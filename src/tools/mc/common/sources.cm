@@ -1,0 +1,35 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2004 The Moby Project (http://moby.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * src/util/sources.cm.  Generated from sources_cm.in by configure.
+ *
+ * Utility code for Moby compiler and tools.
+ *)
+
+Library
+
+  structure FloatLit
+  structure IntegerLit
+  structure Literal
+  structure Stamp
+  signature VAR_PARAMS
+  signature VAR
+  functor VarFn
+  structure VarRep
+
+is
+
+  $/basis.cm
+
+  $/smlnj-lib.cm
+  $/pp-lib.cm
+
+  float-lit.sml
+  integer-lit.sml
+  literal.sml
+  stamp.sml
+  var-fn.sml
+  var-rep.sml
+

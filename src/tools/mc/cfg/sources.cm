@@ -1,0 +1,25 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2006 The Moby Project (http://moby.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * src/util/sources.cm.  Generated from sources_cm.in by configure.
+ *
+ * Utility code for Moby compiler and tools.
+ *)
+
+Library
+
+  structure CFG
+
+is
+
+  $/basis.cm
+
+  $/smlnj-lib.cm
+  $/pp-lib.cm
+
+  ../common/sources.cm
+
+  cfg.sml
+
