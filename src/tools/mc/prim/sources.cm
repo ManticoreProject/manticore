@@ -3,12 +3,12 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * The "control-flow graph" representation.
+ * Primitive operations.
  *)
 
 Library
 
-  structure CFG
+  structure Prim
 
 is
 
@@ -17,8 +17,5 @@ is
   $/smlnj-lib.cm
   $/pp-lib.cm
 
-  ../common/sources.cm
-  ../prim/sources.cm
-
-  cfg.sml
+  prim.sml
 

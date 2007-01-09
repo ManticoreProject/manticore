@@ -1,7 +1,10 @@
 (* cfg.sml
  *
- * COPYRIGHT (c) 2006 John Reppy (http://www.cs.uchicago.edu/~jhr)
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
+ *
+ * The "control-flow graph" representation; essentially a 1st-order
+ * CPS language.
  *)
 
 structure CFG =
@@ -12,7 +15,7 @@ structure CFG =
   (* extended basic block *)
     datatype xblock = XBB of (label * var list * exp)
 
-    and exp = Exp of (ProgPt.prog_pt * exp')
+    and exp = Exp of (ProgPt.ppt * exp')
 
     and exp'
       = E_Let of (var list * rhs * exp)
@@ -28,15 +31,28 @@ structure CFG =
       | E_Select of (int * var)
       | E_Alloc of ty * var list
       | E_Prim of prim
+      | E_CCall of (var * var list)
 
     and var_kind
       = VK_None
       | VK_Let of rhs
       | VK_Param
 
+    and label_kind
+      = Extern of string	(* external label; e.g., a C function *)
+      | Export of string	(* exported label *)
+      | Local			(* local to a function *)
+      | Entry
+
     withtype var = (var_kind, ty) VarRep.var_rep
+	 and label = (label_kind, ty) VarRep.var_rep
          and prim = var Prim.prim
          and jump = (label * var list)
+
+    datatype func_kind
+      = KnownFunc		(* known function; use specialized calling convention *)
+      | StandardFunc		(* standard calling convention *)
+      | ContFunc		(* first-class continuation *)
 
     datatype func = FUNC of {
 	entry : xblock,

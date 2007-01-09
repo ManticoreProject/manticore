@@ -1,9 +1,7 @@
 (* sources.cm
  *
- * COPYRIGHT (c) 2004 The Moby Project (http://moby.cs.uchicago.edu)
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
- *
- * src/util/sources.cm.  Generated from sources_cm.in by configure.
  *
  * Utility code for Moby compiler and tools.
  *)
@@ -13,6 +11,7 @@ Library
   structure FloatLit
   structure IntegerLit
   structure Literal
+  structure ProgPt
   structure Stamp
   signature VAR_PARAMS
   signature VAR
@@ -29,6 +28,7 @@ is
   float-lit.sml
   integer-lit.sml
   literal.sml
+  prog-point.sml
   stamp.sml
   var-fn.sml
   var-rep.sml
