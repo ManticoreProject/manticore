@@ -1,7 +1,9 @@
 (* var-rep.sml
  *
- * COPYRIGHT (c) 2006 John Reppy (http://www.cs.uchicago.edu/~jhr)
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
+ *
+ * Generic representation of variables.
  *)
 
 structure VarRep =

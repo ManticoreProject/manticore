@@ -1,6 +1,6 @@
 (* float-lit.sml
  *
- * COPYRIGHT (c) 2005 The Moby Project (http://moby.cs.uchicago.edu/)
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
  * Internal representation of floating-point literals with limited
