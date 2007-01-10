@@ -41,18 +41,29 @@ functor CodeGenFn (??) =
 		of CFG.E_Let(xs, rhs, e) =>
 		 | CFG.E_HeapCheck(szb, callGC, e) =>
 		 | CFG.E_If(cond, trueJmp, falseJmp) =>
+		 | CFG.E_Switch(arg, cases, SOME dflt) =>
+		 | CFG.E_Switch(arg, cases, NONE) =>
 		 | CFG.E_Apply(f, args) =>
 		 | CFG.E_Throw(k, args) =>
 		 | CFG.E_Goto gmp = genJump jmp
 		(* end case *))
+	(* generate code for rhs of let *)
+	  and genRHS ([x], CFG.E_Var y) =
+	    | genRHS ([x], CFG.E_Label lab) =
+		bindToRExp (vTbl, T.LABEL(LabelCode.getName lab))
+	    | genRHS ([x], CFG.E_Literal lit) =
+	    | genRHS ([x], CFG.E_Select(i, y)) =
+	    | genRHS ([x], CFG.E_Alloc(ty, args)) =
+	    | genRHS ([x], CFG.E_Prim p) = genPrim (vTbl, x, p)
+	    | genRHS ([x], CFG.E_CCall(cfun, args)) =
 	(* jump to local label *)
-	  and genJump (lab, args) = let
-		val name = Label.getName lab
-		val params = Label.getParams lab
+	  and genJump (lab, args, fallThrough) = let
+		val name = LabelCode.getName lab
+		val params = LabelCode.getParams lab
 		val args = List.map getDef args
 		in
 		  Copy.copy {src = args, dst = params};
-		  gen (T.JMP(T.LABEL name, [name]))
+		  if fallThrough then () else gen (T.JMP(T.LABEL name, [name]))
 		end
 	  in
 	    ??

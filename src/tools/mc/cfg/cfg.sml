@@ -21,6 +21,7 @@ structure CFG =
       = E_Let of (var list * rhs * exp)
       | E_HeapCheck of (int * jump * exp)
       | E_If of (var * jump * jump)
+      | E_Switch of (var * (int * jump) list * jump option)
       | E_Apply of (var * var list)
       | E_Throw of (var * var list)
       | E_Goto of jump
@@ -28,6 +29,7 @@ structure CFG =
     and rhs
       = E_Var of var
       | E_Label of label
+      | E_Literal of Literal.literal
       | E_Select of (int * var)
       | E_Alloc of ty * var list
       | E_Prim of prim
