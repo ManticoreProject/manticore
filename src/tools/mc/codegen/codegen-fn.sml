@@ -50,20 +50,20 @@ functor CodeGenFn (??) =
 	(* generate code for rhs of let *)
 	  and genRHS ([x], CFG.E_Var y) =
 	    | genRHS ([x], CFG.E_Label lab) =
-		bindToRExp (vTbl, T.LABEL(LabelCode.getName lab))
+		bindToRExp (vTbl, x, T.LABEL(LabelCode.getName lab))
 	    | genRHS ([x], CFG.E_Literal lit) =
 	    | genRHS ([x], CFG.E_Select(i, y)) =
 	    | genRHS ([x], CFG.E_Alloc(ty, args)) =
 	    | genRHS ([x], CFG.E_Prim p) = genPrim (vTbl, x, p)
 	    | genRHS ([x], CFG.E_CCall(cfun, args)) =
 	(* jump to local label *)
-	  and genJump (lab, args, fallThrough) = let
+	  and genJump (lab, args) = let
 		val name = LabelCode.getName lab
 		val params = LabelCode.getParams lab
 		val args = List.map getDef args
 		in
 		  Copy.copy {src = args, dst = params};
-		  if fallThrough then () else gen (T.JMP(T.LABEL name, [name]))
+		  gen (T.JMP(T.LABEL name, [name]))
 		end
 	  in
 	    ??
