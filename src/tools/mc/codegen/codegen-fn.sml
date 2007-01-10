@@ -48,8 +48,10 @@ functor CodeGenFn (??) =
 	(* jump to local label *)
 	  and genJump (lab, args) = let
 		val name = Label.getName lab
+		val params = Label.getParams lab
+		val args = List.map getDef args
 		in
-(* copy arguments to destination registers *)
+		  Copy.copy {src = args, dst = params};
 		  gen (T.JMP(T.LABEL name, [name]))
 		end
 	  in
