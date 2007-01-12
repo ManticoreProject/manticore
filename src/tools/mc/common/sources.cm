@@ -13,6 +13,8 @@ Library
   structure Literal
   structure ProgPt
   structure Stamp
+  signature UTF8
+  structure UTF8
   signature VAR_PARAMS
   signature VAR
   functor VarFn
@@ -30,6 +32,8 @@ is
   literal.sml
   prog-point.sml
   stamp.sml
+  utf8-sig.sml
+  utf8.sml
   var-fn.sml
   var-rep.sml
 

@@ -32,6 +32,18 @@ signature VAR =
 
     val toString : var -> string
 
+  (* per-variable properties *)
+    val newProp : (var -> 'a) -> {
+	    clrFn : var -> unit,
+	    getFn : var -> 'a,
+	    peekFn : var -> 'a option,
+	    setFn : (var * 'a) -> unit
+	  }
+    val newFlag : var -> {
+	    getFn : var -> bool,
+	    setFn : var * bool -> unit
+	  }
+
     structure Set : ORD_SET where type Key.ord_key = var
     structure Map : ORD_MAP where type Key.ord_key = var
     structure Tbl : MONO_HASH_TABLE where type Key.hash_key = var
@@ -64,6 +76,12 @@ functor VarFn (VP : VAR_PARAMS) : VAR =
     fun hash (V{id, ...}) = Stamp.hash id
 
     fun toString (V{name, id, ...}) = Atom.toString name ^ Stamp.toString id
+
+    fun propsOf (V{props, ...}) = props
+
+  (* per-variable properties *)
+    fun newProp mkProp = PropList.newProp (propsOf, mkProp)
+    val newFlag = newFlag propsOf
 
     structure Key =
       struct

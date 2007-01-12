@@ -1,0 +1,18 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2006 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+Library
+
+  structure AST
+
+is
+
+  $/basis.cm
+  $/smlnj-lib.cm
+  ../common/sources.cm
+
+  ast.sml
+
