@@ -9,6 +9,7 @@
 Library
 
   structure CFG
+  structure PrintCFG
 
 is
 
@@ -21,4 +22,4 @@ is
   ../prim/sources.cm
 
   cfg.sml
-
+  print-cfg.sml
