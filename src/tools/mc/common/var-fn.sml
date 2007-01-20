@@ -39,7 +39,7 @@ signature VAR =
 	    peekFn : var -> 'a option,
 	    setFn : (var * 'a) -> unit
 	  }
-    val newFlag : var -> {
+    val newFlag : unit -> {
 	    getFn : var -> bool,
 	    setFn : var * bool -> unit
 	  }
@@ -81,7 +81,7 @@ functor VarFn (VP : VAR_PARAMS) : VAR =
 
   (* per-variable properties *)
     fun newProp mkProp = PropList.newProp (propsOf, mkProp)
-    val newFlag = newFlag propsOf
+    fun newFlag () = PropList.newFlag propsOf
 
     structure Key =
       struct

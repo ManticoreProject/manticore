@@ -13,13 +13,18 @@ structure CFG =
     type ty = unit (* FIXME *)
 
   (* extended basic block *)
-    datatype xblock = XBB of (label * var list * exp)
+    datatype func = FUNC of {
+	lab : label,
+	kind : func_kind,
+	params : var list,
+	body : exp
+      }
 
     and exp = Exp of (ProgPt.ppt * exp')
 
     and exp'
       = E_Let of (var list * rhs * exp)
-      | E_HeapCheck of (int * jump * exp)
+      | E_HeapCheck of (word * exp)
       | E_If of (var * jump * jump)
       | E_Switch of (var * (int * jump) list * jump option)
       | E_Apply of (var * var list)
@@ -35,6 +40,11 @@ structure CFG =
       | E_Prim of prim
       | E_CCall of (var * var list)
 
+    and func_kind
+      = KnownFunc		(* known function; use specialized calling convention *)
+      | StandardFunc		(* standard calling convention *)
+      | ContFunc		(* first-class continuation *)
+
     and var_kind
       = VK_None
       | VK_Let of rhs
@@ -43,34 +53,45 @@ structure CFG =
     and label_kind
       = Extern of string	(* external label; e.g., a C function *)
       | Export of string	(* exported label *)
-      | Local			(* local to a function *)
-      | Entry
+      | Local			(* local to module *)
 
     withtype var = (var_kind, ty) VarRep.var_rep
 	 and label = (label_kind, ty) VarRep.var_rep
          and prim = var Prim.prim
          and jump = (label * var list)
 
-    datatype func_kind
-      = KnownFunc		(* known function; use specialized calling convention *)
-      | StandardFunc		(* standard calling convention *)
-      | ContFunc		(* first-class continuation *)
-
-    datatype func = FUNC of {
-	entry : xblock,
-	kind : func_kind,
-	body : xblock list
-      }
-
     fun tyToString _ = ""	(* FIXME *)
-    fun kindToString _ = ""	(* FIXME *)
+    fun labelKindToString _ = ""	(* FIXME *)
+    fun varKindToString _ = ""	(* FIXME *)
+
+    structure Label = VarFn (
+      struct
+	type kind = label_kind
+	type ty = ty
+	val kindToString = labelKindToString
+	val tyToString = tyToString
+      end)
+
+    datatype module = MODULE of {
+	code : func list,	(* first function is initialization *)
+	funcs : func Label.Map.map
+      }
 
     structure Var = VarFn (
       struct
 	type kind = var_kind
 	type ty = ty
-	val kindToString = kindToString
+	val kindToString = varKindToString
 	val tyToString = tyToString
       end)
+
+  (* smart constructors *)
+    fun mkLet arg = Exp(ProgPt.new(), E_Let arg)
+    fun mkHeapCheck arg = Exp(ProgPt.new(), E_HeapCheck arg)
+    fun mkIf arg = Exp(ProgPt.new(), E_If arg)
+    fun mkSwitch arg = Exp(ProgPt.new(), E_Switch arg)
+    fun mkApply arg = Exp(ProgPt.new(), E_Apply arg)
+    fun mkThrow arg = Exp(ProgPt.new(), E_Throw arg)
+    fun mkGoto arg = Exp(ProgPt.new(), E_Goto arg)
 
   end
