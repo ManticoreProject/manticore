@@ -94,4 +94,11 @@ structure CFG =
     fun mkThrow arg = Exp(ProgPt.new(), E_Throw arg)
     fun mkGoto arg = Exp(ProgPt.new(), E_Goto arg)
 
+    fun mkModule code = MODULE{
+	    code = code,
+	    funcs = List.foldl
+	      (fn (f as FUNC{lab, ...}, fm) => Label.Map.insert(fm, lab, f))
+		Label.Map.empty code
+	  }
+
   end

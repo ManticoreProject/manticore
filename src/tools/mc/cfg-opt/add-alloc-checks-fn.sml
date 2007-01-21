@@ -99,11 +99,8 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 		    end
 		  else f
 	  val code = List.map rewrite code
-	  val funcs = List.foldl
-		(fn (f as CFG.FUNC{lab, ...}, fm) => CFG.Label.Map.insert(fm, lab, f))
-		  CFG.Label.Map.empty code
 	  in
-	    CFG.MODULE{code = List.rev code, funcs = funcs}
+	    CFG.mkModule (List.rev code)
 	  end
 
   end
