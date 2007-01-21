@@ -35,7 +35,7 @@ structure CFG =
       = E_Var of var
       | E_Label of label
       | E_Literal of Literal.literal
-      | E_Select of (int * var)
+      | E_Select of (int * var)		(* select i'th field (zero-based) *)
       | E_Alloc of ty * var list
       | E_Prim of prim
       | E_CCall of (var * var list)
