@@ -10,6 +10,8 @@ structure PrintCFG : sig
 
     val output : flags -> (TextIO.outstream * CFG.module) -> unit
 
+    val print : CFG.module -> unit
+
   end = struct
 
     type flags = {prog_pts : bool}
@@ -19,10 +21,14 @@ structure PrintCFG : sig
 	  fun prl s = pr(String.concat s)
 	  fun prIndent 0 = ()
 	    | prIndent n = (pr "  "; prIndent(n-1))
-	  fun indent i = indent(i + 8)
-	  fun indentWithPPt (ppt, i) = (
-		pr (StringCvt.padRight #" " 8 (ProgPt.toString ppt ^ ":"));
-		indent i)
+	  fun indent i = if (#prog_pts flgs)
+		then prIndent(i + 8)
+		else prIndent i
+	  fun indentWithPPt (ppt, i) = if (#prog_pts flgs)
+		then (
+		  pr (StringCvt.padRight #" " 8 (ProgPt.toString ppt ^ ":"));
+		  prIndent i)
+		else prIndent i
 	  fun prList toS [] = pr "()"
 	    | prList toS [x] = pr(toS x)
 	    | prList toS l = let
@@ -40,12 +46,12 @@ structure PrintCFG : sig
 		indent 1;
 		case (CFG.Label.kindOf lab, kind)
 		 of (CFG.Export name, CFG.StandardFunc) => pr "export function "
-		  | (CFG.Local, CFG.KnownFunc) => pr "local function"
+		  | (CFG.Local, CFG.KnownFunc) => pr "local function "
 		  | (CFG.Local, CFG.StandardFunc) => pr "function "
 		  | (CFG.Local, CFG.ContFunc) => pr "cont "
 		  | _ => raise Fail "bogus function/label kind"
 		(* end case *);
-		prl [labelToString lab, " ("]; prList varBindToString params; pr ")\n";
+		prl [labelToString lab, " "]; prList varBindToString params; pr "\n";
 		prExp (2, body))
 	  and prExp (i, CFG.Exp(ppt, e)) = (
 		indentWithPPt (ppt, i);
@@ -100,5 +106,7 @@ structure PrintCFG : sig
 	    List.app prFunc code;
 	    pr "}\n"
 	  end
+
+    fun print m = output {prog_pts=false} (TextIO.stdErr, m)
 
   end

@@ -32,6 +32,7 @@ structure CFG =
       | E_Goto of jump
 
     and rhs
+(* QUESTION: perhaps allow parallel copy? *)
       = E_Var of var
       | E_Label of label
       | E_Literal of Literal.literal
@@ -86,7 +87,12 @@ structure CFG =
       end)
 
   (* smart constructors *)
-    fun mkLet arg = Exp(ProgPt.new(), E_Let arg)
+    fun mkLet (lhs, rhs, e) = let
+	  val e = Exp(ProgPt.new(), E_Let(lhs, rhs, e))
+	  in
+	    List.app (fn x => Var.setKind(x, VK_Let rhs)) lhs;
+	    e
+	  end
     fun mkHeapCheck arg = Exp(ProgPt.new(), E_HeapCheck arg)
     fun mkIf arg = Exp(ProgPt.new(), E_If arg)
     fun mkSwitch arg = Exp(ProgPt.new(), E_Switch arg)

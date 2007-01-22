@@ -63,6 +63,7 @@ functor VarFn (VP : VAR_PARAMS) : VAR =
 	    name = name,
 	    id = Stamp.new(),
 	    kind = ref k,
+	    useCnt = ref 0,
 	    ty = ty,
 	    props = PropList.newHolder()
 	  }

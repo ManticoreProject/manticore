@@ -13,6 +13,7 @@ structure VarRep =
 	name : Atom.atom,
 	id : Stamp.stamp,
 	kind : 'kind ref,
+	useCnt : int ref,
 	ty : 'ty,
 	props : PropList.holder
       }

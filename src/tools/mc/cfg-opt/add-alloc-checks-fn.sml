@@ -42,8 +42,14 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 			    in
 			      List.foldl f l cases
 			    end
-(* FIXME: if f is known, we should include its label in the graph. *)
-			| CFG.E_Apply(f, _) => l
+			| CFG.E_Apply(f, _) => (case funLabel f
+			     of CFG.VK_Let(CFG.E_Label f') => (case CFG.Label.kindOf f'
+				   of CFG.Local => VSet.add(l, f')
+				    | CFG.Export _ => VSet.add(l, f')
+				    | _ => l
+				  (* end case *))
+			      | _ => l
+			    (* end case *))
 (* FIXME: if k is known, we should include its label in the graph. *)
 			| CFG.E_Throw(k, _) => l
 			| CFG.E_Goto jmp => VSet.add(l, #1 jmp)
@@ -51,14 +57,29 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 		in
 		  (lab, VSet.listItems(out(body, VSet.empty)))
 		end
+(* +DEBUG *)
+val toNode = fn f => let
+	val nd as (src, out) = toNode f
+	val src = CFG.Label.toString src
+	val out = String.concatWith "," (List.map CFG.Label.toString out)
+	in
+	  print(concat["  ", src, " -> [", out, "]\n"]);
+	  nd
+	end
+(* -DEBUG *)
 	  in
+(*DEBUG*)print "makeGraph\n";
 	    List.map toNode code
 	  end
 
   (* label annotations *)
     val {clrFn=clrAlloc, getFn=getAlloc, peekFn=peekAlloc, setFn=setAlloc} =
 	  CFG.Label.newProp (fn _ => 0w0)
-    
+
+(* FIXME: what about known continuations? *)
+    fun escaping CFG.KnownFunc = false
+      | escaping _ = true
+
     fun transform (CFG.MODULE{code, funcs, ...}) = let
 	  val graph = makeGraph code
 	  val fbSet = FB.feedback graph
@@ -72,6 +93,11 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 		fun expAlloc (CFG.Exp(_, e')) = (case e'
 		       of CFG.E_Let(_, rhs, e) => rhsAlloc rhs + expAlloc e
 			| CFG.E_HeapCheck _ => raise Fail "unexpected HeapCheck"
+			| CFG.E_If(_, j1, j2) => Word.max(jumpAlloc j1, jumpAlloc j2)
+			| CFG.E_Switch(_, cases, dflt) => ??
+			| CFG.E_Apply(f, _) => ??
+			| CFG.E_Throw(k, _) => ??
+			| CFG.E_Goto jmp => jumpAlloc jmp
 			| _ => 0w0
 		      (* end case *))
 		and rhsAlloc (CFG.E_Alloc(ty, _)) = sizeOf ty
@@ -91,7 +117,7 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 	  val _ = List.app (ignore o funcAlloc) code
 	(* add allocation checks as needed *)
 	  fun rewrite (f as CFG.FUNC{lab, kind, params, body}) =
-		if FB.Set.member(fbSet, lab)
+		if FB.Set.member(fbSet, lab) orelse escaping kind
 		  then let
 		    val sz = getAlloc lab
 		    in
@@ -100,7 +126,7 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 		  else f
 	  val code = List.map rewrite code
 	  in
-	    CFG.mkModule (List.rev code)
+	    CFG.mkModule code
 	  end
 
   end
