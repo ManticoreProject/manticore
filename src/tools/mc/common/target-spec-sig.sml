@@ -6,17 +6,20 @@
  * Information about the target architecture and operating system.
  *)
 
-signature TARGET_SPEC = sig
+signature TARGET_SPEC =
+  sig
 
     val archName : string
     val abiName : string
     val osName : string
 
-    val wordSzB : int   (* size of machine words in bytes *)
-    val boolSzB : int   (* size of boolean values in bytes *)
+    val wordSzB : word		(* number of bytes in a pointer-sized word *)
+    val wordAlignB : word	(* byte alignment of pointers *)
+
+    val boolSzB : word		(* size of boolean values in bytes *)
 		  
-    (* representation of True and False *)
+  (* representation of True and False *)
     val trueRep : IntegerLit.integer
     val falseRep : IntegerLit.integer
 
-end (* TARGET_SPEC *)
+  end (* TARGET_SPEC *)
