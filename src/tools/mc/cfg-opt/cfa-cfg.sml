@@ -6,18 +6,18 @@
 
 structure CFACFG : sig
 
-    val analyse : CFG.module -> unit
+    val analyze : CFG.module -> unit
 
     datatype call_sites
-      = Unknown			(* possible unknown call sites *)
-      | Known of LSet.set	(* only called from known locations; the labels are the *)
-				(* entry labels of the functions that call the target *)
+      = Unknown				(* possible unknown call sites *)
+      | Known of CFG.Label.Set.set	(* only called from known locations; the labels are the *)
+					(* entry labels of the functions that call the target *)
 
     val callSitesOf : CFG.label -> call_sites
 
     datatype value
       = TOP
-      | TUPLE of CFG.ty * value list
+      | TUPLE of value list
       | LABELS of CFG.Label.Set.set
       | BOT
 
@@ -27,7 +27,8 @@ structure CFACFG : sig
 
   end = struct
 
-    structure LSet = CFG.Label.Set.set
+    structure LSet = CFG.Label.Set
+    structure LMap = CFG.Label.Map
 
     datatype call_sites
       = Unknown			(* possible unknown call sites *)
@@ -36,20 +37,37 @@ structure CFACFG : sig
 
     datatype value
       = TOP
-      | TUPLE of CFG.ty * value list
+      | TUPLE of value list
       | LABELS of LSet.set
       | BOT
 
-    val {getFn=callSitesOf, ...} = CFG.Label.newProp (fn _ => Known(LSet.empty))
-    val {getFn=valueOf, ...} = CFG.Var.newProt (fn _ => BOT)
+    val {getFn=callSitesOf, clrFn=clrLabel, ...} = CFG.Label.newProp (fn _ => Known(LSet.empty))
+    val {getFn=valueOf, clrFn=clrVar, peekFn=peekVar, setFn=setVar} = CFG.Var.newProp (fn _ => BOT)
+
+  (* clear CFA annotations from the variables and labels of a module.  Note that we can
+   * restrict the traversal to binding instances.
+   *)
+    fun clearInfo (CFG.MODULE{code, ...}) = let
+	  fun doFunct (CFG.FUNC{lab, params, body, ...}) = (
+		clrLabel lab;
+		List.app clrVar params;
+		doExp body)
+	  and doExp (CFG.Exp(_, e)) = (case e
+		 of CFG.E_Let(lhs, _, e) => (List.app clrVar lhs; doExp e)
+		  | CFG.E_HeapCheck(_, e) => doExp e
+		  | _ => ()
+		(* end case *))
+	  in
+	    List.app doFunct code
+	  end
 
   (* marks on entry labels to avoid infinite loops in the analysis *)
     local
-      val {getFn, setFn} = CFG.Label.newProp(fn _ => 0)
+      val {getFn, setFn, ...} = CFG.Label.newProp(fn _ => 0)
     in
-    fun isMarked lab = (getFn x = 0)
-    fun mark lab = setFn(lab, getFn x + 1)
-    fun unmark lab = setFn(lab, getFn x - 1)
+    fun isMarked lab = (getFn lab = 0)
+    fun mark lab = setFn(lab, getFn lab + 1)
+    fun unmark lab = setFn(lab, getFn lab - 1)
     end
 
   (* test if a new approximate value is different from an old value; this
@@ -60,8 +78,7 @@ structure CFACFG : sig
 	    | (TOP, _) => true
 	    | (BOT, BOT) => false
 	    | (_, BOT) => true
-	    | (TUPLE(_, vs1), TUPLE(_, vs2)) =>
-		ListPairEq.exists changedValue (vs1, vs2)
+	    | (TUPLE vs1, TUPLE vs2) => ListPair.exists changedValue (vs1, vs2)
 	    | (LABELS s1, LABELS s2) => if (LSet.numItems s1 > LSet.numItems s2)
 		then true
 		else false
@@ -77,14 +94,14 @@ structure CFACFG : sig
 	    | kJoin (_, BOT, v) = v
 	    | kJoin (_, v, BOT) = v
 	    | kJoin (k, TUPLE vs1, TUPLE vs2) =
-		TUPLE(ListPair.mapEq (fn (v1, v2) => kJoin(k-1, v1, v2)) (v1s, v2s))
-	    | kJoin (_, LABELS labs1, LABELS labs2) => LABELS(LSet.union(labs1, labs2))
+		TUPLE(ListPair.mapEq (fn (v1, v2) => kJoin(k-1, v1, v2)) (vs1, vs2))
+	    | kJoin (_, LABELS labs1, LABELS labs2) = LABELS(LSet.union(labs1, labs2))
 	    | kJoin _ = raise Fail "type error"
 	  in
 	    kJoin (maxDepth, v1, v2)
 	  end
 
-    fun analyse (CFG.MODULE{code, funcs, ...}) = let
+    fun analyze (CFG.MODULE{code, funcs, ...}) = let
 	  fun onePass () = let
 		val changed = ref false
 	      (* update the approximate value of a variable by some delta and record if
@@ -101,27 +118,42 @@ structure CFACFG : sig
 				else ()
 			    end
 		      (* end case *))
-		fun doFunct (CFG.FUNC{lab, params, ...}, args) = (
+	      (* record that a given variable escapes *)
+		fun escape x = (case valueOf x
+		       of LABELS labs => let
+			  (* set the parameters to TOP, since the function escapes *)
+			    fun doLab lab = let
+				  val SOME(CFG.FUNC{params, ...}) = CFG.Label.Map.find(funcs, lab)
+				  in
+				    List.app (fn x => addInfo(x, TOP)) params
+				  end
+			    in
+			      CFG.Label.Set.app doLab labs
+			    end
+			| _ => ()
+		      (* end case *))
+		fun doFunct (CFG.FUNC{lab, params, body, ...}, args) = (
 		      ListPair.appEq addInfo (params, args);
-		      if marked lab
+		      if isMarked lab
 			then ()
 			else doExp body)
 		and doExp (CFG.Exp(_, e)) = (case e
 		       of CFG.E_Let(lhs, rhs, e) => (
 			    case (lhs, rhs)
-			     of ([x], CFG.E_Var y) => updateInfo(x, valueOf y)
+			     of ([x], CFG.E_Var y) => addInfo(x, valueOf y)
 			      | ([x], CFG.E_Label lab) =>
-				  updateInfo(x, LABELS(LSet.singleton lab))
-			      | ([x], CFG.E_Select(i, y)) => (case valueOf y
-				   of TUPLE(_, vs) => List.ith(vs, i)
+				  addInfo(x, LABELS(LSet.singleton lab))
+			      | ([x], CFG.E_Select(i, y)) => addInfo(x, case valueOf y
+				   of TUPLE vs => List.nth(vs, i)
 				    | BOT => BOT
 				    | TOP => TOP
 				    | _ => raise Fail "type error"
 				  (* end case *))
-			      | ([x], CFG.E_Alloc(ty, xs) =>
-				  updateInfo(x, TUPLE(ty, List.map valueOf xs))
+			      | ([x], CFG.E_Alloc(ty, xs)) =>
+				  addInfo(x, TUPLE(List.map valueOf xs))
 			      | (_, CFG.E_Prim _) => ()
-			      | (_, CFG.E_CCall(cf, args)) => ??
+			      | (_, CFG.E_CCall(cf, args)) => List.app escape args
+			      | _ => raise Fail "ill-formed RHS"
 			    (* end case *);
 			    doExp e)
 			| CFG.E_HeapCheck(_, e) => doExp e
@@ -146,10 +178,11 @@ structure CFACFG : sig
 		and doApply (f, args) = (case valueOf f
 		       of LABELS targets => LSet.app (fn lab => doJump(lab, args)) targets
 			| BOT => ()
-			| TOP => (* the args escape! *)
+			| TOP => List.app escape args
+			| _ => raise Fail "type error"
 		      (* end case *))
 		in
-(* apply doFunct for each exported function *);
+(* apply doFunct for each exported function *)
 		  !changed
 		end
 	  fun iterate () = if onePass() then iterate() else ()

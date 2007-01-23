@@ -42,7 +42,7 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 			    in
 			      List.foldl f l cases
 			    end
-			| CFG.E_Apply(f, _) => (case funLabel f
+			| CFG.E_Apply(f, _) => (case CFG.Var.kindOf f
 			     of CFG.VK_Let(CFG.E_Label f') => (case CFG.Label.kindOf f'
 				   of CFG.Local => VSet.add(l, f')
 				    | CFG.Export _ => VSet.add(l, f')
@@ -83,25 +83,43 @@ val toNode = fn f => let
     fun transform (CFG.MODULE{code, funcs, ...}) = let
 	  val graph = makeGraph code
 	  val fbSet = FB.feedback graph
-	(* compute the allocation performed by an extended block and annotate
-	 * the label with it.
+	(* compute the allocation performed by a function and annotate
+	 * its label with it.
 	 *)
 	  fun funcAlloc (CFG.FUNC{lab, body, ...}) = let
-		fun jumpAlloc (lab, _) = if FB.Set.member(fbSet, lab)
+		fun labelAlloc lab = if FB.Set.member(fbSet, lab)
 		      then 0w0
 		      else funcAlloc (valOf(CFG.Label.Map.find(funcs, lab)))
+		fun jumpAlloc (lab, _) = labelAlloc lab
 		fun expAlloc (CFG.Exp(_, e')) = (case e'
 		       of CFG.E_Let(_, rhs, e) => rhsAlloc rhs + expAlloc e
 			| CFG.E_HeapCheck _ => raise Fail "unexpected HeapCheck"
 			| CFG.E_If(_, j1, j2) => Word.max(jumpAlloc j1, jumpAlloc j2)
-			| CFG.E_Switch(_, cases, dflt) => ??
-			| CFG.E_Apply(f, _) => ??
-			| CFG.E_Throw(k, _) => ??
+			| CFG.E_Switch(_, cases, dflt) => let
+			    fun f ((_, jmp), sz) = Word.max(jumpAlloc jmp, sz)
+			    val sz = List.foldl f 0w0 cases
+			    in
+			      case dflt of SOME jmp => Word.max(jumpAlloc jmp, sz) | _ => sz
+			    end
+			| CFG.E_Apply(f, _) => applyAlloc f
+			| CFG.E_Throw(k, _) => applyAlloc k
 			| CFG.E_Goto jmp => jumpAlloc jmp
-			| _ => 0w0
 		      (* end case *))
 		and rhsAlloc (CFG.E_Alloc(ty, _)) = sizeOf ty
 		  | rhsAlloc _ = 0w0
+	      (* transitive allocation by a called function/continuation.  If we know the
+	       * call sites, then take the maximum of the functions that are not in the
+	       * feedback set.  Note that by ignoring members of the feedback set, we are
+	       * safe from infinite loops.
+	       *)
+		and applyAlloc f = (case CFACFG.valueOf f
+		       of CFACFG.LABELS labs => let
+			    fun f (lab, sz) = Word.max(labelAlloc lab, sz)
+			    in
+			      CFG.Label.Set.foldl f 0w0 labs
+			    end
+			| _ => 0w0
+		      (* end case *))
 		val alloc = expAlloc body
 		in
 		  case peekAlloc lab
