@@ -9,8 +9,9 @@ structure CFACFG : sig
     val analyse : CFG.module -> unit
 
     datatype call_sites
-      = Unknwn				(* possible unknown call sites *)
-      | Known of CFG.Label.Set.set	(* called from known locations *)
+      = Unknown			(* possible unknown call sites *)
+      | Known of LSet.set	(* only called from known locations; the labels are the *)
+				(* entry labels of the functions that call the target *)
 
     val callSitesOf : CFG.label -> call_sites
 
@@ -29,8 +30,9 @@ structure CFACFG : sig
     structure LSet = CFG.Label.Set.set
 
     datatype call_sites
-      = Unknwn				(* possible unknown call sites *)
-      | Known of LSet.set	(* called from known locations *)
+      = Unknown			(* possible unknown call sites *)
+      | Known of LSet.set	(* only called from known locations; the labels are the *)
+				(* entry labels of the functions that call the target *)
 
     datatype value
       = TOP
@@ -151,6 +153,8 @@ structure CFACFG : sig
 		  !changed
 		end
 	  fun iterate () = if onePass() then iterate() else ()
+	(* compute the call-sites for every label *)
+	  
 	  in
 	    iterate ()
 (* compute call-side information for labels *)
