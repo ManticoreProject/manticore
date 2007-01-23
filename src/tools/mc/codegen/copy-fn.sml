@@ -15,7 +15,7 @@ functor CopyFn (
   structure MTy = MTy
   structure T = MTy.T
 
-  val ty = Spec.wordSzB * 8
+  val ty = (Word.toInt Spec.wordSzB) * 8
 
   fun parallelCopy (vs1, vs2) = T.COPY (ty, vs1, vs2)
   fun copyExpr (v, e) = T.MV (ty, v, e)
@@ -29,7 +29,7 @@ functor CopyFn (
 			(regs, exprs, fregs, fexprs)) =
 	      ( (v1,v2) :: regs, exprs, fregs, fexprs)
 	    | mkCopies (MTy.GPReg (_, v1), MTy.EXP (_, e), 
-			(regs, exprs, fregs, fexprs)) =
+			(regs, exprs, fregs, fexprs)) = 
 	      (regs, (v1,e) :: exprs, fregs, fexprs)
 	    | mkCopies (MTy.FPReg (_, v1), MTy.FPR (_, v2), 
 			(regs, exprs, fregs, fexprs)) =

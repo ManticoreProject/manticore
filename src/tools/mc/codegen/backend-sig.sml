@@ -24,6 +24,8 @@ signature BACK_END = sig
     structure Regs : MANTICORE_REGS
     structure MTy : MLRISC_TYPES
 	where T = MLTreeComp.TS.T
+    structure LabelCode : LABEL_CODE
+	where MTy = MTy
 
     (* take a control-flow graph, do RA, optimization, etc. and then
      * emit it to the assembly file.

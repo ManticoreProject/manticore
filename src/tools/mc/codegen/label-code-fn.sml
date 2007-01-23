@@ -15,20 +15,23 @@ functor LabelCodeFn (
   structure P = PropList
   structure LV = CFG.Label
 
-  fun getName cl = Label.label (CFG.Label.toString cl) ()
+  local
+      val {getFn, ...} = 
+	  LV.newProp (fn v => Label.label (CFG.Label.toString v) ())
+  in
+    fun getName v = getFn v
+  end (* local *)
 
   local
       val {getFn, peekFn, ...} = LV.newProp (fn _ => ref [])
   in
-
   fun setParamRegs (v, ps : MTy.mlrisc_reg list) = (getFn v) := ps
 
   fun getParamRegs v =
       (case peekFn v
-	of NONE => raise Fail "paramRegs"
+	of NONE => raise Fail ("paramRegs" ^ LV.toString v)
 	 | SOME prRef => !prRef
       (* esac *))
-
   end (* local *)
 
 end (* LabelCodeFn *)

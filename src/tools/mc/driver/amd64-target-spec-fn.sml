@@ -15,7 +15,8 @@ functor AMD64TargetSpecFn (
   val abiName = abiName
   val osName = osName
 
-  val wordSzB = 64
+  val wordSzB = 0w8
+  val wordAlignB = 0w16
   val boolSzB = wordSzB
 
   (* representation of True and False *)

@@ -17,7 +17,7 @@ functor VarDefFn (
   structure Tbl = CFG.Var.Tbl
   structure T = MTy.T
 
-  val wordSz = Spec.wordSzB * 8
+  val wordSz = (Word.toInt Spec.wordSzB) * 8
   (* representations of some simple constants *)
   val valTRUE = T.LI Spec.trueRep
   val valFALSE = T.LI Spec.falseRep

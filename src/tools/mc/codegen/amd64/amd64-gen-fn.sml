@@ -108,6 +108,8 @@ functor AMD64GenFn (
     structure MTy = MLRiscTypesFn (
                      structure Spec = Spec
 		     structure T = AMD64MLTree ) 
+    structure LabelCode = LabelCodeFn (
+			  structure MTy = MTy )
 
 
     structure Regs = AMD64Regs

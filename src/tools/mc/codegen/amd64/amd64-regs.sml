@@ -13,7 +13,10 @@ structure AMD64Regs : MANTICORE_REGS = struct
 
   structure C = AMD64Cells
 
-  val retReg = C.rax
+  val stdArgReg = C.rax
+  val clReg = C.rcx
+  val kReg = C.rdx
+  val exnReg = C.rbx
   val spReg = C.rsp
   val fpReg = NONE  (* shouldn't we use the frame pointer for something else? *)
   val apReg = C.rdi

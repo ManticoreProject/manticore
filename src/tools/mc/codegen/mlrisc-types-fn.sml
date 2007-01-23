@@ -26,6 +26,7 @@ signature MLRISC_TYPES = sig
     val treeToMLRisc : mlrisc_tree -> T.mlrisc
     val mlriscTypeOf : T.rexp -> T.ty
     val mlriscFTypeOf : T.fexp -> T.ty
+    val regToTree : mlrisc_reg -> mlrisc_tree
 
 end (* MLRISC_TYPES *)
 
@@ -38,7 +39,7 @@ functor MLRiscTypesFn (
   structure T = T
   structure MTS = MLTreeSize (
     structure T = T
-    val intTy = Spec.wordSzB * 8 )
+    val intTy = (Word.toInt Spec.wordSzB) * 8 )
 
   datatype mlrisc_kind = K_INT | K_FLOAT | K_COND
 					   
@@ -67,5 +68,8 @@ functor MLRiscTypesFn (
   fun mlriscToTree (T.CCR cexp) = CEXP cexp
     | mlriscToTree (T.GPR exp) = EXP (mlriscTypeOf exp, exp)
     | mlriscToTree (T.FPR fexp) = FEXP (mlriscFTypeOf fexp, fexp)
+
+  fun regToTree (GPReg (ty, v)) = GPR (ty, v)
+    | regToTree (FPReg (fty, fv)) = FPR (fty, fv)
 
 end (* MLRiscTypesFn *)

@@ -25,13 +25,12 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
                    structure MTy = MTy
 		   structure Spec = Spec
 		   structure MLTreeComp = BE.MLTreeComp )
-  structure LabelCode = LabelCodeFn (
-			  structure T = T
-			  structure MTy = MTy )
+  structure LabelCode = BE.LabelCode
 
-  val ty = Spec.wordSzB * 8
+  val ty = (Word.toInt Spec.wordSzB) * 8
   val memory = ManticoreRegion.memory
-  val retReg = MTy.GPReg (ty, BE.Regs.retReg)
+  val stdArgReg = MTy.GPReg (ty, BE.Regs.stdArgReg)
+  val retReg = stdArgReg (* same as stdArg in CPS *)
   val spReg = MTy.GPReg (ty, BE.Regs.spReg)
 
   fun fail s = raise Fail s
@@ -55,6 +54,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	      beginCluster, getAnnotations, comment, emit, defineLabel, 
 	      entryLabel, exitBlock, pseudoOp, endCluster, ...} = mlStrm
 	  val endCluster = BE.compileCFG o endCluster
+	  val emitStms = app emit
 
 	  val varDefTbl = VD.newTbl ()
 	  val getDefOf = VD.getDefOf varDefTbl
@@ -80,9 +80,8 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	      end
 	    | genExp' (M.E_Switch (tst, jumps, jDefault)) = fail "todo"
 	    | genExp' (M.E_HeapCheck (i, e)) = fail "todo"
-	    | genExp' (M.E_Apply (f, args)) = fail "todo"
-	    | genExp' (M.E_Throw {k, retVal, cp}) = 
-	      genJump' (defOf k, [], [retReg, spReg], [retVal, cp])
+	    | genExp' (M.E_Apply (f, args)) = fail "todo"	      
+	    | genExp' (M.E_Throw (k, args)) = fail "todo"
 
 	  and genJump (l, args) =
 	      let val name = LabelCode.getName l
@@ -92,8 +91,9 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	      end
 	  and genJump' (target, ls, params, args) =
 	      let val args = map getDefOf args
+		  val stms = Copy.copy {src=args, dst=params}
 	      in
-		  Copy.copy {src=args, dst=params};
+		  emitStms stms;
 		  emit (T.JMP (target, ls))
 	      end
 
@@ -115,12 +115,17 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	    | genRHS _ = fail ""
 
 
-	  fun genFunc (M.FUNC {lab, kind, params, body}) = (
-	      beginCluster 0;
-	      pseudoOp P.text;
-	      defineLabel (LabelCode.getName lab);
-	      genExp body;
-	      endCluster []; () )
+	  fun genFunc (M.FUNC {lab, kind, params, body}) =
+	      let val regs = LabelCode.getParamRegs lab
+	      in 
+		  beginCluster 0;
+		  pseudoOp P.text;
+		  ListPair.app (fn (r,x) => setDefOf (x, MTy.regToTree r)) 
+			       (LabelCode.getParamRegs lab, params);
+		  defineLabel (LabelCode.getName lab);
+		  genExp body;
+		  endCluster []; ()
+	      end (* genFunc *)
 
 	  fun genFuncs () = app genFunc code
       in
