@@ -1,0 +1,55 @@
+Library
+
+  structure T
+
+is
+
+  $/basis.cm
+
+  $/smlnj-lib.cm
+  $/pp-lib.cm
+
+  /home/mrainey/school/manticore/MLRISC/cm/Control.cm
+  /home/mrainey/school/manticore/MLRISC/cm/Lib.cm
+  /home/mrainey/school/manticore/MLRISC/cm/MLRISC.cm
+  /home/mrainey/school/manticore/MLRISC/cm/AMD64.cm
+  /home/mrainey/school/manticore/MLRISC/cm/Graphs.cm
+  /home/mrainey/school/manticore/MLRISC/cm/MLTREE.cm
+  /home/mrainey/school/manticore/MLRISC/cm/RA.cm
+
+  amd64/amd64-const.sml
+  amd64/amd64-mltree.sml
+  amd64/amd64-extension.sml
+  amd64/amd64-regs.sml
+  amd64/amd64-frame.sml
+  amd64/amd64-gen-fn.sml  
+
+  ../common/sources.cm
+  ../prim/sources.cm
+
+  ../driver/target-spec-sig.sml
+  ../driver/amd64-target-spec-fn.sml
+
+  ../cfg/cfg.sml
+
+  var-def-sig.sml
+  var-def-fn.sml
+
+  manticore-pseudo-ops-sig.sml
+  manticore-pseudo-ops-fn.sml
+  manticore-region.sml
+  manticore-regs-sig.sml
+  manticore-frame.sml
+  manticore-frame-fn.sml
+  manticore-frame-sig.sml
+  spill-loc-fn.sml
+  spill-loc-sig.sml
+  backend-sig.sml
+  codegen-sig.sml
+  codegen-fn.sml
+  mlrisc-types-fn.sml
+  label-code-sig.sml
+  label-code-fn.sml
+  copy-sig.sml
+  copy-fn.sml
+  test.sml
