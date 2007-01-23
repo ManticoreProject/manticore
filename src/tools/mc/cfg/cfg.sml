@@ -20,6 +20,18 @@ structure CFG =
 	body : exp
       }
 
+    and func_kind
+      = StandardFunc	(* a function that may be called from unknown sites; it uses the *)
+			(* standard calling convention. *)
+      | ContFunc	(* a continuation that may be thrown to from unknown sites; it uses *)
+			(* the standard continuation-calling convention *)
+      | KnownFunc	(* a function/continuation for which we know all of its call sites *)
+			(* and only known functions are called from those sites (Serrano's *)
+			(* "T" property).  It uses a specialized calling convention. *)
+      | Block		(* a function/continuation for which we know all of its call sites *)
+			(* and it is the only function called at those sites (Serrano's *)
+			(* "X" property) *)
+
     and exp = Exp of (ProgPt.ppt * exp')
 
     and exp'
@@ -40,11 +52,6 @@ structure CFG =
       | E_Alloc of ty * var list
       | E_Prim of prim
       | E_CCall of (var * var list)
-
-    and func_kind
-      = KnownFunc		(* known function; use specialized calling convention *)
-      | StandardFunc		(* standard calling convention *)
-      | ContFunc		(* first-class continuation *)
 
     and var_kind
       = VK_None

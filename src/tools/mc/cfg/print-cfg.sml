@@ -46,9 +46,10 @@ structure PrintCFG : sig
 		indent 1;
 		case (CFG.Label.kindOf lab, kind)
 		 of (CFG.Export name, CFG.StandardFunc) => pr "export function "
-		  | (CFG.Local, CFG.KnownFunc) => pr "local function "
 		  | (CFG.Local, CFG.StandardFunc) => pr "function "
 		  | (CFG.Local, CFG.ContFunc) => pr "cont "
+		  | (CFG.Local, CFG.KnownFunc) => pr "local function "
+		  | (CFG.Local, CFG.Block) => pr "label "
 		  | _ => raise Fail "bogus function/label kind"
 		(* end case *);
 		prl [labelToString lab, " "]; prList varBindToString params; pr "\n";
