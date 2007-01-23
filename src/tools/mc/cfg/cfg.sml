@@ -40,7 +40,7 @@ structure CFG =
       | E_If of (var * jump * jump)
       | E_Switch of (var * (int * jump) list * jump option)
       | E_Apply of (var * var list)
-      | E_Throw of (var * var list)
+      | E_Throw of {k : var, retVal : var, cp : var}
       | E_Goto of jump
 
     and rhs

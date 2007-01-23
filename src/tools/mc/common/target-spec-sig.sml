@@ -1,19 +1,22 @@
-(* target-spec-sig.sml
- *
+(* spill-loc-fn.sml
+ * 
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Target OS/architecture specific information.
+ * Information about the target architecture and operating system.
  *)
 
-signature TARGET_SPEC =
-  sig
+signature TARGET_SPEC = sig
 
-    val targetOS : string
-    val targetArch : string
+    val archName : string
+    val abiName : string
+    val osName : string
 
-    val wordSzB : word		(* number of bytes in a pointer-sized word *)
-    val wordAlignB : word	(* byte alignment of pointers *)
+    val wordSzB : int   (* size of machine words in bytes *)
+    val boolSzB : int   (* size of boolean values in bytes *)
+		  
+    (* representation of True and False *)
+    val trueRep : IntegerLit.integer
+    val falseRep : IntegerLit.integer
 
-  end
-
+end (* TARGET_SPEC *)

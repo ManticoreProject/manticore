@@ -7,9 +7,11 @@
  *)
 
 signature MANTICORE_REGS = sig
+
     type gpr = CellsBasis.cell
     type fpr = CellsBasis.cell
-	   
+
+    val retReg : gpr                (* function return-value register *)	   
     val spReg : gpr                 (* stack-pointer register *)
     val fpReg : gpr option          (* frame-pointer register *)
     val apReg : gpr                 (* allocation-pointer register *)
@@ -33,4 +35,5 @@ signature MANTICORE_REGS = sig
     val saveFRegs : fpr list	(* callee-save floating-point registers *)
     val availFRegs : gpr list	(* registers available for allocation *)
     val allFRegs : fpr list	(* all of the floating-point registers *)
+
 end (* MANTICORE_REGS *)

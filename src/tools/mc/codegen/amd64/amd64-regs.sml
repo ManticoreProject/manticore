@@ -13,8 +13,9 @@ structure AMD64Regs : MANTICORE_REGS = struct
 
   structure C = AMD64Cells
 
+  val retReg = C.rax
   val spReg = C.rsp
-  val fpReg = SOME C.rbp
+  val fpReg = NONE  (* shouldn't we use the frame pointer for something else? *)
   val apReg = C.rdi
   val dedicatedRegs = [C.rdi, C.rsp]
   val dedicatedFRegs = []
@@ -27,7 +28,7 @@ structure AMD64Regs : MANTICORE_REGS = struct
   val saveRegs = [C.rbx, C.rsp, C.rbp] @
 		 C.Regs CellsBasis.GP {from=12, to=15, step=1}
   val availRegs = miscRegs
-  (* This list argument gprs complies with the SVID C ABI.  The list is
+  (* This list of argument gprs complies with the SVID C ABI.  The list is
    * in the order of the actual arguments. *)
   val argRegs = [C.rdi, C.rsi, C.rdx, C.rcx] @ 
 		C.Regs CellsBasis.GP {from=8, to=9, step=1}

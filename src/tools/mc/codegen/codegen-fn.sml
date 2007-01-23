@@ -31,6 +31,8 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 
   val ty = Spec.wordSzB * 8
   val memory = ManticoreRegion.memory
+  val retReg = MTy.GPReg (ty, BE.Regs.retReg)
+  val spReg = MTy.GPReg (ty, BE.Regs.spReg)
 
   fun fail s = raise Fail s
 
@@ -77,10 +79,10 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		  genJump jT
 	      end
 	    | genExp' (M.E_Switch (tst, jumps, jDefault)) = fail "todo"
-	    | genExp' (M.E_HeapCheck (i, j, e)) = fail "todo"
+	    | genExp' (M.E_HeapCheck (i, e)) = fail "todo"
 	    | genExp' (M.E_Apply (f, args)) = fail "todo"
-	    | genExp' (M.E_Throw (k, args)) = 
-	      genJump' (defOf k, [], [(* FIXME *)], args)
+	    | genExp' (M.E_Throw {k, retVal, cp}) = 
+	      genJump' (defOf k, [], [retReg, spReg], [retVal, cp])
 
 	  and genJump (l, args) =
 	      let val name = LabelCode.getName l
