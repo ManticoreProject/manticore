@@ -13,6 +13,7 @@ Library
   functor CFGOptFn
   structure PrintCFG
   structure Fib
+  structure Test
 
 is
 
@@ -28,4 +29,4 @@ is
 
   dummy-spec.sml
   fib-test.sml
-
+  test.sml

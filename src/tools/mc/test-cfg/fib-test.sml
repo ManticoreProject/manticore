@@ -46,8 +46,10 @@ structure Fib =
 
     structure P = Prim
 
-    fun var name = CFG.Var.new(Atom.atom name, CFG.VK_None, ())
-    fun label () = CFG.Label.new(Atom.atom "L", CFG.Local, ())
+    val ty = CFG.WordArray 0
+
+    fun var name = CFG.Var.new(Atom.atom name, CFG.VK_None, ty)
+    fun label () = CFG.Label.new(Atom.atom "L", CFG.Local, ty)
 
     fun func (lab, params, body) = let
 	  val params = List.map var params
@@ -82,13 +84,13 @@ structure Fib =
     fun sub (a, b) = CFG.E_Prim(P.I32Sub(a, b))
 
   (* labels *)
-    val fib = CFG.Label.new(Atom.atom "fib", CFG.Export "_fib", ())
+    val fib = CFG.Label.new(Atom.atom "fib", CFG.Export "_fib", ty)
     val L1 = label()
     val L2 = label()
     val L3 = label()
     val L4 = label()
-    val k' = CFG.Label.new(Atom.atom "k'", CFG.Local, ())
-    val k'' = CFG.Label.new(Atom.atom "k''", CFG.Local, ())
+    val k' = CFG.Label.new(Atom.atom "k'", CFG.Local, ty)
+    val k'' = CFG.Label.new(Atom.atom "k''", CFG.Local, ty)
 
     val code = [
 	    func (fib, ["i", "k", "cl"], fn [i, k, cl] =>
@@ -104,7 +106,7 @@ structure Fib =
 	    xbb (L4, ["i", "k", "cl"], fn [i, k, cl] =>
 	      mkLet(lit 1, fn t =>
 	      mkLet(sub(i, t), fn t' =>
-	      mkLet(CFG.E_Alloc((), [i, k, cl]), fn cl' =>
+	      mkLet(CFG.E_Alloc(ty, [i, k, cl]), fn cl' =>
 	      mkLet(CFG.E_Label fib, fn fib =>
 	      mkLet(CFG.E_Label k', fn k' =>
 		CFG.mkApply(fib, [t', k', cl']))))))),
@@ -114,7 +116,7 @@ structure Fib =
 	      mkLet(sub(i, two), fn t =>
 	      mkLet(CFG.E_Select(1, cl'), fn k =>
 	      mkLet(CFG.E_Select(2, cl'), fn cl =>
-	      mkLet(CFG.E_Alloc((), [a, k, cl]), fn cl'' =>
+	      mkLet(CFG.E_Alloc(ty, [a, k, cl]), fn cl'' =>
 	      mkLet(CFG.E_Label fib, fn fib =>
 	      mkLet(CFG.E_Label k'', fn k'' =>
 		CFG.mkApply(fib, [t, k'', cl''])))))))))),
