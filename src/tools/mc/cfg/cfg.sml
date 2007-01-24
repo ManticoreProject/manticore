@@ -135,6 +135,27 @@ structure CFG =
 	  end
       | varsOfXfer (HeapCheck{gc=(_, args1), nogc=(_, args2), ...}) = args1 @ args2
 
+  (* project the list of destination labels in a control transfer; note that this function
+   * only looks at jumps.  A control-flow analysis may give better information.
+   *)
+    fun labelsOfXfer (StdApply _) = []
+      | labelsOfXfer (StdThrow _) = []
+      | labelsOfXfer (Apply _) = []
+      | labelsOfXfer (Goto(lab, _)) = [lab]
+      | labelsOfXfer (If(x, (lab1, _), (lab2, _))) = [lab1, lab2]
+      | labelsOfXfer (Switch(x, cases, dflt)) = let
+	  fun f ((_, (lab, _)), l) = lab :: l
+	  in
+	    List.foldl f (case dflt of SOME(lab, _) => [lab] | _ => []) cases
+	  end
+      | labelsOfXfer (HeapCheck{gc=(lab1, _), nogc=(lab2, _), ...}) = [lab1, lab2]
+
+  (* project out the parameters of a convention *)
+    fun paramsOfConv (StdFunc{clos, arg, ret, exh}) = [clos, arg, ret, exh]
+      | paramsOfConv (StdCont{clos, arg}) = [clos, arg]
+      | paramsOfConv (KnownFunc args) = args
+      | paramsOfConv (Block args) = args
+
   (* smart constructors that set the kind field of the lhs variables *)
     fun mkExp e = (
 	  List.app (fn x => Var.setKind(x, VK_Let e)) (lhsOfExp e);
@@ -150,7 +171,7 @@ structure CFG =
     fun mkFunc (l, conv, body, exit) = let
 	  val func = FUNC{lab = l, entry = conv, body = body, exit = exit}
 	  in
-(* FIXME: set kind of variables *)
+	    List.app (fn x => Var.setKind(x, VK_Param func)) (paramsOfConv conv);
 	    func
 	  end
 

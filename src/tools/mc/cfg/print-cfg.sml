@@ -38,8 +38,9 @@ structure PrintCFG : sig
 		in
 		  pr "("; prL l; pr ")"
 		end
-(* FIXME: add type info *)
-	  fun varBindToString x = CFG.Var.toString x
+	  fun varBindToString x = String.concat[
+		  CFG.Var.toString x, ":", CFGTy.toString(CFG.Var.typeOf x)
+		]
 	  fun varUseToString x = CFG.Var.toString x
 	  val labelToString = CFG.Label.toString
 	  fun prFunc (CFG.FUNC{lab, entry, body, exit}) = let

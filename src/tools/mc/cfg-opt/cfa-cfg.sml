@@ -23,6 +23,11 @@ structure CFACFG : sig
 
     val valueOf : CFG.var -> value
 
+  (* return the set of labels that a control transfer targets; the empty set
+   * is used to represent unknown control flow.
+   *)
+    val labelsOf : CFG.transfer -> CFG.Label.Set.set
+
     val clearInfo : CFG.module -> unit
 
   end = struct
@@ -48,15 +53,11 @@ structure CFACFG : sig
    * restrict the traversal to binding instances.
    *)
     fun clearInfo (CFG.MODULE{code, ...}) = let
-	  fun doFunct (CFG.FUNC{lab, params, body, ...}) = (
+	  fun doFunct (CFG.FUNC{lab, entry, body, ...}) = (
 		clrLabel lab;
-		List.app clrVar params;
-		doExp body)
-	  and doExp (CFG.Exp(_, e)) = (case e
-		 of CFG.E_Let(lhs, _, e) => (List.app clrVar lhs; doExp e)
-		  | CFG.E_HeapCheck(_, e) => doExp e
-		  | _ => ()
-		(* end case *))
+		List.app clrVar (CFG.paramsOfConv entry);
+		List.app doExp body)
+	  and doExp exp = List.app clrVar (CFG.lhsOfExp exp)
 	  in
 	    List.app doFunct code
 	  end
@@ -123,51 +124,46 @@ structure CFACFG : sig
 		       of LABELS labs => let
 			  (* set the parameters to TOP, since the function escapes *)
 			    fun doLab lab = let
-				  val SOME(CFG.FUNC{params, ...}) = CFG.Label.Map.find(funcs, lab)
+				  val SOME(CFG.FUNC{entry, ...}) = CFG.Label.Map.find(funcs, lab)
 				  in
-				    List.app (fn x => addInfo(x, TOP)) params
+				    List.app (fn x => addInfo(x, TOP)) (CFG.paramsOfConv entry)
 				  end
 			    in
 			      CFG.Label.Set.app doLab labs
 			    end
 			| _ => ()
 		      (* end case *))
-		fun doFunct (CFG.FUNC{lab, params, body, ...}, args) = (
-		      ListPair.appEq addInfo (params, args);
+		fun doFunct (CFG.FUNC{lab, entry, body, exit}, args) = (
+		      ListPair.appEq addInfo (CFG.paramsOfConv entry, args);
 		      if isMarked lab
 			then ()
-			else doExp body)
-		and doExp (CFG.Exp(_, e)) = (case e
-		       of CFG.E_Let(lhs, rhs, e) => (
-			    case (lhs, rhs)
-			     of ([x], CFG.E_Var y) => addInfo(x, valueOf y)
-			      | ([x], CFG.E_Label lab) =>
-				  addInfo(x, LABELS(LSet.singleton lab))
-			      | ([x], CFG.E_Select(i, y)) => addInfo(x, case valueOf y
-				   of TUPLE vs => List.nth(vs, i)
-				    | BOT => BOT
-				    | TOP => TOP
-				    | _ => raise Fail "type error"
-				  (* end case *))
-			      | ([x], CFG.E_Alloc(ty, xs)) =>
-				  addInfo(x, TUPLE(List.map valueOf xs))
-			      | (_, CFG.E_Prim _) => ()
-			      | (_, CFG.E_CCall(cf, args)) => List.app escape args
-			      | _ => raise Fail "ill-formed RHS"
-			    (* end case *);
-			    doExp e)
-			| CFG.E_HeapCheck(_, e) => doExp e
-(* NOTE: if we track booleans, then we can test the condition *)
-			| CFG.E_If(_, jmp1, jmp2) => (
-			    doJump jmp1;
-			    doJump jmp2)
-			| CFG.E_Switch(_, cases, dflt) => (
-			    List.app (doJump o #2) cases;
-			    Option.app doJump dflt)
-			| CFG.E_Apply apply => doApply apply
-			| CFG.E_Throw apply => doApply apply
-			| CFG.E_Goto jmp => doJump jmp
-		      (* end case *))
+			else (
+			  List.app doExp body;
+			  doXfer exit))
+		and doExp (CFG.E_Var(xs, ys)) =
+		      ListPair.appEq (fn (x, y) => addInfo(x, valueOf y)) (xs, ys)
+		  | doExp (CFG.E_Label(x, lab)) = addInfo(x, LABELS(LSet.singleton lab))
+		  | doExp (CFG.E_Literal(x, lit)) = ()
+		  | doExp (CFG.E_Select(x, i, y)) =
+		      addInfo(x, case valueOf y
+			 of TUPLE vs => List.nth(vs, i)
+			  | BOT => BOT
+			  | TOP => TOP
+			  | _ => raise Fail "type error"
+			(* end case *))
+		  | doExp (CFG.E_Alloc(x, xs)) = addInfo(x, TUPLE(List.map valueOf xs))
+		  | doExp (CFG.E_Prim(x, _)) = ()
+		  | doExp (CFG.E_CCall(x, _, args)) = List.app escape args
+		and doXfer (CFG.StdApply{f, clos, arg, ret, exh}) =
+		      doApply (f, [clos, arg, ret, exh])
+		  | doXfer (CFG.StdThrow{k, clos, arg}) = doApply (k, [clos, arg])
+		  | doXfer (CFG.Apply{f, args}) = doApply (f, args)
+		  | doXfer (CFG.Goto jmp) = doJump jmp
+		  | doXfer (CFG.If(_, jmp1, jmp2)) = (doJump jmp1; doJump jmp2)
+		  | doXfer (CFG.Switch(x, cases, dflt)) = (
+		      List.app (doJump o #2) cases;
+		      Option.app doJump dflt)
+		  | doXfer (CFG.HeapCheck{nogc, ...}) = doJump nogc
 		and doJump (lab, args) = (case LMap.find(funcs, lab)
 		       of NONE => raise Fail "jump to unknown label"
 			| SOME f => (
@@ -187,10 +183,23 @@ structure CFACFG : sig
 		end
 	  fun iterate () = if onePass() then iterate() else ()
 	(* compute the call-sites for every label *)
-	  
+(* SOMETHING HERE *)
 	  in
 	    iterate ()
 (* compute call-side information for labels *)
 	  end
+
+  (* return the set of labels that a control transfer targets; the empty set
+   * is used to represent unknown control flow.
+   *)
+    fun labelsOf xfer = (case xfer
+	   of CFG.StdApply _ => LSet.empty
+	    | CFG.StdThrow _ => LSet.empty
+	    | CFG.Apply{f, ...} => (case valueOf f
+	       of LABELS s => s
+		| _ => LSet.empty	(* can this happen?? *)
+	      (* end case *))
+	    | _ => LSet.addList(LSet.empty, CFG.labelsOfXfer xfer)
+	  (* end case *))
 
   end
