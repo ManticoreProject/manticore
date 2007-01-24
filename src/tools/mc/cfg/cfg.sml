@@ -10,7 +10,7 @@
 structure CFG =
   struct
 
-  datatype ty = WordArray of int (* FIXME *)
+    datatype ty = datatype CFGTy.ty
 
   (* extended basic block *)
     datatype func = FUNC of {
@@ -68,7 +68,6 @@ structure CFG =
          and prim = var Prim.prim
          and jump = (label * var list)
 
-    fun tyToString (WordArray i) = "WordArray " ^ Int.toString i (* FIXME *)
     fun labelKindToString (Extern s) = "Extern " ^ s
       | labelKindToString (Export s) = "Export " ^ s
       | labelKindToString Local = "Local"
@@ -81,7 +80,7 @@ structure CFG =
 	type kind = label_kind
 	type ty = ty
 	val kindToString = labelKindToString
-	val tyToString = tyToString
+	val tyToString = CFGTy.toString
       end)
 
     datatype module = MODULE of {
@@ -94,7 +93,7 @@ structure CFG =
 	type kind = var_kind
 	type ty = ty
 	val kindToString = varKindToString
-	val tyToString = tyToString
+	val tyToString = CFGTy.toString
       end)
 
   (* smart constructors *)
