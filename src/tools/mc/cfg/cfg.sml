@@ -14,49 +14,56 @@ structure CFG =
 
   (* extended basic block *)
     datatype func = FUNC of {
-	lab : label,
-	kind : func_kind,
-	params : var list,
-	body : exp
+	lab : label,		(* label of function *)
+	entry : convention,	(* calling convention, includes parameters *)
+	body : exp list,	(* body of function is straight-line sequence of bindings *)
+	exit : transfer		(* control transfer out of function *)
       }
 
-    and func_kind
-      = StandardFunc	(* a function that may be called from unknown sites; it uses the *)
+    and convention
+      = StdFunc of {	(* a function that may be called from unknown sites; it uses the *)
 			(* standard calling convention. *)
-      | ContFunc	(* a continuation that may be thrown to from unknown sites; it uses *)
+	    clos : var,	  (* closure parameter *)
+	    arg : var,	  (* argument parameter *)
+	    ret : var,	  (* return-continuation parameter *)
+	    exh : var	  (* exception-handler-continuation parameter *)
+	  }
+      | StdCont of {	(* a continuation that may be thrown to from unknown sites; it uses *)
 			(* the standard continuation-calling convention *)
+	    clos : var,	  (* closure parameter *)
+	    arg : var	  (* argument parameter *)
+	  }
       | KnownFunc	(* a function/continuation for which we know all of its call sites *)
 			(* and only known functions are called from those sites (Serrano's *)
 			(* "T" property).  It uses a specialized calling convention. *)
+	  of var list	  (* parameters *)
       | Block		(* a function/continuation for which we know all of its call sites *)
 			(* and it is the only function called at those sites (Serrano's *)
 			(* "X" property) *)
+	  of var list	  (* parameters *)
 
-    and exp = Exp of (ProgPt.ppt * exp')
+    and exp
+      = E_Var of var list * var list
+      | E_Label of var * label
+      | E_Literal of var * Literal.literal
+      | E_Select of (var * int * var)		(* select i'th field (zero-based) *)
+      | E_Alloc of var * var list
+      | E_Prim of var * prim
+      | E_CCall of (var * var * var list)
 
-    and exp'
-      = E_Let of (var list * rhs * exp)
-      | E_HeapCheck of (word * exp)
-      | E_If of (var * jump * jump)
-      | E_Switch of (var * (int * jump) list * jump option)
-      | E_Apply of (var * var list)
-      | E_Throw of (var * var list)
-      | E_Goto of jump
-
-    and rhs
-(* QUESTION: perhaps allow parallel copy? *)
-      = E_Var of var
-      | E_Label of label
-      | E_Literal of Literal.literal
-      | E_Select of (int * var)		(* select i'th field (zero-based) *)
-      | E_Alloc of ty * var list
-      | E_Prim of prim
-      | E_CCall of (var * var list)
+    and transfer
+      = StdApply of {f : var, clos : var, arg : var, ret : var, exh : var}
+      | StdThrow of {k : var, clos : var, arg : var}
+      | Apply of {f : var, args : var list}
+      | Goto of jump
+      | If of (var * jump * jump)
+      | Switch of (var * (int * jump) list * jump option)
+      | HeapCheck of {szb : word, gc : jump, nogc : jump}
 
     and var_kind
       = VK_None
-      | VK_Let of rhs
-      | VK_Param
+      | VK_Let of exp
+      | VK_Param of func
 
     and label_kind
       = Extern of string	(* external label; e.g., a C function *)
@@ -71,9 +78,10 @@ structure CFG =
     fun labelKindToString (Extern s) = "Extern " ^ s
       | labelKindToString (Export s) = "Export " ^ s
       | labelKindToString Local = "Local"
+
     fun varKindToString VK_None = "None"
-      | varKindToString (VK_Let rhs) = "Let"
-      | varKindToString VK_Param = "Param"
+      | varKindToString (VK_Let _) = "Let"
+      | varKindToString (VK_Param _) = "Param"
 
     structure Label = VarFn (
       struct
@@ -96,17 +104,55 @@ structure CFG =
 	val tyToString = CFGTy.toString
       end)
 
-  (* smart constructors *)
-    fun mkExp e = Exp(ProgPt.new(), e)
-    fun mkLet (lhs, rhs, e) = (
-	  List.app (fn x => Var.setKind(x, VK_Let rhs)) lhs;
-	  mkExp (E_Let(lhs, rhs, e)))
-    fun mkHeapCheck arg = mkExp(E_HeapCheck arg)
-    fun mkIf arg = mkExp(E_If arg)
-    fun mkSwitch arg = mkExp(E_Switch arg)
-    fun mkApply arg = mkExp(E_Apply arg)
-    fun mkThrow arg = mkExp(E_Throw arg)
-    fun mkGoto arg = mkExp(E_Goto arg)
+  (* project out the lhs variables of an expression *)
+    fun lhsOfExp (E_Var(xs, _)) = xs
+      | lhsOfExp (E_Label(x, _)) = [x]
+      | lhsOfExp (E_Literal(x, _)) = [x]
+      | lhsOfExp (E_Select(x, _, _)) = [x]
+      | lhsOfExp (E_Alloc(x, _)) = [x]
+      | lhsOfExp (E_Prim(x, _)) = [x]
+      | lhsOfExp (E_CCall(x, _, _)) = [x]
+
+  (* project out the rhs variable of an expression *)
+    fun rhsOfExp (E_Var(_, ys)) = ys
+      | rhsOfExp (E_Label _) = []
+      | rhsOfExp (E_Literal _) = []
+      | rhsOfExp (E_Select(_, _, y)) = [y]
+      | rhsOfExp (E_Alloc(_, args)) = args
+      | rhsOfExp (E_Prim(_, p)) = Prim.varsOf p
+      | rhsOfExp (E_CCall(_, f, args)) = f::args
+
+  (* project the list of variables in a control transfer *)
+    fun varsOfXfer (StdApply{f, clos, arg, ret, exh}) = [f, clos, arg, ret, exh]
+      | varsOfXfer (StdThrow{k, clos, arg}) = [k, clos, arg]
+      | varsOfXfer (Apply{f, args}) = f::args
+      | varsOfXfer (Goto(_, args)) = args
+      | varsOfXfer (If(x, (_, args1), (_, args2))) = x :: args1 @ args2
+      | varsOfXfer (Switch(x, cases, dflt)) = let
+	  fun f ((_, (_, args)), l) = args @ l
+	  in
+	    x :: (List.foldl f (case dflt of SOME(_, args) => args | _ => []) cases)
+	  end
+      | varsOfXfer (HeapCheck{gc=(_, args1), nogc=(_, args2), ...}) = args1 @ args2
+
+  (* smart constructors that set the kind field of the lhs variables *)
+    fun mkExp e = (
+	  List.app (fn x => Var.setKind(x, VK_Let e)) (lhsOfExp e);
+	  e)
+    fun mkVar arg = mkExp(E_Var arg)
+    fun mkLabel arg = mkExp(E_Label arg)
+    fun mkLiteral arg = mkExp(E_Literal arg)
+    fun mkSelect arg = mkExp(E_Select arg)
+    fun mkAlloc arg = mkExp(E_Alloc arg)
+    fun mkPrim arg = mkExp(E_Prim arg)
+    fun mkCCall arg = mkExp(E_CCall arg)
+
+    fun mkFunc (l, conv, body, exit) = let
+	  val func = FUNC{lab = l, entry = conv, body = body, exit = exit}
+	  in
+(* FIXME: set kind of variables *)
+	    func
+	  end
 
     fun mkModule code = MODULE{
 	    code = code,

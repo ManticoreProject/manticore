@@ -42,32 +42,58 @@ structure PrintCFG : sig
 	  fun varBindToString x = CFG.Var.toString x
 	  fun varUseToString x = CFG.Var.toString x
 	  val labelToString = CFG.Label.toString
-	  fun prFunc (CFG.FUNC{lab, kind, params, body}) = (
-		indent 1;
-		case (CFG.Label.kindOf lab, kind)
-		 of (CFG.Export name, CFG.StandardFunc) => pr "export function "
-		  | (CFG.Local, CFG.StandardFunc) => pr "function "
-		  | (CFG.Local, CFG.ContFunc) => pr "cont "
-		  | (CFG.Local, CFG.KnownFunc) => pr "local function "
-		  | (CFG.Local, CFG.Block) => pr "label "
-		  | _ => raise Fail "bogus function/label kind"
-		(* end case *);
-		prl [labelToString lab, " "]; prList varBindToString params; pr "\n";
-		prExp (2, body))
-	  and prExp (i, CFG.Exp(ppt, e)) = (
-		indentWithPPt (ppt, i);
+	  fun prFunc (CFG.FUNC{lab, entry, body, exit}) = let
+		val (kind, params) = (case (CFG.Label.kindOf lab, entry)
+		       of (CFG.Export name, CFG.StdFunc{clos, arg, ret, exh}) =>
+			    ("export function ", [clos, arg, ret, exh])
+			| (CFG.Local, CFG.StdFunc{clos, arg, ret, exh}) =>
+			    ("function ", [clos, arg, ret, exh])
+			| (CFG.Local, CFG.StdCont{clos, arg}) => ("cont ", [clos, arg])
+			| (CFG.Local, CFG.KnownFunc args) => ("local function ", args)
+			| (CFG.Local, CFG.Block args) => ("block ", args)
+			| _ => raise Fail "bogus function"
+		      (* end case *))
+		in
+		  indent 1;
+		  pr kind;
+		  prl [labelToString lab, " "]; prList varBindToString params; pr "\n";
+		  List.app (prExp 2) body;
+		  prXfer (2, exit)
+		end
+	  and prExp i e = (
+		indent i;
+		pr "let "; prList varBindToString (CFG.lhsOfExp e); pr " = ";
 		case e
-		 of CFG.E_Let(lhs, rhs, e) => (
-		      pr "let "; prList varBindToString lhs; pr " = "; prRHS rhs; pr "\n";
-		      prExp (i, e))
-		  | CFG.E_HeapCheck(sz, e) => (
-		      pr "check "; pr(Word.fmt StringCvt.DEC sz); pr "\n";
-		      prExp (i, e))
-		  | CFG.E_If(x, j1, j2) => (
+		 of (CFG.E_Var(_, xs)) => prList varUseToString xs
+		  | (CFG.E_Label(_, lab)) => pr(labelToString lab)
+		  | (CFG.E_Literal(_, lit)) => pr(Literal.toString lit)
+		  | (CFG.E_Select(_, i, x)) =>
+		      prl ["#", Int.toString i, " ", varUseToString x]
+		  | (CFG.E_Alloc(_, args)) => pr "<alloc>" (* FIXME *)
+		  | (CFG.E_Prim(_, p)) => pr (Prim.fmt varUseToString p)
+		  | (CFG.E_CCall(_, f, args)) => (
+		      prl ["ccall ", varUseToString f, " "];
+		      prList varUseToString args)
+		(* end case *);
+		pr "\n")
+	  and prXfer (i, xfer) = (
+		indent i;
+		case xfer
+		 of CFG.StdApply{f, clos, arg, ret, exh} =>
+		      prApply("apply", f, [clos, arg, ret, exh])
+		  | CFG.StdThrow{k, clos, arg} =>
+		      prApply("throw", k, [clos, arg])
+		  | CFG.Apply{f, args} => prApply("apply", f, args)
+		  | CFG.Goto jmp => prJump("goto", jmp)
+		  | CFG.HeapCheck{szb, gc, nogc} => (
+		      pr "check (avail-mem < "; pr(Word.fmt StringCvt.DEC szb); pr ")\n";
+		      indent (i+1); prJump("then", gc);
+		      indent (i+1); prJump("else", nogc))
+		  | CFG.If(x, j1, j2) => (
 		      prl ["if ", varUseToString x, "\n"];
 		      indent (i+1); prJump("then", j1);
 		      indent (i+1); prJump("else", j2))
-		  | CFG.E_Switch(x, cases, dflt) => let
+		  | CFG.Switch(x, cases, dflt) => let
 		      fun prCase (c, jmp) = (
 			    indent (i+1);
 			    prl ["case ", Int.toString c, ": "];
@@ -80,21 +106,8 @@ structure PrintCFG : sig
 			  | SOME jmp => (indent(i+1); prJump("default: ", jmp))
 			(* end case *)
 		      end
-		  | CFG.E_Apply jmp => prApply("apply", jmp)
-		  | CFG.E_Throw jmp => prApply("throw", jmp)
-		  | CFG.E_Goto jmp => prJump("goto", jmp)
 		(* end case *))
-	  and prRHS (CFG.E_Var x) = pr(varUseToString x)
-	    | prRHS (CFG.E_Label lab) = pr(labelToString lab)
-	    | prRHS (CFG.E_Literal lit) = pr(Literal.toString lit)
-	    | prRHS (CFG.E_Select(i, x)) =
-		prl ["#", Int.toString i, " ", varUseToString x]
-	    | prRHS (CFG.E_Alloc(ty, args)) = pr "<alloc>" (* FIXME *)
-	    | prRHS (CFG.E_Prim p) = pr (Prim.fmt varUseToString p)
-	    | prRHS (CFG.E_CCall(f, args)) = (
-		prl ["ccall ", varUseToString f, " "];
-		prList varUseToString args)
-	  and prApply (prefix, (x, args)) = (
+	  and prApply (prefix, x, args) = (
 		prl [prefix, " ", varUseToString x];
 		prList varUseToString args;
 		pr "\n")
