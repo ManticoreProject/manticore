@@ -48,6 +48,8 @@ structure CFG =
       | E_Literal of var * Literal.literal
       | E_Select of (var * int * var)		(* select i'th field (zero-based) *)
       | E_Alloc of var * var list
+      | E_Wrap of var * var			(* wrap raw value *)
+      | E_Unwrap of var * var			(* unwrap value *)
       | E_Prim of var * prim
       | E_CCall of (var * var * var list)
 
@@ -110,6 +112,8 @@ structure CFG =
       | lhsOfExp (E_Literal(x, _)) = [x]
       | lhsOfExp (E_Select(x, _, _)) = [x]
       | lhsOfExp (E_Alloc(x, _)) = [x]
+      | lhsOfExp (E_Wrap(x, _)) = [x]
+      | lhsOfExp (E_Unwrap(x, _)) = [x]
       | lhsOfExp (E_Prim(x, _)) = [x]
       | lhsOfExp (E_CCall(x, _, _)) = [x]
 
@@ -119,6 +123,8 @@ structure CFG =
       | rhsOfExp (E_Literal _) = []
       | rhsOfExp (E_Select(_, _, y)) = [y]
       | rhsOfExp (E_Alloc(_, args)) = args
+      | rhsOfExp (E_Wrap(_, y)) = [y]
+      | rhsOfExp (E_Unwrap(_, y)) = [y]
       | rhsOfExp (E_Prim(_, p)) = Prim.varsOf p
       | rhsOfExp (E_CCall(_, f, args)) = f::args
 
@@ -153,8 +159,8 @@ structure CFG =
   (* project out the parameters of a convention *)
     fun paramsOfConv (StdFunc{clos, arg, ret, exh}) = [clos, arg, ret, exh]
       | paramsOfConv (StdCont{clos, arg}) = [clos, arg]
-      | paramsOfConv (KnownFunc args) = args
-      | paramsOfConv (Block args) = args
+      | paramsOfConv (KnownFunc params) = params
+      | paramsOfConv (Block params) = params
 
   (* smart constructors that set the kind field of the lhs variables *)
     fun mkExp e = (
@@ -165,6 +171,8 @@ structure CFG =
     fun mkLiteral arg = mkExp(E_Literal arg)
     fun mkSelect arg = mkExp(E_Select arg)
     fun mkAlloc arg = mkExp(E_Alloc arg)
+    fun mkWrap arg = mkExp(E_Wrap arg)
+    fun mkUnwrap arg = mkExp(E_Unwrap arg)
     fun mkPrim arg = mkExp(E_Prim arg)
     fun mkCCall arg = mkExp(E_CCall arg)
 

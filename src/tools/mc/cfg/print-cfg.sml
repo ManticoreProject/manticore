@@ -70,7 +70,9 @@ structure PrintCFG : sig
 		  | (CFG.E_Literal(_, lit)) => pr(Literal.toString lit)
 		  | (CFG.E_Select(_, i, x)) =>
 		      prl ["#", Int.toString i, " ", varUseToString x]
-		  | (CFG.E_Alloc(_, args)) => pr "<alloc>" (* FIXME *)
+		  | (CFG.E_Alloc(_, args)) => (pr "alloc"; prList varUseToString args)
+		  | (CFG.E_Wrap(_, y)) => prl["wrap(", varUseToString y, ")"]
+		  | (CFG.E_Unwrap(_, y)) => prl["unwrap(", varUseToString y, ")"]
 		  | (CFG.E_Prim(_, p)) => pr (Prim.fmt varUseToString p)
 		  | (CFG.E_CCall(_, f, args)) => (
 		      prl ["ccall ", varUseToString f, " "];
