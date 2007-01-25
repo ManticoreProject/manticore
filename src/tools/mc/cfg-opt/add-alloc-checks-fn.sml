@@ -18,6 +18,8 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 
   end = struct
 
+    structure CFA = CFACFG
+
     structure Vertex = struct
 	type vertex = CFG.label
 	val compare = CFG.Label.compare
@@ -31,32 +33,8 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
   (* construct the flow graph for a module *)
     fun makeGraph code = let
 	(* return the outgoing targets of a function *)
-	  fun toNode (CFG.FUNC{lab, body, ...}) = let
-		fun out (CFG.Exp(_, e), l) = (case e
-		       of CFG.E_Let(_, _, e) => out(e, l)
-			| CFG.E_HeapCheck _ => raise Fail "unexpected HeapCheck"
-			| CFG.E_If(_, j1, j2) => VSet.addList(l, [#1 j1, #1 j2])
-			| CFG.E_Switch(_, cases, dflt) => let
-			    val l = (case dflt of SOME(lab, _) => VSet.add(l, lab) | _ => l)
-			    fun f ((_, (lab, _)), l) = VSet.add(l, lab)
-			    in
-			      List.foldl f l cases
-			    end
-			| CFG.E_Apply(f, _) => (case CFG.Var.kindOf f
-			     of CFG.VK_Let(CFG.E_Label f') => (case CFG.Label.kindOf f'
-				   of CFG.Local => VSet.add(l, f')
-				    | CFG.Export _ => VSet.add(l, f')
-				    | _ => l
-				  (* end case *))
-			      | _ => l
-			    (* end case *))
-(* FIXME: if k is known, we should include its label in the graph. *)
-			| CFG.E_Throw(k, _) => l
-			| CFG.E_Goto jmp => VSet.add(l, #1 jmp)
-		      (* end case *))
-		in
-		  (lab, VSet.listItems(out(body, VSet.empty)))
-		end
+	  fun toNode (CFG.FUNC{lab, exit, ...}) =
+		(lab, CFG.Label.Set.listItems(CFA.labelsOf exit))
 (* +DEBUG *)
 val toNode = fn f => let
 	val nd as (src, out) = toNode f
@@ -77,8 +55,13 @@ val toNode = fn f => let
 	  CFG.Label.newProp (fn _ => 0w0)
 
 (* FIXME: what about known continuations? *)
-    fun escaping CFG.KnownFunc = false
-      | escaping _ = true
+    fun escaping (CFG.StdFunc _) = true
+      | escaping (CFG.StdCont _) = true
+      | escaping _ = false
+
+  (* the amount of storage allocated by an expression *)
+    fun expAlloc (CFG.E_Alloc(_, xs)) = Target.wordSzB * Word.fromInt(length xs + 1)
+      | expAlloc _ = 0w0
 
     fun transform (CFG.MODULE{code, funcs, ...}) = let
 	  val graph = makeGraph code
@@ -86,63 +69,79 @@ val toNode = fn f => let
 	(* compute the allocation performed by a function and annotate
 	 * its label with it.
 	 *)
-	  fun funcAlloc (CFG.FUNC{lab, body, ...}) = let
-		fun labelAlloc lab = if FB.Set.member(fbSet, lab)
-		      then 0w0
-		      else funcAlloc (valOf(CFG.Label.Map.find(funcs, lab)))
-		fun jumpAlloc (lab, _) = labelAlloc lab
-		fun expAlloc (CFG.Exp(_, e')) = (case e'
-		       of CFG.E_Let(_, rhs, e) => rhsAlloc rhs + expAlloc e
-			| CFG.E_HeapCheck _ => raise Fail "unexpected HeapCheck"
-			| CFG.E_If(_, j1, j2) => Word.max(jumpAlloc j1, jumpAlloc j2)
-			| CFG.E_Switch(_, cases, dflt) => let
-			    fun f ((_, jmp), sz) = Word.max(jumpAlloc jmp, sz)
-			    val sz = List.foldl f 0w0 cases
-			    in
-			      case dflt of SOME jmp => Word.max(jumpAlloc jmp, sz) | _ => sz
-			    end
-			| CFG.E_Apply(f, _) => applyAlloc f
-			| CFG.E_Throw(k, _) => applyAlloc k
-			| CFG.E_Goto jmp => jumpAlloc jmp
-		      (* end case *))
-		and rhsAlloc (CFG.E_Alloc(ty, _)) = sizeOf ty
-		  | rhsAlloc _ = 0w0
-	      (* transitive allocation by a called function/continuation.  If we know the
-	       * call sites, then take the maximum of the functions that are not in the
-	       * feedback set.  Note that by ignoring members of the feedback set, we are
-	       * safe from infinite loops.
-	       *)
-		and applyAlloc f = (case CFACFG.valueOf f
-		       of CFACFG.LABELS labs => let
-			    fun f (lab, sz) = Word.max(labelAlloc lab, sz)
+	  fun funcAlloc (CFG.FUNC{lab, body, exit, ...}) = (case peekAlloc lab
+		 of NONE => let
+		    (* transitive allocation by a called function/continuation.  If we know the
+		     * call sites, then take the maximum of the functions that are not in the
+		     * feedback set.  Note that by ignoring members of the feedback set, we are
+		     * safe from infinite loops.
+		     *)
+		      val alloc = let
+			    val labs = CFA.labelsOf exit
+			    fun f (lab, sz) = if FB.Set.member(fbSet, lab)
+				  then 0w0
+				  else let
+				    val sz' = funcAlloc (valOf(CFG.Label.Map.find(funcs, lab)))
+				    in
+				      Word.max(sz', sz)
+				    end
 			    in
 			      CFG.Label.Set.foldl f 0w0 labs
 			    end
-			| _ => 0w0
-		      (* end case *))
-		val alloc = expAlloc body
-		in
-		  case peekAlloc lab
-		   of NONE => let
-			val alloc = expAlloc body
-			in
-			  setAlloc (lab, alloc); alloc
-			end
-		    | SOME alloc => alloc
-		  (* end case *)
-		end
+		    (* add in any data allocated in this function *)
+		      val alloc = List.foldl (fn (e, sz) => sz + expAlloc e) alloc body
+		      in
+			setAlloc (lab, alloc); alloc
+		      end
+		  | SOME alloc => alloc
+		(* end case *))
 	(* annotate each block with the amount of allocation it does *)
 	  val _ = List.app (ignore o funcAlloc) code
 	(* add allocation checks as needed *)
-	  fun rewrite (f as CFG.FUNC{lab, kind, params, body}) =
-		if FB.Set.member(fbSet, lab) orelse escaping kind
+	  fun rewrite (f as CFG.FUNC{lab, entry, body, exit}, fs) =
+		if FB.Set.member(fbSet, lab) orelse escaping entry
 		  then let
-		    val sz = getAlloc lab
+		    val funTy = CFG.Label.typeOf lab
+		    val lab' = CFG.Label.new(Atom.atom "check", CFG.Local, funTy)
+		    val (freeVars, entry') = (case entry (* rename parameters *)
+			   of CFG.StdFunc{clos, arg, ret, exh} => let
+				val clos' = CFG.Var.copy clos
+				val arg' = CFG.Var.copy arg
+				val ret' = CFG.Var.copy ret
+				val exh' = CFG.Var.copy exh
+				in (
+				  [clos', arg'],
+				  CFG.StdFunc{clos=clos', arg=arg', ret=ret', exh=exh'}
+				) end
+			    | CFG.StdCont{clos, arg} => let
+				val clos' = CFG.Var.copy clos
+				val arg' = CFG.Var.copy arg
+				in
+				  ([clos', arg'], CFG.StdCont{clos=clos', arg=arg'})
+				end
+			    | CFG.KnownFunc params => let
+				val params' = List.map CFG.Var.copy params
+				in
+				  (params', CFG.KnownFunc params')
+				end
+			    | CFG.Block params => let
+				val params' = List.map CFG.Var.copy params
+				in
+				  (params', CFG.Block params')
+				end
+			  (* end case *))
+		    val gcLab = CFG.Label.new(Atom.atom "callGC", CFG.Extern "callGC", funTy)
+		    val f' = CFG.mkFunc(lab, entry', [], CFG.HeapCheck{
+			    szb = getAlloc lab,
+			    gc = (gcLab, freeVars),
+			    nogc = (lab', freeVars)
+			  })
+		    val f'' = CFG.mkFunc(lab', CFG.Block(CFG.paramsOfConv entry), body, exit)
 		    in
-		      CFG.FUNC{lab=lab, kind=kind, params=params, body=CFG.mkHeapCheck(sz, body)}
+		      f' :: f'' :: fs
 		    end
-		  else f
-	  val code = List.map rewrite code
+		  else f::fs
+	  val code = List.foldr rewrite [] code
 	  in
 	    CFG.mkModule code
 	  end
