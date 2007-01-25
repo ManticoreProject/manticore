@@ -18,6 +18,7 @@ structure CFACFG : sig
     datatype value
       = TOP
       | TUPLE of value list
+      | WRAP of value
       | LABELS of CFG.Label.Set.set
       | BOT
 
@@ -43,6 +44,7 @@ structure CFACFG : sig
     datatype value
       = TOP
       | TUPLE of value list
+      | WRAP of value
       | LABELS of LSet.set
       | BOT
 
@@ -80,6 +82,7 @@ structure CFACFG : sig
 	    | (BOT, BOT) => false
 	    | (_, BOT) => true
 	    | (TUPLE vs1, TUPLE vs2) => ListPair.exists changedValue (vs1, vs2)
+	    | (WRAP v1, WRAP v2) => changedValue(v1, v2)
 	    | (LABELS s1, LABELS s2) => if (LSet.numItems s1 > LSet.numItems s2)
 		then true
 		else false
@@ -96,6 +99,7 @@ structure CFACFG : sig
 	    | kJoin (_, v, BOT) = v
 	    | kJoin (k, TUPLE vs1, TUPLE vs2) =
 		TUPLE(ListPair.mapEq (fn (v1, v2) => kJoin(k-1, v1, v2)) (vs1, vs2))
+	    | kJoin (k, WRAP v1, WRAP v2) = WRAP(kJoin(k, v1, v2))
 	    | kJoin (_, LABELS labs1, LABELS labs2) = LABELS(LSet.union(labs1, labs2))
 	    | kJoin _ = raise Fail "type error"
 	  in
@@ -152,6 +156,14 @@ structure CFACFG : sig
 			  | _ => raise Fail "type error"
 			(* end case *))
 		  | doExp (CFG.E_Alloc(x, xs)) = addInfo(x, TUPLE(List.map valueOf xs))
+		  | doExp (CFG.E_Wrap(x, y)) = addInfo(x, WRAP(valueOf y))
+		  | doExp (CFG.E_Unwrap(x, y)) =
+		      addInfo (x, case valueOf y
+			 of WRAP v => v
+			  | BOT => BOT
+			  | TOP => TOP
+			  | _ => raise Fail "type error"
+			(* end case *))
 		  | doExp (CFG.E_Prim(x, _)) = ()
 		  | doExp (CFG.E_CCall(x, _, args)) = List.app escape args
 		and doXfer (CFG.StdApply{f, clos, arg, ret, exh}) =
