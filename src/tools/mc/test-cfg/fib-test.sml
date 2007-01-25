@@ -11,17 +11,22 @@
  *
  * CPS converted form
  *
- *      fun fib (i, k, exh) = if (i <= 0) then k(0)
- *                       else if (i = 1) then k(1)
- *                       else let
- *			   fun k' a = let
- *			       fun k'' b = k(a+b)
- *			       in
- *				 fib (i-2, k'', exh)
- *			       end
- *			   in
- *			     fib (i-1, k', exh)
- *			   end
+ *      fun fib (i, k, exh) = let
+ *	      fun fib' (i, k) = if (i <= 0) then k(0)
+ *		    else if (i = 1) then k(1)
+ *		      else let
+ *			fun k' a = let
+ *			      fun k'' b = k(a+b)
+ *			      in
+ *				fib' (i-2, k'')
+ *			      end
+ *			in
+ *			  fib' (i-1, k')
+ *			end
+ *            fun k''' i = k (wrap i)
+ *            in
+ *		fib' (unwrap i, k''')
+ *	      end
  *
  * First-order CPS
  *
