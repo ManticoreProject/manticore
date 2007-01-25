@@ -14,8 +14,11 @@ structure CFGTy =
       | T_Bool			(* booleans *)
       | T_Raw of raw_ty		(* raw machine type *)
       | T_Wrap of raw_ty	(* boxed raw value *)
-      | T_Fun of ty list	(* the address of a function/continuation *)
       | T_Tuple of ty list	(* heap-allocated tuple *)
+    (* function/continuation types.  The type specifies the calling convention *)
+      | T_StdFun of {clos : ty, arg : ty, ret : ty, exh : ty}
+      | T_StdCont of {clos : ty, arg : ty}
+      | T_Code of ty list	(* includes both known functions and blocks *)
 
     and raw_ty
       = T_Byte | T_Short | T_Int | T_Long
@@ -41,8 +44,10 @@ structure CFGTy =
 	      | T_Bool => "bool"
 	      | T_Raw ty => r2s ty
 	      | T_Wrap ty => concat["wrap(", r2s ty, ")"]
-	      | T_Fun tys => concat("fun(" :: tys2l(tys, [")"]))
 	      | T_Tuple tys => concat("(" :: tys2l(tys, [")"]))
+	      | T_StdFun{clos, arg, ret, exh} => concat("fun(" :: tys2l([clos, arg, ret, exh], [")"]))
+	      | T_StdCont{clos, arg} => concat("cont(" :: tys2l([clos, arg], [")"]))
+	      | T_Code tys => concat("code(" :: tys2l(tys, [")"]))
 	    (* end case *)
 	  end
 

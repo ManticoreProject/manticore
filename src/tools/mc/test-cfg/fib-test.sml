@@ -102,7 +102,7 @@ structure Fib =
     val iTy = Ty.T_Raw Ty.T_Int
     val bTy = Ty.T_Bool
     val aTy = Ty.T_Any
-    val f2aiTy = Ty.T_Fun[aTy, iTy]	(* (_ * int) func *)
+    val f2aiTy = Ty.T_Code[aTy, iTy]	(* (_ * int) code *)
     val tif2aiaTy = Ty.T_Tuple[iTy, f2aiTy, aTy]
     val tif2aiaaTy = Ty.T_Tuple[iTy, f2aiTy, aTy, aTy]
 
