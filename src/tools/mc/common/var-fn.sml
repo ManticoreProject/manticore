@@ -21,7 +21,9 @@ signature VAR =
     type var = (kind, ty) VarRep.var_rep
 
     val new : (Atom.atom * kind * ty) -> var
+    val copy : var -> var
 
+    val nameOf : var -> Atom.atom
     val kindOf : var -> kind
     val setKind : (var * kind) -> unit
     val typeOf : var -> ty
@@ -68,6 +70,9 @@ functor VarFn (VP : VAR_PARAMS) : VAR =
 	    props = PropList.newHolder()
 	  }
 
+    fun copy (V{name, kind, ty, ...}) = new (name, !kind, ty)
+
+    fun nameOf (V{name, ...}) = name
     fun kindOf (V{kind, ...}) = !kind
     fun setKind (V{kind, ...}, k) = kind := k
     fun typeOf (V{ty, ...}) = ty
