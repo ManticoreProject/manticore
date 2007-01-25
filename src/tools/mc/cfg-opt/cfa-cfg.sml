@@ -48,6 +48,24 @@ structure CFACFG : sig
       | LABELS of LSet.set
       | BOT
 
+    fun valueToString v = let
+	  fun v2s (TOP, l) = "T" :: l
+	    | v2s (TUPLE[v], l) = "<" :: v2s (v, ">" :: l)
+	    | v2s (TUPLE(v::r), l) =
+		"<" :: v2s (v, List.foldr (fn (v, l) => "," :: v2s(v, l)) (">" :: l) r)
+	    | v2s (WRAP v, l) = "[" :: v2s (v, "]" :: l)
+	    | v2s (LABELS s, l) = let
+		fun f [] = "}" :: l
+		  | f [x] = CFG.Label.toString x :: "}" :: l
+		  | f (x::r) = CFG.Label.toString x :: "," :: f r
+		in
+		  "{" :: f (LSet.listItems s)
+		end
+	    | v2s (BOT, l) = "#" :: l
+	  in
+	    concat (v2s(v, []))
+	  end
+
     val {getFn=callSitesOf, clrFn=clrLabel, ...} = CFG.Label.newProp (fn _ => Known(LSet.empty))
     val {getFn=valueOf, clrFn=clrVar, peekFn=peekVar, setFn=setVar} = CFG.Var.newProp (fn _ => BOT)
 
@@ -68,7 +86,7 @@ structure CFACFG : sig
     local
       val {getFn, setFn, ...} = CFG.Label.newProp(fn _ => 0)
     in
-    fun isMarked lab = (getFn lab = 0)
+    fun isMarked lab = (getFn lab > 0)
     fun mark lab = setFn(lab, getFn lab + 1)
     fun unmark lab = setFn(lab, getFn lab - 1)
     end
@@ -114,7 +132,9 @@ structure CFACFG : sig
 	       *)
 		fun addInfo (x, BOT) = ()
 		  | addInfo (x, v) = (case peekVar x
-		       of NONE => setVar(x, v)
+		       of NONE => (
+			    changed := true;
+			    setVar(x, v))
 			| SOME oldV => let
 			    val newV = joinValues(oldV, v)
 			    in
@@ -137,7 +157,7 @@ structure CFACFG : sig
 			    end
 			| _ => ()
 		      (* end case *))
-		fun doFunct (CFG.FUNC{lab, entry, body, exit}, args) = (
+		fun doFunc (CFG.FUNC{lab, entry, body, exit}, args) = (
 		      ListPair.appEq addInfo (CFG.paramsOfConv entry, args);
 		      if isMarked lab
 			then ()
@@ -180,7 +200,7 @@ structure CFACFG : sig
 		       of NONE => raise Fail "jump to unknown label"
 			| SOME f => (
 			    mark lab;
-			    doFunct (f, List.map valueOf args);
+			    doFunc (f, List.map valueOf args);
 			    unmark lab)
 		      (* end case *))
 		and doApply (f, args) = (case valueOf f
@@ -189,8 +209,14 @@ structure CFACFG : sig
 			| TOP => List.app escape args
 			| _ => raise Fail "type error"
 		      (* end case *))
+	      (* apply doFunct to standard functions and continuations *)
+		fun doStdFunc (f as CFG.FUNC{entry, ...}) = (case entry
+		       of CFG.StdFunc _ => doFunc (f, List.tabulate(4, fn _ => TOP))
+			| CFG.StdCont _ => doFunc (f, List.tabulate(2, fn _ => TOP))
+			| _ => ()
+		      (* end case *))
 		in
-(* apply doFunct for each exported function *)
+		  List.app doStdFunc code;
 		  !changed
 		end
 	  fun iterate () = if onePass() then iterate() else ()
