@@ -6,29 +6,18 @@
 
 structure PrintCFG : sig
 
-    type flags = {prog_pts : bool}
-
-    val output : flags -> (TextIO.outstream * CFG.module) -> unit
+    val output : (TextIO.outstream * CFG.module) -> unit
 
     val print : CFG.module -> unit
 
   end = struct
 
-    type flags = {prog_pts : bool}
-
-    fun output (flgs : flags) (outS, CFG.MODULE{code, ...}) = let
+    fun output (outS, CFG.MODULE{code, ...}) = let
 	  fun pr s = TextIO.output(outS, s)
 	  fun prl s = pr(String.concat s)
 	  fun prIndent 0 = ()
 	    | prIndent n = (pr "  "; prIndent(n-1))
-	  fun indent i = if (#prog_pts flgs)
-		then prIndent(i + 8)
-		else prIndent i
-	  fun indentWithPPt (ppt, i) = if (#prog_pts flgs)
-		then (
-		  pr (StringCvt.padRight #" " 8 (ProgPt.toString ppt ^ ":"));
-		  prIndent i)
-		else prIndent i
+	  fun indent i = prIndent i
 	  fun prList toS [] = pr "()"
 	    | prList toS [x] = pr(toS x)
 	    | prList toS l = let
@@ -124,6 +113,6 @@ structure PrintCFG : sig
 	    pr "}\n"
 	  end
 
-    fun print m = output {prog_pts=false} (TextIO.stdErr, m)
+    fun print m = output (TextIO.stdErr, m)
 
   end
