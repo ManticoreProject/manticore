@@ -46,6 +46,12 @@ functor CopyFn (
 	  parallelFCopy (ListPair.unzip fregs) :: cexps
       end (* copy *)
 
-  fun fresh regs = raise Fail ""
+  fun fresh regs =
+      let fun mkTemp _ = MTy.GPReg (ty, Cells.newReg ())
+	  val regs = map MTy.regToTree regs
+	  val regs' = map mkTemp regs
+      in
+	  {stms=copy {src=regs, dst=regs'}, regs=regs'}
+      end
 
 end (* CopyFn *)

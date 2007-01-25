@@ -11,6 +11,7 @@ signature SPILL_LOC = sig
     type frame
     structure Frame : MANTICORE_FRAME
 
+    val getFuncFrame : CFG.label -> frame
     val frameSzInfo : frame -> Frame.frame_sz_info
     val frameAn : frame Annotations.property
 

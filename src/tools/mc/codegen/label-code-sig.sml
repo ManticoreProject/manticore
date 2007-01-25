@@ -14,7 +14,7 @@ signature LABEL_CODE = sig
 
     (* Get and set the parameters associated with the block assigned to this
      * label. *)
-    val setParamRegs: (CFG.label * MTy.mlrisc_reg list) -> unit
+    val setParamRegs : (CFG.label * MTy.mlrisc_reg list) -> unit
     val getParamRegs : CFG.label -> MTy.mlrisc_reg list
 
 end (* LABEL_CODE *)

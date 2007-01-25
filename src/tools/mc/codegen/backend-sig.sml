@@ -20,6 +20,7 @@ signature BACK_END = sig
 	where I = MLTreeComp.I
 	where S = MLTreeComp.TS.S
 
+    structure SpillLoc : SPILL_LOC
     structure Spec : TARGET_SPEC
     structure Regs : MANTICORE_REGS
     structure MTy : MLRISC_TYPES

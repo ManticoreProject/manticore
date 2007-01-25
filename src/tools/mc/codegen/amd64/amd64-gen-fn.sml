@@ -110,6 +110,7 @@ functor AMD64GenFn (
 		     structure T = AMD64MLTree ) 
     structure LabelCode = LabelCodeFn (
 			  structure MTy = MTy )
+    structure SpillLoc = AMD64SpillLoc
 
 
     structure Regs = AMD64Regs
@@ -124,7 +125,7 @@ functor AMD64GenFn (
 		    val (cfg, blocks) = BlockPlacement.blockPlacement cfg
 		in
 		    Emit.asmEmit (cfg, blocks)
-		end
+		end 
 	end (* compileCFG *)
   end (* BackEnd *)
 

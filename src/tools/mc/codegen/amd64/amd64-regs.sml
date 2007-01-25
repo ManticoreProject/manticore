@@ -13,19 +13,24 @@ structure AMD64Regs : MANTICORE_REGS = struct
 
   structure C = AMD64Cells
 
-  val stdArgReg = C.rax
-  val clReg = C.rcx
-  val kReg = C.rdx
-  val exnReg = C.rbx
+  val argReg = C.rax
+  val closReg = C.rcx
+  val retReg = C.rdx
+  val exhReg = C.rbx
   val spReg = C.rsp
   val fpReg = NONE  (* shouldn't we use the frame pointer for something else? *)
   val apReg = C.rdi
-  val dedicatedRegs = [C.rdi, C.rsp]
+  val dedicatedRegs = [argReg, closReg, retReg, exhReg, spReg, apReg]
   val dedicatedFRegs = []
 
-  val miscRegs = C.Regs CellsBasis.GP {from=0, to=3, step=1} @ 
-		 C.Regs CellsBasis.GP {from=5, to=6, step=1} @
-		 C.Regs CellsBasis.GP {from=8, to=15, step=1}
+  val allRegs = C.Regs CellsBasis.GP {from=0, to=15, step=1}
+  val allRegsSet = foldl C.addReg C.empty allRegs
+
+  val miscRegs =
+      let val rSet = foldl C.rmvReg allRegsSet dedicatedRegs
+      in 
+	  C.getReg rSet 
+      end
 
   (* this list of callee-save gprs complies with the SVID C ABI. *)
   val saveRegs = [C.rbx, C.rsp, C.rbp] @
@@ -35,7 +40,6 @@ structure AMD64Regs : MANTICORE_REGS = struct
    * in the order of the actual arguments. *)
   val argRegs = [C.rdi, C.rsi, C.rdx, C.rcx] @ 
 		C.Regs CellsBasis.GP {from=8, to=9, step=1}
-  val allRegs = miscRegs @ dedicatedRegs
 
   val miscFRegs = []
   val argFRegs = []
