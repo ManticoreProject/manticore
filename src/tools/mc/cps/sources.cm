@@ -1,0 +1,27 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * The higher-order CPS representation.
+ *)
+
+Library
+
+  structure CPS
+  structure CPSTy
+  structure PrintCPS
+
+is
+
+  $/basis.cm
+
+  $/smlnj-lib.cm
+  $/pp-lib.cm
+
+  ../common/sources.cm
+  ../prim/sources.cm
+
+  cps.sml
+  cps-ty.sml
+  print-cps.sml
