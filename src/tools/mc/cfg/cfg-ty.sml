@@ -11,6 +11,7 @@ structure CFGTy =
 
     datatype ty
       = T_Any			(* unknown type; uniform representation *)
+      | T_Bool			(* booleans *)
       | T_Raw of raw_ty		(* raw machine type *)
       | T_Wrap of raw_ty	(* boxed raw value *)
       | T_Fun of ty list	(* the address of a function/continuation *)
@@ -37,6 +38,7 @@ structure CFGTy =
 	  in
 	    case ty
 	     of T_Any => "any"
+	      | T_Bool => "bool"
 	      | T_Raw ty => r2s ty
 	      | T_Wrap ty => concat["wrap(", r2s ty, ")"]
 	      | T_Fun tys => concat("fun(" :: tys2l(tys, [")"]))
