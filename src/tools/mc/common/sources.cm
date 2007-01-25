@@ -12,6 +12,7 @@ Library
   structure IntegerLit
   structure Literal
   structure ProgPt
+  structure RawTypes
   structure Stamp
   signature TARGET_SPEC
   signature UTF8
@@ -32,6 +33,7 @@ is
   integer-lit.sml
   literal.sml
   prog-point.sml
+  raw-types.sml
   stamp.sml
   target-spec-sig.sml
   utf8-sig.sml
