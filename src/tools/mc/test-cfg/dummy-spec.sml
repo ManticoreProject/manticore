@@ -9,11 +9,18 @@
 structure DummySpec : TARGET_SPEC =
   struct
 
-    val targetOS = "dummy"
-    val targetArch = "dummy"
+    val archName = "dummy"
+    val abiName = "dummy"
+    val osName = "dummy"
 
     val wordSzB = 0w4
     val wordAlignB = 0w4
+
+    val boolSzB = 0w4
+
+  (* representation of True and False *)
+    val trueRep : IntegerLit.integer = 1
+    val falseRep : IntegerLit.integer = 0
 
   end
 

@@ -45,58 +45,75 @@ structure Fib =
   struct
 
     structure P = Prim
+    structure Ty = CFGTy
 
-    val ty = CFG.WordArray 0
+    fun var (name, ty) = CFG.Var.new(Atom.atom name, CFG.VK_None, ty)
+    fun label ty = CFG.Label.new(Atom.atom "L", CFG.Local, ty)
 
-    fun var name = CFG.Var.new(Atom.atom name, CFG.VK_None, ty)
-    fun label () = CFG.Label.new(Atom.atom "L", CFG.Local, ty)
+    fun func (lab, params, bodyFn) = let
+	  val params as [clos, arg, ret, exh] = List.map var params
+	  val (body, exit) = bodyFn params
+	  in
+	    CFG.mkFunc (lab, CFG.StdFunc{clos=clos, arg=arg, ret=ret, exh=exh}, body, exit)
+	  end
 
-    fun func (lab, params, body) = let
+    fun cont (lab, params, bodyFn) = let
+	  val params as [clos, arg] = List.map var params
+	  val (body, exit) = bodyFn params
+	  in
+	    CFG.mkFunc (lab, CFG.StdCont{clos=clos, arg=arg}, body, exit)
+	  end
+
+    fun known (lab, params, bodyFn) = let
 	  val params = List.map var params
+	  val (body, exit) = bodyFn params
 	  in
-	    CFG.FUNC{lab=lab, kind=CFG.StandardFunc, params=params, body=body params}
+	    CFG.mkFunc (lab, CFG.KnownFunc params, body, exit)
 	  end
 
-    fun cont (lab, params, body) = let
+    fun xbb (lab, params, bodyFn) = let
 	  val params = List.map var params
+	  val (body, exit) = bodyFn params
 	  in
-	    CFG.FUNC{lab=lab, kind=CFG.ContFunc, params=params, body=body params}
+	    CFG.mkFunc (lab, CFG.Block params, body, exit)
 	  end
 
-    fun xbb (lab, params, body) = let
-	  val params = List.map var params
+    fun mkLet (ty, rhs, bodyFn) = let
+	  val tmp = var ("_t", ty)
+	  val (code, xfer) = bodyFn tmp
 	  in
-	    CFG.FUNC{lab=lab, kind=CFG.KnownFunc, params=params, body=body params}
+	    ((rhs tmp) :: code, xfer)
 	  end
 
-    fun mkLet (rhs, body) = let
-	  val tmp = var "_t"
-	  in
-	    CFG.mkLet([tmp], rhs, body tmp)
-	  end
+    fun mkExit xfer = ([], xfer)
 
-    fun lit i = CFG.E_Literal(Literal.Int i)
+    fun lit i x = CFG.E_Literal(x, Literal.Int i)
 
   (* prim ops *)
-    fun lte (a, b) = CFG.E_Prim(P.I32Lte(a, b))
-    fun eq (a, b) = CFG.E_Prim(P.I32Eq(a, b))
-    fun add (a, b) = CFG.E_Prim(P.I32Add(a, b))
-    fun sub (a, b) = CFG.E_Prim(P.I32Sub(a, b))
+    fun lte (a, b) x = CFG.E_Prim(x, P.I32Lte(a, b))
+    fun eq (a, b) x = CFG.E_Prim(x, P.I32Eq(a, b))
+    fun add (a, b) x = CFG.E_Prim(x, P.I32Add(a, b))
+    fun sub (a, b) x = CFG.E_Prim(x, P.I32Sub(a, b))
+
+  (* some types *)
+    val iTy = Ty.T_Raw Ty.T_Int
+    val aTy = Ty.T_Any
+    val faiTy = Ty.T_Fun[aTy, iTy]	(* (_ * int) func *)
 
   (* labels *)
-    val fib = CFG.Label.new(Atom.atom "fib", CFG.Export "_fib", ty)
-    val L1 = label()
-    val L2 = label()
-    val L3 = label()
-    val L4 = label()
-    val k' = CFG.Label.new(Atom.atom "k'", CFG.Local, ty)
-    val k'' = CFG.Label.new(Atom.atom "k''", CFG.Local, ty)
+    val fib = CFG.Label.new(Atom.atom "fib", CFG.Export "_fib", aTy)
+    val L1 = label aTy
+    val L2 = label aTy
+    val L3 = label aTy
+    val L4 = label aTy
+    val k' = CFG.Label.new(Atom.atom "k'", CFG.Local, aTy)
+    val k'' = CFG.Label.new(Atom.atom "k''", CFG.Local, aTy)
 
     val code = [
-	    func (fib, ["i", "k", "cl"], fn [i, k, cl] =>
-	      mkLet(lit 0, fn t =>
-	      mkLet(lte(i, t), fn cond =>
-		CFG.mkIf(cond, (L1, [k, cl]), (L2, [i, k, cl]))))),
+	    func (fib, [("i", iTy), ("k", faiTy), ("cl", aTy), ("exh", aTy)], fn [i, k, cl, exh] =>
+	      mkLet(iTy, lit 0, fn t =>
+	      mkLet(iTy, lte(i, t), fn cond =>
+		mkExit (CFG.If(cond, (L1, [k, cl]), (L2, [i, k, cl]))))))(*,
 	    xbb (L1, ["k", "cl"], fn [k, cl] => mkLet(lit 0, fn t => CFG.mkThrow(k, [t, cl]))),
 	    xbb (L2, ["i", "k", "cl"], fn [i, k, cl] =>
 	      mkLet(lit 1, fn t =>
@@ -126,6 +143,7 @@ structure Fib =
 	      mkLet(add(a, b), fn t =>
 	      mkLet(CFG.E_Select(2, cl''), fn cl =>
 		CFG.mkThrow(k, [t, cl]))))))
+*)
 	  ]
 
     val module = CFG.mkModule code
