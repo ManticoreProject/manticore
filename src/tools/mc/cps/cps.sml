@@ -11,10 +11,12 @@ structure CPS =
 
     datatype exp
       = Let of (var list * rhs * exp)
-      | Fix of (lambda list * exp)
+      | Fun of (lambda list * exp)
+      | Cont of (lambda * exp)
       | If of (var * exp * exp)
       | Switch of (var * (int * exp) list * exp option)
       | Apply of (var * var list)
+      | Throw of (var * var list)
 
     and rhs
       = E_Var of var list
@@ -35,6 +37,18 @@ structure CPS =
          and prim = var Prim.prim
 	 and lambda = (var * var list * exp)
 
-    datatype module = MODULE of exp
+    datatype module = MODULE of lambda
+
+    fun varKindToString VK_None = "None"
+      | varKindToString (VK_Let _) = "Let"
+      | varKindToString (VK_Param _) = "Param"
+
+    structure Var = VarFn (
+      struct
+	type kind = var_kind
+	type ty = ty
+	val kindToString = varKindToString
+	val tyToString = CPSTy.toString
+      end)
 
   end
