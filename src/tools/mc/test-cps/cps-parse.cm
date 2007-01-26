@@ -1,0 +1,26 @@
+(* cps-parse.cm
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+Library
+
+    functor CPSParse
+    structure CPSPT
+
+is
+
+  $/basis.cm
+  $/smlnj-lib.cm
+(*
+  $/ml-lpt-lib.cm
+*)
+  lpt-lib/ml-lpt-lib.cm
+
+  ../common/sources.cm
+  ../cps/sources.cm
+
+  cps.grm.sml
+  cps-pt.sml
+
