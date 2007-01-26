@@ -19,18 +19,18 @@ structure CPS =
       | Throw of (var * var list)
 
     and rhs
-      = E_Var of var list
-      | E_Literal of Literal.literal
-      | E_Select of (int * var)		(* select i'th field (zero-based) *)
-      | E_Alloc of var list
-      | E_Wrap of var			(* wrap raw value *)
-      | E_Unwrap of var			(* unwrap value *)
-      | E_Prim of prim
-      | E_CCall of (var * var list)
+      = Var of var list
+      | Literal of Literal.literal
+      | Select of (int * var)		(* select i'th field (zero-based) *)
+      | Alloc of var list
+      | Wrap of var			(* wrap raw value *)
+      | Unwrap of var			(* unwrap value *)
+      | Prim of prim
+      | CCall of (var * var list)
 
     and var_kind
       = VK_None
-      | VK_Let of exp
+      | VK_Let of rhs
       | VK_Param of lambda
 
     withtype var = (var_kind, ty) VarRep.var_rep
@@ -50,5 +50,12 @@ structure CPS =
 	val kindToString = varKindToString
 	val tyToString = CPSTy.toString
       end)
+
+  (* smart constructors; these enforce the variable kind invariant and should be
+   * used to construct terms.
+   *)
+    fun mkLet (lhs, rhs, exp) = (
+	  List.app (fn x => Var.setKind(x, VK_Let rhs)) lhs;
+	  Let(lhs, rhs, exp))
 
   end
