@@ -1,6 +1,10 @@
 Library
 
-  structure T
+  functor AMD64TargetSpecFn
+  functor AMD64GenFn
+  signature BACK_END
+  structure AsmStream
+  structure Label
 
 is
 
@@ -50,4 +54,5 @@ is
   label-code-fn.sml
   copy-sig.sml
   copy-fn.sml
-  test.sml
+  alloc-sig.sml
+  alloc64-fn.sml

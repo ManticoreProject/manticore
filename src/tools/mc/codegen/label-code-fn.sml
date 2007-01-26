@@ -17,7 +17,11 @@ functor LabelCodeFn (
 
   local
       val {getFn, ...} = 
-	  LV.newProp (fn v => Label.label (CFG.Label.toString v) ())
+	  LV.newProp (fn v => 
+	    let val atm = CFG.Label.nameOf v
+	    in 
+		Label.label (Atom.toString atm) ()
+	    end)
   in
     fun getName v = getFn v
   end (* local *)

@@ -27,6 +27,8 @@ signature BACK_END = sig
 	where T = MLTreeComp.TS.T
     structure LabelCode : LABEL_CODE
 	where MTy = MTy
+    structure Alloc : ALLOC
+	where MTy = MTy
 
     (* take a control-flow graph, do RA, optimization, etc. and then
      * emit it to the assembly file.

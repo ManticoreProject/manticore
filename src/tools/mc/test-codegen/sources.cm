@@ -8,12 +8,6 @@
 
 Library
 
-  structure CFG
-  structure DummySpec
-  functor CFGOptFn
-  structure PrintCFG
-  structure Fib
-  structure Test
   structure T
 
 is
@@ -29,7 +23,4 @@ is
   ../cfg-opt/sources.cm
   ../codegen/sources.cm
 
-  dummy-spec.sml
-  fib-test.sml
-  test.sml
   test-1.sml

@@ -23,4 +23,6 @@ functor AMD64TargetSpecFn (
   val trueRep = IntInf.fromInt 1
   val falseRep = IntInf.fromInt 0
 
+  val spillAreaSzB = 0w1024
+
 end (* AMD64TargetSpecFn *)

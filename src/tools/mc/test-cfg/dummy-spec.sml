@@ -22,5 +22,7 @@ structure DummySpec : TARGET_SPEC =
     val trueRep : IntegerLit.integer = 1
     val falseRep : IntegerLit.integer = 0
 
+    val spillAreaSzB = 0w1024
+
   end
 

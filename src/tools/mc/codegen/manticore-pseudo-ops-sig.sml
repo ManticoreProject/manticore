@@ -13,6 +13,7 @@ signature MANTICORE_PSEUDO_OPS = sig
     type pseudo_op = (P.T.labexp, pseudo_op_ext) PseudoOpsBasisTyp.pseudo_op
 
     val text : pseudo_op
+    val global : Label.label -> pseudo_op
 
     structure PseudoOps : PSEUDO_OPS 
 	  where T = P.T

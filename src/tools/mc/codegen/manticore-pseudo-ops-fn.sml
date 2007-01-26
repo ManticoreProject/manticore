@@ -17,6 +17,7 @@ functor ManticorePseudoOpsFn (
   type pseudo_op = unit P.pseudo_op
 
   val text : pseudo_op = PTy.TEXT
+  fun global lab = PTy.EXPORT [lab]
 
   structure Client = struct
       structure AsmPseudoOps = P

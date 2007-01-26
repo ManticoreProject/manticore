@@ -15,8 +15,9 @@ signature TARGET_SPEC =
 
     val wordSzB : word		(* number of bytes in a pointer-sized word *)
     val wordAlignB : word	(* byte alignment of pointers *)
-
     val boolSzB : word		(* size of boolean values in bytes *)
+
+    val spillAreaSzB : word      (* size of the spill area on the stack *)
 		  
   (* representation of True and False *)
     val trueRep : IntegerLit.integer

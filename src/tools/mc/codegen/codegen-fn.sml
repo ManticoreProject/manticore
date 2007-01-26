@@ -15,6 +15,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
   structure Cells = Instr.C
   structure T = BE.MLTreeComp.TS.T
   structure M = CFG
+  structure Ty = CFGTy
   structure Var = M.Var
   structure MTy = BE.MTy
   structure Copy = CopyFn (
@@ -27,12 +28,14 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		   structure MLTreeComp = BE.MLTreeComp )
   structure LabelCode = BE.LabelCode
 
-  val ty = (Word.toInt Spec.wordSzB) * 8
+  val wordSzB = Word.toInt Spec.wordSzB
+  val ty = wordSzB * 8
   val memory = ManticoreRegion.memory
   val argReg = BE.Regs.argReg
   val retReg= BE.Regs.retReg
-  val closReg = BE.Regs.spReg
+  val closReg = BE.Regs.closReg
   val exhReg = BE.Regs.exhReg
+  val apReg = BE.Regs.apReg
   val stdCallRegs = [closReg, argReg, retReg, exhReg]
   val stdContRegs = [closReg, argReg]
 
@@ -49,6 +52,8 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
     | genLit (Literal.String s) = fail "todo"
   fun litFromInt i = T.LI (T.I.fromInt (ty, i))
   fun gpReg r = MTy.GPReg (ty, r)
+  fun regGP (MTy.GPReg (_, r)) = r
+    | regGP (MTy.FPReg (_, r)) = r
   fun gprToMLTree r = MTy.GPR (ty, r)
   fun regExp r = T.REG (ty, r)
   fun mkExp e = MTy.EXP (ty, e)
@@ -79,8 +84,8 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		  val stdRegs = map gpReg stdRegs
 	      in
 		  emitStms (Copy.copy {src=map getDefOf vs, dst=map gpReg allRs});
-		  genJump' (regExp tgtReg, labels, stdRegs, map gprToMLTree rs);
-		  map (fn (MTy.GPReg (_, r)) => T.GPR (regExp r)) stdRegs
+		  genJump (regExp tgtReg, labels, stdRegs, map gprToMLTree rs);
+		  map (T.GPR o regExp o regGP) stdRegs
 	      end (* genStdTransfer *)
 
 	  and genTransfer (t as M.StdApply {f, clos, arg, ret, exh}) =
@@ -90,93 +95,106 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	      exitBlock (genStdTransfer (k, [] (*CFACFG.labelsOf t*), 
 					 [clos, arg], stdContRegs))
 	    | genTransfer (M.Apply {f, args}) = fail "todo"
-	    | genTransfer (M.Goto jmp) = genJump jmp
+	    | genTransfer (M.Goto jmp) = genGoto jmp
 	    | genTransfer (M.If (c, jT as (lT, argsT), jF)) = 
 	      let val labT = newLabel "L_true"
 	      in 
 		  emit (T.BCC (cdefOf c, labT));
-		  genJump jF;
+		  genGoto jF;
 		  defineLabel labT;
-		  genJump jT
+		  genGoto jT
 	      end
 	    | genTransfer (M.Switch (c, js, jOpt)) = fail "todo"
 	    | genTransfer (M.HeapCheck {szb, gc, nogc}) = fail "todo"
-
+							  
 	  and genExp e = 
-	      let val mlrEs = genExp' e
+	      let val (mlrEs, mlrStms) = genExp' e
 		  val lhs = M.lhsOfExp e
 		  val regs = map newReg lhs
 		  val stms = Copy.copy {src=map mkExp mlrEs, dst=map gpReg regs}
 	      in
 		  ListPair.app bindToRExp (lhs, map regExp regs);
-		  emitStms stms
+		  emitStms (stms @ mlrStms)
 	      end
 
-	  and genExp' (M.E_Var (_, rhs)) = map defOf rhs
-	    | genExp' (M.E_Literal (_, lit)) = [genLit lit]
-	    | genExp' (M.E_Label (_, l)) = [T.LABEL (LabelCode.getName l)]
+	  and genExp' (M.E_Var (_, rhs)) = (map defOf rhs, [])
+	    | genExp' (M.E_Literal (_, lit)) = ([genLit lit], [])
+	    | genExp' (M.E_Label (_, l)) = ([T.LABEL (LabelCode.getName l)], [])
 	    | genExp' (M.E_Select (_, i, v)) =
 	      let val offset = litFromInt (i * (Word.toInt Spec.wordSzB))
 	      in
-		  [load (T.ADD (ty, defOf v, offset))]
+		  ([load (T.ADD (ty, defOf v, offset))], [])
 	      end
-	    | genExp' (M.E_Alloc (_, vs)) = fail "todo"
+	    | genExp' (M.E_Alloc (_, vs)) = 
+	      let fun conv v = (Var.typeOf v, getDefOf v)
+		  val args = map conv vs
+	      in		  
+		  ([regExp apReg], BE.Alloc.genAlloc args)
+	      end
 	    | genExp' (M.E_Wrap (_, v)) = fail "todo"
 	    | genExp' (M.E_Unwrap (_, v)) = fail "todo"
 	    | genExp' (M.E_Prim (_, p)) = fail "todo"
 	    | genExp' (M.E_CCall (_, f, args)) = fail "todo"
 
-	  and genJump (l, args) =
+	  and genGoto (l, args) =
 	      let val name = LabelCode.getName l
 		  val params = LabelCode.getParamRegs l
 	      in
-		  genJump' (T.LABEL name, [name], params, map getDefOf args)
+		  genJump (T.LABEL name, [name], params, map getDefOf args)
 	      end
 
-	  and genJump' (target, ls, params, args) =
+	  and genJump (target, ls, params, args) =
 	      let val stms = Copy.copy {src=args, dst=params}
 	      in
 		  emitStms stms;
 		  emit (T.JMP (target, ls))
 	      end 
 
-	  fun genFunc (M.FUNC {lab, entry, body, exit}) =
-	      let fun doBind (M.StdFunc {clos, arg, ret, exh}) =
-		      ([clos, arg, ret, exh], stdCallRegs, map newReg stdCallRegs)
-		    | doBind (M.StdCont {clos, arg}) = 
-		      ([clos, arg], stdContRegs, map newReg stdContRegs)
-		    | doBind (M.KnownFunc vs | M.Block vs) = (vs, map newReg vs, [])
-		  fun bindParams conv =
-		      let val (lhs, rhs, temps) = doBind conv
-			  val rhs' = map regExp rhs
-			  val {stms, regs=ts} = Copy.fresh (map gpReg rhs)
-			  val ts = map gpReg temps
-			  fun bindToLHS rs = ListPair.app bindToRExp (lhs, rs)
-		      in 			  
-			  (case temps
-			    of [] => (
-			       LabelCode.setParamRegs (lab, map gpReg rhs);
-			       bindToLHS rhs' )
-			     | _ => (
-			       LabelCode.setParamRegs (lab, ts);
-			       bindToLHS (map regExp temps);
-			       emitStms stms )
-			  (* esac *))
-		      end
-		  (* get the spill-frame for this function *)
-		  val funcAnRef = getAnnotations ()
-		  val frame = BE.SpillLoc.getFuncFrame lab
-	      in 
-		  beginCluster 0;
-		  pseudoOp P.text;
-		  defineLabel (LabelCode.getName lab);
-		  funcAnRef := ((#create BE.SpillLoc.frameAn) frame) :: (!funcAnRef);
-		  bindParams entry;
-		  app genExp body;
-		  genTransfer exit;
-		  endCluster []; ()
-	      end (* genFunc *)
+	  (* bind the parameters for the body of a FUNC *)
+	  fun bindParams (lab, conv) =
+	      let fun doBind (M.StdFunc {clos, arg, ret, exh}) = 
+		      ([clos, arg, ret, exh], stdCallRegs)
+		    | doBind (M.StdCont {clos, arg}) = ([clos, arg], stdContRegs)
+		    | doBind (M.KnownFunc vs | M.Block vs) = (vs, [])
+		  val (lhs, stdRegs) = doBind conv
+		  fun bindToLHS rs = ListPair.app bindToRExp (lhs, rs)		  
+	      in 			  
+		  (case stdRegs
+		    of [] => (* specialized calling convention *)
+		       fail "todo"
+		     | _ =>  (* standard calling convention *)
+		       let val {stms, regs} = Copy.fresh (map gpReg stdRegs)
+		       in 
+			   LabelCode.setParamRegs (lab, regs);
+			   bindToLHS (map (regExp o regGP) regs);
+			   emitStms stms
+		       end
+		  (* esac *))
+	      end
 
+	  fun genCluster (lab, gen) =
+	      let val funcAnRef = getAnnotations ()
+		  val frame = BE.SpillLoc.getFuncFrame lab
+		  val labStr = Atom.toString (M.Label.nameOf lab)
+	      in
+		  beginCluster 0;
+		  pseudoOp (P.global (Label.global labStr));
+		  pseudoOp P.text;
+		  defineLabel (Label.global labStr);
+		  defineLabel (LabelCode.getName lab);
+		  funcAnRef := (#create BE.SpillLoc.frameAn) frame :: (!funcAnRef);
+		  gen ();
+		  endCluster []; ()
+	      end (* genCluster *)
+
+	  fun genFunc (M.FUNC {lab, entry, body, exit}) =
+	      let fun gen () = (		      
+		      bindParams (lab, entry);
+		      app genExp body;
+		      genTransfer exit )
+	      in 
+		  genCluster (lab, gen)
+	      end (* genFunc *)
       in
 	  Cells.reset ();
 	  app genFunc code
