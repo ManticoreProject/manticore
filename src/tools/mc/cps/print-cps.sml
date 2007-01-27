@@ -60,14 +60,14 @@ structure PrintCPS : sig
 		      prl["throw ", varUseToString k, " "];
 		      prList varUseToString args)
 		(* end case *))
-	  and prRHS (CPS.E_Var ys) = prList varUseToString ys
-	    | prRHS (CPS.E_Literal lit) = pr(Literal.toString lit)
-	    | prRHS (CPS.E_Select(i, y)) = prl ["#", Int.toString i, "(", varUseToString y, ")"]
-	    | prRHS (CPS.E_Alloc ys) = (pr "alloc"; prList varUseToString ys)
-	    | prRHS (CPS.E_Wrap y) = prl["wrap(", varUseToString y, ")"]
-	    | prRHS (CPS.E_Unwrap y) = prl["unwrap(", varUseToString y, ")"]
-	    | prRHS (CPS.E_Prim p) = pr (Prim.fmt varUseToString p)
-	    | prRHS (CPS.E_CCall(f, args)) = (
+	  and prRHS (CPS.Var ys) = prList varUseToString ys
+	    | prRHS (CPS.Literal lit) = pr(Literal.toString lit)
+	    | prRHS (CPS.Select(i, y)) = prl ["#", Int.toString i, "(", varUseToString y, ")"]
+	    | prRHS (CPS.Alloc ys) = (pr "alloc"; prList varUseToString ys)
+	    | prRHS (CPS.Wrap y) = prl["wrap(", varUseToString y, ")"]
+	    | prRHS (CPS.Unwrap y) = prl["unwrap(", varUseToString y, ")"]
+	    | prRHS (CPS.Prim p) = pr (Prim.fmt varUseToString p)
+	    | prRHS (CPS.CCall(f, args)) = (
 		prl ["ccall ", varUseToString f, " "];
 		prList varUseToString args)
 	  and prLambda (i, prefix, (f, params, e)) = (

@@ -31,6 +31,8 @@ structure CPS =
     and var_kind
       = VK_None
       | VK_Let of rhs
+      | VK_Fun of lambda
+      | VK_Cont of lambda
       | VK_Param of lambda
 
     withtype var = (var_kind, ty) VarRep.var_rep
@@ -41,6 +43,8 @@ structure CPS =
 
     fun varKindToString VK_None = "None"
       | varKindToString (VK_Let _) = "Let"
+      | varKindToString (VK_Fun _) = "Fun"
+      | varKindToString (VK_Cont _) = "Cont"
       | varKindToString (VK_Param _) = "Param"
 
     structure Var = VarFn (
@@ -57,5 +61,17 @@ structure CPS =
     fun mkLet (lhs, rhs, exp) = (
 	  List.app (fn x => Var.setKind(x, VK_Let rhs)) lhs;
 	  Let(lhs, rhs, exp))
+    fun mkFun (fbs, e) = let
+	  fun setKind (lambda as (f, params, _)) = (
+		Var.setKind(f, VK_Fun lambda);
+		List.app (fn x => Var.setKind(x, VK_Param lambda)) params)
+	  in
+	    List.app setKind fbs;
+	    Fun(fbs, e)
+	  end
+    fun mkCont (lambda as (k, params, _), e) = (
+	  Var.setKind(k, VK_Cont lambda);
+	  List.app (fn x => Var.setKind(x, VK_Param lambda)) params;
+	  Cont(lambda, e))
 
   end
