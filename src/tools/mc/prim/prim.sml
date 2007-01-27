@@ -31,7 +31,7 @@ structure Prim =
       | I64Mul of 'var * 'var
       | I64Div of 'var * 'var
       | I64Mod of 'var * 'var
-      | I64Neg of 'var * 'var
+      | I64Neg of 'var
       | I64Eq of 'var * 'var
       | I64NEq of 'var * 'var
       | I64Lt of 'var * 'var
@@ -82,7 +82,7 @@ structure Prim =
 	    | I64Mul(x, y) => concat["I64Mul(", v2s x, ",", v2s y, ")"]
 	    | I64Div(x, y) => concat["I64Div(", v2s x, ",", v2s y, ")"]
 	    | I64Mod(x, y) => concat["I64Mod(", v2s x, ",", v2s y, ")"]
-	    | I64Neg(x, y) => concat["I64Neg(", v2s x, ",", v2s y, ")"]
+	    | I64Neg x => concat["I64Neg(", v2s x, ")"]
 	    | I64Eq(x, y) => concat["I64Eq(", v2s x, ",", v2s y, ")"]
 	    | I64NEq(x, y) => concat["I64NEq(", v2s x, ",", v2s y, ")"]
 	    | I64Lt(x, y) => concat["I64Lt(", v2s x, ",", v2s y, ")"]
@@ -134,7 +134,7 @@ structure Prim =
       | varsOf (I64Mul(a, b)) = [a, b]
       | varsOf (I64Div(a, b)) = [a, b]
       | varsOf (I64Mod(a, b)) = [a, b]
-      | varsOf (I64Neg(a, b)) = [a, b]
+      | varsOf (I64Neg a) = [a]
       | varsOf (I64Eq(a, b)) = [a, b]
       | varsOf (I64NEq(a, b)) = [a, b]
       | varsOf (I64Lt(a, b)) = [a, b]
