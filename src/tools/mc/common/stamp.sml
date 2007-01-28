@@ -47,7 +47,7 @@ structure Stamp :> sig
     fun hash (STAMP{id, ...}) = id
 
     fun toString (STAMP{id, ...}) =
-	  concat["<", StringCvt.padLeft #"0" 6 (W.toString id), ">"]
+	  concat["<", StringCvt.padLeft #"0" 4 (W.toString id), ">"]
 
     structure Key =
       struct
