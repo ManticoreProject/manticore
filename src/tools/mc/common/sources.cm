@@ -15,8 +15,6 @@ Library
   structure RawTypes
   structure Stamp
   signature TARGET_SPEC
-  signature UTF8
-  structure UTF8
   signature VAR_PARAMS
   signature VAR
   functor VarFn
@@ -36,8 +34,6 @@ is
   raw-types.sml
   stamp.sml
   target-spec-sig.sml
-  utf8-sig.sml
-  utf8.sml
   var-fn.sml
   var-rep.sml
 
