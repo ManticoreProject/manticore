@@ -33,7 +33,8 @@ structure PrintCPS : sig
 		indent i;
 		case e
 		 of CPS.Let(xs, rhs, e) => (
-		      pr "let "; prList varBindToString xs; pr " = "; prRHS rhs; pr "\n")
+		      pr "let "; prList varBindToString xs; pr " = "; prRHS rhs; pr "\n";
+		      prExp (i, e))
 		  | CPS.Fun(fb::fbs, e) => (
 		      prLambda(i, "fun ", fb);
 		      List.app (fn fb => prLambda(i, "and ", fb)) fbs;
@@ -55,10 +56,12 @@ structure PrintCPS : sig
 		      end
 		  | CPS.Apply(f, args) => (
 		      prl["apply ", varUseToString f, " "];
-		      prList varUseToString args)
+		      prList varUseToString args;
+		      pr "\n")
 		  | CPS.Throw(k, args) => (
 		      prl["throw ", varUseToString k, " "];
-		      prList varUseToString args)
+		      prList varUseToString args;
+		      pr "\n")
 		(* end case *))
 	  and prRHS (CPS.Var ys) = prList varUseToString ys
 	    | prRHS (CPS.Literal lit) = pr(Literal.toString lit)
