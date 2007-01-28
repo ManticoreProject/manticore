@@ -28,7 +28,7 @@ structure Expand =
 
   (* table mapping primop names to prim_info *)
     val findPrim = let
-	  val tbl = AtomTable.mkTable(128, raise Fail "prim table")
+	  val tbl = AtomTable.mkTable(128, Fail "prim table")
 	  val ins = AtomTable.insert tbl
 	  val bTy = Ty.T_Bool
 	  val i32 = Ty.T_Raw Ty.T_Int
@@ -93,7 +93,7 @@ structure Expand =
 
   (* some type utilities *)
     fun unwrapType (Ty.T_Wrap rTy) = Ty.T_Raw rTy
-      | unwrapType _ = raise Fail "unwrapType"
+      | unwrapType ty = raise Fail(concat["unwrapType(", Ty.toString ty, ")"])
 
     fun selectType (i, Ty.T_Tuple tys) = List.nth(tys, i)
       | selectType _ = raise Fail "selectType"
@@ -118,15 +118,35 @@ structure Expand =
     fun cvtExp (env, e) = (case e
 	   of PT.Let(lhs, rhs, e) => let
 		val (env', lhs') = cvtVarBinds (env, lhs)
+		val lhs' = List.rev lhs'
 		val e' = cvtExp(env', e)
 		in
 		  case rhs
-		   of PT.SimpleExp e =>
-			cvtSimpleExp (env, e, fn x => ??)
+		   of PT.SimpleExp e => (case e
+			 of PT.Var x => CPS.mkLet(lhs', CPS.Var[lookup (env, x)], e')
+			  | PT.Select(i, arg) =>
+			      cvtSimpleExp (env, arg, fn x =>
+				CPS.mkLet(lhs', CPS.Select(i, x), e'))
+			  | PT.Literal(lit, _) => CPS.mkLet(lhs', CPS.Literal lit, e')
+			  | PT.Unwrap arg =>
+			      cvtSimpleExp (env, arg, fn x =>
+				CPS.mkLet(lhs', CPS.Unwrap x, e'))
+			  | PT.Prim(p, args) =>
+			      cvtSimpleExps (env, args, fn xs => let
+				val rhs = (case (findPrim p, xs)
+				       of (NONE, _) => raise Fail("unknown primop " ^ Atom.toString p)
+					| (SOME(Prim1{mk, ...}), [x]) => mk x
+					| (SOME(Prim2{mk, ...}), [x, y]) => mk(x, y)
+					| _ => raise Fail("arity mismatch for primop " ^ Atom.toString p)
+				      (* end case *))
+				in
+				  CPS.mkLet(lhs', CPS.Prim rhs, e')
+				end)
+			(* end case *))
 		    | PT.Alloc args =>
 			cvtSimpleExps (env, args, fn xs => CPS.mkLet(lhs', CPS.Alloc xs, e'))
-		    | PT.Wrap e =>
-			cvtSimpleExp (env, e, fn x => CPS.mkLet(lhs', CPS.Wrap x, e'))
+		    | PT.Wrap arg =>
+			cvtSimpleExp (env, arg, fn x => CPS.mkLet(lhs', CPS.Wrap x, e'))
 		    | PT.CCall(f, args) =>
 			cvtSimpleExps (env, args, fn xs =>
 			  CPS.mkLet(lhs', CPS.CCall(lookup(env, f), xs), e'))
@@ -164,7 +184,7 @@ structure Expand =
 	  fun doBody env = let
 		val (envWParams, params') = cvtVarBinds (env, params)
 		in
-		  (f', params', cvtExp (envWParams, e))
+		  (f', List.rev params', cvtExp (envWParams, e))
 		end
 	  in
 	    (AtomMap.insert(env, f, f'), doBody)
@@ -178,12 +198,15 @@ structure Expand =
 		  in
 		    CPS.mkLet([tmp], CPS.Select(i, x), k tmp)
 		  end)
-	    | PT.Literal lit =>
-		cvtSimpleExp (env, e, fn x => let
-		  val tmp = newTmp Ty.T_Any	(* FIXME *)
+	    | PT.Literal (lit, optTy) => let
+		  val ty = (case optTy
+			 of NONE => Ty.T_Any
+			  | SOME rTy => Ty.T_Raw rTy
+			(* end case *))
+		  val tmp = newTmp ty
 		  in
 		    CPS.mkLet([tmp], CPS.Literal lit, k tmp)
-		  end)
+		  end
 	    | PT.Unwrap e =>
 		cvtSimpleExp (env, e, fn x => let
 		  val tmp = newTmp(unwrapType(CPS.Var.typeOf x))
@@ -208,6 +231,12 @@ structure Expand =
 	    | cvt (e::es, tmps) = cvtSimpleExp (env, e, fn t => cvt(es, t::tmps))
 	  in
 	    cvt (exps, [])
+	  end
+
+    fun cvtModule (PT.MODULE lambda) = let
+	  val (_, cvtBody) = cvtLambda (AtomMap.empty, lambda)
+	  in
+	    CPS.MODULE(cvtBody AtomMap.empty)
 	  end
 
   end

@@ -35,7 +35,7 @@ structure CPSPT =
     and simple_exp
       = Var of var
       | Select of (int * simple_exp)	(* select i'th field (zero-based) *)
-      | Literal of Literal.literal
+      | Literal of (Literal.literal * raw_ty option)
       | Unwrap of simple_exp		(* unwrap value *)
       | Prim of (Atom.atom * simple_exp list)
 

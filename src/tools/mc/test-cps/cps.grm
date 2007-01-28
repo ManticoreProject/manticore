@@ -46,6 +46,7 @@
     | MINUS		("-")
     | ID of Atom.atom
     | INT of IntInf.int
+    | STR of string
     ;
 
 %defs(
@@ -120,8 +121,8 @@ SimpleExp
 	| "#" INT "(" SimpleExp ")"	=> (PT.Select(Int.fromLarge INT, SimpleExp))
 	| "unwrap" "(" SimpleExp ")"	=> (PT.Unwrap SimpleExp)
 	| ID Args			=> (PT.Prim(ID, Args))
-	| INT				=> (PT.Literal(Literal.Int INT))
-	| "-" INT			=> (PT.Literal(Literal.Int(~INT)))
+	| INT (":" RawType)?		=> (PT.Literal(Literal.Int INT, SR))
+	| "-" INT (":" RawType)?	=> (PT.Literal(Literal.Int(~INT), SR))
 	;
 
 Args
