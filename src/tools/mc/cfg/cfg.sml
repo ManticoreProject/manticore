@@ -125,7 +125,7 @@ structure CFG =
       | rhsOfExp (E_Alloc(_, args)) = args
       | rhsOfExp (E_Wrap(_, y)) = [y]
       | rhsOfExp (E_Unwrap(_, y)) = [y]
-      | rhsOfExp (E_Prim(_, p)) = Prim.varsOf p
+      | rhsOfExp (E_Prim(_, p)) = PrimUtil.varsOf p
       | rhsOfExp (E_CCall(_, f, args)) = f::args
 
   (* project the list of variables in a control transfer *)

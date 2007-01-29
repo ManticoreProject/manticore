@@ -25,7 +25,7 @@ structure FreeVars : sig
       | fvOfRHS (fv, CPS.Alloc xs) = V.Set.addList(fv, xs)
       | fvOfRHS (fv, CPS.Wrap x) = V.Set.add(fv, x)
       | fvOfRHS (fv, CPS.Unwrap x) = V.Set.add(fv, x)
-      | fvOfRHS (fv, CPS.Prim p) = V.Set.addList(fv, Prim.varsOf p)
+      | fvOfRHS (fv, CPS.Prim p) = V.Set.addList(fv, PrimUtil.varsOf p)
       | fvOfRHS (fv, CPS.CCall(f, args)) = V.Set.addList(fv, f::args)
 
     fun analExp (fv, e) = (case e

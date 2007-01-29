@@ -53,11 +53,36 @@ structure FlatClosure : sig
 	    (env, List.rev xs)
 	  end
 
+  (* lookup a CPS variable in the environment.  If it has to be fetched from
+   * a closure, we introduce a new temporary for it.
+   * QUESTION: should we cache the temp in the environment?
+   *)
+    fun lookupVar (env, x) = (case VMap.find(env, x)
+	   of SOME(Local x') => ([], x')
+	    | SOME(Global i) => let
+		val tmp = newVar x
+		in
+		  ([CFG.mkSelect(tmp, i, envPtrOf env)], tmp)
+		end
+	    | NONE => raise Fail("unbound variable " ^ CPS.Var.toString x)
+	  (* end case *))
+
+    fun lookupVars (env, xs) = let
+	  fun lookup ([], binds, xs) = (binds, xs)
+	    | lookup (x::xs) = let
+		val (b, x) = lookupVar(env, x)
+		in
+		  lookup (xs, b::binds, x::xs)
+		end
+	  in
+	    lookup (List.rev xs, [], [])
+	  end
+
     fun cvtExp (env, e, stms) = (case e
 	   of CPS.Let(lhs, rhs, e) => let
-		val (stm, env') = cvtRHS(env, lhs, rhs)
+		val (stms', env') = cvtRHS(env, lhs, rhs)
 		in
-		  cvtExp (env', e, stm::stms)
+		  cvtExp (env', e, stms' @ stms)
 		end
 	    | CPS.Fun(fbs, e) =>
 	    | CPS.Cont(fb, e) =>
@@ -69,13 +94,36 @@ structure FlatClosure : sig
 
     and cvtRHS (env, lhs, rhs) = (case (newLocals(env, lhs), rhs)
 	   of ((env, lhs), CPS.Var ys) => (?, env)
-	    | ((env, [x]), CPS.Literal lit) => (CFG.mkLiteral(x, lit), env)
-	    | ((env, [x]), CPS.Select(i, y)) => (?, env)
-	    | ((env, [x]), CPS.Alloc ys) => (?, env)
-	    | ((env, [x]), CPS.Wrap y) => (?, env)
-	    | ((env, [x]), CPS.Unwrap y) => (?, env)
-	    | ((env, [x]), CPS.Prim p) => (?, env)
-	    | ((env, [x]), CPS.CCall(f, args)) => (?, env)
+	    | ((env, [x]), CPS.Literal lit) => ([CFG.mkLiteral(x, lit)], env)
+	    | ((env, [x]), CPS.Select(i, y)) => let
+		val (binds, y) = lookupVar(env, y)
+		in
+		  (binds @ [CFG.mkSelect(x, i, y)], env)
+		end
+	    | ((env, [x]), CPS.Alloc ys) => let
+		val (binds, ys) = lookupVars (env, ys)
+		in
+		  (binds @ [CFG.mkAlloc(x, ys)], env)
+		end
+	    | ((env, [x]), CPS.Wrap y) => let
+		val (binds, y) = lookupVar (env, y)
+		in
+		  (binds @ [CFG.mkWrap(x, y)], env)
+		end
+	    | ((env, [x]), CPS.Unwrap y) => let
+		val (binds, y) = lookupVar (env, y)
+		in
+		  (binds @ [CFG.mkUnwrap(x, y)], env)
+		end
+	    | ((env, [x]), CPS.Prim p) => let
+		in
+		  (binds @ [], env)
+		end
+	    | ((env, [x]), CPS.CCall(f, args)) => let
+		val (binds, f::args) = lookupVars (env, f::args)
+		in
+		  (binds @ [CFG.mkCCall(x, f, args)], env)
+		end
 	  (* end case *))
 
     fun convert (m as CPS.MODULE lambda) = (

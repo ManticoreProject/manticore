@@ -69,7 +69,7 @@ structure PrintCPS : sig
 	    | prRHS (CPS.Alloc ys) = (pr "alloc"; prList varUseToString ys)
 	    | prRHS (CPS.Wrap y) = prl["wrap(", varUseToString y, ")"]
 	    | prRHS (CPS.Unwrap y) = prl["unwrap(", varUseToString y, ")"]
-	    | prRHS (CPS.Prim p) = pr (Prim.fmt varUseToString p)
+	    | prRHS (CPS.Prim p) = pr (PrimUtil.fmt varUseToString p)
 	    | prRHS (CPS.CCall(f, args)) = (
 		prl ["ccall ", varUseToString f, " "];
 		prList varUseToString args)
