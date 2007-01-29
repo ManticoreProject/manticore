@@ -13,6 +13,14 @@ structure FlatClosure : sig
     structure FV = FreeVars
     structure VMap = CPS.Var.Map
 
+  (* convert from CPS types to CFG types *)
+    fun cvtTy (CPSTy.T_Any) = CFG.T_Any
+      | cvtTy (CPSTy.T_Bool) = CFG.T_Bool
+      | cvtTy (CPSTy.T_Raw rTy) = CFGTy.T_Raw rTy
+      | cvtTy (CPSTy.T_Wrap rTy) = CFG.T_Wrap rTy
+      | cvtTy (CPSTy.T_Tuple tys) = CFG.T_Tuple(List.map cvtTy tys)
+      | cvtTy (CPSTy.T_Fun tys) = CFG.T_Any (* ??? *)
+
     datatype loc
       = Local of CFG.var	(* bound in the current function *)
       | Global of int		(* at the ith slot of the current closure *)
@@ -33,7 +41,7 @@ structure FlatClosure : sig
 	  fun f (x, (i, env, tys)) = let
 		val x' = newVar x
 		in
-		  (i+1, VMap.insert(env, x, Global i), CFG.Var.typeOf x')
+		  (i+1, VMap.insert(env, x, Global i), CFG.Var.typeOf x' :: tys)
 		end
 	  val (_, env, tys) = List.foldl f (0, VMap.empty, []) fvs
 	  val tys = List.rev tys
@@ -46,7 +54,7 @@ structure FlatClosure : sig
 	  fun f (x, (env, xs')) = let
 		val x' = newVar x
 		in
-		  (VMap.insert(env, x, Local x), x'::xs')
+		  (VMap.insert(env, x, Local x'), x'::xs')
 		end
 	  val (env, xs) = List.foldl f (env, []) xs
 	  in
@@ -78,10 +86,10 @@ structure FlatClosure : sig
 
     fun lookupVars (env, xs) = let
 	  fun lookup ([], binds, xs) = (binds, xs)
-	    | lookup (x::xs) = let
+	    | lookup (x::xs, binds, xs') = let
 		val (b, x) = lookupVar(env, x)
 		in
-		  lookup (xs, b @ binds, x::xs)
+		  lookup (xs, b @ binds, x::xs')
 		end
 	  in
 	    lookup (List.rev xs, [], [])
@@ -104,7 +112,7 @@ structure FlatClosure : sig
 			    in
 			      cvt (env', e, stms' @ stms)
 			    end
-			| CPS.Fun(fbs, e) =>
+			| CPS.Fun(fbs, e) => ??
 			| CPS.Cont(fb, e) => let
 			    val (binds, env) = cvtCont(env, fb)
 			    in
@@ -112,7 +120,7 @@ structure FlatClosure : sig
 			    end
 			| CPS.If(x, e1, e2) => let
 			    val (binds, x) = lookupVar(env, x)
-			    fun mkBranch (lab, e) = let
+			    fun branch (lab, e) = let
 				  val needsEP = ref false
 				  fun f (x, (args, params)) = (case findLocal(env, x)
 					 of SOME x' => (x' :: args, CFG.Var.copy x' :: params)
@@ -127,7 +135,8 @@ structure FlatClosure : sig
 					  in (ep :: args, CFG.Var.copy ep :: params) end
 					else (args, params)
 				  val lab = CFG.Label.new(
-					lab,
+					Atom.atom lab,
+					CFG.Local,
 					CFGTy.T_Code(List.map CFG.Var.typeOf params))
 				  in
 				    cvtExp (newEnv, lab, CFG.Block params, e);
@@ -135,30 +144,69 @@ structure FlatClosure : sig
 				  end
 			    in
 			      finish(binds @ stms,
-				CFG.mkIf(x, branch("then", e1), branch("else", e2)))
+				CFG.If(x, branch("then", e1), branch("else", e2)))
 			    end
 			| CPS.Switch(x, cases, dflt) => raise Fail "switch not supported yet"
 			| CPS.Apply(f, args) => let
 			    val (binds, f::args) = lookupVars(env, f::args)
-			    val xfer = ??
+			    val (binds, xfer) = (case args
+				   of [arg, ret, exh] => let
+(* if f has kind VK_Fun, then we can refer directly to its label *)
+					val cp = CFG.Var.new(CFG.Var.nameOf f, CFG.VK_None,
+						CFG.T_StdFun{
+						    clos = CFG.Var.typeOf f,
+						    arg = CFG.Var.typeOf arg,
+						    ret = CFG.Var.typeOf ret,
+						    exh = CFG.Var.typeOf exh
+						  })
+					val xfer = CFG.StdApply{
+						f = cp,
+						clos = f,
+						arg = arg,
+						ret = ret,
+						exh = exh
+					      }
+					in
+					  (CFG.mkSelect(cp, 0, f) :: binds, xfer)
+					end
+				    | _ => raise Fail "non-standard calling convention"
+				  (* end case *))
 			    in
 			      finish (binds @ stms, xfer)
 			    end
 			| CPS.Throw(k, args) => let
 			    val (binds, k::args) = lookupVars(env, k::args)
-			    val xfer = ??
+			    val (binds, xfer) = (case args
+				   of [arg] => let
+(* if k has kind VK_Cont, then we can refer directly to its label *)
+					val cp = CFG.Var.new(CFG.Var.nameOf k, CFG.VK_None,
+						CFG.T_StdCont{
+						    clos = CFG.Var.typeOf k,
+						    arg = CFG.Var.typeOf arg
+						  })
+					val xfer = CFG.StdThrow{
+						k = cp,
+						clos = k,
+						arg = arg
+					      }
+					in
+					  (CFG.mkSelect(cp, 0, k) :: binds, xfer)
+					end
+				    | _ => raise Fail "non-standard calling convention"
+				  (* end case *))
 			    in
 			      finish (binds @ stms, xfer)
 			    end
 		      (* end case *))
 		in
+		  cvt (env, e, [])
 		end
 	(* convert a CPS RHS to a list of CFG expressions, plus a new environment *)
 	  and cvtRHS (env, lhs, rhs) = (case (newLocals(env, lhs), rhs)
 		 of ((env, lhs), CPS.Var ys) => let
 		      val (binds, ys) = lookupVars (env, ys)
 		      in
-			(binds @ [CG.mkVar(lhs, ys)], env)
+			(binds @ [CFG.mkVar(lhs, ys)], env)
 		      end
 		  | ((env, [x]), CPS.Literal lit) => ([CFG.mkLiteral(x, lit)], env)
 		  | ((env, [x]), CPS.Select(i, y)) => let
@@ -196,7 +244,7 @@ structure FlatClosure : sig
 	(* convert a function *)
 	  and cvtFun (env, (f, params, e)) = let
 		in
-		  (CFG.mkAlloc(f, clos) :: binds, env)
+		  (CFG.mkAlloc(f', clos) :: binds, env)
 		end
 	(* convert a bound continuation *)
 	  and cvtCont (env, (k, params, e)) = let

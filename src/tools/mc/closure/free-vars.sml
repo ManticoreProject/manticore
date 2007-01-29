@@ -14,7 +14,7 @@ structure FreeVars : sig
 
     structure V = CPS.Var
 
-    val {getFn = freeVarsOf, setFn, ...} = V.newProp (fn _ => Var.Set.empty)
+    val {getFn = freeVarsOf, setFn, ...} = V.newProp (fn _ => V.Set.empty)
 
     fun remove (s, x) = V.Set.delete (s, x) handle _ => s
 
@@ -29,18 +29,18 @@ structure FreeVars : sig
       | fvOfRHS (fv, CPS.CCall(f, args)) = V.Set.addList(fv, f::args)
 
     fun analExp (fv, e) = (case e
-	   of Let([x], rhs, e) => remove(analExp (fvOfRHS (fv, rhs), e), x)
-	    | Fun(fbs, e) => ??
-	    | Cont(fb, e) => (
+	   of CPS.Let([x], rhs, e) => remove(analExp (fvOfRHS (fv, rhs), e), x)
+	    | CPS.Fun(fbs, e) => (* FIXME *) raise Fail "Fun"
+	    | CPS.Cont(fb, e) => let
 		val fvOfLambda = analFB fb
 		in
 		  setFn (#1 fb, fvOfLambda);
 		  remove (analExp (V.Set.union (fv, fvOfLambda), e), #1 fb)
 		end
-	    | If(x, e1, e2) => analExp (analExp (V.Set.add (fv, x), e1), e2)
-	    | Switch _ => raise Fail "switch not implemented"
-	    | Apply(f, args) => V.Set.addList(fv, f::args)
-	    | Throw(k, args) => V.Set.addList(fv, k::args)
+	    | CPS.If(x, e1, e2) => analExp (analExp (V.Set.add (fv, x), e1), e2)
+	    | CPS.Switch _ => raise Fail "switch not implemented"
+	    | CPS.Apply(f, args) => V.Set.addList(fv, f::args)
+	    | CPS.Throw(k, args) => V.Set.addList(fv, k::args)
 	  (* end case *))
 
   (* compute the free variables of a lambda; the resulting set may include
@@ -50,6 +50,8 @@ structure FreeVars : sig
 	  analExp (V.Set.empty, body),
 	  V.Set.addList(V.Set.empty, params))
 
-    fun analyze (CPS.MODULE lambda) =
+    fun analyze (CPS.MODULE lambda) = if V.Set.isEmpty(analFB lambda)
+	  then ()
+	  else raise Fail "non-closed module"
 
   end
