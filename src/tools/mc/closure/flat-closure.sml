@@ -42,10 +42,15 @@ structure FlatClosure : sig
 	    E{ep = ep, env = env}
 	  end
 
-    fun newLocal (env, x) = let
-	  val x' = newVar x
+    fun newLocals (env, xs) = let
+	  fun f (x, (env, xs')) = let
+		val x' = newVar x
+		in
+		  (VMap.insert(env, x, Local x), x'::xs')
+		end
+	  val (env, xs) = List.foldl f (env, []) xs
 	  in
-	    (x', VMap.insert(env, x, Local x))
+	    (env, List.rev xs)
 	  end
 
     fun cvtExp (env, e, stms) = (case e
@@ -62,15 +67,15 @@ structure FlatClosure : sig
 	    | CPS.Throw(k, args) =>
 	  (* end case *))
 
-    and cvtRHS (env, lhs, rhs) = (case (lhs, rhs)
-	   of (_, CPS.Var ys) =>
-	    | ([x], CPS.Literal lit) =>
-	    | ([x], CPS.Select(i, y)) =>
-	    | ([x], CPS.Alloc ys) =>
-	    | ([x], CPS.Wrap y) =>
-	    | ([x], CPS.Unwrap y) =>
-	    | ([x], CPS.Prim p) =>
-	    | ([x], CPS.CCall(f, args)) =>
+    and cvtRHS (env, lhs, rhs) = (case (newLocals(env, lhs), rhs)
+	   of ((env, lhs), CPS.Var ys) => (?, env)
+	    | ((env, [x]), CPS.Literal lit) => (CFG.mkLiteral(x, lit), env)
+	    | ((env, [x]), CPS.Select(i, y)) => (?, env)
+	    | ((env, [x]), CPS.Alloc ys) => (?, env)
+	    | ((env, [x]), CPS.Wrap y) => (?, env)
+	    | ((env, [x]), CPS.Unwrap y) => (?, env)
+	    | ((env, [x]), CPS.Prim p) => (?, env)
+	    | ((env, [x]), CPS.CCall(f, args)) => (?, env)
 	  (* end case *))
 
     fun convert (m as CPS.MODULE lambda) = (
