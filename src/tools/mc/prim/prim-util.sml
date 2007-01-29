@@ -11,7 +11,7 @@ structure PrimUtil : sig
 
     val fmt : ('var -> string) -> 'var Prim.prim -> string
     val varsOf : 'var Prim.prim -> 'var list
-    val explode : 'var Prim.prim -> (('var list -> 'var Prim.prim) * 'var list)
+    val explode : 'var Prim.prim -> (('a list -> 'a Prim.prim) * 'var list)
 
   end = struct
 
