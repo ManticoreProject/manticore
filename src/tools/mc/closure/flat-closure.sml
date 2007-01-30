@@ -21,9 +21,38 @@ structure FlatClosure : sig
       | cvtTy (CPSTy.T_Tuple tys) = CFG.T_Tuple(List.map cvtTy tys)
       | cvtTy (CPSTy.T_Fun tys) = CFG.T_Any (* ??? *)
 
+  (* assign labels to functions and continuations *)
+    local
+      val {getFn : CPS.var -> CFG.label, setFn, ...} =
+	    CPS.Var.newProp (fn f => raise Fail(concat["labelOf(", CPS.Var.toString f, ")"]))
+    in
+    fun assignLabels lambda = let
+	  fun assignFB (f, _, e) = let
+(* FIXME: when are labels exported? *)
+		val lab = CFG.Label.new(CPS.Var.nameOf f, CFG.Local, cvtTy(CPS.Var.typeOf f))
+		in
+		  setFn (f, lab);
+		  assignExp e
+		end
+	  and assignExp (CPS.Let(_, _, e)) = assignExp e
+	    | assignExp (CPS.Fun(fbs, e)) = (List.app assignFB fbs; assignExp e)
+	    | assignExp (CPS.Cont(fb, e)) = (assignFB fb; assignExp e)
+	    | assignExp (CPS.If(_, e1, e2)) = (assignExp e1; assignExp e2)
+	    | assignExp (CPS.Switch(_, cases, dflt)) = (
+		List.app (assignExp o #2) cases;
+		Option.app assignExp dflt)
+	    | assignExp _ = ()
+	  in
+	    assignFB lambda
+	  end
+    val labelOf = getFn
+    end
+
     datatype loc
       = Local of CFG.var	(* bound in the current function *)
       | Global of int		(* at the ith slot of the current closure *)
+      | EnclFun of CFG.var	(* the enclosing function (or one that shares the *)
+				(* same closure).  The variable is the ep *)
 
   (* an envrionment for mapping from CPS variables to CFG variables.  We also
    * track the current closure.
@@ -60,6 +89,14 @@ structure FlatClosure : sig
 	  in
 	    (E{ep=ep, env=env}, List.rev xs)
 	  end
+ 
+    fun bindLabel lab = let
+	  val labVar = CFG.Var.new(CFG.Label.nameOf lab, CFG.VK_None, CFG.Label.typeOf lab)
+	  in
+	    (CFG.mkLabel(labVar, lab), labVar)
+	  end
+
+    fun findVar (E{env, ...}, x) = VMap.find(env, x)
 
   (* lookup a variable in the environment; return NONE if it is global, otherwise return
    * SOME of the CFG variable.
@@ -76,10 +113,19 @@ structure FlatClosure : sig
    *)
     fun lookupVar (E{ep, env}, x) = (case VMap.find(env, x)
 	   of SOME(Local x') => ([], x')
-	    | SOME(Global i) => let
+	    | SOME(Global i) => let (* fetch from closure *)
 		val tmp = newVar x
 		in
 		  ([CFG.mkSelect(tmp, i, ep)], tmp)
+		end
+	    | SOME(EnclFun ep) => let (* build <ep, cp> pair *)
+		val (b, lab) = bindLabel(labelOf x)
+		val tmp = CFG.Var.new(
+			CPS.Var.nameOf x,
+			CFG.VK_None,
+			CFGTy.T_Tuple[CFG.Var.typeOf ep, CFG.Var.typeOf lab])
+		in
+		  ([CFG.mkAlloc(tmp, [ep, lab]), b], tmp)
 		end
 	    | NONE => raise Fail("unbound variable " ^ CPS.Var.toString x)
 	  (* end case *))
@@ -112,7 +158,7 @@ structure FlatClosure : sig
 			    in
 			      cvt (env', e, stms' @ stms)
 			    end
-			| CPS.Fun(fbs, e) => ??
+			| CPS.Fun(fbs, e) => (* FIXME *) raise Fail "function binding unimplemented"
 			| CPS.Cont(fb, e) => let
 			    val (binds, env) = cvtCont(env, fb)
 			    in
@@ -126,7 +172,7 @@ structure FlatClosure : sig
 					 of SOME x' => (x' :: args, CFG.Var.copy x' :: params)
 					  | NONE => (needsEP := true; (args, params))
 					(* end case *))
-				  val (args, params) = List.foldr f ([], []) (freeVars e)
+				  val (args, params) = CPS.Var.Set.foldr f ([], []) (FV.freeVarsOfExp e)
 				(* if there are any free globals in e, then we include
 				 * the environment pointer as an argument.
 				 *)
@@ -148,26 +194,51 @@ structure FlatClosure : sig
 			    end
 			| CPS.Switch(x, cases, dflt) => raise Fail "switch not supported yet"
 			| CPS.Apply(f, args) => let
-			    val (binds, f::args) = lookupVars(env, f::args)
+			    val (binds, args) = lookupVars(env, args)
 			    val (binds, xfer) = (case args
 				   of [arg, ret, exh] => let
-(* if f has kind VK_Fun, then we can refer directly to its label *)
-					val cp = CFG.Var.new(CFG.Var.nameOf f, CFG.VK_None,
-						CFG.T_StdFun{
-						    clos = CFG.Var.typeOf f,
-						    arg = CFG.Var.typeOf arg,
-						    ret = CFG.Var.typeOf ret,
-						    exh = CFG.Var.typeOf exh
-						  })
+					fun bindEP () = let
+					      val (binds, f') = lookupVar(env, f)
+					      val ep = CFG.Var.new(Atom.atom "ep", CFG.VK_None, CFGTy.T_Any)
+					      in
+						(CFG.mkSelect(ep, 0, f') :: binds, f', ep)
+					      end
+					val (cp, ep, binds') = (case CPS.Var.kindOf f
+					       of CPS.VK_Fun _ => let
+						    val (b, cp) = bindLabel(labelOf f)
+						    in
+						      case findVar(env, f)
+							of SOME(EnclFun ep) => (cp, ep, [b])
+							 | _ => let
+							    val (binds, _, ep) = bindEP ()
+							    in
+							      (cp, ep, b::binds)
+							    end
+						       (* end case *)
+						    end
+						| _ => let
+						    val (binds, f', ep) = bindEP ()
+						    val cp = CFG.Var.new(CFG.Var.nameOf f', CFG.VK_None,
+							    CFG.T_StdFun{
+								clos = CFGTy.T_Any,
+								arg = CFG.Var.typeOf arg,
+								ret = CFG.Var.typeOf ret,
+								exh = CFG.Var.typeOf exh
+							      })
+						    val b = CFG.mkSelect(cp, 1, f')
+						    in
+						      (cp, ep, b::binds)
+						    end
+					      (* end case *))
 					val xfer = CFG.StdApply{
 						f = cp,
-						clos = f,
+						clos = ep,
 						arg = arg,
 						ret = ret,
 						exh = exh
 					      }
 					in
-					  (CFG.mkSelect(cp, 0, f) :: binds, xfer)
+					  (binds', xfer)
 					end
 				    | _ => raise Fail "non-standard calling convention"
 				  (* end case *))
@@ -253,6 +324,7 @@ structure FlatClosure : sig
 		end
 	  in
 	    FV.analyze m;
+	    assignLabels lambda;
 	    cvtFun (VMap.empty, lambda);
 	    CFG.mkModule(!blocks)
 	  end
