@@ -2,6 +2,12 @@
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
+ *
+ * This is a simple closure conversion algorithm.  In general, function
+ * closures are represented as an environment-pointer (EP) / code-pointer (CP)
+ * pair.  Mutually recursive functions share the same environment and use direct
+ * calls to each other.  Continuation closures are represented as a record with
+ * the first word containing the code pointer.
  *)
 
 structure FlatClosure : sig
@@ -19,7 +25,34 @@ structure FlatClosure : sig
       | cvtTy (CPSTy.T_Raw rTy) = CFGTy.T_Raw rTy
       | cvtTy (CPSTy.T_Wrap rTy) = CFG.T_Wrap rTy
       | cvtTy (CPSTy.T_Tuple tys) = CFG.T_Tuple(List.map cvtTy tys)
-      | cvtTy (CPSTy.T_Fun tys) = CFG.T_Any (* ??? *)
+      | cvtTy (ty as CPSTy.T_Fun tys) = CFG.T_Tuple[CFG.T_Any, cvtStdFunTy ty]
+      | cvtTy (ty as CPSTy.T_Cont tys) = CFG.T_Tuple[cvtStdContTy ty]
+
+  (* convert a function type to a standard-function type *)
+    and cvtStdFunTy (CPSTy.T_Fun[argTy, retTy, exhTy]) = CFGTy.T_StdFun{
+	    clos = CFGTy.T_Any,
+	    arg = cvtTy argTy,
+	    ret = cvtStdContTy retTy,
+	    exh = cvtStdContTy exhTy
+	  }
+      | cvtStdFunTy (CPSTy.T_Any) = CFGTy.T_StdFun{
+	    clos = CFGTy.T_Any,
+	    arg = CFGTy.T_Any,
+	    ret = CFGTy.T_Any,
+	    exh = CFGTy.T_Any
+	  }
+      | cvtStdFunTy ty = raise Fail("bogus function type " ^ CPSTy.toString ty)
+
+  (* convert a continuation type to a standard-function type *)
+    and cvtStdContTy (CPSTy.T_Cont[argTy]) = CFGTy.T_StdCont{
+	    clos = CFGTy.T_Any,
+	    arg = cvtTy argTy
+	  }
+      | cvtStdContTy (CPSTy.T_Any) = CFGTy.T_StdCont{
+	    clos = CFGTy.T_Any,
+	    arg = CFGTy.T_Any
+	  }
+      | cvtStdContTy ty = raise Fail("bogus continuation type " ^ CPSTy.toString ty)
 
   (* assign labels to functions and continuations *)
     local
@@ -29,14 +62,21 @@ structure FlatClosure : sig
     fun assignLabels lambda = let
 	  fun assignFB (f, _, e) = let
 (* FIXME: when are labels exported? *)
-		val lab = CFG.Label.new(CPS.Var.nameOf f, CFG.Local, cvtTy(CPS.Var.typeOf f))
+		val lab = CFG.Label.new(CPS.Var.nameOf f, CFG.Local, cvtStdFunTy(CPS.Var.typeOf f))
 		in
 		  setFn (f, lab);
 		  assignExp e
 		end
+	  and assignKB (k, _, e) = let
+(* FIXME: when are labels exported? *)
+		val lab = CFG.Label.new(CPS.Var.nameOf k, CFG.Local, cvtStdContTy(CPS.Var.typeOf k))
+		in
+		  setFn (k, lab);
+		  assignExp e
+		end
 	  and assignExp (CPS.Let(_, _, e)) = assignExp e
 	    | assignExp (CPS.Fun(fbs, e)) = (List.app assignFB fbs; assignExp e)
-	    | assignExp (CPS.Cont(fb, e)) = (assignFB fb; assignExp e)
+	    | assignExp (CPS.Cont(kb, e)) = (assignKB kb; assignExp e)
 	    | assignExp (CPS.If(_, e1, e2)) = (assignExp e1; assignExp e2)
 	    | assignExp (CPS.Switch(_, cases, dflt)) = (
 		List.app (assignExp o #2) cases;
@@ -59,26 +99,24 @@ structure FlatClosure : sig
    *)
     datatype env = E of {ep : CFG.var, env : loc VMap.map}
 
+    fun envPtrOf (E{ep, ...}) = ep
+
+    fun newEnv ep = E{ep = ep, env = VMap.empty}
+
   (* create a new CFG variable for a CPS variable *)
     fun newVar x = CFG.Var.new (
 	  CPS.Var.nameOf x,
 	  CFG.VK_None,
 	  cvtTy(CPS.Var.typeOf x))
 
-  (* create a new environment from a list of free variables *)
-    fun newEnv fvs = let
-	  fun f (x, (i, env, tys)) = let
-		val x' = newVar x
-		in
-		  (i+1, VMap.insert(env, x, Global i), CFG.Var.typeOf x' :: tys)
-		end
-	  val (_, env, tys) = List.foldl f (0, VMap.empty, []) fvs
-	  val tys = List.rev tys
-	  val ep = CFG.Var.new(Atom.atom "ep", CFG.VK_None, CFGTy.T_Tuple tys)
-	  in
-	    E{ep = ep, env = env}
-	  end
+    fun newEP ty = CFG.Var.new (Atom.atom "ep", CFG.VK_None, ty)
 
+    fun newLocal (E{ep, env}, x) = let
+	  val x' = newVar x
+	  in
+	    (E{ep=ep, env=VMap.insert(env, x, Local x')}, x')
+	  end
+ 
     fun newLocals (E{ep, env}, xs) = let
 	  fun f (x, (env, xs')) = let
 		val x' = newVar x
@@ -141,6 +179,24 @@ structure FlatClosure : sig
 	    lookup (List.rev xs, [], [])
 	  end
 
+  (* given a set of free CPS variables that define the environment of a lambda, create the
+   * argument variables and bindings to build the closure and the parameter variables and
+   * environment for the lambda's body.
+   *)
+    fun mkClosure (env, fv) = let
+	  fun mkArgs (x, (i, binds, clos, xs)) = let
+		val (b, x') = lookupVar(env, x)
+		in
+		  (i+1, b@binds, VMap.insert(clos, x, Global i), x'::xs)
+		end
+	  val (_, binds, clos, cfgArgs) =
+		CPS.Var.Set.foldl mkArgs (0, [], VMap.empty, []) fv
+	  val cfgArgs = List.rev cfgArgs
+	  val ep = newEP (CFGTy.T_Tuple(List.map CFG.Var.typeOf cfgArgs))
+	  in
+	    (binds, cfgArgs, E{ep = ep, env = clos})
+	  end
+
     fun convert (m as CPS.MODULE lambda) = let
 	  val blocks = ref []
 	(* convert an expression to a CFG FUNC; note that this function will convert
@@ -168,6 +224,8 @@ structure FlatClosure : sig
 			    val (binds, x) = lookupVar(env, x)
 			    fun branch (lab, e) = let
 				  val needsEP = ref false
+				  val branchEnv = newEnv (envPtrOf env)
+(* FIXME: need to add params to env *)
 				  fun f (x, (args, params)) = (case findLocal(env, x)
 					 of SOME x' => (x' :: args, CFG.Var.copy x' :: params)
 					  | NONE => (needsEP := true; (args, params))
@@ -177,15 +235,18 @@ structure FlatClosure : sig
 				 * the environment pointer as an argument.
 				 *)
 				  val (args, params) = if !needsEP
-					then let val E{ep, ...} = env
-					  in (ep :: args, CFG.Var.copy ep :: params) end
+					then let
+					  val ep = envPtrOf env
+					  in
+					    (ep :: args, CFG.Var.copy ep :: params)
+					  end
 					else (args, params)
 				  val lab = CFG.Label.new(
 					Atom.atom lab,
 					CFG.Local,
 					CFGTy.T_Code(List.map CFG.Var.typeOf params))
 				  in
-				    cvtExp (newEnv, lab, CFG.Block params, e);
+				    cvtExp (branchEnv, lab, CFG.Block params, e);
 				    (lab, args)
 				  end
 			    in
@@ -199,7 +260,7 @@ structure FlatClosure : sig
 				   of [arg, ret, exh] => let
 					fun bindEP () = let
 					      val (binds, f') = lookupVar(env, f)
-					      val ep = CFG.Var.new(Atom.atom "ep", CFG.VK_None, CFGTy.T_Any)
+					      val ep = newEP (CFG.T_Any)
 					      in
 						(CFG.mkSelect(ep, 0, f') :: binds, f', ep)
 					      end
@@ -312,20 +373,62 @@ structure FlatClosure : sig
 			(binds @ [CFG.mkCCall(x, f, args)], env)
 		      end
 		(* end case *))
+	(* create a standard function convention for a list of parameters *)
+	  and stdFunConvention (env, [arg, ret, exh]) = let
+		val (env, arg) = newLocal (env, arg)
+		val (env, ret) = newLocal (env, ret)
+		val (env, exh) = newLocal (env, exh)
+		val conv = CFG.StdFunc{
+			clos = envPtrOf env,
+			arg = arg, ret = ret, exh = exh
+		      }
+		in
+		  (env, conv)
+		end
+	    | stdFunConvention _ = raise Fail "non-standard function"
 	(* convert a function *)
 	  and cvtFun (env, (f, params, e)) = let
+		val lab = labelOf f
+		val (binds, clos, lambdaEnv) = mkClosure (env, FV.envOfFun f)
+		val (lambdaEnv, conv) = stdFunConvention (lambdaEnv, params)
+		val ep = newEP (CFG.T_Tuple(List.map CFG.Var.typeOf clos))
+		val bindEP = CFG.mkAlloc(ep, clos)
+		val (bindLab, labVar) = bindLabel (labelOf f)
+		val (env', f') = newLocal (env, f)
+		val binds = CFG.mkAlloc(f', [ep, labVar]) :: bindLab :: bindEP :: binds
 		in
-		  (CFG.mkAlloc(f', clos) :: binds, env)
+		  cvtExp (lambdaEnv, labelOf f, conv, e);
+		  (binds, env)
 		end
 	(* convert a bound continuation *)
 	  and cvtCont (env, (k, params, e)) = let
+		val (binds, clos, lambdaEnv) = mkClosure (env, FV.envOfFun k)
+		val (lambdaEnv, conv) = (case params
+		       of [arg] => let
+			    val (lambdaEnv, arg) = newLocal (lambdaEnv, arg)
+			    in
+			      (lambdaEnv, CFG.StdCont{clos = envPtrOf lambdaEnv, arg = arg})
+			    end
+			| _ => raise Fail("non-standard continuation " ^ CPS.Var.toString k)
+		      (* end case *))
+		val (bindLab, labVar) = bindLabel (labelOf k)
+		val (env', k') = newLocal (env, k)
+		val binds = CFG.mkAlloc(k', labVar :: clos) :: bindLab :: binds
 		in
-		  (CFG.mkAlloc(k', clos) :: binds, env)
+		  cvtExp (lambdaEnv, labelOf k, conv, e);
+		  (binds, env)
+		end
+	(* create the calling convention for the module *)
+	  fun cvtModLambda (f, params, e) = let
+		val ep = newEP (CFGTy.T_Tuple[])
+		val (env, conv) = stdFunConvention (E{ep = ep, env = VMap.empty}, params)
+		in
+		  cvtExp (env, labelOf f, conv, e)
 		end
 	  in
 	    FV.analyze m;
 	    assignLabels lambda;
-	    cvtFun (VMap.empty, lambda);
+	    cvtModLambda lambda;
 	    CFG.mkModule(!blocks)
 	  end
 
