@@ -1,0 +1,24 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+Library
+
+  structure Test
+
+is
+
+  $/basis.cm
+  $/smlnj-lib.cm
+
+  ../common/sources.cm
+  ../prim/sources.cm
+  ../cps/sources.cm
+  ../closure/sources.cm
+  ../cfg/sources.cm
+
+  cps-parse.cm
+
+  test.sml
