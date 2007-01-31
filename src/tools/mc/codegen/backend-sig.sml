@@ -29,6 +29,11 @@ signature BACK_END = sig
 	where MTy = MTy
     structure Alloc : ALLOC
 	where MTy = MTy
+    structure Types : ARCH_TYPES
+    structure Copy : COPY
+	where MTy = MTy
+    structure VarDef : VAR_DEF		     
+	where MTy = MTy
 
     (* take a control-flow graph, do RA, optimization, etc. and then
      * emit it to the assembly file.

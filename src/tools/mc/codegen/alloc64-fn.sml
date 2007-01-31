@@ -9,6 +9,8 @@
 functor Alloc64Fn (
 	structure MTy : MLRISC_TYPES
 	structure Regs : MANTICORE_REGS
+	structure Spec : TARGET_SPEC
+	structure Types : ARCH_TYPES
 ) : ALLOC = struct
 
   structure MTy = MTy
@@ -17,7 +19,8 @@ functor Alloc64Fn (
   structure Var = M.Var
   structure Ty = CFGTy
 
-  val wordSzB = 8
+  val wordSzB = Word.toInt Spec.wordSzB
+  val wordAlignB = Word.toInt Spec.wordAlignB
   val ty = wordSzB * 8
 
   val memory = ManticoreRegion.memory
@@ -25,31 +28,30 @@ functor Alloc64Fn (
 
   fun litFromInt i = T.LI (T.I.fromInt (ty, i))
   fun regExp r = T.REG (ty, r)
-  fun mkExp e = MTy.EXP (ty, e)
-  fun load addr = T.LOAD (ty, addr, memory)
-  fun store (ea, data) = T.STORE (ty, ea, data, memory)
   fun move (r, e) = T.MV (ty, r, e)
+  fun addAp i = T.ADD (ty, regExp apReg, litFromInt i)
 
-  fun sizeOfTy (M.T_Raw rt | M.T_Wrap rt) =
-      (case rt
-	of Ty.T_Byte => 8
-	 | Ty.T_Short => 16
-	 | Ty.T_Int => 32
-	 | Ty.T_Long => 64
-	 | Ty.T_Float => 32
-	 | Ty.T_Double => 64
-	 | Ty.T_Vec128 => 128
-      (* escac *))
-    | sizeOfTy (M.T_Tuple ts) = foldl (fn (t, acc) => sizeOfTy t + acc) 0 ts
-    | sizeOfTy _ = wordSzB
+  val alignedTySzB = Types.alignedTySzB
+
+  (* for now, the offset of the ith element in a tuple is the sum of the
+   * sizes of previous types. *)
+  fun offsetOf {tys, i} =
+      let fun offset (ty :: tys, j, sz) =
+	      if (j >= i) then sz
+	      else offset (tys, j+1, alignedTySzB ty + sz)
+      in 
+	  offset (tys, 0, 0) 
+      end (* offsetOf *)
 
   fun genAlloc args = 
-      let val tys = map (fn (ty, _) => ty) args
-	  val totalSize = foldl (fn (ty, acc) => sizeOfTy ty + acc) 0 tys
-	  val apMv = move (apReg, T.ADD (ty, regExp apReg , litFromInt totalSize))
-(* perform and record the stores here *)
+      let fun initLoc ((ty, mltree), (stms, totalSize)) =
+	      let val store = MTy.store (addAp totalSize, mltree, memory)
+	      in
+		  (store :: stms, alignedTySzB ty + totalSize)
+	      end (* initLoc *)
+	  val (stms, totalSize) = foldl initLoc ([], 0) args
       in	  
-	  [apMv]
+	  rev (move (apReg, addAp totalSize) :: stms)
       end (* genAlloc *)
 
 end (* Alloc64Fn *)

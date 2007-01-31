@@ -28,6 +28,9 @@ signature MLRISC_TYPES = sig
     val mlriscFTypeOf : T.fexp -> T.ty
     val regToTree : mlrisc_reg -> mlrisc_tree
 
+    (* type dependent load/stores *)
+    val store : (T.rexp * mlrisc_tree * T.Region.region) -> T.stm
+
 end (* MLRISC_TYPES *)
 
 functor MLRiscTypesFn (
@@ -36,10 +39,12 @@ functor MLRiscTypesFn (
 		where Region = ManticoreRegion
 ) : MLRISC_TYPES = struct
 
+  val ty = (Word.toInt Spec.wordSzB) * 8
+
   structure T = T
   structure MTS = MLTreeSize (
     structure T = T
-    val intTy = (Word.toInt Spec.wordSzB) * 8 )
+    val intTy = ty )
 
   datatype mlrisc_kind = K_INT | K_FLOAT | K_COND
 					   
@@ -71,5 +76,16 @@ functor MLRiscTypesFn (
 
   fun regToTree (GPReg (ty, v)) = GPR (ty, v)
     | regToTree (FPReg (fty, fv)) = FPR (fty, fv)
+
+  val valTRUE = T.LI Spec.trueRep
+  val valFALSE = T.LI Spec.falseRep
+  fun cexpToExp exp = T.COND(ty, exp, valTRUE, valFALSE)
+
+  (* type dependent store *)
+  fun store (dst, GPR(ty, r), rg) = T.STORE(ty, dst, T.REG(ty, r), rg)
+    | store (dst, FPR(fty, r), rg) = T.FSTORE(fty, dst, T.FREG(fty, r), rg)
+    | store (dst, EXP(ty, rexp), rg) = T.STORE(ty, dst, rexp, rg)
+    | store (dst, FEXP(fty, fexp), rg) = T.FSTORE(fty, dst, fexp, rg)
+    | store (dst, CEXP cexp, rg) = T.STORE(ty, dst, cexpToExp cexp, rg)
 
 end (* MLRiscTypesFn *)

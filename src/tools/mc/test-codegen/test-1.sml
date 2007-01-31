@@ -27,7 +27,9 @@ structure T = struct
       end (* compile *)
 
     fun var (name, ty) = CFG.Var.new(Atom.atom name, CFG.VK_None, ty)
+    fun newGlobal (lStr, ty) = CFG.Label.new(Atom.atom lStr, CFG.Export lStr, ty)
     fun newLab (lStr, ty) = CFG.Label.new(Atom.atom lStr, CFG.Local, ty)
+    fun freshLab ty = CFG.Label.new(Atom.atom "L", CFG.Local, ty)
 
     fun func (lab, params, bodyFn) = let
 	  val params as [clos, arg, ret, exh] = List.map var params
@@ -72,33 +74,52 @@ structure T = struct
     fun select (i, y) x = CFG.mkSelect(x, i, y)
 
   (* prim ops *)
-    fun lte (a, b) x = CFG.mkPrim(x, P.I32Lte(a, b))
-    fun eq (a, b) x = CFG.mkPrim(x, P.I32Eq(a, b))
-    fun add (a, b) x = CFG.mkPrim(x, P.I32Add(a, b))
-    fun sub (a, b) x = CFG.mkPrim(x, P.I32Sub(a, b))
+    fun lte (a, b) x = CFG.mkPrim(x, P.I64Lte(a, b))
+    fun eq (a, b) x = CFG.mkPrim(x, P.I64Eq(a, b))
+    fun add (a, b) x = CFG.mkPrim(x, P.I64Add(a, b))
+    fun sub (a, b) x = CFG.mkPrim(x, P.I64Sub(a, b))
 
   (* some types *)
-    val iTy = Ty.T_Raw Ty.T_Int
+    val iTy = Ty.T_Raw Ty.T_Long
     val bTy = Ty.T_Bool
     val aTy = Ty.T_Any
+    val f2aiTy = Ty.T_Code[aTy, iTy]	(* (_ * int) code *)
+    val tif2aiaTy = Ty.T_Tuple[iTy, f2aiTy, aTy]
+    val tif2aiaaTy = Ty.T_Tuple[iTy, f2aiTy, aTy, aTy]
+
 
   fun intLit i = Literal.Int i
   fun mkVar (vStr, k) = var(vStr, M.T_Any)
   fun mkLabel lStr = Label.label lStr ()
 
   fun t outFile = 
-      let val t = newLab ("mantentry", M.T_Any)
+      let val t = newGlobal ("mantentry", M.T_Any)
 	  fun mkVarParam v = (v, M.T_Any)
 	  val vs = [mkVarParam "cl", mkVarParam "arg", mkVarParam "ret", 
 		    mkVarParam "exh"]
+
+	  val L1 = freshLab aTy
+	  val L2 = freshLab aTy
 		  
 	  fun bodyFn [clos, arg, ret, exh] =
-	      mkLet (M.T_Any, lit 1024, fn il =>
-	        mkLet (M.T_Any, alloc [il], fn lt =>
-		  mkLet (M.T_Any, label t, fn f =>					     
-  		     mkExit (M.StdThrow {k=ret, clos=clos, arg=il}))))
+	      mkLet (iTy, lit 1024, fn il =>
+	      mkLet (iTy, lit 1025, fn il2 =>
+  		mkLet (aTy, label t, fn f =>					     					   
+  		mkLet (iTy, sub (il,il2) , fn il3 =>					     					   
+	        mkLet (M.T_Tuple [iTy, aTy], alloc [il, f, il3], fn lt =>					
+		mkLet (aTy, select (1, lt), fn fv =>
+		mkLet (iTy, lte (il, il2), fn c =>
+  		     mkExit (M.If (c, (L1, [ret, il2]), (L2, [ret, il2]))))))))))
+	  val i1 =  xbb (L1, [("k", f2aiTy), ("cl", aTy)], fn [k, cl] =>
+	      mkLet(iTy, lit 0, fn t =>
+		mkExit(CFG.StdThrow{k=k, arg=t, clos=cl})))
+	  val i2 =  xbb (L2, [("k", f2aiTy), ("cl", aTy)], fn [k, cl] =>
+	      mkLet(iTy, lit 1, fn t =>
+		mkExit(CFG.StdThrow{k=k, arg=t, clos=cl})))
+
       in 	  
-	  compile (M.MODULE {code=[func (t, vs, bodyFn)], funcs=LM.empty}, outFile) 
+	  compile (M.MODULE {code=[i1, i2, func (t, vs, bodyFn)
+				   ], funcs=LM.empty}, outFile) 
       end (* t *)
 
 end

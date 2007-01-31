@@ -23,6 +23,20 @@ functor AMD64GenFn (
   structure AMD64SpillLoc = SpillLocFn (structure Frame=AMD64Frame)
   structure BlockPlacement = DefaultBlockPlacement (AMD64CFG)
 
+  structure AMD64Shuffle = AMD64Shuffle(AMD64Instr)
+
+  (* transformation to expand COPY and FCOPYs *)
+  structure AMD64Expand = CFGExpandCopies (
+     structure CFG = AMD64CFG
+     structure Shuffle = AMD64Shuffle)
+
+  (* AMD64 peephole optimization *)
+  structure AMD64PeepholeOpt = CFGPeephole(
+     structure CFG = AMD64CFG
+     structure PeepHole = AMD64Peephole(
+     structure Instr = I
+     structure Eval = AMD64MLTreeEval))
+
   (* a function to get the frame annotation *)
   fun getFrameAn annotations = 
       (case #get AMD64SpillLoc.frameAn annotations
@@ -112,9 +126,21 @@ functor AMD64GenFn (
 			  structure MTy = MTy )
     structure SpillLoc = AMD64SpillLoc
     structure Regs = AMD64Regs
+    structure Types = AMD64TypesFn (
+                        structure Spec = Spec )
     structure Alloc = Alloc64Fn (
                         structure MTy = MTy
-			structure Regs = Regs )
+			structure Regs = Regs
+		        structure Spec = Spec 
+			structure Types = Types )
+  structure Copy = CopyFn (
+                   structure MTy = MTy
+		   structure Spec = Spec
+		   structure Cells = AMD64Cells )
+  structure VarDef = VarDefFn ( 
+                      structure MTy = MTy
+		      structure Spec = Spec
+		      structure MLTreeComp = AMD64MLTreeComp )
 
     fun compileCFG (cfg as Graph.GRAPH graph) = 
 	let val CFGGen.CFG.INFO{annotations, ...} = #graph_info graph
@@ -123,6 +149,8 @@ functor AMD64GenFn (
 	     of NONE => Emit.asmEmit (cfg, #nodes graph ())
 	      | SOME frame => 
 		let val cfg = RA.run cfg
+		    val cfg = AMD64Expand.run cfg
+		    val cfg = AMD64PeepholeOpt.run cfg
 		    val (cfg, blocks) = BlockPlacement.blockPlacement cfg
 		in
 		    Emit.asmEmit (cfg, blocks)
