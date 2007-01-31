@@ -154,7 +154,7 @@ structure Expand =
 		end
 	    | PT.Fun(fbs, e) => let
 		fun f (fb, (env', cvtBodies)) = let
-			val (env'', cvt) = cvtLambda (env, fb)
+			val (env'', cvt) = cvtLambda (env, fb, Ty.T_Fun)
 			in
 			  (env'', cvt::cvtBodies)
 			end
@@ -165,7 +165,7 @@ structure Expand =
 		    cvtExp (envWFBs, e))
 		end
 	    | PT.Cont(fb, e) => let
-		val (env', cvtBody) = cvtLambda(env, fb)
+		val (env', cvtBody) = cvtLambda(env, fb, Ty.T_Cont)
 		in
 		  CPS.mkCont(cvtBody env, cvtExp(env', e))
 		end
@@ -178,8 +178,8 @@ structure Expand =
 		cvtSimpleExps (env, args, fn xs => CPS.Throw(lookup(env, k), xs))
 	  (* end case *))
 
-    and cvtLambda (env, (f, params, e)) = let
-	  val fnTy = Ty.T_Fun(List.map #2 params)
+    and cvtLambda (env, (f, params, e), tyCon) = let
+	  val fnTy = tyCon(List.map #2 params)
 	  val f' = CPS.Var.new(f, CPS.VK_None, fnTy)
 	  fun doBody env = let
 		val (envWParams, params') = cvtVarBinds (env, params)
@@ -234,7 +234,7 @@ structure Expand =
 	  end
 
     fun cvtModule (PT.MODULE lambda) = let
-	  val (_, cvtBody) = cvtLambda (AtomMap.empty, lambda)
+	  val (_, cvtBody) = cvtLambda (AtomMap.empty, lambda, Ty.T_Fun)
 	  in
 	    CPS.MODULE(cvtBody AtomMap.empty)
 	  end

@@ -82,6 +82,7 @@ Type
 	| "(" Type ("," Type)* ")"		=> (PT.T_Tuple(Type :: SR))
 (* FIXME: can remove extra action when 110.62 comes out *)
 	| "fun" "(" (Type ("," Type)* => (Type, SR) )? ")"	=> (PT.T_Fun(flatten SR))
+	| "cont" "(" (Type ("," Type)* => (Type, SR) )? ")"	=> (PT.T_Cont(flatten SR))
 	;
 
 RawType

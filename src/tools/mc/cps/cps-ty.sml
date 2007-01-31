@@ -16,6 +16,7 @@ structure CPSTy =
       | T_Wrap of raw_ty	(* boxed raw value *)
       | T_Tuple of ty list	(* heap-allocated tuple *)
       | T_Fun of ty list
+      | T_Cont of ty list
 
     fun toString ty = let
 	  fun r2s T_Byte = "byte"
@@ -38,6 +39,7 @@ structure CPSTy =
 	      | T_Wrap ty => concat["wrap(", RawTypes.toString ty, ")"]
 	      | T_Tuple tys => concat("(" :: tys2l(tys, [")"]))
 	      | T_Fun tys => concat("fun(" :: tys2l(tys, [")"]))
+	      | T_Cont tys => concat("cont(" :: tys2l(tys, [")"]))
 	    (* end case *)
 	  end
 
