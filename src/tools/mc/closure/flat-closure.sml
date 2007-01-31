@@ -225,12 +225,16 @@ structure FlatClosure : sig
 			    fun branch (lab, e) = let
 				  val needsEP = ref false
 				  val branchEnv = newEnv (envPtrOf env)
-(* FIXME: need to add params to env *)
-				  fun f (x, (args, params)) = (case findLocal(env, x)
-					 of SOME x' => (x' :: args, CFG.Var.copy x' :: params)
-					  | NONE => (needsEP := true; (args, params))
+				  fun f (x, (bEnv, args, params)) = (case findLocal(env, x)
+					 of SOME x' => let
+					      val (bEnv', x'') = newLocal(bEnv, x)
+					      in
+						(bEnv', x' :: args, x'' :: params)
+					      end
+					  | NONE => (needsEP := true; (bEnv, args, params))
 					(* end case *))
-				  val (args, params) = CPS.Var.Set.foldr f ([], []) (FV.freeVarsOfExp e)
+				  val (branchEnv, args, params) =
+					CPS.Var.Set.foldr f (branchEnv, [], []) (FV.freeVarsOfExp e)
 				(* if there are any free globals in e, then we include
 				 * the environment pointer as an argument.
 				 *)
