@@ -153,8 +153,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	      end
 	    | genExp' (M.E_Wrap (_, v)) = fail "todo"
 	    | genExp' (M.E_Unwrap (_, v)) = fail "todo"
-	    | genExp' (M.E_Prim (_, p)) = 
-	      ([genPrim p], [])
+	    | genExp' (M.E_Prim (_, p)) = ([genPrim p], [])
 	    | genExp' (M.E_CCall (_, f, args)) = fail "todo"
 
 	  (* bind the parameters for the body of a FUNC *)

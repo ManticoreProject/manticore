@@ -17,7 +17,9 @@ signature TARGET_SPEC =
     val wordAlignB : word	(* byte alignment of pointers *)
     val boolSzB : word		(* size of boolean values in bytes *)
 
-    val spillAreaSzB : word      (* size of the spill area on the stack *)
+    val spillAreaSzB : word     (* size of the spill area on the stack *)
+    val maxObjectSzB : word     (* maximum number of bytes allowable in a
+				 * heap-allocated object *) 
 		  
   (* representation of True and False *)
     val trueRep : IntegerLit.integer
