@@ -13,6 +13,7 @@ structure Test =
 	  val _ = PrintCFG.print module
 	  val module = Opt.optimize module
 	  in
+	    CheckCG.check module;
 	    PrintCFG.print module
 	  end
 

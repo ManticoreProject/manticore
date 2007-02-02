@@ -19,6 +19,7 @@ structure Test =
 		prHdr "CFG after closure";
 		PrintCFG.print cfg)
 	  in
+	    CheckCFG.check cfg;
 	    cfg
 	  end
 
