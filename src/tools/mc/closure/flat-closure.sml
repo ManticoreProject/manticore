@@ -298,7 +298,7 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
 			    end
 			| CPS.Switch(x, cases, dflt) => raise Fail "switch not supported yet"
 			| CPS.Apply(f, args) => let
-			    val (binds, args) = lookupVars(env, args)
+			    val (argBinds, args) = lookupVars(env, args)
 			    val (binds, xfer) = (case args
 				   of [arg, ret, exh] => let
 					fun bindEP () = let
@@ -316,7 +316,7 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
 							 | _ => let
 							    val (binds, _, ep) = bindEP ()
 							    in
-							      (cp, ep, b::binds)
+							      (cp, ep, b :: binds @ argBinds)
 							    end
 						       (* end case *)
 						    end
@@ -331,7 +331,7 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
 							      })
 						    val b = CFG.mkSelect(cp, 1, f')
 						    in
-						      (cp, ep, b::binds)
+						      (cp, ep, b :: binds @ argBinds)
 						    end
 					      (* end case *))
 					val xfer = CFG.StdApply{
