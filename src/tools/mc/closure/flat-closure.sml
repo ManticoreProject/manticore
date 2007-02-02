@@ -91,8 +91,8 @@ structure FlatClosure : sig
     datatype loc
       = Local of CFG.var	(* bound in the current function *)
       | Global of int		(* at the ith slot of the current closure *)
-      | EnclFun of CFG.var	(* the enclosing function (or one that shares the *)
-				(* same closure).  The variable is the ep *)
+      | EnclFun			(* the enclosing function (or one that shares the *)
+				(* same closure). *)
 
   (* an envrionment for mapping from CPS variables to CFG variables.  We also
    * track the current closure.
@@ -103,6 +103,13 @@ structure FlatClosure : sig
 
     fun newEnv ep = E{ep = ep, env = VMap.empty}
 
+    fun insertVar (E{ep, env}, x, x') = E{ep=ep, env=VMap.insert(env, x, x')}
+
+    fun findVar (E{env, ...}, x) = (case VMap.find(env, x)
+	  of SOME loc => loc
+	   | NONE => raise Fail("unbound variable " ^ CPS.Var.toString x)
+	  (* end case *))
+
   (* create a new CFG variable for a CPS variable *)
     fun newVar x = CFG.Var.new (
 	  CPS.Var.nameOf x,
@@ -111,10 +118,10 @@ structure FlatClosure : sig
 
     fun newEP ty = CFG.Var.new (Atom.atom "ep", CFG.VK_None, ty)
 
-    fun newLocal (E{ep, env}, x) = let
+    fun newLocal (env, x) = let
 	  val x' = newVar x
 	  in
-	    (E{ep=ep, env=VMap.insert(env, x, Local x')}, x')
+	    (insertVar(env, x, Local x'), x')
 	  end
  
     fun newLocals (E{ep, env}, xs) = let
@@ -134,17 +141,6 @@ structure FlatClosure : sig
 	    (CFG.mkLabel(labVar, lab), labVar)
 	  end
 
-    fun findVar (E{env, ...}, x) = VMap.find(env, x)
-
-  (* lookup a variable in the environment; return NONE if it is global, otherwise return
-   * SOME of the CFG variable.
-   *)
-    fun findLocal (E{env, ...}, x) = (case VMap.find(env, x)
-	   of NONE => raise Fail("unbound variable " ^ CPS.Var.toString x)
-	    | SOME(Local x') => SOME x'
-	    | _ => NONE
-	  (* end case *))
-
   (* lookup a CPS variable in the environment.  If it has to be fetched from
    * a closure, we introduce a new temporary for it.
    * QUESTION: should we cache the temp in the environment?
@@ -156,7 +152,7 @@ structure FlatClosure : sig
 		in
 		  ([CFG.mkSelect(tmp, i, ep)], tmp)
 		end
-	    | SOME(EnclFun ep) => let (* build <ep, cp> pair *)
+	    | SOME EnclFun => let (* build <ep, cp> pair *)
 		val (b, lab) = bindLabel(labelOf x)
 		val tmp = CFG.Var.new(
 			CPS.Var.nameOf x,
@@ -178,6 +174,21 @@ structure FlatClosure : sig
 	  in
 	    lookup (List.rev xs, [], [])
 	  end
+
+(* +DEBUG *)
+    fun locToString (Local x) = concat["L(", CFG.Var.toString x, ")"]
+      | locToString (Global i) = concat["G(", Int.toString i, ")"]
+      | locToString EnclFun = "EnclFun"
+    fun prEnv (E{ep, env}) = let
+	  fun f (x, loc, false) = (print(concat[", ", CPS.Var.toString x, "->", locToString loc]); false)
+	    | f (x, loc, true) = (print(concat[CPS.Var.toString x, "->", locToString loc]); false)
+	  in
+	    print(concat["E{ep = ", CFG.Var.toString ep, " : ", CFGTy.toString(CFG.Var.typeOf ep), "\n"]);
+	    print "  env = {";
+	    VMap.foldli f true env;
+	    print "}\n}\n"
+	  end
+(* -DEBUG *)
 
   (* given a set of free CPS variables that define the environment of a lambda, create the
    * argument variables and bindings to build the closure and the parameter variables and
@@ -203,6 +214,7 @@ structure FlatClosure : sig
 	 * any nested functions first.
          *)
 	  fun cvtExp (env, lab, conv, e) = let
+val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString lab, "\n"]); prEnv env)
 		fun finish (binds, xfer) = let
 		      val func = CFG.mkFunc (lab, conv, List.rev binds, xfer)
 		      in
@@ -214,7 +226,33 @@ structure FlatClosure : sig
 			    in
 			      cvt (env', e, stms' @ stms)
 			    end
-			| CPS.Fun(fbs, e) => (* FIXME *) raise Fail "function binding unimplemented"
+			| CPS.Fun(fbs, e) => let
+			  (* the functions share a common environment tuple *)
+			    val (binds, clos, sharedEnv) = mkClosure (env, FV.envOfFun(#1(hd fbs)))
+			    val ep = newEP (CFG.T_Tuple(List.map CFG.Var.typeOf clos))
+			    val bindEP = CFG.mkAlloc(ep, clos)
+			  (* map the names of the bound functions to EnvlFun *)
+			    val sharedEnv = List.foldl
+				  (fn ((f, _, _), env) => insertVar(env, f, EnclFun))
+				    sharedEnv fbs
+			  (* convert an individual function binding; this includes creating its
+			   * code-pointer/environment-pointer pair and converting the function's body.
+			   *)
+			    fun cvtFB ((f, params, e), (binds, env)) = let
+				  val lab = labelOf f
+				  val (fbEnv, conv) = stdFunConvention (sharedEnv, params)
+				  val (bindLab, labVar) = bindLabel (labelOf f)
+				  val (env', f') = newLocal (env, f)
+				  val binds = CFG.mkAlloc(f', [ep, labVar]) :: bindLab :: binds
+				  in
+				  (* convert the function itself *)
+				    cvtExp (fbEnv, labelOf f, conv, e);
+				    (binds, env')
+				  end
+			    val (binds, env') = List.foldl cvtFB (bindEP::binds, env) fbs
+			    in
+			      cvt (env', e, binds @ stms)
+			    end
 			| CPS.Cont(fb, e) => let
 			    val (binds, env) = cvtCont(env, fb)
 			    in
@@ -225,13 +263,16 @@ structure FlatClosure : sig
 			    fun branch (lab, e) = let
 				  val needsEP = ref false
 				  val branchEnv = newEnv (envPtrOf env)
-				  fun f (x, (bEnv, args, params)) = (case findLocal(env, x)
-					 of SOME x' => let
+				  fun f (x, (bEnv, args, params)) = (case findVar(env, x)
+					 of Local x' => let
 					      val (bEnv', x'') = newLocal(bEnv, x)
 					      in
 						(bEnv', x' :: args, x'' :: params)
 					      end
-					  | NONE => (needsEP := true; (bEnv, args, params))
+					  | Global _ => (needsEP := true; (bEnv, args, params))
+					  | EnclFun => (
+					      needsEP := true;
+					      (insertVar(bEnv, x, EnclFun), args, params))
 					(* end case *))
 				  val (branchEnv, args, params) =
 					CPS.Var.Set.foldr f (branchEnv, [], []) (FV.freeVarsOfExp e)
@@ -273,7 +314,7 @@ structure FlatClosure : sig
 						    val (b, cp) = bindLabel(labelOf f)
 						    in
 						      case findVar(env, f)
-							of SOME(EnclFun ep) => (cp, ep, [b])
+							of EnclFun => (cp, envPtrOf env, [b])
 							 | _ => let
 							    val (binds, _, ep) = bindEP ()
 							    in
@@ -390,20 +431,6 @@ structure FlatClosure : sig
 		  (env, conv)
 		end
 	    | stdFunConvention _ = raise Fail "non-standard function"
-	(* convert a function *)
-	  and cvtFun (env, (f, params, e)) = let
-		val lab = labelOf f
-		val (binds, clos, lambdaEnv) = mkClosure (env, FV.envOfFun f)
-		val (lambdaEnv, conv) = stdFunConvention (lambdaEnv, params)
-		val ep = newEP (CFG.T_Tuple(List.map CFG.Var.typeOf clos))
-		val bindEP = CFG.mkAlloc(ep, clos)
-		val (bindLab, labVar) = bindLabel (labelOf f)
-		val (env', f') = newLocal (env, f)
-		val binds = CFG.mkAlloc(f', [ep, labVar]) :: bindLab :: bindEP :: binds
-		in
-		  cvtExp (lambdaEnv, labelOf f, conv, e);
-		  (binds, env)
-		end
 	(* convert a bound continuation *)
 	  and cvtCont (env, (k, params, e)) = let
 		val (binds, clos, lambdaEnv) = mkClosure (env, FV.envOfFun k)
@@ -420,7 +447,7 @@ structure FlatClosure : sig
 		val binds = CFG.mkAlloc(k', labVar :: clos) :: bindLab :: binds
 		in
 		  cvtExp (lambdaEnv, labelOf k, conv, e);
-		  (binds, env)
+		  (binds, env')
 		end
 	(* create the calling convention for the module *)
 	  fun cvtModLambda (f, params, e) = let

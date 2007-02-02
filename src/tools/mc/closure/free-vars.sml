@@ -20,7 +20,7 @@ structure FreeVars : sig
 
     structure V = CPS.Var
 
-    val {getFn = envOfFun, setFn, ...} = V.newProp (fn _ => V.Set.empty)
+    val {getFn = getFV, setFn, ...} = V.newProp (fn _ => V.Set.empty)
 
     fun remove (s, x) = V.Set.delete (s, x) handle _ => s
 
@@ -72,8 +72,20 @@ structure FreeVars : sig
 	  then ()
 	  else raise Fail "non-closed module"
 
+    fun envOfFun f = let
+	  val fv = getFV f
+	  in
+(*DEBUG*)print(concat["FV(", V.toString f, ") = {"]);
+(*DEBUG*)V.Set.foldl
+(*DEBUG*)    (fn (x, false) => (print("," ^ V.toString x); false)
+(*DEBUG*)      | (x, true) => (print(V.toString x); false)
+(*DEBUG*)    ) true fv;
+(*DEBUG*)print "}\n";
+	    fv
+	  end
+
     fun freeVarsOfExp exp = let
-	  fun analFB (f, _, _) = envOfFun f
+	  fun analFB (f, _, _) = getFV f
 	  fun analExp (fv, e) = (case e
 		 of CPS.Let([x], rhs, e) => remove(analExp (fvOfRHS (fv, rhs), e), x)
 		  | CPS.Fun(fbs, e) => let
