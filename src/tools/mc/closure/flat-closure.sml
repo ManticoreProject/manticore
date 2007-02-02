@@ -262,7 +262,9 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
 			    val (binds, x) = lookupVar(env, x)
 			    fun branch (lab, e) = let
 				  val needsEP = ref false
-				  val branchEnv = newEnv (envPtrOf env)
+				  val argEP = envPtrOf env
+				  val paramEP = CFG.Var.copy argEP
+				  val branchEnv = newEnv paramEP
 				  fun f (x, (bEnv, args, params)) = (case findVar(env, x)
 					 of Local x' => let
 					      val (bEnv', x'') = newLocal(bEnv, x)
@@ -280,11 +282,7 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
 				 * the environment pointer as an argument.
 				 *)
 				  val (args, params) = if !needsEP
-					then let
-					  val ep = envPtrOf env
-					  in
-					    (ep :: args, CFG.Var.copy ep :: params)
-					  end
+					then (argEP :: args, paramEP :: params)
 					else (args, params)
 				  val lab = CFG.Label.new(
 					Atom.atom lab,
