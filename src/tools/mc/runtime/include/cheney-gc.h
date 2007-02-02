@@ -18,10 +18,12 @@
  */
 
 #define ALL_1S (~0l)
-#define LEN_MASK 0xffffffffffffff
+#define BYTE_MASK 0xffffl
+#define WORD_SZ_B  (sizeof(Word_t))
+#define LEN_MASK (~ (BYTE_MASK<<((WORD_SZ_B-1l)*8l)))
 
 typedef struct {
-  unsigned char mask[7];
+  unsigned char mask[WORD_SZ_B-1];
   unsigned char length;
 } Hdr_Bytes_t;
 
@@ -37,13 +39,16 @@ typedef struct {
 static inline Object_t *pointer_to_obj (void **p) {
   return (Object_t*)(p-1);
 }
+static inline void *obj_to_pointer (Object_t *obj) {
+  return &obj->data;
+}
 
 static inline uint_t hdr_len (Object_t *obj) {
   return (uint_t)obj->hdr.hdr_bytes.length;
 }
 
 static inline Bool_t is_pointer (Object_t *obj, uint_t i) {
-  return ~1l & ((LEN_MASK & obj->hdr.hdr_word) >> i);
+  return 1l & ((LEN_MASK & obj->hdr.hdr_word) >> i);
 }
 
 /*static inline Bool_t is_forwarded (void *to_space, void *p) {
@@ -60,15 +65,17 @@ static inline Bool_t is_forwarded (Object_t *obj) {
 
 static inline void *get_forward_ptr (Object_t *obj) {
   /* Store the forward pointer at the beginning of the data segment. */
-  return obj->data[0];
+  return obj->data;
 }
 
 static inline void set_forward_ptr (Object_t *obj, void *p) {
   obj->hdr.hdr_word = ALL_1S;
-  obj->data[0] = p;
+  obj->data = p;
 }
 
 // keep a global copy of to- and from-space locally
-void *to_space, *from_space;
+void **to_space, **from_space;
+
+void init_gc (void *);
 
 #endif
