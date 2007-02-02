@@ -1,24 +1,28 @@
 #ifndef _CHENEY_GC_H
 #define _CHENEY_GC_H
 
-#include "context.h"
 #include "manticore-types.h"
+#include "gc-defs.h"
 
 /*
- * Objects have a simple storage format:
+ * An object has simple a representation:
  * 
- *  | -- 1 byte -- |   -- 7 bytes --  |  length bytes |
- *  |   length     |   pointer mask   |     data      |
+ *               header
+ *  ___________________________________         ...
+ *  | -- 1 byte -- |   -- 7 bytes --  |  -- length bytes -- |
+ *  |   length     |   pointer mask   |        data         |
  * 
- * Data is aligned on 8-byte boundaries.
- * 
- * This representation allows for a max of 56 words in an object, much more
- * than the 265 possible with the length byte.
+ * Data are aligned on word boundaries. This representation of objects
+ * allows for a max of 56 words in an object, much more than the 265
+ * possible with the length byte.
  */
 
+#define ALL_1S (~0l)
+#define LEN_MASK 0xffffffffffffff
+
 typedef struct {
-  unsigned char length;
   unsigned char mask[7];
+  unsigned char length;
 } Hdr_Bytes_t;
 
 typedef struct {
@@ -26,26 +30,45 @@ typedef struct {
     Word_t hdr_word;
     Hdr_Bytes_t hdr_bytes;
   } hdr;
-  void *data;
+  void **data;
 } Object_t;
 
 /* pointers only point to the first element of an object's data segment */
-static inline Object_t pointer_to_obj (void *p) {
+static inline Object_t *pointer_to_obj (void **p) {
   return (Object_t*)(p-1);
 }
 
 static inline uint_t hdr_len (Object_t *obj) {
-  return (uint_t)obj->hdr.hdr_bytes.len;
+  return (uint_t)obj->hdr.hdr_bytes.length;
 }
 
 static inline Bool_t is_pointer (Object_t *obj, uint_t i) {
-
+  return ~1l & ((LEN_MASK & obj->hdr.hdr_word) >> i);
 }
 
-static inline Bool_t is_forwarded (void *to_space, void *p) {
+/*static inline Bool_t is_forwarded (void *to_space, void *p) {
   return p >= to_space;
+  }*/
+
+static inline Bool_t is_forwarded (Object_t *obj) {
+  /* Since LENGTH(obj) <= 56, we know that the length field never reaches
+   * 0xFF; thus obj->hdr should never normally contain all 1s.  An object
+   * that does, however, contain all 1s denotes a forwarded object.
+   */
+  return obj->hdr.hdr_word == ALL_1S;
 }
 
-#define ALL_1s (~0l)
+static inline void *get_forward_ptr (Object_t *obj) {
+  /* Store the forward pointer at the beginning of the data segment. */
+  return obj->data[0];
+}
+
+static inline void set_forward_ptr (Object_t *obj, void *p) {
+  obj->hdr.hdr_word = ALL_1S;
+  obj->data[0] = p;
+}
+
+// keep a global copy of to- and from-space locally
+void *to_space, *from_space;
 
 #endif

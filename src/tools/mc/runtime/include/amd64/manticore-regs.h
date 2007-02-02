@@ -1,3 +1,12 @@
+/* manticore-regs.h
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Lists the "root" GC registers.  IMPORTANT: this file must agree with
+ * ../codegen/amd64/amd64-regs.sml
+ */
+
 #ifndef _MANTICORE_REGS_H
 #define _MANTICORE_REGS_H
 
