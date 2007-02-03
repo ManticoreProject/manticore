@@ -12,11 +12,11 @@ structure CPSParser : sig
 
   end = struct
 
-    structure Parser = CPSParse(CPSLex)
+    structure Parser = CPSParseFn(CPSLex)
 
   (* error function for parsers *)
     fun parseErr (filename, srcMap) = let
-	  val errToStr = Repair.repairToString srcMap CPSParseToks.toksToString
+	  val errToStr = Repair.repairToString CPSTokens.toString srcMap
 	  in
 	    fn err => TextIO.print(concat["Error [", filename, "] ", errToStr err, "\n"])
 	  end
@@ -24,7 +24,7 @@ structure CPSParser : sig
   (* parse a file, returning a parse tree *)
     fun parseFile filename = let
 	  val file = TextIO.openIn filename
-	  fun get n = TextIO.inputN (file, n)
+	  fun get () = TextIO.input file
 	  val srcMap = StreamPos.mkSourcemap()
 	  val lexer = CPSLex.lex srcMap
 	  in

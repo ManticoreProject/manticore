@@ -8,7 +8,7 @@
 
 %defs(
 
-    structure T = CPSParseToks
+    structure T = CPSTokens
 
   (* error function for lexers *)
     fun lexErr (lnum, msg) = TextIO.print(concat [
