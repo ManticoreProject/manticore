@@ -8,7 +8,7 @@ typedef struct {
   void *data;
 } Alloc_t;
 
-Object_t *alloc (void ***ap, uint_t length, Alloc_t *alloc_arr) {
+void ***alloc (void ***ap, uint_t length, Alloc_t *alloc_arr) {
   Word_t hdr = 0;
   void **heap = *ap;
 
@@ -19,7 +19,7 @@ Object_t *alloc (void ***ap, uint_t length, Alloc_t *alloc_arr) {
   *ap += length+1;
   Object_t *obj = (Object_t*)heap;
   obj->hdr.hdr_word = ((Word_t)length<<56)|hdr;
-  return obj;
+  return &obj->data;
 }
 
 void init_raw_obj (Alloc_t *a, Word_t data) {
@@ -36,12 +36,11 @@ void init_heap () {
   to_space = from_space + HEAP_SIZE;
 }
 
-void *data_value (Object_t *obj, uint_t i) {
-  if (i > hdr_len (obj)) {
+void *data_value (void **data, uint_t i) {
+  if (i > hdr_len (pointer_to_obj (data))) {
 	printf ("index too large\n");
 	exit (1);
   } else {
-	void **data = &obj->data;
 	return data[i];
   }
 }
@@ -52,26 +51,27 @@ int main () {
 
   Alloc_t arr1[1];
   init_raw_obj (&arr1[0], 1023);
-  Object_t *obj1 = alloc (&heap, 1, arr1);
+  void ***obj1 = alloc (&heap, 1, arr1); 
 
   Alloc_t arr[3];
   init_raw_obj (&arr[0], 1024);
-  init_ptr_obj (&arr[1], obj_to_pointer (obj1));
+  //init_raw_obj (&arr[1], 1025);
+  init_ptr_obj (&arr[1], obj1);
   init_raw_obj (&arr[2], 1026);
-  Object_t *obj = alloc (&heap, 3, arr);
+  void ***obj = alloc (&heap, 3, arr);
 
   Alloc_t arr_root[1];
-  init_ptr_obj (&arr_root[0], obj_to_pointer (obj));
+  init_ptr_obj (&arr_root[0], obj);
 
-  Object_t *root_obj = alloc (&heap, 1, arr_root);
+  void ***root_obj = alloc (&heap, 1, arr_root);
 
-  Object_t *obj_1 = pointer_to_obj (data_value (root_obj, 0));
-  printf ("%ld\n",(Word_t)data_value (obj_1, 2));
+  void *p1 = data_value (root_obj, 0);
+  printf ("%ld\n",(Word_t)data_value (p1, 2));
 
-  init_gc (&root_obj->data);
+  init_gc (root_obj);
 
-  Object_t *obj_2 = pointer_to_obj (data_value (root_obj, 0));
-  printf ("%ld\n",(Word_t)data_value (obj_2, 2));
+  void *obj3 = root_obj[0];
+  printf ("%ld\n",(Word_t)data_value (obj3, 2)); 
 
   return 0;
 }

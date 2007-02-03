@@ -32,7 +32,7 @@ typedef struct {
     Word_t hdr_word;
     Hdr_Bytes_t hdr_bytes;
   } hdr;
-  void **data;
+  void **data; // Word_t w[1];
 } Object_t;
 
 /* pointers only point to the first element of an object's data segment */

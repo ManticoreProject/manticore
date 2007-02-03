@@ -24,7 +24,7 @@ void *forward (void ***next, void **data) {
     for (int i = 0; i < len; i++) {
       heap[i] = data[i-1];
     }
-    set_forward_ptr (obj, data);
+    set_forward_ptr (obj, heap);
     *next += len;
     return obj->data;
   }
@@ -32,7 +32,7 @@ void *forward (void ***next, void **data) {
 
 void do_gc (Object_t *root_obj) {
   void **next = to_space;
-  void **scan = next + 1;
+  void **scan = next;
 
   // forward the roots
   uint_t len = hdr_len (root_obj);
@@ -44,14 +44,14 @@ void do_gc (Object_t *root_obj) {
   }
   // forward each live object
   while (scan < next) {
-    Object_t *obj = pointer_to_obj (scan);
+    Object_t *obj = (Object_t*)scan;
     uint_t len = hdr_len (obj);
     for (uint_t i = 0; i < len; i++) {
       if (is_pointer (obj, i)) {
-		scan[i] = forward (&next, scan[i]);
+		scan[i+1] = forward (&next, scan[i+1]);
       }
     }
-    scan += len;
+    scan += len+1;
   }
 }
 
