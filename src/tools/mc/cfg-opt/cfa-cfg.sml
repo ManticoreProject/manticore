@@ -50,6 +50,7 @@ structure CFACFG : sig
 
     fun valueToString v = let
 	  fun v2s (TOP, l) = "T" :: l
+	    | v2s (TUPLE[], l) = "<>" :: l
 	    | v2s (TUPLE[v], l) = "<" :: v2s (v, ">" :: l)
 	    | v2s (TUPLE(v::r), l) =
 		"<" :: v2s (v, List.foldr (fn (v, l) => "," :: v2s(v, l)) (">" :: l) r)
@@ -178,6 +179,9 @@ structure CFACFG : sig
 				else ()
 			    end
 		      (* end case *))
+(*DEBUG*)val addInfo = fn (x, v) => let val prevV = valueOf x in addInfo(x, v);
+(*DEBUG*)print(concat["addInfo(", CFG.Var.toString x, ", ", valueToString v, "): ",
+(*DEBUG*)valueToString prevV, " ==> ", valueToString(valueOf x), "\n"]) end
 	      (* record that a given variable escapes *)
 		fun escape x = (case valueOf x
 		       of LABELS labs => let
@@ -191,6 +195,7 @@ structure CFACFG : sig
 				    List.app (fn x => addInfo(x, TOP)) (CFG.paramsOfConv entry)
 				  end
 			    in
+print(concat["escape: valueOf(", CFG.Var.toString x, ") = ", valueToString(valueOf x), "\n"]);
 			      CFG.Label.Set.app doLab labs
 			    end
 			| _ => ()
@@ -200,8 +205,10 @@ structure CFACFG : sig
 		      if isMarked lab
 			then ()
 			else (
+			  mark lab;
 			  List.app doExp body;
-			  doXfer exit))
+			  doXfer exit;
+			  unmark lab))
 		and doExp (CFG.E_Var(xs, ys)) =
 		      ListPair.appEq (fn (x, y) => addInfo(x, valueOf y)) (xs, ys)
 		  | doExp (CFG.E_Label(x, lab)) = addInfo(x, LABELS(LSet.singleton lab))
@@ -211,7 +218,11 @@ structure CFACFG : sig
 			 of TUPLE vs => List.nth(vs, i)
 			  | BOT => BOT
 			  | TOP => TOP
-			  | _ => raise Fail "type error"
+			  | v => raise Fail(concat[
+				"type error: Select(", CFG.Var.toString x, ", ",
+				Int.toString i, ", ", CFG.Var.toString y, "); valueOf(",
+				CFG.Var.toString y, ") = ", valueToString v
+			      ])
 			(* end case *))
 		  | doExp (CFG.E_Alloc(x, xs)) = addInfo(x, TUPLE(List.map valueOf xs))
 		  | doExp (CFG.E_Wrap(x, y)) = addInfo(x, WRAP(valueOf y))
@@ -236,10 +247,7 @@ structure CFACFG : sig
 		  | doXfer (CFG.HeapCheck{nogc, ...}) = doJump nogc
 		and doJump (lab, args) = (case LMap.find(funcs, lab)
 		       of NONE => raise Fail "jump to unknown label"
-			| SOME f => (
-			    mark lab;
-			    doFunc (f, List.map valueOf args);
-			    unmark lab)
+			| SOME f => doFunc (f, List.map valueOf args)
 		      (* end case *))
 		and doApply (f, args) = (case valueOf f
 		       of LABELS targets => LSet.app (fn lab => doJump(lab, args)) targets
@@ -247,18 +255,34 @@ structure CFACFG : sig
 			| TOP => List.app escape args
 			| _ => raise Fail "type error"
 		      (* end case *))
-	      (* apply doFunct to standard functions and continuations *)
-		fun doStdFunc (f as CFG.FUNC{entry, ...}) = (case entry
-		       of CFG.StdFunc _ => doFunc (f, List.tabulate(4, fn _ => TOP))
-			| CFG.StdCont _ => doFunc (f, List.tabulate(2, fn _ => TOP))
-			| _ => ()
-		      (* end case *))
+	      (* analyse standard functions and continuations *)
+		fun doStdFunc (f as CFG.FUNC{lab, entry, body, exit}) = let
+		      fun anal () = (
+			    mark lab;
+			    List.app doExp body;
+			    doXfer exit;
+			    unmark lab)
+		      in
+			case entry
+			 of CFG.StdFunc _ => anal()
+			  | CFG.StdCont _ => anal()
+			  | _ => ()
+			(* end case *)
+		      end
 		in
 		  List.app doStdFunc code;
 		  !changed
 		end
 	  fun iterate () = if onePass() then iterate() else ()
 	  in
+	  (* initialize the arguments to the module entry to top *)
+	    case code
+	     of CFG.FUNC{entry=CFG.StdFunc{clos, arg, ret, exh}, ...} :: _ => (
+		  setVar (clos, TOP); setVar (arg, TOP);
+		  setVar (ret, TOP); setVar (exh, TOP))
+	      | _ => raise Fail "strange module entry"
+	    (* end case *);
+	  (* iterate to a fixed point *)
 	    iterate ();
 	  (* compute call-side information for labels *)
 	    computeCallSites code
@@ -267,14 +291,21 @@ structure CFACFG : sig
   (* return the set of labels that a control transfer targets; the empty set
    * is used to represent unknown control flow.
    *)
-    fun labelsOf xfer = (case xfer
-	   of CFG.StdApply _ => LSet.empty
-	    | CFG.StdThrow _ => LSet.empty
-	    | CFG.Apply{f, ...} => (case valueOf f
-	       of LABELS s => s
-		| _ => LSet.empty	(* can this happen?? *)
-	      (* end case *))
-	    | _ => LSet.addList(LSet.empty, CFG.labelsOfXfer xfer)
-	  (* end case *))
+    fun labelsOf xfer = let
+	  fun labelSet f = (case valueOf f
+		 of LABELS s => s
+		  | TOP => LSet.empty
+		  | v => raise Fail(concat[
+			"labelsOf: valueOf(", CFG.Var.toString f, ") = ", valueToString v
+		      ])
+		(* end case *))
+	  in
+	    case xfer
+	     of CFG.StdApply{f, ...} => labelSet f
+	      | CFG.StdThrow{k, ...} => labelSet k
+	      | CFG.Apply{f, ...} => labelSet f
+	      | _ => LSet.addList(LSet.empty, CFG.labelsOfXfer xfer)
+	    (* end case *)
+	  end
 
   end
