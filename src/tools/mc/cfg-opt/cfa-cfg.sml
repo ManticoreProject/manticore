@@ -66,8 +66,10 @@ structure CFACFG : sig
 	    concat (v2s(v, []))
 	  end
 
-    val {getFn=callSitesOf, clrFn=clrLabel, ...} = CFG.Label.newProp (fn _ => Known(LSet.empty))
-    val {getFn=valueOf, clrFn=clrVar, peekFn=peekVar, setFn=setVar} = CFG.Var.newProp (fn _ => BOT)
+    val {getFn=callSitesOf, clrFn=clrLabel, setFn=setSites, ...} =
+	  CFG.Label.newProp (fn _ => Known(LSet.empty))
+    val {getFn=valueOf, clrFn=clrVar, peekFn=peekVar, setFn=setVar} =
+	  CFG.Var.newProp (fn _ => BOT)
 
   (* clear CFA annotations from the variables and labels of a module.  Note that we can
    * restrict the traversal to binding instances.
@@ -124,6 +126,39 @@ structure CFACFG : sig
 	    kJoin (maxDepth, v1, v2)
 	  end
 
+  (* compute the call-sites of labels.  We visit every function and add its label
+   * to the call sites of any known targets.  Note that this function is called
+   * after the main analysis and that the call site of any escaping function
+   * should have been set to Unknown.
+   *)
+    fun computeCallSites code = let
+	  fun compute (CFG.FUNC{lab=srcLab, exit, ...}) = let
+		fun add dstLab = (case callSitesOf dstLab
+		       of Unknown => ()
+			| Known s => setSites(dstLab, Known(LSet.add(s, srcLab)))
+		      (* end case *))
+		fun addSet f = (case valueOf f
+		       of LABELS s => LSet.app add s
+			| _ => ()
+		      (* end case *))
+		fun addJump (lab, _) = add lab
+		in
+		  case exit
+		   of CFG.StdApply{f, ...} => addSet f
+		    | CFG.StdThrow{k, ...} => addSet k
+		    | CFG.Apply{f, ...} => addSet f
+		    | CFG.Goto jmp => addJump jmp
+		    | CFG.If(_, j1, j2) => (addJump j1; addJump j2)
+		    | CFG.Switch(_, cases, dflt) => (
+			List.app (addJump o #2) cases;
+			Option.app addJump dflt)
+		    | CFG.HeapCheck{nogc, ...} => addJump nogc
+		  (* end case *)
+		end
+	  in
+	    List.app compute code
+	  end
+
     fun analyze (CFG.MODULE{code, funcs, ...}) = let
 	  fun onePass () = let
 		val changed = ref false
@@ -146,10 +181,13 @@ structure CFACFG : sig
 	      (* record that a given variable escapes *)
 		fun escape x = (case valueOf x
 		       of LABELS labs => let
-			  (* set the parameters to TOP, since the function escapes *)
+			  (* for each escaping function, we set its call site to Unknown and
+			   * set its parameters to TOP.
+			   *)
 			    fun doLab lab = let
 				  val SOME(CFG.FUNC{entry, ...}) = CFG.Label.Map.find(funcs, lab)
 				  in
+				    setSites (lab, Unknown);
 				    List.app (fn x => addInfo(x, TOP)) (CFG.paramsOfConv entry)
 				  end
 			    in
@@ -220,11 +258,10 @@ structure CFACFG : sig
 		  !changed
 		end
 	  fun iterate () = if onePass() then iterate() else ()
-	(* compute the call-sites for every label *)
-(* SOMETHING HERE *)
 	  in
-	    iterate ()
-(* compute call-side information for labels *)
+	    iterate ();
+	  (* compute call-side information for labels *)
+	    computeCallSites code
 	  end
 
   (* return the set of labels that a control transfer targets; the empty set
