@@ -6,13 +6,17 @@
 
 structure PrintCFG : sig
 
-    val output : (TextIO.outstream * CFG.module) -> unit
+    type flags = {types : bool}
+
+    val output : flags -> (TextIO.outstream * CFG.module) -> unit
 
     val print : CFG.module -> unit
 
   end = struct
 
-    fun output (outS, CFG.MODULE{code, ...}) = let
+    type flags = {types : bool}
+
+    fun output (flags : flags) (outS, CFG.MODULE{code, ...}) = let
 	  fun pr s = TextIO.output(outS, s)
 	  fun prl s = pr(String.concat s)
 	  fun prIndent 0 = ()
@@ -27,9 +31,11 @@ structure PrintCFG : sig
 		in
 		  pr "("; prL l; pr ")"
 		end
-	  fun varBindToString x = String.concat[
-		  CFG.Var.toString x, ":", CFGTy.toString(CFG.Var.typeOf x)
-		]
+	  fun varBindToString x = if (#types flags)
+		then String.concat[
+		    CFG.Var.toString x, ":", CFGTy.toString(CFG.Var.typeOf x)
+		  ]
+		else CFG.Var.toString x
 	  fun varUseToString x = CFG.Var.toString x
 	  val labelToString = CFG.Label.toString
 	  fun prFunc (CFG.FUNC{lab, entry, body, exit}) = let
@@ -113,6 +119,6 @@ structure PrintCFG : sig
 	    pr "}\n"
 	  end
 
-    fun print m = output (TextIO.stdErr, m)
+    fun print m = output {types=false} (TextIO.stdErr, m)
 
   end
