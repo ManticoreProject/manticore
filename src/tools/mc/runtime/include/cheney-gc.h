@@ -13,7 +13,7 @@
  *  |   length     |   pointer mask   |        data         |
  * 
  * Data are aligned on word boundaries. This representation of objects
- * allows for a max of 56 words in an object, much more than the 265
+ * allows for a max of 56 words in an object, much less than the 265
  * possible with the length byte.
  */
 
