@@ -23,6 +23,9 @@ structure DummySpec : TARGET_SPEC =
     val falseRep : IntegerLit.integer = 0
 
     val spillAreaSzB = 0w1024
+    val bitMaskSzB = wordSzB - 0w1
+  (* number aligned words * number of bits in the object-header bitmask  *)
+    val maxObjectSzB = wordAlignB * (bitMaskSzB * 0w8)  
 
   end
 

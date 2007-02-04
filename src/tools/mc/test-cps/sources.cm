@@ -18,7 +18,9 @@ is
   ../cps/sources.cm
   ../closure/sources.cm
   ../cfg/sources.cm
+  ../cfg-opt/sources.cm
 
   cps-parse.cm
 
+  ../test-cfg/dummy-spec.sml
   test.sml

@@ -7,6 +7,8 @@
 structure Test =
   struct
 
+    structure Opt = CFGOptFn (DummySpec)
+
     fun prHdr msg = print(concat["******************** ", msg,  "********************\n"])
 
     fun doit file = let
@@ -17,9 +19,14 @@ structure Test =
 	  val cfg = FlatClosure.convert cps
 	  val _ = (
 		prHdr "CFG after closure";
-		PrintCFG.print cfg)
+		PrintCFG.print cfg;
+		CheckCFG.check cfg)
+	  val cfg = Opt.optimize cfg
+	  val _ = (
+		prHdr "CFG after cfg-opt";
+		PrintCFG.print cfg;
+		CheckCFG.check cfg)
 	  in
-	    CheckCFG.check cfg;
 	    cfg
 	  end
 
