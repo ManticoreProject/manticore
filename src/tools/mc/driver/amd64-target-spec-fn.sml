@@ -7,25 +7,26 @@
  *)
 
 functor AMD64TargetSpecFn (
-	val abiName : string
-	val osName : string
-) :> TARGET_SPEC = struct
+    val abiName : string
+    val osName : string
+  ) :> TARGET_SPEC =
+  struct
 
-  val archName = "amd64"
-  val abiName = abiName
-  val osName = osName
+    val archName = "amd64"
+    val abiName = abiName
+    val osName = osName
 
-  val wordSzB = 0w8
-  val wordAlignB = 0w8
-  val boolSzB = wordSzB
+    val wordSzB = 0w8
+    val wordAlignB = 0w8
+    val boolSzB = wordSzB
 
   (* representation of True and False *)
-  val trueRep = IntInf.fromInt 1
-  val falseRep = IntInf.fromInt 0
+    val trueRep = IntInf.fromInt 1
+    val falseRep = IntInf.fromInt 0
 
-  val spillAreaSzB = 0w1024
-  val bitMaskSzB = wordSzB - 0w1
+    val spillAreaSzB = 0w1024
+    val bitMaskSzB = wordSzB - 0w1
   (* number aligned words * number of bits in the object-header bitmask  *)
-  val maxObjectSzB = wordAlignB * (bitMaskSzB * 0w8)  
+    val maxObjectSzB = wordAlignB * (bitMaskSzB * 0w8)  
 
-end (* AMD64TargetSpecFn *)
+  end (* AMD64TargetSpecFn *)
