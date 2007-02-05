@@ -20,9 +20,10 @@ structure FreeVars : sig
 
     structure V = CPS.Var
 
-    val {getFn = getFV, setFn, ...} = V.newProp (fn _ => V.Set.empty)
+    val {getFn = getFV, setFn = setFV, ...} = V.newProp (fn _ => V.Set.empty)
 
     fun remove (s, x) = V.Set.delete (s, x) handle _ => s
+    fun removes (s, xs) = List.foldl (fn (x, s) => remove (s, x)) s xs
 
   (* extend a set of free variables by the variables in a RHS *)
     fun fvOfRHS (fv, CPS.Var xs) = V.Set.addList(fv, xs)
@@ -35,7 +36,7 @@ structure FreeVars : sig
       | fvOfRHS (fv, CPS.CCall(f, args)) = V.Set.addList(fv, f::args)
 
     fun analExp (fv, e) = (case e
-	   of CPS.Let([x], rhs, e) => remove(analExp (fvOfRHS (fv, rhs), e), x)
+	   of CPS.Let(xs, rhs, e) => removes(analExp (fvOfRHS (fv, rhs), e), xs)
 	    | CPS.Fun(fbs, e) => let
 	      (* first, compute the union of the free variables of the lambdas *)
 		fun f (fb, fv) = V.Set.union(analFB fb, fv)
@@ -45,18 +46,27 @@ structure FreeVars : sig
 		val fbEnv = List.foldl g fbEnv fbs
 		in
 		(* record the environment for the lambdas *)
-		  List.app (fn fb => setFn (#1 fb, fbEnv)) fbs;
+		  List.app (fn fb => setFV (#1 fb, fbEnv)) fbs;
 		(* also remove the function names from the free variables of e *)
 		  List.foldl g (analExp (V.Set.union(fv, fbEnv), e)) fbs
 		end
 	    | CPS.Cont(fb, e) => let
 		val fbEnv = analFB fb
 		in
-		  setFn (#1 fb, fbEnv);
+		  setFV (#1 fb, fbEnv);
 		  remove (analExp (V.Set.union (fv, fbEnv), e), #1 fb)
 		end
 	    | CPS.If(x, e1, e2) => analExp (analExp (V.Set.add (fv, x), e1), e2)
-	    | CPS.Switch _ => raise Fail "switch not implemented"
+	    | CPS.Switch(x, cases, dflt) => 
+                List.foldl (fn ((_,e), fv) => analExp (fv, e))
+                           (let
+                               val fv = V.Set.add (fv, x)
+                            in 
+                               case dflt of
+                                  SOME e => analExp (fv, e)
+                                | NONE => fv
+                            end)
+                           cases
 	    | CPS.Apply(f, args) => V.Set.addList(fv, f::args)
 	    | CPS.Throw(k, args) => V.Set.addList(fv, k::args)
 	  (* end case *))
@@ -87,19 +97,28 @@ structure FreeVars : sig
     fun freeVarsOfExp exp = let
 	  fun analFB (f, _, _) = getFV f
 	  fun analExp (fv, e) = (case e
-		 of CPS.Let([x], rhs, e) => remove(analExp (fvOfRHS (fv, rhs), e), x)
+		 of CPS.Let(xs, rhs, e) => removes(analExp (fvOfRHS (fv, rhs), e), xs)
 		  | CPS.Fun(fbs, e) => let
 		    (* first add the free variables of the lambdas to fv *)
 		      fun f (fb, fv) = V.Set.union(analFB fb, fv)
 		      val fv = List.foldl f fv fbs
 		      in
 		      (* remove the function names from the free variables of e *)
-			List.foldl (fn (fb, fv)=> remove(fv, #1 fb)) (analExp (fv, e)) fbs
+			List.foldl (fn (fb, fv) => remove(fv, #1 fb)) (analExp (fv, e)) fbs
 		      end
 		  | CPS.Cont(fb, e) =>
 		      remove (analExp (V.Set.union (fv, analFB fb), e), #1 fb)
 		  | CPS.If(x, e1, e2) => analExp (analExp (V.Set.add (fv, x), e1), e2)
-		  | CPS.Switch _ => raise Fail "switch not implemented"
+		  | CPS.Switch(x, cases, dflt) => 
+                      List.foldl (fn ((_,e), fv) => analExp (fv, e))
+                                 (let
+                                     val fv = V.Set.add (fv, x)
+                                  in
+                                     case dflt of
+                                        SOME e => analExp (fv, e)
+                                      | NONE => fv
+                                  end)
+                                 cases
 		  | CPS.Apply(f, args) => V.Set.addList(fv, f::args)
 		  | CPS.Throw(k, args) => V.Set.addList(fv, k::args)
 		(* end case *))
