@@ -17,7 +17,10 @@ structure CFGTy =
       | T_Raw of raw_ty		(* raw machine type *)
       | T_Wrap of raw_ty	(* boxed raw value *)
       | T_Tuple of ty list	(* heap-allocated tuple *)
-    (* function/continuation types.  The type specifies the calling convention *)
+      | T_OpenTuple of ty list	(* a tuple of unknown sizem, where we know the prefix. *)
+    (* function/continuation types.  The type specifies the calling convention.  These
+     * types should be used for labels and code addresses.
+     *)
       | T_StdFun of {clos : ty, arg : ty, ret : ty, exh : ty}
       | T_StdCont of {clos : ty, arg : ty}
       | T_Code of ty list	(* includes both known functions and blocks *)
@@ -35,6 +38,7 @@ structure CFGTy =
 	      | T_Raw ty => RawTypes.toString ty
 	      | T_Wrap ty => concat["wrap(", RawTypes.toString ty, ")"]
 	      | T_Tuple tys => concat("(" :: tys2l(tys, [")"]))
+	      | T_OpenTuple tys => concat("(" :: tys2l(tys, [",...)"]))
 	      | T_StdFun{clos, arg, ret, exh} => concat("fun(" :: tys2l([clos, arg, ret, exh], [")"]))
 	      | T_StdCont{clos, arg} => concat("cont(" :: tys2l([clos, arg], [")"]))
 	      | T_Code tys => concat("code(" :: tys2l(tys, [")"]))
