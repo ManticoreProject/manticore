@@ -26,7 +26,7 @@ structure FlatClosure : sig
       | cvtTy (CPSTy.T_Wrap rTy) = CFG.T_Wrap rTy
       | cvtTy (CPSTy.T_Tuple tys) = CFG.T_Tuple(List.map cvtTy tys)
       | cvtTy (ty as CPSTy.T_Fun tys) = CFG.T_Tuple[CFG.T_Any, cvtStdFunTy ty]
-      | cvtTy (ty as CPSTy.T_Cont tys) = CFG.T_Tuple[cvtStdContTy ty]
+      | cvtTy (ty as CPSTy.T_Cont tys) = CFG.T_OpenTuple[cvtStdContTy ty]
 
   (* convert a function type to a standard-function type *)
     and cvtStdFunTy (CPSTy.T_Fun[argTy, retTy, exhTy]) = CFGTy.T_StdFun{
@@ -45,11 +45,11 @@ structure FlatClosure : sig
 
   (* convert a continuation type to a standard-function type *)
     and cvtStdContTy (CPSTy.T_Cont[argTy]) = CFGTy.T_StdCont{
-	    clos = CFGTy.T_Any,
+	    clos = CFG.T_OpenTuple[CFGTy.T_Any],
 	    arg = cvtTy argTy
 	  }
       | cvtStdContTy (CPSTy.T_Any) = CFGTy.T_StdCont{
-	    clos = CFGTy.T_Any,
+	    clos = CFG.T_OpenTuple[CFGTy.T_Any],
 	    arg = CFGTy.T_Any
 	  }
       | cvtStdContTy ty = raise Fail("bogus continuation type " ^ CPSTy.toString ty)
@@ -194,14 +194,14 @@ structure FlatClosure : sig
    * argument variables and bindings to build the closure and the parameter variables and
    * environment for the lambda's body.
    *)
-    fun mkClosure (env, fv) = let
+    fun mkClosure (env, base, fv) = let
 	  fun mkArgs (x, (i, binds, clos, xs)) = let
 		val (b, x') = lookupVar(env, x)
 		in
 		  (i+1, b@binds, VMap.insert(clos, x, Global i), x'::xs)
 		end
 	  val (_, binds, clos, cfgArgs) =
-		CPS.Var.Set.foldl mkArgs (0, [], VMap.empty, []) fv
+		CPS.Var.Set.foldl mkArgs (base, [], VMap.empty, []) fv
 	  val cfgArgs = List.rev cfgArgs
 	  val ep = newEP (CFGTy.T_Tuple(List.map CFG.Var.typeOf cfgArgs))
 	  in
@@ -228,7 +228,7 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
 			    end
 			| CPS.Fun(fbs, e) => let
 			  (* the functions share a common environment tuple *)
-			    val (binds, clos, sharedEnv) = mkClosure (env, FV.envOfFun(#1(hd fbs)))
+			    val (binds, clos, sharedEnv) = mkClosure (env, 0, FV.envOfFun(#1(hd fbs)))
 			    val ep = newEP (CFG.T_Tuple(List.map CFG.Var.typeOf clos))
 			    val bindEP = CFG.mkAlloc(ep, clos)
 			  (* map the names of the bound functions to EnvlFun *)
@@ -431,7 +431,7 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
 	    | stdFunConvention _ = raise Fail "non-standard function"
 	(* convert a bound continuation *)
 	  and cvtCont (env, (k, params, e)) = let
-		val (binds, clos, lambdaEnv) = mkClosure (env, FV.envOfFun k)
+		val (binds, clos, lambdaEnv) = mkClosure (env, 1, FV.envOfFun k)
 		val (lambdaEnv, conv) = (case params
 		       of [arg] => let
 			    val (lambdaEnv, arg) = newLocal (lambdaEnv, arg)
