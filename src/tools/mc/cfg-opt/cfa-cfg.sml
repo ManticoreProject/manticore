@@ -102,13 +102,21 @@ structure CFACFG : sig
 	    | (TOP, _) => true
 	    | (BOT, BOT) => false
 	    | (_, BOT) => true
-	    | (TUPLE vs1, TUPLE vs2) => ListPair.exists changedValue (vs1, vs2)
+	    | (TUPLE vs1, TUPLE vs2) => let
+		fun changed ([], []) = false
+		  | changed (x::xs, y::ys) = changedValue(x, y) orelse changed(xs, ys)
+		  | changed (l, []) = true
+		  | changed ([], l) = raise Fail "non-monotonic change"
+		in
+		  changed (vs1, vs2)
+		end
 	    | (WRAP v1, WRAP v2) => changedValue(v1, v2)
 	    | (LABELS s1, LABELS s2) => if (LSet.numItems s1 > LSet.numItems s2)
 		then true
 		else false
 	    | _ => raise Fail "non-monotonic change"
 	  (* end case *))
+handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToString old, ")\n"]); raise ex)
 
     val maxDepth = 3
 
@@ -118,11 +126,17 @@ structure CFACFG : sig
 	    | kJoin (_, _, TOP) = TOP
 	    | kJoin (_, BOT, v) = v
 	    | kJoin (_, v, BOT) = v
-	    | kJoin (k, TUPLE vs1, TUPLE vs2) =
-		TUPLE(ListPair.mapEq (fn (v1, v2) => kJoin(k-1, v1, v2)) (vs1, vs2))
+	    | kJoin (k, TUPLE vs1, TUPLE vs2) = let
+		fun join ([], []) = []
+		  | join (x::xs, y::ys) = kJoin(k-1, x, y) :: join(xs, ys)
+		  | join ([], l) = l
+		  | join (l, []) = l
+		in
+		  TUPLE(join(vs1, vs2))
+		end
 	    | kJoin (k, WRAP v1, WRAP v2) = WRAP(kJoin(k, v1, v2))
 	    | kJoin (_, LABELS labs1, LABELS labs2) = LABELS(LSet.union(labs1, labs2))
-	    | kJoin _ = raise Fail "type error"
+	    | kJoin _ = TOP
 	  in
 	    kJoin (maxDepth, v1, v2)
 	  end
@@ -182,6 +196,7 @@ structure CFACFG : sig
 (*DEBUG*)val addInfo = fn (x, v) => let val prevV = valueOf x in addInfo(x, v);
 (*DEBUG*)print(concat["addInfo(", CFG.Var.toString x, ", ", valueToString v, "): ",
 (*DEBUG*)valueToString prevV, " ==> ", valueToString(valueOf x), "\n"]) end
+(*DEBUG*)handle ex => (print(concat["addInfo(", CFG.Var.toString x, ", _): uncaught exception\n"]); raise ex)
 	      (* record that a given variable escapes *)
 		fun escape x = (case valueOf x
 		       of LABELS labs => let
@@ -253,7 +268,12 @@ print(concat["escape: valueOf(", CFG.Var.toString x, ") = ", valueToString(value
 		       of LABELS targets => LSet.app (fn lab => doJump(lab, args)) targets
 			| BOT => ()
 			| TOP => List.app escape args
-			| _ => raise Fail "type error"
+			| v => raise Fail(concat[
+			      "type error: doApply(", CFG.Var.toString f, ", [",
+			      String.concatWith "," (List.map CFG.Var.toString args),
+			      "]); valueOf(", CFG.Var.toString f, ") = ", valueToString v,
+			      "\n"
+			    ])
 		      (* end case *))
 	      (* analyse standard functions and continuations *)
 		fun doStdFunc (f as CFG.FUNC{lab, entry, body, exit}) = let
