@@ -23,8 +23,6 @@
 #define WORD_SZ_B     (sizeof(Word_t))
 #define PTR_MASK_SZ   ((WORD_SZ_B-1l)*BYTE_SZ_B)      // pointer mask bit length
 
-typedef Word_t Mant_t;
-
 static inline Word_t hdr_word (Mant_t *m) {
   return m[-1];
 }
@@ -55,6 +53,11 @@ static inline void set_forward_ptr (Mant_t *m_fs, Mant_t *m_ts) {
 
 Mant_t *to_space, *from_space;
 
-Mant_t *init_gc (Mant_t *);
+typedef struct {
+  Mant_t *root;
+  Mant_t *ap;
+} GC_info_t;
+
+void init_gc (GC_info_t *);
 
 #endif

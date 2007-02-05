@@ -16,11 +16,11 @@ Mant_t *forward (Mant_t **next, Mant_t *data) {
   }
 }
 
-Mant_t *do_gc (Mant_t *root_fs) {
+void do_gc (GC_info_t *info) {
   Mant_t *next = to_space;   // expect that &to_space == &heap[1]
   Mant_t *scan = next;
 
-  Mant_t *root_ts = forward (&next, root_fs);
+  Mant_t *root_ts = forward (&next, info.root);
 
   while (scan < next) {
 	uint_t len = hdr_len (scan);
@@ -31,14 +31,15 @@ Mant_t *do_gc (Mant_t *root_fs) {
 	}
 	scan += len + 1;
   }
-  return root_ts;
+  // refresh heap information
+  info->root = root_ts;
+  info->ap = next;
 }
 
-Mant_t *init_gc (Mant_t *root_fs) {
-  Mant_t *root_ts = do_gc (root_fs);
+void init_gc (GC_info_t *info) {
+  do_gc (info);
   
-  Mant_t *temp;
-  to_space = from_space; from_space = temp;
-
-  return root_ts;
+  Mant_t *temp = to_space;
+  to_space   = from_space; 
+  from_space = temp;
 }

@@ -8,17 +8,17 @@ typedef struct {
   Mant_t data;
 } Alloc_t;
 
-Mant_t *heap;
+GC_info_t info;
 
-Mant_t *alloc (Mant_t **ap, uint_t len, Alloc_t *alloc_arr) {
+Mant_t *alloc (uint_t len, Alloc_t *alloc_arr) {
   Word_t hdr = 0;
-  Mant_t *heap = *ap;
+  Mant_t *heap = info.ap;
 
   for (int i = len-1; i >= 0; i--) {
 	heap[i] = (Mant_t)alloc_arr[i].data;
 	hdr = (hdr << 1l) | (Word_t)alloc_arr[i].is_pointer;
   }
-  *ap += len + 1;
+  info.ap += len + 1;
   heap[-1] = ((Word_t)len)|(hdr<<8l);
   return heap;
 }
@@ -36,13 +36,12 @@ void init_heap () {
   posix_memalign (&from_space, HEAP_ALIGN, HEAP_SIZE*2);
   from_space++;
   to_space = from_space + HEAP_SIZE;
-  heap = from_space;
+  info.ap = from_space;
 }
 
-Mant_t *gc (Mant_t *root_fs) {
-  Mant_t *root_ts = init_gc (root_fs);
-  heap = from_space;
-  return root_ts;
+void gc (Mant_t *root_fs) {
+  info.root = root_fs;
+  init_gc (&info);
 }
 
 Mant_t data_value (Mant_t *obj, uint_t i) {
@@ -54,60 +53,7 @@ Mant_t data_value (Mant_t *obj, uint_t i) {
   }
 }
 
-struct Cons_cell {
-  Word_t i;
-  struct Cons_cell *next;
-};
-typedef struct Cons_cell Cons_cell_t;
-
-Bool_t is_null (Cons_cell_t *c) {
-  return c == NULL;
-}
-Cons_cell_t *cons (Alloc_t *arr, Cons_cell_t *c) {
-  if (is_null (c)) {
-	init_raw_obj (&arr[1], (Mant_t)NULL);
-  } else {
-	init_ptr_obj (&arr[1], (Mant_t*)c);
-  }
-  return (Cons_cell_t*)alloc (&heap, 2, arr);
-}
-Cons_cell_t *cons_num (Word_t i, Cons_cell_t *c) {
-  Alloc_t arr[2];
-  init_raw_obj (arr, (Mant_t)i);
-  return cons (arr, c);
-}
-Cons_cell_t *cons_ptr (Mant_t *ptr, Cons_cell_t *c) {
-  Alloc_t arr[2];
-  init_ptr_obj (arr, ptr);
-  return cons (arr, c);
-}
-
-Word_t hd (Cons_cell_t *c) {
-  return c->i;
-}
-Cons_cell_t *tl (Cons_cell_t *c) {
-  return c->next;
-}
-
-Cons_cell_t *tabulate (int i) {
-  if (i > 0) {
-	return cons_num (i, tabulate (i-1));
-  } else {
-	return NULL;
-  }
-}
-
-void print_ls (Cons_cell_t *c) {
-  if (is_null (c)) {
-	printf ("\n");
-  } else if (is_pointer (c, 0)) {
-	print_ls (hd (c));
-	print_ls (tl (c));
-  } else {
-	printf ("%ld\t", hd (c));
-	print_ls (tl (c));
-  }
-}
+#include "list.c"
 
 int main () {
   init_heap ();
@@ -119,15 +65,17 @@ int main () {
 
   Alloc_t arr_root[1];
   init_ptr_obj (arr_root, lss);
-  Mant_t *root_obj = alloc (&heap, 1, arr_root);
+  Mant_t *root_obj = alloc (1, arr_root);
 
-  Mant_t *root_obj_1 = gc (root_obj);
+  gc (root_obj);
 
-  print_ls (data_value (root_obj_1, 0));
+  print_ls (data_value (info.root, 0));
 
-  Mant_t *root_obj_2 = gc (root_obj_1);
+  Cons_cell_t *ls_2 = tabulate (4);
 
-  print_ls (data_value (root_obj_2, 0));
+  gc (info.root);
+
+  print_ls (data_value (info.root, 0)); 
 
   /*  Alloc_t arr0[1];
   init_ptr_obj (arr0, 10);
