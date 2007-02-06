@@ -8,3 +8,5 @@ asm_init_gc:
 	movq %rcx, %rsi  /* allocation pointer goes in arg0 */
 	call init_gc
 	ret
+
+	
