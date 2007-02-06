@@ -1,7 +1,6 @@
 #ifndef _CHENEY_GC_H
 #define _CHENEY_GC_H
 
-#include "manticore-types.h"
 #include "gc-defs.h"
 
 /*
@@ -59,6 +58,6 @@ typedef struct {
   Mant_t *ra;
 } GC_info_t;
 
-GC_info_t init_gc (Mant_t *, Mant_t *, Mant_t *);
+GC_info_t *init_gc (Mant_t *, Mant_t *, Mant_t *);
 
 #endif

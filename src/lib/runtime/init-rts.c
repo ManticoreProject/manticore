@@ -9,19 +9,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "gc-defs.h"
+#include "trivial-cheney-gc.h"
+
+GC_info_t info;
 
 // find me in mantentry.s
 int mantentryglue (void *, void *, void *, void *);
 
+void init_heap () {
+  posix_memalign (&from_space, HEAP_ALIGN, HEAP_SIZE*2);
+  from_space++;
+  to_space = from_space + HEAP_SIZE;
+  info.ap = from_space;
+}
+
 int main () {
-  // allocate the heap
-  void *heap;
-  posix_memalign (&heap, HEAP_ALIGN, HEAP_SIZE);
-  heap++;
+  init_heap ();
 
   // call the manticore entry function using the "mantentryglue" wrapper
-  int ans = mantentryglue (NULL, NULL, NULL, heap);
+  int ans = mantentryglue (NULL, NULL, NULL, info.ap);
   printf ("ans: %d\n", ans);
 
   return 0;

@@ -20,7 +20,7 @@ void do_gc (GC_info_t *info) {
   Mant_t *next = to_space;   // expect that &to_space == &heap[1]
   Mant_t *scan = next;
   
-  Mant_t *root_ts = forward (&next, info.root);
+  Mant_t *root_ts = forward (&next, info->root);
 
   while (scan < next) {
     uint_t len = hdr_len (scan);
@@ -36,7 +36,7 @@ void do_gc (GC_info_t *info) {
   info->ap = next;
 }
 
-GC_info_t init_gc (Mant_t *root, Mant_t *ap, Mant_t *ra) {
+GC_info_t *init_gc (Mant_t *ra, Mant_t *ap, Mant_t *root) {
   GC_info_t info;
   info.root = root; info.ap = ap; info.ra = ra;
 
@@ -46,6 +46,6 @@ GC_info_t init_gc (Mant_t *root, Mant_t *ap, Mant_t *ra) {
   to_space   = from_space; 
   from_space = temp;
 
-  return info;  /* this is safe because the caller assembly stub does not
+  return &info;  /* this is safe because the caller assembly stub does not
 		  * use the stack */
 }
