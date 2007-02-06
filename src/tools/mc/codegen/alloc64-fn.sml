@@ -31,6 +31,8 @@ functor Alloc64Fn (
   fun regExp r = T.REG (ty, r)
   fun move (r, e) = T.MV (ty, r, e)
   fun offAp i = T.ADD (ty, regExp apReg, litFromInt i)
+  fun gpReg r = MTy.GPReg (ty, r)
+  fun mltGPR r = MTy.GPR (ty, r)
 
   val alignedTySzB = Types.alignedTySzB
 

@@ -36,6 +36,7 @@ signature BACK_END = sig
 	where MTy = MTy
     structure Transfer : TRANSFER
 	where MTy = MTy
+	where VarDef = VarDef
 
     (* take a control-flow graph, do RA, optimization, etc. and then
      * emit it to the assembly file.
