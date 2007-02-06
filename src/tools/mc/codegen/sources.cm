@@ -29,6 +29,7 @@ is
   amd64/amd64-frame.sml
   amd64/amd64-gen-fn.sml  
   amd64/amd64-types.sml
+  amd64/amd64-heap-transfer-fn.sml
 
   ../common/sources.cm
   ../prim/sources.cm
@@ -60,3 +61,6 @@ is
   alloc64-fn.sml
   arch-types-sig.sml
   prim-gen-fn.sml
+  transfer-sig.sml
+  heap-transfer-fn.sml
+  runtime-labels.sml

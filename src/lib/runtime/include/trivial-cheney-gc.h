@@ -56,8 +56,9 @@ Mant_t *to_space, *from_space;
 typedef struct {
   Mant_t *root;
   Mant_t *ap;
+  Mant_t *ra;
 } GC_info_t;
 
-void init_gc (GC_info_t *);
+GC_info_t init_gc (Mant_t *, Mant_t *, Mant_t *);
 
 #endif

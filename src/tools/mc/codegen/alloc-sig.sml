@@ -16,4 +16,7 @@ signature ALLOC = sig
     (* allocate a list of types, and initialize them *)
     val genAlloc : (CFG.ty * MTy.mlrisc_tree) list -> MTy.T.stm list
 
+    (* heap limit check *)
+    val genAllocCheck : word -> MTy.T.ccexp
+
 end (* ALLOC *)

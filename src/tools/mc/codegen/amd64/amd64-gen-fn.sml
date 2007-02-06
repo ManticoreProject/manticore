@@ -141,6 +141,16 @@ functor AMD64GenFn (
                       structure MTy = MTy
 		      structure Spec = Spec
 		      structure MLTreeComp = AMD64MLTreeComp )
+  structure AMD64HeapTarget = AMD64HeapTransferFn (
+			        structure Spec = Spec
+				structure SpillLoc = SpillLoc )
+  structure Transfer = HeapTransferFn (
+		         structure MTy =MTy
+			 structure VarDef = VarDef
+			 structure SpillLoc = SpillLoc
+			 structure Copy = Copy
+			 structure Regs = Regs 
+			 structure Target = AMD64HeapTarget )
 
     fun compileCFG (cfg as Graph.GRAPH graph) = 
 	let val CFGGen.CFG.INFO{annotations, ...} = #graph_info graph

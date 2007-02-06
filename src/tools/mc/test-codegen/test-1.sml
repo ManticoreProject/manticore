@@ -102,23 +102,24 @@ structure T = struct
 	  val L2 = freshLab aTy
 		  
 	  fun bodyFn [clos, arg, ret, exh] =
-	      mkLet (iTy, lit 1024, fn il =>
-	      mkLet (iTy, lit 1025, fn il2 =>
+	      mkLet (iTy, lit 7, fn il1 =>
+	      mkLet (iTy, lit 13, fn il2 =>
   		mkLet (aTy, label t, fn f =>					     					   
-  		mkLet (iTy, sub (il,il2) , fn il3 =>					     					   
-	        mkLet (M.T_Tuple [iTy, aTy], alloc [il, f, il3], fn lt =>					
-		mkLet (aTy, select (1, lt), fn fv =>
-		mkLet (iTy, lte (il, il2), fn c =>
-  		     mkExit (M.If (c, (L1, [ret, il2]), (L2, [ret, il2]))))))))))
+  		mkLet (iTy, sub (il1,il2) , fn il3 =>					     					   
+	        mkLet (M.T_Tuple [iTy, aTy], alloc [il1, il3, f], fn lt =>					
+		mkLet (iTy, select (1, lt), fn fv =>
+  		   mkExit (M.HeapCheck {szb=Word.* (0w8, 0w3), 
+			gc=(L1, [il1, il2]), nogc=(L1, [il1, il2])}
+		    )))))))
 	  val i1 =  xbb (L1, [("k", f2aiTy), ("cl", aTy)], fn [k, cl] =>
 	      mkLet(iTy, lit 0, fn t =>
 		mkExit(CFG.StdThrow{k=k, arg=t, clos=cl})))
-	  val i2 =  xbb (L2, [("k", f2aiTy), ("cl", aTy)], fn [k, cl] =>
+(*	  val i2 =  xbb (L2, [("k", f2aiTy), ("cl", aTy)], fn [k, cl] =>
 	      mkLet(iTy, lit 1, fn t =>
-		mkExit(CFG.StdThrow{k=k, arg=t, clos=cl})))
+		mkExit(CFG.StdThrow{k=k, arg=t, clos=cl})))*)
 
       in 	  
-	  compile (M.MODULE {code=[i1, i2, func (t, vs, bodyFn)
+	  compile (M.MODULE {code=[i1, func (t, vs, bodyFn)
 				   ], funcs=LM.empty}, outFile) 
       end (* t *)
 

@@ -24,9 +24,12 @@ functor AMD64TargetSpecFn (
     val trueRep = IntInf.fromInt 1
     val falseRep = IntInf.fromInt 0
 
-    val spillAreaSzB = 0w1024
+    val spillAreaSzB = Word.<< (0w1, 0w10)
     val bitMaskSzB = wordSzB - 0w1
   (* number aligned words * number of bits in the object-header bitmask  *)
     val maxObjectSzB = wordAlignB * (bitMaskSzB * 0w8)  
+    val allocChunkSzB : Word64.word = Word64.<< (0w1, 0w11)
+
+    val gcInitLabel = Label.global "gc_init"
 
   end (* AMD64TargetSpecFn *)

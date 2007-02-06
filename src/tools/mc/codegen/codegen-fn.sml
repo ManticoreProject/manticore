@@ -21,7 +21,6 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
   structure Prim = PrimGenFn (structure BE = BE)
 
   val wordSzB = Word.toInt Spec.wordSzB
-  val intTy = 32
   val ty = wordSzB * 8
   val memory = ManticoreRegion.memory
   val argReg = BE.Regs.argReg
@@ -51,6 +50,16 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
   fun regExp r = T.REG (ty, r)
   fun mkExp e = MTy.EXP (ty, e)
   fun move (r, e) = T.MV (ty, r, e)
+
+  fun select (lhsTy, mty, i, e) =
+      let fun offsetOf (M.T_Tuple tys) = BE.Alloc.offsetOf {tys=tys, i=i}
+	    | offsetOf _ = fail "offsetOf: non-tuple type"
+	  val offset = offsetOf mty
+      in 
+	  MTy.EXP (lhsTy, T.LOAD (lhsTy, T.ADD (ty, e, intLit offset), memory))
+      end (* select *)
+
+  val genAlloc = BE.Alloc.genAlloc
 
   fun codeGen {dst, code=M.MODULE {code, funcs}} = 
       let val mlStrm = BE.MLTreeComp.selectInstructions (BE.CFGGen.build ())
@@ -106,7 +115,34 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		  genGoto jT
 	      end
 	    | genTransfer (M.Switch (c, js, jOpt)) = fail "todo"
-	    | genTransfer (M.HeapCheck {szb, gc, nogc}) = fail "todo"
+	    (* invariant: #2 gc = #2 nogc (their arguments are the same) *)
+	    | genTransfer (M.HeapCheck {szb, gc=(_, argRoots), nogc=(nogc, _)}) = 
+	      let val nogcLbl = BE.LabelCode.getName nogc
+		  val allocCheck = BE.Alloc.genAllocCheck szb
+		  val rootReg = newReg ()
+		  fun argInfo (a, (freshRegs, mtys, mlrTrees)) = 
+		      let val mty = Var.typeOf a
+			  val e = getDefOf a
+		      in 
+			  (newReg a :: freshRegs, mty :: mtys, e :: mlrTrees)
+		      end (* argInfo *)
+		  val (freshRegs, mtys, mlrTrees) = foldl argInfo ([],[],[]) argRoots
+		  val regStms = BE.Copy.copy {src=mlrTrees, dst=map gpReg freshRegs}
+		  (* allocate space on the heap for the roots *)
+		  val allocStms = BE.Alloc.genAlloc (ListPair.zip (mtys, 
+							map gprToMLTree freshRegs))
+		  val noGCParams = BE.LabelCode.getParamRegs nogc
+	      in 
+		  (* allocate a heap object for GC roots *)
+		  emit (move (rootReg, regExp apReg));
+		  emitStms regStms;
+		  emitStms allocStms;
+		  (* save the root pointer in the argReg *)
+		  emit (move (argReg, regExp rootReg));
+		  (* set up the return pointer*)
+		  emit (move (retReg, T.LABEL nogcLbl));
+		  emitStms (BE.Transfer.genGCCall ())
+	      end
 
 	  and genGoto (l, args) =
 	      let val name = BE.LabelCode.getName l
@@ -137,20 +173,11 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	    | genExp' (M.E_Label (_, l)) = 
 	      ([MTy.EXP (ty, T.LABEL (BE.LabelCode.getName l))], [])
 	    | genExp' (M.E_Select (lhs, i, v)) =
-	      let fun offsetOf (M.T_Tuple ts) = BE.Alloc.offsetOf {tys=ts, i=i}
-		    | offsetOf _ = fail "offsetOf: non-tuple type"
-		  val offset = offsetOf (Var.typeOf v)
-		  val lTy = BE.Types.szOf (Var.typeOf lhs)
-	      in
-		  ([MTy.EXP (lTy, 
-		     T.LOAD (lTy, T.ADD (ty, defOf v, intLit offset), memory))], [])
-	      end
+	      ([select (BE.Types.szOf (Var.typeOf lhs), 
+			Var.typeOf v, i, defOf v)], [])
 	    | genExp' (M.E_Alloc (_, vs)) = 
-	      let fun conv v = (Var.typeOf v, getDefOf v)
-		  val args = map conv vs
-	      in		  
-		  ([gprToMLTree apReg], BE.Alloc.genAlloc args)
-	      end
+	      ([gprToMLTree apReg], 
+	       genAlloc (map (fn v => (Var.typeOf v, getDefOf v)) vs))
 	    | genExp' (M.E_Wrap (_, v)) = fail "todo"
 	    | genExp' (M.E_Unwrap (_, v)) = fail "todo"
 	    | genExp' (M.E_Prim (_, p)) = ([genPrim p], [])
