@@ -53,7 +53,7 @@ structure PrintCPS : sig
 			 of NONE => ()
 			  | SOME e => (indent(i+1); pr "default:\n"; prExp(i+2, e))
 			(* end case *);
-                        pr "end\n"
+                        (indent (i+1); pr "end\n")
 		      end
 		  | CPS.Apply(f, args) => (
 		      prl["apply ", varUseToString f, " "];
