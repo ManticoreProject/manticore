@@ -11,10 +11,8 @@ Library
   structure CFG
   structure DummySpec
   functor CFGOptFn
+  structure InterpCFG
   structure PrintCFG
-  structure Fib
-  structure Test
-  structure T
 
 is
 
@@ -27,9 +25,7 @@ is
   ../prim/sources.cm
   ../cfg/sources.cm
   ../cfg-opt/sources.cm
-  ../codegen/sources.cm
 
   dummy-spec.sml
-  fib-test.sml
-  test.sml
-  test-1.sml
+  interp-cfg.sml
+
