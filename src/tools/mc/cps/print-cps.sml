@@ -52,7 +52,8 @@ structure PrintCPS : sig
 			case dflt
 			 of NONE => ()
 			  | SOME e => (indent(i+1); pr "default:\n"; prExp(i+2, e))
-			(* end case *)
+			(* end case *);
+                        pr "end\n"
 		      end
 		  | CPS.Apply(f, args) => (
 		      prl["apply ", varUseToString f, " "];
@@ -66,7 +67,7 @@ structure PrintCPS : sig
 	  and prRHS (CPS.Var ys) = prList varUseToString ys
 	    | prRHS (CPS.Literal lit) = pr(Literal.toString lit)
 	    | prRHS (CPS.Select(i, y)) = prl ["#", Int.toString i, "(", varUseToString y, ")"]
-	    | prRHS (CPS.Alloc ys) = (pr "alloc"; prList varUseToString ys)
+	    | prRHS (CPS.Alloc ys) = (pr "alloc "; prList varUseToString ys)
 	    | prRHS (CPS.Wrap y) = prl["wrap(", varUseToString y, ")"]
 	    | prRHS (CPS.Unwrap y) = prl["unwrap(", varUseToString y, ")"]
 	    | prRHS (CPS.Prim p) = pr (PrimUtil.fmt varUseToString p)
