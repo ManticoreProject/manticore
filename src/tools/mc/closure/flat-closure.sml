@@ -258,9 +258,9 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
                       in
                         case e
                          of CPS.Let(lhs, rhs, e) => let
-                               val (stms', env') = cvtRHS(env, lhs, rhs)
+                               val (binds, env') = cvtRHS(env, lhs, rhs)
                                in
-                                 cvt (env', e, stms' @ stms)
+                                 cvt (env', e, binds @ stms)
                                end
                           | CPS.Fun(fbs, e) => let
                               (* the functions share a common environment tuple *)
@@ -394,39 +394,39 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
                  of ((env, lhs), CPS.Var ys) => let
                       val (binds, ys) = lookupVars (env, ys)
                       in
-                        (binds @ [CFG.mkVar(lhs, ys)], env)
+                        ([CFG.mkVar(lhs, ys)] @ binds, env)
                       end
                   | ((env, [x]), CPS.Literal lit) => ([CFG.mkLiteral(x, lit)], env)
                   | ((env, [x]), CPS.Select(i, y)) => let
                       val (binds, y) = lookupVar(env, y)
                       in
-                        (binds @ [CFG.mkSelect(x, i, y)], env)
+                        ([CFG.mkSelect(x, i, y)] @ binds, env)
                       end
                   | ((env, [x]), CPS.Alloc ys) => let
                       val (binds, ys) = lookupVars (env, ys)
                       in
-                        (binds @ [CFG.mkAlloc(x, ys)], env)
+                        ([CFG.mkAlloc(x, ys)] @ binds, env)
                       end
                   | ((env, [x]), CPS.Wrap y) => let
                       val (binds, y) = lookupVar (env, y)
                       in
-                        (binds @ [CFG.mkWrap(x, y)], env)
+                        ([CFG.mkWrap(x, y)] @ binds, env)
                       end
                   | ((env, [x]), CPS.Unwrap y) => let
                       val (binds, y) = lookupVar (env, y)
                       in
-                        (binds @ [CFG.mkUnwrap(x, y)], env)
+                        ([CFG.mkUnwrap(x, y)] @ binds, env)
                       end
                   | ((env, [x]), CPS.Prim p) => let
                       val (mkP, args) = PrimUtil.explode p
                       val (binds, args) = lookupVars (env, args)
                       in
-                        (binds @ [CFG.mkPrim(x, mkP args)], env)
+                        ([CFG.mkPrim(x, mkP args)] @ binds, env)
                       end
                   | ((env, [x]), CPS.CCall(f, args)) => let
                       val (binds, f::args) = lookupVars (env, f::args)
                       in
-                        (binds @ [CFG.mkCCall(x, f, args)], env)
+                        ([CFG.mkCCall(x, f, args)] @ binds, env)
                       end
                 (* end case *))
         (* create a standard function convention for a list of parameters *)
