@@ -57,8 +57,8 @@ structure CFACFG : sig
 	    | v2s (WRAP v, l) = "[" :: v2s (v, "]" :: l)
 	    | v2s (LABELS s, l) = let
 		fun f [] = "}" :: l
-		  | f [x] = CFG.Label.toString x :: "}" :: l
-		  | f (x::r) = CFG.Label.toString x :: "," :: f r
+		  | f [x] = "$" :: CFG.Label.toString x :: "}" :: l
+		  | f (x::r) = "$" :: CFG.Label.toString x :: "," :: f r
 		in
 		  "{" :: f (LSet.listItems s)
 		end

@@ -37,7 +37,7 @@ structure PrintCFG : sig
 		  ]
 		else CFG.Var.toString x
 	  fun varUseToString x = CFG.Var.toString x
-	  val labelToString = CFG.Label.toString
+	  fun labelToString lab = "$" ^ CFG.Label.toString
 	  fun prFunc (CFG.FUNC{lab, entry, body, exit}) = let
 		val (kind, params) = (case (CFG.Label.kindOf lab, entry)
 		       of (CFG.Export name, CFG.StdFunc{clos, arg, ret, exh}) =>
