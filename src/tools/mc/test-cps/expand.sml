@@ -30,7 +30,7 @@ structure Expand =
     val findPrim = let
 	  val tbl = AtomTable.mkTable(128, Fail "prim table")
 	  val ins = AtomTable.insert tbl
-	  val bTy = Ty.T_Bool
+	  val bTy = Ty.boolTy
 	  val i32 = Ty.T_Raw Ty.T_Int
 	  val i64 = Ty.T_Raw Ty.T_Long
 	  val f32 = Ty.T_Raw Ty.T_Float
@@ -127,6 +127,9 @@ structure Expand =
 			  | PT.Select(i, arg) =>
 			      cvtSimpleExp (env, arg, fn x =>
 				CPS.mkLet(lhs', CPS.Select(i, x), e'))
+			  | PT.Cast(ty, arg) =>
+			      cvtSimpleExp (env, arg, fn x =>
+				CPS.mkLet(lhs', CPS.Cast(ty, x), e'))
 			  | PT.Literal(lit, _) => CPS.mkLet(lhs', CPS.Literal lit, e')
 			  | PT.Unwrap arg =>
 			      cvtSimpleExp (env, arg, fn x =>

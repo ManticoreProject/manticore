@@ -20,6 +20,7 @@
     | KW_double		("double")
     | KW_else		("else")
     | KW_end		("end")
+    | KW_enum		("enum")
     | KW_float		("float")
     | KW_fun		("fun")
     | KW_if		("if")
@@ -31,6 +32,7 @@
     | KW_switch		("switch")
     | KW_then		("then")
     | KW_throw		("throw")
+    | KW_unit		("unit")
     | KW_unwrap		("unwrap")
     | KW_vec128		("vec128")
     | KW_wrap		("wrap")
@@ -75,7 +77,9 @@ Param
 
 Type
 	: "any"					=> (PT.T_Any)
-	| "bool"				=> (PT.T_Bool)
+	| "bool"				=> (CPSTy.boolTy)
+	| "unit"				=> (CPSTy.unitTy)
+	| "enum" "(" INT ")"			=> (PT.T_Enum(Word.fromLargeInt INT))
 	| "[" RawType "]"			=> (PT.T_Wrap RawType)
 	| RawType				=> (PT.T_Raw RawType)
 	| "(" Type ("," Type)* ")"		=> (PT.T_Tuple(Type :: SR))
@@ -120,6 +124,7 @@ SimpleExp
 	| "#" INT "(" SimpleExp ")"	=> (PT.Select(Int.fromLarge INT, SimpleExp))
 	| "unwrap" "(" SimpleExp ")"	=> (PT.Unwrap SimpleExp)
 	| ID Args			=> (PT.Prim(ID, Args))
+	| "(" Type ")" SimpleExp	=> (PT.Cast(Type, SimpleExp))
 	| INT (":" RawType)?		=> (PT.Literal(Literal.Int INT, SR))
 	| "-" INT (":" RawType)?	=> (PT.Literal(Literal.Int(~INT), SR))
 	;

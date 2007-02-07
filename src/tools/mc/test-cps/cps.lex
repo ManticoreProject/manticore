@@ -50,6 +50,7 @@
 		  ("double",	T.KW_double),
 		  ("else",	T.KW_else),
 		  ("end",	T.KW_end),
+		  ("enum",	T.KW_enum),
 		  ("float",	T.KW_float),
 		  ("fun",	T.KW_fun),
 		  ("if",	T.KW_if),
@@ -62,6 +63,7 @@
 		  ("then",	T.KW_then),
 		  ("throw",	T.KW_throw),
 		  ("unwrap",	T.KW_unwrap),
+		  ("unit",	T.KW_unit),
 		  ("vec128",	T.KW_vec128),
 		  ("wrap",	T.KW_wrap)
 		];
