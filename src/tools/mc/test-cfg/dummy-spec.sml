@@ -26,6 +26,7 @@ structure DummySpec : TARGET_SPEC =
     val bitMaskSzB = wordSzB - 0w1
   (* number aligned words * number of bits in the object-header bitmask  *)
     val maxObjectSzB = wordAlignB * (bitMaskSzB * 0w8)  
+    val allocChunkSzB = 0w64 * 0w1024
 
   end
 
