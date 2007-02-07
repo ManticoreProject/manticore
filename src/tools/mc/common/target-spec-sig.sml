@@ -18,9 +18,9 @@ signature TARGET_SPEC =
     val boolSzB : word		(* size of boolean values in bytes *)
 
     val spillAreaSzB : word     (* size of the spill area on the stack *)
-    val maxObjectSzB : word     (* maximum number of bytes allowable in a
-				 * heap-allocated object *) 
-    val allocChunkSzB : Word64.word    (* size of the allocation space n = 2^k *)
+    val maxObjectSzB : word     (* maximum number of bytes allowable in a *)
+				(* heap-allocated object *) 
+    val allocChunkSzB : word	(* size of the allocation space n = 2^k *)
 
   (* representation of True and False *)
     val trueRep : IntegerLit.integer
