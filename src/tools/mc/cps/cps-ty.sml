@@ -11,12 +11,15 @@ structure CPSTy =
 
     datatype ty
       = T_Any			(* unknown type; uniform representation *)
-      | T_Bool			(* booleans *)
+      | T_Enum of Word.word	(* unsigned tagged integer; word is max value <= 2^31-1 *)
       | T_Raw of raw_ty		(* raw machine type *)
       | T_Wrap of raw_ty	(* boxed raw value *)
       | T_Tuple of ty list	(* heap-allocated tuple *)
       | T_Fun of ty list
       | T_Cont of ty list
+
+    val unitTy = T_Enum(0w0)
+    val boolTy = T_Enum(0w1)	(* false = 0, true = 1 *)
 
     fun toString ty = let
 	  fun r2s T_Byte = "byte"
@@ -34,7 +37,7 @@ structure CPSTy =
 	  in
 	    case ty
 	     of T_Any => "any"
-	      | T_Bool => "bool"
+	      | T_Enum w => concat["enum(0..", Word.fmt StringCvt.DEC w, ")"]
 	      | T_Raw ty => RawTypes.toString ty
 	      | T_Wrap ty => concat["wrap(", RawTypes.toString ty, ")"]
 	      | T_Tuple tys => concat("(" :: tys2l(tys, [")"]))

@@ -60,7 +60,9 @@ structure PrintCFG : sig
 		indent i;
 		pr "let "; prList varBindToString (CFG.lhsOfExp e); pr " = ";
 		case e
-		 of (CFG.E_Var(_, xs)) => prList varUseToString xs
+		 of (CFG.E_Var(_, ys)) => prList varUseToString ys
+		  | (CFG.E_Enum(_, w)) => pr["enum(", Word.fmt StringCvt.DEC w, ")"]
+		  | (CFG.E_Cast(_, ty, y)) => pr["(", CFGTy.toString ty, ")", varUseToString y]
 		  | (CFG.E_Label(_, lab)) => pr(labelToString lab)
 		  | (CFG.E_Literal(_, lit)) => pr(Literal.toString lit)
 		  | (CFG.E_Select(_, i, x)) =>

@@ -65,6 +65,8 @@ structure PrintCPS : sig
 		      pr "\n")
 		(* end case *))
 	  and prRHS (CPS.Var ys) = prList varUseToString ys
+	    | prRHS (CPS.Enum w) = pr["enum(", Word.fmt StringCvt.DEC w, ")"]
+	    | prRHS (CPS.Cast(ty, y)) = pr["(", CPSTy.toString ty, ")", varUseToString y]
 	    | prRHS (CPS.Literal lit) = pr(Literal.toString lit)
 	    | prRHS (CPS.Select(i, y)) = prl ["#", Int.toString i, "(", varUseToString y, ")"]
 	    | prRHS (CPS.Alloc ys) = (pr "alloc "; prList varUseToString ys)

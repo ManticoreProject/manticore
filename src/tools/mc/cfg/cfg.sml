@@ -44,6 +44,8 @@ structure CFG =
 
     and exp
       = E_Var of var list * var list
+      | E_Enum of var * Word.word
+      | E_Cast of var * ty * var		(* typecast *)
       | E_Label of var * label
       | E_Literal of var * Literal.literal
       | E_Select of (var * int * var)		(* select i'th field (zero-based) *)
@@ -108,6 +110,8 @@ structure CFG =
 
   (* project out the lhs variables of an expression *)
     fun lhsOfExp (E_Var(xs, _)) = xs
+      | lhsOfExp (E_Enum(x, _)) = [x]
+      | lhsOfExp (E_Cast(x, _, _)) = [x]
       | lhsOfExp (E_Label(x, _)) = [x]
       | lhsOfExp (E_Literal(x, _)) = [x]
       | lhsOfExp (E_Select(x, _, _)) = [x]
@@ -119,6 +123,8 @@ structure CFG =
 
   (* project out the rhs variable of an expression *)
     fun rhsOfExp (E_Var(_, ys)) = ys
+      | rhsOfExp (E_Enum _) = []
+      | rhsOfExp (E_Cast(_, _, y)) = [y]
       | rhsOfExp (E_Label _) = []
       | rhsOfExp (E_Literal _) = []
       | rhsOfExp (E_Select(_, _, y)) = [y]
@@ -167,6 +173,8 @@ structure CFG =
 	  List.app (fn x => Var.setKind(x, VK_Let e)) (lhsOfExp e);
 	  e)
     fun mkVar arg = mkExp(E_Var arg)
+    fun mkEnum arg = mkExp(E_Enum arg)
+    fun mkCast arg = mkExp(E_Cast arg)
     fun mkLabel arg = mkExp(E_Label arg)
     fun mkLiteral arg = mkExp(E_Literal arg)
     fun mkSelect arg = mkExp(E_Select arg)

@@ -226,6 +226,8 @@ print(concat["escape: valueOf(", CFG.Var.toString x, ") = ", valueToString(value
 			  unmark lab))
 		and doExp (CFG.E_Var(xs, ys)) =
 		      ListPair.appEq (fn (x, y) => addInfo(x, valueOf y)) (xs, ys)
+		  | doExp (CFG.E_Enum _) = ()
+		  | doExp (CFG.E_Cast(x, _, y)) = addInfo(x, valueOf y)
 		  | doExp (CFG.E_Label(x, lab)) = addInfo(x, LABELS(LSet.singleton lab))
 		  | doExp (CFG.E_Literal(x, lit)) = ()
 		  | doExp (CFG.E_Select(x, i, y)) =

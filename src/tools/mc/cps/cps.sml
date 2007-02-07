@@ -20,6 +20,8 @@ structure CPS =
 
     and rhs
       = Var of var list
+      | Enum of Word.word
+      | Cast of ty * var		(* typecast *)
       | Literal of Literal.literal
       | Select of (int * var)		(* select i'th field (zero-based) *)
       | Alloc of var list

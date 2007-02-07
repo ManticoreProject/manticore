@@ -21,7 +21,7 @@ structure FlatClosure : sig
 
   (* convert from CPS types to CFG types *)
     fun cvtTy (CPSTy.T_Any) = CFG.T_Any
-      | cvtTy (CPSTy.T_Bool) = CFG.T_Bool
+      | cvtTy (CPSTy.T_Enum w) = CFG.T_Enum w
       | cvtTy (CPSTy.T_Raw rTy) = CFGTy.T_Raw rTy
       | cvtTy (CPSTy.T_Wrap rTy) = CFG.T_Wrap rTy
       | cvtTy (CPSTy.T_Tuple tys) = CFG.T_Tuple(List.map cvtTy tys)
@@ -395,6 +395,12 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
                       val (binds, ys) = lookupVars (env, ys)
                       in
                         ([CFG.mkVar(lhs, ys)] @ binds, env)
+                      end
+		  | ((env, [x]), CPS.Enum w) => ([CFG.mkEnum(x, w)], env)
+		  | ((env, [x]), CPS.Cast(ty, y)) => let
+                      val (binds, y) = lookupVar(env, y)
+                      in
+                        ([CFG.mkCast(x, cvtTy ty, y)] @ binds, env)
                       end
                   | ((env, [x]), CPS.Literal lit) => ([CFG.mkLiteral(x, lit)], env)
                   | ((env, [x]), CPS.Select(i, y)) => let
