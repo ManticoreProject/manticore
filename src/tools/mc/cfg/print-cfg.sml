@@ -37,7 +37,7 @@ structure PrintCFG : sig
 		  ]
 		else CFG.Var.toString x
 	  fun varUseToString x = CFG.Var.toString x
-	  fun labelToString lab = "$" ^ CFG.Label.toString
+	  fun labelToString lab = "$" ^ (CFG.Label.toString lab)
 	  fun prFunc (CFG.FUNC{lab, entry, body, exit}) = let
 		val (kind, params) = (case (CFG.Label.kindOf lab, entry)
 		       of (CFG.Export name, CFG.StdFunc{clos, arg, ret, exh}) =>
@@ -61,8 +61,8 @@ structure PrintCFG : sig
 		pr "let "; prList varBindToString (CFG.lhsOfExp e); pr " = ";
 		case e
 		 of (CFG.E_Var(_, ys)) => prList varUseToString ys
-		  | (CFG.E_Enum(_, w)) => pr["enum(", Word.fmt StringCvt.DEC w, ")"]
-		  | (CFG.E_Cast(_, ty, y)) => pr["(", CFGTy.toString ty, ")", varUseToString y]
+		  | (CFG.E_Enum(_, w)) => prl["enum(", Word.fmt StringCvt.DEC w, ")"]
+		  | (CFG.E_Cast(_, ty, y)) => prl["(", CFGTy.toString ty, ")", varUseToString y]
 		  | (CFG.E_Label(_, lab)) => pr(labelToString lab)
 		  | (CFG.E_Literal(_, lit)) => pr(Literal.toString lit)
 		  | (CFG.E_Select(_, i, x)) =>
