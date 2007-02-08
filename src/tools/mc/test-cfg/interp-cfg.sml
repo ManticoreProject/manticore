@@ -4,8 +4,28 @@
  * All rights reserved.
  *)
 
-structure InterpCFG =
-  struct
+structure InterpCFG : sig
+
+    type code_map
+
+    val runtime : unit -> code_map
+
+    datatype value
+      = UNIT
+      | ENUM of word
+      | RAW of raw_value
+      | WRAP of raw_value
+      | TUPLE of value list
+      | LABEL of CFG.label
+
+    and raw_value = INT of IntInf.int
+
+    val fmt : int -> value -> string
+
+    val load : code_map -> CFG.module -> value
+    val apply : code_map -> (CFG.func * value) -> value
+
+  end = struct
 
     structure P = Prim
     structure VMap = CFG.Var.Map
