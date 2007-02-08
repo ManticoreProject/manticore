@@ -429,10 +429,10 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
                       in
                         ([CFG.mkPrim(x, mkP args)] @ binds, env)
                       end
-                  | ((env, [x]), CPS.CCall(f, args)) => let
+                  | ((env, res), CPS.CCall(f, args)) => let
                       val (binds, f::args) = lookupVars (env, f::args)
                       in
-                        ([CFG.mkCCall(x, f, args)] @ binds, env)
+                        ([CFG.mkCCall(res, f, args)] @ binds, env)
                       end
                 (* end case *))
         (* create a standard function convention for a list of parameters *)

@@ -53,7 +53,7 @@ structure CFG =
       | E_Wrap of var * var			(* wrap raw value *)
       | E_Unwrap of var * var			(* unwrap value *)
       | E_Prim of var * prim
-      | E_CCall of (var * var * var list)
+      | E_CCall of (var list * var * var list)
 
     and transfer
       = StdApply of {f : var, clos : var, arg : var, ret : var, exh : var}
@@ -119,7 +119,7 @@ structure CFG =
       | lhsOfExp (E_Wrap(x, _)) = [x]
       | lhsOfExp (E_Unwrap(x, _)) = [x]
       | lhsOfExp (E_Prim(x, _)) = [x]
-      | lhsOfExp (E_CCall(x, _, _)) = [x]
+      | lhsOfExp (E_CCall(res, _, _)) = res
 
   (* project out the rhs variable of an expression *)
     fun rhsOfExp (E_Var(_, ys)) = ys
