@@ -23,7 +23,8 @@ structure InterpCFG : sig
     val fmt : int -> value -> string
 
     val load : code_map -> CFG.module -> value
-    val apply : code_map -> (CFG.func * value) -> value
+    val applyClos : code_map -> (value * value) -> value
+    val applyFunc : code_map -> (CFG.func * value) -> value
 
   end = struct
 
@@ -146,23 +147,55 @@ structure InterpCFG : sig
 	  (* end case *))
     end (* local *)
 
-    fun exnHandler (handler : value -> value) = let
+  (* raised in response to the invoking of the default exception handler *)
+    exception Uncaught of value
+
+    local
+      fun new name = CFG.Label.new(Atom.atom name, CFG.Extern name, CFGTy.T_Any)
+    in
+    val uncaughtLab = new "uncaught"
+    val returnLab = new "return"
+    end
+
+  (* allocate and initialize a code map that has definitions for the
+   * runtime hooks.
+   *)
+    fun runtime () = let
+	  val cMap = CFG.Label.Tbl.mkTable(128, Fail "code map")
+	  fun ins (label, f) = CFG.Label.Tbl.insert cMap (label, EXTERN_FN f)
+	  in
+	    ins (uncaughtLab, fn [v] => raise Uncaught v);
+	    cMap
+	  end
+
+  (* creates an exception-handler-continuation closure that invokes the uncaught exception
+   * runtime function.
+   *)
+    fun exnHandler cMap = let
+	  fun newV name = CFG.Var.new(Atom.atom name, CFG.VK_None, CFGTy.T_Any)
 	  val ty = CFGTy.T_StdCont{clos = CFGTy.T_Any, arg = CFGTy.T_Any}
 	  val lab = CFG.Label.new(Atom.atom "exnHandler", CFG.Local, ty)
+	  val closParam = newV "clos"
+	  val argParam = newV "arg"
+	  val f = newV "f"
+	  val self = newV "self"
 	  val func = CFG.FUNC{
 		  lab = lab,
 		  entry = CFG.StdCont{clos = closParam, arg = argParam},
 		  body = [
-		      CFG.mkLabel(f, handlerLab),
-		      CFG.mkCCall(res, x, [argParam])
+		      CFG.mkLabel(f, uncaughtLab),
+		      CFG.mkCCall([], f, [argParam]),
+		      CFG.mkLabel(self, lab)
 		    ],
-		  exit = ??
+		  exit = CFG.StdThrow{k = self, clos = closParam, arg = argParam}
 		}
 	  in
-	    ?
+	    CFG.Label.Tbl.insert cMap (lab, CFG_FN func);
+	    TUPLE[LABEL lab]
 	  end
 
-    fun apply cMap (CFG.FUNC{lab, entry, body, exit}, arg) = let
+    fun applyClos cMap (closure as TUPLE[LABEL lab, _], arg) = let
+	  val CFG_FN(func as CFG.FUNC{entry, body, exit, ...}) = CFG.Label.Tbl.lookup cMap lab
 	  val findFunc = CFG.Label.Tbl.find cMap
 	  fun evalFunc (CFG.FUNC{lab, body, exit, ...}, argEnv) = let
 		fun error msg = raise Fail(concat(
@@ -196,7 +229,7 @@ structure InterpCFG : sig
 			      | _ => error["expected raw value"]
 			    (* end case *))
 			| CFG.E_Prim(x, p) => set(env, x, evalPrim(env, p))
-			| CFG.E_CCall(x, f, args) => raise Fail "ccall"
+			| CFG.E_CCall(res, f, args) => raise Fail "ccall"
 		      (* end case *))
 		fun evalExit (xfer, env) = let
 		      fun toFunc f = (case valueOf(env, f)
@@ -263,9 +296,18 @@ structure InterpCFG : sig
 		in
 		  evalExit (exit, List.foldl evalExp argEnv body)
 		end
+	  val CFG.StdFunc params = entry
+	  val env = List.foldl VMap.insert' VMap.empty [
+		  (#clos params, closure),
+		  (#arg params, arg),
+		  (#ret params, returnCont cMap),
+		  (#exh params, exnHandler cMap)
+		]
 	  in
-	    ?
+	    evalFunc (func, env)
 	  end
+
+    fun applyFunc cMap (CFG.FUNC{lab, ...}, arg) = applyClos cMap (TUPLE[LABEL lab, UNIT], arg)
 
     fun load cMap (CFG.MODULE{code as init::_, funcs}) = let
 	  fun register (func as CFG.FUNC{lab, ...}) =
@@ -274,7 +316,7 @@ structure InterpCFG : sig
 	  (* register the functions in the module *)
 	    List.app register code;
 	  (* evaluate the module's initialization code *)
-	    apply cMap (init, UNIT)
+	    applyFunc cMap (init, UNIT)
 	  end
 
   end
