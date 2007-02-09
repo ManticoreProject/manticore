@@ -48,9 +48,9 @@ functor VarDefFn (
   fun cdefOf vdt v = 
       (case getDefOf vdt v
 	of MTy.CEXP ce => ce
-	 | MTy.GPR r => T.CMP (wordSz, T.Basis.NE, T.REG r, valFALSE)
-	 | MTy.EXP (_, exp) => T.CMP (wordSz, T.Basis.NE, exp, valFALSE)
-	 | _ => raise Fail "cdefOf"
+(*	 | MTy.GPR r => T.CMP (wordSz, T.Basis.NE, T.REG r, valFALSE)*)
+(*	 | MTy.EXP (_, exp) => T.CMP (wordSz, T.Basis.NE, exp, valFALSE)*)
+	 | _ => raise Fail ("cdefOf " ^ CFG.Var.toString v)
       (* esac *))
 
 end (* VarDefFn *)

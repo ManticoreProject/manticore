@@ -43,7 +43,7 @@ functor PrimGenFn (
 	      (case p
 		of P.I64Add (v1, v2) => genArith64 (i64ty, T.ADD, v1, v2)
 		 | P.I64Sub (v1, v2) => genArith64 (i64ty, T.SUB, v1, v2)
-		 | P.I64Lte (v1, v2) => genCmp64 (i64ty, T.LT, v1, v2)
+		 | P.I64Lte (v1, v2) => genCmp64 (i64ty, T.LE, v1, v2)
 		 | P.I64Eq (v1, v2) => genCmp64 (i64ty, T.EQ, v1, v2)
 		 | _ => raise Fail ""
 	      (* esac *))

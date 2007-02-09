@@ -70,6 +70,7 @@ structure T = struct
 
     fun lit i x = CFG.mkLiteral(x, Literal.Int i)
     fun alloc args x = CFG.mkAlloc(x, args)
+    fun enum arg x = CFG.mkEnum(x, arg)
     fun label lab x = CFG.mkLabel(x, lab)
     fun select (i, y) x = CFG.mkSelect(x, i, y)
 
@@ -81,45 +82,66 @@ structure T = struct
 
   (* some types *)
     val iTy = Ty.T_Raw Ty.T_Long
-    val bTy = Ty.T_Bool
     val aTy = Ty.T_Any
     val f2aiTy = Ty.T_Code[aTy, iTy]	(* (_ * int) code *)
     val tif2aiaTy = Ty.T_Tuple[iTy, f2aiTy, aTy]
     val tif2aiaaTy = Ty.T_Tuple[iTy, f2aiTy, aTy, aTy]
-
+    val wIntTy = Ty.T_Tuple [Ty.T_Raw Ty.T_Long]
+    val listTy = Ty.T_Tuple [aTy, aTy]
 
   fun intLit i = Literal.Int i
   fun mkVar (vStr, k) = var(vStr, M.T_Any)
   fun mkLabel lStr = Label.label lStr ()
 
   fun t outFile = 
-      let val t = newGlobal ("mantentry", M.T_Any)
+      let val t = newGlobal ("begin", M.T_Any)
+	  val consHCl = newGlobal ("consHCl", M.T_Any)
+	  val consLl = newGlobal ("consLl", M.T_Any)
+	  val consLEl = newGlobal ("consLEl", M.T_Any)
+	  val consLLl = newGlobal ("consLLl", M.T_Any)
 	  fun mkVarParam v = (v, M.T_Any)
-	  val vs = [mkVarParam "cl", mkVarParam "arg", mkVarParam "ret", 
+	  val vs = [mkVarParam "cl", mkVarParam "arg", ("k", f2aiTy),
 		    mkVarParam "exh"]
 
-	  val L1 = freshLab aTy
+	  val kL = freshLab aTy
 	  val L2 = freshLab aTy
-		  
+
+	  fun consLt l mty = xbb (l, [("k", f2aiTy), ("cl", aTy), 
+				    ("x", iTy), ("xs", mty)], 
+			fn [k, cl, x, xs] =>
+			mkLet(aTy, alloc [x, xs], fn t =>
+			      mkExit(CFG.StdThrow{k=k, arg=t, clos=cl})))
+	  val consLE = consLt consLEl Ty.unitTy
+	  val consLF = consLt consLLl listTy
+
+	  val consL = xbb (consLl, [("k", f2aiTy), ("cl", aTy), 
+				    ("x", iTy), ("xs", aTy)], 
+			fn [k, cl, x, xs] =>
+		mkLet (Ty.unitTy, enum 0w0, fn nilv =>
+		mkLet (iTy, eq (nilv, xs), fn condi =>
+		mkExit (M.If (condi, (consLEl, [k,cl,x,xs]), 
+			      (consLLl, [k,cl,x,xs]))))))
+
+	  val consHC = xbb (consHCl, [("k", f2aiTy), ("cl", aTy), 
+				      ("x", aTy), ("xs", aTy)], 
+			 fn [k, cl, x, xs] =>
+			   mkExit (M.HeapCheck {szb=Word.* (0w8, 0w3), 
+				gc=(consLl, [k, cl, x, xs]), 
+				nogc=(consLl, [k, cl, x, xs])}))
+
+	  val lsK = cont (kL, [("cl", f2aiTy), ("ls", wIntTy)], 
+		       fn [cl, ls] =>
+		mkLet (iTy, select (0, ls), fn x =>
+		mkExit (M.StdThrow {k=cl, arg=ls, clos=cl})))
+
 	  fun bodyFn [clos, arg, ret, exh] =
 	      mkLet (iTy, lit 7, fn il1 =>
-	      mkLet (iTy, lit 13, fn il2 =>
-  		mkLet (aTy, label t, fn f =>					     					   
-  		mkLet (iTy, sub (il1,il2) , fn il3 =>					     					   
-	        mkLet (M.T_Tuple [iTy, aTy], alloc [il1, il3, f], fn lt =>					
-		mkLet (iTy, select (1, lt), fn fv =>
-  		   mkExit (M.HeapCheck {szb=Word.* (0w8, 0w3), 
-			gc=(L1, [il1, il2]), nogc=(L1, [il1, il2])}
-		    )))))))
-	  val i1 =  xbb (L1, [("k", f2aiTy), ("cl", aTy)], fn [k, cl] =>
-	      mkLet(iTy, lit 0, fn t =>
-		mkExit(CFG.StdThrow{k=k, arg=t, clos=cl})))
-(*	  val i2 =  xbb (L2, [("k", f2aiTy), ("cl", aTy)], fn [k, cl] =>
-	      mkLet(iTy, lit 1, fn t =>
-		mkExit(CFG.StdThrow{k=k, arg=t, clos=cl})))*)
+		mkLet (Ty.unitTy, enum 0w0, fn nilv =>
+		mkExit (M.Goto (consHCl, [ret, clos, il1, nilv]))))
 
       in 	  
-	  compile (M.MODULE {code=[i1, func (t, vs, bodyFn)
+	  compile (M.MODULE {code=[
+		func (t, vs, bodyFn), consLE, consLF, lsK, consL, consHC
 				   ], funcs=LM.empty}, outFile) 
       end (* t *)
 

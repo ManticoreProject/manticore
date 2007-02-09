@@ -31,7 +31,7 @@ functor CopyFn (
 	      ( (v1,v2) :: regs, exprs, fregs, fexprs)
 	    | mkCopies (MTy.GPReg (_, v1), MTy.EXP (ty, e), 
 			(regs, exprs, fregs, fexprs)) = 
-	      (regs, (ty, v1,e) :: exprs, fregs, fexprs)
+	      (regs, (ty, v1,e) :: exprs, fregs, fexprs) 
 	    | mkCopies (MTy.FPReg (_, v1), MTy.FPR (fty, v2), 
 			(regs, exprs, fregs, fexprs)) =
 	      ( regs, exprs, (v1,v2) :: fregs, fexprs)

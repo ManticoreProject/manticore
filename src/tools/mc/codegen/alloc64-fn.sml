@@ -11,6 +11,7 @@ functor Alloc64Fn (
 	structure Regs : MANTICORE_REGS
 	structure Spec : TARGET_SPEC
 	structure Types : ARCH_TYPES
+	structure MLTreeComp : MLTREECOMP 
 ) : ALLOC = struct
 
   structure MTy = MTy
@@ -19,6 +20,7 @@ functor Alloc64Fn (
   structure Var = M.Var
   structure Ty = CFGTy
   structure W = Word64
+  structure Cells = MLTreeComp.I.C
 
   val wordSzB = Word.toInt Spec.wordSzB
   val wordAlignB = Word.toInt Spec.wordAlignB
@@ -67,9 +69,20 @@ functor Alloc64Fn (
 	  else rev (move (apReg, offAp (totalSize+wordSzB)) :: stms)
       end (* genAlloc *)
 
+  fun genWrap (mty, arg) =
+      let val ptrReg = Cells.newReg ()
+	  val stms = genAlloc [(mty, arg)]
+      in
+	  {rhsEs=[MTy.GPR (ty, ptrReg)],
+	   stms=List.concat [
+	   [move (ptrReg, regExp apReg)],
+	   stms
+	   ]}
+      end
+
   (* The allocation chunk size is 2^n; the high (32-n) bits of allocMask are 1
    * and the low n bits are 0. *)
-  val apMask = T.LI (W.toLargeInt (W.notb (Spec.allocChunkSzB - 0w1)))
+  val apMask = T.LI (Word.toLargeInt (Word.notb (Spec.allocChunkSzB - 0w1)))
 
   (* generate code to check the limit pointer.  In pseudo-code, the test is
    *

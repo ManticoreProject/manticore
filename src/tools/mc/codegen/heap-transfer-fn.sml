@@ -1,3 +1,11 @@
+(* heap-transfer-fn.sml
+ * 
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Generate CFG calls and entry points using heap-allocated activation records.
+ *)
+
 signature TARGET_TRANSFER_HEAP = sig
     
     type stm
@@ -57,14 +65,22 @@ functor HeapTransferFn (
   fun regGP (MTy.GPReg (_, r)) = r
     | regGP (MTy.FPReg (_, r)) = r
   fun fail s = raise Fail s
+  val toGPR = T.GPR o regExp o regGP
 
-  fun select (lhsTy, mty, i, e) =
+  fun bindToRExp' varDefTbl (ty, x, e) = 
+      VarDef.setDefOf varDefTbl (x, MTy.EXP (ty, e))
+  fun bindToRExp varDefTbl (x, e) = 
+      bindToRExp' varDefTbl (Types.szOf (Var.typeOf x), x, e)
+
+  fun select' (lhsTy, mty, i, e) =
       let fun offsetOf (M.T_Tuple tys) = Alloc.offsetOf {tys=tys, i=i}
+	    | offsetOf (M.T_Code tys) = Alloc.offsetOf {tys=tys, i=i}
 	    | offsetOf _ = fail "offsetOf: non-tuple type"
 	  val offset = offsetOf mty
       in 
-	  MTy.EXP (lhsTy, T.LOAD (lhsTy, T.ADD (ty, e, intLit offset), memory))
-      end (* select *)
+	  T.LOAD (lhsTy, T.ADD (ty, e, intLit offset), memory)
+      end (* select' *)
+  fun select (lhsTy, mty, i, e) = MTy.EXP (lhsTy, select' (lhsTy, mty, i, e))
 
   fun genJump (target, ls, params, args) =
       let val stms = Copy.copy {src=args, dst=params}
@@ -80,20 +96,42 @@ functor HeapTransferFn (
 	  genJump (T.LABEL name, [name], params, map getDefOf args)
       end (* genGoto *)
 
-  fun genStdTransfer varDefTbl (tgt, labels, args, stdRegs) =
+  fun genStdTransfer varDefTbl (tgt, tgtReg, args, argRegs, stdRegs) =
       let val getDefOf = VarDef.getDefOf varDefTbl
-	  val vs = tgt :: args
-	  val allRs as tgtReg :: rs = map newReg vs
-	  val stdRegs = map gpReg stdRegs
+	  val stdRegs = map gpReg stdRegs 
       in
-	  {stms=
-	   List.concat [
+	  {stms=List.concat [
 	   (* copy the function and its args into temp registers *)
-	   Copy.copy {src=map getDefOf vs, dst=map gpReg allRs},
+	   Copy.copy {src=map getDefOf (tgt :: args), 
+		      dst=map gpReg (tgtReg :: argRegs)},
 	   (* jump to the function with its fresh args *)
-	   genJump (regExp tgtReg, labels, stdRegs, map mltGPR rs)],
-	   liveOut=map (T.GPR o regExp o regGP) stdRegs}
+	   genJump (regExp tgtReg, [] (* FIXME *), stdRegs, map mltGPR argRegs)],
+	   liveOut=map toGPR stdRegs}
       end (* genStdTransfer *)
+
+  fun genStdCall varDefTbl {f, clos, arg, ret, exh} = 
+      let val getDefOf = VarDef.defOf varDefTbl
+	  val args = [clos, arg, ret, exh]
+	  val argRegs = map newReg args
+	  val {stms, liveOut} =
+	      genStdTransfer varDefTbl (f, newReg f, args, argRegs, stdCallRegs)
+      in
+	  {stms=stms, liveOut=liveOut}
+      end (* genStdCall *)
+
+  fun genStdThrow varDefTbl {k, clos, arg} = 
+      let val getDefOf = VarDef.defOf varDefTbl
+	  val kReg = newReg k
+	  val argRegs = map newReg [clos, arg]
+	  val {stms, liveOut} = 
+	      genStdTransfer varDefTbl (k, kReg, [clos, arg], argRegs, stdContRegs)
+      in 
+	  {stms=List.concat [
+	   [move (kReg, select' (ty, M.Var.typeOf k, 0, getDefOf k))],
+	   stms
+	   ],
+	   liveOut=liveOut}
+      end (* genStdThrow *)
       
   fun genHeapCheck varDefTbl {szb, gc=(gcLbl, argRoots), nogc} =
       let fun argInfo (a, (argTys, args)) = 
@@ -105,6 +143,7 @@ functor HeapTransferFn (
 
 	  val allocCheck = Alloc.genAllocCheck szb
 	  val rootReg = newReg ()
+	  val tmpRetReg = newReg ()
 	  val freshRegs = map newReg args
 	  val regStms = Copy.copy {src=args, dst=map gpReg freshRegs}
 	  (* allocate space on the heap for the roots *)
@@ -113,7 +152,7 @@ functor HeapTransferFn (
 	  fun loadArg (mty, (i, ss)) =
 	      (i+1,  select (ty, M.T_Tuple argTys, i, regExp argReg) :: ss)
 	  val (_, ss) = foldr loadArg (0, []) argTys
-	  val selStms = Copy.copy {src=ss, dst=params}
+	  val selStms = Copy.copy {src=rev ss, dst=params}
       in
 	  List.concat [
 	  (* allocate a heap object for GC roots *)
@@ -122,8 +161,6 @@ functor HeapTransferFn (
 	  allocStms,
 	  (* save the root pointer in the argReg *)
 	  [move (argReg, regExp rootReg)],
-	  (* initialize the return pointer *)
-	  [move (retReg, T.LABEL gcLbl)],
 	  (* perform the GC *)
 	  genGCCall (),
 	  selStms,
@@ -131,35 +168,41 @@ functor HeapTransferFn (
 	  ]
       end (* genHeapCheck *)
 
-
-  fun genLabelEntry varDefTbl (lab, convention) =
-      let val setDefOf = VarDef.setDefOf varDefTbl
-	  fun bindToRExp' (ty, x, e) = setDefOf (x, MTy.EXP (ty, e))
-	  fun bindToRExp (x, e) = bindToRExp' (Types.szOf (Var.typeOf x), x, e)
-
+  fun genFuncEntry varDefTbl (lab, convention) =
+      let val bindToRExp = bindToRExp varDefTbl	  
 	  fun doBind (M.StdFunc {clos, arg, ret, exh}) = 
 	      ([clos, arg, ret, exh], stdCallRegs)
 	    | doBind (M.StdCont {clos, arg}) = ([clos, arg], stdContRegs)
 	    | doBind (M.KnownFunc vs | M.Block vs) = (vs, [])
 	  val (lhs, stdRegs) = doBind convention
 	  fun bindToLHS rs = ListPair.app bindToRExp (lhs, rs)		  
-	  val mkReg = regExp o regGP
-      in 			  
-	  (case stdRegs
-	    of [] => (* specialized calling convention or block *)
-	       let val regs = map (gpReg o newReg) lhs
-	       in
-		   LabelCode.setParamRegs (lab, regs);
-		   bindToLHS (map mkReg regs); []
-	       end		       
-	     | _ =>  (* standard calling convention *)
-	       let val {stms, regs} = Copy.fresh (map gpReg stdRegs)
-	       in 
-		   LabelCode.setParamRegs (lab, regs);
-		   bindToLHS (map mkReg regs);
-		   stms
-	       end
-	  (* esac *))
-      end (* genLabelEntry *)
+	  val {stms, regs} = 
+	      (case stdRegs
+		of [] => (* specialized calling convention or block *)
+		   {stms=[], regs=map (gpReg o newReg) lhs}
+		 | _ => (* standard calling convention *)
+		   Copy.fresh (map gpReg stdRegs)
+	      (* esac *))
+      in 	
+	  LabelCode.setParamRegs (lab, regs);
+	  bindToLHS (map (regExp o regGP) regs);
+	  stms
+      end (* genFuncEntry *)
+
+  fun genModuleEntry code =
+      let val entryLbl = 
+	      (case code
+		of M.FUNC {lab, ...} :: _ => LabelCode.getName lab
+		 | _ => raise Fail ""
+	      (* esac *))
+      (* expect the return pointer in the argument reg *)
+	  val allocStms = Alloc.genAlloc [(M.T_Code [M.T_Any], mltGPR argReg)]
+      in
+	  List.concat [
+	  [move (retReg, regExp apReg)],
+	  allocStms,
+	  genJump (T.LABEL entryLbl, [], [], [])
+	  ]
+      end (* genModuleEntry *)
 
 end (* HeapTransferFn *)

@@ -1,3 +1,11 @@
+(* transfer-sig.sml
+ * 
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Generate CFG control transfers.
+ *)
+
 signature TRANSFER = sig
 
     structure MTy : MLRISC_TYPES
@@ -7,21 +15,30 @@ signature TRANSFER = sig
     val stdCallRegs : CellsBasis.cell list
     val stdContRegs : CellsBasis.cell list
 
-    val genGCCall : unit -> MTy.T.stm list
-
+    (* known functions *)
     val genGoto : VarDef.var_def_tbl -> CFG.jump -> MTy.T.stm list
 
-    val genStdTransfer : VarDef.var_def_tbl -> 
-	(CFG.var * MTy.T.controlflow * CFG.var list * MTy.T.var list)
+    (* standard functions *)
+    val genStdCall : VarDef.var_def_tbl -> 
+	{f : CFG.var, clos : CFG.var, arg : CFG.var, ret : CFG.var, exh : CFG.var}
 	-> {stms : MTy.T.stm list, liveOut : MTy.T.mlrisc list}
 
+    val genStdThrow : VarDef.var_def_tbl -> 
+	{k : CFG.var, clos : CFG.var, arg : CFG.var}
+	-> {stms : MTy.T.stm list, liveOut : MTy.T.mlrisc list}
+
+    (* perform a heap check, possibly triggering the GC *)
     val genHeapCheck : 
 	VarDef.var_def_tbl ->
 	{szb : word, gc : CFG.jump, nogc : CFG.jump}
 	-> MTy.T.stm list
 
-    val genLabelEntry :
+    (* entry to a labelled function *)
+    val genFuncEntry :
 	VarDef.var_def_tbl ->
 	(CFG.label * CFG.convention) -> MTy.T.stm list
+
+    (* entry to a module *)
+    val genModuleEntry : CFG.func list -> MTy.T.stm list
 
 end (* TRANSFER *)

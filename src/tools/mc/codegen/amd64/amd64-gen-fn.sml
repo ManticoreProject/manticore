@@ -132,6 +132,7 @@ functor AMD64GenFn (
                         structure MTy = MTy
 			structure Regs = Regs
 		        structure Spec = Spec 
+			structure MLTreeComp = AMD64MLTreeComp
 			structure Types = Types )
   structure Copy = CopyFn (
                    structure MTy = MTy
