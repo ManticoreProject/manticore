@@ -150,6 +150,9 @@ structure InterpCFG : sig
   (* raised in response to the invoking of the default exception handler *)
     exception Uncaught of value
 
+  (* raised in response to the invoking of the top-level return continuation *)
+    exception Return of value
+
     local
       fun new name = CFG.Label.new(Atom.atom name, CFG.Extern name, CFGTy.T_Any)
     in
@@ -165,10 +168,37 @@ structure InterpCFG : sig
 	  fun ins (label, f) = CFG.Label.Tbl.insert cMap (label, EXTERN_FN f)
 	  in
 	    ins (uncaughtLab, fn [v] => raise Uncaught v);
+	    ins (returnLab, fn [v] => raise Return v);
 	    cMap
 	  end
 
-  (* creates an exception-handler-continuation closure that invokes the uncaught exception
+  (* create a return-continuation closure that invokes the return
+   * runtime function.
+   *)
+    fun returnCont cMap = let
+	  fun newV name = CFG.Var.new(Atom.atom name, CFG.VK_None, CFGTy.T_Any)
+	  val ty = CFGTy.T_StdCont{clos = CFGTy.T_Any, arg = CFGTy.T_Any}
+	  val lab = CFG.Label.new(Atom.atom "returnCont", CFG.Local, ty)
+	  val closParam = newV "clos"
+	  val argParam = newV "arg"
+	  val f = newV "f"
+	  val self = newV "self"
+	  val func = CFG.FUNC{
+		  lab = lab,
+		  entry = CFG.StdCont{clos = closParam, arg = argParam},
+		  body = [
+		      CFG.mkLabel(f, returnLab),
+		      CFG.mkCCall([], f, [argParam]),
+		      CFG.mkLabel(self, lab)
+		    ],
+		  exit = CFG.StdThrow{k = self, clos = closParam, arg = argParam}
+		}
+	  in
+	    CFG.Label.Tbl.insert cMap (lab, CFG_FN func);
+	    TUPLE[LABEL lab]
+	  end
+
+  (* create an exception-handler-continuation closure that invokes the uncaught exception
    * runtime function.
    *)
     fun exnHandler cMap = let
@@ -235,9 +265,9 @@ structure InterpCFG : sig
 		      fun toFunc f = (case valueOf(env, f)
 			     of LABEL lab => (case findFunc lab
 				   of SOME(CFG_FN f) => f
-				    | NONE => ??
+				    | NONE => raise Fail "undefined label"
 				  (* end case *))
-			      | _ => ??
+			      | _ => raise Fail "not label"
 			    (* end case *))
 		      fun initEnv binds = List.foldl
 			    (fn ((param, arg), newEnv) =>
@@ -249,7 +279,7 @@ structure InterpCFG : sig
 				    in
 				      evalFunc (f, env)
 				    end
-			      | _ => ??
+			      | _ => raise Fail "undefined label"
 			    (* end case *))
 		      in
 			case xfer
@@ -264,7 +294,7 @@ structure InterpCFG : sig
 				    in
 				      evalFunc (f, env)
 				    end
-				| _ => ??
+				| _ => raise Fail "not standard function entry"
 			      (* end case *))
 			  | CFG.StdThrow{k, clos, arg} => (case toFunc k
 			       of (k as CFG.FUNC{entry=CFG.StdCont params, ...}) => let
@@ -275,7 +305,7 @@ structure InterpCFG : sig
 				    in
 				      evalFunc (k, env)
 				    end
-				| _ => ??
+				| _ => raise Fail "not standard continuation entry"
 			      (* end case *))
 			  | CFG.Apply{f, args} => (case toFunc f
 			       of (f as CFG.FUNC{entry=CFG.KnownFunc params, ...}) => let
@@ -283,7 +313,7 @@ structure InterpCFG : sig
 				    in
 				      evalFunc (f, env)
 				    end
-				| _ => ??
+				| _ => raise Fail "not known function entry"
 			      (* end case *))
 			  | CFG.Goto jmp => evalJump jmp
 			  | CFG.If(x, j1, j2) => if toBool(valueOf(env, x))
