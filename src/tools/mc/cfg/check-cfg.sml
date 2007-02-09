@@ -70,9 +70,9 @@ structure CheckCFG : sig
 		  | CFG.E_Prim(x, p) => (
 (* FIXME: check the args of the prim p *)
 		      bindVar (env, x))
-		  | CFG.E_CCall(x, f, args) => (
+		  | CFG.E_CCall(lhs, f, args) => (
 		      chkVars (env, f::args);
-		      bindVar (env, x))
+		      bindVars (env, lhs))
 		(* end case *))
 	  fun chkExit (env, xfer) = (case xfer
 		 of CFG.StdApply{f, clos, arg, ret, exh} => (
