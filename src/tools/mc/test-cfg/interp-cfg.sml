@@ -20,6 +20,10 @@ structure InterpCFG : sig
 
     and raw_value = INT of IntInf.int
 
+  (* set to true to enable execution tracing *)
+    val traceFlg : bool ref
+
+  (* convert a value to a string; the conversion is limited by the depth parameter *)
     val fmt : int -> value -> string
 
     val load : code_map -> CFG.module -> value
@@ -54,11 +58,11 @@ structure InterpCFG : sig
 	    | toS (_, WRAP rv, l) = "[" :: rawToString rv :: "]" :: l
 	    | toS (0, TUPLE _, l) = "<...>" :: l
 	    | toS (k, TUPLE vs, l) = let
-		fun f ([], l) = ">" :: l
-		  | f ([v], l) = toS(k-1, v, ">"::l)
-		  | f (v::vs, l) = f (vs, toS(k-1, v, ">,"::l))
+		fun f ([], l) = l
+		  | f ([v], l) = toS(k-1, v, l)
+		  | f (v::vs, l) = toS(k-1, v, "," :: f (vs, l))
 		in
-		  "<" :: f(vs, l)
+		  "<" :: f(vs, ">"::l)
 		end
 	    | toS (_, LABEL lab, l) = "$" :: CFG.Label.toString lab :: l
 	  in
@@ -73,7 +77,7 @@ structure InterpCFG : sig
       | fromBool true = ENUM 0w1
 
     datatype code
-      = EXTERN_FN of value list  -> value
+      = EXTERN_FN of value list  -> value list
       | CFG_FN of CFG.func
 
     type code_map = code CFG.Label.Tbl.hash_table
@@ -224,10 +228,77 @@ structure InterpCFG : sig
 	    TUPLE[LABEL lab]
 	  end
 
-    fun applyClos cMap (closure as TUPLE[LABEL lab, _], arg) = let
+  (* tracing *)
+    val traceFlg = ref false
+
+    local
+      val v2s = fmt 1
+      fun prl l = print(concat l)
+    in
+    fun traceExp curBlock = if !traceFlg
+	  then let
+	    val curBlock = CFG.Label.toString curBlock ^ ": "
+	    val lineLabel = StringCvt.padRight #" " 20 curBlock
+	    fun arg2str env x = (case VMap.find(env, x)
+		   of SOME v => v2s v
+		    | NONE => raise Fail(concat[
+			  "Error in ", curBlock, "unbound variable ", CFG.Var.toString x
+			])
+		  (* end case *))
+	    fun args2str env [] = "()"
+	      | args2str env [x] = concat["(", arg2str env x, ")"]
+	      | args2str env (first::rest) =
+		  concat("(" :: arg2str env first
+		    :: (List.foldr (fn (x, l) => "," :: arg2str env x :: l) [")"] rest))
+	    fun lhsV2str x = concat[
+		    lineLabel, "let ", CFG.Var.toString x, " = "
+		  ]
+	    fun lhs2str lhs = let
+		  val lhs = (case lhs
+			 of [] => ["do "]
+			  | [x] => ["let ", CFG.Var.toString x, " = "]
+			  | (x::rest) => "let " :: CFG.Var.toString x
+			      :: (List.foldr (fn (x, l) => "," :: CFG.Var.toString x :: l) [") = "] rest)
+			(* end case *))
+		  in
+		    concat(lineLabel :: lhs)
+		  end
+	    fun trace (env, exp) = (case exp
+		   of CFG.E_Var(lhs, rhs) =>
+			prl [lhs2str lhs, args2str env rhs, "\n"]
+		    | CFG.E_Label(x, lab) =>
+			prl [lhsV2str x, "$", CFG.Label.toString lab, "\n"]
+		    | CFG.E_Literal(x, Literal.Bool b) => 
+			prl [lhsV2str x, Bool.toString b, "\n"]
+		    | CFG.E_Literal(x, Literal.Int n) => 
+			prl [lhsV2str x, IntInf.toString n, "\n"]
+		    | CFG.E_Literal(x, Literal.Float f) => raise Fail "float"
+		    | CFG.E_Select(x, i, y) => 
+			prl [lhsV2str x, "#", Int.toString i, "(", arg2str env y, ")", "\n"]
+		    | CFG.E_Alloc(x, []) => 
+			prl [lhsV2str x, "<>\n"]
+		    | CFG.E_Alloc(x, ys) => 
+			prl [lhsV2str x, "alloc", args2str env ys, "\n"]
+		    | CFG.E_Wrap(x, y) =>
+			prl [lhsV2str x, "wrap(", arg2str env y, ")\n"]
+		    | CFG.E_Unwrap(x, y) => 
+			prl [lhsV2str x, "unwrap(", arg2str env y, ")\n"]
+		    | CFG.E_Prim(x, p) =>
+			prl [lhsV2str x, PrimUtil.fmt (arg2str env) p, "\n"]
+		    | CFG.E_CCall(res, f, args) =>
+			prl [lhs2str res, "ccall ", arg2str env f, " ", args2str env args, "\n"]
+		  (* end case *))
+	    in
+	      trace
+	    end
+	  else (fn _ => ())
+    end (* local *)
+
+    fun applyClos cMap (closure as TUPLE[_, LABEL lab], arg) = let
 	  val CFG_FN(func as CFG.FUNC{entry, body, exit, ...}) = CFG.Label.Tbl.lookup cMap lab
 	  val findFunc = CFG.Label.Tbl.find cMap
 	  fun evalFunc (CFG.FUNC{lab, body, exit, ...}, argEnv) = let
+		val trace = traceExp lab
 		fun error msg = raise Fail(concat(
 		      "Error in " :: CFG.Label.toString lab :: ": " :: msg))
 		fun valueOf (env, x) = (case VMap.find(env, x)
@@ -235,7 +306,9 @@ structure InterpCFG : sig
 			| NONE => error["unbound variable ", CFG.Var.toString x]
 		      (* end case *))
 		fun valueOf' env x = valueOf(env, x)
-		fun evalExp (exp, env : env) = (case exp
+		fun evalExp (exp, env : env) = (
+		      trace (env, exp);
+		      case exp
 		       of CFG.E_Var(lhs, rhs) =>
 			    ListPair.foldl
 			      (fn (x, y, env) => set(env, x, valueOf(env, y)))
@@ -259,7 +332,19 @@ structure InterpCFG : sig
 			      | _ => error["expected raw value"]
 			    (* end case *))
 			| CFG.E_Prim(x, p) => set(env, x, evalPrim(env, p))
-			| CFG.E_CCall(res, f, args) => raise Fail "ccall"
+			| CFG.E_CCall(lhs, f, args) => (case valueOf(env, f)
+			     of LABEL lab => (case findFunc lab
+				   of SOME(EXTERN_FN f) => let
+					val res = f(List.map (fn y => valueOf(env, y)) args)
+					in
+					  ListPair.foldl
+					    (fn (x, y, env) => set(env, x, y))
+					      env (lhs, res)
+					end
+				    | _ => raise Fail "C fucntion not extern"
+				  (* end case *))
+			      | _ => raise Fail "C function not label"
+			    (* end case *))
 		      (* end case *))
 		fun evalExit (xfer, env) = let
 		      fun toFunc f = (case valueOf(env, f)
@@ -336,8 +421,9 @@ structure InterpCFG : sig
 	  in
 	    evalFunc (func, env)
 	  end
+	    handle Return v => v
 
-    fun applyFunc cMap (CFG.FUNC{lab, ...}, arg) = applyClos cMap (TUPLE[LABEL lab, UNIT], arg)
+    fun applyFunc cMap (CFG.FUNC{lab, ...}, arg) = applyClos cMap (TUPLE[UNIT, LABEL lab], arg)
 
     fun load cMap (CFG.MODULE{code as init::_, funcs}) = let
 	  fun register (func as CFG.FUNC{lab, ...}) =
