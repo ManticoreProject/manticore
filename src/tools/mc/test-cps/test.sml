@@ -11,7 +11,7 @@ structure Test =
 
     fun prHdr msg = print(concat["******************** ", msg,  "********************\n"])
 
-    fun doit file = let
+    fun load file = let
 	  val cps = CPSParser.parse file
 	  val _ = (
 		prHdr "CPS after expand";
@@ -21,13 +21,25 @@ structure Test =
 		prHdr "CFG after closure";
 		PrintCFG.print cfg;
 		CheckCFG.check cfg)
+(*
 	  val cfg = Opt.optimize cfg
 	  val _ = (
 		prHdr "CFG after cfg-opt";
 		PrintCFG.print cfg;
 		CheckCFG.check cfg)
+*)
 	  in
 	    cfg
 	  end
+
+    fun init file = let
+	  val cMap = InterpCFG.runtime()
+	  val cfg = load file
+	  in
+	    InterpCFG.traceFlg := true;
+	    (cMap, InterpCFG.load cMap cfg)
+	  end
+
+    fun apply (cMap, clos) value = InterpCFG.applyClos cMap (clos, value)
 
   end
