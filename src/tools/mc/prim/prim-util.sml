@@ -12,6 +12,7 @@ structure PrimUtil : sig
     val fmt : ('var -> string) -> 'var Prim.prim -> string
     val varsOf : 'var Prim.prim -> 'var list
     val explode : 'var Prim.prim -> (('a list -> 'a Prim.prim) * 'var list)
+    val map : ('a -> 'b) -> 'a Prim.prim -> 'b Prim.prim
 
   end = struct
 
@@ -179,5 +180,7 @@ structure PrimUtil : sig
       | explode (P.F64Gt(a, b)) = (p2 P.F64Gt, [a, b])
       | explode (P.F64Gte(a, b)) = (p2 P.F64Gte, [a, b])
     end (* local *)
+
+    fun map f p = let val (mk, args) = explode p in mk(List.map f args) end
 
   end
