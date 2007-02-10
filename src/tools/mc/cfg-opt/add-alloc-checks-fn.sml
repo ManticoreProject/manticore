@@ -109,7 +109,7 @@ val toNode = fn f => let
 		if FB.Set.member(fbSet, lab) orelse escaping entry
 		  then let
 		    val funTy = CFG.Label.typeOf lab
-		    val lab' = CFG.Label.new(Atom.atom "check", CFG.Local, funTy)
+		    val lab' = CFG.Label.new(Atom.atom "check", funTy)
 		    val (freeVars, entry') = (case entry (* rename parameters *)
 			   of CFG.StdFunc{clos, arg, ret, exh} => let
 				val clos' = CFG.Var.copy clos
@@ -137,7 +137,7 @@ val toNode = fn f => let
 				  (params', CFG.Block params')
 				end
 			  (* end case *))
-		    val gcLab = CFG.Label.new(Atom.atom "callGC", CFG.Extern "callGC", funTy)
+		    val gcLab = CFG.Label.newWithKind(Atom.atom "callGC", CFG.Extern "callGC", funTy)
 		    val f' = CFG.mkFunc(lab, entry', [], CFG.HeapCheck{
 			    szb = getAlloc lab,
 			    gc = (gcLab, freeVars),

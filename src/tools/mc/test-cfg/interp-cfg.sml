@@ -158,7 +158,7 @@ structure InterpCFG : sig
     exception Return of value
 
     local
-      fun new name = CFG.Label.new(Atom.atom name, CFG.Extern name, CFGTy.T_Any)
+      fun new name = CFG.Label.newWithKind(Atom.atom name, CFG.Extern name, CFGTy.T_Any)
     in
     val uncaughtLab = new "uncaught"
     val returnLab = new "return"
@@ -180,9 +180,9 @@ structure InterpCFG : sig
    * runtime function.
    *)
     fun returnCont cMap = let
-	  fun newV name = CFG.Var.new(Atom.atom name, CFG.VK_None, CFGTy.T_Any)
+	  fun newV name = CFG.Var.new(Atom.atom name, CFGTy.T_Any)
 	  val ty = CFGTy.T_StdCont{clos = CFGTy.T_Any, arg = CFGTy.T_Any}
-	  val lab = CFG.Label.new(Atom.atom "returnCont", CFG.Local, ty)
+	  val lab = CFG.Label.new(Atom.atom "returnCont", ty)
 	  val closParam = newV "clos"
 	  val argParam = newV "arg"
 	  val f = newV "f"
@@ -206,9 +206,9 @@ structure InterpCFG : sig
    * runtime function.
    *)
     fun exnHandler cMap = let
-	  fun newV name = CFG.Var.new(Atom.atom name, CFG.VK_None, CFGTy.T_Any)
+	  fun newV name = CFG.Var.new(Atom.atom name, CFGTy.T_Any)
 	  val ty = CFGTy.T_StdCont{clos = CFGTy.T_Any, arg = CFGTy.T_Any}
-	  val lab = CFG.Label.new(Atom.atom "exnHandler", CFG.Local, ty)
+	  val lab = CFG.Label.new(Atom.atom "exnHandler", ty)
 	  val closParam = newV "clos"
 	  val argParam = newV "arg"
 	  val f = newV "f"

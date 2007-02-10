@@ -9,6 +9,8 @@ signature VAR_PARAMS =
     type kind
     type ty
 
+    val defaultKind : kind
+
     val kindToString : kind -> string
     val tyToString : ty -> string
 
@@ -20,13 +22,16 @@ signature VAR =
     type ty
     type var = (kind, ty) VarRep.var_rep
 
-    val new : (Atom.atom * kind * ty) -> var
+    val new : (Atom.atom * ty) -> var
+    val newWithKind : (Atom.atom * kind * ty) -> var
     val copy : var -> var
 
     val nameOf : var -> Atom.atom
     val kindOf : var -> kind
     val setKind : (var * kind) -> unit
     val typeOf : var -> ty
+
+    val useCount : var -> int
 
     val same : (var * var) -> bool
     val compare : (var * var) -> order
@@ -61,7 +66,7 @@ functor VarFn (VP : VAR_PARAMS) : VAR =
     type ty = VP.ty
     type var = (kind, ty) VarRep.var_rep
 
-    fun new (name, k, ty) = V{
+    fun newWithKind (name, k, ty) = V{
 	    name = name,
 	    id = Stamp.new(),
 	    kind = ref k,
@@ -70,12 +75,18 @@ functor VarFn (VP : VAR_PARAMS) : VAR =
 	    props = PropList.newHolder()
 	  }
 
-    fun copy (V{name, kind, ty, ...}) = new (name, !kind, ty)
+    fun new (name, ty) = newWithKind (name, VP.defaultKind, ty)
+
+    fun copy (V{name, kind, ty, ...}) = newWithKind (name, !kind, ty)
 
     fun nameOf (V{name, ...}) = name
+
     fun kindOf (V{kind, ...}) = !kind
     fun setKind (V{kind, ...}, k) = kind := k
+
     fun typeOf (V{ty, ...}) = ty
+
+    fun useCount (V{useCnt, ...}) = !useCnt
 
     fun same (V{id=a, ...}, V{id=b, ...}) = Stamp.same(a, b)
     fun compare (V{id=a, ...}, V{id=b, ...}) = Stamp.compare(a, b)

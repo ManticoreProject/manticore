@@ -103,11 +103,11 @@ structure Expand =
 	    | SOME x' => x'
 	  (* end case *))
 
-    fun newTmp ty = CPS.Var.new(Atom.atom "_t", CPS.VK_None, ty)
+    fun newTmp ty = CPS.Var.new(Atom.atom "_t", ty)
 
     fun cvtVarBinds (env, vars) = let
 	  fun f ((x, ty), (env, xs)) = let
-		val x' = CPS.Var.new(x, CPS.VK_None, ty)
+		val x' = CPS.Var.new(x, ty)
 		in
 		  (AtomMap.insert(env, x, x'), x'::xs)
 		end
@@ -189,7 +189,7 @@ structure Expand =
 
     and cvtLambda (env, (f, params, e), tyCon) = let
 	  val fnTy = tyCon(List.map #2 params)
-	  val f' = CPS.Var.new(f, CPS.VK_None, fnTy)
+	  val f' = CPS.Var.new(f, fnTy)
 	  fun doBody env = let
 		val (envWParams, params') = cvtVarBinds (env, params)
 		in

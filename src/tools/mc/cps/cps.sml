@@ -53,6 +53,7 @@ structure CPS =
       struct
 	type kind = var_kind
 	type ty = ty
+	val defaultKind = VK_None
 	val kindToString = varKindToString
 	val tyToString = CPSTy.toString
       end)

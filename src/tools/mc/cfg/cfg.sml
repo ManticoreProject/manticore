@@ -91,6 +91,7 @@ structure CFG =
       struct
 	type kind = label_kind
 	type ty = ty
+	val defaultKind = Local
 	val kindToString = labelKindToString
 	val tyToString = CFGTy.toString
       end)
@@ -104,6 +105,7 @@ structure CFG =
       struct
 	type kind = var_kind
 	type ty = ty
+	val defaultKind = VK_None
 	val kindToString = varKindToString
 	val tyToString = CFGTy.toString
       end)

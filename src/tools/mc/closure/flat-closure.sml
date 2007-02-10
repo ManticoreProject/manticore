@@ -62,14 +62,14 @@ structure FlatClosure : sig
     fun assignLabels lambda = let
           fun assignFB (f, _, e) = let
 (* FIXME: when are labels exported? *)
-                val lab = CFG.Label.new(CPS.Var.nameOf f, CFG.Local, cvtStdFunTy(CPS.Var.typeOf f))
+                val lab = CFG.Label.new(CPS.Var.nameOf f, cvtStdFunTy(CPS.Var.typeOf f))
                 in
                   setFn (f, lab);
                   assignExp e
                 end
           and assignKB (k, _, e) = let
 (* FIXME: when are labels exported? *)
-                val lab = CFG.Label.new(CPS.Var.nameOf k, CFG.Local, cvtStdContTy(CPS.Var.typeOf k))
+                val lab = CFG.Label.new(CPS.Var.nameOf k, cvtStdContTy(CPS.Var.typeOf k))
                 in
                   setFn (k, lab);
                   assignExp e
@@ -113,10 +113,9 @@ structure FlatClosure : sig
   (* create a new CFG variable for a CPS variable *)
     fun newVar x = CFG.Var.new (
           CPS.Var.nameOf x,
-          CFG.VK_None,
           cvtTy(CPS.Var.typeOf x))
 
-    fun newEP ty = CFG.Var.new (Atom.atom "ep", CFG.VK_None, ty)
+    fun newEP ty = CFG.Var.new (Atom.atom "ep", ty)
 
     fun newLocal (env, x) = let
           val x' = newVar x
@@ -136,7 +135,7 @@ structure FlatClosure : sig
           end
  
     fun bindLabel lab = let
-          val labVar = CFG.Var.new(CFG.Label.nameOf lab, CFG.VK_None, CFG.Label.typeOf lab)
+          val labVar = CFG.Var.new(CFG.Label.nameOf lab, CFG.Label.typeOf lab)
           in
             (CFG.mkLabel(labVar, lab), labVar)
           end
@@ -156,7 +155,6 @@ structure FlatClosure : sig
                 val (b, lab) = bindLabel(labelOf x)
                 val tmp = CFG.Var.new(
                         CPS.Var.nameOf x,
-                        CFG.VK_None,
                         CFGTy.T_Tuple[CFG.Var.typeOf ep, CFG.Var.typeOf lab])
                 in
                   ([CFG.mkAlloc(tmp, [ep, lab]), b], tmp)
@@ -249,7 +247,6 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
                                   else (args, params)
                             val lab = CFG.Label.new(
                                   Atom.atom lab,
-                                  CFG.Local,
                                   CFGTy.T_Code(List.map CFG.Var.typeOf params))
                             in
                               cvtExp (branchEnv, lab, CFG.Block params, e);
@@ -334,7 +331,7 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
                                                        end
                                                    | _ => let
                                                        val (binds, f', ep) = bindEP ()
-                                                       val cp = CFG.Var.new(CFG.Var.nameOf f', CFG.VK_None,
+                                                       val cp = CFG.Var.new(CFG.Var.nameOf f',
                                                                CFG.T_StdFun{
                                                                    clos = CFGTy.T_Any,
                                                                    arg = CFG.Var.typeOf arg,
@@ -366,7 +363,7 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
                                val (binds, xfer) = (case args
                                       of [arg] => let
 (* if k has kind VK_Cont, then we can refer directly to its label *)
-                                           val cp = CFG.Var.new(CFG.Var.nameOf k, CFG.VK_None,
+                                           val cp = CFG.Var.new(CFG.Var.nameOf k,
                                                    CFG.T_StdCont{
                                                        clos = CFG.Var.typeOf k,
                                                        arg = CFG.Var.typeOf arg
