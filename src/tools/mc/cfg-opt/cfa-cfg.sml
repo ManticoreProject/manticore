@@ -121,6 +121,7 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
     val maxDepth = 3
 
     fun joinValues (v1, v2) = let
+(* QUESTION: I think that when k goes to 0, we need to flag the values as escaping *)
 	  fun kJoin (0, _, _) = TOP
 	    | kJoin (_, TOP, _) = TOP
 	    | kJoin (_, _, TOP) = TOP
@@ -198,8 +199,8 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 (*DEBUG*)valueToString prevV, " ==> ", valueToString(valueOf x), "\n"]) end
 (*DEBUG*)handle ex => (print(concat["addInfo(", CFG.Var.toString x, ", _): uncaught exception\n"]); raise ex)
 	      (* record that a given variable escapes *)
-		fun escape x = (case valueOf x
-		       of LABELS labs => let
+		fun escape x = let
+		      fun esc (LABELS labs) = let
 			  (* for each escaping function, we set its call site to Unknown and
 			   * set its parameters to TOP.
 			   *)
@@ -213,8 +214,11 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 print(concat["escape: valueOf(", CFG.Var.toString x, ") = ", valueToString(valueOf x), "\n"]);
 			      CFG.Label.Set.app doLab labs
 			    end
-			| _ => ()
-		      (* end case *))
+			| esc (TUPLE vs) = List.app esc vs
+			| esc _ = ()
+		      in
+			esc (valueOf x)
+		      end
 		fun doFunc (CFG.FUNC{lab, entry, body, exit}, args) = (
 		      ListPair.appEq addInfo (CFG.paramsOfConv entry, args);
 		      if isMarked lab

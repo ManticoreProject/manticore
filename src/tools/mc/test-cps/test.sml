@@ -21,13 +21,11 @@ structure Test =
 		prHdr "CFG after closure";
 		PrintCFG.print cfg;
 		CheckCFG.check cfg)
-(*
 	  val cfg = Opt.optimize cfg
 	  val _ = (
 		prHdr "CFG after cfg-opt";
 		PrintCFG.print cfg;
 		CheckCFG.check cfg)
-*)
 	  in
 	    cfg
 	  end
