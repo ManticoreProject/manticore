@@ -10,7 +10,7 @@
 
 	.text
 mantentryglue:
-	movq $returnloc, %rsi
+	movq $returnloc, %rax
 	jmp mantentry    /* entry function for CFG programs */
 returnloc:
 	ret

@@ -169,8 +169,8 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 
 	  fun genModule () =
 	      let val l = "mantentry"
-		  val entryL = M.Label.new (Atom.atom l, 
-					    CFG.Export l, M.T_Any)
+		  val entryL = M.Label.newWithKind (Atom.atom l, CFG.Export l,
+						    M.T_Any)
 		  val funcAnRef = getAnnotations ()
 		  val frame = BE.SpillLoc.getFuncFrame entryL
 	      in

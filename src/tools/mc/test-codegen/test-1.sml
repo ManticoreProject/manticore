@@ -26,10 +26,10 @@ structure T = struct
 	  TextIO.closeOut outStrm
       end (* compile *)
 
-    fun var (name, ty) = CFG.Var.new(Atom.atom name, CFG.VK_None, ty)
-    fun newGlobal (lStr, ty) = CFG.Label.new(Atom.atom lStr, CFG.Export lStr, ty)
-    fun newLab (lStr, ty) = CFG.Label.new(Atom.atom lStr, CFG.Local, ty)
-    fun freshLab ty = CFG.Label.new(Atom.atom "L", CFG.Local, ty)
+    fun var (name, ty) = CFG.Var.newWithKind(Atom.atom name, CFG.VK_None, ty)
+    fun newGlobal (lStr, ty) = CFG.Label.newWithKind(Atom.atom lStr, CFG.Export lStr, ty)
+    fun newLab (lStr, ty) = CFG.Label.newWithKind(Atom.atom lStr, CFG.Local, ty)
+    fun freshLab ty = CFG.Label.newWithKind(Atom.atom "L", CFG.Local, ty)
 
     fun func (lab, params, bodyFn) = let
 	  val params as [clos, arg, ret, exh] = List.map var params
@@ -123,7 +123,7 @@ structure T = struct
 			      (consLLl, [k,cl,x,xs]))))))
 
 	  val consHC = xbb (consHCl, [("k", f2aiTy), ("cl", aTy), 
-				      ("x", aTy), ("xs", aTy)], 
+				      ("x", iTy), ("xs", aTy)], 
 			 fn [k, cl, x, xs] =>
 			   mkExit (M.HeapCheck {szb=Word.* (0w8, 0w3), 
 				gc=(consLl, [k, cl, x, xs]), 
