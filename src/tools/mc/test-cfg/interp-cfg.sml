@@ -235,7 +235,7 @@ structure InterpCFG : sig
       val v2s = fmt 1
       fun prl l = print(concat l)
     in
-    fun traceExp curBlock = if !traceFlg
+    fun trace curBlock = if !traceFlg
 	  then let
 	    val curBlock = CFG.Label.toString curBlock ^ ": "
 	    val lineLabel = StringCvt.padRight #" " 20 curBlock
@@ -263,7 +263,7 @@ structure InterpCFG : sig
 		  in
 		    concat(lineLabel :: lhs)
 		  end
-	    fun trace (env, exp) = (case exp
+	    fun traceExp (env, exp) = (case exp
 		   of CFG.E_Var(lhs, rhs) =>
 			prl [lhs2str lhs, args2str env rhs, "\n"]
 		    | CFG.E_Label(x, lab) =>
@@ -288,17 +288,31 @@ structure InterpCFG : sig
 		    | CFG.E_CCall(res, f, args) =>
 			prl [lhs2str res, "ccall ", arg2str env f, " ", args2str env args, "\n"]
 		  (* end case *))
+	    fun traceExit (env, xfer, CFG.FUNC{lab, ...}) = let
+		  val lab = CFG.Label.toString lab
+		  in
+		    case xfer
+		     of CFG.StdApply _ => prl [lineLabel, "StdApply ===> ", lab, "\n"]
+		      | CFG.StdThrow _ => prl [lineLabel, "StdThrow ===> ", lab, "\n"]
+		      | CFG.Apply _ => prl [lineLabel, "Apply ===> ", lab, "\n"]
+		      | CFG.Goto _ => prl [lineLabel, "Goto ===> ", lab, "\n"]
+		      | CFG.If(x, _, _) => prl [lineLabel, "If(", arg2str env x, ") ===> ", lab, "\n"]
+		      | CFG.Switch(x, _, _) =>
+			  prl [lineLabel, "Switch(", arg2str env x, ") ===> ", lab, "\n"]
+		      | CFG.HeapCheck _ => prl [lineLabel, "HeapCheck ===> ", lab, "\n"]
+		    (* end case *)
+		  end
 	    in
-	      trace
+	      {traceExp = traceExp, traceExit = traceExit}
 	    end
-	  else (fn _ => ())
+	  else {traceExp = fn _ => (), traceExit = fn _ => ()}
     end (* local *)
 
-    fun applyClos cMap (closure as TUPLE[_, LABEL lab], arg) = let
+    fun applyClos cMap (closure as TUPLE[_, LABEL lab], arg : value) = let
 	  val CFG_FN(func as CFG.FUNC{entry, body, exit, ...}) = CFG.Label.Tbl.lookup cMap lab
 	  val findFunc = CFG.Label.Tbl.find cMap
 	  fun evalFunc (CFG.FUNC{lab, body, exit, ...}, argEnv) = let
-		val trace = traceExp lab
+		val {traceExp=trace, traceExit} = trace lab
 		fun error msg = raise Fail(concat(
 		      "Error in " :: CFG.Label.toString lab :: ": " :: msg))
 		fun valueOf (env, x) = (case VMap.find(env, x)
@@ -347,6 +361,7 @@ structure InterpCFG : sig
 			    (* end case *))
 		      (* end case *))
 		fun evalExit (xfer, env) = let
+		      fun goto (f, env) = (traceExit(env, xfer, f); evalFunc(f, env))
 		      fun toFunc f = (case valueOf(env, f)
 			     of LABEL lab => (case findFunc lab
 				   of SOME(CFG_FN f) => f
@@ -362,7 +377,7 @@ structure InterpCFG : sig
 			     of SOME(CFG_FN(f as CFG.FUNC{entry=CFG.Block params, ...})) => let
 				  val env = initEnv (ListPair.zip (params, args))
 				    in
-				      evalFunc (f, env)
+				      goto (f, env)
 				    end
 			      | _ => raise Fail "undefined label"
 			    (* end case *))
@@ -377,7 +392,7 @@ structure InterpCFG : sig
 					    (#exh params, exh)
 					  ]
 				    in
-				      evalFunc (f, env)
+				      goto (f, env)
 				    end
 				| _ => raise Fail "not standard function entry"
 			      (* end case *))
@@ -388,7 +403,7 @@ structure InterpCFG : sig
 					    (#arg params, arg)
 					  ]
 				    in
-				      evalFunc (k, env)
+				      goto (k, env)
 				    end
 				| _ => raise Fail "not standard continuation entry"
 			      (* end case *))
@@ -396,7 +411,7 @@ structure InterpCFG : sig
 			       of (f as CFG.FUNC{entry=CFG.KnownFunc params, ...}) => let
 				    val env = initEnv (ListPair.zip (params, args))
 				    in
-				      evalFunc (f, env)
+				      goto (f, env)
 				    end
 				| _ => raise Fail "not known function entry"
 			      (* end case *))
@@ -404,10 +419,23 @@ structure InterpCFG : sig
 			  | CFG.If(x, j1, j2) => if toBool(valueOf(env, x))
 			      then evalJump j1
 			      else evalJump j2
-			  | CFG.Switch(x, cases, dflt) => raise Fail "switch"
+			  | CFG.Switch(x, cases, dflt) => let
+			      val arg = (case valueOf(env, x)
+				     of ENUM w => Word.toIntX w
+				      | RAW(INT i) => Int.fromLarge i
+				    (* end case *))
+			      fun match [] = (case dflt
+				     of SOME jmp => evalJump jmp
+				      | NONE => raise Fail "switch failure"
+				    (* end case *))
+				| match ((i, jmp)::r) =
+				    if (i = arg) then evalJump jmp else match r
+			      in
+				match cases
+			      end
 			  | CFG.HeapCheck{nogc, ...} => evalJump nogc
 			(* end case *)
-		      end
+		      end (* end evalExit *)
 		in
 		  evalExit (exit, List.foldl evalExp argEnv body)
 		end
