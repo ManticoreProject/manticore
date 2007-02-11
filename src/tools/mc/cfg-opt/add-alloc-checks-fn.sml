@@ -9,7 +9,8 @@
  * heap checks to those blocks that are in the feedback vertex set.
  *
  * TODO:
- *	0-CFA would allow us to construct a more complete graph.
+ *	Need to get escaping functions/continuations right (in CFA?)
+ *	free variables for gc/nogc jumps
  *)
 
 functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
