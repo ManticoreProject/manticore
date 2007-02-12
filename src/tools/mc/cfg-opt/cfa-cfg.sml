@@ -125,15 +125,59 @@ structure CFACFG : sig
 	  (* end case *))
 handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToString old, ")\n"]); raise ex)
 
+  (* this global reference is used to mark when a value changes during an anlysis pass;
+   * it is global (ugh!) because I wanted to lift the escapingValue code out of the
+   * main function.
+   *)
+    val changed = ref false
+
+  (* depth limit on approximate values *)
     val maxDepth = 3
 
-    fun joinValues (v1, v2) = let
-(* QUESTION: I think that when k goes to 0 or when joining with a TOP value, we need to
- * flag the non-top values as escapin
- *)
-	  fun kJoin (0, _, _) = TOP
-	    | kJoin (_, TOP, _) = TOP
-	    | kJoin (_, _, TOP) = TOP
+  (* update the approximate value of a variable by some delta and record if
+   * it changed.
+   *)
+    fun addInfo (x, BOT) = ()
+      | addInfo (x, v) = (case peekVar x
+	   of NONE => (
+		changed := true;
+		setVar(x, v))
+	    | SOME oldV => let
+		val newV = joinValues(oldV, v)
+		in
+		  if changedValue(newV, oldV)
+		    then (changed := true; setVar(x, newV))
+		    else ()
+		end
+	  (* end case *))
+
+  (* if a value escapes (e.g., is passed to an escaping function), we need to mark any
+   * labels that it contains as escaping too.
+  *)
+    and escapingValue (LABELS labs) = let
+	(* for each escaping function, we set its call site to Unknown and
+	 * set its parameters to TOP.
+	 *)
+	  fun doLab lab = if not(isEscaping lab)
+		then (case CFG.funcOfLabel lab
+		   of SOME(CFG.FUNC{entry, ...}) => (
+			setSites (lab, Unknown);
+			List.app (fn x => addInfo(x, TOP)) (CFG.paramsOfConv entry))
+		    | _ => ()
+		  (* end case *))
+		else ()
+	  in
+	    CFG.Label.Set.app doLab labs
+	  end
+      | escapingValue (TUPLE vs) = List.app escapingValue vs
+      | escapingValue _ = ()
+
+    and joinValues (v1, v2) = let
+	  fun kJoin (0, v1, v2) = (
+	      (* since the value are going to top, we can't track them so they may be escaping *)
+		escapingValue v1; escapingValue v2; TOP)
+	    | kJoin (_, TOP, v) = (escapingValue v; TOP)
+	    | kJoin (_, v, TOP) = (escapingValue v; TOP)
 	    | kJoin (_, BOT, v) = v
 	    | kJoin (_, v, BOT) = v
 	    | kJoin (k, TUPLE vs1, TUPLE vs2) = let
@@ -186,48 +230,12 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 
     fun analyze (CFG.MODULE{code, ...}) = let
 	  fun onePass () = let
-		val changed = ref false
-	      (* update the approximate value of a variable by some delta and record if
-	       * it changed.
-	       *)
-		fun addInfo (x, BOT) = ()
-		  | addInfo (x, v) = (case peekVar x
-		       of NONE => (
-			    changed := true;
-			    setVar(x, v))
-			| SOME oldV => let
-			    val newV = joinValues(oldV, v)
-			    in
-			      if changedValue(newV, oldV)
-				then (changed := true; setVar(x, newV))
-				else ()
-			    end
-		      (* end case *))
 (*DEBUG*)val addInfo = fn (x, v) => let val prevV = valueOf x in addInfo(x, v);
 (*DEBUG*)print(concat["addInfo(", CFG.Var.toString x, ", ", valueToString v, "): ",
 (*DEBUG*)valueToString prevV, " ==> ", valueToString(valueOf x), "\n"]) end
 (*DEBUG*)handle ex => (print(concat["addInfo(", CFG.Var.toString x, ", _): uncaught exception\n"]); raise ex)
 	      (* record that a given variable escapes *)
-		fun escape x = let
-		      fun esc (LABELS labs) = let
-			  (* for each escaping function, we set its call site to Unknown and
-			   * set its parameters to TOP.
-			   *)
-			    fun doLab lab = (case CFG.funcOfLabel lab
-				   of SOME(CFG.FUNC{entry, ...}) => (
-					setSites (lab, Unknown);
-					List.app (fn x => addInfo(x, TOP)) (CFG.paramsOfConv entry))
-				    | _ => ()
-				  (* end case *))
-			    in
-print(concat["escape: valueOf(", CFG.Var.toString x, ") = ", valueToString(valueOf x), "\n"]);
-			      CFG.Label.Set.app doLab labs
-			    end
-			| esc (TUPLE vs) = List.app esc vs
-			| esc _ = ()
-		      in
-			esc (valueOf x)
-		      end
+		fun escape x = escapingValue (valueOf x)
 		fun doFunc (CFG.FUNC{lab, entry, body, exit}, args) = (
 		      ListPair.appEq addInfo (CFG.paramsOfConv entry, args);
 		      if isMarked lab
@@ -305,6 +313,7 @@ print(concat["escape: valueOf(", CFG.Var.toString x, ") = ", valueToString(value
 			(* end case *)
 		      end
 		in
+		  changed := false;
 		  List.app doStdFunc code;
 		  !changed
 		end
