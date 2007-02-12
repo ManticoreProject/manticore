@@ -7,6 +7,9 @@
 structure Test =
   struct
 
+    datatype value = datatype InterpCFG.value
+    datatype raw_value = datatype InterpCFG.raw_value
+
     structure Opt = CFGOptFn (DummySpec)
 
     fun prHdr msg = print(concat["******************** ", msg,  "********************\n"])
