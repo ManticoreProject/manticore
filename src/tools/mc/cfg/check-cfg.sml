@@ -88,7 +88,7 @@ structure CheckCFG : sig
 			    chkVar (env, y);
 			    bindVar (env, x))
 			| CFG.E_Prim(x, p) => (
-(* FIXME: check the args of the prim p *)
+			    chkVars (env, PrimUtil.varsOf p);
 			    bindVar (env, x))
 			| CFG.E_CCall(lhs, f, args) => (
 			    chkVars (env, f::args);
