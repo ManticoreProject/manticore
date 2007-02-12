@@ -216,6 +216,12 @@ structure Expand =
 		  in
 		    CPS.mkLet([tmp], CPS.Literal lit, k tmp)
 		  end
+	    | PT.Cast(ty, e) =>
+		cvtSimpleExp (env, e, fn x => let
+		  val tmp = newTmp ty
+		  in
+		    CPS.mkLet([tmp], CPS.Cast(ty, x), k tmp)
+		  end)
 	    | PT.Unwrap e =>
 		cvtSimpleExp (env, e, fn x => let
 		  val tmp = newTmp(unwrapType(CPS.Var.typeOf x))
