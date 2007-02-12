@@ -474,7 +474,13 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
             FV.analyze m;
             assignLabels lambda;
             cvtModLambda lambda;
-            CFG.mkModule(!blocks)
+	  (* we need to rebuild the entry function so that it has an exported lambda *)
+	    let val CFG.FUNC{lab, entry, body, exit} :: r = !blocks
+	    val name = CPS.Var.nameOf(#1 lambda)
+	    val init = CFG.mkExportFunc(lab, entry, body, exit, Atom.toString name ^ "_init")
+	    in
+	      CFG.mkModule(name, init::r)
+	    end
           end
 
   end

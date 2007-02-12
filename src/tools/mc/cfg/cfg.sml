@@ -70,36 +70,40 @@ structure CFG =
       | VK_Param of func
 
     and label_kind
-      = Extern of string	(* external label; e.g., a C function *)
-      | Export of string	(* exported label *)
-      | Local			(* local to module *)
+      = LK_None			(* for initialization purposes *)
+      | LK_Extern of string	(* external label; e.g., a C function *)
+      | LK_Local of {		(* local to module *)
+	    func : func,	    (* the function that this label names *)
+	    export : string option  (* optional export name. *)
+	  }
 
     withtype var = (var_kind, ty) VarRep.var_rep
 	 and label = (label_kind, ty) VarRep.var_rep
          and prim = var Prim.prim
          and jump = (label * var list)
 
-    fun labelKindToString (Extern s) = "Extern " ^ s
-      | labelKindToString (Export s) = "Export " ^ s
-      | labelKindToString Local = "Local"
+    datatype module = MODULE of {
+	name : Atom.atom,
+	code : func list	(* first function is initialization *)
+      }
 
-    fun varKindToString VK_None = "None"
-      | varKindToString (VK_Let _) = "Let"
-      | varKindToString (VK_Param _) = "Param"
+    fun labelKindToString (LK_None) = "None"
+      | labelKindToString (LK_Extern s) = "Extern " ^ s
+      | labelKindToString (LK_Local{export = NONE, ...}) = "Local"
+      | labelKindToString (LK_Local{export = SOME s, ...}) = "Export " ^ s
 
     structure Label = VarFn (
       struct
 	type kind = label_kind
 	type ty = ty
-	val defaultKind = Local
+	val defaultKind = LK_None
 	val kindToString = labelKindToString
 	val tyToString = CFGTy.toString
       end)
 
-    datatype module = MODULE of {
-	code : func list,	(* first function is initialization *)
-	funcs : func Label.Map.map
-      }
+    fun varKindToString VK_None = "None"
+      | varKindToString (VK_Let _) = "Let"
+      | varKindToString (VK_Param _) = "Param"
 
     structure Var = VarFn (
       struct
@@ -109,6 +113,12 @@ structure CFG =
 	val kindToString = varKindToString
 	val tyToString = CFGTy.toString
       end)
+
+  (* return the function that a label is bound to, or NONE if it is external *)
+    fun funcOfLabel lab = (case Label.kindOf lab
+	   of LK_Local{func, ...} => SOME func
+	    | _ => NONE
+	  (* end case *))
 
   (* project out the lhs variables of an expression *)
     fun lhsOfExp (E_Var(xs, _)) = xs
@@ -186,18 +196,22 @@ structure CFG =
     fun mkPrim arg = mkExp(E_Prim arg)
     fun mkCCall arg = mkExp(E_CCall arg)
 
-    fun mkFunc (l, conv, body, exit) = let
-	  val func = FUNC{lab = l, entry = conv, body = body, exit = exit}
-	  in
-	    List.app (fn x => Var.setKind(x, VK_Param func)) (paramsOfConv conv);
-	    func
-	  end
+    local
+      fun mkFn (l, conv, body, exit, export) = let
+	    val func = FUNC{lab = l, entry = conv, body = body, exit = exit}
+	    in
+	      Label.setKind (l, LK_Local{func = func, export = export});
+	      List.app (fn x => Var.setKind(x, VK_Param func)) (paramsOfConv conv);
+	      func
+	    end
+    in
+    fun mkFunc (l, conv, body, exit) = mkFn (l, conv, body, exit, NONE)
+    fun mkExportFunc (l, conv, body, exit, name) = mkFn (l, conv, body, exit, SOME name)
+    end
 
-    fun mkModule code = MODULE{
-	    code = code,
-	    funcs = List.foldl
-	      (fn (f as FUNC{lab, ...}, fm) => Label.Map.insert(fm, lab, f))
-		Label.Map.empty code
+    fun mkModule (name, code) = MODULE{
+	    name = name,
+	    code = code
 	  }
 
   end

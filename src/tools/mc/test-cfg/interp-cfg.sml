@@ -159,7 +159,7 @@ structure InterpCFG : sig
     exception Return of value
 
     local
-      fun new name = CFG.Label.newWithKind(Atom.atom name, CFG.Extern name, CFGTy.T_Any)
+      fun new name = CFG.Label.newWithKind(Atom.atom name, CFG.LK_Extern name, CFGTy.T_Any)
     in
     val uncaughtLab = new "uncaught"
     val returnLab = new "return"
@@ -454,7 +454,7 @@ structure InterpCFG : sig
 
     fun applyFunc cMap (CFG.FUNC{lab, ...}, arg) = applyClos cMap (TUPLE[UNIT, LABEL lab], arg)
 
-    fun load cMap (CFG.MODULE{code as init::_, funcs}) = let
+    fun load cMap (CFG.MODULE{code as init::_, ...}) = let
 	  fun register (func as CFG.FUNC{lab, ...}) =
 		CFG.Label.Tbl.insert cMap (lab, CFG_FN func)
 	  in

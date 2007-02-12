@@ -37,7 +37,6 @@ structure CFACFG : sig
   end = struct
 
     structure LSet = CFG.Label.Set
-    structure LMap = CFG.Label.Map
 
     datatype call_sites
       = Unknown			(* possible unknown call sites *)
@@ -185,7 +184,7 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 	    List.app compute code
 	  end
 
-    fun analyze (CFG.MODULE{code, funcs, ...}) = let
+    fun analyze (CFG.MODULE{code, ...}) = let
 	  fun onePass () = let
 		val changed = ref false
 	      (* update the approximate value of a variable by some delta and record if
@@ -214,12 +213,12 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 			  (* for each escaping function, we set its call site to Unknown and
 			   * set its parameters to TOP.
 			   *)
-			    fun doLab lab = let
-				  val SOME(CFG.FUNC{entry, ...}) = CFG.Label.Map.find(funcs, lab)
-				  in
-				    setSites (lab, Unknown);
-				    List.app (fn x => addInfo(x, TOP)) (CFG.paramsOfConv entry)
-				  end
+			    fun doLab lab = (case CFG.funcOfLabel lab
+				   of SOME(CFG.FUNC{entry, ...}) => (
+					setSites (lab, Unknown);
+					List.app (fn x => addInfo(x, TOP)) (CFG.paramsOfConv entry))
+				    | _ => ()
+				  (* end case *))
 			    in
 print(concat["escape: valueOf(", CFG.Var.toString x, ") = ", valueToString(valueOf x), "\n"]);
 			      CFG.Label.Set.app doLab labs
@@ -276,9 +275,9 @@ print(concat["escape: valueOf(", CFG.Var.toString x, ") = ", valueToString(value
 		      List.app (doJump o #2) cases;
 		      Option.app doJump dflt)
 		  | doXfer (CFG.HeapCheck{nogc, ...}) = doJump nogc
-		and doJump (lab, args) = (case LMap.find(funcs, lab)
-		       of NONE => raise Fail "jump to unknown label"
-			| SOME f => doFunc (f, List.map valueOf args)
+		and doJump (lab, args) = (case CFG.funcOfLabel lab
+		       of SOME func => doFunc (func, List.map valueOf args)
+			| _ => raise Fail "jump to unknown label"
 		      (* end case *))
 		and doApply (f, args) = (case valueOf f
 		       of LABELS targets => LSet.app (fn lab => doJump(lab, args)) targets

@@ -16,7 +16,7 @@ structure PrintCFG : sig
 
     type flags = {types : bool}
 
-    fun output (flags : flags) (outS, CFG.MODULE{code, ...}) = let
+    fun output (flags : flags) (outS, CFG.MODULE{name, code}) = let
 	  fun pr s = TextIO.output(outS, s)
 	  fun prl s = pr(String.concat s)
 	  fun prIndent 0 = ()
@@ -40,13 +40,13 @@ structure PrintCFG : sig
 	  fun labelToString lab = "$" ^ (CFG.Label.toString lab)
 	  fun prFunc (CFG.FUNC{lab, entry, body, exit}) = let
 		val (kind, params) = (case (CFG.Label.kindOf lab, entry)
-		       of (CFG.Export name, CFG.StdFunc{clos, arg, ret, exh}) =>
+		       of (CFG.LK_Local{export=SOME name, ...}, CFG.StdFunc{clos, arg, ret, exh}) =>
 			    ("export function ", [clos, arg, ret, exh])
-			| (CFG.Local, CFG.StdFunc{clos, arg, ret, exh}) =>
+			| (CFG.LK_Local _, CFG.StdFunc{clos, arg, ret, exh}) =>
 			    ("function ", [clos, arg, ret, exh])
-			| (CFG.Local, CFG.StdCont{clos, arg}) => ("cont ", [clos, arg])
-			| (CFG.Local, CFG.KnownFunc args) => ("local function ", args)
-			| (CFG.Local, CFG.Block args) => ("block ", args)
+			| (CFG.LK_Local _, CFG.StdCont{clos, arg}) => ("cont ", [clos, arg])
+			| (CFG.LK_Local _, CFG.KnownFunc args) => ("local function ", args)
+			| (CFG.LK_Local _, CFG.Block args) => ("block ", args)
 			| _ => raise Fail "bogus function"
 		      (* end case *))
 		in
@@ -116,7 +116,7 @@ structure PrintCFG : sig
 		prList varUseToString args;
 		pr "\n")
 	  in
-	    pr "module {\n";
+	    prl ["module ", Atom.toString name, " {\n"];
 	    List.app prFunc code;
 	    pr "}\n"
 	  end

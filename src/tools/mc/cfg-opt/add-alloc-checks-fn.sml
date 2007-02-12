@@ -55,11 +55,6 @@ val toNode = fn f => let
     val {clrFn=clrAlloc, getFn=getAlloc, peekFn=peekAlloc, setFn=setAlloc} =
 	  CFG.Label.newProp (fn _ => 0w0)
 
-(* FIXME: what about known continuations? *)
-    fun escaping (CFG.StdFunc _) = true
-      | escaping (CFG.StdCont _) = true
-      | escaping _ = false
-
   (* the amount of storage allocated by an expression *)
     fun expAlloc (CFG.E_Alloc(_, xs)) = Target.wordSzB * Word.fromInt(length xs + 1)
       | expAlloc (CFG.E_Wrap(_, y)) = (case CFG.Var.typeOf y
@@ -71,7 +66,7 @@ val toNode = fn f => let
 	  (* end case *))
       | expAlloc _ = 0w0
 
-    fun transform (CFG.MODULE{code, funcs, ...}) = let
+    fun transform (CFG.MODULE{name, code}) = let
 	  val graph = makeGraph code
 	  val fbSet = FB.feedback graph
 	(* compute the allocation performed by a function and annotate
@@ -89,7 +84,7 @@ val toNode = fn f => let
 			    fun f (lab, sz) = if FB.Set.member(fbSet, lab)
 				  then 0w0
 				  else let
-				    val sz' = funcAlloc (valOf(CFG.Label.Map.find(funcs, lab)))
+				    val sz' = funcAlloc (valOf(CFG.funcOfLabel lab))
 				    in
 				      Word.max(sz', sz)
 				    end
@@ -107,7 +102,7 @@ val toNode = fn f => let
 	  val _ = List.app (ignore o funcAlloc) code
 	(* add allocation checks as needed *)
 	  fun rewrite (f as CFG.FUNC{lab, entry, body, exit}, fs) =
-		if FB.Set.member(fbSet, lab) orelse escaping entry
+		if FB.Set.member(fbSet, lab) orelse CFA.isEscaping lab
 		  then let
 		    val funTy = CFG.Label.typeOf lab
 		    val lab' = CFG.Label.new(Atom.atom "check", funTy)
@@ -138,7 +133,7 @@ val toNode = fn f => let
 				  (params', CFG.Block params')
 				end
 			  (* end case *))
-		    val gcLab = CFG.Label.newWithKind(Atom.atom "callGC", CFG.Extern "callGC", funTy)
+		    val gcLab = CFG.Label.newWithKind(Atom.atom "callGC", CFG.LK_Extern "callGC", funTy)
 		    val f' = CFG.mkFunc(lab, entry', [], CFG.HeapCheck{
 			    szb = getAlloc lab,
 			    gc = (gcLab, freeVars),
@@ -151,7 +146,7 @@ val toNode = fn f => let
 		  else f::fs
 	  val code = List.foldr rewrite [] code
 	  in
-	    CFG.mkModule code
+	    CFG.mkModule(name, code)
 	  end
 
   end
