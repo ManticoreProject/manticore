@@ -121,7 +121,9 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
     val maxDepth = 3
 
     fun joinValues (v1, v2) = let
-(* QUESTION: I think that when k goes to 0, we need to flag the values as escaping *)
+(* QUESTION: I think that when k goes to 0 or when joining with a TOP value, we need to
+ * flag the non-top values as escapin
+ *)
 	  fun kJoin (0, _, _) = TOP
 	    | kJoin (_, TOP, _) = TOP
 	    | kJoin (_, _, TOP) = TOP
