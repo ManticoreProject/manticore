@@ -12,8 +12,11 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
 
     structure AddAllocChecks = AddAllocChecksFn (Target)
 
-    fun optimize module = (
-	  CFACFG.analyze module;
-	  AddAllocChecks.transform module)
+    fun optimize module = let
+	  val _ = CFACFG.analyze module
+	  val module = SpecializeCalls.transform module;
+	  in
+	    AddAllocChecks.transform module
+	  end
 
   end

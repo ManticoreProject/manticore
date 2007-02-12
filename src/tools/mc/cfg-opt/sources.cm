@@ -25,4 +25,5 @@ is
   cfa-cfg.sml
   cfg-opt-fn.sml
   feedback-fn.sml
+  specialize-calls.sml
 
