@@ -124,6 +124,7 @@ structure InterpCFG : sig
 	    | P.I64Lte(x, y) => fromBool(IntInf.<=(toInt(env, x), toInt(env, y)))
 	    | P.I64Gt(x, y) => fromBool(IntInf.>(toInt(env, x), toInt(env, y)))
 	    | P.I64Gte(x, y) => fromBool(IntInf.>=(toInt(env, x), toInt(env, y)))
+	    | _ => raise Fail "unsupported primop"
 (*
 	    | P.F32Add of 'var * 'var
 	    | P.F32Sub of 'var * 'var
