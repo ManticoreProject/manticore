@@ -29,6 +29,9 @@ structure CFACFG : sig
    *)
     val labelsOf : CFG.transfer -> CFG.Label.Set.set
 
+  (* return true if the given label escapes *)
+    val isEscaping : CFG.label -> bool
+
     val clearInfo : CFG.module -> unit
 
   end = struct
@@ -67,10 +70,15 @@ structure CFACFG : sig
 	    concat (v2s(v, []))
 	  end
 
+  (* property to track call-sites *)
     val {getFn=callSitesOf, clrFn=clrLabel, setFn=setSites, ...} =
 	  CFG.Label.newProp (fn _ => Known(LSet.empty))
+  (* property to track the estimated value of variables *)
     val {getFn=valueOf, clrFn=clrVar, peekFn=peekVar, setFn=setVar} =
 	  CFG.Var.newProp (fn _ => BOT)
+
+  (* return true if the given label escapes *)
+    fun isEscaping lab = (case callSitesOf lab of Unknown => true | _ => false)
 
   (* clear CFA annotations from the variables and labels of a module.  Note that we can
    * restrict the traversal to binding instances.
