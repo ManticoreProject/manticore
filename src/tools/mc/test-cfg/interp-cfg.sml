@@ -242,9 +242,12 @@ structure InterpCFG : sig
 	    val lineLabel = StringCvt.padRight #" " 20 curBlock
 	    fun arg2str env x = (case VMap.find(env, x)
 		   of SOME v => v2s v
-		    | NONE => raise Fail(concat[
+		    | NONE => 
+(print "env = {"; print (String.concatWith "," (List.map CFG.Var.toString (VMap.listKeys env))); print "}\n";
+raise Fail(concat[
 			  "Error in ", curBlock, "unbound variable ", CFG.Var.toString x
 			])
+)
 		  (* end case *))
 	    fun args2str env [] = "()"
 	      | args2str env [x] = concat["(", arg2str env x, ")"]
@@ -361,9 +364,9 @@ structure InterpCFG : sig
 			      | _ => raise Fail "C function not label"
 			    (* end case *))
 		      (* end case *))
-		fun evalExit (xfer, env) = let
-		      fun goto (f, env) = (traceExit(env, xfer, f); evalFunc(f, env))
-		      fun toFunc f = (case valueOf(env, f)
+		fun evalExit (xfer, env0) = let
+		      fun goto (f, env) = (traceExit(env0, xfer, f); evalFunc(f, env))
+		      fun toFunc f = (case valueOf(env0, f)
 			     of LABEL lab => (case findFunc lab
 				   of SOME(CFG_FN f) => f
 				    | NONE => raise Fail "undefined label"
@@ -372,7 +375,7 @@ structure InterpCFG : sig
 			    (* end case *))
 		      fun initEnv binds = List.foldl
 			    (fn ((param, arg), newEnv) =>
-			      VMap.insert (newEnv, param, valueOf(env, arg))
+			      VMap.insert (newEnv, param, valueOf(env0, arg))
 			    ) VMap.empty binds
 		      fun evalJump (lab, args) = (case findFunc lab
 			     of SOME(CFG_FN(f as CFG.FUNC{entry=CFG.Block params, ...})) => let
@@ -417,11 +420,11 @@ structure InterpCFG : sig
 				| _ => raise Fail "not known function entry"
 			      (* end case *))
 			  | CFG.Goto jmp => evalJump jmp
-			  | CFG.If(x, j1, j2) => if toBool(valueOf(env, x))
+			  | CFG.If(x, j1, j2) => if toBool(valueOf(env0, x))
 			      then evalJump j1
 			      else evalJump j2
 			  | CFG.Switch(x, cases, dflt) => let
-			      val arg = (case valueOf(env, x)
+			      val arg = (case valueOf(env0, x)
 				     of ENUM w => Word.toIntX w
 				      | RAW(INT i) => Int.fromLarge i
 				    (* end case *))
