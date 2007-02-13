@@ -14,7 +14,7 @@ structure Test =
 
     fun prHdr msg = print(concat["******************** ", msg,  "********************\n"])
 
-    fun load file = let
+    fun cvt flags file = let
 	  val cps = CPSParser.parse file
 	  val _ = (
 		prHdr "CPS after expand";
@@ -22,8 +22,14 @@ structure Test =
 	  val cfg = FlatClosure.convert cps
 	  val _ = (
 		prHdr "CFG after closure";
-		PrintCFG.print cfg;
+		PrintCFG.output flags (TextIO.stdOut, cfg);
 		CheckCFG.check cfg)
+	  in
+	    cfg
+	  end
+
+    fun load file = let
+	  val cfg = cvt {types=false} file
 	  val cfg = Opt.optimize cfg
 	  val _ = (
 		prHdr "CFG after cfg-opt";
