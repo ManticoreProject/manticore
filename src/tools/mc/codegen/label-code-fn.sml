@@ -33,7 +33,8 @@ functor LabelCodeFn (
 
   fun getParamRegs v =
       (case peekFn v
-	of NONE => raise Fail ("paramRegs" ^ LV.toString v)
+	of NONE => (*if LV.kindOf v = CFG.LK_Extern "callGC" then []
+		  else *) raise Fail ("paramRegs" ^ LV.toString v)
 	 | SOME prRef => !prRef
       (* esac *))
   end (* local *)

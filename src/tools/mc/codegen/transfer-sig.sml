@@ -31,7 +31,7 @@ signature TRANSFER = sig
     val genHeapCheck : 
 	VarDef.var_def_tbl ->
 	{szb : word, gc : CFG.jump, nogc : CFG.jump}
-	-> MTy.T.stm list
+	-> {stms : MTy.T.stm list, liveOut : MTy.T.mlrisc list}
 
     (* entry to a labelled function *)
     val genFuncEntry :
@@ -39,6 +39,8 @@ signature TRANSFER = sig
 	(CFG.label * CFG.convention) -> MTy.T.stm list
 
     (* entry to a module *)
-    val genModuleEntry : CFG.func list -> MTy.T.stm list
+    val genModuleEntry : CFG.func list -> 
+	{modEntryLbl : string, entryStms : MTy.T.stm list, 
+	 initLbl : string, initStms : MTy.T.stm list}
 
 end (* TRANSFER *)

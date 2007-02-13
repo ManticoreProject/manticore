@@ -9,6 +9,7 @@
 Library
 
   structure T
+  structure TestCompile
 
 is
 
@@ -22,5 +23,10 @@ is
   ../cfg/sources.cm
   ../cfg-opt/sources.cm
   ../codegen/sources.cm
+  ../closure/sources.cm
+  ../cfg-opt/sources.cm
+  ../test-cps/sources.cm
+  ../test-cps/cps-parse.cm
 
   test-1.sml
+  test-compile.sml

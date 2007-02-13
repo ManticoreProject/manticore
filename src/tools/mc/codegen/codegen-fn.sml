@@ -25,6 +25,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
   val memory = ManticoreRegion.memory
   val apReg = BE.Regs.apReg
   val stdCallRegs = BE.Transfer.stdCallRegs
+  val genAlloc = BE.Alloc.genAlloc
 
   fun fail s = raise Fail s
   fun newLabel s = Label.label s () 
@@ -44,19 +45,10 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
   fun mltGPR r = MTy.GPR (ty, r)
   fun regExp r = T.REG (ty, r)
   fun move (r, e) = T.MV (ty, r, e)
+  fun select (lhsTy, mty, i, e) = MTy.EXP (lhsTy, 
+		BE.Alloc.select {lhsTy=lhsTy, mty=mty, i=i, base=e})
 
-  fun select (lhsTy, mty, i, e) =
-      let fun offsetOf (M.T_Tuple tys) = BE.Alloc.offsetOf {tys=tys, i=i}
-	    | offsetOf (M.T_Code tys) = BE.Alloc.offsetOf {tys=tys, i=i}
-	    | offsetOf _ = fail "offsetOf: non-tuple type"
-	  val offset = offsetOf mty
-      in 
-	  MTy.EXP (lhsTy, T.LOAD (lhsTy, T.ADD (ty, e, intLit offset), memory))
-      end (* select *)
-
-  val genAlloc = BE.Alloc.genAlloc
-
-  fun codeGen {dst, code=M.MODULE {code, funcs}} = 
+  fun codeGen {dst, code=M.MODULE {name, code}} = 
       let val mlStrm = BE.MLTreeComp.selectInstructions (BE.CFGGen.build ())
 	  (* extract operations from the emitter's streams *)
 	  val Stream.STREAM { 
@@ -98,7 +90,11 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	    | genTransfer (M.Switch (c, js, jOpt)) = fail "todo"
 	    (* invariant: #2 gc = #2 nogc (their arguments are the same) *)
 	    | genTransfer (M.HeapCheck hc) = 
-	      emitStms (BE.Transfer.genHeapCheck varDefTbl hc)
+	      let val {stms, liveOut} = BE.Transfer.genHeapCheck varDefTbl hc
+	      in 
+		  emitStms stms;
+		  emit (T.LIVE liveOut)
+	      end
 							  
 	  and bindExp (lhs, rhsEs) = 
 	      let val regs = map newReg rhsEs
@@ -113,7 +109,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	    | genExp (M.E_Literal (lhs, lit)) = bindExp ([lhs], [genLit lit])
 	    | genExp (M.E_Label (lhs, l)) = 
 	      bindExp ([lhs], [mkExp (T.LABEL (BE.LabelCode.getName l))])
-	    | genExp (M.E_Select (lhs, i, v)) =
+	    | genExp (M.E_Select (lhs, i, v)) = 
 	      bindExp ([lhs], [select (BE.Types.szOf (Var.typeOf lhs), 
 				       Var.typeOf v, i, defOf v)])
 	    | genExp (M.E_Alloc (lhs, vs)) = 
@@ -123,14 +119,14 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		  emitStms stms
 	      end
 	    | genExp (M.E_Wrap (lhs, v)) = 
-	      let val {rhsEs, stms} = BE.Alloc.genWrap (Var.typeOf v, getDefOf v)
+	      let val {rhs, stms} = BE.Alloc.genWrap (Var.typeOf v, getDefOf v)
 	      in
-		  bindExp ([lhs], rhsEs);
+		  bindExp ([lhs], [mltGPR rhs]);
 		  emitStms stms
 	      end
 	    | genExp (M.E_Unwrap (lhs, v)) = 
 	      bindExp ([lhs], [select (BE.Types.szOf (Var.typeOf lhs), 
-				       Var.typeOf v, 0, defOf v)])
+				       Var.typeOf v, 0, defOf v)]) 
 	    | genExp (M.E_Prim (lhs, p)) = setDefOf (lhs, genPrim p)
 	    | genExp (M.E_CCall (_, f, args)) = fail "todo"
 	    | genExp (M.E_Enum (lhs, c)) = 
@@ -141,12 +137,14 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	  fun genFunc (M.FUNC {lab, entry, body, exit}) =
 	      let fun emitLabel () = 
 		      (case M.Label.kindOf lab
-			of M.Export s => ( 
+			of M.LK_Local {export=SOME s, ...} => ( 
 			   pseudoOp (P.global (Label.global s));
 			   defineLabel (BE.LabelCode.getName lab);
 			   defineLabel (Label.global s) )
-			 | M.Local => defineLabel (BE.LabelCode.getName lab)
-			 | M.Extern _ => fail "attempt to define a C function"
+			 | ( M.LK_None | M.LK_Local _ ) => (
+			   comment (M.Label.toString lab);
+			   defineLabel (BE.LabelCode.getName lab) )
+			 | _ => fail "emitLabel"
 		      (* esac *))
 		  val stms = BE.Transfer.genFuncEntry varDefTbl (lab, entry)
 		  fun finish () = 
@@ -168,25 +166,29 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	      end (* genFunc *)
 
 	  fun genModule () =
-	      let val l = "mantentry"
-		  val entryL = M.Label.newWithKind (Atom.atom l, CFG.Export l,
-						    M.T_Any)
+	      let val {modEntryLbl, entryStms, initLbl, initStms} =
+		      BE.Transfer.genModuleEntry code
+		  val entryL = 
+		      M.Label.newWithKind (Atom.atom modEntryLbl, 
+					   CFG.LK_None, M.T_Any)
 		  val funcAnRef = getAnnotations ()
 		  val frame = BE.SpillLoc.getFuncFrame entryL
 	      in
 		  beginCluster 0;		  
-		  pseudoOp (P.global (Label.global l));
+		  pseudoOp (P.global (Label.global modEntryLbl));
 		  funcAnRef := (#create BE.SpillLoc.frameAn) frame :: 
 			       (!funcAnRef);
 		  pseudoOp P.text;		  
-		  defineLabel (Label.global l);
-		  emitStms (BE.Transfer.genModuleEntry code);
+		  defineLabel (Label.global modEntryLbl);
+		  emitStms entryStms;
+		  defineLabel (Label.global initLbl);
+		  emitStms initStms;
 		  endCluster []; ()
 	      end (* genModule *)
 
 	  val finishers = map genFunc code
       in
-	  Cells.reset ();
+	  Cells.reset ();	  
 	  app (fn f => f()) finishers;
 	  genModule () 
       end (* codeGen *)

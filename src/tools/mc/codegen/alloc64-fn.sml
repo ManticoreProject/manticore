@@ -29,6 +29,7 @@ functor Alloc64Fn (
   val memory = ManticoreRegion.memory
   val apReg = Regs.apReg
 
+  fun intLit i = T.LI (T.I.fromInt (ty, i))
   fun litFromInt i = T.LI (T.I.fromInt (ty, i))
   fun regExp r = T.REG (ty, r)
   fun move (r, e) = T.MV (ty, r, e)
@@ -42,16 +43,34 @@ functor Alloc64Fn (
       let fun offset (ty :: tys, j, sz) =
 	      if (j >= i) then sz
 	      else offset (tys, j+1, alignedTySzB ty + sz)
+	    | offset ([], _, _) = raise Fail ("offset of type "^
+			CFGTy.toString (M.T_Tuple tys)^Int.toString (length tys))
       in 
 	  offset (tys, 0, 0) 
       end (* offsetOf *)
 
-  fun isTyPointer ( M.T_Any | M.T_Wrap _ | M.T_Tuple _ ) = true
+  fun select {lhsTy : T.ty, mty : M.ty, i : int, base : T.rexp} =
+      let fun offsetOf' ( 
+	      M.T_Tuple tys
+	    | M.T_Code tys
+	    | M.T_OpenTuple tys ) = offsetOf {tys=tys, i=i}
+	    | offsetOf' (M.T_StdCont {clos, arg}) = 
+	      offsetOf {tys=[clos, arg], i=i}
+	    | offsetOf' (M.T_Wrap ty) = offsetOf {tys=[M.T_Raw ty], i=0}
+	    | offsetOf' _ = raise Fail ("offsetOf': non-tuple type "^CFGTy.toString mty)
+	  val offset = offsetOf' mty
+      in 
+	  T.LOAD (lhsTy, T.ADD (ty, base, intLit offset), memory)
+      end (* select *)
+
+  fun isTyPointer ( M.T_Any | M.T_Wrap _ | M.T_Tuple _ | 
+		    M.T_OpenTuple _ | M.T_Code _ | M.T_StdCont _ ) = true
     | isTyPointer _ = false
 
   fun setBit (w, i, ty) = if (isTyPointer ty) then W.orb (w, W.<< (0w1, i)) else w
 
-  fun genAlloc args = 
+  fun genAlloc [] = []
+    | genAlloc args = 
       let fun initLoc ((ty, mltree), (i, stms, totalSize, tyMask)) =
 	      let val store = MTy.store (offAp totalSize, mltree, memory)
 		  val tyMask' = setBit (tyMask, Word.fromInt i, ty)
@@ -73,7 +92,7 @@ functor Alloc64Fn (
       let val ptrReg = Cells.newReg ()
 	  val stms = genAlloc [(mty, arg)]
       in
-	  {rhsEs=[MTy.GPR (ty, ptrReg)],
+	  {rhs=ptrReg,
 	   stms=List.concat [
 	   [move (ptrReg, regExp apReg)],
 	   stms

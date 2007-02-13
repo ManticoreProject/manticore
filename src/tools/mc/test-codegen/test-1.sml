@@ -27,9 +27,10 @@ structure T = struct
       end (* compile *)
 
     fun var (name, ty) = CFG.Var.newWithKind(Atom.atom name, CFG.VK_None, ty)
-    fun newGlobal (lStr, ty) = CFG.Label.newWithKind(Atom.atom lStr, CFG.Export lStr, ty)
-    fun newLab (lStr, ty) = CFG.Label.newWithKind(Atom.atom lStr, CFG.Local, ty)
-    fun freshLab ty = CFG.Label.newWithKind(Atom.atom "L", CFG.Local, ty)
+    fun newGlobal (lStr, ty) = raise Fail ""
+(*CFG.Label.newWithKind(Atom.atom lStr,  lStr, ty)*)
+    fun newLab (lStr, ty) = CFG.Label.newWithKind(Atom.atom lStr, CFG.LK_None, ty)
+    fun freshLab ty = CFG.Label.newWithKind(Atom.atom "L", CFG.LK_None, ty)
 
     fun func (lab, params, bodyFn) = let
 	  val params as [clos, arg, ret, exh] = List.map var params
@@ -140,9 +141,9 @@ structure T = struct
 		mkExit (M.Goto (consHCl, [ret, clos, il1, nilv]))))
 
       in 	  
-	  compile (M.MODULE {code=[
+	  compile (M.MODULE {name=Atom.atom "entryPt", code=[
 		func (t, vs, bodyFn), consLE, consLF, lsK, consL, consHC
-				   ], funcs=LM.empty}, outFile) 
+				   ]}, outFile) 
       end (* t *)
 
 end
