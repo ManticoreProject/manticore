@@ -48,4 +48,30 @@ structure CFGTy =
 	    (* end case *)
 	  end
 
+    fun stdContTy (cpTy, argTy) = let
+	  val cpTy = (case cpTy
+		 of T_Any => T_StdCont{
+			clos=T_OpenTuple[T_StdCont{clos=T_Any, arg=argTy}],
+			arg=argTy
+		      }
+		  | T_StdCont _ => cpTy
+		  | ty => raise Fail(concat["stdContTy(", toString cpTy, ", ", toString argTy, ")"])
+		(* end case *))
+	  in
+	    cpTy
+	  end
+
+    fun selectTy (i, ty) = let
+	  fun err () = raise Fail(concat["selectTy(", Int.toString i, ", ", toString ty, ")"])
+	  fun sel (_, []) = err()
+	    | sel (0, ty::r) = ty
+	    | sel (i, _::r) = sel(i-1, r)
+	  in
+	    case ty
+	     of T_Tuple tys => sel(i, tys)
+	      | T_OpenTuple tys => sel(i, tys)
+	      | _ => err()
+	    (* end case *)
+	  end
+
   end
