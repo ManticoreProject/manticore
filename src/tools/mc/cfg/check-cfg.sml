@@ -71,10 +71,14 @@ structure CheckCFG : sig
 			    chkLabel lab;
 			    bindVar (env, x))
 			| CFG.E_Literal(x, _) => bindVar (env, x)
-			| CFG.E_Select(x, i, y) => (
-(* FIXME: check the type of y *)
-			    chkVar (env, y);
-			    bindVar (env, x))
+			| CFG.E_Select(x, i, y) => let
+			    val ty = CFGTy.selectTy(i, CFG.Var.typeOf y)
+				  handle Fail msg => (error [msg]; CFGTy.T_Any)
+			    in
+(* FIXME: check the type of y against ty *)
+			      chkVar (env, y);
+			      bindVar (env, x)
+			    end
 			| CFG.E_Alloc(x, ys) => (
 (* FIXME: check the type of x *)
 			    chkVars (env, ys);
