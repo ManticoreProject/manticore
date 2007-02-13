@@ -44,14 +44,8 @@ structure FlatClosure : sig
       | cvtStdFunTy ty = raise Fail("bogus function type " ^ CPSTy.toString ty)
 
   (* convert a continuation type to a standard-function type *)
-    and cvtStdContTy (CPSTy.T_Cont[argTy]) = CFGTy.T_StdCont{
-            clos = CFG.T_OpenTuple[CFGTy.T_Any],
-            arg = cvtTy argTy
-          }
-      | cvtStdContTy (CPSTy.T_Any) = CFGTy.T_StdCont{
-            clos = CFG.T_OpenTuple[CFGTy.T_Any],
-            arg = CFGTy.T_Any
-          }
+    and cvtStdContTy (CPSTy.T_Cont[argTy]) = CFGTy.stdContTy(CFGTy.T_Any, cvtTy argTy)
+      | cvtStdContTy (CPSTy.T_Any) = CFGTy.stdContTy(CFGTy.T_Any, CFGTy.T_Any)
       | cvtStdContTy ty = raise Fail("bogus continuation type " ^ CPSTy.toString ty)
 
   (* assign labels to functions and continuations *)
@@ -61,14 +55,12 @@ structure FlatClosure : sig
     in
     fun assignLabels lambda = let
           fun assignFB (f, _, e) = let
-(* FIXME: when are labels exported? *)
                 val lab = CFG.Label.new(CPS.Var.nameOf f, cvtStdFunTy(CPS.Var.typeOf f))
                 in
                   setFn (f, lab);
                   assignExp e
                 end
           and assignKB (k, _, e) = let
-(* FIXME: when are labels exported? *)
                 val lab = CFG.Label.new(CPS.Var.nameOf k, cvtStdContTy(CPS.Var.typeOf k))
                 in
                   setFn (k, lab);
@@ -188,22 +180,44 @@ structure FlatClosure : sig
           end
 (* -DEBUG *)
 
-  (* given a set of free CPS variables that define the environment of a lambda, create the
+  (* given a set of free CPS variables that define the environment of a function, create the
    * argument variables and bindings to build the closure and the parameter variables and
-   * environment for the lambda's body.
+   * environment for the function's body.
    *)
-    fun mkClosure (env, base, fv) = let
+    fun mkFunClosure (env, fv) = let
           fun mkArgs (x, (i, binds, clos, xs)) = let
                 val (b, x') = lookupVar(env, x)
                 in
                   (i+1, b@binds, VMap.insert(clos, x, Global i), x'::xs)
                 end
           val (_, binds, clos, cfgArgs) =
-                CPS.Var.Set.foldl mkArgs (base, [], VMap.empty, []) fv
+                CPS.Var.Set.foldl mkArgs (0, [], VMap.empty, []) fv
           val cfgArgs = List.rev cfgArgs
           val ep = newEP (CFGTy.T_Tuple(List.map CFG.Var.typeOf cfgArgs))
           in
             (binds, cfgArgs, E{ep = ep, env = clos})
+          end
+
+  (* given a set of free CPS variables that define the environment of a continuation, create the
+   * argument variables and bindings to build the closure and the parameter variables and
+   * environment for the continuation's body.
+   *)
+    fun mkContClosure (env, param, fv) = let
+	  val param' = newVar param
+          fun mkArgs (x, (i, binds, clos, xs)) = let
+                val (b, x') = lookupVar(env, x)
+                in
+                  (i+1, b@binds, VMap.insert(clos, x, Global i), x'::xs)
+                end
+          val (_, binds, clos, cfgArgs) =
+                CPS.Var.Set.foldl mkArgs (1, [], VMap.singleton(param, Local param'), []) fv
+          val cfgArgs = List.rev cfgArgs
+	  val closTy = CFGTy.T_Tuple(
+		CFGTy.stdContTy(CFGTy.T_Any, CFG.Var.typeOf param')
+		  :: List.map CFG.Var.typeOf cfgArgs)
+          val ep = newEP closTy
+          in
+            (binds, cfgArgs, E{ep = ep, env = clos}, param')
           end
 
     fun convert (m as CPS.MODULE lambda) = let
@@ -225,18 +239,18 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
                             val paramEP = CFG.Var.copy argEP
                             val branchEnv = newEnv paramEP
                             fun f (x, (bEnv, args, params)) = (case findVar(env, x)
-                                  of Local x' => let
+                                   of Local x' => let
                                         val (bEnv', x'') = newLocal(bEnv, x)
                                         in
                                           (bEnv', x' :: args, x'' :: params)
                                         end
-                                   | Global i => (
+                                    | Global i => (
                                         needsEP := true; 
                                         (insertVar(bEnv, x, Global i), args, params))
-                                   | EnclFun => (
+                                    | EnclFun => (
                                         needsEP := true;
                                         (insertVar(bEnv, x, EnclFun), args, params))
-                                 (* end case *))
+                                  (* end case *))
                             val (branchEnv, args, params) =
                                   CPS.Var.Set.foldr f (branchEnv, [], []) (FV.freeVarsOfExp e)
                            (* if there are any free globals in e, then we include
@@ -255,133 +269,138 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
                       in
                         case e
                          of CPS.Let(lhs, rhs, e) => let
-                               val (binds, env') = cvtRHS(env, lhs, rhs)
-                               in
-                                 cvt (env', e, binds @ stms)
-                               end
+                              val (binds, env') = cvtRHS(env, lhs, rhs)
+                              in
+                        	cvt (env', e, binds @ stms)
+                              end
                           | CPS.Fun(fbs, e) => let
-                              (* the functions share a common environment tuple *)
-                               val (binds, clos, sharedEnv) = mkClosure (env, 0, FV.envOfFun(#1(hd fbs)))
-                               val ep = newEP (CFG.T_Tuple(List.map CFG.Var.typeOf clos))
-                               val bindEP = CFG.mkAlloc(ep, clos)
-                              (* map the names of the bound functions to EnvlFun *)
-                               val sharedEnv = List.foldl (fn ((f, _, _), env) => insertVar(env, f, EnclFun)) 
-                                                          sharedEnv fbs
-                              (* convert an individual function binding; this includes creating its
-                               * code-pointer/environment-pointer pair and converting the function's body.
-                               *)
-                               fun cvtFB ((f, params, e), (binds, env)) = let
-                                     val lab = labelOf f
-                                     val (fbEnv, conv) = stdFunConvention (sharedEnv, params)
-                                     val (bindLab, labVar) = bindLabel (labelOf f)
-                                     val (env', f') = newLocal (env, f)
-                                     val binds = CFG.mkAlloc(f', [ep, labVar]) :: bindLab :: binds
-                                     in
-                                      (* convert the function itself *)
-                                       cvtExp (fbEnv, labelOf f, conv, e);
-                                       (binds, env')
-                                     end
-                               val (binds, env') = List.foldl cvtFB (bindEP::binds, env) fbs
-                               in
-                                 cvt (env', e, binds @ stms)
-                               end
+                            (* the functions share a common environment tuple *)
+                              val (binds, clos, sharedEnv) =
+				    mkFunClosure (env, FV.envOfFun(#1(hd fbs)))
+                              val ep = newEP (CFG.T_Tuple(List.map CFG.Var.typeOf clos))
+                              val bindEP = CFG.mkAlloc(ep, clos)
+                            (* map the names of the bound functions to EnvlFun *)
+			      val sharedEnv = List.foldl
+				    (fn ((f, _, _), env) => insertVar(env, f, EnclFun)) 
+                                      sharedEnv fbs
+                            (* convert an individual function binding; this includes creating its
+                             * code-pointer/environment-pointer pair and converting the function's body.
+                             *)
+                              fun cvtFB ((f, params, e), (binds, env)) = let
+                                    val lab = labelOf f
+                                    val (fbEnv, conv) = stdFunConvention (sharedEnv, params)
+                                    val (bindLab, labVar) = bindLabel (labelOf f)
+                                    val (env', f') = newLocal (env, f)
+                                    val binds = CFG.mkAlloc(f', [ep, labVar]) :: bindLab :: binds
+                                    in
+                                    (* convert the function itself *)
+                                      cvtExp (fbEnv, labelOf f, conv, e);
+                                      (binds, env')
+                                    end
+                              val (binds, env') = List.foldl cvtFB (bindEP::binds, env) fbs
+                              in
+                                cvt (env', e, binds @ stms)
+                              end
                           | CPS.Cont(fb, e) => let
-                               val (binds, env) = cvtCont(env, fb)
-                               in
-                                 cvt (env, e, binds @ stms)
-                               end
+                              val (binds, env) = cvtCont(env, fb)
+                              in
+                                cvt (env, e, binds @ stms)
+                              end
                           | CPS.If(x, e1, e2) => let
-                               val (binds, x) = lookupVar(env, x)
-                               in
-                                 finish(binds @ stms,
-                                        CFG.If(x, branch("then", e1), branch("else", e2)))
-                               end
+                              val (binds, x) = lookupVar(env, x)
+                              in
+                                finish(binds @ stms,
+				  CFG.If(x, branch("then", e1), branch("else", e2)))
+                              end
                           | CPS.Switch(x, cases, dflt) => let
-                               val (binds, x) = lookupVar(env, x)
-                               in
-                                 finish(binds @ stms,
-                                        CFG.Switch(x,
-                                                   List.map (fn (i,e) => (i, branch("case", e))) cases,
-                                                   case dflt 
-                                                    of NONE => NONE
-                                                     | SOME e => SOME (branch("default", e))))
-                               end
+                              val (binds, x) = lookupVar(env, x)
+                              in
+                                finish(binds @ stms,
+				  CFG.Switch(x,
+                                    List.map (fn (i,e) => (i, branch("case", e))) cases,
+                                    case dflt 
+                                     of NONE => NONE
+                                      | SOME e => SOME (branch("default", e))))
+                              end
                           | CPS.Apply(f, args) => let
-                               val (argBinds, args) = lookupVars(env, args)
-                               val (binds, xfer) = (case args
-                                      of [arg, ret, exh] => let
-                                           fun bindEP () = let
-                                                 val (binds, f') = lookupVar(env, f)
-                                                 val ep = newEP (CFG.T_Any)
-                                                 in
-                                                   (CFG.mkSelect(ep, 0, f') :: binds, f', ep)
-                                                 end
-                                            val (cp, ep, binds') = (case CPS.Var.kindOf f
-                                                  of CPS.VK_Fun _ => let
-                                                       val (b, cp) = bindLabel(labelOf f)
-                                                       in
-                                                          case findVar(env, f)
-                                                           of EnclFun => (cp, envPtrOf env, [b])
-                                                            | _ => let
-                                                               val (binds, _, ep) = bindEP ()
-                                                               in
-                                                                 (cp, ep, b :: binds @ argBinds)
-                                                               end
-                                                          (* end case *)
-                                                       end
-                                                   | _ => let
-                                                       val (binds, f', ep) = bindEP ()
-                                                       val cp = CFG.Var.new(CFG.Var.nameOf f',
-                                                               CFG.T_StdFun{
-                                                                   clos = CFGTy.T_Any,
-                                                                   arg = CFG.Var.typeOf arg,
-                                                                   ret = CFG.Var.typeOf ret,
-                                                                   exh = CFG.Var.typeOf exh
-                                                                })
-                                                       val b = CFG.mkSelect(cp, 1, f')
-                                                       in
-                                                         (cp, ep, b :: binds @ argBinds)
-                                                       end
-                                                 (* end case *))
-                                            val xfer = CFG.StdApply{
-                                                   f = cp,
-                                                   clos = ep,
-                                                   arg = arg,
-                                                   ret = ret,
-                                                   exh = exh
-                                                 }
-                                            in
-                                              (binds', xfer)
-                                            end
-                                       | _ => raise Fail "non-standard calling convention"
-                                     (* end case *))
-                               in
-                                 finish (binds @ stms, xfer)
-                               end
-                           | CPS.Throw(k, args) => let
-                               val (binds, k::args) = lookupVars(env, k::args)
-                               val (binds, xfer) = (case args
-                                      of [arg] => let
-(* if k has kind VK_Cont, then we can refer directly to its label *)
-                                           val cp = CFG.Var.new(CFG.Var.nameOf k,
-                                                   CFG.T_StdCont{
-                                                       clos = CFG.Var.typeOf k,
-                                                       arg = CFG.Var.typeOf arg
-                                                     })
-                                           val xfer = CFG.StdThrow{
-                                                   k = cp,
-                                                   clos = k,
-                                                   arg = arg
-                                                 }
-                                           in
-                                             (CFG.mkSelect(cp, 0, k) :: binds, xfer)
-                                           end
-                                       | _ => raise Fail "non-standard calling convention"
-                                     (* end case *))
-                               in
-                                 finish (binds @ stms, xfer)
-                               end
-                         (* end case *)
+                              val (argBinds, args) = lookupVars(env, args)
+                              val (binds, xfer) = (case args
+				     of [arg, ret, exh] => let
+					  fun bindEP () = let
+                                                val (binds, f') = lookupVar(env, f)
+                                                val ep = newEP (CFG.T_Any)
+                                                in
+                                                  (CFG.mkSelect(ep, 0, f') :: binds, f', ep)
+                                                end
+                                          val (cp, ep, binds') = (case CPS.Var.kindOf f
+                                        	 of CPS.VK_Fun _ => let
+						      val (b, cp) = bindLabel(labelOf f)
+                                        	      in
+                                                        case findVar(env, f)
+                                                         of EnclFun => (cp, envPtrOf env, [b])
+                                                          | _ => let
+                                                             val (binds, _, ep) = bindEP ()
+                                                             in
+                                                               (cp, ep, b :: binds @ argBinds)
+                                                             end
+                                                        (* end case *)
+                                                      end
+                                                 | _ => let
+                                                      val (binds, f', ep) = bindEP ()
+                                                      val cp = CFG.Var.new(CFG.Var.nameOf f',
+                                                              CFG.T_StdFun{
+                                                                  clos = CFGTy.T_Any,
+                                                                  arg = CFG.Var.typeOf arg,
+                                                                  ret = CFG.Var.typeOf ret,
+                                                                  exh = CFG.Var.typeOf exh
+                                                               })
+                                                      val b = CFG.mkSelect(cp, 1, f')
+                                                      in
+                                                        (cp, ep, b :: binds @ argBinds)
+                                                      end
+						(* end case *))
+					  val xfer = CFG.StdApply{
+                                                  f = cp,
+                                                  clos = ep,
+                                                  arg = arg,
+                                                  ret = ret,
+                                                  exh = exh
+                                                }
+                                          in
+                                            (binds', xfer)
+                                          end
+                                      | _ => raise Fail "non-standard calling convention"
+                                    (* end case *))
+                              in
+                                finish (binds @ stms, xfer)
+			      end
+			  | CPS.Throw(k, args) => let
+                              val (binds, k'::args') = lookupVars(env, k::args)
+                              val (binds, xfer) = (case args'
+				     of [arg] => let
+					  val cp = CFG.Var.new(CFG.Var.nameOf k',
+						 CFGTy.selectTy(0, CFG.Var.typeOf k'))
+					(* if k has kind VK_Cont, then we can refer directly
+					 * to its label
+					 *)
+					  val bindCP = (case CPS.Var.kindOf k
+						 of CPS.VK_Cont _ => CFG.mkLabel(cp, labelOf k)
+						  | _ => CFG.mkSelect(cp, 0, k')
+						(* end case *))
+                                          val xfer = CFG.StdThrow{
+                                                  k = cp,
+                                                  clos = k',
+                                                  arg = arg
+                                        	}
+                                          in
+                                            (bindCP :: binds, xfer)
+                                          end
+                                      | _ => raise Fail "non-standard calling convention"
+                                    (* end case *))
+                              in
+                                finish (binds @ stms, xfer)
+                              end
+			(* end case *)
                       end
                 in
                   cvt (env, e, [])
@@ -446,16 +465,9 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
                 end
             | stdFunConvention _ = raise Fail "non-standard function"
         (* convert a bound continuation *)
-          and cvtCont (env, (k, params, e)) = let
-                val (binds, clos, lambdaEnv) = mkClosure (env, 1, FV.envOfFun k)
-                val (lambdaEnv, conv) = (case params
-                       of [arg] => let
-                            val (lambdaEnv, arg) = newLocal (lambdaEnv, arg)
-                            in
-                              (lambdaEnv, CFG.StdCont{clos = envPtrOf lambdaEnv, arg = arg})
-                            end
-                        | _ => raise Fail("non-standard continuation " ^ CPS.Var.toString k)
-                      (* end case *))
+          and cvtCont (env, (k, [param], e)) = let
+                val (binds, clos, lambdaEnv, param') = mkContClosure (env, param, FV.envOfFun k)
+                val conv = CFG.StdCont{clos = envPtrOf lambdaEnv, arg = param'}
                 val (bindLab, labVar) = bindLabel (labelOf k)
                 val (env', k') = newLocal (env, k)
                 val binds = CFG.mkAlloc(k', labVar :: clos) :: bindLab :: binds
@@ -463,6 +475,7 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
                   cvtExp (lambdaEnv, labelOf k, conv, e);
                   (binds, env')
                 end
+	    | cvtCont (_, (k, _, _)) = raise Fail("non-standard continuation " ^ CPS.Var.toString k)
         (* create the calling convention for the module *)
           fun cvtModLambda (f, params, e) = let
                 val ep = newEP (CFGTy.T_Tuple[])
