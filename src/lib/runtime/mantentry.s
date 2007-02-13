@@ -7,12 +7,13 @@
  */
 	
 	.global mantentryglue
+	.global returnloc
 
 	.text
 mantentryglue:
 	movq %rdi, %rax
-	xorl %rdi, %rdi
-	xorl %rbx, %rbx
+	xorl %edi, %edi
+	xorl %ebx, %ebx
 	jmp mantentry    /* entry function for CFG programs */
 returnloc:
 	ret

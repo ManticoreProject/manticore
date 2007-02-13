@@ -2,6 +2,7 @@
 #include <stdio.h>
 #define __USE_XOPEN2k
 #include <stdlib.h>
+#include <time.h>
 
 typedef struct {
   Bool_t is_pointer;
@@ -39,9 +40,8 @@ void init_heap () {
   info.ap = from_space;
 }
 
-void gc (Mant_t *root_fs) {
-  info.root = root_fs;
-  init_gc (&info);
+Mant_t *gc (Mant_t *root_fs) {
+  return init_gc (NULL, NULL, root_fs)->root;
 }
 
 Mant_t data_value (Mant_t *obj, uint_t i) {
@@ -56,26 +56,35 @@ Mant_t data_value (Mant_t *obj, uint_t i) {
 #include "list.c"
 
 int main () {
+  srand (time (NULL));
+
   init_heap ();
 
-  Cons_cell_t *ls_0 = tabulate (3);
-  Cons_cell_t *ls_1 = tabulate (4);
-  Cons_cell_t *lss = cons_ptr (ls_0, cons_ptr (ls_1, NULL));
+  Cons_cell_t *lss = make_lists (10);
   print_ls (lss);
 
   Alloc_t arr_root[1];
   init_ptr_obj (arr_root, lss);
-  Mant_t *root_obj = alloc (1, arr_root);
+  Mant_t *root_obj_1 = alloc (1, arr_root);
 
-  gc (root_obj);
-
-  print_ls (data_value (info.root, 0));
-
-  Cons_cell_t *ls_2 = tabulate (4);
-
-  gc (info.root);
-
-  print_ls (data_value (info.root, 0)); 
+  {
+	Mant_t *new_root = gc (root_obj_1);
+	
+	printf ("\n\n");
+	Mant_t *lss_2 = data_value (new_root, 0);
+	print_ls (lss_2);
+	
+	printf ("\n\n");
+	Mant_t *new_ls = take_even (TRUE, lss_2);
+	print_ls (new_ls);
+	
+	new_root[0] = new_ls;
+	Mant_t *new_root_2 = gc (new_root);
+	
+	printf ("\n\n");
+	Mant_t *lss_3 = data_value (new_root_2, 0);
+	print_ls (lss_3); 
+  }
 
   /*  Alloc_t arr0[1];
   init_ptr_obj (arr0, 10);

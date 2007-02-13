@@ -46,6 +46,7 @@ GC_info_t *init_gc (Mant_t *ra, Mant_t *ap, Mant_t *root) {
   to_space   = from_space; 
   from_space = temp;
 
+  //printf ("\nGC: %d\n", info.ap-from_space);
   return &info;  /* this is safe because the caller assembly stub does not
 		  * use the stack */
 }

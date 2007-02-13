@@ -27,7 +27,7 @@ int main () {
   init_heap ();
 
   // call the manticore entry function using the "mantentryglue" wrapper
-  int ans = mantentryglue (NULL, NULL, NULL, info.ap);
+  int ans = mantentryglue (42, NULL, NULL, info.ap);
   printf ("ans: %d\n", ans);
 
   return 0;
