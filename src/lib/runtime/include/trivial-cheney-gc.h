@@ -23,6 +23,7 @@
 #define PTR_MASK_SZ   ((WORD_SZ_B-1l)*BYTE_SZ_B)      // pointer mask bit length
 
 Mant_t *to_space, *from_space;
+Mant_t *high, *low;
 
 static inline Word_t hdr_word (Mant_t *m) {
   return m[-1];
@@ -35,11 +36,9 @@ static inline uint_t hdr_len (Mant_t *m) {
 static inline Bool_t is_pointer (Mant_t *m, uint_t i) {
   Mant_t *mi = (Mant_t*)m[i];  
   return (1l & (hdr_word (m) >> (i + BYTE_SZ_B)))  && 
-	mi != 0l;
-	/*
-	( (mi < to_space && mi >= from_space) || (mi < from_space && mi >= to_space) ); 
-	*/
-	/*m[i] != 0l;*/
+	( (mi < high) && (mi >= low) );
+	/*	((mi < to_space && mi >= from_space) 
+		|| (mi < from_space && mi >= to_space)); */
 }
 
 /* Since LENGTH(obj) <= 56, we know that the length field never reaches
