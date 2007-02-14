@@ -14,7 +14,7 @@
 GC_info_t info;
 
 // find me in mantentry.s
-int mantentryglue (void *, void *, void *, void *);
+Word_t *mantentryglue (void *, void *, void *, void *);
 
 void init_heap () {
   posix_memalign (&from_space, HEAP_ALIGN, HEAP_SIZE*2);
@@ -27,8 +27,8 @@ int main () {
   init_heap ();
 
   // call the manticore entry function using the "mantentryglue" wrapper
-  int ans = mantentryglue (42, NULL, NULL, info.ap);
-  printf ("ans: %d\n", ans);
+  Word_t *ans = mantentryglue (3, NULL, NULL, info.ap);
+  printf ("ans: %ld\n", *ans);
 
   return 0;
 }

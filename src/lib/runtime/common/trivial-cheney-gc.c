@@ -1,5 +1,7 @@
 #include "trivial-cheney-gc.h"
 
+#include "trivial-cheney-gc-info.c"
+
 Mant_t *forward (Mant_t **next, Mant_t *data) {
   Mant_t *heap = *next;
   
@@ -45,6 +47,8 @@ GC_info_t *init_gc (Mant_t *ra, Mant_t *ap, Mant_t *root) {
   Mant_t *temp = to_space;
   to_space   = from_space; 
   from_space = temp;
+
+  dump_heap (info.ap, from_space);
 
   //printf ("\nGC: %d\n", info.ap-from_space);
   return &info;  /* this is safe because the caller assembly stub does not
