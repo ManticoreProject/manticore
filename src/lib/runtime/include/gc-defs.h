@@ -5,7 +5,7 @@
 
 typedef Word_t Mant_t;
 
-#define HEAP_ALIGN      (1<<11)
-#define HEAP_SIZE       (1<<12)
+#define HEAP_ALIGN      (1<<12)
+#define HEAP_SIZE       HEAP_ALIGN
 
 #endif

@@ -42,6 +42,8 @@ GC_info_t *init_gc (Mant_t *ra, Mant_t *ap, Mant_t *root) {
   GC_info_t info;
   info.root = root; info.ap = ap; info.ra = ra;
 
+  dump_heap (info.ap, from_space);
+
   do_gc (&info);
   
   Mant_t *temp = to_space;
@@ -50,7 +52,6 @@ GC_info_t *init_gc (Mant_t *ra, Mant_t *ap, Mant_t *root) {
 
   dump_heap (info.ap, from_space);
 
-  //printf ("\nGC: %d\n", info.ap-from_space);
   return &info;  /* this is safe because the caller assembly stub does not
 		  * use the stack */
 }
