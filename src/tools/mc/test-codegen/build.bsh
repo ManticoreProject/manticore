@@ -2,11 +2,15 @@
 
 CM=sml
 
+if [ ! -d .heap ]
+then 
+    mkdir .heap
+fi
 
 $CM <<XXX
    CM.make("sources.cm");
    SMLofNJ.exportFn
-	("heap/manticore", 
+	(".heap/manticore", 
  	 fn (_, [file]) => 
 	       (TestCompile.init file; OS.Process.success)):unit;
 XXX
