@@ -1,0 +1,12 @@
+#! /bin/bash
+
+CM=sml
+
+
+$CM <<XXX
+   CM.make("sources.cm");
+   SMLofNJ.exportFn
+	("heap/manticore", 
+ 	 fn (_, [file]) => 
+	       (TestCompile.init file; OS.Process.success)):unit;
+XXX

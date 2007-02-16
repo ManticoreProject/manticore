@@ -1,0 +1,16 @@
+# ./compile.bsh file.cps
+
+#!/bin/bash
+
+SML=sml
+BINDIR=.
+GCC=gcc-4.1
+RTDIR=../../../lib/runtime
+INCLUDE=$RTDIR/include/
+
+$SML @SMLquiet @SMLload=$BINDIR/heap/manticore.x86-linux $1 &&
+$GCC -g -pedantic -Wall -std=c99 -o $1-bin -I$INCLUDE \
+     $RTDIR/common/trivial-cheney-gc.c \
+     $RTDIR/common/amd64/init-gc.s \
+     $RTDIR/mantentry.s \
+     $RTDIR/init-rts.c
