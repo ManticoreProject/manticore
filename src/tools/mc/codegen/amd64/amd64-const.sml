@@ -11,7 +11,7 @@ structure AMD64Constant = struct
 				 loc : AMD64Frame.loc }
 
   fun toString _ = ""
-  fun valueOf _ = 0
+  fun valueOf (StackLoc {loc, ...}) = AMD64Frame.frameOffset loc
   fun hash _ = 0w0
   fun == _ = true
 

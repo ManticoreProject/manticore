@@ -39,26 +39,28 @@ functor HeapTransferFn (
   structure M = CFG
   structure Var = M.Var
 
-  val genGCCall = Target.genGCCall
-
-  val closReg = Regs.closReg
-  val exhReg = Regs.exhReg
-  val argReg = Regs.argReg
-  val retReg= Regs.retReg
   val apReg = Regs.apReg
   val wordSzB = Word.toInt Spec.wordSzB
   val wordAlignB = Word.toInt Spec.wordAlignB
-  val ty = wordSzB * 8
-  val iTy = 32
+  val ty = MTy.wordTy
+  val iTy = Types.szOf (CFGTy.T_Raw CFGTy.T_Int)
   val memory = ManticoreRegion.memory
 
-  val stdCallRegs = [closReg, argReg, retReg, exhReg]
-  val stdContRegs = [closReg, argReg]
+  val stdCallRegs as [closReg, argReg, retReg, exhReg] = 
+      [Regs.closReg, Regs.argReg, Regs.retReg, Regs.exhReg]
+  val stdContRegs as [closReg, argReg] = 
+      [Regs.closReg, Regs.argReg]
 
+  fun fail s = raise Fail s
   fun intLit i = T.LI (T.I.fromInt (ty, i))
   fun litFromInt i = T.LI (T.I.fromInt (ty, i))
   fun regExp r = T.REG (ty, r)
   fun move (r, e) = T.MV (ty, r, e)
+  fun move' (r, mlt) = 
+      (case MTy.treeToMLRisc mlt
+	of T.GPR e => move (r, e)
+	 | _ => fail "move'"
+      (* esac *))
   fun offAp i = T.ADD (ty, regExp apReg, litFromInt i)
   fun newReg _ = Cells.newReg ()
   fun gpReg r = MTy.GPReg (ty, r)
@@ -66,7 +68,6 @@ functor HeapTransferFn (
   fun regGP (MTy.GPReg (_, r)) = r
     | regGP (MTy.FPReg (_, r)) = r
   fun mkExp rexp = MTy.EXP (ty, rexp)
-  fun fail s = raise Fail s
   val toGPR = T.GPR o regExp o regGP
 
   fun bindToRExp' varDefTbl (ty, x, e) = 
@@ -96,10 +97,10 @@ functor HeapTransferFn (
 	  val stdRegs = map gpReg stdRegs 
       in
 	  {stms=List.concat [
-	   (* copy the function and its args into temp registers *)
+	   (* copy the arguments into temp registers *)
 	   Copy.copy {src=map getDefOf args, 
 		      dst=map gpReg argRegs},
-	   (* jump to the function with its fresh args *)
+	   (* jump to the function with fresh arguments *)
 	   genJump (regExp tgtReg, [] (* FIXME *), stdRegs, map mltGPR argRegs)],
 	   liveOut=map toGPR stdRegs}
       end (* genStdTransfer *)
@@ -123,8 +124,6 @@ functor HeapTransferFn (
 	      genStdTransfer varDefTbl (kReg, [clos, arg], argRegs, stdContRegs)
       in 
 	  {stms=
-(*	   [move (kReg, Alloc.select {lhsTy=ty, mty=M.Var.typeOf k, 
-				      i=0, base=getDefOf k})],*)
 	   move (kReg, defOf k) ::
 	   stms,
 	   liveOut=liveOut}
@@ -139,60 +138,62 @@ functor HeapTransferFn (
 	  val gcLbl = LabelCode.getName gcLbl
 
 	  val allocCheck = Alloc.genAllocCheck szb
-	  val rootReg = newReg ()
 	  val tmpRetReg = newReg ()
 	  val freshRegs = map newReg args
 	  val regStms = Copy.copy {src=args, dst=map gpReg freshRegs}
 	  (* allocate space on the heap for the roots *)
-	  val allocStms = 
+	  val {ptr=rootReg, stms=allocStms} = 
 	      Alloc.genAlloc (ListPair.zip (argTys, map mltGPR freshRegs))
 	  fun loadArg (mty, (i, ss)) =
 	      (i+1,  select (ty, M.T_Tuple argTys, i, regExp argReg) :: ss)
 	  val (_, ss) = foldr loadArg (0, []) argTys
 	  val selStms = Copy.copy {src=rev ss, dst=params}
       in
-	  print ((Int.toString (length params))^"\n");
-	  print ((Int.toString (length argRoots))^"\n");
-	  print ((Int.toString (length selStms))^"\n");
 	  {stms=List.concat [
+(* FIXME: add the heap check here *)
 	  (* allocate a heap object for GC roots *)
-	  [move (rootReg, regExp apReg)],
 	  regStms,
 	  allocStms,
-	  (* save the root pointer in the argReg *)
-	  [move (argReg, regExp rootReg)],
+	  (* save the root pointer in the argReg (where the GC expects it) *)
+	  [move' (argReg, rootReg)],
 	  (* perform the GC *)
-	  genGCCall (),
+	  Target.genGCCall (),
+	  (* revive the roots *)
 	  selStms,
+	  (* jump to the post-gc function *)
 	  [T.JMP (T.LABEL gcLbl, [gcLbl])]
 	  ], liveOut=map (T.GPR o regExp o regGP) params}
       end (* genHeapCheck *)
 
   fun genFuncEntry varDefTbl (lab, convention) =
-      let fun doBind (M.StdFunc {clos, arg, ret, exh}) = 
-	      ([clos, arg, ret, exh], stdCallRegs)
-	    | doBind (M.StdCont {clos, arg}) = ([clos, arg], stdContRegs)
-	    | doBind (M.KnownFunc vs | M.Block vs) = (vs, [])
-	  val (lhs, stdRegs) = doBind convention
-	  val bindToRExp = bindToRExp varDefTbl
-	  fun bindToLHS rs = ListPair.app bindToRExp (lhs, rs)		  
+      let datatype conv = Special | StdConv of Regs.gpr list
+	  val (lhs, stdRegs) = 
+	      (case convention
+		of M.StdFunc {clos, arg, ret, exh} => 
+		   ([clos, arg, ret, exh], StdConv stdCallRegs)
+		 | M.StdCont {clos, arg} => ([clos, arg], StdConv stdContRegs)
+		 | ( M.KnownFunc vs | M.Block vs ) => (vs, Special)
+	      (* esac *))
+	  fun bindToLHS rs = ListPair.app (bindToRExp varDefTbl) (lhs, rs)
+	  fun gpReg' (v, r) = MTy.GPReg (Types.szOf (Var.typeOf v), r)
 	  val {stms, regs} = 
 	      (case stdRegs
-		of [] => (* specialized calling convention or block *)
-		   {stms=[], regs=map (gpReg o newReg) lhs}
-		 | _ => (* standard calling convention *)
-		   Copy.fresh (map gpReg stdRegs)
+		of Special => (* specialized calling convention or block *)
+		   {stms=[], regs=ListPair.map gpReg' (lhs, map newReg lhs)}
+		 | StdConv stdRegs => (* standard calling convention *)
+		   Copy.fresh (ListPair.map gpReg' (lhs, stdRegs))
 	      (* esac *))
       in 	
 	  LabelCode.setParamRegs (lab, regs);
-	  bindToLHS (map (regExp o regGP) regs);
+	  bindToLHS (map MTy.gprToExp regs);
 	  stms
       end (* genFuncEntry *)
 
+  (* shorthands for some CFG types *)
   val aTy = M.T_Any
   val retTy = M.T_Code [aTy]
   val kTy = M.T_OpenTuple [retTy]
-  val intTy = M.T_Raw RawTypes.T_Int
+  val longTy = M.T_Raw RawTypes.T_Long
 
   fun genModuleEntry code =
       let val entryLbl = 
@@ -200,51 +201,58 @@ functor HeapTransferFn (
 		of M.FUNC {lab, ...} :: _ => LabelCode.getName lab
 		 | _ => raise Fail ""
 	      (* esac *))
-	  val initLbl = "initLbl"
+	  val initLbl = "initK"
 
-	  val rReg = newReg ()
+	  val {stms=argInitStms, ptr=wArgReg} = Alloc.genWrap (longTy, mltGPR argReg)
+	  val {stms=initClosStms, ptr=initClosReg} = 
+	      Alloc.genAlloc 
+		      [(CFGTy.unitTy, mkExp (intLit 0)),
+		       (aTy, mkExp (T.LABEL entryLbl))]
 
-	  val {stms=argInitStms, rhs} = Alloc.genWrap (intTy, mltGPR argReg)
-
-	  val retKStms = 
+	  val {ptr=rReg, stms=retKStms} = 
 	      Alloc.genAlloc [(retTy, mkExp (T.LABEL (Label.global "returnloc")))]
-	  val initKStms = Alloc.genAlloc 
+	  val {ptr=initReg, stms=initKStms} = Alloc.genAlloc 
 		[(retTy, mkExp (T.LABEL (Label.global initLbl))),
 		 (aTy, mltGPR closReg), 
-		 (intTy, mltGPR argReg), (* FIXME: need a wrapped arg *)
-		 (kTy, mltGPR rReg), 
+		 (aTy, mltGPR argReg), 
+		 (kTy, rReg), 
 		 (kTy, mltGPR exhReg)]
-	  val mty = M.T_Tuple [retTy, aTy, intTy, kTy, kTy]
+	  val mty = M.T_Tuple [retTy, aTy, longTy, kTy, kTy]
 	  val baseReg = newReg ()
-	  val baseReg' = newReg ()
 	  val kReg = newReg ()
 	  val aReg = newReg ()
 	  fun doSelect (r, i) = move (r, 
 	      Alloc.select {lhsTy=ty, mty=mty, i=i, base=regExp aReg} )
 	  val (selects, _) = 
-	      foldl (fn (r, (ss, i)) => (doSelect (r, i) :: ss, i+1)) ([], 1) stdCallRegs
+	      foldl (fn (r, (ss, i)) => (doSelect (r, i) :: ss, i+1)) ([], 2) 
+		    [argReg, retReg]
       in
 	  {modEntryLbl="mantentry",
 	   entryStms=List.concat [
 	   (* wrap the integer argument *)
 	   argInitStms,
-	   [move (argReg, regExp rhs)], 
+	   [move' (argReg, wArgReg)], 
+	   (* create an initial closure *)
+	   initClosStms,
+	   [move' (closReg, initClosReg)],
 	   (* allocate and save the outer continuation *)
-	   [move (rReg, regExp apReg)],
 	   retKStms,
 	   (* allocate and save the initial continuation *)
-	   [move (retReg, regExp apReg)],
 	   initKStms,
+	   [move' (retReg, initReg)],
 	   (* jump to the module initialization function *)
 	   genJump (T.LABEL entryLbl, [], [], [])
 	   ],
 	   initLbl=initLbl,
 	   initStms=List.concat [
+	   (* retrieve the entry point function *)
 	   [move (baseReg, regExp argReg)],
 	   [move (kReg, Alloc.select {lhsTy=ty, mty=mty, i=1, base=regExp baseReg})],
-
+	   (* retrieve the outgoing argument, return cont, and exception *) 
 	   [move (aReg, regExp closReg)],
 	   selects,
+	   (* retrieve the initial closure *)
+	   [move (closReg, Alloc.select {lhsTy=ty, mty=mty, i=0, base=regExp baseReg})],
 	   genJump (regExp kReg, [],  [], [])
 	   ]
 	  }

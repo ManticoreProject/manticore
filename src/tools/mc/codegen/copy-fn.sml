@@ -29,9 +29,9 @@ functor CopyFn (
 	  fun mkCopies (MTy.GPReg (_, v1), MTy.GPR (_, v2), 
 			(regs, exprs, fregs, fexprs)) =
 	      ( (v1,v2) :: regs, exprs, fregs, fexprs)
-	    | mkCopies (MTy.GPReg (_, v1), MTy.EXP (ty, e), 
+	    | mkCopies (MTy.GPReg (_, v1), MTy.EXP (ety, e), 
 			(regs, exprs, fregs, fexprs)) = 
-	      (regs, (ty, v1,e) :: exprs, fregs, fexprs) 
+	      (regs, (ety,v1,e) :: exprs, fregs, fexprs) 
 	    | mkCopies (MTy.FPReg (_, v1), MTy.FPR (fty, v2), 
 			(regs, exprs, fregs, fexprs)) =
 	      ( regs, exprs, (v1,v2) :: fregs, fexprs)
@@ -48,9 +48,10 @@ functor CopyFn (
       end (* copy *)
 
   fun fresh regs =
-      let fun mkTemp _ = MTy.GPReg (ty, Cells.newReg ())
-	  val regs = map MTy.regToTree regs
+      let fun mkTemp (MTy.GPReg (ty, _)) = MTy.GPReg (ty, Cells.newReg ())
+	    | mkTemp (MTy.FPReg (fty, _)) = MTy.FPReg (fty, Cells.newReg ())
 	  val regs' = map mkTemp regs
+	  val regs = map MTy.regToTree regs
       in
 	  {stms=copy {src=regs, dst=regs'}, regs=regs'}
       end

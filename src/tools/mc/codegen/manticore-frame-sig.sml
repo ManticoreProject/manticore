@@ -20,4 +20,6 @@ signature MANTICORE_FRAME = sig
     val recordSpill  : (frame_sz_info * int) -> loc
     val recordFSpill  : (frame_sz_info * int) -> loc
 
+    val frameOffset : loc -> int
+
 end (* MANTICORE_FRAME *)

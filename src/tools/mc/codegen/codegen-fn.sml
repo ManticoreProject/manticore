@@ -20,19 +20,19 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
   structure MTy = BE.MTy
   structure Prim = PrimGenFn (structure BE = BE)
 
-  val wordSzB = Word.toInt Spec.wordSzB
-  val ty = wordSzB * 8
+  val ty = MTy.wordTy
   val memory = ManticoreRegion.memory
   val apReg = BE.Regs.apReg
   val stdCallRegs = BE.Transfer.stdCallRegs
   val genAlloc = BE.Alloc.genAlloc
+  val iTy = BE.Types.szOf (Ty.T_Raw Ty.T_Int)
 
   fun fail s = raise Fail s
   fun newLabel s = Label.label s () 
   fun labelToMLRisc l = newLabel (M.Label.toString l)
   fun newReg _ = Cells.newReg ()
   fun mkExp e = MTy.EXP (ty, e)
-  fun genLit (Literal.Int i) = MTy.EXP (ty, T.LI i)
+  fun genLit (Literal.Int i) = MTy.EXP (iTy, T.LI i)
     | genLit (Literal.Bool true) = MTy.EXP (ty, T.LI Spec.trueRep)
     | genLit (Literal.Bool false) = MTy.EXP (ty, T.LI Spec.falseRep)
     | genLit (Literal.Float f) = fail "todo"
@@ -45,6 +45,11 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
   fun mltGPR r = MTy.GPR (ty, r)
   fun regExp r = T.REG (ty, r)
   fun move (r, e) = T.MV (ty, r, e)
+  fun freshMv e = 
+      let val r = newReg ()
+      in
+	  {reg=r, mv=move (r, e)}
+      end
   fun select (lhsTy, mty, i, e) = MTy.EXP (lhsTy, 
 		BE.Alloc.select {lhsTy=lhsTy, mty=mty, i=i, base=e})
 
@@ -67,7 +72,10 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	  val genPrim = #gen (Prim.genPrim {varDefTbl=varDefTbl})
 	  fun bindToRExp (ty, x, e) = setDefOf (x, MTy.EXP (ty, e))
 	  fun bindToReg (x, r) = 
-	      bindToRExp (BE.Types.szOf (Var.typeOf x), x, T.REG (ty, r))
+	      let val ty = BE.Types.szOf (Var.typeOf x)
+	      in 
+		  bindToRExp (ty, x, T.REG (ty, r))
+	      end
 
 	  fun genStdTransfer {stms, liveOut} = (
 	      emitStms stms;
@@ -87,7 +95,24 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		  defineLabel labT;
 		  emitStms (genGoto jT)
 	      end
-	    | genTransfer (M.Switch (c, js, jOpt)) = fail "todo"
+	    | genTransfer (M.Switch (v, js, jOpt)) = 
+	      let val {reg, mv} = freshMv (defOf v)
+		  val _ = emit mv
+		  fun compare i = T.CMP (ty, T.EQ, T.REG (ty, reg), intLit i)
+		  fun genTest ((i, jmp), exits) =
+		      let val labT = newLabel "S_true"
+		      in			  
+			  emit (T.BCC (compare i, labT));
+			  (labT, genGoto jmp) :: exits
+		      end
+		  val exits = foldl genTest [] js
+		  fun emitJ (labT, jmpStms) = (
+		      defineLabel labT;
+		      emitStms jmpStms )
+	      in		  
+		  Option.app (fn defJmp => emitStms (genGoto defJmp)) jOpt;
+		  app emitJ (rev exits)
+	      end
 	    (* invariant: #2 gc = #2 nogc (their arguments are the same) *)
 	    | genTransfer (M.HeapCheck hc) = 
 	      let val {stms, liveOut} = BE.Transfer.genHeapCheck varDefTbl hc
@@ -109,20 +134,21 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	    | genExp (M.E_Literal (lhs, lit)) = bindExp ([lhs], [genLit lit])
 	    | genExp (M.E_Label (lhs, l)) = 
 	      bindExp ([lhs], [mkExp (T.LABEL (BE.LabelCode.getName l))])
-	    | genExp (M.E_Select (lhs, i, v)) = 
+	    | genExp (M.E_Select (lhs, i, v)) =  
 	      bindExp ([lhs], [select (BE.Types.szOf (Var.typeOf lhs), 
 				       Var.typeOf v, i, defOf v)])
 	    | genExp (M.E_Alloc (lhs, vs)) = 
-	      let val stms = genAlloc (map (fn v => (Var.typeOf v, getDefOf v)) vs)
+	      let val {ptr, stms} = 
+		      genAlloc (map (fn v => (Var.typeOf v, getDefOf v)) vs)
 	      in 
-		  bindExp ([lhs], [mltGPR apReg]);
-		  emitStms stms
+		  emitStms stms;
+		  bindExp ([lhs], [ptr])
 	      end
 	    | genExp (M.E_Wrap (lhs, v)) = 
-	      let val {rhs, stms} = BE.Alloc.genWrap (Var.typeOf v, getDefOf v)
+	      let val {ptr, stms} = BE.Alloc.genWrap (Var.typeOf v, getDefOf v)
 	      in
-		  bindExp ([lhs], [mltGPR rhs]);
-		  emitStms stms
+		  emitStms stms;
+		  bindExp ([lhs], [ptr])
 	      end
 	    | genExp (M.E_Unwrap (lhs, v)) = 
 	      bindExp ([lhs], [select (BE.Types.szOf (Var.typeOf lhs), 
@@ -148,10 +174,10 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		      (* esac *))
 		  val stms = BE.Transfer.genFuncEntry varDefTbl (lab, entry)
 		  fun finish () = 
-		      let val funcAnRef = getAnnotations ()
+		      let val _ = beginCluster 0
+			  val funcAnRef = getAnnotations ()
 			  val frame = BE.SpillLoc.getFuncFrame lab
-		      in
-			  beginCluster 0;		  			 
+		      in			  
 			  funcAnRef := (#create BE.SpillLoc.frameAn) frame :: 
 				       (!funcAnRef);
 			  pseudoOp P.text;		  
@@ -171,10 +197,10 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		  val entryL = 
 		      M.Label.newWithKind (Atom.atom modEntryLbl, 
 					   CFG.LK_None, M.T_Any)
+		  val _ = beginCluster 0
 		  val funcAnRef = getAnnotations ()
 		  val frame = BE.SpillLoc.getFuncFrame entryL
-	      in
-		  beginCluster 0;		  
+	      in		  
 		  pseudoOp (P.global (Label.global modEntryLbl));
 		  funcAnRef := (#create BE.SpillLoc.frameAn) frame :: 
 			       (!funcAnRef);

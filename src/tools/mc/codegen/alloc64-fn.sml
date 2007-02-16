@@ -24,7 +24,7 @@ functor Alloc64Fn (
 
   val wordSzB = Word.toInt Spec.wordSzB
   val wordAlignB = Word.toInt Spec.wordAlignB
-  val ty = wordSzB * 8
+  val ty = MTy.wordTy
 
   val memory = ManticoreRegion.memory
   val apReg = Regs.apReg
@@ -32,7 +32,8 @@ functor Alloc64Fn (
   fun intLit i = T.LI (T.I.fromInt (ty, i))
   fun litFromInt i = T.LI (T.I.fromInt (ty, i))
   fun regExp r = T.REG (ty, r)
-  fun move (r, e) = T.MV (ty, r, e)
+  fun move' (ty, r, e) = T.MV (ty, r, e)
+  fun move (r, e) = move' (ty, r, e)
   fun offAp i = T.ADD (ty, regExp apReg, litFromInt i)
   fun gpReg r = MTy.GPReg (ty, r)
   fun mltGPR r = MTy.GPR (ty, r)
@@ -64,12 +65,14 @@ functor Alloc64Fn (
       end (* select *)
 
   fun isTyPointer ( M.T_Any | M.T_Wrap _ | M.T_Tuple _ | 
-		    M.T_OpenTuple _ | M.T_Code _ | M.T_StdCont _ ) = true
+		    M.T_OpenTuple _ | M.T_Code _ ) = true
     | isTyPointer _ = false
 
   fun setBit (w, i, ty) = if (isTyPointer ty) then W.orb (w, W.<< (0w1, i)) else w
 
-  fun genAlloc [] = []
+  fun genAlloc [] =
+      { ptr=MTy.EXP (ty, litFromInt 0),
+	stms=[] }
     | genAlloc args = 
       let fun initLoc ((ty, mltree), (i, stms, totalSize, tyMask)) =
 	      let val store = MTy.store (offAp totalSize, mltree, memory)
@@ -80,24 +83,20 @@ functor Alloc64Fn (
 	      end (* initLoc *)
 	  val (nWords, stms, totalSize, hdrWord) = foldl initLoc (0, [], 0, 0w0) args
 	  val hdrWord = W.toLargeInt (W.orb (W.<< (hdrWord, 0w8), W.fromInt nWords))
-	  val stms = MTy.store (offAp (~wordSzB), MTy.EXP (ty, T.LI hdrWord), memory) 
-		     :: stms
+	  val stms = 
+	      MTy.store (offAp (~wordSzB), MTy.EXP (ty, T.LI hdrWord), memory) 
+	        :: stms
+	  val ptrReg = Cells.newReg ()
       in	  
 	  if ((Word.fromInt totalSize) > Spec.maxObjectSzB)
 	  then raise Fail "object size too large"
-	  else rev (move (apReg, offAp (totalSize+wordSzB)) :: stms)
+	  else
+	      { ptr=mltGPR ptrReg,
+		stms=move (ptrReg, regExp apReg) ::
+		     rev (move (apReg, offAp (totalSize+wordSzB)) :: stms) }
       end (* genAlloc *)
 
-  fun genWrap (mty, arg) =
-      let val ptrReg = Cells.newReg ()
-	  val stms = genAlloc [(mty, arg)]
-      in
-	  {rhs=ptrReg,
-	   stms=List.concat [
-	   [move (ptrReg, regExp apReg)],
-	   stms
-	   ]}
-      end
+  fun genWrap (mty, arg) = genAlloc [(mty, arg)]
 
   (* The allocation chunk size is 2^n; the high (32-n) bits of allocMask are 1
    * and the low n bits are 0. *)
