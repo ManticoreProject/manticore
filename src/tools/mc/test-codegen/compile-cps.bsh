@@ -13,4 +13,5 @@ $GCC -g -pedantic -Wall -std=c99 -o $1-bin -I$INCLUDE \
      $RTDIR/common/trivial-cheney-gc.c \
      $RTDIR/common/amd64/init-gc.s \
      $RTDIR/mantentry.s \
-     $RTDIR/init-rts.c
+     $RTDIR/init-rts.c \
+     $1
