@@ -48,6 +48,7 @@
     | MINUS		("-")
     | ID of Atom.atom
     | INT of IntInf.int
+    | FLOAT of FloatLit.float
     | STR of string
     ;
 
@@ -127,6 +128,8 @@ SimpleExp
 	| "(" Type ")" SimpleExp	=> (PT.Cast(Type, SimpleExp))
 	| INT (":" RawType)?		=> (PT.Literal(Literal.Int INT, SR))
 	| "-" INT (":" RawType)?	=> (PT.Literal(Literal.Int(~INT), SR))
+	| FLOAT (":" RawType)?		=> (PT.Literal(Literal.Float FLOAT, SR))
+	| "-" FLOAT (":" RawType)?	=> (PT.Literal(Literal.Float(FloatLit.negate FLOAT), SR))
 	;
 
 Args
