@@ -14,17 +14,6 @@ structure RawTypes =
       | T_Float | T_Double
       | T_Vec128
 
-    fun equals (rty1, rty2) =
-        case (rty1, rty2) of
-            (T_Byte, T_Byte) => true
-          | (T_Short, T_Short) => true
-          | (T_Int, T_Int) => true
-          | (T_Long, T_Long) => true
-          | (T_Float, T_Float) => true
-          | (T_Double, T_Double) => true
-          | (T_Vec128, T_Vec128) => true
-          | _ => false
-
     fun sizeOf T_Byte = 1
       | sizeOf T_Short = 2
       | sizeOf T_Int = 4

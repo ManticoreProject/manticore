@@ -61,24 +61,24 @@ structure CheckCFG : sig
 		  | chkEntry (CFG.Block params) =
 		      bindVars(VSet.empty, params)
 		fun chkExp (e, env) = (case e
-		       of CFG.E_Var(lhs, rhs) => (
-			    chkVars (env, rhs);
-                            (ListPair.appEq
-                               (fn (x, y) => if Ty.equals (V.typeOf x, V.typeOf y)
-                                                then ()
-                                             else err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
-                                                      " does not match ",
-                                                      "variable ", V.toString y, ":", Ty.toString (V.typeOf y)]
-                               (lhs, rhs))) handle ListPair.UnequalLengths => 
-                                                  err["E_Var binding of unequal lengths"];
-			    bindVars (env, lhs)
-                            )
+		       of CFG.E_Var(lhs, rhs) => let
+			    fun chk (x, y) = if Ty.equals (V.typeOf x, V.typeOf y) then ()
+                                    else err[
+					"variable ", V.toString x, ":", Ty.toString (V.typeOf x),
+                                        " does not match ",
+                                        "variable ", V.toString y, ":", Ty.toString (V.typeOf y)
+				      ]
+			    in
+			      chkVars (env, rhs);
+                              (ListPair.appEq chk (lhs, rhs))
+				handle ListPair.UnequalLengths => err["E_Var binding of unequal lengths"];
+			      bindVars (env, lhs)
+                            end
 			| CFG.E_Enum(x, w) => (
-                            case V.typeOf x of
-                               CFGTy.T_Enum wt => if Word.<= (w, wt)
-                                                     then ()
-                                                  else error [""]
-                             | _ => error [""];
+                            case V.typeOf x
+                             of CFGTy.T_Enum wt => if Word.<= (w, wt) then () else error [""]
+                             | _ => error [""]
+			    (* end case *);
                             bindVar (env, x))
 			| CFG.E_Cast(x, ty, y) => (
 			    chkVar (env, y);
@@ -143,10 +143,10 @@ structure CheckCFG : sig
                                                      " is not raw"]
                             in
                                case V.typeOf x of
-                                  CFGTy.T_Wrap rtx => if RawTypes.equals (rtx, rty)
-                                                         then ()
-                                                      else err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
-                                                               " is not ", Ty.toString (CFGTy.T_Wrap rty)]
+                                  CFGTy.T_Wrap rtx => if (rtx = rty)
+                                         then ()
+                                         else err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
+                                                  " is not ", Ty.toString (CFGTy.T_Wrap rty)]
                                 | _ => err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
                                            " is not wrap"]
                             end;
@@ -160,7 +160,7 @@ structure CheckCFG : sig
                                                     " is not wrap"]
                             in
                                case V.typeOf x of
-                                  CFGTy.T_Raw rtx => if RawTypes.equals (rtx, rty)
+                                  CFGTy.T_Raw rtx => if (rtx = rty)
                                                         then ()
                                                      else err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
                                                               " is not ", Ty.toString (CFGTy.T_Raw rty)]
