@@ -20,7 +20,8 @@ module Map2 (arg : any, mk : cont(any), exh : cont(any)) =
                let tl : any = #1(l)
                cont k1 (hd' : int) =
                     cont k2 (tl' : any) =
-                         let l' : any = alloc (hd', tl')
+                         let l' : (int, any) = alloc (hd', tl')
+                         let l' : any = (any)l'
                          throw k(l')
                     apply map' (tl, k2, exh)
                apply f (hd, k1, exh)
@@ -30,14 +31,16 @@ module Map2 (arg : any, mk : cont(any), exh : cont(any)) =
   fun tabulate (i : int, k : cont(any), exh : cont(any)) =
       if I32Lte (i, 0:int) then throw k(0)
       else cont k1 (l : any) =
-	        let l' : any = alloc (i, l)
+	        let l' : (int, any) = alloc (i, l)
+                let l' : any = (any)l'
                 throw k(l')
            apply tabulate (I32Sub (i, 1:int), k1, exh)
 
   fun doit (wi : [int], k : cont([int]), exh : cont(any)) =
       let i : int = unwrap (wi)
       cont k1 (l : any) =
-	   let a : any = alloc (add1, l)
+	   let a : (fun(int,cont(int),cont(any)), any) = alloc (add1, l)
+           let a : any = (any)a
 	   apply map (a, k, exh)
       apply tabulate (i, k1, exh)
 

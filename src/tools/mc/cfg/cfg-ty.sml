@@ -17,7 +17,7 @@ structure CFGTy =
       | T_Raw of raw_ty		(* raw machine type *)
       | T_Wrap of raw_ty	(* boxed raw value *)
       | T_Tuple of ty list	(* heap-allocated tuple *)
-      | T_OpenTuple of ty list	(* a tuple of unknown sizem, where we know the prefix. *)
+      | T_OpenTuple of ty list	(* a tuple of unknown size, where we know the prefix. *)
     (* function/continuation types.  The type specifies the calling convention.  These
      * types should be used for labels and code addresses.
      *)
@@ -27,6 +27,27 @@ structure CFGTy =
 
     val unitTy = T_Enum(0w0)
     val boolTy = T_Enum(0w1)	(* false = 0, true = 1 *)
+
+    fun equals (ty1, ty2) =
+        case (ty1, ty2) of
+            (T_Any, T_Any) => true
+          | (T_Enum w1, T_Enum w2) => w1 = w2
+          | (T_Raw rty1, T_Raw rty2) => RawTypes.equals (rty1, rty2)
+          | (T_Wrap rty1, T_Wrap rty2) => RawTypes.equals (rty1, rty2)
+          | (T_Tuple ty1s, T_Tuple ty2s) => ListPair.allEq equals (ty1s, ty2s)
+          | (T_OpenTuple ty1s, T_OpenTuple ty2s) => ListPair.allEq equals (ty1s, ty2s)
+          | (T_StdFun {clos = clos1, arg = arg1, ret = ret1, exh = exh1},
+             T_StdFun {clos = clos2, arg = arg2, ret = ret2, exh = exh2}) =>
+                equals (clos1, clos2) andalso
+                equals (arg1, arg2) andalso
+                equals (ret1, ret2) andalso
+                equals (exh1, exh2)
+          | (T_StdCont {clos = clos1, arg = arg1}, 
+             T_StdCont {clos = clos2, arg = arg2}) =>
+                equals (clos1, clos2) andalso
+                equals (arg1, arg2)
+          | (T_Code ty1s, T_Code ty2s) => ListPair.allEq equals (ty1s, ty2s)
+          | _ => false
 
     fun toString ty = let
 	  fun tys2l ([], l) = l

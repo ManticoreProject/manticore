@@ -12,10 +12,16 @@ structure CheckCFG : sig
 
   end = struct
 
+    structure V = CFG.Var
+    structure L = CFG.Label
     structure VSet = CFG.Var.Set
     structure LSet = CFG.Label.Set
+    structure LMap = CFG.Label.Map
+    structure Ty = CFGTy
 
-    fun error msg = TextIO.output(TextIO.stdErr, concat("Error: " :: msg @ ["\n"]))
+    exception CheckCFG
+    fun error msg = (TextIO.output(TextIO.stdErr, concat("Error: " :: msg @ ["\n"]))
+                     ; raise CheckCFG)
 
     fun bindVar (env, x) = VSet.add(env, x)
 
@@ -26,29 +32,25 @@ structure CheckCFG : sig
 	  val lSet = List.foldl
 		(fn (f as CFG.FUNC{lab, ...}, lset) => LSet.add(lset, lab))
 		  LSet.empty code
+          val lMap = List.foldl
+                (fn (f as CFG.FUNC{lab, entry, ...}, lmap) => LMap.insert(lmap,lab,entry))
+                  LMap.empty code
 	  fun chk (CFG.FUNC{lab, entry, body, exit}) = let
+                fun err msg = error (msg @ [" in ", L.toString lab, ".", Atom.toString name])
 		fun chkVar (env, x) = if VSet.member(env, x)
 		      then ()
-		      else error[
-			  "unbound variable ", CFG.Var.toString x, " in ",
-			  CFG.Label.toString lab, ".", Atom.toString name
-			]
+		      else err[
+			  "unbound variable ", V.toString x]
 		fun chkVars (env, xs) = List.app (fn x => chkVar(env, x)) xs
-		fun chkLabel l = (case (CFG.Label.kindOf l, LSet.member(lSet, l))
-		       of (CFG.LK_None, _) => error [
-			      "label ", CFG.Label.toString l, "has no kind in ",
-			      CFG.Label.toString lab, ".", Atom.toString name
-			    ]
+		fun chkLabel l = (case (L.kindOf l, LSet.member(lSet, l))
+		       of (CFG.LK_None, _) => err[
+			      "label ", L.toString l, "has no kind"]
 			| (CFG.LK_Extern _, false) => ()
-			| (CFG.LK_Extern _, true) => error [
-			      "exported local label ", CFG.Label.toString l,
-			      " in ", CFG.Label.toString lab, ".", Atom.toString name
-			    ]
+			| (CFG.LK_Extern _, true) => err[
+			      "exported local label ", L.toString l]
 			| (CFG.LK_Local _, true) => ()
-			| (CFG.LK_Local _, false) => error[
-			      "reference to unbound label ", CFG.Label.toString l,
-			      " in ", CFG.Label.toString lab, ".", Atom.toString name
-			    ]
+			| (CFG.LK_Local _, false) => err[
+			      "reference to unbound label ", L.toString l]
 		      (* end case *))
 		fun chkEntry (CFG.StdFunc{clos, arg, ret, exh}) =
 		      bindVars(VSet.empty, [clos, arg, ret, exh])
@@ -61,35 +63,110 @@ structure CheckCFG : sig
 		fun chkExp (e, env) = (case e
 		       of CFG.E_Var(lhs, rhs) => (
 			    chkVars (env, rhs);
-			    bindVars (env, lhs))
-			| CFG.E_Enum(x, _) => bindVar (env, x)
+                            (ListPair.appEq
+                               (fn (x, y) => if Ty.equals (V.typeOf x, V.typeOf y)
+                                                then ()
+                                             else err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
+                                                      " does not match ",
+                                                      "variable ", V.toString y, ":", Ty.toString (V.typeOf y)]
+                               (lhs, rhs))) handle ListPair.UnequalLengths => 
+                                                  err["E_Var binding of unequal lengths"];
+			    bindVars (env, lhs)
+                            )
+			| CFG.E_Enum(x, w) => (
+                            case V.typeOf x of
+                               CFGTy.T_Enum wt => if Word.<= (w, wt)
+                                                     then ()
+                                                  else error [""]
+                             | _ => error [""];
+                            bindVar (env, x))
 			| CFG.E_Cast(x, ty, y) => (
-(* FIXME: check that x and y have same kinds and that x has type ty *)
 			    chkVar (env, y);
+(* FIXME: check that x and y have same kinds *)
+(*
+                            case (V.kindOf x, V.kindOf y) of
+                               (CFG.VK_None, CFG.VK_None) => ()
+                             | (CFG.VK_Let _, CFG.VK_Let _) => ()
+                             | (CFG.VK_Param _, CFG.VK_Param _) => ()
+                             | _ => err["variable ", V.toString x, "@", CFG.varKindToString (V.kindOf x),
+                                        " does not match ",
+                                        "variable ", V.toString y, "@", CFG.varKindToString (V.kindOf y)];
+*)
+                            if Ty.equals (V.typeOf x, ty)
+                               then ()
+                            else err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
+                                     " does not match ",
+                                     "type ", Ty.toString ty];
 			    bindVar (env, x))
 			| CFG.E_Label(x, lab) => (
 			    chkLabel lab;
+                            case L.kindOf lab of
+                               CFG.LK_Extern _ => ()
+                             | CFG.LK_Local _ => 
+                                  if Ty.equals (V.typeOf x, L.typeOf lab)
+                                     then ()
+                                  else err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
+                                           " does not match ",
+                                           "label", L.toString lab, ":", Ty.toString (L.typeOf lab)];
 			    bindVar (env, x))
 			| CFG.E_Literal(x, _) => bindVar (env, x)
 			| CFG.E_Select(x, i, y) => let
-			    val ty = CFGTy.selectTy(i, CFG.Var.typeOf y)
+			    val ty = CFGTy.selectTy(i, V.typeOf y)
 				  handle Fail msg => (error [msg]; CFGTy.T_Any)
 			    in
-(* FIXME: check the type of y against ty *)
 			      chkVar (env, y);
-			      bindVar (env, x)
+(* FIXME: Selecting from a known closure into an T_Any environment pointer fails *)
+(*
+                              if Ty.equals (V.typeOf x, ty)
+                                 then ()
+                              else err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
+                                       " does not match ",
+                                       "type ", Ty.toString ty];
+*)
+                              bindVar (env, x)
 			    end
 			| CFG.E_Alloc(x, ys) => (
-(* FIXME: check the type of x *)
 			    chkVars (env, ys);
+(* FIXME: check the type of x *)
+                            (case V.typeOf x of
+                                CFGTy.T_Tuple tys => ()
+                              | CFGTy.T_OpenTuple tys => ()
+                              | _ => err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
+                                         " does not match allocation"]);
 			    bindVar (env, x))
 			| CFG.E_Wrap(x, y) => (
-(* FIXME: check the type of y *)
 			    chkVar (env, y);
+                            let
+                               val rty = case V.typeOf y of
+                                            CFGTy.T_Raw rty => rty
+                                          | _ => err["variable ", V.toString y, ":", Ty.toString (V.typeOf y),
+                                                     " is not raw"]
+                            in
+                               case V.typeOf x of
+                                  CFGTy.T_Wrap rtx => if RawTypes.equals (rtx, rty)
+                                                         then ()
+                                                      else err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
+                                                               " is not ", Ty.toString (CFGTy.T_Wrap rty)]
+                                | _ => err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
+                                           " is not wrap"]
+                            end;
 			    bindVar (env, x))
 			| CFG.E_Unwrap(x, y) => (
-(* FIXME: check the type of y *)
 			    chkVar (env, y);
+                            let
+                               val rty = case V.typeOf y of
+                                            CFGTy.T_Wrap rty => rty
+                                          | _=> err["variable ", V.toString y, ":", Ty.toString (V.typeOf y),
+                                                    " is not wrap"]
+                            in
+                               case V.typeOf x of
+                                  CFGTy.T_Raw rtx => if RawTypes.equals (rtx, rty)
+                                                        then ()
+                                                     else err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
+                                                              " is not ", Ty.toString (CFGTy.T_Raw rty)]
+                                | _ => err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
+                                           " is not raw"]
+                            end;
 			    bindVar (env, x))
 			| CFG.E_Prim(x, p) => (
 			    chkVars (env, PrimUtil.varsOf p);
@@ -115,6 +192,7 @@ structure CheckCFG : sig
 			    chkJump (env, j1);
 			    chkJump (env, j2))
 			| CFG.Switch(x, cases, dflt) => (
+(* FIXME: check type of x *)
 			    chkVar (env, x);
 			    List.app (fn (_, j) => chkJump(env, j)) cases;
 			    Option.app (fn j => chkJump(env, j)) dflt)
@@ -123,8 +201,13 @@ structure CheckCFG : sig
 			    chkJump (env, nogc))
 		      (* end case *))
 		and chkJump (env, (lab, args)) = (
-(* FIXME: check the type of the label *)
 		      chkLabel lab;
+(* FIXME: gcCall in HeapCheck are Extern, not Block *)
+(*
+                      case LMap.find (lMap, lab) of
+                         SOME (CFG.Block ys) => ()
+                        | _ => err["label ", L.toString lab, " is not Block"];
+*)
 		      chkVars (env, args))
 		val env = chkEntry entry
 		val env = List.foldl chkExp env body

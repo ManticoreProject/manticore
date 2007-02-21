@@ -14,7 +14,8 @@ module SumLs (arg : any, mk : cont(any), exh : cont(any)) =
   fun tabulate (i : int, k : cont(any), exh : cont(any)) =
       if I32Lte (i, 0:int) then throw k(0)
       else cont k1 (l : any) =
-	        let l' : any = alloc (i, l)
+	        let l' : (int,any) = alloc (i, l)
+                let l' : any = (any)l'
                 throw k(l')
            apply tabulate (I32Sub (i, 1:int), k1, exh)
 
@@ -28,14 +29,16 @@ module SumLs (arg : any, mk : cont(any), exh : cont(any)) =
            let tl : any = #1(ls)
            let a : (any, any) = alloc (hd, acc)
            cont k1 (x : any) =
-                let a : any = alloc (f, tl, x)
+                let a : (fun((any,any),cont(int),cont(any)),any,any) = alloc (f, tl, x)
+                let a : any = (any)a
                 apply foldl (a, k, exh)
            apply f (a, k1, exh)
 
   fun doit (wi : [int], k : cont([int]), exh : cont(any)) =
       let i : int = unwrap (wi)
       cont k1 (ls : any) =
-	   let a : any = alloc (add, ls, 0)
+	   let a : (fun((int,int),cont(int),cont(any)),any,int) = alloc (add, ls, 0)
+           let a : any = (any)a
            cont k2 (i : int) = 
                 let wi : [int] = wrap (i)
                 throw k(wi)
