@@ -71,13 +71,21 @@ structure CheckCFG : sig
 			    in
 			      chkVars (env, rhs);
                               (ListPair.appEq chk (lhs, rhs))
-				handle ListPair.UnequalLengths => err["E_Var binding of unequal lengths"];
+                                 handle ListPair.UnequalLengths => 
+                                          err["variables (", String.concatWith "," (List.map V.toString lhs),
+                                              ") do not match ", 
+                                              "variables (", String.concatWith "," (List.map V.toString lhs),
+                                              ")"];
 			      bindVars (env, lhs)
                             end
 			| CFG.E_Enum(x, w) => (
-                            case V.typeOf x
-                             of CFGTy.T_Enum wt => if Word.<= (w, wt) then () else error [""]
-                             | _ => error [""]
+                            case V.typeOf x of 
+                               CFGTy.T_Enum wt => if Word.<= (w, wt) 
+                                                     then () 
+                                                  else err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
+                                                           " is not ", Ty.toString (CFGTy.T_Enum wt)]
+                             | _ => error ["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
+                                           " is not enum"]
 			    (* end case *);
                             bindVar (env, x))
 			| CFG.E_Cast(x, ty, y) => (
@@ -187,14 +195,40 @@ structure CheckCFG : sig
 			    chkVars (env, f::args))
 			| CFG.Goto jmp => chkJump (env, jmp)
 			| CFG.If(x, j1, j2) => (
-(* FIXME: check type of x *)
 			    chkVar (env, x);
+                            if Ty.equals (V.typeOf x, CFGTy.boolTy)
+                               then ()
+                            else err["variable ", V.toString x, ":", Ty.toString (V.typeOf x), 
+                                     " is not bool"]
 			    chkJump (env, j1);
 			    chkJump (env, j2))
 			| CFG.Switch(x, cases, dflt) => (
-(* FIXME: check type of x *)
 			    chkVar (env, x);
-			    List.app (fn (_, j) => chkJump(env, j)) cases;
+                            let
+                               val chkC =
+                                  (case V.typeOf x of
+                                      CFGTy.T_Enum wt => 
+                                         (fn i => if Word.<= (Word.fromInt i, wt)
+                                                     then ()
+                                                  else err["case ", Int.toString i,
+                                                           " is out of range for ",
+                                                           "variable ", V.toString x, ":", Ty.toString (V.typeOf x)])
+                                    | CFGTy.T_Raw rty => 
+                                         (case rty of
+                                             RawTypes.T_Int => (fn _ => ())
+                                           | _ => err["variable ", V.toString x, ":", Ty.toString (V.typeOf x), 
+                                                      " is not switch"])
+                                    | CFGTy.T_Tuple _ => 
+                                         (fn i => if i = 0
+                                                     then ()
+                                                  else err["case ", Int.toString i,
+                                                           " is out of range for ",
+                                                           "variable ", V.toString x, ":", Ty.toString (V.typeOf x)])
+                                    | _ => err["variable ", V.toString x, ":", Ty.toString (V.typeOf x), 
+                                               " is not switch"])
+                            in
+                            List.app (fn (i, j) => (chkC i; chkJump(env, j))) cases
+                            end;
 			    Option.app (fn j => chkJump(env, j)) dflt)
 			| CFG.HeapCheck{szb, gc, nogc} => (
 			    chkJump (env, gc);
