@@ -1,0 +1,144 @@
+(* bom.grm
+ *
+ * COPYRIGHT (c) 2007 John Reppy (http://www.cs.uchicago.edu/~jhr)
+ * All rights reserved.
+ *)
+
+%name BOM;
+
+%tokens
+    : KW_alloc		("alloc")
+    | KW_and		("and")
+    | KW_any		("any")
+    | KW_apply		("apply")
+    | KW_bool		("bool")
+    | KW_byte		("byte")
+    | KW_case		("case")
+    | KW_ccall		("ccall")
+    | KW_cont		("cont")
+    | KW_default	("default")
+    | KW_double		("double")
+    | KW_else		("else")
+    | KW_end		("end")
+    | KW_enum		("enum")
+    | KW_float		("float")
+    | KW_fun		("fun")
+    | KW_if		("if")
+    | KW_int		("int")
+    | KW_let		("let")
+    | KW_long		("long")
+    | KW_module		("module")
+    | KW_short		("short")
+    | KW_switch		("switch")
+    | KW_then		("then")
+    | KW_throw		("throw")
+    | KW_unit		("unit")
+    | KW_unwrap		("unwrap")
+    | KW_vec128		("vec128")
+    | KW_wrap		("wrap")
+    | LP		("(")
+    | RP		(")")
+    | LB		("[")
+    | RB		("]")
+    | HASH		("#")
+    | COMMA		(",")
+    | EQ		("=")
+    | COLON		(":")
+    | SEMI		(";")
+    | ID of Atom.atom
+    | INT of IntInf.int
+    | FLOAT of FloatLit.float
+    | STRING of string
+    ;
+
+%defs(
+    structure PT = BOMPT
+
+    fun flatten NONE = []
+      | flatten (SOME(x, xs)) = x::xs
+);
+
+
+Module
+	: KW_module Lambda		=> (PT.MODULE Lambda)
+	;
+
+Lambda
+	: ID Params "=" Exp		=> (ID, Params, Exp)
+	;
+
+Params
+	: "(" (Param ("," Param)*)? ")"	=> (flatten SR)
+	;
+
+Param
+	: ID ":" Type	=> (ID, Type)
+	;
+
+Type
+	: "any"					=> (PT.T_Any)
+	| "bool"				=> (CPSTy.boolTy)
+	| "unit"				=> (CPSTy.unitTy)
+	| "enum" "(" INT ")"			=> (PT.T_Enum(Word.fromLargeInt INT))
+	| "[" RawType "]"			=> (PT.T_Wrap RawType)
+	| RawType				=> (PT.T_Raw RawType)
+	| "(" Type ("," Type)* ")"		=> (PT.T_Tuple(Type :: SR))
+	| "fun" "(" (Type ("," Type)* )? ")"	=> (PT.T_Fun(flatten SR))
+	| "cont" "(" (Type ("," Type)* )? ")"	=> (PT.T_Cont(flatten SR))
+	;
+
+RawType
+	: "byte"	=> (PT.T_Byte)
+	| "short"	=> (PT.T_Short)
+	| "int"		=> (PT.T_Int)
+	| "long"	=> (PT.T_Long)
+	| "float"	=> (PT.T_Float)
+	| "double"	=> (PT.T_Double)
+	| "vec128"	=> (PT.T_Vec128)
+	;
+
+Exp
+	: "let" LHS "=" RHS Exp				=> (PT.Let(LHS, RHS, Exp))
+	| "let" LHS "=" Exp Exp				=> ()
+	| "fun" Lambda ("and" Lambda)* Exp		=> (PT.Fun(Lambda::SR, Exp))
+	| "cont" Lambda Exp				=> (PT.Cont(Lambda, Exp))
+	| "if" SimpleExp "then" Exp "else" Exp		=> (PT.If(SimpleExp, Exp1, Exp2))
+	| "switch" SimpleExp Cases DefaultCase? "end"	=> (PT.Switch(SimpleExp, Cases, DefaultCase))
+	| "apply" ID Args				=> (PT.Apply(ID, Args))
+	| "throw" ID Args				=> (PT.Throw(ID, Args))
+	;
+
+LHS
+	: Param		=> ([Param])
+	| Params	=> (Params)
+	;
+
+RHS
+	: SimpleExp			=> (PT.SimpleExp SimpleExp)
+	| "alloc" Args			=> (PT.Alloc Args)
+	| "wrap" "(" SimpleExp ")"	=> (PT.Wrap SimpleExp)
+	| "ccall" ID Args		=> (PT.CCall(ID, Args))
+	;
+
+SimpleExp
+	: ID				=> (PT.Var ID)
+	| "#" INT "(" SimpleExp ")"	=> (PT.Select(Int.fromLarge INT, SimpleExp))
+	| "unwrap" "(" SimpleExp ")"	=> (PT.Unwrap SimpleExp)
+	| ID Args			=> (PT.Prim(ID, Args))
+	| "(" Type ")" SimpleExp	=> (PT.Cast(Type, SimpleExp))
+	| INT (":" RawType)?		=> (PT.Literal(Literal.Int INT, SR))
+	| FLOAT (":" RawType)?		=> (PT.Literal(Literal.Float FLOAT, SR))
+	| STRING			=> (PT.Literal(Literal.String STRING, NONE))
+	;
+
+Args
+	: "(" (SimpleExp ("," SimpleExp)* )? ")"	=> (flatten SR)
+	;
+
+Cases
+	: ("case" INT ":" Exp => (Int.fromLarge INT, Exp))+
+	;
+
+DefaultCase
+	: "default" ":" Exp		=> (Exp)
+	;
