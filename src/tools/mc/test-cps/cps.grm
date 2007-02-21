@@ -45,11 +45,10 @@
     | EQ		("=")
     | COLON		(":")
     | SEMI		(";")
-    | MINUS		("-")
     | ID of Atom.atom
     | INT of IntInf.int
     | FLOAT of FloatLit.float
-    | STR of string
+    | STRING of string
     ;
 
 %defs(
@@ -127,9 +126,8 @@ SimpleExp
 	| ID Args			=> (PT.Prim(ID, Args))
 	| "(" Type ")" SimpleExp	=> (PT.Cast(Type, SimpleExp))
 	| INT (":" RawType)?		=> (PT.Literal(Literal.Int INT, SR))
-	| "-" INT (":" RawType)?	=> (PT.Literal(Literal.Int(~INT), SR))
 	| FLOAT (":" RawType)?		=> (PT.Literal(Literal.Float FLOAT, SR))
-	| "-" FLOAT (":" RawType)?	=> (PT.Literal(Literal.Float(FloatLit.negate FLOAT), SR))
+	| STRING			=> (PT.Literal(Literal.String STRING, NONE))
 	;
 
 Args

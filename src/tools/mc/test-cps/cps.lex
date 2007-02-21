@@ -18,17 +18,47 @@
   (* some type lex_result is necessitated by ml-ulex *)
     type lex_result = T.token
 
-  (* eof : unit -> lex_result *)
-  (* ml-ulex requires this as well *)
-    fun eof () = T.EOF
-
   (* the depth int ref will be used for keeping track of comment depth *)
     val depth = ref 0
 
-  (* trimq : Substring.substring -> Substring.substring *) 
-  (* purpose: to trim the quotes off of the given substring *)
-  (*          e.g. "\"hammerhead\"" becomes "hammerhead" *)
-    fun trimq ss = Substring.triml 1 (Substring.trimr 1 ss)
+  (* list of string fragments to concatenate *)
+    val buf : string list ref = ref []
+
+  (* add a string to the buffer *)
+    fun addStr s = (buf := s :: !buf)
+
+  (* make a string from buf *)
+    fun mkString () = (T.STRING(String.concat(List.rev(!buf))) before buf := [])
+
+  (* make a FLOAT token from a substring *)
+    fun mkFloat ss = let
+	  val (isNeg, rest) = (case Substring.getc ss
+		 of SOME(#"-", r) => (true, r)
+		  | SOME(#"~", r) => (true, r)
+		  | _ => (false, ss)
+		(* end case *))
+	  val (whole, rest) = Substring.splitl Char.isDigit ss
+	  val rest = Substring.triml 1 rest (* remove "." *)
+	  val (frac, rest) = Substring.splitl Char.isDigit rest
+	  val exp = if Substring.isEmpty rest
+		then 0
+		else let
+		  val rest = Substring.triml 1 rest (* remove "e" or "E" *)
+		  in
+		    #1(valOf(Int.scan StringCvt.DEC Substring.getc rest))
+		  end
+	  in
+	    T.FLOAT(FloatLit.float{
+		isNeg = isNeg,
+		whole = Substring.string whole,
+		frac = Substring.string frac,
+		exp = exp
+	      })
+	  end
+
+  (* eof : unit -> lex_result *)
+  (* ml-ulex requires this as well *)
+    fun eof () = T.EOF
 
   (* keyword lookup table *)
     local
@@ -82,10 +112,11 @@
     end
 );
 
-%states INITIAL COMMENT;
+%states INITIAL COMMENT STRING;
 
 %let letter = [a-zA-Z];
 %let dig = [0-9];
+%let num = {dig}+;
 %let idchar = {letter}|{dig}|"_"|"'";
 %let id = {letter}{idchar}*;
 %let tyvarid = "'"{idchar}*;
@@ -93,23 +124,37 @@
 %let sgood = [\032-\126]&[^\"\\]; (* sgood means "characters good inside strings" *)
 %let ws = " "|[\t\n\v\f\r];
 
-<INITIAL>"("	=> (T.LP);
-<INITIAL>")"	=> (T.RP);
-<INITIAL>"["	=> (T.LB);
-<INITIAL>"]"	=> (T.RB);
-<INITIAL>"#"	=> (T.HASH);
-<INITIAL>","	=> (T.COMMA);
-<INITIAL>"="	=> (T.EQ);
-<INITIAL>":"	=> (T.COLON);
-<INITIAL>";"	=> (T.SEMI);
-<INITIAL>"-"	=> (T.MINUS);
-<INITIAL>{id}	=> (idToken yytext);
-<INITIAL>({dig})+
-		=> (T.INT(valOf (IntInf.fromString yytext)));
-<INITIAL>{ws}	=> (continue ());
-<INITIAL>"(*"	=> (YYBEGIN COMMENT; depth := 1; continue());
-<INITIAL> "\""({esc}|{sgood})*"\"" => 
-  (T.STR(valOf (String.fromString (Substring.string (trimq yysubstr)))));
+<INITIAL>"("		=> (T.LP);
+<INITIAL>")"		=> (T.RP);
+<INITIAL>"["		=> (T.LB);
+<INITIAL>"]"		=> (T.RB);
+<INITIAL>"#"		=> (T.HASH);
+<INITIAL>","		=> (T.COMMA);
+<INITIAL>"="		=> (T.EQ);
+<INITIAL>":"		=> (T.COLON);
+<INITIAL>";"		=> (T.SEMI);
+<INITIAL>{id}		=> (idToken yytext);
+<INITIAL>[~\-]?{num}	=> (T.INT(valOf (IntInf.fromString yytext)));
+<INITIAL>[~\-]?{num}"."{num}([eE][+~-]?{num})?
+			=> (mkFloat yysubstr);
+<INITIAL>{ws}		=> (continue ());
+<INITIAL>"(*"		=> (YYBEGIN COMMENT; depth := 1; continue());
+<INITIAL> "\""		=> (YYBEGIN STRING; continue());
+
+<STRING>{esc}		=> (addStr(valOf(String.fromString yytext)); continue());
+<STRING>{sgood}+	=> (addStr yytext; continue());
+<STRING>"\""		=> (YYBEGIN INITIAL; mkString());
+<STRING>"\\".		=> (lexErr(!yylineno, concat[
+				"bad escape character `", String.toString yytext,
+				"' in string literal"
+			      ]);
+			    continue());
+<STRING>.		=> (lexErr(!yylineno, concat[
+				"bad character `", String.toString yytext,
+				"' in string literal"
+			      ]);
+			    continue());
+
 <INITIAL> . => (
 	lexErr(!yylineno, concat["bad character `", String.toString yytext, "'"]);
 	continue());
