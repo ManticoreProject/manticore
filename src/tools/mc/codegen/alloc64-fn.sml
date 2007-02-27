@@ -54,14 +54,24 @@ functor Alloc64Fn (
       let fun offsetOf' ( 
 	      M.T_Tuple tys
 	    | M.T_Code tys
-	    | M.T_OpenTuple tys ) = offsetOf {tys=tys, i=i}
+	    | M.T_OpenTuple tys ) = 
+	      (offsetOf {tys=tys, i=i}, List.nth (tys, i))
 	    | offsetOf' (M.T_StdCont {clos, arg}) = 
-	      offsetOf {tys=[clos, arg], i=i}
-	    | offsetOf' (M.T_Wrap ty) = offsetOf {tys=[M.T_Raw ty], i=0}
-	    | offsetOf' _ = raise Fail ("offsetOf': non-tuple type "^CFGTy.toString mty)
-	  val offset = offsetOf' mty
+	      (offsetOf {tys=[clos, arg], i=i}, List.nth ([clos, arg], i))
+	    | offsetOf' (M.T_Wrap ty) = 
+	      (offsetOf {tys=[M.T_Raw ty], i=0}, M.T_Raw ty)
+	    | offsetOf' _ = 
+	      raise Fail ("offsetOf': non-tuple type "^CFGTy.toString mty)
+	  val (offset, lhsMTy) = offsetOf' mty
       in 
-	  T.LOAD (lhsTy, T.ADD (ty, base, intLit offset), memory)
+	  (case MTy.cfgTyToMLRisc lhsMTy
+	    of MTy.K_FLOAT => 
+	       MTy.FEXP (lhsTy, T.FLOAD (lhsTy, 
+			T.ADD (ty, base, intLit offset), memory))
+	     | MTy.K_INT =>
+	       MTy.EXP (lhsTy, T.LOAD (lhsTy, 
+			T.ADD (ty, base, intLit offset), memory))
+	  (* esac *))
       end (* select *)
 
   fun isTyPointer ( M.T_Any | M.T_Wrap _ | M.T_Tuple _ | 
@@ -70,9 +80,7 @@ functor Alloc64Fn (
 
   fun setBit (w, i, ty) = if (isTyPointer ty) then W.orb (w, W.<< (0w1, i)) else w
 
-  fun genAlloc [] =
-      { ptr=MTy.EXP (ty, litFromInt 0),
-	stms=[] }
+  fun genAlloc [] = { ptr=MTy.EXP (ty, litFromInt 0), stms=[] }
     | genAlloc args = 
       let fun initLoc ((ty, mltree), (i, stms, totalSize, tyMask)) =
 	      let val store = MTy.store (offAp totalSize, mltree, memory)

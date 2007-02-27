@@ -20,4 +20,8 @@ signature VAR_DEF = sig
     val fdefOf : var_def_tbl -> CFG.var -> MTy.T.fexp
     val cdefOf : var_def_tbl -> CFG.var -> MTy.T.ccexp
 
+    val bind : var_def_tbl -> (MTy.T.ty * CFG.var * MTy.T.rexp) -> unit
+    val cbind : var_def_tbl -> (CFG.var * MTy.T.ccexp) -> unit
+    val fbind : var_def_tbl -> (MTy.T.fty * CFG.var * MTy.T.fexp) -> unit
+
 end (* VAR_DEF *)

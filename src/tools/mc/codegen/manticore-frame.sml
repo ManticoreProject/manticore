@@ -70,6 +70,6 @@ structure ManticoreFrame = struct
   end
 					   
   fun recordSpill (info : frame_sz_info, i) = record (info, Word i)
-  fun recordFSpill (info : frame_sz_info, i) = record (info, Word i)
+  fun recordFSpill (info : frame_sz_info, i) = record (info, Float i)
 			     
 end (* ManticoreFrame *)

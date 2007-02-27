@@ -15,7 +15,7 @@ signature ALLOC = sig
 
     (* select the ith element off of a 'base' address *)
     val select : {lhsTy : MTy.T.ty, mty : CFG.ty, i : int, base : MTy.T.rexp} ->
-		 MTy.T.rexp
+		 MTy.mlrisc_tree
 
     (* allocate a list of types, and initialize them *)
     val genAlloc : (CFG.ty * MTy.mlrisc_tree) list -> 

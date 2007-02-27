@@ -7,6 +7,10 @@
 structure TestCompile =
   struct
 
+  val _ = (
+      SMLofNJ.Internals.TDP.mode := true;
+      Coverage.install ();
+      BackTrace.install() )
 
     structure AMD64TargetSpec = AMD64TargetSpecFn (
     val abiName = "SVID"
@@ -36,11 +40,11 @@ structure TestCompile =
 	    cfg
 	  end
 
-    fun init file = 
+    fun init file = BackTrace.monitor (fn () =>
 	let val cMap = InterpCFG.runtime()
 	    val cfg = load file
 	in
 	    T.compile (cfg, file ^".s")
-	end
+	end)
 
   end

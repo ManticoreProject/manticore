@@ -30,6 +30,7 @@ is
   amd64/amd64-gen-fn.sml  
   amd64/amd64-types.sml
   amd64/amd64-heap-transfer-fn.sml
+  amd64/amd64-copy-fn.sml
 
   ../common/sources.cm
   ../prim/sources.cm
@@ -56,7 +57,6 @@ is
   label-code-sig.sml
   label-code-fn.sml
   copy-sig.sml
-  copy-fn.sml
   alloc-sig.sml
   alloc64-fn.sml
   arch-types-sig.sml
@@ -64,3 +64,4 @@ is
   transfer-sig.sml
   heap-transfer-fn.sml
   runtime-labels.sml
+  literal-tbl-fn.sml

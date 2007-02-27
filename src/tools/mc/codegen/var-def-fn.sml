@@ -14,7 +14,7 @@ functor VarDefFn (
 
   structure Cells = MLTreeComp.I.C
   structure MTy = MTy
-  structure Tbl = CFG.Var.Tbl
+  structure Map = CFG.Var.Map
   structure T = MTy.T
 
   val wordSz = (Word.toInt Spec.wordSzB) * 8
@@ -25,11 +25,27 @@ functor VarDefFn (
   (* the ML-Risc tree that converts a cexp to an rexp  *)
   fun cexpToExp exp = T.COND (wordSz, exp, valTRUE, valFALSE)
 
-  type var_def_tbl = MTy.mlrisc_tree Tbl.hash_table
+  type var_def_tbl = MTy.mlrisc_tree Map.map ref
 
-  fun newTbl () = Tbl.mkTable (256, Fail "varDefTbl")
-  fun getDefOf vdt v = Tbl.lookup vdt v
-  fun setDefOf vdt x = Tbl.insert vdt x
+  fun newTbl () = ref Map.empty
+
+  fun getDefOf vdt v = let val e = valOf (Map.find (!vdt, v)) in
+(
+      print "\ngetDefOf  ";
+      print (CFG.Var.toString v);
+      print (MTy.treeToString e);
+      print "\n";
+e )
+end
+
+  fun setDefOf vdt (v, e) = 
+(
+      print "\nsetDefOf  ";
+      print (CFG.Var.toString v);
+      print (MTy.treeToString e);
+      print "\n";
+
+vdt := Map.insert (!vdt, v, e) )
 
   fun defOf vdt v =
       (case getDefOf vdt v
@@ -42,15 +58,20 @@ functor VarDefFn (
   fun fdefOf vdt v =       
       (case getDefOf vdt v
 	of MTy.FEXP (_, fe) => fe
+	 | MTy.FPR (fty, r) => T.FREG (fty, r)
 	 | _ => raise Fail "fdefOf"
       (* esac *))
 
   fun cdefOf vdt v = 
       (case getDefOf vdt v
 	of MTy.CEXP ce => ce
-(*	 | MTy.GPR r => T.CMP (wordSz, T.Basis.NE, T.REG r, valFALSE)*)
-(*	 | MTy.EXP (_, exp) => T.CMP (wordSz, T.Basis.NE, exp, valFALSE)*)
+	 | MTy.GPR r => T.CMP (wordSz, T.Basis.NE, T.REG r, valFALSE)
+	 | MTy.EXP (_, exp) => T.CMP (wordSz, T.Basis.NE, exp, valFALSE)
 	 | _ => raise Fail ("cdefOf " ^ CFG.Var.toString v)
       (* esac *))
+
+  fun bind vdt (ty, x, e) = setDefOf vdt (x, MTy.EXP (ty, e))
+  fun cbind vdt (x, c) = setDefOf vdt (x, MTy.CEXP c)
+  fun fbind vdt (ty, x, fe) = setDefOf vdt (x, MTy.FEXP (ty, fe))
 
 end (* VarDefFn *)

@@ -23,7 +23,7 @@ structure PrintCFG : sig
 	    | prIndent n = (pr "  "; prIndent(n-1))
 	  fun indent i = prIndent i
 	  fun prList toS [] = pr "()"
-	    | prList toS [x] = pr(toS x)
+	    | prList toS [x] = pr("("^toS x^")")
 	    | prList toS l = let
 		fun prL [] = ()
 		  | prL [x] = pr(toS x)

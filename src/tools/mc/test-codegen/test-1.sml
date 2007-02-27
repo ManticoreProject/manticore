@@ -17,18 +17,22 @@ structure T = struct
   structure Ty = CFGTy
 
   val ty = (Word.toInt BE.Spec.wordSzB) * 8
+  val wordTy = (Word.toInt BE.Spec.wordSzB) * 8
+  val f32ty = 32
 
   fun compile (cfg, outFile) =
       let val outStrm = TextIO.openOut outFile
+	  val outStrmFG = TextIO.openOut (outFile^".fg")
 	  fun doit () = AMD64CG.Gen.codeGen {dst=outStrm, code=cfg}
       in	  
+	  MLRiscControl.debug_stream := outStrmFG;
+	  (MLRiscControl.flag "amd64-cfg-debug") := true;
 	  AsmStream.withStream outStrm doit ();
 	  TextIO.closeOut outStrm
       end (* compile *)
 
     fun var (name, ty) = CFG.Var.newWithKind(Atom.atom name, CFG.VK_None, ty)
-    fun newGlobal (lStr, ty) = raise Fail ""
-(*CFG.Label.newWithKind(Atom.atom lStr,  lStr, ty)*)
+    fun newGlobal (lStr, ty) = CFG.Label.newWithKind(Atom.atom lStr, CFG.LK_Extern lStr, ty)
     fun newLab (lStr, ty) = CFG.Label.newWithKind(Atom.atom lStr, CFG.LK_None, ty)
     fun freshLab ty = CFG.Label.newWithKind(Atom.atom "L", CFG.LK_None, ty)
 
@@ -70,7 +74,9 @@ structure T = struct
     fun mkExit xfer = ([], xfer)
 
     fun lit i x = CFG.mkLiteral(x, Literal.Int i)
+    fun litf i x = CFG.mkLiteral(x, Literal.Float i)
     fun alloc args x = CFG.mkAlloc(x, args)
+    fun wrap arg x = CFG.mkWrap(x, arg)
     fun enum arg x = CFG.mkEnum(x, arg)
     fun label lab x = CFG.mkLabel(x, lab)
     fun select (i, y) x = CFG.mkSelect(x, i, y)
@@ -79,10 +85,12 @@ structure T = struct
     fun lte (a, b) x = CFG.mkPrim(x, P.I64Lte(a, b))
     fun eq (a, b) x = CFG.mkPrim(x, P.I64Eq(a, b))
     fun add (a, b) x = CFG.mkPrim(x, P.I64Add(a, b))
+    fun addf (a, b) x = CFG.mkPrim(x, P.F32Add(a, b))
     fun sub (a, b) x = CFG.mkPrim(x, P.I64Sub(a, b))
 
   (* some types *)
     val iTy = Ty.T_Raw Ty.T_Long
+    val fTy = Ty.T_Raw Ty.T_Float
     val aTy = Ty.T_Any
     val f2aiTy = Ty.T_Code[aTy, iTy]	(* (_ * int) code *)
     val tif2aiaTy = Ty.T_Tuple[iTy, f2aiTy, aTy]
@@ -94,12 +102,18 @@ structure T = struct
   fun mkVar (vStr, k) = var(vStr, M.T_Any)
   fun mkLabel lStr = Label.label lStr ()
 
-  fun t outFile = 
+  val _ = (
+      SMLofNJ.Internals.TDP.mode := true;
+      Coverage.install ();
+      BackTrace.install() )
+
+  fun t outFile = BackTrace.monitor (fn () =>
       let val t = newGlobal ("begin", M.T_Any)
 	  val consHCl = newGlobal ("consHCl", M.T_Any)
 	  val consLl = newGlobal ("consLl", M.T_Any)
 	  val consLEl = newGlobal ("consLEl", M.T_Any)
 	  val consLLl = newGlobal ("consLLl", M.T_Any)
+	  val fL = newGlobal ("floatL", M.T_Any)
 	  fun mkVarParam v = (v, M.T_Any)
 	  val vs = [mkVarParam "cl", mkVarParam "arg", ("k", f2aiTy),
 		    mkVarParam "exh"]
@@ -135,6 +149,15 @@ structure T = struct
 		mkLet (iTy, select (0, ls), fn x =>
 		mkExit (M.StdThrow {k=cl, arg=ls, clos=cl})))
 
+	  val fl = FloatLit.one
+	  val flK = cont (fL, [("cl", f2aiTy), ("i", wIntTy)],
+			  fn [cl, i] =>
+		mkLet (fTy, litf fl, fn fl1 =>
+		mkLet (fTy, litf fl, fn fl2 =>
+		mkLet (fTy, addf (fl1, fl2), fn f3 =>
+	       mkLet (aTy, wrap f3, fn wf =>
+		mkExit (M.StdThrow {k=cl, arg=wf, clos=cl}))))))
+
 	  fun bodyFn [clos, arg, ret, exh] =
 	      mkLet (iTy, lit 7, fn il1 =>
 		mkLet (Ty.unitTy, enum 0w0, fn nilv =>
@@ -142,8 +165,8 @@ structure T = struct
 
       in 	  
 	  compile (M.MODULE {name=Atom.atom "entryPt", code=[
-		func (t, vs, bodyFn), consLE, consLF, lsK, consL, consHC
+		func (t, vs, bodyFn), consLE, consLF, lsK, consL, consHC, flK
 				   ]}, outFile) 
-      end (* t *)
+      end) (* t *)
 
 end

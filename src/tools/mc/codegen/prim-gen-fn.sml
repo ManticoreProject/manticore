@@ -4,7 +4,7 @@ signature PRIM_GEN = sig
 
     type ctx = {varDefTbl : BE.VarDef.var_def_tbl}
 	       
-    val genPrim : ctx -> {gen : CFG.prim -> BE.MTy.mlrisc_tree}
+    val genPrim : ctx -> {gen : (CFG.var * CFG.prim) -> unit}
 			
 end (* PRIM_GEN *)
 
@@ -26,9 +26,6 @@ functor PrimGenFn (
   val i64ty = 64
   val f32ty = 32
   val f64ty = 64
-  fun i64Exp e = MTy.EXP (i64ty, e)
-  fun i32Exp e = MTy.EXP (i32ty, e)
-  fun cExp e = MTy.CEXP e
 
   fun genPrim {varDefTbl} = 
       let val getDefOf = BE.VarDef.getDefOf varDefTbl
@@ -36,27 +33,36 @@ functor PrimGenFn (
 	  val defOf = BE.VarDef.defOf varDefTbl
 	  val fdefOf = BE.VarDef.fdefOf varDefTbl
 	  val cdefOf = BE.VarDef.cdefOf varDefTbl
+	  val bind = BE.VarDef.bind varDefTbl
+	  val cbind = BE.VarDef.cbind varDefTbl
+	  val fbind = BE.VarDef.fbind varDefTbl
 
-	  fun genCmp64 (ty, c, v1, v2) = cExp (T.CMP (ty, c, defOf v1, defOf v2))
-	  fun genArith64 (ty, oper, v1, v2) = i64Exp (oper (ty, defOf v1, defOf v2))
+	  fun gen (v, p) = 
+	      let fun genCmp (ty, c, (v1, v2)) = 
+		      cbind (v, T.CMP (ty, c, defOf v1, defOf v2))
+		  fun genArith (ty, oper, (v1, v2)) = 
+		      bind (ty, v, oper (ty, defOf v1, defOf v2))
+		  fun genFArith (fty, oper, (v1, v2)) =
+		      fbind (fty, v, oper (fty, fdefOf v1, fdefOf v2))
+	      in
+		  (case p
+		    of (* 64-bit integer primitives *)
+		       P.I64Add a => genArith (i64ty, T.ADD, a)
+		     | P.I64Sub a => genArith (i64ty, T.SUB, a)
+		     | P.I64Lte a => genCmp (i64ty, T.LE, a)
+		     | P.I64Eq a => genCmp (i64ty, T.EQ, a)
+		     (* 32-bit integer primitives *)				  
+		     | P.I32Add a => genArith (i32ty, T.ADD, a)
+		     | P.I32Sub a => genArith (i32ty, T.SUB, a)
+		     | P.I32Lte a => genCmp (i32ty, T.LE, a)
+		     | P.I32Eq a => genCmp (i32ty, T.EQ, a)
+					  
+		     | P.F32Add a => genFArith (f32ty, T.FADD, a)
+		     | P.F32Sub a => genFArith (f32ty, T.FSUB, a)
 
-	  fun genCmp32 (ty, c, v1, v2) = cExp (T.CMP (i32ty, c, defOf v1, defOf v2))
-	  fun genArith32 (ty, oper, v1, v2) = 
-	      i32Exp (oper (i32ty, defOf v1, defOf v2))
-
-	  fun gen p = 
-	      (case p
-		of P.I64Add (v1, v2) => genArith64 (i64ty, T.ADD, v1, v2)
-		 | P.I64Sub (v1, v2) => genArith64 (i64ty, T.SUB, v1, v2)
-		 | P.I64Lte (v1, v2) => genCmp64 (i64ty, T.LE, v1, v2)
-		 | P.I64Eq (v1, v2) => genCmp64 (i64ty, T.EQ, v1, v2)
-					       
-		 | P.I32Add (v1, v2) => genArith32 (i32ty, T.ADD, v1, v2)
-		 | P.I32Sub (v1, v2) => genArith32 (i32ty, T.SUB, v1, v2)
-		 | P.I32Lte (v1, v2) => genCmp32 (i32ty, T.LE, v1, v2)
-		 | P.I32Eq (v1, v2) => genCmp32 (i32ty, T.EQ, v1, v2)
-		 | _ => raise Fail ""
-	      (* esac *))
+		     | _ => raise Fail "genPrim"
+		  (* esac *))
+	      end (* gen *)
       in
 	  {gen=gen}
       end (* genPrim *)

@@ -13,9 +13,11 @@ signature TARGET_SPEC =
     val abiName : string
     val osName : string
 
-    val wordSzB : word		(* number of bytes in a pointer-sized word *)
-    val wordAlignB : word	(* byte alignment of pointers *)
-    val boolSzB : word		(* size of boolean values in bytes *)
+    val wordSzB : word		 (* number of bytes in a pointer-sized word *)
+    val wordAlignB : word	 (* byte alignment of pointers *)
+    val boolSzB : word		 (* size of boolean values in bytes *)
+    val extendedAlignB : word    (* alignment constraint for extended-precision
+				  * floats *)
 
     val spillAreaSzB : word     (* size of the spill area on the stack *)
     val maxObjectSzB : word     (* maximum number of bytes allowable in a *)
