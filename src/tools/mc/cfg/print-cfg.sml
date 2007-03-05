@@ -121,6 +121,6 @@ structure PrintCFG : sig
 	    pr "}\n"
 	  end
 
-    fun print m = output {types=true} (TextIO.stdErr, m)
+    fun print m = output {types=false} (TextIO.stdErr, m)
 
   end

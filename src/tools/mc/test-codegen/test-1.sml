@@ -26,7 +26,8 @@ structure T = struct
 	  fun doit () = AMD64CG.Gen.codeGen {dst=outStrm, code=cfg}
       in	  
 	  MLRiscControl.debug_stream := outStrmFG;
-	  (MLRiscControl.flag "amd64-cfg-debug") := true;
+(*	  (MLRiscControl.flag "amd64-cfg-debug") := true;*)
+	  (MLRiscControl.flag "dump-initial-cfg") := true;
 	  AsmStream.withStream outStrm doit ();
 	  TextIO.closeOut outStrm
       end (* compile *)
