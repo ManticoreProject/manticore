@@ -1,5 +1,4 @@
 #include "trivial-cheney-gc.h"
-
 #include "trivial-cheney-gc-info.c"
 
 Mant_t *forward (Mant_t **next, Mant_t *data) {
