@@ -61,7 +61,6 @@ functor HeapTransferFn (
 	of T.GPR e => move (r, e)
 	 | _ => fail "move'"
       (* esac *))
-  fun offAp i = T.ADD (ty, regExp apReg, litFromInt i)
   fun newReg _ = Cells.newReg ()
   fun newFReg _ = Cells.newFreg ()
   fun gpReg r = MTy.GPReg (ty, r)
@@ -103,8 +102,12 @@ functor HeapTransferFn (
 	  val name = LabelCode.getName l
 	  val params = LabelCode.getParamRegs l
 	  val args' = map getDefOf args
+	  val argRegs = map (fn (MTy.GPReg (ty, _)) => MTy.GPReg (ty, newReg())
+			     | (MTy.FPReg (ty, _)) => MTy.FPReg (ty, newFReg()) )
+			params
+	  val stms = Copy.copy {src=args', dst=argRegs}
       in
-	  genJump (T.LABEL name, [name], params, args')
+	  stms @ genJump (T.LABEL name, [name], params, map MTy.regToTree argRegs)
       end (* genGoto *)
 
   fun genStdTransfer varDefTbl (tgtReg, args, argRegs, stdRegs) =
@@ -142,10 +145,18 @@ functor HeapTransferFn (
       end (* genStdThrow *)
       
   fun genHeapCheck varDefTbl {szb, gc, nogc=(gcLbl, argRoots)} =
-      let fun argInfo (a, (argTys, args, mlrRegs)) = 
+      let fun argInfo ([], argTys, args, mlRegs) = (rev argTys, rev args, rev mlRegs)
+	    | argInfo (a :: args, argTys, hcArgs, mlrRegs) =
+	      argInfo (args, Var.typeOf a :: argTys, 
+		      VarDef.getDefOf varDefTbl a :: hcArgs,
+		      mlrReg a :: mlrRegs)
+	  val (argTys, args, mlrRegs) = argInfo (argRoots, [], [], [])
+	      
+(*	  fun argInfo (a, (argTys, args, mlrRegs)) = 
 	      (Var.typeOf a :: argTys, VarDef.getDefOf varDefTbl a :: args,
 	       mlrReg a :: mlrRegs)
-	  val (argTys, args, mlrRegs) = foldr argInfo ([], [], []) argRoots
+	  val (argTys, args, mlrRegs) = foldr argInfo ([], [], []) argRoots *)
+
 
 	  val params = LabelCode.getParamRegs gcLbl
 	  val gcLbl = LabelCode.getName gcLbl
@@ -156,10 +167,15 @@ functor HeapTransferFn (
 	  (* allocate space on the heap for the roots *)
 	  val {ptr=rootReg, stms=allocStms} = 
 	      Alloc.genAlloc (ListPair.zip (argTys, map MTy.regToTree mlrRegs))
-	  fun loadArg (mty, (i, ss)) =
-	      (i+1,  select' (ty, M.T_Tuple argTys, i, regExp argReg) :: ss)
-	  val (_, ss) = foldr loadArg (0, []) argTys
-	  val selStms = Copy.copy {src=rev ss, dst=params}
+
+	  fun loadArgs ([], i, ss) = rev ss
+	    | loadArgs (mty :: mtys, i, ss) =
+	      let val ty = Types.szOf mty
+		  val s = select' (ty, M.T_Tuple argTys, i, regExp argReg)
+	      in 
+		  loadArgs (mtys, i+1, s :: ss)
+	      end
+	  val selStms = Copy.copy {src=loadArgs (argTys, 0, []), dst=params}
       in
 	  {stms=List.concat [
 (* FIXME: add the heap check here *)

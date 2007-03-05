@@ -90,7 +90,10 @@ functor Alloc64Fn (
 		  (i+1, store :: stms, totalSize', tyMask')
 	      end (* initLoc *)
 	  val (nWords, stms, totalSize, hdrWord) = foldl initLoc (0, [], 0, 0w0) args
-	  val hdrWord = W.toLargeInt (W.orb (W.<< (hdrWord, 0w8), W.fromInt nWords))
+(* FIXME: using all mixed objects at first. *)
+	  val hdrWord = W.toLargeInt (
+		W.+ (W.orb (W.<< (hdrWord, 0w7), 
+			    W.<< (W.fromInt nWords, 0w1)), 0w1) )
 	  val stms = 
 	      MTy.store (offAp (~wordSzB), MTy.EXP (ty, T.LI hdrWord), memory) 
 	        :: stms

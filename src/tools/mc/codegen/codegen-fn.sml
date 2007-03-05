@@ -123,11 +123,10 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		  fun compare i = T.CMP (ty, T.EQ, T.REG (ty, reg), intLit i)
 		  fun genTest ((i, jmp), exits) =
 		      let val labT = newLabel "S_case"
-val g =genGoto jmp
+			  val jmpStms = genGoto jmp
 		      in		
-			  printstms g;
 			  emit (T.BCC (compare i, labT));
-			  (labT, g) :: exits
+			  (labT, jmpStms) :: exits
 		      end
 		  (* exit the code block if the value equals the case *)
 		  val exits = foldl genTest [] js
@@ -191,28 +190,18 @@ val g =genGoto jmp
 	    | genExp (M.E_Wrap (lhs, v)) = 
 	      let val {ptr, stms} = BE.Alloc.genWrap (Var.typeOf v, getDefOf v)
 	      in
-(*print "wrap\n";
-(case getDefOf v
-  of MTy.FEXP (ty, T.FREG (_, x)) => (
-     print ((Var.toString v)^"\n");
-     print (CellsBasis.toStringWithSize(x, ty))
-(*     print (BE.MLTreeUtils.fexpToString e);*)
-)
-   | _ => ()
-);
-(*		  printstms stms;*)
-print "-wrap\n"; *)
 		  emitStms stms;
 		  bindExp ([lhs], [ptr])
 	      end
 	    | genExp (M.E_Unwrap (lhs, v)) = 
 	      bindExp ([lhs], [select (BE.Types.szOf (Var.typeOf lhs), 
-				       Var.typeOf v, 0, defOf v)]) 
+				       Var.typeOf v, 0, defOf v)])
 	    | genExp (M.E_Prim (lhs, p)) = genPrim (lhs, p)
 	    | genExp (M.E_CCall (_, f, args)) = fail "todo"
 	    | genExp (M.E_Enum (lhs, c)) = 
 	      bindExp ([lhs], [mkExp(T.LI (T.I.fromWord (ty, c)))])
 	    | genExp (M.E_Cast (lhs, _, v)) = 
+(* FIXME: should a case affect anything here? *)
 	      bindExp ([lhs], [getDefOf v])
 
 	  fun genFunc (M.FUNC {lab, entry, body, exit}) =
@@ -223,34 +212,41 @@ print "-wrap\n"; *)
 			   entryLabel (BE.LabelCode.getName lab);
 			   entryLabel (Label.global s) )
 			 | ( M.LK_None | M.LK_Local _ ) => (
-			   comment (M.Label.toString lab);
+			   comment (M.Label.toString lab);			   
 			   defineLabel (BE.LabelCode.getName lab) )
 			 | _ => fail "emitLabel"
 		      (* esac *))
 		  val stms = BE.Transfer.genFuncEntry varDefTbl (lab, entry)
 		  fun finish () = 
-		      let val _ = beginCluster 0
-			  val funcAnRef = getAnnotations ()
+		      let val funcAnRef = getAnnotations ()
 			  val frame = BE.SpillLoc.getFuncFrame lab
+(* DEBUG *)
+			  val regs = BE.LabelCode.getParamRegs lab
+			  val regStrs = map (MTy.treeToString o MTy.regToTree) regs 
+			  val regStrs = map (fn s => comment ("param:"^s^" ")) regStrs
+(* DEBUG *)
 		      in			  
 			  funcAnRef := (#create BE.SpillLoc.frameAn) frame :: 
 				       (!funcAnRef);
 			  pseudoOp P.text;		  
 			  emitLabel ();
-print ((CFG.Label.toString lab)^" :gen\n");
-printstms stms;
-print (Int.toString (length stms));
 			  emitStms stms;
 			  app genExp body;
-print "--\n";
-			  genTransfer exit;
-			  endCluster []; ()  
+			  genTransfer exit
 		      end (* finish *)
 	      in
 		  finish
 	      end (* genFunc *)
 
-	  fun genModule () =
+	  fun genCluster c =
+	      let val finishers = map genFunc c
+	      in 
+ 		  beginCluster 0;
+		  app (fn f => f()) finishers;
+		  endCluster []
+	      end (* genCluster *)
+
+	  fun genModuleEntry () =
 	      let val {modEntryLbl, entryStms, initLbl, initStms} =
 		      BE.Transfer.genModuleEntry code
 		  val entryL = 
@@ -269,8 +265,7 @@ print "--\n";
 		  entryLabel (Label.global initLbl);
 		  emitStms initStms;
 		  endCluster []; ()
-	      end (* genModule *)
-	  val finishers = map genFunc code
+	      end (* genModuleEntry *)
 
 	  fun genLiterals () = (
 	      beginCluster 0;
@@ -278,10 +273,12 @@ print "--\n";
 	      FloatLit.appi emitFltLit floatTbl;
 	      endCluster []
 	  )
+
+	  val clusters = GenClusters.clusters code
       in
 	  Cells.reset ();	  
-	  app (fn f => f()) finishers;
-	  genModule ();
+	  app genCluster clusters;
+	  genModuleEntry ();
 	  genLiterals () 
       end (* codeGen *) 
 

@@ -31,20 +31,19 @@ functor VarDefFn (
 
   fun getDefOf vdt v = let val e = valOf (Map.find (!vdt, v)) in
 (
-      print "\ngetDefOf  ";
+(*      print "\ngetDefOf  ";
       print (CFG.Var.toString v);
       print (MTy.treeToString e);
-      print "\n";
+      print "\n"; *)
 e )
 end
 
   fun setDefOf vdt (v, e) = 
 (
-      print "\nsetDefOf  ";
+(*      print "\nsetDefOf  ";
       print (CFG.Var.toString v);
       print (MTy.treeToString e);
-      print "\n";
-
+      print "\n"; *)
 vdt := Map.insert (!vdt, v, e) )
 
   fun defOf vdt v =

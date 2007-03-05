@@ -76,7 +76,7 @@ functor AMD64CopyFn (
 	    | isNonEmptyCpy _ = true
 
       in
-	  List.filter isNonEmptyCpy (pc32 :: pc64 :: fpc32 :: fpc64 :: fpc80 :: cexps)
+	  (List.filter isNonEmptyCpy [pc32, pc64, fpc32, fpc64, fpc80]) @ cexps
       end (* copy *)
 
   fun fresh regs =

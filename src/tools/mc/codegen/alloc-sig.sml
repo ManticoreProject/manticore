@@ -21,6 +21,7 @@ signature ALLOC = sig
     val genAlloc : (CFG.ty * MTy.mlrisc_tree) list -> 
 		   {ptr : MTy.mlrisc_tree, stms : MTy.T.stm list}
 
+    (* allocate and initialize a cell for a single value *)
     val genWrap : (CFG.ty * MTy.mlrisc_tree) -> 
 		  {ptr : MTy.mlrisc_tree, stms : MTy.T.stm list}
 

@@ -65,3 +65,4 @@ is
   heap-transfer-fn.sml
   runtime-labels.sml
   literal-tbl-fn.sml
+  gen-clusters.sml
