@@ -21,11 +21,17 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
   structure Prim = PrimGenFn (structure BE = BE)
 
   structure FloatLit = LiteralTblFn (
-		         type lit = (T.ty * FloatLit.float)
-			 val labelPrefix = "flt"
-			 fun hash (_, f) = FloatLit.hash f
-			 fun same ( (sz1 : T.ty, f1), (sz2, f2) ) =
-			     (sz1 = sz2) andalso FloatLit.same(f1, f2) )
+        type lit = (T.ty * FloatLit.float)
+	val labelPrefix = "flt"
+	fun hash (_, f) = FloatLit.hash f
+	fun same ( (sz1 : T.ty, f1), (sz2, f2) ) =
+	    (sz1 = sz2) andalso FloatLit.same(f1, f2) )
+
+  structure StringLit = LiteralTblFn (
+	type lit = string
+	val labelPrefix = "str"
+	val hash = HashString.hashString
+	fun same (s1 : string , s2) = s1 = s2 )
 
   val ty = MTy.wordTy
 
@@ -81,6 +87,10 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	      pseudoOp P.alignData;
 	      defineLabel l;
 	      pseudoOp (P.float(sz, [f])))					
+	  val strTbl = StringLit.new ()
+	  fun emitStrLit (s, l) = (
+	      defineLabel l;
+	      pseudoOp (P.asciz s) )
 	  fun genLit (ty, Literal.Int i) = MTy.EXP (ty, T.LI i)
 	    | genLit (ty, Literal.Bool true) = MTy.EXP (ty, T.LI Spec.trueRep)
 	    | genLit (ty, Literal.Bool false) = MTy.EXP (ty, T.LI Spec.falseRep)
@@ -90,12 +100,11 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		  MTy.FEXP (fty, T.FLOAD (fty, T.LABEL lbl, ()))
 	      end
 	    | genLit (_, Literal.Char c) = fail "todo"
-	    | genLit (_, Literal.String s) = fail "todo"
-
-	  fun printstm stm = 
-	      print ((BE.MLTreeUtils.stmToString stm)^" --\n")
-	  val printstms = app printstm
-
+	    | genLit (_, Literal.String s) = 
+	      let val lbl = StringLit.addLit (strTbl, s)
+	      in
+		  MTy.EXP (ty, T.LABEL lbl)
+	      end
 
 	  fun genStdTransfer {stms, liveOut} = (
 	      emitStms stms;
@@ -197,7 +206,13 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	      bindExp ([lhs], [select (BE.Types.szOf (Var.typeOf lhs), 
 				       Var.typeOf v, 0, defOf v)])
 	    | genExp (M.E_Prim (lhs, p)) = genPrim (lhs, p)
-	    | genExp (M.E_CCall (_, f, args)) = fail "todo"
+	    | genExp (M.E_CCall (lhs, f, args)) = 
+	      let val {stms, result} = 
+		      BE.Transfer.genCCall varDefTbl {lhs=lhs, f=f, args=args}
+	      in
+		  emitStms stms;
+		  bindExp (lhs, result)
+	      end
 	    | genExp (M.E_Enum (lhs, c)) = 
 	      bindExp ([lhs], [mkExp(T.LI (T.I.fromWord (ty, c)))])
 	    | genExp (M.E_Cast (lhs, _, v)) = 
@@ -271,6 +286,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	      beginCluster 0;
 	      pseudoOp P.rodata;
 	      FloatLit.appi emitFltLit floatTbl;
+	      StringLit.appi emitStrLit strTbl;
 	      endCluster []
 	  )
 

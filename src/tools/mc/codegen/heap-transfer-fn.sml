@@ -29,6 +29,8 @@ functor HeapTransferFn (
     structure LabelCode : LABEL_CODE
 	where MTy = MTy
     structure Types : ARCH_TYPES
+    structure CCall : C_CALL
+	where T = MTy.T
 ) : TRANSFER = struct
 
   structure MTy = MTy
@@ -142,6 +144,47 @@ functor HeapTransferFn (
       in 
 	  {stms=move (kReg, defOf k) :: stms, liveOut=liveOut}
       end (* genStdThrow *)
+
+  structure Ty = CFGTy
+  structure CTy = CTypes
+
+  fun rawTyToCTy Ty.T_Byte = CTy.C_signed CTy.I_char
+    | rawTyToCTy Ty.T_Short = CTy.C_signed CTy.I_short
+    | rawTyToCTy Ty.T_Int = CTy.C_signed CTy.I_int
+    | rawTyToCTy Ty.T_Long = CTy.C_signed CTy.I_long_long
+    | rawTyToCTy Ty.T_Float = CTy.C_float
+    | rawTyToCTy Ty.T_Double = CTy.C_double
+    | rawTyToCTy Ty.T_Vec128 = raise Fail "todo"
+
+  fun cfgTyToCTy ty =
+      (case ty
+	of Ty.T_Any => CTy.C_PTR
+	 | Ty.T_Raw rt => rawTyToCTy rt
+	 | Ty.T_Enum _ => CTy.C_signed CTy.I_int
+	 | Ty.T_Wrap _ => CTy.C_PTR
+	 | Ty.T_Tuple _ => CTy.C_PTR
+	 | Ty.T_OpenTuple _ => CTy.C_PTR
+	 | _ => raise Fail "cfgTyToCTy"
+      (* esac *))
+
+  fun genCCall varDefTbl {lhs=lhss as [lhs], f, args} =
+      let val defOf = VarDef.defOf varDefTbl
+	  val getDefOf = VarDef.getDefOf varDefTbl
+	  val getTy = cfgTyToCTy o Var.typeOf
+	  val szOfVar = Types.szOf o Var.typeOf
+	  val name = defOf f
+	  val cArgs = map (MTy.treeToMLRisc o getDefOf) args
+	  val retTy = getTy lhs
+	  val paramTys = map getTy args
+	  val {callseq, result} = CCall.genCall {
+		  name=name, args=cArgs,
+		  proto={conv="", retTy=retTy, paramTys=paramTys} }
+	  fun convResult (T.GPR e, v) = MTy.EXP (szOfVar v, e)
+	    | convResult (T.FPR e, v) = MTy.FEXP (szOfVar v, e)
+	    | convResult _ = raise Fail "convResult"
+      in
+	  {stms=callseq, result=ListPair.map convResult (result, lhss)}
+      end (* genCCall *)
       
   (* Check whether the heap contains szb free bytes. If it does, jump to the
    * nogc function.  Otherwise, perform the GC with the following steps:

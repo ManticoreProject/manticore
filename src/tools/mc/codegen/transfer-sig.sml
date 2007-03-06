@@ -33,6 +33,11 @@ signature TRANSFER = sig
 	{szb : word, gc : CFG.jump, nogc : CFG.jump}
 	-> {stms : MTy.T.stm list, liveOut : MTy.T.mlrisc list}
 
+    (* apply a C function f to args.  the result goes in lhs. *)
+    val genCCall : VarDef.var_def_tbl ->
+	{lhs: CFG.var list, f : CFG.var, args: CFG.var list} -> 
+		   {stms : MTy.T.stm list, result : MTy.mlrisc_tree list}
+
     (* entry to a labelled function *)
     val genFuncEntry :
 	VarDef.var_def_tbl ->

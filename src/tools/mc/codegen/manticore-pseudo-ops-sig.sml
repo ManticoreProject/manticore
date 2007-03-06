@@ -17,6 +17,7 @@ signature MANTICORE_PSEUDO_OPS = sig
     val rodata : pseudo_op
     val alignData : pseudo_op
     val float : (P.T.fty * FloatLit.float list) -> pseudo_op
+    val asciz : string -> pseudo_op
 
     structure PseudoOps : PSEUDO_OPS 
 	  where T = P.T

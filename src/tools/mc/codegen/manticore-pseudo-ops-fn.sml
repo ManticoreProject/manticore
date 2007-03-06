@@ -31,6 +31,7 @@ functor ManticorePseudoOpsFn (
   fun global lab = PTy.EXPORT [lab]
   fun float (ty, flts) =
       PTy.FLOAT {sz = ty, f = map FloatLit.toString flts}
+  val asciz = PTy.ASCIIZ
   val rodata : pseudo_op = PTy.DATA_READ_ONLY
   val alignData : pseudo_op = PTy.ALIGN_SZ maxAlign
 
