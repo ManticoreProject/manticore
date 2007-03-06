@@ -20,10 +20,11 @@ typedef union {
 } Ret_t;
 
 // find me in mantentry.s
-Word_t *mantentryglue (Word_t arg,           // command line argument
-					   Mant_t *limit_ptr,    // initial limit pointer
-					   Mant_t *junk,         // placeholder
-					   Mant_t *ap);          // allocation pointer
+Ret_t *mantentryglue (
+		Word_t arg,           // command line argument
+		Mant_t *limit_ptr,    // initial limit pointer
+		Mant_t *junk,         // placeholder
+		Mant_t *ap);          // allocation pointer
 
 void init_heap () {
   posix_memalign (&from_space, HEAP_ALIGN*2, HEAP_SIZE*2);
@@ -42,6 +43,7 @@ int main (int argc, char *argv[]) {
   }
 
   int arg = atoi (argv[1]);
+
   init_heap ();
 
   // call the manticore entry function using the "mantentryglue" wrapper
