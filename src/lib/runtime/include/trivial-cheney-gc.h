@@ -1,6 +1,8 @@
 #ifndef _CHENEY_GC_H
 #define _CHENEY_GC_H
 
+#include <stdio.h>
+#include <stdlib.h>
 #include "gc-defs.h"
 
 /* The GC has mixed-type objects (containing both pointer and
@@ -53,6 +55,8 @@
 #define WORD_SZ_B     (sizeof(Word_t))
 #define HDR_ALIGN_MASK    7l
 #define MIXED_LEN_BITS 6
+// number of slop words 
+#define HEAP_SLOP      (1<<5)
 
 enum { FORWARD=0, RAW=2, VECTOR=4 /*, MIXED=1,3,7 */};
 typedef int Header_t;
@@ -70,28 +74,32 @@ static inline Header_t hdr_type (Mant_t *m) {
 } 
 
 // extract the length of an object
-static /*inline*/ uint_t hdr_len (Mant_t *m) {
+static inline uint_t hdr_len (Mant_t *m) {
   switch (hdr_type (m)) {
   case FORWARD:
-	exit(1);
 	// chase down the forward pointer
 	return hdr_len ((Mant_t*)*m);  
   case RAW:
   case VECTOR:
-	exit (1);
 	return hdr_word (m) >> 3;
   default:
 	// MIXED
-	return (hdr_word (m) >> 1) & 
-	  ((1<<MIXED_LEN_BITS)-1);
+	return (hdr_word (m) >> 1) & ((1<<MIXED_LEN_BITS)-1);
   }
+}
+
+static inline Bool_t is_mixed (Mant_t *m) {
+  return (hdr_word (m) & 1l) == 1;
 }
 
 // is the ith element of m a pointer?
 static inline Bool_t is_pointer (Mant_t *m, uint_t i) {
   Mant_t *mi = (Mant_t*)m[i];  
-  return (1l & (hdr_word (m) >> (i + MIXED_LEN_BITS+1)))  && 
-	( ((Word_t)mi & ALIGN_MASK) == (Word_t)base );  // test whether a pointer is in the heap
+  return 
+	is_mixed (m) &&
+	(1l & (hdr_word (m) >> (i + MIXED_LEN_BITS+1)))  && 
+	// test whether a pointer is in the heap
+	( ((Word_t)mi & ALIGN_MASK) == (Word_t)base );  
 	/*( (mi < high) && (mi >= low) );*/
 }
 
@@ -113,6 +121,7 @@ typedef struct {
   Mant_t *ra;
 } GC_info_t;
 
+Mant_t *limit_ptr ();
 GC_info_t *init_gc (Mant_t *, Mant_t *, Mant_t *);
 
 #endif

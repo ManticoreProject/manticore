@@ -13,10 +13,14 @@
 
 GC_info_t info;
 
-#define HEAP_SIZE_W (HEAP_SIZE>>3)
+typedef union {
+  int int_v;
+  Word_t word_v;
+  float float_v;
+} Ret_t;
 
 // find me in mantentry.s
-Word_t *mantentryglue (void *, void *, void *, void *);
+Word_t *mantentryglue (Word_t, Mant_t *, Mant_t *, Mant_t *);
 
 void init_heap () {
   posix_memalign (&from_space, HEAP_ALIGN*2, HEAP_SIZE*2);
@@ -38,8 +42,9 @@ int main (int argc, char *argv[]) {
   init_heap ();
 
   // call the manticore entry function using the "mantentryglue" wrapper
-  Word_t *ans = mantentryglue ((Word_t)arg, NULL, NULL, info.ap);
-  printf ("ans: %ld\n", *ans);
+  Ret_t *ans = mantentryglue ((Word_t)arg, limit_ptr (), NULL, info.ap);
+  printf ("ans->int=%d ans->word=%ld ans->float=%f\n", 
+		  ans->int_v, ans->word_v, ans->float_v);
 
   return 0;
 }

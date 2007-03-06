@@ -1,6 +1,10 @@
 #include "trivial-cheney-gc.h"
 #include "trivial-cheney-gc-info.c"
 
+Mant_t *limit_ptr () {
+  return from_space + (HEAP_SIZE_W-HEAP_SLOP);
+}
+
 Mant_t *forward (Mant_t **next, Mant_t *data) {
   Mant_t *heap = *next;
   
@@ -25,12 +29,23 @@ void do_gc (GC_info_t *info) {
 
   while (scan < next) {
     uint_t len = hdr_len (scan);
-    for (uint_t i = 0; i < len; i++) {
-      if (is_pointer (scan, i)) {
-	scan[i] = (Mant_t)forward (&next, (Mant_t*)scan[i]);
-      }
-    }
-    scan += len + 1;
+
+	switch (hdr_type (scan)) {
+	case FORWARD:
+	  printf ("unexpected forward pointer\n");
+	  exit (1);
+	case RAW:
+	case VECTOR:
+	  break;
+	default: 
+	  // MIXED
+	  for (uint_t i = 0; i < len; i++) {
+		if (is_pointer (scan, i)) {
+		  scan[i] = (Mant_t)forward (&next, (Mant_t*)scan[i]);
+		}
+	  }
+	}
+	scan += len + 1;
   }
   // refresh heap information
   info->root = root_ts;
@@ -39,6 +54,8 @@ void do_gc (GC_info_t *info) {
 
 GC_info_t *init_gc (Mant_t *ra, Mant_t *ap, Mant_t *root) {
   GC_info_t info;
+  int reclaimed_space = ap-from_space;
+
   info.root = root; info.ap = ap; info.ra = ra;
 
   dump_heap (info.ap, from_space);
@@ -50,6 +67,11 @@ GC_info_t *init_gc (Mant_t *ra, Mant_t *ap, Mant_t *root) {
   from_space = temp;
 
   dump_heap (info.ap, from_space);
+
+  if (reclaimed_space <= (info.ap-from_space)) {
+	printf ("failed to reclaim space, exiting\n");
+	exit(1);
+  }
 
   return &info;  /* this is safe because the caller assembly stub does not
 		  * use the stack */

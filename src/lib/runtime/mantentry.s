@@ -22,6 +22,7 @@ mantentryglue:
 	pushq %r14
 	pushq %r15
 	/* */
+	movq %rsi, %rbp  /* use %rbp as the limit pointer */
 	jmp mantentry    /* entry function for CFG programs */
 returnloc:
 	/* restore the callee-save regs*/
