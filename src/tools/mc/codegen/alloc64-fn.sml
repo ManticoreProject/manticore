@@ -80,50 +80,67 @@ functor Alloc64Fn (
 
   fun setBit (w, i, ty) = if (isTyPointer ty) then W.orb (w, W.<< (0w1, i)) else w
 
-  fun genAlloc [] = { ptr=MTy.EXP (ty, litFromInt 0), stms=[] }
-    | genAlloc args = 
-      let fun initLoc ((ty, mltree), (i, stms, totalSize, tyMask)) =
-	      let val store = MTy.store (offAp totalSize, mltree, memory)
-		  val tyMask' = setBit (tyMask, Word.fromInt i, ty)
-		  val totalSize' = alignedTySzB ty + totalSize
-	      in
-		  (i+1, store :: stms, totalSize', tyMask')
-	      end (* initLoc *)
-	  val (nWords, stms, totalSize, hdrWord) = foldl initLoc (0, [], 0, 0w0) args
-(* FIXME: using all mixed objects at first. *)
+  fun initObj ((ty, mltree), {i, stms, totalSize, ptrMask}) =
+      let val store = MTy.store (offAp totalSize, mltree, memory)
+	  val ptrMask' = setBit (ptrMask, Word.fromInt i, ty)
+	  val totalSize' = alignedTySzB ty + totalSize
+      in
+	  {i=i+1, stms=store :: stms, totalSize=totalSize', ptrMask=ptrMask'}
+      end (* initObj *)
+
+  fun allocMixedObj args =
+      let val {i=nWords, stms, totalSize, ptrMask} = 
+	      foldl initObj {i=0, stms=[], totalSize=0, ptrMask=0w0} args
+	  (* create the mixed-object header word *)
 	  val hdrWord = W.toLargeInt (
-		W.+ (W.orb (W.<< (hdrWord, 0w7), 
+		W.+ (W.orb (W.<< (ptrMask, 0w7), 
 			    W.<< (W.fromInt nWords, 0w1)), 0w1) )
-	  val stms = 
-	      MTy.store (offAp (~wordSzB), MTy.EXP (ty, T.LI hdrWord), memory) 
-	        :: stms
-	  val ptrReg = Cells.newReg ()
       in	  
 	  if ((Word.fromInt totalSize) > Spec.maxObjectSzB)
 	  then raise Fail "object size too large"
-	  else
-	      { ptr=mltGPR ptrReg,
-		stms=move (ptrReg, regExp apReg) ::
-		     rev (move (apReg, offAp (totalSize+wordSzB)) :: stms) }
+	  else (totalSize, hdrWord, stms)
+      end (* allocMixedObj *)
+
+  fun allocRawObj args =
+      let val {i=nWords, stms, totalSize, ...} =
+	      foldl initObj {i=0, stms=[], totalSize=0, ptrMask=0w0} args
+	  val hdrWord = W.toLargeInt (W.+ (W.<< (W.fromInt nWords, 0w3), 0w2))
+      in
+	  (totalSize, hdrWord, stms)
+      end (* allocRawObj *)
+
+  fun genAlloc [] = { ptr=MTy.EXP (ty, litFromInt 0), stms=[] }
+    | genAlloc args = 
+      let val (totalSize, hdrWord, stms) = 
+	      if List.all (not o isTyPointer o #1) args
+	      then allocRawObj args
+	      else allocMixedObj args
+	  (* store the header word *)
+	  val stms = 
+	      MTy.store (offAp (~wordSzB), MTy.EXP (ty, T.LI hdrWord), memory) 
+	        :: stms
+	  (* ptrReg points to the first data word of the object *)
+	  val ptrReg = Cells.newReg ()
+	  (* copy the original allocation pointer into ptrReg *)
+	  val ptrMv = move (ptrReg, regExp apReg)
+	  (* bump up the allocation pointer *)
+	  val bumpAp = move (apReg, offAp (totalSize+wordSzB))
+      in
+	  { ptr=mltGPR ptrReg, stms=ptrMv :: rev (bumpAp :: stms) }
       end (* genAlloc *)
 
   fun genWrap (mty, arg) = genAlloc [(mty, arg)]
 
-  (* The allocation chunk size is 2^n; the high (32-n) bits of allocMask are 1
-   * and the low n bits are 0. *)
-  val apMask = T.LI (Word.toLargeInt (Word.notb (Spec.allocChunkSzB - 0w1)))
-
-  (* generate code to check the limit pointer.  In pseudo-code, the test is
-   *
-   *      if (-sz > (ap | allocMask)) goto NoGC;
-   *      ap = callgc (ap);
-   *	NoGC:;
-   *
-   * The oring of the allocation-pointer (ap) with allocMask has the effect
-   * computing the negation of the amount of free space in the allocation
-   * chunk. *)
+  (* This expression evaluates to true when the heap has enough space for szB
+   * bytes.  An allocation check thus looks like:
+   * 
+   * if (limReg - apReg < szB)
+   *    then continue;
+   *    else doGC ();
+   *)
   fun genAllocCheck szB =
-      T.CMP (ty, T.Basis.GT, T.LI (Word.toLargeInt szB), 
-	     T.ORB (ty, T.REG (ty, Regs.apReg), apMask))
+      T.CMP (ty, T.Basis.LE, 
+	     T.SUB (ty, T.REG (ty, Regs.limReg), T.REG (ty, Regs.apReg)),
+	     T.LI (Word.toLargeInt szB))
 
 end (* Alloc64Fn *)

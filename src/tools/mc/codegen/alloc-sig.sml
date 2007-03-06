@@ -25,7 +25,8 @@ signature ALLOC = sig
     val genWrap : (CFG.ty * MTy.mlrisc_tree) -> 
 		  {ptr : MTy.mlrisc_tree, stms : MTy.T.stm list}
 
-    (* heap limit check *)
+    (* heap limit check.  evaluates to true when the heap contains sufficient
+     * space for the given size. *)
     val genAllocCheck : word -> MTy.T.ccexp
 
 end (* ALLOC *)

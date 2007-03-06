@@ -20,6 +20,7 @@ is
   /home/mrainey/school/manticore/MLRISC/cm/Graphs.cm
   /home/mrainey/school/manticore/MLRISC/cm/MLTREE.cm
   /home/mrainey/school/manticore/MLRISC/cm/RA.cm
+  /home/mrainey/school/manticore/MLRISC/cm/SA.cm
   /home/mrainey/school/manticore/MLRISC/cm/AMD64-Peephole.cm
 
   amd64/amd64-const.sml

@@ -58,7 +58,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	  val Stream.STREAM { 
 	      beginCluster, getAnnotations, comment, emit, defineLabel, 
 	      entryLabel, exitBlock, pseudoOp, endCluster, ...} = mlStrm
-	  val emit = fn stm => emit (note(stm, BE.MLTreeUtils.stmToString stm))
+	  val emit = fn stm => emit (note (stm, BE.MLTreeUtils.stmToString stm))
 	  val endCluster = BE.compileCFG o endCluster
 	  val emitStms = app emit
 
@@ -201,7 +201,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	    | genExp (M.E_Enum (lhs, c)) = 
 	      bindExp ([lhs], [mkExp(T.LI (T.I.fromWord (ty, c)))])
 	    | genExp (M.E_Cast (lhs, _, v)) = 
-(* FIXME: should a case affect anything here? *)
+(* FIXME: should a cast affect anything here? *)
 	      bindExp ([lhs], [getDefOf v])
 
 	  fun genFunc (M.FUNC {lab, entry, body, exit}) =

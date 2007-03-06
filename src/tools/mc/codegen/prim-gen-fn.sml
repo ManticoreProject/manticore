@@ -54,6 +54,8 @@ functor PrimGenFn (
 		     (* 32-bit integer primitives *)				  
 		     | P.I32Add a => genArith (i32ty, T.ADD, a)
 		     | P.I32Sub a => genArith (i32ty, T.SUB, a)
+		     | P.I32Mul a => genArith (i32ty, T.MULS, a)
+		     | P.I32Gte a => genCmp (i32ty, T.GE, a)
 		     | P.I32Lte a => genCmp (i32ty, T.LE, a)
 		     | P.I32Eq a => genCmp (i32ty, T.EQ, a)
 					  

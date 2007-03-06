@@ -77,7 +77,6 @@ functor HeapTransferFn (
 	  (* esac *))
       end (* mlrReg *)
 
-
   fun bind varDefTbl (x, T.GPR e) = 
       VarDef.bind varDefTbl (Types.szOf (Var.typeOf x), x, e)
     | bind varDefTbl (x, T.FPR e) = 
@@ -141,9 +140,16 @@ functor HeapTransferFn (
 	  val {stms, liveOut} = 
 	      genStdTransfer varDefTbl (kReg, [clos, arg], argRegs, stdContRegs)
       in 
-	  {stms= move (kReg, defOf k) :: stms, liveOut=liveOut}
+	  {stms=move (kReg, defOf k) :: stms, liveOut=liveOut}
       end (* genStdThrow *)
       
+  (* Check whether the heap contains szb free bytes. If it does, jump to the
+   * nogc function.  Otherwise, perform the GC with the following steps:
+   * 1. Allocate the root set (argRoots) in the heap's slop space.
+   * 2. Call the assembly stub that initializes the GC.
+   * 3. The GC returns, putting a pointer to the root set in argReg.
+   * 4. Apply the nogc function to the restored root set.
+   *)
   fun genHeapCheck varDefTbl {szb, gc, nogc=(gcLbl, argRoots)} =
       let fun argInfo ([], argTys, args, mlRegs) = (rev argTys, rev args, rev mlRegs)
 	    | argInfo (a :: args, argTys, hcArgs, mlrRegs) =
@@ -152,12 +158,6 @@ functor HeapTransferFn (
 		      mlrReg a :: mlrRegs)
 	  val (argTys, args, mlrRegs) = argInfo (argRoots, [], [], [])
 	      
-(*	  fun argInfo (a, (argTys, args, mlrRegs)) = 
-	      (Var.typeOf a :: argTys, VarDef.getDefOf varDefTbl a :: args,
-	       mlrReg a :: mlrRegs)
-	  val (argTys, args, mlrRegs) = foldr argInfo ([], [], []) argRoots *)
-
-
 	  val params = LabelCode.getParamRegs gcLbl
 	  val gcLbl = LabelCode.getName gcLbl
 
@@ -176,21 +176,30 @@ functor HeapTransferFn (
 		  loadArgs (mtys, i+1, s :: ss)
 	      end
 	  val selStms = Copy.copy {src=loadArgs (argTys, 0, []), dst=params}
-      in
-	  {stms=List.concat [
-(* FIXME: add the heap check here *)
-	  (* allocate a heap object for GC roots *)
-	  regStms,
-	  allocStms,
-	  (* save the root pointer in the argReg (where the GC expects it) *)
-	  [move' (argReg, rootReg)],
+
 	  (* perform the GC *)
-	  Target.genGCCall (),
-	  (* revive the roots *)
-	  selStms,
-	  (* jump to the post-gc function *)
-	  [T.JMP (T.LABEL gcLbl, [gcLbl])]
-	  ], liveOut=map MTy.gprToExp params}
+	  val doGCLbl = Label.label "doGC" ()
+	  val doGCStms = List.concat [
+ 	      [T.DEFINE doGCLbl],
+	      (* allocate a heap object for GC roots *)
+	      regStms,
+	      allocStms,
+	      (* save the root pointer in the argReg (where the GC expects it) *)
+	      [move' (argReg, rootReg)],
+	      (* perform the GC *)
+	      Target.genGCCall (),
+	      (* restore the roots *)
+	      selStms,
+	      (* jump to the post-gc function *)
+	      [T.JMP (T.LABEL gcLbl, [gcLbl])] ]
+	  (* if the allocation check succeeds (there is sufficient heap space),
+	   * jump to gcLbl.  otherwise, do the GC. *)
+	  val stms = List.concat [
+	      [T.BCC (Alloc.genAllocCheck szb, doGCLbl)],
+	      genJump (T.LABEL gcLbl, [gcLbl], params, args),
+	      doGCStms ]
+      in
+	  {stms=stms, liveOut=map MTy.gprToExp params}
       end (* genHeapCheck *)
 
   fun genFuncEntry varDefTbl (lab, convention) =

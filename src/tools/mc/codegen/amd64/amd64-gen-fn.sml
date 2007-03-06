@@ -215,6 +215,7 @@ functor AMD64GenFn (
 			 structure Spec = Spec 
 			 structure LabelCode = LabelCode
 			 structure Types = Types)
+  structure CCall = AMD64GenCCallFn (structure T=AMD64MLTree)
 
     fun compileCFG (cfg as Graph.GRAPH graph) = 
 	let val CFGGen.CFG.INFO{annotations, ...} = #graph_info graph

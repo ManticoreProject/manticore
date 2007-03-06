@@ -157,7 +157,7 @@ structure Expand =
 		end
 	    | PT.Fun(fbs, e) => let
 		fun f (fb, (env', cvtBodies)) = let
-			val (env'', cvt) = cvtLambda (env, fb, Ty.T_Fun)
+			val (env'', cvt) = cvtLambda (env', fb, Ty.T_Fun)
 			in
 			  (env'', cvt::cvtBodies)
 			end
