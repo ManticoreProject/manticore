@@ -16,6 +16,10 @@ struct struct_vproc {
     Word_t	atomic;		/*!< true, when in a vproc-atomic region */
     Word_t	sigPending;	/*!< true, when there is a pending signal */
 			      /* VProc registers */
+    Value_t	stdArg;		/*!< holds value of standard argument reg. */
+    Value_t	stdEnvPtr;	/*!< holds value of standard environment-pointer reg. */
+    Value_t	stdCont;	/*!< holds value of standard return-cont. reg. */
+    Value_t	stdExnCont;	/*!< holds value of standard exception-cont. reg. */
     Addr_t	allocPtr;	/*!< allocation pointer */
     Addr_t	limitPtr;	/*!< heap-limit pointer */
     OSThread_t	hostID;	      /*!< PThread ID of host */

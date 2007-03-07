@@ -3,7 +3,7 @@
 #
 
 CC =		gcc
-CFLAGS =	-std=gnu99 -g -O2
+CFLAGS =	-std=gnu99 -g -O2 -m64
 LDFLAGS =	
 CPPFLAGS =	-I../include
 AR =		ar
@@ -14,7 +14,7 @@ LIBS		= -lpthreads
 
 TARGET		= libmanticore.a
 
-VPATH		= ../include:../gc:../vproc:../misc:../config
+VPATH		= ../include:../gc:../vproc:../misc:../misc/machine:../config
 
 GC_SRCS 	= minor-gc.c \
 		  major-gc.c \
@@ -27,9 +27,18 @@ VPROC_SRCS	= vproc.c
 C_SRCS		= $(GC_SRCS) $(VPROC_SRCS)
 C_OBJS		= $(patsubst %.c,%.o,$(C_SRCS))
 
-$(TARGET):	$(C_OBJS)
-	$(AR) $(ARFLAGS) $(TARGET) $(C_OBJS)
+ASM_SRCS	= asm-glue.S
+ASM_OBJS	= $(patsubst %.S,%.o,$(ASM_SRCS))
+
+OBJS		= $(C_OBJS) $(ASM_OBJS)
+
+$(TARGET):	$(OBJS)
+	$(AR) $(ARFLAGS) $(TARGET) $(OBJS)
 	$(RANLIB) $(TARGET)
+
+
+$(ASM_OBJS): %.o : %.S asm-offsets.h
+	$(CC) -c -m64 -I. -DNOT_C_SOURCE $(CPPFLAGS) -o $@ $<
 
 asm-offsets.h:		gen-asm-offsets
 	gen-asm-offsets > asm-offsets.h
@@ -40,5 +49,5 @@ gen-asm-offsets:	gen-asm-offsets.c manticore-rt.h vproc.h request-codes.h
 .PHONY:		clean
 
 clean:
-	rm -rf $(C_OBJS) $(TARGET) gen-asm-offsets
+	rm -rf $(OBJS) $(TARGET) gen-asm-offsets asm-offsets.h
 

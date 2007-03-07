@@ -11,6 +11,7 @@
 
 #include "manticore-rt.h"
 #include <pthread.h>
+#include <signal.h>
 
 /********** Atomic operations **********
  *

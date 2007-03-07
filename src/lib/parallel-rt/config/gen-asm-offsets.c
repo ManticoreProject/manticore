@@ -13,7 +13,7 @@
 #include "request-codes.h"
 
 #define PR_OFFSET(obj, symb, lab)	\
-	printf("#define " #symb " %d\n", (int)&(obj.lab) - (int)&obj)
+	printf("#define " #symb " %d\n", (int)((Addr_t)&(obj.lab) - (Addr_t)&obj))
 #define PR_DEFINE(symb)			\
 	printf("#define " #symb " %d\n", symb)
 
@@ -30,14 +30,18 @@ int main ()
     PR_OFFSET(vp, SIG_PENDING, sigPending);
     PR_OFFSET(vp, ALLOC_PTR, allocPtr);
     PR_OFFSET(vp, LIMIT_PTR, limitPtr);
+    PR_OFFSET(vp, STD_ARG, stdArg);
+    PR_OFFSET(vp, STD_EP, stdEnvPtr);
+    PR_OFFSET(vp, STD_CONT, stdCont);
+    PR_OFFSET(vp, STD_EXH, stdExnCont);
 
     printf("\n/* mask to get address of VProc from alloc pointer */\n");
-    printf("#define VP_MASK %#08x\n", ~(VP_HEAP_SZB-1));
+    printf("#define VP_MASK %#08lx\n", ~((Addr_t)VP_HEAP_SZB-1));
 
     printf("\n/* request codes for when Manticore returns to C */\n");
-    PR_DEFINE(REQ_RequestGC);
+    PR_DEFINE(REQ_GC);
     PR_DEFINE(REQ_Return);
-    PR_DEFINE(REQ_RaiseExn);
+    PR_DEFINE(REQ_UncaughtExn);
 
     printf ("\n#endif\n");
 

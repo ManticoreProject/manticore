@@ -13,7 +13,9 @@
  *	%r11	-- limit pointer
  */
 
-#define NOT_C_SOURCE
+#ifndef NOT_C_SOURCE
+#  define NOT_C_SOURCE
+#endif
 #include "asm-offsets.h"
 
 /* Stack frame layout */
@@ -21,7 +23,7 @@
 #define SAVE_AREA	(5*8)	/* for callee saves %rbx, %r12-%r15 */
 #define PAD_SZB		8	/* pad so that frame size (plus saved PC and FP */
 				/* is a multiple of 16 bytes */
-#define FRAME_SZB	(SPILL_SZB+SAVE_AREA+PAD)
+#define FRAME_SZB	(SPILL_SZB+SAVE_AREA+PAD_SZB)
 #define RBX_OFF		8	/* offset off %rbp for saving %rbx */
 #define R12_OFF		16	/* offset off %rbp for saving %r12 */
 #define R13_OFF		24	/* offset off %rbp for saving %r13 */
@@ -40,7 +42,7 @@
  *	    Value_t ek)		-- function exception continuation; in %r9
  */
 	.text
-	.palign	3
+	.p2align 3
 	.global	ASM_Apply
 ASM_Apply:
 	pushq	%rbp			/* save frame pointer */
@@ -62,24 +64,24 @@ ASM_Apply:
       /* load Manticore state */
 	movq	ALLOC_PTR(%r10),%rcx	/* load allocation pointer */
 	movq	LIMIT_PTR(%r10),%r11	/* limit pointer */
-	movq	$TRUE,IN_MANTICORE(%r10) /* we are running manticore code now! */
+	movq	$1,IN_MANTICORE(%r10) /* we are running manticore code now! */
 	jmp	*%r11
 
 /* code address for uncaught exception continuation */
-	.palign	3
+	.p2align 3
 	.global	ASM_UncaughtExn
 ASM_UncaughtExn:
 	movq	$REQ_UncaughtExn, %r12
-	ba	switch_to_c
+	jmp	switch_to_c
 
 /* code address for return continuation */
-	.palign	3
+	.p2align 3
 	.global	ASM_Return
 ASM_Return:
 	movq	$REQ_Return, %r12
-	ba	switch_to_c
+	jmp	switch_to_c
 
-	.palign	3
+	.p2align 3
 	.global	ASM_InvokeGC
 ASM_InvokeGC:
 	movq	$REQ_GC, %r12
@@ -89,13 +91,13 @@ switch_to_c:
 	movq	%rcx,%r10
 	andq	$VP_MASK,%r10
       /* mark that we are not running Manticore code anymore */
-	xorl	%rdx,%rdx
+	xorl	%edx,%edx
 	movq	%rdx,IN_MANTICORE(%r10)
       /* save Manticore state */
 	movq	%rax,STD_ARG(%r10)
 	movq	%rdi,STD_EP(%r10)
 	movq	%rsi,STD_CONT(%r10)
-	movq	%rbx,STR_EXH(%r10)
+	movq	%rbx,STD_EXH(%r10)
 	movq	%rcx,ALLOC_PTR(%r10)
       /* restore C callee-save registers */
 	movq	RBX_OFF(%rbp),%rbx
