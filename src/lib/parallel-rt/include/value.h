@@ -30,6 +30,6 @@ ContClosure_t *ValueToCont (Value_t v)		{ return (ContClosure_t *)ValueToPtr(v);
 #define M_NIL	((Value_t)1)
 
 /* heap allocate a tuple of uniformly represented values in the local heap */
-Value_t AllocUniform (VProc_t *vp, int nItems, Value_t arg1, ...);
+Value_t AllocUniform (VProc_t *vp, int nItems, ...);
 
 #endif /* !_VALUE_H_ */

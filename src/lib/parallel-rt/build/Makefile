@@ -20,7 +20,7 @@ GC_SRCS 	= minor-gc.c \
 		  major-gc.c \
 		  global-gc.c \
 		  unix-memory.c \
-		  options.c
+		  alloc.c
 
 VPROC_SRCS	= vproc.c
 
