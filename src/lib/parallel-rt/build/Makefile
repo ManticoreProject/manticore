@@ -24,7 +24,10 @@ GC_SRCS 	= minor-gc.c \
 
 VPROC_SRCS	= vproc.c
 
-C_SRCS		= $(GC_SRCS) $(VPROC_SRCS)
+MISC_SRCS	= apply.c \
+		  options.c
+
+C_SRCS		= $(GC_SRCS) $(VPROC_SRCS) $(MISC_SRCS)
 C_OBJS		= $(patsubst %.c,%.o,$(C_SRCS))
 
 ASM_SRCS	= asm-glue.S

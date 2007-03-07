@@ -22,7 +22,6 @@ struct struct_vproc {
     Value_t	stdExnCont;	/*!< holds value of standard exception-cont. reg. */
     Addr_t	allocPtr;	/*!< allocation pointer */
     Addr_t	limitPtr;	/*!< heap-limit pointer */
-    OSThread_t	hostID;	      /*!< PThread ID of host */
 			      /* GC parameters */
     Addr_t	allocBase;	/*!< base address of nursery */
     Addr_t	oldTop;		/*!< Old objects live in the space from the */
@@ -30,6 +29,10 @@ struct struct_vproc {
     Addr_t	globNextW;	/*!< pointer to next word to allocate in */
 				/* global heap */
     Addr_t	globLimit;	/*!< limit pointer for global heap */
+    OSThread_t	hostID;	      /*!< PThread ID of host */
+    Mutex_t	lock;	      /*!< lock for VProc state */
+    Cond_t	wait;	      /*!< for waiting when idle */
+    bool	idle;	      /*!< true when the VProc is idle */
 };
 
 /* Return the base address of the VProc's heap */
@@ -49,5 +52,6 @@ typedef enum {
 
 extern VProc_t *VProcSelf ();
 extern void VProcSignal (VProc_t *vp, VPSignal_t sig);
+extern void VProcSleep (VProc_t *vp);
 
 #endif /* !_VPROC_H_ */

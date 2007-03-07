@@ -19,6 +19,7 @@
 
 static void *VProcMain (void *_data);
 static void SigHandler (int sig, siginfo_t *si, void *_sc);
+static int GetNumCPUs ();
 
 static pthread_key_t	VProcInfoKey;
 
@@ -34,6 +35,7 @@ VProc_t			*Procs[MAX_NUM_VPROCS];
  */
 void VProcInit (Options_t *opts)
 {
+    NumHardwareProcs = GetNumCPUs();
 
   /* get command-line options */
     int nProcs = GetIntOpt (opts, "-p", NumHardwareProcs);
@@ -92,6 +94,21 @@ void VProcSignal (VProc_t *vp, VPSignal_t sig)
 
 } /* end of VProcSignal */
 
+/*! \brief put an idle vproc to sleep.
+ *  \param vp the vproc that is being put to sleep.
+ */
+void VProcSleep (VProc_t *vp)
+{
+    assert (vp == VProcSelf());
+
+    MutexLock (&(vp->lock));
+	vp->idle = true;
+	while (vp->idle) {
+	    CondWait (&(vp->wait), &(vp->lock));
+	}
+    MutexUnlock (&(vp->lock));
+
+}
 
 /* VProcMain:
  */
@@ -130,7 +147,7 @@ static void SigHandler (int sig, siginfo_t *si, void *_sc)
 
 } /* SignHandler */
 
-int GetNumCPUs ()
+static int GetNumCPUs ()
 {
 #if defined(HAVE_PROC_CPUINFO)
   /* Get the number of hardware processors on systems that have /proc/cpuinfo */

@@ -24,4 +24,12 @@ typedef struct {
 FunClosure_t *ValueToClosure (Value_t v)	{ return (FunClosure_t *)ValueToPtr(v); }
 ContClosure_t *ValueToCont (Value_t v)		{ return (ContClosure_t *)ValueToPtr(v); }
 
+#define	M_FALSE	((Value_t)1)
+#define	M_TRUE	((Value_t)3)
+#define M_UNIT	((Value_t)1)
+#define M_NIL	((Value_t)1)
+
+/* heap allocate a tuple of uniformly represented values in the local heap */
+Value_t AllocUniform (VProc_t *vp, int nItems, Value_t arg1, ...);
+
 #endif /* !_VALUE_H_ */

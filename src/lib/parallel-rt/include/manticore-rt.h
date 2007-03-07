@@ -84,10 +84,10 @@ typedef struct struct_vproc VProc_t;
 
 /* type conversions  */
 STATIC_INLINE Addr_t ValueToAddr (Value_t v) { return (Addr_t)v; }
-STATIC_INLINE Word_t *ValueToPtr (Value_t v) { return (Word_t *)(Addr_t)v; }
+STATIC_INLINE void *ValueToPtr (Value_t v) { return (void *)(Addr_t)v; }
 STATIC_INLINE Word_t ValueToWord (Value_t v) { return ((Word_t)v) >> 1; }
 STATIC_INLINE Value_t AddrToValue (Addr_t v) { return (Value_t)v; }
-STATIC_INLINE Value_t PtrToValue (Word_t *v) { return (Value_t)(Addr_t)v; }
+STATIC_INLINE Value_t PtrToValue (void *v) { return (Value_t)(Addr_t)v; }
 STATIC_INLINE Value_t WordToValue (Word_t v) { return (Value_t)((v << 1)+1); }
 
 extern void Die (const char *, ...)
