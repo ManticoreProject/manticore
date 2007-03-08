@@ -99,7 +99,6 @@ RawType
 
 Exp
 	: "let" LHS "=" RHS Exp				=> (PT.Let(LHS, RHS, Exp))
-	| "let" LHS "=" Exp Exp				=> ()
 	| "fun" Lambda ("and" Lambda)* Exp		=> (PT.Fun(Lambda::SR, Exp))
 	| "cont" Lambda Exp				=> (PT.Cont(Lambda, Exp))
 	| "if" SimpleExp "then" Exp "else" Exp		=> (PT.If(SimpleExp, Exp1, Exp2))
@@ -114,7 +113,8 @@ LHS
 	;
 
 RHS
-	: SimpleExp			=> (PT.SimpleExp SimpleExp)
+	: Exp				=> (PT.Exp Exp)
+	| SimpleExp			=> (PT.SimpleExp SimpleExp)
 	| "alloc" Args			=> (PT.Alloc Args)
 	| "wrap" "(" SimpleExp ")"	=> (PT.Wrap SimpleExp)
 	| "ccall" ID Args		=> (PT.CCall(ID, Args))

@@ -176,11 +176,10 @@ structure Expand =
 		cvtSimpleExp (env, e1, fn x => CPS.If(x, cvtExp(env, e2), cvtExp(env, e3)))
 	    | PT.Switch(arg, cases, dflt) => 
                 cvtSimpleExp (env, arg, fn arg =>
-                              CPS.Switch (arg, 
-                                          List.map (fn (i,e) => (i, cvtExp(env,e))) cases,
-                                          case dflt of
-                                              NONE => NONE
-                                            | SOME e => SOME (cvtExp(env, e))))
+                  CPS.Switch (
+		    arg, 
+                    List.map (fn (i,e) => (i, cvtExp(env,e))) cases,
+                    case dflt of NONE => NONE | SOME e => SOME (cvtExp(env, e))))
 	    | PT.Apply(f, args) =>
 		cvtSimpleExps (env, args, fn xs => CPS.Apply(lookup(env, f), xs))
 	    | PT.Throw(k, args) =>

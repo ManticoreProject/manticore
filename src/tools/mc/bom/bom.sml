@@ -12,7 +12,7 @@ structure BOM =
     and term
       = E_Let of (var list * exp * exp)
       | E_Stmt of (var list * rhs * exp)
-      | E_Fun of (lambda list * exp)	(* not in BOL-Unit rep. *)
+      | E_Fun of (lambda list * exp)
       | E_Cont of (lambda * exp)
       | E_If of (var * exp * exp)
       | E_Case of (var * (pat * exp) list * exp option)
@@ -58,8 +58,20 @@ structure BOM =
       | E_FConst of FloatLit.float * ty
       | E_BConst of bool
 
+    and var_kind
+      = VK_None
+      | VK_Let of exp
+      | VK_RHS of rhs
+      | VK_Param
+      | VK_Fun of lambda
+      | VK_Cont of lambda
+
     withtype var = (var_kind, ty) VarRep.var_rep
          and prim = var Prim.prim
 	 and lambda = (var * var list * exp)
+
+(* FIXME: need constructor functions *)
+    fun mkExp t = E_Pt(ProgPt.new(), e)
+    fun mkRet args = mkExp(E_Ret args))
 
   end
