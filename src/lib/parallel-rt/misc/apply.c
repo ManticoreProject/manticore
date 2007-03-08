@@ -40,6 +40,8 @@ void RunManticore (VProc_t *vp, Value_t f, Value_t arg)
 	      /* we need to invoke the stdCont to resume after GC */
 		cp = ValueToAddr (ValueToCont(vp->stdCont)->cp);
 		ep = M_UNIT;
+		retCont = M_UNIT;  /* unused in throw to standard cont. */
+		exnCont = M_UNIT;  /* unused in throw to standard cont. */
 	    } break;
 	  case REQ_Return:	/* returning from a function call */
 	    return;
