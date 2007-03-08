@@ -23,6 +23,7 @@ VPATH		= ../include:../gc:../vproc:../misc:../misc/machine:../config
 GC_SRCS 	= minor-gc.c \
 		  major-gc.c \
 		  global-gc.c \
+		  heap.c \
 		  unix-memory.c \
 		  alloc.c
 

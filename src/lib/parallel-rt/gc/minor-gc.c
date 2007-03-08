@@ -6,6 +6,7 @@
  * Minor GCs are local collections of a vproc's allocation space.
  */
 
+#include "manticore-rt.h"
 #include "heap.h"
 #include "gc.h"
 #include "vproc.h"

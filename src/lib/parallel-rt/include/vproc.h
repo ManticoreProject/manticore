@@ -26,6 +26,8 @@ struct struct_vproc {
     Addr_t	allocBase;	/*!< base address of nursery */
     Addr_t	oldTop;		/*!< Old objects live in the space from the */
 				/* heap base to the oldTop. */
+    MemChunk_t	*globToSpace;	/*!< a to-space chunk in the global heap to promote */
+				/* objects into. */
     Addr_t	globNextW;	/*!< pointer to next word to allocate in */
 				/* global heap */
     Addr_t	globLimit;	/*!< limit pointer for global heap */

@@ -10,7 +10,6 @@
 #include "manticore-rt.h"
 #include "vproc.h"
 
-
 /********** VProc local heaps **********/
 
 /* VP_HEAP_SZB */		/* defined in manticore-rt.h */
@@ -19,6 +18,19 @@
 
 #define MAJOR_GC_THRESHOLD	(VP_HEAP_DATA_SZB >> 1)
 
+
 /********** Global heap **********/
+
+#define HEAP_CHUNK_SZB		(4*ONE_MEG)
+
+extern Addr_t	GlobalVM;	/* amount of memory allocated to Global heap (including */
+				/* free chunks). */
+extern Addr_t	FreeVM;		/* amount of free memory in free list */
+extern Addr_t	TotalVM;	/* total memory used by heap (including vproc local heaps) */
+
+
+/********** Exported functions **********/
+
+extern void InitHeap (Options_t *opts);
 
 #endif /* !_HEAP_H_ */

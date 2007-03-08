@@ -54,6 +54,9 @@ typedef unsigned long long UInt64_t;
 #endif
 #define BYTES_TO_WORDS(N)	(((N) + (WORD_SZB-1)) >> WORD_LOGSZB)
 
+/* round up to a power-of-2 size */
+#define ROUNDUP(N, POW_OF_TWO)	(((N) + (POW_OF_TWO-1)) & ~(POW_OF_TWO-1))
+
 /* object allocation in the C heap */
 #define MALLOC(sz)		malloc(sz)
 #define CALLOC(n,sz)		calloc(n,sz)
@@ -81,6 +84,7 @@ typedef unsigned long long UInt64_t;
 /* forward declarations of runtime system data structures */
 typedef struct struct_opts Options_t;
 typedef struct struct_vproc VProc_t;
+typedef struct struct_chunk MemChunk_t;
 
 /* type conversions  */
 STATIC_INLINE Addr_t ValueToAddr (Value_t v) { return (Addr_t)v; }
