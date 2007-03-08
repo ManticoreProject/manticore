@@ -21,23 +21,23 @@ extern MemChunk_t	**BIBOP[L1_TBLSZ];
 
 STATIC_INLINE MemChunk_t *AddrToChunk (Addr_t addr)
 {
-    assert (addr < (1 << ADDR_BITS));
+    assert (addr < (1l << ADDR_BITS));
     return BIBOP[addr >> L1_SHIFT][addr >> L2_SHIFT];
 }
 
-#else
+#else /* !SIXTYFOUR_BIT_WORDS */
 
 #define ADDR_BITS	32
 #define BIBOP_BITS	(ADDR_BITS-PAGE_BITS)
 #define BIBOP_TBLSZ	(1 << BIBOP_BITS)
 
-extern MemChunk_t	**BIBOP[BIBOP_TBLSZ];
+extern MemChunk_t	*BIBOP[BIBOP_TBLSZ];
 
 STATIC_INLINE MemChunk_t *AddrToChunk (Addr_t addr)
 {
     return BIBOP[addr >> PAGE_BITS];
 }
 
-#endif
+#endif /* SIXTYFOUR_BIT_WORDS */
 
 #endif /* !_BIBOP_H_ */

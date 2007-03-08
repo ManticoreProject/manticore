@@ -6,7 +6,7 @@
 # @configure_output@
 #
 
-CC =		gcc
+CC =		@CC@
 CFLAGS =	-std=gnu99 -g -O2 @CC_MODE_FLAG@
 LDFLAGS =	
 CPPFLAGS =	-I../include

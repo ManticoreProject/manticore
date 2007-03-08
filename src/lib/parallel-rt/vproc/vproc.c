@@ -16,6 +16,7 @@
 #include "heap.h"
 #include "gc.h"
 #include "options.h"
+#include "value.h"
 
 static void *VProcMain (void *_data);
 static void SigHandler (int sig, siginfo_t *si, void *_sc);
@@ -57,6 +58,9 @@ void VProcInit (Options_t *opts)
  */
 VProc_t *VProcCreate ()
 {
+    if (NumVProcs >= MAX_NUM_VPROCS)
+	Die ("too many vprocs\n");
+
   /* allocate the VProc heap; we store the VProc representation in the base
    * of the heap area.
    */
@@ -65,6 +69,28 @@ VProc_t *VProcCreate ()
     if ((vproc == 0) || (nBlocks != 1))
 	Die ("unable to allocate vproc heap");
 
+  /* initialize the vproc structure */
+    vproc->inManticore = false;
+    vproc->atomic = false;
+    vproc->sigPending = false;
+    vproc->stdArg = M_UNIT;
+    vproc->stdEnvPtr = M_UNIT;
+    vproc->stdCont = M_UNIT;
+    vproc->stdExnCont = M_UNIT;
+    vproc->allocBase = (Addr_t)vproc + sizeof(VProc_t);
+    vproc->limitPtr = (Addr_t)vproc + VP_HEAP_SZB - ALLOC_BUF_SZB;
+    vproc->oldTop = vproc->allocBase;
+    SetAllocPtr (vproc);
+    MutexInit (&(vproc->lock));
+    CondInit (&(vproc->wait));
+    vproc->idle = true;
+
+    vproc->id = NumVProcs;
+    VProcs[NumVProcs++] = vproc;
+
+    InitVProcHeap (vproc);
+
+  /* start the vproc's pthread */
     ThreadCreate (&(vproc->hostID), VProcMain, vproc);
 
     return vproc;
@@ -126,6 +152,8 @@ static void *VProcMain (void *_data)
     sigfillset (&(sa.sa_mask));
     sigaction (SIGUSR1, &sa, 0);
     sigaction (SIGUSR2, &sa, 0);
+
+/* FIXME: what do we do now?? */
 
 } /* VProcMain */
 

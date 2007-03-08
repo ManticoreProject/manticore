@@ -47,7 +47,8 @@ typedef unsigned long long UInt64_t;
 
 #define MAX_WORD		((Word_t)(~0))
 #define WORD_SZB		SIZEOF_CHAR_P
-#ifdef SIXTYFOUR_BIT_WORDS
+#if (WORD_SZB == 8)
+#  define SIXTYFOUR_BIT_WORDS
 #  define WORD_LOGSZB		3
 #else
 #  define WORD_LOGSZB		2

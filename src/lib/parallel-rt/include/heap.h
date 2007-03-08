@@ -18,6 +18,15 @@
 
 #define MAJOR_GC_THRESHOLD	(VP_HEAP_DATA_SZB >> 1)
 
+#define ALLOC_BUF_SZB		(4*ONE_K)	/* slop at end of allocation space */
+
+/* set the allocation pointer for a vproc */
+STATIC_INLINE void SetAllocPtr (VProc_t *vp)
+{
+    Addr_t top = (Addr_t)vp + VP_HEAP_SZB;
+    vp->allocPtr = vp->oldTop + (top - vp->oldTop) / 2;
+}
+
 
 /********** Global heap **********/
 
@@ -32,5 +41,6 @@ extern Addr_t	TotalVM;	/* total memory used by heap (including vproc local heaps
 /********** Exported functions **********/
 
 extern void InitHeap (Options_t *opts);
+extern void InitVProcHeap (VProc_t *vp);
 
 #endif /* !_HEAP_H_ */

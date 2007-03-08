@@ -31,6 +31,7 @@ struct struct_vproc {
     Addr_t	globNextW;	/*!< pointer to next word to allocate in */
 				/* global heap */
     Addr_t	globLimit;	/*!< limit pointer for global heap */
+    int		id;	      /*!< index of this vproc in VProcs[] array */
     OSThread_t	hostID;	      /*!< PThread ID of host */
     Mutex_t	lock;	      /*!< lock for VProc state */
     Cond_t	wait;	      /*!< for waiting when idle */

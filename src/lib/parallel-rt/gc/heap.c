@@ -8,8 +8,8 @@
 #include "heap.h"
 #include "vproc.h"
 #include "bibop.h"
-
-typedef struct struct_chunk MemChunk_t;
+#include "os-memory.h"
+#include "os-threads.h"
 
 typedef enum {
     FREE_CHUNK,
@@ -47,20 +47,16 @@ static MemChunk_t *AllocChunk (Addr_t szb);
 
 /* InitHeap:
  *
- * At this point, we assume that VProc initialization has already been
- * done, so the vproc-local heaps have been allocated.  Here we need to
- * allocate an initial collection of memory chunks for the global heap
- * and provide each vproc with a chunk for major collections.
  */
 void InitHeap (Options_t *opts)
 {
 
   /* initialize the BIBOP */
 #ifdef SIXTYFOUR_BIT_WORDS
-    for (int i = 0;  i < 1<<L2_TBLSZ; i++)
+    for (int i = 0;  i < L2_TBLSZ; i++)
 	FreeL2Tbl[i] = 0;
     for (int i = 0;  i < L1_TBLSZ;  i++)
-	BIBOP[i] = L2FreeTbl;
+	BIBOP[i] = FreeL2Tbl;
 #else
     for (int i = 0;  i < L1_TBLSZ;  i++)
 	BIBOP[i] = 0;
@@ -71,18 +67,25 @@ void InitHeap (Options_t *opts)
     FreeVM = 0;
 /* ??? */
 
-  /* provision the VProcs with to-space chunks in the global heap */
-    for (int i = 0;  i < NumVProcs;  i++) {
-	MemChunk_t *chunk = AllocChunk (HEAP_CHUNK_SZB);
-	if (chunk == 0)
-	    Die ("unable to allocate vproc to-space chunk\n");
-	chunk->sts = VPROC_CHUNK(i);
-	VProcs[i].globToSpace = chunk;
-	VProcs[i].globNextW = chunk->baseAddr + WORD_SZB;
-	VProcs[i].globLimit = chunk->baseAddr + chunk->szB;
-    }
-
 } /* end of InitHeap */
+
+/* InitVProcHeap:
+ */
+void InitVProcHeap (VProc_t *vp)
+{
+/* FIXME: grap the heap lock here? */
+
+  /* provision the vproc with a to-space chunk in the global heap */
+/* FIXME: eventually, we should check the free list first! */
+    MemChunk_t *chunk = AllocChunk (HEAP_CHUNK_SZB);
+    if (chunk == 0)
+	Die ("unable to allocate vproc to-space chunk\n");
+    chunk->sts = VPROC_CHUNK(vp->id);
+    vp->globToSpace = chunk;
+    vp->globNextW = chunk->baseAddr + WORD_SZB;
+    vp->globLimit = chunk->baseAddr + chunk->szB;
+
+}
 
 static MemChunk_t *AllocChunk (Addr_t szb)
 {
@@ -98,7 +101,7 @@ static MemChunk_t *AllocChunk (Addr_t szb)
     if (chunk == 0)
 	Die("unable to malloc memory\n");
 
-    chunk->addr = (Addr_t)memObj;
+    chunk->baseAddr = (Addr_t)memObj;
     chunk->szB = nPages * BIBOP_PAGE_SZB;
     chunk->next = 0;
 
