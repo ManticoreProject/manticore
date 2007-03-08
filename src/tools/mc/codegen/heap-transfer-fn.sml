@@ -53,6 +53,7 @@ functor HeapTransferFn (
   val stdContRegs as [closReg, argReg] = 
       [Regs.closReg, Regs.argReg]
 
+  fun newLabel s = Label.label s () 
   fun fail s = raise Fail s
   fun intLit i = T.LI (T.I.fromInt (ty, i))
   fun litFromInt i = T.LI (T.I.fromInt (ty, i))
@@ -186,63 +187,74 @@ functor HeapTransferFn (
 	  {stms=callseq, result=ListPair.map convResult (result, lhss)}
       end (* genCCall *)
       
-  (* Check whether the heap contains szb free bytes. If it does, jump to the
+  (* Check whether the heap contains szb free bytes. If it does, apply the
    * nogc function.  Otherwise, perform the GC with the following steps:
-   * 1. Allocate the root set (argRoots) in the heap's slop space.
-   * 2. Call the assembly stub that initializes the GC.
-   * 3. The GC returns, putting a pointer to the root set in argReg.
-   * 4. Apply the nogc function to the restored root set.
+   * 1. Allocate the root set (roots) in the heap-slop space (assume
+   *    there is ample space).
+   * 2. Create a continuation, retK, that has the following (standard) layout:
+   *    [ retK, root0, ..., root_n ], where the code at retK applies the
+   *    nogc function to the fresh roots.
+   * 3. Call the GC initialization routine, passing it retK in the return 
+   *    continuation register.
    *)
-  fun genHeapCheck varDefTbl {szb, gc, nogc=(gcLbl, argRoots)} =
-      let fun argInfo ([], argTys, args, mlRegs) = (rev argTys, rev args, rev mlRegs)
-	    | argInfo (a :: args, argTys, hcArgs, mlrRegs) =
+  fun genHeapCheck varDefTbl {szb, gc, nogc=(noGCLbl, roots)} =
+      let fun argInfo ([], argTys, hcArgs, mlRegs) = 
+	      (rev argTys, rev hcArgs, rev mlRegs)
+	    | argInfo (a :: args, argTys, hcArgs, rootsMLR) =
 	      argInfo (args, Var.typeOf a :: argTys, 
-		      VarDef.getDefOf varDefTbl a :: hcArgs,
-		      mlrReg a :: mlrRegs)
-	  val (argTys, args, mlrRegs) = argInfo (argRoots, [], [], [])
+		       VarDef.getDefOf varDefTbl a :: hcArgs,
+		       mlrReg a :: rootsMLR)
+	  (*   arg type,  arg,     fresh arg register *)
+	  val (argTys,    args,    rootsMLR) = argInfo (roots, [], [], [])
 	      
-	  val params = LabelCode.getParamRegs gcLbl
-	  val gcLbl = LabelCode.getName gcLbl
+	  val noGCParamRegs = LabelCode.getParamRegs noGCLbl
+	  val noGCLbl = LabelCode.getName noGCLbl
+	  val retKLbl = newLabel "retGCK"
 
-	  val allocCheck = Alloc.genAllocCheck szb
-	  val tmpRetReg = newReg ()
-	  val regStms = Copy.copy {src=args, dst=mlrRegs}
-	  (* allocate space on the heap for the roots *)
+	  val rootSet = ListPair.zip (argTys, map MTy.regToTree rootsMLR)
+	  (* heap allocate the root set *)
 	  val {ptr=rootReg, stms=allocStms} = 
-	      Alloc.genAlloc (ListPair.zip (argTys, map MTy.regToTree mlrRegs))
+	      Alloc.genAlloc ((Ty.T_Any, MTy.EXP (ty, T.LABEL retKLbl)) :: rootSet)
 
+	  (* perform the GC *)
+	  val doGCLbl = newLabel "doGC"
+	  val doGCStms = List.concat [
+ 	      [T.DEFINE doGCLbl],
+	      (* force the root set into registers *)
+	      Copy.copy {dst=rootsMLR, src=args},
+	      (* allocate a heap object for GC roots *)
+	      allocStms,
+	      (* save the root pointer in the continuation register *)
+	      [move' (retReg, rootReg)],
+	      (* perform the GC *)
+	      Target.genGCCall () ]
+
+	  (* load the fresh roots that GC produces *)
 	  fun loadArgs ([], i, ss) = rev ss
 	    | loadArgs (mty :: mtys, i, ss) =
 	      let val ty = Types.szOf mty
-		  val s = select' (ty, M.T_Tuple argTys, i, regExp argReg)
+		  (* ignore the first argument, which is the return pointer *)
+		  val argTys = Ty.T_Any :: argTys
+		  val s = select' (ty, M.T_Tuple argTys, i, regExp retReg)
 	      in 
-		  loadArgs (mtys, i+1, s :: ss)
+		  loadArgs (mtys, i + 1, s :: ss)
 	      end
-	  val selStms = Copy.copy {src=loadArgs (argTys, 0, []), dst=params}
-
-	  (* perform the GC *)
-	  val doGCLbl = Label.label "doGC" ()
-	  val doGCStms = List.concat [
- 	      [T.DEFINE doGCLbl],
-	      (* allocate a heap object for GC roots *)
-	      regStms,
-	      allocStms,
-	      (* save the root pointer in the argReg (where the GC expects it) *)
-	      [move' (argReg, rootReg)],
-	      (* perform the GC *)
-	      Target.genGCCall (),
-	      (* restore the roots *)
-	      selStms,
+	  val restoredRoots = loadArgs (argTys, 1, [])
+	  (* generate the return continuation from GC *)
+	  val retK = List.concat [
+ 	      [T.DEFINE retKLbl],
 	      (* jump to the post-gc function *)
-	      [T.JMP (T.LABEL gcLbl, [gcLbl])] ]
+	      genJump (T.LABEL noGCLbl, [noGCLbl], noGCParamRegs, restoredRoots) ]
+
 	  (* if the allocation check succeeds (there is sufficient heap space),
-	   * jump to gcLbl.  otherwise, do the GC. *)
+	   * apply noGCLbl.  otherwise, perform the GC. *)
 	  val stms = List.concat [
 	      [T.BCC (Alloc.genAllocCheck szb, doGCLbl)],
-	      genJump (T.LABEL gcLbl, [gcLbl], params, args),
+	      genJump (T.LABEL noGCLbl, [noGCLbl], noGCParamRegs, args),
+	      retK,
 	      doGCStms ]
       in
-	  {stms=stms, liveOut=map MTy.gprToExp params}
+	  {stms=stms, liveOut=map MTy.gprToExp noGCParamRegs}
       end (* genHeapCheck *)
 
   fun genFuncEntry varDefTbl (lab, convention) =
