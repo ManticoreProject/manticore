@@ -22,6 +22,7 @@
 
 static void ScanGlobalToSpace (
 	VProc_t *vp, Addr_t heapBase, MemChunk_t *scanChunk, Word_t *scanPtr);
+static void GetGlobalChunk (VProc_t *vp);
 
 /* return true of the given address is within the old region of the heap */
 STATIC_INLINE bool inOldHeap (Addr_t heapBase, Addr_t oldSzB, Addr_t p)
@@ -135,7 +136,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     }
 
   /* scan to-space objects */
-    ScanGlobalToSpace (vp, heapBase, globScan, scanChunk);
+    ScanGlobalToSpace (vp, heapBase, scanChunk, globScan);
 
   /* copy the live data between vp->oldTop and top to the base of the heap */
     Addr_t youngSzB = top - vp->oldTop;
@@ -163,7 +164,7 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
 	root = ForwardObj (vp, root);
 
       /* promote any reachable values */
-	ScanGlobalToSpace (vp, heapBase, (Word_t *)(vp->globNextW), scanChunk);
+	ScanGlobalToSpace (vp, heapBase, scanChunk, (Word_t *)(vp->globNextW));
     }
 
     return root;
@@ -235,4 +236,11 @@ static void ScanGlobalToSpace (
 
     } while (scanPtr < scanTop);
 
+}
+
+/* GetGlobalChunk:
+ */
+static void GetGlobalChunk (VProc_t *vp)
+{
+    Die ("GetGlobalChunk unimplemented\n");
 }
