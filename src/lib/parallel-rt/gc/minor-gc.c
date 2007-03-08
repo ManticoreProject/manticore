@@ -73,13 +73,10 @@ void MinorGC (VProc_t *vp, Value_t **roots)
 	else if (isVectorHdr(hdr)) {
 	  // an array of pointers
 	    int len = GetVectorLen(hdr);
-	    for (int i = 0;  i < len;  i++) {
+	    for (int i = 0;  i < len;  i++, nextScan++) {
 		Value_t v = *(Value_t *)nextScan;
-		if (isPtr(v)) {
-		    if (inVPHeap(heapBase, ValueToAddr(v))) {
-			*nextScan = (Word_t)ForwardObj(v, &nextW);
-		    }
-		    nextScan++;
+		if (isPtr(v) && inVPHeap(heapBase, ValueToAddr(v))) {
+		    *nextScan = (Word_t)ForwardObj(v, &nextW);
 		}
 	    }
 	}
@@ -99,5 +96,8 @@ void MinorGC (VProc_t *vp, Value_t **roots)
       /* remember information about the final state of the heap */
 	vp->oldTop = (Addr_t)nextScan;
     }
+
+  /* reset the allocation pointer */
+    SetAllocPtr (vp);
 
 }

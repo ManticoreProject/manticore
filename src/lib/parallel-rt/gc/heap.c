@@ -10,22 +10,7 @@
 #include "bibop.h"
 #include "os-memory.h"
 #include "os-threads.h"
-
-typedef enum {
-    FREE_CHUNK,
-    TO_SP_CHUNK,
-    FROM_SP_CHUNK,
-    VPROC_CHUNK_TAG,
-} Status_t;
-
-#define VPROC_CHUNK(id)		((Status_t)((id) << 4) | VPROC_CHUNK_TAG)
-
-struct struct_chunk {
-    Addr_t	baseAddr;	/* chunk base address */
-    Addr_t	szB;		/* chunk size in bytes */
-    MemChunk_t	*next;		/* link field */
-    Status_t	sts;		/* current status of chunk */
-};
+#include "internal-heap.h"
 
 Addr_t		GlobalVM;	/* amount of memory allocated to Global heap (including */
 				/* free chunks). */
@@ -40,9 +25,6 @@ static MemChunk_t	*FreeL2Tbl[L2_TBLSZ];
 #else
 MemChunk_t		**BIBOP[BIBOP_TBLSZ];
 #endif
-
-/* forward declarations */
-static MemChunk_t *AllocChunk (Addr_t szb);
 
 
 /* InitHeap:
@@ -87,7 +69,7 @@ void InitVProcHeap (VProc_t *vp)
 
 }
 
-static MemChunk_t *AllocChunk (Addr_t szb)
+MemChunk_t *AllocChunk (Addr_t szb)
 {
   /* round size up to multiple of BIBOP pagesize */
     szb = ROUNDUP(szb, BIBOP_PAGE_SZB);
