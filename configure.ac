@@ -1,4 +1,4 @@
-AC_INIT(manticore,0.1,xxx)
+AC_INIT(manticore,0.1,[http://manticore.cs.uchicago.edu])
 
 AC_PREREQ(2.52)
 AC_CONFIG_AUX_DIR(config)
@@ -18,7 +18,6 @@ AC_CANONICAL_TARGET
 case $host_cpu in
   i386|i486|i586|i686) TARGET_CPU=TARGET_X86; ARCH=x86 ;;
   x86_64) TARGET_CPU=TARGET_X86_64; ARCH=x86_64 ;;
-  powerpc) TARGET_CPU=TARGET_PPC; ARCH=ppc ;;
   *) AC_MSG_ERROR([host cpu ${host_cpu} is not supported]) ;;
 esac
 case $host_os in
@@ -39,7 +38,11 @@ if test $ARCH = x86_64; then
     TARGET_CPU=TARGET_X86
     ARCH=x86
     CC_MODE_FLAG="-m32"
+  else
+    CC_MODE_FLAG="-m64"
   fi
+else
+  CC_MODE_FLAG=""
 fi
 AC_SUBST(CC_MODE_FLAG)
 
@@ -60,18 +63,6 @@ dnl
 ACX_PTHREAD()
 
 dnl
-dnl check for gcc builtin atomic operations
-dnl
-AC_MSG_CHECKING([for builtin atomic operations])
-AC_LINK_IFELSE(
-   AC_LANG_PROGRAM([], [int foo1; int foo2 = __sync_fetch_and_add(&foo1, 1);]),
-   AC_MSG_RESULT(yes)
-   AC_DEFINE(
-    [HAVE_BUILTIN_ATOMIC_OPS], 1,
-    [Define to 1 if gcc compiler provides atomic operations.]),
-   AC_MSG_RESULT(no))
-
-dnl
 dnl check for various library routines
 dnl
 AC_CHECK_FUNCS(posix_memalign)
@@ -82,11 +73,30 @@ if test x"$ac_cv_func_posix_memalign" != xyes ; then
   fi
 fi
 
-dnl check for leading "-" on global names
+dnl ******************** Runtime system parameters ********************
+
+AC_DEFINE([MAX_NUM_VPROCS], [16], [maximum number of virtual processors])
+dnl VP_HEAP_SZB
+dnl MEM_BLOCK_SZB
+
+
+dnl ******************** C compiler properties ********************
+
+dnl check for leading "_" on global names
 dnl
 CHECK_LEADING_UNDERSCORE
 
-dnl ******************** C compiler properties ********************
+dnl
+dnl check for gcc builtin atomic operations
+dnl
+AC_MSG_CHECKING([for builtin atomic operations])
+AC_LINK_IFELSE(
+   AC_LANG_PROGRAM([], [int foo1; int foo2 = __sync_fetch_and_add(&foo1, 1);]),
+   AC_MSG_RESULT(yes)
+   AC_DEFINE(
+    [HAVE_BUILTIN_ATOMIC_OPS], 1,
+    [Define to 1 if gcc compiler provides atomic operations.]),
+   AC_MSG_RESULT(no))
 
 AC_C_BIGENDIAN
 AC_C_INLINE
@@ -118,30 +128,41 @@ dnl
 dnl config.h stuff
 AH_TOP([
 /*
- * COPYRIGHT (c) 2006 Manticore project. (http://manticore.cs.uchicago.edu)
+ * COPYRIGHT (c) 2007 Manticore project. (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  */
 
-#ifndef _CONFIG_H_
-#define _CONFIG_H_
+#ifndef _MANTICORE_CONFIG_H_
+#define _MANTICORE_CONFIG_H_
 ])
 AH_BOTTOM([
 
-#endif /* !_CONFIG_H_ */
+#ifndef NOT_C_SOURCE
+typedef unsigned long Word_t;
+typedef unsigned long Addr_t;
+typedef struct manticore_value *Value_t;
+#endif /* !NOT_C_SOURCE */
+
+#endif /* !_MANTICORE_CONFIG_H_ */
 ])
 
 dnl ******************** Output ********************
 
-AC_CONFIG_FILES(\
-dnl ***** Makefiles *****
-)
 dnl
 dnl generate run-time config files
 dnl
+AC_CONFIG_FILES(\
+dnl ***** Makefiles *****
+  src/lib/parallel-rt/build/Makefile
+)
+AC_CONFIG_HEADERS(src/lib/parallel-rt/include/manticore-config.h:config/config_h.in)
 
 dnl
 dnl create machine-specific links
 dnl
+AC_CONFIG_LINKS([
+  src/lib/parallel-rt/misc/machine:src/lib/parallel-rt/misc/$ARCH
+])
 
 AC_OUTPUT
 

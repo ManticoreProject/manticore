@@ -1,9 +1,13 @@
 # Makefile
 #
+# COPYRIGHT (c) 2007 Manticore project. (http://manticore.cs.uchicago.edu)
+# All rights reserved.
+#
+# @configure_output@
 #
 
 CC =		gcc
-CFLAGS =	-std=gnu99 -g -O2 -m64
+CFLAGS =	-std=gnu99 -g -O2 @CC_MODE_FLAG@
 LDFLAGS =	
 CPPFLAGS =	-I../include
 AR =		ar
@@ -41,7 +45,7 @@ $(TARGET):	$(OBJS)
 
 
 $(ASM_OBJS): %.o : %.S asm-offsets.h
-	$(CC) -c -m64 -I. -DNOT_C_SOURCE $(CPPFLAGS) -o $@ $<
+	$(CC) -c @CC_MODE_FLAG@ -I. -DNOT_C_SOURCE $(CPPFLAGS) -o $@ $<
 
 asm-offsets.h:		gen-asm-offsets
 	gen-asm-offsets > asm-offsets.h
