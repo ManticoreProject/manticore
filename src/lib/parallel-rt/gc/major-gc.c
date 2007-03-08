@@ -181,9 +181,9 @@ static void ScanGlobalToSpace (
     Word_t	*scanTop;
 
     if (vp->globToSpace == scanChunk)
-	scanTop = vp->globNextW - WORD_SZB;
+	scanTop = (Word_t *)(vp->globNextW - WORD_SZB);
     else
-	scanTop = scanChunk->usedTop;
+	scanTop = (Word_t *)(scanChunk->usedTop);
 
     do {
 	while (scanPtr < scanTop) {
@@ -223,8 +223,8 @@ static void ScanGlobalToSpace (
 
       /* recompute the scan top, switching chunks if necessary */
 	if (vp->globToSpace == scanChunk)
-	    scanTop = vp->globNextW - WORD_SZB;
-	else if (scanPtr == scanChunk->usedTop) {
+	    scanTop = (Word_t *)(vp->globNextW - WORD_SZB);
+	else if (scanPtr == (Word_t *)scanChunk->usedTop) {
 	    scanChunk = vp->globToSpace;
 	    assert ((scanChunk->baseAddr < vp->globNextW)
 		&& (vp->globNextW < scanChunk->baseAddr+scanChunk->szB));
@@ -232,7 +232,7 @@ static void ScanGlobalToSpace (
 	    scanPtr = (Word_t *)(scanChunk->baseAddr);
 	}
 	else
-	    scanTop = scanChunk->usedTop;
+	    scanTop = (Word_t *)(scanChunk->usedTop);
 
     } while (scanPtr < scanTop);
 
