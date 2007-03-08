@@ -56,7 +56,7 @@ ASM_Apply:
 	movq	%r15,R15_OFF(%rbp)
       /* setup standard arguments to the Manticore function */
 	movq	%rdi,%r10		/* save vproc pointer in %r10 */
-	movq	%rsi,%r11		/* save code pointer in %r11 */
+	movq	%rsi,%r12		/* save code pointer in %r12 */
 	movq	%rdx,%rax		/* standard argument */
 	movq	%rcx,%rdi		/* environment pointer */
 	movq	%r8,%rsi		/* return continuation */
@@ -65,7 +65,7 @@ ASM_Apply:
 	movq	ALLOC_PTR(%r10),%rcx	/* load allocation pointer */
 	movq	LIMIT_PTR(%r10),%r11	/* limit pointer */
 	movq	$1,IN_MANTICORE(%r10) /* we are running manticore code now! */
-	jmp	*%r11
+	jmp	*%r12
 
 /* code address for uncaught exception continuation */
 	.p2align 3
