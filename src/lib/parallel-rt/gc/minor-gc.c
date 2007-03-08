@@ -14,18 +14,18 @@
 /* Copy an object to the old region */
 STATIC_INLINE Value_t ForwardObj (Value_t v, Word_t **nextW)
 {
-    Word_t	*p = ValueToPtr(v)-1;
-    Word_t	hdr = *p;
+    Word_t	*p = (Word_t *)ValueToPtr(v);
+    Word_t	hdr = p[-1];
     if (isForwardPtr(hdr))
 	return PtrToValue(GetForwardPtr(hdr));
     else {
 	int len = GetLength(hdr);
-	Word_t *np = *nextW;
-	for (int i = 0;  i <= len;  i++) {
-	    np[i] = p[i];
+	Word_t *newObj = *nextW;
+	newObj[-1] = hdr;
+	for (int i = 0;  i < len;  i++) {
+	    newObj[i] = p[i];
 	}
-	Word_t *newObj = np+1;
-	*nextW = newObj+len;
+	*nextW = newObj+len+1;
 	*p = MakeForwardPtr(hdr, newObj);
 	return PtrToValue(newObj);
     }
@@ -51,7 +51,7 @@ void MinorGC (VProc_t *vp, Value_t **roots)
     }
 
   /* scan to space */
-    while (nextScan < nextW) {
+    while (nextScan < nextW-1) {
 	Word_t hdr = *nextScan++;	// get object header
 	if (isMixedHdr(hdr)) {
 	  // a record
