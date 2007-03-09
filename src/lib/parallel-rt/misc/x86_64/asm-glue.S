@@ -89,8 +89,8 @@ ASM_InvokeGC:
 switch_to_c:
 	/* the sequential GC does not store the VProc at the base of its heap */
 #ifdef SEQUENTIAL_RT
-	call VProcSelf
-	movq %rax,%r10
+	call	VProcSelf
+	movq	%rax,%r10
 #else
       /* compute the vproc pointer from the allocation pointer */
 	movq	%rcx,%r10
@@ -115,3 +115,4 @@ switch_to_c:
 	movq	%r9,%rax
 	leave
 	ret
+
