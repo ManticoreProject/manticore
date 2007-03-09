@@ -120,7 +120,7 @@ typedef pthread_t OSThread_t;
 
 STATIC_INLINE bool ThreadCreate (OSThread_t *tidOut, void * (*f)(void *), void *arg)
 {
-    if (pthread_create(tidOut, (pthread_attr_t *)0, f, &arg) != 0)
+    if (pthread_create(tidOut, (pthread_attr_t *)0, f, arg) != 0)
 	return false;
     else
 	return true;
