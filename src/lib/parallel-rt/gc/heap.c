@@ -27,10 +27,10 @@ MemChunk_t		**BIBOP[BIBOP_TBLSZ];
 #endif
 
 
-/* InitHeap:
+/* HeapInit:
  *
  */
-void InitHeap (Options_t *opts)
+void HeapInit (Options_t *opts)
 {
 
   /* initialize the BIBOP */
@@ -49,7 +49,7 @@ void InitHeap (Options_t *opts)
     FreeVM = 0;
 /* ??? */
 
-} /* end of InitHeap */
+} /* end of HeapInit */
 
 /* InitVProcHeap:
  */

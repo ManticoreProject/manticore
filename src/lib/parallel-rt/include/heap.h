@@ -40,7 +40,7 @@ extern Addr_t	TotalVM;	/* total memory used by heap (including vproc local heaps
 
 /********** Exported functions **********/
 
-extern void InitHeap (Options_t *opts);
+extern void HeapInit (Options_t *opts);
 extern void InitVProcHeap (VProc_t *vp);
 
 #endif /* !_HEAP_H_ */
