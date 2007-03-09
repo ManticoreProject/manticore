@@ -73,6 +73,8 @@ if test x"$ac_cv_func_posix_memalign" != xyes ; then
   fi
 fi
 
+AC_CHECK(sigtimedwait nanosleep)
+
 dnl ******************** Runtime system parameters ********************
 
 AC_DEFINE([MAX_NUM_VPROCS], [16], [maximum number of virtual processors])
