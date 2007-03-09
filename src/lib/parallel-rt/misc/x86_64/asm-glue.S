@@ -24,11 +24,11 @@
 #define PAD_SZB		8	/* pad so that frame size (plus saved PC and FP */
 				/* is a multiple of 16 bytes */
 #define FRAME_SZB	(SPILL_SZB+SAVE_AREA+PAD_SZB)
-#define RBX_OFF		8	/* offset off %rbp for saving %rbx */
-#define R12_OFF		16	/* offset off %rbp for saving %r12 */
-#define R13_OFF		24	/* offset off %rbp for saving %r13 */
-#define R14_OFF		32	/* offset off %rbp for saving %r14 */
-#define R15_OFF		40	/* offset off %rbp for saving %r15 */
+#define RBX_OFF		(-2*8)	/* offset off %rbp for saving %rbx */
+#define R12_OFF		(-3*8)	/* offset off %rbp for saving %r12 */
+#define R13_OFF		(-4*8)	/* offset off %rbp for saving %r13 */
+#define R14_OFF		(-5*8)	/* offset off %rbp for saving %r14 */
+#define R15_OFF		(-6*8)	/* offset off %rbp for saving %r15 */
 
 
 /* ASM_Apply:
@@ -47,7 +47,7 @@
 ASM_Apply:
 	pushq	%rbp			/* save frame pointer */
 	movq	%rsp,%rbp		/* set new frame pointer */
-	lea	FRAME_SZB(%rsp),%rsp	/* allocate the stack frame */
+	leaq	FRAME_SZB(%rsp),%rsp	/* allocate the stack frame */
       /* save C callee-save registers */
 	movq	%rbx,RBX_OFF(%rbp)
 	movq	%r12,R12_OFF(%rbp)
@@ -71,25 +71,31 @@ ASM_Apply:
 	.p2align 3
 	.global	ASM_UncaughtExn
 ASM_UncaughtExn:
-	movq	$REQ_UncaughtExn, %r12
+	movq	$REQ_UncaughtExn, %r9
 	jmp	switch_to_c
 
 /* code address for return continuation */
 	.p2align 3
 	.global	ASM_Return
 ASM_Return:
-	movq	$REQ_Return, %r12
+	movq	$REQ_Return, %r9
 	jmp	switch_to_c
 
 	.p2align 3
 	.global	ASM_InvokeGC
 ASM_InvokeGC:
-	movq	$REQ_GC, %r12
+	movq	$REQ_GC, %r9
 
 switch_to_c:
+	/* the sequential GC does not store the VProc at the base of its heap */
+#ifdef SEQUENTIAL_RT
+	call VProcSelf
+	movq %rax,%r10
+#else
       /* compute the vproc pointer from the allocation pointer */
 	movq	%rcx,%r10
 	andq	$VP_MASK,%r10
+#endif
       /* mark that we are not running Manticore code anymore */
 	xorl	%edx,%edx
 	movq	%rdx,IN_MANTICORE(%r10)
@@ -106,6 +112,6 @@ switch_to_c:
 	movq	R14_OFF(%rbp),%r14
 	movq	R15_OFF(%rbp),%r15
       /* return request code */
-	movq	%r12,%rax
+	movq	%r9,%rax
 	leave
 	ret
