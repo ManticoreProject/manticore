@@ -1,7 +1,7 @@
 (* length.cps *)
 
 module Length (arg : any, mk : cont(any), exh : cont(any)) =
-  fun length (l : any, k : cont(int), exh : cont(any)) = 
+  fun length (l : any, k : cont([int]), exh : cont(any)) = 
     fun len' (l : any, k : cont(int), exh : cont(any)) =
       let tag : int = #0(((int,any))l)
       if I32Eq(tag, 1 : int) 

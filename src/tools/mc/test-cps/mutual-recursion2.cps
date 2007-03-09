@@ -1,6 +1,6 @@
 (* mutual-recursion2.cps *)
 
-module MutualRec (arg : any, mk : cont(any), exh : cont(any)) =
+module MutualRec2 (arg : any, mk : cont(any), exh : cont(any)) =
 
   (* "outer" returns i^n *)
   fun outer (a : (int, int), k : cont(int), exh : cont(any)) =
@@ -15,7 +15,7 @@ module MutualRec (arg : any, mk : cont(any), exh : cont(any)) =
 
       and g (j : int, k : cont(int), exh : cont(any)) =
 	  if I32Gte (j, n)
-	  then throw k(1)
+	  then throw k(1 : int)
 	  else let j' : int = I32Add (j, 1 : int)
 	       apply f (j', k, exh)
 		     

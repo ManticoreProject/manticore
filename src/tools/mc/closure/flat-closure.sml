@@ -25,28 +25,30 @@ structure FlatClosure : sig
       | cvtTy (CPSTy.T_Raw rTy) = CFGTy.T_Raw rTy
       | cvtTy (CPSTy.T_Wrap rTy) = CFG.T_Wrap rTy
       | cvtTy (CPSTy.T_Tuple tys) = CFG.T_Tuple(List.map cvtTy tys)
-      | cvtTy (ty as CPSTy.T_Fun tys) = CFG.T_Tuple[CFG.T_Any, cvtStdFunTy ty]
-      | cvtTy (ty as CPSTy.T_Cont tys) = CFG.T_OpenTuple[cvtStdContTy ty]
+      | cvtTy (ty as CPSTy.T_Fun tys) = cvtStdFunTy ty
+      | cvtTy (ty as CPSTy.T_Cont tys) = cvtStdContTy ty
 
   (* convert a function type to a standard-function type *)
-    and cvtStdFunTy (CPSTy.T_Fun[argTy, retTy, exhTy]) = CFGTy.T_StdFun{
+    and cvtStdFunTy ty = CFG.T_Tuple[CFG.T_Any, cvtStdFunTyAux ty]
+    and cvtStdFunTyAux (CPSTy.T_Fun[argTy, retTy, exhTy]) = CFGTy.T_StdFun{
             clos = CFGTy.T_Any,
             arg = cvtTy argTy,
             ret = cvtStdContTy retTy,
             exh = cvtStdContTy exhTy
           }
-      | cvtStdFunTy (CPSTy.T_Any) = CFGTy.T_StdFun{
+      | cvtStdFunTyAux (CPSTy.T_Any) = CFGTy.T_StdFun{
             clos = CFGTy.T_Any,
             arg = CFGTy.T_Any,
             ret = CFGTy.T_Any,
             exh = CFGTy.T_Any
           }
-      | cvtStdFunTy ty = raise Fail("bogus function type " ^ CPSTy.toString ty)
+      | cvtStdFunTyAux ty = raise Fail("bogus function type " ^ CPSTy.toString ty)
 
-  (* convert a continuation type to a standard-function type *)
-    and cvtStdContTy (CPSTy.T_Cont[argTy]) = CFGTy.stdContTy(CFGTy.T_Any, cvtTy argTy)
-      | cvtStdContTy (CPSTy.T_Any) = CFGTy.stdContTy(CFGTy.T_Any, CFGTy.T_Any)
-      | cvtStdContTy ty = raise Fail("bogus continuation type " ^ CPSTy.toString ty)
+  (* convert a continuation type to a standard-continuation type *)
+    and cvtStdContTy ty = CFG.T_OpenTuple[cvtStdContTyAux ty]
+    and cvtStdContTyAux (CPSTy.T_Cont[argTy]) = CFGTy.stdContTy(CFGTy.T_Any, cvtTy argTy)
+      | cvtStdContTyAux (CPSTy.T_Any) = CFGTy.stdContTy(CFGTy.T_Any, CFGTy.T_Any)
+      | cvtStdContTyAux ty = raise Fail("bogus continuation type " ^ CPSTy.toString ty)
 
   (* assign labels to functions and continuations *)
     local
@@ -55,13 +57,13 @@ structure FlatClosure : sig
     in
     fun assignLabels lambda = let
           fun assignFB (f, _, e) = let
-                val lab = CFG.Label.new(CPS.Var.nameOf f, cvtStdFunTy(CPS.Var.typeOf f))
+                val lab = CFG.Label.new(CPS.Var.nameOf f, cvtStdFunTyAux(CPS.Var.typeOf f))
                 in
                   setFn (f, lab);
                   assignExp e
                 end
           and assignKB (k, _, e) = let
-                val lab = CFG.Label.new(CPS.Var.nameOf k, cvtStdContTy(CPS.Var.typeOf k))
+                val lab = CFG.Label.new(CPS.Var.nameOf k, cvtStdContTyAux(CPS.Var.typeOf k))
                 in
                   setFn (k, lab);
                   assignExp e
@@ -369,7 +371,7 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
                                           in
                                             (binds', xfer)
                                           end
-                                      | _ => raise Fail "non-standard calling convention"
+                                      | _ => raise Fail "non-standard apply convention"
                                     (* end case *))
                               in
                                 finish (binds @ stms, xfer)
@@ -395,7 +397,7 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
                                           in
                                             (bindCP :: binds, xfer)
                                           end
-                                      | _ => raise Fail "non-standard calling convention"
+                                      | _ => raise Fail "non-standard throw convention"
                                     (* end case *))
                               in
                                 finish (binds @ stms, xfer)

@@ -49,6 +49,30 @@ structure CFGTy =
             | _ => false
 	  (* end case *))
 
+    fun hasUniformRep ty = (case ty 
+           of T_Any => true
+            | T_Enum _ => false
+            | T_Raw _ => false
+            | T_Wrap _ => true
+            | T_Tuple _ => true
+            | T_OpenTuple _ => true
+            | T_StdFun _ => true
+            | T_StdCont _ => true
+            | T_Code _ => false
+	  (* end case *))
+
+    fun isValidCast (fromTy, toTy) = (case (fromTy, toTy)
+           of (T_Any, toTy) => hasUniformRep toTy
+            | (fromTy, T_Any) => hasUniformRep fromTy
+            | (T_OpenTuple ty1s, T_OpenTuple ty2s) =>
+                  ListPair.all isValidCast (ty1s, ty2s)
+            | (T_StdFun {clos = clos1, arg = arg1, ret = ret1, exh = exh1},
+               T_StdFun {clos = clos2, arg = arg2, ret = ret2, exh = exh2}) => true
+            | (T_StdCont {clos = clos1, arg = arg1},
+               T_StdCont {clos = clos2, arg = arg2}) => true
+            | _ => equals (fromTy, toTy)
+	  (* end case *))
+
     fun toString ty = let
 	  fun tys2l ([], l) = l
 	    | tys2l ([ty], l) = toString ty :: l

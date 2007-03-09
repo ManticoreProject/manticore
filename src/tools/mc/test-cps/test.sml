@@ -14,7 +14,7 @@ structure Test =
 
     fun prHdr msg = print(concat["******************** ", msg,  "********************\n"])
 
-    fun cvt flags file = let
+    fun cvt file = let
 	  val cps = CPSParser.parse file
 	  val _ = (
 		prHdr "CPS after expand";
@@ -22,19 +22,19 @@ structure Test =
 	  val cfg = FlatClosure.convert cps
 	  val _ = (
 		prHdr "CFG after closure";
-		PrintCFG.output flags (TextIO.stdOut, cfg);
-		CheckCFG.check cfg)
+		PrintCFG.output {types=true} (TextIO.stdOut, cfg))
+          val _ = CheckCFG.check cfg
 	  in
 	    cfg
 	  end
 
     fun load file = let
-	  val cfg = cvt {types=false} file
+	  val cfg = cvt file
 	  val cfg = Opt.optimize cfg
 	  val _ = (
 		prHdr "CFG after cfg-opt";
-		PrintCFG.print cfg;
-		CheckCFG.check cfg)
+		PrintCFG.output {types=true} (TextIO.stdOut, cfg))
+          val _ = CheckCFG.check cfg
 	  in
 	    cfg
 	  end
@@ -48,5 +48,15 @@ structure Test =
 	  end
 
     fun apply (cMap, clos) value = InterpCFG.applyClos cMap (clos, value)
+
+    val all = ["add1.cps","fact.cps","fib.cps",
+               "float1.cps","float2.cps","float3.cps",
+               "length.cps","map.cps","map2.cps",
+               (*"mult-ls.cps",*)"sum-ls-foldr.cps","sum-ls.cps",
+               "mutual-recursion.cps","mutual-recursion2.cps"]
+
+    fun cvtAll () = List.map cvt all
+    fun loadAll () = List.map load all
+    fun initAll () = List.map init all
 
   end

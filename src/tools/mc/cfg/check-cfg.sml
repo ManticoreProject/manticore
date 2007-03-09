@@ -90,16 +90,11 @@ structure CheckCFG : sig
                             bindVar (env, x))
 			| CFG.E_Cast(x, ty, y) => (
 			    chkVar (env, y);
-(* FIXME: check that x and y have same kinds *)
-(*
-                            case (V.kindOf x, V.kindOf y) of
-                               (CFG.VK_None, CFG.VK_None) => ()
-                             | (CFG.VK_Let _, CFG.VK_Let _) => ()
-                             | (CFG.VK_Param _, CFG.VK_Param _) => ()
-                             | _ => err["variable ", V.toString x, "@", CFG.varKindToString (V.kindOf x),
-                                        " does not match ",
-                                        "variable ", V.toString y, "@", CFG.varKindToString (V.kindOf y)];
-*)
+                            if Ty.isValidCast (V.typeOf y, ty)
+                                then ()
+                            else err["variable ", V.toString y, ":", Ty.toString (V.typeOf y),
+                                     " cannot be cast to ",
+                                     "type ", Ty.toString ty];
                             if Ty.equals (V.typeOf x, ty)
                                then ()
                             else err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
@@ -115,7 +110,7 @@ structure CheckCFG : sig
                                      then ()
                                   else err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
                                            " does not match ",
-                                           "label", L.toString lab, ":", Ty.toString (L.typeOf lab)];
+                                           "label ", L.toString lab, ":", Ty.toString (L.typeOf lab)];
 			    bindVar (env, x))
 			| CFG.E_Literal(x, _) => bindVar (env, x)
 			| CFG.E_Select(x, i, y) => let
@@ -135,7 +130,6 @@ structure CheckCFG : sig
 			    end
 			| CFG.E_Alloc(x, ys) => (
 			    chkVars (env, ys);
-(* FIXME: check the type of x *)
                             (case V.typeOf x of
                                 CFGTy.T_Tuple tys => ()
                               | CFGTy.T_OpenTuple tys => ()
@@ -185,14 +179,65 @@ structure CheckCFG : sig
 		      (* end case *))
 		fun chkExit (env, xfer) = (case xfer
 		       of CFG.StdApply{f, clos, arg, ret, exh} => (
-(* FIXME: check type of f *)
-			    chkVars (env, [f, clos, arg, ret, exh]))
+			    chkVars (env, [f, clos, arg, ret, exh]);
+                            (case V.typeOf f of
+                                Ty.T_StdFun {clos = closTy, arg = argTy, ret = retTy, exh = exhTy} =>
+                                   (if Ty.isValidCast (V.typeOf clos, closTy)
+                                       then ()
+                                    else err["variable ", V.toString clos, ":", Ty.toString (V.typeOf clos),
+                                             " does not match ",
+                                             "closure type ", Ty.toString closTy];
+                                    if Ty.isValidCast (V.typeOf arg, argTy)
+                                       then ()
+                                    else err["variable ", V.toString arg, ":", Ty.toString (V.typeOf arg),
+                                             " does not match ",
+                                             "argument type ", Ty.toString argTy];
+                                    if Ty.isValidCast (V.typeOf ret, retTy)
+                                       then ()
+                                    else err["variable ", V.toString ret, ":", Ty.toString (V.typeOf ret),
+                                             " does not match ",
+                                             "return type ", Ty.toString retTy];
+                                    if Ty.isValidCast (V.typeOf exh, exhTy)
+                                       then ()
+                                    else err["variable ", V.toString exh, ":", Ty.toString (V.typeOf exh),
+                                             " does not match ",
+                                             "exh type ", Ty.toString exhTy])
+                              | _ => err["variable ", V.toString f, ":", Ty.toString (V.typeOf f),
+                                         " is not stdfun"]))
 			| CFG.StdThrow{k, clos, arg} => (
-(* FIXME: check type of k *)
-			    chkVars (env, [k, clos, arg]))
+			    chkVars (env, [k, clos, arg]);
+                            (case V.typeOf k of
+                                Ty.T_StdCont {clos = closTy, arg = argTy} =>
+                                   (if Ty.isValidCast (V.typeOf clos, closTy)
+                                       then ()
+                                    else err["variable ", V.toString clos, ":", Ty.toString (V.typeOf clos),
+                                             " does not match ",
+                                             "closure type ", Ty.toString closTy];
+                                    if Ty.isValidCast (V.typeOf arg, argTy)
+                                       then ()
+                                    else err["variable ", V.toString arg, ":", Ty.toString (V.typeOf arg),
+                                             " does not match ",
+                                             "argument type ", Ty.toString argTy])
+                              | _ => err["variable ", V.toString k, ":", Ty.toString (V.typeOf k),
+                                         " is not stdcont"]))
 			| CFG.Apply{f, args} => (
-(* FIXME: check type of f *)
-			    chkVars (env, f::args))
+			    chkVars (env, f::args);
+                            (case V.typeOf f of
+                                Ty.T_Code argTys => 
+                                   ((ListPair.appEq (fn (arg, argTy) =>
+                                                     if Ty.equals (V.typeOf arg, argTy)
+                                                        then ()
+                                                     else err["variable ", V.toString arg, ":", Ty.toString (V.typeOf arg),
+                                                              " does not match ",
+                                                              "argument type ", Ty.toString argTy])
+                                                     (args, argTys))
+                                    handle ListPair.UnequalLengths =>
+                                             err["variables (", String.concatWith "," (List.map V.toString args),
+                                                 ") do not match ", 
+                                                 "variables (", String.concatWith "," (List.map Ty.toString argTys),
+                                                 ")"])
+                              | _ => err["variable ", V.toString f, ":", Ty.toString (V.typeOf f),
+                                         " is not code"]))
 			| CFG.Goto jmp => chkJump (env, jmp)
 			| CFG.If(x, j1, j2) => (
 			    chkVar (env, x);
