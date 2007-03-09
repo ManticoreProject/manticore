@@ -73,7 +73,7 @@ if test x"$ac_cv_func_posix_memalign" != xyes ; then
   fi
 fi
 
-AC_CHECK(sigtimedwait nanosleep)
+AC_CHECK_FUNCS(sigtimedwait nanosleep)
 
 dnl ******************** Runtime system parameters ********************
 
