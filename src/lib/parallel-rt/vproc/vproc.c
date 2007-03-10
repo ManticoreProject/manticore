@@ -36,7 +36,7 @@ static pthread_key_t	VProcInfoKey;
 /********** Globals **********/
 int			NumHardwareProcs;
 int			NumVProcs;
-VProc_t			*Procs[MAX_NUM_VPROCS];
+VProc_t			*VProcs[MAX_NUM_VPROCS];
 
 
 /* VProcInit:

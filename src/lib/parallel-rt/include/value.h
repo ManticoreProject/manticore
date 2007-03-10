@@ -21,8 +21,8 @@ typedef struct {
     Value_t	env[];
 } ContClosure_t;
 
-FunClosure_t *ValueToClosure (Value_t v)	{ return (FunClosure_t *)ValueToPtr(v); }
-ContClosure_t *ValueToCont (Value_t v)		{ return (ContClosure_t *)ValueToPtr(v); }
+STATIC_INLINE FunClosure_t *ValueToClosure (Value_t v)	{ return (FunClosure_t *)ValueToPtr(v); }
+STATIC_INLINE ContClosure_t *ValueToCont (Value_t v)	{ return (ContClosure_t *)ValueToPtr(v); }
 
 #define	M_FALSE	((Value_t)1)
 #define	M_TRUE	((Value_t)3)
