@@ -10,7 +10,7 @@ structure RuntimeLabels = struct
 
   local val global = Label.global
   in
-    val initGC = global "asm_init_gc"
+    val initGC = global "ASM_InvokeGC"
   end (* local *)
 
 end (* RuntimeLabels *)

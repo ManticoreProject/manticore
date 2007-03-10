@@ -197,7 +197,7 @@ functor HeapTransferFn (
    * 3. Call the GC initialization routine, passing it retK in the return 
    *    continuation register.
    *)
-  fun genHeapCheck varDefTbl {szb, nogc=(noGCLbl, roots)} =
+  fun genHeapCheck varDefTbl {szb, gc, nogc=(noGCLbl, roots)} =
       let fun argInfo ([], argTys, hcArgs, mlRegs) = 
 	      (rev argTys, rev hcArgs, rev mlRegs)
 	    | argInfo (a :: args, argTys, hcArgs, rootsMLR) =
@@ -289,7 +289,8 @@ functor HeapTransferFn (
   val longTy = M.T_Raw RawTypes.T_Long
 
   fun genModuleEntry code =
-      let val entryLbl = 
+      let (* The entry function is the first function in the module. *)
+	  val entryLbl = 
 	      (case code
 		of M.FUNC {lab, ...} :: _ => LabelCode.getName lab
 		 | _ => raise Fail ""
@@ -297,18 +298,19 @@ functor HeapTransferFn (
 	  val initLbl = "initK"
 
 	  val {stms=argInitStms, ptr=wArgReg} = Alloc.genWrap (longTy, mltGPR argReg)
-	  val {stms=initClosStms, ptr=initClosReg} = 
+(*	  val {stms=initClosStms, ptr=initClosReg} = 
 	      Alloc.genAlloc 
 		      [(CFGTy.unitTy, mkExp (intLit 0)),
-		       (aTy, mkExp (T.LABEL entryLbl))]
+		       (aTy, mkExp (T.LABEL entryLbl))] *)
 
-	  val {ptr=rReg, stms=retKStms} = 
-	      Alloc.genAlloc [(retTy, mkExp (T.LABEL (Label.global "returnloc")))]
+(*	  val {ptr=rReg, stms=retKStms} = 
+	      Alloc.genAlloc [(retTy, mkExp (T.LABEL (Label.global "returnloc")))] *)
 	  val {ptr=initReg, stms=initKStms} = Alloc.genAlloc 
 		[(retTy, mkExp (T.LABEL (Label.global initLbl))),
 		 (aTy, mltGPR closReg), 
 		 (aTy, mltGPR argReg), 
-		 (kTy, rReg), 
+		 (kTy, mltGPR retReg),
+(*		 (kTy, rReg),*)
 		 (kTy, mltGPR exhReg)]
 	  val mty = M.T_Tuple [retTy, aTy, longTy, kTy, kTy]
 	  val baseReg = newReg ()
@@ -325,11 +327,11 @@ functor HeapTransferFn (
 	   (* wrap the integer argument *)
 	   argInitStms,
 	   [move' (argReg, wArgReg)], 
-	   (* create an initial closure *)
+(*	   (* create an initial closure *)
 	   initClosStms,
-	   [move' (closReg, initClosReg)],
-	   (* allocate and save the outer continuation *)
-	   retKStms,
+	   [move' (closReg, initClosReg)], *)
+(*	   (* allocate and save the outer continuation *)
+	   retKStms, *)
 	   (* allocate and save the initial continuation *)
 	   initKStms,
 	   [move' (retReg, initReg)],
