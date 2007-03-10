@@ -23,7 +23,7 @@ static MemChunk_t *FreeChunks;	/* list of free chunks */
 MemChunk_t		**BIBOP[L1_TBLSZ];
 static MemChunk_t	*FreeL2Tbl[L2_TBLSZ];
 #else
-MemChunk_t		**BIBOP[BIBOP_TBLSZ];
+MemChunk_t		*BIBOP[BIBOP_TBLSZ];
 #endif
 
 
@@ -40,7 +40,7 @@ void HeapInit (Options_t *opts)
     for (int i = 0;  i < L1_TBLSZ;  i++)
 	BIBOP[i] = FreeL2Tbl;
 #else
-    for (int i = 0;  i < L1_TBLSZ;  i++)
+    for (int i = 0;  i < BIBOP_TBLSZ;  i++)
 	BIBOP[i] = 0;
 #endif
 
