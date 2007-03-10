@@ -107,6 +107,10 @@ extern void Error (const char *, ...)
 	__attribute__ ((format(printf, 1, 2)));
 extern void Warning (const char *, ...)
 	__attribute__ ((format(printf, 1, 2)));
+extern void SayDebug (const char *fmt, ...)
+	__attribute__ ((format(printf, 1, 2)));
+extern void Say (const char *fmt, ...)
+	__attribute__ ((format(printf, 1, 2)));
 
 extern Value_t RunManticore (VProc_t *vp, Value_t f, Value_t arg);
 

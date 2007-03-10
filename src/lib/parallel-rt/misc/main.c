@@ -8,10 +8,12 @@
 #include <stdio.h>
 #include <time.h>
 #include <signal.h>
+#include <stdarg.h>
 #include "options.h"
 #include "value.h"
 #include "vproc.h"
 #include "heap.h"
+#include "os-threads.h"
 
 static void IdleVProc (VProc_t *vp, void *arg);
 static void MainVProc (VProc_t *vp, void *arg);
@@ -24,6 +26,10 @@ static void SigHandler (int sig, siginfo_t *si, void *uc);
 #define MIN_TIMEQ_NS	1000000		/* minimum timeq in nanoseconds (== 1ms) */
 
 static int	TimeQ = DFLT_TIME_Q_MS;	// time quantum in milliseconds
+#ifndef NDBUG
+static FILE	*DebugF = NULL;
+#endif
+static Mutex_t	PrintLock;		/* lock for output routines */
 
 extern int mantentry;		/* the entry-point of the Manticore code */
 
@@ -32,8 +38,15 @@ int main (int argc, const char **argv)
 {
     Options_t *opts = InitOptions (argc, argv);
 
+    MutexInit (&PrintLock);
+
     VProcInit (opts);
     HeapInit (opts);
+
+#ifndef NDEBUG
+  /* initialize debug output */
+    DebugF = stderr;
+#endif
 
   /* start the idle vprocs */
     for (int i = 1;  i < NumHardwareProcs;  i++)
@@ -153,3 +166,92 @@ static void SigHandler (int sig, siginfo_t *si, void *_uc)
     exit (0);
 }
 #endif
+
+
+/***** Output and error routines *****/
+
+/* Say:
+ * Print a message to the standard output.
+ */
+void Say (const char *fmt, ...)
+{
+    va_list	ap;
+
+    va_start (ap, fmt);
+    MutexLock (&PrintLock);
+      vfprintf (stdout, fmt, ap);
+    MutexUnlock (&PrintLock);
+    va_end(ap);
+    fflush (stdout);
+
+} /* end of Say */
+
+#ifndef NDEBUG
+/* SayDebug:
+ * Print a message to the debug output stream.
+ */
+void SayDebug (const char *fmt, ...)
+{
+    va_list	ap;
+
+    va_start (ap, fmt);
+    MutexLock (&PrintLock);
+      vfprintf (DebugF, fmt, ap);
+    MutexUnlock (&PrintLock);
+    va_end(ap);
+    fflush (DebugF);
+
+} /* end of SayDebug */
+#endif
+
+/* Error:
+ * Print an error message.
+ */
+void Error (const char *fmt, ...)
+{
+    va_list	ap;
+
+    va_start (ap, fmt);
+    MutexLock (&PrintLock);
+      fprintf (stderr, "[%2d] Error -- ", VProcSelf()->id);
+      vfprintf (stderr, fmt, ap);
+    MutexUnlock (&PrintLock);
+    va_end(ap);
+
+} /* end of Error */
+
+/* Warning:
+ * Print a warning message.
+ */
+void Warning (const char *fmt, ...)
+{
+    va_list	ap;
+
+    va_start (ap, fmt);
+    MutexLock (&PrintLock);
+      fprintf (stderr, "[%2d] Warning -- ", VProcSelf()->id);
+      vfprintf (stderr, fmt, ap);
+    MutexUnlock (&PrintLock);
+    va_end(ap);
+
+} /* end of Warning */
+
+
+/* Die:
+ * Print an error message and then exit.
+ */
+void Die (const char *fmt, ...)
+{
+    va_list	ap;
+
+    va_start (ap, fmt);
+    MutexLock (&PrintLock);
+      fprintf (stderr, "[%2d] Fatal error -- ", VProcSelf()->id);
+      vfprintf (stderr, fmt, ap);
+      fprintf (stderr, "\n");
+    MutexUnlock(&PrintLock);
+    va_end(ap);
+
+    exit (1);
+
+} /* end of Die */
