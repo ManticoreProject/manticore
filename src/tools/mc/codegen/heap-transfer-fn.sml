@@ -197,7 +197,7 @@ functor HeapTransferFn (
    * 3. Call the GC initialization routine, passing it retK in the return 
    *    continuation register.
    *)
-  fun genHeapCheck varDefTbl {szb, gc, nogc=(noGCLbl, roots)} =
+  fun genHeapCheck varDefTbl {szb, nogc=(noGCLbl, roots)} =
       let fun argInfo ([], argTys, hcArgs, mlRegs) = 
 	      (rev argTys, rev hcArgs, rev mlRegs)
 	    | argInfo (a :: args, argTys, hcArgs, rootsMLR) =

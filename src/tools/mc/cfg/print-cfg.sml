@@ -85,9 +85,9 @@ structure PrintCFG : sig
 		      prApply("throw", k, [clos, arg])
 		  | CFG.Apply{f, args} => prApply("apply", f, args)
 		  | CFG.Goto jmp => prJump("goto", jmp)
-		  | CFG.HeapCheck{szb, gc, nogc} => (
+		  | CFG.HeapCheck{szb, nogc} => (
 		      pr "check (avail-mem < "; pr(Word.fmt StringCvt.DEC szb); pr ")\n";
-		      indent (i+1); prJump("then", gc);
+		      indent (i+1); pr "then GC()\n";
 		      indent (i+1); prJump("else", nogc))
 		  | CFG.If(x, j1, j2) => (
 		      prl ["if ", varUseToString x, "\n"];

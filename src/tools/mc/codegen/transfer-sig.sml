@@ -30,7 +30,7 @@ signature TRANSFER = sig
     (* perform a heap check, possibly triggering the GC *)
     val genHeapCheck : 
 	VarDef.var_def_tbl ->
-	{szb : word, gc : CFG.jump, nogc : CFG.jump}
+	{szb : word, nogc : CFG.jump}
 	-> {stms : MTy.T.stm list, liveOut : MTy.T.mlrisc list}
 
     (* apply a C function f to args.  the result goes in lhs. *)

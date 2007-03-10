@@ -133,13 +133,11 @@ val toNode = fn f => let
 				  (params', CFG.Block params')
 				end
 			  (* end case *))
-		    val gcLab = CFG.Label.newWithKind(Atom.atom "callGC", CFG.LK_Extern "callGC", funTy)
 		    val f' = CFG.mkFunc(lab, entry', [], CFG.HeapCheck{
 			    szb = getAlloc lab,
-			    gc = (gcLab, freeVars),
 			    nogc = (lab', freeVars)
 			  })
-		    val f'' = CFG.mkFunc(lab', CFG.Block(CFG.paramsOfConv entry), body, exit)
+		    val f'' = CFG.mkFunc(lab', entry, body, exit)
 		    in
 		      f' :: f'' :: fs
 		    end
