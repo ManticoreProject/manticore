@@ -29,6 +29,10 @@
 #  define VP_HEAP_SZB		ONE_MEG
 #endif
 
+#ifndef DFLT_TIME_Q_MS
+#  define DFLT_TIME_Q_MS	100
+#endif
+
 
 /******************** Utility definitions ********************/
 
@@ -87,6 +91,8 @@ typedef struct struct_opts Options_t;
 typedef struct struct_vproc VProc_t;
 typedef struct struct_chunk MemChunk_t;
 
+STATIC_INLINE bool ValueIsBoxed (Value_t v) { return (((Addr_t)v & 0x3) == 0); }
+
 /* type conversions  */
 STATIC_INLINE Addr_t ValueToAddr (Value_t v) { return (Addr_t)v; }
 STATIC_INLINE void *ValueToPtr (Value_t v) { return (void *)(Addr_t)v; }
@@ -101,5 +107,7 @@ extern void Error (const char *, ...)
 	__attribute__ ((format(printf, 1, 2)));
 extern void Warning (const char *, ...)
 	__attribute__ ((format(printf, 1, 2)));
+
+extern Value_t RunManticore (VProc_t *vp, Value_t f, Value_t arg);
 
 #endif /* _MANTICORE_RT_H_ */

@@ -18,6 +18,15 @@
 #include "options.h"
 #include "value.h"
 
+typedef struct {		/* data passed to VProcMain */
+    VProc_t	*vp;		/* the host vproc */
+    VProcFn_t	initFn;	/* the initial function to run */
+    void	*arg;		/* an additional argument to initFn */
+    bool	started;	/* used to signal that the vproc has started */
+    Mutex_t	lock;		/* lock to protect wait and started */
+    Cond_t	wait;		/* use to wait for the vproc to start */
+} InitData_t;
+
 static void *VProcMain (void *_data);
 static void SigHandler (int sig, siginfo_t *si, void *_sc);
 static int GetNumCPUs ();
@@ -56,7 +65,7 @@ void VProcInit (Options_t *opts)
  * Create the data structures and underlying system thread to
  * implement a vproc.
  */
-VProc_t *VProcCreate ()
+VProc_t *VProcCreate (VProcFn_t f, void *arg)
 {
     if (NumVProcs >= MAX_NUM_VPROCS)
 	Die ("too many vprocs\n");
@@ -91,7 +100,22 @@ VProc_t *VProcCreate ()
     InitVProcHeap (vproc);
 
   /* start the vproc's pthread */
-    ThreadCreate (&(vproc->hostID), VProcMain, vproc);
+    InitData_t data;
+    data.vp = vproc;
+    data.initFn = f;
+    data.arg = arg;
+    data.started = false;
+    MutexInit(&(data.lock));
+    CondInit(&(data.wait));
+    ThreadCreate (&(vproc->hostID), VProcMain, &data);
+
+  /* wait until the vproc has started, since data is in use until
+   * then.
+   */
+    MutexLock (&(data.lock));
+	while (! data.started)
+	    CondWait (&(data.wait), &(data.lock));
+    MutexUnlock (&(data.lock));
 
     return vproc;
 
@@ -140,7 +164,10 @@ void VProcSleep (VProc_t *vp)
  */
 static void *VProcMain (void *_data)
 {
-    VProc_t		*self = (VProc_t *)_data;
+    InitData_t		*data = (InitData_t *)_data;
+    VProc_t		*self = data->vp;
+    VProcFn_t		init = data->initFn;
+    void		*arg = data->arg;
     struct sigaction	sa;
 
   /* store a pointer to the VProc info as thread-specific data */
@@ -153,7 +180,13 @@ static void *VProcMain (void *_data)
     sigaction (SIGUSR1, &sa, 0);
     sigaction (SIGUSR2, &sa, 0);
 
-/* FIXME: what do we do now?? */
+  /* signal that we have started */
+    MutexLock (&(data->lock));
+	data->started = true;
+	CondSignal (&(data->wait));
+    MutexUnlock (&data->lock);
+
+    init (self, arg);
 
 } /* VProcMain */
 

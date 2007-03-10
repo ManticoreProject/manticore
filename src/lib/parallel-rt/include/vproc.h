@@ -38,6 +38,14 @@ struct struct_vproc {
     bool	idle;	      /*!< true when the VProc is idle */
 };
 
+typedef enum {
+    GCSignal,
+    PreemptSignal
+} VPSignal_t;
+
+/* the type of the initial function to run in a vproc */
+typedef void (*VProcFn_t) (VProc_t *vp, void *arg);
+
 /* Return the base address of the VProc's heap */
 STATIC_INLINE Addr_t VProcHeap (VProc_t *vp)
 {
@@ -45,14 +53,12 @@ STATIC_INLINE Addr_t VProcHeap (VProc_t *vp)
 }
 
 /* the array of vprocs */
+extern int		NumHardwareProcs;	// number of hardware processors to use.
 extern int		NumVProcs;
 extern VProc_t		*VProcs[MAX_NUM_VPROCS];
 
-typedef enum {
-    GCSignal,
-    PreemptSignal
-} VPSignal_t;
-
+extern void VProcInit (Options_t *opts);
+extern VProc_t *VProcCreate (VProcFn_t f, void *arg);
 extern VProc_t *VProcSelf ();
 extern void VProcSignal (VProc_t *vp, VPSignal_t sig);
 extern void VProcSleep (VProc_t *vp);

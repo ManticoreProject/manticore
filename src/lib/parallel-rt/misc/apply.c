@@ -14,7 +14,10 @@ extern RequestCode_t ASM_Apply (VProc_t *vp, Addr_t cp, Value_t arg, Value_t ep,
 extern int ASM_Return;
 extern int ASM_UncaughtExn;
 
-void RunManticore (VProc_t *vp, Value_t f, Value_t arg)
+/* Run a Manticore function f applied to arg.  If the function
+ * returns, then return the result.
+ */
+Value_t RunManticore (VProc_t *vp, Value_t f, Value_t arg)
 {
   /* get the code and environment pointers for f */
     Addr_t cp = ValueToAddr (ValueToClosure(f)->cp);
@@ -44,7 +47,7 @@ void RunManticore (VProc_t *vp, Value_t f, Value_t arg)
 		exnCont = M_UNIT;  /* unused in throw to standard cont. */
 	    } break;
 	  case REQ_Return:	/* returning from a function call */
-	    return;
+	    return vp->stdArg;
 	  case REQ_UncaughtExn:	/* raising an exception */
 	    Die ("uncaught exception\n");
 	  case REQ_Sleep:	/* make the VProc idle */

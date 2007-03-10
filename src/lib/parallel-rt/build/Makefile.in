@@ -29,7 +29,8 @@ GC_SRCS 	= minor-gc.c \
 
 VPROC_SRCS	= vproc.c
 
-MISC_SRCS	= apply.c \
+MISC_SRCS	= main.c \
+		  apply.c \
 		  options.c
 
 C_SRCS		= $(GC_SRCS) $(VPROC_SRCS) $(MISC_SRCS)
