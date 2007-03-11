@@ -99,6 +99,11 @@ MemChunk_t *AllocChunk (Addr_t szb)
     chunk->szB = nPages * BIBOP_PAGE_SZB;
     chunk->next = 0;
 
+#ifndef NDEBUG
+    if (DebugFlg)
+	SayDebug("AllocChunk: %d Kb at %#p\n", szb/1024, memObj);
+#endif
+
 } /* end of AllocChunk */
 
 /* UpdateBIBOP:
