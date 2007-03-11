@@ -170,6 +170,11 @@ static void *VProcMain (void *_data)
     void		*arg = data->arg;
     struct sigaction	sa;
 
+#ifndef NDEBUG
+    if (DebugFlg)
+	SayDebug("[%2d] VProcMain: initializing ...\n", self->id);
+#endif
+
   /* store a pointer to the VProc info as thread-specific data */
     pthread_setspecific (VProcInfoKey, self);
 

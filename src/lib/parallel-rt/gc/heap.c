@@ -55,7 +55,7 @@ void HeapInit (Options_t *opts)
  */
 void InitVProcHeap (VProc_t *vp)
 {
-/* FIXME: grap the heap lock here? */
+/* FIXME: grab the heap lock here? */
 
   /* provision the vproc with a to-space chunk in the global heap */
 /* FIXME: eventually, we should check the free list first! */

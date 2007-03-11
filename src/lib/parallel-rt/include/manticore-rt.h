@@ -114,4 +114,9 @@ extern void Say (const char *fmt, ...)
 
 extern Value_t RunManticore (VProc_t *vp, Value_t f, Value_t arg);
 
+#ifndef NDEBUG
+extern bool	DebugFlg;
+#endif
+
+
 #endif /* _MANTICORE_RT_H_ */

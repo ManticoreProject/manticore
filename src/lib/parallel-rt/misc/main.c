@@ -28,6 +28,7 @@ static void SigHandler (int sig, siginfo_t *si, void *uc);
 static int	TimeQ = DFLT_TIME_Q_MS;	// time quantum in milliseconds
 #ifndef NDBUG
 static FILE	*DebugF = NULL;
+bool		DebugFlg = false;
 #endif
 static Mutex_t	PrintLock;		/* lock for output routines */
 
@@ -46,6 +47,7 @@ int main (int argc, const char **argv)
 #ifndef NDEBUG
   /* initialize debug output */
     DebugF = stderr;
+    DebugFlg = GetFlagOpt (opts, "-d");
 #endif
 
   /* start the idle vprocs */
@@ -64,7 +66,12 @@ int main (int argc, const char **argv)
  */
 static void IdleVProc (VProc_t *vp, void *arg)
 {
-/* ??? */
+#ifndef NDEBUG
+    if (DebugFlg)
+	SayDebug("[%2d] IdleVProc starting\n", vp->id);
+#endif
+
+    /* ??? */
 }
 
 /* MainVProc:
@@ -74,6 +81,11 @@ static void IdleVProc (VProc_t *vp, void *arg)
  */ 
 static void MainVProc (VProc_t *vp, void *arg)
 {
+#ifndef NDEBUG
+    if (DebugFlg)
+	SayDebug("[%2d] MainVProc starting\n", vp->id);
+#endif
+
     Value_t res = RunManticore (vp, arg, M_UNIT);
 
     if (ValueIsBoxed(res))
