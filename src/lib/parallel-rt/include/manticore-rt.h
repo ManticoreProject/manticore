@@ -33,6 +33,9 @@
 #  define DFLT_TIME_Q_MS	100
 #endif
 
+#ifndef DFLT_NUM_VPROCS
+#  define DFLT_NUM_VPROCS	2
+#endif
 
 /******************** Utility definitions ********************/
 

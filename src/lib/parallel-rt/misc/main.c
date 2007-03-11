@@ -15,7 +15,6 @@
 #include "heap.h"
 #include "os-threads.h"
 
-static void IdleVProc (VProc_t *vp, void *arg);
 static void MainVProc (VProc_t *vp, void *arg);
 static void PingLoop ();
 static void Ping (int n);
@@ -47,12 +46,8 @@ int main (int argc, const char **argv)
     DebugFlg = GetFlagOpt (opts, "-d");
 #endif
 
-    VProcInit (opts);
     HeapInit (opts);
-
-  /* start the idle vprocs */
-    for (int i = 1;  i < NumHardwareProcs;  i++)
-	VProcCreate (IdleVProc, 0);
+    VProcInit (opts);
 
   /* create the main vproc */
     VProcCreate (MainVProc, &mantentry);
@@ -61,18 +56,6 @@ int main (int argc, const char **argv)
 
 } /* end of main */
 
-
-/* IdleVProc:
- */
-static void IdleVProc (VProc_t *vp, void *arg)
-{
-#ifndef NDEBUG
-    if (DebugFlg)
-	SayDebug("[%2d] IdleVProc starting\n", vp->id);
-#endif
-
-    /* ??? */
-}
 
 /* MainVProc:
  *

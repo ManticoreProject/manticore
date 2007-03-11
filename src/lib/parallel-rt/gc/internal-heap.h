@@ -30,5 +30,6 @@ struct struct_chunk {
 
 extern MemChunk_t *AllocChunk (Addr_t szb);
 extern void FreeChunk (MemChunk_t *);
+extern void UpdateBIBOP (MemChunk_t *chunk);
 
 #endif /* !_INTERNAL_HEAP_H_ */

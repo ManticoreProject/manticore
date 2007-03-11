@@ -28,6 +28,7 @@ typedef struct {		/* data passed to VProcMain */
 } InitData_t;
 
 static void *VProcMain (void *_data);
+static void IdleVProc (VProc_t *vp, void *arg);
 static void SigHandler (int sig, siginfo_t *si, void *_sc);
 static int GetNumCPUs ();
 
@@ -48,13 +49,25 @@ void VProcInit (Options_t *opts)
     NumHardwareProcs = GetNumCPUs();
 
   /* get command-line options */
-    int nProcs = GetIntOpt (opts, "-p", NumHardwareProcs);
+    int nProcs = ((NumHardwareProcs == 0) ? DFLT_NUM_VPROCS : NumHardwareProcs);
+    nProcs = GetIntOpt (opts, "-p", nProcs);
     if ((NumHardwareProcs > 0) && (nProcs > NumHardwareProcs))
 	Warning ("%d processors requested on a %d processor machine\n",
 	    nProcs, NumHardwareProcs);
 
+#ifndef NDEBUG
+    SayDebug("%d/%d processors allocated to vprocs\n", nProcs, NumHardwareProcs);
+#endif
+
     if (pthread_key_create (&VProcInfoKey, 0) != 0) {
 	Die ("unable to create VProcInfoKey");
+    }
+
+  /* allocate nProcs-1 idle vprocs; the last vproc will be created to run
+   * the initial Manticore thread.
+   */
+    for (int i = 1;  i < nProcs;  i++) {
+	VProcCreate (IdleVProc, 0);
     }
 
 } /* end of VProcInit */
@@ -194,6 +207,18 @@ static void *VProcMain (void *_data)
     init (self, arg);
 
 } /* VProcMain */
+
+/* IdleVProc:
+ */
+static void IdleVProc (VProc_t *vp, void *arg)
+{
+#ifndef NDEBUG
+    if (DebugFlg)
+	SayDebug("[%2d] IdleVProc starting\n", vp->id);
+#endif
+
+    /* ??? */
+}
 
 /* SigHandler:
  *

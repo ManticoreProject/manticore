@@ -12,6 +12,8 @@
 #include "os-threads.h"
 #include "internal-heap.h"
 
+Mutex_t		HeapLock;	/* lock for protecting heap data structures */
+
 Addr_t		GlobalVM;	/* amount of memory allocated to Global heap (including */
 				/* free chunks). */
 Addr_t		FreeVM;		/* amount of free memory in free list */
@@ -19,6 +21,10 @@ Addr_t		TotalVM = 0;	/* total memory used by heap (including vproc local heaps) 
 
 static MemChunk_t *FreeChunks;	/* list of free chunks */
 
+/* The BIBOP maps addresses to the memory chunks containing the address.
+ * It is used by the global collector and access to it is protected by
+ * the HeapLock.
+ */
 #ifdef SIXTYFOUR_BIT_WORDS
 MemChunk_t		**BIBOP[L1_TBLSZ];
 static MemChunk_t	*FreeL2Tbl[L2_TBLSZ];
@@ -45,8 +51,10 @@ void HeapInit (Options_t *opts)
 #endif
 
   /* initialize the heap data structures */
+    MutexInit (&HeapLock);
     GlobalVM = 0;
     FreeVM = 0;
+    FreeChunks = 0;
 /* ??? */
 
 } /* end of HeapInit */
@@ -55,17 +63,21 @@ void HeapInit (Options_t *opts)
  */
 void InitVProcHeap (VProc_t *vp)
 {
-/* FIXME: grab the heap lock here? */
+    MutexLock (&HeapLock);  /* can we do this inside AllocChunk? */
 
-  /* provision the vproc with a to-space chunk in the global heap */
+      /* provision the vproc with a to-space chunk in the global heap */
 /* FIXME: eventually, we should check the free list first! */
-    MemChunk_t *chunk = AllocChunk (HEAP_CHUNK_SZB);
-    if (chunk == 0)
-	Die ("unable to allocate vproc to-space chunk\n");
-    chunk->sts = VPROC_CHUNK(vp->id);
-    vp->globToSpace = chunk;
-    vp->globNextW = chunk->baseAddr + WORD_SZB;
-    vp->globLimit = chunk->baseAddr + chunk->szB;
+	MemChunk_t *chunk = AllocChunk (HEAP_CHUNK_SZB);
+	if (chunk == 0)
+	    Die ("unable to allocate vproc to-space chunk\n");
+	chunk->sts = VPROC_CHUNK(vp->id);
+	vp->globToSpace = chunk;
+	vp->globNextW = chunk->baseAddr + WORD_SZB;
+	vp->globLimit = chunk->baseAddr + chunk->szB;
+
+	UpdateBIBOP (chunk);
+
+    MutexUnlock (&HeapLock);
 
 }
 
@@ -88,3 +100,35 @@ MemChunk_t *AllocChunk (Addr_t szb)
     chunk->next = 0;
 
 } /* end of AllocChunk */
+
+/* UpdateBIBOP:
+ *
+ * Update the BIBOP to point to the freshly allocated chunk.
+ */
+void UpdateBIBOP (MemChunk_t *chunk)
+{
+    Addr_t addr = chunk->baseAddr;
+    Addr_t top = addr + chunk->szB;
+    while (addr < top) {
+#ifdef SIXTYFOUR_BIT_WORDS
+	MemChunk_t	**l2 = BIBOP[addr >> L1_SHIFT];
+	assert (l2[addr >> L2_SHIFT] == 0);
+	if (l2 == FreeL2Tbl) {
+	  /* we need to allocate a new L2 table for this range */
+	    l2 = NEWVEC(Chunk_t *, L2_TBLSZ);
+	    for (int i = 0;  i < L2_TBLSZ;  i++
+		l2[i] = 0;
+	    l2[addr >> L2_SHIFT] = chunk;
+	    BIBOP[addr >> L1_SHIFT] = l2;
+	}
+	else {
+	    l2[addr >> L2_SHIFT] = chunk;
+	}
+#else /* !SIXTYFOUR_BIT_WORDS */
+	assert (BIBOP[addr >> PAGE_BITS] == 0);
+	BIBOP[addr >> PAGE_BITS] = chunk;
+#endif /* SIXTYFOUR_BIT_WORDS */
+	addr += BIBOP_PAGE_SZB;
+    } /* while */
+
+}
