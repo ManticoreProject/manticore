@@ -115,8 +115,8 @@ void UpdateBIBOP (MemChunk_t *chunk)
 	assert (l2[addr >> L2_SHIFT] == 0);
 	if (l2 == FreeL2Tbl) {
 	  /* we need to allocate a new L2 table for this range */
-	    l2 = NEWVEC(Chunk_t *, L2_TBLSZ);
-	    for (int i = 0;  i < L2_TBLSZ;  i++
+	    l2 = NEWVEC(MemChunk_t *, L2_TBLSZ);
+	    for (int i = 0;  i < L2_TBLSZ;  i++)
 		l2[i] = 0;
 	    l2[addr >> L2_SHIFT] = chunk;
 	    BIBOP[addr >> L1_SHIFT] = l2;
