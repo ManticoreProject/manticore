@@ -13,10 +13,11 @@
 #include "options.h"
 
 struct struct_opts {
-    bool	errors;
-    const char	*cmd;
-    int		argc;
-    const char	**argv;
+    bool	errors;		/* set to true if there were errors */
+				/* in process options */
+    const char	*cmd;		/* the name of the executable */
+    int		argc;		/* number of arguments in argv */
+    const char	**argv;		/* array of argument pointers */
 };
 
 Options_t *InitOptions (int argc, const char **argv)
@@ -24,6 +25,7 @@ Options_t *InitOptions (int argc, const char **argv)
     Options_t *opts = NEW(Options_t);
     opts->errors = false;
     opts->cmd = argv[0];
+    opts->argc = argc-1;
     opts->argv = NEWVEC(const char *, argc-1);
     for (int i = 1;  i < argc;  i++) {
 	opts->argv[i-1] = argv[i];
