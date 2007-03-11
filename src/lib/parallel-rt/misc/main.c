@@ -41,14 +41,14 @@ int main (int argc, const char **argv)
 
     MutexInit (&PrintLock);
 
-    VProcInit (opts);
-    HeapInit (opts);
-
 #ifndef NDEBUG
   /* initialize debug output */
     DebugF = stderr;
     DebugFlg = GetFlagOpt (opts, "-d");
 #endif
+
+    VProcInit (opts);
+    HeapInit (opts);
 
   /* start the idle vprocs */
     for (int i = 1;  i < NumHardwareProcs;  i++)
