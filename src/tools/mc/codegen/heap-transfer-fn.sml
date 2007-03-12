@@ -191,13 +191,12 @@ functor HeapTransferFn (
    * nogc function.  Otherwise, perform the GC with the following steps:
    * 1. Allocate the root set (roots) in the heap-slop space (assume
    *    there is ample space).
-   * 2. Create a continuation, retK, that has the following (standard) layout:
-   *    [ retK, root0, ..., root_n ], where the code at retK applies the
-   *    nogc function to the fresh roots.
+   * 2. Put the root set pointer into closReg, and put the return address,
+   *    retKLbl, into retReg.
    * 3. Call the GC initialization routine, passing it retK in the return 
    *    continuation register.
    *)
-  fun genHeapCheck varDefTbl {szb, gc, nogc=(noGCLbl, roots)} =
+  fun genHeapCheck varDefTbl {szb, nogc=(noGCLbl, roots)} =
       let fun argInfo ([], argTys, hcArgs, mlRegs) = 
 	      (rev argTys, rev hcArgs, rev mlRegs)
 	    | argInfo (a :: args, argTys, hcArgs, rootsMLR) =
@@ -213,8 +212,7 @@ functor HeapTransferFn (
 
 	  val rootSet = ListPair.zip (argTys, map MTy.regToTree rootsMLR)
 	  (* heap allocate the root set *)
-	  val {ptr=rootReg, stms=allocStms} = 
-	      Alloc.genAlloc ((Ty.T_Any, MTy.EXP (ty, T.LABEL retKLbl)) :: rootSet)
+	  val {ptr=rootReg, stms=allocStms} = Alloc.genAlloc rootSet
 
 	  (* perform the GC *)
 	  val doGCLbl = newLabel "doGC"
@@ -224,8 +222,10 @@ functor HeapTransferFn (
 	      Copy.copy {dst=rootsMLR, src=args},
 	      (* allocate a heap object for GC roots *)
 	      allocStms,
-	      (* save the root pointer in the continuation register *)
-	      [move' (retReg, rootReg)],
+	      (* save the root pointer in the closure register *)
+	      [move' (closReg, rootReg)],
+	      (* put the return address into retReg *)
+	      [move (retReg, T.LABEL retKLbl)],
 	      (* perform the GC *)
 	      Target.genGCCall () ]
 
