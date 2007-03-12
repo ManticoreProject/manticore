@@ -205,11 +205,15 @@ void SayDebug (const char *fmt, ...)
 void Error (const char *fmt, ...)
 {
     va_list	ap;
+    VProc_t	*vp = VProcSelf();
 
     va_start (ap, fmt);
     MutexLock (&PrintLock);
-      fprintf (stderr, "[%2d] Error -- ", VProcSelf()->id);
-      vfprintf (stderr, fmt, ap);
+	if (vp != 0)
+	    fprintf (stderr, "[%2d] Error -- ", VProcSelf()->id);
+	else
+	    fprintf (stderr, "Error -- ");
+	vfprintf (stderr, fmt, ap);
     MutexUnlock (&PrintLock);
     va_end(ap);
 
@@ -221,11 +225,15 @@ void Error (const char *fmt, ...)
 void Warning (const char *fmt, ...)
 {
     va_list	ap;
+    VProc_t	*vp = VProcSelf();
 
     va_start (ap, fmt);
     MutexLock (&PrintLock);
-      fprintf (stderr, "[%2d] Warning -- ", VProcSelf()->id);
-      vfprintf (stderr, fmt, ap);
+	if (vp != 0)
+	    fprintf (stderr, "[%2d] Warning -- ", VProcSelf()->id);
+	else
+	    fprintf (stderr, "Warning -- ");
+	vfprintf (stderr, fmt, ap);
     MutexUnlock (&PrintLock);
     va_end(ap);
 
@@ -238,12 +246,16 @@ void Warning (const char *fmt, ...)
 void Die (const char *fmt, ...)
 {
     va_list	ap;
+    VProc_t	*vp = VProcSelf();
 
     va_start (ap, fmt);
     MutexLock (&PrintLock);
-      fprintf (stderr, "[%2d] Fatal error -- ", VProcSelf()->id);
-      vfprintf (stderr, fmt, ap);
-      fprintf (stderr, "\n");
+	if (vp != 0)
+	    fprintf (stderr, "[%2d] Fatal error -- ", VProcSelf()->id);
+	else
+	    fprintf (stderr, "Fatal error -- ");
+	vfprintf (stderr, fmt, ap);
+	fprintf (stderr, "\n");
     MutexUnlock(&PrintLock);
     va_end(ap);
 
