@@ -137,7 +137,7 @@ val toNode = fn f => let
 			    szb = getAlloc lab,
 			    nogc = (lab', freeVars)
 			  })
-		    val f'' = CFG.mkFunc(lab', entry, body, exit)
+		    val f'' = CFG.mkFunc(lab', CFG.Block(CFG.paramsOfConv entry), body, exit)
 		    in
 		      f' :: f'' :: fs
 		    end
