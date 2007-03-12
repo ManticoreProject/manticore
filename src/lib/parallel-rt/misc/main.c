@@ -69,7 +69,8 @@ static void MainVProc (VProc_t *vp, void *arg)
 	SayDebug("[%2d] MainVProc starting\n", vp->id);
 #endif
 
-    Value_t res = RunManticore (vp, arg, M_UNIT);
+    FunClosure_t fn = {.cp = PtrToValue(arg), .ep = M_UNIT};
+    Value_t res = RunManticore (vp, PtrToValue(&fn), M_UNIT);
 
     if (ValueIsBoxed(res))
 	printf("result = %p\n", ValueToPtr(res));
