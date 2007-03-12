@@ -104,8 +104,6 @@ val toNode = fn f => let
 	  fun rewrite (f as CFG.FUNC{lab, entry, body, exit}, fs) =
 		if FB.Set.member(fbSet, lab) orelse CFA.isEscaping lab
 		  then let
-		    val funTy = CFG.Label.typeOf lab
-		    val lab' = CFG.Label.new(Atom.atom "check", funTy)
 		    val (freeVars, entry') = (case entry (* rename parameters *)
 			   of CFG.StdFunc{clos, arg, ret, exh} => let
 				val clos' = CFG.Var.copy clos
@@ -133,6 +131,9 @@ val toNode = fn f => let
 				  (params', CFG.Block params')
 				end
 			  (* end case *))
+		    val lab' = CFG.Label.new(
+				Atom.atom "check",
+				CFGTy.T_Code(List.map CFG.Var.typeOf freeVars))
 		    val f' = CFG.mkFunc(lab, entry', [], CFG.HeapCheck{
 			    szb = getAlloc lab,
 			    nogc = (lab', freeVars)
