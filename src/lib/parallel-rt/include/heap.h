@@ -18,13 +18,17 @@
 
 #define MAJOR_GC_THRESHOLD	(VP_HEAP_DATA_SZB >> 1)
 
-#define ALLOC_BUF_SZB		(4*ONE_K)	/* slop at end of allocation space */
+#define ALLOC_BUF_SZB		(4*ONE_K)	/* slop at end of nursery */
+#define MIN_NURSERY_SZB		(16*ONE_K)	/* minimum nursery size */
 
 /* set the allocation pointer for a vproc */
 STATIC_INLINE void SetAllocPtr (VProc_t *vp)
 {
+    extern Addr_t MaxNurserySzB;
     Addr_t top = (Addr_t)vp + VP_HEAP_SZB;
-    vp->allocPtr = vp->oldTop + (top - vp->oldTop) / 2;
+    Addr_t szB = ROUNDDOWN((top - vp->oldTop) / 2, WORD_SZB);
+    if (szB > MaxNurserySzB) szB = MaxNurserySzB;
+    vp->allocPtr = top - MaxNurserySzB;
 }
 
 

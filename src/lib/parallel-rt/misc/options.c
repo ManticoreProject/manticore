@@ -78,3 +78,31 @@ int GetIntOpt (Options_t *opts, const char *opt, int dflt)
 
     return dflt;
 }
+
+/* get a size option; the suffixes "k" and "m" are supported */
+Addr_t GetSizeOpt (Options_t *opts, const char *opt, Addr_t dfltScale, Addr_t dflt)
+{
+    for (int i = 0;  i < opts->argc;  i++) {
+	if (strcmp(opt, opts->argv[i]) == 0) {
+	    if (++i < opts->argc) {
+		char *endp;
+		long arg = strtol (opts->argv[i], &endp, 10);
+		CompressOpts (opts, i-1, 2);
+		if (arg < 0) {
+		    Error("%s: size should be positive\n", opts->cmd);
+		if (*endp == 'k') dfltScale = ONE_K;
+		else if (*endp == 'm') dfltScale = ONE_MEG;
+		return arg * dfltScale;
+	    } else {
+		CompressOpts (opts, i-1, 1);
+		Error("%s: missing argument for `%s' option\n", opts->cmd, opt);
+		opts->errors = true;
+		return dflt;
+	    }
+	}
+    }
+
+    return dflt;
+}
+
+

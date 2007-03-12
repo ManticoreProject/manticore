@@ -18,6 +18,7 @@ Addr_t		GlobalVM;	/* amount of memory allocated to Global heap (including */
 				/* free chunks). */
 Addr_t		FreeVM;		/* amount of free memory in free list */
 Addr_t		TotalVM = 0;	/* total memory used by heap (including vproc local heaps) */
+Addr_t		MaxNurserySzB;	/* limit on size of nursery in vproc heap */
 
 static MemChunk_t *FreeChunks;	/* list of free chunks */
 
@@ -38,6 +39,10 @@ MemChunk_t		*BIBOP[BIBOP_TBLSZ];
  */
 void HeapInit (Options_t *opts)
 {
+
+    MaxNurserySzB = GetSizeOpt ("-nursery", ONE_K, HEAP_CHUNK_SZB/2);
+    if (MaxNurserySzB < MIN_NURSERY_SZB)
+	MaxNurserySzB = MIN_NURSERY_SZB;
 
   /* initialize the BIBOP */
 #ifdef SIXTYFOUR_BIT_WORDS
