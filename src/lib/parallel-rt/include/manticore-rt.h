@@ -66,7 +66,7 @@ typedef unsigned long long UInt64_t;
 #define ROUNDUP(N, POW_OF_TWO)	(((N) + (POW_OF_TWO-1)) & ~(POW_OF_TWO-1))
 
 /* round down to a power-of-2 size */
-#define ROUNDOWN(N, POW_OF_TWO)	((N) & ~(POW_OF_TWO-1))
+#define ROUNDDOWN(N, POW_OF_TWO) ((N) & ~(POW_OF_TWO-1))
 
 /* object allocation in the C heap */
 #define MALLOC(sz)		malloc(sz)
