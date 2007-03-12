@@ -10,6 +10,7 @@
 #include "bibop.h"
 #include "os-memory.h"
 #include "os-threads.h"
+#include "options.h"
 #include "internal-heap.h"
 
 Mutex_t		HeapLock;	/* lock for protecting heap data structures */
@@ -40,7 +41,7 @@ MemChunk_t		*BIBOP[BIBOP_TBLSZ];
 void HeapInit (Options_t *opts)
 {
 
-    MaxNurserySzB = GetSizeOpt ("-nursery", ONE_K, HEAP_CHUNK_SZB/2);
+    MaxNurserySzB = GetSizeOpt (opts, "-nursery", ONE_K, HEAP_CHUNK_SZB/2);
     if (MaxNurserySzB < MIN_NURSERY_SZB)
 	MaxNurserySzB = MIN_NURSERY_SZB;
 

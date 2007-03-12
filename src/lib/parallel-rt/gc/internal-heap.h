@@ -32,7 +32,4 @@ extern MemChunk_t *AllocChunk (Addr_t szb);
 extern void FreeChunk (MemChunk_t *);
 extern void UpdateBIBOP (MemChunk_t *chunk);
 
-extern Addr_t		MaxNurserySzB = HEAP_CHUNK_SZB;
-				/* limit on size of nursery in vproc heap */
-
 #endif /* !_INTERNAL_HEAP_H_ */

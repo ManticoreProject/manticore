@@ -90,6 +90,8 @@ Addr_t GetSizeOpt (Options_t *opts, const char *opt, Addr_t dfltScale, Addr_t df
 		CompressOpts (opts, i-1, 2);
 		if (arg < 0) {
 		    Error("%s: size should be positive\n", opts->cmd);
+		    return dflt;
+		}
 		if (*endp == 'k') dfltScale = ONE_K;
 		else if (*endp == 'm') dfltScale = ONE_MEG;
 		return arg * dfltScale;
