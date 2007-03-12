@@ -233,13 +233,11 @@ functor HeapTransferFn (
 	  fun loadArgs ([], i, ss) = rev ss
 	    | loadArgs (mty :: mtys, i, ss) =
 	      let val ty = Types.szOf mty
-		  (* ignore the first argument, which is the return pointer *)
-		  val argTys = Ty.T_Any :: argTys
 		  val s = select' (ty, M.T_Tuple argTys, i, regExp retReg)
 	      in 
 		  loadArgs (mtys, i + 1, s :: ss)
 	      end
-	  val restoredRoots = loadArgs (argTys, 1, [])
+	  val restoredRoots = loadArgs (argTys, 0, [])
 	  (* generate the return continuation from GC *)
 	  val retK = List.concat [
  	      [T.DEFINE retKLbl],
