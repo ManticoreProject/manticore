@@ -75,6 +75,10 @@ fi
 
 AC_CHECK_FUNCS(sigtimedwait nanosleep)
 
+dnl check for /proc/cpuinfo
+dnl
+AC_CHECK_FILES(/proc/cpuinfo)
+
 dnl ******************** Runtime system parameters ********************
 
 AC_DEFINE([MAX_NUM_VPROCS], [16], [maximum number of virtual processors])

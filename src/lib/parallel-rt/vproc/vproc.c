@@ -5,6 +5,7 @@
  */
 
 #include "manticore-rt.h"
+#include <stdio.h>
 #include <signal.h>
 #include <ucontext.h>
 #if defined (OPSYS_DARWIN)
@@ -240,13 +241,13 @@ static void SigHandler (int sig, siginfo_t *si, void *_sc)
 
 static int GetNumCPUs ()
 {
-#if defined(HAVE_PROC_CPUINFO)
+#if defined(HAVE__PROC_CPUINFO)
   /* Get the number of hardware processors on systems that have /proc/cpuinfo */
     FILE *cpuinfo = fopen("/proc/cpuinfo", "r");
     char buf[1024];
     if (cpuinfo != NULL) {
 	int n = 0;
-	while (fgets(sizeof(buf), buf, cpuinfo) != 0) {
+	while (fgets(buf, sizeof(buf), cpuinfo) != 0) {
 	    int id;
 	    if (sscanf(buf, "processor : %d", &id) == 1)
 		n++;
@@ -258,5 +259,6 @@ static int GetNumCPUs ()
     return MPProcessors ();
 #else
     return 0;
-}
 #endif
+
+} /* end of GetNumCPUs */
