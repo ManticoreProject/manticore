@@ -119,17 +119,17 @@ void UpdateBIBOP (MemChunk_t *chunk)
     while (addr < top) {
 #ifdef SIXTYFOUR_BIT_WORDS
 	MemChunk_t	**l2 = BIBOP[addr >> L1_SHIFT];
-	assert (l2[addr >> L2_SHIFT] == 0);
+	assert (l2[(addr >> L2_SHIFT) & L2_MASK] == 0);
 	if (l2 == FreeL2Tbl) {
 	  /* we need to allocate a new L2 table for this range */
 	    l2 = NEWVEC(MemChunk_t *, L2_TBLSZ);
 	    for (int i = 0;  i < L2_TBLSZ;  i++)
 		l2[i] = 0;
-	    l2[addr >> L2_SHIFT] = chunk;
+	    l2[(addr >> L2_SHIFT) & L2_MASK] = chunk;
 	    BIBOP[addr >> L1_SHIFT] = l2;
 	}
 	else {
-	    l2[addr >> L2_SHIFT] = chunk;
+	    l2[(addr >> L2_SHIFT) & L2_MASK] = chunk;
 	}
 #else /* !SIXTYFOUR_BIT_WORDS */
 	assert (BIBOP[addr >> PAGE_BITS] == 0);

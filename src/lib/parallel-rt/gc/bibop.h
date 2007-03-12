@@ -16,13 +16,14 @@
 #define L2_SHIFT	PAGE_BITS
 #define L1_TBLSZ	(1 << L1_BITS)
 #define L2_TBLSZ	(1 << L2_BITS)
+#define L2_MASK		(L2_TBLSZ - 1)
 
 extern MemChunk_t	**BIBOP[L1_TBLSZ];
 
 STATIC_INLINE MemChunk_t *AddrToChunk (Addr_t addr)
 {
     assert (addr < (1l << ADDR_BITS));
-    return BIBOP[addr >> L1_SHIFT][addr >> L2_SHIFT];
+    return BIBOP[addr >> L1_SHIFT][(addr >> L2_SHIFT) & L2_MASK];
 }
 
 #else /* !SIXTYFOUR_BIT_WORDS */
