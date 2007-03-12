@@ -31,20 +31,23 @@ Value_t RunManticore (VProc_t *vp, Value_t f, Value_t arg)
 	Value_t exnCont = AllocUniform(vp, 1, PtrToValue(&ASM_UncaughtExn));
 	RequestCode_t req = ASM_Apply (vp, cp, arg, ep, retCont, exnCont);
 	switch (req) {
-	  case REQ_GC: {/* request a minor GC */
+	  case REQ_GC: {
+	    /* request a minor GC; the protocol is that
+	     * the stdCont register holds the return address (which is
+	     * not in the heap) and that the stdEnvPtr holds the GC root.
+	     */
 		Value_t *roots[16], **rp;
 		rp = roots;
-		*rp++ = &(vp->stdArg);
 		*rp++ = &(vp->stdEnvPtr);
-		*rp++ = &(vp->stdCont);
-		*rp++ = &(vp->stdExnCont);
 		*rp++ = 0;
 		MinorGC (vp, roots);
 	      /* we need to invoke the stdCont to resume after GC */
-		cp = ValueToAddr (ValueToCont(vp->stdCont)->cp);
-		ep = M_UNIT;
-		retCont = M_UNIT;  /* unused in throw to standard cont. */
-		exnCont = M_UNIT;  /* unused in throw to standard cont. */
+		cp = ValueToAddr (vp->stdCont);
+		ep = vp->stdEnvPtr;
+	      /* clear the dead registers */
+		arg = M_UNIT;
+		retCont = M_UNIT;
+		exnCont = M_UNIT;
 	    } break;
 	  case REQ_Return:	/* returning from a function call */
 	    return vp->stdArg;
