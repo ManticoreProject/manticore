@@ -10,6 +10,7 @@
 #define _GC_INLINE_H_
 
 #include "manticore-rt.h"
+#include "heap.h"
 
 /* is a header tagged as a forward pointer? */
 STATIC_INLINE bool isForwardPtr (Word_t hdr)

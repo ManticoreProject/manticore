@@ -100,9 +100,8 @@ VProc_t *VProcCreate (VProcFn_t f, void *arg)
     vproc->stdEnvPtr = M_UNIT;
     vproc->stdCont = M_UNIT;
     vproc->stdExnCont = M_UNIT;
-    vproc->allocBase = (Addr_t)vproc + sizeof(VProc_t);
     vproc->limitPtr = (Addr_t)vproc + VP_HEAP_SZB - ALLOC_BUF_SZB;
-    vproc->oldTop = vproc->allocBase;
+    vproc->oldTop = VProcHeap(vproc);
     SetAllocPtr (vproc);
     MutexInit (&(vproc->lock));
     CondInit (&(vproc->wait));

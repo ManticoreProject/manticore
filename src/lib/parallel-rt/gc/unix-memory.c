@@ -47,7 +47,7 @@ void *AllocMemory (int *nBlocks, int blkSzB)
   /* The object is not aligned, so free it up and try again with a
    * fixed address.
    */
-    base = (void *)((Addr_t)memObj & ~(blkSzB-1)) + blkSzB;
+    base = (void *)(((Addr_t)memObj & ~(blkSzB-1)) + blkSzB);
     UnmapMemory (base, *nBlocks * blkSzB);
     if ((memObj = MapMemory(base, nBlocks, blkSzB, MAP_FIXED)) == MAP_FAILED)
 	return 0;

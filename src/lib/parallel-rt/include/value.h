@@ -30,6 +30,7 @@ STATIC_INLINE ContClosure_t *ValueToCont (Value_t v)	{ return (ContClosure_t *)V
 #define M_NIL	((Value_t)1)
 
 /* heap allocate a tuple of uniformly represented values in the local heap */
-Value_t AllocUniform (VProc_t *vp, int nItems, ...);
+extern Value_t AllocUniform (VProc_t *vp, int nItems, ...);
+extern Value_t WrapInt (VProc_t *vp, long i);
 
 #endif /* !_VALUE_H_ */

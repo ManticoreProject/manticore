@@ -37,9 +37,14 @@ STATIC_INLINE Value_t ForwardObj (Value_t v, Word_t **nextW)
  */
 void MinorGC (VProc_t *vp, Value_t **roots)
 {
-    Addr_t	heapBase = VProcHeap(vp);
-    Word_t	*nextW = (Word_t *)(vp->oldTop); /* next word in to space to copy to */
-    Word_t	*nextScan = nextW;		/* current top of to space */
+    Addr_t	heapBase = (Addr_t)vp;
+    Word_t	*nextScan = (Word_t *)(vp->oldTop); /* current top of to space */
+    Word_t	*nextW = nextScan + 1; /* next word in to space to copy to */
+
+#ifndef NDEBUG
+    if (DebugFlg)
+	SayDebug ("[%2d] starting minor GC; oldTop = %#p\n", vp->id, nextScan);
+#endif
 
   /* process the roots */
     for (int i = 0;  roots[i] != 0;  i++) {
@@ -53,6 +58,7 @@ void MinorGC (VProc_t *vp, Value_t **roots)
 
   /* scan to space */
     while (nextScan < nextW-1) {
+	assert ((Addr_t)nextW < vp->nurseryBase);
 	Word_t hdr = *nextScan++;	// get object header
 	if (isMixedHdr(hdr)) {
 	  // a record
@@ -87,7 +93,12 @@ void MinorGC (VProc_t *vp, Value_t **roots)
 	}
     }
 
-    Addr_t avail = VP_HEAP_SZB - ((Addr_t)nextScan - (Addr_t)vp);
+    assert ((Addr_t)nextScan >= VProcHeap(vp));
+    Addr_t avail = VP_HEAP_SZB - ((Addr_t)nextScan - VProcHeap(vp));
+#ifndef NDEBUG
+    if (DebugFlg)
+	SayDebug("[%2d] minor GC done: avail = %p, oldTop = %p\n", vp->id, avail, nextScan);
+#endif
     if (avail < MAJOR_GC_THRESHOLD) {
       /* time to do a major collection. */
 	MajorGC (vp, roots, (Addr_t)nextScan);

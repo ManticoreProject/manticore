@@ -49,8 +49,11 @@ int main (int argc, const char **argv)
     HeapInit (opts);
     VProcInit (opts);
 
+/* FIXME: for testing purposes, we pass an integer argument to the Manticore code */
+    int arg = GetIntOpt(opts, "-a", 1);
+
   /* create the main vproc */
-    VProcCreate (MainVProc, &mantentry);
+    VProcCreate (MainVProc, (void *)(Addr_t)arg);
 
     PingLoop();
 
@@ -61,6 +64,8 @@ int main (int argc, const char **argv)
  *
  * The main vproc is responsible for running the Manticore code.  The
  * argument is the address of the initial entry-point in Manticore program.
+ *
+ * FIXME: right now, the argument is an integer argument to the program.
  */ 
 static void MainVProc (VProc_t *vp, void *arg)
 {
@@ -69,8 +74,10 @@ static void MainVProc (VProc_t *vp, void *arg)
 	SayDebug("[%2d] MainVProc starting\n", vp->id);
 #endif
 
-    FunClosure_t fn = {.cp = PtrToValue(arg), .ep = M_UNIT};
-    Value_t res = RunManticore (vp, PtrToValue(&fn), M_UNIT);
+    Value_t argV = WrapInt(vp, (int)(Addr_t)arg); /* FIXME: for testing purposes */
+
+    FunClosure_t fn = {.cp = PtrToValue(&mantentry), .ep = M_UNIT};
+    Value_t res = RunManticore (vp, PtrToValue(&fn), argV);
 
     if (ValueIsBoxed(res))
 	printf("result = %p\n", ValueToPtr(res));

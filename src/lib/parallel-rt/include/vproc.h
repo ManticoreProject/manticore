@@ -23,7 +23,7 @@ struct struct_vproc {
     Addr_t	allocPtr;	/*!< allocation pointer */
     Addr_t	limitPtr;	/*!< heap-limit pointer */
 			      /* GC parameters */
-    Addr_t	allocBase;	/*!< base address of nursery */
+    Addr_t	nurseryBase;	/*!< Base address of current nursery area */
     Addr_t	oldTop;		/*!< Old objects live in the space from the */
 				/* heap base to the oldTop. */
     MemChunk_t	*globToSpace;	/*!< a to-space chunk in the global heap to promote */

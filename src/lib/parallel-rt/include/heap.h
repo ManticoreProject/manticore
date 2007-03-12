@@ -13,13 +13,13 @@
 /********** VProc local heaps **********/
 
 /* VP_HEAP_SZB */		/* defined in manticore-rt.h */
-#define VP_HEAP_MASK		(VP_HEAP_SZB-1)
-#define VP_HEAP_DATA_SZB	(VP_HEAP_SZB - sizeof(VProc_t))
+#define VP_HEAP_MASK		((Addr_t)(VP_HEAP_SZB-1))
+#define VP_HEAP_DATA_SZB	((Addr_t)(VP_HEAP_SZB - sizeof(VProc_t)))
 
-#define MAJOR_GC_THRESHOLD	(VP_HEAP_DATA_SZB >> 1)
+#define MAJOR_GC_THRESHOLD	((Addr_t)(VP_HEAP_DATA_SZB >> 1))
 
-#define ALLOC_BUF_SZB		(4*ONE_K)	/* slop at end of nursery */
-#define MIN_NURSERY_SZB		(16*ONE_K)	/* minimum nursery size */
+#define ALLOC_BUF_SZB		((Addr_t)(4*ONE_K))	/* slop at end of nursery */
+#define MIN_NURSERY_SZB		((Addr_t)(16*ONE_K))	/* minimum nursery size */
 
 /* set the allocation pointer for a vproc */
 STATIC_INLINE void SetAllocPtr (VProc_t *vp)
@@ -28,13 +28,14 @@ STATIC_INLINE void SetAllocPtr (VProc_t *vp)
     Addr_t top = (Addr_t)vp + VP_HEAP_SZB;
     Addr_t szB = ROUNDDOWN((top - vp->oldTop) / 2, WORD_SZB);
     if (szB > MaxNurserySzB) szB = MaxNurserySzB;
-    vp->allocPtr = top - MaxNurserySzB;
+    vp->nurseryBase = (top - szB);
+    vp->allocPtr = vp->nurseryBase + WORD_SZB;
 }
 
 
 /********** Global heap **********/
 
-#define HEAP_CHUNK_SZB		(4*ONE_MEG)
+#define HEAP_CHUNK_SZB		((Addr_t)(4*ONE_MEG))
 
 extern Addr_t	GlobalVM;	/* amount of memory allocated to Global heap (including */
 				/* free chunks). */

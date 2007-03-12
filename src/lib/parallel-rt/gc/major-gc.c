@@ -33,7 +33,7 @@ STATIC_INLINE bool inOldHeap (Addr_t heapBase, Addr_t oldSzB, Addr_t p)
 /* Forward an object into the global-heap chunk reserved for the current VP */
 STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
 {
-    Word_t	*p = ValueToPtr(v)-1;  // address of object header
+    Word_t	*p = ((Word_t *)ValueToPtr(v))-1;  // address of object header
     Word_t	hdr = *p;
     if (isForwardPtr(hdr))
 	return PtrToValue(GetForwardPtr(hdr));
@@ -60,8 +60,8 @@ STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
  */
 void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 {
-    Addr_t	heapBase = VProcHeap(vp);
-    Addr_t	oldSzB = vp->oldTop - heapBase;
+    Addr_t	heapBase = (Addr_t)vp;
+    Addr_t	oldSzB = vp->oldTop - VProcHeap(vp);
     Word_t	*globScan = (Word_t *)(vp->globNextW - WORD_SZB);
     MemChunk_t	*scanChunk = vp->globToSpace;
 

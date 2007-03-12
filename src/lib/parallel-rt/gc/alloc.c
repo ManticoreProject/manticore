@@ -13,11 +13,10 @@
  */
 Value_t AllocUniform (VProc_t *vp, int nItems, ...)
 {
-    Word_t	*obj;
+    Word_t	*obj = (Word_t *)(vp->allocPtr);
     va_list	ap;
 
     va_start(ap, nItems);
-    obj = (Word_t *)(vp->allocPtr);
     obj[-1] = VEC_HDR(nItems);
     for (int i = 0;  i < nItems;  i++) {
 	Value_t arg = va_arg(ap, Value_t);
@@ -26,5 +25,17 @@ Value_t AllocUniform (VProc_t *vp, int nItems, ...)
     va_end(ap);
 
     vp->allocPtr += WORD_SZB * (nItems+1);
+    return PtrToValue(obj);
+}
+
+/*! \brief allocate a wrapped integer value.
+ */
+Value_t WrapInt (VProc_t *vp, long i)
+{
+    Word_t	*obj = (Word_t *)(vp->allocPtr);
+    obj[-1] = RAW_HDR(1);
+    obj[0] = (Word_t)i;
+
+    vp->allocPtr += WORD_SZB * 2;
     return PtrToValue(obj);
 }
