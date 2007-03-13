@@ -41,11 +41,6 @@ void MinorGC (VProc_t *vp, Value_t **roots)
     Word_t	*nextScan = (Word_t *)(vp->oldTop); /* current top of to space */
     Word_t	*nextW = nextScan + 1; /* next word in to space to copy to */
 
-#ifndef NDEBUG
-    if (DebugFlg)
-	SayDebug ("[%2d] starting minor GC; oldTop = %#p\n", vp->id, nextScan);
-#endif
-
   /* process the roots */
     for (int i = 0;  roots[i] != 0;  i++) {
 	Value_t p = *roots[i];
@@ -97,7 +92,9 @@ void MinorGC (VProc_t *vp, Value_t **roots)
     Addr_t avail = VP_HEAP_SZB - ((Addr_t)nextScan - VProcHeap(vp));
 #ifndef NDEBUG
     if (DebugFlg)
-	SayDebug("[%2d] minor GC done: avail = %p, oldTop = %p\n", vp->id, avail, nextScan);
+	SayDebug("[%2d] minor GC: %ld/%ld bytes live\n",
+	    vp->id, (Addr_t)nextScan - vp->oldTop,
+	    vp->allocPtr - vp->nurseryBase - WORD_SZB);
 #endif
     if (avail < MAJOR_GC_THRESHOLD) {
       /* time to do a major collection. */
