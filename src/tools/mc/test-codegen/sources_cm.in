@@ -10,7 +10,6 @@
 
 Library
 
-  structure T
   structure TestCompile
 
 is

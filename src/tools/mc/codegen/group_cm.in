@@ -8,7 +8,7 @@
  * Sources file for code generator.
  *)
 
-Library
+Group
 
   functor AMD64TargetSpecFn
   functor AMD64GenFn
