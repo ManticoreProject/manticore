@@ -45,9 +45,9 @@ structure Literal : sig
 		| #"\013" => "\\r"
 		| c => if (Char.isPrint c)
 		    then String.str c
-		    else concat["\\(0x", Word32.toString w, ")"]
+		    else concat["\\(0x", Word.toString w, ")"]
 	      (* end case *))
-	    else concat["\\(0x", Word32.toString w, ")"]
+	    else concat["\\(0x", Word.toString w, ")"]
 
     fun utf8ToStr s =
 	  concat(rev(UTF8.fold (fn (w, l) => wcharToStr w :: l) [] s))
@@ -71,7 +71,7 @@ structure Literal : sig
       | compare (Bool _, Bool _) = EQUAL
       | compare (Int i1, Int i2) = IntegerLit.compare(i1, i2)
       | compare (Float f1, Float f2) = FloatLit.compare(f1, f2)
-      | compare (Char c1, Char c2) = Word32.compare(c1, c2)
+      | compare (Char c1, Char c2) = Word.compare(c1, c2)
       | compare (String s1, String s2) = String.compare(s1, s2)
       | compare (Bool _, _) = LESS
       | compare (_, Bool _) = GREATER
@@ -96,7 +96,7 @@ structure Literal : sig
       | hash (Bool true) = h(0w1, boolCd)
       | hash (Int i) = h(IntegerLit.hash i, intCd)
       | hash (Float f) = h(FloatLit.hash f, floatCd)
-      | hash (Char c) = h(Word.fromLargeWord(Word32.toLargeWord c), charCd)
+      | hash (Char c) = h(c, charCd)
       | hash (String s) = h(HashString.hashString s, stringCd)
     end (* local *)
 
