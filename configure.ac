@@ -195,6 +195,7 @@ dnl ***** Makefiles *****
   src/lib/parallel-rt/build/Makefile
 dnl ***** sources files *****
   src/tools/mc/codegen/group.cm:src/tools/mc/codegen/group_cm.in
+  src/tools/mc/codegen/wrapper.cm:src/tools/mc/codegen/wrapper_cm.in
   src/tools/mc/test-codegen/sources.cm:src/tools/mc/test-codegen/sources_cm.in
 )
 AC_CONFIG_HEADERS(src/lib/parallel-rt/include/manticore-config.h:config/config_h.in)
