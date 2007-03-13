@@ -3,6 +3,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include "manticore-rt.h"
+#include "../../parallel-rt/include/header-bits.h"
+#include "../../parallel-rt/include/vproc.h"
+#include "../../parallel-rt/include/manticore-rt.h"
 #include "gc-defs.h"
 
 /* The GC has mixed-type objects (containing both pointer and
@@ -52,76 +56,95 @@
 
 #define ALL_1S        (~0l)
 #define BYTE_MASK     0xffl
-#define WORD_SZ_B     (sizeof(Word_t))
 #define HDR_ALIGN_MASK    7l
-#define MIXED_LEN_BITS 6
+#define MIXED_LEN_MASK   ((1<<MIXED_LEN_BITS)-1)
+#define MIXED_TY_MASK   1l
 // number of slop words 
-#define HEAP_SLOP      (1<<5)
+#define HEAP_SLOP      (1<<(12-3))
 
-enum { FORWARD=0, RAW=2, VECTOR=4 /*, MIXED=1,3,7 */};
-typedef int Header_t;
+typedef Word_t Header_t;
 
-Mant_t *to_space, *from_space;
-Mant_t *high, *low, *base;
+#define TO_SPACE(vp) (vp->nurseryBase)
+#define FROM_SPACE(vp) vp->oldTop
+#define VP_HEAP_BASE(vp) vp->globLimit
 
 // extract the header word from an object
-static inline Word_t hdr_word (Mant_t *m) {
+STATIC_INLINE Word_t hdr_word (Mant_t *m) {
   return m[-1];
 }
 
-static inline Header_t hdr_type (Mant_t *m) {
+STATIC_INLINE Header_t hdr_type (Mant_t *m) {
   return hdr_word (m) & HDR_ALIGN_MASK;
 } 
 
 // extract the length of an object
-static inline uint_t hdr_len (Mant_t *m) {
+STATIC_INLINE uint_t hdr_len (Mant_t *m) {
   switch (hdr_type (m)) {
-  case FORWARD:
+  case FWDPTR_TAG:
 	// chase down the forward pointer
 	return hdr_len ((Mant_t*)*m);  
-  case RAW:
-  case VECTOR:
-	return hdr_word (m) >> 3;
+  case RAW_TAG:
+	return hdr_word (m) >> RAW_TAG_BITS;
+  case VEC_TAG:
+	return hdr_word (m) >> VEC_TAG_BITS;
   default:
 	// MIXED
-	return (hdr_word (m) >> 1) & ((1<<MIXED_LEN_BITS)-1);
+	return (hdr_word (m) >> MIXED_TAG_BITS) & MIXED_LEN_MASK;
   }
 }
 
-static inline Bool_t is_mixed (Mant_t *m) {
-  return (hdr_word (m) & 1l) == 1;
+STATIC_INLINE Bool_t is_mixed (Mant_t *m) {
+  return (hdr_word (m) & MIXED_TAG_MASK) == MIXED_TAG;
+}
+
+STATIC_INLINE Bool_t in_heap (Mant_t *m) {
+  return ((Word_t)m & ALIGN_MASK) == (Word_t)VP_HEAP_BASE(VProcSelf ());
+}
+
+STATIC_INLINE Bool_t is_ptr (Mant_t *m) {
+  return (((Word_t)m & 0x3) == 0);
 }
 
 // is the ith element of m a pointer?
-static inline Bool_t is_pointer (Mant_t *m, uint_t i) {
+STATIC_INLINE Bool_t is_pointer (Mant_t *m, uint_t i) {
   Mant_t *mi = (Mant_t*)m[i];  
   return 
 	is_mixed (m) &&
-	(1l & (hdr_word (m) >> (i + MIXED_LEN_BITS+1)))  && 
+	(MIXED_TY_MASK & (hdr_word (m) >> (i + MIXED_LEN_BITS+1)))  && 
 	// test whether a pointer is in the heap
-	( ((Word_t)mi & ALIGN_MASK) == (Word_t)base );  
+	in_heap (mi);
+	/*	( ((Word_t)mi & ALIGN_MASK) == (Word_t)base );  */
 	/*( (mi < high) && (mi >= low) );*/
 }
 
-static inline Bool_t is_forwarded (Mant_t *m) {
-  return hdr_type (m) == FORWARD;
+STATIC_INLINE Bool_t is_forwarded (Mant_t *m) {
+  return hdr_type (m) == FWDPTR_TAG;
 }
 
-static inline Mant_t *get_forward_ptr (Mant_t *m) {
+STATIC_INLINE Mant_t *get_forward_ptr (Mant_t *m) {
   return (Mant_t*)hdr_word (m);
 }
 
-static inline void set_forward_ptr (Mant_t *m_fs, Mant_t *m_ts) {
+STATIC_INLINE void set_forward_ptr (Mant_t *m_fs, Mant_t *m_ts) {
   m_fs[-1] = (Mant_t)m_ts;
 }
 
-typedef struct {
-  Mant_t *root;
-  Mant_t *ap;
-  Mant_t *ra;
-} GC_info_t;
+STATIC_INLINE void set_to_space (VProc_t *vp, Addr_t addr) {
+  vp->nurseryBase = addr;
+}
+STATIC_INLINE void set_from_space (VProc_t *vp, Addr_t addr) {
+  vp->oldTop = addr;
+}
 
-Mant_t *limit_ptr ();
-GC_info_t *init_gc (Mant_t *, Mant_t *, Mant_t *);
+STATIC_INLINE void swap_space (VProc_t *vp) {
+  Addr_t temp;
+  temp = TO_SPACE(vp);
+  set_to_space (vp, FROM_SPACE(vp));
+  set_from_space (vp, temp);
+}
+
+STATIC_INLINE void set_limit_ptr (VProc_t *vp) {
+  vp->limitPtr = FROM_SPACE(vp) + (HEAP_SIZE_W-HEAP_SLOP);
+}
 
 #endif

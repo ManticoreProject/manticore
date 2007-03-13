@@ -1,12 +1,17 @@
 #include <stdio.h>
 
+void die (char *str) {
+  printf ("%s\n", str);
+  exit (1);
+}
+
 char *get_hdr_type (Mant_t *m) {
   switch (hdr_type (m)) {
-  case FORWARD: 
+  case FWDPTR_TAG: 
 	return "forward";
-  case RAW: 
+  case RAW_TAG: 
 	return "raw";
-  case VECTOR: 
+  case VEC_TAG: 
 	return "vector";
   default: 
 	return "mixed";
