@@ -54,10 +54,13 @@ Addr_t do_gc (VProc_t *vp, Value_t **roots) {
 }
 
 void MinorGC (VProc_t *vp, Value_t **roots) {
+  Word_t initWords =  (Word_t)(vp->allocPtr-vp->oldTop);
   vp->allocPtr = do_gc (vp, roots);
   // swap to- and from-space
   swap_space (vp);
   set_limit_ptr (vp);
   numGCs++;
-  printf ("heap size: %d\n",8 * (int)(vp->allocPtr-vp->oldTop));
+  Word_t heapSz = (Word_t)(vp->allocPtr-vp->oldTop);
+  printf ("heap size: %ld\tbytes collected: %ld\n", 
+		  8*heapSz, 8*(initWords-heapSz));
 }

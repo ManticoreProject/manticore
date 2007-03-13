@@ -40,7 +40,7 @@ void Warning (const char *fmt, ...) {
 }
 
 // dummy slot for the manticore entry function
-extern int mantentry ();
+extern int mantEntry ();
 
 VProc_t *InitVProcHeap () {
   VProc_t *vp;
@@ -84,8 +84,9 @@ static void VProcMainSEQ (void *_data) {
   
   int argVal = GetIntOpt (opts, "-a", arg);
 
-  Value_t entry = AllocUniform (vp, 2, PtrToValue(&mantentry), NULL);
-  Ret_t *ans = RunManticore (vp, entry, argVal);
+  Value_t argValPtr = WrapInt (vp, argVal);
+  Value_t entry = AllocUniform (vp, 2, PtrToValue(&mantEntry), 1);
+  Ret_t *ans = RunManticore (vp, entry, argValPtr);
 
   printf ("ans->int=%d ans->word=%ld ans->float=%f\tnumGCs=%d\n", 
 		  ans->int_v, ans->word_v, ans->float_v,numGCs);
