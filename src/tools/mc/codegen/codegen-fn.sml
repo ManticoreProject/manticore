@@ -257,30 +257,25 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	      let val finishers = map genFunc c
 	      in 
  		  beginCluster 0;
-		  app (fn f => f()) finishers;
+		  app (fn f => f ()) finishers;
 		  endCluster []
 	      end (* genCluster *)
 
-	  fun genModuleEntry () =
-	      let val {modEntryLbl, entryStms, initLbl, initStms} =
-		      BE.Transfer.genModuleEntry code
-		  val entryL = 
-		      M.Label.newWithKind (Atom.atom modEntryLbl, 
-					   CFG.LK_None, M.T_Any)
-		  val _ = beginCluster 0
-		  val funcAnRef = getAnnotations ()
-		  val frame = BE.SpillLoc.getFuncFrame entryL
-	      in		  
-		  pseudoOp (P.global (Label.global modEntryLbl));
-		  funcAnRef := (#create BE.SpillLoc.frameAn) frame :: 
-			       (!funcAnRef);
-		  pseudoOp P.text;		  
-		  defineLabel (Label.global modEntryLbl);
-		  emitStms entryStms;
-		  entryLabel (Label.global initLbl);
-		  emitStms initStms;
-		  endCluster []; ()
-	      end (* genModuleEntry *)
+	  (* The first function of the module is its entry point.
+	   * The code generator tacks on the module entry label,
+	   * "mantEntry", to indicate where the RTS can execute the
+	   * module.
+	   *)
+	  fun genModuleEntry f =
+	      let val finisher = genFunc f
+		  val entryL = Label.global "mantEntry"
+	      in
+		  beginCluster 0;
+		  pseudoOp (P.global entryL);
+		  entryLabel entryL;
+		  finisher ();
+		  endCluster []
+	      end 
 
 	  fun genLiterals () = (
 	      beginCluster 0;
@@ -290,11 +285,12 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	      endCluster []
 	  )
 
+	  val entryFunc :: code = code
 	  val clusters = GenClusters.clusters code
       in
 	  Cells.reset ();	  
 	  app genCluster clusters;
-	  genModuleEntry ();
+	  genModuleEntry entryFunc;
 	  genLiterals () 
       end (* codeGen *) 
 

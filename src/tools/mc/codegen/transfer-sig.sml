@@ -43,9 +43,4 @@ signature TRANSFER = sig
 	VarDef.var_def_tbl ->
 	(CFG.label * CFG.convention) -> MTy.T.stm list
 
-    (* entry to a module *)
-    val genModuleEntry : CFG.func list -> 
-	{modEntryLbl : string, entryStms : MTy.T.stm list, 
-	 initLbl : string, initStms : MTy.T.stm list}
-
 end (* TRANSFER *)
