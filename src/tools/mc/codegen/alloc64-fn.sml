@@ -131,16 +131,23 @@ functor Alloc64Fn (
 
   fun genWrap (mty, arg) = genAlloc [(mty, arg)]
 
+  val heapSlopSzB = Word.- (Word.<< (0w1, 0w12), 0w512)
+
   (* This expression evaluates to true when the heap has enough space for szB
-   * bytes.  An allocation check thus looks like:
+   * bytes.  There are 4kbytes of heap slop presubtracted from the limit pointer
+   * So, most allocations need only perform the following check.
    * 
-   * if (limReg - apReg < szB)
+   * if (limReg - apReg <= 0)
    *    then continue;
    *    else doGC ();
    *)
   fun genAllocCheck szB =
-      T.CMP (ty, T.Basis.LE, 
-	     T.SUB (ty, T.REG (ty, Regs.limReg), T.REG (ty, Regs.apReg)),
-	     T.LI (Word.toLargeInt szB))
+      if Word.<= (szB, heapSlopSzB)
+      then T.CMP (ty, T.Basis.LE, 
+		  T.SUB (ty, T.REG (ty, Regs.limReg), T.REG (ty, Regs.apReg)),
+		  T.LI 0)
+      else T.CMP (ty, T.Basis.LE, 
+		  T.SUB (ty, T.REG (ty, Regs.limReg), T.REG (ty, Regs.apReg)),
+		  T.LI (Word.toLargeInt szB))
 
 end (* Alloc64Fn *)

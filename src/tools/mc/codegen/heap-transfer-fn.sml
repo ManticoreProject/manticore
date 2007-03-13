@@ -233,7 +233,7 @@ functor HeapTransferFn (
 	  fun loadArgs ([], i, ss) = rev ss
 	    | loadArgs (mty :: mtys, i, ss) =
 	      let val ty = Types.szOf mty
-		  val s = select' (ty, M.T_Tuple argTys, i, regExp retReg)
+		  val s = select' (ty, M.T_Tuple argTys, i, regExp closReg)
 	      in 
 		  loadArgs (mtys, i + 1, s :: ss)
 	      end
@@ -250,7 +250,8 @@ functor HeapTransferFn (
 	      [T.BCC (Alloc.genAllocCheck szb, doGCLbl)],
 	      genJump (T.LABEL noGCLbl, [noGCLbl], noGCParamRegs, args),
 	      retK,
-	      doGCStms ]
+	      doGCStms ] 
+(*	  val stms = List.concat [ doGCStms, retK ]*)
       in
 	  {stms=stms, liveOut=map MTy.gprToExp noGCParamRegs}
       end (* genHeapCheck *)
@@ -296,19 +297,12 @@ functor HeapTransferFn (
 	  val initLbl = "initK"
 
 	  val {stms=argInitStms, ptr=wArgReg} = Alloc.genWrap (longTy, mltGPR argReg)
-(*	  val {stms=initClosStms, ptr=initClosReg} = 
-	      Alloc.genAlloc 
-		      [(CFGTy.unitTy, mkExp (intLit 0)),
-		       (aTy, mkExp (T.LABEL entryLbl))] *)
 
-(*	  val {ptr=rReg, stms=retKStms} = 
-	      Alloc.genAlloc [(retTy, mkExp (T.LABEL (Label.global "returnloc")))] *)
 	  val {ptr=initReg, stms=initKStms} = Alloc.genAlloc 
 		[(retTy, mkExp (T.LABEL (Label.global initLbl))),
 		 (aTy, mltGPR closReg), 
 		 (aTy, mltGPR argReg), 
 		 (kTy, mltGPR retReg),
-(*		 (kTy, rReg),*)
 		 (kTy, mltGPR exhReg)]
 	  val mty = M.T_Tuple [retTy, aTy, longTy, kTy, kTy]
 	  val baseReg = newReg ()
@@ -325,11 +319,6 @@ functor HeapTransferFn (
 	   (* wrap the integer argument *)
 	   argInitStms,
 	   [move' (argReg, wArgReg)], 
-(*	   (* create an initial closure *)
-	   initClosStms,
-	   [move' (closReg, initClosReg)], *)
-(*	   (* allocate and save the outer continuation *)
-	   retKStms, *)
 	   (* allocate and save the initial continuation *)
 	   initKStms,
 	   [move' (retReg, initReg)],

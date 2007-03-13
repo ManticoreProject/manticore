@@ -9,4 +9,4 @@ structure AMD64Frame = ManticoreFrameFn (
                            val wordSz = 8
 			   val floatSz = 12
 			   val floatAlign = 4
-			   val linkageSz = 8)
+			   val linkageSz = 6)
