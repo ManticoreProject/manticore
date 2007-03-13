@@ -79,6 +79,39 @@ dnl check for /proc/cpuinfo
 dnl
 AC_CHECK_FILES(/proc/cpuinfo)
 
+
+dnl ******************** SML/NJ configuration ********************
+
+dnl
+dnl allow the user to override the location of the MLRisc library
+dnl
+MLRISC_DIR=""
+AC_ARG_WITH(mlrisc,
+  AC_HELP_STRING([--with-mlrisc=PATH], [specify location of MLRisc library]),
+  MLRISC_DIR=$with_mlrisc)
+if test x$with_mlrisc = xyes -o x$with_mlrisc = xno ; then
+  AC_MSG_ERROR([--with-mlrisc option must specify directory argument])
+elif test x$with_mlrisc != x -a ! -r $MLRISC_DIR/cm/MLRISC.cm ; then
+  AC_MSG_ERROR([MLRisc library not found at $MLRISC_DIR])
+elif test x$MLRISC_DIR != x ; then
+dnl
+dnl verify that $MLRISC_DIR is an absolute path
+dnl
+  case $MLRISC_DIR in
+    /*) ;;
+    *) AC_MSG_ERROR([--with-mlrisc argument must be absolute]) ;;
+  esac
+fi
+if test x$MLRISC_DIR = x ; then
+  MLRISC_DIR="<builtin>"
+  MLRISC_CM_DIR='$SMLNJ-MLRISC'
+else
+  MLRISC_CM_DIR=$MLRISC_DIR/cm
+fi
+AC_SUBST(MLRISC_DIR)
+AC_SUBST(MLRISC_CM_DIR)
+
+
 dnl ******************** Runtime system parameters ********************
 
 AC_DEFINE([MAX_NUM_VPROCS], [16], [maximum number of virtual processors])
@@ -160,6 +193,9 @@ dnl
 AC_CONFIG_FILES(\
 dnl ***** Makefiles *****
   src/lib/parallel-rt/build/Makefile
+dnl ***** sources files *****
+  src/tools/mc/codegen/group.cm:src/tools/mc/codegen/group_cm.in
+  src/tools/mc/test-codegen/sources.cm:src/tools/mc/test-codegen/sources_cm.in
 )
 AC_CONFIG_HEADERS(src/lib/parallel-rt/include/manticore-config.h:config/config_h.in)
 
