@@ -40,11 +40,23 @@ structure TestCompile =
 	    cfg
 	  end
 
+  fun compile (cfg, outFile) =
+      let val outStrm = TextIO.openOut outFile
+	  val outStrmFG = TextIO.openOut (outFile^".fg")
+	  fun doit () = AMD64CG.Gen.codeGen {dst=outStrm, code=cfg}
+      in	  
+	  MLRiscControl.debug_stream := outStrmFG;
+(*	  (MLRiscControl.flag "amd64-cfg-debug") := true;*)
+	  (MLRiscControl.flag "dump-initial-cfg") := true;
+	  AsmStream.withStream outStrm doit ();
+	  TextIO.closeOut outStrm
+      end (* compile *)
+
     fun init file = BackTrace.monitor (fn () =>
 	let val cMap = InterpCFG.runtime()
 	    val cfg = load file
 	in
-	    T.compile (cfg, file ^".s")
+	    compile (cfg, file ^".s")
 	end)
 
   end
