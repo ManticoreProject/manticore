@@ -49,8 +49,16 @@ structure CFGTy =
             | _ => false
 	  (* end case *))
 
+  (* return true if the type has a single-word uniform representation; this includes
+   * anything represented by a pointer or a tagged integer.
+   *)
     fun hasUniformRep ty = (case ty 
-           of T_Any => true
+           of T_Raw _ => false
+            | _ => true
+	  (* end case *))
+
+    fun isBoxed ty = (case ty 
+           of T_Any => false
             | T_Enum _ => false
             | T_Raw _ => false
             | T_Wrap _ => true
@@ -58,11 +66,13 @@ structure CFGTy =
             | T_OpenTuple _ => true
             | T_StdFun _ => true
             | T_StdCont _ => true
-            | T_Code _ => false
+            | T_Code _ => true
 	  (* end case *))
 
     fun isValidCast (fromTy, toTy) = (case (fromTy, toTy)
-           of (T_Any, toTy) => hasUniformRep toTy
+           of (T_Any, T_Code) = false
+	    | (T_Code, T_Any) = false
+	    | (T_Any, toTy) => hasUniformRep toTy
             | (fromTy, T_Any) => hasUniformRep fromTy
             | (T_OpenTuple ty1s, T_OpenTuple ty2s) =>
                   ListPair.all isValidCast (ty1s, ty2s)

@@ -7,11 +7,11 @@
  *)
 
 functor Alloc64Fn (
-	structure MTy : MLRISC_TYPES
-	structure Regs : MANTICORE_REGS
-	structure Spec : TARGET_SPEC
-	structure Types : ARCH_TYPES
-	structure MLTreeComp : MLTREECOMP 
+    structure MTy : MLRISC_TYPES
+    structure Regs : MANTICORE_REGS
+    structure Spec : TARGET_SPEC
+    structure Types : ARCH_TYPES
+    structure MLTreeComp : MLTREECOMP 
 ) : ALLOC = struct
 
   structure MTy = MTy
@@ -74,11 +74,14 @@ functor Alloc64Fn (
 	  (* esac *))
       end (* select *)
 
-  fun isTyPointer ( M.T_Any | M.T_Wrap _ | M.T_Tuple _ | 
-		    M.T_OpenTuple _ | M.T_Code _ ) = true
-    | isTyPointer _ = false
+  (* return true if the type may be represented by a pointer into the heap *)
+    fun isHeapPointer M.T_Any = true
+      | isHeapPointer (M.T_Wrap _) = true
+      | isHeapPointer (M.T_Tuple _) = true
+      | isHeapPointer (M.T_OpenTuple _) = true
+      | isHeapPointer _ = false
 
-  fun setBit (w, i, ty) = if (isTyPointer ty) then W.orb (w, W.<< (0w1, i)) else w
+    fun setBit (w, i, ty) = if (isHeapPointer ty) then W.orb (w, W.<< (0w1, i)) else w
 
   fun initObj ((ty, mltree), {i, stms, totalSize, ptrMask}) =
       let val store = MTy.store (offAp totalSize, mltree, memory)
@@ -88,46 +91,68 @@ functor Alloc64Fn (
 	  {i=i+1, stms=store :: stms, totalSize=totalSize', ptrMask=ptrMask'}
       end (* initObj *)
 
-  fun allocMixedObj args =
-      let val {i=nWords, stms, totalSize, ptrMask} = 
-	      foldl initObj {i=0, stms=[], totalSize=0, ptrMask=0w0} args
-	  (* create the mixed-object header word *)
+    fun allocMixedObj args = let
+	  val {i=nWords, stms, totalSize, ptrMask} = 
+		List.foldl initObj {i=0, stms=[], totalSize=0, ptrMask=0w0} args
+	(* create the mixed-object header word *)
 	  val hdrWord = W.toLargeInt (
-		W.+ (W.orb (W.<< (ptrMask, 0w7), 
-			    W.<< (W.fromInt nWords, 0w1)), 0w1) )
-      in	  
+		  W.+ (W.orb (W.<< (ptrMask, 0w7), 
+			      W.<< (W.fromInt nWords, 0w1)), 0w1) )
+	in	  
 	  if ((Word.fromInt totalSize) > Spec.maxObjectSzB)
-	  then raise Fail "object size too large"
-	  else (totalSize, hdrWord, stms)
-      end (* allocMixedObj *)
+	    then raise Fail "object size too large"
+	    else (totalSize, hdrWord, stms)
+	end (* allocMixedObj *)
 
-  fun allocRawObj args =
-      let val {i=nWords, stms, totalSize, ...} =
-	      foldl initObj {i=0, stms=[], totalSize=0, ptrMask=0w0} args
+    fun allocVectorObj args = let
+	  val {i=nWords, stms, totalSize, ...} =
+	        List.foldl initObj {i=0, stms=[], totalSize=0, ptrMask=0w0} args
+	  val hdrWord = W.toLargeInt(W.+ (W.<< (W.fromInt nWords, 0w3), 0w4))
+	  in
+	    (totalSize, hdrWord, stms)
+	  end
+
+    fun allocRawObj args = let
+	  val {i=nWords, stms, totalSize, ...} =
+	        List.foldl initObj {i=0, stms=[], totalSize=0, ptrMask=0w0} args
 	  val hdrWord = W.toLargeInt (W.+ (W.<< (W.fromInt nWords, 0w3), 0w2))
-      in
-	  (totalSize, hdrWord, stms)
-      end (* allocRawObj *)
+	  in
+	    (totalSize, hdrWord, stms)
+	  end (* allocRawObj *)
 
-  fun genAlloc [] = { ptr=MTy.EXP (ty, litFromInt 0), stms=[] }
-    | genAlloc args = 
-      let val (totalSize, hdrWord, stms) = 
-	      if List.all (not o isTyPointer o #1) args
-	      then allocRawObj args
-	      else allocMixedObj args
-	  (* store the header word *)
-	  val stms = 
-	      MTy.store (offAp (~wordSzB), MTy.EXP (ty, T.LI hdrWord), memory) 
-	        :: stms
-	  (* ptrReg points to the first data word of the object *)
+    datatype object_kinds = VECTOR | MIXED | RAW
+
+  (* determine the representation of an allocation and generate the appropriate
+   * allocation code.
+   *)
+    fun alloc args = let
+	  fun lp (hasPtr, hasRaw, x::xs) = if isHeapPointer x
+		then lp(true, hasRaw, xs)
+		else if CFGTy.hasUniformRep x
+		  then lp (hasPtr, hasRaw, xs)
+		  else lp (hasPtr, true, xs)
+	    | lp (true, true, []) = allocMixedObj args
+	    | lp (true, false, []) = allocVectorObj args
+	    | lp (false, _, []) = allocRawObj args
+	  in
+	    lp (false, false, args)
+	  end
+
+    fun genAlloc [] = { ptr=MTy.EXP (ty, litFromInt 0), stms=[] }
+      | genAlloc args = let
+	  val (totalSize, hdrWord, stms) = alloc args
+	(* store the header word *)
+	  val stms = MTy.store (offAp (~wordSzB), MTy.EXP (ty, T.LI hdrWord), memory) 
+		:: stms
+	(* ptrReg points to the first data word of the object *)
 	  val ptrReg = Cells.newReg ()
-	  (* copy the original allocation pointer into ptrReg *)
+	(* copy the original allocation pointer into ptrReg *)
 	  val ptrMv = move (ptrReg, regExp apReg)
-	  (* bump up the allocation pointer *)
+	(* bump up the allocation pointer *)
 	  val bumpAp = move (apReg, offAp (totalSize+wordSzB))
-      in
-	  { ptr=mltGPR ptrReg, stms=ptrMv :: rev (bumpAp :: stms) }
-      end (* genAlloc *)
+	  in
+	    { ptr=mltGPR ptrReg, stms=ptrMv :: rev (bumpAp :: stms) }
+	  end (* genAlloc *)
 
   fun genWrap (mty, arg) = genAlloc [(mty, arg)]
 

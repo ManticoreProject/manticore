@@ -4,7 +4,7 @@
  *    - sum over the list using foldr
  *)
 
-module ListTest (arg : any, mk : cont(any), exh : cont(any)) =
+module ListTest (arg : [int], mk : cont(any), exh : cont(any)) =
 
   let nil : any = 1
 
@@ -76,4 +76,5 @@ module ListTest (arg : any, mk : cont(any), exh : cont(any)) =
            apply map (a, k2, exh)
       apply tabulate (i, k1, exh)
 
-  throw mk(doit)
+  apply doit(arg, mk, exh)
+
