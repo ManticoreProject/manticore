@@ -23,6 +23,7 @@ STATIC_INLINE Value_t ForwardObj (Value_t v, Word_t **nextW)
 	int len = GetLength(hdr);
 	Word_t *newObj = *nextW;
 	newObj[-1] = hdr;
+SayDebug("ForwardObj(%d) %p --> %p\n", len, v, newObj);
 	for (int i = 0;  i < len;  i++) {
 	    newObj[i] = p[i];
 	}
@@ -56,6 +57,7 @@ void MinorGC (VProc_t *vp, Value_t **roots)
 	assert ((Addr_t)nextW < vp->nurseryBase);
 	Word_t hdr = *nextScan++;	// get object header
 	if (isMixedHdr(hdr)) {
+SayDebug("Scan mixed at %p\n", nextScan);
 	  // a record
 	    Word_t tagBits = GetMixedBits(hdr);
 	    Value_t *scanP = (Value_t *)nextScan;
@@ -72,6 +74,7 @@ void MinorGC (VProc_t *vp, Value_t **roots)
 	    nextScan += GetMixedSizeW(hdr);
 	}
 	else if (isVectorHdr(hdr)) {
+SayDebug("Scan vector at %p\n", nextScan);
 	  // an array of pointers
 	    int len = GetVectorLen(hdr);
 	    for (int i = 0;  i < len;  i++, nextScan++) {
@@ -82,6 +85,7 @@ void MinorGC (VProc_t *vp, Value_t **roots)
 	    }
 	}
 	else {
+SayDebug("Scan raw at %p\n", nextScan);
 	  // we can just skip raw objects
 	    assert (isRawHdr(hdr));
 	    nextScan += GetRawSizeW(hdr);
