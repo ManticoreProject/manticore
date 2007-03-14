@@ -3,13 +3,14 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Inline operations for the GC.
+ * Inline operations for the GC.  See ../include/header-bits.h for header layout.
  */
 
 #ifndef _GC_INLINE_H_
 #define _GC_INLINE_H_
 
 #include "manticore-rt.h"
+#include "header-bits.h"
 #include "heap.h"
 
 /* is a header tagged as a forward pointer? */
@@ -56,7 +57,7 @@ STATIC_INLINE int GetMixedSizeW (Word_t hdr)
     return (hdr >> MIXED_TAG_BITS) & ((1 << MIXED_LEN_BITS) - 1);
 }
 
-STATIC_INLINE bool GetMixedBits (Word_t hdr)
+STATIC_INLINE Word_t GetMixedBits (Word_t hdr)
 {
     return (hdr >> (MIXED_LEN_BITS+MIXED_TAG_BITS));
 }
@@ -76,8 +77,10 @@ STATIC_INLINE int GetLength (Word_t hdr)
 {
     if (isMixedHdr(hdr))
 	return GetMixedSizeW(hdr);
-    else
-	return GetVectorLen (hdr);  /* assming RAW and VEC have same layout */
+    else {
+	assert (isRawHdr(hdr) || isVectorHdr(hdr));
+	return GetVectorLen (hdr);  /* assuming RAW and VEC have same layout */
+    }
 }
 
 /* return true of the given address is within the given vproc heap */

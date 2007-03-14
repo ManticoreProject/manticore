@@ -2,6 +2,42 @@
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
+ *
+ * The GC has mixed-type objects (containing both pointer and
+ * raw values), raw objects (containing only raw data like floats
+ * and ints), and vectors (containing the rope representation of
+ * data-parallel arrays).  Each of these types of objects has 
+ * a distinct header configuration.  The rightmost header bits rely
+ * on an 8-byte alignment for all pointers.
+ * 
+ *  Mixed-Type Object header:
+ *
+ *  ---------------------------------------------- 
+ *  | -- 56 bits -- | -- 6-bits -- | -- 1 bit -- |
+ *  | pointer mask  |     length   |      1      |
+ *  ----------------------------------------------
+ *
+ *  Raw-data header:
+ *
+ *  ---------------------------------------------- 
+ *  |        -- 61 bits --        | -- 3 bits -- |
+ *  |           length            |     010      |
+ *  ----------------------------------------------
+ *
+ *  Vector header:
+ *
+ *  ---------------------------------------------- 
+ *  |        -- 61 bits --        | -- 3 bits -- |
+ *  |           length            |     100      |
+ *  ----------------------------------------------
+ * 
+ * The GC also has a simple header for forward pointers:
+ *
+ *  ---------------------------------------------- 
+ *  |        -- 61 bits --        | -- 3 bits -- |
+ *  |       forward pointer       |     000      |
+ *  ---------------------------------------------- 
+ *
  */
 
 #ifndef _HEADER_BITS_H_

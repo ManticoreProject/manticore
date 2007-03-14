@@ -12,6 +12,9 @@
 #include "vproc.h"
 #include "gc-inline.h"
 
+extern Addr_t	MajorGCThreshold; /* when the size of the nursery goes below this limit */
+				/* it is time to do a GC. */
+
 /* Copy an object to the old region */
 STATIC_INLINE Value_t ForwardObj (Value_t v, Word_t **nextW)
 {
@@ -23,12 +26,11 @@ STATIC_INLINE Value_t ForwardObj (Value_t v, Word_t **nextW)
 	int len = GetLength(hdr);
 	Word_t *newObj = *nextW;
 	newObj[-1] = hdr;
-SayDebug("ForwardObj(%d) %p --> %p\n", len, v, newObj);
 	for (int i = 0;  i < len;  i++) {
 	    newObj[i] = p[i];
 	}
 	*nextW = newObj+len+1;
-	*p = MakeForwardPtr(hdr, newObj);
+	p[-1] = MakeForwardPtr(hdr, newObj);
 	return PtrToValue(newObj);
     }
 
@@ -42,6 +44,10 @@ void MinorGC (VProc_t *vp, Value_t **roots)
     Word_t	*nextScan = (Word_t *)(vp->oldTop); /* current top of to space */
     Word_t	*nextW = nextScan + 1; /* next word in to space to copy to */
 
+    assert (VProcHeap(vp) <= (Addr_t)nextScan);
+    assert ((Addr_t)nextScan < vp->nurseryBase);
+    assert (vp->nurseryBase < vp->allocPtr);
+
   /* process the roots */
     for (int i = 0;  roots[i] != 0;  i++) {
 	Value_t p = *roots[i];
@@ -54,17 +60,17 @@ void MinorGC (VProc_t *vp, Value_t **roots)
 
   /* scan to space */
     while (nextScan < nextW-1) {
-	assert ((Addr_t)nextW < vp->nurseryBase);
+	assert ((Addr_t)(nextW-1) <= vp->nurseryBase);
 	Word_t hdr = *nextScan++;	// get object header
 	if (isMixedHdr(hdr)) {
-SayDebug("Scan mixed at %p\n", nextScan);
 	  // a record
 	    Word_t tagBits = GetMixedBits(hdr);
+	    assert (tagBits < (1 << GetMixedSizeW(hdr)));
 	    Value_t *scanP = (Value_t *)nextScan;
 	    while (tagBits != 0) {
 		if (tagBits & 0x1) {
 		    Value_t v = *scanP;
-		    if (inVPHeap(heapBase, ValueToAddr(v))) {
+		    if (isPtr(v) && inVPHeap(heapBase, ValueToAddr(v))) {
 			*scanP = ForwardObj(v, &nextW);
 		    }
 		}
@@ -74,7 +80,6 @@ SayDebug("Scan mixed at %p\n", nextScan);
 	    nextScan += GetMixedSizeW(hdr);
 	}
 	else if (isVectorHdr(hdr)) {
-SayDebug("Scan vector at %p\n", nextScan);
 	  // an array of pointers
 	    int len = GetVectorLen(hdr);
 	    for (int i = 0;  i < len;  i++, nextScan++) {
@@ -85,7 +90,6 @@ SayDebug("Scan vector at %p\n", nextScan);
 	    }
 	}
 	else {
-SayDebug("Scan raw at %p\n", nextScan);
 	  // we can just skip raw objects
 	    assert (isRawHdr(hdr));
 	    nextScan += GetRawSizeW(hdr);
@@ -96,11 +100,12 @@ SayDebug("Scan raw at %p\n", nextScan);
     Addr_t avail = VP_HEAP_SZB - ((Addr_t)nextScan - VProcHeap(vp));
 #ifndef NDEBUG
     if (DebugFlg)
-	SayDebug("[%2d] minor GC: %ld/%ld bytes live\n",
+	SayDebug("[%2d] Minor GC: %ld/%ld bytes live; %d available\n",
 	    vp->id, (Addr_t)nextScan - vp->oldTop,
-	    vp->allocPtr - vp->nurseryBase - WORD_SZB);
+	    vp->allocPtr - vp->nurseryBase - WORD_SZB,
+	    (int)avail);
 #endif
-    if (avail < MAJOR_GC_THRESHOLD) {
+    if (avail < MajorGCThreshold) {
       /* time to do a major collection. */
 	MajorGC (vp, roots, (Addr_t)nextScan);
     }

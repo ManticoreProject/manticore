@@ -138,6 +138,18 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
   /* scan to-space objects */
     ScanGlobalToSpace (vp, heapBase, scanChunk, globScan);
 
+#ifndef NDEBUG
+    if (DebugFlg) {
+	int nBytesCopied;
+	if (vp->globToSpace == scanChunk)
+	    nBytesCopied = (int)(vp->globNextW - (Addr_t)globScan - WORD_SZB);
+	else
+	    nBytesCopied = -1;  /* FIXME */
+	SayDebug("[%2d] Major GC: %d/%d bytes live\n",
+	    vp->id, nBytesCopied, oldSzB);
+    }
+#endif
+
   /* copy the live data between vp->oldTop and top to the base of the heap */
     Addr_t youngSzB = top - vp->oldTop;
     memcpy ((void *)VProcHeap(vp), (void *)(vp->oldTop), youngSzB);

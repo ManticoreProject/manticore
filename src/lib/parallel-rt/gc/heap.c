@@ -20,6 +20,8 @@ Addr_t		GlobalVM;	/* amount of memory allocated to Global heap (including */
 Addr_t		FreeVM;		/* amount of free memory in free list */
 Addr_t		TotalVM = 0;	/* total memory used by heap (including vproc local heaps) */
 Addr_t		MaxNurserySzB;	/* limit on size of nursery in vproc heap */
+Addr_t		MajorGCThreshold; /* when the size of the nursery goes below this limit */
+				/* it is time to do a GC. */
 
 static MemChunk_t *FreeChunks;	/* list of free chunks */
 
@@ -41,10 +43,15 @@ MemChunk_t		*BIBOP[BIBOP_TBLSZ];
 void HeapInit (Options_t *opts)
 {
 
-    MaxNurserySzB = GetSizeOpt (opts, "-nursery", ONE_K, HEAP_CHUNK_SZB/2);
+    MaxNurserySzB = GetSizeOpt (opts, "-nursery", ONE_K, VP_HEAP_DATA_SZB/2);
     if (MaxNurserySzB < MIN_NURSERY_SZB)
 	MaxNurserySzB = MIN_NURSERY_SZB;
 
+    MajorGCThreshold = VP_HEAP_DATA_SZB / 10;
+    if (MajorGCThreshold < MIN_NURSERY_SZB)
+	MajorGCThreshold = MIN_NURSERY_SZB;
+
+SayDebug("HeapInit: max nursery = %d, threshold = %d\n", (int)MaxNurserySzB, (int)MajorGCThreshold);
   /* initialize the BIBOP */
 #ifdef SIXTYFOUR_BIT_WORDS
     for (int i = 0;  i < L2_TBLSZ; i++)

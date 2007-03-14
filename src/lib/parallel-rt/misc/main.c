@@ -31,7 +31,7 @@ bool		DebugFlg = false;
 #endif
 static Mutex_t	PrintLock;		/* lock for output routines */
 
-extern int mantentry;		/* the entry-point of the Manticore code */
+extern int mantEntry;		/* the entry-point of the Manticore code */
 
 
 int main (int argc, const char **argv)
@@ -42,7 +42,7 @@ int main (int argc, const char **argv)
 
 #ifndef NDEBUG
   /* initialize debug output */
-    DebugF = stderr;
+    DebugF = stdout;
     DebugFlg = GetFlagOpt (opts, "-d");
 #endif
 
@@ -76,7 +76,7 @@ static void MainVProc (VProc_t *vp, void *arg)
 
     Value_t argV = WrapInt(vp, (int)(Addr_t)arg); /* FIXME: for testing purposes */
 
-    FunClosure_t fn = {.cp = PtrToValue(&mantentry), .ep = M_UNIT};
+    FunClosure_t fn = {.cp = PtrToValue(&mantEntry), .ep = M_UNIT};
     Value_t res = RunManticore (vp, PtrToValue(&fn), argV);
 
     if (ValueIsBoxed(res))
