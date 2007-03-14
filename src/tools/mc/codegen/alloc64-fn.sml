@@ -120,13 +120,11 @@ functor Alloc64Fn (
 	    (totalSize, hdrWord, stms)
 	  end (* allocRawObj *)
 
-    datatype object_kinds = VECTOR | MIXED | RAW
-
   (* determine the representation of an allocation and generate the appropriate
    * allocation code.
    *)
     fun alloc args = let
-	  fun lp (hasPtr, hasRaw, x::xs) = if isHeapPointer x
+	  fun lp (hasPtr, hasRaw, (x, _)::xs) = if isHeapPointer x
 		then lp(true, hasRaw, xs)
 		else if CFGTy.hasUniformRep x
 		  then lp (hasPtr, hasRaw, xs)

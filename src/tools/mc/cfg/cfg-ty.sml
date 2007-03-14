@@ -70,8 +70,8 @@ structure CFGTy =
 	  (* end case *))
 
     fun isValidCast (fromTy, toTy) = (case (fromTy, toTy)
-           of (T_Any, T_Code) = false
-	    | (T_Code, T_Any) = false
+           of (T_Any, T_Code _) => false
+	    | (T_Code _, T_Any) => false
 	    | (T_Any, toTy) => hasUniformRep toTy
             | (fromTy, T_Any) => hasUniformRep fromTy
             | (T_OpenTuple ty1s, T_OpenTuple ty2s) =>
