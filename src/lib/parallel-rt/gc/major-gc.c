@@ -50,7 +50,7 @@ STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
 	    newObj[i] = p[i];
 	}
 	vp->globNextW = (Addr_t)(newObj+len+1);
-	*p = MakeForwardPtr(hdr, newObj);
+	p[-1] = MakeForwardPtr(hdr, newObj);
 	return PtrToValue(newObj);
     }
 
