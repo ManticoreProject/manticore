@@ -10,6 +10,7 @@
 #include "manticore-rt.h"
 #include <stdio.h>
 #include "vproc.h"
+#include "value.h"
 #include "request-codes.h"
 #include "../vproc/scheduler.h"
 
@@ -50,6 +51,12 @@ int main ()
     PR_DEFINE(REQ_GC);
     PR_DEFINE(REQ_Return);
     PR_DEFINE(REQ_UncaughtExn);
+
+    printf("\n/* common Manticore unboxed values */\n");
+    PR_DEFINE(M_FALSE);
+    PR_DEFINE(M_TRUE);
+    PR_DEFINE(M_UNIT);
+    PR_DEFINE(M_NIL);
 
     printf ("\n#endif\n");
 

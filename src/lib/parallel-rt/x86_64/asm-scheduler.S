@@ -41,7 +41,7 @@ ASM_Run:
 	movq	%rcx,ACTION_STK(%r10)		/* set top of stack to new cell */
 	leaq	24(%rcx),%rcx			/* bump up allocation pointer */
       /* transfer control to the fiber */
-	movl	$ML_UNIT,%eax
+	movl	$M_UNIT,%eax
 	jmpq	*(%rdi)
 
 /* ASM_Forward:
