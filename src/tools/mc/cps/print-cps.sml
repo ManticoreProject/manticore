@@ -63,7 +63,7 @@ structure PrintCPS : sig
 		      prl["throw ", varUseToString k, " "];
 		      prList varUseToString args;
 		      pr "\n")
-		  | CPS.Run(act, fiber) =>
+		  | CPS.Run{act, fiber} =>
 		      prl["run ", varUseToString act, " ", varUseToString fiber, "\n"]
 		  | CPS.Forward sign =>
 		      prl["forward ", varUseToString sign, "\n"]

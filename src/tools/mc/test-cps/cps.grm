@@ -107,7 +107,7 @@ Exp
 	| "switch" SimpleExp Cases DefaultCase? "end"	=> (PT.Switch(SimpleExp, Cases, DefaultCase))
 	| "apply" ID Args				=> (PT.Apply(ID, Args))
 	| "throw" ID Args				=> (PT.Throw(ID, Args))
-	| "run" ID ID					=> (PT.Run(ID, ID))
+	| "run" ID ID					=> (PT.Run(ID1, ID2))
 	| "forward" ID					=> (PT.Forward ID)
 	;
 

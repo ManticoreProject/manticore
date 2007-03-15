@@ -18,7 +18,7 @@ structure CPS =
       | Apply of (var * var list)
       | Throw of (var * var list)
     (* scheduler operations *)
-      | Run of (var * var)
+      | Run of {act:var, fiber:var}
       | Forward of var
 
     and rhs

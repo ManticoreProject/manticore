@@ -222,6 +222,8 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 			List.app (addJump o #2) cases;
 			Option.app addJump dflt)
 		    | CFG.HeapCheck{nogc, ...} => addJump nogc
+		    | CFG.Run _ => ()
+		    | CFG.Forward _ => ()
 		  (* end case *)
 		end
 	  in
@@ -284,7 +286,7 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 		      Option.app doJump dflt)
 		  | doXfer (CFG.HeapCheck{nogc, ...}) = doJump nogc
 		  | doXfer (CFG.Run{act, fiber}) = (escape act; escape fiber)
-		  | doXfer (CFG.Fiber sign) = escape sign
+		  | doXfer (CFG.Forward sign) = escape sign
 		and doJump (lab, args) = (case CFG.funcOfLabel lab
 		       of SOME func => doFunc (func, List.map valueOf args)
 			| _ => raise Fail "jump to unknown label"
