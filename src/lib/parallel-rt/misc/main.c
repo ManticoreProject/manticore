@@ -79,10 +79,9 @@ static void MainVProc (VProc_t *vp, void *arg)
     FunClosure_t fn = {.cp = PtrToValue(&mantEntry), .ep = M_UNIT};
     Value_t res = RunManticore (vp, PtrToValue(&fn), argV);
 
-    if (ValueIsBoxed(res))
-	printf("result = %p\n", ValueToPtr(res));
-    else
-	printf("result = %d\n", ValueToWord(res));
+    Say("result = ");
+    SayValue (res);
+    Say("\n");
 
     exit (0);
 
