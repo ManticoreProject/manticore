@@ -15,7 +15,7 @@ structure CPSPT =
     type var = Atom.atom
     type var_bind = var * ty
 
-    datatype module = MODULE of lambda
+    datatype module = MODULE of (CFunctions.c_fun list * lambda)
 
     and exp
       = Let of (var_bind list * rhs * exp)

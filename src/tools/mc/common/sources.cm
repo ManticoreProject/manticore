@@ -8,6 +8,7 @@
 
 Library
 
+  structure CFunctions
   structure FloatLit
   structure IntegerLit
   structure Literal
@@ -27,6 +28,7 @@ is
   $/smlnj-lib.cm
   $/pp-lib.cm
 
+  c-functions.sml
   float-lit.sml
   integer-lit.sml
   literal.sml

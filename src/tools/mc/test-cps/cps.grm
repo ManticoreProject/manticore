@@ -25,6 +25,7 @@
     | KW_forward	("forward")
     | KW_fun		("fun")
     | KW_if		("if")
+    | KW_import		("import")
     | KW_int		("int")
     | KW_let		("let")
     | KW_long		("long")
@@ -37,12 +38,14 @@
     | KW_unit		("unit")
     | KW_unwrap		("unwrap")
     | KW_vec128		("vec128")
+    | KW_void		("void")
     | KW_wrap		("wrap")
     | LP		("(")
     | RP		(")")
     | LB		("[")
     | RB		("]")
     | HASH		("#")
+    | STAR		("*")
     | COMMA		(",")
     | EQ		("=")
     | COLON		(":")
@@ -55,6 +58,7 @@
 
 %defs(
     structure PT = CPSPT
+    structure CF = CFunctions
 
     fun flatten NONE = []
       | flatten (SOME(x, xs)) = x::xs
@@ -62,7 +66,27 @@
 
 
 Module
-	: KW_module Lambda		=> (PT.MODULE Lambda)
+	: "module" Import* Lambda	=> (PT.MODULE(Import, Lambda))
+	;
+
+Import
+	: "import" CRetTy ID "(" (CArgTy ("," CArgTy)* )? ")"
+		=> (CF.CFun{
+			name = ID,
+			externName = Atom.toString ID,
+			retTy = CRetTy,
+			argTys = flatten SR
+		      })
+	;
+
+CRetTy
+	: "void"	=> (CF.VoidTy)
+	| CArgTy	=> (CArgTy)
+	;
+
+CArgTy
+	: RawType	=> (CF.BaseTy RawType)
+	| "void" "*"	=> (CF.PointerTy)
 	;
 
 Lambda

@@ -252,9 +252,10 @@ structure Expand =
 	    cvt (exps, [])
 	  end
 
-    fun cvtModule (PT.MODULE lambda) = let
+    fun cvtModule (PT.MODULE(cfuns, lambda)) = let
 	  val (_, cvtBody) = cvtLambda (AtomMap.empty, lambda, Ty.T_Fun)
 	  in
+(* FIXME: need to do something with the C functions *)
 	    CPS.MODULE(cvtBody AtomMap.empty)
 	  end
 
