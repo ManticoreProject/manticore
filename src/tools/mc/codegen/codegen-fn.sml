@@ -155,7 +155,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	      end
 	    | genTransfer (M.Run args) =
 		genStdTransfer (BE.Transfer.genRun varDefTbl args)
-	    | getTransfer (M.Forward sign) =
+	    | genTransfer (M.Forward sign) =
 		genStdTransfer (BE.Transfer.genForward varDefTbl sign)
 							  
 	  and bindExp (lhs, rhsEs) = 

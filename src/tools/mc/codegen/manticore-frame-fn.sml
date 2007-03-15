@@ -13,7 +13,7 @@ functor ManticoreFrameFn (
 
   open ManticoreFrame
 
-  fun frameOffset (Word i) = wordSz * i
+  fun frameOffset (Word i) = wordSz * (i+linkageSz)
     | frameOffset _ = raise Fail "frameOffset"
 
 end (* ManticoreFrameFn *)

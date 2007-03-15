@@ -51,10 +51,6 @@ static inline Bool_t is_pointer (Object_t *obj, uint_t i) {
   return 1l & ((LEN_MASK & obj->hdr.hdr_word) >> i);
 }
 
-/*static inline Bool_t is_forwarded (void *to_space, void *p) {
-  return p >= to_space;
-  }*/
-
 static inline Bool_t is_forwarded (Object_t *obj) {
   /* Since LENGTH(obj) <= 56, we know that the length field never reaches
    * 0xFF; thus obj->hdr should never normally contain all 1s.  An object

@@ -121,7 +121,7 @@ functor HeapTransferFn (
 	   Copy.copy {src=map getDefOf args, 
 		      dst=map gpReg argRegs},
 	   (* jump to the function with fresh arguments *)
-	   genJump (regExp tgtReg, [] (* FIXME *), stdRegs, map mltGPR argRegs)],
+	   genJump (tgtReg, [] (* FIXME *), stdRegs, map mltGPR argRegs)],
 	   liveOut=map toGPR stdRegs}
       end (* genStdTransfer *)
 
@@ -131,7 +131,7 @@ functor HeapTransferFn (
 	  val argRegs = map newReg args
 	  val tgtReg = newReg ()
 	  val {stms, liveOut} =
-	      genStdTransfer varDefTbl (tgtReg, args, argRegs, stdCallRegs)
+	      genStdTransfer varDefTbl (regExp tgtReg, args, argRegs, stdCallRegs)
       in
 	  {stms=move (tgtReg, defOf f) :: stms, liveOut=liveOut}
       end (* genStdCall *)
@@ -141,7 +141,7 @@ functor HeapTransferFn (
 	  val kReg = newReg ()
 	  val argRegs = map newReg [clos, arg]
 	  val {stms, liveOut} = 
-	      genStdTransfer varDefTbl (kReg, [clos, arg], argRegs, stdContRegs)
+	      genStdTransfer varDefTbl (regExp kReg, [clos, arg], argRegs, stdContRegs)
       in 
 	  {stms=move (kReg, defOf k) :: stms, liveOut=liveOut}
       end (* genStdThrow *)
@@ -152,8 +152,9 @@ functor HeapTransferFn (
  *)
   fun genRun varDefTbl {act, fiber} = let
 	val argRegs = map newReg [act, fiber]
+	val runL = T.LABEL RuntimeLabels.run
 	in
-	  genStdTransfer varDefTbl (??, [fiber, act], argRegs, stdContRegs)
+	  genStdTransfer varDefTbl (runL, [fiber, act], argRegs, stdContRegs)
 	end
 
 (* generate a transfer to the "forward" scheduler operation.  We pass the signal
@@ -161,8 +162,9 @@ functor HeapTransferFn (
  *)
   fun genForward varDefTbl sign = let
 	val argRegs = [newReg sign]
+	val forwardL = T.LABEL RuntimeLabels.forward
 	in
-	  genStdTransfer varDefTbl (??, [fiber, act], argRegs, [argReg])
+	  genStdTransfer varDefTbl (forwardL, [sign], argRegs, [argReg])
 	end
 
   structure Ty = CFGTy

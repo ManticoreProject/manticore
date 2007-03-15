@@ -340,7 +340,7 @@ structure CheckCFG : sig
                                            | _ => err["variable ", V.toString x, ":", Ty.toString (V.typeOf x), 
                                                       " is not switch"])
                                     | CFGTy.T_Tuple _ => 
-                                         (fn i => if i = 0
+                                         (fn i => if i = 1
                                                      then ()
                                                   else err["case ", Int.toString i,
                                                            " is out of range for ",

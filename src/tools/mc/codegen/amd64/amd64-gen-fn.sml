@@ -119,7 +119,7 @@ functor AMD64GenFn (
 	    val spillLoc = recordSpill (fsi, loc)
 	in
 	    I.Displace {
-	    base = AMD64Regs.spReg, 
+	    base = valOf AMD64Regs.fpReg, 
 	    disp = I.ImmedLabel (AMD64MLTree.CONST (AMD64Constant.StackLoc {
 					       frame = fsi,
 					       loc   = spillLoc

@@ -22,7 +22,10 @@ structure AMD64Regs : MANTICORE_REGS = struct
   val apReg = C.rcx
   val limReg = C.GPReg 11
   val dedicatedRegs = [argReg, closReg, retReg, exhReg, spReg, apReg, 
-		       valOf fpReg, limReg]
+		       valOf fpReg, limReg
+(* stress test register allocation *)
+(*		       ,C.GPReg 15, C.GPReg 14, C.GPReg 13, C.GPReg 12*)
+		       ]
   val dedicatedFRegs = []
 
   val allRegs = C.Regs CellsBasis.GP {from=0, to=15, step=1}

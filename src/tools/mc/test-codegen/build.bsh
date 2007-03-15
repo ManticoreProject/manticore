@@ -12,5 +12,5 @@ $CM <<XXX
    SMLofNJ.exportFn
 	(".heap/manticore", 
  	 fn (_, [file]) => 
-	       (TestCompile.init file; OS.Process.success)):unit;
+	       (TestCompile.init file; TestCompile.init file; OS.Process.success)):unit;
 XXX
