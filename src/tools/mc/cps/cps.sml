@@ -17,6 +17,9 @@ structure CPS =
       | Switch of (var * (int * exp) list * exp option)
       | Apply of (var * var list)
       | Throw of (var * var list)
+    (* scheduler operations *)
+      | Run of (var * var)
+      | Forward of var
 
     and rhs
       = Var of var list

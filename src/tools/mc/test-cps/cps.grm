@@ -22,12 +22,14 @@
     | KW_end		("end")
     | KW_enum		("enum")
     | KW_float		("float")
+    | KW_forward	("forward")
     | KW_fun		("fun")
     | KW_if		("if")
     | KW_int		("int")
     | KW_let		("let")
     | KW_long		("long")
     | KW_module		("module")
+    | KW_run		("run")
     | KW_short		("short")
     | KW_switch		("switch")
     | KW_then		("then")
@@ -105,6 +107,8 @@ Exp
 	| "switch" SimpleExp Cases DefaultCase? "end"	=> (PT.Switch(SimpleExp, Cases, DefaultCase))
 	| "apply" ID Args				=> (PT.Apply(ID, Args))
 	| "throw" ID Args				=> (PT.Throw(ID, Args))
+	| "run" ID ID					=> (PT.Run(ID, ID))
+	| "forward" ID					=> (PT.Forward ID)
 	;
 
 LHS

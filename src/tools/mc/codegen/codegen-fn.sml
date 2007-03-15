@@ -153,6 +153,10 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		  emitStms stms;
 		  emit (T.LIVE liveOut)
 	      end
+	    | genTransfer (M.Run args) =
+		genStdTransfer (BE.Transfer.genRun varDefTbl args)
+	    | getTransfer (M.Forward sign) =
+		genStdTransfer (BE.Transfer.genForward varDefTbl sign)
 							  
 	  and bindExp (lhs, rhsEs) = 
 	      let fun getReg (l, (rs, gprs)) = 

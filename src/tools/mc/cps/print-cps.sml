@@ -63,6 +63,10 @@ structure PrintCPS : sig
 		      prl["throw ", varUseToString k, " "];
 		      prList varUseToString args;
 		      pr "\n")
+		  | CPS.Run(act, fiber) =>
+		      prl["run ", varUseToString act, " ", varUseToString fiber, "\n"]
+		  | CPS.Forward sign =>
+		      prl["forward ", varUseToString sign, "\n"]
 		(* end case *))
 	  and prRHS (CPS.Var ys) = prList varUseToString ys
 	    | prRHS (CPS.Enum w) = prl["enum(", Word.fmt StringCvt.DEC w, ")"]

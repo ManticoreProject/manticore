@@ -283,6 +283,8 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 		      List.app (doJump o #2) cases;
 		      Option.app doJump dflt)
 		  | doXfer (CFG.HeapCheck{nogc, ...}) = doJump nogc
+		  | doXfer (CFG.Run{act, fiber}) = (escape act; escape fiber)
+		  | doXfer (CFG.Fiber sign) = escape sign
 		and doJump (lab, args) = (case CFG.funcOfLabel lab
 		       of SOME func => doFunc (func, List.map valueOf args)
 			| _ => raise Fail "jump to unknown label"

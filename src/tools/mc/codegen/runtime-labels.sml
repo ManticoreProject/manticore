@@ -11,6 +11,8 @@ structure RuntimeLabels = struct
   local val global = Label.global
   in
     val initGC = global "ASM_InvokeGC"
+    val run = global "ASM_Run"
+    val forward = global "ASM_Forward"
   end (* local *)
 
 end (* RuntimeLabels *)

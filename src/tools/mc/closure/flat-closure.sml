@@ -402,6 +402,17 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
                               in
                                 finish (binds @ stms, xfer)
                               end
+			  | CPS.Run{act, fiber} => let
+			      val (binds1, act) = lookupVar(env, act)
+			      val (binds2, fiber) = lookupVar(env, fiber)
+			      in
+				finish (binds2 @ binds1 @ stms, CFG.Run{act=act, fiber=fiber})
+			      end
+			  | CPS.Forward sign => let
+			      val (binds1, sign) = lookupVar(env, sign)
+			      in
+				finish (binds @ stms, CFG.Forward sign)
+			      end
 			(* end case *)
                       end
                 in

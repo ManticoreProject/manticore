@@ -184,6 +184,11 @@ structure Expand =
 		cvtSimpleExps (env, args, fn xs => CPS.Apply(lookup(env, f), xs))
 	    | PT.Throw(k, args) =>
 		cvtSimpleExps (env, args, fn xs => CPS.Throw(lookup(env, k), xs))
+	    | PT.Run(act, fiber) => CPS.Run{
+		  act = lookup (env, act),
+		  fiber = lookup (env, fiber)
+		}
+	    | PT.Forward sign => CPS.Forward(lookup(env, sign))
 	  (* end case *))
 
     and cvtLambda (env, (f, params, e), tyCon) = let

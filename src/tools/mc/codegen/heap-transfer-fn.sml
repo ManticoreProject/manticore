@@ -146,6 +146,25 @@ functor HeapTransferFn (
 	  {stms=move (kReg, defOf k) :: stms, liveOut=liveOut}
       end (* genStdThrow *)
 
+(* generate a transfer to the "run" scheduler operation.  We pass the fiber to
+ * run in the standard closure register and the signal action in the standard
+ * argument register.
+ *)
+  fun genRun varDefTbl {act, fiber} = let
+	val argRegs = map newReg [act, fiber]
+	in
+	  genStdTransfer varDefTbl (??, [fiber, act], argRegs, stdContRegs)
+	end
+
+(* generate a transfer to the "forward" scheduler operation.  We pass the signal
+ * that is being forwarded in the standard argument register.
+ *)
+  fun genForward varDefTbl sign = let
+	val argRegs = [newReg sign]
+	in
+	  genStdTransfer varDefTbl (??, [fiber, act], argRegs, [argReg])
+	end
+
   structure Ty = CFGTy
   structure CTy = CTypes
 
