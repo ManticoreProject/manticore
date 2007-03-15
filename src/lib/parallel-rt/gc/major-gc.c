@@ -8,7 +8,6 @@
  * case where the amount of free space falls below some threshold.  
  *
  * TODO:
- *	check heap limit when forwarding objects
  *	check for global GC.  How?
  */
 
@@ -33,8 +32,8 @@ STATIC_INLINE bool inOldHeap (Addr_t heapBase, Addr_t oldSzB, Addr_t p)
 /* Forward an object into the global-heap chunk reserved for the current VP */
 STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
 {
-    Word_t	*p = ((Word_t *)ValueToPtr(v))-1;  // address of object header
-    Word_t	hdr = *p;
+    Word_t	*p = ((Word_t *)ValueToPtr(v));
+    Word_t	hdr = p[-1];
     if (isForwardPtr(hdr))
 	return PtrToValue(GetForwardPtr(hdr));
     else {
@@ -56,7 +55,11 @@ STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
 
 }
 
-/* MajorGC:
+/*! \brief Perform a major collection on a vproc's local heap.
+ *  \param vp the vproc that is performing the collection.
+ *  \param roots a null-terminated array of root addresses.
+ *  \param top the address of the top of the old region in
+ *         the local heap.
  */
 void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 {
@@ -64,6 +67,9 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     Addr_t	oldSzB = vp->oldTop - VProcHeap(vp);
     Word_t	*globScan = (Word_t *)(vp->globNextW - WORD_SZB);
     MemChunk_t	*scanChunk = vp->globToSpace;
+
+    assert (VProcHeap(vp) < vp->oldTop);
+    assert (vp->oldTop < top);
 
   /* process the roots */
     for (int i = 0;  roots[i] != 0;  i++) {
@@ -95,13 +101,15 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 	    while (tagBits != 0) {
 		if (tagBits & 0x1) {
 		    Value_t p = *(Value_t *)scanP;
-		    if (inOldHeap(heapBase, oldSzB, ValueToAddr(p))) {
-			*scanP = (Word_t)ForwardObj(vp, p);
-		    }
-		    else if (inVPHeap(heapBase, ValueToAddr(p))) {
-		      // p points to another object in the "young" region,
-		      // so adjust it.
-			*scanP = (Word_t)AddrToValue(ValueToAddr(p) - oldSzB);
+		    if (isPtr(p)) {
+			if (inOldHeap(heapBase, oldSzB, ValueToAddr(p))) {
+			    *scanP = (Word_t)ForwardObj(vp, p);
+			}
+			else if (inVPHeap(heapBase, ValueToAddr(p))) {
+			  // p points to another object in the "young" region,
+			  // so adjust it.
+			    *scanP = (Word_t)AddrToValue(ValueToAddr(p) - oldSzB);
+			}
 		    }
 		}
 		tagBits >>= 1;
@@ -207,7 +215,7 @@ static void ScanGlobalToSpace (
 		while (tagBits != 0) {
 		    if (tagBits & 0x1) {
 			Value_t p = *(Value_t *)scanP;
-			if (inVPHeap(heapBase, ValueToAddr(p))) {
+			if (isPtr(v) && inVPHeap(heapBase, ValueToAddr(p))) {
 			    *scanP = (Word_t)ForwardObj(vp, p);
 			}
 		    }
