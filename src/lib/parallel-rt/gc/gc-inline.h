@@ -89,4 +89,10 @@ STATIC_INLINE bool inVPHeap (Addr_t heapBase, Addr_t p)
     return (heapBase == (p & ~VP_HEAP_MASK));
 }
 
+/* return true of the given address is within the given address range */
+STATIC_INLINE bool inAddrRange (Addr_t base, Addr_t szB, Addr_t p)
+{
+    return ((p - base) < szB);
+}
+
 #endif /* !_GC_INLINE_H_ */

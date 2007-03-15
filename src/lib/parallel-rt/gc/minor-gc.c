@@ -40,7 +40,8 @@ STATIC_INLINE Value_t ForwardObj (Value_t v, Word_t **nextW)
  */
 void MinorGC (VProc_t *vp, Value_t **roots)
 {
-    Addr_t	heapBase = (Addr_t)vp;
+    Addr_t	nurseryBase = vp->nurseryBase;
+    Addr_t	allocSzB = vp->allocPtr - nurseryBase - WORD_SZB;
     Word_t	*nextScan = (Word_t *)(vp->oldTop); /* current top of to space */
     Word_t	*nextW = nextScan + 1; /* next word in to space to copy to */
 
@@ -52,7 +53,7 @@ void MinorGC (VProc_t *vp, Value_t **roots)
     for (int i = 0;  roots[i] != 0;  i++) {
 	Value_t p = *roots[i];
 	if (isPtr(p)) {
-	    if (inVPHeap(heapBase, (Addr_t)p)) {
+	    if (inAddrRange(nurseryBase, allocSzB, ValueToAddr(p))) {
 		*roots[i] = ForwardObj(p, &nextW);
 	    }
 	}
@@ -70,7 +71,7 @@ void MinorGC (VProc_t *vp, Value_t **roots)
 	    while (tagBits != 0) {
 		if (tagBits & 0x1) {
 		    Value_t v = *scanP;
-		    if (isPtr(v) && inVPHeap(heapBase, ValueToAddr(v))) {
+		    if (isPtr(v) && inAddrRange(nurseryBase, allocSzB, ValueToAddr(v))) {
 			*scanP = ForwardObj(v, &nextW);
 		    }
 		}
@@ -84,7 +85,7 @@ void MinorGC (VProc_t *vp, Value_t **roots)
 	    int len = GetVectorLen(hdr);
 	    for (int i = 0;  i < len;  i++, nextScan++) {
 		Value_t v = *(Value_t *)nextScan;
-		if (isPtr(v) && inVPHeap(heapBase, ValueToAddr(v))) {
+		if (isPtr(v) && inAddrRange(nurseryBase, allocSzB, ValueToAddr(v))) {
 		    *nextScan = (Word_t)ForwardObj(v, &nextW);
 		}
 	    }

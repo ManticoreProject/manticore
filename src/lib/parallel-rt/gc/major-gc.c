@@ -23,12 +23,6 @@ static void ScanGlobalToSpace (
 	VProc_t *vp, Addr_t heapBase, MemChunk_t *scanChunk, Word_t *scanPtr);
 static void GetGlobalChunk (VProc_t *vp);
 
-/* return true of the given address is within the old region of the heap */
-STATIC_INLINE bool inOldHeap (Addr_t heapBase, Addr_t oldSzB, Addr_t p)
-{
-    return ((p - heapBase) < oldSzB);
-}
-
 /* Forward an object into the global-heap chunk reserved for the current VP */
 STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
 {
@@ -64,7 +58,8 @@ STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
 void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 {
     Addr_t	heapBase = (Addr_t)vp;
-    Addr_t	oldSzB = vp->oldTop - VProcHeap(vp);
+    Addr_t	oldBase = VProcHeap(vp);
+    Addr_t	oldSzB = vp->oldTop - oldBase;
     Word_t	*globScan = (Word_t *)(vp->globNextW - WORD_SZB);
     MemChunk_t	*scanChunk = vp->globToSpace;
 
@@ -75,10 +70,10 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     for (int i = 0;  roots[i] != 0;  i++) {
 	Value_t p = *roots[i];
 	if (isPtr(p)) {
-	    if (inOldHeap(heapBase, oldSzB, (Addr_t)p)) {
+	    if (inAddrRange(oldBase, oldSzB, ValueToAddr(p))) {
 		*roots[i] = ForwardObj(vp, p);
 	    }
-	    else if (inVPHeap(heapBase, (Addr_t)p)) {
+	    else if (inVPHeap(heapBase, ValueToAddr(p))) {
 	      // p points to another object in the "young" region,
 	      // so adjust it.
 		*roots[i] = AddrToValue(ValueToAddr(p) - oldSzB);
@@ -102,7 +97,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 		if (tagBits & 0x1) {
 		    Value_t p = *(Value_t *)scanP;
 		    if (isPtr(p)) {
-			if (inOldHeap(heapBase, oldSzB, ValueToAddr(p))) {
+			if (inAddrRange(oldBase, oldSzB, ValueToAddr(p))) {
 			    *scanP = (Word_t)ForwardObj(vp, p);
 			}
 			else if (inVPHeap(heapBase, ValueToAddr(p))) {
@@ -123,7 +118,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 	    for (int i = 0;  i < len;  i++) {
 		Value_t v = (Value_t)*nextScan;
 		if (isPtr(v)) {
-		    if (inOldHeap(heapBase, oldSzB, ValueToAddr(v))) {
+		    if (inAddrRange(oldBase, oldSzB, ValueToAddr(v))) {
 			*nextScan = (Word_t)ForwardObj(vp, v);
 		    }
 		    else if (inVPHeap(heapBase, (Addr_t)v)) {
@@ -215,7 +210,7 @@ static void ScanGlobalToSpace (
 		while (tagBits != 0) {
 		    if (tagBits & 0x1) {
 			Value_t p = *(Value_t *)scanP;
-			if (isPtr(v) && inVPHeap(heapBase, ValueToAddr(p))) {
+			if (isPtr(p) && inVPHeap(heapBase, ValueToAddr(p))) {
 			    *scanP = (Word_t)ForwardObj(vp, p);
 			}
 		    }
