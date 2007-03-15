@@ -71,6 +71,8 @@ structure FreeVars : sig
                            cases
 	    | CPS.Apply(f, args) => V.Set.addList(fv, f::args)
 	    | CPS.Throw(k, args) => V.Set.addList(fv, k::args)
+	    | CPS.Run{act, fiber} => V.Set.addList(fv, [act, fiber])
+	    | CPS.Forward sign => V.Set.add(fv, sign)
 	  (* end case *))
 
   (* compute the free variables of a lambda; the resulting set may include
