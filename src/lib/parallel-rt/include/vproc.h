@@ -15,6 +15,7 @@ struct struct_vproc {
     Word_t	inManticore;	/*!< true, when executing Manticore code */
     Word_t	atomic;		/*!< true, when in a vproc-atomic region */
     Word_t	sigPending;	/*!< true, when there is a pending signal */
+    Value_t	actionStk;	/*!< the top of the signal-action stack */
 			      /* VProc registers */
     Value_t	stdArg;		/*!< holds value of standard argument reg. */
     Value_t	stdEnvPtr;	/*!< holds value of standard environment-pointer reg. */

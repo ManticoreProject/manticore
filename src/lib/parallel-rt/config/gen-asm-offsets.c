@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include "vproc.h"
 #include "request-codes.h"
+#include "../vproc/scheduler.h"
 
 #define PR_OFFSET(obj, symb, lab)	\
 	printf("#define " #symb " %d\n", (int)((Addr_t)&(obj.lab) - (Addr_t)&obj))
@@ -19,7 +20,8 @@
 
 int main ()
 {
-    VProc_t	vp;
+    VProc_t		vp;
+    SchedActStkItem_t	actcons;
 
     printf ("#ifndef _ASM_OFFSETS_H_\n");
     printf ("#define _ASM_OFFSETS_H_\n");
@@ -34,9 +36,15 @@ int main ()
     PR_OFFSET(vp, STD_EP, stdEnvPtr);
     PR_OFFSET(vp, STD_CONT, stdCont);
     PR_OFFSET(vp, STD_EXH, stdExnCont);
+    PR_OFFSET(vp, ACTION_STK, actionStk);
 
     printf("\n/* mask to get address of VProc from alloc pointer */\n");
     printf("#define VP_MASK %#08lx\n", ~((Addr_t)VP_HEAP_SZB-1));
+
+    printf("\n/* offsets for the scheduler-action stack */\n");
+    printf("#define ACTCONS_HDR %d\n", VEC_HDR(2));
+    PR_OFFSET(actcons, ACTCONS_ACT_OFF, act);
+    PR_OFFSET(actcons, ACTCONS_LINK_OFF, link);
 
     printf("\n/* request codes for when Manticore returns to C */\n");
     PR_DEFINE(REQ_GC);
