@@ -14,7 +14,7 @@ functor VarDefFn (
 
   structure Cells = MLTreeComp.I.C
   structure MTy = MTy
-  structure Map = CFG.Var.Map
+  structure Tbl = CFG.Var.Tbl
   structure T = MTy.T
 
   val wordSz = (Word.toInt Spec.wordSzB) * 8
@@ -25,26 +25,11 @@ functor VarDefFn (
   (* the ML-Risc tree that converts a cexp to an rexp  *)
   fun cexpToExp exp = T.COND (wordSz, exp, valTRUE, valFALSE)
 
-  type var_def_tbl = MTy.mlrisc_tree Map.map ref
+  type var_def_tbl = MTy.mlrisc_tree Tbl.hash_table
 
-  fun newTbl () = ref Map.empty
-
-  fun getDefOf vdt v = let val e = valOf (Map.find (!vdt, v)) in
-(
-(*      print "\ngetDefOf  ";
-      print (CFG.Var.toString v);
-      print (MTy.treeToString e);
-      print "\n"; *)
-e )
-end
-
-  fun setDefOf vdt (v, e) = 
-(
-(*      print "\nsetDefOf  ";
-      print (CFG.Var.toString v);
-      print (MTy.treeToString e);
-      print "\n"; *)
-vdt := Map.insert (!vdt, v, e) )
+  fun newTbl () = Tbl.mkTable (256, Fail "varDefTbl")
+  fun getDefOf vdt v = Tbl.lookup vdt v
+  fun setDefOf vdt (v,e) = Tbl.insert vdt (v,e)
 
   fun defOf vdt v =
       (case getDefOf vdt v
