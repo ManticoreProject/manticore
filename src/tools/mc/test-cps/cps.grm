@@ -1,6 +1,6 @@
 (* cps.grm
  *
- * COPYRIGHT (c) 2007 John Reppy (http://www.cs.uchicago.edu/~jhr)
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *)
 
@@ -21,11 +21,11 @@
     | KW_else		("else")
     | KW_end		("end")
     | KW_enum		("enum")
+    | KW_extern		("extern")
     | KW_float		("float")
     | KW_forward	("forward")
     | KW_fun		("fun")
     | KW_if		("if")
-    | KW_import		("import")
     | KW_int		("int")
     | KW_let		("let")
     | KW_long		("long")
@@ -66,14 +66,15 @@
 
 
 Module
-	: "module" Import* Lambda	=> (PT.MODULE(Import, Lambda))
+	: "module" ID Import* "fun" Lambda
+		=> (PT.MODULE{name=ID, externs=Import, body=Lambda})
 	;
 
 Import
-	: "import" CRetTy ID "(" (CArgTy ("," CArgTy)* )? ")"
+	: "extern" CRetTy ID "(" (CArgTy ("," CArgTy)* )? ")" ";"
 		=> (CF.CFun{
-			name = ID,
-			externName = Atom.toString ID,
+			var = ID,
+			name = Atom.toString ID,
 			retTy = CRetTy,
 			argTys = flatten SR
 		      })

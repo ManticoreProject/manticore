@@ -84,9 +84,11 @@ structure CFG =
 	 and label = (label_kind, ty) VarRep.var_rep
          and prim = var Prim.prim
          and jump = (label * var list)
+	 and cfun = label CFunctions.c_fun
 
     datatype module = MODULE of {
 	name : Atom.atom,
+	externs : cfun list,
 	code : func list	(* first function is initialization *)
       }
 
@@ -216,8 +218,13 @@ structure CFG =
     fun mkExportFunc (l, conv, body, exit, name) = mkFn (l, conv, body, exit, SOME name)
     end
 
-    fun mkModule (name, code) = MODULE{
+    fun mkCFun arg = (
+	  Label.setKind (#var arg, LK_Extern(#name arg));
+	  CFunctions.CFun arg)
+
+    fun mkModule (name, externs, code) = MODULE{
 	    name = name,
+	    externs = externs,
 	    code = code
 	  }
 

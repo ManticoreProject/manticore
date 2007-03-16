@@ -27,6 +27,7 @@ structure FlatClosure : sig
       | cvtTy (CPSTy.T_Tuple tys) = CFG.T_Tuple(List.map cvtTy tys)
       | cvtTy (ty as CPSTy.T_Fun tys) = cvtStdFunTy ty
       | cvtTy (ty as CPSTy.T_Cont tys) = cvtStdContTy ty
+      | cvtTy (CPSTy.T_CFun cproto) = CFGTy.T_CFun cproto
 
   (* convert a function type to a standard-function type *)
     and cvtStdFunTy ty = CFG.T_Tuple[CFG.T_Any, cvtStdFunTyAux ty]
@@ -87,6 +88,7 @@ structure FlatClosure : sig
       | Global of int           (* at the ith slot of the current closure *)
       | EnclFun                 (* the enclosing function (or one that shares the *)
                                 (* same closure). *)
+      | Extern of CFG.label	(* bound to an external variable (e.g., C function *)
 
   (* an envrionment for mapping from CPS variables to CFG variables.  We also
    * track the current closure.
@@ -95,7 +97,7 @@ structure FlatClosure : sig
 
     fun envPtrOf (E{ep, ...}) = ep
 
-    fun newEnv ep = E{ep = ep, env = VMap.empty}
+    fun newEnv externEnv ep = E{ep = ep, env = externEnv}
 
     fun insertVar (E{ep, env}, x, x') = E{ep=ep, env=VMap.insert(env, x, x')}
 
@@ -153,6 +155,11 @@ structure FlatClosure : sig
                 in
                   ([CFG.mkAlloc(tmp, [ep, lab]), b], tmp)
                 end
+	    | SOME(Extern lab) => let
+                val tmp = newVar x
+                in
+                  ([CFG.mkLabel(tmp, lab)], tmp)
+                end
             | NONE => raise Fail("unbound variable " ^ CPS.Var.toString x)
           (* end case *))
 
@@ -171,6 +178,7 @@ structure FlatClosure : sig
     fun locToString (Local x) = concat["L(", CFG.Var.toString x, ")"]
       | locToString (Global i) = concat["G(", Int.toString i, ")"]
       | locToString EnclFun = "EnclFun"
+      | locToString (Extern lab) = concat["X(", CFG.Label.toString lab, ")"]
     fun prEnv (E{ep, env}) = let
           fun f (x, loc, false) = (print(concat[", ", CPS.Var.toString x, "->", locToString loc]); false)
             | f (x, loc, true) = (print(concat[CPS.Var.toString x, "->", locToString loc]); false)
@@ -222,8 +230,20 @@ structure FlatClosure : sig
             (binds, cfgArgs, E{ep = ep, env = clos}, param')
           end
 
-    fun convert (m as CPS.MODULE lambda) = let
+    fun convert (m as CPS.MODULE{name, externs, body}) = let
           val blocks = ref []
+	(* construct an initial environment that maps the CPS externs to CFG labels *)
+	  val (externs, externEnv) = let
+		fun cvt (CFunctions.CFun{var, name, retTy, argTys}, (cfs, env)) = let
+		      val lab = CFG.Label.new(Atom.atom name, cvtTy(CPS.Var.typeOf var))
+		      val cf = CFG.mkCFun{var=lab, name=name, argTys=argTys, retTy=retTy}
+		      in
+			(cf::cfs, VMap.insert(env, var, Extern lab))
+		      end
+		in
+		  List.foldl cvt ([], VMap.empty) externs
+		end
+	  val newEnv = newEnv externEnv
         (* convert an expression to a CFG FUNC; note that this function will convert
          * any nested functions first.
          *)
@@ -252,6 +272,7 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
                                     | EnclFun => (
                                         needsEP := true;
                                         (insertVar(bEnv, x, EnclFun), args, params))
+				    | Extern _ => raise Fail "unexpected extern in free-var list"
                                   (* end case *))
                             val (branchEnv, args, params) =
                                   CPS.Var.Set.foldr f (branchEnv, [], []) (FV.freeVarsOfExp e)
@@ -492,20 +513,19 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
         (* create the calling convention for the module *)
           fun cvtModLambda (f, params, e) = let
                 val ep = newEP (CFGTy.T_Tuple[])
-                val (env, conv) = stdFunConvention (E{ep = ep, env = VMap.empty}, params)
+                val (env, conv) = stdFunConvention (E{ep = ep, env = externEnv}, params)
                 in
                   cvtExp (env, labelOf f, conv, e)
                 end
           in
             FV.analyze m;
-            assignLabels lambda;
-            cvtModLambda lambda;
+            assignLabels body;
+            cvtModLambda body;
 	  (* we need to rebuild the entry function so that it has an exported lambda *)
 	    let val CFG.FUNC{lab, entry, body, exit} :: r = !blocks
-	    val name = CPS.Var.nameOf(#1 lambda)
 	    val init = CFG.mkExportFunc(lab, entry, body, exit, Atom.toString name ^ "_init")
 	    in
-	      CFG.mkModule(name, init::r)
+	      CFG.mkModule(name, externs, init::r)
 	    end
           end
 

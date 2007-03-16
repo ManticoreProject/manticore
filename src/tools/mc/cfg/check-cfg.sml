@@ -27,7 +27,7 @@ structure CheckCFG : sig
 
     fun bindVars (env, xs) = VSet.addList(env, xs)
 
-    fun check (m as CFG.MODULE{name, code}) = let
+    fun check (m as CFG.MODULE{name, externs, code}) = let
 	(* construct a set of the bound labels in the module *)
 	  val lSet = List.foldl
 		(fn (f as CFG.FUNC{lab, ...}, lset) => LSet.add(lset, lab))
@@ -179,14 +179,16 @@ structure CheckCFG : sig
 			    bindVar (env, x))
 			| CFG.E_Label(x, lab) => (
 			    chkLabel lab;
-                            case L.kindOf lab of
-                               CFG.LK_Extern _ => ()
-                             | CFG.LK_Local _ => 
-                                  if Ty.equals (V.typeOf x, L.typeOf lab)
-                                     then ()
-                                  else err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
-                                           " does not match ",
-                                           "label ", L.toString lab, ":", Ty.toString (L.typeOf lab)];
+                            case L.kindOf lab
+			     of CFG.LK_Extern _ => ()
+			      | CFG.LK_Local _ => if Ty.equals (V.typeOf x, L.typeOf lab)
+				  then ()
+                                  else err[
+				      "variable ", V.toString x, ":", Ty.toString (V.typeOf x),
+				      " does not match ",
+				      "label ", L.toString lab, ":", Ty.toString (L.typeOf lab)
+				    ]
+			    (* end case *);
 			    bindVar (env, x))
 			| CFG.E_Literal(x, _) => bindVar (env, x)
 			| CFG.E_Select(x, i, y) => let

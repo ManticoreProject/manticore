@@ -39,27 +39,41 @@ structure CPS =
       | VK_Fun of lambda
       | VK_Cont of lambda
       | VK_Param of lambda
+      | VK_Extern of string
 
     withtype var = (var_kind, ty) VarRep.var_rep
          and prim = var Prim.prim
 	 and lambda = (var * var list * exp)
 
-    datatype module = MODULE of lambda
+    datatype module = MODULE of {
+	name : Atom.atom,
+	externs : var CFunctions.c_fun list,
+	body : lambda
+      }
 
     fun varKindToString VK_None = "None"
       | varKindToString (VK_Let _) = "Let"
       | varKindToString (VK_Fun _) = "Fun"
       | varKindToString (VK_Cont _) = "Cont"
       | varKindToString (VK_Param _) = "Param"
+      | varKindToString (VK_Extern _) = "Extern"
 
-    structure Var = VarFn (
-      struct
-	type kind = var_kind
-	type ty = ty
-	val defaultKind = VK_None
-	val kindToString = varKindToString
-	val tyToString = CPSTy.toString
-      end)
+    structure Var = struct
+	local
+	  structure V = VarFn (
+	    struct
+	      type kind = var_kind
+	      type ty = ty
+	      val defaultKind = VK_None
+	      val kindToString = varKindToString
+	      val tyToString = CPSTy.toString
+	    end)
+	in
+	open V
+	fun isExtern (VarRep.V{kind = ref(VK_Extern _), ...}) = true
+	  | isExtern _ = false
+	end (* local *)
+      end
 
   (* smart constructors; these enforce the variable kind invariant and should be
    * used to construct terms.
@@ -79,5 +93,9 @@ structure CPS =
 	  Var.setKind(k, VK_Cont lambda);
 	  List.app (fn x => Var.setKind(x, VK_Param lambda)) params;
 	  Cont(lambda, e))
+
+    fun mkCFun arg = (
+	  Var.setKind(#var arg, VK_Extern(#name arg));
+	  CFunctions.CFun arg)
 
   end

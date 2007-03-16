@@ -18,6 +18,7 @@ structure CFGTy =
       | T_Wrap of raw_ty	(* boxed raw value *)
       | T_Tuple of ty list	(* heap-allocated tuple *)
       | T_OpenTuple of ty list	(* a tuple of unknown size, where we know the prefix. *)
+      | T_CFun of CFunctions.c_proto (* a C function prototype *)
     (* function/continuation types.  The type specifies the calling convention.  These
      * types should be used for labels and code addresses.
      *)
@@ -35,6 +36,7 @@ structure CFGTy =
             | (T_Wrap rty1, T_Wrap rty2) => (rty1 = rty2)
             | (T_Tuple ty1s, T_Tuple ty2s) => ListPair.allEq equals (ty1s, ty2s)
             | (T_OpenTuple ty1s, T_OpenTuple ty2s) => ListPair.allEq equals (ty1s, ty2s)
+	    | (T_CFun proto1, T_CFun proto2) => (proto1 = proto2)
             | (T_StdFun {clos = clos1, arg = arg1, ret = ret1, exh = exh1},
                T_StdFun {clos = clos2, arg = arg2, ret = ret2, exh = exh2}) =>
                   equals (clos1, clos2) andalso
@@ -57,6 +59,9 @@ structure CFGTy =
             | _ => true
 	  (* end case *))
 
+  (* return true if the type is represented by a pointer (including pointers
+   * that lie outside the heap).
+   *)
     fun isBoxed ty = (case ty 
            of T_Any => false
             | T_Enum _ => false
@@ -64,6 +69,7 @@ structure CFGTy =
             | T_Wrap _ => true
             | T_Tuple _ => true
             | T_OpenTuple _ => true
+	    | T_CFun _ => true
             | T_StdFun _ => true
             | T_StdCont _ => true
             | T_Code _ => true
@@ -97,6 +103,7 @@ structure CFGTy =
 	      | T_Wrap ty => concat["wrap(", RawTypes.toString ty, ")"]
 	      | T_Tuple tys => concat("(" :: tys2l(tys, [")"]))
 	      | T_OpenTuple tys => concat("(" :: tys2l(tys, [",...)"]))
+	      | T_CFun proto => CFunctions.protoToString proto
 	      | T_StdFun{clos, arg, ret, exh} => concat("fun(" :: tys2l([clos, arg, ret, exh], [")"]))
 	      | T_StdCont{clos, arg} => concat("cont(" :: tys2l([clos, arg], [")"]))
 	      | T_Code tys => concat("code(" :: tys2l(tys, [")"]))

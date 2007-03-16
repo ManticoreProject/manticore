@@ -66,7 +66,7 @@ val toNode = fn f => let
 	  (* end case *))
       | expAlloc _ = 0w0
 
-    fun transform (CFG.MODULE{name, code}) = let
+    fun transform (CFG.MODULE{name, externs, code}) = let
 	  val graph = makeGraph code
 	  val fbSet = FB.feedback graph
 	(* compute the allocation performed by a function and annotate
@@ -93,6 +93,11 @@ val toNode = fn f => let
 			    end
 		    (* add in any data allocated in this function *)
 		      val alloc = List.foldl (fn (e, sz) => sz + expAlloc e) alloc body
+		    (* the "run" transfer allocates a cons cell *)
+		      val alloc = (case exit
+			     of CFG.Run _ => alloc + 0w3 * Target.wordSzB
+			      | _ => alloc
+			    (* end case *))
 		      in
 			setAlloc (lab, alloc); alloc
 		      end
@@ -145,7 +150,7 @@ val toNode = fn f => let
 		  else f::fs
 	  val code = List.foldr rewrite [] code
 	  in
-	    CFG.mkModule(name, code)
+	    CFG.mkModule(name, externs, code)
 	  end
 
   end

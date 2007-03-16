@@ -16,7 +16,7 @@ structure PrintCFG : sig
 
     type flags = {types : bool}
 
-    fun output (flags : flags) (outS, CFG.MODULE{name, code}) = let
+    fun output (flags : flags) (outS, CFG.MODULE{name, externs, code}) = let
 	  fun pr s = TextIO.output(outS, s)
 	  fun prl s = pr(String.concat s)
 	  fun prIndent 0 = ()
@@ -118,8 +118,13 @@ structure PrintCFG : sig
 		prl [prefix, " ", labelToString lab];
 		prList varUseToString args;
 		pr "\n")
+	  fun prExtern (CFunctions.CFun{var, ...}) = prl[
+		  "  extern ", labelToString var, " : ",
+		  CFGTy.toString(CFG.Label.typeOf var), "\n"
+		]
 	  in
 	    prl ["module ", Atom.toString name, " {\n"];
+	    List.app prExtern externs;
 	    List.app prFunc code;
 	    pr "}\n"
 	  end

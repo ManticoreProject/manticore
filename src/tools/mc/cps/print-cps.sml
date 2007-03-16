@@ -10,7 +10,7 @@ structure PrintCPS : sig
 
   end = struct
 
-    fun output (outS, CPS.MODULE body) = let
+    fun output (outS, CPS.MODULE{name, externs, body}) = let
 	  fun pr s = TextIO.output(outS, s)
 	  fun prl s = pr(String.concat s)
 	  fun prIndent 0 = ()
@@ -93,8 +93,13 @@ structure PrintCPS : sig
 		prl ["if ", varUseToString x, " then\n"];
 		prExp(i+1, e1);
 		indent (i); pr "else\n"; prExp(i+1, e2))
+	  fun prExtern (CFunctions.CFun{var, ...}) = (
+		indent 1;
+		prl ["extern ", varBindToString var, "\n"])
 	  in
-	    prLambda (0, "module ", body)
+	    prl ["module ", Atom.toString name, "\n"];
+	    List.app prExtern externs;
+	    prLambda (2, "  fun ", body)
 	  end
 
     fun print m = output (TextIO.stdErr, m)

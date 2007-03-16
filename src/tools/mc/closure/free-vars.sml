@@ -22,20 +22,33 @@ structure FreeVars : sig
 
     val {getFn = getFV, setFn = setFV, ...} = V.newProp (fn _ => V.Set.empty)
 
+  (* is a variable externally bound? *)
+    fun isExtern x = (case V.kindOf x
+	   of CPS.VK_Extern _ => true
+	    | _ => false
+	  (* end case *))
+
+  (* functions to add free variables to a set; if the variable is extern,
+   * then it is ignored.
+   *)
+    fun addVar (fv, x) = if isExtern x then fv else V.Set.add(fv, x)
+    fun addVars (fv, []) = fv
+      | addVars (fv, x::xs) = addVars(addVar(fv, x), xs)
+
     fun remove (s, x) = V.Set.delete (s, x) handle _ => s
     fun removes (s, xs) = List.foldl (fn (x, s) => remove (s, x)) s xs
 
   (* extend a set of free variables by the variables in a RHS *)
-    fun fvOfRHS (fv, CPS.Var xs) = V.Set.addList(fv, xs)
+    fun fvOfRHS (fv, CPS.Var xs) = addVars(fv, xs)
       | fvOfRHS (fv, CPS.Enum _) = fv
-      | fvOfRHS (fv, CPS.Cast(_, y)) = V.Set.add(fv, y)
+      | fvOfRHS (fv, CPS.Cast(_, y)) = addVar(fv, y)
       | fvOfRHS (fv, CPS.Literal _) = fv
-      | fvOfRHS (fv, CPS.Select(_, x)) = V.Set.add(fv, x)
-      | fvOfRHS (fv, CPS.Alloc xs) = V.Set.addList(fv, xs)
-      | fvOfRHS (fv, CPS.Wrap x) = V.Set.add(fv, x)
-      | fvOfRHS (fv, CPS.Unwrap x) = V.Set.add(fv, x)
-      | fvOfRHS (fv, CPS.Prim p) = V.Set.addList(fv, PrimUtil.varsOf p)
-      | fvOfRHS (fv, CPS.CCall(f, args)) = V.Set.addList(fv, f::args)
+      | fvOfRHS (fv, CPS.Select(_, x)) = addVar(fv, x)
+      | fvOfRHS (fv, CPS.Alloc xs) = addVars(fv, xs)
+      | fvOfRHS (fv, CPS.Wrap x) = addVar(fv, x)
+      | fvOfRHS (fv, CPS.Unwrap x) = addVar(fv, x)
+      | fvOfRHS (fv, CPS.Prim p) = addVars(fv, PrimUtil.varsOf p)
+      | fvOfRHS (fv, CPS.CCall(f, args)) = addVars(fv, f::args)
 
     fun analExp (fv, e) = (case e
 	   of CPS.Let(xs, rhs, e) => removes(analExp (fvOfRHS (fv, rhs), e), xs)
@@ -58,21 +71,21 @@ structure FreeVars : sig
 		  setFV (#1 fb, fbEnv);
 		  remove (analExp (V.Set.union (fv, fbEnv), e), #1 fb)
 		end
-	    | CPS.If(x, e1, e2) => analExp (analExp (V.Set.add (fv, x), e1), e2)
+	    | CPS.If(x, e1, e2) => analExp (analExp (addVar (fv, x), e1), e2)
 	    | CPS.Switch(x, cases, dflt) => 
                 List.foldl (fn ((_,e), fv) => analExp (fv, e))
                            (let
-                               val fv = V.Set.add (fv, x)
+                               val fv = addVar (fv, x)
                             in 
                                case dflt of
                                   SOME e => analExp (fv, e)
                                 | NONE => fv
                             end)
                            cases
-	    | CPS.Apply(f, args) => V.Set.addList(fv, f::args)
-	    | CPS.Throw(k, args) => V.Set.addList(fv, k::args)
-	    | CPS.Run{act, fiber} => V.Set.addList(fv, [act, fiber])
-	    | CPS.Forward sign => V.Set.add(fv, sign)
+	    | CPS.Apply(f, args) => addVars(fv, f::args)
+	    | CPS.Throw(k, args) => addVars(fv, k::args)
+	    | CPS.Run{act, fiber} => addVars(fv, [act, fiber])
+	    | CPS.Forward sign => addVar(fv, sign)
 	  (* end case *))
 
   (* compute the free variables of a lambda; the resulting set may include
@@ -80,9 +93,9 @@ structure FreeVars : sig
    *)
     and analFB (f, params, body) = V.Set.difference (
 	  analExp (V.Set.empty, body),
-	  V.Set.addList(V.Set.empty, params))
+	  addVars(V.Set.empty, params))
 
-    fun analyze (CPS.MODULE lambda) = if V.Set.isEmpty(analFB lambda)
+    fun analyze (CPS.MODULE{body, ...}) = if V.Set.isEmpty(analFB body)
 	  then ()
 	  else raise Fail "non-closed module"
 
@@ -112,19 +125,21 @@ structure FreeVars : sig
 		      end
 		  | CPS.Cont(fb, e) =>
 		      remove (analExp (V.Set.union (fv, analFB fb), e), #1 fb)
-		  | CPS.If(x, e1, e2) => analExp (analExp (V.Set.add (fv, x), e1), e2)
+		  | CPS.If(x, e1, e2) => analExp (analExp (addVar (fv, x), e1), e2)
 		  | CPS.Switch(x, cases, dflt) => 
                       List.foldl (fn ((_,e), fv) => analExp (fv, e))
                                  (let
-                                     val fv = V.Set.add (fv, x)
+                                     val fv = addVar (fv, x)
                                   in
                                      case dflt of
                                         SOME e => analExp (fv, e)
                                       | NONE => fv
                                   end)
                                  cases
-		  | CPS.Apply(f, args) => V.Set.addList(fv, f::args)
-		  | CPS.Throw(k, args) => V.Set.addList(fv, k::args)
+		  | CPS.Apply(f, args) => addVars(fv, f::args)
+		  | CPS.Throw(k, args) => addVars(fv, k::args)
+		  | CPS.Run{act, fiber} => addVars(fv, [act, fiber])
+		  | CPS.Forward sign => addVar(fv, sign)
 		(* end case *))
 	  in
 	    analExp (V.Set.empty, exp)
