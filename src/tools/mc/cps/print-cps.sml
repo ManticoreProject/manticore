@@ -39,6 +39,7 @@ structure PrintCPS : sig
 		      prLambda(i, "fun ", fb);
 		      List.app (fn fb => prLambda(i, "and ", fb)) fbs;
 		      prExp (i, e))
+		  | CPS.Fun _ => raise Fail "empty function binding"
 		  | CPS.Cont(fb, e) => (prLambda(i, "cont ", fb); prExp (i, e))
 		  | CPS.If(x, e1, e2) => prIf(i, x, e1, e2)
 		  | CPS.Switch(x, cases, dflt) => let
