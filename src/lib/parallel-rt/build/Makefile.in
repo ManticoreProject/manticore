@@ -7,7 +7,7 @@
 #
 
 CC =		@CC@
-CFLAGS =	-std=gnu99 -g -O2 @CC_MODE_FLAG@
+CFLAGS =	-std=gnu99 -pedantic -g -O2 @CC_MODE_FLAG@
 LDFLAGS =	
 CPPFLAGS =	-I../include
 AR =		ar

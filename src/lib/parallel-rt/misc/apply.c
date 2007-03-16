@@ -39,6 +39,7 @@ Value_t RunManticore (VProc_t *vp, Value_t f, Value_t arg)
 		Value_t *roots[16], **rp;
 		rp = roots;
 		*rp++ = &(vp->stdEnvPtr);
+		*rp++ = &(vp->actionStk);
 		*rp++ = 0;
 		MinorGC (vp, roots);
 	      /* we need to invoke the stdCont to resume after GC */
