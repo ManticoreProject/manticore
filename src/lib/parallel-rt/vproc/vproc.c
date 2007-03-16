@@ -229,11 +229,16 @@ static void SigHandler (int sig, siginfo_t *si, void *_sc)
     ucontext_t	*uc = (ucontext_t *)_sc;
     VProc_t	*self = VProcSelf();
 
-    if (! self->inManticore) {
+    if (self->inManticore == M_FALSE) {
+	self->sigPending = M_TRUE;
     }
-    else if (self->atomic) {
+    else if (self->atomic == M_TRUE) {
+	self->sigPending = M_TRUE;
     }
     else {
+      // set the limit pointer to zero to force a context switch on
+      // the next GC test
+	uc->uc_mcontext.gregs[REG_R11] = 0;
     }
 
 } /* SignHandler */

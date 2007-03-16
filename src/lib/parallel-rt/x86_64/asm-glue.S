@@ -64,7 +64,7 @@ ASM_Apply:
       /* load Manticore state */
 	movq	ALLOC_PTR(%r10),%rcx	/* load allocation pointer */
 	movq	LIMIT_PTR(%r10),%r11	/* limit pointer */
-	movq	$1,IN_MANTICORE(%r10) /* we are running manticore code now! */
+	movq	$M_TRUE,IN_MANTICORE(%r10) /* we are running manticore code now! */
 	jmp	*%r12
 
 /* code address for uncaught exception continuation */
@@ -97,8 +97,7 @@ switch_to_c:
 	andq	$VP_MASK,%r10
 #endif
       /* mark that we are not running Manticore code anymore */
-	xorl	%edx,%edx
-	movq	%rdx,IN_MANTICORE(%r10)
+	movq	$M_FALSE,IN_MANTICORE(%r10)
       /* save Manticore state */
 	movq	%rax,STD_ARG(%r10)
 	movq	%rdi,STD_EP(%r10)
