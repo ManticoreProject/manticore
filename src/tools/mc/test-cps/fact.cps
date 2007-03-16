@@ -1,7 +1,7 @@
 (* fact.cps *)
 
 module Fact
-  init (i : [int], k : cont([int]), exh : cont(any)) =
+  fun init (i : [int], k : cont([int]), exh : cont(any)) =
 
     fun fact (i : int, k2 : cont(int), exh : cont(any)) =
 	if I32Lte (i, 1:int) then throw k2(1:int)
