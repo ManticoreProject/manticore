@@ -204,7 +204,7 @@ dnl
 dnl create machine-specific links
 dnl
 AC_CONFIG_LINKS([
-  src/lib/parallel-rt/misc/machine:src/lib/parallel-rt/misc/$ARCH
+  src/lib/parallel-rt/machine:src/lib/parallel-rt/$ARCH
 ])
 
 AC_OUTPUT
