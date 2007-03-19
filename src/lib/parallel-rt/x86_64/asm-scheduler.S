@@ -40,6 +40,9 @@ ASM_Run:
 	movq	%r9,ACTCONS_LINK_OFF(%rcx)	/* store top of stack in the link field */
 	movq	%rcx,ACTION_STK(%r10)		/* set top of stack to new cell */
 	leaq	24(%rcx),%rcx			/* bump up allocation pointer */
+      /* mark that we are out of the atomic region */
+	movl	$M_FALSE,%eax
+	movq	%rax,ATOMIC(%r10)
       /* transfer control to the fiber */
 	movl	$M_UNIT,%eax
 	jmpq	*(%rdi)
@@ -58,6 +61,9 @@ ASM_Forward:
       /* compute the vproc pointer from the allocation pointer */
 	movq	%rcx,%r10
 	andq	$VP_MASK,%r10
+      /* mark that we are running in atomic mode */
+	movl	M_TRUE,%edi
+	movq	%rdi,ATOMIC(%r10)
       /* fetch top of sigaction stack */
 	movq	ACTION_STK(%r10),%r9
 	movq	ACTCONS_ACT_OFF(%r9),%rdi	/* stdEP gets signal-action continuation */
@@ -65,3 +71,25 @@ ASM_Forward:
 	movq	%r9,ACTION_STK(%r10)
       /* transfer control to the signal-action continuation */
 	jmpq	*(%rdi)
+
+/* ASM_Resume:
+ *
+ * This function is the code for the resume continuation created by preemption.
+ * It assumes that the standard environment pointer points to a tuple with the
+ * following layout:
+ *
+ *		+----------------+
+ *	ep ---> |   ASM_Resume   |
+ *		+----------------+
+ *		| GC return addr |
+ *		+----------------+
+ *		|    GC root     |
+ *		+----------------+
+ */
+	.text
+	.p2align 3
+	.global	ASM_Resume
+ASM_Resume:
+	movq	8(%rdi),%r9	/* fetch code address */
+	movq	16(%rdi),%rdi	/* set EP to point to GC root */
+	jmpq	*%r9		/* jump to the GC return code */

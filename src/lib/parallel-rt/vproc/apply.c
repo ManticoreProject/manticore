@@ -14,7 +14,7 @@
 extern RequestCode_t ASM_Apply (VProc_t *vp, Addr_t cp, Value_t arg, Value_t ep, Value_t rk, Value_t ek);
 extern int ASM_Return;
 extern int ASM_UncaughtExn;
-extern int ASM_Preempt;
+extern int ASM_Resume;
 
 /* Run a Manticore function f applied to arg.  If the function
  * returns, then return the result.
@@ -51,7 +51,7 @@ Value_t RunManticore (VProc_t *vp, Value_t f, Value_t arg)
 	    }
 	  /* check for pending signals */
 	    if (vp->sigPending == M_TRUE) {
-/* FIXME: this code assumes that the signal is preemption */
+/* FIXME: this code assumes that the signal is always preemption */
 		Value_t resumeK = AllocUniform(vp, 3,
 			    PtrToValue(&ASM_Resume),
 			    vp->stdCont,
@@ -59,12 +59,14 @@ Value_t RunManticore (VProc_t *vp, Value_t f, Value_t arg)
 		SchedActStkItem_t *item = (SchedActStkItem_t *)ValueToPtr(vp->actionStk);
 		assert (item != 0);
 		vp->actionStk = item->link;
-		ep = vp->act;
-		cp = ValueToCont(ep)->cp;
+		ep = item->act;
+		cp = ValueToAddr(ValueToCont(ep)->cp);
 		arg = resumeK;
 		retCont = M_UNIT;
 		exnCont = M_UNIT;
-SayDebug("[%d] pending signal\n", vp->id);
+		vp->atomic = M_TRUE;
+		vp->sigPending = M_FALSE;
+SayDebug("[%2d] pending signal\n", vp->id);
 	    }
 	    else {
 	      /* setup the return from GC */

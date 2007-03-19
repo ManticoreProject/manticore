@@ -24,14 +24,14 @@ static void SigHandler (int sig, siginfo_t *si, void *uc);
 
 #define MIN_TIMEQ_NS	1000000		/* minimum timeq in nanoseconds (== 1ms) */
 
-static int	TimeQ = DFLT_TIME_Q_MS;	// time quantum in milliseconds
+static int	TimeQ;			/* time quantum in milliseconds */
 #ifndef NDBUG
 static FILE	*DebugF = NULL;
 bool		DebugFlg = false;
 #endif
 static Mutex_t	PrintLock;		/* lock for output routines */
 
-extern int mantEntry;		/* the entry-point of the Manticore code */
+extern int mantEntry;			/* the entry-point of the Manticore code */
 
 
 int main (int argc, const char **argv)
@@ -48,6 +48,9 @@ int main (int argc, const char **argv)
 
     HeapInit (opts);
     VProcInit (opts);
+
+  /* get the time quantum in milliseconds */
+    TimeQ = GetIntOpt(opts, "-q", DFLT_TIME_Q_MS);
 
 /* FIXME: for testing purposes, we pass an integer argument to the Manticore code */
     int arg = GetIntOpt(opts, "-a", 1);
@@ -95,14 +98,19 @@ static void PingLoop ()
     struct timespec	tq;
 
   /* compute interval for preempting the vprocs */
-    int ns = 1000000*TimeQ;
+    long ns = 1000000 * (long)TimeQ;
     int nPings = 1;
-    while ((nPings * ns) / NumVProcs < MIN_TIMEQ_NS) {
+    while (((nPings * ns) / NumVProcs < MIN_TIMEQ_NS) && (nPings < NumVProcs)) {
 	nPings++;
     }
 
+    long nsec = ns / NumVProcs;
     tq.tv_sec = 0;
-    tq.tv_nsec = ns / NumVProcs;
+    while (nsec >= 1000000000) {
+	nsec -= 1000000000;
+	tq.tv_sec++;
+    }
+    tq.tv_nsec = nsec / NumVProcs;
 
 #if defined(HAVE_SIGTIMEDWAIT)
     sigset_t		sigs;
@@ -128,11 +136,12 @@ static void PingLoop ()
 	int sigNum = sigtimedwait (&sigs, &info, &tq);
 	if (sigNum < 0) {
 	  // timeout
+SayDebug("Ping %d vprocs\n", nPings);
 	    Ping (nPings);
 	}
 	else {
 	  // signal
-	    fprintf(stderr, "Received signal %d\n", info.si_signo);
+	    Error("Received signal %d\n", info.si_signo);
 	    exit (0);
 	}
 #elif defined(HAVE_NANOSLEEP)
@@ -153,18 +162,19 @@ static void Ping (int n)
     static int	nextPing = 0;
 
     for (int i = 0;  i < n;  i++) {
-	if (! VProcs[i]->idle)
-	    VProcSignal (VProcs[i], PreemptSignal);
+	if (! VProcs[nextPing]->idle)
+	    VProcSignal (VProcs[nextPing], PreemptSignal);
 	if (++nextPing == NumVProcs)
 	    nextPing = 0;
     }
 
+/* DEBUG sleep (1000); */
 } /* end of Ping */
 
 #ifndef HAVE_SIGTIMEDWAIT
 static void SigHandler (int sig, siginfo_t *si, void *_uc)
 {
-    fprintf(stderr, "Received signal %d\n", sig);
+    Error("Received signal %d\n", sig);
     exit (0);
 }
 #endif

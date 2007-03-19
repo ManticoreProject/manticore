@@ -49,8 +49,8 @@ void SayValue (Value_t v)
 	int n = GetLength(hdr);
 	Say("[");
 	for (int i = 0;  i < n; i++) {
-	    Say("%p", ValueToPtr(obj[i]));
 	    if (i != 0) Say(", ");
+	    Say("%p", ValueToPtr(obj[i]));
 	}
 	Say ("]");
     }

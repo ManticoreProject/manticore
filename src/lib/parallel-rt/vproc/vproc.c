@@ -93,9 +93,9 @@ VProc_t *VProcCreate (VProcFn_t f, void *arg)
 	Die ("unable to allocate vproc heap");
 
   /* initialize the vproc structure */
-    vproc->inManticore = false;
-    vproc->atomic = false;
-    vproc->sigPending = false;
+    vproc->inManticore = M_FALSE;
+    vproc->atomic = M_FALSE;
+    vproc->sigPending = M_FALSE;
     vproc->stdArg = M_UNIT;
     vproc->stdEnvPtr = M_UNIT;
     vproc->stdCont = M_UNIT;
@@ -204,6 +204,8 @@ static void *VProcMain (void *_data)
 	CondSignal (&(data->wait));
     MutexUnlock (&data->lock);
 
+    self->idle = false;
+
     init (self, arg);
 
 } /* VProcMain */
@@ -217,7 +219,16 @@ static void IdleVProc (VProc_t *vp, void *arg)
 	SayDebug("[%2d] IdleVProc starting\n", vp->id);
 #endif
 
+    MutexLock (&(vp->lock));
+	while (vp->idle)
+	    CondWait (&(vp->wait), &(vp->lock));
+    MutexUnlock (&(vp->lock));
+
+  /* Here, we expect that there will be a thread to run on the vproc's
+   * ready queue soon.
+   */
     /* ??? */
+
 }
 
 /* SigHandler:
@@ -229,15 +240,12 @@ static void SigHandler (int sig, siginfo_t *si, void *_sc)
     ucontext_t	*uc = (ucontext_t *)_sc;
     VProc_t	*self = VProcSelf();
 
-    if (self->inManticore == M_FALSE) {
-	self->sigPending = M_TRUE;
-    }
-    else if (self->atomic == M_TRUE) {
-	self->sigPending = M_TRUE;
-    }
-    else {
-      // set the limit pointer to zero to force a context switch on
-      // the next GC test
+SayDebug("[%2d] inManticore = %p, atomic = %p\n", self->id, self->inManticore, self->atomic);
+    self->sigPending = M_TRUE;
+    if ((self->inManticore == M_TRUE) && (self->atomic == M_FALSE)) {
+      /* set the limit pointer to zero to force a context switch on
+       * the next GC test.
+       */
 	uc->uc_mcontext.gregs[REG_R11] = 0;
     }
 
