@@ -135,6 +135,7 @@ functor HeapTransferFn (
 	  val {stms, liveOut} =
 	      genStdTransfer varDefTbl (regExp tgtReg, args, argRegs, stdCallRegs)
       in
+(* TODO: if f is a label, put it in directly, but otherwise use a temp *)
 	  {stms=move (tgtReg, defOf f) :: stms, liveOut=liveOut}
       end (* genStdCall *)
 
@@ -219,7 +220,7 @@ functor HeapTransferFn (
 	      in
 		  loop (rs, ([], []))
 	      end (* saveRegs *)
-	  val {saves, restores} = saveRegs (Regs.dedicatedRegs @ Regs.saveRegs)
+	  val {saves, restores} = saveRegs Regs.saveRegs
       in
 	  {stms=[saves] @ callseq @ [restores], 
 	   result=ListPair.map convResult (result, lhs)}
