@@ -133,10 +133,12 @@ functor Alloc64Fn (
 	    | lp (true, false, []) = allocVectorObj args
 	    | lp (false, _, []) = allocRawObj args
 	  in
-	    lp (false, false, args)
+allocMixedObj args
+(*	    lp (false, false, args)*)
 	  end
 
-    fun genAlloc [] = { ptr=MTy.EXP (ty, litFromInt 0), stms=[] }
+    (* *)
+    fun genAlloc [] = { ptr=MTy.EXP (ty, litFromInt 1), stms=[] }
       | genAlloc args = let
 	  val (totalSize, hdrWord, stms) = alloc args
 	(* store the header word *)

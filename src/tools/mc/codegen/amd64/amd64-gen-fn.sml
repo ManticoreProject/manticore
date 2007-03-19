@@ -214,6 +214,7 @@ functor AMD64GenFn (
 			 structure MLTreeComp = AMD64MLTreeComp
 			 structure Spec = Spec 
 			 structure LabelCode = LabelCode
+			 structure Frame = AMD64Frame
 			 structure CCall = AMD64GenCCallFn (structure T=AMD64MLTree)
 			 structure Types = Types)
 

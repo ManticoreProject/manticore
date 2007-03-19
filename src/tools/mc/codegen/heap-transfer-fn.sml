@@ -31,6 +31,7 @@ functor HeapTransferFn (
     structure Types : ARCH_TYPES
     structure CCall : C_CALL
 	where T = MTy.T
+    structure Frame : MANTICORE_FRAME
 ) : TRANSFER = struct
 
   structure MTy = MTy
@@ -40,6 +41,7 @@ functor HeapTransferFn (
   structure Cells = MLTreeComp.I.C
   structure M = CFG
   structure Var = M.Var
+  structure Frame = Frame
 
   val apReg = Regs.apReg
   val wordSzB = Word.toInt Spec.wordSzB
@@ -189,14 +191,17 @@ functor HeapTransferFn (
 	 | _ => raise Fail "cfgTyToCTy"
       (* esac *))
 
-  fun genCCall varDefTbl {lhs=lhss as [lhs], f, args} =
+  fun genCCall varDefTbl {frame, lhs, f, args} =
       let val defOf = VarDef.defOf varDefTbl
 	  val getDefOf = VarDef.getDefOf varDefTbl
 	  val getTy = cfgTyToCTy o Var.typeOf
 	  val szOfVar = Types.szOf o Var.typeOf
 	  val name = defOf f
 	  val cArgs = map (MTy.treeToMLRisc o getDefOf) args
-	  val retTy = getTy lhs
+	  val retTy = (case lhs
+			of l :: _ => getTy l
+			 | [] => CTy.C_signed CTy.I_int
+		       (* esac *))
 	  val paramTys = map getTy args
 	  val {callseq, result} = CCall.genCall {
 		  name=name, args=cArgs,
@@ -204,8 +209,20 @@ functor HeapTransferFn (
 	  fun convResult (T.GPR e, v) = MTy.EXP (szOfVar v, e)
 	    | convResult (T.FPR e, v) = MTy.FEXP (szOfVar v, e)
 	    | convResult _ = raise Fail "convResult"
+				   
+	  fun saveRegs rs =	      
+	      let fun loop ([], (tmps, ss)) = 
+		      {saves=T.COPY (ty, tmps, ss),
+		       restores=T.COPY (ty, ss, tmps)}
+		    | loop (r :: rs, (tmps, ss)) =
+		      loop (rs, (newReg () :: tmps, r :: ss))
+	      in
+		  loop (rs, ([], []))
+	      end (* saveRegs *)
+	  val {saves, restores} = saveRegs (Regs.dedicatedRegs @ Regs.saveRegs)
       in
-	  {stms=callseq, result=ListPair.map convResult (result, lhss)}
+	  {stms=[saves] @ callseq @ [restores], 
+	   result=ListPair.map convResult (result, lhs)}
       end (* genCCall *)
       
   (* Check whether the heap contains szb free bytes. If it does, apply the

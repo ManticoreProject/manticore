@@ -35,7 +35,7 @@ signature TRANSFER = sig
 
     (* apply a C function f to args.  the result goes in lhs. *)
     val genCCall : VarDef.var_def_tbl ->
-	{lhs: CFG.var list, f : CFG.var, args: CFG.var list} -> 
+	{frame : SpillLoc.frame, lhs: CFG.var list, f : CFG.var, args: CFG.var list} -> 
 		   {stms : MTy.T.stm list, result : MTy.mlrisc_tree list}
 
     (* entry to a labelled function *)
