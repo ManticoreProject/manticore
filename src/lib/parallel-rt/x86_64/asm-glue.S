@@ -47,7 +47,7 @@
 ASM_Apply:
 	pushq	%rbp			/* save frame pointer */
 	movq	%rsp,%rbp		/* set new frame pointer */
-	leaq	FRAME_SZB(%rsp),%rsp	/* allocate the stack frame */
+	leaq	-FRAME_SZB(%rsp),%rsp	/* allocate the stack frame */
       /* save C callee-save registers */
 	movq	%rbx,RBX_OFF(%rbp)
 	movq	%r12,R12_OFF(%rbp)
