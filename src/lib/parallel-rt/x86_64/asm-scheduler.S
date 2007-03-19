@@ -52,7 +52,7 @@ ASM_Run:
  * This function is invoked by Manticore code to do a scheduler forward operation.
  * The incoming register state is:
  *
- *	%rax	-- holds signal to forward
+ *	%rax	-- holds the signal to forward
  */
 	.text
 	.p2align 3
@@ -62,7 +62,7 @@ ASM_Forward:
 	movq	%rcx,%r10
 	andq	$VP_MASK,%r10
       /* mark that we are running in atomic mode */
-	movl	M_TRUE,%edi
+	movl	$M_TRUE,%edi
 	movq	%rdi,ATOMIC(%r10)
       /* fetch top of sigaction stack */
 	movq	ACTION_STK(%r10),%r9

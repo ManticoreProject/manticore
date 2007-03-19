@@ -168,7 +168,6 @@ static void Ping (int n)
 	    nextPing = 0;
     }
 
-/* DEBUG sleep (1000); */
 } /* end of Ping */
 
 #ifndef HAVE_SIGTIMEDWAIT
