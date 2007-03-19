@@ -9,10 +9,12 @@
 #include "gc.h"
 #include "value.h"
 #include "request-codes.h"
+#include "scheduler.h"
 
 extern RequestCode_t ASM_Apply (VProc_t *vp, Addr_t cp, Value_t arg, Value_t ep, Value_t rk, Value_t ek);
 extern int ASM_Return;
 extern int ASM_UncaughtExn;
+extern int ASM_Preempt;
 
 /* Run a Manticore function f applied to arg.  If the function
  * returns, then return the result.
@@ -31,17 +33,41 @@ Value_t RunManticore (VProc_t *vp, Value_t f, Value_t arg)
 	Value_t exnCont = AllocUniform(vp, 1, PtrToValue(&ASM_UncaughtExn));
 	RequestCode_t req = ASM_Apply (vp, cp, arg, ep, retCont, exnCont);
 	switch (req) {
-	  case REQ_GC: {
-	    /* request a minor GC; the protocol is that
-	     * the stdCont register holds the return address (which is
-	     * not in the heap) and that the stdEnvPtr holds the GC root.
-	     */
+	  case REQ_GC:
+	  /* check to see if we actually need to do a GC, since this request
+	   * might be from a pending signal.
+	   */
+	    if (vp->limitPtr < vp->allocPtr) {
+	      /* request a minor GC; the protocol is that
+	       * the stdCont register holds the return address (which is
+	       * not in the heap) and that the stdEnvPtr holds the GC root.
+	       */
 		Value_t *roots[16], **rp;
 		rp = roots;
 		*rp++ = &(vp->stdEnvPtr);
 		*rp++ = &(vp->actionStk);
 		*rp++ = 0;
 		MinorGC (vp, roots);
+	    }
+	  /* check for pending signals */
+	    if (vp->sigPending == M_TRUE) {
+/* FIXME: this code assumes that the signal is preemption */
+		Value_t resumeK = AllocUniform(vp, 3,
+			    PtrToValue(&ASM_Resume),
+			    vp->stdCont,
+			    vp->stdEnvPtr);
+		SchedActStkItem_t *item = (SchedActStkItem_t *)ValueToPtr(vp->actionStk);
+		assert (item != 0);
+		vp->actionStk = item->link;
+		ep = vp->act;
+		cp = ValueToCont(ep)->cp;
+		arg = resumeK;
+		retCont = M_UNIT;
+		exnCont = M_UNIT;
+SayDebug("[%d] pending signal\n", vp->id);
+	    }
+	    else {
+	      /* setup the return from GC */
 	      /* we need to invoke the stdCont to resume after GC */
 		cp = ValueToAddr (vp->stdCont);
 		ep = vp->stdEnvPtr;
@@ -49,7 +75,8 @@ Value_t RunManticore (VProc_t *vp, Value_t f, Value_t arg)
 		arg = M_UNIT;
 		retCont = M_UNIT;
 		exnCont = M_UNIT;
-	    } break;
+	    }
+	    break;
 	  case REQ_Return:	/* returning from a function call */
 	    return vp->stdArg;
 	  case REQ_UncaughtExn:	/* raising an exception */
