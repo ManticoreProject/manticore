@@ -5,12 +5,12 @@
  *
  * Generate code for the following vproc operations:
  * - let vproc = host_vp ()                 (inline assembly)
- * - let () = enqueue (vproc, (tid, k))     (calls into runtime-system)
+ * - let () = enqueue (vproc, tid, k)     (calls into runtime-system)
  *   Runtime convention: 
- *        enqueue (argReg := vproc, closReg := (tid,k))
+ *        enqueue (argRegs[0], argRegs[1], argRegs[2])
  * - let (tid, k) = dequeue (vproc)         (calls into runtime-system)
  *   Runtime convention: 
- *        argReg := dequeue (argReg := vproc)
+ *        (argRegs[0], argRegs[1]) := dequeue (argRegs[0])
  * - let vprocs = provision n          (??)
  * - let () = release vproc            (??)
  * - let tid = newTid ()               (??)
@@ -35,16 +35,16 @@ functor VProcOpsFn (
 ) : VPROC_OPS = struct
 
   structure MTy = MTy
-  structure W = Word
+  structure W = Word64
   structure Cells = MLTreeComp.I.C
   structure T = MTy.T
 
   val ty = MTy.wordTy
-  fun intLit i = T.LI (T.I.fromInt (ty, i))
 
   (* Assume that the runtime system aligns the heap on a
    * vpHeapSzB boundary. *)
-  val vpHeapMask = W.notb (W.- (Spec.vpHeapSzB, 0w1))
+  val vpHeapSzB = Word.toLargeWord Spec.vpHeapSzB
+  val vpHeapMask = W.notb (W.- (W.fromLargeWord vpHeapSzB, 0w1))
 
   val genHostVP =
       MTy.EXP (ty, T.ANDB (ty, T.REG (ty, Regs.apReg), 
