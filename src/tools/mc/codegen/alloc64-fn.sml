@@ -133,8 +133,8 @@ functor Alloc64Fn (
 	    | lp (true, false, []) = allocVectorObj args
 	    | lp (false, _, []) = allocRawObj args
 	  in
-allocMixedObj args
-(*	    lp (false, false, args)*)
+(*allocMixedObj args*)
+	    lp (false, false, args)
 	  end
 
     (* *)
