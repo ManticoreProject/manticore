@@ -212,15 +212,17 @@ structure FlatClosure : sig
    * argument variables and bindings to build the closure and the parameter variables and
    * environment for the continuation's body.
    *)
-    fun mkContClosure (env, param, fv) = let
+    fun mkContClosure externEnv (env, param, fv) = let
 	  val param' = newVar param
           fun mkArgs (x, (i, binds, clos, xs)) = let
                 val (b, x') = lookupVar(env, x)
                 in
                   (i+1, b@binds, VMap.insert(clos, x, Global i), x'::xs)
                 end
+	(* the initial environment is the externs plus the parameter *)
+	  val env = VMap.insert(externEnv, param, Local param')
           val (_, binds, clos, cfgArgs) =
-                CPS.Var.Set.foldl mkArgs (1, [], VMap.singleton(param, Local param'), []) fv
+                CPS.Var.Set.foldl mkArgs (1, [], env, []) fv
           val cfgArgs = List.rev cfgArgs
 	  val closTy = CFGTy.T_Tuple(
 		CFGTy.stdContTy(CFGTy.T_Any, CFG.Var.typeOf param')
@@ -245,6 +247,7 @@ structure FlatClosure : sig
 		end
 	  val newEnv = newEnv externEnv
 	  val mkFunClosure = mkFunClosure externEnv
+	  val mkContClosure = mkContClosure externEnv
         (* convert an expression to a CFG FUNC; note that this function will convert
          * any nested functions first.
          *)
