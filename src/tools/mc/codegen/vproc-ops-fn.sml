@@ -43,11 +43,10 @@ functor VProcOpsFn (
 
   (* Assume that the runtime system aligns the heap on a
    * vpHeapSzB boundary. *)
-  val vpHeapSzB = Word.toLargeWord Spec.vpHeapSzB
-  val vpHeapMask = W.notb (W.- (W.fromLargeWord vpHeapSzB, 0w1))
+  val vpHeapMask = W.notb (W.- ((Spec.vpHeapSzB, 0w1)))
 
   val genHostVP =
       MTy.EXP (ty, T.ANDB (ty, T.REG (ty, Regs.apReg), 
-				      T.LI (W.toLargeInt vpHeapMask)))
+				      T.LI (W.toLargeInt vpHeapMask))) 
 
 end (* VProcOpsFn *)

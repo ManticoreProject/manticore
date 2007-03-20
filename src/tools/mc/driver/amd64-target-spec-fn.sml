@@ -33,4 +33,10 @@ functor AMD64TargetSpecFn (
 
     val gcInitLabel = Label.global "gc_init"
 
+    (* mirror the heap size information here.  autoheader should generate
+     * this file. *)
+    val oneK = Word64.fromInt 1024
+    val oneMeg = Word64.* (oneK, oneK)
+    val vpHeapSzB = oneMeg
+		    
   end (* AMD64TargetSpecFn *)

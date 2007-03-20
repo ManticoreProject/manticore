@@ -28,4 +28,7 @@ signature TARGET_SPEC =
     val trueRep : IntegerLit.integer
     val falseRep : IntegerLit.integer
 
+    val vpHeapSzB : Word64.word        (* size (and byte alignment) of the
+				 * vproc-local heap *)
+
   end (* TARGET_SPEC *)

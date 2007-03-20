@@ -1,3 +1,6 @@
+(* hello2.cps
+ * mix C calls with garbage collections *)
+
 module Hi
   extern void printInt (int); 
   fun init (arg : [int], k : cont(any), exh : cont(any)) =
