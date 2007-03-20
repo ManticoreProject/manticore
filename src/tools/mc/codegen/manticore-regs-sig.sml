@@ -30,7 +30,7 @@ signature MANTICORE_REGS = sig
     val miscRegs : gpr list     (* non-dedicated general-purpose registers *)
     val saveRegs : gpr list     (* callee-save registers *)
     val availRegs : gpr list    (* registers available for allocation *)
-    val argRegs : gpr list      (* registers for passing function arguments *)
+    val argRegs' : gpr list      (* registers for passing function arguments *)
     val allRegs : gpr list      (* all general-purpose registers *)
 
     val miscFRegs : fpr list	(* non-dedicated floating-point registers *)

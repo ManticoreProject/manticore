@@ -17,7 +17,6 @@ functor AMD64GenFn (
   (* Fast FP is controlled by the MLRISC flags *)
   val useFastFP = MLRiscControl.getFlag "x86-fast-fp"
 
-
   structure AMD64PseudoOps = ManticorePseudoOpsFn (
     structure P=AMD64GasPseudoOps
     structure Spec = Spec)
@@ -217,6 +216,12 @@ functor AMD64GenFn (
 			 structure Frame = AMD64Frame
 			 structure CCall = AMD64GenCCallFn (structure T=AMD64MLTree)
 			 structure Types = Types)
+  structure VProcOps = VProcOpsFn (
+                         structure MTy = MTy
+			 structure Regs = Regs
+			 structure Spec = Spec
+			 structure Types = Types
+			 structure MLTreeComp = AMD64MLTreeComp )
 
     fun compileCFG (cfg as Graph.GRAPH graph) = 
 	let val CFGGen.CFG.INFO{annotations, ...} = #graph_info graph

@@ -78,3 +78,4 @@ is
   runtime-labels.sml
   literal-tbl-fn.sml
   gen-clusters.sml
+  vproc-ops-fn.sml

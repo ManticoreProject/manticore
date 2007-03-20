@@ -30,11 +30,10 @@ functor Alloc64Fn (
   val apReg = Regs.apReg
 
   fun intLit i = T.LI (T.I.fromInt (ty, i))
-  fun litFromInt i = T.LI (T.I.fromInt (ty, i))
   fun regExp r = T.REG (ty, r)
   fun move' (ty, r, e) = T.MV (ty, r, e)
   fun move (r, e) = move' (ty, r, e)
-  fun offAp i = T.ADD (ty, regExp apReg, litFromInt i)
+  fun offAp i = T.ADD (ty, regExp apReg, intLit i)
   fun gpReg r = MTy.GPReg (ty, r)
   fun mltGPR r = MTy.GPR (ty, r)
 
@@ -138,7 +137,7 @@ functor Alloc64Fn (
 	  end
 
     (* *)
-    fun genAlloc [] = { ptr=MTy.EXP (ty, litFromInt 1), stms=[] }
+    fun genAlloc [] = { ptr=MTy.EXP (ty, intLit 1), stms=[] }
       | genAlloc args = let
 	  val (totalSize, hdrWord, stms) = alloc args
 	(* store the header word *)

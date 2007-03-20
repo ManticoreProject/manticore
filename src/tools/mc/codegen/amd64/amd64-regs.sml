@@ -37,13 +37,16 @@ structure AMD64Regs : MANTICORE_REGS = struct
 	  C.getReg rSet 
       end
 
-  (* this list of callee-save gprs complies with the SVID C ABI. *)
-  val CCalleeSaveRegs = C.rbx :: C.Regs CellsBasis.GP {from=12, to=15, step=1} 
+  val svidCalleeSaves = 
+      C.rbx :: C.Regs CellsBasis.GP {from=12, to=15, step=1} 
+  val svidCallerSaves =
+      [C.rax, C.rcx, C.rdx, C.rsi, C.rdi] @ 
+      C.Regs CellsBasis.GP {from=8, to=11, step=1}
 
-  val saveRegs = [apReg, limReg]
+  val saveRegs = [apReg, limReg] @ svidCallerSaves
   val availRegs = miscRegs
   (* This list of argument gprs complies with the SVID C ABI. *)
-  val argRegs = [C.rdi, C.rsi, C.rdx, C.rcx] @ 
+  val argRegs' = [C.rdi, C.rsi, C.rdx, C.rcx] @ 
 		C.Regs CellsBasis.GP {from=8, to=9, step=1}
 
   val miscFRegs = []
