@@ -93,3 +93,21 @@ ASM_Resume:
 	movq	8(%rdi),%r9	/* fetch code address */
 	movq	16(%rdi),%rdi	/* set EP to point to GC root */
 	jmpq	*%r9		/* jump to the GC return code */
+
+/* ASM_Enqueue:
+ *
+ * This function enqueues a (fiber, thread ID) pair in the calling vproc's
+ * ready queue.
+ */
+	.text
+	.p2align 3
+	.global	ASM_Enqueue
+ASM_Enqueue:
+
+
+/* ASM_Dequeue:
+ */
+	.text
+	.p2align 3
+	.global	ASM_Dequeue
+ASM_Dequeue:

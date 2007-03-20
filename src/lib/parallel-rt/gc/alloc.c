@@ -11,14 +11,16 @@
 #include "gc-inline.h"
 
 /*! \brief allocate a tuple of uniform values.
+ *  \param vp the host vproc
+ *  \param nItems the number of tuple elements.
  */
-Value_t AllocUniform (VProc_t *vp, int nItems, ...)
+Value_t AllocUniform (VProc_t *vp, int nElems, ...)
 {
     Word_t	*obj = (Word_t *)(vp->allocPtr);
     va_list	ap;
 
-    va_start(ap, nItems);
-    obj[-1] = VEC_HDR(nItems);
+    va_start(ap, nElems);
+    obj[-1] = VEC_HDR(nElems);
     for (int i = 0;  i < nItems;  i++) {
 	Value_t arg = va_arg(ap, Value_t);
 	obj[i] = (Word_t)arg;
@@ -56,4 +58,32 @@ void SayValue (Value_t v)
     }
     else
 	Say("%d", ValueToWord(v));
+}
+
+/*! \brief allocate a tuple of uniform values on the global heap.
+ *  \param vp the host vproc
+ *  \param nItems the number of tuple elements.
+ */
+Value_t GlobalAllocUniform (VProc_t *vp, int nElems, ...)
+{
+    Value_t	elems[nElems];
+    va_list	ap;
+
+  /* first we must ensure that the elements are in the global heap */
+    va_start(ap, nElems);
+    for (int i = 0;  i < nItems;  i++) {
+	elem[i] = PromoteObj (vp, va_arg(ap, Value_t));
+    }
+    va_end(ap);
+
+    Word_t *obj = (Word_t *)(vp->globNextW);
+/* FIXME: what if there isn't enough space!!! */
+    obj[-1] = VEC_HDR(nElems);
+    for (int i = 0;  i < nItems;  i++) {
+	Value_t arg = va_arg(ap, Value_t);
+	obj[i] = (Word_t)elem[i];
+    }
+
+    vp->globNextW += WORD_SZB * (nItems+1);
+    return PtrToValue(obj);
 }

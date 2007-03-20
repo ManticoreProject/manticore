@@ -96,6 +96,9 @@ VProc_t *VProcCreate (VProcFn_t f, void *arg)
     vproc->inManticore = M_FALSE;
     vproc->atomic = M_FALSE;
     vproc->sigPending = M_FALSE;
+    vproc->actionStk = M_NIL;	    /* FIXME: install default action? */
+    vproc->rdyQHd = M_NIL;
+    vproc->rdyQTl = M_NIL;
     vproc->stdArg = M_UNIT;
     vproc->stdEnvPtr = M_UNIT;
     vproc->stdCont = M_UNIT;
@@ -209,6 +212,24 @@ static void *VProcMain (void *_data)
     init (self, arg);
 
 } /* VProcMain */
+
+/*! \brief enqueue a (fiber, thread ID) pair on another vproc's ready queue
+ *  \param self the calling vproc
+ *  \param vp the vproc to enqueue the thread on.
+ *  \param fiber the fiber to be enqueued.
+ *  \param 
+ */
+static void EnqueueOnVProc (VProc_t *self, VProc_t *vp, Value_t *fiber, Value_t *tid)
+{
+    MutexLock (&(vp->lock));
+/***** where do we put the object? *****/
+        if (vp->idle) {
+	    vp->idle = false;
+	    CondSignal (&(vp->wait));
+	}
+    MutexUnlock (&(vp->lock));
+
+} /* end of EnqueueOnVProc */
 
 /* IdleVProc:
  */

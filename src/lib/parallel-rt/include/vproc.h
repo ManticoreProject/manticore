@@ -16,6 +16,8 @@ struct struct_vproc {
     Value_t	atomic;		/*!< true, when in a vproc-atomic region */
     Value_t	sigPending;	/*!< true, when there is a pending signal */
     Value_t	actionStk;	/*!< the top of the signal-action stack */
+    Value_t	rdyQHd;		/*!< the head of the primary ready queue */
+    Value_t	rdyQTl;		/*!< the head of the primary ready queue */
 			      /* VProc registers */
     Value_t	stdArg;		/*!< holds value of standard argument reg. */
     Value_t	stdEnvPtr;	/*!< holds value of standard environment-pointer reg. */

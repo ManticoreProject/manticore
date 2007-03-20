@@ -9,6 +9,11 @@
 
 #include "manticore-rt.h"
 
+#define	M_FALSE	((Value_t)1)
+#define	M_TRUE	((Value_t)3)
+#define M_UNIT	((Value_t)1)
+#define M_NIL	((Value_t)1)
+
 /* function closures are represented by code-pointer/env-pointer pairs */
 typedef struct {
     Value_t	cp;
@@ -21,17 +26,31 @@ typedef struct {
     Value_t	env[];
 } ContClosure_t;
 
+/* a cons cell in a list */
+typedef struct {
+    Value_t	hd;
+    Value_t	tl;
+} ListCons_t;
+
 STATIC_INLINE FunClosure_t *ValueToClosure (Value_t v)	{ return (FunClosure_t *)ValueToPtr(v); }
 STATIC_INLINE ContClosure_t *ValueToCont (Value_t v)	{ return (ContClosure_t *)ValueToPtr(v); }
-
-#define	M_FALSE	((Value_t)1)
-#define	M_TRUE	((Value_t)3)
-#define M_UNIT	((Value_t)1)
-#define M_NIL	((Value_t)1)
 
 /* heap allocate a tuple of uniformly represented values in the local heap */
 extern Value_t AllocUniform (VProc_t *vp, int nItems, ...);
 extern Value_t WrapInt (VProc_t *vp, long i);
 extern void SayValue (Value_t v);
+
+STATIC_INLINE Value_t Cons (VProc_t *vp, Value_t a, Value_t b)
+{
+    return AllocUniform (vp, 2, a, b);
+}
+
+/* heap allocation in the global heap */
+extern Value_t GlobalAllocUniform (VProc_t *vp, int nItems, ...);
+
+STATIC_INLINE Value_t GlobalCons (VProc_t *vp, Value_t a, Value_t b)
+{
+    return GlobalAllocUniform (vp, 2, a, b);
+}
 
 #endif /* !_VALUE_H_ */

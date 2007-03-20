@@ -8,6 +8,7 @@
 #define _SCHEDULER_H_
 
 #include "manticore-rt.h"
+#include "value.h"
 
 typedef struct {	      /* Items on the scheduler-action stack */
     Value_t	act;		/* the scheduler action continuation */
