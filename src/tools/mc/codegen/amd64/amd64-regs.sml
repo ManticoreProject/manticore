@@ -45,9 +45,7 @@ structure AMD64Regs : MANTICORE_REGS = struct
 
   val saveRegs = [apReg, limReg] @ svidCallerSaves
   val availRegs = miscRegs
-  (* This list of argument gprs complies with the SVID C ABI. *)
-  val argRegs' = [C.rdi, C.rsi, C.rdx, C.rcx] @ 
-		C.Regs CellsBasis.GP {from=8, to=9, step=1}
+  val argRegs = [argReg, closReg, retReg, exhReg]
 
   val miscFRegs = []
   val argFRegs = []
