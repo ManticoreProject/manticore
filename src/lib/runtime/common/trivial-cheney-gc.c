@@ -37,7 +37,6 @@ Addr_t do_gc (VProc_t *vp, Value_t **roots) {
 	case FWDPTR_TAG:
 	  Die ("unexpected forward pointer");
 	case RAW_TAG:
-	case VEC_TAG:
 	  break;
 	default: 
 	  // MIXED

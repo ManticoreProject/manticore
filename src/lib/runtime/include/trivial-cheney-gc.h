@@ -93,6 +93,10 @@ STATIC_INLINE uint_t hdr_len (Mant_t *m) {
   }
 }
 
+STATIC_INLINE Bool_t is_vector (Mant_t *m) {
+  return (hdr_word (m) & VEC_TAG_MASK) == VEC_TAG;
+}
+
 STATIC_INLINE Bool_t is_mixed (Mant_t *m) {
   return (hdr_word (m) & MIXED_TAG_MASK) == MIXED_TAG;
 }
@@ -108,6 +112,10 @@ STATIC_INLINE Bool_t is_ptr (Mant_t *m) {
 // is the ith element of m a pointer?
 STATIC_INLINE Bool_t is_pointer (Mant_t *m, uint_t i) {
   Mant_t *mi = (Mant_t*)m[i];  
+
+  if (is_vector (m))
+    return in_heap (mi);
+
   return 
 	is_mixed (m) &&
 	(MIXED_TY_MASK & (hdr_word (m) >> (i + MIXED_LEN_BITS+1)))  && 

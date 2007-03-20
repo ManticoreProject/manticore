@@ -12,7 +12,6 @@
 #include "trivial-cheney-gc.h"
 #include "../parallel-rt/include/value.h"
 
-extern Value_t RunManticore (VProc_t *vp, Value_t f, Value_t arg);
 int TotalVM;
 int MaxNurserySzB;
 
@@ -24,6 +23,24 @@ typedef union {
   Word_t word_v;
   float float_v;
 } Ret_t;
+
+void printInt (int i) {
+  printf ("%d\n", i);
+}
+
+void print (const char *s) {
+  printf ("%s\n",s);
+}
+
+void Say (const char *fmt, ...) {
+
+}
+
+void SayDebug (const char *fmt, ...) {
+
+}
+
+void ASM_Resume () {}
 
 void Die (const char *fmt, ...) {
   printf ("die\n");
@@ -90,7 +107,7 @@ static void VProcMainSEQ (void *_data) {
 
   printf ("ans->int=%d ans->word=%ld ans->float=%f\tnumGCs=%d\n", 
 		  ans->int_v, ans->word_v, ans->float_v,numGCs);
-  
+
   FREE (vp);
 }
 
