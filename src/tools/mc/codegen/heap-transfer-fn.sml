@@ -44,8 +44,8 @@ functor HeapTransferFn (
   structure Frame = Frame
 
   val apReg = Regs.apReg
-  val wordSzB = Word.toInt Spec.wordSzB
-  val wordAlignB = Word.toInt Spec.wordAlignB
+  val wordSzB = Word.toInt Spec.C.wordSzB
+  val wordAlignB = Word.toInt Spec.C.wordAlignB
   val ty = MTy.wordTy
   val iTy = Types.szOf (CFGTy.T_Raw CFGTy.T_Int)
   val memory = ManticoreRegion.memory
@@ -222,6 +222,7 @@ functor HeapTransferFn (
 	      end (* saveRegs *)
 	  val {saves, restores} = saveRegs Regs.saveRegs
       in
+(* FIXME: unset the IN_MANTICORE flag *)
 	  {stms=[saves] @ callseq @ [restores], 
 	   result=ListPair.map convResult (result, lhs)}
       end (* genCCall *)

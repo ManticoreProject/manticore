@@ -27,8 +27,9 @@ Options_t *InitOptions (int argc, const char **argv)
     opts->cmd = argv[0];
     opts->argc = argc-1;
     opts->argv = NEWVEC(const char *, argc-1);
-    for (int i = 1;  i < argc;  i++) {
-	opts->argv[i-1] = argv[i];
+	opts->argc = 0;
+    for (int i = 1;  i < argc;  i++, opts->argc++) {
+	  opts->argv[i-1] = argv[i];
     }
 
     return opts;

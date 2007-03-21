@@ -7,7 +7,7 @@ functor AMD64HeapTransferFn (
 
   type stm = T.stm
 
-  val wordSzB = Word.toInt Spec.wordSzB
+  val wordSzB = Word.toInt Spec.C.wordSzB
   val memory = ManticoreRegion.memory
   val ty = wordSzB * 8
   fun regExp r = T.REG (ty, r)

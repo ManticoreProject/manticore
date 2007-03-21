@@ -24,8 +24,8 @@ functor ManticorePseudoOpsFn (
 	  lg (Word.fromInt i, 0)
       end
 
-  val maxAlign = Int.max (Word.toInt Spec.wordAlignB, 
-			  Word.toInt Spec.extendedAlignB)
+  val maxAlign = Int.max (Word.toInt Spec.C.wordAlignB, 
+			  Word.toInt Spec.C.extendedAlignB)
 
   val text : pseudo_op = PTy.TEXT
   fun global lab = PTy.EXPORT [lab]

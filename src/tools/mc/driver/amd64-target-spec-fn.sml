@@ -16,7 +16,9 @@ functor AMD64TargetSpecFn (
     val abiName = abiName
     val osName = osName
 
-    val wordSzB = 0w8
+    structure C = RuntimeConstants
+
+(*    val wordSzB = 0w8
     val wordAlignB = 0w8
     val boolSzB = wordSzB
     val extendedAlignB = 0w4
@@ -31,12 +33,10 @@ functor AMD64TargetSpecFn (
     val maxObjectSzB = wordAlignB * (bitMaskSzB * 0w8)  
     val allocChunkSzB : word = Word.<< (0w1, 0w11)
 
-    val gcInitLabel = Label.global "gc_init"
-
     (* mirror the heap size information here.  autoheader should generate
      * this file. *)
     val oneK = Word64.fromInt 1024
     val oneMeg = Word64.* (oneK, oneK)
     val vpHeapSzB = oneMeg
-		    
+	*)	    
   end (* AMD64TargetSpecFn *)

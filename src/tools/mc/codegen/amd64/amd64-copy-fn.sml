@@ -18,7 +18,7 @@ functor AMD64CopyFn (
   structure T = MTy.T
   structure Cells = AMD64Cells
 
-  val ty = (Word.toInt Spec.wordSzB) * 8
+  val ty = (Word.toInt Spec.C.wordSzB) * 8
 
    fun note' stm =
       T.ANNOTATION(stm, #create MLRiscAnnotations.COMMENT 

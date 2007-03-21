@@ -43,7 +43,8 @@ functor VProcOpsFn (
 
   (* Assume that the runtime system aligns the heap on a
    * vpHeapSzB boundary. *)
-  val vpHeapMask = W.notb (W.- ((Spec.vpHeapSzB, 0w1)))
+  val vpHeapMask = Spec.C.vpMask 
+(*W.notb (W.- ((Spec.C.vpHeapSzB, 0w1)))*)
 
   val genHostVP =
       MTy.EXP (ty, T.ANDB (ty, T.REG (ty, Regs.apReg), 

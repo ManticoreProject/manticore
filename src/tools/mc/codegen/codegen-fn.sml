@@ -92,8 +92,8 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	      defineLabel l;
 	      pseudoOp (P.asciz s) )
 	  fun genLit (ty, Literal.Int i) = MTy.EXP (ty, T.LI i)
-	    | genLit (ty, Literal.Bool true) = MTy.EXP (ty, T.LI Spec.trueRep)
-	    | genLit (ty, Literal.Bool false) = MTy.EXP (ty, T.LI Spec.falseRep)
+	    | genLit (ty, Literal.Bool true) = MTy.EXP (ty, T.LI Spec.C.trueRep)
+	    | genLit (ty, Literal.Bool false) = MTy.EXP (ty, T.LI Spec.C.falseRep)
 	    | genLit (fty, Literal.Float f) = 
 	      let val lbl = FloatLit.addLit (floatTbl, (fty, f))
 	      in

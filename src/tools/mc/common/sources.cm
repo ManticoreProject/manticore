@@ -16,10 +16,12 @@ Library
   structure RawTypes
   structure Stamp
   signature TARGET_SPEC
+  signature RUNTIME_CONSTANTS
   signature VAR_PARAMS
   signature VAR
   functor VarFn
   structure VarRep
+  structure RuntimeConstants
 
 is
 
@@ -38,4 +40,5 @@ is
   target-spec-sig.sml
   var-fn.sml
   var-rep.sml
-
+  runtime-constants-sig.sml
+  runtime-constants.sml

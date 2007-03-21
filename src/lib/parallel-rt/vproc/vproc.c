@@ -267,7 +267,7 @@ SayDebug("[%2d] inManticore = %p, atomic = %p\n", self->id, self->inManticore, s
       /* set the limit pointer to zero to force a context switch on
        * the next GC test.
        */
-	uc->uc_mcontext.gregs[REG_R11] = 0;
+      //	uc->uc_mcontext.gregs[REG_R11] = 0;
     }
 
 } /* SignHandler */
