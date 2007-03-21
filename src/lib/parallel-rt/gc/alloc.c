@@ -9,10 +9,11 @@
 #include "value.h"
 #include "vproc.h"
 #include "gc-inline.h"
+#include "gc.h"
 
 /*! \brief allocate a tuple of uniform values.
  *  \param vp the host vproc
- *  \param nItems the number of tuple elements.
+ *  \param nElems the number of tuple elements.
  */
 Value_t AllocUniform (VProc_t *vp, int nElems, ...)
 {
@@ -21,13 +22,13 @@ Value_t AllocUniform (VProc_t *vp, int nElems, ...)
 
     va_start(ap, nElems);
     obj[-1] = VEC_HDR(nElems);
-    for (int i = 0;  i < nItems;  i++) {
+    for (int i = 0;  i < nElems;  i++) {
 	Value_t arg = va_arg(ap, Value_t);
 	obj[i] = (Word_t)arg;
     }
     va_end(ap);
 
-    vp->allocPtr += WORD_SZB * (nItems+1);
+    vp->allocPtr += WORD_SZB * (nElems+1);
     return PtrToValue(obj);
 }
 
@@ -62,7 +63,7 @@ void SayValue (Value_t v)
 
 /*! \brief allocate a tuple of uniform values on the global heap.
  *  \param vp the host vproc
- *  \param nItems the number of tuple elements.
+ *  \param nElems the number of tuple elements.
  */
 Value_t GlobalAllocUniform (VProc_t *vp, int nElems, ...)
 {
@@ -71,19 +72,19 @@ Value_t GlobalAllocUniform (VProc_t *vp, int nElems, ...)
 
   /* first we must ensure that the elements are in the global heap */
     va_start(ap, nElems);
-    for (int i = 0;  i < nItems;  i++) {
-	elem[i] = PromoteObj (vp, va_arg(ap, Value_t));
+    for (int i = 0;  i < nElems;  i++) {
+	elems[i] = PromoteObj (vp, va_arg(ap, Value_t));
     }
     va_end(ap);
 
     Word_t *obj = (Word_t *)(vp->globNextW);
 /* FIXME: what if there isn't enough space!!! */
     obj[-1] = VEC_HDR(nElems);
-    for (int i = 0;  i < nItems;  i++) {
+    for (int i = 0;  i < nElems;  i++) {
 	Value_t arg = va_arg(ap, Value_t);
-	obj[i] = (Word_t)elem[i];
+	obj[i] = (Word_t)elems[i];
     }
 
-    vp->globNextW += WORD_SZB * (nItems+1);
+    vp->globNextW += WORD_SZB * (nElems+1);
     return PtrToValue(obj);
 }
