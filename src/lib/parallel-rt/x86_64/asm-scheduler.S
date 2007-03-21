@@ -5,10 +5,10 @@
  *
  * Manticore runtime conventions on the AMD64:
  *
- *	%rax	-- standard arg
- *	%rdi	-- standard ep
- *	%rsi	-- standard return continuation
- *	%rbx	-- standard exception handler
+ *	%rax	-- standard arg (a.k.a. arg0)
+ *	%rdi	-- standard ep (a.k.a. arg1)
+ *	%rsi	-- standard return continuation (a.k.a. arg2)
+ *	%rbx	-- standard exception handler (a.k.a. arg3)
  *	%rcx	-- allocation pointer
  *	%r11	-- limit pointer
  */
@@ -97,15 +97,31 @@ ASM_Resume:
 /* ASM_Enqueue:
  *
  * This function enqueues a (fiber, thread ID) pair in the calling vproc's
- * ready queue.
+ * ready queue.  It takes three arguments in registers as follows:
+ *
+ *	%rax	-- fiber
+ *	%rdi	-- thread ID
+ *	%rsi	-- host vproc (preserved across the call)
  */
 	.text
 	.p2align 3
 	.global	ASM_Enqueue
 ASM_Enqueue:
-
+	movq	$RDYQ_CONS_HDR,-8(%rcx)
+	movq	%rax,(%rcx)
+	movq	%rdi,(%rcx)
+	movq	VP_RDYQ_TL(%rsi),%rax
+	movq	%rax,(%rcx)
+	movq	%rcx,VP_RDYQ_TL(%rsi)
+	leaq	RDYQ_CONS_SZB(%rcx),%rcx
+	ret
 
 /* ASM_Dequeue:
+ *
+ * This function dequeues an element from the calling vproc's ready queue.
+ *
+ *	%rax	-- result points to dequeued item
+ *	%rsi	-- host vproc (reserved across the call)
  */
 	.text
 	.p2align 3
