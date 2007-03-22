@@ -10,7 +10,6 @@
 
 Group
 
-  functor AMD64TargetSpecFn
   functor AMD64GenFn
   signature BACK_END
   structure AsmStream
@@ -47,8 +46,6 @@ is
   ../common/sources.cm
   ../prim/sources.cm
   ../cfg/sources.cm
-
-  ../driver/amd64-target-spec-fn.sml
 
   var-def-sig.sml
   var-def-fn.sml

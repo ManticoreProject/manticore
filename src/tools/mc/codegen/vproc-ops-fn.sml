@@ -38,9 +38,7 @@ functor VProcOpsFn (
   val ty = MTy.wordTy
   val memory = ManticoreRegion.memory
 
-  val genHostVP =
-      MTy.EXP (ty, T.ANDB (ty, T.REG (ty, Regs.apReg), 
-				      T.LI (W.toLargeInt Spec.ABI.vpMask))) 
+  val genHostVP = MTy.EXP(ty, T.ANDB (ty, T.REG (ty, Regs.apReg), T.LI Spec.ABI.vpMask))
 
   fun genVPLoad varDefTbl (offset, vproc) =
       MTy.EXP (ty, T.LOAD (ty, T.ADD (ty, VarDef.defOf varDefTbl vproc, T.LI offset), memory))

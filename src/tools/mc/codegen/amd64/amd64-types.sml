@@ -11,8 +11,8 @@ functor AMD64TypesFn (
     structure M = CFG
     structure Ty = CFGTy
 
-    val wordSzB = Word.toInt Spec.C.wordSzB
-    val wordAlignB = Word.toInt Spec.C.wordAlignB
+    val wordSzB = Word.toInt Spec.ABI.wordSzB
+    val wordAlignB = Word.toInt Spec.ABI.wordAlignB
 
     fun alignedRawTySzB Ty.T_Vec128 = 16
       | alignedRawTySzB _ = wordAlignB

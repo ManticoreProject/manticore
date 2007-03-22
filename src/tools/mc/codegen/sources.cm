@@ -7,7 +7,6 @@
  *)
 
 Library
-  functor AMD64TargetSpecFn
   functor AMD64GenFn
   signature BACK_END
   structure AsmStream
