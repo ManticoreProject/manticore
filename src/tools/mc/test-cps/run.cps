@@ -10,7 +10,8 @@ module Run
 
     fun loop (x : long, k : cont(any), exh : cont(any)) =
 	  if I64Eq(x, limit)
-	    then forward stop
+	    then let vp : vproc = host_vproc
+	      forward vp stop
 	    else apply loop(I64Sub(x, 1:long), k, exh)
 
     (* Tie the recursive knot with mkAct, since kAct is not allowed
@@ -18,17 +19,20 @@ module Run
     fun mkAct (i : int, k : cont(any), exh : cont(any)) =
 	(* kAct is a scheduler action that terminates upon a stop
 	 * signal, and resumes upon a preempt signal. *)
-	cont kAct (fiber : cont(enum(1))) =
+	cont kAct (fiber : cont(enum(0))) =
              if I64Eq (fiber, stop) then throw kRet(retVal)
 	     else 
-		 cont k' (kAct : cont(cont(enum(1)))) =
-	              run kAct fiber
+		 cont k' (kAct : cont(cont(enum(0)))) =
+		      let vp : vproc = host_vproc
+	              run vp kAct fiber
         	 apply mkAct (i, k', exh)
 	throw k(kAct)  (* the voodoo is strong here *)
 
     cont fiber (x : any) = apply loop(0:long, kRet, exh)
 
-    cont mkActRet (act : cont(cont(enum(1)))) = run act fiber
+    cont mkActRet (act : cont(cont(enum(1)))) =
+	let vp : vproc = host_vproc
+	run vp act fiber
 
     apply mkAct (0:int, mkActRet, exh)
 
