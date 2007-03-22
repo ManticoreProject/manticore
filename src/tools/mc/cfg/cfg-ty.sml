@@ -19,6 +19,7 @@ structure CFGTy =
       | T_Tuple of ty list	(* heap-allocated tuple *)
       | T_OpenTuple of ty list	(* a tuple of unknown size, where we know the prefix. *)
       | T_CFun of CFunctions.c_proto (* a C function prototype *)
+      | T_VProc			(* address of runtime vproc structure *)
     (* function/continuation types.  The type specifies the calling convention.  These
      * types should be used for labels and code addresses.
      *)
@@ -37,6 +38,7 @@ structure CFGTy =
             | (T_Tuple ty1s, T_Tuple ty2s) => ListPair.allEq equals (ty1s, ty2s)
             | (T_OpenTuple ty1s, T_OpenTuple ty2s) => ListPair.allEq equals (ty1s, ty2s)
 	    | (T_CFun proto1, T_CFun proto2) => (proto1 = proto2)
+	    | (T_VProc, T_VProc) => true
             | (T_StdFun {clos = clos1, arg = arg1, ret = ret1, exh = exh1},
                T_StdFun {clos = clos2, arg = arg2, ret = ret2, exh = exh2}) =>
                   equals (clos1, clos2) andalso
@@ -70,6 +72,7 @@ structure CFGTy =
             | T_Tuple _ => true
             | T_OpenTuple _ => true
 	    | T_CFun _ => true
+	    | T_VProc => true
             | T_StdFun _ => true
             | T_StdCont _ => true
             | T_Code _ => true
@@ -104,6 +107,7 @@ structure CFGTy =
 	      | T_Tuple tys => concat("(" :: tys2l(tys, [")"]))
 	      | T_OpenTuple tys => concat("(" :: tys2l(tys, [",...)"]))
 	      | T_CFun proto => CFunctions.protoToString proto
+	      | T_VProc => "vproc"
 	      | T_StdFun{clos, arg, ret, exh} => concat("fun(" :: tys2l([clos, arg, ret, exh], [")"]))
 	      | T_StdCont{clos, arg} => concat("cont(" :: tys2l([clos, arg], [")"]))
 	      | T_Code tys => concat("code(" :: tys2l(tys, [")"]))

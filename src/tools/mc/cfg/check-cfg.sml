@@ -167,20 +167,23 @@ structure CheckCFG : sig
 			| CFG.E_Cast(x, ty, y) => (
 			    chkVar (env, y);
                             if Ty.isValidCast (V.typeOf y, ty)
-                                then ()
-                            else err["variable ", V.toString y, ":", Ty.toString (V.typeOf y),
-                                     " cannot be cast to ",
-                                     "type ", Ty.toString ty];
+			      then ()
+			      else err[
+				  "variable ", V.toString y, ":", Ty.toString (V.typeOf y),
+                                  " cannot be cast to ", "type ", Ty.toString ty
+				];
                             if Ty.equals (V.typeOf x, ty)
-                               then ()
-                            else err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
-                                     " does not match ",
-                                     "type ", Ty.toString ty];
+			      then ()
+			      else err[
+				  "variable ", V.toString x, ":", Ty.toString (V.typeOf x),
+				  " does not match ", "type ", Ty.toString ty
+				];
 			    bindVar (env, x))
 			| CFG.E_Label(x, lab) => (
 			    chkLabel lab;
                             case L.kindOf lab
-			     of CFG.LK_Extern _ => ()
+			     of CFG.LK_None => err["label ", L.toString lab, " has kind None"]
+			      | CFG.LK_Extern _ => ()
 			      | CFG.LK_Local _ => if Ty.equals (V.typeOf x, L.typeOf lab)
 				  then ()
                                   else err[
@@ -254,6 +257,14 @@ structure CheckCFG : sig
 			| CFG.E_CCall(lhs, f, args) => (
 			    chkVars (env, f::args);
 			    bindVars (env, lhs))
+			| CFG.E_HostVProc vp => bindVar (env, vp)
+			| CFG.E_VPLoad(x, _, vp) => (
+			    chkVar (env, vp);
+			    bindVar (env, x))
+			| CFG.E_VPStore(_, vp, x) => (
+			    chkVar (env, vp);
+			    chkVar (env, x);
+			    env)
 		      (* end case *))
 		fun chkExit (env, xfer) = (case xfer
 		       of CFG.StdApply{f, clos, arg, ret, exh} => (

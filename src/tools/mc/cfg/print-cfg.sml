@@ -58,7 +58,11 @@ structure PrintCFG : sig
 		end
 	  and prExp i e = (
 		indent i;
-		pr "let "; prList varBindToString (CFG.lhsOfExp e); pr " = ";
+		case CFG.lhsOfExp e
+		 of [] => pr "do "
+		  | [x] => prl["let ", varBindToString x, " = "]
+		  | xs => (pr "let "; prList varBindToString xs; pr " = ")
+		(* end case *);
 		case e
 		 of (CFG.E_Var(_, ys)) => prList varUseToString ys
 		  | (CFG.E_Enum(_, w)) => prl["enum(", Word.fmt StringCvt.DEC w, ")"]
@@ -74,6 +78,14 @@ structure PrintCFG : sig
 		  | (CFG.E_CCall(_, f, args)) => (
 		      prl ["ccall ", varUseToString f, " "];
 		      prList varUseToString args)
+		  | (CFG.E_HostVProc _) => pr "host_vproc()"
+		  | (CFG.E_VPLoad(_, offset, vp)) => prl [
+			"load(", varUseToString vp, "+0x", Word.toString offset, ")"
+		      ]
+		  | (CFG.E_VPStore(offset, vp, x)) => prl [
+			"store(", varUseToString vp, "+0x", Word.toString offset, ",",
+			varUseToString x, ")"
+		      ]
 		(* end case *);
 		pr "\n")
 	  and prXfer (i, xfer) = (

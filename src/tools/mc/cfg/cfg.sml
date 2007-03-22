@@ -54,6 +54,12 @@ structure CFG =
       | E_Unwrap of var * var			(* unwrap value *)
       | E_Prim of var * prim
       | E_CCall of (var list * var * var list)
+    (* VProc operations *)
+      | E_HostVProc of var			(* gets the hosting VProc *)
+      | E_VPLoad of (var * word * var)		(* load a value from the given byte offset *)
+						(* in the vproc structure *)
+      | E_VPStore of (word * var * var)		(* store a value at the given byte offset *)
+						(* in the vproc structure *)
 
     and transfer
       = StdApply of {f : var, clos : var, arg : var, ret : var, exh : var}
@@ -137,6 +143,9 @@ structure CFG =
       | lhsOfExp (E_Unwrap(x, _)) = [x]
       | lhsOfExp (E_Prim(x, _)) = [x]
       | lhsOfExp (E_CCall(res, _, _)) = res
+      | lhsOfExp (E_HostVProc x) = [x]
+      | lhsOfExp (E_VPLoad(x, _, _)) = [x]
+      | lhsOfExp (E_VPStore _) = []
 
   (* project out the rhs variable of an expression *)
     fun rhsOfExp (E_Var(_, ys)) = ys
@@ -150,6 +159,9 @@ structure CFG =
       | rhsOfExp (E_Unwrap(_, y)) = [y]
       | rhsOfExp (E_Prim(_, p)) = PrimUtil.varsOf p
       | rhsOfExp (E_CCall(_, f, args)) = f::args
+      | rhsOfExp (E_HostVProc _) = []
+      | rhsOfExp (E_VPLoad(_, _, x)) = [x]
+      | rhsOfExp (E_VPStore(_, x, y)) = [x, y]
 
   (* project the list of variables in a control transfer *)
     fun varsOfXfer (StdApply{f, clos, arg, ret, exh}) = [f, clos, arg, ret, exh]
@@ -204,6 +216,9 @@ structure CFG =
     fun mkUnwrap arg = mkExp(E_Unwrap arg)
     fun mkPrim arg = mkExp(E_Prim arg)
     fun mkCCall arg = mkExp(E_CCall arg)
+    fun mkHostVProc arg = mkExp(E_HostVProc arg)
+    fun mkVPLoad arg = mkExp(E_VPLoad arg)
+    fun mkVPStore arg = mkExp(E_VPStore arg)
 
     local
       fun mkFn (l, conv, body, exit, export) = let
