@@ -218,6 +218,7 @@ functor AMD64GenFn (
 			 structure Types = Types)
   structure VProcOps = VProcOpsFn (
                          structure MTy = MTy
+			 structure VarDef = VarDef
 			 structure Regs = Regs
 			 structure Spec = Spec
 			 structure Types = Types

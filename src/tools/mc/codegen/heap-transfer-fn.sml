@@ -58,7 +58,6 @@ functor HeapTransferFn (
   fun newLabel s = Label.label s () 
   fun fail s = raise Fail s
   fun intLit i = T.LI (T.I.fromInt (ty, i))
-  fun litFromInt i = T.LI (T.I.fromInt (ty, i))
   fun regExp r = T.REG (ty, r)
   fun move (r, e) = T.MV (ty, r, e)
   fun move' (r, mlt) = 

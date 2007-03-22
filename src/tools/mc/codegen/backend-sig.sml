@@ -39,6 +39,7 @@ signature BACK_END = sig
 	where VarDef = VarDef
         where SpillLoc = SpillLoc
     structure VProcOps : VPROC_OPS
+	where VarDef = VarDef
 	where MTy = MTy
 
     (* take a control-flow graph, do RA, optimization, etc. and then

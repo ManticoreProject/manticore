@@ -224,6 +224,13 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		    | gen (M.E_Cast (lhs, _, v)) = 
 		      (* FIXME: should a cast affect anything here? *)
 		      bindExp ([lhs], [getDefOf v])
+		    (* vproc operations *)
+		    | gen (M.E_HostVProc lhs) =
+		      bindExp ([lhs], [BE.VProcOps.genHostVP])
+		    | gen (M.E_VPLoad (lhs, offset, vproc)) =
+		      bindExp ([lhs], [BE.VProcOps.genVPLoad varDefTbl (offset, vproc)])
+		    | gen (M.E_VPStore (offset, vproc, v)) =
+		      emitStms [BE.VProcOps.genVPStore varDefTbl (offset, vproc, v)]
 	      in
 		  gen
 	      end (* genExp *)

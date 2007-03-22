@@ -3,31 +3,26 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Generate code for the following vproc operations:
- * - let vproc = host_vp ()                 (inline assembly)
- * - let () = enqueue (vproc, tid, k)     (calls into runtime-system)
- *   Runtime convention: 
- *        enqueue (argRegs[0], argRegs[1], argRegs[2])
- * - let (tid, k) = dequeue (vproc)         (calls into runtime-system)
- *   Runtime convention: 
- *        (argRegs[0], argRegs[1]) := dequeue (argRegs[0])
- * - let vprocs = provision n          (??)
- * - let () = release vproc            (??)
- * - let tid = newTid ()               (??)
- * - let () = setTid tid               (??)
- * - let tid = getTid ()               (??)
+ * Generate code for accessing and modifying fields in the vproc structure.
  *)
 
 signature VPROC_OPS = sig
 
     structure MTy : MLRISC_TYPES
+    structure VarDef : VAR_DEF
 
+    (* this expression is a pointer to the host vproc structure. *)
     val genHostVP : MTy.mlrisc_tree
+    (* load a value from a given offset off the vproc structure. *)
+    val genVPLoad : VarDef.var_def_tbl -> (CFG.offset * CFG.var) -> MTy.mlrisc_tree
+    (* store a value at an offset from the vproc structure. *)
+    val genVPStore : VarDef.var_def_tbl -> (CFG.offset * CFG.var * CFG.var) -> MTy.T.stm
 
 end (* VPROC_OPS *)
 
 functor VProcOpsFn (
     structure MTy : MLRISC_TYPES
+    structure VarDef : VAR_DEF where MTy = MTy
     structure Regs : MANTICORE_REGS
     structure Spec : TARGET_SPEC
     structure Types : ARCH_TYPES
@@ -35,19 +30,23 @@ functor VProcOpsFn (
 ) : VPROC_OPS = struct
 
   structure MTy = MTy
+  structure VarDef = VarDef
   structure W = Word64
   structure Cells = MLTreeComp.I.C
   structure T = MTy.T
 
   val ty = MTy.wordTy
-
-  (* Assume that the runtime system aligns the heap on a
-   * vpHeapSzB boundary. *)
-  val vpHeapMask = Spec.C.vpMask 
-(*W.notb (W.- ((Spec.C.vpHeapSzB, 0w1)))*)
+  val memory = ManticoreRegion.memory
 
   val genHostVP =
       MTy.EXP (ty, T.ANDB (ty, T.REG (ty, Regs.apReg), 
-				      T.LI (W.toLargeInt vpHeapMask))) 
+				      T.LI (W.toLargeInt Spec.C.vpMask))) 
+
+  fun genVPLoad varDefTbl (offset, vproc) =
+      MTy.EXP (ty, T.LOAD (ty, T.ADD (ty, VarDef.defOf varDefTbl vproc, T.LI offset), memory))
+
+  fun genVPStore varDefTbl (offset, vproc, v) =
+      T.STORE (ty, T.ADD (ty, VarDef.defOf varDefTbl vproc, T.LI offset),
+	       VarDef.defOf varDefTbl v, memory)
 
 end (* VProcOpsFn *)
