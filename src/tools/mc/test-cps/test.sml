@@ -10,7 +10,8 @@ structure Test =
     datatype value = datatype InterpCFG.value
     datatype raw_value = datatype InterpCFG.raw_value
 
-    structure Opt = CFGOptFn (DummySpec)
+    structure CPSOpt = CPSOptFn (DummySpec)
+    structure CFGOpt = CFGOptFn (DummySpec)
 
     fun prHdr msg = print(concat["******************** ", msg,  "********************\n"])
 
@@ -18,6 +19,10 @@ structure Test =
 	  val cps = CPSParser.parse file
 	  val _ = (
 		prHdr "CPS after expand";
+		PrintCPS.print cps)
+	  val cps = CPSOpt.optimize cps
+	  val _ = (
+		prHdr "CPS after optimization";
 		PrintCPS.print cps)
 	  val cfg = FlatClosure.convert cps
 	  val _ = (
@@ -30,7 +35,7 @@ structure Test =
 
     fun load file = let
 	  val cfg = cvt file
-	  val cfg = Opt.optimize cfg
+	  val cfg = CFGOpt.optimize cfg
 	  val _ = (
 		prHdr "CFG after cfg-opt";
 		PrintCFG.output {types=true} (TextIO.stdOut, cfg))
@@ -60,3 +65,4 @@ structure Test =
     fun initAll () = List.map init all
 
   end
+

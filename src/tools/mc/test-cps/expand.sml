@@ -145,6 +145,7 @@ structure Expand =
 				in
 				  CPS.mkLet(lhs', CPS.Prim rhs, e')
 				end)
+			  | PT.HostVProc => CPS.mkLet(lhs', CPS.HostVProc, e')
 			(* end case *))
 		    | PT.Alloc args =>
 			cvtSimpleExps (env, args, fn xs => CPS.mkLet(lhs', CPS.Alloc xs, e'))
@@ -184,11 +185,15 @@ structure Expand =
 		cvtSimpleExps (env, args, fn xs => CPS.Apply(lookup(env, f), xs))
 	    | PT.Throw(k, args) =>
 		cvtSimpleExps (env, args, fn xs => CPS.Throw(lookup(env, k), xs))
-	    | PT.Run(act, fiber) => CPS.Run{
+	    | PT.Run(vp, act, fiber) => CPS.Run{
+		  vp = lookup(env, vp),
 		  act = lookup (env, act),
 		  fiber = lookup (env, fiber)
 		}
-	    | PT.Forward sign => CPS.Forward(lookup(env, sign))
+	    | PT.Forward(vp, sign) => CPS.Forward{
+		  vp = lookup(env, vp),
+		  sign = lookup(env, sign)
+		}
 	  (* end case *))
 
     and cvtLambda (env, (f, params, e), tyCon) = let
@@ -243,6 +248,11 @@ structure Expand =
 		  in
 		    CPS.mkLet([lhs], CPS.Prim rhs, k lhs)
 		  end)
+	    | PT.HostVProc => let
+		val tmp = newTmp(Ty.T_VProc)
+		in
+		  CPS.mkLet([tmp], CPS.HostVProc, k tmp)
+		end
 	  (* end case *))
 
     and cvtSimpleExps (env, exps, k) = let

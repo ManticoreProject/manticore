@@ -28,8 +28,9 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 
     structure FB = FeedbackFn (Vertex)
     structure VSet = FB.Set
+    structure ABI = Target.ABI
 
-    fun sizeOf ty = Target.C.wordSzB (* FIXME *)
+    fun sizeOf ty = ABI.wordSzB (* FIXME *)
 
   (* construct the flow graph for a module *)
     fun makeGraph code = let
@@ -56,7 +57,7 @@ val toNode = fn f => let
 	  CFG.Label.newProp (fn _ => 0w0)
 
   (* the amount of storage allocated by an expression *)
-    fun expAlloc (CFG.E_Alloc(_, xs)) = Target.C.wordSzB * Word.fromInt(length xs + 1)
+    fun expAlloc (CFG.E_Alloc(_, xs)) = ABI.wordSzB * Word.fromInt(length xs + 1)
       | expAlloc (CFG.E_Wrap(_, y)) = (case CFG.Var.typeOf y
 	   of CFGTy.T_Raw CFGTy.T_Long => 0w12		(* include header word *)
 	    | CFGTy.T_Raw CFGTy.T_Double => 0w12
@@ -93,11 +94,6 @@ val toNode = fn f => let
 			    end
 		    (* add in any data allocated in this function *)
 		      val alloc = List.foldl (fn (e, sz) => sz + expAlloc e) alloc body
-		    (* the "run" transfer allocates a cons cell *)
-		      val alloc = (case exit
-			     of CFG.Run _ => alloc + 0w3 * Target.C.wordSzB
-			      | _ => alloc
-			    (* end case *))
 		      in
 			setAlloc (lab, alloc); alloc
 		      end

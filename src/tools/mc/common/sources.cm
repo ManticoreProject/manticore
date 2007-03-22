@@ -21,7 +21,6 @@ Library
   signature VAR
   functor VarFn
   structure VarRep
-  structure RuntimeConstants
 
 is
 
@@ -41,4 +40,3 @@ is
   var-fn.sml
   var-rep.sml
   runtime-constants-sig.sml
-  runtime-constants.sml

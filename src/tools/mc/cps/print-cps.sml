@@ -32,7 +32,10 @@ structure PrintCPS : sig
 	  fun prExp (i, e) = (
 		indent i;
 		case e
-		 of CPS.Let(xs, rhs, e) => (
+		 of CPS.Let([], rhs, e) => (
+		      pr "do "; prRHS rhs; pr "\n";
+		      prExp (i, e))
+		  | CPS.Let(xs, rhs, e) => (
 		      pr "let "; prList varBindToString xs; pr " = "; prRHS rhs; pr "\n";
 		      prExp (i, e))
 		  | CPS.Fun(fb::fbs, e) => (
@@ -64,9 +67,9 @@ structure PrintCPS : sig
 		      prl["throw ", varUseToString k, " "];
 		      prList varUseToString args;
 		      pr "\n")
-		  | CPS.Run{act, fiber} =>
+		  | CPS.Run{vp, act, fiber} =>
 		      prl["run ", varUseToString act, " ", varUseToString fiber, "\n"]
-		  | CPS.Forward sign =>
+		  | CPS.Forward{vp, sign} =>
 		      prl["forward ", varUseToString sign, "\n"]
 		(* end case *))
 	  and prRHS (CPS.Var ys) = prList varUseToString ys
@@ -81,6 +84,14 @@ structure PrintCPS : sig
 	    | prRHS (CPS.CCall(f, args)) = (
 		prl ["ccall ", varUseToString f, " "];
 		prList varUseToString args)
+	    | prRHS (CPS.HostVProc) = pr "host_vproc()"
+	    | prRHS (CPS.VPLoad(offset, vp)) = prl [
+		  "load(", varUseToString vp, "+", IntInf.toString offset, ")"
+		]
+	    | prRHS (CPS.VPStore(offset, vp, x)) = prl [
+		  "store(", varUseToString vp, "+", IntInf.toString offset, ",",
+		  varUseToString x, ")"
+		]
 	  and prLambda (i, prefix, (f, params, e)) = (
 		prl [prefix, varUseToString f, " "];
 		prList varBindToString params;

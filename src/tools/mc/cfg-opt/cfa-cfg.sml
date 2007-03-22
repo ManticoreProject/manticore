@@ -222,8 +222,6 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 			List.app (addJump o #2) cases;
 			Option.app addJump dflt)
 		    | CFG.HeapCheck{nogc, ...} => addJump nogc
-		    | CFG.Run _ => ()
-		    | CFG.Forward _ => ()
 		  (* end case *)
 		end
 	  in
@@ -276,8 +274,8 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 		  | doExp (CFG.E_Prim(x, _)) = ()
 		  | doExp (CFG.E_CCall(x, _, args)) = List.app escape args
 		  | doExp (CFG.E_HostVProc vp) = ()
-		  | doExp (CFG.E_VPLoad(x, _, vp)) = ()
-		  | doExp (CFG.E_VPStore(_, vp, x)) = ()
+		  | doExp (CFG.E_VPLoad(x, _, vp)) = addInfo(x, TOP)
+		  | doExp (CFG.E_VPStore(_, vp, x)) = escape x
 		and doXfer (CFG.StdApply{f, clos, arg, ret, exh}) =
 		      doApply (f, [clos, arg, ret, exh])
 		  | doXfer (CFG.StdThrow{k, clos, arg}) = doApply (k, [clos, arg])
@@ -288,8 +286,6 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 		      List.app (doJump o #2) cases;
 		      Option.app doJump dflt)
 		  | doXfer (CFG.HeapCheck{nogc, ...}) = doJump nogc
-		  | doXfer (CFG.Run{act, fiber}) = (escape act; escape fiber)
-		  | doXfer (CFG.Forward sign) = escape sign
 		and doJump (lab, args) = (case CFG.funcOfLabel lab
 		       of SOME func => doFunc (func, List.map valueOf args)
 			| _ => raise Fail "jump to unknown label"

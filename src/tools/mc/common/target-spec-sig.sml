@@ -13,6 +13,11 @@ signature TARGET_SPEC =
     val abiName : string
     val osName : string
 
-    structure C : RUNTIME_CONSTANTS
+    structure ABI : RUNTIME_CONSTANTS
+
+  (* representation of True and False *)
+    val trueRep : IntegerLit.integer
+    val falseRep : IntegerLit.integer
 
   end (* TARGET_SPEC *)
+

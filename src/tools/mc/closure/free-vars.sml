@@ -49,6 +49,9 @@ structure FreeVars : sig
       | fvOfRHS (fv, CPS.Unwrap x) = addVar(fv, x)
       | fvOfRHS (fv, CPS.Prim p) = addVars(fv, PrimUtil.varsOf p)
       | fvOfRHS (fv, CPS.CCall(f, args)) = addVars(fv, f::args)
+      | fvOfRHS (fv, CPS.HostVProc) = fv
+      | fvOfRHS (fv, CPS.VPLoad(_, vp)) = addVar(fv, vp)
+      | fvOfRHS (fv, CPS.VPStore(_, vp, x)) = addVars(fv, [vp, x])
 
     fun analExp (fv, e) = (case e
 	   of CPS.Let(xs, rhs, e) => removes(analExp (fvOfRHS (fv, rhs), e), xs)
@@ -84,8 +87,9 @@ structure FreeVars : sig
                            cases
 	    | CPS.Apply(f, args) => addVars(fv, f::args)
 	    | CPS.Throw(k, args) => addVars(fv, k::args)
-	    | CPS.Run{act, fiber} => addVars(fv, [act, fiber])
-	    | CPS.Forward sign => addVar(fv, sign)
+(* FIXME: the following cases shouldn't happen after optimization! *)
+	    | CPS.Run{vp, act, fiber} => addVars(fv, [vp, act, fiber])
+	    | CPS.Forward{vp, sign} => addVars(fv, [vp, sign])
 	  (* end case *))
 
   (* compute the free variables of a lambda; the resulting set may include
@@ -138,8 +142,8 @@ structure FreeVars : sig
                                  cases
 		  | CPS.Apply(f, args) => addVars(fv, f::args)
 		  | CPS.Throw(k, args) => addVars(fv, k::args)
-		  | CPS.Run{act, fiber} => addVars(fv, [act, fiber])
-		  | CPS.Forward sign => addVar(fv, sign)
+		  | CPS.Run{vp, act, fiber} => addVars(fv, [vp, act, fiber])
+		  | CPS.Forward{vp, sign} => addVars(fv, [vp, sign])
 		(* end case *))
 	  in
 	    analExp (V.Set.empty, exp)

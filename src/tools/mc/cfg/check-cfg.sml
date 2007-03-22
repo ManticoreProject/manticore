@@ -422,8 +422,6 @@ structure CheckCFG : sig
                                           ")"])
                               | _ => err["label ", L.toString lab, ":", Ty.toString (L.typeOf lab),
                                          " is not heap-check target"]))
-			| CFG.Run{act, fiber} => (chkVar (env, act); chkVar (env, fiber))
-			| CFG.Forward sign => chkVar (env, sign)
 		      (* end case *))
 		and chkJump (env, (lab, args)) = (
 		      chkLabel lab;

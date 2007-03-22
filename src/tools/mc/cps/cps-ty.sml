@@ -18,6 +18,7 @@ structure CPSTy =
       | T_Fun of ty list
       | T_Cont of ty list
       | T_CFun of CFunctions.c_proto
+      | T_VProc			(* address of VProc runtime structure *)
 
     val unitTy = T_Enum(0w0)
     val boolTy = T_Enum(0w1)	(* false = 0, true = 1 *)
@@ -38,6 +39,7 @@ structure CPSTy =
 	      | T_Fun tys => concat("fun(" :: tys2l(tys, [")"]))
 	      | T_Cont tys => concat("cont(" :: tys2l(tys, [")"]))
 	      | T_CFun cp => CFunctions.protoToString cp
+	      | T_VProc => "vproc"
 	    (* end case *)
 	  end
 

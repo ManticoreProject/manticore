@@ -25,6 +25,7 @@
     | KW_float		("float")
     | KW_forward	("forward")
     | KW_fun		("fun")
+    | KW_host_vproc	("host_vproc")
     | KW_if		("if")
     | KW_int		("int")
     | KW_let		("let")
@@ -39,6 +40,7 @@
     | KW_unwrap		("unwrap")
     | KW_vec128		("vec128")
     | KW_void		("void")
+    | KW_vproc		("vproc")
     | KW_wrap		("wrap")
     | LP		("(")
     | RP		(")")
@@ -112,6 +114,7 @@ Type
 	| "(" Type ("," Type)* ")"		=> (PT.T_Tuple(Type :: SR))
 	| "fun" "(" (Type ("," Type)* )? ")"	=> (PT.T_Fun(flatten SR))
 	| "cont" "(" (Type ("," Type)* )? ")"	=> (PT.T_Cont(flatten SR))
+	| "vproc"				=> (PT.T_VProc)
 	;
 
 RawType
@@ -132,8 +135,8 @@ Exp
 	| "switch" SimpleExp Cases DefaultCase? "end"	=> (PT.Switch(SimpleExp, Cases, DefaultCase))
 	| "apply" ID Args				=> (PT.Apply(ID, Args))
 	| "throw" ID Args				=> (PT.Throw(ID, Args))
-	| "run" ID ID					=> (PT.Run(ID1, ID2))
-	| "forward" ID					=> (PT.Forward ID)
+	| "run" ID ID ID				=> (PT.Run(ID1, ID2, ID3))
+	| "forward" ID ID				=> (PT.Forward(ID1, ID2))
 	;
 
 LHS
@@ -157,6 +160,7 @@ SimpleExp
 	| INT (":" RawType)?		=> (PT.Literal(Literal.Int INT, SR))
 	| FLOAT (":" RawType)?		=> (PT.Literal(Literal.Float FLOAT, SR))
 	| STRING			=> (PT.Literal(Literal.String STRING, NONE))
+	| "host_vproc"			=> (PT.HostVProc)
 	;
 
 Args

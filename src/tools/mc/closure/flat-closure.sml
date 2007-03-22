@@ -28,6 +28,7 @@ structure FlatClosure : sig
       | cvtTy (ty as CPSTy.T_Fun tys) = cvtStdFunTy ty
       | cvtTy (ty as CPSTy.T_Cont tys) = cvtStdContTy ty
       | cvtTy (CPSTy.T_CFun cproto) = CFGTy.T_CFun cproto
+      | cvtTy (CPSTy.T_VProc) = CFGTy.T_VProc
 
   (* convert a function type to a standard-function type *)
     and cvtStdFunTy ty = CFG.T_Tuple[CFG.T_Any, cvtStdFunTyAux ty]
@@ -427,17 +428,8 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
                               in
                                 finish (binds @ stms, xfer)
                               end
-			  | CPS.Run{act, fiber} => let
-			      val (binds1, act) = lookupVar(env, act)
-			      val (binds2, fiber) = lookupVar(env, fiber)
-			      in
-				finish (binds2 @ binds1 @ stms, CFG.Run{act=act, fiber=fiber})
-			      end
-			  | CPS.Forward sign => let
-			      val (binds, sign) = lookupVar(env, sign)
-			      in
-				finish (binds @ stms, CFG.Forward sign)
-			      end
+			  | CPS.Run _ => raise Fail "unexpected Run"
+			  | CPS.Forward _ => raise Fail "unexpected Forward"
 			(* end case *)
                       end
                 in
@@ -488,6 +480,18 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
                       in
                         ([CFG.mkCCall(res, f, args)] @ binds, env)
                       end
+		  | ((env, [vp]), CPS.HostVProc) => ([CFG.mkHostVProc(vp)], env)
+		  | ((env, [x]), CPS.VPLoad(offset, vp)) => let
+                      val (binds, vp) = lookupVar(env, vp)
+                      in
+                        ([CFG.mkVPLoad(x, offset, vp)] @ binds, env)
+                      end
+		  | ((env, []), CPS.VPStore(offset, vp, x)) => let
+                      val (binds, [vp, x]) = lookupVars(env, [vp, x])
+                      in
+                        ([CFG.mkVPStore(offset, vp, x)] @ binds, env)
+                      end
+		  | _ => raise Fail "ill-formed RHS binding"
                 (* end case *))
         (* create a standard function convention for a list of parameters *)
           and stdFunConvention (env, [arg, ret, exh]) = let

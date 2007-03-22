@@ -9,6 +9,8 @@ structure CPS =
 
     type ty = CPSTy.ty
 
+    type offset = IntInf.int
+
     datatype exp
       = Let of (var list * rhs * exp)
       | Fun of (lambda list * exp)
@@ -18,8 +20,8 @@ structure CPS =
       | Apply of (var * var list)
       | Throw of (var * var list)
     (* scheduler operations *)
-      | Run of {act:var, fiber:var}
-      | Forward of var
+      | Run of {vp : var, act : var, fiber : var}
+      | Forward of {vp : var, sign : var}
 
     and rhs
       = Var of var list
@@ -32,6 +34,12 @@ structure CPS =
       | Unwrap of var			(* unwrap value *)
       | Prim of prim
       | CCall of (var * var list)
+    (* VProc operations *)
+      | HostVProc			(* gets the hosting VProc *)
+      | VPLoad of (offset * var)	(* load a value from the given byte offset *)
+					(* in the vproc structure *)
+      | VPStore of (offset * var * var)	(* store a value at the given byte offset *)
+					(* in the vproc structure *)
 
     and var_kind
       = VK_None
@@ -74,6 +82,13 @@ structure CPS =
 	  | isExtern _ = false
 	end (* local *)
       end
+
+  (* representation of true and false *)
+    val trueLit = Enum 0w1
+    val falseLit = Enum 0w0
+
+  (* representation of unit *)
+    val unitLit = Enum 0w0
 
   (* smart constructors; these enforce the variable kind invariant and should be
    * used to construct terms.

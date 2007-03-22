@@ -29,8 +29,8 @@ structure CPSPT =
       | Switch of (simple_exp * (int * exp) list * exp option)
       | Apply of (var * simple_exp list)
       | Throw of (var * simple_exp list)
-      | Run of (var * var)
-      | Forward of var
+      | Run of (var * var * var)
+      | Forward of var * var
 
     and rhs
       = SimpleExp of simple_exp
@@ -45,6 +45,7 @@ structure CPSPT =
       | Cast of (ty * simple_exp)
       | Unwrap of simple_exp		(* unwrap value *)
       | Prim of (Atom.atom * simple_exp list)
+      | HostVProc
 
     withtype lambda = (var * var_bind list * exp)
 

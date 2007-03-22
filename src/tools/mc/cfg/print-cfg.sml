@@ -118,9 +118,6 @@ structure PrintCFG : sig
 			  | SOME jmp => (indent(i+1); prJump("default: ", jmp))
 			(* end case *)
 		      end
-		  | CFG.Run{act, fiber} =>
-		      prl ["run ", varUseToString act, " ", varUseToString fiber, "\n"]
-		  | CFG.Forward sign => prl ["forward ", varUseToString sign, "\n"]
 		(* end case *))
 	  and prApply (prefix, x, args) = (
 		prl [prefix, " ", varUseToString x];

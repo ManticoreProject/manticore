@@ -85,6 +85,7 @@
 		  ("float",	T.KW_float),
 		  ("forward",	T.KW_forward),
 		  ("fun",	T.KW_fun),
+		  ("host_vproc", T.KW_host_vproc),
 		  ("if",	T.KW_if),
 		  ("int",	T.KW_int),
 		  ("let",	T.KW_let),
@@ -99,6 +100,7 @@
 		  ("unit",	T.KW_unit),
 		  ("vec128",	T.KW_vec128),
 		  ("void",	T.KW_void),
+		  ("vproc",	T.KW_vproc),
 		  ("wrap",	T.KW_wrap)
 		];
 	      AtomTable.find tbl
