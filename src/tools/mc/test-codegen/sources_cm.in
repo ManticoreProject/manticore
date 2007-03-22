@@ -33,6 +33,9 @@ is
   ../closure/sources.cm
   ../cfg-opt/sources.cm
   ../test-cps/sources.cm
+  ../cps-opt/sources.cm
   ../test-cps/cps-parse.cm
 
+  ../driver/target-spec-fn.sml
+  ../driver/runtime-constants.sml
   test-compile.sml

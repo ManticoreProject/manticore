@@ -216,7 +216,8 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 			  bindExp (lhs, result)
 		      end
 		    | gen (M.E_Enum (lhs, c)) = 
-		      bindExp ([lhs], [mkExp(T.LI (T.I.fromWord (ty, c)))])
+		      bindExp ([lhs], [mkExp (T.LI (T.I.fromWord (ty, 
+				(Word.+ (Word.<< (c, 0w1), 0w1)))))])
 		    | gen (M.E_Cast (lhs, _, v)) = 
 		      (* FIXME: should a cast affect anything here? *)
 		      bindExp ([lhs], [getDefOf v])
