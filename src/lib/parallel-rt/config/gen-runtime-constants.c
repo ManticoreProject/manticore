@@ -24,7 +24,7 @@ int main () {
   VProc_t		vp;
   SchedActStkItem_t	actcons;
 
-  printf ("structure RuntimeConstants : RUNTIME_CONSTS =\n");
+  printf ("structure RuntimeConstants : RUNTIME_CONSTANTS =\n");
   printf ("  struct\n");
 
   printf ("\n  (* word size and alignment *)\n");
