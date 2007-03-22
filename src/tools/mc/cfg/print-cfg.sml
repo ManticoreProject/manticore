@@ -80,10 +80,10 @@ structure PrintCFG : sig
 		      prList varUseToString args)
 		  | (CFG.E_HostVProc _) => pr "host_vproc()"
 		  | (CFG.E_VPLoad(_, offset, vp)) => prl [
-			"load(", varUseToString vp, "+0x", Word.toString offset, ")"
+			"load(", varUseToString vp, "+", IntInf.toString offset, ")"
 		      ]
 		  | (CFG.E_VPStore(offset, vp, x)) => prl [
-			"store(", varUseToString vp, "+0x", Word.toString offset, ",",
+			"store(", varUseToString vp, "+", IntInf.toString offset, ",",
 			varUseToString x, ")"
 		      ]
 		(* end case *);

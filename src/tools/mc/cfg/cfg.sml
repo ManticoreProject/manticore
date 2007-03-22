@@ -12,6 +12,8 @@ structure CFG =
 
     datatype ty = datatype CFGTy.ty
 
+    type offset = IntInf.int
+
   (* extended basic block *)
     datatype func = FUNC of {
 	lab : label,		(* label of function *)
@@ -56,9 +58,9 @@ structure CFG =
       | E_CCall of (var list * var * var list)
     (* VProc operations *)
       | E_HostVProc of var			(* gets the hosting VProc *)
-      | E_VPLoad of (var * word * var)		(* load a value from the given byte offset *)
+      | E_VPLoad of (var * offset * var)	(* load a value from the given byte offset *)
 						(* in the vproc structure *)
-      | E_VPStore of (word * var * var)		(* store a value at the given byte offset *)
+      | E_VPStore of (offset * var * var)	(* store a value at the given byte offset *)
 						(* in the vproc structure *)
 
     and transfer
