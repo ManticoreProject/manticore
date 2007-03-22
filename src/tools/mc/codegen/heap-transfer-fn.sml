@@ -44,8 +44,8 @@ functor HeapTransferFn (
   structure Frame = Frame
 
   val apReg = Regs.apReg
-  val wordSzB = Word.toInt Spec.C.wordSzB
-  val wordAlignB = Word.toInt Spec.C.wordAlignB
+  val wordSzB = Word.toInt Spec.ABI.wordSzB
+  val wordAlignB = Word.toInt Spec.ABI.wordAlignB
   val ty = MTy.wordTy
   val iTy = Types.szOf (CFGTy.T_Raw CFGTy.T_Int)
   val memory = ManticoreRegion.memory
@@ -147,27 +147,6 @@ functor HeapTransferFn (
       in 
 	  {stms=move (kReg, defOf k) :: stms, liveOut=liveOut}
       end (* genStdThrow *)
-
-(* generate a transfer to the "run" scheduler operation.  We pass the fiber to
- * run in the standard closure register and the signal action in the standard
- * argument register.
- *)
-  fun genRun varDefTbl {act, fiber} = let
-	val argRegs = map newReg [act, fiber]
-	val runL = T.LABEL RuntimeLabels.run
-	in
-	  genStdTransfer varDefTbl (runL, [fiber, act], argRegs, stdContRegs)
-	end
-
-(* generate a transfer to the "forward" scheduler operation.  We pass the signal
- * that is being forwarded in the standard argument register.
- *)
-  fun genForward varDefTbl sign = let
-	val argRegs = [newReg sign]
-	val forwardL = T.LABEL RuntimeLabels.forward
-	in
-	  genStdTransfer varDefTbl (forwardL, [sign], argRegs, [argReg])
-	end
 
   structure Ty = CFGTy
   structure CTy = CTypes

@@ -44,7 +44,7 @@ functor MLRiscTypesFn (
 		where Region = ManticoreRegion
 ) : MLRISC_TYPES = struct
 
-  val ty = (Word.toInt Spec.C.wordSzB) * 8
+  val ty = (Word.toInt Spec.ABI.wordSzB) * 8
   val wordTy = ty
 
   structure T = T
@@ -91,8 +91,8 @@ functor MLRiscTypesFn (
   fun regToTree (GPReg (ty, v)) = GPR (ty, v)
     | regToTree (FPReg (fty, fv)) = FPR (fty, fv)
 
-  val valTRUE = T.LI Spec.C.trueRep
-  val valFALSE = T.LI Spec.C.falseRep
+  val valTRUE = T.LI Spec.trueRep
+  val valFALSE = T.LI Spec.falseRep
   fun cexpToExp exp = T.COND(ty, exp, valTRUE, valFALSE)
 
   (* type dependent store *)

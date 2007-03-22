@@ -17,10 +17,10 @@ functor VarDefFn (
   structure Tbl = CFG.Var.Tbl
   structure T = MTy.T
 
-  val wordSz = (Word.toInt Spec.C.wordSzB) * 8
+  val wordSz = (Word.toInt Spec.ABI.wordSzB) * 8
   (* representations of some simple constants *)
-  val valTRUE = T.LI Spec.C.trueRep
-  val valFALSE = T.LI Spec.C.falseRep
+  val valTRUE = T.LI Spec.trueRep
+  val valFALSE = T.LI Spec.falseRep
 
   (* the ML-Risc tree that converts a cexp to an rexp  *)
   fun cexpToExp exp = T.COND (wordSz, exp, valTRUE, valFALSE)

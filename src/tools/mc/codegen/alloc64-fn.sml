@@ -22,8 +22,8 @@ functor Alloc64Fn (
   structure W = Word64
   structure Cells = MLTreeComp.I.C
 
-  val wordSzB = Word.toInt Spec.C.wordSzB
-  val wordAlignB = Word.toInt Spec.C.wordAlignB
+  val wordSzB = Word.toInt Spec.ABI.wordSzB
+  val wordAlignB = Word.toInt Spec.ABI.wordAlignB
   val ty = MTy.wordTy
 
   val memory = ManticoreRegion.memory
@@ -98,7 +98,7 @@ functor Alloc64Fn (
 		  W.+ (W.orb (W.<< (ptrMask, 0w7), 
 			      W.<< (W.fromInt nWords, 0w1)), 0w1) )
 	in	  
-	  if ((Word.fromInt totalSize) > Spec.C.maxObjectSzB)
+	  if ((Word.fromInt totalSize) > Spec.ABI.maxObjectSzB)
 	    then raise Fail "object size too large"
 	    else (totalSize, hdrWord, stms)
 	end (* allocMixedObj *)

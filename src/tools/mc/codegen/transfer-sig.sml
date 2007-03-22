@@ -43,12 +43,4 @@ signature TRANSFER = sig
 	VarDef.var_def_tbl ->
 	(CFG.label * CFG.convention) -> MTy.T.stm list
 
-    val genRun : VarDef.var_def_tbl
-	  -> {act : CFG.var, fiber : CFG.var}
-	    -> {stms : MTy.T.stm list, liveOut : MTy.T.mlrisc list}
-
-    val genForward : VarDef.var_def_tbl
-	  -> CFG.var
-	    -> {stms : MTy.T.stm list, liveOut : MTy.T.mlrisc list}
-
   end (* TRANSFER *)
