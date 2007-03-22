@@ -47,6 +47,9 @@ int main ()
     PR_OFFSET(actcons, ACTCONS_ACT_OFF, act);
     PR_OFFSET(actcons, ACTCONS_LINK_OFF, link);
 
+    printf("\n/* Stack-frame size */
+    PR_DEFINE(FRAME_SZB)
+
     printf("\n/* request codes for when Manticore returns to C */\n");
     PR_DEFINE(REQ_GC);
     PR_DEFINE(REQ_Return);

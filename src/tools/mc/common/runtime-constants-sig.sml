@@ -19,6 +19,7 @@ signature RUNTIME_CONSTANTS =
 
 
     val spillAreaSzB : word     (* size of the spill area on the stack *)
+    val spillAreaOff : word	(* offset from frame pointer to spill area *)
     val maxObjectSzB : word     (* maximum number of bytes allowable in a *)
 				(* heap-allocated object *) 
 

@@ -35,6 +35,7 @@ int main () {
 
   printf ("\n  (* stack size and heap size info *)\n");
   printf ("    val spillAreaSzB = 0w%d\n", FRAME_SZB);
+  printf ("    val spillAreaOff = 0w%d\n", SAVE_AREA+PAD_SZB);
   printf ("    val maxObjectSzB = 0w%d\n", ((sizeof (Word_t)*8)-MIXED_TAG_BITS)*sizeof(Word_t));
 
   printf ("\n  (* offsets into the VProc_t structure *)\n");
