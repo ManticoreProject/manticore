@@ -12,12 +12,16 @@ structure TestCompile =
         Coverage.install ();
         BackTrace.install() )
 
-    structure AMD64TargetSpec = AMD64TargetSpecFn (
+    structure AMD64TargetSpec = TargetSpecFn (
+	val archName = "amd64"
 	val abiName = "SVID"
-	val osName = "linux" )
+	val osName = "linux"
+	structure ABI = RuntimeConstants)
+
     structure AMD64CG = AMD64GenFn (structure Spec = AMD64TargetSpec)
 
-    structure Opt = CFGOptFn (AMD64TargetSpec)
+    structure CPSOpt = CPSOptFn (AMD64TargetSpec)
+    structure CFGOpt = CFGOptFn (AMD64TargetSpec)
 
     fun prHdr msg = print(concat["******************** ", msg,  "********************\n"])
 
@@ -26,12 +30,16 @@ structure TestCompile =
 	  val _ = (
 		prHdr "CPS after expand";
 		PrintCPS.print cps)
+	  val cps = CPSOpt.optimize cps
+	  val _ = (
+		prHdr "CPS after optimization";
+		PrintCPS.print cps)
 	  val cfg = FlatClosure.convert cps
 	  val _ = (
 		prHdr "CFG after closure";
 		PrintCFG.print cfg;
 		CheckCFG.check cfg)
-	  val cfg = Opt.optimize cfg
+	  val cfg = CFGOpt.optimize cfg
 	  val _ = (
 		prHdr "CFG after cfg-opt";
 		PrintCFG.print cfg;

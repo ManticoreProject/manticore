@@ -35,11 +35,11 @@ ASM_Run:
 	andq	$VP_MASK,%r10
       /* allocate stack cell and push on stack */
 	movq	$ACTCONS_HDR,-8(%rcx)		/* store header */
-	movq	%rax,ACTCONS_ACT_OFF(%rcx)	/* store signal-action continuation */
-	movq	ACTION_STK(%r10),%r9
-	movq	%r9,ACTCONS_LINK_OFF(%rcx)	/* store top of stack in the link field */
-	movq	%rcx,ACTION_STK(%r10)		/* set top of stack to new cell */
-	leaq	24(%rcx),%rcx			/* bump up allocation pointer */
+	movq	%rax,ACTCONS_ACT(%rcx)		/* store signal-action continuation */
+	movq	VP_ACTION_STK(%r10),%r9
+	movq	%r9,ACTCONS_LINK(%rcx)		/* store top of stack in the link field */
+	movq	%rcx,VP_ACTION_STK(%r10)	/* set top of stack to new cell */
+	leaq	ACTCONS_SZB(%rcx),%rcx		/* bump up allocation pointer */
       /* mark that we are out of the atomic region */
 	movl	$M_FALSE,%eax
 	movq	%rax,ATOMIC(%r10)
@@ -65,10 +65,10 @@ ASM_Forward:
 	movl	$M_TRUE,%edi
 	movq	%rdi,ATOMIC(%r10)
       /* fetch top of sigaction stack */
-	movq	ACTION_STK(%r10),%r9
-	movq	ACTCONS_ACT_OFF(%r9),%rdi	/* stdEP gets signal-action continuation */
-	movq	ACTCONS_LINK_OFF(%r9),%r9	/* pop the cell */
-	movq	%r9,ACTION_STK(%r10)
+	movq	VP_ACTION_STK(%r10),%r9
+	movq	ACTCONS_ACT(%r9),%rdi	/* stdEP gets signal-action continuation */
+	movq	ACTCONS_LINK(%r9),%r9	/* pop the cell */
+	movq	%r9,VP_ACTION_STK(%r10)
       /* transfer control to the signal-action continuation */
 	jmpq	*(%rdi)
 
@@ -94,13 +94,14 @@ ASM_Resume:
 	movq	16(%rdi),%rdi	/* set EP to point to GC root */
 	jmpq	*%r9		/* jump to the GC return code */
 
+#ifdef XXXX
 /* ASM_Enqueue:
  *
  * This function enqueues a (fiber, thread ID) pair in the calling vproc's
  * ready queue.  It takes three arguments in registers as follows:
  *
- *	%rax	-- fiber
- *	%rdi	-- thread ID
+ *	%rax	-- thread ID
+ *	%rdi	-- fiber
  *	%rsi	-- host vproc (preserved across the call)
  */
 	.text
@@ -108,22 +109,11 @@ ASM_Resume:
 	.global	ASM_Enqueue
 ASM_Enqueue:
 	movq	$RDYQ_CONS_HDR,-8(%rcx)
-	movq	%rax,(%rcx)
-	movq	%rdi,(%rcx)
+	movq	%rdi,RDYQ_FIBER(%rcx)
+	movq	%rax,RDYQ_TID(%rcx)
 	movq	VP_RDYQ_TL(%rsi),%rax
-	movq	%rax,(%rcx)
+	movq	%rax,RDYQ_LINK(%rcx)
 	movq	%rcx,VP_RDYQ_TL(%rsi)
-	leaq	RDYQ_CONS_SZB(%rcx),%rcx
+	leaq	RDYQ_SZB(%rcx),%rcx
 	ret
-
-/* ASM_Dequeue:
- *
- * This function dequeues an element from the calling vproc's ready queue.
- *
- *	%rax	-- result points to dequeued item
- *	%rsi	-- host vproc (reserved across the call)
- */
-	.text
-	.p2align 3
-	.global	ASM_Dequeue
-ASM_Dequeue:
+#endif
