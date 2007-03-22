@@ -22,12 +22,7 @@
 #define ONE_K			1024
 #define ONE_MEG			(ONE_K*ONE_K)
 
-#ifndef MEM_BLOCK_SZB
-#  define MEM_BLOCK_SZB		(256*ONE_K)
-#endif
-#ifndef VP_HEAP_SZB
-#  define VP_HEAP_SZB		ONE_MEG
-#endif
+#include "machine/sizes.h"
 
 #ifndef DFLT_TIME_Q_MS
 #  define DFLT_TIME_Q_MS	100

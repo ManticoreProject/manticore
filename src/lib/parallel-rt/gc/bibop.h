@@ -1,9 +1,14 @@
+/* bibop.h
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ */
+
 #ifndef _BIBOP_H_
 #define _BIBOP_H_
 
 #include "manticore-rt.h"
 
-#define PAGE_BITS	20	/* one-megabyte pages in the global heap */
 #define BIBOP_PAGE_SZB	(1<<PAGE_BITS)
 
 #ifdef SIXTYFOUR_BIT_WORDS

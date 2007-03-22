@@ -15,37 +15,29 @@
 #include "request-codes.h"
 #include "../vproc/scheduler.h"
 
-/* FIXME: move this somewhere else */
-/* Stack frame layout */
-#define SPILL_SZB	2048	/* for register spilling */
-#define SAVE_AREA	(5*8)	/* for callee saves %rbx, %r12-%r15 */
-#define PAD_SZB		8	/* pad so that frame size (plus saved PC and FP */
-				/* is a multiple of 16 bytes */
-#define FRAME_SZB	(SPILL_SZB+SAVE_AREA+PAD_SZB)
-
-
 #define PR_OFFSET(obj, symb, lab)	\
-	printf("\tval " #symb " = %d\n", (int)((Addr_t)&(obj.lab) - (Addr_t)&obj))
+	printf("    val " #symb " : IntInf.int = %d\n", (int)((Addr_t)&(obj.lab) - (Addr_t)&obj))
 #define PR_DEFINE(symb, val)			\
-	printf("\tval " #symb " = IntInf.fromInt %d\n", val)
+	printf("    val " #symb " : IntInf.int = %d\n", val)
 
 int main () {
   VProc_t		vp;
   SchedActStkItem_t	actcons;
 
-  printf ("structure RuntimeConstants = struct\n");
+  printf ("structure RuntimeConstants : RUNTIME_CONSTS =\n");
+  printf ("  struct\n");
 
-  printf ("\n(* word size and alignment *)\n");
-  printf ("\tval wordSzB = 0w%d\n", sizeof (Word_t));
-  printf ("\tval wordAlignB = 0w%d\n", sizeof (Word_t));
-  printf ("\tval boolSzB = 0w%d\n", sizeof (Word_t));
-  printf ("\tval extendedAlignB = 0w%d\n", sizeof (double));
+  printf ("\n  (* word size and alignment *)\n");
+  printf ("    val wordSzB = 0w%d\n", sizeof (Word_t));
+  printf ("    val wordAlignB = 0w%d\n", sizeof (Word_t));
+  printf ("    val boolSzB = 0w%d\n", sizeof (Word_t));
+  printf ("    val extendedAlignB = 0w%d\n", sizeof (double));
 
-  printf ("\n(* stack size and heap size info *)\n");
-  printf ("\tval spillAreaSzB = 0w%d\n", FRAME_SZB);
-  printf ("\tval maxObjectSzB = 0w%d\n", ((sizeof (Word_t)*8)-MIXED_TAG_BITS)*sizeof(Word_t));
+  printf ("\n  (* stack size and heap size info *)\n");
+  printf ("    val spillAreaSzB = 0w%d\n", FRAME_SZB);
+  printf ("    val maxObjectSzB = 0w%d\n", ((sizeof (Word_t)*8)-MIXED_TAG_BITS)*sizeof(Word_t));
 
-  printf ("\n(* offsets into the VProc_t structure *)\n");
+  printf ("\n  (* offsets into the VProc_t structure *)\n");
   PR_OFFSET(vp, inManticore, inManticore);
   PR_OFFSET(vp, atomic, atomic);
   PR_OFFSET(vp, sigPending, sigPending);
@@ -57,15 +49,9 @@ int main () {
   PR_OFFSET(vp, stdExnCont, stdExnCont);
   PR_OFFSET(vp, actionStk, actionStk);  
 
-  printf("\n(* mask to get address of VProc from alloc pointer *)\n");
-  printf("\tval vpMask = Word64.notb (Word64.-(0w%d,0w1))\n", VP_HEAP_SZB);
-
-  printf("\n(* common Manticore unboxed values *)\n");
-  PR_DEFINE(falseRep, M_FALSE);
-  PR_DEFINE(trueRep,  M_TRUE);
-  PR_DEFINE(unitRep,  M_UNIT);
-  PR_DEFINE(nilRep,   M_NIL);
+  printf("\n  (* mask to get address of VProc from alloc pointer *)\n");
+  printf("    val vpMask : IntInf.int = %0lx\n", ~(VP_HEAP_SZB-1));
   
-  printf ("end (* RuntimeConstants *)\n");
+  printf ("  end (* RuntimeConstants *)\n");
 
 }
