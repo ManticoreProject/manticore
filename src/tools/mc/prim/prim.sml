@@ -11,7 +11,9 @@ structure Prim =
   struct
 
     datatype 'var prim
-      = BNot of 'var
+      = isBoxed of 'var
+      | isUnboxed of 'var
+      | BNot of 'var
       | BEq of 'var * 'var
       | BNEq of 'var * 'var
       | I32Add of 'var * 'var

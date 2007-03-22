@@ -18,7 +18,9 @@ structure PrimUtil : sig
 
     structure P = Prim
 
-    fun nameOf (P.BNot _) = "BNot"
+    fun nameOf (P.isBoxed _) = "isBoxed"
+      | nameOf (P.isUnboxed _) = "isUnboxed"
+      | nameOf (P.BNot _) = "BNot"
       | nameOf (P.BEq _) = "BEq"
       | nameOf (P.BNEq _) = "BNEq"
       | nameOf (P.I32Add _) = "I32Add"
@@ -69,7 +71,9 @@ structure PrimUtil : sig
       | nameOf (P.F64Gte _) = "F64Gte"
 
   (* return the list of variables referenced in a primitive operation *)
-    fun varsOf (P.BNot a) = [a]
+    fun varsOf (P.isBoxed a) = [a]
+      | varsOf (P.isUnboxed a) = [a]
+      | varsOf (P.BNot a) = [a]
       | varsOf (P.BEq(a, b)) = [a, b]
       | varsOf (P.BNEq(a, b)) = [a, b]
       | varsOf (P.I32Add(a, b)) = [a, b]
@@ -130,7 +134,9 @@ structure PrimUtil : sig
       fun p2 p [a, b] = p(a, b)
 	| p2 p _ = raise Fail "binary primop needs two args"
     in
-    fun explode (P.BNot a) = (p1 P.BNot, [a])
+    fun explode (P.isBoxed a) = (p1 P.isBoxed, [a])
+      | explode (P.isUnboxed a) = (p1 P.isUnboxed, [a])
+      | explode (P.BNot a) = (p1 P.BNot, [a])
       | explode (P.BEq(a, b)) = (p2 P.BEq, [a, b])
       | explode (P.BNEq(a, b)) = (p2 P.BNEq, [a, b])
       | explode (P.I32Add(a, b)) = (p2 P.I32Add, [a, b])

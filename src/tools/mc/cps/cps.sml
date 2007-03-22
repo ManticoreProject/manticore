@@ -90,6 +90,9 @@ structure CPS =
   (* representation of unit *)
     val unitLit = Enum 0w0
 
+  (* representation of nil *)
+    val nilLit = Enum 0w0
+
   (* smart constructors; these enforce the variable kind invariant and should be
    * used to construct terms.
    *)
