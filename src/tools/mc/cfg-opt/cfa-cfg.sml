@@ -275,6 +275,9 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 			(* end case *))
 		  | doExp (CFG.E_Prim(x, _)) = ()
 		  | doExp (CFG.E_CCall(x, _, args)) = List.app escape args
+		  | doExp (CFG.E_HostVProc vp) = ()
+		  | doExp (CFG.E_VPLoad(x, _, vp)) = ()
+		  | doExp (CFG.E_VPStore(_, vp, x)) = ()
 		and doXfer (CFG.StdApply{f, clos, arg, ret, exh}) =
 		      doApply (f, [clos, arg, ret, exh])
 		  | doXfer (CFG.StdThrow{k, clos, arg}) = doApply (k, [clos, arg])
