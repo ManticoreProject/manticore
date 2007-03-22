@@ -23,6 +23,7 @@ int main ()
 {
     VProc_t		vp;
     SchedActStkItem_t	actcons;
+    RdyQItem_t		rdyq;
 
     printf ("#ifndef _ASM_OFFSETS_H_\n");
     printf ("#define _ASM_OFFSETS_H_\n");
@@ -37,18 +38,28 @@ int main ()
     PR_OFFSET(vp, STD_EP, stdEnvPtr);
     PR_OFFSET(vp, STD_CONT, stdCont);
     PR_OFFSET(vp, STD_EXH, stdExnCont);
-    PR_OFFSET(vp, ACTION_STK, actionStk);
+    PR_OFFSET(vp, VP_ACTION_STK, actionStk);
+    PR_OFFSET(vp, VP_RDYQ_HD, rdyQHd);
+    PR_OFFSET(vp, VP_RDYQ_TL, rdyQTl);
 
     printf("\n/* mask to get address of VProc from alloc pointer */\n");
     printf("#define VP_MASK %#08lx\n", ~((Addr_t)VP_HEAP_SZB-1));
 
-    printf("\n/* offsets for the scheduler-action stack */\n");
+    printf("\n/* constants for the scheduler-action stack elements */\n");
     printf("#define ACTCONS_HDR %d\n", VEC_HDR(2));
-    PR_OFFSET(actcons, ACTCONS_ACT_OFF, act);
-    PR_OFFSET(actcons, ACTCONS_LINK_OFF, link);
+    printf("#define ACTCONS_SZB %d\n", sizeof(SchedActStkItem_t) + WORD_SZB);
+    PR_OFFSET(actcons, ACTCONS_ACT, act);
+    PR_OFFSET(actcons, ACTCONS_LINK, link);
 
-    printf("\n/* Stack-frame size */
-    PR_DEFINE(FRAME_SZB)
+    printf("\n/* constants for the ready queue elements */\n");
+    printf("#define RDYQ_HDR %d\n", VEC_HDR(3));
+    printf("#define RDYQ_SZB %d\n", sizeof(RdyQItem_t) + WORD_SZB);
+    PR_OFFSET(rdyq, RDYQ_FIBER, fiber);
+    PR_OFFSET(rdyq, RDYQ_TID, tid);
+    PR_OFFSET(rdyq, RDYQ_LINK, link);
+    
+    printf("\n/* Stack-frame size */\n");
+    PR_DEFINE(FRAME_SZB);
 
     printf("\n/* request codes for when Manticore returns to C */\n");
     PR_DEFINE(REQ_GC);
