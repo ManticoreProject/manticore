@@ -1,0 +1,26 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Sources file for the CPS optimization phases.
+ *)
+
+Library
+
+  functor CPSOptFn
+
+is
+
+  $/basis.cm
+
+  $/smlnj-lib.cm
+  $/pp-lib.cm
+
+  ../common/sources.cm
+  ../prim/sources.cm
+  ../cps/sources.cm
+
+  expand-ops-fn.sml
+  cps-opt-fn.sml
+
