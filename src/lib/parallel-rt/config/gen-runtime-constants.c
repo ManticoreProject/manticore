@@ -15,8 +15,8 @@
 #include "request-codes.h"
 #include "../vproc/scheduler.h"
 
-#define PR_OFFSET(obj, symb, lab)	\
-	printf("    val " #symb " : IntInf.int = %d\n", (int)((Addr_t)&(obj.lab) - (Addr_t)&obj))
+#define PR_OFFSET(obj, lab)	\
+	printf("    val " #lab " : IntInf.int = %d\n", (int)((Addr_t)&(obj.lab) - (Addr_t)&obj))
 #define PR_DEFINE(symb, val)			\
 	printf("    val " #symb " : IntInf.int = %d\n", val)
 
@@ -39,19 +39,21 @@ int main () {
   printf ("    val maxObjectSzB = 0w%d\n", ((sizeof (Word_t)*8)-MIXED_TAG_BITS)*sizeof(Word_t));
 
   printf ("\n  (* offsets into the VProc_t structure *)\n");
-  PR_OFFSET(vp, inManticore, inManticore);
-  PR_OFFSET(vp, atomic, atomic);
-  PR_OFFSET(vp, sigPending, sigPending);
-  PR_OFFSET(vp, allocPtr, allocPtr);
-  PR_OFFSET(vp, limitPtr, limitPtr);
-  PR_OFFSET(vp, stdArg, stdArg);
-  PR_OFFSET(vp, stdPtr, stdEnvPtr);
-  PR_OFFSET(vp, stdCont, stdCont);
-  PR_OFFSET(vp, stdExnCont, stdExnCont);
-  PR_OFFSET(vp, actionStk, actionStk);  
+  PR_OFFSET(vp, inManticore);
+  PR_OFFSET(vp, atomic);
+  PR_OFFSET(vp, sigPending);
+  PR_OFFSET(vp, actionStk);
+  PR_OFFSET(vp, rdyQHd);
+  PR_OFFSET(vp, rdyQTl);
+  PR_OFFSET(vp, stdArg);
+  PR_OFFSET(vp, stdEnvPtr);
+  PR_OFFSET(vp, stdCont);
+  PR_OFFSET(vp, stdExnCont);
+  PR_OFFSET(vp, allocPtr);
+  PR_OFFSET(vp, limitPtr);
 
   printf("\n  (* mask to get address of VProc from alloc pointer *)\n");
-  printf("    val vpMask : IntInf.int = %0lx\n", ~(VP_HEAP_SZB-1));
+  printf("    val vpMask : IntInf.int = %#0lx\n", ~((Addr_t)VP_HEAP_SZB-1));
   
   printf ("  end (* RuntimeConstants *)\n");
 

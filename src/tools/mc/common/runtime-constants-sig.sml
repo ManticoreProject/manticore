@@ -31,7 +31,7 @@ signature RUNTIME_CONSTANTS =
     val rdyQHd : IntInf.int
     val rdyQTl : IntInf.int
     val stdArg : IntInf.int 
-    val stdPtr : IntInf.int
+    val stdEnvPtr : IntInf.int
     val stdCont : IntInf.int
     val stdExnCont : IntInf.int
     val allocPtr : IntInf.int
