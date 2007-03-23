@@ -208,5 +208,10 @@ AC_CONFIG_LINKS([
   src/lib/parallel-rt/include/machine:src/lib/parallel-rt/include/$ARCH
 ])
 
+dnl
+dnl generate the runtime-constants.sml file
+dnl
+AC_CONFIG_COMMANDS([runtime-consts], [config/gen-runtime-consts.sh])
+
 AC_OUTPUT
 

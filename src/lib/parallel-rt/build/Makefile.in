@@ -55,10 +55,7 @@ asm-offsets.h:		gen-asm-offsets
 gen-asm-offsets:	gen-asm-offsets.c manticore-rt.h vproc.h request-codes.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o gen-asm-offsets $<
 
-runtime-constants.sml:  gen-runtime-constants
-	gen-runtime-constants > runtime-constants.sml
-
-gen-runtime-constants:	gen-runtime-constants.c manticore-rt.h vproc.h request-codes.h
+gen-runtime-constants:	gen-runtime-constants.c manticore-rt.h vproc.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o gen-runtime-constants $<
 
 .PHONY:		clean
