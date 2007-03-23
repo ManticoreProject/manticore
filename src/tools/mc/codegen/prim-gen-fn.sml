@@ -32,6 +32,8 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
     val f32ty = 32
     val f64ty = 64
 
+    fun wordLit i = T.LI (T.I.fromInt (i64ty, i))
+
     fun genPrim {varDefTbl} = let
 	  val getDefOf = BE.VarDef.getDefOf varDefTbl
 	  val setDefOf = BE.VarDef.setDefOf varDefTbl
@@ -66,6 +68,14 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		    (* 32-bit floating-point *)
 		     | P.F32Add a => genFArith (f32ty, T.FADD, a)
 		     | P.F32Sub a => genFArith (f32ty, T.FSUB, a)
+		     (* test whether a value is boxed by testing
+		      * its bottom bit. *)
+		     | P.isBoxed v => 
+		       cbind (v, T.CMP (i64ty, T.EQ, 
+			T.ANDB (i64ty, defOf v, wordLit 1), wordLit 0))
+		     | P.isUnboxed v => 
+		       cbind (v, T.CMP (i64ty, T.EQ, 
+			T.ANDB (i64ty, defOf v, wordLit 1), wordLit 1))
 
 		     | _ => raise Fail(concat[
 			  "genPrim(", CFG.Var.toString v, ", ",
