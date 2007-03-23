@@ -5,7 +5,7 @@
  *
  *)
 
-structure AMD64Constant = struct
+functor AMD64ConstantFn (structure AMD64Frame : MANTICORE_FRAME) = struct
 
   datatype const = StackLoc of { frame : AMD64Frame.frame_sz_info,
 				 loc : AMD64Frame.loc }

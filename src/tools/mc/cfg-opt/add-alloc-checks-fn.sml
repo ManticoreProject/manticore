@@ -57,7 +57,7 @@ val toNode = fn f => let
 	  CFG.Label.newProp (fn _ => 0w0)
 
   (* the amount of storage allocated by an expression *)
-    fun expAlloc (CFG.E_Alloc(_, xs)) = ABI.wordSzB * Word.fromInt(length xs + 1)
+    fun expAlloc (CFG.E_Alloc(_, xs)) = Word.fromLargeInt ABI.wordSzB * Word.fromInt(length xs + 1)
       | expAlloc (CFG.E_Wrap(_, y)) = (case CFG.Var.typeOf y
 	   of CFGTy.T_Raw CFGTy.T_Long => 0w12		(* include header word *)
 	    | CFGTy.T_Raw CFGTy.T_Double => 0w12

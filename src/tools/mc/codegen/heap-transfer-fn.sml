@@ -44,8 +44,6 @@ functor HeapTransferFn (
   structure Frame = Frame
 
   val apReg = Regs.apReg
-  val wordSzB = Word.toInt Spec.ABI.wordSzB
-  val wordAlignB = Word.toInt Spec.ABI.wordAlignB
   val ty = MTy.wordTy
   val iTy = Types.szOf (CFGTy.T_Raw CFGTy.T_Int)
   val memory = ManticoreRegion.memory

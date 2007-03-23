@@ -17,13 +17,13 @@ functor VarDefFn (
   structure Tbl = CFG.Var.Tbl
   structure T = MTy.T
 
-  val wordSz = (Word.toInt Spec.ABI.wordSzB) * 8
+  val wordTy = MTy.wordTy
   (* representations of some simple constants *)
   val valTRUE = T.LI Spec.trueRep
   val valFALSE = T.LI Spec.falseRep
 
   (* the ML-Risc tree that converts a cexp to an rexp  *)
-  fun cexpToExp exp = T.COND (wordSz, exp, valTRUE, valFALSE)
+  fun cexpToExp exp = T.COND (wordTy, exp, valTRUE, valFALSE)
 
   type var_def_tbl = MTy.mlrisc_tree Tbl.hash_table
 
@@ -49,8 +49,8 @@ functor VarDefFn (
   fun cdefOf vdt v = 
       (case getDefOf vdt v
 	of MTy.CEXP ce => ce
-	 | MTy.GPR r => T.CMP (wordSz, T.Basis.NE, T.REG r, valFALSE)
-	 | MTy.EXP (_, exp) => T.CMP (wordSz, T.Basis.NE, exp, valFALSE)
+	 | MTy.GPR r => T.CMP (wordTy, T.Basis.NE, T.REG r, valFALSE)
+	 | MTy.EXP (_, exp) => T.CMP (wordTy, T.Basis.NE, exp, valFALSE)
 	 | _ => raise Fail ("cdefOf " ^ CFG.Var.toString v)
       (* esac *))
 

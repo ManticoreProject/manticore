@@ -6,6 +6,8 @@
  * Specialize the MLRISC tree to the AMD64.
  *)
 
+functor AMD64MLTreeFn (structure AMD64Constant : CONSTANT) = struct
+
 structure AMD64MLTree = MLTreeF (
    structure Constant = AMD64Constant
    structure Region = ManticoreRegion
@@ -69,3 +71,4 @@ structure AMD64MLTreeUtils : MLTREE_UTILS = struct
   open U  
 end (* AMD64MLTreeUtils *)
 
+end (* AMD64MLTree *)

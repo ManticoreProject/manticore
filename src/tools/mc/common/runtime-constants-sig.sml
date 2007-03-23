@@ -10,18 +10,18 @@
 signature RUNTIME_CONSTANTS =
   sig
 
-    val wordSzB : word		 (* number of bytes in a pointer-sized word *)
-    val wordAlignB : word	 (* byte alignment of pointers *)
-    val boolSzB : word		 (* size of boolean values in bytes *)
-    val extendedAlignB : word    (* alignment constraint for extended-precision
-				  * floats
-				  *)
+    val wordSzB : IntInf.int		 (* number of bytes in a pointer-sized word *)
+    val wordAlignB : IntInf.int	         (* byte alignment of pointers *)
+    val boolSzB : IntInf.int		 (* size of boolean values in bytes *)
+    val extendedAlignB : IntInf.int      (* alignment constraint for extended-precision
+					  * floats
+					  *)
 
 
-    val spillAreaSzB : word     (* size of the spill area on the stack *)
-    val spillAreaOff : word	(* offset from frame pointer to spill area *)
-    val maxObjectSzB : word     (* maximum number of bytes allowable in a *)
-				(* heap-allocated object *) 
+    val spillAreaSzB : IntInf.int     (* size of the spill area on the stack *)
+    val spillAreaOff : IntInf.int     (* offset from frame pointer to spill area *)
+    val maxObjectSzB : IntInf.int     (* maximum number of bytes allowable in a
+				       * heap-allocated object *) 
 
   (* offsets into the VProc_t structure *)
     val inManticore : IntInf.int

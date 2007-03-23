@@ -10,12 +10,17 @@
 functor AMD64GenFn (
           structure Spec : TARGET_SPEC
 ) = struct
+  (* Fast FP is controlled by the MLRISC flags *)
+  val useFastFP = MLRiscControl.getFlag "x86-fast-fp"
+
+  structure AMD64Frame = AMD64FrameFn (structure Spec = Spec)
+  structure AMD64Constant = AMD64ConstantFn (structure AMD64Frame=AMD64Frame)
+
+  structure AMD64MLT = AMD64MLTreeFn (structure AMD64Constant = AMD64Constant)
+  open AMD64MLT
 
   structure C = AMD64Cells
   structure I = AMD64Instr
-
-  (* Fast FP is controlled by the MLRISC flags *)
-  val useFastFP = MLRiscControl.getFlag "x86-fast-fp"
 
   structure AMD64PseudoOps = ManticorePseudoOpsFn (
     structure P=AMD64GasPseudoOps
@@ -200,6 +205,7 @@ functor AMD64GenFn (
 		      structure Spec = Spec
 		      structure MLTreeComp = AMD64MLTreeComp )
   structure AMD64HeapTarget = AMD64HeapTransferFn (
+                                structure AMD64MLTree = AMD64MLTree
 			        structure Spec = Spec
 				structure SpillLoc = SpillLoc )
   structure Transfer = HeapTransferFn (

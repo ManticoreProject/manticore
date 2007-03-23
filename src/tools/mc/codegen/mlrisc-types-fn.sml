@@ -44,7 +44,7 @@ functor MLRiscTypesFn (
 		where Region = ManticoreRegion
 ) : MLRISC_TYPES = struct
 
-  val ty = (Word.toInt Spec.ABI.wordSzB) * 8
+  val ty = (IntInf.toInt Spec.ABI.wordSzB) * 8
   val wordTy = ty
 
   structure T = T

@@ -5,8 +5,14 @@
  *
  *)
 
-structure AMD64Frame = ManticoreFrameFn (
-                           val wordSz = 8
-			   val floatSz = 12
-			   val floatAlign = 4
-			   val linkageSz = 6)
+functor AMD64FrameFn (structure Spec : TARGET_SPEC) = struct 
+
+  structure Frame = ManticoreFrameFn (
+                     structure Spec = Spec
+(*		     val wordSz = 8
+		     val floatSz = 12
+		     val floatAlign = 4
+		     val linkageSz = 8 *) )
+  open Frame
+
+end (* AMD64Frame *)

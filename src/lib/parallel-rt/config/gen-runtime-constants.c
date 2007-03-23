@@ -28,15 +28,15 @@ int main () {
   printf ("  struct\n");
 
   printf ("\n  (* word size and alignment *)\n");
-  printf ("    val wordSzB = 0w%d\n", sizeof (Word_t));
-  printf ("    val wordAlignB = 0w%d\n", sizeof (Word_t));
-  printf ("    val boolSzB = 0w%d\n", sizeof (Word_t));
-  printf ("    val extendedAlignB = 0w%d\n", sizeof (double));
+  printf ("    val wordSzB : IntInf.int = %d\n", sizeof (Word_t));
+  printf ("    val wordAlignB : IntInf.int = %d\n", sizeof (Word_t));
+  printf ("    val boolSzB : IntInf.int = %d\n", sizeof (Word_t));
+  printf ("    val extendedAlignB : IntInf.int = %d\n", sizeof (double));
 
   printf ("\n  (* stack size and heap size info *)\n");
-  printf ("    val spillAreaSzB = 0w%d\n", FRAME_SZB);
-  printf ("    val spillAreaOff = 0w%d\n", SAVE_AREA+PAD_SZB);
-  printf ("    val maxObjectSzB = 0w%d\n", ((sizeof (Word_t)*8)-MIXED_TAG_BITS)*sizeof(Word_t));
+  printf ("    val spillAreaSzB : IntInf.int = %d\n", FRAME_SZB);
+  printf ("    val spillAreaOff : IntInf.int = %d\n", SAVE_AREA+PAD_SZB);
+  printf ("    val maxObjectSzB : IntInf.int = %d\n", ((sizeof (Word_t)*8)-MIXED_TAG_BITS)*sizeof(Word_t));
 
   printf ("\n  (* offsets into the VProc_t structure *)\n");
   PR_OFFSET(vp, inManticore);
