@@ -7,17 +7,14 @@
 
 functor ManticoreFrameFn (
           structure Spec : TARGET_SPEC
-(*          val wordSz : int
-	  val floatSz : int
-	  val floatAlign : int
-	  val linkageSz : int *)) : MANTICORE_FRAME = struct
+) : MANTICORE_FRAME = struct
 
   open ManticoreFrame
 
   val wordSz = IntInf.toInt Spec.ABI.wordSzB
-  val spillAreaOff = IntInf.toInt Spec.ABI.spillAreaOff
+  val spillAreaOffB = IntInf.toInt Spec.ABI.spillAreaOffB
 
-  fun frameOffset (Word i) = ~(wordSz * (i+spillAreaOff))
+  fun frameOffset (Word i) = ~(wordSz * i) + ~spillAreaOffB
     | frameOffset _ = raise Fail "frameOffset"
 
 end (* ManticoreFrameFn *)
