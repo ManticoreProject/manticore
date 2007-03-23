@@ -20,8 +20,9 @@ structure CheckCFG : sig
     structure Ty = CFGTy
 
     exception CheckCFG
-    fun error msg = (TextIO.output(TextIO.stdErr, concat("Error: " :: msg @ ["\n"]))
-                     ; raise CheckCFG)
+    fun error msg = (
+	  TextIO.output(TextIO.stdErr, concat("Error: " :: msg @ ["\n"]));
+          raise CheckCFG)
 
     fun bindVar (env, x) = VSet.add(env, x)
 
@@ -176,7 +177,7 @@ structure CheckCFG : sig
 			      then ()
 			      else err[
 				  "variable ", V.toString x, ":", Ty.toString (V.typeOf x),
-				  " does not match ", "type ", Ty.toString ty
+				  " does not match type ", Ty.toString ty
 				];
 			    bindVar (env, x))
 			| CFG.E_Label(x, lab) => (
@@ -188,15 +189,19 @@ structure CheckCFG : sig
 				  then ()
                                   else err[
 				      "variable ", V.toString x, ":", Ty.toString (V.typeOf x),
-				      " does not match ",
-				      "label ", L.toString lab, ":", Ty.toString (L.typeOf lab)
+				      " does not match label",
+				      L.toString lab, ":", Ty.toString (L.typeOf lab)
 				    ]
 			    (* end case *);
 			    bindVar (env, x))
 			| CFG.E_Literal(x, _) => bindVar (env, x)
 			| CFG.E_Select(x, i, y) => let
 			    val ty = CFGTy.selectTy(i, V.typeOf y)
-				  handle Fail msg => (error [msg]; CFGTy.T_Any)
+				  handle Fail msg => (
+				    error["E_Select(", V.toString x, ", ", Int.toString i, ", ",
+					V.toString y, ":", CFGTy.toString(V.typeOf y), ")"
+				      ];
+				    CFGTy.T_Any)
 			    in
 			      chkVar (env, y);
 (* FIXME: Selecting from a known closure into an T_Any environment pointer fails *)
@@ -211,11 +216,12 @@ structure CheckCFG : sig
 			    end
 			| CFG.E_Alloc(x, ys) => (
 			    chkVars (env, ys);
-                            (case V.typeOf x of
-                                CFGTy.T_Tuple tys => ()
+                            case V.typeOf x
+                             of CFGTy.T_Tuple tys => ()
                               | CFGTy.T_OpenTuple tys => ()
                               | _ => err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
-                                         " does not match allocation"]);
+                                         " does not match allocation"]
+			    (* end case *);
 			    bindVar (env, x))
 			| CFG.E_Wrap(x, y) => (
 			    chkVar (env, y);

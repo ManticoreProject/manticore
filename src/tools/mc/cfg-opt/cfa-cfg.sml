@@ -342,6 +342,7 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 	  fun labelSet f = (case valueOf f
 		 of LABELS s => s
 		  | TOP => LSet.empty
+		  | BOT => LSet.empty	(* because of dead code! *)
 		  | v => raise Fail(concat[
 			"labelsOf: valueOf(", CFG.Var.toString f, ") = ", valueToString v
 		      ])

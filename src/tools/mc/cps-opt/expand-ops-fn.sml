@@ -32,11 +32,17 @@ functor ExpandOpsFn (Spec : TARGET_SPEC) : sig
 	    CPS.mkCont((name, [param], body param), k name)
 	  end
 
+  (* the type of a fiber *)
+    val fiberTy = Ty.T_Cont[Ty.unitTy]
+
+  (* the type of a thread ID *)
+    val tidTy = Ty.T_Any
+
   (* the type of items on a vproc's action stack *)
     val actStkItemTy = Ty.T_Tuple[Ty.T_Cont[Ty.T_Any], Ty.T_Any]
 
   (* the type of items in a vproc's ready queue *)
-    val rdyQItemTy = Ty.T_Tuple[Ty.T_Any, Ty.T_Cont[Ty.unitTy], Ty.T_Any]
+    val rdyQItemTy = Ty.T_Tuple[tidTy, fiberTy, Ty.T_Any]
 
   (* expansion for Run *)
     fun xRun {vp, act, fiber} = let
@@ -100,12 +106,12 @@ functor ExpandOpsFn (Spec : TARGET_SPEC) : sig
 		val param = var("param", Ty.T_Tuple[Ty.T_Any, Ty.T_Any])
 		val retK = var("retK", Ty.T_Cont[Ty.T_Any]);
 		val loop = var("loop", Ty.T_Fun[CPS.Var.typeOf param, CPS.Var.typeOf retK, CPS.Var.typeOf exh])
-		val lst = var("lst", Ty.T_Any)
+		val lst = var("lst", rdyQItemTy)
 		val hd = var("hd", Ty.T_Any)
 		val lst' = var("lst", Ty.T_Any)
-		val tid = var("tid", Ty.T_Any)
-		val fiber = var("fiber", Ty.T_Cont[Ty.unitTy])
-		val hd' = var("hd", Ty.T_Any)
+		val tid = var("tid", tidTy)
+		val fiber = var("fiber", fiberTy)
+		val hd' = var("hd", rdyQItemTy)
 		val nil' = var("nil", Ty.T_Enum(0w0))
 		val arg = var("arg", CPS.Var.typeOf param)
 		val arg' = var("arg", CPS.Var.typeOf param)
@@ -124,7 +130,10 @@ functor ExpandOpsFn (Spec : TARGET_SPEC) : sig
 		      CPS.If(isBoxed,
 			CPS.mkLet([arg'], CPS.Alloc[lst', hd'], CPS.Apply(loop, [arg', retK, exh])),
 			CPS.Throw(retK, [hd']))))],
-		  CPS.mkLet([arg], CPS.Alloc[tl, nil'],
+		  mkLet([
+		      ([nil'], CPS.nilLit),
+		      ([arg], CPS.Alloc[tl, nil'])
+		    ],
 		    CPS.Apply(loop, [arg, fastPath, exh])))
 		end
 	  val item = var("item", rdyQItemTy)
@@ -158,8 +167,8 @@ functor ExpandOpsFn (Spec : TARGET_SPEC) : sig
 	  val VProcDequeue = cfun("VProcDequeue", CFunctions.PointerTy, [CFunctions.PointerTy])
 	  val xDequeue = xDequeue (CFunctions.varOf VProcDequeue)
 	  fun xExp (e, exh) = let
-		fun expand (CPS.Let([x], CPS.Dequeue vp, e)) = xDequeue (x, vp, e, exh)
-		  | expand (CPS.Let([], CPS.Enqueue arg, e)) = xEnqueue (arg, e)
+		fun expand (CPS.Let([x], CPS.Dequeue vp, e)) = xDequeue (x, vp, expand e, exh)
+		  | expand (CPS.Let([], CPS.Enqueue arg, e)) = xEnqueue (arg, expand e)
 		  | expand (CPS.Let(lhs, rhs, e)) = CPS.mkLet(lhs, rhs, expand e)
 		  | expand (CPS.Fun(fbs, e)) = CPS.mkFun(List.map xLambda fbs, expand e)
 		  | expand (CPS.Cont(fb, e)) = CPS.mkCont(xLambda fb, expand e)

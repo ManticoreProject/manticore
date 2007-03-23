@@ -20,6 +20,16 @@ structure FreeVars : sig
 
     structure V = CPS.Var
 
+(* +DEBUG *)
+    fun prSet s = (
+	  print "{";
+	  V.Set.foldl
+	    (fn (x, false) => (print("," ^ V.toString x); false)
+	      | (x, true) => (print(V.toString x); false)
+	    ) true s;
+	  print "}")
+(* -DEBUG*)
+
     val {getFn = getFV, setFn = setFV, ...} = V.newProp (fn _ => V.Set.empty)
 
   (* is a variable externally bound? *)
@@ -49,6 +59,8 @@ structure FreeVars : sig
       | fvOfRHS (fv, CPS.Unwrap x) = addVar(fv, x)
       | fvOfRHS (fv, CPS.Prim p) = addVars(fv, PrimUtil.varsOf p)
       | fvOfRHS (fv, CPS.CCall(f, args)) = addVars(fv, f::args)
+      | fvOfRHS (fv, CPS.Dequeue _) = raise Fail "unexpected Dequeue"
+      | fvOfRHS (fv, CPS.Enqueue _) = raise Fail "unexpected Enqueue"
       | fvOfRHS (fv, CPS.HostVProc) = fv
       | fvOfRHS (fv, CPS.VPLoad(_, vp)) = addVar(fv, vp)
       | fvOfRHS (fv, CPS.VPStore(_, vp, x)) = addVars(fv, [vp, x])
@@ -99,19 +111,21 @@ structure FreeVars : sig
 	  analExp (V.Set.empty, body),
 	  addVars(V.Set.empty, params))
 
-    fun analyze (CPS.MODULE{body, ...}) = if V.Set.isEmpty(analFB body)
-	  then ()
-	  else raise Fail "non-closed module"
+    fun analyze (CPS.MODULE{name, body, ...}) = let
+	  val fv = analFB body
+	  in
+	    if V.Set.isEmpty fv
+	      then ()
+	      else (
+		print(concat["FV(", Atom.toString name, ") = "]);
+		prSet fv; print "\n";
+		raise Fail "non-closed module")
+	  end
 
     fun envOfFun f = let
 	  val fv = getFV f
 	  in
-(*DEBUG*)print(concat["FV(", V.toString f, ") = {"]);
-(*DEBUG*)V.Set.foldl
-(*DEBUG*)    (fn (x, false) => (print("," ^ V.toString x); false)
-(*DEBUG*)      | (x, true) => (print(V.toString x); false)
-(*DEBUG*)    ) true fv;
-(*DEBUG*)print "}\n";
+(*DEBUG*)print(concat["FV(", V.toString f, ") = "]); prSet fv; print "\n";
 	    fv
 	  end
 
