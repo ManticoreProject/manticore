@@ -34,6 +34,9 @@ structure CPS =
       | Unwrap of var			(* unwrap value *)
       | Prim of prim
       | CCall of (var * var list)
+    (* scheduler operations *)
+      | Dequeue of var
+      | Enqueue of (var * var * var)
     (* VProc operations *)
       | HostVProc			(* gets the hosting VProc *)
       | VPLoad of (offset * var)	(* load a value from the given byte offset *)

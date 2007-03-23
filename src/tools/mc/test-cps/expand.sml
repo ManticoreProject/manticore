@@ -154,6 +154,11 @@ structure Expand =
 		    | PT.CCall(f, args) =>
 			cvtSimpleExps (env, args, fn xs =>
 			  CPS.mkLet(lhs', CPS.CCall(lookup(env, f), xs), e'))
+		    | PT.Dequeue(vp) => cvtSimpleExp (env, vp, fn vp =>
+			  CPS.mkLet(lhs', CPS.Dequeue vp, e'))
+		    | PT.Enqueue(vp, tid, fiber) =>
+			cvtSimpleExps (env, [vp, tid, fiber], fn [vp, tid, fiber] =>
+			  CPS.mkLet(lhs', CPS.Enqueue(vp, tid, fiber), e'))
 		  (* end case *)
 		end
 	    | PT.Fun(fbs, e) => let

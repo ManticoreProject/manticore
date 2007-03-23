@@ -22,6 +22,7 @@ structure CFunctions =
 
     datatype c_proto = CProto of c_type * c_type list
 
+    fun varOf (CFun{var, ...}) = var
     fun typeOf (CFun{retTy, argTys, ...}) = CProto(retTy, argTys)
 
     fun tyToString PointerTy = "void *"

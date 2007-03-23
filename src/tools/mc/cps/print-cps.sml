@@ -84,6 +84,11 @@ structure PrintCPS : sig
 	    | prRHS (CPS.CCall(f, args)) = (
 		prl ["ccall ", varUseToString f, " "];
 		prList varUseToString args)
+	    | prRHS (CPS.Dequeue vp) = prl["dequeue(", varUseToString vp, ")"]
+	    | prRHS (CPS.Enqueue(vp, tid, fiber)) = prl[
+		  "enqueue(", varUseToString vp, ",", varUseToString tid, ",",
+		  varUseToString fiber, ")"
+		]
 	    | prRHS (CPS.HostVProc) = pr "host_vproc()"
 	    | prRHS (CPS.VPLoad(offset, vp)) = prl [
 		  "load(", varUseToString vp, "+", IntInf.toString offset, ")"

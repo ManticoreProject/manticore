@@ -17,9 +17,12 @@
     | KW_ccall		("ccall")
     | KW_cont		("cont")
     | KW_default	("default")
+    | KW_dequeue	("dequeue")
+    | KW_do		("do")
     | KW_double		("double")
     | KW_else		("else")
     | KW_end		("end")
+    | KW_enqueue	("enqueue")
     | KW_enum		("enum")
     | KW_extern		("extern")
     | KW_float		("float")
@@ -129,6 +132,7 @@ RawType
 
 Exp
 	: "let" LHS "=" RHS Exp				=> (PT.Let(LHS, RHS, Exp))
+	| "do" RHS Exp					=> (PT.Let([], RHS, Exp))
 	| "fun" Lambda ("and" Lambda)* Exp		=> (PT.Fun(Lambda::SR, Exp))
 	| "cont" Lambda Exp				=> (PT.Cont(Lambda, Exp))
 	| "if" SimpleExp "then" Exp "else" Exp		=> (PT.If(SimpleExp, Exp1, Exp2))
@@ -149,6 +153,9 @@ RHS
 	| "alloc" Args			=> (PT.Alloc Args)
 	| "wrap" "(" SimpleExp ")"	=> (PT.Wrap SimpleExp)
 	| "ccall" ID Args		=> (PT.CCall(ID, Args))
+	| "enqueue" "(" SimpleExp "," SimpleExp "," SimpleExp ")"
+		=> (PT.Enqueue(SimpleExp1, SimpleExp2, SimpleExp3))
+	| "dequeue" "(" SimpleExp ")"	=> (PT.Dequeue SimpleExp)
 	;
 
 SimpleExp

@@ -37,6 +37,8 @@ structure CPSPT =
       | Alloc of simple_exp list
       | Wrap of simple_exp			(* wrap raw value *)
       | CCall of (var * simple_exp list)
+      | Dequeue of simple_exp
+      | Enqueue of (simple_exp * simple_exp * simple_exp)
 
     and simple_exp
       = Var of var

@@ -15,6 +15,13 @@ functor ExpandOpsFn (Spec : TARGET_SPEC) : sig
 
     fun var (name, ty) = CPS.Var.new(Atom.atom name, ty)
 
+    fun cfun (name, resTy, paramTys) = let
+	  val cf = var(name, Ty.T_CFun(CFunctions.CProto(resTy, paramTys)))
+	  in
+	    CPS.Var.setKind(cf, CPS.VK_Extern name);
+	    CFunctions.CFun{var = cf, name = name, retTy=resTy, argTys = paramTys}
+	  end
+
     fun mkLet ([], e) = e
       | mkLet ((lhs, rhs)::binds, e) = CPS.mkLet(lhs, rhs, mkLet(binds, e))
 
@@ -77,9 +84,8 @@ functor ExpandOpsFn (Spec : TARGET_SPEC) : sig
 	      e)
 	  end
 
-(* FIXME: need to do something about VProcDequeue and exh
   (* expansion for Dequeue *)
-    fun xDequeue (x, (vp, tid, fiber), e) = let
+    fun xDequeue VProcDequeue (x, vp, e, exh) = let
 	  val join = var("join", Ty.T_Cont[CPS.Var.typeOf x])
 	  val hd = var("hd", rdyQItemTy)
 	  val link = var("link", Ty.T_Any)
@@ -97,6 +103,8 @@ functor ExpandOpsFn (Spec : TARGET_SPEC) : sig
 		val lst = var("lst", Ty.T_Any)
 		val hd = var("hd", Ty.T_Any)
 		val lst' = var("lst", Ty.T_Any)
+		val tid = var("tid", Ty.T_Any)
+		val fiber = var("fiber", Ty.T_Cont[Ty.unitTy])
 		val hd' = var("hd", Ty.T_Any)
 		val nil' = var("nil", Ty.T_Enum(0w0))
 		val arg = var("arg", CPS.Var.typeOf param)
@@ -145,26 +153,32 @@ functor ExpandOpsFn (Spec : TARGET_SPEC) : sig
 		      CPS.mkLet([item], CPS.CCall(VProcDequeue, [vp]),
 			CPS.Throw(join, [item]))))))))
 	  end
-*)
 
     fun transform (CPS.MODULE{name, externs, body}) = let
-	  fun xExp (CPS.Let(lhs, rhs, e)) = CPS.mkLet(lhs, rhs, xExp e)
-	    | xExp (CPS.Fun(fbs, e)) = CPS.mkFun(List.map xLambda fbs, xExp e)
-	    | xExp (CPS.Cont(fb, e)) = CPS.mkCont(xLambda fb, xExp e)
-	    | xExp (CPS.If(x, e1, e2)) = CPS.If(x, xExp e1, xExp e2)
-	    | xExp (CPS.Switch(x, cases, dflt)) =
-		CPS.Switch(x,
-		  List.map (fn (l, e) => (l, xExp e)) cases,
-		  Option.map xExp dflt)
-	    | xExp (e as CPS.Apply _) = e
-	    | xExp (e as CPS.Throw _) = e
-	  (* scheduler operations *)
-	    | xExp (CPS.Run arg) = xRun arg
-	    | xExp (CPS.Forward arg) = xForward arg
-	  and xLambda (f, params, e) = (f, params, xExp e)
+	  val VProcDequeue = cfun("VProcDequeue", CFunctions.PointerTy, [CFunctions.PointerTy])
+	  val xDequeue = xDequeue (CFunctions.varOf VProcDequeue)
+	  fun xExp (e, exh) = let
+		fun expand (CPS.Let([x], CPS.Dequeue vp, e)) = xDequeue (x, vp, e, exh)
+		  | expand (CPS.Let([], CPS.Enqueue arg, e)) = xEnqueue (arg, e)
+		  | expand (CPS.Let(lhs, rhs, e)) = CPS.mkLet(lhs, rhs, expand e)
+		  | expand (CPS.Fun(fbs, e)) = CPS.mkFun(List.map xLambda fbs, expand e)
+		  | expand (CPS.Cont(fb, e)) = CPS.mkCont(xLambda fb, expand e)
+		  | expand (CPS.If(x, e1, e2)) = CPS.If(x, expand e1, expand e2)
+		  | expand (CPS.Switch(x, cases, dflt)) =
+		      CPS.Switch(x,
+			List.map (fn (l, e) => (l, expand e)) cases,
+			Option.map expand dflt)
+		  | expand (e as CPS.Apply _) = e
+		  | expand (e as CPS.Throw _) = e
+		  | expand (CPS.Run arg) = xRun arg
+		  | expand (CPS.Forward arg) = xForward arg
+		in
+		  expand e
+		end
+	  and xLambda (f, params, e) = (f, params, xExp(e, List.last params))
 	  in
 	    CPS.MODULE{
-		name = name, externs = externs,
+		name = name, externs = VProcDequeue::externs,
 		body = xLambda body
 	      }
 	  end

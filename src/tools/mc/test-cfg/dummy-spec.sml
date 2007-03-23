@@ -20,6 +20,7 @@ structure DummySpec : TARGET_SPEC =
 	val extendedAlignB = 0w4
     
 	val spillAreaSzB = 0w1024
+	val spillAreaOff = 0w0
 	val bitMaskSzB = wordSzB - 0w1
       (* number aligned words * number of bits in the object-header bitmask  *)
 	val maxObjectSzB = wordAlignB * (bitMaskSzB * 0w8)  
@@ -33,7 +34,7 @@ structure DummySpec : TARGET_SPEC =
 	val rdyQHd : IntInf.int = 20
 	val rdyQTl : IntInf.int = 24
 	val stdArg : IntInf.int = 28
-	val stdPtr : IntInf.int = 32
+	val stdEnvPtr : IntInf.int = 32
 	val stdCont : IntInf.int = 36
 	val stdExnCont : IntInf.int = 40
 	val allocPtr : IntInf.int = 44
