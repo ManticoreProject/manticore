@@ -28,7 +28,10 @@ functor VarDefFn (
   type var_def_tbl = MTy.mlrisc_tree Tbl.hash_table
 
   fun newTbl () = Tbl.mkTable (256, Fail "varDefTbl")
-  fun getDefOf vdt v = Tbl.lookup vdt v
+  fun getDefOf vdt v = (case Tbl.find vdt v
+	 of SOME def => def
+	  | NONE => raise Fail(concat["getDefOf(", CFG.Var.toString v, ")"])
+	(* end case *))
   fun setDefOf vdt (v,e) = Tbl.insert vdt (v,e)
 
   fun defOf vdt v =
