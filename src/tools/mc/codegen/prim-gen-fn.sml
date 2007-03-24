@@ -70,12 +70,12 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		     | P.F32Sub a => genFArith (f32ty, T.FSUB, a)
 		     (* test whether a value is boxed by testing
 		      * its bottom bit. *)
-		     | P.isBoxed v => 
+		     | P.isBoxed p => 
 		       cbind (v, T.CMP (i64ty, T.EQ, 
-			T.ANDB (i64ty, defOf v, wordLit 1), wordLit 0))
-		     | P.isUnboxed v => 
+			T.ANDB (i64ty, defOf p, wordLit 1), wordLit 0))
+		     | P.isUnboxed p => 
 		       cbind (v, T.CMP (i64ty, T.EQ, 
-			T.ANDB (i64ty, defOf v, wordLit 1), wordLit 1))
+			T.ANDB (i64ty, defOf p, wordLit 1), wordLit 1))
 
 		     | _ => raise Fail(concat[
 			  "genPrim(", CFG.Var.toString v, ", ",
