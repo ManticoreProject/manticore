@@ -7,14 +7,12 @@
 #
 
 CC =		@CC@
-CFLAGS =	-std=gnu99 -pedantic -g -O2 @CC_MODE_FLAG@
+CFLAGS =	@CFLAGS@ @PTHREAD_CFLAGS@ @CC_MODE_FLAG@
 LDFLAGS =	
 CPPFLAGS =	-I../include
 AR =		ar
 ARFLAGS =	rcv
 RANLIB =	ranlib
-
-LIBS		= -lpthreads
 
 TARGET		= libmanticore.a
 

@@ -58,6 +58,11 @@ AC_PROG_INSTALL
 AC_PROG_MAKE_SET
 
 dnl
+dnl extrac CFLAGS
+dnl
+CFLAGS="$CFLAGS -D_GNU_SOURCE -std=gnu99 -pedantic"
+
+dnl
 dnl check for pthreads
 dnl
 ACX_PTHREAD()
@@ -74,6 +79,22 @@ if test x"$ac_cv_func_posix_memalign" != xyes ; then
 fi
 
 AC_CHECK_FUNCS(sigtimedwait nanosleep)
+
+save_LIBS=$LIBS
+save_CFLAGS=$CFLAGS
+LIBS="$PTHREAD_LIBS $LIBS"
+CFLAGS="$PTHREAD_CFLAGS $CFLAGS"
+AC_MSG_CHECKING([for pthread_setaffinity_np])
+AC_LINK_IFELSE(
+  AC_LANG_PROGRAM(
+    [[#include <pthread.h>]],
+    [[cpu_set_t s; pthread_setaffinity_np(pthread_self(), sizeof(s), &s); ]]),
+  [ ac_cv_func_pthread_setaffinity_np=yes;
+    AC_DEFINE(HAVE_PTHREAD_SETAFFINITY_NP, [1], [is pthread_setaffinity_np available?])],
+  [ac_cv_func_pthread_setaffinity_np=no])
+AC_MSG_RESULT($ac_cv_func_pthread_setaffinity_np)
+LIBS=$save_LIBS
+CFLAGS=$save_CFLAGS
 
 dnl check for /proc/cpuinfo
 dnl

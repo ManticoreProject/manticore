@@ -84,6 +84,15 @@ VProc_t *VProcCreate (VProcFn_t f, void *arg)
     if (NumVProcs >= MAX_NUM_VPROCS)
 	Die ("too many vprocs\n");
 
+#ifdef HAVE_PTHREAD_SETAFFINITY_NP
+    cpu_set_t	cpus;
+    CPU_ZERO(&cpus);
+    CPU_SET(NumVProcs, &cpus);
+    if (pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpus) == -1) {
+	Warning("[%2d] unable to set affinity\n", NumVProcs);
+    }
+#endif
+
   /* allocate the VProc heap; we store the VProc representation in the base
    * of the heap area.
    */
