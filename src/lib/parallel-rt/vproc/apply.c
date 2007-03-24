@@ -66,7 +66,7 @@ Value_t RunManticore (VProc_t *vp, Value_t f, Value_t arg)
 		exnCont = M_UNIT;
 		vp->atomic = M_TRUE;
 		vp->sigPending = M_FALSE;
-SayDebug("[%2d] pending signal\n", vp->id);
+SayDebug("[%2d] pending signal; cp = %p\n", vp->id, cp);
 	    }
 	    else {
 	      /* setup the return from GC */
