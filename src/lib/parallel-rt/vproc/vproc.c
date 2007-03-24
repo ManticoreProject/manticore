@@ -228,7 +228,7 @@ static void *VProcMain (void *_data)
  *  \param fiber the fiber to be enqueued.
  *  \param 
  */
-static void EnqueueOnVProc (VProc_t *self, VProc_t *vp, Value_t *fiber, Value_t *tid)
+void EnqueueOnVProc (VProc_t *self, VProc_t *vp, Value_t *fiber, Value_t *tid)
 {
     MutexLock (&(vp->lock));
 /***** where do we put the object? *****/
@@ -239,6 +239,24 @@ static void EnqueueOnVProc (VProc_t *self, VProc_t *vp, Value_t *fiber, Value_t 
     MutexUnlock (&(vp->lock));
 
 } /* end of EnqueueOnVProc */
+
+/*! \brief dequeue a fiber from the secondary scheduling queue or else go idle.
+ *  \param self the calling vproc
+ */
+Value_t VProcDequeue (VProc_t *self)
+{
+#ifndef NDEBUG
+    if (DebugFlg)
+	SayDebug("[%2d] VProcDequeue called\n", self->id);
+#endif
+
+    MutexLock (&(self->lock));
+	self->idle = false;
+	while (self->idle)
+	    CondWait (&(self->wait), &(self->lock));
+    MutexUnlock (&(self->lock));
+
+} /* end of VProcDequeue */
 
 /* IdleVProc:
  */
