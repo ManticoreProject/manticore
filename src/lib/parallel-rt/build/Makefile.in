@@ -9,7 +9,7 @@
 CC =		@CC@
 CFLAGS =	@CFLAGS@ @PTHREAD_CFLAGS@ @CC_MODE_FLAG@
 LDFLAGS =	
-CPPFLAGS =	-I../include
+CPPFLAGS =	-I. -I../include
 AR =		ar
 ARFLAGS =	rcv
 RANLIB =	ranlib
@@ -44,6 +44,7 @@ $(TARGET):	$(OBJS)
 	$(AR) $(ARFLAGS) $(TARGET) $(OBJS)
 	$(RANLIB) $(TARGET)
 
+main.o:		asm-offsets.h
 
 $(ASM_OBJS): %.o : %.S asm-offsets.h
 	$(CC) -c @CC_MODE_FLAG@ -I. -DNOT_C_SOURCE $(CPPFLAGS) -o $@ $<

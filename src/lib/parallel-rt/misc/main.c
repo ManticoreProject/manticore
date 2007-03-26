@@ -14,6 +14,7 @@
 #include "vproc.h"
 #include "heap.h"
 #include "os-threads.h"
+#include "asm-offsets.h"
 
 static void MainVProc (VProc_t *vp, void *arg);
 static void PingLoop ();
@@ -32,6 +33,7 @@ bool		DebugFlg = false;
 static Mutex_t	PrintLock;		/* lock for output routines */
 
 extern int mantEntry;			/* the entry-point of the Manticore code */
+extern Int32_t mantMagic;
 
 
 int main (int argc, const char **argv)
@@ -45,6 +47,10 @@ int main (int argc, const char **argv)
     DebugF = stdout;
     DebugFlg = GetFlagOpt (opts, "-d");
 #endif
+
+    if (mantMagic != RUNTIME_MAGIC) {
+	Die("runtime/compiler inconsistency\n");
+    }
 
     HeapInit (opts);
     VProcInit (opts);

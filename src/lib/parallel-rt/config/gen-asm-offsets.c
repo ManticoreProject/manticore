@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include "manticore-rt.h"
 #include <stdio.h>
+#include <string.h>
 #include "vproc.h"
 #include "value.h"
 #include "request-codes.h"
@@ -19,6 +20,8 @@ extern UInt32_t CRC32 (void *buf, int nBytes);
 #define PR_OFFSET(obj, symb, lab)						\
 	do {									\
 	    UInt32_t _offset = (int)((Addr_t)&(obj.lab) - (Addr_t)&obj);	\
+	    strncpy((char *)(buf+len), #lab, sizeof(#lab));			\
+	    len += sizeof(#lab);						\
 	    buf[len++] = ((_offset >> 8) & 0xff);				\
 	    buf[len++] = _offset & 0xff;					\
 	    printf("#define " #symb " %d\n", _offset);				\
@@ -32,7 +35,7 @@ int main ()
     VProc_t		vp;
     SchedActStkItem_t	actcons;
     RdyQItem_t		rdyq;
-    unsigned char		buf[1024];
+    unsigned char	buf[2048];
     int			len = 0;
 
     printf ("#ifndef _ASM_OFFSETS_H_\n");
@@ -46,6 +49,8 @@ int main ()
 
     printf ("\n/* magic number */\n");
     printf ("#define RUNTIME_MAGIC %#0x\n", CRC32(buf, len));
+
+    printf("\n#ifdef NOT_C_SOURCE\n");
 
     printf("\n/* constants for the scheduler-action stack elements */\n");
     printf("#define ACTCONS_HDR %d\n", VEC_HDR(2));
@@ -75,6 +80,7 @@ int main ()
     PR_DEFINE(M_UNIT);
     PR_DEFINE(M_NIL);
 
+    printf ("\n#endif /* NOT_C_SOURCE */\n");
     printf ("\n#endif\n");
 
    return 0;

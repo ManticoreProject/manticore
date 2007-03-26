@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include "manticore-rt.h"
 #include <stdio.h>
+#include <string.h>
 #include "vproc.h"
 #include "value.h"
 #include "request-codes.h"
@@ -20,6 +21,8 @@ extern UInt32_t CRC32 (void *buf, int nBytes);
 #define PR_OFFSET(obj, xxx, lab)						\
 	do {									\
 	    UInt32_t _offset = (int)((Addr_t)&(obj.lab) - (Addr_t)&obj);	\
+	    strncpy((char *)(buf+len), #lab, sizeof(#lab));			\
+	    len += sizeof(#lab);						\
 	    buf[len++] = ((_offset >> 8) & 0xff);				\
 	    buf[len++] = _offset & 0xff;					\
 	    printf("    val " #lab " : IntInf.int = %d\n", _offset);		\
