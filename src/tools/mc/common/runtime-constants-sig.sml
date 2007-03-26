@@ -23,6 +23,9 @@ signature RUNTIME_CONSTANTS =
     val maxObjectSzB : IntInf.int     (* maximum number of bytes allowable in a
 				       * heap-allocated object *) 
 
+  (* magic number used to check consistency between generated code and the runtime system *)
+    val magic : IntInf.int
+
   (* offsets into the VProc_t structure *)
     val inManticore : IntInf.int
     val atomic : IntInf.int
