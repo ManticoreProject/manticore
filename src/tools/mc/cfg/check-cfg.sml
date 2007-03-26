@@ -37,21 +37,18 @@ structure CheckCFG : sig
                 (fn (f as CFG.FUNC{lab, entry, ...}, lmap) => LMap.insert(lmap,lab,entry))
                   LMap.empty code
 	  fun chk (CFG.FUNC{lab, entry, body, exit}) = let
-                fun err msg = error (msg @ [" in ", L.toString lab, ".", Atom.toString name])
+                fun err msg = error (msg @ [" in ", Atom.toString name, ".", L.toString lab])
 		fun chkVar (env, x) = if VSet.member(env, x)
 		      then ()
 		      else err[
 			  "unbound variable ", V.toString x]
 		fun chkVars (env, xs) = List.app (fn x => chkVar(env, x)) xs
 		fun chkLabel l = (case (L.kindOf l, LSet.member(lSet, l))
-		       of (CFG.LK_None, _) => err[
-			      "label ", L.toString l, "has no kind"]
+		       of (CFG.LK_None, _) => err["label ", L.toString l, "has no kind"]
 			| (CFG.LK_Extern _, false) => ()
-			| (CFG.LK_Extern _, true) => err[
-			      "extern local label ", L.toString l]
+			| (CFG.LK_Extern _, true) => err["extern local label ", L.toString l]
 			| (CFG.LK_Local _, true) => ()
-			| (CFG.LK_Local _, false) => err[
-			      "reference to unbound label ", L.toString l]
+			| (CFG.LK_Local _, false) => err["reference to unbound label ", L.toString l]
 		      (* end case *))
 		fun chkEntry (CFG.StdFunc{clos, arg, ret, exh}) = (
                       (case L.typeOf lab of
