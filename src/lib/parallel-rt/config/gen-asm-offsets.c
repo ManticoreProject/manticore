@@ -14,8 +14,16 @@
 #include "request-codes.h"
 #include "../vproc/scheduler.h"
 
-#define PR_OFFSET(obj, symb, lab)	\
-	printf("#define " #symb " %d\n", (int)((Addr_t)&(obj.lab) - (Addr_t)&obj))
+extern UInt32_t CRC32 (void *buf, int nBytes);
+
+#define PR_OFFSET(obj, symb, lab)						\
+	do {									\
+	    UInt32_t _offset = (int)((Addr_t)&(obj.lab) - (Addr_t)&obj);	\
+	    buf[len++] = ((_offset >> 8) & 0xff);				\
+	    buf[len++] = _offset & 0xff;					\
+	    printf("#define " #symb " %d\n", _offset);				\
+	} while (0)
+
 #define PR_DEFINE(symb)			\
 	printf("#define " #symb " %d\n", symb)
 
@@ -24,26 +32,20 @@ int main ()
     VProc_t		vp;
     SchedActStkItem_t	actcons;
     RdyQItem_t		rdyq;
+    unsigned char		buf[1024];
+    int			len = 0;
 
     printf ("#ifndef _ASM_OFFSETS_H_\n");
     printf ("#define _ASM_OFFSETS_H_\n");
 
     printf ("\n/* offsets into the VProc_t structure */\n");
-    PR_OFFSET(vp, IN_MANTICORE, inManticore);
-    PR_OFFSET(vp, ATOMIC, atomic);
-    PR_OFFSET(vp, SIG_PENDING, sigPending);
-    PR_OFFSET(vp, ALLOC_PTR, allocPtr);
-    PR_OFFSET(vp, LIMIT_PTR, limitPtr);
-    PR_OFFSET(vp, STD_ARG, stdArg);
-    PR_OFFSET(vp, STD_EP, stdEnvPtr);
-    PR_OFFSET(vp, STD_CONT, stdCont);
-    PR_OFFSET(vp, STD_EXH, stdExnCont);
-    PR_OFFSET(vp, VP_ACTION_STK, actionStk);
-    PR_OFFSET(vp, VP_RDYQ_HD, rdyQHd);
-    PR_OFFSET(vp, VP_RDYQ_TL, rdyQTl);
+#include "vproc-offsets-ins.c"
 
     printf("\n/* mask to get address of VProc from alloc pointer */\n");
     printf("#define VP_MASK %#08lx\n", ~((Addr_t)VP_HEAP_SZB-1));
+
+    printf ("\n/* magic number */\n");
+    printf ("#define RUNTIME_MAGIC %#0x\n", CRC32(buf, len));
 
     printf("\n/* constants for the scheduler-action stack elements */\n");
     printf("#define ACTCONS_HDR %d\n", VEC_HDR(2));
@@ -65,6 +67,7 @@ int main ()
     PR_DEFINE(REQ_GC);
     PR_DEFINE(REQ_Return);
     PR_DEFINE(REQ_UncaughtExn);
+    PR_DEFINE(REQ_Sleep);
 
     printf("\n/* common Manticore unboxed values */\n");
     PR_DEFINE(M_FALSE);
