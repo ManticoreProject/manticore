@@ -26,6 +26,8 @@ structure DummySpec : TARGET_SPEC =
 	val maxObjectSzB = wordAlignB * (bitMaskSzB * 0w8)  
 	val allocChunkSzB = 0w64 * 0w1024
 
+	val magic : IntInf.int = 0xdeadbeef
+
       (* offsets into the VProc_t structure *)
 	val inManticore : IntInf.int = 0
 	val atomic : IntInf.int = 4
