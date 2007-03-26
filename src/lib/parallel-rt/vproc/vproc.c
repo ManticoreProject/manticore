@@ -253,9 +253,9 @@ static void *VProcMain (void *_data)
 /*! \brief return a list of the vprocs in the system.
  *  \param self the host vproc
  */
-Value_t *ListVProcs (VProc_t *self)
+Value_t ListVProcs (VProc_t *self)
 {
-    Value_t	*l = M_NIL;
+    Value_t	l = M_NIL;
 
     for (int i = 0;  i < NumVProcs;  i++) {
 	l = Cons(self, PtrToValue(VProcs[i]), l);
