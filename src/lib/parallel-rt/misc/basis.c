@@ -5,11 +5,11 @@
  */
 
 #include "manticore-rt.h"
+#include "vproc.h"
 
 /* M_Print:
  */
 void M_Print (char *s)
 {
-    Say(s);
+    Say("[%2d] %s", VProcSelf()->id, s);
 }
-

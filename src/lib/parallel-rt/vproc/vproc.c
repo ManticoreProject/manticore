@@ -250,13 +250,28 @@ static void *VProcMain (void *_data)
 
 } /* VProcMain */
 
+/*! \brief return a list of the vprocs in the system.
+ *  \param self the host vproc
+ */
+Value_t *ListVProcs (VProc_t *self)
+{
+    Value_t	*l = M_NIL;
+
+    for (int i = 0;  i < NumVProcs;  i++) {
+	l = Cons(self, PtrToValue(VProcs[i]), l);
+    }
+
+    return l;
+
+}
+
 /*! \brief enqueue a (fiber, thread ID) pair on another vproc's ready queue
  *  \param self the calling vproc
  *  \param vp the vproc to enqueue the thread on.
  *  \param tid the thread ID of the thread being enqueued
  *  \param fiber the fiber to be enqueued.
  */
-void EnqueueOnVProc (VProc_t *self, VProc_t *vp, Value_t *tid, Value_t *fiber)
+void EnqueueOnVProc (VProc_t *self, VProc_t *vp, Value_t tid, Value_t fiber)
 {
 #ifndef NDEBUG
     if (DebugFlg)
