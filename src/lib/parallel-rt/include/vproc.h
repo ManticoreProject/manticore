@@ -15,9 +15,12 @@ struct struct_vproc {
     Value_t	inManticore;	/*!< true, when executing Manticore code */
     Value_t	atomic;		/*!< true, when in a vproc-atomic region */
     Value_t	sigPending;	/*!< true, when there is a pending signal */
+    Value_t	currentTId;	/*!< thread ID of current thread */
     Value_t	actionStk;	/*!< the top of the signal-action stack */
     Value_t	rdyQHd;		/*!< the head of the primary ready queue */
     Value_t	rdyQTl;		/*!< the head of the primary ready queue */
+    Value_t	secondaryQHd;	/*!< the head of the secondary ready queue */
+    Value_t	secondaryQTl;	/*!< the head of the secondary ready queue */
 			      /* VProc registers */
     Value_t	stdArg;		/*!< holds value of standard argument reg. */
     Value_t	stdEnvPtr;	/*!< holds value of standard environment-pointer reg. */

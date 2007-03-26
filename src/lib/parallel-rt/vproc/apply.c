@@ -16,22 +16,46 @@ extern int ASM_Return;
 extern int ASM_UncaughtExn;
 extern int ASM_Resume;
 
-/* Run a Manticore function f applied to arg.  If the function
- * returns, then return the result.
+/* \brief run a Manticore function f applied to arg.
+ * \param vp the host vproc
+ * \param f the Manticore function to apply
+ * \param arg the Manticore value to apply \arg{f} to
+ * \return the result of the application.
  */
-Value_t RunManticore (VProc_t *vp, Value_t f, Value_t arg)
+Value_t ApplyFun (VProc_t *vp, Value_t f, Value_t arg)
 {
   /* get the code and environment pointers for f */
     Addr_t cp = ValueToAddr (ValueToClosure(f)->cp);
     Value_t ep = ValueToClosure(f)->ep;
 
+    RunManticore (vp, cp, arg, ep);
+
+    return vp->stdArg;
+
+} /* end of ApplyFun */
+
+
+/* \brief Run Manticore code.
+ * \param vp the host vproc
+ * \param codeP the address of the code to run
+ * \param arg the value of the standard argument register
+ * \param envP the value of the standard environment-pointer register
+ */
+void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
+{
+  /* allocate the return and exception continuation objects
+   * in the VProc's heap.
+   */
+    Value_t retCont = AllocUniform(vp, 1, PtrToValue(&ASM_Return));
+    Value_t exnCont = AllocUniform(vp, 1, PtrToValue(&ASM_UncaughtExn));
+
     while (1) {
-      /* allocate the return and exception continuation objects
-       * in the VProc's heap.
-       */
-	Value_t retCont = AllocUniform(vp, 1, PtrToValue(&ASM_Return));
-	Value_t exnCont = AllocUniform(vp, 1, PtrToValue(&ASM_UncaughtExn));
-	RequestCode_t req = ASM_Apply (vp, cp, arg, ep, retCont, exnCont);
+#ifndef NDEBUG
+	if (DebugFlg)
+	    SayDebug("[%2d] ASM_Apply(-, %p, %p, %p, %p, %p)\n",
+		vp->id, codeP, arg, envP, retCont, exnCont);
+#endif
+	RequestCode_t req = ASM_Apply (vp, codeP, arg, envP, retCont, exnCont);
 	switch (req) {
 	  case REQ_GC:
 	  /* check to see if we actually need to do a GC, since this request
@@ -46,6 +70,8 @@ Value_t RunManticore (VProc_t *vp, Value_t f, Value_t arg)
 		rp = roots;
 		*rp++ = &(vp->stdEnvPtr);
 		*rp++ = &(vp->actionStk);
+		*rp++ = &(vp->rdyQHd);
+		*rp++ = &(vp->rdyQTl);
 		*rp++ = 0;
 		MinorGC (vp, roots);
 	    }
@@ -56,23 +82,22 @@ Value_t RunManticore (VProc_t *vp, Value_t f, Value_t arg)
 			    PtrToValue(&ASM_Resume),
 			    vp->stdCont,
 			    vp->stdEnvPtr);
-		SchedActStkItem_t *item = (SchedActStkItem_t *)ValueToPtr(vp->actionStk);
-		assert (item != 0);
+		SchedActStkItem_t *item = ValueToSchedActStkItem(vp->actionStk);
+		assert (item != ValueToSchedActStkItem(M_NIL));
 		vp->actionStk = item->link;
-		ep = item->act;
-		cp = ValueToAddr(ValueToCont(ep)->cp);
+		envP = item->act;
+		codeP = ValueToAddr(ValueToCont(envP)->cp);
 		arg = resumeK;
 		retCont = M_UNIT;
 		exnCont = M_UNIT;
 		vp->atomic = M_TRUE;
 		vp->sigPending = M_FALSE;
-SayDebug("[%2d] pending signal; cp = %p\n", vp->id, cp);
 	    }
 	    else {
 	      /* setup the return from GC */
 	      /* we need to invoke the stdCont to resume after GC */
-		cp = ValueToAddr (vp->stdCont);
-		ep = vp->stdEnvPtr;
+		codeP = ValueToAddr (vp->stdCont);
+		envP = vp->stdEnvPtr;
 	      /* clear the dead registers */
 		arg = M_UNIT;
 		retCont = M_UNIT;
@@ -80,14 +105,18 @@ SayDebug("[%2d] pending signal; cp = %p\n", vp->id, cp);
 	    }
 	    break;
 	  case REQ_Return:	/* returning from a function call */
-	    return vp->stdArg;
+	    return;
 	  case REQ_UncaughtExn:	/* raising an exception */
 	    Die ("uncaught exception\n");
 	  case REQ_Sleep:	/* make the VProc idle */
 	    VProcSleep(vp);
-/* FIXME: need to run the idle fiber! */
+	    envP = vp->stdCont;
+	    codeP = ValueToAddr(ValueToCont(envP)->cp);
+	    arg = M_UNIT;
+	    retCont = M_UNIT;
+	    exnCont = M_UNIT;
 	    break;
 	}
     }
 
-}
+} /* end of RunManticore */

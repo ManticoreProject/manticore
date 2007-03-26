@@ -15,11 +15,19 @@ typedef struct {	      /* Items on the scheduler-action stack */
     Value_t	link;		/* points to the next item in the stack */
 } SchedActStkItem_t;
 
+STATIC_INLINE SchedActStkItem_t *ValueToSchedActStkItem (Value_t v)
+{
+    return (SchedActStkItem_t *)ValueToPtr(v);
+}
+
+
 typedef struct {	      /* Items in the primary scheduling queue.  This */
 			      /* queue is represented as a pair of stacks. */
-    Value_t	fiber;		/* fiber of thread */
     Value_t	tid;		/* ID of thread */
+    Value_t	fiber;		/* fiber of thread */
     Value_t	link;		/* points to the next item in the stack */
 } RdyQItem_t;
+
+STATIC_INLINE RdyQItem_t *ValueToRdyQItem (Value_t v) { return (RdyQItem_t *)ValueToPtr(v); }
 
 #endif /* !_SCHEDULER_H_ */

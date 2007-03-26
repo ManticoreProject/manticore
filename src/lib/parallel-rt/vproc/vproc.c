@@ -18,6 +18,7 @@
 #include "gc.h"
 #include "options.h"
 #include "value.h"
+#include "scheduler.h"
 
 typedef struct {		/* data passed to VProcMain */
     VProc_t	*vp;		/* the host vproc */
@@ -32,13 +33,17 @@ static void *VProcMain (void *_data);
 static void IdleVProc (VProc_t *vp, void *arg);
 static void SigHandler (int sig, siginfo_t *si, void *_sc);
 static int GetNumCPUs ();
+static Value_t Dequeue2 (VProc_t *self);
 
 static pthread_key_t	VProcInfoKey;
 
 /********** Globals **********/
 int			NumHardwareProcs;
 int			NumVProcs;
+int			NumIdleVProcs;
 VProc_t			*VProcs[MAX_NUM_VPROCS];
+
+extern int ASM_VProcSleep;
 
 
 /* VProcInit:
@@ -48,6 +53,8 @@ VProc_t			*VProcs[MAX_NUM_VPROCS];
 void VProcInit (Options_t *opts)
 {
     NumHardwareProcs = GetNumCPUs();
+    NumVProcs = 0;
+    NumIdleVProcs = 0;
 
   /* get command-line options */
     int nProcs = ((NumHardwareProcs == 0) ? DFLT_NUM_VPROCS : NumHardwareProcs);
@@ -108,6 +115,8 @@ VProc_t *VProcCreate (VProcFn_t f, void *arg)
     vproc->actionStk = M_NIL;	    /* FIXME: install default action? */
     vproc->rdyQHd = M_NIL;
     vproc->rdyQTl = M_NIL;
+    vproc->secondaryQHd = M_NIL;
+    vproc->secondaryQTl = M_NIL;
     vproc->stdArg = M_UNIT;
     vproc->stdEnvPtr = M_UNIT;
     vproc->stdCont = M_UNIT;
@@ -176,12 +185,31 @@ void VProcSleep (VProc_t *vp)
 {
     assert (vp == VProcSelf());
 
-    MutexLock (&(vp->lock));
-	vp->idle = true;
-	while (vp->idle) {
-	    CondWait (&(vp->wait), &(vp->lock));
-	}
-    MutexUnlock (&(vp->lock));
+#ifndef NDEBUG
+    if (DebugFlg)
+	SayDebug("[%2d] VProcSleep called\n", vp->id);
+#endif
+
+    if (FetchAndInc(&NumIdleVProcs) == NumVProcs-1) {
+      /* all VProcs are idle, so shutdown */
+#ifndef NDEBUG
+	if (DebugFlg)
+	    SayDebug("[%2d] shutting down\n", vp->id);
+#endif
+	exit (0);
+    }
+    else {
+	MutexLock (&(vp->lock));
+	    vp->idle = true;
+	    while (vp->idle) {
+		CondWait (&(vp->wait), &(vp->lock));
+	    }
+	  /* get an item from the secondary queue */
+	    Value_t item = Dequeue2(vp);
+	MutexUnlock (&(vp->lock));
+	vp->stdCont = ValueToRdyQItem(item)->fiber;
+	vp->currentTId = ValueToRdyQItem(item)->tid;
+    }
 
 }
 
@@ -225,13 +253,20 @@ static void *VProcMain (void *_data)
 /*! \brief enqueue a (fiber, thread ID) pair on another vproc's ready queue
  *  \param self the calling vproc
  *  \param vp the vproc to enqueue the thread on.
+ *  \param tid the thread ID of the thread being enqueued
  *  \param fiber the fiber to be enqueued.
- *  \param 
  */
-void EnqueueOnVProc (VProc_t *self, VProc_t *vp, Value_t *fiber, Value_t *tid)
+void EnqueueOnVProc (VProc_t *self, VProc_t *vp, Value_t *tid, Value_t *fiber)
 {
+#ifndef NDEBUG
+    if (DebugFlg)
+	SayDebug("[%2d] EnqueueOnVProc %d\n", self->id, vp->id);
+#endif
+
     MutexLock (&(vp->lock));
-/***** where do we put the object? *****/
+      /* allocate a secondary queue item on the global heap */
+	vp->secondaryQTl = GlobalAllocUniform(vp, 3, tid, fiber, vp->secondaryQTl);
+      /* if the vproc is idle, then wake it up */
         if (vp->idle) {
 	    vp->idle = false;
 	    CondSignal (&(vp->wait));
@@ -245,16 +280,25 @@ void EnqueueOnVProc (VProc_t *self, VProc_t *vp, Value_t *fiber, Value_t *tid)
  */
 Value_t VProcDequeue (VProc_t *self)
 {
+    Value_t	item;
+
 #ifndef NDEBUG
     if (DebugFlg)
 	SayDebug("[%2d] VProcDequeue called\n", self->id);
 #endif
 
+  /* dequeue an item */
     MutexLock (&(self->lock));
-	self->idle = false;
-	while (self->idle)
-	    CondWait (&(self->wait), &(self->lock));
+	item = Dequeue2 (self);
     MutexUnlock (&(self->lock));
+
+    if (item = M_NIL) {
+      /* the secondary queue is empty, so return an item that will put us to sleep */
+	Value_t cont = AllocUniform(self, 1, PtrToValue(&ASM_VProcSleep));
+	item = AllocUniform(self, 3, M_UNIT, cont, M_NIL);
+    }
+
+    return item;
 
 } /* end of VProcDequeue */
 
@@ -267,17 +311,12 @@ static void IdleVProc (VProc_t *vp, void *arg)
 	SayDebug("[%2d] IdleVProc starting\n", vp->id);
 #endif
 
-    MutexLock (&(vp->lock));
-	while (vp->idle)
-	    CondWait (&(vp->wait), &(vp->lock));
-    MutexUnlock (&(vp->lock));
+  /* Run code that will immediately put this VProc to sleep. */
+    RunManticore (vp, (Addr_t)&ASM_VProcSleep, M_UNIT, M_UNIT);
 
-  /* Here, we expect that there will be a thread to run on the vproc's
-   * ready queue soon.
-   */
-    /* ??? */
+    Die("unexpected return from RunManticore ni IdleVProc\n");
 
-}
+} /* end of IdleVProc */
 
 /* SigHandler:
  *
@@ -322,3 +361,39 @@ static int GetNumCPUs ()
 #endif
 
 } /* end of GetNumCPUs */
+
+/* Dequeue2:
+ *
+ * Dequeue an item from a VProc's secondary queue.  Return M_NIL if it is empty.
+ * WARNING: this code should only be called when the vproc's lock is held!
+ */
+static Value_t Dequeue2 (VProc_t *self)
+{
+
+  /* dequeue an item */
+    if (self->secondaryQHd != M_NIL) {
+	Value_t item = self->secondaryQHd;
+	Value_t link = ValueToRdyQItem(item)->link;
+	self->secondaryQHd = link;
+	return item;
+    }
+    else if (self->secondaryQTl != M_NIL) {
+      /* need to reverse the list; but since the list is in the global heap,
+       * it is safe to destructively update it.
+       */
+	RdyQItem_t *p = ValueToRdyQItem(self->secondaryQTl);
+	self->secondaryQTl = M_NIL;
+	RdyQItem_t *q = ValueToRdyQItem(p->link);
+	while (q != ValueToRdyQItem(M_NIL)) {
+	    RdyQItem_t *next = ValueToRdyQItem(q->link);
+	    q->link = PtrToValue(p);
+	    p = q;
+	    q = next;
+	}
+	self->secondaryQHd = p->link;
+	return PtrToValue(p);
+    }
+    else
+	return M_NIL;
+
+} /* end of Dequeue2 */
