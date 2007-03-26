@@ -295,8 +295,9 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	      beginCluster 0;
 	      pseudoOp P.rodata;
 	      (* runtime constant magic number for sanity test *)
-	      defineLabel (RuntimeLabels.magic);
-	      pseudoOp (P.int (P.I32, [0:IntInf.int]));
+	      pseudoOp (P.global RuntimeLabels.magic);
+	      defineLabel RuntimeLabels.magic;
+	      pseudoOp (P.int (P.I32, [Spec.ABI.magic]));
 	      (* generate floats *)
 	      FloatLit.appi emitFltLit floatTbl;
 	      (* generate strings *)
