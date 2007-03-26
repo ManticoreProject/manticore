@@ -12,12 +12,15 @@ signature MANTICORE_PSEUDO_OPS = sig
     type pseudo_op_ext
     type pseudo_op = (P.T.labexp, pseudo_op_ext) PseudoOpsBasisTyp.pseudo_op
 
+    datatype int_size = I8 | I16 | I32 | I64 | Iptr
+
     val text : pseudo_op
     val global : Label.label -> pseudo_op
     val rodata : pseudo_op
     val alignData : pseudo_op
     val float : (P.T.fty * FloatLit.float list) -> pseudo_op
     val asciz : string -> pseudo_op
+    val int : (int_size * IntInf.int list) -> pseudo_op
 
     structure PseudoOps : PSEUDO_OPS 
 	  where T = P.T

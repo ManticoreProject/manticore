@@ -24,6 +24,16 @@ functor ManticorePseudoOpsFn (
 	  lg (Word.fromInt i, 0)
       end
 
+  val ty = (IntInf.toInt Spec.ABI.wordSzB) * 8
+
+  datatype int_size = I8 | I16 | I32 | I64 | Iptr
+	  
+  fun intSzToSz I8 = 8
+    | intSzToSz I16 = 16
+    | intSzToSz I32 = 32
+    | intSzToSz I64 = 64
+    | intSzToSz Iptr = ty
+		       
   val maxAlign = Int.max (IntInf.toInt Spec.ABI.wordAlignB, 
 			  IntInf.toInt Spec.ABI.extendedAlignB)
 
@@ -34,6 +44,7 @@ functor ManticorePseudoOpsFn (
   val asciz = PTy.ASCIIZ
   val rodata : pseudo_op = PTy.DATA_READ_ONLY
   val alignData : pseudo_op = PTy.ALIGN_SZ maxAlign
+  fun int (sz, ints) = PTy.INT{sz = intSzToSz sz, i = List.map P.T.LI ints}
 
   structure Client = struct
       structure AsmPseudoOps = P

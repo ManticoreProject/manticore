@@ -11,6 +11,7 @@ structure RuntimeLabels = struct
   local val global = Label.global
   in
     val entry = global "mantEntry"
+    val magic = global "mantMagic"
     val initGC = global "ASM_InvokeGC"
   end (* local *)
 

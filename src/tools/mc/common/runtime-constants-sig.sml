@@ -14,9 +14,7 @@ signature RUNTIME_CONSTANTS =
     val wordAlignB : IntInf.int	         (* byte alignment of pointers *)
     val boolSzB : IntInf.int		 (* size of boolean values in bytes *)
     val extendedAlignB : IntInf.int      (* alignment constraint for extended-precision
-					  * floats
-					  *)
-
+					  * floats *)
 
     val spillAreaSzB : IntInf.int     (* size of the spill area on the stack *)
     val spillAreaOffB : IntInf.int     (* offset from frame pointer to spill area *)
