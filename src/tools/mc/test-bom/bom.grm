@@ -1,6 +1,6 @@
 (* bom.grm
  *
- * COPYRIGHT (c) 2007 John Reppy (http://www.cs.uchicago.edu/~jhr)
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *)
 
@@ -16,12 +16,13 @@
     | KW_case		("case")
     | KW_ccall		("ccall")
     | KW_cont		("cont")
-    | KW_default	("default")
     | KW_double		("double")
     | KW_else		("else")
     | KW_end		("end")
     | KW_enum		("enum")
+    | KW_extern		("extern")
     | KW_float		("float")
+    | KW_forward	("forward")
     | KW_fun		("fun")
     | KW_if		("if")
     | KW_int		("int")
@@ -29,18 +30,20 @@
     | KW_long		("long")
     | KW_module		("module")
     | KW_short		("short")
-    | KW_switch		("switch")
     | KW_then		("then")
     | KW_throw		("throw")
     | KW_unit		("unit")
     | KW_unwrap		("unwrap")
     | KW_vec128		("vec128")
+    | KW_void		("void")
+    | KW_vproc		("vproc")
     | KW_wrap		("wrap")
     | LP		("(")
     | RP		(")")
     | LB		("[")
     | RB		("]")
     | HASH		("#")
+    | STAR		("*")
     | COMMA		(",")
     | EQ		("=")
     | COLON		(":")
@@ -60,7 +63,28 @@
 
 
 Module
-	: KW_module Lambda		=> (PT.MODULE Lambda)
+	: KW_module Import* "fun" Lambda
+		=> (PT.MODULE Lambda)
+	;
+
+Import
+	: "extern" CRetTy ID "(" (CArgTy ("," CArgTy)* )? ")" ";"
+		=> (CF.CFun{
+			var = ID,
+			name = Atom.toString ID,
+			retTy = CRetTy,
+			argTys = flatten SR
+		      })
+	;
+
+CRetTy
+	: "void"	=> (CF.VoidTy)
+	| CArgTy	=> (CArgTy)
+	;
+
+CArgTy
+	: RawType	=> (CF.BaseTy RawType)
+	| "void" "*"	=> (CF.PointerTy)
 	;
 
 Lambda

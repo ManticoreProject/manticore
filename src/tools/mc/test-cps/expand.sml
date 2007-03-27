@@ -30,6 +30,7 @@ structure Expand =
     val findPrim = let
 	  val tbl = AtomTable.mkTable(128, Fail "prim table")
 	  val ins = AtomTable.insert tbl
+	  val aTy = Ty.T_Any
 	  val bTy = Ty.boolTy
 	  val i32 = Ty.T_Raw Ty.T_Int
 	  val i64 = Ty.T_Raw Ty.T_Long
@@ -38,6 +39,8 @@ structure Expand =
 	  fun mk cons (mk, argTy, resTy) = cons {mk=mk, argTy=argTy, resTy  = resTy}
 	  in
 	    List.app (fn (n, info) => ins(Atom.atom n, info)) [
+		("isBoxed",	mk Prim1 (P.isBoxed,	aTy,		bTy)),
+		("isUnoxed",	mk Prim1 (P.isBoxed,	aTy,		bTy)),
 		("BNot",	mk Prim1 (P.BNot,	bTy,		bTy)),
 		("BEq",		mk Prim2 (P.BEq,	(bTy, bTy),	bTy)),
 		("BNEq",	mk Prim2 (P.BNEq,	(bTy, bTy),	bTy)),
@@ -174,9 +177,10 @@ structure Expand =
 		    cvtExp (envWFBs, e))
 		end
 	    | PT.Cont(fb, e) => let
+	      (* NOTE: continuations are permitted to be recursive *)
 		val (env', cvtBody) = cvtLambda(env, fb, Ty.T_Cont)
 		in
-		  CPS.mkCont(cvtBody env, cvtExp(env', e))
+		  CPS.mkCont(cvtBody env', cvtExp(env', e))
 		end
 	    | PT.If(e1, e2, e3) =>
 		cvtSimpleExp (env, e1, fn x => CPS.If(x, cvtExp(env, e2), cvtExp(env, e3)))

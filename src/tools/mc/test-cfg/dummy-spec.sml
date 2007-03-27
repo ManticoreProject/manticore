@@ -14,17 +14,17 @@ structure DummySpec : TARGET_SPEC =
     val osName = "dummy"
 
     structure ABI = struct
-	val wordSzB = 0w4
-	val wordAlignB = 0w4
-	val boolSzB = 0w4
-	val extendedAlignB = 0w4
+	val wordSzB : IntInf.int = 4
+	val wordAlignB : IntInf.int = 4
+	val boolSzB : IntInf.int = 4
+	val extendedAlignB : IntInf.int = 4
     
-	val spillAreaSzB = 0w1024
-	val spillAreaOff = 0w0
-	val bitMaskSzB = wordSzB - 0w1
+	val spillAreaSzB : IntInf.int = 1024
+	val spillAreaOffB : IntInf.int = 0
+	val bitMaskSzB : IntInf.int = wordSzB - 1
       (* number aligned words * number of bits in the object-header bitmask  *)
-	val maxObjectSzB = wordAlignB * (bitMaskSzB * 0w8)  
-	val allocChunkSzB = 0w64 * 0w1024
+	val maxObjectSzB : IntInf.int = wordAlignB * (bitMaskSzB * 8)  
+	val allocChunkSzB : IntInf.int = 64 * 1024
 
 	val magic : IntInf.int = 0xdeadbeef
 

@@ -81,7 +81,10 @@ structure FreeVars : sig
 		  List.foldl g (analExp (V.Set.union(fv, fbEnv), e)) fbs
 		end
 	    | CPS.Cont(fb, e) => let
+	      (* compute the free variables of the lambda *)
 		val fbEnv = analFB fb
+	      (* remove the continuation's name from the set *)
+		val fbEnv = remove(fbEnv, #1 fb)
 		in
 		  setFV (#1 fb, fbEnv);
 		  remove (analExp (V.Set.union (fv, fbEnv), e), #1 fb)
@@ -99,9 +102,9 @@ structure FreeVars : sig
                            cases
 	    | CPS.Apply(f, args) => addVars(fv, f::args)
 	    | CPS.Throw(k, args) => addVars(fv, k::args)
-(* FIXME: the following cases shouldn't happen after optimization! *)
-	    | CPS.Run{vp, act, fiber} => addVars(fv, [vp, act, fiber])
-	    | CPS.Forward{vp, sign} => addVars(fv, [vp, sign])
+	  (* the following cases shouldn't happen after optimization! *)
+	    | CPS.Run _ => raise Fail "unexpected Run"
+	    | CPS.Forward _ => raise Fail "unexpected Forward"
 	  (* end case *))
 
   (* compute the free variables of a lambda; the resulting set may include
