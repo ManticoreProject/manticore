@@ -89,6 +89,7 @@ structure FlatClosure : sig
       | Global of int           (* at the ith slot of the current closure *)
       | EnclFun                 (* the enclosing function (or one that shares the *)
                                 (* same closure). *)
+      | EnclCont		(* the enclosing continuation function *)
       | Extern of CFG.label	(* bound to an external variable (e.g., C function *)
 
   (* an envrionment for mapping from CPS variables to CFG variables.  We also
@@ -156,6 +157,7 @@ structure FlatClosure : sig
                 in
                   ([CFG.mkAlloc(tmp, [ep, lab]), b], tmp)
                 end
+	    | SOME EnclCont => ([], ep)
 	    | SOME(Extern lab) => let
                 val tmp = newVar x
                 in
@@ -179,6 +181,7 @@ structure FlatClosure : sig
     fun locToString (Local x) = concat["L(", CFG.Var.toString x, ")"]
       | locToString (Global i) = concat["G(", Int.toString i, ")"]
       | locToString EnclFun = "EnclFun"
+      | locToString EnclCont = "EnclCont"
       | locToString (Extern lab) = concat["X(", CFG.Label.toString lab, ")"]
     fun prEnv (E{ep, env}) = let
           fun f (x, loc, false) = (print(concat[", ", CPS.Var.toString x, "->", locToString loc]); false)
@@ -277,6 +280,9 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
                                     | EnclFun => (
                                         needsEP := true;
                                         (insertVar(bEnv, x, EnclFun), args, params))
+				    | EnclCont => (
+                                        needsEP := true;
+                                        (insertVar(bEnv, x, EnclCont), args, params))
 				    | Extern _ => raise Fail "unexpected extern in free-var list"
                                   (* end case *))
                             val (branchEnv, args, params) =
@@ -511,10 +517,11 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
                 val (binds, clos, lambdaEnv, param') = mkContClosure (env, param, FV.envOfFun k)
                 val conv = CFG.StdCont{clos = envPtrOf lambdaEnv, arg = param'}
                 val (bindLab, labVar) = bindLabel (labelOf k)
+		val contEnv = insertVar (lambdaEnv, k, EnclCont)  (* to support recursive conts *)
                 val (env', k') = newLocal (env, k)
                 val binds = CFG.mkAlloc(k', labVar :: clos) :: bindLab :: binds
                 in
-                  cvtExp (lambdaEnv, labelOf k, conv, e);
+                  cvtExp (contEnv, labelOf k, conv, e);
                   (binds, env')
                 end
 	    | cvtCont (_, (k, _, _)) = raise Fail("non-standard continuation " ^ CPS.Var.toString k)
