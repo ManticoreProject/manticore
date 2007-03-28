@@ -13,6 +13,8 @@ structure Prim =
     datatype 'var prim
       = isBoxed of 'var
       | isUnboxed of 'var
+      | Equal of 'var * 'var	(* equality on T_any *)
+      | NotEqual of 'var * 'var	(* equality on T_any *)
       | BNot of 'var
       | BEq of 'var * 'var
       | BNEq of 'var * 'var

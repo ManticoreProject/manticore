@@ -4,7 +4,8 @@
  * All rights reserved.
  *)
 
-signature PRIM_GEN = sig
+signature PRIM_GEN =
+  sig
 
     structure BE : BACK_END
 
@@ -12,7 +13,7 @@ signature PRIM_GEN = sig
 	       
     val genPrim : ctx -> {gen : (CFG.var * CFG.prim) -> unit}
 			
-end (* PRIM_GEN *)
+  end (* PRIM_GEN *)
 
 functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
   struct
@@ -27,6 +28,7 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 
     type ctx = {varDefTbl : BE.VarDef.var_def_tbl}
 
+    val aty = 64	(* MLRISC type of "any" *)
     val i32ty = 32
     val i64ty = 64
     val f32ty = 32
@@ -53,31 +55,30 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		      fbind (fty, v, oper (fty, fdefOf v1, fdefOf v2))
 		in
 		  case p
+		   of P.isBoxed p =>
+			cbind (v, T.CMP(aty, T.EQ, T.ANDB(aty, defOf p, wordLit 1), wordLit 0))
+		    | P.isUnboxed p =>
+			cbind (v, T.CMP(aty, T.NE, T.ANDB(aty, defOf p, wordLit 1), wordLit 0))
+		    | P.Equal a => genCmp (aty, T.EQ, a)
+		    | P.NotEqual a => genCmp (aty, T.NE, a)
+		   (* 32-bit integer primitives *)				  
+		    | P.I32Add a => genArith (i32ty, T.ADD, a)
+		    | P.I32Sub a => genArith (i32ty, T.SUB, a)
+		    | P.I32Mul a => genArith (i32ty, T.MULS, a)
+		    | P.I32Gte a => genCmp (i32ty, T.GE, a)
+		    | P.I32Lte a => genCmp (i32ty, T.LE, a)
+		    | P.I32Eq a => genCmp (i32ty, T.EQ, a)
 		   (* 64-bit integer primitives *)
-		    of P.I64Add a => genArith (i64ty, T.ADD, a)
-		     | P.I64Sub a => genArith (i64ty, T.SUB, a)
-		     | P.I64Lte a => genCmp (i64ty, T.LE, a)
-		     | P.I64Eq a => genCmp (i64ty, T.EQ, a)
-		     (* 32-bit integer primitives *)				  
-		     | P.I32Add a => genArith (i32ty, T.ADD, a)
-		     | P.I32Sub a => genArith (i32ty, T.SUB, a)
-		     | P.I32Mul a => genArith (i32ty, T.MULS, a)
-		     | P.I32Gte a => genCmp (i32ty, T.GE, a)
-		     | P.I32Lte a => genCmp (i32ty, T.LE, a)
-		     | P.I32Eq a => genCmp (i32ty, T.EQ, a)
-		    (* 32-bit floating-point *)
-		     | P.F32Add a => genFArith (f32ty, T.FADD, a)
-		     | P.F32Sub a => genFArith (f32ty, T.FSUB, a)
-		     (* test whether a value is boxed by testing
-		      * its bottom bit. *)
-		     | P.isBoxed p => 
-		       cbind (v, T.CMP (i64ty, T.EQ, 
-			T.ANDB (i64ty, defOf p, wordLit 1), wordLit 0))
-		     | P.isUnboxed p => 
-		       cbind (v, T.CMP (i64ty, T.EQ, 
-			T.ANDB (i64ty, defOf p, wordLit 1), wordLit 1))
-
-		     | _ => raise Fail(concat[
+		    | P.I64Add a => genArith (i64ty, T.ADD, a)
+		    | P.I64Sub a => genArith (i64ty, T.SUB, a)
+		    | P.I64Lte a => genCmp (i64ty, T.LE, a)
+		    | P.I64Eq a => genCmp (i64ty, T.EQ, a)
+		    | P.I64NEq a => genCmp (i64ty, T.NE, a)
+		  (* 32-bit floating-point *)
+		    | P.F32Add a => genFArith (f32ty, T.FADD, a)
+		    | P.F32Sub a => genFArith (f32ty, T.FSUB, a)
+		    | P.F32Mul a => genFArith (f32ty, T.FMUL, a)
+		    | _ => raise Fail(concat[
 			  "genPrim(", CFG.Var.toString v, ", ",
 			  PrimUtil.fmt CFG.Var.toString p, ")"
 			])

@@ -40,7 +40,9 @@ structure Expand =
 	  in
 	    List.app (fn (n, info) => ins(Atom.atom n, info)) [
 		("isBoxed",	mk Prim1 (P.isBoxed,	aTy,		bTy)),
-		("isUnoxed",	mk Prim1 (P.isBoxed,	aTy,		bTy)),
+		("isUnboxed",	mk Prim1 (P.isUnboxed,	aTy,		bTy)),
+		("Equal",	mk Prim2 (P.Equal,	(aTy, aTy),	bTy)),
+		("NotEqual",	mk Prim2 (P.NotEqual,	(aTy, aTy),	bTy)),
 		("BNot",	mk Prim1 (P.BNot,	bTy,		bTy)),
 		("BEq",		mk Prim2 (P.BEq,	(bTy, bTy),	bTy)),
 		("BNEq",	mk Prim2 (P.BNEq,	(bTy, bTy),	bTy)),

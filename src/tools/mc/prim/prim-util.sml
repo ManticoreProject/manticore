@@ -20,6 +20,8 @@ structure PrimUtil : sig
 
     fun nameOf (P.isBoxed _) = "isBoxed"
       | nameOf (P.isUnboxed _) = "isUnboxed"
+      | nameOf (P.Equal _) = "Equal"
+      | nameOf (P.NotEqual _) = "NotEqual"
       | nameOf (P.BNot _) = "BNot"
       | nameOf (P.BEq _) = "BEq"
       | nameOf (P.BNEq _) = "BNEq"
@@ -73,6 +75,8 @@ structure PrimUtil : sig
   (* return the list of variables referenced in a primitive operation *)
     fun varsOf (P.isBoxed a) = [a]
       | varsOf (P.isUnboxed a) = [a]
+      | varsOf (P.Equal(a, b)) = [a, b]
+      | varsOf (P.NotEqual(a, b)) = [a, b]
       | varsOf (P.BNot a) = [a]
       | varsOf (P.BEq(a, b)) = [a, b]
       | varsOf (P.BNEq(a, b)) = [a, b]
@@ -136,6 +140,8 @@ structure PrimUtil : sig
     in
     fun explode (P.isBoxed a) = (p1 P.isBoxed, [a])
       | explode (P.isUnboxed a) = (p1 P.isUnboxed, [a])
+      | explode (P.Equal(a, b)) = (p2 P.Equal, [a, b])
+      | explode (P.NotEqual(a, b)) = (p2 P.NotEqual, [a, b])
       | explode (P.BNot a) = (p1 P.BNot, [a])
       | explode (P.BEq(a, b)) = (p2 P.BEq, [a, b])
       | explode (P.BNEq(a, b)) = (p2 P.BNEq, [a, b])
