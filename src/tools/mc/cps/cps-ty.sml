@@ -32,7 +32,7 @@ structure CPSTy =
 	  in
 	    case ty
 	     of T_Any => "any"
-	      | T_Enum w => concat["enum(0..", Word.fmt StringCvt.DEC w, ")"]
+	      | T_Enum w => concat["enum(", Word.fmt StringCvt.DEC w, ")"]
 	      | T_Raw ty => RawTypes.toString ty
 	      | T_Wrap ty => concat["wrap(", RawTypes.toString ty, ")"]
 	      | T_Tuple tys => concat("(" :: tys2l(tys, [")"]))
