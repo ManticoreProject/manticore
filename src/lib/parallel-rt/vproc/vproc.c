@@ -345,7 +345,10 @@ static void SigHandler (int sig, siginfo_t *si, void *_sc)
     ucontext_t	*uc = (ucontext_t *)_sc;
     VProc_t	*self = VProcSelf();
 
-SayDebug("[%2d] inManticore = %p, atomic = %p\n", self->id, self->inManticore, self->atomic);
+#ifndef NDEBUG
+    if (DebugFlg)
+	SayDebug("[%2d] inManticore = %p, atomic = %p\n", self->id, self->inManticore, self->atomic);
+#endif
     self->sigPending = M_TRUE;
     if ((self->inManticore == M_TRUE) && (self->atomic == M_FALSE)) {
       /* set the limit pointer to zero to force a context switch on
