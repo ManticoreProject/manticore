@@ -142,7 +142,6 @@ static void PingLoop ()
 	int sigNum = sigtimedwait (&sigs, &info, &tq);
 	if (sigNum < 0) {
 	  // timeout
-SayDebug("Ping %d vprocs\n", nPings);
 	    Ping (nPings);
 	}
 	else {

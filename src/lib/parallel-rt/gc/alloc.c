@@ -46,7 +46,7 @@ Value_t WrapInt (VProc_t *vp, long i)
 
 void SayValue (Value_t v)
 {
-    if (ValueIsBoxed(v)) {
+    if (ValueIsBoxed(v) && (v != 0)) {
 	Value_t *obj = (Value_t *)ValueToPtr(v);
 	Word_t hdr = ((Word_t *)obj)[-1];
 	int n = GetLength(hdr);

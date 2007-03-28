@@ -42,6 +42,7 @@ int			NumHardwareProcs;
 int			NumVProcs;
 int			NumIdleVProcs;
 VProc_t			*VProcs[MAX_NUM_VPROCS];
+int			NextVProc;			/* index of next slot in VProcs */
 
 extern int ASM_VProcSleep;
 
@@ -53,18 +54,18 @@ extern int ASM_VProcSleep;
 void VProcInit (Options_t *opts)
 {
     NumHardwareProcs = GetNumCPUs();
-    NumVProcs = 0;
+    NextVProc = 0;
     NumIdleVProcs = 0;
 
   /* get command-line options */
-    int nProcs = ((NumHardwareProcs == 0) ? DFLT_NUM_VPROCS : NumHardwareProcs);
-    nProcs = GetIntOpt (opts, "-p", nProcs);
-    if ((NumHardwareProcs > 0) && (nProcs > NumHardwareProcs))
+    NumVProcs = ((NumHardwareProcs == 0) ? DFLT_NUM_VPROCS : NumHardwareProcs);
+    NumVProcs = GetIntOpt (opts, "-p", NumVProcs);
+    if ((NumHardwareProcs > 0) && (NumVProcs > NumHardwareProcs))
 	Warning ("%d processors requested on a %d processor machine\n",
-	    nProcs, NumHardwareProcs);
+	    NumVProcs, NumHardwareProcs);
 
 #ifndef NDEBUG
-    SayDebug("%d/%d processors allocated to vprocs\n", nProcs, NumHardwareProcs);
+    SayDebug("%d/%d processors allocated to vprocs\n", NumVProcs, NumHardwareProcs);
 #endif
 
     if (pthread_key_create (&VProcInfoKey, 0) != 0) {
@@ -74,7 +75,7 @@ void VProcInit (Options_t *opts)
   /* allocate nProcs-1 idle vprocs; the last vproc will be created to run
    * the initial Manticore thread.
    */
-    for (int i = 1;  i < nProcs;  i++) {
+    for (int i = 1;  i < NumVProcs;  i++) {
 	VProcCreate (IdleVProc, 0);
     }
 
@@ -88,17 +89,8 @@ void VProcInit (Options_t *opts)
  */
 VProc_t *VProcCreate (VProcFn_t f, void *arg)
 {
-    if (NumVProcs >= MAX_NUM_VPROCS)
+    if (NextVProc >= MAX_NUM_VPROCS)
 	Die ("too many vprocs\n");
-
-#ifdef HAVE_PTHREAD_SETAFFINITY_NP
-    cpu_set_t	cpus;
-    CPU_ZERO(&cpus);
-    CPU_SET(NumVProcs, &cpus);
-    if (pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpus) == -1) {
-	Warning("[%2d] unable to set affinity\n", NumVProcs);
-    }
-#endif
 
   /* allocate the VProc heap; we store the VProc representation in the base
    * of the heap area.
@@ -128,8 +120,8 @@ VProc_t *VProcCreate (VProcFn_t f, void *arg)
     CondInit (&(vproc->wait));
     vproc->idle = true;
 
-    vproc->id = NumVProcs;
-    VProcs[NumVProcs++] = vproc;
+    vproc->id = NextVProc;
+    VProcs[NextVProc++] = vproc;
 
     InitVProcHeap (vproc);
 
@@ -194,7 +186,7 @@ void VProcSleep (VProc_t *vp)
       /* all VProcs are idle, so shutdown */
 #ifndef NDEBUG
 	if (DebugFlg)
-	    SayDebug("[%2d] shutting down\n", vp->id);
+	    SayDebug("[%2d] shuting down\n", vp->id);
 #endif
 	exit (0);
     }
@@ -207,6 +199,7 @@ void VProcSleep (VProc_t *vp)
 	  /* get an item from the secondary queue */
 	    Value_t item = Dequeue2(vp);
 	MutexUnlock (&(vp->lock));
+	FetchAndDec(&NumIdleVProcs);
 	vp->stdCont = ValueToRdyQItem(item)->fiber;
 	vp->currentTId = ValueToRdyQItem(item)->tid;
     }
@@ -226,6 +219,15 @@ static void *VProcMain (void *_data)
 #ifndef NDEBUG
     if (DebugFlg)
 	SayDebug("[%2d] VProcMain: initializing ...\n", self->id);
+#endif
+
+#ifdef HAVE_PTHREAD_SETAFFINITY_NP
+    cpu_set_t	cpus;
+    CPU_ZERO(&cpus);
+    CPU_SET(NumVProcs, &cpus);
+    if (pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpus) == -1) {
+	Warning("[%2d] unable to set affinity\n", NumVProcs);
+    }
 #endif
 
   /* store a pointer to the VProc info as thread-specific data */
