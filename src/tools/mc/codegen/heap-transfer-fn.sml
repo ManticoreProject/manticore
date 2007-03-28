@@ -157,16 +157,16 @@ functor HeapTransferFn (
     | rawTyToCTy Ty.T_Double = CTy.C_double
     | rawTyToCTy Ty.T_Vec128 = raise Fail "todo"
 
-  fun cfgTyToCTy ty =
-      (case ty
-	of Ty.T_Any => CTy.C_PTR
-	 | Ty.T_Raw rt => rawTyToCTy rt
-	 | Ty.T_Enum _ => CTy.C_signed CTy.I_int
-	 | Ty.T_Wrap _ => CTy.C_PTR
-	 | Ty.T_Tuple _ => CTy.C_PTR
-	 | Ty.T_OpenTuple _ => CTy.C_PTR
-	 | _ => raise Fail "cfgTyToCTy"
-      (* esac *))
+  fun cfgTyToCTy ty = (case ty
+	 of Ty.T_Any => CTy.C_PTR
+	  | Ty.T_Raw rt => rawTyToCTy rt
+	  | Ty.T_Enum _ => CTy.C_signed CTy.I_int
+	  | Ty.T_Wrap _ => CTy.C_PTR
+	  | Ty.T_Tuple _ => CTy.C_PTR
+	  | Ty.T_OpenTuple _ => CTy.C_PTR
+	  | Ty.T_VProc => CTy.C_PTR
+	  | _ => raise Fail(concat["cfgTyToCTy(", CFGTy.toString ty, ")"])
+	(* esac *))
 
   fun genCCall varDefTbl {frame, lhs, f, args} =
       let val defOf = VarDef.defOf varDefTbl
