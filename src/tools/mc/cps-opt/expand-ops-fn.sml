@@ -64,11 +64,14 @@ functor ExpandOpsFn (Spec : TARGET_SPEC) : sig
 
   (* expansion for Forward *)
     fun xForward {vp, sign} = let
+	  val t = var("true", Ty.boolTy)
 	  val tos = var("tos", actStkItemTy)
 	  val rest = var("rest", Ty.T_Any)
 	  val act = var("act", Ty.T_Cont[Ty.T_Any])
 	  in
 	    mkLet([
+		([t], CPS.trueLit),
+		([], CPS.VPStore(Offsets.atomic, vp, f)),
 		([tos], CPS.VPLoad(Offsets.actionStk, vp)),
 		([rest], CPS.Select(1, tos)),
 		([], CPS.VPStore(Offsets.actionStk, vp, rest)),
