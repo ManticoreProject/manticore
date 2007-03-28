@@ -171,7 +171,7 @@ functor ExpandOpsFn (Spec : TARGET_SPEC) : sig
 		  | expand (CPS.Let([], CPS.Enqueue arg, e)) = xEnqueue (arg, expand e)
 		  | expand (CPS.Let(lhs, rhs, e)) = CPS.mkLet(lhs, rhs, expand e)
 		  | expand (CPS.Fun(fbs, e)) = CPS.mkFun(List.map xLambda fbs, expand e)
-		  | expand (CPS.Cont(fb, e)) = CPS.mkCont(xLambda fb, expand e)
+		  | expand (CPS.Cont(fb, e)) = CPS.mkCont(xCont(fb, exh), expand e)
 		  | expand (CPS.If(x, e1, e2)) = CPS.If(x, expand e1, expand e2)
 		  | expand (CPS.Switch(x, cases, dflt)) =
 		      CPS.Switch(x,
@@ -185,6 +185,7 @@ functor ExpandOpsFn (Spec : TARGET_SPEC) : sig
 		  expand e
 		end
 	  and xLambda (f, params, e) = (f, params, xExp(e, List.last params))
+	  and xCont ((k, params, e), exh) = (k, params, xExp(e, exh))
 	  in
 	    CPS.MODULE{
 		name = name, externs = VProcDequeue::externs,
