@@ -231,8 +231,10 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
     fun analyze (CFG.MODULE{code, ...}) = let
 	  fun onePass () = let
 (*DEBUG*)val addInfo = fn (x, v) => let val prevV = valueOf x in addInfo(x, v);
+(*DEBUG*)if changedValue(valueOf x, prevV) then (
 (*DEBUG*)print(concat["addInfo(", CFG.Var.toString x, ", ", valueToString v, "): ",
-(*DEBUG*)valueToString prevV, " ==> ", valueToString(valueOf x), "\n"]) end
+(*DEBUG*)valueToString prevV, " ==> ", valueToString(valueOf x), "\n"]))
+(*DEBUG*)else () end
 (*DEBUG*)handle ex => (print(concat["addInfo(", CFG.Var.toString x, ", _): uncaught exception\n"]); raise ex)
 	      (* record that a given variable escapes *)
 		fun escape x = escapingValue (valueOf x)
