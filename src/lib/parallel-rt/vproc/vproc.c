@@ -102,7 +102,7 @@ VProc_t *VProcCreate (VProcFn_t f, void *arg)
 
   /* initialize the vproc structure */
     vproc->inManticore = M_FALSE;
-    vproc->atomic = M_FALSE;
+    vproc->atomic = M_TRUE;
     vproc->sigPending = M_FALSE;
     vproc->actionStk = M_NIL;	    /* FIXME: install default action? */
     vproc->rdyQHd = M_NIL;
@@ -198,6 +198,7 @@ void VProcSleep (VProc_t *vp)
 	    }
 	  /* get an item from the secondary queue */
 	    Value_t item = Dequeue2(vp);
+SayDebug("[%2d] VProcSleep: waking up; cont = %p\n", vp->id, ValueToRdyQItem(item)->fiber);
 	MutexUnlock (&(vp->lock));
 	FetchAndDec(&NumIdleVProcs);
 	vp->stdCont = ValueToRdyQItem(item)->fiber;
@@ -277,7 +278,7 @@ void EnqueueOnVProc (VProc_t *self, VProc_t *vp, Value_t tid, Value_t fiber)
 {
 #ifndef NDEBUG
     if (DebugFlg)
-	SayDebug("[%2d] EnqueueOnVProc %d\n", self->id, vp->id);
+	SayDebug("[%2d] EnqueueOnVProc %d; fiber = %p\n", self->id, vp->id, fiber);
 #endif
 
     MutexLock (&(vp->lock));
@@ -309,7 +310,7 @@ Value_t VProcDequeue (VProc_t *self)
 	item = Dequeue2 (self);
     MutexUnlock (&(self->lock));
 
-    if (item = M_NIL) {
+    if (item == M_NIL) {
       /* the secondary queue is empty, so return an item that will put us to sleep */
 	Value_t cont = AllocUniform(self, 1, PtrToValue(&ASM_VProcSleep));
 	item = AllocUniform(self, 3, M_UNIT, cont, M_NIL);
@@ -400,15 +401,16 @@ static Value_t Dequeue2 (VProc_t *self)
        */
 	RdyQItem_t *p = ValueToRdyQItem(self->secondaryQTl);
 	self->secondaryQTl = M_NIL;
-	RdyQItem_t *q = ValueToRdyQItem(p->link);
-	while (q != ValueToRdyQItem(M_NIL)) {
-	    RdyQItem_t *next = ValueToRdyQItem(q->link);
-	    q->link = PtrToValue(p);
-	    p = q;
-	    q = next;
+	RdyQItem_t *q = ValueToRdyQItem(M_NIL);
+	while (p != ValueToRdyQItem(M_NIL)) {
+	    RdyQItem_t *next = ValueToRdyQItem(p->link);
+	    p->link = PtrToValue(q);
+	    q = p;
+	    p = next;
 	}
-	self->secondaryQHd = p->link;
-	return PtrToValue(p);
+	self->secondaryQHd = q->link;
+SayDebug("[%2d] Dequeue2: result = %p, hd = %p\n", self->id, q, q->link);
+	return PtrToValue(q);
     }
     else
 	return M_NIL;
