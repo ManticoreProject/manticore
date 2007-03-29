@@ -11,6 +11,7 @@
     | KW_and		("and")
     | KW_any		("any")
     | KW_apply		("apply")
+    | KW_attribute	("__attribute__")
     | KW_bool		("bool")
     | KW_byte		("byte")
     | KW_case		("case")
@@ -34,6 +35,7 @@
     | KW_let		("let")
     | KW_long		("long")
     | KW_module		("module")
+    | KW_pure		("pure")
     | KW_run		("run")
     | KW_short		("short")
     | KW_switch		("switch")
@@ -76,12 +78,13 @@ Module
 	;
 
 Import
-	: "extern" CRetTy ID "(" (CArgTy ("," CArgTy)* )? ")" ";"
+	: "extern" CRetTy ID "(" (CArgTy ("," CArgTy)* )? ")" Attrs ";"
 		=> (CF.CFun{
 			var = ID,
 			name = Atom.toString ID,
 			retTy = CRetTy,
-			argTys = flatten SR
+			argTys = flatten SR,
+			attrs = Attrs
 		      })
 	;
 
@@ -93,6 +96,17 @@ CRetTy
 CArgTy
 	: RawType	=> (CF.BaseTy RawType)
 	| "void" "*"	=> (CF.PointerTy)
+	;
+
+Attrs
+	: (* empty *)	=> ([])
+	| "__attribute__" "(" "(" Attr ("," Attr)* ")" ")"
+		=> (Attr :: SR)
+	;
+
+Attr
+	: "pure"	=> (CFunctions.A_pure)
+	| "alloc"	=> (CFunctions.A_alloc)
 	;
 
 Lambda

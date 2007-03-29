@@ -12,14 +12,15 @@ functor ExpandOpsFn (Spec : TARGET_SPEC) : sig
 
     structure Ty = CPSTy
     structure Offsets = Spec.ABI
+    structure CF = CFunctions
 
     fun var (name, ty) = CPS.Var.new(Atom.atom name, ty)
 
-    fun cfun (name, resTy, paramTys) = let
-	  val cf = var(name, Ty.T_CFun(CFunctions.CProto(resTy, paramTys)))
+    fun cfun (name, resTy, paramTys, attrs) = let
+	  val cf = var(name, Ty.T_CFun(CF.CProto(resTy, paramTys)))
 	  in
 	    CPS.Var.setKind(cf, CPS.VK_Extern name);
-	    CFunctions.CFun{var = cf, name = name, retTy=resTy, argTys = paramTys}
+	    CF.CFun{var = cf, name = name, retTy=resTy, argTys = paramTys, attrs=attrs}
 	  end
 
     fun mkLet ([], e) = e
@@ -71,7 +72,7 @@ functor ExpandOpsFn (Spec : TARGET_SPEC) : sig
 	  in
 	    mkLet([
 		([t], CPS.trueLit),
-		([], CPS.VPStore(Offsets.atomic, vp, f)),
+		([], CPS.VPStore(Offsets.atomic, vp, t)),
 		([tos], CPS.VPLoad(Offsets.actionStk, vp)),
 		([rest], CPS.Select(1, tos)),
 		([], CPS.VPStore(Offsets.actionStk, vp, rest)),
@@ -167,8 +168,8 @@ functor ExpandOpsFn (Spec : TARGET_SPEC) : sig
 	  end
 
     fun transform (CPS.MODULE{name, externs, body}) = let
-	  val VProcDequeue = cfun("VProcDequeue", CFunctions.PointerTy, [CFunctions.PointerTy])
-	  val xDequeue = xDequeue (CFunctions.varOf VProcDequeue)
+	  val VProcDequeue = cfun("VProcDequeue", CF.PointerTy, [CF.PointerTy], [CF.A_alloc])
+	  val xDequeue = xDequeue (CF.varOf VProcDequeue)
 	  fun xExp (e, exh) = let
 		fun expand (CPS.Let([x], CPS.Dequeue vp, e)) = xDequeue (x, vp, expand e, exh)
 		  | expand (CPS.Let([], CPS.Enqueue arg, e)) = xEnqueue (arg, expand e)

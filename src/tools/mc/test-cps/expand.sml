@@ -274,10 +274,10 @@ structure Expand =
 	  end
 
     fun cvtModule (PT.MODULE{name, externs, body}) = let
-	  fun doCFun (CFunctions.CFun{var, name, retTy, argTys}, (cfs, env)) = let
+	  fun doCFun (CFunctions.CFun{var, name, retTy, argTys, attrs}, (cfs, env)) = let
 		val f = CPS.Var.new(var, Ty.T_CFun(CFunctions.CProto(retTy, argTys)))
 		in (
-		  CPS.mkCFun{var=f, name=name, retTy=retTy, argTys=argTys}::cfs,
+		  CPS.mkCFun{var=f, name=name, retTy=retTy, argTys=argTys, attrs=attrs}::cfs,
 		  AtomMap.insert(env, var, f)
 		) end
 	  val (cfs, env) = List.foldl doCFun ([], AtomMap.empty) externs

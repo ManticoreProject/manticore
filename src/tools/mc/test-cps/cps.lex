@@ -71,6 +71,7 @@
 		  ("and",	T.KW_and),
 		  ("any",	T.KW_any),
 		  ("apply",	T.KW_apply),
+		  ("__attribute__", T.KW_attribute),
 		  ("bool",	T.KW_bool),
 		  ("byte",	T.KW_byte),
 		  ("case",	T.KW_case),
@@ -94,6 +95,7 @@
 		  ("let",	T.KW_let),
 		  ("long",	T.KW_long),
 		  ("module",	T.KW_module),
+		  ("pure",	T.KW_pure),
 		  ("run",	T.KW_run),
 		  ("short",	T.KW_short),
 		  ("switch",	T.KW_switch),
@@ -127,7 +129,7 @@
 %let dig = [0-9];
 %let num = {dig}+;
 %let idchar = {letter}|{dig}|"_"|"'";
-%let id = {letter}{idchar}*;
+%let id = ({letter}|"_"){idchar}*;
 %let tyvarid = "'"{idchar}*;
 %let esc = "\\"[abfnrtv\\\"]|"\\"{dig}{dig}{dig};
 %let sgood = [\032-\126]&[^\"\\]; (* sgood means "characters good inside strings" *)
