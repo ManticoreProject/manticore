@@ -283,7 +283,7 @@ void EnqueueOnVProc (VProc_t *self, VProc_t *vp, Value_t tid, Value_t fiber)
 
     MutexLock (&(vp->lock));
       /* allocate a secondary queue item on the global heap */
-	vp->secondaryQTl = GlobalAllocUniform(vp, 3, tid, fiber, vp->secondaryQTl);
+	vp->secondaryQTl = GlobalAllocUniform(self, 3, tid, fiber, vp->secondaryQTl);
       /* if the vproc is idle, then wake it up */
         if (vp->idle) {
 	    vp->idle = false;
@@ -299,6 +299,8 @@ void EnqueueOnVProc (VProc_t *self, VProc_t *vp, Value_t tid, Value_t fiber)
 Value_t VProcDequeue (VProc_t *self)
 {
     Value_t	item;
+
+    assert (vp->atomic);
 
 #ifndef NDEBUG
     if (DebugFlg)
@@ -347,7 +349,9 @@ static void SigHandler (int sig, siginfo_t *si, void *_sc)
 
 #ifndef NDEBUG
     if (DebugFlg)
-	SayDebug("[%2d] inManticore = %p, atomic = %p\n", self->id, self->inManticore, self->atomic);
+	SayDebug("[%2d] inManticore = %p, atomic = %p, pc = %p\n",
+	    self->id, self->inManticore, self->atomic,
+	    uc->uc_mcontext.gregs[REG_RIP]);
 #endif
     self->sigPending = M_TRUE;
     if ((self->inManticore == M_TRUE) && (self->atomic == M_FALSE)) {
