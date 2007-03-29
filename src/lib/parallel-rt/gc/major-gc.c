@@ -168,15 +168,17 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
  */
 Value_t PromoteObj (VProc_t *vp, Value_t root)
 {
-    Addr_t	heapBase = VProcHeap(vp);
+    Addr_t	heapBase = (Addr_t)vp;
     MemChunk_t	*scanChunk = vp->globToSpace;
 
+SayDebug("[%2d] PromoteObj(%p, %p)\n", vp->id, vp, root);
   /* NOTE: the following test probably ought to happen before the runtime
    * system gets called.
    */
     if (isPtr(root) && inVPHeap(heapBase, ValueToAddr(root))) {
       /* promote the root to the global heap */
 	root = ForwardObj (vp, root);
+SayDebug("[%2d]  ==> %p\n", vp->id, root);
 
       /* promote any reachable values */
 	ScanGlobalToSpace (vp, heapBase, scanChunk, (Word_t *)(vp->globNextW));

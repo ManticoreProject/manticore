@@ -278,7 +278,7 @@ void EnqueueOnVProc (VProc_t *self, VProc_t *vp, Value_t tid, Value_t fiber)
 {
 #ifndef NDEBUG
     if (DebugFlg)
-	SayDebug("[%2d] EnqueueOnVProc %d; fiber = %p\n", self->id, vp->id, fiber);
+	SayDebug("[%2d] EnqueueOnVProc(-, %d, %p, %p)\n", self->id, vp->id, tid, fiber);
 #endif
 
     MutexLock (&(vp->lock));
@@ -300,7 +300,7 @@ Value_t VProcDequeue (VProc_t *self)
 {
     Value_t	item;
 
-    assert (vp->atomic);
+    assert (self->atomic);
 
 #ifndef NDEBUG
     if (DebugFlg)
