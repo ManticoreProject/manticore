@@ -110,9 +110,12 @@ structure PrintCPS : sig
 		prl ["if ", varUseToString x, " then\n"];
 		prExp(i+1, e1);
 		indent (i); pr "else\n"; prExp(i+1, e2))
+	  fun prExtern cf = (indent 1; prl [CFunctions.cfunToString cf, "\n"])
+(*
 	  fun prExtern (CFunctions.CFun{var, ...}) = (
 		indent 1;
 		prl ["extern ", varBindToString var, "\n"])
+*)
 	  in
 	    prl ["module ", Atom.toString name, "\n"];
 	    List.app prExtern externs;

@@ -127,10 +127,13 @@ structure PrintCFG : sig
 		prl [prefix, " ", labelToString lab];
 		prList varUseToString args;
 		pr "\n")
+	  fun prExtern cf = prl["  ", CFunctions.cfunToString cf, "\n"]
+(*
 	  fun prExtern (CFunctions.CFun{var, ...}) = prl[
 		  "  extern ", labelToString var, " : ",
 		  CFGTy.toString(CFG.Label.typeOf var), "\n"
 		]
+*)
 	  in
 	    prl ["module ", Atom.toString name, " {\n"];
 	    List.app prExtern externs;
