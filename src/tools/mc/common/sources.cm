@@ -8,6 +8,12 @@
 
 Library
 
+  signature C_FUNCTIONS
+  signature TARGET_SPEC
+  signature RUNTIME_CONSTANTS
+  signature VAR_PARAMS
+  signature VAR
+
   structure CFunctions
   structure FloatLit
   structure IntegerLit
@@ -15,12 +21,9 @@ Library
   structure ProgPt
   structure RawTypes
   structure Stamp
-  signature TARGET_SPEC
-  signature RUNTIME_CONSTANTS
-  signature VAR_PARAMS
-  signature VAR
-  functor VarFn
   structure VarRep
+
+  functor VarFn
 
 is
 

@@ -17,7 +17,7 @@ functor ExpandOpsFn (Spec : TARGET_SPEC) : sig
     fun var (name, ty) = CPS.Var.new(Atom.atom name, ty)
 
     fun cfun (name, resTy, paramTys, attrs) = let
-	  val cf = var(name, Ty.T_CFun(CF.CProto(resTy, paramTys)))
+	  val cf = var(name, Ty.T_CFun(CF.CProto(resTy, paramTys, attrs)))
 	  in
 	    CPS.Var.setKind(cf, CPS.VK_Extern name);
 	    CF.CFun{var = cf, name = name, retTy=resTy, argTys = paramTys, attrs=attrs}
