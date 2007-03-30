@@ -32,6 +32,7 @@ signature VAR =
     val typeOf : var -> ty
 
     val useCount : var -> int
+    val addToCount : (var * int) -> unit
 
     val same : (var * var) -> bool
     val compare : (var * var) -> order
@@ -87,6 +88,7 @@ functor VarFn (VP : VAR_PARAMS) : VAR =
     fun typeOf (V{ty, ...}) = ty
 
     fun useCount (V{useCnt, ...}) = !useCnt
+    fun addToCount (V{useCnt, ...}, n) = (useCnt := !useCnt + n)
 
     fun same (V{id=a, ...}, V{id=b, ...}) = Stamp.same(a, b)
     fun compare (V{id=a, ...}, V{id=b, ...}) = Stamp.compare(a, b)
