@@ -32,6 +32,9 @@ functor HeapTransferFn (
     structure CCall : C_CALL
 	where T = MTy.T
     structure Frame : MANTICORE_FRAME
+    structure VProcOps : VPROC_OPS
+	where VarDef = VarDef
+	where MTy = MTy
 ) : TRANSFER = struct
 
   structure MTy = MTy
@@ -197,10 +200,21 @@ functor HeapTransferFn (
 		  loop (rs, ([], []))
 	      end (* saveRegs *)
 	  val {saves, restores} = saveRegs Regs.saveRegs
+	  val MTy.EXP(_,hostVP) = VProcOps.genHostVP
+	  val setInManticore = 
+	      VProcOps.genVPStore' (Spec.ABI.inManticore, hostVP, intLit 0)
+	  val stms = [setInManticore, saves] @ callseq @ [restores]
+	  val result = ListPair.map convResult (result, lhs)
+	  val saveAP =
+	      VProcOps.genVPStore' (Spec.ABI.allocPtr, hostVP, T.REG (ty, Regs.apReg))
       in
-(* FIXME: unset the IN_MANTICORE flag *)
-	  {stms=[saves] @ callseq @ [restores], 
-	   result=ListPair.map convResult (result, lhs)}
+	  (case Var.typeOf f
+	    of CFGTy.T_CFun proto =>
+	       if CFunctions.protoHasAttr CFunctions.A_alloc proto
+	       then {stms=saveAP :: stms, result=result}
+	       else {stms=stms, result=result}
+	     | _ => raise Fail "bogus type for c function"
+	   (* esac *))
       end (* genCCall *)
       
   (* Check whether the heap contains szb free bytes. If it does, apply the

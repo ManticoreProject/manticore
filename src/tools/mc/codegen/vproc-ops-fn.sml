@@ -17,6 +17,7 @@ signature VPROC_OPS = sig
     val genVPLoad : VarDef.var_def_tbl -> (CFG.offset * CFG.var) -> MTy.mlrisc_tree
     (* store a value at an offset from the vproc structure. *)
     val genVPStore : VarDef.var_def_tbl -> (CFG.offset * CFG.var * CFG.var) -> MTy.T.stm
+    val genVPStore' : (CFG.offset * MTy.T.rexp * MTy.T.rexp) -> MTy.T.stm
 
 end (* VPROC_OPS *)
 
@@ -43,8 +44,11 @@ functor VProcOpsFn (
   fun genVPLoad varDefTbl (offset, vproc) =
       MTy.EXP (ty, T.LOAD (ty, T.ADD (ty, VarDef.defOf varDefTbl vproc, T.LI offset), memory))
 
+  fun genVPStore' (offset, vproc, v) =
+      T.STORE (ty, T.ADD (ty, vproc, T.LI offset), v, memory)
+
   fun genVPStore varDefTbl (offset, vproc, v) =
-      T.STORE (ty, T.ADD (ty, VarDef.defOf varDefTbl vproc, T.LI offset),
-	       VarDef.defOf varDefTbl v, memory)
+      genVPStore' (offset, VarDef.defOf varDefTbl vproc, 
+		  VarDef.defOf varDefTbl v)
 
 end (* VProcOpsFn *)
