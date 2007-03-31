@@ -22,9 +22,8 @@ structure BOM =
 
     and rhs
       = E_Const of const
-      | E_Cast of (var * ty)
+      | E_Cast of (ty * var)
       | E_Select of (int * var)
-      | E_Update of (int * var * var)
       | E_Alloc of (ty * var list)
       | E_Wrap of var
       | E_Unwrap of var
@@ -35,20 +34,20 @@ structure BOM =
 (* QUESTION: should the following operations be builtin or supported as hlops? *)
     (* non-atomic queue operations *)
       | E_QItemAlloc of var list	(* allocate a queue item *)
-      | E_Enqueue of (var * var)	(* insert an item [nonatomic] *)
-      | E_Dequeue of var		(* remove an item [nonatomic] *)
-      | E_EmptyQ of var			(* return true if queue is empty [nonatomic] *)
+      | E_QEnqueue of (var * var)	(* insert an item [nonatomic] *)
+      | E_QDequeue of var		(* remove an item [nonatomic] *)
+      | E_QEmpty of var			(* return true if queue is empty [nonatomic] *)
     (* concurrent queue operations *)
-      | E_AtomicEnqueue of (var * var)	(* insert an item [atomic] *)
-      | E_AtomicDequeue of var		(* remove an item [atomic] *)
+      | E_AtomicQEnqueue of (var * var)	(* insert an item [atomic] *)
+      | E_AtomicQDequeue of var		(* remove an item [atomic] *)
     (* scheduler operations *)
-      | Dequeue of var
-      | Enqueue of (var * var * var)
+      | E_Dequeue of var
+      | E_Enqueue of (var * var * var)
     (* VProc operations *)
-      | HostVProc			(* gets the hosting VProc *)
-      | VPLoad of (offset * var)	(* load a value from the given byte offset *)
+      | E_HostVProc			(* gets the hosting VProc *)
+      | E_VPLoad of (offset * var)	(* load a value from the given byte offset *)
 					(* in the vproc structure *)
-      | VPStore of (offset * var * var)	(* store a value at the given byte offset *)
+      | E_VPStore of (offset * var * var)	(* store a value at the given byte offset *)
 					(* in the vproc structure *)
 
     and lambda = FB of {	      (* function/continuation abstraction *)
