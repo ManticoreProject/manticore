@@ -58,7 +58,6 @@ functor HeapTransferFn (
 
   fun newLabel s = Label.label s () 
   fun fail s = raise Fail s
-  fun intLit i = T.LI (T.I.fromInt (ty, i))
   fun regExp r = T.REG (ty, r)
   fun move (r, e) = T.MV (ty, r, e)
   fun move' (r, mlt) = 
@@ -171,51 +170,85 @@ functor HeapTransferFn (
 	  | _ => raise Fail(concat["cfgTyToCTy(", CFGTy.toString ty, ")"])
 	(* esac *))
 
-  fun genCCall varDefTbl {frame, lhs, f, args} =
-      let val defOf = VarDef.defOf varDefTbl
+    fun cvtCTy (CFunctions.PointerTy) = CTy.C_PTR
+      | cvtCTy (CFunctions.BaseTy rTy) = rawTyToCTy rTy
+      | cvtCTy (CFunctions.VoidTy) = CTy.C_void
+
+  (* remove a register from a list of registers *)
+    fun removeReg reg (r::rs) = if CellsBasis.sameCell(reg, r)
+	  then rs
+	  else removeReg reg rs
+      | removeReg _ [] = []
+
+    fun genCCall varDefTbl {frame, lhs, f, args} = let
+	  val defOf = VarDef.defOf varDefTbl
 	  val getDefOf = VarDef.getDefOf varDefTbl
-	  val getTy = cfgTyToCTy o Var.typeOf
+	(* get the C function's prototype *)
+	  val cProtoTy as CFunctions.CProto(retTy, paramTys, _) = (
+		case Var.typeOf f
+		 of CFGTy.T_CFun proto => proto
+		  | _ => raise Fail(concat["genCCall: ", Var.toString f, " not a C function"])
+		(* end case *))
+	(* convert from CFunctions.c_type to CTypes.c_type *)
+	  val retTy = cvtCTy retTy
+	  val paramTys = List.map cvtCTy paramTys
 	  val szOfVar = Types.szOf o Var.typeOf
 	  val name = defOf f
 	  val cArgs = map (MTy.treeToMLRisc o getDefOf) args
-	  val retTy = (case lhs
-			of l :: _ => getTy l
-			 | [] => CTy.C_signed CTy.I_int
-		       (* esac *))
-	  val paramTys = map getTy args
 	  val {callseq, result} = CCall.genCall {
 		  name=name, args=cArgs,
-		  proto={conv="", retTy=retTy, paramTys=paramTys} }
+		  proto={conv="", retTy=retTy, paramTys=paramTys}
+		}
+	(* do we need to save/restore the allocation pointer? *)
+	  val saveAllocPtr = CFunctions.protoHasAttr CFunctions.A_alloc cProtoTy
+	(* for each caller-save register, allocate a fresh temporary and
+	 * generate save/restore operations that copy the dedicated registers
+	 * to/from the temporaries.
+	 *)
+	  fun saveRegs rs = let
+		fun loop ([], (tmps, ss)) = {
+			  saves=T.COPY (ty, tmps, ss),
+			  restores=T.COPY (ty, ss, tmps)
+			}
+		  | loop (r :: rs, (tmps, ss)) =
+		      loop (rs, (newReg () :: tmps, r :: ss))
+		in
+		  loop (rs, ([], []))
+		end (* saveRegs *)
+	  val {saves, restores} = if saveAllocPtr
+		then saveRegs (removeReg Regs.apReg Regs.saveRegs)
+		else saveRegs Regs.saveRegs
+	(* we need a pointer to the vproc to set the inManticore flag, etc. *)
+	  val (vpReg, setVP) = let
+		val r = newReg()
+		val MTy.EXP(_, hostVP) = VProcOps.genHostVP
+		in
+		  (T.REG(ty, r), T.MV(ty, r, hostVP))
+		end
+	(* generate a statement to store a value in the vproc inManticore flag *)
+	  fun setInManticore value = 
+	        VProcOps.genVPStore' (Spec.ABI.inManticore, vpReg, T.LI value)
+	(* statements to save/restore the allocation pointer from the vproc *)
+	  val (saveAP, restoreAP) = if saveAllocPtr
+		then let
+		  val apReg = T.REG(ty, Regs.apReg)
+		  val save = VProcOps.genVPStore' (Spec.ABI.allocPtr, vpReg, apReg)
+		  val restore = T.MV(ty, Regs.apReg,
+			VProcOps.genVPLoad' (Spec.ABI.allocPtr, vpReg))
+		  in
+		    ([save], [restore])
+		  end
+		else ([], [])
+	  val stms = saveAP @ [setInManticore(Spec.falseRep), saves]
+		@ callseq
+		@ (restores :: restoreAP @ [setInManticore(Spec.trueRep)])
 	  fun convResult (T.GPR e, v) = MTy.EXP (szOfVar v, e)
 	    | convResult (T.FPR e, v) = MTy.FEXP (szOfVar v, e)
 	    | convResult _ = raise Fail "convResult"
-				   
-	  fun saveRegs rs =	      
-	      let fun loop ([], (tmps, ss)) = 
-		      {saves=T.COPY (ty, tmps, ss),
-		       restores=T.COPY (ty, ss, tmps)}
-		    | loop (r :: rs, (tmps, ss)) =
-		      loop (rs, (newReg () :: tmps, r :: ss))
-	      in
-		  loop (rs, ([], []))
-	      end (* saveRegs *)
-	  val {saves, restores} = saveRegs Regs.saveRegs
-	  val MTy.EXP(_,hostVP) = VProcOps.genHostVP
-	  val setInManticore = 
-	      VProcOps.genVPStore' (Spec.ABI.inManticore, hostVP, intLit 0)
-	  val stms = [setInManticore, saves] @ callseq @ [restores]
 	  val result = ListPair.map convResult (result, lhs)
-	  val saveAP =
-	      VProcOps.genVPStore' (Spec.ABI.allocPtr, hostVP, T.REG (ty, Regs.apReg))
-      in
-	  (case Var.typeOf f
-	    of CFGTy.T_CFun proto =>
-	       if CFunctions.protoHasAttr CFunctions.A_alloc proto
-	       then {stms=saveAP :: stms, result=result}
-	       else {stms=stms, result=result}
-	     | _ => raise Fail "bogus type for c function"
-	   (* esac *))
-      end (* genCCall *)
+	  in
+	    {stms=stms, result=result}
+	  end (* genCCall *)
       
   (* Check whether the heap contains szb free bytes. If it does, apply the
    * nogc function.  Otherwise, perform the GC with the following steps:
