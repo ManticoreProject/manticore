@@ -41,12 +41,22 @@ structure BOM =
     (* concurrent queue operations *)
       | E_AtomicEnqueue of (var * var)	(* insert an item [atomic] *)
       | E_AtomicDequeue of var		(* remove an item [atomic] *)
+    (* scheduler operations *)
+      | Dequeue of var
+      | Enqueue of (var * var * var)
     (* VProc operations *)
-      | E_HostVProc			(* returns the host VProc *)
-      | E_GetRdyQ of var		(* returns the ready queue of the VProc *)
-    (* Thread operations *)
-      | E_GetTId of var			(* returns the current Thread ID of the VProc *)
-      | E_SetTId of var	* var		(* sets the current Thread ID of the VProc *)
+      | HostVProc			(* gets the hosting VProc *)
+      | VPLoad of (offset * var)	(* load a value from the given byte offset *)
+					(* in the vproc structure *)
+      | VPStore of (offset * var * var)	(* store a value at the given byte offset *)
+					(* in the vproc structure *)
+
+    and lambda = FB of {	      (* function/continuation abstraction *)
+	  f : var,			(* function name *)
+	  params : var list,		(* parameters *)
+	  exh : var,			(* exception continuation *)
+	  body : exp			(* function body *)
+	}
 
     and pat
       = P_DCon of data_con * var
@@ -69,6 +79,12 @@ structure BOM =
     withtype var = (var_kind, ty) VarRep.var_rep
          and prim = var Prim.prim
 	 and lambda = (var * var list * exp)
+
+    datatype module = MODULE of {
+	name : Atom.atom,
+	externs : var CFunctions.c_fun list,
+	body : lambda
+      }
 
 (* FIXME: need constructor functions *)
     fun mkExp t = E_Pt(ProgPt.new(), e)

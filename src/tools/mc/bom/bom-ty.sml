@@ -15,7 +15,9 @@ structure BOMTy =
       | T_Raw of raw_ty		(* raw machine type *)
       | T_Wrap of raw_ty	(* boxed raw value *)
       | T_Tuple of ty list	(* heap-allocated tuple *)
-      | T_Fun of ty list -> ty
+      | T_Fun of (ty list * ty * ty)
+				(* function type; the second argument is the type of *)
+				(* the exception continuation *)
       | T_Cont of ty list
 
     val unitTy = T_Enum(0w0)
@@ -45,5 +47,9 @@ structure BOMTy =
 	      | T_Cont tys => concat("cont(" :: tys2l(tys, [")"]))
 	    (* end case *)
 	  end
+
+  (* view a type as a function type *)
+    fun asFunTy (T_Fun arg) = arg
+      | asFunTy ty = raise Fail("expected function type, but found " ^ toString ty)
 
   end
