@@ -57,12 +57,26 @@ structure BOM =
 	  body : exp			(* function body *)
 	}
 
-    and pat
+    and pat			      (* simple, one-level, patterns *)
       = P_DCon of data_con * var
       | P_Const of const
 
+    and data_con = DCon of {	      (* a data-constructor function *)
+	  name : string,		(* the name of the constructor *)
+	  stamp : Stamp.stamp,		(* a unique stamp *)
+	  rep : dcon_rep		(* the representation of values constructed by this *)
+					(* constructor *)
+	}
+
+    and dcon_rep		      (* representation of data-constructor functions; note: *)
+				      (* this type does not include constants. *)
+      = Transparent			(* data-constructor represented directly by its argument *)
+      | Boxed				(* heap-allocated box containing value *)
+      | TaggedBox of word		(* heap-allocated tag/value pair *)
+
     and const
-      = E_IConst of IntInf.int * ty
+      = E_EnumConst of word * ty	(* tagged enumeration constant *)
+      | E_IConst of IntInf.int * ty
       | E_SConst of string
       | E_FConst of FloatLit.float * ty
       | E_BConst of bool

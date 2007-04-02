@@ -14,8 +14,10 @@ structure Convert : sig
 
     structure B = BOM
     structure BV = B.Var
+    structure BTy = BOMTy
     structure C = CPS
     structure CV = C.Var
+    structure CTy = CPSTy
     structure E = BV.Map
 
   (* convert a BOM type to a CPS type *)
@@ -74,7 +76,15 @@ structure Convert : sig
 
   (* convert an expression that is in a tail position *)
     and cvtTailE (env, B.E_Pt(_, e), retK') = (case e
-	   of B.E_Let(xs, e1, e2) =>
+	   of B.E_Let(xs, e1, e2) => let
+		val (xs', env2) = cvtVars (env, xs)
+		val tys' = List.map CV.typeOf xs'
+		val joinK' = CV.new("letJoinK", CTy.contTy tys')
+		in
+		  C.mkCont(
+		    C.FB{f=joinK', params=xs', rets=[], body=cvtTailE(env2, e2, retK')},
+		    cvtE (env, e1, tys', fn k ys' => C.Throw(joinK', ys')))
+		end
 	    | B.E_Stmt(xs, rhs, e) =>
 		cvtRHS (env, xs, rhs, fn env => cvtTailE(env, e, retK'))
 	    | B.E_Fun(fbs, e) =>
@@ -87,7 +97,7 @@ structure Convert : sig
 		C.If(lookup(env, x),
 		  cvtTailE (env, e1, retK'),
 		  cvtTailE (env, e2, retK'))
-	    | B.E_Case(x, cases, optDflt) => ??
+	    | B.E_Case(x, cases, optDflt) => cvtCase (env, x, cases, optDflt, retK')
 	    | B.E_Apply(f, params, exh) =
 		C.Apply(lookup(env, f),
 		  lookupVars(env, params),
@@ -96,28 +106,45 @@ structure Convert : sig
 	    | B.E_Ret xs => C.Throw(retK', lookupVars(env, xs))
 	  (* end case *))
 
-  (* convert an expression that is in a non-tail position *)
-    and cvtE (env, B.E_Pt(_, e), k) = (case e
-	   of B.E_Let(xs, e1, e2) =>
-	    | B.E_Stmt(xs, rhs, e) =>
-		cvtRHS (env, xs, rhs, fn env => cvtE(env, e, k))
-	    | B.E_Fun(fbs, e) =>
-		cvtFun (env, fbs,
-		  fn (env2, fbs') => C.mkFun(fbs', cvtE(env2, e, k)))
-	    | B.E_Cont(kb, e) =>
-		cvtCont (env, fb,
-		  fn (env2, fb') => C.mkCont(fb', cvtE(env2, e, k)))
-	    | B.E_If(x, e1, e2) => let
-		val joink' = CV.new("joinK", ??)
-		val a' = CV.nwe("a", ??)
+  (* convert an expression that is in a non-tail position; the tys' parameter is
+   * a list of the result types returned by the expression.
+   *)
+    and cvtE (env, B.E_Pt(_, e), tys', k) = (case e
+	   of B.E_Let(xs, e1, e2) => let
+		val (xs', env2) = cvtVars (env, xs)
+		val tys2' = List.map CV.typeOf xs'
+		val joinK' = CV.new("letJoinK", CTy.contTy tys')
 		in
 		  C.mkCont(
-		    C.FB{f=joinK', params=[a'], rets=[], body=k [a']},
+		    C.FB{f=joinK', params=xs', rets=[], body=cvtE(env2, e2, tys', retK')},
+		    cvtE (env, e1, tys2', fn k ys' => C.Throw(joinK', ys')))
+		end
+	    | B.E_Stmt(xs, rhs, e) =>
+		cvtRHS (env, xs, rhs, fn env => cvtE(env, e, tys', k))
+	    | B.E_Fun(fbs, e) =>
+		cvtFun (env, fbs,
+		  fn (env2, fbs') => C.mkFun(fbs', cvtE(env2, e, tys', k)))
+	    | B.E_Cont(kb, e) =>
+		cvtCont (env, fb,
+		  fn (env2, fb') => C.mkCont(fb', cvtE(env2, e, tys', k)))
+	    | B.E_If(x, e1, e2) => let
+		val ys' = List.map (fn ty => CV.new("a", ty)) tys'
+		val joinK' = CV.new("ifJoinK", CTy.contTy tys')
+		in
+		  C.mkCont(
+		    C.FB{f=joinK', params=ys', rets=[], body=k ys'},
 		    C.If(lookup(env, x),
 		      cvtTailE(env, joink'),
 		      cvtTailE(env, joink')))
 		end
-	    | B.E_Case(x, cases, optDflt) => ??
+	    | B.E_Case(x, cases, optDflt) => let
+		val ys' = List.map (fn ty => CV.new("a", ty)) tys'
+		val joinK' = CV.new("caseJoinK", CTy.contTy tys')
+		in
+		  C.mkCont(
+		    C.FB{f=joinK', params=ys', rets=[], body=k ys'},
+		    cvtCase (env, x, cases, optDflt, joinK'))
+		end
 	    | B.E_Apply(f, params, exh) = let
 		val f' = lookup(env, f)
 		val params' = lookupVars(env, params)
@@ -163,6 +190,17 @@ structure Convert : sig
 		(* end case *))
 	  in
 	    C.mkLet(lhs', rhs', k env2)
+	  end
+
+  (* convert the body of a case expression; note that after case simplification, all cases
+   * will just involve enumeration tags.
+   *)
+    and cvtCase (env, x, cases, optDflt, retK') = let
+	  fun cvtCase (B.P_Const(P.EnumConst(tag, _)), e) = (tag, cvtTailE(env, e, retK'))
+	    | cvtCase c = raise Fail "complex case"
+	  val dflt' = Option.map(fn e => cvtTailE(env, e, retK')) dflt
+	  in
+	    C.Switch(lookup(env, x), List.map cvtCase cases, dflt')
 	  end
 
     and cvtFun (env, fbs, k) = let
