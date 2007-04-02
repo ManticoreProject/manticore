@@ -44,6 +44,13 @@ structure Convert : sig
 	    (v', E.insert(env, v, v'))
 	  end
 
+    fun bindVars (env, [], vs') = (List.rev vs', env)
+      | bindVars (env, v::vs, vs') = let
+	  val (v', env) = bindVar(env, v)
+	  in
+	    bindVars(env, vs, v'::vs')
+	  end
+
     fun bindLambda (B.FB{f, ...}, env) = #2(bindVar (env, f))
 
     fun lookup (env, s) = (case E.find(env, x)
@@ -54,11 +61,7 @@ structure Convert : sig
 
     fun cvtLambda (env, B.FB{f, params, exh, body}) = let
 	  val f' = lookup(env, f)
-	  val (params', env) = List.foldl
-		(fn (v, (vs', env)) => let
-		  val (v', env) = bindVar(env, v)
-		  in (v'::vs', env) end
-		) ([], env) params
+	  val (params', env) = bindVars (env, params)
 	  val retK' = CV.new("retK", CTy.returnTy(CV.typeOf f'))
 	  val (exh', env) = bindVar (env, exh)
 	  val body' = cvtExpTail(env, body, retK')
@@ -73,6 +76,7 @@ structure Convert : sig
     and cvtTailE (env, B.E_Pt(_, e), retK') = (case e
 	   of B.E_Let(xs, e1, e2) =>
 	    | B.E_Stmt(xs, rhs, e) =>
+		cvtRHS (env, xs, rhs, fn env => cvtTailE(env, e, retK'))
 	    | B.E_Fun(fbs, e) =>
 		cvtFun (env, fbs,
 		  fn (env2, fbs') => C.mkFun(fbs', cvtTailE(env2, e, retK')))
@@ -83,7 +87,7 @@ structure Convert : sig
 		C.If(lookup(env, x),
 		  cvtTailE (env, e1, retK'),
 		  cvtTailE (env, e2, retK'))
-	    | B.E_Case of (var * (pat * exp) list * exp option)
+	    | B.E_Case(x, cases, optDflt) => ??
 	    | B.E_Apply(f, params, exh) =
 		C.Apply(lookup(env, f),
 		  lookupVars(env, params),
@@ -96,6 +100,7 @@ structure Convert : sig
     and cvtE (env, B.E_Pt(_, e), k) = (case e
 	   of B.E_Let(xs, e1, e2) =>
 	    | B.E_Stmt(xs, rhs, e) =>
+		cvtRHS (env, xs, rhs, fn env => cvtE(env, e, k))
 	    | B.E_Fun(fbs, e) =>
 		cvtFun (env, fbs,
 		  fn (env2, fbs') => C.mkFun(fbs', cvtE(env2, e, k)))
@@ -112,7 +117,7 @@ structure Convert : sig
 		      cvtTailE(env, joink'),
 		      cvtTailE(env, joink')))
 		end
-	    | B.E_Case of (var * (pat * exp) list * exp option)
+	    | B.E_Case(x, cases, optDflt) => ??
 	    | B.E_Apply(f, params, exh) = let
 		val f' = lookup(env, f)
 		val params' = lookupVars(env, params)
@@ -130,7 +135,7 @@ structure Convert : sig
 
     and cvtRHS (env, lhs, rhs, k) = let
 	  fun cv x = lookup(env, x)
-	  val lhs' = ??
+	  val (lhs', env) = bindVars (env, lhs)
 	  val rhs' = (case rhs
 		 of B.E_Const of const
 		  | B.E_Cast(ty, x) => C.Cast(cvtTy ty, cv x)
