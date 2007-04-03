@@ -76,7 +76,8 @@ structure BOM =
 
     and const
       = E_EnumConst of word * ty	(* tagged enumeration constant *)
-      | E_IConst of IntInf.int * ty
+(* NOTE: we use Literal.literal in the other IRs!! *)
+      | E_IConst of IntegerLit.int * ty
       | E_SConst of string
       | E_FConst of FloatLit.float * ty
       | E_BConst of bool

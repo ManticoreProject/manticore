@@ -164,7 +164,13 @@ structure Convert : sig
 	  fun cv x = lookup(env, x)
 	  val (lhs', env) = bindVars (env, lhs)
 	  val rhs' = (case rhs
-		 of B.E_Const of const
+		 of B.E_Const c => (case c
+		       of B.E_EnumConst(w, _) => C.Enum w
+			| B.E_IConst(n, _) => C.Literal(Literal.Int n)
+			| B.E_SConst s => C.Literal(Literal.String s)
+			| B.E_FConst(f, _) => C.Literal(Literal.Float f)
+			| B.E_BConst b => C.Literal(Literal.Bool b)
+		      (* end case *))
 		  | B.E_Cast(ty, x) => C.Cast(cvtTy ty, cv x)
 		  | B.E_Select(i, x) => C.Select(i, cv x)
 		  | B.E_Alloc(ty, args) => C.Alloc(List.map cv args)
