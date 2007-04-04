@@ -1,0 +1,262 @@
+(* minmant.grm
+ *
+ * COPYRIGHT (c) 2007 John Reppy (http://www.cs.uchicago.edu/~jhr)
+ * All rights reserved.
+ *
+ * Based on CMSC 22610 Sample code (Winter 2007)
+ *)
+
+%name MinMant;
+
+%tokens
+    : KW_and		("and")
+    | KW_andalso	("andalso")
+    | KW_case		("case")
+    | KW_datatype	("datatype")
+    | KW_div		("div")
+    | KW_else		("else")
+    | KW_end		("end")
+    | KW_fun		("fun")
+    | KW_if		("if")
+    | KW_in		("in")
+    | KW_let		("let")
+    | KW_mod		("mod")
+    | KW_of		("of")
+    | KW_orelse		("orelse")
+    | KW_then		("then")
+    | KW_type		("type")
+    | KW_val		("val")
+    | LP		("(")
+    | RP		(")")
+    | LTEQ		("<=")
+    | LT		("<")
+    | DCOLON		("::")
+    | AT		("@")
+    | PLUS		("+")
+    | MINUS		("-")
+    | TIMES		("*")
+    | EQ		("=")
+    | TILDE		("~")
+    | COMMA		(",")
+    | SEMI		(";")
+    | BAR		("|")
+    | ARROW		("->")
+    | DARROW		("=>")
+    | WILD		("_")
+    | TYVAR of Atom.atom
+    | NAME of Atom.atom
+    | NUMBER of IntInf.int
+    | STRING of string
+    ;
+
+%defs (
+  structure PT = ParseTree
+  structure Op = BasisNames
+
+(* apply a mark constructor to a span and a tree *)
+  fun mark cons ((l, _) : StreamPos.span, tr) = cons{
+	  lnum = StreamPos.lineNo (!Error.sourceMap) l,
+	  tree = tr
+	}
+
+(* specialize mark functions for common node types *)
+  val markDecl = mark PT.MarkDecl
+  val markTy = mark PT.MarkTy
+  val markExp = mark PT.MarkExp
+  val markMatch = mark PT.MarkMatch
+  val markPat = mark PT.MarkPat
+  val markVarPat = mark PT.MarkVPat
+
+(* construct a left-associative type application *)
+  fun mkTyApp (arg, []) = arg
+    | mkTyApp (arg, (span, id)::r) =
+	mkTyApp (markTy(span, PT.NamedTy([arg], id)), r)
+
+(* construct conditional expressions for a list of expressions *)
+  fun mkCondExp con = let
+	fun mk (e, []) = e
+	  | mk (e, e'::r) = mk (con(e', e), r)
+	in
+	  mk
+	end
+
+(* build an application for an infix binary operator *)
+  fun mkBinApp (e1, rator, e2) = PT.BinaryExp(e1, rator, e2)
+
+(* construct application expressions for left-associative binary operators *)
+  fun mkLBinExp (e, []) = e
+    | mkLBinExp (e, (id, e')::r) = mkLBinExp (mkBinApp(e, id, e'), r)
+
+(* construct application expressions for right-associative binary operators *)
+  fun mkRBinExp (e, []) = e
+    | mkRBinExp (e, [(id, e')]) = mkBinApp(e, id, e')
+    | mkRBinExp (e, (id, e')::r) = mkBinApp(e, id, mkRBinExp(e', r))
+
+(* turn a list of expressions into a tree of applications; remember that
+ * application associates to the left.
+ *)
+  fun mkApply (e, []) = e
+    | mkApply (e, e'::r) = mkApply (PT.ApplyExp(e, e'), r)
+);
+
+Program
+	: (TopDecl ";")* Exp
+		=> (SR, Exp)
+	;
+
+TopDecl
+	: "type" TyParams NAME "=" Type
+		=> (markDecl (KW_type_SPAN, PT.TyDecl(TyParams, NAME, Type)))
+	| "datatype" TyParams NAME "=" ConsDecl ("|" ConsDecl)*
+		=> (markDecl (KW_datatype_SPAN, PT.DataDecl(TyParams, NAME, ConsDecl :: SR)))
+	| ValueDecl
+		=> (markDecl (ValueDecl_SPAN, PT.ValueDecl ValueDecl))
+	;
+
+TyParams
+	: (* empty *)			=> ([])
+	| TYVAR				=> ([TYVAR])
+	| "(" TYVAR ("," TYVAR)* ")"	=> (TYVAR :: SR)
+	;
+
+Type
+	: TupleType ( "->" Type )?
+		=> (case SR of SOME ty => markTy(FULL_SPAN, PT.FunTy(TupleType, ty)) | _ => TupleType)
+	;
+
+TupleType
+	: TyApp ( "*" TyApp )*
+		=> (if null SR
+		    then TyApp
+		    else markTy (FULL_SPAN, PT.TupleTy (TyApp :: SR)))
+	;
+
+TyApp
+	: NAME (NAME => (NAME_SPAN, NAME))*
+		=> (mkTyApp (markTy(NAME_SPAN, PT.NamedTy([], NAME)), SR))
+	| TYVAR (NAME => (NAME_SPAN, NAME))*
+		=> (mkTyApp (markTy(TYVAR_SPAN, PT.VarTy TYVAR), SR))
+	| "(" Type optTypes			=> (markTy (FULL_SPAN, optTypes Type))
+	;
+
+optTypes
+	: ")" NAME?
+		=> (case NAME
+		     of SOME id => (fn ty => PT.NamedTy([ty], id))
+		      | _ => (fn ty => ty)
+		    (* end case *))
+	| ( "," Type)+ ")" NAME
+		=> (fn ty => PT.NamedTy(ty::SR, NAME))
+	;
+
+ConsDecl
+	: NAME ("of" Type)?
+		=> (mark PT.MarkConDecl (FULL_SPAN, PT.ConDecl(NAME, SR)))
+	;
+
+ValueDecl
+	: "val" TuplePat "=" Exp
+		=> (mark PT.MarkVDecl (KW_val_SPAN, PT.ValVDecl(TuplePat, Exp)))
+	| "fun" FunDef ("and" FunDef)*
+		=> (mark PT.MarkVDecl (KW_fun_SPAN, PT.FunVDecl(FunDef :: SR)))
+	;
+
+FunDef
+	: NAME TuplePat "=" Exp
+		=> (mark PT.MarkFunct (FULL_SPAN, PT.Funct(NAME, TuplePat, Exp)))
+	;
+
+Exp
+	: AndalsoExp
+		=> (AndalsoExp)
+	| "let" ValueDecl+ "in" Exp (";" Exp)* "end"
+		=> (markExp (FULL_SPAN, PT.LetExp(ValueDecl, if null SR then Exp else PT.SeqExp(Exp::SR))))
+	| "if" Exp "then" Exp "else" Exp
+		=> (markExp (FULL_SPAN, PT.IfExp(Exp1, Exp2, Exp3)))
+	| "case" Exp "of" MatchRules
+		=> (markExp (FULL_SPAN, PT.CaseExp(Exp, MatchRules)))
+	;
+
+ClosedExp
+	: AndalsoExp
+		=> (AndalsoExp)
+	| "let" ValueDecl+ "in" Exp (";" Exp)* "end"
+		=> (markExp (FULL_SPAN, PT.LetExp(ValueDecl, if null SR then Exp else PT.SeqExp(Exp::SR))))
+	| "if" Exp "then" Exp "else" ClosedExp
+		=> (markExp (FULL_SPAN, PT.IfExp(Exp1, Exp2, ClosedExp)))
+	;
+
+MatchRules
+	: %try Pat "=>" ClosedExp ("|" MatchRules)?
+		=> (markMatch (Pat_SPAN, PT.Match(Pat, ClosedExp)) :: Option.getOpt(SR, []))
+	| %try Pat "=>" Exp
+		=> ([markMatch (FULL_SPAN, PT.Match(Pat, Exp))])
+	;
+
+AndalsoExp
+	: OrelseExp ("andalso" OrelseExp)*
+		=> (markExp (FULL_SPAN, mkCondExp PT.AndAlsoExp (OrelseExp, SR)))
+	;
+
+OrelseExp
+	: RExp ("orelse" RExp)*
+		=> (markExp (FULL_SPAN, mkCondExp PT.OrElseExp (RExp, SR)))
+	;
+
+RExp
+	: LExp (( "=" => (Op.eq) | "<" => (Op.lt) | "<=" => (Op.lte) ) LExp => (SR, LExp))*
+		=> (markExp (FULL_SPAN, mkLBinExp(LExp, SR)))
+	;
+
+LExp
+	: AExp (( "::" => (Op.listCons) | "@" => (Op.append) ) AExp => (SR, AExp))*
+		=> (markExp (FULL_SPAN, mkRBinExp(AExp, SR)))
+	;
+
+AExp
+	: MExp (( "+" => (Op.plus) | "-" => (Op.minus) ) MExp => (SR, MExp))*
+		=> (markExp (FULL_SPAN, mkLBinExp(MExp, SR)))
+	;
+
+MExp
+	: ApplyExp (( "*" => (Op.times) | "div" => (Op.div) | "mod" => (Op.mod) ) ApplyExp => (SR, ApplyExp))*
+		=> (markExp (FULL_SPAN, mkLBinExp(ApplyExp, SR)))
+	;
+
+ApplyExp
+	: AtomicExp AtomicExp*	=> (markExp (FULL_SPAN, mkApply(AtomicExp1, AtomicExp2)))
+	| "~" AtomicExp		=> (markExp (FULL_SPAN, PT.ApplyExp(PT.IdExp Op.uMinus, AtomicExp)))
+	;
+
+AtomicExp
+	: NAME			=> (markExp (FULL_SPAN, PT.IdExp NAME))
+	| NUMBER		=> (markExp (FULL_SPAN, PT.ConstExp(PT.IntLit NUMBER)))
+	| STRING		=> (markExp (FULL_SPAN, PT.ConstExp(PT.StrLit STRING)))
+	| "(" ")"		=> (markExp (FULL_SPAN, PT.TupleExp[]))
+	| "(" Exp optExps ")"	=> (markExp (FULL_SPAN, optExps Exp))
+	;
+
+optExps
+	: (* empty *)		=> (fn e => e)
+	| ("," Exp)+		=> (fn e => PT.TupleExp(e :: SR))
+	| (";" Exp)+		=> (fn e => PT.SeqExp(e :: SR))
+	;
+
+Pat
+	: NAME TuplePat			=> (markPat (FULL_SPAN, PT.ConPat(NAME, TuplePat)))
+	| TuplePat			=> (markPat (FULL_SPAN, PT.TuplePat TuplePat))
+	| VarPat "::" VarPat		=> (markPat (FULL_SPAN, PT.ConPat(Op.listCons, [VarPat1, VarPat2])))
+	| NUMBER			=> (markPat (FULL_SPAN, PT.ConstPat(PT.IntLit NUMBER)))
+	| STRING			=> (markPat (FULL_SPAN, PT.ConstPat(PT.StrLit STRING)))
+	;
+
+TuplePat
+	: VarPat			=> ([VarPat])
+	| "(" (VarPat ( "," VarPat )*)? ")"
+		=> (case SR of NONE => [] | SOME (p, ps) => p::ps)
+	;
+
+VarPat
+	: NAME		=> (markVarPat (FULL_SPAN, PT.IdVPat NAME))
+	| "_"		=> (markVarPat (FULL_SPAN, PT.WildVPat))
+	;

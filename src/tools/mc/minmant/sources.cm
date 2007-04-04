@@ -1,0 +1,33 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2007 John Reppy (http://www.cs.uchicago.edu/~jhr)
+ * All rights reserved.
+ *
+ * Based on CMSC 22610 Sample code (Winter 2007)
+ *)
+
+Library
+
+  structure FrontEnd
+  structure AST
+
+is
+  $/basis.cm
+  $/smlnj-lib.cm
+
+  ../common/sources.cm
+
+  parser.cm
+
+  ast.sml
+  basis.sml
+  data-con.sml
+  env.sml
+  front-end.sml
+  meta-var.sml
+  typechecker.sml
+  ty-con.sml
+  ty-var.sml
+  type-util.sml
+  unify.sml
+  var.sml
