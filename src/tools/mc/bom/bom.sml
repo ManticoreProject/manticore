@@ -53,7 +53,7 @@ structure BOM =
     and lambda = FB of {	      (* function/continuation abstraction *)
 	  f : var,			(* function name *)
 	  params : var list,		(* parameters *)
-	  exh : var,			(* exception continuation *)
+	  exh : var list,			(* exception continuation *)
 	  body : exp			(* function body *)
 	}
 
@@ -89,9 +89,10 @@ structure BOM =
       | VK_Param
       | VK_Fun of lambda
       | VK_Cont of lambda
+      | VK_Extern of string
 
     withtype var = (var_kind, ty) VarRep.var_rep
-         and prim = var Prim.prim
+         and primop = var Prim.prim
 
 
     datatype module = MODULE of {
@@ -106,7 +107,8 @@ structure BOM =
       | varKindToString (VK_Param _) = "Param"
       | varKindToString (VK_Fun_) = "Fun"
       | varKindToString (VK_Cont _) = "Cont"
-      
+      | varKindToString (VK_Extern _) = "Extern"
+
     structure Var = VarFn (
     	local
 	  strucutre V = VarFn (
@@ -134,20 +136,33 @@ structure BOM =
     fun mkExp t = E_Pt(ProgPt.new(), t)
     fun mkLet (lhs, rhs, exp) = (
     	  List.app (fn x => Var.setKind (x, VK_Let rhs)) lhs;
-	  E_Let(lhs, rhs, exp))
+	  mkExp(E_Let(lhs, rhs, exp)))
+    fun mkStmt (lhs, rhs, exp) = (
+    	  List.app (fn x => Var.setKind (x, VK_RHS rhs)) lhs;
+	  mkExp(E_Stmt(lhs, rhs, exp)))
     fun mkFun(fbs, e) = let
-    	 fun setKind (lambda as FB{f, params,_}) = (
-	       Var.setKind(f, VK_Fun lambda);
-	       List.app (fn x => Var.setKind( x, VK_Param lambda))
-	 in
-	   List.app setKind fbs;
-	   E_Fun(fbs, e))
-	 end
+    	  fun setKind (lambda as FB{f, params, exh, _}) = (
+		Var.setKind(f, VK_Fun lambda);
+		List.app (fn x => Var.setKind(x, VK_Param lambda)) (params @ exh))
+	  in
+	    List.app setKind fbs;
+	    mkExp(E_Fun(fbs, e)))
+	  end
     fun mkCont (lambda as FB{k, params, _},e) = (
           Var.setKind (k, VK_Cont lambda);
 	  List.app (fn x=> Var.setKind(x, VK_Param lambda)) params;
-	  E_Cont(lambda, e))
+	  mkExp(E_Cont(lambda, e)))
+    fun mkIf arg = mkExp(E_If arg)
+    fun mkCase arg = mkExp(E_Case arg)
+    fun mkApply arg = mkExp(E_Apply arg)
+    fun mkThrow arg = mkExp(E_Throw arg)
+    fun mkRet arg = mkExp(E_Ret arg))
 
-    fun mkRet args = mkExp(E_Ret args))
+    fun mkModule (name, externs, body as FB{params, exh, ...}) = (
+	  List.app (fn x => Var.setKind(x, VK_Param lambda)) (params @ exh);
+	  List.app
+	    (fn (CFunctions.CFun{var, name, ...}) => Var.setKind(var, VK_Extern name))
+	      externs;
+	  MODULE{name = name, externs = externs, body = body})
 
   end
