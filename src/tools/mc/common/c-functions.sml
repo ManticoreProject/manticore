@@ -28,6 +28,7 @@ signature C_FUNCTIONS =
     datatype c_proto = CProto of c_type * c_type list * attribute list
 
     val varOf : 'var c_fun -> 'var
+    val nameOf : 'var c_fun -> string
     val typeOf : 'var c_fun -> c_proto
 
     val protoHasAttr : attribute -> c_proto -> bool
