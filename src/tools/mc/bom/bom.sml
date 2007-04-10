@@ -27,7 +27,7 @@ structure BOM =
       | E_Alloc of (ty * var list)
       | E_Wrap of var
       | E_Unwrap of var
-      | E_Prim of var primop
+      | E_Prim of prim
       | E_DCon of (data_con * var list)	(* data constructor *)
       | E_HLOp of (hlop * var list)	(* application of high-level operator *)
       | E_CCall of (var * var list)	(* foreign-function calls *)
@@ -92,7 +92,7 @@ structure BOM =
 
     withtype var = (var_kind, ty) VarRep.var_rep
          and prim = var Prim.prim
-	 and lambda = (var * var list * exp)
+
 
     datatype module = MODULE of {
 	name : Atom.atom,
@@ -100,8 +100,54 @@ structure BOM =
 	body : lambda
       }
 
+    fun varKindToString VK_None = "None"
+      | varKindToString (VK_Let _) = "Let"
+      | varKindToString (VK_RHS _) = "RHS"
+      | varKindToString (VK_Param _) = "Param"
+      | varKindToString (VK_Fun_) = "Fun"
+      | varKindToString (VK_Cont _) = "Cont"
+      
+    structure Var = VarFn (
+    	local
+	  strucutre V = VarFn (
+	    struct
+	      type kind = var_kind
+	      type ty=ty
+	      val defaultkind = VK_None
+	      val kindToString = varKindToString
+	      val tyToString = CPSTy.toString
+	    end)
+	in
+	open V
+	end
+      end 
+       
+    val trueLit = Enum 0w1
+    val falseLit = Enum 0w0  
+
+    val unitLit = Enum 0w0
+    
+    val nilLit = Enum 0w0
+
+
 (* FIXME: need constructor functions *)
-    fun mkExp t = E_Pt(ProgPt.new(), e)
+    fun mkExp t = E_Pt(ProgPt.new(), t)
+    fun mkLet (lhs, rhs, exp) = (
+    	  List.app (fn x => Var.setKind (x, VK_Let rhs)) lhs;
+	  E_Let(lhs, rhs, exp))
+    fun mkFun(fbs, e) = let
+    	 fun setKind (lambda as FB{f, params,_}) = (
+	       Var.setKind(f, VK_Fun lambda);
+	       List.app (fn x => Var.setKind( x, VK_Param lambda))
+	 in
+	   List.app setKind fbs;
+	   E_Fun(fbs, e))
+	 end
+    fun mkCont (lambda as FB{k, params, _},e) = (
+          Var.setKind (k, VK_Cont lambda);
+	  List.app (fn x=> Var.setKind(x, VK_Param lambda)) params;
+	  E_Cont(lambda, e))
+
     fun mkRet args = mkExp(E_Ret args))
 
   end

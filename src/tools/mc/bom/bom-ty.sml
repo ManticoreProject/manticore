@@ -43,7 +43,9 @@ structure BOMTy =
 	      | T_Raw ty => RawTypes.toString ty
 	      | T_Wrap ty => concat["wrap(", RawTypes.toString ty, ")"]
 	      | T_Tuple tys => concat("(" :: tys2l(tys, [")"]))
-	      | T_Fun tys => concat("fun(" :: tys2l(tys, [")"]))
+
+(* T_Fun => fun( [...], ty1, ty2) *)
+	      | T_Fun (tyl, ty1, ty2) => concat("fun( [" :: tys2l(tyl, ["]"]) :: toString ty1 :: "," :: toString ty2 :: ")")
 	      | T_Cont tys => concat("cont(" :: tys2l(tys, [")"]))
 	    (* end case *)
 	  end
