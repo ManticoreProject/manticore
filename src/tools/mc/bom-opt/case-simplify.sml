@@ -23,7 +23,7 @@ structure CaseSimplify : sig
 	    | B.E_Stmt(lhs, rhs, e) => B.mkStmt(lhs, rhs, xformE e)
 	    | B.E_Fun(fbs, e) => B.mkFun(List.map xformLambda fbs, xformE e)
 	    | B.E_Cont(fb, e) => B.mkCont(List.map xformLamda
-	    | B.E_If(x, e1, e2) => B.E_If(x, xformE e1, xformE x2)
+	    | B.E_If(x, e1, e2) => B.mkIf(x, xformE e1, xformE x2)
 	    | B.E_Case(x, rules, dflt) => ??
 	    | e => B.mkExp e
 	  (* end case *))
