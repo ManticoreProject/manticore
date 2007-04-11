@@ -69,6 +69,9 @@ structure CaseSimplify : sig
 			  in
 			    if (numEnumsOfTyc tyc = 1)
 			      then let
+			      (* when there is only one possible enum value, we just do
+			       * an equality test.
+			       *)
 				val [(w, ty, e)] = enums
 				val tmp = BV.new("t", ty)
 				in
@@ -84,10 +87,19 @@ structure CaseSimplify : sig
 				    List.map (fn (w, ty, e) => (B.D_Const(B.EnumConst(w, ty)), e)) enums,
 				    NONE)))
 			  end
-		      | (_, true) =>
+		      | (false, true) => let
+			  val isBoxed = BV.new("isBoxed", BTy.boolTy)
+			  in
+			    B.mkStmt([isBoxed], B.E_Prim(Primop.P_isBoxed x),
+			      B.mkIf(isBoxed,
+				consCase (x, cons, NONE),
+				B.mkCase(x,
+				  List.map (fn (w, ty, e) => (B.D_Const(B.EnumConst(w, ty)), e)) enums,
+				  dflt)))
+			  end
 		      | (false, false) => let
 			(* the default case is shared by both the boxed and unboxed
-			 * sub cases.
+			 * sub cases, so we have to wrap it in a function abstraction.
 			 *)
 			  in
 			  end
