@@ -61,10 +61,10 @@ structure CaseSimplify : sig
 		  val tyc = BTy.asTyc(BV.typeOf x)
 		  val enumCover = (List.length enums = numEnumsOfTyc tyc)
 		  val consCover = (List.length cons = numConsOfTyc tyc)
+		  val isBoxed = BV.new("isBoxed", BTy.boolTy)
 		  in
 		    case (enumCover, consCover)
 		     of (true, _) => let
-			  val isBoxed = BV.new("isBoxed", BTy.boolTy)
 			  val case1 = consCase (x, cons, dflt)
 			  in
 			    if (numEnumsOfTyc tyc = 1)
@@ -87,21 +87,27 @@ structure CaseSimplify : sig
 				    List.map (fn (w, ty, e) => (B.D_Const(B.EnumConst(w, ty)), e)) enums,
 				    NONE)))
 			  end
-		      | (false, true) => let
-			  val isBoxed = BV.new("isBoxed", BTy.boolTy)
-			  in
-			    B.mkStmt([isBoxed], B.E_Prim(Primop.P_isBoxed x),
-			      B.mkIf(isBoxed,
-				consCase (x, cons, NONE),
-				B.mkCase(x,
-				  List.map (fn (w, ty, e) => (B.D_Const(B.EnumConst(w, ty)), e)) enums,
-				  dflt)))
-			  end
+		      | (false, true) =>
+			  B.mkStmt([isBoxed], B.E_Prim(Primop.P_isBoxed x),
+			    B.mkIf(isBoxed,
+			      consCase (x, cons, NONE),
+			      B.mkCase(x,
+				List.map (fn (w, ty, e) => (B.D_Const(B.EnumConst(w, ty)), e)) enums,
+				dflt)))
 		      | (false, false) => let
 			(* the default case is shared by both the boxed and unboxed
 			 * sub cases, so we have to wrap it in a function abstraction.
 			 *)
+			  val join = BV.new("join", BTy.T_Fun([], [], ??))
+			  val joinFB = B.FB{f=join, params=[], exh=[], body=valOf dflt}
 			  in
+			    B.mkCont(joinFB,
+			    B.mkStmt([isBoxed], B.E_Prim(Primop.P_isBoxed x),
+			      B.mkIf(isBoxed,
+				consCase (x, cons, B.mkThrow(join, [])),
+				B.mkCase(x,
+				  List.map (fn (w, ty, e) => (B.D_Const(B.EnumConst(w, ty)), e)) enums,
+				  B.mkThrow(join, [])))))
 			  end
 		    (* end case *)
 		  end
