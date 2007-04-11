@@ -7,6 +7,9 @@
 structure BOM =
   struct
 
+    datatype data_con = datatype BOMTyCon.data_con
+    datatype dcon_rep = datatype BOMTyCon.dcon_rep
+
     datatype exp = E_Pt of (ProgPt.ppt * term)
 
     and term
@@ -60,19 +63,6 @@ structure BOM =
     and pat			      (* simple, one-level, patterns *)
       = P_DCon of data_con * var
       | P_Const of const
-
-    and data_con = DCon of {	      (* a data-constructor function *)
-	  name : string,		(* the name of the constructor *)
-	  stamp : Stamp.stamp,		(* a unique stamp *)
-	  rep : dcon_rep		(* the representation of values constructed by this *)
-					(* constructor *)
-	}
-
-    and dcon_rep		      (* representation of data-constructor functions; note: *)
-				      (* this type does not include constants. *)
-      = Transparent			(* data-constructor represented directly by its argument *)
-      | Boxed				(* heap-allocated box containing value *)
-      | TaggedBox of word		(* heap-allocated tag/value pair *)
 
     and const
       = E_EnumConst of word * ty	(* tagged enumeration constant *)
@@ -164,5 +154,9 @@ structure BOM =
 	    (fn (CFunctions.CFun{var, name, ...}) => Var.setKind(var, VK_Extern name))
 	      externs;
 	  MODULE{name = name, externs = externs, body = body})
+
+  (* for sequences of Stms *)
+    fun mkStmts ([], e) = e
+      | mkStmts ((lhs, rhs)::r, e) = mkStmt(lhs, rhs, mkStmts(r, e)
 
   end
