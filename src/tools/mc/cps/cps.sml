@@ -17,7 +17,7 @@ structure CPS =
       | Cont of (lambda * exp)
       | If of (var * exp * exp)
       | Switch of (var * (int * exp) list * exp option)
-      | Apply of (var * var list)
+      | Apply of (var * var list * var list)
       | Throw of (var * var list)
     (* scheduler operations *)
       | Run of {vp : var, act : var, fiber : var}
@@ -44,6 +44,13 @@ structure CPS =
       | VPStore of (offset * var * var)	(* store a value at the given byte offset *)
 					(* in the vproc structure *)
 
+    and lambda = FB of {	      (* function/continuation abstraction *)
+	  f : var,			(* function name *)
+	  params : var list,		(* parameters *)
+	  rets : var list,		(* return/exception continuations *)
+	  body : exp			(* function body *)
+	}
+
     and var_kind
       = VK_None
       | VK_Let of rhs
@@ -54,7 +61,6 @@ structure CPS =
 
     withtype var = (var_kind, ty) VarRep.var_rep
          and prim = var Prim.prim
-	 and lambda = (var * var list * exp)
 
     datatype module = MODULE of {
 	name : Atom.atom,
@@ -103,15 +109,16 @@ structure CPS =
 	  List.app (fn x => Var.setKind(x, VK_Let rhs)) lhs;
 	  Let(lhs, rhs, exp))
     fun mkFun (fbs, e) = let
-	  fun setKind (lambda as (f, params, _)) = (
+	  fun setKind (lambda as FB{f, params, rets, ...}) = (
 		Var.setKind(f, VK_Fun lambda);
-		List.app (fn x => Var.setKind(x, VK_Param lambda)) params)
+		List.app (fn x => Var.setKind(x, VK_Param lambda)) params;
+		List.app (fn x => Var.setKind(x, VK_Param lambda)) rets)
 	  in
 	    List.app setKind fbs;
 	    Fun(fbs, e)
 	  end
-    fun mkCont (lambda as (k, params, _), e) = (
-	  Var.setKind(k, VK_Cont lambda);
+    fun mkCont (lambda as FB{f, params, ...}, e) = (
+	  Var.setKind(f, VK_Cont lambda);
 	  List.app (fn x => Var.setKind(x, VK_Param lambda)) params;
 	  Cont(lambda, e))
 

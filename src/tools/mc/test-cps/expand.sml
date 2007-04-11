@@ -168,7 +168,7 @@ structure Expand =
 		end
 	    | PT.Fun(fbs, e) => let
 		fun f (fb, (env', cvtBodies)) = let
-			val (env'', cvt) = cvtLambda (env', fb, Ty.T_Fun)
+			val (env'', cvt) = cvtLambda (env', fb)
 			in
 			  (env'', cvt::cvtBodies)
 			end
@@ -180,7 +180,7 @@ structure Expand =
 		end
 	    | PT.Cont(fb, e) => let
 	      (* NOTE: continuations are permitted to be recursive *)
-		val (env', cvtBody) = cvtLambda(env, fb, Ty.T_Cont)
+		val (env', cvtBody) = cvtLambda(env, fb)
 		in
 		  CPS.mkCont(cvtBody env', cvtExp(env', e))
 		end
@@ -192,8 +192,9 @@ structure Expand =
 		    arg, 
                     List.map (fn (i,e) => (i, cvtExp(env,e))) cases,
                     case dflt of NONE => NONE | SOME e => SOME (cvtExp(env, e))))
-	    | PT.Apply(f, args) =>
-		cvtSimpleExps (env, args, fn xs => CPS.Apply(lookup(env, f), xs))
+	    | PT.Apply(f, args, rets) =>
+		cvtSimpleExps (env, args,
+		  fn xs => cvtSimpleExps (env, rets, fn ys => CPS.Apply(lookup(env, f), xs, ys)))
 	    | PT.Throw(k, args) =>
 		cvtSimpleExps (env, args, fn xs => CPS.Throw(lookup(env, k), xs))
 	    | PT.Run(vp, act, fiber) => CPS.Run{
@@ -207,13 +208,17 @@ structure Expand =
 		}
 	  (* end case *))
 
-    and cvtLambda (env, (f, params, e), tyCon) = let
-	  val fnTy = tyCon(List.map #2 params)
+    and cvtLambda (env, (f, params, rets, e)) = let
+	  val fnTy = Ty.T_Fun(List.map #2 params, List.map #2 rets)
 	  val f' = CPS.Var.new(f, fnTy)
 	  fun doBody env = let
 		val (envWParams, params') = cvtVarBinds (env, params)
+		val (envWParams, rets') = cvtVarBinds (envWParams, rets)
 		in
-		  (f', List.rev params', cvtExp (envWParams, e))
+		  CPS.FB{
+		      f = f', params = List.rev params',
+		      rets = List.rev rets', body = cvtExp (envWParams, e)
+		    }
 		end
 	  in
 	    (AtomMap.insert(env, f, f'), doBody)
@@ -281,7 +286,7 @@ structure Expand =
 		  AtomMap.insert(env, var, f)
 		) end
 	  val (cfs, env) = List.foldl doCFun ([], AtomMap.empty) externs
-	  val (_, cvtBody) = cvtLambda (AtomMap.empty, body, Ty.T_Fun)
+	  val (_, cvtBody) = cvtLambda (AtomMap.empty, body)
 	  in
 	    CPS.MODULE{name=name, externs=cfs, body=cvtBody env}
 	  end

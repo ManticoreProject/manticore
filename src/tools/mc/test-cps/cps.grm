@@ -110,11 +110,15 @@ Attr
 	;
 
 Lambda
-	: ID Params "=" Exp		=> (ID, Params, Exp)
+	: ID "(" Params ";" Params ")" "=" Exp	=> (ID, Params1, Params2, Exp)
+	;
+
+CLambda
+	: ID "(" Params ")" "=" Exp		=> (ID, Params, [], Exp)
 	;
 
 Params
-	: "(" (Param ("," Param)*)? ")"	=> (flatten SR)
+	: (Param ("," Param)*)?			=> (flatten SR)
 	;
 
 Param
@@ -129,9 +133,13 @@ Type
 	| "[" RawType "]"			=> (PT.T_Wrap RawType)
 	| RawType				=> (PT.T_Raw RawType)
 	| "(" Type ("," Type)* ")"		=> (PT.T_Tuple(Type :: SR))
-	| "fun" "(" (Type ("," Type)* )? ")"	=> (PT.T_Fun(flatten SR))
-	| "cont" "(" (Type ("," Type)* )? ")"	=> (PT.T_Cont(flatten SR))
+	| "fun" "(" Types ";" Types ")"		=> (PT.T_Fun(Types1, Types2))
+	| "cont" "(" Types ")"			=> (PT.T_Fun(Types, []))
 	| "vproc"				=> (PT.T_VProc)
+	;
+
+Types
+	: (Type ("," Type)* )?			=> (flatten SR)
 	;
 
 RawType
@@ -148,18 +156,18 @@ Exp
 	: "let" LHS "=" RHS Exp				=> (PT.Let(LHS, RHS, Exp))
 	| "do" RHS Exp					=> (PT.Let([], RHS, Exp))
 	| "fun" Lambda ("and" Lambda)* Exp		=> (PT.Fun(Lambda::SR, Exp))
-	| "cont" Lambda Exp				=> (PT.Cont(Lambda, Exp))
+	| "cont" CLambda Exp				=> (PT.Cont(CLambda, Exp))
 	| "if" SimpleExp "then" Exp "else" Exp		=> (PT.If(SimpleExp, Exp1, Exp2))
 	| "switch" SimpleExp Cases DefaultCase? "end"	=> (PT.Switch(SimpleExp, Cases, DefaultCase))
-	| "apply" ID Args				=> (PT.Apply(ID, Args))
+	| "apply" ID "(" ArgExps ";" ArgExps ")"	=> (PT.Apply(ID, ArgExps1, ArgExps2))
 	| "throw" ID Args				=> (PT.Throw(ID, Args))
 	| "run" ID ID ID				=> (PT.Run(ID1, ID2, ID3))
 	| "forward" ID ID				=> (PT.Forward(ID1, ID2))
 	;
 
 LHS
-	: Param		=> ([Param])
-	| Params	=> (Params)
+	: Param			=> ([Param])
+	| "(" Params ")"	=> (Params)
 	;
 
 RHS
@@ -185,7 +193,11 @@ SimpleExp
 	;
 
 Args
-	: "(" (SimpleExp ("," SimpleExp)* )? ")"	=> (flatten SR)
+	: "(" ArgExps ")"		=> (ArgExps)
+	;
+
+ArgExps
+	: (SimpleExp ("," SimpleExp)* )?	=> (flatten SR)
 	;
 
 Cases

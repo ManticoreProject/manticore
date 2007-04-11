@@ -16,6 +16,15 @@ structure PrintCPS : sig
 	  fun prIndent 0 = ()
 	    | prIndent n = (pr "  "; prIndent(n-1))
 	  fun indent i = prIndent i
+	  fun prList' toS [] = ()
+	    | prList' toS [x] = pr(toS x)
+	    | prList' toS l = let
+		fun prL [] = ()
+		  | prL [x] = pr(toS x)
+		  | prL (x::r) = (pr(toS x); pr ","; prL r)
+		in
+		  prL l
+		end
 	  fun prList toS [] = pr "()"
 	    | prList toS [x] = pr(toS x)
 	    | prList toS l = let
@@ -59,10 +68,12 @@ structure PrintCPS : sig
 			(* end case *);
                         (indent (i+1); pr "end\n")
 		      end
-		  | CPS.Apply(f, args) => (
-		      prl["apply ", varUseToString f, " "];
-		      prList varUseToString args;
-		      pr "\n")
+		  | CPS.Apply(f, args, rets) => (
+		      prl["apply ", varUseToString f, " ("];
+		      prList' varUseToString args;
+		      pr "; ";
+		      prList' varUseToString args;
+		      pr ")\n")
 		  | CPS.Throw(k, args) => (
 		      prl["throw ", varUseToString k, " "];
 		      prList varUseToString args;
@@ -97,11 +108,20 @@ structure PrintCPS : sig
 		  "store(", varUseToString vp, "+", IntInf.toString offset, ",",
 		  varUseToString x, ")"
 		]
-	  and prLambda (i, prefix, (f, params, e)) = (
-		prl [prefix, varUseToString f, " "];
-		prList varBindToString params;
-		pr " =\n";
-		prExp (i+2, e))
+	  and prLambda (i, prefix, CPS.FB{f, params, rets, body}) = let
+		fun prParams params = prList' varBindToString params
+		in
+		  prl [prefix, varUseToString f, " "];
+		  pr "(";
+		  case (params, rets)
+		   of ([], []) => ()
+		    | (_, []) => prParams params
+		    | ([], _) => (pr "-; "; prParams rets)
+		    | _ => (prParams params; pr "; "; prParams rets)
+		  (* end case *);
+		  pr ") =\n";
+		  prExp (i+2, body)
+		end
 	  and prIf (i, x, e1, CPS.If(y, e2, e3)) = (
 		prl ["if ", varUseToString x, " then\n"];
 		prExp(i+1, e1);

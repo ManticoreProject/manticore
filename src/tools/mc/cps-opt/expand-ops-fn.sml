@@ -10,16 +10,17 @@ functor ExpandOpsFn (Spec : TARGET_SPEC) : sig
 
   end = struct
 
+    structure CV = CPS.Var
     structure Ty = CPSTy
     structure Offsets = Spec.ABI
     structure CF = CFunctions
 
-    fun var (name, ty) = CPS.Var.new(Atom.atom name, ty)
+    fun var (name, ty) = CV.new(Atom.atom name, ty)
 
     fun cfun (name, resTy, paramTys, attrs) = let
 	  val cf = var(name, Ty.T_CFun(CF.CProto(resTy, paramTys, attrs)))
 	  in
-	    CPS.Var.setKind(cf, CPS.VK_Extern name);
+	    CV.setKind(cf, CPS.VK_Extern name);
 	    CF.CFun{var = cf, name = name, retTy=resTy, argTys = paramTys, attrs=attrs}
 	  end
 
@@ -27,20 +28,25 @@ functor ExpandOpsFn (Spec : TARGET_SPEC) : sig
       | mkLet ((lhs, rhs)::binds, e) = CPS.mkLet(lhs, rhs, mkLet(binds, e))
 
     fun mkCont (name, param, body, k) = let
-	  val name = var(name, Ty.T_Cont[#2 param])
+	  val name = var(name, Ty.contTy[#2 param])
 	  val param = var param
 	  in
-	    CPS.mkCont((name, [param], body param), k name)
+	    CPS.mkCont(
+	      CPS.FB{f = name, params = [param], rets = [], body = body param},
+	      k name)
 	  end
 
+    fun mkFun (name, param, rets, body, e) =
+	  CPS.mkFun([CPS.FB{f = name, params=[param], rets = rets, body = body}], e)
+
   (* the type of a fiber *)
-    val fiberTy = Ty.T_Cont[Ty.unitTy]
+    val fiberTy = Ty.contTy[Ty.unitTy]
 
   (* the type of a thread ID *)
     val tidTy = Ty.T_Any
 
   (* the type of items on a vproc's action stack *)
-    val actStkItemTy = Ty.T_Tuple[Ty.T_Cont[Ty.T_Any], Ty.T_Any]
+    val actStkItemTy = Ty.T_Tuple[Ty.contTy[Ty.T_Any], Ty.T_Any]
 
   (* the type of items in a vproc's ready queue *)
     val rdyQItemTy = Ty.T_Tuple[tidTy, fiberTy, Ty.T_Any]
@@ -68,7 +74,7 @@ functor ExpandOpsFn (Spec : TARGET_SPEC) : sig
 	  val t = var("true", Ty.boolTy)
 	  val tos = var("tos", actStkItemTy)
 	  val rest = var("rest", Ty.T_Any)
-	  val act = var("act", Ty.T_Cont[Ty.T_Any])
+	  val act = var("act", Ty.contTy[Ty.T_Any])
 	  in
 	    mkLet([
 		([t], CPS.trueLit),
@@ -96,7 +102,7 @@ functor ExpandOpsFn (Spec : TARGET_SPEC) : sig
 
   (* expansion for Dequeue *)
     fun xDequeue VProcDequeue (x, vp, e, exh) = let
-	  val join = var("join", Ty.T_Cont[CPS.Var.typeOf x])
+	  val join = var("join", Ty.contTy[CV.typeOf x])
 	  val hd = var("hd", rdyQItemTy)
 	  val link = var("link", Ty.T_Any)
 	  val isBoxed1 = var("isBoxed", Ty.boolTy)
@@ -108,8 +114,9 @@ functor ExpandOpsFn (Spec : TARGET_SPEC) : sig
  *)
 	  fun copyLoop (tl, fastPath)= let
 		val param = var("param", Ty.T_Tuple[Ty.T_Any, Ty.T_Any])
-		val retK = var("retK", Ty.T_Cont[Ty.T_Any]);
-		val loop = var("loop", Ty.T_Fun[CPS.Var.typeOf param, CPS.Var.typeOf retK, CPS.Var.typeOf exh])
+		val retK = var("retK", Ty.contTy[Ty.T_Any]);
+		val loop = var("loop",
+		      Ty.T_Fun([CV.typeOf param], [CV.typeOf retK, CV.typeOf exh]))
 		val lst = var("lst", rdyQItemTy)
 		val hd = var("hd", Ty.T_Any)
 		val lst' = var("lst", Ty.T_Any)
@@ -117,11 +124,11 @@ functor ExpandOpsFn (Spec : TARGET_SPEC) : sig
 		val fiber = var("fiber", fiberTy)
 		val hd' = var("hd", rdyQItemTy)
 		val nil' = var("nil", Ty.T_Enum(0w0))
-		val arg = var("arg", CPS.Var.typeOf param)
-		val arg' = var("arg", CPS.Var.typeOf param)
+		val arg = var("arg", CV.typeOf param)
+		val arg' = var("arg", CV.typeOf param)
 		val isBoxed = var("isBoxed", Ty.boolTy)
 		in
-		  CPS.mkFun([(loop, [param, retK, exh],
+		  mkFun(loop, param, [retK, exh],
 		    mkLet([
 			([lst], CPS.Select(0, param)),
 			([hd], CPS.Select(1, param)),
@@ -132,17 +139,18 @@ functor ExpandOpsFn (Spec : TARGET_SPEC) : sig
 			([isBoxed], CPS.Prim(Prim.isBoxed lst'))
 		      ],
 		      CPS.If(isBoxed,
-			CPS.mkLet([arg'], CPS.Alloc[lst', hd'], CPS.Apply(loop, [arg', retK, exh])),
-			CPS.Throw(retK, [hd']))))],
+			CPS.mkLet([arg'], CPS.Alloc[lst', hd'],
+			  CPS.Apply(loop, [arg'], [retK, exh])),
+			CPS.Throw(retK, [hd']))),
 		  mkLet([
 		      ([nil'], CPS.nilLit),
 		      ([arg], CPS.Alloc[tl, nil'])
 		    ],
-		    CPS.Apply(loop, [arg, fastPath, exh])))
+		    CPS.Apply(loop, [arg], [fastPath, exh])))
 		end
 	  val item = var("item", rdyQItemTy)
 	  in
-	    CPS.mkCont((join, [x], e),
+	    CPS.mkCont(CPS.FB{f=join, params=[x], rets=[], body=e},
 	    mkCont("fastPath", ("hd", rdyQItemTy),
 	      fn hd => mkLet([
 		  ([link], CPS.Select(2, hd)),
@@ -188,8 +196,10 @@ functor ExpandOpsFn (Spec : TARGET_SPEC) : sig
 		in
 		  expand e
 		end
-	  and xLambda (f, params, e) = (f, params, xExp(e, List.last params))
-	  and xCont ((k, params, e), exh) = (k, params, xExp(e, exh))
+	  and xLambda (CPS.FB{f, params, rets, body}) =
+		CPS.FB{f=f, params=params, rets=rets, body=xExp(body, List.last params)}
+	  and xCont (CPS.FB{f, params, body, ...}, exh) =
+		CPS.FB{f=f, params=params, rets=[], body=xExp(body, exh)}
 	  in
 	    CPS.MODULE{
 		name = name, externs = VProcDequeue::externs,

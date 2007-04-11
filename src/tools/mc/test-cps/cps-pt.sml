@@ -27,7 +27,7 @@ structure CPSPT =
       | Cont of (lambda * exp)
       | If of (simple_exp * exp * exp)
       | Switch of (simple_exp * (int * exp) list * exp option)
-      | Apply of (var * simple_exp list)
+      | Apply of (var * simple_exp list * simple_exp list)
       | Throw of (var * simple_exp list)
       | Run of (var * var * var)
       | Forward of var * var
@@ -49,6 +49,6 @@ structure CPSPT =
       | Prim of (Atom.atom * simple_exp list)
       | HostVProc
 
-    withtype lambda = (var * var_bind list * exp)
+    withtype lambda = (var * var_bind list * var_bind list * exp)
 
   end
