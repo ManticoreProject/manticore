@@ -16,9 +16,9 @@ structure BOMTy =
       | T_Raw of raw_ty		(* raw machine type *)
       | T_Wrap of raw_ty	(* boxed raw value *)
       | T_Tuple of ty list	(* heap-allocated tuple *)
-      | T_Fun of (ty list * ty * ty)
+      | T_Fun of (ty list * ty list * ty)
 				(* function type; the second argument is the type of *)
-				(* the exception continuation *)
+				(* the exception continuation(s) *)
       | T_Cont of ty list	(* first-class continuation *)
       | T_TyCon of tyc		(* high-level type constructor *)
 
