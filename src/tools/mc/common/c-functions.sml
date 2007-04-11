@@ -68,6 +68,7 @@ structure CFunctions : C_FUNCTIONS =
     fun cfunHasAttr attr (CFun{attrs, ...}) = List.exists (fn a => (a = attr)) attrs
 
     fun varOf (CFun{var, ...}) = var
+    fun nameOf (CFun{name, ...}) = name
     fun typeOf (CFun{retTy, argTys, attrs, ...}) = CProto(retTy, argTys, attrs)
 
     fun tyToString PointerTy = "void *"
