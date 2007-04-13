@@ -20,9 +20,27 @@ structure CaseSimplify : sig
     fun numEnumsOfTyc (B.DataTyc{nNullary, ...}) = nNullary
     fun numConsOfTyc (B.DataTycP{cons, ...}) = List.length cons
 
+(* FIXME: we probably need to rewrite bound variables with new types! *)
     fun xformE (B.E_Pt(_, e)) = (case e
 	   of B.E_Let(lhs, e1, e2) => B.mkLet(lhs, xformE exp, xformE e2)
-	    | B.E_Stmt(lhs, B.E_DCon(dc, xs), e) => ??
+	    | B.E_Stmt(lhs, B.E_DCon(dc, x), e) => let
+		val e = xformE e
+		val B.DCon{name, rep, ...} = dc
+		in
+		  case rep
+		   of B.Transparent => B.mkLet(lhs, B.mkRet[x], e)
+		    | B.Boxed => B.mkStmt(lhs, B.E_Alloc(?, [x]), e)
+		    | B.TaggedBox tag => let
+			val tagTy = BTy.T_Enum tag
+			val tag' = BV.new(name, tagTy)
+			in
+			  B.mkStmts([
+			      ([tag'], B.E_Const(B.E_EnumConst(tag, tagTy))),
+			      (lhs, B.E_Alloc(?, [tag', x]))
+			    ], e)
+			end
+		  (* end case *)
+		end
 	    | B.E_Stmt(lhs, rhs, e) => B.mkStmt(lhs, rhs, xformE e)
 	    | B.E_Fun(fbs, e) => B.mkFun(List.map xformLambda fbs, xformE e)
 	    | B.E_Cont(fb, e) => B.mkCont(List.map xformLamda
