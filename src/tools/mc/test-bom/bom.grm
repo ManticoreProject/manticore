@@ -88,8 +88,7 @@ CArgTy
 	;
 
 Lambda
-	: ID Params "=" Exp "=>" Exp		=> (ID, Params, Exp1,
-	Exp2)
+	: ID "(" Params ";" Params ")" "=" Exp	=> (ID, Params1, Params2, Exp)
 	;
 
 Params
@@ -98,6 +97,10 @@ Params
 
 Param
 	: ID ":" Type	=> (ID, Type)
+	;
+
+CLambda
+	: ID "(" Params ")" "=" Exp		=> (ID, Params, [], Exp)
 	;
 
 Type
@@ -127,6 +130,7 @@ Exp
 	| "fun" Lambda ("and" Lambda)* Exp		=> (PT.Fun(Lambda::SR, Exp))
 	| "cont" Lambda Exp				=> (PT.Cont(Lambda, Exp))
 	| "if" SimpleExp "then" Exp "else" Exp		=> (PT.If(SimpleExp, Exp1, Exp2))
+        | "case" SimpleExp Case Case "end"              => (PT.Case(SimpleExp, Case1, Case2))
 	| "switch" SimpleExp Cases DefaultCase? "end"	=> (PT.Switch(SimpleExp, Cases, DefaultCase))
 	| "apply" ID Args				=> (PT.Apply(ID, Args))
 	| "throw" ID Args				=> (PT.Throw(ID, Args))
@@ -159,6 +163,9 @@ SimpleExp
 Args
 	: "(" (SimpleExp ("," SimpleExp)* )? ")"	=> (flatten SR)
 	;
+
+Case
+        : ("case" INT ":" Exp => (Int.fromLarge INT, Exp)
 
 Cases
 	: ("case" INT ":" Exp => (Int.fromLarge INT, Exp))+
