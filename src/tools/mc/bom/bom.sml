@@ -22,6 +22,7 @@ structure BOM =
       | E_Apply of (var * var list)
       | E_Throw of (var * var list)
       | E_Ret of var list
+(* QUESTION: what about E_Run and E_Forward? *)
 
     and rhs
       = E_Const of const
