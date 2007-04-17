@@ -20,39 +20,65 @@ structure CaseSimplify : sig
     fun numEnumsOfTyc (B.DataTyc{nNullary, ...}) = nNullary
     fun numConsOfTyc (B.DataTycP{cons, ...}) = List.length cons
 
-(* FIXME: we probably need to rewrite bound variables with new types! *)
-    fun xformE (B.E_Pt(_, e)) = (case e
-	   of B.E_Let(lhs, e1, e2) => B.mkLet(lhs, xformE exp, xformE e2)
-	    | B.E_Stmt(lhs, B.E_DCon(dc, x), e) => let
-		val e = xformE e
-		val B.DCon{name, rep, ...} = dc
-		in
-		  case rep
-		   of B.Transparent => B.mkLet(lhs, B.mkRet[x], e)
-		    | B.Boxed => B.mkStmt(lhs, B.E_Alloc(?, [x]), e)
-		    | B.TaggedBox tag => let
-			val tagTy = BTy.T_Enum tag
-			val tag' = BV.new(name, tagTy)
-			in
-			  B.mkStmts([
-			      ([tag'], B.E_Const(B.E_EnumConst(tag, tagTy))),
-			      (lhs, B.E_Alloc(?, [tag', x]))
-			    ], e)
-			end
-		  (* end case *)
-		end
+    val typeOf = BV.typeOf
+    val typesOf = List.map typeOf
+
+  (* variable to variable substitution *)
+    fun subst s x = (case BV.Map.find x of NONE => x | SOME y => y)
+    fun retype (s, x, ty) = let
+	  val x' = BV.new(BV.nameOf x, ty)
+	  in
+	    (BV.Map.insert(s, x, x'), x')
+	  end
+  (* transform an expression.  The parameters are:
+   *	s	-- a substitution used to rename variables whose types have changed.
+   *	tys	-- the result type(s) of the expression.
+   *	e	-- the expresssion to transform
+   *)
+    fun xformE (s, tys, B.E_Pt(_, e)) = (case e
+	   of B.E_Let(lhs, e1, e2) =>
+		B.mkLet(lhs, xformE(s, typesOf lhs, e1), xformE(s, tys, e2))
+	    | B.E_Stmt([y], B.E_DCon(B.DCon{name, rep, ...}, x), e) => (
+		case rep
+		 of B.Transparent => let
+		      val (s', y') = retype (s, y, typeOf x)
+		      in
+			B.mkLet([y'], B.mkRet[x], xFormE(s', tys, e))
+		      end
+		  | B.Boxed => let
+		      val ty = BTy.T_Tuple[typeOf x]
+		      val (s', y') = retype (s, y, ty)
+		      in
+			B.mkStmt([y'], B.E_Alloc(ty, [x]), xFormE(s', tys, e))
+		      end
+		  | B.TaggedBox tag => let
+		      val tagTy = BTy.T_Enum tag
+		      val tag' = BV.new(name, tagTy)
+		      val ty = BTy.T_Tuple[tagTy, typeOf x]
+		      val (s', y') = retype (s, y, ty)
+		      in
+			B.mkStmts([
+			    ([tag'], B.E_Const(B.E_EnumConst(tag, tagTy))),
+			    (lhs, B.E_Alloc(ty, [tag', x]))
+			  ], xFormE([y'], tys, e))
+		      end
+		(* end case *))
+(* FIXME: need to apply the substitution to the RHS *)
 	    | B.E_Stmt(lhs, rhs, e) => B.mkStmt(lhs, rhs, xformE e)
-	    | B.E_Fun(fbs, e) => B.mkFun(List.map xformLambda fbs, xformE e)
-	    | B.E_Cont(fb, e) => B.mkCont(List.map xformLamda
-	    | B.E_If(x, e1, e2) => B.mkIf(x, xformE e1, xformE x2)
-	    | B.E_Case(x, rules, dflt) => xformCase (x, rules, dflt)
+	    | B.E_Fun(fbs, e) => B.mkFun(List.map (xformLambda s) fbs, xformE(s, tys, e))
+	    | B.E_Cont(fb, e) => B.mkCont(xformLamda s fb, xformE(s, tys, e))
+	    | B.E_If(x, e1, e2) =>
+		B.mkIf(x, xformE(s, tys, e1), xformE(s, tys, x2))
+	    | B.E_Case(x, rules, dflt) => xformCase (s, tys, x, rules, dflt)
 	    | e => B.mkExp e
 	  (* end case *))
 
-    and xformLambda (B.FB{f, params, exh, body}) =
-	  B.FB{f = f, params = params, exh = exh, body = xformE body}
+    and xformLambda s (B.FB{f, params, exh, body}) = B.FB{
+	    f = f, params = params, exh = exh,
+	    body = xformE(s, [BTy.returnTy(typeOf f)], body)
+	  }
 
-    and xformCase (x, rules, dflt) = let
+    and xformCase (s, tys, x, rules, dflt) = let
 	  val dflt = Option.map xformE dflt
 	(* classify the rules into a list of those with enum patterns, a list
 	 * of literal patterns, and a list of data constructor patterns.
@@ -116,7 +142,7 @@ structure CaseSimplify : sig
 			(* the default case is shared by both the boxed and unboxed
 			 * sub cases, so we have to wrap it in a function abstraction.
 			 *)
-			  val join = BV.new("join", BTy.T_Fun([], [], ??))
+			  val join = BV.new("join", BTy.T_Fun([], [], tys))
 			  val joinFB = B.FB{f=join, params=[], exh=[], body=valOf dflt}
 			  in
 			    B.mkCont(joinFB,
@@ -134,6 +160,6 @@ structure CaseSimplify : sig
 	  end
 
     fun transform (B.MODULE{name, externs, body}) =
-	  B.mkModule(name, externs, xformLambda body)
+	  B.mkModule(name, externs, xformLambda BV.Map.empty body)
 
   end
