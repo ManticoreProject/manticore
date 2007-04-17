@@ -1,0 +1,24 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Sources file for the BOM to CPS conversion phase.
+ *)
+
+Library
+
+  structure Convert
+
+is
+
+  $/basis.cm
+
+  $/smlnj-lib.cm
+
+  ../common/sources.cm
+  ../prim/sources.cm
+  ../bom/sources.cm
+  ../cps/sources.cm
+
+  convert.sml
