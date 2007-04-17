@@ -108,11 +108,11 @@ structure Expand =
 	    | SOME x' => x'
 	  (* end case *))
 
-    fun newTmp ty = CPS.Var.new(Atom.atom "_t", ty)
+    fun newTmp ty = CPS.Var.new("_t", ty)
 
     fun cvtVarBinds (env, vars) = let
 	  fun f ((x, ty), (env, xs)) = let
-		val x' = CPS.Var.new(x, ty)
+		val x' = CPS.Var.new(Atom.toString x, ty)
 		in
 		  (AtomMap.insert(env, x, x'), x'::xs)
 		end
@@ -210,7 +210,7 @@ structure Expand =
 
     and cvtLambda (env, (f, params, rets, e)) = let
 	  val fnTy = Ty.T_Fun(List.map #2 params, List.map #2 rets)
-	  val f' = CPS.Var.new(f, fnTy)
+	  val f' = CPS.Var.new(Atom.toString f, fnTy)
 	  fun doBody env = let
 		val (envWParams, params') = cvtVarBinds (env, params)
 		val (envWParams, rets') = cvtVarBinds (envWParams, rets)
@@ -280,7 +280,7 @@ structure Expand =
 
     fun cvtModule (PT.MODULE{name, externs, body}) = let
 	  fun doCFun (CFunctions.CFun{var, name, retTy, argTys, attrs}, (cfs, env)) = let
-		val f = CPS.Var.new(var, Ty.T_CFun(CFunctions.CProto(retTy, argTys, attrs)))
+		val f = CPS.Var.new(Atom.toString var, Ty.T_CFun(CFunctions.CProto(retTy, argTys, attrs)))
 		in (
 		  CPS.mkCFun{var=f, name=name, retTy=retTy, argTys=argTys, attrs=attrs}::cfs,
 		  AtomMap.insert(env, var, f)

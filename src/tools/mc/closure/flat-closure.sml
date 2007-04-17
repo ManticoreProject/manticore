@@ -116,7 +116,7 @@ structure FlatClosure : sig
           CPS.Var.nameOf x,
           cvtTy(CPS.Var.typeOf x))
 
-    fun newEP ty = CFG.Var.new (Atom.atom "ep", ty)
+    fun newEP ty = CFG.Var.new ("ep", ty)
 
     fun newLocal (env, x) = let
           val x' = newVar x
@@ -244,7 +244,7 @@ structure FlatClosure : sig
 	(* construct an initial environment that maps the CPS externs to CFG labels *)
 	  val (externs, externEnv) = let
 		fun cvt (CFunctions.CFun{var, name, retTy, argTys, attrs}, (cfs, env)) = let
-		      val lab = CFG.Label.new(Atom.atom name, cvtTy(CPS.Var.typeOf var))
+		      val lab = CFG.Label.new(name, cvtTy(CPS.Var.typeOf var))
 		      val cf = CFG.mkCFun{var=lab, name=name, argTys=argTys, retTy=retTy, attrs=attrs}
 		      in
 			(cf::cfs, VMap.insert(env, var, Extern lab))
@@ -297,7 +297,7 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
                                   then (argEP :: args, paramEP :: params)
                                   else (args, params)
                             val lab = CFG.Label.new(
-                                  Atom.atom lab,
+                                  lab,
                                   CFGTy.T_Code(List.map CFG.Var.typeOf params))
                             in
                               cvtExp (branchEnv, lab, CFG.Block params, e);

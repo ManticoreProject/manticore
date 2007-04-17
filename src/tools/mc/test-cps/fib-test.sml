@@ -36,7 +36,7 @@ structure Fib =
     structure P = Prim
     structure Ty = CPSTy
 
-    fun var (name, ty) = CPS.Var.new(Atom.atom name, CFG.VK_None, ty)
+    fun var (name, ty) = CPS.Var.new(name, CFG.VK_None, ty)
 
     fun lit i x = CFG.mkLiteral(x, Literal.Int i)
     fun alloc args x = CFG.mkAlloc(x, args)
@@ -59,11 +59,11 @@ structure Fib =
     val tif2aiaaTy = Ty.T_Tuple[iTy, f2aiTy, aTy, aTy]
 
   (* labels *)
-    val fib = CFG.Label.new(Atom.atom "fib", CFG.Export "_fib", aTy)
-    val fib' = CFG.Label.new(Atom.atom "fib", CFG.Export "_fib", aTy)
-    val k' = CFG.Label.new(Atom.atom "k'", CFG.Local, aTy)
-    val k'' = CFG.Label.new(Atom.atom "k''", CFG.Local, aTy)
-    val k''' = CFG.Label.new(Atom.atom "k''", CFG.Local, aTy)
+    val fib = CFG.Label.new("fib", CFG.Export "_fib", aTy)
+    val fib' = CFG.Label.new("fib", CFG.Export "_fib", aTy)
+    val k' = CFG.Label.new("k'", CFG.Local, aTy)
+    val k'' = CFG.Label.new("k''", CFG.Local, aTy)
+    val k''' = CFG.Label.new("k''", CFG.Local, aTy)
 
     val body = mkLambda(fib, [("i", wiTy), ("k", aTy), ("exh", aTy)], fn (i, k, exh) =>
 	  mkFun([

@@ -10,7 +10,7 @@ structure VarRep =
   struct
 
     datatype ('kind, 'ty) var_rep = V of {
-	name : Atom.atom,
+	name : string,
 	id : Stamp.stamp,
 	kind : 'kind ref,
 	useCnt : int ref,

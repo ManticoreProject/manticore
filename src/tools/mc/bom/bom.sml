@@ -117,8 +117,6 @@ structure BOM =
 	    end)
 	in
 	open V
-	fun new (name, ty) = V.new(Atom.atom name, ty)	(* temporary *)
-	fun nameOf v = Atom.toString(V.nameOf v)	(* temporary *)
 	end
       end 
        

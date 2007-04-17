@@ -133,7 +133,7 @@ val toNode = fn f => let
 				end
 			  (* end case *))
 		    val lab' = CFG.Label.new(
-				Atom.atom "check",
+				"check",
 				CFGTy.T_Code(List.map CFG.Var.typeOf freeVars))
 		    val f' = CFG.mkFunc(lab, entry', [], CFG.HeapCheck{
 			    szb = getAlloc lab,

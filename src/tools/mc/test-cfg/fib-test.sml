@@ -52,8 +52,8 @@ structure Fib =
     structure P = Prim
     structure Ty = CFGTy
 
-    fun var (name, ty) = CFG.Var.new(Atom.atom name, CFG.VK_None, ty)
-    fun newLab ty = CFG.Label.new(Atom.atom "L", CFG.Local, ty)
+    fun var (name, ty) = CFG.Var.new(name, CFG.VK_None, ty)
+    fun newLab ty = CFG.Label.new("L", CFG.Local, ty)
 
     fun func (lab, params, bodyFn) = let
 	  val params as [clos, arg, ret, exh] = List.map var params
@@ -112,13 +112,13 @@ structure Fib =
     val tif2aiaaTy = Ty.T_Tuple[iTy, f2aiTy, aTy, aTy]
 
   (* labels *)
-    val fib = CFG.Label.new(Atom.atom "fib", CFG.Export "_fib", aTy)
+    val fib = CFG.Label.new("fib", CFG.Export "_fib", aTy)
     val L1 = newLab aTy
     val L2 = newLab aTy
     val L3 = newLab aTy
     val L4 = newLab aTy
-    val k' = CFG.Label.new(Atom.atom "k'", CFG.Local, aTy)
-    val k'' = CFG.Label.new(Atom.atom "k''", CFG.Local, aTy)
+    val k' = CFG.Label.new("k'", CFG.Local, aTy)
+    val k'' = CFG.Label.new("k''", CFG.Local, aTy)
 
     val code = [
 	    func (fib, [("i", iTy), ("k", f2aiTy), ("cl", aTy), ("exh", aTy)], fn [i, k, cl, exh] =>

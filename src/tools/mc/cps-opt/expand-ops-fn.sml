@@ -15,7 +15,7 @@ functor ExpandOpsFn (Spec : TARGET_SPEC) : sig
     structure Offsets = Spec.ABI
     structure CF = CFunctions
 
-    fun var (name, ty) = CV.new(Atom.atom name, ty)
+    fun var (name, ty) = CV.new(name, ty)
 
     fun cfun (name, resTy, paramTys, attrs) = let
 	  val cf = var(name, Ty.T_CFun(CF.CProto(resTy, paramTys, attrs)))

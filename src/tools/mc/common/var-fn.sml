@@ -22,11 +22,11 @@ signature VAR =
     type ty
     type var = (kind, ty) VarRep.var_rep
 
-    val new : (Atom.atom * ty) -> var
-    val newWithKind : (Atom.atom * kind * ty) -> var
+    val new : (string * ty) -> var
+    val newWithKind : (string * kind * ty) -> var
     val copy : var -> var
 
-    val nameOf : var -> Atom.atom
+    val nameOf : var -> string
     val kindOf : var -> kind
     val setKind : (var * kind) -> unit
     val typeOf : var -> ty
@@ -94,7 +94,7 @@ functor VarFn (VP : VAR_PARAMS) : VAR =
     fun compare (V{id=a, ...}, V{id=b, ...}) = Stamp.compare(a, b)
     fun hash (V{id, ...}) = Stamp.hash id
 
-    fun toString (V{name, id, ...}) = Atom.toString name ^ Stamp.toString id
+    fun toString (V{name, id, ...}) = name ^ Stamp.toString id
 
     fun propsOf (V{props, ...}) = props
 
