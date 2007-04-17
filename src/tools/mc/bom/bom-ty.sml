@@ -38,11 +38,21 @@ structure BOMTy =
 	      | T_Raw ty => RawTypes.toString ty
 	      | T_Wrap ty => concat["wrap(", RawTypes.toString ty, ")"]
 	      | T_Tuple tys => concat("(" :: tys2l(tys, [")"]))
-
-(* T_Fun => fun( [...], ty1, ty2) *)
-	      | T_Fun (tyl, ty1, ty2) => concat("fun( [" :: tys2l(tyl, ["]"]) :: toString ty1 :: "," :: toString ty2 :: ")")
+	      | T_Fun(paramTys, exhTys, retTys) => let
+		  fun f1 [] = "-;" :: f2 exhTys
+		    | f1 [ty] = toString ty :: ";" :: f2 exhTys
+		    | f1 (ty::tys) = toString ty :: "," :: f1 tys
+		  and f2 [] = "-) -> (" :: f3 retTys
+		    | f2 [ty] = toString ty :: ") -> (" :: f3 retTys
+		    | f2 (ty::tys) = toString ty :: "," :: f2 tys
+		  and f3 [] = [")"]
+		    | f3 [ty] = [toString ty, ")"]
+		    | f3 (ty::tys) = toString ty :: "," :: f3 tys
+		  in
+		    concat("(" :: f1 paramTys)
+		  end
 	      | T_Cont tys => concat("cont(" :: tys2l(tys, [")"]))
-	      | T_Tyc tyc => BOMTyCon.toString tyc
+	      | T_TyCon tyc => BOMTyCon.toString tyc
 	    (* end case *)
 	  end
 

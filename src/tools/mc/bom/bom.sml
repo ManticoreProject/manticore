@@ -10,6 +10,11 @@ structure BOM =
     datatype data_con = datatype BOMTyCon.data_con
     datatype dcon_rep = datatype BOMTyCon.dcon_rep
 
+    type ty = BOMTy.ty
+    type hlop = HLOp.hlop
+
+    type offset = IntInf.int
+
     datatype exp = E_Pt of (ProgPt.ppt * term)
 
     and term
@@ -68,7 +73,7 @@ structure BOM =
     and const
       = E_EnumConst of word * ty	(* tagged enumeration constant *)
 (* NOTE: we use Literal.literal in the other IRs!! *)
-      | E_IConst of IntegerLit.int * ty
+      | E_IConst of IntegerLit.integer * ty
       | E_SConst of string
       | E_FConst of FloatLit.float * ty
       | E_BConst of bool
@@ -83,7 +88,7 @@ structure BOM =
       | VK_Extern of string
 
     withtype var = (var_kind, ty) VarRep.var_rep
-         and primop = var Prim.prim
+         and prim = var Prim.prim
 
 
     datatype module = MODULE of {
@@ -95,32 +100,30 @@ structure BOM =
     fun varKindToString VK_None = "None"
       | varKindToString (VK_Let _) = "Let"
       | varKindToString (VK_RHS _) = "RHS"
-      | varKindToString (VK_Param _) = "Param"
-      | varKindToString (VK_Fun_) = "Fun"
+      | varKindToString VK_Param = "Param"
+      | varKindToString (VK_Fun _) = "Fun"
       | varKindToString (VK_Cont _) = "Cont"
       | varKindToString (VK_Extern _) = "Extern"
 
-    structure Var = VarFn (
+    structure Var = struct
     	local
-	  strucutre V = VarFn (
+	  structure V = VarFn (
 	    struct
 	      type kind = var_kind
 	      type ty=ty
-	      val defaultkind = VK_None
+	      val defaultKind = VK_None
 	      val kindToString = varKindToString
-	      val tyToString = CPSTy.toString
+	      val tyToString = BOMTy.toString
 	    end)
 	in
 	open V
 	end
       end 
        
-    val trueLit = Enum 0w1
-    val falseLit = Enum 0w0  
-
-    val unitLit = Enum 0w0
-    
-    val nilLit = Enum 0w0
+    val trueLit = E_EnumConst(0w1, BOMTy.boolTy)
+    val falseLit = E_EnumConst(0w0, BOMTy.boolTy)
+    val unitLit = E_EnumConst(0w0, BOMTy.unitTy)
+    val nilLit = E_EnumConst(0w0, BOMTy.unitTy)		(* FIXME: sum types?? *)
 
 
 (* FIXME: need constructor functions *)
@@ -132,25 +135,25 @@ structure BOM =
     	  List.app (fn x => Var.setKind (x, VK_RHS rhs)) lhs;
 	  mkExp(E_Stmt(lhs, rhs, exp)))
     fun mkFun(fbs, e) = let
-    	  fun setKind (lambda as FB{f, params, exh, _}) = (
+    	  fun setKind (lambda as FB{f, params, exh, ...}) = (
 		Var.setKind(f, VK_Fun lambda);
-		List.app (fn x => Var.setKind(x, VK_Param lambda)) (params @ exh))
+		List.app (fn x => Var.setKind(x, VK_Param)) (params @ exh))
 	  in
 	    List.app setKind fbs;
-	    mkExp(E_Fun(fbs, e)))
+	    mkExp(E_Fun(fbs, e))
 	  end
-    fun mkCont (lambda as FB{k, params, _},e) = (
-          Var.setKind (k, VK_Cont lambda);
-	  List.app (fn x=> Var.setKind(x, VK_Param lambda)) params;
+    fun mkCont (lambda as FB{f, params, ...},e) = (
+          Var.setKind (f, VK_Cont lambda);
+	  List.app (fn x=> Var.setKind(x, VK_Param)) params;
 	  mkExp(E_Cont(lambda, e)))
     fun mkIf arg = mkExp(E_If arg)
     fun mkCase arg = mkExp(E_Case arg)
     fun mkApply arg = mkExp(E_Apply arg)
     fun mkThrow arg = mkExp(E_Throw arg)
-    fun mkRet arg = mkExp(E_Ret arg))
+    fun mkRet arg = mkExp(E_Ret arg)
 
     fun mkModule (name, externs, body as FB{params, exh, ...}) = (
-	  List.app (fn x => Var.setKind(x, VK_Param lambda)) (params @ exh);
+	  List.app (fn x => Var.setKind(x, VK_Param)) (params @ exh);
 	  List.app
 	    (fn (CFunctions.CFun{var, name, ...}) => Var.setKind(var, VK_Extern name))
 	      externs;
@@ -158,6 +161,6 @@ structure BOM =
 
   (* for sequences of Stms *)
     fun mkStmts ([], e) = e
-      | mkStmts ((lhs, rhs)::r, e) = mkStmt(lhs, rhs, mkStmts(r, e)
+      | mkStmts ((lhs, rhs)::r, e) = mkStmt(lhs, rhs, mkStmts(r, e))
 
   end
