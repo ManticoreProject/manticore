@@ -12,7 +12,8 @@ structure CFG =
 
     datatype ty = datatype CFGTy.ty
 
-    type offset = IntInf.int
+    type tag = Word.word	(* data-constant tags *)
+    type offset = IntInf.int	(* offsets into the runtime-system vproc structure *)
 
   (* extended basic block *)
     datatype func = FUNC of {
@@ -69,7 +70,7 @@ structure CFG =
       | Apply of {f : var, args : var list}
       | Goto of jump
       | If of (var * jump * jump)
-      | Switch of (var * (int * jump) list * jump option)
+      | Switch of (var * (tag * jump) list * jump option)
       | HeapCheck of {szb : word, nogc : jump}
 
     and var_kind

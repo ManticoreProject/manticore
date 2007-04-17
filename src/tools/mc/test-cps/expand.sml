@@ -190,7 +190,7 @@ structure Expand =
                 cvtSimpleExp (env, arg, fn arg =>
                   CPS.Switch (
 		    arg, 
-                    List.map (fn (i,e) => (i, cvtExp(env,e))) cases,
+                    List.map (fn (i,e) => (Word.fromInt i, cvtExp(env,e))) cases,
                     case dflt of NONE => NONE | SOME e => SOME (cvtExp(env, e))))
 	    | PT.Apply(f, args, rets) =>
 		cvtSimpleExps (env, args,

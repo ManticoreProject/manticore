@@ -58,7 +58,7 @@ structure PrintCPS : sig
 		  | CPS.Switch(x, cases, dflt) => let
 		      fun prCase (c, e) = (
 			    indent (i+1);
-			    prl ["case ", Int.toString c, ":\n"];
+			    prl ["case 0x", Word.toString c, ":\n"];
 			    prExp (i+2, e))
 		      in
 			prl ["switch ", varUseToString x, "\n"];

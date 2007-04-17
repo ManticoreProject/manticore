@@ -345,26 +345,21 @@ structure CheckCFG : sig
                                val chkC =
                                   (case V.typeOf x of
                                       CFGTy.T_Enum wt => 
-                                         (fn i => if Word.<= (Word.fromInt i, wt)
+                                         (fn w => if (wt <= w)
                                                      then ()
-                                                  else err["case ", Int.toString i,
-                                                           " is out of range for ",
-                                                           "variable ", V.toString x, ":", Ty.toString (V.typeOf x)])
+                                                  else err[
+						      "case ", Word.toString w, " is out of range for ",
+                                                      "variable ", V.toString x, ":", Ty.toString (V.typeOf x)
+						    ])
                                     | CFGTy.T_Raw rty => 
                                          (case rty of
                                              RawTypes.T_Int => (fn _ => ())
                                            | _ => err["variable ", V.toString x, ":", Ty.toString (V.typeOf x), 
                                                       " is not switch"])
-                                    | CFGTy.T_Tuple _ => 
-                                         (fn i => if i = 1
-                                                     then ()
-                                                  else err["case ", Int.toString i,
-                                                           " is out of range for ",
-                                                           "variable ", V.toString x, ":", Ty.toString (V.typeOf x)])
                                     | _ => err["variable ", V.toString x, ":", Ty.toString (V.typeOf x), 
-                                               " is not switch"])
+                                               " is not valid argument for switch"])
                             in
-                            List.app (fn (i, j) => (chkC i; chkJump(env, j))) cases
+                              List.app (fn (i, j) => (chkC i; chkJump(env, j))) cases
                             end;
 			    Option.app (fn j => chkJump(env, j)) dflt)
 			| CFG.HeapCheck{szb, nogc = (lab, args)} => (

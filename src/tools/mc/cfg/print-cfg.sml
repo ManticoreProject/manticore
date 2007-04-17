@@ -108,7 +108,7 @@ structure PrintCFG : sig
 		  | CFG.Switch(x, cases, dflt) => let
 		      fun prCase (c, jmp) = (
 			    indent (i+1);
-			    prl ["case ", Int.toString c, ": "];
+			    prl ["case 0x", Word.toString c, ": "];
 			    prJump("", jmp))
 		      in
 			prl ["switch ", varUseToString x, "\n"];

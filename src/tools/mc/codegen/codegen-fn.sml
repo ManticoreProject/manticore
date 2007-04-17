@@ -41,7 +41,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
   fun newReg _ = Cells.newReg ()
   fun newFReg _ = Cells.newFreg ()
   fun mkExp e = MTy.EXP (ty, e)
-  fun intLit i = T.LI (T.I.fromInt (ty, i))
+  fun wordLit i = T.LI(T.I.fromInt (ty, Word.toIntX i))
   fun gpReg r = MTy.GPReg (ty, r)
   fun regGP (MTy.GPReg (_, r)) = r
     | regGP (MTy.FPReg (_, r)) = r
@@ -124,12 +124,12 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		  defineLabel labT;
 		  emitStms (genGoto jT)
 	      end
-	    | genTransfer (M.Switch (v, js, jOpt)) = 
-	      let (* put the value into reg *)
+	    | genTransfer (M.Switch (v, js, jOpt)) = let
+		(* put the value into reg *)
 		  val {reg, mv} = freshMv (defOf v)
 		  val _ = emit mv
-		  (* compare the value with each branch *)
-		  fun compare i = T.CMP (ty, T.EQ, T.REG (ty, reg), intLit i)
+		(* compare the value with each branch *)
+		  fun compare i = T.CMP (ty, T.EQ, T.REG (ty, reg), wordLit i)
 		  fun genTest ((i, jmp), exits) =
 		      let val labT = newLabel "S_case"
 			  val jmpStms = genGoto jmp
@@ -137,7 +137,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 			  emit (T.BCC (compare i, labT));
 			  (labT, jmpStms) :: exits
 		      end
-		  (* exit the code block if the value equals the case *)
+		(* exit the code block if the value equals the case *)
 		  val exits = foldl genTest [] js
 		  fun emitJ (labT, jmpStms) = (
 		      defineLabel labT;

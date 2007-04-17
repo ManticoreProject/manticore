@@ -425,8 +425,8 @@ raise Fail(concat[
 			      else evalJump j2
 			  | CFG.Switch(x, cases, dflt) => let
 			      val arg = (case valueOf(env0, x)
-				     of ENUM w => Word.toIntX w
-				      | RAW(INT i) => Int.fromLarge i
+				     of ENUM w => w
+				      | RAW(INT i) => Word.fromLargeInt i
 				    (* end case *))
 			      fun match [] = (case dflt
 				     of SOME jmp => evalJump jmp
