@@ -20,6 +20,8 @@ structure CaseSimplify : sig
     fun numEnumsOfTyc (B.DataTyc{nNullary, ...}) = nNullary
     fun numConsOfTyc (B.DataTycP{cons, ...}) = List.length cons
 
+    fun repOf (B.DCon{rep, ...}) = rep
+
     val typeOf = BV.typeOf
     val typesOf = List.map typeOf
 
@@ -30,6 +32,13 @@ structure CaseSimplify : sig
 	  in
 	    (BV.Map.insert(s, x, x'), x')
 	  end
+
+  (* if a variable has a TyCon type, the retype it *)
+    fun xformVar (s, x) = (case typeOf x
+	   of BTy.T_TyCon tc => retype(s, x, xformTyc tc)
+	    | _ => (s, x)
+	  (* end case *))
+
   (* transform an expression.  The parameters are:
    *	s	-- a substitution used to rename variables whose types have changed.
    *	tys	-- the result type(s) of the expression.
@@ -79,6 +88,7 @@ structure CaseSimplify : sig
 	  }
 
     and xformCase (s, tys, x, rules, dflt) = let
+	  val arg = subst s x
 	  val dflt = Option.map xformE dflt
 	(* classify the rules into a list of those with enum patterns, a list
 	 * of literal patterns, and a list of data constructor patterns.
@@ -90,12 +100,53 @@ structure CaseSimplify : sig
 		classify (rules, enums, (c, xformE e)::lits, cons)
 	    | classify ((B.P_DCon(dc, y), e)::rules, enums, lits, cons) =
 		classify (rules, enums, lits, (dc, y, xformE e)::cons)
-	(* classify data constructors *)
-	  fun dcClassify ([], trans, boxed, tagged) =
-	    | dcClassify (dc::rest, trans, boxed, tagged) =
-		case dc
-		 of (B.DCon{rep=Transparent, ...}, y, e) =>
-	  fun consCase ([
+	(* generate a case for a list of one or more data constructors, plus an
+	 * optional default case.
+	 *)
+	  fun consCase ([(dc, y, e)], dflt) = let
+		val (s, y) = xformVar(s, y)
+		in
+		  case (repOf dc, dflt)
+		   of (B.Transparent, NONE) =>
+			B.mkStmt([y], B.E_Cast(typeOf y, argument), xformExp(s, tys, e))
+		    | (B.Boxed, NONE) =>
+			B.mkStmt([y], B.E_Select(0, argument), xformExp(s, tys, e))
+		    | (B.TaggedBox tag, SOME dflt) => let
+			val tag' = BV.new("tag", BTy.T_Enum tag)
+			val tmp = BV.new("tmp", BTy.T_Enum tag)
+			val eq = BV.new("eq", BTy.boolTy)
+			in
+			  B.mkStmts([
+			      ([tag], B.E_Select(0, argument)),
+			      ([tmp], B.E_Const(B.E_EnumConst(tag, ty))),
+			      ([eq], B.E_Prim(Primop.P_I32Neq(x, tmp)))
+			    ],
+			    B.mkIf(eq,
+			      B.mkStmt([y], B.E_Select(1, argument), xformExp(s, tys, e)),
+			      xformExp(s, tys, dflt)))
+			end
+		    | _ => raise Fail "bogus dcon rep"
+		  (* end case *)
+		end
+	    | consCase (x, cons, dflt) = let
+	      (* here we have two, or more, constructors and they must all have the
+	       * TaggedBox representation.
+	       *)
+		fun mkAlt (dc, y, e) = (case repOf dc
+		       of B.TaggedBox tag => let
+			    val (s, y) = xformVar(s, y)
+			    in (
+			      B.P_Const(B.E_EnumConst tag),
+			      B.mkStmt([y], B.E_Select(1, argument), xformExp(s, tys, e))
+			    ) end
+			| _ => raise Fail "expected TaggedBox representation"
+		      (* end case *))
+		val cons = List.map getTag cons
+		in
+		  B.mkCase(argument,
+		    List.map mkAlt cons,
+		    Option.map (fn e => xformExp(s, tys, e))
+		end
 	  in
 	    case classify (rules, [], [], [])
 	     of (enums, [], []) => B.mkCase(x, rules, dflt)
