@@ -16,9 +16,10 @@ structure CaseSimplify : sig
 
     structure B = BOM
     structure BV = BOM.Var
+    structure BTy = BOMTy
 
-    fun numEnumsOfTyc (B.DataTyc{nNullary, ...}) = nNullary
-    fun numConsOfTyc (B.DataTycP{cons, ...}) = List.length cons
+    fun numEnumsOfTyc (BTy.DataTyc{nNullary, ...}) = nNullary
+    fun numConsOfTyc (BTy.DataTyc{cons, ...}) = List.length cons
 
     fun repOf (B.DCon{rep, ...}) = rep
 
@@ -26,7 +27,7 @@ structure CaseSimplify : sig
     val typesOf = List.map typeOf
 
   (* variable to variable substitution *)
-    fun subst s x = (case BV.Map.find x of NONE => x | SOME y => y)
+    fun subst s x = (case BV.Map.find(s, x) of NONE => x | SOME y => y)
     fun retype (s, x, ty) = let
 	  val x' = BV.new(BV.nameOf x, ty)
 	  in
@@ -52,54 +53,54 @@ structure CaseSimplify : sig
 		 of B.Transparent => let
 		      val (s', y') = retype (s, y, typeOf x)
 		      in
-			B.mkLet([y'], B.mkRet[x], xFormE(s', tys, e))
+			B.mkLet([y'], B.mkRet[x], xformE(s', tys, e))
 		      end
 		  | B.Boxed => let
 		      val ty = BTy.T_Tuple[typeOf x]
 		      val (s', y') = retype (s, y, ty)
 		      in
-			B.mkStmt([y'], B.E_Alloc(ty, [x]), xFormE(s', tys, e))
+			B.mkStmt([y'], B.E_Alloc(ty, [x]), xformE(s', tys, e))
 		      end
 		  | B.TaggedBox tag => let
 		      val tagTy = BTy.T_Enum tag
 		      val tag' = BV.new(name, tagTy)
 		      val ty = BTy.T_Tuple[tagTy, typeOf x]
-		      val (s', y') = retype (s, y, ty)
+		      val (s, y) = retype (s, y, ty)
 		      in
 			B.mkStmts([
 			    ([tag'], B.E_Const(B.E_EnumConst(tag, tagTy))),
-			    (lhs, B.E_Alloc(ty, [tag', x]))
-			  ], xFormE([y'], tys, e))
+			    ([y], B.E_Alloc(ty, [tag', x]))
+			  ], xformE(s, tys, e))
 		      end
 		(* end case *))
 (* FIXME: need to apply the substitution to the RHS *)
-	    | B.E_Stmt(lhs, rhs, e) => B.mkStmt(lhs, rhs, xformE e)
+	    | B.E_Stmt(lhs, rhs, e) => B.mkStmt(lhs, rhs, xformE(s, tys, e))
 	    | B.E_Fun(fbs, e) => B.mkFun(List.map (xformLambda s) fbs, xformE(s, tys, e))
-	    | B.E_Cont(fb, e) => B.mkCont(xformLamda s fb, xformE(s, tys, e))
+	    | B.E_Cont(fb, e) => B.mkCont(xformLambda s fb, xformE(s, tys, e))
 	    | B.E_If(x, e1, e2) =>
-		B.mkIf(x, xformE(s, tys, e1), xformE(s, tys, x2))
+		B.mkIf(x, xformE(s, tys, e1), xformE(s, tys, e2))
 	    | B.E_Case(x, rules, dflt) => xformCase (s, tys, x, rules, dflt)
 	    | e => B.mkExp e
 	  (* end case *))
 
     and xformLambda s (B.FB{f, params, exh, body}) = B.FB{
 	    f = f, params = params, exh = exh,
-	    body = xformE(s, [BTy.returnTy(typeOf f)], body)
+	    body = xformE(s, BTy.returnTy(typeOf f), body)
 	  }
 
     and xformCase (s, tys, x, rules, dflt) = let
-	  val arg = subst s x
-	  val dflt = Option.map xformE dflt
+	  val argument = subst s x
+	  val dflt = Option.map (fn e => xformE(s, tys, e)) dflt
 	(* classify the rules into a list of those with enum patterns, a list
 	 * of literal patterns, and a list of data constructor patterns.
 	 *)
 	  fun classify ([], enums, lits, cons) = (enums, lits, cons)
-	    | classify ((B.D_Const(B.EnumConst(w, ty)), e):: rules) =
-		classify (rules, (w, ty, xformE e)::enums, lits, cons)
-	    | classify ((B.D_Const c), e):: rules) =
-		classify (rules, enums, (c, xformE e)::lits, cons)
+	    | classify ((B.P_Const(B.E_EnumConst(w, ty)), e)::rules, enums, lits, cons) =
+		classify (rules, (w, ty, e)::enums, lits, cons)
+	    | classify ((B.P_Const c, e)::rules, enums, lits, cons) =
+		classify (rules, enums, (c, e)::lits, cons)
 	    | classify ((B.P_DCon(dc, y), e)::rules, enums, lits, cons) =
-		classify (rules, enums, lits, (dc, y, xformE e)::cons)
+		classify (rules, enums, lits, (dc, y, e)::cons)
 	(* generate a case for a list of one or more data constructors, plus an
 	 * optional default case.
 	 *)
@@ -108,27 +109,28 @@ structure CaseSimplify : sig
 		in
 		  case (repOf dc, dflt)
 		   of (B.Transparent, NONE) =>
-			B.mkStmt([y], B.E_Cast(typeOf y, argument), xformExp(s, tys, e))
+			B.mkStmt([y], B.E_Cast(typeOf y, argument), xformE(s, tys, e))
 		    | (B.Boxed, NONE) =>
-			B.mkStmt([y], B.E_Select(0, argument), xformExp(s, tys, e))
+			B.mkStmt([y], B.E_Select(0, argument), xformE(s, tys, e))
 		    | (B.TaggedBox tag, SOME dflt) => let
-			val tag' = BV.new("tag", BTy.T_Enum tag)
-			val tmp = BV.new("tmp", BTy.T_Enum tag)
+			val ty = BTy.T_Enum tag
+			val tag' = BV.new("tag", ty)
+			val tmp = BV.new("tmp", ty)
 			val eq = BV.new("eq", BTy.boolTy)
 			in
 			  B.mkStmts([
-			      ([tag], B.E_Select(0, argument)),
+			      ([tag'], B.E_Select(0, argument)),
 			      ([tmp], B.E_Const(B.E_EnumConst(tag, ty))),
-			      ([eq], B.E_Prim(Primop.P_I32Neq(x, tmp)))
+			      ([eq], B.E_Prim(Prim.I32NEq(argument, tmp)))
 			    ],
 			    B.mkIf(eq,
-			      B.mkStmt([y], B.E_Select(1, argument), xformExp(s, tys, e)),
-			      xformExp(s, tys, dflt)))
+			      B.mkStmt([y], B.E_Select(1, argument), xformE(s, tys, e)),
+			      dflt))
 			end
 		    | _ => raise Fail "bogus dcon rep"
 		  (* end case *)
 		end
-	    | consCase (x, cons, dflt) = let
+	    | consCase (cons, dflt) = let
 	      (* here we have two, or more, constructors and they must all have the
 	       * TaggedBox representation.
 	       *)
@@ -136,22 +138,19 @@ structure CaseSimplify : sig
 		       of B.TaggedBox tag => let
 			    val (s, y) = xformVar(s, y)
 			    in (
-			      B.P_Const(B.E_EnumConst tag),
-			      B.mkStmt([y], B.E_Select(1, argument), xformExp(s, tys, e))
+			      B.P_Const(B.E_EnumConst(tag, ??)),
+			      B.mkStmt([y], B.E_Select(1, argument), xformE(s, tys, e))
 			    ) end
 			| _ => raise Fail "expected TaggedBox representation"
 		      (* end case *))
-		val cons = List.map getTag cons
 		in
-		  B.mkCase(argument,
-		    List.map mkAlt cons,
-		    Option.map (fn e => xformExp(s, tys, e))
+		  B.mkCase(argument, List.map mkAlt cons, dflt)
 		end
 	  in
 	    case classify (rules, [], [], [])
-	     of (enums, [], []) => B.mkCase(x, rules, dflt)
-	      | ([], lits, []) => (* build binary search tree *)
-	      | ([], [], cons) => consCase (x, cons, dflt)
+	     of (enums, [], []) => B.mkCase(argument, rules, dflt)
+	      | ([], lits, []) => raise Fail "unimplemented" (* build binary search tree *)
+	      | ([], [], cons) => consCase (cons, dflt)
 	      | (enums, [], cons) => let
 		  val tyc = BTy.asTyc(BV.typeOf x)
 		  val enumCover = (List.length enums = numEnumsOfTyc tyc)
@@ -160,7 +159,7 @@ structure CaseSimplify : sig
 		  in
 		    case (enumCover, consCover)
 		     of (true, _) => let
-			  val case1 = consCase (x, cons, dflt)
+			  val case1 = consCase (cons, dflt)
 			  in
 			    if (numEnumsOfTyc tyc = 1)
 			      then let
@@ -170,24 +169,24 @@ structure CaseSimplify : sig
 				val [(w, ty, e)] = enums
 				val tmp = BV.new("t", ty)
 				in
-				  B.mkStms([
+				  B.mkStmts([
 				      ([tmp], B.E_Const(B.E_EnumConst(w, ty))),
-				      ([isBoxed], B.E_Prim(Primop.P_I32Neq(x, tmp)))
+				      ([isBoxed], B.E_Prim(Prim.I32NEq(argument, tmp)))
 				    ],
 				    B.mkIf(isBoxed, case1, e))
 				end
-			      else B.mkStmt([isBoxed], B.E_Prim(Primop.P_isBoxed x),
+			      else B.mkStmt([isBoxed], B.E_Prim(Prim.isBoxed argument),
 				B.mkIf(isBoxed, case1,
-				  B.mkCase(x,
-				    List.map (fn (w, ty, e) => (B.D_Const(B.EnumConst(w, ty)), e)) enums,
+				  B.mkCase(argument,
+				    List.map (fn (w, ty, e) => (B.P_Const(B.E_EnumConst(w, ty)), e)) enums,
 				    NONE)))
 			  end
 		      | (false, true) =>
-			  B.mkStmt([isBoxed], B.E_Prim(Primop.P_isBoxed x),
+			  B.mkStmt([isBoxed], B.E_Prim(Prim.isBoxed argument),
 			    B.mkIf(isBoxed,
-			      consCase (x, cons, NONE),
-			      B.mkCase(x,
-				List.map (fn (w, ty, e) => (B.D_Const(B.EnumConst(w, ty)), e)) enums,
+			      consCase (cons, NONE),
+			      B.mkCase(argument,
+				List.map (fn (w, ty, e) => (B.P_Const(B.E_EnumConst(w, ty)), e)) enums,
 				dflt)))
 		      | (false, false) => let
 			(* the default case is shared by both the boxed and unboxed
@@ -197,12 +196,12 @@ structure CaseSimplify : sig
 			  val joinFB = B.FB{f=join, params=[], exh=[], body=valOf dflt}
 			  in
 			    B.mkCont(joinFB,
-			    B.mkStmt([isBoxed], B.E_Prim(Primop.P_isBoxed x),
+			    B.mkStmt([isBoxed], B.E_Prim(Prim.isBoxed argument),
 			      B.mkIf(isBoxed,
-				consCase (x, cons, B.mkThrow(join, [])),
-				B.mkCase(x,
-				  List.map (fn (w, ty, e) => (B.D_Const(B.EnumConst(w, ty)), e)) enums,
-				  B.mkThrow(join, [])))))
+				consCase (cons, SOME(B.mkThrow(join, []))),
+				B.mkCase(argument,
+				  List.map (fn (w, ty, e) => (B.P_Const(B.E_EnumConst(w, ty)), e)) enums,
+				  SOME(B.mkThrow(join, []))))))
 			  end
 		    (* end case *)
 		  end

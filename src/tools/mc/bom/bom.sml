@@ -37,7 +37,7 @@ structure BOM =
       | E_Wrap of var
       | E_Unwrap of var
       | E_Prim of prim
-      | E_DCon of (data_con * var list)	(* data constructor *)
+      | E_DCon of (data_con * var)	(* data constructor *)
       | E_HLOp of (hlop * var list)	(* application of high-level operator *)
       | E_CCall of (var * var list)	(* foreign-function calls *)
 (* QUESTION: should the following operations be builtin or supported as hlops? *)
@@ -117,6 +117,8 @@ structure BOM =
 	    end)
 	in
 	open V
+	fun new (name, ty) = V.new(Atom.atom name, ty)	(* temporary *)
+	fun nameOf v = Atom.toString(V.nameOf v)	(* temporary *)
 	end
       end 
        

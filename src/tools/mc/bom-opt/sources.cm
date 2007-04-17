@@ -8,7 +8,7 @@
 
 Library
 
-  structure BOMOpt
+  functor BOMOptFn
 
 is
 
@@ -23,4 +23,3 @@ is
 
   bom-opt-fn.sml
   case-simplify.sml
-

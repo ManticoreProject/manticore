@@ -6,6 +6,7 @@
 
 structure PrintCPS : sig
 
+    val output : TextIO.outstream * CPS.module -> unit
     val print : CPS.module -> unit
 
   end = struct
