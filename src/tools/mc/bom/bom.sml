@@ -24,7 +24,7 @@ structure BOM =
       | E_Cont of (lambda * exp)
       | E_If of (var * exp * exp)
       | E_Case of (var * (pat * exp) list * exp option)
-      | E_Apply of (var * var list)
+      | E_Apply of (var * var list * var list)
       | E_Throw of (var * var list)
       | E_Ret of var list
 (* QUESTION: what about E_Run and E_Forward? *)

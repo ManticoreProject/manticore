@@ -9,14 +9,15 @@ structure CPS =
 
     type ty = CPSTy.ty
 
-    type offset = IntInf.int
+    type tag = Word.word	(* data-constant tags *)
+    type offset = IntInf.int	(* offsets into the runtime-system vproc structure *)
 
     datatype exp
       = Let of (var list * rhs * exp)
       | Fun of (lambda list * exp)
       | Cont of (lambda * exp)
       | If of (var * exp * exp)
-      | Switch of (var * (int * exp) list * exp option)
+      | Switch of (var * (tag * exp) list * exp option)
       | Apply of (var * var list * var list)
       | Throw of (var * var list)
     (* scheduler operations *)

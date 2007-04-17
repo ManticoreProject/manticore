@@ -3,7 +3,8 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Convert the BOM representation to CPS.
+ * Convert the BOM representation to CPS.  We assume that HL operator expansion
+ * and case simplification have been performed.
  *)
 
 structure Convert : sig
@@ -25,14 +26,14 @@ structure Convert : sig
       | cvtTy (BTy.T_Enum w) = CTy.T_Enum w
       | cvtTy (BTy.T_Raw rTy) = CTy.T_Raw rTy
       | cvtTy (BTy.T_Wrap rTy) = CTy.T_Wrap rTy
-      | cvtTy (BTy.T_Tuple tys) =
+      | cvtTy (BTy.T_Tuple tys) = CTy.T_Tuple(List.map cvtTy tys)
       | cvtTy (BTy.T_Fun(paramTys, exhTys, retTys)) = let
-	  val retTy' = cvtTy retTy
-	  val retKTy' = CTy.contTy[retTy']
+	  val retKTy = CTy.contTy(List.map cvtTy retTys)
 	  in
-	    CTy.T_Fun(List.map cvtTy paramTys, [retKTy', cvtTy exhTy])
+	    CTy.T_Fun(List.map cvtTy paramTys, retKTy :: List.map cvtTy exhTys)
 	  end
       | cvtTy (BTy.T_Cont tys) = CTy.contTy(List.map cvtTy tys)
+      | cvtTy (BTy.T_TyCon _) = raise Fail "unexpected tycon"
 
   (* create a new CPS variable using the name of a BOM variable *)
     fun newVar (v, ty') = CV.new(BV.nameOf v, ty')
@@ -46,16 +47,20 @@ structure Convert : sig
 	    (v', E.insert(env, v, v'))
 	  end
 
-    fun bindVars (env, [], vs') = (List.rev vs', env)
-      | bindVars (env, v::vs, vs') = let
-	  val (v', env) = bindVar(env, v)
+    fun bindVars (env, vs) = let
+	  fun bind (env, [], vs') = (List.rev vs', env)
+	    | bind (env, v::vs, vs') = let
+		val (v', env) = bindVar(env, v)
+		in
+		  bind(env, vs, v'::vs')
+		end
 	  in
-	    bindVars(env, vs, v'::vs')
+	    bind (env, vs, [])
 	  end
 
     fun bindLambda (B.FB{f, ...}, env) = #2(bindVar (env, f))
 
-    fun lookup (env, s) = (case E.find(env, x)
+    fun lookup (env, x) = (case E.find(env, x)
 	   of SOME x' => x'
 	    | NONE => raise Fail("unbound variable " ^ BV.toString x)
 	  (* end case *))
@@ -65,32 +70,29 @@ structure Convert : sig
 	  val f' = lookup(env, f)
 	  val (params', env) = bindVars (env, params)
 	  val retK' = CV.new("retK", CTy.returnTy(CV.typeOf f'))
-	  val (exh', env) = bindVar (env, exh)
-	  val body' = cvtExpTail(env, body, retK')
+	  val (exhs', env) = bindVars (env, exh)
+	  val body' = cvtTailE(env, body, retK')
 	  in
-	    C.FB{
-		f = f', params = params', rets = [retK', exh'],
-		body = body'
-	      }
+	    C.FB{f = f', params = params', rets = retK' :: exhs', body = body'}
 	  end
 
   (* convert an expression that is in a tail position *)
     and cvtTailE (env, B.E_Pt(_, e), retK') = (case e
 	   of B.E_Let(xs, e1, e2) => let
-		val (xs', env2) = cvtVars (env, xs)
+		val (xs', env2) = bindVars (env, xs)
 		val tys' = List.map CV.typeOf xs'
 		val joinK' = CV.new("letJoinK", CTy.contTy tys')
 		in
 		  C.mkCont(
 		    C.FB{f=joinK', params=xs', rets=[], body=cvtTailE(env2, e2, retK')},
-		    cvtE (env, e1, tys', fn k ys' => C.Throw(joinK', ys')))
+		    cvtE (env, e1, tys', fn ys' => C.Throw(joinK', ys')))
 		end
 	    | B.E_Stmt(xs, rhs, e) =>
 		cvtRHS (env, xs, rhs, fn env => cvtTailE(env, e, retK'))
 	    | B.E_Fun(fbs, e) =>
 		cvtFun (env, fbs,
 		  fn (env2, fbs') => C.mkFun(fbs', cvtTailE(env2, e, retK')))
-	    | B.E_Cont(kb, e) =>
+	    | B.E_Cont(fb, e) =>
 		cvtCont (env, fb,
 		  fn (env2, fb') => C.mkCont(fb', cvtTailE(env2, e, retK')))
 	    | B.E_If(x, e1, e2) =>
@@ -98,10 +100,10 @@ structure Convert : sig
 		  cvtTailE (env, e1, retK'),
 		  cvtTailE (env, e2, retK'))
 	    | B.E_Case(x, cases, optDflt) => cvtCase (env, x, cases, optDflt, retK')
-	    | B.E_Apply(f, params, exh) =
+	    | B.E_Apply(f, args, exhs) =>
 		C.Apply(lookup(env, f),
-		  lookupVars(env, params),
-		  [retK', lookupVar(env, exh)])
+		  lookupVars(env, args),
+		  retK' :: lookupVars(env, exhs))
 	    | B.E_Throw(k, xs) => C.Throw(lookup(env, k), lookupVars(env, xs))
 	    | B.E_Ret xs => C.Throw(retK', lookupVars(env, xs))
 	  (* end case *))
@@ -111,20 +113,20 @@ structure Convert : sig
    *)
     and cvtE (env, B.E_Pt(_, e), tys', k) = (case e
 	   of B.E_Let(xs, e1, e2) => let
-		val (xs', env2) = cvtVars (env, xs)
+		val (xs', env2) = bindVars (env, xs)
 		val tys2' = List.map CV.typeOf xs'
 		val joinK' = CV.new("letJoinK", CTy.contTy tys')
 		in
 		  C.mkCont(
-		    C.FB{f=joinK', params=xs', rets=[], body=cvtE(env2, e2, tys', retK')},
-		    cvtE (env, e1, tys2', fn k ys' => C.Throw(joinK', ys')))
+		    C.FB{f=joinK', params=xs', rets=[], body=cvtE(env2, e2, tys', k)},
+		    cvtE (env, e1, tys2', fn ys' => C.Throw(joinK', ys')))
 		end
 	    | B.E_Stmt(xs, rhs, e) =>
 		cvtRHS (env, xs, rhs, fn env => cvtE(env, e, tys', k))
 	    | B.E_Fun(fbs, e) =>
 		cvtFun (env, fbs,
 		  fn (env2, fbs') => C.mkFun(fbs', cvtE(env2, e, tys', k)))
-	    | B.E_Cont(kb, e) =>
+	    | B.E_Cont(fb, e) =>
 		cvtCont (env, fb,
 		  fn (env2, fb') => C.mkCont(fb', cvtE(env2, e, tys', k)))
 	    | B.E_If(x, e1, e2) => let
@@ -134,8 +136,8 @@ structure Convert : sig
 		  C.mkCont(
 		    C.FB{f=joinK', params=ys', rets=[], body=k ys'},
 		    C.If(lookup(env, x),
-		      cvtTailE(env, joink'),
-		      cvtTailE(env, joink')))
+		      cvtTailE(env, e1, joinK'),
+		      cvtTailE(env, e2, joinK')))
 		end
 	    | B.E_Case(x, cases, optDflt) => let
 		val ys' = List.map (fn ty => CV.new("a", ty)) tys'
@@ -145,24 +147,24 @@ structure Convert : sig
 		    C.FB{f=joinK', params=ys', rets=[], body=k ys'},
 		    cvtCase (env, x, cases, optDflt, joinK'))
 		end
-	    | B.E_Apply(f, params, exh) = let
+	    | B.E_Apply(f, params, exh) => let
 		val f' = lookup(env, f)
 		val params' = lookupVars(env, params)
-		val exh' = lookup(env, exh)
+		val exh' = lookupVars(env, exh)
 		val retK' = CV.new("retK", CTy.returnTy(CV.typeOf f'))
-		val a' = CV.new("a", ??)
+		val ys' = List.map (fn ty => CV.new("a", ty)) tys'
 		in
 		  C.mkCont(
-		    C.FB{f=retK', params=[a'], rets=[], body=k [a']},
-		    C.Apply(f', params', [retK', ehx']))
+		    C.FB{f=retK', params=ys', rets=[], body=k ys'},
+		    C.Apply(f', params', retK' :: exh'))
 		end
 	    | B.E_Throw(k, xs) => C.Throw(lookup(env, k), lookupVars(env, xs))
-	    | B.E_Ret xs = k(lookupVars(env, xs))
+	    | B.E_Ret xs => k(lookupVars(env, xs))
 	  (* end case *))
 
     and cvtRHS (env, lhs, rhs, k) = let
 	  fun cv x = lookup(env, x)
-	  val (lhs', env) = bindVars (env, lhs)
+	  val (lhs', env2) = bindVars (env, lhs)
 	  val rhs' = (case rhs
 		 of B.E_Const c => (case c
 		       of B.E_EnumConst(w, _) => C.Enum w
@@ -201,8 +203,8 @@ structure Convert : sig
   (* convert the body of a case expression; note that after case simplification, all cases
    * will just involve enumeration tags.
    *)
-    and cvtCase (env, x, cases, optDflt, retK') = let
-	  fun cvtCase (B.P_Const(P.EnumConst(tag, _)), e) = (tag, cvtTailE(env, e, retK'))
+    and cvtCase (env, x, cases, dflt, retK') = let
+	  fun cvtCase (B.P_Const(B.E_EnumConst(tag, _)), e) = (tag, cvtTailE(env, e, retK'))
 	    | cvtCase c = raise Fail "complex case"
 	  val dflt' = Option.map(fn e => cvtTailE(env, e, retK')) dflt
 	  in
@@ -221,6 +223,20 @@ structure Convert : sig
 	  val fb' = cvtLambda(env, fb)
 	  in
 	    k (env, fb')
+	  end
+
+    fun transform (B.MODULE{name, externs, body}) = let
+	  fun cvtExtern (CFunctions.CFun{var, name, retTy, argTys, attrs}, (cfs, env)) = let
+		val (var', env) = bindVar(env, var)
+		in
+		  (CFunctions.CFun{var=var', name=name, retTy=retTy, argTys=argTys, attrs=attrs}::cfs, env)
+		end
+	  val (externs', env) = List.foldr cvtExtern ([], E.empty) externs
+	  in
+	    C.MODULE{
+		name = name, externs = externs',
+		body = cvtLambda (env, body)
+	      }
 	  end
 
   end
