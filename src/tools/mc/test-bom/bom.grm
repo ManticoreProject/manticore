@@ -16,6 +16,7 @@
     | KW_case		("case")
     | KW_ccall		("ccall")
     | KW_cont		("cont")
+    | KW_default	("default")    
     | KW_double		("double")
     | KW_else		("else")
     | KW_end		("end")
@@ -29,6 +30,7 @@
     | KW_let		("let")
     | KW_long		("long")
     | KW_module		("module")
+    | KW_switch		("switch")
     | KW_short		("short")
     | KW_then		("then")
     | KW_throw		("throw")
@@ -163,10 +165,9 @@ SimpleExp
 Args
 	: "(" (SimpleExp ("," SimpleExp)* )? ")"	=> (flatten SR)
 	;
-
 Case
-        : ("case" INT ":" Exp => (Int.fromLarge INT, Exp)
-
+        : "case" INT ":" Exp => (Int.fromLarge INT, Exp)
+        ;
 Cases
 	: ("case" INT ":" Exp => (Int.fromLarge INT, Exp))+
 	;
