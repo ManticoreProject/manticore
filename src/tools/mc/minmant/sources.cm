@@ -28,6 +28,7 @@ is
   typechecker.sml
   ty-con.sml
   ty-var.sml
+  types.sml
   type-util.sml
   unify.sml
   var.sml

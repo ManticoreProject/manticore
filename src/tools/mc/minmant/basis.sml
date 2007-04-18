@@ -1,6 +1,6 @@
 (* basis.sml
  *
- * COPYRIGHT (c) 2007 John Reppy (http://www.cs.uchicago.edu/~jhr)
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
  * Based on CMSC 22610 Sample code (Winter 2007)
@@ -22,7 +22,7 @@ structure Basis =
 	    in
 	      AST.TyScheme([tv], mkTy tv)
 	    end
-      fun monoVar (name, ty) = Var.new(name, ty)
+      fun monoVar (name, ty) = Var.new(Atom.toString name, ty)
     in
 
     val boolTyc = TyCon.newDataTyc (N.bool, [])
@@ -54,7 +54,7 @@ structure Basis =
   (* operator symbols *) 
     val lte =		monoVar(N.lte, intTy ** intTy --> boolTy)
     val lt =		monoVar(N.lt, intTy ** intTy --> boolTy)
-    val append =	Var.newPoly(N.append,
+    val append =	Var.newPoly(Atom.toString N.append,
 			  forall(fn tv => let
 			    val ty = listTy(AST.VarTy tv)
 			    in
@@ -92,7 +92,7 @@ structure Basis =
   (* predefined functions *)
     val args =		monoVar(N.args, unitTy --> listTy stringTy)
     val print =		monoVar(N.print, stringTy --> unitTy)
-    val fail =		Var.newPoly(N.fail, forall (fn tv => stringTy --> AST.VarTy tv))
+    val fail =		Var.newPoly(Atom.toString N.fail, forall (fn tv => stringTy --> AST.VarTy tv))
     val itos =		monoVar(N.itos, intTy --> stringTy)
     val size =		monoVar(N.size, stringTy --> intTy)
     val sub =		monoVar(N.sub, stringTy ** intTy --> intTy)

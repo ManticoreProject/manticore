@@ -13,28 +13,28 @@ structure TypeUtil : sig
   (* return the "head-normal form" by pruning an instantiated meta
    * variables.
    *)
-    val prune : AST.ty -> AST.ty
+    val prune : Types.ty -> Types.ty
 
   (* apply a type variable to type substitution to a type.  The substitution
    * is represented as a list of type variable/type pairs.
    *)
-    val substitute : (AST.ty * (AST.tyvar * AST.ty) list) -> AST.ty
+    val substitute : (Types.ty * (Types.tyvar * Types.ty) list) -> Types.ty
 
   (* instantiate a type scheme at the given lambda-nesting depth *)
-    val instantiate : (int * AST.ty_scheme) -> AST.ty
+    val instantiate : (int * Types.ty_scheme) -> Types.ty
 
   (* close a type w.r.t. to a set of non-generic variables (i.e., those
    * variables whose depth is less than or equal to the given depth).
    *)
-    val closeTy : (int * AST.ty) -> AST.ty_scheme
+    val closeTy : (int * Types.ty) -> Types.ty_scheme
 
   (* return true if two types are equal.  Note that this function does not
    * do unification or alpha renaming of meta variables, but it does chase
    * instantiated meta-variable types.
    *)
-    val same : (AST.ty * AST.ty) -> bool
+    val same : (Types.ty * Types.ty) -> bool
 
-    val toString : AST.ty -> string
+    val toString : Types.ty -> string
 
   end = struct
 
@@ -45,10 +45,10 @@ structure TypeUtil : sig
   (* return the "head-normal form" by pruning an instantiated meta
    * variables.
    *)
-    fun prune (AST.MetaTy(AST.MVar{info as ref(AST.INSTANCE ty), ...})) = let
+    fun prune (Types.MetaTy(Types.MVar{info as ref(Types.INSTANCE ty), ...})) = let
 	  val ty = prune ty
 	  in
-	    info := AST.INSTANCE ty;	(* path compression *)
+	    info := Types.INSTANCE ty;	(* path compression *)
 	    ty
 	  end
       | prune ty = ty
@@ -56,12 +56,12 @@ structure TypeUtil : sig
   (* apply a type variable to type substitution to a type *)
     fun applySubst (subst, ty) = let
 	  fun inst ty = (case prune ty
-		 of AST.ErrorTy => ty
-		  | AST.MetaTy _ => raise Fail "unexpected meta variable"
-		  | AST.VarTy tv => TVMap.lookup(subst, tv)
-		  | AST.ConTy(args, tyc) => AST.ConTy(List.map inst args, tyc)
-		  | AST.FunTy(ty1, ty2) => AST.FunTy(inst ty1, inst ty2)
-		  | AST.TupleTy tys => AST.TupleTy(List.map inst tys)
+		 of Types.ErrorTy => ty
+		  | Types.MetaTy _ => raise Fail "unexpected meta variable"
+		  | Types.VarTy tv => TVMap.lookup(subst, tv)
+		  | Types.ConTy(args, tyc) => Types.ConTy(List.map inst args, tyc)
+		  | Types.FunTy(ty1, ty2) => Types.FunTy(inst ty1, inst ty2)
+		  | Types.TupleTy tys => Types.TupleTy(List.map inst tys)
 		(* end case *))
 	  in
 	    inst ty
@@ -74,11 +74,11 @@ structure TypeUtil : sig
       | substitute (ty, s) = applySubst (List.foldl TVMap.insert' TVMap.empty s, ty)
 
   (* instantiate a type scheme at the given lambda-nesting depth *)
-    fun instantiate (_, AST.TyScheme([], ty)) = ty
-      | instantiate (depth, AST.TyScheme(tvs, ty)) = let
+    fun instantiate (_, Types.TyScheme([], ty)) = ty
+      | instantiate (depth, Types.TyScheme(tvs, ty)) = let
 	(* create a substitution from type variables to fresh meta variables *)
 	  val subst = List.foldl
-		(fn (tv, s) => TVMap.insert(s, tv, AST.MetaTy(MV.new depth)))
+		(fn (tv, s) => TVMap.insert(s, tv, Types.MetaTy(MV.new depth)))
 		  TVMap.empty tvs
 	  in
 	    applySubst (subst, ty)
@@ -97,35 +97,35 @@ structure TypeUtil : sig
 		  TyVar.new(Atom.atom("'M" ^ Int.toString id))
 		end
 	  fun genVars (ty, env) = (case prune ty
-		 of AST.ErrorTy => (env, AST.ErrorTy)
-		  | ty as AST.MetaTy(mv as AST.MVar{info=ref(AST.UNIV d), ...}) =>
+		 of Types.ErrorTy => (env, Types.ErrorTy)
+		  | ty as Types.MetaTy(mv as Types.MVar{info=ref(Types.UNIV d), ...}) =>
 		      if (d > depth)
 			then (case MVMap.find(env, mv) (* generic variable *)
-			   of SOME tv => (env, AST.VarTy tv)
+			   of SOME tv => (env, Types.VarTy tv)
 			    | NONE => let
 				val tv = newVar()
 				in
-				  (MVMap.insert(env, mv, tv), AST.VarTy tv)
+				  (MVMap.insert(env, mv, tv), Types.VarTy tv)
 				end
 			  (* end case *))
 			else (env, ty) (* non-generic variable *)
-		  | AST.MetaTy _ => raise Fail "impossible"
-		  | AST.VarTy _ => raise Fail "unexpected type variable"
-		  | AST.ConTy(args, tyc) => let
+		  | Types.MetaTy _ => raise Fail "impossible"
+		  | Types.VarTy _ => raise Fail "unexpected type variable"
+		  | Types.ConTy(args, tyc) => let
 		      val (env, tys) = genVarsForTys (args, env)
 		      in
-			(env, AST.ConTy(tys, tyc))
+			(env, Types.ConTy(tys, tyc))
 		      end
-		  | AST.FunTy(ty1, ty2) => let
+		  | Types.FunTy(ty1, ty2) => let
 		      val (env, ty1) = genVars (ty1, env)
 		      val (env, ty2) = genVars (ty2, env)
 		      in
-			(env, AST.FunTy(ty1, ty2))
+			(env, Types.FunTy(ty1, ty2))
 		      end
-		  | AST.TupleTy tys => let
+		  | Types.TupleTy tys => let
 		      val (env, tys) = genVarsForTys (tys, env)
 		      in
-			(env, AST.TupleTy tys)
+			(env, Types.TupleTy tys)
 		      end
 		(* end case *))
 	  and genVarsForTys (tys, env) = let
@@ -139,7 +139,7 @@ structure TypeUtil : sig
 		end
 	  val (tvs, ty) = genVars (ty, MetaVar.Map.empty)
 	  in
-	    AST.TyScheme(MVMap.listItems tvs, ty)
+	    Types.TyScheme(MVMap.listItems tvs, ty)
 	  end
 
   (* return true if two types are equal.  Note that this function does not
@@ -147,39 +147,39 @@ structure TypeUtil : sig
    * instantiated meta-variable types and allows ErrorTy to equal any type.
    *)
     fun same (ty1, ty2) = (case (prune ty1, prune ty2)
-	   of (AST.ErrorTy, _) => true
-	    | (_, AST.ErrorTy) => true
-	    | (AST.MetaTy mv1, AST.MetaTy mv2) => MV.same(mv1, mv2)
-	    | (AST.VarTy tv1, AST.VarTy tv2) => TyVar.same(tv1, tv2)
-	    | (AST.ConTy(args1, tyc1), AST.ConTy(args2, tyc2)) =>
+	   of (Types.ErrorTy, _) => true
+	    | (_, Types.ErrorTy) => true
+	    | (Types.MetaTy mv1, Types.MetaTy mv2) => MV.same(mv1, mv2)
+	    | (Types.VarTy tv1, Types.VarTy tv2) => TyVar.same(tv1, tv2)
+	    | (Types.ConTy(args1, tyc1), Types.ConTy(args2, tyc2)) =>
 		TyCon.same(tyc1, tyc2) andalso ListPair.allEq same (args1, args2)
-	    | (AST.FunTy(ty11, ty12), AST.FunTy(ty21, ty22)) =>
+	    | (Types.FunTy(ty11, ty12), Types.FunTy(ty21, ty22)) =>
 		same(ty11, ty21) andalso same(ty21, ty22)
-	    | (AST.TupleTy tys1, AST.TupleTy tys2) =>
+	    | (Types.TupleTy tys1, Types.TupleTy tys2) =>
 		ListPair.allEq same (tys1, tys2)
 	    | _ => false
 	  (* end case *))
 
   (* return a string representation of a type (for debugging) *)
-    fun toString (AST.ErrorTy) = "<error>"
-      | toString (AST.MetaTy(AST.MVar{stamp, info})) = (case !info
-	   of AST.UNIV d => concat["$", Stamp.toString stamp, "@", Int.toString d]
-	    | AST.INSTANCE ty => (
-		info := AST.UNIV(~1);
+    fun toString (Types.ErrorTy) = "<error>"
+      | toString (Types.MetaTy(Types.MVar{stamp, info})) = (case !info
+	   of Types.UNIV d => concat["$", Stamp.toString stamp, "@", Int.toString d]
+	    | Types.INSTANCE ty => (
+		info := Types.UNIV(~1);
 		concat["$", Stamp.toString stamp, " == ", toString ty]
-		  before info := AST.INSTANCE ty)
+		  before info := Types.INSTANCE ty)
 	  (* end case *))
-      | toString (AST.VarTy(AST.TVar{name, ...})) = Atom.toString name
-      | toString (AST.ConTy([], tyc)) = Atom.toString(TyCon.nameOf tyc)
-      | toString (AST.ConTy([ty], tyc)) = concat[
+      | toString (Types.VarTy(Types.TVar{name, ...})) = Atom.toString name
+      | toString (Types.ConTy([], tyc)) = Atom.toString(TyCon.nameOf tyc)
+      | toString (Types.ConTy([ty], tyc)) = concat[
 	    toString ty, " ", Atom.toString(TyCon.nameOf tyc)
 	  ]
-      | toString (AST.ConTy(tys, tyc)) = concat[
+      | toString (Types.ConTy(tys, tyc)) = concat[
 	    "(", String.concatWith "," (List.map toString tys), ")",
 	    Atom.toString(TyCon.nameOf tyc)
 	  ]
-      | toString (AST.FunTy(ty1, ty2)) = concat[toString ty1, " -> ", toString ty2]
-      | toString (AST.TupleTy tys) = "<tuplety>"
+      | toString (Types.FunTy(ty1, ty2)) = concat[toString ty1, " -> ", toString ty2]
+      | toString (Types.TupleTy tys) = "<tuplety>"
 
   end
 

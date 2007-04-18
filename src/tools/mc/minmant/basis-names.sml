@@ -1,6 +1,6 @@
 (* basis-names.sml
  *
- * COPYRIGHT (c) 2007 John Reppy (http://www.cs.uchicago.edu/~jhr)
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
  * Based on CMSC 22610 Sample code (Winter 2007)

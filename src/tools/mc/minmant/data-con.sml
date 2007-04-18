@@ -1,6 +1,6 @@
 (* data-con.sml
  *
- * COPYRIGHT (c) 2007 John Reppy (http://www.cs.uchicago.edu/~jhr)
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
  * Based on CMSC 22610 Sample code (Winter 2007)
@@ -9,7 +9,7 @@
 structure DataCon : sig
 
   (* create a new data constructor and add it to the list of constructors in its parent. *)
-    val new : AST.tycon -> (Atom.atom * AST.ty option) -> AST.dcon
+    val new : Types.tycon -> (Atom.atom * AST.ty option) -> AST.dcon
 
   (* return true if two data constructors are the same (i.e., have the same stamp) *)
     val same : AST.dcon * AST.dcon -> bool
@@ -33,7 +33,7 @@ structure DataCon : sig
 
     datatype dcon = datatype AST.dcon
 
-    fun new (tyc as AST.DataTyc{cons, ...}) (name, argTy) = let
+    fun new (tyc as Types.DataTyc{cons, ...}) (name, argTy) = let
 	  val dcon = DCon{stamp = Stamp.new(), name = name, owner = tyc, argTy = argTy}
 	  in
 	    cons := !cons @ [dcon];
@@ -46,7 +46,7 @@ structure DataCon : sig
 
     fun argTypeOf (DCon{argTy, ...}) = argTy
 
-    fun typeOf (DCon{owner as AST.DataTyc{params, ...}, argTy, ...}) = let
+    fun typeOf (DCon{owner as Types.DataTyc{params, ...}, argTy, ...}) = let
 	  val ty = AST.ConTy(List.map AST.VarTy params, owner)
 	  in
 	    case argTy

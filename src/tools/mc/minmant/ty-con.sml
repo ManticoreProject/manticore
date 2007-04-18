@@ -1,6 +1,6 @@
 (* ty-con.sml
  *
- * COPYRIGHT (c) 2007 John Reppy (http://www.cs.uchicago.edu/~jhr)
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
  * Based on CMSC 22610 Sample code (Winter 2007)
@@ -11,26 +11,26 @@
 structure TyCon : sig
 
   (* create a new abstract type constructor *)
-    val newAbsTyc : (Atom.atom * int) -> AST.tycon
+    val newAbsTyc : (Atom.atom * int) -> Types.tycon
 
   (* create a new datatype tyc; it will have an empty constructor list *)
-    val newDataTyc : (Atom.atom * AST.tyvar list) -> AST.tycon
+    val newDataTyc : (Atom.atom * AST.tyvar list) -> Types.tycon
 
   (* return the name of a type constructor *)
-    val nameOf : AST.tycon -> Atom.atom
+    val nameOf : Types.tycon -> Atom.atom
 
   (* return true if two type constructors are the same *)
-    val same : AST.tycon * AST.tycon -> bool
+    val same : Types.tycon * Types.tycon -> bool
 
   (* return the arity of a type constructor *)
-    val arityOf : AST.tycon -> int
+    val arityOf : Types.tycon -> int
 
   (* hash tables keyed by type constructors *)
-    structure Tbl : MONO_HASH_TABLE where type Key.hash_key = AST.tycon
+    structure Tbl : MONO_HASH_TABLE where type Key.hash_key = Types.tycon
 
   end = struct
 
-    datatype tycon = datatype AST.tycon
+    datatype tycon = datatype Types.tycon
 
   (* create a new abstract type constructor *)
     fun newAbsTyc (name, arity) = AbsTyc{
