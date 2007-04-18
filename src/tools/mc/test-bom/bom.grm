@@ -11,6 +11,7 @@
     | KW_and		("and")
     | KW_any		("any")
     | KW_apply		("apply")
+    | KW_attribute	("__attribute__")
     | KW_bool		("bool")
     | KW_byte		("byte")
     | KW_case		("case")
@@ -30,7 +31,8 @@
     | KW_let		("let")
     | KW_long		("long")
     | KW_module		("module")
-    | KW_switch		("switch")
+    | KW_of		("of")
+    | KW_pure		("pure")
     | KW_short		("short")
     | KW_then		("then")
     | KW_throw		("throw")
@@ -50,6 +52,10 @@
     | EQ		("=")
     | COLON		(":")
     | SEMI		(";")
+    | BAR		("|")
+    | WILD		("_")
+    | DARROW		("=>")
+    | ARROW		("->")
     | ID of Atom.atom
     | INT of IntInf.int
     | FLOAT of FloatLit.float
@@ -58,6 +64,7 @@
 
 %defs(
     structure PT = BOMPT
+    structure CF = CFunctions
 
     fun flatten NONE = []
       | flatten (SOME(x, xs)) = x::xs
@@ -65,17 +72,18 @@
 
 
 Module
-	: KW_module Import* "fun" Lambda
-		=> (PT.MODULE Lambda)
+	: KW_module ID Import* "fun" Lambda
+		=> (PT.MODULE{name=ID, externs=Import, body=Lambda})
 	;
 
 Import
-	: "extern" CRetTy ID "(" (CArgTy ("," CArgTy)* )? ")" ";"
+	: "extern" CRetTy ID "(" (CArgTy ("," CArgTy)* )? ")" Attrs ";"
 		=> (CF.CFun{
 			var = ID,
 			name = Atom.toString ID,
 			retTy = CRetTy,
-			argTys = flatten SR
+			argTys = flatten SR,
+			attrs = Attrs
 		      })
 	;
 
@@ -89,8 +97,20 @@ CArgTy
 	| "void" "*"	=> (CF.PointerTy)
 	;
 
+Attrs
+	: (* empty *)	=> ([])
+	| "__attribute__" "(" "(" Attr ("," Attr)* ")" ")"
+		=> (Attr :: SR)
+	;
+
+Attr
+	: "pure"	=> (CFunctions.A_pure)
+	| "alloc"	=> (CFunctions.A_alloc)
+	;
+
 Lambda
-	: ID "(" Params ";" Params ")" "=" Exp	=> (ID, Params1, Params2, Exp)
+	: ID "(" Params ";" Params ")" ":" Type "=" Exp
+		=> (ID, Params1, Params2, [Type], Exp)
 	;
 
 Params
@@ -102,13 +122,13 @@ Param
 	;
 
 CLambda
-	: ID "(" Params ")" "=" Exp		=> (ID, Params, [], Exp)
+	: ID "(" Params ")" "=" Exp		=> (ID, Params, [], [], Exp)
 	;
 
 Type
 	: "any"					=> (PT.T_Any)
-	| "bool"				=> (CPSTy.boolTy)
-	| "unit"				=> (CPSTy.unitTy)
+	| "bool"				=> (BOMTy.boolTy)
+	| "unit"				=> (BOMTy.unitTy)
 	| "enum" "(" INT ")"			=> (PT.T_Enum(Word.fromLargeInt INT))
 	| "[" RawType "]"			=> (PT.T_Wrap RawType)
 	| RawType				=> (PT.T_Raw RawType)
@@ -130,10 +150,9 @@ RawType
 Exp
 	: "let" LHS "=" RHS Exp				=> (PT.Let(LHS, RHS, Exp))
 	| "fun" Lambda ("and" Lambda)* Exp		=> (PT.Fun(Lambda::SR, Exp))
-	| "cont" Lambda Exp				=> (PT.Cont(Lambda, Exp))
+	| "cont" CLambda Exp				=> (PT.Cont(CLambda, Exp))
 	| "if" SimpleExp "then" Exp "else" Exp		=> (PT.If(SimpleExp, Exp1, Exp2))
-        | "case" SimpleExp Case Case "end"              => (PT.Case(SimpleExp, Case1, Case2))
-	| "switch" SimpleExp Cases DefaultCase? "end"	=> (PT.Switch(SimpleExp, Cases, DefaultCase))
+        | "case" SimpleExp "of" Rules Default? "end"	=> (PT.Case(SimpleExp, Rules, Default))
 	| "apply" ID Args				=> (PT.Apply(ID, Args))
 	| "throw" ID Args				=> (PT.Throw(ID, Args))
 	;
@@ -157,21 +176,29 @@ SimpleExp
 	| "unwrap" "(" SimpleExp ")"	=> (PT.Unwrap SimpleExp)
 	| ID Args			=> (PT.Prim(ID, Args))
 	| "(" Type ")" SimpleExp	=> (PT.Cast(Type, SimpleExp))
-	| INT (":" RawType)?		=> (PT.Literal(Literal.Int INT, SR))
-	| FLOAT (":" RawType)?		=> (PT.Literal(Literal.Float FLOAT, SR))
-	| STRING			=> (PT.Literal(Literal.String STRING, NONE))
+	| Literal			=> (PT.Literal(Literal))
 	;
 
 Args
 	: "(" (SimpleExp ("," SimpleExp)* )? ")"	=> (flatten SR)
 	;
-Case
-        : "case" INT ":" Exp => (Int.fromLarge INT, Exp)
-        ;
-Cases
-	: ("case" INT ":" Exp => (Int.fromLarge INT, Exp))+
+
+Rules
+	: Rule ("|" Rule)*		=> (Rule :: SR)
 	;
 
-DefaultCase
-	: "default" ":" Exp		=> (Exp)
+Rule
+	: ID "(" ID ")" "=>" Exp	=> (PT.DConPat(ID1, ID2), Exp)
+	| Literal "=>" Exp		=> (PT.ConstPat Literal, Exp)
+	;
+
+Default
+	: "_" "=>" Exp			=> (PT.WildPat, Exp)
+	| ID "=>" Exp			=> (PT.VarPat ID, Exp)
+	;
+
+Literal
+	: INT (":" RawType)?		=> (Literal.Int INT, SR)
+	| FLOAT (":" RawType)?		=> (Literal.Float FLOAT, SR)
+	| STRING			=> (Literal.String STRING, NONE)
 	;

@@ -22,22 +22,21 @@
       }
 
     and exp
-      = Let of (var_bind list * exp * exp)
+      = Let of (var_bind list * rhs * exp)
       | Fun of (lambda list * exp)
       | Cont of (lambda * exp)
       | If of (simple_exp * exp * exp)
-      | Case of (simple_exp * (int * exp) list)
+      | Case of (simple_exp * (pat * exp) list * (default_pat * exp) option)
       | Switch of (simple_exp * (int * exp) list * exp option)
       | Apply of (var * simple_exp list)
       | Throw of (var * simple_exp list)
 
-
     and rhs
-      = SimpleExp of simple_exp
+      = Exp of exp
+      | SimpleExp of simple_exp
       | Alloc of simple_exp list
       | Wrap of simple_exp			(* wrap raw value *)
       | CCall of (var * simple_exp list)
-
 
     and simple_exp
       = Var of var
@@ -47,7 +46,15 @@
       | Unwrap of simple_exp		(* unwrap value *)
       | Prim of (Atom.atom * simple_exp list)
 
-    withtype lambda = (var * var_bind list * exp * exp)
+    and pat
+      = DConPat of (Atom.atom * Atom.atom)
+      | ConstPat of (Literal.literal * raw_ty option)
+
+    and default_pat
+      = WildPat
+      | VarPat of Atom.atom
+
+    withtype lambda = (var * var_bind list * var_bind list * ty list * exp)
 
   end
   
