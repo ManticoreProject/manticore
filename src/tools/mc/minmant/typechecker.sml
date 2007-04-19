@@ -240,7 +240,6 @@ structure Typechecker : sig
 		in
 		  (AST.ConstExp const', ty)
 		end
-	    | PT.TupleExp[] => (AST.TupleExp[], Basis.unitTy)
 	    | PT.TupleExp es => let
 		fun chk (e, (es, tys)) = let
 		      val (e', ty) = chkExp(loc, depth, ve, e)
@@ -367,7 +366,6 @@ structure Typechecker : sig
 	  in
 	    case tys
 	     of [ty] => (vpats', ve', ty)
-	      | [] => ([], ve', Basis.unitTy)
 	      | _ => (vpats', ve', mkTupleTy tys)
 	    (* end case *)
 	  end

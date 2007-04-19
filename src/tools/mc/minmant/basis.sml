@@ -42,13 +42,12 @@ structure Basis =
 
     val intTyc = TyCon.newAbsTyc (N.int, 0)
     val stringTyc = TyCon.newAbsTyc (N.string, 0)
-    val unitTyc = TyCon.newAbsTyc (N.unit, 0)
 
   (* predefined types *)
     val boolTy = AST.ConTy([], boolTyc)
     val intTy = AST.ConTy([], intTyc)
     val stringTy = AST.ConTy([], stringTyc)
-    val unitTy = AST.ConTy([], unitTyc)
+    val unitTy = AST.TupleTy[]
     fun listTy ty = AST.ConTy([ty], listTyc)
 
   (* operator symbols *) 
@@ -105,7 +104,7 @@ structure Basis =
 	    (N.int,		Env.TyCon intTyc),
 	    (N.list,		Env.TyCon listTyc),
 	    (N.string,		Env.TyCon stringTyc),
-	    (N.unit,		Env.TyCon unitTyc)
+	    (N.unit,		Env.TyDef(Types.TyScheme([], unitTy)))
 	  ]
 
     val ve0 = Env.fromList [
