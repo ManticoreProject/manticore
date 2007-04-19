@@ -1,6 +1,6 @@
 (* ast.sml
  *
- * COPYRIGHT (c) 2007 John Reppy (http://www.cs.uchicago.edu/~jhr)
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
  * Based on CMSC 22610 Sample code (Winter 2007)
@@ -18,11 +18,10 @@ structure AST =
       = LetExp of binding * exp
       | IfExp of (exp * exp * exp)
       | CaseExp of (exp * (pat * exp) list)
-      | TyApplyExp of (exp * ty list)	(* instantiation of polymorphic expression *)
       | ApplyExp of exp * exp
       | TupleExp of exp list
       | ConstExp of const
-      | VarExp of var
+      | VarExp of var * ty list
       | SeqExp of (exp * exp)
 
     and binding

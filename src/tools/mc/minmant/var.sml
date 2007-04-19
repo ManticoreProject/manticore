@@ -15,7 +15,7 @@ structure Var =
 	  type ty = AST.ty_scheme ref
 	  val defaultKind = AST.VK_None
 	  val kindToString = AST.varKindToString
-	  val tyToString = Types.toString
+	  val tyToString = TypeUtil.schemeToString o !
 	end)
     in
     open V

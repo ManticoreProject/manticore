@@ -2,6 +2,8 @@
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
+ *
+ * Based on CMSC 22610 Sample code (Winter 2007)
  *)
 
 structure Types =
@@ -50,8 +52,5 @@ structure Types =
 	    owner : tycon,		(* the datatype for which this is a constructor *)
 	    argTy : ty option		(* argument type; NONE for nullary constructors *)
 	  }
-
-  (* FIXME *)
-    fun toString _ = "<type>"
 
   end

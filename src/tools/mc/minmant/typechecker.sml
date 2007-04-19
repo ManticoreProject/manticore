@@ -1,6 +1,6 @@
 (* typechecker.sml
  *
- * COPYRIGHT (c) 2007 John Reppy (http://www.cs.uchicago.edu/~jhr)
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
  * Based on CMSC 22610 Sample code (Winter 2007)
@@ -29,7 +29,7 @@ structure Typechecker : sig
 	  val AST.TyScheme(_, AST.FunTy(argTy, _)) = Var.typeOf f
 	  val arg = Var.new ("arg", argTy)
 	  in
-	    AST.FB(f, arg, AST.CaseExp(AST.VarExp arg, [(AST.TuplePat xs, e)]))
+	    AST.FB(f, arg, AST.CaseExp(AST.VarExp(arg, []), [(AST.TuplePat xs, e)]))
 	  end
 
   (* "smart" tuple type constructor *)
@@ -184,42 +184,45 @@ structure Typechecker : sig
 	    | PT.BinaryExp(e1, bop, e2) => let
 		val (e1', ty1) = chkExp (loc, depth, ve, e1)
 		val (e2', ty2) = chkExp (loc, depth, ve, e2)
-		fun mkApp rator = AST.ApplyExp(AST.VarExp rator, AST.TupleExp[e1', e2'])
+		fun mkApp arg = AST.ApplyExp(AST.VarExp arg, AST.TupleExp[e1', e2'])
 		fun chkApp tyScheme = let
-		      val AST.FunTy(argTy, resTy) = TU.instantiate (depth, tyScheme)
+		      val (tys, AST.FunTy(argTy, resTy)) = TU.instantiate (depth, tyScheme)
 		      in
 			if not(U.unify(argTy, AST.TupleTy[ty1, ty2]))
 			  then error(loc, ["type mismatch for operator ", Atom.toString bop])
 			  else ();
-			resTy
+			(tys, resTy)
 		      end
 		in
 		  if Atom.same(bop, BasisNames.eq)
+(* FIXME: equality should be handled as overloading *)
 		    then if not(U.unify(ty1, ty2))
 		      then (
 			error(loc, ["type mismatch for operator ="]);
 			(AST.TupleExp[], Basis.boolTy))
 		      else if TU.same(ty1, Basis.boolTy)
-			then (mkApp Basis.boolEq, Basis.boolTy)
+			then (mkApp(Basis.boolEq, []), Basis.boolTy)
 		      else if TU.same(ty1, Basis.intTy)
-			then (mkApp Basis.intEq, Basis.boolTy)
+			then (mkApp(Basis.intEq, []), Basis.boolTy)
 		      else if TU.same(ty1, Basis.stringTy)
-			then (mkApp Basis.stringEq, Basis.boolTy)
+			then (mkApp(Basis.stringEq, []), Basis.boolTy)
 			else (
 			  error(loc, ["not an equality type"]);
 			  (AST.TupleExp[], Basis.boolTy))
 		  else if Atom.same(bop, BasisNames.listCons)
-		    then (
+		    then let
+		      val (tyArgs, resTy) = chkApp (DataCon.typeOf Basis.listCons)
+		      in (
 			AST.ApplyExp(
-(* FIXME: add type args *)
-			  AST.ConstExp(AST.DConst(Basis.listCons, [])),
+			  AST.ConstExp(AST.DConst(Basis.listCons, tyArgs)),
 			  AST.TupleExp[e1', e2']),
-			chkApp (DataCon.typeOf Basis.listCons)
-		      )
+			resTy
+		      ) end
 		    else let
 		      val rator = Basis.lookupOp bop
+		      val (argTys, resTy) = chkApp (Var.typeOf rator)
 		      in
-			(mkApp rator, chkApp (Var.typeOf rator))
+			(mkApp(rator, argTys), resTy)
 		      end
 		end
 	    | PT.ApplyExp(e1, e2) => let
@@ -261,15 +264,14 @@ structure Typechecker : sig
 		end
 	    | PT.IdExp x => (case E.find(ve, x)
 		 of SOME(E.Con dc) => let
-		      val ty = TU.instantiate (depth, DataCon.typeOf dc)
+		      val (argTys, ty) = TU.instantiate (depth, DataCon.typeOf dc)
 		      in
-(* FIXME: add type args *)
-			(AST.ConstExp(AST.DConst(dc, [])), ty)
+			(AST.ConstExp(AST.DConst(dc, argTys)), ty)
 		      end
 		  | SOME(E.Var x') => let
-		      val ty = TU.instantiate (depth, Var.typeOf x')
+		      val (argTys, ty) = TU.instantiate (depth, Var.typeOf x')
 		      in
-			(AST.VarExp x', ty)
+			(AST.VarExp(x', argTys), ty)
 		      end
 		  | NONE => (
 		      error(loc, ["undefined identifier ", Atom.toString x]);
@@ -300,12 +302,11 @@ structure Typechecker : sig
 		in
 		  case E.find(ve, conid)
 		   of SOME(E.Con dc) => (case TU.instantiate (depth, DataCon.typeOf dc)
-			 of AST.FunTy(argTy, resTy) => (
+			 of (tyArgs, AST.FunTy(argTy, resTy)) => (
 			      if not(U.unify(argTy, ty))
 				then error(loc, ["type mismatch in constructor pattern"])
 				else ();
-(* FIXME: add type args *)
-			      (AST.ConPat(dc, [], pats), ve', resTy))
+			      (AST.ConPat(dc, tyArgs, pats), ve', resTy))
 			  | _ => (
 			      error(loc, [
 				  "application of nullary constructor ",
@@ -336,14 +337,13 @@ structure Typechecker : sig
 		  case vpat
 		   of PT.IdVPat x => (case E.find(ve, x)
 			 of SOME(E.Con dc) => (case TU.instantiate (depth, DataCon.typeOf dc)
-				 of AST.FunTy _ => (
+				 of (tyArgs, AST.FunTy _) => (
 				      error(loc, [
 					  "missing arguments to data constructor ",
 					  Atom.toString x
 					]);
 				      (bogusPat, ve, bogusTy))
-(* FIXME: add type args *)
-				  | ty => (AST.ConstPat(AST.DConst(dc, [])), ve, ty)
+				  | (tyArgs, ty) => (AST.ConstPat(AST.DConst(dc, tyArgs)), ve, ty)
 				(* end case *))
 			  | _ => chk()
 			(* end case *))

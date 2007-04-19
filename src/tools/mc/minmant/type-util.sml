@@ -1,6 +1,6 @@
 (* type-util.sml
  *
- * COPYRIGHT (c) 2007 John Reppy (http://www.cs.uchicago.edu/~jhr)
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
  * Based on CMSC 22610 Sample code (Winter 2007)
@@ -20,8 +20,11 @@ structure TypeUtil : sig
    *)
     val substitute : (Types.ty * (Types.tyvar * Types.ty) list) -> Types.ty
 
-  (* instantiate a type scheme at the given lambda-nesting depth *)
-    val instantiate : (int * Types.ty_scheme) -> Types.ty
+  (* instantiate a type scheme at the given lambda-nesting depth.  This function
+   * returns the list of type arguments (i.e., fresh metavariables allocated
+   * for the bound variables of the scheme) and the resulting type.
+  s *)
+    val instantiate : (int * Types.ty_scheme) -> (Types.ty list * Types.ty)
 
   (* close a type w.r.t. to a set of non-generic variables (i.e., those
    * variables whose depth is less than or equal to the given depth).
@@ -34,7 +37,10 @@ structure TypeUtil : sig
    *)
     val same : (Types.ty * Types.ty) -> bool
 
+  (* convert various things to strings *)
+    val tyvarToString : Types.tyvar -> string
     val toString : Types.ty -> string
+    val schemeToString : Types.ty_scheme -> string
 
   end = struct
 
@@ -74,14 +80,17 @@ structure TypeUtil : sig
       | substitute (ty, s) = applySubst (List.foldl TVMap.insert' TVMap.empty s, ty)
 
   (* instantiate a type scheme at the given lambda-nesting depth *)
-    fun instantiate (_, Types.TyScheme([], ty)) = ty
+    fun instantiate (_, Types.TyScheme([], ty)) = ([], ty)
       | instantiate (depth, Types.TyScheme(tvs, ty)) = let
 	(* create a substitution from type variables to fresh meta variables *)
-	  val subst = List.foldl
-		(fn (tv, s) => TVMap.insert(s, tv, Types.MetaTy(MV.new depth)))
-		  TVMap.empty tvs
+	  val (subst, mvs) = List.foldl
+		(fn (tv, (s, mvs)) => let val mv = Types.MetaTy(MV.new depth)
+		  in
+		    (TVMap.insert(s, tv, mv), mv :: mvs)
+		  end)
+		  (TVMap.empty, []) tvs
 	  in
-	    applySubst (subst, ty)
+	    (mvs, applySubst (subst, ty))
 	  end
 
   (* close a type w.r.t. to a set of non-generic variables (i.e., those
@@ -160,6 +169,8 @@ structure TypeUtil : sig
 	    | _ => false
 	  (* end case *))
 
+    fun tyvarToString (Types.TVar{name, ...}) = Atom.toString name
+
   (* return a string representation of a type (for debugging) *)
     fun toString (Types.ErrorTy) = "<error>"
       | toString (Types.MetaTy(Types.MVar{stamp, info})) = (case !info
@@ -169,7 +180,7 @@ structure TypeUtil : sig
 		concat["$", Stamp.toString stamp, " == ", toString ty]
 		  before info := Types.INSTANCE ty)
 	  (* end case *))
-      | toString (Types.VarTy(Types.TVar{name, ...})) = Atom.toString name
+      | toString (Types.VarTy tv) = tyvarToString tv
       | toString (Types.ConTy([], tyc)) = Atom.toString(TyCon.nameOf tyc)
       | toString (Types.ConTy([ty], tyc)) = concat[
 	    toString ty, " ", Atom.toString(TyCon.nameOf tyc)
@@ -180,6 +191,12 @@ structure TypeUtil : sig
 	  ]
       | toString (Types.FunTy(ty1, ty2)) = concat[toString ty1, " -> ", toString ty2]
       | toString (Types.TupleTy tys) = "<tuplety>"
+
+  (* return the string representation of a type scheme *)
+    fun schemeToString (Types.TyScheme([], ty)) = toString ty
+      | schemeToString (Types.TyScheme(tvs, ty)) = concat[
+	    "[", String.concatWith "," (List.map tyvarToString tvs), "]", toString ty
+	  ]
 
   end
 
