@@ -26,10 +26,10 @@ structure AST =
       | SeqExp of (exp * exp)
 
     and binding
-      = ValBind of pat * exp
+      = ValBind of var list * exp
       | FunBind of lambda list
 
-    and lambda = FB of (var * tyvar list * var * exp)
+    and lambda = FB of (var * var * exp)
 
     and pat
       = ConPat of dcon * ty list * var list	(* data-constructor application *)
@@ -38,7 +38,7 @@ structure AST =
       | ConstPat of const
 
     and const
-      = DConst of dcon
+      = DConst of dcon * ty list
       | IConst of IntInf.int
       | SConst of string
 
@@ -48,7 +48,7 @@ structure AST =
       | VK_Fun			(* bound to a function *)
       | VK_Prim			(* builtin function or operator *)
 
-    withtype var = (var_kind, ty_scheme) VarRep.var_rep
+    withtype var = (var_kind, ty_scheme ref) VarRep.var_rep
 
     fun varKindToString VK_None = "None"
       | varKindToString VK_Pat = "Pat"

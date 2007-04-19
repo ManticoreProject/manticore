@@ -12,15 +12,16 @@ structure Var =
       structure V = VarFn (
 	struct
 	  type kind = AST.var_kind
-	  type ty = AST.ty_scheme
+	  type ty = AST.ty_scheme ref
 	  val defaultKind = AST.VK_None
 	  val kindToString = AST.varKindToString
 	  val tyToString = Types.toString
 	end)
     in
     open V
-    val newPoly = V.new
+    fun newPoly (name, tyScheme) = V.new(name, ref tyScheme)
     fun new (name, ty) = newPoly (name, AST.TyScheme([], ty))
+    fun typeOf x = !(V.typeOf x)
   (* close the type of the variable w.r.t. to the given lambda-nesting depth. *)
     fun closeTypeOf (depth, VarRep.V{ty as ref(AST.TyScheme(_, ty')), ...}) =
 	  ty := TypeUtil.closeTy(depth, ty')

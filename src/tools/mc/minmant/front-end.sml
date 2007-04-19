@@ -8,7 +8,7 @@
 
 structure FrontEnd : sig
 
-    val load : string -> AST.program option
+    val load : string -> AST.module option
 
   end = struct
 
