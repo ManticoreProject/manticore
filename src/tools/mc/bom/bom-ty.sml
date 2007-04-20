@@ -8,7 +8,6 @@ structure BOMTy =
   struct
 
     datatype raw_ty = datatype RawTypes.raw_ty
-    datatype tyc = datatype BOMTyCon.tyc
 	
     datatype ty
       = T_Any			(* unknown type; uniform representation *)
@@ -21,6 +20,29 @@ structure BOMTy =
 				(* the exception continuation(s) *)
       | T_Cont of ty list	(* first-class continuation *)
       | T_TyCon of tyc		(* high-level type constructor *)
+
+    and tyc		      (* high-level type constructor *)
+      = DataTyc of {
+	  name : string,
+	  stamp : Stamp.stamp,		(* a unique stamp *)
+	  nNullary : int,		(* the number of nullary constructors *)
+	  cons : data_con list		(* list of non-nullary constructors *)
+	}
+
+    and data_con = DCon of {	      (* a data-constructor function *)
+	  name : string,		(* the name of the constructor *)
+	  stamp : Stamp.stamp,		(* a unique stamp *)
+	  rep : dcon_rep,		(* the representation of values constructed by this *)
+					(* constructor *)
+	  argTy : ty			(* type of argument *)
+	}
+
+    and dcon_rep		      (* representation of data-constructor functions; note: *)
+				      (* this type does not include constants. *)
+      = Transparent			(* data-constructor represented directly by its argument *)
+      | Boxed				(* heap-allocated box containing value *)
+      | TaggedBox of word		(* heap-allocated tag/value pair *)
+
 
     val unitTy = T_Enum(0w0)
     val boolTy = T_Enum(0w1)	(* false = 0, true = 1 *)
@@ -52,7 +74,7 @@ structure BOMTy =
 		    concat("(" :: f1 paramTys)
 		  end
 	      | T_Cont tys => concat("cont(" :: tys2l(tys, [")"]))
-	      | T_TyCon tyc => BOMTyCon.toString tyc
+	      | T_TyCon(DataTyc{name, ...}) => name
 	    (* end case *)
 	  end
 

@@ -36,7 +36,7 @@ structure CaseSimplify : sig
 
   (* if a variable has a TyCon type, the retype it *)
     fun xformVar (s, x) = (case typeOf x
-	   of BTy.T_TyCon tc => retype(s, x, xformTyc tc)
+	   of BTy.T_TyCon tc => retype(s, x, BOMTyCon.toRepTy tc)
 	    | _ => (s, x)
 	  (* end case *))
 
@@ -138,7 +138,7 @@ structure CaseSimplify : sig
 		       of B.TaggedBox tag => let
 			    val (s, y) = xformVar(s, y)
 			    in (
-			      B.P_Const(B.E_EnumConst(tag, ??)),
+			      B.P_Const(B.E_EnumConst(tag, BTy.T_Enum tag)),
 			      B.mkStmt([y], B.E_Select(1, argument), xformE(s, tys, e))
 			    ) end
 			| _ => raise Fail "expected TaggedBox representation"

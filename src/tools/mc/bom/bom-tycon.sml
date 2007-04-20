@@ -2,32 +2,23 @@
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
+ *
+ * Utility code for datatypes in BOM.
  *)
 
 structure BOMTyCon =
   struct
 
-    datatype tyc		      (* high-level type constructor *)
-      = DataTyc of {
-	  name : string,
-	  stamp : Stamp.stamp,		(* a unique stamp *)
-	  nNullary : int,		(* the number of nullary constructors *)
-	  cons : data_con list		(* list of non-nullary constructors *)
-	}
-
-    and data_con = DCon of {	      (* a data-constructor function *)
-	  name : string,		(* the name of the constructor *)
-	  stamp : Stamp.stamp,		(* a unique stamp *)
-	  rep : dcon_rep		(* the representation of values constructed by this *)
-					(* constructor *)
-	}
-
-    and dcon_rep		      (* representation of data-constructor functions; note: *)
-				      (* this type does not include constants. *)
-      = Transparent			(* data-constructor represented directly by its argument *)
-      | Boxed				(* heap-allocated box containing value *)
-      | TaggedBox of word		(* heap-allocated tag/value pair *)
+    datatype tyc = datatype BOMTy.tyc
+    datatype data_con = datatype BOMTy.data_con
+    datatype dcon_rep = datatype BOMTy.dcon_rep
 
     fun toString (DataTyc{name, ...}) = name
+
+  (* convert datatypes to their representation types *)
+    fun toRepTy (DataTyc{nNullary=0, cons=[DCon{argTy, ...}], ...}) = argTy
+      | toRepTy (DataTyc{nNullary, cons=[], ...}) = BOMTy.T_Enum(Word.fromInt nNullary - 0w1)
+(* FIXME: we need a union type in BOM for this situation *)
+      | toRepTy _ = BOMTy.T_Any
 
   end

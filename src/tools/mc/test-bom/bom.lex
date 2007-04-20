@@ -133,7 +133,7 @@
 <INITIAL>":"		=> (T.COLON);
 <INITIAL>";"		=> (T.SEMI);
 <INITIAL>{id}		=> (idToken yytext);
-<INITIAL>[~\045]?{num}	=> (T.INT(valOf (IntInf.fromString yytext)));
+<INITIAL>[~\-]?{num}	=> (T.INT(valOf (IntInf.fromString yytext)));
 <INITIAL>[~\045]?{num}"."{num}([eE][+~\045]?{num})?
 			=> (mkFloat yysubstr);
 <INITIAL>{ws}		=> (continue ());
