@@ -17,15 +17,19 @@
     | KW_case		("case")
     | KW_ccall		("ccall")
     | KW_cont		("cont")
-    | KW_default	("default")    
+    | KW_default	("default") 
+	| KW_dequeue    ("dequeue")
+	| KW_do         ("do")   
     | KW_double		("double")
     | KW_else		("else")
     | KW_end		("end")
+	| KW_enqueue     ("engueue")
     | KW_enum		("enum")
     | KW_extern		("extern")
     | KW_float		("float")
     | KW_forward	("forward")
     | KW_fun		("fun")
+	| KW_host_vproc ("host_vproc")
     | KW_if		("if")
     | KW_int		("int")
     | KW_let		("let")
@@ -33,7 +37,9 @@
     | KW_module		("module")
     | KW_of		("of")
     | KW_pure		("pure")
+	| KW_run         ("run")
     | KW_short		("short")
+	| KW_switch      ("switch")
     | KW_then		("then")
     | KW_throw		("throw")
     | KW_unit		("unit")
@@ -133,9 +139,13 @@ Type
 	| "[" RawType "]"			=> (PT.T_Wrap RawType)
 	| RawType				=> (PT.T_Raw RawType)
 	| "(" Type ("," Type)* ")"		=> (PT.T_Tuple(Type :: SR))
-	| "fun" "(" (Type ("," Type)* )? ")"	=> (PT.T_Fun(flatten SR))
+	| "fun" "(" Typelist ";" Typelist "->" Typelist ")"	=> (PT.T_Fun(Typelist1, Typelist2, Typelist3))
 	| "cont" "(" (Type ("," Type)* )? ")"	=> (PT.T_Cont(flatten SR))
 	;
+
+Typelist
+    : (Type ("," Type)* )?  => (flatten SR)
+    ;
 
 RawType
 	: "byte"	=> (PT.T_Byte)
