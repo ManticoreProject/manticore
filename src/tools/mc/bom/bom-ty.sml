@@ -34,14 +34,14 @@ structure BOMTy =
 	  stamp : Stamp.stamp,		(* a unique stamp *)
 	  rep : dcon_rep,		(* the representation of values constructed by this *)
 					(* constructor *)
-	  argTy : ty			(* type of argument *)
+	  argTy : ty list		(* type(s) of argument(s) *)
 	}
 
     and dcon_rep		      (* representation of data-constructor functions; note: *)
 				      (* this type does not include constants. *)
       = Transparent			(* data-constructor represented directly by its argument *)
-      | Boxed				(* heap-allocated box containing value *)
-      | TaggedBox of word		(* heap-allocated tag/value pair *)
+      | Tuple				(* heap-allocated tuple of values *)
+      | TaggedTuple of word		(* heap-allocated tag/value pair *)
 
 
     val unitTy = T_Enum(0w0)

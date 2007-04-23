@@ -58,7 +58,7 @@ structure Basis =
     val rdyqItemTyc = BOMTyCon.newDataTyc ("rdyq_item", 1)
     val rdyqItemTy = BTy.T_TyCon rdyqItemTyc
     val rdyqConsDC = BOMTyCon.newDataCon rdyqItemTyc
-	  ("QITEM", BTy.Transparent, BTy.T_Tuple[tidTy, fiberTy, rdyqItemTy])
+	  ("QITEM", BTy.Transparent, [tidTy, fiberTy, rdyqItemTy])
 
 (*
     val qItemAlloc of var * var list	(* allocate a queue item *)
@@ -79,10 +79,10 @@ structure Basis =
 
   (* other predefined datatypes *)
     val signalTyc = BOMTyCon.newDataTyc ("signal", 1)
-    val preemptDCon = BOMTyCon.newDataCon signalTyc ("PREEMPT", BTy.Transparent, fiberTy)
+    val preemptDCon = BOMTyCon.newDataCon signalTyc ("PREEMPT", BTy.Transparent, [fiberTy])
     val listTyc = BOMTyCon.newDataTyc ("list", 1)
     val listTy = BTy.T_TyCon listTyc
     val consTyc = BOMTyCon.newDataCon listTyc
-	  ("CONS", BTy.Transparent, BTy.T_Tuple[BTy.T_Any, listTy])
+	  ("CONS", BTy.Transparent, [BTy.T_Any, listTy])
 
   end

@@ -19,7 +19,7 @@ structure CaseSimplify : sig
     structure BTy = BOMTy
 
     fun numEnumsOfTyc (BTy.DataTyc{nNullary, ...}) = nNullary
-    fun numConsOfTyc (BTy.DataTyc{cons, ...}) = List.length cons
+    fun numConsOfTyc (BTy.DataTyc{cons, ...}) = List.length(!cons)
 
     fun repOf (B.DCon{rep, ...}) = rep
 
@@ -40,6 +40,18 @@ structure CaseSimplify : sig
 	    | _ => (s, x)
 	  (* end case *))
 
+  (* apply xformVar over a list of variables *)
+    fun xformVars (s, xs) = let
+	  fun xform ([], s, xs') = (s, List.rev xs')
+	    | xform (x::xs, s, xs') = let
+		val (s, x') = xformVar(s, x)
+		in
+		  xform(xs, s, x'::xs')
+		end
+	  in
+	    xform (xs, s, [])
+	  end
+
   (* transform an expression.  The parameters are:
    *	s	-- a substitution used to rename variables whose types have changed.
    *	tys	-- the result type(s) of the expression.
@@ -48,28 +60,28 @@ structure CaseSimplify : sig
     fun xformE (s, tys, B.E_Pt(_, e)) = (case e
 	   of B.E_Let(lhs, e1, e2) =>
 		B.mkLet(lhs, xformE(s, typesOf lhs, e1), xformE(s, tys, e2))
-	    | B.E_Stmt([y], B.E_DCon(B.DCon{name, rep, ...}, x), e) => (
-		case rep
-		 of B.Transparent => let
+	    | B.E_Stmt([y], B.E_DCon(B.DCon{name, rep, argTy, ...}, xs), e) => (
+		case (rep, xs)
+		 of (B.Transparent, [x]) => let
 		      val (s', y') = retype (s, y, typeOf x)
 		      in
 			B.mkLet([y'], B.mkRet[x], xformE(s', tys, e))
 		      end
-		  | B.Boxed => let
-		      val ty = BTy.T_Tuple[typeOf x]
+		  | (B.Tuple, _) => let
+		      val ty = BTy.T_Tuple argTy
 		      val (s', y') = retype (s, y, ty)
 		      in
-			B.mkStmt([y'], B.E_Alloc(ty, [x]), xformE(s', tys, e))
+			B.mkStmt([y'], B.E_Alloc(ty, xs), xformE(s', tys, e))
 		      end
-		  | B.TaggedBox tag => let
+		  | (B.TaggedTuple tag, _) => let
 		      val tagTy = BTy.T_Enum tag
 		      val tag' = BV.new(name, tagTy)
-		      val ty = BTy.T_Tuple[tagTy, typeOf x]
+		      val ty = BTy.T_Tuple(tagTy :: argTy)
 		      val (s, y) = retype (s, y, ty)
 		      in
 			B.mkStmts([
 			    ([tag'], B.E_Const(B.E_EnumConst(tag, tagTy))),
-			    ([y], B.E_Alloc(ty, [tag', x]))
+			    ([y], B.E_Alloc(ty, tag' :: xs))
 			  ], xformE(s, tys, e))
 		      end
 		(* end case *))
@@ -104,15 +116,19 @@ structure CaseSimplify : sig
 	(* generate a case for a list of one or more data constructors, plus an
 	 * optional default case.
 	 *)
-	  fun consCase ([(dc, y, e)], dflt) = let
-		val (s, y) = xformVar(s, y)
+	  fun consCase ([(dc, ys, e)], dflt) = let
+		val (s, ys) = xformVars(s, ys)
+		fun sel ([], _) = xformE(s, tys, e)
+		  | sel (y::ys, i) = B.mkStmt([y], B.E_Select(i, argument), sel(ys, i+1))
 		in
 		  case (repOf dc, dflt)
-		   of (B.Transparent, NONE) =>
-			B.mkStmt([y], B.E_Cast(typeOf y, argument), xformE(s, tys, e))
-		    | (B.Boxed, NONE) =>
-			B.mkStmt([y], B.E_Select(0, argument), xformE(s, tys, e))
-		    | (B.TaggedBox tag, SOME dflt) => let
+		   of (B.Transparent, NONE) => let
+			val [y] = ys
+			in
+			  B.mkStmt([y], B.E_Cast(typeOf y, argument), xformE(s, tys, e))
+			end
+		    | (B.Tuple, NONE) => sel (ys, 0)
+		    | (B.TaggedTuple tag, SOME dflt) => let
 			val ty = BTy.T_Enum tag
 			val tag' = BV.new("tag", ty)
 			val tmp = BV.new("tmp", ty)
@@ -123,9 +139,7 @@ structure CaseSimplify : sig
 			      ([tmp], B.E_Const(B.E_EnumConst(tag, ty))),
 			      ([eq], B.E_Prim(Prim.I32NEq(argument, tmp)))
 			    ],
-			    B.mkIf(eq,
-			      B.mkStmt([y], B.E_Select(1, argument), xformE(s, tys, e)),
-			      dflt))
+			    B.mkIf(eq, sel(ys, 1), dflt))
 			end
 		    | _ => raise Fail "bogus dcon rep"
 		  (* end case *)
@@ -134,13 +148,14 @@ structure CaseSimplify : sig
 	      (* here we have two, or more, constructors and they must all have the
 	       * TaggedBox representation.
 	       *)
-		fun mkAlt (dc, y, e) = (case repOf dc
-		       of B.TaggedBox tag => let
-			    val (s, y) = xformVar(s, y)
-			    in (
-			      B.P_Const(B.E_EnumConst(tag, BTy.T_Enum tag)),
-			      B.mkStmt([y], B.E_Select(1, argument), xformE(s, tys, e))
-			    ) end
+		fun mkAlt (dc, ys, e) = (case repOf dc
+		       of B.TaggedTuple tag => let
+			    val (s, ys) = xformVars(s, ys)
+			    fun sel ([], _) = xformE(s, tys, e)
+			      | sel (y::ys, i) = B.mkStmt([y], B.E_Select(i, argument), sel(ys, i+1))
+			    in
+			      (B.P_Const(B.E_EnumConst(tag, BTy.T_Enum tag)), sel (ys, 1))
+			    end
 			| _ => raise Fail "expected TaggedBox representation"
 		      (* end case *))
 		in

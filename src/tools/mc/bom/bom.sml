@@ -37,7 +37,7 @@ structure BOM =
       | E_Wrap of var
       | E_Unwrap of var
       | E_Prim of prim
-      | E_DCon of (data_con * var)	(* data constructor *)
+      | E_DCon of (data_con * var list)	(* data constructor *)
       | E_HLOp of (hlop * var list)	(* application of high-level operator *)
       | E_CCall of (var * var list)	(* foreign-function calls *)
 (* QUESTION: should the following operations be builtin or supported as hlops? *)
@@ -67,7 +67,7 @@ structure BOM =
 	}
 
     and pat			      (* simple, one-level, patterns *)
-      = P_DCon of data_con * var
+      = P_DCon of data_con * var list
       | P_Const of const
 
     and const
