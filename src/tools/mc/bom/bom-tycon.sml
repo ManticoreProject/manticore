@@ -16,9 +16,32 @@ structure BOMTyCon =
     fun toString (DataTyc{name, ...}) = name
 
   (* convert datatypes to their representation types *)
-    fun toRepTy (DataTyc{nNullary=0, cons=[DCon{argTy, ...}], ...}) = argTy
-      | toRepTy (DataTyc{nNullary, cons=[], ...}) = BOMTy.T_Enum(Word.fromInt nNullary - 0w1)
+    fun toRepTy (DataTyc{nNullary, cons, ...}) = (case (nNullary, !cons)
+	   of (0, [DCon{argTy, ...}]) => argTy
+	    | (_, []) => BOMTy.T_Enum(Word.fromInt nNullary - 0w1)
 (* FIXME: we need a union type in BOM for this situation *)
-      | toRepTy _ = BOMTy.T_Any
+	    | _ => BOMTy.T_Any
+	  (* end case *))
+
+  (* create a new datatype tycon *)
+    fun newDataTyc (name, nNullary) = DataTyc{
+	    name = name,
+	    stamp = Stamp.new(),
+	    nNullary = nNullary,
+	    cons = ref[]
+	  }
+
+  (* add a data constructor to a datatype tycon *)
+    fun newDataCon (DataTyc{cons, ...}) (name, rep, argTy) = let
+	  val dc = DCon{
+		  name = name,
+		  stamp = Stamp.new(),
+		  rep = rep,
+		  argTy = argTy
+		}
+	  in
+	    cons := !cons @ [dc];
+	    dc
+	  end
 
   end
