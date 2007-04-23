@@ -84,6 +84,7 @@ structure CaseSimplify : sig
 			    ([y], B.E_Alloc(ty, tag' :: xs))
 			  ], xformE(s, tys, e))
 		      end
+		  | (B.Transparent, _) => raise Fail "bogus transparent dcon application"
 		(* end case *))
 (* FIXME: need to apply the substitution to the RHS *)
 	    | B.E_Stmt(lhs, rhs, e) => B.mkStmt(lhs, rhs, xformE(s, tys, e))
