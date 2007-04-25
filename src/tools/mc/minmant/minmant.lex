@@ -1,3 +1,4 @@
+
 (* minmant.lex
  *
  * Based on CMSC 22610 Sample code (Winter 2006)
@@ -44,6 +45,7 @@
 	      app ins [
 		("and",		T.KW_and),
 		("andalso",	T.KW_andalso),
+		("by",          T.KW_by),
 		("case",	T.KW_case),
 		("datatype",	T.KW_datatype),
 		("div",		T.KW_div),
@@ -56,9 +58,12 @@
 		("mod",		T.KW_mod),
 		("of",		T.KW_of),
 		("orelse",	T.KW_orelse),
+		("spawn",       T.KW_spawn),
 		("then",	T.KW_then),
+		("to",          T.KW_to),
 		("type",	T.KW_type),
-		("val",		T.KW_val)
+		("val",		T.KW_val),
+		("where",       T.KW_where)
 	      ];
 	      AtomTable.find tbl
 	  end
@@ -87,8 +92,14 @@
 
 <INITIAL> "("	=> (T.LP);
 <INITIAL> ")"	=> (T.RP);
+<INITIAL> "(|"  => (T.LPB);
+<INITIAL> "|)"  => (T.RPB);
+<INITIAL> "[|"  => (T.LBB);
+<INITIAL> "|]"  => (T.RBB);
 <INITIAL> "<="	=> (T.LTEQ);
 <INITIAL> "<"	=> (T.LT);
+<INITIAL> ">"   => (T.GT);
+<INITIAL> ">="  => (T.GTEQ);
 <INITIAL> "::"	=> (T.DCOLON);
 <INITIAL> "@"	=> (T.AT);
 <INITIAL> "+"	=> (T.PLUS);

@@ -63,6 +63,11 @@ structure ParseTree =
       | ApplyExp of (exp * exp)		(* application *)
       | ConstExp of const
       | TupleExp of exp list
+      | RangeExp of (exp * exp * exp)
+      | PTupleExp of exp list
+      | PListExp of exp list
+      | ComprehendExp of (exp * pbind list * exp option)
+      | SpawnExp of exp
       | SeqExp of exp list		(* sequence of two or more expressions *)
       | IdExp of vid			(* either variable or nullary constant *)
 
@@ -70,6 +75,10 @@ structure ParseTree =
     and match
       = MarkMatch of match mark
       | Match of (pat * exp)
+
+    and pbind
+      = MarkPBind of pbind mark
+      | PBind of (pat * exp)
 
     and pat
       = MarkPat of pat mark

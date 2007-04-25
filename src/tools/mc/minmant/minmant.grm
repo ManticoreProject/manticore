@@ -11,6 +11,7 @@
 %tokens
     : KW_and		("and")
     | KW_andalso	("andalso")
+    | KW_by		("by")
     | KW_case		("case")
     | KW_datatype	("datatype")
     | KW_div		("div")
@@ -23,13 +24,22 @@
     | KW_mod		("mod")
     | KW_of		("of")
     | KW_orelse		("orelse")
+    | KW_spawn		("spawn")
     | KW_then		("then")
+    | KW_to		("to")
     | KW_type		("type")
     | KW_val		("val")
+    | KW_where		("where")
     | LP		("(")
     | RP		(")")
+    | LPB		("(|")
+    | RPB		("|)")
+    | LBB		("[|")
+    | RBB		("|]")
     | LTEQ		("<=")
     | LT		("<")
+    | GTEQ		(">=")
+    | GT		(">")
     | DCOLON		("::")
     | AT		("@")
     | PLUS		("+")
@@ -64,6 +74,7 @@
   val markTy = mark PT.MarkTy
   val markExp = mark PT.MarkExp
   val markMatch = mark PT.MarkMatch
+  val markPBind = mark PT.MarkPBind
   val markPat = mark PT.MarkPat
   val markVarPat = mark PT.MarkVPat
 
@@ -173,6 +184,8 @@ Exp
 		=> (markExp (FULL_SPAN, PT.LetExp(ValueDecl, if null SR then Exp else PT.SeqExp(Exp::SR))))
 	| "if" Exp "then" Exp "else" Exp
 		=> (markExp (FULL_SPAN, PT.IfExp(Exp1, Exp2, Exp3)))
+	| "spawn" Exp
+		=> (markExp (FULL_SPAN, PT.SpawnExp(Exp)))
 	| "case" Exp "of" MatchRules
 		=> (markExp (FULL_SPAN, PT.CaseExp(Exp, MatchRules)))
 	;
@@ -184,6 +197,8 @@ ClosedExp
 		=> (markExp (FULL_SPAN, PT.LetExp(ValueDecl, if null SR then Exp else PT.SeqExp(Exp::SR))))
 	| "if" Exp "then" Exp "else" ClosedExp
 		=> (markExp (FULL_SPAN, PT.IfExp(Exp1, Exp2, ClosedExp)))
+	| "spawn" ClosedExp
+		=> (markExp (FULL_SPAN, PT.SpawnExp(Exp)))
 	;
 
 MatchRules
@@ -234,12 +249,30 @@ AtomicExp
 	| STRING		=> (markExp (FULL_SPAN, PT.ConstExp(PT.StrLit STRING)))
 	| "(" ")"		=> (markExp (FULL_SPAN, PT.TupleExp[]))
 	| "(" Exp optExps ")"	=> (markExp (FULL_SPAN, optExps Exp))
+	| "(|" Exp optCommaExps "|)"
+				=> (markExp (FULL_SPAN, PT.PTupleExp (optCommaExps Exp)))
+	| "[|" Exp (optCommaExps "|]"
+				=> (markExp (FULL_SPAN, PT.PListExp (optCommaExps Exp)))
+	           | "to" Exp "by" Exp "|]"
+				=> (markExp (FULL_SPAN, PT.RangeExp (Exp1, Exp2, Exp3)))
+	           | "|" PBind ("," PBind)* ("where" Exp)? "|]"
+				=> (markExp (FULL_SPAN, PT.ComprehendExp (Exp, PBind :: SR1, SR2)))
+		   )
 	;
 
 optExps
 	: (* empty *)		=> (fn e => e)
 	| ("," Exp)+		=> (fn e => PT.TupleExp(e :: SR))
 	| (";" Exp)+		=> (fn e => PT.SeqExp(e :: SR))
+	;
+
+optCommaExps
+	: (* empty *)		=> (fn e => [e])
+	| ("," Exp)+		=> (fn e => (e :: SR))
+	;
+
+PBind
+	: Pat "in" Exp		=> (markPBind (FULL_SPAN, PT.PBind (Pat, Exp)))
 	;
 
 Pat
