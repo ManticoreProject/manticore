@@ -198,12 +198,12 @@ ClosedExp
 	| "if" Exp "then" Exp "else" ClosedExp
 		=> (markExp (FULL_SPAN, PT.IfExp(Exp1, Exp2, ClosedExp)))
 	| "spawn" ClosedExp
-		=> (markExp (FULL_SPAN, PT.SpawnExp(Exp)))
+		=> (markExp (FULL_SPAN, PT.SpawnExp ClosedExp))
 	;
 
 MatchRules
-	: %try Pat "=>" ClosedExp ("|" MatchRules)?
-		=> (markMatch (Pat_SPAN, PT.Match(Pat, ClosedExp)) :: Option.getOpt(SR, []))
+	: %try Pat "=>" ClosedExp "|" MatchRules
+		=> (markMatch (Pat_SPAN, PT.Match(Pat, ClosedExp)) :: MatchRules)
 	| %try Pat "=>" Exp
 		=> ([markMatch (FULL_SPAN, PT.Match(Pat, Exp))])
 	;
@@ -251,13 +251,16 @@ AtomicExp
 	| "(" Exp optExps ")"	=> (markExp (FULL_SPAN, optExps Exp))
 	| "(|" Exp optCommaExps "|)"
 				=> (markExp (FULL_SPAN, PT.PTupleExp (optCommaExps Exp)))
-	| "[|" Exp (optCommaExps "|]"
-				=> (markExp (FULL_SPAN, PT.PListExp (optCommaExps Exp)))
-	           | "to" Exp "by" Exp "|]"
-				=> (markExp (FULL_SPAN, PT.RangeExp (Exp1, Exp2, Exp3)))
-	           | "|" PBind ("," PBind)* ("where" Exp)? "|]"
-				=> (markExp (FULL_SPAN, PT.ComprehendExp (Exp, PBind :: SR1, SR2)))
-		   )
+	| "[|" "|]"		=> (markExp (FULL_SPAN, PT.PListExp[]))
+	| "[|" Exp PArrayBody "|]"
+				=> (markExp (FULL_SPAN, PArrayBody Exp))
+	;
+
+PArrayBody
+	: optCommaExps		=> (fn e => markExp (FULL_SPAN, PT.PListExp (optCommaExps e)))
+	| "to" Exp "by" Exp	=> (fn e => markExp (FULL_SPAN, PT.RangeExp (e, Exp1, Exp2)))
+	| "|" PBind ("," PBind)* ("where" Exp)?
+				=> (fn e => markExp (FULL_SPAN, PT.ComprehendExp (e, PBind :: SR1, SR2)))
 	;
 
 optExps
