@@ -32,6 +32,32 @@
   (* make a string from buf *)
     fun mkString () = (T.STRING(String.concat(List.rev(!buf))) before buf := [])
 
+  (* make a FLOAT token from a substring *)
+    fun mkFloat ss = let
+	  val (isNeg, rest) = (case Substring.getc ss
+		 of SOME(#"-", r) => (true, r)
+		  | SOME(#"~", r) => (true, r)
+		  | _ => (false, ss)
+		(* end case *))
+	  val (whole, rest) = Substring.splitl Char.isDigit ss
+	  val rest = Substring.triml 1 rest (* remove "." *)
+	  val (frac, rest) = Substring.splitl Char.isDigit rest
+	  val exp = if Substring.isEmpty rest
+		then 0
+		else let
+		  val rest = Substring.triml 1 rest (* remove "e" or "E" *)
+		  in
+		    #1(valOf(Int.scan StringCvt.DEC Substring.getc rest))
+		  end
+	  in
+	    T.FLOAT(FloatLit.float{
+		isNeg = isNeg,
+		whole = Substring.string whole,
+		frac = Substring.string frac,
+		exp = exp
+	      })
+	  end
+
   (* eof : unit -> lex_result *)
   (* ml-ulex requires this as well *)
     fun eof () = T.EOF
@@ -83,6 +109,7 @@
 
 %let letter = [a-zA-Z];
 %let dig = [0-9];
+%let num = {dig}+;
 %let idchar = {letter}|{dig}|"_"|"'";
 %let id = {letter}{idchar}*;
 %let tyvarid = "'"{idchar}*;
@@ -110,12 +137,15 @@
 <INITIAL> ","	=> (T.COMMA);
 <INITIAL> ";"	=> (T.SEMI);
 <INITIAL> "|"	=> (T.BAR);
+<INITIAL> ":"	=> (T.COLON);
 <INITIAL> "->"	=> (T.ARROW);
 <INITIAL> "=>"	=> (T.DARROW);
 <INITIAL> "_"	=> (T.WILD);
 <INITIAL> {id}	=> (idToken yytext);
 <INITIAL> {tyvarid}	=> (T.TYVAR(Atom.atom yytext));
-<INITIAL> ({dig})+	=> (T.NUMBER(valOf (IntInf.fromString yytext)));
+<INITIAL> {num}		=> (T.INT(valOf (IntInf.fromString yytext)));
+<INITIAL> {num}"."{num}([eE][+~]?{num})?
+			=> (mkFloat yysubstr);
 <INITIAL> {ws}		=> (continue ());
 <INITIAL> "(*"		=> (YYBEGIN COMMENT; depth := 1; continue());
 <INITIAL> "\""		=> (YYBEGIN STRING; continue());

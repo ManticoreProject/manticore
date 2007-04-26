@@ -18,6 +18,8 @@ is
   $/smlnj-lib.cm
   $/ml-lpt-lib.cm
 
+  ../common/sources.cm
+
   basis-names.sml
   error.sml
   minmant.lex : ml-ulex

@@ -50,12 +50,14 @@
     | COMMA		(",")
     | SEMI		(";")
     | BAR		("|")
+    | COLON		(":")
     | ARROW		("->")
     | DARROW		("=>")
     | WILD		("_")
     | TYVAR of Atom.atom
     | NAME of Atom.atom
-    | NUMBER of IntInf.int
+    | INT of IntInf.int
+    | FLOAT of FloatLit.float
     | STRING of string
     ;
 
@@ -71,12 +73,14 @@
 
 (* specialize mark functions for common node types *)
   val markDecl = mark PT.MarkDecl
-  val markTy = mark PT.MarkTy
-  val markExp = mark PT.MarkExp
+  fun markTy (_, e as PT.MarkTy _) = e
+    | markTy (sp, tr) = mark PT.MarkTy (sp, tr)
+  fun markExp (_, e as PT.MarkExp _) = e
+    | markExp (sp, tr) = mark PT.MarkExp (sp, tr)
   val markMatch = mark PT.MarkMatch
   val markPBind = mark PT.MarkPBind
-  val markPat = mark PT.MarkPat
-  val markVarPat = mark PT.MarkVPat
+  fun markPat (_, p as PT.MarkPat _) = p
+    | markPat (sp, tr) = mark PT.MarkPat (sp, tr)
 
 (* construct a left-associative type application *)
   fun mkTyApp (arg, []) = arg
@@ -178,10 +182,8 @@ FunDef
 	;
 
 Exp
-	: AndalsoExp
-		=> (AndalsoExp)
-	| "let" ValueDecl+ "in" Exp (";" Exp)* "end"
-		=> (markExp (FULL_SPAN, PT.LetExp(ValueDecl, if null SR then Exp else PT.SeqExp(Exp::SR))))
+	: ConstraintExp
+		=> (ConstraintExp)
 	| "if" Exp "then" Exp "else" Exp
 		=> (markExp (FULL_SPAN, PT.IfExp(Exp1, Exp2, Exp3)))
 	| "spawn" Exp
@@ -191,10 +193,8 @@ Exp
 	;
 
 ClosedExp
-	: AndalsoExp
-		=> (AndalsoExp)
-	| "let" ValueDecl+ "in" Exp (";" Exp)* "end"
-		=> (markExp (FULL_SPAN, PT.LetExp(ValueDecl, if null SR then Exp else PT.SeqExp(Exp::SR))))
+	: ConstraintExp
+		=> (ConstraintExp)
 	| "if" Exp "then" Exp "else" ClosedExp
 		=> (markExp (FULL_SPAN, PT.IfExp(Exp1, Exp2, ClosedExp)))
 	| "spawn" ClosedExp
@@ -206,6 +206,14 @@ MatchRules
 		=> (markMatch (Pat_SPAN, PT.Match(Pat, ClosedExp)) :: MatchRules)
 	| %try Pat "=>" Exp
 		=> ([markMatch (FULL_SPAN, PT.Match(Pat, Exp))])
+	;
+
+ConstraintExp
+	: AndalsoExp (":" Type)?
+		=> (case SR
+		     of SOME ty => markExp (FULL_SPAN, PT.ConstraintExp(AndalsoExp, ty))
+		      | NONE => AndalsoExp
+		    (* end case *))
 	;
 
 AndalsoExp
@@ -245,7 +253,8 @@ ApplyExp
 
 AtomicExp
 	: NAME			=> (markExp (FULL_SPAN, PT.IdExp NAME))
-	| NUMBER		=> (markExp (FULL_SPAN, PT.ConstExp(PT.IntLit NUMBER)))
+	| INT			=> (markExp (FULL_SPAN, PT.ConstExp(PT.IntLit INT)))
+	| FLOAT			=> (markExp (FULL_SPAN, PT.ConstExp(PT.FltLit FLOAT)))
 	| STRING		=> (markExp (FULL_SPAN, PT.ConstExp(PT.StrLit STRING)))
 	| "(" ")"		=> (markExp (FULL_SPAN, PT.TupleExp[]))
 	| "(" Exp optExps ")"	=> (markExp (FULL_SPAN, optExps Exp))
@@ -254,6 +263,8 @@ AtomicExp
 	| "[|" "|]"		=> (markExp (FULL_SPAN, PT.PListExp[]))
 	| "[|" Exp PArrayBody "|]"
 				=> (markExp (FULL_SPAN, PArrayBody Exp))
+	| "let" ValueDecl+ "in" Exp (";" Exp)* "end"
+		=> (markExp (FULL_SPAN, PT.LetExp(ValueDecl, if null SR then Exp else PT.SeqExp(Exp::SR))))
 	;
 
 PArrayBody
@@ -280,19 +291,23 @@ PBind
 
 Pat
 	: NAME TuplePat			=> (markPat (FULL_SPAN, PT.ConPat(NAME, TuplePat)))
-	| TuplePat			=> (markPat (FULL_SPAN, PT.TuplePat TuplePat))
-	| VarPat "::" VarPat		=> (markPat (FULL_SPAN, PT.ConPat(Op.listCons, [VarPat1, VarPat2])))
-	| NUMBER			=> (markPat (FULL_SPAN, PT.ConstPat(PT.IntLit NUMBER)))
+	| TuplePat			=> (TuplePat)
+	| VarPat "::" VarPat		=> (markPat (FULL_SPAN, PT.ConPat(Op.listCons, PT.TuplePat[VarPat1, VarPat2])))
+	| INT				=> (markPat (FULL_SPAN, PT.ConstPat(PT.IntLit INT)))
+	| FLOAT				=> (markPat (FULL_SPAN, PT.ConstPat(PT.FltLit FLOAT)))
 	| STRING			=> (markPat (FULL_SPAN, PT.ConstPat(PT.StrLit STRING)))
 	;
 
 TuplePat
-	: VarPat			=> ([VarPat])
+	: VarPat			=> (VarPat)
 	| "(" (VarPat ( "," VarPat )*)? ")"
-		=> (case SR of NONE => [] | SOME (p, ps) => p::ps)
+		=> (case SR
+		     of NONE => markPat (FULL_SPAN, PT.TuplePat[])
+		      | SOME (p, ps) => markPat (FULL_SPAN, PT.TuplePat(p::ps))
+		    (* end case *))
 	;
 
 VarPat
-	: NAME		=> (markVarPat (FULL_SPAN, PT.IdVPat NAME))
-	| "_"		=> (markVarPat (FULL_SPAN, PT.WildVPat))
+	: NAME		=> (markPat (FULL_SPAN, PT.IdPat NAME))
+	| "_"		=> (markPat (FULL_SPAN, PT.WildPat))
 	;

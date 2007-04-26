@@ -35,13 +35,13 @@ structure ParseTree =
   (* value declarations *)
     and val_decl
       = MarkVDecl of val_decl mark
-      | ValVDecl of var_pat list * exp
+      | ValVDecl of pat * exp
       | FunVDecl of funct list
 
   (* function definitions *)
     and funct
       = MarkFunct of funct mark
-      | Funct of (vid * var_pat list * exp)
+      | Funct of (vid * pat * exp)
 
   (* types *)
     and ty
@@ -70,6 +70,7 @@ structure ParseTree =
       | SpawnExp of exp
       | SeqExp of exp list		(* sequence of two or more expressions *)
       | IdExp of vid			(* either variable or nullary constant *)
+      | ConstraintExp of exp * ty	(* type constraint *)
 
   (* pattern matching rules *)
     and match
@@ -82,19 +83,17 @@ structure ParseTree =
 
     and pat
       = MarkPat of pat mark
-      | ConPat of conid * var_pat list
-      | TuplePat of var_pat list
-      | VarPat of var_pat
+      | ConPat of conid * pat
+      | TuplePat of pat list
       | ConstPat of const
-
-    and var_pat
-      = MarkVPat of var_pat mark
-      | WildVPat
-      | IdVPat of vid			(* either variable or nullary constant *)
+      | WildPat
+      | IdPat of vid			(* either variable or nullary constant *)
+      | ConstraintPat of pat * ty	(* type constraint *)
 
   (* literal values *)
     and const
       = IntLit of IntInf.int
+      | FltLit of FloatLit.float
       | StrLit of string
 
     type program = (decl list * exp)
