@@ -152,6 +152,10 @@ structure BOM =
     fun mkThrow arg = mkExp(E_Throw arg)
     fun mkRet arg = mkExp(E_Ret arg)
 
+    fun mkCFun arg = (
+	  Var.setKind(#var arg, VK_Extern(#name arg));
+	  CFunctions.CFun arg)
+
     fun mkModule (name, externs, body as FB{params, exh, ...}) = (
 	  List.app (fn x => Var.setKind(x, VK_Param)) (params @ exh);
 	  List.app

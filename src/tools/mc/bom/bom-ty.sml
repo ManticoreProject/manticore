@@ -19,6 +19,7 @@ structure BOMTy =
 				(* function type; the second argument is the type of *)
 				(* the exception continuation(s) *)
       | T_Cont of ty list	(* first-class continuation *)
+      | T_CFun of CFunctions.c_proto	(* C functions *)
       | T_TyCon of tyc		(* high-level type constructor *)
 
     and tyc		      (* high-level type constructor *)
@@ -74,6 +75,7 @@ structure BOMTy =
 		    concat("(" :: f1 paramTys)
 		  end
 	      | T_Cont tys => concat("cont(" :: tys2l(tys, [")"]))
+	      | T_CFun cp => CFunctions.protoToString cp
 	      | T_TyCon(DataTyc{name, ...}) => name
 	    (* end case *)
 	  end

@@ -13,6 +13,7 @@
     structure PT = BOMPT
     structure P = Prim
     structure Ty = BOMTy
+    structure BV = BOM.Var
 
     datatype prim_info
       = Prim1 of {
@@ -130,7 +131,7 @@
 		in
 		  case rhs
 		   of PT.SimpleExp e => (case e
-			 of PT.Var x => BOM.mkStmt(lhs', BOM.E_Var[lookup (env, x)], e')
+			 of PT.Var x => BOM.mkLet(lhs', BOM.mkRet[lookup (env, x)], e')
 			  | PT.Select(i, arg) =>
 			      cvtSimpleExp (env, arg, fn x =>
 				BOM.mkStmt(lhs', BOM.E_Select(i, x), e'))
@@ -145,7 +146,7 @@
 		              in
 		                BOM.mkStmt(lhs', BOM.E_Const (BOM.E_IConst (x, ty)), e')
 		              end
-	                  | PT.Literal (Literal.String x, _) => BOM.mkStmt(lhs', BOM.E_Const (BOM.E_SConst x), e')
+	                  | PT.Literal (Literal.String x, _) => BOM.mkStmt(lhs', BOM.E_Const(BOM.E_SConst x), e')
 	                  | PT.Literal (Literal.Float x, optTy) => let
 		              val ty = (case optTy
 			      of NONE => Ty.T_Any
@@ -170,7 +171,8 @@
 				end)
 			(* end case *))
 		    | PT.Alloc args =>
-			cvtSimpleExps (env, args, fn xs => BOM.mkStmt(lhs', BOM.E_Alloc xs, e'))
+			cvtSimpleExps (env, args,
+			  fn xs => BOM.mkStmt(lhs', BOM.E_Alloc(Ty.T_Tuple(List.map BV.typeOf xs), xs), e'))
 		    | PT.Wrap arg =>
 			cvtSimpleExp (env, arg, fn x => BOM.mkStmt(lhs', BOM.E_Wrap x, e'))
 		    | PT.CCall(f, args) =>
@@ -192,36 +194,37 @@
 		end
 	    | PT.Cont(fb, e) => let
 	      (* NOTE: continuations are permitted to be recursive *)
-		val (env', cvtBody) = cvtLambda(env, fb, Ty.T_Cont)
+		val (env', cvtBody) = cvtLambda(env, fb, fn (argTys, _, _) => Ty.T_Cont argTys)
 		in
 		  BOM.mkCont(cvtBody env', cvtExp(env', e))
 		end
 	    | PT.If(e1, e2, e3) =>
-		cvtSimpleExp (env, e1, fn x => BOM.E_If(x, cvtExp(env, e2), cvtExp(env, e3)))
-	    | PT.Case(arg, e1, e2) =>
-	        cvtSimpleExp (env, arg, fn x => BOM.E_If(x, cvtExp(env, e1), cvtExp(env, e2)))
+		cvtSimpleExp (env, e1, fn x => BOM.mkIf(x, cvtExp(env, e2), cvtExp(env, e3)))
+	    | PT.Case(arg, e1, e2) => raise Fail "unimplemented" (* FIXME *)
 	    | PT.Switch(arg, cases, dflt) => 
                 cvtSimpleExp (env, arg, fn arg =>
                     BOM.E_Case (
 		      arg, 
                       List.map (fn (i,e) => (i, cvtExp(env,e))) cases,
                       case dflt of NONE => NONE | SOME e => SOME (cvtExp(env, e))))
-	    | PT.Apply(f, args) =>
-		cvtSimpleExps (env, args, fn xs => BOM.E_Apply(lookup(env, f), xs))
+	    | PT.Apply(f, args, rets) =>
+		cvtSimpleExps (env, args,
+		  fn xs => cvtSimpleExps (env, rets,
+		    fn ys => BOM.mkApply(lookup(env, f), xs, ys)))
 	    | PT.Throw(k, args) =>
-		cvtSimpleExps (env, args, fn xs => BOM.E_Throw(lookup(env, k), xs))
+		cvtSimpleExps (env, args, fn xs => BOM.mkThrow(lookup(env, k), xs))
 	  (* end case *))
 
-    and cvtLambda (env, (f, params, rets, e)) = let
-	  val fnTy = Ty.T_Fun(List.map #2 params, List.map #2 rets)
-	  val f' = BOM.Var.new(f, fnTy)
+    and cvtLambda (env, (f, params, rets, tys, e), tyCon) = let
+	  val fnTy = tyCon(List.map #2 params, List.map #2 rets, tys)
+	  val f' = BOM.Var.new(Atom.toString f, fnTy)
 	  fun doBody env = let
 		val (envWParams, params') = cvtVarBinds (env, params)
 		val (envWParams, rets') = cvtVarBinds (envWParams, rets)
 		in
 		  BOM.FB{
 		      f = f', params = List.rev params',
-		      rets = List.rev rets', body = cvtExp (envWParams, e)
+		      exh = List.rev rets', body = cvtExp (envWParams, e)
 		    }
 		end
 	  in
@@ -234,7 +237,7 @@
 		cvtSimpleExp (env, e, fn x => let
 		  val tmp = newTmp(selectType(i, BOM.Var.typeOf x))
 		  in
-		    BOM.mkLet([tmp], BOM.E_Select(i, x), k tmp)
+		    BOM.mkStmt([tmp], BOM.E_Select(i, x), k tmp)
 		  end)
 	    | PT.Literal (Literal.Int x, optTy) => let
 		  val ty = (case optTy
@@ -243,7 +246,7 @@
 			(* end case *))
 		  val tmp = newTmp ty
 		  in
-		    BOM.mkLet([tmp], BOM.E_Const BOM.E_IConst (x, ty), k tmp)
+		    BOM.mkStmt([tmp], BOM.E_Const(BOM.E_IConst(x, ty)), k tmp)
 		  end
 	    | PT.Literal (Literal.Float x, optTy) => let
 		  val ty = (case optTy
@@ -252,25 +255,25 @@
 			(* end case *))
 		  val tmp = newTmp ty
 		  in
-		    BOM.mkLet([tmp], BOM.E_Const BOM.E_FConst (x, ty), k tmp)
+		    BOM.mkStmt([tmp], BOM.E_Const(BOM.E_FConst(x, ty)), k tmp)
 		  end
 	    | PT.Literal (Literal.String x, _) => let
 		  val tmp = newTmp Ty.T_Any
 		  in
-		    BOM.mkLet([tmp], BOM.E_Const BOM.E_SConst x, k tmp)
+		    BOM.mkStmt([tmp], BOM.E_Const(BOM.E_SConst x), k tmp)
 		  end
 
 	    | PT.Cast(ty, e) =>
 		cvtSimpleExp (env, e, fn x => let
 		  val tmp = newTmp ty
 		  in
-		    BOM.mkLet([tmp], BOM.E_Cast(ty, x), k tmp)
+		    BOM.mkStmt([tmp], BOM.E_Cast(ty, x), k tmp)
 		  end)
 	    | PT.Unwrap e =>
 		cvtSimpleExp (env, e, fn x => let
 		  val tmp = newTmp(unwrapType(BOM.Var.typeOf x))
 		  in
-		    BOM.mkLet([tmp], BOM.E_Unwrap x, k tmp)
+		    BOM.mkStmt([tmp], BOM.E_Unwrap x, k tmp)
 		  end)
 	    | PT.Prim(p, args) =>
 		cvtSimpleExps (env, args, fn xs => let
@@ -281,7 +284,7 @@
 			  | _ => raise Fail("arity mismatch for primop " ^ Atom.toString p)
 			(* end case *))
 		  in
-		    BOM.mkLet([lhs], BOM.E_Prim rhs, k lhs)
+		    BOM.mkStmt([lhs], BOM.E_Prim rhs, k lhs)
 		  end)
 	  (* end case *))
 

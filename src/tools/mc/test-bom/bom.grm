@@ -7,66 +7,66 @@
 %name BOM;
 
 %tokens
-    : KW_alloc		("alloc")
-    | KW_and		("and")
-    | KW_any		("any")
-    | KW_apply		("apply")
-    | KW_attribute	("__attribute__")
-    | KW_bool		("bool")
-    | KW_byte		("byte")
-    | KW_case		("case")
-    | KW_ccall		("ccall")
-    | KW_cont		("cont")
-    | KW_default	("default") 
-	| KW_dequeue    ("dequeue")
-	| KW_do         ("do")   
-    | KW_double		("double")
-    | KW_else		("else")
-    | KW_end		("end")
-	| KW_enqueue     ("engueue")
-    | KW_enum		("enum")
-    | KW_extern		("extern")
-    | KW_float		("float")
-    | KW_forward	("forward")
-    | KW_fun		("fun")
+	: KW_alloc	("alloc")
+	| KW_and	("and")
+	| KW_any	("any")
+	| KW_apply	("apply")
+	| KW_attribute	("__attribute__")
+	| KW_bool	("bool")
+	| KW_byte	("byte")
+	| KW_case	("case")
+	| KW_ccall	("ccall")
+	| KW_cont	("cont")
+	| KW_default	("default") 
+	| KW_dequeue	("dequeue")
+	| KW_do	("do")   
+	| KW_double	("double")
+	| KW_else	("else")
+	| KW_end	("end")
+	| KW_enqueue	("engueue")
+	| KW_enum	("enum")
+	| KW_extern	("extern")
+	| KW_float	("float")
+	| KW_forward	("forward")
+	| KW_fun	("fun")
 	| KW_host_vproc ("host_vproc")
-    | KW_if		("if")
-    | KW_int		("int")
-    | KW_let		("let")
-    | KW_long		("long")
-    | KW_module		("module")
-    | KW_of		("of")
-    | KW_pure		("pure")
-	| KW_run         ("run")
-    | KW_short		("short")
-	| KW_switch      ("switch")
-    | KW_then		("then")
-    | KW_throw		("throw")
-    | KW_unit		("unit")
-    | KW_unwrap		("unwrap")
-    | KW_vec128		("vec128")
-    | KW_void		("void")
-    | KW_vproc		("vproc")
-    | KW_wrap		("wrap")
-    | LP		("(")
-    | RP		(")")
-    | LB		("[")
-    | RB		("]")
-    | HASH		("#")
-    | STAR		("*")
-    | COMMA		(",")
-    | EQ		("=")
-    | COLON		(":")
-    | SEMI		(";")
-    | BAR		("|")
-    | WILD		("_")
-    | DARROW		("=>")
-    | ARROW		("->")
-    | ID of Atom.atom
-    | INT of IntInf.int
-    | FLOAT of FloatLit.float
-    | STRING of string
-    ;
+	| KW_if		("if")
+	| KW_int	("int")
+	| KW_let	("let")
+	| KW_long	("long")
+	| KW_module	("module")
+	| KW_of		("of")
+	| KW_pure	("pure")
+	| KW_run	("run")
+	| KW_short	("short")
+	| KW_switch	("switch")
+	| KW_then	("then")
+	| KW_throw	("throw")
+	| KW_unit	("unit")
+	| KW_unwrap	("unwrap")
+	| KW_vec128	("vec128")
+	| KW_void	("void")
+	| KW_vproc	("vproc")
+	| KW_wrap	("wrap")
+	| LP		("(")
+	| RP		(")")
+	| LB		("[")
+	| RB		("]")
+	| HASH		("#")
+	| STAR		("*")
+	| COMMA		(",")
+	| EQ		("=")
+	| COLON		(":")
+	| SEMI		(";")
+	| BAR		("|")
+	| WILD		("_")
+	| DARROW	("=>")
+	| ARROW		("->")
+	| ID of Atom.atom
+	| INT of IntInf.int
+	| FLOAT of FloatLit.float
+	| STRING of string
+	;
 
 %defs(
     structure PT = BOMPT
@@ -163,8 +163,8 @@ Exp
 	| "cont" CLambda Exp				=> (PT.Cont(CLambda, Exp))
 	| "if" SimpleExp "then" Exp "else" Exp		=> (PT.If(SimpleExp, Exp1, Exp2))
         | "case" SimpleExp "of" Rules Default? "end"	=> (PT.Case(SimpleExp, Rules, Default))
-	| "apply" ID Args				=> (PT.Apply(ID, Args))
-	| "throw" ID Args				=> (PT.Throw(ID, Args))
+	| "apply" ID "(" Args ";" Args ")"		=> (PT.Apply(ID, Args1, Args2))
+	| "throw" ID "(" Args ")"			=> (PT.Throw(ID, Args))
 	;
 
 LHS
@@ -175,22 +175,22 @@ LHS
 RHS
 	: Exp				=> (PT.Exp Exp)
 	| SimpleExp			=> (PT.SimpleExp SimpleExp)
-	| "alloc" Args			=> (PT.Alloc Args)
+	| "alloc" "(" Args ")"		=> (PT.Alloc Args)
 	| "wrap" "(" SimpleExp ")"	=> (PT.Wrap SimpleExp)
-	| "ccall" ID Args		=> (PT.CCall(ID, Args))
+	| "ccall" ID "(" Args ")"	=> (PT.CCall(ID, Args))
 	;
 
 SimpleExp
 	: ID				=> (PT.Var ID)
 	| "#" INT "(" SimpleExp ")"	=> (PT.Select(Int.fromLarge INT, SimpleExp))
 	| "unwrap" "(" SimpleExp ")"	=> (PT.Unwrap SimpleExp)
-	| ID Args			=> (PT.Prim(ID, Args))
+	| ID "(" Args ")"		=> (PT.Prim(ID, Args))
 	| "(" Type ")" SimpleExp	=> (PT.Cast(Type, SimpleExp))
 	| Literal			=> (PT.Literal(Literal))
 	;
 
 Args
-	: "(" (SimpleExp ("," SimpleExp)* )? ")"	=> (flatten SR)
+	: (SimpleExp ("," SimpleExp)* )?	=> (flatten SR)
 	;
 
 Rules
