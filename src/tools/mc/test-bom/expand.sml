@@ -110,11 +110,11 @@
 	    | SOME x' => x'
 	  (* end case *))
 
-    fun newTmp ty = BOM.Var.new(Atom.atom "_t", ty)
+    fun newTmp ty = BOM.Var.new("_t", ty)
     
     fun cvtVarBinds (env, vars) = let
 	  fun f ((x, ty), (env, xs)) = let
-		val x' = BOM.Var.new(x, ty)
+		val x' = BOM.Var.new(Atom.toString x, ty)
 		in
 		  (AtomMap.insert(env, x, x'), x'::xs)
 		end
@@ -130,17 +130,33 @@
 		in
 		  case rhs
 		   of PT.SimpleExp e => (case e
-			 of PT.Var x => BOM.mkLet(lhs', BOM.Var[lookup (env, x)], e')
+			 of PT.Var x => BOM.mkStmt(lhs', BOM.E_Var[lookup (env, x)], e')
 			  | PT.Select(i, arg) =>
 			      cvtSimpleExp (env, arg, fn x =>
-				BOM.mkExp (BOM.mkLet(lhs', BOM.Select(i, x), e')))
+				BOM.mkStmt(lhs', BOM.E_Select(i, x), e'))
 			  | PT.Cast(ty, arg) =>
 			      cvtSimpleExp (env, arg, fn x =>
-				BOM.mkExp (BOM.mkLet(lhs', BOM.Cast(ty, x), e')))
-			  | PT.Literal(lit, _) => BOM.mkExp (BOM.mkLet(lhs', BOM.Literal lit, e'))
+				BOM.mkStmt(lhs', BOM.E_Cast(ty, x), e'))
+	                  | PT.Literal (Literal.Int x, optTy) => let
+		              val ty = (case optTy
+			        of NONE => Ty.T_Any
+			         | SOME rTy => Ty.T_Raw rTy
+			        (* end case *))
+		              in
+		                BOM.mkStmt(lhs', BOM.E_Const (BOM.E_IConst (x, ty)), e')
+		              end
+	                  | PT.Literal (Literal.String x, _) => BOM.mkStmt(lhs', BOM.E_Const (BOM.E_SConst x), e')
+	                  | PT.Literal (Literal.Float x, optTy) => let
+		              val ty = (case optTy
+			      of NONE => Ty.T_Any
+			       | SOME rTy => Ty.T_Raw rTy
+			      (* end case *))
+		            in
+		              BOM.mkStmt(lhs', BOM.E_Const (BOM.E_FConst (x, ty)), e')
+		            end
 			  | PT.Unwrap arg =>
 			      cvtSimpleExp (env, arg, fn x =>
-				BOM.mkExp (BOM.mkLet(lhs', BOM.Unwrap x, e')))
+				BOM.mkStmt(lhs', BOM.E_Unwrap x, e'))
 			  | PT.Prim(p, args) =>
 			      cvtSimpleExps (env, args, fn xs => let
 				val rhs = (case (findPrim p, xs)
@@ -150,16 +166,16 @@
 					| _ => raise Fail("arity mismatch for primop " ^ Atom.toString p)
 				      (* end case *))
 				in
-				  BOM.mkExp (BOM.mkLet(lhs', BOM.Prim rhs, e'))
+				  BOM.mkStmt(lhs', BOM.E_Prim rhs, e')
 				end)
 			(* end case *))
 		    | PT.Alloc args =>
-			cvtSimpleExps (env, args, fn xs => BOM.mkExp (BOM.mkLet(lhs', BOM.Alloc xs, e')))
+			cvtSimpleExps (env, args, fn xs => BOM.mkStmt(lhs', BOM.E_Alloc xs, e'))
 		    | PT.Wrap arg =>
-			cvtSimpleExp (env, arg, fn x => BOM.mkExp (BOM.mkLet(lhs', BOM.Wrap x, e')))
+			cvtSimpleExp (env, arg, fn x => BOM.mkStmt(lhs', BOM.E_Wrap x, e'))
 		    | PT.CCall(f, args) =>
 			cvtSimpleExps (env, args, fn xs =>
-			  BOM.mkExp (BOM.mkLet(lhs', BOM.CCall(lookup(env, f), xs), e')))
+			  BOM.mkStmt(lhs', BOM.E_CCall(lookup(env, f), xs), e'))
 		  (* end case *)
 		end
 	    | PT.Fun(fbs, e) => let
@@ -169,33 +185,31 @@
 			  (env'', cvt::cvtBodies)
 			end
 		val (envWFBs, cvtBodies) = List.foldl f (env, []) fbs
-		in
-		  BOM.mkExp (
-		    BOM.mkFun(
-		      List.foldl (fn (cvt, fbs) => cvt envWFBs :: fbs) [] cvtBodies,
-		      cvtExp (envWFBs, e)))
+		in		 
+		  BOM.mkFun(
+		    List.foldl (fn (cvt, fbs) => cvt envWFBs :: fbs) [] cvtBodies,
+		    cvtExp (envWFBs, e))
 		end
 	    | PT.Cont(fb, e) => let
 	      (* NOTE: continuations are permitted to be recursive *)
 		val (env', cvtBody) = cvtLambda(env, fb, Ty.T_Cont)
 		in
-		  BOM.mkExp (BOM.mkCont(cvtBody env', cvtExp(env', e)))
+		  BOM.mkCont(cvtBody env', cvtExp(env', e))
 		end
 	    | PT.If(e1, e2, e3) =>
-		cvtSimpleExp (env, e1, fn x => BOM.mkExp (BOM.If(x, cvtExp(env, e2), cvtExp(env, e3))))
+		cvtSimpleExp (env, e1, fn x => BOM.E_If(x, cvtExp(env, e2), cvtExp(env, e3)))
 	    | PT.Case(arg, e1, e2) =>
-	        cvtSimpleExp (env, arg, fn x => BOM.mkExp (BOM.If(x, cvtExp(env, e1), cvtExp(env, e2))))
+	        cvtSimpleExp (env, arg, fn x => BOM.E_If(x, cvtExp(env, e1), cvtExp(env, e2)))
 	    | PT.Switch(arg, cases, dflt) => 
                 cvtSimpleExp (env, arg, fn arg =>
-		  BOM.mkExp (
-                    BOM.Switch (
+                    BOM.E_Case (
 		      arg, 
                       List.map (fn (i,e) => (i, cvtExp(env,e))) cases,
-                      case dflt of NONE => NONE | SOME e => SOME (cvtExp(env, e)))))
+                      case dflt of NONE => NONE | SOME e => SOME (cvtExp(env, e))))
 	    | PT.Apply(f, args) =>
-		cvtSimpleExps (env, args, fn xs => BOM.mkExp (BOM.Apply(lookup(env, f), xs)))
+		cvtSimpleExps (env, args, fn xs => BOM.E_Apply(lookup(env, f), xs))
 	    | PT.Throw(k, args) =>
-		cvtSimpleExps (env, args, fn xs => BOM.mkExp (BOM.Throw(lookup(env, k), xs)))
+		cvtSimpleExps (env, args, fn xs => BOM.E_Throw(lookup(env, k), xs))
 	  (* end case *))
 
     and cvtLambda (env, (f, params, rets, e)) = let
@@ -220,28 +234,43 @@
 		cvtSimpleExp (env, e, fn x => let
 		  val tmp = newTmp(selectType(i, BOM.Var.typeOf x))
 		  in
-		    CPS.mkExp (BOM.mkLet([tmp], BOM.Select(i, x), k tmp))
+		    BOM.mkLet([tmp], BOM.E_Select(i, x), k tmp)
 		  end)
-	    | PT.Literal (lit, optTy) => let
+	    | PT.Literal (Literal.Int x, optTy) => let
 		  val ty = (case optTy
 			 of NONE => Ty.T_Any
 			  | SOME rTy => Ty.T_Raw rTy
 			(* end case *))
 		  val tmp = newTmp ty
 		  in
-		    BOM.mkExp (BOM.mkLet([tmp], BOM.Literal lit, k tmp))
+		    BOM.mkLet([tmp], BOM.E_Const BOM.E_IConst (x, ty), k tmp)
 		  end
+	    | PT.Literal (Literal.Float x, optTy) => let
+		  val ty = (case optTy
+			 of NONE => Ty.T_Any
+			  | SOME rTy => Ty.T_Raw rTy
+			(* end case *))
+		  val tmp = newTmp ty
+		  in
+		    BOM.mkLet([tmp], BOM.E_Const BOM.E_FConst (x, ty), k tmp)
+		  end
+	    | PT.Literal (Literal.String x, _) => let
+		  val tmp = newTmp Ty.T_Any
+		  in
+		    BOM.mkLet([tmp], BOM.E_Const BOM.E_SConst x, k tmp)
+		  end
+
 	    | PT.Cast(ty, e) =>
 		cvtSimpleExp (env, e, fn x => let
 		  val tmp = newTmp ty
 		  in
-		    BOM.mkExp (BOM.mkLet([tmp], BOM.Cast(ty, x), k tmp))
+		    BOM.mkLet([tmp], BOM.E_Cast(ty, x), k tmp)
 		  end)
 	    | PT.Unwrap e =>
 		cvtSimpleExp (env, e, fn x => let
 		  val tmp = newTmp(unwrapType(BOM.Var.typeOf x))
 		  in
-		    BOM.mkExp (BOM.mkLet([tmp], BOM.Unwrap x, k tmp))
+		    BOM.mkLet([tmp], BOM.E_Unwrap x, k tmp)
 		  end)
 	    | PT.Prim(p, args) =>
 		cvtSimpleExps (env, args, fn xs => let
@@ -252,7 +281,7 @@
 			  | _ => raise Fail("arity mismatch for primop " ^ Atom.toString p)
 			(* end case *))
 		  in
-		    BOM.mkExp (BOM.mkLet([lhs], BOM.Prim rhs, k lhs))
+		    BOM.mkLet([lhs], BOM.E_Prim rhs, k lhs)
 		  end)
 	  (* end case *))
 
@@ -266,7 +295,7 @@
    
     fun cvtModule (PT.MODULE{name, externs, body}) = let
 	  fun doCFun (CFunctions.CFun{var, name, retTy, argTys, attrs}, (cfs, env)) = let
-		val f = BOM.Var.new(var, Ty.T_CFun(CFunctions.CProto(retTy, argTys, attrs)))
+		val f = BOM.Var.new(Atom.toString var, Ty.T_CFun(CFunctions.CProto(retTy, argTys, attrs)))
 		in (
 		  BOM.mkCFun{var=f, name=name, retTy=retTy, argTys=argTys, attrs=attrs}::cfs,
 		  AtomMap.insert(env, var, f)
