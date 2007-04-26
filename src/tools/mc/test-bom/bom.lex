@@ -145,6 +145,7 @@
 <INITIAL>":"		=> (T.COLON);
 <INITIAL>";"		=> (T.SEMI);
 <INITIAL>{id}		=> (idToken yytext);
+<INITIAL>"@"{id}	=> (T.HLOP(Atom.atom(String.extract(yytext, 1, NONE))))
 <INITIAL>[~\045]?{num}	=> (T.INT(valOf (IntInf.fromString yytext)));
 <INITIAL>[~\045]?{num}"."{num}([eE][+~\045]?{num})?
 			=> (mkFloat yysubstr);

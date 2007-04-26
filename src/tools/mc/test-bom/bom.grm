@@ -63,6 +63,7 @@
 	| DARROW	("=>")
 	| ARROW		("->")
 	| ID of Atom.atom
+	| HLOP of Atom.atom
 	| INT of IntInf.int
 	| FLOAT of FloatLit.float
 	| STRING of string
