@@ -182,8 +182,8 @@ FunDef
 	;
 
 Exp
-	: ConstraintExp
-		=> (ConstraintExp)
+	: OrelseExp
+		=> (OrelseExp)
 	| "if" Exp "then" Exp "else" Exp
 		=> (markExp (FULL_SPAN, PT.IfExp(Exp1, Exp2, Exp3)))
 	| "spawn" Exp
@@ -193,8 +193,8 @@ Exp
 	;
 
 ClosedExp
-	: ConstraintExp
-		=> (ConstraintExp)
+	: OrelseExp
+		=> (OrelseExp)
 	| "if" Exp "then" Exp "else" ClosedExp
 		=> (markExp (FULL_SPAN, PT.IfExp(Exp1, Exp2, ClosedExp)))
 	| "spawn" ClosedExp
@@ -208,22 +208,22 @@ MatchRules
 		=> ([markMatch (FULL_SPAN, PT.Match(Pat, Exp))])
 	;
 
-ConstraintExp
-	: AndalsoExp (":" Type)?
-		=> (case SR
-		     of SOME ty => markExp (FULL_SPAN, PT.ConstraintExp(AndalsoExp, ty))
-		      | NONE => AndalsoExp
-		    (* end case *))
+OrelseExp
+	: AndalsoExp ("orelse" AndalsoExp)*
+		=> (markExp (FULL_SPAN, mkCondExp PT.OrElseExp (AndalsoExp, SR)))
 	;
 
 AndalsoExp
-	: OrelseExp ("andalso" OrelseExp)*
-		=> (markExp (FULL_SPAN, mkCondExp PT.AndAlsoExp (OrelseExp, SR)))
+	: ConstraintExp ("andalso" ConstraintExp)*
+		=> (markExp (FULL_SPAN, mkCondExp PT.AndAlsoExp (ConstraintExp, SR)))
 	;
 
-OrelseExp
-	: RExp ("orelse" RExp)*
-		=> (markExp (FULL_SPAN, mkCondExp PT.OrElseExp (RExp, SR)))
+ConstraintExp
+	: RExp (":" Type)?
+		=> (case SR
+		     of SOME ty => markExp (FULL_SPAN, PT.ConstraintExp(RExp, ty))
+		      | NONE => RExp
+		    (* end case *))
 	;
 
 RExp
