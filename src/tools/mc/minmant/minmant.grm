@@ -274,8 +274,8 @@ AtomicExp
 	;
 
 PArrayBody
-	: optCommaExps		=> (fn e => markExp (FULL_SPAN, PT.PListExp (optCommaExps e)))
-	| "to" Exp "by" Exp	=> (fn e => markExp (FULL_SPAN, PT.RangeExp (e, Exp1, Exp2)))
+	: optCommaExps		=> (fn e => markExp (FULL_SPAN, PT.PListExp(optCommaExps e)))
+	| "to" Exp ("by" Exp)?	=> (fn e => markExp (FULL_SPAN, PT.RangeExp(e, Exp, SR)))
 	| "|" PBind ("," PBind)* ("where" Exp)?
 				=> (fn e => markExp (FULL_SPAN, PT.ComprehendExp (e, PBind :: SR1, SR2)))
 	;
