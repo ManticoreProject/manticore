@@ -269,8 +269,8 @@ AtomicExp
 	| "[|" "|]"		=> (markExp (FULL_SPAN, PT.PListExp[]))
 	| "[|" Exp PArrayBody "|]"
 				=> (markExp (FULL_SPAN, PArrayBody Exp))
-	| "let" ValueDecl+ "in" Exp (";" Exp)* "end"
-		=> (markExp (FULL_SPAN, PT.LetExp(ValueDecl, if null SR then Exp else PT.SeqExp(Exp::SR))))
+	| "let" (ValueDecl ";"? => (ValueDecl))+ "in" Exp (";" Exp)* "end"
+		=> (markExp (FULL_SPAN, PT.LetExp(SR1, if null SR2 then Exp else PT.SeqExp(Exp::SR2))))
 	;
 
 PArrayBody
