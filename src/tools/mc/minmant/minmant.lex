@@ -132,6 +132,7 @@
 <INITIAL> "+"	=> (T.PLUS);
 <INITIAL> "-"	=> (T.MINUS);
 <INITIAL> "*"	=> (T.TIMES);
+<INITIAL> "/"	=> (T.SLASH);
 <INITIAL> "="	=> (T.EQ);
 <INITIAL> "~"	=> (T.TILDE);
 <INITIAL> ","	=> (T.COMMA);

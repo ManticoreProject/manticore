@@ -45,6 +45,7 @@
     | PLUS		("+")
     | MINUS		("-")
     | TIMES		("*")
+    | SLASH		("/")
     | EQ		("=")
     | TILDE		("~")
     | COMMA		(",")
@@ -112,6 +113,11 @@
  *)
   fun mkApply (e, []) = e
     | mkApply (e, e'::r) = mkApply (PT.ApplyExp(e, e'), r)
+
+(* construct application patterns for right-associative binary operators *)
+  fun mkRBinPat (e, []) = e
+    | mkRBinPat (e, [(sp, id, e')]) = mark PT.MarkPat (sp, PT.BinaryPat(e, id, e'))
+    | mkRBinPat (e, (sp, id, e')::r) = mark PT.MarkPat (sp, PT.BinaryPat(e, id, mkRBinPat(e', r)))
 );
 
 Program
@@ -170,15 +176,15 @@ ConsDecl
 	;
 
 ValueDecl
-	: "val" TuplePat "=" Exp
-		=> (mark PT.MarkVDecl (KW_val_SPAN, PT.ValVDecl(TuplePat, Exp)))
+	: "val" Pat "=" Exp
+		=> (mark PT.MarkVDecl (KW_val_SPAN, PT.ValVDecl(Pat, Exp)))
 	| "fun" FunDef ("and" FunDef)*
 		=> (mark PT.MarkVDecl (KW_fun_SPAN, PT.FunVDecl(FunDef :: SR)))
 	;
 
 FunDef
-	: NAME TuplePat "=" Exp
-		=> (mark PT.MarkFunct (FULL_SPAN, PT.Funct(NAME, TuplePat, Exp)))
+	: NAME AtomicPat "=" Exp
+		=> (mark PT.MarkFunct (FULL_SPAN, PT.Funct(NAME, AtomicPat, Exp)))
 	;
 
 Exp
@@ -242,7 +248,7 @@ AExp
 	;
 
 MExp
-	: ApplyExp (( "*" => (Op.times) | "div" => (Op.div) | "mod" => (Op.mod) ) ApplyExp => (SR, ApplyExp))*
+	: ApplyExp (( "*" => (Op.times) | "div" => (Op.div) | "mod" => (Op.mod) | "/" => (Op.fdiv)) ApplyExp)*
 		=> (markExp (FULL_SPAN, mkLBinExp(ApplyExp, SR)))
 	;
 
@@ -290,24 +296,32 @@ PBind
 	;
 
 Pat
-	: NAME TuplePat			=> (markPat (FULL_SPAN, PT.ConPat(NAME, TuplePat)))
-	| TuplePat			=> (TuplePat)
-	| VarPat "::" VarPat		=> (markPat (FULL_SPAN, PT.ConPat(Op.listCons, PT.TuplePat[VarPat1, VarPat2])))
-	| INT				=> (markPat (FULL_SPAN, PT.ConstPat(PT.IntLit INT)))
-	| FLOAT				=> (markPat (FULL_SPAN, PT.ConstPat(PT.FltLit FLOAT)))
-	| STRING			=> (markPat (FULL_SPAN, PT.ConstPat(PT.StrLit STRING)))
+	: InfixPat (":" Type)?	=> (case SR
+				     of NONE => InfixPat
+				      | SOME ty => markPat (FULL_SPAN, PT.ConstraintPat(InfixPat, ty))
+				    (* end case *))
 	;
 
-TuplePat
-	: VarPat			=> (VarPat)
-	| "(" (VarPat ( "," VarPat )*)? ")"
+InfixPat
+	: ApplyPat ("::" ApplyPat => (FULL_SPAN, Op.listCons, ApplyPat))*
+		=> (markPat (FULL_SPAN, mkRBinPat (ApplyPat, SR)))
+	;
+
+ApplyPat
+	: AtomicPat		=> (AtomicPat)
+	| NAME AtomicPat	=> (markPat (FULL_SPAN, PT.ConPat(NAME, AtomicPat)))
+	;
+
+AtomicPat
+	: "(" (Pat ("," Pat)*)? ")"
 		=> (case SR
 		     of NONE => markPat (FULL_SPAN, PT.TuplePat[])
-		      | SOME (p, ps) => markPat (FULL_SPAN, PT.TuplePat(p::ps))
+		      | SOME(p, []) => p
+		      | SOME(p, ps) => markPat (FULL_SPAN, PT.TuplePat(p::ps))
 		    (* end case *))
-	;
-
-VarPat
-	: NAME		=> (markPat (FULL_SPAN, PT.IdPat NAME))
-	| "_"		=> (markPat (FULL_SPAN, PT.WildPat))
+	| NAME			=> (markPat (FULL_SPAN, PT.IdPat NAME))
+	| "_"			=> (markPat (FULL_SPAN, PT.WildPat))
+	| INT			=> (markPat (FULL_SPAN, PT.ConstPat(PT.IntLit INT)))
+	| FLOAT			=> (markPat (FULL_SPAN, PT.ConstPat(PT.FltLit FLOAT)))
+	| STRING		=> (markPat (FULL_SPAN, PT.ConstPat(PT.StrLit STRING)))
 	;

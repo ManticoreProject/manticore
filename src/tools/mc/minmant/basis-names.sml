@@ -30,6 +30,7 @@ structure BasisNames =
     val times =		Atom.atom "*"
     val div =		Atom.atom "div"
     val mod =		Atom.atom "mod"
+    val fdiv =		Atom.atom "/"
     val uMinus =	Atom.atom "~"
 
   (* pre-defined data constructors *)

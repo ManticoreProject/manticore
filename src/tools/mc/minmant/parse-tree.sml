@@ -83,6 +83,7 @@ structure ParseTree =
 
     and pat
       = MarkPat of pat mark
+      | BinaryPat of pat * conid * pat	(* infix pattern *)
       | ConPat of conid * pat
       | TuplePat of pat list
       | ConstPat of const
