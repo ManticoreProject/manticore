@@ -166,7 +166,9 @@ structure FlatClosure : sig
                 in
                   ([CFG.mkLabel(tmp, lab)], tmp)
                 end
-            | NONE => raise Fail("unbound variable " ^ CPS.Var.toString x)
+            | NONE => raise Fail(concat[
+		  "unbound variable ", CPS.Var.toString x, "; ep = ", CFG.Var.toString ep
+		])
           (* end case *))
 
     fun lookupVars (env, xs) = let
