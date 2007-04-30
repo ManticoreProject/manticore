@@ -15,7 +15,13 @@ structure Test =
 
     fun cvt file = let
 	  val bom = BOMParser.parse file
+	  val _ = (
+		prHdr "BOM after expand";
+		PrintBOM.print bom)
 	  val bom = BOMOpt.optimize bom
+	  val _ = (
+		prHdr "BOM after optimization";
+		PrintBOM.print bom)
 	  val cps = Convert.transform bom
 	  val _ = (
 		prHdr "CPS after convert";

@@ -26,7 +26,7 @@
       | Fun of (lambda list * exp)
       | Cont of (lambda * exp)
       | If of (simple_exp * exp * exp)
-      | Case of (simple_exp * (pat * exp) list * (default_pat * exp) option)
+      | Case of (simple_exp * (pat * exp) list * (var_pat * exp) option)
       | Apply of (var * simple_exp list * simple_exp list)
       | Throw of (var * simple_exp list)
       | Return of simple_exp list
@@ -47,12 +47,12 @@
       | Prim of (Atom.atom * simple_exp list)
 
     and pat
-      = DConPat of (Atom.atom * Atom.atom)
+      = DConPat of (Atom.atom * var_pat list)
       | ConstPat of (Literal.literal * raw_ty option)
 
-    and default_pat
+    and var_pat
       = WildPat
-      | VarPat of Atom.atom
+      | VarPat of (Atom.atom * ty)
 
     withtype lambda = (var * var_bind list * var_bind list * ty list * exp)
 

@@ -21,6 +21,8 @@ is
 
   bom.grm : ml-antlr
   bom.lex : ml-ulex
+
+  bom-basis.sml
   bom-parser.sml
   bom-pt.sml
   expand.sml

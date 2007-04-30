@@ -201,13 +201,18 @@ Rules
 	;
 
 Rule
-	: ID "(" ID ")" "=>" Exp	=> (PT.DConPat(ID1, ID2), Exp)
+	: ID "(" VarPat ("," VarPat)* ")" "=>" Exp
+					=> (PT.DConPat(ID1, VarPat::SR), Exp)
 	| Literal "=>" Exp		=> (PT.ConstPat Literal, Exp)
 	;
 
 Default
-	: "_" "=>" Exp			=> (PT.WildPat, Exp)
-	| ID "=>" Exp			=> (PT.VarPat ID, Exp)
+	: VarPat "=>" Exp		=> (VarPat, Exp)
+	;
+
+VarPat
+	: "_"				=> (PT.WildPat)
+	| ID ":" Type			=> (PT.VarPat(ID, Type))
 	;
 
 Literal
