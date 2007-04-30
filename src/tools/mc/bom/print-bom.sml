@@ -88,7 +88,7 @@ structure PrintBOM : sig
 		      prl["apply ", varUseToString f, " ("];
 		      prList' varUseToString args;
 		      pr "; ";
-		      prList' varUseToString args;
+		      prList' varUseToString rets;
 		      pr ")\n")
 		  | B.E_Throw(k, args) => (
 		      prl["throw ", varUseToString k, " "];
