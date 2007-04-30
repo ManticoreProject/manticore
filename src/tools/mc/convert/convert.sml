@@ -33,6 +33,7 @@ structure Convert : sig
 	    CTy.T_Fun(List.map cvtTy paramTys, retKTy :: List.map cvtTy exhTys)
 	  end
       | cvtTy (BTy.T_Cont tys) = CTy.contTy(List.map cvtTy tys)
+      | cvtTy (BTy.T_CFun cproto) = CTy.T_CFun cproto
       | cvtTy (BTy.T_TyCon _) = raise Fail "unexpected tycon"
 
   (* create a new CPS variable using the name of a BOM variable *)
@@ -66,6 +67,7 @@ structure Convert : sig
 	  (* end case *))
     fun lookupVars (env, xs) = List.map (fn x => lookup(env, x)) xs
 
+  (* CPS convert a lambda; note that we assume that the function name has already been converted *)
     fun cvtLambda (env, B.FB{f, params, exh, body}) = let
 	  val f' = lookup(env, f)
 	  val (params', env) = bindVars (env, params)
@@ -85,7 +87,7 @@ structure Convert : sig
 		in
 		  C.mkCont(
 		    C.FB{f=joinK', params=xs', rets=[], body=cvtTailE(env2, e2, retK')},
-		    cvtE (env, e1, tys', fn ys' => C.Throw(joinK', ys')))
+		    cvtTailE (env, e1, joinK'))
 		end
 	    | B.E_Stmt(xs, rhs, e) =>
 		cvtRHS (env, xs, rhs, fn env => cvtTailE(env, e, retK'))
@@ -115,11 +117,11 @@ structure Convert : sig
 	   of B.E_Let(xs, e1, e2) => let
 		val (xs', env2) = bindVars (env, xs)
 		val tys2' = List.map CV.typeOf xs'
-		val joinK' = CV.new("letJoinK", CTy.contTy tys')
+		val joinK' = CV.new("letJoinK", CTy.contTy tys2')
 		in
 		  C.mkCont(
 		    C.FB{f=joinK', params=xs', rets=[], body=cvtE(env2, e2, tys', k)},
-		    cvtE (env, e1, tys2', fn ys' => C.Throw(joinK', ys')))
+		    cvtTailE (env, e1, joinK'))
 		end
 	    | B.E_Stmt(xs, rhs, e) =>
 		cvtRHS (env, xs, rhs, fn env => cvtE(env, e, tys', k))
@@ -232,6 +234,7 @@ structure Convert : sig
 		  (CFunctions.CFun{var=var', name=name, retTy=retTy, argTys=argTys, attrs=attrs}::cfs, env)
 		end
 	  val (externs', env) = List.foldr cvtExtern ([], E.empty) externs
+	  val env = bindLambda (body, env)
 	  in
 	    C.MODULE{
 		name = name, externs = externs',
