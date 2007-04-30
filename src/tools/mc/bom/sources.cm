@@ -10,7 +10,7 @@ Library
   structure BOMTy
   structure BOMTyCon
   structure HLOp
-  (* structure PrintBOM *)
+  structure PrintBOM
 
 is
 
@@ -24,4 +24,4 @@ is
   bom-tycon.sml
   bom.sml
   hlop.sml
-  (* print-bom.sml *)
+  print-bom.sml

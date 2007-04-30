@@ -6,8 +6,8 @@
 
 structure PrintBOM : sig
 
-    val output : TextIO.outstream * B.module -> unit
-    val print : B.module -> unit
+    val output : TextIO.outstream * BOM.module -> unit
+    val print : BOM.module -> unit
 
   end = struct
 
@@ -46,14 +46,14 @@ structure PrintBOM : sig
 	  fun prLHS [] = pr "do "
 	    | prLHS [x] = (pr "let "; pr(varBindToString x); pr " = ")
 	    | prLHS xs = (pr "let "; prList varBindToString xs; pr " = ")
-	  fun prExp (i, e) = (
+	  fun prExp (i, B.E_Pt(_, e)) = (
 		indent i;
 		case e
 		 of B.E_Let(lhs, rhs, e) => (
-		      prLHS lhs; prExp(i+2, rhs);
+		      prLHS lhs; pr "\n"; prExp(i+2, rhs);
 		      prExp (i, e))
 		  | B.E_Stmt(xs, rhs, e) => (
-		      prLHS lh; prRHS rhs; pr "\n";
+		      prLHS xs; prRHS rhs; pr "\n";
 		      prExp (i, e))
 		  | B.E_Fun(fb::fbs, e) => (
 		      prLambda(i, "fun ", fb);
@@ -63,13 +63,21 @@ structure PrintBOM : sig
 		  | B.E_Cont(fb, e) => (prLambda(i, "cont ", fb); prExp (i, e))
 		  | B.E_If(x, e1, e2) => prIf(i, x, e1, e2)
 		  | B.E_Case(x, cases, dflt) => let
-		      fun prCase (c, e) = (
-			    indent (i+1);
-			    prl ["case ", Int.toString c, ":\n"];
-			    prExp (i+2, e))
+		      fun prCase ((pat, e), isFirst) = (
+			    indent i;
+			    if isFirst then pr " of " else pr "  | ";
+			    case pat
+			     of B.P_DCon(B.DCon{name, ...}, args) => (
+				  pr name;
+				  prList varBindToString args)
+			      | B.P_Const const => prConst const
+			    (* end case *);
+			    pr " =>\n";
+			    prExp (i+2, e);
+			    false)
 		      in
-			prl ["switch ", varUseToString x, "\n"];
-			List.app prCase cases;
+			prl ["case ", varUseToString x, "\n"];
+			ignore (List.foldl prCase true cases);
 			case dflt
 			 of NONE => ()
 			  | SOME e => (indent(i+1); pr "default:\n"; prExp(i+2, e))
@@ -86,34 +94,47 @@ structure PrintBOM : sig
 		      prl["throw ", varUseToString k, " "];
 		      prList varUseToString args;
 		      pr "\n")
-		  | B.E_Ret xs =>
-		      prl["run ", varUseToString act, " ", varUseToString fiber, "\n"]
+		  | B.E_Ret xs => (
+		      pr "return ";
+		      prList varUseToString xs;
+		      pr "\n")
 		(* end case *))
-	  and prRHS (B.Var ys) = prList varUseToString ys
-	    | prRHS (B.Enum w) = prl["enum(", Word.fmt StringCvt.DEC w, ")"]
-	    | prRHS (B.Cast(ty, y)) = prl["(", Ty.toString ty, ")", varUseToString y]
-	    | prRHS (B.Literal lit) = pr(Literal.toString lit)
-	    | prRHS (B.Select(i, y)) = prl ["#", Int.toString i, "(", varUseToString y, ")"]
-	    | prRHS (B.Alloc ys) = (pr "alloc "; prList varUseToString ys)
-	    | prRHS (B.Wrap y) = prl["wrap(", varUseToString y, ")"]
-	    | prRHS (B.Unwrap y) = prl["unwrap(", varUseToString y, ")"]
-	    | prRHS (B.Prim p) = pr (PrimUtil.fmt varUseToString p)
-	    | prRHS (B.CCall(f, args)) = (
+	  and prRHS (B.E_Const c) = prConst c
+	    | prRHS (B.E_Cast(ty, y)) = prl["(", Ty.toString ty, ")", varUseToString y]
+	    | prRHS (B.E_Select(i, y)) = prl ["#", Int.toString i, "(", varUseToString y, ")"]
+	    | prRHS (B.E_Alloc(_, ys)) = (pr "alloc "; prList varUseToString ys)
+	    | prRHS (B.E_Wrap y) = prl["wrap(", varUseToString y, ")"]
+	    | prRHS (B.E_Unwrap y) = prl["unwrap(", varUseToString y, ")"]
+	    | prRHS (B.E_Prim p) = pr (PrimUtil.fmt varUseToString p)
+(* E_DCon *)
+(* E_HLOp *)
+	    | prRHS (B.E_CCall(f, args)) = (
 		prl ["ccall ", varUseToString f, " "];
 		prList varUseToString args)
-	    | prRHS (B.Dequeue vp) = prl["dequeue(", varUseToString vp, ")"]
-	    | prRHS (B.Enqueue(vp, tid, fiber)) = prl[
+(* E_QItemAlloc *)
+(* E_QEnqueue *)
+(* E_QDequeue *)
+(* E_QEmpty *)
+(* E_AtomicQEnqueue *)
+(* E_AtomicQDequeue *)
+	    | prRHS (B.E_Dequeue vp) = prl["dequeue(", varUseToString vp, ")"]
+	    | prRHS (B.E_Enqueue(vp, tid, fiber)) = prl[
 		  "enqueue(", varUseToString vp, ",", varUseToString tid, ",",
 		  varUseToString fiber, ")"
 		]
-	    | prRHS (B.HostVProc) = pr "host_vproc()"
-	    | prRHS (B.VPLoad(offset, vp)) = prl [
+	    | prRHS (B.E_HostVProc) = pr "host_vproc()"
+	    | prRHS (B.E_VPLoad(offset, vp)) = prl [
 		  "load(", varUseToString vp, "+", IntInf.toString offset, ")"
 		]
-	    | prRHS (B.VPStore(offset, vp, x)) = prl [
+	    | prRHS (B.E_VPStore(offset, vp, x)) = prl [
 		  "store(", varUseToString vp, "+", IntInf.toString offset, ",",
 		  varUseToString x, ")"
 		]
+	  and prConst (B.E_EnumConst(w, ty)) = prl["enum(", Word.fmt StringCvt.DEC w, ")"]
+	    | prConst (B.E_IConst(i, ty)) = prl[IntegerLit.toString i, ":", Ty.toString ty]
+	    | prConst (B.E_SConst s) = prl["\"", String.toString s, "\""]
+	    | prConst (B.E_FConst(f, ty)) = prl[FloatLit.toString f, ":", Ty.toString ty]
+	    | prConst (B.E_BConst b) = pr(Bool.toString b)
 	  and prLambda (i, prefix, B.FB{f, params, exh, body}) = let
 		fun prParams params = prList' varBindToString params
 		in
@@ -128,7 +149,7 @@ structure PrintBOM : sig
 		  pr ") =\n";
 		  prExp (i+2, body)
 		end
-	  and prIf (i, x, e1, B.If(y, e2, e3)) = (
+	  and prIf (i, x, e1, B.E_Pt(_, B.E_If(y, e2, e3))) = (
 		prl ["if ", varUseToString x, " then\n"];
 		prExp(i+1, e1);
 		indent (i); pr "else "; prIf(i, y, e2, e3))
