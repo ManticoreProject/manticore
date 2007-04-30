@@ -27,9 +27,9 @@
       | Cont of (lambda * exp)
       | If of (simple_exp * exp * exp)
       | Case of (simple_exp * (pat * exp) list * (default_pat * exp) option)
-      | Switch of (simple_exp * (int * exp) list * exp option)
       | Apply of (var * simple_exp list * simple_exp list)
       | Throw of (var * simple_exp list)
+      | Return of simple_exp list
 
     and rhs
       = Exp of exp

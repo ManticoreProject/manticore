@@ -37,6 +37,7 @@
 	| KW_module	("module")
 	| KW_of		("of")
 	| KW_pure	("pure")
+        | KW_return	("return")
 	| KW_run	("run")
 	| KW_short	("short")
 	| KW_switch	("switch")
@@ -121,11 +122,11 @@ Lambda
 	;
 
 Params
-	: "(" (Param ("," Param)*)? ")"	=> (flatten SR)
+	: (Param ("," Param)* )?		=> (flatten SR)
 	;
 
 Param
-	: ID ":" Type	=> (ID, Type)
+	: ID ":" Type				=> (ID, Type)
 	;
 
 CLambda
@@ -166,11 +167,12 @@ Exp
         | "case" SimpleExp "of" Rules Default? "end"	=> (PT.Case(SimpleExp, Rules, Default))
 	| "apply" ID "(" Args ";" Args ")"		=> (PT.Apply(ID, Args1, Args2))
 	| "throw" ID "(" Args ")"			=> (PT.Throw(ID, Args))
+	| "return" "(" Args ")"				=> (PT.Return Args)
 	;
 
 LHS
-	: Param		=> ([Param])
-	| Params	=> (Params)
+	: Param				=> ([Param])
+	| "(" Params ")"		=> (Params)
 	;
 
 RHS

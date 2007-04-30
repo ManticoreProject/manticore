@@ -143,6 +143,7 @@
                     of Literal.Int x => BOM.P_Const (BOM.E_IConst(x, ty))
                      | Literal.String x => BOM.P_Const (BOM.E_SConst x)
                      | Literal.Float x => BOM.P_Const (BOM.E_FConst(x, ty))
+		     | _ => raise Fail "unsupported literal type in pattern"
                    (* end case *)
                  end
             (* end case *))
@@ -154,7 +155,8 @@
 		val e' = cvtExp(env', e)
 		in
 		  case rhs
-		   of PT.SimpleExp e => (case e
+		   of PT.Exp e => BOM.mkLet(lhs', cvtExp(env, e), e')
+		    | PT.SimpleExp e => (case e
 			 of PT.Var x => BOM.mkLet(lhs', BOM.mkRet[lookup (env, x)], e')
 			  | PT.Select(i, arg) =>
 			      cvtSimpleExp (env, arg, fn x =>
@@ -173,12 +175,13 @@
 	                  | PT.Literal (Literal.String x, _) => BOM.mkStmt(lhs', BOM.E_Const(BOM.E_SConst x), e')
 	                  | PT.Literal (Literal.Float x, optTy) => let
 		              val ty = (case optTy
-			      of NONE => Ty.T_Any
-			       | SOME rTy => Ty.T_Raw rTy
-			      (* end case *))
-		            in
-		              BOM.mkStmt(lhs', BOM.E_Const (BOM.E_FConst (x, ty)), e')
-		            end
+				     of NONE => Ty.T_Any
+				      | SOME rTy => Ty.T_Raw rTy
+				    (* end case *))
+		              in
+		        	BOM.mkStmt(lhs', BOM.E_Const (BOM.E_FConst (x, ty)), e')
+		              end
+			  | PT.Literal _ => raise Fail "unsupported literal type"
 			  | PT.Unwrap arg =>
 			      cvtSimpleExp (env, arg, fn x =>
 				BOM.mkStmt(lhs', BOM.E_Unwrap x, e'))
@@ -224,7 +227,6 @@
 		end
 	    | PT.If(e1, e2, e3) =>
 		cvtSimpleExp (env, e1, fn x => BOM.mkIf(x, cvtExp(env, e2), cvtExp(env, e3)))
-	    | PT.Case(arg, e1, e2) => raise Fail "unimplemented" (* FIXME *)
 	    | PT.Case(arg, cases, dflt) => 
                 cvtSimpleExp (env, arg, fn arg =>
                     BOM.mkCase(
@@ -237,6 +239,8 @@
 		    fn ys => BOM.mkApply(lookup(env, f), xs, ys)))
 	    | PT.Throw(k, args) =>
 		cvtSimpleExps (env, args, fn xs => BOM.mkThrow(lookup(env, k), xs))
+	    | PT.Return args =>
+		cvtSimpleExps (env, args, fn xs => BOM.mkRet xs)
 	  (* end case *))
 
     and cvtLambda (env, (f, params, rets, tys, e), tyCon) = let
@@ -263,7 +267,7 @@
 		  in
 		    BOM.mkStmt([tmp], BOM.E_Select(i, x), k tmp)
 		  end)
-	    | PT.Literal (Literal.Int x, optTy) => let
+	    | PT.Literal(Literal.Int x, optTy) => let
 		  val ty = (case optTy
 			 of NONE => Ty.T_Any
 			  | SOME rTy => Ty.T_Raw rTy
@@ -272,7 +276,7 @@
 		  in
 		    BOM.mkStmt([tmp], BOM.E_Const(BOM.E_IConst(x, ty)), k tmp)
 		  end
-	    | PT.Literal (Literal.Float x, optTy) => let
+	    | PT.Literal(Literal.Float x, optTy) => let
 		  val ty = (case optTy
 			 of NONE => Ty.T_Any
 			  | SOME rTy => Ty.T_Raw rTy
@@ -281,12 +285,12 @@
 		  in
 		    BOM.mkStmt([tmp], BOM.E_Const(BOM.E_FConst(x, ty)), k tmp)
 		  end
-	    | PT.Literal (Literal.String x, _) => let
+	    | PT.Literal(Literal.String x, _) => let
 		  val tmp = newTmp Ty.T_Any
 		  in
 		    BOM.mkStmt([tmp], BOM.E_Const(BOM.E_SConst x), k tmp)
 		  end
-
+	    | PT.Literal _ => raise Fail "unsupported literal type"
 	    | PT.Cast(ty, e) =>
 		cvtSimpleExp (env, e, fn x => let
 		  val tmp = newTmp ty

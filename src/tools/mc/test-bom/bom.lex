@@ -96,6 +96,7 @@
 		  ("long",	T.KW_long),
 		  ("module",	T.KW_module),
 		  ("pure",	T.KW_pure),
+		  ("return",	T.KW_return),
 		  ("run",	T.KW_run),
 		  ("short",	T.KW_short),
 		  ("switch",	T.KW_switch),
