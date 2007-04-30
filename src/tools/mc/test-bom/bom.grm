@@ -202,7 +202,7 @@ Rules
 
 Rule
 	: ID "(" VarPat ("," VarPat)* ")" "=>" Exp
-					=> (PT.DConPat(ID1, VarPat::SR), Exp)
+					=> (PT.DConPat(ID, VarPat::SR), Exp)
 	| Literal "=>" Exp		=> (PT.ConstPat Literal, Exp)
 	;
 

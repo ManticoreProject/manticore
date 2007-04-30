@@ -57,4 +57,3 @@
     withtype lambda = (var * var_bind list * var_bind list * ty list * exp)
 
   end
-  

@@ -125,11 +125,13 @@
  
     fun cvtPat pat = (case pat
            of PT.DConPat(ty, x) => let
+(* FIXME: Need to lookup the data constructor in the Basis environment *)
                 val dataCon = BOMTy.DCon{
-                  name = Atom.toString ty,
-                  stamp = Stamp.new (),
-                  rep = BOMTy.Transparent,
-                  argTy = []}
+                	name = Atom.toString ty,
+                	stamp = Stamp.new (),
+                	rep = BOMTy.Transparent,
+                	argTy = []
+		      }
                 in
                   BOM.P_DCon(dataCon, [])
                 end 
@@ -232,7 +234,8 @@
                     BOM.mkCase(
 		      arg, 
                       List.map (fn (pat,e) => (cvtPat pat, cvtExp(env,e))) cases,
-                      case dflt of NONE => NONE | SOME (_, e) => SOME (cvtExp(env, e))))
+(* FIXME: the default case can bind a variable!! *)
+                      case dflt of NONE => NONE | SOME(_, e) => SOME (cvtExp(env, e))))
 	    | PT.Apply(f, args, rets) =>
 		cvtSimpleExps (env, args,
 		  fn xs => cvtSimpleExps (env, rets,
