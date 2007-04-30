@@ -159,7 +159,7 @@
 		  case rhs
 		   of PT.Exp e => BOM.mkLet(lhs', cvtExp(env, e), e')
 		    | PT.SimpleExp e => (case e
-			 of PT.Var x => BOM.mkLet(lhs', BOM.mkRet[lookup (env, x)], e')
+			 of PT.Var x => BOM.mkLet(lhs', BOM.mkRet[lookup(env, x)], e')
 			  | PT.Select(i, arg) =>
 			      cvtSimpleExp (env, arg, fn x =>
 				BOM.mkStmt(lhs', BOM.E_Select(i, x), e'))
@@ -234,8 +234,11 @@
                     BOM.mkCase(
 		      arg, 
                       List.map (fn (pat,e) => (cvtPat pat, cvtExp(env,e))) cases,
-(* FIXME: the default case can bind a variable!! *)
-                      case dflt of NONE => NONE | SOME(_, e) => SOME (cvtExp(env, e))))
+                      case dflt
+		       of NONE => NONE
+			| SOME(PT.WildPat, e) => SOME (cvtExp(env, e))
+			| SOME(PT.VarPat(x, _), e) => SOME (cvtExp(AtomMap.insert(env, x, arg), e))
+		      (* end case *)))
 	    | PT.Apply(f, args, rets) =>
 		cvtSimpleExps (env, args,
 		  fn xs => cvtSimpleExps (env, rets,

@@ -7,7 +7,6 @@
 Library
 
   structure BOMParser
-  (* structure PrintBOM *)
 
 is
 

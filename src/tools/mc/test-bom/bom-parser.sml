@@ -8,6 +8,7 @@
 
 structure BOMParser : sig
 
+    val parseFile : string -> BOMPT.module option
     val parse : string -> BOM.module
 
   end = struct
