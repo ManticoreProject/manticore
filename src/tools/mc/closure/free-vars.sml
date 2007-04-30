@@ -115,7 +115,7 @@ structure FreeVars : sig
    *)
     and analFB (CPS.FB{f, params, rets, body}) = V.Set.difference (
 	  analExp (V.Set.empty, body),
-	  addVars(V.Set.empty, params))
+	  addVars (addVars(V.Set.empty, params), rets))
 
     fun analyze (CPS.MODULE{name, body, ...}) = let
 	  val fv = analFB body
