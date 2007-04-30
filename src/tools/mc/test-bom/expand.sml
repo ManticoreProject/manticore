@@ -122,6 +122,30 @@
 	  in
 	    List.foldl f (env, []) vars
 	  end
+ 
+    fun cvtPat pat = (case pat
+           of PT.DConPat(ty, x) => let
+                val dataCon = BOMTy.DCon{
+                  name = Atom.toString ty,
+                  stamp = Stamp.new (),
+                  rep = BOMTy.Transparent,
+                  argTy = []}
+                in
+                  BOM.P_DCon(dataCon, [])
+                end 
+            | PT.ConstPat (const, optTy) => let
+                val ty = (case optTy
+                  of NONE => Ty.T_Any
+                   | SOME rTy => Ty.T_Raw rTy
+                  (* end case *))
+                in 
+                  case const
+                    of Literal.Int x => BOM.P_Const (BOM.E_IConst(x, ty))
+                     | Literal.String x => BOM.P_Const (BOM.E_SConst x)
+                     | Literal.Float x => BOM.P_Const (BOM.E_FConst(x, ty))
+                   (* end case *)
+                 end
+            (* end case *))
 
     fun cvtExp (env, e) = (case e
 	   of PT.Let(lhs, rhs, e) => let
@@ -201,12 +225,12 @@
 	    | PT.If(e1, e2, e3) =>
 		cvtSimpleExp (env, e1, fn x => BOM.mkIf(x, cvtExp(env, e2), cvtExp(env, e3)))
 	    | PT.Case(arg, e1, e2) => raise Fail "unimplemented" (* FIXME *)
-	    | PT.Switch(arg, cases, dflt) => 
+	    | PT.Case(arg, cases, dflt) => 
                 cvtSimpleExp (env, arg, fn arg =>
-                    BOM.E_Case (
+                    BOM.mkCase(
 		      arg, 
-                      List.map (fn (i,e) => (i, cvtExp(env,e))) cases,
-                      case dflt of NONE => NONE | SOME e => SOME (cvtExp(env, e))))
+                      List.map (fn (pat,e) => (cvtPat pat, cvtExp(env,e))) cases,
+                      case dflt of NONE => NONE | SOME (_, e) => SOME (cvtExp(env, e))))
 	    | PT.Apply(f, args, rets) =>
 		cvtSimpleExps (env, args,
 		  fn xs => cvtSimpleExps (env, rets,
