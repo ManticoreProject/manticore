@@ -1,0 +1,7 @@
+module Hi
+  extern void print (void *); 
+  fun init (arg : any; exh : cont(any)) : int =
+      fun doit (arg : any; exh : cont(any)) : int =
+	let () = ccall print ("hello world\n\000")
+	return (0 : int)
+      apply doit (arg; exh)
