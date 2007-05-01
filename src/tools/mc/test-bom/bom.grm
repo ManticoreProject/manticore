@@ -146,8 +146,8 @@ Type
 	;
 
 Typelist
-    : (Type ("," Type)* )?  => (flatten SR)
-    ;
+	: (Type ("," Type)* )?  => (flatten SR)
+	;
 
 RawType
 	: "byte"	=> (PT.T_Byte)
