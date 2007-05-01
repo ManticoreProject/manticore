@@ -50,9 +50,8 @@ structure FreeVars : sig
 
   (* extend a set of free variables by the variables in a RHS *)
     fun fvOfRHS (fv, CPS.Var xs) = addVars(fv, xs)
-      | fvOfRHS (fv, CPS.Enum _) = fv
+      | fvOfRHS (fv, CPS.Const _) = fv
       | fvOfRHS (fv, CPS.Cast(_, y)) = addVar(fv, y)
-      | fvOfRHS (fv, CPS.Literal _) = fv
       | fvOfRHS (fv, CPS.Select(_, x)) = addVar(fv, x)
       | fvOfRHS (fv, CPS.Alloc xs) = addVars(fv, xs)
       | fvOfRHS (fv, CPS.Wrap x) = addVar(fv, x)

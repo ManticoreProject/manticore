@@ -41,14 +41,14 @@
     and simple_exp
       = Var of var
       | Select of (int * simple_exp)	(* select i'th field (zero-based) *)
-      | Literal of (Literal.literal * raw_ty option)
+      | Const of (Literal.literal * ty)
       | Cast of (ty * simple_exp)
       | Unwrap of simple_exp		(* unwrap value *)
       | Prim of (Atom.atom * simple_exp list)
 
     and pat
       = DConPat of (Atom.atom * var_pat list)
-      | ConstPat of (Literal.literal * raw_ty option)
+      | ConstPat of (Literal.literal * ty)
 
     and var_pat
       = WildPat

@@ -130,11 +130,9 @@ structure PrintBOM : sig
 		  "store(", varUseToString vp, "+", IntInf.toString offset, ",",
 		  varUseToString x, ")"
 		]
-	  and prConst (B.E_EnumConst(w, ty)) = prl["enum(", Word.fmt StringCvt.DEC w, ")"]
-	    | prConst (B.E_IConst(i, ty)) = prl[IntegerLit.toString i, ":", Ty.toString ty]
-	    | prConst (B.E_SConst s) = prl["\"", String.toString s, "\""]
-	    | prConst (B.E_FConst(f, ty)) = prl[FloatLit.toString f, ":", Ty.toString ty]
-	    | prConst (B.E_BConst b) = pr(Bool.toString b)
+	  and prConst (lit, ty) = prl [
+		  Literal.toString lit, ":", Ty.toString ty
+		]
 	  and prLambda (i, prefix, B.FB{f, params, exh, body}) = let
 		fun prParams params = prList' varBindToString params
 		in

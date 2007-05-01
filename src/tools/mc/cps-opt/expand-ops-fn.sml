@@ -62,9 +62,9 @@ functor ExpandOpsFn (Spec : TARGET_SPEC) : sig
 		([stk], CPS.VPLoad(Offsets.actionStk, vp)),
 		([item], CPS.Alloc[act, stk]),
 		([], CPS.VPStore(Offsets.actionStk, vp, item)),
-		([f], CPS.falseLit),
+		([f], CPS.falseRHS),
 		([], CPS.VPStore(Offsets.atomic, vp, f)),
-		([u], CPS.unitLit)
+		([u], CPS.unitRHS)
 	      ],
 	      CPS.Throw(fiber, [u]))
 	  end
@@ -77,7 +77,7 @@ functor ExpandOpsFn (Spec : TARGET_SPEC) : sig
 	  val act = var("act", Ty.contTy[Ty.T_Any])
 	  in
 	    mkLet([
-		([t], CPS.trueLit),
+		([t], CPS.trueRHS),
 		([], CPS.VPStore(Offsets.atomic, vp, t)),
 		([tos], CPS.VPLoad(Offsets.actionStk, vp)),
 		([rest], CPS.Select(1, tos)),
@@ -143,7 +143,7 @@ functor ExpandOpsFn (Spec : TARGET_SPEC) : sig
 			  CPS.Apply(loop, [arg'], [retK, exh])),
 			CPS.Throw(retK, [hd']))),
 		  mkLet([
-		      ([nil'], CPS.nilLit),
+		      ([nil'], CPS.nilRHS),
 		      ([arg], CPS.Alloc[tl, nil'])
 		    ],
 		    CPS.Apply(loop, [arg], [fastPath, exh])))
@@ -165,7 +165,7 @@ functor ExpandOpsFn (Spec : TARGET_SPEC) : sig
 		  CPS.Throw(fastPath, [hd]),
 		  mkLet([
 		      ([tl], CPS.VPLoad(Offsets.rdyQTl, vp)),
-		      ([nil'], CPS.nilLit),
+		      ([nil'], CPS.nilRHS),
 		      ([], CPS.VPStore(Offsets.rdyQTl, vp, nil')),
 		      ([isBoxed2], CPS.Prim(Prim.isBoxed tl))
 		    ],

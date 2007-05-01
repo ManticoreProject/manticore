@@ -9,7 +9,7 @@
 structure Literal : sig
 
     datatype literal
-      = Bool of bool
+      = Enum of word			(* tagged ints used for constants *)
       | Int of IntegerLit.integer	(* Int, Long, and Integer types *)
       | Float of FloatLit.float		(* Float and Double types *)
       | Char of UTF8.wchar
@@ -23,10 +23,18 @@ structure Literal : sig
 
     structure Tbl : MONO_HASH_TABLE where type Key.hash_key = literal
 
+  (* some standard constants *)
+    val unitLit : literal
+    val trueLit : literal
+    val falseLit : literal
+    val nilLit : literal		(* nil list *)
+    val noneLit : literal		(* NONE constructor *)
+    val stopLit : literal		(* STOP signal *)
+
   end = struct
 
     datatype literal
-      = Bool of bool
+      = Enum of word			(* tagged ints used for constants *)
       | Int of IntegerLit.integer	(* Int, Long, and Integer types *)
       | Float of FloatLit.float		(* Float and Double types *)
       | Char of UTF8.wchar
@@ -52,29 +60,26 @@ structure Literal : sig
     fun utf8ToStr s =
 	  concat(rev(UTF8.fold (fn (w, l) => wcharToStr w :: l) [] s))
 
-    fun toString (Bool true) = "True"
-      | toString (Bool false) = "False"
+    fun toString (Enum n) = concat["enum(", Word.fmt StringCvt.DEC n, ")"]
       | toString (Int i) = IntegerLit.toString i
       | toString (Float flt) = FloatLit.toString flt
       | toString (Char wc) = concat["'", wcharToStr wc, "'"]
       | toString (String s) = concat["\"", utf8ToStr s, "\""]
 
-    fun same (Bool b1, Bool b2) = (b1 = b2)
+    fun same (Enum e1, Enum e2) = (e1 = e2)
       | same (Int i1, Int i2) = IntegerLit.same(i1, i2)
       | same (Float f1, Float f2) = FloatLit.same(f1, f2)
       | same (Char c1, Char c2) = (c1 = c2)
       | same (String s1, String s2) = (s1 = s2)
       | same _ = false
 
-    fun compare (Bool false, Bool true) = LESS
-      | compare (Bool true, Bool false) = GREATER
-      | compare (Bool _, Bool _) = EQUAL
+    fun compare (Enum a, Enum b) = Word.compare(a, b)
       | compare (Int i1, Int i2) = IntegerLit.compare(i1, i2)
       | compare (Float f1, Float f2) = FloatLit.compare(f1, f2)
       | compare (Char c1, Char c2) = Word.compare(c1, c2)
       | compare (String s1, String s2) = String.compare(s1, s2)
-      | compare (Bool _, _) = LESS
-      | compare (_, Bool _) = GREATER
+      | compare (Enum _, _) = LESS
+      | compare (_, Enum _) = GREATER
       | compare (Int _, _) = LESS
       | compare (_, Int _) = GREATER
       | compare (Float _, _) = LESS
@@ -84,16 +89,14 @@ structure Literal : sig
 
   (* for hash codes, use the low-order 3 bits for a type code *)
     local
-      val unitCd = 0w1
-      val boolCd = 0w2
+      val enumCd = 0w2
       val intCd = 0w3
-      val floatCd = 0w4
-      val charCd = 0w5
-      val stringCd = 0w6
+      val floatCd = 0w5
+      val charCd = 0w7
+      val stringCd = 0w11
       fun h (hash, base) = Word.<<(hash, 0w3) + base
     in
-    fun hash (Bool false) = h(0w0, boolCd)
-      | hash (Bool true) = h(0w1, boolCd)
+    fun hash (Enum w) = h(w, enumCd)
       | hash (Int i) = h(IntegerLit.hash i, intCd)
       | hash (Float f) = h(FloatLit.hash f, floatCd)
       | hash (Char c) = h(c, charCd)
@@ -106,5 +109,13 @@ structure Literal : sig
 	val hashVal = hash
 	val sameKey = same
       end)
+
+  (* some standard constants *)
+    val unitLit = Enum 0w0
+    val trueLit = Enum 0w1
+    val falseLit = Enum 0w0
+    val nilLit = Enum 0w0
+    val noneLit = Enum 0w0
+    val stopLit = Enum 0w0
 
   end

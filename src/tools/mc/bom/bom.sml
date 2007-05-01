@@ -70,14 +70,6 @@ structure BOM =
       = P_DCon of data_con * var list
       | P_Const of const
 
-    and const
-      = E_EnumConst of word * ty	(* tagged enumeration constant *)
-(* NOTE: we use Literal.literal in the other IRs!! *)
-      | E_IConst of IntegerLit.integer * ty
-      | E_SConst of string
-      | E_FConst of FloatLit.float * ty
-      | E_BConst of bool
-
     and var_kind
       = VK_None
       | VK_Let of exp
@@ -89,7 +81,7 @@ structure BOM =
 
     withtype var = (var_kind, ty) VarRep.var_rep
          and prim = var Prim.prim
-
+	 and const = (Literal.literal * ty)
 
     datatype module = MODULE of {
 	name : Atom.atom,
@@ -120,10 +112,9 @@ structure BOM =
 	end
       end 
        
-    val trueLit = E_EnumConst(0w1, BOMTy.boolTy)
-    val falseLit = E_EnumConst(0w0, BOMTy.boolTy)
-    val unitLit = E_EnumConst(0w0, BOMTy.unitTy)
-    val nilLit = E_EnumConst(0w0, BOMTy.unitTy)		(* FIXME: sum types?? *)
+    val trueConst = (Literal.trueLit, BOMTy.boolTy)
+    val falseConst = (Literal.falseLit, BOMTy.boolTy)
+    val unitConst = (Literal.unitLit, BOMTy.unitTy)
 
 
 (* FIXME: need constructor functions *)

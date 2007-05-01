@@ -91,20 +91,20 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	  fun emitStrLit (s, l) = (
 	      defineLabel l;
 	      pseudoOp (P.asciz s) )
-	  fun genLit (ty, Literal.Int i) = MTy.EXP (ty, T.LI i)
-	    | genLit (ty, Literal.Bool true) = MTy.EXP (ty, T.LI Spec.trueRep)
-	    | genLit (ty, Literal.Bool false) = MTy.EXP (ty, T.LI Spec.falseRep)
-	    | genLit (fty, Literal.Float f) = 
-	      let val lbl = FloatLit.addLit (floatTbl, (fty, f))
-	      in
+	  fun genLit (ty, Literal.Enum c) =
+		MTy.EXP(ty, T.LI(T.I.fromWord (ty, Word.<<(c, 0w1) + 0w1)))
+	    | genList (ty, Literal.Int i) = MTy.EXP(ty, T.LI i)
+	    | genLit (fty, Literal.Float f) = let
+		val lbl = FloatLit.addLit (floatTbl, (fty, f))
+		in
 		  MTy.FEXP (fty, T.FLOAD (fty, T.LABEL lbl, ()))
-	      end
+		end
 	    | genLit (_, Literal.Char c) = fail "todo"
-	    | genLit (_, Literal.String s) = 
-	      let val lbl = StringLit.addLit (strTbl, s)
-	      in
+	    | genLit (_, Literal.String s) = let
+		val lbl = StringLit.addLit (strTbl, s)
+		in
 		  MTy.EXP (ty, T.LABEL lbl)
-	      end
+		end
 
 	  fun genStdTransfer {stms, liveOut} = (
 	      emitStms stms;
@@ -180,34 +180,34 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		  emitStms copyStms
 	      end (* bindExp *)
 
-	  and genExp frame =
-	      let fun gen (M.E_Var (lhs, rhs)) = 
+	  and genExp frame = let
+		fun gen (M.E_Var (lhs, rhs)) = 
 		      bindExp (lhs, map getDefOf rhs)
-		    | gen (M.E_Literal (lhs, lit)) = 
-		      bindExp ([lhs], [genLit (BE.Types.szOf (Var.typeOf lhs), lit)])
-		    | gen (M.E_Label (lhs, l)) = 
+		  | gen (M.E_Const(lhs, lit)) = 
+		      bindExp ([lhs], [genLit (BE.Types.szOf(Var.typeOf lhs), lit)])
+		  | gen (M.E_Label (lhs, l)) = 
 		      bindExp ([lhs], [mkExp (T.LABEL (BE.LabelCode.getName l))])
-		    | gen (M.E_Select (lhs, i, v)) =  
+		  | gen (M.E_Select (lhs, i, v)) =  
 		      bindExp ([lhs], [select (BE.Types.szOf (Var.typeOf lhs), 
 					       Var.typeOf v, i, defOf v)])
-		    | gen (M.E_Alloc (lhs, vs)) = 
+		  | gen (M.E_Alloc (lhs, vs)) = 
 		      let val {ptr, stms} = 
 			      BE.Alloc.genAlloc (map (fn v => (Var.typeOf v, getDefOf v)) vs)
 		      in 
 			  emitStms stms;
 			  bindExp ([lhs], [ptr])
 		      end
-		    | gen (M.E_Wrap (lhs, v)) = 
+		  | gen (M.E_Wrap (lhs, v)) = 
 		      let val {ptr, stms} = BE.Alloc.genWrap (Var.typeOf v, getDefOf v)
 		      in
 			  emitStms stms;
 			  bindExp ([lhs], [ptr])
 		      end
-		    | gen (M.E_Unwrap (lhs, v)) = 
+		  | gen (M.E_Unwrap (lhs, v)) = 
 		      bindExp ([lhs], [select (BE.Types.szOf (Var.typeOf lhs), 
 					       Var.typeOf v, 0, defOf v)])
-		    | gen (M.E_Prim (lhs, p)) = genPrim (lhs, p)
-		    | gen (M.E_CCall (lhs, f, args)) = 
+		  | gen (M.E_Prim (lhs, p)) = genPrim (lhs, p)
+		  | gen (M.E_CCall (lhs, f, args)) = 
 		      let val {stms, result} = 
 			      BE.Transfer.genCCall varDefTbl 
 				{frame=frame, lhs=lhs, f=f, args=args}
@@ -215,22 +215,19 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 			  emitStms stms;
 			  bindExp (lhs, result)
 		      end
-		    | gen (M.E_Enum (lhs, c)) = 
-		      bindExp ([lhs], [mkExp (T.LI (T.I.fromWord (ty, 
-				(Word.+ (Word.<< (c, 0w1), 0w1)))))])
-		    | gen (M.E_Cast (lhs, _, v)) = 
+		  | gen (M.E_Cast(lhs, _, v)) = 
 		      (* FIXME: should a cast affect anything here? *)
 		      bindExp ([lhs], [getDefOf v])
 		    (* vproc operations *)
-		    | gen (M.E_HostVProc lhs) =
+		  | gen (M.E_HostVProc lhs) =
 		      bindExp ([lhs], [BE.VProcOps.genHostVP])
-		    | gen (M.E_VPLoad (lhs, offset, vproc)) =
+		  | gen (M.E_VPLoad(lhs, offset, vproc)) =
 		      bindExp ([lhs], [BE.VProcOps.genVPLoad varDefTbl (offset, vproc)])
-		    | gen (M.E_VPStore (offset, vproc, v)) =
+		  | gen (M.E_VPStore(offset, vproc, v)) =
 		      emitStms [BE.VProcOps.genVPStore varDefTbl (offset, vproc, v)]
-	      in
+		in
 		  gen
-	      end (* genExp *)
+		end (* genExp *)
 	      
 
 	  fun genFunc (M.FUNC {lab, entry, body, exit}) =

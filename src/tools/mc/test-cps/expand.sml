@@ -135,7 +135,18 @@ structure Expand =
 			  | PT.Cast(ty, arg) =>
 			      cvtSimpleExp (env, arg, fn x =>
 				CPS.mkLet(lhs', CPS.Cast(ty, x), e'))
-			  | PT.Literal(lit, _) => CPS.mkLet(lhs', CPS.Literal lit, e')
+			  | PT.Literal(lit, optTy) => let
+			      val rhs = (case (lit, optTy)
+				     of (Literal.Enum w, _) => CPS.Const(lit, Ty.T_Enum w)
+				      | (Literal.Int _, SOME ty) => CPS.Const(lit, Ty.T_Wrap ty)
+			              | (Literal.Int _, NONE) => CPS.Const(lit, Ty.T_Wrap Ty.T_Int)
+				      | (Literal.Float _, SOME ty) => CPS.Const(lit, Ty.T_Wrap ty)
+			              | (Literal.Float _, NONE) => CPS.Const(lit, Ty.T_Wrap Ty.T_Float)
+			              | (Literal.String s, _) => CPS.Const(lit, Ty.T_Any)
+				    (* end case *))
+			      in
+				CPS.mkLet(lhs', rhs, e')
+			      end
 			  | PT.Unwrap arg =>
 			      cvtSimpleExp (env, arg, fn x =>
 				CPS.mkLet(lhs', CPS.Unwrap x, e'))
@@ -239,7 +250,7 @@ structure Expand =
 			(* end case *))
 		  val tmp = newTmp ty
 		  in
-		    CPS.mkLet([tmp], CPS.Literal lit, k tmp)
+		    CPS.mkLet([tmp], CPS.Const(lit, ty), k tmp)
 		  end
 	    | PT.Cast(ty, e) =>
 		cvtSimpleExp (env, e, fn x => let

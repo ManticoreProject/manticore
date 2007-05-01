@@ -18,6 +18,7 @@ structure CheckCFG : sig
     structure LSet = CFG.Label.Set
     structure LMap = CFG.Label.Map
     structure Ty = CFGTy
+    structure Lit = Literal
 
     exception CheckCFG
     fun error msg = (
@@ -152,16 +153,17 @@ structure CheckCFG : sig
                                               ")"];
 			      bindVars (env, lhs)
                             end
-			| CFG.E_Enum(x, w) => (
-                            case V.typeOf x of 
-                               CFGTy.T_Enum wt => if Word.<= (w, wt) 
-                                                     then () 
-                                                  else err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
-                                                           " is not ", Ty.toString (CFGTy.T_Enum wt)]
-                             | _ => error ["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
-                                           " is not enum"]
+			| CFG.E_Const(x, lit) => (
+			    case (V.typeOf x, lit)
+			     of (Ty.T_Enum wt, Lit.Enum w) => if Word.<= (w, wt) 
+                        	  then ()
+                                  else err[
+				      "variable ", V.toString x, ":", Ty.toString (V.typeOf x),
+                                      " is not ", Ty.toString (Ty.T_Enum wt)
+				    ]
+			      | _ => ()
 			    (* end case *);
-                            bindVar (env, x))
+			    bindVar (env, x))
 			| CFG.E_Cast(x, ty, y) => (
 			    chkVar (env, y);
                             if Ty.isValidCast (V.typeOf y, ty)
@@ -191,14 +193,13 @@ structure CheckCFG : sig
 				    ]
 			    (* end case *);
 			    bindVar (env, x))
-			| CFG.E_Literal(x, _) => bindVar (env, x)
 			| CFG.E_Select(x, i, y) => let
-			    val ty = CFGTy.selectTy(i, V.typeOf y)
+			    val ty = Ty.selectTy(i, V.typeOf y)
 				  handle Fail msg => (
 				    error["E_Select(", V.toString x, ", ", Int.toString i, ", ",
-					V.toString y, ":", CFGTy.toString(V.typeOf y), ")"
+					V.toString y, ":", Ty.toString(V.typeOf y), ")"
 				      ];
-				    CFGTy.T_Any)
+				    Ty.T_Any)
 			    in
 			      chkVar (env, y);
 (* FIXME: Selecting from a known closure into an T_Any environment pointer fails *)
@@ -214,8 +215,8 @@ structure CheckCFG : sig
 			| CFG.E_Alloc(x, ys) => (
 			    chkVars (env, ys);
                             case V.typeOf x
-                             of CFGTy.T_Tuple tys => ()
-                              | CFGTy.T_OpenTuple tys => ()
+                             of Ty.T_Tuple tys => ()
+                              | Ty.T_OpenTuple tys => ()
                               | _ => err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
                                          " does not match allocation"]
 			    (* end case *);
@@ -224,15 +225,15 @@ structure CheckCFG : sig
 			    chkVar (env, y);
                             let
                                val rty = case V.typeOf y of
-                                            CFGTy.T_Raw rty => rty
+                                            Ty.T_Raw rty => rty
                                           | _ => err["variable ", V.toString y, ":", Ty.toString (V.typeOf y),
                                                      " is not raw"]
                             in
                                case V.typeOf x of
-                                  CFGTy.T_Wrap rtx => if (rtx = rty)
+                                  Ty.T_Wrap rtx => if (rtx = rty)
                                          then ()
                                          else err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
-                                                  " is not ", Ty.toString (CFGTy.T_Wrap rty)]
+                                                  " is not ", Ty.toString (Ty.T_Wrap rty)]
                                 | _ => err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
                                            " is not wrap"]
                             end;
@@ -241,15 +242,15 @@ structure CheckCFG : sig
 			    chkVar (env, y);
                             let
                                val rty = case V.typeOf y of
-                                            CFGTy.T_Wrap rty => rty
+                                            Ty.T_Wrap rty => rty
                                           | _=> err["variable ", V.toString y, ":", Ty.toString (V.typeOf y),
                                                     " is not wrap"]
                             in
                                case V.typeOf x of
-                                  CFGTy.T_Raw rtx => if (rtx = rty)
+                                  Ty.T_Raw rtx => if (rtx = rty)
                                                         then ()
                                                      else err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
-                                                              " is not ", Ty.toString (CFGTy.T_Raw rty)]
+                                                              " is not ", Ty.toString (Ty.T_Raw rty)]
                                 | _ => err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
                                            " is not raw"]
                             end;
@@ -333,7 +334,7 @@ structure CheckCFG : sig
 			| CFG.Goto jmp => chkJump (env, jmp)
 			| CFG.If(x, j1, j2) => (
 			    chkVar (env, x);
-                            if Ty.equals (V.typeOf x, CFGTy.boolTy)
+                            if Ty.equals (V.typeOf x, Ty.boolTy)
                                then ()
                             else err["variable ", V.toString x, ":", Ty.toString (V.typeOf x), 
                                      " is not bool"]
@@ -344,14 +345,14 @@ structure CheckCFG : sig
                             let
                                val chkC =
                                   (case V.typeOf x of
-                                      CFGTy.T_Enum wt => 
+                                      Ty.T_Enum wt => 
                                          (fn w => if (wt <= w)
                                                      then ()
                                                   else err[
 						      "case ", Word.toString w, " is out of range for ",
                                                       "variable ", V.toString x, ":", Ty.toString (V.typeOf x)
 						    ])
-                                    | CFGTy.T_Raw rty => 
+                                    | Ty.T_Raw rty => 
                                          (case rty of
                                              RawTypes.T_Int => (fn _ => ())
                                            | _ => err["variable ", V.toString x, ":", Ty.toString (V.typeOf x), 

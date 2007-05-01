@@ -454,13 +454,12 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
                       in
                         ([CFG.mkVar(lhs, ys)] @ binds, env)
                       end
-		  | ((env, [x]), CPS.Enum w) => ([CFG.mkEnum(x, w)], env)
+		  | ((env, [x]), CPS.Const(lit, ty)) => ([CFG.mkConst(x, lit)], env)
 		  | ((env, [x]), CPS.Cast(ty, y)) => let
                       val (binds, y) = lookupVar(env, y)
                       in
                         ([CFG.mkCast(x, cvtTy ty, y)] @ binds, env)
                       end
-                  | ((env, [x]), CPS.Literal lit) => ([CFG.mkLiteral(x, lit)], env)
                   | ((env, [x]), CPS.Select(i, y)) => let
                       val (binds, y) = lookupVar(env, y)
                       in

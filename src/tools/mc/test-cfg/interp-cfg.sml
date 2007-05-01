@@ -270,13 +270,10 @@ raise Fail(concat[
 	    fun traceExp (env, exp) = (case exp
 		   of CFG.E_Var(lhs, rhs) =>
 			prl [lhs2str lhs, args2str env rhs, "\n"]
+		    | CFG.E_Const(x, lit) => 
+			prl [lhsV2str x, Literal.toString lit, "\n"]
 		    | CFG.E_Label(x, lab) =>
 			prl [lhsV2str x, "$", CFG.Label.toString lab, "\n"]
-		    | CFG.E_Literal(x, Literal.Bool b) => 
-			prl [lhsV2str x, Bool.toString b, "\n"]
-		    | CFG.E_Literal(x, Literal.Int n) => 
-			prl [lhsV2str x, IntInf.toString n, "\n"]
-		    | CFG.E_Literal(x, Literal.Float f) => raise Fail "float"
 		    | CFG.E_Select(x, i, y) => 
 			prl [lhsV2str x, "#", Int.toString i, "(", arg2str env y, ")", "\n"]
 		    | CFG.E_Alloc(x, []) => 
@@ -332,9 +329,9 @@ raise Fail(concat[
 			      (fn (x, y, env) => set(env, x, valueOf(env, y)))
 				env (lhs, rhs)
 			| CFG.E_Label(x, lab) => set(env, x, LABEL lab)
-			| CFG.E_Literal(x, Literal.Bool b) => set(env, x, fromBool b)
-			| CFG.E_Literal(x, Literal.Int n) => set(env, x, RAW(INT n))
-			| CFG.E_Literal(x, Literal.Float f) => raise Fail "float"
+			| CFG.E_Const(x, Literal.Enum n) => set(env, x, ENUM n)
+			| CFG.E_Const(x, Literal.Int n) => set(env, x, RAW(INT n))
+			| CFG.E_Const(x, Literal.Float f) => raise Fail "float"
 			| CFG.E_Select(x, i, y) => (case valueOf(env, y)
 			     of TUPLE vs => set(env, x, List.nth(vs, i))
 			      | _ => error["expected tuple"]

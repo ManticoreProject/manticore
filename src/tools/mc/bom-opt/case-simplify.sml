@@ -17,6 +17,7 @@ structure CaseSimplify : sig
     structure B = BOM
     structure BV = BOM.Var
     structure BTy = BOMTy
+    structure Lit = Literal
 
     fun numEnumsOfTyc (BTy.DataTyc{nNullary, ...}) = nNullary
     fun numConsOfTyc (BTy.DataTyc{cons, ...}) = List.length(!cons)
@@ -80,7 +81,7 @@ structure CaseSimplify : sig
 		      val (s, y) = retype (s, y, ty)
 		      in
 			B.mkStmts([
-			    ([tag'], B.E_Const(B.E_EnumConst(tag, tagTy))),
+			    ([tag'], B.E_Const(Lit.Enum tag, tagTy)),
 			    ([y], B.E_Alloc(ty, tag' :: xs))
 			  ], xformE(s, tys, e))
 		      end
@@ -108,7 +109,7 @@ structure CaseSimplify : sig
 	 * of literal patterns, and a list of data constructor patterns.
 	 *)
 	  fun classify ([], enums, lits, cons) = (enums, lits, cons)
-	    | classify ((B.P_Const(B.E_EnumConst(w, ty)), e)::rules, enums, lits, cons) =
+	    | classify ((B.P_Const(Lit.Enum w, ty), e)::rules, enums, lits, cons) =
 		classify (rules, (w, ty, e)::enums, lits, cons)
 	    | classify ((B.P_Const c, e)::rules, enums, lits, cons) =
 		classify (rules, enums, (c, e)::lits, cons)
@@ -137,7 +138,7 @@ structure CaseSimplify : sig
 			in
 			  B.mkStmts([
 			      ([tag'], B.E_Select(0, argument)),
-			      ([tmp], B.E_Const(B.E_EnumConst(tag, ty))),
+			      ([tmp], B.E_Const(Lit.Enum tag, ty)),
 			      ([eq], B.E_Prim(Prim.I32NEq(argument, tmp)))
 			    ],
 			    B.mkIf(eq, sel(ys, 1), dflt))
@@ -155,7 +156,7 @@ structure CaseSimplify : sig
 			    fun sel ([], _) = xformE(s, tys, e)
 			      | sel (y::ys, i) = B.mkStmt([y], B.E_Select(i, argument), sel(ys, i+1))
 			    in
-			      (B.P_Const(B.E_EnumConst(tag, BTy.T_Enum tag)), sel (ys, 1))
+			      (B.P_Const(Lit.Enum tag, BTy.T_Enum tag), sel (ys, 1))
 			    end
 			| _ => raise Fail "expected TaggedBox representation"
 		      (* end case *))
@@ -186,7 +187,7 @@ structure CaseSimplify : sig
 				val tmp = BV.new("t", ty)
 				in
 				  B.mkStmts([
-				      ([tmp], B.E_Const(B.E_EnumConst(w, ty))),
+				      ([tmp], B.E_Const(Lit.Enum w, ty)),
 				      ([isBoxed], B.E_Prim(Prim.I32NEq(argument, tmp)))
 				    ],
 				    B.mkIf(isBoxed, case1, e))
@@ -194,7 +195,7 @@ structure CaseSimplify : sig
 			      else B.mkStmt([isBoxed], B.E_Prim(Prim.isBoxed argument),
 				B.mkIf(isBoxed, case1,
 				  B.mkCase(argument,
-				    List.map (fn (w, ty, e) => (B.P_Const(B.E_EnumConst(w, ty)), e)) enums,
+				    List.map (fn (w, ty, e) => (B.P_Const(Lit.Enum w, ty), e)) enums,
 				    NONE)))
 			  end
 		      | (false, true) =>
@@ -202,7 +203,7 @@ structure CaseSimplify : sig
 			    B.mkIf(isBoxed,
 			      consCase (cons, NONE),
 			      B.mkCase(argument,
-				List.map (fn (w, ty, e) => (B.P_Const(B.E_EnumConst(w, ty)), e)) enums,
+				List.map (fn (w, ty, e) => (B.P_Const(Lit.Enum w, ty), e)) enums,
 				dflt)))
 		      | (false, false) => let
 			(* the default case is shared by both the boxed and unboxed
@@ -216,7 +217,7 @@ structure CaseSimplify : sig
 			      B.mkIf(isBoxed,
 				consCase (cons, SOME(B.mkThrow(join, []))),
 				B.mkCase(argument,
-				  List.map (fn (w, ty, e) => (B.P_Const(B.E_EnumConst(w, ty)), e)) enums,
+				  List.map (fn (w, ty, e) => (B.P_Const(Lit.Enum w, ty), e)) enums,
 				  SOME(B.mkThrow(join, []))))))
 			  end
 		    (* end case *)

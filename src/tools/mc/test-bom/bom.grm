@@ -19,11 +19,11 @@
 	| KW_cont	("cont")
 	| KW_default	("default") 
 	| KW_dequeue	("dequeue")
-	| KW_do	("do")   
+	| KW_do		("do")   
 	| KW_double	("double")
 	| KW_else	("else")
 	| KW_end	("end")
-	| KW_enqueue	("engueue")
+	| KW_enqueue	("enqueue")
 	| KW_enum	("enum")
 	| KW_extern	("extern")
 	| KW_float	("float")
@@ -76,6 +76,11 @@
 
     fun flatten NONE = []
       | flatten (SOME(x, xs)) = x::xs
+
+  (* default types for literals *)
+    val dfltIntTy = BOMTy.T_Raw(BOMTy.T_Int)
+    val dfltFloatTy = BOMTy.T_Raw(BOMTy.T_Float)
+    val dfltStringTy = BOMTy.T_Any (* FIXME *)
 );
 
 
@@ -189,7 +194,7 @@ SimpleExp
 	| "unwrap" "(" SimpleExp ")"	=> (PT.Unwrap SimpleExp)
 	| ID "(" Args ")"		=> (PT.Prim(ID, Args))
 	| "(" Type ")" SimpleExp	=> (PT.Cast(Type, SimpleExp))
-	| Literal			=> (PT.Literal(Literal))
+	| Literal			=> (PT.Const(Literal))
 	;
 
 Args
@@ -216,7 +221,16 @@ VarPat
 	;
 
 Literal
-	: INT (":" RawType)?		=> (Literal.Int INT, SR)
-	| FLOAT (":" RawType)?		=> (Literal.Float FLOAT, SR)
-	| STRING			=> (Literal.String STRING, NONE)
+	: INT (":" Type)?
+		=> (case SR
+		   of NONE => (Literal.Int INT, dfltIntTy)
+		    | SOME ty => (Literal.Int INT, ty)
+		  (* end case *))
+	| FLOAT (":" Type)?
+		=> (case SR
+		   of NONE => (Literal.Float FLOAT, dfltFloatTy)
+		    | SOME ty => (Literal.Float FLOAT, ty)
+		  (* end case *))
+	| STRING
+		=> (Literal.String STRING, dfltStringTy)
 	;

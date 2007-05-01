@@ -65,10 +65,9 @@ structure PrintCFG : sig
 		(* end case *);
 		case e
 		 of (CFG.E_Var(_, ys)) => prList varUseToString ys
-		  | (CFG.E_Enum(_, w)) => prl["enum(", Word.fmt StringCvt.DEC w, ")"]
+		  | (CFG.E_Const(_, lit)) => pr(Literal.toString lit)
 		  | (CFG.E_Cast(_, ty, y)) => prl["(", CFGTy.toString ty, ")", varUseToString y]
 		  | (CFG.E_Label(_, lab)) => pr(labelToString lab)
-		  | (CFG.E_Literal(_, lit)) => pr(Literal.toString lit)
 		  | (CFG.E_Select(_, i, x)) =>
 		      prl ["#", Int.toString i, " ", varUseToString x]
 		  | (CFG.E_Alloc(_, args)) => (pr "alloc"; prList varUseToString args)

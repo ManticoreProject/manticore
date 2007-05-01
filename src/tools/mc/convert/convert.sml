@@ -168,13 +168,7 @@ structure Convert : sig
 	  fun cv x = lookup(env, x)
 	  val (lhs', env2) = bindVars (env, lhs)
 	  val rhs' = (case rhs
-		 of B.E_Const c => (case c
-		       of B.E_EnumConst(w, _) => C.Enum w
-			| B.E_IConst(n, _) => C.Literal(Literal.Int n)
-			| B.E_SConst s => C.Literal(Literal.String s)
-			| B.E_FConst(f, _) => C.Literal(Literal.Float f)
-			| B.E_BConst b => C.Literal(Literal.Bool b)
-		      (* end case *))
+		 of B.E_Const(lit, ty) => C.Const(lit, cvtTy ty)
 		  | B.E_Cast(ty, x) => C.Cast(cvtTy ty, cv x)
 		  | B.E_Select(i, x) => C.Select(i, cv x)
 		  | B.E_Alloc(ty, args) => C.Alloc(List.map cv args)
@@ -206,7 +200,7 @@ structure Convert : sig
    * will just involve enumeration tags.
    *)
     and cvtCase (env, x, cases, dflt, retK') = let
-	  fun cvtCase (B.P_Const(B.E_EnumConst(tag, _)), e) = (tag, cvtTailE(env, e, retK'))
+	  fun cvtCase (B.P_Const(Literal.Enum tag, _), e) = (tag, cvtTailE(env, e, retK'))
 	    | cvtCase c = raise Fail "complex case"
 	  val dflt' = Option.map(fn e => cvtTailE(env, e, retK')) dflt
 	  in

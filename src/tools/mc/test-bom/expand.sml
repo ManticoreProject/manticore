@@ -123,32 +123,18 @@
 	    List.foldl f (env, []) vars
 	  end
  
-    fun cvtPat pat = (case pat
-           of PT.DConPat(ty, x) => let
+    fun cvtPat (PT.DConPat(ty, x)) = let
 (* FIXME: Need to lookup the data constructor in the Basis environment *)
-                val dataCon = BOMTy.DCon{
-                	name = Atom.toString ty,
-                	stamp = Stamp.new (),
-                	rep = BOMTy.Transparent,
-                	argTy = []
-		      }
-                in
-                  BOM.P_DCon(dataCon, [])
-                end 
-            | PT.ConstPat (const, optTy) => let
-                val ty = (case optTy
-                  of NONE => Ty.T_Any
-                   | SOME rTy => Ty.T_Raw rTy
-                  (* end case *))
-                in 
-                  case const
-                    of Literal.Int x => BOM.P_Const (BOM.E_IConst(x, ty))
-                     | Literal.String x => BOM.P_Const (BOM.E_SConst x)
-                     | Literal.Float x => BOM.P_Const (BOM.E_FConst(x, ty))
-		     | _ => raise Fail "unsupported literal type in pattern"
-                   (* end case *)
-                 end
-            (* end case *))
+          val dataCon = BOMTy.DCon{
+                  name = Atom.toString ty,
+                  stamp = Stamp.new (),
+                  rep = BOMTy.Transparent,
+                  argTy = []
+		}
+          in
+            BOM.P_DCon(dataCon, [])
+          end 
+      | cvtPat (PT.ConstPat(const, ty)) = BOM.P_Const(const, ty)
 
     fun cvtExp (env, e) = (case e
 	   of PT.Let(lhs, rhs, e) => let
@@ -166,24 +152,7 @@
 			  | PT.Cast(ty, arg) =>
 			      cvtSimpleExp (env, arg, fn x =>
 				BOM.mkStmt(lhs', BOM.E_Cast(ty, x), e'))
-	                  | PT.Literal (Literal.Int x, optTy) => let
-		              val ty = (case optTy
-			        of NONE => Ty.T_Any
-			         | SOME rTy => Ty.T_Raw rTy
-			        (* end case *))
-		              in
-		                BOM.mkStmt(lhs', BOM.E_Const (BOM.E_IConst (x, ty)), e')
-		              end
-	                  | PT.Literal (Literal.String x, _) => BOM.mkStmt(lhs', BOM.E_Const(BOM.E_SConst x), e')
-	                  | PT.Literal (Literal.Float x, optTy) => let
-		              val ty = (case optTy
-				     of NONE => Ty.T_Any
-				      | SOME rTy => Ty.T_Raw rTy
-				    (* end case *))
-		              in
-		        	BOM.mkStmt(lhs', BOM.E_Const (BOM.E_FConst (x, ty)), e')
-		              end
-			  | PT.Literal _ => raise Fail "unsupported literal type"
+	                  | PT.Const(lit, ty) => BOM.mkStmt(lhs', BOM.E_Const(lit, ty), e')
 			  | PT.Unwrap arg =>
 			      cvtSimpleExp (env, arg, fn x =>
 				BOM.mkStmt(lhs', BOM.E_Unwrap x, e'))
@@ -273,30 +242,11 @@
 		  in
 		    BOM.mkStmt([tmp], BOM.E_Select(i, x), k tmp)
 		  end)
-	    | PT.Literal(Literal.Int x, optTy) => let
-		  val ty = (case optTy
-			 of NONE => Ty.T_Any
-			  | SOME rTy => Ty.T_Raw rTy
-			(* end case *))
+	    | PT.Const(lit, ty) => let
 		  val tmp = newTmp ty
 		  in
-		    BOM.mkStmt([tmp], BOM.E_Const(BOM.E_IConst(x, ty)), k tmp)
+		    BOM.mkStmt([tmp], BOM.E_Const(lit, ty), k tmp)
 		  end
-	    | PT.Literal(Literal.Float x, optTy) => let
-		  val ty = (case optTy
-			 of NONE => Ty.T_Any
-			  | SOME rTy => Ty.T_Raw rTy
-			(* end case *))
-		  val tmp = newTmp ty
-		  in
-		    BOM.mkStmt([tmp], BOM.E_Const(BOM.E_FConst(x, ty)), k tmp)
-		  end
-	    | PT.Literal(Literal.String x, _) => let
-		  val tmp = newTmp Ty.T_Any
-		  in
-		    BOM.mkStmt([tmp], BOM.E_Const(BOM.E_SConst x), k tmp)
-		  end
-	    | PT.Literal _ => raise Fail "unsupported literal type"
 	    | PT.Cast(ty, e) =>
 		cvtSimpleExp (env, e, fn x => let
 		  val tmp = newTmp ty

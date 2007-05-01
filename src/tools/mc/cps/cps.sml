@@ -26,9 +26,8 @@ structure CPS =
 
     and rhs
       = Var of var list
-      | Enum of Word.word
       | Cast of ty * var		(* typecast *)
-      | Literal of Literal.literal
+      | Const of (Literal.literal * ty)
       | Select of (int * var)		(* select i'th field (zero-based) *)
       | Alloc of var list
       | Wrap of var			(* wrap raw value *)
@@ -94,14 +93,14 @@ structure CPS =
       end
 
   (* representation of true and false *)
-    val trueLit = Enum 0w1
-    val falseLit = Enum 0w0
+    val trueRHS = Const(Literal.trueLit, CPSTy.boolTy)
+    val falseRHS = Const(Literal.falseLit, CPSTy.boolTy)
 
   (* representation of unit *)
-    val unitLit = Enum 0w0
+    val unitRHS = Const(Literal.unitLit, CPSTy.unitTy)
 
   (* representation of nil *)
-    val nilLit = Enum 0w0
+    val nilRHS = Const(Literal.nilLit, CPSTy.T_Enum 0w0)
 
   (* smart constructors; these enforce the variable kind invariant and should be
    * used to construct terms.
