@@ -25,14 +25,14 @@ structure AST =
       | SeqExp of (exp * exp)
 
     and binding
-      = ValBind of var list * exp
+      = ValBind of pat * exp
       | FunBind of lambda list
 
     and lambda = FB of (var * var * exp)
 
     and pat
-      = ConPat of dcon * ty list * var list	(* data-constructor application *)
-      | TuplePat of var list
+      = ConPat of dcon * ty list * pat list	(* data-constructor application *)
+      | TuplePat of pat list
       | VarPat of var
       | ConstPat of const
 
