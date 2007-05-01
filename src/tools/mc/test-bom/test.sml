@@ -11,7 +11,7 @@ structure Test =
     structure CPSOpt = CPSOptFn (DummySpec)
     structure CFGOpt = CFGOptFn (DummySpec)
 
-    fun prHdr msg = print(concat["******************** ", msg,  "********************\n"])
+    fun prHdr msg = print(concat["******************** ", msg,  " ********************\n"])
 
     fun cvt file = let
 	  val bom = BOMParser.parse file
@@ -33,8 +33,13 @@ structure Test =
 	  val cfg = FlatClosure.convert cps
 	  val _ = (
 		prHdr "CFG after closure";
-		PrintCFG.output {types=true} (TextIO.stdOut, cfg))
-          val _ = CheckCFG.check cfg
+		PrintCFG.output {types=true} (TextIO.stdOut, cfg);
+		CheckCFG.check cfg)
+	  val cfg = CFGOpt.optimize cfg
+	  val _ = (
+		prHdr "CFG after cfg-opt";
+		PrintCFG.print cfg;
+		CheckCFG.check cfg)
 	  in
 	    cfg
 	  end
