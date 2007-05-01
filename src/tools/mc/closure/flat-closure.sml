@@ -333,7 +333,7 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
                                     val binds = CFG.mkAlloc(f', [ep, labVar]) :: bindLab :: binds
                                     in
                                     (* convert the function itself *)
-                                      cvtExp (fbEnv, labelOf f, conv, e);
+                                      cvtExp (fbEnv, labelOf f, conv, body);
                                       (binds, env')
                                     end
                               val (binds, env') = List.foldl cvtFB (bindEP::binds, env) fbs

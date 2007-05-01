@@ -118,8 +118,7 @@ structure FreeVars : sig
 	  addVars (addVars(V.Set.empty, params), rets))
 
     fun analyze (CPS.MODULE{name, externs, body, ...}) = let
-	  val fv = V.Set.difference (analFB body,
-		V.Set.fromList(List.map CFunctions.varOf externs))
+	  val fv = analFB body
 	  in
 	    if V.Set.isEmpty fv
 	      then ()
