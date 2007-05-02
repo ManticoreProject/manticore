@@ -37,16 +37,20 @@ structure BOMTyCon =
 	  }
 
   (* add a data constructor to a datatype tycon *)
-    fun newDataCon (DataTyc{cons, ...}) (name, rep, argTy) = let
+    fun newDataCon (tyc as DataTyc{cons, ...}) (name, rep, argTy) = let
 	  val dc = DCon{
 		  name = name,
 		  stamp = Stamp.new(),
 		  rep = rep,
-		  argTy = argTy
+		  argTy = argTy,
+		  myTyc = tyc
 		}
 	  in
 	    cons := !cons @ [dc];
 	    dc
 	  end
+
+    fun dconName (DCon{name, ...}) = name
+    fun dconResTy (DCon{myTyc, ...}) = BOMTy.T_TyCon myTyc
 
   end

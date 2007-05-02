@@ -35,7 +35,8 @@ structure BOMTy =
 	  stamp : Stamp.stamp,		(* a unique stamp *)
 	  rep : dcon_rep,		(* the representation of values constructed by this *)
 					(* constructor *)
-	  argTy : ty list		(* type(s) of argument(s) *)
+	  argTy : ty list,		(* type(s) of argument(s) *)
+	  myTyc : tyc
 	}
 
     and dcon_rep		      (* representation of data-constructor functions; note: *)

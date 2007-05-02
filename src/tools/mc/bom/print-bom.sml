@@ -98,6 +98,14 @@ structure PrintBOM : sig
 		      pr "return ";
 		      prList varUseToString xs;
 		      pr "\n")
+		  | B.E_HLOp(hlop, args, []) => (
+		      pr(HLOp.toString hlop); pr " ";
+		      prList varUseToString args;
+		      pr "\n")
+		  | B.E_HLOp(hlop, args, rets) => (
+		      pr(HLOp.toString hlop); pr " (";
+		      prList' varUseToString args; pr "; ";
+		      prList' varUseToString rets; pr ")\n")
 		(* end case *))
 	  and prRHS (B.E_Const c) = prConst c
 	    | prRHS (B.E_Cast(ty, y)) = prl["(", Ty.toString ty, ")", varUseToString y]
@@ -106,22 +114,11 @@ structure PrintBOM : sig
 	    | prRHS (B.E_Wrap y) = prl["wrap(", varUseToString y, ")"]
 	    | prRHS (B.E_Unwrap y) = prl["unwrap(", varUseToString y, ")"]
 	    | prRHS (B.E_Prim p) = pr (PrimUtil.fmt varUseToString p)
-(* E_DCon *)
-(* E_HLOp *)
+	    | prRHS (B.E_DCon(dc, args)) = (
+		pr(BOMTyCon.dconName dc); prList varUseToString args; pr "\n")
 	    | prRHS (B.E_CCall(f, args)) = (
 		prl ["ccall ", varUseToString f, " "];
 		prList varUseToString args)
-(* E_QItemAlloc *)
-(* E_QEnqueue *)
-(* E_QDequeue *)
-(* E_QEmpty *)
-(* E_AtomicQEnqueue *)
-(* E_AtomicQDequeue *)
-	    | prRHS (B.E_Dequeue vp) = prl["dequeue(", varUseToString vp, ")"]
-	    | prRHS (B.E_Enqueue(vp, tid, fiber)) = prl[
-		  "enqueue(", varUseToString vp, ",", varUseToString tid, ",",
-		  varUseToString fiber, ")"
-		]
 	    | prRHS (B.E_HostVProc) = pr "host_vproc()"
 	    | prRHS (B.E_VPLoad(offset, vp)) = prl [
 		  "load(", varUseToString vp, "+", IntInf.toString offset, ")"

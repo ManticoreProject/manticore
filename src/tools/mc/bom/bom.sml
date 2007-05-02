@@ -27,7 +27,7 @@ structure BOM =
       | E_Apply of (var * var list * var list)
       | E_Throw of (var * var list)
       | E_Ret of var list
-(* QUESTION: what about E_Run and E_Forward? *)
+      | E_HLOp of (hlop * var list * var list)	(* application of high-level operator *)
 
     and rhs
       = E_Const of const
@@ -37,36 +37,23 @@ structure BOM =
       | E_Wrap of var
       | E_Unwrap of var
       | E_Prim of prim
-      | E_DCon of (data_con * var list)	(* data constructor *)
-      | E_HLOp of (hlop * var list)	(* application of high-level operator *)
-      | E_CCall of (var * var list)	(* foreign-function calls *)
-(* QUESTION: should the following operations be builtin or supported as hlops? *)
-    (* non-atomic queue operations *)
-      | E_QItemAlloc of var list	(* allocate a queue item *)
-      | E_QEnqueue of (var * var)	(* insert an item [nonatomic] *)
-      | E_QDequeue of var		(* remove an item [nonatomic] *)
-      | E_QEmpty of var			(* return true if queue is empty [nonatomic] *)
-    (* concurrent queue operations *)
-      | E_AtomicQEnqueue of (var * var)	(* insert an item [atomic] *)
-      | E_AtomicQDequeue of var		(* remove an item [atomic] *)
-    (* scheduler operations *)
-      | E_Dequeue of var
-      | E_Enqueue of (var * var * var)
+      | E_DCon of (data_con * var list)		(* data constructor *)
+      | E_CCall of (var * var list)		(* foreign-function calls *)
     (* VProc operations *)
-      | E_HostVProc			(* gets the hosting VProc *)
-      | E_VPLoad of (offset * var)	(* load a value from the given byte offset *)
-					(* in the vproc structure *)
+      | E_HostVProc				(* gets the hosting VProc *)
+      | E_VPLoad of (offset * var)		(* load a value from the given byte offset *)
+						(* in the vproc structure *)
       | E_VPStore of (offset * var * var)	(* store a value at the given byte offset *)
-					(* in the vproc structure *)
+						(* in the vproc structure *)
 
-    and lambda = FB of {	      (* function/continuation abstraction *)
-	  f : var,			(* function name *)
-	  params : var list,		(* parameters *)
+    and lambda = FB of {	  	    (* function/continuation abstraction *)
+	  f : var,				(* function name *)
+	  params : var list,			(* parameters *)
 	  exh : var list,			(* exception continuation *)
-	  body : exp			(* function body *)
+	  body : exp				(* function body *)
 	}
 
-    and pat			      (* simple, one-level, patterns *)
+    and pat			  	    (* simple, one-level, patterns *)
       = P_DCon of data_con * var list
       | P_Const of const
 
@@ -142,6 +129,7 @@ structure BOM =
     fun mkApply arg = mkExp(E_Apply arg)
     fun mkThrow arg = mkExp(E_Throw arg)
     fun mkRet arg = mkExp(E_Ret arg)
+    fun mkHLOp arg = mkExp(E_HLOp arg)
 
     fun mkCFun arg = (
 	  Var.setKind(#var arg, VK_Extern(#name arg));

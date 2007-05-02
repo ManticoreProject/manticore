@@ -30,6 +30,7 @@
       | Apply of (var * simple_exp list * simple_exp list)
       | Throw of (var * simple_exp list)
       | Return of simple_exp list
+      | HLOpApply of (var * simple_exp list * simple_exp list)
 
     and rhs
       = Exp of exp
@@ -40,11 +41,11 @@
 
     and simple_exp
       = Var of var
-      | Select of (int * simple_exp)	(* select i'th field (zero-based) *)
+      | Select of (int * simple_exp)		(* select i'th field (zero-based) *)
       | Const of (Literal.literal * ty)
       | Cast of (ty * simple_exp)
-      | Unwrap of simple_exp		(* unwrap value *)
-      | Prim of (Atom.atom * simple_exp list)
+      | Unwrap of simple_exp			(* unwrap value *)
+      | Prim of (Atom.atom * simple_exp list)	(* prim-op or data constructor *)
 
     and pat
       = DConPat of (Atom.atom * var_pat list)

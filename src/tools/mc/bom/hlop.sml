@@ -27,7 +27,8 @@ structure HLOp =
 (* FIXME: need effects *)
       }
 
-    fun toString (HLOp{name, ...}) = name
+    fun toString (HLOp{name, ...}) = Atom.toString name
+    fun name (HLOp{name, ...}) = name
 
     datatype attributes = NORETURN
 

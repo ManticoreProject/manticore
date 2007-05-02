@@ -34,11 +34,14 @@ signature BASIS =
     val runOp : HLOp.hlop
     val forwardOp : HLOp.hlop
     val dequeueOp : HLOp.hlop
-    val enqueue : HLOp.hlop
+    val enqueueOp : HLOp.hlop
+
+    val findHLOp : Atom.atom -> HLOp.hlop option
+    val findDCon : Atom.atom -> BOMTy.data_con option
 
   end
 
-structure Basis =
+structure Basis : BASIS =
   struct
 
     structure BTy = BOMTy
@@ -75,14 +78,35 @@ structure Basis =
     val runOp = new("run", [vprocTy, sigActTy, fiberTy], [], [H.NORETURN])
     val forwardOp = new("forward", [vprocTy, sigTy], [], [H.NORETURN])
     val dequeueOp = new("dequeue", [vprocTy], [rdyqItemTy], [])
-    val enqueue = new("enqueue", [vprocTy, tidTy, fiberTy], [], [])
+    val enqueueOp = new("enqueue", [vprocTy, tidTy, fiberTy], [], [])
 
   (* other predefined datatypes *)
     val signalTyc = BOMTyCon.newDataTyc ("signal", 1)
-    val preemptDCon = BOMTyCon.newDataCon signalTyc ("PREEMPT", BTy.Transparent, [fiberTy])
+    val preemptDC = BOMTyCon.newDataCon signalTyc ("PREEMPT", BTy.Transparent, [fiberTy])
     val listTyc = BOMTyCon.newDataTyc ("list", 1)
     val listTy = BTy.T_TyCon listTyc
-    val consTyc = BOMTyCon.newDataCon listTyc
+    val consDC = BOMTyCon.newDataCon listTyc
 	  ("CONS", BTy.Transparent, [BTy.T_Any, listTy])
+
+    fun mkTbl nameOf bindings = let
+	  val tbl = AtomTable.mkTable (List.length bindings, Fail "table")
+	  fun ins v = AtomTable.insert tbl (nameOf v, v)
+	  in
+	    List.app ins bindings;
+	    AtomTable.find tbl
+	  end
+
+  (* HLOp table *)
+    val findHLOp : Atom.atom -> HLOp.hlop option = mkTbl HLOp.name [
+	    dequeueOp,
+	    enqueueOp,
+	    forwardOp,
+	    runOp
+	  ]
+    val findDCon : Atom.atom -> BOMTy.data_con option = mkTbl (Atom.atom o BOMTyCon.dconName) [
+	    consDC,
+	    rdyqConsDC,
+	    preemptDC
+	  ]
 
   end

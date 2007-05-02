@@ -123,18 +123,25 @@
 	    List.foldl f (env, []) vars
 	  end
  
-    fun cvtPat (PT.DConPat(ty, x)) = let
-(* FIXME: Need to lookup the data constructor in the Basis environment *)
-          val dataCon = BOMTy.DCon{
-                  name = Atom.toString ty,
-                  stamp = Stamp.new (),
-                  rep = BOMTy.Transparent,
-                  argTy = []
-		}
-          in
-            BOM.P_DCon(dataCon, [])
-          end 
-      | cvtPat (PT.ConstPat(const, ty)) = BOM.P_Const(const, ty)
+    fun cvtPat (env, PT.DConPat(dc, xs)) = (case Basis.findDCon dc
+	   of SOME dc => let
+		fun f (PT.WildPat, (env, xs)) = let
+		      val x' = BOM.Var.new("_wild", Ty.T_Any)
+		      in
+			(env, x'::xs)
+		      end
+		  | f (PT.VarPat(x, ty), (env, xs)) = let
+		      val x' = BOM.Var.new(Atom.toString x, ty)
+		      in
+			(AtomMap.insert(env, x, x'), x'::xs)
+		      end
+		val (env, xs) = List.foldl f (env, []) xs
+		in
+		  (env, BOM.P_DCon(dc, List.rev xs))
+		end
+	    | NONE => raise Fail(concat["unknown data constructor ", Atom.toString dc])
+	  (* end case *))
+      | cvtPat (env, PT.ConstPat(const, ty)) = (env, BOM.P_Const(const, ty))
 
     fun cvtExp (env, e) = (case e
 	   of PT.Let(lhs, rhs, e) => let
@@ -198,16 +205,23 @@
 		end
 	    | PT.If(e1, e2, e3) =>
 		cvtSimpleExp (env, e1, fn x => BOM.mkIf(x, cvtExp(env, e2), cvtExp(env, e3)))
-	    | PT.Case(arg, cases, dflt) => 
-                cvtSimpleExp (env, arg, fn arg =>
+	    | PT.Case(arg, cases, dflt) => let
+		fun doCase (pat, exp) = let
+		      val (env', pat') = cvtPat(env, pat)
+		      in
+			(pat', cvtExp(env', exp))
+		      end
+                in
+		  cvtSimpleExp (env, arg, fn arg =>
                     BOM.mkCase(
 		      arg, 
-                      List.map (fn (pat,e) => (cvtPat pat, cvtExp(env,e))) cases,
+                      List.map doCase cases,
                       case dflt
 		       of NONE => NONE
 			| SOME(PT.WildPat, e) => SOME (cvtExp(env, e))
 			| SOME(PT.VarPat(x, _), e) => SOME (cvtExp(AtomMap.insert(env, x, arg), e))
 		      (* end case *)))
+		end
 	    | PT.Apply(f, args, rets) =>
 		cvtSimpleExps (env, args,
 		  fn xs => cvtSimpleExps (env, rets,
@@ -216,6 +230,13 @@
 		cvtSimpleExps (env, args, fn xs => BOM.mkThrow(lookup(env, k), xs))
 	    | PT.Return args =>
 		cvtSimpleExps (env, args, fn xs => BOM.mkRet xs)
+	    | PT.HLOpApply(hlop, args, rets) => (case Basis.findHLOp hlop
+		 of SOME hlop =>
+		      cvtSimpleExps (env, args,
+			fn xs => cvtSimpleExps (env, rets,
+			  fn ys => BOM.mkHLOp(hlop, xs, ys)))
+		  | NONE => raise Fail(concat["unknown high-level op ", Atom.toString hlop])
+		(* end case *))
 	  (* end case *))
 
     and cvtLambda (env, (f, params, rets, tys, e), tyCon) = let
@@ -259,17 +280,26 @@
 		  in
 		    BOM.mkStmt([tmp], BOM.E_Unwrap x, k tmp)
 		  end)
-	    | PT.Prim(p, args) =>
-		cvtSimpleExps (env, args, fn xs => let
-		  val (lhs, rhs) = (case (findPrim p, xs)
-			 of (NONE, _) => raise Fail("unknown primop " ^ Atom.toString p)
-			  | (SOME(Prim1{mk, resTy, ...}), [x]) => (newTmp resTy, mk x)
-			  | (SOME(Prim2{mk, resTy, ...}), [x, y]) => (newTmp resTy, mk(x, y))
-			  | _ => raise Fail("arity mismatch for primop " ^ Atom.toString p)
-			(* end case *))
-		  in
-		    BOM.mkStmt([lhs], BOM.E_Prim rhs, k lhs)
-		  end)
+	    | PT.Prim(p, args) => let
+		fun mkBind xs = (case (findPrim p, xs)
+		       of (NONE, _) => (case Basis.findDCon p
+			     of NONE => raise Fail("unknown primop " ^ Atom.toString p)
+			      | SOME dc =>
+				  (newTmp(BOMTyCon.dconResTy dc), BOM.E_DCon(dc, xs))
+			    (* end case *))
+			| (SOME(Prim1{mk, resTy, ...}), [x]) =>
+			    (newTmp resTy, BOM.E_Prim(mk x))
+			| (SOME(Prim2{mk, resTy, ...}), [x, y]) =>
+			    (newTmp resTy, BOM.E_Prim(mk(x, y)))
+			| _ => raise Fail("arity mismatch for primop " ^ Atom.toString p)
+		      (* end case *))
+		in
+		  cvtSimpleExps (env, args, fn xs => let
+		    val (lhs, rhs) = mkBind xs
+		    in
+		      BOM.mkStmt([lhs], rhs, k lhs)
+		    end)
+		end
 	  (* end case *))
 
     and cvtSimpleExps (env, exps, k) = let
