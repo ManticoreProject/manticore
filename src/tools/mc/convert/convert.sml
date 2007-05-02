@@ -108,6 +108,7 @@ structure Convert : sig
 		  retK' :: lookupVars(env, exhs))
 	    | B.E_Throw(k, xs) => C.Throw(lookup(env, k), lookupVars(env, xs))
 	    | B.E_Ret xs => C.Throw(retK', lookupVars(env, xs))
+	    | B.E_HLOp _ => raise Fail "unexpected high-level op"
 	  (* end case *))
 
   (* convert an expression that is in a non-tail position; the tys' parameter is
@@ -162,6 +163,7 @@ structure Convert : sig
 		end
 	    | B.E_Throw(k, xs) => C.Throw(lookup(env, k), lookupVars(env, xs))
 	    | B.E_Ret xs => k(lookupVars(env, xs))
+	    | B.E_HLOp _ => raise Fail "unexpected high-level op"
 	  (* end case *))
 
     and cvtRHS (env, lhs, rhs, k) = let
@@ -176,17 +178,7 @@ structure Convert : sig
 		  | B.E_Unwrap x => C.Unwrap(cv x)
 		  | B.E_Prim p => C.Prim(PrimUtil.map cv p)
 		  | B.E_DCon _ => raise Fail "unexpected DCon"
-		  | B.E_HLOp _ => raise Fail "unexpected HLOp"
 		  | B.E_CCall(f, args) => C.CCall(cv f, List.map cv args)
-		  | B.E_QItemAlloc xs => raise Fail "QItemAlloc unimplemented"
-		  | B.E_QEnqueue(x, y) => raise Fail "QEnqueue unimplemented"
-		  | B.E_QDequeue x => raise Fail "QDequeue unimplemented"
-		  | B.E_QEmpty x => raise Fail "QEmpty unimplemented"
-		  | B.E_AtomicQEnqueue(x, y) => raise Fail "AtomicQEnqueue unimplemented"
-		  | B.E_AtomicQDequeue x => raise Fail "AtomicQDequeue unimplemented"
-		(* scheduler operations *)
-		  | B.E_Dequeue x => C.Dequeue(cv x)
-		  | B.E_Enqueue(x, y, z) => C.Enqueue(cv x, cv y, cv z)
 		(* VProc operations *)
 		  | B.E_HostVProc => C.HostVProc
 		  | B.E_VPLoad(off, x) => C.VPLoad(off, cv x)
