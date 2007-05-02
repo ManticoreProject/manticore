@@ -38,8 +38,7 @@ structure AST =
 
     and const
       = DConst of dcon * ty list
-      | IConst of IntInf.int
-      | SConst of string
+      | LConst of (Literal.literal * ty)
 
     and var_kind
       = VK_None
