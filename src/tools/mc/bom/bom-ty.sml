@@ -47,6 +47,7 @@ structure BOMTy =
 
     val unitTy = T_Enum(0w0)
     val boolTy = T_Enum(0w1)	(* false = 0, true = 1 *)
+    val exhTy = T_Cont[T_Any]
 
     fun toString ty = let
 	  fun tys2l ([], l) = l
