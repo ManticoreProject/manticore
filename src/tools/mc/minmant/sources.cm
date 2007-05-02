@@ -8,8 +8,10 @@
 
 Library
 
-  structure FrontEnd
   structure AST
+  structure FrontEnd
+  structure Types
+  structure Var
 
 is
   $/basis.cm
