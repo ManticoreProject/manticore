@@ -36,6 +36,7 @@ signature BASIS =
     val dequeueOp : HLOp.hlop
     val enqueueOp : HLOp.hlop
 
+    val findTyc : Atom.atom -> BOMTy.tyc option
     val findHLOp : Atom.atom -> HLOp.hlop option
     val findDCon : Atom.atom -> BOMTy.data_con option
 
@@ -96,6 +97,12 @@ structure Basis : BASIS =
 	    AtomTable.find tbl
 	  end
 
+  (* Type-constructor table *)
+    val findTyc : Atom.atom -> BOMTy.tyc option = mkTbl (Atom.atom o BOMTyCon.tycName) [
+	    listTyc,
+	    rdyqItemTyc,
+	    signalTyc
+	  ]
   (* HLOp table *)
     val findHLOp : Atom.atom -> HLOp.hlop option = mkTbl HLOp.name [
 	    dequeueOp,
@@ -103,6 +110,7 @@ structure Basis : BASIS =
 	    forwardOp,
 	    runOp
 	  ]
+  (* Data-constructor table *)
     val findDCon : Atom.atom -> BOMTy.data_con option = mkTbl (Atom.atom o BOMTyCon.dconName) [
 	    consDC,
 	    rdyqConsDC,

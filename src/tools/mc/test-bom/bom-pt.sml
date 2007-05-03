@@ -10,7 +10,19 @@
    struct
    
     datatype raw_ty = datatype BOMTy.raw_ty
-    datatype ty = datatype BOMTy.ty
+
+    datatype ty
+      = T_Any			(* unknown type; uniform representation *)
+      | T_Enum of Word.word	(* unsigned tagged integer; word is max value <= 2^31-1 *)
+      | T_Raw of raw_ty		(* raw machine type *)
+      | T_Wrap of raw_ty	(* boxed raw value *)
+      | T_Tuple of ty list	(* heap-allocated tuple *)
+      | T_Fun of (ty list * ty list * ty list)
+				(* function type; the second argument is the type of *)
+				(* the exception continuation(s) *)
+      | T_Cont of ty list	(* first-class continuation *)
+      | T_CFun of CFunctions.c_proto	(* C functions *)
+      | T_TyCon of Atom.atom	(* high-level type constructor *)
 
     type var = Atom.atom
     type var_bind = var * ty

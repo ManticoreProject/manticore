@@ -71,10 +71,13 @@
     fun flatten NONE = []
       | flatten (SOME(x, xs)) = x::xs
 
+    val unitTy = PT.T_Enum(0w0)
+    val boolTy = PT.T_Enum(0w1)	(* false = 0, true = 1 *)
+
   (* default types for literals *)
-    val dfltIntTy = BOMTy.T_Raw(BOMTy.T_Int)
-    val dfltFloatTy = BOMTy.T_Raw(BOMTy.T_Float)
-    val dfltStringTy = BOMTy.T_Any (* FIXME *)
+    val dfltIntTy = PT.T_Raw(BOMTy.T_Int)
+    val dfltFloatTy = PT.T_Raw(BOMTy.T_Float)
+    val dfltStringTy = PT.T_Any (* FIXME *)
 );
 
 
@@ -134,14 +137,15 @@ CLambda
 
 Type
 	: "any"					=> (PT.T_Any)
-	| "bool"				=> (BOMTy.boolTy)
-	| "unit"				=> (BOMTy.unitTy)
+	| "bool"				=> (boolTy)
+	| "unit"				=> (unitTy)
 	| "enum" "(" INT ")"			=> (PT.T_Enum(Word.fromLargeInt INT))
 	| "[" RawType "]"			=> (PT.T_Wrap RawType)
 	| RawType				=> (PT.T_Raw RawType)
 	| "(" Type ("," Type)* ")"		=> (PT.T_Tuple(Type :: SR))
 	| "fun" "(" Typelist ";" Typelist "->" Typelist ")"	=> (PT.T_Fun(Typelist1, Typelist2, Typelist3))
 	| "cont" "(" (Type ("," Type)* )? ")"	=> (PT.T_Cont(flatten SR))
+	| ID					=> (PT.T_TyCon ID)
 	;
 
 Typelist
@@ -222,7 +226,7 @@ Literal
 		    val w = Word.fromLargeInt INT
 		    in
 		      case SR
-		       of NONE => (Literal.Enum w, BOMTy.T_Enum w)
+		       of NONE => (Literal.Enum w, PT.T_Enum w)
 			| SOME ty => (Literal.Enum w, ty)
 		      (* end case *)
 		    end)

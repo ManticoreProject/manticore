@@ -27,7 +27,6 @@
 	    resTy : Ty.ty
 	  }
 	  
-	  
   (* table mapping primop names to prim_info *)
     val findPrim = let
 	  val tbl = AtomTable.mkTable(128, Fail "prim table")
@@ -97,8 +96,7 @@
 	      ];
 	    AtomTable.find tbl
 	  end
-	  
-	  
+
   (* some type utilities *)
     fun unwrapType (Ty.T_Wrap rTy) = Ty.T_Raw rTy
       | unwrapType ty = raise Fail(concat["unwrapType(", Ty.toString ty, ")"])
@@ -112,9 +110,25 @@
 	  (* end case *))
 
     fun newTmp ty = BOM.Var.new("_t", ty)
-    
+
+  (* convert a parse-tree type express to a BOM type *)
+    fun cvtTy PT.T_Any = Ty.T_Any
+      | cvtTy (PT.T_Enum w) = Ty.T_Enum w
+      | cvtTy (PT.T_Raw rty) = Ty.T_Raw rty
+      | cvtTy (PT.T_Wrap rty) = Ty.T_Wrap rty
+      | cvtTy (PT.T_Tuple tys) = Ty.T_Tuple(List.map cvtTy tys)
+      | cvtTy (PT.T_Fun(argTys, exhTys, resTys)) =
+	  Ty.T_Fun(List.map cvtTy argTys, List.map cvtTy exhTys, List.map cvtTy resTys)
+      | cvtTy (PT.T_Cont tys) = Ty.T_Cont(List.map cvtTy tys)
+      | cvtTy (PT.T_CFun cproto) = Ty.T_CFun cproto
+      | cvtTy (PT.T_TyCon tyc) = (case Basis.findTyc tyc
+	   of SOME tyc => Ty.T_TyCon tyc
+	    | NONE => raise Fail(concat["unknown type constructor ", Atom.toString tyc])
+	  (* end case *))
+
     fun cvtVarBinds (env, vars) = let
 	  fun f ((x, ty), (env, xs)) = let
+		val ty = cvtTy ty
 		val x' = BOM.Var.new(Atom.toString x, ty)
 		in
 		  (AtomMap.insert(env, x, x'), x'::xs)
@@ -131,6 +145,7 @@
 			(env, x'::xs)
 		      end
 		  | f (PT.VarPat(x, ty), (env, xs)) = let
+		      val ty = cvtTy ty
 		      val x' = BOM.Var.new(Atom.toString x, ty)
 		      in
 			(AtomMap.insert(env, x, x'), x'::xs)
@@ -141,7 +156,7 @@
 		end
 	    | NONE => raise Fail(concat["unknown data constructor ", Atom.toString dc])
 	  (* end case *))
-      | cvtPat (env, PT.ConstPat(const, ty)) = (env, BOM.P_Const(const, ty))
+      | cvtPat (env, PT.ConstPat(const, ty)) = (env, BOM.P_Const(const, cvtTy ty))
 
     fun cvtExp (env, e) = (case e
 	   of PT.Let(lhs, rhs, e) => let
@@ -158,8 +173,8 @@
 				BOM.mkStmt(lhs', BOM.E_Select(i, x), e'))
 			  | PT.Cast(ty, arg) =>
 			      cvtSimpleExp (env, arg, fn x =>
-				BOM.mkStmt(lhs', BOM.E_Cast(ty, x), e'))
-	                  | PT.Const(lit, ty) => BOM.mkStmt(lhs', BOM.E_Const(lit, ty), e')
+				BOM.mkStmt(lhs', BOM.E_Cast(cvtTy ty, x), e'))
+	                  | PT.Const(lit, ty) => BOM.mkStmt(lhs', BOM.E_Const(lit, cvtTy ty), e')
 			  | PT.Unwrap arg =>
 			      cvtSimpleExp (env, arg, fn x =>
 				BOM.mkStmt(lhs', BOM.E_Unwrap x, e'))
@@ -240,7 +255,8 @@
 	  (* end case *))
 
     and cvtLambda (env, (f, params, rets, tys, e), tyCon) = let
-	  val fnTy = tyCon(List.map #2 params, List.map #2 rets, tys)
+	  fun cvt (_, ty) = cvtTy ty
+	  val fnTy = tyCon(List.map cvt params, List.map cvt rets, List.map cvtTy tys)
 	  val f' = BOM.Var.new(Atom.toString f, fnTy)
 	  fun doBody env = let
 		val (envWParams, params') = cvtVarBinds (env, params)
@@ -264,12 +280,14 @@
 		    BOM.mkStmt([tmp], BOM.E_Select(i, x), k tmp)
 		  end)
 	    | PT.Const(lit, ty) => let
+		  val ty = cvtTy ty
 		  val tmp = newTmp ty
 		  in
 		    BOM.mkStmt([tmp], BOM.E_Const(lit, ty), k tmp)
 		  end
 	    | PT.Cast(ty, e) =>
 		cvtSimpleExp (env, e, fn x => let
+		  val ty = cvtTy ty
 		  val tmp = newTmp ty
 		  in
 		    BOM.mkStmt([tmp], BOM.E_Cast(ty, x), k tmp)

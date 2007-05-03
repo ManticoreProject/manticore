@@ -2,10 +2,10 @@
 
 module Length
   fun init (arg : any; exh : cont(any)) : unit =
-    fun length (l : any; exh : cont(any)) : int =
+    fun length (l : list; exh : cont(any)) : int =
 	  case l
 	   of enum(0) => return (0:int)
-	    | CONS(_, tl:any) =>
+	    | CONS(_, tl:list) =>
 		let n:int = apply length(tl; exh)
 		return (I32Add(n, 1))
 	  end
