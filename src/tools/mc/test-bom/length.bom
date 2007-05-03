@@ -4,7 +4,7 @@ module Length
   fun init (arg : any; exh : cont(any)) : unit =
     fun length (l : any; exh : cont(any)) : int =
 	  case l
-	   of 0 => return (0:int)
+	   of enum(0) => return (0:int)
 	    | CONS(_, tl:any) =>
 		let n:int = apply length(tl; exh)
 		return (I32Add(n, 1))

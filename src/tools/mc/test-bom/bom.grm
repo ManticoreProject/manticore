@@ -217,7 +217,16 @@ VarPat
 	;
 
 Literal
-	: INT (":" Type)?
+	: "enum" "(" INT ")" (":" Type)?
+		=> (let
+		    val w = Word.fromLargeInt INT
+		    in
+		      case SR
+		       of NONE => (Literal.Enum w, BOMTy.T_Enum w)
+			| SOME ty => (Literal.Enum w, ty)
+		      (* end case *)
+		    end)
+	| INT (":" Type)?
 		=> (case SR
 		   of NONE => (Literal.Int INT, dfltIntTy)
 		    | SOME ty => (Literal.Int INT, ty)
