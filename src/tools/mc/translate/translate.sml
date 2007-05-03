@@ -34,6 +34,14 @@ structure Translate : sig
 
     fun handlerOf (E{exh, ...}) = [exh]
 
+  (* translate a binding occurrence of an AST variable to a BOM variable *)
+    fun trVar (env, x) = let
+	  val AST.TyScheme([], ty) = V.typeOf x
+	  val x' = BV.new(V.nameOf x, trTy ty)
+	  in
+	    (x', insert(env, x, x'))
+	  end
+
   (* the yield of translating an AST expression *)
     datatype bom_code
       = BIND of (B.var list * B.rhs)
@@ -59,12 +67,12 @@ structure Translate : sig
 		  BIND([t], B.E_Const(Lit.unitLit, BTy.unitTy))
 		end
 	    | AST.TupleExp es =>
-		trExpsToVs (env, es, fn xs => let
+		EXP(trExpsToVs (env, es, fn xs => let
 		  val ty = BTy.T_Tuple(List.map BV.typeOf xs)
 		  val t = BV.new("_tpl", ty)
 		  in
-		    BIND([t], B.E_Alloc(ty, xs))
-		  end)
+		    B.mkStmt([t], B.E_Alloc(ty, xs), B.mkRet [t])
+		  end))
 	    | AST.ConstExp(AST.DConst dc) => raise Fail "DConst"
 	    | AST.ConstExp(AST.LConst(lit, ty)) => let
 		val ty' = trTy ty
@@ -72,16 +80,18 @@ structure Translate : sig
 		in
 		  BIND([t], B.E_Const(lit, ty'))
 		end
-	    | AST.VarExp(x, []) => B.mkRet[lookup(env, x)]
+	    | AST.VarExp(x, []) => EXP(B.mkRet[lookup(env, x)])
 	    | AST.VarExp(x, tys) => raise Fail "poly var"
-	    | AST.SeqExp(e1, e2) => let
-		val e1' = trExp(env, e1)
-		val e2' = trExp(env, e2)
+	    | AST.SeqExp _ => let
+	      (* note: the typechecker puts sequences in right-recursive form *)
+		fun tr (AST.SeqExp(e1, e2)) = (
+		      case trExp(env, e1)
+		       of BIND([], rhs) => B.mkStmt([], rhs, tr e2)
+			| EXP e1' => B.mkLet([], e1', tr e2)
+		      (* end case *))
+		  | tr e = toExp(trExp(env, e))
 		in
-		  case e1'
-		   of BIND([], rhs) => B.mkStmt([], rhs, toExp e2')
-		    | EXP e1' => B.mkLet([], e1', toExp e2')
-		  (* end case *)
+		  EXP(tr exp)
 		end
 	  (* end case *))
 
