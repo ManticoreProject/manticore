@@ -124,11 +124,10 @@ structure CaseSimplify : sig
 		  | sel (y::ys, i) = B.mkStmt([y], B.E_Select(i, argument), sel(ys, i+1))
 		in
 		  case (repOf dc, dflt)
-		   of (B.Transparent, NONE) => let
-			val [y] = ys
-			in
-			  B.mkStmt([y], B.E_Cast(typeOf y, argument), xformE(s, tys, e))
-			end
+		   of (B.Transparent, NONE) => (case ys
+			 of [y] => B.mkStmt([y], B.E_Cast(typeOf y, argument), xformE(s, tys, e))
+			  | _ => sel (ys, 0)
+			(* end case *))
 		    | (B.Tuple, NONE) => sel (ys, 0)
 		    | (B.TaggedTuple tag, SOME dflt) => let
 			val ty = BTy.T_Enum tag
