@@ -50,6 +50,7 @@ structure BOMTyCon =
 	    dc
 	  end
 
+    fun tycName (DataTyc{name, ...}) = name
     fun dconName (DCon{name, ...}) = name
     fun dconResTy (DCon{myTyc, ...}) = BOMTy.T_TyCon myTyc
 
