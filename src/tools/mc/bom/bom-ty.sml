@@ -27,7 +27,8 @@ structure BOMTy =
 	  name : string,
 	  stamp : Stamp.stamp,		(* a unique stamp *)
 	  nNullary : int,		(* the number of nullary constructors *)
-	  cons : data_con list ref	(* list of non-nullary constructors *)
+	  cons : data_con list ref,	(* list of non-nullary constructors *)
+	  rep : ty option ref		(* a cache of the representation type *)
 	}
 
     and data_con = DCon of {	      (* a data-constructor function *)

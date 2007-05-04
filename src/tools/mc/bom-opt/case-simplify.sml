@@ -27,6 +27,47 @@ structure CaseSimplify : sig
     val typeOf = BV.typeOf
     val typesOf = List.map typeOf
 
+  (* does a BOM type contain type constructors? *)
+    fun hasTyc (BTy.T_Tuple tys) = List.exists hasTyc tys
+      | hasTyc (BTy.T_Fun(tys1, tys2, tys3)) =
+	  List.exists hasTyc tys1 orelse List.exists hasTyc tys2
+	    orelse List.exists hasTyc tys3
+      | hasTyc (BTy.T_Cont tys) = List.exists hasTyc tys
+      | hasTyc (BTy.T_TyCon _) = true
+      | hasTyc _ = false
+
+  (* convert datatypes to their representation types.  We assume that hasTyc is true
+   * for ty.
+   *)
+    fun toRepTy ty = let
+	  fun ty2ty (BTy.T_Tuple tys) = BTy.T_Tuple(List.map ty2ty tys)
+	    | ty2ty (BTy.T_Fun(argTys, exh, resTys)) =
+		BTy.T_Fun(tys2tys argTys, tys2tys exh, tys2tys resTys)
+	    | ty2ty (BTy.T_Cont tys) = BTy.T_Cont(tys2tys tys)
+	    | ty2ty (BTy.T_TyCon tyc) = tyc2ty tyc
+	    | ty2ty ty = ty
+	  and tys2tys [] = []
+	    | tys2tys (ty::r) = ty2ty ty :: tys2tys r
+	  and tyc2ty (BTy.DataTyc{rep=ref(SOME ty), ...}) = ty
+	    | tyc2ty (BTy.DataTyc{nNullary, cons, rep, ...}) = let
+		val _ = (rep := SOME BTy.T_Any);  (* to avoid infinite recursion *)
+		val ty = (case (nNullary, !cons)
+		       of (0, [BTy.DCon{rep=BTy.Transparent, argTy=[ty], ...}]) => ty2ty ty
+			| (0, [BTy.DCon{rep=BTy.Tuple, argTy, ...}]) => BTy.T_Tuple(tys2tys argTy)
+			| (0, [BTy.DCon{rep=BTy.TaggedTuple tag, argTy, ...}]) =>
+			    BTy.T_Tuple(BTy.T_Enum tag :: tys2tys argTy)
+			| (_, []) => BTy.T_Enum(Word.fromInt nNullary - 0w1)
+(* FIXME: we need a union type in BOM for this situation *)
+			| _ => BOMTy.T_Any
+		      (* end case *))
+		in
+		  rep := SOME ty;
+		  ty
+		end
+	  in
+	    ty2ty ty
+	  end
+
   (* variable to variable substitution *)
     fun subst s x = (case BV.Map.find(s, x) of NONE => x | SOME y => y)
     fun retype (s, x, ty) = let
@@ -36,10 +77,9 @@ structure CaseSimplify : sig
 	  end
 
   (* if a variable has a TyCon type, the retype it *)
-    fun xformVar (s, x) = (case typeOf x
-	   of BTy.T_TyCon tc => retype(s, x, BOMTyCon.toRepTy tc)
-	    | _ => (s, x)
-	  (* end case *))
+    fun xformVar (s, x) = if hasTyc(typeOf x)
+	  then retype(s, x, toRepTy(typeOf x))
+	  else (s, x)
 
   (* apply xformVar over a list of variables *)
     fun xformVars (s, xs) = let
@@ -59,8 +99,11 @@ structure CaseSimplify : sig
    *	e	-- the expresssion to transform
    *)
     fun xformE (s, tys, B.E_Pt(_, e)) = (case e
-	   of B.E_Let(lhs, e1, e2) =>
-		B.mkLet(lhs, xformE(s, typesOf lhs, e1), xformE(s, tys, e2))
+	   of B.E_Let(lhs, e1, e2) => let
+		val (s', lhs) = xformVars (s, lhs)
+		in
+		  B.mkLet(lhs, xformE(s, typesOf lhs, e1), xformE(s', tys, e2))
+		end
 	    | B.E_Stmt([y], B.E_DCon(B.DCon{name, rep, argTy, ...}, xs), e) => (
 		case (rep, xs)
 		 of (B.Transparent, [x]) => let
@@ -87,20 +130,67 @@ structure CaseSimplify : sig
 		      end
 		  | (B.Transparent, _) => raise Fail "bogus transparent dcon application"
 		(* end case *))
-(* FIXME: need to apply the substitution to the RHS *)
-	    | B.E_Stmt(lhs, rhs, e) => B.mkStmt(lhs, rhs, xformE(s, tys, e))
-	    | B.E_Fun(fbs, e) => B.mkFun(List.map (xformLambda s) fbs, xformE(s, tys, e))
-	    | B.E_Cont(fb, e) => B.mkCont(xformLambda s fb, xformE(s, tys, e))
+	    | B.E_Stmt(lhs, rhs, e) => let
+		val (s', lhs) = xformVars (s, lhs)
+		in
+(* FIXME: need to apply the substitution s to the RHS *)
+		  B.mkStmt(lhs, rhs, xformE(s', tys, e))
+		end
+	    | B.E_Fun(fbs, e) => B.mkFun(xformLambdas (s, fbs), xformE(s, tys, e))
+	    | B.E_Cont(fb, e) => B.mkCont(xformLambda (s, fb), xformE(s, tys, e))
 	    | B.E_If(x, e1, e2) =>
-		B.mkIf(x, xformE(s, tys, e1), xformE(s, tys, e2))
+		B.mkIf(subst s x, xformE(s, tys, e1), xformE(s, tys, e2))
 	    | B.E_Case(x, rules, dflt) => xformCase (s, tys, x, rules, dflt)
-	    | e => B.mkExp e
+	    | B.E_Apply(f, args, exh) => let
+		val subst = subst s
+		in
+		  B.mkApply(subst f, List.map subst args, List.map subst exh)
+		end
+	    | B.E_Throw(k, args) => B.mkThrow(subst s k, List.map (subst s) args)
+	    | B.E_Ret args => B.mkRet(List.map (subst s) args)
+	    | B.E_HLOp _ => raise Fail "unexpected HLOp"
 	  (* end case *))
 
-    and xformLambda s (B.FB{f, params, exh, body}) = B.FB{
-	    f = f, params = params, exh = exh,
-	    body = xformE(s, BTy.returnTy(typeOf f), body)
-	  }
+    and xformRHS (s, rhs) = let
+	  val subst = subst s
+	  in
+	    case rhs
+	     of B.E_Const _ => rhs
+	      | B.E_Cast(ty, x) => if hasTyc ty
+		  then B.E_Cast(toRepTy ty, subst x)
+		  else rhs
+	      | B.E_Select(i, x)  => B.E_Select(i, subst x)
+	      | B.E_Alloc(ty, xs) => if hasTyc ty
+		  then B.E_Alloc(toRepTy ty, List.map subst xs)
+		  else rhs
+	      | B.E_Wrap _ => rhs
+	      | B.E_Unwrap _ => rhs
+	      | B.E_Prim p => B.E_Prim(PrimUtil.map subst p)
+	      | B.E_DCon _ => raise Fail "impossible"
+	      | B.E_CCall _ => rhs
+	      | B.E_HostVProc => rhs
+	      | B.E_VPLoad _ => rhs
+	      | B.E_VPStore _ => rhs
+	    (* end case *)
+	  end
+
+    and xformLambdas (s, fbs) = let
+	  val s = List.foldl (fn (B.FB{f, ...}, s) => (#1(xformVar(s, f)))) s fbs
+	  fun xformLambda (B.FB{f, params, exh, body}) = let
+		val f = subst s f
+		val (s, params) = xformVars (s, params)
+		val (s, exh) = xformVars (s, exh)
+		in
+		  B.FB{
+		      f = f, params = params, exh = exh,
+		      body = xformE(s, BTy.returnTy(typeOf f), body)
+		    }
+		end
+	  in
+	    List.map xformLambda fbs
+	  end
+
+    and xformLambda (s, fb) = hd(xformLambdas(s, [fb]))
 
     and xformCase (s, tys, x, rules, dflt) = let
 	  val argument = subst s x
@@ -226,6 +316,6 @@ structure CaseSimplify : sig
 	  end
 
     fun transform (B.MODULE{name, externs, body}) =
-	  B.mkModule(name, externs, xformLambda BV.Map.empty body)
+	  B.mkModule(name, externs, xformLambda (BV.Map.empty, body))
 
   end
