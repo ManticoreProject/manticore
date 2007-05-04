@@ -9,4 +9,4 @@ module Length
 		let n:int = apply length(tl; exh)
 		return (I32Add(n, 1))
 	  end
-    return ()
+    return (enum(0))
