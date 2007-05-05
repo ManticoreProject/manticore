@@ -87,7 +87,7 @@ structure Basis : BASIS =
     val listTyc = BOMTyCon.newDataTyc ("list", 1)
     val listTy = BTy.T_TyCon listTyc
     val consDC = BOMTyCon.newDataCon listTyc
-	  ("CONS", BTy.Transparent, [BTy.T_Any, listTy])
+	  ("CONS", BTy.Tuple, [BTy.T_Any, listTy])
 
     fun mkTbl nameOf bindings = let
 	  val tbl = AtomTable.mkTable (List.length bindings, Fail "table")
