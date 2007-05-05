@@ -39,7 +39,7 @@ structure CaseSimplify : sig
   (* convert datatypes to their representation types.  We assume that hasTyc is true
    * for ty.
    *)
-    fun toRepTy ty = let
+    fun tyToRepTy ty = let
 	  fun ty2ty (BTy.T_Tuple tys) = BTy.T_Tuple(List.map ty2ty tys)
 	    | ty2ty (BTy.T_Fun(argTys, exh, resTys)) =
 		BTy.T_Fun(tys2tys argTys, tys2tys exh, tys2tys resTys)
@@ -68,6 +68,14 @@ structure CaseSimplify : sig
 	    ty2ty ty
 	  end
 
+  (* return the low-level BOM type that describes the representation of a data constructor *)
+    fun dconToRepTy (BTy.DCon{rep, argTy, ...}) = (case (rep, argTy)
+	   of (BTy.Transparent, [ty]) => tyToRepTy ty
+	    | (B.Transparent, _) => raise Fail "bogus transparent dcon application"
+	    | (BTy.Tuple, _) => BTy.T_Tuple(List.map tyToRepTy argTy)
+	    | (BTy.TaggedTuple tag, _) => BTy.T_Tuple(BTy.T_Enum tag :: List.map tyToRepTy argTy)
+	  (* end case *))
+
   (* variable to variable substitution *)
     fun subst s x = (case BV.Map.find(s, x) of NONE => x | SOME y => y)
     fun retype (s, x, ty) = let
@@ -78,7 +86,7 @@ structure CaseSimplify : sig
 
   (* if a variable has a TyCon type, the retype it *)
     fun xformVar (s, x) = if hasTyc(typeOf x)
-	  then retype(s, x, toRepTy(typeOf x))
+	  then retype(s, x, tyToRepTy(typeOf x))
 	  else (s, x)
 
   (* apply xformVar over a list of variables *)
@@ -157,11 +165,11 @@ structure CaseSimplify : sig
 	    case rhs
 	     of B.E_Const _ => rhs
 	      | B.E_Cast(ty, x) => if hasTyc ty
-		  then B.E_Cast(toRepTy ty, subst x)
+		  then B.E_Cast(tyToRepTy ty, subst x)
 		  else rhs
 	      | B.E_Select(i, x)  => B.E_Select(i, subst x)
 	      | B.E_Alloc(ty, xs) => if hasTyc ty
-		  then B.E_Alloc(toRepTy ty, List.map subst xs)
+		  then B.E_Alloc(tyToRepTy ty, List.map subst xs)
 		  else rhs
 	      | B.E_Wrap _ => rhs
 	      | B.E_Unwrap _ => rhs
@@ -208,17 +216,21 @@ structure CaseSimplify : sig
 	(* generate a case for a list of one or more data constructors, plus an
 	 * optional default case.
 	 *)
+(* FIXME: need to cast argument variable to correct type *)
 	  fun consCase ([(dc, ys, e)], dflt) = let
 		val (s, ys) = xformVars(s, ys)
+		val (s, argument') = retype(s, argument, dconToRepTy dc)
 		fun sel ([], _) = xformE(s, tys, e)
-		  | sel (y::ys, i) = B.mkStmt([y], B.E_Select(i, argument), sel(ys, i+1))
+		  | sel (y::ys, i) = B.mkStmt([y], B.E_Select(i, argument'), sel(ys, i+1))
 		in
 		  case (repOf dc, dflt)
 		   of (B.Transparent, NONE) => (case ys
 			 of [y] => B.mkStmt([y], B.E_Cast(typeOf y, argument), xformE(s, tys, e))
-			  | _ => sel (ys, 0)
+			  | _ => raise Fail "bogus transparent rep"
 			(* end case *))
-		    | (B.Tuple, NONE) => sel (ys, 0)
+		    | (B.Tuple, NONE) => B.mkStmt(
+			[argument'], B.E_Cast(BV.typeOf argument', argument),
+			sel (ys, 0))
 		    | (B.TaggedTuple tag, SOME dflt) => let
 			val ty = BTy.T_Enum tag
 			val tag' = BV.new("tag", ty)
@@ -226,7 +238,8 @@ structure CaseSimplify : sig
 			val eq = BV.new("eq", BTy.boolTy)
 			in
 			  B.mkStmts([
-			      ([tag'], B.E_Select(0, argument)),
+			      ([argument'], B.E_Cast(BV.typeOf argument', argument)),
+			      ([tag'], B.E_Select(0, argument')),
 			      ([tmp], B.E_Const(Lit.Enum tag, ty)),
 			      ([eq], B.E_Prim(Prim.I32NEq(argument, tmp)))
 			    ],

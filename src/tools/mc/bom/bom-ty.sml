@@ -42,9 +42,12 @@ structure BOMTy =
 
     and dcon_rep		      (* representation of data-constructor functions; note: *)
 				      (* this type does not include constants. *)
-      = Transparent			(* data-constructor represented directly by its argument *)
-      | Tuple				(* heap-allocated tuple of values *)
-      | TaggedTuple of word		(* heap-allocated tag/value pair *)
+      = Transparent			(* for "CON of ty"; the data-constructor is represented *)
+					(* directly by its argument *)
+      | Tuple				(* for "CON of (ty * ... * ty)", where CON is the only *)
+					(* constructor; represented as heap-allocated tuple of values *)
+      | TaggedTuple of word		(* for when there are multiple constructors: the constructor *)
+					(* is represented as heap-allocated tag/value pair *)
 
 
     val unitTy = T_Enum(0w0)
