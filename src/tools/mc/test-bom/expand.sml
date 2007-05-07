@@ -121,6 +121,7 @@
 	  Ty.T_Fun(List.map cvtTy argTys, List.map cvtTy exhTys, List.map cvtTy resTys)
       | cvtTy (PT.T_Cont tys) = Ty.T_Cont(List.map cvtTy tys)
       | cvtTy (PT.T_CFun cproto) = Ty.T_CFun cproto
+      | cvtTy (PT.T_VProc) = Ty.T_VProc
       | cvtTy (PT.T_TyCon tyc) = (case Basis.findTyc tyc
 	   of SOME tyc => Ty.T_TyCon tyc
 	    | NONE => raise Fail(concat["unknown type constructor ", Atom.toString tyc])
@@ -189,6 +190,7 @@
 				in
 				  BOM.mkStmt(lhs', BOM.E_Prim rhs, e')
 				end)
+			  | PT.HostVProc => BOM.mkStmt(lhs', BOM.E_HostVProc, e')
 			(* end case *))
 		    | PT.Alloc args =>
 			cvtSimpleExps (env, args,
@@ -318,6 +320,11 @@
 		      BOM.mkStmt([lhs], rhs, k lhs)
 		    end)
 		end
+	    | PT.HostVProc =>  let
+		  val tmp = newTmp Ty.T_VProc
+		  in
+		    BOM.mkStmt([tmp], BOM.E_HostVProc, k tmp)
+		  end
 	  (* end case *))
 
     and cvtSimpleExps (env, exps, k) = let

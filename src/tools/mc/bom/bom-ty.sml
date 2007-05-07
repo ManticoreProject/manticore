@@ -10,19 +10,20 @@ structure BOMTy =
     datatype raw_ty = datatype RawTypes.raw_ty
 	
     datatype ty
-      = T_Any			(* unknown type; uniform representation *)
-      | T_Enum of Word.word	(* unsigned tagged integer; word is max value <= 2^31-1 *)
-      | T_Raw of raw_ty		(* raw machine type *)
-      | T_Wrap of raw_ty	(* boxed raw value *)
-      | T_Tuple of ty list	(* heap-allocated tuple *)
+      = T_Any				(* unknown type; uniform representation *)
+      | T_Enum of Word.word		(* unsigned tagged integer; word is max value <= 2^31-1 *)
+      | T_Raw of raw_ty			(* raw machine type *)
+      | T_Wrap of raw_ty		(* boxed raw value *)
+      | T_Tuple of ty list		(* heap-allocated tuple *)
       | T_Fun of (ty list * ty list * ty list)
-				(* function type; the second argument is the type of *)
-				(* the exception continuation(s) *)
-      | T_Cont of ty list	(* first-class continuation *)
+					(* function type; the second argument is the type of *)
+					(* the exception continuation(s) *)
+      | T_Cont of ty list		(* first-class continuation *)
       | T_CFun of CFunctions.c_proto	(* C functions *)
-      | T_TyCon of tyc		(* high-level type constructor *)
+      | T_VProc				(* address of VProc runtime structure *)
+      | T_TyCon of tyc			(* high-level type constructor *)
 
-    and tyc		      (* high-level type constructor *)
+    and tyc			      (* high-level type constructor *)
       = DataTyc of {
 	  name : string,
 	  stamp : Stamp.stamp,		(* a unique stamp *)
@@ -82,6 +83,7 @@ structure BOMTy =
 		  end
 	      | T_Cont tys => concat("cont(" :: tys2l(tys, [")"]))
 	      | T_CFun cp => CFunctions.protoToString cp
+	      | T_VProc=> "vproc"
 	      | T_TyCon(DataTyc{name, ...}) => name
 	    (* end case *)
 	  end

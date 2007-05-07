@@ -145,6 +145,7 @@ Type
 	| "(" Type ("," Type)* ")"		=> (PT.T_Tuple(Type :: SR))
 	| "fun" "(" Typelist ";" Typelist "->" Typelist ")"	=> (PT.T_Fun(Typelist1, Typelist2, Typelist3))
 	| "cont" "(" (Type ("," Type)* )? ")"	=> (PT.T_Cont(flatten SR))
+	| "vproc"				=> (PT.T_VProc)
 	| ID					=> (PT.T_TyCon ID)
 	;
 
@@ -164,6 +165,7 @@ RawType
 
 Exp
 	: "let" LHS "=" RHS Exp				=> (PT.Let(LHS, RHS, Exp))
+	| "do" RHS Exp					=> (PT.Let([], RHS, Exp))
 	| "fun" Lambda ("and" Lambda)* Exp		=> (PT.Fun(Lambda::SR, Exp))
 	| "cont" CLambda Exp				=> (PT.Cont(CLambda, Exp))
 	| "if" SimpleExp "then" Exp "else" Exp		=> (PT.If(SimpleExp, Exp1, Exp2))
@@ -195,6 +197,7 @@ SimpleExp
 	| ID "(" Args ")"		=> (PT.Prim(ID, Args))
 	| "(" Type ")" SimpleExp	=> (PT.Cast(Type, SimpleExp))
 	| Literal			=> (PT.Const(Literal))
+	| "host_vproc"			=> (PT.HostVProc)
 	;
 
 Args

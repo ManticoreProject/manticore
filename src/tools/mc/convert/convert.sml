@@ -34,6 +34,7 @@ structure Convert : sig
 	  end
       | cvtTy (BTy.T_Cont tys) = CTy.contTy(List.map cvtTy tys)
       | cvtTy (BTy.T_CFun cproto) = CTy.T_CFun cproto
+      | cvtTy (BTy.T_VProc) = CTy.T_VProc
       | cvtTy (BTy.T_TyCon _) = raise Fail "unexpected tycon"
 
   (* create a new CPS variable using the name of a BOM variable *)
