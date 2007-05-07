@@ -26,7 +26,7 @@ structure Convert : sig
       | cvtTy (BTy.T_Enum w) = CTy.T_Enum w
       | cvtTy (BTy.T_Raw rTy) = CTy.T_Raw rTy
       | cvtTy (BTy.T_Wrap rTy) = CTy.T_Wrap rTy
-      | cvtTy (BTy.T_Tuple tys) = CTy.T_Tuple(List.map cvtTy tys)
+      | cvtTy (BTy.T_Tuple(mut, tys)) = CTy.T_Tuple(mut, List.map cvtTy tys)
       | cvtTy (BTy.T_Fun(paramTys, exhTys, retTys)) = let
 	  val retKTy = CTy.contTy(List.map cvtTy retTys)
 	  in

@@ -113,7 +113,7 @@ structure CaseSimplify : sig
     val typesOf = List.map typeOf
 
   (* does a BOM type contain type constructors? *)
-    fun hasTyc (BTy.T_Tuple tys) = List.exists hasTyc tys
+    fun hasTyc (BTy.T_Tuple(_, tys)) = List.exists hasTyc tys
       | hasTyc (BTy.T_Fun(tys1, tys2, tys3)) =
 	  List.exists hasTyc tys1 orelse List.exists hasTyc tys2
 	    orelse List.exists hasTyc tys3
@@ -125,7 +125,7 @@ structure CaseSimplify : sig
    * for ty.
    *)
     fun tyToRepTy ty = let
-	  fun ty2ty (BTy.T_Tuple tys) = BTy.T_Tuple(List.map ty2ty tys)
+	  fun ty2ty (BTy.T_Tuple(mut, tys)) = BTy.T_Tuple(mut, List.map ty2ty tys)
 	    | ty2ty (BTy.T_Fun(argTys, exh, resTys)) =
 		BTy.T_Fun(tys2tys argTys, tys2tys exh, tys2tys resTys)
 	    | ty2ty (BTy.T_Cont tys) = BTy.T_Cont(tys2tys tys)
@@ -138,9 +138,9 @@ structure CaseSimplify : sig
 		val _ = (rep := SOME BTy.T_Any);  (* to avoid infinite recursion *)
 		val ty = (case (nNullary, !cons)
 		       of (0, [BTy.DCon{rep=BTy.Transparent, argTy=[ty], ...}]) => ty2ty ty
-			| (0, [BTy.DCon{rep=BTy.Tuple, argTy, ...}]) => BTy.T_Tuple(tys2tys argTy)
+			| (0, [BTy.DCon{rep=BTy.Tuple, argTy, ...}]) => BTy.T_Tuple(false, tys2tys argTy)
 			| (0, [BTy.DCon{rep=BTy.TaggedTuple tag, argTy, ...}]) =>
-			    BTy.T_Tuple(BTy.T_Enum tag :: tys2tys argTy)
+			    BTy.T_Tuple(false, BTy.T_Enum tag :: tys2tys argTy)
 			| (_, []) => BTy.T_Enum(Word.fromInt nNullary - 0w1)
 (* FIXME: we need a union type in BOM for this situation *)
 			| _ => BOMTy.T_Any
@@ -157,8 +157,8 @@ structure CaseSimplify : sig
     fun dconToRepTy (BTy.DCon{rep, argTy, ...}) = (case (rep, argTy)
 	   of (BTy.Transparent, [ty]) => tyToRepTy ty
 	    | (B.Transparent, _) => raise Fail "bogus transparent dcon application"
-	    | (BTy.Tuple, _) => BTy.T_Tuple(List.map tyToRepTy argTy)
-	    | (BTy.TaggedTuple tag, _) => BTy.T_Tuple(BTy.T_Enum tag :: List.map tyToRepTy argTy)
+	    | (BTy.Tuple, _) => BTy.T_Tuple(false, List.map tyToRepTy argTy)
+	    | (BTy.TaggedTuple tag, _) => BTy.T_Tuple(false, BTy.T_Enum tag :: List.map tyToRepTy argTy)
 	  (* end case *))
 
   (* variable to variable substitution *)
@@ -204,7 +204,7 @@ structure CaseSimplify : sig
 			B.mkLet([y'], B.mkRet[x], xformE(s', tys, e))
 		      end
 		  | (B.Tuple, _) => let
-		      val ty = BTy.T_Tuple argTy
+		      val ty = BTy.T_Tuple(false, argTy)
 		      val (s', y') = retype (s, y, ty)
 		      in
 			B.mkStmt([y'], B.E_Alloc(ty, xs), xformE(s', tys, e))
@@ -212,7 +212,7 @@ structure CaseSimplify : sig
 		  | (B.TaggedTuple tag, _) => let
 		      val tagTy = BTy.T_Enum tag
 		      val tag' = BV.new(name, tagTy)
-		      val ty = BTy.T_Tuple(tagTy :: argTy)
+		      val ty = BTy.T_Tuple(false, tagTy :: argTy)
 		      val (s, y) = retype (s, y, ty)
 		      in
 			B.mkStmts([

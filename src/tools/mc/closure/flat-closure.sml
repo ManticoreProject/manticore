@@ -27,14 +27,14 @@ structure FlatClosure : sig
       | cvtTy (CPSTy.T_Enum w) = CFG.T_Enum w
       | cvtTy (CPSTy.T_Raw rTy) = CFGTy.T_Raw rTy
       | cvtTy (CPSTy.T_Wrap rTy) = CFG.T_Wrap rTy
-      | cvtTy (CPSTy.T_Tuple tys) = CFG.T_Tuple(List.map cvtTy tys)
+      | cvtTy (CPSTy.T_Tuple(mut, tys)) = CFG.T_Tuple(mut, List.map cvtTy tys)
       | cvtTy (ty as CPSTy.T_Fun(_, [])) = cvtStdContTy ty
       | cvtTy (ty as CPSTy.T_Fun _) = cvtStdFunTy ty
       | cvtTy (CPSTy.T_CFun cproto) = CFGTy.T_CFun cproto
       | cvtTy (CPSTy.T_VProc) = CFGTy.T_VProc
 
   (* convert a function type to a standard-function type *)
-    and cvtStdFunTy ty = CFG.T_Tuple[CFG.T_Any, cvtStdFunTyAux ty]
+    and cvtStdFunTy ty = CFG.T_Tuple(false, [CFG.T_Any, cvtStdFunTyAux ty])
     and cvtStdFunTyAux (CPSTy.T_Fun([argTy], [retTy, exhTy])) = CFGTy.T_StdFun{
             clos = CFGTy.T_Any,
             arg = cvtTy argTy,
@@ -156,7 +156,7 @@ structure FlatClosure : sig
                 val (b, lab) = bindLabel(labelOf x)
                 val tmp = CFG.Var.new(
                         CPS.Var.nameOf x,
-                        CFGTy.T_Tuple[CFG.Var.typeOf ep, CFG.Var.typeOf lab])
+                        CFGTy.T_Tuple(false, [CFG.Var.typeOf ep, CFG.Var.typeOf lab]))
                 in
                   ([CFG.mkAlloc(tmp, [ep, lab]), b], tmp)
                 end
@@ -212,7 +212,7 @@ structure FlatClosure : sig
           val (_, binds, clos, cfgArgs) =
                 CPS.Var.Set.foldl mkArgs (0, [], externEnv, []) fv
           val cfgArgs = List.rev cfgArgs
-          val ep = newEP (CFGTy.T_Tuple(List.map CFG.Var.typeOf cfgArgs))
+          val ep = newEP (CFGTy.T_Tuple(false, List.map CFG.Var.typeOf cfgArgs))
           in
             (binds, cfgArgs, E{ep = ep, env = clos})
           end
@@ -233,7 +233,7 @@ structure FlatClosure : sig
           val (_, binds, clos, cfgArgs) =
                 CPS.Var.Set.foldl mkArgs (1, [], env, []) fv
           val cfgArgs = List.rev cfgArgs
-	  val closTy = CFGTy.T_Tuple(
+	  val closTy = CFGTy.T_Tuple(false, 
 		CFGTy.stdContTy(CFGTy.T_Any, CFG.Var.typeOf param')
 		  :: List.map CFG.Var.typeOf cfgArgs)
           val ep = newEP closTy
@@ -316,7 +316,7 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
                             (* the functions share a common environment tuple *)
                               val (binds, clos, sharedEnv) =
 				    mkFunClosure (env, FV.envOfFun(funVar(hd fbs)))
-                              val ep = newEP (CFG.T_Tuple(List.map CFG.Var.typeOf clos))
+                              val ep = newEP (CFG.T_Tuple(false, List.map CFG.Var.typeOf clos))
                               val bindEP = CFG.mkAlloc(ep, clos)
                             (* map the names of the bound functions to EnvlFun *)
 			      val sharedEnv = List.foldl
@@ -532,7 +532,7 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
 	    | cvtCont (_, fb) = raise Fail("non-standard continuation " ^ CPS.Var.toString(funVar fb))
         (* create the calling convention for the module *)
           fun cvtModLambda (CPS.FB{f, params, rets, body}) = let
-                val ep = newEP (CFGTy.T_Tuple[])
+                val ep = newEP (CFGTy.T_Enum 0w0)
                 val (env, conv) = stdFunConvention (E{ep = ep, env = externEnv}, params, rets)
                 in
                   cvtExp (env, labelOf f, conv, body)

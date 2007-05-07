@@ -55,6 +55,7 @@
 	| SEMI		(";")
 	| BAR		("|")
 	| WILD		("_")
+	| BANG		("!")
 	| DARROW	("=>")
 	| ARROW		("->")
 	| ID of Atom.atom
@@ -142,7 +143,8 @@ Type
 	| "enum" "(" INT ")"			=> (PT.T_Enum(Word.fromLargeInt INT))
 	| "[" RawType "]"			=> (PT.T_Wrap RawType)
 	| RawType				=> (PT.T_Raw RawType)
-	| "(" Type ("," Type)* ")"		=> (PT.T_Tuple(Type :: SR))
+	| "!" "(" Type ("," Type)* ")"		=> (PT.T_Tuple(true, Type :: SR))
+	| "(" Type ("," Type)* ")"		=> (PT.T_Tuple(false, Type :: SR))
 	| "fun" "(" Typelist ";" Typelist "->" Typelist ")"	=> (PT.T_Fun(Typelist1, Typelist2, Typelist3))
 	| "cont" "(" (Type ("," Type)* )? ")"	=> (PT.T_Cont(flatten SR))
 	| "vproc"				=> (PT.T_VProc)

@@ -46,10 +46,10 @@ functor ExpandOpsFn (Spec : TARGET_SPEC) : sig
     val tidTy = Ty.T_Any
 
   (* the type of items on a vproc's action stack *)
-    val actStkItemTy = Ty.T_Tuple[Ty.contTy[Ty.T_Any], Ty.T_Any]
+    val actStkItemTy = Ty.T_Tuple(false, [Ty.contTy[Ty.T_Any], Ty.T_Any])
 
   (* the type of items in a vproc's ready queue *)
-    val rdyQItemTy = Ty.T_Tuple[tidTy, fiberTy, Ty.T_Any]
+    val rdyQItemTy = Ty.T_Tuple(false, [tidTy, fiberTy, Ty.T_Any])
 
   (* expansion for Run *)
     fun xRun {vp, act, fiber} = let
@@ -113,7 +113,7 @@ functor ExpandOpsFn (Spec : TARGET_SPEC) : sig
  * avoid the tupling of the argument.
  *)
 	  fun copyLoop (tl, fastPath)= let
-		val param = var("param", Ty.T_Tuple[Ty.T_Any, Ty.T_Any])
+		val param = var("param", Ty.T_Tuple(false, [Ty.T_Any, Ty.T_Any]))
 		val retK = var("retK", Ty.contTy[Ty.T_Any]);
 		val loop = var("loop",
 		      Ty.T_Fun([CV.typeOf param], [CV.typeOf retK, CV.typeOf exh]))

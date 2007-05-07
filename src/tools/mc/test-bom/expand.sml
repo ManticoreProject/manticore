@@ -101,7 +101,7 @@
     fun unwrapType (Ty.T_Wrap rTy) = Ty.T_Raw rTy
       | unwrapType ty = raise Fail(concat["unwrapType(", Ty.toString ty, ")"])
 
-    fun selectType (i, Ty.T_Tuple tys) = List.nth(tys, i)
+    fun selectType (i, Ty.T_Tuple(_, tys)) = List.nth(tys, i)
       | selectType _ = raise Fail "selectType"
 
     fun lookup (env, x) = (case AtomMap.find(env, x)
@@ -116,7 +116,7 @@
       | cvtTy (PT.T_Enum w) = Ty.T_Enum w
       | cvtTy (PT.T_Raw rty) = Ty.T_Raw rty
       | cvtTy (PT.T_Wrap rty) = Ty.T_Wrap rty
-      | cvtTy (PT.T_Tuple tys) = Ty.T_Tuple(List.map cvtTy tys)
+      | cvtTy (PT.T_Tuple(mut, tys)) = Ty.T_Tuple(mut, List.map cvtTy tys)
       | cvtTy (PT.T_Fun(argTys, exhTys, resTys)) =
 	  Ty.T_Fun(List.map cvtTy argTys, List.map cvtTy exhTys, List.map cvtTy resTys)
       | cvtTy (PT.T_Cont tys) = Ty.T_Cont(List.map cvtTy tys)
@@ -192,9 +192,16 @@
 				end)
 			  | PT.HostVProc => BOM.mkStmt(lhs', BOM.E_HostVProc, e')
 			(* end case *))
-		    | PT.Alloc args =>
-			cvtSimpleExps (env, args,
-			  fn xs => BOM.mkStmt(lhs', BOM.E_Alloc(Ty.T_Tuple(List.map BV.typeOf xs), xs), e'))
+		    | PT.Alloc args => let
+			val mut = (case BV.typeOf(hd lhs')
+			       of Ty.T_Tuple(true, _) => true
+				| _ => false
+			      (* end case *))
+			in
+			  cvtSimpleExps (env, args,
+			    fn xs => BOM.mkStmt(lhs', BOM.E_Alloc(Ty.T_Tuple(mut, List.map BV.typeOf xs), xs),
+				e'))
+			end
 		    | PT.Wrap arg =>
 			cvtSimpleExp (env, arg, fn x => BOM.mkStmt(lhs', BOM.E_Wrap x, e'))
 		    | PT.CCall(f, args) =>

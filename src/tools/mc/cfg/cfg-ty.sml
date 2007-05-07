@@ -12,14 +12,15 @@ structure CFGTy =
     datatype raw_ty = datatype RawTypes.raw_ty
 
     datatype ty
-      = T_Any			(* unknown type; uniform representation *)
-      | T_Enum of Word.word	(* unsigned tagged integer; word is max value <= 2^31-1 *)
-      | T_Raw of raw_ty		(* raw machine type *)
-      | T_Wrap of raw_ty	(* boxed raw value *)
-      | T_Tuple of ty list	(* heap-allocated tuple *)
-      | T_OpenTuple of ty list	(* a tuple of unknown size, where we know the prefix. *)
-      | T_CFun of CFunctions.c_proto (* a C function prototype *)
-      | T_VProc			(* address of runtime vproc structure *)
+      = T_Any				(* unknown type; uniform representation *)
+      | T_Enum of Word.word		(* unsigned tagged integer; word is max value <= 2^31-1 *)
+      | T_Raw of raw_ty			(* raw machine type *)
+      | T_Wrap of raw_ty		(* boxed raw value *)
+      | T_Tuple of bool * ty list	(* heap-allocated tuple; the boolean is true for *)
+					(* mutable tuples *)
+      | T_OpenTuple of ty list		(* an immutable tuple of unknown size, where we know the prefix. *)
+      | T_CFun of CFunctions.c_proto	(* a C function prototype *)
+      | T_VProc				(* address of runtime vproc structure *)
     (* function/continuation types.  The type specifies the calling convention.  These
      * types should be used for labels and code addresses.
      *)
@@ -35,7 +36,8 @@ structure CFGTy =
             | (T_Enum w1, T_Enum w2) => (w1 = w2)
             | (T_Raw rty1, T_Raw rty2) => (rty1 = rty2)
             | (T_Wrap rty1, T_Wrap rty2) => (rty1 = rty2)
-            | (T_Tuple ty1s, T_Tuple ty2s) => ListPair.allEq equals (ty1s, ty2s)
+            | (T_Tuple(mut1, ty1s), T_Tuple(mut2, ty2s)) =>
+		(mut1 = mut2) andalso ListPair.allEq equals (ty1s, ty2s)
             | (T_OpenTuple ty1s, T_OpenTuple ty2s) => ListPair.allEq equals (ty1s, ty2s)
 	    | (T_CFun proto1, T_CFun proto2) => (proto1 = proto2)
 	    | (T_VProc, T_VProc) => true
@@ -104,7 +106,8 @@ structure CFGTy =
 	      | T_Enum w => concat["enum(", Word.fmt StringCvt.DEC w, ")"]
 	      | T_Raw ty => RawTypes.toString ty
 	      | T_Wrap ty => concat["wrap(", RawTypes.toString ty, ")"]
-	      | T_Tuple tys => concat("(" :: tys2l(tys, [")"]))
+	      | T_Tuple(false, tys) => concat("(" :: tys2l(tys, [")"]))
+	      | T_Tuple(true, tys) => concat("!(" :: tys2l(tys, [")"]))
 	      | T_OpenTuple tys => concat("(" :: tys2l(tys, [",...)"]))
 	      | T_CFun proto => CFunctions.protoToString proto
 	      | T_VProc => "vproc"
@@ -134,7 +137,7 @@ structure CFGTy =
 	    | sel (i, _::r) = sel(i-1, r)
 	  in
 	    case ty
-	     of T_Tuple tys => sel(i, tys)
+	     of T_Tuple(_, tys) => sel(i, tys)
 	      | T_OpenTuple tys => sel(i, tys)
 	      | _ => err()
 	    (* end case *)

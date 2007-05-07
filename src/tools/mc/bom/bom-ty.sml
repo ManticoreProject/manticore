@@ -14,7 +14,8 @@ structure BOMTy =
       | T_Enum of Word.word		(* unsigned tagged integer; word is max value <= 2^31-1 *)
       | T_Raw of raw_ty			(* raw machine type *)
       | T_Wrap of raw_ty		(* boxed raw value *)
-      | T_Tuple of ty list		(* heap-allocated tuple *)
+      | T_Tuple of bool * ty list	(* heap-allocated tuple; the boolean is true for *)
+					(* mutable tuples *)
       | T_Fun of (ty list * ty list * ty list)
 					(* function type; the second argument is the type of *)
 					(* the exception continuation(s) *)
@@ -67,7 +68,8 @@ structure BOMTy =
 	      | T_Enum w => concat["enum(0..", Word.fmt StringCvt.DEC w, ")"]
 	      | T_Raw ty => RawTypes.toString ty
 	      | T_Wrap ty => concat["wrap(", RawTypes.toString ty, ")"]
-	      | T_Tuple tys => concat("(" :: tys2l(tys, [")"]))
+	      | T_Tuple(false, tys) => concat("(" :: tys2l(tys, [")"]))
+	      | T_Tuple(true, tys) => concat("!(" :: tys2l(tys, [")"]))
 	      | T_Fun(paramTys, exhTys, retTys) => let
 		  fun f1 [] = "-;" :: f2 exhTys
 		    | f1 [ty] = toString ty :: ";" :: f2 exhTys
