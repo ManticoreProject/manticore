@@ -214,7 +214,9 @@ dnl
 AC_CONFIG_FILES(\
 dnl ***** Makefiles *****
   src/lib/parallel-rt/build/Makefile
-dnl ***** sources files *****
+dnl ***** SML source files *****
+  src/tools/mc/common/run-cpp.sml:src/tools/mc/common/run-cpp_sml.in \
+dnl ***** CM files *****
   src/tools/mc/codegen/group.cm:src/tools/mc/codegen/group_cm.in
   src/tools/mc/codegen/wrapper.cm:src/tools/mc/codegen/wrapper_cm.in
   src/tools/mc/test-codegen/sources.cm:src/tools/mc/test-codegen/sources_cm.in
