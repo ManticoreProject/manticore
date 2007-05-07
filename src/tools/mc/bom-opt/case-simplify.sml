@@ -19,6 +19,91 @@ structure CaseSimplify : sig
     structure BTy = BOMTy
     structure Lit = Literal
 
+  (* case conversion structures *)
+
+    local
+    (* generate numeric comparisons *)
+      fun genNumTest (ty, ltPrim, eqPrim, const) {arg, key, ltAct, eqAct, gtAct} = let
+	    val v = BV.new("_caseLbl", ty)
+	    val isLess = BV.new("_isLess", BTy.boolTy)
+	    val isEq = BV.new("_isEq", BTy.boolTy)
+	    in
+	      B.mkStmt([v], const key,
+	      B.mkStmt([isLess], B.E_Prim(ltPrim(arg, v)),
+		B.mkIf(isLess,
+		  ltAct,
+		  B.mkStmt([isEq], B.E_Prim(eqPrim(arg, v)),
+		    B.mkIf(isEq, eqAct, gtAct)))))
+	    end
+
+    (* generate numeric order test *)
+      fun genNumOrdTest (ty, cmpPrim, const) {arg, key, eqAct, neqAct} = let
+	    val v = BV.new("_caseLbl", ty)
+	    val isOrd = BV.new("_isOrd", BTy.boolTy)
+	    in
+	      B.mkStmt([v], const key,
+	      B.mkStmt([isOrd], B.E_Prim(cmpPrim(arg, v)),
+		B.mkIf(isOrd, eqAct, neqAct)))
+	    end
+    (* label types *)
+      val intTy = BTy.T_Raw BTy.T_Int
+      val longTy = BTy.T_Raw BTy.T_Int
+      val floatTy = BTy.T_Raw BTy.T_Int
+      val doubleTy = BTy.T_Raw BTy.T_Int
+    (* make an integer constant *)
+      fun iConst ty i = B.E_Const(Literal.Int i, ty)
+      val i32Const = iConst intTy
+      val i64Const = iConst longTy
+    (* make a float constant *)
+      fun fConst ty f = B.E_Const(Literal.Float f, ty)
+      val f32Const = fConst floatTy
+      val f64Const = fConst doubleTy
+    in
+    structure I32Tst = LiteralCaseFn (
+      struct
+	type label = IntInf.int
+	val equal = (op =)
+	val greater = IntInf.>
+	fun succ (i : IntInf.int) = SOME(i+1)
+	fun pred (i : IntInf.int) = SOME(i-1)
+	val genCmpTest = genNumTest (intTy, Prim.I32Lt, Prim.I32Eq, i32Const)
+	val genEqTest = genNumOrdTest (intTy, Prim.I32Eq, i32Const)
+      end)
+
+    structure I64Tst = LiteralCaseFn (
+      struct
+	type label = IntInf.int
+	val equal = (op =)
+	val greater = IntInf.>
+	fun succ (i : IntInf.int) = SOME(i+1)
+	fun pred (i : IntInf.int) = SOME(i-1)
+	val genCmpTest = genNumTest (longTy, Prim.I64Lt, Prim.I64Eq, i64Const)
+	val genEqTest = genNumOrdTest (longTy, Prim.I64Eq, i64Const)
+      end)
+
+    structure F32Tst = LiteralCaseFn (
+      struct
+	type label = FloatLit.float
+	fun equal (a, b) = (case FloatLit.compare(a, b) of EQUAL => true | _ => false)
+	fun greater (a, b) = (case FloatLit.compare(a, b) of GREATER => true | _ => false)
+	fun succ _ = NONE
+	fun pred _ = NONE
+	fun genCmpTest _ = raise Fail "F32Tst.genTest"
+	val genEqTest = genNumOrdTest (floatTy, Prim.F32Eq, f32Const)
+      end)
+
+    structure F64Tst = LiteralCaseFn (
+      struct
+	type label = FloatLit.float
+	fun equal (a, b) = (case FloatLit.compare(a, b) of EQUAL => true | _ => false)
+	fun greater (a, b) = (case FloatLit.compare(a, b) of GREATER => true | _ => false)
+	fun succ _ = NONE
+	fun pred _ = NONE
+	fun genCmpTest _ = raise Fail "F64Tst.genTest"
+	val genEqTest = genNumOrdTest (doubleTy, Prim.F64Eq, f64Const)
+      end)
+   end (* local *)
+
     fun numEnumsOfTyc (BTy.DataTyc{nNullary, ...}) = nNullary
     fun numConsOfTyc (BTy.DataTyc{cons, ...}) = List.length(!cons)
 
@@ -83,7 +168,6 @@ structure CaseSimplify : sig
 	  in
 	    (BV.Map.insert(s, x, x'), x')
 	  end
-
   (* if a variable has a TyCon type, the retype it *)
     fun xformVar (s, x) = if hasTyc(typeOf x)
 	  then retype(s, x, tyToRepTy(typeOf x))
@@ -268,7 +352,7 @@ structure CaseSimplify : sig
 	  in
 	    case classify (rules, [], [], [])
 	     of (enums, [], []) => B.mkCase(argument, rules, dflt)
-	      | ([], lits, []) => raise Fail "unimplemented" (* build binary search tree *)
+	      | ([], lits, []) => literalCase (s, tys, argument, lits, dflt)
 	      | ([], [], cons) => consCase (cons, dflt)
 	      | (enums, [], cons) => let
 		  val tyc = BTy.asTyc(BV.typeOf x)
@@ -327,6 +411,27 @@ structure CaseSimplify : sig
 	      | _ => raise Fail "strange case"
 	    (* end case *)
 	  end
+
+  (* convert a case on literals to a if-then-else tree; note that the default case
+   * is required and has already been transformed.
+   *)
+    and literalCase (s, tys, argument, cases as (((_, ty), _)::_), SOME dflt) = let
+	  val arcs = List.map (fn ((lit, _), e) => (lit, xformE(s, tys, e))) cases
+	  fun convert (proj, cvt) = cvt{
+		  arg = argument,
+		  arcs = List.map (fn ((lit, _), e) => (proj lit, xformE(s, tys, e))) cases,
+		  default = dflt
+		}
+	  in
+	    case ty
+	     of BTy.T_Raw BTy.T_Int => convert(fn (Literal.Int i) => i, I32Tst.convert)
+	      | BTy.T_Raw BTy.T_Long => convert(fn (Literal.Int i) => i, I64Tst.convert)
+	      | BTy.T_Raw BTy.T_Float => convert(fn (Literal.Float f) => f, F32Tst.convert)
+	      | BTy.T_Raw BTy.T_Double => convert(fn (Literal.Float f) => f, F64Tst.convert)
+	      | _ => raise Fail("literal case on unsupported type "^ BTy.toString ty)
+	    (* end case *)
+	  end
+      | literalCase _ = raise Fail "ill-formed literal case"
 
     fun transform (B.MODULE{name, externs, body}) =
 	  B.mkModule(name, externs, xformLambda (BV.Map.empty, body))
