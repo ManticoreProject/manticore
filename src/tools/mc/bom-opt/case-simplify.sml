@@ -62,7 +62,7 @@ structure CaseSimplify : sig
     structure I32Tst = LiteralCaseFn (
       struct
 	type label = IntInf.int
-	val equal = (op =)
+	val equal : IntInf.int * IntInf.int -> bool = (op =)
 	val greater = IntInf.>
 	fun succ (i : IntInf.int) = SOME(i+1)
 	fun pred (i : IntInf.int) = SOME(i-1)
@@ -73,7 +73,7 @@ structure CaseSimplify : sig
     structure I64Tst = LiteralCaseFn (
       struct
 	type label = IntInf.int
-	val equal = (op =)
+	val equal : IntInf.int * IntInf.int -> bool = (op =)
 	val greater = IntInf.>
 	fun succ (i : IntInf.int) = SOME(i+1)
 	fun pred (i : IntInf.int) = SOME(i-1)
@@ -252,6 +252,7 @@ structure CaseSimplify : sig
 		  then B.E_Cast(tyToRepTy ty, subst x)
 		  else rhs
 	      | B.E_Select(i, x)  => B.E_Select(i, subst x)
+	      | B.E_Update(i, x, y)  => B.E_Update(i, subst x, subst y)
 	      | B.E_Alloc(ty, xs) => if hasTyc ty
 		  then B.E_Alloc(tyToRepTy ty, List.map subst xs)
 		  else rhs

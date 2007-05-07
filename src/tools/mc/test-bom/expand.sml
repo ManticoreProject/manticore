@@ -192,6 +192,10 @@
 				end)
 			  | PT.HostVProc => BOM.mkStmt(lhs', BOM.E_HostVProc, e')
 			(* end case *))
+		    | PT.Update(i, arg, rhs) =>
+			cvtSimpleExp (env, arg, fn x =>
+			  cvtSimpleExp (env, rhs, fn y =>
+			    BOM.mkStmt(lhs', BOM.E_Update(i, x, y), e')))
 		    | PT.Alloc args => let
 			val mut = (case BV.typeOf(hd lhs')
 			       of Ty.T_Tuple(true, _) => true

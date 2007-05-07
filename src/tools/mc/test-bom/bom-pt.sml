@@ -48,6 +48,7 @@
     and rhs
       = Exp of exp
       | SimpleExp of simple_exp
+      | Update of (int * simple_exp * simple_exp)
       | Alloc of simple_exp list
       | Wrap of simple_exp			(* wrap raw value *)
       | CCall of (var * simple_exp list)

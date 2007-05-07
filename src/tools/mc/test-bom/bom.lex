@@ -143,6 +143,8 @@
 <INITIAL>";"		=> (T.SEMI);
 <INITIAL>"|"		=> (T.BAR);
 <INITIAL>"_"		=> (T.WILD);
+<INITIAL>"!"		=> (T.BANG);
+<INITIAL>":="		=> (T.ASSIGN);
 <INITIAL>"=>"		=> (T.DARROW);
 <INITIAL>"->"		=> (T.ARROW);
 <INITIAL>{id}		=> (idToken yytext);

@@ -465,6 +465,12 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
                       in
                         ([CFG.mkSelect(x, i, y)] @ binds, env)
                       end
+                  | ((env, []), CPS.Update(i, y, z)) => let
+                      val (binds, y) = lookupVar(env, y)
+                      val (binds', z) = lookupVar(env, z)
+                      in
+                        ([CFG.mkUpdate(i, y, z)] @ binds' @ binds, env)
+                      end
                   | ((env, [x]), CPS.Alloc ys) => let
                       val (binds, ys) = lookupVars (env, ys)
                       in

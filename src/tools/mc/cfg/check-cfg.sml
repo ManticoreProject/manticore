@@ -212,6 +212,19 @@ structure CheckCFG : sig
 *)
                               bindVar (env, x)
 			    end
+			| CFG.E_Update(i, y, z) => let
+			    val ty = Ty.selectTy(i, V.typeOf y)
+				  handle Fail msg => (
+				    error["E_Update(", Int.toString i, ", ",
+					V.toString y, ":", Ty.toString(V.typeOf y), ", ",
+					V.toString z, ")"
+				      ];
+				    Ty.T_Any)
+			    in
+			      chkVar (env, y);
+(* FIXME: check that the tuple is mutable and that z has the right type *)
+			      env
+			    end
 			| CFG.E_Alloc(x, ys) => (
 			    chkVars (env, ys);
                             case V.typeOf x

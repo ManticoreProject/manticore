@@ -174,6 +174,7 @@ structure Convert : sig
 		 of B.E_Const(lit, ty) => C.Const(lit, cvtTy ty)
 		  | B.E_Cast(ty, x) => C.Cast(cvtTy ty, cv x)
 		  | B.E_Select(i, x) => C.Select(i, cv x)
+		  | B.E_Update(i, x, z) => C.Update(i, cv x, cv z)
 		  | B.E_Alloc(ty, args) => C.Alloc(List.map cv args)
 		  | B.E_Wrap x => C.Wrap(cv x)
 		  | B.E_Unwrap x => C.Unwrap(cv x)

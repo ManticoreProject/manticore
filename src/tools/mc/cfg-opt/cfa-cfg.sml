@@ -253,6 +253,7 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 		  | doExp (CFG.E_Cast(x, _, y)) = addInfo(x, valueOf y)
 		  | doExp (CFG.E_Label(x, lab)) = addInfo(x, LABELS(LSet.singleton lab))
 		  | doExp (CFG.E_Select(x, i, y)) =
+(* FIXME: if x is mutable, then we should just bind it to top. *)
 		      addInfo(x, case valueOf y
 			 of TUPLE vs => List.nth(vs, i)
 			  | BOT => BOT
@@ -263,6 +264,7 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 				CFG.Var.toString y, ") = ", valueToString v
 			      ])
 			(* end case *))
+		  | doExp (CFG.E_Update(i, y, z)) = ()
 		  | doExp (CFG.E_Alloc(x, xs)) = addInfo(x, TUPLE(List.map valueOf xs))
 		  | doExp (CFG.E_Wrap(x, y)) = addInfo(x, WRAP(valueOf y))
 		  | doExp (CFG.E_Unwrap(x, y)) =

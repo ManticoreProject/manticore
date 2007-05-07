@@ -70,6 +70,9 @@ structure PrintCFG : sig
 		  | (CFG.E_Label(_, lab)) => pr(labelToString lab)
 		  | (CFG.E_Select(_, i, x)) =>
 		      prl ["#", Int.toString i, " ", varUseToString x]
+		  | (CFG.E_Update(i, x, z)) => prl [
+			"#", Int.toString i, " ", varUseToString x, " := ", varUseToString z
+		      ]
 		  | (CFG.E_Alloc(_, args)) => (pr "alloc"; prList varUseToString args)
 		  | (CFG.E_Wrap(_, y)) => prl["wrap(", varUseToString y, ")"]
 		  | (CFG.E_Unwrap(_, y)) => prl["unwrap(", varUseToString y, ")"]

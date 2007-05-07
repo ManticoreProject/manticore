@@ -56,6 +56,7 @@
 	| BAR		("|")
 	| WILD		("_")
 	| BANG		("!")
+	| ASSIGN	(":=")
 	| DARROW	("=>")
 	| ARROW		("->")
 	| ID of Atom.atom
@@ -186,20 +187,29 @@ LHS
 
 RHS
 	: Exp				=> (PT.Exp Exp)
-	| SimpleExp			=> (PT.SimpleExp SimpleExp)
+	| NonSelectExp			=> (PT.SimpleExp NonSelectExp)
+	| "#" INT "(" SimpleExp ")" (":=" SimpleExp)?
+		=> (case SR
+		     of SOME e => PT.Update(Int.fromLarge INT, SimpleExp, e)
+		      | NONE => PT.SimpleExp(PT.Select(Int.fromLarge INT, SimpleExp))
+		    (* end case *))
 	| "alloc" "(" Args ")"		=> (PT.Alloc Args)
 	| "wrap" "(" SimpleExp ")"	=> (PT.Wrap SimpleExp)
 	| "ccall" ID "(" Args ")"	=> (PT.CCall(ID, Args))
 	;
 
-SimpleExp
+NonSelectExp
 	: ID				=> (PT.Var ID)
-	| "#" INT "(" SimpleExp ")"	=> (PT.Select(Int.fromLarge INT, SimpleExp))
 	| "unwrap" "(" SimpleExp ")"	=> (PT.Unwrap SimpleExp)
 	| ID "(" Args ")"		=> (PT.Prim(ID, Args))
 	| "(" Type ")" SimpleExp	=> (PT.Cast(Type, SimpleExp))
 	| Literal			=> (PT.Const(Literal))
 	| "host_vproc"			=> (PT.HostVProc)
+	;
+
+SimpleExp
+	: NonSelectExp			=> (NonSelectExp)
+	| "#" INT "(" SimpleExp ")"	=> (PT.Select(Int.fromLarge INT, SimpleExp))
 	;
 
 Args

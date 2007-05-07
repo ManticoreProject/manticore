@@ -110,6 +110,9 @@ structure PrintBOM : sig
 	  and prRHS (B.E_Const c) = prConst c
 	    | prRHS (B.E_Cast(ty, y)) = prl["(", Ty.toString ty, ")", varUseToString y]
 	    | prRHS (B.E_Select(i, y)) = prl ["#", Int.toString i, "(", varUseToString y, ")"]
+	    | prRHS (B.E_Update(i, y, z)) = prl [
+		  "#", Int.toString i, "(", varUseToString y, ") := ", varUseToString z
+		]
 	    | prRHS (B.E_Alloc(_, ys)) = (pr "alloc "; prList varUseToString ys)
 	    | prRHS (B.E_Wrap y) = prl["wrap(", varUseToString y, ")"]
 	    | prRHS (B.E_Unwrap y) = prl["unwrap(", varUseToString y, ")"]

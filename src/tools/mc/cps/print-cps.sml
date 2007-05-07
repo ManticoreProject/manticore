@@ -90,6 +90,9 @@ structure PrintCPS : sig
 		  Literal.toString lit, ":", CPSTy.toString ty
 		]
 	    | prRHS (CPS.Select(i, y)) = prl ["#", Int.toString i, "(", varUseToString y, ")"]
+	    | prRHS (CPS.Update(i, y, z)) = prl [
+		  "#", Int.toString i, "(", varUseToString y, ") := ", varUseToString z
+		]
 	    | prRHS (CPS.Alloc ys) = (pr "alloc "; prList varUseToString ys)
 	    | prRHS (CPS.Wrap y) = prl["wrap(", varUseToString y, ")"]
 	    | prRHS (CPS.Unwrap y) = prl["unwrap(", varUseToString y, ")"]
