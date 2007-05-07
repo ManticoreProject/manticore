@@ -7,7 +7,7 @@ module Float3
 	let fl : float = #1(ar)
 	case i
          of 0  => return (fl)
-          | 1  =>
+          | _  =>
               let f1 : float = 2.3
               let fl' : float = F32Add (fl, f1)
               return (fl')
