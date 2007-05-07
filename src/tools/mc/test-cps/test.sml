@@ -12,6 +12,7 @@ structure Test =
 
     structure CPSOpt = CPSOptFn (DummySpec)
     structure CFGOpt = CFGOptFn (DummySpec)
+    structure AMD64Gen = AMD64GenFn (structure Spec = DummySpec)
 
     fun prHdr msg = print(concat["******************** ", msg,  "********************\n"])
 
@@ -60,9 +61,18 @@ structure Test =
                (*"mult-ls.cps",*)"sum-ls-foldr.cps","sum-ls.cps",
                "mutual-recursion.cps","mutual-recursion2.cps"]
 
+    fun compile file = 
+	let val cfg = load file
+	    val outStrm = TextIO.openOut (file^".s")
+	in
+	    AMD64Gen.BackEnd.codeGen {dst=outStrm, code=cfg};
+	    TextIO.closeOut outStrm
+	end
+
     fun cvtAll () = List.map cvt all
     fun loadAll () = List.map load all
     fun initAll () = List.map init all
+    fun compileAll () = List.map compile all
 
   end
 

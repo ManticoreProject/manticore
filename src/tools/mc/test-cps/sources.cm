@@ -22,7 +22,7 @@ is
   ../cfg/sources.cm
   ../cfg-opt/sources.cm
   ../test-cfg/sources.cm
-  (* ../codegen/sources.cm *)
+ ../codegen/sources.cm 
 
   cps-parse.cm
 

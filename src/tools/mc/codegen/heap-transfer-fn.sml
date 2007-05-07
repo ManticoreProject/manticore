@@ -201,10 +201,11 @@ functor HeapTransferFn (
 	  val szOfVar = Types.szOf o Var.typeOf
 	  val name = defOf f
 	  val cArgs = map (MTy.treeToMLRisc o getDefOf) args
-	  val {callseq, result} = CCall.genCall {
+	  val {callseq, result} = raise Fail "todo" 
+(*CCall.genCall {
 		  name=name, args=cArgs,
 		  proto={conv="", retTy=retTy, paramTys=paramTys}
-		}
+		} *)
 	(* do we need to save/restore the allocation pointer? *)
 	  val saveAllocPtr = CFunctions.protoHasAttr CFunctions.A_alloc cProtoTy
 	(* for each caller-save register, allocate a fresh temporary and
@@ -302,7 +303,7 @@ functor HeapTransferFn (
 	  fun loadArgs ([], i, ss) = rev ss
 	    | loadArgs (mty :: mtys, i, ss) =
 	      let val ty = Types.szOf mty
-		  val s = select' (ty, M.T_Tuple argTys, i, regExp closReg)
+		  val s = select' (ty, M.T_Tuple (false, argTys), i, regExp closReg)
 	      in 
 		  loadArgs (mtys, i + 1, s :: ss)
 	      end

@@ -100,7 +100,7 @@ structure Expand =
     fun unwrapType (Ty.T_Wrap rTy) = Ty.T_Raw rTy
       | unwrapType ty = raise Fail(concat["unwrapType(", Ty.toString ty, ")"])
 
-    fun selectType (i, Ty.T_Tuple tys) = List.nth(tys, i)
+    fun selectType (i, Ty.T_Tuple (_, tys)) = List.nth(tys, i)
       | selectType _ = raise Fail "selectType"
 
     fun lookup (env, x) = (case AtomMap.find(env, x)

@@ -93,7 +93,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	      pseudoOp (P.asciz s) )
 	  fun genLit (ty, Literal.Enum c) =
 		MTy.EXP(ty, T.LI(T.I.fromWord (ty, Word.<<(c, 0w1) + 0w1)))
-	    | genList (ty, Literal.Int i) = MTy.EXP(ty, T.LI i)
+	    | genLit (ty, Literal.Int i) = MTy.EXP(ty, T.LI i)
 	    | genLit (fty, Literal.Float f) = let
 		val lbl = FloatLit.addLit (floatTbl, (fty, f))
 		in
@@ -190,6 +190,10 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		  | gen (M.E_Select (lhs, i, v)) =  
 		      bindExp ([lhs], [select (BE.Types.szOf (Var.typeOf lhs), 
 					       Var.typeOf v, i, defOf v)])
+		  | gen (M.E_Update (i, lhs, rhs)) =
+		    emit (T.STORE (BE.Types.szOf (Var.typeOf lhs), 
+				   T.ADD (ty, defOf lhs, T.LI (T.I.fromInt (ty, i))), 
+					  defOf rhs, ManticoreRegion.memory))
 		  | gen (M.E_Alloc (lhs, vs)) = 
 		      let val {ptr, stms} = 
 			      BE.Alloc.genAlloc (map (fn v => (Var.typeOf v, getDefOf v)) vs)

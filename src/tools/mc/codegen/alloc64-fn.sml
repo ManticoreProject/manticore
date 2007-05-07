@@ -44,14 +44,14 @@ functor Alloc64Fn (
 	      if (j >= i) then sz
 	      else offset (tys, j+1, alignedTySzB ty + sz)
 	    | offset ([], _, _) = raise Fail ("offset of type "^
-			CFGTy.toString (M.T_Tuple tys)^Int.toString (length tys))
+			CFGTy.toString (M.T_Tuple (false, tys))^Int.toString (length tys))
       in 
 	  offset (tys, 0, 0) 
       end (* offsetOf *)
 
   fun select {lhsTy : T.ty, mty : M.ty, i : int, base : T.rexp} =
       let fun offsetOf' ( 
-	      M.T_Tuple tys
+	      M.T_Tuple (_, tys)
 	    | M.T_Code tys
 	    | M.T_OpenTuple tys ) = 
 	      (offsetOf {tys=tys, i=i}, List.nth (tys, i))

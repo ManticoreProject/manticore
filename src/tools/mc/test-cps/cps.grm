@@ -132,7 +132,7 @@ Type
 	| "enum" "(" INT ")"			=> (PT.T_Enum(Word.fromLargeInt INT))
 	| "[" RawType "]"			=> (PT.T_Wrap RawType)
 	| RawType				=> (PT.T_Raw RawType)
-	| "(" Type ("," Type)* ")"		=> (PT.T_Tuple(Type :: SR))
+	| "(" Type ("," Type)* ")"		=> (PT.T_Tuple(false, Type :: SR))
 	| "fun" "(" Types ";" Types ")"		=> (PT.T_Fun(Types1, Types2))
 	| "cont" "(" Types ")"			=> (PT.T_Fun(Types, []))
 	| "vproc"				=> (PT.T_VProc)
