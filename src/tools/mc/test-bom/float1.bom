@@ -1,0 +1,10 @@
+(* float1.bom *)
+
+module Float1
+  fun init (arg : any; exh : cont(any)) : unit =
+  
+    fun retFloat (i : int; exh : cont(any)) : float =
+	let f : float = 3.14
+	return (F32Add (f, f))
+
+    return (enum(0))

@@ -1,0 +1,28 @@
+(* mutual-recursion2.bom *)
+
+module MutualRec2
+  fun init (arg : any; exh : cont(any)) : unit =
+
+  (* "outer" returns i^n *)
+    fun outer (a : (int, int); exh : cont(any)) : int =
+	let i : int = #0(a)
+	let n : int = #1(a)
+
+	fun f (j : int; exh : cont(any)) : int =
+            let x : int = apply g (j; exh)
+	    return (I32Mul(i, x))
+
+	and g (j : int; exh : cont(any)) : int =
+	    if I32Gte (j, n)
+	    then return (1 : int)
+	    else let j' : int = I32Add (j, 1 : int)
+		 apply f (j'; exh)
+
+	apply f (1 : int; exh)
+
+
+    fun doit (i : int; exh : cont(any)) : int =
+	let a : (int, int) = alloc (2 : int, i)
+	apply outer(a; exh)
+
+    return (enum(0))

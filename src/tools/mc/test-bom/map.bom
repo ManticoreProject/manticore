@@ -1,0 +1,19 @@
+(* map.bom *)
+
+module Map
+  fun init (arg : any; exh : cont(any)) : unit =
+    fun map (fl : any; exh : cont(any)) : list =
+      let f : fun(any; cont(any) -> any) = #0(((fun(any; cont(any) -> any),list))fl)
+      let l : list = #1(((fun(any; cont(any) -> any),list))fl)
+      fun map' (l : list; exh : cont(any)) : list =	
+	case l
+          of enum(0) =>
+                return (enum(0))
+           | CONS(hd : any, tl : list) =>
+	        let hd' : any = apply f (hd; exh)
+		let tl' : list = apply map' (tl; exh)
+	        return (CONS(hd', tl'))	
+        end
+      apply map' (l; exh)
+    
+    return (enum(0))

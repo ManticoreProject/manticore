@@ -1,0 +1,38 @@
+(* map2.bom 
+ * Take an integer i, create a list [i,..,1], and add 1 to each element of the list.
+ * Lists have the basic cons-cell representation: (elt, ptr).
+ *)
+
+module Map2
+  fun init (arg : any; exh : cont(any)) : unit =
+
+    fun add1 (i : int; exh : cont(any)) : int = 
+	return (I32Add(i, 1: int))
+
+    fun map (fl : any; exh : cont(any)) : list =
+      let f : fun(any; cont(any) -> any) = #0(((fun(any; cont(any) -> any), list))fl)
+      let l : list = #1(((fun(any; cont(any) -> any), list))fl)
+      fun map' (l : list; exh : cont(any)) : list =	
+	case l
+          of enum(0) =>
+                return (enum(0))
+           | CONS(hd : any, tl : list) =>
+	        let hd' : any = apply f (hd; exh)
+		let tl' : list = apply map' (tl; exh)
+	        return (CONS(hd', tl'))	
+        end
+      apply map' (l; exh)
+	
+    (* returns the list [i,..,1] *)
+    fun tabulate (i : int; exh : cont(any)) : list =
+	if I32Lte (i, 0:int) then return (enum(0))
+	else let tl : list = apply tabulate (I32Sub (i, 1:int); exh)
+	     return (CONS(i, tl))
+
+    fun doit (i : int; exh : cont(any)) : list =
+	let l : list = apply tabulate (i; exh)
+	let a : (fun(int; cont(any) -> int), list) = alloc (add1, l)
+	let l' : list = apply map (a; exh)
+	return (l')
+    
+    return (enum(0))
