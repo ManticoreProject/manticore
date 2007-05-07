@@ -17,7 +17,7 @@ structure RunCPP : sig
 
   end = struct
 
-    val cppCmd = "@CPP_CMD@"
+    val cppCmd = "@CPP@"
 
     fun run {noLines, defs, includes, input} = let
 	  fun mkDef (symb, NONE) = "-D" ^ symb
