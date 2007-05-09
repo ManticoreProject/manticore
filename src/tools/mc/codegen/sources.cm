@@ -7,10 +7,13 @@
  *)
 
 Library
-  functor AMD64GenFn
+  signature CODE_GEN
   signature BACK_END
+
   structure AsmStream
   structure Label
+
+  functor AMD64GenFn
 is
 
   $/basis.cm

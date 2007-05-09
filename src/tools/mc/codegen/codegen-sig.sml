@@ -6,11 +6,12 @@
  * Translate the CFG representation into MLRISC trees.
  *)
 
-signature CODE_GEN = sig
+signature CODE_GEN =
+  sig
 
     val codeGen : {
-	dst : TextIO.outstream,  (* assembly output stream *)
-	code : CFG.module        (* first-order CPS program *)
-    } -> unit
+	    dst : TextIO.outstream,	(* assembly output stream *)
+	    code : CFG.module		(* first-order CPS program *)
+	  } -> unit
 
-end (* CODE_GEN *)
+  end (* CODE_GEN *)
