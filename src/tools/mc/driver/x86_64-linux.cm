@@ -1,0 +1,14 @@
+Library
+
+  structure Main
+
+is
+
+  $/basis.cm
+
+  ../codegen/sources.cm
+  ../common/sources.cm
+  sources.cm
+
+  runtime-constants.sml
+  x86_64-linux.sml

@@ -1,0 +1,17 @@
+(* x86_64-linux.sml
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+structure AMD64TargetSpec = TargetSpecFn (
+    val archName = "x86_64"
+    val abiName = "SVID"
+    val osName = "linux"
+    structure ABI = RuntimeConstants)
+
+structure CodeGen = AMD64GenFn (structure Spec = AMD64TargetSpec)
+
+structure Main = MainFn(
+    structure Spec = AMD64TargetSpec
+    structure CG = CodeGen.Gen)
