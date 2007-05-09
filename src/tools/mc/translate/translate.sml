@@ -32,6 +32,12 @@ structure Translate : sig
     fun insert (E{vmap, exh}, x, x') =
 	  E{vmap=V.Map.insert(vmap, x, x'), exh=exh}
 
+    fun newHandler (E{vmap, ...}) = let
+	  val exh = BV.new("_exh", BTy.exhTy)
+	  in
+	    (exh, E{vmap = vmap, exh = exh})
+	  end
+
     fun handlerOf (E{exh, ...}) = [exh]
 
   (* translate a binding occurrence of an AST variable to a BOM variable *)
@@ -73,6 +79,18 @@ structure Translate : sig
 		  in
 		    B.mkStmt([t], B.E_Alloc(ty, xs), B.mkRet [t])
 		  end))
+	    | AST.RangeExp(lo, hi, optStep) =>
+	    | AST.PTupleExp exps => raise Fail "PTupleExp"
+	    | AST.PArrayExp exps => raise Fail "PArrayExp"
+	    | AST.ComprehendExp _ => raise Fail "unexpected ComprehendExp"
+	    | AST.SpawnExp e => let
+		val (exh, env') = newHandler env
+		val e' = trExp(env', e)
+		val thd = BV.newVar("_thd", BTy.T_Fun([], [BTy.exhTy], []))
+		in
+		  B.mkFun([B.FB{f=thd, params=[], exh=[exh], body=e'}],
+		    B.mkHLOp(ManticoreOps.spawnOp, [f], []))
+		end
 	    | AST.ConstExp(AST.DConst dc) => raise Fail "DConst"
 	    | AST.ConstExp(AST.LConst(lit, ty)) => let
 		val ty' = trTy ty
@@ -165,7 +183,7 @@ structure Translate : sig
 	  end
 
     fun translate exp = let
-	  val exh = BV.new("exh", BTy.exhTy)
+	  val exh = BV.new("_topExh", BTy.exhTy)
 	  val mainFun = B.FB{
 		  f = BV.new("main", BTy.T_Fun([], [BTy.exhTy], [])),
 		  params = [],

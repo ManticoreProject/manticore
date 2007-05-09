@@ -16,6 +16,7 @@ structure HLOp =
 
     type hlop_sig = {		(* High-level operation signature *)
 	params : param_ty list,		(* paramter signature *)
+	exh : BOMTy.ty list,
 	results : BOMTy.ty list		(* list of results *)
       }
 

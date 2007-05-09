@@ -30,6 +30,9 @@ signature BASIS =
     val atomicQDequeue : HLOp.hlop	(* remove an item [atomic] *)
 *)
 
+  (* high-level operations from ManticoreOps *)
+    val spawnOp : HLOp.hlop
+
   (* scheduler operations *)
     val runOp : HLOp.hlop
     val forwardOp : HLOp.hlop
@@ -49,7 +52,7 @@ structure Basis : BASIS =
     structure H = HLOp
 
     fun new (name, params, res, attrs) =
-	  H.new(Atom.atom name, {params= List.map HLOp.PARAM params, results=res}, attrs)
+	  H.new(Atom.atom name, {params= List.map HLOp.PARAM params, exh=[], results=res}, attrs)
 
   (* some standard parameter types *)
     val vprocTy = BTy.T_Any	(* FIXME *)
@@ -74,6 +77,9 @@ structure Basis : BASIS =
     val atomicQEnqueue of (var * var)	(* insert an item [atomic] *)
     val atomicQDequeue of var		(* remove an item [atomic] *)
 *)
+
+  (* high-level operations from ManticoreOps *)
+    val spawnOp = ManticoreOps.spawnOp
 
   (* scheduler operations *)
     val runOp = new("run", [vprocTy, sigActTy, fiberTy], [], [H.NORETURN])
@@ -105,6 +111,7 @@ structure Basis : BASIS =
 	  ]
   (* HLOp table *)
     val findHLOp : Atom.atom -> HLOp.hlop option = mkTbl HLOp.name [
+	    spawnOp,
 	    dequeueOp,
 	    enqueueOp,
 	    forwardOp,
