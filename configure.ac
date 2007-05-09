@@ -1,4 +1,14 @@
-AC_INIT(manticore,0.1,[http://manticore.cs.uchicago.edu])
+dnl Process this file with autoconf to produce a configure script.
+dnl
+dnl COPYRIGHT (c) 2007 The Manticore Project (manticore.cs.uchicago.edu)
+dnl All rights reserved.
+dnl
+dnl This the configuration script for autoconf version 2.59.  The
+dnl file configure.in is for older versions.
+
+dnl NOTE: MANTICORE_DIST_VERSION is an M4 variable defined in config/aclocal.m4
+dnl
+AC_INIT(manticore,MANTICORE_DIST_VERSION,http://manticore.cs.uchicago.edu)
 
 AC_PREREQ(2.52)
 AC_CONFIG_AUX_DIR(config)
@@ -6,6 +16,8 @@ AC_CONFIG_AUX_DIR(config)
 dnl
 dnl include extra macros
 dnl
+sinclude(config/check_smlnj.m4)
+sinclude(config/check_smlnj_heap_suffix.m4)
 sinclude(config/acx_pthread.m4)
 sinclude(config/check_leading_uscore.m4)
 
@@ -14,24 +26,34 @@ dnl get host and target information
 dnl
 AC_CANONICAL_HOST
 AC_CANONICAL_TARGET
+if test $target_cpu != $host_cpu ; then
+  CROSS_COMPILING=1
+  RUNTIME_DIR=
+else
+  CROSS_COMPILING=0
+  RUNTIME_DIR=runtime
+fi
+AC_SUBST(CROSS_COMPILING)
 
-case $host_cpu in
+case $target_cpu in
   i386|i486|i586|i686) TARGET_CPU=TARGET_X86; ARCH=x86 ;;
   x86_64) TARGET_CPU=TARGET_X86_64; ARCH=x86_64 ;;
-  *) AC_MSG_ERROR([host cpu ${host_cpu} is not supported]) ;;
+  *) AC_MSG_ERROR([target cpu ${target_cpu} is not supported]) ;;
 esac
-case $host_os in
-  linux|linux-gnu) TARGET_OS=TARGET_LINUX ;;
-  darwin*) TARGET_OS=TARGET_DARWIN ;;
-  *) AC_MSG_ERROR([host os ${host_os} is not supported]) ;;
+case $target_os in
+  linux|linux-gnu) TARGET_OS=TARGET_LINUX; OS=linux ;;
+  darwin*) TARGET_OS=TARGET_DARWIN; OS=darwin ;;
+  *) AC_MSG_ERROR([target os ${target_os} is not supported]) ;;
 esac
+TARGET=$ARCH-$OS
 AC_SUBST(TARGET_CPU)
 AC_SUBST(TARGET_OS)
+AC_SUBST(TARGET)
 
 dnl
 dnl check for --disable-64 flag
 dnl
-if test $ARCH = x86_64; then
+if test $ARCH = x86_64 -a $CROSS_COMPILING = 0; then
   AC_ARG_ENABLE(32,
     AC_HELP_STRING(["--enable-32], [enable 32-bit compatibility mode on x86-64]))
   if test x"$enable_32" = xyes ; then
@@ -45,6 +67,36 @@ else
   CC_MODE_FLAG=""
 fi
 AC_SUBST(CC_MODE_FLAG)
+
+
+dnl
+dnl Manticore version information
+dnl
+case $PACKAGE_VERSION in
+  development) VERSION=0.0.0 ;;
+  *.*.*) VERSION=$PACKAGE_VERSION ;;
+  *.*) VERSION=$PACKAGE_VERSION.0 ;;
+  *) AC_MSG_ERROR([badly formed version number \"$PACKAGE_VERSION\"])
+  ;;
+esac
+[MAJOR_VERSION=`echo $VERSION \
+  | sed -e 's/\([0-9]*\).\([0-9]*\).\([0-9]*\)/\1/'`]
+[MINOR_VERSION=`echo $VERSION \
+  | sed -e 's/\([0-9]*\).\([0-9]*\).\([0-9]*\)/\1/'`]
+[PATCH_VERSION=`echo $VERSION \
+  | sed -e 's/\([0-9]*\).\([0-9]*\).\([0-9]*\)/\1/'`]
+MANTICORE_VERSION=$PACKAGE_VERSION
+BUILD_DATE=`date +%Y-%m-%d`
+
+dnl BUILD_VERSION and RElEASE_DATE are defined in config/aclocal.m4
+dnl by the following macro:
+MANTICORE_SET_VERSION
+
+AC_SUBST(MANTICORE_VERSION)
+AC_SUBST(MAJOR_VERSION)
+AC_SUBST(MINOR_VERSION)
+AC_SUBST(PATCH_VERSION)
+AC_SUBST(BUILD_DATE)
 
 dnl
 dnl check for standard programs
@@ -104,6 +156,47 @@ AC_CHECK_FILES(/proc/cpuinfo)
 dnl ******************** SML/NJ configuration ********************
 
 dnl
+dnl
+dnl check that we have a compatible version of SML/NJ
+dnl
+CHECK_SMLNJ([AC_MSG_ERROR([must have SML/NJ installed])])
+if test $SMLNJ_MAJOR_VERSION -lt 110 \
+  -o $SMLNJ_MINOR_VERSION -lt 56
+then
+  AC_MSG_ERROR([installation requires SML/NJ version 110.56+])
+fi
+AC_SUBST(SMLNJ_VERSION)
+
+dnl
+dnl determine the heap-image suffix
+dnl
+CHECK_SMLNJ_HEAP_SUFFIX([
+  AC_MSG_ERROR([unsupported configuration ${host_cpu}-${host_os}])])
+
+dnl
+dnl look for ml-makedepend
+dnl
+AC_MSG_CHECKING([for ml-makedepend])
+tmpPATH="$SMLNJ_PATH:$PATH"
+AC_PATH_PROG(ML_MAKEDEPEND, ml-makedepend, ":", $tmpPATH)
+if test $ML_MAKEDEPEND = none ; then
+  AC_MSG_ERROR([ml-makedepend not found])
+else
+  AC_MSG_RESULT([$ML_MAKEDEPEND])
+fi
+AC_SUBST(ML_MAKEDEPEND)
+
+dnl
+dnl look for ml-build
+dnl
+tmpPATH="$SMLNJ_PATH:$PATH"
+AC_PATH_PROG(ML_BUILD, ml-build, none, $tmpPATH)
+if test $ML_BUILD = none ; then
+  AC_MSG_ERROR([ml-build not found])
+fi
+AC_SUBST(ML_BUILD)
+
+dnl
 dnl allow the user to override the location of the MLRisc library
 dnl
 MLRISC_DIR=""
@@ -131,6 +224,28 @@ else
 fi
 AC_SUBST(MLRISC_DIR)
 AC_SUBST(MLRISC_CM_DIR)
+
+
+dnl ******************** Paths ********************
+
+MANTICORE_ROOT=`pwd`
+MANTICORE_DOCDIR=$MANTICORE_ROOT/doc
+MANTICORE_SRCDIR=$MANTICORE_ROOT/src
+MANTICORE_LIBDIR=$MANTICORE_ROOT/lib
+MANTICORE_BINDIR=$MANTICORE_ROOT/bin
+MANTICORE_MKDIR=$MANTICORE_ROOT/mk
+MANTICORE_RUNSRCDIR=$MANTICORE_SRCDIR/lib/parallel-rt
+HEAP_IMAGE_DIR=$MANTICORE_BINDIR/.heap
+INSTALL_SMLNJ_WRAPPER=$MANTICORE_BINDIR/install-sml-wrapper.sh
+
+AC_SUBST(MANTICORE_DOCDIR)
+AC_SUBST(MANTICORE_SRCDIR)
+AC_SUBST(MANTICORE_LIBDIR)
+AC_SUBST(MANTICORE_BINDIR)
+AC_SUBST(MANTICORE_MKDIR)
+AC_SUBST(MANTICORE_RUNSRCDIR)
+AC_SUBST(HEAP_IMAGE_DIR)
+AC_SUBST(INSTALL_SMLNJ_WRAPPER)
 
 
 dnl ******************** Runtime system parameters ********************
@@ -165,8 +280,7 @@ AC_C_LONG_DOUBLE
 
 dnl
 dnl Figure out the sizes of a few things; we use this information in
-dnl moby-config.h to determine the type of MOBY_word_t.  And in the
-dnl moby-lib/c-interface.mbx file.
+dnl manticore-config.h to determine the type of Word_t.
 dnl
 AC_CHECK_SIZEOF(char *)
 AC_CHECK_SIZEOF(char)
@@ -214,14 +328,21 @@ dnl
 AC_CONFIG_FILES(\
 dnl ***** Makefiles *****
   src/lib/parallel-rt/build/Makefile
+  src/tools/mc/Makefile
 dnl ***** SML source files *****
-  src/tools/mc/common/run-cpp.sml:src/tools/mc/common/run-cpp_sml.in \
+  src/tools/mc/common/run-cpp.sml:src/tools/mc/common/run-cpp_sml.in
+  src/tools/mc/driver/version-fn.sml:src/tools/mc/driver/version-fn_sml.in
 dnl ***** CM files *****
   src/tools/mc/codegen/group.cm:src/tools/mc/codegen/group_cm.in
   src/tools/mc/codegen/wrapper.cm:src/tools/mc/codegen/wrapper_cm.in
   src/tools/mc/test-codegen/sources.cm:src/tools/mc/test-codegen/sources_cm.in
 )
 AC_CONFIG_HEADERS(src/lib/parallel-rt/include/manticore-config.h:config/config_h.in)
+
+dnl
+dnl shell scripts
+dnl
+AC_CONFIG_FILES([bin/install-sml-wrapper.sh:config/install-sml-wrapper_sh.in], [chmod +x bin/install-sml-wrapper.sh])
 
 dnl
 dnl create machine-specific links

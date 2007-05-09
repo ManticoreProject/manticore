@@ -20,6 +20,7 @@ functor MainFn (
         Coverage.install ();
         BackTrace.install() )
 
+    structure Version = VersionFn (Spec)
     structure BOMOpt = BOMOptFn (Spec)
     structure CPSOpt = CPSOptFn (Spec)
     structure CFGOpt = CFGOptFn (Spec)

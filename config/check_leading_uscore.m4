@@ -1,6 +1,6 @@
 dnl check_leading_uscore.m4
 dnl
-dnl COPYRIGHT (c) 2006 The Moby Project (http://moby.cs.uchicago.edu/)
+dnl COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu/)
 dnl All rights reserved.
 dnl
 dnl @synopsis CHECK_LEADING_UNDERSCORE

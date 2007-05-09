@@ -1,0 +1,86 @@
+# Makefile.in
+#
+# COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+# All rights reserved.
+#
+# @configure_input@
+#
+
+# tools
+#
+SHELL = 		@SHELL@
+@SET_MAKE@
+INSTALL_WRAPPER =	@INSTALL_SMLNJ_WRAPPER@
+ML_BUILD =		@ML_BUILD@
+ML_BUILD_FLAGS =
+ML_MAKEDEPEND =		@ML_MAKEDEPEND@
+ML_MAKEDEPEND_FLAGS =
+
+# install paths
+#
+PREFIX =		@prefix@
+INSTALL_BINDIR =	$(PREFIX)/bin
+INSTALL_LIBDIR =	$(PREFIX)/lib
+INSTALL_INCDIR =	$(PREFIX)/include
+SRCDIR =		@MANTICORE_SRCDIR@
+LIBDIR =		@MANTICORE_LIBDIR@
+BINDIR =		@MANTICORE_BINDIR@
+
+PROGRAM =		mc
+TARGET =		@TARGET@
+HEAP_IMAGE =		$(PROGRAM).$(HEAP_SUFFIX)
+ROOT_CM =		driver/$(TARGET).cm
+
+CM_FILES =		bom-opt/sources.cm \
+			bom/sources.cm \
+			cfg-opt/sources.cm \
+			cfg/sources.cm \
+			closure/sources.cm \
+			codegen/sources.cm \
+			common/sources.cm \
+			convert/sources.cm \
+			cps-opt/sources.cm \
+			cps/sources.cm \
+			driver/sources.cm \
+			$(ROOT_CM) \
+			minmant/parser.cm \
+			minmant/sources.cm \
+			prim/sources.cm \
+			test-bom/bom-parse.cm \
+			translate/sources.cm
+
+build:		local-install
+
+default-target:
+	rm -f $(HEAP_IMAGE)
+	make $(HEAP_IMAGE)
+
+$(HEAP_IMAGE):
+	$(ML_BUILD) $(ML_BUILD_FLAGS) $(ROOT_CM) Main.main $(PROGRAM)
+
+.depend:	$(CM_FILES)
+	touch .depend
+	$(ML_MAKEDEPEND) $(ML_MAKEDEPEND_FLAGS) -n -f .depend $(ROOT_CM) $(HEAP_IMAGE)
+
+local-install:	default-target
+	$(INSTALL_WRAPPER) $(PROGRAM) $(BINDIR)
+
+install:	default-target
+	$(INSTALL_WRAPPER) $(PROGRAM) $(INSTALL_BINDIR)
+
+sinclude .depend
+
+#################### Cleanup ####################
+
+CLEAN_FILES =		$(HEAP_IMAGE) \
+			*/*.grm.sml \
+			*/*.lex.sml
+DISTCLEAN_FILES =	codegen/group.cm \
+			codegen/wrapper.cm \
+			common/run-cpp.sml \
+			driver/version-fn.sml \
+			.depend
+DEVCLEAN_FILES =
+
+include @MANTICORE_MKDIR@/clean-rules.gmk
+
