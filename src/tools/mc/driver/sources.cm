@@ -1,0 +1,30 @@
+Library
+
+  functor MainFn
+  functor TargetSpecFn
+
+is
+  $/basis.cm
+
+  $smlnj-tdp/plugins.cm
+  $smlnj-tdp/back-trace.cm
+  $smlnj-tdp/coverage.cm
+
+  ../bom/sources.cm
+  ../bom-opt/sources.cm
+  ../cfg/sources.cm
+  ../cfg-opt/sources.cm
+  ../codegen/sources.cm
+  ../common/sources.cm
+  ../convert/sources.cm
+  ../closure/sources.cm
+  ../cfg-opt/sources.cm
+  ../cps/sources.cm
+  ../cps-opt/sources.cm
+  ../prim/sources.cm
+  ../test-bom/bom-parse.cm
+
+  target-spec-fn.sml
+(*  runtime-constants.sml*)
+  main-fn.sml
+
