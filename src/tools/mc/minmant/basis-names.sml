@@ -19,6 +19,8 @@ structure BasisNames =
     val list =		Atom.atom "list"
     val string =	Atom.atom "string"
     val unit =		Atom.atom "unit"
+    val parray =        Atom.atom "parray"
+    val thread_id =     Atom.atom "thread_id"
 
   (* operators *)
     val eq =		Atom.atom "="

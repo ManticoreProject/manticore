@@ -130,152 +130,188 @@ structure Typechecker : sig
     and chkExp (loc, depth, ve, exp) = (case exp
 	   of PT.MarkExp{lnum, tree} => chkExp (lnum, depth, ve, tree)
 	    | PT.LetExp(valDcls, exp) => let
-		fun chkDcls ([], ve) = chkExp (loc, depth, ve, exp)
-		  | chkDcls (vd::vds, ve) = let
-		      val (bind, ve) = chkValDcl (loc, depth, ve, vd)
-		      val (e', ty) = chkDcls (vds, ve)
+		  fun chkDcls ([], ve) = chkExp (loc, depth, ve, exp)
+		    | chkDcls (vd::vds, ve) = let
+			  val (bind, ve) = chkValDcl (loc, depth, ve, vd)
+			  val (e', ty) = chkDcls (vds, ve)
 		      in
-		        (AST.LetExp(bind, e'), ty)
+		          (AST.LetExp(bind, e'), ty)
 		      end
-		in
+	      in
 		  chkDcls (valDcls, ve)
-		end
+	      end
 	    | PT.IfExp(e1, e2, e3) => let
-		val (e1', ty1) = chkExp (loc, depth, ve, e1)
-		val (e2', ty2) = chkExp (loc, depth, ve, e2)
-		val (e3', ty3) = chkExp (loc, depth, ve, e3)
-		in
+		  val (e1', ty1) = chkExp (loc, depth, ve, e1)
+		  val (e2', ty2) = chkExp (loc, depth, ve, e2)
+		  val (e3', ty3) = chkExp (loc, depth, ve, e3)
+	      in
 		  if not(U.unify(ty1, Basis.boolTy))
-		    then error(loc, ["type of conditional not bool"])
-		    else ();
+		  then error(loc, ["type of conditional not bool"])
+		  else ();
 		  if not(U.unify(ty2, ty3))
-		    then (
+		  then (
 		      error(loc, ["types of then and else clauses must match"]);
 		      bogusExp)
-		    else (AST.IfExp(e1', e2', e3'), ty2)
-		end
+		  else (AST.IfExp(e1', e2', e3'), ty2)
+	      end
 	    | PT.CaseExp(e, cases) => let
-		val (e', argTy) = chkExp (loc, depth, ve, e)
-		val resTy = AST.MetaTy(MetaVar.new depth)
-		val matches = List.map
-		      (fn m => chkMatch(loc, depth, ve, argTy, resTy, m))
-			cases
-		in
+		  val (e', argTy) = chkExp (loc, depth, ve, e)
+		  val resTy = AST.MetaTy(MetaVar.new depth)
+		  val matches = List.map
+				    (fn m => chkMatch(loc, depth, ve, argTy, resTy, m))
+				    cases
+	      in
 		  (AST.CaseExp(e', matches), resTy)
-		end
+	      end
 	    | PT.AndAlsoExp(e1, e2) => let
-		val (e1', ty1) = chkExp (loc, depth, ve, e1)
-		val (e2', ty2) = chkExp (loc, depth, ve, e2)
-		in
+		  val (e1', ty1) = chkExp (loc, depth, ve, e1)
+		  val (e2', ty2) = chkExp (loc, depth, ve, e2)
+	      in
 		  if not(U.unify(ty1, Basis.boolTy) andalso U.unify(ty2, Basis.boolTy))
-		    then error(loc, ["arguments of andalso must have type bool"])
-		    else ();
+		  then error(loc, ["arguments of andalso must have type bool"])
+		  else ();
 		  (AST.IfExp(e1', e2', AST.ConstExp(AST.DConst(Basis.boolFalse, []))), Basis.boolTy)
-		end
+	      end
 	    | PT.OrElseExp(e1, e2) => let
-		val (e1', ty1) = chkExp (loc, depth, ve, e1)
-		val (e2', ty2) = chkExp (loc, depth, ve, e2)
-		in
+		  val (e1', ty1) = chkExp (loc, depth, ve, e1)
+		  val (e2', ty2) = chkExp (loc, depth, ve, e2)
+	      in
 		  if not(U.unify(ty1, Basis.boolTy) andalso U.unify(ty2, Basis.boolTy))
-		    then error(loc, ["arguments of orelse must have type bool"])
-		    else ();
+		  then error(loc, ["arguments of orelse must have type bool"])
+		  else ();
 		  (AST.IfExp(e1', AST.ConstExp(AST.DConst(Basis.boolTrue, [])), e2'), Basis.boolTy)
-		end
+	      end
 	    | PT.BinaryExp(e1, bop, e2) => let
-		val (e1', ty1) = chkExp (loc, depth, ve, e1)
-		val (e2', ty2) = chkExp (loc, depth, ve, e2)
-		fun mkApp arg = AST.ApplyExp(AST.VarExp arg, AST.TupleExp[e1', e2'])
-		fun chkApp tyScheme = let
+		  val (e1', ty1) = chkExp (loc, depth, ve, e1)
+		  val (e2', ty2) = chkExp (loc, depth, ve, e2)
+		  fun mkApp arg = AST.ApplyExp(AST.VarExp arg, AST.TupleExp[e1', e2'])
+		  fun chkApp tyScheme = let
 		      val (tys, AST.FunTy(argTy, resTy)) = TU.instantiate (depth, tyScheme)
-		      in
-			if not(U.unify(argTy, AST.TupleTy[ty1, ty2]))
-			  then error(loc, ["type mismatch for operator ", Atom.toString bop])
-			  else ();
-			(tys, resTy)
-		      end
-		in
+		  in
+		      if not(U.unify(argTy, AST.TupleTy[ty1, ty2]))
+		      then error(loc, ["type mismatch for operator ", Atom.toString bop])
+		      else ();
+		      (tys, resTy)
+		  end
+	      in
 		  if Atom.same(bop, BasisNames.eq)
 (* FIXME: equality should be handled as overloading *)
-		    then if not(U.unify(ty1, ty2))
-		      then (
-			error(loc, ["type mismatch for operator ="]);
-			(AST.TupleExp[], Basis.boolTy))
-		      else if TU.same(ty1, Basis.boolTy)
-			then (mkApp(Basis.boolEq, []), Basis.boolTy)
-		      else if TU.same(ty1, Basis.intTy)
-			then (mkApp(Basis.intEq, []), Basis.boolTy)
-		      else if TU.same(ty1, Basis.stringTy)
-			then (mkApp(Basis.stringEq, []), Basis.boolTy)
-			else (
-			  error(loc, ["not an equality type"]);
-			  (AST.TupleExp[], Basis.boolTy))
+		  then if not(U.unify(ty1, ty2))
+		       then (
+			   error(loc, ["type mismatch for operator ="]);
+			   (AST.TupleExp[], Basis.boolTy))
+		       else if TU.same(ty1, Basis.boolTy)
+		       then (mkApp(Basis.boolEq, []), Basis.boolTy)
+		       else if TU.same(ty1, Basis.intTy)
+		       then (mkApp(Basis.intEq, []), Basis.boolTy)
+		       else if TU.same(ty1, Basis.stringTy)
+		       then (mkApp(Basis.stringEq, []), Basis.boolTy)
+		       else (
+			   error(loc, ["not an equality type"]);
+			   (AST.TupleExp[], Basis.boolTy))
 		  else if Atom.same(bop, BasisNames.listCons)
-		    then let
-		      val (tyArgs, resTy) = chkApp (DataCon.typeOf Basis.listCons)
+		  then let
+			  val (tyArgs, resTy) = chkApp (DataCon.typeOf Basis.listCons)
 		      in (
-			AST.ApplyExp(
+			  AST.ApplyExp(
 			  AST.ConstExp(AST.DConst(Basis.listCons, tyArgs)),
 			  AST.TupleExp[e1', e2']),
-			resTy
-		      ) end
-		    else let
-		      val rator = Basis.lookupOp bop
-		      val (argTys, resTy) = chkApp (Var.typeOf rator)
+			  resTy
+			  ) end
+		  else let
+			  val rator = Basis.lookupOp bop
+			  val (argTys, resTy) = chkApp (Var.typeOf rator)
 		      in
-			(mkApp(rator, argTys), resTy)
+			  (mkApp(rator, argTys), resTy)
 		      end
-		end
+	      end
 	    | PT.ApplyExp(e1, e2) => let
-		val (e1', ty1) = chkExp (loc, depth, ve, e1)
-		val (e2', ty2) = chkExp (loc, depth, ve, e2)
-		val resTy = AST.MetaTy(MetaVar.new depth)
-		in
+		  val (e1', ty1) = chkExp (loc, depth, ve, e1)
+		  val (e2', ty2) = chkExp (loc, depth, ve, e2)
+		  val resTy = AST.MetaTy(MetaVar.new depth)
+	      in
 		  if not(U.unify(ty1, AST.FunTy(ty2, resTy)))
-		    then error(loc, ["type mismatch in application"])
-		    else ();
+		  then error(loc, ["type mismatch in application"])
+		  else ();
 		  (AST.ApplyExp(e1', e2'), resTy)
-		end
+	      end
 	    | PT.ConstExp const => let
-		val (const', ty) = chkLit (loc, const)
-		in
+		  val (const', ty) = chkLit (loc, const)
+	      in
 		  (AST.ConstExp const', ty)
-		end
+	      end
 	    | PT.TupleExp es => let
-		fun chk (e, (es, tys)) = let
+		  fun chk (e, (es, tys)) = let
 		      val (e', ty) = chkExp(loc, depth, ve, e)
-		      in
-			(e'::es, ty::tys)
-		      end
-		val (es', tys) = List.foldr chk ([], []) es
-		in
+		  in
+		      (e'::es, ty::tys)
+		  end
+		  val (es', tys) = List.foldr chk ([], []) es
+	      in
 		  (AST.TupleExp es', mkTupleTy tys)
-		end
+	      end
+	    | PT.PTupleExp es => let
+		  fun chk (e, (es, tys)) = let
+		      val (e', ty) = chkExp(loc, depth, ve, e)
+		  in
+		      (e'::es, ty::tys)
+		  end
+		  val (es', tys) = List.foldr chk ([], []) es
+	      in
+		  (AST.PTupleExp es', mkTupleTy tys)
+	      end
+	    | PT.PListExp es => let
+		  fun chk (e, (es, ty)) =
+		      let
+			  val (e', ty') = chkExp(loc, depth, ve, e)
+		      in
+			  if not(U.unify (ty, ty'))
+			  then error(loc, ["type mismatch in parray"])
+			  else ();
+			  (e'::es, ty')
+		      end
+		val (es', ty) = List.foldr chk ([], T.MetaTy (MV.new depth)) es
+	      in
+		  (AST.PListExp es', B.parrayTy ty)
+	      end
+	    | PT.ComprehendExp (e, pbs, eo) => let
+		  
+	      in
+	      end
+	    | PT.SpawnExp e => let
+		  val (e', ty) = chkExp (loc, depth, ve, e)
+	      in
+		  if not(U.unify (ty, B.unitTy)
+		  then error(loc, ["type mismatch in spawn"])
+		  else ();
+		  (AST.SpawnExp e, B.threadIdTy)
+	      end
 	    | PT.SeqExp es => let
-		fun chk [e] = chkExp(loc, depth, ve, e)
-		  | chk (e::r) = let
-		      val (e', _) = chkExp (loc, depth, ve, e)
-		      val (e'', ty) = chk r
+		  fun chk [e] = chkExp(loc, depth, ve, e)
+		    | chk (e::r) = let
+			  val (e', _) = chkExp (loc, depth, ve, e)
+			  val (e'', ty) = chk r
 		      in
-			(AST.SeqExp(e', e''), ty)
+			  (AST.SeqExp(e', e''), ty)
 		      end
-		in
+	      in
 		  chk es
-		end
+	      end
 	    | PT.IdExp x => (case E.find(ve, x)
-		 of SOME(E.Con dc) => let
-		      val (argTys, ty) = TU.instantiate (depth, DataCon.typeOf dc)
-		      in
-			(AST.ConstExp(AST.DConst(dc, argTys)), ty)
-		      end
-		  | SOME(E.Var x') => let
-		      val (argTys, ty) = TU.instantiate (depth, Var.typeOf x')
-		      in
-			(AST.VarExp(x', argTys), ty)
-		      end
-		  | NONE => (
-		      error(loc, ["undefined identifier ", Atom.toString x]);
-		      bogusExp)
-		(* end case *))
+			      of SOME(E.Con dc) => let
+				     val (argTys, ty) = TU.instantiate (depth, DataCon.typeOf dc)
+				 in
+				     (AST.ConstExp(AST.DConst(dc, argTys)), ty)
+				 end
+			       | SOME(E.Var x') => let
+				     val (argTys, ty) = TU.instantiate (depth, Var.typeOf x')
+				 in
+				     (AST.VarExp(x', argTys), ty)
+				 end
+			       | NONE => (
+				 error(loc, ["undefined identifier ", Atom.toString x]);
+				 bogusExp)
+			    (* end case *))
 	  (* end case *))
 
     and chkMatch (loc, depth, ve, argTy, resTy, match) = (case match

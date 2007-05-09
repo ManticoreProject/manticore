@@ -30,18 +30,20 @@ structure Basis =
     val boolFalse = DataCon.new boolTyc (N.boolFalse, NONE)
 
     local
-      val tv = TyVar.new(Atom.atom "'a")
-      val tv' = AST.VarTy tv
+	val tv = TyVar.new(Atom.atom "'a")
+	val tv' = AST.VarTy tv
     in
     val listTyc = TyCon.newDataTyc (N.list, [tv])
     val listNil = DataCon.new listTyc (N.listNil, NONE)
     val listCons =
-	  DataCon.new listTyc
-	    (N.listCons, SOME(AST.TupleTy[tv', AST.ConTy([tv'], listTyc)]))
+	DataCon.new listTyc
+		    (N.listCons, SOME(AST.TupleTy[tv', AST.ConTy([tv'], listTyc)]))
     end (* local *)
 
     val intTyc = TyCon.newAbsTyc (N.int, 0)
     val stringTyc = TyCon.newAbsTyc (N.string, 0)
+    val parrayTyc = TyCon.newAbsTyc (N.parray, 1)
+    val threadIdTyc = TyCon.newAbsTyc (N.thread_id, 0)
 
   (* predefined types *)
     val boolTy = AST.ConTy([], boolTyc)
@@ -49,6 +51,8 @@ structure Basis =
     val stringTy = AST.ConTy([], stringTyc)
     val unitTy = AST.TupleTy[]
     fun listTy ty = AST.ConTy([ty], listTyc)
+    fun parrayTy ty = AST.ConTy([ty], parrayTyc)
+    val threadIdTy = AST.ConTy([], threadIdTyc)
 
   (* operator symbols *) 
     val lte =		monoVar(N.lte, intTy ** intTy --> boolTy)

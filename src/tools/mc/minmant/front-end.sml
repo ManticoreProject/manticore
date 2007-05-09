@@ -3,7 +3,7 @@
  * COPYRIGHT (c) 2007 John Reppy (http://www.cs.uchicago.edu/~jhr)
  * All rights reserved.
  *
- * Based on Based on CMSC 22610 Sample code (Winter 2007)
+ * Based on CMSC 22610 Sample code (Winter 2007)
  *)
 
 structure FrontEnd : sig

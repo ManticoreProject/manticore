@@ -20,6 +20,11 @@ structure AST =
       | CaseExp of (exp * (pat * exp) list)
       | ApplyExp of exp * exp
       | TupleExp of exp list
+      | RangeExp of (exp * exp * exp option)
+      | PTupleExp of exp list
+      | PArrayExp of exp list
+      | ComprehendExp of (exp * (pat * exp) list * exp option)
+      | SpawnExp of exp
       | ConstExp of const
       | VarExp of var * ty list
       | SeqExp of (exp * exp)
