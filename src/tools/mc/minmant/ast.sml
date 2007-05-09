@@ -16,11 +16,11 @@ structure AST =
 
     datatype exp
       = LetExp of binding * exp
-      | IfExp of (exp * exp * exp)
-      | CaseExp of (exp * (pat * exp) list)
-      | ApplyExp of exp * exp
+      | IfExp of (exp * exp * exp * ty)			(* ty is result type *)
+      | CaseExp of (exp * (pat * exp) list * ty)	(* ty is result type *)
+      | ApplyExp of exp * exp * ty			(* ty is result type *)
       | TupleExp of exp list
-      | RangeExp of (exp * exp * exp option)
+      | RangeExp of (exp * exp * exp option * ty)	(* ty is element type *)
       | PTupleExp of exp list
       | PArrayExp of exp list
       | ComprehendExp of (exp * (pat * exp) list * exp option)
@@ -28,6 +28,7 @@ structure AST =
       | ConstExp of const
       | VarExp of var * ty list
       | SeqExp of (exp * exp)
+      | OverloadExp of overload_var ref
 
     and binding
       = ValBind of pat * exp
@@ -44,6 +45,10 @@ structure AST =
     and const
       = DConst of dcon * ty list
       | LConst of (Literal.literal * ty)
+
+    and overload_var
+      = Unknown of (ty * var list)
+      | Instance of var
 
     and var_kind
       = VK_None
