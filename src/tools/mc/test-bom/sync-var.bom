@@ -2,7 +2,7 @@
  * ivar implementation draft, not implement HLOp yet, such as
  * @getAddr
  * @cas
- * @update
+ * @update  : atomic update
  * and address type : addrty
  *)
 
@@ -15,7 +15,7 @@ module SyncVar
 
 
     fun iPut(arg : any; exh : cont(any)) : enum(0) = 
-          let ivar : (list, any, int) = #0((((list, any, int), any))arg)
+          let ivar : (list, any, int) = #0((((list, any, int, int), any))arg)
           let x : any = #1((((list, any, int), any))arg)
           let readL : list = #0(ivar)
           let valueAddr : addrty = @getAddr (ivar, 1)
@@ -23,6 +23,11 @@ module SyncVar
           let oldValue : any = @cas (valueAddr, enum(0), x)
           case oldvalue
            of enum(0) =>
+                fun spin (flag : int; exh : cont(any)) : unit = 
+                      case flag
+                       of 0 : int => return (enum(0))
+                        | _ => apply spin (flag, exh)
+                do apply spin (readflag, exh)
                 case readL
                  of enum(0) => return (enum(0))
                   | CONS(hd : any, tl : list) =>                      
@@ -46,20 +51,23 @@ module SyncVar
 
     fun iGet (ivar : (list, any, int); exh : cont(any)) : any =
           let readList : list = #0(ivar)
-          let flagAddr : addrty = @getAddr (ivar, 2)
-          let listAddr : addrty = @getAddr (ivar, 1)
-          (* set the readflag to 1*)
-          do @update (flagAddr, 1)
+          let listAddr : addrty = @getAddr (ivar, 0)
           let value : any = #1(ivar)
+          let readFlag : int = #2(ivar)
+          let flagAddr : addrty = @getAddr (ivar, 2)
+          (* update readFlag *)
+          do @update (flagAddr, I32Add(readFlag, 1))
           case value
-           of enum(0) => 
+           of enum(0) =>
+                (* atomic update, kinda like fetch and increment *)
                 cont k (x : any) = return (x)
                 let item : any = (any)(dummyTid, k)
                 (* atomic update *)
                 do @update (listAddr, CONS(item, readList))
+                do @update (flagAddr, I32Sub(readFlag, 1))
                 @forward (host_vproc, stop)
             | x : any =>
-                do @update (flagAddr, 0) 
+                do @update (flagAddr, I32Sub(readFlag, 0))
                 return (x)
                         
           end
