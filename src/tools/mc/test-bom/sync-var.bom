@@ -1,0 +1,67 @@
+(* sync-var.bom 
+ * ivar implementation draft, not implement HLOp yet, such as
+ * @getAddr
+ * @cas
+ * @update
+ * and address type : addrty
+ *)
+
+module SyncVar
+  extern void M_Print (void *);
+
+  fun init (wi : [int]; exh : cont(any)) : unit =
+    let stop : enum(0) = 0
+    let dummyTid : enum(0) = 0
+
+
+    fun iPut(arg : any; exh : cont(any)) : enum(0) = 
+          let ivar : (list, any, int) = #0((((list, any, int), any))arg)
+          let x : any = #1((((list, any, int), any))arg)
+          let readL : list = #0(ivar)
+          let valueAddr : addrty = @getAddr (ivar, 1)
+          let readflag : int = #2(ivar)
+          let oldValue : any = @cas (valueAddr, enum(0), x)
+          case oldvalue
+           of enum(0) =>
+                case readL
+                 of enum(0) => return (enum(0))
+                  | CONS(hd : any, tl : list) =>                      
+                      let fiber : cont(any) = #1(((int, cont(any)))hd)
+                      do @enqueue(host_vproc, dummyTid, fiber)
+                      fun wakeRead(l : list; exh : cont(any)) : enum(0) = 
+                            case l 
+                              of enum(0) => return (enum(0))
+                               | CONS(hd' : any, tl' : list) =>
+                                   let fiber' : cont(any) = #1(((int, cont(any)))hd')
+                                   do @enqueue(host_vproc, dummyTid, fiber)
+                                   apply wakeRead(tl', exh)
+                             end
+                      apply wakeRead(tl, exh) 
+                end
+            | _ => 
+                do ccall M_Print ("ivar is full\n\000")
+                let vp : vproc = host_vproc
+                @forward (vp, stop)
+          end
+
+    fun iGet (ivar : (list, any, int); exh : cont(any)) : any =
+          let readList : list = #0(ivar)
+          let flagAddr : addrty = @getAddr (ivar, 2)
+          let listAddr : addrty = @getAddr (ivar, 1)
+          (* set the readflag to 1*)
+          do @update (flagAddr, 1)
+          let value : any = #1(ivar)
+          case value
+           of enum(0) => 
+                cont k (x : any) = return (x)
+                let item : any = (any)(dummyTid, k)
+                (* atomic update *)
+                do @update (listAddr, CONS(item, readList))
+                @forward (host_vproc, stop)
+            | x : any =>
+                do @update (flagAddr, 0) 
+                return (x)
+                        
+          end
+
+     return (enum(0))
