@@ -21,6 +21,7 @@
 	type ty = Ty.ty
 	val anyTy = Ty.T_Any
 	val boolTy = Ty.boolTy
+	val addrTy = Ty.T_Addr(Ty.T_Any)
 	val rawTy = Ty.T_Raw)
 
     datatype prim_info = datatype MkPrim.prim_info
@@ -118,6 +119,7 @@
 				       of (NONE, _) => raise Fail("unknown primop " ^ Atom.toString p)
 					| (SOME(Prim1{mk, ...}), [x]) => mk x
 					| (SOME(Prim2{mk, ...}), [x, y]) => mk(x, y)
+					| (SOME(Prim3{mk, ...}), [x, y, z]) => mk(x, y, z)
 					| _ => raise Fail("arity mismatch for primop " ^ Atom.toString p)
 				      (* end case *))
 				in
@@ -261,6 +263,8 @@
 			    (newTmp resTy, BOM.E_Prim(mk x))
 			| (SOME(Prim2{mk, resTy, ...}), [x, y]) =>
 			    (newTmp resTy, BOM.E_Prim(mk(x, y)))
+			| (SOME(Prim3{mk, resTy, ...}), [x, y, z]) =>
+			    (newTmp resTy, BOM.E_Prim(mk(x, y, z)))
 			| _ => raise Fail("arity mismatch for primop " ^ Atom.toString p)
 		      (* end case *))
 		in

@@ -64,5 +64,8 @@ structure Prim =
       | F64Lte of 'var * 'var
       | F64Gt of 'var * 'var
       | F64Gte of 'var * 'var
+    (* atomic operations *)
+      | CAS of 'var * 'var * 'var	(* compare and swap; returns old value *)
+      | BCAS of 'var * 'var * 'var	(* compare and swap; returns bool *)
 
   end

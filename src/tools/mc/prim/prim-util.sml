@@ -71,6 +71,8 @@ structure PrimUtil : sig
       | nameOf (P.F64Lte _) = "F64Lte"
       | nameOf (P.F64Gt _) = "F64Gt"
       | nameOf (P.F64Gte _) = "F64Gte"
+      | nameOf (P.CAS _) = "CAS"
+      | nameOf (P.BCAS _) = "BCAS"
 
   (* return the list of variables referenced in a primitive operation *)
     fun varsOf (P.isBoxed a) = [a]
@@ -126,10 +128,13 @@ structure PrimUtil : sig
       | varsOf (P.F64Lte(a, b)) = [a, b]
       | varsOf (P.F64Gt(a, b)) = [a, b]
       | varsOf (P.F64Gte(a, b)) = [a, b]
+      | varsOf (P.CAS(a, b, c)) = [a, b, c]
+      | varsOf (P.BCAS(a, b, c)) = [a, b, c]
 
     fun fmt v2s p = (case varsOf p
 	   of [x] => concat[nameOf p, "(", v2s x, ")"]
 	    | [x, y] => concat[nameOf p, "(", v2s x, ",", v2s y, ")"]
+	    | [x, y, z] => concat[nameOf p, "(", v2s x, ",", v2s y, ",", v2s z, ")"]
 	  (* end case *))
 
     local
@@ -137,6 +142,8 @@ structure PrimUtil : sig
 	| p1 p _ = raise Fail "unary primop needs one arg"
       fun p2 p [a, b] = p(a, b)
 	| p2 p _ = raise Fail "binary primop needs two args"
+      fun p3 p [a, b, c] = p(a, b, c)
+	| p3 p _ = raise Fail "ternary primop needs three args"
     in
     fun explode (P.isBoxed a) = (p1 P.isBoxed, [a])
       | explode (P.isUnboxed a) = (p1 P.isUnboxed, [a])
@@ -191,6 +198,8 @@ structure PrimUtil : sig
       | explode (P.F64Lte(a, b)) = (p2 P.F64Lte, [a, b])
       | explode (P.F64Gt(a, b)) = (p2 P.F64Gt, [a, b])
       | explode (P.F64Gte(a, b)) = (p2 P.F64Gte, [a, b])
+      | explode (P.CAS(a, b, c)) = (p3 P.CAS, [a, b, c])
+      | explode (P.BCAS(a, b, c)) = (p3 P.BCAS, [a, b, c])
     end (* local *)
 
     fun map f p = let val (mk, args) = explode p in mk(List.map f args) end

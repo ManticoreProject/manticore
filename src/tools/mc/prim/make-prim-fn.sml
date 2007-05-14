@@ -11,6 +11,7 @@ signature PRIM_TYPES =
 
     val anyTy : ty
     val boolTy : ty
+    val addrTy : ty
     val rawTy : RawTypes.raw_ty -> ty
 
   end
@@ -26,6 +27,11 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
       | Prim2 of {
 	    mk : Ty.var * Ty.var -> Ty.var Prim.prim,
 	    argTy : Ty.ty * Ty.ty,
+	    resTy : Ty.ty
+	  }
+      | Prim3 of {
+	    mk : Ty.var * Ty.var * Ty.var -> Ty.var Prim.prim,
+	    argTy : Ty.ty * Ty.ty * Ty.ty,
 	    resTy : Ty.ty
 	  }
 
@@ -46,9 +52,15 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 	    argTy : Ty.ty * Ty.ty,
 	    resTy : Ty.ty
 	  }
+      | Prim3 of {
+	    mk : Ty.var * Ty.var * Ty.var -> Ty.var Prim.prim,
+	    argTy : Ty.ty * Ty.ty * Ty.ty,
+	    resTy : Ty.ty
+	  }
 
     val aTy = Ty.anyTy
     val bTy = Ty.boolTy
+    val adrTy = Ty.addrTy
     val i32 = Ty.rawTy RawTypes.T_Int
     val i64 = Ty.rawTy RawTypes.T_Long
     val f32 = Ty.rawTy RawTypes.T_Float
@@ -113,7 +125,9 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 		("F64Lt",	mk Prim2 (P.F64Lt,	(f64, f64),	bTy)),
 		("F64Lte",	mk Prim2 (P.F64Lte,	(f64, f64),	bTy)),
 		("F64Gt",	mk Prim2 (P.F64Gt,	(f64, f64),	bTy)),
-		("F64Gte",	mk Prim2 (P.F64Gte,	(f64, f64),	bTy))
+		("F64Gte",	mk Prim2 (P.F64Gte,	(f64, f64),	bTy)),
+		("CAS",		mk Prim3 (P.CAS,	(adrTy, aTy, aTy), aTy)),
+		("BCAS",	mk Prim3 (P.BCAS,	(adrTy, aTy, aTy), bTy))
 	      ];
 	    AtomTable.find tbl
 	  end
