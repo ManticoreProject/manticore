@@ -265,6 +265,7 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 			      ])
 			(* end case *))
 		  | doExp (CFG.E_Update(i, y, z)) = ()
+		  | doExp (CFG.E_AddrOf(x, i, y)) = addInfo(x, TOP)
 		  | doExp (CFG.E_Alloc(x, xs)) = addInfo(x, TUPLE(List.map valueOf xs))
 		  | doExp (CFG.E_Wrap(x, y)) = addInfo(x, WRAP(valueOf y))
 		  | doExp (CFG.E_Unwrap(x, y)) =

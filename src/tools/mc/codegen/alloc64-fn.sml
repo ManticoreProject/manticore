@@ -12,66 +12,70 @@ functor Alloc64Fn (
     structure Spec : TARGET_SPEC
     structure Types : ARCH_TYPES
     structure MLTreeComp : MLTREECOMP 
-) : ALLOC = struct
+  ) : ALLOC = struct
 
-  structure MTy = MTy
-  structure T = MTy.T
-  structure M = CFG
-  structure Var = M.Var
-  structure Ty = CFGTy
-  structure W = Word64
-  structure Cells = MLTreeComp.I.C
+    structure MTy = MTy
+    structure T = MTy.T
+    structure M = CFG
+    structure Var = M.Var
+    structure Ty = CFGTy
+    structure W = Word64
+    structure Cells = MLTreeComp.I.C
 
-  val wordSzB = IntInf.toInt Spec.ABI.wordSzB
-  val wordAlignB = IntInf.toInt Spec.ABI.wordAlignB
-  val ty = MTy.wordTy
+    val wordSzB = IntInf.toInt Spec.ABI.wordSzB
+    val wordAlignB = IntInf.toInt Spec.ABI.wordAlignB
+    val ty = MTy.wordTy
 
-  val memory = ManticoreRegion.memory
-  val apReg = Regs.apReg
+    val memory = ManticoreRegion.memory
+    val apReg = Regs.apReg
 
-  fun intLit i = T.LI (T.I.fromInt (ty, i))
-  fun regExp r = T.REG (ty, r)
-  fun move' (ty, r, e) = T.MV (ty, r, e)
-  fun move (r, e) = move' (ty, r, e)
-  fun offAp i = T.ADD (ty, regExp apReg, intLit i)
-  fun gpReg r = MTy.GPReg (ty, r)
-  fun mltGPR r = MTy.GPR (ty, r)
+    fun intLit i = T.LI (T.I.fromInt (ty, i))
+    fun regExp r = T.REG (ty, r)
+    fun move' (ty, r, e) = T.MV (ty, r, e)
+    fun move (r, e) = move' (ty, r, e)
+    fun offAp i = T.ADD (ty, regExp apReg, intLit i)
+    fun gpReg r = MTy.GPReg (ty, r)
+    fun mltGPR r = MTy.GPR (ty, r)
 
-  val alignedTySzB = Types.alignedTySzB
+    val alignedTySzB = Types.alignedTySzB
 
-  fun offsetOf {tys, i} =
-      let fun offset (ty :: tys, j, sz) =
-	      if (j >= i) then sz
-	      else offset (tys, j+1, alignedTySzB ty + sz)
-	    | offset ([], _, _) = raise Fail ("offset of type "^
-			CFGTy.toString (M.T_Tuple (false, tys))^Int.toString (length tys))
-      in 
-	  offset (tys, 0, 0) 
-      end (* offsetOf *)
+  (* return the offset and type of the i'th element of a list of fields *)
+    fun offsetOf {tys, i} = let
+	  fun offset (ty :: tys, j, sz) =
+		if (j >= i) then (sz, ty)
+		else offset (tys, j+1, alignedTySzB ty + sz)
+	    | offset ([], _, _) = raise Fail(concat[
+		  "offset ", Int.toString(length tys), " of type ", CFGTy.toString (M.T_Tuple (false, tys))
+		])
+	  in 
+	    offset (tys, 0, 0) 
+	  end (* offsetOf *)
 
-  fun select {lhsTy : T.ty, mty : M.ty, i : int, base : T.rexp} =
-      let fun offsetOf' ( 
-	      M.T_Tuple (_, tys)
-	    | M.T_Code tys
-	    | M.T_OpenTuple tys ) = 
-	      (offsetOf {tys=tys, i=i}, List.nth (tys, i))
-	    | offsetOf' (M.T_StdCont {clos, arg}) = 
-	      (offsetOf {tys=[clos, arg], i=i}, List.nth ([clos, arg], i))
-	    | offsetOf' (M.T_Wrap ty) = 
-	      (offsetOf {tys=[M.T_Raw ty], i=0}, M.T_Raw ty)
-	    | offsetOf' _ = 
-	      raise Fail ("offsetOf': non-tuple type "^CFGTy.toString mty)
+  (* compute the address of the ith element off of a 'base' address *)
+    fun addrOf {lhsTy : T.ty, mty : M.ty, i : int, base : T.rexp} = let
+          fun offsetOf' (M.T_Tuple(_, tys)) = offsetOf {tys=tys, i=i}
+	    | offsetOf' (M.T_OpenTuple tys) = offsetOf {tys=tys, i=i}
+	    | offsetOf' (M.T_Wrap ty) = (0, M.T_Raw ty)
+	    | offsetOf' _ = raise Fail ("offsetOf': non-tuple type " ^ CFGTy.toString mty)
+	  val (offset, _) = offsetOf' mty
+	  in
+	    T.ADD (ty, base, intLit offset)
+	  end
+
+  (* select the ith element off of a 'base' address *)
+    fun select {lhsTy : T.ty, mty : M.ty, i : int, base : T.rexp} = let
+          fun offsetOf' (M.T_Tuple(_, tys)) = offsetOf {tys=tys, i=i}
+	    | offsetOf' (M.T_OpenTuple tys) = offsetOf {tys=tys, i=i}
+	    | offsetOf' (M.T_Wrap ty) = (0, M.T_Raw ty)
+	    | offsetOf' _ = raise Fail ("offsetOf': non-tuple type " ^ CFGTy.toString mty)
 	  val (offset, lhsMTy) = offsetOf' mty
-      in 
-	  (case MTy.cfgTyToMLRisc lhsMTy
-	    of MTy.K_FLOAT => 
-	       MTy.FEXP (lhsTy, T.FLOAD (lhsTy, 
-			T.ADD (ty, base, intLit offset), memory))
-	     | MTy.K_INT =>
-	       MTy.EXP (lhsTy, T.LOAD (lhsTy, 
-			T.ADD (ty, base, intLit offset), memory))
-	  (* esac *))
-      end (* select *)
+	  val addr = T.ADD(ty, base, intLit offset)
+	  in 
+	    case MTy.cfgTyToMLRisc lhsMTy
+	     of MTy.K_FLOAT => MTy.FEXP (lhsTy, T.FLOAD (lhsTy, addr, memory))
+	      | MTy.K_INT => MTy.EXP (lhsTy, T.LOAD (lhsTy, addr, memory))
+	    (* esac *)
+	  end (* select *)
 
   (* return true if the type may be represented by a pointer into the heap *)
     fun isHeapPointer M.T_Any = true

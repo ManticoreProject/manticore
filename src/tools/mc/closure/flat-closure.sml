@@ -28,6 +28,7 @@ structure FlatClosure : sig
       | cvtTy (CPSTy.T_Raw rTy) = CFGTy.T_Raw rTy
       | cvtTy (CPSTy.T_Wrap rTy) = CFG.T_Wrap rTy
       | cvtTy (CPSTy.T_Tuple(mut, tys)) = CFG.T_Tuple(mut, List.map cvtTy tys)
+      | cvtTy (CPSTy.T_Addr ty) = CFG.T_Addr(cvtTy ty)
       | cvtTy (ty as CPSTy.T_Fun(_, [])) = cvtStdContTy ty
       | cvtTy (ty as CPSTy.T_Fun _) = cvtStdFunTy ty
       | cvtTy (CPSTy.T_CFun cproto) = CFGTy.T_CFun cproto

@@ -30,6 +30,7 @@ structure CPS =
       | Const of (Literal.literal * ty)
       | Select of (int * var)		(* select i'th field (zero-based) *)
       | Update of (int * var * var)	(* update i'th field (zero-based) *)
+      | AddrOf of (int * var)		(* return address of i'th field (zero-based) *)
       | Alloc of var list
       | Wrap of var			(* wrap raw value *)
       | Unwrap of var			(* unwrap value *)

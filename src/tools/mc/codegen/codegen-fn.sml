@@ -48,15 +48,16 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
   fun mltGPR r = MTy.GPR (ty, r)
   fun regExp r = T.REG (ty, r)
   fun move (r, e) = T.MV (ty, r, e)
-  fun freshMv e = 
-      let val r = newReg ()
-      in
+  fun freshMv e = let val r = newReg ()
+	in
 	  {reg=r, mv=move (r, e)}
-      end (* freshMv *)
+	end (* freshMv *)
   fun note (stm, msg) =
-      T.ANNOTATION(stm, #create MLRiscAnnotations.COMMENT msg)
+        T.ANNOTATION(stm, #create MLRiscAnnotations.COMMENT msg)
   fun select (lhsTy, mty, i, e) = 
-      BE.Alloc.select {lhsTy=lhsTy, mty=mty, i=i, base=e}
+        BE.Alloc.select {lhsTy=lhsTy, mty=mty, i=i, base=e}
+  fun addrOf (lhsTy, mty, i, e) = 
+        BE.Alloc.addrOf {lhsTy=lhsTy, mty=mty, i=i, base=e}
 
   fun codeGen {dst, code=M.MODULE {name, externs, code}} = 
       let val mlStrm = BE.MLTreeComp.selectInstructions (BE.CFGGen.build ())
@@ -154,46 +155,49 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		  emit (T.LIVE liveOut)
 	      end
 
-	  and bindExp (lhs, rhsEs) = 
-	      let fun getReg (l, (rs, gprs)) = 
-		      let val mty = Var.typeOf l
-			  val ty = BE.Types.szOf mty
+	  and bindExp (lhs, rhsEs) = let
+		fun getReg (l, (rs, gprs)) = let
+		      val mty = Var.typeOf l
+		      val ty = BE.Types.szOf mty
 		      in
-			  (case MTy.cfgTyToMLRisc mty
-			    of MTy.K_FLOAT =>
-			       let val r = newFReg ()
-			       in
-				   (MTy.FPR (ty, r) :: rs, MTy.FPReg (ty, r) :: gprs)
-			       end
-			     | MTy.K_INT => 
-			       let val r = newReg ()
-			       in
-				   (MTy.GPR (ty, r) :: rs, MTy.GPReg (ty, r) :: gprs)
-			       end
-			     | _ => fail "getReg"
-			  (* esac *))
+			case MTy.cfgTyToMLRisc mty
+			 of MTy.K_FLOAT => let val r = newFReg ()
+			      in
+				(MTy.FPR(ty, r) :: rs, MTy.FPReg(ty, r) :: gprs)
+			      end
+			  | MTy.K_INT => let val r = newReg ()
+			      in
+				(MTy.GPR(ty, r) :: rs, MTy.GPReg(ty, r) :: gprs)
+			      end
+			  | _ => fail "getReg"
+			(* esac *)
 		      end (* getReg *)
 		  val (regs, gprs) = foldl getReg ([], []) lhs
 		  val copyStms = BE.Copy.copy {src=rhsEs, dst=gprs}
-	      in
+		in
 		  ListPair.app setDefOf (lhs, regs);
 		  emitStms copyStms
-	      end (* bindExp *)
+		end (* bindExp *)
 
 	  and genExp frame = let
-		fun gen (M.E_Var (lhs, rhs)) = 
+		fun gen (M.E_Var(lhs, rhs)) = 
 		      bindExp (lhs, map getDefOf rhs)
 		  | gen (M.E_Const(lhs, lit)) = 
 		      bindExp ([lhs], [genLit (BE.Types.szOf(Var.typeOf lhs), lit)])
-		  | gen (M.E_Label (lhs, l)) = 
+		  | gen (M.E_Label(lhs, l)) = 
 		      bindExp ([lhs], [mkExp (T.LABEL (BE.LabelCode.getName l))])
-		  | gen (M.E_Select (lhs, i, v)) =  
+		  | gen (M.E_Select(lhs, i, v)) =  
 		      bindExp ([lhs], [select (BE.Types.szOf (Var.typeOf lhs), 
 					       Var.typeOf v, i, defOf v)])
-		  | gen (M.E_Update (i, lhs, rhs)) =
+		  | gen (M.E_Update(i, lhs, rhs)) =
 		    emit (T.STORE (BE.Types.szOf (Var.typeOf lhs), 
 				   T.ADD (ty, defOf lhs, T.LI (T.I.fromInt (ty, i))), 
 					  defOf rhs, ManticoreRegion.memory))
+		  | gen (M.E_AddrOf(lhs, i, v)) = let
+		      val addr = addrOf(BE.Types.szOf(Var.typeOf lhs),  Var.typeOf v, i, defOf v)
+		      in
+		        bindExp ([lhs], [MTy.EXP(ty, addr)])
+		      end
 		  | gen (M.E_Alloc (lhs, vs)) = 
 		      let val {ptr, stms} = 
 			      BE.Alloc.genAlloc (map (fn v => (Var.typeOf v, getDefOf v)) vs)

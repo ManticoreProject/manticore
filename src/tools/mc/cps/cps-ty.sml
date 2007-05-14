@@ -16,6 +16,7 @@ structure CPSTy =
       | T_Wrap of raw_ty		(* boxed raw value *)
       | T_Tuple of bool * ty list	(* heap-allocated tuple; the boolean is true for *)
 					(* mutable tuples *)
+      | T_Addr of ty			(* address of a tuple's field *)
       | T_Fun of (ty list * ty list)	(* function/continuation type; the second list of types *)
 					(* are the types of the return continuations *)
       | T_CFun of CFunctions.c_proto	(* C functions *)
@@ -38,6 +39,7 @@ structure CPSTy =
 	      | T_Wrap ty => concat["wrap(", RawTypes.toString ty, ")"]
 	      | T_Tuple(false, tys) => concat("(" :: tys2l(tys, [")"]))
 	      | T_Tuple(true, tys) => concat("!(" :: tys2l(tys, [")"]))
+	      | T_Addr ty => concat["addr(", toString ty, ")"]
 	      | T_Fun(tys, []) => concat("cont(" :: tys2l(tys, [")"]))
 	      | T_Fun(tys1, tys2) => concat("fun(" :: tys2l(tys1, ";" :: tys2l(tys2, [")"])))
 	      | T_CFun cp => CFunctions.protoToString cp

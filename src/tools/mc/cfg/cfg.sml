@@ -52,6 +52,7 @@ structure CFG =
       | E_Label of var * label
       | E_Select of (var * int * var)		(* select i'th field (zero-based) *)
       | E_Update of (int * var * var)		(* update i'th field (zero-based) *)
+      | E_AddrOf of (var * int * var)		(* return address of i'th field (zero-based) *)
       | E_Alloc of var * var list
       | E_Wrap of var * var			(* wrap raw value *)
       | E_Unwrap of var * var			(* unwrap value *)
@@ -138,6 +139,7 @@ structure CFG =
       | lhsOfExp (E_Label(x, _)) = [x]
       | lhsOfExp (E_Select(x, _, _)) = [x]
       | lhsOfExp (E_Update(_, _, _)) = []
+      | lhsOfExp (E_AddrOf(x, _, _)) = [x]
       | lhsOfExp (E_Alloc(x, _)) = [x]
       | lhsOfExp (E_Wrap(x, _)) = [x]
       | lhsOfExp (E_Unwrap(x, _)) = [x]
@@ -154,6 +156,7 @@ structure CFG =
       | rhsOfExp (E_Label _) = []
       | rhsOfExp (E_Select(_, _, y)) = [y]
       | rhsOfExp (E_Update(_, y, z)) = [y, z]
+      | rhsOfExp (E_AddrOf(_, _, y)) = [y]
       | rhsOfExp (E_Alloc(_, args)) = args
       | rhsOfExp (E_Wrap(_, y)) = [y]
       | rhsOfExp (E_Unwrap(_, y)) = [y]
@@ -207,6 +210,7 @@ structure CFG =
     fun mkLabel arg = mkExp(E_Label arg)
     fun mkSelect arg = mkExp(E_Select arg)
     fun mkUpdate arg = mkExp(E_Update arg)
+    fun mkAddrOf arg = mkExp(E_AddrOf arg)
     fun mkAlloc arg = mkExp(E_Alloc arg)
     fun mkWrap arg = mkExp(E_Wrap arg)
     fun mkUnwrap arg = mkExp(E_Unwrap arg)

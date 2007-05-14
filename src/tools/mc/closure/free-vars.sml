@@ -54,6 +54,7 @@ structure FreeVars : sig
       | fvOfRHS (fv, CPS.Cast(_, y)) = addVar(fv, y)
       | fvOfRHS (fv, CPS.Select(_, x)) = addVar(fv, x)
       | fvOfRHS (fv, CPS.Update(_, x, y)) = addVars(fv, [x, y])
+      | fvOfRHS (fv, CPS.AddrOf(_, x)) = addVar(fv, x)
       | fvOfRHS (fv, CPS.Alloc xs) = addVars(fv, xs)
       | fvOfRHS (fv, CPS.Wrap x) = addVar(fv, x)
       | fvOfRHS (fv, CPS.Unwrap x) = addVar(fv, x)

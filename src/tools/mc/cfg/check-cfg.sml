@@ -4,6 +4,9 @@
  * All rights reserved.
  *
  * Check a CFG module for well-formedness
+ *
+ * TODO:
+ *	Check that T_Addr does not appear in tuple or open-tuple types.
  *)
 
 structure CheckCFG : sig
@@ -224,6 +227,28 @@ structure CheckCFG : sig
 			      chkVar (env, y);
 (* FIXME: check that the tuple is mutable and that z has the right type *)
 			      env
+			    end
+			| CFG.E_AddrOf(x, i, y) => let
+			    val ty = Ty.selectTy(i, V.typeOf y)
+				  handle Fail msg => (
+				    error["E_AddrOf(", V.toString x, ", ", Int.toString i, ", ",
+					V.toString y, ":", Ty.toString(V.typeOf y), ")"
+				      ];
+				    Ty.T_Any)
+			    in
+			      chkVar (env, y);
+			      case V.typeOf x
+			       of Ty.T_Addr ty' => if Ty.equals(ty, ty')
+				    then ()
+				    else error[
+					"type mismatch in E_AddrOf: lhs = ", Ty.toString ty',
+					", rhs = ", Ty.toString ty, "\n"
+				      ]
+				| ty' => error[
+					"type error in E_AddrOf: lhs = ", Ty.toString ty', "\n"
+				      ]
+			      (* end case *);
+                              bindVar (env, x)
 			    end
 			| CFG.E_Alloc(x, ys) => (
 			    chkVars (env, ys);

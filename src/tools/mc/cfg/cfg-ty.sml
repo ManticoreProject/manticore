@@ -19,6 +19,7 @@ structure CFGTy =
       | T_Tuple of bool * ty list	(* heap-allocated tuple; the boolean is true for *)
 					(* mutable tuples *)
       | T_OpenTuple of ty list		(* an immutable tuple of unknown size, where we know the prefix. *)
+      | T_Addr of ty			(* address of a tuple's field *)
       | T_CFun of CFunctions.c_proto	(* a C function prototype *)
       | T_VProc				(* address of runtime vproc structure *)
     (* function/continuation types.  The type specifies the calling convention.  These
@@ -39,6 +40,7 @@ structure CFGTy =
             | (T_Tuple(mut1, ty1s), T_Tuple(mut2, ty2s)) =>
 		(mut1 = mut2) andalso ListPair.allEq equals (ty1s, ty2s)
             | (T_OpenTuple ty1s, T_OpenTuple ty2s) => ListPair.allEq equals (ty1s, ty2s)
+	    | (T_Addr ty1, T_Addr ty2) => equals(ty1, ty2)
 	    | (T_CFun proto1, T_CFun proto2) => (proto1 = proto2)
 	    | (T_VProc, T_VProc) => true
             | (T_StdFun {clos = clos1, arg = arg1, ret = ret1, exh = exh1},
@@ -73,6 +75,7 @@ structure CFGTy =
             | T_Wrap _ => true
             | T_Tuple _ => true
             | T_OpenTuple _ => true
+	    | T_Addr _ => raise Fail "isBoxed(addr)"
 	    | T_CFun _ => true
 	    | T_VProc => true
             | T_StdFun _ => true
@@ -83,6 +86,8 @@ structure CFGTy =
     fun isValidCast (fromTy, toTy) = (case (fromTy, toTy)
            of (T_Any, T_Code _) => false
 	    | (T_Code _, T_Any) => false
+	    | (T_Any, T_Addr _) => false
+	    | (T_Addr _, T_Any) => false
 	    | (T_Any, toTy) => hasUniformRep toTy
             | (fromTy, T_Any) => hasUniformRep fromTy
             | (T_OpenTuple ty1s, T_OpenTuple ty2s) =>
@@ -109,6 +114,7 @@ structure CFGTy =
 	      | T_Tuple(false, tys) => concat("(" :: tys2l(tys, [")"]))
 	      | T_Tuple(true, tys) => concat("!(" :: tys2l(tys, [")"]))
 	      | T_OpenTuple tys => concat("(" :: tys2l(tys, [",...)"]))
+	      | T_Addr ty => concat["addr(", toString ty, ")"]
 	      | T_CFun proto => CFunctions.protoToString proto
 	      | T_VProc => "vproc"
 	      | T_StdFun{clos, arg, ret, exh} => concat("fun(" :: tys2l([clos, arg, ret, exh], [")"]))

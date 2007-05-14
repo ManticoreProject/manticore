@@ -93,6 +93,7 @@ structure PrintCPS : sig
 	    | prRHS (CPS.Update(i, y, z)) = prl [
 		  "#", Int.toString i, "(", varUseToString y, ") := ", varUseToString z
 		]
+	    | prRHS (CPS.AddrOf(i, y)) = prl ["&", Int.toString i, "(", varUseToString y, ")"]
 	    | prRHS (CPS.Alloc ys) = (pr "alloc "; prList varUseToString ys)
 	    | prRHS (CPS.Wrap y) = prl["wrap(", varUseToString y, ")"]
 	    | prRHS (CPS.Unwrap y) = prl["unwrap(", varUseToString y, ")"]

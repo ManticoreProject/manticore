@@ -34,6 +34,7 @@ structure BOM =
       | E_Cast of (ty * var)
       | E_Select of (int * var)
       | E_Update of (int * var * var)		(* update i'th field (zero-based) *)
+      | E_AddrOf of (int * var)			(* return address of i'th field (zero-based) *)
       | E_Alloc of (ty * var list)
       | E_Wrap of var
       | E_Unwrap of var

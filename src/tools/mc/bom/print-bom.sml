@@ -113,6 +113,7 @@ structure PrintBOM : sig
 	    | prRHS (B.E_Update(i, y, z)) = prl [
 		  "#", Int.toString i, "(", varUseToString y, ") := ", varUseToString z
 		]
+	    | prRHS (B.E_AddrOf(i, y)) = prl ["&", Int.toString i, "(", varUseToString y, ")"]
 	    | prRHS (B.E_Alloc(_, ys)) = (pr "alloc "; prList varUseToString ys)
 	    | prRHS (B.E_Wrap y) = prl["wrap(", varUseToString y, ")"]
 	    | prRHS (B.E_Unwrap y) = prl["unwrap(", varUseToString y, ")"]

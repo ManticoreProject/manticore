@@ -16,6 +16,7 @@ structure BOMTy =
       | T_Wrap of raw_ty		(* boxed raw value *)
       | T_Tuple of bool * ty list	(* heap-allocated tuple; the boolean is true for *)
 					(* mutable tuples *)
+      | T_Addr of ty			(* address of a tuple's field *)
       | T_Fun of (ty list * ty list * ty list)
 					(* function type; the second argument is the type of *)
 					(* the exception continuation(s) *)
@@ -71,6 +72,7 @@ structure BOMTy =
 	      | T_Wrap ty => concat["wrap(", RawTypes.toString ty, ")"]
 	      | T_Tuple(false, tys) => concat("(" :: tys2l(tys, [")"]))
 	      | T_Tuple(true, tys) => concat("!(" :: tys2l(tys, [")"]))
+	      | T_Addr ty => concat["addr(", toString ty, ")"]
 	      | T_Fun(paramTys, exhTys, retTys) => let
 		  fun f1 [] = "-;" :: f2 exhTys
 		    | f1 [ty] = toString ty :: ";" :: f2 exhTys

@@ -253,6 +253,7 @@ structure CaseSimplify : sig
 		  else rhs
 	      | B.E_Select(i, x)  => B.E_Select(i, subst x)
 	      | B.E_Update(i, x, y)  => B.E_Update(i, subst x, subst y)
+	      | B.E_AddrOf(i, x)  => B.E_AddrOf(i, subst x)
 	      | B.E_Alloc(ty, xs) => if hasTyc ty
 		  then B.E_Alloc(tyToRepTy ty, List.map subst xs)
 		  else rhs
