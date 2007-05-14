@@ -15,87 +15,16 @@
     structure Ty = BOMTy
     structure BV = BOM.Var
 
-    datatype prim_info
-      = Prim1 of {
-	    mk : BOM.var -> BOM.var P.prim,
-	    argTy : Ty.ty,
-	    resTy : Ty.ty
-	  }
-      | Prim2 of {
-	    mk : BOM.var * BOM.var -> BOM.var P.prim,
-	    argTy : Ty.ty * Ty.ty,
-	    resTy : Ty.ty
-	  }
-	  
   (* table mapping primop names to prim_info *)
-    val findPrim = let
-	  val tbl = AtomTable.mkTable(128, Fail "prim table")
-	  val ins = AtomTable.insert tbl
-	  val aTy = Ty.T_Any
-	  val bTy = Ty.boolTy
-	  val i32 = Ty.T_Raw Ty.T_Int
-	  val i64 = Ty.T_Raw Ty.T_Long
-	  val f32 = Ty.T_Raw Ty.T_Float
-	  val f64 = Ty.T_Raw Ty.T_Double
-	  fun mk cons (mk, argTy, resTy) = cons {mk=mk, argTy=argTy, resTy  = resTy}
-	  in
-	    List.app (fn (n, info) => ins(Atom.atom n, info)) [
-		("isBoxed",	mk Prim1 (P.isBoxed,	aTy,		bTy)),
-		("isUnboxed",	mk Prim1 (P.isUnboxed,	aTy,		bTy)),
-		("Equal",	mk Prim2 (P.Equal,	(aTy, aTy),	bTy)),
-		("NotEqual",	mk Prim2 (P.NotEqual,	(aTy, aTy),	bTy)),
-		("BNot",	mk Prim1 (P.BNot,	bTy,		bTy)),
-		("BEq",		mk Prim2 (P.BEq,	(bTy, bTy),	bTy)),
-		("BNEq",	mk Prim2 (P.BNEq,	(bTy, bTy),	bTy)),
-		("I32Add",	mk Prim2 (P.I32Add,	(i32, i32),	i32)),
-		("I32Sub",	mk Prim2 (P.I32Sub,	(i32, i32),	i32)),
-		("I32Mul",	mk Prim2 (P.I32Mul,	(i32, i32),	i32)),
-		("I32Div",	mk Prim2 (P.I32Div,	(i32, i32),	i32)),
-		("I32Mod",	mk Prim2 (P.I32Mod,	(i32, i32),	i32)),
-		("I32Neg",	mk Prim1 (P.I32Neg,	i32,		i32)),
-		("I32Eq",	mk Prim2 (P.I32Eq,	(i32, i32),	bTy)),
-		("I32NEq",	mk Prim2 (P.I32NEq,	(i32, i32),	bTy)),
-		("I32Lt",	mk Prim2 (P.I32Lt,	(i32, i32),	bTy)),
-		("I32Lte",	mk Prim2 (P.I32Lte,	(i32, i32),	bTy)),
-		("I32Gt",	mk Prim2 (P.I32Gt,	(i32, i32),	bTy)),
-		("I32Gte",	mk Prim2 (P.I32Gte,	(i32, i32),	bTy)),
-		("I64Add",	mk Prim2 (P.I64Add,	(i64, i64),	i64)),
-		("I64Sub",	mk Prim2 (P.I64Sub,	(i64, i64),	i64)),
-		("I64Mul",	mk Prim2 (P.I64Mul,	(i64, i64),	i64)),
-		("I64Div",	mk Prim2 (P.I64Div,	(i64, i64),	i64)),
-		("I64Mod",	mk Prim2 (P.I64Mod,	(i64, i64),	i64)),
-		("I64Neg",	mk Prim1 (P.I64Neg,	i64,		i64)),
-		("I64Eq",	mk Prim2 (P.I64Eq,	(i64, i64),	bTy)),
-		("I64NEq",	mk Prim2 (P.I64NEq,	(i64, i64),	bTy)),
-		("I64Lt",	mk Prim2 (P.I64Lt,	(i64, i64),	bTy)),
-		("I64Lte",	mk Prim2 (P.I64Lte,	(i64, i64),	bTy)),
-		("I64Gt",	mk Prim2 (P.I64Gt,	(i64, i64),	bTy)),
-		("I64Gte",	mk Prim2 (P.I64Gte,	(i64, i64),	bTy)),
-		("F32Add",	mk Prim2 (P.F32Add,	(f32, f32),	f32)),
-		("F32Sub",	mk Prim2 (P.F32Sub,	(f32, f32),	f32)),
-		("F32Mul",	mk Prim2 (P.F32Mul,	(f32, f32),	f32)),
-		("F32Div",	mk Prim2 (P.F32Div,	(f32, f32),	f32)),
-		("F32Neg",	mk Prim1 (P.F32Neg,	f32,		f32)),
-		("F32Eq",	mk Prim2 (P.F32Eq,	(f32, f32),	bTy)),
-		("F32NEq",	mk Prim2 (P.F32NEq,	(f32, f32),	bTy)),
-		("F32Lt",	mk Prim2 (P.F32Lt,	(f32, f32),	bTy)),
-		("F32Lte",	mk Prim2 (P.F32Lte,	(f32, f32),	bTy)),
-		("F32Gt",	mk Prim2 (P.F32Gt,	(f32, f32),	bTy)),
-		("F32Gte",	mk Prim2 (P.F32Gte,	(f32, f32),	bTy)),
-		("F64Add",	mk Prim2 (P.F64Add,	(f64, f64),	f64)),
-		("F64Sub",	mk Prim2 (P.F64Sub,	(f64, f64),	f64)),
-		("F64Mul",	mk Prim2 (P.F64Mul,	(f64, f64),	f64)),
-		("F64Div",	mk Prim2 (P.F64Div,	(f64, f64),	f64)),
-		("F64Neg",	mk Prim1 (P.F64Neg,	f64,		f64)),
-		("F64Eq",	mk Prim2 (P.F64Eq,	(f64, f64),	bTy)),
-		("F64NEq",	mk Prim2 (P.F64NEq,	(f64, f64),	bTy)),
-		("F64Lt",	mk Prim2 (P.F64Lt,	(f64, f64),	bTy)),
-		("F64Lte",	mk Prim2 (P.F64Lte,	(f64, f64),	bTy)),
-		("F64Gt",	mk Prim2 (P.F64Gt,	(f64, f64),	bTy)),
-		("F64Gte",	mk Prim2 (P.F64Gte,	(f64, f64),	bTy))
-	      ];
-	    AtomTable.find tbl
-	  end
+    structure MkPrim = MakePrimFn (
+	type var = BOM.var
+	type ty = Ty.ty
+	val anyTy = Ty.T_Any
+	val boolTy = Ty.boolTy
+	val rawTy = Ty.T_Raw)
+
+    datatype prim_info = datatype MkPrim.prim_info
+    val findPrim = MkPrim.findPrim
 
   (* some type utilities *)
     fun unwrapType (Ty.T_Wrap rTy) = Ty.T_Raw rTy
@@ -117,6 +46,7 @@
       | cvtTy (PT.T_Raw rty) = Ty.T_Raw rty
       | cvtTy (PT.T_Wrap rty) = Ty.T_Wrap rty
       | cvtTy (PT.T_Tuple(mut, tys)) = Ty.T_Tuple(mut, List.map cvtTy tys)
+      | cvtTy (PT.T_Addr ty) = Ty.T_Addr(cvtTy ty)
       | cvtTy (PT.T_Fun(argTys, exhTys, resTys)) =
 	  Ty.T_Fun(List.map cvtTy argTys, List.map cvtTy exhTys, List.map cvtTy resTys)
       | cvtTy (PT.T_Cont tys) = Ty.T_Cont(List.map cvtTy tys)
@@ -172,6 +102,9 @@
 			  | PT.Select(i, arg) =>
 			      cvtSimpleExp (env, arg, fn x =>
 				BOM.mkStmt(lhs', BOM.E_Select(i, x), e'))
+			  | PT.AddrOf(i, arg) =>
+			      cvtSimpleExp (env, arg, fn x =>
+				BOM.mkStmt(lhs', BOM.E_AddrOf(i, x), e'))
 			  | PT.Cast(ty, arg) =>
 			      cvtSimpleExp (env, arg, fn x =>
 				BOM.mkStmt(lhs', BOM.E_Cast(cvtTy ty, x), e'))
@@ -291,6 +224,12 @@
 		  val tmp = newTmp(selectType(i, BOM.Var.typeOf x))
 		  in
 		    BOM.mkStmt([tmp], BOM.E_Select(i, x), k tmp)
+		  end)
+	    | PT.AddrOf(i, e) =>
+		cvtSimpleExp (env, e, fn x => let
+		  val tmp = newTmp(Ty.T_Addr(selectType(i, BOM.Var.typeOf x)))
+		  in
+		    BOM.mkStmt([tmp], BOM.E_AddrOf(i, x), k tmp)
 		  end)
 	    | PT.Const(lit, ty) => let
 		  val ty = cvtTy ty

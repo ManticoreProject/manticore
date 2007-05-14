@@ -17,6 +17,7 @@
       | T_Raw of raw_ty			(* raw machine type *)
       | T_Wrap of raw_ty		(* boxed raw value *)
       | T_Tuple of bool * ty list	(* heap-allocated tuple *)
+      | T_Addr of ty
       | T_Fun of (ty list * ty list * ty list)
 					(* function type; the second argument is the type of *)
 					(* the exception continuation(s) *)
@@ -56,6 +57,7 @@
     and simple_exp
       = Var of var
       | Select of (int * simple_exp)		(* select i'th field (zero-based) *)
+      | AddrOf of (int * simple_exp)		(* address of i'th field (zero-based) *)
       | Const of (Literal.literal * ty)
       | Cast of (ty * simple_exp)
       | Unwrap of simple_exp			(* unwrap value *)

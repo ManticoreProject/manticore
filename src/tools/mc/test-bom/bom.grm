@@ -7,7 +7,8 @@
 %name BOM;
 
 %tokens
-	: KW_alloc	("alloc")
+	: KW_addr	("addr")
+	| KW_alloc	("alloc")
 	| KW_and	("and")
 	| KW_any	("any")
 	| KW_apply	("apply")
@@ -56,6 +57,7 @@
 	| BAR		("|")
 	| WILD		("_")
 	| BANG		("!")
+	| AMP		("&")
 	| ASSIGN	(":=")
 	| DARROW	("=>")
 	| ARROW		("->")
@@ -138,7 +140,8 @@ CLambda
 	;
 
 Type
-	: "any"					=> (PT.T_Any)
+	: "addr" "(" Type ")"			=> (PT.T_Addr(Type))
+	| "any"					=> (PT.T_Any)
 	| "bool"				=> (boolTy)
 	| "unit"				=> (unitTy)
 	| "enum" "(" INT ")"			=> (PT.T_Enum(Word.fromLargeInt INT))
@@ -193,6 +196,7 @@ RHS
 		     of SOME e => PT.Update(Int.fromLarge INT, SimpleExp, e)
 		      | NONE => PT.SimpleExp(PT.Select(Int.fromLarge INT, SimpleExp))
 		    (* end case *))
+	| "&" INT "(" SimpleExp ")"	=> (PT.SimpleExp(PT.AddrOf(Int.fromLarge INT, SimpleExp)))
 	| "alloc" "(" Args ")"		=> (PT.Alloc Args)
 	| "wrap" "(" SimpleExp ")"	=> (PT.Wrap SimpleExp)
 	| "ccall" ID "(" Args ")"	=> (PT.CCall(ID, Args))

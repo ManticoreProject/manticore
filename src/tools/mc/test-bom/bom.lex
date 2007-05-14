@@ -67,6 +67,7 @@
 	    fun ins (id, tok) = AtomTable.insert tbl (Atom.atom id, tok)
 	    in
 	      app ins [
+		  ("addr",	T.KW_addr),
 		  ("alloc",	T.KW_alloc),
 		  ("and",	T.KW_and),
 		  ("any",	T.KW_any),
@@ -144,6 +145,7 @@
 <INITIAL>"|"		=> (T.BAR);
 <INITIAL>"_"		=> (T.WILD);
 <INITIAL>"!"		=> (T.BANG);
+<INITIAL>"&"		=> (T.AMP);
 <INITIAL>":="		=> (T.ASSIGN);
 <INITIAL>"=>"		=> (T.DARROW);
 <INITIAL>"->"		=> (T.ARROW);
