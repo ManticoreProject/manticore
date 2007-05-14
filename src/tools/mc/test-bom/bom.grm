@@ -196,7 +196,6 @@ RHS
 		     of SOME e => PT.Update(Int.fromLarge INT, SimpleExp, e)
 		      | NONE => PT.SimpleExp(PT.Select(Int.fromLarge INT, SimpleExp))
 		    (* end case *))
-	| "&" INT "(" SimpleExp ")"	=> (PT.SimpleExp(PT.AddrOf(Int.fromLarge INT, SimpleExp)))
 	| "alloc" "(" Args ")"		=> (PT.Alloc Args)
 	| "wrap" "(" SimpleExp ")"	=> (PT.Wrap SimpleExp)
 	| "ccall" ID "(" Args ")"	=> (PT.CCall(ID, Args))
@@ -204,6 +203,7 @@ RHS
 
 NonSelectExp
 	: ID				=> (PT.Var ID)
+	| "&" INT "(" SimpleExp ")"	=> (PT.AddrOf(Int.fromLarge INT, SimpleExp))
 	| "unwrap" "(" SimpleExp ")"	=> (PT.Unwrap SimpleExp)
 	| ID "(" Args ")"		=> (PT.Prim(ID, Args))
 	| "(" Type ")" SimpleExp	=> (PT.Cast(Type, SimpleExp))
