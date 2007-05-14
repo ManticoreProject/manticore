@@ -1,9 +1,5 @@
 (* sync-var.bom 
  * ivar implementation draft, not implement HLOp yet, such as
- * @getAddr
- * @cas
- * @update  : atomic update
- * and address type : addrty
  *)
 
 module SyncVar
@@ -18,9 +14,8 @@ module SyncVar
           let ivar : !(list, any, int) = #0(arg)
           let x : any = #1(arg)
           let readL : list = #0(ivar)
-          let valueAddr : addr(any) = &1(ivar)
           let readflag : int = #2(ivar)
-          let oldValue : any = @cas (valueAddr, enum(0), x)
+          let oldValue : any = CAS (&1(ivar), enum(0), x)
           case oldValue
            of enum(0) =>
 (* FIXME: the following is an infinite loop! *)
