@@ -14,9 +14,9 @@ module SyncVar
     let dummyTid : enum(0) = 0
 
 
-    fun iPut(arg : any; exh : cont(any)) : enum(0) = 
-          let ivar : (list, any, int) = #0((((list, any, int, int), any))arg)
-          let x : any = #1((((list, any, int), any))arg)
+    fun iPut (arg : (!(list, any, int), any); exh : cont(any)) : enum(0) = 
+          let ivar : !(list, any, int) = #0(arg)
+          let x : any = #1(arg)
           let readL : list = #0(ivar)
           let valueAddr : addrty = @getAddr (ivar, 1)
           let readflag : int = #2(ivar)
@@ -49,7 +49,7 @@ module SyncVar
                 @forward (vp, stop)
           end
 
-    fun iGet (ivar : (list, any, int); exh : cont(any)) : any =
+    fun iGet (ivar : !(list, any, int); exh : cont(any)) : any =
           let readList : list = #0(ivar)
           let listAddr : addrty = @getAddr (ivar, 0)
           let value : any = #1(ivar)
