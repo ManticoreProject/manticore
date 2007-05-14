@@ -10,7 +10,7 @@ Library
 
   structure Prim
   structure PrimUtil
-
+  functor MakePrimFn
 is
 
   $/basis.cm
@@ -18,5 +18,8 @@ is
   $/smlnj-lib.cm
   $/pp-lib.cm
 
+  ../common/sources.cm
+
+  make-prim-fn.sml
   prim.sml
   prim-util.sml
