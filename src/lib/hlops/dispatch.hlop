@@ -1,0 +1,11 @@
+(* dispatch.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+#include "vproc-offsets.def"
+
+define dispatch (vp : vproc, tid : enum(0), fiber : cont(enum(0))) =
+    do @setCurrentTId(vp, tid)
+    throw fiber(enum(0))
