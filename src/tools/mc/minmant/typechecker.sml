@@ -152,7 +152,7 @@ structure Typechecker : sig
 		  then (
 		      error(loc, ["types of then and else clauses must match"]);
 		      bogusExp)
-		  else (AST.IfExp(e1', e2', e3'), ty2)
+		  else (AST.IfExp(e1', e2', e3', ty2), ty2)
 	      end
 	    | PT.CaseExp(e, cases) => let
 		  val (e', argTy) = chkExp (loc, depth, ve, e)
@@ -161,7 +161,7 @@ structure Typechecker : sig
 				    (fn m => chkMatch(loc, depth, ve, argTy, resTy, m))
 				    cases
 	      in
-		  (AST.CaseExp(e', matches), resTy)
+		  (AST.CaseExp(e', matches, resTy), resTy)
 	      end
 	    | PT.AndAlsoExp(e1, e2) => let
 		  val (e1', ty1) = chkExp (loc, depth, ve, e1)
@@ -233,7 +233,7 @@ structure Typechecker : sig
 		  if not(U.unify(ty1, AST.FunTy(ty2, resTy)))
 		  then error(loc, ["type mismatch in application"])
 		  else ();
-		  (AST.ApplyExp(e1', e2'), resTy)
+		  (AST.ApplyExp(e1', e2', resTy), resTy)
 	      end
 	    | PT.ConstExp const => let
 		  val (const', ty) = chkLit (loc, const)
@@ -275,13 +275,26 @@ structure Typechecker : sig
 		  (AST.PListExp es', B.parrayTy ty)
 	      end
 	    | PT.ComprehendExp (e, pbs, eo) => let
-		  
+		  val (pes, ve') = chkPBinds (loc, depth, ve, pbs)
+		  val (e', resTy) = chkExp (loc, depth, ve', e)
+		  val eo' = (case eo of
+				 (SOME exp) => let
+				      val (exp', ty) = chkExp (loc, depth, ve', exp)
+				  in
+				      if not(U.unify (ty, B.boolTy))
+				      then error (loc, ["type mismatch in parray comprehension 'where' clause"])
+				      else ();
+				      SOME exp'
+				  end
+			       | NONE => NONE
+			    (* end case *))
 	      in
+		  (AST.ComprehendExp (e', pes, eo'), B.parrayTy resTy)
 	      end
 	    | PT.SpawnExp e => let
 		  val (e', ty) = chkExp (loc, depth, ve, e)
 	      in
-		  if not(U.unify (ty, B.unitTy)
+		  if not(U.unify (ty, B.unitTy))
 		  then error(loc, ["type mismatch in spawn"])
 		  else ();
 		  (AST.SpawnExp e, B.threadIdTy)
@@ -329,6 +342,39 @@ structure Typechecker : sig
 		  (pat', exp')
 		end
 	  (* end case *))
+
+    and chkPBinds (loc, depth, ve, pbs) =
+	(case pbs of
+	     [] => ([], ve)
+	   | pb::pbs => let
+		 val (pe, ve1) = chkPBind (loc, depth, ve, pb)
+		 val (pes, ve2) = chkPBinds (loc, depth, ve, pbs)
+		 fun notInVE2 [] = true
+		   | notInVE2 (atom::atoms) =
+		     if E.inDomain (ve2, atom)
+		     then false
+		     else notInVE2 atoms
+	     in
+		 if notInVE2 (map #1 (listItemsi ve1))
+		 then ()
+		 else error (loc, ["conflicting pattern bindings in parray comprehension"]);
+		 (pe::pes, AtomMap.unionWith #1 (ve1, ve2))
+	     end
+	(* end case *))
+
+    and chkPBind (loc, depth, ve, pb) =
+	(case pb of
+	     PT.MarkPBind{lnum, tree} => chkPBind(lnum, depth, ve, tree)
+	   | PT.PBind (pat, exp) => let
+		 val (exp', resTy) = chkExp(loc, depth, ve, exp)
+		 val (pat', ve', resTy') = chkPat (loc, depth, ve, pat)
+	     in
+		 if not(U.unify(resTy, B.parrayTy resTy'))
+		 then error(loc, ["type mismatch in pattern binding"])
+		 else ();
+		 ((pat', exp'), ve')
+	     end
+	(* end case *))
 
     and chkPat (loc, depth, ve, pat) = (case pat
 	   of PT.MarkPat{lnum, tree} => chkPat(lnum, depth, ve, tree)
