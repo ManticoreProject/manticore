@@ -37,7 +37,7 @@ structure AST =
     and lambda = FB of (var * var * exp)
 
     and pat
-      = ConPat of dcon * ty list * pat list	(* data-constructor application *)
+      = ConPat of dcon * ty list * pat	(* data-constructor application *)
       | TuplePat of pat list
       | VarPat of var
       | ConstPat of const

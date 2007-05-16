@@ -7,6 +7,7 @@ structure TypeClass =
 struct
 
 structure B = Basis
+structure Ty = Types
 
 val IntClass = [B.intTy, B.longTy, B.integerTy]
 val FloatClass = [B.floatTy, B.doubleTy]
@@ -22,13 +23,13 @@ fun isClass (Ty.ConTy (_, tyc), c) =
 		
 fun isEqualityType t =
     let
-	fun arg Ty.DCon {argTy, ...} = argTy
+	fun arg (Ty.DCon {argTy, ...}) = argTy
     in
 	isClass (t, BasicClass) orelse
 	(case t of
-	     TupleTy tys => List.all isEqualityType tys
-	   | ConTy (_, Ty.DataTyc {cons, ...}) =>
-	     List.all isEqualityType (List.mapPartial arg cons)
+	     Ty.TupleTy tys => List.all isEqualityType tys
+	   | Ty.ConTy (_, Ty.DataTyc {cons, ...}) =>
+	     List.all isEqualityType (List.mapPartial arg (!cons))
 	   | _ => false
 	(* end case *))
     end

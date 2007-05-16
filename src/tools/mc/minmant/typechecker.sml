@@ -16,6 +16,8 @@ structure Typechecker : sig
     structure E = Env
     structure U = Unify
     structure TU = TypeUtil
+    structure B = Basis
+    structure Ty = Types
 
     val atos = Atom.toString
 
@@ -23,18 +25,18 @@ structure Typechecker : sig
 	  "Error [" :: !Error.sourceFile :: ":" :: Int.toString lnum :: "] "
 	    :: (msg @ ["\n"]))
 
-  (* create a single-parameter lambda from one that has a list of parameters *)
-    fun mkLambda (f, [x], e) = AST.FB(f, x, e)
-      | mkLambda (f, xs, e) = let
-	  val AST.TyScheme(_, AST.FunTy(argTy, _)) = Var.typeOf f
-	  val arg = Var.new ("arg", argTy)
-	  in
-	    AST.FB(f, arg, AST.CaseExp(AST.VarExp(arg, []), [(AST.TuplePat xs, e)]))
-	  end
-
   (* "smart" tuple type constructor *)
     fun mkTupleTy [ty] = ty
       | mkTupleTy tys = AST.TupleTy tys
+
+  (* create a single-parameter lambda from one that has a list of parameters *)
+    fun mkLambda (f, AST.VarPat x, e) = AST.FB(f, x, e)
+      | mkLambda (f, pat, e) = let
+	 val AST.TyScheme(_, AST.FunTy(argTy, resTy)) = Var.typeOf f
+	 val arg = Var.new ("arg", argTy)
+	 in
+	   AST.FB(f, arg, AST.CaseExp(AST.VarExp(arg, []), [(pat, e)], resTy))
+	 end
 
   (* a type expression for when there is an error *)
     val bogusTy = AST.ErrorTy
@@ -45,10 +47,8 @@ structure Typechecker : sig
   (* a pattern for when there is an error *)
     val bogusPat = AST.TuplePat[]
 
-  (* a variable pattern for when there is an error *)
-    val bogusVPat = Var.new("*error*", bogusTy)
-
-  (* typecehck a literal *)
+  (* typecheck a literal *)
+(* FIXME: this check should be done after overload resolution *)
     fun chkLit (loc, PT.IntLit i) =
 	  if ((i < ~0x40000000) orelse (0x3FFFFFFF < i))
 	    then (
@@ -60,14 +60,14 @@ structure Typechecker : sig
   (* typecheck value declarations as described in Section 6.6 *)
     fun chkValDcl (loc, depth, ve, decl) = (case decl
 	   of PT.MarkVDecl{lnum, tree} => chkValDcl (lnum, depth, ve, tree)
-	    | PT.ValVDecl(apats, e) => let
-		val (apats', ve', lhsTy) = chkVarPats(loc, depth, ve, apats)
+	    | PT.ValVDecl(pat, e) => let
+		val (pat', ve', lhsTy) = chkPat(loc, depth, ve, pat)
 		val (e', rhsTy) = chkExp (loc, depth, ve, e)
 		in
 		  if not(U.unify(lhsTy, rhsTy))
 		    then error (loc, ["type mismatch in val binding"])
 		    else ();
-		  (AST.ValBind(apats', e'), ve')
+		  (AST.ValBind(pat', e'), ve')
 		end
 	    | PT.FunVDecl fbs => let
 		val depth' = depth+1
@@ -100,17 +100,16 @@ structure Typechecker : sig
 	      (* typecheck the functions *)
 		fun chkFun loc (fb, fbs) = (case fb
 		       of PT.MarkFunct{lnum, tree} => chkFun lnum (tree, fbs)
-			| PT.Funct(f, params, body) => let
+			| PT.Funct(f, param, body) => let
 			    val SOME(E.Var f') = E.find(ve', f)
 			    val AST.TyScheme(_, funTy) = Var.typeOf f'
-			    val (params', ve'', paramTy) =
-				  chkVarPats (loc, depth', ve', params)
+			    val (param', ve'', paramTy) = chkPat (loc, depth', ve', param)
 			    val (body', bodyTy) = chkExp (loc, depth', ve'', body)
 			    in
 			      if not(U.unify(funTy, AST.FunTy(paramTy, bodyTy)))
 				then error(loc, ["type mismatch in function ", Atom.toString f])
 				else ();
-			      mkLambda(f', params', body') :: fbs
+			      mkLambda(f', param', body') :: fbs
 			    end
 		      (* end case *))
 		val fbs' = List.foldr (chkFun loc) [] fbs
@@ -170,7 +169,7 @@ structure Typechecker : sig
 		  if not(U.unify(ty1, Basis.boolTy) andalso U.unify(ty2, Basis.boolTy))
 		  then error(loc, ["arguments of andalso must have type bool"])
 		  else ();
-		  (AST.IfExp(e1', e2', AST.ConstExp(AST.DConst(Basis.boolFalse, []))), Basis.boolTy)
+		  (AST.IfExp(e1', e2', AST.ConstExp(AST.DConst(Basis.boolFalse, [])), Basis.boolTy), Basis.boolTy)
 	      end
 	    | PT.OrElseExp(e1, e2) => let
 		  val (e1', ty1) = chkExp (loc, depth, ve, e1)
@@ -179,7 +178,7 @@ structure Typechecker : sig
 		  if not(U.unify(ty1, Basis.boolTy) andalso U.unify(ty2, Basis.boolTy))
 		  then error(loc, ["arguments of orelse must have type bool"])
 		  else ();
-		  (AST.IfExp(e1', AST.ConstExp(AST.DConst(Basis.boolTrue, [])), e2'), Basis.boolTy)
+		  (AST.IfExp(e1', AST.ConstExp(AST.DConst(Basis.boolTrue, [])), e2', Basis.boolTy), Basis.boolTy)
 	      end
 	    | PT.BinaryExp(e1, bop, e2) => let
 		  val (e1', ty1) = chkExp (loc, depth, ve, e1)
@@ -214,8 +213,8 @@ structure Typechecker : sig
 			  val (tyArgs, resTy) = chkApp (DataCon.typeOf Basis.listCons)
 		      in (
 			  AST.ApplyExp(
-			  AST.ConstExp(AST.DConst(Basis.listCons, tyArgs)),
-			  AST.TupleExp[e1', e2']),
+			    AST.ConstExp(AST.DConst(Basis.listCons, tyArgs)),
+			    AST.TupleExp[e1', e2'], resTy),
 			  resTy
 			  ) end
 		  else let
@@ -260,7 +259,7 @@ structure Typechecker : sig
 	      in
 		  (AST.PTupleExp es', mkTupleTy tys)
 	      end
-	    | PT.PListExp es => let
+	    | PT.PArrayExp es => let
 		  fun chk (e, (es, ty)) =
 		      let
 			  val (e', ty') = chkExp(loc, depth, ve, e)
@@ -270,9 +269,9 @@ structure Typechecker : sig
 			  else ();
 			  (e'::es, ty')
 		      end
-		val (es', ty) = List.foldr chk ([], T.MetaTy (MV.new depth)) es
+		val (es', ty) = List.foldr chk ([], Ty.MetaTy (MetaVar.new depth)) es
 	      in
-		  (AST.PListExp es', B.parrayTy ty)
+		  (AST.PArrayExp es', B.parrayTy ty)
 	      end
 	    | PT.ComprehendExp (e, pbs, eo) => let
 		  val (pes, ve') = chkPBinds (loc, depth, ve, pbs)
@@ -294,10 +293,10 @@ structure Typechecker : sig
 	    | PT.SpawnExp e => let
 		  val (e', ty) = chkExp (loc, depth, ve, e)
 	      in
-		  if not(U.unify (ty, B.unitTy))
+		if not(U.unify (ty, B.unitTy))
 		  then error(loc, ["type mismatch in spawn"])
 		  else ();
-		  (AST.SpawnExp e, B.threadIdTy)
+		(AST.SpawnExp e', B.threadIdTy)
 	      end
 	    | PT.SeqExp es => let
 		  fun chk [e] = chkExp(loc, depth, ve, e)
@@ -355,10 +354,10 @@ structure Typechecker : sig
 		     then false
 		     else notInVE2 atoms
 	     in
-		 if notInVE2 (map #1 (listItemsi ve1))
+	       if notInVE2 (map #1 (AtomMap.listItemsi ve1))
 		 then ()
 		 else error (loc, ["conflicting pattern bindings in parray comprehension"]);
-		 (pe::pes, AtomMap.unionWith #1 (ve1, ve2))
+	       (pe::pes, AtomMap.unionWith #1 (ve1, ve2))
 	     end
 	(* end case *))
 
@@ -378,8 +377,8 @@ structure Typechecker : sig
 
     and chkPat (loc, depth, ve, pat) = (case pat
 	   of PT.MarkPat{lnum, tree} => chkPat(lnum, depth, ve, tree)
-	    | PT.ConPat(conid, pats) => let
-		val (pats, ve', ty) = chkVarPats (loc, depth, ve, pats)
+	    | PT.ConPat(conid, pat) => let
+		val (pat, ve', ty) = chkPat (loc, depth, ve, pat)
 		in
 		  case E.find(ve, conid)
 		   of SOME(E.Con dc) => (case TU.instantiate (depth, DataCon.typeOf dc)
@@ -387,7 +386,7 @@ structure Typechecker : sig
 			      if not(U.unify(argTy, ty))
 				then error(loc, ["type mismatch in constructor pattern"])
 				else ();
-			      (AST.ConPat(dc, tyArgs, pats), ve', resTy))
+			      (AST.ConPat(dc, tyArgs, pat), ve', resTy))
 			  | _ => (
 			      error(loc, [
 				  "application of nullary constructor ",
@@ -401,79 +400,50 @@ structure Typechecker : sig
 		  (* end case *)
 		end
 	    | PT.TuplePat pats => let
-		val (pats, ve', ty) = chkVarPats (loc, depth, ve, pats)
+		val (pats, ve', ty) = chkPats (loc, depth, ve, pats)
 		in
 		  (AST.TuplePat pats, ve', ty)
-		end
-	    | PT.VarPat pat => let
-		fun stripMark (_, PT.MarkVPat{lnum, tree}) = stripMark(lnum, tree)
-		  | stripMark (loc, vpat) = (loc, vpat)
-		val (loc, vpat) = stripMark (loc, pat)
-		fun chk () = let
-		      val (x, ve, ty) = chkVarPat (loc, depth, ve, vpat)
-		      in
-			(AST.VarPat x, ve, ty)
-		      end
-		in
-		  case vpat
-		   of PT.IdVPat x => (case E.find(ve, x)
-			 of SOME(E.Con dc) => (case TU.instantiate (depth, DataCon.typeOf dc)
-				 of (tyArgs, AST.FunTy _) => (
-				      error(loc, [
-					  "missing arguments to data constructor ",
-					  Atom.toString x
-					]);
-				      (bogusPat, ve, bogusTy))
-				  | (tyArgs, ty) => (AST.ConstPat(AST.DConst(dc, tyArgs)), ve, ty)
-				(* end case *))
-			  | _ => chk()
-			(* end case *))
-		    | _ => chk()
-		  (* end case *)
 		end
 	    | PT.ConstPat const => let
 		val (const', ty) = chkLit (loc, const)
 		in
 		  (AST.ConstPat const', ve, ty)
 		end
-	  (* end case *))
-
-    and chkVarPats (loc, depth, ve, vpats) = let
-	  fun chk (vpat, (ve, ps, tys)) = let
-		val (vpat', ve', ty) = chkVarPat (loc, depth, ve, vpat)
-		in
-		  (ve', vpat'::ps, ty::tys)
-		end
-	  val (ve', vpats', tys) = List.foldr chk (ve, [], []) vpats
-	  in
-	    case tys
-	     of [ty] => (vpats', ve', ty)
-	      | _ => (vpats', ve', mkTupleTy tys)
-	    (* end case *)
-	  end
-
-    and chkVarPat (loc, depth, ve, apat) = (case apat
-	   of PT.MarkVPat{lnum, tree} => chkVarPat (lnum, depth, ve, tree)
-	    | PT.WildVPat => let
+	    | PT.WildPat => let
 		val ty = AST.MetaTy(MetaVar.new depth)
 		val x' = Var.new("_", ty)
 		in
-		  (x', ve, ty)
+		  (AST.VarPat x', ve, ty)
 		end
-	    | PT.IdVPat x => (case E.find(ve, x)
+	    | PT.IdPat x => (case E.find(ve, x)
 		 of SOME(E.Con dc) => (
 		      error(loc, [
 			  "data constructor ", Atom.toString x, " in variable pattern"
 			]);
-		      (bogusVPat, ve, bogusTy))
+		      (bogusPat, ve, bogusTy))
 		  | _ => let
 		      val ty = AST.MetaTy(MetaVar.new depth)
 		      val x' = Var.new(Atom.toString x, ty)
 		      in
-			(x', E.insert(ve, x, E.Var x'), ty)
+			(AST.VarPat x', E.insert(ve, x, E.Var x'), ty)
 		      end
 		(* end case *))
+	    | PT.ConstraintPat(p, ty) => ??
 	  (* end case *))
+
+    and chkPats (loc, depth, ve, pats : PT.pat list) = let
+	  fun chk (pat, (ve, ps, tys)) = let
+		val (pat', ve', ty) = chkPat (loc, depth, ve, pat)
+		in
+		  (ve', pat'::ps, ty::tys)
+		end
+	  val (ve', pats', tys) = List.foldr chk (ve, [], []) pats
+	  in
+	    case tys
+	     of [ty] => (pats', ve', ty)
+	      | _ => (pats', ve', mkTupleTy tys)
+	    (* end case *)
+	  end
 
   (* typecheck type expressions as described in Section 6.4 *)
     fun chkTy (loc, te, tve, ty) = (case ty

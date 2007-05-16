@@ -65,7 +65,7 @@ structure ParseTree =
       | TupleExp of exp list
       | RangeExp of (exp * exp * exp option)
       | PTupleExp of exp list
-      | PListExp of exp list
+      | PArrayExp of exp list
       | ComprehendExp of (exp * pbind list * exp option)
       | SpawnExp of exp
       | SeqExp of exp list		(* sequence of two or more expressions *)

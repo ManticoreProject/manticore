@@ -266,7 +266,7 @@ AtomicExp
 	| "(" Exp optExps ")"	=> (markExp (FULL_SPAN, optExps Exp))
 	| "(|" Exp optCommaExps "|)"
 				=> (markExp (FULL_SPAN, PT.PTupleExp (optCommaExps Exp)))
-	| "[|" "|]"		=> (markExp (FULL_SPAN, PT.PListExp[]))
+	| "[|" "|]"		=> (markExp (FULL_SPAN, PT.PArrayExp[]))
 	| "[|" Exp PArrayBody "|]"
 				=> (markExp (FULL_SPAN, PArrayBody Exp))
 	| "let" (ValueDecl ";"? => (ValueDecl))+ "in" Exp (";" Exp)* "end"
@@ -274,7 +274,7 @@ AtomicExp
 	;
 
 PArrayBody
-	: optCommaExps		=> (fn e => markExp (FULL_SPAN, PT.PListExp(optCommaExps e)))
+	: optCommaExps		=> (fn e => markExp (FULL_SPAN, PT.PArrayExp(optCommaExps e)))
 	| "to" Exp ("by" Exp)?	=> (fn e => markExp (FULL_SPAN, PT.RangeExp(e, Exp, SR)))
 	| "|" PBind ("," PBind)* ("where" Exp)?
 				=> (fn e => markExp (FULL_SPAN, PT.ComprehendExp (e, PBind :: SR1, SR2)))

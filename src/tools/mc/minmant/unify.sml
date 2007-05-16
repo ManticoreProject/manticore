@@ -23,6 +23,7 @@ structure Unify : sig
 	  fun occurs ty = (case TU.prune ty
 		 of Ty.ErrorTy => false
 		  | (Ty.MetaTy mv') => MV.same(mv, mv')
+		  | (Ty.ClassTy _) => false
 		  | (Ty.VarTy _) => raise Fail "unexpected type variable"
 		  | (Ty.ConTy(args, _)) => List.exists occurs args
 		  | (Ty.FunTy(ty1, ty2)) => occurs ty1 orelse occurs ty2
@@ -40,6 +41,8 @@ structure Unify : sig
 	    | adjust (Ty.MetaTy(Ty.MVar{info as ref(Ty.UNIV d), ...})) =
 		if (depth < d) then info := Ty.UNIV d else ()
 	    | adjust (Ty.MetaTy(Ty.MVar{info=ref(Ty.INSTANCE ty), ...})) = adjust ty
+	    | adjust (Ty.ClassTy(Ty.Class(ref(Ty.RESOLVED ty)))) = adjust ty
+	    | adjust (Ty.ClassTy _) = ()
 	    | adjust (Ty.VarTy _) = raise Fail "unexpected type variable"
 	    | adjust (Ty.ConTy(args, _)) = List.app adjust args
 	    | adjust (Ty.FunTy(ty1, ty2)) = (adjust ty1; adjust ty2)
@@ -79,7 +82,7 @@ structure Unify : sig
 	    else (adjustDepth(ty, d); MV.instantiate(mv, ty); true)
       | unifyWithMV _ = raise Fail "impossible"
 
-    and unifyClasses (Ty.Class(info1 as ref(Ty.CLASS cl1)), Ty.Class(info2 as ref(Ty.Class cl2))) =
+    and unifyClasses (Ty.Class(info1 as ref(Ty.CLASS cl1)), Ty.Class(info2 as ref(Ty.CLASS cl2))) =
 	(case (cl1, cl2) of
 	     (Ty.Int, Ty.Float) => false
 	   | (Ty.Float, Ty.Int) => false
