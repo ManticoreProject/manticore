@@ -13,7 +13,7 @@ signature FILE_TYPE =
 
     type file
 
-    val parse : string -> file option
+    val parse : TextIO.instream -> file option
 
   (* search-path info *)
     val defaultSearchPath : string
@@ -25,6 +25,9 @@ functor LoaderFn (F : FILE_TYPE) : sig
     val load : string -> F.file option
 
   end = struct
+
+    val defaultIncludes =
+	  String.fields (fn #":" => true | _ => false) Paths.includeSearchPath
 
     val defaultSearchPath =
 	  String.fields (fn #":" => true | _ => false) F.defaultSearchPath
@@ -48,7 +51,16 @@ functor LoaderFn (F : FILE_TYPE) : sig
 	  end
 
     fun load file = (case findFile (defaultSearchPath, file)
-	   of SOME path => F.parse path
+	   of SOME path => let
+		val {inStrm, reap} = RunCPP.run{
+			noLines = true,
+			defs = [],
+			includes = defaultIncludes,
+			input = path
+		      }
+		in
+		  (F.parse path before reap()) handle ex => (reap(); raise ex)
+		end
 	    | NONE => NONE
 	  (* end case *)
 

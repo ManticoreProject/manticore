@@ -19,26 +19,19 @@ structure HLOpDefLoader : sig
 	    fn err => TextIO.print(concat["Error [", filename, "] ", errToStr err, "\n"])
 	  end
 
-  (* parse a file, returning a parse tree *)
-    fun parseFile filename = let
-	  val file = TextIO.openIn filename
-	  fun get () = TextIO.input file
+  (* parse an input stream, returning a parse tree *)
+    fun parse inStrm = let
+	  fun get () = TextIO.input inStrm
 	  val srcMap = StreamPos.mkSourcemap()
 	  val lexer = HLOpDefLex.lex srcMap
 	  in
 	    case Parser.parse lexer (HLOpDefLex.streamify get)
-	     of (SOME pt, _, []) => (TextIO.closeIn file; SOME pt)
+	     of (SOME pt, _, []) => SOME(cvtFile pt)
 	      | (_, _, errs) => (
-		  TextIO.closeIn file;
 		  List.app (parseErr (filename, srcMap)) errs;
 		  NONE)
 	    (* end case *)
 	  end
-
-    fun parse filename = (case parseFile filename
-	   of SOME pt => Expand.cvtModule pt
-	    | NONE => NONE
-	  (* end case *))
 
     structure Loader = LoaderFn(
       struct
