@@ -251,8 +251,13 @@ dnl where to put the high-level-operation definitions
 dnl
 HLOPS_DIR=$MANTICORE_LIBDIR/hlops
 
-INC_SEARCH_PATH="$HLOPS_DIR:$prefix/lib/hlops"
-HLOP_SEARCH_PATH=".:$HLOPS_DIR:$prefix/lib/hlops"
+if test x"$prefix" = xNONE ; then
+  INC_SEARCH_PATH="$HLOPS_DIR"
+  HLOP_SEARCH_PATH=".:$HLOPS_DIR"
+else
+  INC_SEARCH_PATH="$HLOPS_DIR:$prefix/lib/hlops"
+  HLOP_SEARCH_PATH=".:$HLOPS_DIR:$prefix/lib/hlops"
+fi
 AC_SUBST(HLOP_SEARCH_PATH)
 AC_SUBST(INC_SEARCH_PATH)
 
@@ -341,7 +346,7 @@ dnl ***** Makefiles *****
 dnl ***** SML source files *****
   src/tools/mc/common/run-cpp.sml:src/tools/mc/common/run-cpp_sml.in
   src/tools/mc/driver/version-fn.sml:src/tools/mc/driver/version-fn_sml.in
-  src/tools/mc/hlops/paths.sml:src/tools/mc/hlops/paths_sml.in
+  src/tools/mc/hlop/paths.sml:src/tools/mc/hlop/paths_sml.in
 dnl ***** CM files *****
   src/tools/mc/codegen/group.cm:src/tools/mc/codegen/group_cm.in
   src/tools/mc/codegen/wrapper.cm:src/tools/mc/codegen/wrapper_cm.in
