@@ -9,9 +9,11 @@
  
  structure Expand : sig
 
-    val cvtFile : HLOpDefPT.file -> {
-	    imports : BOM.var CFunctions.c_fun list,
-	    defs : (HLOp.hlop * BOM.lambda) list
+  (* an environment to keep track of any imports required by the high-level operator *)
+    type import_env = BOM.var CFunctions.c_function AtomTable.hash_table
+
+    val cvtFile : (import_env * HLOpDefPT.file) -> {
+	    defs : (HLOp.hlop * BOM.lambda ) list
 	  }
 
   end = struct

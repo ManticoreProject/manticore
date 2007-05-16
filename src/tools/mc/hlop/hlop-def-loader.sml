@@ -6,12 +6,20 @@
 
 structure HLOpDefLoader : sig
 
-    val load : HLOp.hlop -> BOM.lambda
+  (* an environment to keep track of any imports required by the high-level operator *)
+    type import_env = BOM.var CFunctions.c_function AtomTable.hash_table
+
+    val load : (import_env * HLOp.hlop) -> {
+	    inline : bool,
+	    defn : BOM.lambda
+	  }
 
   end = struct
 
     structure Parser = HLOpDefParseFn(HLOpDefLex)
     structure ATbl = AtomTable
+
+    type import_env = BOM.var CFunctions.c_function ATbl.hash_table
 
   (* error function for parsers *)
     fun parseErr (filename, srcMap) = let

@@ -88,6 +88,7 @@
 		  ("fun",	T.KW_fun),
 		  ("host_vproc", T.KW_host_vproc),
 		  ("if",	T.KW_if),
+		  ("inline",	T.KW_inline),
 		  ("int",	T.KW_int),
 		  ("let",	T.KW_let),
 		  ("long",	T.KW_long),

@@ -29,6 +29,7 @@
 	| KW_fun	("fun")
 	| KW_host_vproc ("host_vproc")
 	| KW_if		("if")
+	| KW_inline	("inline")
 	| KW_int	("int")
 	| KW_let	("let")
 	| KW_long	("long")
@@ -100,8 +101,8 @@ Definition
 			argTys = flatten SR,
 			attrs = Attrs
 		      }))
-	| "define" HLOP "(" Params ";" Params ")" ":" Type ("=" Exp)? ";"
-		=> (PT.Define(HLOP, Params1, Params2, [Type], SR))
+	| "define" optInline HLOP "(" Params ";" Params ")" ":" Type ("=" Exp)? ";"
+		=> (PT.Define(optInline, HLOP, Params1, Params2, [Type], SR))
 	;
 
 CRetTy
@@ -123,6 +124,11 @@ Attrs
 Attr
 	: "pure"	=> (CFunctions.A_pure)
 	| "alloc"	=> (CFunctions.A_alloc)
+	;
+
+optInline
+	: (* empty *)	=> (false)
+	| "inline"	=> (true)
 	;
 
 Params

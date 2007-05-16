@@ -24,22 +24,29 @@ structure HLOp =
 	name : Atom.atom,
 	id : Stamp.stamp,
 	sign : hlop_sig,
-	returns : bool			(* true, if the high-level operation returns *)
+	returns : bool,			(* true, if the operation returns *)
+	inline : bool			(* true, if the operations should always be inlined *)
+					(* otherwise, a copy of the operator is added to the *)
+					(* module. *)
 (* FIXME: need effects *)
       }
 
     fun toString (HLOp{name, ...}) = Atom.toString name
     fun name (HLOp{name, ...}) = name
+    fun hash (HLOp{stamp, ...}) = Stamp.hash stamp
+    fun same (HLOp{stamp=a, ...}, HLOp{stamp=b, ...}) = Stamp.same(a, b)
 
-    datatype attributes = NORETURN
+    datatype attributes = NORETURN | INLINE
 
     fun new (name, sign, attrs) = let
 	  val id = Stamp.new()
 	  val returns = ref true
-	  fun doAttr (NORETURN) = returns := false
+	  val inline = ref false
+	  fun doAttr NORETURN = returns := false
+	    | doAttr INLINE = inline := true
 	  in
 	    List.app doAttr attrs;
-	    HLOp{name = name, id = id, sign = sign, returns = !returns}
+	    HLOp{name = name, id = id, sign = sign, returns = !returns, inline = !inline}
 	  end
 
   end
