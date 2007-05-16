@@ -199,7 +199,7 @@
 		cvtSimpleExps (env, args, fn xs => BOM.mkThrow(lookup(env, k), xs))
 	    | PT.Return args =>
 		cvtSimpleExps (env, args, fn xs => BOM.mkRet xs)
-	    | PT.HLOpApply(hlop, args, rets) => (case Basis.findHLOp hlop
+	    | PT.HLOpApply(hlop, args, rets) => (case HLOpEnv.find hlop
 		 of SOME hlop =>
 		      cvtSimpleExps (env, args,
 			fn xs => cvtSimpleExps (env, rets,

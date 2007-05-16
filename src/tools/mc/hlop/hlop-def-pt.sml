@@ -29,10 +29,11 @@
     type var = Atom.atom
     type var_bind = var * ty
 
-    datatype file = FILE of (Atom.atom CFunctions.c_fun list * defn list)
+    datatype file = FILE of defn list
 
     and defn
-      = Define of (var * var_bind list * var_bind list * ty list * exp)
+      = Import of Atom.atom CFunctions.c_fun
+      | Define of (var * var_bind list * var_bind list * ty list * exp option)
 
     and exp
       = Let of (var_bind list * rhs * exp)

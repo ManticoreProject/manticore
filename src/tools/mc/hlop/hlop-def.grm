@@ -87,19 +87,21 @@
 
 
 File
-	: Import* Definition+
-		=> (PT.FILE(Import, Definition))
+	: Definition+
+		=> (PT.FILE Definition)
 	;
 
-Import
+Definition
 	: "extern" CRetTy ID "(" (CArgTy ("," CArgTy)* )? ")" Attrs ";"
-		=> (CF.CFun{
+		=> (PT.Import(CF.CFun{
 			var = ID,
 			name = Atom.toString ID,
 			retTy = CRetTy,
 			argTys = flatten SR,
 			attrs = Attrs
-		      })
+		      }))
+	| "define" HLOP "(" Params ";" Params ")" ":" Type ("=" Exp)? ";"
+		=> (PT.Define(HLOP, Params1, Params2, [Type], SR))
 	;
 
 CRetTy
@@ -121,11 +123,6 @@ Attrs
 Attr
 	: "pure"	=> (CFunctions.A_pure)
 	| "alloc"	=> (CFunctions.A_alloc)
-	;
-
-Definition 
-	: "define" HLOP "(" Params ";" Params ")" ":" Type "=" Exp
-		=> (PT.Define(HLOP, Params1, Params2, [Type], Exp))
 	;
 
 Params
