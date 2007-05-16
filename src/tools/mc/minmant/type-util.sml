@@ -57,6 +57,12 @@ structure TypeUtil : sig
 	    info := Types.INSTANCE ty;	(* path compression *)
 	    ty
 	  end
+      | prune (Types.ClassTy(Types.Class(info as ref(Types.RESOLVED ty)))) = let
+	  val ty = prune ty
+	  in
+	    info := Types.RESOLVED ty;	(* path compression *)
+	    ty
+	  end
       | prune ty = ty
 
   (* apply a type variable to type substitution to a type *)

@@ -16,6 +16,7 @@ structure Unify : sig
     structure Ty = Types
     structure MV = MetaVar
     structure TU = TypeUtil
+    structure TC = TypeClass
 
   (* does a meta-variable occur in a type? *)
     fun occursIn (mv, ty) = let
@@ -59,6 +60,9 @@ structure Unify : sig
 		true)
 	    | (Ty.MetaTy mv1, ty2) => unifyWithMV (ty2, mv1)
 	    | (ty1, Ty.MetaTy mv2) => unifyWithMV (ty1, mv2)
+	    | (ty1 as Ty.ClassTy cl1, ty2 as Ty.ClassTy cl2) => unifyClasses (cl1, cl2)
+	    | (Ty.ClassTy cl1, ty2) => unifyWithClass (ty2, cl1)
+	    | (ty1, Ty.ClassTy cl2) => unifyWithClass (ty1, cl2)
 	    | (Ty.ConTy(tys1, tyc1), Ty.ConTy(tys2, tyc2)) =>
 		(TyCon.same(tyc1, tyc2)) andalso ListPair.allEq unify (tys1, tys2)
 	    | (Ty.FunTy(ty11, ty12), Ty.FunTy(ty21, ty22)) =>
@@ -75,4 +79,30 @@ structure Unify : sig
 	    else (adjustDepth(ty, d); MV.instantiate(mv, ty); true)
       | unifyWithMV _ = raise Fail "impossible"
 
+    and unifyClasses (Ty.Class(info1 as ref(Ty.CLASS cl1)), Ty.Class(info2 as ref(Ty.Class cl2))) =
+	(case (cl1, cl2) of
+	     (Ty.Int, Ty.Float) => false
+	   | (Ty.Float, Ty.Int) => false
+	   | (Ty.Int, _) => (info2 := Ty.CLASS Ty.Int; true)
+	   | (_, Ty.Int) => (info1 := Ty.CLASS Ty.Int; true)
+	   | (Ty.Float, _) => (info2 := Ty.CLASS Ty.Float; true)
+	   | (_, Ty.Float) => (info1 := Ty.CLASS Ty.Float; true)
+	   | (Ty.Num, _) => (info2 := Ty.CLASS Ty.Num; true)
+	   | (_, Ty.Num) => (info1 := Ty.CLASS Ty.Num; true)
+	   | (Ty.Order, _) => (info2 := Ty.CLASS Ty.Order; true)
+	   | (_, Ty.Order) => (info1 := Ty.CLASS Ty.Order; true)
+	   | _ => true
+	(* end case *))
+      | unifyClasses _ = raise Fail "impossible"
+
+    and unifyWithClass (ty, Ty.Class (info as ref(Ty.CLASS cl))) =
+	if (case cl of
+		Ty.Int => TC.isClass (ty, TC.IntClass)
+	      | Ty.Float => TC.isClass (ty, TC.FloatClass)
+	      | Ty.Num => TC.isClass (ty, TC.NumClass)
+	      | Ty.Order => TC.isClass (ty, TC.OrderClass)
+	      | Ty.Eq => TC.isEqualityType ty
+	   (* end case *))
+	then (info := Ty.RESOLVED ty; true)
+	else false
   end

@@ -31,6 +31,7 @@ is
   ty-con.sml
   ty-var.sml
   types.sml
+  type-class.sml
   type-util.sml
   unify.sml
   var.sml

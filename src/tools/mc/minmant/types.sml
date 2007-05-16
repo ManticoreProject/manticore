@@ -14,6 +14,7 @@ structure Types =
     and ty
       = ErrorTy
       | MetaTy of meta
+      | ClassTy of class
       | VarTy of tyvar
       | ConTy of (ty list * tycon)
       | FunTy of ty * ty
@@ -27,6 +28,19 @@ structure Types =
     and meta_info
       = UNIV of int
       | INSTANCE of ty
+
+    and class = Class of class_info ref
+
+    and class_info
+      = CLASS of ty_class
+      | RESOLVED of ty
+
+    and ty_class
+      = Int
+      | Float
+      | Num
+      | Order
+      | Eq
 
     and tyvar = TVar of {
 	    stamp : Stamp.stamp,	(* unique stamp *)
