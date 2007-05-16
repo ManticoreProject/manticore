@@ -1,0 +1,15 @@
+(* paths.sml
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * @configure_input@
+ *)
+
+structure Paths =
+  struct
+
+    val hlopSearchPath = "@HLOP_SEARCH_PATH@"
+    val includeSearchPath = "@INC_SEARCH_PATH@"
+
+  end

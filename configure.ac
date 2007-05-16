@@ -110,7 +110,7 @@ AC_PROG_INSTALL
 AC_PROG_MAKE_SET
 
 dnl
-dnl extrac CFLAGS
+dnl extra CFLAGS
 dnl
 CFLAGS="$CFLAGS -D_GNU_SOURCE -std=gnu99 -pedantic"
 
@@ -247,6 +247,15 @@ AC_SUBST(MANTICORE_RUNSRCDIR)
 AC_SUBST(HEAP_IMAGE_DIR)
 AC_SUBST(INSTALL_SMLNJ_WRAPPER)
 
+dnl where to put the high-level-operation definitions
+dnl
+HLOPS_DIR=$MANTICORE_LIBDIR/hlops
+
+INC_SEARCH_PATH="$HLOPS_DIR:$prefix/lib/hlops"
+HLOP_SEARCH_PATH=".:$HLOPS_DIR:$prefix/lib/hlops"
+AC_SUBST(HLOP_SEARCH_PATH)
+AC_SUBST(INC_SEARCH_PATH)
+
 
 dnl ******************** Runtime system parameters ********************
 
@@ -332,6 +341,7 @@ dnl ***** Makefiles *****
 dnl ***** SML source files *****
   src/tools/mc/common/run-cpp.sml:src/tools/mc/common/run-cpp_sml.in
   src/tools/mc/driver/version-fn.sml:src/tools/mc/driver/version-fn_sml.in
+  src/tools/mc/hlops/paths.sml:src/tools/mc/hlops/paths_sml.in
 dnl ***** CM files *****
   src/tools/mc/codegen/group.cm:src/tools/mc/codegen/group_cm.in
   src/tools/mc/codegen/wrapper.cm:src/tools/mc/codegen/wrapper_cm.in
@@ -353,7 +363,7 @@ AC_CONFIG_LINKS([
 ])
 
 dnl
-dnl generate the runtime-constants.sml file
+dnl generate the runtime-constants files
 dnl
 AC_CONFIG_COMMANDS([runtime-consts], [config/gen-runtime-consts.sh])
 

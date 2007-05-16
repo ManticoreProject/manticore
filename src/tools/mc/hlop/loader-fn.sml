@@ -2,6 +2,10 @@
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
+ *
+ * TODO:
+ *	Eventually, we should support overriding/augmenting the search path
+ *	using the command-line and shell environment.
  *)
 
 signature FILE_TYPE =
@@ -43,28 +47,9 @@ functor LoaderFn (F : FILE_TYPE) : sig
 	    look searchPath
 	  end
 
-    structure FileTbl = HashTableFn(struct
-	type hash_key = string
-	val hashVal = HashString.hashString
-	val sameKey : (string * string) -> bool = (op =)
-      end)
-
-    val tbl : F.file FileTbl.hash_table  = FileTbl.mkTable (64, Fail "file table")
-
-    fun load file = (case FileTbl.find tbl file
-	   of SOME file => SOME file
-	    | NONE => let
-		fun loadFile path = (case F.parse path
-		       of NONE => NONE
-			| SOME file => (
-			    FileTbl.insert tbl (path, file);
-			    SOME file)
-		      (* end case *))
-		in
-		  case findFile (defaultSearchPath, file)
-		   of SOME path => loadFile path
-		    | NONE => NONE
-		end
-	  (* end case *))
+    fun load file = (case findFile (defaultSearchPath, file)
+	   of SOME path => F.parse path
+	    | NONE => NONE
+	  (* end case *)
 
   end
