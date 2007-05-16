@@ -70,7 +70,7 @@
 	;
 
 %defs(
-    structure PT = BOMPT
+    structure PT = HLOpDefPT
     structure CF = CFunctions
 
     fun flatten NONE = []
@@ -125,7 +125,7 @@ Attr
 
 Definition 
 	: "define" HLOP "(" Params ";" Params ")" ":" Type "=" Exp
-		=> (PT.Define(ID, Params1, Params2, [Type], Exp))
+		=> (PT.Define(HLOP, Params1, Params2, [Type], Exp))
 	;
 
 Params

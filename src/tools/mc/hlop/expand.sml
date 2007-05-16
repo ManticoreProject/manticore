@@ -10,13 +10,13 @@
  structure Expand : sig
 
     val cvtFile : HLOpDefPT.file -> {
-	    imports : BOM.var CFunctions.c_fun list
+	    imports : BOM.var CFunctions.c_fun list,
 	    defs : (HLOp.hlop * BOM.lambda) list
 	  }
 
   end = struct
 
-    structure PT = BOMPT
+    structure PT = HLOpDefPT
     structure P = Prim
     structure Ty = BOMTy
     structure BV = BOM.Var

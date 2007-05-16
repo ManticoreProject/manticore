@@ -13,7 +13,7 @@ signature FILE_TYPE =
 
     type file
 
-    val parse : TextIO.instream -> file option
+    val parse : (string * TextIO.instream) -> file option
 
   (* search-path info *)
     val defaultSearchPath : string
@@ -59,9 +59,9 @@ functor LoaderFn (F : FILE_TYPE) : sig
 			input = path
 		      }
 		in
-		  (F.parse path before reap()) handle ex => (reap(); raise ex)
+		  (F.parse(path, inStrm) before reap()) handle ex => (reap(); raise ex)
 		end
 	    | NONE => NONE
-	  (* end case *)
+	  (* end case *))
 
   end

@@ -8,7 +8,7 @@
 
 %defs(
 
-    structure T = BOMTokens
+    structure T = HLOpDefTokens
 
   (* error function for lexers *)
     fun lexErr (lnum, msg) = TextIO.print(concat [

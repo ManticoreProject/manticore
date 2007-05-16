@@ -6,9 +6,13 @@
 
 structure HLOpDefLoader : sig
 
-    val load : Atom.atom -> (HLOp.hlop * BOM.lambda) option
+    type hlop_def = (HLOp.hlop * BOM.lambda)
+
+    val load : Atom.atom -> hlop_def
 
   end = struct
+
+    type hlop_def = (HLOp.hlop * BOM.lambda)
 
     structure Parser = HLOpDefParseFn(HLOpDefLex)
 
@@ -20,13 +24,13 @@ structure HLOpDefLoader : sig
 	  end
 
   (* parse an input stream, returning a parse tree *)
-    fun parse inStrm = let
+    fun parse (filename, inStrm) = let
 	  fun get () = TextIO.input inStrm
 	  val srcMap = StreamPos.mkSourcemap()
 	  val lexer = HLOpDefLex.lex srcMap
 	  in
 	    case Parser.parse lexer (HLOpDefLex.streamify get)
-	     of (SOME pt, _, []) => SOME(cvtFile pt)
+	     of (SOME pt, _, []) => SOME(Expand.cvtFile pt)
 	      | (_, _, errs) => (
 		  List.app (parseErr (filename, srcMap)) errs;
 		  NONE)
@@ -36,5 +40,21 @@ structure HLOpDefLoader : sig
     structure Loader = LoaderFn(
       struct
 	type file = HLOp.hlop * BOM.lambda
-	val 
+	val parse = parse
+	val defaultSearchPath = Paths.hlopSearchPath
+      end)
+
+  (* a cache of previously loaded definitions *)
+    val cache : hlop_def AtomTable.hash_table = AtomTbl.mkTable (128, Fail "HLOpDef table")
+
+    fun load opName = (case AtomTable.find cache opName
+	   of NONE => (case Loader.load(Atom.toString opName)
+		 of SOME defn => (
+		      AtomTable.insert cache (opName, defn);
+		      defn)
+		  | NONE => raise Fail("unable to load definition for @" ^ Atom.toString opName)
+		(* end case *))
+	    | SOME defn => defn
+	  (* end case *))
+
   end
