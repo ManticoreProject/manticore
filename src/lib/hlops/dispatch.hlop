@@ -6,6 +6,8 @@
 
 #include "vproc-offsets.def"
 
-define dispatch (vp : vproc, tid : enum(0), fiber : cont(enum(0))) =
+define @setCurrentTId (vp : vproc, tid : enum(0)) : ();
+
+define inline @dispatch (vp : vproc, tid : enum(0), fiber : cont(enum(0))) =
     do @setCurrentTId(vp, tid)
-    throw fiber(enum(0))
+    throw fiber(enum(0));
