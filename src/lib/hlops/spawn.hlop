@@ -1,0 +1,20 @@
+(* spawn.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * The @spawn operator is used to implement the "spawn" operation in Manticore.
+ *)
+
+define @dispatch (vp : vproc);
+define @enqueue (vp : vproc, tid : enum(0), fiber : cont(enum(0))) : enum(0);
+
+define inline @spawn (f : (enum(0); cont(enum(0))) -> enum(0)) : enum(0) =
+    cont fiber (_ : enum(0)) =
+	cont handler (ex : any) = @dispatch(host_vproc)
+	do f(enum(0); handler)
+	  @dispatch(host_vproc)
+    (* in *)
+      let vp = host_vproc
+      @enqueue (host_vproc, enum(0), fiber)
+;

@@ -4,10 +4,8 @@
  * All rights reserved.
  *)
 
-#include "vproc-offsets.def"
-
-define @setCurrentTId (vp : vproc, tid : enum(0)) : ();
+define @dequeue (vp : vproc) : (tid : enum(0), fiber : cont(enum(0)));
 
 define inline @dispatch (vp : vproc, tid : enum(0), fiber : cont(enum(0))) =
-    do @setCurrentTId(vp, tid)
-    throw fiber(enum(0));
+    let (tid, fiber) = @dequeue (vp)
+    @switch-to (vp, tid, fiber)
