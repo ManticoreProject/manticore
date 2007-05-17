@@ -33,7 +33,7 @@
 
     and defn
       = Import of Atom.atom CFunctions.c_fun
-      | Define of (var * var_bind list * var_bind list * ty list * exp option)
+      | Define of (bool * var * var_bind list * var_bind list * ty list * exp option)
 
     and exp
       = Let of (var_bind list * rhs * exp)

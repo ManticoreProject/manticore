@@ -101,8 +101,8 @@ Definition
 			argTys = flatten SR,
 			attrs = Attrs
 		      }))
-	| "define" optInline HLOP "(" Params ";" Params ")" ":" Type ("=" Exp)? ";"
-		=> (PT.Define(optInline, HLOP, Params1, Params2, [Type], SR))
+	| "define" optInline HLOP "(" Params ";" Params ")" optReturnTy ("=" Exp)? ";"
+		=> (PT.Define(optInline, HLOP, Params1, Params2, optReturnTy, SR))
 	;
 
 CRetTy
@@ -124,6 +124,11 @@ Attrs
 Attr
 	: "pure"	=> (CFunctions.A_pure)
 	| "alloc"	=> (CFunctions.A_alloc)
+	;
+
+optReturnTy
+	: (* empty *)	=> ([])
+	| ":" Type	=> ([Type])
 	;
 
 optInline

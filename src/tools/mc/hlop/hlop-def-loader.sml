@@ -6,20 +6,29 @@
 
 structure HLOpDefLoader : sig
 
-  (* an environment to keep track of any imports required by the high-level operator *)
-    type import_env = BOM.var CFunctions.c_function AtomTable.hash_table
+    type hlop_def = {
+	inline : bool,			(* true, if the operations should always be inlined *)
+					(* otherwise, a copy of the operator is added to the *)
+					(* module. *)
+	defn : BOM.lambda
+      }
 
-    val load : (import_env * HLOp.hlop) -> {
-	    inline : bool,
-	    defn : BOM.lambda
-	  }
+  (* an environment to keep track of any imports required by the high-level operator *)
+    type import_env = BOM.var CFunctions.c_fun AtomTable.hash_table
+
+    val load : (import_env * HLOp.hlop) -> hlop_def
 
   end = struct
 
     structure Parser = HLOpDefParseFn(HLOpDefLex)
     structure ATbl = AtomTable
 
-    type import_env = BOM.var CFunctions.c_function ATbl.hash_table
+    type hlop_def = {
+	inline : bool,
+	defn : BOM.lambda
+      }
+
+    type import_env = BOM.var CFunctions.c_fun ATbl.hash_table
 
   (* error function for parsers *)
     fun parseErr (filename, srcMap) = let
@@ -50,15 +59,21 @@ structure HLOpDefLoader : sig
       end)
 
   (* a cache of previously loaded definitions *)
-    val cache : BOM.lambda ATbl.hash_table = ATbl.mkTable (128, Fail "HLOpDef table")
+    val cache : hlop_def ATbl.hash_table = ATbl.mkTable (128, Fail "HLOpDef table")
 
-    fun load hlOp = (case ATbl.find cache (HLOp.name hlOp)
+    fun load (importEnv, hlOp) = (case ATbl.find cache (HLOp.name hlOp)
 	   of NONE => let
 		val opName = HLOp.name hlOp
 		in
 		  case Loader.load(Atom.toString opName)
-		   of SOME pt =>
-(* FIXME: convert pt; insert defns, etc. *)raise Fail "load"
+		   of SOME pt => let
+			val defs = Expand.cvtFile(importEnv, pt)
+			fun record (hlOp, inline, lambda) =
+			      ATbl.insert cache (HLOp.name hlOp, {inline=inline, defn=lambda})
+			in
+			  List.app record defs;
+			  ATbl.lookup cache opName
+			end
 		    | NONE => raise Fail("unable to load definition for @" ^ Atom.toString opName)
 		  (* end case *)
 		end
