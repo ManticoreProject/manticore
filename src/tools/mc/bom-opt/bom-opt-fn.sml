@@ -10,6 +10,16 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 
   end = struct
 
-    fun optimize module = CaseSimplify.transform module
+    fun expandAll module = (case ExpandHLOps.expand module
+	   of SOME module => expandAll module
+	    | NONE => module
+	  (* end case *))
+
+    fun optimize module = let
+	  val module = expandAll module
+	  val module = CaseSimplify.transform module
+	  in
+	    module
+	  end
 
   end
