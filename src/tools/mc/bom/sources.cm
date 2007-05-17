@@ -9,6 +9,7 @@ Library
   structure BOM
   structure BOMTy
   structure BOMTyCon
+  structure BOMUtil
   structure HLOp
   structure ManticoreOps
   structure PrintBOM
@@ -21,9 +22,10 @@ is
   ../common/sources.cm
   ../prim/sources.cm
 
+  bom.sml
   bom-ty.sml
   bom-tycon.sml
-  bom.sml
+  bom-util.sml
   hlop.sml
   manticore-ops.sml
   print-bom.sml
