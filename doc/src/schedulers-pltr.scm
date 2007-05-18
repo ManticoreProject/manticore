@@ -1,17 +1,31 @@
+;;; schedulers-pltr.scm
+;;;
+;;; COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+;;; All rights reserved.
+;;;
+;;; This module contains a PLT Redex model of the Manticore semantics, particularly those
+;;; operations involved in scheduling.
+
 (module schedulers-pltr mzscheme
-  (require (planet "reduction-semantics.ss" ("robby" "redex.plt" 3 5))
-           (planet "gui.ss" ("robby" "redex.plt" 3 5)))
+  (require (planet "reduction-semantics.ss" ("robby" "redex.plt" 3 11))
+           (planet "gui.ss" ("robby" "redex.plt" 3 11)))
   (require (lib "list.ss")
            (lib "plt-match.ss"))
   
   (define scheduler-language
     (language 
-     ; multiprocessor state (vprocs, store, provision map)
-     (MP ((vps VP ...) (store (x v) ...) (pmap (number number ...) ...)))
+     ; multiprocessor state (contains each vproc in the multiprocessor)
+     (MP ((vps VP ...) global-store provision-map))
+     ; provisioning map from a unique ID (the gid) to a set of vproc IDs
+     (provision-map (pmap (number number ...) ...))
+     ; store
+     (global-store (store (x v) ...))
      ; virtual processor state (scheduler action stack, thread queue, mask bit, expression)
-     (VP (vproc number (action-stack v ...) fiber-queue mask e))
+     (VP (vproc number action fiber-queue mask e))
+     ; scheduler-action stack
+     (action (action-stack v ...))
      ; fiber queue
-     (fiber-queue (queue (in v ...) (out v ...)))
+     (fiber-queue (queue v ...))
      ; mask bit
      (mask (masked) (unmasked))
      ; scheduler signals
@@ -30,26 +44,36 @@
       (deq e) (enq e e) (deq-vp) (enq-vp e) (enq-on-vp e e)
       ; allocating / deallocating vprocs
       (gid) (provision e) (release e)
+      ; atomic operations
+      (cas e e e) (ref e) (deref e)
       ; signal handler
       (handle e (stop-handler e) (preempt-handler e)))
       ; contexts
       (E (E e) (v E) (+ E e) (+ v E) (if0 E e e) (begin E e e ...) (run E e) (run v E)
          (enq E e) (enq v E) (enq-vp E) (enq-on-vp E e) (enq-on-vp v E) (deq E) (forward E)
          (provision E) (release E)
+         (case E e e) (cas v E e) (cas v v E) (ref E) (deref E)
          (let ((x E)) e) (handle E (stop-handler e) (preempt-handler e)) hole)
      ; keywords
      (x (variable-except λ + abort letcont begin unit if0 let letrec fix
                          forward run stop preempt handle enq deq enq-vp deq-vp enq-on-vp
                          gid provision release
+                         cas ref deref
                          in out queue action-stack store pmap vps vproc
                          preempt-handler stop-handler))))
   
+  ;; contains : number * listof(number) -> bool
+  ;;
+  ;; does the list ls contain the number n?
   (define (contains n ls)
     (cond ((null? ls) #f)
           ((= n (car ls)) #f)
           (#t (contains n (cdr ls))))) 
   
-  ; return either the first vproc not in the provisioned set or the host vproc
+  ;; provision : vp-num * listof(vproc) * listof(vp-num) -> vp-num
+  ;;
+  ;; provision returns either the first vproc not in the provisioned set
+  ;; or the host vproc
   (define (provision host-vp vps provisioned)
     (let ([find
            (lambda (vp vps)
@@ -59,6 +83,9 @@
                                               (cons n vps)))))])
       (car (foldl find (list host-vp) vps))))
   
+  ;;; gid : listof(number * listof(number)) -> number
+  ;;;
+  ;;; return a unique group id w.r.t the provisioning map pmap
   (define (gid pmap)
     (letrec ((f (lambda (max pmap)
                   (cond ((null? pmap) max)
@@ -139,82 +166,103 @@
            (vproc number_1 (action-stack v_acts ...) fiber-queue_1 mask_1 (v_a v_sig))
            "forward")
      
-     (vp=> (vproc number_1 (action-stack v_acts ...) fiber-queue_1 (unmasked) (in-hole E_1 e_1))
-           ,(term-let ((x_new (variable-not-in (term (in-hole E_1 e_1)) (term x))))
-                      (term (vproc number_1 (action-stack v_acts ...) fiber-queue_1 (masked)
-                                            (forward (preempt (λ (x_new) (in-hole E_1 e_1)))))))
-           "preempt")
+;     (vp=> (vproc number_1 (action-stack v_acts ...) fiber-queue_1 (unmasked) (in-hole E_1 e_1))
+;           ,(term-let ((x_new (variable-not-in (term (in-hole E_1 e_1)) (term x))))
+;                      (term (vproc number_1 (action-stack v_acts ...) fiber-queue_1 (masked)
+;                                            (forward (preempt (λ (x_new) (in-hole E_1 e_1)))))))
+;           "preempt")
           
-     (vp=> (vproc number_1 (action-stack v_a ...) (queue (in v_ins ...) (out v_out v_outs ...)) mask_1 
-                  (in-hole E_1 (deq-vp)))
-           (vproc number_1 (action-stack v_a ...) (queue (in v_ins ...) (out v_outs ...)) mask_1 (in-hole E_1 v_out))
-           "deq-vp-full")
+     (vp=> (vproc number_1 action_1 (queue v_ks ... v_k) mask_1 (in-hole E_1 (deq-vp)))
+           (vproc number_1 action_1 (queue v_ks ...) mask_1 (in-hole E_1 v_k))
+           "deq-vp")
      
-     (vp=> (vproc number_1 (action-stack v_a ...) (queue (in v_in v_ins ...) (out)) mask_1 (in-hole E_1 (deq-vp)))
-           (vproc number_1 (action-stack v_a ...) (queue (in) (out ,@(reverse (term (v_in v_ins ...))))) mask_1 
-                  (in-hole E_1 (deq-vp)))
-           "deq-vp-empty")
-     
-     (vp=> (vproc number_1 (action-stack v_a ...) (queue (in v_ins ...) (out v_outs ...)) mask_1 (in-hole E_1 (enq-vp v_k)))
-           (vproc number_1 (action-stack v_a ...) (queue (in v_k v_ins ...) (out v_outs ...)) mask_1 (in-hole E_1 (unit)))
+     (vp=> (vproc number_1 action_1 (queue v_ks ...) mask_1 (in-hole E_1 (enq-vp v_k)))
+           (vproc number_1 action_1 (queue v_k v_ks ...) mask_1 (in-hole E_1 (unit)))
            "enq-vp")
            
      ;; multiproc transitions
      
      (--> ((vps VP_1 ...
-                (vproc number_1 (action-stack v_a1 ...) (queue (in v_ins1 ...) (out v_outs1 ...)) mask_1
-                       (enq-on-vp number_2 v_k))
-                VP_2 ...
-                (vproc number_2 (action-stack v_a2 ...) (queue (in v_ins2 ...) (out v_outs2 ...)) mask_2 e_2)
-                VP_3 ...)
-           (store (x_1 v_1) ...)
-           (pmap (number_p1 number_p2 ...) ...))
+                (vproc number_1 action_1 fiber-queue_1 mask_1 (in-hole E_1 (let ((x_1 (ref v_1))) e_1)))
+                VP_2 ...)
+           (store (x_s v_s) ...) provision-map_1)
+          ,(term-let ((x_new (variable-not-in (term ((x_s v_s) ...)) (term x_1))))
+                     (term ((vps VP_1 ...
+                                 (vproc number_1 action_1 fiber-queue_1 mask_1 (in-hole E_1 (subst (x_1 x_new e_1))))
+                                 VP_2 ...)
+                            (store (x_new v_1) (x_s v_s) ...) provision-map_1)))
+          "ref")
+     
+     (--> ((vps VP_1 ...
+                (vproc number_1 action_1 fiber-queue_1 mask_1 (in-hole E_1 (deref x_1)))
+                VP_2 ...)
+           (store (x_s1 v_s1) ... (x_1 v_1) (x_s2 v_s2) ...) provision-map_1)
           ((vps VP_1 ...
-                (vproc number_1 (action-stack v_a1 ...) (queue (in v_ins1 ...) (out v_outs1 ...)) mask_1
-                       (unit))
+                (vproc number_1 action_1 fiber-queue_1 mask_1 (in-hole E_1 v_1))
+                VP_2 ...)
+           (store (x_s1 v_s1) ... (x_1 v_1) (x_s2 v_s2) ...) provision-map_1)
+          "deref")     
+            
+     (--> ((vps VP_1 ...
+                (vproc number_1 action_1 fiber-queue_1 mask_1 (in-hole E_1 (cas x_l v_o v_n)))
+                VP_2 ...)
+           (store (x_s1 v_s1) ... (x_1 v_1) (x_s2 v_s2) ...) provision-map_1)
+          ((vps VP_1 ...
+                (vproc number_1 action_1 fiber-queue_1 mask_1 (in-hole E_1 v_1))
+                VP_2 ...)
+           (store (x_s1 v_s1) ... (x_1 ,(if (= (term v_1) (term v_o))
+                                            (term v_n) 
+                                            (term v_1))
+                  (x_s2 v_s2) ...))
+                  provision-map_1)
+          "cas")
+     
+     (--> ((vps VP_1 ...
+                (vproc number_1 action_1 fiber-queue_1 mask_1 (in-hole E_1 (enq-on-vp number_2 v_k)))
                 VP_2 ...
-                (vproc number_2 (action-stack v_a2 ...) (queue (in v_k v_ins2 ...) (out v_outs2 ...)) mask_2 e_2)
+                (vproc number_2 action_2 (queue v_ks2 ...) mask_2 e_2)
                 VP_3 ...)
-           (store (x_1 v_1) ...)
-           (pmap (number_p1 number_p2 ...) ...))
+           global-store_1 provision-map_1)
+          ((vps VP_1 ...
+                (vproc number_1 action_1 fiber-queue_1 mask_1 (in-hole E_1 (unit)))
+                VP_2 ...
+                (vproc number_2 action_2 (queue v_k v_ks2 ...) mask_2 e_2)
+                VP_3 ...)
+           global-store_1 provision-map_1)
           "enq-on-vp-l")
      
      (--> ((vps VP_1 ...
-                (vproc number_2 (action-stack v_a2 ...) (queue (in v_ins2 ...) (out v_outs2 ...)) mask_2 e_2)
+                (vproc number_2 action_2 (queue v_ks2 ...) mask_2 e_2)
                 VP_2 ...
-                (vproc number_1 (action-stack v_a1 ...) (queue (in v_ins1 ...) (out v_outs1 ...)) mask_1
-                       (enq-on-vp number_2 v_k))                
+                (vproc number_1 action_1 fiber-queue_1 mask_1 (in-hole E_1 (enq-on-vp number_2 v_k)))
                 VP_3 ...)
-           (store (x_1 v_1) ...)
-           (pmap (number_p1 number_p2 ...) ...))
+           global-store_1 provision-map_1)
           ((vps VP_1 ...
-                (vproc number_2 (action-stack v_a2 ...) (queue (in v_k v_ins2 ...) (out v_outs2 ...)) mask_2 e_2)
+                (vproc number_2 action_2 (queue v_k v_ks2 ...) mask_2 e_2)
                 VP_2 ...
-                (vproc number_1 (action-stack v_a1 ...) (queue (in v_ins1 ...) (out v_outs1 ...)) mask_1
-                       (unit))                
+                (vproc number_1 action_1 fiber-queue_1 mask_1 (in-hole E_1 (unit)))
                 VP_3 ...)
-           (store (x_1 v_1) ...)
-           (pmap (number_p1 number_p2 ...) ...))
+           global-store_1 provision-map_1)
           "enq-on-vp-r")
      
      (--> ((vps VP_1 ...
-                (vproc number_1 (action-stack v_a1 ...) fiber-queue_1 mask_1 (in-hole E_1 (gid)))
+                (vproc number_1 action_1 fiber-queue_1 mask_1 (in-hole E_1 (gid)))
                 VP_2 ...)                
-           (store (x_1 v_1) ...)
+           global-store_1
            (pmap (number_p1 number_p2 ...) ... ))
           ,(term-let ((number-gid (gid (term (number_p1 ...)))))
                      (term
                       ((vps VP_1 ...
-                            (vproc number_1 (action-stack v_a1 ...) fiber-queue_1 mask_1 (in-hole E_1 number-gid))
+                            (vproc number_1 action_1 fiber-queue_1 mask_1 (in-hole E_1 number-gid))
                             VP_2 ...)                
-                       (store (x_1 v_1) ...)
+                       global-store_1
                        (pmap (number_p1 number_p2 ...) ... (number-gid)))))
           "gid")
      
      (--> ((vps VP_1 ...
                 (vproc number_1 (action-stack v_a1 ...) fiber-queue_1 mask_1 (in-hole E_1 (provision number_gid)))
                 VP_2 ...)                
-           (store (x_1 v_1) ...)
+           global-store_1
            (pmap (number_p1 number_p2 ...) ... (number_gid number_vps ...) (number_p3 number_p4 ...) ... ))
           ,(term-let ((number-vp (provision (term number_1) 
                                             (append (term (VP_1 ...)) (term (VP_2 ...))) 
@@ -223,17 +271,18 @@
                       ((vps VP_1 ...
                             (vproc number_1 (action-stack v_a1 ...) fiber-queue_1 mask_1 (in-hole E_1 number-vp))
                             VP_2 ...)                
-                       (store (x_1 v_1) ...)
+                       global-store_1
                        (pmap (number_p1 number_p2 ...) ... (number_gid number-vp number_vps ...) 
                              (number_p3 number_p4 ...) ... ))))
           "provision")          
       
      where
+     ; sequential transition rule
      ((s==> e1 e2) (--> ((vps VP_1 ... (vproc number_vp (action-stack v_a ...) fiber-queue_1 mask_1 e1)
                                               VP_2 ...) (store (x_1 v_1) ...) (pmap (number_1 number_2 ...) ...))
                         ((vps VP_1 ... (vproc number_vp (action-stack v_a ...) fiber-queue_1 mask_1 e2)
                                              VP_2 ...) (store (x_1 v_1) ...) (pmap (number_1 number_2 ...) ...))))
-                        
+     ; vproc transition rule
      ((vp=> vp1 vp2) (-->  ((vps VP_1 ... vp1 VP_2 ...) (store (x_1 v_1) ...) (pmap (number_1 number_2 ...) ...))
                            ((vps VP_1 ... vp2 VP_2 ...) (store (x_1 v_1) ...) (pmap (number_1 number_2 ...) ...))))))
     
@@ -299,23 +348,31 @@
     ;; thread queue operations
     [(x_1 e_1 (deq-vp))
      (deq-vp)]
+    [(x_1 e_1 (enq-vp e_2))
+     (enq-vp (subst (x_1 e_1 e_2)))]
+    [(x_1 e_1 (enq-on-vp e_2 e_3))
+     (enq-on-vp (subst (x_1 e_1 e_2)) (subst (x_1 e_1 e_3)))]
+    ;; atomic store operations
+    [(x_1 e_1 (cas e_2 e_3 e_4))
+     (cas (subst (x_1 e_1 e_2)) (subst (x_1 e_1 e_3)) (subst (x_1 e_1 e_4)))]
+    [(x_1 e_1 (ref e_2))
+     (ref (subst (x_1 e_1 e_2)))]
+    [(x_1 e_1 (deref e_2))
+     (deref (subst (x_1 e_1 e_2)))]
+    ;; provisioning operations
     [(x_1 e_1 (gid))
      (gid)]
     [(x_1 e_1 (provision e_2))
      (provision (subst (x_1 e_1 e_2)))]
     [(x_1 e_1 (release e_2))
-     (release (subst (x_1 e_2 e_2)))]
-    [(x_1 e_1 (enq-vp e_2))
-     (enq-vp (subst (x_1 e_1 e_2)))]
+     (release (subst (x_1 e_2 e_2)))]    
     [(x_1 e_1 (enq e_vp e_k))
-     (enq (subst (x_1 e_1 e_vp)) (subst (x_1 e_1 e_k)))]
-    [(x_1 e_1 (enq-on-vp e_2 e_3))
-     (enq-on-vp (subst (x_1 e_1 e_2)) (subst (x_1 e_1 e_3)))]
+     (enq (subst (x_1 e_1 e_vp)) (subst (x_1 e_1 e_k)))]   
     [(x_1 e_1 (deq e_vp))
      (deq (subst (x_1 e_1 e_vp)))])
   
   (define (run-on-vp n e)
-    `(vproc ,n (action-stack) (queue (in) (out)) (masked) ,e))
+    `(vproc ,n (action-stack) (queue) (masked) ,e))
     
   (define (run es)
     (let* ([run (lambda (e vps)
@@ -326,13 +383,29 @@
           [vps (reverse (cdr vs))]
           [mm `((vps ,@vps) (store) (pmap))])
       (traces scheduler-language multiprocessor-machine mm)))
-      
-  (define (t1)
-    (run (list (term (+ 1 2)))))
   
-  (define (t2)
-    (run (list (term (run 1 2)))))
- 
+  (define (rr es)
+      (let* ([run (lambda (e vps)
+                 (let ([n (car vps)]
+                       [es (cdr vps)])
+                   (cons (add1 n) (cons (run-on-vp n e) es))))]
+          [vs (foldl run (cons 0 '()) es)]
+          [vps (reverse (cdr vs))]
+          [mm `((vps ,@vps) (store) (pmap))])
+      (apply-reduction-relation* multiprocessor-machine mm)))
+  
+  (define t1
+    (list (term (+ 1 2))))
+  
+  (define t2
+    (list (term (run 1 2))))
+  
+  (define tref
+    (list (term (let ((x (ref (+ 1 23)))) 
+                  (let ((y (ref 9)))
+                    (+ (deref x) (deref y)))))
+          (term (let ((x (ref 999))) (deref x)))))
+  
   (define (t3)
     (run (list (term (+ (+ 500 3) 2)) (term (+ 3 4)))))
  
