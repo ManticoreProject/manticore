@@ -12,6 +12,8 @@
   (require (lib "list.ss")
            (lib "plt-match.ss"))
   
+  (provide run fiber step)
+  
   (define scheduler-language
     (language 
      ; multiprocessor state (contains each vproc in the multiprocessor)
@@ -52,7 +54,7 @@
       (E (E e) (v E) (+ E e) (+ v E) (if0 E e e) (begin E e e ...) (run E e) (run v E)
          (enq E e) (enq v E) (enq-vp E) (enq-on-vp E e) (enq-on-vp v E) (deq E) (forward E)
          (provision E) (release E)
-         (case E e e) (cas v E e) (cas v v E) (ref E) (deref E)
+         (cas E e e) (cas x E e) (cas x v E) (ref E) (deref E)
          (let ((x E)) e) (handle E (stop-handler e) (preempt-handler e)) hole)
      ; keywords
      (x (variable-except λ + abort letcont begin unit if0 let letrec fix
@@ -114,10 +116,13 @@
            e_1
            "abort")
      
-     ;name capture bug???
      (s==> (in-hole E_1 (letcont x_1 x_2 e_1 e_2))
-           (in-hole E_1 (letrec ((x_1 (λ (x_2) (abort (in-hole E_1 e_1)))))
-                          e_2))
+           ,(term-let ((x_new1 (variable-not-in (term E_1) (term x_1)))
+                       (x_new2 (variable-not-in (term E_1) (term x_2))))
+                      (term (in-hole E_1 (letrec ((x_new1 (λ (x_new2) 
+                                                            (abort (in-hole E_1 
+                                                                            (subst (x_1 x_new1 (subst (x_2 x_new2 e_1)))))))))
+                                           (subst (x_1 x_new1 e_2))))))
            "letcont")
 
      (s==> (in-hole E_1 (let ((x_1 v_1)) e_2))
@@ -373,16 +378,22 @@
   
   (define (run-on-vp n e)
     `(vproc ,n (action-stack) (queue) (masked) ,e))
-    
-  (define (run es)
+  
+  (define (mk-multiprocessor es)
     (let* ([run (lambda (e vps)
-                 (let ([n (car vps)]
-                       [es (cdr vps)])
-                   (cons (add1 n) (cons (run-on-vp n e) es))))]
-          [vs (foldl run (cons 0 '()) es)]
-          [vps (reverse (cdr vs))]
-          [mm `((vps ,@vps) (store) (pmap))])
-      (traces scheduler-language multiprocessor-machine mm)))
+                  (let ([n (car vps)]
+                        [es (cdr vps)])
+                    (cons (add1 n) (cons (run-on-vp n e) es))))]
+           [vs (foldl run (cons 0 '()) es)]
+           [vps (reverse (cdr vs))]
+           [mm `((vps ,@vps) (store) (pmap))])
+      mm))
+      
+  (define (run es)
+    (traces scheduler-language multiprocessor-machine (mk-multiprocessor es)))
+  
+  (define (step es)
+    (stepper scheduler-language multiprocessor-machine (mk-multiprocessor es)))
   
   (define (rr es)
       (let* ([run (lambda (e vps)
@@ -406,6 +417,7 @@
                     (+ (deref x) (deref y)))))
           (term (let ((x (ref 999))) (deref x)))))
   
+  
   (define (t3)
     (run (list (term (+ (+ 500 3) 2)) (term (+ 3 4)))))
  
@@ -422,7 +434,8 @@
                (term 888))))
   
   (define (fiber f)
-    (term (letcont k x (begin (,f (unit)) (forward (stop))) k)))
+    (term-let ((x_new (variable-not-in f (term x))))
+              (term (letcont k x_new (begin (,f (unit)) (forward (stop))) k))))
   
   (define default-action
     (term (letrec ((act (λ (sig)
