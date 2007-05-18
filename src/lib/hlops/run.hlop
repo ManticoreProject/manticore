@@ -1,0 +1,14 @@
+(* run.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+#include "runtime-offsets.def"
+
+define inline @run (vp : vproc, act : cont(any), fiber : cont(unit)) noreturn =
+    let stk : (cont(any), any) = vpload(vp, VP_ACTION_STK)
+    let item : (cont(any), any) = alloc(act, stk)
+    do vpstore(vp, VP_ACTION_STK, item)
+    do vpstore(vp, VP_ATOMIC, FALSE)
+      throw fiber(enum(0))

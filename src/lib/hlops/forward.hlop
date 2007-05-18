@@ -1,0 +1,16 @@
+(* forward.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+
+#include "runtime-offsets.def"
+
+define inline @forward (vp : vproc, sig : any) noreturn =
+    do vpstore(vp, VP_ATOMIC, TRUE)
+    let tos : (cont(any), any) = vpload(vp, VP_ACTION_STK)
+    let rest : any = #1(tos)
+    do vpstore(vp, VP_ACTION_STK, rest)
+    let act : cont(any) = #0(tos)
+      throw act(sig)
