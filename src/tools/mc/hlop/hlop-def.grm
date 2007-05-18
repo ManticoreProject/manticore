@@ -34,6 +34,7 @@
 	| KW_let	("let")
 	| KW_long	("long")
 	| KW_module	("module")
+	| KW_noreturn	("noreturn")
 	| KW_of		("of")
 	| KW_pure	("pure")
         | KW_return	("return")
@@ -45,6 +46,8 @@
 	| KW_vec128	("vec128")
 	| KW_void	("void")
 	| KW_vproc	("vproc")
+	| KW_vpload	("vpload")
+	| KW_vpstore	("vpstore")
 	| KW_wrap	("wrap")
 	| LP		("(")
 	| RP		(")")
@@ -101,8 +104,8 @@ Definition
 			argTys = flatten SR,
 			attrs = Attrs
 		      }))
-	| "define" optInline HLOP "(" Params ";" Params ")" optReturnTy ("=" Exp)? ";"
-		=> (PT.Define(optInline, HLOP, Params1, Params2, optReturnTy, SR))
+	| "define" optInline HLOP "(" Params ";" Params ")" returnTy ("=" Exp)? ";"
+		=> (PT.Define(optInline, HLOP, Params1, Params2, returnTy, SR))
 	;
 
 CRetTy
@@ -124,10 +127,11 @@ Attrs
 Attr
 	: "pure"	=> (CFunctions.A_pure)
 	| "alloc"	=> (CFunctions.A_alloc)
+	| "noreturn"	=> (CFunctions.A_noreturn)
 	;
 
-optReturnTy
-	: (* empty *)	=> ([])
+returnTy
+	: "noreturn"	=> ([])
 	| ":" Type	=> ([Type])
 	;
 
@@ -223,6 +227,10 @@ NonSelectExp
 	| "(" Type ")" SimpleExp	=> (PT.Cast(Type, SimpleExp))
 	| Literal			=> (PT.Const(Literal))
 	| "host_vproc"			=> (PT.HostVProc)
+	| "vpload" "(" INT "," SimpleExp ")"
+					=> (PT.VPLoad(INT, SimpleExp))
+	| "vpstore" "(" INT "," SimpleExp "," SimpleExp ")"
+					=> (PT.VPStore(INT, SimpleExp1, SimpleExp2))
 	;
 
 SimpleExp

@@ -93,6 +93,7 @@
 		  ("let",	T.KW_let),
 		  ("long",	T.KW_long),
 		  ("module",	T.KW_module),
+		  ("noreturn",	T.KW_noreturn),
 		  ("of",	T.KW_of),
 		  ("pure",	T.KW_pure),
 		  ("return",	T.KW_return),
@@ -104,6 +105,8 @@
 		  ("vec128",	T.KW_vec128),
 		  ("void",	T.KW_void),
 		  ("vproc",	T.KW_vproc),
+		  ("vpload",	T.KW_vpload),
+		  ("vpstore",	T.KW_vpstore),
 		  ("wrap",	T.KW_wrap)
 		];
 	      AtomTable.find tbl
@@ -128,6 +131,7 @@
 %let num = {dig}+;
 %let idchar = {letter}|{dig}|"_"|"'";
 %let id = {letter}{idchar}*;
+%let hlid = "@"{letter}({idchar}|"-")*;
 %let tyvarid = "'"{idchar}*;
 %let esc = "\\"[abfnrtv\\\"]|"\\"{dig}{dig}{dig};
 %let sgood = [\032-\126]&[^\"\\]; (* sgood means "characters good inside strings" *)
@@ -151,7 +155,7 @@
 <INITIAL>"=>"		=> (T.DARROW);
 <INITIAL>"->"		=> (T.ARROW);
 <INITIAL>{id}		=> (idToken yytext);
-<INITIAL>"@"{id}	=> (T.HLOP(Atom.atom(String.extract(yytext, 1, NONE))))
+<INITIAL>{hlid}		=> (T.HLOP(Atom.atom(String.extract(yytext, 1, NONE))))
 <INITIAL>[~\045]?{num}	=> (T.INT(valOf (IntInf.fromString yytext)));
 <INITIAL>[~\045]?{num}"."{num}([eE][+~\045]?{num})?
 			=> (mkFloat yysubstr);

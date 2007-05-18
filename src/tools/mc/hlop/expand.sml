@@ -138,6 +138,13 @@
 				  BOM.mkStmt(lhs', BOM.E_Prim rhs, e')
 				end)
 			  | PT.HostVProc => BOM.mkStmt(lhs', BOM.E_HostVProc, e')
+			  | PT.VPLoad(offset, vp) =>
+			      cvtSimpleExp(findCFun, env, vp, fn vp =>
+				BOM.mkStmt(lhs', BOM.E_VPLoad(offset, vp), e'))
+			  | PT.VPStore(offset, vp, arg) =>
+			      cvtSimpleExp(findCFun, env, vp, fn vp =>
+				cvtSimpleExp(findCFun, env, arg, fn x =>
+				  BOM.mkStmt(lhs', BOM.E_VPStore(offset, vp, x), e')))
 			(* end case *))
 		    | PT.Update(i, arg, rhs) =>
 			cvtSimpleExp(findCFun, env, arg, fn x =>
@@ -292,6 +299,7 @@
 		  in
 		    BOM.mkStmt([tmp], BOM.E_HostVProc, k tmp)
 		  end
+(* FIXME: handle VPLoad and VPStore *)
 	  (* end case *))
 
     and cvtSimpleExps (findCFun, env, exps, k) = let

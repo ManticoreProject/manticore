@@ -15,6 +15,7 @@ signature C_FUNCTIONS =
     datatype attribute
       = A_pure				(* the C function is side-effect free *)
       | A_alloc				(* the C function may allocate head data *)
+      | A_noreturn			(* the C function does not return *)
 
     datatype 'var c_fun = CFun of {
 	var : 'var,			(* name of the Manticore variable bound to *)
@@ -52,6 +53,7 @@ structure CFunctions : C_FUNCTIONS =
     datatype attribute
       = A_pure				(* the C function is side-effect free *)
       | A_alloc				(* the C function may allocate head data *)
+      | A_noreturn			(* the C function does not return *)
 
     datatype 'var c_fun = CFun of {
 	var : 'var,			(* name of the Manticore variable bound to *)
@@ -77,6 +79,7 @@ structure CFunctions : C_FUNCTIONS =
 
     fun attrToString A_pure = "pure"
       | attrToString A_alloc = "alloc"
+      | attrToString A_noreturn = "noreturn"
 
     fun list2slist (l, tos, r) lst = let
 	  fun l2sl [] = r

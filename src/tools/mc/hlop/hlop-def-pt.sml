@@ -11,6 +11,8 @@
    
     datatype raw_ty = datatype BOMTy.raw_ty
 
+    type offset = IntInf.int
+
     datatype ty
       = T_Any				(* unknown type; uniform representation *)
       | T_Enum of Word.word		(* unsigned tagged integer; word is max value <= 2^31-1 *)
@@ -64,6 +66,8 @@
       | Prim of (Atom.atom * simple_exp list)	(* prim-op or data constructor *)
     (* VProc operations *)
       | HostVProc				(* gets the hosting VProc *)
+      | VPLoad of (offset * simple_exp)
+      | VPStore of (offset * simple_exp * simple_exp)
 
     and pat
       = DConPat of (Atom.atom * var_pat list)
