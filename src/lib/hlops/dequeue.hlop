@@ -1,13 +1,45 @@
-(* this function is the slow-path of dequeue *)
-define @copy-rdyq (lst, hd) =
-  fun loop (lst, hd) : any =
-	let hd' = alloc(#0 lst, #1 lst, lst)
-	let lst' = #2 lst
-	  if (isBoxed(lst'))
-	    then apply loop (lst', hd')
-	    else return hd'
-  (* in *)
-    apply loop (lst, hd)
-;
+(* dequeue.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
 
-define inline @dequeue (vp : vproc) : 
+#include "runtime-offsets.def"
+
+extern void *VProcDequeue (void *) __attribute__((alloc));
+
+(* this function is the slow-path of dequeue *)
+define @dequeue-slow-path (vp : vproc) : rdyq_item =
+    case (rdyq_item)vpload(VP_RDYQ_TL, vp)
+     of enum(0) =>
+	let item : rdyq_item = ccall VProcDequeue(vp)
+	  return (item)
+      | tl : rdyq_item =>
+	do vpstore(VP_RDYQ_TL, vp, enum(0))
+	fun loop (lst : rdyq_item, hd : rdyq_item) : rdyq_item =
+	      let hd' : rdyq_item = alloc(#0 lst, #1 lst, lst)
+	      case (rdyq_item)(#2(lst))
+	       of enum(0) => return hd'
+		| _ => apply loop (lst', hd')
+	      end
+	(* in *)
+	  apply loop (lst, hd)
+	let hd = loop (tl, enum(0))
+	let link : any = #2(hd)
+	do vpstore(VP_RDYQ_HD, vp, link)
+	return (hd)
+    end
+;	  
+
+define inline @dequeue (vp : vproc) : rdyq_item =
+    let hd : rdyq_item = vpload(VP_RDYQ_HD, vp)
+    case hd
+     of QITEM(_, _, link) =>
+	do vpstore(VP_RDYQ_HD, vp, link)
+	return (hd)
+      | enum(0) =>
+	let item = @dequeue-slow-path(vp)
+	return (item)
+    end
+;
+	  

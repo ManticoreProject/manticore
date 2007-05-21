@@ -6,9 +6,8 @@
 
 #include "runtime-offsets.def"
 
-define inline @run (vp : vproc, act : cont(any), fiber : cont(unit)) noreturn =
-    let stk : (cont(any), any) = vpload(vp, VP_ACTION_STK)
-    let item : (cont(any), any) = alloc(act, stk)
+define inline @run (vp : vproc, act : cont(signal), fiber : cont(unit)) noreturn =
+    let stk : (cont(signal), any) = vpload(vp, VP_ACTION_STK)
+    let item : (cont(signal), any) = alloc(act, stk)
     do vpstore(vp, VP_ACTION_STK, item)
-    do vpstore(vp, VP_ATOMIC, FALSE)
-      throw fiber(enum(0))
+      @switch-to(vp, enum(0), fiber)

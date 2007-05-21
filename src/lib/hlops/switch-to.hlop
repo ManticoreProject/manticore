@@ -4,8 +4,9 @@
  * All rights reserved.
  *)
 
-define @set-current-tid (vp : vproc, tid : enum(0)) : ();
+#include "runtime-offsets.def"
 
 define inline @switch-to (vp : vproc, tid : enum(0), fiber : cont(enum(0))) =
-    do @set-current-tid(vp, tid)
+    do vpstore(vp, VP_CURRENT_TID, tid)
+    do vpstore(vp, VP_ATOMIC, FALSE)
     throw fiber(enum(0));
