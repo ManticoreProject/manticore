@@ -299,7 +299,14 @@
 		  in
 		    BOM.mkStmt([tmp], BOM.E_HostVProc, k tmp)
 		  end
-(* FIXME: handle VPLoad and VPStore *)
+	    | PT.VPLoad(offset, vp) =>
+		cvtSimpleExp(findCFun, env, vp, fn vp => let
+		  val tmp = newTmp(Ty.T_Any)
+		  in
+		    BOM.mkStmt([tmp], BOM.E_VPLoad(offset, vp), k tmp)
+		  end)
+	    | PT.VPStore(offset, vp, arg) =>
+		raise Fail "VPStore in argument position"
 	  (* end case *))
 
     and cvtSimpleExps (findCFun, env, exps, k) = let
