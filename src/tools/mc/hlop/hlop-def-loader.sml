@@ -43,6 +43,7 @@ structure HLOpDefLoader : sig
 	  val srcMap = StreamPos.mkSourcemap()
 	  val lexer = HLOpDefLex.lex srcMap
 	  in
+(*DEBUG*)print(concat["parsing ", filename, "\n"]);
 	    case Parser.parse lexer (HLOpDefLex.streamify get)
 	     of (SOME pt, _, []) => SOME pt
 	      | (_, _, errs) => (
@@ -64,8 +65,9 @@ structure HLOpDefLoader : sig
     fun load (importEnv, hlOp) = (case ATbl.find cache (HLOp.name hlOp)
 	   of NONE => let
 		val opName = HLOp.name hlOp
+		val fileName = OS.Path.joinBaseExt{base=Atom.toString opName, ext=SOME "hlop"}
 		in
-		  case Loader.load(Atom.toString opName)
+		  case Loader.load fileName
 		   of SOME pt => let
 			val defs = Expand.cvtFile(importEnv, pt)
 			fun record (hlOp, inline, lambda) =

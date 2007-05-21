@@ -6,6 +6,7 @@
 
 Library
 
+  structure BOMBasis
   structure HLOpDefLoader
   structure HLOpEnv
 

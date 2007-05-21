@@ -132,7 +132,6 @@
 %let idchar = {letter}|{dig}|"_"|"'";
 %let id = {letter}{idchar}*;
 %let hlid = "@"{letter}({idchar}|"-")*;
-%let tyvarid = "'"{idchar}*;
 %let esc = "\\"[abfnrtv\\\"]|"\\"{dig}{dig}{dig};
 %let sgood = [\032-\126]&[^\"\\]; (* sgood means "characters good inside strings" *)
 %let ws = " "|[\t\n\v\f\r];

@@ -18,7 +18,7 @@ functor MainFn (
     val _ = (
         SMLofNJ.Internals.TDP.mode := true;
         Coverage.install ();
-        BackTrace.install() )
+        BackTrace.install ())
 
     structure Version = VersionFn (Spec)
     structure BOMOpt = BOMOptFn (Spec)
@@ -55,13 +55,13 @@ functor MainFn (
 	    cfg
 	  end
 
-  fun codegen (outFile, cfg) = let
-	val outStrm = TextIO.openOut outFile
-	fun doit () = CG.codeGen {dst=outStrm, code=cfg}
-	in	  
-	  AsmStream.withStream outStrm doit ();
-	  TextIO.closeOut outStrm
-	end (* compile *)
+    fun codegen (outFile, cfg) = let
+	  val outStrm = TextIO.openOut outFile
+	  fun doit () = CG.codeGen {dst=outStrm, code=cfg}
+	  in	  
+	    AsmStream.withStream outStrm doit ();
+	    TextIO.closeOut outStrm
+	  end (* compile *)
 
     fun bomC (bomFile, asmFile) = let
 	  val bom = BOMParser.parse bomFile
@@ -74,7 +74,7 @@ functor MainFn (
 
     fun mantC (srcFile, asmFile) = raise Fail "Manticore frontend not done yet"
 
-    fun doFile file = let
+    fun doFile file = BackTrace.monitor (fn () =>let
 	  fun asmFile stem = OS.Path.joinBaseExt{base=stem, ext=SOME ".s"}
 	  in
 	    case OS.Path.splitBaseExt file
@@ -82,9 +82,11 @@ functor MainFn (
 	      | {base, ext=SOME "pml"} => mantC(file, asmFile base)
 	      | _ => raise Fail "unknown source file extension"
 	    (* end case *)
-	  end
+	  end)
 
     fun main (cmd, [file]) = (doFile file; OS.Process.success)
-      | main _ = raise Fail "usage"
+      | main (cmd, _) = (
+	  TextIO.output(TextIO.stdErr, concat["usage: ", cmd, " file\n"]);
+	  OS.Process.failure)
  
   end

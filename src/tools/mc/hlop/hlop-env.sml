@@ -48,6 +48,7 @@ structure HLOpEnv : sig
 
   (* high-level operations used to implement Manticore language constructs *)
     val spawnOp = new("spawn", [BTy.T_Fun([], [exhTy], [])], [tidTy], [])
+    val threadExitOp = new("thread-exit", [], [], [H.NORETURN])
 
   (* scheduler operations *)
     val runOp = new("run", [vprocTy, sigActTy, fiberTy], [], [H.NORETURN])
@@ -72,6 +73,7 @@ structure HLOpEnv : sig
   (* insert predefined HLOps *)
     val _ = List.app define [
 		spawnOp,
+		threadExitOp,
 		dequeueOp,
 		enqueueOp,
 		forwardOp,

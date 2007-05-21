@@ -86,7 +86,7 @@
 
 
 Module
-	: KW_module ID Import* "fun" Lambda
+	: "module" ID Import* "fun" Lambda
 		=> (PT.MODULE{name=ID, externs=Import, body=Lambda})
 	;
 
