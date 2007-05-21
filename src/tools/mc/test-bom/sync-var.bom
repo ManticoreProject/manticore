@@ -18,7 +18,6 @@ module SyncVar
           let oldValue : any = CAS (&1(ivar), enum(0), x)
           case oldValue
            of enum(0) =>
-(* FIXME: the following is an infinite loop! *)
                 fun spin (; exh : cont(any)) : unit =
                       if (#2(ivar) = 0:int)
 			then return (enum(0))
@@ -34,7 +33,7 @@ module SyncVar
                               of enum(0) => return (enum(0))
                                | CONS(hd' : any, tl' : list) =>
                                    let fiber' : cont(any) = #1(((int, cont(any)))hd')
-                                   do @enqueue(host_vproc, dummyTid, fiber)
+                                   do @enqueue(host_vproc, dummyTid, fiber')
                                    apply wakeRead(tl'; exh)
                              end
                       apply wakeRead(tl; exh) 
@@ -66,4 +65,104 @@ module SyncVar
                         
           end
 
-     return (enum(0))
+
+    fun relayMsg (arg : (!(list, any, int),any); exh : cont(any)) : enum(0) = 
+          let mvar : !(list, any,int) = #0(arg)
+	  let x : any = #1(arg)
+	  let readL : list = #0(mvar)
+	  case readL
+	   of enum(0) => return (enum(0))
+	    | CONS(hd : any, tl : list) =>
+	        let fiber : cont(any) = #1(((int,cont(any)))hd)
+		do #0(mvar) := tl
+		do enqueue(host_vproc, dummyTid,fiber)
+		return (enum(0))
+	  end
+
+    fun mPut (arg : (!(list, any, int), any); exh : cont(any)) : enum(0) = 
+          let mvar : !(list, any, int) = #0(arg)
+          let x : any = #1(arg)
+          let readL : list = #0(mvar)
+          let readflag : int = #2(mvar)
+          let oldValue : any = CAS (&1(mvar), enum(0), x)
+          case oldValue
+           of enum(0) =>
+                fun spin (; exh : cont(any)) : unit =
+                      if (#2(ivar) = 0:int)
+			then return (enum(0))
+			else apply spin (; exh)
+                do apply spin (; exh)
+                case readL
+                 of enum(0) => return (enum(0))
+                  | CONS(hd : any, tl : list) =>                      
+                      let fiber : cont(any) = #1(((int, cont(any)))hd)
+		      do #0(mvar) := tl
+                      do @enqueue(host_vproc, dummyTid, fiber)
+                      return (enum(0))
+                end
+            | _ => 
+                do ccall M_Print ("ivar is full\n\000")
+                let vp : vproc = host_vproc
+                @forward (vp, stop)
+          end
+
+
+
+    fun mGet (mvar : !(list, any, int, int); exh : cont(any)) : any =
+          let readList : list = #0(mvar)
+          let value : any = #1(mvar)
+          let readFlag : int = #2(mvar)
+	  let takeFlag : int = #3(mvar)
+          do #2(mvar) := I32Add(readFlag, 1)
+	  if (takeFlag = 1 :int)
+	    then cont k (x : any) = 
+	           let arg : (any, any) = ((any)mvar, x) 
+	           do apply relayMsg (arg; exh)
+	           return (x)
+              let item : (enum(0), cont(any)) = alloc (dummyTid, k)
+              do #0(mvar) := CONS(item, readList)
+              do #2(mvar) := I32Sub(readFlag, 1)
+              @forward (host_vproc, stop)
+	    else	             
+              case value
+               of enum(0) =>
+                    cont k (x : any) = return (x)
+                    let item : (enum(0), cont(any)) = alloc (dummyTid, k)
+                    do #0(mvar) := CONS(item, readList)
+                    do #2(mvar) := I32Sub(readFlag, 1)
+                    @forward (host_vproc, stop)
+                | x : any =>
+                    do #2(mvar) := I32Sub(readFlag, 1)
+                    return (x)                       
+              end
+
+
+     fun mTake(mvar : !(list, any, int, int); exh : cont(any)) : any =
+           (* set #3(mvar) to 1 : takeflag *) 
+           do #3(mvar) : = 1
+           let readList : list = #0(mvar)
+	   let value : any = #1(mvar)
+	   let readFlag : int = #2(mvar)
+	   do #2(mvar) := I32Add(readFlag, 1)
+	   case value
+	    of enum(0) =>
+	         cont k (x : any) = 
+		   do #1(mvar) := enum(0)
+		   do #3(mvar) := 0
+		   return (x)
+		 let item : (enum(0), cont(any)) = alloc(dummyTid, k)
+		 do #0(mvar) := CONS(item, readList)
+		 do #2(mvar) := I32Sub(readFlag, 1)
+		 @forward (host_vproc, stop)
+            | x : any =>
+	        do #2(mvar) := I32Sub(readFlag, 1)
+                fun spin (; exh : cont(any)) : unit =
+                      if (#2(mvar) = 0:int)
+			then return (enum(0))
+			else apply spin (; exh)
+                do apply spin (; exh)		       
+                do #1(mvar) := enum(0)
+		do #3(mvar) := 0
+		return (x) 
+		
+     return (enum(0)) 
