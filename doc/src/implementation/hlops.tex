@@ -1,0 +1,36 @@
+\documentclass[11pt]{article}
+
+\setlength{\textwidth}{6in}
+\setlength{\oddsidemargin}{0.25in}
+\setlength{\evensidemargin}{0.25in}
+\setlength{\parskip}{5pt}
+
+\usepackage{url}
+\usepackage{times}
+\input{../common/common-defs}
+
+\title{A guide to high-level operations in the Manticore compiler}
+\author{The Manticore Group \\
+  {\small{}\url{http://manticore.cs.uchicago.edu}}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+\emph{High-level operations} (``HLOps'' for short) are part of the BOM representation used
+in the Manticore compiler's main optimization phases.
+They play two important \role{}s in these phases:
+\begin{enumerate}
+  \item HLOps are used to give names to higher-level abstractions to support high-level
+    optimizations~\cite{playing-by-the-rules,optimizing-cml}.
+  \item HLOps are used to provide implementations of surface-language features.
+\end{enumerate}%
+This note describes how to add high-level operations to the compiler and
+catalogues the existing operations.
+
+\section{Defining HLOps}
+
+\section{A field guide to HLOps}
+
+\end{document}  
