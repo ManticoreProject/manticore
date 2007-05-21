@@ -1,0 +1,13 @@
+(* enqueue.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+#include "runtime-offsets.def"
+
+define inline @enqueue (vp : vproc, tid : enum(0), fiber : cont(enum(0))) : enum(0) =
+    let tl = vpload(RDYQ_TL, vp)
+    let item = alloc(tid, fiber, tl)
+    do vpstore(RDYQ_TL, vp, item)
+    return (enum(0))

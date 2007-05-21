@@ -1,0 +1,13 @@
+(* this function is the slow-path of dequeue *)
+define @copy-rdyq (lst, hd) =
+  fun loop (lst, hd) : any =
+	let hd' = alloc(#0 lst, #1 lst, lst)
+	let lst' = #2 lst
+	  if (isBoxed(lst'))
+	    then apply loop (lst', hd')
+	    else return hd'
+  (* in *)
+    apply loop (lst, hd)
+;
+
+define inline @dequeue (vp : vproc) : 
