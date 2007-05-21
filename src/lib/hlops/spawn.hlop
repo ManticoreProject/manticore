@@ -15,7 +15,6 @@ define inline @spawn (f : (enum(0); cont(enum(0))) -> enum(0)) : enum(0) =
 	do f(enum(0); handler)
 	  @dispatch(host_vproc)
     (* in *)
-      let vp : vproc = host_vproc
       let tid : enum(0) = enum(0)
       @enqueue (host_vproc, enum(0), fiber)
 ;

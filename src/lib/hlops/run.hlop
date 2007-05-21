@@ -6,6 +6,8 @@
 
 #include "runtime-offsets.def"
 
+define @switch-to (vp : vproc, tid : enum(0), fiber : cont(enum(0))) noreturn;
+
 define inline @run (vp : vproc, act : cont(signal), fiber : cont(unit)) noreturn =
     let stk : (cont(signal), any) = vpload(vp, VP_ACTION_STK)
     let item : (cont(signal), any) = alloc(act, stk)

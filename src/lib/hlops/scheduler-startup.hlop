@@ -1,0 +1,37 @@
+(* scheduler-startup.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Install an initial scheduler action on the vprocs in a system.
+ *)
+
+#define NIL	enum(0)
+
+extern void *ListVProcs (void *) __attribute__((alloc));
+
+define inline @spawn-on (f : (enum(0); cont(enum(0))) -> enum(0), dst : vproc) : enum(0);
+define inline @run (vp : vproc, act : cont(signal), fiber : cont(unit)) noreturn;
+define inline @thread-exit () noreturn;
+
+define @scheduler-startup (act : cont(signal)) : enum(0) =
+    fun init (x : enum(0); exh : cont(any)) : any =
+	  cont k (x : enum(0)) = @thread-exit()
+	  @run (host_vproc, act, k)
+    let self : vproc = host_vproc
+    let vps : list = ccall ListVProcs(self)
+    fun spawnOnAll (vps : list) : enum(0) =
+	  case vps
+	   of NIL => return(enum(0))
+	    | CONS(vp, r) =>
+		do if Equal(vp, self)
+		  then apply lp (r)
+		  else @spawn-on (init)
+		apply spawnOnAll (r)
+	  end
+    cont startup (x : enum(0)) =
+	(* install the scheduler on remove vprocs *)
+	  apply spawnOnAll (vps)
+    (* in *)
+      @run (self, act, startup)
+;

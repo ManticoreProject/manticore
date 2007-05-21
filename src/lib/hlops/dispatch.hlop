@@ -2,10 +2,13 @@
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
+ *
+ * Switch to the next thread from the host-vproc's ready queue.
  *)
 
 define @dequeue (vp : vproc) : (tid : enum(0), fiber : cont(enum(0)));
+define @switch-to (vp : vproc, tid : enum(0), fiber : cont(enum(0))) noreturn;
 
-define inline @dispatch (vp : vproc, tid : enum(0), fiber : cont(enum(0))) =
+define inline @dispatch (vp : vproc, tid : enum(0), fiber : cont(enum(0))) noreturn =
     let (tid, fiber) = @dequeue (vp)
     @switch-to (vp, tid, fiber)

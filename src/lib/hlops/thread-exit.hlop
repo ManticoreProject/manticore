@@ -1,0 +1,13 @@
+(* thread-exit.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Exit the current thread by forwarding a STOP signal.
+ *)
+
+#define STOP	enum(0)
+
+define inline @forward (vp : vproc, sig : signal) noreturn;
+
+define inline @thread-exit () noreturn = @forward (host_vproc, sig);

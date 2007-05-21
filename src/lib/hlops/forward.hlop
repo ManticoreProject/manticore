@@ -2,15 +2,16 @@
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
+ *
+ * Forward a signal to the top-most handler on the action stack.
  *)
-
 
 #include "runtime-offsets.def"
 
-define inline @forward (vp : vproc, sig : any) noreturn =
+define inline @forward (vp : vproc, sig : signal) noreturn =
     do vpstore(vp, VP_ATOMIC, TRUE)
-    let tos : (cont(any), any) = vpload(vp, VP_ACTION_STK)
+    let tos : (cont(signal), any) = vpload(vp, VP_ACTION_STK)
     let rest : any = #1(tos)
     do vpstore(vp, VP_ACTION_STK, rest)
-    let act : cont(any) = #0(tos)
+    let act : cont(signal) = #0(tos)
       throw act(sig)
