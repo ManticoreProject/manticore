@@ -26,7 +26,7 @@ define @dequeue-slow-path (vp : vproc) : rdyq_item =
 	      end
 	(* in *)
 	  apply loop (lst, hd)
-	let hd = loop (tl, enum(0))
+	let hd : rdyq_item = loop (tl, enum(0))
 	let link : any = #2(hd)
 	do vpstore(VP_RDYQ_HD, vp, link)
 	return (hd)
@@ -40,8 +40,8 @@ define inline @dequeue (vp : vproc) : rdyq_item =
 	do vpstore(VP_RDYQ_HD, vp, link)
 	return (hd)
       | enum(0) =>
-	let item = @dequeue-slow-path(vp)
+	let item : rdyq_item = @dequeue-slow-path(vp)
 	return (item)
     end
 ;
-	  
+

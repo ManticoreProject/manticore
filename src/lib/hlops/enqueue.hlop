@@ -9,7 +9,8 @@
 #include "runtime-offsets.def"
 
 define inline @enqueue (vp : vproc, tid : enum(0), fiber : cont(enum(0))) : enum(0) =
-    let tl = vpload(VP_RDYQ_TL, vp)
-    let item = alloc(tid, fiber, tl)
+    let tl : rdyq_item = vpload(VP_RDYQ_TL, vp)
+    let item : rdyq_item = alloc(tid, fiber, tl)
     do vpstore(VP_RDYQ_TL, vp, item)
     return (enum(0))
+;

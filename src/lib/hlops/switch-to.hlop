@@ -9,4 +9,5 @@
 define inline @switch-to (vp : vproc, tid : enum(0), fiber : cont(enum(0))) noreturn =
     do vpstore(vp, CURRENT_TID, tid)
     do vpstore(vp, ATOMIC, FALSE)
-    throw fiber(enum(0));
+    throw fiber(enum(0))
+;
