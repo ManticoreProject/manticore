@@ -126,7 +126,7 @@
 %let dig = [0-9];
 %let num = {dig}+;
 %let idchar = {letter}|{dig}|"_"|"'";
-%let id = {letter}{idchar}*;
+%let id = ({letter}|"_"){idchar}*;
 %let hlid = "@"{letter}({idchar}|"-")*;
 %let esc = "\\"[abfnrtv\\\"]|"\\"{dig}{dig}{dig};
 %let sgood = [\032-\126]&[^\"\\]; (* sgood means "characters good inside strings" *)
