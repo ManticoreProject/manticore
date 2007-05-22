@@ -103,7 +103,6 @@ dnl check for standard programs
 dnl
 AC_GNU_SOURCE
 AC_PROG_CC
-AC_PROG_CPP
 AC_CHECK_PROG(AR, ar, ar)
 AC_PROG_RANLIB
 AC_PROG_INSTALL
@@ -113,6 +112,15 @@ dnl
 dnl extra CFLAGS
 dnl
 CFLAGS="$CFLAGS -D_GNU_SOURCE -std=gnu99 -pedantic"
+
+dnl
+dnl For various reasons, "gcc -E" doesn't work as a cpp command, so we look for
+dnl the old cpp.
+dnl
+AC_PATH_PROGS(CPP, cpp, NONE, $PATH:/lib:/usr/lib)
+if test x$CPP = x ; then
+  AC_MSG_ERROR([no cpp found])
+fi
 
 dnl
 dnl check for pthreads
