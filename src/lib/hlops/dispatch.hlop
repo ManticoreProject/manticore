@@ -6,9 +6,12 @@
  * Switch to the next thread from the host-vproc's ready queue.
  *)
 
-define @dequeue (vp : vproc) : (tid : enum(0), fiber : cont(enum(0)));
-define @switch-to (vp : vproc, tid : enum(0), fiber : cont(enum(0))) noreturn;
+#define TID	enum(0)
 
-define inline @dispatch (vp : vproc, tid : enum(0), fiber : cont(enum(0))) noreturn =
-    let (tid, fiber) = @dequeue (vp)
+define @dequeue (vp : vproc) : (TID, cont(enum(0)));
+define @switch-to (vp : vproc, tid : TID, fiber : cont(enum(0))) noreturn;
+
+define inline @dispatch (vp : vproc, tid : TID, fiber : cont(enum(0))) noreturn =
+    let (tid : TID, fiber : cont(enum(0))) = @dequeue (vp)
     @switch-to (vp, tid, fiber)
+;
