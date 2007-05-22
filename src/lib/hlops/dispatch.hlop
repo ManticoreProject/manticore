@@ -11,7 +11,7 @@
 define @dequeue (vp : vproc) : (TID, cont(enum(0)));
 define @switch-to (vp : vproc, tid : TID, fiber : cont(enum(0))) noreturn;
 
-define inline @dispatch (vp : vproc, tid : TID, fiber : cont(enum(0))) noreturn =
+define inline @dispatch (vp : vproc) noreturn =
     let (tid : TID, fiber : cont(enum(0))) = @dequeue (vp)
     @switch-to (vp, tid, fiber)
 ;
