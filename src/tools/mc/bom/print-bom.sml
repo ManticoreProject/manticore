@@ -84,10 +84,14 @@ structure PrintBOM : sig
 			(* end case *);
                         (indent (i+1); pr "end\n")
 		      end
+		  | B.E_Apply(f, args, []) => (
+		      prl["apply ", varUseToString f, " ("];
+		      prList' varUseToString args;
+		      pr ")\n")
 		  | B.E_Apply(f, args, rets) => (
 		      prl["apply ", varUseToString f, " ("];
 		      prList' varUseToString args;
-		      pr "; ";
+		      pr " / ";
 		      prList' varUseToString rets;
 		      pr ")\n")
 		  | B.E_Throw(k, args) => (
@@ -104,7 +108,7 @@ structure PrintBOM : sig
 		      pr "\n")
 		  | B.E_HLOp(hlop, args, rets) => (
 		      pr(HLOp.toString hlop); pr " (";
-		      prList' varUseToString args; pr "; ";
+		      prList' varUseToString args; pr " / ";
 		      prList' varUseToString rets; pr ")\n")
 		(* end case *))
 	  and prRHS (B.E_Const c) = prConst c
@@ -125,10 +129,10 @@ structure PrintBOM : sig
 		prList varUseToString args)
 	    | prRHS (B.E_HostVProc) = pr "host_vproc()"
 	    | prRHS (B.E_VPLoad(offset, vp)) = prl [
-		  "load(", varUseToString vp, "+", IntInf.toString offset, ")"
+		  "vpload(", IntInf.toString offset, ", ", varUseToString vp, ")"
 		]
 	    | prRHS (B.E_VPStore(offset, vp, x)) = prl [
-		  "store(", varUseToString vp, "+", IntInf.toString offset, ",",
+		  "vpstore(", IntInf.toString offset, ", ", varUseToString vp, ", ",
 		  varUseToString x, ")"
 		]
 	  and prConst (lit, ty) = prl [
@@ -142,8 +146,8 @@ structure PrintBOM : sig
 		  case (params, exh)
 		   of ([], []) => ()
 		    | (_, []) => prParams params
-		    | ([], _) => (pr "-; "; prParams exh)
-		    | _ => (prParams params; pr "; "; prParams exh)
+		    | ([], _) => (pr "- / "; prParams exh)
+		    | _ => (prParams params; pr " / "; prParams exh)
 		  (* end case *);
 		  pr ") =\n";
 		  prExp (i+2, body)
