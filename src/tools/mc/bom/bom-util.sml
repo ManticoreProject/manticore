@@ -43,8 +43,9 @@ structure BOMUtil : sig
 	  (* end case *))
     fun subst' (s, l) = List.map (subst s) l
     val extend : (subst * BOM.var * BOM.var) -> subst = VMap.insert
-    fun extend' (s, xs, ys) =
-	  ListPair.foldlEq (fn (x, y, s) => VMap.insert(s, x,y)) s (xs, ys)
+    fun extend' (s, [], []) = s
+      | extend' (s, x::xs, y::ys) = extend'(VMap.insert(s, x, y), xs, ys)
+      | extend' (s, _, _) = raise Fail "BOMUtil.extend': unequal lists"
 
   (* apply a substitution to a RHS term *)
     fun substRHS (s, rhs) = (case rhs
@@ -157,9 +158,11 @@ structure BOMUtil : sig
   (* beta-reduce a lambda application; the resulting term will have
    * fresh bound variables.
    *)
-    fun applyLambda (B.FB{params, exh, body, ...}, args, rets) = let
+    fun applyLambda (B.FB{f, params, exh, body}, args, rets) = let
 	  val s = extend' (empty, params, args)
+		    handle _ => raise Fail("param/arg mismatch in application of " ^ BV.toString f)
 	  val s = extend' (s, exh, rets)
+		    handle _ => raise Fail("exh/rets mismatch in application of " ^ BV.toString f)
 	  in
 	    copyExp' (s, body)
 	  end

@@ -44,7 +44,7 @@
       | unwrapType ty = raise Fail(concat["unwrapType(", Ty.toString ty, ")"])
 
     fun selectType (i, Ty.T_Tuple(_, tys)) = List.nth(tys, i)
-      | selectType _ = raise Fail "selectType"
+      | selectType (i, ty) = raise Fail(concat["selectType(", Int.toString i, ", ", Ty.toString ty, ")"])
 
     fun lookup (env, x) = (case AtomMap.find(env, x)
 	   of NONE => raise Fail("unbound variable " ^ Atom.toString x)
