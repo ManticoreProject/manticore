@@ -10,7 +10,7 @@
 
 extern void *ListVProcs (void *) __attribute__((alloc));
 
-define inline @spawn-on (f : (enum(0); cont(enum(0))) -> enum(0), dst : vproc) : enum(0);
+define inline @spawn-on (f : (enum(0) / cont(enum(0))) -> enum(0), dst : vproc) : enum(0);
 define inline @run (vp : vproc, act : cont(signal), fiber : cont(unit)) noreturn;
 define inline @thread-exit () noreturn;
 
