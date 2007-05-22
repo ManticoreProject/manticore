@@ -165,7 +165,7 @@ Type
 	| RawType				=> (PT.T_Raw RawType)
 	| "!" "(" Type ("," Type)* ")"		=> (PT.T_Tuple(true, Type :: SR))
 	| "(" Type ("," Type)* ")"		=> (PT.T_Tuple(false, Type :: SR))
-	| "fun" "(" Typelist ";" Typelist "->" Typelist ")"	=> (PT.T_Fun(Typelist1, Typelist2, Typelist3))
+	| "fun" "(" Typelist "/" Typelist "->" Typelist ")"	=> (PT.T_Fun(Typelist1, Typelist2, Typelist3))
 	| "cont" "(" (Type ("," Type)* )? ")"	=> (PT.T_Cont(flatten SR))
 	| "vproc"				=> (PT.T_VProc)
 	| ID					=> (PT.T_TyCon ID)
