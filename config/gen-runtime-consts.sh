@@ -12,11 +12,18 @@ DRIVER_DIR=src/tools/mc/driver
 PROG=gen-runtime-constants
 OUTFILE=runtime-constants.sml
 
-(cd $BUILD_DIR; make $PROG || exit 1)
+function gen {
+  PROG=$1
+  OUTFILE=$2
+  (cd $BUILD_DIR; make $PROG || exit 1)
 
-echo "$BUILD_DIR/$PROG > $DRIVER_DIR/$OUTFILE"
-$BUILD_DIR/$PROG > $DRIVER_DIR/$OUTFILE
+  echo "$BUILD_DIR/$PROG > $OUTFILE"
+  $BUILD_DIR/$PROG > $OUTFILE
 
-rm -f $BUILD_DIR/$PROG
+  rm -f $BUILD_DIR/$PROG
+}
+
+gen gen-runtime-constants src/tools/mc/driver/runtime-constants.sml
+gen gen-runtime-offsets src/lib/hlops/runtime-offsets.def
 
 exit 0

@@ -78,6 +78,7 @@
 		  ("case",	T.KW_case),
 		  ("ccall",	T.KW_ccall),
 		  ("cont",	T.KW_cont),
+		  ("define",	T.KW_define),
 		  ("do",	T.KW_do),
 		  ("double",	T.KW_double),
 		  ("else",	T.KW_else),
@@ -146,6 +147,7 @@
 <INITIAL>"="		=> (T.EQ);
 <INITIAL>":"		=> (T.COLON);
 <INITIAL>";"		=> (T.SEMI);
+<INITIAL>"/"		=> (T.SLASH);
 <INITIAL>"|"		=> (T.BAR);
 <INITIAL>"_"		=> (T.WILD);
 <INITIAL>"!"		=> (T.BANG);

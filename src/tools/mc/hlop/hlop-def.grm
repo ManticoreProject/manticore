@@ -58,6 +58,7 @@
 	| COMMA		(",")
 	| EQ		("=")
 	| COLON		(":")
+	| SLASH		("/")
 	| SEMI		(";")
 	| BAR		("|")
 	| WILD		("_")
@@ -104,8 +105,10 @@ Definition
 			argTys = flatten SR,
 			attrs = Attrs
 		      }))
-	| "define" optInline HLOP "(" Params ";" Params ")" returnTy ("=" Exp)? ";"
-		=> (PT.Define(optInline, HLOP, Params1, Params2, returnTy, SR))
+	| "define" optInline HLOP FunParams returnTy ("=" Exp)? ";"
+		=> (let val (p1, p2) = FunParams in
+		      PT.Define(optInline, HLOP, p1, p2, returnTy, SR)
+		    end)
 	;
 
 CRetTy
@@ -138,6 +141,10 @@ returnTy
 optInline
 	: (* empty *)	=> (false)
 	| "inline"	=> (true)
+	;
+
+FunParams
+	: "(" Params ("/" Params)? ")"		=> (Params, case SR of SOME l => l | _ => [])
 	;
 
 Params
@@ -185,16 +192,16 @@ Exp
 	| "cont" CLambda Exp				=> (PT.Cont(CLambda, Exp))
 	| "if" SimpleExp "then" Exp "else" Exp		=> (PT.If(SimpleExp, Exp1, Exp2))
         | "case" SimpleExp "of" Rules ("|" Default)? "end"	=> (PT.Case(SimpleExp, Rules, SR))
-	| "apply" ID "(" Args ";" Args ")"		=> (PT.Apply(ID, Args1, Args2))
+	| "apply" ID "(" Args ("/" Args)? ")"		=> (PT.Apply(ID, Args, Option.getOpt(SR, [])))
 	| "throw" ID "(" Args ")"			=> (PT.Throw(ID, Args))
 	| "return" "(" Args ")"				=> (PT.Return Args)
-	| HLOP "(" Args (";" Args)? ")"
+	| HLOP "(" Args ("/" Args)? ")"
 		=> (PT.HLOpApply(HLOP, Args, Option.getOpt(SR, [])))
 	;
 
 Lambda
-	: ID "(" Params ";" Params ")" ":" Type "=" Exp
-		=> (ID, Params1, Params2, [Type], Exp)
+	: ID FunParams ":" Type "=" Exp
+		=> (let val (p1, p2) = FunParams in (ID, p1, p2, [Type], Exp) end)
 	;
 
 CLambda

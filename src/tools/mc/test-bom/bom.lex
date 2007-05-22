@@ -142,6 +142,7 @@
 <INITIAL>"="		=> (T.EQ);
 <INITIAL>":"		=> (T.COLON);
 <INITIAL>";"		=> (T.SEMI);
+<INITIAL>"/"		=> (T.SLASH);
 <INITIAL>"|"		=> (T.BAR);
 <INITIAL>"_"		=> (T.WILD);
 <INITIAL>"!"		=> (T.BANG);
@@ -150,7 +151,7 @@
 <INITIAL>"=>"		=> (T.DARROW);
 <INITIAL>"->"		=> (T.ARROW);
 <INITIAL>{id}		=> (idToken yytext);
-<INITIAL>{hlid}		=> (T.HLOP(Atom.atom(String.extract(yytext, 1, NONE))))
+<INITIAL>{hlid}		=> (T.HLOP(Atom.atom(String.extract(yytext, 1, NONE))));
 <INITIAL>[~\045]?{num}	=> (T.INT(valOf (IntInf.fromString yytext)));
 <INITIAL>[~\045]?{num}"."{num}([eE][+~\045]?{num})?
 			=> (mkFloat yysubstr);

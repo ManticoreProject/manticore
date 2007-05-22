@@ -54,6 +54,7 @@
 	| EQ		("=")
 	| COLON		(":")
 	| SEMI		(";")
+	| SLASH		("/")
 	| BAR		("|")
 	| WILD		("_")
 	| BANG		("!")
@@ -123,8 +124,8 @@ Attr
 	;
 
 Lambda
-	: ID "(" Params ";" Params ")" ":" Type "=" Exp
-		=> (ID, Params1, Params2, [Type], Exp)
+	: ID "(" Params ("/" Params)? ")" ":" Type "=" Exp
+		=> (ID, Params, Option.getOpt(SR, []), [Type], Exp)
 	;
 
 Params
@@ -149,7 +150,7 @@ Type
 	| RawType				=> (PT.T_Raw RawType)
 	| "!" "(" Type ("," Type)* ")"		=> (PT.T_Tuple(true, Type :: SR))
 	| "(" Type ("," Type)* ")"		=> (PT.T_Tuple(false, Type :: SR))
-	| "fun" "(" Typelist ";" Typelist "->" Typelist ")"	=> (PT.T_Fun(Typelist1, Typelist2, Typelist3))
+	| "fun" "(" Typelist "/" Typelist "->" Typelist ")"	=> (PT.T_Fun(Typelist1, Typelist2, Typelist3))
 	| "cont" "(" (Type ("," Type)* )? ")"	=> (PT.T_Cont(flatten SR))
 	| "vproc"				=> (PT.T_VProc)
 	| ID					=> (PT.T_TyCon ID)
@@ -176,10 +177,10 @@ Exp
 	| "cont" CLambda Exp				=> (PT.Cont(CLambda, Exp))
 	| "if" SimpleExp "then" Exp "else" Exp		=> (PT.If(SimpleExp, Exp1, Exp2))
         | "case" SimpleExp "of" Rules ("|" Default)? "end"	=> (PT.Case(SimpleExp, Rules, SR))
-	| "apply" ID "(" Args ";" Args ")"		=> (PT.Apply(ID, Args1, Args2))
+	| "apply" ID "(" Args ("/" Args)? ")"		=> (PT.Apply(ID, Args, Option.getOpt(SR, [])))
 	| "throw" ID "(" Args ")"			=> (PT.Throw(ID, Args))
 	| "return" "(" Args ")"				=> (PT.Return Args)
-	| HLOP "(" Args (";" Args)? ")"
+	| HLOP "(" Args ("/" Args)? ")"
 		=> (PT.HLOpApply(HLOP, Args, Option.getOpt(SR, [])))
 	;
 
