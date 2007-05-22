@@ -128,14 +128,17 @@
 			  | PT.Prim(p, args) =>
 			      cvtSimpleExps(findCFun, env, args, fn xs => let
 				val rhs = (case (findPrim p, xs)
-				       of (NONE, _) => raise Fail("unknown primop " ^ Atom.toString p)
-					| (SOME(Prim1{mk, ...}), [x]) => mk x
-					| (SOME(Prim2{mk, ...}), [x, y]) => mk(x, y)
-					| (SOME(Prim3{mk, ...}), [x, y, z]) => mk(x, y, z)
+				       of (NONE, _) => (case Basis.findDCon p
+					     of NONE => raise Fail("unknown primop " ^ Atom.toString p)
+					      | SOME dc => BOM.E_DCon(dc, xs)
+					    (* end case *))
+					| (SOME(Prim1{mk, ...}), [x]) => BOM.E_Prim(mk x)
+					| (SOME(Prim2{mk, ...}), [x, y]) => BOM.E_Prim(mk(x, y))
+					| (SOME(Prim3{mk, ...}), [x, y, z]) => BOM.E_Prim(mk(x, y, z))
 					| _ => raise Fail("arity mismatch for primop " ^ Atom.toString p)
 				      (* end case *))
 				in
-				  BOM.mkStmt(lhs', BOM.E_Prim rhs, e')
+				  BOM.mkStmt(lhs', rhs, e')
 				end)
 			  | PT.HostVProc => BOM.mkStmt(lhs', BOM.E_HostVProc, e')
 			  | PT.VPLoad(offset, vp) =>

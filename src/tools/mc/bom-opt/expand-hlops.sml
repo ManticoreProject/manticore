@@ -81,6 +81,14 @@ structure ExpandHLOps : sig
 	  and cvtLambda (B.FB{f, params, exh, body}) =
 		B.FB{f=f, params=params, exh=exh, body=cvtExp body}
 	  val body = cvtLambda body
+	  val body = (case VTbl.listItems lambdas
+		 of [] => body
+		  | fbs => let
+		      val B.FB{f, params, exh, body} = body
+		      in
+			B.FB{f=f, params=params, exh=exh, body=B.mkFun(fbs, body)}
+		      end
+		(* end case *))																			
 	  in
 	    if !changed
 	      then SOME(B.mkModule(name, getExterns(), body))

@@ -99,6 +99,7 @@ structure BOMTy =
 
   (* get the return type(s) of a function type *)
     fun returnTy (T_Fun(_, _, ty)) = ty
+      | returnTy (T_Cont _) = []
       | returnTy ty = raise Fail("expected function type, but found " ^ toString ty)
 
   (* view as tycon *)
