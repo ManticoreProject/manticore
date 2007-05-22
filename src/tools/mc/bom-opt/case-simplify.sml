@@ -18,6 +18,7 @@ structure CaseSimplify : sig
     structure BV = BOM.Var
     structure BTy = BOMTy
     structure Lit = Literal
+    structure BU = BOMUtil
 
   (* case conversion structures *)
 
@@ -162,11 +163,11 @@ structure CaseSimplify : sig
 	  (* end case *))
 
   (* variable to variable substitution *)
-    fun subst s x = (case BV.Map.find(s, x) of NONE => x | SOME y => y)
+    val subst = BU.subst
     fun retype (s, x, ty) = let
 	  val x' = BV.new(BV.nameOf x, ty)
 	  in
-	    (BV.Map.insert(s, x, x'), x')
+	    (BU.extend(s, x, x'), x')
 	  end
   (* if a variable has a TyCon type, the retype it *)
     fun xformVar (s, x) = if hasTyc(typeOf x)
@@ -225,8 +226,7 @@ structure CaseSimplify : sig
 	    | B.E_Stmt(lhs, rhs, e) => let
 		val (s', lhs) = xformVars (s, lhs)
 		in
-(* FIXME: need to apply the substitution s to the RHS *)
-		  B.mkStmt(lhs, rhs, xformE(s', tys, e))
+		  B.mkStmt(lhs, BU.substRHS(s, rhs), xformE(s', tys, e))
 		end
 	    | B.E_Fun(fbs, e) => B.mkFun(xformLambdas (s, fbs), xformE(s, tys, e))
 	    | B.E_Cont(fb, e) => B.mkCont(xformLambda (s, fb), xformE(s, tys, e))

@@ -11,7 +11,10 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
   end = struct
 
     fun expandAll module = (case ExpandHLOps.expand module
-	   of SOME module => expandAll module
+	   of SOME module => (
+		print "******************** after expand ********************\n";
+		PrintBOM.print module;
+		expandAll module)
 	    | NONE => module
 	  (* end case *))
 

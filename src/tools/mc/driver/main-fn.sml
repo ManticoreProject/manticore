@@ -25,7 +25,7 @@ functor MainFn (
     structure CPSOpt = CPSOptFn (Spec)
     structure CFGOpt = CFGOptFn (Spec)
 
-    fun prHdr msg = print(concat["******************** ", msg,  "********************\n"])
+    fun prHdr msg = print(concat["******************** ", msg,  " ********************\n"])
 
   (* *)
     fun bomToCFG bom = let

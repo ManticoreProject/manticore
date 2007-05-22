@@ -15,6 +15,9 @@ structure BOMUtil : sig
     val subst' : (subst * BOM.var list) -> BOM.var list
     val extend : (subst * BOM.var * BOM.var) -> subst
 
+  (* apply a substitution to a RHS *)
+    val substRHS : (subst * BOM.rhs) -> BOM.rhs
+
   (* beta-reduce a lambda application; the resulting term will have
    * fresh bound variables.
    *)
@@ -102,12 +105,12 @@ structure BOMUtil : sig
 	   of B.E_Let(lhs, e1, e2) => let
 		val (s', lhs) = freshVars(s, lhs)
 		in
-		  B.mkLet(lhs, copyExp' (s, e1), copyExp' (s, e2))
+		  B.mkLet(lhs, copyExp' (s, e1), copyExp' (s', e2))
 		end
 	    | B.E_Stmt(lhs, rhs, e) => let
 		val (s', lhs) = freshVars(s, lhs)
 		in
-		  B.mkStmt(lhs, substRHS (s, rhs), copyExp' (s, e))
+		  B.mkStmt(lhs, substRHS (s, rhs), copyExp' (s', e))
 		end
 	    | B.E_Fun(fbs, e) => let
 	      (* first pass creates fresh function names and gives a list of doBody
