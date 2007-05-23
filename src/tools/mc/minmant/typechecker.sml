@@ -265,6 +265,29 @@ structure Typechecker : sig
 	      in
 		  (AST.TupleExp es', mkTupleTy tys)
 	      end
+	    | PT.RangeExp (e1, e2, eo) => let
+		  val (e1', ty1) = chkExp (loc, depth, ve, e1)
+		  val (e2', ty2) = chkExp (loc, depth, ve, e2)
+		  val _ = if not(U.unify (ty1, ty2))
+			  then error (loc, ["type mismatch in range"])
+			  else ()
+		  val eo' = (case eo of
+				 (SOME exp) => let
+				     val (exp', ty) = chkExp (loc, depth, ve, exp)
+				 in
+				     if not(U.unify (ty, ty1))
+				     then error (loc, ["type mismatch in range"])
+				     else ();
+				     SOME exp'
+				 end
+			       | NONE => NONE
+			    (* end case *))
+	      in
+		  if not(U.unify (ty1, TypeClass.new Types.Num))
+		  then error (loc, ["range elements must have numeric type"])
+		  else ();
+		  (AST.RangeExp (e1', e2', eo', ty1), B.parrayTy ty1)
+	      end
 	    | PT.PTupleExp es => let
 		  fun chk (e, (es, tys)) = let
 		      val (e', ty) = chkExp(loc, depth, ve, e)
