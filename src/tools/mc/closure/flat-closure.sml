@@ -101,6 +101,23 @@ structure FlatClosure : sig
    *)
     datatype env = E of {ep : CFG.var, env : loc VMap.map}
 
+(* +DEBUG *)
+    fun locToString (Local x) = concat["L(", CFG.Var.toString x, ")"]
+      | locToString (Global i) = concat["G(", Int.toString i, ")"]
+      | locToString EnclFun = "EnclFun"
+      | locToString EnclCont = "EnclCont"
+      | locToString (Extern lab) = concat["X(", CFG.Label.toString lab, ")"]
+    fun prEnv (E{ep, env}) = let
+          fun f (x, loc, false) = (print(concat[", ", CPS.Var.toString x, "->", locToString loc]); false)
+            | f (x, loc, true) = (print(concat[CPS.Var.toString x, "->", locToString loc]); false)
+          in
+            print(concat["E{ep = ", CFG.Var.toString ep, " : ", CFGTy.toString(CFG.Var.typeOf ep), "\n"]);
+            print "  env = {";
+            VMap.foldli f true env;
+            print "}\n}\n"
+          end
+(* -DEBUG *)
+
     fun envPtrOf (E{ep, ...}) = ep
 
     fun newEnv externEnv ep = E{ep = ep, env = externEnv}
@@ -171,6 +188,10 @@ structure FlatClosure : sig
 		  "unbound variable ", CPS.Var.toString x, "; ep = ", CFG.Var.toString ep
 		])
           (* end case *))
+(*
+val lookupVar = fn (environ as E{ep, env}, x) => let val (binds, x') = lookupVar(environ, x) in
+print(concat["lookupVar: ", CPS.Var.toString x, " @ ", locToString(valOf(VMap.find(env, x))), " --> ", CFG.Var.toString x', "\n"]); (binds, x') end
+*)
 
     fun lookupVars (env, xs) = let
           fun lookup ([], binds, xs) = (binds, xs)
@@ -182,23 +203,6 @@ structure FlatClosure : sig
           in
             lookup (List.rev xs, [], [])
           end
-
-(* +DEBUG *)
-    fun locToString (Local x) = concat["L(", CFG.Var.toString x, ")"]
-      | locToString (Global i) = concat["G(", Int.toString i, ")"]
-      | locToString EnclFun = "EnclFun"
-      | locToString EnclCont = "EnclCont"
-      | locToString (Extern lab) = concat["X(", CFG.Label.toString lab, ")"]
-    fun prEnv (E{ep, env}) = let
-          fun f (x, loc, false) = (print(concat[", ", CPS.Var.toString x, "->", locToString loc]); false)
-            | f (x, loc, true) = (print(concat[CPS.Var.toString x, "->", locToString loc]); false)
-          in
-            print(concat["E{ep = ", CFG.Var.toString ep, " : ", CFGTy.toString(CFG.Var.typeOf ep), "\n"]);
-            print "  env = {";
-            VMap.foldli f true env;
-            print "}\n}\n"
-          end
-(* -DEBUG *)
 
   (* given a set of free CPS variables that define the environment of a function, create the
    * argument variables and bindings to build the closure and the parameter variables and
@@ -266,6 +270,9 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
                 fun finish (binds, xfer) = let
                       val func = CFG.mkFunc (lab, conv, List.rev binds, xfer)
                       in
+(*
+print(concat["******************** finish ", CFG.Label.toString lab, "\n"]);
+*)
                         blocks := func :: !blocks
                       end
                 fun cvt (env, e, stms) = let
@@ -319,7 +326,7 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
 				    mkFunClosure (env, FV.envOfFun(funVar(hd fbs)))
                               val ep = newEP (CFG.T_Tuple(false, List.map CFG.Var.typeOf clos))
                               val bindEP = CFG.mkAlloc(ep, clos)
-                            (* map the names of the bound functions to EnvlFun *)
+                            (* map the names of the bound functions to EnclFun *)
 			      val sharedEnv = List.foldl
 				    (fn (fb, env) => insertVar(env, funVar fb, EnclFun)) 
                                       sharedEnv fbs
@@ -413,7 +420,7 @@ val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString
                                       | _ => raise Fail "non-standard apply convention"
                                     (* end case *))
                               in
-                                finish (binds @ stms, xfer)
+                                finish (binds @ retBinds @ argBinds @ stms, xfer)
 			      end
 			  | CPS.Throw(k, args) => let
                               val (binds, k'::args') = lookupVars(env, k::args)
