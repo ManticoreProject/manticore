@@ -39,6 +39,7 @@
   (define (fiber f)
     (term-let ((x_new (variable-not-in f (term x))))
               (term (letcont k x_new (begin 
+                                       ;(,f (unit))
                                        ,(set-bang (term 0) (term (,f (unit))))
                                        (forward (stop))) k))))
   
