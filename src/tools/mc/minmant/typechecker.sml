@@ -21,6 +21,9 @@ structure Typechecker : sig
 
     val atos = Atom.toString
 
+  (* list of overload vars for resolution *)
+    val overloads = ref []
+
     fun error (lnum, msg) = Error.say (
 	  "Error [" :: !Error.sourceFile :: ":" :: Int.toString lnum :: "] "
 	    :: (msg @ ["\n"]))
@@ -183,16 +186,28 @@ structure Typechecker : sig
 	    | PT.BinaryExp(e1, bop, e2) => let
 		  val (e1', ty1) = chkExp (loc, depth, ve, e1)
 		  val (e2', ty2) = chkExp (loc, depth, ve, e2)
-		  fun mkApp arg = AST.ApplyExp(AST.VarExp arg, AST.TupleExp[e1', e2'])
+		  fun mkApp arg = AST.ApplyExp(AST.OverloadExp arg, AST.TupleExp[e1', e2'])
 		  fun chkApp tyScheme = let
-		      val (tys, AST.FunTy(argTy, resTy)) = TU.instantiate (depth, tyScheme)
+		      val (tys, instTy as AST.FunTy(argTy, resTy)) = TU.instantiate (depth, tyScheme)
 		  in
 		      if not(U.unify(argTy, AST.TupleTy[ty1, ty2]))
 		      then error(loc, ["type mismatch for operator ", Atom.toString bop])
 		      else ();
-		      (tys, resTy)
+		      (tys, resTy, instTy)
 		  end
 	      in
+		  if Atom.same(bop, BasisName.listCons)
+		  then raise Fail "Not done yet."
+		  else
+		      let
+			  val (tysch, vars) = Basis.lookupOp(bop)
+			  val (argTys, resTy, instTy) = chkApp tysch
+			  val ovar = AST.Unknown (instTy, vars)
+		      in
+			  (Overload.add ovar;
+			   (mkApp (ovar, argTys), resTy))
+		      end
+(*
 		  if Atom.same(bop, BasisNames.eq)
 (* FIXME: equality should be handled as overloading *)
 		  then if not(U.unify(ty1, ty2))
@@ -223,6 +238,7 @@ structure Typechecker : sig
 		      in
 			  (mkApp(rator, argTys), resTy)
 		      end
+*)
 	      end
 	    | PT.ApplyExp(e1, e2) => let
 		  val (e1', ty1) = chkExp (loc, depth, ve, e1)

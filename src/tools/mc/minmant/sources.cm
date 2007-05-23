@@ -27,6 +27,7 @@ is
   env.sml
   front-end.sml
   meta-var.sml
+  overload.sml
   typechecker.sml
   ty-con.sml
   ty-var.sml

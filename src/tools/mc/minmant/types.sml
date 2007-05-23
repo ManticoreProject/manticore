@@ -44,7 +44,8 @@ structure Types =
 
     and tyvar = TVar of {
 	    stamp : Stamp.stamp,	(* unique stamp *)
-	    name : Atom.atom		(* the varable name *)
+	    name : Atom.atom,		(* the varable name *)
+	    class : ty_class option     (* optional type class *)
 	  }
 
     and tycon

@@ -90,10 +90,17 @@ structure TypeUtil : sig
       | instantiate (depth, Types.TyScheme(tvs, ty)) = let
 	(* create a substitution from type variables to fresh meta variables *)
 	  val (subst, mvs) = List.foldl
-		(fn (tv, (s, mvs)) => let val mv = Types.MetaTy(MV.new depth)
-		  in
-		    (TVMap.insert(s, tv, mv), mv :: mvs)
-		  end)
+		(fn (tv as AST.TVar{class,...}, (s, mvs)) =>
+		    case class of
+			NONE => let val mv = Types.MetaTy(MV.new depth)
+				in
+				    (TVMap.insert(s, tv, mv), mv :: mvs)
+				end
+		      | SOME c => let val cmv = Types.ClassTy(TypeClass.new c)
+				  in
+				      (TVMap.insert(s, tv, cmv), mv :: mvs)
+				  end
+		)
 		  (TVMap.empty, []) tvs
 	  in
 	    (mvs, applySubst (subst, ty))

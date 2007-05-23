@@ -11,6 +11,9 @@ structure TyVar : sig
   (* create a new type variable *)
     val new : Atom.atom -> AST.tyvar
 
+  (* create a new type variable with a specified type class *)
+    val newClass : Atom.atom * Types.ty_class -> AST.tyvar
+
   (* return true if two type variables are the same (i.e., have the same stamp) *)
     val same : AST.tyvar * AST.tyvar -> bool
 
@@ -22,7 +25,10 @@ structure TyVar : sig
     datatype tyvar = datatype AST.tyvar
 
   (* create a new type variable *)
-    fun new name = TVar{stamp = Stamp.new(), name = name}
+    fun new name = TVar{stamp = Stamp.new(), name = name, class = NONE}
+
+  (* create a new type variable with a specified type class *)
+    fun newClass (name, class) = TVar{stamp = Stamp.new(), name = name, class = SOME class}
 
   (* return true if two type variables are the same (i.e., have the same stamp) *)
     fun same (TVar{stamp=a, ...}, TVar{stamp=b, ...}) = Stamp.same(a, b)
