@@ -201,7 +201,7 @@ structure Expand =
 			 of (NONE, _) => raise Fail("unknown primop " ^ Atom.toString p)
 			  | (SOME(Prim1{mk, resTy, ...}), [x]) => (newTmp resTy, mk x)
 			  | (SOME(Prim2{mk, resTy, ...}), [x, y]) => (newTmp resTy, mk(x, y))
-			  | (SOME(Prim3{mk, resTy, ...}), [x, y, y]) => (newTmp resTy, mk(x, y, y))
+			  | (SOME(Prim3{mk, resTy, ...}), [x, y, z]) => (newTmp resTy, mk(x, y, z))
 			  | _ => raise Fail("arity mismatch for primop " ^ Atom.toString p)
 			(* end case *))
 		  in
