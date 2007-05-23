@@ -16,19 +16,16 @@ define @dequeue-slow-path (vp : vproc) : rdyq_item =
      of enum(0) =>
 	let item : rdyq_item = ccall VProcDequeue(vp)
 	  return (item)
-      | tl : rdyq_item =>
+      | QITEM(tid : enum(0), fiber : cont(enum(0)), tl : rdyq_item) =>
 	do vpstore(VP_RDYQ_TL, vp, enum(0))
-	fun loop (lst : rdyq_item, hd : rdyq_item) : rdyq_item =
-	      let (hd' : rdyq_item, lst' : rdyq_item) = case lst
-		   of QITEM(tid : enum(0), fiber : cont(enum(0)), lst' : rdyq_item) =>
-			let hd' : rdyq_item = QITEM(tid, fiber, lst)
-			  return (hd', lst')
-		  end
-	      case lst'
-		   of enum(0) => return (hd')
-		    | _ => apply loop (lst', hd')
-		  end
-	let hd : rdyq_item = apply loop (tl, enum(0))
+	fun loop (tid : enum(0), fiber : cont(enum(0)), lst : rdyq_item, hd : rdyq_item) : rdyq_item =
+	      let hd' : rdyq_item = QITEM(tid, fiber, lst)
+	      case lst
+	       of enum(0) => return (hd')
+		| QITEM(tid' : enum(0), fiber' : cont(enum(0)), lst' : rdyq_item) =>
+		    apply loop (tid', fiber', lst', hd')
+	      end
+	let hd : rdyq_item = apply loop (tid, fiber, tl, enum(0))
 	let link : any = #2(hd)
 	do vpstore(VP_RDYQ_HD, vp, link)
 	return (hd)

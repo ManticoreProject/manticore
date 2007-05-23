@@ -155,9 +155,9 @@ structure CaseSimplify : sig
 	  end
 
   (* return the low-level BOM type that describes the representation of a data constructor *)
-    fun dconToRepTy (BTy.DCon{rep, argTy, ...}) = (case (rep, argTy)
+    fun dconToRepTy (BTy.DCon{name, rep, argTy, ...}) = (case (rep, argTy)
 	   of (BTy.Transparent, [ty]) => tyToRepTy ty
-	    | (B.Transparent, _) => raise Fail "bogus transparent dcon application"
+	    | (B.Transparent, _) => raise Fail("bogus application of transparent dcon "^name)
 	    | (BTy.Tuple, _) => BTy.T_Tuple(false, List.map tyToRepTy argTy)
 	    | (BTy.TaggedTuple tag, _) => BTy.T_Tuple(false, BTy.T_Enum tag :: List.map tyToRepTy argTy)
 	  (* end case *))
