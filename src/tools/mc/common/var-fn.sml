@@ -39,6 +39,7 @@ signature VAR =
     val hash : var -> word
 
     val toString : var -> string
+    val varsToString : var list -> string
 
   (* per-variable properties *)
     val newProp : (var -> 'a) -> {
@@ -95,6 +96,8 @@ functor VarFn (VP : VAR_PARAMS) : VAR =
     fun hash (V{id, ...}) = Stamp.hash id
 
     fun toString (V{name, id, ...}) = name ^ Stamp.toString id
+
+    fun varsToString vs = String.concatWith "," (List.map toString vs)
 
     fun propsOf (V{props, ...}) = props
 
