@@ -65,7 +65,7 @@ structure Test =
 	let val cfg = load file
 	    val outStrm = TextIO.openOut (file^".s")
 	in
-	    AMD64Gen.BackEnd.codeGen {dst=outStrm, code=cfg};
+	    AMD64Gen.Gen.codeGen {dst=outStrm, code=cfg};
 	    TextIO.closeOut outStrm
 	end
 
