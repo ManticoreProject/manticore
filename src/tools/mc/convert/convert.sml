@@ -36,7 +36,7 @@ structure Convert : sig
       | cvtTy (BTy.T_Cont tys) = CTy.contTy(List.map cvtTy tys)
       | cvtTy (BTy.T_CFun cproto) = CTy.T_CFun cproto
       | cvtTy (BTy.T_VProc) = CTy.T_VProc
-      | cvtTy (BTy.T_TyCon _) = raise Fail "unexpected tycon"
+      | cvtTy (BTy.T_TyCon tyc) = raise Fail("unexpected tycon " ^ BOMTyCon.toString tyc)
 
   (* create a new CPS variable using the name of a BOM variable *)
     fun newVar (v, ty') = CV.new(BV.nameOf v, ty')
@@ -110,7 +110,7 @@ structure Convert : sig
 		  retK' :: lookupVars(env, exhs))
 	    | B.E_Throw(k, xs) => C.Throw(lookup(env, k), lookupVars(env, xs))
 	    | B.E_Ret xs => C.Throw(retK', lookupVars(env, xs))
-	    | B.E_HLOp _ => raise Fail "unexpected high-level op"
+	    | B.E_HLOp(hlop, _, _) => raise Fail("unexpected high-level op " ^ HLOp.toString hlop)
 	  (* end case *))
 
   (* convert an expression that is in a non-tail position; the tys' parameter is
