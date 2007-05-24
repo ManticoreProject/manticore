@@ -13,6 +13,7 @@ structure PrimUtil : sig
     val varsOf : 'var Prim.prim -> 'var list
     val explode : 'var Prim.prim -> (('a list -> 'a Prim.prim) * 'var list)
     val map : ('a -> 'b) -> 'a Prim.prim -> 'b Prim.prim
+    val app : ('a -> unit) -> 'a Prim.prim -> unit
 
   end = struct
 
@@ -203,5 +204,7 @@ structure PrimUtil : sig
     end (* local *)
 
     fun map f p = let val (mk, args) = explode p in mk(List.map f args) end
+
+    fun app f p = List.app f (varsOf p)
 
   end

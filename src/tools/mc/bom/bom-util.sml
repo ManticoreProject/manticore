@@ -18,6 +18,9 @@ structure BOMUtil : sig
   (* apply a substitution to a RHS *)
     val substRHS : (subst * BOM.rhs) -> BOM.rhs
 
+  (* apply a function to the variables of a RHS *)
+    val appRHS : (BOM.var -> unit) -> BOM.rhs -> unit
+
   (* beta-reduce a lambda application; the resulting term will have
    * fresh bound variables.
    *)
@@ -63,6 +66,24 @@ structure BOMUtil : sig
 	    | B.E_HostVProc => rhs
 	    | B.E_VPLoad(n, x) => B.E_VPLoad(n, subst s x)
 	    | B.E_VPStore(n, x, y) => B.E_VPStore(n, subst s x, subst s y)
+	  (* end case *))
+
+  (* apply a function to the variables of a RHS *)
+    fun appRHS f rhs = (case rhs
+	   of B.E_Const _ => ()
+	    | B.E_Cast(_, x) => f x
+	    | B.E_Select(i, x) => f x
+	    | B.E_Update(i, x, y) => (f x; f y)
+	    | B.E_AddrOf(i, x) => f x
+	    | B.E_Alloc(ty, args) => List.app f args
+	    | B.E_Wrap x => f x
+	    | B.E_Unwrap x =>  f x
+	    | B.E_Prim p => PrimUtil.app f p
+	    | B.E_DCon(dc, args) => List.app f args
+	    | B.E_CCall(cf, args) => (f cf; List.app f args)
+	    | B.E_HostVProc => ()
+	    | B.E_VPLoad(n, x) => f x
+	    | B.E_VPStore(n, x, y) => (f x; f y)
 	  (* end case *))
 
     fun freshVar (s, x) = let

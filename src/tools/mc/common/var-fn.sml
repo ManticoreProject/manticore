@@ -31,6 +31,8 @@ signature VAR =
     val setKind : (var * kind) -> unit
     val typeOf : var -> ty
 
+  (* operations of use counts *)
+    val clrCount : var -> unit
     val useCount : var -> int
     val addToCount : (var * int) -> unit
 
@@ -88,6 +90,7 @@ functor VarFn (VP : VAR_PARAMS) : VAR =
 
     fun typeOf (V{ty, ...}) = ty
 
+    fun clrCount (V{useCnt, ...}) = (useCnt := 0)
     fun useCount (V{useCnt, ...}) = !useCnt
     fun addToCount (V{useCnt, ...}, n) = (useCnt := !useCnt + n)
 
