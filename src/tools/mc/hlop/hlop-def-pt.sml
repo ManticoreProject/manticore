@@ -29,17 +29,16 @@
       | T_TyCon of Atom.atom		(* high-level type constructor *)
 
     type var = Atom.atom
-    type var_bind = var * ty
 
     datatype file = FILE of defn list
 
     and defn
       = Extern of Atom.atom CFunctions.c_fun
       | TypeDef of Atom.atom * ty
-      | Define of (bool * var * var_bind list * var_bind list * ty list * exp option)
+      | Define of (bool * var * var_pat list * var_pat list * ty list * exp option)
 
     and exp
-      = Let of (var_bind list * rhs * exp)
+      = Let of (var_pat list * rhs * exp)
       | Fun of (lambda list * exp)
       | Cont of (lambda * exp)
       | If of (simple_exp * exp * exp)
@@ -75,9 +74,9 @@
       | ConstPat of (Literal.literal * ty)
 
     and var_pat
-      = WildPat
+      = WildPat of ty option
       | VarPat of (Atom.atom * ty)
 
-    withtype lambda = (var * var_bind list * var_bind list * ty list * exp)
+    withtype lambda = (var * var_pat list * var_pat list * ty list * exp)
 
   end

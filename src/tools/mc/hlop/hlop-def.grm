@@ -151,11 +151,7 @@ FunParams
 	;
 
 Params
-	: (Param ("," Param)* )?		=> (flatten SR)
-	;
-
-Param
-	: ID ":" Type				=> (ID, Type)
+	: (VarPat ("," VarPat)* )?		=> (flatten SR)
 	;
 
 Type
@@ -206,11 +202,11 @@ Lambda
 	;
 
 CLambda
-	: ID "(" Params ")" "=" Exp		=> (ID, Params, [], [], Exp)
+	: ID "(" Params ")" "=" Exp	=> (ID, Params, [], [], Exp)
 	;
 
 LHS
-	: Param				=> ([Param])
+	: VarPat			=> ([VarPat])
 	| "(" Params ")"		=> (Params)
 	;
 
@@ -265,7 +261,7 @@ Default
 	;
 
 VarPat
-	: "_"				=> (PT.WildPat)
+	: "_" (":" Type)?		=> (PT.WildPat SR)
 	| ID ":" Type			=> (PT.VarPat(ID, Type))
 	;
 

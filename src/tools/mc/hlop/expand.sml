@@ -87,33 +87,32 @@
 
     and cvtTys (env, tys) = List.map (fn ty => cvtTy(env, ty)) tys
 
-    fun cvtVarBinds (env, vars) = let
-	  fun f ((x, ty), (env, xs)) = let
+    fun cvtVarPats (env, vpats) = let
+	  fun f (PT.WildPat ty, (env, xs)) = let
+		val ty = (case ty
+		       of NONE => Ty.T_Any
+			| SOME ty => cvtTy(env, ty)
+		      (* end case *))
+		val x' = BOM.Var.new("_wild", Ty.T_Any)
+		in
+		  (env, x'::xs)
+		end
+	    | f (PT.VarPat(x, ty), (env, xs)) = let
 		val ty = cvtTy(env, ty)
 		val x' = BOM.Var.new(Atom.toString x, ty)
 		in
 		  (insertVar(env, x, x'), x'::xs)
 		end
+	  val (env, xs) = List.foldl f (env, []) vpats
 	  in
-	    List.foldl f (env, []) vars
+	    (env, List.rev xs)
 	  end
- 
+
     fun cvtPat (env, PT.DConPat(dc, xs)) = (case Basis.findDCon dc
 	   of SOME dc => let
-		fun f (PT.WildPat, (env, xs)) = let
-		      val x' = BOM.Var.new("_wild", Ty.T_Any)
-		      in
-			(env, x'::xs)
-		      end
-		  | f (PT.VarPat(x, ty), (env, xs)) = let
-		      val ty = cvtTy(env, ty)
-		      val x' = BOM.Var.new(Atom.toString x, ty)
-		      in
-			(insertVar(env, x, x'), x'::xs)
-		      end
-		val (env, xs) = List.foldl f (env, []) xs
+		val (env, xs) = cvtVarPats (env, xs)
 		in
-		  (env, BOM.P_DCon(dc, List.rev xs))
+		  (env, BOM.P_DCon(dc, xs))
 		end
 	    | NONE => raise Fail(concat["unknown data constructor ", Atom.toString dc])
 	  (* end case *))
@@ -121,8 +120,7 @@
 
     fun cvtExp (findCFun, env, e) = (case e
 	   of PT.Let(lhs, rhs, e) => let
-		val (env', lhs') = cvtVarBinds (env, lhs)
-		val lhs' = List.rev lhs'
+		val (env', lhs') = cvtVarPats (env, lhs)
 		val e' = cvtExp(findCFun, env', e)
 		in
 		  case rhs
@@ -220,7 +218,7 @@
                       List.map doCase cases,
                       case dflt
 		       of NONE => NONE
-			| SOME(PT.WildPat, e) => SOME(cvtExp(findCFun, env, e))
+			| SOME(PT.WildPat _, e) => SOME(cvtExp(findCFun, env, e))
 			| SOME(PT.VarPat(x, _), e) =>
 			    SOME(cvtExp(findCFun, insertVar(env, x, arg), e))
 		      (* end case *)))
@@ -243,18 +241,14 @@
 	  (* end case *))
 
     and cvtLambda (findCFun, env, (f, params, rets, tys, e), tyCon) = let
-	  fun cvt (_, ty) = cvtTy(env, ty)
-	  val fnTy = tyCon(List.map cvt params, List.map cvt rets, cvtTys(env, tys))
+	  val (envWParams, params) = cvtVarPats (env, params)
+	  val (envWParams, rets) = cvtVarPats (envWParams, rets)
+	  val fnTy = tyCon(List.map BV.typeOf params, List.map BV.typeOf rets, cvtTys(env, tys))
 	  val f' = BOM.Var.new(Atom.toString f, fnTy)
-	  fun doBody env = let
-		val (envWParams, params') = cvtVarBinds (env, params)
-		val (envWParams, rets') = cvtVarBinds (envWParams, rets)
-		in
-		  BOM.FB{
-		      f = f', params = List.rev params',
-		      exh = List.rev rets', body = cvtExp(findCFun, envWParams, e)
-		    }
-		end
+	  val envWParams = insertVar(envWParams, f, f')
+	  fun doBody env = BOM.FB{
+		  f = f', params = params, exh = rets, body = cvtExp(findCFun, envWParams, e)
+		}
 	  in
 	    (insertVar(env, f, f'), doBody)
 	  end
@@ -362,13 +356,16 @@
 		  | NONE => let
 		    (* create a high-level operator *)
 		      val attrs = if null retTy then [HLOp.NORETURN] else []
-		      val paramTys = List.map (fn (_, ty) => HLOp.PARAM(cvtTy(env, ty))) params
-		      val exh = List.map (fn (_, ty) => cvtTy(env, ty)) exh
+		      fun tyOfPat (PT.WildPat NONE) = Ty.T_Any
+			| tyOfPat (PT.WildPat(SOME ty)) = cvtTy(env, ty)
+			| tyOfPat (PT.VarPat(_, ty)) = cvtTy(env, ty)
+		      val paramTys = List.map (fn p => HLOp.PARAM(tyOfPat p)) params
+		      val exhTys = List.map tyOfPat exh
 		      val retTy = cvtTys(env, retTy)
 		      in
 			Env.define (HLOp.new (
 			  name,
-			  {params=paramTys, exh=exh, results=retTy},
+			  {params=paramTys, exh=exhTys, results=retTy},
 			  attrs));
 			env
 		      end
