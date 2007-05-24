@@ -66,7 +66,7 @@ functor MainFn (
     fun bomC (bomFile, asmFile) = let
 	  val bom = BOMParser.parse bomFile
 	  val _ = (
-		prHdr "BOM after expand";
+		prHdr "BOM after parsing";
 		PrintBOM.print bom)
 	  in
 	    codegen (asmFile, bomToCFG bom)
