@@ -24,5 +24,6 @@ is
 
   bom-opt-fn.sml
   case-simplify.sml
+  census.sml
   expand-hlops.sml
   literal-case-fn.sml

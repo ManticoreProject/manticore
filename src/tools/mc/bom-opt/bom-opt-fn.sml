@@ -19,6 +19,7 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 	  (* end case *))
 
     fun optimize module = let
+	  val _ = Census.census module
 	  val module = expandAll module
 	  val module = CaseSimplify.transform module
 	  in
