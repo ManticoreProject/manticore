@@ -6,7 +6,7 @@
  * Exit the current thread by forwarding a STOP signal.
  *)
 
-#define STOP	enum(0)
+#include "types.def"
 
 define inline @forward (vp : vproc, sig : signal) noreturn;
 

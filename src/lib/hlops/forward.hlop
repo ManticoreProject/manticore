@@ -7,14 +7,13 @@
  *)
 
 #include "runtime-offsets.def"
-
-#define TRUE	enum(1)
+#include "types.def"
 
 define inline @forward (vp : vproc, sig : signal) noreturn =
     do vpstore(ATOMIC, vp, TRUE)
-    let tos : (cont(signal), any) = vpload(VP_ACTION_STK, vp)
+    let tos : (sigact, any) = vpload(VP_ACTION_STK, vp)
     let rest : any = #1(tos)
     do vpstore(VP_ACTION_STK, vp, rest)
-    let act : cont(signal) = #0(tos)
+    let act : sigact = #0(tos)
       throw act(sig)
 ;

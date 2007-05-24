@@ -6,15 +6,19 @@
  * The @spawn operator is used to implement the "spawn" operation in Manticore.
  *)
 
-define @dispatch (vp : vproc) noreturn;
-define @enqueue (vp : vproc, tid : enum(0), fiber : cont(enum(0))) : enum(0);
+#include "types.def"
 
-define inline @spawn (f : fun(enum(0) / cont(enum(0)) -> enum(0))) : enum(0) =
-    cont fiber (x : enum(0)) =
-	cont handler (ex : any) = @dispatch(host_vproc)
-	do apply f(enum(0) / handler)
+define @dispatch (vp : vproc) noreturn;
+define @enqueue (vp : vproc, tid : tid, fiber : fiber) : unit;
+define @new-tid (vp : vproc) : tid;
+
+define inline @spawn (f : fun(unit / handler -> unit)) : unit =
+    cont fiber (_ : unit) =
+	cont handler (ex : exn) = @dispatch(host_vproc)
+	do apply f(UNIT / handler)
 	  @dispatch(host_vproc)
     (* in *)
-      let tid : enum(0) = enum(0)
-      @enqueue (host_vproc, enum(0), fiber)
+      let vp : vproc = host_vproc
+      let tid : tid = @new-tid(vp)
+      @enqueue (vp, tid, fiber)
 ;

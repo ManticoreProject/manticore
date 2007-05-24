@@ -1,0 +1,31 @@
+(* types.def
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Common type definitions.
+ *)
+
+#ifndef _TYPES_DEF_
+#define _TYPES_DEF_
+
+typedef bool = enum(1);		(* 0 = false, 1 = true *)
+#define FALSE	enum(0):bool
+#define TRUE	enum(1):bool
+
+typedef unit = enum(0);
+#define UNIT	enum(0):unit
+
+typedef tid = enum(0);		(* FIXME: this should be something else *)
+typedef fiber = cont(unit);
+typedef exn = any;
+typedef handler = cont(exn);
+typedef sigact = cont(signal);
+
+(* constants for builtin datatypss *)
+#define NIL	enum(0):list
+#define STOP	enum(0):signal
+#define QEMPTY	enum(0):rdyq_item
+
+#endif /* !_TYPES_DEF_ */
+
