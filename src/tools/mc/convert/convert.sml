@@ -96,9 +96,11 @@ structure Convert : sig
 	    | B.E_Fun(fbs, e) =>
 		cvtFun (env, fbs,
 		  fn (env2, fbs') => C.mkFun(fbs', cvtTailE(env2, e, retK')))
-	    | B.E_Cont(fb, e) =>
-		cvtCont (env, fb,
-		  fn (env2, fb') => C.mkCont(fb', cvtTailE(env2, e, retK')))
+	    | B.E_Cont(fb, e) => let
+		val (env, fb) = cvtCont(env, fb, retK')
+		in
+		  C.mkCont(fb, cvtTailE(env, e, retK'))
+		end
 	    | B.E_If(x, e1, e2) =>
 		C.If(lookup(env, x),
 		  cvtTailE (env, e1, retK'),
@@ -131,9 +133,15 @@ structure Convert : sig
 	    | B.E_Fun(fbs, e) =>
 		cvtFun (env, fbs,
 		  fn (env2, fbs') => C.mkFun(fbs', cvtE(env2, e, tys', k)))
-	    | B.E_Cont(fb, e) =>
-		cvtCont (env, fb,
-		  fn (env2, fb') => C.mkCont(fb', cvtE(env2, e, tys', k)))
+	    | B.E_Cont(fb, e) => let
+		val ys' = List.map (fn ty => CV.new("a", ty)) tys'
+		val joinK' = CV.new("ifJoinK", CTy.contTy tys')
+		val (env, fb) = cvtCont(env, fb, joinK')
+		in
+		  C.mkCont(
+		    C.FB{f=joinK', params=ys', rets=[], body=k ys'},
+		    C.mkCont(fb, cvtTailE(env, e, joinK')))
+		end
 	    | B.E_If(x, e1, e2) => let
 		val ys' = List.map (fn ty => CV.new("a", ty)) tys'
 		val joinK' = CV.new("ifJoinK", CTy.contTy tys')
@@ -210,11 +218,13 @@ structure Convert : sig
 	    k (env, fbs')
 	  end
 
-    and cvtCont (env, fb, k) = let
+    and cvtCont (env, fb as B.FB{f, params, exh=[], body}, k) = let
 	  val env = bindLambda(fb, env)
-	  val fb' = cvtLambda(env, fb)
+	  val f' = lookup(env, f)
+	  val (params', env) = bindVars (env, params)
+	  val body' = cvtTailE(env, body, k)
 	  in
-	    k (env, fb')
+	    (env, C.FB{f = f', params = params', rets = [], body = body'})
 	  end
 
     fun transform (B.MODULE{name, externs, body}) = let
