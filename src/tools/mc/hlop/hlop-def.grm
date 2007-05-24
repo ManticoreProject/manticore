@@ -2,6 +2,10 @@
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
+ *
+ * TODO:
+ *	add datatype definitions
+ *	rewrite rules
  *)
 
 %name HLOpDef;
@@ -13,11 +17,11 @@
 	| KW_any	("any")
 	| KW_apply	("apply")
 	| KW_attribute	("__attribute__")
-	| KW_bool	("bool")
 	| KW_byte	("byte")
 	| KW_case	("case")
 	| KW_ccall	("ccall")
 	| KW_cont	("cont")
+	| KW_datatype	("datatype")
 	| KW_define	("define")
 	| KW_do		("do")   
 	| KW_double	("double")
@@ -41,7 +45,7 @@
 	| KW_short	("short")
 	| KW_then	("then")
 	| KW_throw	("throw")
-	| KW_unit	("unit")
+	| KW_typedef	("typedef")
 	| KW_unwrap	("unwrap")
 	| KW_vec128	("vec128")
 	| KW_void	("void")
@@ -81,9 +85,6 @@
     fun flatten NONE = []
       | flatten (SOME(x, xs)) = x::xs
 
-    val unitTy = PT.T_Enum(0w0)
-    val boolTy = PT.T_Enum(0w1)	(* false = 0, true = 1 *)
-
   (* default types for literals *)
     val dfltIntTy = PT.T_Raw(BOMTy.T_Int)
     val dfltFloatTy = PT.T_Raw(BOMTy.T_Float)
@@ -98,13 +99,15 @@ File
 
 Definition
 	: "extern" CRetTy ID "(" (CArgTy ("," CArgTy)* )? ")" Attrs ";"
-		=> (PT.Import(CF.CFun{
+		=> (PT.Extern(CF.CFun{
 			var = ID,
 			name = Atom.toString ID,
 			retTy = CRetTy,
 			argTys = flatten SR,
 			attrs = Attrs
 		      }))
+	| "typedef" ID "=" Type ";"
+		=> (PT.TypeDef(ID, Type))
 	| "define" optInline HLOP FunParams returnTy ("=" Exp)? ";"
 		=> (let val (p1, p2) = FunParams in
 		      PT.Define(optInline, HLOP, p1, p2, returnTy, SR)
@@ -158,8 +161,6 @@ Param
 Type
 	: "addr" "(" Type ")"			=> (PT.T_Addr(Type))
 	| "any"					=> (PT.T_Any)
-	| "bool"				=> (boolTy)
-	| "unit"				=> (unitTy)
 	| "enum" "(" INT ")"			=> (PT.T_Enum(Word.fromLargeInt INT))
 	| "[" RawType "]"			=> (PT.T_Wrap RawType)
 	| RawType				=> (PT.T_Raw RawType)

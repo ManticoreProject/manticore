@@ -34,7 +34,8 @@
     datatype file = FILE of defn list
 
     and defn
-      = Import of Atom.atom CFunctions.c_fun
+      = Extern of Atom.atom CFunctions.c_fun
+      | TypeDef of Atom.atom * ty
       | Define of (bool * var * var_bind list * var_bind list * ty list * exp option)
 
     and exp
