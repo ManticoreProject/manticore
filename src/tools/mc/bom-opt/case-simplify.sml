@@ -115,6 +115,7 @@ structure CaseSimplify : sig
 
   (* does a BOM type contain type constructors? *)
     fun hasTyc (BTy.T_Tuple(_, tys)) = List.exists hasTyc tys
+      | hasTyc (BTy.T_Addr ty) = hasTyc ty
       | hasTyc (BTy.T_Fun(tys1, tys2, tys3)) =
 	  List.exists hasTyc tys1 orelse List.exists hasTyc tys2
 	    orelse List.exists hasTyc tys3
@@ -127,6 +128,7 @@ structure CaseSimplify : sig
    *)
     fun tyToRepTy ty = let
 	  fun ty2ty (BTy.T_Tuple(mut, tys)) = BTy.T_Tuple(mut, List.map ty2ty tys)
+	    | ty2ty (BTy.T_Addr ty) = BTy.T_Addr(ty2ty ty)
 	    | ty2ty (BTy.T_Fun(argTys, exh, resTys)) =
 		BTy.T_Fun(tys2tys argTys, tys2tys exh, tys2tys resTys)
 	    | ty2ty (BTy.T_Cont tys) = BTy.T_Cont(tys2tys tys)
@@ -167,6 +169,7 @@ structure CaseSimplify : sig
     fun retype (s, x, ty) = let
 	  val x' = BV.new(BV.nameOf x, ty)
 	  in
+print(concat["retype(_, ", BV.toString x, ", ", BTy.toString ty, ") = ", BV.toString x', "\n"]);
 	    (BU.extend(s, x, x'), x')
 	  end
   (* if a variable has a TyCon type, the retype it *)
@@ -200,25 +203,25 @@ structure CaseSimplify : sig
 	    | B.E_Stmt([y], B.E_DCon(B.DCon{name, rep, argTy, ...}, xs), e) => (
 		case (rep, xs)
 		 of (B.Transparent, [x]) => let
-		      val (s', y') = retype (s, y, typeOf x)
+		      val (s', y') = retype (s, y, tyToRepTy(typeOf x))
 		      in
-			B.mkLet([y'], B.mkRet[x], xformE(s', tys, e))
+			B.mkLet([y'], B.mkRet[subst s x], xformE(s', tys, e))
 		      end
 		  | (B.Tuple, _) => let
-		      val ty = BTy.T_Tuple(false, argTy)
+		      val ty = tyToRepTy(BTy.T_Tuple(false, argTy))
 		      val (s', y') = retype (s, y, ty)
 		      in
-			B.mkStmt([y'], B.E_Alloc(ty, xs), xformE(s', tys, e))
+			B.mkStmt([y'], B.E_Alloc(ty, BU.subst'(s, xs)), xformE(s', tys, e))
 		      end
 		  | (B.TaggedTuple tag, _) => let
 		      val tagTy = BTy.T_Enum tag
 		      val tag' = BV.new(name, tagTy)
-		      val ty = BTy.T_Tuple(false, tagTy :: argTy)
+		      val ty = tyToRepTy(BTy.T_Tuple(false, tagTy :: argTy))
 		      val (s, y) = retype (s, y, ty)
 		      in
 			B.mkStmts([
 			    ([tag'], B.E_Const(Lit.Enum tag, tagTy)),
-			    ([y], B.E_Alloc(ty, tag' :: xs))
+			    ([y], B.E_Alloc(ty, tag' :: BU.subst'(s, xs)))
 			  ], xformE(s, tys, e))
 		      end
 		  | (B.Transparent, _) => raise Fail "bogus transparent dcon application"
@@ -226,10 +229,18 @@ structure CaseSimplify : sig
 	    | B.E_Stmt(lhs, rhs, e) => let
 		val (s', lhs) = xformVars (s, lhs)
 		in
-		  B.mkStmt(lhs, BU.substRHS(s, rhs), xformE(s', tys, e))
+		  B.mkStmt(lhs, xformRHS(s, rhs), xformE(s', tys, e))
 		end
-	    | B.E_Fun(fbs, e) => B.mkFun(xformLambdas (s, fbs), xformE(s, tys, e))
-	    | B.E_Cont(fb, e) => B.mkCont(xformLambda (s, fb), xformE(s, tys, e))
+	    | B.E_Fun(fbs, e) => let
+		val (s, fbs) = xformLambdas (s, fbs)
+		in
+		  B.mkFun(fbs, xformE(s, tys, e))
+		end
+	    | B.E_Cont(fb, e) => let
+		val (s, fb) = xformLambda (s, fb)
+		in
+		  B.mkCont(fb, xformE(s, tys, e))
+		end
 	    | B.E_If(x, e1, e2) =>
 		B.mkIf(subst s x, xformE(s, tys, e1), xformE(s, tys, e2))
 	    | B.E_Case(x, rules, dflt) => xformCase (s, tys, x, rules, dflt)
@@ -243,30 +254,19 @@ structure CaseSimplify : sig
 	    | B.E_HLOp _ => raise Fail "unexpected HLOp"
 	  (* end case *))
 
-    and xformRHS (s, rhs) = let
-	  val subst = subst s
-	  in
-	    case rhs
-	     of B.E_Const _ => rhs
-	      | B.E_Cast(ty, x) => if hasTyc ty
-		  then B.E_Cast(tyToRepTy ty, subst x)
-		  else rhs
-	      | B.E_Select(i, x)  => B.E_Select(i, subst x)
-	      | B.E_Update(i, x, y)  => B.E_Update(i, subst x, subst y)
-	      | B.E_AddrOf(i, x)  => B.E_AddrOf(i, subst x)
-	      | B.E_Alloc(ty, xs) => if hasTyc ty
-		  then B.E_Alloc(tyToRepTy ty, List.map subst xs)
-		  else rhs
-	      | B.E_Wrap _ => rhs
-	      | B.E_Unwrap _ => rhs
-	      | B.E_Prim p => B.E_Prim(PrimUtil.map subst p)
-	      | B.E_DCon _ => raise Fail "impossible"
-	      | B.E_CCall _ => rhs
-	      | B.E_HostVProc => rhs
-	      | B.E_VPLoad _ => rhs
-	      | B.E_VPStore _ => rhs
-	    (* end case *)
-	  end
+    and xformRHS (s, rhs) = (case rhs
+	   of B.E_Const(lit, ty) => if hasTyc ty
+		then B.E_Const(lit, tyToRepTy ty)
+		else BU.substRHS(s, rhs)
+	    | B.E_Cast(ty, x) => if hasTyc ty
+		then B.E_Cast(tyToRepTy ty, subst s x)
+		else BU.substRHS(s, rhs)
+	    | B.E_Alloc(ty, xs) => if hasTyc ty
+		then B.E_Alloc(tyToRepTy ty, List.map (subst s) xs)
+		else BU.substRHS(s, rhs)
+	    | B.E_DCon _ => raise Fail "impossible"
+	    | _ => BU.substRHS(s, rhs)
+	  (* end case *))
 
     and xformLambdas (s, fbs) = let
 	  val s = List.foldl (fn (B.FB{f, ...}, s) => (#1(xformVar(s, f)))) s fbs
@@ -281,10 +281,14 @@ structure CaseSimplify : sig
 		    }
 		end
 	  in
-	    List.map xformLambda fbs
+	    (s, List.map xformLambda fbs)
 	  end
 
-    and xformLambda (s, fb) = hd(xformLambdas(s, [fb]))
+    and xformLambda (s, fb) = let
+	  val (s, [fb]) = xformLambdas(s, [fb])
+	  in
+	    (s, fb)
+	  end
 
     and xformCase (s, tys, x, rules, dflt) = let
 	  val argument = subst s x
@@ -351,9 +355,14 @@ structure CaseSimplify : sig
 		in
 		  B.mkCase(argument, List.map mkAlt cons, dflt)
 		end
+	  fun enumCase (w, ty, e) = let
+		val ty = if hasTyc ty then tyToRepTy ty else ty
+		in
+		  (B.P_Const(Lit.Enum w, ty), xformE(s, tys, e))
+		end
 	  in
 	    case classify (rules, [], [], [])
-	     of (enums, [], []) => B.mkCase(argument, rules, dflt)
+	     of (enums, [], []) => B.mkCase(argument, List.map enumCase enums, dflt)
 	      | ([], lits, []) => literalCase (s, tys, argument, lits, dflt)
 	      | ([], [], cons) => consCase (cons, dflt)
 	      | (enums, [], cons) => let
@@ -372,18 +381,19 @@ structure CaseSimplify : sig
 			       * an equality test.
 			       *)
 				val [(w, ty, e)] = enums
+				val ty = if hasTyc ty then tyToRepTy ty else ty
 				val tmp = BV.new("t", ty)
 				in
 				  B.mkStmts([
 				      ([tmp], B.E_Const(Lit.Enum w, ty)),
 				      ([isBoxed], B.E_Prim(Prim.I32NEq(argument, tmp)))
 				    ],
-				    B.mkIf(isBoxed, case1, e))
+				    B.mkIf(isBoxed, case1, xformE(s, tys, e)))
 				end
 			      else B.mkStmt([isBoxed], B.E_Prim(Prim.isBoxed argument),
 				B.mkIf(isBoxed, case1,
 				  B.mkCase(argument,
-				    List.map (fn (w, ty, e) => (B.P_Const(Lit.Enum w, ty), e)) enums,
+				    List.map enumCase enums,
 				    NONE)))
 			  end
 		      | (false, true) =>
@@ -391,7 +401,7 @@ structure CaseSimplify : sig
 			    B.mkIf(isBoxed,
 			      consCase (cons, NONE),
 			      B.mkCase(argument,
-				List.map (fn (w, ty, e) => (B.P_Const(Lit.Enum w, ty), e)) enums,
+				List.map enumCase enums,
 				dflt)))
 		      | (false, false) => let
 			(* the default case is shared by both the boxed and unboxed
@@ -405,7 +415,7 @@ structure CaseSimplify : sig
 			      B.mkIf(isBoxed,
 				consCase (cons, SOME(B.mkThrow(join, []))),
 				B.mkCase(argument,
-				  List.map (fn (w, ty, e) => (B.P_Const(Lit.Enum w, ty), e)) enums,
+				  List.map enumCase enums,
 				  SOME(B.mkThrow(join, []))))))
 			  end
 		    (* end case *)
@@ -436,6 +446,6 @@ structure CaseSimplify : sig
       | literalCase _ = raise Fail "ill-formed literal case"
 
     fun transform (B.MODULE{name, externs, body}) =
-	  B.mkModule(name, externs, xformLambda (BV.Map.empty, body))
+	  B.mkModule(name, externs, #2 (xformLambda (BV.Map.empty, body)))
 
   end
