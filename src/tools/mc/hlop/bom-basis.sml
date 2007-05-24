@@ -46,7 +46,7 @@ structure BOMBasis : BOM_BASIS =
     val rdyqItemTyc = BOMTyCon.newDataTyc ("rdyq_item", 1)
     val rdyqItemTy = BTy.T_TyCon rdyqItemTyc
     val rdyqConsDC = BOMTyCon.newDataCon rdyqItemTyc
-	  ("QITEM", BTy.Transparent, [tidTy, fiberTy, rdyqItemTy])
+	  ("QITEM", BTy.Tuple, [tidTy, fiberTy, rdyqItemTy])
 
   (* other predefined datatypes *)
     val signalTyc = BOMTyCon.newDataTyc ("signal", 1)
