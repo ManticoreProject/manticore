@@ -10,8 +10,6 @@ functor CPSOptFn (Spec : TARGET_SPEC) : sig
 
   end = struct
 
-    structure Expand = ExpandOpsFn (Spec)
-
-    fun optimize module = Expand.transform module
+    fun optimize module = module
 
   end

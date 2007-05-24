@@ -20,9 +20,6 @@ structure CPS =
       | Switch of (var * (tag * exp) list * exp option)
       | Apply of (var * var list * var list)
       | Throw of (var * var list)
-    (* scheduler operations *)
-      | Run of {vp : var, act : var, fiber : var}
-      | Forward of {vp : var, sign : var}
 
     and rhs
       = Var of var list
@@ -36,9 +33,6 @@ structure CPS =
       | Unwrap of var			(* unwrap value *)
       | Prim of prim
       | CCall of (var * var list)
-    (* scheduler operations *)
-      | Dequeue of var
-      | Enqueue of (var * var * var)
     (* VProc operations *)
       | HostVProc			(* gets the hosting VProc *)
       | VPLoad of (offset * var)	(* load a value from the given byte offset *)

@@ -18,16 +18,13 @@
     | KW_ccall		("ccall")
     | KW_cont		("cont")
     | KW_default	("default")
-    | KW_dequeue	("dequeue")
     | KW_do		("do")
     | KW_double		("double")
     | KW_else		("else")
     | KW_end		("end")
-    | KW_enqueue	("enqueue")
     | KW_enum		("enum")
     | KW_extern		("extern")
     | KW_float		("float")
-    | KW_forward	("forward")
     | KW_fun		("fun")
     | KW_host_vproc	("host_vproc")
     | KW_if		("if")
@@ -36,7 +33,6 @@
     | KW_long		("long")
     | KW_module		("module")
     | KW_pure		("pure")
-    | KW_run		("run")
     | KW_short		("short")
     | KW_switch		("switch")
     | KW_then		("then")
@@ -161,8 +157,6 @@ Exp
 	| "switch" SimpleExp Cases DefaultCase? "end"	=> (PT.Switch(SimpleExp, Cases, DefaultCase))
 	| "apply" ID "(" ArgExps ";" ArgExps ")"	=> (PT.Apply(ID, ArgExps1, ArgExps2))
 	| "throw" ID Args				=> (PT.Throw(ID, Args))
-	| "run" ID ID ID				=> (PT.Run(ID1, ID2, ID3))
-	| "forward" ID ID				=> (PT.Forward(ID1, ID2))
 	;
 
 LHS
@@ -175,9 +169,6 @@ RHS
 	| "alloc" Args			=> (PT.Alloc Args)
 	| "wrap" "(" SimpleExp ")"	=> (PT.Wrap SimpleExp)
 	| "ccall" ID Args		=> (PT.CCall(ID, Args))
-	| "enqueue" "(" SimpleExp "," SimpleExp "," SimpleExp ")"
-		=> (PT.Enqueue(SimpleExp1, SimpleExp2, SimpleExp3))
-	| "dequeue" "(" SimpleExp ")"	=> (PT.Dequeue SimpleExp)
 	;
 
 SimpleExp

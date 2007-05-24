@@ -21,6 +21,5 @@ is
   ../prim/sources.cm
   ../cps/sources.cm
 
-  expand-ops-fn.sml
   cps-opt-fn.sml
 

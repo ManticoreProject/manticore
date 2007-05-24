@@ -101,11 +101,6 @@ structure Expand =
 		    | PT.CCall(f, args) =>
 			cvtSimpleExps (env, args, fn xs =>
 			  CPS.mkLet(lhs', CPS.CCall(lookup(env, f), xs), e'))
-		    | PT.Dequeue(vp) => cvtSimpleExp (env, vp, fn vp =>
-			  CPS.mkLet(lhs', CPS.Dequeue vp, e'))
-		    | PT.Enqueue(vp, tid, fiber) =>
-			cvtSimpleExps (env, [vp, tid, fiber], fn [vp, tid, fiber] =>
-			  CPS.mkLet(lhs', CPS.Enqueue(vp, tid, fiber), e'))
 		  (* end case *)
 		end
 	    | PT.Fun(fbs, e) => let
@@ -139,15 +134,6 @@ structure Expand =
 		  fn xs => cvtSimpleExps (env, rets, fn ys => CPS.Apply(lookup(env, f), xs, ys)))
 	    | PT.Throw(k, args) =>
 		cvtSimpleExps (env, args, fn xs => CPS.Throw(lookup(env, k), xs))
-	    | PT.Run(vp, act, fiber) => CPS.Run{
-		  vp = lookup(env, vp),
-		  act = lookup (env, act),
-		  fiber = lookup (env, fiber)
-		}
-	    | PT.Forward(vp, sign) => CPS.Forward{
-		  vp = lookup(env, vp),
-		  sign = lookup(env, sign)
-		}
 	  (* end case *))
 
     and cvtLambda (env, (f, params, rets, e)) = let

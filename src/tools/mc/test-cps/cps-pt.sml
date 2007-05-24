@@ -29,16 +29,12 @@ structure CPSPT =
       | Switch of (simple_exp * (int * exp) list * exp option)
       | Apply of (var * simple_exp list * simple_exp list)
       | Throw of (var * simple_exp list)
-      | Run of (var * var * var)
-      | Forward of var * var
 
     and rhs
       = SimpleExp of simple_exp
       | Alloc of simple_exp list
       | Wrap of simple_exp			(* wrap raw value *)
       | CCall of (var * simple_exp list)
-      | Dequeue of simple_exp
-      | Enqueue of (simple_exp * simple_exp * simple_exp)
 
     and simple_exp
       = Var of var

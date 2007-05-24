@@ -448,8 +448,6 @@ print(concat["******************** finish ", CFG.Label.toString lab, "\n"]);
                               in
                                 finish (binds @ stms, xfer)
                               end
-			  | CPS.Run _ => raise Fail "unexpected Run"
-			  | CPS.Forward _ => raise Fail "unexpected Forward"
 			(* end case *)
                       end
                 in

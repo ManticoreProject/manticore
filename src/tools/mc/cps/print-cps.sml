@@ -79,10 +79,6 @@ structure PrintCPS : sig
 		      prl["throw ", varUseToString k, " "];
 		      prList varUseToString args;
 		      pr "\n")
-		  | CPS.Run{vp, act, fiber} =>
-		      prl["run ", varUseToString act, " ", varUseToString fiber, "\n"]
-		  | CPS.Forward{vp, sign} =>
-		      prl["forward ", varUseToString sign, "\n"]
 		(* end case *))
 	  and prRHS (CPS.Var ys) = prList varUseToString ys
 	    | prRHS (CPS.Cast(ty, y)) = prl["(", CPSTy.toString ty, ")", varUseToString y]
@@ -101,11 +97,6 @@ structure PrintCPS : sig
 	    | prRHS (CPS.CCall(f, args)) = (
 		prl ["ccall ", varUseToString f, " "];
 		prList varUseToString args)
-	    | prRHS (CPS.Dequeue vp) = prl["dequeue(", varUseToString vp, ")"]
-	    | prRHS (CPS.Enqueue(vp, tid, fiber)) = prl[
-		  "enqueue(", varUseToString vp, ",", varUseToString tid, ",",
-		  varUseToString fiber, ")"
-		]
 	    | prRHS (CPS.HostVProc) = pr "host_vproc()"
 	    | prRHS (CPS.VPLoad(offset, vp)) = prl [
 		  "load(", varUseToString vp, "+", IntInf.toString offset, ")"
