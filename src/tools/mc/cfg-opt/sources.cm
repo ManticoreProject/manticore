@@ -22,6 +22,7 @@ is
   ../cfg/sources.cm
 
   add-alloc-checks-fn.sml
+  census.sml
   cfa-cfg.sml
   cfg-opt-fn.sml
   feedback-fn.sml

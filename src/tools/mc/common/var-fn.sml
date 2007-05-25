@@ -32,8 +32,8 @@ signature VAR =
     val typeOf : var -> ty
 
   (* operations of use counts *)
-    val clrCount : var -> unit
     val useCount : var -> int
+    val clrCount : var -> unit
     val addToCount : (var * int) -> unit
 
     val same : (var * var) -> bool

@@ -145,8 +145,11 @@ val toNode = fn f => let
 		    end
 		  else f::fs
 	  val code = List.foldr rewrite [] code
+	  val module = CFG.mkModule(name, externs, code)
 	  in
-	    CFG.mkModule(name, externs, code)
+	  (* recompute the census counts *)
+	    Census.census module;
+	    module
 	  end
 
   end
