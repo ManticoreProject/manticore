@@ -161,7 +161,9 @@
                    (enq-vp k)))))
   
   (define (test-sched act es)
-    (map (lambda (e) (term (run ,act ,(fiber (term (λ (,(variable-not-in (term e) (term x-unit))) ,e)))))) es))
+    (map (lambda (e) 
+           (term (run ,act ,(fiber (term (λ (,(variable-not-in (term e) (term x-unit))) ,e)))))) 
+         es))
   
   (define tcas
     (list (term (let ((x (ref 999)))
@@ -271,5 +273,12 @@
   (define test-por
     (list (por (term 999) (term 0))
           (term ((deq-vp) (unit)))))
+  
+  (define test-default-action
+    (list 
+     (term
+      (begin
+        (enq-vp ,(fiber (term (λ (x) 0))))
+        1))))
 
   )
