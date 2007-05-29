@@ -299,18 +299,18 @@ structure Typechecker : sig
 		  (AST.PTupleExp es', mkTupleTy tys)
 	      end
 	    | PT.PArrayExp es => let
-		  fun chk (e, (es, ty)) =
-		      let
-			  val (e', ty') = chkExp(loc, depth, ve, e)
-		      in
-			  if not(U.unify (ty, ty'))
-			  then error(loc, ["type mismatch in parray"])
-			  else ();
-			  (e'::es, ty')
-		      end
+		fun chk (e, (es, ty)) =
+		    let
+			val (e', ty') = chkExp(loc, depth, ve, e)
+		    in
+			if not(U.unify (ty, ty'))
+			then error(loc, ["type mismatch in parray"])
+			else ();
+			(e'::es, ty')
+		    end
 		val (es', ty) = List.foldr chk ([], Ty.MetaTy (MetaVar.new depth)) es
 	      in
-		  (AST.PArrayExp es', B.parrayTy ty)
+		  (AST.PArrayExp(es', ty), B.parrayTy ty)
 	      end
 	    | PT.ComprehendExp (e, pbs, eo) => let
 		  val (pes, ve') = chkPBinds (loc, depth, ve, pbs)
@@ -349,20 +349,20 @@ structure Typechecker : sig
 		  chk es
 	      end
 	    | PT.IdExp x => (case E.find(ve, x)
-			      of SOME(E.Con dc) => let
-				     val (argTys, ty) = TU.instantiate (depth, DataCon.typeOf dc)
-				 in
-				     (AST.ConstExp(AST.DConst(dc, argTys)), ty)
-				 end
-			       | SOME(E.Var x') => let
-				     val (argTys, ty) = TU.instantiate (depth, Var.typeOf x')
-				 in
-				     (AST.VarExp(x', argTys), ty)
-				 end
-			       | NONE => (
-				 error(loc, ["undefined identifier ", Atom.toString x]);
-				 bogusExp)
-			    (* end case *))
+		of SOME(E.Con dc) => let
+		       val (argTys, ty) = TU.instantiate (depth, DataCon.typeOf dc)
+		   in
+		       (AST.ConstExp(AST.DConst(dc, argTys)), ty)
+		   end
+		 | SOME(E.Var x') => let
+		       val (argTys, ty) = TU.instantiate (depth, Var.typeOf x')
+		   in
+		       (AST.VarExp(x', argTys), ty)
+		   end
+		 | NONE => (
+		   error(loc, ["undefined identifier ", Atom.toString x]);
+		   bogusExp)
+	      (* end case *))
 	  (* end case *))
 
     and chkMatch (loc, depth, ve, argTy, resTy, match) = (case match

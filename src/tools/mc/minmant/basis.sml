@@ -190,15 +190,15 @@ structure Basis =
 	  val ins = AtomTable.insert tbl
 	  in
 	    List.app ins [
-	    (N.lte, lte),
-	    (N.lt, lt),
-	    (N.gte, gte),
-	    (N.gt, lt),
-	    (N.plus, plus),
-	    (N.minus, minus),
-	    (N.times, times),
-	    (N.div, div),
-	    (N.mod, mod),
+		(N.lte, lte),
+		(N.lt, lt),
+		(N.gte, gte),
+		(N.gt, lt),
+		(N.plus, plus),
+		(N.minus, minus),
+		(N.times, times),
+		(N.div, div),
+		(N.mod, mod)
 	      ];
 	    AtomTable.lookup tbl
 	  end

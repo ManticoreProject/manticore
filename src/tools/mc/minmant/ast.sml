@@ -22,7 +22,7 @@ structure AST =
       | TupleExp of exp list
       | RangeExp of (exp * exp * exp option * ty)	(* ty is element type *)
       | PTupleExp of exp list
-      | PArrayExp of exp list
+      | PArrayExp of exp list * ty			(* ty is element type *)
       | ComprehendExp of (exp * (pat * exp) list * exp option)
       | SpawnExp of exp
       | ConstExp of const
