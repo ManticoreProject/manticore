@@ -63,7 +63,7 @@ structure Translate : sig
 		EXP(trExpToV (env, e1, fn x =>
 		  B.mkIf(x, trExpToExp(env, e2), trExpToExp(env, e3))))
 	    | AST.CaseExp(e, rules) => raise Fail "case"
-	    | AST.ApplyExp(e1, e2) =>
+	    | AST.ApplyExp(e1, e2, ty) =>
 		EXP(trExpToV (env, e1, fn f =>
 		  trExpToV (env, e2, fn arg =>
 		    B.mkApply(f, [arg], handlerOf env))))
@@ -79,7 +79,7 @@ structure Translate : sig
 		  in
 		    B.mkStmt([t], B.E_Alloc(ty, xs), B.mkRet [t])
 		  end))
-	    | AST.RangeExp(lo, hi, optStep) =>
+	    | AST.RangeExp(lo, hi, optStep, ty) =>
 	    | AST.PTupleExp exps => raise Fail "PTupleExp"
 	    | AST.PArrayExp exps => raise Fail "PArrayExp"
 	    | AST.ComprehendExp _ => raise Fail "unexpected ComprehendExp"
