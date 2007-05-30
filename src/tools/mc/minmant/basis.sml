@@ -40,16 +40,16 @@ structure Basis =
 		    (N.listCons, SOME(AST.TupleTy[tv', AST.ConTy([tv'], listTyc)]))
     end (* local *)
 
-    val intTyc = TyCon.newAbsTyc (N.int, 0)
-    val longTyc = TyCon.newAbsTyc (N.long, 0)
-    val integerTyc = TyCon.newAbsTyc (N.integer, 0)
-    val floatTyc = TyCon.newAbsTyc (N.float, 0)
-    val doubleTyc = TyCon.newAbsTyc (N.double, 0)
-    val charTyc = TyCon.newAbsTyc (N.char, 0)
-    val runeTyc = TyCon.newAbsTyc (N.rune, 0)
-    val stringTyc = TyCon.newAbsTyc (N.string, 0)
-    val parrayTyc = TyCon.newAbsTyc (N.parray, 1)
-    val threadIdTyc = TyCon.newAbsTyc (N.thread_id, 0)
+    val intTyc = TyCon.newAbsTyc (N.int, 0, true)
+    val longTyc = TyCon.newAbsTyc (N.long, 0, true)
+    val integerTyc = TyCon.newAbsTyc (N.integer, 0, true)
+    val floatTyc = TyCon.newAbsTyc (N.float, 0, true)
+    val doubleTyc = TyCon.newAbsTyc (N.double, 0, true)
+    val charTyc = TyCon.newAbsTyc (N.char, 0, true)
+    val runeTyc = TyCon.newAbsTyc (N.rune, 0, true)
+    val stringTyc = TyCon.newAbsTyc (N.string, 0, true)
+    val parrayTyc = TyCon.newAbsTyc (N.parray, 1, false)
+    val threadIdTyc = TyCon.newAbsTyc (N.thread_id, 0, true)
 
   (* predefined types *)
     val boolTy = AST.ConTy([], boolTyc)
@@ -71,7 +71,6 @@ structure Basis =
     val FloatClass = [floatTy, doubleTy]
     val NumClass = IntClass @ FloatClass
     val OrderClass = NumClass @ [charTy, runeTy, stringTy]
-    val BasicClass = unitTy :: OrderClass
 
   (* operator symbols *) 
     val append =	Var.newPoly(Atom.toString N.append,
@@ -96,7 +95,7 @@ structure Basis =
     val long_lt =	monoVar(N.lt, longTy ** longTy --> boolTy)
     val integer_lt =	monoVar(N.lt, integerTy ** integerTy --> boolTy)
     val char_lt =	monoVar(N.lt, charTy ** charTy --> boolTy)
-    val rune_lt =	monoVar(N.lt, runeTy ** runey --> boolTy)
+    val rune_lt =	monoVar(N.lt, runeTy ** runeTy --> boolTy)
     val string_lt =	monoVar(N.lt, stringTy ** stringTy --> boolTy)
 
     val int_gte =	monoVar(N.gte, intTy ** intTy --> boolTy)
@@ -156,19 +155,19 @@ structure Basis =
 *)
 
     val (ov1, ov2, ov3, ov4) =
-	(TyVar.newClass (Atom.atom "'a", AST.Order),
-	 TyVar.newClass (Atom.atom "'a", AST.Order),
-	 TyVar.newClass (Atom.atom "'a", AST.Order),
-	 TyVar.newClass (Atom.atom "'a", AST.Order))
+	(TyVar.newClass (Atom.atom "'a", Types.Order),
+	 TyVar.newClass (Atom.atom "'a", Types.Order),
+	 TyVar.newClass (Atom.atom "'a", Types.Order),
+	 TyVar.newClass (Atom.atom "'a", Types.Order))
 
     val (nv1, nv2, nv3) =
-	(TyVar.newClass (Atom.atom "'a", AST.Num),
-	 TyVar.newClass (Atom.atom "'a", AST.Num),
-	 TyVar.newClass (Atom.atom "'a", AST.Num))
+	(TyVar.newClass (Atom.atom "'a", Types.Num),
+	 TyVar.newClass (Atom.atom "'a", Types.Num),
+	 TyVar.newClass (Atom.atom "'a", Types.Num))
 
     val (iv1, iv2) =
-	(TyVar.newClass (Atom.atom "'a", AST.Int),
-	 TyVar.newClass (Atom.atom "'a", AST.Int))
+	(TyVar.newClass (Atom.atom "'a", Types.Int),
+	 TyVar.newClass (Atom.atom "'a", Types.Int))
 
     val lte = (Types.TyScheme ([ov1], (Types.VarTy ov1) ** (Types.VarTy ov1) --> boolTy),
 	       [int_lte, long_lte, integer_lte, float_lte, double_lte, char_lte, rune_lte, string_lte])

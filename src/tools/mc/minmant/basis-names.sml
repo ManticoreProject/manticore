@@ -30,6 +30,9 @@ structure BasisNames =
 
   (* operators *)
     val eq =		Atom.atom "="
+    val neq =		Atom.atom "<>"
+    val gte =		Atom.atom ">="
+    val gt =		Atom.atom ">"
     val lte =		Atom.atom "<="
     val lt =		Atom.atom "<"
     val append =	Atom.atom "@"
