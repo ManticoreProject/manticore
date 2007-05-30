@@ -9,6 +9,7 @@
 Library
 
   structure AST
+  structure Basis
   structure FrontEnd
   structure Types
   structure TypeOf
