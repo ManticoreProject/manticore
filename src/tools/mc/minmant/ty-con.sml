@@ -11,7 +11,7 @@
 structure TyCon : sig
 
   (* create a new abstract type constructor *)
-    val newAbsTyc : (Atom.atom * int) -> Types.tycon
+    val newAbsTyc : (Atom.atom * int * bool) -> Types.tycon
 
   (* create a new datatype tyc; it will have an empty constructor list *)
     val newDataTyc : (Atom.atom * AST.tyvar list) -> Types.tycon
@@ -33,10 +33,11 @@ structure TyCon : sig
     datatype tycon = datatype Types.tycon
 
   (* create a new abstract type constructor *)
-    fun newAbsTyc (name, arity) = AbsTyc{
+    fun newAbsTyc (name, arity, eq) = AbsTyc{
 	    name = name,
 	    stamp = Stamp.new(),
-	    arity = arity
+	    arity = arity,
+	    eq = eq
 	  }
 
   (* create a new datatype tyc; it will have an empty constructor list *)

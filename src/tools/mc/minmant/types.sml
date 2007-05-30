@@ -52,7 +52,8 @@ structure Types =
       = AbsTyc of {
 	    stamp : Stamp.stamp,	(* unique stamp *)
 	    name : Atom.atom,		(* the type name *)
-	    arity : int			(* number of type parameters *)
+	    arity : int,		(* number of type parameters *)
+	    eq : bool			(* is it an equality type? *)
 	  }
       | DataTyc of {
 	    stamp : Stamp.stamp,	(* unique stamp *)

@@ -66,6 +66,13 @@ structure Basis =
     fun parrayTy ty = AST.ConTy([ty], parrayTyc)
     val threadIdTy = AST.ConTy([], threadIdTyc)
 
+  (* type classes as lists of types *)
+    val IntClass = [intTy, longTy, integerTy]
+    val FloatClass = [floatTy, doubleTy]
+    val NumClass = IntClass @ FloatClass
+    val OrderClass = NumClass @ [charTy, runeTy, stringTy]
+    val BasicClass = unitTy :: OrderClass
+
   (* operator symbols *) 
     val append =	Var.newPoly(Atom.toString N.append,
 			  forall(fn tv => let

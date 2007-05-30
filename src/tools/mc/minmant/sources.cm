@@ -11,6 +11,7 @@ Library
   structure AST
   structure FrontEnd
   structure Types
+  structure TypeOf
   structure Var
 
 is
@@ -33,6 +34,7 @@ is
   ty-var.sml
   types.sml
   type-class.sml
+  type-of.sml
   type-util.sml
   unify.sml
   var.sml

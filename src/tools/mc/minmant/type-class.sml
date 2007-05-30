@@ -1,37 +1,44 @@
 (* type-class.sml
  *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
  * Utility functions for dealing with type classes.
  *)
 
-structure TypeClass =
-struct
+structure TypeClass : sig
 
-structure B = Basis
-structure Ty = Types
+    val new : Types.ty_class -> Types.ty
 
-val IntClass = [B.intTy, B.longTy, B.integerTy]
-val FloatClass = [B.floatTy, B.doubleTy]
-val NumClass = IntClass @ FloatClass
-val OrderClass = NumClass @ [B.charTy, B.runeTy, B.stringTy]
-val BasicClass = B.unitTy :: OrderClass
+    val toString : Types.ty_class -> string
 
-fun new cl = Ty.ClassTy (Ty.Class (ref (Ty.CLASS cl)))
-		 
-fun isClass (Ty.ConTy (_, tyc), c) =
-    List.exists (fn (Ty.ConTy (_, tyc')) => TyCon.same (tyc, tyc')) c
-  | isClass _ = false
-		
-fun isEqualityType t =
-    let
-	fun arg (Ty.DCon {argTy, ...}) = argTy
-    in
-	isClass (t, BasicClass) orelse
-	(case t of
-	     Ty.TupleTy tys => List.all isEqualityType tys
-	   | Ty.ConTy (_, Ty.DataTyc {cons, ...}) =>
-	     List.all isEqualityType (List.mapPartial arg (!cons))
-	   | _ => false
-	(* end case *))
-    end
+  (* is a type in a type class (represented as a list of types)? *) 
+    val isClass : Types.ty * Types.ty list -> bool
 
-end
+  (* is the type an equality type? *)
+    val isEqualityType : Types.ty  -> bool
+
+  end = struct
+
+    structure Ty = Types
+
+    fun new cl = Ty.ClassTy(Ty.Class(ref(Ty.CLASS cl)))
+
+    fun toString Ty.Int = "INT"
+      | toString Ty.Float = "FLOAT"
+      | toString Ty.Num = "NUM"
+      | toString Ty.Order = "ORDER"
+      | toString Ty.Eq = "EQ"
+
+    fun isClass (Ty.ConTy (_, tyc), c) =
+	  List.exists (fn (Ty.ConTy(_, tyc')) => TyCon.same (tyc, tyc')) c
+      | isClass _ = false
+
+    fun isEqualityType Ty.ErrorTy = true
+      | isEqualityType (Ty.MetaTy(Ty.MVar{info=ref(Ty.INSTANCE ty), ...})) = isEqualityType ty
+      | isEqualityType (Ty.ClassTy _) = true  (* all classes are <= Eq *)
+      | isEqualityType (Ty.ConTy([], Ty.AbsTyc{eq, ...})) = eq
+      | isEqualityType (Ty.TupleTy tys) = List.all isEqualityType tys
+      | isEqualityType _ = false
+
+  end

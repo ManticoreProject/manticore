@@ -16,6 +16,10 @@ structure TypeOf : sig
 
     structure Ty = Types
     structure B = Basis
+    structure TU = TypeUtil
+
+    fun monoTy (Ty.TyScheme([], ty)) = TU.prune ty
+      | monoTy _ = raise Fail "unexpected type scheme"
 
     fun exp (AST.LetExp(_, e)) = exp e
       | exp (AST.IfExp(_, _, _, ty)) = ty
@@ -24,13 +28,26 @@ structure TypeOf : sig
       | exp (AST.TupleExp es) = Ty.TupleTy(List.map exp es)
       | exp (AST.RangeExp(_, _, _, ty)) = B.parrayTy ty
       | exp (AST.PTupleExp es) = Ty.TupleTy(List.map exp es)
-      | exp (AST.PArrayExp of exp list
+      | exp (AST.PArrayExp(_, ty)) = B.parrayTy ty
       | exp (AST.ComprehendExp(e, _, _)) = B.parrayTy(exp e)
       | exp (AST.SpawnExp _) = Basis.threadIdTy
-      | exp (AST.ConstExp of const
-      | exp (AST.VarExp(x, argTys)) = (* apply typeOf dc to argTys *)
-      | exp (AST.SeqExp of (exp * exp)
-      | exp (AST.OverloadExp of overload_var ref
+      | exp (AST.ConstExp c) = const c
+      | exp (AST.VarExp(x, argTys)) = TU.apply(Var.typeOf x, argTys)
+      | exp (AST.SeqExp(_, e)) = exp e
+      | exp (AST.OverloadExp(ref(Instance x))) =
+	(* NOTE: all overload instances are monomorphic *)
+	  monoTy (Var.typeOf x)
 
-    and const (AST.DConst(dc, argTys)) = (* apply typeOf dc to argTys *)
+    and const (AST.DConst(dc, argTys)) = TU.apply(DataCon.typeOf dc, argTys)
       | const (AST.LConst(_, ty)) = ty
+
+    and pat (AST.ConPat(dc, argTys, _)) = let
+	  val Ty.FunTy(_, ty) = TU.apply(DataCon.typeOf dc, argTys)
+	  in
+	    ty
+	  end
+      | pat (AST.TuplePat ps) = Ty.TupleTy(List.map pat es)
+      | pat (AST.VarPat x) = monoTy (Var.typeOf x)
+      | pat (AST.ConstPat c) = const c
+
+  end
