@@ -51,14 +51,23 @@ structure Typechecker : sig
     val bogusPat = AST.TuplePat[]
 
   (* typecheck a literal *)
-(* FIXME: this check should be done after overload resolution *)
-    fun chkLit (loc, PT.IntLit i) =
-	  if ((i < ~0x40000000) orelse (0x3FFFFFFF < i))
-	    then (
-	      error(loc, ["integer literal ", IntInf.toString i, " out of range"]);
-	      (AST.IConst 0, Basis.intTy))
-	    else (AST.IConst i, Basis.intTy)
-      | chkLit (_, PT.StrLit s) = (AST.SConst s, Basis.stringTy)
+    fun chkLit (_, PT.IntLit i) =
+	let
+	    val ty = TypeClass.new Ty.Int
+	    val rc = ref (ty, TypeClass.IntClass)
+	in
+	    (Overload.add_lit rc;
+	     (AST.LConst (Literal.Int i, ty), ty))
+	end
+      | chkLit (_, PT.FloatLit f) =
+	let
+	    val ty = TypeClass.new Ty.Float
+	    val rc = ref (ty, TypeClass.FloatClass)
+	in
+	    (Overload.add_lit rc;
+	     (AST.LConst (Literal.Float f, ty), ty))
+	end
+      | chkLit (_, PT.StrLit s) = (AST.LConst (Literal.String s, Basis.stringTy), Basis.stringTy)
 
   (* typecheck value declarations as described in Section 6.6 *)
     fun chkValDcl (loc, depth, ve, decl) = (case decl
@@ -202,9 +211,9 @@ structure Typechecker : sig
 		      let
 			  val (tysch, vars) = Basis.lookupOp(bop)
 			  val (argTys, resTy, instTy) = chkApp tysch
-			  val ovar = AST.Unknown (instTy, vars)
+			  val ovar = ref (AST.Unknown (instTy, vars))
 		      in
-			  (Overload.add ovar;
+			  (Overload.add_var ovar;
 			   (mkApp (ovar, argTys), resTy))
 		      end
 (*
@@ -586,11 +595,13 @@ structure Typechecker : sig
 	  (* end case *))
 
     fun check (dcls, exp) = let
-	  fun chkDcls (te, ve, []) = chkExp(1, 0, ve, exp)
-	    | chkDcls (te, ve, d::ds) =
-		chkTopDcl (1, te, ve, d, fn (te, ve) => chkDcls (te, ve, ds))
-	  in
-	    SOME (#1 (chkDcls (Basis.te0, Basis.ve0, dcls)))
-	  end
+	fun chkDcls (te, ve, []) = chkExp(1, 0, ve, exp)
+	  | chkDcls (te, ve, d::ds) =
+	    chkTopDcl (1, te, ve, d, fn (te, ve) => chkDcls (te, ve, ds))
+	    
+	val ret = SOME (#1 (chkDcls (Basis.te0, Basis.ve0, dcls)))
+    in
+	(Overload.resolve (); ret)
+    end
 
   end
