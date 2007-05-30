@@ -34,9 +34,10 @@ structure TypeOf : sig
       | exp (AST.ConstExp c) = const c
       | exp (AST.VarExp(x, argTys)) = TU.apply(Var.typeOf x, argTys)
       | exp (AST.SeqExp(_, e)) = exp e
-      | exp (AST.OverloadExp(ref(Instance x))) =
+      | exp (AST.OverloadExp(ref(AST.Instance x))) =
 	(* NOTE: all overload instances are monomorphic *)
 	  monoTy (Var.typeOf x)
+      | exp (AST.OverloadExp _) = raise Fail "unresolved overloading"
 
     and const (AST.DConst(dc, argTys)) = TU.apply(DataCon.typeOf dc, argTys)
       | const (AST.LConst(_, ty)) = ty
@@ -46,7 +47,7 @@ structure TypeOf : sig
 	  in
 	    ty
 	  end
-      | pat (AST.TuplePat ps) = Ty.TupleTy(List.map pat es)
+      | pat (AST.TuplePat ps) = Ty.TupleTy(List.map pat ps)
       | pat (AST.VarPat x) = monoTy (Var.typeOf x)
       | pat (AST.ConstPat c) = const c
 

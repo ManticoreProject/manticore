@@ -21,9 +21,6 @@ structure Typechecker : sig
 
     val atos = Atom.toString
 
-  (* list of overload vars for resolution *)
-    val overloads = ref []
-
     fun error (lnum, msg) = Error.say (
 	  "Error [" :: !Error.sourceFile :: ":" :: Int.toString lnum :: "] "
 	    :: (msg @ ["\n"]))
@@ -54,18 +51,18 @@ structure Typechecker : sig
     fun chkLit (_, PT.IntLit i) =
 	let
 	    val ty = TypeClass.new Ty.Int
-	    val rc = ref (ty, TypeClass.IntClass)
+	    val rc = ref (ty, Basis.IntClass)
 	in
-	    (Overload.add_lit rc;
-	     (AST.LConst (Literal.Int i, ty), ty))
+	    Overload.add_lit rc;
+	     (AST.LConst (Literal.Int i, ty), ty)
 	end
-      | chkLit (_, PT.FloatLit f) =
+      | chkLit (_, PT.FltLit f) =
 	let
 	    val ty = TypeClass.new Ty.Float
-	    val rc = ref (ty, TypeClass.FloatClass)
+	    val rc = ref (ty, Basis.FloatClass)
 	in
-	    (Overload.add_lit rc;
-	     (AST.LConst (Literal.Float f, ty), ty))
+	    Overload.add_lit rc;
+	     (AST.LConst (Literal.Float f, ty), ty)
 	end
       | chkLit (_, PT.StrLit s) = (AST.LConst (Literal.String s, Basis.stringTy), Basis.stringTy)
 
@@ -195,7 +192,7 @@ structure Typechecker : sig
 	    | PT.BinaryExp(e1, bop, e2) => let
 		  val (e1', ty1) = chkExp (loc, depth, ve, e1)
 		  val (e2', ty2) = chkExp (loc, depth, ve, e2)
-		  fun mkApp arg = AST.ApplyExp(AST.OverloadExp arg, AST.TupleExp[e1', e2'])
+		  fun mkApp (arg, resTy) = AST.ApplyExp(AST.OverloadExp arg, AST.TupleExp[e1', e2'], resTy)
 		  fun chkApp tyScheme = let
 		      val (tys, instTy as AST.FunTy(argTy, resTy)) = TU.instantiate (depth, tyScheme)
 		  in
@@ -205,7 +202,7 @@ structure Typechecker : sig
 		      (tys, resTy, instTy)
 		  end
 	      in
-		  if Atom.same(bop, BasisName.listCons)
+		  if Atom.same(bop, BasisNames.listCons)
 		  then raise Fail "Not done yet."
 		  else
 		      let
@@ -214,7 +211,7 @@ structure Typechecker : sig
 			  val ovar = ref (AST.Unknown (instTy, vars))
 		      in
 			  (Overload.add_var ovar;
-			   (mkApp (ovar, argTys), resTy))
+			   (mkApp (ovar, resTy), resTy))
 		      end
 (*
 		  if Atom.same(bop, BasisNames.eq)
@@ -372,6 +369,7 @@ structure Typechecker : sig
 		   error(loc, ["undefined identifier ", Atom.toString x]);
 		   bogusExp)
 	      (* end case *))
+	    | PT.ConstraintExp(e, ty) => raise Fail "ConstraintExp" (* FIXME *)
 	  (* end case *))
 
     and chkMatch (loc, depth, ve, argTy, resTy, match) = (case match
@@ -447,6 +445,7 @@ structure Typechecker : sig
 			(bogusPat, ve', bogusTy))
 		  (* end case *)
 		end
+	    | PT.BinaryPat(p1, conid, p2) => raise Fail "BinaryPat" (* FIXME *)
 	    | PT.TuplePat pats => let
 		val (pats, ve', ty) = chkPats (loc, depth, ve, pats)
 		in
@@ -476,7 +475,7 @@ structure Typechecker : sig
 			(AST.VarPat x', E.insert(ve, x, E.Var x'), ty)
 		      end
 		(* end case *))
-	    | PT.ConstraintPat(p, ty) => ??
+	    | PT.ConstraintPat(p, ty) => raise Fail "ConstraintPat unimplemented" (* FIXME *)
 	  (* end case *))
 
     and chkPats (loc, depth, ve, pats : PT.pat list) = let
