@@ -35,7 +35,9 @@ structure TypeClass : sig
       | isClass _ = false
 
     fun isEqualityType Ty.ErrorTy = true
-      | isEqualityType (Ty.MetaTy(Ty.MVar{info=ref(Ty.INSTANCE ty), ...})) = isEqualityType ty
+      | isEqualityType (Ty.MetaTy(Ty.MVar{info as ref(Ty.INSTANCE ty), ...})) = (
+	  info := Ty.UNIV 0; (* blackhole *)
+	  isEqualityType ty before info := Ty.INSTANCE ty)
       | isEqualityType (Ty.ClassTy _) = true  (* all classes are <= Eq *)
       | isEqualityType (Ty.ConTy([], Ty.AbsTyc{eq, ...})) = eq
       | isEqualityType (Ty.TupleTy tys) = List.all isEqualityType tys
