@@ -117,10 +117,10 @@ structure Unify : sig
 				   
 	and unifyWithClass (ty, c as Ty.Class (info as ref(Ty.CLASS cl)), rc) =
 	    if (case cl of
-		    Ty.Int => TC.isClass (ty, TC.IntClass)
-		  | Ty.Float => TC.isClass (ty, TC.FloatClass)
-		  | Ty.Num => TC.isClass (ty, TC.NumClass)
-		  | Ty.Order => TC.isClass (ty, TC.OrderClass)
+		    Ty.Int => TC.isClass (ty, Basis.IntClass)
+		  | Ty.Float => TC.isClass (ty, Basis.FloatClass)
+		  | Ty.Num => TC.isClass (ty, Basis.NumClass)
+		  | Ty.Order => TC.isClass (ty, Basis.OrderClass)
 		  | Ty.Eq => TC.isEqualityType ty
 	       (* end case *))
 	    then (assign_cl (c, Ty.RESOLVED ty, rc); true)
