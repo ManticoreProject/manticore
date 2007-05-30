@@ -17,8 +17,10 @@ structure HLOpEnv : sig
     val atomicQDequeue : HLOp.hlop	(* remove an item [atomic] *)
 *)
 
-  (* high-level operations from ManticoreOps *)
+  (* high-level operations used to implement Manticore language constructs *)
+    val listAppendOp : HLOp.hlop
     val spawnOp : HLOp.hlop
+    val threadExitOp : HLOp.hlop
 
   (* scheduler operations *)
     val runOp : HLOp.hlop
@@ -42,11 +44,13 @@ structure HLOpEnv : sig
     val sigActTy = BTy.T_Cont[sigTy]
     val tidTy = BTy.tidTy
     val exhTy = BTy.exhTy
+    val listTy = BTy.T_TyCon Basis.listTyc
 
     fun new (name, params, res, attrs) =
 	  H.new(Atom.atom name, {params= List.map HLOp.PARAM params, exh=[], results=res}, attrs)
 
   (* high-level operations used to implement Manticore language constructs *)
+    val listAppendOp = new("list-append", [listTy, listTy], [], [])
     val spawnOp = new("spawn", [BTy.T_Fun([], [exhTy], [])], [tidTy], [])
     val threadExitOp = new("thread-exit", [], [], [H.NORETURN])
 

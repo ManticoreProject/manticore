@@ -28,7 +28,7 @@ structure StdEnv : sig
       | HLOp of HLOp.hlop
 
     val operators = [
-	  (B.append, HLOp H.listappendOp),
+	  (B.append, HLOp H.listAppendOp),
 
 	  (B.int_lte, Prim2 P.I32Lte),
 	  (B.float_lte, Prim2 P.F32Lte),
