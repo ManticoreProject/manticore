@@ -47,6 +47,40 @@ structure Typechecker : sig
   (* a pattern for when there is an error *)
     val bogusPat = AST.TuplePat[]
 
+  (* typecheck type expressions as described in Section 6.4 *)
+    fun chkTy (loc, te, tve, ty) = (case ty
+	   of PT.MarkTy{lnum, tree} => chkTy(lnum, te, tve, tree)
+	    | PT.NamedTy(tyArgs, id) => let
+		val tyArgs' = List.map (fn ty => chkTy(loc, te, tve, ty)) tyArgs
+		in
+		  case Env.find(te, id)
+		   of SOME(E.TyDef(AST.TyScheme(tvs, ty))) =>
+			if (List.length tvs <> List.length tyArgs')
+			  then (
+			    error(loc, ["arity mismatch for ", atos id]);
+			    bogusTy)
+			  else TU.substitute (ty, ListPair.zip(tvs, tyArgs'))
+		    | SOME(E.TyCon tyc') =>
+			if (TyCon.arityOf tyc' <> List.length tyArgs')
+			  then (
+			    error(loc, ["arity mismatch for ", atos id]);
+			    bogusTy)
+			  else AST.ConTy(tyArgs', tyc')
+		    | NONE => (
+			error(loc, ["undefined type constructor ", atos id]);
+			bogusTy)
+		  (* end case *)
+		end
+	    | PT.VarTy tv => (case Env.find(tve, tv)
+		 of SOME tv' => AST.VarTy tv'
+		  | NONE => (error(loc, ["unbound type variable ", atos tv]); bogusTy)
+		(* end case *))
+	    | PT.TupleTy tys =>
+		mkTupleTy(List.map (fn ty => chkTy(loc, te, tve, ty)) tys)
+	    | PT.FunTy(ty1, ty2) =>
+		AST.FunTy(chkTy(loc, te, tve, ty1), chkTy(loc, te, tve, ty2))
+	  (* end case *))
+
   (* typecheck a literal *)
     fun chkLit (_, PT.IntLit i) =
 	let
@@ -475,7 +509,12 @@ structure Typechecker : sig
 			(AST.VarPat x', E.insert(ve, x, E.Var x'), ty)
 		      end
 		(* end case *))
-	    | PT.ConstraintPat(p, ty) => raise Fail "ConstraintPat unimplemented" (* FIXME *)
+	    | PT.ConstraintPat(p, ty) => let
+(* FIXME: we need the type environment to check ty! *)
+		val (p', ve, ty') = chkPat (loc, depth, ve, pat)
+		in
+		  (p', ve, ty')
+		end
 	  (* end case *))
 
     and chkPats (loc, depth, ve, pats : PT.pat list) = let
@@ -491,40 +530,6 @@ structure Typechecker : sig
 	      | _ => (pats', ve', mkTupleTy tys)
 	    (* end case *)
 	  end
-
-  (* typecheck type expressions as described in Section 6.4 *)
-    fun chkTy (loc, te, tve, ty) = (case ty
-	   of PT.MarkTy{lnum, tree} => chkTy(lnum, te, tve, tree)
-	    | PT.NamedTy(tyArgs, id) => let
-		val tyArgs' = List.map (fn ty => chkTy(loc, te, tve, ty)) tyArgs
-		in
-		  case Env.find(te, id)
-		   of SOME(E.TyDef(AST.TyScheme(tvs, ty))) =>
-			if (List.length tvs <> List.length tyArgs')
-			  then (
-			    error(loc, ["arity mismatch for ", atos id]);
-			    bogusTy)
-			  else TU.substitute (ty, ListPair.zip(tvs, tyArgs'))
-		    | SOME(E.TyCon tyc') =>
-			if (TyCon.arityOf tyc' <> List.length tyArgs')
-			  then (
-			    error(loc, ["arity mismatch for ", atos id]);
-			    bogusTy)
-			  else AST.ConTy(tyArgs', tyc')
-		    | NONE => (
-			error(loc, ["undefined type constructor ", atos id]);
-			bogusTy)
-		  (* end case *)
-		end
-	    | PT.VarTy tv => (case Env.find(tve, tv)
-		 of SOME tv' => AST.VarTy tv'
-		  | NONE => (error(loc, ["unbound type variable ", atos tv]); bogusTy)
-		(* end case *))
-	    | PT.TupleTy tys =>
-		mkTupleTy(List.map (fn ty => chkTy(loc, te, tve, ty)) tys)
-	    | PT.FunTy(ty1, ty2) =>
-		AST.FunTy(chkTy(loc, te, tve, ty1), chkTy(loc, te, tve, ty2))
-	  (* end case *))
 
   (* check a list of type variables *)
     fun chkTyVars (loc, tvs) = let
@@ -594,13 +599,15 @@ structure Typechecker : sig
 	  (* end case *))
 
     fun check (dcls, exp) = let
-	fun chkDcls (te, ve, []) = chkExp(1, 0, ve, exp)
-	  | chkDcls (te, ve, d::ds) =
-	    chkTopDcl (1, te, ve, d, fn (te, ve) => chkDcls (te, ve, ds))
+	  fun chkDcls (te, ve, []) = chkExp(1, 0, ve, exp)
+	    | chkDcls (te, ve, d::ds) =
+	      chkTopDcl (1, te, ve, d, fn (te, ve) => chkDcls (te, ve, ds))
 	    
-	val ret = SOME (#1 (chkDcls (Basis.te0, Basis.ve0, dcls)))
-    in
-	(Overload.resolve (); ret)
-    end
+	  val ret = SOME (#1 (chkDcls (Basis.te0, Basis.ve0, dcls)))
+	  in
+	    print "resolve overloading\n";
+	    Overload.resolve ();
+	    ret
+	  end
 
   end

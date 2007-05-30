@@ -13,7 +13,14 @@ structure FrontEnd : sig
   end = struct
 
   (* parse and typecheck a file *)
-    fun load file = Option.mapPartial Typechecker.check (Parser.parseFile file)
+    fun load file = (
+	  print(concat["parsing ", file, "\n"]);
+	  case Parser.parseFile file
+	   of SOME pt => (
+		print(concat["typechecking ", file, "\n"]);
+		Typechecker.check pt)
+	    | NONE => NONE
+	  (* end case *))
 
   end
 

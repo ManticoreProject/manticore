@@ -44,21 +44,19 @@ structure Overload : sig
 		   | AST.Instance _ => false
 		(* end case *))
 
-	    fun try_lit (rc as (ref (ty, tl))) =
-		 let
-		     fun try (t::ts) =
-			 if U.unifiable (ty, t)
-			 then try ts
-			 else ((case ts of
-				    [] => raise Fail "type mismatch"
-				  | [x] => (U.unify (ty, x); rc := (ty, []))
-				  | _ => rc := (ty, ts)
-			       (* end case *));
-			       try ts; true)
-		       | try [] = false
-		 in
-		     try tl
-		 end
+	    fun try_lit (ref(_, [])) = false
+	      | try_lit (rc as (ref (ty, tl))) = let
+		  fun try (changed, t::ts, ok) = if U.unifiable(ty, t)
+			then try(changed, ts, t::ok)
+			else try(true, ts, ok)
+		    | try (changed, [], ok) = (changed, ok)
+		  in
+		    case try (false, tl, [])
+		     of (_, []) => raise Fail "type mismatch for literal"
+		      | (_, [t]) => (U.unify (ty, t); rc := (ty, []); true)
+		      | (changed, ok) => (rc := (ty, ok); changed)
+		    (* end case *)
+		  end
 
 	    fun default_type Types.Int = Basis.intTy
 	      | default_type Types.Float = Basis.floatTy

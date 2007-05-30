@@ -219,6 +219,8 @@ structure Basis =
     val sub =		monoVar(N.sub, stringTy ** intTy --> intTy)
     val substring =	monoVar(N.substring, AST.TupleTy[stringTy, intTy, intTy] --> stringTy)
     val concat =	monoVar(N.concat, listTy stringTy --> stringTy)
+    val powd =		monoVar(N.powd, doubleTy ** doubleTy --> doubleTy)
+    val sqrtd =		monoVar(N.sqrtd, doubleTy --> doubleTy)
 
   (* the predefined type environment *)
     val te0 = Env.fromList [
@@ -249,7 +251,9 @@ structure Basis =
 	    (N.size,		Env.Var size),
 	    (N.sub,		Env.Var sub),
 	    (N.substring,	Env.Var substring),
-	    (N.concat,		Env.Var concat)
+	    (N.concat,		Env.Var concat),
+	    (N.powd,		Env.Var powd),
+	    (N.sqrtd,		Env.Var sqrtd)
 	  ]
 
     end (* local *)

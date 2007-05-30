@@ -59,5 +59,7 @@ structure BasisNames =
     val sub =		Atom.atom "sub"
     val substring =	Atom.atom "substring"
     val concat =	Atom.atom "concat"
+    val powd =		Atom.atom "powd"
+    val sqrtd =		Atom.atom "sqrtd"
 
   end
