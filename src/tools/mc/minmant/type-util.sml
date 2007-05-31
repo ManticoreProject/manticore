@@ -209,7 +209,7 @@ structure TypeUtil : sig
 	   of Ty.UNIV d => concat["$", Stamp.toString stamp, "@", Int.toString d]
 	    | Ty.INSTANCE ty => (
 		info := Ty.UNIV(~1);
-		concat["$", Stamp.toString stamp, " == ", toString ty]
+		concat["($", Stamp.toString stamp, " == ", toString ty, ")"]
 		  before info := Ty.INSTANCE ty)
 	  (* end case *))
       | toString (Ty.ClassTy(Ty.Class(ref(Ty.CLASS cls)))) =
@@ -224,6 +224,7 @@ structure TypeUtil : sig
 	    "(", String.concatWith "," (List.map toString tys), ")",
 	    Atom.toString(TyCon.nameOf tyc)
 	  ]
+      | toString (Ty.FunTy(ty1 as Ty.FunTy _, ty2)) = concat["(", toString ty1, ") -> ", toString ty2]
       | toString (Ty.FunTy(ty1, ty2)) = concat[toString ty1, " -> ", toString ty2]
       | toString (Ty.TupleTy tys) = "<tuplety>"
 

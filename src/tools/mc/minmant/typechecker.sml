@@ -82,23 +82,21 @@ structure Typechecker : sig
 	  (* end case *))
 
   (* typecheck a literal *)
-    fun chkLit (_, PT.IntLit i) =
-	let
-	    val ty = TypeClass.new Ty.Int
-	    val rc = ref (ty, Basis.IntClass)
-	in
+    fun chkLit (_, PT.IntLit i) = let
+	  val ty = TypeClass.new Ty.Int
+	  val rc = ref (ty, Basis.IntClass)
+	  in
 	    Overload.add_lit rc;
-	     (AST.LConst (Literal.Int i, ty), ty)
-	end
-      | chkLit (_, PT.FltLit f) =
-	let
-	    val ty = TypeClass.new Ty.Float
-	    val rc = ref (ty, Basis.FloatClass)
-	in
+	    (AST.LConst(Literal.Int i, ty), ty)
+	  end
+      | chkLit (_, PT.FltLit f) = let
+	  val ty = TypeClass.new Ty.Float
+	  val rc = ref (ty, Basis.FloatClass)
+	  in
 	    Overload.add_lit rc;
-	     (AST.LConst (Literal.Float f, ty), ty)
-	end
-      | chkLit (_, PT.StrLit s) = (AST.LConst (Literal.String s, Basis.stringTy), Basis.stringTy)
+	    (AST.LConst(Literal.Float f, ty), ty)
+	  end
+      | chkLit (_, PT.StrLit s) = (AST.LConst(Literal.String s, Basis.stringTy), Basis.stringTy)
 
   (* typecheck value declarations as described in Section 6.6 *)
     fun chkValDcl (loc, depth, te, ve, decl) = (case decl
@@ -519,7 +517,7 @@ structure Typechecker : sig
 		(* end case *))
 	    | PT.ConstraintPat(p, ty) => let
 		val constraintTy = chkTy (loc, te, E.empty, ty)
-		val (p', ve, ty') = chkPat (loc, depth, te, ve, pat)
+		val (p', ve, ty') = chkPat (loc, depth, te, ve, p)
 		in
 		   if not(U.unify(ty', constraintTy))
 		     then error(loc, ["type mismatch in constraint pattern"])
