@@ -101,11 +101,11 @@ structure Typechecker : sig
       | chkLit (_, PT.StrLit s) = (AST.LConst (Literal.String s, Basis.stringTy), Basis.stringTy)
 
   (* typecheck value declarations as described in Section 6.6 *)
-    fun chkValDcl (loc, depth, ve, decl) = (case decl
-	   of PT.MarkVDecl{lnum, tree} => chkValDcl (lnum, depth, ve, tree)
+    fun chkValDcl (loc, depth, te, ve, decl) = (case decl
+	   of PT.MarkVDecl{lnum, tree} => chkValDcl (lnum, depth, te, ve, tree)
 	    | PT.ValVDecl(pat, e) => let
-		val (pat', ve', lhsTy) = chkPat(loc, depth, ve, pat)
-		val (e', rhsTy) = chkExp (loc, depth, ve, e)
+		val (pat', ve', lhsTy) = chkPat(loc, depth, te, ve, pat)
+		val (e', rhsTy) = chkExp (loc, depth, te, ve, e)
 		in
 		  if not(U.unify(lhsTy, rhsTy))
 		    then error (loc, ["type mismatch in val binding"])
@@ -146,8 +146,8 @@ structure Typechecker : sig
 			| PT.Funct(f, param, body) => let
 			    val SOME(E.Var f') = E.find(ve', f)
 			    val AST.TyScheme(_, funTy) = Var.typeOf f'
-			    val (param', ve'', paramTy) = chkPat (loc, depth', ve', param)
-			    val (body', bodyTy) = chkExp (loc, depth', ve'', body)
+			    val (param', ve'', paramTy) = chkPat (loc, depth', te, ve', param)
+			    val (body', bodyTy) = chkExp (loc, depth', te, ve'', body)
 			    in
 			      if not(U.unify(funTy, AST.FunTy(paramTy, bodyTy)))
 				then error(loc, ["type mismatch in function ", Atom.toString f])
@@ -169,12 +169,12 @@ structure Typechecker : sig
 	  (* end case *))
 
   (* typecheck expressions as described in Section 6.8 *)
-    and chkExp (loc, depth, ve, exp) = (case exp
-	   of PT.MarkExp{lnum, tree} => chkExp (lnum, depth, ve, tree)
+    and chkExp (loc, depth, te, ve, exp) = (case exp
+	   of PT.MarkExp{lnum, tree} => chkExp (lnum, depth, te, ve, tree)
 	    | PT.LetExp(valDcls, exp) => let
-		  fun chkDcls ([], ve) = chkExp (loc, depth, ve, exp)
+		  fun chkDcls ([], ve) = chkExp (loc, depth, te, ve, exp)
 		    | chkDcls (vd::vds, ve) = let
-			  val (bind, ve) = chkValDcl (loc, depth, ve, vd)
+			  val (bind, ve) = chkValDcl (loc, depth, te, ve, vd)
 			  val (e', ty) = chkDcls (vds, ve)
 		      in
 		          (AST.LetExp(bind, e'), ty)
@@ -183,9 +183,9 @@ structure Typechecker : sig
 		  chkDcls (valDcls, ve)
 	      end
 	    | PT.IfExp(e1, e2, e3) => let
-		  val (e1', ty1) = chkExp (loc, depth, ve, e1)
-		  val (e2', ty2) = chkExp (loc, depth, ve, e2)
-		  val (e3', ty3) = chkExp (loc, depth, ve, e3)
+		  val (e1', ty1) = chkExp (loc, depth, te, ve, e1)
+		  val (e2', ty2) = chkExp (loc, depth, te, ve, e2)
+		  val (e3', ty3) = chkExp (loc, depth, te, ve, e3)
 	      in
 		  if not(U.unify(ty1, Basis.boolTy))
 		  then error(loc, ["type of conditional not bool"])
@@ -197,17 +197,17 @@ structure Typechecker : sig
 		  else (AST.IfExp(e1', e2', e3', ty2), ty2)
 	      end
 	    | PT.CaseExp(e, cases) => let
-		  val (e', argTy) = chkExp (loc, depth, ve, e)
+		  val (e', argTy) = chkExp (loc, depth, te, ve, e)
 		  val resTy = AST.MetaTy(MetaVar.new depth)
 		  val matches = List.map
-				    (fn m => chkMatch(loc, depth, ve, argTy, resTy, m))
+				    (fn m => chkMatch(loc, depth, te, ve, argTy, resTy, m))
 				    cases
 	      in
 		  (AST.CaseExp(e', matches, resTy), resTy)
 	      end
 	    | PT.AndAlsoExp(e1, e2) => let
-		  val (e1', ty1) = chkExp (loc, depth, ve, e1)
-		  val (e2', ty2) = chkExp (loc, depth, ve, e2)
+		  val (e1', ty1) = chkExp (loc, depth, te, ve, e1)
+		  val (e2', ty2) = chkExp (loc, depth, te, ve, e2)
 	      in
 		  if not(U.unify(ty1, Basis.boolTy) andalso U.unify(ty2, Basis.boolTy))
 		  then error(loc, ["arguments of andalso must have type bool"])
@@ -215,8 +215,8 @@ structure Typechecker : sig
 		  (AST.IfExp(e1', e2', AST.ConstExp(AST.DConst(Basis.boolFalse, [])), Basis.boolTy), Basis.boolTy)
 	      end
 	    | PT.OrElseExp(e1, e2) => let
-		  val (e1', ty1) = chkExp (loc, depth, ve, e1)
-		  val (e2', ty2) = chkExp (loc, depth, ve, e2)
+		  val (e1', ty1) = chkExp (loc, depth, te, ve, e1)
+		  val (e2', ty2) = chkExp (loc, depth, te, ve, e2)
 	      in
 		  if not(U.unify(ty1, Basis.boolTy) andalso U.unify(ty2, Basis.boolTy))
 		  then error(loc, ["arguments of orelse must have type bool"])
@@ -224,8 +224,8 @@ structure Typechecker : sig
 		  (AST.IfExp(e1', AST.ConstExp(AST.DConst(Basis.boolTrue, [])), e2', Basis.boolTy), Basis.boolTy)
 	      end
 	    | PT.BinaryExp(e1, bop, e2) => let
-		  val (e1', ty1) = chkExp (loc, depth, ve, e1)
-		  val (e2', ty2) = chkExp (loc, depth, ve, e2)
+		  val (e1', ty1) = chkExp (loc, depth, te, ve, e1)
+		  val (e2', ty2) = chkExp (loc, depth, te, ve, e2)
 		  fun mkApp (arg, resTy) = AST.ApplyExp(AST.OverloadExp arg, AST.TupleExp[e1', e2'], resTy)
 		  fun chkApp tyScheme = let
 		      val (tys, instTy as AST.FunTy(argTy, resTy)) = TU.instantiate (depth, tyScheme)
@@ -281,8 +281,8 @@ structure Typechecker : sig
 *)
 	      end
 	    | PT.ApplyExp(e1, e2) => let
-		  val (e1', ty1) = chkExp (loc, depth, ve, e1)
-		  val (e2', ty2) = chkExp (loc, depth, ve, e2)
+		  val (e1', ty1) = chkExp (loc, depth, te, ve, e1)
+		  val (e2', ty2) = chkExp (loc, depth, te, ve, e2)
 		  val resTy = AST.MetaTy(MetaVar.new depth)
 	      in
 		  if not(U.unify(ty1, AST.FunTy(ty2, resTy)))
@@ -297,7 +297,7 @@ structure Typechecker : sig
 	      end
 	    | PT.TupleExp es => let
 		  fun chk (e, (es, tys)) = let
-		      val (e', ty) = chkExp(loc, depth, ve, e)
+		      val (e', ty) = chkExp(loc, depth, te, ve, e)
 		  in
 		      (e'::es, ty::tys)
 		  end
@@ -306,14 +306,14 @@ structure Typechecker : sig
 		  (AST.TupleExp es', mkTupleTy tys)
 	      end
 	    | PT.RangeExp (e1, e2, eo) => let
-		  val (e1', ty1) = chkExp (loc, depth, ve, e1)
-		  val (e2', ty2) = chkExp (loc, depth, ve, e2)
+		  val (e1', ty1) = chkExp (loc, depth, te, ve, e1)
+		  val (e2', ty2) = chkExp (loc, depth, te, ve, e2)
 		  val _ = if not(U.unify (ty1, ty2))
 			  then error (loc, ["type mismatch in range"])
 			  else ()
 		  val eo' = (case eo of
 				 (SOME exp) => let
-				     val (exp', ty) = chkExp (loc, depth, ve, exp)
+				     val (exp', ty) = chkExp (loc, depth, te, ve, exp)
 				 in
 				     if not(U.unify (ty, ty1))
 				     then error (loc, ["type mismatch in range"])
@@ -326,11 +326,11 @@ structure Typechecker : sig
 		  if not(U.unify (ty1, TypeClass.new Types.Num))
 		  then error (loc, ["range elements must have numeric type"])
 		  else ();
-		  (AST.RangeExp (e1', e2', eo', ty1), B.parrayTy ty1)
+		  (AST.RangeExp(e1', e2', eo', ty1), B.parrayTy ty1)
 	      end
 	    | PT.PTupleExp es => let
 		  fun chk (e, (es, tys)) = let
-		      val (e', ty) = chkExp(loc, depth, ve, e)
+		      val (e', ty) = chkExp(loc, depth, te, ve, e)
 		  in
 		      (e'::es, ty::tys)
 		  end
@@ -341,7 +341,7 @@ structure Typechecker : sig
 	    | PT.PArrayExp es => let
 		fun chk (e, (es, ty)) =
 		    let
-			val (e', ty') = chkExp(loc, depth, ve, e)
+			val (e', ty') = chkExp(loc, depth, te, ve, e)
 		    in
 			if not(U.unify (ty, ty'))
 			then error(loc, ["type mismatch in parray"])
@@ -353,16 +353,16 @@ structure Typechecker : sig
 		  (AST.PArrayExp(es', ty), B.parrayTy ty)
 	      end
 	    | PT.ComprehendExp (e, pbs, eo) => let
-		  val (pes, ve') = chkPBinds (loc, depth, ve, pbs)
-		  val (e', resTy) = chkExp (loc, depth, ve', e)
+		  val (pes, ve') = chkPBinds (loc, depth, te, ve, pbs)
+		  val (e', resTy) = chkExp (loc, depth, te, ve', e)
 		  val eo' = (case eo of
 				 (SOME exp) => let
-				      val (exp', ty) = chkExp (loc, depth, ve', exp)
+				      val (exp', ty) = chkExp (loc, depth, te, ve', exp)
 				  in
-				      if not(U.unify (ty, B.boolTy))
+				    if not(U.unify (ty, B.boolTy))
 				      then error (loc, ["type mismatch in parray comprehension 'where' clause"])
 				      else ();
-				      SOME exp'
+				    SOME exp'
 				  end
 			       | NONE => NONE
 			    (* end case *))
@@ -370,7 +370,7 @@ structure Typechecker : sig
 		  (AST.ComprehendExp (e', pes, eo'), B.parrayTy resTy)
 	      end
 	    | PT.SpawnExp e => let
-		  val (e', ty) = chkExp (loc, depth, ve, e)
+		  val (e', ty) = chkExp (loc, depth, te, ve, e)
 	      in
 		if not(U.unify (ty, B.unitTy))
 		  then error(loc, ["type mismatch in spawn"])
@@ -378,9 +378,9 @@ structure Typechecker : sig
 		(AST.SpawnExp e', B.threadIdTy)
 	      end
 	    | PT.SeqExp es => let
-		  fun chk [e] = chkExp(loc, depth, ve, e)
+		  fun chk [e] = chkExp(loc, depth, te, ve, e)
 		    | chk (e::r) = let
-			  val (e', _) = chkExp (loc, depth, ve, e)
+			  val (e', _) = chkExp (loc, depth, te, ve, e)
 			  val (e'', ty) = chk r
 		      in
 			  (AST.SeqExp(e', e''), ty)
@@ -403,14 +403,22 @@ structure Typechecker : sig
 		   error(loc, ["undefined identifier ", Atom.toString x]);
 		   bogusExp)
 	      (* end case *))
-	    | PT.ConstraintExp(e, ty) => raise Fail "ConstraintExp" (* FIXME *)
+	    | PT.ConstraintExp(e, ty) => let
+		val constraintTy = chkTy (loc, te, E.empty, ty)
+		val (e', ty') = chkExp (loc, depth, te, ve, e)
+		in
+		   if not(U.unify(ty', constraintTy))
+		     then error(loc, ["type mismatch in constraint pattern"])
+		     else ();
+		  (e', ty')
+		end
 	  (* end case *))
 
-    and chkMatch (loc, depth, ve, argTy, resTy, match) = (case match
-	   of PT.MarkMatch{lnum, tree} => chkMatch(lnum, depth, ve, argTy, resTy, tree)
+    and chkMatch (loc, depth, te, ve, argTy, resTy, match) = (case match
+	   of PT.MarkMatch{lnum, tree} => chkMatch(lnum, depth, te, ve, argTy, resTy, tree)
 	    | PT.Match(pat, exp) => let
-		val (pat', ve', argTy') = chkPat(loc, depth, ve, pat)
-		val (exp', resTy') = chkExp(loc, depth, ve', exp)
+		val (pat', ve', argTy') = chkPat(loc, depth, te, ve, pat)
+		val (exp', resTy') = chkExp(loc, depth, te, ve', exp)
 		in
 		  if not(U.unify(argTy, argTy'))
 		    then error(loc, ["type mismatch in case pattern"])
@@ -422,12 +430,12 @@ structure Typechecker : sig
 		end
 	  (* end case *))
 
-    and chkPBinds (loc, depth, ve, pbs) =
+    and chkPBinds (loc, depth, te, ve, pbs) =
 	(case pbs of
 	     [] => ([], ve)
 	   | pb::pbs => let
-		 val (pe, ve1) = chkPBind (loc, depth, ve, pb)
-		 val (pes, ve2) = chkPBinds (loc, depth, ve, pbs)
+		 val (pe, ve1) = chkPBind (loc, depth, te, ve, pb)
+		 val (pes, ve2) = chkPBinds (loc, depth, te, ve, pbs)
 		 fun notInVE2 [] = true
 		   | notInVE2 (atom::atoms) =
 		     if E.inDomain (ve2, atom)
@@ -441,12 +449,12 @@ structure Typechecker : sig
 	     end
 	(* end case *))
 
-    and chkPBind (loc, depth, ve, pb) =
+    and chkPBind (loc, depth, te, ve, pb) =
 	(case pb of
-	     PT.MarkPBind{lnum, tree} => chkPBind(lnum, depth, ve, tree)
+	     PT.MarkPBind{lnum, tree} => chkPBind(lnum, depth, te, ve, tree)
 	   | PT.PBind (pat, exp) => let
-		 val (exp', resTy) = chkExp(loc, depth, ve, exp)
-		 val (pat', ve', resTy') = chkPat (loc, depth, ve, pat)
+		 val (exp', resTy) = chkExp(loc, depth, te, ve, exp)
+		 val (pat', ve', resTy') = chkPat (loc, depth, te, ve, pat)
 	     in
 		 if not(U.unify(resTy, B.parrayTy resTy'))
 		 then error(loc, ["type mismatch in pattern binding"])
@@ -455,10 +463,10 @@ structure Typechecker : sig
 	     end
 	(* end case *))
 
-    and chkPat (loc, depth, ve, pat) = (case pat
-	   of PT.MarkPat{lnum, tree} => chkPat(lnum, depth, ve, tree)
+    and chkPat (loc, depth, te, ve, pat) = (case pat
+	   of PT.MarkPat{lnum, tree} => chkPat(lnum, depth, te, ve, tree)
 	    | PT.ConPat(conid, pat) => let
-		val (pat, ve', ty) = chkPat (loc, depth, ve, pat)
+		val (pat, ve', ty) = chkPat (loc, depth, te, ve, pat)
 		in
 		  case E.find(ve, conid)
 		   of SOME(E.Con dc) => (case TU.instantiate (depth, DataCon.typeOf dc)
@@ -481,7 +489,7 @@ structure Typechecker : sig
 		end
 	    | PT.BinaryPat(p1, conid, p2) => raise Fail "BinaryPat" (* FIXME *)
 	    | PT.TuplePat pats => let
-		val (pats, ve', ty) = chkPats (loc, depth, ve, pats)
+		val (pats, ve', ty) = chkPats (loc, depth, te, ve, pats)
 		in
 		  (AST.TuplePat pats, ve', ty)
 		end
@@ -510,16 +518,19 @@ structure Typechecker : sig
 		      end
 		(* end case *))
 	    | PT.ConstraintPat(p, ty) => let
-(* FIXME: we need the type environment to check ty! *)
-		val (p', ve, ty') = chkPat (loc, depth, ve, pat)
+		val constraintTy = chkTy (loc, te, E.empty, ty)
+		val (p', ve, ty') = chkPat (loc, depth, te, ve, pat)
 		in
+		   if not(U.unify(ty', constraintTy))
+		     then error(loc, ["type mismatch in constraint pattern"])
+		     else ();
 		  (p', ve, ty')
 		end
 	  (* end case *))
 
-    and chkPats (loc, depth, ve, pats : PT.pat list) = let
+    and chkPats (loc, depth, te, ve, pats : PT.pat list) = let
 	  fun chk (pat, (ve, ps, tys)) = let
-		val (pat', ve', ty) = chkPat (loc, depth, ve, pat)
+		val (pat', ve', ty) = chkPat (loc, depth, te, ve, pat)
 		in
 		  (ve', pat'::ps, ty::tys)
 		end
@@ -591,7 +602,7 @@ structure Typechecker : sig
 		  next(te, ve')
 		end
 	    | PT.ValueDecl valDcl => let
-		val (bind, ve) = chkValDcl(loc, 0, ve, valDcl)
+		val (bind, ve) = chkValDcl(loc, 0, te, ve, valDcl)
 		val (e, ty) = next(te, ve)
 		in
 		  (AST.LetExp(bind, e), ty)
@@ -599,7 +610,7 @@ structure Typechecker : sig
 	  (* end case *))
 
     fun check (dcls, exp) = let
-	  fun chkDcls (te, ve, []) = chkExp(1, 0, ve, exp)
+	  fun chkDcls (te, ve, []) = chkExp(1, 0, te, ve, exp)
 	    | chkDcls (te, ve, d::ds) =
 	      chkTopDcl (1, te, ve, d, fn (te, ve) => chkDcls (te, ve, ds))
 	    
