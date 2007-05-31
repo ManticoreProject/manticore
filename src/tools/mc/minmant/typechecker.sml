@@ -503,11 +503,18 @@ structure Typechecker : sig
 		  (AST.VarPat x', ve, ty)
 		end
 	    | PT.IdPat x => (case E.find(ve, x)
-		 of SOME(E.Con dc) => (
-		      error(loc, [
-			  "data constructor ", Atom.toString x, " in variable pattern"
-			]);
-		      (bogusPat, ve, bogusTy))
+		 of SOME(E.Con dc) => (case DataCon.argTypeOf dc
+		       of NONE => let
+			    val (tyArgs, ty) = TU.instantiate (depth, DataCon.typeOf dc)
+			    in
+			      (AST.ConstPat(AST.DConst(dc, tyArgs)), ve, ty)
+			    end
+			| _ => (
+			    error(loc, [
+				"data constructor ", Atom.toString x, " in variable pattern"
+			      ]);
+			    (bogusPat, ve, bogusTy))
+		      (* end case *))
 		  | _ => let
 		      val ty = AST.MetaTy(MetaVar.new depth)
 		      val x' = Var.new(Atom.toString x, ty)
