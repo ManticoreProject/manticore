@@ -18,4 +18,6 @@ is
   ../minmant/sources.cm
   ../bom/sources.cm
 
+  std-env.sml
   translate.sml
+  translate-types.sml

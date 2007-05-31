@@ -22,6 +22,9 @@ structure StdEnv : sig
     structure B = Basis
     structure H = HLOpEnv
 
+    fun lookupTy _ = raise "lookupTy"
+    fun lookupDCon = raise "lookupDCon"
+
     datatype builtin
       = Prim1 of BOM.var -> BOM.prim
       | Prim2 of BOM.var * BOM.var -> BOM.prim
@@ -35,8 +38,10 @@ structure StdEnv : sig
 	  (B.double_lte, Prim2 P.F64Lte),
 	  (B.long_lte, Prim2 P.I64Lte),
 	  (B.integer_lte, HLOp H.integerLteOp),
+(*
 	  (B.char_lte, Prim2 P.?),
 	  (B.rune_lte, Prim2 P.?),
+*)
 	  (B.string_lte, HLOp H.stringLteOp),
 
 	  (B.int_lt, Prim2 P.I32Lt),
@@ -44,8 +49,10 @@ structure StdEnv : sig
 	  (B.double_lt, Prim2 P.F64Lt),
 	  (B.long_lt, Prim2 P.I64Lt),
 	  (B.integer_lt, HLOp H.integerLtOp),
+(*
 	  (B.char_lt, Prim2 P.?),
 	  (B.rune_lt, Prim2 P.?),
+*)
 	  (B.string_lt, HLOp H.stringLtOp),
 
 	  (B.int_gte, Prim2 P.I32Gte),
@@ -53,8 +60,10 @@ structure StdEnv : sig
 	  (B.double_gte, Prim2 P.F64Gte),
 	  (B.long_gte, Prim2 P.I64Gte),
 	  (B.integer_gte, HLOp H.integerGteOp),
+(*
 	  (B.char_gte, Prim2 P.?),
 	  (B.rune_gte, Prim2 P.?),
+*)
 	  (B.string_gte, HLOp H.stringGteOp),
 
 	  (B.int_gt, Prim2 P.I32Gt),
@@ -92,5 +101,15 @@ structure StdEnv : sig
 	  (B.long_mod, Prim2 P.I64Mod),
 	  (B.integer_mod, HLOp H.integerModOp)
 	]
+
+    val lookupVar : AST.var -> builtin = let
+	  val tbl = Var.Tbl.mkTable(List.length operators, Fail "var tbl")
+	  in
+	    List.app (Var.Tbl.insert tbl) operators;
+	    fn x => (case Var.Tbl.find tbl x
+	       of SOME b => b
+		| NONE => raise Fail("unbound variable " ^ Var.toString x)
+	      (* end case *))
+	  end
 
   end

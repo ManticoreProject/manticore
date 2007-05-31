@@ -12,10 +12,9 @@ Library
   structure Basis
   structure FrontEnd
   structure Types
+  structure TypeUtil
   structure TypeOf
   structure Var
-
-  structure TypeClass
 
 is
   $/basis.cm

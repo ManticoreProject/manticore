@@ -10,12 +10,13 @@ structure Translate : sig
 
   end = struct
 
-    structure Ty = Types;
     structure V = Var
     structure B = BOM
     structure BV = B.Var
     structure BTy = BOMTy
     structure Lit = Literal
+
+    val trTy = TranslateTypes.tr
 
     datatype env = E of {
 	exh : B.var,		(* current exception handler *)
@@ -59,10 +60,10 @@ structure Translate : sig
     fun trExp (env, exp) = (case exp
 	   of AST.LetExp(b, e) =>
 		EXP(trBind (env, b, fn env' => trExpToExp(env', e)))
-	    | AST.IfExp(e1, e2, e3) =>
+	    | AST.IfExp(e1, e2, e3, ty) =>
 		EXP(trExpToV (env, e1, fn x =>
 		  B.mkIf(x, trExpToExp(env, e2), trExpToExp(env, e3))))
-	    | AST.CaseExp(e, rules) => raise Fail "case"
+	    | AST.CaseExp(e, rules, ty) => raise Fail "case"
 	    | AST.ApplyExp(e1, e2, ty) =>
 		EXP(trExpToV (env, e1, fn f =>
 		  trExpToV (env, e2, fn arg =>
@@ -74,22 +75,22 @@ structure Translate : sig
 		end
 	    | AST.TupleExp es =>
 		EXP(trExpsToVs (env, es, fn xs => let
-		  val ty = BTy.T_Tuple(List.map BV.typeOf xs)
+		  val ty = BTy.T_Tuple(false, List.map BV.typeOf xs)
 		  val t = BV.new("_tpl", ty)
 		  in
-		    B.mkStmt([t], B.E_Alloc(ty, xs), B.mkRet [t])
+		    EXP(B.mkStmt([t], B.E_Alloc(ty, xs), B.mkRet [t]))
 		  end))
-	    | AST.RangeExp(lo, hi, optStep, ty) =>
+	    | AST.RangeExp(lo, hi, optStep, ty) => raise Fail "RangeExp"
 	    | AST.PTupleExp exps => raise Fail "PTupleExp"
 	    | AST.PArrayExp(exps, ty) => raise Fail "PArrayExp"
 	    | AST.ComprehendExp _ => raise Fail "unexpected ComprehendExp"
 	    | AST.SpawnExp e => let
 		val (exh, env') = newHandler env
 		val e' = trExp(env', e)
-		val thd = BV.newVar("_thd", BTy.T_Fun([], [BTy.exhTy], []))
+		val thd = BV.new("_thd", BTy.T_Fun([], [BTy.exhTy], []))
 		in
-		  B.mkFun([B.FB{f=thd, params=[], exh=[exh], body=e'}],
-		    B.mkHLOp(ManticoreOps.spawnOp, [f], []))
+		  EXP(B.mkFun([B.FB{f=thd, params=[], exh=[exh], body=e'}],
+		    B.mkHLOp(ManticoreOps.spawnOp, [thd], [])))
 		end
 	    | AST.ConstExp(AST.DConst dc) => raise Fail "DConst"
 	    | AST.ConstExp(AST.LConst(lit, ty)) => let
@@ -125,7 +126,7 @@ structure Translate : sig
 		  case trExp(env, exp)
 		   of BIND([y], rhs) => B.mkStmt([y], rhs, sel(y, 0, xs, pats))
 		    | EXP e => let
-			val ty = BTy.T_Tuple(List.map BV.typeOf xs)
+			val ty = BTy.T_Tuple(false, List.map BV.typeOf xs)
 			val t = BV.new("_tpl", ty)
 			in
 			  B.mkLet([t], e, sel(t, 0, xs, pats))
@@ -167,7 +168,7 @@ structure Translate : sig
       | trExpToV (env, exp, cxt : B.var -> B.exp) = (case trExp(env, exp)
 	   of BIND([x], rhs) => B.mkStmt([x], rhs, cxt x)
 	    | EXP e => let
-		val t = BV.new ("_t", ?)
+		val t = BV.new ("_t", trTy(TypeOf.exp exp))
 		in
 		  B.mkLet([t], e, cxt t)
 		end
