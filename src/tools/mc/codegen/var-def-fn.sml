@@ -28,14 +28,21 @@ functor VarDefFn (
   type var_def_tbl = MTy.mlrisc_tree Tbl.hash_table
 
   fun newTbl () = Tbl.mkTable (256, Fail "varDefTbl")
+
   fun getDefOf vdt v = (case Tbl.find vdt v
 	 of SOME def => def
 	  | NONE => raise Fail(concat["getDefOf(", CFG.Var.toString v, ")"])
 	(* end case *))
+
+  fun getAndClrDefOf vdt = Tbl.remove vdt
+
+  fun useDefOf vdt v = if (CFG.Var.useCount v = 1)
+	then getAndClrDefOf vdt v
+	else getDefOf vdt v
+
   fun setDefOf vdt (v,e) = Tbl.insert vdt (v,e)
 
-  fun defOf vdt v =
-      (case getDefOf vdt v
+  fun defOf vdt v = (case useDefOf vdt v
 	of MTy.EXP (_, e) => e
 	 | MTy.GPR (ty, r) => T.REG (ty, r)
 	 | MTy.CEXP ce => cexpToExp ce

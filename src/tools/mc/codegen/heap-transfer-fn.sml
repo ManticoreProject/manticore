@@ -106,7 +106,7 @@ functor HeapTransferFn (
 	  val params = LabelCode.getParamRegs l
 	  val args' = map getDefOf args
 	  val argRegs = map (fn (MTy.GPReg (ty, _)) => MTy.GPReg (ty, newReg())
-			     | (MTy.FPReg (ty, _)) => MTy.FPReg (ty, newFReg()) )
+			      | (MTy.FPReg (ty, _)) => MTy.FPReg (ty, newFReg()) )
 			params
 	  val stms = Copy.copy {src=args', dst=argRegs}
       in
@@ -190,22 +190,24 @@ functor HeapTransferFn (
 		  | _ => raise Fail(concat["genCCall: ", Var.toString f, " not a C function"])
 		(* end case *))
 	(* convert from CFunctions.c_type to CTypes.c_type *)
-(* FIXME: the following uglyness is to work around a bug in MLRISC
 	  val retTy = cvtCTy retTy
-*)
-	  val retTy = (case retTy
-		 of CFunctions.VoidTy => CTy.C_signed CTy.I_int
-		  | _ => cvtCTy retTy
-		(* end case *))
 	  val paramTys = List.map cvtCTy paramTys
 	  val szOfVar = Types.szOf o Var.typeOf
 	  val name = defOf f
-	  val cArgs = map (MTy.treeToMLRisc o getDefOf) args
-	  val {callseq, result} = raise Fail "todo" 
-(*CCall.genCall {
-		  name=name, args=cArgs,
-		  proto={conv="", retTy=retTy, paramTys=paramTys}
-		} *)
+	  fun mlriscToCArg (T.GPR rexp) = CCall.ARG rexp
+	    | mlriscToCArg (T.FPR fexp) = CCall.FARG fexp
+	    | mlriscToCArg _ = raise Fail "impossible"
+	  val cArgs = map (mlriscToCArg o MTy.treeToMLRisc o getDefOf) args
+	  val {callseq, result} = 
+	      CCall.genCall {
+		  name=name, 
+		  args=cArgs,
+		  proto={conv="", retTy=retTy, paramTys=paramTys},
+		  paramAlloc=fn _ => false,
+		  structRet=fn _ => T.REG (64, retReg),
+		  saveRestoreDedicated=fn _ => {save=[], restore=[]},
+		  callComment=NONE
+		} 
 	(* do we need to save/restore the allocation pointer? *)
 	  val saveAllocPtr = CFunctions.protoHasAttr CFunctions.A_alloc cProtoTy
 	(* for each caller-save register, allocate a fresh temporary and
@@ -247,8 +249,8 @@ functor HeapTransferFn (
 		  end
 		else ([], [])
 	  val stms = setVP :: saveAP @ [setInManticore(Spec.falseRep), saves]
-		@ callseq
-		@ (restores :: restoreAP @ [setInManticore(Spec.trueRep)])
+		     @ callseq
+		     @ (restores :: restoreAP) @ [setInManticore(Spec.trueRep)]
 	  fun convResult (T.GPR e, v) = MTy.EXP (szOfVar v, e)
 	    | convResult (T.FPR e, v) = MTy.FEXP (szOfVar v, e)
 	    | convResult _ = raise Fail "convResult"

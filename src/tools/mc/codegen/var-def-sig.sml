@@ -14,6 +14,7 @@ signature VAR_DEF = sig
 
     val newTbl : unit -> var_def_tbl
     val getDefOf : var_def_tbl -> CFG.var -> MTy.mlrisc_tree
+    val useDefOf : var_def_tbl -> CFG.var -> MTy.mlrisc_tree
     val setDefOf : var_def_tbl -> (CFG.var * MTy.mlrisc_tree) -> unit
 
     val defOf : var_def_tbl -> CFG.var -> MTy.T.rexp

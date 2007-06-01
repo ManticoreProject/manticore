@@ -10,8 +10,6 @@
 functor AMD64GenFn (
           structure Spec : TARGET_SPEC
 ) = struct
-  (* Fast FP is controlled by the MLRISC flags *)
-  val useFastFP = MLRiscControl.getFlag "x86-fast-fp"
 
   structure AMD64Frame = AMD64FrameFn (structure Spec = Spec)
   structure AMD64Constant = AMD64ConstantFn (structure AMD64Frame=AMD64Frame)
@@ -32,12 +30,7 @@ functor AMD64GenFn (
     structure Instr = AMD64Instr
     structure S = AMD64Stream
     structure MLTreeEval = AMD64MLTreeEval
-    structure Shuffle = AMD64Shuffle
-    structure MemRegs = struct
-      structure I = AMD64Instr
-      fun memReg _ = raise Fail "mem reg"
-    end
-    val memRegBase = NONE (*SOME AMD64Cells.rsp*))
+    structure Shuffle = AMD64Shuffle)
 
   structure AMD64CFG = ControlFlowGraph (
     structure I = AMD64AsmEmit.I
@@ -64,18 +57,12 @@ functor AMD64GenFn (
     val compileCCext = unimplemented
   end (* AMD64MTC *)
 
-  structure AMD64MLTreeComp = AMD64 (
-    structure AMD64Instr = AMD64Instr
+  structure AMD64MLTreeComp = AMD64Gen (
+    structure I = AMD64Instr
     structure MLTreeUtils = AMD64MLTreeUtils
     structure MLTreeStream = AMD64MLTStream
-    structure ExtensionComp = AMD64MTC
-    fun cvti2f _ = raise Fail "Todo"
-    val fast_floating_point = useFastFP
-    val defaultIntTy = 64
-    val defaultAddrTy = 64)
+    structure ExtensionComp = AMD64MTC)
 
-
-(*  structure AMD64Rewrite = AMD64Rewrite (AMD64Instr)*)
   structure AMD64FlowGraph = BuildFlowgraph (
                               structure Props = AMD64Props
                               structure Stream = AMD64Stream
@@ -92,11 +79,11 @@ functor AMD64GenFn (
      structure Shuffle = AMD64Shuffle)
 
   (* AMD64 peephole optimization *)
-  structure AMD64PeepholeOpt = CFGPeephole(
+(*  structure AMD64PeepholeOpt = CFGPeephole(
      structure CFG = AMD64CFG
      structure PeepHole = AMD64Peephole(
      structure Instr = I
-     structure Eval = AMD64MLTreeEval))
+     structure Eval = AMD64MLTreeEval)) *)
 
   (* a function to get the frame annotation *)
   fun getFrameAn annotations = 
@@ -137,33 +124,28 @@ functor AMD64GenFn (
     structure IntRA = struct
       val dedicated = AMD64Regs.dedicatedRegs
       val avail = AMD64Regs.availRegs
-      val memRegs = []
       val phases = [SPILL_PROPAGATION,SPILL_COLORING]
       fun spillInit _ = ()
       fun spillLoc {info=frame, an, cell, id=loc} =
 	  {opnd = gprLoc (frame, loc), kind = SPILL_LOC}
     end (* IntRA *)
     structure FloatRA = struct
-      val avail     = []
+      val avail     = AMD64Regs.availFRegs
       val dedicated = AMD64Regs.dedicatedFRegs (* empty *)
-      val memRegs   = []
-      val phases    = [SPILL_PROPAGATION]
+      val phases    = [SPILL_PROPAGATION, SPILL_COLORING]
       fun spillInit _ = ()
       fun spillLoc (frame, an, loc) = fprLoc (frame, loc)
-      val fastMemRegs = []
-      val fastPhases  = [SPILL_PROPAGATION,SPILL_COLORING]
     end (* FloatRA *)
   in
-    structure RA = AMD64RA (
+    structure RA = AMD64RegAlloc (
       structure I = AMD64Instr
-      structure InsnProps = AMD64Props
+      structure Props = AMD64Props
       structure CFG = AMD64CFG
       structure Asm = AMD64AsmEmit
       structure SpillHeur = ChowHennessySpillHeur
       structure Spill = RASpill
-      val fast_floating_point = useFastFP
-      datatype raPhase = datatype raPhase
-      datatype spillOperandKind = datatype spillOperandKind
+      datatype ra_phase = datatype raPhase
+      datatype spill_operand_kind = datatype spillOperandKind
       type spill_info = AMD64SpillLoc.frame
       fun beforeRA (Graph.GRAPH graph) = 
 	  let val CFG.INFO{annotations, ...} = #graph_info graph
@@ -227,20 +209,20 @@ functor AMD64GenFn (
 			 structure Spec = Spec 
 			 structure LabelCode = LabelCode
 			 structure Frame = AMD64Frame
-			 structure CCall = AMD64GenCCallFn (structure T=AMD64MLTree)
+			 structure CCall = AMD64SVID (structure T=AMD64MLTree
+						      val frameAlign = 16)
 			 structure Types = Types
 			 structure VProcOps = VProcOps )
 
     fun compileCFG (cfg as Graph.GRAPH graph) = 
 	let val CFGGen.CFG.INFO{annotations, ...} = #graph_info graph
 	in 
-	    useFastFP := true;
 	    case (#get AMD64SpillLoc.frameAn) (!annotations)
 	     of NONE => Emit.asmEmit (cfg, #nodes graph ())
 	      | SOME frame => 
 		let val cfg = RA.run cfg
 		    val cfg = AMD64Expand.run cfg
-		    val cfg = AMD64PeepholeOpt.run cfg
+		    (*val cfg = AMD64PeepholeOpt.run cfg*)
 		    val (cfg, blocks) = BlockPlacement.blockPlacement cfg
 		in
 		    Emit.asmEmit (cfg, blocks)
