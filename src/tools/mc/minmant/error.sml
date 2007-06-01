@@ -16,7 +16,7 @@ structure Error =
     val sourceFile = ref ""
 
   (* the current sourcemap *)
-    val sourceMap = ref(StreamPos.mkSourcemap())
+    val sourceMap = ref(AntlrStreamPos.mkSourcemap())
 
   (* print an error message and record the fact that there was an error *)
     fun say l = (

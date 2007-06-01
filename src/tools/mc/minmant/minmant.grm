@@ -67,8 +67,8 @@
   structure Op = BasisNames
 
 (* apply a mark constructor to a span and a tree *)
-  fun mark cons ((l, _) : StreamPos.span, tr) = cons{
-	  lnum = StreamPos.lineNo (!Error.sourceMap) l,
+  fun mark cons ((l, _) : AntlrStreamPos.span, tr) = cons{
+	  lnum = AntlrStreamPos.lineNo (!Error.sourceMap) l,
 	  tree = tr
 	}
 
