@@ -21,7 +21,7 @@ structure Parser : sig
 
   (* error function for parsers *)
     fun parseErr (filename, srcMap) = let
-	  val errToStr = Repair.repairToString MinMantTokens.toString srcMap
+	  val errToStr = AntlrRepair.repairToString MinMantTokens.toString srcMap
 	  in
 	    fn err => Error.say ["Error [", filename, "] ", errToStr err]
 	  end
@@ -31,7 +31,7 @@ structure Parser : sig
 	  val _ = (anyErrors := false; Error.sourceFile := filename)
 	  val file = TextIO.openIn filename
 	  fun get () = TextIO.input file
-	  val srcMap = StreamPos.mkSourcemap()
+	  val srcMap = AntlrStreamPos.mkSourcemap()
 	  val _ = Error.sourceMap := srcMap
 	  val lexer = MinMantLex.lex srcMap
 	  in

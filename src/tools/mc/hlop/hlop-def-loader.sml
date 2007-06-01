@@ -32,7 +32,7 @@ structure HLOpDefLoader : sig
 
   (* error function for parsers *)
     fun parseErr (filename, srcMap) = let
-	  val errToStr = Repair.repairToString HLOpDefTokens.toString srcMap
+	  val errToStr = AntlrRepair.repairToString HLOpDefTokens.toString srcMap
 	  in
 	    fn err => TextIO.print(concat["Error [", filename, "] ", errToStr err, "\n"])
 	  end
@@ -40,7 +40,7 @@ structure HLOpDefLoader : sig
   (* parse an input stream, returning a parse tree *)
     fun parse (filename, inStrm) = let
 	  fun get () = TextIO.input inStrm
-	  val srcMap = StreamPos.mkSourcemap()
+	  val srcMap = AntlrStreamPos.mkSourcemap()
 	  val lexer = HLOpDefLex.lex srcMap
 	  in
 (*DEBUG*)print(concat["parsing ", filename, "\n"]);

@@ -17,7 +17,7 @@ structure BOMParser : sig
 
   (* error function for parsers *)
     fun parseErr (filename, srcMap) = let
-	  val errToStr = Repair.repairToString BOMTokens.toString srcMap
+	  val errToStr = AntlrRepair.repairToString BOMTokens.toString srcMap
 	  in
 	    fn err => TextIO.print(concat["Error [", filename, "] ", errToStr err, "\n"])
 	  end
@@ -26,7 +26,7 @@ structure BOMParser : sig
     fun parseFile filename = let
 	  val file = TextIO.openIn filename
 	  fun get () = TextIO.input file
-	  val srcMap = StreamPos.mkSourcemap()
+	  val srcMap = AntlrStreamPos.mkSourcemap()
 	  val lexer = BOMLex.lex srcMap
 	  in
 	    case Parser.parse lexer (BOMLex.streamify get)
