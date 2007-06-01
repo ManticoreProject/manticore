@@ -22,6 +22,16 @@ typedef exn = any;
 typedef handler = cont(exn);
 typedef sigact = cont(signal);
 
+typedef ml_int = wrap(int);
+typedef ml_long = wrap(long);
+typedef ml_float = wrap(float);
+typedef ml_double = wrap(double);
+
+#define INT(n)		wrap(n : int)
+#define LONG(n)		wrap(n : long)
+#define FLOAT(f)	wrap(f : float)
+#define DOUBLE(f)	wrap(f : double)
+
 (* constants for builtin datatypss *)
 #define NIL	enum(0):list
 #define STOP	enum(0):signal

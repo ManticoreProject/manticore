@@ -1,0 +1,15 @@
+(* float-sqrt.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+#include "types.def"
+
+extern float sqrtf (float) __attribute((pure));
+
+define @float-sqrt (x : ml_float / exh : exh) : ml_float =
+    let y = ccall sqrtf (unwrap(x))
+    let res : ml_float = wrap(y)
+      return res
+;
