@@ -27,6 +27,14 @@ functor MainFn (
 
     fun prHdr msg = print(concat["******************** ", msg,  " ********************\n"])
 
+    fun srcToBOM file = (case FrontEnd.load file
+	   of SOME ast => (case ASTOpt.optimize ast
+		 of SOME ast => SOME(Translate.translate ast)
+		  | NONE => NONE
+		(* end case *))
+	    | NONE => NONE
+	  (* end case *))
+
   (* *)
     fun bomToCFG bom = let
 	  val bom = BOMOpt.optimize bom
@@ -72,7 +80,13 @@ functor MainFn (
 	    codegen (asmFile, bomToCFG bom)
 	  end
 
-    fun mantC (srcFile, asmFile) = raise Fail "Manticore frontend not done yet"
+    fun mantC (srcFile, asmFile) = (case srcToBOM srcFile
+	   of SOME bom => (
+		prHdr "BOM after translation";
+		PrintBOM.print bom;
+		codegen (asmFile, bomToCFG bom))
+	    | NONE => OS.Process.exit OS.Process.failure
+	  (* end case *))
 
     fun doFile file = BackTrace.monitor (fn () =>let
 	  fun asmFile stem = OS.Path.joinBaseExt{base=stem, ext=SOME ".s"}

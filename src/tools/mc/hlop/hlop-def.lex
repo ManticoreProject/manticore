@@ -160,9 +160,9 @@
 <INITIAL>[~\045]?{num}	=> (T.INT(valOf (IntInf.fromString yytext)));
 <INITIAL>[~\045]?{num}"."{num}([eE][+~\045]?{num})?
 			=> (mkFloat yysubstr);
-<INITIAL>{ws}		=> (continue ());
-<INITIAL>"(*"		=> (YYBEGIN COMMENT; depth := 1; continue());
-<INITIAL> "\""		=> (YYBEGIN STRING; continue());
+<INITIAL>{ws}		=> (skip ());
+<INITIAL>"(*"		=> (YYBEGIN COMMENT; depth := 1; skip());
+<INITIAL> "\""		=> (YYBEGIN STRING; skip());
 
 <STRING>{esc}		=> (addStr(valOf(String.fromString yytext)); continue());
 <STRING>{sgood}+	=> (addStr yytext; continue());
@@ -180,13 +180,13 @@
 
 <INITIAL> . => (
 	lexErr(!yylineno, concat["bad character `", String.toString yytext, "'"]);
-	continue());
+	skip());
 
 <COMMENT> "(*" => (
 	depth := !depth + 1;
-	continue());
+	skip());
 <COMMENT> "*)" => (
 	depth := !depth - 1;
         if (!depth = 0) then YYBEGIN INITIAL else ();
-	continue ());
-<COMMENT> .|"\n" => (continue ());
+	skip ());
+<COMMENT> .|"\n" => (skip ());

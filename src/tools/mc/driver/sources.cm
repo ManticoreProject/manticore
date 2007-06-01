@@ -1,3 +1,9 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
 Library
 
   functor MainFn
@@ -10,6 +16,7 @@ is
   $smlnj-tdp/back-trace.cm
   $smlnj-tdp/coverage.cm
 
+  ../ast-opt/sources.cm
   ../bom/sources.cm
   ../bom-opt/sources.cm
   ../cfg/sources.cm
@@ -21,8 +28,10 @@ is
   ../cfg-opt/sources.cm
   ../cps/sources.cm
   ../cps-opt/sources.cm
+  ../minmant/sources.cm
   ../prim/sources.cm
   ../test-bom/bom-parse.cm
+  ../translate/sources.cm
 
   target-spec-fn.sml
 (*  runtime-constants.sml*)

@@ -2,6 +2,8 @@
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
+ *
+ * TODO: eventually, this information should be loaded from a file.
  *)
 
 structure HLOpEnv : sig

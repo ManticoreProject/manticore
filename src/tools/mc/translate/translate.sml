@@ -57,7 +57,7 @@ structure Translate : sig
     fun toExp (BIND(xs, rhs)) = B.mkStmt(xs, rhs, B.mkRet xs)
       | toExp (EXP e) = e
 
-    fun trExp (env, exp) = (case exp
+    fun trExp (env, exp) : bom_code = (case exp
 	   of AST.LetExp(b, e) =>
 		EXP(trBind (env, b, fn env' => trExpToExp(env', e)))
 	    | AST.IfExp(e1, e2, e3, ty) =>
@@ -78,7 +78,7 @@ structure Translate : sig
 		  val ty = BTy.T_Tuple(false, List.map BV.typeOf xs)
 		  val t = BV.new("_tpl", ty)
 		  in
-		    EXP(B.mkStmt([t], B.E_Alloc(ty, xs), B.mkRet [t]))
+		    B.mkStmt([t], B.E_Alloc(ty, xs), B.mkRet [t])
 		  end))
 	    | AST.RangeExp(lo, hi, optStep, ty) => raise Fail "RangeExp"
 	    | AST.PTupleExp exps => raise Fail "PTupleExp"
@@ -86,7 +86,7 @@ structure Translate : sig
 	    | AST.ComprehendExp _ => raise Fail "unexpected ComprehendExp"
 	    | AST.SpawnExp e => let
 		val (exh, env') = newHandler env
-		val e' = trExp(env', e)
+		val e' = trExpToExp(env', e)
 		val thd = BV.new("_thd", BTy.T_Fun([], [BTy.exhTy], []))
 		in
 		  EXP(B.mkFun([B.FB{f=thd, params=[], exh=[exh], body=e'}],
@@ -108,10 +108,12 @@ structure Translate : sig
 		       of BIND([], rhs) => B.mkStmt([], rhs, tr e2)
 			| EXP e1' => B.mkLet([], e1', tr e2)
 		      (* end case *))
-		  | tr e = toExp(trExp(env, e))
+		  | tr e = trExpToExp(env, e)
 		in
 		  EXP(tr exp)
 		end
+	    | AST.OverloadExp(ref(AST.Instance x)) => EXP(B.mkRet[lookup(env, x)])
+	    | AST.OverloadExp _ => raise Fail "unresolved overloading"
 	  (* end case *))
 
     and trExpToExp (env, exp) = toExp(trExp(env, exp))
@@ -175,7 +177,7 @@ structure Translate : sig
 	  (* end case *))
 
   (* translate a list of expressions to a BOM let binding *)
-    and trExpsToVs (env, exps, cxt : B.var list -> B.exp) = let
+    and trExpsToVs (env, exps, cxt : B.var list -> B.exp) : B.exp = let
 	  fun tr ([], xs) = cxt xs
 	    | tr (exp::exps, xs) =
 		trExpToV (env, exp, fn x => tr(exps, x::xs))
