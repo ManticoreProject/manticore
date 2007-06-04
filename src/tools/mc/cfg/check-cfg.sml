@@ -65,6 +65,9 @@ structure CheckCFG : sig
 			| (CFG.LK_Local _, true) => ()
 			| (CFG.LK_Local _, false) => err["reference to unbound label ", L.toString l]
 		      (* end case *))
+	      (* check the entry against the declared type of the label;  The declared type is allowed to
+	       * be more specific.
+	       *)
 		fun chkEntry (CFG.StdFunc{clos, args, ret, exh}) = (
                       (case L.typeOf lab of
                           Ty.T_StdFun{clos = closTy, args = argTys, ret = retTy, exh = exhTy} => 
@@ -76,18 +79,18 @@ structure CheckCFG : sig
                                        " does not match ",
                                        "closure type ", Ty.toString closTy];
                               *)
-                              if ListPair.allEq Ty.equal (List.map V.typeOf args, argTys)
+                              if ListPair.allEq Ty.match (argTys, List.map V.typeOf args)
                         	then ()
                                 else err[
 				    "arguments ", vl2s args, " do not match ",
                                        "argument types ", tyl2s argTys
 				  ];
-                              if Ty.equal (V.typeOf ret, retTy)
+                              if Ty.match (retTy, V.typeOf ret)
                                  then ()
                               else err["variable ", V.toString ret, ":", Ty.toString (V.typeOf ret),
                                        " does not match ",
                                        "return type ", Ty.toString retTy];
-                              if Ty.equal (V.typeOf exh, exhTy)
+                              if Ty.equal (exhTy, V.typeOf exh)
                                  then ()
                               else err["variable ", V.toString exh, ":", Ty.toString (V.typeOf exh),
                                        " does not match ",
@@ -106,7 +109,7 @@ structure CheckCFG : sig
                                      " does not match ",
                                      "closure type ", Ty.toString closTy];
                             *)
-                            if ListPair.allEq Ty.equal (List.map V.typeOf args, argTys)
+                            if ListPair.allEq Ty.match (argTys, List.map V.typeOf args)
                               then ()
                               else err[
 				  "arguments ", vl2s args, " do not match ",
@@ -120,9 +123,9 @@ structure CheckCFG : sig
                       case L.typeOf lab of
                           Ty.T_Code argTys => 
                              ((ListPair.appEq (fn (arg, argTy) =>
-                                               if Ty.equal (V.typeOf arg, argTy)
+                                               if Ty.match (argTy, V.typeOf arg)
                                                   then ()
-                                               else err["variable ", V.toString arg, ":", Ty.toString (V.typeOf arg),
+                                               else err["argument ", V.toString arg, ":", Ty.toString (V.typeOf arg),
                                                         " does not match ",
                                                         "argument type ", Ty.toString argTy])
                                               (args, argTys))
@@ -139,7 +142,7 @@ structure CheckCFG : sig
                       (case L.typeOf lab of
                           Ty.T_Code argTys => 
                              ((ListPair.appEq (fn (arg, argTy) =>
-                                               if Ty.equal (V.typeOf arg, argTy)
+                                               if Ty.match (argTy, V.typeOf arg)
                                                   then ()
                                                else err["variable ", V.toString arg, ":", Ty.toString (V.typeOf arg),
                                                         " does not match ",
@@ -270,6 +273,7 @@ structure CheckCFG : sig
                             case V.typeOf x
                              of Ty.T_Tuple tys => ()
                               | Ty.T_OpenTuple tys => ()
+			      | Ty.T_Any => ()
                               | _ => err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
                                          " does not match allocation"]
 			    (* end case *);
@@ -328,23 +332,23 @@ structure CheckCFG : sig
 			    chkVars (env, f :: clos :: ret :: exh :: args);
                             case V.typeOf f
 			     of Ty.T_StdFun{clos = closTy, args = argTys, ret = retTy, exh = exhTy} => (
-                                  if Ty.isValidCast (V.typeOf clos, closTy)
+                                  if Ty.match (V.typeOf clos, closTy)
                                      then ()
                                   else err["variable ", V.toString clos, ":", Ty.toString (V.typeOf clos),
                                            " does not match ",
                                            "closure type ", Ty.toString closTy];
-                        	  if ListPair.allEq Ty.isValidCast (List.map V.typeOf args, argTys)
+                        	  if ListPair.allEq Ty.match (List.map V.typeOf args, argTys)
                                     then ()
                                     else err[
 					"arguments ", vl2s args, " do not match ",
                                 	   "argument types ", tyl2s argTys
 				      ];
-                                  if Ty.isValidCast (V.typeOf ret, retTy)
+                                  if Ty.match (V.typeOf ret, retTy)
                                      then ()
                                   else err["variable ", V.toString ret, ":", Ty.toString (V.typeOf ret),
                                            " does not match ",
                                            "return type ", Ty.toString retTy];
-                                  if Ty.isValidCast (V.typeOf exh, exhTy)
+                                  if Ty.match (V.typeOf exh, exhTy)
                                      then ()
                                   else err["variable ", V.toString exh, ":", Ty.toString (V.typeOf exh),
                                            " does not match ",
@@ -356,12 +360,12 @@ structure CheckCFG : sig
 			    chkVars (env, k :: clos :: args);
                             case V.typeOf k
 			     of Ty.T_StdCont{clos = closTy, args = argTys} => (
-                                  if Ty.isValidCast (V.typeOf clos, closTy)
+                                  if Ty.match (V.typeOf clos, closTy)
                                      then ()
                                   else err["variable ", V.toString clos, ":", Ty.toString (V.typeOf clos),
                                            " does not match ",
                                            "closure type ", Ty.toString closTy];
-                        	if ListPair.allEq Ty.isValidCast (List.map V.typeOf args, argTys)
+                        	if ListPair.allEq Ty.match (List.map V.typeOf args, argTys)
                         	  then ()
                         	  else err[
 				      "arguments ", vl2s args, " do not match ",
@@ -375,7 +379,7 @@ structure CheckCFG : sig
                             (case V.typeOf f of
                                 Ty.T_Code argTys => 
                                    ((ListPair.appEq (fn (arg, argTy) =>
-                                                     if Ty.equal (V.typeOf arg, argTy)
+                                                     if Ty.match (V.typeOf arg, argTy)
                                                         then ()
                                                      else err["variable ", V.toString arg, ":", Ty.toString (V.typeOf arg),
                                                               " does not match ",

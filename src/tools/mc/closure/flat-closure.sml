@@ -42,11 +42,13 @@ structure FlatClosure : sig
             ret = cvtStdContTy retTy,
             exh = cvtStdContTy exhTy
           }
+      | cvtStdFunTyAux (CPSTy.T_Fun(argTys, [retTy])) =
+	  CFGTy.T_Code(CFGTy.T_Any :: List.map cvtTy argTys @ [cvtStdContTy retTy])
       | cvtStdFunTyAux (CPSTy.T_Any) = CFGTy.T_StdFun{
             clos = CFGTy.T_Any,
             args = [CFGTy.T_Any],
-            ret = CFGTy.T_Any,
-            exh = CFGTy.T_Any
+            ret = cvtStdContTy CPSTy.T_Any,
+            exh = cvtStdContTy CPSTy.T_Any
           }
       | cvtStdFunTyAux ty = raise Fail("bogus function type " ^ CPSTy.toString ty)
 
@@ -236,7 +238,7 @@ print(concat["lookupVar: ", CPS.Var.toString x, " @ ", locToString(valOf(VMap.fi
                 end
 	(* the initial environment is the externs plus the parameters *)
 	  val env = ListPair.foldl
-		(fn (x, x', env) => VMap.insert(externEnv, x, Local x'))
+		(fn (x, x', env) => VMap.insert(env, x, Local x'))
 		  externEnv (params, params')
           val (_, binds, clos, cfgArgs) =
                 CPS.Var.Set.foldl mkArgs (1, [], env, []) fv
@@ -375,14 +377,14 @@ print(concat["******************** finish ", CFG.Label.toString lab, "\n"]);
                           | CPS.Apply(f, args, rets) => let
                               val (argBinds, args) = lookupVars(env, args)
                               val (retBinds, rets) = lookupVars(env, rets)
+			      fun bindEP () = let
+                                    val (binds, f') = lookupVar(env, f)
+                                    val ep = newEP (CFG.T_Any)
+                                    in
+                                      (CFG.mkSelect(ep, 0, f') :: binds, f', ep)
+                                    end
                               val (binds, xfer) = (case rets
 				     of [ret, exh] => let
-					  fun bindEP () = let
-                                                val (binds, f') = lookupVar(env, f)
-                                                val ep = newEP (CFG.T_Any)
-                                                in
-                                                  (CFG.mkSelect(ep, 0, f') :: binds, f', ep)
-                                                end
                                           val (cp, ep, binds') = (case CPS.Var.kindOf f
                                         	 of CPS.VK_Fun _ => let
 						      val (b, cp) = bindLabel(labelOf f)
@@ -416,6 +418,38 @@ print(concat["******************** finish ", CFG.Label.toString lab, "\n"]);
                                                   args = args,
                                                   ret = ret,
                                                   exh = exh
+                                                }
+                                          in
+                                            (binds', xfer)
+                                          end
+				      | [ret] => let
+                                          val (cp, ep, binds') = (case CPS.Var.kindOf f
+                                        	 of CPS.VK_Fun _ => let
+						      val (b, cp) = bindLabel(labelOf f)
+                                        	      in
+                                                        case findVar(env, f)
+                                                         of EnclFun => (cp, envPtrOf env, [b])
+                                                          | _ => let
+                                                             val (binds, _, ep) = bindEP ()
+                                                             in
+                                                               (cp, ep, b :: binds @ argBinds)
+                                                             end
+                                                        (* end case *)
+                                                      end
+                                                 | _ => let
+                                                      val (binds, f', ep) = bindEP ()
+                                                      val cp = CFG.Var.new(CFG.Var.nameOf f',
+                                                              CFG.T_Code(
+								CFGTy.T_Any :: List.map CFG.Var.typeOf args
+								  @ [CFG.Var.typeOf ret]))
+                                                      val b = CFG.mkSelect(cp, 1, f')
+                                                      in
+                                                        (cp, ep, b :: binds @ argBinds)
+                                                      end
+						(* end case *))
+					  val xfer = CFG.Apply{
+                                                  f = cp,
+                                                  args = ep :: args @ [ret]
                                                 }
                                           in
                                             (binds', xfer)
@@ -528,6 +562,13 @@ print(concat["******************** finish ", CFG.Label.toString lab, "\n"]);
                 in
                   (env, conv)
                 end
+	    | stdFunConvention (env, args, [ret]) = let
+                val (env, args) = newLocals (env, args)
+                val (env, ret) = newLocal (env, ret)
+                val conv = CFG.KnownFunc(envPtrOf env :: args @ [ret])
+                in
+                  (env, conv)
+                end
         (* convert a bound continuation *)
           and cvtCont (env, CPS.FB{f, params, body, ...}) = let
                 val (binds, clos, lambdaEnv, params') = mkContClosure (env, params, FV.envOfFun f)
@@ -542,7 +583,7 @@ print(concat["******************** finish ", CFG.Label.toString lab, "\n"]);
                 end
         (* create the calling convention for the module *)
           fun cvtModLambda (CPS.FB{f, params, rets, body}) = let
-                val ep = newEP (CFGTy.T_Enum 0w0)
+                val ep = newEP (CFGTy.T_Any)
                 val (env, conv) = stdFunConvention (E{ep = ep, env = externEnv}, params, rets)
                 in
                   cvtExp (env, labelOf f, conv, body)

@@ -83,6 +83,43 @@ structure CFGTy =
             | T_Code _ => true
 	  (* end case *))
 
+  (* is fromTy a more specific instance of toTy? *)
+    fun match (fromTy, toTy) = (case (fromTy, toTy)
+           of (T_Any, T_Code _) => false
+	    | (T_Code _, T_Any) => false
+	    | (T_Any, T_Addr _) => false
+	    | (T_Addr _, T_Any) => false
+            | (fromTy, T_Any) => hasUniformRep fromTy
+            | (T_OpenTuple ty1s, T_OpenTuple ty2s) => let
+		fun ok (_, []) = true
+		  | ok (ty1::r1, ty2::r2) = match(ty1, ty2) andalso ok(r1, r2)
+		  | ok ([], _) = false
+		in
+		  ok (ty1s, ty2s)
+		end
+	    | (T_Tuple(false, tys1), T_OpenTuple tys2) => let
+		fun ok (_, []) = true
+		  | ok (ty1::r1, ty2::r2) = match(ty1, ty2) andalso ok(r1, r2)
+		  | ok ([], _) = false
+		in
+		  ok (tys1, tys2)
+		end
+            | (T_Tuple(mut1, ty1s), T_Tuple(mut2, ty2s)) =>
+		(mut1 = mut2) andalso ListPair.allEq match (ty1s, ty2s)
+            | (T_StdFun{clos = clos1, args = args1, ret = ret1, exh = exh1},
+               T_StdFun{clos = clos2, args = args2, ret = ret2, exh = exh2}) =>
+                  match (clos1, clos2) andalso
+                  ListPair.allEq match (args1, args2) andalso
+                  match (ret1, ret2) andalso
+                  match (exh1, exh2)
+            | (T_StdCont{clos = clos1, args = args1}, 
+               T_StdCont{clos = clos2, args = args2}) =>
+                  match (clos1, clos2) andalso ListPair.allEq match (args1, args2)
+            | (T_Code ty1s, T_Code ty2s) => ListPair.allEq match (ty1s, ty2s)
+            | _ => equal (fromTy, toTy)
+	  (* end case *))
+
+  (* is it legal to cast from fromTo to toTy? *)
     fun isValidCast (fromTy, toTy) = (case (fromTy, toTy)
            of (T_Any, T_Code _) => false
 	    | (T_Code _, T_Any) => false
