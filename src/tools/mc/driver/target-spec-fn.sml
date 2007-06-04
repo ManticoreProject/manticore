@@ -10,6 +10,10 @@ functor TargetSpecFn (
     val abiName : string
     val osName : string
     structure ABI : RUNTIME_CONSTANTS
+    val maxGPRArgs : int
+    val maxFPRArgs : int
+    val maxVPRArgs : int
+
 
   ) :> TARGET_SPEC = struct
 
@@ -23,4 +27,12 @@ functor TargetSpecFn (
     val trueRep : IntegerLit.integer = 3
     val falseRep : IntegerLit.integer = 1
 
-  end (* AMD64TargetSpecFn *)
+  (* information about registers available for argument passing; the
+   * GPR count must be at least four to support the standard calling
+   * convention (clos, arg, ret, and exh).
+   *)
+    val maxGPRArgs = maxGPRArgs
+    val maxFPRArgs = maxFPRArgs
+    val maxVPRArgs = maxVPRArgs
+
+  end (* TargetSpecFn *)

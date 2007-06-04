@@ -19,5 +19,13 @@ signature TARGET_SPEC =
     val trueRep : IntegerLit.integer
     val falseRep : IntegerLit.integer
 
+  (* information about registers available for argument passing; the
+   * GPR count must be at least four to support the standard calling
+   * convention (clos, arg, ret, and exh).
+   *)
+    val maxGPRArgs : int	(* max number of general-purpose-register args *)
+    val maxFPRArgs : int	(* max number of floating-point-register args *)
+    val maxVPRArgs : int	(* max number of vector-register args *)
+
   end (* TARGET_SPEC *)
 

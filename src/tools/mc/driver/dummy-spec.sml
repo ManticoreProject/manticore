@@ -51,5 +51,13 @@ structure DummySpec : TARGET_SPEC =
     val trueRep : IntegerLit.integer = 3
     val falseRep : IntegerLit.integer = 1
 
+  (* information about registers available for argument passing; the
+   * GPR count must be at least four to support the standard calling
+   * convention (clos, arg, ret, and exh).
+   *)
+    val maxGPRArgs = 4
+    val maxFPRArgs = 0
+    val maxVPRArgs = 0
+
   end
 

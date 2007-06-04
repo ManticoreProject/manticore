@@ -26,6 +26,6 @@ is
   ../cfg/sources.cm
   ../cfg-opt/sources.cm
 
-  dummy-spec.sml
+  ../driver/dummy-spec.sml
   interp-cfg.sml
 
