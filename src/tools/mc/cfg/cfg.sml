@@ -24,26 +24,26 @@ structure CFG =
       }
 
     and convention
-      = StdFunc of {	(* a function that may be called from unknown sites; it uses the *)
-			(* standard calling convention. *)
-	    clos : var,	  (* closure parameter *)
-	    arg : var,	  (* argument parameter *)
-	    ret : var,	  (* return-continuation parameter *)
-	    exh : var	  (* exception-handler-continuation parameter *)
+      = StdFunc of {		(* a function that may be called from unknown sites; it uses *)
+				(* the standard calling convention. *)
+	    clos : var,		  (* closure parameter *)
+	    args : var list,	  (* argument parameters *)
+	    ret : var,		  (* return-continuation parameter *)
+	    exh : var		  (* exception-handler-continuation parameter *)
 	  }
-      | StdCont of {	(* a continuation that may be thrown to from unknown sites; it uses *)
-			(* the standard continuation-calling convention *)
-	    clos : var,	  (* closure parameter *)
-	    arg : var	  (* argument parameter *)
+      | StdCont of {		(* a continuation that may be thrown to from unknown sites; *)
+				(* it uses the standard continuation-calling convention *)
+	    clos : var,		  (* closure parameter *)
+	    args : var list	  (* argument parameters *)
 	  }
-      | KnownFunc	(* a function/continuation for which we know all of its call sites *)
-			(* and only known functions are called from those sites (Serrano's *)
-			(* "T" property).  It uses a specialized calling convention. *)
-	  of var list	  (* parameters *)
-      | Block		(* a function/continuation for which we know all of its call sites *)
-			(* and it is the only function called at those sites (Serrano's *)
-			(* "X" property) *)
-	  of var list	  (* parameters *)
+      | KnownFunc		(* a function/continuation for which we know all of its call sites *)
+				(* and only known functions are called from those sites (Serrano's *)
+				(* "T" property).  It uses a specialized calling convention. *)
+	  of var list		  (* parameters *)
+      | Block			(* a function/continuation for which we know all of its call sites *)
+				(* and it is the only function called at those sites (Serrano's *)
+				(* "X" property) *)
+	  of var list		  (* parameters *)
 
     and exp
       = E_Var of var list * var list
@@ -66,8 +66,8 @@ structure CFG =
 						(* in the vproc structure *)
 
     and transfer
-      = StdApply of {f : var, clos : var, arg : var, ret : var, exh : var}
-      | StdThrow of {k : var, clos : var, arg : var}
+      = StdApply of {f : var, clos : var, args : var list, ret : var, exh : var}
+      | StdThrow of {k : var, clos : var, args : var list}
       | Apply of {f : var, args : var list}
       | Goto of jump
       | If of (var * jump * jump)
@@ -166,9 +166,11 @@ structure CFG =
       | rhsOfExp (E_VPLoad(_, _, x)) = [x]
       | rhsOfExp (E_VPStore(_, x, y)) = [x, y]
 
-  (* project the list of variables in a control transfer *)
-    fun varsOfXfer (StdApply{f, clos, arg, ret, exh}) = [f, clos, arg, ret, exh]
-      | varsOfXfer (StdThrow{k, clos, arg}) = [k, clos, arg]
+  (* project the list of variables in a control transfer.  Note that the order must agree with
+   * the parameter order of paramsOfConv below.
+   *)
+    fun varsOfXfer (StdApply{f, clos, args, ret, exh}) = f :: clos :: args @ [ret, exh]
+      | varsOfXfer (StdThrow{k, clos, args}) = k :: clos :: args
       | varsOfXfer (Apply{f, args}) = f::args
       | varsOfXfer (Goto(_, args)) = args
       | varsOfXfer (If(x, (_, args1), (_, args2))) = x :: args1 @ args2
@@ -195,8 +197,8 @@ structure CFG =
       | labelsOfXfer (HeapCheck{nogc=(lab, _), ...}) = [lab]
 
   (* project out the parameters of a convention *)
-    fun paramsOfConv (StdFunc{clos, arg, ret, exh}) = [clos, arg, ret, exh]
-      | paramsOfConv (StdCont{clos, arg}) = [clos, arg]
+    fun paramsOfConv (StdFunc{clos, args, ret, exh}) = clos :: args @ [ret, exh]
+      | paramsOfConv (StdCont{clos, args}) = clos::args
       | paramsOfConv (KnownFunc params) = params
       | paramsOfConv (Block params) = params
 

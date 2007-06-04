@@ -25,38 +25,38 @@ structure CFGTy =
     (* function/continuation types.  The type specifies the calling convention.  These
      * types should be used for labels and code addresses.
      *)
-      | T_StdFun of {clos : ty, arg : ty, ret : ty, exh : ty}
-      | T_StdCont of {clos : ty, arg : ty}
+      | T_StdFun of {clos : ty, args : ty list, ret : ty, exh : ty}
+      | T_StdCont of {clos : ty, args : ty list}
       | T_Code of ty list	(* includes both known functions and blocks *)
 
     val unitTy = T_Enum(0w0)
     val boolTy = T_Enum(0w1)	(* false = 0, true = 1 *)
 
-    fun equals (ty1, ty2) = (case (ty1, ty2)
+    fun equal (ty1, ty2) = (case (ty1, ty2)
 	   of (T_Any, T_Any) => true
             | (T_Enum w1, T_Enum w2) => (w1 = w2)
             | (T_Raw rty1, T_Raw rty2) => (rty1 = rty2)
             | (T_Wrap rty1, T_Wrap rty2) => (rty1 = rty2)
             | (T_Tuple(mut1, ty1s), T_Tuple(mut2, ty2s)) =>
-		(mut1 = mut2) andalso ListPair.allEq equals (ty1s, ty2s)
-            | (T_OpenTuple ty1s, T_OpenTuple ty2s) => ListPair.allEq equals (ty1s, ty2s)
-	    | (T_Addr ty1, T_Addr ty2) => equals(ty1, ty2)
+		(mut1 = mut2) andalso equalList (ty1s, ty2s)
+            | (T_OpenTuple ty1s, T_OpenTuple ty2s) => equalList (ty1s, ty2s)
+	    | (T_Addr ty1, T_Addr ty2) => equal(ty1, ty2)
 	    | (T_CFun proto1, T_CFun proto2) => (proto1 = proto2)
 	    | (T_VProc, T_VProc) => true
-            | (T_StdFun {clos = clos1, arg = arg1, ret = ret1, exh = exh1},
-               T_StdFun {clos = clos2, arg = arg2, ret = ret2, exh = exh2}) =>
-                  equals (clos1, clos2) andalso
-                  equals (arg1, arg2) andalso
-                  equals (ret1, ret2) andalso
-                  equals (exh1, exh2)
-            | (T_StdCont {clos = clos1, arg = arg1}, 
-               T_StdCont {clos = clos2, arg = arg2}) =>
-                  equals (clos1, clos2) andalso
-                  equals (arg1, arg2)
-            | (T_Code ty1s, T_Code ty2s) => ListPair.allEq equals (ty1s, ty2s)
+            | (T_StdFun{clos = clos1, args = args1, ret = ret1, exh = exh1},
+               T_StdFun{clos = clos2, args = args2, ret = ret2, exh = exh2}) =>
+                  equal (clos1, clos2) andalso
+                  equalList (args1, args2) andalso
+                  equal (ret1, ret2) andalso
+                  equal (exh1, exh2)
+            | (T_StdCont{clos = clos1, args = args1}, 
+               T_StdCont{clos = clos2, args = args2}) =>
+                  equal (clos1, clos2) andalso equalList (args1, args2)
+            | (T_Code ty1s, T_Code ty2s) => equalList (ty1s, ty2s)
             | _ => false
 	  (* end case *))
 
+    and equalList (tys1, tys2) = ListPair.allEq equal (tys1, tys2)
   (* return true if the type has a single-word uniform representation; this includes
    * anything represented by a pointer or a tagged integer.
    *)
@@ -90,13 +90,10 @@ structure CFGTy =
 	    | (T_Addr _, T_Any) => false
 	    | (T_Any, toTy) => hasUniformRep toTy
             | (fromTy, T_Any) => hasUniformRep fromTy
-            | (T_OpenTuple ty1s, T_OpenTuple ty2s) =>
-                  ListPair.all isValidCast (ty1s, ty2s)
-            | (T_StdFun {clos = clos1, arg = arg1, ret = ret1, exh = exh1},
-               T_StdFun {clos = clos2, arg = arg2, ret = ret2, exh = exh2}) => true
-            | (T_StdCont {clos = clos1, arg = arg1},
-               T_StdCont {clos = clos2, arg = arg2}) => true
-            | _ => equals (fromTy, toTy)
+            | (T_OpenTuple ty1s, T_OpenTuple ty2s) => ListPair.all isValidCast (ty1s, ty2s)
+            | (T_StdFun _, T_StdFun _) => true
+            | (T_StdCont _, T_StdCont _) => true
+            | _ => equal (fromTy, toTy)
 	  (* end case *))
 
     fun toString ty = let
@@ -105,6 +102,9 @@ structure CFGTy =
 	    | tys2l (ty::tys, l) =
 		toString ty ::
 		  (List.foldr (fn (ty, l) => "," :: toString ty :: l) l tys)
+	  fun args2s [] = "[]"
+	    | args2s [ty] = toString ty
+	    | args2s tys = concat("[" :: tys2l(tys, ["]"]))
 	  in
 	    case ty
 	     of T_Any => "any"
@@ -117,8 +117,13 @@ structure CFGTy =
 	      | T_Addr ty => concat["addr(", toString ty, ")"]
 	      | T_CFun proto => CFunctions.protoToString proto
 	      | T_VProc => "vproc"
-	      | T_StdFun{clos, arg, ret, exh} => concat("fun(" :: tys2l([clos, arg, ret, exh], [")"]))
-	      | T_StdCont{clos, arg} => concat("cont(" :: tys2l([clos, arg], [")"]))
+	      | T_StdFun{clos, args, ret, exh} => concat[
+		    "fun(", toString clos, ",", args2s args, ",",
+		    toString ret, ",", toString exh, ")"
+		  ]
+	      | T_StdCont{clos, args} =>  concat[
+		    "cont(", toString clos, ",", args2s args, ")"
+		  ]
 	      | T_Code tys => concat("code(" :: tys2l(tys, [")"]))
 	    (* end case *)
 	  end
@@ -126,11 +131,14 @@ structure CFGTy =
     fun stdContTy (cpTy, argTy) = let
 	  val cpTy = (case cpTy
 		 of T_Any => T_StdCont{
-			clos=T_OpenTuple[T_StdCont{clos=T_Any, arg=argTy}],
-			arg=argTy
+			clos=T_OpenTuple[T_StdCont{clos=T_Any, args=argTy}],
+			args=argTy
 		      }
 		  | T_StdCont _ => cpTy
-		  | ty => raise Fail(concat["stdContTy(", toString cpTy, ", ", toString argTy, ")"])
+		  | ty => raise Fail(concat[
+			"stdContTy(", toString cpTy, ", ", "[",
+			String.concatWith "," (List.map toString argTy), "])"
+		      ])
 		(* end case *))
 	  in
 	    cpTy

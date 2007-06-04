@@ -126,9 +126,9 @@ functor HeapTransferFn (
 	   liveOut=map toGPR stdRegs}
       end (* genStdTransfer *)
 
-  fun genStdCall varDefTbl {f, clos, arg, ret, exh} = 
+  fun genStdCall varDefTbl {f, clos, args, ret, exh} = 
       let val defOf = VarDef.defOf varDefTbl
-	  val args = [clos, arg, ret, exh]
+	  val args = clos :: args @ [ret, exh]
 	  val argRegs = map newReg args
 	  val tgtReg = newReg ()
 	  val {stms, liveOut} =
@@ -138,12 +138,12 @@ functor HeapTransferFn (
 	  {stms=move (tgtReg, defOf f) :: stms, liveOut=liveOut}
       end (* genStdCall *)
 
-  fun genStdThrow varDefTbl {k, clos, arg} = 
+  fun genStdThrow varDefTbl {k, clos, args} = 
       let val defOf = VarDef.defOf varDefTbl
 	  val kReg = newReg ()
-	  val argRegs = map newReg [clos, arg]
+	  val argRegs = map newReg (clos :: args)
 	  val {stms, liveOut} = 
-	      genStdTransfer varDefTbl (regExp kReg, [clos, arg], argRegs, stdContRegs)
+	      genStdTransfer varDefTbl (regExp kReg, clos :: args, argRegs, stdContRegs)
       in 
 	  {stms=move (kReg, defOf k) :: stms, liveOut=liveOut}
       end (* genStdThrow *)
@@ -330,11 +330,10 @@ functor HeapTransferFn (
 
   fun genFuncEntry varDefTbl (lab, convention) =
       let datatype conv = Special | StdConv of Regs.gpr list
-	  val (params, stdRegs) = 
-	      (case convention
-		of M.StdFunc {clos, arg, ret, exh} => 
-		   ([clos, arg, ret, exh], StdConv stdCallRegs)
-		 | M.StdCont {clos, arg} => ([clos, arg], StdConv stdContRegs)
+	  val (params, stdRegs) = (case convention
+		of M.StdFunc{clos, args, ret, exh} => 
+		   (clos :: args @ [ret, exh], StdConv stdCallRegs)
+		 | M.StdCont{clos, args} => (clos::args, StdConv stdContRegs)
 		 | ( M.KnownFunc vs | M.Block vs ) => (vs, Special)
 	      (* esac *))
 	  fun bindToParams rs = 

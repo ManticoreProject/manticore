@@ -36,15 +36,15 @@ structure FlatClosure : sig
 
   (* convert a function type to a standard-function type *)
     and cvtStdFunTy ty = CFG.T_Tuple(false, [CFG.T_Any, cvtStdFunTyAux ty])
-    and cvtStdFunTyAux (CPSTy.T_Fun([argTy], [retTy, exhTy])) = CFGTy.T_StdFun{
+    and cvtStdFunTyAux (CPSTy.T_Fun(argTys, [retTy, exhTy])) = CFGTy.T_StdFun{
             clos = CFGTy.T_Any,
-            arg = cvtTy argTy,
+            args = List.map cvtTy argTys,
             ret = cvtStdContTy retTy,
             exh = cvtStdContTy exhTy
           }
       | cvtStdFunTyAux (CPSTy.T_Any) = CFGTy.T_StdFun{
             clos = CFGTy.T_Any,
-            arg = CFGTy.T_Any,
+            args = [CFGTy.T_Any],
             ret = CFGTy.T_Any,
             exh = CFGTy.T_Any
           }
@@ -52,8 +52,9 @@ structure FlatClosure : sig
 
   (* convert a continuation type to a standard-continuation type *)
     and cvtStdContTy ty = CFG.T_OpenTuple[cvtStdContTyAux ty]
-    and cvtStdContTyAux (CPSTy.T_Fun([argTy], [])) = CFGTy.stdContTy(CFGTy.T_Any, cvtTy argTy)
-      | cvtStdContTyAux (CPSTy.T_Any) = CFGTy.stdContTy(CFGTy.T_Any, CFGTy.T_Any)
+    and cvtStdContTyAux (CPSTy.T_Fun(argTys, [])) =
+	  CFGTy.stdContTy(CFGTy.T_Any, List.map cvtTy argTys)
+      | cvtStdContTyAux (CPSTy.T_Any) = CFGTy.stdContTy(CFGTy.T_Any, [CFGTy.T_Any])
       | cvtStdContTyAux ty = raise Fail("bogus continuation type " ^ CPSTy.toString ty)
 
   (* assign labels to functions and continuations *)
@@ -226,24 +227,26 @@ print(concat["lookupVar: ", CPS.Var.toString x, " @ ", locToString(valOf(VMap.fi
    * argument variables and bindings to build the closure and the parameter variables and
    * environment for the continuation's body.
    *)
-    fun mkContClosure externEnv (env, param, fv) = let
-	  val param' = newVar param
+    fun mkContClosure externEnv (env, params, fv) = let
+	  val params' = List.map newVar params
           fun mkArgs (x, (i, binds, clos, xs)) = let
                 val (b, x') = lookupVar(env, x)
                 in
                   (i+1, b@binds, VMap.insert(clos, x, Global i), x'::xs)
                 end
-	(* the initial environment is the externs plus the parameter *)
-	  val env = VMap.insert(externEnv, param, Local param')
+	(* the initial environment is the externs plus the parameters *)
+	  val env = ListPair.foldl
+		(fn (x, x', env) => VMap.insert(externEnv, x, Local x'))
+		  externEnv (params, params')
           val (_, binds, clos, cfgArgs) =
                 CPS.Var.Set.foldl mkArgs (1, [], env, []) fv
           val cfgArgs = List.rev cfgArgs
 	  val closTy = CFGTy.T_Tuple(false, 
-		CFGTy.stdContTy(CFGTy.T_Any, CFG.Var.typeOf param')
+		CFGTy.stdContTy(CFGTy.T_Any, List.map CFG.Var.typeOf params')
 		  :: List.map CFG.Var.typeOf cfgArgs)
           val ep = newEP closTy
           in
-            (binds, cfgArgs, E{ep = ep, env = clos}, param')
+            (binds, cfgArgs, E{ep = ep, env = clos}, params')
           end
 
     fun convert (m as CPS.MODULE{name, externs, body}) = let
@@ -372,8 +375,8 @@ print(concat["******************** finish ", CFG.Label.toString lab, "\n"]);
                           | CPS.Apply(f, args, rets) => let
                               val (argBinds, args) = lookupVars(env, args)
                               val (retBinds, rets) = lookupVars(env, rets)
-                              val (binds, xfer) = (case (args, rets)
-				     of ([arg], [ret, exh]) => let
+                              val (binds, xfer) = (case rets
+				     of [ret, exh] => let
 					  fun bindEP () = let
                                                 val (binds, f') = lookupVar(env, f)
                                                 val ep = newEP (CFG.T_Any)
@@ -398,7 +401,7 @@ print(concat["******************** finish ", CFG.Label.toString lab, "\n"]);
                                                       val cp = CFG.Var.new(CFG.Var.nameOf f',
                                                               CFG.T_StdFun{
                                                                   clos = CFGTy.T_Any,
-                                                                  arg = CFG.Var.typeOf arg,
+                                                                  args = List.map CFG.Var.typeOf args,
                                                                   ret = CFG.Var.typeOf ret,
                                                                   exh = CFG.Var.typeOf exh
                                                                })
@@ -410,7 +413,7 @@ print(concat["******************** finish ", CFG.Label.toString lab, "\n"]);
 					  val xfer = CFG.StdApply{
                                                   f = cp,
                                                   clos = ep,
-                                                  arg = arg,
+                                                  args = args,
                                                   ret = ret,
                                                   exh = exh
                                                 }
@@ -424,27 +427,24 @@ print(concat["******************** finish ", CFG.Label.toString lab, "\n"]);
 			      end
 			  | CPS.Throw(k, args) => let
                               val (binds, k'::args') = lookupVars(env, k::args)
-                              val (binds, xfer) = (case args'
-				     of [arg] => let
-					  val cp = CFG.Var.new(CFG.Var.nameOf k',
-						 CFGTy.selectTy(0, CFG.Var.typeOf k'))
-					(* if k has kind VK_Cont, then we can refer directly
-					 * to its label
-					 *)
-					  val bindCP = (case CPS.Var.kindOf k
-						 of CPS.VK_Cont _ => CFG.mkLabel(cp, labelOf k)
-						  | _ => CFG.mkSelect(cp, 0, k')
-						(* end case *))
-                                          val xfer = CFG.StdThrow{
-                                                  k = cp,
-                                                  clos = k',
-                                                  arg = arg
-                                        	}
-                                          in
-                                            (bindCP :: binds, xfer)
-                                          end
-                                      | _ => raise Fail "non-standard throw convention"
-                                    (* end case *))
+                              val (binds, xfer) = let
+				    val cp = CFG.Var.new(CFG.Var.nameOf k',
+					   CFGTy.selectTy(0, CFG.Var.typeOf k'))
+				  (* if k has kind VK_Cont, then we can refer directly
+				   * to its label
+				   *)
+				    val bindCP = (case CPS.Var.kindOf k
+					   of CPS.VK_Cont _ => CFG.mkLabel(cp, labelOf k)
+					    | _ => CFG.mkSelect(cp, 0, k')
+					  (* end case *))
+                                    val xfer = CFG.StdThrow{
+                                            k = cp,
+                                            clos = k',
+                                            args = args'
+                                          }
+                                    in
+                                      (bindCP :: binds, xfer)
+                                    end
                               in
                                 finish (binds @ stms, xfer)
                               end
@@ -517,22 +517,21 @@ print(concat["******************** finish ", CFG.Label.toString lab, "\n"]);
 		  | _ => raise Fail "ill-formed RHS binding"
                 (* end case *))
         (* create a standard function convention for a list of parameters *)
-          and stdFunConvention (env, [arg], [ret, exh]) = let
-                val (env, arg) = newLocal (env, arg)
+          and stdFunConvention (env, args, [ret, exh]) = let
+                val (env, args) = newLocals (env, args)
                 val (env, ret) = newLocal (env, ret)
                 val (env, exh) = newLocal (env, exh)
                 val conv = CFG.StdFunc{
                         clos = envPtrOf env,
-                        arg = arg, ret = ret, exh = exh
+                        args = args, ret = ret, exh = exh
                       }
                 in
                   (env, conv)
                 end
-            | stdFunConvention _ = raise Fail "non-standard function"
         (* convert a bound continuation *)
-          and cvtCont (env, CPS.FB{f, params=[param], body, ...}) = let
-                val (binds, clos, lambdaEnv, param') = mkContClosure (env, param, FV.envOfFun f)
-                val conv = CFG.StdCont{clos = envPtrOf lambdaEnv, arg = param'}
+          and cvtCont (env, CPS.FB{f, params, body, ...}) = let
+                val (binds, clos, lambdaEnv, params') = mkContClosure (env, params, FV.envOfFun f)
+                val conv = CFG.StdCont{clos = envPtrOf lambdaEnv, args = params'}
                 val (bindLab, labVar) = bindLabel (labelOf f)
 		val contEnv = insertVar (lambdaEnv, f, EnclCont)  (* to support recursive conts *)
                 val (env', k') = newLocal (env, f)
@@ -541,7 +540,6 @@ print(concat["******************** finish ", CFG.Label.toString lab, "\n"]);
                   cvtExp (contEnv, labelOf f, conv, body);
                   (binds, env')
                 end
-	    | cvtCont (_, fb) = raise Fail("non-standard continuation " ^ CPS.Var.toString(funVar fb))
         (* create the calling convention for the module *)
           fun cvtModLambda (CPS.FB{f, params, rets, body}) = let
                 val ep = newEP (CFGTy.T_Enum 0w0)

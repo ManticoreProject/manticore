@@ -280,9 +280,9 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 		  | doExp (CFG.E_HostVProc vp) = ()
 		  | doExp (CFG.E_VPLoad(x, _, vp)) = addInfo(x, TOP)
 		  | doExp (CFG.E_VPStore(_, vp, x)) = escape x
-		and doXfer (CFG.StdApply{f, clos, arg, ret, exh}) =
-		      doApply (f, [clos, arg, ret, exh])
-		  | doXfer (CFG.StdThrow{k, clos, arg}) = doApply (k, [clos, arg])
+		and doXfer (CFG.StdApply{f, clos, args, ret, exh}) =
+		      doApply (f, clos :: args @ [ret, exh])
+		  | doXfer (CFG.StdThrow{k, clos, args}) = doApply (k, clos::args)
 		  | doXfer (CFG.Apply{f, args}) = doApply (f, args)
 		  | doXfer (CFG.Goto jmp) = doJump jmp
 		  | doXfer (CFG.If(_, jmp1, jmp2)) = (doJump jmp1; doJump jmp2)
@@ -328,8 +328,8 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 	  in
 	  (* initialize the arguments to the module entry to top *)
 	    case code
-	     of CFG.FUNC{entry=CFG.StdFunc{clos, arg, ret, exh}, ...} :: _ => (
-		  setVar (clos, TOP); setVar (arg, TOP);
+	     of CFG.FUNC{entry=CFG.StdFunc{clos, args, ret, exh}, ...} :: _ => (
+		  setVar (clos, TOP); List.app (fn x => setVar (x, TOP)) args;
 		  setVar (ret, TOP); setVar (exh, TOP))
 	      | _ => raise Fail "strange module entry"
 	    (* end case *);

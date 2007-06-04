@@ -28,6 +28,17 @@ structure CheckCFG : sig
 	  TextIO.output(TextIO.stdErr, concat("Error: " :: msg @ ["\n"]));
           raise CheckCFG)
 
+    fun vl2s [] = "[]"
+      | vl2s [x] = concat[V.toString x, ":", Ty.toString(V.typeOf x)]
+      | vl2s (x::xs) = let
+	  fun f (x, l) = "," :: V.toString x ::  ":" ::  Ty.toString(V.typeOf x) :: l
+	  in
+	    String.concat("[" :: V.toString x ::  ":" ::  Ty.toString(V.typeOf x)
+	      :: List.foldr f ["]"] xs)
+	  end
+
+    fun tyl2s tys = Ty.toString(Ty.T_Tuple(false, tys))
+
     fun bindVar (env, x) = VSet.add(env, x)
 
     fun bindVars (env, xs) = VSet.addList(env, xs)
@@ -54,59 +65,62 @@ structure CheckCFG : sig
 			| (CFG.LK_Local _, true) => ()
 			| (CFG.LK_Local _, false) => err["reference to unbound label ", L.toString l]
 		      (* end case *))
-		fun chkEntry (CFG.StdFunc{clos, arg, ret, exh}) = (
+		fun chkEntry (CFG.StdFunc{clos, args, ret, exh}) = (
                       (case L.typeOf lab of
-                          Ty.T_StdFun {clos = closTy, arg = argTy, ret = retTy, exh = exhTy} => 
+                          Ty.T_StdFun{clos = closTy, args = argTys, ret = retTy, exh = exhTy} => 
                              ((* FIXME: closure types not set by assignLabels *)
                               (*
-                              if Ty.equals (V.typeOf clos, closTy)
+                              if Ty.equal (V.typeOf clos, closTy)
                                  then ()
                               else err["variable ", V.toString clos, ":", Ty.toString (V.typeOf clos),
                                        " does not match ",
                                        "closure type ", Ty.toString closTy];
                               *)
-                              if Ty.equals (V.typeOf arg, argTy)
-                                 then ()
-                              else err["variable ", V.toString arg, ":", Ty.toString (V.typeOf arg),
-                                       " does not match ",
-                                       "argument type ", Ty.toString argTy];
-                              if Ty.equals (V.typeOf ret, retTy)
+                              if ListPair.allEq Ty.equal (List.map V.typeOf args, argTys)
+                        	then ()
+                                else err[
+				    "arguments ", vl2s args, " do not match ",
+                                       "argument types ", tyl2s argTys
+				  ];
+                              if Ty.equal (V.typeOf ret, retTy)
                                  then ()
                               else err["variable ", V.toString ret, ":", Ty.toString (V.typeOf ret),
                                        " does not match ",
                                        "return type ", Ty.toString retTy];
-                              if Ty.equals (V.typeOf exh, exhTy)
+                              if Ty.equal (V.typeOf exh, exhTy)
                                  then ()
                               else err["variable ", V.toString exh, ":", Ty.toString (V.typeOf exh),
                                        " does not match ",
                                        "exh type ", Ty.toString exhTy])
                         | _ => err["label ", L.toString lab, ":", Ty.toString (L.typeOf lab),
                                    " is not stdfun"]);
-		      bindVars(VSet.empty, [clos, arg, ret, exh]))
-		  | chkEntry (CFG.StdCont{clos, arg}) = (
-                      (case L.typeOf lab of
-                          Ty.T_StdCont {clos = closTy, arg = argTy} => 
-                             ((* FIXME: closure types not set by assignLabels *)
-                              (*
-                              if Ty.equals (V.typeOf clos, closTy)
-                                 then ()
-                              else err["variable ", V.toString clos, ":", Ty.toString (V.typeOf clos),
-                                       " does not match ",
-                                       "closure type ", Ty.toString closTy];
-                              *)
-                              if Ty.equals (V.typeOf arg, argTy)
-                                 then ()
-                              else err["variable ", V.toString arg, ":", Ty.toString (V.typeOf arg),
-                                       " does not match ",
-                                       "argument type ", Ty.toString argTy])
-                        | _ => err["label ", L.toString lab, ":", Ty.toString (L.typeOf lab),
-                                   " is not stdcont"]);
-		      bindVars(VSet.empty, [clos, arg]))
+		      bindVars(VSet.empty, clos::ret::exh::args))
+		  | chkEntry (CFG.StdCont{clos, args}) = (
+                      case L.typeOf lab
+		       of Ty.T_StdCont{clos = closTy, args = argTys} => (
+                           (* FIXME: closure types not set by assignLabels *)
+                            (*
+                            if Ty.equal (V.typeOf clos, closTy)
+                               then ()
+                            else err["variable ", V.toString clos, ":", Ty.toString (V.typeOf clos),
+                                     " does not match ",
+                                     "closure type ", Ty.toString closTy];
+                            *)
+                            if ListPair.allEq Ty.equal (List.map V.typeOf args, argTys)
+                              then ()
+                              else err[
+				  "arguments ", vl2s args, " do not match ",
+                                     "argument types ", tyl2s argTys
+				])
+			| _ => err["label ", L.toString lab, ":", Ty.toString (L.typeOf lab),
+                                   " is not stdcont"]
+		      (* end case *);
+		      bindVars(VSet.empty, clos::args))
 		  | chkEntry (CFG.KnownFunc args) = (
-                      (case L.typeOf lab of
+                      case L.typeOf lab of
                           Ty.T_Code argTys => 
                              ((ListPair.appEq (fn (arg, argTy) =>
-                                               if Ty.equals (V.typeOf arg, argTy)
+                                               if Ty.equal (V.typeOf arg, argTy)
                                                   then ()
                                                else err["variable ", V.toString arg, ":", Ty.toString (V.typeOf arg),
                                                         " does not match ",
@@ -118,13 +132,14 @@ structure CheckCFG : sig
                                      "variables (", String.concatWith "," (List.map Ty.toString argTys),
                                      ")"])
                         | _ => err["label ", L.toString lab, ":", Ty.toString (L.typeOf lab),
-                                   " is not code"]);
+                                   " is not code"]
+		      (* end case *);
 		      bindVars(VSet.empty, args))
 		  | chkEntry (CFG.Block args) = (
                       (case L.typeOf lab of
                           Ty.T_Code argTys => 
                              ((ListPair.appEq (fn (arg, argTy) =>
-                                               if Ty.equals (V.typeOf arg, argTy)
+                                               if Ty.equal (V.typeOf arg, argTy)
                                                   then ()
                                                else err["variable ", V.toString arg, ":", Ty.toString (V.typeOf arg),
                                                         " does not match ",
@@ -140,7 +155,7 @@ structure CheckCFG : sig
 		      bindVars(VSet.empty, args))
 		fun chkExp (e, env) = (case e
 		       of CFG.E_Var(lhs, rhs) => let
-			    fun chk (x, y) = if Ty.equals (V.typeOf x, V.typeOf y) then ()
+			    fun chk (x, y) = if Ty.equal (V.typeOf x, V.typeOf y) then ()
                                     else err[
 					"variable ", V.toString x, ":", Ty.toString (V.typeOf x),
                                         " does not match ",
@@ -175,7 +190,7 @@ structure CheckCFG : sig
 				  "variable ", V.toString y, ":", Ty.toString (V.typeOf y),
                                   " cannot be cast to ", "type ", Ty.toString ty
 				];
-                            if Ty.equals (V.typeOf x, ty)
+                            if Ty.equal (V.typeOf x, ty)
 			      then ()
 			      else err[
 				  "variable ", V.toString x, ":", Ty.toString (V.typeOf x),
@@ -187,7 +202,7 @@ structure CheckCFG : sig
                             case L.kindOf lab
 			     of CFG.LK_None => err["label ", L.toString lab, " has kind None"]
 			      | CFG.LK_Extern _ => ()
-			      | CFG.LK_Local _ => if Ty.equals (V.typeOf x, L.typeOf lab)
+			      | CFG.LK_Local _ => if Ty.equal (V.typeOf x, L.typeOf lab)
 				  then ()
                                   else err[
 				      "variable ", V.toString x, ":", Ty.toString (V.typeOf x),
@@ -207,7 +222,7 @@ structure CheckCFG : sig
 			      chkVar (env, y);
 (* FIXME: Selecting from a known closure into an T_Any environment pointer fails *)
 (*
-                              if Ty.equals (V.typeOf x, ty)
+                              if Ty.equal (V.typeOf x, ty)
                                  then ()
                               else err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
                                        " does not match ",
@@ -238,7 +253,7 @@ structure CheckCFG : sig
 			    in
 			      chkVar (env, y);
 			      case V.typeOf x
-			       of Ty.T_Addr ty' => if Ty.equals(ty, ty')
+			       of Ty.T_Addr ty' => if Ty.equal(ty, ty')
 				    then ()
 				    else error[
 					"type mismatch in E_AddrOf: lhs = ", Ty.toString ty',
@@ -309,54 +324,58 @@ structure CheckCFG : sig
 			    env)
 		      (* end case *))
 		fun chkExit (env, xfer) = (case xfer
-		       of CFG.StdApply{f, clos, arg, ret, exh} => (
-			    chkVars (env, [f, clos, arg, ret, exh]);
-                            (case V.typeOf f of
-                                Ty.T_StdFun {clos = closTy, arg = argTy, ret = retTy, exh = exhTy} =>
-                                   (if Ty.isValidCast (V.typeOf clos, closTy)
-                                       then ()
-                                    else err["variable ", V.toString clos, ":", Ty.toString (V.typeOf clos),
-                                             " does not match ",
-                                             "closure type ", Ty.toString closTy];
-                                    if Ty.isValidCast (V.typeOf arg, argTy)
-                                       then ()
-                                    else err["variable ", V.toString arg, ":", Ty.toString (V.typeOf arg),
-                                             " does not match ",
-                                             "argument type ", Ty.toString argTy];
-                                    if Ty.isValidCast (V.typeOf ret, retTy)
-                                       then ()
-                                    else err["variable ", V.toString ret, ":", Ty.toString (V.typeOf ret),
-                                             " does not match ",
-                                             "return type ", Ty.toString retTy];
-                                    if Ty.isValidCast (V.typeOf exh, exhTy)
-                                       then ()
-                                    else err["variable ", V.toString exh, ":", Ty.toString (V.typeOf exh),
-                                             " does not match ",
-                                             "exh type ", Ty.toString exhTy])
+		       of CFG.StdApply{f, clos, args, ret, exh} => (
+			    chkVars (env, f :: clos :: ret :: exh :: args);
+                            case V.typeOf f
+			     of Ty.T_StdFun{clos = closTy, args = argTys, ret = retTy, exh = exhTy} => (
+                                  if Ty.isValidCast (V.typeOf clos, closTy)
+                                     then ()
+                                  else err["variable ", V.toString clos, ":", Ty.toString (V.typeOf clos),
+                                           " does not match ",
+                                           "closure type ", Ty.toString closTy];
+                        	  if ListPair.allEq Ty.isValidCast (List.map V.typeOf args, argTys)
+                                    then ()
+                                    else err[
+					"arguments ", vl2s args, " do not match ",
+                                	   "argument types ", tyl2s argTys
+				      ];
+                                  if Ty.isValidCast (V.typeOf ret, retTy)
+                                     then ()
+                                  else err["variable ", V.toString ret, ":", Ty.toString (V.typeOf ret),
+                                           " does not match ",
+                                           "return type ", Ty.toString retTy];
+                                  if Ty.isValidCast (V.typeOf exh, exhTy)
+                                     then ()
+                                  else err["variable ", V.toString exh, ":", Ty.toString (V.typeOf exh),
+                                           " does not match ",
+                                           "exh type ", Ty.toString exhTy])
                               | _ => err["variable ", V.toString f, ":", Ty.toString (V.typeOf f),
-                                         " is not stdfun"]))
-			| CFG.StdThrow{k, clos, arg} => (
-			    chkVars (env, [k, clos, arg]);
-                            (case V.typeOf k of
-                                Ty.T_StdCont {clos = closTy, arg = argTy} =>
-                                   (if Ty.isValidCast (V.typeOf clos, closTy)
-                                       then ()
-                                    else err["variable ", V.toString clos, ":", Ty.toString (V.typeOf clos),
-                                             " does not match ",
-                                             "closure type ", Ty.toString closTy];
-                                    if Ty.isValidCast (V.typeOf arg, argTy)
-                                       then ()
-                                    else err["variable ", V.toString arg, ":", Ty.toString (V.typeOf arg),
-                                             " does not match ",
-                                             "argument type ", Ty.toString argTy])
+                                         " is not stdfun"]
+			    (* end case *))
+			| CFG.StdThrow{k, clos, args} => (
+			    chkVars (env, k :: clos :: args);
+                            case V.typeOf k
+			     of Ty.T_StdCont{clos = closTy, args = argTys} => (
+                                  if Ty.isValidCast (V.typeOf clos, closTy)
+                                     then ()
+                                  else err["variable ", V.toString clos, ":", Ty.toString (V.typeOf clos),
+                                           " does not match ",
+                                           "closure type ", Ty.toString closTy];
+                        	if ListPair.allEq Ty.isValidCast (List.map V.typeOf args, argTys)
+                        	  then ()
+                        	  else err[
+				      "arguments ", vl2s args, " do not match ",
+                                	 "argument types ", tyl2s argTys
+				    ])
                               | _ => err["variable ", V.toString k, ":", Ty.toString (V.typeOf k),
-                                         " is not stdcont"]))
+                                         " is not stdcont"]
+			    (* end case *))
 			| CFG.Apply{f, args} => (
 			    chkVars (env, f::args);
                             (case V.typeOf f of
                                 Ty.T_Code argTys => 
                                    ((ListPair.appEq (fn (arg, argTy) =>
-                                                     if Ty.equals (V.typeOf arg, argTy)
+                                                     if Ty.equal (V.typeOf arg, argTy)
                                                         then ()
                                                      else err["variable ", V.toString arg, ":", Ty.toString (V.typeOf arg),
                                                               " does not match ",
@@ -372,7 +391,7 @@ structure CheckCFG : sig
 			| CFG.Goto jmp => chkJump (env, jmp)
 			| CFG.If(x, j1, j2) => (
 			    chkVar (env, x);
-                            if Ty.equals (V.typeOf x, Ty.boolTy)
+                            if Ty.equal (V.typeOf x, Ty.boolTy)
                                then ()
                             else err["variable ", V.toString x, ":", Ty.toString (V.typeOf x), 
                                      " is not bool"]
@@ -404,49 +423,12 @@ structure CheckCFG : sig
 			| CFG.HeapCheck{szb, nogc = (lab, args)} => (
                             chkLabel lab;
                             chkVars (env, args);
-                            (case L.typeOf lab of
-                                Ty.T_StdFun {clos = closTy, arg = argTy, ret = retTy, exh = exhTy} =>
-                                   (let val [clos, arg, ret, exh] = args in
-                                    if Ty.isValidCast (V.typeOf clos, closTy)
-                                       then ()
-                                    else err["variable ", V.toString clos, ":", Ty.toString (V.typeOf clos),
-                                             " does not match ",
-                                             "closure type ", Ty.toString closTy];
-                                    if Ty.isValidCast (V.typeOf arg, argTy)
-                                       then ()
-                                    else err["variable ", V.toString arg, ":", Ty.toString (V.typeOf arg),
-                                             " does not match ",
-                                             "argument type ", Ty.toString argTy];
-                                    if Ty.isValidCast (V.typeOf ret, retTy)
-                                       then ()
-                                    else err["variable ", V.toString ret, ":", Ty.toString (V.typeOf ret),
-                                             " does not match ",
-                                             "return type ", Ty.toString retTy];
-                                    if Ty.isValidCast (V.typeOf exh, exhTy)
-                                       then ()
-                                    else err["variable ", V.toString exh, ":", Ty.toString (V.typeOf exh),
-                                             " does not match ",
-                                             "exh type ", Ty.toString exhTy]
-                                    end)
-                              | Ty.T_StdCont {clos = closTy, arg = argTy} =>
-                                  (let val [clos, arg] = args in
-                                    (* FIXME: closure types not set by assignLabels *)
-                                    (*
-                                    if Ty.isValidCast (V.typeOf clos, closTy)
-                                       then ()
-                                    else err["variable ", V.toString clos, ":", Ty.toString (V.typeOf clos),
-                                             " does not match ",
-                                             "closure type ", Ty.toString closTy];
-                                    *)
-                                    if Ty.isValidCast (V.typeOf arg, argTy)
-                                       then ()
-                                    else err["variable ", V.toString arg, ":", Ty.toString (V.typeOf arg),
-                                             " does not match ",
-                                             "argument type ", Ty.toString argTy]
-                                    end)
+                            case L.typeOf lab
+			     of Ty.T_StdFun _ => err["noGC target is standard fun"]
+                              | Ty.T_StdCont _ => err["noGC target is standard cont"]
                               | Ty.T_Code argTys => 
                                   ((ListPair.appEq (fn (arg, argTy) =>
-                                                    if Ty.equals (V.typeOf arg, argTy)
+                                                    if Ty.equal (V.typeOf arg, argTy)
                                                        then ()
                                                     else err["variable ", V.toString arg, ":", Ty.toString (V.typeOf arg),
                                                              " does not match ",
@@ -458,7 +440,8 @@ structure CheckCFG : sig
                                           "variables (", String.concatWith "," (List.map Ty.toString argTys),
                                           ")"])
                               | _ => err["label ", L.toString lab, ":", Ty.toString (L.typeOf lab),
-                                         " is not heap-check target"]))
+                                         " is not heap-check target"]
+			    (* end case *))
 		      (* end case *))
 		and chkJump (env, (lab, args)) = (
 		      chkLabel lab;
@@ -466,7 +449,7 @@ structure CheckCFG : sig
                       case LMap.find (lMap, lab) of
                          SOME (CFG.Block argTys) => 
                            ((ListPair.appEq (fn (arg, argTy) =>
-                                             if Ty.equals (V.typeOf arg, argTy)
+                                             if Ty.equal (V.typeOf arg, argTy)
                                                 then ()
                                              else err["variable ", V.toString arg, ":", Ty.toString (V.typeOf arg),
                                                       " does not match ",

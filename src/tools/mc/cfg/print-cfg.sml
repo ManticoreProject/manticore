@@ -40,11 +40,11 @@ structure PrintCFG : sig
 	  fun labelToString lab = "$" ^ (CFG.Label.toString lab)
 	  fun prFunc (CFG.FUNC{lab, entry, body, exit}) = let
 		val (kind, params) = (case (CFG.Label.kindOf lab, entry)
-		       of (CFG.LK_Local{export=SOME name, ...}, CFG.StdFunc{clos, arg, ret, exh}) =>
-			    ("export function ", [clos, arg, ret, exh])
-			| (CFG.LK_Local _, CFG.StdFunc{clos, arg, ret, exh}) =>
-			    ("function ", [clos, arg, ret, exh])
-			| (CFG.LK_Local _, CFG.StdCont{clos, arg}) => ("cont ", [clos, arg])
+		       of (CFG.LK_Local{export=SOME name, ...}, CFG.StdFunc{clos, args, ret, exh}) =>
+			    ("export function ", clos :: args @ [ret, exh])
+			| (CFG.LK_Local _, CFG.StdFunc{clos, args, ret, exh}) =>
+			    ("function ", clos :: args @ [ret, exh])
+			| (CFG.LK_Local _, CFG.StdCont{clos, args}) => ("cont ", clos::args)
 			| (CFG.LK_Local _, CFG.KnownFunc args) => ("local function ", args)
 			| (CFG.LK_Local _, CFG.Block args) => ("block ", args)
 			| _ => raise Fail "bogus function"
@@ -95,10 +95,10 @@ structure PrintCFG : sig
 	  and prXfer (i, xfer) = (
 		indent i;
 		case xfer
-		 of CFG.StdApply{f, clos, arg, ret, exh} =>
-		      prApply("apply", f, [clos, arg, ret, exh])
-		  | CFG.StdThrow{k, clos, arg} =>
-		      prApply("throw", k, [clos, arg])
+		 of CFG.StdApply{f, clos, args, ret, exh} =>
+		      prApply("apply", f, clos :: args @ [ret, exh])
+		  | CFG.StdThrow{k, clos, args} =>
+		      prApply("throw", k, clos :: args)
 		  | CFG.Apply{f, args} => prApply("apply", f, args)
 		  | CFG.Goto jmp => prJump("goto", jmp)
 		  | CFG.HeapCheck{szb, nogc} => (

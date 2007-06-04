@@ -112,7 +112,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	      exitBlock liveOut )
 
 	  fun genTransfer (M.StdApply apply) =
-	      genStdTransfer (BE.Transfer.genStdCall varDefTbl apply)
+		genStdTransfer (BE.Transfer.genStdCall varDefTbl apply)
 	    | genTransfer (M.StdThrow throw) =
 	      genStdTransfer (BE.Transfer.genStdThrow varDefTbl throw)
 	    | genTransfer (M.Apply {f, args}) = fail "todo"

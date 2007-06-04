@@ -106,20 +106,20 @@ val toNode = fn f => let
 		if FB.Set.member(fbSet, lab) orelse CFA.isEscaping lab
 		  then let
 		    val (freeVars, entry') = (case entry (* rename parameters *)
-			   of CFG.StdFunc{clos, arg, ret, exh} => let
+			   of CFG.StdFunc{clos, args, ret, exh} => let
 				val clos' = CFG.Var.copy clos
-				val arg' = CFG.Var.copy arg
+				val args' = List.map CFG.Var.copy args
 				val ret' = CFG.Var.copy ret
 				val exh' = CFG.Var.copy exh
 				in (
-				  [clos', arg', ret', exh'],
-				  CFG.StdFunc{clos=clos', arg=arg', ret=ret', exh=exh'}
+				  clos' :: ret' :: exh' :: args',
+				  CFG.StdFunc{clos=clos', args=args', ret=ret', exh=exh'}
 				) end
-			    | CFG.StdCont{clos, arg} => let
+			    | CFG.StdCont{clos, args} => let
 				val clos' = CFG.Var.copy clos
-				val arg' = CFG.Var.copy arg
+				val args' = List.map CFG.Var.copy args
 				in
-				  ([clos', arg'], CFG.StdCont{clos=clos', arg=arg'})
+				  (clos' :: args', CFG.StdCont{clos=clos', args=args'})
 				end
 			    | CFG.KnownFunc params => let
 				val params' = List.map CFG.Var.copy params

@@ -21,8 +21,8 @@ structure Census : sig
     fun incLab lab = C.Label.addToCount(lab, 1)
 
   (* update the census counts for the variables bound in an entry convention *)
-    fun doEntry (C.StdFunc{clos, arg, ret, exh}) = (clr clos; clr arg; clr ret; clr exh)
-      | doEntry (C.StdCont{clos, arg}) = (clr clos; clr arg)
+    fun doEntry (C.StdFunc{clos, args, ret, exh}) = (clr clos; clr' args; clr ret; clr exh)
+      | doEntry (C.StdCont{clos, args}) = (clr clos; clr' args)
       | doEntry (C.KnownFunc xs) = clr' xs
       | doEntry (C.Block xs) = clr' xs
 
@@ -47,8 +47,8 @@ structure Census : sig
     fun doJump (lab, args) = (incLab lab; inc' args)
 
   (* update the census counts for the variables in a exit transfer *)
-    fun doExit (C.StdApply{f, clos, arg, ret, exh}) = (inc f; inc clos; inc arg; inc ret; inc exh)
-      | doExit (C.StdThrow{k, clos, arg}) = (inc k; inc clos; inc arg)
+    fun doExit (C.StdApply{f, clos, args, ret, exh}) = (inc f; inc clos; inc' args; inc ret; inc exh)
+      | doExit (C.StdThrow{k, clos, args}) = (inc k; inc clos; inc' args)
       | doExit (C.Apply{f, args}) = (inc f; inc' args)
       | doExit (C.Goto jmp) = doJump jmp
       | doExit (C.If(x, jmp1, jmp2)) = (inc x; doJump jmp1; doJump jmp2)
