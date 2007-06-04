@@ -112,7 +112,7 @@ val toNode = fn f => let
 				val ret' = CFG.Var.copy ret
 				val exh' = CFG.Var.copy exh
 				in (
-				  clos' :: ret' :: exh' :: args',
+				  clos' :: args' @ [ret', exh'],
 				  CFG.StdFunc{clos=clos', args=args', ret=ret', exh=exh'}
 				) end
 			    | CFG.StdCont{clos, args} => let
