@@ -15,10 +15,11 @@ define @new-tid (vp : vproc) : tid;
 define inline @spawn (f : fun(unit / handler -> unit)) : unit =
     cont fiber (_ : unit) =
 	cont handler (ex : exn) = @dispatch(host_vproc)
-	do apply f(UNIT / handler)
+	let (_ : unit) = apply f(UNIT / handler)
 	  @dispatch(host_vproc)
     (* in *)
       let vp : vproc = host_vproc
       let tid : tid = @new-tid(vp)
-      @enqueue (vp, tid, fiber)
+      do @enqueue (vp, tid, fiber)
+      return (UNIT)
 ;

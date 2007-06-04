@@ -22,10 +22,10 @@ typedef exn = any;
 typedef handler = cont(exn);
 typedef sigact = cont(signal);
 
-typedef ml_int = wrap(int);
-typedef ml_long = wrap(long);
-typedef ml_float = wrap(float);
-typedef ml_double = wrap(double);
+typedef ml_int = [int];
+typedef ml_long = [long];
+typedef ml_float = [float];
+typedef ml_double = [double];
 
 #define INT(n)		wrap(n : int)
 #define LONG(n)		wrap(n : long)
