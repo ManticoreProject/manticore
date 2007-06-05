@@ -23,10 +23,9 @@ structure CheckCFG : sig
     structure Ty = CFGTy
     structure Lit = Literal
 
-    exception CheckCFG
-    fun error msg = (
-	  TextIO.output(TextIO.stdErr, concat("Error: " :: msg @ ["\n"]));
-          raise CheckCFG)
+    fun error msg = TextIO.output(TextIO.stdErr, concat("Error: " :: msg @ ["\n"]))
+
+    fun warning msg = TextIO.output(TextIO.stdErr, concat("Warning: " :: msg @ ["\n"]))
 
     fun vl2s [] = "[]"
       | vl2s [x] = concat[V.toString x, ":", Ty.toString(V.typeOf x)]
@@ -44,6 +43,7 @@ structure CheckCFG : sig
     fun bindVars (env, xs) = VSet.addList(env, xs)
 
     fun check (m as CFG.MODULE{name, externs, code}) = let
+	  val anyErrors = ref false
 	(* construct a set of the bound labels in the module *)
 	  val lSet = List.foldl
 		(fn (f as CFG.FUNC{lab, ...}, lset) => LSet.add(lset, lab))
@@ -52,7 +52,10 @@ structure CheckCFG : sig
                 (fn (f as CFG.FUNC{lab, entry, ...}, lmap) => LMap.insert(lmap,lab,entry))
                   LMap.empty code
 	  fun chk (CFG.FUNC{lab, entry, body, exit}) = let
-                fun err msg = error (msg @ [" in ", Atom.toString name, ".", L.toString lab])
+                fun err msg = (
+		      anyErrors := true;
+		      error (msg @ [" in ", Atom.toString name, ".", L.toString lab]))
+                fun warn msg = warning (msg @ [" in ", Atom.toString name, ".", L.toString lab])
 		fun chkVar (env, x) = if VSet.member(env, x)
 		      then ()
 		      else err[
@@ -82,17 +85,17 @@ structure CheckCFG : sig
                               if ListPair.allEq Ty.match (argTys, List.map V.typeOf args)
                         	then ()
                                 else err[
-				    "arguments ", vl2s args, " do not match ",
+				    "parameters ", vl2s args, " do not match ",
                                        "argument types ", tyl2s argTys
 				  ];
                               if Ty.match (retTy, V.typeOf ret)
                                  then ()
-                              else err["variable ", V.toString ret, ":", Ty.toString (V.typeOf ret),
+                              else err["parameter ", V.toString ret, ":", Ty.toString (V.typeOf ret),
                                        " does not match ",
                                        "return type ", Ty.toString retTy];
                               if Ty.equal (exhTy, V.typeOf exh)
                                  then ()
-                              else err["variable ", V.toString exh, ":", Ty.toString (V.typeOf exh),
+                              else err["parameter ", V.toString exh, ":", Ty.toString (V.typeOf exh),
                                        " does not match ",
                                        "exh type ", Ty.toString exhTy])
                         | _ => err["label ", L.toString lab, ":", Ty.toString (L.typeOf lab),
@@ -112,7 +115,7 @@ structure CheckCFG : sig
                             if ListPair.allEq Ty.match (argTys, List.map V.typeOf args)
                               then ()
                               else err[
-				  "arguments ", vl2s args, " do not match ",
+				  "parameters ", vl2s args, " do not match ",
                                      "argument types ", tyl2s argTys
 				])
 			| _ => err["label ", L.toString lab, ":", Ty.toString (L.typeOf lab),
@@ -125,14 +128,14 @@ structure CheckCFG : sig
                              ((ListPair.appEq (fn (arg, argTy) =>
                                                if Ty.match (argTy, V.typeOf arg)
                                                   then ()
-                                               else err["argument ", V.toString arg, ":", Ty.toString (V.typeOf arg),
+                                               else err["parameter ", V.toString arg, ":", Ty.toString (V.typeOf arg),
                                                         " does not match ",
                                                         "argument type ", Ty.toString argTy])
                                               (args, argTys))
                               handle ListPair.UnequalLengths =>
-                                 err["variables (", String.concatWith "," (List.map V.toString args),
-                                     ") do not match ", 
-                                     "variables (", String.concatWith "," (List.map Ty.toString argTys),
+                                 err["parameter (", String.concatWith "," (List.map V.toString args),
+                                     ") do not match (", 
+                                     String.concatWith "," (List.map Ty.toString argTys),
                                      ")"])
                         | _ => err["label ", L.toString lab, ":", Ty.toString (L.typeOf lab),
                                    " is not code"]
@@ -144,14 +147,14 @@ structure CheckCFG : sig
                              ((ListPair.appEq (fn (arg, argTy) =>
                                                if Ty.match (argTy, V.typeOf arg)
                                                   then ()
-                                               else err["variable ", V.toString arg, ":", Ty.toString (V.typeOf arg),
+                                               else err["parameter ", V.toString arg, ":", Ty.toString (V.typeOf arg),
                                                         " does not match ",
                                                         "argument type ", Ty.toString argTy])
                                               (args, argTys))
                               handle ListPair.UnequalLengths =>
-                                 err["variables (", String.concatWith "," (List.map V.toString args),
-                                     ") do not match ", 
-                                     "variables (", String.concatWith "," (List.map Ty.toString argTys),
+                                 err["parameters (", String.concatWith "," (List.map V.toString args),
+                                     ") do not match (", 
+                                     String.concatWith "," (List.map Ty.toString argTys),
                                      ")"])
                         | _ => err["label ", L.toString lab, ":", Ty.toString (L.typeOf lab),
                                    " is not code"]);
@@ -217,7 +220,7 @@ structure CheckCFG : sig
 			| CFG.E_Select(x, i, y) => let
 			    val ty = Ty.selectTy(i, V.typeOf y)
 				  handle Fail msg => (
-				    error["E_Select(", V.toString x, ", ", Int.toString i, ", ",
+				    err["E_Select(", V.toString x, ", ", Int.toString i, ", ",
 					V.toString y, ":", Ty.toString(V.typeOf y), ")"
 				      ];
 				    Ty.T_Any)
@@ -236,7 +239,7 @@ structure CheckCFG : sig
 			| CFG.E_Update(i, y, z) => let
 			    val ty = Ty.selectTy(i, V.typeOf y)
 				  handle Fail msg => (
-				    error["E_Update(", Int.toString i, ", ",
+				    err["E_Update(", Int.toString i, ", ",
 					V.toString y, ":", Ty.toString(V.typeOf y), ", ",
 					V.toString z, ")"
 				      ];
@@ -249,7 +252,7 @@ structure CheckCFG : sig
 			| CFG.E_AddrOf(x, i, y) => let
 			    val ty = Ty.selectTy(i, V.typeOf y)
 				  handle Fail msg => (
-				    error["E_AddrOf(", V.toString x, ", ", Int.toString i, ", ",
+				    err["E_AddrOf(", V.toString x, ", ", Int.toString i, ", ",
 					V.toString y, ":", Ty.toString(V.typeOf y), ")"
 				      ];
 				    Ty.T_Any)
@@ -258,11 +261,11 @@ structure CheckCFG : sig
 			      case V.typeOf x
 			       of Ty.T_Addr ty' => if Ty.equal(ty, ty')
 				    then ()
-				    else error[
+				    else err[
 					"type mismatch in E_AddrOf: lhs = ", Ty.toString ty',
 					", rhs = ", Ty.toString ty, "\n"
 				      ]
-				| ty' => error[
+				| ty' => err[
 					"type error in E_AddrOf: lhs = ", Ty.toString ty', "\n"
 				      ]
 			      (* end case *);
@@ -280,37 +283,33 @@ structure CheckCFG : sig
 			    bindVar (env, x))
 			| CFG.E_Wrap(x, y) => (
 			    chkVar (env, y);
-                            let
-                               val rty = case V.typeOf y of
-                                            Ty.T_Raw rty => rty
-                                          | _ => err["variable ", V.toString y, ":", Ty.toString (V.typeOf y),
-                                                     " is not raw"]
-                            in
-                               case V.typeOf x of
-                                  Ty.T_Wrap rtx => if (rtx = rty)
+			    case V.typeOf y
+			     of Ty.T_Raw rty => (case V.typeOf x
+				   of Ty.T_Wrap rtx => if (rtx = rty)
                                          then ()
                                          else err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
                                                   " is not ", Ty.toString (Ty.T_Wrap rty)]
-                                | _ => err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
+				    | _ => err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
                                            " is not wrap"]
-                            end;
+				  (* end case *))
+			      | _ => err["variable ", V.toString y, ":", Ty.toString (V.typeOf y),
+                                                     " is not raw"]
+			    (* end case *);
 			    bindVar (env, x))
 			| CFG.E_Unwrap(x, y) => (
 			    chkVar (env, y);
-                            let
-                               val rty = case V.typeOf y of
-                                            Ty.T_Wrap rty => rty
-                                          | _=> err["variable ", V.toString y, ":", Ty.toString (V.typeOf y),
-                                                    " is not wrap"]
-                            in
-                               case V.typeOf x of
-                                  Ty.T_Raw rtx => if (rtx = rty)
-                                                        then ()
-                                                     else err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
-                                                              " is not ", Ty.toString (Ty.T_Raw rty)]
-                                | _ => err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
+			    case V.typeOf y
+			     of Ty.T_Wrap rty => (case V.typeOf x
+				   of Ty.T_Raw rtx => if (rtx = rty)
+                                        then ()
+                                        else err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
+                                                 " is not ", Ty.toString (Ty.T_Raw rty)]
+				    | _ => err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
                                            " is not raw"]
-                            end;
+				  (* end case *))
+			      | _ =>  err["variable ", V.toString y, ":", Ty.toString (V.typeOf y),
+                                                    " is not wrap"]
+			    (* end case *);
 			    bindVar (env, x))
 			| CFG.E_Prim(x, p) => (
 			    chkVars (env, PrimUtil.varsOf p);
@@ -334,7 +333,7 @@ structure CheckCFG : sig
 			     of Ty.T_StdFun{clos = closTy, args = argTys, ret = retTy, exh = exhTy} => (
                                   if Ty.match (V.typeOf clos, closTy)
                                      then ()
-                                  else err["variable ", V.toString clos, ":", Ty.toString (V.typeOf clos),
+                                  else warn["variable ", V.toString clos, ":", Ty.toString (V.typeOf clos),
                                            " does not match ",
                                            "closure type ", Ty.toString closTy];
                         	  if ListPair.allEq Ty.match (List.map V.typeOf args, argTys)
@@ -362,7 +361,7 @@ structure CheckCFG : sig
 			     of Ty.T_StdCont{clos = closTy, args = argTys} => (
                                   if Ty.match (V.typeOf clos, closTy)
                                      then ()
-                                  else err["variable ", V.toString clos, ":", Ty.toString (V.typeOf clos),
+                                  else warn["variable ", V.toString clos, ":", Ty.toString (V.typeOf clos),
                                            " does not match ",
                                            "closure type ", Ty.toString closTy];
                         	if ListPair.allEq Ty.match (List.map V.typeOf args, argTys)
@@ -396,34 +395,30 @@ structure CheckCFG : sig
 			| CFG.If(x, j1, j2) => (
 			    chkVar (env, x);
                             if Ty.equal (V.typeOf x, Ty.boolTy)
-                               then ()
-                            else err["variable ", V.toString x, ":", Ty.toString (V.typeOf x), 
-                                     " is not bool"]
+                              then ()
+                              else err["variable ", V.toString x, ":", Ty.toString (V.typeOf x), 
+                                     " is not bool"];
 			    chkJump (env, j1);
 			    chkJump (env, j2))
 			| CFG.Switch(x, cases, dflt) => (
 			    chkVar (env, x);
-                            let
-                               val chkC =
-                                  (case V.typeOf x of
-                                      Ty.T_Enum wt => 
-                                         (fn w => if (wt <= w)
-                                                     then ()
-                                                  else err[
-						      "case ", Word.toString w, " is out of range for ",
-                                                      "variable ", V.toString x, ":", Ty.toString (V.typeOf x)
-						    ])
-                                    | Ty.T_Raw rty => 
-                                         (case rty of
-                                             RawTypes.T_Int => (fn _ => ())
-                                           | _ => err["variable ", V.toString x, ":", Ty.toString (V.typeOf x), 
-                                                      " is not switch"])
-                                    | _ => err["variable ", V.toString x, ":", Ty.toString (V.typeOf x), 
-                                               " is not valid argument for switch"])
-                            in
-                              List.app (fn (i, j) => (chkC i; chkJump(env, j))) cases
-                            end;
-			    Option.app (fn j => chkJump(env, j)) dflt)
+			    case V.typeOf x
+			     of Ty.T_Enum wt => let
+				  fun chkCase (tag, jmp) = (
+					if (tag <= wt)
+                                	  then ()
+                                	  else err[
+					      "case ", Word.toString tag, " is out of range for ",
+                                	      V.toString x, ":", Ty.toString (V.typeOf x)
+					    ];
+					chkJump(env, jmp))
+				  in
+				    List.app chkCase cases;
+				    Option.app (fn j => chkJump(env, j)) dflt
+				  end
+			      | _ => err["variable ", V.toString x, ":", Ty.toString (V.typeOf x), 
+                                               " is not valid argument for switch"]
+			    (* end case *))
 			| CFG.HeapCheck{szb, nogc = (lab, args)} => (
                             chkLabel lab;
                             chkVars (env, args);
@@ -471,7 +466,8 @@ structure CheckCFG : sig
 		  chkExit (env, exit)
 		end (* chk *)
 	  in
-	    List.app chk code
+	    List.app chk code;
+	    if !anyErrors then raise Fail "broken CFG" else ()
 	  end (* check *)
 
   end

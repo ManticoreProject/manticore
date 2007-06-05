@@ -108,14 +108,14 @@ structure CFGTy =
 		(mut1 = mut2) andalso ListPair.allEq match (ty1s, ty2s)
             | (T_StdFun{clos = clos1, args = args1, ret = ret1, exh = exh1},
                T_StdFun{clos = clos2, args = args2, ret = ret2, exh = exh2}) =>
-                  match (clos1, clos2) andalso
-                  ListPair.allEq match (args1, args2) andalso
-                  match (ret1, ret2) andalso
-                  match (exh1, exh2)
+                  match (clos2, clos1) andalso
+                  ListPair.allEq match (args2, args1) andalso
+                  match (ret2, ret1) andalso
+                  match (exh2, exh1)
             | (T_StdCont{clos = clos1, args = args1}, 
                T_StdCont{clos = clos2, args = args2}) =>
-                  match (clos1, clos2) andalso ListPair.allEq match (args1, args2)
-            | (T_Code ty1s, T_Code ty2s) => ListPair.allEq match (ty1s, ty2s)
+                  match (clos2, clos1) andalso ListPair.allEq match (args2, args1)
+            | (T_Code ty1s, T_Code ty2s) => ListPair.allEq match (ty2s, ty1s)
             | _ => equal (fromTy, toTy)
 	  (* end case *))
 
