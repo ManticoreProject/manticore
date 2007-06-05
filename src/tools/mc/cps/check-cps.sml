@@ -112,8 +112,9 @@ structure CheckCPS : sig
 		  | ([ty], C.Wrap x) => chkVar(env, x, "Wrap")
 		  | ([ty], C.Unwrap x) => chkVar(env, x, "Unwrap")
 		  | ([ty], C.Prim p) => chkVars(env, PrimUtil.varsOf p, PrimUtil.nameOf p)
-		  | ( ([_], C.CCall(cf, args)) |
-		      ([], C.CCall(cf, args))   ) => (
+		  | ([ty], C.CCall(cf, args)) => (
+		      chkVar(env, cf, "CCall"); chkVars(env, args, "CCall args"))
+		  | ([], C.CCall(cf, args)) => (
 		      chkVar(env, cf, "CCall"); chkVars(env, args, "CCall args"))
 		  | ([ty], C.HostVProc) => ()
 		  | ([ty], C.VPLoad(n, vp)) => chkVar(env, vp, "VPLoad")
