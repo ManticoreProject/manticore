@@ -20,4 +20,6 @@ structure TranslateTypes =
 	    | Ty.TupleTy tys => BTy.T_Tuple(false, List.map tr tys)
 	  (* end case *))
 
+    fun trScheme (Ty.TyScheme(_, ty)) = tr ty
+
   end

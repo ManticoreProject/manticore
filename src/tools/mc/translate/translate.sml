@@ -17,6 +17,7 @@ structure Translate : sig
     structure Lit = Literal
 
     val trTy = TranslateTypes.tr
+    val trScheme = TranslateTypes.trScheme
 
     datatype env = E of {
 	exh : B.var,		(* current exception handler *)
@@ -43,8 +44,7 @@ structure Translate : sig
 
   (* translate a binding occurrence of an AST variable to a BOM variable *)
     fun trVar (env, x) = let
-	  val AST.TyScheme([], ty) = V.typeOf x
-	  val x' = BV.new(V.nameOf x, trTy ty)
+	  val x' = BV.new(V.nameOf x, trScheme(V.typeOf x))
 	  in
 	    (x', insert(env, x, x'))
 	  end
@@ -145,7 +145,23 @@ structure Translate : sig
 			end
 		(* end case *))
 	    | AST.ValBind _ => raise Fail "unexpected complex pattern"
-	    | AST.FunBind fbs => raise Fail "fun bind"
+	    | AST.FunBind fbs => let
+		fun bindFun (AST.FB(f, x, e), (env, fs)) = let
+		      val (f', env) = trVar(env, f)
+		      in
+			(env, (f', x, e) :: fs)
+		      end
+		val (env, fs) = List.foldr bindFun (env, []) fbs
+		fun trFun (f', x, e) = let
+		      val (x', env) = trVar(env, x)
+		      val (exh', env) = newHandler env
+		      val e' = trExpToExp (env, e)
+		      in
+			B.FB{f = f', params = [x'], exh = [exh'], body = e'}
+		      end
+		in
+		  B.mkFun(List.map trFun fs, k env)
+		end
 	  (* end case *))
 
     and trVarPats (env, pats) = let
