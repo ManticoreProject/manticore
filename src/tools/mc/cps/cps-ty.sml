@@ -52,6 +52,10 @@ structure CPSTy =
 	    | (T_Raw _, _) => false
 	    | (_, T_Raw _) => false
 	    | (_, T_Any) => true
+	    | (T_Fun(argTys1, retTys1), T_Fun(argTys2, retTys2)) =>
+	      (* NOTE contravariance! *)
+		ListPair.allEq match (argTys2, argTys1)
+		andalso ListPair.allEq match (retTys2, retTys1)
 	    | _ => equal(ty1, ty2)
 	  (* end case *))
 
