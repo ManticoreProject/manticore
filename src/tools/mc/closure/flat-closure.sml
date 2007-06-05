@@ -137,7 +137,10 @@ structure FlatClosure : sig
           CPS.Var.nameOf x,
           cvtTy(CPS.Var.typeOf x))
 
-    fun newEP ty = CFG.Var.new ("ep", ty)
+    fun newEP [] =
+      (* NOTE: T_Enum(0w0) is the correct type here, but that causes problems in CheckCFG. *)
+	  CFG.Var.new ("ep", CFGTy.T_Any)
+      | newEP tys = CFG.Var.new ("ep", CFGTy.T_Tuple(false, tys))
 
     fun newLocal (env, x) = let
           val x' = newVar x
@@ -220,7 +223,7 @@ print(concat["lookupVar: ", CPS.Var.toString x, " @ ", locToString(valOf(VMap.fi
           val (_, binds, clos, cfgArgs) =
                 CPS.Var.Set.foldl mkArgs (0, [], externEnv, []) fv
           val cfgArgs = List.rev cfgArgs
-          val ep = newEP (CFGTy.T_Tuple(false, List.map CFG.Var.typeOf cfgArgs))
+          val ep = newEP (List.map CFG.Var.typeOf cfgArgs)
           in
             (binds, cfgArgs, E{ep = ep, env = clos})
           end
@@ -243,10 +246,8 @@ print(concat["lookupVar: ", CPS.Var.toString x, " @ ", locToString(valOf(VMap.fi
           val (_, binds, clos, cfgArgs) =
                 CPS.Var.Set.foldl mkArgs (1, [], env, []) fv
           val cfgArgs = List.rev cfgArgs
-	  val closTy = CFGTy.T_Tuple(false, 
-		CFGTy.stdContTy(CFGTy.T_Any, List.map CFG.Var.typeOf params')
+	  val ep = newEP (CFGTy.stdContTy(CFGTy.T_Any, List.map CFG.Var.typeOf params')
 		  :: List.map CFG.Var.typeOf cfgArgs)
-          val ep = newEP closTy
           in
             (binds, cfgArgs, E{ep = ep, env = clos}, params')
           end
@@ -329,7 +330,7 @@ print(concat["******************** finish ", CFG.Label.toString lab, "\n"]);
                             (* the functions share a common environment tuple *)
                               val (binds, clos, sharedEnv) =
 				    mkFunClosure (env, FV.envOfFun(funVar(hd fbs)))
-                              val ep = newEP (CFG.T_Tuple(false, List.map CFG.Var.typeOf clos))
+                              val ep = newEP (List.map CFG.Var.typeOf clos)
                               val bindEP = CFG.mkAlloc(ep, clos)
                             (* map the names of the bound functions to EnclFun *)
 			      val sharedEnv = List.foldl
@@ -379,7 +380,7 @@ print(concat["******************** finish ", CFG.Label.toString lab, "\n"]);
                               val (retBinds, rets) = lookupVars(env, rets)
 			      fun bindEP () = let
                                     val (binds, f') = lookupVar(env, f)
-                                    val ep = newEP (CFG.T_Any)
+                                    val ep = CFG.Var.new (CPS.Var.nameOf f ^ "_ep", CFGTy.T_Any)
                                     in
                                       (CFG.mkSelect(ep, 0, f') :: binds, f', ep)
                                     end
@@ -583,7 +584,7 @@ print(concat["******************** finish ", CFG.Label.toString lab, "\n"]);
                 end
         (* create the calling convention for the module *)
           fun cvtModLambda (CPS.FB{f, params, rets, body}) = let
-                val ep = newEP (CFGTy.T_Any)
+                val ep = CFG.Var.new ("dummyEP", CFGTy.T_Any)
                 val (env, conv) = stdFunConvention (E{ep = ep, env = externEnv}, params, rets)
                 in
                   cvtExp (env, labelOf f, conv, body)
