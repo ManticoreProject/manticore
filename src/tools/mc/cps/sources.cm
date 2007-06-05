@@ -8,6 +8,7 @@
 
 Library
 
+  structure CheckCPS
   structure CPS
   structure CPSTy
   structure PrintCPS
@@ -22,6 +23,7 @@ is
   ../common/sources.cm
   ../prim/sources.cm
 
+  check-cps.sml
   cps.sml
   cps-ty.sml
   print-cps.sml

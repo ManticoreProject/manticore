@@ -72,7 +72,7 @@ structure PrintCPS : sig
 		  | CPS.Apply(f, args, rets) => (
 		      prl["apply ", varUseToString f, " ("];
 		      prList' varUseToString args;
-		      pr "; ";
+		      pr " / ";
 		      prList' varUseToString rets;
 		      pr ")\n")
 		  | CPS.Throw(k, args) => (
@@ -114,7 +114,7 @@ structure PrintCPS : sig
 		   of ([], []) => ()
 		    | (_, []) => prParams params
 		    | ([], _) => (pr "-; "; prParams rets)
-		    | _ => (prParams params; pr "; "; prParams rets)
+		    | _ => (prParams params; pr " / "; prParams rets)
 		  (* end case *);
 		  pr ") =\n";
 		  prExp (i+2, body)

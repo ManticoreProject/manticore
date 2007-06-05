@@ -25,6 +25,36 @@ structure CPSTy =
     val unitTy = T_Enum(0w0)
     val boolTy = T_Enum(0w1)	(* false = 0, true = 1 *)
 
+  (* compare types for equality *)
+    fun equal (ty1 : ty, ty2) = (ty1 = ty2)
+
+  (* is a cast from the first type to the second type valid? *)
+    fun validCast (ty1, ty2) = (case (ty1, ty2)
+	   of (T_Addr ty1, T_Addr ty2) => equal(ty1, ty2)
+	    | (T_Addr _, _) => false
+	    | (_, T_Addr _) => false
+	    | (T_Raw rty1, T_Raw rty2) => (rty1 = rty2)
+	    | (T_Raw _, _) => false
+	    | (_, T_Raw _) => false
+	    | (T_Any, _) => true
+	    | (_, T_Any) => true
+	    | _ => equal(ty1, ty2)
+	  (* end case *))
+
+  (* does the first type "match" the second type (i.e., can its values be used
+   * wherever the second type is expected?
+   *)
+    fun match (ty1, ty2) = (case (ty1, ty2)
+	   of (T_Addr ty1, T_Addr ty2) => equal(ty1, ty2)
+	    | (T_Addr _, _) => false
+	    | (_, T_Addr _) => false
+	    | (T_Raw rty1, T_Raw rty2) => (rty1 = rty2)
+	    | (T_Raw _, _) => false
+	    | (_, T_Raw _) => false
+	    | (_, T_Any) => true
+	    | _ => equal(ty1, ty2)
+	  (* end case *))
+
     fun toString ty = let
 	  fun tys2l ([], l) = l
 	    | tys2l ([ty], l) = toString ty :: l

@@ -44,11 +44,13 @@ functor MainFn (
 	  val cps = Convert.transform bom
 	  val _ = (
 		prHdr "CPS after convert";
-		PrintCPS.print cps)
+		PrintCPS.print cps;
+		CheckCPS.check cps)
 	  val cps = CPSOpt.optimize cps
 	  val _ = (
 		prHdr "CPS after optimization";
-		PrintCPS.print cps)
+		PrintCPS.print cps;
+		CheckCPS.check cps)
 	  val cfg = FlatClosure.convert cps
 	  val _ = (
 		prHdr "CFG after closure";
