@@ -11,7 +11,7 @@ signature PRIM_GEN =
 
     type ctx = {varDefTbl : BE.VarDef.var_def_tbl}
 	       
-    val genPrim : ctx -> {gen : (CFG.var * CFG.prim) -> unit}
+    val genPrim : ctx -> {gen : (CFG.var * CFG.prim) -> BE.MTy.T.stm list}
 			
   end (* PRIM_GEN *)
 
@@ -42,23 +42,23 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 	  val defOf = BE.VarDef.defOf varDefTbl
 	  val fdefOf = BE.VarDef.fdefOf varDefTbl
 	  val cdefOf = BE.VarDef.cdefOf varDefTbl
-	  val bind = BE.VarDef.bind varDefTbl
+	  val gprBind = BE.VarDef.gprBind varDefTbl
 	  val cbind = BE.VarDef.cbind varDefTbl
 	  val fbind = BE.VarDef.fbind varDefTbl
 
 	  fun gen (v, p) = let
 		fun genCmp (ty, c, (v1, v2)) = 
-		      cbind (v, T.CMP (ty, c, defOf v1, defOf v2))
+		    cbind (v, T.CMP (ty, c, defOf v1, defOf v2))
 		fun genArith (ty, oper, (v1, v2)) = 
-		      bind (ty, v, oper (ty, defOf v1, defOf v2))
-		fun genFArith (fty, oper, (v1, v2)) =
-		      fbind (fty, v, oper (fty, fdefOf v1, fdefOf v2))
+		    gprBind (ty, v, oper (ty, defOf v1, defOf v2))
+		fun genFArith (fty, oper, (v1, v2)) = 
+		    fbind (fty, v, oper (fty, fdefOf v1, fdefOf v2))
 		in
 		  case p
-		   of P.isBoxed p =>
+		   of P.isBoxed p => 
 			cbind (v, T.CMP(aty, T.EQ, T.ANDB(aty, defOf p, wordLit 1), wordLit 0))
-		    | P.isUnboxed p =>
-			cbind (v, T.CMP(aty, T.NE, T.ANDB(aty, defOf p, wordLit 1), wordLit 0))
+		    | P.isUnboxed p => 
+		      cbind (v, T.CMP(aty, T.NE, T.ANDB(aty, defOf p, wordLit 1), wordLit 0))
 		    | P.Equal a => genCmp (aty, T.EQ, a)
 		    | P.NotEqual a => genCmp (aty, T.NE, a)
 		   (* 32-bit integer primitives *)				  

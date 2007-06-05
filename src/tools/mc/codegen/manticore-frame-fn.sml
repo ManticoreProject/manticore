@@ -14,7 +14,7 @@ functor ManticoreFrameFn (
   val wordSz = IntInf.toInt Spec.ABI.wordSzB
   val spillAreaOffB = IntInf.toInt Spec.ABI.spillAreaOffB
 
-  fun frameOffset (Word i) = ~(wordSz * i) + ~spillAreaOffB
+  fun frameOffset (Word i | Float i) = ~(wordSz * i) + ~spillAreaOffB
     | frameOffset _ = raise Fail "frameOffset"
 
 end (* ManticoreFrameFn *)

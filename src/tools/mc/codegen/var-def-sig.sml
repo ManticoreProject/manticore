@@ -21,8 +21,15 @@ signature VAR_DEF = sig
     val fdefOf : var_def_tbl -> CFG.var -> MTy.T.fexp
     val cdefOf : var_def_tbl -> CFG.var -> MTy.T.ccexp
 
-    val bind : var_def_tbl -> (MTy.T.ty * CFG.var * MTy.T.rexp) -> unit
-    val cbind : var_def_tbl -> (CFG.var * MTy.T.ccexp) -> unit
-    val fbind : var_def_tbl -> (MTy.T.fty * CFG.var * MTy.T.fexp) -> unit
+    (* binds an expression in the table, but possibly returns 
+     * code that binds the expression to a register.  *) 
+    val gprBind : var_def_tbl -> (MTy.T.ty * CFG.var * MTy.T.rexp) -> MTy.T.stm list
+    val cbind : var_def_tbl -> (CFG.var * MTy.T.ccexp) -> MTy.T.stm list
+    val fbind : var_def_tbl -> (MTy.T.fty * CFG.var * MTy.T.fexp) -> MTy.T.stm list
+
+    val bind : var_def_tbl -> (CFG.var * MTy.mlrisc_tree) -> MTy.T.stm list
+
+    (* force all pending loads into registers *)
+    val flushLoads : var_def_tbl -> MTy.T.stm list
 
 end (* VAR_DEF *)

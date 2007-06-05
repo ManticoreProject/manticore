@@ -58,6 +58,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
         BE.Alloc.select {lhsTy=lhsTy, mty=mty, i=i, base=e}
   fun addrOf (lhsTy, mty, i, e) = 
         BE.Alloc.addrOf {lhsTy=lhsTy, mty=mty, i=i, base=e}
+  val szOf = BE.Types.szOf o Var.typeOf
 
   fun codeGen {dst, code=M.MODULE {name, externs, code}} = 
       let val mlStrm = BE.MLTreeComp.selectInstructions (BE.CFGGen.build ())
@@ -75,13 +76,13 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	  val defOf = BE.VarDef.defOf varDefTbl
 	  val fdefOf = BE.VarDef.fdefOf varDefTbl
 	  val cdefOf = BE.VarDef.cdefOf varDefTbl
+	  val bind = BE.VarDef.bind varDefTbl
+	  fun flushLoads () = (case BE.VarDef.flushLoads varDefTbl
+	      of [] => ()
+	       | stms => (comment "flushLoads"; emitStms stms)
+	      (* esac *))
 	  val genGoto = BE.Transfer.genGoto varDefTbl
 	  val genPrim = #gen (Prim.genPrim {varDefTbl=varDefTbl})
-	  fun bindToReg (x, r) = 
-	      let val ty = BE.Types.szOf (Var.typeOf x)
-	      in
-		  BE.VarDef.bind varDefTbl (ty, x, T.REG (ty, r))
-	      end (* bindToReg *)
 
 	  val floatTbl = FloatLit.new ()
 	  fun emitFltLit ((sz, f), l) = (
@@ -111,8 +112,10 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	      emitStms stms;
 	      exitBlock liveOut )
 
+	  (* Generate code for a control transfer, e.g., a function or
+	   * a continuation call or a heap-limit check. *)
 	  fun genTransfer (M.StdApply apply) =
-		genStdTransfer (BE.Transfer.genStdCall varDefTbl apply)
+	      genStdTransfer (BE.Transfer.genStdCall varDefTbl apply)
 	    | genTransfer (M.StdThrow throw) =
 	      genStdTransfer (BE.Transfer.genStdThrow varDefTbl throw)
 	    | genTransfer (M.Apply {f, args}) = fail "todo"
@@ -155,46 +158,32 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		  emit (T.LIVE liveOut)
 	      end
 
-	  and bindExp (lhs, rhsEs) = let
-		fun getReg (l, (rs, gprs)) = let
-		      val mty = Var.typeOf l
-		      val ty = BE.Types.szOf mty
-		      in
-			case MTy.cfgTyToMLRisc mty
-			 of MTy.K_FLOAT => let val r = newFReg ()
-			      in
-				(MTy.FPR(ty, r) :: rs, MTy.FPReg(ty, r) :: gprs)
-			      end
-			  | MTy.K_INT => let val r = newReg ()
-			      in
-				(MTy.GPR(ty, r) :: rs, MTy.GPReg(ty, r) :: gprs)
-			      end
-			  | _ => fail "getReg"
-			(* esac *)
-		      end (* getReg *)
-		  val (regs, gprs) = foldl getReg ([], []) lhs
-		  val copyStms = BE.Copy.copy {src=rhsEs, dst=gprs}
-		in
-		  ListPair.app setDefOf (lhs, regs);
-		  emitStms copyStms
-		end (* bindExp *)
+	  (* Bind some CFG variables to MLRISC trees, possibly emitting 
+	   * the tree if the variable has a useCount > 1. *)
+	  and bindExp (lhs, rhs) = let
+	      fun doBind (l, r) = emitStms (bind (l, r))	      
+              in
+                 ListPair.app doBind (lhs, rhs)
+              end                 
 
+	  (* Construct an MLRISC tree from a CFG expression. *)
 	  and genExp frame = let
 		fun gen (M.E_Var(lhs, rhs)) = 
-		      bindExp (lhs, map getDefOf rhs)
+		    ListPair.app setDefOf (lhs, map getDefOf rhs)
 		  | gen (M.E_Const(lhs, lit)) = 
-		      bindExp ([lhs], [genLit (BE.Types.szOf(Var.typeOf lhs), lit)])
+		    bindExp ([lhs], [genLit (szOf lhs, lit)])
 		  | gen (M.E_Label(lhs, l)) = 
-		      bindExp ([lhs], [mkExp (T.LABEL (BE.LabelCode.getName l))])
+		    bindExp ([lhs], [mkExp (T.LABEL (BE.LabelCode.getName l))])
 		  | gen (M.E_Select(lhs, i, v)) =  
-		      bindExp ([lhs], [select (BE.Types.szOf (Var.typeOf lhs), 
-					       Var.typeOf v, i, defOf v)])
-		  | gen (M.E_Update(i, lhs, rhs)) =
-		    emit (T.STORE (BE.Types.szOf (Var.typeOf lhs), 
+		    bindExp ([lhs], [select (szOf lhs,
+					      Var.typeOf v, i, defOf v)])
+		  | gen (M.E_Update(i, lhs, rhs)) = (
+		    flushLoads ();
+		    emit (T.STORE (szOf lhs,
 				   T.ADD (ty, defOf lhs, T.LI (T.I.fromInt (ty, i))), 
-					  defOf rhs, ManticoreRegion.memory))
+					  defOf rhs, ManticoreRegion.memory)))
 		  | gen (M.E_AddrOf(lhs, i, v)) = let
-		      val addr = addrOf(BE.Types.szOf(Var.typeOf lhs),  Var.typeOf v, i, defOf v)
+		      val addr = addrOf(szOf lhs,  Var.typeOf v, i, defOf v)
 		      in
 		        bindExp ([lhs], [MTy.EXP(ty, addr)])
 		      end
@@ -212,9 +201,9 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 			  bindExp ([lhs], [ptr])
 		      end
 		  | gen (M.E_Unwrap (lhs, v)) = 
-		      bindExp ([lhs], [select (BE.Types.szOf (Var.typeOf lhs), 
+		      bindExp ([lhs], [select (szOf lhs,
 					       Var.typeOf v, 0, defOf v)])
-		  | gen (M.E_Prim (lhs, p)) = genPrim (lhs, p)
+		  | gen (M.E_Prim (lhs, p)) = emitStms (genPrim (lhs, p))
 		  | gen (M.E_CCall (lhs, f, args)) = 
 		      let val {stms, result} = 
 			      BE.Transfer.genCCall varDefTbl 

@@ -81,11 +81,6 @@ functor HeapTransferFn (
 	  (* esac *))
       end (* mlrReg *)
 
-  fun bind varDefTbl (x, T.GPR e) = 
-      VarDef.bind varDefTbl (Types.szOf (Var.typeOf x), x, e)
-    | bind varDefTbl (x, T.FPR e) = 
-      VarDef.fbind varDefTbl (Types.szOf (Var.typeOf x), x, e)
-
   fun select' (lhsTy, mty, i, e) = 
       Alloc.select {lhsTy=lhsTy, mty=mty, i=i, base=e}
   fun select {lhsTy, mty, i, base} =
@@ -101,10 +96,10 @@ functor HeapTransferFn (
       end (* genJump *)
 
   fun genGoto varDefTbl (l, args) =
-      let val getDefOf = VarDef.getDefOf varDefTbl
+      let val useDefOf = VarDef.useDefOf varDefTbl
 	  val name = LabelCode.getName l
 	  val params = LabelCode.getParamRegs l
-	  val args' = map getDefOf args
+	  val args' = map useDefOf args
 	  val argRegs = map (fn (MTy.GPReg (ty, _)) => MTy.GPReg (ty, newReg())
 			      | (MTy.FPReg (ty, _)) => MTy.FPReg (ty, newFReg()) )
 			params
@@ -323,7 +318,6 @@ functor HeapTransferFn (
 	      genJump (T.LABEL noGCLbl, [noGCLbl], noGCParamRegs, args),
 	      retK,
 	      doGCStms ] 
-(*	  val stms = List.concat [ doGCStms, retK ]*)
       in
 	  {stms=stms, liveOut=map MTy.gprToExp noGCParamRegs}
       end (* genHeapCheck *)
@@ -337,7 +331,7 @@ functor HeapTransferFn (
 		 | ( M.KnownFunc vs | M.Block vs ) => (vs, Special)
 	      (* esac *))
 	  fun bindToParams rs = 
-	      ListPair.app (bind varDefTbl) (params, rs)
+	      ListPair.app (VarDef.setDefOf varDefTbl) (params, rs)
 	  fun gpReg' (v, r) = MTy.GPReg (Types.szOf (Var.typeOf v), r)
 	  val {stms, regs} = 
 	      (case stdRegs
@@ -348,7 +342,7 @@ functor HeapTransferFn (
 	      (* esac *))
       in 	
 	  LabelCode.setParamRegs (lab, regs);
-	  bindToParams (map MTy.gprToExp regs);
+	  bindToParams (map MTy.regToTree regs);
 	  stms
       end (* genFuncEntry *)
 
