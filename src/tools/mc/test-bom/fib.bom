@@ -6,9 +6,9 @@ module Fib
     fun fib (i : int; exh : cont(any)) : int =
 	if I32Lte(i, 0:int) then return (0:int)
 	else if I32Eq(i, 1:int) then return (1:int)
-	  else
+	  else 
 	    let a : int = apply fib (I32Sub (i, 2: int); exh)
-	    let j : int = apply fib (I32Sub (i, 1: int); exh)
+	    let b : int = apply fib (I32Sub (i, 1: int); exh)
 	    return (I32Add(a, b))
 
-    apply fib (unwrap(i); exh)
+    apply fib (5 : int; exh)
