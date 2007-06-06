@@ -114,6 +114,8 @@ structure BOM =
     fun mkStmt (lhs, rhs, exp) = (
     	  List.app (fn x => Var.setKind (x, VK_RHS rhs)) lhs;
 	  mkExp(E_Stmt(lhs, rhs, exp)))
+    fun mkStmts ([], exp) = exp
+      | mkStmts ((lhs, rhs)::r, exp) = mkStmt(lhs, rhs, mkStmts(r, exp))
     fun mkFun(fbs, e) = let
     	  fun setKind (lambda as FB{f, params, exh, ...}) = (
 		Var.setKind(f, VK_Fun lambda);
