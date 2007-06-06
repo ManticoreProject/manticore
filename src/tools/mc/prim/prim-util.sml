@@ -73,6 +73,7 @@ structure PrimUtil : sig
       | nameOf (P.F64Lte _) = "F64Lte"
       | nameOf (P.F64Gt _) = "F64Gt"
       | nameOf (P.F64Gte _) = "F64Gte"
+      | nameOf (P.I32FetchAndAdd _) = "I32FetchAndAdd"
       | nameOf (P.CAS _) = "CAS"
       | nameOf (P.BCAS _) = "BCAS"
 
@@ -130,6 +131,7 @@ structure PrimUtil : sig
       | varsOf (P.F64Lte(a, b)) = [a, b]
       | varsOf (P.F64Gt(a, b)) = [a, b]
       | varsOf (P.F64Gte(a, b)) = [a, b]
+      | varsOf (P.I32FetchAndAdd(a, b)) = [a, b]
       | varsOf (P.CAS(a, b, c)) = [a, b, c]
       | varsOf (P.BCAS(a, b, c)) = [a, b, c]
 
@@ -200,6 +202,7 @@ structure PrimUtil : sig
       | explode (P.F64Lte(a, b)) = (p2 P.F64Lte, [a, b])
       | explode (P.F64Gt(a, b)) = (p2 P.F64Gt, [a, b])
       | explode (P.F64Gte(a, b)) = (p2 P.F64Gte, [a, b])
+      | explode (P.I32FetchAndAdd(a, b)) = (p2, P.I32.FetchAndAdd, [a, b])
       | explode (P.CAS(a, b, c)) = (p3 P.CAS, [a, b, c])
       | explode (P.BCAS(a, b, c)) = (p3 P.BCAS, [a, b, c])
     end (* local *)
