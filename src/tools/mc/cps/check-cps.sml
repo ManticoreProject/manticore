@@ -44,8 +44,8 @@ structure CheckCPS : sig
 	(* match the parameter types against arguments *)
 	  fun checkArgs (paramTys, args, cxt) = let
 		fun chk ([], []) = ()
-		  | chk (_, []) = err["too few arguments in ", cxt]
-		  | chk ([], _) = err["too many arguments in ", cxt]
+		  | chk (l, []) = err[Int.toString(length l), " too few arguments in ", cxt]
+		  | chk ([], l) = err[Int.toString(length l), " too many arguments in ", cxt]
 		  | chk (ty::tys, x::xs) = (
 		      if (Ty.match(V.typeOf x, ty))
 			then ()
