@@ -16,10 +16,10 @@ define inline @relayMsg (mvar : !(list, any, int), x : any) : unit =
     let readL : list = #0(mvar)
     let dummyTid : tid = enum(0)
     case readL
-     of enum(0) => return (enum(0))
+     of NIL => return (UNIT)
       | CONS(hd : any, tl : list) =>
 	  let fiber : fiber = #1(((int,cont(any)))hd)
           do #0(mvar) := tl
 	  do @enqueue(host_vproc, dummyTid, fiber)
-	  return (enum(0))
+	  return (UNIT)
     end
