@@ -91,6 +91,14 @@ structure Overload : sig
 
 	    fun set_lit_defaults () = List.app (fn (ref (ty, _)) => set_def_ty ty) (!lits)
 
+	    fun all_done () =
+		(List.all (fn (ref (AST.Unknown _)) => false
+			    | (ref (AST.Instance _)) => true)
+			  (!vars)) andalso
+		(List.all (fn (ref (_, [])) => true
+			    | _ => false)
+			  (!lits))
+
 	    fun resolve_lists (lits_done, vars_done) =
 		if (List.exists try_var (!vars))
 		   orelse (List.exists try_lit (!lits))
@@ -100,7 +108,9 @@ structure Overload : sig
 					     resolve_lists (true, false))
 			| (true, false) => (set_var_defaults ();
 					    resolve_lists (true, true))
-			| _ => raise Fail "failed to resolve overloaded variable"
+			| _ => if all_done ()
+			       then ()
+			       else raise Fail "failed to resolve overloaded variable"
 		     (* end case *))
 	in
 	    resolve_lists (false, false)

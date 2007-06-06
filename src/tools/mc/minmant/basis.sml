@@ -134,6 +134,9 @@ structure Basis =
     val long_times =	monoVar(N.times, longTy ** longTy --> longTy)
     val integer_times =	monoVar(N.times, integerTy ** integerTy --> integerTy)
 
+    val float_fdiv =    monoVar(N.fdiv, floatTy ** floatTy --> floatTy)
+    val double_fdiv =   monoVar(N.fdiv, doubleTy ** doubleTy --> doubleTy)
+
     val int_div =	monoVar(N.div, intTy ** intTy --> intTy)
     val long_div =	monoVar(N.div, longTy ** longTy --> longTy)
     val integer_div =	monoVar(N.div, integerTy ** integerTy --> integerTy)
@@ -169,6 +172,8 @@ structure Basis =
 	(TyVar.newClass (Atom.atom "'a", Types.Int),
 	 TyVar.newClass (Atom.atom "'a", Types.Int))
 
+    val fv = TyVar.newClass (Atom.atom "'a", Types.Float)
+
     val lte = (Types.TyScheme ([ov1], (Types.VarTy ov1) ** (Types.VarTy ov1) --> boolTy),
 	       [int_lte, long_lte, integer_lte, float_lte, double_lte, char_lte, rune_lte, string_lte])
     val lt = (Types.TyScheme ([ov2], (Types.VarTy ov2) ** (Types.VarTy ov2) --> boolTy),
@@ -184,6 +189,9 @@ structure Basis =
 	       [int_minus, long_minus, integer_minus, float_minus, double_minus])
     val times = (Types.TyScheme ([nv2], (Types.VarTy nv3) ** (Types.VarTy nv3) --> (Types.VarTy nv3)),
 	       [int_times, long_times, integer_times, float_times, double_times])
+
+    val fdiv = (Types.TyScheme ([fv], (Types.VarTy fv) ** (Types.VarTy fv) --> (Types.VarTy fv)),
+		[float_fdiv, double_fdiv])
 
     val div = (Types.TyScheme ([iv1], (Types.VarTy iv1) ** (Types.VarTy iv1) --> (Types.VarTy iv1)),
 	       [int_div, long_div, integer_div])
@@ -203,6 +211,7 @@ structure Basis =
 		(N.plus, plus),
 		(N.minus, minus),
 		(N.times, times),
+		(N.fdiv, fdiv),
 		(N.div, div),
 		(N.mod, mod)
 	      ];
