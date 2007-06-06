@@ -18,22 +18,11 @@ module SyncVar
           let oldValue : any = CAS (&1(ivar), enum(0), x)
           case oldValue
            of enum(0) =>
-<<<<<<< .mine
-(* FIXME: the following is an infinite loop! *)
-                fun spin (flag : int; exh : cont(any)) : unit = 
-                      
-                      case flag
-                       of 0 : int => return (enum(0))
-                        | _ => apply spin (flag; exh)
-		      end
-                do apply spin (readflag; exh)
-=======
                 fun spin (; exh : cont(any)) : unit =
                       if (#2(ivar) = 0:int)
 			then return (enum(0))
 			else apply spin (; exh)
                 do apply spin (; exh)
->>>>>>> .r742
                 case readL
                  of enum(0) => return (enum(0))
                   | CONS(hd : any, tl : list) =>                      
@@ -71,7 +60,7 @@ module SyncVar
                 do #2(ivar) := I32Sub(readFlag, 1)
                 @forward (host_vproc, stop)
             | x : any =>
-                do #2(ivar) := I32Sub(readFlag, 0)
+                do #2(ivar) := I32Sub(readFlag, 1)
                 return (x)
                         
           end
