@@ -202,7 +202,7 @@ structure PrimUtil : sig
       | explode (P.F64Lte(a, b)) = (p2 P.F64Lte, [a, b])
       | explode (P.F64Gt(a, b)) = (p2 P.F64Gt, [a, b])
       | explode (P.F64Gte(a, b)) = (p2 P.F64Gte, [a, b])
-      | explode (P.I32FetchAndAdd(a, b)) = (p2 P.I32.FetchAndAdd, [a, b])
+      | explode (P.I32FetchAndAdd(a, b)) = (p2 P.I32FetchAndAdd, [a, b])
       | explode (P.CAS(a, b, c)) = (p3 P.CAS, [a, b, c])
       | explode (P.BCAS(a, b, c)) = (p3 P.BCAS, [a, b, c])
     end (* local *)
