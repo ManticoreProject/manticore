@@ -6,11 +6,17 @@
 ;;; This module contains a PLT Redex model of the Manticore scheduler semantics.
 
 (module schedulers-pltr mzscheme
-  (require (planet "reduction-semantics.ss" ("robby" "redex.plt" 3 11))
-           (planet "gui.ss" ("robby" "redex.plt" 3 11)))
+  (require (planet "reduction-semantics.ss" ("robby" "redex.plt" 3 14))
+           (planet "gui.ss" ("robby" "redex.plt" 3 14))
+           (planet "pict.ss" ("robby" "redex.plt" 3 14)))
   (require (lib "list.ss")
+           (lib "class.ss")
+           (lib "mred.ss" "mred")
            (lib "plt-match.ss"))
   
+;  (require (lib "mrpict.ss" "texpict"))
+;  (dc-for-text-size (new bitmap-dc%))
+
   (provide run step mk-multiprocessor multiprocessor-machine scheduler-language)
   
   (define scheduler-language
@@ -38,7 +44,7 @@
      ; expressions
      (e 
       ; core expressions
-      (e e) (+ e e) (if0 e e e) (=i e e) x v (begin e e ...) (let ((x e)) e) (letrec ((x e)) e) (fix e)
+      (e e) (+ e e) (if0 e e e) (=i e e) (<i e e) x v (begin e e ...) (let ((x e)) e) (letrec ((x e)) e) (fix e)
       ; first-class continuations
       (abort e) (letcont x x e e)
       ; scheduler operations
@@ -50,17 +56,18 @@
       ; allocating / deallocating vprocs
       (gid) (provision e) (release e)
       ; atomic operations
-      (cas e e e) (ref e) (deref e)
+      (cas e e e) (ref e) (deref e) (fai e)
       ; send an asynchronous signal
       (signal-vp e)
       ; signal handler
       (handle e (stop-handler e) (preempt-handler e)))
       ; contexts
-      (E (E e) (v E) (+ E e) (+ v E) (if0 E e e) (begin E e e ...) (run E e) (run v E) (=i E e) (=i v E)
+      (E (E e) (v E) (+ E e) (+ v E) (if0 E e e) (begin E e e ...) (run E e) (run v E) 
+         (=i E e) (=i v E) (<i E e) (<i v E)
          (enq E e) (enq v E) (enq-on-vp E e) (enq-on-vp v E) 
          (provision E) (release E) (deq E) (forward E) (enq-vp E)
          (ref E) (deref E) (fix E)
-         (cas E e e) (cas number E e) (cas number v E) 
+         (cas E e e) (cas number E e) (cas number v E) (fai E)
          (signal-vp E)
          (let ((x E)) e) 
          (handle E (stop-handler e) (preempt-handler e)) 
@@ -68,7 +75,7 @@
          (handle v (stop-handler v) (preempt-handler E))
          hole)
      ; keywords
-     (x (variable-except λ + abort letcont begin unit if0 let letrec fix =i
+     (x (variable-except λ + abort letcont begin unit if0 let letrec fix =i <i
                          forward run stop preempt handle enq deq enq-vp deq-vp enq-on-vp
                          gid provision release
                          cas ref deref
@@ -88,7 +95,7 @@
   ;; provision : vp-num * listof(vproc) * listof(vp-num) -> vp-num
   ;;
   ;; provision returns either the first vproc not in the provisioned set
-  ;; or the host vproc
+  ;; or the host vproc if nothing else is available.
   (define (provision host-vp vps provisioned)
     (let ([find
            (lambda (vp vps)
@@ -105,7 +112,7 @@
     (letrec ((f (lambda (max pmap)
                   (cond ((null? pmap) max)
                         ((< (car pmap) max) (f max (cdr pmap)))
-                        (#t (f (car pmap) (cdr pmap)))))))
+                        (else (f (car pmap) (cdr pmap)))))))
       (add1 (f 0 pmap))))
   
   (define multiprocessor-machine
@@ -120,6 +127,10 @@
      (s==> (in-hole E_1 (=i number_1 number_2))
            (in-hole E_1 ,(if (= (term number_1) (term number_2)) (term 0) (term 1)))
            "=i")
+     
+     (s==> (in-hole E_1 (<i number_1 number_2))
+           (in-hole E_1 ,(if (< (term number_1) (term number_2)) (term 0) (term 1)))
+           "<i")
      
      (s==> (in-hole E_1 ((λ (x_1) e_1) v_1))
            (in-hole E_1 (subst (x_1 v_1 e_1)))
@@ -240,6 +251,18 @@
                   (number_s2 v_s2) ...)
            provision-map_1)
           "cas")
+     
+     (--> ((vps VP_1 ...
+                (vproc number_1 action_1 fiber-queue_1 mask_1 (in-hole E_1 (fai number_l)) sp_1)
+                VP_2 ...)
+           (store (number_s1 v_s1) ... (number_l v_1) (number_s2 v_s2) ...) provision-map_1)
+          ((vps VP_1 ...
+                (vproc number_1 action_1 fiber-queue_1 mask_1 (in-hole E_1 v_1) sp_1)
+                VP_2 ...)
+           (store (number_s1 v_s1) ... (number_l ,(+ (term v_l) 1))
+                  (number_s2 v_s2) ...)
+           provision-map_1)
+          "fai")
      
      (--> ((vps VP_1 ...
                 (vproc number_1 action_1 fiber-queue_1 mask_1 (in-hole E_1 (enq-on-vp number_1 v_k)) sp_1)
@@ -408,6 +431,8 @@
           (subst (x_1 e_1 e_4)))]
     [(x_1 e_1 (=i e_3 e_4))
      (=i (subst (x_1 e_1 e_3)) (subst (x_1 e_1 e_4)))]
+    [(x_1 e_1 (<i e_3 e_4))
+     (<i (subst (x_1 e_1 e_3)) (subst (x_1 e_1 e_4)))]
     [(x_1 e_1 number_1)
      number_1]
     [(x_1 e_1 (unit))
@@ -458,6 +483,8 @@
     ;; atomic store operations
     [(x_1 e_1 (cas e_2 e_3 e_4))
      (cas (subst (x_1 e_1 e_2)) (subst (x_1 e_1 e_3)) (subst (x_1 e_1 e_4)))]
+    [(x_1 e_1 (fai e_2))
+     (fai (subst (x_1 e_1 e_2)))]
     [(x_1 e_1 (ref e_2))
      (ref (subst (x_1 e_1 e_2)))]
     [(x_1 e_1 (deref e_2))

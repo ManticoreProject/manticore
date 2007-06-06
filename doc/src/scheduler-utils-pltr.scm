@@ -6,15 +6,13 @@
 ;;; Common functions for programming schedulers.
 
 (module scheduler-utils-pltr mzscheme
-  (require (planet "reduction-semantics.ss" ("robby" "redex.plt" 3 11))
-           (planet "random.ss" ("schematics" "random.plt" 1 0))
-           (planet "gui.ss" ("robby" "redex.plt" 3 11)))
+  (require (planet "reduction-semantics.ss" ("robby" "redex.plt" 3 13)))
   (require "schedulers-pltr.scm")
   (require (lib "list.ss")
            (lib "pretty.ss")
            (lib "plt-match.ss"))
   
-  (provide set-bang fiber yield atomic-yield dispatch-on schedule-fiber migrate)
+  (provide set-bang fiber fiber-store-ans yield atomic-yield dispatch-on schedule-fiber migrate)
   
   ; use cas to achieve set!
   (define (set-bang l v)
@@ -22,11 +20,18 @@
   
   ; Fiber creates a new fiber that runs the term f : any -> any. Before finishing,
   ; set the store location 0 to the return value of f.
-  (define (fiber f)
+  (define (fiber-store-ans f)
     (term-let ((x-new (variable-not-in f (term xarg))))
               (term
                (λ (x-new) (begin
                             ,(set-bang (term 0) (term (,f (unit))))   ;; run f and set location 0 to its result
+                            (forward (stop)))))))
+  
+  (define (fiber f)
+    (term-let ((x-new (variable-not-in f (term xarg))))
+              (term
+               (λ (x-new) (begin
+                            (,f (unit)) ;; just run f
                             (forward (stop)))))))
 
   ; Yield control of the vproc, but pass the current continuation for

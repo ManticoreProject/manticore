@@ -6,9 +6,8 @@
 ;;; Prototype work-stealing scheduler.
 
 (module work-stealing-scheduler-pltr mzscheme
-  (require (planet "reduction-semantics.ss" ("robby" "redex.plt" 3 11))
-           (planet "random.ss" ("schematics" "random.plt" 1 0))
-           (planet "gui.ss" ("robby" "redex.plt" 3 11)))
+  (require (planet "reduction-semantics.ss" ("robby" "redex.plt" 3 13))
+           (planet "random.ss" ("schematics" "random.plt" 1 0)))
   (require "schedulers-pltr.scm")
   (require "scheduler-utils-pltr.scm")
   (require (lib "list.ss")
