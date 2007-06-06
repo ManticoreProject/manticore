@@ -1,0 +1,43 @@
+(* mPut.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * mPut function for m-variable.
+ *)
+
+#include "types.def"
+
+(* compare and swap declaration 
+extern any CAS() __attribute__(()); 
+ *) 
+
+define @enqueue (vp : vproc, tid : tid, fiber : fiber) : unit;
+define @forward (vp : vproc, sig : signal ) noreturn;
+
+define inline @mPut (mvar : !(list, any, int), x : any) : unit = 
+          let readL : list = #0(mvar)
+          let readflag : int = #2(mvar)
+          let dummyTid : tid = enum(0)
+          let oldValue : any = CAS (&1(mvar), enum(0), x)
+          case oldValue
+           of enum(0) =>
+                fun spin (; exh : cont(any)) : unit =
+                      if (#2(ivar) = 0:int)
+			then return (enum(0))
+			else apply spin (; exh)
+                do apply spin (; exh)
+                case readL
+                 of enum(0) => return (enum(0))
+                  | CONS(hd : any, tl : list) => 
+                      cont k () = return (enum(0))                     
+                      let fiber : fiber = #1(((int, cont(any)))hd)
+		      do #0(mvar) := tl            
+                      do @enqueue(host_vproc, dummyTid, k)
+                      throw fiber(x)
+                end
+            | _ => 
+                do ccall M_Print ("ivar is full\n\000")
+                let vp : vproc = host_vproc
+                @forward (vp, stop)
+          end

@@ -1,0 +1,32 @@
+(* iGet.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * get function for i-variable.
+ *)
+
+#include "types.def"
+
+define @dispatch (vp : vrpoc) noreturn;
+
+define inline @iGet (ivar : !(list, any, int)) : any =
+          let readList : list = #0(ivar)
+          let value : any = #1(ivar)
+          let readFlag : int = #2(ivar)
+          do #2(ivar) := I32Add(readFlag, 1)
+          let dummyTid : tid = enum(0)
+          case value
+           of enum(0) =>
+                (* atomic update, kinda like fetch and increment *)
+                cont k (x : any) = return (x)
+                let item : (enum(0), cont(any)) = alloc (dummyTid, k)
+                (* atomic update *)
+                do #0(ivar) := CONS(item, readList)
+                do #2(ivar) := I32Sub(readFlag, 1)
+                @dispatch (host_vproc)
+            | x : any =>
+                do #2(ivar) := I32Sub(readFlag, 1)
+                return (x)
+                        
+          end

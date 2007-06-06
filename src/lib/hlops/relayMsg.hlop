@@ -1,0 +1,25 @@
+(* relayMsg.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * relayMsg function for m-variable.
+ *)
+
+#include "types.def"
+
+define @enqueue (vp : vproc, tid : tid, fiber : fiber) : unit;
+
+define inline @relayMsg (mvar : !(list, any, int), x : any) : unit =     
+    let mvar : !(list, any,int) = #0(arg)
+    let x : any = #1(arg)
+    let readL : list = #0(mvar)
+    let dummyTid : tid = enum(0)
+    case readL
+     of enum(0) => return (enum(0))
+      | CONS(hd : any, tl : list) =>
+	  let fiber : fiber = #1(((int,cont(any)))hd)
+          do #0(mvar) := tl
+	  do @enqueue(host_vproc, dummyTid, fiber)
+	  return (enum(0))
+    end

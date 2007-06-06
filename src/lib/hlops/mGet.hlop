@@ -1,0 +1,40 @@
+(* mGet.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * get function for m-variable.
+ *)
+
+#include "types.def"
+
+define @dispatch (vp : vproc) noreturn;
+define @relayMsg (mvar : !(list, any, int, int), x : any) : unit;
+
+define inline @mGet (mvar : !(list, any, int, int)) : any =
+          let dummyTid : tid = enum(0)
+          let readList : list = #0(mvar)
+          let value : any = #1(mvar)
+          let readFlag : int = #2(mvar)
+	  let takeFlag : int = #3(mvar)
+          do #2(mvar) := I32Add(readFlag, 1)
+	  if (takeFlag = 1 :int)
+	    then cont k (x : any) =  
+	           do @relayMsg (mvar, x)
+	           return (x)
+              let item : (enum(0), cont(any)) = alloc (dummyTid, k)
+              do #0(mvar) := CONS(item, readList)
+              do #2(mvar) := I32Sub(readFlag, 1)
+              @dispatch (host_vproc)
+	    else	             
+              case value
+               of enum(0) =>
+                    cont k (x : any) = return (x)
+                    let item : (enum(0), cont(any)) = alloc (dummyTid, k)
+                    do #0(mvar) := CONS(item, readList)
+                    do #2(mvar) := I32Sub(readFlag, 1)
+                    @dispatch (host_vproc)
+                | x : any =>
+                    do #2(mvar) := I32Sub(readFlag, 1)
+                    return (x)                       
+              end

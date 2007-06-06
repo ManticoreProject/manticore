@@ -1,0 +1,50 @@
+(* iPut.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * put function for i-variable.
+ *)
+
+#include "types.def"
+
+(* compare and swap 
+extern any CAS() __attribute__(()); 
+ *) 
+
+define @enqueue (vp : vproc, tid : tid, fiber : fiber) : unit;
+define @forward (vp : vrpoc, sig : signal ) noreturn;
+
+define inline @iPut (ivar : !(list, any, int), x : any) : unit = 
+          let readL : list = #0(ivar)
+          let readflag : int = #2(ivar)
+          let oldValue : any = ccall CAS (&1(ivar), enum(0), x)
+          let dummyTid : tid = enum(0)
+          case oldValue
+           of enum(0) =>
+                fun spin (; exh : cont(any)) : unit =
+                      if (#2(ivar) = 0:int)
+			then return (enum(0))
+			else apply spin (; exh)
+                do apply spin (; exh)
+                case readL
+                 of enum(0) => return (enum(0))
+                  | CONS(hd : any, tl : list) =>                      
+                      let fiber : cont(any) = #1(((int, cont(any)))hd)
+                      do @enqueue(host_vproc, dummyTid, fiber)
+                      fun wakeRead(l : list; exh : cont(any)) : enum(0) = 
+                            case l 
+                              of enum(0) => return (enum(0))
+                               | CONS(hd' : any, tl' : list) =>
+                                   let fiber' : cont(any) = #1(((int, cont(any)))hd')
+                                   let k : cont(any) = throw fiber'(x) 
+                                   do @enqueue(host_vproc, dummyTid, k)
+                                   apply wakeRead(tl'; exh)
+                             end
+                      apply wakeRead(tl; exh) 
+                end
+            | _ => 
+                do ccall M_Print ("ivar is full\n\000")
+                let vp : vproc = host_vproc
+                @forward (vp, stop)
+          end
