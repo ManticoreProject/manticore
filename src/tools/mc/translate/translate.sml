@@ -63,7 +63,8 @@ structure Translate : sig
 	    | AST.IfExp(e1, e2, e3, ty) =>
 		EXP(trExpToV (env, e1, fn x =>
 		  B.mkIf(x, trExpToExp(env, e2), trExpToExp(env, e3))))
-	    | AST.CaseExp(e, rules, ty) => raise Fail "case"
+	    | AST.CaseExp(e, rules, ty) =>
+		EXP(trExpToV (env, e, fn x => trCase(env, x, rules)))
 	    | AST.ApplyExp(e1, e2, ty) =>
 		EXP(trExpToV (env, e1, fn f =>
 		  trExpToV (env, e2, fn arg =>
@@ -164,6 +165,41 @@ structure Translate : sig
 		end
 	  (* end case *))
 
+    and trCase (env, arg, rules) = let
+	  fun mkCase (cases, dflt) = B.mkCase(arg, List.rev cases, dflt)
+	  fun trRules ([(pat, exp)], cases) = (case pat (* last rule *)
+		 of AST.ConPat(dc, tyArgs, p) => raise Fail "ConPat"
+		  | AST.TuplePat[] =>
+		      mkCase((B.P_Const B.unitConst, trExpToExp (env, exp))::cases, NONE)
+		  | AST.TuplePat ps => let
+		      val (env, xs) = trVarPats (env, ps)
+		      fun bind (_, []) = trExpToExp (env, exp)
+			| bind (i, x::xs) = B.mkStmt([x], B.E_Select(i, arg), bind(i+1, xs))
+		      in
+			mkCase(cases, SOME(bind(0, xs)))
+		      end
+		  | AST.VarPat x =>
+		    (* default case: map x to the argument *)
+		      mkCase(cases, SOME(trExpToExp(insert(env, x, arg), exp)))
+		  | AST.ConstPat(AST.DConst(dc, tyArgs)) => raise Fail "DConst"
+		  | AST.ConstPat(AST.LConst(lit, ty)) =>
+		      mkCase((B.P_Const(lit, trTy ty), trExpToExp (env, exp))::cases, NONE)
+		(* end case *))
+	    | trRules ((pat, exp)::rules, cases) = let
+		val rule' = (case pat
+		       of AST.ConPat(dc, tyArgs, p) => raise Fail "ConPat"
+			| AST.ConstPat(AST.DConst(dc, tyArgs)) => raise Fail "DConst"
+			| AST.ConstPat(AST.LConst(lit, ty)) =>
+			    (B.P_Const(lit, trTy ty), trExpToExp (env, exp))
+			| _ => raise Fail "exhaustive pattern in case"
+		      (* end case *))
+		in
+		  trRules (rules, rule'::cases)
+		end
+	  in
+	    trRules (rules, [])
+	  end
+
     and trVarPats (env, pats) = let
 	  fun tr ([], env, xs) = (env, List.rev xs)
 	    | tr (AST.VarPat x::pats, env, xs) = let
@@ -204,7 +240,7 @@ structure Translate : sig
     fun translate exp = let
 	  val exh = BV.new("_topExh", BTy.exhTy)
 	  val mainFun = B.FB{
-		  f = BV.new("main", BTy.T_Fun([], [BTy.exhTy], [])),
+		  f = BV.new("main", BTy.T_Fun([], [BTy.exhTy], [trTy(TypeOf.exp exp)])),
 		  params = [],
 		  exh = [exh],
 		  body = trExpToExp(mkEnv exh, exp)
