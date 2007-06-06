@@ -91,7 +91,7 @@ functor MainFn (
 	  (* end case *))
 
     fun doFile file = BackTrace.monitor (fn () =>let
-	  fun asmFile stem = OS.Path.joinBaseExt{base=stem, ext=SOME ".s"}
+	  fun asmFile stem = OS.Path.joinBaseExt{base=stem, ext=SOME "s"}
 	  in
 	    case OS.Path.splitBaseExt file
 	     of {base, ext=SOME "bom"} => bomC(file, asmFile base)
