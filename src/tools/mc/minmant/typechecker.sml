@@ -245,38 +245,6 @@ structure Typechecker : sig
 			  (Overload.add_var ovar;
 			   (mkApp (ovar, resTy), resTy))
 		      end
-(*
-		  if Atom.same(bop, BasisNames.eq)
-(* FIXME: equality should be handled as overloading *)
-		  then if not(U.unify(ty1, ty2))
-		       then (
-			   error(loc, ["type mismatch for operator ="]);
-			   (AST.TupleExp[], Basis.boolTy))
-		       else if TU.same(ty1, Basis.boolTy)
-		       then (mkApp(Basis.boolEq, []), Basis.boolTy)
-		       else if TU.same(ty1, Basis.intTy)
-		       then (mkApp(Basis.intEq, []), Basis.boolTy)
-		       else if TU.same(ty1, Basis.stringTy)
-		       then (mkApp(Basis.stringEq, []), Basis.boolTy)
-		       else (
-			   error(loc, ["not an equality type"]);
-			   (AST.TupleExp[], Basis.boolTy))
-		  else if Atom.same(bop, BasisNames.listCons)
-		  then let
-			  val (tyArgs, resTy) = chkApp (DataCon.typeOf Basis.listCons)
-		      in (
-			  AST.ApplyExp(
-			    AST.ConstExp(AST.DConst(Basis.listCons, tyArgs)),
-			    AST.TupleExp[e1', e2'], resTy),
-			  resTy
-			  ) end
-		  else let
-			  val rator = Basis.lookupOp bop
-			  val (argTys, resTy) = chkApp (Var.typeOf rator)
-		      in
-			  (mkApp(rator, argTys), resTy)
-		      end
-*)
 	      end
 	    | PT.ApplyExp(e1, e2) => let
 		  val (e1', ty1) = chkExp (loc, depth, te, ve, e1)
@@ -485,7 +453,7 @@ structure Typechecker : sig
 			(bogusPat, ve', bogusTy))
 		  (* end case *)
 		end
-	    | PT.BinaryPat(p1, conid, p2) => raise Fail "BinaryPat" (* FIXME *)
+	    | PT.BinaryPat(p1, conid, p2) => chkPat (loc, depth, te, ve, PT.ConPat (conid, PT.TuplePat [p1, p2]))
 	    | PT.TuplePat pats => let
 		val (pats, ve', ty) = chkPats (loc, depth, te, ve, pats)
 		in
