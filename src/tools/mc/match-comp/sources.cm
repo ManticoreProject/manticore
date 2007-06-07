@@ -1,0 +1,30 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Sources file for the match-pattern-compilation phase.
+ *)
+
+Library
+
+(*
+  structure MatchCompile
+*)
+
+structure MatchDFA
+is
+
+  $/basis.cm
+  $/smlnj-lib.cm
+  $/pp-lib.cm
+
+  ../minmant/sources.cm
+  ../common/sources.cm
+
+(*
+  match-compile.sml
+*)
+  match-dfa-sig.sml
+  match-dfa.sml
+
