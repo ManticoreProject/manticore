@@ -15,7 +15,7 @@ structure DataCon : sig
     val same : AST.dcon * AST.dcon -> bool
 
   (* return the name of the data constructor *)
-    val nameOf : AST.dcon -> Atom.atom
+    val nameOf : AST.dcon -> string
 
   (* return the type of the data constructor *)
     val typeOf : AST.dcon -> AST.ty_scheme
@@ -42,7 +42,7 @@ structure DataCon : sig
 
     fun same (DCon{stamp=a, ...}, DCon{stamp=b, ...}) = Stamp.same(a, b)
 
-    fun nameOf (DCon{name, ...}) = name
+    fun nameOf (DCon{name, ...}) = Atom.toString name
 
     fun argTypeOf (DCon{argTy, ...}) = argTy
 

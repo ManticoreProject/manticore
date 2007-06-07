@@ -10,7 +10,9 @@ Library
 
   structure AST
   structure Basis
+  structure DataCon
   structure FrontEnd
+  structure TyCon
   structure Types
   structure TypeUtil
   structure TypeOf

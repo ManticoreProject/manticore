@@ -26,10 +26,7 @@ structure Translate : sig
 
     fun mkEnv exh = E{exh = exh, vmap = V.Map.empty}
 
-    fun lookup (E{vmap, ...}, x) = (case V.Map.find(vmap, x)
-	   of SOME x' => x'
-	    | NONE => raise Fail(concat["lookup(-, ", V.toString x, ")"])
-	  (* end case *))
+    fun find (E{vmap, ...}, x) = V.Map.find(vmap, x)
 
     fun insert (E{vmap, exh}, x, x') =
 	  E{vmap=V.Map.insert(vmap, x, x'), exh=exh}
@@ -41,6 +38,14 @@ structure Translate : sig
 	  end
 
     fun handlerOf (E{exh, ...}) = [exh]
+
+  (* prune out overload nodes.
+   * NOTE: we should probably have a pass that does this before
+   * AST optimization.
+   *)
+    fun prune (AST.OverloadExp(ref(AST.Instance x))) = AST.VarExp(x, [])
+      | prune (AST.OverloadExp _) = raise Fail "unresolved overloading"
+      | prune e = e
 
   (* translate a binding occurrence of an AST variable to a BOM variable *)
     fun trVar (env, x) = let
@@ -57,7 +62,7 @@ structure Translate : sig
     fun toExp (BIND(xs, rhs)) = B.mkStmt(xs, rhs, B.mkRet xs)
       | toExp (EXP e) = e
 
-    fun trExp (env, exp) : bom_code = (case exp
+    fun trExp (env, exp) : bom_code = (case prune exp
 	   of AST.LetExp(b, e) =>
 		EXP(trBind (env, b, fn env' => trExpToExp(env', e)))
 	    | AST.IfExp(e1, e2, e3, ty) =>
@@ -65,10 +70,9 @@ structure Translate : sig
 		  B.mkIf(x, trExpToExp(env, e2), trExpToExp(env, e3))))
 	    | AST.CaseExp(e, rules, ty) =>
 		EXP(trExpToV (env, e, fn x => trCase(env, x, rules)))
-	    | AST.ApplyExp(e1, e2, ty) =>
-		EXP(trExpToV (env, e1, fn f =>
-		  trExpToV (env, e2, fn arg =>
-		    B.mkApply(f, [arg], handlerOf env))))
+	    | AST.ApplyExp(e1, e2, ty) => EXP(trExpToV (env, e1, fn f =>
+		trExpToV (env, e2, fn arg =>
+		  B.mkApply(f, [arg], handlerOf env))))
 	    | AST.TupleExp[] => let
 		val t = BV.new("_unit", BTy.unitTy)
 		in
@@ -100,8 +104,7 @@ structure Translate : sig
 		in
 		  BIND([t], B.E_Const(lit, ty'))
 		end
-	    | AST.VarExp(x, []) => EXP(B.mkRet[lookup(env, x)])
-	    | AST.VarExp(x, tys) => raise Fail "poly var"
+	    | AST.VarExp(x, _) => EXP(trVtoV(env, x, fn x' => B.mkRet[x']))
 	    | AST.SeqExp _ => let
 	      (* note: the typechecker puts sequences in right-recursive form *)
 		fun tr (AST.SeqExp(e1, e2)) = (
@@ -113,7 +116,6 @@ structure Translate : sig
 		in
 		  EXP(tr exp)
 		end
-	    | AST.OverloadExp(ref(AST.Instance x)) => EXP(B.mkRet[lookup(env, x)])
 	    | AST.OverloadExp _ => raise Fail "unresolved overloading"
 	  (* end case *))
 
@@ -217,8 +219,7 @@ structure Translate : sig
    *	let t = exp in cxt[t]
    *)
     and trExpToV (env, AST.VarExp(x, tys), cxt : B.var -> B.exp) =
-	(* if exp is a variable, we just pass it directly to the context *)
-	  cxt (lookup(env, x))
+	  trVtoV (env, x, cxt)
       | trExpToV (env, exp, cxt : B.var -> B.exp) = (case trExp(env, exp)
 	   of BIND([x], rhs) => B.mkStmt([x], rhs, cxt x)
 	    | EXP e => let
@@ -226,6 +227,48 @@ structure Translate : sig
 		in
 		  B.mkLet([t], e, cxt t)
 		end
+	  (* end case *))
+
+    and trVtoV (env, x, cxt : B.var -> B.exp) = (
+	  case find(env, x)
+	   of SOME x' => cxt x' (* pass x' directly to the context *)
+	    | NONE => (case StdEnv.lookupVar x
+		 of StdEnv.Prim1 mk => let
+		      val ty as BTy.T_Fun([argTy], _, [resTy]) = trScheme(V.typeOf x)
+		      val f = BV.new("_prim", ty)
+		      val arg = BV.new("_arg", argTy)
+		      val res = BV.new("_res", resTy)
+		      val exh = BV.new("_exh", BTy.exhTy)
+		      in
+			B.mkFun([B.FB{
+			    f=f, params=[arg], exh=[exh],
+			    body = B.mkStmt([res], B.E_Prim(mk arg), B.mkRet[res])
+			  }],
+			  cxt f)
+		      end
+		  | StdEnv.Prim2 mk => let
+		      val ty as BTy.T_Fun([argTy], _, [resTy]) = trScheme(V.typeOf x)
+		      val BTy.T_Tuple(_, [ty1, ty2]) = argTy
+		      val f = BV.new("_prim", ty)
+		      val arg = BV.new("_arg", argTy)
+		      val a = BV.new("_a", ty1)
+		      val b = BV.new("_b", ty2)
+		      val res = BV.new("_res", resTy)
+		      val exh = BV.new("_exh", BTy.exhTy)
+		      in
+			B.mkFun([B.FB{
+			    f=f, params=[arg], exh=[exh],
+			    body = B.mkStmts([
+				([a], B.E_Select(0, arg)),
+				([b], B.E_Select(1, arg)),
+				([res], B.E_Prim(mk(a, b)))
+			      ],
+			      B.mkRet[res])
+			  }],
+			  cxt f)
+		      end
+		  | StdEnv.HLOp hlop => raise Fail "HLOp"
+		(* end case *))
 	  (* end case *))
 
   (* translate a list of expressions to a BOM let binding *)

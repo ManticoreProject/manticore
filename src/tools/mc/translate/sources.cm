@@ -17,6 +17,7 @@ is
   ../prim/sources.cm
   ../minmant/sources.cm
   ../bom/sources.cm
+  ../hlop/sources.cm
 
   std-env.sml
   translate.sml
