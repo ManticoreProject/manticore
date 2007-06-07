@@ -232,43 +232,11 @@ structure Translate : sig
     and trVtoV (env, x, cxt : B.var -> B.exp) = (
 	  case find(env, x)
 	   of SOME x' => cxt x' (* pass x' directly to the context *)
-	    | NONE => (case StdEnv.lookupVar x
-		 of StdEnv.Prim1 mk => let
-		      val ty as BTy.T_Fun([argTy], _, [resTy]) = trScheme(V.typeOf x)
-		      val f = BV.new("_prim", ty)
-		      val arg = BV.new("_arg", argTy)
-		      val res = BV.new("_res", resTy)
-		      val exh = BV.new("_exh", BTy.exhTy)
-		      in
-			B.mkFun([B.FB{
-			    f=f, params=[arg], exh=[exh],
-			    body = B.mkStmt([res], B.E_Prim(mk arg), B.mkRet[res])
-			  }],
-			  cxt f)
-		      end
-		  | StdEnv.Prim2 mk => let
-		      val ty as BTy.T_Fun([argTy], _, [resTy]) = trScheme(V.typeOf x)
-		      val BTy.T_Tuple(_, [ty1, ty2]) = argTy
-		      val f = BV.new("_prim", ty)
-		      val arg = BV.new("_arg", argTy)
-		      val a = BV.new("_a", ty1)
-		      val b = BV.new("_b", ty2)
-		      val res = BV.new("_res", resTy)
-		      val exh = BV.new("_exh", BTy.exhTy)
-		      in
-			B.mkFun([B.FB{
-			    f=f, params=[arg], exh=[exh],
-			    body = B.mkStmts([
-				([a], B.E_Select(0, arg)),
-				([b], B.E_Select(1, arg)),
-				([res], B.E_Prim(mk(a, b)))
-			      ],
-			      B.mkRet[res])
-			  }],
-			  cxt f)
-		      end
-		  | StdEnv.HLOp hlop => raise Fail "HLOp"
-		(* end case *))
+	    | NONE => let
+		val lambda as B.FB{f, ...} = StdEnv.lookupVar x
+		in
+		  B.mkFun([lambda], cxt f)
+		end
 	  (* end case *))
 
   (* translate a list of expressions to a BOM let binding *)

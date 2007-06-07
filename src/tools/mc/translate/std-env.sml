@@ -8,14 +8,9 @@
 
 structure StdEnv : sig
 
-    datatype builtin
-      = Prim1 of BOM.var -> BOM.prim
-      | Prim2 of BOM.var * BOM.var -> BOM.prim
-      | HLOp of HLOp.hlop
-
     val findTyc : Types.tycon -> BOMTy.ty option
     val lookupDCon : Types.dcon -> BOMTy.data_con
-    val lookupVar : AST.var -> builtin
+    val lookupVar : AST.var -> AST.lambda
 
   end = struct
 
@@ -51,11 +46,70 @@ structure StdEnv : sig
 	    TTbl.find tbl
 	  end
 
-    datatype builtin
-      = Prim1 of BOM.var -> BOM.prim
-      | Prim2 of BOM.var * BOM.var -> BOM.prim
-      | HLOp of HLOp.hlop
-
+    local
+      fun unary (t1, t2) = BTy.T_Fun([t1], [], [t2])
+      fun binary (t1, t2, t3) = BTy.T_Fun([t1, t2], [], [t3])
+      val i = BTy.T_Raw BTy.T_Int
+      val b = BTy.boolTy
+      val i_i = unary(i, i)
+      val ii_i = binary(i, i, i)
+      val ii_b = binary (i, i, b)
+    (* generate a variable for a primop; if the ty is raw, then we have to
+     * unwrap the argument and so we generate two variables.
+     *)
+      fun unwrapArg (name, ty, stms) = let
+	    val rawX = BV.new("_"^name, ty)
+	    in
+	      case ty
+	       of BTy.T_Raw rty => let
+		    val wrapTy = BTy.T_Wrap rty
+		    val wrapX = BV.new("_w"^name, wrapTy)
+		    in
+		      (([rawX], B.E_Unwrap wrapX)::stms, rawX, wrapX, wrapTy)
+		    end
+		| _ => (stms, rawX, rawX, ty)
+	      (* end case *)
+	    end
+      fun wrapRes ty = let
+	    val rawX = BV.new("_res", ty)
+	    in
+	      case ty
+	       of BTy.T_Raw rty => let
+		    val wrapTy = BTy.T_Wrap rty
+		    val wrapX = BV.new("_w"^name, wrapTy)
+		    in
+		      ([([wrapX], B.E_Wrap wrapX)], rawX, wrapX, wrapTy)
+		    end
+		| _ => ([], rawX, rawX, ty)
+	      (* end case *)
+	    end
+      fun funTy (arg, res) = BTy.T_Fun([BV.typeOf arg], [BTy.exhTy], [BT.typeOf res])
+      fun prim2 (rator, f, rawATy, rawBTy, rawResTy) = let
+	    val (preStms, rawB, wrapB, wrapBTy) = unwrapArg ("b", rawBTy, preStms)
+	    val (preStms, rawA, wrapA, wrapATy) = unwrapArg ("a", rawATy, [])
+	    val preStms = ([wrapA], B.E_Select(0, arg))
+		  :: ([wrapB], B.E_Select(1, arg))
+		  :: preStms
+	    val argTy = BTy.T_Tuple(false, wrapATy, wrapBTy)
+	    val arg = BV.new("_arg", argTy)
+	    val (postStms, rawRes, wrapRes, wrapResTy) = wrapRes rawResTy
+	    val stms = ([res], B.E_Prim(mk(a, b)) :: stms
+		  ]
+	    val stms = preStms @ (([res], B.E_Prim(mk(a, b))) :: postStms)
+	    in
+	      B.FB{
+		  f = BV.new(f, BTy.T_Fun([argTy], [BTy.exhTy], [wrapResTy]),
+		  params=[arg],
+		  exh=[BV.new("_exh", BTy.exhTy)],
+		  body = B.mkStmts([
+		      ([a], B.E_Select(0, arg)),
+		      ([b], B.E_Select(1, arg)),
+		      ([res], B.E_Prim(mk(a, b)))
+		    ],
+		    B.mkRet[res])
+		}
+	    end
+    in
     val operators = [
 	    (B.append, HLOp H.listAppendOp),
   
