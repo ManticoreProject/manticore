@@ -169,6 +169,13 @@ structure Translate : sig
 
     and trCase (env, arg, rules) = let
 	  fun mkCase (cases, dflt) = B.mkCase(arg, List.rev cases, dflt)
+	(* translate the type of a literal; if it is wrapped, then replace the wrapped
+	 * type with a raw type.
+	 *)
+	  fun trLitTy ty = (case trTy ty
+		 of BTy.T_Wrap rty => BTy.T_Raw rty
+		  | ty => ty
+		(* end case *))
 	  fun trRules ([(pat, exp)], cases) = (case pat (* last rule *)
 		 of AST.ConPat(dc, tyArgs, p) => raise Fail "ConPat"
 		  | AST.TuplePat[] =>
@@ -185,21 +192,28 @@ structure Translate : sig
 		      mkCase(cases, SOME(trExpToExp(insert(env, x, arg), exp)))
 		  | AST.ConstPat(AST.DConst(dc, tyArgs)) => raise Fail "DConst"
 		  | AST.ConstPat(AST.LConst(lit, ty)) =>
-		      mkCase((B.P_Const(lit, trTy ty), trExpToExp (env, exp))::cases, NONE)
+		      mkCase((B.P_Const(lit, trLitTy ty), trExpToExp (env, exp))::cases, NONE)
 		(* end case *))
 	    | trRules ((pat, exp)::rules, cases) = let
 		val rule' = (case pat
 		       of AST.ConPat(dc, tyArgs, p) => raise Fail "ConPat"
 			| AST.ConstPat(AST.DConst(dc, tyArgs)) => raise Fail "DConst"
 			| AST.ConstPat(AST.LConst(lit, ty)) =>
-			    (B.P_Const(lit, trTy ty), trExpToExp (env, exp))
+			    (B.P_Const(lit, trLitTy ty), trExpToExp (env, exp))
 			| _ => raise Fail "exhaustive pattern in case"
 		      (* end case *))
 		in
 		  trRules (rules, rule'::cases)
 		end
 	  in
-	    trRules (rules, [])
+	    case BV.typeOf arg
+	     of BTy.T_Wrap rty => let
+		  val ty = BTy.T_Raw rty
+		  val arg' = BV.new("_raw", ty)
+		  in
+		    B.mkStmt([arg'], B.E_Unwrap arg, trCase (env, arg', rules))
+		  end
+	      | _ => trRules (rules, [])
 	  end
 
     and trVarPats (env, pats) = let
