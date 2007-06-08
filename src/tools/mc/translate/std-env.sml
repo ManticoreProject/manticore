@@ -24,6 +24,7 @@ structure StdEnv : sig
     fun lookupDCon _ = raise Fail "lookupDCon"
 
     val types = [
+	    (B.boolTyc, BTy.boolTy),
 	    (B.intTyc, BTy.T_Wrap BTy.T_Int),
 	    (B.longTyc,  BTy.T_Wrap BTy.T_Int),
 (*
@@ -35,9 +36,15 @@ structure StdEnv : sig
 	    (B.charTyc, ),
 	    (B.runeTyc, ),
 	    (B.stringTyc, ),
-	    (B.parrayTyc, ),
 *)
 	    (B.threadIdTyc, BTy.tidTy)
+(*
+	    (B.parrayTyc, ),
+	    (B.chanTyc, ),
+	    (B.ivarTyc, ),
+	    (B.mvarTyc, ),
+	    (B.eventTyc, )
+*)
 	  ]
 
     val findTyc : Types.tycon -> BOMTy.ty option = let
@@ -118,17 +125,17 @@ structure StdEnv : sig
     in
     val operators = [
 (* FIXME
-	    (B.append,		HLOp H.listAppendOp),
+	    (B.append,		hlop H.listAppendOp),
 *)
 	    (B.int_lte,		prim2 (P.I32Lte, "lte", i, i, b)),
 	    (B.long_lte,	prim2 (P.I64Lte, "lte", l, l, b)),
 	    (B.float_lte,	prim2 (P.F32Lte, "lte", f, f, b)),
 	    (B.double_lte,	prim2 (P.F64Lte, "lte", d, d, b)),
 (*
-	    (B.integer_lte, HLOp H.integerLteOp),
+	    (B.integer_lte,	hlop H.integerLteOp),
 	    (B.char_lte,	prim2 (P., "lte", ?, ?, ?)?),
 	    (B.rune_lte,	prim2 (P., "lte", ?, ?, ?)?),
-	    (B.string_lte, HLOp H.stringLteOp),
+	    (B.string_lte,	hlop H.stringLteOp),
 *)
   
 	    (B.int_lt,		prim2 (P.I32Lt, "lt", i, i, b)),
@@ -136,10 +143,10 @@ structure StdEnv : sig
 	    (B.double_lt,	prim2 (P.F64Lt, "lt", d, d, b)),
 	    (B.long_lt,		prim2 (P.I64Lt, "lt", l, l, b)),
 (*
-	    (B.integer_lt, HLOp H.integerLtOp),
-	    (B.char_lt,	prim2 (P., "lt", ?, ?, ?)?),
-	    (B.rune_lt,	prim2 (P., "lt", ?, ?, ?)?),
-	    (B.string_lt, HLOp H.stringLtOp),
+	    (B.integer_lt,	hlop H.integerLtOp),
+	    (B.char_lt,		prim2 (P., "lt", ?, ?, ?)?),
+	    (B.rune_lt,		prim2 (P., "lt", ?, ?, ?)?),
+	    (B.string_lt,	hlop H.stringLtOp),
 *)
   
 	    (B.int_gte,		prim2 (P.I32Gte, "gte", i, i, b)),
@@ -147,10 +154,10 @@ structure StdEnv : sig
 	    (B.double_gte,	prim2 (P.F64Gte, "gte", d, d, b)),
 	    (B.long_gte,	prim2 (P.I64Gte, "gte", l, l, b)),
 (*
-	    (B.integer_gte, HLOp H.integerGteOp),
+	    (B.integer_gte,	hlop H.integerGteOp),
 	    (B.char_gte,	prim2 (P., "gte", ?, ?, ?)?),
 	    (B.rune_gte,	prim2 (P., "gte", ?, ?, ?)?),
-	    (B.string_gte, HLOp H.stringGteOp),
+	    (B.string_gte,	hlop H.stringGteOp),
 *)
   
 	    (B.int_gt,		prim2 (P.I32Gt, "gt", i, i, b)),
@@ -158,10 +165,10 @@ structure StdEnv : sig
 	    (B.double_gt,	prim2 (P.F64Gt, "gt", d, d, b)),
 	    (B.long_gt,		prim2 (P.I64Gt, "gt", l, l, b)),
 (*
-	    (B.integer_gt, HLOp H.integerGtOp),
-	    (B.char_gt,	prim2 (P., "gt", ?, ?, ?)?),
-	    (B.rune_gt,	prim2 (P., "gt", ?, ?, ?)?),
-	    (B.string_gt, HLOp H.stringGtOp),
+	    (B.integer_gt,	hlop H.integerGtOp),
+	    (B.char_gt,		prim2 (P., "gt", ?, ?, ?)?),
+	    (B.rune_gt,		prim2 (P., "gt", ?, ?, ?)?),
+	    (B.string_gt,	hlop H.stringGtOp),
 *)
 
 	    (B.int_plus,	prim2 (P.I32Add, "plus", i, i, i)),
@@ -169,7 +176,7 @@ structure StdEnv : sig
 	    (B.double_plus,	prim2 (P.F64Add, "plus", d, d, d)),
 	    (B.long_plus,	prim2 (P.I64Add, "plus", l, l, l)),
 (*
-	    (B.integer_plus, HLOp H.integerAddOp),
+	    (B.integer_plus,	hlop H.integerAddOp),
 *)
 
 	    (B.int_minus,	prim2 (P.I32Sub, "minus", i, i, i)),
@@ -177,7 +184,7 @@ structure StdEnv : sig
 	    (B.double_minus,	prim2 (P.F64Sub, "minus", d, d, d)),
 	    (B.long_minus,	prim2 (P.I64Sub, "minus", l, l, l)),
 (*
-	    (B.integer_minus, HLOp H.integerSubOp),
+	    (B.integer_minus,	hlop H.integerSubOp),
 *)
 
 	    (B.int_times,	prim2 (P.I32Mul, "times", i, i, i)),
@@ -185,19 +192,53 @@ structure StdEnv : sig
 	    (B.double_times,	prim2 (P.F64Mul, "times", d, d, d)),
 	    (B.long_times,	prim2 (P.I64Mul, "times", l, l, l)),
 (*
-	    (B.integer_times, HLOp H.integerMulOp),
+	    (B.integer_times,	hlop H.integerMulOp),
 *)
 
 	    (B.int_div,		prim2 (P.I32Div, "div", i, i, i)),
 	    (B.long_div,	prim2 (P.I64Div, "div", l, l, l)),
 (*
-	    (B.integer_div, HLOp H.integerDivOp),
+	    (B.integer_div,	hlop H.integerDivOp),
 *)
 
 	    (B.int_mod,		prim2 (P.I32Mod, "mod", i, i, i)),
 	    (B.long_mod,	prim2 (P.I64Mod, "mod", l, l, l))
 (*
-	    (B.integer_mod, HLOp H.integerModOp)
+	    (B.integer_mod,	hlop H.integerModOp)
+*)
+	  ]
+  (* predefined functions *)
+    val predefs = [
+(*
+	    (B.sqrtf,		hlop H.sqrtf),
+	    (B.lnf,		hlop H.lnf),
+	    (B.log2f,		hlop H.log2f),
+	    (B.log10f,		hlop H.log10f),
+	    (B.powf,		hlop H.powf),
+	    (B.expf,		hlop H.expf),
+	    (B.sqrtd,		hlop H.sqrtd),
+	    (B.lnd,		hlop H.lnd),
+	    (B.log2d,		hlop H.log2d),
+	    (B.log10d,		hlop H.log10d),
+	    (B.powd,		hlop H.powd),
+	    (B.expd,		hlop H.expd),
+	    (B.channel,		hlop H.channel),
+	    (B.send,		hlop H.send),
+	    (B.recv,		hlop H.recv),
+	    (B.iVar,		hlop H.iVar),
+	    (B.iGet,		hlop H.iGet),
+	    (B.iPut,		hlop H.iPut),
+	    (B.mVar,		hlop H.mVar),
+	    (B.mGet,		hlop H.mGet),
+	    (B.mTake,		hlop H.mTake),
+	    (B.mPut,		hlop H.mPut),
+	    (B.itos,		hlop H.itos),
+	    (B.ltos,		hlop H.ltos),
+	    (B.ftos,		hlop H.ftos),
+	    (B.dtos,		hlop H.dtos),
+	    (B.print,		hlop H.print),
+	    (B.args,		hlop H.args),
+	    (B.fail,		hlop H.fail)
 *)
 	  ]
     end (* local *)
@@ -206,6 +247,7 @@ structure StdEnv : sig
 	  val tbl = Var.Tbl.mkTable(List.length operators, Fail "var tbl")
 	  in
 	    List.app (Var.Tbl.insert tbl) operators;
+	    List.app (Var.Tbl.insert tbl) predefs;
 	    fn x => (case Var.Tbl.find tbl x
 	       of SOME lambda => BOMUtil.copyLambda lambda
 		| NONE => raise Fail("unbound variable " ^ Var.toString x)

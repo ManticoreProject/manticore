@@ -14,6 +14,7 @@ structure BasisNames =
     nonfix mod div
 
   (* predefined type names *)
+    val unit =		Atom.atom "unit"
     val bool =		Atom.atom "bool"
     val int =		Atom.atom "int"
     val long =		Atom.atom "long"
@@ -24,9 +25,13 @@ structure BasisNames =
     val rune =		Atom.atom "rune"
     val string =	Atom.atom "string"
     val list =		Atom.atom "list"
-    val unit =		Atom.atom "unit"
+    val option =	Atom.atom "option"
     val parray =        Atom.atom "parray"
-    val thread_id =     Atom.atom "thread_id"
+    val chan =		Atom.atom "chan"
+    val ivar =		Atom.atom "ivar"
+    val mvar =		Atom.atom "mvar"
+    val event =		Atom.atom "event"
+    val thread_id =     Atom.atom "tid"
 
   (* operators *)
     val eq =		Atom.atom "="
@@ -49,17 +54,44 @@ structure BasisNames =
     val boolFalse =	Atom.atom "false"
     val listCons =	Atom.atom "::"
     val listNil =	Atom.atom "nil"
+    val optionNONE =	Atom.atom "NONE"
+    val optionSOME =	Atom.atom "SOME"
 
   (* predefined variables *)
-    val args =		Atom.atom "args"
-    val print =		Atom.atom "print"
-    val fail =		Atom.atom "fail"
+    val sqrtf =		Atom.atom "sqrtf"
+    val lnf =		Atom.atom "lnf"
+    val log2f =		Atom.atom "log2f"
+    val log10f =	Atom.atom "log10f"
+    val powf =		Atom.atom "powf"
+    val expf =		Atom.atom "expf"
+    val sqrtd =		Atom.atom "sqrtd"
+    val lnd =		Atom.atom "lnd"
+    val log2d =		Atom.atom "log2d"
+    val log10d =	Atom.atom "log10d"
+    val powd =		Atom.atom "powd"
+    val expd =		Atom.atom "expd"
+    val channel =	Atom.atom "channel"
+    val send =		Atom.atom "send"
+    val recv =		Atom.atom "recv"
+    val iVar =		Atom.atom "iVar"
+    val iGet =		Atom.atom "iGet"
+    val iPut =		Atom.atom "iPut"
+    val mVar =		Atom.atom "mVar"
+    val mGet =		Atom.atom "mGet"
+    val mTake =		Atom.atom "mTake"
+    val mPut =		Atom.atom "mPut"
     val itos =		Atom.atom "itos"
+    val ltos =		Atom.atom "ltos"
+    val ftos =		Atom.atom "ftos"
+    val dtos =		Atom.atom "dtos"
+    val print =		Atom.atom "print"
+    val args =		Atom.atom "args"
+    val fail =		Atom.atom "fail"
+(*
     val size =		Atom.atom "size"
     val sub =		Atom.atom "sub"
     val substring =	Atom.atom "substring"
     val concat =	Atom.atom "concat"
-    val powd =		Atom.atom "powd"
-    val sqrtd =		Atom.atom "sqrtd"
+*)
 
   end
