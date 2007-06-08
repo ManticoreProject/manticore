@@ -222,30 +222,37 @@ structure Typechecker : sig
 		  (AST.IfExp(e1', AST.ConstExp(AST.DConst(Basis.boolTrue, [])), e2', Basis.boolTy), Basis.boolTy)
 	      end
 	    | PT.BinaryExp(e1, bop, e2) => let
-		  val (e1', ty1) = chkExp (loc, depth, te, ve, e1)
-		  val (e2', ty2) = chkExp (loc, depth, te, ve, e2)
-		  fun mkApp (arg, resTy) = AST.ApplyExp(AST.OverloadExp arg, AST.TupleExp[e1', e2'], resTy)
-		  fun chkApp tyScheme = let
-		      val (tys, instTy as AST.FunTy(argTy, resTy)) = TU.instantiate (depth, tyScheme)
-		  in
-		      if not(U.unify(argTy, AST.TupleTy[ty1, ty2]))
-		      then error(loc, ["type mismatch for operator ", Atom.toString bop])
-		      else ();
-		      (tys, resTy, instTy)
-		  end
-	      in
-		  if Atom.same(bop, BasisNames.listCons)
-		  then raise Fail "Not done yet."
-		  else
-		      let
-			  val (tysch, vars) = Basis.lookupOp(bop)
-			  val (argTys, resTy, instTy) = chkApp tysch
-			  val ovar = ref (AST.Unknown (instTy, vars))
+		val (e1', ty1) = chkExp (loc, depth, te, ve, e1)
+		val (e2', ty2) = chkExp (loc, depth, te, ve, e2)
+		fun mkApp (arg, resTy) = AST.ApplyExp(arg, AST.TupleExp[e1', e2'], resTy)
+		fun chkApp tyScheme = let
+		      val (argTys, instTy as AST.FunTy(argTy, resTy)) = TU.instantiate (depth, tyScheme)
 		      in
-			  (Overload.add_var ovar;
-			   (mkApp (ovar, resTy), resTy))
+			if not(U.unify(argTy, AST.TupleTy[ty1, ty2]))
+			  then error(loc, [
+			      "type mismatch for operator ", Atom.toString bop,
+			      ", argument has type ", TypeUtil.toString(AST.TupleTy[ty1, ty2])
+			    ])
+			  else ();
+			(argTys, resTy, instTy)
 		      end
-	      end
+		in
+		  if Atom.same(bop, BasisNames.listCons)
+		    then let
+		      val dc = Basis.listCons
+		      val (argTys, resTy, _) = chkApp (DataCon.typeOf dc)
+		      in
+			 (mkApp (AST.ConstExp(AST.DConst(dc, argTys)), resTy), resTy)
+		     end
+		    else let
+		      val (tysch, vars) = Basis.lookupOp(bop)
+		      val (argTys, resTy, instTy) = chkApp tysch
+		      val ovar = ref (AST.Unknown (instTy, vars))
+		      in
+			Overload.add_var ovar;
+			(mkApp (AST.OverloadExp ovar, resTy), resTy)
+		      end
+		end
 	    | PT.ApplyExp(e1, e2) => let
 		  val (e1', ty1) = chkExp (loc, depth, te, ve, e1)
 		  val (e2', ty2) = chkExp (loc, depth, te, ve, e2)
@@ -366,7 +373,7 @@ structure Typechecker : sig
 		       (AST.VarExp(x', argTys), ty)
 		   end
 		 | NONE => (
-		   error(loc, ["undefined identifier ", Atom.toString x]);
+		   error(loc, ["undefined identifier \"", Atom.toString x, "\""]);
 		   bogusExp)
 	      (* end case *))
 	    | PT.ConstraintExp(e, ty) => let

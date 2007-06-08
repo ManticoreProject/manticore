@@ -54,6 +54,42 @@ structure TypeUtil : sig
     structure MVMap = MetaVar.Map
     structure Ty = Types
 
+    fun tyvarToString (Ty.TVar{name, ...}) = Atom.toString name
+
+  (* return a string representation of a type (for debugging) *)
+    fun toString (Ty.ErrorTy) = "<error>"
+      | toString (Ty.MetaTy(Ty.MVar{stamp, info})) = (case !info
+	   of Ty.UNIV d => concat["$", Stamp.toString stamp, "@", Int.toString d]
+	    | Ty.INSTANCE ty => (
+		info := Ty.UNIV(~1);
+		concat["($", Stamp.toString stamp, " == ", toString ty, ")"]
+		  before info := Ty.INSTANCE ty)
+	  (* end case *))
+      | toString (Ty.ClassTy(Ty.Class(ref(Ty.CLASS cls)))) =
+	  concat["<", TypeClass.toString cls, ">"]
+      | toString (Ty.ClassTy(Ty.Class(ref(Ty.RESOLVED ty)))) = toString ty
+      | toString (Ty.VarTy tv) = tyvarToString tv
+      | toString (Ty.ConTy([], tyc)) = Atom.toString(TyCon.nameOf tyc)
+      | toString (Ty.ConTy([ty], tyc)) = concat[
+	    toString ty, " ", Atom.toString(TyCon.nameOf tyc)
+	  ]
+      | toString (Ty.ConTy(tys, tyc)) = concat[
+	    "(", String.concatWith "," (List.map toString tys), ")",
+	    Atom.toString(TyCon.nameOf tyc)
+	  ]
+      | toString (Ty.FunTy(ty1 as Ty.FunTy _, ty2)) =
+	  concat["(", toString ty1, ") -> ", toString ty2]
+      | toString (Ty.FunTy(ty1, ty2)) = concat[toString ty1, " -> ", toString ty2]
+      | toString (Ty.TupleTy []) = "unit"
+      | toString (Ty.TupleTy tys) =
+	  concat["(", String.concatWith " * " (List.map toString tys), ")"]
+
+  (* return the string representation of a type scheme *)
+    fun schemeToString (Ty.TyScheme([], ty)) = toString ty
+      | schemeToString (Ty.TyScheme(tvs, ty)) = concat[
+	    "[", String.concatWith "," (List.map tyvarToString tvs), "]", toString ty
+	  ]
+
   (* return the "head-normal form" by pruning an instantiated meta
    * variables.
    *)
@@ -72,18 +108,21 @@ structure TypeUtil : sig
       | prune ty = ty
 
   (* apply a type variable to type substitution to a type *)
-    fun applySubst (subst, ty) = let
+    fun applySubst (subst, ty0) = let
 	  fun inst ty = (case prune ty
 		 of Ty.ErrorTy => ty
-		  | Ty.MetaTy _ => raise Fail "unexpected meta variable"
+		  | ty as Ty.MetaTy _ => ty
 		  | ty as Ty.ClassTy _ => ty
-		  | Ty.VarTy tv => TVMap.lookup(subst, tv)
+		  | ty as Ty.VarTy tv => (case TVMap.find(subst, tv)
+		       of NONE => ty
+			| SOME ty => ty
+		      (* end case *))
 		  | Ty.ConTy(args, tyc) => Ty.ConTy(List.map inst args, tyc)
 		  | Ty.FunTy(ty1, ty2) => Ty.FunTy(inst ty1, inst ty2)
 		  | Ty.TupleTy tys => Ty.TupleTy(List.map inst tys)
 		(* end case *))
 	  in
-	    inst ty
+	    inst ty0
 	  end
 
   (* apply a type-variable-to-type substitution to a type.  The substitution
@@ -200,39 +239,6 @@ structure TypeUtil : sig
 		ListPair.allEq same (tys1, tys2)
 	    | _ => false
 	  (* end case *))
-
-    fun tyvarToString (Ty.TVar{name, ...}) = Atom.toString name
-
-  (* return a string representation of a type (for debugging) *)
-    fun toString (Ty.ErrorTy) = "<error>"
-      | toString (Ty.MetaTy(Ty.MVar{stamp, info})) = (case !info
-	   of Ty.UNIV d => concat["$", Stamp.toString stamp, "@", Int.toString d]
-	    | Ty.INSTANCE ty => (
-		info := Ty.UNIV(~1);
-		concat["($", Stamp.toString stamp, " == ", toString ty, ")"]
-		  before info := Ty.INSTANCE ty)
-	  (* end case *))
-      | toString (Ty.ClassTy(Ty.Class(ref(Ty.CLASS cls)))) =
-	  concat["<", TypeClass.toString cls, ">"]
-      | toString (Ty.ClassTy(Ty.Class(ref(Ty.RESOLVED ty)))) = toString ty
-      | toString (Ty.VarTy tv) = tyvarToString tv
-      | toString (Ty.ConTy([], tyc)) = Atom.toString(TyCon.nameOf tyc)
-      | toString (Ty.ConTy([ty], tyc)) = concat[
-	    toString ty, " ", Atom.toString(TyCon.nameOf tyc)
-	  ]
-      | toString (Ty.ConTy(tys, tyc)) = concat[
-	    "(", String.concatWith "," (List.map toString tys), ")",
-	    Atom.toString(TyCon.nameOf tyc)
-	  ]
-      | toString (Ty.FunTy(ty1 as Ty.FunTy _, ty2)) = concat["(", toString ty1, ") -> ", toString ty2]
-      | toString (Ty.FunTy(ty1, ty2)) = concat[toString ty1, " -> ", toString ty2]
-      | toString (Ty.TupleTy tys) = "<tuplety>"
-
-  (* return the string representation of a type scheme *)
-    fun schemeToString (Ty.TyScheme([], ty)) = toString ty
-      | schemeToString (Ty.TyScheme(tvs, ty)) = concat[
-	    "[", String.concatWith "," (List.map tyvarToString tvs), "]", toString ty
-	  ]
 
   end
 

@@ -35,9 +35,8 @@ structure Basis =
     in
     val listTyc = TyCon.newDataTyc (N.list, [tv])
     val listNil = DataCon.new listTyc (N.listNil, NONE)
-    val listCons =
-	DataCon.new listTyc
-		    (N.listCons, SOME(AST.TupleTy[tv', AST.ConTy([tv'], listTyc)]))
+    val listCons = DataCon.new listTyc
+	  (N.listCons, SOME(AST.TupleTy[tv', AST.ConTy([tv'], listTyc)]))
     end (* local *)
 
     val intTyc = TyCon.newAbsTyc (N.int, 0, true)
@@ -187,7 +186,7 @@ structure Basis =
 	       [int_plus, long_plus, integer_plus, float_plus, double_plus])
     val minus = (Types.TyScheme ([nv2], (Types.VarTy nv2) ** (Types.VarTy nv2) --> (Types.VarTy nv2)),
 	       [int_minus, long_minus, integer_minus, float_minus, double_minus])
-    val times = (Types.TyScheme ([nv2], (Types.VarTy nv3) ** (Types.VarTy nv3) --> (Types.VarTy nv3)),
+    val times = (Types.TyScheme ([nv3], (Types.VarTy nv3) ** (Types.VarTy nv3) --> (Types.VarTy nv3)),
 	       [int_times, long_times, integer_times, float_times, double_times])
 
     val fdiv = (Types.TyScheme ([fv], (Types.VarTy fv) ** (Types.VarTy fv) --> (Types.VarTy fv)),
