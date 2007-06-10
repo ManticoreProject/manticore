@@ -240,18 +240,27 @@ structure Basis =
 
 
   (* predefined functions *)
+    val not =		monoVar(N.not, boolTy --> boolTy)
     val sqrtf =		monoVar(N.sqrtf, floatTy --> floatTy)
     val lnf =		monoVar(N.lnf, floatTy --> floatTy)
     val log2f =		monoVar(N.log2f, floatTy --> floatTy)
     val log10f =	monoVar(N.log10f, floatTy --> floatTy)
-    val powf =		monoVar(N.powf, doubleTy ** doubleTy --> doubleTy)
-    val expf =		monoVar(N.expf, doubleTy --> doubleTy)
+    val powf =		monoVar(N.powf, floatTy ** floatTy --> floatTy)
+    val expf =		monoVar(N.expf, floatTy --> floatTy)
+    val sinf =		monoVar(N.expf, floatTy --> floatTy)
+    val cosf =		monoVar(N.expf, floatTy --> floatTy)
+    val tanf =		monoVar(N.expf, floatTy --> floatTy)
+    val itof =		monoVar(N.expf, intTy --> floatTy)
     val sqrtd =		monoVar(N.sqrtd, doubleTy --> doubleTy)
     val lnd =		monoVar(N.lnd, doubleTy --> doubleTy)
     val log2d =		monoVar(N.log2d, doubleTy --> doubleTy)
     val log10d =	monoVar(N.log10d, doubleTy --> doubleTy)
     val powd =		monoVar(N.powd, doubleTy ** doubleTy --> doubleTy)
     val expd =		monoVar(N.expd, doubleTy --> doubleTy)
+    val cosd =		monoVar(N.expd, doubleTy --> doubleTy)
+    val sind =		monoVar(N.expd, doubleTy --> doubleTy)
+    val tand =		monoVar(N.expd, doubleTy --> doubleTy)
+    val itod =		monoVar(N.expd, intTy --> doubleTy)
     val channel =	polyVar(N.channel, fn tv => unitTy --> chanTy tv)
     val send =		polyVar(N.send, fn tv => chanTy tv ** tv--> unitTy)
     val recv =		polyVar(N.recv, fn tv => chanTy tv --> tv)
@@ -305,18 +314,27 @@ structure Basis =
 	    (N.listNil,		Env.Con listNil),
 	    (N.listCons,	Env.Con listCons),
 	    (*(N.uMinus,		Env.Var uMinus),*)
+	    (N.not,		Env.Var not),
 	    (N.sqrtf,		Env.Var sqrtf),
 	    (N.lnf,		Env.Var lnf),
 	    (N.log2f,		Env.Var log2f),
 	    (N.log10f,		Env.Var log10f),
 	    (N.powf,		Env.Var powf),
 	    (N.expf,		Env.Var expf),
+	    (N.sinf,		Env.Var sinf),
+	    (N.cosf,		Env.Var cosf),
+	    (N.tanf,		Env.Var tanf),
+	    (N.itof,		Env.Var itof),
 	    (N.sqrtd,		Env.Var sqrtd),
 	    (N.lnd,		Env.Var lnd),
 	    (N.log2d,		Env.Var log2d),
 	    (N.log10d,		Env.Var log10d),
 	    (N.powd,		Env.Var powd),
 	    (N.expd,		Env.Var expd),
+	    (N.sind,		Env.Var sind),
+	    (N.cosd,		Env.Var cosd),
+	    (N.tand,		Env.Var tand),
+	    (N.itod,		Env.Var itod),
 	    (N.channel,		Env.Var channel),
 	    (N.send,		Env.Var send),
 	    (N.recv,		Env.Var recv),
