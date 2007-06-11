@@ -8,7 +8,7 @@
 
 #include "types.def"
 
-define @dispatch (vp : vrpoc) noreturn;
+define @dispatch (vp : vproc) noreturn;
 
 define inline @iGet (ivar : !(list, any, int)) : any =
           let readList : list = #0(ivar)
@@ -26,7 +26,7 @@ define inline @iGet (ivar : !(list, any, int)) : any =
                    let tmp : list = #0(ivar)
                    let newlist : list = CONS(item, tmp)
                    let flag : bool = CAS(&0(ivar), tmp, newlist)
-                   if (flag = FALSE) 
+                   if BEq(flag, enum(0))
                      then apply loop ()
                      else return (enum(0)) 
                 do apply loop ()
@@ -36,3 +36,4 @@ define inline @iGet (ivar : !(list, any, int)) : any =
                 do #2(ivar) := I32Sub(readFlag, 1)
                 return (x)                        
           end
+;
