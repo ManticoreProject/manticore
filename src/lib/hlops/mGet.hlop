@@ -23,7 +23,14 @@ define inline @mGet (mvar : !(list, any, int, int)) : any =
 	           do @relayMsg (mvar, x)
 	           return (x)
               let item : (enum(0), cont(any)) = alloc (dummyTid, k)
-              do #0(mvar) := CONS(item, readList)
+              fun loop () : unit = 
+                 let tmp : list = #0(mvar)
+                 let newlist : list = CONS(item, tmp)
+                 let flag : bool = CAS(&0(mvar), tmp, newlist)
+                 if (flag = FALSE) 
+                   then apply loop ()
+                   else return (enum(0)) 
+              do apply loop ()
               do #2(mvar) := I32Sub(readFlag, 1)
               @dispatch (host_vproc)
 	    else	             
@@ -31,7 +38,14 @@ define inline @mGet (mvar : !(list, any, int, int)) : any =
                of enum(0) =>
                     cont k (x : any) = return (x)
                     let item : (enum(0), cont(any)) = alloc (dummyTid, k)
-                    do #0(mvar) := CONS(item, readList)
+                    fun loop () : unit = 
+                       let tmp : list = #0(mvar)
+                       let newlist : list = CONS(item, tmp)
+                       let flag : bool = CAS(&0(mvar), tmp, newlist)
+                       if (flag = FALSE) 
+                         then apply loop ()
+                         else return (enum(0)) 
+                    do apply loop ()
                     do #2(mvar) := I32Sub(readFlag, 1)
                     @dispatch (host_vproc)
                 | x : any =>

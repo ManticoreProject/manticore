@@ -22,11 +22,11 @@ define inline @iPut (ivar : !(list, any, int), x : any) : unit =
           let dummyTid : tid = enum(0)
           case oldValue
            of enum(0) =>
-                fun spin (; exh : cont(any)) : unit =
+                fun spin () : unit =
                       if (#2(ivar) = 0:int)
 			then return (enum(0))
-			else apply spin (; exh)
-                do apply spin (; exh)
+			else apply spin ()
+                do apply spin ()
                 case readL
                  of enum(0) => return (enum(0))
                   | CONS(hd : any, tl : list) =>                      

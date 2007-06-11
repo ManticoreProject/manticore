@@ -22,11 +22,17 @@ define inline @iGet (ivar : !(list, any, int)) : any =
                 cont k (x : any) = return (x)
                 let item : (enum(0), cont(any)) = alloc (dummyTid, k)
                 (* atomic update *)
-                do #0(ivar) := CONS(item, readList)
+                fun loop () : unit = 
+                   let tmp : list = #0(ivar)
+                   let newlist : list = CONS(item, tmp)
+                   let flag : bool = CAS(&0(ivar), tmp, newlist)
+                   if (flag = FALSE) 
+                     then apply loop ()
+                     else return (enum(0)) 
+                do apply loop ()
                 do #2(ivar) := I32Sub(readFlag, 1)
                 @dispatch (host_vproc)
             | x : any =>
                 do #2(ivar) := I32Sub(readFlag, 1)
-                return (x)
-                        
+                return (x)                        
           end
