@@ -20,6 +20,6 @@ define inline @spawn (f : fun(unit / handler -> unit)) : unit =
     (* in *)
       let vp : vproc = host_vproc
       let tid : tid = @new-tid(vp)
-      do @enqueue (vp, tid, fiber)
+      let _ : unit = @enqueue (vp, tid, fiber)
       return (UNIT)
 ;

@@ -12,6 +12,7 @@ define @dequeue (vp : vproc) : (tid, fiber);
 define @switch-to (vp : vproc, tid : tid, fiber : fiber) noreturn;
 
 define inline @dispatch (vp : vproc) noreturn =
-    let (tid : tid, fiber : fiber) = @dequeue (vp)
-    @switch-to (vp, tid, fiber)
+    let qitem : rdyq_item = @dequeue (vp)
+    let item : (tid, fiber, any) = ((tid, fiber, any)) qitem
+    @switch-to (vp, #0(item), #1(item))
 ;
