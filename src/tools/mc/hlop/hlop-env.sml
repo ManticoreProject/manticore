@@ -23,6 +23,9 @@ structure HLOpEnv : sig
     val listAppendOp : HLOp.hlop
     val spawnOp : HLOp.hlop
     val threadExitOp : HLOp.hlop
+    val iVarOp : HLOp.hlop
+    val iGetOp : HLOp.hlop
+    val iPutOp : HLOp.hlop
 
   (* scheduler operations *)
     val runOp : HLOp.hlop
@@ -47,6 +50,7 @@ structure HLOpEnv : sig
     val tidTy = BTy.tidTy
     val exhTy = BTy.exhTy
     val listTy = BTy.T_TyCon Basis.listTyc
+    val ivarTy = BTy.T_Tuple(true, [listTy, BTy.T_Any, BTy.T_Raw BTy.T_Int])
 
     fun new (name, params, res, attrs) =
 	  H.new(Atom.atom name, {params= List.map HLOp.PARAM params, exh=[], results=res}, attrs)
@@ -55,6 +59,9 @@ structure HLOpEnv : sig
     val listAppendOp = new("list-append", [listTy, listTy], [], [])
     val spawnOp = new("spawn", [BTy.T_Fun([], [exhTy], [])], [tidTy], [])
     val threadExitOp = new("thread-exit", [], [], [H.NORETURN])
+    val iVarOp = new("iVar", [], [ivarTy], [])
+    val iGetOp = new("iGet", [ivarTy], [BTy.T_Any], [])
+    val iPutOp = new("iPut", [ivarTy, BTy.T_Any], [], [])
 
   (* scheduler operations *)
     val runOp = new("run", [vprocTy, sigActTy, fiberTy], [], [H.NORETURN])
@@ -80,6 +87,9 @@ structure HLOpEnv : sig
     val _ = List.app define [
 		spawnOp,
 		threadExitOp,
+		iVarOp,
+		iGetOp,
+		iPutOp,
 		dequeueOp,
 		enqueueOp,
 		forwardOp,
