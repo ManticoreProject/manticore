@@ -25,7 +25,7 @@ structure Convert : sig
     fun cvtTy BTy.T_Any = CTy.T_Any
       | cvtTy (BTy.T_Enum w) = CTy.T_Enum w
       | cvtTy (BTy.T_Raw rTy) = CTy.T_Raw rTy
-      | cvtTy (BTy.T_Wrap rTy) = CTy.T_Wrap rTy
+      | cvtTy (BTy.T_Tuple(false, [BTy.T_Raw rTy])) = CTy.T_Wrap rTy
       | cvtTy (BTy.T_Tuple(mut, tys)) = CTy.T_Tuple(mut, List.map cvtTy tys)
       | cvtTy (BTy.T_Addr ty) = CTy.T_Addr(cvtTy ty)
       | cvtTy (BTy.T_Fun(paramTys, exhTys, retTys)) = let
@@ -182,12 +182,15 @@ structure Convert : sig
 	  val rhs' = (case rhs
 		 of B.E_Const(lit, ty) => C.Const(lit, cvtTy ty)
 		  | B.E_Cast(ty, x) => C.Cast(cvtTy ty, cv x)
-		  | B.E_Select(i, x) => C.Select(i, cv x)
+(* FIXME: eventually we should remove Wrap/Unwrap from the CPS and CFG reps. *)
+		  | B.E_Alloc(BTy.T_Tuple(false, [BTy.T_Raw _]), [x]) => C.Wrap(cv x)
+		  | B.E_Select(i, x) => (case (i, BV.typeOf x)
+		       of (0, BTy.T_Tuple(false, [BTy.T_Raw _])) => C.Unwrap(cv x)
+			| _ => C.Select(i, cv x)
+		      (* end case *))
 		  | B.E_Update(i, x, z) => C.Update(i, cv x, cv z)
 		  | B.E_AddrOf(i, x) => C.AddrOf(i, cv x)
 		  | B.E_Alloc(ty, args) => C.Alloc(List.map cv args)
-		  | B.E_Wrap x => C.Wrap(cv x)
-		  | B.E_Unwrap x => C.Unwrap(cv x)
 		  | B.E_Prim p => C.Prim(PrimUtil.map cv p)
 		  | B.E_DCon _ => raise Fail "unexpected DCon"
 		  | B.E_CCall(f, args) => C.CCall(cv f, List.map cv args)

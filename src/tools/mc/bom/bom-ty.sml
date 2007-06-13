@@ -13,7 +13,6 @@ structure BOMTy =
       = T_Any				(* unknown type; uniform representation *)
       | T_Enum of Word.word		(* unsigned tagged integer; word is max value <= 2^31-1 *)
       | T_Raw of raw_ty			(* raw machine type *)
-      | T_Wrap of raw_ty		(* boxed raw value *)
       | T_Tuple of bool * ty list	(* heap-allocated tuple; the boolean is true for *)
 					(* mutable tuples *)
       | T_Addr of ty			(* address of a tuple's field *)
@@ -69,7 +68,6 @@ structure BOMTy =
 	     of T_Any => "any"
 	      | T_Enum w => concat["enum(", Word.fmt StringCvt.DEC w, ")"]
 	      | T_Raw ty => RawTypes.toString ty
-	      | T_Wrap ty => concat["wrap(", RawTypes.toString ty, ")"]
 	      | T_Tuple(false, tys) => concat("(" :: tys2l(tys, [")"]))
 	      | T_Tuple(true, tys) => concat("!(" :: tys2l(tys, [")"]))
 	      | T_Addr ty => concat["addr(", toString ty, ")"]
@@ -92,6 +90,13 @@ structure BOMTy =
 	      | T_TyCon(DataTyc{name, ...}) => name
 	    (* end case *)
 	  end
+
+  (* wrapped raw values are stored in tuples *)
+    fun wrap (ty as T_Raw _) = T_Tuple(false, [ty])
+      | wrap ty = raise Fail(concat["wrap(", toString ty, ")"])
+
+    fun unwrap (T_Tuple(false, [ty as T_Raw _])) = ty
+      | unwrap ty = raise Fail(concat["unwrap(", toString ty, ")"])
 
   (* view a type as a function type *)
     fun asFunTy (T_Fun arg) = arg

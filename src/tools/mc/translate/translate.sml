@@ -168,31 +168,30 @@ structure Translate : sig
 	  (* end case *))
 
     and trCase (env, arg, rules) = let
-	  fun mkCase (cases, dflt) = B.mkCase(arg, List.rev cases, dflt)
 	(* translate the type of a literal; if it is wrapped, then replace the wrapped
 	 * type with a raw type.
 	 *)
-	  fun trLitTy ty = (case trTy ty
-		 of BTy.T_Wrap rty => BTy.T_Raw rty
+	  fun trLitTy ty = (case BV.typeOf arg
+		 of BTy.T_Tuple(false, [ty as BTy.T_Raw _]) => ty
 		  | ty => ty
 		(* end case *))
 	  fun trRules ([(pat, exp)], cases) = (case pat (* last rule *)
 		 of AST.ConPat(dc, tyArgs, p) => raise Fail "ConPat"
 		  | AST.TuplePat[] =>
-		      mkCase((B.P_Const B.unitConst, trExpToExp (env, exp))::cases, NONE)
+		      ((B.P_Const B.unitConst, trExpToExp (env, exp))::cases, NONE)
 		  | AST.TuplePat ps => let
 		      val (env, xs) = trVarPats (env, ps)
 		      fun bind (_, []) = trExpToExp (env, exp)
 			| bind (i, x::xs) = B.mkStmt([x], B.E_Select(i, arg), bind(i+1, xs))
 		      in
-			mkCase(cases, SOME(bind(0, xs)))
+			(cases, SOME(bind(0, xs)))
 		      end
 		  | AST.VarPat x =>
 		    (* default case: map x to the argument *)
-		      mkCase(cases, SOME(trExpToExp(insert(env, x, arg), exp)))
+		      (cases, SOME(trExpToExp(insert(env, x, arg), exp)))
 		  | AST.ConstPat(AST.DConst(dc, tyArgs)) => raise Fail "DConst"
 		  | AST.ConstPat(AST.LConst(lit, ty)) =>
-		      mkCase((B.P_Const(lit, trLitTy ty), trExpToExp (env, exp))::cases, NONE)
+		      ((B.P_Const(lit, trLitTy ty), trExpToExp (env, exp))::cases, NONE)
 		(* end case *))
 	    | trRules ((pat, exp)::rules, cases) = let
 		val rule' = (case pat
@@ -205,15 +204,16 @@ structure Translate : sig
 		in
 		  trRules (rules, rule'::cases)
 		end
+	  fun mkCase arg (cases, dflt) = B.mkCase(arg, List.rev cases, dflt)
 	  in
 	    case BV.typeOf arg
-	     of BTy.T_Wrap rty => let
+	     of BTy.T_Tuple(false, [ty as BTy.T_Raw rty]) => let
 		  val ty = BTy.T_Raw rty
 		  val arg' = BV.new("_raw", ty)
 		  in
-		    B.mkStmt([arg'], B.E_Unwrap arg, trCase (env, arg', rules))
+		    B.mkStmt([arg'], B.unwrap arg, mkCase arg' (trRules (rules, [])))
 		  end
-	      | _ => trRules (rules, [])
+	      | _ => mkCase arg (trRules (rules, []))
 	  end
 
     and trVarPats (env, pats) = let

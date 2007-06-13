@@ -36,8 +36,6 @@ structure BOM =
       | E_Update of (int * var * var)		(* update i'th field (zero-based) *)
       | E_AddrOf of (int * var)			(* return address of i'th field (zero-based) *)
       | E_Alloc of (ty * var list)
-      | E_Wrap of var
-      | E_Unwrap of var
       | E_Prim of prim
       | E_DCon of (data_con * var list)		(* data constructor *)
       | E_CCall of (var * var list)		(* foreign-function calls *)
@@ -105,6 +103,9 @@ structure BOM =
     val falseConst = (Literal.falseLit, BOMTy.boolTy)
     val unitConst = (Literal.unitLit, BOMTy.unitTy)
 
+  (* wrapped raw values are stored in tuples *)
+    fun wrap x = E_Alloc(BOMTy.wrap(Var.typeOf x), [x])
+    fun unwrap x = E_Select(0, x)
 
 (* FIXME: need constructor functions *)
     fun mkExp t = E_Pt(ProgPt.new(), t)

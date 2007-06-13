@@ -58,8 +58,6 @@ structure BOMUtil : sig
 	    | B.E_Update(i, x, y) => B.E_Update(i, subst s x, subst s y)
 	    | B.E_AddrOf(i, x) => B.E_AddrOf(i, subst s x)
 	    | B.E_Alloc(ty, args) => B.E_Alloc(ty, subst'(s, args))
-	    | B.E_Wrap x => B.E_Wrap(subst s x)
-	    | B.E_Unwrap x => B.E_Unwrap(subst s x)
 	    | B.E_Prim p => B.E_Prim(PrimUtil.map (subst s) p)
 	    | B.E_DCon(dc, args) => B.E_DCon(dc, subst'(s, args))
 	    | B.E_CCall(f, args) => B.E_CCall(subst s f, subst'(s, args))
@@ -76,8 +74,6 @@ structure BOMUtil : sig
 	    | B.E_Update(i, x, y) => (f x; f y)
 	    | B.E_AddrOf(i, x) => f x
 	    | B.E_Alloc(ty, args) => List.app f args
-	    | B.E_Wrap x => f x
-	    | B.E_Unwrap x =>  f x
 	    | B.E_Prim p => PrimUtil.app f p
 	    | B.E_DCon(dc, args) => List.app f args
 	    | B.E_CCall(cf, args) => (f cf; List.app f args)

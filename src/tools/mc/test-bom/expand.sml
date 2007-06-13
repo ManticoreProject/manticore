@@ -29,8 +29,7 @@
     val findPrim = MkPrim.findPrim
 
   (* some type utilities *)
-    fun unwrapType (Ty.T_Wrap rTy) = Ty.T_Raw rTy
-      | unwrapType ty = raise Fail(concat["unwrapType(", Ty.toString ty, ")"])
+    val unwrapType = Ty.unwrap
 
     fun selectType (i, Ty.T_Tuple(_, tys)) = List.nth(tys, i)
       | selectType _ = raise Fail "selectType"
@@ -46,7 +45,7 @@
     fun cvtTy PT.T_Any = Ty.T_Any
       | cvtTy (PT.T_Enum w) = Ty.T_Enum w
       | cvtTy (PT.T_Raw rty) = Ty.T_Raw rty
-      | cvtTy (PT.T_Wrap rty) = Ty.T_Wrap rty
+      | cvtTy (PT.T_Wrap rty) = Ty.wrap(Ty.T_Raw rty)
       | cvtTy (PT.T_Tuple(mut, tys)) = Ty.T_Tuple(mut, List.map cvtTy tys)
       | cvtTy (PT.T_Addr ty) = Ty.T_Addr(cvtTy ty)
       | cvtTy (PT.T_Fun(argTys, exhTys, resTys)) =
@@ -113,7 +112,7 @@
 	                  | PT.Const(lit, ty) => BOM.mkStmt(lhs', BOM.E_Const(lit, cvtTy ty), e')
 			  | PT.Unwrap arg =>
 			      cvtSimpleExp (env, arg, fn x =>
-				BOM.mkStmt(lhs', BOM.E_Unwrap x, e'))
+				BOM.mkStmt(lhs', BOM.unwrap x, e'))
 			  | PT.Prim(p, args) =>
 			      cvtSimpleExps (env, args, fn xs => let
 				val rhs = (case (findPrim p, xs)
@@ -143,7 +142,7 @@
 				e'))
 			end
 		    | PT.Wrap arg =>
-			cvtSimpleExp (env, arg, fn x => BOM.mkStmt(lhs', BOM.E_Wrap x, e'))
+			cvtSimpleExp (env, arg, fn x => BOM.mkStmt(lhs', BOM.wrap x, e'))
 		    | PT.CCall(f, args) =>
 			cvtSimpleExps (env, args, fn xs =>
 			  BOM.mkStmt(lhs', BOM.E_CCall(lookup(env, f), xs), e'))
@@ -251,7 +250,7 @@
 		cvtSimpleExp (env, e, fn x => let
 		  val tmp = newTmp(unwrapType(BOM.Var.typeOf x))
 		  in
-		    BOM.mkStmt([tmp], BOM.E_Unwrap x, k tmp)
+		    BOM.mkStmt([tmp], BOM.unwrap x, k tmp)
 		  end)
 	    | PT.Prim(p, args) => let
 		fun mkBind xs = (case (findPrim p, xs)

@@ -23,21 +23,23 @@ structure StdEnv : sig
 
     fun lookupDCon _ = raise Fail "lookupDCon"
 
+    fun wrapTy rty = BTy.wrap(BTy.T_Raw rty)
+
     val types = [
-	    (B.boolTyc, BTy.boolTy),
-	    (B.intTyc, BTy.T_Wrap BTy.T_Int),
-	    (B.longTyc,  BTy.T_Wrap BTy.T_Int),
+	    (B.boolTyc,		BTy.boolTy),
+	    (B.intTyc,		wrapTy BTy.T_Int),
+	    (B.longTyc,		wrapTy BTy.T_Int),
 (*
 	    (B.integerTyc,  ),
 *)
-	    (B.floatTyc,  BTy.T_Wrap BTy.T_Float),
-	    (B.doubleTyc,  BTy.T_Wrap BTy.T_Double),
+	    (B.floatTyc,	wrapTy BTy.T_Float),
+	    (B.doubleTyc,	wrapTy BTy.T_Double),
 (*
 	    (B.charTyc, ),
 	    (B.runeTyc, ),
 	    (B.stringTyc, ),
 *)
-	    (B.threadIdTyc, BTy.tidTy)
+	    (B.threadIdTyc,	BTy.tidTy)
 (*
 	    (B.parrayTyc, ),
 	    (B.chanTyc, ),
@@ -63,10 +65,10 @@ structure StdEnv : sig
 	    in
 	      case ty
 	       of BTy.T_Raw rty => let
-		    val wrapTy = BTy.T_Wrap rty
+		    val wrapTy = wrapTy rty
 		    val wrapX = BV.new("_w"^name, wrapTy)
 		    in
-		      (([rawX], BOM.E_Unwrap wrapX)::stms, rawX, wrapX, wrapTy)
+		      (([rawX], BOM.unwrap wrapX)::stms, rawX, wrapX, wrapTy)
 		    end
 		| _ => (stms, rawX, rawX, ty)
 	      (* end case *)
@@ -76,10 +78,10 @@ structure StdEnv : sig
 	    in
 	      case ty
 	       of BTy.T_Raw rty => let
-		    val wrapTy = BTy.T_Wrap rty
+		    val wrapTy = wrapTy rty
 		    val wrapX = BV.new("_wres", wrapTy)
 		    in
-		      ([([wrapX], BOM.E_Wrap rawX)], rawX, wrapX, wrapTy)
+		      ([([wrapX], BOM.wrap rawX)], rawX, wrapX, wrapTy)
 		    end
 		| _ => ([], rawX, rawX, ty)
 	      (* end case *)
