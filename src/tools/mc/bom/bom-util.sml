@@ -14,6 +14,7 @@ structure BOMUtil : sig
     val subst : subst -> BOM.var -> BOM.var
     val subst' : (subst * BOM.var list) -> BOM.var list
     val extend : (subst * BOM.var * BOM.var) -> subst
+    val extend' : (subst * BOM.var list * BOM.var list) -> subst
 
   (* apply a substitution to a RHS *)
     val substRHS : (subst * BOM.rhs) -> BOM.rhs
