@@ -165,7 +165,13 @@ structure Basis =
     val long_mod =	monoVar(N.mod, longTy ** longTy --> longTy)
     val integer_mod =	monoVar(N.mod, integerTy ** integerTy --> integerTy)
 
-(* TODO do /, @, ! *)
+    val int_neg =	monoVar(N.uMinus, intTy --> intTy)
+    val long_neg =	monoVar(N.uMinus, longTy --> longTy)
+    val integer_neg =	monoVar(N.uMinus, integerTy --> integerTy)
+    val float_neg =	monoVar(N.uMinus, floatTy --> floatTy)
+    val double_neg =	monoVar(N.uMinus, doubleTy --> doubleTy)
+
+(* TODO do @, ! *)
 
 (* TODO what's up with the equality operators?
     val boolEq =	monoVar(N.eq, boolTy ** boolTy --> boolTy)
@@ -173,51 +179,39 @@ structure Basis =
     val stringEq =	monoVar(N.eq, stringTy ** stringTy --> boolTy)
 *)
 
-(* TODO what about uMinus?
-    val uMinus =	monoVar(N.uMinus, intTy --> intTy)
-*)
+  (* create a type scheme that binds a kinded type variable *)
+    fun tyScheme (cls, mk) = let
+	  val tv = TyVar.newClass (Atom.atom "'a", cls)
+	  in
+	    Types.TyScheme([tv], mk(Types.VarTy tv))
+	  end
 
-    val (ov1, ov2, ov3, ov4) =
-	(TyVar.newClass (Atom.atom "'a", Types.Order),
-	 TyVar.newClass (Atom.atom "'a", Types.Order),
-	 TyVar.newClass (Atom.atom "'a", Types.Order),
-	 TyVar.newClass (Atom.atom "'a", Types.Order))
-
-    val (nv1, nv2, nv3) =
-	(TyVar.newClass (Atom.atom "'a", Types.Num),
-	 TyVar.newClass (Atom.atom "'a", Types.Num),
-	 TyVar.newClass (Atom.atom "'a", Types.Num))
-
-    val (iv1, iv2) =
-	(TyVar.newClass (Atom.atom "'a", Types.Int),
-	 TyVar.newClass (Atom.atom "'a", Types.Int))
-
-    val fv = TyVar.newClass (Atom.atom "'a", Types.Float)
-
-    val lte = (Types.TyScheme ([ov1], (Types.VarTy ov1) ** (Types.VarTy ov1) --> boolTy),
+    val lte = (tyScheme(Types.Order, fn tv => (tv ** tv --> boolTy)),
 	       [int_lte, long_lte, integer_lte, float_lte, double_lte, char_lte, rune_lte, string_lte])
-    val lt = (Types.TyScheme ([ov2], (Types.VarTy ov2) ** (Types.VarTy ov2) --> boolTy),
+    val lt = (tyScheme(Types.Order, fn tv => (tv ** tv --> boolTy)),
 	       [int_lt, long_lt, integer_lt, float_lt, double_lt, char_lt, rune_lt, string_lt])
-    val gte = (Types.TyScheme ([ov3], (Types.VarTy ov3) ** (Types.VarTy ov3) --> boolTy),
+    val gte = (tyScheme(Types.Order, fn tv => (tv ** tv --> boolTy)),
 	       [int_gte, long_gte, integer_gte, float_gte, double_gte, char_gte, rune_gte, string_gte])
-    val gt = (Types.TyScheme ([ov4], (Types.VarTy ov4) ** (Types.VarTy ov4) --> boolTy),
+    val gt = (tyScheme(Types.Order, fn tv => (tv ** tv --> boolTy)),
 	       [int_gt, long_gt, integer_gt, float_gt, double_gt, char_gt, rune_gt, string_gt])
 
-    val plus = (Types.TyScheme ([nv1], (Types.VarTy nv1) ** (Types.VarTy nv1) --> (Types.VarTy nv1)),
+    val plus = (tyScheme(Types.Num, fn tv => (tv ** tv --> tv)),
 	       [int_plus, long_plus, integer_plus, float_plus, double_plus])
-    val minus = (Types.TyScheme ([nv2], (Types.VarTy nv2) ** (Types.VarTy nv2) --> (Types.VarTy nv2)),
+    val minus = (tyScheme(Types.Num, fn tv => (tv ** tv --> tv)),
 	       [int_minus, long_minus, integer_minus, float_minus, double_minus])
-    val times = (Types.TyScheme ([nv3], (Types.VarTy nv3) ** (Types.VarTy nv3) --> (Types.VarTy nv3)),
+    val times = (tyScheme(Types.Num, fn tv => (tv ** tv --> tv)),
 	       [int_times, long_times, integer_times, float_times, double_times])
 
-    val fdiv = (Types.TyScheme ([fv], (Types.VarTy fv) ** (Types.VarTy fv) --> (Types.VarTy fv)),
+    val fdiv = (tyScheme(Types.Float, fn tv => (tv ** tv --> tv)),
 		[float_fdiv, double_fdiv])
 
-    val div = (Types.TyScheme ([iv1], (Types.VarTy iv1) ** (Types.VarTy iv1) --> (Types.VarTy iv1)),
+    val div = (tyScheme(Types.Int, fn tv => (tv ** tv --> tv)),
 	       [int_div, long_div, integer_div])
-    val mod = (Types.TyScheme ([iv2], (Types.VarTy iv2) ** (Types.VarTy iv2) --> (Types.VarTy iv2)),
+    val mod = (tyScheme(Types.Int, fn tv => (tv ** tv --> tv)),
 	       [int_mod, long_mod, integer_mod])
 
+    val neg = (tyScheme(Types.Num, fn tv => (tv --> tv)),
+		[int_neg, long_neg, integer_neg, float_neg, double_neg])
 
     val lookupOp = let
 	  val tbl = AtomTable.mkTable (16, Fail "lookupOp")

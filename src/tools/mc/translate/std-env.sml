@@ -208,11 +208,20 @@ structure StdEnv : sig
 
 (* FIXME: these should really be HLOps that check for divide by zero *)
 	    (B.int_mod,		prim2 (P.I32Mod, "mod", i, i, i)),
-	    (B.long_mod,	prim2 (P.I64Mod, "mod", l, l, l))
+	    (B.long_mod,	prim2 (P.I64Mod, "mod", l, l, l)),
 (*
-	    (B.integer_mod,	hlop H.integerModOp)
+	    (B.integer_mod,	hlop H.integerModOp),
 *)
+
+	    (B.int_neg,		prim1 (P.I32Neg, "neg", i, i)),
+	    (B.long_neg,	prim1 (P.I64Neg, "neg", l, l)),
+(*
+	    (B.integer_neg,	prim1 (P.I32Neg, "neg", i, i)),
+*)
+	    (B.float_neg,	prim1 (P.F32Neg, "neg", f, f)),
+	    (B.double_neg,	prim1 (P.F64Neg, "neg", d, d))
 	  ]
+
   (* predefined functions *)
     val predefs = [
 (*
