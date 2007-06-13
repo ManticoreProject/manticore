@@ -266,6 +266,12 @@ else
   INC_SEARCH_PATH="$HLOPS_DIR:$prefix/lib/hlops"
   HLOP_SEARCH_PATH=".:$HLOPS_DIR:$prefix/lib/hlops"
 fi
+dnl
+dnl include source tree paths too
+dnl
+INC_SEARCH_PATH="$INC_SEARCH_PATH:$MANTICORE_SRCDIR/lib/hlops"
+HLOP_SEARCH_PATH="$HLOP_SEARCH_PATH:$MANTICORE_SRCDIR/lib/hlops"
+
 AC_SUBST(HLOP_SEARCH_PATH)
 AC_SUBST(INC_SEARCH_PATH)
 
