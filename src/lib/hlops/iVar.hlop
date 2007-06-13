@@ -1,0 +1,14 @@
+(* iVar.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * create function for i-variable.
+ *)
+
+#include "types.def"
+
+define inline @iVar () : (list, any, int) = 
+          let x : (list, any, int) = alloc (enum(0), enum(0), 0)
+          return (x)
+;

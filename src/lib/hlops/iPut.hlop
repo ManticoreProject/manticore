@@ -20,11 +20,11 @@ define inline @iPut (ivar : !(list, any, int), x : any) : unit =
            of enum(0) =>
                 fun spin () : unit =
                       if (#2(ivar) = 0:int)
-			then return (enum(0))
+			then return ()
 			else apply spin ()
                 do apply spin ()
                 case readL
-                 of enum(0) => return (enum(0))
+                 of enum(0) => return ()
                   | CONS(hd : any, tl : list) =>                      
                       let fiber : cont(any) = #1(((int, cont(any)))hd)
                       do @enqueue(host_vproc, dummyTid, fiber)
