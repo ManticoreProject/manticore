@@ -1,0 +1,7 @@
+(* test @run hlop *)
+
+module Main
+  fun main (/) : enum(0) =
+    fun f (x : enum(0) / exh : cont(any)) : enum(0) = @thread-exit()
+    let tid : enum(0) = @spawn (f)
+      return (tid)

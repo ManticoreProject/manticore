@@ -1,0 +1,7 @@
+module Main
+  fun main (arg : enum(0)/exh : cont(any)) : enum(0) =
+    fun f (x : [double] / exh : cont(any)) : [double] =
+	let y : [double] = @double-sqrt(x)
+	  return (y)
+    return (enum(0))
+
