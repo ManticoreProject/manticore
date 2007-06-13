@@ -78,7 +78,7 @@ structure CPSTy =
 	      | T_Tuple(true, tys) => concat("!(" :: tys2l(tys, [")"]))
 	      | T_Addr ty => concat["addr(", toString ty, ")"]
 	      | T_Fun(tys, []) => concat("cont(" :: tys2l(tys, [")"]))
-	      | T_Fun(tys1, tys2) => concat("fun(" :: tys2l(tys1, ";" :: tys2l(tys2, [")"])))
+	      | T_Fun(tys1, tys2) => concat("fun(" :: tys2l(tys1, " / " :: tys2l(tys2, [")"])))
 	      | T_CFun cp => CFunctions.protoToString cp
 	      | T_VProc => "vproc"
 	    (* end case *)
