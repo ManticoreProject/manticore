@@ -28,7 +28,7 @@ structure StdEnv : sig
     val types = [
 	    (B.boolTyc,		BTy.boolTy),
 	    (B.intTyc,		wrapTy BTy.T_Int),
-	    (B.longTyc,		wrapTy BTy.T_Int),
+	    (B.longTyc,		wrapTy BTy.T_Long),
 (*
 	    (B.integerTyc,  ),
 *)
