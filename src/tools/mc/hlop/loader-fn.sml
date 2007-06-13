@@ -32,6 +32,8 @@ functor LoaderFn (F : FILE_TYPE) : sig
     val defaultSearchPath =
 	  String.fields (fn #":" => true | _ => false) F.defaultSearchPath
 
+    fun err msg = TextIO.print(concat("Error: " :: msg))
+
   (* search for a file *)
     fun findFile (searchPath, file) = let
 	  fun exists path = let
@@ -41,7 +43,9 @@ functor LoaderFn (F : FILE_TYPE) : sig
 		    then SOME path
 		    else NONE
 		end
-	  fun look [] = NONE
+	  fun look [] = (
+		err["unable to find \"", file, "\" in path \"", String.concatWith ":" searchPath, "\n"];
+		NONE)
 	    | look (p::ps) = (case exists p
 		 of NONE => look ps
 		  | somePath => somePath
