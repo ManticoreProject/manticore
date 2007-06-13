@@ -197,12 +197,16 @@ structure StdEnv : sig
 	    (B.integer_times,	hlop H.integerMulOp),
 *)
 
+(* FIXME: these should really be HLOps that check for divide by zero *)
 	    (B.int_div,		prim2 (P.I32Div, "div", i, i, i)),
 	    (B.long_div,	prim2 (P.I64Div, "div", l, l, l)),
 (*
 	    (B.integer_div,	hlop H.integerDivOp),
 *)
+	    (B.float_fdiv,	prim2 (P.F32Div, "fdiv", f, f, f)),
+	    (B.double_fdiv,	prim2 (P.F64Div, "fdiv", d, d, d)),
 
+(* FIXME: these should really be HLOps that check for divide by zero *)
 	    (B.int_mod,		prim2 (P.I32Mod, "mod", i, i, i)),
 	    (B.long_mod,	prim2 (P.I64Mod, "mod", l, l, l))
 (*
