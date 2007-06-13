@@ -15,6 +15,7 @@ structure PrimUtil : sig
     val explode : 'var Prim.prim -> (('a list -> 'a Prim.prim) * 'var list)
     val map : ('a -> 'b) -> 'a Prim.prim -> 'b Prim.prim
     val app : ('a -> unit) -> 'a Prim.prim -> unit
+    val isPure : 'var Prim.prim -> bool
 
   end = struct
 
@@ -210,5 +211,10 @@ structure PrimUtil : sig
     fun map f p = let val (mk, args) = explode p in mk(List.map f args) end
 
     fun app f p = List.app f (varsOf p)
+
+    fun isPure (P.I32FetchAndAdd _) = false
+      | isPure (P.CAS _) = false
+      | isPure (P.BCAS _) = false
+      | isPure _ = true
 
   end

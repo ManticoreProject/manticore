@@ -33,6 +33,8 @@ structure HLOp =
     fun hash (HLOp{id, ...}) = Stamp.hash id
     fun same (HLOp{id=a, ...}, HLOp{id=b, ...}) = Stamp.same(a, b)
 
+    fun isPure _ = false (* FIXME *)
+
     datatype attributes = NORETURN
 
     fun new (name, sign, attrs) = let
