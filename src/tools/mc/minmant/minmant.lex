@@ -125,6 +125,7 @@
 <INITIAL> "|]"  => (T.RBB);
 <INITIAL> "<="	=> (T.LTEQ);
 <INITIAL> "<"	=> (T.LT);
+<INITIAL> "<>"  => (T.NEQ);
 <INITIAL> ">"   => (T.GT);
 <INITIAL> ">="  => (T.GTEQ);
 <INITIAL> "::"	=> (T.DCOLON);

@@ -38,6 +38,7 @@
     | RBB		("|]")
     | LTEQ		("<=")
     | LT		("<")
+    | NEQ		("<>")
     | GTEQ		(">=")
     | GT		(">")
     | DCOLON		("::")
@@ -233,17 +234,22 @@ ConstraintExp
 	;
 
 RExp
-	: LExp (( "=" => (Op.eq) | "<" => (Op.lt) | "<=" => (Op.lte) ) LExp => (SR, LExp))*
+	: LExp (RelOp LExp)*
 		=> (markExp (FULL_SPAN, mkLBinExp(LExp, SR)))
 	;
 
+RelOp
+	: "<" => (Op.lt) | "<=" => (Op.lte)
+	| "=" => (Op.eq) | "<>" => (Op.neq)
+	| ">" => (Op.gt) | ">=" => (Op.gte)
+	;
 LExp
-	: AExp (( "::" => (Op.listCons) | "@" => (Op.append) ) AExp => (SR, AExp))*
+	: AExp (( "::" => (Op.listCons) | "@" => (Op.append) ) AExp)*
 		=> (markExp (FULL_SPAN, mkRBinExp(AExp, SR)))
 	;
 
 AExp
-	: MExp (( "+" => (Op.plus) | "-" => (Op.minus) ) MExp => (SR, MExp))*
+	: MExp (( "+" => (Op.plus) | "-" => (Op.minus) ) MExp)*
 		=> (markExp (FULL_SPAN, mkLBinExp(MExp, SR)))
 	;
 
