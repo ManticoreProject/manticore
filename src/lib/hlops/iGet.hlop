@@ -28,8 +28,8 @@ define inline @iGet (ivar : !(list, any, int)) : any =
                    let flag : bool = CAS(&0(ivar), tmp, newlist)
                    if BEq(flag, enum(0))
                      then apply loop ()
-                     else return (enum(0)) 
-                do apply loop ()
+                     else return () 
+                do apply loop()
                 do #2(ivar) := I32Sub(readFlag, 1)
                 @dispatch (host_vproc)
             | x : any =>

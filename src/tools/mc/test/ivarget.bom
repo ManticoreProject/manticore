@@ -1,0 +1,6 @@
+(* ivar.bom *)
+
+module iVar 
+  fun tryget (ivar : !(list, any, int) / exh : cont(any)) : any  =
+    let x : any = @iGet(ivar)
+    return (x) 

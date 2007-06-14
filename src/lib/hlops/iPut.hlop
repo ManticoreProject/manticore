@@ -9,7 +9,7 @@
 #include "types.def"
 
 define @enqueue (vp : vproc, tid : tid, fiber : fiber) : unit;
-define @forward (vp : vrpoc, sig : signal ) noreturn;
+define @forward (vp : vproc, sig : signal ) noreturn;
 
 define inline @iPut (ivar : !(list, any, int), x : any) : unit = 
           let readL : list = #0(ivar)
@@ -19,7 +19,7 @@ define inline @iPut (ivar : !(list, any, int), x : any) : unit =
           case oldValue
            of enum(0) =>
                 fun spin () : unit =
-                      if (#2(ivar) = 0:int)
+                      if BEq(#2(ivar), 0)
 			then return ()
 			else apply spin ()
                 do apply spin ()
@@ -28,7 +28,7 @@ define inline @iPut (ivar : !(list, any, int), x : any) : unit =
                   | CONS(hd : any, tl : list) =>                      
                       let fiber : cont(any) = #1(((int, cont(any)))hd)
                       do @enqueue(host_vproc, dummyTid, fiber)
-                      fun wakeRead(l : list) : () =
+                      fun wakeRead(l : list) : unit =
                             case l 
                               of enum(0) => return ()
                                | CONS(hd' : any, tl' : list) =>
@@ -37,11 +37,11 @@ define inline @iPut (ivar : !(list, any, int), x : any) : unit =
                                    do @enqueue(host_vproc, dummyTid, k)
                                    apply wakeRead(tl')
                              end
-                      apply wakeRead(tl) 
+                      do apply wakeRead(tl)
+                      return () 
                 end
             | _ => 
-                do ccall M_Print ("ivar is full\n\000")
                 let vp : vproc = host_vproc
-                @forward (vp, stop)
+                @forward (vp, STOP)
           end
 ;
