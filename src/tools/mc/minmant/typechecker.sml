@@ -414,13 +414,16 @@ structure Typechecker : sig
 	   | pb::pbs => let
 		 val (pe, ve1) = chkPBind (loc, depth, te, ve, pb)
 		 val (pes, ve2) = chkPBinds (loc, depth, te, ve, pbs)
+		 val newve1 = List.filter (fn x => not (E.inDomain (ve, x)))
+					  (AtomMap.listKeys ve1)
+
 		 fun notInVE2 [] = true
 		   | notInVE2 (atom::atoms) =
 		     if E.inDomain (ve2, atom)
 		     then false
 		     else notInVE2 atoms
 	     in
-	       if notInVE2 (map #1 (AtomMap.listItemsi ve1))
+	       if notInVE2 newve1
 		 then ()
 		 else error (loc, ["conflicting pattern bindings in parray comprehension"]);
 	       (pe::pes, AtomMap.unionWith #1 (ve1, ve2))
