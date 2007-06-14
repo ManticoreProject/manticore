@@ -224,6 +224,7 @@ structure StdEnv : sig
 
   (* predefined functions *)
     val predefs = [
+	    (B.not,		prim1 (P.BNot, "not", b, b)),
 (*
 	    (B.sqrtf,		hlop H.sqrtf),
 	    (B.lnf,		hlop H.lnf),
@@ -231,12 +232,24 @@ structure StdEnv : sig
 	    (B.log10f,		hlop H.log10f),
 	    (B.powf,		hlop H.powf),
 	    (B.expf,		hlop H.expf),
+	    (B.sinf,		hlop H.sinf),
+	    (B.cosf,		hlop H.cosf),
+	    (B.tanf,		hlop H.tanf),
+*)
+	    (B.itof,		prim1 (P.I32ToF32, "itof", i, f)),
+(*
 	    (B.sqrtd,		hlop H.sqrtd),
 	    (B.lnd,		hlop H.lnd),
 	    (B.log2d,		hlop H.log2d),
 	    (B.log10d,		hlop H.log10d),
 	    (B.powd,		hlop H.powd),
 	    (B.expd,		hlop H.expd),
+	    (B.sind,		hlop H.sind),
+	    (B.cosd,		hlop H.cosd),
+	    (B.tand,		hlop H.tand),
+*)
+	    (B.itod,		prim1 (P.I32ToF64, "itod", i, d))
+(*
 	    (B.channel,		hlop H.channel),
 	    (B.send,		hlop H.send),
 	    (B.recv,		hlop H.recv),
