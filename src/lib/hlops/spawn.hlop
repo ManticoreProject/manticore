@@ -9,17 +9,17 @@
 #include "types.def"
 
 define @dispatch (vp : vproc) noreturn;
-define @enqueue (vp : vproc, tid : tid, fiber : fiber) : unit;
+define @enqueue (vp : vproc, tid : tid, fiber : fiber) : ();
 define @new-tid (vp : vproc) : tid;
 
-define inline @spawn (f : fun(unit / handler -> unit)) : unit =
+define inline @spawn (f : fun( / handler -> unit)) : unit =
     cont fiber (_ : unit) =
 	cont handler (ex : exn) = @dispatch(host_vproc)
-	let (_ : unit) = apply f(UNIT / handler)
+	let _ : unit = apply f( / handler)
 	  @dispatch(host_vproc)
     (* in *)
       let vp : vproc = host_vproc
       let tid : tid = @new-tid(vp)
-      let _ : unit = @enqueue (vp, tid, fiber)
+      do @enqueue (vp, tid, fiber)
       return (UNIT)
 ;

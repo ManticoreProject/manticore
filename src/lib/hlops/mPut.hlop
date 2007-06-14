@@ -12,7 +12,7 @@
 extern any CAS() __attribute__(()); 
  *) 
 
-define @enqueue (vp : vproc, tid : tid, fiber : fiber) : unit;
+define @enqueue (vp : vproc, tid : tid, fiber : fiber) : ();
 define @forward (vp : vproc, sig : signal ) noreturn;
 
 define inline @mPut (mvar : !(list, any, int), x : any) : unit = 
@@ -37,7 +37,7 @@ define inline @mPut (mvar : !(list, any, int), x : any) : unit =
                          case readL 
                           of enum(0) => return (emum(0))
                            | CONS(hd : any, tl : list) => return (tl) 
-                      fun loop () : unit = 
+                      fun loop () : () = 
                         let tmp : list = #0(mvar)
                         let tl : list = apply getTL ()
                         let flag : bool = CAS(&0(mvar), tmp, tl)

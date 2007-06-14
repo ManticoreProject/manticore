@@ -8,40 +8,40 @@
 
 #include "types.def"
 
-define @enqueue (vp : vproc, tid : tid, fiber : fiber) : unit;
+define @enqueue (vp : vproc, tid : tid, fiber : fiber) : ();
 define @forward (vp : vproc, sig : signal ) noreturn;
 
-define inline @iPut (ivar : !(list, any, int), x : any) : unit = 
-          let readL : list = #0(ivar)
-          let readflag : int = #2(ivar)
-          let oldValue : any = CAS (&1(ivar), enum(0), x)
-          let dummyTid : tid = enum(0)
-          case oldValue
-           of enum(0) =>
-                fun spin () : unit =
-                      if BEq(#2(ivar), 0)
-			then return ()
-			else apply spin ()
-                do apply spin ()
-                case readL
-                 of enum(0) => return ()
-                  | CONS(hd : any, tl : list) =>                      
-                      let fiber : cont(any) = #1(((int, cont(any)))hd)
-                      do @enqueue(host_vproc, dummyTid, fiber)
-                      fun wakeRead(l : list) : unit =
-                            case l 
-                              of enum(0) => return ()
-                               | CONS(hd' : any, tl' : list) =>
-                                   let fiber' : cont(any) = #1(((int, cont(any)))hd')
-                                   let k : cont(any) = throw fiber'(x) 
-                                   do @enqueue(host_vproc, dummyTid, k)
-                                   apply wakeRead(tl')
-                             end
-                      do apply wakeRead(tl)
-                      return () 
-                end
-            | _ => 
-                let vp : vproc = host_vproc
-                @forward (vp, STOP)
+define inline @iPut (ivar : ![list, any, int], x : any) : () = 
+    let readL : list = #0(ivar)
+    let readflag : int = #2(ivar)
+    let oldValue : any = CAS (&1(ivar), enum(0), x)
+    let dummyTid : tid = enum(0)
+    case oldValue
+     of enum(0) =>
+          fun spin () : () =
+        	if BEq(#2(ivar), 0)
+		  then return ()
+		  else apply spin ()
+          do apply spin ()
+          case readL
+           of enum(0) => return ()
+            | CONS(hd : any, tl : list) =>                      
+        	let fiber : cont(any) = #1(([int, cont(any)])hd)
+        	do @enqueue(host_vproc, dummyTid, fiber)
+        	fun wakeRead(l : list) : () =
+                      case l 
+                	of enum(0) => return ()
+                	 | CONS(hd' : any, tl' : list) =>
+                             let fiber' : cont(any) = #1(([int, cont(any)])hd')
+                             let k : cont(any) = throw fiber'(x) 
+                             do @enqueue(host_vproc, dummyTid, k)
+                             apply wakeRead(tl')
+                       end
+        	do apply wakeRead(tl)
+        	return () 
           end
+      | _ => 
+          let vp : vproc = host_vproc
+          @forward (vp, STOP)
+    end
 ;

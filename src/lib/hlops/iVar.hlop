@@ -9,6 +9,6 @@
 #include "types.def"
 
 define inline @iVar () : (list, any, int) = 
-          let x : (list, any, int) = alloc (enum(0), enum(0), 0)
-          return (x)
+    let x : ![list, any, int] = alloc (enum(0), enum(0), 0)
+    return (x)
 ;

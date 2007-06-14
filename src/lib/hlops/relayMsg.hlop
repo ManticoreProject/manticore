@@ -8,7 +8,7 @@
 
 #include "types.def"
 
-define @enqueue (vp : vproc, tid : tid, fiber : fiber) : unit;
+define @enqueue (vp : vproc, tid : tid, fiber : fiber) : ();
 
 define inline @relayMsg (mvar : !(list, any, int), x : any) : unit =     
     let mvar : !(list, any,int) = #0(arg)

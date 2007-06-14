@@ -9,7 +9,7 @@
 #include "types.def"
 
 define @dispatch (vp : vproc) noreturn;
-define @relayMsg (mvar : !(list, any, int, int), x : any) : unit;
+define @relayMsg (mvar : !(list, any, int, int), x : any) : ();
 
 define inline @mGet (mvar : !(list, any, int, int)) : any =
           let dummyTid : tid = enum(0)

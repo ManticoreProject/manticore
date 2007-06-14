@@ -10,30 +10,30 @@
 
 define @dispatch (vp : vproc) noreturn;
 
-define inline @iGet (ivar : !(list, any, int)) : any =
-          let readList : list = #0(ivar)
-          let value : any = #1(ivar)
-          let readFlag : int = #2(ivar)
-          do #2(ivar) := I32Add(readFlag, 1)
-          let dummyTid : tid = enum(0)
-          case value
-           of enum(0) =>
-                (* atomic update, kinda like fetch and increment *)
-                cont k (x : any) = return (x)
-                let item : (enum(0), cont(any)) = alloc (dummyTid, k)
-                (* atomic update *)
-                fun loop () : unit = 
-                   let tmp : list = #0(ivar)
-                   let newlist : list = CONS(item, tmp)
-                   let flag : bool = CAS(&0(ivar), tmp, newlist)
-                   if BEq(flag, enum(0))
-                     then apply loop ()
-                     else return () 
-                do apply loop()
-                do #2(ivar) := I32Sub(readFlag, 1)
-                @dispatch (host_vproc)
-            | x : any =>
-                do #2(ivar) := I32Sub(readFlag, 1)
-                return (x)                        
-          end
+define inline @iGet (ivar : ![list, any, int]) : any =
+    let readList : list = #0(ivar)
+    let value : any = #1(ivar)
+    let readFlag : int = #2(ivar)
+    do #2(ivar) := I32Add(readFlag, 1)
+    let dummyTid : tid = enum(0)
+    case value
+     of enum(0) =>
+          (* atomic update, kinda like fetch and increment *)
+          cont k (x : any) = return (x)
+          let item : [enum(0), cont(any)] = alloc (dummyTid, k)
+          (* atomic update *)
+          fun loop () : () = 
+             let tmp : list = #0(ivar)
+             let newlist : list = CONS(item, tmp)
+             let flag : bool = CAS(&0(ivar), tmp, newlist)
+             if BEq(flag, enum(0))
+               then apply loop ()
+               else return () 
+          do apply loop()
+          do #2(ivar) := I32Sub(readFlag, 1)
+          @dispatch (host_vproc)
+      | x : any =>
+          do #2(ivar) := I32Sub(readFlag, 1)
+          return (x)                        
+    end
 ;
