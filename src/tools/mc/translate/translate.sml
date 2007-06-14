@@ -92,7 +92,7 @@ structure Translate : sig
 	    | AST.SpawnExp e => let
 		val (exh, env') = newHandler env
 		val e' = trExpToExp(env', e)
-		val thd = BV.new("_thd", BTy.T_Fun([], [BTy.exhTy], []))
+		val thd = BV.new("_thd", BTy.T_Fun([], [BTy.exhTy], [BTy.unitTy]))
 		in
 		  EXP(B.mkFun([B.FB{f=thd, params=[], exh=[exh], body=e'}],
 		    B.mkHLOp(ManticoreOps.spawnOp, [thd], [])))
