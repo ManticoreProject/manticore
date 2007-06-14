@@ -45,7 +45,6 @@
     fun cvtTy PT.T_Any = Ty.T_Any
       | cvtTy (PT.T_Enum w) = Ty.T_Enum w
       | cvtTy (PT.T_Raw rty) = Ty.T_Raw rty
-      | cvtTy (PT.T_Wrap rty) = Ty.wrap(Ty.T_Raw rty)
       | cvtTy (PT.T_Tuple(mut, tys)) = Ty.T_Tuple(mut, List.map cvtTy tys)
       | cvtTy (PT.T_Addr ty) = Ty.T_Addr(cvtTy ty)
       | cvtTy (PT.T_Fun(argTys, exhTys, resTys)) =

@@ -67,7 +67,6 @@
 	   of PT.T_Any => Ty.T_Any
 	    | (PT.T_Enum w) => Ty.T_Enum w
 	    | (PT.T_Raw rty) => Ty.T_Raw rty
-	    | (PT.T_Wrap rty) => Ty.wrap(Ty.T_Raw rty)
 	    | (PT.T_Tuple(mut, tys)) => Ty.T_Tuple(mut, cvtTys(env, tys))
 	    | (PT.T_Addr ty) => Ty.T_Addr(cvtTy(env, ty))
 	    | (PT.T_Fun(argTys, exhTys, resTys)) =>
@@ -354,13 +353,15 @@
 		 of SOME hlop => env (* already defined, so do nothing *)
 		  | NONE => let
 		    (* create a high-level operator *)
-		      val attrs = if null retTy then [HLOp.NORETURN] else []
+		      val (retTy, attrs) = (case retTy
+			     of NONE => ([], [HLOp.NORETURN])
+			      | SOME tys => (cvtTys(env, tys), [])
+			    (* end case *))
 		      fun tyOfPat (PT.WildPat NONE) = Ty.T_Any
 			| tyOfPat (PT.WildPat(SOME ty)) = cvtTy(env, ty)
 			| tyOfPat (PT.VarPat(_, ty)) = cvtTy(env, ty)
 		      val paramTys = List.map (fn p => HLOp.PARAM(tyOfPat p)) params
 		      val exhTys = List.map tyOfPat exh
-		      val retTy = cvtTys(env, retTy)
 		      in
 			Env.define (HLOp.new (
 			  name,
@@ -379,6 +380,7 @@
 	  fun cvtDefs [] = []
 	    | cvtDefs (PT.Define(inline, name, params, exh, retTy, SOME e)::defs) = let
 		val hlop = valOf(Env.find name)
+		val retTy = (case retTy of NONE => [] | SOME tys => tys)
 		val (env, doBody) = cvtLambda (findCFun, env, (name, params, exh, retTy, e), Ty.T_Fun)
 		val lambda = doBody env
 		in

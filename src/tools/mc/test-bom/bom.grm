@@ -124,8 +124,8 @@ Attr
 	;
 
 Lambda
-	: ID "(" Params ("/" Params)? ")" ":" Type "=" Exp
-		=> (ID, Params, Option.getOpt(SR, []), [Type], Exp)
+	: ID "(" Params ("/" Params)? ")" ":" "(" TypeList ")" "=" Exp
+		=> (ID, Params, Option.getOpt(SR, []), TypeList, Exp)
 	;
 
 Params
@@ -146,17 +146,16 @@ Type
 	| "bool"				=> (boolTy)
 	| "unit"				=> (unitTy)
 	| "enum" "(" INT ")"			=> (PT.T_Enum(Word.fromLargeInt INT))
-	| "[" RawType "]"			=> (PT.T_Wrap RawType)
 	| RawType				=> (PT.T_Raw RawType)
-	| "!" "(" Type ("," Type)* ")"		=> (PT.T_Tuple(true, Type :: SR))
-	| "(" Type ("," Type)* ")"		=> (PT.T_Tuple(false, Type :: SR))
-	| "fun" "(" Typelist "/" Typelist "->" Typelist ")"	=> (PT.T_Fun(Typelist1, Typelist2, Typelist3))
-	| "cont" "(" (Type ("," Type)* )? ")"	=> (PT.T_Cont(flatten SR))
+	| "!" "[" Type ("," Type)* "]"		=> (PT.T_Tuple(true, Type :: SR))
+	| "[" Type ("," Type)* "]"		=> (PT.T_Tuple(false, Type :: SR))
+	| "fun" "(" TypeList "/" TypeList "->" TypeList ")"	=> (PT.T_Fun(TypeList1, TypeList2, TypeList3))
+	| "cont" "(" TypeList ")"		=> (PT.T_Cont TypeList)
 	| "vproc"				=> (PT.T_VProc)
 	| ID					=> (PT.T_TyCon ID)
 	;
 
-Typelist
+TypeList
 	: (Type ("," Type)* )?  => (flatten SR)
 	;
 

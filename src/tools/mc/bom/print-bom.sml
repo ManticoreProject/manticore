@@ -147,7 +147,14 @@ structure PrintBOM : sig
 		    | ([], _) => (pr "- / "; prParams exh)
 		    | _ => (prParams params; pr " / "; prParams exh)
 		  (* end case *);
-		  pr ") =\n";
+		  case BV.typeOf f
+		   of Ty.T_Fun(_, _, [ty]) => (pr ") -> "; pr(Ty.toString ty); pr " =\n")
+		    | Ty.T_Fun(_, _, tys) => (
+			pr ") -> (";
+			pr (String.concatWith "," (List.map Ty.toString tys));
+			pr ") = \n")
+		    | _ => pr ") =\n"
+		  (* end case *);
 		  prExp (i+2, body)
 		end
 	  and prIf (i, x, e1, B.E_Pt(_, B.E_If(y, e2, e3))) = (

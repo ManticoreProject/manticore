@@ -17,7 +17,6 @@
       = T_Any				(* unknown type; uniform representation *)
       | T_Enum of Word.word		(* unsigned tagged integer; word is max value <= 2^31-1 *)
       | T_Raw of raw_ty			(* raw machine type *)
-      | T_Wrap of raw_ty		(* boxed raw value *)
       | T_Tuple of bool * ty list	(* heap-allocated tuple *)
       | T_Addr of ty
       | T_Fun of (ty list * ty list * ty list)
@@ -35,7 +34,7 @@
     and defn
       = Extern of Atom.atom CFunctions.c_fun
       | TypeDef of Atom.atom * ty
-      | Define of (bool * var * var_pat list * var_pat list * ty list * exp option)
+      | Define of (bool * var * var_pat list * var_pat list * ty list option * exp option)
 
     and exp
       = Let of (var_pat list * rhs * exp)
