@@ -11,6 +11,7 @@ Library
   structure CheckCPS
   structure CPS
   structure CPSTy
+  structure CPSUtil
   structure PrintCPS
 
 is
@@ -26,4 +27,5 @@ is
   check-cps.sml
   cps.sml
   cps-ty.sml
+  cps-util.sml
   print-cps.sml
