@@ -71,6 +71,15 @@ structure Contract : sig
     fun dec x = BV.addToCount(x, ~1)
     val dec' = List.app dec
     fun unused x = (useCountOf x = 0)
+    fun combineAppUseCnts (arg, param) = let
+	  val argU = useCntRef arg
+	  in
+	    argU := !argU + useCntOf param
+(* FIXME: adjust app counts too *)
+	  end
+
+    fun decS (env, x) = dec(U.subst env x)
+    fun decS' (env, xs) = dec'(U.subst'(env, xs))
 
   (* support for recording that a function has been inlined.  Note that we
    * need to distinguish between inlined and dead functions (even though
@@ -138,32 +147,6 @@ structure Contract : sig
     end (* local *)
 
 
-  (********** census bookkeeping **********)
-
-    fun deleteExp (env, e) = let
-	  val subst = U.subst env
-	  fun dec x = useCntRef(subst x) -= 1
-	  fun dec' xs = List.map dec xs
-	  fun del (B.E_Pt(_, t)) = (case t
-		 of B.E_Let(_, e1, e2) => (del e2; del e2)
-		  | B.E_Stmt(_, rhs, e) => (BOMUtil.appRHS dec rhs; del e)
-		  | B.E_Fun(fbs, e) => (List.app delFB fbs; del e)
-		  | B.E_Cont(fb, e) => (delFB fb; del e)
-		  | B.E_If(x, e1, e2) => (dec x; del e1; del e2)
-		  | B.E_Case(x, cases, dflt) => (
-		      dec x;
-		      List.app (fn (_, e) => del e) cases;
-		      Option.app dec dflt)
-		  | B.E_Apply(f, args, rets) => (dec f; dec' args; dec' rets)
-		  | B.E_Throw(k, args) => (dec k; dec' args)
-		  | B.E_Ret xs = dec' xs
-		  | B.E_HLOp(_, args, rets) => (dec' args; dec' rets)
-		(* end case *))
-	  in
-	    del e
-	  end
-
-
   (********** Contraction **********)
 
   (* we use this global to hold the eta flag that the contract function gets
@@ -225,10 +208,35 @@ structure Contract : sig
 		    List.app dec (U.subst'(env, U.varsOfRHS rhs));
 		    doExp (env, e))
 		  else B.mkStmts
+	    | B.E_Stmt(lhs, B.E_Const _) =>
+	    | B.E_Stmt([x], B.E_Cast(ty, y)) =>
+	    | B.E_Stmt([x], B.E_Select(i, y)) => let
+		val y = subst env y
+		in
+		 case bindingOf(U.subst env y)
+		  of B.VK_RHS(B.E_Alloc(_, ys)) => let
+			val z = List.nth(ys, i)
+			in
+			  ST.tick cntSelectConst;
+			  
+			  (U.extend(env, x, z), [])
+		   | _ => (env, ([x], [B.E_Select(i, y)]))
+		  (* end case *)
+		end
+	    | B.E_Stmt([], B.E_Update(i, y, z)) =>
+	    | B.E_Stmt([x], B.E_AddrOf(i, y)) =>
+	    | B.E_Stmt([x], B.E_Alloc(ty, ys)) =>
+	    | B.E_Stmt([x], B.E_Prim p) =>
+	    | B.E_Stmt([x], B.E_DCon(dc, ys)) =>
+	    | B.E_Stmt(lhs, B.E_CCall(cf, ys)) =>
+	    | B.E_Stmt([x], B.E_HostVProc) =>
+	    | B.E_Stmt([x], B.E_VPLoad(n, y)) =>
+	    | B.E_Stmt([], B.E_VPStore(n, y, z)) =>
+	    | B.E_Stmt _ => raise Fail "bogus E_Stmt"
 	    | B.E_Fun([fb], e) => let
 		  fun deadFun () = (
 			ST.tick cntDeadFun;
-			C.adjust (env, body, ~1))
+			C.delete (env, body))
 		(* reduce the function body and its scope *)
 		  fun reduceRest () = let
 			val e' = doExp (e, env, kid)
@@ -262,7 +270,7 @@ structure Contract : sig
 			      if not(isInlined f)
 				then (
 				  ST.tick cntDeadRecFun;
-				  C.adjust (env, body, ~1))
+				  C.delete (env, body))
 				else ();
 			      e'
 			    end
@@ -278,7 +286,7 @@ structure Contract : sig
 			if (useCntOf f = 0)
 			  then (
 			    ST.tick cntDeadFun;
-			    C.adjust (env, body, ~1);
+			    C.delete (env, body);
 			    NONE)
 			  else SOME lambda
 		(* check to see if a function has been inlined or is dead *)
@@ -315,7 +323,7 @@ structure Contract : sig
 		  fun isDead () = if (useCntOf k = 0)
 			then (
 			  ST.tick cntDeadCont;
-			  C.adjust (env, body, ~1);
+			  C.delete (env, body);
 			  true)
 			else false
 		  in
@@ -411,22 +419,6 @@ structure Contract : sig
 		B.mkHLOp(hlop, U.subst'(subst, args), U.subst'(subst, rets))
 	  (* end case *))
 
-    and doRHS (subst, lhs, rhs) = (case (lhs, rhs)
-	   of B.E_Const of const
-	    | B.E_Cast of (ty * var)
-	    | B.E_Select of (int * var)
-	    | B.E_Update of (int * var * var)		(* update i'th field (zero-based) *)
-	    | B.E_AddrOf of (int * var)			(* return address of i'th field (zero-based) *)
-	    | B.E_Alloc of (ty * var list)
-	    | B.E_Prim of prim
-	    | B.E_DCon of (data_con * var list)		(* data constructor *)
-	    | B.E_CCall of (var * var list)		(* foreign-function calls *)
-	    | B.E_HostVProc				(* gets the hosting VProc *)
-	    | B.E_VPLoad of (offset * var)		(* load a value from the given byte offset *)
-						      (* in the vproc structure *)
-	    | B.E_VPStore of (offset * var * var)	(* store a value at the given byte offset *)
-	  (* end case *))
-
   (* contract the body of a function.  Prior to doing so, we null out the
    * function variable's binding so that we avoid infinite unwinding.
    *)
@@ -443,7 +435,7 @@ structure Contract : sig
     and inlineApply {env, kid, args, params, body} = let
 	  val env = U.extend' (subst, params, args)
 	  fun adjust (arg, param) = (
-		BV.combineAppUseCnts (arg, param);
+		combineAppUseCnts (arg, param);
 		useCntRef arg -= 1)
 	  in
 	    ListPair.app adjust (args, param);

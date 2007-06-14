@@ -59,7 +59,7 @@ structure BOMUtil : sig
       | varsOfRHS (B.E_Cast(_, x)) = [x]
       | varsOfRHS (B.E_Select(_, x)) = [x]
       | varsOfRHS (B.E_Update(_, x, y)) = [x, y]
-      | varsOfRHS (B.E_AddrOfRHS(_, x)) = [x]
+      | varsOfRHS (B.E_AddrOf(_, x)) = [x]
       | varsOfRHS (B.E_Alloc(_, args)) = args
       | varsOfRHS (B.E_Prim p) = PrimUtil.varsOf p
       | varsOfRHS (B.E_DCon(_, args)) = args
