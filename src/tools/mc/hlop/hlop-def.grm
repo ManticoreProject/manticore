@@ -108,9 +108,9 @@ Definition
 		      }))
 	| "typedef" ID "=" Type ";"
 		=> (PT.TypeDef(ID, Type))
-	| "define" optInline HLOP FunParams returnTy ("=" Exp)? ";"
+	| "define" optInline HLOP FunParams ReturnTy ("=" Exp)? ";"
 		=> (let val (p1, p2) = FunParams in
-		      PT.Define(optInline, HLOP, p1, p2, returnTy, SR)
+		      PT.Define(optInline, HLOP, p1, p2, ReturnTy, SR)
 		    end)
 	;
 
@@ -136,8 +136,9 @@ Attr
 	| "noreturn"	=> (CFunctions.A_noreturn)
 	;
 
-returnTy
+ReturnTy
 	: "noreturn"		=> (NONE)
+	| ":" Type		=> (SOME[Type])
 	| ":" "(" TypeList ")"	=> (SOME TypeList)
 	;
 
@@ -196,8 +197,13 @@ Exp
 	;
 
 Lambda
-	: ID FunParams ":" Type "=" Exp
-		=> (let val (p1, p2) = FunParams in (ID, p1, p2, [Type], Exp) end)
+	: ID FunParams ":" FunReturnTy "=" Exp
+		=> (let val (p1, p2) = FunParams in (ID, p1, p2, FunReturnTy, Exp) end)
+	;
+
+FunReturnTy
+	: Type			=> ([Type])
+	| "(" TypeList ")"	=> (TypeList)
 	;
 
 CLambda

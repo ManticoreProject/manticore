@@ -30,9 +30,16 @@ structure HLOpDefLoader : sig
 
     type import_env = BOM.var CFunctions.c_fun ATbl.hash_table
 
+    fun tokToString (HLOpDefTokens.STRING s) = concat["\"", String.toString s, "\""]
+      | tokToString (HLOpDefTokens.FLOAT flt) = FloatLit.toString flt
+      | tokToString (HLOpDefTokens.INT n) = IntInf.toString n
+      | tokToString (HLOpDefTokens.HLOP id) = "@" ^ Atom.toString id
+      | tokToString (HLOpDefTokens.ID id) = Atom.toString id
+      | tokToString tok = HLOpDefTokens.toString tok
+
   (* error function for parsers *)
     fun parseErr (filename, srcMap) = let
-	  val errToStr = AntlrRepair.repairToString HLOpDefTokens.toString srcMap
+	  val errToStr = AntlrRepair.repairToString tokToString srcMap
 	  in
 	    fn err => TextIO.print(concat["Error [", filename, "] ", errToStr err, "\n"])
 	  end

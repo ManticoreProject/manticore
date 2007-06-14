@@ -124,8 +124,8 @@ Attr
 	;
 
 Lambda
-	: ID "(" Params ("/" Params)? ")" ":" "(" TypeList ")" "=" Exp
-		=> (ID, Params, Option.getOpt(SR, []), TypeList, Exp)
+	: ID "(" Params ("/" Params)? ")" ":" FunReturnTy "=" Exp
+		=> (ID, Params, Option.getOpt(SR, []), FunReturnTy, Exp)
 	;
 
 Params
@@ -134,6 +134,11 @@ Params
 
 Param
 	: ID ":" Type				=> (ID, Type)
+	;
+
+FunReturnTy
+	: Type			=> ([Type])
+	| "(" TypeList ")"	=> (TypeList)
 	;
 
 CLambda
