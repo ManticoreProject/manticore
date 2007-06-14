@@ -512,6 +512,11 @@ print(concat["******************** finish ", CFG.Label.toString lab, "\n"]);
                       in
                         ([CFG.mkUpdate(i, y, z)] @ binds' @ binds, env)
                       end
+                  | ((env, [x]), CPS.AddrOf(i, y)) => let
+                      val (binds, y) = lookupVar(env, y)
+                      in
+                        ([CFG.mkAddrOf(x, i, y)] @ binds, env)
+                      end
                   | ((env, [x]), CPS.Alloc ys) => let
                       val (binds, ys) = lookupVars (env, ys)
                       in
@@ -549,7 +554,7 @@ print(concat["******************** finish ", CFG.Label.toString lab, "\n"]);
                       in
                         ([CFG.mkVPStore(offset, vp, x)] @ binds, env)
                       end
-		  | _ => raise Fail "ill-formed RHS binding"
+		  | (_, rhs) => raise Fail("ill-formed RHS binding: " ^ CPSUtil.rhsToString rhs)
                 (* end case *))
         (* create a standard function convention for a list of parameters *)
           and stdFunConvention (env, args, [ret, exh]) = let
