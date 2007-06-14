@@ -31,12 +31,17 @@ structure Typechecker : sig
 
   (* create a single-parameter lambda from one that has a list of parameters *)
     fun mkLambda (f, AST.VarPat x, e) = AST.FB(f, x, e)
+      | mkLambda (f, AST.TuplePat[], e) = let
+	  val arg = Var.new ("arg", Basis.unitTy)
+	  in
+	    AST.FB(f, arg, e)
+	  end
       | mkLambda (f, pat, e) = let
-	 val AST.TyScheme(_, AST.FunTy(argTy, resTy)) = Var.typeOf f
-	 val arg = Var.new ("arg", argTy)
-	 in
-	   AST.FB(f, arg, AST.CaseExp(AST.VarExp(arg, []), [(pat, e)], resTy))
-	 end
+	  val AST.TyScheme(_, AST.FunTy(argTy, resTy)) = Var.typeOf f
+	  val arg = Var.new ("arg", argTy)
+	  in
+	    AST.FB(f, arg, AST.CaseExp(AST.VarExp(arg, []), [(pat, e)], resTy))
+	  end
 
   (* a type expression for when there is an error *)
     val bogusTy = AST.ErrorTy
