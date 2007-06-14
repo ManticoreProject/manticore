@@ -16,6 +16,9 @@ structure BOMUtil : sig
     val extend : (subst * BOM.var * BOM.var) -> subst
     val extend' : (subst * BOM.var list * BOM.var list) -> subst
 
+  (* return the variables used in a RHS term *)
+    val varsOfRHS : BOM.rhs -> BOM.var list
+
   (* apply a substitution to a RHS *)
     val substRHS : (subst * BOM.rhs) -> BOM.rhs
 
@@ -51,6 +54,20 @@ structure BOMUtil : sig
       | extend' (s, x::xs, y::ys) = extend'(VMap.insert(s, x, y), xs, ys)
       | extend' (s, _, _) = raise Fail "BOMUtil.extend': unequal lists"
 
+  (* return the variables used in a RHS term *)
+    fun varsOfRHS (B.E_Const _) = []
+      | varsOfRHS (B.E_Cast(_, x)) = [x]
+      | varsOfRHS (B.E_Select(_, x)) = [x]
+      | varsOfRHS (B.E_Update(_, x, y)) = [x, y]
+      | varsOfRHS (B.E_AddrOfRHS(_, x)) = [x]
+      | varsOfRHS (B.E_Alloc(_, args)) = args
+      | varsOfRHS (B.E_Prim p) = PrimUtil.varsOf p
+      | varsOfRHS (B.E_DCon(_, args)) = args
+      | varsOfRHS (B.E_CCall(f, args)) = f :: args
+      | varsOfRHS (B.E_HostVProc) = []
+      | varsOfRHS (B.E_VPLoad(n, x)) = [x]
+      | varsOfRHS (B.E_VPStore(n, x, y)) = [x, y]
+
   (* apply a substitution to a RHS term *)
     fun substRHS (s, rhs) = (case rhs
 	   of B.E_Const _ => rhs
@@ -68,20 +85,7 @@ structure BOMUtil : sig
 	  (* end case *))
 
   (* apply a function to the variables of a RHS *)
-    fun appRHS f rhs = (case rhs
-	   of B.E_Const _ => ()
-	    | B.E_Cast(_, x) => f x
-	    | B.E_Select(i, x) => f x
-	    | B.E_Update(i, x, y) => (f x; f y)
-	    | B.E_AddrOf(i, x) => f x
-	    | B.E_Alloc(ty, args) => List.app f args
-	    | B.E_Prim p => PrimUtil.app f p
-	    | B.E_DCon(dc, args) => List.app f args
-	    | B.E_CCall(cf, args) => (f cf; List.app f args)
-	    | B.E_HostVProc => ()
-	    | B.E_VPLoad(n, x) => f x
-	    | B.E_VPStore(n, x, y) => (f x; f y)
-	  (* end case *))
+    fun appRHS f rhs = List.app f (varsOfRHS rhs)
 
     fun freshVar (s, x) = let
 	  val x' = BV.copy x
