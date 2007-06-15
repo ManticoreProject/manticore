@@ -167,8 +167,7 @@ structure Basis =
 
     val int_neg =	monoVar(N.uMinus, intTy --> intTy)
     val long_neg =	monoVar(N.uMinus, longTy --> longTy)
-    val integer_neg =	monoVar(N.uMinus, integerTy --> integerTy)
-    val float_neg =	monoVar(N.uMinus, floatTy --> floatTy)
+    val integer_neg =	monoVar(N.uMinus, integerTy --> integerTy)    val float_neg =	monoVar(N.uMinus, floatTy --> floatTy)
     val double_neg =	monoVar(N.uMinus, doubleTy --> doubleTy)
 
 (* TODO do @, ! *)
@@ -307,7 +306,8 @@ structure Basis =
 	    (N.boolFalse,	Env.Con boolFalse),
 	    (N.listNil,		Env.Con listNil),
 	    (N.listCons,	Env.Con listCons),
-	    (*(N.uMinus,		Env.Var uMinus),*)
+	    (* Unary minus is overloaded, so it's being handled
+             * specially by the typechecker *)
 	    (N.not,		Env.Var not),
 	    (N.sqrtf,		Env.Var sqrtf),
 	    (N.lnf,		Env.Var lnf),

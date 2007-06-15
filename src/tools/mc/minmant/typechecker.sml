@@ -366,21 +366,35 @@ structure Typechecker : sig
 	      in
 		  chk es
 	      end
-	    | PT.IdExp x => (case E.find(ve, x)
-		of SOME(E.Con dc) => let
-		       val (argTys, ty) = TU.instantiate (depth, DataCon.typeOf dc)
-		   in
-		       (AST.ConstExp(AST.DConst(dc, argTys)), ty)
-		   end
-		 | SOME(E.Var x') => let
-		       val (argTys, ty) = TU.instantiate (depth, Var.typeOf x')
-		   in
-		       (AST.VarExp(x', argTys), ty)
-		   end
-		 | NONE => (
-		   error(loc, ["undefined identifier \"", Atom.toString x, "\""]);
-		   bogusExp)
-	      (* end case *))
+	    | PT.IdExp x =>
+	      if Atom.same (x, BasisNames.uMinus)
+	      then
+		  (* Unary minus is being handled specially as
+		   * an overloaded variable *)
+		  let
+		      val (tysch, vars) = B.neg
+		      val (_, instTy) = TU.instantiate (depth, tysch)
+		      val ovar = ref (AST.Unknown (instTy, vars))
+		  in
+		      (Overload.add_var ovar;
+		       (AST.OverloadExp ovar, instTy))
+		  end
+	      else
+		  (case E.find(ve, x)
+		    of SOME(E.Con dc) => let
+			   val (argTys, ty) = TU.instantiate (depth, DataCon.typeOf dc)
+		       in
+			   (AST.ConstExp(AST.DConst(dc, argTys)), ty)
+		       end
+		     | SOME(E.Var x') => let
+			   val (argTys, ty) = TU.instantiate (depth, Var.typeOf x')
+		       in
+			   (AST.VarExp(x', argTys), ty)
+		       end
+		     | NONE => (
+		       error(loc, ["undefined identifier \"", Atom.toString x, "\""]);
+		       bogusExp)
+		  (* end case *))
 	    | PT.ConstraintExp(e, ty) => let
 		val constraintTy = chkTy (loc, te, E.empty, ty)
 		val (e', ty') = chkExp (loc, depth, te, ve, e)
