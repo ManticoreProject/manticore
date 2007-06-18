@@ -89,6 +89,7 @@ structure Translate : sig
 	    | AST.PTupleExp exps => raise Fail "PTupleExp"
 	    | AST.PArrayExp(exps, ty) => raise Fail "PArrayExp"
 	    | AST.ComprehendExp _ => raise Fail "unexpected ComprehendExp"
+	    | AST.PChoiceExp _ => raise Fail "unexpected PChoiceExp"
 	    | AST.SpawnExp e => let
 		val (exh, env') = newHandler env
 		val e' = trExpToExp(env', e)
@@ -148,6 +149,7 @@ structure Translate : sig
 			end
 		(* end case *))
 	    | AST.ValBind _ => raise Fail "unexpected complex pattern"
+	    | AST.PValBind _ => raise Fail "PValBind"
 	    | AST.FunBind fbs => let
 		fun bindFun (AST.FB(f, x, e), (env, fs)) = let
 		      val (f', env) = trVar(env, f)

@@ -36,6 +36,7 @@ structure ParseTree =
     and val_decl
       = MarkVDecl of val_decl mark
       | ValVDecl of pat * exp
+      | PValVDecl of pat * exp
       | FunVDecl of funct list
 
   (* function definitions *)
@@ -60,6 +61,7 @@ structure ParseTree =
       | AndAlsoExp of (exp * exp)
       | OrElseExp of (exp * exp)
       | BinaryExp of (exp * opid * exp)	(* infix binary expressions *)
+      | PChoiceExp of exp list		(* two or more expressions joined by |?| *)
       | ApplyExp of (exp * exp)		(* application *)
       | ConstExp of const
       | TupleExp of exp list

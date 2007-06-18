@@ -115,6 +115,15 @@ structure Typechecker : sig
 		    else ();
 		  (AST.ValBind(pat', e'), ve')
 		end
+	    | PT.PValVDecl(pat, e) => let
+		val (pat', ve', lhsTy) = chkPat(loc, depth, te, ve, pat)
+		val (e', rhsTy) = chkExp (loc, depth, te, ve, e)
+		in
+		  if not(U.unify(lhsTy, rhsTy))
+		    then error (loc, ["type mismatch in pval binding"])
+		    else ();
+		  (AST.PValBind(pat', e'), ve')
+		end
 	    | PT.FunVDecl fbs => let
 		val depth' = depth+1
 	      (* create variable bindings for the functions *)
@@ -208,15 +217,19 @@ structure Typechecker : sig
 	      in
 		  (AST.CaseExp(e', matches, resTy), resTy)
 	      end
-	    | PT.AndAlsoExp(e1, e2) => let
-		  val (e1', ty1) = chkExp (loc, depth, te, ve, e1)
-		  val (e2', ty2) = chkExp (loc, depth, te, ve, e2)
-	      in
-		  if not(U.unify(ty1, Basis.boolTy) andalso U.unify(ty2, Basis.boolTy))
-		  then error(loc, ["arguments of andalso must have type bool"])
-		  else ();
-		  (AST.IfExp(e1', e2', AST.ConstExp(AST.DConst(Basis.boolFalse, [])), Basis.boolTy), Basis.boolTy)
-	      end
+	    | PT.PChoiceExp es => let
+		fun chk (e, (es, ty)) = let
+		      val (e', ty') = chkExp(loc, depth, te, ve, e)
+		      in
+			if not(U.unify (ty, ty'))
+			  then error(loc, ["type mismatch in parallel choice"])
+			  else ();
+			(e'::es, ty')
+		      end
+		val (es', ty) = List.foldr chk ([], Ty.MetaTy (MetaVar.new depth)) es
+		in
+		  (AST.PChoiceExp(es', ty), ty)
+		end
 	    | PT.OrElseExp(e1, e2) => let
 		  val (e1', ty1) = chkExp (loc, depth, te, ve, e1)
 		  val (e2', ty2) = chkExp (loc, depth, te, ve, e2)
@@ -225,6 +238,15 @@ structure Typechecker : sig
 		  then error(loc, ["arguments of orelse must have type bool"])
 		  else ();
 		  (AST.IfExp(e1', AST.ConstExp(AST.DConst(Basis.boolTrue, [])), e2', Basis.boolTy), Basis.boolTy)
+	      end
+	    | PT.AndAlsoExp(e1, e2) => let
+		  val (e1', ty1) = chkExp (loc, depth, te, ve, e1)
+		  val (e2', ty2) = chkExp (loc, depth, te, ve, e2)
+	      in
+		  if not(U.unify(ty1, Basis.boolTy) andalso U.unify(ty2, Basis.boolTy))
+		  then error(loc, ["arguments of andalso must have type bool"])
+		  else ();
+		  (AST.IfExp(e1', e2', AST.ConstExp(AST.DConst(Basis.boolFalse, [])), Basis.boolTy), Basis.boolTy)
 	      end
 	    | PT.BinaryExp(e1, bop, e2) => let
 		val (e1', ty1) = chkExp (loc, depth, te, ve, e1)
@@ -328,7 +350,7 @@ structure Typechecker : sig
 		    end
 		val (es', ty) = List.foldr chk ([], Ty.MetaTy (MetaVar.new depth)) es
 	      in
-		  (AST.PArrayExp(es', ty), B.parrayTy ty)
+		  (AST.PArrayExp(es', ty), ty)
 	      end
 	    | PT.ComprehendExp (e, pbs, eo) => let
 		  val (pes, ve') = chkPBinds (loc, depth, te, ve, pbs)

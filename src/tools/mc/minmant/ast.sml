@@ -24,6 +24,7 @@ structure AST =
       | PTupleExp of exp list
       | PArrayExp of exp list * ty			(* ty is element type *)
       | ComprehendExp of (exp * (pat * exp) list * exp option)
+      | PChoiceExp of exp list * ty			(* ty is result type *)
       | SpawnExp of exp
       | ConstExp of const
       | VarExp of var * ty list
@@ -32,6 +33,7 @@ structure AST =
 
     and binding
       = ValBind of pat * exp
+      | PValBind of pat * exp
       | FunBind of lambda list
 
     and lambda = FB of (var * var * exp)

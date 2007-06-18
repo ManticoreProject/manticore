@@ -30,6 +30,7 @@ structure TypeOf : sig
       | exp (AST.PTupleExp es) = Ty.TupleTy(List.map exp es)
       | exp (AST.PArrayExp(_, ty)) = B.parrayTy ty
       | exp (AST.ComprehendExp(e, _, _)) = B.parrayTy(exp e)
+      | exp (AST.PChoiceExp(_, ty)) = ty
       | exp (AST.SpawnExp _) = Basis.threadIdTy
       | exp (AST.ConstExp c) = const c
       | exp (AST.VarExp(x, argTys)) = TU.apply(Var.typeOf x, argTys)

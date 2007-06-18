@@ -84,6 +84,7 @@
 		("mod",		T.KW_mod),
 		("of",		T.KW_of),
 		("orelse",	T.KW_orelse),
+		("pval",	T.KW_pval),
 		("spawn",       T.KW_spawn),
 		("then",	T.KW_then),
 		("to",          T.KW_to),
@@ -143,6 +144,7 @@
 <INITIAL> "->"	=> (T.ARROW);
 <INITIAL> "=>"	=> (T.DARROW);
 <INITIAL> "_"	=> (T.WILD);
+<INITIAL> "|?|" => (T.PCHOICE);
 <INITIAL> {id}	=> (idToken yytext);
 <INITIAL> {tyvarid}	=> (T.TYVAR(Atom.atom yytext));
 <INITIAL> {num}		=> (T.INT(valOf (IntInf.fromString yytext)));
