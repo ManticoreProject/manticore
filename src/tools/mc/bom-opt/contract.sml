@@ -189,26 +189,12 @@ structure Contract : sig
 	      true)
 	    else false
 
-    fun doExp (env, B.E_Pt(_, t), kid) = (case t
-	   of B.E_Let(lhs, rhs, e) =>
-		if List.all unused lhs andalso pureExp e
-		  then (
-		    ST.tick cntLetElim;
-		    deleteExp(env, rhs);
-		    doExp (env, e))
-		  else (case doExp(env, rhs)
-		     of B.E_Pt(_, B.E_Ret ys) =>
-		      | B.E_Pt(_, B.E_Let(xs, e1, e2)) =>
-		      | rhs => B.mkLet(lhs, doExp(env, rhs), doExp(env, e))
-		    (* end case *))
-	    | B.E_Stmt(lhs, rhs, e) =>
-		if List.app unused lhs andalso pureRHS rhs
-		  then (
-		    ST.tick cntUnusedStmt;
-		    List.app dec (U.subst'(env, U.varsOfRHS rhs));
-		    doExp (env, e))
-		  else B.mkStmts
-	    | B.E_Stmt(lhs, B.E_Const _) =>
+    datatype 
+  (* contract a pure RHS form; we assume that x is used and that the variables in
+   * the RHS have already been renamed.
+   *)
+    fun doPureRHS (x, rhs) = (case rhs
+	   of B.E_Stmt(lhs, B.E_Const _) =>
 	    | B.E_Stmt([x], B.E_Cast(ty, y)) =>
 	    | B.E_Stmt([x], B.E_Select(i, y)) => let
 		val y = subst env y
@@ -218,206 +204,244 @@ structure Contract : sig
 			val z = List.nth(ys, i)
 			in
 			  ST.tick cntSelectConst;
-			  
+
 			  (U.extend(env, x, z), [])
 		   | _ => (env, ([x], [B.E_Select(i, y)]))
 		  (* end case *)
 		end
-	    | B.E_Stmt([], B.E_Update(i, y, z)) =>
 	    | B.E_Stmt([x], B.E_AddrOf(i, y)) =>
 	    | B.E_Stmt([x], B.E_Alloc(ty, ys)) =>
 	    | B.E_Stmt([x], B.E_Prim p) =>
 	    | B.E_Stmt([x], B.E_DCon(dc, ys)) =>
-	    | B.E_Stmt(lhs, B.E_CCall(cf, ys)) =>
 	    | B.E_Stmt([x], B.E_HostVProc) =>
 	    | B.E_Stmt([x], B.E_VPLoad(n, y)) =>
-	    | B.E_Stmt([], B.E_VPStore(n, y, z)) =>
-	    | B.E_Stmt _ => raise Fail "bogus E_Stmt"
-	    | B.E_Fun([fb], e) => let
-		  fun deadFun () = (
-			ST.tick cntDeadFun;
-			C.delete (env, body))
-		(* reduce the function body and its scope *)
-		  fun reduceRest () = let
-			val e' = doExp (e, env, kid)
-			in
-			  if (isInlined f)
-			    then e'
-			  else if (useCntOf f = 0)
-			    then (deadFun(); e')
-			    else let
-			      val lambda' = doFunBody(lambda, env, kid)
-			      in
-				case etaContract lambda'
-				 of NONE => C.mkFun([lambda'], e')
-				  | (SOME g) => (
-				      ST.tick cntEta;
-				    (* adjust counts of g *)
-				      useCntRef g += (useCntOf f - 1);
-				      appCntRef g += (appCntOf f - 1);
-				    (* replace f with g in e' *)
-				      S.applyToExp(S.singleton(f, g), e'))
-				(* end case *)
-			      end
-			  end
-		  in
-		    case (useCntOf f)
-		     of 0 => (deadFun(); doExp (e, env, kid))
-		      | 1 => if (appCntOf f = 1)
-		          then let
-			    val e' = doExp (e, env, kid)
-			    in
-			      if not(isInlined f)
-				then (
-				  ST.tick cntDeadRecFun;
-				  C.delete (env, body))
-				else ();
-			      e'
-			    end
-		          else reduceRest()
-		      | _ => reduceRest()
-		    (* end case *)
-		  end
-	    | B.E_Fun(fbs, e) => let
-		(* check to see if a function is dead and do the bookkeeping
-		 * if it is.
-		 *)
-		  fun deadFun (lambda as (f, _, body)) =
-			if (useCntOf f = 0)
-			  then (
-			    ST.tick cntDeadFun;
-			    C.delete (env, body);
-			    NONE)
-			  else SOME lambda
-		(* check to see if a function has been inlined or is dead *)
-		  fun deadFun' (lambda as (f, _, _)) =
-			if (isInlined f)
-			  then NONE
-			  else deadFun lambda
-		(* process a function body, but skip those that are going to
-		 * be eliminated (i.e., have zero use counts).
-		 *)
-		  fun doFB lambda = if (useCntOf(#1 lambda) = 0)
-			then lambda
-			else doFunBody (lambda, env, kid)
-		  in
-		    case List.mapPartial deadFun fbs
-		     of [] => doExp (e, env, kid)
-		      | fbs => let
-			  val e' = doExp(e, env, kid)
-			  val fbs = List.mapPartial deadFun' fbs
-			  val fbs = List.map doFB fbs
-			  in
-(** NOTE: this code needs to be modified to also support etaContraction, but
- ** I'm not sure how to handle the renaming (perhaps as a second pass?).
- ** [jhr; 2000-05-02]
- **)
-			    case List.mapPartial deadFun' fbs
-			     of [] => e'
-			      | fbs => C.mkFun(fbs, e')
-			    (* end case *)
-			  end
-		    (* end case *)
-		  end
-	    | B.E_Cont(fb, e) => let
-		  fun isDead () = if (useCntOf k = 0)
+	    | _ => raise Fail "impure rhs"
+	  (* end case *))
+
+    fun doExp (env, B.E_Pt(_, t), kid) = let
+	  val subst = subst env
+	  in
+	    case t
+	     of B.E_Let(lhs, rhs, e) =>
+		  if List.all unused lhs andalso pureExp e
+		    then (
+		      ST.tick cntLetElim;
+		      deleteExp(env, rhs);
+		      doExp (env, e))
+		    else (case doExp(env, rhs)
+		       of B.E_Pt(_, B.E_Ret ys) =>
+			| B.E_Pt(_, B.E_Let(xs, e1, e2)) =>
+			| rhs => B.mkLet(lhs, doExp(env, rhs), doExp(env, e))
+		      (* end case *))
+	    (* impure statement forms *)
+	      | B.E_Stmt([], B.E_Update(i, y, z)) =>
+		  B.mkStmt([], B.E_Update(n, subst env y, subst env z), doExp(env, e, kid))
+	      | B.E_Stmt(lhs, B.E_CCall(cf, ys)) =>
+	      | B.E_Stmt([], B.E_VPStore(n, y, z), e) =>
+		  B.mkStmt([], B.E_VPStore(n, subst env y, subst env z), doExp(env, e, kid))
+	    (* pure statement forms; note that all pure forms produce a single
+	     * result.
+	     *)
+	      | B.E_Stmt([x], rhs, e) => let
+		  val rhs = U.substRHS(env, rhs)
+		  fun tryContract () = if unused x
 			then (
-			  ST.tick cntDeadCont;
-			  C.delete (env, body);
+			  ST.tick cntUnusedStmt;
+			  U.appRHS dec rhs;
 			  true)
 			else false
 		  in
-		    if isDead()
-		      then doExp(e, env, kid)
-		      else let
-			val body' = doExp(body, env, kid)
-		      (* we record the kid as a property of k, so that we
-		       * know when it is correct to inline a throw to k
-		       * in the expression e.
-		       *)
-			val _ = setKID(k, kid)
-			val e' = doExp(e, env, kid)
-			in
-			  clrKID k;  (* clear KID property *)
-			  if isDead()
-			    then e'
-			    else C.mkCont((k, params, body'), e')
-			end
+		    if tryContract()
+		      then doExp(env, e, kid)
+		      else (case doPureRHS(x, rhs)
+			 of 
+	      | B.E_Stmt _ => raise Fail "bogus E_Stmt"
+	      | B.E_Fun([fb], e) => let
+		    fun deadFun () = (
+			  ST.tick cntDeadFun;
+			  C.delete (env, body))
+		  (* reduce the function body and its scope *)
+		    fun reduceRest () = let
+			  val e' = doExp (e, env, kid)
+			  in
+			    if (isInlined f)
+			      then e'
+			    else if (useCntOf f = 0)
+			      then (deadFun(); e')
+			      else let
+				val lambda' = doFunBody(lambda, env, kid)
+				in
+				  case etaContract lambda'
+				   of NONE => C.mkFun([lambda'], e')
+				    | (SOME g) => (
+					ST.tick cntEta;
+				      (* adjust counts of g *)
+					useCntRef g += (useCntOf f - 1);
+					appCntRef g += (appCntOf f - 1);
+				      (* replace f with g in e' *)
+					S.applyToExp(S.singleton(f, g), e'))
+				  (* end case *)
+				end
+			    end
+		    in
+		      case (useCntOf f)
+		       of 0 => (deadFun(); doExp (e, env, kid))
+			| 1 => if (appCntOf f = 1)
+		            then let
+			      val e' = doExp (e, env, kid)
+			      in
+				if not(isInlined f)
+				  then (
+				    ST.tick cntDeadRecFun;
+				    C.delete (env, body))
+				  else ();
+				e'
+			      end
+		            else reduceRest()
+			| _ => reduceRest()
+		      (* end case *)
+		    end
+	      | B.E_Fun(fbs, e) => let
+		  (* check to see if a function is dead and do the bookkeeping
+		   * if it is.
+		   *)
+		    fun deadFun (lambda as (f, _, body)) =
+			  if (useCntOf f = 0)
+			    then (
+			      ST.tick cntDeadFun;
+			      C.delete (env, body);
+			      NONE)
+			    else SOME lambda
+		  (* check to see if a function has been inlined or is dead *)
+		    fun deadFun' (lambda as (f, _, _)) =
+			  if (isInlined f)
+			    then NONE
+			    else deadFun lambda
+		  (* process a function body, but skip those that are going to
+		   * be eliminated (i.e., have zero use counts).
+		   *)
+		    fun doFB lambda = if (useCntOf(#1 lambda) = 0)
+			  then lambda
+			  else doFunBody (lambda, env, kid)
+		    in
+		      case List.mapPartial deadFun fbs
+		       of [] => doExp (e, env, kid)
+			| fbs => let
+			    val e' = doExp(e, env, kid)
+			    val fbs = List.mapPartial deadFun' fbs
+			    val fbs = List.map doFB fbs
+			    in
+  (** NOTE: this code needs to be modified to also support etaContraction, but
+   ** I'm not sure how to handle the renaming (perhaps as a second pass?).
+   ** [jhr; 2000-05-02]
+   **)
+			      case List.mapPartial deadFun' fbs
+			       of [] => e'
+				| fbs => C.mkFun(fbs, e')
+			      (* end case *)
+			    end
+		      (* end case *)
+		    end
+	      | B.E_Cont(fb, e) => let
+		    fun isDead () = if (useCntOf k = 0)
+			  then (
+			    ST.tick cntDeadCont;
+			    C.delete (env, body);
+			    true)
+			  else false
+		    in
+		      if isDead()
+			then doExp(e, env, kid)
+			else let
+			  val body' = doExp(body, env, kid)
+			(* we record the kid as a property of k, so that we
+			 * know when it is correct to inline a throw to k
+			 * in the expression e.
+			 *)
+			  val _ = setKID(k, kid)
+			  val e' = doExp(e, env, kid)
+			  in
+			    clrKID k;  (* clear KID property *)
+			    if isDead()
+			      then e'
+			      else C.mkCont((k, params, body'), e')
+			  end
+		    end
+	      | B.E_If(x, e1, e2) => let
+		  val x = U.subst subst x
+		  in
+		    case bindingOf x
+		     of B.VK_RHS(B.E_Const(Lit.Enum b)) => (
+			  ST.tick cntIfConst;
+			  dec x;
+			  if (b <> 0w0)
+			    then (C.delete e2; doExp(subst, e1, kid))
+			    else (C.delete e1; doExp(subst, e2, kid))
+		      | B.VK_RHS(B.E_Prim(P.BNot y)) => (
+			  ST.tick cntIfNot;
+			  dec x;
+			  inc y;
+			  B.mkIf(y, doExp(subst, e2, kid), doExp(subst, e1, kid)))
+		      | _ => B.mkIf(x, doExp(subst, e1, kid), doExp(subst, e2, kid))
+		    (* end case *)
 		  end
-	    | B.E_If(x, e1, e2) => let
-		val x = U.subst subst x
-		in
-		  case bindingOf x
-		   of B.VK_RHS(B.E_Const(Lit.Enum b)) => (
-			ST.tick cntIfConst;
-			dec x;
-			if (b <> 0w0)
-			  then (C.delete e2; doExp(subst, e1, kid))
-			  else (C.delete e1; doExp(subst, e2, kid))
-		    | B.VK_RHS(B.E_Prim(P.BNot y)) => (
-			ST.tick cntIfNot;
-			dec x;
-			inc y;
-			B.mkIf(y, doExp(subst, e2, kid), doExp(subst, e1, kid)))
-		    | _ => B.mkIf(x, doExp(subst, e1, kid), doExp(subst, e2, kid))
-		  (* end case *)
-		end
-	    | B.E_Case(x, cases, dflt) => let
-		val x = U.subst subst x
-		fun doCase (pat, e) = (pat, doExp(env, e, kid))
-		in
-(* FIXME: check for the case where x is bound to a known value *)
-		  B.mkCase(x,
-		    List.map doCase cases,
-		    Option.map (fn e => doExp(env, e, kid)) dflt)
-		end
-	    | B.E_Apply(f, args, rets) => let
-		val f = U.subst subst f
-		val args = U.subst' (subst, args)
-		val rets = U.subst' (subst, rets)
-		in
-		  case bindingOf f
-		   of B.VK_Lambda(B.FB{params, exh, body, ...}) =>
-		        if (useCountOf f = 1)
-			  then ( (* beta-reduce function with single call site *)
-			    markInlined f;
-			    ST.tick cntBeta;
-			    appCntRef f -= 1;
-			    useCntRef f -= 1;
-			    inlineApply {
-				env = env, kid = kid,
-				args = rets@args, params = exh@params,
-				body = body
-			      })
-			  else B,mkApply(f, args, rets)
-		    | _ => B.mkApply(f, args, rets)
-		  (* end case *)
-		end
-	    | B.E_Throw(k, args) => let
-		val k = U.subst subst k
-		val args = U.subst' (subst, args)
-		in
-		  case bindingOf f
-		   of B.VK_Lambda(B.FB{params, exh, body, ...}) =>
-		        if (useCountOf k = 1) andalso (kid = getKID k)
-			  then ( (* beta-reduce function with single call site *)
-			    markInlined k;
-			    ST.tick cntBetaCont;
-			    appCntRef k -= 1;
-			    useCntRef k -= 1;
-			    inlineApply {
-				env = env, kid = kid,
-				args = args, params = params,
-				body = body
-			      })
-			  else B.mkThrow(k, args)
-		    | _ => B.mkThrow(k, args)
-		  (* end case *)
-		end
-	    | B.E_Ret xs => B.mkRet(U.subst'(subst, xs))
-	    | B.E_HLOp(hlop, args, rets) =>
-		B.mkHLOp(hlop, U.subst'(subst, args), U.subst'(subst, rets))
-	  (* end case *))
+	      | B.E_Case(x, cases, dflt) => let
+		  val x = U.subst subst x
+		  fun doCase (pat, e) = (pat, doExp(env, e, kid))
+		  in
+  (* FIXME: check for the case where x is bound to a known value *)
+		    B.mkCase(x,
+		      List.map doCase cases,
+		      Option.map (fn e => doExp(env, e, kid)) dflt)
+		  end
+	      | B.E_Apply(f, args, rets) => let
+		  val f = U.subst subst f
+		  val args = U.subst' (subst, args)
+		  val rets = U.subst' (subst, rets)
+		  in
+		    case bindingOf f
+		     of B.VK_Lambda(B.FB{params, exh, body, ...}) =>
+		          if (useCountOf f = 1)
+			    then ( (* beta-reduce function with single call site *)
+			      markInlined f;
+			      ST.tick cntBeta;
+			      appCntRef f -= 1;
+			      useCntRef f -= 1;
+			      inlineApply {
+				  env = env, kid = kid,
+				  args = rets@args, params = exh@params,
+				  body = body
+				})
+			    else B,mkApply(f, args, rets)
+		      | _ => B.mkApply(f, args, rets)
+		    (* end case *)
+		  end
+	      | B.E_Throw(k, args) => let
+		  val k = U.subst subst k
+		  val args = U.subst' (subst, args)
+		  in
+		    case bindingOf f
+		     of B.VK_Lambda(B.FB{params, exh, body, ...}) =>
+		          if (useCountOf k = 1) andalso (kid = getKID k)
+			    then ( (* beta-reduce function with single call site *)
+			      markInlined k;
+			      ST.tick cntBetaCont;
+			      appCntRef k -= 1;
+			      useCntRef k -= 1;
+			      inlineApply {
+				  env = env, kid = kid,
+				  args = args, params = params,
+				  body = body
+				})
+			    else B.mkThrow(k, args)
+		      | _ => B.mkThrow(k, args)
+		    (* end case *)
+		  end
+	      | B.E_Ret xs => B.mkRet(U.subst'(subst, xs))
+	      | B.E_HLOp(hlop, args, rets) =>
+		  B.mkHLOp(hlop, U.subst'(subst, args), U.subst'(subst, rets))
+	    (* end case *)
+	  end
 
   (* contract the body of a function.  Prior to doing so, we null out the
    * function variable's binding so that we avoid infinite unwinding.
