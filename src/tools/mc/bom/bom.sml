@@ -96,7 +96,25 @@ structure BOM =
 	    end)
 	in
 	open V
-	end
+      (* application counts for functions *)
+	local
+	  val {clrFn, getFn, peekFn, ...} = newProp (fn _ => ref 0)
+	in
+	val appCntRef = getFn
+	val appCntRmv = clrFn
+	fun appCntOf v = (case peekFn v of NONE => 0 | (SOME ri) => !ri)
+	fun combineAppUseCnts (x as VarRep.V{useCnt=ux, ...}, y as VarRep.V{useCnt=uy, ...}) = (
+	      ux := !ux + !uy;
+	      case peekFn y
+	       of (SOME ry) => let
+		    val rx = appCntRef x
+		    in
+		      rx := !rx + !ry
+		    end
+		| NONE => ()
+	      (* end case *))
+	end (* local val ... *)
+	end (* local structure V = ... *)
       end 
        
     val trueConst = (Literal.trueLit, BOMTy.boolTy)

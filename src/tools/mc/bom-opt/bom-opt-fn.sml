@@ -10,16 +10,25 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 
   end = struct
 
+    fun contract module = let
+	  val _ = Census.census module;
+	  val module = Contract.contract module
+	  in
+	    print "******************** after contract ********************\n";
+	    PrintBOM.print module;
+	    module
+	  end
+
     fun expandAll module = (case ExpandHLOps.expand module
 	   of SOME module => (
 		print "******************** after expand ********************\n";
 		PrintBOM.print module;
-		expandAll module)
+		contract(expandAll module))
 	    | NONE => module
 	  (* end case *))
 
     fun optimize module = let
-	  val _ = Census.census module
+	  val module = contract module
 	  val module = expandAll module
 	  val module = CaseSimplify.transform module
 	  in

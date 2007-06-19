@@ -24,7 +24,12 @@ structure Census : sig
     fun inc x = B.Var.addToCount(x, 1)
 
   (* record an application use *)
-    fun appUse x = inc x
+    fun appUse x = let
+	  val appCnt = B.Var.appCntRef x
+	  in
+	    inc x;
+	    appCnt := !appCnt + 1
+	  end
 
     fun doE (B.E_Pt(_, t)) = (case t
 	   of B.E_Let(lhs, e1, e2) => (List.app clr lhs; doE e1; doE e2)
@@ -47,7 +52,8 @@ structure Census : sig
 	  (* end case *))
 
     and clrFB (B.FB{f, params, exh, ...}) = (
-	  clr f; List.app clr params; List.app clr exh)
+	  clr f; B.Var.appCntRmv f;
+	  List.app clr params; List.app clr exh)
 
     and doFB (B.FB{body, ...}) = doE body
 
@@ -62,7 +68,12 @@ structure Census : sig
     fun delete (env, e) = let
 	  val subst = U.subst env
 	  fun dec x = B.Var.addToCount(x, ~1)
-	  fun decApp f = dec f (* FIXME *)
+	  fun decApp f = let
+		val appCnt = B.Var.appCntRef f
+		in
+		  dec f;
+		  appCnt := !appCnt - 1
+		end
 	  fun dec' xs = List.app dec xs
 	  fun del (B.E_Pt(_, t)) = (case t
 		 of B.E_Let(_, e1, e2) => (del e2; del e2)

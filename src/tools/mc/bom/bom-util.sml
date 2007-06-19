@@ -22,6 +22,9 @@ structure BOMUtil : sig
   (* apply a substitution to a RHS *)
     val substRHS : (subst * BOM.rhs) -> BOM.rhs
 
+  (* apply a substitution to an expression *)
+    val substExp : (subst * BOM.exp) -> BOM.exp
+
   (* apply a function to the variables of a RHS *)
     val appRHS : (BOM.var -> unit) -> BOM.rhs -> unit
 
@@ -84,6 +87,32 @@ structure BOMUtil : sig
 	    | B.E_VPStore(n, x, y) => B.E_VPStore(n, subst s x, subst s y)
 	  (* end case *))
 
+  (* apply a substitution to an expression *)
+    fun substExp (s, e) = let
+	  fun substE (B.E_Pt(_, e)) = (case e
+		 of B.E_Let(xs, e1, e2) => B.mkLet(xs, substE e1, substE e2)
+		  | B.E_Stmt(xs, rhs, e) => B.mkStmt(xs, substRHS (s, rhs), substE e)
+		  | B.E_Fun(fbs, e) => B.mkFun(List.map substFB fbs, substE e)
+		  | B.E_Cont(fb, e) => B.mkCont(substFB fb, substE e)
+		  | B.E_If(x, e1, e2) => B.mkIf(subst s x, substE e1, substE e2)
+		  | B.E_Case(x, cases, dflt) =>
+		      B.mkCase(subst s x,
+			List.map (fn (p, e) => (p, substE e)) cases,
+			Option.map substE dflt)
+		  | B.E_Apply(f, args, rets) =>
+		      B.mkApply(subst s f, subst'(s, args), subst'(s, rets))
+		  | B.E_Throw(k, args) =>
+		      B.mkThrow(subst s k, subst'(s, args))
+		  | B.E_Ret xs => B.mkRet(subst'(s, xs))
+		  | B.E_HLOp(hlop, args, rets) =>
+		      B.mkHLOp(hlop, subst'(s, args), subst'(s, rets))
+		(* end case *))
+	  and substFB (B.FB{f, params, exh, body}) =
+		B.FB{f=f, params=params, exh=exh, body=substE body}
+	  in
+	    substE e
+	  end
+
   (* apply a function to the variables of a RHS *)
     fun appRHS f rhs = List.app f (varsOfRHS rhs)
 
@@ -100,7 +129,7 @@ structure BOMUtil : sig
 		end
 	    | fresh ([], s, xs') = (s, List.rev xs')
 	  in
-	   fresh (xs, s, [])
+	    fresh (xs, s, [])
 	  end
 
   (* copy a lambda term; this is done as a staged operation, since we must

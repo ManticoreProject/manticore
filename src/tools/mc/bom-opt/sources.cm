@@ -25,5 +25,9 @@ is
   bom-opt-fn.sml
   case-simplify.sml
   census.sml
+  contract.sml
   expand-hlops.sml
+  let-float.sml
   literal-case-fn.sml
+  prim-contract.sml
+
