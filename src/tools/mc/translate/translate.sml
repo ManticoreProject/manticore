@@ -99,12 +99,22 @@ structure Translate : sig
 		    B.mkHLOp(ManticoreOps.spawnOp, [thd], [])))
 		end
 	    | AST.ConstExp(AST.DConst dc) => raise Fail "DConst"
-	    | AST.ConstExp(AST.LConst(lit, ty)) => let
-		val ty' = trTy ty
-		val t = BV.new("_lit", ty')
-		in
-		  BIND([t], B.E_Const(lit, ty'))
-		end
+	    | AST.ConstExp(AST.LConst(lit, ty)) => (case trTy ty
+		 of ty' as BTy.T_Tuple(false, [rty as BTy.T_Raw _]) => let
+		      val t1 = BV.new("_lit", rty)
+		      val t2 = BV.new("_wlit", ty')
+		      in
+			EXP(B.mkStmts([
+			    ([t1], B.E_Const(lit, rty)),
+			    ([t2], B.wrap t1)
+			  ], B.mkRet [t2]))
+		      end
+		  | ty' => let
+		      val t = BV.new("_lit", ty')
+		      in
+			BIND([t], B.E_Const(lit, ty'))
+		      end
+		(* end case *))
 	    | AST.VarExp(x, _) => EXP(trVtoV(env, x, fn x' => B.mkRet[x']))
 	    | AST.SeqExp _ => let
 	      (* note: the typechecker puts sequences in right-recursive form *)
