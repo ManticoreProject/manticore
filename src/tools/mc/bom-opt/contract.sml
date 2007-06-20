@@ -19,9 +19,21 @@ structure Contract : sig
     structure B = BOM
     structure BV = B.Var
     structure BTy = BOMTy
+    structure Lit = Literal
     structure C = Census
     structure U = BOMUtil
     structure ST = Stats
+
+(* +DEBUG *)
+val v2s = BV.toString
+fun vl2s [] = "()"
+  | vl2s [x] = v2s x
+  | vl2s (x::xs) = let
+      fun f (x, l) = ", " :: v2s x :: l
+      in
+	concat("(" :: v2s x :: List.foldr f [")"] xs)
+      end
+(* -DEBUG *)
 
   (********** Counters for statistics **********)
     val cntUnusedStmt		= ST.newCounter "contract:unused-stmt"
@@ -39,7 +51,7 @@ structure Contract : sig
     val cntIfNot		= ST.newCounter "contract:if-not"
     val cntIfConst		= ST.newCounter "contract:if-const"
     val cntIfReduce		= ST.newCounter "contract:if-reduce"
-    val cntSwitchConst		= ST.newCounter "contract:switch-const"
+    val cntCaseConst		= ST.newCounter "contract:case-const"
     val cntBeta			= ST.newCounter "contract:beta"
     val cntBetaCont		= ST.newCounter "contract:beta-cont"
     val firstCounter		= cntUnusedStmt
@@ -158,7 +170,7 @@ structure Contract : sig
 		      val z = List.nth(ys, i)
 		      in
 			ST.tick cntSelectConst;
-			dec' ys;
+			dec y;
 			combineAppUseCnts(z, x);
 			OK([], U.extend(env, x, z))
 		      end
@@ -170,14 +182,14 @@ structure Contract : sig
 
     fun doExp (env, B.E_Pt(_, t), kid) = (case t
 	   of B.E_Let(lhs, rhs, e) =>
-		if List.all unused lhs andalso pureExp e
+		if List.all unused lhs andalso pureExp rhs
 		  then (
 		    ST.tick cntLetElim;
 		    C.delete (env, rhs);
 		    doExp (env, e, kid))
 		  else (case doExp(env, rhs, kid+1)
 		     of B.E_Pt(_, B.E_Ret ys) => let
-			(* "let xs = ys in e" ==> e[ys/xs] *)
+			(* "let lhs = ys in e" ==> e[ys/lhs] *)
 			  fun bind (x, y, env) = (
 				dec y;
 				BV.combineAppUseCnts(y, x);
@@ -188,7 +200,7 @@ structure Contract : sig
 			    doExp (env, e, kid)
 			  end
 		      | B.E_Pt(_, B.E_Let(xs, e1, e2)) => (
-			(* let lhs = (let xs = e1 in e2) in e ==> let xs = e1 let ls = e2 in e *)
+			(* let lhs = (let xs = e1 in e2) in e ==> let xs = e1 let lhs = e2 in e *)
 			  ST.tick cntLetFloat;
 			  setBindings (lhs, B.VK_Let e2);
 			  B.mkLet(xs, e1, B.mkLet(lhs, e2, doExp (env, e, kid))))
@@ -219,14 +231,13 @@ structure Contract : sig
 		      then doExp(env, e, kid)
 		      else let
 			val res = doPureRHS(env, x, rhs)
-			val e = doExp(env, e, kid)
 			in
 			  case res
-			   of OK([], env) => e
+			   of OK([], env) => doExp(env, e, kid)
 			    | OK(binds, env) => if tryContract()
 				then e
-				else B.mkStmts(binds, e)
-			    | FAIL => B.mkStmt([x], rhs, e)
+				else B.mkStmts(binds, doExp(env, e, kid))
+			    | FAIL => B.mkStmt([x], rhs, doExp(env, e, kid))
 			  (* end case *)
 			end
 		    else B.mkStmt([x], rhs, doExp(env, e, kid))
@@ -265,8 +276,6 @@ structure Contract : sig
 			      end
 			  end
 		  in
-print(concat["Fun ", BV.toString f, ", useCnt = ", Int.toString(useCntOf f),
-", appCnt = ", Int.toString(appCntOf f), "\n"]);
 		    case (useCntOf f)
 		     of 0 => (deadFun(); doExp (env, e, kid))
 		      | 1 => if (appCntOf f = 1)
@@ -352,9 +361,32 @@ print(concat["Fun ", BV.toString f, ", useCnt = ", Int.toString(useCntOf f),
 		  end
 	    | B.E_If(x, e1, e2) => let
 		val x = U.subst env x
+		fun doIf (cond, trueE, falseE) = let
+		    (* check for expressions of the form
+		     *   if x then let a = true in a else let b = false in b
+		     *)
+		      fun bval (B.E_Pt(_, B.E_Stmt([a], B.E_Const(Lit.Enum av, _), B.E_Pt(_, B.E_Ret[a'])))) =
+			    SOME(a, av)
+			| bval _ = NONE
+		      val trueE = doExp(env, trueE, kid)
+		      val falseE = doExp(env, falseE, kid)
+		      in
+			case (bval trueE, bval falseE)
+			 of (SOME(a, 0w1), SOME(b, 0w0)) => (
+			      ST.tick cntIfReduce;
+			      B.mkRet[cond])
+			  | (SOME(a, 0w0), SOME(b, 0w1)) => (
+			      ST.tick cntIfReduce;
+			      B.mkStmt([a], B.E_Prim(Prim.BNot cond), B.mkRet[a]))
+			  | (SOME(a, av), SOME(b, _)) => (
+			      ST.tick cntIfReduce;
+			      B.mkStmt([a], B.E_Const(Lit.Enum av, BTy.boolTy), B.mkRet[a]))
+			  | _ => B.mkIf(cond, trueE, falseE)
+			(* end case *)
+		      end
 		in
 		  case bindingOf x
-		   of B.VK_RHS(B.E_Const(Literal.Enum b, _)) => (
+		   of B.VK_RHS(B.E_Const(Lit.Enum b, _)) => (
 			ST.tick cntIfConst;
 			dec x;
 			if (b <> 0w0)
@@ -457,19 +489,17 @@ print(concat["Fun ", BV.toString f, ", useCnt = ", Int.toString(useCntOf f),
 		in
 (*DEBUG**prl["contract: ", Int.toString(sum - prevSum), " ticks\n"];*)
 (*DEBUG
-if (prevSum <> sum) then dumpModule("one iteration of contract", B.MODULE{
-      name = name, modules = modules,
-      imports=imports, statics=statics, exports = exports,
-      body = body
-    })
+if (prevSum <> sum) then (
+    print "******************** after one iteration of contract ********************\n";
+    PrintBOM.print(B.MODULE{name=name, externs=externs, body=body}))
   else ();
 DEBUG*)
 		  if (prevSum <> sum)
 		    then loop (body, sum)
 		    else body
 		end
-val _ = ST.verbose := true
-	  val body = loop (LetFloat.denestLambda(body, true), ticks())
+	  val body = LetFloat.denestLambda(body, true)
+	  val body = loop (body, ticks())
 	(* remove unused externs *)
 	  val externs = List.filter (fn cf => not(unused(CFunctions.varOf cf))) externs
 	  in
