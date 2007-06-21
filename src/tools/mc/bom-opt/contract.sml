@@ -44,6 +44,7 @@ fun vl2s [] = "()"
     val cntIdCast		= ST.newCounter "contract:identity-cast"
     val cntUnusedSelect		= ST.newCounter "contract:unused-select"
     val cntSelectConst		= ST.newCounter "contract:select-const"
+    val cntReallocElim		= ST.newCounter "contract:realloc-elim"
     val cntDeadFun		= ST.newCounter "contract:dead-fun"
     val cntDeadRecFun		= ST.newCounter "contract:dead-rec-fun"
     val cntDeadCont		= ST.newCounter "contract:dead-cont"
@@ -173,6 +174,26 @@ fun vl2s [] = "()"
 			dec y;
 			combineAppUseCnts(z, x);
 			OK([], U.extend(env, x, z))
+		      end
+		  | _ => FAIL
+		(* end case *))
+	    | B.E_Alloc(BTy.T_Tuple(false, tys), z::zs) => (case bindingOf z
+		 of B.VK_RHS(B.E_Select(0, tpl)) => let
+		      fun chk (_, []) = true
+			| chk (i, z::zs) = (case bindingOf z
+			     of B.VK_RHS(B.E_Select(j, tpl')) =>
+				  (i = j) andalso BV.same(tpl, tpl') andalso chk(i+1, zs)
+			      | _ => false
+			    (* end case *))
+		      in
+			if (List.length tys = List.length zs+1) andalso chk(1, zs)
+			  then (
+			  (* alloc(#0 tpl, #1 tpl, ..., #n tpl) ==> tpl *)
+			    ST.tick cntReallocElim;
+			    dec' (z::zs);
+			    useCntRef tpl += useCntOf x;
+			    OK([], U.extend(env, x, tpl)))
+			  else FAIL
 		      end
 		  | _ => FAIL
 		(* end case *))
