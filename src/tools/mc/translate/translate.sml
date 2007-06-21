@@ -267,7 +267,7 @@ structure Translate : sig
 
   (* translate a list of expressions to a BOM let binding *)
     and trExpsToVs (env, exps, cxt : B.var list -> B.exp) : B.exp = let
-	  fun tr ([], xs) = cxt xs
+	  fun tr ([], xs) = cxt(List.rev xs)
 	    | tr (exp::exps, xs) =
 		trExpToV (env, exp, fn x => tr(exps, x::xs))
 	  in
