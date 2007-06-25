@@ -50,7 +50,7 @@ $(ASM_OBJS): %.o : %.S asm-offsets.h
 	$(CC) -c @CC_MODE_FLAG@ -I. -DNOT_C_SOURCE $(CPPFLAGS) -o $@ $<
 
 asm-offsets.h:		gen-asm-offsets
-	gen-asm-offsets > asm-offsets.h
+	./gen-asm-offsets > asm-offsets.h
 
 gen-asm-offsets:	gen-asm-offsets.c manticore-rt.h vproc.h request-codes.h vproc-offsets-ins.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o gen-asm-offsets $< ../config/crc.c
