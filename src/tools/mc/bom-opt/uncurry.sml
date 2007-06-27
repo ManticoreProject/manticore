@@ -44,7 +44,7 @@ structure Uncurry : sig
 				    (* application (the other applications cannot raise exceptions) *)
 	  }
 
-    fun analyse (_, _, B.FB{body, ...}) = let
+    fun analyse (B.FB{body, ...}) = let
 	(* this flag is set to true if there are opportunities for the uncurrying transformation *)
 	  val optPossible = ref false
 	(* partial map from functions to currying info *)
@@ -65,10 +65,10 @@ structure Uncurry : sig
 	 * where f does not occur free in e.  We check the latter property
 	 * by testing the use count of f (which will be > 1 when f is free in e).
 	 *)
-	  fun chkFB (f0, _, body) = let
+	  fun chkFB (B.FB{f=f0, body, ...}) = let
 		fun arity (n, e as B.E_Pt(_, t)) = (case t
 		       of B.E_Fun([B.FB{f, body, ...}], B.E_Pt(_, B.E_Ret[f'])) =>
-			    if BV.same(f, f') andalso (BV.useCntOf f = 1)
+			    if BV.same(f, f') andalso (BV.useCount f = 1)
 			      then arity(n+1, body)
 			      else done (n, body)
 			| _ => done (n, e)
@@ -88,7 +88,7 @@ structure Uncurry : sig
 			| SOME(DEF n) => recordPartial(g, n, f, [xs], ys)
 			| SOME(PARTIAL{arity=0, ...}) => raise Fail "bogus application"
 			| SOME(PARTIAL{arity, f, args, ...}) =>
-			    recordPartial(g, arity, f, xs::args, exh=ys)
+			    recordPartial(g, arity, f, xs::args, ys)
 		      (* end case *);
 		      chkExp e)
 		  | B.E_Let(lhs, rhs, e) => (chkExp rhs; chkExp e)
@@ -112,7 +112,7 @@ structure Uncurry : sig
 	    (!optPossible, findCurried)
 	  end
 
-    fun xform (B.MODULE{name, externs, body}) = let
+    fun xform (module as B.MODULE{name, externs, body}) = let
 	  val (optPossible, findCurried) = analyse body
 	  val uncurried = VTbl.mkTable (16, Fail "UncurriedFns")
 	(* lookup the curry-arity of the function *)
@@ -132,7 +132,7 @@ structure Uncurry : sig
 (*DEBUG*)handle ex => (print(concat["mkApply(", BV.toString f, ", _, _)\n"]); raise ex)
 	  fun xformFB (B.FB{f, params, exh, body}, fbs) = let
 		val arity = arityOf f
-		fun copyParam x = let val x' as B.V{useCnt, ...} = BV.copyVar x
+		fun copyParam x = let val x' as VarRep.V{useCnt, ...} = BV.copy x
 		      in
 			useCnt := 1;
 			x'
@@ -141,14 +141,15 @@ structure Uncurry : sig
 		  if arity > 1
 		    then let
 		      fun flatten (g, 0, allParams, newParams, body) = let
-			    val bty = BTy.T_FunPtr{
-				    dom = List.map BV.typeOf allParams,
-				    rng = BTy.rangeOf(BV.typeOf g)
-				  }
+			    val bty = BTy.T_Fun(
+				    List.map BV.typeOf allParams,
+				    ??,
+				    BTy.returnTy(BV.typeOf g)
+				  )
 			    val f' = BV.aliasVar(f, SOME "_uncurried", bty)
 			    in
 			      C.incAppCnt f';
-			      (B.mkApply(f', newParams), C.mkLambda(f', allParams, body))
+			      (B.mkApply(f', newParams), B.mkLambda(f', allParams, body))
 			    end
 			| flatten (_, n, allParams, newParams, fb) = let
 			    val B.E_Pt(_, B.E_Fun([(g, params, body)], e)) = fb
@@ -159,30 +160,30 @@ structure Uncurry : sig
 				  newParams @ params',
 				  body)
 			    in
-			      (C.mkFun([(g, params', body')], xformExp e), newFB)
+			      (B.mkFun([(g, params', body')], xformExp e), newFB)
 			    end
 		      val params' = List.map copyParam params
 		      val (curriedFun, uncurriedFB) =
 			    flatten (f, arity-1, params, params', body)
 		      in
 			VTbl.insert uncurried (f, #1 uncurriedFB);
-			C.mkLambda(f, params', curriedFun) :: uncurriedFB :: fbs
+			B.mkLambda(f, params', curriedFun) :: uncurriedFB :: fbs
 		      end
-		    else C.mkLambda(f, params, xformExp body) :: fbs
+		    else B.mkLambda(f, params, xformExp body) :: fbs
 		end
 	  and xformFBs fbs = List.foldr xformFB [] fbs
 	  and xformExp (e as B.E_Pt(_, t)) = (case t
-		 of B.E_Let([g], rhs as B.E_Pt(_, B.E_Apply(f, args)), e) => (
+		 of B.E_Let([g], rhs as B.E_Pt(_, B.E_Apply(f, args, rets)), e) => (
 		      case findCurried g
-		       of SOME(PARTIAL(0, h, allArgs)) => (
+		       of SOME(PARTIAL{arity=0, f=h, args=allArgs, ...}) => (
 			    ST.tick cntReplace;
 			    C.decAppCnt f;
 			    List.app C.decUseCnt args;
-			    C.mkLet([g], mkApply(h, allArgs), xformExp e))
+			    B.mkLet([g], mkApply(h, allArgs), xformExp e))
 			| SOME _ => let
 			    val e = xformExp e
 			    in
-			      if BV.useCntOf g > 0
+			      if BV.useCount g > 0
 				then B.mkLet([g], rhs, e)
 				else (
 				  ST.tick cntElim;
@@ -193,14 +194,14 @@ structure Uncurry : sig
 			    end
 			| NONE => B.mkLet([g], rhs, xformExp e)
 		      (* end case *))
-		  | B.E_Let(lhs, rhs, e) => C.mkLet(lhs, xformExp rhs, xformExp e)
-		  | B.E_Stmt(lhs, rhs, e) => C.mkStmt(lhs, rhs, xformExp e)
+		  | B.E_Let(lhs, rhs, e) => B.mkLet(lhs, xformExp rhs, xformExp e)
+		  | B.E_Stmt(lhs, rhs, e) => B.mkStmt(lhs, rhs, xformExp e)
 		  | B.E_Fun(fbs, e) =>
 		    (* NOTE: xformFBs takes care of census info for the fbs *)
 		      B.mkFun(xformFBs fbs, xformExp e)
 		  | B.E_Cont(B.FB{f=k, params, exh, body}, e) =>
-		      C.mkCont(
-			B.FB{f=k, params=params, exh=exh, body=xformExp e1},
+		      B.mkCont(
+			B.FB{f=k, params=params, exh=exh, body=xformExp e},
 			xformExp e)
 		  | B.E_If(x, e1, e2) =>
 		      B.mkIf(x, xformExp e1, xformExp e2)
@@ -209,7 +210,7 @@ structure Uncurry : sig
 			List.map (fn (l, e) => (l, xformExp e)) cases,
 			Option.map xformExp dflt)
 		  | B.E_Apply(f, args, rets) => (case findCurried f
-		       of SOME(PARTIAL(1, h, allArgs, rets)) => (
+		       of SOME(PARTIAL{arity=1, f=h, args=allArgs, ...}) => (
 			    ST.tick cntReplace;
 			    C.decAppCnt f;
 			    List.app C.decUseCnt args; (* will get inc by mkApply *)

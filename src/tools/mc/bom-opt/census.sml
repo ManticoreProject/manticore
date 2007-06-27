@@ -15,6 +15,12 @@ structure Census : sig
    *)
     val delete : (BOMUtil.subst * BOM.exp) -> unit
 
+  (* update variable counts *)
+    val incUseCnt : BOM.var -> unit	(* increment use count *)
+    val incAppCnt : BOM.var -> unit	(* increment both use and application counts *)
+    val decUseCnt : BOM.var -> unit	(* decrement use count *)
+    val decAppCnt : BOM.var -> unit	(* decrement both use and application counts *)
+
   end = struct
 
     structure B = BOM
@@ -93,6 +99,16 @@ structure Census : sig
 	  and delFB (B.FB{body, ...}) = del body
 	  in
 	    del e
+	  end
+
+    val incUseCnt = inc
+    val incAppCnt = appUse
+    fun decUseCnt x = B.Var.addToCount(x, ~1)
+    fun decAppCnt x = let
+	  val appCnt = B.Var.appCntRef x
+	  in
+	    inc x;
+	    appCnt := !appCnt - 1
 	  end
 
   end
