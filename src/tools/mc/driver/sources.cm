@@ -16,6 +16,8 @@ is
   $smlnj-tdp/back-trace.cm
   $smlnj-tdp/coverage.cm
 
+  $/controls-lib.cm
+
   ../ast-opt/sources.cm
   ../bom/sources.cm
   ../bom-opt/sources.cm

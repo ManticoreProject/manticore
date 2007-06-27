@@ -14,6 +14,7 @@ Library
   signature VAR_PARAMS
   signature VAR
 
+  structure BasicControl
   structure CFunctions
   structure ConstArith
   structure FloatLit
@@ -33,8 +34,10 @@ is
   $/basis.cm
 
   $/smlnj-lib.cm
+  $/controls-lib.cm
   $/pp-lib.cm
 
+  basic-control.sml
   c-functions.sml
   const-arith.sml
   float-lit.sml

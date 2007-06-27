@@ -33,6 +33,9 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	val hash = HashString.hashString
 	fun same (s1 : string , s2) = s1 = s2 )
 
+  (* Bogus binding to force inclusion of MLRisc controls *)
+  val debug : bool Controls.control = CodegenControls.debug
+
   val ty = MTy.wordTy
 
   fun fail s = raise Fail s

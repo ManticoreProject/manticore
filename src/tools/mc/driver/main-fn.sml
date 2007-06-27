@@ -100,9 +100,110 @@ functor MainFn (
 	    (* end case *)
 	  end)
 
-    fun main (cmd, [file]) = (doFile file; OS.Process.success)
-      | main (cmd, _) = (
-	  TextIO.output(TextIO.stdErr, concat["usage: ", cmd, " file\n"]);
-	  OS.Process.failure)
+    fun err s = TextIO.output (TextIO.stdErr, s)
+    fun err1 c =  TextIO.output1 (TextIO.stdErr, c)
+    fun errnl s = (err s; err1 #"\n")
+
+    fun quit b = OS.Process.exit (if b then OS.Process.success else OS.Process.failure)
+
+    fun bad s =
+       (err s 
+        ; err "!* try `-h' or `-h<level>' for help\n"
+        ; quit false)
+
+    fun version () =  (errnl Version.banner
+                       ; quit true)
+
+    fun message (level, b) =
+       (err "usage: mc [options] file\n\
+            \\n\
+            \  file:\n\
+            \    <file>.pml\n\
+            \    <file>.bom\n\
+            \\n\
+            \  options:\n\
+            \    -C<control>=<v>  (set named control)\n\
+            \    -H               (produce complete help listing)\n\
+            \    -h               (produce minimal help listing)\n\
+            \    -h<level>        (help listing with obscurity limit)\n\
+            \    -version         (show version)\n"
+        ; if level = NONE
+             then  ()
+          else (err "\n"
+                ; BasicControl.show_all err
+                                        (Controls.name o #ctl,
+                                         fn ci =>
+                                         concat ["(", 
+                                                 #help (Controls.info (#ctl ci)), 
+                                                 "; ",
+                                                 Controls.get (#ctl ci),
+                                                 ")"])
+                                        (valOf level))
+        ; quit b)
+    fun usage () = message (NONE, false)
+    fun help level = message (level, true)
+
+    fun processControl arg =
+       let
+          val spec = Substring.extract (arg, 2, NONE)
+          val (name, value) =
+             Substring.splitl (fn c => c <> #"=") spec
+          val name = Substring.string name
+          val names = String.fields (fn c => c = #".") name
+          val value = if Substring.size value > 0
+                         then Substring.string (Substring.slice (value, 1, NONE))
+                      else ""
+       in
+          if name = "" orelse value = ""
+             then bad (concat ["!* ill-formed -C option: `",arg,"'\n"])
+          else case ControlRegistry.control BasicControl.topregistry names of
+                  NONE => bad (concat ["!* unknown control: ",name,"\n"])
+                | SOME sctl =>
+                     (Controls.set (sctl, value)
+                      handle Controls.ValueSyntax vse =>
+                         bad (concat ["!* unable to parse value `",
+                                      value,"' for ",
+                                      name," : ",
+                                      #tyName vse,"\n"]))
+       end
+
+    fun processArgs args =
+       (case args of
+           arg :: args =>
+              if String.size arg > 0
+                 andalso String.sub (arg, 0) = #"-"
+                 then processOption (arg, args)
+              else processFile (arg, args)
+         | _ => usage ())
+    and processFile (arg, args) =
+       (case (arg, args) of
+           (file, []) => (doFile file; quit true)
+         | _ => usage ())
+    and processOption (arg, args) =
+       let
+          fun badopt () = 
+             bad (concat ["!* ill-formed option: `",arg,"'\n"])
+       in
+          if String.isPrefix "-C" arg
+             then (processControl arg
+                   ; processArgs args)
+          else if String.isPrefix "-h" arg
+             then let
+                     val level = String.extract (arg, 2, NONE)
+                  in
+                     if level = "" 
+                        then help NONE
+                     else if CharVector.all (fn c => #"0" <= c andalso c <= #"9") level
+                        then help (SOME (Int.fromString level))
+                     else badopt ()
+                  end
+          else if arg = "-H"
+             then help (SOME NONE)
+          else if arg = "-version"
+             then version ()
+          else badopt ()
+       end
+
+    fun main (_, args) = processArgs args
  
   end
