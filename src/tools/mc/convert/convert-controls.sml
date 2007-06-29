@@ -3,18 +3,14 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu/)
  * All rights reserved.
  *
- * Codegen controls.
+ * BOMOpt controls.
  *)
 
-structure CodegenControls =
+structure ConvertControls =
 struct
-   val _ = BasicControl.nest (MLRiscControl.prefix,
-                              MLRiscControl.registry,
-                              MLRiscControl.priority)
-
-   val registry = ControlRegistry.new {help = "Codegen"}
+   val registry = ControlRegistry.new {help = "Convert"}
    val priority = []
-   val _ = BasicControl.nest ("codegen", registry, priority)
+   val _ = BasicControl.nest ("Convert", registry, priority)
 
    val debug =
       Controls.genControl

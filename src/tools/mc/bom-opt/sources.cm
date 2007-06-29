@@ -15,6 +15,7 @@ is
   $/basis.cm
 
   $/smlnj-lib.cm
+  $/controls-lib.cm
   $/pp-lib.cm
 
   ../common/sources.cm
@@ -22,6 +23,7 @@ is
   ../bom/sources.cm
   ../hlop/sources.cm
 
+  bom-opt-controls.sml
   bom-opt-fn.sml
   case-simplify.sml
   census.sml

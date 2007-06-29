@@ -11,7 +11,9 @@ Library
 is
 
   $/basis.cm
+
   $/smlnj-lib.cm
+  $/controls-lib.cm
 
   ../common/sources.cm
   ../prim/sources.cm
@@ -21,4 +23,5 @@ is
 
   std-env.sml
   translate.sml
+  translate-controls.sml
   translate-types.sml

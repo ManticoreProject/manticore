@@ -12,6 +12,7 @@ Library
   structure Basis
   structure DataCon
   structure FrontEnd
+  structure PrintAST
   structure TyCon
   structure Types
   structure TypeUtil
@@ -33,6 +34,7 @@ is
   front-end.sml
   meta-var.sml
   overload.sml
+  print-ast.sml
   typechecker.sml
   ty-con.sml
   ty-var.sml

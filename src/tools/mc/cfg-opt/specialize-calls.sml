@@ -71,4 +71,12 @@ structure SpecializeCalls : sig
 
     fun transform m = m
 
+    val transform =
+       BasicControl.mkPassSimple
+       {output = PrintCFG.output {types=true},
+        ext = "cfg",
+        passName = "specializeCalls",
+        pass = transform,
+        registry = CFGOptControls.registry}
+
   end

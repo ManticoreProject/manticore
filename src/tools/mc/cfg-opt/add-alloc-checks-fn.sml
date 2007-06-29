@@ -37,18 +37,21 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 	(* return the outgoing targets of a function *)
 	  fun toNode (CFG.FUNC{lab, exit, ...}) =
 		(lab, CFG.Label.Set.listItems(CFA.labelsOf exit))
-(* +DEBUG *)
-val toNode = fn f => let
-	val nd as (src, out) = toNode f
-	val src = CFG.Label.toString src
-	val out = String.concatWith "," (List.map CFG.Label.toString out)
-	in
-	  print(concat["  ", src, " -> [", out, "]\n"]);
-	  nd
-	end
-(* -DEBUG *)
+          val toNode = fn f =>
+             if Controls.get CFGOptControls.debug
+                then let
+                        val nd as (src, out) = toNode f
+                        val src = CFG.Label.toString src
+                        val out = String.concatWith "," (List.map CFG.Label.toString out)
+                     in
+                        print(concat["  ", src, " -> [", out, "]\n"]);
+                        nd
+                     end
+             else toNode f
 	  in
-(*DEBUG*)print "makeGraph\n";
+            if Controls.get CFGOptControls.debug
+               then print "makeGraph\n"
+            else ();
 	    List.map toNode code
 	  end
 
@@ -151,5 +154,13 @@ val toNode = fn f => let
 	    Census.census module;
 	    module
 	  end
+
+    val transform =
+       BasicControl.mkPassSimple
+       {output = PrintCFG.output {types=true},
+        ext = "cfg",
+        passName = "addAllocChecks",
+        pass = transform,
+        registry = CFGOptControls.registry}
 
   end

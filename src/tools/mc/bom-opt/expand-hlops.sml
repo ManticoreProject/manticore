@@ -11,6 +11,8 @@ structure ExpandHLOps : sig
    *)
     val expand : BOM.module -> BOM.module option
 
+    val expandAll : BOM.module -> BOM.module
+
   end = struct
 
     structure B = BOM
@@ -94,5 +96,29 @@ structure ExpandHLOps : sig
 	      then SOME(B.mkModule(name, getExterns(), body))
 	      else NONE
 	  end
+
+    val expand =
+       BasicControl.mkPass
+       {preOutput = PrintBOM.output,
+        preExt = "bom",
+        postOutput = fn (out, NONE) => () 
+                      | (out, SOME p) => PrintBOM.output (out, p),
+        postExt = "bom",
+        passName = "expandHLOps",
+        pass = expand,
+        registry = BOMOptControls.registry}
+
+    fun expandAll module =
+       (case expand module of
+           SOME module => expandAll (Contract.contract module)
+         | NONE => module)
+
+    val expandAll =
+       BasicControl.mkPassSimple
+       {output = PrintBOM.output,
+        ext = "bom",
+        passName = "expandAllHLOps",
+        pass = expandAll,
+        registry = BOMOptControls.registry}
 
   end

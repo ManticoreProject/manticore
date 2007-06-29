@@ -13,7 +13,23 @@ sig
    (* nest a tier-2 registery within the top-level registery *)
    val nest : string * ControlRegistry.registry * Controls.priority -> unit
 
-   val debugPriority : int
+   (* *)
+   val mkPass : {preOutput: TextIO.outstream * 'pre -> unit,
+                 preExt: string,
+                 postOutput: TextIO.outstream * 'post -> unit,
+                 postExt: string,
+                 passName: string,
+                 pass: 'pre -> 'post,
+                 registry: ControlRegistry.registry} -> 
+                'pre -> 'post
+   val mkPassSimple : {output: TextIO.outstream * 'a -> unit,
+                       ext: string,
+                       passName: string,
+                       pass: 'a -> 'a,
+                       registry: ControlRegistry.registry} -> 
+                      'a -> 'a
+
+   val debugObscurity : int
    (* *)
    val show_all : (string -> unit) -> 
                   (({ctl: string Controls.control,
@@ -32,7 +48,69 @@ struct
                                         obscurity = 0,
                                         reg = reg}
 
-   val debugPriority = 2
+   val debugObscurity = 2
+
+
+   fun ('pre, 'post) mkPass {preOutput: TextIO.outstream * 'pre -> unit,
+                             preExt: string,
+                             postOutput: TextIO.outstream * 'post -> unit,
+                             postExt: string,
+                             passName: string,
+                             pass: 'pre -> 'post,
+                             registry: ControlRegistry.registry} : 'pre -> 'post =
+      let
+         val keepPassCtl =
+            Controls.genControl
+            {name = "keep-" ^ passName,
+             pri = [5, 0],
+             obscurity = 1,
+             help = "keep " ^  passName ^ " passes",
+             default = false}
+         val _ = 
+            ControlRegistry.register
+            registry
+            {ctl = Controls.stringControl ControlUtil.Cvt.bool keepPassCtl,
+             envName = NONE}
+         val countRef = ref 0
+      in
+         fn pre =>
+         let
+            val count = !countRef
+            val () = countRef := count + 1
+            val post =
+               if Controls.get keepPassCtl
+                  then let
+                          val outPre = 
+                             TextIO.openOut (concat [passName, Int.toString count,
+                                                     ".pre.", preExt])
+                          val () = preOutput (outPre, pre)
+                          val () = TextIO.closeOut outPre
+                          val post = pass pre
+                          val outPost = 
+                             TextIO.openOut (concat [passName, Int.toString count,
+                                                     ".post.", postExt])
+                          val () = postOutput (outPost, post)
+                          val () = TextIO.closeOut outPost
+                        in
+                          post
+                       end
+                  else pass pre
+         in
+            post
+         end
+      end
+   fun mkPassSimple {output: TextIO.outstream * 'a -> unit,
+                     ext: string,
+                     passName: string,
+                     pass: 'a -> 'a,
+                     registry: ControlRegistry.registry} =
+      mkPass {preOutput = output,
+              preExt = ext,
+              postOutput = output,
+              postExt = ext,
+              passName = passName,
+              pass = pass,
+              registry = registry}
 
    fun show_all output (getarg, getvalue) level =
       let

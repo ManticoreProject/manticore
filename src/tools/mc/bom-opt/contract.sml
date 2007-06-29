@@ -24,17 +24,6 @@ structure Contract : sig
     structure U = BOMUtil
     structure ST = Stats
 
-(* +DEBUG *)
-val v2s = BV.toString
-fun vl2s [] = "()"
-  | vl2s [x] = v2s x
-  | vl2s (x::xs) = let
-      fun f (x, l) = ", " :: v2s x :: l
-      in
-	concat("(" :: v2s x :: List.foldr f [")"] xs)
-      end
-(* -DEBUG *)
-
   (********** Counters for statistics **********)
     val cntUnusedStmt		= ST.newCounter "contract:unused-stmt"
     val cntLetRename		= ST.newCounter "contract:let-rename"
@@ -501,7 +490,8 @@ fun vl2s [] = "()"
 	    doExp (env, body, kid)
 	  end
 
-    fun contract (B.MODULE{name, externs, body}) = let
+    fun contract (module as B.MODULE{name, externs, body}) = let
+          val _ = Census.census module
 	  fun ticks () = ST.sum {from = firstCounter, to = lastCounter}
 	  fun loop (body, prevSum) = let
 		val _ = ST.tick cntIters
@@ -527,5 +517,13 @@ DEBUG*)
 	    ST.tick cntPhases;
 	    B.MODULE{name=name, externs=externs, body=body}
 	  end
+
+    val contract =
+       BasicControl.mkPassSimple
+       {output = PrintBOM.output,
+        ext = "bom",
+        passName = "contract",
+        pass = contract,
+        registry = BOMOptControls.registry}
 
   end

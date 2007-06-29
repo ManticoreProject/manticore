@@ -10,6 +10,7 @@ Library
   structure BOMTy
   structure BOMTyCon
   structure BOMUtil
+  structure CheckBOM
   structure HLOp
   structure ManticoreOps
   structure PrintBOM
@@ -26,6 +27,7 @@ is
   bom-ty.sml
   bom-tycon.sml
   bom-util.sml
+  check-bom.sml
   hlop.sml
   manticore-ops.sml
   print-bom.sml

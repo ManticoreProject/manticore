@@ -37,30 +37,16 @@ functor MainFn (
 
   (* *)
     fun bomToCFG bom = let
-	  val bom = BOMOpt.optimize bom
-	  val _ = (
-		prHdr "BOM after optimization";
-		PrintBOM.print bom)
-	  val cps = Convert.transform bom
-	  val _ = (
-		prHdr "CPS after convert";
-		PrintCPS.print cps;
-		CheckCPS.check cps)
+	  val bom = BOMOpt.optimize bom	
+          val _ = CheckBOM.check bom
+          val cps = Convert.transform bom
+	  val _ = CheckCPS.check cps
 	  val cps = CPSOpt.optimize cps
-	  val _ = (
-		prHdr "CPS after optimization";
-		PrintCPS.print cps;
-		CheckCPS.check cps)
+	  val _ = CheckCPS.check cps
 	  val cfg = FlatClosure.convert cps
-	  val _ = (
-		prHdr "CFG after closure";
-		PrintCFG.output {types=true} (TextIO.stdOut, cfg);
-		CheckCFG.check cfg)
+	  val _ = CheckCFG.check cfg
 	  val cfg = CFGOpt.optimize cfg
-	  val _ = (
-		prHdr "CFG after cfg-opt";
-		PrintCFG.print cfg;
-		CheckCFG.check cfg)
+	  val _ = CheckCFG.check cfg
 	  in
 	    cfg
 	  end
@@ -75,18 +61,12 @@ functor MainFn (
 
     fun bomC (bomFile, asmFile) = let
 	  val bom = BOMParser.parse bomFile
-	  val _ = (
-		prHdr "BOM after parsing";
-		PrintBOM.print bom)
 	  in
 	    codegen (asmFile, bomToCFG bom)
 	  end
 
     fun mantC (srcFile, asmFile) = (case srcToBOM srcFile
-	   of SOME bom => (
-		prHdr "BOM after translation";
-		PrintBOM.print bom;
-		codegen (asmFile, bomToCFG bom))
+	   of SOME bom => codegen (asmFile, bomToCFG bom)
 	    | NONE => OS.Process.exit OS.Process.failure
 	  (* end case *))
 

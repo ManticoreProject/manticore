@@ -245,4 +245,14 @@ structure Convert : sig
 	      }
 	  end
 
+    val transform =
+       BasicControl.mkPass
+       {preOutput = PrintBOM.output,
+        preExt = "bom",
+        postOutput = PrintCPS.output,
+        postExt = "cps",
+        passName = "convert",
+        pass = transform,
+        registry = ConvertControls.registry}
+
   end

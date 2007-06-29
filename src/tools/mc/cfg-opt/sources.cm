@@ -15,6 +15,7 @@ is
   $/basis.cm
 
   $/smlnj-lib.cm
+  $/controls-lib.cm
   $/pp-lib.cm
 
   ../common/sources.cm
@@ -24,6 +25,7 @@ is
   add-alloc-checks-fn.sml
   census.sml
   cfa-cfg.sml
+  cfg-opt-controls.sml
   cfg-opt-fn.sml
   feedback-fn.sml
   specialize-calls.sml

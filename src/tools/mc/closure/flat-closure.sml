@@ -272,13 +272,16 @@ print(concat["lookupVar: ", CPS.Var.toString x, " @ ", locToString(valOf(VMap.fi
          * any nested functions first.
          *)
           fun cvtExp (env, lab, conv, e) = let
-val _ = (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString lab, "\n"]); prEnv env)
+                val () =
+                   if Controls.get ClosureControls.debug
+                      then (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString lab, "\n"]); prEnv env)
+                   else ()
                 fun finish (binds, xfer) = let
                       val func = CFG.mkFunc (lab, conv, List.rev binds, xfer)
                       in
-(*
-print(concat["******************** finish ", CFG.Label.toString lab, "\n"]);
-*)
+                        if Controls.get ClosureControls.debug
+                           then print(concat["******************** finish ", CFG.Label.toString lab, "\n"])
+                        else ();
                         blocks := func :: !blocks
                       end
                 fun cvt (env, e, stms) = let
@@ -605,5 +608,15 @@ print(concat["******************** finish ", CFG.Label.toString lab, "\n"]);
 	      CFG.mkModule(name, externs, init::r)
 	    end
           end
+
+    val convert =
+       BasicControl.mkPass
+       {preOutput = PrintCPS.output,
+        preExt = "cps",
+        postOutput = PrintCFG.output {types=true},
+        postExt = "cfg",
+        passName = "flatClosure",
+        pass = convert,
+        registry = ClosureControls.registry}
 
   end

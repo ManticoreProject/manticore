@@ -448,4 +448,12 @@ print(concat["retype(_, ", BV.toString x, ", ", BTy.toString ty, ") = ", BV.toSt
     fun transform (B.MODULE{name, externs, body}) =
 	  B.mkModule(name, externs, #2 (xformLambda (BV.Map.empty, body)))
 
+    val transform =
+       BasicControl.mkPassSimple
+       {output = PrintBOM.output,
+        ext = "bom",
+        passName = "caseSimplify",
+        pass = transform,
+        registry = BOMOptControls.registry}
+
   end
