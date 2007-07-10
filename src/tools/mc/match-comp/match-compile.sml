@@ -46,7 +46,7 @@ structure MatchCompile : sig
 	    Error.mark (loc, f (loc, env, term))
 	  end
 
-    fun newVar ty = Var.gen("_anon_", ty, AST.VB_PATTERN)
+    fun newVar ty = Var.new("_anon_", ty)
 
   (* compute the set of free source variables and used path variables
    * for the states of a DFA.  Record this information for shared states
@@ -253,17 +253,10 @@ structure MatchCompile : sig
 
   (* get the list of variables bound by a pattern list *)
     fun bvars pats = let
-	  fun bv (AST.P_WILD _, s) = s
-	    | bv (AST.P_LIT _, s) = s
-	    | bv (AST.P_VAR x, s) = VSet.add(s, x)
-	    | bv (AST.P_CON _, s) = s
-	    | bv (AST.P_CONAPP(_, ps, _), s) = bv'(ps, s)
-	    | bv (AST.P_TCON _, s) = s
-	    | bv (AST.P_TCONAPP(_, _, ps, _), s) = bv'(ps, s)
-	    | bv (AST.P_OR(p1, p2), s) = bv(p2, bv(p1, s))
-	    | bv (AST.P_IS(x, p), s) = bv(p, VSet.add(s, x))
-	    | bv (AST.P_ISNOT(SOME x, _), s) = VSet.add(s, x)
-	    | bv (AST.P_ISNOT(NONE, _), s) = s
+	  fun bv (AST.ConPat(_, _, p), s) = bv(p, s)
+	    | bv (AST.TuplePat ps, s) = bv'(ps, s)
+	    | bv (AST.VarPat x, s) = VSet.add(s, x)
+	    | bv (AST.ConstPat _, s) = s
 	  and bv' ([], s) = s
 	    | bv' (p::ps, s) = bv'(ps, bv(p, s))
 	  in
@@ -294,90 +287,38 @@ structure MatchCompile : sig
 	  fun rewrite' e = rewrite (loc, env, e)
 	  in
 	    case exp
-	     of AST.E_OVERINST(ref(AST.OV_RESOLVED e), _) => rewrite' e
-	      | AST.E_OVERINST _ => raise Fail "unresolved overload instance"
-	      | AST.E_LIT _ => exp
-	      | AST.E_VAR(x, loc) => AST.E_VAR(Env.apply(env, x), loc)
-	      | AST.E_CON _ => exp
-	      | AST.E_TAPP(e, tys) => AST.E_TAPP(rewrite' e, tys)
-	      | AST.E_APP{f, args, resTy, loc} => AST.E_APP{
-		    f = rewrite (loc, env, f),
-		    args = List.map (fn e => rewrite (loc, env, e)) args,
-		    resTy = resTy, loc = loc
-		  }
-	      | AST.E_EXPS es => AST.E_EXPS(List.map rewrite' es)
-	      | AST.E_BLOCK(stms, tpl) => AST.E_BLOCK(rewriteStmList(loc, env, stms), tpl)
-	      | AST.E_LAMBDA(ts, args, e) => AST.E_LAMBDA(ts, args, rewrite' e)
-	      | AST.E_IF(e1, e2, e3, ty) => AST.E_IF(rewrite' e1, rewrite' e2, rewrite' e3, ty)
-	      | AST.E_CASE(es, mc) =>
-		  AST.E_CASE(List.map rewrite' es, rewriteMatch (loc, env, mc))
-	      | AST.E_TRYEXCEPT(e, mc) =>
-		  AST.E_TRYEXCEPT(rewrite' e,  rewriteExcept (loc, env, mc))
-	      | AST.E_TRYFINAL(e1, e2) => AST.E_TRYFINAL(rewrite' e1, rewrite' e2)
-	      | AST.E_RAISE(e, tys) => AST.E_RAISE(rewrite' e, tys)
-	      | AST.E_SUBSCRIPT(e1, e2) => AST.E_SUBSCRIPT(rewrite' e1, rewrite' e2)
-	      | AST.E_RFIELD(e, lab) => AST.E_RFIELD(rewrite' e, lab)
-	      | AST.E_ASSIGN(lval, e) =>
-		  AST.E_ASSIGN(rewriteL(loc, env, lval), rewrite' e)
-	      | AST.E_ADDROF(lval, tys) => AST.E_ADDROF(rewriteL(loc, env, lval), tys)
-	      | AST.E_VALUEOF lval => AST.E_VALUEOF(rewriteL(loc, env, lval))
-	      | AST.E_NEW _ => exp
-	      | AST.E_METH(e, lab, ty) => AST.E_METH(rewrite' e, lab, ty)
-	      | AST.E_FIELD(e1, lab, e2, ty) => AST.E_FIELD(rewrite' e1, lab, rewrite' e2, ty)
-	      | AST.E_SUPER _ => exp
-	      | AST.E_SELF _ => exp
-	      | AST.E_SPAWN e => AST.E_SPAWN(rewrite' e)
-	      | AST.E_SYNC(e, ty) => AST.E_SYNC(rewrite' e, ty)
-	      | AST.E_EVENT(e, ty) => AST.E_EVENT(rewrite' e, ty)
-	      | AST.E_CHOOSE(es, ty) => AST.E_CHOOSE(List.map rewrite' es, ty)
-	      | AST.E_WRAP(e, mc) => AST.E_WRAP(rewrite' e, rewriteMatch (loc, env, mc))
-	    (* end of case *)
-	  end
-
-    and rewriteL (loc, env, lval) = (case lval
-	   of AST.L_OVERINST(ref(AST.OV_RESOLVED lval), _) => rewriteL(loc, env, lval)
-	    | AST.L_OVERINST _ => raise Fail "unresolved overload instance"
-	    | AST.L_APP(x, tys, es) =>
-	      (* NOTE: x cannot be pattern bound here, so no substitution is needed *)
-		AST.L_APP(x, tys, List.map (fn e => rewrite(loc, env, e)) es)
-	    | AST.L_RFIELD(e, lab) => AST.L_RFIELD(rewrite(loc, env, e), lab)
-	    | AST.L_FIELD(e1, lab, e2, ty) =>
-		AST.L_FIELD(rewrite(loc, env, e1), lab, rewrite(loc, env, e2), ty)
-	  (* end case *))
-
-    and rewriteStmList (loc, env, stms) = let
-	  fun rewriteExps (loc, env, es) = List.map (fn e => rewrite(loc, env, e)) es
-	  fun rewriteStm (loc, env, AST.S_VAL(pats, e)) =
-		rewriteBind (loc, env, pats, e)
-	    | rewriteStm (loc, env, AST.S_FUN fbs) =
-		([AST.S_FUN(List.map (rewriteFB (loc, env)) fbs)], env)
-	    | rewriteStm (loc, env, AST.S_EXP e) =
-		([AST.S_EXP(rewrite(loc, env, e))], env)
-	    | rewriteStm (loc, env, AST.S_FIELD(lab, e1, e2)) =
-		([AST.S_FIELD(lab, rewrite(loc, env, e1), rewrite(loc, env, e2))], env)
-	    | rewriteStm (loc, env, AST.S_SUPER(NONE, mk, es)) =
-		([AST.S_SUPER(NONE, mk, rewriteExps(loc, env, es))], env)
-	    | rewriteStm (loc, env, AST.S_SUPER(SOME ps, mk, es)) =
-		raise Fail "super fields" (* FIXME *)
-	  fun rewriteStms (env, []) = []
-	    | rewriteStms (env, stm::stms) = let
-		val (stms', env) = rewriteStm (loc, env, stm)
-		in
-		  stms' @ rewriteStms (env, stms)
-		end
-	  in
-	    rewriteStms(env, stms)
+	     of AST.LetExp(bind, e) => ??
+	      | AST.IfExp(e1, e2, e3, ty) =>
+		  AST.IfExp(rewrite' e1, rewrite' e2, rewrite' e3, ty)
+	      | AST.CaseExp(e, mc, ty) =>
+		  AST.CaseExp(rewrite' e, rewriteMatch(loc, env, mc), ty)
+	      | AST.ApplyExp(e1, e2, ty) => AST.ApplyExp(rewrite' e1, rewrite' e2, ty)
+	      | AST.TupleExp es => AST.TupleExp(List.map rewrite' es)
+	      | AST.RangeExp(e1, e2, e3, ty) =>
+		  AST.RangeExp(rewrite' e1, rewrite' e2, Option.map rewrite' e3, ty)
+	      | AST.PTupleExp es => AST.PTupleExp(List.map rewrite' es)
+	      | AST.PArrayExp(es, ty) => AST.PArrayExp(List.map rewrite' es, ty)
+	      | AST.ComprehendExp _ => (* should have been compiled away *)
+		  raise Fail "unexpected ComprehendExp"
+	      | AST.PChoiceExp _ => (* should have been compiled away *)
+		  raise Fail "unexpected PChoiceExp"
+	      | AST.SpawnExp e => AST.SpawnExp(rewrite' e)
+	      | AST.ConstExp _ => exp
+	      | AST.VarExp _ => exp
+	      | AST.SeqExp(e1, e2) => AST.SeqExp(rewrite' e1, rewrite' e2)
+	      | AST.OverloadExp(ref(AST.Instance x)) => AST.VarExp(x, [])
+	      | AST.OverloadExp _ => raise Fail "unresolved overloading"
+	    (* end case *)
 	  end
 
     and rewriteFB (loc, env) (f, tys, xs, e) =
 	  (f, tys, xs, rewrite(loc, env, e))
 
   (* we translate
-   *    let lhs = rhs;
+   *    let pat = rhs;
    * to
-   *    let args = rhs;
-   *    let xs = case args of { lhs => ys | _ => raise Bind };
-   * where ys are the variables bound in lhs and xs are fresh copies of the
+   *    let xs = case rhs of { pat => ys | _ => raise Bind };
+   * where ys are the variables bound in pat and xs are fresh copies of the
    * ys.  We also return an environment extended with ys :-> xs.
    *)
     and rewriteBind (loc, env, [], rhs) = ([AST.S_EXP rhs], env)
@@ -455,42 +396,6 @@ structure MatchCompile : sig
 	    (* end case *)
  	  end
 
-  (* rewrite an exception-handler match. *)
-    and rewriteExcept (loc, env, AST.MCASE{argTy, resTy, cases}) = let
-	  val SOME exnTy = TU.toSingleTy argTy
-	  val arg = newVar exnTy
-	  val dfa = MatchToDFA.rulesToDFA (loc, env, [arg], cases)
-	(* reraise the exception on match failure *)
-	  fun reraise (loc, env, ty) = AST.E_RAISE(AST.E_VAR(arg, loc), ty)
-	  val {shared, match} = dfaToAST (loc, env, dfa, reraise, resTy)
-	(* Filter out unreachable default states. *)
-	  val final = List.filter (not o DFA.unusedDefault)
-		(DFA.finalStates dfa)
-	  in
-(* NOTE: perhaps we should issue an error message for each
- * redundant match with more precise location information???
- *)
-	  (* check for redundant matches; note that M_DEFAULT cannot cause
-	   * a redundant match, since it would have been filtered out above.
-	   *)
-	    if (List.exists (fn q => DFA.rCount q = 0) final)
-	      then Err.errRedundantMatch(Env.errStrm env, loc)
-	      else ();
-	    case shared
-	     of [] => AST.MCASE{
-		  argTy = argTy, resTy = resTy,
-		  cases = [AST.M_MATCH([AST.P_VAR arg], match)]
-		}
-	      | _ => AST.MCASE{
-		  argTy = argTy, resTy = resTy,
-		  cases = [
-		      AST.M_MATCH([AST.P_VAR arg],
-			AST.E_BLOCK(shared @ [AST.S_EXP match], resTy))
-		    ]
-		}
-	    (* end case *)
- 	  end
-
   (* convert the DFA representation back to typed AST.  The result of this
    * function is a list of functions that represent the shared states of the
    * DFA and an expression that is the simplified match case.
@@ -535,7 +440,7 @@ structure MatchCompile : sig
 		    })
 		end
 	    | treeToAST (IF(env, cond, t, f)) =
-		AST.E_IF(rewrite(loc, env, cond), treeToAST t, treeToAST f, resTy)
+		AST.IfExp(rewrite(loc, env, cond), treeToAST t, treeToAST f, resTy)
 	    | treeToAST (ACTION(env, e)) = rewrite(loc, env, e)
 	  fun treeToFB (f, params, body) = (f, [], params, treeToAST body)
 	  val shared = (case fns
@@ -546,79 +451,6 @@ structure MatchCompile : sig
 	    { shared = shared, match = treeToAST tree }
 	  end
 
-    fun rewriteModExp (env, mExp) = let
-	  fun rewriteExp e = rewrite (Error.UNKNOWN, env, e)
-	  fun comp (AST.MEXP_BODY dclGrps) =
-		AST.MEXP_BODY(List.map rewriteDclGrp dclGrps)
-	    | comp mExp = mExp
-	  and rewriteDclGrp (AST.D_MODULE(vis, mRef, mExp)) =
-		AST.D_MODULE(vis, mRef, comp mExp)
-	    | rewriteDclGrp (AST.D_DECL dcl) = AST.D_DECL(rewriteDcl dcl)
-	    | rewriteDclGrp (AST.D_GROUP dcls) = AST.D_GROUP(List.map rewriteDcl dcls)
-	  and rewriteDcl (dcl as AST.D_TAGTYPE _) = dcl
-	    | rewriteDcl (dcl as AST.D_CLASS(vis, AST.CLS{binding, ...})) = (
-		case !binding
-		 of AST.CB_DEF{iface, fields, meths, makers, initially} => let
-		      fun rewriteMeth (m, ts, AST.M_DEF(xs, e)) =
-			    (m, ts, AST.M_DEF(xs, rewriteExp e))
-			| rewriteMeth meth = meth
-		      fun rewriteMk (mk, tys, AST.MKDEF(xs, stms)) =
-			    ( mk, tys,
-			      AST.MKDEF(xs, rewriteStmList(Error.UNKNOWN, env, stms))
-			    )
-		      in
-		      (* WARNING: destructive update!!! *)
-			binding := AST.CB_DEF{
-			    iface = iface, fields = fields,
-			    meths = List.map rewriteMeth meths,
-			    makers = List.map rewriteMk makers,
-			    initially = (case initially
-			       of NONE => NONE
-				| SOME e => SOME(rewriteExp e)
-			      (* end case *))
-			  }
-		      end
-		  | _ => ()
-		(* end case *);
-		dcl)
-	    | rewriteDcl (dcl as AST.D_CONST _) = dcl  (* process in translate *)
-	    | rewriteDcl (AST.D_FUN(vis, f, tvs, xs, e)) =
-		AST.D_FUN(vis, f, tvs, xs, rewriteExp e)
-	    | rewriteDcl (AST.D_VAL(vis, xs, e)) = AST.D_VAL(vis, xs, rewriteExp e)
-	  in
-	    comp mExp
-	  end
-
-    fun compile gEnv (AST.CU_MODULE{module, def, preds}) = AST.CU_MODULE{
-	    module = module,
-	    def = rewriteModExp (Env.fromGlobalEnv gEnv, def),
-	    preds = preds
-	  }
-      | compile gEnv (AST.CU_FUNCTOR{module, def}) = AST.CU_FUNCTOR{
-	    module = module,
-	    def = rewriteModExp (Env.fromGlobalEnv gEnv, def)
-	  }
-      | compile gEnv cUnit = cUnit
-
-    fun compileTest gEnv (loc, ty, pat) = let
-	  val env = Env.fromGlobalEnv gEnv
-	  val arg = newVar ty
-	  val tyBool = Ty.T_Con(GlobalEnv.tycBool gEnv, [])
-	  val expFalse = AST.E_LIT(Literal.Bool false, tyBool)
-	  val expTrue = AST.E_LIT(Literal.Bool true, tyBool)
-	  val dfa = MatchToDFA.rulesToDFA (
-		  loc, env, [arg],
-		  [AST.M_MATCH([pat], expTrue), AST.M_DEFAULT([AST.P_WILD ty], expFalse)])
-	  val {shared, match} = dfaToAST (
-		loc, env, dfa, fn _ => raise Fail "not exhaustive", tyBool)
-	(* Filter out unreachable default states. *)
-	  val final = List.filter (not o DFA.unusedDefault)
-		(DFA.finalStates dfa)
-	  in
-	    case shared
-	     of [] => (arg, match)
-	      | _ => (arg, AST.E_BLOCK(shared @ [AST.S_EXP match], tyBool))
-	    (* end case *)
-	  end
+    fun compile (exp : AST.module) = rewrite (?, ?, exp)
 
   end

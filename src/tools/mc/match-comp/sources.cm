@@ -8,11 +8,8 @@
 
 Library
 
-(*
   structure MatchCompile
-*)
 
-structure MatchDFA
 is
 
   $/basis.cm
@@ -22,9 +19,7 @@ is
   ../minmant/sources.cm
   ../common/sources.cm
 
-(*
   match-compile.sml
-*)
   match-dfa-sig.sml
   match-dfa.sml
 
