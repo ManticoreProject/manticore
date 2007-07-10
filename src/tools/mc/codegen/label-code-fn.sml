@@ -26,6 +26,7 @@ functor LabelCodeFn (
   end (* local *)
 
   local
+(* QUESTION: why not use setFn and skip the ref? *)
       val {getFn, peekFn, ...} = LV.newProp (fn _ => ref [])
   in
   fun setParamRegs (v, ps : MTy.mlrisc_reg list) = (getFn v) := ps
