@@ -1,27 +1,16 @@
-(* codegen-controls.sml
+(* closure-controls.sml
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu/)
  * All rights reserved.
  *
- * BOMOpt controls.
+ * Closure-conversion controls.
  *)
 
 structure ClosureControls =
-struct
-   val registry = ControlRegistry.new {help = "Closure"}
-   val priority = []
-   val _ = BasicControl.nest ("Closure", registry, priority)
+  struct
 
-   val debug =
-      Controls.genControl
-      {name = "debug",
-       pri = priority,
-       obscurity = BasicControl.debugObscurity,
-       help = "debug",
-       default = false}
-   val _ = 
-      ControlRegistry.register
-      registry
-      {ctl = Controls.stringControl ControlUtil.Cvt.bool debug,
-       envName = NONE}
-end
+    val (registry, debug) = BasicControl.newRegistryWithDebug {
+	    name = "Closure", help = "closure-conversion controls"
+	  }
+
+  end

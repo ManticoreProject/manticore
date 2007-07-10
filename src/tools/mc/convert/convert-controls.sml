@@ -1,27 +1,16 @@
-(* codegen-controls.sml
+(* convert-controls.sml
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu/)
  * All rights reserved.
  *
- * BOMOpt controls.
+ * BOM to CPS conversion controls.
  *)
 
 structure ConvertControls =
-struct
-   val registry = ControlRegistry.new {help = "Convert"}
-   val priority = []
-   val _ = BasicControl.nest ("Convert", registry, priority)
+  struct
 
-   val debug =
-      Controls.genControl
-      {name = "debug",
-       pri = priority,
-       obscurity = BasicControl.debugObscurity,
-       help = "debug",
-       default = false}
-   val _ = 
-      ControlRegistry.register
-      registry
-      {ctl = Controls.stringControl ControlUtil.Cvt.bool debug,
-       envName = NONE}
-end
+    val (registry, debug) = BasicControl.newRegistryWithDebug {
+	    name = "Convert", help = "CPS-conversion controls"
+	  }
+
+  end

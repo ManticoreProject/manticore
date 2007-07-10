@@ -1,27 +1,16 @@
-(* codegen-controls.sml
+(* translate-controls.sml
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu/)
  * All rights reserved.
  *
- * BOMOpt controls.
+ * AST to BOM translation controls.
  *)
 
 structure TranslateControls =
-struct
-   val registry = ControlRegistry.new {help = "Translate"}
-   val priority = []
-   val _ = BasicControl.nest ("Translate", registry, priority)
+  struct
 
-   val debug =
-      Controls.genControl
-      {name = "debug",
-       pri = priority,
-       obscurity = BasicControl.debugObscurity,
-       help = "debug",
-       default = false}
-   val _ = 
-      ControlRegistry.register
-      registry
-      {ctl = Controls.stringControl ControlUtil.Cvt.bool debug,
-       envName = NONE}
-end
+    val (registry, debug) = BasicControl.newRegistryWithDebug {
+	    name = "Translate", help = "Translate phase controls"
+	  }
+
+  end

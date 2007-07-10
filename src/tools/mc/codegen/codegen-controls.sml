@@ -7,25 +7,15 @@
  *)
 
 structure CodegenControls =
-struct
-   val _ = BasicControl.nest (MLRiscControl.prefix,
-                              MLRiscControl.registry,
-                              MLRiscControl.priority)
+  struct
 
-   val registry = ControlRegistry.new {help = "Codegen"}
-   val priority = []
-   val _ = BasicControl.nest ("codegen", registry, priority)
+    val _ = BasicControl.nest (
+	    MLRiscControl.prefix,
+            MLRiscControl.registry,
+            MLRiscControl.priority)
 
-   val debug =
-      Controls.genControl
-      {name = "debug",
-       pri = priority,
-       obscurity = BasicControl.debugObscurity,
-       help = "debug",
-       default = false}
-   val _ = 
-      ControlRegistry.register
-      registry
-      {ctl = Controls.stringControl ControlUtil.Cvt.bool debug,
-       envName = NONE}
-end
+    val (registry, debug) = BasicControl.newRegistryWithDebug {
+	    name = "codegen", help = "code-generation controls"
+	  }
+
+  end
