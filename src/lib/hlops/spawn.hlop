@@ -12,7 +12,7 @@ define @dispatch (vp : vproc) noreturn;
 define @enqueue (vp : vproc, tid : tid, fiber : fiber) : ();
 define @new-tid (vp : vproc) : tid;
 
-define inline @spawn (f : fun( / handler -> unit)) : unit =
+define inline @spawn (f : fun( / handler -> unit)) : tid =
     cont fiber (_ : unit) =
 	cont handler (ex : exn) = @dispatch(host_vproc)
 	let _ : unit = apply f( / handler)
@@ -21,5 +21,5 @@ define inline @spawn (f : fun( / handler -> unit)) : unit =
       let vp : vproc = host_vproc
       let tid : tid = @new-tid(vp)
       do @enqueue (vp, tid, fiber)
-      return (UNIT)
+      return (tid)
 ;

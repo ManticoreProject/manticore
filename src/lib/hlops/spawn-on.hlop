@@ -13,7 +13,7 @@ extern void EnqueueOnVProc (void *, void *, void *, void *);
 define @dispatch (vp : vproc) noreturn;
 define @new-tid (vp : vproc) : tid;
 
-define inline @spawn-on (f : (unit / handler) -> unit, dst : vproc) : unit =
+define inline @spawn-on (f : (unit / handler) -> unit, dst : vproc) : tid =
     cont fiber (_ : unit) =
 	cont handler (ex : exn) = @dispatch(host_vproc)
 	let (_ : unit) = apply f(UNIT; handler)
@@ -22,5 +22,5 @@ define inline @spawn-on (f : (unit / handler) -> unit, dst : vproc) : unit =
       let vp : vproc = host_vproc
       let tid : tid = @new-tid(vp)
       do ccall EnqueueOnVProc(vp, dst, tid, fiber)
-      return (UNIT)
+      return (tid)
 ;
