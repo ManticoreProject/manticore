@@ -15,6 +15,20 @@ structure RunCPP : sig
 	    input : string
 	  } -> {inStrm : TextIO.instream, reap : unit -> unit}
 
+  (* Parse a line that contains a C pre-processor line marker.  This code
+   * expects the line marker to either be in ANSI format
+   *
+   *	# line <n> <filename>
+   *
+   * or GNU format
+   *
+   *	# <n> <filename> <flags>
+   *)
+    val parseLineDirective : string -> {
+	    file : string option,
+	    line : int
+	  } option
+
   end = struct
 
     val cppCmd = "@CPP@"
@@ -34,5 +48,48 @@ structure RunCPP : sig
 	      reap = fn () => (TextIO.closeOut outStrm; ignore(Unix.reap proc))
 	    }
 	  end
+
+    structure SS = Substring
+
+    val skipWS = StringCvt.skipWS SS.getc
+
+  (* scan a file name *)
+(* FIXME: eventually, we should deal with escape characters! *)
+    fun scanFileName ss = let
+	  fun isSChar #"\"" = false | isSChar _ = true
+	  in
+	    case SS.getc ss
+	     of SOME(#"\"", ss) => let
+		  val (filename, ss) = SS.splitl isSChar ss
+		  in
+		    case SS.getc ss
+		     of SOME(#"\"", ss) => SOME(SS.string filename, ss)
+		      | _ => NONE
+		    (* end case *)
+		  end
+	      | _ => NONE
+	    (* end case *)
+	  end
+
+    (* scan a decimal number *)
+    val scanNum = Int.scan StringCvt.DEC SS.getc
+
+    fun parseLineDirective ln = let
+	  val ln = SS.triml 1 (SS.full ln)	(* trim leading # *)
+	  val ln = skipWS ln
+	  in
+	    if SS.isPrefix "line" ln
+	      then NONE (* FIXME: handle ANSI format *)
+	      else let (* handle GNU format *)
+		val SOME(n, ln) = scanNum ln
+		val ln = skipWS ln
+		in
+		  case scanFileName ln
+		   of SOME(file, _) => SOME{file=SOME file, line=n}
+		    | NONE => SOME{file=NONE, line=n}
+		  (* end case *)
+		end
+	  end
+	    handle _ => NONE
 
   end

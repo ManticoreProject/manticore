@@ -57,7 +57,7 @@ functor LoaderFn (F : FILE_TYPE) : sig
     fun load file = (case findFile (defaultSearchPath, file)
 	   of SOME path => let
 		val {inStrm, reap} = RunCPP.run{
-			noLines = true,
+			noLines = false,
 			defs = [],
 			includes = defaultIncludes,
 			input = path

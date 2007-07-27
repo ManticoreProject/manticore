@@ -136,6 +136,13 @@
 %let esc = "\\"[abfnrtv\\\"]|"\\"{dig}{dig}{dig};
 %let sgood = [\032-\126]&[^\"\\]; (* sgood means "characters good inside strings" *)
 %let ws = " "|[\t\n\v\f\r];
+%let eol = "\n"|"\r\n"|"\r";
+%let space = " "|"\t";
+%let filename = "\""{sgood}*"\"";
+
+<INITIAL>"#"{space}*{dig}+{space}+{filename}({space}+{dig}+)*{eol} => (
+	print yytext;
+	skip());
 
 <INITIAL>"("		=> (T.LP);
 <INITIAL>")"		=> (T.RP);
