@@ -112,6 +112,7 @@ structure Uncurry : sig
 	    (!optPossible, findCurried)
 	  end
 
+  (* transform curried applications to tupled applications *)
     fun xform (module as B.MODULE{name, externs, body}) = let
 	  val (optPossible, findCurried) = analyse body
 	  val uncurried = VTbl.mkTable (16, Fail "UncurriedFns")
@@ -147,29 +148,32 @@ structure Uncurry : sig
 				    BTy.returnTy(BV.typeOf g)
 				  )
 			    val f' = BV.aliasVar(f, SOME "_uncurried", bty)
+			    val newFB = B.FB{f=f', params=allParams, exh= ??, body=body}
 			    in
 			      C.incAppCnt f';
-			      (B.mkApply(f', newParams), B.mkLambda(f', allParams, body))
+			      (B.mkApply(f', newParams, ?), newFB)
 			    end
-			| flatten (_, n, allParams, newParams, fb) = let
-			    val B.E_Pt(_, B.E_Fun([(g, params, body)], e)) = fb
+			| flatten (_, n, allParams, newParams, B.E_Pt(_, B.E_Fun([fb], e))) = let
+			    val B.FB{f=g, params, exh, body} = fb
 			    val params' = List.map copyParam params
 			    val (body', newFB) = flatten(
 				  g, n-1,
 				  allParams @ params,
 				  newParams @ params',
 				  body)
+			    val fb' = B.FB{f = g, params = params', exh = ?, body = body'}
 			    in
-			      (B.mkFun([(g, params', body')], xformExp e), newFB)
+			      (B.mkFun([fb'], xformExp e), newFB)
 			    end
+			| flatten _ = raise Fail "expected function binding"
 		      val params' = List.map copyParam params
-		      val (curriedFun, uncurriedFB) =
+		      val (curriedFun, uncurriedFB as B.FB{f=uncurriedF, ...}) =
 			    flatten (f, arity-1, params, params', body)
 		      in
-			VTbl.insert uncurried (f, #1 uncurriedFB);
-			B.mkLambda(f, params', curriedFun) :: uncurriedFB :: fbs
+			VTbl.insert uncurried (f, uncurriedF);
+			B.FB{f=f, params=params', exh= ??, body=curriedFun} :: uncurriedFB :: fbs
 		      end
-		    else B.mkLambda(f, params, xformExp body) :: fbs
+		    else B.FB{f=f, params=params, exh=exh, body=xformExp body} :: fbs
 		end
 	  and xformFBs fbs = List.foldr xformFB [] fbs
 	  and xformExp (e as B.E_Pt(_, t)) = (case t
@@ -179,7 +183,7 @@ structure Uncurry : sig
 			    ST.tick cntReplace;
 			    C.decAppCnt f;
 			    List.app C.decUseCnt args;
-			    B.mkLet([g], mkApply(h, allArgs), xformExp e))
+			    B.mkLet([g], mkApply(h, allArgs, rets), xformExp e))
 			| SOME _ => let
 			    val e = xformExp e
 			    in
