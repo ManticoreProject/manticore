@@ -518,12 +518,4 @@ DEBUG*)
 	    B.MODULE{name=name, externs=externs, body=body}
 	  end
 
-    val contract =
-       BasicControl.mkPassSimple
-       {output = PrintBOM.output,
-        ext = "bom",
-        passName = "contract",
-        pass = contract,
-        registry = BOMOptControls.registry}
-
   end
