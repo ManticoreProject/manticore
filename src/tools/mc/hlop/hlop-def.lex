@@ -135,13 +135,17 @@
 %let hlid = "@"{letter}({idchar}|"-")*;
 %let esc = "\\"[abfnrtv\\\"]|"\\"{dig}{dig}{dig};
 %let sgood = [\032-\126]&[^\"\\]; (* sgood means "characters good inside strings" *)
-%let ws = " "|[\t\n\v\f\r];
 %let eol = "\n"|"\r\n"|"\r";
-%let space = " "|"\t";
+%let ws = " "|[\t\v\f];
 %let filename = "\""{sgood}*"\"";
 
-<INITIAL>"#"{space}*{dig}+{space}+{filename}({space}+{dig}+)*{eol} => (
+<INITIAL>"#"{ws}*{dig}+{ws}+{filename}({ws}+{dig}+)*{eol} => (
 	print yytext;
+	case RunCPP.parseLineDirective yytext
+	 of SOME{lineNo, fileName} => 
+	      AntlrStreamPos.resynch yysm (yypos, {fileName=fileName, lineNo=lineNo, colNo=1})
+	  | _ => ()
+	(* end case *);
 	skip());
 
 <INITIAL>"("		=> (T.LP);
@@ -168,6 +172,7 @@
 <INITIAL>[~\045]?{num}"."{num}([eE][+~\045]?{num})?
 			=> (mkFloat yysubstr);
 <INITIAL>{ws}		=> (skip ());
+<INITIAL>{eol}		=> (AntlrStreamPos.markNewLine yysm yypos; skip());
 <INITIAL>"(*"		=> (YYBEGIN COMMENT; depth := 1; skip());
 <INITIAL> "\""		=> (YYBEGIN STRING; skip());
 
@@ -196,4 +201,5 @@
 	depth := !depth - 1;
         if (!depth = 0) then YYBEGIN INITIAL else ();
 	skip ());
-<COMMENT> .|"\n" => (skip ());
+<COMMENT>.		=> (skip ());
+<COMMENT>{eol}		=> (AntlrStreamPos.markNewLine yysm yypos; skip());

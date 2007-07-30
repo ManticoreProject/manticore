@@ -25,8 +25,8 @@ structure RunCPP : sig
    *	# <n> <filename> <flags>
    *)
     val parseLineDirective : string -> {
-	    file : string option,
-	    line : int
+	    fileName : string option,
+	    lineNo : int
 	  } option
 
   end = struct
@@ -85,8 +85,8 @@ structure RunCPP : sig
 		val ln = skipWS ln
 		in
 		  case scanFileName ln
-		   of SOME(file, _) => SOME{file=SOME file, line=n}
-		    | NONE => SOME{file=NONE, line=n}
+		   of SOME(file, _) => SOME{fileName=SOME file, lineNo=n}
+		    | NONE => SOME{fileName=NONE, lineNo=n}
 		  (* end case *)
 		end
 	  end
