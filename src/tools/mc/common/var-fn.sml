@@ -25,6 +25,7 @@ signature VAR =
     val new : (string * ty) -> var
     val newWithKind : (string * kind * ty) -> var
     val copy : var -> var
+    val alias : (var * string option * ty) -> var
 
     val nameOf : var -> string
     val kindOf : var -> kind
@@ -82,6 +83,14 @@ functor VarFn (VP : VAR_PARAMS) : VAR =
     fun new (name, ty) = newWithKind (name, VP.defaultKind, ty)
 
     fun copy (V{name, kind, ty, ...}) = newWithKind (name, !kind, ty)
+    fun alias (V{name, kind, ...}, optSuffix, ty) = let
+	  val name = (case optSuffix
+		 of NONE => name
+		  | SOME suffix => name ^ suffix
+		(* end case *))
+	  in
+	    newWithKind (name, !kind, ty)
+	  end
 
     fun nameOf (V{name, ...}) = name
 
