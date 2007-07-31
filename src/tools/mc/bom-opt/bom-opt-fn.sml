@@ -36,13 +36,13 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 	  (* end case *))
 
     val contract = transform "Contract" "bom-opt1" Contract.contract
-(*    val uncurry = transform "Uncurry" "bom-opt2" Uncurry.transform*)
+    val uncurry = transform "Uncurry" "bom-opt2" Uncurry.transform
     val caseSimplify = transform "CaseSimplify" "bom-opt3" CaseSimplify.transform
     val expandAll = transform "Expand" "bom-opt4" expandAll
 
     fun optimize module = let
 	  val module = contract module
-(*	  val module = uncurry module*)
+	  val module = uncurry module
 	  val module = contract module
 	  val module = expandAll module
 	  val module = caseSimplify module

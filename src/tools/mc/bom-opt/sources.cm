@@ -28,6 +28,7 @@ is
   case-simplify.sml
   census.sml
   contract.sml
+  uncurry.sml
   expand-hlops.sml
   let-float.sml
   literal-case-fn.sml

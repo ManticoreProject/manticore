@@ -141,37 +141,51 @@ structure Uncurry : sig
 		in
 		  if arity > 1
 		    then let
-		      fun flatten (g, 0, allParams, newParams, body) = let
+		    (* this function constructs the uncurried version of the function.  It also
+		     * returns a new version of the curried definition that calls the uncurried version.
+		     * For example, if the original function is
+		     *
+		     *	fun f (x / exh1) = fun g (y / exh2) = e1 in g end
+		     *
+		     * we get the following two bindings (where the primed variables are fresh):
+		     *
+		     *	fun f (x' / exh1') = fun g (y' / exh2') = f'(x', y' / exh2') in g end
+		     *	and f' (x, y / exh2) = e1
+		     *)
+		      fun flatten (g, 0, allParams, newParams, exh, newExh, body) = let
 			    val bty = BTy.T_Fun(
 				    List.map BV.typeOf allParams,
-				    ??,
+				    List.map BV.typeOf exh,
 				    BTy.returnTy(BV.typeOf g)
 				  )
-			    val f' = BV.aliasVar(f, SOME "_uncurried", bty)
-			    val newFB = B.FB{f=f', params=allParams, exh= ??, body=body}
+			    val f' = BV.alias(f, SOME "_uncurried", bty)
+			    val newFB = B.FB{f=f', params=allParams, exh= exh, body=body}
 			    in
 			      C.incAppCnt f';
-			      (B.mkApply(f', newParams, ?), newFB)
+			      (B.mkApply(f', newParams, newExh), newFB)
 			    end
-			| flatten (_, n, allParams, newParams, B.E_Pt(_, B.E_Fun([fb], e))) = let
+			| flatten (_, n, allParams, newParams, _, _, B.E_Pt(_, B.E_Fun([fb], e))) = let
 			    val B.FB{f=g, params, exh, body} = fb
 			    val params' = List.map copyParam params
+			    val exh' = List.map copyParam exh
 			    val (body', newFB) = flatten(
 				  g, n-1,
 				  allParams @ params,
 				  newParams @ params',
+				  exh, exh',
 				  body)
-			    val fb' = B.FB{f = g, params = params', exh = ?, body = body'}
+			    val fb' = B.FB{f = g, params = params', exh = exh', body = body'}
 			    in
 			      (B.mkFun([fb'], xformExp e), newFB)
 			    end
 			| flatten _ = raise Fail "expected function binding"
 		      val params' = List.map copyParam params
+		      val exh' = List.map copyParam exh
 		      val (curriedFun, uncurriedFB as B.FB{f=uncurriedF, ...}) =
-			    flatten (f, arity-1, params, params', body)
+			    flatten (f, arity-1, params, params', exh, exh', body)
 		      in
 			VTbl.insert uncurried (f, uncurriedF);
-			B.FB{f=f, params=params', exh= ??, body=curriedFun} :: uncurriedFB :: fbs
+			B.FB{f=f, params=params', exh= exh', body=curriedFun} :: uncurriedFB :: fbs
 		      end
 		    else B.FB{f=f, params=params, exh=exh, body=xformExp body} :: fbs
 		end
@@ -180,6 +194,7 @@ structure Uncurry : sig
 		 of B.E_Let([g], rhs as B.E_Pt(_, B.E_Apply(f, args, rets)), e) => (
 		      case findCurried g
 		       of SOME(PARTIAL{arity=0, f=h, args=allArgs, ...}) => (
+			  (* the final application of a curried function *)
 			    ST.tick cntReplace;
 			    C.decAppCnt f;
 			    List.app C.decUseCnt args;
