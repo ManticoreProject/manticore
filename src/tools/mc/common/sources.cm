@@ -17,6 +17,7 @@ Library
   structure BasicControl
   structure CFunctions
   structure ConstArith
+  structure Error
   structure FloatLit
   structure IntegerLit
   structure Literal
@@ -36,10 +37,12 @@ is
   $/smlnj-lib.cm
   $/controls-lib.cm
   $/pp-lib.cm
+  $/ml-lpt-lib.cm
 
   basic-control.sml
   c-functions.sml
   const-arith.sml
+  error.sml
   float-lit.sml
   integer-lit.sml
   literal.sml

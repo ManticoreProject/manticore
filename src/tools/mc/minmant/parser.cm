@@ -21,7 +21,6 @@ is
   ../common/sources.cm
 
   basis-names.sml
-  error.sml
   minmant.lex : ml-ulex
   minmant.grm : ml-antlr
   parse-tree.sml
