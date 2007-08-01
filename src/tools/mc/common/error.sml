@@ -13,6 +13,9 @@ structure Error :> sig
 
     type err_stream
 
+  (* make an error stream. *)
+    val mkErrStream : string -> err_stream
+
   (* global flag to record the existance of errors *)
     val anyErrors : bool ref
 
@@ -52,6 +55,14 @@ structure Error :> sig
 	numErrors	: int ref,
 	numWarnings	: int ref
       }
+
+  (* make an error stream. *)
+    fun mkErrStream filename = ES{
+	    sm = SP.mkSourcemap' filename,
+	    errors = ref [],
+	    numErrors = ref 0,
+	    numWarnings = ref 0
+	  }
 
     fun addErr (ES{errors, numErrors, ...}, pos, msg) = (
 	  numErrors := !numErrors + 1;
