@@ -8,39 +8,28 @@
 
 structure BOMParser : sig
 
-    val parseFile : string -> BOMPT.module option
-    val parse : string -> BOM.module
+    val parse : (Error.err_stream * string) -> BOM.module option
 
   end = struct
 
     structure Parser = BOMParseFn(BOMLex)
 
   (* error function for parsers *)
-    fun parseErr (filename, srcMap) = let
-	  val errToStr = AntlrRepair.repairToString BOMTokens.toString srcMap
-	  in
-	    fn err => TextIO.print(concat["Error [", filename, "] ", errToStr err, "\n"])
-	  end
+    val parseErr = Error.parseError BOMTokens.toString
 
   (* parse a file, returning a parse tree *)
-    fun parseFile filename = let
+    fun parse (errStrm, filename) = let
 	  val file = TextIO.openIn filename
 	  fun get () = TextIO.input file
-	  val srcMap = AntlrStreamPos.mkSourcemap()
-	  val lexer = BOMLex.lex srcMap
+	  val lexer = BOMLex.lex (Error.sourceMap errStrm)
 	  in
 	    case Parser.parse lexer (BOMLex.streamify get)
-	     of (SOME pt, _, []) => (TextIO.closeIn file; SOME pt)
+	     of (SOME pt, _, []) => (TextIO.closeIn file; SOME(Expand.cvtModule pt))
 	      | (_, _, errs) => (
 		  TextIO.closeIn file;
-		  List.app (parseErr (filename, srcMap)) errs;
+		  List.app (parseErr errStrm) errs;
 		  NONE)
 	    (* end case *)
 	  end
-
-    fun parse filename = (case parseFile filename
-	   of SOME pt => Expand.cvtModule pt
-	    | NONE => raise Fail "bad input"
-	  (* end case *))
 
   end

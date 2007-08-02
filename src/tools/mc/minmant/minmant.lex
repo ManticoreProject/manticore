@@ -8,14 +8,11 @@
 
 %name MinMantLex;
 
+%arg (lexErr);
+
 %defs(
 
     structure T = MinMantTokens
-
-  (* error function for lexers *)
-    fun lexErr (lnum, msg) = Error.say [
-	    "Error [", !Error.sourceFile, ":", Int.toString lnum, "]: ", msg, "\n"
-	  ]
 
   (* some type lex_result is necessitated by ml-ulex *)
     type lex_result = T.token
@@ -157,19 +154,19 @@
 <STRING>{esc}		=> (addStr(valOf(String.fromString yytext)); continue());
 <STRING>{sgood}+	=> (addStr yytext; continue());
 <STRING>"\""		=> (YYBEGIN INITIAL; mkString());
-<STRING>"\\".		=> (lexErr(!yylineno, concat[
+<STRING>"\\".		=> (lexErr(yypos, [
 				"bad escape character `", String.toString yytext,
 				"' in string literal"
 			      ]);
 			    continue());
-<STRING>.		=> (lexErr(!yylineno, concat[
+<STRING>.		=> (lexErr(yypos, [
 				"bad character `", String.toString yytext,
 				"' in string literal"
 			      ]);
 			    continue());
 
 <INITIAL> . => (
-	lexErr(!yylineno, concat["bad character `", String.toString yytext, "'"]);
+	lexErr(yypos, ["bad character `", String.toString yytext, "'"]);
 	continue());
 
 <COMMENT> "(*" => (

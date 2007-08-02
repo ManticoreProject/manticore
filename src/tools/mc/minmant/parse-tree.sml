@@ -17,8 +17,8 @@ structure ParseTree =
     type vid = Atom.atom
     type opid = Atom.atom	(* operator IDs; e.g., "=", "<=", "<", "::", ... *)
 
-  (* a term marked with a line number *)
-    type 'a mark = {lnum : int, tree : 'a}
+  (* a term marked with a source-map span *)
+    type 'a mark = {span : Error.span, tree : 'a}
 
   (* top-level declarations *)
     datatype decl
@@ -99,6 +99,6 @@ structure ParseTree =
       | FltLit of FloatLit.float
       | StrLit of string
 
-    type program = (decl list * exp)
+    type program = (decl list * exp) mark
 
   end

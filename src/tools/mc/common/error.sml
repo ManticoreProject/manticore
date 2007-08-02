@@ -9,24 +9,34 @@
 structure Error :> sig
 
   (* logical positions in the input stream *)
-    type pos
+    type pos = AntlrStreamPos.pos
+    type span = AntlrStreamPos.span
 
     type err_stream
 
   (* make an error stream. *)
     val mkErrStream : string -> err_stream
 
-  (* global flag to record the existance of errors *)
-    val anyErrors : bool ref
+    val anyErrors : err_stream -> bool
+    val sourceFile : err_stream -> string
+    val sourceMap : err_stream -> AntlrStreamPos.sourcemap
 
-  (* the current input file *)
-    val sourceFile : string ref
+  (* add error messages to the error stream *)
+    val error : err_stream * string list -> unit
+    val errorAt : err_stream * span * string list -> unit
 
-  (* the current sourcemap *)
-    val sourceMap : AntlrStreamPos.sourcemap ref
+  (* add warning messages to the error stream *)
+    val warning : err_stream * string list -> unit
+    val warningAt : err_stream * span * string list -> unit
 
-  (* print an error message and record the fact that there was an error *)
-    val say : string list -> unit
+  (* add an ml-antlr parse error to the error stream *)
+    val parseError : ('tok -> string)
+	  -> err_stream
+	    -> (pos * 'tok AntlrRepair.repair_action)
+	      -> unit
+
+  (* print the errors to an output stream *)
+    val report : TextIO.outstream * err_stream -> unit
 
   end = struct
 
@@ -49,6 +59,7 @@ structure Error :> sig
    * a compilation unit.
    *)
     datatype err_stream = ES of {
+	srcFile		: string,
 	sm		: SP.sourcemap,	(* the source map for mapping positions to *)
 					(* source-file positions *)
 	errors		: error list ref,
@@ -58,11 +69,16 @@ structure Error :> sig
 
   (* make an error stream. *)
     fun mkErrStream filename = ES{
+	    srcFile = filename,
 	    sm = SP.mkSourcemap' filename,
 	    errors = ref [],
 	    numErrors = ref 0,
 	    numWarnings = ref 0
 	  }
+
+    fun anyErrors (ES{numErrors, ...}) = (!numErrors > 0)
+    fun sourceFile (ES{srcFile, ...}) = srcFile
+    fun sourceMap (ES{sm, ...}) = sm
 
     fun addErr (ES{errors, numErrors, ...}, pos, msg) = (
 	  numErrors := !numErrors + 1;
@@ -87,7 +103,30 @@ structure Error :> sig
 	    addErr (es, SOME(pos, pos), String.concat msg)
 	  end
 
-    fun printError (ES{sm, ...}) = let
+  (* add error messages to the error stream *)
+    fun error (es, msg) = addErr (es, NONE, String.concat msg)
+    fun errorAt (es, span, msg) = addErr (es, SOME span, String.concat msg)
+
+  (* add warning messages to the error stream *)
+    fun warning (es, msg) = addWarn (es, NONE, String.concat msg)
+    fun warningAt (es, span, msg) = addWarn (es, SOME span, String.concat msg)
+
+  (* sort a list of errors by position in the source file *)
+    val sort = let
+	  fun lt (NONE, NONE) = false
+	    | lt (NONE, _) = true
+	    | lt (_, NONE) = false
+	    | lt (SOME(l1, r1), SOME(l2, r2)) = (case Position.compare(l1, l2)
+		 of LESS => true
+		  | EQUAL => (Position.compare(r1, r2) = LESS)
+		  | GREATER => false
+		(* end case *))
+	  fun cmp (e1 : error, e2 : error) = lt(#pos e1, #pos e2)
+	  in
+	    ListMergeSort.sort cmp
+	  end
+
+    fun printError (outStrm, ES{sm, ...}) = let
 	  fun pr {kind, pos, msg} = let
 		val kind = (case kind of ERR => "Error" | Warn => "Warning")
 		val pos = (case pos
@@ -119,25 +158,13 @@ structure Error :> sig
 			      end
 		      (* end case *))
 		in
-		  TextIO.output (TextIO.stdOut, String.concat [pos, kind, ": ", msg])
+		  TextIO.output (outStrm, String.concat [pos, kind, ": ", msg, "\n"])
 		end
 	  in
 	    pr
 	  end
 
-  (* global flag to record the existance of errors *)
-    val anyErrors = ref false
-
-  (* the current input file *)
-    val sourceFile = ref ""
-
-  (* the current sourcemap *)
-    val sourceMap = ref(AntlrStreamPos.mkSourcemap())
-
-  (* print an error message and record the fact that there was an error *)
-    fun say l = (
-	  anyErrors := true;
-	  TextIO.output(TextIO.stdErr, String.concat l);
-	  TextIO.output1(TextIO.stdErr, #"\n"))
+    fun report (outStrm, es as ES{errors, ...}) =
+	  List.app (printError (outStrm, es)) (sort (!errors))
 
   end

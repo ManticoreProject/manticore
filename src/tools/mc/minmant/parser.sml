@@ -9,37 +9,30 @@
 structure Parser : sig
 
   (* parse a file; return NONE if there are syntax errors *)
-    val parseFile : string -> ParseTree.program option
+    val parseFile : (Error.err_stream * string) -> ParseTree.program option
 
   end = struct
 
   (* glue together the lexer and parser *)
     structure MinMantParser = MinMantParseFn(MinMantLex)
 
-  (* global flag to record the existance of errors *)
-    val anyErrors = Error.anyErrors
+  (* error function for lexers *)
+    fun lexErr errStrm (pos, msg) = Error.errorAt(errStrm, (pos, pos), msg)
 
   (* error function for parsers *)
-    fun parseErr (filename, srcMap) = let
-	  val errToStr = AntlrRepair.repairToString MinMantTokens.toString srcMap
-	  in
-	    fn err => Error.say ["Error [", filename, "] ", errToStr err]
-	  end
+    val parseErr = Error.parseError MinMantTokens.toString
 
   (* parse a file, returning a parse tree *)
-    fun parseFile filename = let
-	  val _ = (anyErrors := false; Error.sourceFile := filename)
+    fun parseFile (errStrm, filename) = let
 	  val file = TextIO.openIn filename
 	  fun get () = TextIO.input file
-	  val srcMap = AntlrStreamPos.mkSourcemap()
-	  val _ = Error.sourceMap := srcMap
-	  val lexer = MinMantLex.lex srcMap
+	  val lexer = MinMantLex.lex (Error.sourceMap errStrm) (lexErr errStrm)
 	  in
 	    case MinMantParser.parse lexer (MinMantLex.streamify get)
 	     of (SOME pt, _, []) => (TextIO.closeIn file; SOME pt)
 	      | (_, _, errs) => (
 		  TextIO.closeIn file;
-		  List.app (parseErr (filename, srcMap)) errs;
+		  List.app (parseErr errStrm) errs;
 		  NONE)
 	    (* end case *)
 	  end

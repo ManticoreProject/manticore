@@ -8,17 +8,17 @@
 
 structure FrontEnd : sig
 
-    val load : string -> AST.module option
+    val load : (Error.err_stream * string) -> AST.module option
 
   end = struct
 
   (* parse and typecheck a file *)
-    fun load file = (
+    fun load (errStrm, file) = (
 	  print(concat["parsing ", file, "\n"]);
-	  case Parser.parseFile file
+	  case Parser.parseFile (errStrm, file)
 	   of SOME pt => (
 		print(concat["typechecking ", file, "\n"]);
-		Typechecker.check pt)
+		Typechecker.check (errStrm, pt))
 	    | NONE => NONE
 	  (* end case *))
 

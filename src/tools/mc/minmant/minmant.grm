@@ -70,10 +70,7 @@
   structure Op = BasisNames
 
 (* apply a mark constructor to a span and a tree *)
-  fun mark cons ((l, _) : AntlrStreamPos.span, tr) = cons{
-	  lnum = AntlrStreamPos.lineNo (!Error.sourceMap) l,
-	  tree = tr
-	}
+  fun mark cons (span : AntlrStreamPos.span, tr) = cons{span = span, tree = tr}
 
 (* specialize mark functions for common node types *)
   val markDecl = mark PT.MarkDecl
@@ -125,7 +122,7 @@
 
 Program
 	: (TopDecl ";")* Exp
-		=> (SR, Exp)
+		=> ({span=FULL_SPAN, tree=(SR, Exp)})
 	;
 
 TopDecl

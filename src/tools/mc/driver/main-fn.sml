@@ -25,17 +25,30 @@ functor MainFn (
     structure CPSOpt = CPSOptFn (Spec)
     structure CFGOpt = CFGOptFn (Spec)
 
+    exception Error
+
+  (* check for errors and report them if there are any *)
+    fun checkForErrors errStrm = (
+	  Error.report (TextIO.stdErr, errStrm);
+	  if Error.anyErrors errStrm
+	    then raise Error
+	    else ())
+
     fun prHdr msg = print(concat["******************** ", msg,  " ********************\n"])
 
-    fun srcToBOM file = (case FrontEnd.load file
-	   of SOME ast => (case ASTOpt.optimize ast
-		 of SOME ast => SOME(Translate.translate ast)
+    fun srcToBOM (errStrm, file) = (case FrontEnd.load (errStrm, file)
+	   of SOME ast => (
+		checkForErrors errStrm;
+		case ASTOpt.optimize ast
+		 of SOME ast => (
+		      checkForErrors errStrm;
+		      SOME(Translate.translate ast))
 		  | NONE => NONE
 		(* end case *))
 	    | NONE => NONE
 	  (* end case *))
 
-  (* *)
+  (* the compiler's backend *)
     fun bomToCFG bom = let
 	  val bom = BOMOpt.optimize bom	
           val _ = CheckBOM.check bom
@@ -59,23 +72,27 @@ functor MainFn (
 	    TextIO.closeOut outStrm
 	  end (* compile *)
 
-    fun bomC (bomFile, asmFile) = let
-	  val bom = BOMParser.parse bomFile
+    fun bomC (errStrm, bomFile, asmFile) = let
+	  val bom = BOMParser.parse (errStrm, bomFile)
 	  in
-	    codegen (asmFile, bomToCFG bom)
+	    checkForErrors errStrm;
+	    codegen (asmFile, bomToCFG(valOf bom))
 	  end
 
-    fun mantC (srcFile, asmFile) = (case srcToBOM srcFile
-	   of SOME bom => codegen (asmFile, bomToCFG bom)
-	    | NONE => OS.Process.exit OS.Process.failure
-	  (* end case *))
+    fun mantC (errStrm, srcFile, asmFile) = let
+	  val bom = srcToBOM(errStrm, srcFile)
+	  in
+	    checkForErrors errStrm;
+	    codegen (asmFile, bomToCFG(valOf bom))
+	  end
 
     fun doFile file = BackTrace.monitor (fn () =>let
 	  fun asmFile stem = OS.Path.joinBaseExt{base=stem, ext=SOME "s"}
+	  val errStrm = Error.mkErrStream file
 	  in
 	    case OS.Path.splitBaseExt file
-	     of {base, ext=SOME "bom"} => bomC(file, asmFile base)
-	      | {base, ext=SOME "pml"} => mantC(file, asmFile base)
+	     of {base, ext=SOME "bom"} => bomC(errStrm, file, asmFile base)
+	      | {base, ext=SOME "pml"} => mantC(errStrm, file, asmFile base)
 	      | _ => raise Fail "unknown source file extension"
 	    (* end case *)
 	  end)
@@ -151,10 +168,9 @@ functor MainFn (
 
     fun processArgs args = (case args
            of arg :: args =>
-              if String.size arg > 0
-                 andalso String.sub (arg, 0) = #"-"
-                 then processOption (arg, args)
-              else processFile (arg, args)
+		if String.size arg > 0 andalso String.sub (arg, 0) = #"-"
+		  then processOption (arg, args)
+		  else processFile (arg, args)
             | _ => usage ()
 	  (* end case *))
 
@@ -186,6 +202,6 @@ functor MainFn (
             else badopt ()
 	  end
 
-    fun main (_, args) = processArgs args
+    fun main (_, args) = (processArgs args) handle Error => OS.Process.failure
  
   end

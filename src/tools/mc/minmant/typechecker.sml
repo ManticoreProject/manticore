@@ -8,7 +8,7 @@
 
 structure Typechecker : sig
 
-    val check : ParseTree.program -> AST.module option
+    val check : Error.err_stream * ParseTree.program -> AST.module option
 
   end = struct
 
@@ -21,9 +21,13 @@ structure Typechecker : sig
 
     val atos = Atom.toString
 
-    fun error (lnum, msg) = Error.say (
-	  "Error [" :: !Error.sourceFile :: ":" :: Int.toString lnum :: "] "
-	    :: (msg @ ["\n"]))
+  (* FIXME: the following is a hack to avoid threading the error stream through
+   * all of the typechecking code.  Eventually, we should fix this, since otherwise
+   * it is a space leak.
+   *)
+    val errStrm = ref(Error.mkErrStream "<bogus>")
+
+    fun error (span, msg) = Error.errorAt (!errStrm, span, msg)
 
   (* "smart" tuple type constructor *)
     fun mkTupleTy [ty] = ty
@@ -54,7 +58,7 @@ structure Typechecker : sig
 
   (* typecheck type expressions as described in Section 6.4 *)
     fun chkTy (loc, te, tve, ty) = (case ty
-	   of PT.MarkTy{lnum, tree} => chkTy(lnum, te, tve, tree)
+	   of PT.MarkTy{span, tree} => chkTy(span, te, tve, tree)
 	    | PT.NamedTy(tyArgs, id) => let
 		val tyArgs' = List.map (fn ty => chkTy(loc, te, tve, ty)) tyArgs
 		in
@@ -105,7 +109,7 @@ structure Typechecker : sig
 
   (* typecheck value declarations as described in Section 6.6 *)
     fun chkValDcl (loc, depth, te, ve, decl) = (case decl
-	   of PT.MarkVDecl{lnum, tree} => chkValDcl (lnum, depth, te, ve, tree)
+	   of PT.MarkVDecl{span, tree} => chkValDcl (span, depth, te, ve, tree)
 	    | PT.ValVDecl(pat, e) => let
 		val (pat', ve', lhsTy) = chkPat(loc, depth, te, ve, pat)
 		val (e', rhsTy) = chkExp (loc, depth, te, ve, e)
@@ -128,7 +132,7 @@ structure Typechecker : sig
 		val depth' = depth+1
 	      (* create variable bindings for the functions *)
 		fun bindFun (fb, (fs, names)) = (case fb
-		       of PT.MarkFunct{lnum, tree} => bindFun (tree, (fs, names))
+		       of PT.MarkFunct{span, tree} => bindFun (tree, (fs, names))
 			| PT.Funct(f, _, _) => let
 			    val f' = Var.new(Atom.toString f,
 				  AST.FunTy(
@@ -154,7 +158,7 @@ structure Typechecker : sig
 			ve fs
 	      (* typecheck the functions *)
 		fun chkFun loc (fb, fbs) = (case fb
-		       of PT.MarkFunct{lnum, tree} => chkFun lnum (tree, fbs)
+		       of PT.MarkFunct{span, tree} => chkFun span (tree, fbs)
 			| PT.Funct(f, param, body) => let
 			    val SOME(E.Var f') = E.find(ve', f)
 			    val AST.TyScheme(_, funTy) = Var.typeOf f'
@@ -182,7 +186,7 @@ structure Typechecker : sig
 
   (* typecheck expressions as described in Section 6.8 *)
     and chkExp (loc, depth, te, ve, exp) = (case exp
-	   of PT.MarkExp{lnum, tree} => chkExp (lnum, depth, te, ve, tree)
+	   of PT.MarkExp{span, tree} => chkExp (span, depth, te, ve, tree)
 	    | PT.LetExp(valDcls, exp) => let
 		  fun chkDcls ([], ve) = chkExp (loc, depth, te, ve, exp)
 		    | chkDcls (vd::vds, ve) = let
@@ -429,7 +433,7 @@ structure Typechecker : sig
 	  (* end case *))
 
     and chkMatch (loc, depth, te, ve, argTy, resTy, match) = (case match
-	   of PT.MarkMatch{lnum, tree} => chkMatch(lnum, depth, te, ve, argTy, resTy, tree)
+	   of PT.MarkMatch{span, tree} => chkMatch(span, depth, te, ve, argTy, resTy, tree)
 	    | PT.Match(pat, exp) => let
 		val (pat', ve', argTy') = chkPat(loc, depth, te, ve, pat)
 		val (exp', resTy') = chkExp(loc, depth, te, ve', exp)
@@ -468,7 +472,7 @@ structure Typechecker : sig
 
     and chkPBind (loc, depth, te, ve, pb) =
 	(case pb of
-	     PT.MarkPBind{lnum, tree} => chkPBind(lnum, depth, te, ve, tree)
+	     PT.MarkPBind{span, tree} => chkPBind(span, depth, te, ve, tree)
 	   | PT.PBind (pat, exp) => let
 		 val (exp', resTy) = chkExp(loc, depth, te, ve, exp)
 		 val (pat', ve', resTy') = chkPat (loc, depth, te, ve, pat)
@@ -481,7 +485,7 @@ structure Typechecker : sig
 	(* end case *))
 
     and chkPat (loc, depth, te, ve, pat) = (case pat
-	   of PT.MarkPat{lnum, tree} => chkPat(lnum, depth, te, ve, tree)
+	   of PT.MarkPat{span, tree} => chkPat(span, depth, te, ve, tree)
 	    | PT.ConPat(conid, pat) => let
 		val (pat, ve', ty) = chkPat (loc, depth, te, ve, pat)
 		in
@@ -584,7 +588,7 @@ structure Typechecker : sig
 
   (* typecheck top-level declarations as described in Sections 6.2 and 6.3 *)
     fun chkTopDcl (loc, te, ve, decl, next) = (case decl
-	   of PT.MarkDecl{lnum, tree} => chkTopDcl (lnum, te, ve, tree, next)
+	   of PT.MarkDecl{span, tree} => chkTopDcl (span, te, ve, tree, next)
 	    | PT.TyDecl(tvs, id, ty) => let
 		val (tve, tvs') = chkTyVars (loc, tvs)
 		val ty' = chkTy (loc, te, tve, ty)
@@ -601,8 +605,8 @@ structure Typechecker : sig
 		val newCon = DataCon.new tyc
 		fun chkCons (_, ids, [], ve, cons) = (ve, List.rev cons)
 		  | chkCons (loc', ids, con::rest, ve, cons) = (case con
-		       of PT.MarkConDecl{lnum, tree} =>
-			    chkCons (lnum, ids, tree::rest, ve, cons)
+		       of PT.MarkConDecl{span, tree} =>
+			    chkCons (span, ids, tree::rest, ve, cons)
 			| PT.ConDecl(conid, optTy) =>
 			    if AtomSet.member(ids, conid)
 			      then (
@@ -633,11 +637,11 @@ structure Typechecker : sig
 		end
 	  (* end case *))
 
-    fun check (dcls, exp) = let
-	  fun chkDcls (te, ve, []) = chkExp(1, 0, te, ve, exp)
+    fun check (es, {span, tree=(dcls, exp)}) = let
+	  val _ = errStrm := es
+	  fun chkDcls (te, ve, []) = chkExp(span, 0, te, ve, exp)
 	    | chkDcls (te, ve, d::ds) =
-	      chkTopDcl (1, te, ve, d, fn (te, ve) => chkDcls (te, ve, ds))
-	    
+	        chkTopDcl (span, te, ve, d, fn (te, ve) => chkDcls (te, ve, ds))
 	  val ret = SOME (#1 (chkDcls (Basis.te0, Basis.ve0, dcls)))
 	  in
 	    print "resolve overloading\n";
