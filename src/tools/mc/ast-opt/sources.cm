@@ -9,6 +9,7 @@
 Library
 
   structure ASTOpt
+  structure FlatParTup
 
 is
 
@@ -17,4 +18,4 @@ is
   ../minmant/sources.cm
 
   ast-opt.sml
-
+  flat-par-tup.sml
