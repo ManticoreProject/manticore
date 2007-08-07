@@ -31,7 +31,7 @@ structure PrintAST (* : sig
           (P.nest 2 (P.break ^^ exp et)) ^/^
         (P.text "else") ^^
           (P.nest 2 (P.break ^^ exp ef))
-      | exp (A.ApplyExp (e1, e2, t)) = P.text (exp e1) ^^ P.text " " ^^ P.text (exp e2)
+      | exp (A.ApplyExp (e1, e2, t)) = exp e1 ^^ P.text " " ^^ exp e2
       | exp (A.TupleExp es)  = delim ("(", ")")   (catw "," (map exp es))
       | exp (A.PTupleExp es) = delim ("(|", "|)") (catw "," (map exp es))
       | exp (A.ConstExp c) = const c

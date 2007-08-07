@@ -27,6 +27,7 @@ is
 
   $/basis.cm
   $/smlnj-lib.cm
+  $/pp-lib.cm
 
   ../common/sources.cm
 
