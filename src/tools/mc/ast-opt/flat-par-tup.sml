@@ -142,7 +142,7 @@ structure FlatParTup (* : sig
 	    val funVar = VarRep.V {name = "f",
 				   id = Stamp.new (),
 				   kind = ref A.VK_Fun,
-				   useCnt = ref 0, (* ??? *)
+				   useCnt = ref 0, (* Q2: is this a proper initial use count? *)
 				   ty = ref funScheme,
 				   props = PropList.newHolder ()}
 	    val argVar = VarRep.V {name = "t",
