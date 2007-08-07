@@ -12,14 +12,19 @@ Library
   structure Basis
   structure DataCon
   structure FrontEnd
+  signature PRETTY_PRINT
+  structure PrettyPrint
   structure PrintAST
   structure TyCon
   structure Types
   structure TypeUtil
   structure TypeOf
   structure Var
+  structure Stamp
+  structure VarRep
 
 is
+
   $/basis.cm
   $/smlnj-lib.cm
 
@@ -34,6 +39,8 @@ is
   front-end.sml
   meta-var.sml
   overload.sml
+  pretty-print.sml
+  pretty-print-sig.sml
   print-ast.sml
   typechecker.sml
   ty-con.sml
