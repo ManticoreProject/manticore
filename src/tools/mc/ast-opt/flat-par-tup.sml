@@ -18,23 +18,11 @@ structure FlatParTup (* : sig
 
     structure A = AST
     structure T = Types
+    structure S = Shapes
 
     (* (**) : ((a -> b) * (c -> d)) -> ((a * c) -> (b * d)) *)
     infixr **
     fun f ** g = (fn (a, b) => (f a, g b))
-
-    datatype shape = ShapeGroup of shapes | Dot
-    and shapes = ShapeSeq of shape * shapes | ShapeSing of shape
-
-    (* shapeOf : A.exp -> shape *)
-    fun shapeOf (A.TupleExp es) = ShapeGroup (shapesOf es)
-      | shapeOf (A.PTupleExp es) = ShapeGroup (shapesOf es)
-      | shapeOf _ = Dot
-
-    (* shapesOf : A.exp list -> shapes *)
-    and shapesOf ([]) = raise Fail "empty tuple"
-      | shapesOf ([e]) = ShapeSing (shapeOf e)
-      | shapesOf (e::es) = ShapeSeq (shapeOf e, shapesOf es)
 
     (* removeParens : A.exp list -> A.exp list *)
     (* pre: argument must not be empty *)
@@ -106,12 +94,12 @@ structure FlatParTup (* : sig
 		end
 	    (* mkNestedTup : shape -> A.exp *)
 	    fun mkNestedTup s =
-		let (* shape : shape -> A.exp *)
-		    fun shape (ShapeGroup sbar) = A.TupleExp (shapes sbar)
-		      | shape Dot = gensym ()
+		let (* S.shape : S.shape -> A.exp *)
+		    fun shape (S.Tup ss) = A.TupleExp (shapes ss)
+		      | shape (S.Dot) = gensym ()
 		    (* shapes : shapes -> A.exp list *)
-		    and shapes (ShapeSeq (s, sbar)) = (shape s) :: (shapes sbar)
-		      | shapes (ShapeSing s) = [shape s]
+		    and shapes (S.Seq (s, ss)) = (shape s) :: (shapes ss)
+		      | shapes (S.Sing s) = [shape s]
 		in
 		    shape s
 		end
@@ -158,6 +146,8 @@ structure FlatParTup (* : sig
 	    (A.FB (funVar, argVar, body), funVar) 
 	end
 
+    (**** main traversal of the AST ****)
+
     (* exp : A.exp -> A.exp *)
     fun exp (A.LetExp (b, e)) = A.LetExp (binding b, exp e)
       | exp (A.IfExp (e1, e2, e3, t)) = A.IfExp (exp e1, exp e2, exp e3, t)
@@ -166,7 +156,7 @@ structure FlatParTup (* : sig
       | exp (A.TupleExp es) = A.TupleExp (List.map exp es)
       | exp (A.RangeExp (e1, e2, oe3, t)) = A.RangeExp (exp e1, exp e2, Option.map exp oe3, t)
       | exp (p as A.PTupleExp es) = 
-	  let val (fdef, fname) = makeNester (shapeOf p)
+	  let val (fdef, fname) = makeNester (S.shapeOf p)
 	      val ftup = flatten p
 	      val ty = tupleType es
 	  in

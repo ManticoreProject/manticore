@@ -10,6 +10,7 @@ Library
 
   structure ASTOpt
   structure FlatParTup
+  structure Shapes
 
 is
 
@@ -20,3 +21,4 @@ is
 
   ast-opt.sml
   flat-par-tup.sml
+  shapes.sml
