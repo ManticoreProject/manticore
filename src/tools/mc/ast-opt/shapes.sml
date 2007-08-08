@@ -8,7 +8,7 @@
  *  (.,(.,(.,.),.),(.,.))
  *)
 
-structure Shapes = 
+structure Shapes : SHAPES = 
    
   struct
 
