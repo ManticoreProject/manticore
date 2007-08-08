@@ -1,0 +1,58 @@
+(* unpar.sml
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * The function unpar recursively turns parallel tuples into sequential tuples.
+ *)
+
+structure Unpar : sig
+
+    val unpar : AST.exp -> AST.exp
+
+  end = struct
+
+    structure A = AST
+
+    fun exp (A.LetExp (b, e)) = A.LetExp (binding b, exp e)
+      | exp (A.IfExp (e1, e2, e3, t)) = A.IfExp (exp e1, exp e2, exp e3, t)
+      | exp (A.CaseExp (e, pes, t)) = 
+	  A.CaseExp (exp e,
+		     map (fn (p,e) => (pat p, exp e)) pes,
+		     t)
+      | exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, t)
+      | exp (A.TupleExp es) = A.TupleExp (map exp es)
+      | exp (A.RangeExp (e1, e2, oe3, t)) = A.RangeExp (exp e1, 
+							exp e2,
+							Option.map exp oe3,
+							t)
+      | exp (A.PTupleExp es) = A.TupleExp (map exp es)
+      | exp (A.PArrayExp (es, t)) = A.PArrayExp (map exp es, t)
+      | exp (A.ComprehendExp (e, pes, oe)) =
+	  A.ComprehendExp (exp e,
+			   map (fn (p,e) => (pat p, exp e)) pes,
+			   Option.map exp oe)
+      | exp (A.PChoiceExp (es, t)) = A.PChoiceExp (map exp es, t)
+      | exp (A.SpawnExp e) = A.SpawnExp (exp e)
+      | exp (A.ConstExp c) = A.ConstExp (const c)
+      | exp (A.VarExp (v, ts)) = A.VarExp (var v, ts)
+      | exp (A.SeqExp (e1, e2)) = A.SeqExp (exp e1, exp e2)
+      | exp (A.OverloadExp ovr) = A.OverloadExp ovr
+
+    and binding (A.ValBind (p, e)) = A.ValBind (pat p, exp e)
+      | binding (A.PValBind (p, e)) = A.PValBind (pat p, exp e)
+      | binding (A.FunBind lams) = A.FunBind (map lambda lams)
+
+    and lambda (A.FB (f, x, e)) = A.FB (var f, var x, exp e)
+
+    and pat p = p
+
+    and const c = c
+
+    and var v = v
+
+    fun module m = exp m
+
+    fun unpar e = exp e
+
+  end

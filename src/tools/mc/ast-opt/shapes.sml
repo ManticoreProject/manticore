@@ -28,6 +28,11 @@ structure Shapes : SHAPES =
       | shapesOf (e::es) = Seq (shapeOf e, shapesOf es)
       | shapesOf ([]) = raise Fail "empty"
 
+    (* mkVarTup : shape * T.ty -> A.exp *)
+    (* to generate a tuple made entirely of fresh variables *)
+    (* matching the given shape and type *)
+    fun mkVarTup (s, t) = raise Fail "todo"
+
     (* interp: 'a -> 'a list -> 'a list *)
     fun interp a xs =
 	let (* i : 'a list -> 'a list *)
@@ -49,5 +54,11 @@ structure Shapes : SHAPES =
 	in
 	    concat (shape s)
 	end
+	
+    (**** tests ****)
+
+    (* comment out signature ascription above to use these *)
+
+    fun tests () = ()
 
   end

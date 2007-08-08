@@ -2,8 +2,6 @@
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
- *
- * Adam Shaw
  *)
 
 (* Q1 What is the ty list for in a VarExp? *)
@@ -18,7 +16,10 @@ structure FlatParTup (* : sig
 
     structure A = AST
     structure T = Types
+
+    (* It seems I won't need shapes in the real implementation...*)
     structure S = Shapes
+    (* but here they are anyway. *)
 
     (* (**) : ((a -> b) * (c -> d)) -> ((a * c) -> (b * d)) *)
     infixr **
@@ -44,110 +45,88 @@ structure FlatParTup (* : sig
       | flatten (A.PTupleExp es) = A.PTupleExp (removeParens es)
       | flatten e = e
 
-    (* letterSeed : int ref *)
-    val letterSeed = ref 0
+    local
+	(* letterSeed : int ref *)
+	val letterSeed = ref 0
+			 
+	(* letters : string vector *)
+	val letters = 
+	    let val alphabet = "abcdefghijklmnopqrstuvwxyz"
+	    in
+		Vector.fromList (List.map Char.toString (explode alphabet))
+	    end
+    in
+        (* resetVarNames : unit -> unit *)
+        fun resetVarNames () = (letterSeed := 0)
+        (* nextVarName : unit -> string *)
+        fun nextVarName () =
+	    let val s = !letterSeed
+		val a = Vector.sub (letters, s mod 26)
+		val n = s div 26
+		val x = if (n > 0) 
+			then a ^ (Int.toString n)
+			else a
+	    in
+		letterSeed := s + 1;
+		x
+	    end
+    end
 
-    (* letters : string vector *)
-    val letters = 
-	let val alphabet = "abcdefghijklmnopqrstuvwxyz"
-	in
-	    Vector.fromList (List.map Char.toString (explode alphabet))
-	end
+    (* freshVar: (string option * T.ty) -> A.var *)
+    fun freshVar (os, t) = 
+  	  VarRep.V {name   = case os of NONE => nextVarName () | SOME s => s,
+		    id     = Stamp.new (),
+		    kind   = ref A.VK_None,
+		    useCnt = ref 0 (* ? Is that right? *),
+		    ty     = ref (T.TyScheme ([], t)),
+		    props  = PropList.newHolder ()}
 
-    (* tupleType : A.exp list -> A.ty *)
-    fun tupleType es =
-	let (* ty : A.exp -> A.ty *)
-	    fun ty (A.LetExp (_, e)) = ty e
-	      | ty (A.IfExp (_, _, _, t)) = t
-	      | ty (A.CaseExp (_, _, t)) = t
-	      | ty (A.ApplyExp (_, _, t)) = t
-	      | ty (A.TupleExp es) = tupleType es
-	      | ty (A.RangeExp (_, _, _, t)) = t
-	      | ty (A.PTupleExp es) = tupleType es
-	      | ty (A.PArrayExp (_, t)) = t
-	      | ty (A.ComprehendExp (e, _, _)) = raise Fail "todo"
-	      | ty (A.PChoiceExp (_, t)) = t
-	      | ty (A.SpawnExp e) = ty e
-	      | ty (A.ConstExp k) = 
-		  (case k
-		    of A.DConst (d, ts) => raise Fail "todo"
-		     | A.LConst (_, t) => t)
-	      | ty (A.VarExp (_, ts)) = raise Fail "todo"
-	      | ty (A.SeqExp (_, e)) = ty e
-	      | ty (A.OverloadExp ovr) = raise Fail "todo"
-	in
-	    T.TupleTy (List.map ty es)
-	end
+    (* mkVarTup : T.ty -> A.exp *)
+    fun mkVarTup (T.TupleTy ts) =
+	  let fun v var = A.VarExp (var, []) 
+	      (* build : T.ty list -> A.exp list *)
+	      fun build ([], acc) = rev acc
+		| build (t::ts, acc) = 
+		    (case t
+		      of T.TupleTy _ => build (ts, (mkVarTup t) :: acc)
+		       | _ => build (ts, (v (freshVar (NONE, t))) :: acc))
+	  in
+	      A.PTupleExp (build (ts, []))
+	  end
+      | mkVarTup _ = raise Fail "not a tuple type"
 
-    (* makeNester : shape -> A.lambda * A.var *)
-    (* returns a function along with the variable to which it is bound *)
-    fun makeNester s =
-	let fun gensym () =
-		let val s = Stamp.new ()
-		    val n = !letterSeed before (letterSeed := (!letterSeed + 1) mod 26)
-		    val a = Vector.sub (letters, n)
-		    val t = T.VarTy (T.TVar {stamp=s, 
-					     name=Atom.atom a,  
-					     class=NONE})
-		in
-		    A.VarExp (* Q1 *) (Var.new (a, t), [])
-		end
-	    (* mkNestedTup : shape -> A.exp *)
-	    fun mkNestedTup s =
-		let (* S.shape : S.shape -> A.exp *)
-		    fun shape (S.Tup ss) = A.TupleExp (shapes ss)
-		      | shape (S.Dot) = gensym ()
-		    (* shapes : shapes -> A.exp list *)
-		    and shapes (S.Seq (s, ss)) = (shape s) :: (shapes ss)
-		      | shapes (S.Sing s) = [shape s]
-		in
-		    shape s
-		end
-	    val nestedVarTup = mkNestedTup s
+
+    (* makeNester : T.ty -> A.var * A.exp *)
+    fun makeNester t =
+	let val nestedVarTup = mkVarTup t
 	    val flatVarTup = flatten nestedVarTup
-	    val flatVarPat = 
-		let fun pat (A.VarExp (v, _)) = A.VarPat v
-		      | pat _ = raise Fail "expected a VarExp"
+	    val nestedTupType = t
+	    val flatTupType = TypeOf.exp flatVarTup
+	    val f = freshVar (SOME "nest", 
+			      T.FunTy (flatTupType, nestedTupType))
+	    val x = freshVar (SOME "x", flatTupType)
+	    val pat = 
+		(* flatVarTup is a parallel tuple of variable expressions *)
+		let (* p : A.exp -> A.pat *)
+		    fun p (A.VarExp (v, ts)) = A.VarPat v
+		      | p _ = raise Fail "expected a VarExp"
+		    (* es : A.exp list *)
+		    val es = case flatVarTup
+			       of (A.PTupleExp es) => es
+				| _ => raise Fail "expected a PTupleExp"
 		in
-		    case flatVarTup
-		     of A.TupleExp es => A.TuplePat (List.map pat es)
-		      | _ => raise Fail "expected a flat tuple of variables"
+		    A.TuplePat (map p es)
 		end
-	    fun varToTyvar (VarRep.V {name, id, ...}) =
-		  Types.TVar {stamp=id, name=Atom.atom name, class=NONE}
-	    fun extractTyvar (A.VarExp (v, _)) = varToTyvar v
-	      | extractTyvar _ = raise Fail "not a VarExp"
-	    val dty = (case flatVarTup
-			of A.TupleExp es => tupleType es
-			 | _ => raise Fail "expected TupleExp")
-	    val rty = (case nestedVarTup	    
-			of A.TupleExp es => tupleType es
-			 | _ => raise Fail "expected TupleExp")
-	    val tvs = (case flatVarTup
-			of A.TupleExp es => List.map extractTyvar es
-			 | _ => raise Fail "expected TupleExp")
-	    val funScheme = T.TyScheme (tvs, T.FunTy (dty, rty))
-	    val funVar = VarRep.V {name = "f",
-				   id = Stamp.new (),
-				   kind = ref A.VK_Fun,
-				   useCnt = ref 0, (* Q2: is this a proper initial use count? *)
-				   ty = ref funScheme,
-				   props = PropList.newHolder ()}
-	    val argVar = VarRep.V {name = "t",
-				   id = Stamp.new (),
-				   kind = ref A.VK_Pat,
-				   useCnt = ref 0,
-				   ty = ref (T.TyScheme (tvs, dty)),
-				   props = PropList.newHolder ()}
-	    val body = A.CaseExp (A.VarExp (argVar, []) (* Q1 *),
-				  [(flatVarPat, nestedVarTup)],
-				  rty)
+	    val body = A.CaseExp (A.VarExp (x, []),
+				  [(pat, Unpar.unpar nestedVarTup)],
+				  nestedTupType)
 	in
-	    (A.FB (funVar, argVar, body), funVar) 
+	    resetVarNames ();
+	    (f, A.FB (f, x, body))
 	end
 
     (**** main traversal of the AST ****)
-
+	
     (* exp : A.exp -> A.exp *)
     fun exp (A.LetExp (b, e)) = A.LetExp (binding b, exp e)
       | exp (A.IfExp (e1, e2, e3, t)) = A.IfExp (exp e1, exp e2, exp e3, t)
@@ -155,13 +134,12 @@ structure FlatParTup (* : sig
       | exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, t)
       | exp (A.TupleExp es) = A.TupleExp (List.map exp es)
       | exp (A.RangeExp (e1, e2, oe3, t)) = A.RangeExp (exp e1, exp e2, Option.map exp oe3, t)
-      | exp (p as A.PTupleExp es) = 
-	  let val (fdef, fname) = makeNester (S.shapeOf p)
-	      val ftup = flatten p
-	      val ty = tupleType es
+      | exp (p as A.PTupleExp es) =
+	  let val t = TypeOf.exp p
+	      val (f, lam) = makeNester t 
 	  in
-	      A.LetExp (A.FunBind [fdef], 
-			A.ApplyExp (A.VarExp (fname, []) (* Q1 *), ftup, ty))
+	      A.LetExp (A.FunBind [lam],
+			A.ApplyExp (A.VarExp (f, []), flatten p, t))
 	  end
       | exp (A.PArrayExp (es, t)) = A.PArrayExp (List.map exp es, t)
       | exp (A.ComprehendExp (e, pes, eo)) = A.ComprehendExp (exp e, 
@@ -204,5 +182,23 @@ structure FlatParTup (* : sig
 
     (* fpt : A.module -> A.module *)
     fun fpt m = exp m
+
+    (**** tests ****)
+
+    local
+	structure P = PrintAST
+	fun ptup es = A.PTupleExp es
+	fun int n = A.ConstExp (A.LConst (Literal.Int n, Basis.intTy))
+	val t0 = ptup [int 0, 
+		       ptup [int 1, int 2],
+		       int 3,
+		       ptup [int 4,
+			     int 5,
+			     ptup [int 6, int 7]]]
+    in
+        fun test0 () = (P.print t0;
+			P.printComment "-->";
+			P.print (fpt t0))
+    end
 
   end
