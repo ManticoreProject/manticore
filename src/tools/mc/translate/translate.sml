@@ -88,7 +88,7 @@ structure Translate : sig
 	    | AST.RangeExp(lo, hi, optStep, ty) => raise Fail "RangeExp"
 	    | AST.PTupleExp exps => raise Fail "PTupleExp"
 	    | AST.PArrayExp(exps, ty) => raise Fail "PArrayExp"
-	    | AST.ComprehendExp _ => raise Fail "unexpected ComprehendExp"
+	    | AST.PCompExp _ => raise Fail "unexpected PCompExp"
 	    | AST.PChoiceExp _ => raise Fail "unexpected PChoiceExp"
 	    | AST.SpawnExp e => let
 		val (exh, env') = newHandler env

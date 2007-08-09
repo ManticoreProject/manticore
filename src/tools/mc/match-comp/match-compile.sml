@@ -298,8 +298,8 @@ structure MatchCompile : sig
 		  AST.RangeExp(rewrite' e1, rewrite' e2, Option.map rewrite' e3, ty)
 	      | AST.PTupleExp es => AST.PTupleExp(List.map rewrite' es)
 	      | AST.PArrayExp(es, ty) => AST.PArrayExp(List.map rewrite' es, ty)
-	      | AST.ComprehendExp _ => (* should have been compiled away *)
-		  raise Fail "unexpected ComprehendExp"
+	      | AST.PCompExp _ => (* should have been compiled away *)
+		  raise Fail "unexpected PCompExp"
 	      | AST.PChoiceExp _ => (* should have been compiled away *)
 		  raise Fail "unexpected PChoiceExp"
 	      | AST.SpawnExp e => AST.SpawnExp(rewrite' e)
