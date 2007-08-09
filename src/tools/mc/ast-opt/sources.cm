@@ -10,6 +10,7 @@ Library
 
   structure ASTOpt
   structure FlatParTup
+  structure FutParTup	
   structure PrintAST  
   signature SHAPES
   structure Shapes
@@ -24,6 +25,7 @@ is
 
   ast-opt.sml
   flat-par-tup.sml
+  fut-par-tup.sml
   shapes-sig.sml
   shapes.sml
   unpar.sml

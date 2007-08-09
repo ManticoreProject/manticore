@@ -150,7 +150,8 @@ structure FlatParTup (* : sig
       | exp (A.ConstExp k) = A.ConstExp (const k)
       | exp (A.VarExp (v, ts)) = A.VarExp (var v, ts)
       | exp (A.SeqExp (e1, e2)) = A.SeqExp (exp e1, exp e2)
-      | exp (A.OverloadExp ovr) = raise Fail "todo"
+      | exp (A.OverloadExp ovr) = (ovr := overload_var (!ovr);
+				   A.OverloadExp ovr)
 
     (* binding : A.binding -> A.binding *)
     and binding (A.ValBind (p, e)) = A.ValBind (pat p, exp e)
