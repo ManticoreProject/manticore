@@ -165,10 +165,10 @@ structure FutParTup (* : sig
 							t)
       | exp (A.PTupleExp es) = ptuple es
       | exp (A.PArrayExp (es, t)) = A.PArrayExp (map exp es, t)
-      | exp (A.ComprehendExp (e, pes, oe)) = 
-	  A.ComprehendExp (exp e,
-			   map (id ** exp) pes,
-			   Option.map exp oe)
+      | exp (A.PCompExp (e, pes, oe)) = 
+	  A.PCompExp (exp e,
+		      map (id ** exp) pes,
+		      Option.map exp oe)
       | exp (A.PChoiceExp (es, t)) = A.PChoiceExp (map exp es, t)
       | exp (A.SpawnExp e) = A.SpawnExp (exp e)
       | exp (k as (A.ConstExp _)) = k

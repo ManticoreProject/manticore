@@ -28,8 +28,8 @@ structure Unpar : sig
 							t)
       | exp (A.PTupleExp es) = A.TupleExp (map exp es)
       | exp (A.PArrayExp (es, t)) = A.PArrayExp (map exp es, t)
-      | exp (A.ComprehendExp (e, pes, oe)) =
-	  A.ComprehendExp (exp e,
+      | exp (A.PCompExp (e, pes, oe)) =
+	  A.PCompExp (exp e,
 			   map (fn (p,e) => (pat p, exp e)) pes,
 			   Option.map exp oe)
       | exp (A.PChoiceExp (es, t)) = A.PChoiceExp (map exp es, t)

@@ -142,9 +142,9 @@ structure FlatParTup (* : sig
 			A.ApplyExp (A.VarExp (f, []), flatten p, t))
 	  end
       | exp (A.PArrayExp (es, t)) = A.PArrayExp (List.map exp es, t)
-      | exp (A.ComprehendExp (e, pes, eo)) = A.ComprehendExp (exp e, 
-							      List.map (pat ** exp) pes, 
-							      Option.map exp eo)
+      | exp (A.PCompExp (e, pes, eo)) = A.PCompExp (exp e, 
+						    List.map (pat ** exp) pes, 
+						    Option.map exp eo)
       | exp (A.PChoiceExp (es, t)) = A.PChoiceExp (List.map exp es, t)
       | exp (A.SpawnExp e) = A.SpawnExp (exp e)
       | exp (A.ConstExp k) = A.ConstExp (const k)
