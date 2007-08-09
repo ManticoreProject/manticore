@@ -8,7 +8,7 @@
 
 structure FlatParTup (* : sig
 
-    val fpt : AST.module -> AST.module
+    val flatten : AST.module -> AST.module
 
   end *) = 
 
@@ -16,10 +16,6 @@ structure FlatParTup (* : sig
 
     structure A = AST
     structure T = Types
-
-    (* It seems I won't need shapes in the real implementation...*)
-    structure S = Shapes
-    (* but here they are anyway. *)
 
     (* (**) : ((a -> b) * (c -> d)) -> ((a * c) -> (b * d)) *)
     infixr **
@@ -40,10 +36,10 @@ structure FlatParTup (* : sig
 	    exps es
 	end
 
-    (* flatten : A.exp -> A.exp *)
-    fun flatten (A.TupleExp es) = A.TupleExp (removeParens es)
-      | flatten (A.PTupleExp es) = A.PTupleExp (removeParens es)
-      | flatten e = e
+    (* flattenTup : A.exp -> A.exp *)
+    fun flattenTup (A.TupleExp es) = A.TupleExp (removeParens es)
+      | flattenTup (A.PTupleExp es) = A.PTupleExp (removeParens es)
+      | flattenTup e = e
 
     local
 	(* letterSeed : int ref *)
@@ -99,7 +95,7 @@ structure FlatParTup (* : sig
     (* makeNester : T.ty -> A.var * A.exp *)
     fun makeNester t =
 	let val nestedVarTup = mkVarTup t
-	    val flatVarTup = flatten nestedVarTup
+	    val flatVarTup = flattenTup nestedVarTup
 	    val nestedTupType = t
 	    val flatTupType = TypeOf.exp flatVarTup
 	    val f = freshVar (SOME "nest", 
@@ -139,7 +135,7 @@ structure FlatParTup (* : sig
 	      val (f, lam) = makeNester t 
 	  in
 	      A.LetExp (A.FunBind [lam],
-			A.ApplyExp (A.VarExp (f, []), flatten p, t))
+			A.ApplyExp (A.VarExp (f, []), flattenTup p, t))
 	  end
       | exp (A.PArrayExp (es, t)) = A.PArrayExp (List.map exp es, t)
       | exp (A.PCompExp (e, pes, eo)) = A.PCompExp (exp e, 
@@ -181,8 +177,8 @@ structure FlatParTup (* : sig
     (* var : A.var -> A.var *)
     and var v = v
 
-    (* fpt : A.module -> A.module *)
-    fun fpt m = exp m
+    (* flatten : A.module -> A.module *)
+    fun flatten m = exp m
 
     (**** tests ****)
 
@@ -199,7 +195,7 @@ structure FlatParTup (* : sig
     in
         fun test0 () = (P.print t0;
 			P.printComment "-->";
-			P.print (fpt t0))
+			P.print (flatten t0))
     end
 
   end

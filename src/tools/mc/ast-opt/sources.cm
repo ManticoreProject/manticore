@@ -12,8 +12,6 @@ Library
   structure FlatParTup
   structure FutParTup	
   structure PrintAST  
-  signature SHAPES
-  structure Shapes
   structure Unpar
 
 is
@@ -26,6 +24,4 @@ is
   ast-opt.sml
   flat-par-tup.sml
   fut-par-tup.sml
-  shapes-sig.sml
-  shapes.sml
   unpar.sml

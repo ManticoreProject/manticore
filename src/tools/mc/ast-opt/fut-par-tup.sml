@@ -120,9 +120,11 @@ structure FutParTup (* : sig
     fun (x,y) :>: (xs,ys) = (x::xs, y::ys)
  
     (* ptuple : A.exp list -> A.exp *)
-    (* consumes a list whose members are the contents of a parallel tuple, *)
-    (* produces a LetExp that is a "futurized" ptuple *)
-    fun ptuple es = 
+    (* Precondition: The argument to the function, a list, is not empty. *)
+    (* Consumes a non-empty list whose members are the contents of a parallel tuple, *)
+    (* and produces a LetExp that is a "futurized" ptuple. *)
+    (* Note: the first member of the list is not futurized (an optimization). *)
+    fun ptuple (e::es) = 
   	  let (* mkFutBinds : A.exp list -> A.binding list * A.var list *)
 	      fun mkFutBinds ([], n) = ([],[])
 		| mkFutBinds (e::es, n) =
@@ -148,8 +150,9 @@ structure FutParTup (* : sig
 	      val (bs, vs) = mkFutBinds (map exp es, 0)
 	      val touches = map (fn v => touch (A.VarExp (v, []))) vs
 	  in
-	      letMany (bs, A.TupleExp touches)
+	      letMany (bs, A.TupleExp (exp e :: touches))
 	  end
+      | ptuple [] = raise Fail "ptuple: expected non-empty list of expressions"
 
     (* exp : A.exp -> A.exp *)
     and exp (A.LetExp (b, e)) = A.LetExp (binding b, exp e)
@@ -208,6 +211,9 @@ structure FutParTup (* : sig
 	      in
 		  A.ApplyExp (e1, e2, rty)
 	      end
+	(* sep : string option -> unit *)
+	fun sep NONE     = PrintAST.printComment "-->"
+	  | sep (SOME s) = PrintAST.printComment (s ^ " -->")
 	(* test cases *)
 	val t0 = ptup (map (apply fact o int) [10,11,12,13,14])
 	val t1 = ptup [ptup [apply fact (int 10),
@@ -215,11 +221,14 @@ structure FutParTup (* : sig
 		       apply fact (int 15)]
 	(* test : A.exp -> unit *)
 	fun test e = (PrintAST.print e;
-		      PrintAST.printComment "-->";
+		      sep (SOME "futurizing");
 		      PrintAST.print (futurize e))
     in
         fun test0 () = test t0
         fun test1 () = test t1
+	fun test2 () = (PrintAST.print t1;
+			sep (SOME "flattening");
+			test (FlatParTup.flatten t1))
     end
 
   end
