@@ -356,7 +356,7 @@ structure Typechecker : sig
 	      in
 		  (AST.PArrayExp(es', ty), ty)
 	      end
-	    | PT.ComprehendExp (e, pbs, eo) => let
+	    | PT.PCompExp (e, pbs, eo) => let
 		  val (pes, ve') = chkPBinds (loc, depth, te, ve, pbs)
 		  val (e', resTy) = chkExp (loc, depth, te, ve', e)
 		  val eo' = (case eo of
@@ -371,7 +371,7 @@ structure Typechecker : sig
 			       | NONE => NONE
 			    (* end case *))
 	      in
-		  (AST.ComprehendExp (e', pes, eo'), B.parrayTy resTy)
+		  (AST.PCompExp (e', pes, eo'), B.parrayTy resTy)
 	      end
 	    | PT.SpawnExp e => let
 		  val (e', ty) = chkExp (loc, depth, te, ve, e)

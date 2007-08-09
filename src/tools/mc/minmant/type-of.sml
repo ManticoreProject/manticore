@@ -29,7 +29,7 @@ structure TypeOf : sig
       | exp (AST.RangeExp(_, _, _, ty)) = B.parrayTy ty
       | exp (AST.PTupleExp es) = Ty.TupleTy(List.map exp es)
       | exp (AST.PArrayExp(_, ty)) = B.parrayTy ty
-      | exp (AST.ComprehendExp(e, _, _)) = B.parrayTy(exp e)
+      | exp (AST.PCompExp(e, _, _)) = B.parrayTy(exp e)
       | exp (AST.PChoiceExp(_, ty)) = ty
       | exp (AST.SpawnExp _) = Basis.threadIdTy
       | exp (AST.ConstExp c) = const c

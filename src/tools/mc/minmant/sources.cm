@@ -12,7 +12,9 @@ Library
   structure Basis
   structure DataCon
   structure FrontEnd
+  structure Literal
   structure PrintAST
+  structure PrintTypes
   structure TyCon
   structure Types
   structure TypeUtil
@@ -41,6 +43,7 @@ is
   pretty-print.sml
   pretty-print-sig.sml
   print-ast.sml
+  print-types.sml
   typechecker.sml
   ty-con.sml
   ty-var.sml

@@ -23,7 +23,7 @@ structure AST =
       | RangeExp of (exp * exp * exp option * ty)	(* ty is element type *)
       | PTupleExp of exp list
       | PArrayExp of exp list * ty			(* ty is element type *)
-      | ComprehendExp of (exp * (pat * exp) list * exp option)
+      | PCompExp of (exp * (pat * exp) list * exp option)
       | PChoiceExp of exp list * ty			(* ty is result type *)
       | SpawnExp of exp
       | ConstExp of const

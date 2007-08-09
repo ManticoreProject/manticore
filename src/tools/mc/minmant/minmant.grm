@@ -292,7 +292,7 @@ PArrayBody
 	: optCommaExps		=> (fn e => markExp (FULL_SPAN, PT.PArrayExp(optCommaExps e)))
 	| "to" Exp ("by" Exp)?	=> (fn e => markExp (FULL_SPAN, PT.RangeExp(e, Exp, SR)))
 	| "|" PBind ("," PBind)* ("where" Exp)?
-				=> (fn e => markExp (FULL_SPAN, PT.ComprehendExp (e, PBind :: SR1, SR2)))
+				=> (fn e => markExp (FULL_SPAN, PT.PCompExp (e, PBind :: SR1, SR2)))
 	;
 
 optExps

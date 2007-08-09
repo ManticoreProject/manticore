@@ -68,7 +68,7 @@ structure ParseTree =
       | RangeExp of (exp * exp * exp option)
       | PTupleExp of exp list
       | PArrayExp of exp list
-      | ComprehendExp of (exp * pbind list * exp option)
+      | PCompExp of (exp * pbind list * exp option)
       | SpawnExp of exp
       | SeqExp of exp list		(* sequence of two or more expressions *)
       | IdExp of vid			(* either variable or nullary constant *)
