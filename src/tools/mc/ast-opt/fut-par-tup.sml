@@ -83,12 +83,7 @@ structure FutParTup (* : sig
 	      val innerTy = typeFromFutureTy te 
 	                    (* will throw exception if e is not a future *)
 	      val tt = T.FunTy (te, innerTy)
-	      val tvar = VarRep.V {name = "touch",
-				   id = Stamp.new (),
-				   kind = ref A.VK_Fun,
-				   useCnt = ref 0,
-				   ty = ref (T.TyScheme ([], tt)),
-				   props = PropList.newHolder ()}
+	      val tvar = Var.newWithKind ("touch", A.VK_Fun, tt)
 	      val t = A.VarExp (tvar, [])
 	  in
 	      A.ApplyExp (t, e, innerTy)

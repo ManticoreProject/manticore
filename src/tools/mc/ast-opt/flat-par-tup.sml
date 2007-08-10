@@ -4,8 +4,6 @@
  * All rights reserved.
  *)
 
-(* Q1 What is the ty list for in a VarExp? *)
-
 structure FlatParTup (* : sig
 
     val flatten : AST.module -> AST.module
@@ -24,6 +22,18 @@ structure FlatParTup (* : sig
     infixr **
     fun f ** g = (fn (a, b) => (f a, g b))
 
+    (* flattenCand : A.exp -> bool *)
+    (* Determines whether the given expression is suitable for flattening. *)
+    fun flattenCand e =
+	  let (* ptup : A.exp -> bool *)
+	      fun ptup (A.PTupleExp _) = true
+		| ptup _ = false
+	  in
+	      case e
+	        of (A.PTupleExp es) => List.exists ptup es
+		 | _ => false
+	  end
+	
     (* removeParens : A.exp list -> A.exp list *)
     (* pre: argument must not be empty *)
     fun removeParens es =
@@ -40,7 +50,7 @@ structure FlatParTup (* : sig
 	end
 
     (* flattenTup : A.exp -> A.exp *)
-    fun flattenTup (A.TupleExp es) = A.TupleExp (removeParens es)
+    fun flattenTup (A.TupleExp es)  = A.TupleExp (removeParens es)
       | flattenTup (A.PTupleExp es) = A.PTupleExp (removeParens es)
       | flattenTup e = e
 
@@ -90,10 +100,11 @@ structure FlatParTup (* : sig
 	  end
       | mkVarTup _ = raise Fail "not a tuple type"
 
-
     (* makeNester : T.ty -> A.var * A.exp *)
+    (* pre: The argument t is a TupleTy. *)
     fun makeNester t =
-	let val nestedVarTup = mkVarTup t
+	let val nestedVarTup = mkVarTup t 
+                            (* will throw an exception if pre is violated *)
 	    val flatVarTup = flattenTup nestedVarTup
 	    val nestedTupTy = t
 	    val flatTupTy = TypeOf.exp flatVarTup
@@ -129,12 +140,15 @@ structure FlatParTup (* : sig
       | exp (A.TupleExp es) = A.TupleExp (List.map exp es)
       | exp (A.RangeExp (e1, e2, oe3, t)) = A.RangeExp (exp e1, exp e2, Option.map exp oe3, t)
       | exp (p as A.PTupleExp es) =
-	  let val t = TypeOf.exp p
-	      val (f, lam) = makeNester t 
-	  in
-	      A.LetExp (A.FunBind [lam],
-			A.ApplyExp (A.VarExp (f, []), flattenTup p, t))
-	  end
+	  if flattenCand p then	      
+	      let val t = TypeOf.exp p
+		  val (f, lam) = makeNester t 
+	      in
+		  A.LetExp (A.FunBind [lam],
+			    A.ApplyExp (A.VarExp (f, []), flattenTup p, t))
+	      end
+	  else 
+	      A.PTupleExp (map exp es)
       | exp (A.PArrayExp (es, t)) = A.PArrayExp (List.map exp es, t)
       | exp (A.PCompExp (e, pes, eo)) = A.PCompExp (exp e, 
 						    List.map (id ** exp) pes, 
