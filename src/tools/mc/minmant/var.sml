@@ -29,6 +29,10 @@ structure Var =
     (* new : string * Types.ty -> V.var *)
     fun new (name, ty) = newPoly (name, AST.TyScheme([], ty))
 
+    (* newWithKind : string * kind * Types.ty -> var *)
+    fun newWithKind (name, k, t) = 
+	  V.newWithKind (name, k, ref (AST.TyScheme ([], t)))
+
     (* typeOf : V.var -> Types.ty *)
     fun typeOf x = !(V.typeOf x)
 

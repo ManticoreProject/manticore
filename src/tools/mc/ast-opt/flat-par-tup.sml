@@ -5,7 +5,6 @@
  *
  * At present, only _parallel tuples_ are flattened.
  * Proposed extensions: 
- *  - tuples within parallel tuples
  *  - data constructors
  *)
 
@@ -21,7 +20,7 @@ structure FlatParTup (* : sig
     structure T = Types
 
     (* id : a -> a *)
-    val id = (fn z => z)
+    val id = (fn x => x)
 
     (* (**) : ((a -> b) * (c -> d)) -> ((a * c) -> (b * d)) *)
     infixr **
@@ -30,111 +29,21 @@ structure FlatParTup (* : sig
     (* flattenCand : A.exp -> bool *)
     (* Determines whether the given expression is suitable for flattening. *)
     fun isFlattenCand e =
-	  let (* ptup : A.exp -> bool *)
-	      fun ptup (A.PTupleExp _) = true
-		| ptup _ = false
+	  let (* tup : A.exp -> bool *)
+	      fun tup (A.PTupleExp _) = true
+		| tup (A.TupleExp _)  = true		
+		| tup _ = false
+	      (* dcon : A.exp -> bool *)
+	      fun dcon (A.ApplyExp (A.ConstExp (A.DConst _), _, _)) = true
+		| dcon _ = false
+	      (* pred : A.exp -> bool *)
+	      fun pred e = tup e orelse dcon e
 	  in
 	      case e
-	        of (A.PTupleExp es) => List.exists ptup es
+	        of (A.PTupleExp es) => List.exists pred es
 		 | _ => false
 	  end
 	
-    (* removeParens : A.exp list -> A.exp list *)
-    (* pre: argument must not be empty *)
-    fun removeParens es =
-	let (* exp : exp -> exp list *)
-	    fun exp (A.TupleExp es) = exps es
-	      | exp (A.PTupleExp es) = exps es
-	      | exp e = [e]
-	    (* exps : exp list -> exp list *)
-	    and exps ([e]) = exp e
-	      | exps (e::es) = exp e @ exps es
-	      | exps [] = raise Fail "empty"
-	in
-	    exps es
-	end
-
-    (* flattenTup : A.exp -> A.exp *)
-    fun flattenTup (A.TupleExp es)  = A.TupleExp (removeParens es)
-      | flattenTup (A.PTupleExp es) = A.PTupleExp (removeParens es)
-      | flattenTup e = e
-
-    local
-	(* letterSeed : int ref *)
-	val letterSeed = ref 0		 
-	(* letters : string vector *)
-	val letters = 
-	    let val alphabet = "abcdefghijklmnopqrstuvwxyz"
-	    in
-		Vector.fromList (List.map Char.toString (explode alphabet))
-	    end
-    in
-        (* resetVarNames : unit -> unit *)
-        fun resetVarNames () = (letterSeed := 0)
-        (* nextVarName : unit -> string *)
-        fun nextVarName () =
-	    let val s = !letterSeed
-		val a = Vector.sub (letters, s mod 26)
-		val n = s div 26
-		val x = if (n > 0) 
-			then a ^ (Int.toString n)
-			else a
-	    in
-		letterSeed := s + 1;
-		x
-	    end
-    end
-
-    (* freshVar: (string option * T.ty) -> A.var *)
-    fun freshVar (os, t) = Var.new (case os 
-				      of NONE => nextVarName () 
-				       | SOME s => s,
-				    t) 
-
-    (* mkVarTup : T.ty -> A.exp *)
-    fun mkVarTup (T.TupleTy ts) =
-	  let fun v var = A.VarExp (var, []) 
-	      (* build : T.ty list -> A.exp list *)
-	      fun build ([], acc) = rev acc
-		| build (t::ts, acc) = 
-		    (case t
-		      of T.TupleTy _ => build (ts, (mkVarTup t) :: acc)
-		       | _ => build (ts, (v (freshVar (NONE, t))) :: acc))
-	  in
-	      A.PTupleExp (build (ts, []))
-	  end
-      | mkVarTup _ = raise Fail "not a tuple type"
-
-    (* makeNester : T.ty -> A.var * A.exp *)
-    (* pre: The argument t is a TupleTy. *)
-    fun makeNester t =
-	let val nestedVarTup = mkVarTup t 
-                            (* will throw an exception if pre is violated *)
-	    val flatVarTup = flattenTup nestedVarTup
-	    val nestedTupTy = t
-	    val flatTupTy = TypeOf.exp flatVarTup
-	    val nest = Var.new ("nest", T.FunTy (flatTupTy, nestedTupTy))
-	    val x = Var.new ("x", flatTupTy)
-	    val pat = 
-		(* flatVarTup is a parallel tuple of variable expressions *)
-		let (* p : A.exp -> A.pat *)
-		    fun p (A.VarExp (v, ts)) = A.VarPat v
-		      | p _ = raise Fail "expected a VarExp"
-		    (* es : A.exp list *)
-		    val es = case flatVarTup
-			       of (A.PTupleExp es) => es
-				| _ => raise Fail "expected a PTupleExp"
-		in
-		    A.TuplePat (map p es)
-		end
-	    val body = A.CaseExp (A.VarExp (x, []),
-				  [(pat, Unpar.unpar nestedVarTup)],
-				  nestedTupTy)
-	in
-	    resetVarNames ();
-	    (nest, A.FB (nest, x, body))
-	end
-
     (**** main traversal of the AST ****)
 	
     (* exp : A.exp -> A.exp *)
@@ -147,10 +56,12 @@ structure FlatParTup (* : sig
       | exp (p as A.PTupleExp es) =
 	  if isFlattenCand p then	      
 	      let val t = TypeOf.exp p
-		  val (f, lam) = makeNester t 
+		  val (f, lam) = Nester.fromTy t 
 	      in
 		  A.LetExp (A.FunBind [lam],
-			    A.ApplyExp (A.VarExp (f, []), flattenTup p, t))
+			    A.ApplyExp (A.VarExp (f, []), 
+					Nester.flatten p, 
+					t))
 	      end
 	  else 
 	      A.PTupleExp (map exp es)

@@ -10,8 +10,10 @@ Library
 
   structure ASTOpt
   structure FlatParTup
+  structure FreshVar
   structure FutParTup	
   structure Futures
+  structure Nester
   structure PrintAST  
   structure Unpar
 
@@ -24,6 +26,8 @@ is
 
   ast-opt.sml
   flat-par-tup.sml
+  fresh-var.sml
   fut-par-tup.sml
   futures.sml
+  nester.sml
   unpar.sml

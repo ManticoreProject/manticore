@@ -12,6 +12,8 @@ structure PrintTypes (* : sig
     val outputTy : TextIO.outstream * Types.ty -> unit
     val printTy  : Types.ty -> unit
 
+    val toString : Types.ty -> string
+
   end *) = struct
 
     structure A = AST
@@ -118,6 +120,9 @@ structure PrintTypes (* : sig
     (* printComment : string -> unit *)       
     (* for debugging purposes *)
     fun printComment s = (prln ("(* " ^ s ^ " *)"))
+
+    (* toStrng : T.ty -> string *)
+    fun toString t = raise Fail "todo"
 
     (**** tests ****)
 			  

@@ -42,7 +42,7 @@ structure FutParTup (* : sig
     fun (x,y) :>: (xs,ys) = (x::xs, y::ys)
  
     (* ptuple : A.exp list -> A.exp *)
-    (* Precondition: The argument to the function, a list, is not empty. *)
+    (* Precondition: The argument to the function, a list, must not be empty. *)
     (* Consumes a list whose members are the contents of a parallel tuple, *)
     (* and produces a LetExp that is a "futurized" ptuple. *)
     (* Note: the first member of the list is not futurized (an optimization). *)
@@ -51,12 +51,10 @@ structure FutParTup (* : sig
 	      fun mkFutBinds ([], n) = ([],[])
 		| mkFutBinds (e::es, n) =
 		    let val fe = F.future e
-			val tfe = TypeOf.exp fe
 			val f_n = Var.newWithKind ("f" ^ Int.toString n,
 						   A.VK_Pat,
-						   tfe)
-			val p = A.VarPat f_n
-			val b = A.ValBind (p, fe)
+						   TypeOf.exp fe)
+			val b = A.ValBind (A.VarPat f_n, fe)
 		    in
 			(b, f_n) :>: mkFutBinds (es, n+1)
 		    end
@@ -64,8 +62,9 @@ structure FutParTup (* : sig
 	      (* pre: there is at least one binding *)
 	      fun letMany (b::[], e) = A.LetExp (b, e)
 		| letMany (b::bs, e) = A.LetExp (b, letMany (bs, e))
-		| letMany ([], _) = raise Fail "argument must have at least one binding"
-	      val (bs, vs) = mkFutBinds (map exp es, 0)
+		| letMany ([], _) = raise Fail 
+			            "letMany: argument must have at least one binding"
+	      val (bs, vs) = mkFutBinds (map exp es, 1)
 	      val touches = map (fn v => F.touch (A.VarExp (v, []))) vs
 	  in
 	      letMany (bs, A.TupleExp (exp e :: touches))
