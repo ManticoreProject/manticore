@@ -28,66 +28,7 @@ structure FutParTup (* : sig
 
     structure A = AST
     structure T = Types
-
-    val futureTycon : T.tycon =
-	let val a = T.TVar {stamp = Stamp.new (),
-			    name = Atom.atom "'a",
-			    class = NONE}
-	    val fcons = ref (nil : T.dcon list)
-	    val fty = T.DataTyc {stamp = Stamp.new (),
-				 name = Atom.atom "future",
-				 params = [a],
-				 cons = fcons}
-	    val fdcon = T.DCon {stamp = Stamp.new (),
-				name = Atom.atom "Future",
-				owner = fty,
-				argTy = SOME (T.VarTy a)}
-	in
-	    fty before fcons := [fdcon]
-	end
-
-    (* futureTy : T.ty -> T.ty *)
-    fun futureTy t = T.ConTy ([t], futureTycon)
-
-    (* future : A.exp -> A.exp *)
-    (* to turn an expression e into "future e" *)
-    fun future e =
-	let val te = TypeOf.exp e
-	    val tf = T.FunTy (te, futureTy te)	     
-	    val fvar = Var.new ("future", tf)
-	    val f = A.VarExp (fvar, []) 
-	in
-	    A.ApplyExp (f, e, futureTy te)
-	end
-
-    (* isFutureTy : T.ty -> bool *)
-    fun isFutureTy (T.ConTy (t, c)) = TyCon.same (futureTycon, c)
-      | isFutureTy _ = false
-
-    (* typeFromFutureTy : T.ty -> T.ty *)
-    fun typeFromFutureTy ty =
-	  if (isFutureTy ty) then
-	      case ty
-	        of T.ConTy ([t], _) => t
-		 | T.ConTy ([], _) => raise Fail "expected arity 1 for future ty; found 0"
-		 | T.ConTy (ts, _) => raise Fail ("expected arity 1 for future ty; found "
-						  ^ (Int.toString (length ts)))
-		 | _ => raise Fail "not a ConTy (this failure should be unreachable)"
-	  else
-	      raise Fail "not a future type"
-
-    (* touch : A.exp -> A.exp *)
-    (* pre: the argument is a future *)
-    fun touch e = 
-  	  let val te = TypeOf.exp e
-	      val innerTy = typeFromFutureTy te 
-	                    (* will throw exception if e is not a future *)
-	      val tt = T.FunTy (te, innerTy)
-	      val tvar = Var.newWithKind ("touch", A.VK_Fun, tt)
-	      val t = A.VarExp (tvar, [])
-	  in
-	      A.ApplyExp (t, e, innerTy)
-	  end
+    structure F = Futures
 
     infixr **
     (* (**) : ('a -> 'b) * ('c -> 'd) -> ('a * 'c) -> ('b * 'd) *)
@@ -102,22 +43,18 @@ structure FutParTup (* : sig
  
     (* ptuple : A.exp list -> A.exp *)
     (* Precondition: The argument to the function, a list, is not empty. *)
-    (* Consumes a non-empty list whose members are the contents of a parallel tuple, *)
+    (* Consumes a list whose members are the contents of a parallel tuple, *)
     (* and produces a LetExp that is a "futurized" ptuple. *)
     (* Note: the first member of the list is not futurized (an optimization). *)
     fun ptuple (e::es) = 
   	  let (* mkFutBinds : A.exp list -> A.binding list * A.var list *)
 	      fun mkFutBinds ([], n) = ([],[])
 		| mkFutBinds (e::es, n) =
-		    let val fe = future e
+		    let val fe = F.future e
 			val tfe = TypeOf.exp fe
-			val f_n =  
-			    VarRep.V {name = "f" ^ Int.toString n,
-				      id = Stamp.new (),
-				      kind = ref A.VK_Pat,
-				      useCnt = ref 0,
-				      ty = ref (T.TyScheme ([], tfe)),
-				      props = PropList.newHolder ()}
+			val f_n = Var.newWithKind ("f" ^ Int.toString n,
+						   A.VK_Pat,
+						   tfe)
 			val p = A.VarPat f_n
 			val b = A.ValBind (p, fe)
 		    in
@@ -129,7 +66,7 @@ structure FutParTup (* : sig
 		| letMany (b::bs, e) = A.LetExp (b, letMany (bs, e))
 		| letMany ([], _) = raise Fail "argument must have at least one binding"
 	      val (bs, vs) = mkFutBinds (map exp es, 0)
-	      val touches = map (fn v => touch (A.VarExp (v, []))) vs
+	      val touches = map (fn v => F.touch (A.VarExp (v, []))) vs
 	  in
 	      letMany (bs, A.TupleExp (exp e :: touches))
 	  end
@@ -195,11 +132,14 @@ structure FutParTup (* : sig
 		  A.ApplyExp (e1, e2, rty)
 	      end
 	(* sep : string option -> unit *)
-	fun sep NONE     = PrintAST.printComment "-->"
+	fun sep NONE = PrintAST.printComment "-->"
 	  | sep (SOME s) = PrintAST.printComment (s ^ " -->")
 	(* test cases *)
-	val t0 = ptup (map (apply fact o int) [10,11,12,13,14])
-	val t1 = ptup [ptup [apply fact (int 10),
+	val t0 = ptup [(apply fact o int) 10,
+		       (apply fact o int) 11]
+	val t1 = ptup [t0, t0]
+	val t2 = ptup (map (apply fact o int) [10,11,12,13,14])
+	val t3 = ptup [ptup [apply fact (int 10),
 			     apply fact (int 11)],
 		       apply fact (int 15)]
 	(* test : A.exp -> unit *)
@@ -208,8 +148,10 @@ structure FutParTup (* : sig
 		      PrintAST.print (futurize e))
     in
         fun test0 () = test t0
-        fun test1 () = test t1
-	fun test2 () = (PrintAST.print t1;
+	fun test1 () = test t1
+	fun test2 () = test t2
+        fun test3 () = test t3
+	fun test4 () = (PrintAST.print t1;
 			sep (SOME "flattening");
 			test (FlatParTup.flatten t1))
     end

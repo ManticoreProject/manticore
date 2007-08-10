@@ -11,6 +11,7 @@ Library
   structure ASTOpt
   structure FlatParTup
   structure FutParTup	
+  structure Futures
   structure PrintAST  
   structure Unpar
 
@@ -24,4 +25,5 @@ is
   ast-opt.sml
   flat-par-tup.sml
   fut-par-tup.sml
+  futures.sml
   unpar.sml

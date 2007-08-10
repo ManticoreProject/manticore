@@ -2,6 +2,11 @@
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
+ *
+ * At present, only _parallel tuples_ are flattened.
+ * Proposed extensions: 
+ *  - tuples within parallel tuples
+ *  - data constructors
  *)
 
 structure FlatParTup (* : sig
@@ -24,7 +29,7 @@ structure FlatParTup (* : sig
 
     (* flattenCand : A.exp -> bool *)
     (* Determines whether the given expression is suitable for flattening. *)
-    fun flattenCand e =
+    fun isFlattenCand e =
 	  let (* ptup : A.exp -> bool *)
 	      fun ptup (A.PTupleExp _) = true
 		| ptup _ = false
@@ -140,7 +145,7 @@ structure FlatParTup (* : sig
       | exp (A.TupleExp es) = A.TupleExp (List.map exp es)
       | exp (A.RangeExp (e1, e2, oe3, t)) = A.RangeExp (exp e1, exp e2, Option.map exp oe3, t)
       | exp (p as A.PTupleExp es) =
-	  if flattenCand p then	      
+	  if isFlattenCand p then	      
 	      let val t = TypeOf.exp p
 		  val (f, lam) = makeNester t 
 	      in
@@ -175,6 +180,7 @@ structure FlatParTup (* : sig
 
     local
 	structure P = PrintAST
+	fun tup es  = A.TupleExp es
 	fun ptup es = A.PTupleExp es
 	fun int n = A.ConstExp (A.LConst (Literal.Int n, Basis.intTy))
 	val t0 = ptup [int 0, 
@@ -183,10 +189,18 @@ structure FlatParTup (* : sig
 		       ptup [int 4,
 			     int 5,
 			     ptup [int 6, int 7]]]
+	val t1 =  ptup [int 0, 
+		        tup [int 1, int 2],
+		        int 3,
+		        tup [int 4,
+			     int 5,
+			     tup [int 6, int 7]]]
+	fun test e = (P.print e;
+		      P.printComment "-->";
+		      P.print (flatten e))
     in
-        fun test0 () = (P.print t0;
-			P.printComment "-->";
-			P.print (flatten t0))
+        fun test0 () = test t0
+        fun test1 () = test t1
     end
 
   end
