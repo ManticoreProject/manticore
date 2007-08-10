@@ -31,7 +31,7 @@ structure FutParTup (* : sig
 
     val futureTycon : T.tycon =
 	let val a = T.TVar {stamp = Stamp.new (),
-			    name = Atom.atom "a",
+			    name = Atom.atom "'a",
 			    class = NONE}
 	    val fcons = ref (nil : T.dcon list)
 	    val fty = T.DataTyc {stamp = Stamp.new (),
@@ -54,28 +54,14 @@ structure FutParTup (* : sig
     fun future e =
 	let val te = TypeOf.exp e
 	    val tf = T.FunTy (te, futureTy te)	     
-	    val fvar = VarRep.V {name = "future",
-				 id = Stamp.new (),
-				 kind = ref A.VK_Fun,
-				 useCnt = ref 0,
-				 ty = ref (T.TyScheme ([], tf)),
-				 props = PropList.newHolder ()}
+	    val fvar = Var.new ("future", tf)
 	    val f = A.VarExp (fvar, []) 
 	in
 	    A.ApplyExp (f, e, futureTy te)
 	end
 
-    (* stampFromTycon : T.tycon -> Stamp.stamp *)
-    fun stampFromTycon (T.AbsTyc data) = #stamp data
-      | stampFromTycon (T.DataTyc data) = #stamp data 
-	
     (* isFutureTy : T.ty -> bool *)
-    fun isFutureTy (T.ConTy (t, c)) =
-	  let val futureStamp = stampFromTycon futureTycon
-	      val cStamp = stampFromTycon c
-	  in
-	      Stamp.same (futureStamp, cStamp)
-	  end
+    fun isFutureTy (T.ConTy (t, c)) = TyCon.same (futureTycon, c)
       | isFutureTy _ = false
 
     (* typeFromFutureTy : T.ty -> T.ty *)
@@ -179,10 +165,12 @@ structure FutParTup (* : sig
       | exp (A.SeqExp (e1, e2)) = A.SeqExp (exp e1, exp e2)
       | exp (ov as (A.OverloadExp _)) = ov
 
+    (* binding : A.binding -> A.binding *)
     and binding (A.ValBind (p, e)) = A.ValBind (p, exp e)
       | binding (A.PValBind (p, e)) = A.PValBind (p, exp e)
       | binding (A.FunBind lams) = A.FunBind (map lambda lams)
 
+    (* lambda : A.lambda -> A.lambda *)
     and lambda (A.FB (f, x, b)) = A.FB (f, x, exp b)
 
     (* module : A.module -> A.module *)

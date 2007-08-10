@@ -7,7 +7,9 @@
  *)
 
 structure Var =
+
   struct
+
     local
       structure V = VarFn (
 	struct
@@ -18,12 +20,23 @@ structure Var =
 	  val tyToString = TypeUtil.schemeToString o !
 	end)
     in
+
     open V
-    fun newPoly (name, tyScheme) = V.new(name, ref tyScheme)
+
+    (* newPoly : string * Types.ty_scheme -> V.var *) 
+    fun newPoly (name, tyScheme) = V.new (name, ref tyScheme)
+
+    (* new : string * Types.ty -> V.var *)
     fun new (name, ty) = newPoly (name, AST.TyScheme([], ty))
+
+    (* typeOf : V.var -> Types.ty *)
     fun typeOf x = !(V.typeOf x)
-  (* close the type of the variable w.r.t. to the given lambda-nesting depth. *)
+
+    (* closeTypeOf : int * VarRep.var_rep -> unit *)
+    (* close the type of the variable w.r.t. to the given lambda-nesting depth. *)
     fun closeTypeOf (depth, VarRep.V{ty as ref(AST.TyScheme(_, ty')), ...}) =
 	  ty := TypeUtil.closeTy(depth, ty')
+    
     end (* local *)
+
   end
