@@ -15,6 +15,7 @@ Library
   structure Futures
   structure Nester
   structure PrintAST  
+  structure TestUtils	
   structure Unpar
 
 is
@@ -30,4 +31,5 @@ is
   fut-par-tup.sml
   futures.sml
   nester.sml
+  test-utils.sml
   unpar.sml

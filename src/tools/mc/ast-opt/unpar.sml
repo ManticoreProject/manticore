@@ -3,12 +3,12 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * The function unpar recursively turns parallel tuples into sequential tuples.
+ * The function noPTups recursively turns parallel tuples into sequential tuples.
  *)
 
 structure Unpar : sig
 
-    val unpar : AST.exp -> AST.exp
+    val noPTups : AST.exp -> AST.exp
 
   end = struct
 
@@ -53,6 +53,6 @@ structure Unpar : sig
 
     fun module m = exp m
 
-    fun unpar e = exp e
+    fun noPTups e = exp e
 
   end

@@ -113,6 +113,7 @@ structure FutParTup (* : sig
     (**** tests ****)
 
     local
+	structure U = TestUtils
 	infixr arrow
 	(* (arrow) : T.ty * T.ty -> T.ty *)
 	fun dom arrow rng = A.FunTy (dom, rng)

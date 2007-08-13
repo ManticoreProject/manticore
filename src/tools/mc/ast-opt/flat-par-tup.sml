@@ -3,9 +3,6 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * At present, only _parallel tuples_ are flattened.
- * Proposed extensions: 
- *  - data constructors
  *)
 
 structure FlatParTup (* : sig
@@ -23,7 +20,8 @@ structure FlatParTup (* : sig
     val id = (fn x => x)
 
     (* (**) : ((a -> b) * (c -> d)) -> ((a * c) -> (b * d)) *)
-    infixr **
+    (* This is a combinator for  "pairing" functions together. *)
+    infix 3 ** (* same precedence level as o *)
     fun f ** g = (fn (a, b) => (f a, g b))
 
     (* flattenCand : A.exp -> bool *)
@@ -56,7 +54,7 @@ structure FlatParTup (* : sig
       | exp (p as A.PTupleExp es) =
 	  if isFlattenCand p then	      
 	      let val t = TypeOf.exp p
-		  val (f, lam) = Nester.fromTy t 
+		  val (f, lam) = Nester.fromExp p 
 	      in
 		  A.LetExp (A.FunBind [lam],
 			    A.ApplyExp (A.VarExp (f, []), 
