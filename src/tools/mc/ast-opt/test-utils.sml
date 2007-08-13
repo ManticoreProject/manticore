@@ -42,12 +42,15 @@ structure TestUtils =
     fun some e = 
 	let val t = TypeOf.exp e
 	    val optionTySch = DataCon.typeOf B.optionSOME
-	    val t' = TypeUtil.apply (optionTySch, [t])
 	    val some = A.ConstExp (A.DConst (B.optionSOME, [t]))
+	    val rngTy = (case TypeUtil.apply (optionTySch, [t])
+			   of T.FunTy (d, r) => r
+			    | _ => fail "some: expected FunTy")
 	in
-	    A.ApplyExp (some, e, t')
+	    A.ApplyExp (some, e, rngTy)
 	end
 
+    (* none: T.ty -> A.exp *)
     fun none t = A.ConstExp (A.DConst (B.optionNONE, [t]))
 
     (* test : (A.exp -> A.exp) -> A.exp -> unit *)

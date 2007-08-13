@@ -58,11 +58,15 @@ structure Nester (* : sig
 	  end
       | mkVarTup _ = fail "not a tuple type"
 
+    (* isDCon : A.exp -> bool *)
+    fun isDCon (A.ConstExp (A.DConst _)) = true
+      | isDCon _ = false
+
     (* isDConApp : A.exp -> bool 
      * Returns true if the given exp is an application of a data constructor.
      * Nullary data constructors are constants, so this function will
      * return false for them. *)
-    fun isDConApp (A.ApplyExp (A.ConstExp (A.DConst _), _, _)) = true
+    fun isDConApp (A.ApplyExp (f, _, _)) = isDCon f
       | isDConApp _ = false
 
     (* funFromLam : A.lambda -> A.exp *)
@@ -96,8 +100,6 @@ structure Nester (* : sig
     (* compose: A.exp * A.exp -> A.exp *)
     (* Return the composition of two functions. *)
     (* Note: compose (f, g) ==> fn x => f (g x) *)
-    (* Pre: both arguments are of the following form: *)
-    (*   let val f = fn x => e in f end *)
     (* Pre: the output type of g matches the input type of f. *)
     fun compose (f, g) =
 	let val (fd, fr) = case TypeOf.exp f
@@ -119,7 +121,17 @@ structure Nester (* : sig
 		    funFromLam (A.FB (h, x, app))
 		end
 	    else
-		fail "compose: g range doesn't match f domain"
+		(print "f: ";
+		 PrintTypes.printTy (TypeOf.exp f);
+		 print "f domain: ";
+		 PrintTypes.printTy fd;
+		 print "f range: ";
+		 PrintTypes.printTy fr;
+		 print "g domain: ";
+		 PrintTypes.printTy gd;
+		 print "g range: ";
+		 PrintTypes.printTy gr;
+		 fail "compose: g range doesn't match f domain")
 	end
 	
     (* foldr1 : ('a -> 'a) -> 'a list -> 'a *)
@@ -154,7 +166,7 @@ structure Nester (* : sig
     fun freshVar t = A.VarExp (FreshVar.fresh (NONE, t), []) (* ??? *)
 
     (* v : T.ty -> A.exp list * A.exp *)
-    fun fv t = let val x = freshVar t in ([x], x) end
+    fun fresh t = let val x = freshVar t in ([x], x) end
 
     (* argTy : A.exp -> T.ty option *)
     (* If the given expression is a non-nullary data constructor, return *)
@@ -162,70 +174,50 @@ structure Nester (* : sig
     fun argTy (A.ConstExp (A.DConst (d, _))) = DataCon.argTypeOf d
                                (* note: argTypeOf already returns an option *)
       | argTy _ = NONE
-(*
-    (* fromTy : T.ty -> A.var * A.lambda *)
-    (* pre: The argument t is a TupleTy. *)
-    (* note: this function does not (cannot) extract data constructors *)
-    fun fromTy t =
-	let val nestedVarTup = mkVarTup t 
-                            (* will throw an exception if pre is violated *)
-	    val flatVarTup = flatten nestedVarTup
-	    val nestedTupTy = t
-	    val flatTupTy = TypeOf.exp flatVarTup
-	    val nest = Var.new ("nest", T.FunTy (flatTupTy, nestedTupTy))
-	    val x = Var.new ("x", flatTupTy)
-	    val pat = 
-		(* flatVarTup is a parallel tuple of variable expressions *)
-		let (* p : A.exp -> A.pat *)
-		    fun p (A.VarExp (v, ts)) = A.VarPat v
-		      | p _ = fail "expected a VarExp"
-		    (* es : A.exp list *)
-		    val es = case flatVarTup
-			       of (A.PTupleExp es) => es
-				| _ => fail "expected a PTupleExp"
-		in
-		    A.TuplePat (map p es)
-		end
-	    val body = A.CaseExp (A.VarExp (x, []),
-				  [(pat, Unpar.noPTups nestedVarTup)],
-				  nestedTupTy)
-	in
-	    FreshVar.resetVarNames ();
-	    (nest, A.FB (nest, x, body))
-	end
-*)
 
-    (* exp : A.exp -> A.exp list * A.exp *)
-    (* Produces a flat list of variables and the properly *)
-    (*   shaped tuple of variables (with data constructors applied *)
-    (*   where appropriate). *)
-    fun exp (app as A.ApplyExp (e1, e2, t)) = 
+    (* mkVars : A.exp -> A.exp list * A.exp *)
+    (* Produces a flat list of variables and the properly-shaped tuple *)
+    (*   of variables and data constructors. *)
+    fun mkVars (app as A.ApplyExp (e1, e2, t)) = 
 	(* TODO: make this recursive *)
-	  (case argTy e1
- 	     of SOME at => 
-		let val x = freshVar at
-		in
-		    ([x], A.ApplyExp (e1, x, t))
-		end
-	      | NONE => fv t)
-      | exp (A.TupleExp es) = 
-  	  let val es' = map exp es
+	if (isDCon e1) andalso (isDConApp e2) then
+	    let val c2 = (case mkVars e2
+                            of (_, A.ApplyExp (c, _, _)) => c
+			     | _ => fail "mkVars: not a function")
+		val c2ArgTy = (case TypeOf.exp c2
+                                 of T.FunTy (d, _) => d
+				  | _ => fail "mkVars: not a function")
+		val x = freshVar c2ArgTy
+	    in
+		([x], A.ApplyExp (compose (e1, c2), x, t))
+	    end
+	else 
+	    (case argTy e1
+ 	       of SOME at => 
+		  let val x = freshVar at
+		  in
+		      ([x], A.ApplyExp (e1, x, t))
+		  end
+		| NONE => fresh t
+  	      (* end case *))
+      | mkVars (A.TupleExp es) = 
+  	  let val (vss, xs) = ListPair.unzip (map mkVars es)
 	  in
-	      (List.concat (map #1 es'), A.TupleExp (map #2 es'))
+	      (List.concat vss, A.TupleExp xs)
 	  end
-      | exp (A.PTupleExp es) = 
-	  let val es' = map exp es
+      | mkVars (A.PTupleExp es) = 
+	  let val (vss, xs) = ListPair.unzip (map mkVars es)
 	  in
-	      (List.concat (map #1 es'), A.TupleExp (map #2 es'))
+	      (List.concat vss, A.TupleExp xs)
 	  end
-      | exp e = fv (TypeOf.exp e)
+      | mkVars e = fresh (TypeOf.exp e)
 
     (* fromExp : A.exp -> A.var * A.lambda *)
     (* Pre: The argument is a tuple. *)
     fun fromExp e = 
 	let fun exps es =
 		let val _ = FreshVar.resetVarNames ()
-		    val (ves, e') = exp e
+		    val (ves, e') = mkVars e
 		    val flatTup = A.TupleExp ves
 		    val nestedTy  = TypeOf.exp e
 		    val flatTy = TypeOf.exp flatTup
@@ -264,11 +256,33 @@ structure Nester (* : sig
 	val t2 = U.ptup [U.some (U.int 2), U.some (U.int 9), U.none B.intTy]
 	val t3 = U.ptup [U.some (U.int 1), 
 			 U.some (U.ptup [U.int 2, U.int 3])]
+	val t4 = U.ptup [U.ptup [U.ptup [U.ptup [U.int 1, U.some (U.int 2)],
+					 U.int 3],
+				 U.int 4],
+			 U.int 5]
+
+	(* t5 = (| 1, SOME (| 2, 3 |) |) *)
+	(* desired outcome : fn (a,b,c) => (a,SOME(b,c)) *)
+	val t5 = U.ptup [U.int 1, U.some (U.ptup [U.int 2, U.int 3])]
+			 
+	(* t6 = (| 1, SOME (SOME 2) |) *)
+	(* desired outcome : fn (a, b) => (a, SOME (SOME b)) *)
+	val t6 = U.ptup [U.int 1, U.some (U.some (U.int 2))]
+
+        (* t7 = (| SOME (SOME (SOME (SOME 4))) |) *)
+	val t7 = U.ptup [U.some (U.some (U.some (U.some (U.int 4))))]
+
     in
+
         fun test0 () = test t0
 	fun test1 () = test t1
 	fun test2 () = test t2
 	fun test3 () = test t3
+	fun test4 () = test t4
+	fun test5 () = test t5
+	fun test6 () = test t6
+	fun test7 () = test t7
+
     end
 
   end

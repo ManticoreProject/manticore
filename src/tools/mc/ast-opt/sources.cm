@@ -15,7 +15,9 @@ Library
   structure Futures
   structure Nester
   structure PrintAST  
+  structure PrintTypes
   structure TestUtils	
+  structure TypeOf	
   structure Unpar
 
 is

@@ -61,11 +61,14 @@ structure PrintTypes (* : sig
       | ty (T.VarTy tv) = tyvar tv
       | ty (T.ConTy (ts, c)) =
 	  (openVBox (rel 0);
-	   appwith (fn () => pr " ") ty ts;
-	   case ts
-	     of [] => tycon c
-	      | _  => (pr " ";
-		       tycon c);
+	   case ts 
+ 	     of [] => tycon c
+	      | _ =>
+		(pr "(";
+		 appwith (fn () => pr " ") ty ts;
+		 pr " ";
+		 tycon c;
+		 pr ")");
 	   closeBox ())
       | ty (T.FunTy (t1, t2)) = 
 	  (openVBox (rel 0);
@@ -110,7 +113,9 @@ structure PrintTypes (* : sig
     fun outputTy (outS, t) = raise Fail "todo: outputTy"
 			
     (* printTyScheme : T.ty_scheme -> unit *)
-    fun printTyScheme s = raise Fail "todo: printTyScheme"
+    fun printTyScheme s = (ty_scheme s;
+			   ln ();
+			   flush ())
 
     (* printTy : T.ty -> unit *)
     fun printTy t = (ty t;
