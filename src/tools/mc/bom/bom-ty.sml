@@ -32,6 +32,12 @@ structure BOMTy =
 	  cons : data_con list ref,	(* list of non-nullary constructors *)
 	  rep : ty option ref		(* a cache of the representation type *)
 	}
+      | AbsTyc of {
+	  name : string,
+	  stamp : Stamp.stamp,
+	  arity : int
+	  (* do we have a notion of equality types? *)
+	}
 
     and data_con = DCon of {	      (* a data-constructor function *)
 	  name : string,		(* the name of the constructor *)
@@ -56,6 +62,9 @@ structure BOMTy =
     val boolTy = T_Enum(0w1)	(* false = 0, true = 1 *)
     val exhTy = T_Cont[T_Any]
     val tidTy = T_Any
+
+    val futureTyc = AbsTyc {name = "future", stamp = Stamp.new (), arity = 1}
+    val futureTy = T_TyCon futureTyc
 
     fun toString ty = let
 	  fun tys2l ([], l) = l
@@ -88,6 +97,7 @@ structure BOMTy =
 	      | T_CFun cp => CFunctions.protoToString cp
 	      | T_VProc=> "vproc"
 	      | T_TyCon(DataTyc{name, ...}) => name
+	      | T_TyCon(AbsTyc{name, ...}) => name
 	    (* end case *)
 	  end
 

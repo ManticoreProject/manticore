@@ -42,7 +42,6 @@ structure Futures (* : sig
 				  futureTy t))		      
 	end
 
-
     local
 
 	(* isFuture : A.exp -> bool *)
@@ -75,7 +74,7 @@ structure Futures (* : sig
     fun touch e = 
 	let val t = typeOfFuture e
 	    val touchVar = Var.new ("touch", T.FunTy (TypeOf.exp e, t))
-	    val touch = A.VarExp (touchVar, [])
+	    val touch = A.VarExp (touchVar, [t])
 	in
 	    A.ApplyExp (touch, e, t)
 	end
@@ -84,17 +83,19 @@ structure Futures (* : sig
     (* Precondition: The argument e1 must be a future. *)
     (* The function raises Fail if the precondition is not met. *)
     fun cancel (e1, e2) =
-	if (isFuture e1) then
-	    let val cancelVar = Var.new ("cancel", 
-					 T.FunTy (TypeOf.exp e1, 
-						  Basis.unitTy))
-		val cancel = A.VarExp (cancelVar, [])
-	    in
-		A.SeqExp (A.ApplyExp (cancel, e1, Basis.unitTy),
-			  e2)
-	    end
-	else
-	    raise Fail "cancel: first argument is not a future"
+	let val u = Basis.unitTy
+	in
+	    if (isFuture e1) then
+		let val cancelVar = Var.new ("cancel", 
+					     T.FunTy (TypeOf.exp e1, u))
+		    val cancel = A.VarExp (cancelVar, 
+					   [typeOfFuture e1])
+		in
+		    A.SeqExp (A.ApplyExp (cancel, e1, u), e2)
+		end
+	    else
+		raise Fail "cancel: first argument is not a future"
+	end
 
     end (* local *)
   

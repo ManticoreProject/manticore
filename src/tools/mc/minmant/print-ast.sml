@@ -251,8 +251,11 @@ structure PrintAST (* : sig
     fun module m = exp m
 		   
     (* output : TextIO.outstream * A.module -> unit *)
-    fun output (outS, m) = (str := outS;
-			    module m)
+    fun output (outS : TextIO.outstream, m : A.module) = 
+	raise Fail "problem with TextIO stream types...undo this exception \
+                   \and try to compile translate/sources.cm"
+(*	  (str := outS;
+	   module m) *)
 				 
     (* print : A.module -> unit *)
     fun print m = (module m;
