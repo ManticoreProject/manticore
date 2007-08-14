@@ -8,7 +8,6 @@
 
 structure Nester (* : sig
 
-    val fromTy  : Types.ty -> AST.var * AST.lambda
     val fromExp : AST.exp  -> AST.var * AST.lambda
 
   end *) =
@@ -62,6 +61,11 @@ structure Nester (* : sig
     fun isDCon (A.ConstExp (A.DConst _)) = true
       | isDCon _ = false
 
+    (* isTup : A.exp -> bool *)
+    fun isTup (A.PTupleExp _) = true
+      | isTup (A.TupleExp  _) = true
+      | isTup _ = false
+
     (* isDConApp : A.exp -> bool 
      * Returns true if the given exp is an application of a data constructor.
      * Nullary data constructors are constants, so this function will
@@ -75,27 +79,6 @@ structure Nester (* : sig
 	A.LetExp (A.FunBind [lam], 
 		  A.VarExp (f, []))
         (* ??? should VarExp list nec. be [] ??? *)	
-
-    (* funFromDCon : T.dcon * T.ty list -> A.exp *)
-    (* Given a constructor like "Fahr", returns a function as follows: *)
-    (* "let val f = fn x => Fahr x in f end" *)
-    (* Pre: The given data constructor is non-nullary. *)
-    fun funFromDCon (d, ts) =
-	let val dc = A.DConst (d, ts)
-	    val t = TypeOf.const dc
-	in
-	    case t
-	      of T.FunTy (dty, rty) =>
-		 let val f = Var.new ("f", t)
-		     val x = Var.new ("x", dty)
-		     val app = A.ApplyExp (A.ConstExp dc,
-					   A.VarExp (x, []), (* ??? *)
-					   rty)
-		 in
-		     funFromLam (A.FB (f, x, app))
-		 end
-	       | _ => fail "funFromDCon: given a nullary data con"
-	end
 
     (* compose: A.exp * A.exp -> A.exp *)
     (* Return the composition of two functions. *)
@@ -121,52 +104,11 @@ structure Nester (* : sig
 		    funFromLam (A.FB (h, x, app))
 		end
 	    else
-		(print "f: ";
-		 PrintTypes.printTy (TypeOf.exp f);
-		 print "f domain: ";
-		 PrintTypes.printTy fd;
-		 print "f range: ";
-		 PrintTypes.printTy fr;
-		 print "g domain: ";
-		 PrintTypes.printTy gd;
-		 print "g range: ";
-		 PrintTypes.printTy gr;
-		 fail "compose: g range doesn't match f domain")
+		 fail "compose: g range doesn't match f domain"
 	end
 	
-    (* foldr1 : ('a -> 'a) -> 'a list -> 'a *)
-    (* Pre: the list is not empty. *)
-    fun foldr1 f xs =
-	let fun g (x::[]) = x
-	      | g (x::xs) = f (x, g xs)
-	      | g [] = fail "foldr1: given empty list"
-	in
-	    g xs
-	end
-
-    (* collectDCons : A.exp list -> A.exp option list
-     * ex: collectDCons [Fahr 32, Cel 100]   ==> [SOME Fahr, SOME Cel] 
-     * ex: collectDCons [optionSOME 8, 9]    ==> [SOME optionSOME, NONE]
-     * ex: collectDCons [optionSOME (Int 8)] ==> [SOME (optionSOME o Int)] *)
-    val collectDCons =
-	let (* exp : A.exp -> A.exp list *)
-	    fun exp (A.ApplyExp(A.ConstExp(A.DConst(c,ts)),e',_)) = 
-		  funFromDCon (c,ts) :: exp e'
-	      | exp _ = []
-	    (* mash : (T.dcon * T.ty list) list -> A.exp option *)
-	    fun mash [] = NONE
-	      | mash fs = SOME (foldr1 compose fs)
-	in
-	    map (mash o exp)
-	end
-
-    (**** main traversal of the AST ****)
-
-    (* freshVar : T.ty -> A.exp *)
-    fun freshVar t = A.VarExp (FreshVar.fresh (NONE, t), []) (* ??? *)
-
-    (* v : T.ty -> A.exp list * A.exp *)
-    fun fresh t = let val x = freshVar t in ([x], x) end
+    (* freshVarExp : T.ty -> A.exp *)
+    fun freshVarExp t = A.VarExp (FreshVar.fresh (NONE, t), []) (* ??? *)
 
     (* argTy : A.exp -> T.ty option *)
     (* If the given expression is a non-nullary data constructor, return *)
@@ -175,49 +117,62 @@ structure Nester (* : sig
                                (* note: argTypeOf already returns an option *)
       | argTy _ = NONE
 
-    (* mkVars : A.exp -> A.exp list * A.exp *)
+    local
+	(* v : T.ty -> A.exp list * A.exp *)
+	fun v t = let val x = freshVarExp t in ([x], x) end
+    in
+    (* nesterComponents : A.exp -> A.exp list * A.exp *)
     (* Produces a flat list of variables and the properly-shaped tuple *)
     (*   of variables and data constructors. *)
-    fun mkVars (app as A.ApplyExp (e1, e2, t)) = 
-	(* TODO: make this recursive *)
+    fun nesterComponents (app as A.ApplyExp (e1, e2, t)) = 
 	if (isDCon e1) andalso (isDConApp e2) then
-	    let val c2 = (case mkVars e2
+	    let val c2 = (case nesterComponents e2
                             of (_, A.ApplyExp (c, _, _)) => c
-			     | _ => fail "mkVars: not a function")
+			     | _ => fail "nesterComponents: not a function")
 		val c2ArgTy = (case TypeOf.exp c2
                                  of T.FunTy (d, _) => d
-				  | _ => fail "mkVars: not a function")
-		val x = freshVar c2ArgTy
+				  | _ => fail "nesterComponents: not a function")
+		val x = freshVarExp c2ArgTy
 	    in
 		([x], A.ApplyExp (compose (e1, c2), x, t))
 	    end
-	else 
+	else if (isDCon e1) andalso (isTup e2) then
+	    let val (vs, ft) = nesterComponents e2
+	    in
+		(vs, A.ApplyExp (e1, ft, t))
+	    end
+	else
 	    (case argTy e1
  	       of SOME at => 
-		  let val x = freshVar at
+		  let val x = freshVarExp at
 		  in
 		      ([x], A.ApplyExp (e1, x, t))
 		  end
-		| NONE => fresh t
+		| NONE => v t
   	      (* end case *))
-      | mkVars (A.TupleExp es) = 
-  	  let val (vss, xs) = ListPair.unzip (map mkVars es)
+      | nesterComponents (A.TupleExp es) = 
+  	  let val (vss, xs) = ListPair.unzip (map nesterComponents es)
 	  in
 	      (List.concat vss, A.TupleExp xs)
 	  end
-      | mkVars (A.PTupleExp es) = 
-	  let val (vss, xs) = ListPair.unzip (map mkVars es)
+      | nesterComponents (A.PTupleExp es) = 
+	  let val (vss, xs) = ListPair.unzip (map nesterComponents es)
 	  in
 	      (List.concat vss, A.TupleExp xs)
 	  end
-      | mkVars e = fresh (TypeOf.exp e)
+      | nesterComponents e = v(TypeOf.exp e)
+    end (* local *)
 
     (* fromExp : A.exp -> A.var * A.lambda *)
     (* Pre: The argument is a tuple. *)
+    (* Generates a "nester" based on the given expression. *)
+    (* Returns the var naming the generated nester and its definition. *)
+    (* A nester is a fn that imposes tuple and datacon structure on a flat tup. *)
+    (* ex: fromExp (1,(SOME 2,3)) ==> fn (a,b,c) => (a,(SOME b,c)) *)
     fun fromExp e = 
 	let fun exps es =
 		let val _ = FreshVar.resetVarNames ()
-		    val (ves, e') = mkVars e
+		    val (ves, e') = nesterComponents e
 		    val flatTup = A.TupleExp ves
 		    val nestedTy  = TypeOf.exp e
 		    val flatTy = TypeOf.exp flatTup
@@ -242,14 +197,18 @@ structure Nester (* : sig
     (**** tests ****)
 
     local
+
 	structure B = Basis
 	structure U = TestUtils 
+
 	fun fromExp' e = 
 	    let val (v, lam) = fromExp e
 	    in
 		funFromLam lam
 	    end
-	val test = U.test fromExp'
+
+	val testTup = U.test fromExp'
+
 	val t0 = U.ptup [U.int 1, U.ptup [U.int 2, U.int 3]]
 	val t1 = U.ptup [U.int 1, U.ptup [U.some (U.int 2),
 					  U.int 3]]
@@ -272,17 +231,27 @@ structure Nester (* : sig
         (* t7 = (| SOME (SOME (SOME (SOME 4))) |) *)
 	val t7 = U.ptup [U.some (U.some (U.some (U.some (U.int 4))))]
 
+	(* t8 = (| SOME (| SOME 5, SOME 6 |) |) *)
+	val t8 = U.ptup [U.some (U.ptup [U.some (U.int 5), 
+					 U.some (U.int 6)])]
+
     in
 
-        fun test0 () = test t0
-	fun test1 () = test t1
-	fun test2 () = test t2
-	fun test3 () = test t3
-	fun test4 () = test t4
-	fun test5 () = test t5
-	fun test6 () = test t6
-	fun test7 () = test t7
-
+        (* test : int -> unit *)
+        fun test n =
+	    let val tests = [t0,t1,t2,t3,t4,t5,t6,t7,t8]
+	    in
+		testTup (List.nth (tests, n))
+		handle Subscript =>
+		  let val msg = "Nester.test: Please choose a test value \
+                                \between 0 and "
+				^ Int.toString ((List.length tests) - 1)
+				^ ".\n"
+		  in
+		      print msg
+		  end
+	    end
+        
     end
 
   end
