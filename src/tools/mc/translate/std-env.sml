@@ -20,6 +20,7 @@ structure StdEnv : sig
     structure TTbl = TyCon.Tbl
     structure BTy = BOMTy
     structure BV = BOM.Var
+    structure F = Futures
 
     fun lookupDCon _ = raise Fail "lookupDCon"
 
@@ -39,14 +40,15 @@ structure StdEnv : sig
 	    (B.runeTyc, ),
 	    (B.stringTyc, ),
 *)
-	    (B.threadIdTyc,	BTy.tidTy)
+	    (B.threadIdTyc,	BTy.tidTy),
 (*
 	    (B.parrayTyc, ),
 	    (B.chanTyc, ),
 	    (B.ivarTyc, ),
 	    (B.mvarTyc, ),
-	    (B.eventTyc, )
+	    (B.eventTyc, ),
 *)
+	    (F.futureTyc,       BTy.futureTy)
 	  ]
 
     val findTyc : Types.tycon -> BOMTy.ty option = let

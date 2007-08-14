@@ -20,6 +20,7 @@ is
   ../minmant/sources.cm
   ../bom/sources.cm
   ../hlop/sources.cm
+  ../ast-opt/sources.cm
 
   std-env.sml
   translate.sml
