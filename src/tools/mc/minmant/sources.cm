@@ -40,8 +40,6 @@ is
   front-end.sml
   meta-var.sml
   overload.sml
-  pretty-print.sml
-  pretty-print-sig.sml
   print-ast.sml
   print-types.sml
   typechecker.sml
