@@ -290,7 +290,7 @@ structure StdEnv : sig
 	    (B.cosd,		hlop H.cosd),
 	    (B.tand,		hlop H.tand),
 *)
-	    (B.itod,		prim1 (P.I32ToF64, "itod", i, d)),
+	    (B.itod,		prim1 (P.I32ToF64, "itod", i, d))
 (*
 	    (B.channel,		hlop H.channel),
 	    (B.send,		hlop H.send),
@@ -310,9 +310,11 @@ structure StdEnv : sig
 	    (B.args,		hlop H.args),
 	    (B.fail,		hlop H.fail),
 *)
+(*
 	    (F.future,          hlop H.future),
 	    (F.touch,           hlop H.touch),
 	    (F.cancel,          hlop H.cancel)
+*)
 	  ]
     end (* local *)
 
