@@ -3,7 +3,7 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Utilities for both nesting and flattening tuples.
+ * A function for building nesters based on tuples.
  *)
 
 structure Nester (* : sig
@@ -37,11 +37,6 @@ structure Nester (* : sig
 	in
 	    exps es
 	end
-
-    (* flatten : A.exp -> A.exp *)
-    fun flatten (A.TupleExp es)  = A.TupleExp  (removeParens es)
-      | flatten (A.PTupleExp es) = A.PTupleExp (removeParens es)
-      | flatten e = e
 
     (* mkVarTup : T.ty -> A.exp *)
     fun mkVarTup (T.TupleTy ts) =

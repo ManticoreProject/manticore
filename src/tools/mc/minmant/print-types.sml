@@ -45,60 +45,8 @@ structure PrintTypes (* : sig
     (* prln : string -> unit *)
     fun prln s = (pr s; ln ())
 
-    (* appwith : (unit -> unit) -> ('a -> unit) -> 'a list -> unit *)
-    fun appwith s f xs =
-	let fun aw [] = ()
-	      | aw (x::[]) = f x
-	      | aw (x::xs) = (f x; s (); aw xs)
-	in
-	    aw xs
-	end
-
     (* ty : T.ty -> unit *)
-    fun ty (T.ErrorTy) = pr "errorTy"
-      | ty (T.MetaTy m) = meta m
-      | ty (T.ClassTy c) = class c
-      | ty (T.VarTy tv) = tyvar tv
-      | ty (T.ConTy (ts, c)) =
-	  (openVBox (rel 0);
-	   case ts 
- 	     of [] => tycon c
-	      | _ =>
-		(pr "(";
-		 appwith (fn () => pr " ") ty ts;
-		 pr " ";
-		 tycon c;
-		 pr ")");
-	   closeBox ())
-      | ty (T.FunTy (t1, t2)) = 
-	  (openVBox (rel 0);
-	   pr "(";
-	   ty t1;
-	   pr " -> ";
-	   ty t2;
-	   pr ")";
-	   closeBox ())
-      | ty (T.TupleTy ts) =
-	  (openVBox (rel 0);
-	   pr "(";
-	   appwith (fn () => pr ",") ty ts;
-	   pr ")";
-	   closeBox ())
-
-    and meta m = raise Fail "todo: meta"
-
-    and class c = raise Fail "todo: class"
-
-    and class_info ci = raise Fail "todo: class_info"
-
-    and ty_class c = raise Fail "todo: ty_class"
-
-    and tyvar (T.TVar {name, ...}) = pr (Atom.toString name)
-
-    and tycon (T.AbsTyc {name, ...})  = pr (Atom.toString name)
-      | tycon (T.DataTyc {name, ...}) = pr (Atom.toString name)
-
-    and dcon _ = raise Fail "todo: dcon"
+    fun ty t = pr (TypeUtil.toString t)
 
     (* ty_scheme : T.ty_scheme -> unit *)
     fun ty_scheme (T.TyScheme (tvs, t)) =

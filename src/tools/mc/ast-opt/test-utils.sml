@@ -22,9 +22,12 @@ structure TestUtils =
 
     (* apply : A.exp -> A.exp -> A.exp *)
     fun apply e1 e2 = 
-	let val (dty, rty) = (case TypeOf.exp e2
+	let val (dty, rty) = (case TypeOf.exp e1
 			        of T.FunTy t => t
-				 | _ => fail "apply: expected a function")
+				 | _ => fail ("apply: expected a function; "
+					      ^ " type is " 
+					      ^ TypeUtil.toString (TypeOf.exp e1)))
+
 	in
 	    if TypeUtil.same (dty, TypeOf.exp e2) then
 		A.ApplyExp (e1, e2, rty)
@@ -52,6 +55,33 @@ structure TestUtils =
 
     (* none: T.ty -> A.exp *)
     fun none t = A.ConstExp (A.DConst (B.optionNONE, [t]))
+
+    (* fact : int -> A.exp *)
+    fun fact n =
+	let val f = Var.new ("fact", T.FunTy (Basis.intTy, Basis.intTy))
+	in
+	    apply (A.VarExp (f, [])) (int n)
+	end
+
+    (* isZero : int -> A.exp *)
+    fun isZero n =
+	let val z = Var.new ("isZero",
+			     T.FunTy (Basis.intTy, Basis.boolTy))
+	in
+	    apply (A.VarExp (z, [])) (int n)
+	end
+
+    (* ifexp : A.exp * A.exp * A.exp -> A.exp *)
+    fun ifexp (e1, e2, e3) =
+	let val t2 = TypeOf.exp e2
+	in
+	    if not (TypeUtil.same (TypeOf.exp e1, Basis.boolTy)) then
+		fail "ifexp: first expression not boolean"
+	    else if TypeUtil.same (t2, TypeOf.exp e3) then
+		A.IfExp (e1, e2, e3, t2)
+	    else
+		fail "ifexp: types of branches don't match"
+	end
 
     (* test : (A.exp -> A.exp) -> A.exp -> unit *)
     fun test ee e = (P.print e;

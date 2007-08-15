@@ -153,7 +153,7 @@ structure FutParTup (* : sig
         fun test3 () = test t3
 	fun test4 () = (PrintAST.print t1;
 			sep (SOME "flattening");
-			test (FlatParTup.flatten t1))
+			test (FlatParTup.flattenModule t1))
     end
 
   end
