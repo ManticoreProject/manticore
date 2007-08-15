@@ -8,6 +8,8 @@ structure Translate : sig
 
     val translate : AST.module -> BOM.module
 
+    val test : int -> unit
+
   end = struct
 
     structure V = Var
@@ -15,6 +17,12 @@ structure Translate : sig
     structure BV = B.Var
     structure BTy = BOMTy
     structure Lit = Literal
+
+    (* fail : string -> 'a *)
+    fun fail msg = raise Fail msg
+
+    (* todo : string -> 'a *)
+    fun todo msg = fail ("todo: " ^ msg)
 
     val trTy = TranslateTypes.tr
     val trScheme = TranslateTypes.trScheme
@@ -295,5 +303,43 @@ structure Translate : sig
         passName = "translate",
         pass = translate,
         registry = TranslateControls.registry}
+
+    (**** tests ****)
+
+    local
+
+	structure U = TestUtils
+	val (tup, ptup) = (U.tup, U.ptup)      
+	val (int, fact, isZero) = (U.int, U.fact, U.isZero)
+
+        (* testModule : AST.module -> BOM.module *)
+	fun testModule a =
+	    let val aflat = FlatParTup.flattenModule a
+		val afut = FutParTup.futurize aflat
+		val b = translate afut
+		fun sep () = PrintAST.printComment "-->"
+	    in
+		PrintAST.print a;
+		sep ();
+		PrintAST.print aflat;
+		sep ();
+		PrintAST.print afut;
+		sep ();
+		PrintBOM.print b
+	    end
+
+	(* t0 = (| 10, 11 |) *)
+	val t0 = ptup [int 10, int 11]
+
+    in
+
+        (* test : int -> unit *)
+        val test =
+	    let val testCases = [t0]
+	    in
+		U.mkTest testModule testCases
+	    end
+
+    end (* local *)
 
   end

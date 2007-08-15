@@ -33,6 +33,11 @@ structure HLOpEnv : sig
     val dequeueOp : HLOp.hlop
     val enqueueOp : HLOp.hlop
 
+  (* futures *)
+    val future : HLOp.hlop
+    val touch  : HLOp.hlop
+    val cancel : HLOp.hlop
+
     val define : HLOp.hlop -> unit
     val find : Atom.atom -> HLOp.hlop option
 
@@ -50,10 +55,14 @@ structure HLOpEnv : sig
     val tidTy = BTy.tidTy
     val exhTy = BTy.exhTy
     val listTy = BTy.T_TyCon Basis.listTyc
+    val futureTy = BTy.futureTy
     val ivarTy = BTy.T_Tuple(true, [listTy, BTy.T_Any, BTy.T_Raw BTy.T_Int])
 
+  (* new : string * BTy.ty list * BTy.ty list * H.attributes list -> H.hlop *)
     fun new (name, params, res, attrs) =
-	  H.new(Atom.atom name, {params= List.map HLOp.PARAM params, exh=[], results=res}, attrs)
+	  H.new (Atom.atom name, 
+		 {params= List.map HLOp.PARAM params, exh=[], results=res}, 
+		 attrs)
 
   (* high-level operations used to implement Manticore language constructs *)
     val listAppendOp = new("list-append", [listTy, listTy], [], [])
@@ -69,6 +78,11 @@ structure HLOpEnv : sig
     val dequeueOp = new("dequeue", [vprocTy], [Basis.rdyqItemTy], [])
     val enqueueOp = new("enqueue", [vprocTy, tidTy, fiberTy], [], [])
 
+  (* futures *)
+    val future = new ("future", [BTy.T_Any], [BTy.T_Any], [])
+    val touch  = new ("touch",  [BTy.T_Any], [BTy.T_Any], [])
+    val cancel = new ("cancel", [BTy.T_Any], [BTy.T_Any], [])
+		    
     fun mkTbl nameOf bindings = let
 	  val tbl = AtomTable.mkTable (List.length bindings, Fail "table")
 	  fun ins v = AtomTable.insert tbl (nameOf v, v)

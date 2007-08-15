@@ -15,7 +15,7 @@ structure HLOp =
       | VEC of BOMTy.ty			(* zero or more instances *)
 
     type hlop_sig = {		(* High-level operation signature *)
-	params : param_ty list,		(* paramter signature *)
+	params : param_ty list,		(* parameter signature *)
 	exh : BOMTy.ty list,
 	results : BOMTy.ty list		(* list of results *)
       }
@@ -37,6 +37,7 @@ structure HLOp =
 
     datatype attributes = NORETURN
 
+    (* new : Atom.atom * hlop_sig * attributes list -> hlop *)
     fun new (name, sign, attrs) = let
 	  val id = Stamp.new()
 	  val returns = ref true

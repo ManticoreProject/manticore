@@ -20,6 +20,12 @@ structure TestUtils =
     (* int : int -> A.exp *)
     fun int n = A.ConstExp (A.LConst (Literal.Int n, B.intTy))
 
+    (* intPat : int -> A.pat *)
+    fun intPat n = A.ConstPat (A.LConst (Literal.Int n, B.intTy))
+
+    (* varPat : var -> A.pat *)
+    fun varPat x = A.VarPat x
+
     (* apply : A.exp -> A.exp -> A.exp *)
     fun apply e1 e2 = 
 	let val (dty, rty) = (case TypeOf.exp e1
@@ -83,9 +89,32 @@ structure TestUtils =
 		fail "ifexp: types of branches don't match"
 	end
 
+    (* caseExp: A.exp * (A.pat * A.exp) list -> A.exp *) 
+    fun caseExp (e, pes as (mp,me)::_) =
+	let val t = TypeOf.exp me
+	in
+	    A.CaseExp (e, pes, t)
+	end
+
     (* test : (A.exp -> A.exp) -> A.exp -> unit *)
     fun test ee e = (P.print e;
 		     P.printComment "-->";
 		     P.print (ee e))
+
+     (* mkTest : ('a -> unit) -> 'a list -> (int -> unit) *)
+    fun mkTest testFunction terms =
+	let fun t n = testFunction (List.nth (terms, n))
+		      handle Subscript =>
+			     let val nTerms = List.length terms
+				 val msg = "Please choose a test value \
+                                           \between 0 and " ^
+					   Int.toString (nTerms - 1) ^
+					   ".\n"
+			     in
+				 print msg
+			     end
+	in
+	    t
+	end
 
   end

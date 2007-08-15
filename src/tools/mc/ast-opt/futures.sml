@@ -11,9 +11,9 @@ structure Futures (* : sig
 
     val futureTyc : Types.tycon
     val futureTy  : Types.ty -> Types.ty
-    val future    : AST.exp -> AST.exp 
-    val touch     : AST.exp -> AST.exp
-    val cancel    : AST.exp * AST.exp -> AST.exp
+    val mkFuture  : AST.exp -> AST.exp 
+    val mkTouch     : AST.exp -> AST.exp
+    val mkCancel    : AST.exp * AST.exp -> AST.exp
 
   end *) =
 
@@ -27,8 +27,8 @@ structure Futures (* : sig
     (* futureTy : T.ty -> T.ty *)
     fun futureTy t = T.ConTy ([t], futureTyc)
 		    
-    (* future : A.exp -> A.exp *)
-    fun future e = 
+    (* mkFuture : A.exp -> A.exp *)
+    fun mkFuture e = 
 	let val t = TypeOf.exp e
 	    val futureVar = Var.new ("future", T.FunTy (t, futureTy t))
 	    val unit = A.TupleExp []
@@ -68,10 +68,10 @@ structure Futures (* : sig
 
     in
 
-    (* touch : A.exp -> A.exp *)
+    (* mkTouch : A.exp -> A.exp *)
     (* Precondition: The argument must be a future. *)
     (* The function raises Fail if the precondition is not met. *)
-    fun touch e = 
+    fun mkTouch e = 
 	let val t = typeOfFuture e
 	    val touchVar = Var.new ("touch", T.FunTy (TypeOf.exp e, t))
 	    val touch = A.VarExp (touchVar, [t])
@@ -79,10 +79,10 @@ structure Futures (* : sig
 	    A.ApplyExp (touch, e, t)
 	end
 
-    (* cancel : A.exp * A.exp -> A.exp *)
+    (* mkCancel : A.exp * A.exp -> A.exp *)
     (* Precondition: The argument e1 must be a future. *)
     (* The function raises Fail if the precondition is not met. *)
-    fun cancel (e1, e2) =
+    fun mkCancel (e1, e2) =
 	let val u = Basis.unitTy
 	in
 	    if (isFuture e1) then
@@ -98,5 +98,28 @@ structure Futures (* : sig
 	end
 
     end (* local *)
-  
+
+    (* forall : (T.ty -> T.ty) -> T.ty_scheme *)
+    fun forall mkTy =
+	let val tv = TyVar.new (Atom.atom "'a")
+	in
+	    T.TyScheme ([tv], mkTy (A.VarTy tv))
+	end
+
+    (* polyVar : Atom.atom * (T.ty -> T.ty) -> Var.var *)
+    fun polyVar (name, mkTy) = Var.newPoly (Atom.toString name, forall mkTy)
+
+    val --> = T.FunTy
+    infixr 8 -->
+
+    (* predefined functions *)
+    val future = polyVar (Atom.atom "future",
+ 		          fn tv => tv --> futureTy tv)
+
+    val touch = polyVar (Atom.atom "touch",
+		         fn tv => futureTy tv --> tv)
+
+    val cancel = polyVar (Atom.atom "cancel",
+			  fn tv => futureTy tv --> Basis.unitTy)
+
   end

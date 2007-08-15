@@ -36,7 +36,6 @@ structure BOMTy =
 	  name : string,
 	  stamp : Stamp.stamp,
 	  arity : int
-	  (* do we have a notion of equality types? *)
 	}
 
     and data_con = DCon of {	      (* a data-constructor function *)
@@ -56,7 +55,6 @@ structure BOMTy =
 					(* constructor; represented as heap-allocated tuple of values *)
       | TaggedTuple of word		(* for when there are multiple constructors: the constructor *)
 					(* is represented as heap-allocated tag/value pair *)
-
 
     val unitTy = T_Enum(0w0)
     val boolTy = T_Enum(0w1)	(* false = 0, true = 1 *)

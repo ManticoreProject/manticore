@@ -19,6 +19,7 @@ Library
   structure Types
   structure TypeUtil
   structure TypeOf
+  structure TyVar
   structure Var
   structure Stamp
   structure VarRep

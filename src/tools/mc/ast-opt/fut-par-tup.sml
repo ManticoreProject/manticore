@@ -50,7 +50,7 @@ structure FutParTup (* : sig
   	  let (* mkFutBinds : A.exp list -> A.binding list * A.var list *)
 	      fun mkFutBinds ([], n) = ([],[])
 		| mkFutBinds (e::es, n) =
-		    let val fe = F.future e
+		    let val fe = F.mkFuture e
 			val f_n = Var.newWithKind ("f" ^ Int.toString n,
 						   A.VK_Pat,
 						   TypeOf.exp fe)
@@ -65,7 +65,7 @@ structure FutParTup (* : sig
 		| letMany ([], _) = raise Fail 
 			            "letMany: argument must have at least one binding"
 	      val (bs, vs) = mkFutBinds (map exp es, 1)
-	      val touches = map (fn v => F.touch (A.VarExp (v, []))) vs
+	      val touches = map (fn v => F.mkTouch (A.VarExp (v, []))) vs
 	  in
 	      letMany (bs, A.TupleExp (exp e :: touches))
 	  end

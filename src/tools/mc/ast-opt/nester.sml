@@ -229,7 +229,6 @@ structure Nester (* : sig
 	(* t8 = (| SOME (| SOME 5, SOME 6 |) |) *)
 	val t8 = U.ptup [U.some (U.ptup [U.some (U.int 5), 
 					 U.some (U.int 6)])]
-
     in
 
         (* test : int -> unit *)

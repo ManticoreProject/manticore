@@ -16,7 +16,13 @@ structure FlatParTup (* : sig
     structure A = AST
     structure T = Types
 
-    (* id : a -> a *)
+    (* fail : string -> 'a *)
+    fun fail msg = raise Fail msg
+
+    (* todo : string -> 'a *)
+    fun todo thing = fail ("todo: " ^ thing)
+
+    (* id : 'a -> 'a *)
     val id = (fn x => x)
 
     (* (**) : ((a -> b) * (c -> d)) -> ((a * c) -> (b * d)) *)
@@ -24,7 +30,7 @@ structure FlatParTup (* : sig
     infix 3 ** (* same precedence level as o *)
     fun f ** g = (fn (a, b) => (f a, g b))
 
-    (* flattenCand : A.exp -> bool *)
+    (* isFlattenCand : A.exp -> bool *)
     (* Determines whether the given expression is suitable for flattening. *)
     fun isFlattenCand e =
 	  let (* tup : A.exp -> bool *)
@@ -64,16 +70,77 @@ structure FlatParTup (* : sig
 	    exps es
 	end
 
-    (**** main traversal of the AST ****)
-	
+    (* getNester : A.exp -> (A.var * A.lambda) option *)	
+    fun getNester (A.LetExp (A.FunBind [nlam],
+			     A.ApplyExp (nvar, e, t))) = SOME (nvar, nlam)
+      | getNester _ = NONE
+
+    (* applicand : A.exp -> A.exp *)
+    (* Pre: the argument is of the form *)
+    (*         let fun f _ = ... in f e end *)
+    fun applicand (A.LetExp (_, A.ApplyExp (_, e, _))) = e
+      | applicand _ = fail "applicand: expected a let with an application in it"
+
+    (* firstValOf : ('a -> 'b option) * (unit -> 'b) -> 'a list -> 'b *)
+    fun firstValOf (f, default) xs =
+	let fun g [] = default ()
+	      | g (x::xs) = (case f x
+			       of SOME x' => x'
+			        | NONE => g xs)
+	in
+	    g xs
+	end
+
     (* exp : A.exp -> A.exp *)
     fun exp (A.LetExp (b, e)) = A.LetExp (binding b, exp e)
       | exp (A.IfExp (e1, e2, e3, t)) =
-          (* TODO: IfExp -- *)
-          (* possible optimization...the nester can be "factored out" of the branches *)
-          (* of an if expression *)
-	  A.IfExp (exp e1, exp e2, exp e3, t) 
-      | exp (A.CaseExp (e, pes, t)) = A.CaseExp (exp e, List.map (id ** exp) pes, t)
+  	  (* Optimization: the nester is factored out of the if expression if poss. *)
+	  if (isFlattenCand e2) orelse (isFlattenCand e3) then
+	      (* note: we must account for the possibility that one but
+                       not both expressions are parallel tuples 
+		       (and hence flatten candidates) *)
+	      let val e2' = exp e2
+		  val e3' = exp e3
+		  val (nesterVar, nesterLam) = 
+		      let val fail' = fn () => fail "exp: (IfExp) no nester found"
+		      in
+   		         (* the nester should be the same if it appears in both *)
+			  firstValOf (getNester, fail') [e2', e3']
+		      end
+		  val e2'' = applicand e2'
+		  val e3'' = applicand e3'
+		  val flatTy = TypeOf.exp e2'' (* e3'' would do as well *)
+	      in
+		  A.LetExp (A.FunBind [nesterLam],
+			    A.ApplyExp (nesterVar,
+					A.IfExp (exp e1, e2'', e3'', flatTy),
+					t))
+	      end
+	  else 
+	      A.IfExp (exp e1, exp e2, exp e3, t) 
+      | exp (A.CaseExp (e, pes, t)) =
+        (* Optimization: the nester is factored out of the case expression if poss. *)
+	if List.exists (isFlattenCand o #2) pes then
+	    let val (ps, es) = ListPair.unzip pes
+		val es' = map exp es
+		val (nesterVar, nesterLam) = 
+		    let val fail' = fn () => fail "exp: (CaseExp) no nester found"
+		    in
+   		        (* the nester should be the same everywhere it appears *)
+			firstValOf (getNester, fail') es'
+		    end
+		val es'' = map applicand es'
+		val flatTy = TypeOf.exp (hd es'')
+	    in
+		A.LetExp (A.FunBind [nesterLam],
+			  A.ApplyExp (nesterVar,
+				      A.CaseExp (exp e,
+						 ListPair.zip (ps, es''),
+						 flatTy),
+				      t))
+	    end
+	else
+	    A.CaseExp (exp e, List.map (id ** exp) pes, t)
       | exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, t)
       | exp (A.TupleExp es) = A.TupleExp (List.map exp es)
       | exp (A.RangeExp (e1, e2, oe3, t)) = 
@@ -120,6 +187,7 @@ structure FlatParTup (* : sig
 	structure U = TestUtils
 
 	val (tup, ptup, int, fact, some) = (U.tup, U.ptup, U.int, U.fact, U.some)
+	val (intPat, varPat) = (U.intPat, U.varPat)
 
 	val t0 = ptup [int 0, 
 		       ptup [int 1, int 2],
@@ -149,10 +217,29 @@ structure FlatParTup (* : sig
 		       tup [some (int 3), some (int 4)]]
 
 
-	(* t5 = if (isZero 0) then (| 1, (2, 3) |) else (| 4, (5, 6) |)  *)
-	val t5 = U.ifexp (U.isZero 0,
+	(* t5 = (| 1, (2, 3) |) *)
+	val t5 = ptup [int 1, tup (map int [2, 3])]
+
+	(* t6 = if (isZero 0) then (| 1, (2, 3) |) else (| 4, (5, 6) |)  *)
+	val t6 = U.ifexp (U.isZero 0,
 			  ptup [int 1, tup [int 2, int 3]],
 			  ptup [int 4, tup [int 5, int 6]])
+
+
+	(* t7 = case n of 0 => (| 1, (2, SOME 3) |) 
+                        | 1 => (| 4, (5, SOME 6) |) 
+                        | k => (| 0, (0, NONE) |) *)
+	val t7 = 
+	    let val k = Var.new ("k", Basis.intTy)
+	    in
+		U.caseExp (A.VarExp (Var.new ("n", Basis.intTy), []),
+			   [(intPat 0, ptup [int 1, tup [int 2, some (int 3)]]),
+			    (intPat 1, ptup [int 4, tup [int 5, some (int 6)]]),
+			    (varPat k, ptup [int 0, tup [int 0, U.none Basis.intTy]])])
+	    end
+
+	(* TODO: THIS TEST CASE POINTS OUT A SERIOUS PROBLEM WITH REFACTORING!!! *)
+	(* THAT IS, IF VARIANTS DON'T SHARE DATA CONS... *)
 
 	fun testExp e = (P.print e;
 			 P.printComment "-->";
@@ -161,18 +248,10 @@ structure FlatParTup (* : sig
     in
 
         (* test : int -> unit *)
-        fun test n =
-	    let val tests = [t0,t1,t2,t3,t4,t5]
+        val test = 
+	    let val testCases = [t0,t1,t2,t3,t4,t5,t6,t7]
 	    in
-		testExp (List.nth (tests, n))
-		handle Subscript =>
-		       let val msg = "FlatParTup.test: Please choose a test value \
-                                     \between 0 and "
-				     ^ Int.toString ((List.length tests) - 1)
-				     ^ ".\n"
-		       in
-			   print msg
-		       end
+		U.mkTest testExp testCases
 	    end
 
     end (* local *)
