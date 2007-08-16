@@ -65,10 +65,11 @@ structure StdEnv : sig
 	    TTbl.find tbl
 	  end
 
-    local
+    local 
     (* generate a variable for a primop; if the ty is raw, then we have to
      * unwrap the argument and so we generate two variables.
      *)
+
      (* unwrapArg : string * BTy.ty * (BV.var list * BOM.rhs) list 
                     -> ((BV.var list * BOM.rhs) list * BV.var * BOM.var * BTy.ty) *)
       fun unwrapArg (name, ty, stms) = let
@@ -84,8 +85,10 @@ structure StdEnv : sig
 		| _ => (stms, rawX, rawX, ty)
 	      (* end case *)
 	    end
-      (* wrapRes : BTy.ty 
-                   -> ((BV.var list * BOM.rhs) list * BV.var * BOM.var * BTy.ty) *)
+
+      (* wrapRes : BV.V.ty 
+                   -> ((BV.V.var list * BOM.rhs) list 
+                        * BV.V.var * BV.V.var * BV.V.ty) *)
       fun wrapRes ty = let
 	    val rawX = BV.new("_res", ty)
 	    in
@@ -99,9 +102,12 @@ structure StdEnv : sig
 		| _ => ([], rawX, rawX, ty)
 	      (* end case *)
 	    end
+
       (* funTy : BV.var * BV.var -> BTy.ty *)
       fun funTy (arg, res) = BTy.T_Fun([BV.typeOf arg], [BTy.exhTy], [BV.typeOf res])
-      (* prim1 : _ * _ * _ * _ -> BOM.lambda *)
+
+      (* prim1 : (BV.V.var -> BOM.prim) * string  * BV.V.ty * BV.V.ty 
+                  -> BOM.lambda *)
       fun prim1 (rator, f, rawArgTy, rawResTy) = let
 	    val (preStms, rawArg, wrapArg, wrapArgTy) = unwrapArg ("arg", rawArgTy, [])
 	    val (postStms, rawRes, wrapRes, wrapResTy) = wrapRes rawResTy
@@ -114,7 +120,10 @@ structure StdEnv : sig
 		  body = BOM.mkStmts(stms, BOM.mkRet[wrapRes])
 		}
 	    end
-      (* prim2 : _ * _ * _ * _ * _ -> BOM.lambda *)
+
+      (* prim2 : (BV.V.var * BV.V.var -> BOM.prim) * string 
+                 * BV.V.ty * BV.V.ty * BV.V.ty 
+                 -> BOM.lambda *)
       fun prim2 (rator, f, rawATy, rawBTy, rawResTy) = let
 	    val (preStms, rawB, wrapB, wrapBTy) = unwrapArg ("b", rawBTy, [])
 	    val (preStms, rawA, wrapA, wrapATy) = unwrapArg ("a", rawATy, preStms)
@@ -135,26 +144,27 @@ structure StdEnv : sig
 	    end
 
       (* hlop : HLOp.hlop -> BOM.lambda *)
-      fun hlop (hlop as HLOp.HLOp{name, sign, ...}) =
+      fun hlop (hlop as HLOp.HLOp {name, sign, ...}) =
 	  let val {params, exh, results} = sign
 	      val paramTys = todo "paramTys"
 	      val fty = BTy.T_Fun (paramTys, exh, results)
 	      val f = BV.new (Atom.toString name, fty)
 	      (* mkVars : BTy.ty list -> BV.var list *)
-	      fun mkVars ts =
-		  let (* build : BTy.ty list * int -> BV.var list *)
+	      fun mkVars baseName ts =
+		  let (* build : string -> BTy.ty list * int -> BV.var list *)
 		      fun build ([], _) = []
 			| build (t::ts, n) =
-			  let val x = "x" ^ Int.toString n
+			  let val x = baseName ^ Int.toString n
 			  in
 			      BV.new (x, t) :: build (ts, n+1)
 			  end
 		  in
 		      build (ts, 0)
 		  end
-	      val params = mkVars paramTys
-	      val exh = todo "exh"
-	      val body = todo "body"
+	      val params = mkVars "x" paramTys
+	      val exh = mkVars "y" exh
+	      val body = BOM.E_Pt (todo "ProgPt.ppt",
+				   BOM.E_HLOp (hlop, params, exh))
 	  in
 	      BOM.FB {f=f, params=params, exh=exh, body=body}
 	  end
@@ -165,7 +175,7 @@ structure StdEnv : sig
       val f = BTy.T_Raw BTy.T_Float
       val d = BTy.T_Raw BTy.T_Double
       val b = BTy.boolTy
-    in
+    in 
     val operators = [
 
 (* FIXME
@@ -316,7 +326,7 @@ structure StdEnv : sig
 	    (F.cancel,          hlop H.cancel)
 *)
 	  ]
-    end (* local *)
+    end (* local *) 
 
     val lookupVar : AST.var -> BOM.lambda = let
 	  val tbl = Var.Tbl.mkTable(List.length operators, Fail "var tbl")

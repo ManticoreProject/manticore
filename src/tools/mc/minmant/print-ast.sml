@@ -264,7 +264,8 @@ structure PrintAST (* : sig
 		  
     (* printComment : string -> unit *)       
     (* for debugging purposes *)
-    fun printComment s = (prln ("(* " ^ s ^ " *)"))
+    fun printComment s = (prln ("(* " ^ s ^ " *)");
+			  flush ())
 			  
     (**** tests ****)
 			  
