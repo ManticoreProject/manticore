@@ -303,6 +303,10 @@ structure Nester (* : sig
 	(* t8 = (| SOME (| SOME 5, SOME 6 |) |) *)
 	val t8 = U.ptup [U.some (U.ptup [U.some (U.int 5), 
 					 U.some (U.int 6)])]
+
+	(* t9 = (| SOME (| SOME 15, SOME 16 |) |) *)
+	val t9 = U.ptup [U.some (U.ptup [U.some (U.int 15), 
+					 U.some (U.int 16)])]
     in
 
         (* test : int -> unit *)
@@ -319,7 +323,25 @@ structure Nester (* : sig
 		      print msg
 		  end
 	    end
-        
+
+	(* testSame : int -> unit *)
+	fun testSame n =
+	    let fun t (e1, e2) =
+		    let val (_, lam1) = fromExp e1
+			val (_, lam2) = fromExp e2
+			val s = same (lam1, lam2)
+		    in
+			PrintAST.print (funFromLam lam1);
+			PrintAST.printComment "****";
+			PrintAST.print (funFromLam lam2);
+			PrintAST.printComment ("same: " ^ Bool.toString s)
+		    end
+	    in
+		case n
+ 		 of 0 => t (t8, t9)
+		  | 1 => t (t7, t8)
+		  | _ => print (Int.toString n ^ ": no such test for testSame.\n")
+	    end
     end
 
   end

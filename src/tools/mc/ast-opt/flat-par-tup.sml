@@ -94,8 +94,10 @@ structure FlatParTup (* : sig
     (* exp : A.exp -> A.exp *)
     fun exp (A.LetExp (b, e)) = A.LetExp (binding b, exp e)
       | exp (A.IfExp (e1, e2, e3, t)) =
-  	  (* Optimization: the nester is factored out of the if expression if poss. *)
-	  if (isFlattenCand e2) orelse (isFlattenCand e3) then
+(*  	  (* Optimization: the nester is factored out of the if expression if poss. *)
+	  (* However, we need to know if both nesters (if there are two) are the same. *)
+          (* While they won't differ in types, they might differ in data constructors. *)
+          if (isFlattenCand e2) orelse (isFlattenCand e3) then
 	      (* note: we must account for the possibility that one but
                        not both expressions are parallel tuples 
 		       (and hence flatten candidates) *)
@@ -116,10 +118,10 @@ structure FlatParTup (* : sig
 					A.IfExp (exp e1, e2'', e3'', flatTy),
 					t))
 	      end
-	  else 
+	  else *)
 	      A.IfExp (exp e1, exp e2, exp e3, t) 
       | exp (A.CaseExp (e, pes, t)) =
-        (* Optimization: the nester is factored out of the case expression if poss. *)
+(*        (* Optimization: the nester is factored out of the case expression if poss. *)
 	if List.exists (isFlattenCand o #2) pes then
 	    let val (ps, es) = ListPair.unzip pes
 		val es' = map exp es
@@ -139,7 +141,7 @@ structure FlatParTup (* : sig
 						 flatTy),
 				      t))
 	    end
-	else
+	else *)
 	    A.CaseExp (exp e, List.map (id ** exp) pes, t)
       | exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, t)
       | exp (A.TupleExp es) = A.TupleExp (List.map exp es)
@@ -237,9 +239,6 @@ structure FlatParTup (* : sig
 			    (intPat 1, ptup [int 4, tup [int 5, some (int 6)]]),
 			    (varPat k, ptup [int 0, tup [int 0, U.none Basis.intTy]])])
 	    end
-
-	(* TODO: THIS TEST CASE POINTS OUT A SERIOUS PROBLEM WITH REFACTORING!!! *)
-	(* THAT IS, IF VARIANTS DON'T SHARE DATA CONS... *)
 
 	fun testExp e = (P.print e;
 			 P.printComment "-->";
