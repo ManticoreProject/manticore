@@ -189,6 +189,80 @@ structure Nester (* : sig
 	       | _ => fail "fromExp: expected tuple"
 	end
 
+    local
+	structure VM = RedBlackMapFn (struct
+				       type ord_key = A.var
+				       val compare = Var.compare
+				      end)
+	(* isDCon : A.exp -> bool *)
+	fun isDCon (A.ConstExp (A.DConst _)) = true
+	  | isDCon _ = false
+	(* dcon : A.exp -> A.dcon *)
+	fun dcon (A.ConstExp (A.DConst (c, _))) = c
+	  | dcon _ = fail "dcon"
+    in
+    (* same : A.lambda * A.lambda -> bool *)
+    (* Nesters are restricted enough that they can be compared for equality. *)
+    (* Pre: Both arguments are in fact nesters. *) 
+    (* There may be no test to verify this (have to think about that one). *)
+    (* As such, care must be taken when invoking this function. *)
+    (* The implementation depends on nesters having the following form: *)
+    (* fun nest x = case x of (a1, ..., an) => (a1, (a2, a3), ...) *)
+    fun same (n1 as A.FB (_, _, b1), n2 as A.FB (_, _, b2)) =
+	let val (p1, e1) = (case b1
+			      of A.CaseExp (_, [(p, e)], _) => (p, e)
+			       | _ => fail "same: n1 is not a nester")
+	    val (p2, e2) = (case b2
+			      of A.CaseExp (_, [(p, e)], _) => (p, e)
+			       | _ => fail "same: n2 is not a nester")
+	    (* pat : A.pat * A.pat -> bool *)
+	    (* Both pats must be flat tuples of vars, and have the same length. *)
+	    fun pat (A.TuplePat ps1, A.TuplePat ps2) = 
+		  let (* ok : A.pat list * A.pat list -> bool *)
+		      fun ok ([], []) = true
+			| ok (A.VarPat _ :: t1, A.VarPat _ :: t2) = ok (t1, t2)
+			| ok _ = false
+		  in
+		      ok (ps1, ps2)
+		  end
+	      | pat _ = false
+	    (* exp : A.exp * A.exp -> bool *)
+	    (* Both exps must consist only of variables and tuples and datacons. *)
+	    (* They must be isomorphic, that is, identical up to variable renaming. *)
+	    fun exp (e1, e2) = 
+		let type vvmap = A.var VM.map
+		    (* e : vvmap * A.exp * A.exp -> vvmap option  *)
+		    (* Returns the isomorphism for e1 and e2, if it exists. *)
+		    fun e (m, A.VarExp(v1,_), A.VarExp(v2,_)) =
+			  (case VM.find (m, v1)
+			     of SOME v => if Var.same (v, v2)
+					  then SOME m
+					  else NONE
+			      | NONE => SOME (VM.insert (m, v1, v2)))
+		      | e (m, A.TupleExp es1, A.TupleExp es2) = es (m, es1, es2)
+		      | e (m, A.ApplyExp (c1, e1, _), A.ApplyExp (c2, e2, _)) =
+			  if isDCon c1 andalso isDCon c2 andalso 
+			     DataCon.same (dcon c1, dcon c2) 
+			  then e (m, e1, e2)
+			  else NONE
+		      | e _ = NONE
+		    (* es : vvmap * A.exp list * A.exp list -> vvmap option *)
+		    and es (m, [], []) = SOME m
+		      | es (m, e1::es1, e2::es2) = 
+			  (case e (m, e1, e2)
+		 	     of SOME m' => es (m', es1, es2)
+			      | NONE => NONE)
+		      | es _ = NONE	
+		in
+		    case e (VM.empty, e1, e2)
+		      of SOME isomorphism => true
+		       | NONE => false
+		end
+	in
+	    pat (p1, p2) andalso exp (e1, e2)
+	end
+    end (* local *)
+
     (**** tests ****)
 
     local
