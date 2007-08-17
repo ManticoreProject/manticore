@@ -96,6 +96,9 @@ structure TestUtils =
 	    A.CaseExp (e, pes, t)
 	end
 
+    (* pval : var * A.exp * A.exp -> A.exp *)
+    fun pval (x, e, e') = A.LetExp (A.PValBind (A.VarPat x, e), e')
+			      
     (* test : (A.exp -> A.exp) -> A.exp -> unit *)
     fun test ee e = (P.print e;
 		     P.printComment "-->";
