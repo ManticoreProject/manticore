@@ -144,36 +144,35 @@ structure StdEnv : sig
 	    end
 
       (* hlop : HLOp.hlop -> BOM.lambda *)
-      fun hlop (hlop as HLOp.HLOp {name, sign, ...}) =
-	  let val {params, exh, results} = sign
-	      val paramTys = 
-		  let fun get (HLOp.PARAM t) = t
-			| get (HLOp.OPT t) = fail "hlop.get: OPT"
-			| get (HLOp.VEC t) = fail "hlop.get: VEC"
+      fun hlop (hlop as HLOp.HLOp{name, sign, ...}) = let
+	    val {params, exh, results} = sign
+	    val paramTys = let
+		  fun get (HLOp.PARAM t) = t
+		    | get (HLOp.OPT t) = fail "hlop.get: OPT"
+		    | get (HLOp.VEC t) = fail "hlop.get: VEC"
 		  in
-		      map get params
+		    List.map get params
 		  end
 	      val fty = BTy.T_Fun (paramTys, exh, results)
 	      val f = BV.new (Atom.toString name, fty)
-	      (* mkVars : BTy.ty list -> BV.var list *)
-	      fun mkVars baseName ts =
-		  let (* build : string -> BTy.ty list * int -> BV.var list *)
-		      fun build ([], _) = []
-			| build (t::ts, n) =
-			  let val x = baseName ^ Int.toString n
+	    (* mkVars : BTy.ty list -> BV.var list *)
+	      fun mkVars baseName ts = let
+		  (* build : string -> BTy.ty list * int -> BV.var list *)
+		    fun build ([], _) = []
+		      | build (t::ts, n) = let
+			  val x = baseName ^ Int.toString n
 			  in
 			      BV.new (x, t) :: build (ts, n+1)
 			  end
-		  in
+		    in
 		      build (ts, 0)
-		  end
-	      val params = mkVars "x" paramTys
-	      val exh = mkVars "y" exh
-	      val body = BOM.E_Pt (ProgPt.new (), (* FIXME: Is this right? - ams *)
-				   BOM.E_HLOp (hlop, params, exh))
-	  in
-	      BOM.FB {f=f, params=params, exh=exh, body=body}
-	  end
+		    end
+	      val params = mkVars "arg" paramTys
+	      val exh = mkVars "exh" exh
+	      val body = BOM.mkHLOp(BOM.E_HLOp(hlop, params, exh))
+	      in
+		BOM.FB{f=f, params=params, exh=exh, body=body}
+	    end
 
     (* type shorthands *)
       val i = BTy.T_Raw BTy.T_Int

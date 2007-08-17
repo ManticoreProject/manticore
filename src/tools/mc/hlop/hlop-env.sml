@@ -57,6 +57,8 @@ structure HLOpEnv : sig
     val listTy = BTy.T_TyCon Basis.listTyc
     val futureTy = BTy.futureTy
     val ivarTy = BTy.T_Tuple(true, [listTy, BTy.T_Any, BTy.T_Raw BTy.T_Int])
+    val thunkTy = BTy.T_Fun([], [], [BTy.T_Any])
+    val futureTy = BTy.T_Any
 
   (* new : string * BTy.ty list * BTy.ty list * H.attributes list -> H.hlop *)
     fun new (name, params, res, attrs) =
@@ -79,9 +81,9 @@ structure HLOpEnv : sig
     val enqueueOp = new("enqueue", [vprocTy, tidTy, fiberTy], [], [])
 
   (* futures *)
-    val future = new ("future", [BTy.T_Any], [BTy.T_Any], [])
-    val touch  = new ("touch",  [BTy.T_Any], [BTy.T_Any], [])
-    val cancel = new ("cancel", [BTy.T_Any], [BTy.T_Any], [])
+    val future = new ("future", [thunkTy], [futureTy], [])
+    val touch  = new ("touch",  [futureTy], [BTy.T_Any], [])
+    val cancel = new ("cancel", [futureTy], [], [])
 		    
     fun mkTbl nameOf bindings = let
 	  val tbl = AtomTable.mkTable (List.length bindings, Fail "table")
