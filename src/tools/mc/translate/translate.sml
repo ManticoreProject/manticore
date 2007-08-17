@@ -317,19 +317,19 @@ structure Translate : sig
 	    let val aflat = FlatParTup.flattenModule a
 		val afut = FutParTup.futurize aflat
 		val b = translate afut
-		fun sep () = PrintAST.printComment "-->"
+		fun sep s = PrintAST.printComment (s ^ " -->")
 	    in
 		PrintAST.print a;
-		sep ();
+		sep "flattening parallel tuples";
 		PrintAST.print aflat;
-		sep ();
+		sep "rewriting parallel tuples in terms of futures";
 		PrintAST.print afut;
-		sep ();
+		sep "translating to BOM";
 		PrintBOM.print b
 	    end
 
-	(* t0 = (| 10, 11 |) *)
-	val t0 = ptup [int 10, int 11]
+	(* t0 = ( 10, 11 ) *)
+	val t0 = tup [int 10, int 11]
 
     in
 

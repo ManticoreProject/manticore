@@ -146,7 +146,13 @@ structure StdEnv : sig
       (* hlop : HLOp.hlop -> BOM.lambda *)
       fun hlop (hlop as HLOp.HLOp {name, sign, ...}) =
 	  let val {params, exh, results} = sign
-	      val paramTys = todo "paramTys"
+	      val paramTys = 
+		  let fun get (HLOp.PARAM t) = t
+			| get (HLOp.OPT t) = fail "hlop.get: OPT"
+			| get (HLOp.VEC t) = fail "hlop.get: VEC"
+		  in
+		      map get params
+		  end
 	      val fty = BTy.T_Fun (paramTys, exh, results)
 	      val f = BV.new (Atom.toString name, fty)
 	      (* mkVars : BTy.ty list -> BV.var list *)
@@ -163,7 +169,7 @@ structure StdEnv : sig
 		  end
 	      val params = mkVars "x" paramTys
 	      val exh = mkVars "y" exh
-	      val body = BOM.E_Pt (todo "ProgPt.ppt",
+	      val body = BOM.E_Pt (ProgPt.new (), (* FIXME: Is this right? - ams *)
 				   BOM.E_HLOp (hlop, params, exh))
 	  in
 	      BOM.FB {f=f, params=params, exh=exh, body=body}
@@ -300,7 +306,7 @@ structure StdEnv : sig
 	    (B.cosd,		hlop H.cosd),
 	    (B.tand,		hlop H.tand),
 *)
-	    (B.itod,		prim1 (P.I32ToF64, "itod", i, d))
+	    (B.itod,		prim1 (P.I32ToF64, "itod", i, d)),
 (*
 	    (B.channel,		hlop H.channel),
 	    (B.send,		hlop H.send),
@@ -320,11 +326,10 @@ structure StdEnv : sig
 	    (B.args,		hlop H.args),
 	    (B.fail,		hlop H.fail),
 *)
-(*
+
 	    (F.future,          hlop H.future),
 	    (F.touch,           hlop H.touch),
 	    (F.cancel,          hlop H.cancel)
-*)
 	  ]
     end (* local *) 
 
