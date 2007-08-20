@@ -169,7 +169,7 @@ structure StdEnv : sig
 		    end
 	      val params = mkVars "arg" paramTys
 	      val exh = mkVars "exh" exh
-	      val body = BOM.mkHLOp(BOM.E_HLOp(hlop, params, exh))
+	      val body = BOM.mkHLOp (hlop, params, exh)
 	      in
 		BOM.FB{f=f, params=params, exh=exh, body=body}
 	    end
@@ -326,9 +326,9 @@ structure StdEnv : sig
 	    (B.fail,		hlop H.fail),
 *)
 
-	    (F.future,          hlop H.future),
-	    (F.touch,           hlop H.touch),
-	    (F.cancel,          hlop H.cancel)
+	    (F.future,          hlop H.futureOp),
+	    (F.touch,           hlop H.touchOp),
+	    (F.cancel,          hlop H.cancelOp)
 	  ]
     end (* local *) 
 

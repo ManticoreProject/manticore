@@ -34,9 +34,9 @@ structure HLOpEnv : sig
     val enqueueOp : HLOp.hlop
 
   (* futures *)
-    val future : HLOp.hlop
-    val touch  : HLOp.hlop
-    val cancel : HLOp.hlop
+    val futureOp : HLOp.hlop
+    val touchOp  : HLOp.hlop
+    val cancelOp : HLOp.hlop
 
     val define : HLOp.hlop -> unit
     val find : Atom.atom -> HLOp.hlop option
@@ -81,9 +81,9 @@ structure HLOpEnv : sig
     val enqueueOp = new("enqueue", [vprocTy, tidTy, fiberTy], [], [])
 
   (* futures *)
-    val future = new ("future", [thunkTy], [futureTy], [])
-    val touch  = new ("touch",  [futureTy], [BTy.T_Any], [])
-    val cancel = new ("cancel", [futureTy], [], [])
+    val futureOp = new ("future", [thunkTy], [futureTy], [])
+    val touchOp  = new ("touch",  [futureTy], [BTy.T_Any], [])
+    val cancelOp = new ("cancel", [futureTy], [], [])
 		    
     fun mkTbl nameOf bindings = let
 	  val tbl = AtomTable.mkTable (List.length bindings, Fail "table")

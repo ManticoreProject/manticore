@@ -312,6 +312,11 @@ structure Translate : sig
 	val (tup, ptup) = (U.tup, U.ptup)      
 	val (int, fact, isZero) = (U.int, U.fact, U.isZero)
 
+	(* itod : int -> AST.exp *)
+	fun itod n = AST.ApplyExp (AST.VarExp (Basis.itod, []),
+				   int n,
+				   Basis.doubleTy)
+
         (* testModule : AST.module -> BOM.module *)
 	fun testModule a =
 	    let val aflat = FlatParTup.flattenModule a
@@ -328,8 +333,8 @@ structure Translate : sig
 		PrintBOM.print b
 	    end
 
-	(* t0 = ( 10, 11 ) *)
-	val t0 = tup [int 10, int 11]
+	(* t0 = (| 10, 11 |) *)
+	val t0 = ptup [itod 10, itod 11]
 
     in
 
