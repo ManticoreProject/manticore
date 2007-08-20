@@ -23,6 +23,10 @@ structure Nester (* : sig
     (* todo : string -> 'a *)
     fun todo msg = fail ("todo: " ^ msg)
 
+    (* allEq : ('a * 'b -> bool) -> 'a list * 'b list -> bool *)
+    (* Raises UnequalLengths if so. *)
+    fun allEq pred (xs, ys) = List.all pred (ListPair.zipEq (xs, ys))
+
     (* removeParens : A.exp list -> A.exp list *)
     (* pre: argument must not be empty *)
     fun removeParens es =
@@ -190,31 +194,53 @@ structure Nester (* : sig
 	end
 
     local
+
 	structure VM = RedBlackMapFn (struct
 				       type ord_key = A.var
 				       val compare = Var.compare
 				      end)
-	(* isDCon : A.exp -> bool *)
-	fun isDCon (A.ConstExp (A.DConst _)) = true
-	  | isDCon _ = false
+
 	(* dcon : A.exp -> A.dcon *)
 	fun dcon (A.ConstExp (A.DConst (c, _))) = c
 	  | dcon _ = fail "dcon"
+
+	(* onlyMatch : A.exp -> A.pat * A.exp *)
+	(* Pre: the argument is a CaseExp. *)
+	(* Pre: the case exp has exactly one branch. *)
+	fun onlyMatch (A.CaseExp (_, [(p,e)], _)) = (p,e)
+	  | onlyMatch (A.CaseExp _) = fail "onlyMatch: expected one match"
+	  | onlyMatch _ = fail "onlyMatch: expected a CaseExp"
+
     in
-    (* same : A.lambda * A.lambda -> bool *)
-    (* Nesters are restricted enough that they can be compared for equality. *)
+
+    (* Note on same and sameDCons: *)
     (* Pre: Both arguments are in fact nesters. *) 
     (* There may be no test to verify this (have to think about that one). *)
     (* As such, care must be taken when invoking this function. *)
     (* The implementation depends on nesters having the following form: *)
-    (* fun nest x = case x of (a1, ..., an) => (a1, (a2, a3), ...) *)
+    (* fun nest x = case x of (a1, ..., an) => (a1, (a2, a3), SOME a4, ...) *)
+
+    (* sameDCons : A.lambda * A.lambda -> bool *)
+    (* Returns true if two nesters have the same dcons in the same places. *)
+    (* ex: sameDCons (fn (a,b) => (Fahr a, b), fn (x,y) => (Fahr x, y)) ==> true *)
+    (* ex: sameDCons (fn (a,b) => (Fahr a, b), fn (x,y) => (Cels x, y)) ==> false *)
+    fun sameDCons (n1 as A.FB (_, _, b1), n2 as A.FB (_, _, b2)) = 
+	let (* s : A.exp * A.exp -> bool *)
+	    fun s (A.VarExp _, A.VarExp _) = true
+	      | s (A.TupleExp es1, A.TupleExp es2) = allEq s (es1, es2)
+	      | s (A.ApplyExp (c1, e1, _), A.ApplyExp (c2, e2, _)) =
+		  isDCon c1 andalso isDCon c2 andalso 
+		  DataCon.same (dcon c1, dcon c2) andalso s (e1, e2)
+	      | s _ = fail "sameDCons: unexpected expression form"
+	in
+	    s (#2 (onlyMatch b1), #2 (onlyMatch b2))
+	end
+
+    (* same : A.lambda * A.lambda -> bool *)
+    (* Nesters are restricted enough that they can be compared for equality. *)
     fun same (n1 as A.FB (_, _, b1), n2 as A.FB (_, _, b2)) =
-	let val (p1, e1) = (case b1
-			      of A.CaseExp (_, [(p, e)], _) => (p, e)
-			       | _ => fail "same: n1 is not a nester")
-	    val (p2, e2) = (case b2
-			      of A.CaseExp (_, [(p, e)], _) => (p, e)
-			       | _ => fail "same: n2 is not a nester")
+	let val (p1,e1) = onlyMatch b1
+	    val (p2,e2) = onlyMatch b2
 	    (* pat : A.pat * A.pat -> bool *)
 	    (* Both pats must be flat tuples of vars, and have the same length. *)
 	    fun pat (A.TuplePat ps1, A.TuplePat ps2) = 
