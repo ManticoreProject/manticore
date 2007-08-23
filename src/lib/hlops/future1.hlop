@@ -1,0 +1,23 @@
+(* future1.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * To create a one-shot future.
+ *)
+
+#include "types.def"
+
+define inline @future1 (thunk : any) : any =
+  (* a future1 cell consists of two words:
+       1) the "state" word, with one of the following values:
+            EMPTY_F   0
+            STOLEN_F  2
+            EVAL_F    4
+            FULL      value
+            WAITING   cont
+       2) the "thunk" word *)
+  let cell : !(any, any) = alloc (EMPTY_F, thunk)
+  (* enqueue the cell *)
+  return (cell)
+;

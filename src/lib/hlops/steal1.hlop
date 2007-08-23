@@ -1,0 +1,36 @@
+(* steal1.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * To steal a one-shot future.
+ *)
+
+#include "types.def"
+
+define inline @steal1 (fp : !(any, any)) : () =
+                         (* state, thunk *)
+  let tmp = CAS(&0(fp), EMPTY_F, STOLEN_F)
+  if (tmp = EMPTY_F) 
+    then let f : any = #1(fp)
+         let #1(fp) : any = NIL
+         let result : any = apply f ()
+         let tmp' : any = CAS(&0(fp), STOLEN_F, result)
+         if (tmp' <> STOLEN_F)
+           then let #0(fp) : any = result
+                throw tmp(result)
+           else let state = #0(fp)
+                return (state)
+    else return ()
+(*
+  if (BCAS(&(fp->state), EMPTY, STOLEN) {
+    f = fp->thunk;
+    fp->thunk = NIL;
+    result = f();
+    tmp = CAS(&(fp->state), STOLEN, result);
+    if (tmp != STOLEN) {
+      fp->state = result;
+      throw tmp result;
+    }       
+*)
+;

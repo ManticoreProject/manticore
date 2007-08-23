@@ -1,0 +1,50 @@
+(* touch1.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * To touch a one-shot future.
+ *)
+
+#include "types.def"
+
+define @getWork1 () : ();
+
+define inline @touch1 (fp : !(any, any)) : any =
+                         (* state, thunk *)
+  let tmp : any = CAS (&0(fp), EMPTY_F, EVAL_F)
+  if (tmp = EMPTY_F)
+    then let f : any = #1(fp)
+         let #1(fp) : any = NIL
+         let result : any = apply f ()
+         return (result)
+    else if (tmp <> STOLEN_F)
+           then tmp
+           else callcc (fn k =>
+                  let tmp' : any = CAS (&0(fp), STOLEN_F, k)
+                  if (tmp' = STOLEN_F)
+                    then do @getWork1 ()
+                    else let result : any = #0(fp)
+                         return (result))
+
+(*
+  ... original notes from Tues 8/21 ...
+
+  tmp = CAS(&(fp->state), EMPTY_F, EVAL_F);
+  if (tmp == EMPTY_F) {
+    f = fp->thunk;
+    fp->thunk = NIL;
+    return f();
+  } else if (tmp != STOLEN_F) {
+    return tmp;
+  } else {
+    callcc (fn k =>
+      if (BCAS(&(fp->state), STOLEN_F, k)) {
+        getWork();
+      } else {
+        return fp->state;
+      })
+  }    
+*)
+
+;

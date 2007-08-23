@@ -37,5 +37,10 @@ typedef ml_double = [double];
 #define STOP	enum(0):signal
 #define QEMPTY	enum(0):rdyq_item
 
+(* constants for futures *)
+#define EMPTY_F  0
+#define STOLEN_F 2
+#define EVAL_F   4
+
 #endif /* !_TYPES_DEF_ */
 
