@@ -95,29 +95,29 @@ structure TestUtils =
 	in
 	    A.CaseExp (e, pes, t)
 	end
+      | caseExp (e, []) = fail "caseExp: no branches"
 
-    (* pval : var * A.exp * A.exp -> A.exp *)
-    fun pval (x, e, e') = A.LetExp (A.PValBind (A.VarPat x, e), e')
+    (* plet : var * A.exp * A.exp -> A.exp *)
+    fun plet (x, e, e') = A.LetExp (A.PValBind (A.VarPat x, e), e')
 			      
     (* test : (A.exp -> A.exp) -> A.exp -> unit *)
     fun test ee e = (P.print e;
 		     P.printComment "-->";
 		     P.print (ee e))
 
-     (* mkTest : ('a -> unit) -> 'a list -> (int -> unit) *)
-    fun mkTest testFunction terms =
-	let fun t n = testFunction (List.nth (terms, n))
-		      handle Subscript =>
-			     let val nTerms = List.length terms
-				 val msg = "Please choose a test value \
-                                           \between 0 and " ^
-					   Int.toString (nTerms - 1) ^
-					   ".\n"
-			     in
-				 print msg
-			     end
+    (* tell : int -> unit *)
+    fun tell n = 	 
+	let val msg = "Please choose a test value \
+                      \between 0 and " ^
+		      Int.toString (n-1) ^
+		      ".\n"
 	in
-	    t
+	    print msg
 	end
 
+    (* mkTest : ('a -> unit) -> 'a list -> (int -> unit) *)
+    fun mkTest testFunction terms n = testFunction (List.nth (terms, n))
+	handle Subscript => tell (List.length terms)
+          (* | UnequalLengths => print "why?\n" *)
+	
   end
