@@ -6,13 +6,13 @@
  * This module rewrites parallel tuples in terms of futures and touches.
  *
  * Roughly, the transformation turns
- *  (| e1 ... en |)
+ *  (| e1, e2, ..., en |)
  * into
- *   let val f1 = future e1
+ *   let val f2 = future (fn () => e2)
  *       ...
- *       val fn = future en
+ *       val fn = future (fn () => en)
  *   in
- *       (touch f1, ..., touch fn)
+ *       (e1, touch f2, ..., touch fn)
  *   end
  *
  * Note this rewriting is type preserving.
@@ -62,8 +62,8 @@ structure FutParTup (* : sig
 	      (* pre: there is at least one binding *)
 	      fun letMany (b::[], e) = A.LetExp (b, e)
 		| letMany (b::bs, e) = A.LetExp (b, letMany (bs, e))
-		| letMany ([], _) = raise Fail 
-			            "letMany: argument must have at least one binding"
+		| letMany ([], _) = raise Fail "letMany: argument must have\
+                                                \ at least one binding"
 	      val (bs, vs) = mkFutBinds (map exp es, 1)
 	      val touches = map (fn v => F.mkTouch1 (A.VarExp (v, []))) vs
 	  in

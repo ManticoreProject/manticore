@@ -74,8 +74,8 @@ structure PrintTypes (* : sig
     (* for debugging purposes *)
     fun printComment s = (prln ("(* " ^ s ^ " *)"))
 
-    (* toStrng : T.ty -> string *)
-    fun toString t = raise Fail "todo"
+    (* toString : T.ty -> string *)
+    fun toString t = TypeUtil.toString t
 
     (**** tests ****)
 			  

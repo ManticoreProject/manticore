@@ -328,7 +328,10 @@ structure StdEnv : sig
 
 	    (F.future,          hlop H.futureOp),
 	    (F.touch,           hlop H.touchOp),
-	    (F.cancel,          hlop H.cancelOp)
+	    (F.cancel,          hlop H.cancelOp),
+	    (F.future1,         hlop H.future1Op),
+	    (F.touch1,          hlop H.touch1Op),
+	    (F.cancel1,         hlop H.cancel1Op)
 	  ]
     end (* local *) 
 

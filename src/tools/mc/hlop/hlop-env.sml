@@ -38,6 +38,10 @@ structure HLOpEnv : sig
     val touchOp  : HLOp.hlop
     val cancelOp : HLOp.hlop
 
+    val future1Op : HLOp.hlop
+    val touch1Op  : HLOp.hlop
+    val cancel1Op : HLOp.hlop
+
     val define : HLOp.hlop -> unit
     val find : Atom.atom -> HLOp.hlop option
 
@@ -84,6 +88,10 @@ structure HLOpEnv : sig
     val futureOp = new ("future", [thunkTy], [futureTy], [])
     val touchOp  = new ("touch",  [futureTy], [BTy.T_Any], [])
     val cancelOp = new ("cancel", [futureTy], [], [])
+
+    val future1Op = new ("future1", [thunkTy], [futureTy], [])
+    val touch1Op  = new ("touch1",  [futureTy], [BTy.T_Any], [])
+    val cancel1Op = new ("cancel1", [futureTy], [], [])
 		    
     fun mkTbl nameOf bindings = let
 	  val tbl = AtomTable.mkTable (List.length bindings, Fail "table")

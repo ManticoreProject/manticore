@@ -14,6 +14,7 @@ Library
   structure FutParLet	
   structure FutParTup	
   structure Futures
+  structure Hash
   structure Nester
   structure PrintAST  
   structure PrintTypes
@@ -35,6 +36,7 @@ is
   fut-par-let.sml
   fut-par-tup.sml
   futures.sml
+  hash.sml
   nester.sml
   test-utils.sml
   unpar.sml
