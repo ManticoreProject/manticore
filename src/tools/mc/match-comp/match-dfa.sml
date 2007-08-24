@@ -48,7 +48,7 @@ structure MatchDFA : MATCH_DFA =
     type var_map = path Var.Map.map
 
     datatype dfa = DFA of {
-	args : AST.var list,
+	arg : AST.var,
 	root : state ref,
 	err : state,
 	final : state list ref,
@@ -86,11 +86,11 @@ structure MatchDFA : MATCH_DFA =
 	    | ERROR => "ERROR"
 	  (* end case *))
 
-    fun mkDFA args = let
+    fun mkDFA arg = let
 	  val err = S{refCnt = ref 0, id = 0w0, kind = ERROR}
 	  in
 	    DFA{
-		args = args,
+		arg = arg,
 		root = ref err,
 		err = err,
 		final = ref [],
@@ -98,7 +98,7 @@ structure MatchDFA : MATCH_DFA =
 	      }
 	  end
 
-  (* return the number of states in a fa *)
+  (* return the number of states in a dfa *)
     fun size (DFA{idCnt, ...}) = Word.toIntX(!idCnt)
 
     fun mkState (DFA{idCnt, ...}, kind) = let
@@ -149,7 +149,7 @@ structure MatchDFA : MATCH_DFA =
     fun finalStates (DFA{final, ...}) = !final
 
   (* get the argument variables of the DFA *)
-    fun getArgs (DFA{args, ...}) = args
+    fun getArg (DFA{arg, ...}) = arg
 
   (* return the kind of a state *)
     fun kind (S{kind, ...}) = kind
@@ -206,7 +206,7 @@ structure MatchDFA : MATCH_DFA =
 		      SOME s)
 		end
     in
-    fun dump (outStrm, DFA{args, root, err, final, ...}) = let
+    fun dump (outStrm, DFA{arg, root, err, final, ...}) = let
 	  val stateQ = mkQueue(!root)
 	  val ppStrm = TextIOPP.openOut{dst = outStrm, wid = 120}
 	  val str = PP.string ppStrm
@@ -216,9 +216,9 @@ structure MatchDFA : MATCH_DFA =
 *)
 	  fun ppExp (ppStrm, _) = str "<exp>"
 	  fun ppStateId (S{id, ...}) = str("state"^Word.toString id)
+	  fun ppVar x = str(Var.toString x)
 	  fun ppVList vl = let
-		fun pVar x = str(Var.toString x)
-		fun pVar' vp = (str ","; sp 1; pVar vp)
+		fun pVar' vp = (str ","; sp 1; ppVar vp)
 		in
 		  PP.openBox ppStrm (PP.Abs 2);
 		    case vl
@@ -226,7 +226,7 @@ structure MatchDFA : MATCH_DFA =
 		      | (item::r) => (
 			  sp 1;
 			  str "{";
-			  pVar item;
+			  ppVar item;
 			  List.app pVar' r;
 			  str "}")
 		    (* end case *);
@@ -302,7 +302,7 @@ structure MatchDFA : MATCH_DFA =
 	    PP.openVBox ppStrm (PP.Abs 0);
 	      str "********** DUMP DFA **********"; PP.newline ppStrm;
 	      PP.openHBox ppStrm;
-		str "args = "; ppVList args;
+		str "arg = "; ppVar arg;
 	      PP.closeBox ppStrm;
 	      PP.newline ppStrm;
 	      ppStates ();

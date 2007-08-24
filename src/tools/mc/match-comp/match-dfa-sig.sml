@@ -54,12 +54,12 @@ signature MATCH_DFA =
       | LIT of Literal.literal
       | CON of (AST.dcon * Types.ty list * path list)
 
-  (* create a new DFA.  The variable list is the list of
-   * arguments being tested by the DFA.
+  (* create a new DFA.  The variable is the argument
+   * being tested by the DFA.
    *)
-    val mkDFA : AST.var list -> dfa
+    val mkDFA : AST.var -> dfa
 
-  (* return the number of states in a fa *)
+  (* return the number of states in a dfa *)
     val size : dfa -> int
 
   (* set the initial (root) state of the DFA *)
@@ -70,8 +70,8 @@ signature MATCH_DFA =
     val errorState : dfa -> state
     val finalStates : dfa -> state list
 
-  (* get the argument variables of the DFA *)
-    val getArgs : dfa -> AST.var list
+  (* get the argument of the DFA *)
+    val getArg : dfa -> AST.var
 
   (* construct a test state *)
     val mkTest : (dfa * path * (simple_pat * state) list) -> state
