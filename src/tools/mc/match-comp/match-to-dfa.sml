@@ -594,7 +594,7 @@ structure MatchToDFA : sig
 	    DFA.setInitialState (dfa, root)
 	  end
 
-    fun rulesToDFA (loc, env, args, rules) = let
+    fun rulesToDFA (loc, env, arg, rules) = let
 	  fun ruleInfo (loc, pats, optWhen, isDefault, act) = {
 		  loc = loc, pats = pats, optWhen = optWhen,
 		  isDefault = isDefault,
@@ -606,7 +606,7 @@ structure MatchToDFA : sig
 		ruleInfo (loc, pats, SOME exp, false, act)
 	    | cvtRule loc (AST.M_DEFAULT(pats, act)) =
 		ruleInfo (loc, pats, NONE, true, act)
-	  val dfa = DFA.mkDFA args
+	  val dfa = DFA.mkDFA arg
 	  val rules = List.map (cvtRule loc) rules
 	  val patMatrix = step1 (env, dfa, rules)
 	  in
