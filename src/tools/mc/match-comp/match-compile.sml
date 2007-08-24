@@ -40,12 +40,6 @@ structure MatchCompile : sig
     structure PMap = RedBlackMapFn (POrd)
     end (* local *)
 
-    fun withMark f (env, m) = let
-	  val (loc, term) = Error.loc' m
-	  in
-	    Error.mark (loc, f (loc, env, term))
-	  end
-
     fun newVar ty = Var.new("_anon_", ty)
 
   (* compute the set of free source variables and used path variables
@@ -113,11 +107,20 @@ structure MatchCompile : sig
 	  end
 
 
+    type env = AST.var VMap.map
+
+    val insertVar : (env * AST.var * AST.var) -> env = VMap.insert
+
+    fun applyEnv (env, x) = (case VMap.find(env, x)
+	   of SOME x' => x'
+	    | NONE => x
+	  (* end case *))
+
     datatype decision_tree
       = CALL of AST.var * AST.var list
       | CASE of (AST.var * (simple_pat * decision_tree) list)
-      | IF of (Env.env * AST.exp * decision_tree * decision_tree)
-      | ACTION of (Env.env * AST.exp)
+      | IF of (env * AST.exp * decision_tree * decision_tree)
+      | ACTION of (env * AST.exp)
 
     and simple_pat
       = WILD
@@ -132,7 +135,7 @@ structure MatchCompile : sig
   (* given an initial environment, DFA, and error action, build a forest of
    * decision trees representing the DFA.
    *)
-    fun dfaToTrees (loc, env0, dfa, raiseExn, resTy) = let
+    fun dfaToTrees (loc, env0 : env, dfa, raiseExn, resTy) = let
 	  val {shared, infoOf} = analyseDFA dfa
 	  val root = DFA.initialState dfa
 	  val stateFuns = STbl.mkTable (8, Fail "shared state funs")
@@ -148,7 +151,7 @@ structure MatchCompile : sig
 		fun ext (x, path, env) = (case PMap.find(pmap, path)
 		       of SOME x' =>
 			    if not(Var.same(x, x'))
-			      then Env.insert(env, x, x')
+			      then insertVar(env, x, x')
 			      else env
 			| NONE => raise Fail(concat[
 			      "ext(", Var.fmt {full=true} x, ",",
@@ -163,7 +166,7 @@ structure MatchCompile : sig
 		  val (f, _, _) = STbl.lookup stateFuns q
 		  val {pvs, fvs} = infoOf q
 		  val fvars = VSet.foldr
-			(fn (x, ys) => Env.apply(env, x) :: ys)
+			(fn (x, ys) => applyEnv(env, x) :: ys)
 			  [] fvs
 		  val pvars = PSet.foldr
 			(fn (path, ys) => lookupPath(pmap, path)::ys)
@@ -271,7 +274,7 @@ structure MatchCompile : sig
 		val SOME x' = PMap.find(pmap, path)
 		in
 		  if not(Var.same(x, x'))
-		    then Env.insert(env, x, x')
+		    then insertVar(env, x, x')
 		    else env
 		end
 	  in
@@ -287,7 +290,18 @@ structure MatchCompile : sig
 	  fun rewrite' e = rewrite (loc, env, e)
 	  in
 	    case exp
-	     of AST.LetExp(bind, e) => ??
+	     of AST.LetExp(AST.ValBind(pat, rhs), e) => let
+		  val (bind', env') = rewriteBind (loc, env, pat, rewrite' rhs)
+		  in
+		    AST.LetExp(bind', rewrite' e)
+		  end
+	      | AST.LetExp(AST.PValBind _, e) => (* should have been compiled away *)
+		  raise Fail "unexpected PValBind"
+	      | AST.LetExp(AST.FunBind fbs, e) => let
+		  fun rewriteFB (AST.FB(f, x, e)) = AST.FB(f, x, rewrite' e)
+		  in
+		    AST.LetExp(AST.FunBind(List.map rewriteFB fbs), rewrite' e)
+		  end
 	      | AST.IfExp(e1, e2, e3, ty) =>
 		  AST.IfExp(rewrite' e1, rewrite' e2, rewrite' e3, ty)
 	      | AST.CaseExp(e, mc, ty) =>
@@ -311,17 +325,15 @@ structure MatchCompile : sig
 	    (* end case *)
 	  end
 
-    and rewriteFB (loc, env) (f, tys, xs, e) =
-	  (f, tys, xs, rewrite(loc, env, e))
-
   (* we translate
    *    let pat = rhs;
    * to
    *    let xs = case rhs of { pat => ys | _ => raise Bind };
    * where ys are the variables bound in pat and xs are fresh copies of the
-   * ys.  We also return an environment extended with ys :-> xs.
+   * ys.  We also return an environment extended with ys :-> xs.  Note that
+   * we assume that rhs has already been rewritten.
    *)
-    and rewriteBind (loc, env, [], rhs) = ([AST.S_EXP rhs], env)
+    and rewriteBind (loc, env, AST.TuplePat[], rhs) = (rhs, env)
       | rewriteBind (loc, env, lhs, rhs) = let
 	(* rewrite the rhs expression *)
 	  val rhs = rewrite (loc, env, rhs)
@@ -335,11 +347,11 @@ structure MatchCompile : sig
 		end
 	  val resTy = TU.types(List.map Var.typeOf bvs)
 	  val dfa = let
-		fun mkVar x = AST.E_VAR(x, loc)
+		fun mkVar x = AST.VarExp(x, [])
 		in
 		  MatchToDFA.rulesToDFA (
 		    loc, env, args,
-		    [AST.M_MATCH(lhs, AST.E_EXPS(List.map mkVar bvs))])
+		    [lhs, AST.mkTupleExp[(List.map mkVar bvs)]])
 		end
 	  val {shared, match} = dfaToAST (loc, env, dfa, raiseBindFail, resTy)
 	(* the new lhs pattern consists of copies of the bound variables *)
@@ -384,7 +396,7 @@ structure MatchCompile : sig
 	    case shared
 	     of [] => AST.MCASE{
 		  argTy=argTy, resTy=resTy,
-		  cases = [AST.M_MATCH(List.map AST.P_VAR args, match)]
+		  cases = [AST.mkTuplePat(List.map AST.VarPat args), match]
 		}
 	      | _ => AST.MCASE{
 		  argTy=argTy, resTy=resTy,
@@ -407,8 +419,9 @@ structure MatchCompile : sig
 		else ()
 (* -DEBUG *)
 	  val {fns, tree} = dfaToTrees (loc, env, dfa, raiseExn, resTy)
-	(* create a variable tagged with the current location *)
-	  fun mkVar x = AST.E_VAR(x, loc)
+	(* create a variable expression *)
+(* FIXME: what about type arguments?? *)
+	  fun mkVar x = AST.VarExp(x, [])
 	(* convert a decision tree to TypedAST *)
 	  fun treeToAST (CALL(f, args)) = AST.E_APP{
 		  f = mkVar f, args = List.map mkVar args,
@@ -420,24 +433,18 @@ structure MatchCompile : sig
 		      fun cvtArg (ARG_ANON ty) = AST.P_WILD ty
 			| cvtArg (ARG_VAR x) = AST.P_VAR x
 		      val pat = (case pat
-			     of WILD => AST.P_WILD argTy
-			      | VAR x => AST.P_VAR x
-			      | LIT lit => AST.P_LIT(lit, argTy)
-			      | CON(dc, [], []) => AST.P_CON(dc, loc)
-			      | CON(dc, tys, []) => AST.P_TCON(dc, tys, loc)
-			      | CON(dc, [], args) =>
-				  AST.P_CONAPP(dc, List.map cvtArg args, loc)
+			     of WILD => AST.VarPat(Var.new("_", argTy))
+			      | VAR x => AST.VarPat x
+			      | LIT lit => AST.ConstPat(AST.LConst(lit, argTy))
+			      | CON(dc, tys, []) => AST.ConstPat(AST.DConst(dc, tys))
 			      | CON(dc, tys, args) =>
-				  AST.P_TCONAPP(dc, tys, List.map cvtArg args, loc)
+				  AST.ConPat(dc, tys, List.map cvtArg args)
 			    (* end case *))
 		      in
-			AST.M_MATCH([pat], treeToAST t)
+			(pat, treeToAST t)
 		      end
 		in
-		  AST.E_CASE([mkVar x], AST.MCASE{
-		      argTy = argTy, resTy = resTy,
-		      cases = List.map cvtCase cases
-		    })
+		  AST.CaseExp(mkVar x, List.map cvtCase cases, resTy)
 		end
 	    | treeToAST (IF(env, cond, t, f)) =
 		AST.IfExp(rewrite(loc, env, cond), treeToAST t, treeToAST f, resTy)
