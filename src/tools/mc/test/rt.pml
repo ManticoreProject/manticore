@@ -449,12 +449,12 @@ and shadowed (pos, dir, lcolor) = let (* need to offset just a bit *)
 (*
 % "main" routine
 *)
-fun ray winsz = let
+fun ray winsize = let
     val lights = testlights;
     val (firstray, scrnx, scrny) = camparams (lookfrom, lookat, vup, fov, winsize);
     fun f (i, j) = tracepixel (world, lights, i, j, firstray, scrnx, scrny);
     in
-      [| [| f(i, j) | j in [| 0 to winsz-1 |] |] | i in [| 0 to winsz-1 |] |]
+      [| [| f(i, j) | j in [| 0 to winsize-1 |] |] | i in [| 0 to winsize-1 |] |]
     end;
 
 ray 1024
