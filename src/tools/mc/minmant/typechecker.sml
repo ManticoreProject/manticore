@@ -521,9 +521,8 @@ structure Typechecker : sig
 		end
 	    | PT.WildPat => let
 		val ty = AST.MetaTy(MetaVar.new depth)
-		val x' = Var.new("_", ty)
 		in
-		  (AST.VarPat x', ve, ty)
+		  (AST.WildPat ty, ve, ty)
 		end
 	    | PT.IdPat x => (case E.find(ve, x)
 		 of SOME(E.Con dc) => (case DataCon.argTypeOf dc

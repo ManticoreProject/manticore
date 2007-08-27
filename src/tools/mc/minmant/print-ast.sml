@@ -236,6 +236,7 @@ structure PrintAST (* : sig
 	   pr ")";
 	   closeBox ())
       | pat (A.VarPat v) = var v
+      | pat (A.WildPat ty) = pr "_"
       | pat (A.ConstPat c) = const c
 
     (* const : A.const -> unit *)
@@ -330,4 +331,4 @@ structure PrintAST (* : sig
     end
 		      
 end
-	   
+

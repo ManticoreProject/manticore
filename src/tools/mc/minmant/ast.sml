@@ -42,6 +42,7 @@ structure AST =
       = ConPat of dcon * ty list * pat	(* data-constructor application *)
       | TuplePat of pat list
       | VarPat of var
+      | WildPat of ty
       | ConstPat of const
 
     and const

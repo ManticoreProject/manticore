@@ -50,6 +50,7 @@ structure TypeOf : sig
 	  end
       | pat (AST.TuplePat ps) = Ty.TupleTy(List.map pat ps)
       | pat (AST.VarPat x) = monoTy (Var.typeOf x)
+      | pat (AST.WildPat ty) = ty
       | pat (AST.ConstPat c) = const c
 
   end
