@@ -126,7 +126,7 @@ structure MatchCompile : sig
       = WILD
       | VAR of AST.var
       | LIT of L.literal
-      | CON of (AST.data_con * Ty.ty list * pat_arg list)
+      | CON of (AST.dcon * Ty.ty list * pat_arg list)
 
     and pat_arg
       = ARG_ANON of Ty.ty
@@ -154,7 +154,7 @@ structure MatchCompile : sig
 			      then insertVar(env, x, x')
 			      else env
 			| NONE => raise Fail(concat[
-			      "ext(", Var.fmt {full=true} x, ",",
+			      "ext(", Var.toString x, ",",
 			      DFA.pathToString path, ")"
 			    ])
 		      (* end case *))
@@ -238,7 +238,7 @@ structure MatchCompile : sig
 		val (fvars, env) = Env.renameList(env0, VSet.listItems fvs)
 	      (* create the function *)
 		val params = fvars @ pvars
-		val f = newVar(TU.fnTy(List.map Var.typeOf params, [resTy]))
+		val f = newVar(TU.funTy(List.map Var.typeOf params, [resTy]))
 		val funct = (f, params, visit(env, pmap, q))
 		in
 		  STbl.insert stateFuns (q, funct); funct
@@ -291,9 +291,9 @@ structure MatchCompile : sig
 	  in
 	    case exp
 	     of AST.LetExp(AST.ValBind(pat, rhs), e) => let
-		  val (bind', env') = rewriteBind (loc, env, pat, rewrite' rhs)
+		  val (binds, env') = rewriteBind (loc, env, pat, rewrite' rhs)
 		  in
-		    AST.LetExp(bind', rewrite' e)
+		    AST.mkLetExp(binds, rewrite' e)
 		  end
 	      | AST.LetExp(AST.PValBind _, e) => (* should have been compiled away *)
 		  raise Fail "unexpected PValBind"
@@ -305,7 +305,7 @@ structure MatchCompile : sig
 	      | AST.IfExp(e1, e2, e3, ty) =>
 		  AST.IfExp(rewrite' e1, rewrite' e2, rewrite' e3, ty)
 	      | AST.CaseExp(e, mc, ty) =>
-		  AST.CaseExp(rewrite' e, rewriteMatch(loc, env, mc), ty)
+		  AST.CaseExp(rewrite' e, rewriteMatch(loc, env, TypeOf.exp e, mc, ty), ty)
 	      | AST.ApplyExp(e1, e2, ty) => AST.ApplyExp(rewrite' e1, rewrite' e2, ty)
 	      | AST.TupleExp es => AST.TupleExp(List.map rewrite' es)
 	      | AST.RangeExp(e1, e2, e3, ty) =>
@@ -326,55 +326,56 @@ structure MatchCompile : sig
 	  end
 
   (* we translate
-   *    let pat = rhs;
+   *    val pat = rhs;
    * to
-   *    let xs = case rhs of { pat => ys | _ => raise Bind };
+   *    val xs = case rhs of pat => ys | _ => raise Bind
    * where ys are the variables bound in pat and xs are fresh copies of the
    * ys.  We also return an environment extended with ys :-> xs.  Note that
    * we assume that rhs has already been rewritten.
    *)
-    and rewriteBind (loc, env, AST.TuplePat[], rhs) = (rhs, env)
+    and rewriteBind (loc, env, las as AST.TuplePat[], rhs) = ([AST.ValBind(lhs, rhs)], env)
       | rewriteBind (loc, env, lhs, rhs) = let
-	(* rewrite the rhs expression *)
-	  val rhs = rewrite (loc, env, rhs)
 	(* get the variables bound by the lhs patterns *)
 	  val bvs = bvars lhs
-	(* synthesize a fresh variable for each pattern on the lhs *)
-	  val args = let
-		fun mkArg p = newVar(TypeOf.pat p)
-		in
-		  List.map mkArg lhs
-		end
-	  val resTy = TU.types(List.map Var.typeOf bvs)
+(* do we really need a variable for the lhs? *)
+	(* synthesize a fresh variable for the lhs *)
+	  val arg = newVar(Types.tyScheme([], TypeOf.pat lhs))
+	  val resTy = TU.tupleTy(List.map Var.typeOf bvs)
 	  val dfa = let
 		fun mkVar x = AST.VarExp(x, [])
 		in
 		  MatchToDFA.rulesToDFA (
-		    loc, env, args,
+		    loc, env, arg,
 		    [lhs, AST.mkTupleExp[(List.map mkVar bvs)]])
 		end
 	  val {shared, match} = dfaToAST (loc, env, dfa, raiseBindFail, resTy)
 	(* the new lhs pattern consists of copies of the bound variables *)
 	  val (bvs', env') = MatchCompEnv.renameList (env, bvs)
-	(* construct the list of statments *)
-	  val stms =
-		AST.S_VAL(List.map AST.P_VAR args, rhs) ::
-		shared @
-		[AST.S_VAL(List.map AST.P_VAR bvs', match)]
+	(* construct the binding *)
+	  val binds = (case shared
+		 of NONE => [
+			AST.ValBind(AST.VarPat arg, rhs),
+			AST.ValBind(AST.mkTuplePat(List.map AST.VarPat bvs'), match)
+		      ]
+		  | SOME fb => [
+			AST.ValBind(AST.VarPat arg, rhs),
+			fb
+			AST.ValBind(AST.mkTuplePat(List.map AST.VarPat bvs'), match)
+		      ]
+		(* end case *))
 	  in
 	  (* check for nonexhaustive binding *)
 	    if (DFA.errorCount dfa <> 0)
 	      then Err.warnNonexhaustiveBind(Env.errStrm env, loc)
 	      else ();
-	  (* we return a list of statements and the extended environment *)
-	    (stms, env')
+	  (* we the rewriten binding and the extended environment *)
+	    (binds, env')
 	  end
 
   (* rewrite a case match. *)
-    and rewriteMatch (loc, env, AST.MCASE{argTy, resTy, cases}) = let
-	  val argTys = TU.toTypes argTy
-	  val args = List.map newVar argTys
-	  val dfa = MatchToDFA.rulesToDFA (loc, env, args, cases)
+    and rewriteMatch (loc, env, argTy, cases, resTy) = let
+	  val arg = newVar argTy
+	  val dfa = MatchToDFA.rulesToDFA (loc, env, arg, cases)
 	  val {shared, match} = dfaToAST (loc, env, dfa, raiseMatchFail, resTy)
 	(* Filter out unreachable default states. *)
 	  val final = List.filter (not o DFA.unusedDefault)
@@ -394,17 +395,8 @@ structure MatchCompile : sig
 	      then Err.warnNonexhaustiveMatch(Env.errStrm env, loc)
 	      else ();
 	    case shared
-	     of [] => AST.MCASE{
-		  argTy=argTy, resTy=resTy,
-		  cases = [AST.mkTuplePat(List.map AST.VarPat args), match]
-		}
-	      | _ => AST.MCASE{
-		  argTy=argTy, resTy=resTy,
-		  cases = [
-		      AST.M_MATCH(List.map AST.P_VAR args,
-			AST.E_BLOCK(shared @ [AST.S_EXP match], resTy))
-		    ]
-		}
+	     of NONE => [(AST.VarPat arg, match)]
+	      | SOME fb => [(arg, AST.LetExp(fb, match))]
 	    (* end case *)
  	  end
 
@@ -428,17 +420,18 @@ structure MatchCompile : sig
 		  resTy = resTy, loc = loc
 		}
 	    | treeToAST (CASE(x, cases)) = let
-		val argTy = Var.typeOf x
+		val AST.TyScheme([], argTy) = Var.typeOf x
 		fun cvtCase (pat, t) = let
-		      fun cvtArg (ARG_ANON ty) = AST.P_WILD ty
-			| cvtArg (ARG_VAR x) = AST.P_VAR x
+		      fun cvtArg (ARG_ANON ty) = AST.WildPat ty
+			| cvtArg (ARG_VAR x) = AST.VarPat x
 		      val pat = (case pat
-			     of WILD => AST.VarPat(Var.new("_", argTy))
+			     of WILD => AST.WildPat argTy
 			      | VAR x => AST.VarPat x
 			      | LIT lit => AST.ConstPat(AST.LConst(lit, argTy))
 			      | CON(dc, tys, []) => AST.ConstPat(AST.DConst(dc, tys))
+			      | CON(dc, tys, [arg]) => AST.ConPat(dc, tys, cvtArg arg)
 			      | CON(dc, tys, args) =>
-				  AST.ConPat(dc, tys, List.map cvtArg args)
+				  AST.ConPat(dc, tys, AST.TuplePat(List.map cvtArg args))
 			    (* end case *))
 		      in
 			(pat, treeToAST t)
@@ -451,8 +444,8 @@ structure MatchCompile : sig
 	    | treeToAST (ACTION(env, e)) = rewrite(loc, env, e)
 	  fun treeToFB (f, params, body) = (f, [], params, treeToAST body)
 	  val shared = (case fns
-		 of [] => []
-		  | _ => [AST.S_FUN(List.map treeToFB fns)]
+		 of [] => NONE
+		  | _ => SOME(AST.FunBind(List.map treeToFB fns))
 		(* end case *))
 	  in
 	    { shared = shared, match = treeToAST tree }

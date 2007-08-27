@@ -75,4 +75,7 @@ structure AST =
     fun mkTuplePat [p] = p
       | mkTuplePat ps = TuplePat ps
 
+    fun mkLetExp ([], e) = e
+      | mkLetExp (bind::r, e) = LetExp(bind, mkLetExp(r, e))
+
   end
