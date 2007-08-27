@@ -3,22 +3,22 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * To touch a one-shot future.
+ * To touch a one-toucher future.
  *)
 
 #include "types.def"
 
 define @getWork1 () : ();
 
-define inline @touch1 (fp : ![any, any] / exh : exh) : any =
+define inline @touch1 (fp : ![any, fun (unit / exh -> any)] / exh : exh) : any =
                          (* state, thunk *)
   let tmp : any = CAS (&0(fp), EMPTY_F, EVAL_F)
   if Equal (tmp, EMPTY_F)
-    then let f : any = #1(fp)
+    then let f : fun (unit / exh -> any) = #1(fp)
          do #1(fp) := NIL
          (* need exn handler for thunk. *)
          (* let exh : exh = ... *)
-         let result : any = apply f ( [] (* / exh *) )
+         let result : any = apply f ([] (* / exh *) )
          do #0(fp) := result (* one toucher, multiple touches *)
          return (result)
     else if NotEqual (tmp, STOLEN_F)
@@ -30,6 +30,7 @@ define inline @touch1 (fp : ![any, any] / exh : exh) : any =
                                             else let result : any = #0(fp)
                                                  result)
                 return (result)
+;
 
 (*
   ... original notes from Tues 8/21 ...
@@ -50,5 +51,3 @@ define inline @touch1 (fp : ![any, any] / exh : exh) : any =
       })
   }    
 *)
-
-;
