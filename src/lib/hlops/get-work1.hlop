@@ -7,10 +7,10 @@
 #include "types.def"
 
 define inline @getWork1 () : () =
-  let w : any = apply @deq ()
+  let w : any = @deq ()
   case w
-    of SOME(fut : ![any, any]) => apply @steal1 fut
-     | NONE => apply @getWork1 ([] (* / exh *))
+    of SOME(fut : ![any, any]) => @steal1 (fut)
+     | NONE => @getWork1 ((* / exh *))
 (*
   while (1) {
     case deq()
