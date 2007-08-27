@@ -47,6 +47,10 @@ structure TypeUtil : sig
     val toString : Types.ty -> string
     val schemeToString : Types.ty_scheme -> string
 
+  (* smart constructors *)
+    val tupleTy : Types.ty list -> Types.ty
+    val funTy : Types.ty list * Types.ty list -> Types.ty
+
   end = struct
 
     structure MV = MetaVar
@@ -239,6 +243,12 @@ structure TypeUtil : sig
 		ListPair.allEq same (tys1, tys2)
 	    | _ => false
 	  (* end case *))
+
+  (* smart constructors *)
+    fun tupleTy [ty] = ty
+      | tupleTy tys = Types.TupleTy tys
+
+    fun funTy (dom, rng) = Types.FunTy(tupleTy dom, tupleTy rng)
 
   end
 

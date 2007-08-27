@@ -18,6 +18,7 @@ structure AST =
       = LetExp of binding * exp
       | IfExp of (exp * exp * exp * ty)			(* ty is result type *)
       | CaseExp of (exp * (pat * exp) list * ty)	(* ty is result type *)
+      | FunExp of (var * exp * ty)			(* ty is result type *)
       | ApplyExp of exp * exp * ty			(* ty is result type *)
       | TupleExp of exp list
       | RangeExp of (exp * exp * exp option * ty)	(* ty is element type *)
@@ -67,5 +68,11 @@ structure AST =
       | varKindToString VK_Prim = "Prim"
 
     type module = exp
+
+    fun mkTupleExp [e] = e
+      | mkTupleExp es = TupleExp es
+
+    fun mkTuplePat [p] = p
+      | mkTuplePat ps = TuplePat ps
 
   end

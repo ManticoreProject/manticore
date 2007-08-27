@@ -36,7 +36,9 @@ structure PrintAST (* : sig
 
     (* ln: unit -> unit *)
     fun ln () = S.newline (!str)
-		
+
+    fun sp () = S.space (!str) 1
+
     (* prln : string -> unit *)
     fun prln s = (pr s; ln ())
 
@@ -96,6 +98,10 @@ structure PrintAST (* : sig
 	   pr "(* end case *))";
 	   closeBox ();
 	   closeBox ())
+      | exp (A.FunExp(arg, body, _)) = (
+	  openHBox ();
+	    pr "(fn"; sp(); var arg; sp(); pr "=>"; sp(); exp body; pr ")";
+	  closeBox())
       | exp (A.ApplyExp (e1, e2, t)) = 
 	  (openVBox (rel 0);
 	   exp e1;
