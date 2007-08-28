@@ -52,14 +52,19 @@ structure HLOpEnv : sig
     structure Basis = BOMBasis
 
   (* some standard parameter types *)
-    val unitTy = BTy.T_Enum 0w0
-    val vprocTy = BTy.T_Any	(* FIXME *)
-    val fiberTy = BTy.T_Cont[unitTy]
-    val sigTy = BTy.T_Any	(* FIXME: really either Enum(0) or fiberTy *)
-    val sigActTy = BTy.T_Cont[sigTy]
-    val tidTy = BTy.tidTy
+    val unitTy = BTy.unitTy
+    val boolTy = BTy.boolTy
+    val exnTy = BTy.exnTy
     val exhTy = BTy.exhTy
+    val tidTy = BTy.tidTy
+    val fiberTy = BTy.fiberTy
+
+    val signalTy = BTy.T_TyCon Basis.signalTyc
+    val sigActTy = BTy.T_Cont[signalTy]
+
+    val vprocTy = BTy.T_Any	(* FIXME *)
     val listTy = BTy.T_TyCon Basis.listTyc
+
     val futureTy = BTy.futureTy
     val ivarTy = BTy.T_Tuple(true, [listTy, BTy.T_Any, BTy.T_Raw BTy.T_Int])
     val thunkTy = BTy.T_Fun([], [], [BTy.T_Any])
@@ -82,8 +87,8 @@ structure HLOpEnv : sig
   (* scheduler operations *)
     val defaultSchedulerStartupOp = new("default-scheduler-startup", [], [], [])
     val schedulerStartupOp = new("scheduler-startup", [sigActTy], [], [])
-    val runOp = new("run", [vprocTy, sigActTy, fiberTy], [], [H.NORETURN])
-    val forwardOp = new("forward", [vprocTy, sigTy], [], [H.NORETURN])
+    val runOp = new("run", [vprocTy, sigActTy, tidTy, fiberTy], [], [H.NORETURN])
+    val forwardOp = new("forward", [vprocTy, signalTy], [], [H.NORETURN])
     val dequeueOp = new("dequeue", [vprocTy], [Basis.rdyqItemTy], [])
     val enqueueOp = new("enqueue", [vprocTy, tidTy, fiberTy], [], [])
 

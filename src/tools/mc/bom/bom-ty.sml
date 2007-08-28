@@ -58,8 +58,10 @@ structure BOMTy =
 
     val unitTy = T_Enum(0w0)
     val boolTy = T_Enum(0w1)	(* false = 0, true = 1 *)
-    val exhTy = T_Cont[T_Any]
-    val tidTy = T_Any
+    val exnTy = T_Any
+    val exhTy = T_Cont[exnTy]
+    val tidTy = T_Enum(0w0);
+    val fiberTy = T_Cont[]
 
     val futureTyc = AbsTyc {name = "future", stamp = Stamp.new (), arity = 1}
     val futureTy = T_TyCon futureTyc

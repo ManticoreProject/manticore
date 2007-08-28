@@ -23,7 +23,6 @@ signature BOM_BASIS =
 
     val findTyc : Atom.atom -> BOMTy.tyc option
     val findDCon : Atom.atom -> BOMTy.data_con option
-
   end
 
 structure BOMBasis : BOM_BASIS =
@@ -36,12 +35,12 @@ structure BOMBasis : BOM_BASIS =
 	  H.new(Atom.atom name, {params= List.map HLOp.PARAM params, exh=[], results=res}, attrs)
 
   (* some standard parameter types *)
-    val unitTy = BTy.T_Enum 0w0
-    val vprocTy = BTy.T_Any	(* FIXME *)
-    val fiberTy = BTy.T_Cont[unitTy]
-    val sigTy = BTy.T_Any	(* FIXME: really either Enum(0) or fiberTy *)
-    val sigActTy = BTy.T_Cont[sigTy]
-    val tidTy = BTy.T_Enum 0w0
+    val unitTy = BTy.unitTy
+    val boolTy = BTy.boolTy
+    val exnTy = BTy.exnTy
+    val exhTy = BTy.exhTy
+    val tidTy = BTy.tidTy
+    val fiberTy = BTy.fiberTy
 
   (* ready queue items *)
     val rdyqItemTyc = BOMTyCon.newDataTyc ("rdyq_item", 1)
@@ -50,12 +49,15 @@ structure BOMBasis : BOM_BASIS =
 	  ("QITEM", BTy.Tuple, [tidTy, fiberTy, rdyqItemTy])
 
   (* other predefined datatypes *)
-    val signalTyc = BOMTyCon.newDataTyc ("signal", 1)
+    val signalTyc = BOMTyCon.newDataTyc ("signal", 1) 
+    val signalTy = BTy.T_TyCon signalTyc
     val preemptDC = BOMTyCon.newDataCon signalTyc ("PREEMPT", BTy.Transparent, [fiberTy])
     val listTyc = BOMTyCon.newDataTyc ("list", 1)
     val listTy = BTy.T_TyCon listTyc
     val consDC = BOMTyCon.newDataCon listTyc
 	  ("CONS", BTy.Tuple, [BTy.T_Any, listTy])
+
+    val sigactTy = BTy.T_Cont[signalTy]
 
     fun mkTbl nameOf bindings = let
 	  val tbl = AtomTable.mkTable (List.length bindings, Fail "table")
