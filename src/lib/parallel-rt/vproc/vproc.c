@@ -416,7 +416,10 @@ static Value_t Dequeue2 (VProc_t *self)
 	    p = next;
 	}
 	self->secondaryQHd = q->link;
-SayDebug("[%2d] Dequeue2: result = %p, hd = %p\n", self->id, q, q->link);
+#ifndef NDEBUG
+        if (DebugFlg)
+            SayDebug("[%2d] Dequeue2: result = %p, hd = %p\n", self->id, q, q->link);
+#endif
 	return PtrToValue(q);
     }
     else

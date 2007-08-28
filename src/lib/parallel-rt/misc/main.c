@@ -85,11 +85,15 @@ static void MainVProc (VProc_t *vp, void *arg)
 
     Value_t argV = WrapInt(vp, (int)(Addr_t)arg); /* FIXME: for testing purposes */
 
-    FunClosure_t fn = {.cp = PtrToValue(&mantEntry), .ep = M_UNIT};
-    Value_t res = ApplyFun (vp, PtrToValue(&fn), argV);
+    Say("arg = ");
+    SayValue (argV);
+    Say("\n");
 
-    Say("result = ");
-    SayValue (res);
+    FunClosure_t fn = {.cp = PtrToValue(&mantEntry), .ep = M_UNIT};
+    Value_t resV = ApplyFun (vp, PtrToValue(&fn), argV);
+
+    Say("res = ");
+    SayValue (resV);
     Say("\n");
 
     exit (0);
