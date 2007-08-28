@@ -13,7 +13,9 @@
 
 structure MatchToDFA : sig
 
-    val rulesToDFA : (Error.location * MatchCompEnv.env * AST.var * (AST.pat * AST.exp) list)
+    type env = AST.var Var.Map.map
+
+    val rulesToDFA : (Error.location * env * AST.var * (AST.pat * AST.exp) list)
 	  -> MatchDFA.dfa
 
   end = struct
@@ -21,13 +23,13 @@ structure MatchToDFA : sig
     structure L = Literal
     structure Ty = Types
     structure DFA = MatchDFA
-    structure Env = MatchCompEnv
     structure DC = DataCon
     structure VMap = Var.Map
     structure VSet = Var.Set
 
 (*FIXME*)val dummy : DFA.var_map = VMap.empty
 
+    type env = AST.var VMap.map
 
   (******************** Utility code ********************)
 
