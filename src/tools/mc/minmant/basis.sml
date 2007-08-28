@@ -220,7 +220,7 @@ structure Basis =
 		(N.lte, lte),
 		(N.lt, lt),
 		(N.gte, gte),
-		(N.gt, lt),
+		(N.gt, gt),
 		(N.plus, plus),
 		(N.minus, minus),
 		(N.times, times),

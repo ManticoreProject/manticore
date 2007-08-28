@@ -53,6 +53,9 @@ structure BOMUtil : sig
 	  (* end case *))
     fun subst' (s, l) = List.map (subst s) l
     val extend : (subst * BOM.var * BOM.var) -> subst = VMap.insert
+    
+    (* extend' : subst * BOM.var list * BOM.var list -> subst *)
+    (* Pre: The lists of variables are of equal length. *)
     fun extend' (s, [], []) = s
       | extend' (s, x::xs, y::ys) = extend'(VMap.insert(s, x, y), xs, ys)
       | extend' (s, _, _) = raise Fail "BOMUtil.extend': unequal lists"
