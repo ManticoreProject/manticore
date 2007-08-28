@@ -18,11 +18,11 @@
  * Note this rewriting is type preserving.
  *)
 
-structure FutParTup (* : sig
+structure FutParTup  : sig
 
-    val futurize : A.module -> A.module
+    val futurize : AST.module -> AST.module
 
-  end *) = 
+  end  = 
 
   struct
 
@@ -72,11 +72,13 @@ structure FutParTup (* : sig
       | ptuple [] = raise Fail "ptuple: expected non-empty list of expressions"
 
     (* exp : A.exp -> A.exp *)
+    (* n.b. Type-preserving. *)
     and exp (A.LetExp (b, e)) = A.LetExp (binding b, exp e)
       | exp (A.IfExp (e1, e2, e3, t)) = A.IfExp (exp e1, exp e2, exp e3, t)
       | exp (A.CaseExp (e, pes, t)) = A.CaseExp (exp e,
 						 map (id ** exp) pes,
 						 t)
+      | exp (A.FunExp (x, e, t)) = A.FunExp (x, exp e, t)
       | exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, t)
       | exp (A.TupleExp es) = A.TupleExp (map exp es)
       | exp (A.RangeExp (e1, e2, oe3, t)) = A.RangeExp (exp e1,

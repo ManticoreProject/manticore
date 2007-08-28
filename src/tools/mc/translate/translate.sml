@@ -77,7 +77,16 @@ structure Translate : sig
 		EXP(trExpToV (env, e1, fn x =>
 		  B.mkIf(x, trExpToExp(env, e2), trExpToExp(env, e3))))
 	    | AST.CaseExp(e, rules, ty) =>
-		EXP(trExpToV (env, e, fn x => trCase(env, x, rules)))
+		  EXP(trExpToV (env, e, fn x => trCase(env, x, rules)))
+	    | AST.FunExp(x, e, ty) => let
+		  val fvar = Var.new ("f", ty)
+		  val env' = insert (env, fvar, BV.new ("f", trTy ty))
+		  val fdef = AST.FB (fvar, x, e)
+		  val letExp = AST.LetExp (AST.FunBind [fdef],
+					   AST.VarExp (fvar, []))
+	          in
+		    trExp (env', letExp)
+	          end
 	    | AST.ApplyExp(e1, e2, ty) => EXP(trExpToV (env, e1, fn f =>
 		trExpToV (env, e2, fn arg =>
 		  B.mkApply(f, [arg], handlerOf env))))
@@ -209,6 +218,7 @@ structure Translate : sig
 		  | AST.VarPat x =>
 		    (* default case: map x to the argument *)
 		      (cases, SOME(trExpToExp(insert(env, x, arg), exp)))
+		  | AST.WildPat ty => raise Fail "WildPat"
 		  | AST.ConstPat(AST.DConst(dc, tyArgs)) => raise Fail "DConst"
 		  | AST.ConstPat(AST.LConst(lit, ty)) =>
 		      ((B.P_Const(lit, trLitTy ty), trExpToExp (env, exp))::cases, NONE)
@@ -335,7 +345,7 @@ structure Translate : sig
 		PrintBOM.print b
 	    end
 
-	(* t0 = (| 10, 11 |) *)
+	(* t0 = (| itod 10, itod 11 |) *)
 	val t0 = ptup [itod 10, itod 11]
 
     in

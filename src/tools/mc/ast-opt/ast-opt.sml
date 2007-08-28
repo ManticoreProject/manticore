@@ -13,6 +13,10 @@ structure ASTOpt : sig
 
   end = struct
 
-    fun optimize module = SOME module
+    fun optimize module = (* SOME module *)
+	let val m' = FutParTup.futurize module
+	in
+	    SOME m'
+	end
 
   end

@@ -113,9 +113,11 @@ structure FlatParTup : sig
     val omap = Option.map
 
     (* exp : A.exp -> A.exp *)
-    fun exp (A.LetExp (b, e)) = A.LetExp (binding b, exp e)
+    (* n.b. Type-preserving. *) 
+   fun exp (A.LetExp (b, e)) = A.LetExp (binding b, exp e)
       | exp (A.IfExp (e1, e2, e3, t)) = ifExp (e1, e2, e3, t)
       | exp (A.CaseExp (e, pes, t)) = caseExp (e, pes, t)
+      | exp (A.FunExp (x, e, t)) = A.FunExp (x, exp e, t)
       | exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, t)
       | exp (A.TupleExp es) = A.TupleExp (List.map exp es)
       | exp (A.RangeExp (e1, e2, oe3, t)) = A.RangeExp (exp e1, 
