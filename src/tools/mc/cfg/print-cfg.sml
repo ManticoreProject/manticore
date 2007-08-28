@@ -96,9 +96,9 @@ structure PrintCFG : sig
 		indent i;
 		case xfer
 		 of CFG.StdApply{f, clos, args, ret, exh} =>
-		      prApply("apply", f, clos :: args @ [ret, exh])
+		      prApply("stdApply", f, clos :: args @ [ret, exh])
 		  | CFG.StdThrow{k, clos, args} =>
-		      prApply("throw", k, clos :: args)
+		      prApply("stdThrow", k, clos :: args)
 		  | CFG.Apply{f, args} => prApply("apply", f, args)
 		  | CFG.Goto jmp => prJump("goto", jmp)
 		  | CFG.HeapCheck{szb, nogc} => (
