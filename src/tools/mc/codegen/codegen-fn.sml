@@ -121,7 +121,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	      genStdTransfer (BE.Transfer.genStdCall varDefTbl apply)
 	    | genTransfer (M.StdThrow throw) =
 	      genStdTransfer (BE.Transfer.genStdThrow varDefTbl throw)
-	    | genTransfer (M.Apply {f, args}) = fail "todo"
+	    | genTransfer (M.Apply {f, args}) = fail "genTransfer (M.Apply {f, args})"
 	    | genTransfer (M.Goto jmp) = emitStms (genGoto jmp)
 	    | genTransfer (M.If (c, jT as (lT, argsT), jF)) = 
 	      let val labT = newLabel "L_true"
