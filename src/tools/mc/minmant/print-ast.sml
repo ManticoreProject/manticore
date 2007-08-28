@@ -37,6 +37,7 @@ structure PrintAST (* : sig
     (* ln: unit -> unit *)
     fun ln () = S.newline (!str)
 
+    (* sp : unit -> unit *)
     fun sp () = S.space (!str) 1
 
     (* prln : string -> unit *)
@@ -170,7 +171,7 @@ structure PrintAST (* : sig
 	   exp e2;
 	   pr ")";
 	   closeBox ())
-      | exp (A.OverloadExp ovr) = raise Fail "todo: OverloadExp"
+      | exp (A.OverloadExp ovr) = overload_var (!ovr)
 
     (* pe : string -> A.pat * A.exp -> unit *)
     and pe s (p, e) =
@@ -249,7 +250,12 @@ structure PrintAST (* : sig
     and const (A.DConst (c, ts)) = dcon c
       | const (A.LConst (lit, t)) = pr (Literal.toString lit)
 
+    (* dcon : T.dcon -> unit *)
     and dcon (T.DCon {name, ...}) = pr (Atom.toString name)
+
+    (* overload_var : A.overload_var -> unit *)
+    and overload_var (A.Unknown (t, vs)) = raise Fail "overload_var.Unknown"
+      | overload_var (A.Instance v) = var v
 				    
     (* var : A.var -> unit *)
     and var (VarRep.V {name, ...}) = pr name

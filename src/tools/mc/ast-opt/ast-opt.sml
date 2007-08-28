@@ -16,6 +16,7 @@ structure ASTOpt : sig
     fun optimize module = (* SOME module *)
 	let val m' = FutParTup.futurize module
 	in
+	    PrintAST.print m';
 	    SOME m'
 	end
 
