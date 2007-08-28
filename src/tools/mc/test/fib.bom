@@ -11,4 +11,5 @@ module Fib
 	    let b : int = apply fib (I32Sub (i, 1: int) / exh)
 	    return (I32Add(a, b))
 
+    do @default-scheduler-startup ()
     apply fib (unwrap(i) / exh)

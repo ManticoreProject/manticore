@@ -52,8 +52,9 @@ structure HLOpEnv : sig
     structure Basis = BOMBasis
 
   (* some standard parameter types *)
+    val unitTy = BTy.T_Enum 0w0
     val vprocTy = BTy.T_Any	(* FIXME *)
-    val fiberTy = BTy.T_Cont[]
+    val fiberTy = BTy.T_Cont[unitTy]
     val sigTy = BTy.T_Any	(* FIXME: really either Enum(0) or fiberTy *)
     val sigActTy = BTy.T_Cont[sigTy]
     val tidTy = BTy.tidTy
@@ -79,6 +80,8 @@ structure HLOpEnv : sig
     val iPutOp = new("iPut", [ivarTy, BTy.T_Any], [], [])
 
   (* scheduler operations *)
+    val defaultSchedulerStartupOp = new("default-scheduler-startup", [], [], [])
+    val schedulerStartupOp = new("scheduler-startup", [sigActTy], [], [])
     val runOp = new("run", [vprocTy, sigActTy, fiberTy], [], [H.NORETURN])
     val forwardOp = new("forward", [vprocTy, sigTy], [], [H.NORETURN])
     val dequeueOp = new("dequeue", [vprocTy], [Basis.rdyqItemTy], [])
@@ -117,7 +120,9 @@ structure HLOpEnv : sig
 		dequeueOp,
 		enqueueOp,
 		forwardOp,
-		runOp
+		runOp,
+                schedulerStartupOp,
+                defaultSchedulerStartupOp
 	      ]
 
   end

@@ -36,11 +36,12 @@ structure BOMBasis : BOM_BASIS =
 	  H.new(Atom.atom name, {params= List.map HLOp.PARAM params, exh=[], results=res}, attrs)
 
   (* some standard parameter types *)
+    val unitTy = BTy.T_Enum 0w0
     val vprocTy = BTy.T_Any	(* FIXME *)
-    val fiberTy = BTy.T_Cont[]
+    val fiberTy = BTy.T_Cont[unitTy]
     val sigTy = BTy.T_Any	(* FIXME: really either Enum(0) or fiberTy *)
     val sigActTy = BTy.T_Cont[sigTy]
-    val tidTy = BTy.T_Any
+    val tidTy = BTy.T_Enum 0w0
 
   (* ready queue items *)
     val rdyqItemTyc = BOMTyCon.newDataTyc ("rdyq_item", 1)

@@ -283,10 +283,12 @@ structure Translate : sig
 	  end
 
     fun translate exp = let
+          val argTy = BTy.T_Raw RawTypes.T_Int
+          val arg = BV.new("_arg", argTy)
 	  val exh = BV.new("_topExh", BTy.exhTy)
 	  val mainFun = B.FB{
-		  f = BV.new("main", BTy.T_Fun([], [BTy.exhTy], [trTy(TypeOf.exp exp)])),
-		  params = [],
+		  f = BV.new("main", BTy.T_Fun([argTy], [BTy.exhTy], [trTy(TypeOf.exp exp)])),
+		  params = [arg],
 		  exh = [exh],
 		  body = trExpToExp(mkEnv exh, exp)
 		}

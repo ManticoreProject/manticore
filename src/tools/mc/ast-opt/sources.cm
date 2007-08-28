@@ -21,7 +21,6 @@ Library
   structure TestUtils	
   structure TypeOf	
   structure Unpar
-  structure VarSubst
 
 is
 
@@ -40,4 +39,3 @@ is
   nester.sml
   test-utils.sml
   unpar.sml
-  var-subst.sml

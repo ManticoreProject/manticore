@@ -135,7 +135,7 @@ structure Convert : sig
 		  fn (env2, fbs') => C.mkFun(fbs', cvtE(env2, e, tys', k)))
 	    | B.E_Cont(fb, e) => let
 		val ys' = List.map (fn ty => CV.new("a", ty)) tys'
-		val joinK' = CV.new("ifJoinK", CTy.contTy tys')
+		val joinK' = CV.new("contJoinK", CTy.contTy tys')
 		val (env, fb) = cvtCont(env, fb, joinK')
 		in
 		  C.mkCont(

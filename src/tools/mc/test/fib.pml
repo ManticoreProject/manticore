@@ -3,4 +3,4 @@ fun fib (i : long) = (case i
 	| 1 => 1
 	| n => fib(i-1) + fib(i-2)
       (* end case *));
-fib 20
+fib 2000

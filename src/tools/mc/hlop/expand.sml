@@ -331,7 +331,7 @@
     fun cvtFile (importEnv, PT.FILE defs) = let
 	(* this is the first pass, which adds C-function prototypes to the import environment,
 	 * defined types to the translation environment, and HLOp signatures to the HLOp
-	  * environment.
+         * environment.
 	 *)
 	  fun insDef (PT.Extern(CFunctions.CFun{var, name, retTy, argTys, attrs}), env) = (
 		case ATbl.find importEnv var

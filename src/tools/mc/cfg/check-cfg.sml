@@ -26,6 +26,7 @@ structure CheckCFG : sig
     fun error msg = TextIO.output(TextIO.stdErr, concat("Error: " :: msg @ ["\n"]))
 
     fun warning msg = TextIO.output(TextIO.stdErr, concat("Warning: " :: msg @ ["\n"]))
+    fun warning msg = ()
 
     fun vl2s [] = "[]"
       | vl2s [x] = concat[V.toString x, ":", Ty.toString(V.typeOf x)]
