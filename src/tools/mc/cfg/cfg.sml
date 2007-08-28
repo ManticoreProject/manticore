@@ -25,7 +25,7 @@ structure CFG =
 
     and convention
       = StdFunc of {		(* a function that may be called from unknown sites; it uses *)
-				(* the standard calling convention. *)
+				(* the standard function-calling convention. *)
 	    clos : var,		  (* closure parameter *)
 	    args : var list,	  (* argument parameters *)
 	    ret : var,		  (* return-continuation parameter *)
@@ -46,7 +46,7 @@ structure CFG =
 	  of var list		  (* parameters *)
 
     and exp
-      = E_Var of var list * var list
+      = E_Var of var list * var list            (* parallel assignment *)
       | E_Const of var * Literal.literal
       | E_Cast of var * ty * var		(* typecast *)
       | E_Label of var * label
