@@ -169,7 +169,9 @@ structure CaseSimplify : sig
     fun retype (s, x, ty) = let
 	  val x' = BV.new(BV.nameOf x, ty)
 	  in
+(*DEBUG
 print(concat["retype(_, ", BV.toString x, ", ", BTy.toString ty, ") = ", BV.toString x', "\n"]);
+DEBUG*)
 	    (BU.extend(s, x, x'), x')
 	  end
   (* if a variable has a TyCon type, the retype it *)

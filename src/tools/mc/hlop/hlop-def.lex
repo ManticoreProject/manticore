@@ -140,7 +140,9 @@
 %let filename = "\""{sgood}*"\"";
 
 <INITIAL>"#"{ws}*{dig}+{ws}+{filename}({ws}+{dig}+)*{eol} => (
+(*DEBUG
 	print yytext;
+DEBUG*)
 	case RunCPP.parseLineDirective yytext
 	 of SOME{lineNo, fileName} => 
 	      AntlrStreamPos.resynch yysm (yypos, {fileName=fileName, lineNo=lineNo, colNo=1})

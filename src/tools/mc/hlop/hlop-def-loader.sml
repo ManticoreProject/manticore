@@ -50,7 +50,9 @@ structure HLOpDefLoader : sig
 	  val srcMap = AntlrStreamPos.mkSourcemap()
 	  val lexer = HLOpDefLex.lex srcMap
 	  in
-(*DEBUG*)print(concat["parsing ", filename, "\n"]);
+(*DEBUG
+print(concat["parsing ", filename, "\n"]);
+DEBUG*)
 	    case Parser.parse lexer (HLOpDefLex.streamify get)
 	     of (SOME pt, _, []) => SOME pt
 	      | (_, _, errs) => (
