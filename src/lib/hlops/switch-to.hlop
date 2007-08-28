@@ -10,5 +10,5 @@
 define inline @switch-to (vp : vproc, tid : tid, fiber : fiber) noreturn =
   do vpstore (CURRENT_TID, vp, tid)
   do vpstore (ATOMIC, vp, FALSE)
-  throw fiber (UNIT)
+  throw fiber ()
 ;

@@ -1,0 +1,36 @@
+(* dequeue.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Dequeue the next thread from the host-vproc's ready queue.
+ *)
+
+#include "runtime-offsets.def"
+#include "types.def"
+
+extern void *VProcDequeue (void *) __attribute__((alloc));
+
+(* this function is the slow-path of dequeue *)
+define @dequeue-slow-path (vp : vproc) : rdyq_item =
+  let tl : rdyq_item = vpload (VP_RDYQ_TL, vp)
+  case tl of
+     QEMPTY =>
+       let item : rdyq_item = ccall VProcDequeue(vp)
+       return (item)
+   | QITEM (tid : tid, fiber : fiber, tl : rdyq_item) =>
+       do vpstore (VP_RDYQ_TL, vp, QEMPTY)
+       fun loop (tid : tid, fiber : fiber, lst : rdyq_item, acc : rdyq_item) : rdyq_item =
+         let acc' : rdyq_item = QITEM (tid, fiber, acc)
+         case lst of 
+            QEMPTY => return (acc')
+          | QITEM (tid' : tid, fiber' : fiber, lst' : rdyq_item) =>
+              apply loop (tid', fiber', lst', acc')
+         end
+       let qitem : rdyq_item = apply loop (tid, fiber, tl, QEMPTY)
+       let item : [tid, fiber, rdyq_item] = ([tid, fiber, rdyq_item]) qitem
+       let link : rdyq_item = #2 (item)
+       do vpstore (VP_RDYQ_HD, vp, link)
+       return (qitem)
+  end
+;	  

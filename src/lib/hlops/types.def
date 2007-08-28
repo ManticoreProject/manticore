@@ -9,17 +9,18 @@
 #ifndef _TYPES_DEF_
 #define _TYPES_DEF_
 
+typedef unit = enum(0);
+#define UNIT	enum(0):unit
+
 typedef bool = enum(1);		(* 0 = false, 1 = true *)
 #define FALSE	enum(0):bool
 #define TRUE	enum(1):bool
 
-typedef unit = enum(0);
-#define UNIT	enum(0):unit
-
-typedef tid = enum(0);		(* FIXME: this should be something else *)
-typedef fiber = cont(unit);
 typedef exn = any;
-typedef handler = cont(exn);
+typedef exh = cont(exn);
+typedef tid = enum(0);		(* FIXME: this should be something else *)
+typedef fiber = cont();
+typedef signal = any;
 typedef sigact = cont(signal);
 
 typedef ml_int = [int];
@@ -33,8 +34,8 @@ typedef ml_double = [double];
 #define DOUBLE(f)	wrap(f : double)
 
 (* constants for builtin datatypss *)
-#define NIL	enum(0):list
 #define STOP	enum(0):signal
+#define NIL	enum(0):list
 #define QEMPTY	enum(0):rdyq_item
 
 (* constants for futures *)

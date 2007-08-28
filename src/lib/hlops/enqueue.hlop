@@ -10,8 +10,9 @@
 #include "types.def"
 
 define inline @enqueue (vp : vproc, tid : tid, fiber : fiber) : () =
-    let tl : rdyq_item = vpload(VP_RDYQ_TL, vp)
-    let item : rdyq_item = alloc(tid, fiber, tl)
-    do vpstore(VP_RDYQ_TL, vp, item)
-    return ()
+  let tl : rdyq_item = vpload (VP_RDYQ_TL, vp)
+  let qitem : [tid, fiber, rdyq_item] = alloc (tid, fiber, tl)
+  let item : rdyq_item = (rdyq_item) qitem
+  do vpstore (VP_RDYQ_TL, vp, item)
+  return ()
 ;

@@ -9,39 +9,16 @@
 #include "runtime-offsets.def"
 #include "types.def"
 
-extern void *VProcDequeue (void *) __attribute__((alloc));
-
-(* this function is the slow-path of dequeue *)
-define @dequeue-slow-path (vp : vproc) : rdyq_item =
-    case (rdyq_item)vpload(VP_RDYQ_TL, vp)
-     of QEMPTY =>
-	let item : rdyq_item = ccall VProcDequeue(vp)
-	  return (item)
-      | QITEM(tid : tid, fiber : fiber, tl : rdyq_item) =>
-	do vpstore(VP_RDYQ_TL, vp, QEMPTY)
-	fun loop (tid : tid, fiber : fiber, lst : rdyq_item, hd : rdyq_item) : rdyq_item =
-	      let hd' : rdyq_item = QITEM(tid, fiber, lst)
-	      case lst
-	       of enum(0) => return (hd')
-		| QITEM(tid' : tid, fiber' : fiber, lst' : rdyq_item) =>
-		    apply loop (tid', fiber', lst', hd')
-	      end
-	let hd : rdyq_item = apply loop (tid, fiber, tl, QEMPTY)
-	let link : any = #2(hd)
-	do vpstore(VP_RDYQ_HD, vp, link)
-	return (hd)
-    end
-;	  
+define @dequeue-slow-path (vp : vproc) : rdyq_item;
 
 define inline @dequeue (vp : vproc) : rdyq_item =
-    let hd : rdyq_item = vpload(VP_RDYQ_HD, vp)
-    case hd
-     of QITEM(_, _, link:rdyq_item) =>
-	do vpstore(VP_RDYQ_HD, vp, link)
-	return (hd)
-      | QEMPTY =>
-	let item : rdyq_item = @dequeue-slow-path(vp)
-	return (item)
-    end
+  let hd : rdyq_item = vpload (VP_RDYQ_HD, vp)
+  case hd of 
+     QITEM (_, _, link:rdyq_item) =>
+       do vpstore (VP_RDYQ_HD, vp, link)
+       return (hd)
+   | QEMPTY =>
+       let item : rdyq_item = @dequeue-slow-path(vp)
+       return (item)
+  end
 ;
-

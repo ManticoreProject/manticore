@@ -1,0 +1,32 @@
+(* default-scheduler-startup.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Install the default initial scheduler action on the vprocs in a system.
+ *)
+
+#include "types.def"
+
+define inline @enqueue (vp : vproc, tid : tid, fiber : fiber) : ();
+define inline @dequeue (vp : vproc) : rdyq_item;
+define inline @run (vp : vproc, act : sigact, tid : tid, fiber : fiber) noreturn;
+define @scheduler-startup (act : sigact) : ();
+
+define @default-scheduler-startup () : () = 
+  cont switch (s : signal) =
+    cont dispatch () =
+      let qitem : rdyq_item = @dequeue (host_vproc)
+      let item : [tid, fiber, rdyq_item] = ([tid, fiber, rdyq_item]) qitem
+      let tid : tid = #0 (item)
+      let fiber : fiber = #1 (item)
+      @run (host_vproc, switch, tid, fiber)
+    if Equal (s, STOP)
+      then throw dispatch ()
+      else let k : fiber = (fiber)s
+           let tid : tid = enum(0)
+           do @enqueue (host_vproc, tid, k)
+           throw dispatch () 
+  do @scheduler-startup (switch)
+  return ()
+;
