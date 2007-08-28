@@ -54,6 +54,7 @@ structure VarSubst (* : sig
 		    (case VarMap.find (s, x)
 		       of NONE => v
 			| SOME x' => A.VarPat x')
+	      | f (A.WildPat t) = A.WildPat t
 	      | f (k as A.ConstPat _) = k
 	in
 	    f p
@@ -68,6 +69,7 @@ structure VarSubst (* : sig
 	      | exp (A.IfExp (e1, e2, e3, t)) =
 		  A.IfExp (exp e1, exp e2, exp e3, t)
 	      | exp (A.CaseExp (e, pes, t)) = todo  "touchExp.exp | CaseExp"
+	      | exp (A.FunExp (x, e, t)) = A.FunExp (x, exp e, t)
 	      | exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, t)
 	      | exp (A.TupleExp es) = A.TupleExp (map exp es)
 	      | exp (A.RangeExp (e1, e2, oe3, t)) =

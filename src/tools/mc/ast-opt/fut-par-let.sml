@@ -53,6 +53,7 @@ structure FutParLet (* : sig
 	    fun vs (A.ConPat (_, _, p)) = vs p
 	      | vs (A.TuplePat ps) = List.concat (map vs ps)
 	      | vs (A.VarPat x) = [x]
+	      | vs (A.WildPat t) = []
 	      | vs (A.ConstPat _) = []
 	in
 	    VSet.fromList o vs
@@ -65,6 +66,11 @@ structure FutParLet (* : sig
     fun exp (A.LetExp (b, e), pliveIn) = letExp (b, e, pliveIn)
       | exp (A.IfExp (e1, e2, e3, t), pliveIn) = ifExp (e1, e2, e3, t, pliveIn)
       | exp (A.CaseExp (e, pes, t), pliveIn) = todo "CaseExp"
+      | exp (A.FunExp (x, e, t), pliveIn) =
+	  let val (e', live1) = exp (e, pliveIn)
+	  in
+	      (A.FunExp (x, e', t), live1)
+	  end
       | exp (A.ApplyExp (e1, e2, t), pliveIn) = 
 	  let val (e1', live1) = exp (e1, pliveIn)
 	      val (e2', live2) = exp (e2, pliveIn)
