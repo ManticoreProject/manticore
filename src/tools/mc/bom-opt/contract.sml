@@ -526,11 +526,8 @@ DEBUG*)
 		end
 	  val body = LetFloat.denestLambda(body, true)
 	  val body = loop (body, ticks())
-(* Can't remove unused externs; they may be needed by to-be expanded HLOps. *)
-(*
 	(* remove unused externs *)
 	  val externs = List.filter (fn cf => not(unused(CFunctions.varOf cf))) externs
-*)
 	  in
 	    ST.tick cntPhases;
 	    B.MODULE{name=name, externs=externs, body=body}
