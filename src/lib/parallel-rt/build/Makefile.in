@@ -47,7 +47,7 @@ $(TARGET):	$(OBJS)
 main.o:		asm-offsets.h
 
 $(ASM_OBJS): %.o : %.S asm-offsets.h
-	$(CC) -c @CC_MODE_FLAG@ -I. -DNOT_C_SOURCE $(CPPFLAGS) -o $@ $<
+	$(CC) -c @CFLAGS@ -DNOT_C_SOURCE $(CPPFLAGS) -o $@ $<
 
 asm-offsets.h:		gen-asm-offsets
 	./gen-asm-offsets > asm-offsets.h
