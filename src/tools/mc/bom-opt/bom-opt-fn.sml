@@ -30,12 +30,13 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 	    registry = BOMOptControls.registry
 	  }
 
+    val contract = transform "contract" Contract.contract
+
     fun expandAll module = (case expand module
-	   of SOME module => expandAll (Contract.contract module)
+	   of SOME module => expandAll (contract module)
 	    | NONE => module
 	  (* end case *))
 
-    val contract = transform "contract" Contract.contract
     val uncurry = transform "uncurry" Uncurry.transform
     val caseSimplify = transform "caseSimplify" CaseSimplify.transform
     val expandAll = transform "expandAll" expandAll
