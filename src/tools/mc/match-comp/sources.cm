@@ -21,7 +21,7 @@ is
 
   match-compile.sml
   match-controls.sml
-  match-errors.sml
   match-dfa-sig.sml
   match-dfa.sml
-
+  match-errors.sml
+  match-to-dfa.sml

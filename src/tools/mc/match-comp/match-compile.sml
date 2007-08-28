@@ -254,8 +254,8 @@ structure MatchCompile : sig
 	    {fns = fns, tree = tree}
 	  end
 
-  (* get the list of variables bound by a pattern list *)
-    fun bvars pats = let
+  (* get the list of variables bound by a pattern *)
+    fun bvars pat = let
 	  fun bv (AST.ConPat(_, _, p), s) = bv(p, s)
 	    | bv (AST.TuplePat ps, s) = bv'(ps, s)
 	    | bv (AST.VarPat x, s) = VSet.add(s, x)
@@ -263,7 +263,7 @@ structure MatchCompile : sig
 	  and bv' ([], s) = s
 	    | bv' (p::ps, s) = bv'(ps, bv(p, s))
 	  in
-	    VSet.listItems (bv'(pats, VSet.empty))
+	    VSet.listItems (bv(pat, VSet.empty))
 	  end
 
   (* given an environment that renames variables and a mapping from variables
