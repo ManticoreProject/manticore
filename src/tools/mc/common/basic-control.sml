@@ -14,6 +14,9 @@ structure BasicControl :  sig
   (* nest a tier-2 registery within the top-level registery *)
     val nest : string * ControlRegistry.registry * Controls.priority -> unit
 
+  (* base name for pass output files; set based on compilation unit. *)
+    val passBaseName : string option Controls.control
+
   (* wrap a pass 'pre -> 'post pass with debug output controled by a new
    * "keep" control.
    *)
@@ -60,6 +63,14 @@ structure BasicControl :  sig
 
     val debugObscurity = 2
 
+    val passBaseName : string option Controls.control =
+       Controls.genControl 
+       {name = "passBaseName",
+        pri = [5, 0],
+        obscurity = debugObscurity + 1,
+        help = "",
+        default = NONE}
+
 
     fun ('pre, 'post) mkPass {preOutput: TextIO.outstream * 'pre -> unit,
                               preExt: string,
@@ -90,15 +101,18 @@ structure BasicControl :  sig
              val post =
         	if Controls.get keepPassCtl
                    then let
-                           val outPre = 
-                              TextIO.openOut (concat [passName, Int.toString count,
-                                                      ".pre.", preExt])
+                           val fileName = 
+                              case Controls.get passBaseName of
+                                 NONE => 
+                                    concat [passName, Int.toString count]
+                               | SOME baseName => 
+                                    concat [baseName, ".", passName, Int.toString count]
+
+                           val outPre = TextIO.openOut (concat [fileName, ".pre.", preExt])
                            val () = preOutput (outPre, pre)
                            val () = TextIO.closeOut outPre
                            val post = pass pre
-                           val outPost = 
-                              TextIO.openOut (concat [passName, Int.toString count,
-                                                      ".post.", postExt])
+                           val outPost = TextIO.openOut (concat [fileName, ".post.", postExt])
                            val () = postOutput (outPost, post)
                            val () = TextIO.closeOut outPost
                          in

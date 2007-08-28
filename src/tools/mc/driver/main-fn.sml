@@ -87,12 +87,19 @@ functor MainFn (
 	  end
 
     fun doFile file = BackTrace.monitor (fn () =>let
-	  fun asmFile stem = OS.Path.joinBaseExt{base=stem, ext=SOME "s"}
-	  val errStrm = Error.mkErrStream file
+          fun doit compFn base = let
+             val () = case Controls.get BasicControl.passBaseName
+                       of NONE => Controls.set (BasicControl.passBaseName, SOME base)
+                        | SOME _ => ()
+             in
+               compFn (Error.mkErrStream file,
+                       file,
+                       OS.Path.joinBaseExt {base = base, ext = SOME "s"})
+             end
 	  in
 	    case OS.Path.splitBaseExt file
-	     of {base, ext=SOME "bom"} => bomC(errStrm, file, asmFile base)
-	      | {base, ext=SOME "pml"} => mantC(errStrm, file, asmFile base)
+	     of {base, ext=SOME "bom"} => doit bomC base
+	      | {base, ext=SOME "pml"} => doit mantC base
 	      | _ => raise Fail "unknown source file extension"
 	    (* end case *)
 	  end)

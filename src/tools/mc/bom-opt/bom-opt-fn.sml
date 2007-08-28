@@ -11,9 +11,9 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
   end = struct
 
   (* a wrapper for BOM optimization passes *)
-    fun transform name ext xform = BasicControl.mkPassSimple {
+    fun transform name xform = BasicControl.mkPassSimple {
 	    output = PrintBOM.output,
-	    ext = ext,
+	    ext = "bom",
 	    passName = name,
 	    pass = xform,
 	    registry = BOMOptControls.registry
@@ -24,8 +24,8 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 	    preExt = "bom",
 	    postOutput = fn (out, NONE) => () 
 			  | (out, SOME p) => PrintBOM.output (out, p),
-	    postExt = "bom-hlop",
-	    passName = "expandHLOps",
+	    postExt = "bom",
+	    passName = "expand",
 	    pass = ExpandHLOps.expand,
 	    registry = BOMOptControls.registry
 	  }
@@ -35,10 +35,10 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 	    | NONE => module
 	  (* end case *))
 
-    val contract = transform "Contract" "bom-opt1" Contract.contract
-    val uncurry = transform "Uncurry" "bom-opt2" Uncurry.transform
-    val caseSimplify = transform "CaseSimplify" "bom-opt3" CaseSimplify.transform
-    val expandAll = transform "Expand" "bom-opt4" expandAll
+    val contract = transform "contract" Contract.contract
+    val uncurry = transform "uncurry" Uncurry.transform
+    val caseSimplify = transform "caseSimplify" CaseSimplify.transform
+    val expandAll = transform "expandAll" expandAll
 
     fun optimize module = let
 	  val module = contract module
@@ -52,8 +52,8 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 
     val optimize = BasicControl.mkPassSimple {
 	    output = PrintBOM.output,
-	    ext = "bom-opt",
-	    passName = "Optimize",
+	    ext = "bom",
+	    passName = "optimize",
 	    pass = optimize,
 	    registry = BOMOptControls.registry
 	  }
