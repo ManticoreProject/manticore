@@ -58,7 +58,7 @@ structure BasicControl :  sig
    val debugObscurity : int
 
   (* *)
-    val show_all : (string -> unit) -> 
+    val showAll : (string -> unit) -> 
                   (({ctl: string Controls.control,
                      info: ControlRegistry.control_info} -> string) *
                    ({ctl: string Controls.control,
@@ -102,116 +102,119 @@ structure BasicControl :  sig
 
 
     local
-       val indent = ref 0
-       val push = fn () => indent := !indent + 4
-       val pop = fn () => indent := !indent - 4
-       val say = fn s =>
-          (print (CharVector.tabulate (!indent, fn _ => #" "));
-           print s;
-           print "\n")
-       val verboseCtl = verbose
+      val indent = ref 0
+      val push = fn () => indent := !indent + 4
+      val pop = fn () => indent := !indent - 4
+      val say = fn s => (
+	    print (CharVector.tabulate (!indent, fn _ => #" "));
+	    print s;
+	    print "\n")
+      val verboseCtl = verbose
     in
-    fun ('pre, 'post) mkTracePass {passName: string,
-                                   pass: 'pre -> 'post,
-                                   verbose: int} =
-       let
-       in
-          fn pre =>
-          let
-             val msg = Controls.get verboseCtl >= verbose
-             val () =
-                if msg 
-                   then (push ()
-                         ; say (concat [passName, " starting"]))
-                else ()
-             val post = pass pre
-             val () =
-                if msg 
-                   then (say (concat [passName, " finished"])
-                         ; pop ())
-                else ()
-          in
-             post
-          end handle exn => (say (concat [passName, " raised exception"])
-                             ; pop ()
-                             ; raise exn)
-       end
-    fun mkTracePassSimple {passName: string,
-                           pass: 'pre -> 'post} =
-       mkTracePass {passName = passName, pass = pass, verbose = 1}
+    fun ('pre, 'post) mkTracePass {
+	  passName : string,
+	  pass : 'pre -> 'post,
+	  verbose : int
+	} = let
+	  fun trace pre = let
+		val msg = Controls.get verboseCtl >= verbose
+		val _ = if msg 
+		      then (push (); say (concat [passName, " starting"]))
+		      else ()
+		val post = pass pre
+		val _ = if msg 
+		      then (say (concat [passName, " finished"]); pop ())
+		      else ()
+		in
+		  post
+		end handle exn => (
+		  say (concat [passName, " raised exception"]);
+		  pop ();
+		  raise exn)
+	  in
+	    trace
+	  end
+    fun mkTracePassSimple {passName: string, pass: 'pre -> 'post} =
+	  mkTracePass {passName = passName, pass = pass, verbose = 1}
     end
 
-    fun ('pre, 'post) mkKeepPass 
-       {preOutput: TextIO.outstream * 'pre -> unit,
-        preExt: string,
-        postOutput: TextIO.outstream * 'post -> unit,
-        postExt: string,
-        passName: string,
-        pass: 'pre -> 'post,
-        registry: ControlRegistry.registry} : 'pre -> 'post =
-       let
-          val keepPassCtl =
-             Controls.genControl
-             {name = "keep-" ^ passName,
-              pri = [5, 0],
-              obscurity = 1,
-              help = "keep " ^  passName ^ " passes",
-              default = false}
-          val _ = 
-             ControlRegistry.register
-             registry
-             {ctl = Controls.stringControl ControlUtil.Cvt.bool keepPassCtl,
-              envName = NONE}
+  (* open an output file while reporting it on stdout *)
+    fun openOut filename = let
+	  val outS = TextIO.openOut filename
+	  in
+	    print(concat["dumping info to ", filename, "\n"]);
+	    outS
+	  end
+
+    fun ('pre, 'post) mkKeepPass {
+	  preOutput : TextIO.outstream * 'pre -> unit,
+	  preExt : string,
+	  postOutput : TextIO.outstream * 'post -> unit,
+	  postExt : string,
+	  passName : string,
+	  pass : 'pre -> 'post,
+	  registry : ControlRegistry.registry
+	} : 'pre -> 'post = let
+          val keepPassCtl = Controls.genControl {
+		name = "keep-" ^ passName,
+		pri = [5, 0],
+		obscurity = 1,
+		help = "keep " ^  passName ^ " passes",
+		default = false
+	      }
+          val _ = ControlRegistry.register registry {
+		ctl = Controls.stringControl ControlUtil.Cvt.bool keepPassCtl,
+                envName = NONE
+	      }
           val countRef = ref 0
-       in
-          fn pre =>
-          let
-             val count = !countRef
-             val () = countRef := count + 1
-             val pass = mkTracePassSimple {passName = passName, pass = pass}
-             val post =
-        	if Controls.get keepPassCtl
-                   then let
-                           val fileName = 
-                              case Controls.get keepPassBaseName of
-                                 NONE => 
-                                    concat [passName, Int.toString count]
-                               | SOME baseName => 
-                                    concat [baseName, ".", passName, Int.toString count]
+	  fun wrap pre = let
+		val count = !countRef
+		val () = countRef := count + 1
+		val pass = mkTracePassSimple {passName = passName, pass = pass}
+		val post = if Controls.get keepPassCtl
+		      then let
+			val fileName = (case Controls.get keepPassBaseName
+			       of NONE => concat [passName, Int.toString count]
+				| SOME baseName => concat [
+				      baseName, ".", passName, Int.toString count
+				    ]
+			      (* end case *))
+			val outPre = openOut (concat [fileName, ".pre.", preExt])
+			val () = preOutput (outPre, pre)
+			val () = TextIO.closeOut outPre
+			val post = pass pre
+			val outPost = openOut (concat [fileName, ".post.", postExt])
+			val () = postOutput (outPost, post)
+			val () = TextIO.closeOut outPost
+			in
+			  post
+			end
+		      else pass pre
+		in
+		  post
+		end
+	  in
+	    wrap
+	  end
 
-                           val outPre = TextIO.openOut (concat [fileName, ".pre.", preExt])
-                           val () = preOutput (outPre, pre)
-                           val () = TextIO.closeOut outPre
-                           val post = pass pre
-                           val outPost = TextIO.openOut (concat [fileName, ".post.", postExt])
-                           val () = postOutput (outPost, post)
-                           val () = TextIO.closeOut outPost
-                         in
-                           post
-                	end
-                   else pass pre
-          in
-             post
-          end
-       end
-    fun mkKeepPassSimple 
-       {output: TextIO.outstream * 'a -> unit,
-        ext: string,
-        passName: string,
-        pass: 'a -> 'a,
-        registry: ControlRegistry.registry} =
-       mkKeepPass {preOutput = output,
-                   preExt = ext,
-                   postOutput = output,
-                   postExt = ext,
-                   passName = passName,
-                   pass = pass,
-                   registry = registry}
+    fun mkKeepPassSimple {
+	  output: TextIO.outstream * 'a -> unit,
+	  ext: string,
+	  passName: string,
+	  pass: 'a -> 'a,
+	  registry: ControlRegistry.registry
+	} = mkKeepPass {
+	      preOutput = output,
+	      preExt = ext,
+	      postOutput = output,
+	      postExt = ext,
+	      passName = passName,
+	      pass = pass,
+	      registry = registry
+	    }
 
-    fun show_all output (getarg, getvalue) level =
-       let
-          fun walk indent (ControlRegistry.RTree rt) =
-             let
+    fun showAll output (getarg, getvalue) level = let
+          fun walk indent (ControlRegistry.RTree rt) = let
         	val sp = CharVector.tabulate (indent, fn _ => #" ")
         	val sp' = CharVector.tabulate (indent + 1, fn _ => #" ")
         	val {help, ctls, subregs, path} = rt

@@ -143,7 +143,7 @@ functor MainFn (
              then  ()
              else (
 		err "\n";
-                BasicControl.show_all err
+                BasicControl.showAll err
                   (Controls.name o #ctl,
                     fn ci => concat [
 			"(", #help (Controls.info (#ctl ci)), 
