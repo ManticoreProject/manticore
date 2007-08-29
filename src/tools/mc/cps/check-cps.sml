@@ -24,9 +24,6 @@ structure CheckCPS : sig
 	    String.concat("[" :: v2s x :: List.foldr f ["]"] xs)
 	  end
 
-    fun typeOfFB (CPS.FB{params, rets, ...}) =
-	  Ty.T_Fun(List.map V.typeOf params, List.map V.typeOf rets)
-
     fun addFB (C.FB{f, ...}, env) = VSet.add(env, f)
 
     fun addVars (env, xs) = VSet.addList(env, xs)
@@ -103,14 +100,57 @@ structure CheckCPS : sig
 		      if Ty.match(ty', ty) andalso Ty.validCast(V.typeOf x, ty')
 			then ()
 			else err["type mismatch in Cast"])
-		  | ([ty], C.Const(_, ty')) => ()
-		  | ([ty], C.Select(i, x)) => chkVar(env, x, "Select")
+		  | ([ty], C.Const(_, ty')) => (
+		      if Ty.equal(ty', ty)
+			then ()
+                        else err["type mismatch in Const"])
+		  | ([ty], C.Select(i, x)) => (
+                      chkVar(env, x, "Select");
+                      case V.typeOf x
+                       of Ty.T_Tuple(_, tys) => if Ty.equal(ty, List.nth (tys, i))
+                                                  then ()
+                                                  else err["type mismatch in Select"]
+			| ty => err[v2s x, ":", Ty.toString ty, " is not a tuple"]
+		      (* end case *))
 		  | ([], C.Update(i, x, y)) => (
-		      chkVar(env, x, "Update"); chkVar(env, y, "Update"))
-		  | ([ty], C.AddrOf(i, x)) => chkVar(env, x, "AddrOf")
-		  | ([ty], C.Alloc xs) => chkVars(env, xs, "Alloc")
-		  | ([ty], C.Wrap x) => chkVar(env, x, "Wrap")
-		  | ([ty], C.Unwrap x) => chkVar(env, x, "Unwrap")
+                      chkVar(env, x, "Update");
+                      chkVar(env, y, "Update");
+                      case V.typeOf x
+                       of Ty.T_Tuple(true, tys) => if Ty.equal(V.typeOf y, List.nth (tys, i))
+                                                     then ()
+                                                     else err["type mismatch in Update"]
+			| ty => err[v2s x, ":", Ty.toString ty, " is not a mutable tuple"]
+		      (* end case *))
+		  | ([ty], C.AddrOf(i, x)) => (
+                      chkVar(env, x, "AddrOf");
+                      case V.typeOf x
+                       of Ty.T_Tuple(_, tys) => if Ty.equal(ty, Ty.T_Addr(List.nth (tys, i)))
+                                                  then ()
+                                                  else err["type mismatch in AddrOf"]
+			| ty => err[v2s x, ":", Ty.toString ty, " is not a tuple"]
+		      (* end case *))
+		  | ([ty], C.Alloc xs) => (
+                      chkVars(env, xs, "Alloc");
+                      if Ty.equal(ty, Ty.T_Tuple(true, List.map V.typeOf xs))
+                         orelse Ty.equal(ty, Ty.T_Tuple(false, List.map V.typeOf xs))
+                        then ()
+                        else err["type mismatch in Alloc"])
+		  | ([ty], C.Wrap x) => (
+                      chkVar(env, x, "Wrap");
+                      case V.typeOf x
+                       of Ty.T_Raw rt => if Ty.equal(ty, Ty.T_Wrap rt)
+                                           then ()
+                                           else err["type mismatch in Wrap"]
+			| ty => err[v2s x, ":", Ty.toString ty, " is not a raw"]
+		      (* end case *))
+		  | ([ty], C.Unwrap x) => (
+                      chkVar(env, x, "Unwrap");
+                      case V.typeOf x
+                       of Ty.T_Wrap rt => if Ty.equal(ty, Ty.T_Raw rt)
+                                            then ()
+                                            else err["type mismatch in Unwrap"]
+			| ty => err[v2s x, ":", Ty.toString ty, " is not a wrap"]
+		      (* end case *))
 		  | ([ty], C.Prim p) => chkVars(env, PrimUtil.varsOf p, PrimUtil.nameOf p)
 		  | ([ty], C.CCall(cf, args)) => (
 		      chkVar(env, cf, "CCall"); chkVars(env, args, "CCall args"))

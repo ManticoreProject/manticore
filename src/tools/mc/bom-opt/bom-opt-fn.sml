@@ -32,7 +32,13 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
     val contract = transform {passName = "contract", pass = Contract.contract}
 
     fun expandAll module = (case expand module
-	   of SOME module => expandAll (contract module)
+	   of SOME module => let
+                                val _ = CheckBOM.check module
+                                val module = contract module
+                                val _ = CheckBOM.check module
+                             in
+                                expandAll module
+                             end
 	    | NONE => module
 	  (* end case *))
 
@@ -41,11 +47,17 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
     val expandAll = transform {passName = "expandAll", pass = expandAll}
 
     fun optimize module = let
+          val _ = CheckBOM.check module
 	  val module = contract module
+          val _ = CheckBOM.check module
 	  val module = uncurry module
+          val _ = CheckBOM.check module
 	  val module = contract module
+          val _ = CheckBOM.check module
 	  val module = expandAll module
+          val _ = CheckBOM.check module
 	  val module = caseSimplify module
+          val _ = CheckBOM.check module
 	  in
 	    module
 	  end

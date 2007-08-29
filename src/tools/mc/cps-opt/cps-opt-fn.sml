@@ -10,7 +10,12 @@ functor CPSOptFn (Spec : TARGET_SPEC) : sig
 
   end = struct
 
-    fun optimize module = module
+    fun optimize module = let
+          val () = CheckCPS.check module
+          val () = CheckCPS.check module
+          in
+            module
+          end
 
     val optimize =
        BasicControl.mkKeepPassSimple
