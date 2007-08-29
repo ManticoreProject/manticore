@@ -45,8 +45,9 @@ structure Translate : sig
 	    (exh, E{vmap = vmap, exh = exh})
 	  end
 
-    fun handlerOf (E{exh, ...}) = [exh]
-
+  (* handlerOf : env -> B.var *)
+    fun handlerOf (E{exh, ...}) = exh
+	
   (* prune out overload nodes.
    * NOTE: we should probably have a pass that does this before
    * AST optimization.
@@ -89,7 +90,7 @@ structure Translate : sig
 	          end
 	    | AST.ApplyExp(e1, e2, ty) => EXP(trExpToV (env, e1, fn f =>
 		trExpToV (env, e2, fn arg =>
-		  B.mkApply(f, [arg], handlerOf env))))
+		  B.mkApply(f, [arg], [handlerOf env]))))
 	    | AST.TupleExp[] => let
 		val t = BV.new("_unit", BTy.unitTy)
 		in

@@ -67,13 +67,19 @@ structure HLOpEnv : sig
 
     val futureTy = BTy.futureTy
     val ivarTy = BTy.T_Tuple(true, [listTy, BTy.T_Any, BTy.T_Raw BTy.T_Int])
-    val thunkTy = BTy.T_Fun([], [], [BTy.T_Any])
-    val futureTy = BTy.T_Any
+    val thunkTy = BTy.T_Fun([BTy.unitTy], [BTy.exhTy], [BTy.T_Any])
+    val futureTy = BTy.T_Fun([thunkTy], [BTy.exhTy], [BTy.T_Any])
 
   (* new : string * BTy.ty list * BTy.ty list * H.attributes list -> H.hlop *)
     fun new (name, params, res, attrs) =
 	  H.new (Atom.atom name, 
 		 {params= List.map HLOp.PARAM params, exh=[], results=res}, 
+		 attrs)
+
+  (* newWithExh : string * BTy.ty list * BTy.ty list * H.attributes list -> H.hlop *)
+    fun newWithExh (name, params, res, attrs) =
+	  H.new (Atom.atom name,
+		 {params = map H.PARAM params, exh = [exhTy], results = res},
 		 attrs)
 
   (* high-level operations used to implement Manticore language constructs *)
@@ -93,13 +99,13 @@ structure HLOpEnv : sig
     val enqueueOp = new("enqueue", [vprocTy, tidTy, fiberTy], [], [])
 
   (* futures *)
-    val futureOp = new ("future", [thunkTy], [futureTy], [])
-    val touchOp  = new ("touch",  [futureTy], [BTy.T_Any], [])
-    val cancelOp = new ("cancel", [futureTy], [], [])
+    val futureOp = newWithExh ("future", [thunkTy], [futureTy], [])
+    val touchOp  = newWithExh ("touch",  [futureTy], [BTy.T_Any], [])
+    val cancelOp = newWithExh ("cancel", [futureTy], [], [])
 
-    val future1Op = new ("future1", [thunkTy], [futureTy], [])
-    val touch1Op  = new ("touch1",  [futureTy], [BTy.T_Any], [])
-    val cancel1Op = new ("cancel1", [futureTy], [], [])
+    val future1Op = newWithExh ("future1", [thunkTy], [futureTy], [])
+    val touch1Op  = newWithExh ("touch1",  [futureTy], [BTy.T_Any], [])
+    val cancel1Op = newWithExh ("cancel1", [futureTy], [], [])
 		    
     fun mkTbl nameOf bindings = let
 	  val tbl = AtomTable.mkTable (List.length bindings, Fail "table")

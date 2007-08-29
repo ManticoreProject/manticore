@@ -79,7 +79,7 @@ structure ExpandHLOps : sig
 		      end
 		(* end case *))
 	  and cvtLambda (B.FB{f, params, exh, body}) =
-		B.FB{f=f, params=params, exh=exh, body=cvtExp body}
+                  B.FB{f=f, params=params, exh=exh, body=cvtExp body}
 	  val body = cvtLambda body
 	  val body = (case VTbl.listItems lambdas
 		 of [] => body
