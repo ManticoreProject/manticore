@@ -103,14 +103,15 @@ structure BasicControl :  sig
 
     local
       val indent = ref 0
-      val push = fn () => indent := !indent + 4
-      val pop = fn () => indent := !indent - 4
-      val say = fn s => (
-	    print (CharVector.tabulate (!indent, fn _ => #" "));
-	    print s;
-	    print "\n")
       val verboseCtl = verbose
     in
+    val push = fn () => indent := !indent + 4
+    val pop = fn () => indent := !indent - 4
+    val say = fn s => (
+	  print (CharVector.tabulate (!indent, fn _ => #" "));
+	  print s;
+	  print "\n")
+
     fun ('pre, 'post) mkTracePass {
 	  passName : string,
 	  pass : 'pre -> 'post,
@@ -118,31 +119,31 @@ structure BasicControl :  sig
 	} = let
 	  fun trace pre = let
 		val msg = Controls.get verboseCtl >= verbose
-		val _ = if msg 
-		      then (push (); say (concat [passName, " starting"]))
-		      else ()
-		val post = pass pre
-		val _ = if msg 
-		      then (say (concat [passName, " finished"]); pop ())
-		      else ()
 		in
-		  post
-		end handle exn => (
-		  say (concat [passName, " raised exception"]);
-		  pop ();
-		  raise exn)
+		  if msg 
+		    then (push (); say (concat [passName, " starting"]))
+		    else ();
+		  (pass pre handle exn => (
+		    say (concat [passName, " raised exception ", exnName exn]);
+		    if msg then pop () else ();
+		    raise exn)
+		  ) before
+		    (if msg 
+		      then (say (concat [passName, " finished"]); pop ())
+		      else ())
+		end
 	  in
 	    trace
 	  end
     fun mkTracePassSimple {passName: string, pass: 'pre -> 'post} =
 	  mkTracePass {passName = passName, pass = pass, verbose = 1}
-    end
+    end (* local *)
 
   (* open an output file while reporting it on stdout *)
     fun openOut filename = let
 	  val outS = TextIO.openOut filename
 	  in
-	    print(concat["dumping info to ", filename, "\n"]);
+	    say(concat["dumping info to ", filename]);
 	    outS
 	  end
 
