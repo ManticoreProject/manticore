@@ -46,7 +46,7 @@ functor MainFn (
     fun astToBOM ast = let
           val ast = ASTOpt.optimize ast
           val bom = Translate.translate ast
-          val _ = CheckBOM.check bom
+          val _ = CheckBOM.check ("translate", bom)
           in
             bom
           end
@@ -54,7 +54,7 @@ functor MainFn (
   (* the compiler's backend *)
     fun bomToCFG bom = let
 	  val bom = BOMOpt.optimize bom	
-          val _ = CheckBOM.check bom
+          val _ = CheckBOM.check ("optimization", bom)
           val cps = Convert.transform bom
 	  val _ = CheckCPS.check cps
 	  val cps = CPSOpt.optimize cps

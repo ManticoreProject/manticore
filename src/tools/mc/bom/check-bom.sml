@@ -2,28 +2,25 @@
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
+ *
+ * Check various invariants in BOM representation.
  *)
 
 structure CheckBOM : sig
 
-    val check : BOM.module -> unit
+    val check : string * BOM.module -> bool
 
   end = struct
 
     structure B = BOM
-    structure V = B.Var
-    structure Ty = BOMTy
-    structure VSet = V.Set
+    structure BV = B.Var
+    structure VTbl = BV.Tbl
+    structure BTy = BOMTy
 
-    val v2s = V.toString
-    fun vl2s [] = "()"
-      | vl2s [x] = v2s x
-      | vl2s (x::xs) = let
-	  fun f (x, l) = "," :: v2s x :: l
-	  in
-	    String.concat("[" :: v2s x :: List.foldr f ["]"] xs)
-	  end
+    val v2s = BV.toString
+    fun vl2s xs = String.concat["(", String.concatWith "," (List.map v2s xs), ")"]
 
+(**** other version
     fun addFB (B.FB{f, ...}, env) = VSet.add(env, f)
 
     fun addVars (env, xs) = VSet.addList(env, xs)
@@ -199,13 +196,222 @@ structure CheckBOM : sig
 	    chkFB (env, body);
 	    if !anyErr then raise Fail "broken BOM" else ()
 	  end (* check *)
+****)
 
-    fun check (m : BOM.module) = ()
+  (* placeholder for testing variable kind equality *)
+    fun eqVK _ = true
 
-    val check =
-       BasicControl.mkTracePass
-       {passName = "BOMCheck",
-        pass = check,
-        verbose = 2}
+    fun vkToString B.VK_None = "VK_None"
+      | vkToString (B.VK_Let rhs) =
+	  concat["VK_Let(", BOMUtil.expToString rhs, ")"]
+      | vkToString (B.VK_RHS rhs) =
+	  concat["VK_RHS(", BOMUtil.rhsToString rhs, ")"]
+      | vkToString B.VK_Param = "VK_Param"
+      | vkToString (B.VK_Fun _) = "VK_Fun"
+      | vkToString (B.VK_Cont _) = "VK_Cont"
+      | vkToString (B.VK_Extern x) = concat["VK_Extern(", x, ")"]
+
+  (* the context of a BOM expression *)
+    datatype context
+      = TAIL of (B.var * int)
+      | BIND of B.var list
+
+(*
+    fun check (phase, module) = let
+	  val B.MODULE{name, externs, body} = module
+	  val anyErrors = ref false
+	(* report an error *)
+	  fun pr s = TextIO.output(TextIO.stdErr, concat s)
+	  fun error msg = (
+		if !anyErrors then ()
+		else (
+		  pr ["***** Bogus BOM in ", name, " after ", phase, " *****\n"];
+		  anyErrors := true);
+		pr ("** " :: msg))
+	(* a table mapping variables to their census counts *)
+	  val counts = VTbl.mkTable (256, Fail "count table")
+	  fun insert x = (case VTbl.find counts x
+		 of SOME _ => error["multiple bindings of ", v2s x, "\n"]
+		  | NONE => VTbl.insert counts (x, {
+			appCnt = BV.appCntOf x,
+			useCnt = BV.useCntOf x
+		      })
+		(* end case *))
+	(* match a list of variables to a context *)
+	  fun chkContext (cxt, xs) = let
+		val n = List.length xs
+		in
+		  case cxt
+		   of MODULE => ()
+		    | TAIL(f, arity) => if (arity <> n)
+			then error [
+			    "arity mismatch in ", v2s f, ": returning ", vl2s xs,
+			    " for ", Int.toString arity, " expected results\n"
+			  ]
+			else ()
+		    | BIND ys => if (List.length ys <> n)
+			then error [
+			    "arity mismatch: ", vl2s ys, " = ", vl2s xs, "\n"
+			  ]
+			else ()
+		  (* end case *)
+		end
+	(* match a tail application/goto to a context *)
+	  fun chkApplyContext (cxt, f) = let
+		val rng = BTy.rangeOf(BV.typeOf f)
+		val n = List.length rng
+		in
+		  case cxt
+		   of MODULE => error["unexpected tail application in module initialization\n"]
+		    | TAIL(g, arity) => if (arity <> n)
+			then error [
+			    "arity mismatch in ", v2s g, ": returning <", Int.toString n,
+			    " results> for ", Int.toString arity, " expected results\n"
+			  ]
+			else ()
+		    | BIND ys => if (List.length ys <> n)
+			then error [
+			    "arity mismatch: ", vl2s ys, " = <", Int.toString n, " results>\n"
+			  ]
+			else ()
+		  (* end case *)
+		end
+	(* create a tail context *)
+	  fun tailContext f = TAIL(f, List.length(BTy.rangeOf(BV.typeOf f)))
+	(* create a bind context *)
+	  fun bindContext vl = BIND vl
+	(* Check that a variable is bound *)
+	  fun chkVar x = if VTbl.inDomain counts x
+		then ()
+		else error["unbound variable ", v2s x, "\n"]
+	  fun chkBinding (x, binding) = if eqVK(BV.bindingOf x, binding)
+		then ()
+		else error[
+		    "binding of ", v2s x, " is ",
+		    vkToString(BV.bindingOf x), " (expected ",
+		    vkToString binding, ")\n"
+		  ]
+	  fun chkBindings (lhs, binding) =
+		List.app (fn x => chkBinding(x, binding)) lhs
+	(* *)
+	  fun insertFB (f, _, _) = insert f
+	  fun chkFB (lambda as B.FB{f, params, exh, body}) = (
+		chkBinding (f, B.VK_Fun lambda);
+		chkBindings (params, B.VK_Param);
+		chkBindings (exh, B.VK_Param);
+		List.app insert params;
+		List.app insert exh;
+		chkE (tailContext f, body))
+	  and chkE (cxt, B.E_Pt(_, t)) = (case t
+		 of B.E_Let(lhs, rhs, e) => (
+		      chkBindings (lhs, B.VK_Let rhs);
+		      chkE(bindContext lhs, rhs);
+		      List.app insert lhs;
+		      chkE(cxt, e))
+		  | B.E_Stmt(lhs, rhs, e) => (
+		      chkBindings (lhs, B.VK_RHS rhs);
+		      chkRHS (lhs, rhs);
+		      List.app insert lhs;
+		      chkE(cxt, e))
+		  | B.E_Fun(fbs, e) => (
+		      List.app insertFB fbs;
+		      chkE(cxt, e);
+		      List.app chkFB fbs)
+		  | B.E_Cont(fb as B.FB{f, params, exh=[], body}, e) => (
+		      chkBinding (f, B.VK_Cont fb);
+		      chkBindings (params, B.VK_Param);
+		      insert k;
+		      chkE(cxt, e);
+		      List.app insert params;
+		      chkE(cxt, body))
+		  | B.E_If(x, e1, e2) => (chkVar x; chkE(cxt, e1); chkE(cxt, e2))
+		  | B.E_Case(x, cases, dflt) => let
+		      fun chk e = chkE(cxt, e)
+		      in
+			chkVar x;
+			List.app (chk o #2) cases;
+			Option.app chk dflt
+		      end
+		  | B.E_Apply(f, args) => (
+		      chkVar f; List.app chkVar args;
+		      chkApplyContext (cxt, f))
+		  | B.E_Throw(k, args) => (
+		      chkVar k; List.app chkVar args)
+		  | B.E_Ret args => (
+		      List.app chkVar args;
+		      chkContext (cxt, args))
+		  | B.E_HLOp(hlop, args, rets) => ??
+		(* end case *))
+	  and chkRHS (lhs, rhs) = (
+		BOMUtil.appRHS chkVar rhs;
+		case rhs
+		 of (B.E_Select(i, x)) => (case BV.typeOf x
+		       of BTy.T_Addr(BTy.T_Struct _) => ()
+			| BTy.T_Ptr(BTy.T_Struct _) => ()
+			| BTy.T_PtrOrEnum{ptrTy=BTy.T_Struct _, ...} => ()
+			| ty => error [
+			      v2s x, " has type ", BTy.toString ty, " (expected struct)\n" 
+			    ]
+		      (* end case *))
+		  | (B.E_Prim prim) => (let
+		      val resTys = CheckPrim.check prim
+		      in
+(* FIXME: check the result types against the lhs variables! *)
+			()
+		      end
+			handle CheckPrim.TypeMismatch(x, ty) => error [
+			    v2s x, " has type ", BTy.toString(BV.typeOf x),
+			    ", expected ", BTy.toString ty, "\n"
+			  ]
+		      (* end handle *))
+		  | _ => ()
+		(* end case *))
+	(* check the module's main function *)
+	  fun chkFB (lambda as B.FB{f, params, exh, body}) = (
+		chkBinding (f, B.VK_Fun lambda);
+		chkBindings (params, B.VK_Param);
+		chkBindings (exh, B.VK_Param);
+		List.app insert params;
+		List.app insert exh;
+		chkE(tailContext f, body))
+	(* check an imported variable *)
+	  fun chkImport x = (
+		insert x;
+		case BV.bindingOf x
+		 of B.VB_Import _ => ()
+		  | vb => error[
+			"imported variable ", v2s x, " has binding ",
+			vkToString vb
+		      ]
+		(* end case *))
+	(* check old counts against new counts *)
+	  fun checkCnt (x, {appCnt, useCnt}) =
+		if (appCnt <> BV.appCntOf x) orelse (useCnt <> BV.useCntOf x)
+		  then error[
+		      "inconsistant counts for ", v2s x, ": recorded <",
+		      Int.toString useCnt, ":", Int.toString appCnt,
+		      "> vs. actual <", Int.toString(BV.useCntOf x), ":",
+		      Int.toString(BV.appCntOf x), ">\n"
+		    ]
+		  else ()
+	  in
+	  (* record census counts and do initial checking *)
+	    List.app chkImport imports;
+	    chkFB body; insertFB body;
+	  (* recompute census information *)
+	    Census.init module;
+	  (* check new and old census information *)
+	    VTbl.appi checkCnt counts;
+	  (* return the error status *)
+	    !anyErrors
+	  end
+*)
+fun check (_ : string * B.module) = false
+
+    val check = BasicControl.mkTracePass {
+	    passName = "bom-check",
+	    pass = check,
+	    verbose = 2
+	  }
 
   end

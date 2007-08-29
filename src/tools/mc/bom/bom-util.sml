@@ -36,6 +36,10 @@ structure BOMUtil : sig
   (* create a copy of a BOM term with fresh bound variables *)
     val copyLambda : BOM.lambda -> BOM.lambda
 
+  (* for debugging output *)
+    val expToString : BOM.exp -> string
+    val rhsToString : BOM.rhs -> string
+
   end = struct
 
     structure B = BOM
@@ -223,5 +227,9 @@ structure BOMUtil : sig
 
   (* create a copy of a BOM term with fresh bound variables *)
     fun copyLambda fb = #2 (copyOneLambda (empty, fb))
+
+  (* for debugging output *)
+    fun expToString _ = "<exp>"	(* FIXME *)
+    fun rhsToString _ = "<rhs>"	(* FIXME *)
 
   end
