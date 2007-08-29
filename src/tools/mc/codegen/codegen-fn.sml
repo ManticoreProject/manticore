@@ -311,4 +311,9 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	  genLiterals () 
       end (* codeGen *) 
 
+   val codeGen : {code: CFG.module, dst: TextIO.outstream} -> unit =
+      BasicControl.mkTracePassSimple
+      {passName = "codeGen",
+       pass = codeGen}
+
 end (* CodeGen *)
