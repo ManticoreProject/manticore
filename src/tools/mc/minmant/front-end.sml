@@ -14,13 +14,16 @@ structure FrontEnd : sig
 
   (* parse and typecheck a file *)
     fun load (errStrm, file) = (
-	  print(concat["parsing ", file, "\n"]);
 	  case Parser.parseFile (errStrm, file)
 	   of SOME pt => (
-		print(concat["typechecking ", file, "\n"]);
 		Typechecker.check (errStrm, pt))
 	    | NONE => NONE
 	  (* end case *))
+
+    val load =
+       BasicControl.mkTracePassSimple
+       {passName = "load",
+        pass = load}
 
   end
 

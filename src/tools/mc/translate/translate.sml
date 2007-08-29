@@ -306,7 +306,7 @@ structure Translate : sig
 	    B.mkModule(Atom.atom "Main", [], mainFun)
 	  end
 
-    val translate = BasicControl.mkPass {
+    val translate = BasicControl.mkKeepPass {
 	    preOutput = PrintAST.output,
 	    preExt = "ast",
 	    postOutput = PrintBOM.output,

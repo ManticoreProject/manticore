@@ -127,6 +127,7 @@ structure CheckCFG : sig
                           Ty.T_Code argTys => 
                              ((ListPair.appEq (fn (arg, argTy) =>
                                                if Ty.match (argTy, V.typeOf arg)
+                                                  orelse Ty.match (argTy, Ty.T_Any)
                                                   then ()
                                                else err["parameter ", V.toString arg, ":", Ty.toString (V.typeOf arg),
                                                         " does not match ",
@@ -470,4 +471,9 @@ structure CheckCFG : sig
 	    if !anyErrors then raise Fail "broken CFG" else ()
 	  end (* check *)
 
+    val check =
+       BasicControl.mkTracePass
+       {passName = "CFGCheck",
+        pass = check,
+        verbose = 2}
   end

@@ -28,9 +28,11 @@ is
   $/basis.cm
   $/smlnj-lib.cm
 
+  ../common/sources.cm
   ../minmant/sources.cm
 
   ast-opt.sml
+  ast-opt-controls.sml
   flat-par-tup.sml
   fresh-var.sml
   fut-par-let.sml

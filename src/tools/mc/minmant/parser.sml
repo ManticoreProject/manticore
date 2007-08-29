@@ -36,5 +36,10 @@ structure Parser : sig
 		  NONE)
 	    (* end case *)
 	  end
+       
+    val parseFile =
+       BasicControl.mkTracePassSimple
+       {passName = "parseFile",
+        pass = parseFile}
 
   end

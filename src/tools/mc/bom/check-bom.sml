@@ -10,6 +10,12 @@ structure CheckBOM : sig
 
   end = struct
 
-    fun check m = ()
+    fun check (m : BOM.module) = ()
+
+    val check =
+       BasicControl.mkTracePass
+       {passName = "BOMCheck",
+        pass = check,
+        verbose = 2}
 
   end

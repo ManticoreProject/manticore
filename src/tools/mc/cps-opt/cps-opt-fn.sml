@@ -13,7 +13,7 @@ functor CPSOptFn (Spec : TARGET_SPEC) : sig
     fun optimize module = module
 
     val optimize =
-       BasicControl.mkPassSimple
+       BasicControl.mkKeepPassSimple
        {output = PrintCPS.output,
         ext = "cps",
         passName = "CPSOptimize",

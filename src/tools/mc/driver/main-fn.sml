@@ -36,17 +36,20 @@ functor MainFn (
 
     fun prHdr msg = print(concat["******************** ", msg,  " ********************\n"])
 
-    fun srcToBOM (errStrm, file) = (case FrontEnd.load (errStrm, file)
-	   of SOME ast => (
-		checkForErrors errStrm;
-		case ASTOpt.optimize ast
-		 of SOME ast => (
-		      checkForErrors errStrm;
-		      SOME(Translate.translate ast))
-		  | NONE => NONE
-		(* end case *))
-	    | NONE => NONE
-	  (* end case *))
+    fun srcToAST (errStrm, file) = let
+          val astMaybe = FrontEnd.load (errStrm, file)
+          val _ = checkForErrors errStrm
+          in
+            valOf astMaybe
+          end
+
+    fun astToBOM ast = let
+          val ast = ASTOpt.optimize ast
+          val bom = Translate.translate ast
+          val _ = CheckBOM.check bom
+          in
+            bom
+          end
 
   (* the compiler's backend *)
     fun bomToCFG bom = let
@@ -74,22 +77,25 @@ functor MainFn (
 
     fun bomC (errStrm, bomFile, asmFile) = let
 	  val bom = BOMParser.parse (errStrm, bomFile)
+          val _ = checkForErrors errStrm;
+          val cfg = bomToCFG (valOf bom)
 	  in
-	    checkForErrors errStrm;
-	    codegen (asmFile, bomToCFG(valOf bom))
+	    codegen (asmFile, cfg)
 	  end
 
     fun mantC (errStrm, srcFile, asmFile) = let
-	  val bom = srcToBOM(errStrm, srcFile)
+          val ast = srcToAST(errStrm, srcFile)
+          val bom = astToBOM ast
+          val _ = checkForErrors errStrm
+          val cfg = bomToCFG bom
 	  in
-	    checkForErrors errStrm;
-	    codegen (asmFile, bomToCFG(valOf bom))
+	    codegen (asmFile, cfg)
 	  end
 
     fun doFile file = BackTrace.monitor (fn () =>let
           fun doit compFn base = let
-             val () = case Controls.get BasicControl.passBaseName
-                       of NONE => Controls.set (BasicControl.passBaseName, SOME base)
+             val () = case Controls.get BasicControl.keepPassBaseName
+                       of NONE => Controls.set (BasicControl.keepPassBaseName, SOME base)
                         | SOME _ => ()
              in
                compFn (Error.mkErrStream file,

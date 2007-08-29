@@ -246,7 +246,7 @@ structure Convert : sig
 	  end
 
     val transform =
-       BasicControl.mkPass
+       BasicControl.mkKeepPass
        {preOutput = PrintBOM.output,
         preExt = "bom",
         postOutput = PrintCPS.output,

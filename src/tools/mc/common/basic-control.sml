@@ -15,12 +15,29 @@ structure BasicControl :  sig
     val nest : string * ControlRegistry.registry * Controls.priority -> unit
 
   (* base name for pass output files; set based on compilation unit. *)
-    val passBaseName : string option Controls.control
+    val keepPassBaseName : string option Controls.control
 
-  (* wrap a pass 'pre -> 'post pass with debug output controled by a new
-   * "keep" control.
+  (* verbosity of diagnostics.
    *)
-    val mkPass : {
+    val verbose : int Controls.control
+
+  (* wrap a 'pre -> 'post pass with a tracing diagnostic, controled by the 
+   * "verbose" control.
+   *)
+   val mkTracePass : {
+            passName: string,
+            pass: 'pre -> 'post,
+            verbose: int
+       } -> 'pre -> 'post
+   val mkTracePassSimple : {
+            passName: string,
+            pass: 'pre -> 'post
+       } -> 'pre -> 'post
+
+  (* wrap a 'pre -> 'post pass with debug output controled by a new
+   * "keep" control.  The pass is also traced (as with mkTracePass).
+   *)
+    val mkKeepPass : {
 	    preOutput: TextIO.outstream * 'pre -> unit,
             preExt: string,
             postOutput: TextIO.outstream * 'post -> unit,
@@ -30,7 +47,7 @@ structure BasicControl :  sig
             registry: ControlRegistry.registry
 	  } -> 'pre -> 'post
 
-    val mkPassSimple : {
+    val mkKeepPassSimple : {
 	    output: TextIO.outstream * 'a -> unit,
             ext: string,
             passName: string,
@@ -63,22 +80,75 @@ structure BasicControl :  sig
 
     val debugObscurity = 2
 
-    val passBaseName : string option Controls.control =
+    val keepPassBaseName : string option Controls.control =
        Controls.genControl 
-       {name = "passBaseName",
+       {name = "keepPassBaseName",
         pri = [5, 0],
         obscurity = debugObscurity + 1,
         help = "",
         default = NONE}
 
+    val verbose : int Controls.control =
+       Controls.genControl
+       {name = "verbose",
+        pri = [0, 0],
+        obscurity = 0,
+        help = "verbosity",
+        default = 0}
+    val () =
+       ControlRegistry.register topRegistry
+       {ctl = Controls.stringControl ControlUtil.Cvt.int verbose,
+        envName = NONE};
 
-    fun ('pre, 'post) mkPass {preOutput: TextIO.outstream * 'pre -> unit,
-                              preExt: string,
-                              postOutput: TextIO.outstream * 'post -> unit,
-                              postExt: string,
-                              passName: string,
-                              pass: 'pre -> 'post,
-                              registry: ControlRegistry.registry} : 'pre -> 'post =
+
+    local
+       val indent = ref 0
+       val push = fn () => indent := !indent + 4
+       val pop = fn () => indent := !indent - 4
+       val say = fn s =>
+          (print (CharVector.tabulate (!indent, fn _ => #" "));
+           print s;
+           print "\n")
+       val verboseCtl = verbose
+    in
+    fun ('pre, 'post) mkTracePass {passName: string,
+                                   pass: 'pre -> 'post,
+                                   verbose: int} =
+       let
+       in
+          fn pre =>
+          let
+             val msg = Controls.get verboseCtl >= verbose
+             val () =
+                if msg 
+                   then (push ()
+                         ; say (concat [passName, " starting"]))
+                else ()
+             val post = pass pre
+             val () =
+                if msg 
+                   then (say (concat [passName, " finished"])
+                         ; pop ())
+                else ()
+          in
+             post
+          end handle exn => (say (concat [passName, " raised exception"])
+                             ; pop ()
+                             ; raise exn)
+       end
+    fun mkTracePassSimple {passName: string,
+                           pass: 'pre -> 'post} =
+       mkTracePass {passName = passName, pass = pass, verbose = 1}
+    end
+
+    fun ('pre, 'post) mkKeepPass 
+       {preOutput: TextIO.outstream * 'pre -> unit,
+        preExt: string,
+        postOutput: TextIO.outstream * 'post -> unit,
+        postExt: string,
+        passName: string,
+        pass: 'pre -> 'post,
+        registry: ControlRegistry.registry} : 'pre -> 'post =
        let
           val keepPassCtl =
              Controls.genControl
@@ -98,11 +168,12 @@ structure BasicControl :  sig
           let
              val count = !countRef
              val () = countRef := count + 1
+             val pass = mkTracePassSimple {passName = passName, pass = pass}
              val post =
         	if Controls.get keepPassCtl
                    then let
                            val fileName = 
-                              case Controls.get passBaseName of
+                              case Controls.get keepPassBaseName of
                                  NONE => 
                                     concat [passName, Int.toString count]
                                | SOME baseName => 
@@ -123,18 +194,19 @@ structure BasicControl :  sig
              post
           end
        end
-    fun mkPassSimple {output: TextIO.outstream * 'a -> unit,
-                      ext: string,
-                      passName: string,
-                      pass: 'a -> 'a,
-                      registry: ControlRegistry.registry} =
-       mkPass {preOutput = output,
-               preExt = ext,
-               postOutput = output,
-               postExt = ext,
-               passName = passName,
-               pass = pass,
-               registry = registry}
+    fun mkKeepPassSimple 
+       {output: TextIO.outstream * 'a -> unit,
+        ext: string,
+        passName: string,
+        pass: 'a -> 'a,
+        registry: ControlRegistry.registry} =
+       mkKeepPass {preOutput = output,
+                   preExt = ext,
+                   postOutput = output,
+                   postExt = ext,
+                   passName = passName,
+                   pass = pass,
+                   registry = registry}
 
     fun show_all output (getarg, getvalue) level =
        let
@@ -172,12 +244,12 @@ structure BasicControl :  sig
 		  help = "debug",
 		  default = false
 		}
-	  in
+	  in	
 	    ControlRegistry.register newReg {
 	        ctl = Controls.stringControl ControlUtil.Cvt.bool debugCtl,
 		envName = NONE
 	      };
-	    (newReg, debugCtl)
+            (newReg, debugCtl)
 	  end
 
    end

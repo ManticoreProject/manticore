@@ -72,7 +72,7 @@ structure SpecializeCalls : sig
     fun transform m = m
 
     val transform =
-       BasicControl.mkPassSimple
+       BasicControl.mkKeepPassSimple
        {output = PrintCFG.output {types=true},
         ext = "cfg",
         passName = "specializeCalls",

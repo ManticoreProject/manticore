@@ -154,4 +154,9 @@ structure CheckCPS : sig
 	    if !anyErr then raise Fail "broken CPS" else ()
 	  end (* check *)
 
+    val check =
+       BasicControl.mkTracePass
+       {passName = "CPSCheck",
+        pass = check,
+        verbose = 2}
   end

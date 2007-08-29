@@ -610,7 +610,7 @@ print(concat["lookupVar: ", CPS.Var.toString x, " @ ", locToString(valOf(VMap.fi
           end
 
     val convert =
-       BasicControl.mkPass
+       BasicControl.mkKeepPass
        {preOutput = PrintCPS.output,
         preExt = "cps",
         postOutput = PrintCFG.output {types=true},

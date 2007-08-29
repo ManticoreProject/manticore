@@ -40,6 +40,7 @@ is
   env.sml
   front-end.sml
   meta-var.sml
+  minmant-controls.sml
   overload.sml
   print-ast.sml
   print-types.sml

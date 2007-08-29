@@ -11,35 +11,34 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
   end = struct
 
   (* a wrapper for BOM optimization passes *)
-    fun transform name xform = BasicControl.mkPassSimple {
-	    output = PrintBOM.output,
-	    ext = "bom",
-	    passName = name,
-	    pass = xform,
-	    registry = BOMOptControls.registry
-	  }
+    fun transform {passName, pass} = 
+       BasicControl.mkKeepPassSimple 
+       {output = PrintBOM.output,
+        ext = "bom",
+        passName = passName,
+        pass = pass,
+        registry = BOMOptControls.registry}
 
-    val expand = BasicControl.mkPass {
-	    preOutput = PrintBOM.output,
-	    preExt = "bom",
-	    postOutput = fn (out, NONE) => () 
-			  | (out, SOME p) => PrintBOM.output (out, p),
-	    postExt = "bom",
-	    passName = "expand",
-	    pass = ExpandHLOps.expand,
-	    registry = BOMOptControls.registry
-	  }
+    val expand = 
+       BasicControl.mkKeepPass 
+       {preOutput = PrintBOM.output,
+        preExt = "bom",
+        postOutput = fn (out, NONE) => () | (out, SOME p) => PrintBOM.output (out, p),
+        postExt = "bom",
+        passName = "expand",
+        pass = ExpandHLOps.expand,
+        registry = BOMOptControls.registry}
 
-    val contract = transform "contract" Contract.contract
+    val contract = transform {passName = "contract", pass = Contract.contract}
 
     fun expandAll module = (case expand module
 	   of SOME module => expandAll (contract module)
 	    | NONE => module
 	  (* end case *))
 
-    val uncurry = transform "uncurry" Uncurry.transform
-    val caseSimplify = transform "caseSimplify" CaseSimplify.transform
-    val expandAll = transform "expandAll" expandAll
+    val uncurry = transform {passName = "uncurry", pass = Uncurry.transform}
+    val caseSimplify = transform {passName = "caseSimplify", pass = CaseSimplify.transform}
+    val expandAll = transform {passName = "expandAll", pass = expandAll}
 
     fun optimize module = let
 	  val module = contract module
@@ -51,10 +50,10 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 	    module
 	  end
 
-    val optimize = BasicControl.mkPassSimple {
+    val optimize = BasicControl.mkKeepPassSimple {
 	    output = PrintBOM.output,
 	    ext = "bom",
-	    passName = "optimize",
+	    passName = "BOMOptimize",
 	    pass = optimize,
 	    registry = BOMOptControls.registry
 	  }

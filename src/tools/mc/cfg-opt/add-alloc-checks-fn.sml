@@ -156,7 +156,7 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 	  end
 
     val transform =
-       BasicControl.mkPassSimple
+       BasicControl.mkKeepPassSimple
        {output = PrintCFG.output {types=true},
         ext = "cfg",
         passName = "addAllocChecks",

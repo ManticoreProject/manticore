@@ -108,4 +108,10 @@ in
     resolve_lists (false, false)
 end
 
+val resolve =
+   BasicControl.mkTracePassSimple
+   {passName = "resolve",
+    pass = resolve}
+
+
 end

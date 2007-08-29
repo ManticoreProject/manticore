@@ -643,9 +643,13 @@ structure Typechecker : sig
 	        chkTopDcl (span, te, ve, d, fn (te, ve) => chkDcls (te, ve, ds))
 	  val ret = SOME (#1 (chkDcls (Basis.te0, Basis.ve0, dcls)))
 	  in
-	    print "resolve overloading\n";
 	    Overload.resolve ();
 	    ret
 	  end
+
+    val check =
+       BasicControl.mkTracePassSimple
+       {passName = "check",
+        pass = check}
 
   end

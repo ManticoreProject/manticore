@@ -4,12 +4,13 @@
  * All rights reserved.
  *)
 
-structure PrintAST (* : sig
+structure PrintAST : sig
 
     val output : TextIO.outstream * AST.module -> unit
     val print  : AST.module -> unit
+    val printComment : string -> unit
 
-  end *) = struct
+  end = struct
 
     structure A = AST
     structure T = Types
@@ -265,10 +266,14 @@ structure PrintAST (* : sig
 		   
     (* output : TextIO.outstream * A.module -> unit *)
     fun output (outS : TextIO.outstream, m : A.module) = 
-	raise Fail "problem with TextIO stream types...undo this exception \
-                   \and try to compile translate/sources.cm"
-(*	  (str := outS;
-	   module m) *)
+       let
+          val oldStr = !str
+          val () = str := S.openOut {dst = outS, wid = 80}
+          val () = module m
+          val () = str := oldStr
+       in
+          ()
+       end
 				 
     (* print : A.module -> unit *)
     fun print m = (module m;

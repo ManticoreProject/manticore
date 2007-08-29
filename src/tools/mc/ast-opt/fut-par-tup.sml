@@ -109,8 +109,16 @@ structure FutParTup  : sig
     (* module : A.module -> A.module *)
     fun module m = exp m
 
-    (* futurize : A,module -> A.module *)
+    (* futurize : A.module -> A.module *)
     fun futurize m = module m
+
+    val futurize = BasicControl.mkKeepPassSimple {
+	    output = PrintAST.output,
+	    ext = "ast",
+	    passName = "FutParTup.futurize",
+	    pass = futurize,
+	    registry = ASTOptControls.registry
+	  }
 
     (**** tests ****)
 

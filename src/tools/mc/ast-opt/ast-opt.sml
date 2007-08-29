@@ -9,16 +9,22 @@
 
 structure ASTOpt : sig
 
-    val optimize : AST.module -> AST.module option
+    val optimize : AST.module -> AST.module
 
   end = struct
 
-    fun optimize module = (* SOME module *)
-	let val m' = FutParTup.futurize module
-	in
-	    PrintAST.printComment "expression after rewriting parallel tuples -->";
-	    PrintAST.print m';
-	    SOME m'
-	end
+    fun optimize module = let
+          val module = FutParTup.futurize module
+          in
+            module
+          end
+
+    val optimize = BasicControl.mkKeepPassSimple {
+	    output = PrintAST.output,
+	    ext = "ast",
+	    passName = "ASTOptimize",
+	    pass = optimize,
+	    registry = ASTOptControls.registry
+	  }
 
   end
