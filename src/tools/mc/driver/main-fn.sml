@@ -92,16 +92,16 @@ functor MainFn (
 	    codegen (asmFile, cfg)
 	  end
 
-    fun doFile file = BackTrace.monitor (fn () =>let
-          fun doit compFn base = let
-             val () = case Controls.get BasicControl.keepPassBaseName
-                       of NONE => Controls.set (BasicControl.keepPassBaseName, SOME base)
-                        | SOME _ => ()
-             in
-               compFn (Error.mkErrStream file,
-                       file,
-                       OS.Path.joinBaseExt {base = base, ext = SOME "s"})
-             end
+    fun doFile file = BackTrace.monitor (fn () => let
+          fun doit compFn base = (
+		case Controls.get BasicControl.keepPassBaseName
+		 of NONE => Controls.set (BasicControl.keepPassBaseName, SOME base)
+		  | SOME _ => ()
+		(* end case *);
+		compFn (
+		  Error.mkErrStream file,
+		  file,
+		  OS.Path.joinBaseExt {base = base, ext = SOME "s"}))
 	  in
 	    case OS.Path.splitBaseExt file
 	     of {base, ext=SOME "bom"} => doit bomC base
