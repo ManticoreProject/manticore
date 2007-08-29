@@ -44,7 +44,7 @@ structure RunCPP : sig
 	  val proc = Unix.execute(cppCmd, args)
 	  in
 	    { inStrm = Unix.textInstreamOf proc,
-	      reap = ignore(Unix.reap proc)
+	      reap = fn () => ignore(Unix.reap proc)
 	    }
 	  end
 
