@@ -41,14 +41,10 @@ structure RunCPP : sig
 		@ (List.map mkInclude includes)
 		@ [input]
 	  val args = if noLines then "-P" :: args else args
-(*DEBUG
-val _ = print (concat ["Execute: ", cppCmd, " ", String.concatWith " " args,"\n"])
-DEBUG*)
 	  val proc = Unix.execute(cppCmd, args)
-	  val (inStrm, outStrm) = Unix.streamsOf proc
 	  in
-	    { inStrm = inStrm,
-	      reap = fn () => (TextIO.closeOut outStrm; ignore(Unix.reap proc))
+	    { inStrm = Unix.textInstreamOf proc,
+	      reap = ignore(Unix.reap proc)
 	    }
 	  end
 
