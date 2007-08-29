@@ -13,17 +13,19 @@ structure ASTOpt : sig
 
   end = struct
 
-    fun optimize module = let
-          val module = FutParTup.futurize module
-          in
-            module
-          end
+  (* futurize : AST.module -> AST.module *)
+    fun futurize m =
+	let val m' = FutParTup.futurize m
+	in
+	    m'
+	end
 
+  (* optimize : AST.module -> AST.module *)
     val optimize = BasicControl.mkKeepPassSimple {
 	    output = PrintAST.output,
 	    ext = "ast",
 	    passName = "ASTOptimize",
-	    pass = optimize,
+	    pass = futurize,
 	    registry = ASTOptControls.registry
 	  }
 
