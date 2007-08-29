@@ -62,8 +62,10 @@ functor LoaderFn (F : FILE_TYPE) : sig
 			includes = defaultIncludes,
 			input = path
 		      }
+		val content = F.parse(path, inStrm) handle ex => (reap(); raise ex)
 		in
-		  (F.parse(path, inStrm) before reap()) handle ex => (reap(); raise ex)
+		  reap();
+		  content
 		end
 	    | NONE => NONE
 	  (* end case *))
