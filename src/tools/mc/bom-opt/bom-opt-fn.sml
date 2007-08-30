@@ -33,9 +33,9 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 
     fun expandAll module = (case expand module
 	   of SOME module => let
-		val _ = CheckBOM.check ("expand", module)
+		val _ = CheckBOM.check ("expandAll:expand", module)
 		val module = contract module
-		val _ = CheckBOM.check ("contract", module)
+		val _ = CheckBOM.check ("expandAll:contract", module)
 		in
 		  expandAll module
 		end
@@ -54,6 +54,7 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 	  val module = contract module
           val _ = CheckBOM.check ("contract2", module)
 	  val module = expandAll module
+          val _ = CheckBOM.check ("expandAll", module)
 	  val module = caseSimplify module
           val _ = CheckBOM.check ("caseSimplify", module)
 	  in

@@ -22,6 +22,8 @@ typedef tid = enum(0);		(* FIXME: this should be something else *)
 typedef fiber = cont();
 typedef signal = any;
 typedef sigact = cont(signal);
+typedef thunk = fun (any / exh -> any);
+typedef future = ![any, thunk]; (* state, thunk *)
 
 typedef ml_int = [int];
 typedef ml_long = [long];
@@ -33,9 +35,10 @@ typedef ml_double = [double];
 #define FLOAT(f)	wrap(f : float)
 #define DOUBLE(f)	wrap(f : double)
 
-(* constants for builtin datatypss *)
+(* constants for builtin datatypes *)
 #define STOP	enum(0):signal
 #define NIL	enum(0):list
+#define NONE	enum(0):option
 #define QEMPTY	enum(0):rdyq_item
 
 (* constants for futures *)

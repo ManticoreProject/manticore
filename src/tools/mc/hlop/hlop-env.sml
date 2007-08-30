@@ -65,10 +65,9 @@ structure HLOpEnv : sig
     val vprocTy = BTy.T_Any	(* FIXME *)
     val listTy = BTy.T_TyCon Basis.listTyc
 
-    val futureTy = BTy.futureTy
     val ivarTy = BTy.T_Tuple(true, [listTy, BTy.T_Any, BTy.T_Raw BTy.T_Int])
-    val thunkTy = BTy.T_Fun([BTy.unitTy], [BTy.exhTy], [BTy.T_Any])
-    val futureTy = BTy.T_Fun([thunkTy], [BTy.exhTy], [BTy.T_Any])
+    val thunkTy = BTy.thunkTy
+    val futureTy = BTy.futureTy
 
   (* new : string * BTy.ty list * BTy.ty list * H.attributes list -> H.hlop *)
     fun new (name, params, res, attrs) =

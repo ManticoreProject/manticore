@@ -20,7 +20,11 @@ structure CheckBOM : sig
     val v2s = BV.toString
     fun vl2s xs = String.concat["(", String.concatWith "," (List.map v2s xs), ")"]
 
-(**** other version
+(**** Fluet version ****
+    structure Ty = BOMTy
+    structure V = B.Var
+    structure VSet = V.Set
+
     fun addFB (B.FB{f, ...}, env) = VSet.add(env, f)
 
     fun addVars (env, xs) = VSet.addList(env, xs)
@@ -28,7 +32,7 @@ structure CheckBOM : sig
     fun addPat (env, B.P_DCon (_, xs)) = addVars (env, xs)
       | addPat (env, B.P_Const _) = env
 
-    fun check (B.MODULE{name,externs,body}) = let
+    fun check (s : string, B.MODULE{name,externs,body}) = let
 	  val anyErr = ref false
 	  fun err msg = (
 		anyErr := true;
@@ -149,7 +153,7 @@ structure CheckBOM : sig
                       if Ty.equal(ty, Ty.T_Tuple(true, List.map V.typeOf xs))
                          orelse Ty.equal(ty, Ty.T_Tuple(false, List.map V.typeOf xs))
                         then ()
-                        else err["type mismatch in Alloc"])
+                        else err["type mismatch in Alloc: ", vl2s xs])
 		  | ([ty], B.E_Prim p) => chkVars(env, PrimUtil.varsOf p, PrimUtil.nameOf p)
                   | ([ty], B.E_DCon (dcon, args)) => chkVars(env, args, BOMTyCon.dconName dcon)
 		  | ([ty], B.E_CCall(cf, args)) => (
@@ -194,10 +198,12 @@ structure CheckBOM : sig
 		  VSet.empty externs
 	  in
 	    chkFB (env, body);
-	    if !anyErr then raise Fail "broken BOM" else ()
+	    if !anyErr then raise Fail "broken BOM" else ();
+            !anyErr
 	  end (* check *)
-****)
+**** Fluet version ****)
 
+(**** Reppy version ****)
   (* placeholder for testing variable kind equality *)
     fun eqVK _ = true
 
@@ -397,6 +403,7 @@ structure CheckBOM : sig
 	  (* return the error status *)
 	    !anyErrors
 	  end
+(**** Reppy version ****)
 
     val check = BasicControl.mkTracePass {
 	    passName = "bom-check",

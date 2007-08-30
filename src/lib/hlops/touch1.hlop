@@ -8,10 +8,9 @@
 
 #include "types.def"
 
-define @getWork1 () : ();
+define @get-work1 ( / exh : exh) : ();
 
-define @touch1 (fp : ![any, fun (unit / exh -> any)] / exh : exh) : any =
-                         (* state, thunk *)
+define @touch1 (fp : future / exh : exh) : any =
   let tmp : any = CAS (&0(fp), EMPTY_F, EVAL_F)
   if Equal (tmp, EMPTY_F)
     then let f : fun (unit / exh -> any) = #1(fp)
@@ -24,10 +23,10 @@ define @touch1 (fp : ![any, fun (unit / exh -> any)] / exh : exh) : any =
     else if NotEqual (tmp, STOLEN_F)
            then return (tmp)
            else cont k (result: any) = return (result)
-	     let tmp' : any = CAS (&0(fp), STOLEN_F, k)
-	     if Equal (tmp', STOLEN_F)
-	       then @getWork1 ()
-	       else return (tmp')
+	     let tmpX : any = CAS (&0(fp), STOLEN_F, k)
+	     if Equal (tmpX, STOLEN_F)
+	       then @get-work1 ( / exh)
+	       else return (tmpX)
 ;
 
 (*

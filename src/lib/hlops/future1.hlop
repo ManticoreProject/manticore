@@ -8,7 +8,7 @@
 
 #include "types.def"
 
-define @future1 (thunk : fun (unit / exh -> any) / exh : exh) : any =
+define @future1 (thunk : thunk / exh : exh) : any =
   (* a future1 cell consists of two words:
        1) a _state_ word, with one of the following values:
             EMPTY_F   0
@@ -17,7 +17,7 @@ define @future1 (thunk : fun (unit / exh -> any) / exh : exh) : any =
             FULL      value
             WAITING   cont
        2) a _thunk_ word *)
-  let cell : ![any, fun (unit / exh -> any)] = alloc (EMPTY_F, thunk)
+  let cell : ![any, thunk] = alloc (EMPTY_F, thunk)
   (* enqueue the cell *)
   return (cell)
 ;

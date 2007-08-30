@@ -486,6 +486,16 @@ structure Contract : sig
 		      params : BOM.var list,
 		      body : BOM.exp} -> BOM.exp *)
     and inlineApply {env, kid, args, params, body} = let
+        (* I'm investigating a problem here at the mo'. - ams*)
+          (* begin debug *)
+          fun prln s = print (s ^ "\n")
+          fun v bvar = B.Var.toString bvar ^ " : " ^ 
+                       BOMTy.toString (B.Var.typeOf bvar)
+          val catw = String.concatWith
+          val _ = (prln "------\ninlineApply";
+                   prln ("  args: " ^ (catw ", " (map v args)));
+                   prln ("params: " ^ (catw ", " (map v params))))
+          (* end debug *)
 	  val env = U.extend' (env, params, args)
 	  fun adjust (arg, param) = (
 		combineAppUseCnts (arg, param);

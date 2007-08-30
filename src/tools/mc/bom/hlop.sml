@@ -71,8 +71,8 @@ structure HLOp =
 	    
     in
 
-  (* toString : hlop -> string *)
-    fun toString (HLOp {name, id, sign, returns}) =
+  (* toDebugString : hlop -> string *)
+    fun toDebugString (HLOp {name, id, sign, returns}) =
 	let val n = Atom.toString name
 	    val i = Stamp.toString id
 	    val s = sigToString sign

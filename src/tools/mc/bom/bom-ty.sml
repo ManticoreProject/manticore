@@ -64,7 +64,8 @@ structure BOMTy =
     val fiberTy = T_Cont[]
 
     val futureTyc = AbsTyc {name = "future", stamp = Stamp.new (), arity = 1}
-    val futureTy = T_TyCon futureTyc
+    val thunkTy = T_Fun([unitTy], [exhTy], [T_Any])
+    val futureTy = T_Tuple(true, [T_Any, thunkTy])
 
   (* compare types for equality *)
     fun equal (ty1, ty2) =

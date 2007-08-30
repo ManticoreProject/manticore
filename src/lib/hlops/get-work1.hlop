@@ -6,11 +6,21 @@
 
 #include "types.def"
 
-define inline @getWork1 () : () =
-  let w : any = @deq ()
-  case w
-    of SOME(fut : ![any, any]) => @steal1 (fut)
-     | NONE => @getWork1 ((* / exh *))
+define @steal1 (fp : ![any, fun (unit / exh -> any)] / exh : exh) : ();
+
+(* need to define some flavor of dequeue .... *)
+(* define @dequeue ...  *)
+
+define @get-work1 ( / exh : exh) : () =
+  fun loop ( / exh : exh) : () =
+    let w : any = NONE (* @dequeue () *)
+    case w
+      of SOME (fut : ![any, fun (unit / exh -> any)]) => @steal1 (fut / exh)
+       | NONE => apply loop ( / exh)
+    end
+  apply loop ( / exh)
+;
+
 (*
   while (1) {
     case deq()
@@ -18,4 +28,4 @@ define inline @getWork1 () : () =
        | SOME fut => steal1 fut
   } 
 *)
-;
+

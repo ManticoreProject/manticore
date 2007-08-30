@@ -56,6 +56,10 @@ structure BOMBasis : BOM_BASIS =
     val listTy = BTy.T_TyCon listTyc
     val consDC = BOMTyCon.newDataCon listTyc
 	  ("CONS", BTy.Tuple, [BTy.T_Any, listTy])
+    val optionTyc = BOMTyCon.newDataTyc ("option", 1)
+    val optionTy = BTy.T_TyCon optionTyc
+    val someDC = BOMTyCon.newDataCon optionTyc
+	  ("SOME", BTy.Tuple, [BTy.T_Any])
 
     val sigactTy = BTy.T_Cont[signalTy]
 
@@ -70,6 +74,7 @@ structure BOMBasis : BOM_BASIS =
   (* Type-constructor table *)
     val findTyc : Atom.atom -> BOMTy.tyc option = mkTbl (Atom.atom o BOMTyCon.tycName) [
 	    listTyc,
+            optionTyc,
 	    rdyqItemTyc,
 	    signalTyc
 	  ]
@@ -77,6 +82,7 @@ structure BOMBasis : BOM_BASIS =
   (* Data-constructor table *)
     val findDCon : Atom.atom -> BOMTy.data_con option = mkTbl (Atom.atom o BOMTyCon.dconName) [
 	    consDC,
+            someDC,
 	    rdyqConsDC,
 	    preemptDC
 	  ]
