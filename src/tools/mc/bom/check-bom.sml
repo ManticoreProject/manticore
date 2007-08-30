@@ -398,8 +398,6 @@ structure CheckBOM : sig
 	    !anyErrors
 	  end
 
-fun check (_ : string * B.module) = false
-
     val check = BasicControl.mkTracePass {
 	    passName = "bom-check",
 	    pass = check,
