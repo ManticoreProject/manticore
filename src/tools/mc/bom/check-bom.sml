@@ -216,7 +216,6 @@ structure CheckBOM : sig
       = TAIL of (B.var * int)
       | BIND of B.var list
 
-(*
     fun check (phase, module) = let
 	  val B.MODULE{name, externs, body} = module
 	  val anyErrors = ref false
@@ -225,7 +224,7 @@ structure CheckBOM : sig
 	  fun error msg = (
 		if !anyErrors then ()
 		else (
-		  pr ["***** Bogus BOM in ", name, " after ", phase, " *****\n"];
+		  pr ["***** Bogus BOM in ", Atom.toString name, " after ", phase, " *****\n"];
 		  anyErrors := true);
 		pr ("** " :: msg))
 	(* a table mapping variables to their census counts *)
@@ -234,7 +233,7 @@ structure CheckBOM : sig
 		 of SOME _ => error["multiple bindings of ", v2s x, "\n"]
 		  | NONE => VTbl.insert counts (x, {
 			appCnt = BV.appCntOf x,
-			useCnt = BV.useCntOf x
+			useCnt = BV.useCount x
 		      })
 		(* end case *))
 	(* match a list of variables to a context *)
@@ -242,8 +241,7 @@ structure CheckBOM : sig
 		val n = List.length xs
 		in
 		  case cxt
-		   of MODULE => ()
-		    | TAIL(f, arity) => if (arity <> n)
+		   of TAIL(f, arity) => if (arity <> n)
 			then error [
 			    "arity mismatch in ", v2s f, ": returning ", vl2s xs,
 			    " for ", Int.toString arity, " expected results\n"
@@ -256,14 +254,13 @@ structure CheckBOM : sig
 			else ()
 		  (* end case *)
 		end
-	(* match a tail application/goto to a context *)
+	(* match a tail application to a context *)
 	  fun chkApplyContext (cxt, f) = let
-		val rng = BTy.rangeOf(BV.typeOf f)
+		val (_, _, rng) = BTy.asFunTy(BV.typeOf f)
 		val n = List.length rng
 		in
 		  case cxt
-		   of MODULE => error["unexpected tail application in module initialization\n"]
-		    | TAIL(g, arity) => if (arity <> n)
+		   of TAIL(g, arity) => if (arity <> n)
 			then error [
 			    "arity mismatch in ", v2s g, ": returning <", Int.toString n,
 			    " results> for ", Int.toString arity, " expected results\n"
@@ -277,24 +274,33 @@ structure CheckBOM : sig
 		  (* end case *)
 		end
 	(* create a tail context *)
-	  fun tailContext f = TAIL(f, List.length(BTy.rangeOf(BV.typeOf f)))
+	  fun tailContext f = let
+		val (_, _, rng) = BTy.asFunTy(BV.typeOf f)
+		in
+		  TAIL(f, List.length rng)
+		end
 	(* create a bind context *)
 	  fun bindContext vl = BIND vl
 	(* Check that a variable is bound *)
 	  fun chkVar x = if VTbl.inDomain counts x
 		then ()
 		else error["unbound variable ", v2s x, "\n"]
-	  fun chkBinding (x, binding) = if eqVK(BV.bindingOf x, binding)
+	  fun chkBinding (x, binding) = if eqVK(BV.kindOf x, binding)
 		then ()
 		else error[
 		    "binding of ", v2s x, " is ",
-		    vkToString(BV.bindingOf x), " (expected ",
+		    vkToString(BV.kindOf x), " (expected ",
 		    vkToString binding, ")\n"
 		  ]
 	  fun chkBindings (lhs, binding) =
 		List.app (fn x => chkBinding(x, binding)) lhs
+(* FIXME: we should check the kind of the xs, but we don't have a kind for pattern-bound
+ * variables yet!
+ *)
+	  fun chkPat (B.P_DCon(_, xs)) = List.app insert xs
+	    | chkPat (B.P_Const _) = ()
 	(* *)
-	  fun insertFB (f, _, _) = insert f
+	  fun insertFB (B.FB{f, ...}) = insert f
 	  fun chkFB (lambda as B.FB{f, params, exh, body}) = (
 		chkBinding (f, B.VK_Fun lambda);
 		chkBindings (params, B.VK_Param);
@@ -317,55 +323,42 @@ structure CheckBOM : sig
 		      List.app insertFB fbs;
 		      chkE(cxt, e);
 		      List.app chkFB fbs)
-		  | B.E_Cont(fb as B.FB{f, params, exh=[], body}, e) => (
+		  | B.E_Cont(fb as B.FB{f, params, exh, body}, e) => (
 		      chkBinding (f, B.VK_Cont fb);
 		      chkBindings (params, B.VK_Param);
-		      insert k;
+		      insert f;
 		      chkE(cxt, e);
 		      List.app insert params;
+		      if not(null exh)
+			then error[
+			    "continuation ", v2s f, " has non-empty return list"
+			  ]
+			else ();
 		      chkE(cxt, body))
 		  | B.E_If(x, e1, e2) => (chkVar x; chkE(cxt, e1); chkE(cxt, e2))
 		  | B.E_Case(x, cases, dflt) => let
-		      fun chk e = chkE(cxt, e)
+		      fun chk' (pat, e) = (chkPat pat; chkE(cxt, e))
 		      in
 			chkVar x;
-			List.app (chk o #2) cases;
-			Option.app chk dflt
+			List.app chk' cases;
+			Option.app (fn e => chkE(cxt, e)) dflt
 		      end
-		  | B.E_Apply(f, args) => (
-		      chkVar f; List.app chkVar args;
+		  | B.E_Apply(f, args, rets) => (
+		      chkVar f;
+		      List.app chkVar args;
+		      List.app chkVar rets;
 		      chkApplyContext (cxt, f))
 		  | B.E_Throw(k, args) => (
 		      chkVar k; List.app chkVar args)
 		  | B.E_Ret args => (
 		      List.app chkVar args;
 		      chkContext (cxt, args))
-		  | B.E_HLOp(hlop, args, rets) => ??
+		  | B.E_HLOp(hlop, args, rets) => (
+		      List.app chkVar args;
+		      List.app chkVar rets)
+(* FIXME: check the hlop result against the context *)
 		(* end case *))
-	  and chkRHS (lhs, rhs) = (
-		BOMUtil.appRHS chkVar rhs;
-		case rhs
-		 of (B.E_Select(i, x)) => (case BV.typeOf x
-		       of BTy.T_Addr(BTy.T_Struct _) => ()
-			| BTy.T_Ptr(BTy.T_Struct _) => ()
-			| BTy.T_PtrOrEnum{ptrTy=BTy.T_Struct _, ...} => ()
-			| ty => error [
-			      v2s x, " has type ", BTy.toString ty, " (expected struct)\n" 
-			    ]
-		      (* end case *))
-		  | (B.E_Prim prim) => (let
-		      val resTys = CheckPrim.check prim
-		      in
-(* FIXME: check the result types against the lhs variables! *)
-			()
-		      end
-			handle CheckPrim.TypeMismatch(x, ty) => error [
-			    v2s x, " has type ", BTy.toString(BV.typeOf x),
-			    ", expected ", BTy.toString ty, "\n"
-			  ]
-		      (* end handle *))
-		  | _ => ()
-		(* end case *))
+	  and chkRHS (lhs, rhs) = BOMUtil.appRHS chkVar rhs
 	(* check the module's main function *)
 	  fun chkFB (lambda as B.FB{f, params, exh, body}) = (
 		chkBinding (f, B.VK_Fun lambda);
@@ -374,38 +367,37 @@ structure CheckBOM : sig
 		List.app insert params;
 		List.app insert exh;
 		chkE(tailContext f, body))
-	(* check an imported variable *)
-	  fun chkImport x = (
-		insert x;
-		case BV.bindingOf x
-		 of B.VB_Import _ => ()
-		  | vb => error[
-			"imported variable ", v2s x, " has binding ",
-			vkToString vb
+	(* check an external function *)
+	  fun chkExtern (CFunctions.CFun{var, name, ...}) = (
+		insert var;
+		case BV.kindOf var
+		 of B.VK_Extern _ => ()
+		  | vk => error[
+			"extern ", v2s var, " has kind ", vkToString vk
 		      ]
 		(* end case *))
 	(* check old counts against new counts *)
 	  fun checkCnt (x, {appCnt, useCnt}) =
-		if (appCnt <> BV.appCntOf x) orelse (useCnt <> BV.useCntOf x)
+		if (appCnt <> BV.appCntOf x) orelse (useCnt <> BV.useCount x)
 		  then error[
 		      "inconsistant counts for ", v2s x, ": recorded <",
 		      Int.toString useCnt, ":", Int.toString appCnt,
-		      "> vs. actual <", Int.toString(BV.useCntOf x), ":",
+		      "> vs. actual <", Int.toString(BV.useCount x), ":",
 		      Int.toString(BV.appCntOf x), ">\n"
 		    ]
 		  else ()
 	  in
 	  (* record census counts and do initial checking *)
-	    List.app chkImport imports;
+	    List.app chkExtern externs;
 	    chkFB body; insertFB body;
 	  (* recompute census information *)
-	    Census.init module;
+	    Census.census module;
 	  (* check new and old census information *)
 	    VTbl.appi checkCnt counts;
 	  (* return the error status *)
 	    !anyErrors
 	  end
-*)
+
 fun check (_ : string * B.module) = false
 
     val check = BasicControl.mkTracePass {

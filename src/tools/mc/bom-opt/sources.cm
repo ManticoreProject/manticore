@@ -26,7 +26,6 @@ is
   bom-opt-controls.sml
   bom-opt-fn.sml
   case-simplify.sml
-  census.sml
   contract.sml
   uncurry.sml
   expand-hlops.sml
