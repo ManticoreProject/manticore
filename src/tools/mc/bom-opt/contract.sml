@@ -446,7 +446,7 @@ structure Contract : sig
 		val args = U.subst' (env, args)
 		in
 		  case bindingOf k
-		   of B.VK_Cont(B.FB{params, exh, body, ...}) =>
+		   of B.VK_Cont(B.FB{params, body, ...}) =>
 		        if (useCntOf k = 1) andalso (kid = getKID k)
 			  then ( (* beta-reduce function with single call site *)
 			    markInlined k;
@@ -503,13 +503,13 @@ structure Contract : sig
 		val body = doFunBody (U.empty, body, 0)
 		val sum = ticks()
 		in
-(*DEBUG**prl["contract: ", Int.toString(sum - prevSum), " ticks\n"];*)
-(*DEBUG
+(*DEBUG*
+print(concat["contract: ", Int.toString(sum - prevSum), " ticks\n"]);(* *)
 if (prevSum <> sum) then (
     print "******************** after one iteration of contract ********************\n";
     PrintBOM.print(B.MODULE{name=name, externs=externs, body=body}))
   else ();
-DEBUG*)
+*DEBUG*)
 		  if (prevSum <> sum)
 		    then loop (body, sum)
 		    else body
