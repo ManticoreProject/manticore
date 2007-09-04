@@ -6,7 +6,7 @@
 
 structure CheckCPS : sig
 
-    val check : CPS.module -> unit
+    val check : CPS.module -> bool
 
   end = struct
 
@@ -67,9 +67,13 @@ structure CheckCPS : sig
 		  | C.Cont(fb, e) => let
 		      val env = addFB (fb, env)
 		      in
-			chkFB(env, fb); chkExp(env, e)
+			chkFB(env, fb); 
+                        chkExp(env, e)
 		      end
-		  | C.If(x, e1, e2) => (chkVar(env, x, "If"); chkExp(env, e1); chkExp(env, e2))
+		  | C.If(x, e1, e2) => (
+                      chkVar(env, x, "If"); 
+                      chkExp(env, e1); 
+                      chkExp(env, e2))
 		  | C.Switch(x, cases, dflt) => (
 		      chkVar(env, x, "Switch");
 		      List.app (fn (_, e) => chkExp (env, e)) cases;
@@ -99,67 +103,106 @@ structure CheckCPS : sig
 		      chkVar (env, x, "Cast");
 		      if Ty.match(ty', ty) andalso Ty.validCast(V.typeOf x, ty')
 			then ()
-			else err["type mismatch in Cast"])
-		  | ([ty], C.Const(_, ty')) => (
+			else err["type mismatch in Cast: ",
+                                 vl2s lhs, " = (", Ty.toString ty', ")", v2s x])
+		  | ([ty], C.Const(lit, ty')) => (
 		      if Ty.equal(ty', ty)
 			then ()
-                        else err["type mismatch in Const"])
+                        else err["type mismatch in Const: ",
+                                 vl2s lhs, " = ", 
+                                 Literal.toString lit, ":", Ty.toString ty'])
 		  | ([ty], C.Select(i, x)) => (
                       chkVar(env, x, "Select");
                       case V.typeOf x
-                       of Ty.T_Tuple(_, tys) => if Ty.equal(ty, List.nth (tys, i))
-                                                  then ()
-                                                  else err["type mismatch in Select"]
-			| ty => err[v2s x, ":", Ty.toString ty, " is not a tuple"]
+                       of Ty.T_Tuple(_, tys) => 
+                            if Ty.equal(ty, List.nth (tys, i))
+                               then ()
+                               else err["type mismatch in Select: ",
+                                         vl2s lhs, " = #", Int.toString i, 
+                                         "(", v2s x, ")"]
+			| ty => err[v2s x, ":", Ty.toString ty, " is not a tuple: ",
+                                    vl2s lhs, " = #", Int.toString i, "(", v2s x, ")"]
 		      (* end case *))
 		  | ([], C.Update(i, x, y)) => (
                       chkVar(env, x, "Update");
                       chkVar(env, y, "Update");
                       case V.typeOf x
-                       of Ty.T_Tuple(true, tys) => if Ty.equal(V.typeOf y, List.nth (tys, i))
-                                                     then ()
-                                                     else err["type mismatch in Update"]
-			| ty => err[v2s x, ":", Ty.toString ty, " is not a mutable tuple"]
+                       of Ty.T_Tuple(true, tys) => 
+                            if Ty.equal(V.typeOf y, List.nth (tys, i))
+                               then ()
+                               else err["type mismatch in Update: ",
+                                         vl2s lhs, " = #", Int.toString i, 
+                                         "(", v2s x, ",", v2s y, ")"]
+			| ty => err[v2s x, ":", Ty.toString ty, " is not a mutable tuple: ",
+                                    vl2s lhs, " = #", Int.toString i, "(", v2s x, ",", v2s y, ")"]
 		      (* end case *))
 		  | ([ty], C.AddrOf(i, x)) => (
                       chkVar(env, x, "AddrOf");
                       case V.typeOf x
-                       of Ty.T_Tuple(_, tys) => if Ty.equal(ty, Ty.T_Addr(List.nth (tys, i)))
-                                                  then ()
-                                                  else err["type mismatch in AddrOf"]
-			| ty => err[v2s x, ":", Ty.toString ty, " is not a tuple"]
+                       of Ty.T_Tuple(_, tys) => 
+                            if Ty.equal(ty, Ty.T_Addr(List.nth (tys, i)))
+                               then ()
+                               else err["type mismatch in AddrOf: ",
+                                        vl2s lhs, " = &(", v2s x, ")"]
+			| ty => err[v2s x, ":", Ty.toString ty, " is not a tuple: ",
+                                        vl2s lhs, " = &(", v2s x, ")"]
 		      (* end case *))
 		  | ([ty], C.Alloc xs) => (
                       chkVars(env, xs, "Alloc");
                       if Ty.equal(ty, Ty.T_Tuple(true, List.map V.typeOf xs))
                          orelse Ty.equal(ty, Ty.T_Tuple(false, List.map V.typeOf xs))
                         then ()
-                        else err["type mismatch in Alloc"])
+                        else err["type mismatch in Alloc: ",
+                                 vl2s lhs, " = ", vl2s xs])
 		  | ([ty], C.Wrap x) => (
                       chkVar(env, x, "Wrap");
                       case V.typeOf x
-                       of Ty.T_Raw rt => if Ty.equal(ty, Ty.T_Wrap rt)
-                                           then ()
-                                           else err["type mismatch in Wrap"]
-			| ty => err[v2s x, ":", Ty.toString ty, " is not a raw"]
+                       of Ty.T_Raw rt => 
+                            if Ty.equal(ty, Ty.T_Wrap rt)
+                               then ()
+                               else err["type mismatch in Wrap: ",
+                                        vl2s lhs, " = wrap(", v2s x, ")"]
+			| ty => err[v2s x, ":", Ty.toString ty, " is not a raw: ",
+                                    vl2s lhs, " = wrap(", v2s x, ")"]
 		      (* end case *))
 		  | ([ty], C.Unwrap x) => (
                       chkVar(env, x, "Unwrap");
                       case V.typeOf x
-                       of Ty.T_Wrap rt => if Ty.equal(ty, Ty.T_Raw rt)
-                                            then ()
-                                            else err["type mismatch in Unwrap"]
-			| ty => err[v2s x, ":", Ty.toString ty, " is not a wrap"]
+                       of Ty.T_Wrap rt => 
+                            if Ty.equal(ty, Ty.T_Raw rt)
+                               then ()
+                               else err["type mismatch in Unwrap:", 
+                                        vl2s lhs, " = unwrap(", v2s x, ")"]
+			| ty => err[v2s x, ":", Ty.toString ty, " is not a wrap: ",
+                                    vl2s lhs, " = unwrap(", v2s x, ")"]
 		      (* end case *))
 		  | ([ty], C.Prim p) => chkVars(env, PrimUtil.varsOf p, PrimUtil.nameOf p)
 		  | ([ty], C.CCall(cf, args)) => (
-		      chkVar(env, cf, "CCall"); chkVars(env, args, "CCall args"))
+		      chkVar(env, cf, "CCall"); 
+                      chkVars(env, args, "CCall args"))
 		  | ([], C.CCall(cf, args)) => (
-		      chkVar(env, cf, "CCall"); chkVars(env, args, "CCall args"))
-		  | ([ty], C.HostVProc) => ()
-		  | ([ty], C.VPLoad(n, vp)) => chkVar(env, vp, "VPLoad")
+		      chkVar(env, cf, "CCall"); 
+                      chkVars(env, args, "CCall args"))
+		  | ([ty], C.HostVProc) => (
+                      if Ty.equal(ty, Ty.T_VProc)
+                         then ()
+                         else err["type mismatch in HostVProc: ",
+                                  vl2s lhs, " = host_vproc()"])
+		  | ([ty], C.VPLoad(n, vp)) => (
+                      chkVar(env, vp, "VPLoad");
+                      if Ty.equal(V.typeOf vp, Ty.T_VProc)
+                         then ()
+                         else err["type mismatch in VPLoad: ",
+                                  vl2s lhs, " = vpload(", 
+                                  IntInf.toString n, ", ", v2s vp, ")"])
 		  | ([], C.VPStore(n, vp, x)) => (
-		      chkVar(env, vp, "VPStore"); chkVar(env, x, "VPStore"))
+		      chkVar(env, vp, "VPStore"); 
+                      chkVar(env, x, "VPStore");
+                      if Ty.equal(V.typeOf vp, Ty.T_VProc)
+                         then ()
+                         else err["type mismatch in VPStore: ",
+                                  vl2s lhs, " = vpstore(", 
+                                  IntInf.toString n, ", ", v2s vp, ", ", v2s x, ")"])
 		  | _ => err["bogus rhs for ", vl2s lhs]
 		(* end case *))
 	  and chkFB (env, fb as C.FB{f, params, rets, body}) = (
@@ -191,7 +234,7 @@ structure CheckCPS : sig
 		  VSet.empty externs
 	  in
 	    chkFB (env, body);
-	    if !anyErr then raise Fail "broken CPS" else ()
+	    !anyErr
 	  end (* check *)
 
     val check =
