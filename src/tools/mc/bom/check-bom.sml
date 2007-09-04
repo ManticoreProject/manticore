@@ -400,6 +400,13 @@ structure CheckBOM : sig
 	    Census.census module;
 	  (* check new and old census information *)
 	    VTbl.appi checkCnt counts;
+if !anyErrors
+  then (
+    print "******************** broken BOM ********************\n";
+    PrintBOM.print module;
+    print "********************\n";
+    raise Fail "broken BOM")
+  else ();
 	  (* return the error status *)
 	    !anyErrors
 	  end

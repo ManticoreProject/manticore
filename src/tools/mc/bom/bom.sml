@@ -113,6 +113,10 @@ structure BOM =
 		    end
 		| NONE => ()
 	      (* end case *))
+val toString = fn x => (case peekFn x
+       of NONE => concat[toString x, "#", Int.toString(useCount x)]
+	| SOME r => concat[toString x, "#", Int.toString(useCount x), ".", Int.toString(!r)]
+      (* end case *))
 	end (* local val ... *)
 	end (* local structure V = ... *)
       end 
