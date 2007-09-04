@@ -20,6 +20,9 @@ structure ExpandHLOps : sig
     structure ATbl = AtomTable
     structure VTbl = B.Var.Tbl
 
+  (* record a use of a C function *)
+    fun useCFun (CFunctions.CFun{var, ...}) = Census.incUseCnt var
+
     fun expand (module as B.MODULE{name, externs, body}) = let
 	  val changed = ref false
 	(* a table of the lambdas that we are adding to the module.  The domain is the
@@ -27,12 +30,13 @@ structure ExpandHLOps : sig
 	 * the lambdas.
 	 *)
 	  val lambdas = VTbl.mkTable (16, Fail "lambda table")
-	  fun applyHLOp (lambda as B.FB{f, ...}, args, rets) = let
+	  fun applyHLOp (lambda as B.FB{f, ...}, args, rets, cfuns) = let
 		val f' = (case VTbl.find lambdas f
 		       of SOME(B.FB{f, ...}) => f
 			| NONE => let
 			    val lambda as B.FB{f=f', ...} = BU.copyLambda lambda
 			    in
+			      List.app useCFun cfuns;
 			      VTbl.insert lambdas (f, lambda);
 			      f'
 			    end
@@ -71,12 +75,14 @@ structure ExpandHLOps : sig
 		  | B.E_Throw _ => e
 		  | B.E_Ret _ => e
 		  | B.E_HLOp(hlOp, args, rets) => let
-		      val {inline, defn} = HLOpDefLoader.load(importEnv, hlOp)
+		      val {inline, defn, cfuns} = HLOpDefLoader.load(importEnv, hlOp)
 		      in
 			changed := true;
 			if inline
-			  then BU.applyLambda(defn, args, rets)
-			  else applyHLOp(defn, args, rets)
+			  then (
+			    List.app useCFun cfuns;
+			    BU.applyLambda(defn, args, rets))
+			  else applyHLOp(defn, args, rets, cfuns)
 		      end
 		(* end case *))
 	  and cvtLambda (B.FB{f, params, exh, body}) =

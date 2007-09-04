@@ -12,7 +12,8 @@
   (* an environment to keep track of any imports required by the high-level operator *)
     type import_env = BOM.var CFunctions.c_fun AtomTable.hash_table
 
-    val cvtFile : (import_env * HLOpDefPT.file) -> (BOM.hlop * bool * BOM.lambda) list
+    val cvtFile : (import_env * HLOpDefPT.file)
+	  -> (BOM.hlop * bool * BOM.lambda * BOM.var CFunctions.c_fun list) list
 
   end = struct
 
@@ -371,20 +372,23 @@
 		      end
 		(* end case *);
 		env)
-	  fun findCFun name = (case ATbl.find importEnv name
-		 of NONE => raise Fail("Unknown C function " ^ Atom.toString name)
-		  | SOME(CFunctions.CFun{var, ...}) => var
-		(* end case *))
 	  val env = List.foldl insDef emptyEnv defs
 	(* this is the second pass, which converts actual HLOp definitions to BOM lambdas *)
 	  fun cvtDefs [] = []
 	    | cvtDefs (PT.Define(inline, name, params, exh, retTy, SOME e)::defs) = let
 		val hlop = valOf(Env.find name)
 		val retTy = (case retTy of NONE => [] | SOME tys => tys)
+		val cfuns = ATbl.mkTable (16, Fail "cfun table")
+		fun findCFun name = (case ATbl.find importEnv name
+		       of NONE => raise Fail("Unknown C function " ^ Atom.toString name)
+			| SOME(cf as CFunctions.CFun{var, ...}) => (
+			    ATbl.insert cfuns (name, cf);
+			    var)
+		      (* end case *))
 		val (env, doBody) = cvtLambda (findCFun, env, (name, params, exh, retTy, e), Ty.T_Fun)
 		val lambda = doBody env
 		in
-		  (hlop, inline, lambda) :: cvtDefs defs
+		  (hlop, inline, lambda, ATbl.listItems cfuns) :: cvtDefs defs
 		end
 	    | cvtDefs (_::defs) = cvtDefs defs
 	  in
