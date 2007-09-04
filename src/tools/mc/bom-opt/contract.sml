@@ -44,6 +44,7 @@ structure Contract : sig
     val cntCaseConst		= ST.newCounter "contract:case-const"
     val cntBeta			= ST.newCounter "contract:beta"
     val cntBetaCont		= ST.newCounter "contract:beta-cont"
+    val cntUnusedCFun		= ST.newCounter "contract:unused-cfun"
     val firstCounter		= cntUnusedStmt
     val lastCounter		= cntBetaCont
   (* these counters track the number of contraction phases/iterations *)
@@ -307,13 +308,12 @@ structure Contract : sig
 		(* check to see if a function is dead and do the bookkeeping
 		 * if it is.
 		 *)
-		  fun deadFun (lambda as B.FB{f, body, ...}) =
-			if (useCntOf f = 0)
-			  then (
-			    ST.tick cntDeadFun;
-			    C.delete (env, body);
-			    NONE)
-			  else SOME lambda
+		  fun deadFun (lambda as B.FB{f, body, ...}) = if (useCntOf f = 0)
+			then (
+			  ST.tick cntDeadFun;
+			  C.delete (env, body);
+			  NONE)
+			else SOME lambda
 		(* check to see if a function has been inlined or is dead *)
 		  fun deadFun' (lambda as B.FB{f, ...}) =
 			if (isInlined f)
@@ -345,16 +345,23 @@ structure Contract : sig
 		    (* end case *)
 		  end
 	    | B.E_Cont(B.FB{f, params, body, ...}, e) => let
-		  fun isDead () = if (useCntOf f = 0)
+		(* check to see if a continuation is dead and do the bookkeeping
+		 * if it is.
+		 *)
+		  fun deadCont () = if (useCntOf f = 0)
 			then (
 			  ST.tick cntDeadCont;
 			  C.delete (env, body);
 			  true)
 			else false
+		(* check to see if a continuation has been inlined or is dead *)
+		  fun deadCont' () = (isInlined f) orelse deadCont ()
 		  in
-		    if isDead()
+		    if deadCont()
 		      then doExp (env, e, kid)
 		      else let
+		      (* record a bogus kid to avoid recursive inlining *)
+			val _ = setKID(f, ~1)
 			val body' = doExp(env, body, kid)
 		      (* we record the kid as a property of f, so that we
 		       * know when it is correct to inline a throw to f
@@ -364,7 +371,7 @@ structure Contract : sig
 			val e' = doExp(env, e, kid)
 			in
 			  clrKID f;  (* clear KID property *)
-			  if isDead()
+			  if deadCont'()
 			    then e'
 			    else B.mkCont(B.FB{f=f, params=params, exh=[], body=body'}, e')
 			end
@@ -518,7 +525,12 @@ if (prevSum <> sum) then (
 	  val body = LetFloat.denestLambda(body, true)
 	  val body = loop (body, ticks())
 	(* remove unused externs *)
-	  val externs = List.filter (fn cf => not(unused(CFunctions.varOf cf))) externs
+	  fun removeUnusedExtern cf = if unused(CFunctions.varOf cf)
+		then (
+		  ST.tick cntUnusedCFun;
+		  false)
+		else true
+	  val externs = List.filter removeUnusedExtern externs
 	  in
 	    ST.tick cntPhases;
 	    B.MODULE{name=name, externs=externs, body=body}
