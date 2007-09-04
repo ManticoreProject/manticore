@@ -480,11 +480,12 @@ structure Contract : sig
 	    lambda'
 	  end
 
-    (* inlineApply : {env : BOMUtil.subst,
-		      kid : int,
-		      args : BOM.var list,
-		      params : BOM.var list,
-		      body : BOM.exp} -> BOM.exp *)
+  (* inlineApply : {env : BOMUtil.subst,
+		    kid : int,
+		    args : BOM.var list,
+		    params : BOM.var list,
+		    body : BOM.exp} -> BOM.exp
+   *)
     and inlineApply {env, kid, args, params, body} = let
 	  val env = U.extend' (env, params, args)
 	  fun adjust (arg, param) = (
