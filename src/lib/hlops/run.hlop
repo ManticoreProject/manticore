@@ -11,7 +11,7 @@ define @switch-to (vp : vproc, tid : tid, fiber : fiber) noreturn;
 
 define inline @run (vp : vproc, act : sigact, tid : tid, fiber : fiber) noreturn =
   let stk : [sigact, any] = vpload (VP_ACTION_STK, vp)
-  let item : [sigact, any] = alloc (act, stk)
+  let item : [sigact, any] = alloc (act, (any)stk)
   do vpstore (VP_ACTION_STK, vp, item)
   @switch-to (vp, tid, fiber)
 ;

@@ -13,6 +13,6 @@ define @switch-to (vp : vproc, tid : tid, fiber : fiber) noreturn;
 
 define inline @dispatch (vp : vproc) noreturn =
     let qitem : rdyq_item = @dequeue (vp)
-    let item : [tid, fiber, any] = ([tid, fiber, any]) qitem
+    let item : [tid, fiber, rdyq_item] = ([tid, fiber, rdyq_item]) qitem
     @switch-to (vp, #0(item), #1(item))
 ;
