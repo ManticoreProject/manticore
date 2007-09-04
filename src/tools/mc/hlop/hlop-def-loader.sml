@@ -79,8 +79,9 @@ DEBUG*)
 		  case Loader.load fileName
 		   of SOME pt => let
 			val defs = Expand.cvtFile(importEnv, pt)
-			fun record (hlOp, inline, lambda) =
-			      ATbl.insert cache (HLOp.name hlOp, {inline=inline, defn=lambda})
+			fun record (hlOp, inline, lambda) = (
+			      Census.initLambda lambda;
+			      ATbl.insert cache (HLOp.name hlOp, {inline=inline, defn=lambda}))
 			in
 			  List.app record defs;
 			  ATbl.lookup cache opName
