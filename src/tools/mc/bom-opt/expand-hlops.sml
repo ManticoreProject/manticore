@@ -28,7 +28,7 @@ structure ExpandHLOps : sig
 	 *)
 	  val lambdas = VTbl.mkTable (16, Fail "lambda table")
 	  fun applyHLOp (lambda as B.FB{f, ...}, args, rets) = let
-		val f = (case VTbl.find lambdas f
+		val f' = (case VTbl.find lambdas f
 		       of SOME(B.FB{f, ...}) => f
 			| NONE => let
 			    val lambda as B.FB{f=f', ...} = BU.copyLambda lambda
@@ -38,7 +38,8 @@ structure ExpandHLOps : sig
 			    end
 		      (* end case *))
 		in
-		  B.mkApply(f, args, rets)
+		  Census.incAppCnt f';
+		  B.mkApply(f', args, rets)
 		end
 	(* initialize the import environment with the current list of external
 	 * C functions.
