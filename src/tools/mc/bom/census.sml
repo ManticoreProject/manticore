@@ -18,6 +18,7 @@ structure Census : sig
     val delete : (BOMUtil.subst * BOM.exp) -> unit
 
   (* update variable counts *)
+    val clear : BOM.var -> unit		(* clear both use and application counts *)
     val incUseCnt : BOM.var -> unit	(* increment use count *)
     val incAppCnt : BOM.var -> unit	(* increment both use and application counts *)
     val decUseCnt : BOM.var -> unit	(* decrement use count *)
@@ -28,7 +29,7 @@ structure Census : sig
     structure B = BOM
     structure U = BOMUtil
 
-    fun clr x = (B.Var.clrCount x; B.Var.appCntRmv x)
+    fun clear x = (B.Var.clrCount x; B.Var.appCntRmv x)
     fun inc x = B.Var.addToCount(x, 1)
 
   (* record an application use *)
@@ -40,13 +41,13 @@ structure Census : sig
 	  end
 
     fun doE (B.E_Pt(_, t)) = (case t
-	   of B.E_Let(lhs, e1, e2) => (List.app clr lhs; doE e1; doE e2)
-	    | B.E_Stmt(lhs, rhs, e) => (List.app clr lhs; BOMUtil.appRHS inc rhs; doE e)
+	   of B.E_Let(lhs, e1, e2) => (List.app clear lhs; doE e1; doE e2)
+	    | B.E_Stmt(lhs, rhs, e) => (List.app clear lhs; BOMUtil.appRHS inc rhs; doE e)
 	    | B.E_Fun(fbs, e) => (List.app clrFB fbs; List.app doFB fbs; doE e)
 	    | B.E_Cont(fb, e) => (clrFB fb; doFB fb; doE e)
 	    | B.E_If(x, e1, e2) => (inc x; doE e1; doE e2)
 	    | B.E_Case(x, cases, dflt) => let
-		fun doCase (B.P_DCon(_, args), e) = (List.app clr args; doE e)
+		fun doCase (B.P_DCon(_, args), e) = (List.app clear args; doE e)
 		  | doCase (_, e) = doE e
 		in
 		  inc x;
@@ -60,13 +61,13 @@ structure Census : sig
 	  (* end case *))
 
     and clrFB (B.FB{f, params, exh, ...}) = (
-	  clr f;
-	  List.app clr params; List.app clr exh)
+	  clear f;
+	  List.app clear params; List.app clear exh)
 
     and doFB (B.FB{body, ...}) = doE body
 
     fun census (B.MODULE{externs, body, ...}) = let
-	  fun clrCFun cf = clr(CFunctions.varOf cf)
+	  fun clrCFun cf = clear(CFunctions.varOf cf)
 	  in
 	    List.app clrCFun externs;
 	    clrFB body;
