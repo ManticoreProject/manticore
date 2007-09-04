@@ -20,7 +20,6 @@ typedef exn = any;
 typedef exh = cont(exn);
 typedef tid = enum(0);		(* FIXME: this should be something else *)
 typedef fiber = cont();
-typedef signal = any;
 typedef sigact = cont(signal);
 typedef thunk = fun (any / exh -> any);
 typedef future = ![any, thunk]; (* state, thunk *)
