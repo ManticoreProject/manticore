@@ -126,12 +126,14 @@ structure BOMUtil : sig
     fun freshVar (s, x) = let
 	  val x' = BV.copy x
 	  in
+	    BV.combineAppUseCnts (x', x);
 	    (extend(s, x, x'), x')
 	  end
     fun freshVars (s, xs) = let
 	  fun fresh (x::xs, s, xs') = let
 		val x' = BV.copy x
 		in
+		  BV.combineAppUseCnts (x', x);
 		  fresh(xs, extend(s, x, x'), x'::xs')
 		end
 	    | fresh ([], s, xs') = (s, List.rev xs')
@@ -214,14 +216,21 @@ structure BOMUtil : sig
 	  (* end case *))
 
   (* beta-reduce a lambda application; the resulting term will have
-   * fresh bound variables.
+   * fresh bound variables.  This operation also correctly preserves the
+   * census counts of the parameters and arguments (but not the function
+   * name itself), assuming that the original counts are correct.
    *)
     fun applyLambda (B.FB{f, params, exh, body}, args, rets) = let
 	  val s = extend' (empty, params, args)
 		    handle _ => raise Fail("param/arg mismatch in application of " ^ BV.toString f)
 	  val s = extend' (s, exh, rets)
 		    handle _ => raise Fail("exh/rets mismatch in application of " ^ BV.toString f)
+	  fun adjust (arg as VarRep.V{useCnt, ...}, param) = (
+		BV.combineAppUseCnts (arg, param);
+		useCnt := !useCnt - 1)
 	  in
+	    ListPair.app adjust (args, params);
+	    ListPair.app adjust (rets, exh);
 	    copyExp' (s, body)
 	  end
 
