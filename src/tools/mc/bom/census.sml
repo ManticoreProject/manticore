@@ -10,6 +10,8 @@ structure Census : sig
 
     val census : BOM.module -> unit
 
+    val initLambda : BOM.lambda -> unit
+
   (* For each variable use (and application use) in the expression, decrement
    * the (renamed) variable's count by one.
    *)
@@ -26,7 +28,7 @@ structure Census : sig
     structure B = BOM
     structure U = BOMUtil
 
-    val clr = B.Var.clrCount
+    fun clr x = (B.Var.clrCount x; B.Var.appCntRmv x)
     fun inc x = B.Var.addToCount(x, 1)
 
   (* record an application use *)
@@ -51,14 +53,14 @@ structure Census : sig
 		  List.app doCase cases;
 		  Option.app doE dflt
 		end
-	    | B.E_Apply(k, xs, ys) => (appUse k; List.app inc xs; List.app inc ys)
+	    | B.E_Apply(f, xs, ys) => (appUse f; List.app inc xs; List.app inc ys)
 	    | B.E_Throw(k, xs) => (appUse k; List.app inc xs)
 	    | B.E_Ret xs => List.app inc xs
 	    | B.E_HLOp(_, xs, ys) => (List.app inc xs; List.app inc ys)
 	  (* end case *))
 
     and clrFB (B.FB{f, params, exh, ...}) = (
-	  clr f; B.Var.appCntRmv f;
+	  clr f;
 	  List.app clr params; List.app clr exh)
 
     and doFB (B.FB{body, ...}) = doE body
@@ -70,6 +72,8 @@ structure Census : sig
 	    clrFB body;
 	    doFB body
 	  end
+
+    fun initLambda fb = (clrFB fb; doFB fb)
 
     fun delete (env, e) = let
 	  val subst = U.subst env
