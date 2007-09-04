@@ -30,7 +30,7 @@ structure BOMTy =
 	  stamp : Stamp.stamp,		(* a unique stamp *)
 	  nNullary : int,		(* the number of nullary constructors *)
 	  cons : data_con list ref,	(* list of non-nullary constructors *)
-	  rep : ty option ref		(* a cache of the representation type *)
+	  rep : ty option ref 		(* a cache of the representation type *)
 	}
       | AbsTyc of {
 	  name : string,
@@ -86,6 +86,7 @@ structure BOMTy =
              ListPair.allEq equal (argTys1, argTys2)
         | (T_CFun c_proto1, T_CFun c_proto2) =>
              c_proto1 = c_proto2
+        | (T_VProc, T_VProc) => true
         | (T_TyCon tyc1, T_TyCon tyc2) => tyc_equal (tyc1, tyc2)
         | _ => false 
     and tyc_equal (tyc1, tyc2) =
@@ -108,6 +109,30 @@ structure BOMTy =
 	    | (_, T_Raw _) => false
 	    | (T_Any, _) => true
 	    | (_, T_Any) => true
+            | (ty1 as T_TyCon (DataTyc {cons, ...}), ty2) =>
+                equal(ty1, ty2) orelse
+                List.exists (fn DCon {rep, argTy, ...} => 
+                             let
+                                val castTy = 
+                                   case rep of
+                                      Transparent => (case argTy of [ty] => ty)
+                                    | Tuple => T_Tuple (false, argTy)
+                                    | TaggedTuple tag => T_Tuple (false, (T_Enum tag) :: argTy)
+                             in
+                                equal (castTy, ty2)
+                             end) (!cons)
+            | (ty1, ty2 as T_TyCon (DataTyc {cons, ...})) =>
+                equal(ty1, ty2) orelse
+                List.exists (fn DCon {rep, argTy, ...} => 
+                             let
+                                val castTy = 
+                                   case rep of
+                                      Transparent => (case argTy of [ty] => ty)
+                                    | Tuple => T_Tuple (false, argTy)
+                                    | TaggedTuple tag => T_Tuple (false, (T_Enum tag) :: argTy)
+                             in
+                                equal (castTy, ty1)
+                             end) (!cons)
 	    | _ => equal(ty1, ty2)
 	  (* end case *))
 
