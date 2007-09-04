@@ -15,16 +15,13 @@ structure CheckBOM : sig
     structure B = BOM
     structure BV = B.Var
     structure VTbl = BV.Tbl
+    structure VSet = BV.Set
     structure BTy = BOMTy
 
     val v2s = BV.toString
     fun vl2s xs = String.concat["(", String.concatWith "," (List.map v2s xs), ")"]
 
-(**** Fluet version ****
-    structure Ty = BOMTy
-    structure V = B.Var
-    structure VSet = V.Set
-
+(**** Fluet version ****)
     fun addFB (B.FB{f, ...}, env) = VSet.add(env, f)
 
     fun addVars (env, xs) = VSet.addList(env, xs)
@@ -32,7 +29,7 @@ structure CheckBOM : sig
     fun addPat (env, B.P_DCon (_, xs)) = addVars (env, xs)
       | addPat (env, B.P_Const _) = env
 
-    fun check (s : string, B.MODULE{name,externs,body}) = let
+    fun checkTypes (s : string, B.MODULE{name,externs,body}) = let
 	  val anyErr = ref false
 	  fun err msg = (
 		anyErr := true;
@@ -48,61 +45,67 @@ structure CheckBOM : sig
 		  | chk (l, []) = err[Int.toString(length l), " too few arguments in ", cxt]
 		  | chk ([], l) = err[Int.toString(length l), " too many arguments in ", cxt]
 		  | chk (ty::tys, x::xs) = (
-		      if (Ty.match(V.typeOf x, ty))
+		      if (BTy.match(BV.typeOf x, ty))
 			then ()
 			else err[
-			    "type mismatch in ", cxt, "\n  expected  ", Ty.toString ty,
-			    "\n  but found ", v2s x, ":", Ty.toString(V.typeOf x)
+			    "type mismatch in ", cxt, "\n  expected  ", BTy.toString ty,
+			    "\n  but found ", v2s x, ":", BTy.toString(BV.typeOf x)
 			  ];
 		      chk(tys, xs))
 		in
 		  chk (paramTys, args)
 		end
-	  fun chkExp (env, B.E_Pt(_,e)) = (case e
+	  fun chkExp (env, B.E_Pt(_,e), expTys) = (case e
                  of B.E_Let(lhs, rhs, e) => (
-                      chkExp (addVars(env, lhs), e))
+                      chkExp (env, rhs, List.map BV.typeOf lhs);
+                      chkExp (addVars(env, lhs), e, expTys))
 		  | B.E_Stmt(lhs, rhs, e) => (
 		      chkRHS(env, lhs, rhs);
-		      chkExp (addVars(env, lhs), e))
+		      chkExp (addVars(env, lhs), e, expTys))
 		  | B.E_Fun(fbs, e) => let
 		      val env = List.foldl addFB env fbs
 		      in
 			List.app (fn fb => chkFB(env, fb)) fbs;
-			chkExp(env, e)
+			chkExp(env, e, expTys)
 		      end
 		  | B.E_Cont(fb, e) => let
 		      val env = addFB (fb, env)
 		      in
-			chkFB(env, fb); chkExp(env, e)
+			chkFB(env, fb); 
+                        chkExp(env, e, expTys)
 		      end
-		  | B.E_If(x, e1, e2) => (chkVar(env, x, "If"); chkExp(env, e1); chkExp(env, e2))
+		  | B.E_If(x, e1, e2) => (
+                      chkVar(env, x, "If"); 
+                      chkExp(env, e1, expTys); 
+                      chkExp(env, e2, expTys))
 		  | B.E_Case(x, cases, dflt) => (
 		      chkVar(env, x, "Switch");
-		      List.app (fn (p, e) => chkExp (addPat (env, p), e)) cases;
-		      Option.app (fn e => chkExp (env, e)) dflt)
+		      List.app (fn (p, e) => chkExp (addPat (env, p), e, expTys)) cases;
+		      Option.app (fn e => chkExp (env, e, expTys)) dflt)
 		  | B.E_Apply(f, args, exhs) => (
-		      chkVar (env, f, "Apply");
-		      case V.typeOf f
-		       of Ty.T_Fun(argTys, exhTys, _) => (
+		      chkVar (env, f, "Apply function");
+		      case BV.typeOf f
+		       of BTy.T_Fun(argTys, exhTys, retTys) => (
 			    chkVars (env, args, "Apply args");
 			    chkVars (env, exhs, "Apply exhs");
 			    checkArgs (argTys, args, concat["Apply ", v2s f, " args"]);
 			    checkArgs (exhTys, exhs, concat["Apply ", v2s f, " exhs"]))
-			| ty => err[v2s f, ":", Ty.toString ty, " is not a function"]
+			| ty => err[v2s f, ":", BTy.toString ty, " is not a function"]
 		      (* end case *))
 		  | B.E_Throw(k, args) => (
 		      chkVar (env, k, "Throw");
-		      case V.typeOf k
-		       of Ty.T_Cont(argTys) => (
+		      case BV.typeOf k
+		       of BTy.T_Cont(argTys) => (
 			    chkVars (env, args, "Throw args");
 			    checkArgs (argTys, args, "Throw " ^ v2s k))
-			| ty => err[v2s k, ":", Ty.toString ty, " is not a continuation"]
+			| ty => err[v2s k, ":", BTy.toString ty, " is not a continuation"]
 		      (* end case *))
                   | B.E_Ret(args) => (
-                      chkVars (env, args, "Return"))
+                      chkVars (env, args, "Return args");
+                      checkArgs (expTys, args, concat ["Return ", vl2s args]))
                   | B.E_HLOp(hlop as HLOp.HLOp {sign as {params as argTys, exh as exhTys, 
                                                          results as resTys}, ...},
-                             args,exhs) => (
+                             args, exhs) => (
                       chkVars (env, args, "HLOP args");
                       chkVars (env, exhs, "HLOP exhs");
                       let 
@@ -113,57 +116,92 @@ structure CheckBOM : sig
                       end;
 		      checkArgs (exhTys, exhs, "HLOP " ^ (HLOp.toString hlop))
 		(* end case *)))
-	  and chkRHS (env, lhs, rhs) = (case (List.map V.typeOf lhs, rhs)
-		 of ([ty], B.E_Const(_, ty')) => (
-		      if Ty.equal(ty', ty)
+	  and chkRHS (env, lhs, rhs) = (case (List.map BV.typeOf lhs, rhs)
+		 of ([ty], B.E_Const(lit, ty')) => (
+		      if BTy.equal(ty', ty)
 			then ()
-			else err["type mismatch in Const"])
+			else err["type mismatch in Const: ", 
+                                 vl2s lhs, " = ", 
+                                 Literal.toString lit, ":", BTy.toString ty'])
 		  | ([ty], B.E_Cast(ty', x)) => (
 		      chkVar (env, x, "Cast");
-		      if Ty.match(ty', ty) andalso Ty.validCast(V.typeOf x, ty')
+		      if BTy.match(ty', ty) andalso BTy.validCast(BV.typeOf x, ty')
 			then ()
-			else err["type mismatch in Cast"])
+			else err["type mismatch in Cast: ", 
+                                 vl2s lhs, " = (", BTy.toString ty', ")", v2s x])
 		  | ([ty], B.E_Select(i, x)) => (
                       chkVar(env, x, "Select");
-                      case V.typeOf x
-                       of Ty.T_Tuple(_, tys) => if Ty.equal(ty, List.nth (tys, i))
-                                                  then ()
-                                                  else err["type mismatch in Select"]
-			| ty => err[v2s x, ":", Ty.toString ty, " is not a tuple"]
+                      case BV.typeOf x
+                       of BTy.T_Tuple(_, tys) => 
+                             if BTy.equal(ty, List.nth (tys, i))
+                                then ()
+                                else err["type mismatch in Select: ",
+                                         vl2s lhs, " = #", Int.toString i, 
+                                         "(", v2s x, ")"]
+			| ty => err[v2s x, ":", BTy.toString ty, " is not a tuple: ",
+                                    vl2s lhs, " = #", Int.toString i, "(", v2s x, ")"]
 		      (* end case *))
 		  | ([], B.E_Update(i, x, y)) => (
                       chkVar(env, x, "Update");
                       chkVar(env, y, "Update");
-                      case V.typeOf x
-                       of Ty.T_Tuple(true, tys) => if Ty.equal(V.typeOf y, List.nth (tys, i))
-                                                     then ()
-                                                     else err["type mismatch in Update"]
-			| ty => err[v2s x, ":", Ty.toString ty, " is not a mutable tuple"]
+                      case BV.typeOf x
+                       of BTy.T_Tuple(true, tys) => 
+                              if BTy.equal(BV.typeOf y, List.nth (tys, i))
+                                 then ()
+                              else err["type mismatch in Update: ",
+                                       "#", Int.toString i, "(", v2s x, ") := ", v2s y]
+			| ty => err[v2s x, ":", BTy.toString ty, " is not a mutable tuple",
+                                    "#", Int.toString i, "(", v2s x, ") := ", v2s y]
 		      (* end case *))
 		  | ([ty], B.E_AddrOf(i, x)) => (
                       chkVar(env, x, "AddrOf");
-                      case V.typeOf x
-                       of Ty.T_Tuple(_, tys) => if Ty.equal(ty, Ty.T_Addr(List.nth (tys, i)))
-                                                  then ()
-                                                  else err["type mismatch in AddrOf"]
-			| ty => err[v2s x, ":", Ty.toString ty, " is not a tuple"]
+                      case BV.typeOf x
+                       of BTy.T_Tuple(_, tys) => 
+                              if BTy.equal(ty, BTy.T_Addr(List.nth (tys, i)))
+                                 then ()
+                              else err["type mismatch in AddrOf: ",
+                                       vl2s lhs, " = &(", v2s x, ")"]
+			| ty => err[v2s x, ":", BTy.toString ty, " is not a tuple",
+                                    vl2s lhs, " = &(", v2s x, ")"]
 		      (* end case *))
-		  | ([ty], B.E_Alloc (_, xs)) => (
+		  | ([ty], B.E_Alloc (allocTy, xs)) => (
                       chkVars(env, xs, "Alloc");
-                      if Ty.equal(ty, Ty.T_Tuple(true, List.map V.typeOf xs))
-                         orelse Ty.equal(ty, Ty.T_Tuple(false, List.map V.typeOf xs))
+                      if BTy.equal (ty, allocTy) andalso
+                         (BTy.equal(ty, BTy.T_Tuple(true, List.map BV.typeOf xs))
+                          orelse BTy.equal(ty, BTy.T_Tuple(false, List.map BV.typeOf xs)))
                         then ()
-                        else err["type mismatch in Alloc: ", vl2s xs])
-		  | ([ty], B.E_Prim p) => chkVars(env, PrimUtil.varsOf p, PrimUtil.nameOf p)
-                  | ([ty], B.E_DCon (dcon, args)) => chkVars(env, args, BOMTyCon.dconName dcon)
+                        else err["type mismatch in Alloc: ", 
+                                 vl2s lhs, " = ", vl2s xs])
+		  | ([ty], B.E_Prim p) => (
+                      chkVars(env, PrimUtil.varsOf p, PrimUtil.nameOf p))
+                  | ([ty], B.E_DCon (dcon, args)) => (
+                      chkVars(env, args, BOMTyCon.dconName dcon))
 		  | ([ty], B.E_CCall(cf, args)) => (
-		      chkVar(env, cf, "CCall"); chkVars(env, args, "CCall args"))
+		      chkVar(env, cf, "CCall"); 
+                      chkVars(env, args, "CCall args"))
 		  | ([], B.E_CCall(cf, args)) => (
-		      chkVar(env, cf, "CCall"); chkVars(env, args, "CCall args"))
-		  | ([ty], B.E_HostVProc) => ()
-		  | ([ty], B.E_VPLoad(n, vp)) => chkVar(env, vp, "VPLoad")
+		      chkVar(env, cf, "CCall"); 
+                      chkVars(env, args, "CCall args"))
+		  | ([ty], B.E_HostVProc) => (
+                      if BTy.equal(ty, BTy.T_VProc)
+                         then ()
+                         else err["type mismatch in HostVProc: ",
+                                  vl2s lhs, " = host_vproc()"])
+		  | ([ty], B.E_VPLoad(n, vp)) => (
+                      chkVar(env, vp, "VPLoad");
+                      if BTy.equal(BV.typeOf vp, BTy.T_VProc)
+                         then ()
+                         else err["type mismatch in VPLoad: ",
+                                  vl2s lhs, " = vpload(", 
+                                  IntInf.toString n, ", ", v2s vp, ")"])
 		  | ([], B.E_VPStore(n, vp, x)) => (
-		      chkVar(env, vp, "VPStore"); chkVar(env, x, "VPStore"))
+		      chkVar(env, vp, "VPStore"); 
+                      chkVar(env, x, "VPStore");
+                      if BTy.equal(BV.typeOf vp, BTy.T_VProc)
+                         then ()
+                         else err["type mismatch in VPStore: ",
+                                  vl2s lhs, " = vpstore(", 
+                                  IntInf.toString n, ", ", v2s vp, ", ", v2s x, ")"])
 		  | _ => err["bogus rhs for ", vl2s lhs]
 		(* end case *))
 	  and chkFB (env, fb as B.FB{f, params, exh, body}) = (let
@@ -171,37 +209,36 @@ structure CheckBOM : sig
 		  | chk (_, []) = err["too few parameters in ", v2s f]
 		  | chk ([], _) = err["too many parameters in ", v2s f]
 		  | chk (ty::tys, x::xs) = (
-		      if (Ty.equal(V.typeOf x, ty))
+		      if (BTy.equal(BV.typeOf x, ty))
 			then ()
 			else err[
-			    "type mismatch in ", v2s f, "\n  expected  ", Ty.toString ty,
-			    "\n  but found ", v2s x, ":", Ty.toString(V.typeOf x)
+			    "type mismatch in ", v2s f, "\n  expected  ", BTy.toString ty,
+			    "\n  but found ", v2s x, ":", BTy.toString(BV.typeOf x)
 			  ];
 		      chk(tys, xs))
+                val (argTys, exhTys, retTys) =
+                      case BV.typeOf f
+                       of BTy.T_Fun(argTys, exhTys, retTys) =>
+                              (argTys, exhTys, retTys)
+                        | BTy.T_Cont(argTys) =>
+                              (argTys, [], [])
+                        | ty => (err["expected function/continuation type for ",
+                                     v2s f, ":", BTy.toString(BV.typeOf f)];
+                                 ([],[],[]))
+                      (* end case *)
                 in
-		case V.typeOf f
-		 of Ty.T_Fun(argTys, exhTys, retTys) => (
-			chk(argTys, params);
-			chk(exhTys, exh))
-                  | Ty.T_Cont(argTys) => (
-			chk(argTys, params);
-			chk([], exh))
-		  | ty => err[
-			"expected function/continuation type for ",
-			v2s f, ":", Ty.toString(V.typeOf f)
-		      ]
-		(* end case *);
-		chkExp (addVars(addVars(env, params), exh), body)
+                chk(argTys, params);
+                chk(exhTys, exh);
+		chkExp (addVars(addVars(env, params), exh), body, retTys)
                 end)
 	  val env = List.foldl
 		(fn (cf, env) => VSet.add(env, CFunctions.varOf cf))
 		  VSet.empty externs
 	  in
 	    chkFB (env, body);
-	    if !anyErr then raise Fail "broken BOM" else ();
             !anyErr
 	  end (* check *)
-**** Fluet version ****)
+(**** Fluet version ****)
 
 (**** Reppy version ****)
   (* placeholder for testing variable kind equality *)
@@ -222,7 +259,7 @@ structure CheckBOM : sig
       = TAIL of (B.var * int)
       | BIND of B.var list
 
-    fun check (phase, module) = let
+    fun checkCensus (phase, module) = let
 	  val B.MODULE{name, externs, body} = module
 	  val anyErrors = ref false
 	(* report an error *)
@@ -411,6 +448,10 @@ if !anyErrors
 	    !anyErrors
 	  end
 (**** Reppy version ****)
+
+    fun check (phase, module) =
+       checkTypes (phase, module)
+       (* andalso checkCensus (phase, module) *)
 
     val check = BasicControl.mkTracePass {
 	    passName = "bom-check",
