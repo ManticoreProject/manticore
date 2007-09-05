@@ -55,9 +55,13 @@ dnl check to see if a x86-darwin host supports 64-bit executables
 dnl
 if test $OS = darwin -a $ARCH = x86 -a $CROSS_COMPILING = 0; then
   if test -x /usr/sbin/sysctl ; then
+    AC_MSG_CHECKING([for 64-bit support])
     /usr/sbin/sysctl -n machdep.cpu.extfeatures | grep -q EM64T
     if test $? = 0 ; then
       TARGET_CPU=TARGET_X86_64; ARCH=x86_64
+      AC_MSG_RESULT(yes)
+    else
+      AC_MSG_RESULT(no)
     fi
   fi
 fi
@@ -78,6 +82,7 @@ if test $ARCH = x86_64 -a $CROSS_COMPILING = 0; then
 else
   CC_MODE_FLAG=""
 fi
+CFLAGS="$CFLAGS $CC_MODE_FLAG"
 AC_SUBST(CC_MODE_FLAG)
 
 
