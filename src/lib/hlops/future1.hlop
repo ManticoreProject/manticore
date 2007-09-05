@@ -17,7 +17,7 @@ define @future1 (thunk : thunk / exh : exh) : any =
             FULL      value
             WAITING   cont
        2) a _thunk_ word *)
-  let cell : ![any, thunk] = alloc (EMPTY_F, thunk)
+  let cell : future = alloc (EMPTY_F, thunk)
   (* enqueue the cell *)
   return (cell)
 ;

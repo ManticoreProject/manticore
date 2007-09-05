@@ -6,13 +6,14 @@
 
 #include "types.def"
 
-define @steal1 (fp : ![any, fun (unit / exh -> any)] / exh : exh) : ();
+define @steal1 (fp : future / exh : exh) : ();
 
 (* need to define some flavor of dequeue .... *)
 (* define @dequeue ...  *)
 
 define @get-work1 ( / exh : exh) : () =
   fun loop ( / exh : exh) : () =
+    (* FIXME: This is a bogus stub implementation. *)
     let w : any = NONE (* @dequeue () *)
     case w
       of SOME (fut : ![any, fun (unit / exh -> any)]) => @steal1 (fut / exh)

@@ -8,7 +8,7 @@
 
 #include "types.def"
 
-define @steal1 (fp : ![any, fun (unit / exh -> any)] / exh : exh) : () =
+define @steal1 (fp : future / exh : exh) : () =
                   (* state, thunk *)
   let tmp : any = CAS (&0(fp), EMPTY_F, STOLEN_F)
   if Equal (tmp, EMPTY_F) 
