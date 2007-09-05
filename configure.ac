@@ -51,6 +51,18 @@ AC_SUBST(TARGET_OS)
 AC_SUBST(TARGET)
 
 dnl
+dnl check to see if a x86-darwin host supports 64-bit executables
+dnl
+if test $OS = darwin -a $ARCH = x86 -a $CROSS_COMPILING = 0; then
+  if test -x /usr/sbin/sysctl ; then
+    /usr/sbin/sysctl -n machdep.cpu.extfeatures | grep -q EM64T
+    if test $? = 0 ; then
+      TARGET_CPU=TARGET_X86_64; ARCH=x86_64
+    fi
+  fi
+fi
+
+dnl
 dnl check for --disable-64 flag
 dnl
 if test $ARCH = x86_64 -a $CROSS_COMPILING = 0; then
