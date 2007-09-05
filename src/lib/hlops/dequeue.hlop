@@ -9,16 +9,16 @@
 #include "runtime-offsets.def"
 #include "types.def"
 
-define @dequeue-slow-path (vp : vproc) : rdyq_item;
+define @dequeue-slow-path (vp : vproc / exh : exh) : rdyq_item;
 
-define inline @dequeue (vp : vproc) : rdyq_item =
+define inline @dequeue (vp : vproc / exh : exh) : rdyq_item =
   let hd : rdyq_item = vpload (VP_RDYQ_HD, vp)
   case hd of 
      QITEM (_, _, link:rdyq_item) =>
        do vpstore (VP_RDYQ_HD, vp, link)
        return (hd)
    | QEMPTY =>
-       let item : rdyq_item = @dequeue-slow-path(vp)
+       let item : rdyq_item = @dequeue-slow-path(vp / exh)
        return (item)
   end
 ;

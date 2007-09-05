@@ -8,25 +8,25 @@
 
 #include "types.def"
 
-define inline @enqueue (vp : vproc, tid : tid, fiber : fiber) : ();
-define inline @dequeue (vp : vproc) : rdyq_item;
-define inline @run (vp : vproc, act : sigact, tid : tid, fiber : fiber) noreturn;
-define @scheduler-startup (act : sigact) : ();
+define inline @enqueue (vp : vproc, tid : tid, fiber : fiber / exh : exh) : ();
+define inline @dequeue (vp : vproc / exh : exh) : rdyq_item;
+define inline @run (vp : vproc, act : sigact, tid : tid, fiber : fiber / exh : exh) noreturn;
+define @scheduler-startup (act : sigact / exh : exh) : ();
 
-define @default-scheduler-startup () : () = 
+define @default-scheduler-startup ( / exh : exh) : () = 
   cont switch (s : signal) =
     cont dispatch () =
-      let qitem : rdyq_item = @dequeue (host_vproc)
+      let qitem : rdyq_item = @dequeue (host_vproc / exh)
       let item : [tid, fiber, rdyq_item] = ([tid, fiber, rdyq_item]) qitem
       let tid : tid = #0 (item)
       let fiber : fiber = #1 (item)
-      @run (host_vproc, switch, tid, fiber)
+      @run (host_vproc, switch, tid, fiber / exh)
     if Equal (s, STOP)
       then throw dispatch ()
       else let k : fiber = (fiber)s
            let tid : tid = enum(0)
-           do @enqueue (host_vproc, tid, k)
+           do @enqueue (host_vproc, tid, k / exh)
            throw dispatch () 
-  do @scheduler-startup (switch)
+  do @scheduler-startup (switch / exh)
   return ()
 ;

@@ -10,28 +10,28 @@
 
 extern void *ListVProcs (void *) __attribute__((alloc));
 
-define inline @spawn-on (f : fun (unit / exh -> unit), dst : vproc) : tid;
-define inline @run (vp : vproc, act : sigact, tid : tid, fiber : fiber) noreturn;
-define inline @thread-exit () noreturn;
+define inline @spawn-on (f : fun (unit / exh -> unit), dst : vproc / exh : exh) : tid;
+define inline @run (vp : vproc, act : sigact, tid : tid, fiber : fiber / exh : exh) noreturn;
+define inline @thread-exit ( / exh : exh) noreturn;
 
-define @scheduler-startup (act : sigact) : () =
+define @scheduler-startup (act : sigact / exh : exh) : () =
   fun init (_ : unit / exh : exh) : unit =
-    cont k () = @thread-exit ()
-    @run (host_vproc, act, enum(0), k)
+    cont k () = @thread-exit ( / exh)
+    @run (host_vproc, act, enum(0), k / exh)
   let self : vproc = host_vproc
-  fun spawnOnAll (vps : list) : () =
+  fun spawnOnAll (vps : list / exh : exh) : () =
     case vps of
        NIL => return ()
      | CONS (vp:vproc, rest:list) =>
          if Equal (vp, self)
-	   then apply spawnOnAll (rest)
-           else let _ : tid = @spawn-on (init, vp)
-                apply spawnOnAll (rest)
+	   then apply spawnOnAll (rest / exh)
+           else let _ : tid = @spawn-on (init, vp / exh)
+                apply spawnOnAll (rest / exh)
     end
   cont startup () =
     (* install the scheduler on remote vprocs *)
     let vps : list = ccall ListVProcs(self)
-    do apply spawnOnAll (vps)
+    do apply spawnOnAll (vps / exh)
     return ()
-  @run (self, act, enum(0), startup)
+  @run (self, act, enum(0), startup / exh)
 ;

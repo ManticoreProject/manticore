@@ -7,7 +7,7 @@
 #include "runtime-offsets.def"
 #include "types.def"
 
-define inline @switch-to (vp : vproc, tid : tid, fiber : fiber) noreturn =
+define inline @switch-to (vp : vproc, tid : tid, fiber : fiber / exh : exh) noreturn =
   do vpstore (CURRENT_TID, vp, tid)
   do vpstore (ATOMIC, vp, FALSE)
   throw fiber ()

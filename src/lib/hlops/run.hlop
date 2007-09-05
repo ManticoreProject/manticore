@@ -7,11 +7,11 @@
 #include "runtime-offsets.def"
 #include "types.def"
 
-define @switch-to (vp : vproc, tid : tid, fiber : fiber) noreturn;
+define @switch-to (vp : vproc, tid : tid, fiber : fiber / exh : exh) noreturn;
 
-define inline @run (vp : vproc, act : sigact, tid : tid, fiber : fiber) noreturn =
+define inline @run (vp : vproc, act : sigact, tid : tid, fiber : fiber / exh : exh) noreturn =
   let stk : [sigact, any] = vpload (VP_ACTION_STK, vp)
   let item : [sigact, any] = alloc (act, (any)stk)
   do vpstore (VP_ACTION_STK, vp, item)
-  @switch-to (vp, tid, fiber)
+  @switch-to (vp, tid, fiber / exh)
 ;

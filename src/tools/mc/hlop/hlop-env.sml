@@ -62,7 +62,7 @@ structure HLOpEnv : sig
     val signalTy = BTy.T_TyCon Basis.signalTyc
     val sigActTy = BTy.T_Cont[signalTy]
 
-    val vprocTy = BTy.T_Any	(* FIXME *)
+    val vprocTy = BTy.T_VProc
     val listTy = BTy.T_TyCon Basis.listTyc
 
     val ivarTy = BTy.T_Tuple(true, [listTy, BTy.T_Any, BTy.T_Raw BTy.T_Int])
@@ -83,19 +83,19 @@ structure HLOpEnv : sig
 
   (* high-level operations used to implement Manticore language constructs *)
     val listAppendOp = new("list-append", [listTy, listTy], [], [])
-    val spawnOp = new("spawn", [BTy.T_Fun([], [exhTy], [])], [tidTy], [])
-    val threadExitOp = new("thread-exit", [], [], [H.NORETURN])
+    val spawnOp = newWithExh("spawn", [BTy.T_Fun([], [exhTy], [])], [tidTy], [])
+    val threadExitOp = newWithExh("thread-exit", [], [], [H.NORETURN])
     val iVarOp = new("iVar", [], [ivarTy], [])
     val iGetOp = new("iGet", [ivarTy], [BTy.T_Any], [])
     val iPutOp = new("iPut", [ivarTy, BTy.T_Any], [], [])
 
   (* scheduler operations *)
-    val defaultSchedulerStartupOp = new("default-scheduler-startup", [], [], [])
-    val schedulerStartupOp = new("scheduler-startup", [sigActTy], [], [])
-    val runOp = new("run", [vprocTy, sigActTy, tidTy, fiberTy], [], [H.NORETURN])
-    val forwardOp = new("forward", [vprocTy, signalTy], [], [H.NORETURN])
-    val dequeueOp = new("dequeue", [vprocTy], [Basis.rdyqItemTy], [])
-    val enqueueOp = new("enqueue", [vprocTy, tidTy, fiberTy], [], [])
+    val defaultSchedulerStartupOp = newWithExh("default-scheduler-startup", [], [], [])
+    val schedulerStartupOp = newWithExh("scheduler-startup", [sigActTy], [], [])
+    val runOp = newWithExh("run", [vprocTy, sigActTy, tidTy, fiberTy], [], [H.NORETURN])
+    val forwardOp = newWithExh("forward", [vprocTy, signalTy], [], [H.NORETURN])
+    val dequeueOp = newWithExh("dequeue", [vprocTy], [Basis.rdyqItemTy], [])
+    val enqueueOp = newWithExh("enqueue", [vprocTy, tidTy, fiberTy], [], [])
 
   (* futures *)
     val futureOp = newWithExh ("future", [thunkTy], [futureTy], [])

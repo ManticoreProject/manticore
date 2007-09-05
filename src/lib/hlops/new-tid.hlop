@@ -10,4 +10,6 @@
 
 #include "types.def"
 
-define @new-tid (vp : vproc) : tid = return (enum(0) : tid);
+define @new-tid (vp : vproc / exh : exh) : tid = 
+  return (enum(0) : tid)
+;

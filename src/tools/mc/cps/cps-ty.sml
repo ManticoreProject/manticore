@@ -20,7 +20,7 @@ structure CPSTy =
       | T_Fun of (ty list * ty list)	(* function/continuation type; the second list of types *)
 					(* are the types of the return continuations and can *)
 					(* have 0, 1, or 2 entries.  The first is the normal return *)
-					(* continuatioj and the second is the exception-handler *)
+					(* continuation and the second is the exception-handler *)
 					(* continuation *)
       | T_CFun of CFunctions.c_proto	(* C functions *)
       | T_VProc				(* address of VProc runtime structure *)

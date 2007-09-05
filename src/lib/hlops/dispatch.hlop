@@ -8,11 +8,11 @@
 
 #include "types.def"
 
-define @dequeue (vp : vproc) : (tid, fiber);
-define @switch-to (vp : vproc, tid : tid, fiber : fiber) noreturn;
+define @dequeue (vp : vproc / exh : exh) : (tid, fiber);
+define @switch-to (vp : vproc, tid : tid, fiber : fiber / exh : exh) noreturn;
 
-define inline @dispatch (vp : vproc) noreturn =
-    let qitem : rdyq_item = @dequeue (vp)
+define inline @dispatch (vp : vproc / exh : exh) noreturn =
+    let qitem : rdyq_item = @dequeue (vp / exh)
     let item : [tid, fiber, rdyq_item] = ([tid, fiber, rdyq_item]) qitem
-    @switch-to (vp, #0(item), #1(item))
+    @switch-to (vp, #0(item), #1(item) / exh)
 ;

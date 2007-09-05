@@ -8,6 +8,8 @@
 
 #include "types.def"
 
-define inline @forward (vp : vproc, sig : signal) noreturn;
+define inline @forward (vp : vproc, sig : signal / exh : exh) noreturn;
 
-define inline @thread-exit () noreturn = @forward (host_vproc, STOP);
+define inline @thread-exit ( / exh : exh) noreturn = 
+  @forward (host_vproc, STOP / exh)
+;
