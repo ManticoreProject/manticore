@@ -50,6 +50,9 @@ structure FutParLet (* : sig
     (* Unlike VSet.delete, this doesn't throw an exception if the elt is absent. *)
     fun minus (s, x) = VSet.difference (s, VSet.singleton x)
 
+    (* plus : VSet.set * Var.var -> VSet.set *)
+    fun plus (s, x) = VSet.union (s, VSet.singleton x)
+
     (* varsInPat : A.pat -> VSet.set *)
     val varsInPat =
 	let (* vs : A.pat -> A.var list *)
@@ -101,7 +104,7 @@ structure FutParLet (* : sig
 	  in
 	      (A.SpawnExp e', pLive')
 	  end
-      | exp (k as A.ConstExp _, pLive) = (k, pLive)
+      | exp (k as A.ConstExp _, _) = (k, VSet.empty)
       | exp (v as A.VarExp (x, ts), pLive) = 
 	  if VSet.member (pLive, x) 
 	  then (F.mkTouch v, VSet.singleton x)
@@ -127,17 +130,18 @@ structure FutParLet (* : sig
 	  end
       | letExp (A.PValBind (p, e1), e2, pLive) = 
 	  (case p
-	     of A.VarPat x =>
-                   (* We'll handle a relatively easy case for starters. *)
+	     of A.ConPat (c, ts, p) => todo "letExp | PValBind | ConPat"
+	      | A.TuplePat ps => todo "letExp | PValBind | TuplePat"
+	      | A.VarPat x =>
 		let val (e1', live1) = exp (e1, pLive)
 		    val e1f = F.mkFuture e1'
-		    val xf  = Var.new ("xf", TypeOf.exp e1f)
-		    val (e2', live2) = exp (e2, pLive)
-		    val e2t = 
+		    val xf  = Var.new (Var.nameOf x ^ "f", TypeOf.exp e1f)
+		    val e2' = 
 			let val s = VarSubst.singleton (x, xf)
 			in
-			    VarSubst.touchExp s e2'
+			    VarSubst.exp s e2
 			end
+		    val (e2t, live2) = exp (e2', plus (pLive, xf))
 		    val pliveOut = 
 			let val s = grandUnion [VSet.singleton xf, live1, live2]
 			in
@@ -146,7 +150,10 @@ structure FutParLet (* : sig
 		in
 		    (A.LetExp (A.ValBind (A.VarPat xf, e1f), e2t), pliveOut)
 		end
-	      | _ => todo "letExp.PValBind")
+	      | A.WildPat t =>  todo "letExp | PValBind | WildPat"
+ 	      | A.ConstPat k => todo "letExp | PValBind | ConstPat"
+	    (* end case *))
+
 (*
 The more general idea is to transform
 
@@ -156,17 +163,13 @@ The more general idea is to transform
 
              let val f = future (fn () => case e
                                             of p => vs p
-            (* where vs p produces the list or tuple of vars in p *)
-                                             | _ => raise Bind)
+            (* where vs p produces the tuple of vars in p *))
              in
-                 [x -> nth (touch f, n)] e' (* if f is a list *)
-                 (* or alternatively *)
                  [x -> #n (touch f)] e'     (* if f is a tuple *)
                  (* where n is the position of x in (vs p) *)
              end
 
-             We don't yet (8/23) have # or nth in our language.
-             (We don't have exceptions yet either.)
+             (We don't have exceptions yet.)
 
              -ams
 *)
@@ -221,10 +224,26 @@ The more general idea is to transform
 	(* t2 = let pval x = fact 10 in if true then x else 1 *)
 	val t2 = 
 	    let val x = Var.new ("x", Basis.intTy)
-		val xexp = A.VarExp (x, [])
-		val b = U.ifexp (U.trueExp, xexp, U.int 1)
+		val b = U.ifexp (U.trueExp, A.VarExp (x, []), U.int 1)
 	    in
 		U.plet (x, U.fact 10, b)
+	    end
+
+	(* t3 = let pval x = fact 10 in
+                let pval y = fact 11 in
+                if true then x else y *)
+	val t3 =
+	    let val x = Var.new ("x", Basis.intTy)
+		val y = Var.new ("y", Basis.intTy)
+		val i = U.ifexp (U.trueExp,
+				 A.VarExp (x, []),
+				 A.VarExp (y, []))
+	    in
+		U.plet (x, 
+			U.fact 10,
+			U.plet (y,
+				U.fact 11,
+				i))
 	    end
 
 	(* testPVal : A.exp -> unit *)
@@ -234,7 +253,7 @@ The more general idea is to transform
 
     in
         (* test : int -> unit *)
-        val test = U.mkTest testPVal [t0,t1,t2]
+        val test = U.mkTest testPVal [t0,t1,t2,t3]
     end
 
   end

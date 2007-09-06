@@ -60,15 +60,12 @@ structure VarSubst (* : sig
 	    f p
 	end
 
-    (* touchExp : subst -> A.exp -> A.exp *)
-    (* Given a subst like [x -> xf] and an expression (x + 2), *)
-    (*   produces ((touch xf) + 2). *)
-    (* n.b. Type-preserving. *)
-    fun touchExp s e =
+    (* expWalk : (A.var * A.ty list -> A.exp) -> subst -> A.exp -> A.exp *)
+    fun expWalk f s e =
 	let fun exp (A.LetExp (b, e)) = A.LetExp (binding b, exp e)
 	      | exp (A.IfExp (e1, e2, e3, t)) =
 		  A.IfExp (exp e1, exp e2, exp e3, t)
-	      | exp (A.CaseExp (e, pes, t)) = todo  "touchExp.exp | CaseExp"
+	      | exp (A.CaseExp (e, pes, t)) = todo  "expWalk.exp | CaseExp"
 	      | exp (A.FunExp (x, e, t)) = A.FunExp (x, exp e, t)
 	      | exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, t)
 	      | exp (A.TupleExp es) = A.TupleExp (map exp es)
@@ -76,20 +73,41 @@ structure VarSubst (* : sig
 		  A.RangeExp (exp e1, exp e2, Option.map exp oe3, t)
 	      | exp (A.PTupleExp es) = A.PTupleExp (map exp es)
 	      | exp (A.PArrayExp (es, t)) = A.PArrayExp (map exp es, t)
-	      | exp (A.PCompExp (e, pes, opred)) = todo "touchExp.exp | PCompExp"
+	      | exp (A.PCompExp (e, pes, opred)) = todo "expWalk.exp | PCompExp"
 	      | exp (A.PChoiceExp (es, t)) = A.PChoiceExp (map exp es, t)
 	      | exp (A.SpawnExp e) = A.SpawnExp (exp e) 
 	      | exp (k as A.ConstExp _) = k
-	      | exp (v as A.VarExp (x, ts)) = 
-		  (case VarMap.find (s, x)
-		     of NONE => v
-		      | SOME x' => F.mkTouch (A.VarExp (x', ts)))
+	      | exp (v as A.VarExp (x, ts)) = f (x, ts)
 	      | exp (A.SeqExp (e1, e2)) = A.SeqExp (exp e1, exp e2)
 	      | exp (ov as A.OverloadExp _) = ov
 	    and binding (A.ValBind (p, e)) = A.ValBind (pat s p, exp e)
-	      | binding _ = todo "touchExp.binding"
+	      | binding (A.PValBind (p, e)) = A.PValBind (pat s p, exp e)
+	      | binding _ = todo "expWalk.binding"
 	in
 	    exp e
+	end
+	
+    (* exp : subst -> A.exp -> A.exp *)
+    (* Given a subst like [x -> y] and an expression (x + 2), *)
+    (*   produces (y + 2). *)
+    fun exp s =
+	let fun f (x, ts) = (case VarMap.find (s, x)
+			      of NONE => A.VarExp (x, ts)
+			       | SOME x' => A.VarExp (x', ts))
+	in
+	    expWalk f s
+	end
+
+    (* touchExp : subst -> A.exp -> A.exp *)
+    (* Given a subst like [x -> xf] and an expression (x + 2), *)
+    (*   produces ((touch xf) + 2). *)
+    (* n.b. Type-preserving when x : 'a and xf : 'a future. *)
+    fun touchExp s =
+	let fun f (x, ts) = (case VarMap.find (s, x)
+				  of NONE => A.VarExp (x, ts)
+				   | SOME x' =>  F.mkTouch (A.VarExp (x', ts)))
+	in
+	    expWalk f s
 	end
 
   end
