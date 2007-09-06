@@ -71,18 +71,21 @@ structure Futures (* : sig
     val cancel1 = polyVar (Atom.atom "cancel1",
 			   fn tv => futureTy tv --> Basis.unitTy)
 
-    (* mkFut : var -> A.exp -> A.exp *)
-    (* Note: The given expression will be thunkified. *)
-    fun mkFut futvar e = 
-	let val t = TypeOf.exp e
-	    val unitTy = Basis.unitTy
-	    val thunkVar = Var.new ("thunk", T.FunTy (unitTy, t))
-	    val thunk = A.FB (thunkVar, Var.new ("u", unitTy), e)
+    (* mkThunk : A.exp -> A.exp *)
+    (* Consumes e; produces (fn u => e) (for fresh u : unit). *)
+    fun mkThunk e =
+	let val te = TypeOf.exp e
+	    val uTy = Basis.unitTy
 	in
-	    A.LetExp (A.FunBind [thunk],
-		      A.ApplyExp (A.VarExp (futvar, [t]),
-				  A.VarExp (thunkVar, []),
-				  futureTy t))		      
+	    A.FunExp (Var.new ("u", uTy), e, T.FunTy (uTy, te))
+	end
+
+    (* mkFut : var -> A.exp -> A.exp *)
+    (* Consumes e; produces future (fn u => e). *)
+    fun mkFut futvar e = 
+	let val te = TypeOf.exp e
+	in
+	    A.ApplyExp (A.VarExp (futvar, [te]), mkThunk e, futureTy te)
 	end
 
     (* mkFuture : A.exp -> A.exp *)
@@ -124,7 +127,10 @@ structure Futures (* : sig
 		    A.ApplyExp (touch, e, t)
 		end
 	    else
-		raise Fail "touch: argument is not a future"
+		let val ts = Var.toString touchvar
+		in 
+		    raise Fail (ts ^ ": argument is not a future")
+		end
 
 	(* mkCan : var -> A.exp -> A.exp *)
 	fun mkCan cancelvar e =
@@ -134,7 +140,11 @@ structure Futures (* : sig
 		    A.ApplyExp (cancel, e, Basis.unitTy)
 		end
 	    else
-		raise Fail "cancel: argument is not a future"
+		let val cs = Var.toString cancelvar
+		in
+		    raise Fail (cs ^ ": argument is not a future")
+		end
+
     in
 
     (* mkTouch : A.exp -> A.exp *)

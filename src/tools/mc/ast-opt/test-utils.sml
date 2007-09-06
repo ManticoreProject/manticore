@@ -99,7 +99,13 @@ structure TestUtils =
 
     (* plet : var * A.exp * A.exp -> A.exp *)
     fun plet (x, e, e') = A.LetExp (A.PValBind (A.VarPat x, e), e')
-			      
+		
+    (* trueExp : A.exp *)
+    val trueExp = A.ConstExp (A.DConst (Basis.boolTrue, []))
+
+    (* falseExp : A.exp *)
+    val falseExp = A.ConstExp (A.DConst (Basis.boolFalse, []))
+
     (* test : (A.exp -> A.exp) -> A.exp -> unit *)
     fun test ee e = (P.print e;
 		     P.printComment "-->";
