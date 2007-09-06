@@ -414,11 +414,11 @@ structure CheckBOM : sig
 			checkArgTypes (concat["HLOP ", (HLOp.toString hlop), " rets"], exhTys, typesOf rets);
 			case (returns, cxt)
 			 of (true, TAIL(g, tys)) =>
-			      checkArgTypes (concat["HLOP ", (HLOp.toString hlop), " in ", v2s g], tys, typesOf rets)
+			      checkArgTypes (concat["HLOP ", (HLOp.toString hlop), " in ", v2s g], tys, resTys)
 			  | (true, BIND ys) =>
 			      checkArgTypes (
 				concat["binding ", vl2s ys, " to HLOP ", (HLOp.toString hlop)],
-				typesOf ys, typesOf rets)
+				typesOf ys, resTys)
 			  | (false, _) => ()
 			(* end case *)
 		      end
