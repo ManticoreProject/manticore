@@ -10,7 +10,7 @@
 
 structure FutParLet : sig
 
-    val futurize : A.module -> A.module
+    val futurize : AST.module -> AST.module
     val test : int -> unit
 
   end = 

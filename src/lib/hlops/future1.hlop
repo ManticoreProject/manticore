@@ -8,7 +8,9 @@
 
 #include "types.def"
 
-define @future1 (thunk : thunk / exh : exh) : any =
+extern void enqueueG (void *);
+
+define @future1 (thunk : thunk / exh : exh) : future =
   (* a future1 cell consists of two words:
        1) a _state_ word, with one of the following values:
             EMPTY_F   0
@@ -18,6 +20,7 @@ define @future1 (thunk : thunk / exh : exh) : any =
             WAITING   cont
        2) a _thunk_ word *)
   let cell : future = alloc (EMPTY_F, thunk)
-  (* enqueue the cell *)
+  let vp : vproc = host_vproc
+  do ccall enqueueG (vp);
   return (cell)
 ;

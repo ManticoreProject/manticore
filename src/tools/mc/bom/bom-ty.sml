@@ -146,6 +146,7 @@ structure BOMTy =
 	    | (T_Raw rty1, T_Raw rty2) => (rty1 = rty2)
 	    | (T_Raw _, _) => false
 	    | (_, T_Raw _) => false
+	    | (T_Any, _) => true
 	    | (_, T_Any) => true
 	    | (T_Fun(argTys1, exhTys1, retTys1), T_Fun(argTys2, exhTys2, retTys2)) =>
 	      (* NOTE contravariance! *)

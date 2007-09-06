@@ -18,9 +18,10 @@
  * Note this rewriting is type preserving.
  *)
 
-structure FutParTup  : sig
+structure FutParTup : sig
 
     val futurize : AST.module -> AST.module
+    val test : int -> unit
 
   end  = 
 
@@ -123,47 +124,34 @@ structure FutParTup  : sig
     (**** tests ****)
 
     local
+
 	structure U = TestUtils
-	infixr arrow
-	(* (arrow) : T.ty * T.ty -> T.ty *)
-	fun dom arrow rng = A.FunTy (dom, rng)
-	val intTy = Basis.intTy
-	(* int : int -> A.Exp *)
-	fun int n = A.ConstExp (A.LConst (Literal.Int n, intTy))
-	(* ptup : A.exp list -> A.exp *)
-	fun ptup es = A.PTupleExp es
-	val fact = A.VarExp (Var.new ("fact", intTy arrow intTy), [])
-        (* apply : A.exp -> A.exp -> A.exp *)
-	fun apply e1 e2 = 
-	      let val rty = (case TypeOf.exp e1
-			       of T.FunTy (d, r) => r
-				| _ => raise Fail "expected a function")
-	      in
-		  A.ApplyExp (e1, e2, rty)
-	      end
-	(* sep : string option -> unit *)
-	fun sep NONE = PrintAST.printComment "-->"
-	  | sep (SOME s) = PrintAST.printComment (s ^ " -->")
+
 	(* test cases *)
-	val t0 = ptup [(apply fact o int) 10,
-		       (apply fact o int) 11]
-	val t1 = ptup [t0, t0]
-	val t2 = ptup (map (apply fact o int) [10,11,12,13,14])
-	val t3 = ptup [ptup [apply fact (int 10),
-			     apply fact (int 11)],
-		       apply fact (int 15)]
+
+	(* t0 = (| fact 10, fact 11 |) *)
+	val t0 = U.ptup [U.fact 10, U.fact 11]
+
+	(* t1 = (| (| fact 10, fact 11|), (| fact 10, fact 11 |) |) *)
+	val t1 = U.ptup [t0, t0]
+
+	(* t2 = (| fact 10, fact 11, fact 12, fact 13, fact 14 |) *)
+	val t2 = U.ptup (map U.fact [10,11,12,13,14])
+
+	(* t3 = (| (| fact 10, fact 11 |), fact 12 |) *)
+	val t3 = U.ptup [U.ptup [U.fact 10,
+				 U.fact 11],
+			 U.fact 12]
+
 	(* test : A.exp -> unit *)
-	fun test e = (PrintAST.print e;
-		      sep (SOME "futurizing");
-		      PrintAST.print (futurize e))
+	fun testPTup e = (PrintAST.print e;
+			  U.describe (SOME "futurizing");
+			  PrintAST.print (futurize e))
     in
-        fun test0 () = test t0
-	fun test1 () = test t1
-	fun test2 () = test t2
-        fun test3 () = test t3
-	fun test4 () = (PrintAST.print t1;
-			sep (SOME "flattening");
-			test (FlatParTup.flattenModule t1))
+
+        (* test : int -> unit *)
+        val test = U.mkTest testPTup [t0,t1,t2,t3]
+
     end
 
   end

@@ -302,7 +302,10 @@ structure Nester (* : sig
 		funFromLam lam
 	    end
 
-	val testTup = U.test fromExp'
+	(* testTup : A.exp -> unit *)
+	fun testTup e = (PrintAST.print e;
+			 U.describe NONE;
+			 PrintAST.print (fromExp' e))
 
 	val t0 = U.ptup [U.int 1, U.ptup [U.int 2, U.int 3]]
 	val t1 = U.ptup [U.int 1, U.ptup [U.some (U.int 2),

@@ -106,24 +106,23 @@ structure TestUtils =
     (* falseExp : A.exp *)
     val falseExp = A.ConstExp (A.DConst (Basis.boolFalse, []))
 
-    (* test : (A.exp -> A.exp) -> A.exp -> unit *)
-    fun test ee e = (P.print e;
-		     P.printComment "-->";
-		     P.print (ee e))
-
-    (* tell : int -> unit *)
-    fun tell n = 	 
-	let val msg = "Please choose a test value \
-                      \between 0 and " ^
-		      Int.toString (n-1) ^
-		      ".\n"
-	in
-	    print msg
-	end
+    (* describe : string option -> unit *)
+    fun describe NONE = P.printComment "-->"
+      | describe (SOME s) = P.printComment (s ^ " -->")
 
     (* mkTest : ('a -> unit) -> 'a list -> (int -> unit) *)
     fun mkTest testFunction terms n = testFunction (List.nth (terms, n))
-	handle Subscript => tell (List.length terms)
-          (* | UnequalLengths => print "why?\n" *)
+	handle Subscript => 
+	       let fun println s = print (s ^ "\n")
+		   fun tell n = 	
+		       let val nstr = Int.toString (n-1)
+			   val msg = "Please choose a test value \
+				     \between 0 and " ^ nstr ^ "."
+		       in
+			   println msg
+		       end
+	       in
+		   tell (length terms)
+	       end
 	
   end
