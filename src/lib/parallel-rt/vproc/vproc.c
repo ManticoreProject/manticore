@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <signal.h>
 #include <ucontext.h>
-#if defined (OPSYS_DARWIN)
+#if defined (TARGET_DARWIN)
 #  include <CoreServices/CoreServices.h>	/* for MPProcessors */
 #endif
 #include "os-memory.h"
@@ -45,6 +45,17 @@ VProc_t			*VProcs[MAX_NUM_VPROCS];
 int			NextVProc;			/* index of next slot in VProcs */
 
 extern int ASM_VProcSleep;
+
+/* Macros for accessing the register fields in the ucontext */
+#if defined(TARGET_LINUX)
+#  define UC_R11(uc)	((uc)->uc_mcontext.gregs[REG_R11])
+#  define UC_RIP(uc)	((uc)->uc_mcontext.gregs[REG_RIP])
+#elif defined(TARGET_DARWIN)
+#  define UC_R11(uc)	((uc)->uc_mcontext->ss.r11)
+#  define UC_RIP(uc)	((uc)->uc_mcontext->ss.rip)
+#else
+#  error unsupported OS
+#endif
 
 
 /* VProcInit:
@@ -351,14 +362,14 @@ static void SigHandler (int sig, siginfo_t *si, void *_sc)
     if (DebugFlg)
 	SayDebug("[%2d] inManticore = %p, atomic = %p, pc = %p\n",
 	    self->id, self->inManticore, self->atomic,
-	    uc->uc_mcontext.gregs[REG_RIP]);
+	    UC_RIP(uc));
 #endif
     self->sigPending = M_TRUE;
     if ((self->inManticore == M_TRUE) && (self->atomic == M_FALSE)) {
       /* set the limit pointer to zero to force a context switch on
        * the next GC test.
        */
-	uc->uc_mcontext.gregs[REG_R11] = 0;
+	UC_R11(uc) = 0;
     }
 
 } /* SignHandler */
@@ -379,7 +390,7 @@ static int GetNumCPUs ()
 	fclose (cpuinfo);
 	return n;
     }
-#elif defined(OPSYS_DARWIN)
+#elif defined(TARGET_DARWIN)
     return MPProcessors ();
 #else
     return 0;

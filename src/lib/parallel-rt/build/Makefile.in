@@ -7,9 +7,9 @@
 #
 
 CC =		@CC@
-CFLAGS =	@CFLAGS@ @PTHREAD_CFLAGS@ @CC_MODE_FLAG@
+CFLAGS =	@CFLAGS@ @PTHREAD_CFLAGS@
 LDFLAGS =	
-CPPFLAGS =	-I. -I../include
+CPPFLAGS =	-I. -I../include -D@TARGET_OS@ -D@TARGET_CPU@
 AR =		ar
 ARFLAGS =	rcv
 RANLIB =	ranlib
