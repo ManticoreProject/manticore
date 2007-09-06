@@ -123,11 +123,14 @@ structure BasicControl :  sig
 		  if msg 
 		    then (push (); say (concat [passName, " starting"]))
 		    else ();
+(***** NOTE: intercepting the exception here breaks the backtrace monitor.
 		  (pass pre handle exn => (
 		    say (concat [passName, " raised exception ", exnName exn]);
 		    if msg then pop () else ();
 		    raise exn)
 		  ) before
+*)
+		  (pass pre) before
 		    (if msg 
 		      then (say (concat [passName, " finished"]); pop ())
 		      else ())
