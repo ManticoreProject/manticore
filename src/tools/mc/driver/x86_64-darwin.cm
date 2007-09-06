@@ -1,4 +1,4 @@
-(* x86_64-linux.cm
+(* x86_64-darwin.cm
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -17,4 +17,4 @@ is
   sources.cm
 
   runtime-constants.sml
-  x86_64-linux.sml
+  x86_64-darwin.sml
