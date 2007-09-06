@@ -256,8 +256,10 @@ structure CheckBOM : sig
 
   (* the context of a BOM expression *)
     datatype context
-      = TAIL of (B.var * int)
+      = TAIL of (B.var * B.ty list)
       | BIND of B.var list
+
+    fun typesOf xs = List.map BV.typeOf xs
 
     fun checkCensus (phase, module) = let
 	  val B.MODULE{name, externs, body} = module
@@ -270,6 +272,23 @@ structure CheckBOM : sig
 		  pr ["***** Bogus BOM in ", Atom.toString name, " after ", phase, " *****\n"];
 		  anyErrors := true);
 		pr ("** " :: msg))
+	  fun cerror msg = pr ("== "::msg)
+	(* match the parameter types against argument variables *)
+	  fun checkArgTypes (ctx, paramTys, argTys) = let
+		fun chk ([], []) = ()
+		  | chk (l, []) = error[Int.toString(length l), " too few arguments in ", ctx, "\n"]
+		  | chk ([], l) = error[Int.toString(length l), " too many arguments in ", ctx, "\n"]
+		  | chk (pty::ptys, aty::atys) = (
+		      if (BTy.match(aty, pty))
+			then ()
+			else (
+			  error ["type mismatch in ", ctx, "\n"];
+			  cerror["  expected  ", BTy.toString pty, "\n"];
+			  cerror["  but found ", BTy.toString aty, "\n"]);
+		      chk(ptys, atys))
+		in
+		  chk (paramTys, argTys)
+		end
 	(* a table mapping variables to their census counts *)
 	  val counts = VTbl.mkTable (256, Fail "count table")
 	  fun insert x = (case VTbl.find counts x
@@ -280,47 +299,28 @@ structure CheckBOM : sig
 		      })
 		(* end case *))
 	(* match a list of variables to a context *)
-	  fun chkContext (cxt, xs) = let
-		val n = List.length xs
-		in
-		  case cxt
-		   of TAIL(f, arity) => if (arity <> n)
-			then error [
-			    "arity mismatch in ", v2s f, ": returning ", vl2s xs,
-			    " for ", Int.toString arity, " expected results\n"
-			  ]
-			else ()
-		    | BIND ys => if (List.length ys <> n)
-			then error [
-			    "arity mismatch: ", vl2s ys, " = ", vl2s xs, "\n"
-			  ]
-			else ()
-		  (* end case *)
-		end
-	(* match a tail application to a context *)
+	  fun chkContext (cxt, xs) = (case cxt
+		 of TAIL(f, tys) => checkArgTypes ("return from " ^ v2s f, tys, typesOf xs)
+		  | BIND ys => checkArgTypes ("binding " ^ vl2s ys, typesOf ys, typesOf xs)
+		(* end case *))
+	(* match an application to a context *)
 	  fun chkApplyContext (cxt, f) = let
 		val (_, _, rng) = BTy.asFunTy(BV.typeOf f)
-		val n = List.length rng
 		in
 		  case cxt
-		   of TAIL(g, arity) => if (arity <> n)
-			then error [
-			    "arity mismatch in ", v2s g, ": returning <", Int.toString n,
-			    " results> for ", Int.toString arity, " expected results\n"
-			  ]
-			else ()
-		    | BIND ys => if (List.length ys <> n)
-			then error [
-			    "arity mismatch: ", vl2s ys, " = <", Int.toString n, " results>\n"
-			  ]
-			else ()
+		   of TAIL(g, tys) =>
+			checkArgTypes (concat["application of ", v2s f, " in ", v2s g], tys, rng)
+		    | BIND ys =>
+			checkArgTypes (
+			  concat["binding ", vl2s ys, " to application of ", v2s f],
+			  typesOf  ys, rng)
 		  (* end case *)
 		end
 	(* create a tail context *)
 	  fun tailContext f = let
 		val (_, _, rng) = BTy.asFunTy(BV.typeOf f)
 		in
-		  TAIL(f, List.length rng)
+		  TAIL(f, rng)
 		end
 	(* create a bind context *)
 	  fun bindContext vl = BIND vl
