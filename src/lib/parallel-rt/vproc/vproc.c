@@ -9,7 +9,7 @@
 #include <signal.h>
 #include <ucontext.h>
 #if defined (TARGET_DARWIN)
-#  include <CoreServices/CoreServices.h>	/* for MPProcessors */
+#  include <sys/sysctl.h>
 #endif
 #include "os-memory.h"
 #include "os-threads.h"
@@ -345,7 +345,7 @@ static void IdleVProc (VProc_t *vp, void *arg)
   /* Run code that will immediately put this VProc to sleep. */
     RunManticore (vp, (Addr_t)&ASM_VProcSleep, M_UNIT, M_UNIT);
 
-    Die("unexpected return from RunManticore ni IdleVProc\n");
+    Die("unexpected return from RunManticore in IdleVProc\n");
 
 } /* end of IdleVProc */
 
@@ -391,7 +391,14 @@ static int GetNumCPUs ()
 	return n;
     }
 #elif defined(TARGET_DARWIN)
-    return MPProcessors ();
+    int		numCPUs;
+    size_t	len = sizeof(int);
+    if (sysctlbyname("hw.activecpu", &numCPUs, &len, 0, 0) < 0) {
+	Warning("unable to determine the number of processors\n");
+	return 0;
+    }
+    else
+	return numCPUs;
 #else
     return 0;
 #endif
