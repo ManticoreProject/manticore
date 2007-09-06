@@ -8,12 +8,12 @@
  * Note this rewriting is type preserving.
  *)
 
-structure FutParLet (* : sig
+structure FutParLet : sig
 
     val futurize : A.module -> A.module
     val test : int -> unit
 
-  end *) = 
+  end = 
 
   struct
 
