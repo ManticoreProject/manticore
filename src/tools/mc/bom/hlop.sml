@@ -47,43 +47,43 @@ structure HLOp =
 	    HLOp{name = name, id = id, sign = sign, returns = !returns}
 	  end
 
-
     local
-
-      (* param_tyToString : param_ty -> string *)
-	fun param_tyToString (PARAM t) = "PARAM " ^ (BOMTy.toString t)
-	  | param_tyToString (OPT t) = "OPT " ^ (BOMTy.toString t)
-	  | param_tyToString (VEC t) = "VEC " ^ (BOMTy.toString t)
-
-      (* sigToString : hlop_sig -> string *)
-	fun sigToString ({params, exh, results}) =
-	    let val ps = map param_tyToString params
-		val es = map BOMTy.toString exh
-		val rs = map BOMTy.toString results
-		val commas = String.concatWith ", "
+    (* param_tyToString : param_ty -> string *)
+      fun param_tyToString (PARAM t) = "PARAM " ^ (BOMTy.toString t)
+	| param_tyToString (OPT t) = "OPT " ^ (BOMTy.toString t)
+	| param_tyToString (VEC t) = "VEC " ^ (BOMTy.toString t)
+    (* sigToString : hlop_sig -> string *)
+      fun sigToString ({params, exh, results}) = let
+	    val ps = map param_tyToString params
+	    val es = map BOMTy.toString exh
+	    val rs = map BOMTy.toString results
+	    val commas = String.concatWith ", "
 	    in
-		"sig\n" ^
-		"  params: " ^ (commas ps) ^ "\n" ^
-		"  exh: " ^ (commas es) ^ "\n" ^
-		"  results: " ^ (commas rs) ^ "\n" ^
-		"end\n"
-	    end
-	    
+	      String.concat[
+		  "sig\n",
+		  "  params: ", (commas ps), "\n",
+		  "  exh: ", (commas es), "\n",
+		  "  results: ", (commas rs), "\n",
+		  "end\n"
+		]
+	    end    
     in
 
   (* toDebugString : hlop -> string *)
-    fun toDebugString (HLOp {name, id, sign, returns}) =
-	let val n = Atom.toString name
-	    val i = Stamp.toString id
-	    val s = sigToString sign
-	    val r = if returns then "true" else "false"
-	in
-	    "begin HLOp ----\n" ^ 
-	    n ^ "<" ^ i ^ ">:\n" ^
-	    s ^
-	    "returns: " ^ r ^ "\n" ^
-	    "end HLOp -----\n"
-	end
+    fun toDebugString (HLOp {name, id, sign, returns}) = let
+	  val n = Atom.toString name
+	  val i = Stamp.toString id
+	  val s = sigToString sign
+	  val r = if returns then "true" else "false"
+	  in
+	    String.concat[
+		"begin HLOp ----\n", 
+		n, "<", i, ">:\n",
+		s,
+		"returns: ", r, "\n",
+		"end HLOp -----\n"
+	      ]
+	  end
 
     end (* local *)
 
