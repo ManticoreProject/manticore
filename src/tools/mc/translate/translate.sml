@@ -304,8 +304,10 @@ structure Translate : sig
 		  exh = [exh],
 		  body = trExpToExp(mkEnv exh, exp)
 		}
+	  val module = B.mkModule(Atom.atom "Main", [], mainFun)
 	  in
-	    B.mkModule(Atom.atom "Main", [], mainFun)
+	    Census.census module;
+	    module
 	  end
 
     val translate = BasicControl.mkKeepPass {

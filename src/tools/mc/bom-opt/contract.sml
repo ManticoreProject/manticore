@@ -504,7 +504,6 @@ structure Contract : sig
 	  end
 
     fun contract (module as B.MODULE{name, externs, body}) = let
-          val _ = Census.census module
 	  fun ticks () = ST.sum {from = firstCounter, to = lastCounter}
 	  fun loop (body, prevSum) = let
 		val _ = ST.tick cntIters

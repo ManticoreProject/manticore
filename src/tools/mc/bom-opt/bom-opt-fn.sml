@@ -11,23 +11,23 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
   end = struct
 
   (* a wrapper for BOM optimization passes *)
-    fun transform {passName, pass} = 
-       BasicControl.mkKeepPassSimple 
-       {output = PrintBOM.output,
-        ext = "bom",
-        passName = passName,
-        pass = pass,
-        registry = BOMOptControls.registry}
+    fun transform {passName, pass} = BasicControl.mkKeepPassSimple {
+	    output = PrintBOM.output,
+	    ext = "bom",
+	    passName = passName,
+	    pass = pass,
+	    registry = BOMOptControls.registry
+	  }
 
-    val expand = 
-       BasicControl.mkKeepPass 
-       {preOutput = PrintBOM.output,
-        preExt = "bom",
-        postOutput = fn (out, NONE) => () | (out, SOME p) => PrintBOM.output (out, p),
-        postExt = "bom",
-        passName = "expand",
-        pass = ExpandHLOps.expand,
-        registry = BOMOptControls.registry}
+    val expand = BasicControl.mkKeepPass {
+	    preOutput = PrintBOM.output,
+	    preExt = "bom",
+	    postOutput = fn (out, NONE) => () | (out, SOME p) => PrintBOM.output (out, p),
+	    postExt = "bom",
+	    passName = "expand",
+	    pass = ExpandHLOps.expand,
+	    registry = BOMOptControls.registry
+	  }
 
     val contract = transform {passName = "contract", pass = Contract.contract}
 
