@@ -73,12 +73,7 @@ structure Futures (* : sig
 
     (* mkThunk : A.exp -> A.exp *)
     (* Consumes e; produces (fn u => e) (for fresh u : unit). *)
-    fun mkThunk e =
-	let val te = TypeOf.exp e
-	    val uTy = Basis.unitTy
-	in
-	    A.FunExp (Var.new ("u", uTy), e, T.FunTy (uTy, te))
-	end
+    fun mkThunk e = A.FunExp (Var.new ("u", Basis.unitTy), e, TypeOf.exp e)
 
     (* mkFut : var -> A.exp -> A.exp *)
     (* Consumes e; produces future (fn u => e). *)

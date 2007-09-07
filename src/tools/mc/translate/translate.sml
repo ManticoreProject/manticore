@@ -79,9 +79,10 @@ structure Translate : sig
 		  B.mkIf(x, trExpToExp(env, e2), trExpToExp(env, e3))))
 	    | AST.CaseExp(e, rules, ty) =>
 		  EXP(trExpToV (env, e, fn x => trCase(env, x, rules)))
-	    | AST.FunExp(x, e, ty) => let
-		  val fvar = Var.new ("f", ty)
-		  val env' = insert (env, fvar, BV.new ("f", trTy ty))
+	    | f as AST.FunExp(x, e, ty) => let
+		  val fty = TypeOf.exp f
+		  val fvar = Var.new ("f", fty)
+		  val env' = insert (env, fvar, BV.new ("f", trTy fty))
 		  val fdef = AST.FB (fvar, x, e)
 		  val letExp = AST.LetExp (AST.FunBind [fdef],
 					   AST.VarExp (fvar, []))
