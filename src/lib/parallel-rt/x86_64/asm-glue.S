@@ -38,7 +38,7 @@
  */
 	.text
 	.p2align 3
-	.global	ASM_Apply
+	.globl	ASM_Apply
 ASM_Apply:
 	pushq	%rbp			/* save frame pointer */
 	movq	%rsp,%rbp		/* set new frame pointer */
@@ -64,27 +64,27 @@ ASM_Apply:
 
 /* code address for uncaught exception continuation */
 	.p2align 3
-	.global	ASM_UncaughtExn
+	.globl	ASM_UncaughtExn
 ASM_UncaughtExn:
 	movq	$REQ_UncaughtExn, %r9
 	jmp	switch_to_c
 
 /* code address for return continuation */
 	.p2align 3
-	.global	ASM_Return
+	.globl	ASM_Return
 ASM_Return:
 	movq	$REQ_Return, %r9
 	jmp	switch_to_c
 
 /* code address for putting the host vproc to sleep */
 	.p2align 3
-	.global	ASM_VProcSleep
+	.globl	ASM_VProcSleep
 ASM_VProcSleep:
 	movq	$REQ_Sleep, %r9
 	jmp	switch_to_c
 
 	.p2align 3
-	.global	ASM_InvokeGC
+	.globl	ASM_InvokeGC
 ASM_InvokeGC:
 	movq	$REQ_GC, %r9
 

@@ -34,7 +34,7 @@
  */
 	.text
 	.p2align 3
-	.global	ASM_Resume
+	.globl	ASM_Resume
 ASM_Resume:
 	movq	8(%rdi),%r9	/* fetch code address */
 	movq	16(%rdi),%rdi	/* set EP to point to GC root */
