@@ -534,7 +534,7 @@ structure CheckBOM : sig
 	  fun checkCnt (x, {appCnt, useCnt}) =
 		if (appCnt <> BV.appCntOf x) orelse (useCnt <> BV.useCount x)
 		  then error[
-		      "inconsistant counts for ", v2s x, ": recorded <",
+		      "inconsistent counts for ", v2s x, ": recorded <",
 		      Int.toString useCnt, ":", Int.toString appCnt,
 		      "> vs. actual <", Int.toString(BV.useCount x), ":",
 		      Int.toString(BV.appCntOf x), ">\n"
