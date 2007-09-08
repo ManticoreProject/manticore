@@ -48,15 +48,17 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 
     fun optimize module = let
 	  val module = contract module
-          val _ = CheckBOM.check ("contract1", module)
+          val _ = CheckBOM.check ("contract", module)
 	  val module = uncurry module
           val _ = CheckBOM.check ("uncurry", module)
 	  val module = contract module
-          val _ = CheckBOM.check ("contract2", module)
+          val _ = CheckBOM.check ("contract", module)
 	  val module = expandAll module
           val _ = CheckBOM.check ("expandAll", module)
 	  val module = caseSimplify module
           val _ = CheckBOM.check ("caseSimplify", module)
+	  val module = contract module
+          val _ = CheckBOM.check ("contract", module)
 	  in
 	    module
 	  end
