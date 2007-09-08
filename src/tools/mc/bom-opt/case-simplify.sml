@@ -308,12 +308,24 @@ DEBUG*)
 	(* generate a case for a list of one or more data constructors, plus an
 	 * optional default case.
 	 *)
-(* FIXME: need to cast argument variable to correct type *)
 	  fun consCase ([(dc, ys, e)], dflt) = let
 		val (s, ys) = xformVars(s, ys)
 		val (s, argument') = retype(s, argument, dconToRepTy dc)
 		fun sel ([], _) = xformE(s, tys, e)
-		  | sel (y::ys, i) = B.mkStmt([y], B.E_Select(i, argument'), sel(ys, i+1))
+		  | sel (y::ys, i) = let
+		      val ty = typeOf y
+		      val ty' = BTy.select(typeOf argument', i)
+		      in
+			if BTy.match(ty', ty)
+			  then B.mkStmt([y], B.E_Select(i, argument'), sel(ys, i+1))
+			  else let
+			    val y' = BV.new("_t", ty')
+			    in
+			      B.mkStmt([y'], B.E_Select(i, argument'),
+			      B.mkStmt([y], B.E_Cast(ty, y'),
+				sel(ys, i+1)))
+			    end
+		      end
 		in
 		  case (repOf dc, dflt)
 		   of (B.Transparent, NONE) => (case ys
