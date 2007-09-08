@@ -68,36 +68,34 @@ structure BOMTy =
     val futureTy = T_Tuple(true, [T_Any, thunkTy])
 
   (* compare types for equality *)
-    fun equal (ty1, ty2) =
-       case (ty1, ty2) of
-          (T_Any, T_Any) => true
-        | (T_Enum w1, T_Enum w2) => w1 = w2
-        | (T_Raw rt1, T_Raw rt2) => rt1 = rt2
-        | (T_Tuple (b1, tys1), T_Tuple (b2, tys2)) =>
-             b1 = b2 andalso
-             ListPair.allEq equal (tys1, tys2)
-        | (T_Addr ty1, T_Addr ty2) => equal (ty1, ty2)
-        | (T_Fun (argTys1, exhTys1, retTys1), 
-           T_Fun (argTys2, exhTys2, retTys2)) =>
-             ListPair.allEq equal (argTys1, argTys2) andalso
-             ListPair.allEq equal (exhTys1, exhTys2) andalso
-             ListPair.allEq equal (retTys1, retTys2)
-        | (T_Cont argTys1, T_Cont argTys2) =>
-             ListPair.allEq equal (argTys1, argTys2)
-        | (T_CFun c_proto1, T_CFun c_proto2) =>
-             c_proto1 = c_proto2
-        | (T_VProc, T_VProc) => true
-        | (T_TyCon tyc1, T_TyCon tyc2) => tyc_equal (tyc1, tyc2)
-        | _ => false 
-    and tyc_equal (tyc1, tyc2) =
-       case (tyc1, tyc2) of
-          (DataTyc {stamp = stamp1, ...}, 
-           DataTyc {stamp = stamp2, ...}) =>
-             Stamp.same (stamp1, stamp2)
-        | (AbsTyc {stamp = stamp1, ...},
-           AbsTyc {stamp = stamp2, ...}) =>
-             Stamp.same (stamp1, stamp2)
-        | _ => false
+    fun equal (ty1, ty2) = (case (ty1, ty2)
+	   of (T_Any, T_Any) => true
+	   | (T_Enum w1, T_Enum w2) => w1 = w2
+	   | (T_Raw rt1, T_Raw rt2) => rt1 = rt2
+	   | (T_Tuple (b1, tys1), T_Tuple (b2, tys2)) =>
+		b1 = b2 andalso
+		ListPair.allEq equal (tys1, tys2)
+	   | (T_Addr ty1, T_Addr ty2) => equal (ty1, ty2)
+	   | (T_Fun (argTys1, exhTys1, retTys1), 
+	      T_Fun (argTys2, exhTys2, retTys2)) =>
+		ListPair.allEq equal (argTys1, argTys2) andalso
+		ListPair.allEq equal (exhTys1, exhTys2) andalso
+		ListPair.allEq equal (retTys1, retTys2)
+	   | (T_Cont argTys1, T_Cont argTys2) =>
+		ListPair.allEq equal (argTys1, argTys2)
+	   | (T_CFun c_proto1, T_CFun c_proto2) =>
+		c_proto1 = c_proto2
+	   | (T_VProc, T_VProc) => true
+	   | (T_TyCon tyc1, T_TyCon tyc2) => tyc_equal (tyc1, tyc2)
+	   | _ => false
+	  (* end case *))
+    and tyc_equal (tyc1, tyc2) = (case (tyc1, tyc2)
+	   of (DataTyc {stamp = stamp1, ...}, DataTyc {stamp = stamp2, ...}) =>
+		Stamp.same (stamp1, stamp2)
+	    | (AbsTyc {stamp = stamp1, ...}, AbsTyc {stamp = stamp2, ...}) =>
+		Stamp.same (stamp1, stamp2)
+	    | _ => false
+	  (* end case *))
 
   (* is a cast from the first type to the second type valid? *)
     fun validCast (ty1, ty2) = (case (ty1, ty2)
@@ -136,8 +134,8 @@ structure BOMTy =
 	    | _ => equal(ty1, ty2)
 	  (* end case *))
 
-  (* does the first type "match" the second type (i.e., can its values be used
-   * wherever the second type is expected?
+  (* does the first type "match" the second type (i.e., can values of the first
+   * type be used wherever the second type is expected)?
    *)
     fun match (ty1, ty2) = (case (ty1, ty2)
 	   of (T_Addr ty1, T_Addr ty2) => equal(ty1, ty2)
@@ -146,13 +144,15 @@ structure BOMTy =
 	    | (T_Raw rty1, T_Raw rty2) => (rty1 = rty2)
 	    | (T_Raw _, _) => false
 	    | (_, T_Raw _) => false
-	    | (T_Any, _) => true
 	    | (_, T_Any) => true
 	    | (T_Fun(argTys1, exhTys1, retTys1), T_Fun(argTys2, exhTys2, retTys2)) =>
-	      (* NOTE contravariance! *)
+	      (* Note contravariance for arguments! *)
 		ListPair.allEq match (argTys2, argTys1)
                 andalso ListPair.allEq match (exhTys2, exhTys1)
-		andalso ListPair.allEq match (retTys2, retTys1)
+		andalso ListPair.allEq match (retTys1, retTys2)
+	    | (T_Cont argTys1, T_Cont argTys2) =>
+	      (* Note contravariance for arguments! *)
+		ListPair.allEq match (argTys2, argTys1)
 	    | _ => equal(ty1, ty2)
 	  (* end case *))
              
@@ -210,5 +210,9 @@ structure BOMTy =
   (* view as tycon *)
     fun asTyc (T_TyCon tyc) = tyc
       | asTyc ty = raise Fail("expected tyc, but found " ^ toString ty)
+
+  (* select i'th type component from a tuple *)
+    fun select (T_Tuple(_, tys), i) = List.nth(tys, i)
+      | select (ty, _) = raise Fail("expected tuple type, but found " ^ toString ty)
 
   end
