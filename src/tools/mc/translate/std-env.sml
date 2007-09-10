@@ -45,8 +45,8 @@ structure StdEnv : sig
 (*
 	    (B.charTyc, ),
 	    (B.runeTyc, ),
-	    (B.stringTyc, ),
 *)
+	    (B.stringTyc,	BOMBasis.stringTy),
 	    (B.threadIdTyc,	BTy.tidTy),
 (*
 	    (B.parrayTyc, ),
@@ -321,7 +321,9 @@ structure StdEnv : sig
 	    (B.ltos,		hlop H.ltos),
 	    (B.ftos,		hlop H.ftos),
 	    (B.dtos,		hlop H.dtos),
-	    (B.print,		hlop H.print),
+*)
+	    (B.print,		hlop H.printOp),
+(*
 	    (B.args,		hlop H.args),
 	    (B.fail,		hlop H.fail),
 *)

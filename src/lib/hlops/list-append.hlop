@@ -8,11 +8,11 @@
 
 #include "types.def"
 
-define @list-append (l1 : list, l2 : list) : list =
-    fun append (l1 : list) : list =
+define @list-append (l1 : list, l2 : list / exh : exh) : list =
+    fun append (l1 : list / exh : exh) : list =
 	  case l1
-	   of CONS(hd:any, tl:list) => CONS(hd, apply append (tl))
+	   of CONS(hd:any, tl:list) => CONS(hd, apply append (tl / exh))
 	    | NIL => l2
 	  end
-      apply append (l1)
+      apply append (l1 / exh)
 ;

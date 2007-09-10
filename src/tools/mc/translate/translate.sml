@@ -152,9 +152,19 @@ structure Translate : sig
 		val thd = BV.new("_thd", BTy.T_Fun([], [BTy.exhTy], [BTy.unitTy]))
 		in
 		  EXP(B.mkFun([B.FB{f=thd, params=[], exh=[exh], body=e'}],
+(* FIXME: should ManticoreOps be HLOpEnv??? *)
 		    B.mkHLOp(ManticoreOps.spawnOp, [thd], [])))
 		end
 	    | AST.ConstExp(AST.DConst dc) => raise Fail "DConst"
+	    | AST.ConstExp(AST.LConst(lit as Literal.String s, _)) => let
+		val t1 = BV.new("_data", BTy.T_Any)
+		val t2 = BV.new("_len", BTy.T_Raw BTy.T_Int)
+		in
+		  EXP(B.mkStmts([
+		      ([t1], B.E_Const(lit, BTy.T_Any)),
+		      ([t2], B.E_Const(Literal.Int(IntInf.fromInt(size s)), BTy.T_Raw BTy.T_Int))
+		    ], B.mkHLOp(HLOpEnv.stringLitOp, [t1, t2], [])))
+		end
 	    | AST.ConstExp(AST.LConst(lit, ty)) => (case trTy ty
 		 of ty' as BTy.T_Tuple(false, [rty as BTy.T_Raw _]) => let
 		      val t1 = BV.new("_lit", rty)

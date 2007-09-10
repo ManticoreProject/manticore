@@ -8,7 +8,7 @@
 
 #include "types.def"
 
-define @string-data (s : ml_string) : any =
+define inline @string-data (s : ml_string) : any =
     let res : any = #0(s)
-      return res
+      return (res)
 ;

@@ -8,7 +8,7 @@
 
 #include "types.def"
 
-define @string-lit (s : string_data, len : int) : ml_string =
-    let res : ml_double = alloc (s, len)
-      return res
+define inline @string-lit (s : string_data, len : int) : ml_string =
+    let res : ml_string = alloc (s, len)
+      return (res)
 ;

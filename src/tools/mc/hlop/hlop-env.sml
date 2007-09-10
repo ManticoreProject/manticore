@@ -4,6 +4,8 @@
  * All rights reserved.
  *
  * TODO: eventually, this information should be loaded from a file.
+ *
+ * QUESTION: what is the relationship between this file and bom/manticore-ops.sml?
  *)
 
 structure HLOpEnv : sig
@@ -21,11 +23,13 @@ structure HLOpEnv : sig
 
   (* high-level operations used to implement Manticore language constructs *)
     val listAppendOp : HLOp.hlop
+    val stringLitOp : HLOp.hlop
     val spawnOp : HLOp.hlop
     val threadExitOp : HLOp.hlop
     val iVarOp : HLOp.hlop
     val iGetOp : HLOp.hlop
     val iPutOp : HLOp.hlop
+    val printOp : HLOp.hlop
 
   (* scheduler operations *)
     val runOp : HLOp.hlop
@@ -63,9 +67,11 @@ structure HLOpEnv : sig
     val sigActTy = BTy.T_Cont[signalTy]
 
     val vprocTy = BTy.T_VProc
+    val rawIntTy = BTy.T_Raw BTy.T_Int
     val listTy = BTy.T_TyCon Basis.listTyc
+    val stringTy = BOMBasis.stringTy
 
-    val ivarTy = BTy.T_Tuple(true, [listTy, BTy.T_Any, BTy.T_Raw BTy.T_Int])
+    val ivarTy = BTy.T_Tuple(true, [listTy, BTy.T_Any, rawIntTy])
     val thunkTy = BTy.thunkTy
     val futureTy = BTy.futureTy
 
@@ -82,12 +88,16 @@ structure HLOpEnv : sig
 		 attrs)
 
   (* high-level operations used to implement Manticore language constructs *)
-    val listAppendOp = new("list-append", [listTy, listTy], [], [])
+    val listAppendOp = newWithExh("list-append", [listTy, listTy], [listTy], [])
+    val stringLitOp = new("string-lit", [BTy.T_Any, rawIntTy], [stringTy], [])
+
+  (* high-level operations used to implement Manticore concurrency constructs *)
     val spawnOp = newWithExh("spawn", [BTy.T_Fun([], [exhTy], [])], [tidTy], [])
     val threadExitOp = newWithExh("thread-exit", [], [], [H.NORETURN])
     val iVarOp = new("iVar", [], [ivarTy], [])
     val iGetOp = new("iGet", [ivarTy], [BTy.T_Any], [])
     val iPutOp = new("iPut", [ivarTy, BTy.T_Any], [], [])
+    val printOp = newWithExh ("print", [stringTy], [unitTy], [])
 
   (* scheduler operations *)
     val defaultSchedulerStartupOp = newWithExh("default-scheduler-startup", [], [], [])

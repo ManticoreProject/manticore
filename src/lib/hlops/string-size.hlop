@@ -8,8 +8,8 @@
 
 #include "types.def"
 
-define @string-size (s : ml_string) : ml_int =
+define inline @string-size (s : ml_string) : ml_int =
     let len : int = #1(s)
     let res : ml_int = [len]
-      return res
+      return (res)
 ;

@@ -9,6 +9,9 @@
 signature BOM_BASIS =
   sig
 
+  (* predefined types *)
+    val stringTy : BOMTy.ty
+
   (* predefined datatypes *)
     val signalTyc : BOMTy.tyc
     val listTyc : BOMTy.tyc
@@ -41,6 +44,9 @@ structure BOMBasis : BOM_BASIS =
     val exhTy = BTy.exhTy
     val tidTy = BTy.tidTy
     val fiberTy = BTy.fiberTy
+
+  (* predefined types *)
+    val stringTy = BTy.T_Tuple(false, [BTy.T_Any, BTy.T_Raw BTy.T_Int])
 
   (* ready queue items *)
     val rdyqItemTyc = BOMTyCon.newDataTyc ("rdyq_item", 1)
