@@ -94,11 +94,46 @@ structure FutParLet : sig
 	  in
 	      (A.TupleExp es', grandUnion ss)
 	  end
-      | exp (A.RangeExp (e1, e2, oe3, t), pLive) = todo "RangeExp"
-      | exp (A.PTupleExp es, pLive) = todo "PTupleExp"
-      | exp (A.PArrayExp (es, t), pLive) = todo "PArrayExp"
-      | exp (A.PCompExp (e, pes, oe), pLive) = todo "PCompExp"
-      | exp (A.PChoiceExp (es, t), pLive) = todo "PChoiceExp"
+      | exp (A.RangeExp (e1, e2, oe3, t), pLive) = 
+	  let val (e1', live1) = exp (e1, pLive)
+	      val (e2', live2) = exp (e2, pLive)
+	  in
+	      case oe3
+	        of NONE => (A.RangeExp (e1', e2', NONE, t),
+			    VSet.union (live1, live2))
+		 | SOME e3 => 
+		     let val (e3', live3) = exp (e3, pLive)
+		     in
+			 (A.RangeExp (e1', e2', SOME e3', t),
+			  grandUnion [live1, live2, live3])
+		     end
+	  end
+      | exp (A.PTupleExp es, pLive) = 
+	  let val (es', pLive') = exps (es, pLive)
+	  in
+	      (A.PTupleExp es', pLive')
+	  end
+      | exp (A.PArrayExp (es, t), pLive) = 
+	  let val (es', pLive') = exps (es, pLive)
+	  in
+	      (A.PArrayExp (es', t), pLive')
+	  end
+      | exp (A.PCompExp (e, pes, oe), pLive) = 
+	  let val (e', pLive') = exp (e, pLive)
+	      val (ps, es) = ListPair.unzip pes
+	      val (es', pLive'') = exps (es, pLive)
+	      val pes' = ListPair.zip (ps, es')
+	  in
+	      case oe
+	        of NONE => (A.PCompExp (e', pes', NONE),
+			    VSet.union (pLive', pLive''))
+		 | SOME pred => todo "PComp"
+	  end
+      | exp (A.PChoiceExp (es, t), pLive) = 
+	  let val (es', pLive') = exps (es, pLive)
+	  in
+	      (A.PChoiceExp (es', t), pLive')
+	  end
       | exp (A.SpawnExp e, pLive) =
 	  let val (e', pLive') = exp (e, pLive)
 	  in
@@ -116,6 +151,14 @@ structure FutParLet : sig
 	      (A.SeqExp (e1', e2'), VSet.union (live1, live2))
 	  end
       | exp (ov as A.OverloadExp _, pLive) = (ov, pLive)
+
+    (* exps: A.exp list * VSet.set -> A.exp list * VSet.set *)
+    and exps (es, pLive) =
+	let val ess = map (fn e => exp (e, pLive)) es
+	    val (es', ss) = ListPair.unzip ess
+	in
+	    (es', grandUnion ss)
+	end
 
     (* letExp : A.binding * A.exp * VSet.set -> A.exp -> VSet.set *)
     and letExp (A.ValBind (p, e1), e2, pLive) = 

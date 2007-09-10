@@ -21,7 +21,7 @@ typedef exh = cont(exn);
 typedef tid = enum(0);		(* FIXME: this should be something else *)
 typedef fiber = cont();
 typedef sigact = cont(signal);
-typedef thunk = fun (any / exh -> any);
+typedef thunk = fun (unit / exh -> any);
 typedef future = ![any, thunk]; (* state, thunk *)
 
 typedef ml_int = [int];

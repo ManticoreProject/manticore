@@ -11,12 +11,14 @@ define @steal1 (fp : future / exh : exh) : ();
 (* need to define some flavor of dequeue .... *)
 (* define @dequeue ...  *)
 
+extern void * dequeueG (void *);
+
 define @get-work1 ( / exh : exh) : () =
   fun loop ( / exh : exh) : () =
-    (* FIXME: This is a bogus stub implementation. *)
+    let vp : vproc = host_vproc
     let w : any = NONE (* @dequeue () *)
     case w
-      of SOME (fut : ![any, fun (unit / exh -> any)]) => @steal1 (fut / exh)
+      of SOME (fut : future) => @steal1 (fut / exh)
        | NONE => apply loop ( / exh)
     end
   apply loop ( / exh)
