@@ -130,7 +130,7 @@ structure CheckBOM : sig
 		      if BTy.match(ty', ty) andalso BTy.validCast(BV.typeOf x, ty')
 			then ()
 			else err["type mismatch in Cast: ", 
-                                 vl2s lhs, " = (", BTy.toString ty', ")", v2s x])
+                                 vl2s lhs, " = (", BTy.toString ty', ")(", v2s' x, ")"])
 		  | ([ty], B.E_Select(i, x)) => (
                       chkVar(env, x, "Select");
                       case BV.typeOf x
@@ -446,7 +446,7 @@ structure CheckBOM : sig
 		      if BTy.match(ty', ty) andalso BTy.validCast(BV.typeOf x, ty')
 			then ()
 			else error["type mismatch in Cast: ", 
-                                 vl2s lhs, " = (", BTy.toString ty', ")", v2s x, "\n"])
+                                 vl2s lhs, " = (", BTy.toString ty', ")(", v2s' x, ")\n"])
 		  | ([ty], B.E_Select(i, x)) => (
                       chkVar(x, "Select");
                       case BV.typeOf x
