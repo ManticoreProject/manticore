@@ -72,12 +72,40 @@ structure Translate : sig
 	    (x', insert(env, x, x'))
 	  end
 
+    local
+      fun mkCasts (x::xs, ty::tys) = let
+	    val (xs', casts) = mkCasts (xs, tys)
+	    in
+	      if BTy.match (ty, BV.typeOf x)
+		then (x::xs', casts)
+		else let
+		  val x' = BV.new("_t", ty)
+		  in
+		    (x'::xs', ([x], B.E_Cast(BV.typeOf x, x'))::casts)
+		  end
+	    end
+	| mkCasts ([], []) = ([], [])
+	| mkCasts _ = raise Fail "rhs/lhs arity mismatch"
+    in
+    fun mkStmt (lhs, rhs, e) = let
+	  val (xs, casts) = mkCasts (lhs, BOMUtil.typeOfRHS rhs)
+	  in
+	    B.mkStmts ((xs, rhs)::casts, e)
+	  end
+
+    fun mkLet (lhs, rhs, e) = let
+	  val (xs, casts) = mkCasts (lhs, BOMUtil.typeOfExp rhs)
+	  in
+	    B.mkLet (xs, rhs, B.mkStmts(casts, e))
+	  end
+    end (* local *)
+
   (* the yield of translating an AST expression *)
     datatype bom_code
       = BIND of (B.var list * B.rhs)
       | EXP of B.exp
 
-    fun toExp (BIND(xs, rhs)) = B.mkStmt(xs, rhs, B.mkRet xs)
+    fun toExp (BIND(xs, rhs)) = mkStmt(xs, rhs, B.mkRet xs)
       | toExp (EXP e) = e
 
     fun trExp (env, exp) : bom_code = (case prune exp
@@ -87,27 +115,20 @@ structure Translate : sig
 		EXP(trExpToV (env, e1, fn x =>
 		  B.mkIf(x, trExpToExp(env, e2), trExpToExp(env, e3))))
 	    | AST.CaseExp(e, rules, ty) =>
-		  EXP(trExpToV (env, e, fn x => trCase(env, x, rules)))
+		EXP(trExpToV (env, e, fn x => trCase(env, x, rules)))
 	    | f as AST.FunExp(x, e, ty) => let
-		  val fty = TypeOf.exp f
-		  val fvar = Var.new ("f", fty)
-		  val env' = insert (env, fvar, BV.new ("f", trTy fty))
-		  val fdef = AST.FB (fvar, x, e)
-		  val letExp = AST.LetExp (AST.FunBind [fdef],
-					   AST.VarExp (fvar, []))
-	          in
-		    trExp (env', letExp)
-	          end
+		val fty = TypeOf.exp f
+		val fvar = Var.new ("f", fty)
+		val env' = insert (env, fvar, BV.new ("f", trTy fty))
+		val fdef = AST.FB (fvar, x, e)
+		val letExp = AST.LetExp (AST.FunBind [fdef], AST.VarExp (fvar, []))
+		in
+		  trExp (env', letExp)
+		end
 	    | AST.ApplyExp(e1, e2, ty) => 
-	        if isTouch e1 orelse isTouch1 e1 
-		then touch (e1, e2, ty)
-		else EXP(trExpToV (env, e1, 
-				   fn f =>
-				     trExpToV (env, e2, 
-					       fn arg =>
-					         B.mkApply(f, 
-							   [arg], 
-							   [handlerOf env]))))
+	        EXP(trExpToV (env, e1, fn f =>
+		  trExpToV (env, e2, fn arg =>
+		    B.mkApply(f, [arg], [handlerOf env]))))
 	    | AST.TupleExp[] => let
 		val t = BV.new("_unit", BTy.unitTy)
 		in
@@ -165,47 +186,32 @@ structure Translate : sig
 	    | AST.OverloadExp _ => raise Fail "unresolved overloading"
 	  (* end case *))
 
-  (* touch: A.exp * A.exp * A.ty -> A.exp *)
-    and touch (tch, e, ty) = (* must downcast the result *) 
-	let val ty' = trTy ty
-	in
-	    todo "touch"
-(*	    EXP(trExpToV (env, tch, 
-		       fn f =>
-			  trExpToV (env, e, 
-				 fn arg =>
-				    B.mkApply(f, 
-					      [arg], 
-					      [handlerOf env]))))
-*)
-	end
-
     and trExpToExp (env, exp) = toExp(trExp(env, exp))
 
     and trBind (env, bind, k : env -> B.exp) = (case bind
 	   of AST.ValBind(AST.TuplePat pats, exp) => let
 		val (env', xs) = trVarPats (env, pats)
 		fun sel (t, i, x::xs, p::ps) =
-		      B.mkStmt([x], B.E_Select(i, t), sel(t, i+1, xs, ps))
+		      mkStmt([x], B.E_Select(i, t), sel(t, i+1, xs, ps))
 		  | sel (t, _, [], []) = k env'
 		in
 		  case trExp(env, exp)
-		   of BIND([y], rhs) => B.mkStmt([y], rhs, sel(y, 0, xs, pats))
+		   of BIND([y], rhs) => mkStmt([y], rhs, sel(y, 0, xs, pats))
 		    | EXP e => let
 			val ty = BTy.T_Tuple(false, List.map BV.typeOf xs)
 			val t = BV.new("_tpl", ty)
 			in
-			  B.mkLet([t], e, sel(t, 0, xs, pats))
+			  mkLet([t], e, sel(t, 0, xs, pats))
 			end
 		  (* end case *)
 		end
 	    | AST.ValBind(AST.VarPat x, exp) => (case trExp(env, exp)
 		   of BIND([x'], rhs) =>
-			B.mkStmt([x'], rhs, k(insert(env, x, x')))
+			mkStmt([x'], rhs, k(insert(env, x, x')))
 		    | EXP e => let
 			val (x', env') = trVar(env, x)
 			in
-			  B.mkLet([x'], trExpToExp(env, exp), k env')
+			  mkLet([x'], trExpToExp(env, exp), k env')
 			end
 		(* end case *))
 	    | AST.ValBind _ => raise Fail "unexpected complex pattern"
@@ -298,11 +304,11 @@ structure Translate : sig
     and trExpToV (env, AST.VarExp(x, tys), cxt : B.var -> B.exp) =
 	  trVtoV (env, x, cxt)
       | trExpToV (env, exp, cxt : B.var -> B.exp) = (case trExp(env, exp)
-	   of BIND([x], rhs) => B.mkStmt([x], rhs, cxt x)
+	   of BIND([x], rhs) => mkStmt([x], rhs, cxt x)
 	    | EXP e => let
 		val t = BV.new ("_t", trTy(TypeOf.exp exp))
 		in
-		  B.mkLet([t], e, cxt t)
+		  mkLet([t], e, cxt t)
 		end
 	  (* end case *))
 
