@@ -1,0 +1,14 @@
+(* string-data.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Get the data pointer of an ML string.
+ *)
+
+#include "types.def"
+
+define @string-data (s : ml_string) : any =
+    let res : any = #0(s)
+      return res
+;

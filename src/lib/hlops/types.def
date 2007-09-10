@@ -34,6 +34,9 @@ typedef ml_double = [double];
 #define FLOAT(f)	wrap(f : float)
 #define DOUBLE(f)	wrap(f : double)
 
+typedef string_data = any;
+typedef ml_string = [string_data, int];
+
 (* constants for builtin datatypes *)
 #define STOP	enum(0):signal
 #define NIL	enum(0):list
