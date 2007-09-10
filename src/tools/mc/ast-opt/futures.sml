@@ -12,6 +12,14 @@ structure Futures (* : sig
     val futureTyc : Types.tycon
     val futureTy  : Types.ty -> Types.ty
 
+    val future : Var.var
+    val touch  : Var.var
+    val cancel : Var.var
+
+    val future1 : Var.var
+    val touch1  : Var.var
+    val cancel1 : Var.var
+
     val mkFuture  : AST.exp -> AST.exp 
     val mkTouch   : AST.exp -> AST.exp
     val mkCancel  : AST.exp -> AST.exp

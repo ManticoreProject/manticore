@@ -77,11 +77,11 @@ structure HLOp =
 	  val r = if returns then "true" else "false"
 	  in
 	    String.concat[
-		"begin HLOp ----\n", 
+		"(* begin HLOp ----\n", 
 		n, "<", i, ">:\n",
 		s,
 		"returns: ", r, "\n",
-		"end HLOp -----\n"
+		"end HLOp ----- *)\n"
 	      ]
 	  end
 

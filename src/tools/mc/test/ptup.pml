@@ -6,4 +6,4 @@ fun signum (n : int) =
     else
 	0;
 
-(| signum (1000 : int), signum (~1000 : int) |) 
+(| signum 1000, signum (~1000) |) 

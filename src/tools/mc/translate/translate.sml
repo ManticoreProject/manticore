@@ -12,18 +12,27 @@ structure Translate : sig
 
   end = struct
 
+    structure A = AST
     structure V = Var
     structure B = BOM
     structure BV = B.Var
     structure BTy = BOMTy
     structure Lit = Literal
 
-    (* fail : string -> 'a *)
+  (* fail : string -> 'a *)
     fun fail msg = raise Fail msg
 
-    (* todo : string -> 'a *)
-    fun todo msg = fail ("todo: " ^ msg)
+  (* todo : string -> 'a *)
+    fun todo thing = fail ("todo: " ^ thing)
 
+  (* isTouch : A.exp -> bool *)
+    fun isTouch (A.VarExp (x, _)) = Var.same (x, Futures.touch)
+      | isTouch _ = false
+
+  (* isTouch1 : A.exp -> bool *)
+    fun isTouch1 (A.VarExp (x, _)) = Var.same (x, Futures.touch1)
+      | isTouch1 _ = false
+ 
     val trTy = TranslateTypes.tr
     val trScheme = TranslateTypes.trScheme
 
@@ -89,9 +98,16 @@ structure Translate : sig
 	          in
 		    trExp (env', letExp)
 	          end
-	    | AST.ApplyExp(e1, e2, ty) => EXP(trExpToV (env, e1, fn f =>
-		trExpToV (env, e2, fn arg =>
-		  B.mkApply(f, [arg], [handlerOf env]))))
+	    | AST.ApplyExp(e1, e2, ty) => 
+	        if isTouch e1 orelse isTouch1 e1 
+		then touch (e1, e2, ty)
+		else EXP(trExpToV (env, e1, 
+				   fn f =>
+				     trExpToV (env, e2, 
+					       fn arg =>
+					         B.mkApply(f, 
+							   [arg], 
+							   [handlerOf env]))))
 	    | AST.TupleExp[] => let
 		val t = BV.new("_unit", BTy.unitTy)
 		in
@@ -148,6 +164,21 @@ structure Translate : sig
 		end
 	    | AST.OverloadExp _ => raise Fail "unresolved overloading"
 	  (* end case *))
+
+  (* touch: A.exp * A.exp * A.ty -> A.exp *)
+    and touch (tch, e, ty) = (* must downcast the result *) 
+	let val ty' = trTy ty
+	in
+	    todo "touch"
+(*	    EXP(trExpToV (env, tch, 
+		       fn f =>
+			  trExpToV (env, e, 
+				 fn arg =>
+				    B.mkApply(f, 
+					      [arg], 
+					      [handlerOf env]))))
+*)
+	end
 
     and trExpToExp (env, exp) = toExp(trExp(env, exp))
 
