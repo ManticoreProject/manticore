@@ -8,7 +8,7 @@
 
 #include "types.def"
 
-define @get-work1 ( / exh : exh) : ();
+define @get-work1 (u : unit / exh : exh) : ();
 
 define @touch1 (fp : future / exh : exh) : any =
   let tmp : any = CAS (&0(fp), EMPTY_F, EVAL_F)
@@ -25,7 +25,7 @@ define @touch1 (fp : future / exh : exh) : any =
            else cont k (result: any) = return (result)
 	     let tmpX : any = CAS (&0(fp), STOLEN_F, k)
 	     if Equal (tmpX, STOLEN_F)
-	       then @get-work1 ( / exh)
+	       then @get-work1 (UNIT / exh)
 	       else return (tmpX)
 ;
 

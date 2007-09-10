@@ -13,10 +13,10 @@ define @steal1 (fp : future / exh : exh) : ();
 
 extern void * dequeueG (void *);
 
-define @get-work1 ( / exh : exh) : () =
+define @get-work1 (unit : unit / exh : exh) : () =
   fun loop ( / exh : exh) : () =
     let vp : vproc = host_vproc
-    let w : any = NONE (* @dequeue () *)
+    let w : any = @dequeue (vp)
     case w
       of SOME (fut : future) => @steal1 (fut / exh)
        | NONE => apply loop ( / exh)
