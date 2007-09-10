@@ -215,4 +215,12 @@ structure BOMTy =
     fun select (T_Tuple(_, tys), i) = List.nth(tys, i)
       | select (ty, _) = raise Fail("expected tuple type, but found " ^ toString ty)
 
+  (* return the type of a data constructor *)
+    fun typeOfDCon (DCon{myTyc, ...}) = T_TyCon myTyc
+
+  (* convert a C type into a BOM type with the same representation *)
+    fun ctypeToBOM (CFunctions.PointerTy) = [T_Any]  (* FIXME: is this safe? *)
+      | ctypeToBOM (CFunctions.BaseTy rTy) = [T_Raw rTy]
+      | ctypeToBOM (CFunctions.VoidTy) = []
+
   end
