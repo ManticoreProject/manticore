@@ -11,6 +11,7 @@ Library
   structure Prim
   structure PrimUtil
   functor MakePrimFn
+  functor PrimTyFn
 is
 
   $/basis.cm
@@ -22,4 +23,5 @@ is
 
   make-prim-fn.sml
   prim.sml
+  prim-ty-fn.sml
   prim-util.sml
