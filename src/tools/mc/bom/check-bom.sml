@@ -277,20 +277,27 @@ structure CheckBOM : sig
 	  fun cerror msg = pr ("== "::msg)
 	(* match the parameter types against argument variables *)
 	  fun checkArgTypes (ctx, paramTys, argTys) = let
-		fun chk ([], []) = ()
-		  | chk (l, []) = error[Int.toString(length l), " too few arguments in ", ctx, "\n"]
-		  | chk ([], l) = error[Int.toString(length l), " too many arguments in ", ctx, "\n"]
-		  | chk (pty::ptys, aty::atys) = (
-		      if (BTy.match(aty, pty))
-			then ()
-			else (
+	      (* chk1 : ty * ty -> unit *)
+	        fun chk1 (pty, aty) =
+		      if (BTy.match (aty, pty))
+                        then ()
+		        else (
 			  error ["type mismatch in ", ctx, "\n"];
-			  cerror["  expected  ", BTy.toString pty, "\n"];
-			  cerror["  but found ", BTy.toString aty, "\n"]);
-		      chk(ptys, atys))
-		in
-		  chk (paramTys, argTys)
-		end
+			  cerror ["  expected  ", BTy.toString pty, "\n"];
+			  cerror ["  but found ", BTy.toString aty, "\n"])
+	        in 
+	          if (length paramTys = length argTys)
+                    then ListPair.app chk1 (paramTys, argTys)
+                    else let
+	            (* str : ty list -> string *)
+                      fun str ts = String.concatWith "," (map BTy.toString ts)
+                      in 
+                        error ["wrong number of arguments in ", ctx, "\n"];
+			cerror ["  expected (", str paramTys, ")\n"];
+			cerror ["  found    (", str argTys, ")\n"]
+                      end
+	        end
+
 	(* a table mapping variables to their census counts *)
 	  val counts = VTbl.mkTable (256, Fail "count table")
 	  fun insert x = (case VTbl.find counts x
