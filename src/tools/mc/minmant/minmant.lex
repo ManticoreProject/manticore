@@ -128,6 +128,7 @@
 <INITIAL> ">="  => (T.GTEQ);
 <INITIAL> "::"	=> (T.DCOLON);
 <INITIAL> "@"	=> (T.AT);
+<INITIAL> "^"	=> (T.CONCAT);
 <INITIAL> "+"	=> (T.PLUS);
 <INITIAL> "-"	=> (T.MINUS);
 <INITIAL> "*"	=> (T.TIMES);

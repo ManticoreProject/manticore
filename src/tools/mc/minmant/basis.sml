@@ -93,12 +93,13 @@ structure Basis =
     val OrderClass = NumClass @ [charTy, runeTy, stringTy]
 
   (* operator symbols *) 
-    val append =	Var.newPoly(Atom.toString N.append,
+    val listAppend =	Var.newPoly(Atom.toString N.append,
 			  forall(fn tv => let
 			    val ty = listTy tv
 			    in
 			      ty ** ty --> ty
 			    end))
+    val stringConcat =	monoVar(N.concat, stringTy ** stringTy --> stringTy)
 
     val int_lte =	monoVar(N.lte, intTy ** intTy --> boolTy)
     val float_lte =	monoVar(N.lte, floatTy ** floatTy --> boolTy)

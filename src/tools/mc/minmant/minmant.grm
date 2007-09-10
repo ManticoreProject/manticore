@@ -44,6 +44,7 @@
     | GT		(">")
     | DCOLON		("::")
     | AT		("@")
+    | CONCAT		("^")
     | PLUS		("+")
     | MINUS		("-")
     | TIMES		("*")
@@ -258,8 +259,14 @@ LExp
 	;
 
 AExp
-	: MExp (( "+" => (Op.plus) | "-" => (Op.minus) ) MExp)*
+	: MExp (AddOp MExp)*
 		=> (markExp (FULL_SPAN, mkLBinExp(MExp, SR)))
+	;
+
+AddOp
+	: "+"	=> (Op.plus)
+	| "-"	=> (Op.minus)
+	| "^"	=> (Op.concat)
 	;
 
 MExp
