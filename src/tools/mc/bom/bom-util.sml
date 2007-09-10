@@ -36,6 +36,11 @@ structure BOMUtil : sig
   (* create a copy of a BOM term with fresh bound variables *)
     val copyLambda : BOM.lambda -> BOM.lambda
 
+  (* return the type of a BOM term *)
+    val typeOfExp : BOM.exp -> BOM.ty list
+    val typeOfRHS : BOM.rhs -> BOM.ty list
+    val typeOfPrim : BOM.prim -> BOM.ty list
+
   (* for debugging output *)
     val expToString : BOM.exp -> string
     val rhsToString : BOM.rhs -> string
@@ -44,6 +49,7 @@ structure BOMUtil : sig
 
     structure B = BOM
     structure BV = BOM.Var
+    structure BTy = BOMTy
     structure VMap = BV.Map
 
   (* substitutions from variables to variables *)
@@ -236,6 +242,53 @@ structure BOMUtil : sig
 
   (* create a copy of a BOM term with fresh bound variables *)
     fun copyLambda fb = #2 (copyOneLambda (empty, fb))
+
+    local
+      structure PTy = PrimTyFn (
+	struct
+	  structure V = BV
+	  val bool = BTy.boolTy
+	  val raw = BTy.T_Raw
+	end)
+    in
+  (* return the type of a BOM term *)
+    fun typeOfPrim prim = [PTy.typeOf prim]
+
+    fun typeOfRHS (B.E_Const(_, ty)) = [ty]
+      | typeOfRHS (B.E_Cast(ty, _)) = [ty]
+      | typeOfRHS (B.E_Select(i, x)) = [BTy.select(BV.typeOf x, i)]
+      | typeOfRHS (B.E_Update _) = []
+      | typeOfRHS (B.E_AddrOf(i, x)) = [BTy.T_Addr(BTy.select(BV.typeOf x, i))]
+      | typeOfRHS (B.E_Alloc(ty, _)) = [ty]
+      | typeOfRHS (B.E_Prim p) = typeOfPrim p
+      | typeOfRHS (B.E_DCon(dc, _)) = [BTy.typeOfDCon dc]
+      | typeOfRHS (B.E_CCall(cf, _)) = let
+	  val BTy.T_CFun(CFunctions.CProto(cty, _, _)) = BV.typeOf cf
+	  in
+	    BTy.ctypeToBOM cty
+	  end
+      | typeOfRHS (B.E_HostVProc) = [BTy.T_VProc]
+      | typeOfRHS (B.E_VPLoad _) = [BTy.T_Any]
+      | typeOfRHS (B.E_VPStore _) = []
+
+    fun typeOfExp (B.E_Pt(_, t)) = (case t
+	   of (B.E_Let(_, _, e)) => typeOfExp e
+	    | (B.E_Stmt(_, _, e)) => typeOfExp e
+	    | (B.E_Fun(_, e)) => typeOfExp e
+	    | (B.E_Cont(_, e)) => typeOfExp e
+	    | (B.E_If(_, e, _)) => typeOfExp e
+	    | (B.E_Case(_, (_, e)::_, _)) => typeOfExp e
+	    | (B.E_Apply(f, _, _)) => let
+		val BTy.T_Fun(_, _, tys) = BV.typeOf f
+		in
+		  tys
+		end
+	    | (B.E_Throw _) => []
+	    | (B.E_Ret xs) => List.map BV.typeOf xs
+	    | (B.E_HLOp(HLOp.HLOp{sign={results, ...}, ...}, _, _)) => results
+	  (* end case *))
+
+    end (* local *)
 
   (* for debugging output *)
     fun expToString _ = "<exp>"	(* FIXME *)
