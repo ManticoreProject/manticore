@@ -431,7 +431,8 @@ structure CheckBOM : sig
 			then ()
 			else error[
 			    "type mismatch in Const: ",  vl2s lhs, " = ", 
-			    Literal.toString lit, ":", BTy.toString ty', "\n"
+			    Literal.toString lit, ":", BTy.toString ty', 
+			    " (* expected ", BTy.toString ty, " *)\n"
 			  ])
 		  | ([ty], B.E_Cast(ty', x)) => (
 		      chkVar (x, "Cast");

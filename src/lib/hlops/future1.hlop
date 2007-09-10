@@ -8,6 +8,7 @@
 
 #include "types.def"
 
+(* FIXME enqueueG stands for "enqueue global" and it is yet to be implemented *)
 extern void enqueueG (void *);
 
 define @future1 (thunk : thunk / exh : exh) : future =
@@ -19,9 +20,9 @@ define @future1 (thunk : thunk / exh : exh) : future =
             FULL      value
             WAITING   cont
        2) a _thunk_ word 
-          FIXME: we also need to account for possibility that thunk is null
    *)
-  let cell : future = alloc (EMPTY_F, thunk)
+  let e : any = (any) EMPTY_F (* FIXME this causes "type mismatch in Const" *)
+  let cell : future = alloc (e, thunk)
   let vp : vproc = host_vproc
   do ccall enqueueG (vp)
   return (cell)

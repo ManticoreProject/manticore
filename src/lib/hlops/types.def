@@ -44,9 +44,9 @@ typedef ml_string = [string_data, int];
 #define QEMPTY	enum(0):rdyq_item
 
 (* constants for futures *)
-#define EMPTY_F  0
-#define STOLEN_F 2
-#define EVAL_F   4
+#define EMPTY_F  0:int
+#define STOLEN_F 2:int
+#define EVAL_F   4:int
 
 #endif /* !_TYPES_DEF_ */
 
