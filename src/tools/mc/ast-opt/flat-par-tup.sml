@@ -9,7 +9,9 @@ structure FlatParTup : sig
 
     val flattenModule : AST.module -> AST.module
 
+(*
     val test : int -> unit
+*)
 
   end = 
 
@@ -240,6 +242,7 @@ structure FlatParTup : sig
 
     (**** tests ****)
 
+(*
     local
 
 	structure P = PrintAST
@@ -331,5 +334,6 @@ structure FlatParTup : sig
 	    end
 
     end (* local *)
+*)
 		    
   end

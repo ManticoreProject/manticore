@@ -47,21 +47,6 @@ structure TestUtils =
     (* ptup : A.exp list -> A.exp *)
     fun ptup es = A.PTupleExp es
 
-    (* some : A.exp -> A.exp *)
-    fun some e = 
-	let val t = TypeOf.exp e
-	    val optionTySch = DataCon.typeOf B.optionSOME
-	    val some = A.ConstExp (A.DConst (B.optionSOME, [t]))
-	    val rngTy = (case TypeUtil.apply (optionTySch, [t])
-			   of T.FunTy (d, r) => r
-			    | _ => fail "some: expected FunTy")
-	in
-	    A.ApplyExp (some, e, rngTy)
-	end
-
-    (* none: T.ty -> A.exp *)
-    fun none t = A.ConstExp (A.DConst (B.optionNONE, [t]))
-
     (* fact : int -> A.exp *)
     fun fact n =
 	let val f = Var.new ("fact", T.FunTy (Basis.intTy, Basis.intTy))

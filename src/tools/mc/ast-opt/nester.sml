@@ -291,6 +291,7 @@ structure Nester (* : sig
 
     (**** tests ****)
 
+(*
     local
 
 	structure B = Basis
@@ -372,5 +373,6 @@ structure Nester (* : sig
 		  | _ => print (Int.toString n ^ ": no such test for testSame.\n")
 	    end
     end
+*)
 
   end

@@ -8,8 +8,6 @@ structure Translate : sig
 
     val translate : AST.module -> BOM.module
 
-    val test : int -> unit
-
   end = struct
 
     structure A = AST
@@ -366,48 +364,5 @@ structure Translate : sig
 	    pass = translate,
 	    registry = TranslateControls.registry
 	  }
-
-    (**** tests ****)
-
-    local
-
-	structure U = TestUtils
-	val (tup, ptup) = (U.tup, U.ptup)      
-	val (int, fact, isZero) = (U.int, U.fact, U.isZero)
-
-	(* itod : int -> AST.exp *)
-	fun itod n = AST.ApplyExp (AST.VarExp (Basis.itod, []),
-				   int n,
-				   Basis.doubleTy)
-
-        (* testModule : AST.module -> BOM.module *)
-	fun testModule a =
-	    let val aflat = FlatParTup.flattenModule a
-		val afut = FutParTup.futurize aflat
-		val b = translate afut
-		fun sep s = PrintAST.printComment (s ^ " -->")
-	    in
-		PrintAST.print a;
-		sep "flattening parallel tuples";
-		PrintAST.print aflat;
-		sep "rewriting parallel tuples in terms of futures";
-		PrintAST.print afut;
-		sep "translating to BOM";
-		PrintBOM.print b
-	    end
-
-	(* t0 = (| itod 10, itod 11 |) *)
-	val t0 = ptup [itod 10, itod 11]
-
-    in
-
-        (* test : int -> unit *)
-        val test =
-	    let val testCases = [t0]
-	    in
-		U.mkTest testModule testCases
-	    end
-
-    end (* local *)
 
   end
