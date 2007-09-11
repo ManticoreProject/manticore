@@ -118,7 +118,14 @@ structure Translate : sig
 (* FIXME: should ManticoreOps be HLOpEnv??? *)
 		    B.mkHLOp(ManticoreOps.spawnOp, [thd], [])))
 		end
-	    | AST.ConstExp(AST.DConst(dc, tys)) => raise Fail(concat["DConst(", DataCon.nameOf dc, ")"])
+	    | AST.ConstExp(AST.DConst(dc, tys)) => (case TranslateTypes.trDataCon(env, dc)
+		 of E.Const(w, ty) => let
+		      val t = BV.new("con_" ^ DataCon.nameOf dc, ty)
+		      in
+			BIND([t], B.E_Const(Lit.Enum w, ty))
+		      end
+		  | E.DCon dc' => raise Fail "data constructor"
+		(* end case *))
 	    | AST.ConstExp(AST.LConst(lit as Literal.String s, _)) => let
 		val t1 = BV.new("_data", BTy.T_Any)
 		val t2 = BV.new("_len", BTy.T_Raw BTy.T_Int)

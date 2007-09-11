@@ -11,17 +11,24 @@ structure TranslateEnv : sig
     val mkEnv : unit -> env
 
     val insertTyc	: (env * Types.tycon * BOMTy.ty) -> unit
+    val insertConst	: (env * Types.dcon * word * BOMTy.ty) -> unit
     val insertDCon	: (env * Types.dcon * BOMTy.data_con) -> unit
     val insertFun	: (env * AST.var * BOM.lambda) -> env
     val insertVar	: (env * AST.var * BOM.var) -> env
     val newHandler	: env -> (BOM.var * env)
 
+  (* data-constructor bindings *)
+    datatype con_bind
+      = Const of word * BOMTy.ty
+      | DCon of BOMTy.data_con
+
+  (* variable bindings *)
     datatype var_bind
       = Lambda of BOM.lambda	(* used for primops and high-level ops *)
       | Var of BOM.var
 
     val findTyc		: (env * Types.tycon) -> BOMTy.ty option
-    val findDCon	: (env * Types.dcon) -> BOMTy.data_con option
+    val findDCon	: (env * Types.dcon) -> con_bind option
     val lookupVar	: (env * AST.var) -> var_bind
     val handlerOf	: env -> BOM.var
 
@@ -31,13 +38,17 @@ structure TranslateEnv : sig
     structure DTbl = DataCon.Tbl
     structure VMap = Var.Map
 
+    datatype con_bind
+      = Const of word * BOMTy.ty
+      | DCon of BOMTy.data_con
+
     datatype var_bind
       = Lambda of BOM.lambda	(* used for primops and high-level ops *)
       | Var of BOM.var
 
     datatype env = E of {
 	tycEnv : BOM.ty TTbl.hash_table,
-	dconEnv : BOMTy.data_con DTbl.hash_table,
+	dconEnv : con_bind DTbl.hash_table,
 	varEnv : var_bind VMap.map,	(* map from AST variables to BOM variables *)
 	exh : BOM.var			(* current exception handler *)
       }
@@ -51,7 +62,9 @@ structure TranslateEnv : sig
 
     fun insertTyc (E{tycEnv, ...}, tyc, bty) = TTbl.insert tycEnv (tyc, bty)
 
-    fun insertDCon (E{dconEnv, ...}, dc, bdc) = DTbl.insert dconEnv (dc, bdc)
+    fun insertConst (E{dconEnv, ...}, dc, w, ty) = DTbl.insert dconEnv (dc, Const(w, ty))
+
+    fun insertDCon (E{dconEnv, ...}, dc, bdc) = DTbl.insert dconEnv (dc, DCon bdc)
 
     fun insertFun (E{tycEnv, dconEnv, varEnv, exh}, x, lambda) = E{
 	    tycEnv = tycEnv,
