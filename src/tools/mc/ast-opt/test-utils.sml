@@ -54,13 +54,10 @@ structure TestUtils =
 	    apply (A.VarExp (f, [])) (int n)
 	end
 
+    val isZeroVar = Var.new ("isZero", T.FunTy (Basis.intTy, Basis.boolTy))
+
     (* isZero : int -> A.exp *)
-    fun isZero n =
-	let val z = Var.new ("isZero",
-			     T.FunTy (Basis.intTy, Basis.boolTy))
-	in
-	    apply (A.VarExp (z, [])) (int n)
-	end
+    fun isZero n = apply (A.VarExp (isZeroVar, [])) (int n)
 
     (* ifexp : A.exp * A.exp * A.exp -> A.exp *)
     fun ifexp (e1, e2, e3) =
@@ -90,6 +87,33 @@ structure TestUtils =
 
     (* falseExp : A.exp *)
     val falseExp = A.ConstExp (A.DConst (Basis.boolFalse, []))
+
+
+    local
+	val tv = TyVar.new(Atom.atom "'a")
+	val tv' = AST.VarTy tv
+        val optionTyc = TyCon.newDataTyc (Atom.atom "option", [tv])
+	val optionNONE = DataCon.new optionTyc (Atom.atom "NONE", NONE)
+	val optionSOME = DataCon.new optionTyc (Atom.atom "SOME", SOME(tv'))
+
+    in
+
+        (*  some : A.exp -> A.exp *)
+        fun some e = 
+	      let val t = TypeOf.exp e
+		  val optionTySch = DataCon.typeOf optionSOME
+		  val some = A.ConstExp (A.DConst (optionSOME, [t]))
+		  val rngTy = (case TypeUtil.apply (optionTySch, [t])
+				of T.FunTy (d, r) => r
+				 | _ => fail "some: expected FunTy")
+	      in
+		  A.ApplyExp (some, e, rngTy)
+	      end
+
+        (*  none: T.ty -> A.exp *)
+	fun none t = A.ConstExp (A.DConst (optionNONE, [t]))
+
+    end (* local *)
 
     (* describe : string option -> unit *)
     fun describe NONE = P.printComment "-->"

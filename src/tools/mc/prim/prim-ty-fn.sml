@@ -9,8 +9,8 @@
 functor PrimTyFn (Ty : sig
 
     structure V : VAR
-    val bool : V.ty
-    val raw : RawTypes.raw_ty -> V.ty
+    val bool    : V.ty
+    val raw     : RawTypes.raw_ty -> V.ty
 
   end) : sig
 
