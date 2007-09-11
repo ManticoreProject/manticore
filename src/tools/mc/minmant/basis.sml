@@ -6,8 +6,157 @@
  * Based on CMSC 22610 Sample code (Winter 2007)
  *)
 
-structure Basis =
-  struct
+structure Basis : sig
+
+  (* basis type constructors *)
+    val boolTyc		: Types.tycon
+    val intTyc		: Types.tycon
+    val longTyc		: Types.tycon
+    val integerTyc	: Types.tycon
+    val floatTyc	: Types.tycon
+    val doubleTyc	: Types.tycon
+    val charTyc		: Types.tycon
+    val runeTyc		: Types.tycon
+    val stringTyc	: Types.tycon
+    val parrayTyc	: Types.tycon
+    val chanTyc		: Types.tycon
+    val ivarTyc		: Types.tycon
+    val mvarTyc		: Types.tycon
+    val eventTyc	: Types.tycon
+    val threadIdTyc	: Types.tycon
+
+  (* basis types *)
+    val unitTy		: AST.ty
+    val boolTy		: AST.ty
+    val intTy		: AST.ty
+    val floatTy		: AST.ty
+    val stringTy	: AST.ty
+    val listTy		: AST.ty -> AST.ty
+    val threadIdTy	: AST.ty
+    val parrayTy	: AST.ty -> AST.ty
+    val eventTy		: AST.ty -> AST.ty
+
+  (* type classes as lists of types *)
+    val IntClass	: AST.ty list
+    val FloatClass	: AST.ty list
+    val NumClass	: AST.ty list
+    val OrderClass	: AST.ty list
+
+  (* constructors *)
+    val boolTrue	: AST.dcon
+    val boolFalse	: AST.dcon
+
+  (* overloaded operators *)
+    val neg : (AST.ty_scheme * AST.var list)
+
+  (* primitive operators *)
+    val int_div		: AST.var
+    val int_gt		: AST.var
+    val int_gte		: AST.var
+    val int_lt		: AST.var
+    val int_lte		: AST.var
+    val int_minus	: AST.var
+    val int_mod		: AST.var
+    val int_neg		: AST.var
+    val int_plus	: AST.var
+    val int_times	: AST.var
+    val long_div	: AST.var
+    val long_gt		: AST.var
+    val long_gte	: AST.var
+    val long_lt		: AST.var
+    val long_lte	: AST.var
+    val long_minus	: AST.var
+    val long_mod	: AST.var
+    val long_neg	: AST.var
+    val long_plus	: AST.var
+    val long_times	: AST.var
+    val integer_div	: AST.var
+    val integer_gt	: AST.var
+    val integer_gte	: AST.var
+    val integer_lt	: AST.var
+    val integer_lte	: AST.var
+    val integer_minus	: AST.var
+    val integer_mod	: AST.var
+    val integer_neg	: AST.var
+    val integer_plus	: AST.var
+    val integer_times	: AST.var
+    val float_fdiv	: AST.var
+    val float_gt	: AST.var
+    val float_gte	: AST.var
+    val float_lt	: AST.var
+    val float_lte	: AST.var
+    val float_minus	: AST.var
+    val float_neg	: AST.var
+    val float_plus	: AST.var
+    val float_times	: AST.var
+    val double_fdiv	: AST.var
+    val double_gt	: AST.var
+    val double_gte	: AST.var
+    val double_lt	: AST.var
+    val double_lte	: AST.var
+    val double_minus	: AST.var
+    val double_neg	: AST.var
+    val double_plus	: AST.var
+    val double_times	: AST.var
+    val char_gt		: AST.var
+    val char_gte	: AST.var
+    val char_lt		: AST.var
+    val char_lte	: AST.var
+    val rune_gt		: AST.var
+    val rune_gte	: AST.var
+    val rune_lt		: AST.var
+    val rune_lte	: AST.var
+    val string_gt	: AST.var
+    val string_gte	: AST.var
+    val string_lt	: AST.var
+    val string_lte	: AST.var
+
+  (* predefined functions *)
+    val not		: AST.var
+    val sqrtf		: AST.var
+    val lnf		: AST.var
+    val log2f		: AST.var
+    val log10f		: AST.var
+    val powf		: AST.var
+    val expf		: AST.var
+    val sinf		: AST.var
+    val cosf		: AST.var
+    val tanf		: AST.var
+    val itof		: AST.var
+    val sqrtd		: AST.var
+    val lnd		: AST.var
+    val log2d		: AST.var
+    val log10d		: AST.var
+    val powd		: AST.var
+    val expd		: AST.var
+    val cosd		: AST.var
+    val sind		: AST.var
+    val tand		: AST.var
+    val itod		: AST.var
+    val channel		: AST.var
+    val send		: AST.var
+    val recv		: AST.var
+    val iVar		: AST.var
+    val iGet		: AST.var
+    val iPut		: AST.var
+    val mVar		: AST.var
+    val mGet		: AST.var
+    val mTake		: AST.var
+    val mPut		: AST.var
+    val itos		: AST.var
+    val ltos		: AST.var
+    val ftos		: AST.var
+    val dtos		: AST.var
+    val print		: AST.var
+    val args		: AST.var
+    val fail		: AST.var
+
+  (* environments *)
+    val lookupOp : Atom.atom -> Env.val_bind
+    val te0 : Env.ty_env
+    val ve0 : Env.var_env
+
+  end = struct
 
     nonfix div mod
 
@@ -101,75 +250,73 @@ structure Basis =
 			    end))
     val stringConcat =	monoVar(N.concat, stringTy ** stringTy --> stringTy)
 
-    val int_lte =	monoVar(N.lte, intTy ** intTy --> boolTy)
-    val float_lte =	monoVar(N.lte, floatTy ** floatTy --> boolTy)
-    val double_lte =	monoVar(N.lte, doubleTy ** doubleTy --> boolTy)
-    val long_lte =	monoVar(N.lte, longTy ** longTy --> boolTy)
-    val integer_lte =	monoVar(N.lte, integerTy ** integerTy --> boolTy)
-    val char_lte =	monoVar(N.lte, charTy ** charTy --> boolTy)
-    val rune_lte =	monoVar(N.lte, runeTy ** runeTy --> boolTy)
-    val string_lte =	monoVar(N.lte, stringTy ** stringTy --> boolTy)
+    val int_div =       monoVar(N.div, intTy ** intTy --> intTy)
+    val int_gt =        monoVar(N.gt, intTy ** intTy --> boolTy)
+    val int_gte =       monoVar(N.gte, intTy ** intTy --> boolTy)
+    val int_lt =        monoVar(N.lt, intTy ** intTy --> boolTy)
+    val int_lte =       monoVar(N.lte, intTy ** intTy --> boolTy)
+    val int_minus =     monoVar(N.minus, intTy ** intTy --> intTy)
+    val int_mod =       monoVar(N.mod, intTy ** intTy --> intTy)
+    val int_neg =       monoVar(N.uMinus, intTy --> intTy)
+    val int_plus =      monoVar(N.plus, intTy ** intTy --> intTy)
+    val int_times =     monoVar(N.times, intTy ** intTy --> intTy)
 
-    val int_lt =	monoVar(N.lt, intTy ** intTy --> boolTy)
-    val float_lt =	monoVar(N.lt, floatTy ** floatTy --> boolTy)
-    val double_lt =	monoVar(N.lt, doubleTy ** doubleTy --> boolTy)
-    val long_lt =	monoVar(N.lt, longTy ** longTy --> boolTy)
-    val integer_lt =	monoVar(N.lt, integerTy ** integerTy --> boolTy)
-    val char_lt =	monoVar(N.lt, charTy ** charTy --> boolTy)
-    val rune_lt =	monoVar(N.lt, runeTy ** runeTy --> boolTy)
-    val string_lt =	monoVar(N.lt, stringTy ** stringTy --> boolTy)
+    val long_div =      monoVar(N.div, longTy ** longTy --> longTy)
+    val long_gt =       monoVar(N.gt, longTy ** longTy --> boolTy)
+    val long_gte =      monoVar(N.gte, longTy ** longTy --> boolTy)
+    val long_lt =       monoVar(N.lt, longTy ** longTy --> boolTy)
+    val long_lte =      monoVar(N.lte, longTy ** longTy --> boolTy)
+    val long_minus =    monoVar(N.minus, longTy ** longTy --> longTy)
+    val long_mod =      monoVar(N.mod, longTy ** longTy --> longTy)
+    val long_neg =      monoVar(N.uMinus, longTy --> longTy)
+    val long_plus =     monoVar(N.plus, longTy ** longTy --> longTy)
+    val long_times =    monoVar(N.times, longTy ** longTy --> longTy)
 
-    val int_gte =	monoVar(N.gte, intTy ** intTy --> boolTy)
-    val float_gte =	monoVar(N.gte, floatTy ** floatTy --> boolTy)
-    val double_gte =	monoVar(N.gte, doubleTy ** doubleTy --> boolTy)
-    val long_gte =	monoVar(N.gte, longTy ** longTy --> boolTy)
-    val integer_gte =	monoVar(N.gte, integerTy ** integerTy --> boolTy)
-    val char_gte =	monoVar(N.gte, charTy ** charTy --> boolTy)
-    val rune_gte =	monoVar(N.gte, runeTy ** runeTy --> boolTy)
-    val string_gte =	monoVar(N.gte, stringTy ** stringTy --> boolTy)
-
-    val int_gt =	monoVar(N.gt, intTy ** intTy --> boolTy)
-    val float_gt =	monoVar(N.gt, floatTy ** floatTy --> boolTy)
-    val double_gt =	monoVar(N.gt, doubleTy ** doubleTy --> boolTy)
-    val long_gt =	monoVar(N.gt, longTy ** longTy --> boolTy)
-    val integer_gt =	monoVar(N.gt, integerTy ** integerTy --> boolTy)
-    val char_gt =	monoVar(N.gt, charTy ** charTy --> boolTy)
-    val rune_gt =	monoVar(N.gt, runeTy ** runeTy --> boolTy)
-    val string_gt =	monoVar(N.gt, stringTy ** stringTy --> boolTy)
-
-    val int_plus =	monoVar(N.plus, intTy ** intTy --> intTy)
-    val float_plus =	monoVar(N.plus, floatTy ** floatTy --> floatTy)
-    val double_plus =	monoVar(N.plus, doubleTy ** doubleTy --> doubleTy)
-    val long_plus =	monoVar(N.plus, longTy ** longTy --> longTy)
-    val integer_plus =	monoVar(N.plus, integerTy ** integerTy --> integerTy)
-
-    val int_minus =	monoVar(N.minus, intTy ** intTy --> intTy)
-    val float_minus =	monoVar(N.minus, floatTy ** floatTy --> floatTy)
-    val double_minus =	monoVar(N.minus, doubleTy ** doubleTy --> doubleTy)
-    val long_minus =	monoVar(N.minus, longTy ** longTy --> longTy)
-    val integer_minus =	monoVar(N.minus, integerTy ** integerTy --> integerTy)
-
-    val int_times =	monoVar(N.times, intTy ** intTy --> intTy)
-    val float_times =	monoVar(N.times, floatTy ** floatTy --> floatTy)
-    val double_times =	monoVar(N.times, doubleTy ** doubleTy --> doubleTy)
-    val long_times =	monoVar(N.times, longTy ** longTy --> longTy)
-    val integer_times =	monoVar(N.times, integerTy ** integerTy --> integerTy)
+    val integer_div =   monoVar(N.div, integerTy ** integerTy --> integerTy)
+    val integer_gt =    monoVar(N.gt, integerTy ** integerTy --> boolTy)
+    val integer_gte =   monoVar(N.gte, integerTy ** integerTy --> boolTy)
+    val integer_lt =    monoVar(N.lt, integerTy ** integerTy --> boolTy)
+    val integer_lte =   monoVar(N.lte, integerTy ** integerTy --> boolTy)
+    val integer_minus = monoVar(N.minus, integerTy ** integerTy --> integerTy)
+    val integer_mod =   monoVar(N.mod, integerTy ** integerTy --> integerTy)
+    val integer_neg =   monoVar(N.uMinus, integerTy --> integerTy)
+    val integer_plus =  monoVar(N.plus, integerTy ** integerTy --> integerTy)
+    val integer_times = monoVar(N.times, integerTy ** integerTy --> integerTy)
 
     val float_fdiv =    monoVar(N.fdiv, floatTy ** floatTy --> floatTy)
+    val float_gt =      monoVar(N.gt, floatTy ** floatTy --> boolTy)
+    val float_gte =     monoVar(N.gte, floatTy ** floatTy --> boolTy)
+    val float_lt =      monoVar(N.lt, floatTy ** floatTy --> boolTy)
+    val float_lte =     monoVar(N.lte, floatTy ** floatTy --> boolTy)
+    val float_minus =   monoVar(N.minus, floatTy ** floatTy --> floatTy)
+    val float_neg =	monoVar(N.uMinus, floatTy --> floatTy)
+    val float_plus =    monoVar(N.plus, floatTy ** floatTy --> floatTy)
+    val float_times =   monoVar(N.times, floatTy ** floatTy --> floatTy)
+
     val double_fdiv =   monoVar(N.fdiv, doubleTy ** doubleTy --> doubleTy)
+    val double_gt =     monoVar(N.gt, doubleTy ** doubleTy --> boolTy)
+    val double_gte =    monoVar(N.gte, doubleTy ** doubleTy --> boolTy)
+    val double_lt =     monoVar(N.lt, doubleTy ** doubleTy --> boolTy)
+    val double_lte =    monoVar(N.lte, doubleTy ** doubleTy --> boolTy)
+    val double_minus =  monoVar(N.minus, doubleTy ** doubleTy --> doubleTy)
+    val double_neg =    monoVar(N.uMinus, doubleTy --> doubleTy)
+    val double_plus =   monoVar(N.plus, doubleTy ** doubleTy --> doubleTy)
+    val double_times =  monoVar(N.times, doubleTy ** doubleTy --> doubleTy)
 
-    val int_div =	monoVar(N.div, intTy ** intTy --> intTy)
-    val long_div =	monoVar(N.div, longTy ** longTy --> longTy)
-    val integer_div =	monoVar(N.div, integerTy ** integerTy --> integerTy)
+    val char_gt =       monoVar(N.gt, charTy ** charTy --> boolTy)
+    val char_gte =      monoVar(N.gte, charTy ** charTy --> boolTy)
+    val char_lt =       monoVar(N.lt, charTy ** charTy --> boolTy)
+    val char_lte =      monoVar(N.lte, charTy ** charTy --> boolTy)
 
-    val int_mod =	monoVar(N.mod, intTy ** intTy --> intTy)
-    val long_mod =	monoVar(N.mod, longTy ** longTy --> longTy)
-    val integer_mod =	monoVar(N.mod, integerTy ** integerTy --> integerTy)
+    val rune_gt =       monoVar(N.gt, runeTy ** runeTy --> boolTy)
+    val rune_gte =      monoVar(N.gte, runeTy ** runeTy --> boolTy)
+    val rune_lt =       monoVar(N.lt, runeTy ** runeTy --> boolTy)
+    val rune_lte =      monoVar(N.lte, runeTy ** runeTy --> boolTy)
 
-    val int_neg =	monoVar(N.uMinus, intTy --> intTy)
-    val long_neg =	monoVar(N.uMinus, longTy --> longTy)
-    val integer_neg =	monoVar(N.uMinus, integerTy --> integerTy)    val float_neg =	monoVar(N.uMinus, floatTy --> floatTy)
-    val double_neg =	monoVar(N.uMinus, doubleTy --> doubleTy)
+    val string_gt =     monoVar(N.gt, stringTy ** stringTy --> boolTy)
+    val string_gte =    monoVar(N.gte, stringTy ** stringTy --> boolTy)
+    val string_lt =     monoVar(N.lt, stringTy ** stringTy --> boolTy)
+    val string_lte =    monoVar(N.lte, stringTy ** stringTy --> boolTy)
 
 (* TODO do @, ! *)
 
@@ -215,19 +362,29 @@ structure Basis =
 
     val lookupOp = let
 	  val tbl = AtomTable.mkTable (16, Fail "lookupOp")
-	  val ins = AtomTable.insert tbl
+	  fun ins (id, info) = AtomTable.insert tbl (id, Env.Overload info)
 	  in
+	  (* insert constructors *)
+	    List.app (AtomTable.insert tbl) [
+		(N.listCons,	Env.Con listCons)
+	      ];
+	  (* insert non-overloaded operators *)
+	    List.app (AtomTable.insert tbl) [
+		(N.append,	Env.Var listAppend),
+		(N.concat,	Env.Var stringConcat)
+	      ];
+	  (* insert overloaded operators *)
 	    List.app ins [
-		(N.lte, lte),
-		(N.lt, lt),
-		(N.gte, gte),
-		(N.gt, gt),
-		(N.plus, plus),
-		(N.minus, minus),
-		(N.times, times),
-		(N.fdiv, fdiv),
-		(N.div, div),
-		(N.mod, mod)
+		(N.lte,		lte),
+		(N.lt,		lt),
+		(N.gte,		gte),
+		(N.gt,		gt),
+		(N.plus,	plus),
+		(N.minus,	minus),
+		(N.times,	times),
+		(N.fdiv,	fdiv),
+		(N.div,		div),
+		(N.mod,		mod)
 	      ];
 	    AtomTable.lookup tbl
 	  end

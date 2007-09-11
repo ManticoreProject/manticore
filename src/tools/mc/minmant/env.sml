@@ -11,7 +11,13 @@ structure Env =
 
     datatype ty_def = TyDef of Types.ty_scheme | TyCon of Types.tycon
 
-    datatype val_bind = Con of AST.dcon | Var of AST.var
+  (* value identifiers may be data constructors, variables, or
+   * overloaded variables.
+   *)
+    datatype val_bind
+      = Con of AST.dcon
+      | Var of AST.var
+      | Overload of AST.ty_scheme * AST.var list
 
     type ty_env = ty_def AtomMap.map		(* TE in the semantics *)
     type tyvar_env = AST.tyvar AtomMap.map	(* TVE in the semantics *)
