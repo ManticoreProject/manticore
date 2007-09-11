@@ -156,7 +156,7 @@ structure Uncurry : sig
 			    val bty = BTy.T_Fun(
 				    List.map BV.typeOf allParams,
 				    List.map BV.typeOf exh,
-				    BTy.returnTy(BV.typeOf g)
+				    BOMTyUtil.returnTy(BV.typeOf g)
 				  )
 			    val f' = BV.alias(f, SOME "_uncurried", bty)
 			    val newFB = B.FB{f=f', params=allParams, exh= exh, body=body}

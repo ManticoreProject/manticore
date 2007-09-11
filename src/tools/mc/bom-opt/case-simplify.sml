@@ -17,6 +17,7 @@ structure CaseSimplify : sig
     structure B = BOM
     structure BV = BOM.Var
     structure BTy = BOMTy
+    structure BTU = BOMTyUtil
     structure Lit = Literal
     structure BU = BOMUtil
 
@@ -279,7 +280,7 @@ DEBUG*)
 		in
 		  B.FB{
 		      f = f, params = params, exh = exh,
-		      body = xformE(s, BTy.returnTy(typeOf f), body)
+		      body = xformE(s, BTU.returnTy(typeOf f), body)
 		    }
 		end
 	  in
@@ -314,9 +315,9 @@ DEBUG*)
 		fun sel ([], _) = xformE(s, tys, e)
 		  | sel (y::ys, i) = let
 		      val ty = typeOf y
-		      val ty' = BTy.select(typeOf argument', i)
+		      val ty' = BTU.select(typeOf argument', i)
 		      in
-			if BTy.match(ty', ty)
+			if BTU.match(ty', ty)
 			  then B.mkStmt([y], B.E_Select(i, argument'), sel(ys, i+1))
 			  else let
 			    val y' = BV.new("_t", ty')
@@ -380,7 +381,7 @@ DEBUG*)
 	      | ([], lits, []) => literalCase (s, tys, argument, lits, dflt)
 	      | ([], [], cons) => consCase (cons, dflt)
 	      | (enums, [], cons) => let
-		  val tyc = BTy.asTyc(BV.typeOf x)
+		  val tyc = BTU.asTyc(BV.typeOf x)
 		  val enumCover = (List.length enums = numEnumsOfTyc tyc)
 		  val consCover = (List.length cons = numConsOfTyc tyc)
 		  val isBoxed = BV.new("isBoxed", BTy.boolTy)
@@ -454,7 +455,7 @@ DEBUG*)
 	      | BTy.T_Raw BTy.T_Long => convert(fn (Literal.Int i) => i, I64Tst.convert)
 	      | BTy.T_Raw BTy.T_Float => convert(fn (Literal.Float f) => f, F32Tst.convert)
 	      | BTy.T_Raw BTy.T_Double => convert(fn (Literal.Float f) => f, F64Tst.convert)
-	      | _ => raise Fail("literal case on unsupported type "^ BTy.toString ty)
+	      | _ => raise Fail("literal case on unsupported type "^ BTU.toString ty)
 	    (* end case *)
 	  end
       | literalCase _ = raise Fail "ill-formed literal case"

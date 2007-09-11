@@ -56,10 +56,8 @@
     val findPrim = MkPrim.findPrim
 
   (* some type utilities *)
-    val unwrapType = Ty.unwrap
-
-    fun selectType (i, Ty.T_Tuple(_, tys)) = List.nth(tys, i)
-      | selectType (i, ty) = raise Fail(concat["selectType(", Int.toString i, ", ", Ty.toString ty, ")"])
+    val unwrapType = BOMTyUtil.unwrap
+    val selectType = BOMTyUtil.select
 
     fun newTmp ty = BOM.Var.new("_t", ty)
 
@@ -256,13 +254,13 @@
 	   of PT.Var x => k(lookup(env, x))
 	    | PT.Select(i, e) =>
 		cvtSimpleExp(findCFun, env, e, fn x => let
-		  val tmp = newTmp(selectType(i, BOM.Var.typeOf x))
+		  val tmp = newTmp(selectType(BOM.Var.typeOf x, i))
 		  in
 		    BOM.mkStmt([tmp], BOM.E_Select(i, x), k tmp)
 		  end)
 	    | PT.AddrOf(i, e) =>
 		cvtSimpleExp(findCFun, env, e, fn x => let
-		  val tmp = newTmp(Ty.T_Addr(selectType(i, BOM.Var.typeOf x)))
+		  val tmp = newTmp(Ty.T_Addr(selectType(BOM.Var.typeOf x, i)))
 		  in
 		    BOM.mkStmt([tmp], BOM.E_AddrOf(i, x), k tmp)
 		  end)

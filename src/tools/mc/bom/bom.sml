@@ -92,7 +92,7 @@ structure BOM =
 	      type ty=ty
 	      val defaultKind = VK_None
 	      val kindToString = varKindToString
-	      val tyToString = BOMTy.toString
+	      val tyToString = BOMTyUtil.toString
 	    end)
 	in
 	open V
@@ -126,7 +126,7 @@ val toString = fn x => (case peekFn x
     val unitConst = (Literal.unitLit, BOMTy.unitTy)
 
   (* wrapped raw values are stored in tuples *)
-    fun wrap x = E_Alloc(BOMTy.wrap(Var.typeOf x), [x])
+    fun wrap x = E_Alloc(BOMTyUtil.wrap(Var.typeOf x), [x])
     fun unwrap x = E_Select(0, x)
 
 (* FIXME: need constructor functions *)

@@ -40,7 +40,7 @@ structure PrintBOM : sig
 		  pr "("; prL l; pr ")"
 		end
 	  fun varBindToString x = String.concat[
-		  BV.toString x, ":", Ty.toString(BV.typeOf x)
+		  BV.toString x, ":", BOMTyUtil.toString(BV.typeOf x)
 		]
 	  fun varUseToString x = BV.toString x
 	  fun prLHS [] = pr "do "
@@ -112,7 +112,7 @@ structure PrintBOM : sig
 		      prList' varUseToString rets; pr ")\n")
 		(* end case *))
 	  and prRHS (B.E_Const c) = prConst c
-	    | prRHS (B.E_Cast(ty, y)) = prl["(", Ty.toString ty, ")", varUseToString y]
+	    | prRHS (B.E_Cast(ty, y)) = prl["(", BOMTyUtil.toString ty, ")", varUseToString y]
 	    | prRHS (B.E_Select(i, y)) = prl ["#", Int.toString i, "(", varUseToString y, ")"]
 	    | prRHS (B.E_Update(i, y, z)) = prl [
 		  "#", Int.toString i, "(", varUseToString y, ") := ", varUseToString z
@@ -134,7 +134,7 @@ structure PrintBOM : sig
 		  varUseToString x, ")"
 		]
 	  and prConst (lit, ty) = prl [
-		  Literal.toString lit, ":", Ty.toString ty
+		  Literal.toString lit, ":", BOMTyUtil.toString ty
 		]
 	  and prLambda (i, prefix, B.FB{f, params, exh, body}) = let
 		fun prParams params = prList' varBindToString params
@@ -148,10 +148,10 @@ structure PrintBOM : sig
 		    | _ => (prParams params; pr " / "; prParams exh)
 		  (* end case *);
 		  case BV.typeOf f
-		   of Ty.T_Fun(_, _, [ty]) => (pr ") -> "; pr(Ty.toString ty); pr " =\n")
+		   of Ty.T_Fun(_, _, [ty]) => (pr ") -> "; pr(BOMTyUtil.toString ty); pr " =\n")
 		    | Ty.T_Fun(_, _, tys) => (
 			pr ") -> (";
-			pr (String.concatWith "," (List.map Ty.toString tys));
+			pr (String.concatWith "," (List.map BOMTyUtil.toString tys));
 			pr ") = \n")
 		    | _ => pr ") =\n"
 		  (* end case *);

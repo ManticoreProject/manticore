@@ -39,7 +39,7 @@ structure Translate : sig
       fun mkCasts (x::xs, ty::tys) = let
 	    val (xs', casts) = mkCasts (xs, tys)
 	    in
-	      if BTy.match (ty, BV.typeOf x)
+	      if BOMTyUtil.match (ty, BV.typeOf x)
 		then (x::xs', casts)
 		else let
 		  val x' = BV.new("_t", ty)

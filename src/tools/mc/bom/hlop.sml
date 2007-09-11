@@ -49,14 +49,14 @@ structure HLOp =
 
     local
     (* param_tyToString : param_ty -> string *)
-      fun param_tyToString (PARAM t) = "PARAM " ^ (BOMTy.toString t)
-	| param_tyToString (OPT t) = "OPT " ^ (BOMTy.toString t)
-	| param_tyToString (VEC t) = "VEC " ^ (BOMTy.toString t)
+      fun param_tyToString (PARAM t) = "PARAM " ^ (BOMTyUtil.toString t)
+	| param_tyToString (OPT t) = "OPT " ^ (BOMTyUtil.toString t)
+	| param_tyToString (VEC t) = "VEC " ^ (BOMTyUtil.toString t)
     (* sigToString : hlop_sig -> string *)
       fun sigToString ({params, exh, results}) = let
 	    val ps = map param_tyToString params
-	    val es = map BOMTy.toString exh
-	    val rs = map BOMTy.toString results
+	    val es = map BOMTyUtil.toString exh
+	    val rs = map BOMTyUtil.toString results
 	    val commas = String.concatWith ", "
 	    in
 	      String.concat[

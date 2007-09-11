@@ -17,10 +17,11 @@ structure CheckBOM : sig
     structure VTbl = BV.Tbl
     structure VSet = BV.Set
     structure BTy = BOMTy
+    structure BTU = BOMTyUtil
 
     val v2s = BV.toString
     fun vl2s xs = String.concat["(", String.concatWith "," (List.map v2s xs), ")"]
-    fun v2s' x = concat[v2s x, ":", BTy.toString(BV.typeOf x)]
+    fun v2s' x = concat[v2s x, ":", BTU.toString(BV.typeOf x)]
     fun vl2s' xs = String.concat["(", String.concatWith "," (List.map v2s' xs), ")"]
 
 (**** Fluet version ****
@@ -47,11 +48,11 @@ structure CheckBOM : sig
 		  | chk (l, []) = err[Int.toString(length l), " too few arguments in ", cxt]
 		  | chk ([], l) = err[Int.toString(length l), " too many arguments in ", cxt]
 		  | chk (ty::tys, x::xs) = (
-		      if (BTy.match(BV.typeOf x, ty))
+		      if (BTU.match(BV.typeOf x, ty))
 			then ()
 			else err[
-			    "type mismatch in ", cxt, "\n  expected  ", BTy.toString ty,
-			    "\n  but found ", v2s x, ":", BTy.toString(BV.typeOf x)
+			    "type mismatch in ", cxt, "\n  expected  ", BTU.toString ty,
+			    "\n  but found ", v2s x, ":", BTU.toString(BV.typeOf x)
 			  ];
 		      chk(tys, xs))
 		in
@@ -92,7 +93,7 @@ structure CheckBOM : sig
 			    chkVars (env, exhs, "Apply exhs");
 			    checkArgs (argTys, args, concat["Apply ", v2s f, " args"]);
 			    checkArgs (exhTys, exhs, concat["Apply ", v2s f, " exhs"]))
-			| ty => err[v2s f, ":", BTy.toString ty, " is not a function"]
+			| ty => err[v2s f, ":", BTU.toString ty, " is not a function"]
 		      (* end case *))
 		  | B.E_Throw(k, args) => (
 		      chkVar (env, k, "Throw");
@@ -100,7 +101,7 @@ structure CheckBOM : sig
 		       of BTy.T_Cont(argTys) => (
 			    chkVars (env, args, "Throw args");
 			    checkArgs (argTys, args, "Throw " ^ v2s k))
-			| ty => err[v2s k, ":", BTy.toString ty, " is not a continuation"]
+			| ty => err[v2s k, ":", BTU.toString ty, " is not a continuation"]
 		      (* end case *))
                   | B.E_Ret(args) => (
                       chkVars (env, args, "Return args");
@@ -120,27 +121,27 @@ structure CheckBOM : sig
 		(* end case *)))
 	  and chkRHS (env, lhs, rhs) = (case (List.map BV.typeOf lhs, rhs)
 		 of ([ty], B.E_Const(lit, ty')) => (
-		      if BTy.equal(ty', ty)
+		      if BTU.equal(ty', ty)
 			then ()
 			else err["type mismatch in Const: ", 
                                  vl2s lhs, " = ", 
-                                 Literal.toString lit, ":", BTy.toString ty'])
+                                 Literal.toString lit, ":", BTU.toString ty'])
 		  | ([ty], B.E_Cast(ty', x)) => (
 		      chkVar (env, x, "Cast");
-		      if BTy.match(ty', ty) andalso BTy.validCast(BV.typeOf x, ty')
+		      if BTU.match(ty', ty) andalso BTU.validCast(BV.typeOf x, ty')
 			then ()
 			else err["type mismatch in Cast: ", 
-                                 vl2s lhs, " = (", BTy.toString ty', ")(", v2s' x, ")"])
+                                 vl2s lhs, " = (", BTU.toString ty', ")(", v2s' x, ")"])
 		  | ([ty], B.E_Select(i, x)) => (
                       chkVar(env, x, "Select");
                       case BV.typeOf x
-                       of BTy.T_Tuple(_, tys) => 
-                             if BTy.equal(ty, List.nth (tys, i))
+                       of BTU.T_Tuple(_, tys) => 
+                             if BTU.equal(ty, List.nth (tys, i))
                                 then ()
                                 else err["type mismatch in Select: ",
                                          vl2s lhs, " = #", Int.toString i, 
                                          "(", v2s x, ")"]
-			| ty => err[v2s x, ":", BTy.toString ty, " is not a tuple: ",
+			| ty => err[v2s x, ":", BTU.toString ty, " is not a tuple: ",
                                     vl2s lhs, " = #", Int.toString i, "(", v2s x, ")"]
 		      (* end case *))
 		  | ([], B.E_Update(i, x, y)) => (
@@ -148,29 +149,29 @@ structure CheckBOM : sig
                       chkVar(env, y, "Update");
                       case BV.typeOf x
                        of BTy.T_Tuple(true, tys) => 
-                              if BTy.equal(BV.typeOf y, List.nth (tys, i))
+                              if BTU.equal(BV.typeOf y, List.nth (tys, i))
                                  then ()
                               else err["type mismatch in Update: ",
                                        "#", Int.toString i, "(", v2s x, ") := ", v2s y]
-			| ty => err[v2s x, ":", BTy.toString ty, " is not a mutable tuple",
+			| ty => err[v2s x, ":", BTU.toString ty, " is not a mutable tuple",
                                     "#", Int.toString i, "(", v2s x, ") := ", v2s y]
 		      (* end case *))
 		  | ([ty], B.E_AddrOf(i, x)) => (
                       chkVar(env, x, "AddrOf");
                       case BV.typeOf x
-                       of BTy.T_Tuple(_, tys) => 
-                              if BTy.equal(ty, BTy.T_Addr(List.nth (tys, i)))
+                       of BTU.T_Tuple(_, tys) => 
+                              if BTU.equal(ty, BTy.T_Addr(List.nth (tys, i)))
                                  then ()
                               else err["type mismatch in AddrOf: ",
                                        vl2s lhs, " = &(", v2s x, ")"]
-			| ty => err[v2s x, ":", BTy.toString ty, " is not a tuple",
+			| ty => err[v2s x, ":", BTU.toString ty, " is not a tuple",
                                     vl2s lhs, " = &(", v2s x, ")"]
 		      (* end case *))
 		  | ([ty], B.E_Alloc (allocTy, xs)) => (
                       chkVars(env, xs, "Alloc");
-                      if BTy.equal (ty, allocTy) andalso
-                         (BTy.equal(ty, BTy.T_Tuple(true, List.map BV.typeOf xs))
-                          orelse BTy.equal(ty, BTy.T_Tuple(false, List.map BV.typeOf xs)))
+                      if BTU.equal (ty, allocTy) andalso
+                         (BTU.equal(ty, BTy.T_Tuple(true, List.map BV.typeOf xs))
+                          orelse BTU.equal(ty, BTy.T_Tuple(false, List.map BV.typeOf xs)))
                         then ()
                         else err["type mismatch in Alloc: ", 
                                  vl2s lhs, " = ", vl2s xs])
@@ -185,13 +186,13 @@ structure CheckBOM : sig
 		      chkVar(env, cf, "CCall"); 
                       chkVars(env, args, "CCall args"))
 		  | ([ty], B.E_HostVProc) => (
-                      if BTy.equal(ty, BTy.T_VProc)
+                      if BTU.equal(ty, BTy.T_VProc)
                          then ()
                          else err["type mismatch in HostVProc: ",
                                   vl2s lhs, " = host_vproc()"])
 		  | ([ty], B.E_VPLoad(n, vp)) => (
                       chkVar(env, vp, "VPLoad");
-                      if BTy.equal(BV.typeOf vp, BTy.T_VProc)
+                      if BTU.equal(BV.typeOf vp, BTy.T_VProc)
                          then ()
                          else err["type mismatch in VPLoad: ",
                                   vl2s lhs, " = vpload(", 
@@ -199,7 +200,7 @@ structure CheckBOM : sig
 		  | ([], B.E_VPStore(n, vp, x)) => (
 		      chkVar(env, vp, "VPStore"); 
                       chkVar(env, x, "VPStore");
-                      if BTy.equal(BV.typeOf vp, BTy.T_VProc)
+                      if BTU.equal(BV.typeOf vp, BTy.T_VProc)
                          then ()
                          else err["type mismatch in VPStore: ",
                                   vl2s lhs, " = vpstore(", 
@@ -211,11 +212,11 @@ structure CheckBOM : sig
 		  | chk (_, []) = err["too few parameters in ", v2s f]
 		  | chk ([], _) = err["too many parameters in ", v2s f]
 		  | chk (ty::tys, x::xs) = (
-		      if (BTy.equal(BV.typeOf x, ty))
+		      if (BTU.equal(BV.typeOf x, ty))
 			then ()
 			else err[
-			    "type mismatch in ", v2s f, "\n  expected  ", BTy.toString ty,
-			    "\n  but found ", v2s x, ":", BTy.toString(BV.typeOf x)
+			    "type mismatch in ", v2s f, "\n  expected  ", BTU.toString ty,
+			    "\n  but found ", v2s x, ":", BTU.toString(BV.typeOf x)
 			  ];
 		      chk(tys, xs))
                 val (argTys, exhTys, retTys) =
@@ -225,7 +226,7 @@ structure CheckBOM : sig
                         | BTy.T_Cont(argTys) =>
                               (argTys, [], [])
                         | ty => (err["expected function/continuation type for ",
-                                     v2s f, ":", BTy.toString(BV.typeOf f)];
+                                     v2s f, ":", BTU.toString(BV.typeOf f)];
                                  ([],[],[]))
                       (* end case *)
                 in
@@ -279,18 +280,18 @@ structure CheckBOM : sig
 	  fun checkArgTypes (ctx, paramTys, argTys) = let
 	      (* chk1 : ty * ty -> unit *)
 	        fun chk1 (pty, aty) =
-		      if (BTy.match (aty, pty))
+		      if (BTU.match (aty, pty))
                         then ()
 		        else (
 			  error ["type mismatch in ", ctx, "\n"];
-			  cerror ["  expected  ", BTy.toString pty, "\n"];
-			  cerror ["  but found ", BTy.toString aty, "\n"])
+			  cerror ["  expected  ", BTU.toString pty, "\n"];
+			  cerror ["  but found ", BTU.toString aty, "\n"])
 	        in 
 	          if (length paramTys = length argTys)
                     then ListPair.app chk1 (paramTys, argTys)
                     else let
 	            (* str : ty list -> string *)
-                      fun str ts = String.concatWith "," (map BTy.toString ts)
+                      fun str ts = String.concatWith "," (map BTU.toString ts)
                       in 
                         error ["wrong number of arguments in ", ctx, "\n"];
 			cerror ["  expected (", str paramTys, ")\n"];
@@ -314,7 +315,7 @@ structure CheckBOM : sig
 		(* end case *))
 	(* create a tail context *)
 	  fun tailContext f = let
-		val (_, _, rng) = BTy.asFunTy(BV.typeOf f)
+		val (_, _, rng) = BTU.asFunTy(BV.typeOf f)
 		in
 		  TAIL(f, rng)
 		end
@@ -400,7 +401,7 @@ structure CheckBOM : sig
 				    concat["binding ", vl2s ys, " to Apply ", v2s f],
 				    typesOf ys, retTys)
 			    (* end case *))
-			| ty => error[v2s f, " : ", BTy.toString ty, " is not a function"]
+			| ty => error[v2s f, " : ", BTU.toString ty, " is not a function"]
 		      (* end case *))
 		  | B.E_Throw(k, args) => (
 		      chkVar(k, "Throw");
@@ -408,7 +409,7 @@ structure CheckBOM : sig
 		       of BTy.T_Cont(argTys) => (
 			    chkVars (args, "Throw args");
 			    checkArgTypes (concat["Throw ", v2s k, " args"], argTys, typesOf args))
-			| ty => error[v2s k, ":", BTy.toString ty, " is not a continuation"]
+			| ty => error[v2s k, ":", BTU.toString ty, " is not a continuation"]
 		      (* end case *))
 		  | B.E_Ret args => (
 		      chkVars(args, "Return");
@@ -434,30 +435,30 @@ structure CheckBOM : sig
 		(* end case *))
 	  and chkRHS (lhs, rhs) = (case (typesOf lhs, rhs)
 		 of ([ty], B.E_Const(lit, ty')) => (
-		      if BTy.equal(ty', ty)
+		      if BTU.equal(ty', ty)
 			then ()
 			else error[
 			    "type mismatch in Const: ",  vl2s lhs, " = ", 
-			    Literal.toString lit, ":", BTy.toString ty', 
-			    " (* expected ", BTy.toString ty, " *)\n"
+			    Literal.toString lit, ":", BTU.toString ty', 
+			    " (* expected ", BTU.toString ty, " *)\n"
 			  ])
 		  | ([ty], B.E_Cast(ty', x)) => (
 		      chkVar (x, "Cast");
-		      if BTy.match(ty', ty) andalso BTy.validCast(BV.typeOf x, ty')
+		      if BTU.match(ty', ty) andalso BTU.validCast(BV.typeOf x, ty')
 			then ()
 			else error["type mismatch in Cast: ", 
-                                 vl2s lhs, " = (", BTy.toString ty', ")(", v2s' x, ")\n"])
+                                 vl2s lhs, " = (", BTU.toString ty', ")(", v2s' x, ")\n"])
 		  | ([ty], B.E_Select(i, x)) => (
                       chkVar(x, "Select");
                       case BV.typeOf x
                        of BTy.T_Tuple(_, tys) =>
-			    if (i < List.length tys) andalso BTy.match(List.nth (tys, i), ty)
+			    if (i < List.length tys) andalso BTU.match(List.nth (tys, i), ty)
 			      then ()
 			      else error[
 				  "type mismatch in Select: ",
 				   vl2s' lhs, " = #", Int.toString i, "(", v2s' x, ")\n"
 				]
-			| ty => error[v2s x, ":", BTy.toString ty, " is not a tuple: ",
+			| ty => error[v2s x, ":", BTU.toString ty, " is not a tuple: ",
                                     vl2s lhs, " = #", Int.toString i, "(", v2s x, ")\n"]
 		      (* end case *))
 		  | ([], B.E_Update(i, x, y)) => (
@@ -465,28 +466,28 @@ structure CheckBOM : sig
                       chkVar(y, "Update");
                       case BV.typeOf x
                        of BTy.T_Tuple(true, tys) => 
-			    if BTy.equal(BV.typeOf y, List.nth (tys, i))
+			    if BTU.equal(BV.typeOf y, List.nth (tys, i))
 			      then ()
 			      else error["type mismatch in Update: ",
 				     "#", Int.toString i, "(", v2s x, ") := ", v2s y, "\n"]
-			| ty => error[v2s x, ":", BTy.toString ty, " is not a mutable tuple",
+			| ty => error[v2s x, ":", BTU.toString ty, " is not a mutable tuple",
                                     "#", Int.toString i, "(", v2s x, ") := ", v2s y, "\n"]
 		      (* end case *))
 		  | ([ty], B.E_AddrOf(i, x)) => (
                       chkVar(x, "AddrOf");
                       case BV.typeOf x
                        of BTy.T_Tuple(_, tys) => 
-			    if (i < List.length tys) andalso BTy.match(BTy.T_Addr(List.nth (tys, i)), ty)
+			    if (i < List.length tys) andalso BTU.match(BTy.T_Addr(List.nth (tys, i)), ty)
 			      then ()
                               else error["type mismatch in AddrOf: ", vl2s lhs, " = &(", v2s x, ")\n"]
-			| ty => error[v2s x, ":", BTy.toString ty, " is not a tuple",
+			| ty => error[v2s x, ":", BTU.toString ty, " is not a tuple",
                                     vl2s lhs, " = &(", v2s x, ")\n"]
 		      (* end case *))
 		  | ([ty], B.E_Alloc (allocTy, xs)) => (
                       chkVars(xs, "Alloc");
-                      if BTy.match (allocTy, ty)
-		      andalso (BTy.equal(ty, BTy.T_Tuple(true, typesOf xs))
-			orelse BTy.equal(ty, BTy.T_Tuple(false, typesOf xs)))
+                      if BTU.match (allocTy, ty)
+		      andalso (BTU.equal(ty, BTy.T_Tuple(true, typesOf xs))
+			orelse BTU.equal(ty, BTy.T_Tuple(false, typesOf xs)))
                         then ()
                         else error["type mismatch in Alloc: ", vl2s lhs, " = ", vl2s xs, "\n"])
 		  | ([ty], B.E_Prim p) => (
@@ -500,12 +501,12 @@ structure CheckBOM : sig
 		      chkVar(cf, "CCall"); 
                       chkVars(args, "CCall args"))
 		  | ([ty], B.E_HostVProc) => (
-                      if BTy.match(BTy.T_VProc, ty)
+                      if BTU.match(BTy.T_VProc, ty)
                          then ()
                          else error["type mismatch in HostVProc: ", vl2s lhs, " = host_vproc()\n"])
 		  | ([ty], B.E_VPLoad(n, vp)) => (
                       chkVar(vp, "VPLoad");
-                      if BTy.equal(BV.typeOf vp, BTy.T_VProc)
+                      if BTU.equal(BV.typeOf vp, BTy.T_VProc)
                          then ()
                          else error["type mismatch in VPLoad: ",
                                   vl2s lhs, " = vpload(", 
@@ -513,7 +514,7 @@ structure CheckBOM : sig
 		  | ([], B.E_VPStore(n, vp, x)) => (
 		      chkVar(vp, "VPStore"); 
                       chkVar(x, "VPStore");
-                      if BTy.equal(BV.typeOf vp, BTy.T_VProc)
+                      if BTU.equal(BV.typeOf vp, BTy.T_VProc)
                          then ()
                          else error["type mismatch in VPStore: ",
                                   vl2s lhs, " = vpstore(", 

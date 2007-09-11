@@ -256,16 +256,16 @@ structure BOMUtil : sig
 
     fun typeOfRHS (B.E_Const(_, ty)) = [ty]
       | typeOfRHS (B.E_Cast(ty, _)) = [ty]
-      | typeOfRHS (B.E_Select(i, x)) = [BTy.select(BV.typeOf x, i)]
+      | typeOfRHS (B.E_Select(i, x)) = [BOMTyUtil.select(BV.typeOf x, i)]
       | typeOfRHS (B.E_Update _) = []
-      | typeOfRHS (B.E_AddrOf(i, x)) = [BTy.T_Addr(BTy.select(BV.typeOf x, i))]
+      | typeOfRHS (B.E_AddrOf(i, x)) = [BTy.T_Addr(BOMTyUtil.select(BV.typeOf x, i))]
       | typeOfRHS (B.E_Alloc(ty, _)) = [ty]
       | typeOfRHS (B.E_Prim p) = typeOfPrim p
-      | typeOfRHS (B.E_DCon(dc, _)) = [BTy.typeOfDCon dc]
+      | typeOfRHS (B.E_DCon(dc, _)) = [BOMTyUtil.typeOfDCon dc]
       | typeOfRHS (B.E_CCall(cf, _)) = let
 	  val BTy.T_CFun(CFunctions.CProto(cty, _, _)) = BV.typeOf cf
 	  in
-	    BTy.ctypeToBOM cty
+	    BOMTyUtil.ctypeToBOM cty
 	  end
       | typeOfRHS (B.E_HostVProc) = [BTy.T_VProc]
       | typeOfRHS (B.E_VPLoad _) = [BTy.T_Any]

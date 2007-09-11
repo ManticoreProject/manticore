@@ -29,7 +29,7 @@
     val findPrim = MkPrim.findPrim
 
   (* some type utilities *)
-    val unwrapType = Ty.unwrap
+    val unwrapType = BOMTyUtil.unwrap
 
     fun selectType (i, Ty.T_Tuple(_, tys)) = List.nth(tys, i)
       | selectType _ = raise Fail "selectType"

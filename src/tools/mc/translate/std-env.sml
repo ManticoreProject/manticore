@@ -23,7 +23,7 @@ structure StdEnv : sig
   (***** Predefined types *****)
 
     (* wrapTy : RawTypes.raw_ty -> BTy.ty *)
-    fun wrapTy rty = BTy.wrap(BTy.T_Raw rty)
+    fun wrapTy rty = BOMTyUtil.wrap(BTy.T_Raw rty)
 
     val types = [
 	    (B.boolTyc,		BTy.boolTy),

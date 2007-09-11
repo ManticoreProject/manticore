@@ -9,6 +9,7 @@ Library
   structure BOM
   structure BOMTy
   structure BOMTyCon
+  structure BOMTyUtil
   structure BOMUtil
   structure Census
   structure CheckBOM
@@ -27,6 +28,7 @@ is
   bom.sml
   bom-ty.sml
   bom-tycon.sml
+  bom-ty-util.sml
   bom-util.sml
   census.sml
   check-bom.sml
