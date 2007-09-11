@@ -21,8 +21,8 @@ define @future1 (thunk : thunk / exh : exh) : future =
             WAITING   cont
        2) a _thunk_ word 
    *)
-  let e : any = (any) EMPTY_F (* FIXME this causes "type mismatch in Cast" *)
-  let cell : future = alloc (e, thunk)
+  let tmp : ![int, thunk] = alloc(EMPTY_F, thunk)
+  let cell : future = (future)tmp
   let vp : vproc = host_vproc
   do ccall enqueueG (vp)
   return (cell)
