@@ -8,9 +8,7 @@
 
 structure StdEnv : sig
 
-    val findTyc : Types.tycon -> BOMTy.ty option
-    val lookupDCon : Types.dcon -> BOMTy.data_con
-    val lookupVar : AST.var -> BOM.lambda
+    val env0 : TranslateEnv.env
 
   end = struct
 
@@ -22,13 +20,7 @@ structure StdEnv : sig
     structure BV = BOM.Var
     structure F = Futures
 
-    (* fail : string -> 'a *)
-    fun fail msg = raise Fail msg
-
-    (* todo : string -> 'a *)
-    fun todo msg = fail ("todo: " ^ msg)
-
-    fun lookupDCon _ = raise Fail "lookupDCon"
+  (***** Predefined types *****)
 
     (* wrapTy : RawTypes.raw_ty -> BTy.ty *)
     fun wrapTy rty = BTy.wrap(BTy.T_Raw rty)
@@ -58,13 +50,13 @@ structure StdEnv : sig
 	    (F.futureTyc,       BTy.futureTy)
 	  ]
 
-    val findTyc : Types.tycon -> BOMTy.ty option = let
-	  val tbl = TTbl.mkTable(List.length types, Fail "tyc tbl")
-	  in
-	    List.app (TTbl.insert tbl) types;
-	    TTbl.find tbl
-	  end
 
+  (***** Predefined data constructors *****)
+
+    val dcons = []
+
+
+  (***** Predefined operators *****)
     local 
     (* generate a variable for a primop; if the ty is raw, then we have to
      * unwrap the argument and so we generate two variables.
@@ -103,7 +95,7 @@ structure StdEnv : sig
 	      (* end case *)
 	    end
 
-      (* funTy : BV.var * BV.var -> BTy.ty *)
+    (* funTy : BV.var * BV.var -> BTy.ty *)
       fun funTy (arg, res) = BTy.T_Fun([BV.typeOf arg], [BTy.exhTy], [BV.typeOf res])
 
       (* prim1 : (BV.V.var -> BOM.prim) * string  * BV.V.ty * BV.V.ty 
@@ -148,8 +140,8 @@ structure StdEnv : sig
 	    val {params, exh, results} = sign
 	    val paramTys = let
 		  fun get (HLOp.PARAM t) = t
-		    | get (HLOp.OPT t) = fail "hlop.get: OPT"
-		    | get (HLOp.VEC t) = fail "hlop.get: VEC"
+		    | get (HLOp.OPT t) = raise Fail "hlop.get: OPT"
+		    | get (HLOp.VEC t) = raise Fail "hlop.get: VEC"
 		  in
 		    List.map get params
 		  end
@@ -337,15 +329,19 @@ structure StdEnv : sig
 	  ]
     end (* local *) 
 
-    val lookupVar : AST.var -> BOM.lambda = let
-	  val tbl = Var.Tbl.mkTable(List.length operators, Fail "var tbl")
+  (* create the initial environment *)
+    val env0 = let
+	  val env = TranslateEnv.mkEnv()
+	(* insert a lambda binding *)
+	  fun insertFun ((x, lambda), env) = TranslateEnv.insertFun (env, x, lambda)
+	(* insert primitive operator definitions *)
+	  val env = List.foldl insertFun env operators
+	(* insert high-level operator definitions *)
+	  val env = List.foldl insertFun env predefs
 	  in
-	    List.app (Var.Tbl.insert tbl) operators;
-	    List.app (Var.Tbl.insert tbl) predefs;
-	    fn x => (case Var.Tbl.find tbl x
-	       of SOME lambda => BOMUtil.copyLambda lambda
-		| NONE => raise Fail("unbound variable " ^ Var.toString x)
-	      (* end case *))
+	    List.app (fn (tyc, bty) => TranslateEnv.insertTyc (env, tyc, bty)) types;
+	    List.app (fn (dc, bdc) => TranslateEnv.insertDCon (env, dc, bdc)) dcons;
+	    env
 	  end
 
   end

@@ -25,4 +25,5 @@ is
   std-env.sml
   translate.sml
   translate-controls.sml
+  translate-env.sml
   translate-types.sml

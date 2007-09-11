@@ -16,45 +16,10 @@ structure Translate : sig
     structure BV = B.Var
     structure BTy = BOMTy
     structure Lit = Literal
+    structure E = TranslateEnv
 
-  (* fail : string -> 'a *)
-    fun fail msg = raise Fail msg
-
-  (* todo : string -> 'a *)
-    fun todo thing = fail ("todo: " ^ thing)
-
-  (* isTouch : A.exp -> bool *)
-    fun isTouch (A.VarExp (x, _)) = Var.same (x, Futures.touch)
-      | isTouch _ = false
-
-  (* isTouch1 : A.exp -> bool *)
-    fun isTouch1 (A.VarExp (x, _)) = Var.same (x, Futures.touch1)
-      | isTouch1 _ = false
- 
     val trTy = TranslateTypes.tr
-    val trScheme = TranslateTypes.trScheme
 
-    datatype env = E of {
-	exh : B.var,		(* current exception handler *)
-	vmap : B.var V.Map.map	(* map from AST variables to BOM variables *)
-      }
-
-    fun mkEnv exh = E{exh = exh, vmap = V.Map.empty}
-
-    fun find (E{vmap, ...}, x) = V.Map.find(vmap, x)
-
-    fun insert (E{vmap, exh}, x, x') =
-	  E{vmap=V.Map.insert(vmap, x, x'), exh=exh}
-
-    fun newHandler (E{vmap, ...}) = let
-	  val exh = BV.new("_exh", BTy.exhTy)
-	  in
-	    (exh, E{vmap = vmap, exh = exh})
-	  end
-
-  (* handlerOf : env -> B.var *)
-    fun handlerOf (E{exh, ...}) = exh
-	
   (* prune out overload nodes.
    * NOTE: we should probably have a pass that does this before
    * AST optimization.
@@ -65,9 +30,9 @@ structure Translate : sig
 
   (* translate a binding occurrence of an AST variable to a BOM variable *)
     fun trVar (env, x) = let
-	  val x' = BV.new(V.nameOf x, trScheme(V.typeOf x))
+	  val x' = BV.new(V.nameOf x, TranslateTypes.trScheme(env, V.typeOf x))
 	  in
-	    (x', insert(env, x, x'))
+	    (x', E.insertVar(env, x, x'))
 	  end
 
     local
@@ -117,7 +82,7 @@ structure Translate : sig
 	    | f as AST.FunExp(x, e, ty) => let
 		val fty = TypeOf.exp f
 		val fvar = Var.new ("f", fty)
-		val env' = insert (env, fvar, BV.new ("f", trTy fty))
+		val env' = E.insertVar (env, fvar, BV.new ("f", trTy(env, fty)))
 		val fdef = AST.FB (fvar, x, e)
 		val letExp = AST.LetExp (AST.FunBind [fdef], AST.VarExp (fvar, []))
 		in
@@ -126,7 +91,7 @@ structure Translate : sig
 	    | AST.ApplyExp(e1, e2, ty) => 
 	        EXP(trExpToV (env, e1, fn f =>
 		  trExpToV (env, e2, fn arg =>
-		    B.mkApply(f, [arg], [handlerOf env]))))
+		    B.mkApply(f, [arg], [E.handlerOf env]))))
 	    | AST.TupleExp[] => let
 		val t = BV.new("_unit", BTy.unitTy)
 		in
@@ -145,7 +110,7 @@ structure Translate : sig
 	    | AST.PCompExp _ => raise Fail "unexpected PCompExp"
 	    | AST.PChoiceExp _ => raise Fail "unexpected PChoiceExp"
 	    | AST.SpawnExp e => let
-		val (exh, env') = newHandler env
+		val (exh, env') = E.newHandler env
 		val e' = trExpToExp(env', e)
 		val thd = BV.new("_thd", BTy.T_Fun([], [BTy.exhTy], [BTy.unitTy]))
 		in
@@ -153,7 +118,7 @@ structure Translate : sig
 (* FIXME: should ManticoreOps be HLOpEnv??? *)
 		    B.mkHLOp(ManticoreOps.spawnOp, [thd], [])))
 		end
-	    | AST.ConstExp(AST.DConst dc) => raise Fail "DConst"
+	    | AST.ConstExp(AST.DConst(dc, tys)) => raise Fail(concat["DConst(", DataCon.nameOf dc, ")"])
 	    | AST.ConstExp(AST.LConst(lit as Literal.String s, _)) => let
 		val t1 = BV.new("_data", BTy.T_Any)
 		val t2 = BV.new("_len", BTy.T_Raw BTy.T_Int)
@@ -163,7 +128,7 @@ structure Translate : sig
 		      ([t2], B.E_Const(Literal.Int(IntInf.fromInt(size s)), BTy.T_Raw BTy.T_Int))
 		    ], B.mkHLOp(HLOpEnv.stringLitOp, [t1, t2], [])))
 		end
-	    | AST.ConstExp(AST.LConst(lit, ty)) => (case trTy ty
+	    | AST.ConstExp(AST.LConst(lit, ty)) => (case trTy(env, ty)
 		 of ty' as BTy.T_Tuple(false, [rty as BTy.T_Raw _]) => let
 		      val t1 = BV.new("_lit", rty)
 		      val t2 = BV.new("_wlit", ty')
@@ -196,7 +161,7 @@ structure Translate : sig
 
     and trExpToExp (env, exp) = toExp(trExp(env, exp))
 
-    and trBind (env, bind, k : env -> B.exp) = (case bind
+    and trBind (env, bind, k : TranslateEnv.env -> B.exp) = (case bind
 	   of AST.ValBind(AST.TuplePat pats, exp) => let
 		val (env', xs) = trVarPats (env, pats)
 		fun sel (t, i, x::xs, p::ps) =
@@ -215,7 +180,7 @@ structure Translate : sig
 		end
 	    | AST.ValBind(AST.VarPat x, exp) => (case trExp(env, exp)
 		   of BIND([x'], rhs) =>
-			mkStmt([x'], rhs, k(insert(env, x, x')))
+			mkStmt([x'], rhs, k(E.insertVar(env, x, x')))
 		    | EXP e => let
 			val (x', env') = trVar(env, x)
 			in
@@ -233,7 +198,7 @@ structure Translate : sig
 		val (env, fs) = List.foldr bindFun (env, []) fbs
 		fun trFun (f', x, e) = let
 		      val (x', env) = trVar(env, x)
-		      val (exh', env) = newHandler env
+		      val (exh', env) = E.newHandler env
 		      val e' = trExpToExp (env, e)
 		      in
 			B.FB{f = f', params = [x'], exh = [exh'], body = e'}
@@ -264,7 +229,7 @@ structure Translate : sig
 		      end
 		  | AST.VarPat x =>
 		    (* default case: map x to the argument *)
-		      (cases, SOME(trExpToExp(insert(env, x, arg), exp)))
+		      (cases, SOME(trExpToExp(E.insertVar(env, x, arg), exp)))
 		  | AST.WildPat ty => raise Fail "WildPat"
 		  | AST.ConstPat(AST.DConst(dc, tyArgs)) => raise Fail "DConst"
 		  | AST.ConstPat(AST.LConst(lit, ty)) =>
@@ -314,17 +279,17 @@ structure Translate : sig
       | trExpToV (env, exp, cxt : B.var -> B.exp) = (case trExp(env, exp)
 	   of BIND([x], rhs) => mkStmt([x], rhs, cxt x)
 	    | EXP e => let
-		val t = BV.new ("_t", trTy(TypeOf.exp exp))
+		val t = BV.new ("_t", trTy(env, TypeOf.exp exp))
 		in
 		  mkLet([t], e, cxt t)
 		end
 	  (* end case *))
 
     and trVtoV (env, x, cxt : B.var -> B.exp) = (
-	  case find(env, x)
-	   of SOME x' => cxt x' (* pass x' directly to the context *)
-	    | NONE => let
-		val lambda as B.FB{f, ...} = StdEnv.lookupVar x
+	  case E.lookupVar(env, x)
+	   of E.Var x' => cxt x' (* pass x' directly to the context *)
+	    | E.Lambda lambda => let
+		val lambda as B.FB{f, ...} = BOMUtil.copyLambda lambda
 		in
 		  B.mkFun([lambda], cxt f)
 		end
@@ -342,12 +307,12 @@ structure Translate : sig
     fun translate exp = let
           val argTy = BTy.T_Raw RawTypes.T_Int
           val arg = BV.new("_arg", argTy)
-	  val exh = BV.new("_topExh", BTy.exhTy)
+	  val (exh, env) = E.newHandler StdEnv.env0
 	  val mainFun = B.FB{
-		  f = BV.new("main", BTy.T_Fun([argTy], [BTy.exhTy], [trTy(TypeOf.exp exp)])),
+		  f = BV.new("main", BTy.T_Fun([argTy], [BTy.exhTy], [trTy(env, TypeOf.exp exp)])),
 		  params = [arg],
 		  exh = [exh],
-		  body = trExpToExp(mkEnv exh, exp)
+		  body = trExpToExp(env, exp)
 		}
 	  val module = B.mkModule(Atom.atom "Main", [], mainFun)
 	  in

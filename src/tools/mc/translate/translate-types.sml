@@ -4,26 +4,35 @@
  * All rights reserved.
  *)
 
-structure TranslateTypes =
-  struct
+structure TranslateTypes : sig
+
+    val tr : TranslateEnv.env * AST.ty -> BOM.ty
+    val trScheme : TranslateEnv.env * AST.ty_scheme -> BOM.ty
+
+  end = struct
 
     structure Ty = Types;
     structure BTy = BOMTy
 
-    fun tr ty = (case TypeUtil.prune ty
-	   of Ty.ErrorTy => raise Fail "unexpected ErrorTy"
-	    | Ty.MetaTy _ => BTy.T_Any (* can this happen? *)
-	    | Ty.ClassTy _ => raise Fail "unresolved overload"
-	    | Ty.VarTy _ => BTy.T_Any
-	    | Ty.ConTy(tyArgs, tyc) => (case StdEnv.findTyc tyc
-		 of SOME ty => ty
-		  | NONE => raise Fail "ConTy unimplemented"
+    fun tr (env, ty) = let
+	  fun tr' ty = (case TypeUtil.prune ty
+		 of Ty.ErrorTy => raise Fail "unexpected ErrorTy"
+		  | Ty.MetaTy _ => BTy.T_Any (* can this happen? *)
+		  | Ty.ClassTy _ => raise Fail "unresolved overload"
+		  | Ty.VarTy _ => BTy.T_Any
+		  | Ty.ConTy(tyArgs, tyc) => (
+		      case TranslateEnv.findTyc (env, tyc)
+		       of SOME ty => ty
+			| NONE => raise Fail "ConTy unimplemented"
+		      (* end case *))
+		  | Ty.FunTy(ty1, ty2) => BTy.T_Fun([tr' ty1], [BTy.exhTy], [tr' ty2])
+		  | Ty.TupleTy [] => BTy.unitTy
+		  | Ty.TupleTy tys => BTy.T_Tuple(false, List.map tr' tys)
 		(* end case *))
-	    | Ty.FunTy(ty1, ty2) => BTy.T_Fun([tr ty1], [BTy.exhTy], [tr ty2])
-	    | Ty.TupleTy [] => BTy.unitTy
-	    | Ty.TupleTy tys => BTy.T_Tuple(false, List.map tr tys)
-	  (* end case *))
+	  in
+	    tr' ty
+	  end
 
-    fun trScheme (Ty.TyScheme(_, ty)) = tr ty
+    fun trScheme (env, Ty.TyScheme(_, ty)) = tr (env, ty)
 
   end
