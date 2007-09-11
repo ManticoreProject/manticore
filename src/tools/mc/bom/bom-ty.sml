@@ -56,6 +56,43 @@ structure BOMTy =
       | TaggedTuple of word		(* for when there are multiple constructors: the constructor *)
 					(* is represented as heap-allocated tag/value pair *)
 
+  (* kinds for BOM types *)
+    datatype kind
+      = K_RAW		(* raw bits *)
+      | K_BOXED		(* heap pointer *)
+      | K_UNBOXED	(* tagged integer *)
+      | K_UNIFORM	(* either K_BOXED or K_UNBOXED *)
+      | K_TYPE		(* type (any of the above kinds) *)
+
+    fun kindToString k = (case k
+	   of K_RAW => "RAW"
+	    | K_BOXED => "RAW"
+	    | K_UNBOXED => "UNBOXED"
+	    | K_UNIFORM => "UNIFORM"
+	    | K_TYPE => "TYPE"
+	  (* end case *))
+
+  (* isKind k1 k2 --- returns true if k2 is a subkind of k1 *)
+    fun isKind K_TYPE _ = true
+      | isKind K_UNIFORM K_BOXED = true
+      | isKind K_UNIFORM K_UNBOXED = true
+      | isKind k1 k2 = (k1 = k2)
+
+    fun kindOf T_Any = K_UNIFORM
+      | kindOf (T_Enum _) = K_UNBOXED
+      | kindOf (T_Raw _) = K_RAW
+      | kindOf (T_Tuple _) = K_BOXED
+      | kindOf (T_Addr _) = K_TYPE
+      | kindOf (T_Fun _) = K_BOXED
+      | kindOf (T_Cont _) = K_BOXED
+      | kindOf (T_CFun _) = K_UNIFORM
+      | kindOf T_VProc = K_UNIFORM
+      | kindOf (T_TyCon(DataTyc{name, rep, ...})) = (case !rep
+	   of SOME ty => kindOf ty
+	    | NONE => K_UNIFORM
+	  (* end case *))
+      | kindOf (T_TyCon(AbsTyc _)) = K_UNIFORM
+
     val unitTy = T_Enum(0w0)
     val boolTy = T_Enum(0w1)	(* false = 0, true = 1 *)
     val exnTy = T_Any
@@ -63,7 +100,7 @@ structure BOMTy =
     val tidTy = T_Enum(0w0);
     val fiberTy = T_Cont[]
 
-    val futureTyc = AbsTyc {name = "future", stamp = Stamp.new (), arity = 1}
+    val futureTyc = AbsTyc{name = "future", stamp = Stamp.new (), arity = 1}
     val thunkTy = T_Fun([unitTy], [exhTy], [T_Any])
     val futureTy = T_Tuple(true, [T_Any, thunkTy])
 
@@ -98,6 +135,10 @@ structure BOMTy =
 	  (* end case *))
 
   (* is a cast from the first type to the second type valid? *)
+    fun validCast (ty1, ty2) =
+	  isKind (kindOf ty1) (kindOf ty2)
+
+(*****
     fun validCast (ty1, ty2) = (case (ty1, ty2)
 	   of (T_Addr ty1, T_Addr ty2) => equal(ty1, ty2)
 	    | (T_Addr _, _) => false
@@ -133,6 +174,7 @@ structure BOMTy =
                              end) (!cons)
 	    | _ => equal(ty1, ty2)
 	  (* end case *))
+*****)
 
   (* does the first type "match" the second type (i.e., can values of the first
    * type be used wherever the second type is expected)?
