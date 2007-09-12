@@ -71,7 +71,6 @@ structure BOMTy =
     val tidTy = T_Enum(0w0);
     val fiberTy = T_Cont[]
 
-    val futureTyc = AbsTyc{name = "future", stamp = Stamp.new (), arity = 1}
     val thunkTy = T_Fun([unitTy], [exhTy], [T_Any])
     val futureTy = T_Tuple(true, [T_Any, thunkTy])
 
