@@ -107,6 +107,7 @@ structure BOMTyUtil : sig
   (* is a cast from the first type to the second type valid? *)
     fun validCast (ty1, ty2) =
 	  isKind (kindOf ty1) (kindOf ty2)
+	    orelse match (ty1, ty2)
 
   (* does the first type "match" the second type (i.e., can values of the first
    * type be used wherever the second type is expected)?
