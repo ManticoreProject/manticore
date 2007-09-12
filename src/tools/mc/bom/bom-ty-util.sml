@@ -46,7 +46,7 @@ structure BOMTyUtil : sig
 
     fun kindToString k = (case k
 	   of BTy.K_RAW => "RAW"
-	    | BTy.K_BOXED => "RAW"
+	    | BTy.K_BOXED => "BOXED"
 	    | BTy.K_UNBOXED => "UNBOXED"
 	    | BTy.K_UNIFORM => "UNIFORM"
 	    | BTy.K_TYPE => "TYPE"
