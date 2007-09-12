@@ -5,6 +5,7 @@
  *)
 
 #include "types.def"
+#include "futures.def"
 
 define @steal1 (fp : future / exh : exh) : ();
 
