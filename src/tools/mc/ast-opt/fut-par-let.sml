@@ -282,11 +282,23 @@ The more general idea is to transform
 				 A.VarExp (x, []),
 				 A.VarExp (y, []))
 	    in
-		U.plet (x, 
-			U.fact 10,
-			U.plet (y,
-				U.fact 11,
-				i))
+		U.plet (x, U.fact 10, U.plet (y, U.fact 11, i))
+	    end
+
+	(* t4 = let pval x = fact 10 in
+		let pval y = fact 11 in
+	        if true then if false then x else y
+                        else if false than y else x *)
+	val t4 =
+	    let val x = Var.new ("x", Basis.intTy)
+		val y = Var.new ("y", Basis.intTy)
+		val xe = A.VarExp (x, [])
+		val ye = A.VarExp (y, [])
+		val i = U.ifexp (U.trueExp,
+				 U.ifexp (U.falseExp, xe, ye),
+				 U.ifexp (U.falseExp, ye, xe))
+	    in
+		U.plet (x, U.fact 10, U.plet (y, U.fact 11, i))
 	    end
 
 	(* testPVal : A.exp -> unit *)
@@ -296,7 +308,7 @@ The more general idea is to transform
 
     in
         (* test : int -> unit *)
-        val test = U.mkTest testPVal [t0,t1,t2,t3]
+        val test = U.mkTest testPVal [t0,t1,t2,t3,t4]
     end
 
   end

@@ -9,12 +9,12 @@
 #include "types.def"
 #include "futures.def"
 
-define @get-work1 (u : unit / exh : exh) : ();
+define @get-work1 ( / exh : exh) : ();
 
 define @touch1 (fp : future / exh : exh) : any =
   let tmp : any = CAS (&0(fp), EMPTY_F, EVAL_F)
   if Equal (tmp, EMPTY_F)
-    then let f : fun (unit / exh -> any) = #1(fp)
+    then let f : thunk = #1(fp)
          do #1(fp) := (thunk) $0
          (* may need exn handler for thunk. *)
          (* let exh : exh = ... *)
@@ -26,7 +26,8 @@ define @touch1 (fp : future / exh : exh) : any =
            else cont k (result: any) = return (result)
 	     let tmpX : any = CAS (&0(fp), STOLEN_F, k)
 	     if Equal (tmpX, STOLEN_F)
-	       then @get-work1 (UNIT / exh)
+	       then do @get-work1 ( / exh) (* this should ultimately throw result to k *)
+                    return (tmpX) (* is this line unreachable? - ams *)
 	       else return (tmpX)
 ;
 

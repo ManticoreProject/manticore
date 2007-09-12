@@ -9,14 +9,13 @@
 #include "types.def"
 
 define @steal1 (fp : future / exh : exh) : () =
-                  (* state, thunk *)
   let tmp : any = CAS (&0(fp), EMPTY_F, STOLEN_F)
   if Equal (tmp, EMPTY_F) 
-    then let f : fun (unit / exh -> any) = #1(fp)
+    then let f : thunk = #1(fp)
          do #1(fp) := NIL
 	 (* need exn handler for thunk. *)
          (* let exh : exh = ... *)
-         let result : any = apply f ( (* / exh *))
+         let result : any = apply f (UNIT / exh)
          let tmpX : any = CAS(&0(fp), STOLEN_F, result)
          if NotEqual (tmpX, STOLEN_F)
            then do #0(fp) := result

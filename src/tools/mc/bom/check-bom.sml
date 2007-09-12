@@ -24,6 +24,9 @@ structure CheckBOM : sig
     fun v2s' x = concat[v2s x, ":", BTU.toString(BV.typeOf x)]
     fun vl2s' xs = String.concat["(", String.concatWith "," (List.map v2s' xs), ")"]
 
+    val t2s = BTU.toString
+    fun tl2s ts = concat["(", String.concatWith "," (map t2s ts), ")"]
+
 (**** Fluet version ****
     fun addFB (B.FB{f, ...}, env) = VSet.add(env, f)
 
@@ -277,6 +280,7 @@ structure CheckBOM : sig
 		pr ("** " :: msg))
 	  fun cerror msg = pr ("== "::msg)
 	(* match the parameter types against argument variables *)
+        (* checkArgTypes : string * ty list * ty list -> unit *)
 	  fun checkArgTypes (ctx, paramTys, argTys) = let
 	      (* chk1 : ty * ty -> unit *)
 	        fun chk1 (pty, aty) =
@@ -424,7 +428,7 @@ structure CheckBOM : sig
 			checkArgTypes (concat["HLOP ", (HLOp.toString hlop), " rets"], exhTys, typesOf rets);
 			case (returns, cxt)
 			 of (true, TAIL(g, tys)) =>
-			      checkArgTypes (concat["HLOP ", (HLOp.toString hlop), " in ", v2s g], tys, resTys)
+			      checkArgTypes (concat["return type of HLOP ", (HLOp.toString hlop), " in ", v2s g], tys, resTys)
 			  | (true, BIND ys) =>
 			      checkArgTypes (
 				concat["binding ", vl2s ys, " to HLOP ", (HLOp.toString hlop)],
@@ -489,7 +493,9 @@ structure CheckBOM : sig
 		      andalso (BTU.equal(ty, BTy.T_Tuple(true, typesOf xs))
 			orelse BTU.equal(ty, BTy.T_Tuple(false, typesOf xs)))
                         then ()
-                        else error["type mismatch in Alloc: ", vl2s lhs, " = ", vl2s xs, "\n"])
+                        else (error  ["type mismatch in Alloc: ", vl2s lhs, " = ", vl2s xs, "\n"];
+			      cerror ["  expected ", tl2s (typesOf lhs), "\n"];
+			      cerror ["  found    ", tl2s (typesOf xs), "\n"]))
 		  | ([ty], B.E_Prim p) => (
                       chkVars(PrimUtil.varsOf p, PrimUtil.nameOf p))
                   | ([ty], B.E_DCon (dcon, args)) => (
