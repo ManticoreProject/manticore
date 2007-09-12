@@ -121,6 +121,9 @@ structure BOMTyUtil : sig
 	    | (_, BTy.T_Any) => true
 	    | (BTy.T_Enum w1, BTy.T_Enum w2) => (w1 <= w2)
 	    | (BTy.T_Enum w, BTy.T_TyCon(BTy.DataTyc{nNullary, ...})) => (w < Word.fromInt nNullary)
+	    | (BTy.T_Tuple(isMut1, tys1), BTy.T_Tuple(isMut2, tys2)) =>
+		(isMut1 orelse not isMut2)
+		andalso ListPair.allEq match (tys1, tys2)
 	    | (BTy.T_Fun(argTys1, exhTys1, retTys1), BTy.T_Fun(argTys2, exhTys2, retTys2)) =>
 	      (* Note contravariance for arguments! *)
 		ListPair.allEq match (argTys2, argTys1)
