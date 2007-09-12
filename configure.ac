@@ -45,10 +45,6 @@ case $target_os in
   darwin*) TARGET_OS=TARGET_DARWIN; OS=darwin ;;
   *) AC_MSG_ERROR([target os ${target_os} is not supported]) ;;
 esac
-TARGET=$ARCH-$OS
-AC_SUBST(TARGET_CPU)
-AC_SUBST(TARGET_OS)
-AC_SUBST(TARGET)
 
 dnl
 dnl check to see if a x86-darwin host supports 64-bit executables
@@ -83,8 +79,11 @@ else
   CC_MODE_FLAG=""
 fi
 CFLAGS="$CFLAGS $CC_MODE_FLAG"
-AC_SUBST(CC_MODE_FLAG)
 
+TARGET=$ARCH-$OS
+AC_SUBST(TARGET_CPU)
+AC_SUBST(TARGET_OS)
+AC_SUBST(TARGET)
 
 dnl
 dnl Manticore version information
