@@ -7,6 +7,7 @@
  *)
 
 #include "types.def"
+#include "futures.def"
 
 (* FIXME enqueueG stands for "enqueue global" and it is yet to be implemented *)
 extern void enqueueG (void *);
@@ -14,15 +15,14 @@ extern void enqueueG (void *);
 define @future1 (thunk : thunk / exh : exh) : future =
   (* a future1 cell consists of two words:
        1) a _state_ word, with one of the following values:
-            EMPTY_F   0
-            STOLEN_F  2
-            EVAL_F    4
+            EMPTY_F
+            STOLEN_F
+            EVAL_F
             FULL      value
             WAITING   cont
        2) a _thunk_ word 
    *)
-  let tmp : ![int, thunk] = alloc(EMPTY_F, thunk)
-  let cell : future = (future)tmp
+  let cell : future = alloc(EMPTY_F, thunk)
   let vp : vproc = host_vproc
   do ccall enqueueG (vp)
   return (cell)

@@ -7,6 +7,7 @@
  *)
 
 #include "types.def"
+#include "futures.def"
 
 define @get-work1 (u : unit / exh : exh) : ();
 
@@ -14,7 +15,7 @@ define @touch1 (fp : future / exh : exh) : any =
   let tmp : any = CAS (&0(fp), EMPTY_F, EVAL_F)
   if Equal (tmp, EMPTY_F)
     then let f : fun (unit / exh -> any) = #1(fp)
-         do #1(fp) := (thunk) NIL
+         do #1(fp) := (thunk) $0
          (* may need exn handler for thunk. *)
          (* let exh : exh = ... *)
          let result : any = apply f (UNIT / exh)

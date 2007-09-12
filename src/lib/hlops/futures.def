@@ -1,0 +1,24 @@
+(* futures.def
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Definitions for the representation of futures.
+ *)
+
+#ifndef _FUTURES_DEF_
+#define _FUTURES_DEF_
+
+#include "types.def"
+
+typedef thunk = fun (unit / exh -> any);
+
+typedef future = ![any, thunk]; (* state, thunk *)
+
+(* constants for futures *)
+#define EMPTY_F  $0
+#define STOLEN_F $1
+#define EVAL_F   $2
+
+#endif /* !_FUTURES_DEF_ */
+

@@ -21,8 +21,6 @@ typedef exh = cont(exn);
 typedef tid = enum(0);		(* FIXME: this should be something else *)
 typedef fiber = cont();
 typedef sigact = cont(signal);
-typedef thunk = fun (unit / exh -> any);
-typedef future = ![any, thunk]; (* state, thunk *)
 
 typedef ml_int = [int];
 typedef ml_long = [long];
@@ -42,11 +40,6 @@ typedef ml_string = [string_data, int];
 #define NIL	enum(0):list
 #define NONE	enum(0):option
 #define QEMPTY	enum(0):rdyq_item
-
-(* constants for futures *)
-#define EMPTY_F  0:int
-#define STOLEN_F 2:int
-#define EVAL_F   4:int
 
 #endif /* !_TYPES_DEF_ */
 
