@@ -35,7 +35,8 @@ structure HLOpDefLoader : sig
 
     fun tokToString (HLOpDefTokens.STRING s) = concat["\"", String.toString s, "\""]
       | tokToString (HLOpDefTokens.FLOAT flt) = FloatLit.toString flt
-      | tokToString (HLOpDefTokens.INT n) = IntInf.toString n
+      | tokToString (HLOpDefTokens.POSINT n) = IntInf.toString n
+      | tokToString (HLOpDefTokens.NEGINT n) = "-" ^ IntInf.toString(~n)
       | tokToString (HLOpDefTokens.HLOP id) = "@" ^ Atom.toString id
       | tokToString (HLOpDefTokens.ID id) = Atom.toString id
       | tokToString tok = HLOpDefTokens.toString tok

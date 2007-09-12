@@ -10,6 +10,9 @@ structure Literal : sig
 
     datatype literal
       = Enum of word			(* tagged ints used for constants *)
+      | StateVal of word		(* special constant used to represent a state value. *)
+					(* The runtime representation of this value will be *)
+					(* distinct from both boxed and unboxed values. *)
       | Int of IntegerLit.integer	(* Int, Long, and Integer types *)
       | Float of FloatLit.float		(* Float and Double types *)
       | Char of UTF8.wchar
@@ -35,6 +38,9 @@ structure Literal : sig
 
     datatype literal
       = Enum of word			(* tagged ints used for constants *)
+      | StateVal of word		(* special constant used to represent a state value. *)
+					(* The runtime representation of this value will be *)
+					(* distinct from both boxed and unboxed values. *)
       | Int of IntegerLit.integer	(* Int, Long, and Integer types *)
       | Float of FloatLit.float		(* Float and Double types *)
       | Char of UTF8.wchar
@@ -61,12 +67,14 @@ structure Literal : sig
 	  concat(rev(UTF8.fold (fn (w, l) => wcharToStr w :: l) [] s))
 
     fun toString (Enum n) = concat["enum(", Word.fmt StringCvt.DEC n, ")"]
+      | toString (StateVal n) = "$" ^ Word.fmt StringCvt.DEC n
       | toString (Int i) = IntegerLit.toString i
       | toString (Float flt) = FloatLit.toString flt
       | toString (Char wc) = concat["'", wcharToStr wc, "'"]
       | toString (String s) = concat["\"", utf8ToStr s, "\""]
 
     fun same (Enum e1, Enum e2) = (e1 = e2)
+      | same (StateVal n1, StateVal n2) = (n1 = n2)
       | same (Int i1, Int i2) = IntegerLit.same(i1, i2)
       | same (Float f1, Float f2) = FloatLit.same(f1, f2)
       | same (Char c1, Char c2) = (c1 = c2)
@@ -74,12 +82,15 @@ structure Literal : sig
       | same _ = false
 
     fun compare (Enum a, Enum b) = Word.compare(a, b)
+      | compare (StateVal n1, StateVal n2) = Word.compare(n1, n2)
       | compare (Int i1, Int i2) = IntegerLit.compare(i1, i2)
       | compare (Float f1, Float f2) = FloatLit.compare(f1, f2)
       | compare (Char c1, Char c2) = Word.compare(c1, c2)
       | compare (String s1, String s2) = String.compare(s1, s2)
       | compare (Enum _, _) = LESS
       | compare (_, Enum _) = GREATER
+      | compare (StateVal _, _) = LESS
+      | compare (_, StateVal _) = GREATER
       | compare (Int _, _) = LESS
       | compare (_, Int _) = GREATER
       | compare (Float _, _) = LESS
@@ -90,13 +101,15 @@ structure Literal : sig
   (* for hash codes, use the low-order 3 bits for a type code *)
     local
       val enumCd = 0w2
-      val intCd = 0w3
-      val floatCd = 0w5
-      val charCd = 0w7
-      val stringCd = 0w11
+      val stateCd = 0w3
+      val intCd = 0w5
+      val floatCd = 0w7
+      val charCd = 0w11
+      val stringCd = 0w13
       fun h (hash, base) = Word.<<(hash, 0w3) + base
     in
     fun hash (Enum w) = h(w, enumCd)
+      | hash (StateVal w) = h(w, stateCd)
       | hash (Int i) = h(IntegerLit.hash i, intCd)
       | hash (Float f) = h(FloatLit.hash f, floatCd)
       | hash (Char c) = h(c, charCd)
@@ -119,3 +132,4 @@ structure Literal : sig
     val stopLit = Enum 0w0
 
   end
+

@@ -68,12 +68,14 @@
 	| WILD		("_")
 	| BANG		("!")
 	| AMP		("&")
+	| DS		("$")
 	| ASSIGN	(":=")
 	| DARROW	("=>")
 	| ARROW		("->")
 	| ID of Atom.atom
 	| HLOP of Atom.atom
-	| INT of IntInf.int
+	| POSINT of IntInf.int		(* positive integer *)
+	| NEGINT of IntInf.int		(* negative integer *)
 	| FLOAT of FloatLit.float
 	| STRING of string
 	;
@@ -158,7 +160,7 @@ Params
 Type
 	: "addr" "(" Type ")"			=> (PT.T_Addr(Type))
 	| "any"					=> (PT.T_Any)
-	| "enum" "(" INT ")"			=> (PT.T_Enum(Word.fromLargeInt INT))
+	| "enum" "(" POSINT ")"			=> (PT.T_Enum(Word.fromLargeInt POSINT))
 	| RawType				=> (PT.T_Raw RawType)
 	| "!" "[" Type ("," Type)* "]"		=> (PT.T_Tuple(true, Type :: SR))
 	| "[" Type ("," Type)* "]"		=> (PT.T_Tuple(false, Type :: SR))
@@ -218,10 +220,10 @@ LHS
 RHS
 	: Exp				=> (PT.Exp Exp)
 	| NonSelectExp			=> (PT.SimpleExp NonSelectExp)
-	| "#" INT "(" SimpleExp ")" (":=" SimpleExp)?
+	| "#" POSINT "(" SimpleExp ")" (":=" SimpleExp)?
 		=> (case SR
-		     of SOME e => PT.Update(Int.fromLarge INT, SimpleExp, e)
-		      | NONE => PT.SimpleExp(PT.Select(Int.fromLarge INT, SimpleExp))
+		     of SOME e => PT.Update(Int.fromLarge POSINT, SimpleExp, e)
+		      | NONE => PT.SimpleExp(PT.Select(Int.fromLarge POSINT, SimpleExp))
 		    (* end case *))
 	| "alloc" "(" Args ")"		=> (PT.Alloc Args)
 	| "wrap" "(" SimpleExp ")"	=> (PT.Wrap SimpleExp)
@@ -230,21 +232,21 @@ RHS
 
 NonSelectExp
 	: ID				=> (PT.Var ID)
-	| "&" INT "(" SimpleExp ")"	=> (PT.AddrOf(Int.fromLarge INT, SimpleExp))
+	| "&" POSINT "(" SimpleExp ")"	=> (PT.AddrOf(Int.fromLarge POSINT, SimpleExp))
 	| "unwrap" "(" SimpleExp ")"	=> (PT.Unwrap SimpleExp)
 	| ID "(" Args ")"		=> (PT.Prim(ID, Args))
 	| "(" Type ")" SimpleExp	=> (PT.Cast(Type, SimpleExp))
 	| Literal			=> (PT.Const(Literal))
 	| "host_vproc"			=> (PT.HostVProc)
-	| "vpload" "(" INT "," SimpleExp ")"
-					=> (PT.VPLoad(INT, SimpleExp))
-	| "vpstore" "(" INT "," SimpleExp "," SimpleExp ")"
-					=> (PT.VPStore(INT, SimpleExp1, SimpleExp2))
+	| "vpload" "(" POSINT "," SimpleExp ")"
+					=> (PT.VPLoad(POSINT, SimpleExp))
+	| "vpstore" "(" POSINT "," SimpleExp "," SimpleExp ")"
+					=> (PT.VPStore(POSINT, SimpleExp1, SimpleExp2))
 	;
 
 SimpleExp
 	: NonSelectExp			=> (NonSelectExp)
-	| "#" INT "(" SimpleExp ")"	=> (PT.Select(Int.fromLarge INT, SimpleExp))
+	| "#" POSINT "(" SimpleExp ")"	=> (PT.Select(Int.fromLarge POSINT, SimpleExp))
 	;
 
 Args
@@ -271,19 +273,21 @@ VarPat
 	;
 
 Literal
-	: "enum" "(" INT ")" (":" Type)?
+	: "enum" "(" POSINT ")" (":" Type)?
 		=> (let
-		    val w = Word.fromLargeInt INT
+		    val w = Word.fromLargeInt POSINT
 		    in
 		      case SR
 		       of NONE => (Literal.Enum w, PT.T_Enum w)
 			| SOME ty => (Literal.Enum w, ty)
 		      (* end case *)
 		    end)
-	| INT (":" Type)?
+	| "$" POSINT
+		=> (Literal.StateVal(Word.fromLargeInt POSINT), PT.T_Any)
+	| Int (":" Type)?
 		=> (case SR
-		   of NONE => (Literal.Int INT, dfltIntTy)
-		    | SOME ty => (Literal.Int INT, ty)
+		   of NONE => (Literal.Int Int, dfltIntTy)
+		    | SOME ty => (Literal.Int Int, ty)
 		  (* end case *))
 	| FLOAT (":" Type)?
 		=> (case SR
@@ -292,4 +296,8 @@ Literal
 		  (* end case *))
 	| STRING
 		=> (Literal.String STRING, dfltStringTy)
+	;
+
+Int	: POSINT	=> (POSINT)
+	| NEGINT	=> (NEGINT)
 	;

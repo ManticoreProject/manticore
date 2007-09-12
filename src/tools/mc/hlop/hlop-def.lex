@@ -165,12 +165,14 @@ DEBUG*)
 <INITIAL>"_"		=> (T.WILD);
 <INITIAL>"!"		=> (T.BANG);
 <INITIAL>"&"		=> (T.AMP);
+<INITIAL>"$"		=> (T.DS);
 <INITIAL>":="		=> (T.ASSIGN);
 <INITIAL>"=>"		=> (T.DARROW);
 <INITIAL>"->"		=> (T.ARROW);
 <INITIAL>{id}		=> (idToken yytext);
 <INITIAL>{hlid}		=> (T.HLOP(Atom.atom(String.extract(yytext, 1, NONE))));
-<INITIAL>[~\045]?{num}	=> (T.INT(valOf (IntInf.fromString yytext)));
+<INITIAL>{num}		=> (T.POSINT(valOf (IntInf.fromString yytext)));
+<INITIAL>[~\045]{num}	=> (T.NEGINT(valOf (IntInf.fromString yytext)));
 <INITIAL>[~\045]?{num}"."{num}([eE][+~\045]?{num})?
 			=> (mkFloat yysubstr);
 <INITIAL>{ws}		=> (skip ());
