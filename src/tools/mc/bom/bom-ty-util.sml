@@ -117,6 +117,18 @@ structure BOMTyUtil : sig
 	    | (_, BTy.T_Any) => true
 	    | (BTy.T_Enum w1, BTy.T_Enum w2) => (w1 <= w2)
 	    | (BTy.T_Enum w, BTy.T_TyCon(BTy.DataTyc{nNullary, ...})) => (w < Word.fromInt nNullary)
+            | (ty1, ty2 as BTy.T_TyCon (BTy.DataTyc {cons, ...})) =>
+                equal(ty1, ty2) orelse
+                List.exists (fn BTy.DCon {rep, argTy, ...} =>
+                             let
+                                val matchTy =
+                                   case rep of
+                                      BTy.Transparent => (case argTy of [ty] => ty)
+                                    | BTy.Tuple => BTy.T_Tuple (false, argTy)
+                                    | BTy.TaggedTuple tag => BTy.T_Tuple (false, (BTy.T_Enum tag) :: argTy)
+                             in
+                                equal (matchTy, ty1)
+                             end) (!cons)
 	    | (BTy.T_Tuple(isMut1, tys1), BTy.T_Tuple(isMut2, tys2)) =>
 		(isMut1 orelse not isMut2)
 		andalso ListPair.allEq match (tys1, tys2)
