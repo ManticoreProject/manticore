@@ -29,4 +29,5 @@ is
   cfg-opt-fn.sml
   feedback-fn.sml
   specialize-calls.sml
+  implement-calls.sml
 

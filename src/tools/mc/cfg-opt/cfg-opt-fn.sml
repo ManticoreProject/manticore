@@ -18,6 +18,8 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
 	  val _ = CFACFG.analyze module
 	  val module = SpecializeCalls.transform module
           val () = CheckCFG.check module
+          val module = ImplementCalls.transform module
+          val () = CheckCFG.check module
 	  val module = AddAllocChecks.transform module
           val () = CheckCFG.check module
 	  in
