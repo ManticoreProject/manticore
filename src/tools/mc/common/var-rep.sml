@@ -14,7 +14,7 @@ structure VarRep =
 	id : Stamp.stamp,
 	kind : 'kind ref,
 	useCnt : int ref,
-	ty : 'ty,
+	ty : 'ty ref,
 	props : PropList.holder
       }
 

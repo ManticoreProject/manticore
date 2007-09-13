@@ -31,6 +31,7 @@ signature VAR =
     val kindOf : var -> kind
     val setKind : (var * kind) -> unit
     val typeOf : var -> ty
+    val setType : (var * ty) -> unit
 
   (* operations of use counts *)
     val useCount : var -> int
@@ -76,13 +77,13 @@ functor VarFn (VP : VAR_PARAMS) : VAR =
 	    id = Stamp.new(),
 	    kind = ref k,
 	    useCnt = ref 0,
-	    ty = ty,
+	    ty = ref ty,
 	    props = PropList.newHolder()
 	  }
 
     fun new (name, ty) = newWithKind (name, VP.defaultKind, ty)
 
-    fun copy (V{name, kind, ty, ...}) = newWithKind (name, !kind, ty)
+    fun copy (V{name, kind, ty, ...}) = newWithKind (name, !kind, !ty)
     fun alias (V{name, kind, ...}, optSuffix, ty) = let
 	  val name = (case optSuffix
 		 of NONE => name
@@ -97,7 +98,8 @@ functor VarFn (VP : VAR_PARAMS) : VAR =
     fun kindOf (V{kind, ...}) = !kind
     fun setKind (V{kind, ...}, k) = kind := k
 
-    fun typeOf (V{ty, ...}) = ty
+    fun typeOf (V{ty, ...}) = !ty
+    fun setType (V{ty, ...}, t) = ty := t
 
     fun clrCount (V{useCnt, ...}) = (useCnt := 0)
     fun useCount (V{useCnt, ...}) = !useCnt

@@ -38,8 +38,9 @@ structure Var =
 
     (* closeTypeOf : int * VarRep.var_rep -> unit *)
     (* close the type of the variable w.r.t. to the given lambda-nesting depth. *)
-    fun closeTypeOf (depth, VarRep.V{ty as ref(AST.TyScheme(_, ty')), ...}) =
-	  ty := TypeUtil.closeTy(depth, ty')
+    fun closeTypeOf (depth, v) = (case V.typeOf v
+           of ty as ref(AST.TyScheme(_, ty')) => ty := TypeUtil.closeTy(depth, ty')
+        (* end case *))
     
     end (* local *)
 
