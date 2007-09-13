@@ -348,7 +348,7 @@ DEBUG*)
 			      ([argument'], B.E_Cast(BV.typeOf argument', argument)),
 			      ([tag'], B.E_Select(0, argument')),
 			      ([tmp], B.E_Const(Lit.Enum tag, ty)),
-			      ([eq], B.E_Prim(Prim.I32NEq(argument, tmp)))
+			      ([eq], B.E_Prim(Prim.I64NEq(argument, tmp)))
 			    ],
 			    B.mkIf(eq, sel(ys, 1), dflt))
 			end
@@ -415,7 +415,7 @@ val _ = PrintBOM.print m
 				in
 				  B.mkStmts([
 				      ([tmp], B.E_Const(Lit.Enum w, ty)),
-				      ([isBoxed], B.E_Prim(Prim.I32NEq(argument, tmp)))
+				      ([isBoxed], B.E_Prim(Prim.I64NEq(argument, tmp)))
 				    ],
 				    B.mkIf(isBoxed, case1, xformE(s, tys, e)))
 				end
