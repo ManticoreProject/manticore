@@ -34,6 +34,7 @@ structure CheckCPS : sig
 		anyErr := true;
 		print(concat("Error: " :: msg));
 		print "\n")
+	  fun cerr msg = print(concat("== "::msg))
 	  fun chkVar (env, x, cxt) = if VSet.member(env, x)
 		then ()
 		else err["variable ", v2s x, " is unbound ", cxt]
@@ -152,8 +153,14 @@ structure CheckCPS : sig
                       if Ty.equal(ty, Ty.T_Tuple(true, List.map V.typeOf xs))
                          orelse Ty.equal(ty, Ty.T_Tuple(false, List.map V.typeOf xs))
                         then ()
-                        else err["type mismatch in Alloc: ",
-                                 vl2s lhs, " = ", vl2s xs])
+                        else let
+                        (* tstr : var list -> string *)
+		          val tstr = (String.concatWith ", ") o map (Ty.toString o V.typeOf)
+			  in
+			    err["type mismatch in Alloc: ", vl2s lhs, " = ", vl2s xs];
+			    cerr["  expected ", tstr lhs, "\n"];
+			    cerr["  found    ", tstr xs, "\n"]
+			  end)
 		  | ([ty], C.Wrap x) => (
                       chkVar(env, x, "Wrap");
                       case V.typeOf x

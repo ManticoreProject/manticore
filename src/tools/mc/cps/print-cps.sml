@@ -134,7 +134,7 @@ structure PrintCPS : sig
 		prl ["extern ", varBindToString var, "\n"])
 *)
 	  in
-	    prl ["module ", Atom.toString name, "\n"];
+	    prl ["(* CPS *)\nmodule ", Atom.toString name, "\n"];
 	    List.app prExtern externs;
 	    prLambda (2, "  fun ", body)
 	  end
