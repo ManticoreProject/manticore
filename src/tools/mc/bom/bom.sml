@@ -130,7 +130,10 @@ val toString = fn x => (case peekFn x
     fun unwrap x = E_Select(0, x)
 
 (* FIXME: need constructor functions *)
+
+  (* mkExp : term -> exp *)
     fun mkExp t = E_Pt(ProgPt.new(), t)
+
     fun mkLet (lhs, rhs, exp) = (
     	  List.app (fn x => Var.setKind (x, VK_Let rhs)) lhs;
 	  mkExp(E_Let(lhs, rhs, exp)))
@@ -152,7 +155,10 @@ val toString = fn x => (case peekFn x
 	  List.app (fn x=> Var.setKind(x, VK_Param)) params;
 	  mkExp(E_Cont(lambda, e)))
     fun mkIf arg = mkExp(E_If arg)
+
+  (* mkCase : var * (pat * exp) list * exp option -> exp *)
     fun mkCase arg = mkExp(E_Case arg)
+
     fun mkApply arg = mkExp(E_Apply arg)
     fun mkThrow arg = mkExp(E_Throw arg)
     fun mkRet arg = mkExp(E_Ret arg)
@@ -162,6 +168,7 @@ val toString = fn x => (case peekFn x
 	  Var.setKind(#var arg, VK_Extern(#name arg));
 	  CFunctions.CFun arg)
 
+  (* mkModule : Atom.atom * var CFunctions.c_fun list * lambda -> module *)
     fun mkModule (name, externs, body as FB{params, exh, ...}) = (
 	  List.app (fn x => Var.setKind(x, VK_Param)) (params @ exh);
 	  List.app

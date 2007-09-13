@@ -293,6 +293,8 @@ DEBUG*)
 	    (s, fb)
 	  end
 
+  (* xformCase : BU.subst * B.ty list * B.var * (B.pat * B.exp) list * B.exp option 
+                 -> B.exp *)
     and xformCase (s, tys, x, rules, dflt) = let
 	  val argument = subst s x
 	  val dflt = Option.map (fn e => xformE(s, tys, e)) dflt
@@ -381,6 +383,18 @@ DEBUG*)
 	      | ([], lits, []) => literalCase (s, tys, argument, lits, dflt)
 	      | ([], [], cons) => consCase (cons, dflt)
 	      | (enums, [], cons) => let
+(*
+(* BEGIN debugging *)
+val _ = print "in CaseSimplify...\n"
+val m = BOM.mkModule (Atom.atom "adHocCaseModule",
+		      [],
+		      BOM.FB {f=BOM.Var.new ("adHocCaseFunction", BTy.T_Any),
+			      params=[],
+			      exh=[],
+			      body=BOM.mkCase(x, rules, dflt)})
+val _ = PrintBOM.print m
+(* END debugging - ams *)
+*)
 		  val tyc = BTU.asTyc(BV.typeOf x)
 		  val enumCover = (List.length enums = numEnumsOfTyc tyc)
 		  val consCover = (List.length cons = numConsOfTyc tyc)

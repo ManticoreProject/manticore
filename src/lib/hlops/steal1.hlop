@@ -13,14 +13,15 @@ define @steal1 (fp : future / exh : exh) : () =
   let tmp : any = CAS (&0(fp), EMPTY_F, STOLEN_F)
   if Equal (tmp, EMPTY_F) 
     then let f : thunk = #1(fp)
-         do #1(fp) := NIL
+         do #1(fp) := (thunk) $0
 	 (* need exn handler for thunk. *)
          (* let exh : exh = ... *)
          let result : any = apply f (UNIT / exh)
          let tmpX : any = CAS(&0(fp), STOLEN_F, result)
          if NotEqual (tmpX, STOLEN_F)
            then do #0(fp) := result
-                throw tmp (result)
+                let k : cont(any) = (cont(any)) result
+                throw k (result)
            else return ()
     else return ()
 ;

@@ -223,7 +223,7 @@ structure CheckBOM : sig
 				    concat["binding ", vl2s ys, " to Apply ", v2s f],
 				    typesOf ys, retTys)
 			    (* end case *))
-			| ty => error[v2s f, " : ", BTU.toString ty, " is not a function"]
+			| ty => error[v2s f, " : ", BTU.toString ty, " is not a function\n"]
 		      (* end case *))
 		  | B.E_Throw(k, args) => (
 		      chkVar(k, "Throw");
@@ -231,7 +231,7 @@ structure CheckBOM : sig
 		       of BTy.T_Cont(argTys) => (
 			    chkVars (args, "Throw args");
 			    checkArgTypes (concat["Throw ", v2s k, " args"], argTys, typesOf args))
-			| ty => error[v2s k, ":", BTU.toString ty, " is not a continuation"]
+			| ty => error[v2s k, ":", BTU.toString ty, " is not a continuation\n"]
 		      (* end case *))
 		  | B.E_Ret args => (
 		      chkVars(args, "Return");

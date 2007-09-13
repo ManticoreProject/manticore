@@ -292,6 +292,7 @@ structure BOMUtil : sig
 
   (* for debugging output *)
     fun expToString _ = "<exp>"	(* FIXME *)
+
     fun rhsToString _ = "<rhs>"	(* FIXME *)
 
   end

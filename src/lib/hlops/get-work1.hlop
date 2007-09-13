@@ -7,17 +7,16 @@
 #include "types.def"
 #include "futures.def"
 
-define @steal1 (fp : future / exh : exh) : ();
-
 (* need to define some flavor of dequeue .... *)
 (* define @dequeue ...  *)
-
 extern void * dequeueG (void *);
+
+define @steal1 (fp : future / exh : exh) : ();
 
 define @get-work1 ( / exh : exh) : () =
   fun loop ( / exh : exh) : () =
     let vp : vproc = host_vproc
-    let w : any = @dequeue (vp)
+    let w : option = ccall dequeueG (vp)
     case w
       of SOME (fut : future) => @steal1 (fut / exh)
        | NONE => apply loop ( / exh)
