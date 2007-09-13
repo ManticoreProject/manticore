@@ -90,7 +90,6 @@ structure CFGTy =
 	    | (T_Any, T_Addr _) => false
 	    | (T_Addr _, T_Any) => false
             | (fromTy, T_Any) => hasUniformRep fromTy
-            | (T_Any, toTy) => hasUniformRep toTy
             | (T_OpenTuple ty1s, T_OpenTuple ty2s) => let
 		fun ok (_, []) = true
 		  | ok (ty1::r1, ty2::r2) = match(ty1, ty2) andalso ok(r1, r2)
@@ -110,21 +109,21 @@ structure CFGTy =
             | (T_StdFun{clos = clos1, args = args1, ret = ret1, exh = exh1},
                T_StdFun{clos = clos2, args = args2, ret = ret2, exh = exh2}) =>
               (* Note contravariance for arguments! *)
-                  match (clos2, clos1) andalso
+                  (match (clos2, clos1) orelse isValidCast (clos2, clos1)) andalso
                   ListPair.allEq match (args2, args1) andalso
                   match (ret2, ret1) andalso
                   match (exh2, exh1)
             | (T_StdCont{clos = clos1, args = args1}, 
                T_StdCont{clos = clos2, args = args2}) =>
               (* Note contravariance for arguments! *)
-                  match (clos2, clos1) andalso 
+                  (match (clos2, clos1) orelse isValidCast (clos2, clos1)) andalso
                   ListPair.allEq match (args2, args1)
             | (T_Code ty1s, T_Code ty2s) => ListPair.allEq match (ty2s, ty1s)
             | _ => equal (fromTy, toTy)
 	  (* end case *))
 
   (* is it legal to cast from fromTo to toTy? *)
-    fun isValidCast (fromTy, toTy) = (case (fromTy, toTy)
+    and isValidCast (fromTy, toTy) = (case (fromTy, toTy)
            of (T_Any, T_Code _) => false
 	    | (T_Code _, T_Any) => false
 	    | (T_Any, T_Addr _) => false
