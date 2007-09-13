@@ -16,10 +16,12 @@ functor LabelCodeFn (
   structure LV = CFG.Label
 
   local
+      fun convert s =
+         String.map (fn #"-" => #"_" | c => c) s
       val {getFn, ...} = 
 	  LV.newProp (fn v => (case CFG.Label.kindOf v
 	      of CFG.LK_Extern s => Label.global s
-	       | _ => Label.label(CFG.Label.nameOf v) ()
+	       | _ => Label.label(convert (CFG.Label.nameOf v)) ()
             (* esac *)))
   in
     fun getName v = getFn v
