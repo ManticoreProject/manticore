@@ -326,9 +326,10 @@ functor HeapTransferFn (
   fun genFuncEntry varDefTbl (lab, convention) =
       let datatype conv = Special | StdConv of Regs.gpr list
 	  val (params, stdRegs) = (case convention
-		of M.StdFunc{clos, args, ret, exh} => 
-		   (clos :: args @ [ret, exh], StdConv stdCallRegs)
-		 | M.StdCont{clos, args} => (clos::args, StdConv stdContRegs)
+		of M.StdFunc{clos, args as [arg], ret, exh} => 
+		   ([clos, arg, ret, exh], StdConv stdCallRegs)
+		 | M.StdCont{clos, args as [arg]} => 
+                   ([clos, arg], StdConv stdContRegs)
 		 | ( M.KnownFunc vs | M.Block vs ) => (vs, Special)
 	      (* esac *))
 	  fun bindToParams rs = 
