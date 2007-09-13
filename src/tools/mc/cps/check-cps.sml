@@ -159,7 +159,7 @@ structure CheckCPS : sig
 			  in
 			    err["type mismatch in Alloc: ", vl2s lhs, " = ", vl2s xs];
 			    cerr["  expected ", tstr lhs, "\n"];
-			    cerr["  found    [", tstr xs, "]\n"]
+			    cerr["  found     ?[", tstr xs, "]\n"]
 			  end)
 		  | ([ty], C.Wrap x) => (
                       chkVar(env, x, "Wrap");
