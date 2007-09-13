@@ -131,7 +131,9 @@ functor HeapTransferFn (
       in
 (* TODO: if f is a label, put it in directly, but otherwise use a temp *)
 	  {stms=move (tgtReg, defOf f) :: stms, liveOut=liveOut}
-      end (* genStdCall *)
+      end 
+    | genStdCall _ _ = raise Fail "genStdCall: ill-formed StdCall"
+    (* genStdCall *)
 
   fun genStdThrow varDefTbl {k, clos, args as [arg]} = 
       let val defOf = VarDef.defOf varDefTbl
@@ -142,7 +144,9 @@ functor HeapTransferFn (
 	      genStdTransfer varDefTbl (regExp kReg, args, argRegs, stdContRegs)
       in 
 	  {stms=move (kReg, defOf k) :: stms, liveOut=liveOut}
-      end (* genStdThrow *)
+      end 
+    | genStdThrow _ _ = raise Fail "genStdThrow: ill-formed StdThrow"
+    (* genStdThrow *)
 
   structure Ty = CFGTy
   structure CTy = CTypes
@@ -328,8 +332,10 @@ functor HeapTransferFn (
 	  val (params, stdRegs) = (case convention
 		of M.StdFunc{clos, args as [arg], ret, exh} => 
 		   ([clos, arg, ret, exh], StdConv stdCallRegs)
+                 | M.StdFunc _ => raise Fail "genFuncEntry: ill-formed StdFunc"
 		 | M.StdCont{clos, args as [arg]} => 
                    ([clos, arg], StdConv stdContRegs)
+                 | M.StdCont _ => raise Fail "genFuncEntry: ill-formed StdCont"
 		 | ( M.KnownFunc vs | M.Block vs ) => (vs, Special)
 	      (* esac *))
 	  fun bindToParams rs = 
