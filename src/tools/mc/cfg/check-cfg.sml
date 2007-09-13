@@ -213,7 +213,7 @@ structure CheckCFG : sig
 				  then ()
                                   else err[
 				      "variable ", V.toString x, ":", Ty.toString (V.typeOf x),
-				      " does not match label",
+				      " does not match label ",
 				      L.toString lab, ":", Ty.toString (L.typeOf lab)
 				    ]
 			    (* end case *);
