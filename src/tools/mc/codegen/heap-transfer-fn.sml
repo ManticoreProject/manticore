@@ -121,9 +121,9 @@ functor HeapTransferFn (
 	   liveOut=map toGPR stdRegs}
       end (* genStdTransfer *)
 
-  fun genStdCall varDefTbl {f, clos, args, ret, exh} = 
+  fun genStdCall varDefTbl {f, clos, args as [arg], ret, exh} = 
       let val defOf = VarDef.defOf varDefTbl
-	  val args = clos :: args @ [ret, exh]
+	  val args = [clos, arg, ret, exh]
 	  val argRegs = map newReg args
 	  val tgtReg = newReg ()
 	  val {stms, liveOut} =
@@ -133,12 +133,13 @@ functor HeapTransferFn (
 	  {stms=move (tgtReg, defOf f) :: stms, liveOut=liveOut}
       end (* genStdCall *)
 
-  fun genStdThrow varDefTbl {k, clos, args} = 
+  fun genStdThrow varDefTbl {k, clos, args as [arg]} = 
       let val defOf = VarDef.defOf varDefTbl
 	  val kReg = newReg ()
-	  val argRegs = map newReg (clos :: args)
+          val args = [clos, arg]
+	  val argRegs = map newReg args
 	  val {stms, liveOut} = 
-	      genStdTransfer varDefTbl (regExp kReg, clos :: args, argRegs, stdContRegs)
+	      genStdTransfer varDefTbl (regExp kReg, args, argRegs, stdContRegs)
       in 
 	  {stms=move (kReg, defOf k) :: stms, liveOut=liveOut}
       end (* genStdThrow *)
