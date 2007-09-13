@@ -26,7 +26,7 @@ static void SigHandler (int sig, siginfo_t *si, void *uc);
 #define MIN_TIMEQ_NS	1000000		/* minimum timeq in nanoseconds (== 1ms) */
 
 static int	TimeQ;			/* time quantum in milliseconds */
-#ifndef NDBUG
+#ifndef NDEBUG
 static FILE	*DebugF = NULL;
 bool		DebugFlg = false;
 #endif

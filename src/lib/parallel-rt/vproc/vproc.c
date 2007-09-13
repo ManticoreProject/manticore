@@ -209,7 +209,10 @@ void VProcSleep (VProc_t *vp)
 	    }
 	  /* get an item from the secondary queue */
 	    Value_t item = Dequeue2(vp);
-SayDebug("[%2d] VProcSleep: waking up; cont = %p\n", vp->id, ValueToRdyQItem(item)->fiber);
+#ifndef NDEBUG
+        if (DebugFlg)
+            SayDebug("[%2d] VProcSleep: waking up; cont = %p\n", vp->id, ValueToRdyQItem(item)->fiber);
+#endif
 	MutexUnlock (&(vp->lock));
 	FetchAndDec(&NumIdleVProcs);
 	vp->stdCont = ValueToRdyQItem(item)->fiber;

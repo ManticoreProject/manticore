@@ -51,7 +51,9 @@ void HeapInit (Options_t *opts)
     if (MajorGCThreshold < MIN_NURSERY_SZB)
 	MajorGCThreshold = MIN_NURSERY_SZB;
 
-SayDebug("HeapInit: max nursery = %d, threshold = %d\n", (int)MaxNurserySzB, (int)MajorGCThreshold);
+#ifndef NDEBUG
+    SayDebug("HeapInit: max nursery = %d, threshold = %d\n", (int)MaxNurserySzB, (int)MajorGCThreshold);
+#endif
   /* initialize the BIBOP */
 #ifdef SIXTYFOUR_BIT_WORDS
     for (int i = 0;  i < L2_TBLSZ; i++)
