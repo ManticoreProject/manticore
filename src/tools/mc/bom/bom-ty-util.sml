@@ -104,11 +104,6 @@ structure BOMTyUtil : sig
 	    | _ => false
 	  (* end case *))
 
-  (* is a cast from the first type to the second type valid? *)
-    fun validCast (ty1, ty2) =
-	  isKind (kindOf ty1) (kindOf ty2)
-	    orelse match (ty1, ty2)
-
   (* does the first type "match" the second type (i.e., can values of the first
    * type be used wherever the second type is expected)?
    *)
@@ -136,6 +131,11 @@ structure BOMTyUtil : sig
 	    | _ => equal(ty1, ty2)
 	  (* end case *))
              
+  (* is a cast from the first type to the second type valid? *)
+    fun validCast (ty1, ty2) =
+	  isKind (kindOf ty1) (kindOf ty2)
+	    orelse match (ty1, ty2)
+
     fun toString ty = let
 	  fun tys2l ([], l) = l
 	    | tys2l ([ty], l) = toString ty :: l
