@@ -9,25 +9,11 @@
  structure HLOpDefPT =
    struct
    
-    datatype raw_ty = datatype BOMTy.raw_ty
-
-    type offset = IntInf.int
-
-    datatype ty
-      = T_Any				(* unknown type; uniform representation *)
-      | T_Enum of Word.word		(* unsigned tagged integer; word is max value <= 2^31-1 *)
-      | T_Raw of raw_ty			(* raw machine type *)
-      | T_Tuple of bool * ty list	(* heap-allocated tuple *)
-      | T_Addr of ty
-      | T_Fun of (ty list * ty list * ty list)
-					(* function type; the second argument is the type of *)
-					(* the exception continuation(s) *)
-      | T_Cont of ty list		(* first-class continuation *)
-      | T_CFun of CFunctions.c_proto	(* C functions *)
-      | T_VProc				(* address of VProc runtime structure *)
-      | T_TyCon of Atom.atom		(* high-level type constructor *)
+    datatype raw_ty = datatype BOMTyPT.raw_ty
+    datatype ty = datatype BOMTyPT.ty
 
     type var = Atom.atom
+    type offset = IntInf.int
 
     datatype file = FILE of defn list
 

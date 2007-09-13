@@ -25,6 +25,7 @@ is
   hlop-def.lex : ml-ulex
 
   bom-basis.sml
+  bom-ty-pt.sml
   hlop-def-loader.sml
   hlop-def-pt.sml
   hlop-env.sml
