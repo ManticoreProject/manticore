@@ -239,6 +239,7 @@ void Error (const char *fmt, ...)
 	else
 	    fprintf (stderr, "Error -- ");
 	vfprintf (stderr, fmt, ap);
+        fflush (stderr);
     MutexUnlock (&PrintLock);
     va_end(ap);
 
@@ -259,6 +260,7 @@ void Warning (const char *fmt, ...)
 	else
 	    fprintf (stderr, "Warning -- ");
 	vfprintf (stderr, fmt, ap);
+        fflush (stderr);
     MutexUnlock (&PrintLock);
     va_end(ap);
 
@@ -281,6 +283,7 @@ void Die (const char *fmt, ...)
 	    fprintf (stderr, "Fatal error -- ");
 	vfprintf (stderr, fmt, ap);
 	fprintf (stderr, "\n");
+        fflush (stderr);
     MutexUnlock(&PrintLock);
     va_end(ap);
 
