@@ -58,7 +58,7 @@ void SayValue (Value_t v)
 	Say ("]");
     }
     else
-	Say("%d", ValueToWord(v));
+	Say("%ld", ValueToWord(v));
 }
 
 /*! \brief allocate a tuple of uniform values on the global heap.
@@ -83,7 +83,6 @@ Value_t GlobalAllocUniform (VProc_t *vp, int nElems, ...)
 /* FIXME: what if there isn't enough space!!! */
     obj[-1] = VEC_HDR(nElems);
     for (int i = 0;  i < nElems;  i++) {
-	Value_t arg = va_arg(ap, Value_t);
 	obj[i] = (Word_t)elems[i];
     }
 
