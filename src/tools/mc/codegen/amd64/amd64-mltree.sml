@@ -51,24 +51,36 @@ structure AMD64Props = AMD64Props (
                         structure MLTreeHash = AMD64MLTreeHash
 			structure MLTreeEval = AMD64MLTreeEval)
 
-structure AMD64MLTreeUtils : MLTREE_UTILS = struct 
-  structure T = AMD64MLTree
-  structure IX = AMD64InstrExt		 
-  structure U = MLTreeUtils (
-      structure T = T
-      fun hashSext _ _ = 0w0
-      fun hashRext _ _ = 0w0
-      fun hashFext _ _ = 0w0
-      fun hashCCext _ _ = 0w0
-      fun eqSext _ _ = raise Fail "eqSext"
-      fun eqRext _ _ = raise Fail "eqRext"
-      fun eqFext _ _ = raise Fail "eqFext"
-      fun eqCCext _ _ = raise Fail "eqCCext"
-      fun showSext (prt : T.printer) ext = raise Fail "Todo"
-      fun showRext _ _ = raise Fail "showRext"
-      fun showFext _ _ = raise Fail "showFext"
-      fun showCCext _ _ = raise Fail "showCCext")    
-  open U  
-end (* AMD64MLTreeUtils *)
+structure AMD64MLTreeUtils : MLTREE_UTILS =
+  struct 
+    structure T = AMD64MLTree
+    structure IX = AMD64InstrExt		 
+    structure U = MLTreeUtils (
+	structure T = T
+	fun hashSext _ _ = 0w0
+	fun hashRext _ _ = 0w0
+	fun hashFext _ _ = 0w0
+	fun hashCCext _ _ = 0w0
+	fun eqSext _ _ = raise Fail "eqSext"
+	fun eqRext _ _ = raise Fail "eqRext"
+	fun eqFext _ _ = raise Fail "eqFext"
+	fun eqCCext _ _ = raise Fail "eqCCext"
+	fun showSext (prt : T.printer) ext = (case ext
+	       of (IX.PUSHQ rexp) => concat["PUSHL(", #rexp prt rexp, ")"]
+		| (IX.POP rexp) => concat["POP(", #rexp prt rexp, ")"]
+		| IX.LEAVE => "LEAVE"
+		| (IX.RET rexp) => concat["RET(", #rexp prt rexp, ")"]
+		| (IX.LOCK_CMPXCHGL(re1, re2)) => concat[
+		      "LOCK_CMPXCHGL(", #rexp prt re1, ",", #rexp prt re2, ")"
+		    ]
+		| (IX.LOCK_CMPXCHGQ(re1, re2)) => concat[
+		      "LOCK_CMPXCHGL(", #rexp prt re1, ",", #rexp prt re2, ")"
+		    ]
+	      (* end case *))
+	fun showRext _ _ = raise Fail "showRext"
+	fun showFext _ _ = raise Fail "showFext"
+	fun showCCext _ _ = raise Fail "showCCext")    
+    open U  
+  end (* AMD64MLTreeUtils *)
 
 end (* AMD64MLTree *)

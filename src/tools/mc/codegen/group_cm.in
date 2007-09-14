@@ -44,6 +44,7 @@ is
   alloc-sig.sml
   alloc64-fn.sml
   arch-types-sig.sml
+  atomic-ops-sig.sml
   backend-sig.sml
   codegen-controls.sml
   codegen-fn.sml
@@ -71,6 +72,7 @@ is
   var-def-fn.sml
   vproc-ops-fn.sml
 
+  amd64/amd64-atomic-ops-fn.sml
   amd64/amd64-comp-ext-fn.sml
   amd64/amd64-const.sml
   amd64/amd64-copy-fn.sml

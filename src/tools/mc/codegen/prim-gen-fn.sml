@@ -28,7 +28,7 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 
     type ctx = {varDefTbl : BE.VarDef.var_def_tbl}
 
-    val aty = 64	(* MLRISC type of "any" *)
+    val anyTy = 64	(* MLRISC type of "any" *)
     val i32ty = 32
     val i64ty = 64
     val f32ty = 32
@@ -64,14 +64,14 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		in
 		  case p
 		   of P.isBoxed p => 
-			cbind (v, T.CMP(aty, T.EQ, T.ANDB(aty, defOf p, wordLit 1), wordLit 0))
+			cbind (v, T.CMP(anyTy, T.EQ, T.ANDB(anyTy, defOf p, wordLit 1), wordLit 0))
 		    | P.isUnboxed p => 
-			cbind (v, T.CMP(aty, T.NE, T.ANDB(aty, defOf p, wordLit 1), wordLit 0))
-		    | P.Equal a => genCmp (aty, T.EQ, a)
-		    | P.NotEqual a => genCmp (aty, T.NE, a)
+			cbind (v, T.CMP(anyTy, T.NE, T.ANDB(anyTy, defOf p, wordLit 1), wordLit 0))
+		    | P.Equal a => genCmp (anyTy, T.EQ, a)
+		    | P.NotEqual a => genCmp (anyTy, T.NE, a)
 		    | P.BNot x => raise Fail "BNot"
-		    | P.BEq a => genCmp (aty, T.EQ, a)
-		    | P.BNEq a => genCmp (aty, T.NE, a)
+		    | P.BEq a => genCmp (anyTy, T.EQ, a)
+		    | P.BNEq a => genCmp (anyTy, T.NE, a)
 		   (* 32-bit integer primitives *)				  
 		    | P.I32Add a => genArith2 (i32ty, T.ADD, a)
 		    | P.I32Sub a => genArith2 (i32ty, T.SUB, a)
@@ -132,9 +132,27 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		  (* atomic operations *)
 (* FIXME
 		    | P.I32FetchAndAdd of 'var * 'var
-		    | P.CAS of 'var * 'var * 'var	(* compare and swap; returns old value *)
-		    | P.BCAS of 'var * 'var * 'var	(* compare and swap; returns bool *)
 *)
+		    | P.CAS(addr, key, new) => let
+			val (_, r, stms) = BE.AtomicOps.genCompareAndSwapWord{
+				    addr = T.LOAD(anyTy, defOf addr, ()),
+				    cmpVal = defOf key, newVal = defOf new
+				  }
+			in
+			  BE.VarDef.flushLoads varDefTbl
+			  @ stms
+			  @ gprBind (anyTy, v, r)
+			end
+		    | P.BCAS(addr, key, new) => let
+			val (cc, _, stms) = BE.AtomicOps.genCompareAndSwapWord{
+				    addr = T.LOAD(anyTy, defOf addr, ()),
+				    cmpVal = defOf key, newVal = defOf new
+				  }
+			in
+			  BE.VarDef.flushLoads varDefTbl
+			  @ stms
+			  @ cbind (v, cc)
+			end
 		    | _ => raise Fail(concat[
 			  "genPrim(", CFG.Var.toString v, ", ",
 			  PrimUtil.fmt CFG.Var.toString p, ")"

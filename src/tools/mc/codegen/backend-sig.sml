@@ -6,7 +6,8 @@
  * Glue code between the code generator and MLRISC.
  *)
 
-signature BACK_END = sig
+signature BACK_END =
+  sig
 
     structure ManticorePseudoOps : MANTICORE_PSEUDO_OPS
 	where P.T.Region = ManticoreRegion
@@ -29,6 +30,8 @@ signature BACK_END = sig
 	where MTy = MTy
     structure Alloc : ALLOC
 	where MTy = MTy
+    structure AtomicOps : ATOMIC_OPS
+        where MTy = MTy
     structure Types : ARCH_TYPES
     structure Copy : COPY
 	where MTy = MTy
@@ -47,4 +50,4 @@ signature BACK_END = sig
      *)
     val compileCFG : CFGGen.CFG.cfg -> unit
 						     
-end (* BACK_END *)
+  end (* BACK_END *)
