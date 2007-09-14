@@ -173,10 +173,10 @@ STATIC_INLINE void MutexDestroy (Mutex_t *mu)
 
 typedef pthread_cond_t Cond_t;
 
-STATIC_INLINE Cond_t CondInit (Cond_t *cond)
+STATIC_INLINE void CondInit (Cond_t *cond)
 {
     pthread_cond_init (cond, (pthread_condattr_t *)0);
-} /* end of NewCond */
+} /* end of CondInit */
 
 STATIC_INLINE void DestroyCond (Cond_t *cond)
 {
