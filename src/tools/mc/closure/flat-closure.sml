@@ -50,14 +50,14 @@ structure FlatClosure : sig
             ret = cvtStdContTy CPSTy.T_Any,
             exh = cvtStdContTy CPSTy.T_Any
           }
-      | cvtStdFunTyAux ty = raise Fail("bogus function type " ^ CPSTy.toString ty)
+      | cvtStdFunTyAux ty = raise Fail("bogus function type " ^ CPSTyUtil.toString ty)
 
   (* convert a continuation type to a standard-continuation type *)
     and cvtStdContTy ty = CFG.T_OpenTuple[cvtStdContTyAux ty]
     and cvtStdContTyAux (CPSTy.T_Fun(argTys, [])) =
 	  CFGTy.stdContTy(CFGTy.T_Any, List.map cvtTy argTys)
       | cvtStdContTyAux (CPSTy.T_Any) = CFGTy.stdContTy(CFGTy.T_Any, [CFGTy.T_Any])
-      | cvtStdContTyAux ty = raise Fail("bogus continuation type " ^ CPSTy.toString ty)
+      | cvtStdContTyAux ty = raise Fail("bogus continuation type " ^ CPSTyUtil.toString ty)
 
   (* assign labels to functions and continuations *)
     local

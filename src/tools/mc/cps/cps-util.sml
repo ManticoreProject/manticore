@@ -17,8 +17,8 @@ structure CPSUtil : sig
     val p2s = PrimUtil.fmt v2s
 
     fun rhsToString (C.Var xs) = concat["Var(", vl2s xs, ")"]
-      | rhsToString (C.Cast(ty, x)) = concat["Cast(", CPSTy.toString ty, ", ", v2s x, ")"]
-      | rhsToString (C.Const(lit, ty)) = concat["Const(", Literal.toString lit, ", ", CPSTy.toString ty, ")"]
+      | rhsToString (C.Cast(ty, x)) = concat["Cast(", CPSTyUtil.toString ty, ", ", v2s x, ")"]
+      | rhsToString (C.Const(lit, ty)) = concat["Const(", Literal.toString lit, ", ", CPSTyUtil.toString ty, ")"]
       | rhsToString (C.Select(i, x)) = concat["Select(", Int.toString i, ", ", v2s x, ")"]
       | rhsToString (C.Update(i, x, y)) = concat["Update(", Int.toString i, ", ", v2s x,  ", ", v2s y, ")"]
       | rhsToString (C.AddrOf(i, x)) = concat["AddrOf(", Int.toString i, ", ", v2s x, ")"]

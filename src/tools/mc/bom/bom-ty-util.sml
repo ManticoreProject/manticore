@@ -78,8 +78,8 @@ structure BOMTyUtil : sig
 	   of (BTy.T_Any, BTy.T_Any) => true
 	   | (BTy.T_Enum w1, BTy.T_Enum w2) => w1 = w2
 	   | (BTy.T_Raw rt1, BTy.T_Raw rt2) => rt1 = rt2
-	   | (BTy.T_Tuple (b1, tys1), BTy.T_Tuple (b2, tys2)) =>
-		b1 = b2 andalso
+	   | (BTy.T_Tuple (m1, tys1), BTy.T_Tuple (m2, tys2)) =>
+		m1 = m2 andalso
 		ListPair.allEq equal (tys1, tys2)
 	   | (BTy.T_Addr ty1, BTy.T_Addr ty2) => equal (ty1, ty2)
 	   | (BTy.T_Fun (argTys1, exhTys1, retTys1), 

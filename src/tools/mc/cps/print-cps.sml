@@ -36,7 +36,7 @@ structure PrintCPS : sig
 		  pr "("; prL l; pr ")"
 		end
 	  fun varBindToString x = String.concat[
-		  CPS.Var.toString x, ":", CPSTy.toString(CPS.Var.typeOf x)
+		  CPS.Var.toString x, ":", CPSTyUtil.toString(CPS.Var.typeOf x)
 		]
 	  fun varUseToString x = CPS.Var.toString x
 	  fun prExp (i, e) = (
@@ -81,9 +81,9 @@ structure PrintCPS : sig
 		      pr "\n")
 		(* end case *))
 	  and prRHS (CPS.Var ys) = prList varUseToString ys
-	    | prRHS (CPS.Cast(ty, y)) = prl["(", CPSTy.toString ty, ")", varUseToString y]
+	    | prRHS (CPS.Cast(ty, y)) = prl["(", CPSTyUtil.toString ty, ")", varUseToString y]
 	    | prRHS (CPS.Const(lit, ty)) = prl[
-		  Literal.toString lit, ":", CPSTy.toString ty
+		  Literal.toString lit, ":", CPSTyUtil.toString ty
 		]
 	    | prRHS (CPS.Select(i, y)) = prl ["#", Int.toString i, "(", varUseToString y, ")"]
 	    | prRHS (CPS.Update(i, y, z)) = prl [

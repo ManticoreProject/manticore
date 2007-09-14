@@ -19,6 +19,7 @@ structure Convert : sig
     structure C = CPS
     structure CV = C.Var
     structure CTy = CPSTy
+    structure CTyUtil = CPSTyUtil
     structure E = BV.Map
 
   (* convert a BOM type to a CPS type *)
@@ -73,7 +74,7 @@ structure Convert : sig
     fun cvtLambda (env, B.FB{f, params, exh, body}) = let
 	  val f' = lookup(env, f)
 	  val (params', env) = bindVars (env, params)
-	  val retK' = CV.new("retK", CTy.returnTy(CV.typeOf f'))
+	  val retK' = CV.new("retK", CTyUtil.returnTy(CV.typeOf f'))
 	  val (exhs', env) = bindVars (env, exh)
 	  val body' = cvtTailE(env, body, retK')
 	  in
@@ -164,7 +165,7 @@ structure Convert : sig
 		val f' = lookup(env, f)
 		val params' = lookupVars(env, params)
 		val exh' = lookupVars(env, exh)
-		val retK' = CV.new("retK", CTy.returnTy(CV.typeOf f'))
+		val retK' = CV.new("retK", CTyUtil.returnTy(CV.typeOf f'))
 		val ys' = List.map (fn ty => CV.new("a", ty)) tys'
 		in
 		  C.mkCont(

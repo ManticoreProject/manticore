@@ -12,7 +12,7 @@ structure CheckCPS : sig
 
     structure C = CPS
     structure V = C.Var
-    structure Ty = CPSTy
+    structure Ty = struct open CPSTy open CPSTyUtil end
     structure VSet = V.Set
 
     val v2s = V.toString

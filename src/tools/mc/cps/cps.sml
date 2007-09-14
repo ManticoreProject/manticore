@@ -79,7 +79,7 @@ structure CPS =
 	      type ty = ty
 	      val defaultKind = VK_None
 	      val kindToString = varKindToString
-	      val tyToString = CPSTy.toString
+	      val tyToString = CPSTyUtil.toString
 	    end)
 	in
 	open V
