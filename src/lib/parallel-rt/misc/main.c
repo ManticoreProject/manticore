@@ -200,9 +200,9 @@ void Say (const char *fmt, ...)
     va_start (ap, fmt);
     MutexLock (&PrintLock);
       vfprintf (stdout, fmt, ap);
+      fflush (stdout);
     MutexUnlock (&PrintLock);
     va_end(ap);
-    fflush (stdout);
 
 } /* end of Say */
 
@@ -217,9 +217,9 @@ void SayDebug (const char *fmt, ...)
     va_start (ap, fmt);
     MutexLock (&PrintLock);
       vfprintf (DebugF, fmt, ap);
+      fflush (DebugF);
     MutexUnlock (&PrintLock);
     va_end(ap);
-    fflush (DebugF);
 
 } /* end of SayDebug */
 #endif
