@@ -27,44 +27,6 @@ structure CheckBOM : sig
     val t2s = BTU.toString
     fun tl2s ts = concat["(", String.concatWith "," (map t2s ts), ")"]
 
-(**** Fluet version ****
-	  and chkFB (env, fb as B.FB{f, params, exh, body}) = (let
-		fun chk ([], []) = ()
-		  | chk (_, []) = err["too few parameters in ", v2s f]
-		  | chk ([], _) = err["too many parameters in ", v2s f]
-		  | chk (ty::tys, x::xs) = (
-		      if (BTU.equal(BV.typeOf x, ty))
-			then ()
-			else err[
-			    "type mismatch in ", v2s f, "\n  expected  ", BTU.toString ty,
-			    "\n  but found ", v2s x, ":", BTU.toString(BV.typeOf x)
-			  ];
-		      chk(tys, xs))
-                val (argTys, exhTys, retTys) =
-                      case BV.typeOf f
-                       of BTy.T_Fun(argTys, exhTys, retTys) =>
-                              (argTys, exhTys, retTys)
-                        | BTy.T_Cont(argTys) =>
-                              (argTys, [], [])
-                        | ty => (err["expected function/continuation type for ",
-                                     v2s f, ":", BTU.toString(BV.typeOf f)];
-                                 ([],[],[]))
-                      (* end case *)
-                in
-                chk(argTys, params);
-                chk(exhTys, exh);
-		chkExp (addVars(addVars(env, params), exh), body, retTys)
-                end)
-	  val env = List.foldl
-		(fn (cf, env) => VSet.add(env, CFunctions.varOf cf))
-		  VSet.empty externs
-	  in
-	    chkFB (env, body);
-            !anyErr
-	  end (* check *)
-**** Fluet version ****)
-
-(**** Reppy version ****)
   (* placeholder for testing variable kind equality *)
     fun eqVK _ = true
 
@@ -164,13 +126,38 @@ structure CheckBOM : sig
 	    | chkPat (B.P_Const _) = ()
 	(* *)
 	  fun insertFB (B.FB{f, ...}) = insert f
-	  fun chkFB (lambda as B.FB{f, params, exh, body}) = (
+	  fun chkFB (lambda as B.FB{f, params, exh, body}) = (let
+		fun chk ([], []) = ()
+		  | chk (_, []) = error["too few parameters in ", v2s f]
+		  | chk ([], _) = error["too many parameters in ", v2s f]
+		  | chk (ty::tys, x::xs) = (
+		      if (BTU.equal(BV.typeOf x, ty))
+			then ()
+			else (
+                           error["type mismatch in ", v2s f, "\n"];
+                           cerror ["  expected  ", BTU.toString ty, "\n"];
+                           cerror ["  but found ", v2s x, ":", BTU.toString(BV.typeOf x), "\n"]);
+		      chk(tys, xs))
+                val (argTys, exhTys, retTys) =
+                      case BV.typeOf f
+                       of BTy.T_Fun(argTys, exhTys, retTys) =>
+                              (argTys, exhTys, retTys)
+                        | BTy.T_Cont(argTys) =>
+                              (argTys, [], [])
+                        | ty => (error["expected function/continuation type for ",
+                                       v2s f, ":", BTU.toString(BV.typeOf f)];
+                                 ([],[],[]))
+                      (* end case *)
+                in
 		chkBinding (f, B.VK_Fun lambda);
 		chkBindings (params, B.VK_Param);
+                chk(argTys, params);
 		chkBindings (exh, B.VK_Param);
+                chk(exhTys, exh);
 		List.app insert params;
 		List.app insert exh;
-		chkE (tailContext f, body))
+		chkE (tailContext f, body)
+                end)
 	  and chkE (cxt, B.E_Pt(_, t)) = (case t
 		 of B.E_Let(lhs, rhs, e) => (
 		      chkBindings (lhs, B.VK_Let rhs);
@@ -349,14 +336,6 @@ structure CheckBOM : sig
                                   IntInf.toString n, ", ", v2s vp, ", ", v2s x, ")\n"])
 		  | _ => error["bogus rhs for ", vl2s lhs, "\n"]
 		(* end case *))
-	(* check the module's main function *)
-	  fun chkFB (lambda as B.FB{f, params, exh, body}) = (
-		chkBinding (f, B.VK_Fun lambda);
-		chkBindings (params, B.VK_Param);
-		chkBindings (exh, B.VK_Param);
-		List.app insert params;
-		List.app insert exh;
-		chkE(tailContext f, body))
 	(* check an external function *)
 	  fun chkExtern (CFunctions.CFun{var, name, ...}) = (
 		insert var;
@@ -394,7 +373,6 @@ if !anyErrors
 	  (* return the error status *)
 	    !anyErrors
 	  end
-(**** Reppy version ****)
 
     val check = BasicControl.mkTracePass {
 	    passName = "bom-check",
