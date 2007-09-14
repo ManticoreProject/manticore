@@ -363,12 +363,20 @@ static void SigHandler (int sig, siginfo_t *si, void *_sc)
     ucontext_t	*uc = (ucontext_t *)_sc;
     VProc_t	*self = VProcSelf();
 
+  /* WARNING:
+   * Enabling the following SayDebug can cause deadlock;
+   * if the signal arrives while the VProc/pthread is in the runtime,
+   * the PrintLock may already be acquired by this thread for debugging. 
+   * Attempting to re-aquire the PrintLock in the signal handler leads to deadlock
+   * (technically, undefined behavior, but deadlock in practice).
+   */
+/*
 #ifndef NDEBUG
     if (DebugFlg)
-	SayDebug("[%2d] SigHandler; inManticore = %p, atomic = %p, pc = %p\n",
-	    self->id, self->inManticore, self->atomic,
-	    UC_RIP(uc));
+        SayDebug("[%2d] SigHandler; inManticore = %p, atomic = %p, pc = %p\n",
+                 self->id, self->inManticore, self->atomic, UC_RIP(uc));
 #endif
+*/
     self->sigPending = M_TRUE;
     if ((self->inManticore == M_TRUE) && (self->atomic == M_FALSE)) {
       /* set the limit pointer to zero to force a context switch on
