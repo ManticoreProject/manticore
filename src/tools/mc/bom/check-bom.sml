@@ -61,10 +61,10 @@ structure CheckBOM : sig
 	  fun cerror msg = pr ("== "::msg)
 	(* match the parameter types against argument variables *)
         (* checkArgTypes : string * ty list * ty list -> unit *)
-	  fun checkArgTypes (ctx, paramTys, argTys) = let
+	  fun checkArgTypes (cmp, ctx, paramTys, argTys) = let
 	      (* chk1 : ty * ty -> unit *)
 	        fun chk1 (pty, aty) =
-		      if (BTU.match (aty, pty))
+		      if (cmp (aty, pty))
                         then ()
 		        else (
 			  error ["type mismatch in ", ctx, "\n"];
@@ -82,7 +82,6 @@ structure CheckBOM : sig
 			cerror ["  found    (", str argTys, ")\n"]
                       end
 	        end
-
 	(* a table mapping variables to their census counts *)
 	  val counts = VTbl.mkTable (256, Fail "count table")
 	  fun insert x = (case VTbl.find counts x
@@ -94,8 +93,8 @@ structure CheckBOM : sig
 		(* end case *))
 	(* match a list of variables to a context *)
 	  fun chkContext (cxt, xs) = (case cxt
-		 of TAIL(f, tys) => checkArgTypes ("return from " ^ v2s f, tys, typesOf xs)
-		  | BIND ys => checkArgTypes ("binding " ^ vl2s ys, typesOf ys, typesOf xs)
+		 of TAIL(f, tys) => checkArgTypes (BTU.match, "return from " ^ v2s f, tys, typesOf xs)
+		  | BIND ys => checkArgTypes (BTU.match, "binding " ^ vl2s ys, typesOf ys, typesOf xs)
 		(* end case *))
 	(* create a tail context *)
 	  fun tailContext f = let
@@ -127,17 +126,6 @@ structure CheckBOM : sig
 	(* *)
 	  fun insertFB (B.FB{f, ...}) = insert f
 	  fun chkFB (lambda as B.FB{f, params, exh, body}) = (let
-		fun chk ([], []) = ()
-		  | chk (_, []) = error["too few parameters in ", v2s f]
-		  | chk ([], _) = error["too many parameters in ", v2s f]
-		  | chk (ty::tys, x::xs) = (
-		      if (BTU.equal(BV.typeOf x, ty))
-			then ()
-			else (
-                           error["type mismatch in ", v2s f, "\n"];
-                           cerror ["  expected  ", BTU.toString ty, "\n"];
-                           cerror ["  but found ", v2s x, ":", BTU.toString(BV.typeOf x), "\n"]);
-		      chk(tys, xs))
                 val (argTys, exhTys, retTys) =
                       case BV.typeOf f
                        of BTy.T_Fun(argTys, exhTys, retTys) =>
@@ -151,9 +139,9 @@ structure CheckBOM : sig
                 in
 		chkBinding (f, B.VK_Fun lambda);
 		chkBindings (params, B.VK_Param);
-                chk(argTys, params);
+                checkArgTypes(BTU.equal, concat["Fun ", v2s f, " params"], argTys, typesOf params);
 		chkBindings (exh, B.VK_Param);
-                chk(exhTys, exh);
+                checkArgTypes(BTU.equal, concat["Fun ", v2s f, " exh"], exhTys, typesOf exh);
 		List.app insert params;
 		List.app insert exh;
 		chkE (tailContext f, body)
@@ -200,13 +188,14 @@ structure CheckBOM : sig
 		       of BTy.T_Fun(argTys, exhTys, retTys) => (
 			    chkVars (args, "Apply args");
 			    chkVars (rets, "Apply rets");
-			    checkArgTypes (concat["Apply ", v2s f, " args"], argTys, typesOf args);
-			    checkArgTypes (concat["Apply ", v2s f, " rets"], exhTys, typesOf rets);
+			    checkArgTypes (BTU.match, concat["Apply ", v2s f, " args"], argTys, typesOf args);
+			    checkArgTypes (BTU.match, concat["Apply ", v2s f, " rets"], exhTys, typesOf rets);
 			    case cxt
 			     of TAIL(g, tys) =>
-				  checkArgTypes (concat["Apply ", v2s f, " in ", v2s g], tys, retTys)
+				  checkArgTypes (BTU.match, concat["Apply ", v2s f, " in ", v2s g], tys, retTys)
 			      | BIND ys =>
 				  checkArgTypes (
+                                    BTU.match, 
 				    concat["binding ", vl2s ys, " to Apply ", v2s f],
 				    typesOf ys, retTys)
 			    (* end case *))
@@ -217,7 +206,7 @@ structure CheckBOM : sig
 		      case BV.typeOf k
 		       of BTy.T_Cont(argTys) => (
 			    chkVars (args, "Throw args");
-			    checkArgTypes (concat["Throw ", v2s k, " args"], argTys, typesOf args))
+			    checkArgTypes (BTU.match, concat["Throw ", v2s k, " args"], argTys, typesOf args))
 			| ty => error[v2s k, ":", BTU.toString ty, " is not a continuation\n"]
 		      (* end case *))
 		  | B.E_Ret args => (
@@ -229,13 +218,14 @@ structure CheckBOM : sig
 		      in
 			chkVars (args, "HLOp args");
 			chkVars (rets, "HLOp rets");
-			checkArgTypes (concat["HLOP ", (HLOp.toString hlop), " args"], paramTys, typesOf args);
-			checkArgTypes (concat["HLOP ", (HLOp.toString hlop), " rets"], exhTys, typesOf rets);
+			checkArgTypes (BTU.match, concat["HLOP ", (HLOp.toString hlop), " args"], paramTys, typesOf args);
+			checkArgTypes (BTU.match, concat["HLOP ", (HLOp.toString hlop), " rets"], exhTys, typesOf rets);
 			case (returns, cxt)
 			 of (true, TAIL(g, tys)) =>
-			      checkArgTypes (concat["return type of HLOP ", (HLOp.toString hlop), " in ", v2s g], tys, resTys)
+			      checkArgTypes (BTU.match, concat["return type of HLOP ", (HLOp.toString hlop), " in ", v2s g], tys, resTys)
 			  | (true, BIND ys) =>
 			      checkArgTypes (
+                                BTU.match, 
 				concat["binding ", vl2s ys, " to HLOP ", (HLOp.toString hlop)],
 				typesOf ys, resTys)
 			  | (false, _) => ()

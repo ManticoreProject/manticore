@@ -54,11 +54,11 @@ functor MainFn (
   (* the compiler's backend *)
     fun bomToCFG bom = let
 	  val bom = BOMOpt.optimize bom	
-          val _ = CheckBOM.check ("optimization", bom)
+          val _ = CheckBOM.check ("bom-optimize", bom)
           val cps = Convert.transform bom
-	  val _ = CheckCPS.check cps
+	  val _ = CheckCPS.check ("convert", cps)
 	  val cps = CPSOpt.optimize cps
-	  val _ = CheckCPS.check cps
+	  val _ = CheckCPS.check ("cps-optimize", cps)
 	  val cfg = FlatClosure.convert cps
 	  val _ = CheckCFG.check cfg
 	  val cfg = CFGOpt.optimize cfg

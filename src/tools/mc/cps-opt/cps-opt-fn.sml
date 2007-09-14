@@ -11,8 +11,6 @@ functor CPSOptFn (Spec : TARGET_SPEC) : sig
   end = struct
 
     fun optimize module = let
-          val _ = CheckCPS.check module
-          val _ = CheckCPS.check module
           in
             module
           end
