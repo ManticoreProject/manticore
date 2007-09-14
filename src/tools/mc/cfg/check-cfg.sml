@@ -23,9 +23,9 @@ structure CheckCFG : sig
     structure Ty = CFGTy
     structure Lit = Literal
 
-    fun error msg = TextIO.output(TextIO.stdErr, concat("Error: " :: msg @ ["\n"]))
+    fun error msg = TextIO.output(TextIO.stdErr, concat("CFG Error: " :: msg @ ["\n"]))
 
-    fun warning msg = TextIO.output(TextIO.stdErr, concat("Warning: " :: msg @ ["\n"]))
+    fun warning msg = TextIO.output(TextIO.stdErr, concat("CFG Warning: " :: msg @ ["\n"]))
 
     fun vl2s [] = "[]"
       | vl2s [x] = concat[V.toString x, ":", Ty.toString(V.typeOf x)]

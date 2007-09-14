@@ -32,7 +32,7 @@ structure CheckCPS : sig
 	  val anyErr = ref false
 	  fun err msg = (
 		anyErr := true;
-		print(concat("Error: " :: msg));
+		print(concat("CPS Error: " :: msg));
 		print "\n")
 	  fun cerr msg = print(concat("== "::msg))
 	  fun chkVar (env, x, cxt) = if VSet.member(env, x)
