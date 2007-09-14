@@ -116,7 +116,7 @@ MemChunk_t *AllocChunk (Addr_t szb)
 
 #ifndef NDEBUG
     if (DebugFlg)
-	SayDebug("AllocChunk: %d Kb at %#p\n", szb/1024, memObj);
+	SayDebug("AllocChunk: %ld Kb at %p\n", szb/1024, memObj);
 #endif
 
     return chunk;
