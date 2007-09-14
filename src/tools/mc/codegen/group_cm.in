@@ -71,6 +71,7 @@ is
   var-def-fn.sml
   vproc-ops-fn.sml
 
+  amd64/amd64-comp-ext-fn.sml
   amd64/amd64-const.sml
   amd64/amd64-copy-fn.sml
   amd64/amd64-extension.sml
@@ -80,3 +81,4 @@ is
   amd64/amd64-mltree.sml
   amd64/amd64-regs.sml
   amd64/amd64-types.sml
+
