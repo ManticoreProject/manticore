@@ -69,6 +69,7 @@ structure TranslateTypes : sig
 	      | ([], _) => raise Fail ""
 	      | (_, _) => raise Fail ""
 	    (* end case *);
+	    E.insertTyc (env, tyc, BTy.T_TyCon dataTyc);
 	    BTy.T_TyCon dataTyc
 	  end
 
