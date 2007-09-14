@@ -71,6 +71,13 @@ structure BOMTy =
     val tidTy = T_Enum(0w0);
     val fiberTy = T_Cont[]
 
+  (* construct an immutable tuple type; nullary tuples are unit type and singleton
+   * tuples have a direct representation.
+   *)
+    fun tupleTy [] = unitTy
+      | tupleTy [ty] = ty
+      | tupleTy tys = T_Tuple(false, tys)
+
     val thunkTy = T_Fun([unitTy], [exhTy], [T_Any])
     val futureTy = T_Tuple(true, [T_Any, thunkTy])
 
