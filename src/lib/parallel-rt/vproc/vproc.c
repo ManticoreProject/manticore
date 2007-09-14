@@ -22,7 +22,7 @@
 
 typedef struct {		/* data passed to VProcMain */
     VProc_t	*vp;		/* the host vproc */
-    VProcFn_t	initFn;	/* the initial function to run */
+    VProcFn_t	initFn;		/* the initial function to run */
     void	*arg;		/* an additional argument to initFn */
     bool	started;	/* used to signal that the vproc has started */
     Mutex_t	lock;		/* lock to protect wait and started */
@@ -265,6 +265,8 @@ static void *VProcMain (void *_data)
 
     init (self, arg);
 
+    Die("VProcMain returning.\n");
+
 } /* VProcMain */
 
 /*! \brief return a list of the vprocs in the system.
@@ -363,7 +365,7 @@ static void SigHandler (int sig, siginfo_t *si, void *_sc)
 
 #ifndef NDEBUG
     if (DebugFlg)
-	SayDebug("[%2d] inManticore = %p, atomic = %p, pc = %p\n",
+	SayDebug("[%2d] SigHandler; inManticore = %p, atomic = %p, pc = %p\n",
 	    self->id, self->inManticore, self->atomic,
 	    UC_RIP(uc));
 #endif
@@ -392,6 +394,10 @@ static int GetNumCPUs ()
 	}
 	fclose (cpuinfo);
 	return n;
+    }
+    else {
+	Warning("unable to determine the number of processors\n");
+	return 0;
     }
 #elif defined(TARGET_DARWIN)
     int		numCPUs;
