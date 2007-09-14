@@ -120,8 +120,8 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 	else if (isVectorHdr(hdr)) {
 	  // an array of pointers
 	    int len = GetVectorLen(hdr);
-	    for (int i = 0;  i < len;  i++) {
-		Value_t v = (Value_t)*nextScan;
+	    for (int i = 0;  i < len;  i++, nextScan++) {
+		Value_t v = *(Value_t*)nextScan;
 		if (isPtr(v)) {
 		    if (inAddrRange(oldBase, oldSzB, ValueToAddr(v))) {
 			*nextScan = (Word_t)ForwardObj(vp, v);
@@ -131,7 +131,6 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 		      // so adjust it.
 			*nextScan = (Word_t)((Addr_t)v - oldSzB);
 		    }
-		    nextScan++;
 		}
 	    }
 	}
