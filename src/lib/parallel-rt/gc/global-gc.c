@@ -17,6 +17,7 @@ static Barrier_t	GCBarrier;
  */
 void GlobalGC ()
 {
+    Die("GlobalGC unimplemented\n");
 
     /* for each vproc, scan its roots */
 
