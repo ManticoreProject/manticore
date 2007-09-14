@@ -66,6 +66,11 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     assert (VProcHeap(vp) < vp->oldTop);
     assert (vp->oldTop < top);
 
+#ifndef NDEBUG
+    if (DebugFlg)
+	SayDebug("[%2d] Major GC starting\n",vp->id);
+#endif
+
   /* process the roots */
     for (int i = 0;  roots[i] != 0;  i++) {
 	Value_t p = *roots[i];
@@ -143,12 +148,12 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 
 #ifndef NDEBUG
     if (DebugFlg) {
-	int nBytesCopied;
+	unsigned long nBytesCopied;
 	if (vp->globToSpace == scanChunk)
-	    nBytesCopied = (int)(vp->globNextW - (Addr_t)globScan - WORD_SZB);
+	    nBytesCopied = (unsigned long)(vp->globNextW - (Addr_t)globScan - WORD_SZB);
 	else
 	    nBytesCopied = -1;  /* FIXME */
-	SayDebug("[%2d] Major GC: %d/%d bytes live\n",
+	SayDebug("[%2d] Major GC finished: %ld/%ld bytes live\n",
 	    vp->id, nBytesCopied, oldSzB);
     }
 #endif
