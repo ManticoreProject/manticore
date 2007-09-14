@@ -71,6 +71,63 @@ structure Translate : sig
     fun toExp (BIND(xs, rhs)) = mkStmt(xs, rhs, B.mkRet xs)
       | toExp (EXP e) = e
 
+  (* translate datatype constructors and constants in expressions *)
+    fun trDConExp (env, dc) : bom_code = (case TranslateTypes.trDataCon(env, dc)
+	   of E.Const(w, ty) => let
+		val t = BV.new("con_" ^ DataCon.nameOf dc, ty)
+		in
+		  BIND([t], B.E_Const(Lit.Enum w, ty))
+		end
+	    | E.DCon dc' => let
+		val (exh, env) = E.newHandler env
+		val dataTy = BOMTyCon.dconResTy dc'
+		val (fb as B.FB{f, ...}) = (case BOMTyCon.dconArgTy dc'
+		       of [ty] => let
+			  (* constructor with a single argument *)
+			    val arg = BV.new("arg", ty)
+			    val res = BV.new("data", dataTy)
+			    val f = BV.new(BOMTyCon.dconName dc',
+				    BTy.T_Fun([ty], [BTy.exhTy], [dataTy]))
+			    in
+			      B.FB{
+				  f = f, params = [arg], exh = [exh],
+				  body = B.mkStmt([res], B.E_DCon(dc', [arg]), B.mkRet[res])
+				}
+			    end
+			| tys => let
+			  (* constructor with multiple arguments (or zero arguments); the
+			   * lambda will take a tuple and deconstruct it to build the data value.
+			   *)
+			    val argTy = BTy.tupleTy tys
+			    val arg = BV.new("arg", argTy)
+			    val (tmps, binds) = let
+				  fun f (ty, (i, xs, binds)) = let
+					val x = BV.new("_t"^Int.toString i, ty)
+					val b = ([x], B.E_Select(i, arg))
+					in
+					  (i+1, x::xs, b::binds)
+					end
+				  val (_, xs, binds) = List.foldl f (0, [], []) tys
+				  in
+				    (List.rev xs, List.rev binds)
+				  end
+			    val res = BV.new("data", dataTy)
+			    val f = BV.new(BOMTyCon.dconName dc',
+				    BTy.T_Fun([argTy], [BTy.exhTy], [dataTy]))
+			    in
+			      B.FB{
+				  f = f, params = [arg], exh = [exh],
+				  body = B.mkStmts(
+				    binds @ [([res], B.E_DCon(dc', tmps))],
+				    B.mkRet[res])
+				}
+			    end
+		      (* end case *))
+		in
+		  EXP(B.mkFun([fb], B.mkRet[f]))
+		end
+	  (* end case *))
+
     fun trExp (env, exp) : bom_code = (case prune exp
 	   of AST.LetExp(b, e) =>
 		EXP(trBind (env, b, fn env' => trExpToExp(env', e)))
@@ -83,8 +140,8 @@ structure Translate : sig
 		val fty = TypeOf.exp f
 		val fvar = Var.new ("f", fty)
 		val env' = E.insertVar (env, fvar, BV.new ("f", trTy(env, fty)))
-		val fdef = AST.FB (fvar, x, e)
-		val letExp = AST.LetExp (AST.FunBind [fdef], AST.VarExp (fvar, []))
+		val fdef = AST.FB(fvar, x, e)
+		val letExp = AST.LetExp (AST.FunBind[fdef], AST.VarExp (fvar, []))
 		in
 		  trExp (env', letExp)
 		end
