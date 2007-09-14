@@ -53,6 +53,9 @@ structure PrintAST : sig
 	    aw xs
 	end
 
+  (* FIXME: should have proper pretty printing for types *)
+    fun tyScheme ts = pr(TypeUtil.schemeToString ts)
+
     (* exp : A.exp -> unit *)
     fun exp (A.LetExp (b, e)) = 
 	  (openVBox (rel 0);
@@ -243,7 +246,10 @@ structure PrintAST : sig
 	   appwith (fn () => pr ",") pat ps;
 	   pr ")";
 	   closeBox ())
-      | pat (A.VarPat v) = var v
+      | pat (A.VarPat v) = (
+	  openHBox ();
+	    var v; pr ":"; tyScheme(Var.typeOf v);
+	  closeBox ())
       | pat (A.WildPat ty) = pr "_"
       | pat (A.ConstPat c) = const c
 
@@ -265,15 +271,15 @@ structure PrintAST : sig
     fun module m = exp m
 		   
     (* output : TextIO.outstream * A.module -> unit *)
-    fun output (outS : TextIO.outstream, m : A.module) = 
-       let
+    fun output (outS : TextIO.outstream, m : A.module) = let
           val oldStr = !str
           val () = str := S.openOut {dst = outS, wid = 80}
           val () = module m
+	  val () = S.closeStream (!str)
           val () = str := oldStr
-       in
-          ()
-       end
+	  in
+	    ()
+	  end
 				 
     (* print : A.module -> unit *)
     fun print m = (module m;
