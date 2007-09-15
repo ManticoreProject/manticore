@@ -1,0 +1,37 @@
+(* build-executable.sml
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * @configure_input@
+ *)
+
+structure BuildExecutable : sig
+
+    val build : {
+	    asmFile : string,
+	    outFile : string
+	  } -> OS.Process.status
+
+  end = struct
+
+    val cat = String.concatWith " "
+
+    val isCrossCompiler = (@CROSS_COMPILING@ = 1)
+    val ccCmd =  "@CC@"
+    val cFlags = "@CFLAGS@"
+    val ldFlags = cat ["-L@MANTICORE_LIBDIR@", "@LDFLAGS@", "-lmanticore -lpthread"]
+
+    val cmd = cat [ccCmd, cFlags, ldFlags]
+
+    fun build {asmFile, outFile} = if isCrossCompiler
+	  then (
+	    TextIO.output(stderr, "cross compiler cannot produce executables");
+	    OS.Process.failure)
+	  else let
+	    val cmd' = String.concat[cmd, " -o ", outFile, " ", asmFile]
+	    in
+	      OS.Process.system cmd'
+	    end
+
+  end
