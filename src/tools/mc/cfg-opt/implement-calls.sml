@@ -98,7 +98,7 @@ struct
                      val newArgTy = CFGTy.T_Tuple (false, List.map getVarNewType args)
                      val newArg = CFG.Var.new ("argFormalTuple", newArgTy)
                      val (_, sels) =
-                        List.foldr
+                        List.foldl
                         (fn (arg, (i, sels)) => 
                          (i + 1, (CFG.mkSelect (arg, i, newArg)) :: sels))
                         (0, [])
