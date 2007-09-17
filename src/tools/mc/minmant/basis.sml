@@ -18,6 +18,8 @@ structure Basis : sig
     val charTyc		: Types.tycon
     val runeTyc		: Types.tycon
     val stringTyc	: Types.tycon
+    val listTyc		: Types.tycon
+    val optionTyc	: Types.tycon
     val parrayTyc	: Types.tycon
     val chanTyc		: Types.tycon
     val ivarTyc		: Types.tycon
@@ -32,6 +34,7 @@ structure Basis : sig
     val floatTy		: AST.ty
     val stringTy	: AST.ty
     val listTy		: AST.ty -> AST.ty
+    val optionTy	: AST.ty -> AST.ty
     val threadIdTy	: AST.ty
     val parrayTy	: AST.ty -> AST.ty
     val eventTy		: AST.ty -> AST.ty
@@ -45,6 +48,10 @@ structure Basis : sig
   (* constructors *)
     val boolTrue	: AST.dcon
     val boolFalse	: AST.dcon
+    val listNil		: AST.dcon
+    val listCons	: AST.dcon
+    val optionNONE	: AST.dcon
+    val optionSOME	: AST.dcon
 
   (* overloaded operators *)
     val neg : (AST.ty_scheme * AST.var list)
@@ -466,6 +473,8 @@ structure Basis : sig
 	    (N.boolFalse,	Env.Con boolFalse),
 	    (N.listNil,		Env.Con listNil),
 	    (N.listCons,	Env.Con listCons),
+	    (N.optionNONE,	Env.Con optionNONE),
+	    (N.optionSOME,	Env.Con optionSOME),
 	    (* Unary minus is overloaded, so it's being handled
              * specially by the typechecker *)
 	    (N.not,		Env.Var not),

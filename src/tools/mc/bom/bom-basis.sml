@@ -13,16 +13,17 @@ signature BOM_BASIS =
     val stringTy : BOMTy.ty
 
   (* predefined datatypes *)
-    val signalTyc : BOMTy.tyc
-    val listTyc : BOMTy.tyc
-    val rdyqItemTyc : BOMTy.tyc
-
+    val boolTy : BOMTy.ty
+    val listTy : BOMTy.ty
+    val optionTy : BOMTy.ty
+    val signalTy : BOMTy.ty
     val rdyqItemTy : BOMTy.ty
 
   (* predefined data constructors *)
-    val preemptDC : BOMTy.data_con
-    val consDC : BOMTy.data_con
-    val rdyqConsDC : BOMTy.data_con
+    val signalPREEMPT : BOMTy.data_con
+    val listCons : BOMTy.data_con
+    val optionSOME : BOMTy.data_con
+    val rdyq_itemQITEM : BOMTy.data_con
 
     val findTyc : Atom.atom -> BOMTy.tyc option
     val findDCon : Atom.atom -> BOMTy.data_con option
@@ -51,20 +52,20 @@ structure BOMBasis : BOM_BASIS =
   (* ready queue items *)
     val rdyqItemTyc = BOMTyCon.newDataTyc ("rdyq_item", 1)
     val rdyqItemTy = BTy.T_TyCon rdyqItemTyc
-    val rdyqConsDC = BOMTyCon.newDataCon rdyqItemTyc
+    val rdyq_itemQITEM = BOMTyCon.newDataCon rdyqItemTyc
 	  ("QITEM", BTy.Tuple, [tidTy, fiberTy, rdyqItemTy])
 
   (* other predefined datatypes *)
     val signalTyc = BOMTyCon.newDataTyc ("signal", 1) 
     val signalTy = BTy.T_TyCon signalTyc
-    val preemptDC = BOMTyCon.newDataCon signalTyc ("PREEMPT", BTy.Transparent, [fiberTy])
+    val signalPREEMPT = BOMTyCon.newDataCon signalTyc ("PREEMPT", BTy.Transparent, [fiberTy])
     val listTyc = BOMTyCon.newDataTyc ("list", 1)
     val listTy = BTy.T_TyCon listTyc
-    val consDC = BOMTyCon.newDataCon listTyc
+    val listCons = BOMTyCon.newDataCon listTyc
 	  ("CONS", BTy.Tuple, [BTy.T_Any, listTy])
     val optionTyc = BOMTyCon.newDataTyc ("option", 1)
     val optionTy = BTy.T_TyCon optionTyc
-    val someDC = BOMTyCon.newDataCon optionTyc
+    val optionSOME = BOMTyCon.newDataCon optionTyc
 	  ("SOME", BTy.Tuple, [BTy.T_Any])
 
     val sigactTy = BTy.T_Cont[signalTy]
@@ -87,10 +88,10 @@ structure BOMBasis : BOM_BASIS =
 
   (* Data-constructor table *)
     val findDCon : Atom.atom -> BOMTy.data_con option = mkTbl (Atom.atom o BOMTyCon.dconName) [
-	    consDC,
-            someDC,
-	    rdyqConsDC,
-	    preemptDC
+	    listCons,
+            optionSOME,
+	    rdyq_itemQITEM,
+	    signalPREEMPT
 	  ]
 
   end

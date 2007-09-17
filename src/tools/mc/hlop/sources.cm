@@ -6,7 +6,6 @@
 
 Library
 
-  structure BOMBasis
   structure HLOpDefLoader
   structure HLOpEnv
 
@@ -24,7 +23,6 @@ is
   hlop-def.grm : ml-antlr
   hlop-def.lex : ml-ulex
 
-  bom-basis.sml
   bom-ty-pt.sml
   hlop-def-loader.sml
   hlop-def-pt.sml

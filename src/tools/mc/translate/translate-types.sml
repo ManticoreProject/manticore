@@ -18,6 +18,9 @@ structure TranslateTypes : sig
     structure BTyc = BOMTyCon
     structure E = TranslateEnv
 
+    fun insertConst (env, dc, w, ty) = E.insertCon (env, dc, E.Const(w, ty))
+    fun insertDCon (env, dc, dc') = E.insertCon (env, dc, E.DCon dc')
+
     fun tr (env, ty) = let
 	  fun tr' ty = (case TypeUtil.prune ty
 		 of Ty.ErrorTy => raise Fail "unexpected ErrorTy"
@@ -53,7 +56,7 @@ structure TranslateTypes : sig
 	  fun setRep (ty, k) = (rep := ty; kind := k)
 	(* assign representations for the constants *)
 	  fun assignConstRep (dc, i) = (
-		E.insertConst (env, dc, i, BTy.T_Enum(Word.fromInt nConsts - 0w1));
+		insertConst (env, dc, i, BTy.T_Enum(Word.fromInt nConsts - 0w1));
 		i + 0w1)
 	  val _ = List.foldl assignConstRep 0w0 consts
 	(* assign representations for the constructor functions *)
@@ -61,7 +64,7 @@ structure TranslateTypes : sig
 	  fun mkDC (dc, rep, tys) = let
 		val dc' = newDataCon (DataCon.nameOf dc, rep, tys)
 		in
-		  E.insertDCon (env, dc, dc')
+		  insertDCon (env, dc, dc')
 		end
 	(* translate the argument type of a data constructor *)
 	  fun trArgTy dc = tr (env, valOf (DataCon.argTypeOf dc))

@@ -64,12 +64,12 @@ structure HLOpEnv : sig
     val tidTy = BTy.tidTy
     val fiberTy = BTy.fiberTy
 
-    val signalTy = BTy.T_TyCon Basis.signalTyc
+    val signalTy = Basis.signalTy
     val sigActTy = BTy.T_Cont[signalTy]
 
     val vprocTy = BTy.T_VProc
     val rawIntTy = BTy.T_Raw BTy.T_Int
-    val listTy = BTy.T_TyCon Basis.listTyc
+    val listTy = Basis.listTy
     val stringTy = BOMBasis.stringTy
 
     val ivarTy = BTy.T_Tuple(true, [listTy, BTy.T_Any, rawIntTy])

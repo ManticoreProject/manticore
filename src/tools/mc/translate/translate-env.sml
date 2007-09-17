@@ -10,13 +10,6 @@ structure TranslateEnv : sig
 
     val mkEnv : unit -> env
 
-    val insertTyc	: (env * Types.tycon * BOMTy.ty) -> unit
-    val insertConst	: (env * Types.dcon * word * BOMTy.ty) -> unit
-    val insertDCon	: (env * Types.dcon * BOMTy.data_con) -> unit
-    val insertFun	: (env * AST.var * BOM.lambda) -> env
-    val insertVar	: (env * AST.var * BOM.var) -> env
-    val newHandler	: env -> (BOM.var * env)
-
   (* data-constructor bindings *)
     datatype con_bind
       = Const of word * BOMTy.ty
@@ -26,6 +19,12 @@ structure TranslateEnv : sig
     datatype var_bind
       = Lambda of BOM.lambda	(* used for primops and high-level ops *)
       | Var of BOM.var
+
+    val insertTyc	: (env * Types.tycon * BOMTy.ty) -> unit
+    val insertCon	: (env * Types.dcon * con_bind) -> unit
+    val insertFun	: (env * AST.var * BOM.lambda) -> env
+    val insertVar	: (env * AST.var * BOM.var) -> env
+    val newHandler	: env -> (BOM.var * env)
 
     val findTyc		: (env * Types.tycon) -> BOMTy.ty option
     val findDCon	: (env * Types.dcon) -> con_bind option
@@ -62,9 +61,7 @@ structure TranslateEnv : sig
 
     fun insertTyc (E{tycEnv, ...}, tyc, bty) = TTbl.insert tycEnv (tyc, bty)
 
-    fun insertConst (E{dconEnv, ...}, dc, w, ty) = DTbl.insert dconEnv (dc, Const(w, ty))
-
-    fun insertDCon (E{dconEnv, ...}, dc, bdc) = DTbl.insert dconEnv (dc, DCon bdc)
+    fun insertCon (E{dconEnv, ...}, dc, bind) = DTbl.insert dconEnv (dc, bind)
 
     fun insertFun (E{tycEnv, dconEnv, varEnv, exh}, x, lambda) = E{
 	    tycEnv = tycEnv,

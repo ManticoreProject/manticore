@@ -19,6 +19,7 @@ structure StdEnv : sig
     structure BTy = BOMTy
     structure BV = BOM.Var
     structure F = Futures
+    structure E = TranslateEnv
 
   (***** Predefined types *****)
 
@@ -39,6 +40,8 @@ structure StdEnv : sig
 	    (B.runeTyc, ),
 *)
 	    (B.stringTyc,	BOMBasis.stringTy),
+	    (B.listTyc,		BOMBasis.listTy),
+	    (B.optionTyc,	BOMBasis.optionTy),
 	    (B.threadIdTyc,	BTy.tidTy),
 (*
 	    (B.parrayTyc, ),
@@ -53,7 +56,14 @@ structure StdEnv : sig
 
   (***** Predefined data constructors *****)
 
-    val dcons = []
+    val dcons = [
+	    (B.boolFalse,	E.Const(0w0, BOMBasis.boolTy)),
+	    (B.boolTrue,	E.Const(0w1, BOMBasis.boolTy)),
+	    (B.listNil,		E.Const(0w0, BTy.T_Enum(0w0))),
+	    (B.listCons,	E.DCon BOMBasis.listCons),
+	    (B.optionNONE,	E.Const(0w0, BTy.T_Enum(0w0))),
+	    (B.optionSOME,	E.DCon BOMBasis.optionSOME)
+	  ]
 
 
   (***** Predefined operators *****)
@@ -329,16 +339,16 @@ structure StdEnv : sig
 
   (* create the initial environment *)
     val env0 = let
-	  val env = TranslateEnv.mkEnv()
+	  val env = E.mkEnv()
 	(* insert a lambda binding *)
-	  fun insertFun ((x, lambda), env) = TranslateEnv.insertFun (env, x, lambda)
+	  fun insertFun ((x, lambda), env) = E.insertFun (env, x, lambda)
 	(* insert primitive operator definitions *)
 	  val env = List.foldl insertFun env operators
 	(* insert high-level operator definitions *)
 	  val env = List.foldl insertFun env predefs
 	  in
-	    List.app (fn (tyc, bty) => TranslateEnv.insertTyc (env, tyc, bty)) types;
-	    List.app (fn (dc, bdc) => TranslateEnv.insertDCon (env, dc, bdc)) dcons;
+	    List.app (fn (tyc, bty) => E.insertTyc (env, tyc, bty)) types;
+	    List.app (fn (dc, bdc) => E.insertCon (env, dc, bdc)) dcons;
 	    env
 	  end
 
