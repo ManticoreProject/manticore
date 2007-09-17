@@ -175,6 +175,11 @@ VProc_t *VProcSelf ()
  */
 void VProcSignal (VProc_t *vp, VPSignal_t sig)
 {
+#ifndef NDEBUG
+    if (DebugFlg)
+	SayDebug("[%2d] VProcSignal called\n", vp->id);
+#endif
+
     if (sig == GCSignal) pthread_kill (vp->hostID, SIGUSR1);
     else if (sig == PreemptSignal) pthread_kill (vp->hostID, SIGUSR2);
     else Die("bogus signal");
@@ -385,7 +390,7 @@ static void SigHandler (int sig, siginfo_t *si, void *_sc)
 	UC_R11(uc) = 0;
     }
 
-} /* SignHandler */
+} /* SigHandler */
 
 static int GetNumCPUs ()
 {
