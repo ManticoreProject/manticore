@@ -9,6 +9,7 @@
 structure BuildExecutable : sig
 
     val build : {
+	    verbose : bool,
 	    asmFile : string,
 	    outFile : string
 	  } -> OS.Process.status
@@ -24,13 +25,16 @@ structure BuildExecutable : sig
 
     val cmd = cat [ccCmd, cFlags, ldFlags]
 
-    fun build {asmFile, outFile} = if isCrossCompiler
+    fun build {verbose, asmFile, outFile} = if isCrossCompiler
 	  then (
-	    TextIO.output(stderr, "cross compiler cannot produce executables");
+	    TextIO.output(TextIO.stdErr, "cross compiler cannot produce executables");
 	    OS.Process.failure)
 	  else let
 	    val cmd' = String.concat[cmd, " -o ", outFile, " ", asmFile]
 	    in
+	      if verbose
+		then TextIO.print(cmd' ^ "\n")
+		else ();
 	      OS.Process.system cmd'
 	    end
 

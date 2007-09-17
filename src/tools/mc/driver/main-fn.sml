@@ -25,6 +25,10 @@ functor MainFn (
     structure CPSOpt = CPSOptFn (Spec)
     structure CFGOpt = CFGOptFn (Spec)
 
+    fun err s = TextIO.output (TextIO.stdErr, s)
+    fun err1 c =  TextIO.output1 (TextIO.stdErr, c)
+    fun errnl s = (err s; err1 #"\n")
+
     exception Error
 
   (* check for errors and report them if there are any *)
@@ -67,38 +71,54 @@ functor MainFn (
 	    cfg
 	  end
 
-    fun codegen (outFile, cfg) = let
+    fun buildExe (verbose, asmFile, exeFile) = let
+	  val exeFile = Option.getOpt (exeFile, "a.out")
+	  val sts = BuildExecutable.build{
+		  verbose = verbose,
+		  asmFile = asmFile,
+		  outFile = exeFile
+		}
+	  in
+	    if OS.Process.isSuccess sts
+	      then ()
+	      else err "error compiling generated assembly code\n"
+	  end
+
+    fun codegen (verbose, outFile, cfg) = let
 	  val outStrm = TextIO.openOut outFile
 	  fun doit () = CG.codeGen {dst=outStrm, code=cfg}
 	  in	  
 	    AsmStream.withStream outStrm doit ();
-	    TextIO.closeOut outStrm
+	    TextIO.closeOut outStrm;
+	    buildExe (verbose, outFile, NONE)
 	  end (* compile *)
 
-    fun bomC (errStrm, bomFile, asmFile) = let
+    fun bomC (verbose, errStrm, bomFile, asmFile) = let
 	  val bom = BOMParser.parse (errStrm, bomFile)
           val _ = checkForErrors errStrm;
           val cfg = bomToCFG (valOf bom)
 	  in
-	    codegen (asmFile, cfg)
+	    codegen (verbose, asmFile, cfg)
 	  end
 
-    fun mantC (errStrm, srcFile, asmFile) = let
+    fun mantC (verbose, errStrm, srcFile, asmFile) = let
           val ast = srcToAST(errStrm, srcFile)
           val bom = astToBOM ast
           val _ = checkForErrors errStrm
           val cfg = bomToCFG bom
 	  in
-	    codegen (asmFile, cfg)
+	    codegen (verbose, asmFile, cfg)
 	  end
 
     fun doFile file = BackTrace.monitor (fn () => let
+	  val verbose = (Controls.get BasicControl.verbose > 0)
           fun doit compFn base = (
 		case Controls.get BasicControl.keepPassBaseName
 		 of NONE => Controls.set (BasicControl.keepPassBaseName, SOME base)
 		  | SOME _ => ()
 		(* end case *);
 		compFn (
+		  verbose,
 		  Error.mkErrStream file,
 		  file,
 		  OS.Path.joinBaseExt {base = base, ext = SOME "s"}))
@@ -109,10 +129,6 @@ functor MainFn (
 	      | _ => raise Fail "unknown source file extension"
 	    (* end case *)
 	  end)
-
-    fun err s = TextIO.output (TextIO.stdErr, s)
-    fun err1 c =  TextIO.output1 (TextIO.stdErr, c)
-    fun errnl s = (err s; err1 #"\n")
 
     fun quit b = OS.Process.exit (if b then OS.Process.success else OS.Process.failure)
 
@@ -193,8 +209,7 @@ functor MainFn (
 	  (* end case *))
 
     and processOption (arg, args) = let
-	  fun badopt () = 
-        	bad (concat ["!* ill-formed option: `",arg,"'\n"])
+	  fun badopt () = bad (concat ["!* ill-formed option: `", arg, "'\n"])
 	  in
             if String.isPrefix "-C" arg
                then (processControl arg; processArgs args)

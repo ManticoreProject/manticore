@@ -35,7 +35,7 @@ is
   ../test-bom/bom-parse.cm
   ../translate/sources.cm
 
-  target-spec-fn.sml
-(*  runtime-constants.sml*)
+  build-executable.sml		(* generated file *)
   main-fn.sml
+  target-spec-fn.sml
   version-fn.sml
