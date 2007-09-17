@@ -17,22 +17,21 @@ structure BasicControl :  sig
   (* base name for pass output files; set based on compilation unit. *)
     val keepPassBaseName : string option Controls.control
 
-  (* verbosity of diagnostics.
-   *)
+  (* verbosity of diagnostics. *)
     val verbose : int Controls.control
 
   (* wrap a 'pre -> 'post pass with a tracing diagnostic, controled by the 
    * "verbose" control.
    *)
-   val mkTracePass : {
+    val mkTracePass : {
             passName: string,
             pass: 'pre -> 'post,
             verbose: int
-       } -> 'pre -> 'post
-   val mkTracePassSimple : {
+	  } -> 'pre -> 'post
+    val mkTracePassSimple : {
             passName: string,
             pass: 'pre -> 'post
-       } -> 'pre -> 'post
+	  } -> 'pre -> 'post
 
   (* wrap a 'pre -> 'post pass with debug output controled by a new
    * "keep" control.  The pass is also traced (as with mkTracePass).
