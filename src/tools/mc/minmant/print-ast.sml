@@ -53,6 +53,17 @@ structure PrintAST : sig
 	    aw xs
 	end
 
+  (* is an expression syntactically atomic? *)
+    fun atomicExp (A.TupleExp _) = true
+      | atomicExp (A.RangeExp _) = true
+      | atomicExp (A.PTupleExp _) = true
+      | atomicExp (A.PArrayExp _) = true
+      | atomicExp (A.PCompExp _) = true
+      | atomicExp (A.ConstExp _) = true
+      | atomicExp (A.VarExp _) = true
+      | atomicExp (A.OverloadExp _) = true
+      | atomicExp _ = false
+
   (* FIXME: should have proper pretty printing for types *)
     fun tyScheme ts = pr(TypeUtil.schemeToString ts)
 
@@ -107,13 +118,13 @@ structure PrintAST : sig
 	  openHBox ();
 	    pr "(fn"; sp(); var arg; sp(); pr "=>"; sp(); exp body; pr ")";
 	  closeBox())
-      | exp (A.ApplyExp (e1, e2, t)) = 
-	  (openVBox (rel 0);
-	   exp e1;
-	   pr "(";
- 	   exp e2;
-	   pr ")";
-	   closeBox ())
+      | exp (A.ApplyExp (e1, e2, t)) = (
+	  openHBox ();
+	    exp e1;
+	    if atomicExp e2
+	      then (sp(); exp e2)
+	      else (pr "("; exp e2; pr ")");
+	  closeBox ())
       | exp (A.TupleExp es) =
 	  (openVBox (rel 0);
 	   pr "(";
