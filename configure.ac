@@ -375,6 +375,7 @@ dnl ***** Makefiles *****
   src/tools/mc/Makefile
 dnl ***** SML source files *****
   src/tools/mc/common/run-cpp.sml:src/tools/mc/common/run-cpp_sml.in
+  src/tools/mc/driver/build-executable.sml:src/tools/mc/driver/build-executable_sml.in
   src/tools/mc/driver/version-fn.sml:src/tools/mc/driver/version-fn_sml.in
   src/tools/mc/hlop/paths.sml:src/tools/mc/hlop/paths_sml.in
 dnl ***** CM files *****
