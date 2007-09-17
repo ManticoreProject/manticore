@@ -50,6 +50,8 @@ structure Basis : sig
     val neg : (AST.ty_scheme * AST.var list)
 
   (* primitive operators *)
+    val listAppend	: AST.var
+    val stringConcat	: AST.var
     val int_div		: AST.var
     val int_gt		: AST.var
     val int_gte		: AST.var

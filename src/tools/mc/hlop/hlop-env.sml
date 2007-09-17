@@ -23,6 +23,7 @@ structure HLOpEnv : sig
 
   (* high-level operations used to implement Manticore language constructs *)
     val listAppendOp : HLOp.hlop
+    val stringConcatOp : HLOp.hlop
     val stringLitOp : HLOp.hlop
     val spawnOp : HLOp.hlop
     val threadExitOp : HLOp.hlop
@@ -75,6 +76,8 @@ structure HLOpEnv : sig
     val thunkTy = BTy.thunkTy
     val futureTy = BTy.futureTy
 
+    fun pairTy (ty1, ty2) = BTy.T_Tuple(false, [ty1, ty2])
+
   (* new : string * BTy.ty list * BTy.ty list * H.attributes list -> H.hlop *)
     fun new (name, params, res, attrs) =
 	  H.new (Atom.atom name, 
@@ -88,7 +91,8 @@ structure HLOpEnv : sig
 		 attrs)
 
   (* high-level operations used to implement Manticore language constructs *)
-    val listAppendOp = newWithExh("list-append", [listTy, listTy], [listTy], [])
+    val listAppendOp = newWithExh("list-append", [pairTy(listTy, listTy)], [listTy], [])
+    val stringConcatOp = newWithExh("string-concat", [pairTy(stringTy, stringTy)], [stringTy], [])
     val stringLitOp = new("string-lit", [BTy.T_Any, rawIntTy], [stringTy], [])
 
   (* high-level operations used to implement Manticore concurrency constructs *)

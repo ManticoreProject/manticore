@@ -174,15 +174,13 @@ structure StdEnv : sig
       val b = BTy.boolTy
     in 
     val operators = [
-
-(* FIXME
-	    (B.append,		hlop H.listAppendOp),
-*)
+	    (B.listAppend,	hlop H.listAppendOp),
+	    (B.stringConcat,	hlop H.stringConcatOp),
 	    (B.int_lte,		prim2 (P.I32Lte, "lte", i, i, b)),
 	    (B.long_lte,	prim2 (P.I64Lte, "lte", l, l, b)),
 	    (B.float_lte,	prim2 (P.F32Lte, "lte", f, f, b)),
 	    (B.double_lte,	prim2 (P.F64Lte, "lte", d, d, b)),
-(*
+(* FIXME
 	    (B.integer_lte,	hlop H.integerLteOp),
 	    (B.char_lte,	prim2 (P., "lte", ?, ?, ?)?),
 	    (B.rune_lte,	prim2 (P., "lte", ?, ?, ?)?),
@@ -193,7 +191,7 @@ structure StdEnv : sig
 	    (B.float_lt,	prim2 (P.F32Lt, "lt", f, f, b)),
 	    (B.double_lt,	prim2 (P.F64Lt, "lt", d, d, b)),
 	    (B.long_lt,		prim2 (P.I64Lt, "lt", l, l, b)),
-(*
+(* FIXME
 	    (B.integer_lt,	hlop H.integerLtOp),
 	    (B.char_lt,		prim2 (P., "lt", ?, ?, ?)?),
 	    (B.rune_lt,		prim2 (P., "lt", ?, ?, ?)?),
@@ -204,7 +202,7 @@ structure StdEnv : sig
 	    (B.float_gte,	prim2 (P.F32Gte, "gte", f, f, b)),
 	    (B.double_gte,	prim2 (P.F64Gte, "gte", d, d, b)),
 	    (B.long_gte,	prim2 (P.I64Gte, "gte", l, l, b)),
-(*
+(* FIXME
 	    (B.integer_gte,	hlop H.integerGteOp),
 	    (B.char_gte,	prim2 (P., "gte", ?, ?, ?)?),
 	    (B.rune_gte,	prim2 (P., "gte", ?, ?, ?)?),
@@ -215,7 +213,7 @@ structure StdEnv : sig
 	    (B.float_gt,	prim2 (P.F32Gt, "gt", f, f, b)),
 	    (B.double_gt,	prim2 (P.F64Gt, "gt", d, d, b)),
 	    (B.long_gt,		prim2 (P.I64Gt, "gt", l, l, b)),
-(*
+(* FIXME
 	    (B.integer_gt,	hlop H.integerGtOp),
 	    (B.char_gt,		prim2 (P., "gt", ?, ?, ?)?),
 	    (B.rune_gt,		prim2 (P., "gt", ?, ?, ?)?),
@@ -258,13 +256,13 @@ structure StdEnv : sig
 (* FIXME: these should really be HLOps that check for divide by zero *)
 	    (B.int_mod,		prim2 (P.I32Mod, "mod", i, i, i)),
 	    (B.long_mod,	prim2 (P.I64Mod, "mod", l, l, l)),
-(*
+(* FIXME
 	    (B.integer_mod,	hlop H.integerModOp),
 *)
 
 	    (B.int_neg,		prim1 (P.I32Neg, "neg", i, i)),
 	    (B.long_neg,	prim1 (P.I64Neg, "neg", l, l)),
-(*
+(* FIXME
 	    (B.integer_neg,	prim1 (P.I32Neg, "neg", i, i)),
 *)
 	    (B.float_neg,	prim1 (P.F32Neg, "neg", f, f)),
@@ -274,7 +272,7 @@ structure StdEnv : sig
   (* predefined functions *)
     val predefs = [
 	    (B.not,		prim1 (P.BNot, "not", b, b)),
-(*
+(* FIXME
 	    (B.sqrtf,		hlop H.sqrtf),
 	    (B.lnf,		hlop H.lnf),
 	    (B.log2f,		hlop H.log2f),
@@ -286,7 +284,7 @@ structure StdEnv : sig
 	    (B.tanf,		hlop H.tanf),
 *)
 	    (B.itof,		prim1 (P.I32ToF32, "itof", i, f)),
-(*
+(* FIXME
 	    (B.sqrtd,		hlop H.sqrtd),
 	    (B.lnd,		hlop H.lnd),
 	    (B.log2d,		hlop H.log2d),
@@ -298,7 +296,7 @@ structure StdEnv : sig
 	    (B.tand,		hlop H.tand),
 *)
 	    (B.itod,		prim1 (P.I32ToF64, "itod", i, d)),
-(*
+(* FIXME
 	    (B.channel,		hlop H.channel),
 	    (B.send,		hlop H.send),
 	    (B.recv,		hlop H.recv),
@@ -315,7 +313,7 @@ structure StdEnv : sig
 	    (B.dtos,		hlop H.dtos),
 *)
 	    (B.print,		hlop H.printOp),
-(*
+(* FIXME
 	    (B.args,		hlop H.args),
 	    (B.fail,		hlop H.fail),
 *)
