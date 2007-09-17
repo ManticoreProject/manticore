@@ -21,7 +21,13 @@ structure BuildExecutable : sig
     val isCrossCompiler = (@CROSS_COMPILING@ = 1)
     val ccCmd =  "@CC@"
     val cFlags = "@CFLAGS@"
-    val ldFlags = cat ["-L@MANTICORE_LIBDIR@", "@LDFLAGS@", "-lmanticore -lpthread"]
+    val ldFlags = cat [
+	    "-L@MANTICORE_LIBDIR@",
+	    "-L@MANTICORE_SRCDIR@/lib/parallel-rt/build",
+	    "@LDFLAGS@",
+	    "-lmanticore",
+	    "-lpthread"
+	  ]
 
     val cmd = cat [ccCmd, cFlags, ldFlags]
 
