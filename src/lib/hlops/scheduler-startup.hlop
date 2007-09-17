@@ -16,7 +16,7 @@ define inline @thread-exit ( / exh : exh) noreturn;
 
 define @scheduler-startup (act : sigact / exh : exh) : () =
   fun init (_ : unit / exh : exh) : unit =
-    cont k () = @thread-exit ( / exh)
+    cont k (_ : unit) = @thread-exit ( / exh)
     @run (host_vproc, act, enum(0), k / exh)
   let self : vproc = host_vproc
   fun spawnOnAll (vps : list / exh : exh) : () =
@@ -28,7 +28,7 @@ define @scheduler-startup (act : sigact / exh : exh) : () =
            else let _ : tid = @spawn-on (init, vp / exh)
                 apply spawnOnAll (rest / exh)
     end
-  cont startup () =
+  cont startup (_ : unit) =
     (* install the scheduler on remote vprocs *)
     let vps : list = ccall ListVProcs(self)
     do apply spawnOnAll (vps / exh)

@@ -15,17 +15,18 @@ define @scheduler-startup (act : sigact / exh : exh) : ();
 
 define @default-scheduler-startup ( / exh : exh) : () = 
   cont switch (s : signal) =
+    let vp : vproc = host_vproc
     cont dispatch () =
-      let qitem : rdyq_item = @dequeue (host_vproc / exh)
+      let qitem : rdyq_item = @dequeue (vp / exh)
       let item : [tid, fiber, rdyq_item] = ([tid, fiber, rdyq_item]) qitem
       let tid : tid = #0 (item)
       let fiber : fiber = #1 (item)
-      @run (host_vproc, switch, tid, fiber / exh)
+      @run (vp, switch, tid, fiber / exh)
     if Equal (s, STOP)
       then throw dispatch ()
       else let k : fiber = (fiber)s
            let tid : tid = enum(0)
-           do @enqueue (host_vproc, tid, k / exh)
+           do @enqueue (vp, tid, k / exh)
            throw dispatch () 
   do @scheduler-startup (switch / exh)
   return ()
