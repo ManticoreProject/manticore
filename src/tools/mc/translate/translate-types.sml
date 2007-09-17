@@ -48,7 +48,9 @@ structure TranslateTypes : sig
 		    (! cons)
 	(* create the data constructor *)
 	  val nConsts = List.length consts
-	  val dataTyc = BOMTyCon.newDataTyc (Atom.toString name, nConsts)
+	  val dataTyc as BTy.DataTyc{rep, kind, ...} =
+		BOMTyCon.newDataTyc (Atom.toString name, nConsts)
+	  fun setRep (ty, k) = (rep := ty; kind := k)
 	(* assign representations for the constants *)
 	  fun assignConstRep (dc, i) = (
 		E.insertConst (env, dc, i, BTy.T_Enum(Word.fromInt nConsts - 0w1));
@@ -56,22 +58,49 @@ structure TranslateTypes : sig
 	  val _ = List.foldl assignConstRep 0w0 consts
 	(* assign representations for the constructor functions *)
 	  val newDataCon = BTyc.newDataCon dataTyc
-	  fun mkDC (dc as Ty.DCon{name, argTy=SOME ty, ...}, rep) = let
-		val dc' = newDataCon (Atom.toString name, BTy.Transparent, [tr (env, ty)])
+	  fun mkDC (dc, rep, tys) = let
+		val dc' = newDataCon (DataCon.nameOf dc, rep, tys)
 		in
 		  E.insertDCon (env, dc, dc')
 		end
+	(* translate the argument type of a data constructor *)
+	  fun trArgTy dc = tr (env, valOf (DataCon.argTypeOf dc))
 	  in
 	    case (consts, conFuns)
-	     of (_::_, []) => ()
-	      | ([], [dc]) => mkDC (dc, BTy.Transparent)
-	      | (_, [dc]) => raise Fail ""
+	     of (_::_, []) => setRep (BTy.T_Enum(Word.fromInt nConsts - 0w1), BTy.K_UNBOXED)
+	      | ([], [dc]) => let
+		  val ty = trArgTy dc
+		  in
+		    setRep (ty, BOMTyUtil.kindOf ty);
+		    mkDC (dc, BTy.Transparent, [ty])
+		  end
+	      | (_, [dc]) => (
+		  case bomKindOfType (env, valOf(DataCon.argTypeOf dc))
+		   of BTy.K_BOXED => mkDC (dc, BTy.Transparent, [trArgTy dc])
+		    | _ => (* need to use singleton tuple to represent data constructor *)
+			mkDC (dc, BTy.Tuple, [BTy.T_Tuple(false, [trArgTy dc])])
+		  (* end case *))
 	      | ([], _) => raise Fail ""
 	      | (_, _) => raise Fail ""
 	    (* end case *);
 	    E.insertTyc (env, tyc, BTy.T_TyCon dataTyc);
 	    BTy.T_TyCon dataTyc
 	  end
+
+  (* return the BOM kind of an AST type; this code looks at the top-level structure
+   * of the type to determine the kind.
+   *)
+    and bomKindOfType (env, ty) = (case ty
+	   of (Ty.FunTy _) => BTy.K_BOXED
+	    | (Ty.TupleTy []) => BTy.K_UNBOXED
+	    | (Ty.TupleTy _) => BTy.K_BOXED
+	    | (Ty.ConTy(_, tyc)) => (
+		case TranslateEnv.findTyc (env, tyc)
+		 of SOME ty => BOMTyUtil.kindOf ty
+		  | NONE => BOMTyUtil.kindOf (trTyc (env, tyc))
+		(* end case *))
+	    | _ => BTy.K_UNIFORM
+	  (* end case *))
 
     fun trScheme (env, Ty.TyScheme(_, ty)) = tr (env, ty)
 

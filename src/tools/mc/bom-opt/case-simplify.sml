@@ -133,30 +133,15 @@ structure CaseSimplify : sig
 	    | ty2ty (BTy.T_Fun(argTys, exh, resTys)) =
 		BTy.T_Fun(tys2tys argTys, tys2tys exh, tys2tys resTys)
 	    | ty2ty (BTy.T_Cont tys) = BTy.T_Cont(tys2tys tys)
-	    | ty2ty (BTy.T_TyCon tyc) = tyc2ty tyc
+	    | ty2ty (BTy.T_TyCon(BTy.DataTyc{rep, ...})) = !rep
 	    | ty2ty ty = ty
 	  and tys2tys [] = []
 	    | tys2tys (ty::r) = ty2ty ty :: tys2tys r
-	  and tyc2ty (BTy.DataTyc{rep=ref(SOME ty), ...}) = ty
-	    | tyc2ty (BTy.DataTyc{nNullary, cons, rep, ...}) = let
-		val _ = (rep := SOME BTy.T_Any);  (* to avoid infinite recursion *)
-		val ty = (case (nNullary, !cons)
-		       of (0, [BTy.DCon{rep=BTy.Transparent, argTy=[ty], ...}]) => ty2ty ty
-			| (0, [BTy.DCon{rep=BTy.Tuple, argTy, ...}]) => BTy.T_Tuple(false, tys2tys argTy)
-			| (0, [BTy.DCon{rep=BTy.TaggedTuple tag, argTy, ...}]) =>
-			    BTy.T_Tuple(false, BTy.T_Enum tag :: tys2tys argTy)
-			| (_, []) => BTy.T_Enum(Word.fromInt nNullary - 0w1)
-(* FIXME: we need a union type in BOM for this situation *)
-			| _ => BOMTy.T_Any
-		      (* end case *))
-		in
-		  rep := SOME ty;
-		  ty
-		end
 	  in
 	    ty2ty ty
 	  end
 
+(* FIXME: we should probably record this information in translate-types.sml *)
   (* return the low-level BOM type that describes the representation of a data constructor *)
     fun dconToRepTy (BTy.DCon{name, rep, argTy, ...}) = (case (rep, argTy)
 	   of (BTy.Transparent, [ty]) => tyToRepTy ty

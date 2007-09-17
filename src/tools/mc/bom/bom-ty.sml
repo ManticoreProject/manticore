@@ -7,6 +7,14 @@
 structure BOMTy =
   struct
 
+  (* kinds for BOM types *)
+    datatype kind
+      = K_RAW		(* raw bits *)
+      | K_BOXED		(* heap pointer *)
+      | K_UNBOXED	(* tagged integer *)
+      | K_UNIFORM	(* either K_BOXED or K_UNBOXED *)
+      | K_TYPE		(* type (any of the above kinds) *)
+
     datatype raw_ty = datatype RawTypes.raw_ty
 	
     datatype ty
@@ -30,8 +38,11 @@ structure BOMTy =
 	  stamp : Stamp.stamp,		(* a unique stamp *)
 	  nNullary : int,		(* the number of nullary constructors *)
 	  cons : data_con list ref,	(* list of non-nullary constructors *)
-	  rep : ty option ref 		(* a cache of the representation type *)
+	  rep : ty ref,			(* type of the representation *)
+	  kind : kind ref		(* kind of the representation: either UNBOXED, BOXED, *)
+					(* or UNIFORM *)
 	}
+(* QUESTION: are we using the following? *)
       | AbsTyc of {
 	  name : string,
 	  stamp : Stamp.stamp,
@@ -43,8 +54,8 @@ structure BOMTy =
 	  stamp : Stamp.stamp,		(* a unique stamp *)
 	  rep : dcon_rep,		(* the representation of values constructed by this *)
 					(* constructor *)
-	  argTy : ty list,		(* type(s) of argument(s) *)
-	  myTyc : tyc
+	  argTy : ty list,		(* type(s) of argument(s) to this constructor *)
+	  myTyc : tyc			(* the datatype that this constructor belongs to *)
 	}
 
     and dcon_rep		      (* representation of data-constructor functions; note: *)
@@ -55,14 +66,6 @@ structure BOMTy =
 					(* constructor; represented as heap-allocated tuple of values *)
       | TaggedTuple of word		(* for when there are multiple constructors: the constructor *)
 					(* is represented as heap-allocated tag/value pair *)
-
-  (* kinds for BOM types *)
-    datatype kind
-      = K_RAW		(* raw bits *)
-      | K_BOXED		(* heap pointer *)
-      | K_UNBOXED	(* tagged integer *)
-      | K_UNIFORM	(* either K_BOXED or K_UNBOXED *)
-      | K_TYPE		(* type (any of the above kinds) *)
 
     val unitTy = T_Enum(0w0)
     val boolTy = T_Enum(0w1)	(* false = 0, true = 1 *)

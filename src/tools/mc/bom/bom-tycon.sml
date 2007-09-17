@@ -21,7 +21,8 @@ structure BOMTyCon =
 	    stamp = Stamp.new(),
 	    nNullary = nNullary,
 	    cons = ref[],
-	    rep = ref NONE
+	    rep = ref BOMTy.T_Any,	(* first approximation *)
+	    kind = ref BOMTy.K_UNIFORM	(* first approximation *)
 	  }
 
   (* add a data constructor to a datatype tycon *)
