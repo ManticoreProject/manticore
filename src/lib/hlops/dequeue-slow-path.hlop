@@ -16,19 +16,19 @@ define @dequeue-slow-path (vp : vproc / exh : exh) : rdyq_item =
   let tl : rdyq_item = vpload (VP_RDYQ_TL, vp)
   case tl of
      QEMPTY =>
-       let item : rdyq_item = ccall VProcDequeue(vp)
-       return (item)
-   | QITEM (tid : tid, fiber : fiber, tl : rdyq_item) =>
+       let qitem : rdyq_item = ccall VProcDequeue(vp)
+       return (qitem)
+   | QITEM (tid : tid, fiber : fiber, lst : rdyq_item) =>
        do vpstore (VP_RDYQ_TL, vp, QEMPTY)
        fun loop (tid : tid, fiber : fiber, lst : rdyq_item, acc : rdyq_item 
                  / exh : exh) : rdyq_item =
-         let acc' : rdyq_item = QITEM (tid, fiber, acc)
+         let acc : rdyq_item = QITEM (tid, fiber, acc)
          case lst of 
-            QEMPTY => return (acc')
-          | QITEM (tid' : tid, fiber' : fiber, lst' : rdyq_item) =>
-              apply loop (tid', fiber', lst', acc' / exh)
+            QEMPTY => return (acc)
+          | QITEM (tid : tid, fiber : fiber, lst : rdyq_item) =>
+              apply loop (tid, fiber, lst, acc / exh)
          end
-       let qitem : rdyq_item = apply loop (tid, fiber, tl, QEMPTY / exh)
+       let qitem : rdyq_item = apply loop (tid, fiber, lst, QEMPTY / exh)
        let item : [tid, fiber, rdyq_item] = ([tid, fiber, rdyq_item]) qitem
        let link : rdyq_item = #2 (item)
        do vpstore (VP_RDYQ_HD, vp, link)

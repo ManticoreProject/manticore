@@ -11,8 +11,7 @@
 
 define inline @enqueue (vp : vproc, tid : tid, fiber : fiber / exh : exh) : () =
   let tl : rdyq_item = vpload (VP_RDYQ_TL, vp)
-  let qitem : [tid, fiber, rdyq_item] = alloc (tid, fiber, tl)
-  let item : rdyq_item = (rdyq_item) qitem
-  do vpstore (VP_RDYQ_TL, vp, item)
+  let qitem : rdyq_item = QITEM (tid, fiber, tl)
+  do vpstore (VP_RDYQ_TL, vp, qitem)
   return ()
 ;
