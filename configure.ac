@@ -84,6 +84,7 @@ TARGET=$ARCH-$OS
 AC_SUBST(TARGET_CPU)
 AC_SUBST(TARGET_OS)
 AC_SUBST(TARGET)
+AC_SUBST(OS)
 
 dnl
 dnl Manticore version information
