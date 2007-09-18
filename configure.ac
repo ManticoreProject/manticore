@@ -63,7 +63,7 @@ if test $OS = darwin -a $ARCH = x86 -a $CROSS_COMPILING = 0; then
 fi
 
 dnl
-dnl check for --disable-64 flag
+dnl check for --enable-32 flag
 dnl
 if test $ARCH = x86_64 -a $CROSS_COMPILING = 0; then
   AC_ARG_ENABLE(32,
@@ -128,6 +128,15 @@ dnl
 dnl extra CFLAGS
 dnl
 CFLAGS="$CFLAGS -D_GNU_SOURCE -std=gnu99 -pedantic"
+
+dnl
+dnl check for --enable-debug 
+dnl
+AC_ARG_ENABLE(debug,
+  AC_HELP_STRING(["--enable-debug], [enable debugging of executables]))
+if test x"$enable_debug" = xyes ; then
+  CFLAGS="$CFLAGS -g3"
+fi
 
 dnl
 dnl For various reasons, "gcc -E" doesn't work as a cpp command, so we look for
