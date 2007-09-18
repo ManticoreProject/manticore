@@ -67,7 +67,7 @@ dnl check for --enable-32 flag
 dnl
 if test $ARCH = x86_64 -a $CROSS_COMPILING = 0; then
   AC_ARG_ENABLE(32,
-    AC_HELP_STRING(["--enable-32], [enable 32-bit compatibility mode on x86-64]))
+    AC_HELP_STRING([--enable-32], [enable 32-bit compatibility mode on x86-64]))
   if test x"$enable_32" = xyes ; then
     TARGET_CPU=TARGET_X86
     ARCH=x86
@@ -134,7 +134,7 @@ dnl
 dnl check for --enable-debug 
 dnl
 AC_ARG_ENABLE(debug,
-  AC_HELP_STRING(["--enable-debug], [enable debugging of executables]))
+  AC_HELP_STRING([--enable-debug], [enable debugging of executables]))
 if test x"$enable_debug" = xyes ; then
   CFLAGS="$CFLAGS -g3"
 fi
