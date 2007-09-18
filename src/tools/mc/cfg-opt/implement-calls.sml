@@ -26,7 +26,7 @@ struct
 
    fun transform (m as CFG.MODULE{name, externs, code}) =
       let
-         fun transTyArgs (args : CFGTy.ty list) : CFGTy.ty =
+         fun transTyStdArgs (args : CFGTy.ty list) : CFGTy.ty =
             case args of
                [] => CFGTy.unitTy
              | [arg] => 
@@ -46,10 +46,10 @@ struct
              | CFGTy.T_CFun cp => CFGTy.T_CFun cp
              | CFGTy.T_VProc => CFGTy.T_VProc
              | CFGTy.T_StdFun {clos, args, ret, exh} =>
-                  CFGTy.T_StdFun {clos = transTy clos, args = [transTyArgs args],
+                  CFGTy.T_StdFun {clos = transTy clos, args = [transTyStdArgs args],
                                   ret = transTy ret, exh = transTy exh}
              | CFGTy.T_StdCont {clos, args} =>
-                  CFGTy.T_StdCont {clos = transTy clos, args = [transTyArgs args]}
+                  CFGTy.T_StdCont {clos = transTy clos, args = [transTyStdArgs args]}
              | CFGTy.T_Code tys => CFGTy.T_Code (List.map transTy tys)
 
          local
@@ -83,7 +83,7 @@ struct
             val updLabelType = ignore o getFn
          end
 
-         fun transFormalArgs (args : CFG.var list) : (CFG.var * CFG.exp list) =
+         fun transFormalStdArgs (args : CFG.var list) : (CFG.var * CFG.exp list) =
             case args of
                [] => 
                   let
@@ -120,14 +120,14 @@ struct
              case c of
                 CFG.StdFunc {clos, args, ret, exh} =>
                    let
-                      val (arg, binds) = transFormalArgs args
+                      val (arg, binds) = transFormalStdArgs args
                    in
                       (CFG.StdFunc {clos = clos, args = [arg], ret = ret, exh = exh}, 
                        binds)
                    end
               | CFG.StdCont {clos, args} =>
                    let
-                      val (arg, binds) = transFormalArgs args
+                      val (arg, binds) = transFormalStdArgs args
                    in
                       (CFG.StdCont {clos = clos, args = [arg]}, 
                        binds)
@@ -138,7 +138,7 @@ struct
              case exp of
                 CFG.E_Cast (x, ty, y) => CFG.mkCast (x, transTy ty, y)
               | _ => exp)
-         fun transActualArgs (args : CFG.var list) : (CFG.exp list * CFG.var) =
+         fun transActualStdArgs (args : CFG.var list) : (CFG.exp list * CFG.var) =
             case args of
                [] => 
                   let
@@ -168,13 +168,13 @@ struct
             case t of
                CFG.StdApply {f, clos, args, ret, exh} => 
                   let
-                     val (binds, arg) = transActualArgs args
+                     val (binds, arg) = transActualStdArgs args
                   in
                      (binds, CFG.StdApply {f = f, clos = clos, args = [arg], ret = ret, exh = exh})
                   end
              | CFG.StdThrow {k, clos, args} => 
                   let
-                     val (binds, arg) = transActualArgs args
+                     val (binds, arg) = transActualStdArgs args
                   in
                      (binds, CFG.StdThrow {k = k, clos = clos, args = [arg]})
                   end
