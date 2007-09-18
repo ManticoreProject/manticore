@@ -13,9 +13,7 @@
  *	%r11	-- limit pointer
  */
 
-#ifndef NOT_C_SOURCE
-#  define NOT_C_SOURCE
-#endif
+#include "asm-defs.h"
 #include "asm-offsets.h"
 
 /* Stack frame layout */
@@ -38,8 +36,8 @@
  */
 	.text
 	.p2align 3
-	.globl	ASM_Apply
-ASM_Apply:
+	.globl	_GSYM(ASM_Apply)
+_GSYM(ASM_Apply):
 	pushq	%rbp			/* save frame pointer */
 	movq	%rsp,%rbp		/* set new frame pointer */
 	leaq	-FRAME_SZB(%rsp),%rsp	/* allocate the stack frame */
@@ -64,28 +62,28 @@ ASM_Apply:
 
 /* code address for uncaught exception continuation */
 	.p2align 3
-	.globl	ASM_UncaughtExn
-ASM_UncaughtExn:
+	.globl	_GSYM(ASM_UncaughtExn)
+_GSYM(ASM_UncaughtExn):
 	movq	$REQ_UncaughtExn, %r9
 	jmp	switch_to_c
 
 /* code address for return continuation */
 	.p2align 3
-	.globl	ASM_Return
-ASM_Return:
+	.globl	_GSYM(ASM_Return)
+_GSYM(ASM_Return):
 	movq	$REQ_Return, %r9
 	jmp	switch_to_c
 
 /* code address for putting the host vproc to sleep */
 	.p2align 3
-	.globl	ASM_VProcSleep
-ASM_VProcSleep:
+	.globl	_GSYM(ASM_VProcSleep)
+_GSYM(ASM_VProcSleep):
 	movq	$REQ_Sleep, %r9
 	jmp	switch_to_c
 
 	.p2align 3
-	.globl	ASM_InvokeGC
-ASM_InvokeGC:
+	.globl	_GSYM(ASM_InvokeGC)
+_GSYM(ASM_InvokeGC):
 	movq	$REQ_GC, %r9
 
 switch_to_c:

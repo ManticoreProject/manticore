@@ -13,9 +13,7 @@
  *	%r11	-- limit pointer
  */
 
-#ifndef NOT_C_SOURCE
-#  define NOT_C_SOURCE
-#endif
+#include "asm-defs.h"
 #include "asm-offsets.h"
 
 /* ASM_Resume:
@@ -34,8 +32,8 @@
  */
 	.text
 	.p2align 3
-	.globl	ASM_Resume
-ASM_Resume:
+	.globl	_GSYM(ASM_Resume)
+_GSYM(ASM_Resume):
 	movq	8(%rdi),%r9	/* fetch code address */
 	movq	16(%rdi),%rdi	/* set EP to point to GC root */
 	jmpq	*%r9		/* jump to the GC return code */
