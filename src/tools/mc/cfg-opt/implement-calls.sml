@@ -4,6 +4,15 @@
  * All rights reserved.
  *
  * Implement calling conventions.
+ *  + StdFunc/StdApply -- require a single, uniform argument.
+ *  + StdCont/StdThrow -- require a single, uniform argument.
+ *     - zero arguments are replaced by a unit argument
+ *     - a single raw argument is replaced by a wrapped argument
+ *     - multiple arguments are replaced by a tupled argument 
+ *
+ * TODO:
+ *  + Code -- Fix a calling convention
+ *
  *)
 
 structure ImplementCalls : 
