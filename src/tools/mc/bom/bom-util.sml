@@ -227,10 +227,11 @@ structure BOMUtil : sig
    * name itself), assuming that the original counts are correct.
    *)
     fun applyLambda (B.FB{f, params, exh, body}, args, rets) = let
-	  val s = extend' (empty, params, args)
-		    handle _ => raise Fail("param/arg mismatch in application of " ^ BV.toString f)
-	  val s = extend' (s, exh, rets)
-		    handle _ => raise Fail("exh/rets mismatch in application of " ^ BV.toString f)
+	  fun err msg = raise Fail(concat[
+		  msg, " mismatch in application of ", BV.toString f, ":", BOMTyUtil.toString(BV.typeOf f)
+		])
+	  val s = extend' (empty, params, args) handle _ => err "param/arg"
+	  val s = extend' (s, exh, rets) handle _ => err "exh/rets"
 	  fun adjust (arg as VarRep.V{useCnt, ...}, param) = (
 		BV.combineAppUseCnts (arg, param);
 		useCnt := !useCnt - 1)
