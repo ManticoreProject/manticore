@@ -169,11 +169,12 @@ structure Translate : sig
 	    | AST.SpawnExp e => let
 		val (exh, env') = E.newHandler env
 		val e' = trExpToExp(env', e)
-		val thd = BV.new("_thd", BTy.T_Fun([], [BTy.exhTy], [BTy.unitTy]))
+		val param = BV.new("unused", BTy.unitTy)
+		val thd = BV.new("_thd", BTy.T_Fun([BTy.unitTy], [BTy.exhTy], [BTy.unitTy]))
 		in
-		  EXP(B.mkFun([B.FB{f=thd, params=[], exh=[exh], body=e'}],
+		  EXP(B.mkFun([B.FB{f=thd, params=[param], exh=[exh], body=e'}],
 (* FIXME: should ManticoreOps be HLOpEnv??? *)
-		    B.mkHLOp(ManticoreOps.spawnOp, [thd], [])))
+		    B.mkHLOp(ManticoreOps.spawnOp, [thd], [E.handlerOf env])))
 		end
 	    | AST.ConstExp(AST.DConst(dc, tys)) => trDConExp (env, dc)
 	    | AST.ConstExp(AST.LConst(lit as Literal.String s, _)) => let
@@ -206,8 +207,8 @@ structure Translate : sig
 	      (* note: the typechecker puts sequences in right-recursive form *)
 		fun tr (AST.SeqExp(e1, e2)) = (
 		      case trExp(env, e1)
-		       of BIND([], rhs) => B.mkStmt([], rhs, tr e2)
-			| EXP e1' => B.mkLet([], e1', tr e2)
+		       of BIND(lhs, rhs) => B.mkStmt(lhs, rhs, tr e2)
+			| EXP e1' => B.mkLet([BV.new("unused", BTy.unitTy)], e1', tr e2)
 		      (* end case *))
 		  | tr e = trExpToExp(env, e)
 		in
@@ -361,6 +362,11 @@ structure Translate : sig
 	    tr (exps, [])
 	  end
 
+  (* wrap the body of the program with code to initialize the scheduler. *)
+    fun startup (env, exp) =
+	  B.mkLet([], B.mkHLOp(HLOpEnv.defaultSchedulerStartupOp, [], [E.handlerOf env]),
+	    exp)
+
     fun translate exp = let
           val argTy = BTy.T_Raw RawTypes.T_Int
           val arg = BV.new("_arg", argTy)
@@ -369,7 +375,7 @@ structure Translate : sig
 		  f = BV.new("main", BTy.T_Fun([argTy], [BTy.exhTy], [trTy(env, TypeOf.exp exp)])),
 		  params = [arg],
 		  exh = [exh],
-		  body = trExpToExp(env, exp)
+		  body = startup (env, trExpToExp(env, exp))
 		}
 	  val module = B.mkModule(Atom.atom "Main", [], mainFun)
 	  in
