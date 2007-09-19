@@ -13,6 +13,7 @@
 #include <errno.h>
 #include "os-memory.h"
 #include "heap.h"
+#include <stdio.h>
 
 #define PROT_ALL        PROT_EXEC|PROT_READ|PROT_WRITE
 
@@ -75,7 +76,10 @@ static void *MapMemory (void *base, int *nBlocks, int blkSzB, int flags)
 
     do {
 	size_t length = *nBlocks * blkSzB;
-	memObj = mmap(base, length, PROT_ALL, MAP_PRIVATE|MAP_ANON|flags, 0, 0);
+      /* NOTE: we use -1 as the fd argument, because Mac OS X uses the fd for naming
+       * even when MAP_ANON has been specified.
+       */
+	memObj = mmap(base, length, PROT_ALL, MAP_PRIVATE|MAP_ANON|flags, -1, 0);
         if (memObj == MAP_FAILED) {
 	    if (errno == ENOMEM) {
 	      /* try a smaller request */
@@ -83,6 +87,7 @@ static void *MapMemory (void *base, int *nBlocks, int blkSzB, int flags)
 		continue;
 	    }
 	    else {
+perror("mmap");
 		*nBlocks = 0;
 		return MAP_FAILED;
 	    }
