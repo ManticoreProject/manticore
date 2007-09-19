@@ -19,7 +19,7 @@ structure ManticoreOps : sig
 
     val spawnOp = H.new(
 	  Atom.atom "spawn",
-	  {params = [H.PARAM(Ty.T_Fun([], [Ty.exhTy], []))], exh=[], results = [Ty.tidTy]},
+	  {params = [H.PARAM(Ty.T_Fun([Ty.unitTy], [Ty.exhTy], [Ty.unitTy]))], exh=[Ty.exhTy], results = [Ty.tidTy]},
 	  [])
 
   end
