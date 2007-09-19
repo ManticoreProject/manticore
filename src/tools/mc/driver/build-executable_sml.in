@@ -36,7 +36,7 @@ structure BuildExecutable : sig
 
     fun build {verbose, asmFile, outFile} = if isCrossCompiler
 	  then (
-	    TextIO.output(TextIO.stdErr, "cross compiler cannot produce executables");
+	    TextIO.output(TextIO.stdErr, "cross compiler cannot produce executables\n");
 	    OS.Process.failure)
 	  else let
 	    val cmd' = String.concat[cmd, " -o ", outFile, " ", asmFile]
