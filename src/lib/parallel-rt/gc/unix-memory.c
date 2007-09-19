@@ -87,7 +87,6 @@ static void *MapMemory (void *base, int *nBlocks, int blkSzB, int flags)
 		continue;
 	    }
 	    else {
-perror("mmap");
 		*nBlocks = 0;
 		return MAP_FAILED;
 	    }
