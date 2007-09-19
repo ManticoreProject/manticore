@@ -8,5 +8,5 @@
 
 #include "types.def"
 
-define @ignore (arg : any / exh : exh) : unit = return (UNIT);
+define inline @ignore (arg : any / exh : exh) : unit = return (UNIT);
 
