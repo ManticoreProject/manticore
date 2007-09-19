@@ -8,11 +8,15 @@
 
 #include "types.def"
 
-define @list-append (l1 : list, l2 : list / exh : exh) : list =
+define @list-append (arg : [list, list] / exh : exh) : list =
+    let l1 : list = #0(arg)
+    let l2 : list = #1(arg)
     fun append (l1 : list / exh : exh) : list =
 	  case l1
-	   of CONS(hd:any, tl:list) => CONS(hd, apply append (tl / exh))
-	    | NIL => l2
+	   of CONS(hd:any, tl:list) =>
+		let l : list = apply append (tl / exh)
+		  return (CONS(hd, l))
+	    | NIL => return (l2)
 	  end
       apply append (l1 / exh)
 ;
