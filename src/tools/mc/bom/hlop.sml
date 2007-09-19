@@ -52,25 +52,26 @@ structure HLOp =
       fun param_tyToString (PARAM t) = "PARAM " ^ (BOMTyUtil.toString t)
 	| param_tyToString (OPT t) = "OPT " ^ (BOMTyUtil.toString t)
 	| param_tyToString (VEC t) = "VEC " ^ (BOMTyUtil.toString t)
-    (* sigToString : hlop_sig -> string *)
-      fun sigToString ({params, exh, results}) = let
-	    val ps = map param_tyToString params
-	    val es = map BOMTyUtil.toString exh
-	    val rs = map BOMTyUtil.toString results
-	    val commas = String.concatWith ", "
-	    in
-	      String.concat[
-		  "sig\n",
-		  "  params: ", (commas ps), "\n",
-		  "  exh: ", (commas es), "\n",
-		  "  results: ", (commas rs), "\n",
-		  "end\n"
-		]
-	    end    
     in
 
+  (* sigToString : hlop_sig -> string *)
+    fun sigToString ({params, exh, results}) = let
+	  val ps = map param_tyToString params
+	  val es = map BOMTyUtil.toString exh
+	  val rs = map BOMTyUtil.toString results
+	  val commas = String.concatWith ", "
+	  in
+	    String.concat[
+		"sig\n",
+		"  params: ", (commas ps), "\n",
+		"  exh: ", (commas es), "\n",
+		"  results: ", (commas rs), "\n",
+		"end\n"
+	      ]
+	  end    
+
   (* toDebugString : hlop -> string *)
-    fun toDebugString (HLOp {name, id, sign, returns}) = let
+    fun toDebugString (HLOp{name, id, sign, returns}) = let
 	  val n = Atom.toString name
 	  val i = Stamp.toString id
 	  val s = sigToString sign
