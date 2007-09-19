@@ -33,6 +33,7 @@ structure HLOpEnv : sig
     val printOp : HLOp.hlop
 
   (* scheduler operations *)
+    val defaultSchedulerStartupOp : HLOp.hlop
     val runOp : HLOp.hlop
     val forwardOp : HLOp.hlop
     val dequeueOp : HLOp.hlop
@@ -96,20 +97,20 @@ structure HLOpEnv : sig
     val stringLitOp = new("string-lit", [BTy.T_Any, rawIntTy], [stringTy], [])
 
   (* high-level operations used to implement Manticore concurrency constructs *)
-    val spawnOp = newWithExh("spawn", [BTy.T_Fun([], [exhTy], [])], [tidTy], [])
-    val threadExitOp = newWithExh("thread-exit", [], [], [H.NORETURN])
-    val iVarOp = new("iVar", [], [ivarTy], [])
-    val iGetOp = new("iGet", [ivarTy], [BTy.T_Any], [])
-    val iPutOp = new("iPut", [ivarTy, BTy.T_Any], [], [])
+    val spawnOp = newWithExh ("spawn", [BTy.T_Fun([], [exhTy], [])], [tidTy], [])
+    val threadExitOp = newWithExh ("thread-exit", [], [], [H.NORETURN])
+    val iVarOp = newWithExh ("iVar", [], [ivarTy], [])
+    val iGetOp = newWithExh ("iGet", [ivarTy], [BTy.T_Any], [])
+    val iPutOp = newWithExh ("iPut", [ivarTy, BTy.T_Any], [], [])
     val printOp = newWithExh ("print", [stringTy], [unitTy], [])
 
   (* scheduler operations *)
-    val defaultSchedulerStartupOp = newWithExh("default-scheduler-startup", [], [], [])
-    val schedulerStartupOp = newWithExh("scheduler-startup", [sigActTy], [], [])
-    val runOp = newWithExh("run", [vprocTy, sigActTy, tidTy, fiberTy], [], [H.NORETURN])
-    val forwardOp = newWithExh("forward", [vprocTy, signalTy], [], [H.NORETURN])
-    val dequeueOp = newWithExh("dequeue", [vprocTy], [Basis.rdyqItemTy], [])
-    val enqueueOp = newWithExh("enqueue", [vprocTy, tidTy, fiberTy], [], [])
+    val defaultSchedulerStartupOp = newWithExh ("default-scheduler-startup", [], [], [])
+    val schedulerStartupOp = newWithExh ("scheduler-startup", [sigActTy], [], [])
+    val runOp = newWithExh ("run", [vprocTy, sigActTy, tidTy, fiberTy], [], [H.NORETURN])
+    val forwardOp = newWithExh ("forward", [vprocTy, signalTy], [], [H.NORETURN])
+    val dequeueOp = newWithExh ("dequeue", [vprocTy], [Basis.rdyqItemTy], [])
+    val enqueueOp = newWithExh ("enqueue", [vprocTy, tidTy, fiberTy], [], [])
 
   (* futures *)
     val futureOp = newWithExh ("future", [thunkTy], [futureTy], [])
