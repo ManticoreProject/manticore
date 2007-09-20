@@ -28,10 +28,7 @@ structure VarSubst (* : sig
     (* todo : string -> 'a *)
     fun todo thing = fail ("todo: " ^ thing)
 			 
-    structure VarMap = RedBlackMapFn (struct
-				        type ord_key = Var.var
-					val compare = Var.compare
-				      end)
+    structure VarMap = Var.Map
 
     type subst = Var.var VarMap.map
 
@@ -105,7 +102,7 @@ structure VarSubst (* : sig
     fun touchExp s =
 	let fun f (x, ts) = (case VarMap.find (s, x)
 				  of NONE => A.VarExp (x, ts)
-				   | SOME x' =>  F.mkTouch (A.VarExp (x', ts)))
+				   | SOME x' => F.mkTouch (A.VarExp (x', ts)))
 	in
 	    expWalk f s
 	end

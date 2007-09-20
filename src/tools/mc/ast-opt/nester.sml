@@ -195,10 +195,7 @@ structure Nester (* : sig
 
     local
 
-	structure VM = RedBlackMapFn (struct
-				       type ord_key = A.var
-				       val compare = Var.compare
-				      end)
+	structure VM = Var.Map
 
 	(* dcon : A.exp -> A.dcon *)
 	fun dcon (A.ConstExp (A.DConst (c, _))) = c

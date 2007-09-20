@@ -34,13 +34,7 @@ structure FutParLet : sig
     (* id : 'a -> 'a *)
     val id = fn x => x
 
-    structure OrdVar = 
-      struct
-        type ord_key = Var.var
-	val compare = Var.compare
-      end
-
-    structure VSet = RedBlackSetFn (OrdVar)
+    structure VSet = Var.Set
 
     (* grandUnion : VSet.set list -> VSet.set *)
     (* Computes the union of all the sets in the given list. *)
