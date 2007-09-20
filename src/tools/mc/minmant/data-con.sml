@@ -33,14 +33,17 @@ structure DataCon : sig
 
     datatype dcon = datatype AST.dcon
 
-    fun new (tyc as Types.DataTyc{cons, ...}) (name, argTy) = let
-	  val dcon = DCon{stamp = Stamp.new(), name = name, owner = tyc, argTy = argTy}
+    fun new (tyc as Types.DataTyc{nCons, cons, ...}) (name, argTy) = let
+	  val id = !nCons
+	  val dcon = DCon{id = id, name = name, owner = tyc, argTy = argTy}
 	  in
+	    nCons := id + 1;
 	    cons := !cons @ [dcon];
 	    dcon
 	  end
 
-    fun same (DCon{stamp=a, ...}, DCon{stamp=b, ...}) = Stamp.same(a, b)
+    fun same (DCon{owner=o1, id=a, ...}, DCon{owner=o2, id=b, ...}) =
+	  (a = b) andalso TyCon.same(o1, o2)
 
     fun nameOf (DCon{name, ...}) = Atom.toString name
 
@@ -55,13 +58,18 @@ structure DataCon : sig
 	    (* end case *)
 	  end
 
+    fun idOf (DCon{id, ...}) = id
+
+    fun hash (DCon{owner=Types.DataTyc{stamp, ...}, id, ...}) =
+	  (0w7 * Stamp.hash stamp) + Word.fromInt id
+
     fun isNullary (DCon{argTy = NONE, ...}) = true
       | isNullary _ = false
 
     structure Tbl = HashTableFn (
       struct
 	type hash_key = dcon
-	fun hashVal (DCon{stamp, ...}) = Stamp.hash stamp
+	val hashVal = hash
 	val sameKey = same
       end)
 

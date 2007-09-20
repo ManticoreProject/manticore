@@ -45,6 +45,7 @@ structure TyCon : sig
 	    name = name,
 	    stamp = Stamp.new(),
 	    params = params,
+	    nCons = ref 0,
 	    cons = ref[]
 	  }
 

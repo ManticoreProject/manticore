@@ -59,11 +59,12 @@ structure Types =
 	    stamp : Stamp.stamp,	(* unique stamp *)
 	    name : Atom.atom,		(* the type name *)
 	    params : tyvar list,	(* type parameters *)
+	    nCons : int ref,		(* number of constructors *)
 	    cons : dcon list ref	(* list of data constructors *)
 	  }
 
     and dcon = DCon of {
-	    stamp : Stamp.stamp,	(* unique stamp *)
+	    id : int,			(* this constructor's index in the cons list *)
 	    name : Atom.atom,		(* the name of the constructor *)
 	    owner : tycon,		(* the datatype for which this is a constructor *)
 	    argTy : ty option		(* argument type; NONE for nullary constructors *)
