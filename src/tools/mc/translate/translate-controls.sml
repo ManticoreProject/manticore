@@ -10,7 +10,7 @@ structure TranslateControls =
   struct
 
     val (registry, debug) = BasicControl.newRegistryWithDebug {
-	    name = "Translate", help = "Translate phase controls"
+	    name = "translate", help = "AST to BOM translation-phase controls"
 	  }
 
   end

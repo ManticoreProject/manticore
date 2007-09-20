@@ -10,7 +10,7 @@ structure ConvertControls =
   struct
 
     val (registry, debug) = BasicControl.newRegistryWithDebug {
-	    name = "Convert", help = "CPS-conversion controls"
+	    name = "convert", help = "CPS-conversion controls"
 	  }
 
   end

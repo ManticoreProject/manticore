@@ -10,7 +10,7 @@ structure CFGOptControls =
   struct
 
     val (registry, debug) = BasicControl.newRegistryWithDebug {
-	    name = "CFGOpt", help = "CFG-optimization controls"
+	    name = "cfg", help = "controls for CFG optimization phases"
 	  }
 
   end

@@ -10,7 +10,7 @@ structure ClosureControls =
   struct
 
     val (registry, debug) = BasicControl.newRegistryWithDebug {
-	    name = "Closure", help = "closure-conversion controls"
+	    name = "clos", help = "closure-conversion controls"
 	  }
 
   end
