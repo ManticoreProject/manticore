@@ -13,6 +13,7 @@
 #define	M_TRUE	((Value_t)3)
 #define M_UNIT	((Value_t)1)
 #define M_NIL	((Value_t)1)
+#define M_NONE	((Value_t)1)
 
 /* function closures are represented by code-pointer/env-pointer pairs */
 typedef struct {
@@ -32,6 +33,11 @@ typedef struct {
     Value_t	tl;
 } ListCons_t;
 
+/* a SOME option value */
+typedef struct {
+    Value_t	aValue;
+} OptionSome_t;
+
 STATIC_INLINE FunClosure_t *ValueToClosure (Value_t v)	{ return (FunClosure_t *)ValueToPtr(v); }
 STATIC_INLINE ContClosure_t *ValueToCont (Value_t v)	{ return (ContClosure_t *)ValueToPtr(v); }
 
@@ -45,12 +51,22 @@ STATIC_INLINE Value_t Cons (VProc_t *vp, Value_t a, Value_t b)
     return AllocUniform (vp, 2, a, b);
 }
 
+STATIC_INLINE Value_t Some (VProc_t *vp, Value_t a)
+{
+    return AllocUniform (vp, 1, a);
+}
+
 /* heap allocation in the global heap */
 extern Value_t GlobalAllocUniform (VProc_t *vp, int nItems, ...);
 
 STATIC_INLINE Value_t GlobalCons (VProc_t *vp, Value_t a, Value_t b)
 {
     return GlobalAllocUniform (vp, 2, a, b);
+}
+
+STATIC_INLINE Value_t GlobalSome (VProc_t *vp, Value_t a)
+{
+    return GlobalAllocUniform (vp, 1, a);
 }
 
 #endif /* !_VALUE_H_ */
