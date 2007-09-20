@@ -22,6 +22,9 @@ structure TyCon : sig
   (* return true if two type constructors are the same *)
     val same : Types.tycon * Types.tycon -> bool
 
+  (* compare two type constructors *)
+    val compare : Types.tycon * Types.tycon -> order
+
   (* return the arity of a type constructor *)
     val arityOf : Types.tycon -> int
 
@@ -58,6 +61,9 @@ structure TyCon : sig
 
   (* return true if two type constructors are the same *)
     fun same (tyc1, tyc2) = Stamp.same(stampOf tyc1, stampOf tyc2)
+
+  (* compare two type constructors *)
+    fun compare (tyc1, tyc2) = Stamp.compare(stampOf tyc1, stampOf tyc2)
 
   (* return the arity of a type constructor *)
     fun arityOf (AbsTyc{arity, ...}) = arity

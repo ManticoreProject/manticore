@@ -11,17 +11,26 @@ structure DataCon : sig
   (* create a new data constructor and add it to the list of constructors in its parent. *)
     val new : Types.tycon -> (Atom.atom * AST.ty option) -> AST.dcon
 
-  (* return true if two data constructors are the same (i.e., have the same stamp) *)
+  (* return true if two data constructors are the same *)
     val same : AST.dcon * AST.dcon -> bool
+
+  (* compare two  data constructors *)
+    val compare : AST.dcon * AST.dcon -> order
 
   (* return the name of the data constructor *)
     val nameOf : AST.dcon -> string
+
+  (* return the ID of the data constructor *)
+    val idOf : AST.dcon -> int
 
   (* return the type of the data constructor *)
     val typeOf : AST.dcon -> AST.ty_scheme
 
   (* return the argument type of the data constructor (if any) *)
     val argTypeOf : AST.dcon -> AST.ty option
+
+  (* return the datatype type constructor that owns this data constructor *)
+    val ownerOf : AST.dcon -> Types.tycon
 
   (* return true if the data constructor is nullary *)
     val isNullary : AST.dcon -> bool
@@ -45,9 +54,20 @@ structure DataCon : sig
     fun same (DCon{owner=o1, id=a, ...}, DCon{owner=o2, id=b, ...}) =
 	  (a = b) andalso TyCon.same(o1, o2)
 
+    fun hash (DCon{owner=Types.DataTyc{stamp, ...}, id, ...}) =
+	  (0w7 * Stamp.hash stamp) + Word.fromInt id
+
+    fun compare (DCon{owner=o1, id=a, ...}, DCon{owner=o2, id=b, ...}) = (
+	  case Int.compare(a, b)
+	   of EQUAL => TyCon.compare(o1, o2)
+	    | order => order
+	  (* end case *))
+
     fun nameOf (DCon{name, ...}) = Atom.toString name
 
     fun argTypeOf (DCon{argTy, ...}) = argTy
+
+    fun ownerOf (DCon{owner, ...}) = owner
 
     fun typeOf (DCon{owner as Types.DataTyc{params, ...}, argTy, ...}) = let
 	  val ty = AST.ConTy(List.map AST.VarTy params, owner)
@@ -59,9 +79,6 @@ structure DataCon : sig
 	  end
 
     fun idOf (DCon{id, ...}) = id
-
-    fun hash (DCon{owner=Types.DataTyc{stamp, ...}, id, ...}) =
-	  (0w7 * Stamp.hash stamp) + Word.fromInt id
 
     fun isNullary (DCon{argTy = NONE, ...}) = true
       | isNullary _ = false
