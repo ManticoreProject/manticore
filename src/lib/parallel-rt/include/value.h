@@ -43,6 +43,7 @@ STATIC_INLINE ContClosure_t *ValueToCont (Value_t v)	{ return (ContClosure_t *)V
 
 /* heap allocate a tuple of uniformly represented values in the local heap */
 extern Value_t AllocUniform (VProc_t *vp, int nItems, ...);
+extern Value_t AllocNonUniform (VProc_t *vp, int nItems, ...);
 extern Value_t WrapInt (VProc_t *vp, long i);
 extern void SayValue (Value_t v);
 
@@ -58,6 +59,7 @@ STATIC_INLINE Value_t Some (VProc_t *vp, Value_t a)
 
 /* heap allocation in the global heap */
 extern Value_t GlobalAllocUniform (VProc_t *vp, int nItems, ...);
+extern Value_t GlobalAllocNonUniform (VProc_t *vp, int nItems, ...);
 
 STATIC_INLINE Value_t GlobalCons (VProc_t *vp, Value_t a, Value_t b)
 {
@@ -68,5 +70,11 @@ STATIC_INLINE Value_t GlobalSome (VProc_t *vp, Value_t a)
 {
     return GlobalAllocUniform (vp, 1, a);
 }
+
+/* Tags for non-uniform object allocation */
+#define PTR_FIELD	1
+#define RAW_FIELD	0
+#define PTR(p)		PTR_FIELD, (Value_t)p
+#define INT(i)		RAW_FIELD, (Value_t)i
 
 #endif /* !_VALUE_H_ */

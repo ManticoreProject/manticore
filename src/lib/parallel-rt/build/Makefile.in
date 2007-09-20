@@ -30,7 +30,8 @@ VPROC_SRCS	= vproc.c
 MISC_SRCS	= main.c \
 		  apply.c \
 		  basis.c \
-		  options.c
+		  options.c \
+		  work-queue.c
 
 C_SRCS		= $(GC_SRCS) $(VPROC_SRCS) $(MISC_SRCS)
 C_OBJS		= $(patsubst %.c,%.o,$(C_SRCS))

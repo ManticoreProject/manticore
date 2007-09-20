@@ -32,6 +32,31 @@ Value_t AllocUniform (VProc_t *vp, int nElems, ...)
     return PtrToValue(obj);
 }
 
+/*! \brief allocate a non-uniform tuple of values.
+ *  \param vp the host vproc
+ *  \param nElems the number of tuple elements.
+ */
+Value_t AllocNonUniform (VProc_t *vp, int nElems, ...)
+{
+    Word_t	*obj = (Word_t *)(vp->allocPtr);
+    Word_t	bits = 0;
+    va_list	ap;
+
+    va_start(ap, nElems);
+    for (int i = 0;  i < nElems;  i++) {
+	int tag = va_arg(ap, int);
+	assert ((tag == RAW_FIELD) || (tag == PTR_FIELD));
+	bits |= (tag << i);
+	Value_t arg = va_arg(ap, Value_t);
+	obj[i] = (Word_t)arg;
+    }
+    va_end(ap);
+    obj[-1] = MIXED_HDR(bits, nElems);
+
+    vp->allocPtr += WORD_SZB * (nElems+1);
+    return PtrToValue(obj);
+}
+
 /*! \brief allocate a wrapped integer value.
  */
 Value_t WrapInt (VProc_t *vp, long i)
@@ -82,6 +107,39 @@ Value_t GlobalAllocUniform (VProc_t *vp, int nElems, ...)
     Word_t *obj = (Word_t *)(vp->globNextW);
 /* FIXME: what if there isn't enough space!!! */
     obj[-1] = VEC_HDR(nElems);
+    for (int i = 0;  i < nElems;  i++) {
+	obj[i] = (Word_t)elems[i];
+    }
+
+    vp->globNextW += WORD_SZB * (nElems+1);
+    return PtrToValue(obj);
+}
+
+/*! \brief allocate a non-uniform tuple of values.
+ *  \param vp the host vproc
+ *  \param nElems the number of tuple elements.
+ */
+Value_t GlobalAllocNonUniform (VProc_t *vp, int nElems, ...)
+{
+    Value_t	elems[nElems];
+    Word_t	bits = 0;
+    va_list	ap;
+
+    assert (vp == VProcSelf());
+
+  /* first we must ensure that the elements are in the global heap */
+    va_start(ap, nElems);
+    for (int i = 0;  i < nElems;  i++) {
+	int tag = va_arg(ap, int);
+	assert ((tag == RAW_FIELD) || (tag == PTR_FIELD));
+	bits |= (tag << i);
+	elems[i] = PromoteObj (vp, va_arg(ap, Value_t));
+    }
+    va_end(ap);
+
+    Word_t *obj = (Word_t *)(vp->globNextW);
+/* FIXME: what if there isn't enough space!!! */
+    obj[-1] = MIXED_HDR(bits, nElems);
     for (int i = 0;  i < nElems;  i++) {
 	obj[i] = (Word_t)elems[i];
     }
