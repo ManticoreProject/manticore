@@ -38,6 +38,16 @@ structure Error :> sig
   (* print the errors to an output stream *)
     val report : TextIO.outstream * err_stream -> unit
 
+  (* source-code locations *)
+    datatype location
+      = UNKNOWN
+      | LOC of {file : string, l1 : int, c1 : int, l2 : int, c2 : int}
+
+    val location : err_stream * span -> location
+    val position : err_stream * pos -> location
+
+    val locToString : location -> string
+
   end = struct
 
     structure SP = AntlrStreamPos
@@ -125,6 +135,43 @@ structure Error :> sig
 	  in
 	    ListMergeSort.sort cmp
 	  end
+
+  (* source-code locations *)
+    datatype location
+      = UNKNOWN
+      | LOC of {file : string, l1 : int, c1 : int, l2 : int, c2 : int}
+
+    fun location (ES{sm, ...}, (p1, p2) : span) =
+	  if (p1 = p2)
+	    then let
+	      val {fileName=SOME f, lineNo, colNo} = SP.sourceLoc sm p1
+	      in
+		LOC{file=f, l1=lineNo, c1=colNo, l2=lineNo, c2=colNo}
+	      end
+	    else let
+	      val {fileName=SOME f1, lineNo=l1, colNo=c1} = SP.sourceLoc sm p1
+	      val {fileName=SOME f2, lineNo=l2, colNo=c2} = SP.sourceLoc sm p2
+	      in
+		if (f1 <> f2)
+		  then LOC{file=f1, l1=l1, c1=c1, l2=l1, c2=c1}
+		  else LOC{file=f1, l1=l1, c1=c1, l2=l2, c2=c2}
+	      end
+
+    fun position (ES{sm, ...}, p : pos) = let
+	  val {fileName=SOME f, lineNo, colNo} = SP.sourceLoc sm p
+	  in
+	    LOC{file=f, l1=lineNo, c1=colNo, l2=lineNo, c2=colNo}
+	  end
+
+    fun locToString UNKNOWN = "<unknown>"
+      | locToString (LOC{file, l1, l2, c1, c2}) =
+	  if (l1 = l2)
+	    then if (c1 = c2)
+	      then F.format "[%s:%d.%d] " [F.STR file, F.INT l1, F.INT c1]
+	      else F.format "[%s:%d.%d-%d] " [F.STR file, F.INT l1, F.INT c1, F.INT c2]
+	    else F.format "[%s:%d.%d-%d.%d] " [
+		F.STR file, F.INT l1, F.INT c1, F.INT l2, F.INT c2
+	      ]
 
     fun printError (outStrm, ES{sm, ...}) = let
 	  fun pr {kind, pos, msg} = let
