@@ -609,14 +609,14 @@ print(concat["lookupVar: ", CPS.Var.toString x, " @ ", locToString(valOf(VMap.fi
 	    end
           end
 
-    val convert =
-       BasicControl.mkKeepPass
-       {preOutput = PrintCPS.output,
-        preExt = "cps",
-        postOutput = PrintCFG.output {types=true},
-        postExt = "cfg",
-        passName = "flatClosure",
-        pass = convert,
-        registry = ClosureControls.registry}
+    val convert = BasicControl.mkKeepPass {
+	    preOutput = PrintCPS.output,
+            preExt = "cps",
+            postOutput = PrintCFG.output {types=true},
+            postExt = "cfg",
+            passName = "closure",
+            pass = convert,
+            registry = ClosureControls.registry
+	  }
 
   end

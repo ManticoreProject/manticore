@@ -33,9 +33,9 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 
     fun expandAll module = (case expand module
 	   of SOME module => let
-		val _ = CheckBOM.check ("expandAll:expand", module)
+		val _ = CheckBOM.check ("expand-all:expand", module)
 		val module = contract module
-		val _ = CheckBOM.check ("expandAll:contract", module)
+		val _ = CheckBOM.check ("expand-all:contract", module)
 		in
 		  expandAll module
 		end
@@ -43,8 +43,8 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 	  (* end case *))
 
     val uncurry = transform {passName = "uncurry", pass = Uncurry.transform}
-    val caseSimplify = transform {passName = "caseSimplify", pass = CaseSimplify.transform}
-    val expandAll = transform {passName = "expandAll", pass = expandAll}
+    val caseSimplify = transform {passName = "case-simplify", pass = CaseSimplify.transform}
+    val expandAll = transform {passName = "expand-all", pass = expandAll}
 
     fun optimize module = let
 	  val module = contract module
@@ -54,9 +54,9 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 	  val module = contract module
           val _ = CheckBOM.check ("contract", module)
 	  val module = expandAll module
-          val _ = CheckBOM.check ("expandAll", module)
+          val _ = CheckBOM.check ("expand-all", module)
 	  val module = caseSimplify module
-          val _ = CheckBOM.check ("caseSimplify", module)
+          val _ = CheckBOM.check ("case-simplify", module)
 	  val module = contract module
           val _ = CheckBOM.check ("contract", module)
 	  in
@@ -66,7 +66,7 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
     val optimize = BasicControl.mkKeepPassSimple {
 	    output = PrintBOM.output,
 	    ext = "bom",
-	    passName = "BOMOptimize",
+	    passName = "optimize",
 	    pass = optimize,
 	    registry = BOMOptControls.registry
 	  }

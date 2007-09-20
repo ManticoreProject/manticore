@@ -10,7 +10,9 @@ structure MatchControls =
   struct
 
     val (registry, debug) = BasicControl.newRegistryWithDebug {
-	    name = "match", help = "Pattern-match compiler controls"
+	    name = "match",
+	    pri = 3,
+	    help = "Pattern-match compiler controls"
 	  }
 
   end

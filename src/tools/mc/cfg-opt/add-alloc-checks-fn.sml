@@ -155,12 +155,4 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 	    module
 	  end
 
-    val transform =
-       BasicControl.mkKeepPassSimple
-       {output = PrintCFG.output {types=true},
-        ext = "cfg",
-        passName = "addAllocChecks",
-        pass = transform,
-        registry = CFGOptControls.registry}
-
   end

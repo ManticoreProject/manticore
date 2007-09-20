@@ -10,7 +10,9 @@ structure MinmantControls =
   struct
 
     val (registry, debug) = BasicControl.newRegistryWithDebug {
-	    name = "Minmant", help = "Minmant controls"
+	    name = "Minmant",
+	    pri = 1,
+	    help = "Minmant controls"
 	  }
 
   end

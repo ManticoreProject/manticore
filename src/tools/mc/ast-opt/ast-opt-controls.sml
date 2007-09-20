@@ -10,7 +10,9 @@ structure ASTOptControls =
   struct
 
     val (registry, debug) = BasicControl.newRegistryWithDebug {
-	    name = "ast", help = "contreols for AST transformation phases"
+	    name = "ast",
+	    pri = 2,
+	    help = "controls for AST transformation phases"
 	  }
 
   end

@@ -15,11 +15,11 @@
  *
  *)
 
-structure ImplementCalls : 
-   sig
+structure ImplementCalls : sig
+
       val transform : CFG.module -> CFG.module
-   end = 
-struct
+
+   end = struct
 
    structure Label = CFG.Label
    structure Var = CFG.Var
@@ -192,13 +192,5 @@ struct
       in
          module
       end
-   
-   val transform =
-      BasicControl.mkKeepPassSimple
-      {output = PrintCFG.output {types=true},
-       ext = "cfg",
-       passName = "implementCalls",
-       pass = transform,
-       registry = CFGOptControls.registry}
       
-end
+  end

@@ -10,7 +10,9 @@ structure CPSOptControls =
   struct
 
     val (registry, debug) = BasicControl.newRegistryWithDebug {
-	    name = "cps", help = "controls for CPS optimization phases"
+	    name = "cps",
+	    pri = 7,
+	    help = "controls for CPS optimization phases"
 	  }
 
   end

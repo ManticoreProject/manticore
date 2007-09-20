@@ -64,40 +64,42 @@ structure BasicControl :  sig
                      info: ControlRegistry.control_info} -> string)) ->
                   int option -> unit
 
-    val newRegistryWithDebug : {name : string, help : string}
+    val newRegistryWithDebug : {name : string, help : string, pri : int}
 	  -> (ControlRegistry.registry * bool Controls.control)
 
   end = struct
 
     val topRegistry = ControlRegistry.new {help = "mc controls"}
 
-    fun nest (prefix, reg, pri) =
-       ControlRegistry.nest topRegistry {prefix = SOME prefix,
-                                         pri = pri,
-                                         obscurity = 0,
-                                         reg = reg}
+    fun nest (prefix, reg, pri) = ControlRegistry.nest topRegistry {
+	    prefix = SOME prefix,
+	    pri = pri,
+	    obscurity = 0,
+	    reg = reg
+	  }
 
     val debugObscurity = 2
 
-    val keepPassBaseName : string option Controls.control =
-       Controls.genControl 
-       {name = "keepPassBaseName",
-        pri = [5, 0],
-        obscurity = debugObscurity + 1,
-        help = "",
-        default = NONE}
+    val keepPassBaseName : string option Controls.control = Controls.genControl {
+	    name = "keepPassBaseName",
+	    pri = [5, 0],
+	    obscurity = debugObscurity + 1,
+	    help = "",
+	    default = NONE
+	  }
 
-    val verbose : int Controls.control =
-       Controls.genControl
-       {name = "verbose",
-        pri = [0, 0],
-        obscurity = 0,
-        help = "verbosity",
-        default = 0}
-    val () =
-       ControlRegistry.register topRegistry
-       {ctl = Controls.stringControl ControlUtil.Cvt.int verbose,
-        envName = NONE};
+    val verbose : int Controls.control = Controls.genControl {
+	    name = "verbose",
+	    pri = [0, 0],
+	    obscurity = 0,
+	    help = "verbosity",
+	    default = 0
+	  }
+
+    val () = ControlRegistry.register topRegistry {
+	    ctl = Controls.stringControl ControlUtil.Cvt.int verbose,
+	    envName = NONE
+	  };
 
 
     local
@@ -239,9 +241,9 @@ structure BasicControl :  sig
           walk 2 (ControlRegistry.controls (topRegistry, level))
        end
 
-    fun newRegistryWithDebug {name, help} = let
+    fun newRegistryWithDebug {name, help, pri} = let
 	  val newReg = ControlRegistry.new {help = help}
-	  val priority = []
+	  val priority = [pri]
 	  val _ = nest (name, newReg, priority)
 	  val debugCtl = Controls.genControl {
 		  name = "debug",

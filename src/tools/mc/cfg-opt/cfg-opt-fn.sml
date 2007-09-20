@@ -10,28 +10,36 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
 
   end = struct
 
+  (* a wrapper for CFG optimization passes *)
+    fun transform {passName, pass} = BasicControl.mkKeepPassSimple {
+	    output = PrintCFG.output {types=true},
+	    ext = "cfg",
+	    passName = passName,
+	    pass = pass,
+	    registry = CFGOptControls.registry
+	  }
+
     structure AddAllocChecks = AddAllocChecksFn (Target)
+
+  (* wrap transformation passes with keep controls *)
+    val specialCalls = transform {passName = "specialize-calls", pass = SpecializeCalls.transform}
+    val implCalls = transform {passName = "implement-calls", pass = ImplementCalls.transform}
+    val allocChecks = transform {passName = "alloc-checks", pass = AddAllocChecks.transform}
 
     fun optimize module = let
           val () = CheckCFG.check module
 	  val _ = Census.census module
 	  val _ = CFACFG.analyze module
-	  val module = SpecializeCalls.transform module
+	  val module = specialCalls module
           val () = CheckCFG.check module
-          val module = ImplementCalls.transform module
+          val module = implCalls module
           val () = CheckCFG.check module
-	  val module = AddAllocChecks.transform module
+	  val module = allocChecks module
           val () = CheckCFG.check module
 	  in
 	    module
 	  end
 
-    val optimize =
-       BasicControl.mkKeepPassSimple
-       {output = PrintCFG.output {types=true},
-        ext = "cfg",
-        passName = "CFGOptimize",
-        pass = optimize,
-        registry = CFGOptControls.registry}
+    val optimize = transform {passName = "optimize", pass = optimize}
 
   end

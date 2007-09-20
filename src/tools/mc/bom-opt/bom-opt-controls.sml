@@ -10,7 +10,9 @@ structure BOMOptControls =
   struct
 
     val (registry, debug) = BasicControl.newRegistryWithDebug {
-	    name = "bom", help = "controls for BOM optimization phases"
+	    name = "bom",
+	    pri = 5,
+	    help = "controls for BOM optimization phases"
 	  }
 
   end

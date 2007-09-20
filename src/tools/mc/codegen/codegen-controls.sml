@@ -15,7 +15,9 @@ structure CodegenControls =
             MLRiscControl.priority)
 
     val (registry, debug) = BasicControl.newRegistryWithDebug {
-	    name = "codegen", help = "code-generation controls"
+	    name = "codegen",
+	    pri = 10,
+	    help = "code-generation controls"
 	  }
 
   end
