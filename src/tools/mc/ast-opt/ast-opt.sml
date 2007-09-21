@@ -13,27 +13,40 @@ structure ASTOpt : sig
 
   end = struct
 
-    val futurize = BasicControl.mkKeepPassSimple {
+  (* a wrapper for AST optimization passes *)
+    fun transform {passName, pass} = BasicControl.mkKeepPassSimple {
 	    output = PrintAST.output,
 	    ext = "ast",
-	    passName = "ptuples",
-	    pass = FutParTup.futurize,
+	    passName = passName,
+	    pass = pass,
 	    registry = ASTOptControls.registry
 	  }
 
+
+  (* futParTup : AST.module -> AST.module *)
+    val futParTup = transform {passName = "fut-par-tup", pass = FutParTup.futurize}
+
   (* futurize : AST.module -> AST.module *)
     fun futurize m = let
-	  val m' = futurize m
+	  val m' = futParTup m
 	  in
 	    m'
 	  end
 
+    val futurize = transform {passName = "futurize", pass = futurize}
+
   (* optimize : AST.module -> AST.module *)
+    fun optimize module = let
+          val module = futurize module
+          in
+            module
+          end
+
     val optimize = BasicControl.mkKeepPassSimple {
 	    output = PrintAST.output,
 	    ext = "ast",
 	    passName = "optimize",
-	    pass = futurize,
+	    pass = optimize,
 	    registry = ASTOptControls.registry
 	  }
 
