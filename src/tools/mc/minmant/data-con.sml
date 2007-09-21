@@ -14,7 +14,7 @@ structure DataCon : sig
   (* return true if two data constructors are the same *)
     val same : AST.dcon * AST.dcon -> bool
 
-  (* compare two  data constructors *)
+  (* compare two data constructors *)
     val compare : AST.dcon * AST.dcon -> order
 
   (* return the name of the data constructor *)
@@ -23,11 +23,17 @@ structure DataCon : sig
   (* return the ID of the data constructor *)
     val idOf : AST.dcon -> int
 
-  (* return the type of the data constructor *)
+  (* return the type of the data constructor; for data constants, this type
+   * will be a ConTy, while for data constructors it will be a FunTy.
+   *)
     val typeOf : AST.dcon -> AST.ty_scheme
 
   (* return the argument type of the data constructor (if any) *)
     val argTypeOf : AST.dcon -> AST.ty option
+
+  (* return the instantiated type/argument type of the data constructor *)
+    val typeOf' : AST.dcon * AST.ty list -> AST.ty
+    val argTypeOf' : AST.dcon * AST.ty list -> AST.ty option
 
   (* return the datatype type constructor that owns this data constructor *)
     val ownerOf : AST.dcon -> Types.tycon
@@ -77,6 +83,14 @@ structure DataCon : sig
 	      | SOME ty' => AST.TyScheme(params, AST.FunTy(ty', ty))
 	    (* end case *)
 	  end
+
+    fun typeOf' (dc, args) = TypeUtil.apply(typeOf dc, args)
+
+    fun argTypeOf' (DCon{owner as Types.DataTyc{params, ...}, argTy, ...}, args) = (
+	  case argTy
+	   of NONE => NONE
+	    | SOME ty => SOME(TypeUtil.apply(AST.TyScheme(params, ty), args))
+	  (* end case *))
 
     fun idOf (DCon{id, ...}) = id
 

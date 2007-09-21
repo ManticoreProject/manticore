@@ -45,14 +45,10 @@ structure TypeOf : sig
 	  monoTy (Var.typeOf x)
       | exp (AST.OverloadExp _) = raise Fail "unresolved overloading"
 
-    and const (AST.DConst(dc, argTys)) = TU.apply(DataCon.typeOf dc, argTys)
+    and const (AST.DConst(dc, argTys)) = DataCon.typeOf'(dc, argTys)
       | const (AST.LConst(_, ty)) = ty
 
-    and pat (AST.ConPat(dc, argTys, _)) = let
-	  val Ty.FunTy(_, ty) = TU.apply(DataCon.typeOf dc, argTys)
-	  in
-	    ty
-	  end
+    and pat (AST.ConPat(dc, argTys, _)) = DataCon.typeOf' (dc, argTys)
       | pat (AST.TuplePat ps) = Ty.TupleTy(List.map pat ps)
       | pat (AST.VarPat x) = monoTy (Var.typeOf x)
       | pat (AST.WildPat ty) = ty
