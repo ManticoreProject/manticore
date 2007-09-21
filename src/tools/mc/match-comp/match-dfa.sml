@@ -44,6 +44,10 @@ structure MatchDFA : MATCH_DFA =
 	  end
 (*-DEBUG*)
 
+  (* return the type of the location specified by a path *)
+    fun typeOfPath (ROOT x) = Var.monoTypeOf x
+      | typeOfPath (PATH{ty, ...}) = ty
+
   (* mapping from source variables to the path of their binding site *)
     type var_map = path Var.Map.map
 
@@ -64,9 +68,8 @@ structure MatchDFA : MATCH_DFA =
     and state_kind
       = TEST of (path * (simple_pat * state) list)
       | BIND of (var_map * state)
-      | FINAL of (bool * Var.Set.set * AST.exp)
-		(* the boolean is true for "default" states *)
-      | WHEN of (var_map * AST.exp * state * state)
+      | FINAL of (Var.Set.set * AST.exp)
+      | COND of (var_map * AST.exp * state * state)
       | ERROR
 
     and simple_pat
@@ -82,7 +85,7 @@ structure MatchDFA : MATCH_DFA =
 	   of TEST(path, _) => concat["TEST(", pathToString path, ")"]
 	    | BIND _ => "BIND"
 	    | FINAL _ => "FINAL"
-	    | WHEN _ => "WHEN"
+	    | COND _ => "COND"
 	    | ERROR => "ERROR"
 	  (* end case *))
 
@@ -125,18 +128,18 @@ structure MatchDFA : MATCH_DFA =
 	  raise Fail(concat["mkBind: not final/error (", toString q, ")"])
 
   (* construct a final state *)
-    fun mkFinal (dfa as DFA{final, ...}, isDflt, vmap, exp) = let
-	  val q = mkState (dfa, FINAL(isDflt, vmap, exp))
+    fun mkFinal (dfa as DFA{final, ...}, vmap, exp) = let
+	  val q = mkState (dfa, FINAL(vmap, exp))
 	  in
 	    final := q :: !final; q
 	  end
 
-  (* construct a "when" test state. *)
-    fun mkWhen (dfa, vmap, e, s1 as S{kind=FINAL _, ...}, s2) = (
+  (* construct a conditional-test state. *)
+    fun mkCond (dfa, vmap, e, s1 as S{kind=FINAL _, ...}, s2) = (
 	  inc s1;
 	  inc s2;
-	  mkState (dfa, WHEN(vmap, e, s1, s2)))
-      | mkWhen _ = raise Fail "mkWhen: true branch not final"
+	  mkState (dfa, COND(vmap, e, s1, s2)))
+      | mkCond _ = raise Fail "mkCond: true branch not final"
 
   (* set the initial state *)
     fun setInitialState (DFA{root, ...}, q) = (
@@ -153,10 +156,6 @@ structure MatchDFA : MATCH_DFA =
 
   (* return the kind of a state *)
     fun kind (S{kind, ...}) = kind
-
-  (* return true if the state is an unused default state (rCount = 0) *)
-    fun unusedDefault (S{refCnt, kind=FINAL(true, _, _), ...}) = (!refCnt = 0)
-      | unusedDefault _ = false
 
   (* return the reference count of a state *)
     fun rCount (S{refCnt, ...}) = !refCnt
@@ -270,13 +269,13 @@ structure MatchDFA : MATCH_DFA =
 			    ppNextState q;
 			  PP.closeBox ppStrm;
 			PP.closeBox ppStrm)
-		    | FINAL(isDefault, bvs, e) => (
+		    | FINAL(bvs, e) => (
 			str "final"; sp 1;
 			PP.openHBox ppStrm;
 			  ppVSet bvs; sp 1;
 			  ppExp (ppStrm, e);
 			PP.closeBox ppStrm)
-		    | WHEN(vmap, e, s1, s2) => let
+		    | COND(vmap, e, s1, s2) => let
 			fun pp (l, s) = (
 			      PP.newline ppStrm;
 			      PP.openHBox ppStrm;

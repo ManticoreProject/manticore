@@ -25,3 +25,4 @@ is
   match-dfa.sml
   match-errors.sml
   match-to-dfa.sml
+  match-util.sml
