@@ -13,10 +13,7 @@
 
 structure MatchToDFA : sig
 
-    type env = AST.var Var.Map.map
-
-    val rulesToDFA : (Error.span * env * AST.var * AST.match list)
-	  -> MatchDFA.dfa
+    val rulesToDFA : (Error.span * AST.var * AST.match list) -> MatchDFA.dfa
 
   end = struct
 
@@ -28,8 +25,6 @@ structure MatchToDFA : sig
     structure VSet = Var.Set
 
 (*FIXME*)val dummy : DFA.var_map = VMap.empty
-
-    type env = AST.var VMap.map
 
     val union = VMap.unionWithi
 	  (fn (x, _ : DFA.path, _) => raise Fail("multiple occurrences of "^Var.toString x))
@@ -451,7 +446,7 @@ structure MatchToDFA : sig
    * Then we invoke mkMatrix to build the initial pattern matrix.  We return the
    * pattern matrix and the error state.
    *)
-    fun step1 (env, dfa, rules : rule_info list) = let
+    fun step1 (dfa, rules : rule_info list) = let
 	(* Convert a AST pattern to a simplified pattern.  We take as arguments
 	 * the source-file location, the pattern's path, the pattern's type,
 	 * and the pattern.
@@ -578,7 +573,7 @@ structure MatchToDFA : sig
 	    DFA.setInitialState (dfa, root)
 	  end
 
-    fun rulesToDFA (loc, env, arg, rules) = let
+    fun rulesToDFA (loc, arg, rules) = let
 	  fun ruleInfo (loc, pat, optCond, act) = {
 		  loc = loc, pat = pat, optCond = optCond,
 		  bvs = MatchUtil.varsOfPat pat, act = act
@@ -587,7 +582,7 @@ structure MatchToDFA : sig
 	    | cvtRule loc (AST.CondMatch(pat, cond, act)) = ruleInfo (loc, pat, SOME cond, act)
 	  val dfa = DFA.mkDFA arg
 	  val rules = List.map (cvtRule loc) rules
-	  val patMatrix = step1 (env, dfa, rules)
+	  val patMatrix = step1 (dfa, rules)
 	  in
 	    step2 (patMatrix, dfa);
 	    dfa
