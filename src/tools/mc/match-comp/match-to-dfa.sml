@@ -15,7 +15,7 @@ structure MatchToDFA : sig
 
     type env = AST.var Var.Map.map
 
-    val rulesToDFA : (Error.location * env * AST.var * AST.match list)
+    val rulesToDFA : (Error.span * env * AST.var * AST.match list)
 	  -> MatchDFA.dfa
 
   end = struct
@@ -439,7 +439,7 @@ structure MatchToDFA : sig
   (******************** Translation ********************)
 
     type rule_info = {		(* A TypedAST match rule with additional info *)
-	loc : Error.location,	  (* the source location of the rule *)
+	loc : Error.span,	  (* the source location of the rule *)
 	pat : AST.pat,	  	  (* the lhs pattern *)
 	optCond : AST.exp option, (* optional "where" clause *)
 	bvs : VSet.set,		  (* source variables bound in pats *)

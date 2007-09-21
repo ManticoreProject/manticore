@@ -9,30 +9,30 @@
 structure MatchErrors : sig
 
     type err_stream = Error.err_stream
-    type location = Error.location
+    type span = Error.span
 
-    val errRedundantMatch : (err_stream * location) -> unit
-    val warnNonexhaustiveMatch : (err_stream * location) -> unit
-    val warnNonexhaustiveBind : (err_stream * location) -> unit
+    val errRedundantMatch : (err_stream * span) -> unit
+    val warnNonexhaustiveMatch : (err_stream * span) -> unit
+    val warnNonexhaustiveBind : (err_stream * span) -> unit
 
   end = struct
 
     structure E = Error
 
     type err_stream = E.err_stream
-    type location = E.location
+    type span = E.span
 
-    fun errRedundantMatch (errStrm, loc) = E.error(
+    fun errRedundantMatch (errStrm, loc) = E.errorAt (
 	  errStrm, loc,
-	  "redundant match")
+	  ["redundant match"])
 
-    fun warnNonexhaustiveMatch (errStrm, loc) = Error.warning(
+    fun warnNonexhaustiveMatch (errStrm, loc) = Error.warningAt (
 	  errStrm, loc,
-	  "nonexhaustive match")
+	  ["nonexhaustive match"])
 
-    fun warnNonexhaustiveBind (errStrm, loc) = Error.warning(
+    fun warnNonexhaustiveBind (errStrm, loc) = Error.warningAt (
 	  errStrm, loc,
-	  "nonexhaustive binding")
+	  ["nonexhaustive binding"])
 
   end
 
