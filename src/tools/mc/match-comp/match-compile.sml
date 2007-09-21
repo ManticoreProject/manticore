@@ -19,6 +19,8 @@ structure MatchCompile : sig
     structure DFA = MatchDFA
     structure VSet = Var.Set
     structure VMap = Var.Map
+    structure Env = MatchCompEnv
+    structure Err = MatchErrors
 
   (* hash tables on DFA states *)
     structure STbl = HashTableFn (
@@ -90,8 +92,8 @@ structure MatchCompile : sig
 			pvs = VMap.foldl PSet.add' pvs vmap,
 			fvs = subtractDom(fvs, vmap)
 		      } end
-		  | DFA.FINAL(_, fvs, _) => {pvs = PSet.empty, fvs = fvs}
-		  | DFA.WHEN(vmap, _, arc1, arc2) => let
+		  | DFA.FINAL(fvs, _) => {pvs = PSet.empty, fvs = fvs}
+		  | DFA.COND(vmap, _, arc1, arc2) => let
 		      val {pvs=pvs1, fvs=fvs1} = next arc1
 		      val {pvs=pvs2, fvs=fvs2} = next arc2
 		      in {
@@ -107,14 +109,10 @@ structure MatchCompile : sig
 	  end
 
 
-    type env = AST.var VMap.map
+    type env = Env.env
 
-    val insertVar : (env * AST.var * AST.var) -> env = VMap.insert
-
-    fun applyEnv (env, x) = (case VMap.find(env, x)
-	   of SOME x' => x'
-	    | NONE => x
-	  (* end case *))
+    val insertVar = Env.insert
+    val applyEnv = Env.apply
 
     datatype decision_tree
       = CALL of AST.var * AST.var list
@@ -215,8 +213,8 @@ structure MatchCompile : sig
 (* FIXME: we need bindings here! *)
 		  | DFA.BIND(vmap, q) =>
 		      next (extendEnvByVMap (env, pmap, vmap), pmap, q)
-		  | DFA.FINAL(_, _, e) => ACTION(env, e)
-		  | DFA.WHEN(vmap, e, t, f) => let
+		  | DFA.FINAL(_, e) => ACTION(env, e)
+		  | DFA.COND(vmap, e, t, f) => let
 		      val env = extendEnvByVMap (env, pmap, vmap)
 		      in
 			IF(env, e, next(env, pmap, t), next(env, pmap, f))
@@ -244,26 +242,10 @@ structure MatchCompile : sig
 		  STbl.insert stateFuns (q, funct); funct
 		end
 	  val fns = List.map defShared shared
-	  val pmap = let
-		fun f (x, pmap) = PMap.insert(pmap, DFA.ROOT x, x)
-		in
-		  List.foldl f PMap.empty (DFA.getArgs dfa)
-		end
+	  val pmap = PMap.singleton (DFA.ROOT(DFA.getArg dfa), DFA.getArg dfa)
 	  val tree = next(env0, pmap, root)
 	  in
 	    {fns = fns, tree = tree}
-	  end
-
-  (* get the list of variables bound by a pattern *)
-    fun bvars pat = let
-	  fun bv (AST.ConPat(_, _, p), s) = bv(p, s)
-	    | bv (AST.TuplePat ps, s) = bv'(ps, s)
-	    | bv (AST.VarPat x, s) = VSet.add(s, x)
-	    | bv (AST.ConstPat _, s) = s
-	  and bv' ([], s) = s
-	    | bv' (p::ps, s) = bv'(ps, bv(p, s))
-	  in
-	    VSet.listItems (bv(pat, VSet.empty))
 	  end
 
   (* given an environment that renames variables and a mapping from variables
@@ -306,6 +288,7 @@ structure MatchCompile : sig
 		  AST.IfExp(rewrite' e1, rewrite' e2, rewrite' e3, ty)
 	      | AST.CaseExp(e, mc, ty) =>
 		  AST.CaseExp(rewrite' e, rewriteMatch(loc, env, TypeOf.exp e, mc, ty), ty)
+	      | AST.FunExp(x, e, ty) => AST.FunExp(x, rewrite' e, ty)
 	      | AST.ApplyExp(e1, e2, ty) => AST.ApplyExp(rewrite' e1, rewrite' e2, ty)
 	      | AST.TupleExp es => AST.TupleExp(List.map rewrite' es)
 	      | AST.RangeExp(e1, e2, e3, ty) =>
@@ -336,11 +319,11 @@ structure MatchCompile : sig
     and rewriteBind (loc, env, las as AST.TuplePat[], rhs) = ([AST.ValBind(lhs, rhs)], env)
       | rewriteBind (loc, env, lhs, rhs) = let
 	(* get the variables bound by the lhs patterns *)
-	  val bvs = bvars lhs
+	  val bvs = Var.Map.listKeys (MatchUtil.varsOfPat lhs)
 (* do we really need a variable for the lhs? *)
 	(* synthesize a fresh variable for the lhs *)
 	  val arg = newVar(Types.tyScheme([], TypeOf.pat lhs))
-	  val resTy = TU.tupleTy(List.map Var.typeOf bvs)
+	  val resTy = TU.tupleTy(List.map Var.monoTypeOf bvs)
 	  val dfa = let
 		fun mkVar x = AST.VarExp(x, [])
 		in
@@ -350,7 +333,7 @@ structure MatchCompile : sig
 		end
 	  val {shared, match} = dfaToAST (loc, env, dfa, raiseBindFail, resTy)
 	(* the new lhs pattern consists of copies of the bound variables *)
-	  val (bvs', env') = MatchCompEnv.renameList (env, bvs)
+	  val (bvs', env') = Env.renameList (env, bvs)
 	(* construct the binding *)
 	  val binds = (case shared
 		 of NONE => [
@@ -396,7 +379,7 @@ structure MatchCompile : sig
 	      else ();
 	    case shared
 	     of NONE => [(AST.VarPat arg, match)]
-	      | SOME fb => [(arg, AST.LetExp(fb, match))]
+	      | SOME fb => [(AST.VarPat arg, AST.LetExp(fb, match))]
 	    (* end case *)
  	  end
 
@@ -406,7 +389,7 @@ structure MatchCompile : sig
    *)
     and dfaToAST (loc, env, dfa, raiseExn, resTy) = let
 (* +DEBUG *)
-	  val _ = if !MatchOptions.debugFlg
+	  val _ = if Controls.get MatchControls.debug
 		then DFA.dump (TextIO.stdOut, dfa)
 		else ()
 (* -DEBUG *)
@@ -415,12 +398,10 @@ structure MatchCompile : sig
 (* FIXME: what about type arguments?? *)
 	  fun mkVar x = AST.VarExp(x, [])
 	(* convert a decision tree to TypedAST *)
-	  fun treeToAST (CALL(f, args)) = AST.E_APP{
-		  f = mkVar f, args = List.map mkVar args,
-		  resTy = resTy, loc = loc
-		}
+	  fun treeToAST (CALL(f, args)) =
+		AST.ApplyExp(mkVar f, AST.mkTupleExp(List.map mkVar args), resTy)
 	    | treeToAST (CASE(x, cases)) = let
-		val AST.TyScheme([], argTy) = Var.typeOf x
+		val argTy = Var.monoTypeOf x
 		fun cvtCase (pat, t) = let
 		      fun cvtArg (ARG_ANON ty) = AST.WildPat ty
 			| cvtArg (ARG_VAR x) = AST.VarPat x
@@ -442,7 +423,7 @@ structure MatchCompile : sig
 	    | treeToAST (IF(env, cond, t, f)) =
 		AST.IfExp(rewrite(loc, env, cond), treeToAST t, treeToAST f, resTy)
 	    | treeToAST (ACTION(env, e)) = rewrite(loc, env, e)
-	  fun treeToFB (f, params, body) = (f, [], params, treeToAST body)
+	  fun treeToFB (f, x, body) = AST.FB(f, x, treeToAST body)
 	  val shared = (case fns
 		 of [] => NONE
 		  | _ => SOME(AST.FunBind(List.map treeToFB fns))
