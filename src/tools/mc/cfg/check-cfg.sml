@@ -473,7 +473,7 @@ structure CheckCFG : sig
 
     val check =
        BasicControl.mkTracePass
-       {passName = "CFGCheck",
+       {passName = "cfg-check",
         pass = check,
         verbose = 2}
   end
