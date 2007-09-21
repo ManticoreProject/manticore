@@ -10,18 +10,10 @@ structure FlatParTup : sig
     val flattenModule : AST.module -> AST.module
     val test : int -> unit
 
-  end = 
-
-  struct
+  end = struct
 
     structure A = AST
     structure T = Types
-
-    (* fail : string -> 'a *)
-    fun fail msg = raise Fail msg
-
-    (* todo : string -> 'a *)
-    fun todo thing = fail ("todo: " ^ thing)
 
     (* id : 'a -> 'a *)
     val id = (fn x => x)
@@ -74,7 +66,7 @@ structure FlatParTup : sig
     (* Pre: The argument is either a PTupleExp or a TupleExp. *)
     fun flattenTup (A.PTupleExp es) = A.PTupleExp (flattenExps es)
       | flattenTup (A.TupleExp es)  = A.TupleExp  (flattenExps es)
-      | flattenTup _ = fail "flattenTup: expected a tuple"
+      | flattenTup _ = raise Fail "flattenTup: expected a tuple"
 
     (* getNester : A.exp -> (A.var * A.lambda) option *)	
     fun getNester (A.LetExp (A.FunBind [nlam],
@@ -160,7 +152,7 @@ structure FlatParTup : sig
 	    (* i : A.exp * A.exp -> A.exp *)
 	    fun i (e2, e3) =
 		case valsOf getNester [e2, e3]
-		 of [] => fail "ifExp: no nesters found"
+		 of [] => raise Fail "ifExp: no nesters found"
 		  | nesters as (nVar, nLam) :: _ =>
 		      if allSame (map #2 nesters) then			   
 			  let val e2' = f e2
@@ -199,7 +191,7 @@ structure FlatParTup : sig
 	    (* c : A.pat list * A.exp list -> A.exp *)
 	    fun c (ps, es) = 
 		(case valsOf getNester es
-		   of [] => fail "caseExp: no nesters found"
+		   of [] => raise Fail "caseExp: no nesters found"
 		    | nesters as (nVar, nLam) :: _ =>
  		        if allSame (map #2 nesters) then
 			    let val es' = map f es
