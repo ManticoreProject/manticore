@@ -20,6 +20,7 @@ is
   ../common/sources.cm
 
   match-compile.sml
+  match-comp-env.sml
   match-controls.sml
   match-dfa-sig.sml
   match-dfa.sml
