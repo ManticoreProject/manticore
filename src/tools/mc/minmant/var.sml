@@ -23,21 +23,23 @@ structure Var =
 
     open V
 
-    (* newPoly : string * Types.ty_scheme -> V.var *) 
     fun newPoly (name, tyScheme) = V.new (name, ref tyScheme)
 
-    (* new : string * Types.ty -> V.var *)
     fun new (name, ty) = newPoly (name, AST.TyScheme([], ty))
 
-    (* newWithKind : string * kind * Types.ty -> var *)
     fun newWithKind (name, k, t) = 
 	  V.newWithKind (name, k, ref (AST.TyScheme ([], t)))
 
-    (* typeOf : V.var -> Types.ty *)
+  (* return the type scheme of a variable *)
     fun typeOf x = !(V.typeOf x)
 
-    (* closeTypeOf : int * VarRep.var_rep -> unit *)
-    (* close the type of the variable w.r.t. to the given lambda-nesting depth. *)
+  (* return the type of a monomorphic variable *)
+    fun monoTypeOf x = (case typeOf x
+	   of AST.TyScheme([], ty) => ty
+	    | _ => raise Fail("monoTypeOf polymorphic variable " ^ toString x)
+	  (* end case *))
+
+  (* close the type of the variable w.r.t. to the given lambda-nesting depth. *)
     fun closeTypeOf (depth, v) = (case V.typeOf v
            of ty as ref(AST.TyScheme(_, ty')) => ty := TypeUtil.closeTy(depth, ty')
         (* end case *))
