@@ -12,20 +12,27 @@ signature TRANSFER = sig
     structure VarDef : VAR_DEF where MTy = MTy
     structure SpillLoc : SPILL_LOC
 
-    val stdCallRegs : CellsBasis.cell list
+    val kfncRegs : CellsBasis.cell list
+    val stdFuncRegs : CellsBasis.cell list
     val stdContRegs : CellsBasis.cell list
 
-  (* known functions *)
+  (* blocks *)
     val genGoto : VarDef.var_def_tbl -> CFG.jump -> MTy.T.stm list
 
+  (* known functions *)
+    val genApply : VarDef.var_def_tbl -> {
+	    f : CFG.var, args : CFG.var list
+	  } -> {stms : MTy.T.stm list, liveOut : MTy.T.mlrisc list}
+
   (* standard functions *)
-    val genStdCall : VarDef.var_def_tbl -> {
+    val genStdApply : VarDef.var_def_tbl -> {
 	    f : CFG.var, clos : CFG.var, args : CFG.var list, ret : CFG.var, exh : CFG.var
 	  } -> {stms : MTy.T.stm list, liveOut : MTy.T.mlrisc list}
 
     val genStdThrow : VarDef.var_def_tbl -> {
 	    k : CFG.var, clos : CFG.var, args : CFG.var list
 	  } -> {stms : MTy.T.stm list, liveOut : MTy.T.mlrisc list}
+
 
   (* perform a heap check, possibly triggering the GC *)
     val genHeapCheck : 

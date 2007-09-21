@@ -19,19 +19,19 @@ define @scheduler-startup (act : sigact / exh : exh) : () =
     cont k (_ : unit) = @thread-exit ( / exh)
     @run (host_vproc, act, enum(0), k / exh)
   let self : vproc = host_vproc
-  fun spawnOnAll (vps : list / exh : exh) : () =
+  fun spawnOnAll (vps : list) : () =
     case vps of
        NIL => return ()
      | CONS (vp:vproc, rest:list) =>
          if Equal (vp, self)
-	   then apply spawnOnAll (rest / exh)
+	   then apply spawnOnAll (rest)
            else let _ : tid = @spawn-on (init, vp / exh)
-                apply spawnOnAll (rest / exh)
+                apply spawnOnAll (rest)
     end
   cont startup (_ : unit) =
     (* install the scheduler on remote vprocs *)
     let vps : list = ccall ListVProcs(self)
-    do apply spawnOnAll (vps / exh)
+    do apply spawnOnAll (vps)
     return ()
   @run (self, act, enum(0), startup / exh)
 ;

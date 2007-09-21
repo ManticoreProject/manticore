@@ -43,7 +43,7 @@ structure FlatClosure : sig
             exh = cvtStdContTy exhTy
           }
       | cvtStdFunTyAux (CPSTy.T_Fun(argTys, [retTy])) =
-	  CFGTy.T_Code(CFGTy.T_Any :: List.map cvtTy argTys @ [cvtStdContTy retTy])
+	  CFGTy.T_KnownFunc(CFGTy.T_Any :: List.map cvtTy argTys @ [cvtStdContTy retTy])
       | cvtStdFunTyAux (CPSTy.T_Any) = CFGTy.T_StdFun{
             clos = CFGTy.T_Any,
             args = [CFGTy.T_Any],
@@ -317,7 +317,7 @@ print(concat["lookupVar: ", CPS.Var.toString x, " @ ", locToString(valOf(VMap.fi
                                   else (args, params)
                             val lab = CFG.Label.new(
                                   lab,
-                                  CFGTy.T_Code(List.map CFG.Var.typeOf params))
+                                  CFGTy.T_Block(List.map CFG.Var.typeOf params))
                             in
                               cvtExp (branchEnv, lab, CFG.Block params, e);
                               (lab, args)
@@ -443,7 +443,7 @@ print(concat["lookupVar: ", CPS.Var.toString x, " @ ", locToString(valOf(VMap.fi
                                                  | _ => let
                                                       val (binds, f', ep) = bindEP ()
                                                       val cp = CFG.Var.new(CFG.Var.nameOf f',
-                                                              CFG.T_Code(
+                                                              CFG.T_KnownFunc(
 								CFGTy.T_Any :: List.map CFG.Var.typeOf args
 								  @ [CFG.Var.typeOf ret]))
                                                       val b = CFG.mkSelect(cp, 1, f')

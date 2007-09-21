@@ -120,11 +120,12 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 
 	  (* Generate code for a control transfer, e.g., a function or
 	   * a continuation call or a heap-limit check. *)
-	  fun genTransfer (M.StdApply apply) =
-	      genStdTransfer (BE.Transfer.genStdCall varDefTbl apply)
-	    | genTransfer (M.StdThrow throw) =
-	      genStdTransfer (BE.Transfer.genStdThrow varDefTbl throw)
-	    | genTransfer (M.Apply {f, args}) = fail "genTransfer (M.Apply {f, args})"
+	  fun genTransfer (M.StdApply args) =
+	      genStdTransfer (BE.Transfer.genStdApply varDefTbl args)
+	    | genTransfer (M.StdThrow args) =
+	      genStdTransfer (BE.Transfer.genStdThrow varDefTbl args)
+	    | genTransfer (M.Apply args) = 
+	      genStdTransfer (BE.Transfer.genApply varDefTbl args)
 	    | genTransfer (M.Goto jmp) = emitStms (genGoto jmp)
 	    | genTransfer (M.If (c, jT as (lT, argsT), jF)) = 
 	      let val labT = newLabel "L_true"

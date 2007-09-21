@@ -27,7 +27,8 @@ structure CFGTy =
      *)
       | T_StdFun of {clos : ty, args : ty list, ret : ty, exh : ty}
       | T_StdCont of {clos : ty, args : ty list}
-      | T_Code of ty list	(* includes both known functions and blocks *)
+      | T_KnownFunc of ty list
+      | T_Block of ty list
 
     val unitTy = T_Enum(0w0)
     val boolTy = T_Enum(0w1)	(* false = 0, true = 1 *)
@@ -52,7 +53,8 @@ structure CFGTy =
             | (T_StdCont{clos = clos1, args = args1}, 
                T_StdCont{clos = clos2, args = args2}) =>
                   equal (clos1, clos2) andalso equalList (args1, args2)
-            | (T_Code ty1s, T_Code ty2s) => equalList (ty1s, ty2s)
+            | (T_KnownFunc ty1s, T_KnownFunc ty2s) => equalList (ty1s, ty2s)
+            | (T_Block ty1s, T_Block ty2s) => equalList (ty1s, ty2s)
             | _ => false
 	  (* end case *))
 
@@ -80,13 +82,16 @@ structure CFGTy =
 	    | T_VProc => true
             | T_StdFun _ => true
             | T_StdCont _ => true
-            | T_Code _ => true
+            | T_KnownFunc _ => true
+            | T_Block _ => true
 	  (* end case *))
 
   (* is fromTy a more specific instance of toTy? *)
     fun match (fromTy, toTy) = (case (fromTy, toTy)
-           of (T_Any, T_Code _) => false
-	    | (T_Code _, T_Any) => false
+           of (T_Any, T_KnownFunc _) => false
+            | (T_Any, T_Block _) => false
+	    | (T_KnownFunc _, T_Any) => false
+	    | (T_Block _, T_Any) => false
 	    | (T_Any, T_Addr _) => false
 	    | (T_Addr _, T_Any) => false
             | (fromTy, T_Any) => hasUniformRep fromTy
@@ -118,14 +123,17 @@ structure CFGTy =
               (* Note contravariance for arguments! *)
                   (match (clos2, clos1) orelse isValidCast (clos2, clos1)) andalso
                   ListPair.allEq match (args2, args1)
-            | (T_Code ty1s, T_Code ty2s) => ListPair.allEq match (ty2s, ty1s)
+            | (T_KnownFunc ty1s, T_KnownFunc ty2s) => ListPair.allEq match (ty2s, ty1s)
+            | (T_Block ty1s, T_Block ty2s) => ListPair.allEq match (ty2s, ty1s)
             | _ => equal (fromTy, toTy)
 	  (* end case *))
 
   (* is it legal to cast from fromTo to toTy? *)
     and isValidCast (fromTy, toTy) = (case (fromTy, toTy)
-           of (T_Any, T_Code _) => false
-	    | (T_Code _, T_Any) => false
+           of (T_Any, T_KnownFunc _) => false
+            | (T_Any, T_Block _) => false
+	    | (T_KnownFunc _, T_Any) => false
+	    | (T_Block _, T_Any) => false
 	    | (T_Any, T_Addr _) => false
 	    | (T_Addr _, T_Any) => false
 	    | (T_Any, toTy) => hasUniformRep toTy
@@ -164,7 +172,8 @@ structure CFGTy =
 	      | T_StdCont{clos, args} =>  concat[
 		    "cont(", toString clos, ",", args2s args, ")"
 		  ]
-	      | T_Code tys => concat("code(" :: tys2l(tys, [")"]))
+	      | T_KnownFunc tys => concat("kfnc(" :: tys2l(tys, [")"]))
+	      | T_Block tys => concat("blck(" :: tys2l(tys, [")"]))
 	    (* end case *)
 	  end
 

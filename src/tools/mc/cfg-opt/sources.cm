@@ -28,6 +28,6 @@ is
   cfg-opt-controls.sml
   cfg-opt-fn.sml
   feedback-fn.sml
+  implement-calls-fn.sml
   specialize-calls.sml
-  implement-calls.sml
 

@@ -20,6 +20,7 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
 	  }
 
     structure AddAllocChecks = AddAllocChecksFn (Target)
+    structure ImplementCalls = ImplementCallsFn (Target)
 
   (* wrap transformation passes with keep controls *)
     val specialCalls = transform {passName = "specialize-calls", pass = SpecializeCalls.transform}

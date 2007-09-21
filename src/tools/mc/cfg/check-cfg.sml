@@ -124,7 +124,7 @@ structure CheckCFG : sig
 		      bindVars(VSet.empty, clos::args))
 		  | chkEntry (CFG.KnownFunc args) = (
                       case L.typeOf lab of
-                          Ty.T_Code argTys => 
+                          Ty.T_KnownFunc argTys => 
                              ((ListPair.appEq (fn (arg, argTy) =>
                                                if Ty.match (argTy, V.typeOf arg)
                                                   orelse Ty.match (argTy, Ty.T_Any)
@@ -144,7 +144,7 @@ structure CheckCFG : sig
 		      bindVars(VSet.empty, args))
 		  | chkEntry (CFG.Block args) = (
                       (case L.typeOf lab of
-                          Ty.T_Code argTys => 
+                          Ty.T_Block argTys => 
                              ((ListPair.appEq (fn (arg, argTy) =>
                                                if Ty.match (argTy, V.typeOf arg)
                                                   then ()
@@ -377,7 +377,7 @@ structure CheckCFG : sig
 			| CFG.Apply{f, args} => (
 			    chkVars (env, f::args);
                             (case V.typeOf f of
-                                Ty.T_Code argTys => 
+                                Ty.T_KnownFunc argTys => 
                                    ((ListPair.appEq (fn (arg, argTy) =>
                                                      if Ty.match (V.typeOf arg, argTy)
                                                         then ()
@@ -426,7 +426,7 @@ structure CheckCFG : sig
                             case L.typeOf lab
 			     of Ty.T_StdFun _ => err["noGC target is standard fun"]
                               | Ty.T_StdCont _ => err["noGC target is standard cont"]
-                              | Ty.T_Code argTys => 
+                              | Ty.T_Block argTys => 
                                   ((ListPair.appEq (fn (arg, argTy) =>
                                                     if Ty.equal (V.typeOf arg, argTy)
                                                        then ()

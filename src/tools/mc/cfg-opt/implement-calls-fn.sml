@@ -9,13 +9,15 @@
  *     - zero arguments are replaced by a unit argument
  *     - a single raw argument is replaced by a wrapped argument
  *     - multiple arguments are replaced by a tupled argument 
+ *  + KnownFunc -- require a single, uniform argument.
+ *  + Block -- arbitrary (handled by codegen)
  *
  * TODO:
- *  + Code -- Fix a calling convention
+ *  + KnownFunc -- Relax calling convention
  *
  *)
 
-structure ImplementCalls : sig
+functor ImplementCallsFn (Target : TARGET_SPEC) : sig
 
       val transform : CFG.module -> CFG.module
 
@@ -50,7 +52,8 @@ structure ImplementCalls : sig
                                   ret = transTy ret, exh = transTy exh}
              | CFGTy.T_StdCont {clos, args} =>
                   CFGTy.T_StdCont {clos = transTy clos, args = [transTyStdArgs args]}
-             | CFGTy.T_Code tys => CFGTy.T_Code (List.map transTy tys)
+             | CFGTy.T_KnownFunc args => CFGTy.T_KnownFunc [transTyStdArgs args]
+             | CFGTy.T_Block tys => CFGTy.T_Block (List.map transTy tys)
 
          local
             val {getFn, peekFn, setFn, clrFn, ...} = 
@@ -132,6 +135,12 @@ structure ImplementCalls : sig
                       (CFG.StdCont {clos = clos, args = [arg]}, 
                        binds)
                    end
+              | CFG.KnownFunc args =>
+                   let
+                      val (arg, binds) = transFormalStdArgs args
+                   in
+                      (CFG.KnownFunc [arg], binds)
+                   end
               | _ => (c, []))
          fun transExp (exp : CFG.exp) : CFG.exp =
             (List.app updVarType (CFG.lhsOfExp exp);
@@ -170,13 +179,20 @@ structure ImplementCalls : sig
                   let
                      val (binds, arg) = transActualStdArgs args
                   in
-                     (binds, CFG.StdApply {f = f, clos = clos, args = [arg], ret = ret, exh = exh})
+                     (binds, CFG.StdApply {f = f, clos = clos, args = [arg], 
+                                           ret = ret, exh = exh})
                   end
              | CFG.StdThrow {k, clos, args} => 
                   let
                      val (binds, arg) = transActualStdArgs args
                   in
                      (binds, CFG.StdThrow {k = k, clos = clos, args = [arg]})
+                  end
+             | CFG.Apply {f, args} =>
+                  let
+                     val (binds, arg) = transActualStdArgs args
+                  in
+                     (binds, CFG.Apply {f = f, args = [arg]})
                   end
              | _ => ([], t)
          fun transFunc (CFG.FUNC {lab, entry, body, exit} : CFG.func) : CFG.func =
