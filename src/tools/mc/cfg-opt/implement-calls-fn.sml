@@ -36,6 +36,12 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                       CFGTy.T_Raw rt => CFGTy.T_Wrap rt
                     | _ => arg)
              | args => CFGTy.T_Tuple (false, List.map transTy args)
+         and transTyKFncArgs (args: CFGTy.ty list) : CFGTy.ty list =
+            let
+
+            in
+               [transTyStdArgs args]
+            end
          and transTy (ty : CFGTy.ty) : CFGTy.ty =
             case ty of
                CFGTy.T_Any => CFGTy.T_Any
@@ -52,7 +58,7 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                                   ret = transTy ret, exh = transTy exh}
              | CFGTy.T_StdCont {clos, args} =>
                   CFGTy.T_StdCont {clos = transTy clos, args = [transTyStdArgs args]}
-             | CFGTy.T_KnownFunc args => CFGTy.T_KnownFunc [transTyStdArgs args]
+             | CFGTy.T_KnownFunc args => CFGTy.T_KnownFunc (transTyKFncArgs args)
              | CFGTy.T_Block tys => CFGTy.T_Block (List.map transTy tys)
 
          local
@@ -118,6 +124,12 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                   in
                      (newArg, List.rev sels)
                   end
+         fun transFormalKFncArgs (args : CFG.var list) : (CFG.var list * CFG.exp list) =
+            let
+               val (arg, binds) = transFormalStdArgs args
+            in
+               ([arg], binds)
+            end
          fun transConvention (c : CFG.convention) : (CFG.convention * CFG.exp list) =
             (List.app updVarType (CFG.paramsOfConv c);
              case c of
@@ -137,9 +149,9 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                    end
               | CFG.KnownFunc args =>
                    let
-                      val (arg, binds) = transFormalStdArgs args
+                      val (args, binds) = transFormalKFncArgs args
                    in
-                      (CFG.KnownFunc [arg], binds)
+                      (CFG.KnownFunc args, binds)
                    end
               | _ => (c, []))
          fun transExp (exp : CFG.exp) : CFG.exp =
@@ -173,6 +185,12 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                   in
                      ([CFG.mkAlloc (newArg, args)], newArg)
                   end
+         fun transActualKFncArgs (args : CFG.var list) : (CFG.exp list * CFG.var list) =
+            let
+               val (binds, arg) = transActualStdArgs args
+            in
+               (binds, [arg])
+            end
          fun transTransfer (t : CFG.transfer) : (CFG.exp list * CFG.transfer) =
             case t of
                CFG.StdApply {f, clos, args, ret, exh} => 
@@ -190,9 +208,9 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                   end
              | CFG.Apply {f, args} =>
                   let
-                     val (binds, arg) = transActualStdArgs args
+                     val (binds, args) = transActualKFncArgs args
                   in
-                     (binds, CFG.Apply {f = f, args = [arg]})
+                     (binds, CFG.Apply {f = f, args = args})
                   end
              | _ => ([], t)
          fun transFunc (CFG.FUNC {lab, entry, body, exit} : CFG.func) : CFG.func =

@@ -11,7 +11,7 @@ signature MANTICORE_REGS = sig
     type gpr = CellsBasis.cell
     type fpr = CellsBasis.cell
 
-    val argReg : gpr		(* function return-value register *)	   
+    val argReg : gpr		(* function argument register *)	   
     val closReg : gpr		(* closure-pointer register *)
     val retReg : gpr		(* return-continuation register *)
     val exhReg : gpr		(* exception register *)
