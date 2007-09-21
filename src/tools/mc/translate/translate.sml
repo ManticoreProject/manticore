@@ -274,7 +274,7 @@ structure Translate : sig
 		 of BTy.T_Tuple(false, [ty as BTy.T_Raw _]) => ty
 		  | ty => ty
 		(* end case *))
-	  fun trRules ([(pat, exp)], cases) = (case pat (* last rule *)
+	  fun trRules ([AST.PatMatch(pat, exp)], cases) = (case pat (* last rule *)
 		 of AST.ConPat(dc, tyArgs, p) => raise Fail "ConPat"
 		  | AST.TuplePat[] =>
 		      ((B.P_Const B.unitConst, trExpToExp (env, exp))::cases, NONE)
@@ -293,7 +293,7 @@ structure Translate : sig
 		  | AST.ConstPat(AST.LConst(lit, ty)) =>
 		      ((B.P_Const(lit, trLitTy ty), trExpToExp (env, exp))::cases, NONE)
 		(* end case *))
-	    | trRules ((pat, exp)::rules, cases) = let
+	    | trRules (AST.PatMatch(pat, exp)::rules, cases) = let
 		val rule' = (case pat
 		       of AST.ConPat(dc, tyArgs, p) => raise Fail "ConPat"
 			| AST.ConstPat(AST.DConst(dc, tyArgs)) => raise Fail "DConst"
@@ -304,6 +304,7 @@ structure Translate : sig
 		in
 		  trRules (rules, rule'::cases)
 		end
+	    | trRules (AST.CondMatch _ :: _, _) = raise Fail "unexpected CondMatch"
 	  fun mkCase arg (cases, dflt) = B.mkCase(arg, List.rev cases, dflt)
 	  in
 	    case BV.typeOf arg

@@ -44,7 +44,7 @@ structure Typechecker : sig
 	  val AST.TyScheme(_, AST.FunTy(argTy, resTy)) = Var.typeOf f
 	  val arg = Var.new ("arg", argTy)
 	  in
-	    AST.FB(f, arg, AST.CaseExp(AST.VarExp(arg, []), [(pat, e)], resTy))
+	    AST.FB(f, arg, AST.CaseExp(AST.VarExp(arg, []), [AST.PatMatch(pat, e)], resTy))
 	  end
 
   (* a type expression for when there is an error *)
@@ -199,28 +199,28 @@ structure Typechecker : sig
 		  chkDcls (valDcls, ve)
 	      end
 	    | PT.IfExp(e1, e2, e3) => let
-		  val (e1', ty1) = chkExp (loc, depth, te, ve, e1)
-		  val (e2', ty2) = chkExp (loc, depth, te, ve, e2)
-		  val (e3', ty3) = chkExp (loc, depth, te, ve, e3)
-	      in
+		val (e1', ty1) = chkExp (loc, depth, te, ve, e1)
+		val (e2', ty2) = chkExp (loc, depth, te, ve, e2)
+		val (e3', ty3) = chkExp (loc, depth, te, ve, e3)
+		in
 		  if not(U.unify(ty1, Basis.boolTy))
-		  then error(loc, ["type of conditional not bool"])
-		  else ();
+		    then error(loc, ["type of conditional not bool"])
+		    else ();
 		  if not(U.unify(ty2, ty3))
-		  then (
+		    then (
 		      error(loc, ["types of then and else clauses must match"]);
 		      bogusExp)
-		  else (AST.IfExp(e1', e2', e3', ty2), ty2)
-	      end
+		    else (AST.IfExp(e1', e2', e3', ty2), ty2)
+		end
 	    | PT.CaseExp(e, cases) => let
-		  val (e', argTy) = chkExp (loc, depth, te, ve, e)
-		  val resTy = AST.MetaTy(MetaVar.new depth)
-		  val matches = List.map
-				    (fn m => chkMatch(loc, depth, te, ve, argTy, resTy, m))
-				    cases
-	      in
+		val (e', argTy) = chkExp (loc, depth, te, ve, e)
+		val resTy = AST.MetaTy(MetaVar.new depth)
+		val matches = List.map
+		      (fn m => chkMatch(loc, depth, te, ve, argTy, resTy, m))
+			cases
+		in
 		  (AST.CaseExp(e', matches, resTy), resTy)
-	      end
+		end
 	    | PT.PChoiceExp es => let
 		fun chk (e, (es, ty)) = let
 		      val (e', ty') = chkExp(loc, depth, te, ve, e)
@@ -448,7 +448,7 @@ structure Typechecker : sig
 		  if not(U.unify(resTy, resTy'))
 		    then error(loc, ["type mismatch in case"])
 		    else ();
-		  (pat', exp')
+		  AST.PatMatch(pat', exp')
 		end
 	  (* end case *))
 

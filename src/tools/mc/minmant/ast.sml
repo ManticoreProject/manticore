@@ -17,7 +17,7 @@ structure AST =
     datatype exp
       = LetExp of binding * exp
       | IfExp of (exp * exp * exp * ty)			(* ty is result type *)
-      | CaseExp of (exp * (pat * exp) list * ty)	(* ty is result type *)
+      | CaseExp of (exp * match list * ty)		(* ty is result type *)
       | FunExp of (var * exp * ty)			(* ty is result type *)
       | ApplyExp of exp * exp * ty			(* ty is result type *)
       | TupleExp of exp list
@@ -38,6 +38,10 @@ structure AST =
       | FunBind of lambda list
 
     and lambda = FB of (var * var * exp)
+
+    and match
+      = PatMatch of pat * exp
+      | CondMatch of pat * exp * exp		(* conditional match; not used yet *)
 
     and pat
       = ConPat of dcon * ty list * pat	(* data-constructor application *)

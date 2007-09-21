@@ -75,7 +75,7 @@ structure TestUtils =
     fun caseExp (e, pes as (mp,me)::_) =
 	let val t = TypeOf.exp me
 	in
-	    A.CaseExp (e, pes, t)
+	    A.CaseExp (e, List.map A.PatMatch pes, t)
 	end
       | caseExp (e, []) = fail "caseExp: no branches"
 

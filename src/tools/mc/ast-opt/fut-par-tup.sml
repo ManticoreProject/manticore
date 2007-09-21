@@ -76,9 +76,12 @@ structure FutParTup : sig
     (* n.b. Type-preserving. *)
     and exp (A.LetExp (b, e)) = A.LetExp (binding b, exp e)
       | exp (A.IfExp (e1, e2, e3, t)) = A.IfExp (exp e1, exp e2, exp e3, t)
-      | exp (A.CaseExp (e, pes, t)) = A.CaseExp (exp e,
-						 map (id ** exp) pes,
-						 t)
+      | exp (A.CaseExp (e, pes, t)) = let
+	  fun match (A.PatMatch(p, e)) = A.PatMatch(p, exp e)
+	    | match (A.CondMatch(p, cond, e)) = A.CondMatch(p, exp cond, exp e)
+	  in
+	    A.CaseExp (exp e, List.map match pes, t)
+	  end
       | exp (A.FunExp (x, e, t)) = A.FunExp (x, exp e, t)
       | exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, t)
       | exp (A.TupleExp es) = A.TupleExp (map exp es)

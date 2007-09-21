@@ -100,20 +100,20 @@ structure PrintAST : sig
 	   exp ef;
 	   closeBox ();
 	   closeBox ())
-      | exp (A.CaseExp (e, pes, t)) =
-	  (openVBox (rel 0);
-	   pr "(case (";
-	   exp e;
-	   pr ")";
-	   openVBox (abs 2);
-	   ln ();
-	   ignore (case pes
-		    of m::ms => (pe " of" m;
-				 app (pe "  |") ms)
-		     | nil => raise Fail "case without any branches");
-	   pr "(* end case *))";
-	   closeBox ();
-	   closeBox ())
+      | exp (A.CaseExp (e, pes, t)) = (
+	  openVBox (rel 0);
+	     pr "(case (";
+	     exp e;
+	     pr ")";
+	     openVBox (abs 2);
+	       ln ();
+	       case pes
+		of m::ms => (pe " of" m;  app (pe "  |") ms)
+		 | nil => raise Fail "case without any branches"
+	       (* end case *);
+	       pr "(* end case *))";
+	     closeBox ();
+	  closeBox ())
       | exp (A.FunExp(arg, body, _)) = (
 	  openHBox ();
 	    pr "(fn"; sp(); var arg; sp(); pr "=>"; sp(); exp body; pr ")";
@@ -188,16 +188,27 @@ structure PrintAST : sig
 	   closeBox ())
       | exp (A.OverloadExp ovr) = overload_var (!ovr)
 
-    (* pe : string -> A.pat * A.exp -> unit *)
-    and pe s (p, e) =
-	  (openVBox (rel 0);
-	   pr s;
-	   pr " ";
-	   pat p;
-	   pr " => ";
-	   exp e;
-	   ln ();
-	   closeBox ())
+    (* pe : string -> A.match -> unit *)
+    and pe s (A.PatMatch(p, e)) = (
+	  openVBox (rel 0);
+	    pr s;
+	    pr " ";
+	    pat p;
+	    pr " => ";
+	    exp e;
+	    ln ();
+	  closeBox ())
+      | pe s (A.CondMatch(p, cond, e)) = (
+	  openHBox ();
+	    pr s;
+	    sp();
+	    pat p;
+	    sp(); pr "where"; sp();
+	    exp cond;
+	    sp(); pr "=>"; sp();
+	    exp e;
+	    ln ();
+	  closeBox ())
 
     (* pbind : A.pat * A.exp -> unit *)
     and pbind (p, e) =
