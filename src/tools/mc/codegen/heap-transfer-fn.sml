@@ -51,8 +51,7 @@ functor HeapTransferFn (
   val iTy = Types.szOf (CFGTy.T_Raw CFGTy.T_Int)
   val memory = ManticoreRegion.memory
 
-  val kfncRegs as [argReg] =
-      [Regs.argReg]
+  val kfncRegs = Regs.argRegs
   val stdFuncRegs as [closReg, argReg, retReg, exhReg] = 
       [Regs.closReg, Regs.argReg, Regs.retReg, Regs.exhReg]
   val stdContRegs as [closReg, argReg] = 
@@ -123,10 +122,10 @@ functor HeapTransferFn (
 	   liveOut=map toGPR stdRegs}
       end (* genStdTransfer *)
 
-  fun genApply varDefTbl {f, args as [arg]} = 
+  fun genApply varDefTbl {f, args} = 
       let val defOf = VarDef.defOf varDefTbl
-	  val args = [arg]
 	  val argRegs = map newReg args
+          val kfncRegs = List.take (kfncRegs, length argRegs)
 	  val tgtReg = newReg ()
 	  val {stms, liveOut} =
 	      genStdTransfer varDefTbl (regExp tgtReg, args, argRegs, kfncRegs)
@@ -134,7 +133,6 @@ functor HeapTransferFn (
 (* TODO: if f is a label, put it in directly, but otherwise use a temp *)
 	  {stms=move (tgtReg, defOf f) :: stms, liveOut=liveOut}
       end 
-    | genApply _ _ = raise Fail "genApply: ill-formed Apply"
     (* genApply *)
 
   fun genStdApply varDefTbl {f, clos, args as [arg], ret, exh} = 
@@ -352,9 +350,8 @@ functor HeapTransferFn (
 		 | M.StdCont{clos, args as [arg]} => 
                    ([clos, arg], StdConv stdContRegs)
                  | M.StdCont _ => raise Fail "genFuncEntry: ill-formed StdCont"
-                 | M.KnownFunc [arg] =>
-                   ([arg], StdConv kfncRegs)
-                 | M.KnownFunc _ => raise Fail "genFuncEntry: ill-formed KnownFunc"
+                 | M.KnownFunc args =>
+                   (args, StdConv (List.take (kfncRegs, length args)))
 		 | M.Block vs => (vs, Special)
 	      (* esac *))
 	  fun bindToParams rs = 

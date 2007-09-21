@@ -20,14 +20,14 @@ define @dequeue-slow-path (vp : vproc / exh : exh) : rdyq_item =
        return (qitem)
    | QITEM (tid : tid, fiber : fiber, lst : rdyq_item) =>
        do vpstore (VP_RDYQ_TL, vp, QEMPTY)
-       fun loop (tid : tid, fiber : fiber, lst : rdyq_item, acc : rdyq_item) : rdyq_item =
+       fun revQueue (tid : tid, fiber : fiber, lst : rdyq_item, acc : rdyq_item) : rdyq_item =
          let acc : rdyq_item = QITEM (tid, fiber, acc)
          case lst of 
             QEMPTY => return (acc)
           | QITEM (tid : tid, fiber : fiber, lst : rdyq_item) =>
-              apply loop (tid, fiber, lst, acc)
+              apply revQueue (tid, fiber, lst, acc)
          end
-       let qitem : rdyq_item = apply loop (tid, fiber, lst, QEMPTY)
+       let qitem : rdyq_item = apply revQueue (tid, fiber, lst, QEMPTY)
        let item : [tid, fiber, rdyq_item] = ([tid, fiber, rdyq_item]) qitem
        let link : rdyq_item = #2 (item)
        do vpstore (VP_RDYQ_HD, vp, link)
