@@ -51,8 +51,8 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		      cbind (v, T.CMP (ty, c, defOf v1, defOf v2))
 		fun genFCmp (ty, c, (v1, v2)) = 
 		      cbind (v, T.FCMP (ty, c, fdefOf v1, fdefOf v2))
-		fun genArith1 (ty, oper, v) = 
-		      gprBind (ty, v, oper (ty, defOf v))
+		fun genArith1 (ty, oper, v') = 
+		      gprBind (ty, v, oper (ty, defOf v'))
 		fun genArith2 (ty, oper, (v1, v2)) = 
 		      gprBind (ty, v, oper (ty, defOf v1, defOf v2))
 		fun genFArith1 (fty, oper, v) = 
