@@ -9,6 +9,7 @@
 Library
 
   structure AST
+  structure ASTUtil
   structure Basis
   structure DataCon
   structure FrontEnd
@@ -35,6 +36,7 @@ is
   parser.cm
 
   ast.sml
+  ast-util.sml
   basis.sml
   data-con.sml
   env.sml

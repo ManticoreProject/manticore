@@ -73,13 +73,4 @@ structure AST =
 
     type module = exp
 
-    fun mkTupleExp [e] = e
-      | mkTupleExp es = TupleExp es
-
-    fun mkTuplePat [p] = p
-      | mkTuplePat ps = TuplePat ps
-
-    fun mkLetExp ([], e) = e
-      | mkLetExp (bind::r, e) = LetExp(bind, mkLetExp(r, e))
-
   end

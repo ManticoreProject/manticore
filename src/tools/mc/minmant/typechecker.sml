@@ -30,22 +30,10 @@ structure Typechecker : sig
     fun error (span, msg) = Error.errorAt (!errStrm, span, msg)
 
   (* "smart" tuple type constructor *)
-    fun mkTupleTy [ty] = ty
-      | mkTupleTy tys = AST.TupleTy tys
+    val mkTupleTy = TU.tupleTy
 
-  (* create a single-parameter lambda from one that has a list of parameters *)
-    fun mkLambda (f, AST.VarPat x, e) = AST.FB(f, x, e)
-      | mkLambda (f, AST.TuplePat[], e) = let
-	  val arg = Var.new ("arg", Basis.unitTy)
-	  in
-	    AST.FB(f, arg, e)
-	  end
-      | mkLambda (f, pat, e) = let
-	  val AST.TyScheme(_, AST.FunTy(argTy, resTy)) = Var.typeOf f
-	  val arg = Var.new ("arg", argTy)
-	  in
-	    AST.FB(f, arg, AST.CaseExp(AST.VarExp(arg, []), [AST.PatMatch(pat, e)], resTy))
-	  end
+  (* create a single-parameter lambda from one that has a pattern parameter *)
+    val mkLambda = ASTUtil.mkFunWithPat
 
   (* a type expression for when there is an error *)
     val bogusTy = AST.ErrorTy
