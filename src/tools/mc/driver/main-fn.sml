@@ -47,14 +47,6 @@ functor MainFn (
             valOf astMaybe
           end
 
-    fun astToBOM ast = let
-          val ast = ASTOpt.optimize ast
-          val bom = Translate.translate ast
-          val _ = CheckBOM.check ("translate", bom)
-          in
-            bom
-          end
-
   (* the compiler's backend *)
     fun bomToCFG bom = let
 	  val bom = BOMOpt.optimize bom	
@@ -103,8 +95,12 @@ functor MainFn (
 
     fun mantC (verbose, errStrm, srcFile, asmFile) = let
           val ast = srcToAST(errStrm, srcFile)
-          val bom = astToBOM ast
           val _ = checkForErrors errStrm
+          val ast = ASTOpt.optimize ast
+	  val ast = MatchCompile.compile (errStrm, ast)
+          val _ = checkForErrors errStrm
+          val bom = Translate.translate ast
+          val _ = CheckBOM.check ("translate", bom)
           val cfg = bomToCFG bom
 	  in
 	    codegen (verbose, asmFile, cfg)
