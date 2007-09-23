@@ -22,6 +22,16 @@ structure MatchCompile : sig
     structure Env = MatchCompEnv
     structure Err = MatchErrors
 
+  (* Debugging support *)
+    fun dumpAST (outFile, ast) = if Controls.get MatchControls.keepAST
+	  then let
+	    val outStrm = TextIO.openOut outFile
+	    in
+	      PrintAST.output (outStrm, ast);
+	      TextIO.closeOut outStrm
+	    end
+	  else ()
+
   (* hash tables on DFA states *)
     structure STbl = HashTableFn (
       struct
@@ -439,7 +449,16 @@ structure MatchCompile : sig
 	    { shared = shared, match = treeToAST tree }
 	  end
 
-    fun compile (errStrm, exp : AST.module) =
-	  rewrite ((0, 0), Env.new errStrm, exp)
+    fun compile (errStrm, exp : AST.module) = let
+	  val base = (case Controls.get BasicControl.keepPassBaseName
+		 of NONE => "match-comp"
+		  | SOME fname => fname ^ ".match-comp"
+		(* end case *))
+	  val _ = dumpAST (base ^ ".pre.ast", exp)
+	  val exp = rewrite ((0, 0), Env.new errStrm, exp)
+	  in
+	    dumpAST (base ^ ".post.ast", exp);
+	    exp
+	  end
 
   end
