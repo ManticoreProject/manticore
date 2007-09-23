@@ -232,7 +232,21 @@ structure MatchDFA : MATCH_DFA =
 		  PP.closeBox ppStrm
 		end
 	  fun ppVSet vset = ppVList (Var.Set.listItems vset)
-	  fun ppVMap vmap = ppVList (Var.Map.listKeys vmap)
+	  fun ppVMap vmap = let
+		fun pVar' (vp, path) = (str ","; sp 1; ppVar vp; str "@"; str(pathToString path))
+		in
+		  PP.openBox ppStrm (PP.Abs 2);
+		    case Var.Map.listItemsi vmap
+		     of [] => str "{}"
+		      | ((v, path)::r) => (
+			  sp 1;
+			  str "{";
+			  ppVar v; str "@"; str(pathToString path);
+			  List.app pVar' r;
+			  str "}")
+		    (* end case *);
+		  PP.closeBox ppStrm
+		end
 	  fun ppArc (pat, q) = (
 		PP.newline ppStrm;
 		PP.openHBox ppStrm;
