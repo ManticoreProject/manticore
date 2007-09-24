@@ -363,7 +363,7 @@ structure MatchCompile : sig
 		  raise Fail "unexpected PChoiceExp"
 	      | AST.SpawnExp e => AST.SpawnExp(rewrite' e)
 	      | AST.ConstExp _ => exp
-	      | AST.VarExp _ => exp
+	      | AST.VarExp(x, tys) => AST.VarExp(applyEnv(env, x), tys)
 	      | AST.SeqExp(e1, e2) => AST.SeqExp(rewrite' e1, rewrite' e2)
 	      | AST.OverloadExp(ref(AST.Instance x)) => AST.VarExp(x, [])
 	      | AST.OverloadExp _ => raise Fail "unresolved overloading"

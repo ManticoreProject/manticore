@@ -275,7 +275,7 @@ structure MatchToDFA : sig
 		end
 	  val splitCol = List.nth(cols, i)
 	  val conMap = mkConMap splitCol
-	(* populate the conMap and build the varMap *)
+	(* populate the conMap and build the varMat *)
 	  fun f ([], _) = mkNilMat vars
 	    | f (row::rows, CELL{pat, right, down}) = let
 		  val varMat = f (rows, down)
