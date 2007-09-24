@@ -23,6 +23,9 @@ is
   hlop-def.grm : ml-antlr
   hlop-def.lex : ml-ulex
 
+  hlrw-def.grm : ml-antlr
+  hlrw-def.lex : ml-ulex
+
   bom-ty-pt.sml
   hlop-def-loader.sml
   hlop-def-pt.sml
@@ -30,3 +33,4 @@ is
   loader-fn.sml
   expand.sml
   paths.sml
+  rewrites.sml

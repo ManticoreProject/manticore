@@ -1,0 +1,88 @@
+(* hlrw-def.grm
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ *)
+
+%name HLRWDef;
+
+%tokens
+        : LP            ("(")
+        | RP            (")")
+        | LBRKT         ("{")
+        | RBRKT         ("}")
+        | COLON         (":")
+        | SEMI          (";")
+        | COMMA         (",")
+        | DDARROW       ("==>")
+        | ID of Atom.atom
+        | HLOP of Atom.atom
+        | NUM of InfInt.int
+        ;
+
+%defs(
+      structure RW = Rewrites
+
+      val zero = IntInf.fromInt 0
+
+      val label_counter = 0 ref
+
+      fun new_label () = let
+          val ret_val = "$rewrite" ^ (Int.toString !label_counter)
+      in
+          label_counter := !label_counter + 1;
+          ret_val
+      end
+
+);
+
+File
+        : Rewrite*
+                => ( Rewrite )
+        ;
+
+Rewrite
+        : LabelOpt Pattern DDARROW Pattern Benefit ";"
+                => ( RW.Rewrite {label = LabelOpt,
+                                 lhs = Pattern1,
+                                 rhs = Pattern2,
+                                 weight = Benefit} )
+        ;
+
+LabelOpt
+        : (* empty *)
+                => ( new_label () )
+        | ID
+                => ( ID )
+        ;
+
+Pattern
+        : IdOrHLOp LP PatternArgs RP
+                => ( RW.Call(IdOrHLOp, PatternArgs) )
+        | ID
+                => ( RW.Var ID )
+        ;
+
+PatternArgs
+        : (* empty *)
+                => ( [] )
+        | Pattern (COMMA Pattern)*
+                => ( Pattern :: SR )
+        ;
+
+Benefit
+        : LBRKT NUM RBRKT
+                => ( NUM )
+        | LBRKT RBRKT
+                => ( zero )
+        | (* Empty *)
+                => ( zero )
+        ;
+
+IdOrHLOp
+        : ID
+                => ( ID )
+        | HLOP
+                => ( HLOP )
+        ;
