@@ -32,14 +32,14 @@ structure BuildExecutable : sig
 	    "-lpthread"
 	  ]
 
-    val cmd = cat [ccCmd, cFlags, ldFlags]
+    fun cmd asmFile = cat [ccCmd, cFlags, asmFile, ldFlags]
 
     fun build {verbose, asmFile, outFile} = if isCrossCompiler
 	  then (
 	    TextIO.output(TextIO.stdErr, "cross compiler cannot produce executables\n");
 	    OS.Process.failure)
 	  else let
-	    val cmd' = String.concat[cmd, " -o ", outFile, " ", asmFile]
+	    val cmd' = cat[cmd asmFile, " -o ", outFile]
 	    in
 	      if verbose
 		then TextIO.print(cmd' ^ "\n")
