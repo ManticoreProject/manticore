@@ -44,6 +44,7 @@ structure TypeUtil : sig
 
   (* convert various things to strings *)
     val tyvarToString : Types.tyvar -> string
+    val fmt : {long : bool} -> Types.ty -> string
     val toString : Types.ty -> string
     val schemeToString : Types.ty_scheme -> string
 
@@ -61,32 +62,44 @@ structure TypeUtil : sig
     fun tyvarToString (Ty.TVar{name, ...}) = Atom.toString name
 
   (* return a string representation of a type (for debugging) *)
-    fun toString (Ty.ErrorTy) = "<error>"
-      | toString (Ty.MetaTy(Ty.MVar{stamp, info})) = (case !info
-	   of Ty.UNIV d => concat["$", Stamp.toString stamp, "@", Int.toString d]
-	    | Ty.INSTANCE ty => (
-		info := Ty.UNIV(~1);
-		concat["($", Stamp.toString stamp, " == ", toString ty, ")"]
-		  before info := Ty.INSTANCE ty)
-	  (* end case *))
-      | toString (Ty.ClassTy(Ty.Class(ref(Ty.CLASS cls)))) =
-	  concat["<", TypeClass.toString cls, ">"]
-      | toString (Ty.ClassTy(Ty.Class(ref(Ty.RESOLVED ty)))) = toString ty
-      | toString (Ty.VarTy tv) = tyvarToString tv
-      | toString (Ty.ConTy([], tyc)) = Atom.toString(TyCon.nameOf tyc)
-      | toString (Ty.ConTy([ty], tyc)) = concat[
-	    toString ty, " ", Atom.toString(TyCon.nameOf tyc)
-	  ]
-      | toString (Ty.ConTy(tys, tyc)) = concat[
-	    "(", String.concatWith "," (List.map toString tys), ")",
-	    Atom.toString(TyCon.nameOf tyc)
-	  ]
-      | toString (Ty.FunTy(ty1 as Ty.FunTy _, ty2)) =
-	  concat["(", toString ty1, ") -> ", toString ty2]
-      | toString (Ty.FunTy(ty1, ty2)) = concat[toString ty1, " -> ", toString ty2]
-      | toString (Ty.TupleTy []) = "unit"
-      | toString (Ty.TupleTy tys) =
-	  concat["(", String.concatWith " * " (List.map toString tys), ")"]
+    fun fmt {long} = let
+	  fun toS(Ty.ErrorTy) = "<error>"
+	    | toS (Ty.MetaTy(Ty.MVar{stamp, info})) = (case !info
+		 of Ty.UNIV d => if long
+		      then concat["$", Stamp.toString stamp, "@", Int.toString d]
+		      else "$" ^ Stamp.toString stamp
+		  | Ty.INSTANCE ty => if long
+		      then (
+			info := Ty.UNIV(~1);
+			concat["($", Stamp.toString stamp, " == ", toS ty, ")"]
+			  before info := Ty.INSTANCE ty)
+		      else (
+			info := Ty.UNIV(~1);
+			toS ty before info := Ty.INSTANCE ty)
+		(* end case *))
+	    | toS (Ty.ClassTy(Ty.Class(ref(Ty.CLASS cls)))) =
+		concat["<", TypeClass.toString cls, ">"]
+	    | toS (Ty.ClassTy(Ty.Class(ref(Ty.RESOLVED ty)))) = toS ty
+	    | toS (Ty.VarTy tv) = tyvarToString tv
+	    | toS (Ty.ConTy([], tyc)) = Atom.toString(TyCon.nameOf tyc)
+	    | toS (Ty.ConTy([ty], tyc)) = concat[
+		  toS ty, " ", Atom.toString(TyCon.nameOf tyc)
+		]
+	    | toS (Ty.ConTy(tys, tyc)) = concat[
+		  "(", String.concatWith "," (List.map toS tys), ")",
+		  Atom.toString(TyCon.nameOf tyc)
+		]
+	    | toS (Ty.FunTy(ty1 as Ty.FunTy _, ty2)) =
+		concat["(", toS ty1, ") -> ", toS ty2]
+	    | toS (Ty.FunTy(ty1, ty2)) = concat[toS ty1, " -> ", toS ty2]
+	    | toS (Ty.TupleTy []) = "unit"
+	    | toS (Ty.TupleTy tys) =
+		concat["(", String.concatWith " * " (List.map toS tys), ")"]
+	  in
+	    toS
+	  end
+
+    val toString = fmt {long=false}
 
   (* return the string representation of a type scheme *)
     fun schemeToString (Ty.TyScheme([], ty)) = toString ty
