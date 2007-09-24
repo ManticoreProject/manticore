@@ -6,10 +6,10 @@
 
 module TestQ
 
-  extern void* M_NewWorkQueue(void*);
+  extern void* M_Print(void*);
 
   fun mkNew (u : unit / exh : cont(any)) : int = 
     let vp : vproc = host_vproc
-    let nq : any = ccall M_NewWorkQueue(vp)
+    let nq : any = ccall M_Print("hello\n\000")
     return (1)
 
