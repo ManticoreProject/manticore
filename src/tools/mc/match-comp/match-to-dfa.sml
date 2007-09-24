@@ -38,15 +38,14 @@ structure MatchToDFA : sig
       | P_Lit of (Literal.literal * Ty.ty)
       | P_Con of AST.dcon * Ty.ty list
       | P_ConApp of (AST.dcon * Ty.ty list * DFA.path * pat)
-(* QUESTION: do we need the paths here? *)
       | P_Tuple of (DFA.path * pat) list
 
     datatype cell
       = NIL
       | CELL of {
 	  pat : pat,
-	  right : cell,
-	  down : cell
+	  right : cell,			(* the cell to the right in the matrix *)
+	  down : cell			(* the cell to the left in the matrix *)
 	}
 
   (* a row of cells in a pattern matrix *)
@@ -102,7 +101,7 @@ structure MatchToDFA : sig
 	    M{rows = r :: rows, cols = cols, vars = vars}
 	  end
 
-  (* replace the ith variable with newVars *)
+  (* replace the ith variable in var with newVars *)
     fun expandVars (vars, i, newVars) = let
 	  fun ins (0, _::r) = newVars @ r
 	    | ins (i, v::r) = v :: ins(i-1, r)
@@ -156,8 +155,9 @@ structure MatchToDFA : sig
 	  fun chkSet (cvtFn, coverFn) l = let
 		fun add (s, item) = S.add(s, cvtFn item)
 		fun chk (s, []) = if (coverFn s) then ALL else PARTIAL
-		  | chk (s, DFA.ANY::r) = ALL
-		  | chk (s, pat::r) = chk(add(s, pat), r)
+		  | chk (s, DFA.ANY :: r) = ALL
+		  | chk (s, DFA.TPL _ :: r) = ALL
+		  | chk (s, pat :: r) = chk(add(s, pat), r)
 		in
 		  chk (S.empty, l)
 		end
@@ -169,6 +169,7 @@ structure MatchToDFA : sig
 	  fun chk [] = PARTIAL
 	    | chk (DFA.ANY :: r) = ALL
 	    | chk (DFA.LIT _ :: r) = chkForAny r
+	    | chk (DFA.TPL _ :: r) = ALL
 	    | chk (l as (DFA.CON(dc, _, _) :: r)) = 
 		chkSet (cvtDataty, coverDataty(DC.ownerOf dc)) l
 	  in
@@ -194,19 +195,25 @@ structure MatchToDFA : sig
    *)
     fun splitAtCol (M{rows, cols, vars}, i) = let
 	(* find the entry for a constructor in the conMap *)
-	  fun findCon (conMap : con_map, c) = let
-		fun find [] = NONE
-		  | find ({pat=DFA.CON(c', _, _), mat}::r) =
-		      if DC.same(c, c') then SOME mat else find r
-		  | find (_::r) = find r
-		in
-		  find conMap
-		end
-	(* find the entry for a constructor in the conMap *)
 	  fun findLit (conMap : con_map, l : L.literal) = let
 		fun find [] = NONE
 		  | find ({pat=DFA.LIT lit, mat}::r) =
 		      if L.same(lit, l) then SOME mat else find r
+		  | find (_::r) = find r
+		in
+		  find conMap
+		end
+	(* get the entry for a tupe in the conMap.  Note that the conMap can have 0 or 1
+	 * entries in this case!
+	 *)
+	  fun findTpl [] = NONE
+	    | findTpl [{pat=DFA.TPL _, mat}] = SOME mat
+	    | findTpl _ = raise Fail "bogus conMap for tuple split"
+	(* find the entry for a constructor in the conMap *)
+	  fun findCon (conMap : con_map, c) = let
+		fun find [] = NONE
+		  | find ({pat=DFA.CON(c', _, _), mat}::r) =
+		      if DC.same(c, c') then SOME mat else find r
 		  | find (_::r) = find r
 		in
 		  find conMap
@@ -253,7 +260,17 @@ structure MatchToDFA : sig
 			      end
 			  | (SOME _) => conMap
 			(* end case *))
-		    | P_Tuple _ => raise Fail "unexpected tuple in split column"
+		    | P_Tuple pats => (
+			case findTpl conMap
+			 of NONE => let
+			      val paths = List.map #1 pats
+			      val vars = expandVars(vars, i, paths)
+			      val mat = mkNilMat vars
+			      in
+				[{pat=DFA.TPL paths, mat = ref mat}]
+			      end
+			  | (SOME _) => conMap
+			(* end case *))
 		  (* end case *)
 		end
 	  val splitCol = List.nth(cols, i)
@@ -291,7 +308,12 @@ structure MatchToDFA : sig
 			    mat := addRow(!mat, expandCols(row, i, [(path, pat)]));
 			    varMat
 			  end
-		      | P_Tuple _ => raise Fail "unexpected tuple in split column"
+		      | P_Tuple pats => let
+			  val [{mat, ...}] = conMap
+			  in
+			    mat := addRow(!mat, expandCols(row, i, pats));
+			    varMat
+			  end
 		    (* end case *)
 		  end
 	  val varMat = f (rows, splitCol)
@@ -314,9 +336,11 @@ structure MatchToDFA : sig
 
   (* choose a column of a matrix for splitting; currently we choose the column
    * with a constructor in its first row and the largest number of distinct
-   * constructors.  If all the columns start with a variable, return NONE.
+   * constructors.  If none of the columns have constants or constructors, we
+   * return one that has a leading tuple pattern; otherwise we return NONE.
    *)
     fun chooseCol (M{rows, cols, vars}) = let
+	(* count the number of constants/constructors in the column *)
 	  fun count (NIL, cons) = ConSet.numItems cons
 	    | count (CELL{pat, down, ...}, cons) = let
 		val cons = (case pat
@@ -329,6 +353,7 @@ structure MatchToDFA : sig
 		in
 		  count (down, cons)
 		end
+	(* find the row with the largest number of distinct constants/constructors *)
 	  fun maxRow (curMax, curCnt, _, []) = curMax
 	    | maxRow (curMax, curCnt, i, CELL{pat=P_Wild, ...}::cols) =
 		maxRow (curMax, curCnt, i+1, cols)
@@ -340,96 +365,18 @@ structure MatchToDFA : sig
 		    else maxRow (curMax, curCnt, i+1, cols)
 		end
 	  in
-	    maxRow (NONE, 0, 0, cols)
+	    case maxRow (NONE, 0, 0, cols)
+	     of NONE => let (* check for a tuple that we can expand *)
+		  fun findTpl (i, CELL{pat = P_Tuple _, ...} :: _) = SOME i
+		    | findTpl (i, _::r) = findTpl (i+1, r)
+		    | findTpl _ = NONE
+		  in
+		    findTpl (0, cols)
+		  end
+	      | someCol => someCol
+	    (* end case *)
 	  end
 
-  (* given a pattern matrix, expand all columns that have a P_Tuple pattern in them. *)
-    fun flattenTuples (mat as M{rows, cols, vars}) = let
-	  val changed = ref false
-	(* check a column to see if it has tuple patterns *)
-	  fun checkForTuple (path, col) = (case (DFA.typeOfPath path)
-		 of Ty.TupleTy[ty] => raise Fail "singleton tuple"
-		  | ty as (Ty.TupleTy tys) => let
-		    (* the column has a tuple type, so check for a tuple pattern *)
-		      fun chkCol NIL = [ty]
-			| chkCol (CELL{pat=P_Tuple _, ...}) = tys
-			| chkCol (CELL{down, ...}) = chkCol down
-		      in
-			chkCol col
-		      end
-		  | ty => [ty]
-		(* end case *))
-	(* process columns from right to left *)
-	  fun doCols (path::paths, submat as col::cols) = let
-		val (right, rightPaths) = doCols(paths, cols)
-		in
-		  case checkForTuple (path, col)
-		   of [] => ((* column has unit type, so we can get rid of it *)
-			changed := true;
-			(right, rightPaths))
-		    | [_] => (* column does not have tuple type *)
-			if not(!changed)
-			  then (col, path::paths)
-			  else let
-			  (* recons the column linked to the new column to the right *)
-			    fun f (NIL, NIL) = NIL
-			      | f (CELL{pat, down=d1, ...}, c as CELL{down=d2, ...}) =
-				  CELL{pat=pat, down=f(d1, d2), right=c}
-			    in
-			      (f (col, right), path::rightPaths)
-			    end
-		    | tys => let
-(* FIXME: note that this code does not expand tuples of tuples, which might be a
- * problem!
- *)
-		      (* compute the paths for the new columns *)
-			val newPaths = let
-			      fun f (i, []) = []
-				| f (i, ty::tys) = DFA.extendPath(path, i, ty) :: f(i+1, tys)
-			      in
-				f (0, tys)
-			      end
-		      (* for each row, add replace the single cell with new cells *)
-			fun expandCell (NIL, _) = NIL
-			  | expandCell (CELL{pat, down=d1, ...}, right as CELL{down=d2, ...}) = let
-			      val down = expandCell (d1, d2)
-			      fun expand ([], NIL) = right
-				| expand (pat::pats, d) = let
-				    val downRight = (case d of NIL => NIL | CELL{right, ...} => right)
-				    val right = expand(pats, downRight)
-				    in
-				      CELL{pat=pat, down=d, right=right}
-				    end
-			      in
-				case pat
-				 of P_Wild => expand (List.map (fn _ => P_Wild) newPaths, down)
-				  | P_Tuple pats => expand (List.map #2 pats, down)
-				  | _ => raise Fail "unexpected constant/constructor"
-				(* end case *)
-			      end
-			val newLeftCell = expandCell (col, right)
-			in
-			  changed := true;
-			  (newLeftCell, newPaths @ rightPaths)
-			end
-		  (* end case *)
-		end
-	    | doCols _ = (NIL, [])
-	  val (firstCol, paths) = doCols (vars, cols)
-	(* rebuild the row list from the old list of rows and the new first column *)
-	  fun rebuildRows ([], NIL) = []
-	    | rebuildRows (R{vmap, optCond, act, ...} :: r, cell as CELL{down, ...}) =
-		R{vmap=vmap, cells=cell, optCond=optCond, act=act}
-		  :: rebuildRows (r, down)
-	  in
-	    if not(!changed)
-	      then mat
-	      else M{
-		  rows = rebuildRows (rows, firstCol),
-		  cols = rowToList firstCol,
-		  vars = paths
-		}
-	  end
 
   (******************** Translation ********************)
 
@@ -511,8 +458,10 @@ structure MatchToDFA : sig
 	  fun genDFA (mat as M{rows as row1::rrows, cols, vars}) = let
 		val R{vmap, cells, optCond, act} = row1
 		in
-(*DEBUG print(concat["genDFA: ", Int.toString(length rows), " rows, ", *)
-(*DEBUG   Int.toString(length cols), " cols\n"]); *)
+(* +DEBUG **
+print(concat["genDFA: ", Int.toString(length rows), " rows, ",
+Int.toString(length cols), " cols\n"]);
+** -DEBUG *)
 		  case (optCond, chooseCol mat)
 		   of (NONE, NONE) => DFA.mkBind(dfa, vmap, act)
 		    | (SOME(bvs, e), NONE) => (case rrows
@@ -531,8 +480,10 @@ structure MatchToDFA : sig
  *)
 			val (splitVar, conMap, varMat, coverage) =
 			      splitAtCol(mat, i)
-(*DEBUG val _ = print(concat["  split at column ", Int.toString i, *)
-(*DEBUG "; coverage is ", coverToString coverage, "\n"]); *)
+(* +DEBUG **
+val _ = print(concat["  split at column ", Int.toString i,
+"; coverage is ", coverToString coverage, "\n"]);
+** -DEBUG *)
 			val lastArc = (case (varMat, coverage)
 			       of (_, ALL) => []
 				| (M{rows=[], ...}, _) => let
@@ -547,7 +498,7 @@ structure MatchToDFA : sig
 				    val (row, cols) =
 					  List.foldr mkCell (NIL, []) vars
 				    val r = R{
-(*FIXME*)vmap = Var.Map.empty,
+					    vmap = Var.Map.empty,
 					    cells = row,
 					    optCond = NONE,
 					    act = errState

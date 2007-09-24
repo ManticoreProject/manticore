@@ -153,11 +153,52 @@ structure MatchCompile : sig
       = WILD
       | VAR of AST.var
       | LIT of L.literal
+      | TPL of pat_arg list
       | CON of (AST.dcon * Ty.ty list * pat_arg list)
 
     and pat_arg
       = ARG_ANON of Ty.ty
       | ARG_VAR of AST.var
+
+(* +DEBUG *)
+    fun prTree tr = let
+	  val pr = TextIO.print
+	  fun indent 0 = ()
+	    | indent i = (pr "  "; indent(i-1))
+	  fun tree (i, nd) = (
+		case nd
+		 of CALL(f, args) => (
+		      pr (Var.toString f); pr " (";
+		      pr (String.concatWith "," (List.map Var.toString args));
+		      pr ")")
+		  | CASE(x, cases) => let
+		      fun argToString (ARG_ANON _) = "_"
+			| argToString (ARG_VAR x) = Var.toString x
+		      fun prArgs args = (pr "("; pr(String.concatWith "," (List.map argToString args)); pr ")")
+		      fun prPat WILD = pr "_"
+			| prPat (VAR x) = pr(Var.toString x)
+			| prPat (LIT lit) = pr(Literal.toString lit)
+			| prPat (TPL args) = prArgs args
+			| prPat (CON(dc, _, [])) = pr (DataCon.nameOf dc)
+			| prPat (CON(dc, _, args)) = (pr (DataCon.nameOf dc); prArgs args)
+		      fun prCase (prefix, (pat, tr)) = (
+			    indent i; pr prefix; pr " "; prPat pat; pr " => ";
+			    tree (i+1, tr))
+		      in
+			pr "CASE "; pr(Var.toString x); pr "\n";
+			prCase (" OF", hd cases);
+			List.app (fn c => (pr "\n"; prCase("  |", c))) (tl cases)
+		      end
+		  | IF(_, _, t1, t2) => (
+		      pr "IF <exp>\n";
+		      indent(i+1); pr "THEN "; tree(i+2, t1); pr "\n";
+		      indent(i+1); pr "ELSE "; tree(i+2, t2))
+		  | ACTION _ => pr "ACTION"
+		(* end case *))
+	  in
+	    tree (0, tr); pr "\n"
+	  end
+(* -DEBUG *)
 
   (* given an initial environment, DFA, and error action, build a forest of
    * decision trees representing the DFA.
@@ -192,28 +233,34 @@ structure MatchCompile : sig
 	  and visit (env, pmap, q) = (case DFA.kind q
 		 of DFA.TEST(arg, cases) => let
 		      fun nextArc arc = next(env, pmap, arc)
+		      fun cvtArg pvs (path as DFA.PATH{ty, ...}, (pmap, args)) =
+			    if PSet.member(pvs, path)
+			      then let
+			      (* this path is tested in some subsequent state, so we
+			       * need to create a fresh variable for it.
+			       *)
+(* QUESTION: what if there is a source variable for this path?? *)
+				val x = newVar ty
+				in
+				  (PMap.insert(pmap, path, x), ARG_VAR x :: args)
+				end
+			      else (pmap, ARG_ANON ty::args)
 		      fun cvtCase (DFA.ANY, arc) = (case PMap.find(pmap, arg)
 			     of NONE => (WILD, nextArc arc)
 			      | SOME x => (VAR x, nextArc arc)
 			    (* end case *))
 			| cvtCase (DFA.LIT lit, arc) = (LIT lit, nextArc arc)
+			| cvtCase (DFA.TPL args, arc) = let
+			    val {pvs, fvs} = infoOf arc
+			    val (pmap, args) = List.foldr (cvtArg pvs) (pmap, []) args
+			    in
+			      (TPL args, next(env, pmap, arc))
+			    end
 			| cvtCase (DFA.CON(dc, tys, []), arc) =
 			    (CON(dc, tys, []), nextArc arc)
-			| cvtCase (DFA.CON(dc, tys, args), arc) = let
+			| cvtCase (DFA.CON(dc, tys, [arg]), arc) = let
 			    val {pvs, fvs} = infoOf arc
-			    fun cvtArg (path as DFA.PATH{ty, ...}, (pmap, args)) =
-				  if PSet.member(pvs, path)
-				    then let
-				    (* this path is tested in some subsequent state, so we
-				     * need to create a fresh variable for it.
-				     *)
-(* QUESTION: what if there is a source variable for this path?? *)
-				      val x = newVar ty
-				      in
-					(PMap.insert(pmap, path, x), ARG_VAR x :: args)
-				      end
-				    else (pmap, ARG_ANON ty::args)
-			    val (pmap, args) = List.foldr cvtArg (pmap, []) args
+			    val (pmap, args) = cvtArg pvs (arg, (pmap, []))
 			    in
 			      (CON(dc, tys, args), next(env, pmap, arc))
 			    end
@@ -399,9 +446,10 @@ structure MatchCompile : sig
    * function is a list of functions that represent the shared states of the
    * DFA and an expression that is the simplified match case.
    *)
-    and dfaToAST (loc, env, dfa, raiseExn, resTy) : {shared : AST.binding option, match : AST.exp}= let
+    and dfaToAST (loc, env, dfa, raiseExn, resTy) : {shared : AST.binding option, match : AST.exp} = let
 (* +DEBUG *)
-	  val _ = if Controls.get MatchControls.debug
+	  val debug = Controls.get MatchControls.debug
+	  val _ = if debug
 		then DFA.dump (TextIO.stdOut, dfa)
 		else ()
 (* -DEBUG *)
@@ -409,6 +457,32 @@ structure MatchCompile : sig
 	(* create a variable expression *)
 (* FIXME: what about type arguments?? *)
 	  fun mkVar x = AST.VarExp(x, [])
+	(* flatten applications of constructors to tuples *)
+	  fun flattenTree tr = let
+		fun flatten tr = (case tr
+		       of CALL _ => tr
+			| CASE(x, cases) => let
+			    fun flattenCase (pat as CON(dc, tys, [ARG_VAR y]), tr as CASE(z, [(TPL args, tr')])) =
+				  if (Var.same(y, z))
+				    then (CON(dc, tys, args), flatten tr')
+				    else (pat, flatten tr)
+			      | flattenCase (pat, tr) = (pat, flatten tr)
+			    in
+			      CASE(x, List.map flattenCase cases)
+			    end
+			| IF(env, e, tr1, tr2) => IF(env, e, flatten tr1, flatten tr2)
+			| ACTION _ => tr
+		      (* end case *))
+		val _ = if debug
+		      then (print "** Decision tree before flattening:\n"; prTree tr)
+		      else ()
+		val tr = flatten tr
+		val _ = if debug
+		      then (print "** Decision tree after flattening:\n"; prTree tr)
+		      else ()
+		in
+		  tr
+		end
 	(* convert a decision tree to TypedAST *)
 	  fun treeToAST (CALL(f, args)) =
 		AST.ApplyExp(mkVar f, ASTUtil.mkTupleExp(List.map mkVar args), resTy)
@@ -421,6 +495,7 @@ structure MatchCompile : sig
 			     of WILD => AST.WildPat argTy
 			      | VAR x => AST.VarPat x
 			      | LIT lit => AST.ConstPat(AST.LConst(lit, argTy))
+			      | TPL args => AST.TuplePat(List.map cvtArg args)
 			      | CON(dc, tys, []) => AST.ConstPat(AST.DConst(dc, tys))
 			      | CON(dc, tys, [arg]) => AST.ConPat(dc, tys, cvtArg arg)
 			      | CON(dc, tys, args) =>
@@ -435,13 +510,14 @@ structure MatchCompile : sig
 	    | treeToAST (IF(env, cond, t, f)) =
 		AST.IfExp(rewrite(loc, env, cond), treeToAST t, treeToAST f, resTy)
 	    | treeToAST (ACTION(env, e)) = rewrite(loc, env, e)
-	  fun treeToFB (f, params, body) = ASTUtil.mkFunWithParams(f, params, treeToAST body)
+	  fun treeToFB (f, params, body) =
+		ASTUtil.mkFunWithParams(f, params, treeToAST (flattenTree body))
 	  val shared = (case fns
 		 of [] => NONE
 		  | _ => SOME(AST.FunBind(List.map treeToFB fns))
 		(* end case *))
 	  in
-	    { shared = shared, match = treeToAST tree }
+	    { shared = shared, match = treeToAST (flattenTree tree) }
 	  end
 
     fun compile (errStrm, exp : AST.module) = let

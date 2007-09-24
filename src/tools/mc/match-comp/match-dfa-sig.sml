@@ -54,6 +54,7 @@ signature MATCH_DFA =
     and simple_pat
       = ANY
       | LIT of Literal.literal
+      | TPL of path list
       | CON of (AST.dcon * Types.ty list * path list)
 		(* the path list is either empty for constants *)
 		(* or a singleton for constructors *)

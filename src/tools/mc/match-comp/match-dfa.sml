@@ -75,6 +75,7 @@ structure MatchDFA : MATCH_DFA =
     and simple_pat
       = ANY
       | LIT of Literal.literal
+      | TPL of path list
       | CON of (AST.dcon * Types.ty list * path list)
 
     fun same (S{refCnt=a, ...}, S{refCnt=b, ...}) = (a = b)
@@ -165,19 +166,23 @@ structure MatchDFA : MATCH_DFA =
 
   (* path variables bound by a simple pattern *)
     fun pathsOf (CON(_, _, paths)) = paths
+      | pathsOf (TPL paths) = paths
       | pathsOf _ = []
 
   (* return a string representation of a simple pattern *)
+    local
+      fun toList [] = [")"]
+	| toList (path::r) = "," :: pathToString path :: toList r
+    in
     fun patToString ANY = "_"
       | patToString (LIT lit) = Literal.toString lit
+      | patToString (TPL[]) = "()"
+      | patToString (TPL(arg::args)) =
+	  concat("(" :: pathToString arg :: toList args)
       | patToString (CON(dc, _, [])) = DataCon.nameOf dc
-      | patToString (CON(dc, _, arg::args)) = let
-	  fun toList [] = [")"]
-	    | toList (path::r) = "," :: pathToString path :: toList r
-	  in
-	    concat(DataCon.nameOf dc :: "(" :: pathToString arg
-	      :: toList args)
-	  end
+      | patToString (CON(dc, _, arg::args)) =
+	  concat(DataCon.nameOf dc :: "(" :: pathToString arg :: toList args)
+    end
 
   (* dump a DFA to a file *)
     local
