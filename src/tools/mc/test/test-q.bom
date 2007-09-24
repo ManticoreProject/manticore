@@ -6,10 +6,21 @@
 
 module TestQ
 
-  extern void* M_Print(void*);
+  extern void* M_NewWorkQueue(void*);
+  extern void* M_WorkDequeue(void*,void*);
+  extern void* M_WorkEnqueue(void*,void*,void*);
 
-  fun mkNew (u : unit / exh : cont(any)) : int = 
+  fun mkNew (u : unit / exh : cont(any) (* exh *)) : any =
     let vp : vproc = host_vproc
-    let nq : any = ccall M_Print("hello\n\000")
-    return (1)
+    let nq : any = ccall M_NewWorkQueue(vp)
+    do ccall M_WorkEnqueue (vp, nq, "Hello, world.")
+    fun loop (n : int / exh : cont(any) (* exh *)) : any =
+      let a : any = ccall M_WorkDequeue (vp, nq)
+      if Equal (n, 0)
+        then return (a)
+        else do ccall M_WorkEnqueue (vp, nq, "Hello, world.")
+             let n : int = I32Sub (n, 1)
+             apply loop (n / exh)
+    let b : any = apply loop (1 / exh)
+    return (b)
 
