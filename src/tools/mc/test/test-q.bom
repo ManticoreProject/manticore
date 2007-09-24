@@ -1,0 +1,15 @@
+(* test-q.bom
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+module TestQ
+
+  extern void* M_NewWorkQueue(void*);
+
+  fun mkNew (u : unit / exh : cont(any)) : int = 
+    let vp : vproc = host_vproc
+    let nq : any = ccall M_NewWorkQueue(vp)
+    return (1)
+
