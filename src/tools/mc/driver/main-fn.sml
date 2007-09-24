@@ -97,10 +97,8 @@ functor MainFn (
           val ast = srcToAST(errStrm, srcFile)
           val _ = checkForErrors errStrm
           val ast = ASTOpt.optimize ast
-(* this phase is not working yet, so I'm commenting it out for now -- jhr
 	  val ast = MatchCompile.compile (errStrm, ast)
           val _ = checkForErrors errStrm
-*)
           val bom = Translate.translate ast
           val _ = CheckBOM.check ("translate", bom)
           val cfg = bomToCFG bom
