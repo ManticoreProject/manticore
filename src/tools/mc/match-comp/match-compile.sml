@@ -124,6 +124,25 @@ structure MatchCompile : sig
     val insertVar = Env.insert
     val applyEnv = Env.apply
 
+  (* extend the renaming environment env by the composition of
+   * vmap, which maps variables to paths, with pmap, which maps
+   * paths to variables.
+   *)
+    fun extendEnv (env, vmap, pmap) = let
+	  fun ext (x, path, env) = (case PMap.find(pmap, path)
+		 of SOME x' =>
+		      if not(Var.same(x, x'))
+			then insertVar(env, x, x')
+			else env
+		  | NONE => raise Fail(concat[
+			"ext(", Var.toString x, ", ",
+			DFA.pathToString path, "): no binding for path"
+		      ])
+		(* end case *))
+	  in
+	    VMap.foldli ext env vmap
+	  end
+
     datatype decision_tree
       = CALL of AST.var * AST.var list
       | CASE of (AST.var * (simple_pat * decision_tree) list)
@@ -151,24 +170,6 @@ structure MatchCompile : sig
 		 of SOME x => x
 		  | NONE => raise Fail(concat["lookupPath(", DFA.pathToString path, ")"])
 		(* end case *))
-	(* extend the renaming environment env by the composition of
-	 * vmap, which maps variables to paths, with pmap, which maps
-	 * paths to variables.
-	 *)
-	  fun extendEnvByVMap (env, pmap, vmap) = let
-		fun ext (x, path, env) = (case PMap.find(pmap, path)
-		       of SOME x' =>
-			    if not(Var.same(x, x'))
-			      then insertVar(env, x, x')
-			      else env
-			| NONE => raise Fail(concat[
-			      "ext(", Var.toString x, ",",
-			      DFA.pathToString path, ")"
-			    ])
-		      (* end case *))
-		in
-		  VMap.foldli ext env vmap
-		end
 	  fun next (env, pmap, q) = if (DFA.rCount q > 1)
 		then let
 		  val (f, _, _) = STbl.lookup stateFuns q
@@ -222,10 +223,10 @@ structure MatchCompile : sig
 		      end
 (* FIXME: we need bindings here! *)
 		  | DFA.BIND(vmap, q) =>
-		      next (extendEnvByVMap (env, pmap, vmap), pmap, q)
+		      next (extendEnv (env, vmap, pmap), pmap, q)
 		  | DFA.FINAL(_, e) => ACTION(env, e)
 		  | DFA.COND(vmap, e, t, f) => let
-		      val env = extendEnvByVMap (env, pmap, vmap)
+		      val env = extendEnv (env, vmap, pmap)
 		      in
 			IF(env, e, next(env, pmap, t), next(env, pmap, f))
 		      end
@@ -258,21 +259,6 @@ structure MatchCompile : sig
 	    {fns = fns, tree = tree}
 	  end
 
-  (* given an environment that renames variables and a mapping from variables
-   * to their path, extend the renaming environment.
-   *)
-    fun extendEnv (env, vmap, pmap) = let
-	  fun ext (x, path, env) = let
-		val SOME x' = PMap.find(pmap, path)
-		in
-		  if not(Var.same(x, x'))
-		    then insertVar(env, x, x')
-		    else env
-		end
-	  in
-	    VMap.foldli ext env vmap
-	  end
-
   (* create the AST to raise an exception (either MatchFail or BindFail) *)
 (*
     fun raiseExn getExn (loc : Err.span, env : Env.env, ty : AST.ty) = AST.E_RAISE(AST.E_CON(getExn env, loc), ty)
@@ -291,11 +277,14 @@ structure MatchCompile : sig
 	  fun rewrite' e = rewrite (loc, env, e)
 	  in
 	    case exp
-	     of AST.LetExp(AST.ValBind(pat, rhs), e) => let
-		  val (binds, env') = rewriteBind (loc, env, pat, rewrite' rhs)
-		  in
-		    ASTUtil.mkLetExp(binds, rewrite' e)
-		  end
+	     of AST.LetExp(AST.ValBind(pat, rhs), e) =>
+		  if MatchUtil.isSimplePat pat
+		    then AST.LetExp(AST.ValBind(pat, rewrite' rhs), rewrite' e)
+		    else let
+		      val (binds, env') = rewriteBind (loc, env, pat, rewrite' rhs)
+		      in
+			ASTUtil.mkLetExp(binds, rewrite(loc, env', e))
+		      end
 	      | AST.LetExp(AST.PValBind _, e) => (* should have been compiled away *)
 		  raise Fail "unexpected PValBind"
 	      | AST.LetExp(AST.FunBind fbs, e) => let
@@ -306,7 +295,14 @@ structure MatchCompile : sig
 	      | AST.IfExp(e1, e2, e3, ty) =>
 		  AST.IfExp(rewrite' e1, rewrite' e2, rewrite' e3, ty)
 	      | AST.CaseExp(e, mc, ty) =>
-		  AST.CaseExp(rewrite' e, rewriteMatch(loc, env, TypeOf.exp e, mc, ty), ty)
+		  if MatchUtil.areSimpleMatches mc
+		    then let
+		      fun f (AST.PatMatch(p, e)) = AST.PatMatch(p, rewrite' e)
+		        | f _ = raise Fail "impossible"
+		      in
+			AST.CaseExp(rewrite' e, List.map f mc, ty)
+		      end
+		    else AST.CaseExp(rewrite' e, rewriteMatch(loc, env, TypeOf.exp e, mc, ty), ty)
 	      | AST.FunExp(x, e, ty) => AST.FunExp(x, rewrite' e, ty)
 	      | AST.ApplyExp(e1, e2, ty) => AST.ApplyExp(rewrite' e1, rewrite' e2, ty)
 	      | AST.TupleExp es => AST.TupleExp(List.map rewrite' es)
@@ -335,8 +331,7 @@ structure MatchCompile : sig
    * ys.  We also return an environment extended with ys :-> xs.  Note that
    * we assume that rhs has already been rewritten.
    *)
-    and rewriteBind (loc, env, lhs as AST.TuplePat[], rhs) = ([AST.ValBind(lhs, rhs)], env)
-      | rewriteBind (loc, env, lhs, rhs) = let
+    and rewriteBind (loc, env, lhs, rhs) = let
 	(* get the variables bound by the lhs patterns *)
 	  val bvs = Var.Set.listItems (MatchUtil.varsOfPat lhs)
 (* do we really need a variable for the lhs? *)
