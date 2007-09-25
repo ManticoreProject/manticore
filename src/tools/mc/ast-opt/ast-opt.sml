@@ -22,22 +22,11 @@ structure ASTOpt : sig
 	    registry = ASTOptControls.registry
 	  }
 
+  (* replace parallel tuples with futures and touches *)
+    val ptuples : AST.module -> AST.module = transform {passName = "ptuples", pass = FutParTup.futurize}
 
-  (* futParTup : AST.module -> AST.module *)
-    val futParTup = transform {passName = "fut-par-tup", pass = FutParTup.futurize}
-
-  (* futurize : AST.module -> AST.module *)
-    fun futurize m = let
-	  val m' = futParTup m
-	  in
-	    m'
-	  end
-
-    val futurize = transform {passName = "futurize", pass = futurize}
-
-  (* optimize : AST.module -> AST.module *)
-    fun optimize module = let
-          val module = futurize module
+    fun optimize (module : AST.module) : AST.module = let
+          val module = ptuples module
           in
             module
           end
