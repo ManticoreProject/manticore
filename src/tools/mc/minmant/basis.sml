@@ -422,8 +422,22 @@ structure Basis : sig
     val tand =		monoVar(N.tand, doubleTy --> doubleTy)
     val itod =		monoVar(N.itod, intTy --> doubleTy)
     val channel =	polyVar(N.channel, fn tv => unitTy --> chanTy tv)
-    val send =		polyVar(N.send, fn tv => chanTy tv ** tv--> unitTy)
+    val send =		polyVar(N.send, fn tv => chanTy tv ** tv --> unitTy)
+    val sendEvt =	polyVar(N.sendEvt, fn tv => chanTy tv ** tv --> eventTy unitTy)
     val recv =		polyVar(N.recv, fn tv => chanTy tv --> tv)
+    val recvEvt =	polyVar(N.recvEvt, fn tv => chanTy tv --> eventTy tv)
+    val wrap =		let
+			val a' = TyVar.new(Atom.atom "'a")
+			val b' = TyVar.new(Atom.atom "'b")
+			in
+			  Var.newPoly(Atom.toString N.wrap, 
+			    AST.TyScheme([a',b'],
+			      (eventTy(AST.VarTy a') ** (AST.VarTy a' --> AST.VarTy b'))
+				--> eventTy(AST.VarTy b')))
+			end
+    val choose =	polyVar(N.choose, fn tv => listTy(eventTy tv) --> eventTy tv)
+    val never =		polyVar(N.never, fn tv => eventTy tv)
+    val sync =		polyVar(N.sync, fn tv => eventTy tv --> tv)
     val iVar =		polyVar(N.iVar, fn tv => unitTy --> ivarTy tv)
     val iGet =		polyVar(N.iGet, fn tv => ivarTy tv --> tv)
     val iPut =		polyVar(N.iPut, fn tv => (ivarTy tv ** tv) --> unitTy)
