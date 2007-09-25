@@ -417,6 +417,25 @@ structure CheckCFG : sig
 				    List.app chkCase cases;
 				    Option.app (fn j => chkJump(env, j)) dflt
 				  end
+                              | Ty.T_Raw rt => let
+                                  fun chkCase (tag, jmp) = 
+                                        chkJump(env, jmp)
+                                  fun chk () = (
+                                        List.app chkCase cases; 
+                                        Option.app (fn j => chkJump(env, j)) dflt)
+                                  fun bad () =
+                                        err["variable ", V.toString x, ":", Ty.toString (V.typeOf x), 
+                                            " is not valid argument for switch"]
+                                  in
+                                    case rt
+                                     of RawTypes.T_Byte => chk ()
+                                      | RawTypes.T_Short => chk ()
+                                      | RawTypes.T_Int => chk ()
+                                      | RawTypes.T_Long => chk ()
+                                      | RawTypes.T_Float => bad ()
+                                      | RawTypes.T_Double => bad ()
+                                      | RawTypes.T_Vec128 => bad ()
+                                  end
 			      | _ => err["variable ", V.toString x, ":", Ty.toString (V.typeOf x), 
                                                " is not valid argument for switch"]
 			    (* end case *))
