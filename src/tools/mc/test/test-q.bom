@@ -6,9 +6,9 @@
 
 module TestQ
 
-  extern void* M_NewWorkQueue(void*);
+  extern void* M_NewWorkQueue(void*) __attribute__((alloc));
   extern void* M_WorkDequeue(void*,void*);
-  extern void* M_WorkEnqueue(void*,void*,void*);
+  extern void* M_WorkEnqueue(void*,void*,void*) __attribute__((alloc));
 
   fun mkNew (u : unit / exh : cont(any) (* exh *)) : any =
     let vp : vproc = host_vproc
