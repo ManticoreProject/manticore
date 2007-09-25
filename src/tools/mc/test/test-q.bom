@@ -18,9 +18,8 @@ module TestQ
       let a : any = ccall M_WorkDequeue (vp, nq)
       if Equal (n, 0)
         then return (a)
-        else do ccall M_WorkEnqueue (vp, nq, "Hello, world.")
+        else do ccall M_WorkEnqueue (vp, nq, a) (* "Hello, world.") *)
              let n : int = I32Sub (n, 1)
              apply loop (n / exh)
     let b : any = apply loop (1 / exh)
     return (b)
-
