@@ -92,7 +92,7 @@ structure BasicControl :  sig
 	    name = "verbose",
 	    pri = [0, 0],
 	    obscurity = 0,
-	    help = "verbosity",
+	    help = "controls verbosity of debugging messages",
 	    default = 0
 	  }
 
@@ -164,7 +164,7 @@ structure BasicControl :  sig
 		name = "keep-" ^ passName,
 		pri = [5, 0],
 		obscurity = 1,
-		help = "keep " ^  passName ^ " passes",
+		help = concat["keep ",  passName, " passes"],
 		default = false
 	      }
           val _ = ControlRegistry.register registry {
