@@ -18,6 +18,13 @@ structure TranslateTypes : sig
     structure BTyc = BOMTyCon
     structure E = TranslateEnv
 
+    fun appi f = let
+	  fun appf (_, []) = ()
+	    | appf (i, x::xs) = (f(i, x); appf(i+1, xs))
+	  in
+	    fn l => appf (0, l)
+	  end
+
     fun insertConst (env, dc, w, ty) = E.insertCon (env, dc, E.Const(w, ty))
     fun insertDCon (env, dc, dc') = E.insertCon (env, dc, E.DCon dc')
 
@@ -49,16 +56,15 @@ structure TranslateTypes : sig
 		List.partition
 		  (fn (Ty.DCon{argTy=NONE, ...}) => true | _ => false)
 		    (! cons)
-	(* create the data constructor *)
+	(* create the datatype constructor *)
 	  val nConsts = List.length consts
 	  val dataTyc as BTy.DataTyc{rep, kind, ...} =
 		BOMTyCon.newDataTyc (Atom.toString name, nConsts)
 	  fun setRep (ty, k) = (rep := ty; kind := k)
 	(* assign representations for the constants *)
-	  fun assignConstRep (dc, i) = (
-		insertConst (env, dc, i, BTy.T_Enum(Word.fromInt nConsts - 0w1));
-		i + 0w1)
-	  val _ = List.foldl assignConstRep 0w0 consts
+	  fun assignConstRep (i, dc) =
+		insertConst (env, dc, Word.fromInt i, BTy.T_Enum(Word.fromInt nConsts - 0w1))
+	  val _ = appi assignConstRep consts
 	(* assign representations for the constructor functions *)
 	  val newDataCon = BTyc.newDataCon dataTyc
 	  fun mkDC (dc, rep, tys) = let
@@ -67,23 +73,30 @@ structure TranslateTypes : sig
 		  insertDCon (env, dc, dc')
 		end
 	(* translate the argument type of a data constructor *)
-	  fun trArgTy dc = tr (env, valOf (DataCon.argTypeOf dc))
+	  fun trArgTy dc = (case tr (env, valOf (DataCon.argTypeOf dc))
+		 of BTy.T_Tuple(false, tys) => tys
+		  | ty => [ty]
+		(* end case *))
 	  in
 	    case (consts, conFuns)
 	     of (_::_, []) => setRep (BTy.T_Enum(Word.fromInt nConsts - 0w1), BTy.K_UNBOXED)
 	      | ([], [dc]) => let
-		  val ty = trArgTy dc
+		  val ty = tr (env, valOf (DataCon.argTypeOf dc))
 		  in
 		    setRep (ty, BOMTyUtil.kindOf ty);
 		    mkDC (dc, BTy.Transparent, [ty])
 		  end
 	      | (_, [dc]) => (
 		  case bomKindOfType (env, valOf(DataCon.argTypeOf dc))
-		   of BTy.K_BOXED => mkDC (dc, BTy.Transparent, [trArgTy dc])
+		   of BTy.K_BOXED => mkDC (dc, BTy.Transparent, trArgTy dc)
 		    | _ => (* need to use singleton tuple to represent data constructor *)
-			mkDC (dc, BTy.Tuple, [BTy.T_Tuple(false, [trArgTy dc])])
+			mkDC (dc, BTy.Tuple, [BTy.T_Tuple(false, trArgTy dc)])
 		  (* end case *))
-	      | ([], _) => raise Fail ""
+	      | ([], _) => let
+		  fun mkDC' (i, dc) = mkDC (dc, BTy.TaggedTuple(Word.fromInt i), trArgTy dc)
+		  in
+		    appi mkDC' conFuns
+		  end
 	      | (_, _) => raise Fail ""
 	    (* end case *);
 	    E.insertTyc (env, tyc, BTy.T_TyCon dataTyc);
