@@ -329,10 +329,15 @@ structure Translate : sig
 
     and trVarPats (env, pats) = let
 	  fun tr ([], env, xs) = (env, List.rev xs)
-	    | tr (AST.VarPat x::pats, env, xs) = let
+	    | tr (AST.VarPat x :: pats, env, xs) = let
 		val (x', env') = trVar(env, x)
 		in
 		  tr (pats, env', x'::xs)
+		end
+	    | tr (AST.WildPat ty :: pats, env, xs) = let
+		val x' = BV.new("_wild_", TranslateTypes.tr(env, ty))
+		in
+		  tr (pats, env, x'::xs)
 		end
 	    | tr _ = raise Fail "expected VarPat"
 	  in
