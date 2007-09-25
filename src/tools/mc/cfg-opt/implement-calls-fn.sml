@@ -9,11 +9,19 @@
  *     - zero arguments are replaced by a unit argument
  *     - a single raw argument is replaced by a wrapped argument
  *     - multiple arguments are replaced by a tupled argument 
- *  + KnownFunc -- require a single, uniform argument.
+ *  + KnownFunc --
+ *     - less than or equal to Target.maxGPRArgs arguments
+ *        - all arguments are passed in registers
+ *          - an integral raw argument is preserved
+ *          - a floating-point or vector raw argument is replaced by a wrapped argument
+ *          - a non-raw argument is preserved
+ *     - more than Target.maxGPRArgs arguments
+ *        - Target.maxGPRArg - 1 arguments are passed in registers
+ *          - an integral raw argument is preserved
+ *          - a floating-point or vector raw argument is replaced by a wrapped argument
+ *          - a non-raw argument is preserved
+ *        - remaining arguments are replaced by a tupled argument, which is passed in a register
  *  + Block -- arbitrary (handled by codegen)
- *
- * TODO:
- *  + KnownFunc -- Relax calling convention
  *
  *)
 
@@ -37,6 +45,23 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                [] => CFGTy.unitTy
              | [arg] => transTyUniformArg arg
              | args => CFGTy.T_Tuple (false, List.map transTy args)
+         and transTyNonUniformArg (arg : CFGTy.ty) : CFGTy.ty =
+            case arg of
+               CFGTy.T_Raw rt =>
+                  let
+                     fun wrap () = CFGTy.T_Wrap rt
+                     fun keep () = CFGTy.T_Raw rt
+                  in
+                     case rt of
+                        RawTypes.T_Byte => keep ()
+                      | RawTypes.T_Short => keep ()
+                      | RawTypes.T_Int => keep ()
+                      | RawTypes.T_Long => keep ()
+                      | RawTypes.T_Float => wrap ()
+                      | RawTypes.T_Double => wrap ()
+                      | RawTypes.T_Vec128 => wrap ()
+                  end
+             | _ => transTy arg
          and transTyKFncArgs (args: CFGTy.ty list) : CFGTy.ty list =
             let
                fun loop (args, gprs) =
@@ -45,7 +70,7 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                   else (case args of
                            [] => []
                          | arg::args => 
-                              (transTyUniformArg arg) ::
+                              (transTyNonUniformArg arg) ::
                               (loop (args, gprs - 1)))
             in
                loop (args, Target.maxGPRArgs)
@@ -133,6 +158,29 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                   in
                      (newArg, List.rev sels)
                   end
+         fun transFormalNonUniformArg (arg : CFG.var) : (CFG.var * CFG.exp list) =
+            case getVarOldType arg of
+               CFGTy.T_Raw rt => 
+                  let
+                     fun wrap () =
+                        let
+                           val newArgTy = CFGTy.T_Wrap rt
+                           val newArg = CFG.Var.new ("argFormalWrap", newArgTy)
+                        in 
+                           (newArg, [CFG.mkUnwrap(arg,newArg)])
+                        end 
+                     fun keep () = (arg, [])
+                  in
+                     case rt of
+                        RawTypes.T_Byte => keep ()
+                      | RawTypes.T_Short => keep ()
+                      | RawTypes.T_Int => keep ()
+                      | RawTypes.T_Long => keep ()
+                      | RawTypes.T_Float => wrap ()
+                      | RawTypes.T_Double => wrap ()
+                      | RawTypes.T_Vec128 => wrap ()
+                  end
+             | _ => (arg, [])
          fun transFormalKFncArgs (args : CFG.var list) : (CFG.var list * CFG.exp list) =
             let
                fun loop (args, gprs) =
@@ -146,7 +194,7 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                            [] => ([],[])
                          | arg::args => 
                               let
-                                 val (arg,bindsArg) = transFormalUniformArg arg
+                                 val (arg,bindsArg) = transFormalNonUniformArg arg
                                  val (args,bindsArgs) = loop (args, gprs - 1)
                               in
                                  (arg :: args, bindsArg @ bindsArgs)
@@ -210,6 +258,29 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                   in
                      ([CFG.mkAlloc (newArg, args)], newArg)
                   end
+         fun transActualNonUniformArg (arg : CFG.var) : (CFG.exp list * CFG.var) =
+            case getVarOldType arg of
+               CFGTy.T_Raw rt => 
+                  let
+                     fun wrap () =
+                        let
+                           val newArgTy = CFGTy.T_Wrap rt
+                           val newArg = CFG.Var.new ("argActualWrap", newArgTy)
+                        in 
+                           ([CFG.mkWrap(newArg, arg)], newArg)
+                        end 
+                     fun keep () = ([], arg)
+                  in
+                     case rt of
+                        RawTypes.T_Byte => keep ()
+                      | RawTypes.T_Short => keep ()
+                      | RawTypes.T_Int => keep ()
+                      | RawTypes.T_Long => keep ()
+                      | RawTypes.T_Float => wrap ()
+                      | RawTypes.T_Double => wrap ()
+                      | RawTypes.T_Vec128 => wrap ()
+                  end
+             | _ => ([], arg)
          fun transActualKFncArgs (args : CFG.var list) : (CFG.exp list * CFG.var list) =
             let
                fun loop (args, gprs) =
@@ -223,7 +294,7 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                            [] => ([],[])
                          | arg::args => 
                               let
-                                 val (bindsArg,arg) = transActualUniformArg arg
+                                 val (bindsArg,arg) = transActualNonUniformArg arg
                                  val (bindsArgs,args) = loop (args, gprs - 1)
                               in
                                  (bindsArg @ bindsArgs, arg :: args)
