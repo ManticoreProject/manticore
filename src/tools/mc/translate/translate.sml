@@ -242,7 +242,16 @@ structure Translate : sig
 		    | EXP e => let
 			val (x', env') = trVar(env, x)
 			in
-			  mkLet([x'], trExpToExp(env, exp), k env')
+			  mkLet([x'], e, k env')
+			end
+		(* end case *))
+	    | AST.ValBind(AST.WildPat ty, exp) => (case trExp(env, exp)
+		   of BIND([x'], rhs) =>
+			mkStmt([x'], rhs, k env)
+		    | EXP e => let
+			val x' = BV.new("_wild_", TranslateTypes.tr(env, ty))
+			in
+			  mkLet([x'], e, k env)
 			end
 		(* end case *))
 	    | AST.ValBind _ => raise Fail "unexpected complex pattern"
