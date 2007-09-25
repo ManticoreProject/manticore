@@ -275,7 +275,17 @@ structure Translate : sig
 		  | ty => ty
 		(* end case *))
 	  fun trRules ([AST.PatMatch(pat, exp)], cases) = (case pat (* last rule *)
-		 of AST.ConPat(dc, tyArgs, p) => raise Fail "ConPat"
+		 of AST.ConPat(dc, tyArgs, pat) => (case TranslateTypes.trDataCon(env, dc)
+		       of E.DCon dc' => let
+			    val (env, args) = (case pat
+				   of AST.TuplePat pats => trVarPats (env, pats)
+				    | _ => trVarPats (env, [pat])
+				  (* end case *))
+			    in
+			      ((B.P_DCon(dc', args), trExpToExp(env, exp))::cases, NONE)
+			    end
+			| _ => raise Fail "unexpected constant"
+		      (* end case *))
 		  | AST.TuplePat[] =>
 		      ((B.P_Const B.unitConst, trExpToExp (env, exp))::cases, NONE)
 		  | AST.TuplePat ps => let
@@ -285,10 +295,10 @@ structure Translate : sig
 		      in
 			(cases, SOME(bind(0, xs)))
 		      end
-		  | AST.VarPat x =>
-		    (* default case: map x to the argument *)
+		  | AST.VarPat x =>(* default case: map x to the argument *)
 		      (cases, SOME(trExpToExp(E.insertVar(env, x, arg), exp)))
-		  | AST.WildPat ty => raise Fail "WildPat"
+		  | AST.WildPat ty => (* default case *)
+		      (cases, SOME(trExpToExp(env, exp)))
 		  | AST.ConstPat(AST.DConst(dc, tyArgs)) => raise Fail "DConst"
 		  | AST.ConstPat(AST.LConst(lit, ty)) =>
 		      ((B.P_Const(lit, trLitTy ty), trExpToExp (env, exp))::cases, NONE)
