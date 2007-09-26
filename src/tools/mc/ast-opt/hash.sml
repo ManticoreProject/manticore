@@ -74,7 +74,7 @@ structure Hash (* : sig
 	    ty t
 	end
 
-    (* mkHash : int * T.ty list -> A.var * A.lambda *)
+    (* mkHash : int * T.ty list -> A.exp *)
     (* n.b. This is hash in the sense of ML's #, not a hash function, table, etc. *)
     (* Pre: n is on [1, length ts]. *)
     (* Pre: There are no free type variables in the list of types. *)
@@ -82,22 +82,16 @@ structure Hash (* : sig
     (* n.b. n is 1-based, in keeping with #. *)
     fun mkHash (n, ts) =
 	let val resultTy = List.nth (ts, n-1)
-	    val hashTy = T.FunTy (T.TupleTy ts, resultTy)
-	    val hashVar = Var.newWithKind ("hash" ^ Int.toString n,
-					   A.VK_Fun,
-					   hashTy)
 	    val (tuplePat, xn) = patAndVar (ts, n)
 	    val arg = Var.new ("t", T.TupleTy ts)
-	    val hashDef = A.FB (hashVar,
-				arg,
-				A.CaseExp (A.VarExp (arg, []),
-					   [(tuplePat, A.VarExp (xn, []))],
-					   resultTy))
+	    val loneBranch = A.PatMatch (tuplePat, A.VarExp (xn, []))
+	    val caise = A.CaseExp (A.VarExp (arg, []), [loneBranch], resultTy)
+	    val hashFn = A.FunExp (arg, caise, resultTy)
 	in
 	    if List.exists containsTyvar ts then
 		fail "mkHash: passed unresolved polymorphic type"
 	    else
-		(hashVar, hashDef)
+		hashFn
 	end
 
     (**** tests ****)
@@ -108,12 +102,10 @@ structure Hash (* : sig
 
 	(* tst : int * T.ty list -> unit *)
 	fun tst (n, ts) = 
-	    let val (hashVar, hashDef) = mkHash (n, ts)
-		val exp = A.LetExp (A.FunBind [hashDef],
-				    A.VarExp (hashVar, []))
+	    let val h = mkHash (n, ts)
 	    in
-		PrintAST.print exp;
-		PrintAST.printComment (TypeUtil.toString (TypeOf.exp exp))
+		PrintAST.print h;
+		PrintAST.printComment (TypeUtil.toString (TypeOf.exp h))
 	    end
 
         (* t0 *)
@@ -131,4 +123,4 @@ structure Hash (* : sig
 
     end
 
-  end
+  end (* structure Hash *)
