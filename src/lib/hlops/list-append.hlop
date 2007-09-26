@@ -8,9 +8,7 @@
 
 #include "types.def"
 
-define @list-append (arg : [list, list] / exh : exh) : list =
-    let l1 : list = #0(arg)
-    let l2 : list = #1(arg)
+define @list-append-loop (l1 : list, l2 : list / exh : exh) : list =
     fun append (l1 : list / exh : exh) : list =
 	  case l1
 	   of CONS(hd:any, tl:list) =>
@@ -19,4 +17,10 @@ define @list-append (arg : [list, list] / exh : exh) : list =
 	    | NIL => return (l2)
 	  end
       apply append (l1 / exh)
+;
+
+define inline @list-append (arg : [list, list] / exh : exh) : list =
+    let l1 : list = #0(arg)
+    let l2 : list = #1(arg)
+      @list-append-loop (l1, l2 / exh)
 ;
