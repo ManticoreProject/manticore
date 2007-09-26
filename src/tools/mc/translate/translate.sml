@@ -276,6 +276,17 @@ structure Translate : sig
 	  (* end case *))
 
     and trCase (env, arg, rules) = let
+	  fun trConPat (dc, tyArgs, pat, exp) = (case TranslateTypes.trDataCon(env, dc)
+		 of E.DCon dc' => let
+		      val (env, args) = (case pat
+			     of AST.TuplePat pats => trVarPats (env, pats)
+			      | _ => trVarPats (env, [pat])
+			    (* end case *))
+		      in
+			(B.P_DCon(dc', args), trExpToExp(env, exp))
+		      end
+		  | _ => raise Fail "unexpected constant"
+		(* end case *))
 	(* translate the type of a literal; if it is wrapped, then replace the wrapped
 	 * type with a raw type.
 	 *)
@@ -284,17 +295,8 @@ structure Translate : sig
 		  | ty => ty
 		(* end case *))
 	  fun trRules ([AST.PatMatch(pat, exp)], cases) = (case pat (* last rule *)
-		 of AST.ConPat(dc, tyArgs, pat) => (case TranslateTypes.trDataCon(env, dc)
-		       of E.DCon dc' => let
-			    val (env, args) = (case pat
-				   of AST.TuplePat pats => trVarPats (env, pats)
-				    | _ => trVarPats (env, [pat])
-				  (* end case *))
-			    in
-			      ((B.P_DCon(dc', args), trExpToExp(env, exp))::cases, NONE)
-			    end
-			| _ => raise Fail "unexpected constant"
-		      (* end case *))
+		 of AST.ConPat(dc, tyArgs, pat) =>
+		      (trConPat (dc, tyArgs, pat, exp) :: cases, NONE)
 		  | AST.TuplePat[] =>
 		      ((B.P_Const B.unitConst, trExpToExp (env, exp))::cases, NONE)
 		  | AST.TuplePat ps => let
@@ -314,7 +316,7 @@ structure Translate : sig
 		(* end case *))
 	    | trRules (AST.PatMatch(pat, exp)::rules, cases) = let
 		val rule' = (case pat
-		       of AST.ConPat(dc, tyArgs, p) => raise Fail "ConPat"
+		       of AST.ConPat(dc, tyArgs, p) => trConPat (dc, tyArgs, p, exp)
 			| AST.ConstPat(AST.DConst(dc, tyArgs)) => raise Fail "DConst"
 			| AST.ConstPat(AST.LConst(lit, ty)) =>
 			    (B.P_Const(lit, trLitTy ty), trExpToExp (env, exp))
