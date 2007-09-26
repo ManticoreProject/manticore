@@ -7,8 +7,8 @@
 structure BOM =
   struct
 
-    datatype data_con = datatype BOMTyCon.data_con
-    datatype dcon_rep = datatype BOMTyCon.dcon_rep
+    datatype data_con = datatype BOMTy.data_con
+    datatype dcon_rep = datatype BOMTy.dcon_rep
 
     type ty = BOMTy.ty
     type hlop = HLOp.hlop

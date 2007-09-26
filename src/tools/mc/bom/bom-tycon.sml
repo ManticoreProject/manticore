@@ -6,14 +6,23 @@
  * Utility code for datatypes in BOM.
  *)
 
-structure BOMTyCon =
-  struct
+structure BOMTyCon : sig
+
+    val newDataTyc : (string * int) -> BOMTy.tyc
+    val tycName : BOMTy.tyc -> string
+    val nCons : BOMTy.tyc -> int
+
+    val newDataCon : BOMTy.tyc -> (string * BOMTy.dcon_rep * BOMTy.ty list) -> BOMTy.data_con
+    val dconName : BOMTy.data_con -> string
+    val dconArgTy : BOMTy.data_con -> BOMTy.ty list
+    val dconTyc : BOMTy.data_con -> BOMTy.tyc
+    val dconResTy : BOMTy.data_con -> BOMTy.ty	(* the tyc as a ty *)
+
+  end = struct
 
     datatype tyc = datatype BOMTy.tyc
     datatype data_con = datatype BOMTy.data_con
     datatype dcon_rep = datatype BOMTy.dcon_rep
-
-    fun toString (DataTyc{name, ...}) = name
 
   (* create a new datatype tycon *)
     fun newDataTyc (name, nNullary) = DataTyc{
