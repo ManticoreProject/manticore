@@ -4,11 +4,16 @@
  * All rights reserved.
  *
  * n.b. This is hash in the sense of ML's #, not a hash function, table, etc.
+ *
+ * Given an integer [1,n] and a list of types of length at least 1 and <= n,
+ * return a tuple selector function (a la ML's #) of appropriate type.
+ *
+ * Ex: mkHash (2, [int, bool, char]) --> fn (i:int, b:bool, c:char) => b
  *)
 
 structure Hash (* : sig
 
-    val mkHash : int * Types.ty list -> AST.var * AST.lambda
+    val mkHash : int * Types.ty list -> AST.exp
 
   end *) = 
 

@@ -16,10 +16,7 @@ structure Unpar : sig
 
     fun exp (A.LetExp (b, e)) = A.LetExp (binding b, exp e)
       | exp (A.IfExp (e1, e2, e3, t)) = A.IfExp (exp e1, exp e2, exp e3, t)
-      | exp (A.CaseExp (e, pes, t)) = 
-	  A.CaseExp (exp e,
-		     map (fn (p,e) => (pat p, exp e)) pes,
-		     t)
+      | exp (A.CaseExp (e, ms, t)) = A.CaseExp (e, map match ms, t)
       | exp (A.FunExp (x, e, t)) = A.FunExp (x, exp e, t)
       | exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, t)
       | exp (A.TupleExp es) = A.TupleExp (map exp es)
@@ -31,26 +28,23 @@ structure Unpar : sig
       | exp (A.PArrayExp (es, t)) = A.PArrayExp (map exp es, t)
       | exp (A.PCompExp (e, pes, oe)) =
 	  A.PCompExp (exp e,
-			   map (fn (p,e) => (pat p, exp e)) pes,
+			   map (fn (p,e) => (p, exp e)) pes,
 			   Option.map exp oe)
       | exp (A.PChoiceExp (es, t)) = A.PChoiceExp (map exp es, t)
       | exp (A.SpawnExp e) = A.SpawnExp (exp e)
-      | exp (A.ConstExp c) = A.ConstExp (const c)
-      | exp (A.VarExp (v, ts)) = A.VarExp (var v, ts)
+      | exp (k as A.ConstExp c) = k
+      | exp (x as A.VarExp (v, ts)) = x
       | exp (A.SeqExp (e1, e2)) = A.SeqExp (exp e1, exp e2)
       | exp (A.OverloadExp ovr) = A.OverloadExp ovr
 
-    and binding (A.ValBind (p, e)) = A.ValBind (pat p, exp e)
-      | binding (A.PValBind (p, e)) = A.PValBind (pat p, exp e)
+    and binding (A.ValBind (p, e)) = A.ValBind (p, exp e)
+      | binding (A.PValBind (p, e)) = A.PValBind (p, exp e)
       | binding (A.FunBind lams) = A.FunBind (map lambda lams)
 
-    and lambda (A.FB (f, x, e)) = A.FB (var f, var x, exp e)
+    and lambda (A.FB (f, x, e)) = A.FB (f, x, exp e)
 
-    and pat p = p
-
-    and const c = c
-
-    and var v = v
+    and match (A.PatMatch (p, e)) = A.PatMatch (p, exp e)
+      | match (A.CondMatch (p, e1, e2)) = A.CondMatch (p, exp e1, exp e2)
 
     fun module m = exp m
 

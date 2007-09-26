@@ -37,12 +37,14 @@ structure Nester (* : sig
 	    (* exps : exp list -> exp list *)
 	    and exps ([e]) = exp e
 	      | exps (e::es) = exp e @ exps es
-	      | exps [] = fail "empty"
+	      | exps [] = fail "removeParens: empty"
 	in
 	    exps es
 	end
 
     (* mkVarTup : T.ty -> A.exp *)
+    (* Consumes a tuple type. *)
+    (* Produces a tuple of fresh variables of the given types. *)
     fun mkVarTup (T.TupleTy ts) =
 	  let fun v var = A.VarExp (var, []) 
 	      (* build : T.ty list -> A.exp list *)
@@ -109,11 +111,18 @@ structure Nester (* : sig
     (* freshVarExp : T.ty -> A.exp *)
     fun freshVarExp t = A.VarExp (FreshVar.fresh (NONE, t), []) (* ??? *)
 
-    (* argTy : A.exp -> T.ty option *)
-    (* If the given expression is a non-nullary data constructor, return *)
-    (*   SOME argument type; otherwise return NONE. *)
-    fun argTy (A.ConstExp (A.DConst (d, _))) = DataCon.argTypeOf d
-                               (* note: argTypeOf already returns an option *)
+    (* argTy : A.ty -> T.ty option *)
+    (* If the given type is a ConTy applied to a single type, *)
+    (* return SOME of that type. *)
+    (* FIXME If the given type is a ConTy applied to a list of >1 types, *)
+    (* raise todo. *)
+    (* If the given type is a nullary dcon or not a ConTy, return NONE. *)
+    fun argTy (T.ConTy (ts, c)) = 
+	  (case ts
+	     of [t] => SOME t
+	      | [] => NONE
+	      | _ => raise Fail "todo: argTy: dcon applied to multiple types"
+	    (* end case *))		    
       | argTy _ = NONE
 
     local
@@ -122,33 +131,35 @@ structure Nester (* : sig
     in
     (* nesterComponents : A.exp -> A.exp list * A.exp *)
     (* Produces a flat list of variables and the properly-shaped tuple *)
-    (*   of variables and data constructors. *)
+    (* of variables and data constructors. *)
     fun nesterComponents (app as A.ApplyExp (e1, e2, t)) = 
-	if (isDCon e1) andalso (isDConApp e2) then
-	    let val c2 = (case nesterComponents e2
-                            of (_, A.ApplyExp (c, _, _)) => c
-			     | _ => fail "nesterComponents: not a function")
-		val c2ArgTy = (case TypeOf.exp c2
-                                 of T.FunTy (d, _) => d
-				  | _ => fail "nesterComponents: not a function")
-		val x = freshVarExp c2ArgTy
-	    in
-		([x], A.ApplyExp (compose (e1, c2), x, t))
-	    end
-	else if (isDCon e1) andalso (isTup e2) then
-	    let val (vs, ft) = nesterComponents e2
-	    in
-		(vs, A.ApplyExp (e1, ft, t))
-	    end
-	else
-	    (case argTy e1
- 	       of SOME at => 
-		  let val x = freshVarExp at
-		  in
-		      ([x], A.ApplyExp (e1, x, t))
-		  end
-		| NONE => v t
-  	      (* end case *))
+	  let val t' = t
+	  in if (isDCon e1) andalso (isDConApp e2) then
+		 let val c2 = (case nesterComponents e2
+				of (_, A.ApplyExp (c, _, _)) => c
+				 | _ => fail "nesterComponents: not a function")
+		     val c2ArgTy = (case TypeOf.exp c2
+                                     of T.FunTy (d, _) => d
+				      | _ => fail "nesterComponents: not a function")
+		     val x = freshVarExp c2ArgTy
+		 in
+		     ([x], A.ApplyExp (compose (e1, c2), x, t))
+		 end
+	     else if (isDCon e1) andalso (isTup e2) then
+		 let val (vs, ft) = nesterComponents e2
+		 in
+		     (vs, A.ApplyExp (e1, ft, t))
+		 end
+	     else
+		 (case argTy t
+ 		   of SOME at => 
+		      let val x = freshVarExp at
+		      in
+			  ([x], A.ApplyExp (e1, x, t))
+		      end
+		    | NONE => v t
+  		 (* end case *))
+	  end
       | nesterComponents (A.TupleExp es) = 
   	  let val (vss, xs) = ListPair.unzip (map nesterComponents es)
 	  in
@@ -162,29 +173,30 @@ structure Nester (* : sig
       | nesterComponents e = v(TypeOf.exp e)
     end (* local *)
 
-    (* fromExp : A.exp -> A.var * A.lambda *)
+    (* fromExp : A.exp -> A.exp *)
+    (* A nester is a fn that imposes tuple and datacon structure on a flat tup. *)
     (* Pre: The argument is a tuple. *)
     (* Generates a "nester" based on the given expression. *)
-    (* Returns the var naming the generated nester and its definition. *)
-    (* A nester is a fn that imposes tuple and datacon structure on a flat tup. *)
+    (* Returns an anonymous function. *)
     (* ex: fromExp (1,(SOME 2,3)) ==> fn (a,b,c) => (a,(SOME b,c)) *)
-    fun fromExp e = 
+    fun fromExp e =
 	let fun exps es =
 		let val _ = FreshVar.resetVarNames ()
-		    val (ves, e') = nesterComponents e
-		    val flatTup = A.TupleExp ves
+		    val (vs, e') = nesterComponents e
+		    val flatTup = A.TupleExp vs
 		    val nestedTy  = TypeOf.exp e
 		    val flatTy = TypeOf.exp flatTup
-		    val nest = Var.new ("nest", T.FunTy (flatTy, nestedTy))
 		    val x = Var.new ("x", flatTy)
 		    fun vpat (A.VarExp (v, _)) = A.VarPat v
 		      | vpat _ = fail "vpat: expected VarExp"
-		    val p = A.TuplePat (map vpat ves)
-		    val body = A.CaseExp (A.VarExp (x, []),
-					  [(p, Unpar.noPTups e')],
-					  nestedTy)
+		    val p = A.TuplePat (map vpat vs)
+		    val body = 
+			let val m = A.PatMatch (p, Unpar.noPTups e')
+			in
+			    A.CaseExp (A.VarExp (x, []), [m], nestedTy)
+			end
 		in
-		    (nest, A.FB (nest, x, body))
+		    A.FunExp (x, body, nestedTy)
 		end
 	in
 	    case e
@@ -201,10 +213,10 @@ structure Nester (* : sig
 	fun dcon (A.ConstExp (A.DConst (c, _))) = c
 	  | dcon _ = fail "dcon"
 
-	(* onlyMatch : A.exp -> A.pat * A.exp *)
+	(* onlyMatch : A.exp -> A.match *)
 	(* Pre: the argument is a CaseExp. *)
 	(* Pre: the case exp has exactly one branch. *)
-	fun onlyMatch (A.CaseExp (_, [(p,e)], _)) = (p,e)
+	fun onlyMatch (A.CaseExp (_, [m], _)) : A.match = m
 	  | onlyMatch (A.CaseExp _) = fail "onlyMatch: expected one match"
 	  | onlyMatch _ = fail "onlyMatch: expected a CaseExp"
 
@@ -221,7 +233,7 @@ structure Nester (* : sig
     (* Returns true if two nesters have the same dcons in the same places. *)
     (* ex: sameDCons (fn (a,b) => (Fahr a, b), fn (x,y) => (Fahr x, y)) ==> true *)
     (* ex: sameDCons (fn (a,b) => (Fahr a, b), fn (x,y) => (Cels x, y)) ==> false *)
-    fun sameDCons (n1 as A.FB (_, _, b1), n2 as A.FB (_, _, b2)) = 
+    fun sameDCons (n1 as A.FunExp (x1, b1, t1), n2 as A.FunExp (x2, b2, t2)) = 
 	let (* s : A.exp * A.exp -> bool *)
 	    fun s (A.VarExp _, A.VarExp _) = true
 	      | s (A.TupleExp es1, A.TupleExp es2) = allEq s (es1, es2)
@@ -229,15 +241,26 @@ structure Nester (* : sig
 		  isDCon c1 andalso isDCon c2 andalso 
 		  DataCon.same (dcon c1, dcon c2) andalso s (e1, e2)
 	      | s _ = fail "sameDCons: unexpected expression form"
+	    (* expFromMatch : A.match -> A.exp *)
+	    fun expFromMatch (A.PatMatch (_, e)) = e
+	      | expFromMatch (A.CondMatch (_, _, e)) = 
+		  raise Fail "Nester.sameDCons.expFromMatch: nesters should only \
+                             \contain PatMatches; this one contains a CondMatch"
+	    (* expFromBody : A.exp -> A.exp *)
+	    val expFromBody = expFromMatch o onlyMatch
 	in
-	    s (#2 (onlyMatch b1), #2 (onlyMatch b2))
+	    s (expFromBody b1, expFromBody b2)
 	end
+      | sameDCons _ = false
 
-    (* same : A.lambda * A.lambda -> bool *)
+    (* same : A.exp * A.exp -> bool *)
     (* Nesters are restricted enough that they can be compared for equality. *)
-    fun same (n1 as A.FB (_, _, b1), n2 as A.FB (_, _, b2)) =
-	let val (p1,e1) = onlyMatch b1
-	    val (p2,e2) = onlyMatch b2
+    fun same (n1 as A.FunExp (x1, b1, t1), n2 as A.FunExp (x2, b2, t2)) =
+	let fun get e = case onlyMatch e
+			  of A.PatMatch (p, e) => (p, e)
+			   | _ => raise Fail "Nester.same: nester contains a CondMatch" 
+	    val (p1, e1) = get b1
+	    val (p2, e2) = get b2
 	    (* pat : A.pat * A.pat -> bool *)
 	    (* Both pats must be flat tuples of vars, and have the same length. *)
 	    fun pat (A.TuplePat ps1, A.TuplePat ps2) = 
@@ -284,31 +307,31 @@ structure Nester (* : sig
 	in
 	    pat (p1, p2) andalso exp (e1, e2)
 	end
+      | same _ = false
+
     end (* local *)
 
-    (**** tests ****)
+    (**** Tests ****)
 
-(*
     local
 
 	structure B = Basis
 	structure U = TestUtils 
 
-	fun fromExp' e = 
-	    let val (v, lam) = fromExp e
-	    in
-		funFromLam lam
-	    end
-
 	(* testTup : A.exp -> unit *)
 	fun testTup e = (PrintAST.print e;
 			 U.describe NONE;
-			 PrintAST.print (fromExp' e))
+			 PrintAST.print (fromExp e))
 
 	val t0 = U.ptup [U.int 1, U.ptup [U.int 2, U.int 3]]
 	val t1 = U.ptup [U.int 1, U.ptup [U.some (U.int 2),
 					  U.int 3]]
+
+	(* FIXME : Ponder example t2 a bit more. *)
+	(* What should we do with nullary constructors? *)
+	(* t2 = (| SOME 2, SOME 9, NONE |) *)
 	val t2 = U.ptup [U.some (U.int 2), U.some (U.int 9), U.none B.intTy]
+
 	val t3 = U.ptup [U.some (U.int 1), 
 			 U.some (U.ptup [U.int 2, U.int 3])]
 	val t4 = U.ptup [U.ptup [U.ptup [U.ptup [U.int 1, U.some (U.int 2)],
@@ -334,11 +357,15 @@ structure Nester (* : sig
 	(* t9 = (| SOME (| SOME 15, SOME 16 |) |) *)
 	val t9 = U.ptup [U.some (U.ptup [U.some (U.int 15), 
 					 U.some (U.int 16)])]
+
+        (* t10 = (| SOME 1 |) *)
+	val t10 = U.ptup [U.some (U.int 1)]
+
     in
 
         (* test : int -> unit *)
         fun test n =
-	    let val tests = [t0,t1,t2,t3,t4,t5,t6,t7,t8]
+	    let val tests = [t0,t1,t2,t3,t4,t5,t6,t7,t8,t9,t10]
 	    in
 		testTup (List.nth (tests, n))
 		handle Subscript =>
@@ -354,13 +381,13 @@ structure Nester (* : sig
 	(* testSame : int -> unit *)
 	fun testSame n =
 	    let fun t (e1, e2) =
-		    let val (_, lam1) = fromExp e1
-			val (_, lam2) = fromExp e2
+		    let val lam1 = fromExp e1
+			val lam2 = fromExp e2
 			val s = same (lam1, lam2)
 		    in
-			PrintAST.print (funFromLam lam1);
+			PrintAST.print lam1;
 			PrintAST.printComment "****";
-			PrintAST.print (funFromLam lam2);
+			PrintAST.print lam2;
 			PrintAST.printComment ("same: " ^ Bool.toString s)
 		    end
 	    in
@@ -370,6 +397,6 @@ structure Nester (* : sig
 		  | _ => print (Int.toString n ^ ": no such test for testSame.\n")
 	    end
     end
-*)
 
-  end
+
+  end (* structure Nester *)

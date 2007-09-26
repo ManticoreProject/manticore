@@ -66,11 +66,15 @@ structure FlatParTup : sig
     (* Pre: The argument is either a PTupleExp or a TupleExp. *)
     fun flattenTup (A.PTupleExp es) = A.PTupleExp (flattenExps es)
       | flattenTup (A.TupleExp es)  = A.TupleExp  (flattenExps es)
-      | flattenTup _ = raise Fail "flattenTup: expected a tuple"
+      | flattenTup e = (print "ARRGGH: ";
+			PrintAST.print e;
+			raise Fail "flattenTup: expected a tuple")
 
-    (* getNester : A.exp -> (A.var * A.lambda) option *)	
-    fun getNester (A.LetExp (A.FunBind [nlam],
-			     A.ApplyExp (nvar, e, t))) = SOME (nvar, nlam)
+
+    (* getNester : A.exp -> A.exp option *)	
+    (* Pre: if the given expression is an application, then it *)
+    (*      is exactly the application of a nester. *)
+    fun getNester (A.ApplyExp (n, e, t)) = SOME n
       | getNester _ = NONE
 
     (* firstValOf : ('a -> 'b option) * (unit -> 'b) -> 'a list -> 'b *)
@@ -84,14 +88,16 @@ structure FlatParTup : sig
 	end
 
     (* valsOf : ('a -> 'b option) -> 'a list -> 'b list *)
-    fun valsOf f =
-	let (* v : 'a list -> 'b list *)
-	    fun v [] = []
-	      | v (x::xs) = (case f x
-			      of SOME x' => x' :: v xs
-			       | NONE => v xs)
+    (* Map a function f over a list of alphas. *)
+    (* Return a list of the values of all SOMEs produced by that map. *)
+    fun valsOf f xs =
+	let (* v : 'a list * 'b list -> 'b list *)
+	    fun v ([], acc) = rev acc
+	      | v (x::xs, acc) = (case f x
+				   of SOME x' => v (xs, x'::acc)
+				    | NONE => v (xs, acc))
 	in
-	    v
+	    v (xs, [])
 	end
 
     (* allSame : A.lambda list -> bool *)
@@ -107,7 +113,7 @@ structure FlatParTup : sig
     (* n.b. Type-preserving. *) 
    fun exp (A.LetExp (b, e)) = A.LetExp (binding b, exp e)
       | exp (A.IfExp (e1, e2, e3, t)) = ifExp (e1, e2, e3, t)
-      | exp (A.CaseExp (e, pes, t)) = caseExp (e, pes, t)
+      | exp (A.CaseExp (e, ms, t)) = caseExp (e, ms, t)
       | exp (A.FunExp (x, e, t)) = A.FunExp (x, exp e, t)
       | exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, t)
       | exp (A.TupleExp es) = A.TupleExp (List.map exp es)
@@ -115,15 +121,12 @@ structure FlatParTup : sig
 							exp e2, 
 							omap exp oe3, 
 							t)
-      | exp (p as A.PTupleExp es) =
-	  if isFlattenCand p then	      
-	      let val t = TypeOf.exp p
-		  val (f, lam) = Nester.fromExp p 
+      | exp (pt as A.PTupleExp es) =
+	  if isFlattenCand pt then	      
+	      let val t = TypeOf.exp pt
+		  val n = Nester.fromExp pt 
 	      in
-		  A.LetExp (A.FunBind [lam],
-			    A.ApplyExp (A.VarExp (f, []), 
-					A.PTupleExp (flattenExps es), 
-					t))
+		  A.ApplyExp (n, A.PTupleExp (flattenExps es), t)
 	      end
 	  else 
 	      A.PTupleExp (map exp es)
@@ -147,26 +150,20 @@ structure FlatParTup : sig
 	    (* f either pulls the "applicand" out of an application, *)
 	    (* or flattens the given tuple. If the argument is neither *)
 	    (* an application nor a tuple, flattenTup will raise Fail. *)
-	    fun f (A.LetExp (_, A.ApplyExp (_, e, _))) = e
+	    fun f (A.ApplyExp (_, e, _)) = e
 	      | f e = flattenTup e
 	    (* i : A.exp * A.exp -> A.exp *)
 	    fun i (e2, e3) =
 		case valsOf getNester [e2, e3]
 		 of [] => raise Fail "ifExp: no nesters found"
-		  | nesters as (nVar, nLam) :: _ =>
-		      if allSame (map #2 nesters) then			   
+		  | nesters as n::_ =>
+		      if allSame nesters then			   
 			  let val e2' = f e2
 			      val e3' = f e3
 			      val flatTy = TypeOf.exp e2' 
                                            (* e3' would do as well *)
 			  in
-			      A.LetExp (A.FunBind [nLam],
-					A.ApplyExp (nVar,
-						    A.IfExp (exp e1, 
-							     e2', 
-							     e3', 
-							     flatTy),
-						    t))
+			      A.ApplyExp (n, A.IfExp (exp e1, e2', e3', flatTy), t)
 			  end
 		      else (* we cannot factor *)
 			  A.IfExp (exp e1, e2, e3, t)
@@ -177,8 +174,8 @@ structure FlatParTup : sig
 		A.IfExp (exp e1, exp e2, exp e3, t)
 	end
 
-    (* caseExp : A.exp * (A.pat * A.exp) list * T.ty -> A.exp *)
-    and caseExp (e, pes, t) =
+    (* caseExp : A.exp * A,match list * T.ty -> A.exp *)
+    and caseExp (e, ms, t) =
 	(* Optimization: the nester is factored out of the case expression if poss. *)
 	(* However, we need to know if all nesters (if there are > 1) are the same. *)
 	(* While they won't differ in types, they might differ in data constructors. *)
@@ -186,36 +183,58 @@ structure FlatParTup : sig
 	    (* f either pulls the "applicand" out of an application, *)
 	    (* or flattens the given tuple. If the argument is neither *)
 	    (* an application nor a tuple, flattenTup will raise Fail. *)
-	    fun f (A.LetExp (_, A.ApplyExp (_, e, _))) = e
+	    fun f (A.ApplyExp (_, e, _)) = e
 	      | f e = flattenTup e
-	    (* c : A.pat list * A.exp list -> A.exp *)
-	    fun c (ps, es) = 
-		(case valsOf getNester es
-		   of [] => raise Fail "caseExp: no nesters found"
-		    | nesters as (nVar, nLam) :: _ =>
- 		        if allSame (map #2 nesters) then
-			    let val es' = map f es
-				val flatTy = TypeOf.exp (hd es')
-				(* any member of es' would do *)
-				val pes' = ListPair.zip (ps, es')
-			    in
-				A.LetExp (A.FunBind [nLam],
-					  A.ApplyExp (nVar,
-						      A.CaseExp (exp e,
-								 pes',
-								 flatTy),
-						      t))
-			    end
-			else (* we cannot factor *)
-			    A.CaseExp (exp e, ListPair.zip (ps, es), t)
-  		  (* end case *))
-	    val (ps, es) = ListPair.unzip pes
-	    val es' = map exp es
+
+	    (* mainExpFromMatch : A.match -> A.exp *)
+	    fun mainExpFromMatch (A.PatMatch (_, e)) = e
+	      | mainExpFromMatch (A.CondMatch (_, _, e)) = e
+
+	    (* remakeMatches : A.exp list * A.match list -> A.match list *)
+	    fun remakeMatches (es, ms) =
+		let fun rm (e, A.PatMatch (p, _)) = A.PatMatch (p, e)
+		      | rm (e, A.CondMatch (p, c, _)) = A.CondMatch (p, c, e)
+		in
+		    ListPair.mapEq rm (es, ms)
+		end
+
+	    (* matches : A.match list -> A.exp *)
+	    fun matches (ms : A.match list) : A.exp =
+		let val mainExps = map mainExpFromMatch ms
+		in (case valsOf getNester mainExps
+		      of [] => raise Fail "caseExp: no nesters found"
+		       | nesters as n::_ =>
+ 		           if allSame nesters then
+			       let val mainExps' = map f mainExps
+				   val flatTy = TypeOf.exp (hd mainExps') 
+				   (* any member of es' would have done for flatTy *)
+				   val ms' = remakeMatches (mainExps', ms)
+			       in
+				   A.ApplyExp (n, A.CaseExp (exp e, ms', flatTy), t)
+			       end
+			   else (* we cannot factor *)
+			       A.CaseExp (exp e, ms, t)
+  		   (* end case *))
+		end
+
+	    (* Separately flatten the conditions in conditional matches; they aren't *)
+	    (* part of this^ optimization, but they deserve flattening too! *)
+	    (* ^They may be recursively subject to this optimization. *)
+	    val ms' =
+		let fun f (A.CondMatch (p, e1, e2)) = A.CondMatch (p, exp e1, e2)
+		      | f patMatch = patMatch
+		in
+		    map f ms
+		end
 	in
-            if List.exists isFlattenCand es then
-		c (ps, es')
-	    else
-		A.CaseExp (exp e, ListPair.zip (ps, es'), t)
+	    if List.exists isFlattenCand (map mainExpFromMatch ms') then
+		let fun f (A.PatMatch (p, e)) = A.PatMatch (p, exp e)
+		      | f (A.CondMatch (p, c, e)) = A.CondMatch (p, c, exp e)
+		in
+		    matches (map f ms')
+		end
+	    else (* we don't flatten *)
+		A.CaseExp (exp e, ms', t)
 	end
 
     (* binding : A.binding -> A.binding *)
@@ -275,7 +294,6 @@ structure FlatParTup : sig
 			  ptup [int 1, tup [int 2, int 3]],
 			  ptup [int 4, tup [int 5, int 6]])
 
-
 	(* t7 = case n of 0 => (| 1, (2, SOME 3) |) 
                         | 1 => (| 4, (5, SOME 6) |) 
                         | k => (| 0, (0, NONE) |) *)
@@ -323,4 +341,4 @@ structure FlatParTup : sig
 
     end (* local *)
 		    
-  end
+  end (* structure FlatParTup *)
