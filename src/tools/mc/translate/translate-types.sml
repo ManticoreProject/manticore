@@ -72,9 +72,11 @@ structure TranslateTypes : sig
 		in
 		  insertDCon (env, dc, dc')
 		end
-	(* translate the argument type of a data constructor *)
+	(* translate the argument type of a data constructor; for tuples of two, or more,
+	 * components, we flatten the representation.
+	 *)
 	  fun trArgTy dc = (case tr (env, valOf (DataCon.argTypeOf dc))
-		 of BTy.T_Tuple(false, tys) => tys
+		 of BTy.T_Tuple(false, tys as _::_::_) => tys
 		  | ty => [ty]
 		(* end case *))
 	  in

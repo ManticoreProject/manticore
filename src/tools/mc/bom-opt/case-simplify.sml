@@ -147,6 +147,7 @@ structure CaseSimplify : sig
     fun dconToRepTy (BTy.DCon{name, rep, argTy, ...}) = (case (rep, argTy)
 	   of (BTy.Transparent, [ty]) => tyToRepTy ty
 	    | (B.Transparent, _) => raise Fail("bogus application of transparent dcon "^name)
+	    | (BTy.Tuple, []) => BTy.unitTy
 	    | (BTy.Tuple, _) => BTy.T_Tuple(false, List.map tyToRepTy argTy)
 	    | (BTy.TaggedTuple tag, _) => BTy.T_Tuple(false, BTy.T_Enum tag :: List.map tyToRepTy argTy)
 	  (* end case *))
@@ -340,7 +341,6 @@ DEBUG*)
 		  (* end case *)
 		end
 	    | consCase (cons as ((dc, _, _)::_), dflt) = let
-(* FIXME: need to case argument to a variable of the correct representation type *)
 		val tagTy = BTy.T_Enum(Word.fromInt(BTyc.nCons(BTyc.dconTyc dc)-1))
 		val hdrTy = BTy.T_Tuple(false, [tagTy]) (* the first word of the object is the tag *)
 		val hdr = BV.new("hdr", hdrTy)
