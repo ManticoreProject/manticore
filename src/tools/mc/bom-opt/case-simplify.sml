@@ -17,6 +17,7 @@ structure CaseSimplify : sig
     structure B = BOM
     structure BV = BOM.Var
     structure BTy = BOMTy
+    structure BTyc = BOMTyCon
     structure BTU = BOMTyUtil
     structure Lit = Literal
     structure BU = BOMUtil
@@ -278,9 +279,7 @@ DEBUG*)
 	    (s, fb)
 	  end
 
-  (* xformCase : BU.subst * B.ty list * B.var * (B.pat * B.exp) list * B.exp option 
-                 -> B.exp *)
-    and xformCase (s, tys, x, rules, dflt) = let
+    and xformCase (s : BU.subst, tys : B.ty list, x, rules : (B.pat * B.exp) list, dflt) = let
 	  val argument = subst s x
 	  val dflt = Option.map (fn e => xformE(s, tys, e)) dflt
 	(* classify the rules into a list of those with enum patterns, a list
@@ -324,7 +323,7 @@ DEBUG*)
 			[argument'], B.E_Cast(BV.typeOf argument', argument),
 			sel (ys, 0))
 		    | (B.TaggedTuple tag, SOME dflt) => let
-			val ty = BTy.T_Enum tag
+			val ty = BTy.T_Enum(Word.fromInt(BTyc.nCons(BTyc.dconTyc dc)))
 			val tag' = BV.new("tag", ty)
 			val tmp = BV.new("tmp", ty)
 			val eq = BV.new("eq", BTy.boolTy)
@@ -340,22 +339,30 @@ DEBUG*)
 		    | _ => raise Fail "bogus dcon rep"
 		  (* end case *)
 		end
-	    | consCase (cons, dflt) = let
+	    | consCase (cons as ((dc, _, _)::_), dflt) = let
+(* FIXME: need to case argument to a variable of the correct representation type *)
+		val tagTy = BTy.T_Enum(Word.fromInt(BTyc.nCons(BTyc.dconTyc dc)-1))
+		val tag = BV.new("tag", tagTy)
 	      (* here we have two, or more, constructors and they must all have the
 	       * TaggedBox representation.
 	       *)
 		fun mkAlt (dc, ys, e) = (case repOf dc
 		       of B.TaggedTuple tag => let
+			    val (s, argument') = retype(s, argument, dconToRepTy dc)
 			    val (s, ys) = xformVars(s, ys)
 			    fun sel ([], _) = xformE(s, tys, e)
-			      | sel (y::ys, i) = B.mkStmt([y], B.E_Select(i, argument), sel(ys, i+1))
+			      | sel (y::ys, i) = B.mkStmt([y], B.E_Select(i, argument'), sel(ys, i+1))
+			    val action = B.mkStmt(
+				  [argument'], B.E_Cast(BV.typeOf argument', argument),
+				  sel (ys, 1))
 			    in
-			      (B.P_Const(Lit.Enum tag, BTy.T_Enum tag), sel (ys, 1))
+			      (B.P_Const(Lit.Enum tag, tagTy), action)
 			    end
 			| _ => raise Fail "expected TaggedBox representation"
 		      (* end case *))
 		in
-		  B.mkCase(argument, List.map mkAlt cons, dflt)
+		  B.mkStmt([tag], B.E_Select(0, argument),
+		    B.mkCase(tag, List.map mkAlt cons, dflt))
 		end
 	  fun enumCase (w, ty, e) = let
 		val ty = if hasTyc ty then tyToRepTy ty else ty
