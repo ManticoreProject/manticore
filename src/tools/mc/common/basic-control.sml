@@ -20,6 +20,9 @@ structure BasicControl :  sig
   (* verbosity of diagnostics. *)
     val verbose : int Controls.control
 
+  (* sequential mode *)
+    val sequential : bool Controls.control
+
   (* wrap a 'pre -> 'post pass with a tracing diagnostic, controled by the 
    * "verbose" control.
    *)
@@ -98,6 +101,20 @@ structure BasicControl :  sig
 
     val () = ControlRegistry.register topRegistry {
 	    ctl = Controls.stringControl ControlUtil.Cvt.int verbose,
+	    envName = NONE
+	  };
+
+  (* sequential mode *)
+    val sequential : bool Controls.control = Controls.genControl {
+	    name = "sequential",
+	    pri = [0, 1],
+	    obscurity = 0,
+	    help = "compile sequential programs",
+	    default = false
+	  }
+
+    val () = ControlRegistry.register topRegistry {
+	    ctl = Controls.stringControl ControlUtil.Cvt.bool sequential,
 	    envName = NONE
 	  };
 

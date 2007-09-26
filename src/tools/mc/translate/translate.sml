@@ -390,9 +390,9 @@ structure Translate : sig
 	  end
 
   (* wrap the body of the program with code to initialize the scheduler. *)
-    fun startup (env, exp) =
-	  B.mkLet([], B.mkHLOp(HLOpEnv.defaultSchedulerStartupOp, [], [E.handlerOf env]),
-	    exp)
+    fun startup (env, exp) = if Controls.get BasicControl.sequential
+	  then exp
+	  else B.mkLet([], B.mkHLOp(HLOpEnv.defaultSchedulerStartupOp, [], [E.handlerOf env]), exp)
 
     fun translate exp = let
           val argTy = BTy.T_Raw RawTypes.T_Int
