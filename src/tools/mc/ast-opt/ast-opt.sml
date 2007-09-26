@@ -34,7 +34,7 @@ structure ASTOpt : sig
     val optimize = BasicControl.mkKeepPassSimple {
 	    output = PrintAST.output,
 	    ext = "ast",
-	    passName = "optimize",
+	    passName = "ast-optimize",
 	    pass = optimize,
 	    registry = ASTOptControls.registry
 	  }

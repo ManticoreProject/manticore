@@ -66,7 +66,7 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
     val optimize = BasicControl.mkKeepPassSimple {
 	    output = PrintBOM.output,
 	    ext = "bom",
-	    passName = "optimize",
+	    passName = "bom-optimize",
 	    pass = optimize,
 	    registry = BOMOptControls.registry
 	  }
