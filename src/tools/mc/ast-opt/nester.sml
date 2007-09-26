@@ -74,13 +74,6 @@ structure Nester (* : sig
     fun isDConApp (A.ApplyExp (f, _, _)) = isDCon f
       | isDConApp _ = false
 
-    (* funFromLam : A.lambda -> A.exp *)
-    (* To clothe a naked lambda in the garb of an expression. *)
-    fun funFromLam (lam as (A.FB (f, _, _))) = 
-	A.LetExp (A.FunBind [lam], 
-		  A.VarExp (f, []))
-        (* ??? should VarExp list nec. be [] ??? *)	
-
     (* compose: A.exp * A.exp -> A.exp *)
     (* Return the composition of two functions. *)
     (* Note: compose (f, g) ==> fn x => f (g x) *)
@@ -94,15 +87,12 @@ structure Nester (* : sig
 			      | _ => fail "compose: g is not a function"
 	in
 	    if TypeUtil.same (gr, fd) then
-		let val h = Var.new ("h", T.FunTy (gd, fr))
-		    val x = Var.new ("x", gd)
-		    val app = A.ApplyExp (f, 
-					  A.ApplyExp (g, 
-						      A.VarExp (x, []), 
-						      fd), 
+		let val z = Var.new ("z", gd)
+		    val fog = A.ApplyExp (f, 
+					  A.ApplyExp (g, A.VarExp (z, []), gr), 
 					  fr)
 		in
-		    funFromLam (A.FB (h, x, app))
+		    A.FunExp (z, fog, fr)
 		end
 	    else
 		 fail "compose: g range doesn't match f domain"
