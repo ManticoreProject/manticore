@@ -41,6 +41,7 @@ structure Contract : sig
     val cntIfNot		= ST.newCounter "contract:if-not"
     val cntIfConst		= ST.newCounter "contract:if-const"
     val cntIfReduce		= ST.newCounter "contract:if-reduce"
+    val cntTrivCase		= ST.newCounter "contract:triv-case"
     val cntCaseConst		= ST.newCounter "contract:case-const"
     val cntBeta			= ST.newCounter "contract:beta"
     val cntBetaCont		= ST.newCounter "contract:beta-cont"
@@ -417,6 +418,14 @@ structure Contract : sig
 		    | _ => B.mkIf(x, doExp(env, e1, kid), doExp(env, e2, kid))
 		  (* end case *)
 		end
+	    | B.E_Case(x, [], SOME e) => let
+	      (* eliminate a trivial case *)
+		val x = U.subst env x
+		in
+		  ST.tick cntTrivCase;
+		  useCntRef x -= 1;
+		  doExp (env, e, kid)
+		end
 	    | B.E_Case(x, cases, dflt) => let
 		val x = U.subst env x
 		fun doCase (pat, e) = (pat, doExp(env, e, kid))
@@ -487,13 +496,10 @@ structure Contract : sig
 	    lambda'
 	  end
 
-  (* inlineApply : {env : BOMUtil.subst,
-		    kid : int,
-		    args : BOM.var list,
-		    params : BOM.var list,
-		    body : BOM.exp} -> BOM.exp
+  (* inline an application of the fucntion "\params.body".  args is the list of actuals and
+   * params is the list of formals.
    *)
-    and inlineApply {env, kid, args, params, body} = let
+    and inlineApply {env : BOMUtil.subst, kid, args, params, body : BOM.exp} = let
 	  val env = U.extend' (env, params, args)
 	  fun adjust (arg, param) = (
 		combineAppUseCnts (arg, param);
