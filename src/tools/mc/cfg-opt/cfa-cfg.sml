@@ -283,7 +283,11 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 			 of WRAP v => v
 			  | BOT => BOT
 			  | TOP => TOP
-			  | _ => raise Fail "type error"
+			  | v => raise Fail(concat[
+				"type error: Unwrap(", CFG.Var.toString x, ", ",
+				CFG.Var.toString y, "); valueOf(",
+				CFG.Var.toString y, ") = ", valueToString v
+			      ])
 			(* end case *))
 		  | doExp (CFG.E_Prim(x, _)) = ()
 		  | doExp (CFG.E_CCall(x, _, args)) = List.app escape args
