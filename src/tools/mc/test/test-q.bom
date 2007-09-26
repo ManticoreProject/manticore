@@ -8,9 +8,9 @@ module TestQ
 
   extern void* M_NewWorkQueue(void*) __attribute__((alloc));
   extern void* M_WorkDequeue(void*,void*);
-  extern void* M_WorkEnqueue(void*,void*,void*) __attribute__((alloc));
+  extern void M_WorkEnqueue(void*,void*,void*) __attribute__((alloc));
 
-  fun mkNew (u : unit / exh : cont(any) (* exh *)) : any =
+  fun test (u : unit / exh : cont(any) (* exh *)) : any =
     let vp : vproc = host_vproc
     let nq : any = ccall M_NewWorkQueue(vp)
     do ccall M_WorkEnqueue (vp, nq, "Hello, world.")
@@ -23,3 +23,5 @@ module TestQ
              apply loop (n / exh)
     let b : any = apply loop (1 / exh)
     return (b)
+
+

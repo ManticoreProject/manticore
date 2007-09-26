@@ -9,8 +9,8 @@
 #include "types.def"
 #include "futures.def"
 
-(* FIXME enqueueG stands for "enqueue global" and it is yet to be implemented *)
-extern void enqueueG (void *);
+(* void M_WorkEnqueue(VProc_t *vp, Value_t q, Value_t item) *)
+extern void M_WorkEnqueue(void*,void*,void*) __attribute__((alloc));
 
 define @future1 (thunk : thunk / exh : exh) : future =
   (* a future1 cell consists of two words:
@@ -25,6 +25,7 @@ define @future1 (thunk : thunk / exh : exh) : future =
   let e : any = (any)EMPTY_F
   let cell : future = alloc(e, thunk)
   let vp : vproc = host_vproc
-  do ccall enqueueG (vp)
+  let THE_QUEUE : any = (any)$0 (* FIXME *)
+  do ccall M_WorkEnqueue (vp, THE_QUEUE, cell)
   return (cell)
 ;
