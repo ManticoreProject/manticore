@@ -101,7 +101,7 @@ structure FlatParTup : sig
 	end
 
     (* allSame : A.lambda list -> bool *)
-    (* Consumes a list of nesters, returns true if they're all the same. *)
+    (* Consumes a list of nesters, returns true if they are all the same. *)
     fun allSame [] = true
       | allSame (n::[]) = true
       | allSame (n::(t as n'::ns)) = Nester.same (n, n') andalso allSame t

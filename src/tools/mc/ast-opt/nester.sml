@@ -23,9 +23,9 @@ structure Nester (* : sig
     (* todo : string -> 'a *)
     fun todo msg = fail ("todo: " ^ msg)
 
-    (* allEq : ('a * 'b -> bool) -> 'a list * 'b list -> bool *)
+    (* allTrue : ('a * 'b -> bool) -> 'a list * 'b list -> bool *)
     (* Raises UnequalLengths if so. *)
-    fun allEq pred (xs, ys) = List.all pred (ListPair.zipEq (xs, ys))
+    fun allTrue pred (xs, ys) = List.all pred (ListPair.zipEq (xs, ys))
 
     (* removeParens : A.exp list -> A.exp list *)
     (* pre: argument must not be empty *)
@@ -206,41 +206,41 @@ structure Nester (* : sig
 	(* onlyMatch : A.exp -> A.match *)
 	(* Pre: the argument is a CaseExp. *)
 	(* Pre: the case exp has exactly one branch. *)
-	fun onlyMatch (A.CaseExp (_, [m], _)) : A.match = m
+	fun onlyMatch (A.CaseExp (_, [m], _)) = m
 	  | onlyMatch (A.CaseExp _) = fail "onlyMatch: expected one match"
 	  | onlyMatch _ = fail "onlyMatch: expected a CaseExp"
+
+	(* expFromMatch : A.match -> A.exp *)
+	fun expFromMatch (A.PatMatch (_, e)) = e
+	  | expFromMatch (A.CondMatch (_, _, e)) = 
+	    raise Fail "Nester.sameDCons.expFromMatch: nesters should only \
+                       \contain PatMatches; this one contains a CondMatch"
+
+	(* expFromBody : A.exp -> A.exp *)
+	val expFromBody = expFromMatch o onlyMatch
 
     in
 
     (* Note on same and sameDCons: *)
     (* Pre: Both arguments are in fact nesters. *) 
-    (* There may be no test to verify this (have to think about that one). *)
-    (* As such, care must be taken when invoking this function. *)
-    (* The implementation depends on nesters having the following form: *)
-    (* fun nest x = case x of (a1, ..., an) => (a1, (a2, a3), SOME a4, ...) *)
+    (* There may be no test to verify this (have to think about that one). - ams *)
+    (* As such, care must be taken when invoking either of these functions. *)
 
     (* sameDCons : A.lambda * A.lambda -> bool *)
     (* Returns true if two nesters have the same dcons in the same places. *)
     (* ex: sameDCons (fn (a,b) => (Fahr a, b), fn (x,y) => (Fahr x, y)) ==> true *)
     (* ex: sameDCons (fn (a,b) => (Fahr a, b), fn (x,y) => (Cels x, y)) ==> false *)
     fun sameDCons (n1 as A.FunExp (x1, b1, t1), n2 as A.FunExp (x2, b2, t2)) = 
-	let (* s : A.exp * A.exp -> bool *)
-	    fun s (A.VarExp _, A.VarExp _) = true
-	      | s (A.TupleExp es1, A.TupleExp es2) = allEq s (es1, es2)
-	      | s (A.ApplyExp (c1, e1, _), A.ApplyExp (c2, e2, _)) =
-		  isDCon c1 andalso isDCon c2 andalso 
-		  DataCon.same (dcon c1, dcon c2) andalso s (e1, e2)
-	      | s _ = fail "sameDCons: unexpected expression form"
-	    (* expFromMatch : A.match -> A.exp *)
-	    fun expFromMatch (A.PatMatch (_, e)) = e
-	      | expFromMatch (A.CondMatch (_, _, e)) = 
-		  raise Fail "Nester.sameDCons.expFromMatch: nesters should only \
-                             \contain PatMatches; this one contains a CondMatch"
-	    (* expFromBody : A.exp -> A.exp *)
-	    val expFromBody = expFromMatch o onlyMatch
-	in
-	    s (expFromBody b1, expFromBody b2)
-	end
+	  let (* s : A.exp * A.exp -> bool *)
+	      fun sim (A.VarExp _, A.VarExp _) = true
+		| sim (A.TupleExp es1, A.TupleExp es2) = allTrue sim (es1, es2)
+		| sim (A.ApplyExp (c1, e1, _), A.ApplyExp (c2, e2, _)) =
+		    isDCon c1 andalso isDCon c2 andalso 
+		    DataCon.same (dcon c1, dcon c2) andalso sim (e1, e2)
+		| sim _ = false
+	  in
+	      sim (expFromBody b1, expFromBody b2)
+	  end
       | sameDCons _ = false
 
     (* same : A.exp * A.exp -> bool *)
