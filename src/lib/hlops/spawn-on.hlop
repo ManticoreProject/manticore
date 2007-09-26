@@ -8,7 +8,7 @@
 
 #include "types.def"
 
-extern void EnqueueOnVProc (void *, void *, void *, void *);
+extern void EnqueueOnVProc (void *, void *, void *, void *) __attribute__((alloc));
 
 define @dispatch (vp : vproc / exh : exh) noreturn;
 define @new-tid (vp : vproc / exh : exh) : tid;
