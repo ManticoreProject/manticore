@@ -130,12 +130,11 @@ structure Uncurry : sig
 		  List.app C.incUseCnt exh;
 		  B.mkApply (f, args, exh)
 		end
-(*DEBUG*)handle ex => (print(concat["mkApply(", BV.toString f, ", _, _)\n"]); raise ex)
 	  fun xformFB (B.FB{f, params, exh, body}, fbs) = let
 		val arity = arityOf f
-		fun copyParam x = let val x' as VarRep.V{useCnt, ...} = BV.copy x
+		fun copyParam n x = let val x' as VarRep.V{useCnt, ...} = BV.copy x
 		      in
-			useCnt := 1;
+			useCnt := n;
 			x'
 		      end
 		in
@@ -159,15 +158,16 @@ structure Uncurry : sig
 				    BOMTyUtil.returnTy(BV.typeOf g)
 				  )
 			    val f' = BV.alias(f, SOME "_uncurried", bty)
-			    val newFB = B.FB{f=f', params=allParams, exh= exh, body=body}
+                            val () = List.app C.incUseCnt newExh
+			    val newFB = B.FB{f=f', params=allParams, exh=exh, body=body}
 			    in
 			      C.incAppCnt f';
 			      (B.mkApply(f', newParams, newExh), newFB)
 			    end
 			| flatten (_, n, allParams, newParams, _, _, B.E_Pt(_, B.E_Fun([fb], e))) = let
 			    val B.FB{f=g, params, exh, body} = fb
-			    val params' = List.map copyParam params
-			    val exh' = List.map copyParam exh
+			    val params' = List.map (copyParam 1) params
+			    val exh' = List.map (copyParam 0) exh
 			    val (body', newFB) = flatten(
 				  g, n-1,
 				  allParams @ params,
@@ -179,13 +179,13 @@ structure Uncurry : sig
 			      (B.mkFun([fb'], xformExp e), newFB)
 			    end
 			| flatten _ = raise Fail "expected function binding"
-		      val params' = List.map copyParam params
-		      val exh' = List.map copyParam exh
+		      val params' = List.map (copyParam 1) params
+		      val exh' = List.map (copyParam 0) exh
 		      val (curriedFun, uncurriedFB as B.FB{f=uncurriedF, ...}) =
 			    flatten (f, arity-1, params, params', exh, exh', body)
 		      in
 			VTbl.insert uncurried (f, uncurriedF);
-			B.FB{f=f, params=params', exh= exh', body=curriedFun} :: uncurriedFB :: fbs
+			B.FB{f=f, params=params', exh=exh', body=curriedFun} :: uncurriedFB :: fbs
 		      end
 		    else B.FB{f=f, params=params, exh=exh, body=xformExp body} :: fbs
 		end
@@ -198,6 +198,7 @@ structure Uncurry : sig
 			    ST.tick cntReplace;
 			    C.decAppCnt f;
 			    List.app C.decUseCnt args;
+			    List.app C.decUseCnt rets; (* will get inc by mkApply *)
 			    B.mkLet([g], mkApply(h, allArgs, rets), xformExp e))
 			| SOME _ => let
 			    val e = xformExp e
@@ -206,9 +207,9 @@ structure Uncurry : sig
 				then B.mkLet([g], rhs, e)
 				else (
 				  ST.tick cntElim;
-				  C.decUseCnt g;
 				  C.decAppCnt f;
 				  List.app C.decUseCnt args;
+				  List.app C.decUseCnt rets;
 				  e)
 			    end
 			| NONE => B.mkLet([g], rhs, xformExp e)
@@ -233,6 +234,7 @@ structure Uncurry : sig
 			    ST.tick cntReplace;
 			    C.decAppCnt f;
 			    List.app C.decUseCnt args; (* will get inc by mkApply *)
+			    List.app C.decUseCnt rets; (* will get inc by mkApply *)
 			    mkApply(h, args::allArgs, rets))
 			| _ => e
 		      (* end case *))
