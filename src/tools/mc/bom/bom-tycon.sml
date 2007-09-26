@@ -40,8 +40,11 @@ structure BOMTyCon =
 	  end
 
     fun tycName (DataTyc{name, ...}) = name
+    fun nCons (DataTyc{cons, ...}) = List.length(!cons)
+
     fun dconName (DCon{name, ...}) = name
     fun dconArgTy (DCon{argTy, ...}) = argTy
+    fun dconTyc (DCon{myTyc, ...}) = myTyc
     fun dconResTy (DCon{myTyc, ...}) = BOMTy.T_TyCon myTyc
 
   end
