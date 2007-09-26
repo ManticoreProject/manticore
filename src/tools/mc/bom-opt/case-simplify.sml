@@ -342,6 +342,8 @@ DEBUG*)
 	    | consCase (cons as ((dc, _, _)::_), dflt) = let
 (* FIXME: need to case argument to a variable of the correct representation type *)
 		val tagTy = BTy.T_Enum(Word.fromInt(BTyc.nCons(BTyc.dconTyc dc)-1))
+		val hdrTy = BTy.T_Tuple(false, [tagTy]) (* the first word of the object is the tag *)
+		val hdr = BV.new("hdr", hdrTy)
 		val tag = BV.new("tag", tagTy)
 	      (* here we have two, or more, constructors and they must all have the
 	       * TaggedBox representation.
@@ -361,7 +363,10 @@ DEBUG*)
 			| _ => raise Fail "expected TaggedBox representation"
 		      (* end case *))
 		in
-		  B.mkStmt([tag], B.E_Select(0, argument),
+		  B.mkStmts([
+		      ([hdr], B.E_Cast(hdrTy, argument)),
+		      ([tag], B.E_Select(0, hdr))
+		    ],
 		    B.mkCase(tag, List.map mkAlt cons, dflt))
 		end
 	  fun enumCase (w, ty, e) = let
