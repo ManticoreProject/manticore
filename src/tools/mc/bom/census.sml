@@ -31,6 +31,7 @@ structure Census : sig
 
     fun clear x = (B.Var.clrCount x; B.Var.appCntRmv x)
     fun inc x = B.Var.addToCount(x, 1)
+    fun dec x = B.Var.addToCount(x, ~1)
 
   (* record an application use *)
     fun appUse x = let
@@ -112,7 +113,7 @@ structure Census : sig
     fun decAppCnt x = let
 	  val appCnt = B.Var.appCntRef x
 	  in
-	    inc x;
+	    dec x;
 	    appCnt := !appCnt - 1
 	  end
 
