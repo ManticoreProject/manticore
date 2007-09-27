@@ -10,7 +10,7 @@
  *     - a single raw argument is replaced by a wrapped argument
  *     - multiple arguments are replaced by a tupled argument 
  *  + KnownFunc --
- *     - less than or equal to Target.maxGPRArgs arguments
+ *     - fewer than or equal to Target.maxGPRArgs arguments
  *        - all arguments are passed in registers
  *          - an integral raw argument is preserved
  *          - a floating-point or vector raw argument is replaced by a wrapped argument
