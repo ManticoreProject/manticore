@@ -265,7 +265,12 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 		  | doExp (CFG.E_Select(x, i, y)) =
 (* FIXME: if x is mutable, then we should just bind it to top. *)
 		      addInfo(x, case valueOf y
-			 of TUPLE vs => List.nth(vs, i)
+			 of TUPLE vs => (List.nth(vs, i)
+			      handle _ => raise Fail(concat[
+				"arity error: Select(", CFG.Var.toString x, ", ",
+				Int.toString i, ", ", CFG.Var.toString y, "); valueOf(",
+				CFG.Var.toString y, ") = ", valueToString(TUPLE vs)
+			      ]))
 			  | BOT => BOT
 			  | TOP => TOP
 			  | v => raise Fail(concat[
