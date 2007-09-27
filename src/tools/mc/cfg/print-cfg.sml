@@ -33,7 +33,7 @@ structure PrintCFG : sig
 		end
 	  fun varBindToString x = if (#types flags)
 		then String.concat[
-		    CFG.Var.toString x, ":", CFGTy.toString(CFG.Var.typeOf x)
+		    CFG.Var.toString x, "#", Int.toString(CFG.Var.useCount x), ":", CFGTy.toString(CFG.Var.typeOf x)
 		  ]
 		else CFG.Var.toString x
 	  fun varUseToString x = CFG.Var.toString x
