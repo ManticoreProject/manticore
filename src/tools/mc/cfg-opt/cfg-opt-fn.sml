@@ -29,16 +29,20 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
     val allocChecks = transform {passName = "alloc-checks", pass = AddAllocChecks.transform}
 
     fun optimize module = let
-          val () = CheckCFG.check module
+          val _ = CheckCFG.check module
 	  val _ = Census.census module
 	  val module = contract module
+          val _ = CheckCFG.check module
 	  val _ = CFACFG.analyze module
 	  val module = specialCalls module
-          val () = CheckCFG.check module
+          val _ = CheckCFG.check module
           val module = implCalls module
-          val () = CheckCFG.check module
+          val _ = CheckCFG.check module
+	  val _ = Census.census module
+	  val module = contract module
+          val _ = CheckCFG.check module
 	  val module = allocChecks module
-          val () = CheckCFG.check module
+          val _ = CheckCFG.check module
 	  in
 	    module
 	  end
