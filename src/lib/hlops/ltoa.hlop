@@ -1,0 +1,18 @@
+(* ltoa.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * HLOp wrapper for long to string conversions
+ *)
+
+#include "types.def"
+
+define @string-data (s : ml_string) : any;
+
+extern void M_LongToString (long) __attribute__((alloc,pure));
+
+define inline @ltoa (n : ml_long / exh : exh) : ml_string =
+    let res : ml_string = ccall M_LongToString (data)
+      return (res)
+;
