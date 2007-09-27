@@ -195,6 +195,23 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 	    kJoin (maxDepth, v1, v2)
 	  end
 
+  (* select the i'th component of a tuple. *)
+    fun select (i, y) = (case valueOf y
+	   of TUPLE vs => let
+		fun sel (0, v::_) = v
+		  | sel (i, v::r) = sel(i-1, r)
+		  | sel (i, []) = BOT (* or should this be TOP? *)
+		in
+		  sel (i, vs)
+		end
+	    | BOT => BOT
+	    | TOP => TOP
+	    | v => raise Fail(concat[
+		  "type error: select(", Int.toString i, ", ", CFG.Var.toString y,
+		  "); valueOf(", CFG.Var.toString y, ") = ", valueToString v
+		])
+	  (* end case *))
+
   (* compute the call-sites of labels.  We visit every function and add its label
    * to the call sites of any known targets.  Note that this function is called
    * after the main analysis and that the call site of any escaping function
@@ -230,22 +247,23 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 
     fun analyze (CFG.MODULE{code, ...}) = let
 	  fun onePass () = let
-               val addInfo = fn (x, v) =>
-                  if Controls.get CFGOptControls.debug
-                     then let 
-                             val prevV = valueOf x
-                          in
-                             addInfo (x, v);
-                             if changedValue(valueOf x, prevV) 
-                                then print(concat["addInfo(", CFG.Var.toString x, 
-                                                  ", ", valueToString v, 
-                                                  "): ", valueToString prevV, 
-                                                  " ==> ", valueToString(valueOf x),
-                                                  "\n"])
-                                else ()
-                          end
-                          handle ex => (print(concat["addInfo(", CFG.Var.toString x, ", _): uncaught exception\n"]); raise ex)
-                  else addInfo (x, v)
+		val addInfo = if Controls.get CFGOptControls.debug
+		      then (fn (x, v) => let
+			val prevV = valueOf x
+			in
+			  addInfo (x, v);
+			  if changedValue(valueOf x, prevV) 
+			    then print(concat[
+				"addInfo(", CFG.Var.toString x,  ", ", valueToString v, 
+				"): ", valueToString prevV, " ==> ", valueToString(valueOf x),
+				"\n"
+			      ])
+			    else ()
+			end
+			  handle ex => (
+			    print(concat["addInfo(", CFG.Var.toString x, ", _): uncaught exception\n"]);
+			    raise ex))
+		      else addInfo
 	      (* record that a given variable escapes *)
 		fun escape x = escapingValue (valueOf x)
 		fun doFunc (CFG.FUNC{lab, entry, body, exit}, args) = (
@@ -264,21 +282,7 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 		  | doExp (CFG.E_Label(x, lab)) = addInfo(x, LABELS(LSet.singleton lab))
 		  | doExp (CFG.E_Select(x, i, y)) =
 (* FIXME: if x is mutable, then we should just bind it to top. *)
-		      addInfo(x, case valueOf y
-			 of TUPLE vs => (List.nth(vs, i)
-			      handle _ => raise Fail(concat[
-				"arity error: Select(", CFG.Var.toString x, ", ",
-				Int.toString i, ", ", CFG.Var.toString y, "); valueOf(",
-				CFG.Var.toString y, ") = ", valueToString(TUPLE vs)
-			      ]))
-			  | BOT => BOT
-			  | TOP => TOP
-			  | v => raise Fail(concat[
-				"type error: Select(", CFG.Var.toString x, ", ",
-				Int.toString i, ", ", CFG.Var.toString y, "); valueOf(",
-				CFG.Var.toString y, ") = ", valueToString v
-			      ])
-			(* end case *))
+		      addInfo(x, select(i, y))
 		  | doExp (CFG.E_Update(i, y, z)) = ()
 		  | doExp (CFG.E_AddrOf(x, i, y)) = addInfo(x, TOP)
 		  | doExp (CFG.E_Alloc(x, xs)) = addInfo(x, TUPLE(List.map valueOf xs))
