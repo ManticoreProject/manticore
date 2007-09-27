@@ -24,8 +24,6 @@ structure Stats :> sig
     val resetAll : unit -> unit
     val report : unit -> (string * int) list
 
-    val verbose : bool ref		(* if set, report ticks *)
-
   end = struct
 
     structure A = Array
@@ -70,6 +68,36 @@ structure Stats :> sig
     fun resetAll () = A.modify (fn _ => 0) counters
 
     fun report () = List.tabulate (!nextCounter, fn i => (name i, count i))
+
+  (* Controls *)
+    val statReg = ControlRegistry.new {help = "Compiler statistics"}
+
+    val reportCtl : bool Controls.control = Controls.genControl {
+	    name = "report",
+	    pri = [0, 1],
+	    obscurity = 0,
+	    help = "report statistics",
+	    default = false
+	  }
+
+    val traceCtl : bool Controls.control = Controls.control {
+	    ctl = verbose,
+	    name = "trace",
+	    pri = [0, 2],
+	    obscurity = 0,
+	    help = "trace ticks"
+	  }
+
+    val () = (
+	  BasicControl.nest ("stats", statReg, [0,1]);
+	  ControlRegistry.register statReg {
+	      ctl = Controls.stringControl ControlUtil.Cvt.bool reportCtl,
+	      envName = NONE
+	    };
+	  ControlRegistry.register statReg {
+	      ctl = Controls.stringControl ControlUtil.Cvt.bool traceCtl,
+	      envName = NONE
+	    })
 
   end
 
