@@ -6,6 +6,7 @@
 
 #include "manticore-rt.h"
 #include <stdarg.h>
+#include <string.h>
 #include "value.h"
 #include "vproc.h"
 #include "gc-inline.h"
@@ -67,6 +68,30 @@ Value_t WrapInt (VProc_t *vp, long i)
 
     vp->allocPtr += WORD_SZB * 2;
     return PtrToValue(obj);
+}
+
+/*! \brief allocate an ML string from a C string.
+ */
+Value_t AllocString (VProc_t *vp, const char *s)
+{
+    int len = strlen(s) + 1;
+
+  /* allocate the raw data object */
+    Word_t	*obj = (Word_t *)(vp->allocPtr);
+    int nWords = BYTES_TO_WORDS(len);
+    obj[-1] = RAW_HDR(nWords);
+    memcpy (obj, s, len);
+    vp->allocPtr += WORD_SZB * (nWords+1);
+
+  /* allocate the string header object */
+    Word_t	*hdr = (Word_t *)(vp->allocPtr);
+    hdr[-1] = 
+    hdr[0] = obj;
+    hdr[1] = (Word_t)len;
+    vp->allocPtr += WORD_SZB * 3;
+
+    return PtrToValue(hdr);
+
 }
 
 void SayValue (Value_t v)
