@@ -47,7 +47,7 @@ structure Contract : sig
     val cntBetaCont		= ST.newCounter "contract:beta-cont"
     val cntUnusedCFun		= ST.newCounter "contract:unused-cfun"
     val firstCounter		= cntUnusedStmt
-    val lastCounter		= cntBetaCont
+    val lastCounter		= cntUnusedCFun
   (* these counters track the number of contraction phases/iterations *)
     val cntPhases		= ST.newCounter "contract:phases"
     val cntIters		= ST.newCounter "contract:iterations"
