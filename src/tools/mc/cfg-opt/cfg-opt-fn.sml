@@ -23,6 +23,7 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
     structure ImplementCalls = ImplementCallsFn (Target)
 
   (* wrap transformation passes with keep controls *)
+    val contract = transform {passName = "contract", pass = Contract.transform}
     val specialCalls = transform {passName = "specialize-calls", pass = SpecializeCalls.transform}
     val implCalls = transform {passName = "implement-calls", pass = ImplementCalls.transform}
     val allocChecks = transform {passName = "alloc-checks", pass = AddAllocChecks.transform}
@@ -30,6 +31,7 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
     fun optimize module = let
           val () = CheckCFG.check module
 	  val _ = Census.census module
+	  val module = contract module
 	  val _ = CFACFG.analyze module
 	  val module = specialCalls module
           val () = CheckCFG.check module

@@ -27,6 +27,7 @@ is
   cfa-cfg.sml
   cfg-opt-controls.sml
   cfg-opt-fn.sml
+  contract.sml
   feedback-fn.sml
   implement-calls-fn.sml
   specialize-calls.sml
