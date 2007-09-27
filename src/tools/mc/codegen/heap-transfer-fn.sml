@@ -90,6 +90,8 @@ functor HeapTransferFn (
 	 | _ => raise Fail ""
       (* esac *))
 
+  (* emit a jump by first copying argument registers to parameter registers
+   * and then emitting a jump instruction. *)
   fun genJump (target, ls, params, args) =
       let val stms = Copy.copy {src=args, dst=params}
       in
@@ -118,20 +120,27 @@ functor HeapTransferFn (
 	   Copy.copy {src=map getDefOf args, 
 		      dst=map gpReg argRegs},
 	   (* jump to the function with fresh arguments *)
-	   genJump (tgtReg, [] (* FIXME *), stdRegs, map mltGPR argRegs)],
+	   genJump (tgtReg, [] (* FIXME: get these values from CFA *), stdRegs, map mltGPR argRegs)],
 	   liveOut=map toGPR stdRegs}
       end (* genStdTransfer *)
+
+  (* if labExp is a label, put it into the jump directly, ow use a 
+   * register temp. *)
+  fun genLabel labExp = (case labExp
+       of T.LABEL _ => (labExp, [])
+	| _ => let val tgtReg = newReg ()
+	       in (regExp tgtReg, [move (tgtReg, labExp)]) end
+       (* end case *))
 
   fun genApply varDefTbl {f, args} = 
       let val defOf = VarDef.defOf varDefTbl
 	  val argRegs = map newReg args
           val kfncRegs = List.take (kfncRegs, length argRegs)
-	  val tgtReg = newReg ()
+	  val (lab, mvInstr) = genLabel (defOf f)
 	  val {stms, liveOut} =
-	      genStdTransfer varDefTbl (regExp tgtReg, args, argRegs, kfncRegs)
+	      genStdTransfer varDefTbl (lab, args, argRegs, kfncRegs)
       in
-(* TODO: if f is a label, put it in directly, but otherwise use a temp *)
-	  {stms=move (tgtReg, defOf f) :: stms, liveOut=liveOut}
+	  {stms=mvInstr @ stms, liveOut=liveOut}
       end 
     (* genApply *)
 
@@ -139,25 +148,24 @@ functor HeapTransferFn (
       let val defOf = VarDef.defOf varDefTbl 
           val args = [clos, arg, ret, exh] 
           val argRegs = map newReg args 
-          val tgtReg = newReg () 
+	  val (lab, mvInstr) = genLabel (defOf f)
           val {stms, liveOut} = 
-              genStdTransfer varDefTbl (regExp tgtReg, args, argRegs, stdFuncRegs) 
+	      genStdTransfer varDefTbl (lab, args, argRegs, stdFuncRegs) 
       in
-(* TODO: if f is a label, put it in directly, but otherwise use a temp *)
-	  {stms=move (tgtReg, defOf f) :: stms, liveOut=liveOut}
+	  {stms=mvInstr @ stms, liveOut=liveOut}
       end 
     | genStdApply _ _ = raise Fail "genStdApply: ill-formed StdApply"
     (* genStdApply *)
 
   fun genStdThrow varDefTbl {k, clos, args as [arg]} = 
       let val defOf = VarDef.defOf varDefTbl
-	  val kReg = newReg ()
           val args = [clos, arg]
 	  val argRegs = map newReg args
+	  val (labK, mvInstr) = genLabel (defOf k)
 	  val {stms, liveOut} = 
-	      genStdTransfer varDefTbl (regExp kReg, args, argRegs, stdContRegs)
+	      genStdTransfer varDefTbl (labK, args, argRegs, stdContRegs)
       in 
-	  {stms=move (kReg, defOf k) :: stms, liveOut=liveOut}
+	  {stms=mvInstr @ stms, liveOut=liveOut}
       end 
     | genStdThrow _ _ = raise Fail "genStdThrow: ill-formed StdThrow"
     (* genStdThrow *)

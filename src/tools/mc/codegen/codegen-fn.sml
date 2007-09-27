@@ -233,7 +233,6 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		  gen
 		end (* genExp *)
 	      
-
 	  fun genFunc (M.FUNC {lab, entry, body, exit}) =
 	      let fun emitLabel () = 
 		      (case M.Label.kindOf lab

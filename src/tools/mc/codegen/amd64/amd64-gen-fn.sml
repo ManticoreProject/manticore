@@ -59,6 +59,12 @@ functor AMD64GenFn (structure Spec : TARGET_SPEC) =
 
     structure AMD64SpillLoc = SpillLocFn (structure Frame=AMD64Frame)
     structure BlockPlacement = DefaultBlockPlacement (AMD64CFG)
+
+    structure JumpChainElim = JumpChainElimFn (
+	       structure CFG = AMD64CFG
+	       structure InsnProps = AMD64Props
+	       val chainEscapes = ref false
+	       val reverseDirection = ref false)
   
     structure AMD64Shuffle = AMD64Shuffle(AMD64Instr)
   
@@ -218,6 +224,7 @@ functor AMD64GenFn (structure Spec : TARGET_SPEC) =
 			  val cfg = AMD64Expand.run cfg
 			  (*val cfg = AMD64PeepholeOpt.run cfg*)
 			  val (cfg, blocks) = BlockPlacement.blockPlacement cfg
+			  (*val (cfg, blocks) = JumpChainElim.run (cfg, blocks)*)
 		      in
 			  Emit.asmEmit (cfg, blocks)
 		      end 
