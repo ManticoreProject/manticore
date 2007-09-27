@@ -24,4 +24,4 @@ Value_t M_LongToString (long n)
     snprintf(buf, sizeof(buf), "%dl", n);
     return AllocString (VProcSelf(), buf);
 }
-    
+
