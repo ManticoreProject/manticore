@@ -8,6 +8,16 @@ structure Census : sig
 
     val census : CFG.module -> unit
 
+  (* modify the use counts of variables *)
+    val inc : CFG.Var.var -> unit
+    val inc' : CFG.Var.var list -> unit
+    val dec : CFG.Var.var -> unit
+    val dec' : CFG.Var.var list -> unit
+
+  (* modify the use counts of labels *)
+    val incLab : CFG.Label.var -> unit
+    val decLab : CFG.Label.var -> unit
+
   end = struct
 
     structure C = CFG
@@ -15,10 +25,13 @@ structure Census : sig
     val clr = C.Var.clrCount
     val clr' = List.app clr
     fun inc x = C.Var.addToCount(x, 1)
-    val inc' = List.app clr
+    fun dec x = C.Var.addToCount(x, ~1)
+    val inc' = List.app inc
+    val dec' = List.app dec
 
     val clrLab = C.Label.clrCount
     fun incLab lab = C.Label.addToCount(lab, 1)
+    fun decLab lab = C.Label.addToCount(lab, ~1)
 
   (* update the census counts for the variables bound in an entry convention *)
     fun doEntry (C.StdFunc{clos, args, ret, exh}) = (clr clos; clr' args; clr ret; clr exh)
