@@ -328,6 +328,7 @@ structure StdEnv : sig
 	    (B.fail,		hlop H.fail),
 *)
 
+	    (F.newWorkQueue,    hlop H.newWorkQueueOp),
 	    (F.future,          hlop H.futureOp),
 	    (F.touch,           hlop H.touchOp),
 	    (F.cancel,          hlop H.cancelOp),

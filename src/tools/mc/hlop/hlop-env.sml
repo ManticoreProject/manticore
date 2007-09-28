@@ -39,6 +39,9 @@ structure HLOpEnv : sig
     val dequeueOp : HLOp.hlop
     val enqueueOp : HLOp.hlop
 
+  (* work queues *)
+    val newWorkQueueOp : HLOp.hlop
+
   (* futures *)
     val futureOp : HLOp.hlop
     val touchOp  : HLOp.hlop
@@ -72,6 +75,8 @@ structure HLOpEnv : sig
     val rawIntTy = BTy.T_Raw BTy.T_Int
     val listTy = Basis.listTy
     val stringTy = BOMBasis.stringTy
+
+    val workQueueTy = BTy.T_Any
 
     val ivarTy = BTy.T_Tuple(true, [listTy, BTy.T_Any, rawIntTy])
     val thunkTy = BTy.thunkTy
@@ -112,6 +117,9 @@ structure HLOpEnv : sig
     val dequeueOp = newWithExh ("dequeue", [vprocTy], [Basis.rdyqItemTy], [])
     val enqueueOp = newWithExh ("enqueue", [vprocTy, tidTy, fiberTy], [], [])
 
+  (* work queue operations *)
+    val newWorkQueueOp = newWithExh ("newWorkQueue", [], [workQueueTy], [])
+
   (* futures *)
     val futureOp = newWithExh ("future", [thunkTy], [futureTy], [])
     val touchOp  = newWithExh ("touch",  [futureTy], [BTy.T_Any], [])
@@ -147,7 +155,14 @@ structure HLOpEnv : sig
 		forwardOp,
 		runOp,
                 schedulerStartupOp,
-                defaultSchedulerStartupOp
+                defaultSchedulerStartupOp,
+		newWorkQueueOp,
+		futureOp,
+		touchOp,
+		cancelOp,
+		future1Op,
+		touch1Op,
+		cancel1Op
 	      ]
 
   end

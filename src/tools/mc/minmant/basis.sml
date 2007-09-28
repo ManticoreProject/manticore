@@ -39,6 +39,9 @@ structure Basis : sig
     val parrayTy	: AST.ty -> AST.ty
     val eventTy		: AST.ty -> AST.ty
 
+  (* a work queue type (not in surface language) *)
+    val workQueueTy     : AST.ty
+
   (* type classes as lists of types *)
     val IntClass	: AST.ty list
     val FloatClass	: AST.ty list
@@ -221,6 +224,13 @@ structure Basis : sig
     val mvarTyc = TyCon.newAbsTyc (N.mvar, 1, true)
     val eventTyc = TyCon.newAbsTyc (N.event, 1, false)
     val threadIdTyc = TyCon.newAbsTyc (N.thread_id, 0, true)
+
+  (* a type for work queues (not part of surface language) *)
+    val workQueueTy = 
+	let val wqTyc = TyCon.newAbsTyc (Atom.atom "work_queue", 0, false)
+	in
+	    AST.ConTy ([], wqTyc)
+	end
 
   (* sequential-language predefined types *)
     val unitTy = AST.TupleTy[]

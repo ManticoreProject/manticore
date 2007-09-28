@@ -12,6 +12,8 @@ structure Futures (* : sig
     val futureTyc : Types.tycon
     val futureTy  : Types.ty -> Types.ty
 
+    val newWorkQueue : Var.var
+
     val future : Var.var
     val touch  : Var.var
     val cancel : Var.var
@@ -54,29 +56,35 @@ structure Futures (* : sig
 	    T.TyScheme ([tv], mkTy (A.VarTy tv))
 	end
 
-    (* polyVar : Atom.atom * (T.ty -> T.ty) -> Var.var *)
-    fun polyVar (name, mkTy) = Var.newPoly (Atom.toString name, forall mkTy)
+    (* monoVar : string * T.ty -> Var.var *)
+    fun monoVar (name, ty) = Var.new (name, ty)
+
+    (* polyVar : string * (T.ty -> T.ty) -> Var.var *)
+    fun polyVar (name, mkTy) = Var.newPoly (name, forall mkTy)
 
     val --> = T.FunTy
     infixr 8 -->
 
     (* predefined functions *)
-    val future = polyVar (Atom.atom "future",
+    val newWorkQueue = monoVar ("newWorkQueue",
+				Basis.unitTy --> Basis.workQueueTy)
+
+    val future = polyVar ("future",
  		          fn tv => (Basis.unitTy --> tv) --> futureTy tv)
 
-    val touch = polyVar (Atom.atom "touch",
+    val touch = polyVar ("touch",
 		         fn tv => futureTy tv --> tv)
 
-    val cancel = polyVar (Atom.atom "cancel",
+    val cancel = polyVar ("cancel",
 			  fn tv => futureTy tv --> Basis.unitTy)
 
-    val future1 = polyVar (Atom.atom "future1",
+    val future1 = polyVar ("future1",
 			   fn tv => (Basis.unitTy --> tv) --> futureTy tv)
 
-    val touch1 = polyVar (Atom.atom "touch1",
+    val touch1 = polyVar ("touch1",
 			  fn tv => futureTy tv --> tv)
 
-    val cancel1 = polyVar (Atom.atom "cancel1",
+    val cancel1 = polyVar ("cancel1",
 			   fn tv => futureTy tv --> Basis.unitTy)
 
     (* mkThunk : A.exp -> A.exp *)

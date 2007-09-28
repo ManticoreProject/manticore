@@ -67,7 +67,7 @@ structure CheckBOM : sig
 		      if (cmp (aty, pty))
                         then ()
 		        else (
-			  error ["type mismatch in ", ctx, "\n"];
+			  error  ["type mismatch in ", ctx, "\n"];
 			  cerror ["  expected  ", BTU.toString pty, "\n"];
 			  cerror ["  but found ", BTU.toString aty, "\n"])
 	        in 
@@ -77,7 +77,7 @@ structure CheckBOM : sig
 	            (* str : ty list -> string *)
                       fun str ts = String.concatWith "," (map BTU.toString ts)
                       in 
-                        error ["wrong number of arguments in ", ctx, "\n"];
+                        error  ["wrong number of arguments in ", ctx, "\n"];
 			cerror ["  expected (", str paramTys, ")\n"];
 			cerror ["  found    (", str argTys, ")\n"]
                       end
