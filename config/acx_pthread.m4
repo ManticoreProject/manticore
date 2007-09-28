@@ -43,7 +43,7 @@ dnl We are also grateful for the helpful feedback of numerous users.
 dnl
 dnl @category InstalledPackages
 dnl @author Steven G. Johnson <stevenj@alum.mit.edu>
-dnl @version 2005-06-15
+dnl @version 2006-05-29
 dnl @license GPLWithACException
 
 AC_DEFUN([ACX_PTHREAD], [
@@ -216,8 +216,12 @@ if test "x$acx_pthread_ok" = xyes; then
         LIBS="$save_LIBS"
         CFLAGS="$save_CFLAGS"
 
-        # More AIX lossage: must compile with cc_r
-        AC_CHECK_PROG(PTHREAD_CC, cc_r, cc_r, ${CC})
+        # More AIX lossage: must compile with xlc_r or cc_r
+	if test x"$GCC" != xyes; then
+          AC_CHECK_PROGS(PTHREAD_CC, xlc_r cc_r, ${CC})
+        else
+          PTHREAD_CC=$CC
+	fi
 else
         PTHREAD_CC="$CC"
 fi
