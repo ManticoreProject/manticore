@@ -1,0 +1,18 @@
+(* newWorkQueue.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * To create a new work queue.
+ *)
+
+#include "types.def"
+
+(*     Value_t M_NewWorkQueue (VProc_t *vp) *)
+extern void*   M_NewWorkQueue (void*);
+
+define @newWorkQueue( / exh : exh) : workQueue =
+  let vp : vproc = host_vproc
+  let q : workQueue = ccall M_NewWorkQueue (vp)
+  return (q)
+;
