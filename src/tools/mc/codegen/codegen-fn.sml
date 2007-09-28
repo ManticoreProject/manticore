@@ -182,8 +182,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		  | gen (M.E_Label(lhs, l)) = 
 		    bindExp ([lhs], [mkExp (T.LABEL (BE.LabelCode.getName l))])
 		  | gen (M.E_Select(lhs, i, v)) =  
-		    bindExp ([lhs], [select (szOf lhs,
-					      Var.typeOf v, i, defOf v)])
+		    bindExp ([lhs], [select (szOf lhs, Var.typeOf v, i, defOf v)])
 		  | gen (M.E_Update(i, lhs, rhs)) = (
 		    flushLoads ();
 		    emit (T.STORE (szOf lhs,
