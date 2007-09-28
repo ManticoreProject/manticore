@@ -152,6 +152,12 @@ functor AMD64GenFn (structure Spec : TARGET_SPEC) =
 	structure Int = IntRA
 	structure Float = FloatRA)
     end (* local *)
+
+    structure GraphViewer = GraphViewer (Dot)
+    structure CFGViewer = CFGViewer (
+                structure CFG = AMD64CFG
+		structure GraphViewer = GraphViewer
+		structure Asm = AMD64AsmEmit)
   
     structure BackEnd : BACK_END =
       struct
@@ -224,8 +230,9 @@ functor AMD64GenFn (structure Spec : TARGET_SPEC) =
 			  val cfg = AMD64Expand.run cfg
 			  (*val cfg = AMD64PeepholeOpt.run cfg*)
 			  val (cfg, blocks) = BlockPlacement.blockPlacement cfg
-			  (*val (cfg, blocks) = JumpChainElim.run (cfg, blocks)*)
+			  val (cfg, blocks) = JumpChainElim.run (cfg, blocks)
 		      in
+			  (*CFGViewer.view cfg;*)
 			  Emit.asmEmit (cfg, blocks)
 		      end 
 	      end (* compileCFG *)

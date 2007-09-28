@@ -16,37 +16,39 @@ signature TRANSFER = sig
     val stdFuncRegs : CellsBasis.cell list
     val stdContRegs : CellsBasis.cell list
 
+    type stms = MTy.T.stm list
+
   (* blocks *)
-    val genGoto : VarDef.var_def_tbl -> CFG.jump -> MTy.T.stm list
+    val genGoto : VarDef.var_def_tbl -> CFG.jump -> stms
 
   (* known functions *)
     val genApply : VarDef.var_def_tbl -> {
 	    f : CFG.var, args : CFG.var list
-	  } -> {stms : MTy.T.stm list, liveOut : MTy.T.mlrisc list}
+	  } -> {stms : stms, liveOut : MTy.T.mlrisc list}
 
   (* standard functions *)
     val genStdApply : VarDef.var_def_tbl -> {
 	    f : CFG.var, clos : CFG.var, args : CFG.var list, ret : CFG.var, exh : CFG.var
-	  } -> {stms : MTy.T.stm list, liveOut : MTy.T.mlrisc list}
+	  } -> {stms : stms, liveOut : MTy.T.mlrisc list}
 
     val genStdThrow : VarDef.var_def_tbl -> {
 	    k : CFG.var, clos : CFG.var, args : CFG.var list
-	  } -> {stms : MTy.T.stm list, liveOut : MTy.T.mlrisc list}
+	  } -> {stms : stms, liveOut : MTy.T.mlrisc list}
 
 
   (* perform a heap check, possibly triggering the GC *)
     val genHeapCheck : 
 	VarDef.var_def_tbl -> {szb : word, nogc : CFG.jump}
-	  -> {stms : MTy.T.stm list, liveOut : MTy.T.mlrisc list}
+	  -> {stms : stms, retKLbl : Label.label, retKStms : stms, liveOut : MTy.T.mlrisc list}
 
   (* apply a C function f to args.  the result goes in lhs. *)
     val genCCall : VarDef.var_def_tbl ->
 	{frame : SpillLoc.frame, lhs: CFG.var list, f : CFG.var, args: CFG.var list} -> 
-		   {stms : MTy.T.stm list, result : MTy.mlrisc_tree list}
+		   {stms : stms, result : MTy.mlrisc_tree list}
 
   (* entry to a labelled function *)
     val genFuncEntry :
 	VarDef.var_def_tbl ->
-	(CFG.label * CFG.convention) -> MTy.T.stm list
+	(CFG.label * CFG.convention) -> stms
 
   end (* TRANSFER *)

@@ -46,6 +46,8 @@ functor HeapTransferFn (
   structure Var = M.Var
   structure Frame = Frame
 
+  type stms = MTy.T.stm list
+
   val apReg = Regs.apReg
   val ty = MTy.wordTy
   val iTy = Types.szOf (CFGTy.T_Raw CFGTy.T_Int)
@@ -126,7 +128,7 @@ functor HeapTransferFn (
 
   (* if labExp is a label, put it into the jump directly, ow use a 
    * register temp. *)
-  fun genLabel labExp = (case labExp
+  fun genTransferTarget labExp = (case labExp
        of T.LABEL _ => (labExp, [])
 	| _ => let val tgtReg = newReg ()
 	       in (regExp tgtReg, [move (tgtReg, labExp)]) end
@@ -136,7 +138,7 @@ functor HeapTransferFn (
       let val defOf = VarDef.defOf varDefTbl
 	  val argRegs = map newReg args
           val kfncRegs = List.take (kfncRegs, length argRegs)
-	  val (lab, mvInstr) = genLabel (defOf f)
+	  val (lab, mvInstr) = genTransferTarget (defOf f)
 	  val {stms, liveOut} =
 	      genStdTransfer varDefTbl (lab, args, argRegs, kfncRegs)
       in
@@ -148,7 +150,7 @@ functor HeapTransferFn (
       let val defOf = VarDef.defOf varDefTbl 
           val args = [clos, arg, ret, exh] 
           val argRegs = map newReg args 
-	  val (lab, mvInstr) = genLabel (defOf f)
+	  val (lab, mvInstr) = genTransferTarget (defOf f)
           val {stms, liveOut} = 
 	      genStdTransfer varDefTbl (lab, args, argRegs, stdFuncRegs) 
       in
@@ -161,7 +163,7 @@ functor HeapTransferFn (
       let val defOf = VarDef.defOf varDefTbl
           val args = [clos, arg]
 	  val argRegs = map newReg args
-	  val (labK, mvInstr) = genLabel (defOf k)
+	  val (labK, mvInstr) = genTransferTarget (defOf k)
 	  val {stms, liveOut} = 
 	      genStdTransfer varDefTbl (labK, args, argRegs, stdContRegs)
       in 
@@ -333,20 +335,17 @@ functor HeapTransferFn (
 	      end
 	  val restoredRoots = loadArgs (argTys, 0, [])
 	  (* generate the return continuation from GC *)
-	  val retK = List.concat [
- 	      [T.DEFINE retKLbl],
-	      (* jump to the post-gc function *)
-	      genJump (T.LABEL noGCLbl, [noGCLbl], noGCParamRegs, restoredRoots) ]
+	  val retKStms = (* jump to the post-gc function *)
+	      genJump (T.LABEL noGCLbl, [noGCLbl], noGCParamRegs, restoredRoots)
 
 	  (* if the allocation check succeeds (there is sufficient heap space),
 	   * apply noGCLbl.  otherwise, perform the GC. *)
 	  val stms = List.concat [
 	      [T.BCC (Alloc.genAllocCheck szb, doGCLbl)],
 	      genJump (T.LABEL noGCLbl, [noGCLbl], noGCParamRegs, args),
-	      retK,
 	      doGCStms ] 
-      in
-	  {stms=stms, liveOut=map MTy.gprToExp noGCParamRegs}
+      in	  
+	  {stms=stms, retKLbl=retKLbl, retKStms=retKStms, liveOut=map MTy.gprToExp noGCParamRegs}
       end (* genHeapCheck *)
 
   fun genFuncEntry varDefTbl (lab, convention) =

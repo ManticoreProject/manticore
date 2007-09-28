@@ -33,6 +33,7 @@ is
   @MLRISC_CM_DIR@/MLTREE.cm
   @MLRISC_CM_DIR@/RA.cm
   @MLRISC_CM_DIR@/SA.cm
+  @MLRISC_CM_DIR@/Visual.cm
   @MLRISC_CM_DIR@/Peephole.cm
   @MLRISC_CM_DIR@/AMD64.cm
   @MLRISC_CM_DIR@/AMD64-Peephole.cm

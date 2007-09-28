@@ -159,10 +159,14 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	      end
 	    (* invariant: #2 gc = #2 nogc (their arguments are the same) *)
 	    | genTransfer (M.HeapCheck hc) = 
-	      let val {stms, liveOut} = BE.Transfer.genHeapCheck varDefTbl hc
+	      let val {stms, retKLbl, retKStms, liveOut} = BE.Transfer.genHeapCheck varDefTbl hc
 	      in 
+		  (* emit code for the heap-limit test and the transfer into the GC *) 
 		  emitStms stms;
-		  emit (T.LIVE liveOut)
+		  emit (T.LIVE liveOut) ;
+		  (* emit an entypoint and code for the return continuation  *)
+		  entryLabel retKLbl;
+		  emitStms retKStms  
 	      end
 
 	  (* Bind some CFG variables to MLRISC trees, possibly emitting 
@@ -233,17 +237,24 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		end (* genExp *)
 	      
 	  fun genFunc (M.FUNC {lab, entry, body, exit}) =
-	      let fun emitLabel () = 
-		      (case M.Label.kindOf lab
-			of M.LK_Local {export=SOME s, ...} => ( 
-			   pseudoOp (P.global (Label.global s));
-			   entryLabel (BE.LabelCode.getName lab);
-			   entryLabel (Label.global s) )
-			 | ( M.LK_None | M.LK_Local _ ) => (
-			   comment (M.Label.toString lab);			   
-			   defineLabel (BE.LabelCode.getName lab) )
-			 | _ => fail "emitLabel"
-		      (* esac *))
+	      let fun emitLabel () = let
+		      val label = BE.LabelCode.getName lab
+		      in
+		        (case M.Label.kindOf lab
+			  of M.LK_Local {export=SOME s, ...} => ( 			   
+			     pseudoOp (P.global (Label.global s));
+			     entryLabel (Label.global s);
+			     defineLabel label)
+			   | M.LK_Local {func=CFG.FUNC{entry, ...}, ...} => 
+			     (case entry
+			       of CFG.Block _ => 
+				  (* CFG.Blocks are only called within their own cluster *)
+				  defineLabel label
+				| _ => entryLabel label
+			     (* end case *))
+			   | _ => fail "emitLabel"
+			(* end case *))
+		      end (* emitLabel *)
 		  val stms = BE.Transfer.genFuncEntry varDefTbl (lab, entry)
 		  fun finish () = 
 		      let val funcAnRef = getAnnotations ()
