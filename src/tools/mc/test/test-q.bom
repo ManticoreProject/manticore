@@ -6,8 +6,8 @@
 
 module TestQ
 
-  extern void* M_NewWorkQueue(void*) __attribute__((alloc));
-  extern void* M_WorkDequeue(void*,void*) __attribute__((alloc));
+  extern void* M_NewWorkQueue(void*)           __attribute__((alloc));
+  extern void* M_WorkDequeue(void*,void*)      __attribute__((alloc));
   extern void M_WorkEnqueue(void*,void*,void*) __attribute__((alloc));
 
   fun test (u : unit / exh : cont(any) (* exh *)) : any =
