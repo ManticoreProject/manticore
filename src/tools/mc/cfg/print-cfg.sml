@@ -23,7 +23,7 @@ structure PrintCFG : sig
 	    | prIndent n = (pr "  "; prIndent(n-1))
 	  fun indent i = prIndent i
 	  fun prList toS [] = pr "()"
-	    | prList toS [x] = pr("("^toS x^")")
+	    | prList toS [x] = pr(concat["(", toS x, ")"])
 	    | prList toS l = let
 		fun prL [] = ()
 		  | prL [x] = pr(toS x)
@@ -38,6 +38,16 @@ structure PrintCFG : sig
 		else CFG.Var.toString x
 	  fun varUseToString x = CFG.Var.toString x
 	  fun labelToString lab = "$" ^ (CFG.Label.toString lab)
+	  fun prParams []= pr "() ="
+	    | prParams [x] = pr(concat["(", varBindToString x, ") ="])
+	    | prParams params = let
+		val params = List.map varBindToString params
+		fun prl [x] = (pr x; pr "\n  ) =")
+		  | prl (x::r) = (pr x; pr ",\n    "; prl r)
+		in
+		  pr "(\n    ";
+		  prl params
+		end
 	  fun prFunc (CFG.FUNC{lab, entry, body, exit}) = let
 		val (kind, params) = (case (CFG.Label.kindOf lab, entry)
 		       of (CFG.LK_Local{export=SOME name, ...}, CFG.StdFunc{clos, args, ret, exh}) =>
@@ -52,7 +62,7 @@ structure PrintCFG : sig
 		in
 		  indent 1;
 		  pr kind;
-		  prl [labelToString lab, " "]; prList varBindToString params; pr "\n";
+		  prl [labelToString lab, " "]; prParams params; pr "\n";
 		  List.app (prExp 2) body;
 		  prXfer (2, exit)
 		end
