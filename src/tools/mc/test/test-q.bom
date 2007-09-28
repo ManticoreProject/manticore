@@ -21,7 +21,7 @@ module TestQ
         else do ccall M_WorkEnqueue (vp, nq, a)
              let n : int = I32Sub (n, 1)
              apply loop (n / exh)
-    let b : any = apply loop (1 / exh)
+    let b : any = apply loop (60000 / exh) (* 60000 works, 61000 doesn't *)
     return (b)
 
 
