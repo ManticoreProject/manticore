@@ -236,6 +236,7 @@ structure Contract : sig
 	    | deleteExp _ = ()
 	  fun deleteJump (lab, _) = Census.decLab lab
 	  in
+	    ST.tick cntUnusedBlock;
 	    List.app deleteExp body;
 	    case exit
 	     of C.StdApply _ => ()
