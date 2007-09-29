@@ -324,18 +324,21 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                      (binds, CFG.Apply {f = f, args = args})
                   end
              | _ => ([], t)
-         fun transFunc (CFG.FUNC {lab, entry, body, exit} : CFG.func) : CFG.func =
-            let
-               val () = updLabelType lab
-               val (entry, entryBinds) = transConvention entry
-               val body = List.map transExp body
-               val (exitBinds, exit) = transTransfer exit
-            in
-               CFG.mkFunc (lab, entry, entryBinds @ body @ exitBinds, exit)
-            end
-         val module = CFG.mkModule (name, externs, List.map transFunc code)
-      in
-         module
-      end
+	  fun transFunc (CFG.FUNC {lab, entry, body, exit} : CFG.func) : CFG.func = let
+		val () = updLabelType lab
+		val (entry, entryBinds) = transConvention entry
+		val body = List.map transExp body
+		val (exitBinds, exit) = transTransfer exit
+		val export = (case CFG.Label.kindOf lab
+		       of CFG.LK_Local{export, ...} => export
+			| _ => raise Fail "bogus label kind"
+		      (* end case *))
+		in
+		   CFG.mkFunc (lab, entry, entryBinds @ body @ exitBinds, exit, export)
+		end
+	  val module = CFG.mkModule (name, externs, List.map transFunc code)
+	  in
+	    module
+	  end
       
   end

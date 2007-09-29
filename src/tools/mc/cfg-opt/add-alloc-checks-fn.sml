@@ -138,11 +138,15 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 		    val lab' = CFG.Label.new(
 				"check",
 				CFGTy.T_Block(List.map CFG.Var.typeOf freeVars))
+		    val export = (case CFG.Label.kindOf lab
+			   of CFG.LK_Local{export, ...} => export
+			    | _ => raise Fail "bogus label kind"
+			  (* end case *))
 		    val f' = CFG.mkFunc(lab, entry', [], CFG.HeapCheck{
 			    szb = getAlloc lab,
 			    nogc = (lab', freeVars)
-			  })
-		    val f'' = CFG.mkFunc(lab', CFG.Block(CFG.paramsOfConv entry), body, exit)
+			  }, export)
+		    val f'' = CFG.mkLocalFunc(lab', CFG.Block(CFG.paramsOfConv entry), body, exit)
 		    in
 		      f' :: f'' :: fs
 		    end

@@ -277,7 +277,7 @@ print(concat["lookupVar: ", CPS.Var.toString x, " @ ", locToString(valOf(VMap.fi
                       then (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString lab, "\n"]); prEnv env)
                    else ()
                 fun finish (binds, xfer) = let
-                      val func = CFG.mkFunc (lab, conv, List.rev binds, xfer)
+                      val func = CFG.mkLocalFunc (lab, conv, List.rev binds, xfer)
                       in
                         if Controls.get ClosureControls.debug
                            then print(concat["******************** finish ", CFG.Label.toString lab, "\n"])

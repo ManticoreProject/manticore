@@ -222,18 +222,15 @@ structure CFG =
     fun mkVPLoad arg = mkExp(E_VPLoad arg)
     fun mkVPStore arg = mkExp(E_VPStore arg)
 
-    local
-      fun mkFn (l, conv, body, exit, export) = let
+    fun mkFunc (l, conv, body, exit, export) = let
 	    val func = FUNC{lab = l, entry = conv, body = body, exit = exit}
 	    in
 	      Label.setKind (l, LK_Local{func = func, export = export});
 	      List.app (fn x => Var.setKind(x, VK_Param func)) (paramsOfConv conv);
 	      func
 	    end
-    in
-    fun mkFunc (l, conv, body, exit) = mkFn (l, conv, body, exit, NONE)
-    fun mkExportFunc (l, conv, body, exit, name) = mkFn (l, conv, body, exit, SOME name)
-    end
+    fun mkLocalFunc (l, conv, body, exit) = mkFunc (l, conv, body, exit, NONE)
+    fun mkExportFunc (l, conv, body, exit, name) = mkFunc (l, conv, body, exit, SOME name)
 
     fun mkCFun arg = (
 	  Label.setKind (#var arg, LK_Extern(#name arg));
