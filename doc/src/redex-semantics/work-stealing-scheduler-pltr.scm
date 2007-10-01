@@ -6,7 +6,7 @@
 ;;; Prototype work-stealing scheduler.
 
 (module work-stealing-scheduler-pltr mzscheme
-  (require (planet "reduction-semantics.ss" ("robby" "redex.plt" 3 13))
+  (require (planet "reduction-semantics.ss" ("robby" "redex.plt" 3 26))
            (planet "random.ss" ("schematics" "random.plt" 1 0)))
   (require "schedulers-pltr.scm")
   (require "scheduler-utils-pltr.scm")
@@ -28,11 +28,11 @@
                                             (letrec ((new-work (λ (nq1) 
                                                                  (λ (nq2)
                                                                    (let ((k-opt (deq nq1)))
-                                                                     (if0 k-opt
+                                                                     (if (=i k-opt 0)
                                                                           ((new-work nq2) nq1)
                                                                           (run ws-switch k-opt)))))))
                                               (handle sign
-                                                      (stop-handler (λ (x) ((new-work my-q) other-q)))
+                                                      (stop-handler (λ () ((new-work my-q) other-q)))
                                                       (preempt-handler 
                                                        (λ (k) (begin
                                                                 (enq my-q k)
@@ -41,6 +41,6 @@
                         ws-switch)))))
              (begin
                ,(dispatch-on (term vp) (term ((ws-action q2) q1)))
-               (run ((ws-action q1) q2) ,(fiber (term (λ (x) (f q1))))))))))))
+               (run ((ws-action q1) q2) ,(fiber (term (λ () (f q1))))))))))))
   
   )
