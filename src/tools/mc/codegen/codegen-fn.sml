@@ -96,8 +96,10 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	  fun emitStrLit (s, l) = (
 	      defineLabel l;
 	      pseudoOp (P.asciz s) )
-	  fun genLit (ty, Literal.Enum c) =
-		MTy.EXP(ty, T.LI(T.I.fromWord (ty, Word.<<(c, 0w1) + 0w1)))
+	  (* encode an enum e as 2*e+1 *)
+	  fun encodeEnum e = Word.<<(e, 0w1) + 0w1
+	  fun genLit (ty, Literal.Enum c) = 
+		MTy.EXP(ty, T.LI(T.I.fromWord (ty, encodeEnum c)))
 	    | genLit (ty, Literal.StateVal n) =
 	      (* we want the two low bits of the state-value representation to be zero *)
 		MTy.EXP(ty, T.LI(T.I.fromWord (ty, Word.<<(n, 0w2))))
@@ -135,27 +137,45 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		  defineLabel labT;
 		  emitStms (genGoto jT)
 	      end
-	    | genTransfer (M.Switch (v, js, jOpt)) = let
-		(* put the value into reg *)
+	    | genTransfer (M.Switch (v, js, jOpt)) = let		  
+		  (* put the switch value into reg *)
 		  val {reg, mv} = freshMv (defOf v)
 		  val _ = emit mv
-		(* compare the value with each branch *)
-		  fun compare i = T.CMP (ty, T.EQ, T.REG (ty, reg), wordLit i)
-		  fun genTest ((i, jmp), exits) =
-		      let val labT = newLabel "S_case"
-			  val jmpStms = genGoto jmp
+
+		  (* compare the value with each branch *)
+		  fun compareCase i = let
+		      (* encode the case values according to the type of the switch value *)
+		      val c = (case Var.typeOf v                      
+				of CFGTy.T_Enum _ => 
+				   (* enums use a special encoding, so we need to use it in cases *)
+				   encodeEnum i
+				 | _ => i
+			      (* end case *))
+		      in
+		        T.CMP (ty, T.EQ, T.REG (ty, reg), wordLit c)
+		      end (* compareCase *)
+
+		  fun genTest ((i, (l, [])), exits) = 
+		      (* if the jump target has no arguments, put it directly into the branch instruction *) 
+		      (emit (T.BCC (compareCase i, BE.LabelCode.getName l));
+		       exits)		      
+		    | genTest ((i, jmp), exits) = let
+                      val labT = newLabel "S_case"
+		      val jmpStms = genGoto jmp
 		      in		
-			  emit (T.BCC (compare i, labT));
+			  emit (T.BCC (compareCase i, labT));
 			  (labT, jmpStms) :: exits
 		      end
+
 		(* exit the code block if the value equals the case *)
 		  val exits = foldl genTest [] js
-		  fun emitJ (labT, jmpStms) = (
+
+		  fun emitJump (labT, jmpStms) = (
 		      defineLabel labT;
 		      emitStms jmpStms )
 	      in		  
-		  Option.app (fn defJmp => emitStms (genGoto defJmp)) jOpt;
-		  app emitJ (rev exits)
+		  app emitJump (List.rev exits);
+		  Option.app (fn defJmp => emitStms (genGoto defJmp)) jOpt
 	      end
 	    (* invariant: #2 gc = #2 nogc (their arguments are the same) *)
 	    | genTransfer (M.HeapCheck hc) = 
