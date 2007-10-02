@@ -61,5 +61,24 @@ support the language:
   \label{fig:stack-heap-alloc}
 \end{figure}%
 
+\subsection{Enumerations}
+The compiler uses enumerations for branching over data structures with variant types.
+We encode an enumeration value $e$ as the odd number $2*e+1$ in order to distinguish it from pointer
+values.
+This encoding takes place at code generation ({\tt code-gen-fn.sml}) and applies to literals
+and the cases of switch statements.
+
+\subsection{Calling C}
+\subsubsection{Attributes}
+Attributes inform the Manticore compiler about special properties of external C functions.
+
+\begin{figure}
+  \begin{center}
+    \begin{tabular}{cl}
+      {\tt alloc} & this function performs allocations in the VProc heap (should be {\tt noalloc})
+    \end{tabular}
+  \end{center}
+  \label{fig:c-attributes}
+\end{figure}
 
 \end{document}  
