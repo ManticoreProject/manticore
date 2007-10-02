@@ -25,3 +25,6 @@ Value_t M_LongToString (long n)
     return AllocString (VProcSelf(), buf);
 }
 
+Value_t M_PrintFloat (float f) {
+  Say ("%f\n",f);
+}
