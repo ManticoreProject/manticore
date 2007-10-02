@@ -9,7 +9,7 @@ module Float1
     fun retFloat (u : unit/ exh : cont(any)) : int =
 	let f : float = 3.14
 	let g : float = F32Add (f, f)
-        do ccall M_PrintFloat (f)
+        do ccall M_PrintFloat (g)
         return (0)
 
     let x : int = apply retFloat (u / exh)
