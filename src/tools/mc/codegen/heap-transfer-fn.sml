@@ -7,11 +7,9 @@
  *)
 
 signature TARGET_TRANSFER_HEAP = sig
-    
     type stm
-
+	 
     val genGCCall : unit -> stm list
-
 end (* TARGET_TRANSFER_HEAP *)
 
 functor HeapTransferFn (

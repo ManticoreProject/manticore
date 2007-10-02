@@ -96,7 +96,9 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	  fun emitStrLit (s, l) = (
 	      defineLabel l;
 	      pseudoOp (P.asciz s) )
-	  (* encode an enum e as 2*e+1 *)
+	  (* use a special encoding for enums to distinguish them from pointers:
+	   * enum(e) => 2*e+1
+	   *)
 	  fun encodeEnum e = Word.<<(e, 0w1) + 0w1
 	  fun genLit (ty, Literal.Enum c) = 
 		MTy.EXP(ty, T.LI(T.I.fromWord (ty, encodeEnum c)))
