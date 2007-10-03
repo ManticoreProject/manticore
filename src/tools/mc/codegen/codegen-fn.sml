@@ -282,6 +282,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		      let val funcAnRef = getAnnotations ()
 			  val frame = BE.SpillLoc.getFuncFrame lab
 (* DEBUG *)
+			  val _ = comment ("CFG function: "^CFG.Label.toString lab)
 			  val regs = BE.LabelCode.getParamRegs lab
 			  val regStrs = map (MTy.treeToString o MTy.regToTree) regs 
 			  val regStrs = map (fn s => comment ("param:"^s^" ")) regStrs
