@@ -61,6 +61,12 @@ support the language:
   \label{fig:stack-heap-alloc}
 \end{figure}%
 
+\subsection{Sequential mode}
+The compiler supports a sequential execution mode (available via the compiler flag
+{\tt -Csequential=true}) to ease debugging.
+This mode causes the compiler to not include hlops for scheduling code, thus disabling parallel execution
+and preemption.
+
 \subsection{Enumerations}
 The compiler uses enumerations for branching over data structures with variant types.
 We encode an enumeration value $e$ as the odd number $2*e+1$ in order to distinguish it from pointer

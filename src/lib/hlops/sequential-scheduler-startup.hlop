@@ -1,0 +1,27 @@
+(* sequential-scheduler-startup.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Install a trivial initial scheduler action on the sequential vproc.
+ *)
+
+#include "types.def"
+
+define inline @run (vp : vproc, act : sigact, tid : tid, fiber : fiber / exh : exh) noreturn;
+
+define @sequential-scheduler-startup ( / exh : exh) : () =
+  cont switch (s : signal) =
+     (* assume a single thread and ignore preemption *)
+     if Equal (s, STOP)
+        then return ()
+        else let self : vproc = host_vproc
+             let k  : fiber = (fiber)s
+            (* FIXME: find a place for tids *)
+             let tid : tid = enum(0)
+             @run (self, switch, tid, k / exh)
+  cont startup (_ : unit) =
+    return ()
+  let self : vproc = host_vproc
+  @run (self, switch, enum(0), startup / exh)
+;

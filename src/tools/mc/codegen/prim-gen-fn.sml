@@ -55,8 +55,8 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		      gprBind (ty, v, oper (ty, defOf v'))
 		fun genArith2 (ty, oper, (v1, v2)) = 
 		      gprBind (ty, v, oper (ty, defOf v1, defOf v2))
-		fun genFArith1 (fty, oper, v) = 
-		      fbind (fty, v, oper (fty, fdefOf v))
+		fun genFArith1 (fty, oper, v') = 
+		      fbind (fty, v, oper (fty, fdefOf v'))
 		fun genFArith2 (fty, oper, (v1, v2)) = 
 		      fbind (fty, v, oper (fty, fdefOf v1, fdefOf v2))
 		fun divs (ty, a, b) = T.DIVS(T.DIV_TO_ZERO, ty, a, b)
@@ -123,12 +123,12 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		    | P.F64Gt a => genFCmp (f64ty, T.>, a)
 		    | P.F64Gte a => genFCmp (f64ty, T.>=, a)
 		  (* conversions *)
-		    | P.I32ToI64X x => gprBind (i32ty, x, T.SX(i32ty, i64ty, defOf x))
-		    | P.I32ToI64 x => gprBind (i32ty, x, T.ZX(i32ty, i64ty, defOf x))
-		    | P.I32ToF32 x => fbind (f32ty, x, T.CVTI2F(i32ty, f32ty, defOf x))
-		    | P.I32ToF64 x => fbind (f64ty, x, T.CVTI2F(i32ty, f64ty, defOf x))
-		    | P.I64ToF32 x => fbind (f32ty, x, T.CVTI2F(i64ty, f32ty, defOf x))
-		    | P.I64ToF64 x => fbind (f64ty, x, T.CVTI2F(i64ty, f64ty, defOf x))
+		    | P.I32ToI64X x => gprBind (i32ty, v, T.SX(i32ty, i64ty, defOf x))
+		    | P.I32ToI64 x => gprBind (i32ty, v, T.ZX(i32ty, i64ty, defOf x))
+		    | P.I32ToF32 x => fbind (f32ty, v, T.CVTI2F(i32ty, f32ty, defOf x))
+		    | P.I32ToF64 x => fbind (f64ty, v, T.CVTI2F(i32ty, f64ty, defOf x))
+		    | P.I64ToF32 x => fbind (f32ty, v, T.CVTI2F(i64ty, f32ty, defOf x))
+		    | P.I64ToF64 x => fbind (f64ty, v, T.CVTI2F(i64ty, f64ty, defOf x))
 		  (* atomic operations *)
 (* FIXME
 		    | P.I32FetchAndAdd of 'var * 'var

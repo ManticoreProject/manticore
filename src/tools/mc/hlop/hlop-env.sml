@@ -33,6 +33,7 @@ structure HLOpEnv : sig
     val printOp : HLOp.hlop
 
   (* scheduler operations *)
+    val sequentialSchedulerStartupOp : HLOp.hlop
     val defaultSchedulerStartupOp : HLOp.hlop
     val runOp : HLOp.hlop
     val forwardOp : HLOp.hlop
@@ -110,6 +111,7 @@ structure HLOpEnv : sig
     val printOp = newWithExh ("print", [stringTy], [unitTy], [])
 
   (* scheduler operations *)
+    val sequentialSchedulerStartupOp = newWithExh ("sequential-scheduler-startup", [], [], [])
     val defaultSchedulerStartupOp = newWithExh ("default-scheduler-startup", [], [], [])
     val schedulerStartupOp = newWithExh ("scheduler-startup", [sigActTy], [], [])
     val runOp = newWithExh ("run", [vprocTy, sigActTy, tidTy, fiberTy], [], [H.NORETURN])
@@ -166,6 +168,7 @@ structure HLOpEnv : sig
 		enqueueOp,
 		forwardOp,
 		runOp,
+		sequentialSchedulerStartupOp,
                 schedulerStartupOp,
                 defaultSchedulerStartupOp,
 		newWorkQueueOp,

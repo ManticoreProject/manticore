@@ -68,6 +68,7 @@ structure Basis : sig
     val int_gte		: AST.var
     val int_lt		: AST.var
     val int_lte		: AST.var
+    val int_eq		: AST.var
     val int_minus	: AST.var
     val int_mod		: AST.var
     val int_neg		: AST.var
@@ -338,10 +339,10 @@ structure Basis : sig
 (* TODO do @, ! *)
 
 (* TODO what's up with the equality operators?
-    val boolEq =	monoVar(N.eq, boolTy ** boolTy --> boolTy)
-    val intEq =		monoVar(N.eq, intTy ** intTy --> boolTy)
-    val stringEq =	monoVar(N.eq, stringTy ** stringTy --> boolTy)
 *)
+    val bool_eq =	monoVar(N.eq, boolTy ** boolTy --> boolTy)
+    val int_eq =		monoVar(N.eq, intTy ** intTy --> boolTy)
+    val string_eq =	monoVar(N.eq, stringTy ** stringTy --> boolTy)
 
   (* create a type scheme that binds a kinded type variable *)
     fun tyScheme (cls, mk) = let
@@ -350,6 +351,8 @@ structure Basis : sig
 	    Types.TyScheme([tv], mk(Types.VarTy tv))
 	  end
 
+    val eq = (tyScheme(Types.Order, fn tv => (tv ** tv --> boolTy)),
+	       [bool_eq, int_eq, string_eq])
     val lte = (tyScheme(Types.Order, fn tv => (tv ** tv --> boolTy)),
 	       [int_lte, long_lte, integer_lte, float_lte, double_lte, char_lte, rune_lte, string_lte])
     val lt = (tyScheme(Types.Order, fn tv => (tv ** tv --> boolTy)),
@@ -392,6 +395,7 @@ structure Basis : sig
 	      ];
 	  (* insert overloaded operators *)
 	    List.app ins [
+		(N.eq,		eq),
 		(N.lte,		lte),
 		(N.lt,		lt),
 		(N.gte,		gte),

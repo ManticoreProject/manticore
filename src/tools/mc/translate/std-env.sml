@@ -187,6 +187,7 @@ structure StdEnv : sig
 	    (B.listAppend,	hlop H.listAppendOp),
 	    (B.stringConcat,	hlop H.stringConcatOp),
 	    (B.int_lte,		prim2 (P.I32Lte, "lte", i, i, b)),
+	    (B.int_eq,		prim2 (P.I32Eq, "eq", i, i, b)),
 	    (B.long_lte,	prim2 (P.I64Lte, "lte", l, l, b)),
 	    (B.float_lte,	prim2 (P.F32Lte, "lte", f, f, b)),
 	    (B.double_lte,	prim2 (P.F64Lte, "lte", d, d, b)),
