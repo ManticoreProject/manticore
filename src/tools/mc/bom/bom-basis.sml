@@ -18,6 +18,7 @@ signature BOM_BASIS =
     val optionTy : BOMTy.ty
     val signalTy : BOMTy.ty
     val rdyqItemTy : BOMTy.ty
+    val workQueueTy : BOMTy.ty
 
   (* predefined data constructors *)
     val signalPREEMPT : BOMTy.data_con
@@ -67,8 +68,10 @@ structure BOMBasis : BOM_BASIS =
     val optionTy = BTy.T_TyCon optionTyc
     val optionSOME = BOMTyCon.newDataCon optionTyc
 	  ("SOME", BTy.Tuple, [BTy.T_Any])
-
     val sigactTy = BTy.T_Cont[signalTy]
+
+    (* val workQueueTyc = BTy.AbsTyc {name="work_queue", stamp=Stamp.new(), arity=0} *)
+    val workQueueTy = BTy.T_Any (* BTy.T_TyCon workQueueTyc *)
 
     fun mkTbl nameOf bindings = let
 	  val tbl = AtomTable.mkTable (List.length bindings, Fail "table")

@@ -118,16 +118,28 @@ structure HLOpEnv : sig
     val enqueueOp = newWithExh ("enqueue", [vprocTy, tidTy, fiberTy], [], [])
 
   (* work queue operations *)
-    val newWorkQueueOp = newWithExh ("newWorkQueue", [], [workQueueTy], [])
+    val newWorkQueueOp = newWithExh ("newWorkQueue", [unitTy], [workQueueTy], [])
 
   (* futures *)
+    (* FIXME set these up with work queues too *)
     val futureOp = newWithExh ("future", [thunkTy], [futureTy], [])
     val touchOp  = newWithExh ("touch",  [futureTy], [BTy.T_Any], [])
     val cancelOp = newWithExh ("cancel", [futureTy], [], [])
 
-    val future1Op = newWithExh ("future1", [thunkTy], [futureTy], [])
-    val touch1Op  = newWithExh ("touch1",  [futureTy], [BTy.T_Any], [])
-    val cancel1Op = newWithExh ("cancel1", [futureTy], [], [])
+    val future1Op = newWithExh ("future1", 
+				[pairTy (workQueueTy, thunkTy)],
+				[futureTy], 
+				[])
+
+    val touch1Op  = newWithExh ("touch1",  
+				[pairTy (workQueueTy, futureTy)], 
+				[BTy.T_Any], 
+				[])
+
+    val cancel1Op = newWithExh ("cancel1", 
+				[pairTy (workQueueTy, futureTy)],
+				[], 
+				[])
 		    
     fun mkTbl nameOf bindings = let
 	  val tbl = AtomTable.mkTable (List.length bindings, Fail "table")

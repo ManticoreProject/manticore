@@ -23,7 +23,8 @@ structure ASTOpt : sig
 	  }
 
   (* replace parallel tuples with futures and touches *)
-    val ptuples : AST.module -> AST.module = transform {passName = "ptuples", pass = FutParTup.futurize}
+    val ptuples : AST.module -> AST.module = 
+	  transform {passName = "ptuples", pass = FutParTup.futurize}
 
     fun optimize (module : AST.module) : AST.module = let
           val module = ptuples module

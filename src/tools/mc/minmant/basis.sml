@@ -26,6 +26,7 @@ structure Basis : sig
     val mvarTyc		: Types.tycon
     val eventTyc	: Types.tycon
     val threadIdTyc	: Types.tycon
+    val workQueueTyc    : Types.tycon
 
   (* basis types *)
     val unitTy		: AST.ty
@@ -224,13 +225,10 @@ structure Basis : sig
     val mvarTyc = TyCon.newAbsTyc (N.mvar, 1, true)
     val eventTyc = TyCon.newAbsTyc (N.event, 1, false)
     val threadIdTyc = TyCon.newAbsTyc (N.thread_id, 0, true)
+    val workQueueTyc =  TyCon.newAbsTyc (Atom.atom "work_queue", 0, false)
 
   (* a type for work queues (not part of surface language) *)
-    val workQueueTy = 
-	let val wqTyc = TyCon.newAbsTyc (Atom.atom "work_queue", 0, false)
-	in
-	    AST.ConTy ([], wqTyc)
-	end
+    val workQueueTy = AST.ConTy ([], workQueueTyc)
 
   (* sequential-language predefined types *)
     val unitTy = AST.TupleTy[]

@@ -22,20 +22,22 @@ structure Futures (* : sig
     val touch1  : Var.var
     val cancel1 : Var.var
 
-    val mkFuture  : AST.exp -> AST.exp 
-    val mkTouch   : AST.exp -> AST.exp
-    val mkCancel  : AST.exp -> AST.exp
+    val mkNewWorkQueue : unit -> AST.exp
 
-    val mkFuture1 : AST.exp -> AST.exp
-    val mkTouch1  : AST.exp -> AST.exp
-    val mkCancel1 : AST.exp -> AST.exp
+    val mkFuture  : AST.exp * AST.exp -> AST.exp 
+    val mkTouch   : AST.exp * AST.exp -> AST.exp
+    val mkCancel  : AST.exp * AST.exp -> AST.exp
+
+    val mkFuture1 : AST.exp * AST.exp -> AST.exp
+    val mkTouch1  : AST.exp * AST.exp -> AST.exp
+    val mkCancel1 : AST.exp * AST.exp -> AST.exp
 
   end *) =
 
   struct
-  
     structure A = AST
     structure T = Types
+    structure B = Basis
     
     (* fail : string -> 'a *)
     fun fail msg = raise Fail msg
@@ -65,9 +67,12 @@ structure Futures (* : sig
     val --> = T.FunTy
     infixr 8 -->
 
+    fun ** (t1, t2) = T.TupleTy [t1, t2]
+    infixr 8 **
+
     (* predefined functions *)
     val newWorkQueue = monoVar ("newWorkQueue",
-				Basis.unitTy --> Basis.workQueueTy)
+				B.unitTy --> B.workQueueTy)
 
     val future = polyVar ("future",
  		          fn tv => (Basis.unitTy --> tv) --> futureTy tv)
@@ -79,30 +84,38 @@ structure Futures (* : sig
 			  fn tv => futureTy tv --> Basis.unitTy)
 
     val future1 = polyVar ("future1",
-			   fn tv => (Basis.unitTy --> tv) --> futureTy tv)
+			   fn tv => (B.workQueueTy ** (B.unitTy --> tv)) --> futureTy tv)
 
     val touch1 = polyVar ("touch1",
-			  fn tv => futureTy tv --> tv)
+			  fn tv => (B.workQueueTy ** (futureTy tv)) --> tv)
 
     val cancel1 = polyVar ("cancel1",
-			   fn tv => futureTy tv --> Basis.unitTy)
+			   fn tv => (B.workQueueTy ** (futureTy tv)) --> Basis.unitTy)
+
+    (* mkNewWorkQueue : unit -> A.exp *)
+    (* Produces an AST expression which is a call to the newWorkQueue hlop. *)
+    fun mkNewWorkQueue () = A.ApplyExp (A.VarExp (newWorkQueue, []),
+					A.TupleExp [],
+					Basis.workQueueTy)
 
     (* mkThunk : A.exp -> A.exp *)
     (* Consumes e; produces (fn u => e) (for fresh u : unit). *)
     fun mkThunk e = A.FunExp (Var.new ("u", Basis.unitTy), e, TypeOf.exp e)
 
-    (* mkFut : var -> A.exp -> A.exp *)
-    (* Consumes e; produces future (fn u => e). *)
-    fun mkFut futvar e = 
+    (* mkFut : var -> A.exp * A.exp -> A.exp *)
+    (* Consumes futvar -> q and e; produces futvar (q, fn u => e). *)
+    fun mkFut futvar (qVarExp, e) = 
 	let val te = TypeOf.exp e
 	in
-	    A.ApplyExp (A.VarExp (futvar, [te]), mkThunk e, futureTy te)
+	    A.ApplyExp (A.VarExp (futvar, []), (* [te]),  *)
+			A.TupleExp [qVarExp, mkThunk e], 
+			futureTy te)
 	end
 
-    (* mkFuture : A.exp -> A.exp *)
+    (* mkFuture : A.exp * A.exp -> A.exp *)
     val mkFuture = mkFut future
  
-    (* mkFuture1 : A.exp -> A.exp *)
+    (* mkFuture1 : A.exp * A.exp -> A.exp *)
     val mkFuture1 = mkFut future1 
 
     local
@@ -129,13 +142,13 @@ structure Futures (* : sig
 		   | _ => raise Fail (mkMsg t)
 	    end
 
-        (* mkTch : var -> A.exp -> A.exp *)
-	fun mkTch touchvar e =
+        (* mkTch : var -> A.exp * A.exp -> A.exp *)
+	fun mkTch touchvar (qvar, e) =
 	    if (isFuture e) then
 		let val t = typeOfFuture e
 		    val touch = A.VarExp (touchvar, [t])
 		in
-		    A.ApplyExp (touch, e, t)
+		    A.ApplyExp (touch, A.TupleExp [qvar, e], t)
 		end
 	    else
 		let val ts = Var.toString touchvar
@@ -143,12 +156,12 @@ structure Futures (* : sig
 		    raise Fail (ts ^ ": argument is not a future")
 		end
 
-	(* mkCan : var -> A.exp -> A.exp *)
-	fun mkCan cancelvar e =
+	(* mkCan : var -> A.exp * A.exp -> A.exp *)
+	fun mkCan cancelvar (qvar, e) =
 	    if (isFuture e) then
 		let val cancel = A.VarExp (cancelvar, [typeOfFuture e])
 		in
-		    A.ApplyExp (cancel, e, Basis.unitTy)
+		    A.ApplyExp (cancel, A.TupleExp [qvar, e], Basis.unitTy)
 		end
 	    else
 		let val cs = Var.toString cancelvar
@@ -158,22 +171,22 @@ structure Futures (* : sig
 
     in
 
-    (* mkTouch : A.exp -> A.exp *)
+    (* mkTouch : A.exp -> A.exp * A.exp *)
     (* Precondition: The argument must be a future. *)
     (* The function raises Fail if the precondition is not met. *)
     val mkTouch = mkTch touch 
 
-    (* mkTouch1 : A.exp -> A.exp *)
+    (* mkTouch1 : A.exp -> A.exp * A.exp *)
     (* Precondition: The argument must be a future. *)
     (* The function raises Fail if the precondition is not met. *)
     val mkTouch1 = mkTch touch1
 
-    (* mkCancel : A.exp -> A.exp *)
+    (* mkCancel : A.exp -> A.exp * A.exp *)
     (* Precondition: The argument e1 must be a future. *)
     (* The function raises Fail if the precondition is not met. *)
     val mkCancel = mkCan cancel
 
-    (* mkCancel1 : A.exp -> A.exp *)
+    (* mkCancel1 : A.exp -> A.exp * A.exp *)
     (* Precondition: The argument e1 must be a future. *)
     (* The function raises Fail if the precondition is not met. *)
     val mkCancel1 = mkCan cancel1

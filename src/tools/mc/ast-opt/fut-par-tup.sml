@@ -42,76 +42,82 @@ structure FutParTup : sig
     (* (:>:) : ('a * 'b) * ('a list * 'b list) -> 'a list * 'b list *)
     fun (x,y) :>: (xs,ys) = (x::xs, y::ys)
  
-    (* ptuple : A.exp list -> A.exp *)
-    (* Precondition: The argument to the function, a list, must not be empty. *)
-    (* Consumes a list whose members are the contents of a parallel tuple, *)
-    (* and produces a LetExp that is a "futurized" ptuple. *)
-    (* Note: the first member of the list is not futurized (an optimization). *)
-    fun ptuple (e::es) = 
-  	  let (* mkFutBinds : A.exp list -> A.binding list * A.var list *)
-	      fun mkFutBinds ([], n) = ([],[])
-		| mkFutBinds (e::es, n) =
-		    let val fe = F.mkFuture1 e
-			val f_n = Var.newWithKind ("f" ^ Int.toString n,
-						   A.VK_Pat,
-						   TypeOf.exp fe)
-			val b = A.ValBind (A.VarPat f_n, fe)
-		    in
-			(b, f_n) :>: mkFutBinds (es, n+1)
-		    end
-	      (* letMany : A.binding list * A.exp -> A.exp *)
-	      (* pre: there is at least one binding *)
-	      fun letMany (b::[], e) = A.LetExp (b, e)
-		| letMany (b::bs, e) = A.LetExp (b, letMany (bs, e))
-		| letMany ([], _) = raise Fail "letMany: argument must have\
-                                                \ at least one binding"
-	      val (bs, vs) = mkFutBinds (map exp es, 1)
-	      val touches = map (fn v => F.mkTouch1 (A.VarExp (v, []))) vs
-	  in
-	      letMany (bs, A.TupleExp (exp e :: touches))
-	  end
-      | ptuple [] = raise Fail "ptuple: expected non-empty list of expressions"
-
-    (* exp : A.exp -> A.exp *)
-    (* n.b. Type-preserving. *)
-    and exp (A.LetExp (b, e)) = A.LetExp (binding b, exp e)
-      | exp (A.IfExp (e1, e2, e3, t)) = A.IfExp (exp e1, exp e2, exp e3, t)
-      | exp (A.CaseExp (e, pes, t)) = let
-	  fun match (A.PatMatch(p, e)) = A.PatMatch(p, exp e)
-	    | match (A.CondMatch(p, cond, e)) = A.CondMatch(p, exp cond, exp e)
-	  in
-	    A.CaseExp (exp e, List.map match pes, t)
-	  end
-      | exp (A.FunExp (x, e, t)) = A.FunExp (x, exp e, t)
-      | exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, t)
-      | exp (A.TupleExp es) = A.TupleExp (map exp es)
-      | exp (A.RangeExp (e1, e2, oe3, t)) = A.RangeExp (exp e1,
-							exp e2,
-							Option.map exp oe3,
-							t)
-      | exp (A.PTupleExp es) = ptuple es
-      | exp (A.PArrayExp (es, t)) = A.PArrayExp (map exp es, t)
-      | exp (A.PCompExp (e, pes, oe)) = 
-	  A.PCompExp (exp e,
-		      map (id ** exp) pes,
-		      Option.map exp oe)
-      | exp (A.PChoiceExp (es, t)) = A.PChoiceExp (map exp es, t)
-      | exp (A.SpawnExp e) = A.SpawnExp (exp e)
-      | exp (k as (A.ConstExp _)) = k
-      | exp (v as (A.VarExp _)) = v
-      | exp (A.SeqExp (e1, e2)) = A.SeqExp (exp e1, exp e2)
-      | exp (ov as (A.OverloadExp _)) = ov
-
-    (* binding : A.binding -> A.binding *)
-    and binding (A.ValBind (p, e)) = A.ValBind (p, exp e)
-      | binding (A.PValBind (p, e)) = A.PValBind (p, exp e)
-      | binding (A.FunBind lams) = A.FunBind (map lambda lams)
-
-    (* lambda : A.lambda -> A.lambda *)
-    and lambda (A.FB (f, x, b)) = A.FB (f, x, exp b)
-
     (* module : A.module -> A.module *)
-    fun module m = exp m
+    fun module m = 
+	let val q = Var.new ("q", Basis.workQueueTy)
+	    val qe = A.VarExp (q, [])
+	    (* ptuple : A.exp list -> A.exp *)
+	    (* Precondition: The argument to the function, a list, must not be empty. *)
+	    (* Consumes a list whose members are the contents of a parallel tuple, *)
+	    (* and produces a LetExp that is a "futurized" ptuple. *)
+	    (* Note: the first member of the list is not futurized (an optimization). *)
+	    fun ptuple (e::es) = 
+  		let (* mkFutBinds : A.exp list -> A.binding list * A.var list *)
+		    fun mkFutBinds ([], n) = ([],[])
+		      | mkFutBinds (e::es, n) =
+			let val fe = F.mkFuture1 (qe, e)
+			    val f_n = Var.newWithKind ("f" ^ Int.toString n,
+						       A.VK_Pat,
+						       TypeOf.exp fe)
+			    val b = A.ValBind (A.VarPat f_n, fe)
+			in
+			    (b, f_n) :>: mkFutBinds (es, n+1)
+			end
+		    (* letMany : A.binding list * A.exp -> A.exp *)
+		    (* pre: there is at least one binding *)
+		    fun letMany (b::[], e) = A.LetExp (b, e)
+		      | letMany (b::bs, e) = A.LetExp (b, letMany (bs, e))
+		      | letMany ([], _) = raise Fail "letMany: argument must have\
+                                                     \ at least one binding"
+		    val (bs, vs) = mkFutBinds (map exp es, 1)
+		    val touches = map (fn v => F.mkTouch1 (qe, A.VarExp (v, []))) vs
+		in
+		    letMany (bs, A.TupleExp (exp e :: touches))
+		end
+	      | ptuple [] = raise Fail "ptuple: expected non-empty list of expressions"
+				  
+	    (* exp : A.exp -> A.exp *)
+	    (* n.b. Type-preserving. *)
+	    and exp (A.LetExp (b, e)) = A.LetExp (binding b, exp e)
+	      | exp (A.IfExp (e1, e2, e3, t)) = A.IfExp (exp e1, exp e2, exp e3, t)
+	      | exp (A.CaseExp (e, pes, t)) = let
+		    fun match (A.PatMatch(p, e)) = A.PatMatch(p, exp e)
+		      | match (A.CondMatch(p, cond, e)) = A.CondMatch(p, exp cond, exp e)
+		in
+		    A.CaseExp (exp e, List.map match pes, t)
+		end
+	      | exp (A.FunExp (x, e, t)) = A.FunExp (x, exp e, t)
+	      | exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, t)
+	      | exp (A.TupleExp es) = A.TupleExp (map exp es)
+	      | exp (A.RangeExp (e1, e2, oe3, t)) = A.RangeExp (exp e1,
+								exp e2,
+								Option.map exp oe3,
+								t)
+	      | exp (A.PTupleExp es) = ptuple es
+	      | exp (A.PArrayExp (es, t)) = A.PArrayExp (map exp es, t)
+	      | exp (A.PCompExp (e, pes, oe)) = 
+		A.PCompExp (exp e,
+			    map (id ** exp) pes,
+			    Option.map exp oe)
+	      | exp (A.PChoiceExp (es, t)) = A.PChoiceExp (map exp es, t)
+	      | exp (A.SpawnExp e) = A.SpawnExp (exp e)
+	      | exp (k as (A.ConstExp _)) = k
+	      | exp (v as (A.VarExp _)) = v
+	      | exp (A.SeqExp (e1, e2)) = A.SeqExp (exp e1, exp e2)
+	      | exp (ov as (A.OverloadExp _)) = ov
+						
+	    (* binding : A.binding -> A.binding *)
+	    and binding (A.ValBind (p, e)) = A.ValBind (p, exp e)
+	      | binding (A.PValBind (p, e)) = A.PValBind (p, exp e)
+	      | binding (A.FunBind lams) = A.FunBind (map lambda lams)
+					   
+	    (* lambda : A.lambda -> A.lambda *)
+	    and lambda (A.FB (f, x, b)) = A.FB (f, x, exp b)
+
+	in
+	    A.LetExp (A.ValBind (A.VarPat q, F.mkNewWorkQueue ()),
+		      exp m)
+	end
 
     (* futurize : A.module -> A.module *)
     fun futurize m = module m

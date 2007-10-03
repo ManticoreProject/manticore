@@ -73,6 +73,7 @@ structure BOMTy =
     val exhTy = T_Cont[exnTy]
     val tidTy = T_Enum(0w0);
     val fiberTy = T_Cont[unitTy]
+    val workQueueTy = T_Any
 
   (* construct an immutable tuple type; nullary tuples are unit type and singleton
    * tuples have a direct representation.
