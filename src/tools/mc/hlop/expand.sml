@@ -12,7 +12,7 @@
   (* an environment to keep track of any imports required by the high-level operator *)
     type import_env = BOM.var CFunctions.c_fun AtomTable.hash_table
 
-    val cvtFile : (import_env * HLOpDefPT.file)
+    val cvtFile : (import_env * string * HLOpDefPT.file)
 	  -> (BOM.hlop * bool * BOM.lambda * BOM.var CFunctions.c_fun list) list
 
   end = struct
@@ -30,16 +30,24 @@
     type import_env = BOM.var CFunctions.c_fun AtomTable.hash_table
 
   (* environment for the translation *)
-    datatype env = E of {tyEnv : Ty.ty AMap.map, vEnv : BOM.var AMap.map}
+    datatype env = E of {
+	file : string,
+	tyEnv : Ty.ty AMap.map,
+	vEnv : BOM.var AMap.map
+      }
 
-    val emptyEnv = E{tyEnv = AMap.empty, vEnv = AMap.empty}
-    fun insertTy (E{tyEnv, vEnv}, id, ty) = E{tyEnv=AMap.insert(tyEnv, id, ty), vEnv=vEnv}
+    fun emptyEnv s = E{file = s, tyEnv = AMap.empty, vEnv = AMap.empty}
+    fun insertTy (E{file, tyEnv, vEnv}, id, ty) =
+	  E{file=file, tyEnv=AMap.insert(tyEnv, id, ty), vEnv=vEnv}
     fun findTy (E{tyEnv, ...}, id) = AMap.find(tyEnv, id)
-    fun insertVar (E{tyEnv, vEnv}, id, x) = E{tyEnv=tyEnv, vEnv=AMap.insert(vEnv, id, x)}
+    fun insertVar (E{file, tyEnv, vEnv}, id, x) =
+	  E{file=file, tyEnv=tyEnv, vEnv=AMap.insert(vEnv, id, x)}
     fun findVar (E{vEnv, ...}, id) = AMap.find(vEnv, id)
 
+    fun fail (E{file, ...}, msg) = Fail(concat(file :: ": " :: msg))
+
     fun lookup (env, x) = (case findVar(env, x)
-	   of NONE => raise Fail("unbound variable " ^ Atom.toString x)
+	   of NONE => raise (fail (env, ["unbound variable ", Atom.toString x]))
 	    | SOME x' => x'
 	  (* end case *))
 
@@ -77,7 +85,7 @@
 		 of SOME ty => ty
 		  | NONE => (case Basis.findTyc tyc
 		       of SOME tyc => Ty.T_TyCon tyc
-			| NONE => raise Fail(concat["unknown type ", Atom.toString tyc])
+			| NONE => raise (fail(env, ["unknown type ", Atom.toString tyc]))
 		      (* end case *))
 		(* end case *))
 	  (* end case *))
@@ -111,7 +119,7 @@
 		in
 		  (env, BOM.P_DCon(dc, xs))
 		end
-	    | NONE => raise Fail(concat["unknown data constructor ", Atom.toString dc])
+	    | NONE => raise (fail(env, ["unknown data constructor ", Atom.toString dc]))
 	  (* end case *))
       | cvtPat (env, PT.ConstPat(const, ty)) = (env, BOM.P_Const(const, cvtTy(env, ty)))
 
@@ -141,13 +149,13 @@
 			      cvtSimpleExps(findCFun, env, args, fn xs => let
 				val rhs = (case (findPrim p, xs)
 				       of (NONE, _) => (case Basis.findDCon p
-					     of NONE => raise Fail("unknown primop " ^ Atom.toString p)
+					     of NONE => raise (fail(env, ["unknown primop ", Atom.toString p]))
 					      | SOME dc => BOM.E_DCon(dc, xs)
 					    (* end case *))
 					| (SOME(Prim1{mk, ...}), [x]) => BOM.E_Prim(mk x)
 					| (SOME(Prim2{mk, ...}), [x, y]) => BOM.E_Prim(mk(x, y))
 					| (SOME(Prim3{mk, ...}), [x, y, z]) => BOM.E_Prim(mk(x, y, z))
-					| _ => raise Fail("arity mismatch for primop " ^ Atom.toString p)
+					| _ => raise (fail(env, ["arity mismatch for primop ", Atom.toString p]))
 				      (* end case *))
 				in
 				  BOM.mkStmt(lhs', rhs, e')
@@ -233,7 +241,7 @@
 		      cvtSimpleExps(findCFun, env, args,
 			fn xs => cvtSimpleExps(findCFun, env, rets,
 			  fn ys => BOM.mkHLOp(hlop, xs, ys)))
-		  | NONE => raise Fail(concat["unknown high-level op ", Atom.toString hlop])
+		  | NONE => raise (fail(env, ["unknown high-level op ", Atom.toString hlop]))
 		(* end case *))
 	  (* end case *))
 
@@ -286,7 +294,7 @@
 	    | PT.Prim(p, args) => let
 		fun mkBind xs = (case (findPrim p, xs)
 		       of (NONE, _) => (case Basis.findDCon p
-			     of NONE => raise Fail("unknown primop " ^ Atom.toString p)
+			     of NONE => raise (fail(env, ["unknown primop ", Atom.toString p]))
 			      | SOME dc =>
 				  (newTmp(BOMTyCon.dconResTy dc), BOM.E_DCon(dc, xs))
 			    (* end case *))
@@ -296,7 +304,7 @@
 			    (newTmp resTy, BOM.E_Prim(mk(x, y)))
 			| (SOME(Prim3{mk, resTy, ...}), [x, y, z]) =>
 			    (newTmp resTy, BOM.E_Prim(mk(x, y, z)))
-			| _ => raise Fail("arity mismatch for primop " ^ Atom.toString p)
+			| _ => raise (fail(env, ["arity mismatch for primop ", Atom.toString p]))
 		      (* end case *))
 		in
 		  cvtSimpleExps(findCFun, env, args, fn xs => let
@@ -317,7 +325,7 @@
 		    BOM.mkStmt([tmp], BOM.E_VPLoad(offset, vp), k tmp)
 		  end)
 	    | PT.VPStore(offset, vp, arg) =>
-		raise Fail "VPStore in argument position"
+		raise (fail(env, ["VPStore in argument position"]))
 	  (* end case *))
 
     and cvtSimpleExps (findCFun, env, exps, k) = let
@@ -327,7 +335,7 @@
 	    cvt (exps, [])
 	  end
 
-    fun cvtFile (importEnv, PT.FILE defs) = let
+    fun cvtFile (importEnv, fileName, PT.FILE defs) = let
 	(* this is the first pass, which adds C-function prototypes to the import environment,
 	 * defined types to the translation environment, and HLOp signatures to the HLOp
          * environment.
@@ -370,7 +378,7 @@
 		      end
 		(* end case *);
 		env)
-	  val env = List.foldl insDef emptyEnv defs
+	  val env = List.foldl insDef (emptyEnv fileName) defs
 	(* this is the second pass, which converts actual HLOp definitions to BOM lambdas *)
 	  fun cvtDefs [] = []
 	    | cvtDefs (PT.Define(inline, name, params, exh, retTy, SOME e)::defs) = let
@@ -378,7 +386,7 @@
 		val retTy = (case retTy of NONE => [] | SOME tys => tys)
 		val cfuns = ATbl.mkTable (16, Fail "cfun table")
 		fun findCFun name = (case ATbl.find importEnv name
-		       of NONE => raise Fail("Unknown C function " ^ Atom.toString name)
+		       of NONE => raise (fail(env, ["Unknown C function ", Atom.toString name]))
 			| SOME(cf as CFunctions.CFun{var, ...}) => (
 			    ATbl.insert cfuns (name, cf);
 			    var)

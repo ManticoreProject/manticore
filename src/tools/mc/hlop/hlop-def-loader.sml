@@ -79,7 +79,7 @@ structure HLOpDefLoader : sig
 		in
 		  case Loader.load fileName
 		   of SOME pt => let
-			val defs = Expand.cvtFile(importEnv, pt)
+			val defs = Expand.cvtFile(importEnv, fileName, pt)
 			fun record (hlOp, inline, lambda, cfuns) = (
 			    (* compute census info for the definition; we have to clear the
 			     * imported C function counts, because they get counted with a
