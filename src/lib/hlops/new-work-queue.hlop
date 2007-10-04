@@ -6,13 +6,13 @@
  * To create a new work queue.
  *)
 
-#include "types.def"
+#include "futures.def"
 
 (*     Value_t M_NewWorkQueue (VProc_t *vp) *)
 extern void *M_NewWorkQueue (void*);
 
 define @new-work-queue( / exh : exh) : work_queue =
   let vp : vproc = host_vproc
-  let q : workQueue = ccall M_NewWorkQueue (vp)
+  let q : work_queue = ccall M_NewWorkQueue (vp)
   return (q)
 ;
