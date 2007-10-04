@@ -52,10 +52,10 @@ structure CFACFG : sig
 
     fun valueToString v = let
 	  fun v2s (TOP, l) = "T" :: l
-	    | v2s (TUPLE[], l) = "<>" :: l
-	    | v2s (TUPLE[v], l) = "<" :: v2s (v, ">" :: l)
+	    | v2s (TUPLE[], l) = "()" :: l
+	    | v2s (TUPLE[v], l) = "(" :: v2s (v, ")" :: l)
 	    | v2s (TUPLE(v::r), l) =
-		"<" :: v2s (v, List.foldr (fn (v, l) => "," :: v2s(v, l)) (">" :: l) r)
+		"(" :: v2s (v, List.foldr (fn (v, l) => "," :: v2s(v, l)) (")" :: l) r)
 	    | v2s (WRAP v, l) = "[" :: v2s (v, "]" :: l)
 	    | v2s (LABELS s, l) = let
 		fun f [] = "}" :: l
