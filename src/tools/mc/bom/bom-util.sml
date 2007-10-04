@@ -36,6 +36,11 @@ structure BOMUtil : sig
   (* create a copy of a BOM term with fresh bound variables *)
     val copyLambda : BOM.lambda -> BOM.lambda
 
+  (* copy an expression creating fresh local variables and renaming global variables
+   * according to the given substitution.
+   *)
+    val copyExp : (subst * BOM.exp) -> BOM.exp
+
   (* return the type of a BOM term *)
     val typeOfExp : BOM.exp -> BOM.ty list
     val typeOfRHS : BOM.rhs -> BOM.ty list
@@ -156,7 +161,7 @@ structure BOMUtil : sig
 		val (s, params) = freshVars (s, params)
 		val (s, exh) = freshVars (s, exh)
 		in
-		  B.FB{f=f, params=params, exh=exh, body=copyExp'(s, body)}
+		  B.FB{f=f, params=params, exh=exh, body=copyExp(s, body)}
 		end
 	  in
 	    (s, doBody)
@@ -168,16 +173,16 @@ structure BOMUtil : sig
 	    (s, doBody s)
 	  end
 
-    and copyExp' (s, B.E_Pt(_, t)) = (case t
+    and copyExp (s, B.E_Pt(_, t)) = (case t
 	   of B.E_Let(lhs, e1, e2) => let
 		val (s', lhs) = freshVars(s, lhs)
 		in
-		  B.mkLet(lhs, copyExp' (s, e1), copyExp' (s', e2))
+		  B.mkLet(lhs, copyExp (s, e1), copyExp (s', e2))
 		end
 	    | B.E_Stmt(lhs, rhs, e) => let
 		val (s', lhs) = freshVars(s, lhs)
 		in
-		  B.mkStmt(lhs, substRHS (s, rhs), copyExp' (s', e))
+		  B.mkStmt(lhs, substRHS (s, rhs), copyExp (s', e))
 		end
 	    | B.E_Fun(fbs, e) => let
 	      (* first pass creates fresh function names and gives a list of doBody
@@ -194,25 +199,25 @@ structure BOMUtil : sig
 	       *)
 		val fbs = List.foldl (fn (doBody, fbs) => doBody s :: fbs) [] doBodies
 		in
-		  B.mkFun(fbs, copyExp'(s, e))
+		  B.mkFun(fbs, copyExp(s, e))
 		end
 	    | B.E_Cont(fb, e) => let
 		val (s, fb) = copyOneLambda(s, fb)
 		in
-		  B.mkCont(fb, copyExp'(s, e))
+		  B.mkCont(fb, copyExp(s, e))
 		end
-	    | B.E_If(x, e1, e2) => B.mkIf(subst s x, copyExp'(s, e1), copyExp'(s, e2))
+	    | B.E_If(x, e1, e2) => B.mkIf(subst s x, copyExp(s, e1), copyExp(s, e2))
 	    | B.E_Case(x, cases, dflt) => let
 		fun copyCase (B.P_DCon(dc, args), e) = let
 		      val (s, args) = freshVars(s, args)
 		      in
-			(B.P_DCon(dc, args), copyExp'(s, e))
+			(B.P_DCon(dc, args), copyExp(s, e))
 		      end
-		  | copyCase (p, e) = (p, copyExp'(s, e))
+		  | copyCase (p, e) = (p, copyExp(s, e))
 		in
 		  B.mkCase(subst s x,
 		    List.map copyCase cases,
-		    Option.map (fn e => copyExp' (s, e)) dflt)
+		    Option.map (fn e => copyExp (s, e)) dflt)
 		end
 	    | B.E_Apply(f, args, rets) =>
 		B.mkApply(subst s f, subst'(s, args), subst'(s, rets))
@@ -238,7 +243,7 @@ structure BOMUtil : sig
 	  in
 	    ListPair.app adjust (args, params);
 	    ListPair.app adjust (rets, exh);
-	    copyExp' (s, body)
+	    copyExp (s, body)
 	  end
 
   (* create a copy of a BOM term with fresh bound variables *)
@@ -278,7 +283,9 @@ structure BOMUtil : sig
 	    | (B.E_Fun(_, e)) => typeOfExp e
 	    | (B.E_Cont(_, e)) => typeOfExp e
 	    | (B.E_If(_, e, _)) => typeOfExp e
+	    | (B.E_Case(_, [], SOME dflt)) => typeOfExp dflt
 	    | (B.E_Case(_, (_, e)::_, _)) => typeOfExp e
+	    | (B.E_Case _) => raise Fail "bogus empty case"
 	    | (B.E_Apply(f, _, _)) => let
 		val BTy.T_Fun(_, _, tys) = BV.typeOf f
 		in
