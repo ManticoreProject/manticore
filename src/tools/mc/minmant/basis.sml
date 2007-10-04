@@ -268,80 +268,112 @@ structure Basis : sig
 			    end))
     val stringConcat =	monoVar(N.concat, stringTy ** stringTy --> stringTy)
 
-    val int_div =       monoVar(N.div, intTy ** intTy --> intTy)
-    val int_gt =        monoVar(N.gt, intTy ** intTy --> boolTy)
-    val int_gte =       monoVar(N.gte, intTy ** intTy --> boolTy)
-    val int_lt =        monoVar(N.lt, intTy ** intTy --> boolTy)
-    val int_lte =       monoVar(N.lte, intTy ** intTy --> boolTy)
-    val int_minus =     monoVar(N.minus, intTy ** intTy --> intTy)
-    val int_mod =       monoVar(N.mod, intTy ** intTy --> intTy)
-    val int_neg =       monoVar(N.uMinus, intTy --> intTy)
-    val int_plus =      monoVar(N.plus, intTy ** intTy --> intTy)
-    val int_times =     monoVar(N.times, intTy ** intTy --> intTy)
+    local
+      fun name a = Atom.atom("Int." ^ Atom.toString a)
+    in
+    val int_div =       monoVar(name N.div, intTy ** intTy --> intTy)
+    val int_gt =        monoVar(name N.gt, intTy ** intTy --> boolTy)
+    val int_gte =       monoVar(name N.gte, intTy ** intTy --> boolTy)
+    val int_lt =        monoVar(name N.lt, intTy ** intTy --> boolTy)
+    val int_lte =       monoVar(name N.lte, intTy ** intTy --> boolTy)
+    val int_minus =     monoVar(name N.minus, intTy ** intTy --> intTy)
+    val int_mod =       monoVar(name N.mod, intTy ** intTy --> intTy)
+    val int_neg =       monoVar(name N.uMinus, intTy --> intTy)
+    val int_plus =      monoVar(name N.plus, intTy ** intTy --> intTy)
+    val int_times =     monoVar(name N.times, intTy ** intTy --> intTy)
+    end
 
-    val long_div =      monoVar(N.div, longTy ** longTy --> longTy)
-    val long_gt =       monoVar(N.gt, longTy ** longTy --> boolTy)
-    val long_gte =      monoVar(N.gte, longTy ** longTy --> boolTy)
-    val long_lt =       monoVar(N.lt, longTy ** longTy --> boolTy)
-    val long_lte =      monoVar(N.lte, longTy ** longTy --> boolTy)
-    val long_minus =    monoVar(N.minus, longTy ** longTy --> longTy)
-    val long_mod =      monoVar(N.mod, longTy ** longTy --> longTy)
-    val long_neg =      monoVar(N.uMinus, longTy --> longTy)
-    val long_plus =     monoVar(N.plus, longTy ** longTy --> longTy)
-    val long_times =    monoVar(N.times, longTy ** longTy --> longTy)
+    local
+      fun name a = Atom.atom("Int." ^ Atom.toString a)
+    in
+    val long_div =      monoVar(name N.div, longTy ** longTy --> longTy)
+    val long_gt =       monoVar(name N.gt, longTy ** longTy --> boolTy)
+    val long_gte =      monoVar(name N.gte, longTy ** longTy --> boolTy)
+    val long_lt =       monoVar(name N.lt, longTy ** longTy --> boolTy)
+    val long_lte =      monoVar(name N.lte, longTy ** longTy --> boolTy)
+    val long_minus =    monoVar(name N.minus, longTy ** longTy --> longTy)
+    val long_mod =      monoVar(name N.mod, longTy ** longTy --> longTy)
+    val long_neg =      monoVar(name N.uMinus, longTy --> longTy)
+    val long_plus =     monoVar(name N.plus, longTy ** longTy --> longTy)
+    val long_times =    monoVar(name N.times, longTy ** longTy --> longTy)
+    end
 
-    val integer_div =   monoVar(N.div, integerTy ** integerTy --> integerTy)
-    val integer_gt =    monoVar(N.gt, integerTy ** integerTy --> boolTy)
-    val integer_gte =   monoVar(N.gte, integerTy ** integerTy --> boolTy)
-    val integer_lt =    monoVar(N.lt, integerTy ** integerTy --> boolTy)
-    val integer_lte =   monoVar(N.lte, integerTy ** integerTy --> boolTy)
-    val integer_minus = monoVar(N.minus, integerTy ** integerTy --> integerTy)
-    val integer_mod =   monoVar(N.mod, integerTy ** integerTy --> integerTy)
-    val integer_neg =   monoVar(N.uMinus, integerTy --> integerTy)
-    val integer_plus =  monoVar(N.plus, integerTy ** integerTy --> integerTy)
-    val integer_times = monoVar(N.times, integerTy ** integerTy --> integerTy)
+    local
+      fun name a = Atom.atom("Int." ^ Atom.toString a)
+    in
+    val integer_div =   monoVar(name N.div, integerTy ** integerTy --> integerTy)
+    val integer_gt =    monoVar(name N.gt, integerTy ** integerTy --> boolTy)
+    val integer_gte =   monoVar(name N.gte, integerTy ** integerTy --> boolTy)
+    val integer_lt =    monoVar(name N.lt, integerTy ** integerTy --> boolTy)
+    val integer_lte =   monoVar(name N.lte, integerTy ** integerTy --> boolTy)
+    val integer_minus = monoVar(name N.minus, integerTy ** integerTy --> integerTy)
+    val integer_mod =   monoVar(name N.mod, integerTy ** integerTy --> integerTy)
+    val integer_neg =   monoVar(name N.uMinus, integerTy --> integerTy)
+    val integer_plus =  monoVar(name N.plus, integerTy ** integerTy --> integerTy)
+    val integer_times = monoVar(name N.times, integerTy ** integerTy --> integerTy)
+    end
 
-    val float_fdiv =    monoVar(N.fdiv, floatTy ** floatTy --> floatTy)
-    val float_gt =      monoVar(N.gt, floatTy ** floatTy --> boolTy)
-    val float_gte =     monoVar(N.gte, floatTy ** floatTy --> boolTy)
-    val float_lt =      monoVar(N.lt, floatTy ** floatTy --> boolTy)
-    val float_lte =     monoVar(N.lte, floatTy ** floatTy --> boolTy)
-    val float_minus =   monoVar(N.minus, floatTy ** floatTy --> floatTy)
-    val float_neg =	monoVar(N.uMinus, floatTy --> floatTy)
-    val float_plus =    monoVar(N.plus, floatTy ** floatTy --> floatTy)
-    val float_times =   monoVar(N.times, floatTy ** floatTy --> floatTy)
+    local
+      fun name a = Atom.atom("Int." ^ Atom.toString a)
+    in
+    val float_fdiv =    monoVar(name N.fdiv, floatTy ** floatTy --> floatTy)
+    val float_gt =      monoVar(name N.gt, floatTy ** floatTy --> boolTy)
+    val float_gte =     monoVar(name N.gte, floatTy ** floatTy --> boolTy)
+    val float_lt =      monoVar(name N.lt, floatTy ** floatTy --> boolTy)
+    val float_lte =     monoVar(name N.lte, floatTy ** floatTy --> boolTy)
+    val float_minus =   monoVar(name N.minus, floatTy ** floatTy --> floatTy)
+    val float_neg =	monoVar(name N.uMinus, floatTy --> floatTy)
+    val float_plus =    monoVar(name N.plus, floatTy ** floatTy --> floatTy)
+    val float_times =   monoVar(name N.times, floatTy ** floatTy --> floatTy)
+    end
 
-    val double_fdiv =   monoVar(N.fdiv, doubleTy ** doubleTy --> doubleTy)
-    val double_gt =     monoVar(N.gt, doubleTy ** doubleTy --> boolTy)
-    val double_gte =    monoVar(N.gte, doubleTy ** doubleTy --> boolTy)
-    val double_lt =     monoVar(N.lt, doubleTy ** doubleTy --> boolTy)
-    val double_lte =    monoVar(N.lte, doubleTy ** doubleTy --> boolTy)
-    val double_minus =  monoVar(N.minus, doubleTy ** doubleTy --> doubleTy)
-    val double_neg =    monoVar(N.uMinus, doubleTy --> doubleTy)
-    val double_plus =   monoVar(N.plus, doubleTy ** doubleTy --> doubleTy)
-    val double_times =  monoVar(N.times, doubleTy ** doubleTy --> doubleTy)
+    local
+      fun name a = Atom.atom("Int." ^ Atom.toString a)
+    in
+    val double_fdiv =   monoVar(name N.fdiv, doubleTy ** doubleTy --> doubleTy)
+    val double_gt =     monoVar(name N.gt, doubleTy ** doubleTy --> boolTy)
+    val double_gte =    monoVar(name N.gte, doubleTy ** doubleTy --> boolTy)
+    val double_lt =     monoVar(name N.lt, doubleTy ** doubleTy --> boolTy)
+    val double_lte =    monoVar(name N.lte, doubleTy ** doubleTy --> boolTy)
+    val double_minus =  monoVar(name N.minus, doubleTy ** doubleTy --> doubleTy)
+    val double_neg =    monoVar(name N.uMinus, doubleTy --> doubleTy)
+    val double_plus =   monoVar(name N.plus, doubleTy ** doubleTy --> doubleTy)
+    val double_times =  monoVar(name N.times, doubleTy ** doubleTy --> doubleTy)
+    end
 
-    val char_gt =       monoVar(N.gt, charTy ** charTy --> boolTy)
-    val char_gte =      monoVar(N.gte, charTy ** charTy --> boolTy)
-    val char_lt =       monoVar(N.lt, charTy ** charTy --> boolTy)
-    val char_lte =      monoVar(N.lte, charTy ** charTy --> boolTy)
+    local
+      fun name a = Atom.atom("Int." ^ Atom.toString a)
+    in
+    val char_gt =       monoVar(name N.gt, charTy ** charTy --> boolTy)
+    val char_gte =      monoVar(name N.gte, charTy ** charTy --> boolTy)
+    val char_lt =       monoVar(name N.lt, charTy ** charTy --> boolTy)
+    val char_lte =      monoVar(name N.lte, charTy ** charTy --> boolTy)
+    end
 
-    val rune_gt =       monoVar(N.gt, runeTy ** runeTy --> boolTy)
-    val rune_gte =      monoVar(N.gte, runeTy ** runeTy --> boolTy)
-    val rune_lt =       monoVar(N.lt, runeTy ** runeTy --> boolTy)
-    val rune_lte =      monoVar(N.lte, runeTy ** runeTy --> boolTy)
+    local
+      fun name a = Atom.atom("Int." ^ Atom.toString a)
+    in
+    val rune_gt =       monoVar(name N.gt, runeTy ** runeTy --> boolTy)
+    val rune_gte =      monoVar(name N.gte, runeTy ** runeTy --> boolTy)
+    val rune_lt =       monoVar(name N.lt, runeTy ** runeTy --> boolTy)
+    val rune_lte =      monoVar(name N.lte, runeTy ** runeTy --> boolTy)
+    end
 
-    val string_gt =     monoVar(N.gt, stringTy ** stringTy --> boolTy)
-    val string_gte =    monoVar(N.gte, stringTy ** stringTy --> boolTy)
-    val string_lt =     monoVar(N.lt, stringTy ** stringTy --> boolTy)
-    val string_lte =    monoVar(N.lte, stringTy ** stringTy --> boolTy)
+    local
+      fun name a = Atom.atom("Int." ^ Atom.toString a)
+    in
+    val string_gt =     monoVar(name N.gt, stringTy ** stringTy --> boolTy)
+    val string_gte =    monoVar(name N.gte, stringTy ** stringTy --> boolTy)
+    val string_lt =     monoVar(name N.lt, stringTy ** stringTy --> boolTy)
+    val string_lte =    monoVar(name N.lte, stringTy ** stringTy --> boolTy)
+    end
 
 (* TODO do @, ! *)
 
 (* TODO what's up with the equality operators?
 *)
     val bool_eq =	monoVar(N.eq, boolTy ** boolTy --> boolTy)
-    val int_eq =		monoVar(N.eq, intTy ** intTy --> boolTy)
+    val int_eq =	monoVar(N.eq, intTy ** intTy --> boolTy)
     val string_eq =	monoVar(N.eq, stringTy ** stringTy --> boolTy)
 
   (* create a type scheme that binds a kinded type variable *)
