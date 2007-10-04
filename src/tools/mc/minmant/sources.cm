@@ -30,6 +30,7 @@ is
   $/basis.cm
   $/smlnj-lib.cm
   $/pp-lib.cm
+  $/controls-lib.cm
 
   ../common/sources.cm
 
