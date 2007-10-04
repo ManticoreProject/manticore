@@ -8,6 +8,7 @@ structure PrintBOM : sig
 
     val output : TextIO.outstream * BOM.module -> unit
     val print : BOM.module -> unit
+    val printExp : BOM.exp -> unit
 
   end = struct
 
@@ -15,7 +16,9 @@ structure PrintBOM : sig
     structure BV = B.Var
     structure Ty = BOMTy
 
-    fun output (outS, B.MODULE{name, externs, body}) = let
+    datatype arg = MODULE of B.module | EXP of B.exp
+
+    fun output' (outS, arg) = let
 	  fun pr s = TextIO.output(outS, s)
 	  fun prl s = pr(String.concat s)
 	  fun prIndent 0 = ()
@@ -167,11 +170,17 @@ structure PrintBOM : sig
 		indent (i); pr "else\n"; prExp(i+1, e2))
 	  fun prExtern cf = (indent 1; prl [CFunctions.cfunToString cf, "\n"])
 	  in
-	    prl ["module ", Atom.toString name, "\n"];
-	    List.app prExtern externs;
-	    prLambda (2, "  fun ", body)
+	    case arg
+	     of MODULE(B.MODULE{name, externs, body}) => (
+		  prl ["module ", Atom.toString name, "\n"];
+		  List.app prExtern externs;
+		  prLambda (2, "  fun ", body))
+	      | EXP e => prExp(0, e)
+	    (* end case *)
 	  end
 
+    fun output (strm, m) = output' (strm, MODULE m)
     fun print m = output (TextIO.stdErr, m)
+    fun printExp e = output' (TextIO.stdErr, EXP e)
 
   end
