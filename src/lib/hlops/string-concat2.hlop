@@ -1,0 +1,16 @@
+(* string-concat.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * HLOp for the binary string-concatenation operator ("^").
+ *)
+
+#include "types.def"
+
+extern void *M_StringConcat2 (void *, void *) __attribute__((pure,alloc));
+
+define inline @strine-concat2 (s1 : ml_string, s2 : ml_string / _ : exh) : ml_string =
+    let res : ml_string = ccall M_StringConcat2 (s1, s2);
+      return (res)
+;
