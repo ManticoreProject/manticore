@@ -9,9 +9,9 @@
 #include "types.def"
 
 (*     Value_t M_NewWorkQueue (VProc_t *vp) *)
-extern void*   M_NewWorkQueue (void*);
+extern void *M_NewWorkQueue (void*);
 
-define @newWorkQueue( / exh : exh) : workQueue =
+define @new-work-queue( / exh : exh) : work_queue =
   let vp : vproc = host_vproc
   let q : workQueue = ccall M_NewWorkQueue (vp)
   return (q)

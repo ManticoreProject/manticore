@@ -20,5 +20,7 @@ typedef future = ![any, thunk]; (* state, thunk *)
 #define STOLEN_F $1
 #define EVAL_F   $2
 
+typedef work_queue = any;
+
 #endif /* !_FUTURES_DEF_ */
 
