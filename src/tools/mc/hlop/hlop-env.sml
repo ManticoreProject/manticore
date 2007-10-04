@@ -98,7 +98,7 @@ structure HLOpEnv : sig
 
   (* high-level operations used to implement Manticore language constructs *)
     val listAppendOp = newWithExh("list-append", [pairTy(listTy, listTy)], [listTy], [])
-    val stringConcatOp = newWithExh("string-concat", [pairTy(stringTy, stringTy)], [stringTy], [])
+    val stringConcatOp = newWithExh("string-concat2", [pairTy(stringTy, stringTy)], [stringTy], [])
     val stringLitOp = new("string-lit", [BTy.T_Any, rawIntTy], [stringTy], [])
 
   (* high-level operations used to implement Manticore concurrency constructs *)
