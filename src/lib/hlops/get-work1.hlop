@@ -12,11 +12,10 @@ extern void* M_WorkDequeue(void*,void*);
 
 define @steal1 (fp : future / exh : exh) : ();
 
-define @get-work1 ( / exh : exh) : () =
-  let THE_QUEUE : any = (any)$0 (* FIXME *)
+define @get-work1 (q : work_queue / exh : exh) : () =
   fun loop ( / exh : exh) : () =
     let vp : vproc = host_vproc
-    let w : option = ccall M_WorkDequeue (vp, THE_QUEUE)
+    let w : option = ccall M_WorkDequeue (vp, q)
     case w
       of SOME (fut : future) => @steal1 (fut / exh)
        | NONE => apply loop ( / exh)

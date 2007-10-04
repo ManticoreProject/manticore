@@ -9,9 +9,16 @@
 #include "types.def"
 #include "futures.def"
 
-define @get-work1 ( / exh : exh) : ();
+define @get-work1 (q : work_queue / exh : exh) : ();
 
-define @touch1 (fp : future / exh : exh) : any =
+extern void M_Print (void *);
+
+define @touch1 (qf: [work_queue, future] / exh : exh) : any =
+  do ccall M_Print ("touch1.0\n\000")
+  let q : work_queue = #0(qf)
+  do ccall M_Print ("touch1.1\n\000")
+  let fp : future = #1(qf)
+  do ccall M_Print ("touch1.2\n\000")
   let tmp : any = CAS (&0(fp), EMPTY_F, EVAL_F)
   if Equal (tmp, EMPTY_F)
     then let f : thunk = #1(fp)
@@ -26,7 +33,7 @@ define @touch1 (fp : future / exh : exh) : any =
            else cont k (result: any) = return (result)
 	     let tmpX : any = CAS (&0(fp), STOLEN_F, k)
 	     if Equal (tmpX, STOLEN_F)
-	       then do @get-work1 ( / exh) (* this should ultimately throw result to k *)
+	       then do @get-work1 (q / exh) (* this should ultimately throw result to k *)
                     return (tmpX) (* is this line unreachable? - ams *)
 	       else return (tmpX)
 ;
