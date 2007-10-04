@@ -118,7 +118,7 @@ structure HLOpEnv : sig
     val enqueueOp = newWithExh ("enqueue", [vprocTy, tidTy, fiberTy], [], [])
 
   (* work queue operations *)
-    val newWorkQueueOp = newWithExh ("newWorkQueue", [unitTy], [workQueueTy], [])
+    val newWorkQueueOp = newWithExh ("new-work-queue", [unitTy], [workQueueTy], [])
 
   (* futures *)
     (* FIXME set these up with work queues too *)
@@ -166,7 +166,6 @@ structure HLOpEnv : sig
 		enqueueOp,
 		forwardOp,
 		runOp,
-		sequentialSchedulerStartupOp,
                 schedulerStartupOp,
                 defaultSchedulerStartupOp,
 		newWorkQueueOp,
