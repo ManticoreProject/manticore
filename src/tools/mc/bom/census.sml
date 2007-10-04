@@ -10,7 +10,9 @@ structure Census : sig
 
     val census : BOM.module -> unit
 
-    val initLambda : BOM.lambda -> unit
+    val initLambda  : BOM.lambda -> unit
+    val initLambdas : BOM.lambda list -> unit
+    val initExp     : BOM.exp -> unit
 
   (* For each variable use (and application use) in the expression, decrement
    * the (renamed) variable's count by one.
@@ -76,6 +78,10 @@ structure Census : sig
 	  end
 
     fun initLambda fb = (clrFB fb; doFB fb)
+
+    fun initLambdas fbs = (List.app clrFB fbs; List.app doFB fbs)
+
+    fun initExp e = doE e
 
     fun delete (env, e) = let
 	  val subst = U.subst env
