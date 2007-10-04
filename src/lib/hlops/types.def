@@ -16,8 +16,6 @@ typedef bool = enum(1);		(* 0 = false, 1 = true *)
 #define FALSE	enum(0):bool
 #define TRUE	enum(1):bool
 
-typedef work_queue = any;
-
 typedef exn = any;
 typedef exh = cont(exn);
 typedef tid = enum(0);		(* FIXME: this should be something else *)
