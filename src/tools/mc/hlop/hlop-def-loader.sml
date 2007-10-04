@@ -91,7 +91,13 @@ structure HLOpDefLoader : sig
 				(HLOp.name hlOp, {inline=inline, defn=lambda, cfuns=cfuns}))
 			in
 			  List.app record defs;
-			  ATbl.lookup cache opName
+			  case ATbl.find cache opName
+			   of NONE => raise Fail(concat[
+				  fileName,
+				  " does not contain definition of @",
+				  Atom.toString opName
+				])
+			    | SOME defn => defn
 			end
 		    | NONE => raise Fail("unable to load definition for @" ^ Atom.toString opName)
 		  (* end case *)
