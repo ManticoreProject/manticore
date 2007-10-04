@@ -10,14 +10,24 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 
   end = struct
 
-  (* a wrapper for BOM optimization passes *)
-    fun transform {passName, pass} = BasicControl.mkKeepPassSimple {
-	    output = PrintBOM.output,
-	    ext = "bom",
-	    passName = passName,
-	    pass = pass,
-	    registry = BOMOptControls.registry
-	  }
+  (* a wrapper for BOM optimization passes.  The wrapper includes a invariant check. *)
+    fun transform {passName, pass} = let
+	  val xform = BasicControl.mkKeepPassSimple {
+		  output = PrintBOM.output,
+		  ext = "bom",
+		  passName = passName,
+		  pass = pass,
+		  registry = BOMOptControls.registry
+		}
+	  fun xform' module = let
+		val module = xform module
+		val _ = CheckBOM.check (passName, module)
+		in
+		  module
+		end
+	  in
+	    xform'
+	  end
 
     val expand = BasicControl.mkKeepPass {
 	    preOutput = PrintBOM.output,
@@ -43,22 +53,21 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 	  (* end case *))
 
     val uncurry = transform {passName = "uncurry", pass = Uncurry.transform}
+    val inline = transform {passName = "inline", pass = Inline.transform}
     val caseSimplify = transform {passName = "case-simplify", pass = CaseSimplify.transform}
     val expandAll = transform {passName = "expand-all", pass = expandAll}
 
     fun optimize module = let
 	  val module = contract module
-          val _ = CheckBOM.check ("contract", module)
 	  val module = uncurry module
-          val _ = CheckBOM.check ("uncurry", module)
 	  val module = contract module
-          val _ = CheckBOM.check ("contract", module)
+	  val module = inline module
+	  val module = contract module
 	  val module = expandAll module
-          val _ = CheckBOM.check ("expand-all", module)
-	  val module = caseSimplify module
-          val _ = CheckBOM.check ("case-simplify", module)
+	  val module = inline module
 	  val module = contract module
-          val _ = CheckBOM.check ("contract", module)
+	  val module = caseSimplify module
+	  val module = contract module
 	  in
 	    module
 	  end

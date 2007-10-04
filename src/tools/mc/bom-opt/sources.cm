@@ -29,7 +29,9 @@ is
   contract.sml
   uncurry.sml
   expand-hlops.sml
+  inline.sml
   let-float.sml
   literal-case-fn.sml
   prim-contract.sml
+  sizes.sml
 
