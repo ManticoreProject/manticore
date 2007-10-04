@@ -10,6 +10,10 @@ signature BOM_BASIS =
   sig
 
   (* predefined types *)
+    val intTy : BOMTy.ty
+    val longTy : BOMTy.ty
+    val floatTy : BOMTy.ty
+    val doubleTy : BOMTy.ty
     val stringTy : BOMTy.ty
 
   (* predefined datatypes *)
@@ -48,7 +52,15 @@ structure BOMBasis : BOM_BASIS =
     val fiberTy = BTy.fiberTy
 
   (* predefined types *)
+    local
+      fun wrap ty = BOMTyUtil.wrap(BTy.T_Raw ty)
+    in
+    val intTy = wrap BTy.T_Int
+    val longTy = wrap BTy.T_Long
+    val floatTy = wrap BTy.T_Float
+    val doubleTy = wrap BTy.T_Double
     val stringTy = BTy.T_Tuple(false, [BTy.T_Any, BTy.T_Raw BTy.T_Int])
+    end
 
   (* ready queue items *)
     val rdyqItemTyc = BOMTyCon.newDataTyc ("rdyq_item", 1)

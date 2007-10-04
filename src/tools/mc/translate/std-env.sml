@@ -318,11 +318,11 @@ structure StdEnv : sig
 	    (B.mGet,		hlop H.mGet),
 	    (B.mTake,		hlop H.mTake),
 	    (B.mPut,		hlop H.mPut),
-	    (B.itos,		hlop H.itos),
-	    (B.ltos,		hlop H.ltos),
-	    (B.ftos,		hlop H.ftos),
-	    (B.dtos,		hlop H.dtos),
 *)
+	    (B.itos,		hlop H.itosOp),
+	    (B.ltos,		hlop H.ltosOp),
+	    (B.ftos,		hlop H.ftosOp),
+	    (B.dtos,		hlop H.dtosOp),
 	    (B.print,		hlop H.printOp),
 (* FIXME
 	    (B.args,		hlop H.args),

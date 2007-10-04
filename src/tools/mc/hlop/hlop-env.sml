@@ -22,14 +22,20 @@ structure HLOpEnv : sig
 *)
 
   (* high-level operations used to implement Manticore language constructs *)
-    val listAppendOp : HLOp.hlop
-    val stringConcatOp : HLOp.hlop
-    val stringLitOp : HLOp.hlop
     val spawnOp : HLOp.hlop
     val threadExitOp : HLOp.hlop
     val iVarOp : HLOp.hlop
     val iGetOp : HLOp.hlop
     val iPutOp : HLOp.hlop
+
+  (* Basis functions *)
+    val listAppendOp : HLOp.hlop
+    val stringConcatOp : HLOp.hlop
+    val stringLitOp : HLOp.hlop
+    val itosOp : HLOp.hlop
+    val ltosOp : HLOp.hlop
+    val ftosOp : HLOp.hlop
+    val dtosOp : HLOp.hlop
     val printOp : HLOp.hlop
 
   (* scheduler operations *)
@@ -74,6 +80,10 @@ structure HLOpEnv : sig
     val vprocTy = BTy.T_VProc
     val rawIntTy = BTy.T_Raw BTy.T_Int
     val listTy = Basis.listTy
+    val intTy = BOMBasis.intTy
+    val longTy = BOMBasis.longTy
+    val floatTy = BOMBasis.floatTy
+    val doubleTy = BOMBasis.doubleTy
     val stringTy = BOMBasis.stringTy
 
     val workQueueTy = BTy.T_Any
@@ -107,6 +117,12 @@ structure HLOpEnv : sig
     val iVarOp = newWithExh ("iVar", [], [ivarTy], [])
     val iGetOp = newWithExh ("iGet", [ivarTy], [BTy.T_Any], [])
     val iPutOp = newWithExh ("iPut", [ivarTy, BTy.T_Any], [], [])
+
+  (* Basis functions *)
+    val itosOp = newWithExh ("itos", [intTy], [stringTy], [])
+    val ltosOp = newWithExh ("ltos", [longTy], [stringTy], [])
+    val ftosOp = newWithExh ("ftos", [floatTy], [stringTy], [])
+    val dtosOp = newWithExh ("dtos", [doubleTy], [stringTy], [])
     val printOp = newWithExh ("print", [stringTy], [unitTy], [])
 
   (* scheduler operations *)
