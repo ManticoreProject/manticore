@@ -42,20 +42,32 @@ structure Overload : sig
 	    
 	fun typeOf x = let val Types.TyScheme([], ty) = Var.typeOf x in ty end
     
-	fun try_var (rc as (ref ov)) = (case ov
-	       of AST.Unknown (ty, vl) =>
-		 (case List.filter (fn v => if U.unifiable (ty, typeOf v)
-					    then true
-					    else (change := true; false))
-				   vl
-		   of [] => raise Fail "type mismatch for variable"
-		    | [x] => (change := true;
-			      U.unify (ty, typeOf x);
-			      rc := AST.Instance x;
-			      false)
-		    | vl' => (rc := AST.Unknown (ty, vl');
-			      true)
-		 (* end case *))
+	fun try_var rc = (case !rc
+	       of AST.Unknown(ty, vl) => let
+		    fun isOK v = if U.unifiable(ty, typeOf v)
+			  then true
+			  else (
+			    if (!debugFlg)
+			      then print(concat["  reject ", Var.toString v, "\n"])
+			      else ();
+			    change := true; false)
+		    in
+		      if (!debugFlg)
+			then print(concat[
+			    "tr_var {", String.concatWith "," (List.map Var.toString vl),
+			    "}\n"
+			  ])
+			else ();
+		      case List.filter isOK vl
+		       of [] => raise Fail "type mismatch for variable"
+			| [x] => (change := true;
+				  U.unify (ty, typeOf x);
+				  rc := AST.Instance x;
+				  false)
+			| vl' => (rc := AST.Unknown (ty, vl');
+				  true)
+		     (* end case *)
+		    end
 		| _ => false
 	      (* end case *))
     
