@@ -37,6 +37,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
   val debug : bool Controls.control = CodegenControls.debug
 
   val ty = MTy.wordTy
+  val wordSzB = IntInf.toInt Spec.ABI.wordSzB
 
   fun fail s = raise Fail s
   fun newLabel s = Label.label s () 
@@ -87,6 +88,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	  val genGoto = BE.Transfer.genGoto varDefTbl
 	  val genPrim = #gen (Prim.genPrim {varDefTbl=varDefTbl})
 
+	  (* emit floating-point literals *)
 	  val floatTbl = FloatLit.new ()
 	  fun emitFltLit ((sz, f), l) = (
 	      pseudoOp P.alignData;
@@ -186,7 +188,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		  (* emit code for the heap-limit test and the transfer into the GC *) 
 		  emitStms stms;
 		  emit (T.LIVE liveOut) ;
-		  (* emit an entypoint and code for the return continuation  *)
+		  (* emit an entypoint and code for the return continuation  *)		  
 		  entryLabel retKLbl;
 		  emitStms retKStms  
 	      end
@@ -212,7 +214,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		  | gen (M.E_Update(i, lhs, rhs)) = (
 		    flushLoads ();
 		    emit (T.STORE (szOf lhs,
-				   T.ADD (ty, defOf lhs, T.LI (T.I.fromInt (ty, i))), 
+				   T.ADD (ty, defOf lhs, T.LI (T.I.fromInt (ty, wordSzB *i))), 
 					  defOf rhs, ManticoreRegion.memory)))
 		  | gen (M.E_AddrOf(lhs, i, v)) = let
 		      val addr = addrOf(szOf lhs,  Var.typeOf v, i, defOf v)
@@ -263,8 +265,8 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		      val label = BE.LabelCode.getName lab
 		      in
 		        (case M.Label.kindOf lab
-			  of M.LK_Local {export=SOME s, ...} => ( 			   
-			     pseudoOp (P.global (Label.global s));
+			  of M.LK_Local {export=SOME s, ...} => ( 
+			     pseudoOp (P.global (Label.global s));			     
 			     entryLabel (Label.global s);
 			     defineLabel label)
 			   | M.LK_Local {func=CFG.FUNC{entry, ...}, ...} => 
@@ -323,10 +325,10 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		  finisher ();
 		  endCluster []
 	      end 
-(* FIXME: alignment! *)
+
 	  fun genLiterals () = (
 	      beginCluster 0;
-	      pseudoOp P.rodata;
+	      pseudoOp P.rodata;	      
 	      (* runtime constant magic number for sanity test *)
 	      pseudoOp (P.global RuntimeLabels.magic);
 	      defineLabel RuntimeLabels.magic;
