@@ -7,7 +7,7 @@ module Assign
       if I32Eq (i,0)
          then do #0(cell) := 2
 	      do #1(cell) := f
-(*              let g : fun (int / cont(any) -> int) = #1(cell)*)
+              (* let g : fun (int / cont(any) -> int) = #1(cell) *)
               let x : int = apply f (i / exh)
               return (x)
          else return (1)
