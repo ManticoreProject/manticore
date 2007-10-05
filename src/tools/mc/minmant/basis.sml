@@ -284,7 +284,7 @@ structure Basis : sig
     end
 
     local
-      fun name a = Atom.atom("Int." ^ Atom.toString a)
+      fun name a = Atom.atom("Long." ^ Atom.toString a)
     in
     val long_div =      monoVar(name N.div, longTy ** longTy --> longTy)
     val long_gt =       monoVar(name N.gt, longTy ** longTy --> boolTy)
@@ -299,7 +299,7 @@ structure Basis : sig
     end
 
     local
-      fun name a = Atom.atom("Int." ^ Atom.toString a)
+      fun name a = Atom.atom("Integer." ^ Atom.toString a)
     in
     val integer_div =   monoVar(name N.div, integerTy ** integerTy --> integerTy)
     val integer_gt =    monoVar(name N.gt, integerTy ** integerTy --> boolTy)
@@ -314,7 +314,7 @@ structure Basis : sig
     end
 
     local
-      fun name a = Atom.atom("Int." ^ Atom.toString a)
+      fun name a = Atom.atom("Float." ^ Atom.toString a)
     in
     val float_fdiv =    monoVar(name N.fdiv, floatTy ** floatTy --> floatTy)
     val float_gt =      monoVar(name N.gt, floatTy ** floatTy --> boolTy)
@@ -328,7 +328,7 @@ structure Basis : sig
     end
 
     local
-      fun name a = Atom.atom("Int." ^ Atom.toString a)
+      fun name a = Atom.atom("Double." ^ Atom.toString a)
     in
     val double_fdiv =   monoVar(name N.fdiv, doubleTy ** doubleTy --> doubleTy)
     val double_gt =     monoVar(name N.gt, doubleTy ** doubleTy --> boolTy)
