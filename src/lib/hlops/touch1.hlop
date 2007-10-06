@@ -20,6 +20,17 @@ define @touch1 (qf: [work_queue, future] / exh : exh) : any =
   let tmp : any = CAS (&0(fp), EMPTY_F, EVAL_F)
   if Equal (tmp, EMPTY_F)
     then let f : thunk = #1(fp)
+         (* may need exn handler for thunk. *)
+         (* let exh : exh = ... *)
+         let result : any = apply f (UNIT / exh)
+         let a : [int] = wrap (1)
+         do #0(fp) := result
+         return (result)
+    else let g : any = #0(fp)
+         return (q)
+
+(*  if Equal (tmp, EMPTY_F)
+    then let f : thunk = #1(fp)
          do #1(fp) := (thunk) $0
          (* may need exn handler for thunk. *)
          (* let exh : exh = ... *)
@@ -34,6 +45,7 @@ define @touch1 (qf: [work_queue, future] / exh : exh) : any =
 	       then do @get-work1 (q / exh) (* this should ultimately throw result to k *)
                     return (tmpX) (* is this line unreachable? - ams *)
 	       else return (tmpX)
+*)
 ;
 
 (*

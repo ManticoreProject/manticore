@@ -1,0 +1,29 @@
+(* pi.bom *)
+
+module Pi
+
+  extern void M_PrintFloat (float);
+ 
+  fun init (u : unit / exh : cont(any)) : int =
+
+      fun sum (i :int, n : int, acc : float, f : fun(int, float / cont(any) -> float)  / exh : cont(any)) : float =
+          if I32Eq (i, n)
+	     then return (acc)
+             else let acc : float = apply f (i, acc / exh)
+                  apply sum (I32Add (i, 1), n, acc, f / exh)
+
+      fun powNeg1 (n : int / exh : cont(any)) : float =
+          if I32Eq (I32Mod (n, 2), 0)
+             then return (1.0)
+             else return (~1.0)
+
+      fun f (i : int, x : float / exh : cont(any)) : float = 
+	  let a : float = apply powNeg1 (i / exh)
+          let k : float = I32ToF32(i)
+          let b : float = F32Add (F32Mul (k, 2.0), 1.0)
+          return (F32Add (x, F32Div (a, b)))
+
+      let x : float = apply sum (0, 10000, 0.0, f / exh)
+      let pi : float = F32Mul (4.0, x) 
+      do ccall M_PrintFloat (pi)
+      return (0)

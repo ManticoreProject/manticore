@@ -34,8 +34,8 @@ functor ManticorePseudoOpsFn (
       | intSzToSz I64 = 64
       | intSzToSz Iptr = ty
 			 
-    val maxAlign = Int.max (IntInf.toInt Spec.ABI.wordAlignB, 
-			    IntInf.toInt Spec.ABI.extendedAlignB)
+    val maxAlign = log2 (Int.max (IntInf.toInt Spec.ABI.wordAlignB, 
+				  IntInf.toInt Spec.ABI.extendedAlignB))
   
     val text : pseudo_op = PTy.TEXT
     fun global lab = PTy.EXPORT [lab]
@@ -43,6 +43,8 @@ functor ManticorePseudoOpsFn (
     val asciz = PTy.ASCIIZ
     val rodata : pseudo_op = PTy.DATA_READ_ONLY
     val alignData : pseudo_op = PTy.ALIGN_SZ maxAlign
+    val alignCode : pseudo_op = PTy.ALIGN_LABEL
+    val alignEntry : pseudo_op = PTy.ALIGN_ENTRY
     fun int (sz, ints) = PTy.INT{sz = intSzToSz sz, i = List.map P.T.LI ints}
   
     structure Client =

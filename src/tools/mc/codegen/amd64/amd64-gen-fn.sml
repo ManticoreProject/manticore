@@ -10,6 +10,20 @@
 functor AMD64GenFn (structure Spec : TARGET_SPEC) =
   struct
 
+  (* MLRISC CFG visualization *)
+    val mlriscCFGVis : bool Controls.control = Controls.genControl {
+           name = "mlriscCFGVis",
+	   pri  = [5, 0],   (* what is this? *)
+	   obscurity = 0,
+	   help = "generate dot files from the MLRISC CFG",
+	   default = false
+        }
+
+    val () = ControlRegistry.register CodegenControls.registry {
+	    ctl = Controls.stringControl ControlUtil.Cvt.bool mlriscCFGVis,
+	    envName = NONE
+	  };
+
     structure AMD64Frame = AMD64FrameFn (structure Spec = Spec)
     structure AMD64Constant = AMD64ConstantFn (structure AMD64Frame=AMD64Frame)
   
@@ -232,7 +246,9 @@ functor AMD64GenFn (structure Spec : TARGET_SPEC) =
 			  val (cfg, blocks) = BlockPlacement.blockPlacement cfg
 			  val (cfg, blocks) = JumpChainElim.run (cfg, blocks)
 		      in
-			  (*CFGViewer.view cfg;*)
+			  if Controls.get mlriscCFGVis
+			     then CFGViewer.view cfg
+			     else ();
 			  Emit.asmEmit (cfg, blocks)
 		      end 
 	      end (* compileCFG *)

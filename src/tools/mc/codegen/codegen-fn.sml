@@ -83,7 +83,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	  val bind = BE.VarDef.bind varDefTbl
 	  fun flushLoads () = (case BE.VarDef.flushLoads varDefTbl
 	      of [] => ()
-	       | stms => (comment "flushLoads"; emitStms stms)
+	       | stms => (comment "flushLoads"; emitStms (rev stms))
 	      (* esac *))
 	  val genGoto = BE.Transfer.genGoto varDefTbl
 	  val genPrim = #gen (Prim.genPrim {varDefTbl=varDefTbl})
@@ -214,7 +214,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		  | gen (M.E_Update(i, lhs, rhs)) = (
 		    flushLoads ();
 		    emit (T.STORE (szOf lhs,
-				   T.ADD (ty, defOf lhs, T.LI (T.I.fromInt (ty, wordSzB *i))), 
+				   T.ADD (ty, defOf lhs, T.LI (T.I.fromInt (ty, wordSzB * i))), 
 					  defOf rhs, ManticoreRegion.memory)))
 		  | gen (M.E_AddrOf(lhs, i, v)) = let
 		      val addr = addrOf(szOf lhs,  Var.typeOf v, i, defOf v)
