@@ -7,7 +7,7 @@ structure Overload : sig
     
     val initialize : unit -> unit
     val add_var : AST.overload_var ref -> unit
-    val add_lit : (Types.ty * Types.ty list) ref -> unit
+    val add_lit : (Types.ty * Types.ty list) -> unit
 						    
     val resolve : unit -> unit
 			  
@@ -35,7 +35,7 @@ structure Overload : sig
 							 
     fun initialize () = (vars := []; lits := [])
     fun add_var ov = vars := (ov :: !vars)
-    fun add_lit lt = lits := (lt :: !lits)
+    fun add_lit lt = lits := (ref lt :: !lits)
 		     
     fun resolve () = let
 	val change = ref false
@@ -48,13 +48,13 @@ structure Overload : sig
 			  then true
 			  else (
 			    if (!debugFlg)
-			      then print(concat["  reject ", Var.toString v, "\n"])
+			      then print(concat["    reject ", Var.toString v, "\n"])
 			      else ();
 			    change := true; false)
 		    in
 		      if (!debugFlg)
 			then print(concat[
-			    "tr_var {", String.concatWith "," (List.map Var.toString vl),
+			    "  tr_var {", String.concatWith "," (List.map Var.toString vl),
 			    "}\n"
 			  ])
 			else ();
@@ -72,15 +72,27 @@ structure Overload : sig
 	      (* end case *))
     
 	fun try_lit (rc as (ref (_, []))) = false
-	  | try_lit (rc as (ref (ty, tl))) =
-	    (case List.filter (fn t => if U.unifiable (ty, t)
-				       then true
-				       else (change := true; false))
-			      tl of
-		 [] => raise Fail "type mismatch for literal"
-	       | [t] => (U.unify (ty, t); rc := (ty, [t]); false)
-	       | tl' => (rc := (ty, tl); true)
-	    (* end case *))
+	  | try_lit (rc as (ref (ty, tl))) = let
+	      fun isOK t = if U.unifiable(ty, t)
+		    then true
+		    else (
+		      if (!debugFlg)
+			then print(concat["    reject ", TypeUtil.toString t, "\n"])
+			else ();
+		      change := true; false)
+	      in
+		if (!debugFlg)
+		  then print(concat[
+		      "  tr_lit (", TypeUtil.fmt {long=true} ty, ", {",
+		      String.concatWith "," (List.map TypeUtil.toString tl), "}\n"
+		    ])
+		  else ();
+		case List.filter isOK tl
+		 of [] => raise Fail "type mismatch for literal"
+		  | [t] => (U.unify (ty, t); rc := (ty, [t]); false)
+		  | tl' => (rc := (ty, tl); true)
+		(* end case *)
+	      end
 					     
 	fun default_type Types.Int = Basis.intTy
 	  | default_type Types.Float = Basis.floatTy
@@ -108,13 +120,23 @@ structure Overload : sig
 		      | AST.Instance _ => ()
 		    (* end case *))
 	      in
+		if (!debugFlg)
+		  then print "set_var_defaults\n"
+		  else ();
 		List.app set_def (!vars)
 	      end
 	    
-	fun set_lit_defaults () = List.app (fn (ref (ty, _)) => set_def_ty ty) (!lits)
+	fun set_lit_defaults () = (
+	      if (!debugFlg)
+		then print "set_lit_defaults\n"
+		else ();
+	      List.app (fn (ref (ty, _)) => set_def_ty ty) (!lits))
 	    
 	fun resolve_lists (lits_done, vars_done) = (
 	      change := false;
+	      if (!debugFlg)
+		then print "resolve_lists\n"
+		else ();
 	      vars := (List.filter try_var (!vars));
 	      lits := (List.filter try_lit (!lits));
 	      if !change
