@@ -89,8 +89,7 @@ structure Unify : sig
 		      | (ty1, Ty.ErrorTy) => true
 		      | (ty1 as Ty.MetaTy mv1, ty2 as Ty.MetaTy mv2) => (
 			if MV.same(mv1, mv2) then ()
-			else if MV.isDeeper(mv1, mv2)
-			then assign_mv (mv1, ty2)
+			else if MV.isDeeper(mv1, mv2) then assign_mv (mv1, ty2)
 			else assign_mv (mv2, ty1);
 			true)
 		      | (Ty.MetaTy mv1, ty2) => unifyWithMV (ty2, mv1)
@@ -109,24 +108,26 @@ structure Unify : sig
 	    (* unify a type with an uninstantiated meta-variable *)
 	      and unifyWithMV (ty, mv as Ty.MVar{info=ref(Ty.UNIV d), ...}) =
 		  if (occursIn(mv, ty))
-		  then false
-		  else (adjustDepth(ty, d); assign_mv(mv, ty); true)
+		    then false
+		    else (adjustDepth(ty, d); assign_mv(mv, ty); true)
 		| unifyWithMV _ = raise Fail "impossible"				  
-	      and unifyClasses (c1 as Ty.Class(info1 as ref(Ty.CLASS cl1)), c2 as Ty.Class(info2 as ref(Ty.CLASS cl2))) =
-		    (case (cl1, cl2) of
-			 (Ty.Int, Ty.Float) => false
-		       | (Ty.Float, Ty.Int) => false
-		       | (Ty.Int, _) => (assign_cl (c2, Ty.CLASS Ty.Int); true)
-		       | (_, Ty.Int) => (assign_cl (c1, Ty.CLASS Ty.Int); true)
-		       | (Ty.Float, _) => (assign_cl (c2, Ty.CLASS Ty.Float); true)
-		       | (_, Ty.Float) => (assign_cl (c1, Ty.CLASS Ty.Float); true)
-		       | (Ty.Num, _) => (assign_cl (c2, Ty.CLASS Ty.Num); true)
-		       | (_, Ty.Num) => (assign_cl (c1, Ty.CLASS Ty.Num); true)
-		       | (Ty.Order, _) => (assign_cl (c2, Ty.CLASS Ty.Order); true)
-		       | (_, Ty.Order) => (assign_cl (c1, Ty.CLASS Ty.Order); true)
-		       | _ => true
-		    (* end case *))
-		 | unifyClasses _ = raise Fail "impossible"				   
+	      and unifyClasses (
+		    c1 as Ty.Class(info1 as ref(Ty.CLASS cl1)),
+		    c2 as Ty.Class(info2 as ref(Ty.CLASS cl2))
+		  ) = (case (cl1, cl2)
+		       of (Ty.Int, Ty.Float) => false
+			| (Ty.Float, Ty.Int) => false
+			| (Ty.Int, _) => (assign_cl (c2, Ty.CLASS Ty.Int); true)
+			| (_, Ty.Int) => (assign_cl (c1, Ty.CLASS Ty.Int); true)
+			| (Ty.Float, _) => (assign_cl (c2, Ty.CLASS Ty.Float); true)
+			| (_, Ty.Float) => (assign_cl (c1, Ty.CLASS Ty.Float); true)
+			| (Ty.Num, _) => (assign_cl (c2, Ty.CLASS Ty.Num); true)
+			| (_, Ty.Num) => (assign_cl (c1, Ty.CLASS Ty.Num); true)
+			| (Ty.Order, _) => (assign_cl (c2, Ty.CLASS Ty.Order); true)
+			| (_, Ty.Order) => (assign_cl (c1, Ty.CLASS Ty.Order); true)
+			| _ => true
+		      (* end case *))
+		| unifyClasses _ = raise Fail "impossible"				   
 	      and unifyWithClass (ty, c as Ty.Class (info as ref(Ty.CLASS cl))) =
 		  if (case cl of
 			  Ty.Int => TC.isClass (ty, Basis.IntClass)

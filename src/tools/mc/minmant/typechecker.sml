@@ -81,16 +81,14 @@ structure Typechecker : sig
   (* typecheck a literal *)
     fun chkLit (_, PT.IntLit i) = let
 	  val ty = TypeClass.new Ty.Int
-	  val rc = ref (ty, Basis.IntClass)
 	  in
-	    Overload.add_lit rc;
+	    Overload.add_lit (ty, Basis.IntClass);
 	    (AST.LConst(Literal.Int i, ty), ty)
 	  end
       | chkLit (_, PT.FltLit f) = let
 	  val ty = TypeClass.new Ty.Float
-	  val rc = ref (ty, Basis.FloatClass)
 	  in
-	    Overload.add_lit rc;
+	    Overload.add_lit (ty, Basis.FloatClass);
 	    (AST.LConst(Literal.Float f, ty), ty)
 	  end
       | chkLit (_, PT.StrLit s) = (AST.LConst(Literal.String s, Basis.stringTy), Basis.stringTy)
@@ -165,6 +163,7 @@ structure Typechecker : sig
 	       *)
 		fun close ((f, f'), ve) = (
 		      Var.closeTypeOf (depth, f');
+(* print(concat["fun ", Var.toString f', " : ", TypeUtil.fmtScheme {long=true} (Var.typeOf f'), "\n"]); *)
 		      E.insert(ve, f, E.Var f'))
 	        val ve' = List.foldl close ve fs
 		in
@@ -277,15 +276,15 @@ structure Typechecker : sig
 		  (* end case *)
 		end
 	    | PT.ApplyExp(e1, e2) => let
-		  val (e1', ty1) = chkExp (loc, depth, te, ve, e1)
-		  val (e2', ty2) = chkExp (loc, depth, te, ve, e2)
-		  val resTy = AST.MetaTy(MetaVar.new depth)
-	      in
+		val (e1', ty1) = chkExp (loc, depth, te, ve, e1)
+		val (e2', ty2) = chkExp (loc, depth, te, ve, e2)
+		val resTy = AST.MetaTy(MetaVar.new depth)
+		in
 		  if not(U.unify(ty1, AST.FunTy(ty2, resTy)))
-		  then error(loc, ["type mismatch in application"])
-		  else ();
+		    then error(loc, ["type mismatch in application"])
+		    else ();
 		  (AST.ApplyExp(e1', e2', resTy), resTy)
-	      end
+		end
 	    | PT.ConstExp const => let
 		  val (const', ty) = chkLit (loc, const)
 	      in
@@ -384,34 +383,31 @@ structure Typechecker : sig
 	      in
 		  chk es
 	      end
-	    | PT.IdExp x =>
-	      if Atom.same (x, BasisNames.uMinus)
-	      then
-		  (* Unary minus is being handled specially as
-		   * an overloaded variable *)
-		  let
-		      val (tysch, vars) = B.neg
-		      val (_, instTy) = TU.instantiate (depth, tysch)
-		      val ovar = ref (AST.Unknown (instTy, vars))
+	    | PT.IdExp x => if Atom.same (x, BasisNames.uMinus)
+		then let
+		(* Unary minus is being handled specially as
+		 * an overloaded variable *)
+		  val (tysch, vars) = B.neg
+		  val (_, instTy) = TU.instantiate (depth, tysch)
+		  val ovar = ref (AST.Unknown (instTy, vars))
 		  in
-		      (Overload.add_var ovar;
-		       (AST.OverloadExp ovar, instTy))
+		    Overload.add_var ovar;
+		    (AST.OverloadExp ovar, instTy)
 		  end
-	      else
-		  (case E.find(ve, x)
-		    of SOME(E.Con dc) => let
-			   val (argTys, ty) = TU.instantiate (depth, DataCon.typeOf dc)
-		       in
-			   (AST.ConstExp(AST.DConst(dc, argTys)), ty)
-		       end
-		     | SOME(E.Var x') => let
-			   val (argTys, ty) = TU.instantiate (depth, Var.typeOf x')
-		       in
-			   (AST.VarExp(x', argTys), ty)
-		       end
-		     | NONE => (
-		       error(loc, ["undefined identifier \"", Atom.toString x, "\""]);
-		       bogusExp)
+		else (case E.find(ve, x)
+		   of SOME(E.Con dc) => let
+			val (argTys, ty) = TU.instantiate (depth, DataCon.typeOf dc)
+			in
+			  (AST.ConstExp(AST.DConst(dc, argTys)), ty)
+			end
+		    | SOME(E.Var x') => let
+			val (argTys, ty) = TU.instantiate (depth, Var.typeOf x')
+			in
+			  (AST.VarExp(x', argTys), ty)
+			end
+		    | NONE => (
+			error(loc, ["undefined identifier \"", Atom.toString x, "\""]);
+			bogusExp)
 		  (* end case *))
 	    | PT.ConstraintExp(e, ty) => let
 		val constraintTy = chkTy (loc, te, E.empty, ty)
@@ -639,9 +635,6 @@ structure Typechecker : sig
 	    ret
 	  end
 
-    val check =
-       BasicControl.mkTracePassSimple
-       {passName = "check",
-        pass = check}
+    val check = BasicControl.mkTracePassSimple {passName = "check", pass = check}
 
   end
