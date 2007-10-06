@@ -96,7 +96,7 @@ Value_t AllocString (VProc_t *vp, const char *s)
 
 /*! \brief allocate raw-data object that can hold the given number of bytes
  */
-Value_t AllocRaw (VProc_t *vp, uint32_t len)
+Value_t AllocRaw (VProc_t *vp, UInt32_t len)
 {
     Word_t	*obj = (Word_t *)(vp->allocPtr);
     int nWords = BYTES_TO_WORDS(len);

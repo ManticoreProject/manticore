@@ -51,7 +51,7 @@ Value_t M_StringConcat2 (Value_t a, Value_t b)
     else if (s2->len == 0) return a;
     else {
 	VProc_t *vp = VProcSelf();
-	uint32_t len = s1->len + s2->len;
+	UInt32_t len = s1->len + s2->len;
 	Value_t data = AllocRaw(vp, len + 1);
       // initialize the data object
 	Byte_t *p = (Byte_t *)ValueToPtr(data);
