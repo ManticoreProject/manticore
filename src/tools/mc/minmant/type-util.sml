@@ -46,6 +46,7 @@ structure TypeUtil : sig
     val tyvarToString : Types.tyvar -> string
     val fmt : {long : bool} -> Types.ty -> string
     val toString : Types.ty -> string
+    val fmtScheme : {long : bool} -> Types.ty_scheme -> string
     val schemeToString : Types.ty_scheme -> string
 
   (* smart constructors *)
@@ -100,6 +101,11 @@ structure TypeUtil : sig
 	  end
 
     val toString = fmt {long=false}
+
+    fun fmtScheme {long} (Ty.TyScheme([], ty)) = fmt {long=long} ty
+      | fmtScheme {long} (Ty.TyScheme(tvs, ty)) = concat[
+	    "[", String.concatWith "," (List.map tyvarToString tvs), "]", fmt {long=long} ty
+	  ]
 
   (* return the string representation of a type scheme *)
     fun schemeToString (Ty.TyScheme([], ty)) = toString ty
