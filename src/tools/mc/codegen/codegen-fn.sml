@@ -278,7 +278,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 			     (* end case *))
 			   | _ => fail "emitLabel"
 			(* end case *))
-		      end (* emitLabel *)
+		      end (* emitLabel *)		  
 		  val stms = BE.Transfer.genFuncEntry varDefTbl (lab, entry)
 		  fun finish () = 
 		      let val funcAnRef = getAnnotations ()
@@ -289,7 +289,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 			  val regStrs = map (MTy.treeToString o MTy.regToTree) regs 
 			  val regStrs = map (fn s => comment ("param:"^s^" ")) regStrs
 (* DEBUG *)
-		      in			  
+		      in			  			  
 			  funcAnRef := (#create BE.SpillLoc.frameAn) frame :: 
 				       (!funcAnRef);
 			  emitLabel ();
@@ -302,7 +302,8 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	      end (* genFunc *)
 
 	  fun genCluster c =
-	      let val finishers = map genFunc c
+	      let val _ = BE.VarDef.clear varDefTbl;
+		  val finishers = map genFunc c
 	      in 
  		  beginCluster 0;
 		  pseudoOp P.text;

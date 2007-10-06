@@ -37,6 +37,8 @@ functor VarDefFn (
 	  | NONE => raise Fail(concat["getDefOf(", CFG.Var.toString v, ")"])
 	(* end case *))
 
+  fun clear vdt = Tbl.clear vdt
+
   fun getAndClrDefOf vdt = Tbl.remove vdt
 
   fun useDefOf vdt v = if (CFG.Var.useCount v = 1)
