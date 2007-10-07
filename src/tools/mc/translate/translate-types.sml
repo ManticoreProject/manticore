@@ -31,7 +31,8 @@ structure TranslateTypes : sig
     fun tr (env, ty) = let
 	  fun tr' ty = (case TypeUtil.prune ty
 		 of Ty.ErrorTy => raise Fail "unexpected ErrorTy"
-		  | Ty.MetaTy _ => raise Fail "unexpected MetaTy"
+		  | Ty.MetaTy(Ty.MVar{info=ref(Ty.UNIV _), ...}) => BTy.T_Any
+		  | Ty.MetaTy _ => raise Fail "unexpected kinded MetaTy"
 		  | Ty.VarTy _ => BTy.T_Any
 		  | Ty.ConTy(tyArgs, tyc) => (
 		      case TranslateEnv.findTyc (env, tyc)
