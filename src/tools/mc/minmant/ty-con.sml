@@ -19,6 +19,9 @@ structure TyCon : sig
   (* return the name of a type constructor *)
     val nameOf : Types.tycon -> Atom.atom
 
+  (* return a string representation *)
+    val toString : Types.tycon -> string
+
   (* return true if two type constructors are the same *)
     val same : Types.tycon * Types.tycon -> bool
 
@@ -55,6 +58,9 @@ structure TyCon : sig
   (* return the name of a type constructor *)
     fun nameOf (AbsTyc{name, ...}) = name
       | nameOf (DataTyc{name, ...}) = name
+
+(* FIXME: should include type parameters! *)
+    fun toString tyc = Atom.toString(nameOf tyc)
 
     fun stampOf (AbsTyc{stamp, ...}) = stamp
       | stampOf (DataTyc{stamp, ...}) = stamp
