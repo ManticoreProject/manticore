@@ -114,6 +114,29 @@ structure PrintAST : sig
 	       pr "(* end case *))";
 	     closeBox ();
 	  closeBox ())
+      | exp (A.HandleExp(e, matches, ty)) = (
+	  openHVBox (rel 2);
+	    openHBox ();
+	      pr "(";
+	      exp e;
+	      pr ")";
+	    closeBox ();
+	    sp ();
+	    pr "handle";
+	    sp ();
+	    openVBox (abs 2);
+	      ln ();
+	      case matches
+	       of m::ms => (pe " of" m;  app (pe "  |") ms)
+		| nil => raise Fail "case without any branches"
+	      (* end case *);
+	      pr "(* end case *))";
+	    closeBox ();
+	 closeBox ())
+      | exp (A.RaiseExp(e, ty)) = (
+	  openHVBox (rel 2);
+	    pr "raise"; sp (); exp e;
+	  closeBox ())
       | exp (A.FunExp(arg, body, _)) = (
 	  openHBox ();
 	    pr "(fn"; sp(); var arg; sp(); pr "=>"; sp(); exp body; pr ")";

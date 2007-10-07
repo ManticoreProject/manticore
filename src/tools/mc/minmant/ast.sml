@@ -18,6 +18,8 @@ structure AST =
       = LetExp of binding * exp
       | IfExp of (exp * exp * exp * ty)			(* ty is result type *)
       | CaseExp of (exp * match list * ty)		(* ty is result type *)
+      | HandleExp of (exp * match list * ty)		(* ty is result type *)
+      | RaiseExp of (exp * ty)				(* ty is result type *)
       | FunExp of (var * exp * ty)			(* ty is result type *)
       | ApplyExp of exp * exp * ty			(* ty is result type *)
       | TupleExp of exp list

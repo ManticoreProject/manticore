@@ -17,7 +17,9 @@
     | KW_div		("div")
     | KW_else		("else")
     | KW_end		("end")
+    | KW_exception	("exception")
     | KW_fun		("fun")
+    | KW_handle		("handle")
     | KW_if		("if")
     | KW_in		("in")
     | KW_let		("let")
@@ -25,6 +27,7 @@
     | KW_of		("of")
     | KW_orelse		("orelse")
     | KW_pval		("pval")
+    | KW_raise		("raise")
     | KW_spawn		("spawn")
     | KW_then		("then")
     | KW_to		("to")
@@ -131,6 +134,8 @@ TopDecl
 		=> (markDecl (KW_type_SPAN, PT.TyDecl(TyParams, NAME, Type)))
 	| "datatype" TyParams NAME "=" ConsDecl ("|" ConsDecl)*
 		=> (markDecl (KW_datatype_SPAN, PT.DataDecl(TyParams, NAME, ConsDecl :: SR)))
+	| "exception" NAME ("of" Type)?
+		=> (mark PT.MarkDecl (FULL_SPAN, PT.ExnDecl(NAME, SR)))
 	| ValueDecl
 		=> (markDecl (ValueDecl_SPAN, PT.ValueDecl ValueDecl))
 	;
@@ -191,10 +196,15 @@ FunDef
 	;
 
 Exp
-	: ChoiceExp
-		=> (ChoiceExp)
+	: ChoiceExp ("handle" MatchRules)?
+		=> (case SR
+		     of NONE => ChoiceExp
+		      | SOME mr => markExp (FULL_SPAN, PT.HandleExp(ChoiceExp, mr))
+		    (* end case *))
 	| "if" Exp "then" Exp "else" Exp
 		=> (markExp (FULL_SPAN, PT.IfExp(Exp1, Exp2, Exp3)))
+	| "raise" Exp
+		=> (markExp (FULL_SPAN, PT.RaiseExp(Exp)))
 	| "spawn" Exp
 		=> (markExp (FULL_SPAN, PT.SpawnExp(Exp)))
 	| "case" Exp "of" MatchRules

@@ -45,6 +45,7 @@ structure TypeUtil : sig
   (* convert various things to strings *)
     val tyvarToString : Types.tyvar -> string
     val fmt : {long : bool} -> Types.ty -> string
+    val fmtMeta : {long : bool} -> Types.meta -> string
     val toString : Types.ty -> string
     val fmtScheme : {long : bool} -> Types.ty_scheme -> string
     val schemeToString : Types.ty_scheme -> string
@@ -65,22 +66,7 @@ structure TypeUtil : sig
   (* return a string representation of a type (for debugging) *)
     fun fmt {long} = let
 	  fun toS(Ty.ErrorTy) = "<error>"
-	    | toS (Ty.MetaTy(Ty.MVar{stamp, info})) = (case !info
-		 of Ty.UNIV d => if long
-		      then concat["$", Stamp.toString stamp, "@", Int.toString d]
-		      else "$" ^ Stamp.toString stamp
-		  | Ty.INSTANCE ty => if long
-		      then (
-			info := Ty.UNIV(~1);
-			concat["($", Stamp.toString stamp, " == ", toS ty, ")"]
-			  before info := Ty.INSTANCE ty)
-		      else (
-			info := Ty.UNIV(~1);
-			toS ty before info := Ty.INSTANCE ty)
-		(* end case *))
-	    | toS (Ty.ClassTy(Ty.Class(ref(Ty.CLASS cls)))) =
-		concat["<", TypeClass.toString cls, ">"]
-	    | toS (Ty.ClassTy(Ty.Class(ref(Ty.RESOLVED ty)))) = toS ty
+	    | toS (Ty.MetaTy mv) = fmtMeta {long=long} mv
 	    | toS (Ty.VarTy tv) = tyvarToString tv
 	    | toS (Ty.ConTy([], tyc)) = Atom.toString(TyCon.nameOf tyc)
 	    | toS (Ty.ConTy([ty], tyc)) = concat[
@@ -99,6 +85,21 @@ structure TypeUtil : sig
 	  in
 	    toS
 	  end
+
+    and fmtMeta {long} (Ty.MVar{stamp, info}) = (case !info
+	   of Ty.UNIV d => if long
+		then concat["$", Stamp.toString stamp, "@", Int.toString d]
+		else "$" ^ Stamp.toString stamp
+	    | Ty.CLASS cls => concat["$", Stamp.toString stamp, "::", TypeClass.toString cls]
+	    | Ty.INSTANCE ty => if long
+		then (
+		  info := Ty.UNIV(~1);
+		  concat["($", Stamp.toString stamp, " == ", fmt {long=true} ty, ")"]
+		    before info := Ty.INSTANCE ty)
+		else (
+		  info := Ty.UNIV(~1);
+		  fmt {long=false} ty before info := Ty.INSTANCE ty)
+	  (* end case *))
 
     val toString = fmt {long=false}
 
@@ -122,12 +123,6 @@ structure TypeUtil : sig
 	    info := Ty.INSTANCE ty;	(* path compression *)
 	    ty
 	  end
-      | prune (Ty.ClassTy(Ty.Class(info as ref(Ty.RESOLVED ty)))) = let
-	  val ty = prune ty
-	  in
-	    info := Ty.RESOLVED ty;	(* path compression *)
-	    ty
-	  end
       | prune ty = ty
 
   (* apply a type variable to type substitution to a type *)
@@ -135,7 +130,6 @@ structure TypeUtil : sig
 	  fun inst ty = (case prune ty
 		 of Ty.ErrorTy => ty
 		  | ty as Ty.MetaTy _ => ty
-		  | ty as Ty.ClassTy _ => ty
 		  | ty as Ty.VarTy tv => (case TVMap.find(subst, tv)
 		       of NONE => ty
 			| SOME ty => ty
@@ -158,7 +152,7 @@ structure TypeUtil : sig
     fun instantiate (_, Ty.TyScheme([], ty)) = ([], ty)
       | instantiate (depth, Ty.TyScheme(tvs, ty)) = let
 	(* create a substitution from type variables to fresh meta variables *)
-	  fun f (tv as AST.TVar{class,...}, (s, mvs)) = (case class
+	  fun f (tv as AST.TVar{class, ...}, (s, mvs)) = (case class
 		   of NONE => let
 			val mv = Ty.MetaTy(MV.new depth)
 			in
@@ -199,19 +193,20 @@ structure TypeUtil : sig
 		end
 	  fun genVars (ty, env) = (case prune ty
 		 of Ty.ErrorTy => (env, Ty.ErrorTy)
-		  | ty as Ty.MetaTy(mv as Ty.MVar{info=ref(Ty.UNIV d), ...}) =>
-		      if (d > depth)
-			then (case MVMap.find(env, mv) (* generic variable *)
-			   of SOME tv => (env, Ty.VarTy tv)
-			    | NONE => let
-				val tv = newVar()
-				in
-				  (MVMap.insert(env, mv, tv), Ty.VarTy tv)
-				end
-			  (* end case *))
-			else (env, ty) (* non-generic variable *)
-		  | Ty.MetaTy _ => raise Fail "impossible"
-		  | ty as Ty.ClassTy _ => (env, ty)
+		  | ty as Ty.MetaTy(mv as Ty.MVar{info, ...}) => (case !info
+		       of Ty.UNIV d => if (d > depth)
+			    then (case MVMap.find(env, mv) (* generic variable *)
+			       of SOME tv => (env, Ty.VarTy tv)
+				| NONE => let
+				    val tv = newVar()
+				    in
+				      (MVMap.insert(env, mv, tv), Ty.VarTy tv)
+				    end
+			      (* end case *))
+			    else (env, ty) (* non-generic variable *)
+			| Ty.CLASS _ => (env, ty)
+			|_ => raise Fail "impossible"
+		      (* end case *))
 		  | Ty.VarTy _ => raise Fail "unexpected type variable"
 		  | Ty.ConTy(args, tyc) => let
 		      val (env, tys) = genVarsForTys (args, env)
@@ -251,8 +246,8 @@ structure TypeUtil : sig
     fun same (ty1, ty2) = (case (prune ty1, prune ty2)
 	   of (Ty.ErrorTy, _) => true
 	    | (_, Ty.ErrorTy) => true
+(* QUESTION: should two meta variables that are both of the same class be equal? *)
 	    | (Ty.MetaTy mv1, Ty.MetaTy mv2) => MV.same(mv1, mv2)
-	    | (Ty.ClassTy(Ty.Class r1), Ty.ClassTy(Ty.Class r2)) => (r1 = r2)
 	    | (Ty.VarTy tv1, Ty.VarTy tv2) => TyVar.same(tv1, tv2)
 	    | (Ty.ConTy(args1, tyc1), Ty.ConTy(args2, tyc2)) =>
 		TyCon.same(tyc1, tyc2) andalso ListPair.allEq same (args1, args2)

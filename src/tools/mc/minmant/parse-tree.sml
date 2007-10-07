@@ -25,6 +25,7 @@ structure ParseTree =
       = MarkDecl of decl mark
       | TyDecl of (tyvar list * tyid * ty)
       | DataDecl of (tyvar list * tyid * con_decl list)
+      | ExnDecl of (conid * ty option)
       | ValueDecl of val_decl
 
   (* data-constructor definitions *)
@@ -58,6 +59,8 @@ structure ParseTree =
       | LetExp of (val_decl list * exp)
       | IfExp of (exp * exp * exp)
       | CaseExp of (exp * match list)
+      | HandleExp of (exp * match list)
+      | RaiseExp of exp
       | AndAlsoExp of (exp * exp)
       | OrElseExp of (exp * exp)
       | BinaryExp of (exp * opid * exp)	(* infix binary expressions *)

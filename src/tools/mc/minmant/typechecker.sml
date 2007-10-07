@@ -163,7 +163,6 @@ structure Typechecker : sig
 	       *)
 		fun close ((f, f'), ve) = (
 		      Var.closeTypeOf (depth, f');
-(* print(concat["fun ", Var.toString f', " : ", TypeUtil.fmtScheme {long=true} (Var.typeOf f'), "\n"]); *)
 		      E.insert(ve, f, E.Var f'))
 	        val ve' = List.foldl close ve fs
 		in
@@ -207,6 +206,23 @@ structure Typechecker : sig
 			cases
 		in
 		  (AST.CaseExp(e', matches, resTy), resTy)
+		end
+	    | PT.HandleExp(e, cases) => let
+		val (e', resTy) = chkExp (loc, depth, te, ve, e)
+		val matches = List.map
+		      (fn m => chkMatch(loc, depth, te, ve, Basis.exnTy, resTy, m))
+			cases
+		in
+		  (AST.HandleExp(e', matches, resTy), resTy)
+		end
+	    | PT.RaiseExp e => let
+		val (e', ty) = chkExp(loc, depth, te, ve, e)
+		val resTy = AST.MetaTy(MetaVar.new depth)
+		in
+		  if not(U.unify(ty, Basis.exnTy))
+		    then error(loc, ["argument of raise must be an exception"])
+		    else ();
+		  (AST.RaiseExp(e', resTy), resTy)
 		end
 	    | PT.PChoiceExp es => let
 		fun chk (e, (es, ty)) = let
@@ -616,6 +632,7 @@ structure Typechecker : sig
 		in
 		  next(te, ve')
 		end
+	    | PT.ExnDecl(id, optTy) => raise Fail "ExceptionDecl"
 	    | PT.ValueDecl valDcl => let
 		val (bind, ve) = chkValDcl(loc, 0, te, ve, valDcl)
 		val (e, ty) = next(te, ve)

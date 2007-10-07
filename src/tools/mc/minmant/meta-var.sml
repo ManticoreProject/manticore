@@ -42,8 +42,8 @@ structure MetaVar : sig
 
   (* instantiate a meta variable; raises Fail if already instantiated *)
     fun instantiate (MVar{info, ...}, ty) = (case !info
-	   of Types.UNIV _ => info := Types.INSTANCE ty
-	    | _ => raise Fail "instantiate"
+	   of Types.INSTANCE _ =>  raise Fail "instantiate"
+	    | _ => info := Types.INSTANCE ty
 	  (* end case *))
 
     structure Map = RedBlackMapFn (

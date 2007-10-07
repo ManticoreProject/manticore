@@ -101,15 +101,14 @@ structure Overload : sig
 	  | default_type Types.Eq = raise Fail "failed to resolve overloaded variable"
 					  
 	fun set_def_ty Types.ErrorTy = ()
-	  | set_def_ty (Types.MetaTy _) = ()
-	  | set_def_ty (Types.VarTy _) = ()
-	  | set_def_ty (ty as Types.ClassTy(Types.Class (ref info))) = (
-	      case info
-	       of Types.CLASS cl => if not(U.unify (ty, default_type cl))
+	  | set_def_ty (ty as Types.MetaTy(Types.MVar{info, ...})) = (case !info
+	       of Types.UNIV _ => ()
+		| Types.CLASS cl => if not(U.unify (ty, default_type cl))
 		    then raise Fail "this should never happen"
 		    else ()
-		| _ => ()
+		| Types.INSTANCE ty => set_def_ty ty
 	      (* end case *))
+	  | set_def_ty (Types.VarTy _) = ()
 	  | set_def_ty (Types.ConTy(tys, _)) = List.app set_def_ty tys
 	  | set_def_ty (Types.FunTy(ty1, ty2)) = (set_def_ty ty1; set_def_ty ty2)
 	  | set_def_ty (Types.TupleTy tys) = List.app set_def_ty tys

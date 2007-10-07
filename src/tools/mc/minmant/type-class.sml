@@ -22,7 +22,7 @@ structure TypeClass : sig
 
     structure Ty = Types
 
-    fun new cl = Ty.ClassTy(Ty.Class(ref(Ty.CLASS cl)))
+    fun new cl = Ty.MetaTy(Ty.MVar{info = ref(Ty.CLASS cl), stamp = Stamp.new()})
 
     fun toString Ty.Int = "INT"
       | toString Ty.Float = "FLOAT"
@@ -30,7 +30,7 @@ structure TypeClass : sig
       | toString Ty.Order = "ORDER"
       | toString Ty.Eq = "EQ"
 
-    fun isClass (Ty.ConTy (_, tyc), c) =
+    fun isClass (Ty.ConTy(_, tyc), c) =
 	  List.exists (fn (Ty.ConTy(_, tyc')) => TyCon.same (tyc, tyc')) c
       | isClass _ = false
 
@@ -38,7 +38,8 @@ structure TypeClass : sig
       | isEqualityType (Ty.MetaTy(Ty.MVar{info as ref(Ty.INSTANCE ty), ...})) = (
 	  info := Ty.UNIV 0; (* blackhole *)
 	  isEqualityType ty before info := Ty.INSTANCE ty)
-      | isEqualityType (Ty.ClassTy _) = true  (* all classes are <= Eq *)
+      | isEqualityType (Ty.MetaTy(Ty.MVar{info as ref(Ty.CLASS _), ...})) =
+	  true (* all classes are <= Eq *)
       | isEqualityType (Ty.ConTy([], Ty.AbsTyc{eq, ...})) = eq
       | isEqualityType (Ty.TupleTy tys) = List.all isEqualityType tys
       | isEqualityType _ = false

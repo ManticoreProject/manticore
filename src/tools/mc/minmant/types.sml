@@ -14,7 +14,6 @@ structure Types =
     and ty
       = ErrorTy
       | MetaTy of meta
-      | ClassTy of class
       | VarTy of tyvar
       | ConTy of (ty list * tycon)
       | FunTy of ty * ty
@@ -27,14 +26,10 @@ structure Types =
 
     and meta_info
       = UNIV of int
+      | CLASS of ty_class
       | INSTANCE of ty
 
-    and class = Class of class_info ref
-
-    and class_info
-      = CLASS of ty_class
-      | RESOLVED of ty
-
+  (* type classes for overloading *)
     and ty_class
       = Int
       | Float

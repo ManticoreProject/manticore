@@ -16,6 +16,7 @@ structure BasisNames =
   (* predefined type names *)
     val unit =		Atom.atom "unit"
     val bool =		Atom.atom "bool"
+    val exn =		Atom.atom "exn"
     val int =		Atom.atom "int"
     val long =		Atom.atom "long"
     val integer =	Atom.atom "integer"

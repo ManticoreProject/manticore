@@ -10,6 +10,7 @@ structure Basis : sig
 
   (* basis type constructors *)
     val boolTyc		: Types.tycon
+    val exnTyc		: Types.tycon
     val intTyc		: Types.tycon
     val longTyc		: Types.tycon
     val integerTyc	: Types.tycon
@@ -29,25 +30,26 @@ structure Basis : sig
     val workQueueTyc    : Types.tycon
 
   (* basis types *)
-    val unitTy		: AST.ty
-    val boolTy		: AST.ty
-    val intTy		: AST.ty
-    val floatTy		: AST.ty
-    val stringTy	: AST.ty
-    val listTy		: AST.ty -> AST.ty
-    val optionTy	: AST.ty -> AST.ty
-    val threadIdTy	: AST.ty
-    val parrayTy	: AST.ty -> AST.ty
-    val eventTy		: AST.ty -> AST.ty
+    val unitTy		: Types.ty
+    val boolTy		: Types.ty
+    val exnTy		: Types.ty
+    val intTy		: Types.ty
+    val floatTy		: Types.ty
+    val stringTy	: Types.ty
+    val listTy		: Types.ty -> Types.ty
+    val optionTy	: Types.ty -> Types.ty
+    val threadIdTy	: Types.ty
+    val parrayTy	: Types.ty -> Types.ty
+    val eventTy		: Types.ty -> Types.ty
 
   (* a work queue type (not in surface language) *)
-    val workQueueTy     : AST.ty
+    val workQueueTy     : Types.ty
 
   (* type classes as lists of types *)
-    val IntClass	: AST.ty list
-    val FloatClass	: AST.ty list
-    val NumClass	: AST.ty list
-    val OrderClass	: AST.ty list
+    val IntClass	: Types.ty list
+    val FloatClass	: Types.ty list
+    val NumClass	: Types.ty list
+    val OrderClass	: Types.ty list
 
   (* constructors *)
     val boolTrue	: AST.dcon
@@ -58,7 +60,7 @@ structure Basis : sig
     val optionSOME	: AST.dcon
 
   (* overloaded operators *)
-    val neg : (AST.ty_scheme * AST.var list)
+    val neg : (Types.ty_scheme * AST.var list)
 
   (* primitive operators *)
     val listAppend	: AST.var
@@ -212,6 +214,8 @@ structure Basis : sig
     val optionSOME = DataCon.new optionTyc (N.optionSOME, SOME(tv'))
     end
 
+    val exnTyc = TyCon.newAbsTyc (N.exn, 0, false)
+
     val intTyc = TyCon.newAbsTyc (N.int, 0, true)
     val longTyc = TyCon.newAbsTyc (N.long, 0, true)
     val integerTyc = TyCon.newAbsTyc (N.integer, 0, true)
@@ -234,6 +238,7 @@ structure Basis : sig
   (* sequential-language predefined types *)
     val unitTy = AST.TupleTy[]
     val boolTy = AST.ConTy([], boolTyc)
+    val exnTy = AST.ConTy([], exnTyc)
     val intTy = AST.ConTy([], intTyc)
     val longTy = AST.ConTy([], longTyc)
     val integerTy = AST.ConTy([], integerTyc)
