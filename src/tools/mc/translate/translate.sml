@@ -229,7 +229,7 @@ structure Translate : sig
 		  case trExp(env, exp)
 		   of BIND([y], rhs) => mkStmt([y], rhs, sel(y, 0, xs, pats))
 		    | EXP e => let
-			val ty = BTy.T_Tuple(false, List.map BV.typeOf xs)
+			val ty = BTy.tupleTy(List.map BV.typeOf xs)
 			val t = BV.new("_tpl", ty)
 			in
 			  mkLet([t], e, sel(t, 0, xs, pats))
