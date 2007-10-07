@@ -148,8 +148,8 @@
 <INITIAL> "|?|" => (T.PCHOICE);
 <INITIAL> {id}	=> (idToken yytext);
 <INITIAL> {tyvarid}	=> (T.TYVAR(Atom.atom yytext));
-<INITIAL> {num}		=> (T.INT(valOf (IntInf.fromString yytext)));
-<INITIAL> {num}"."{num}([eE][+~]?{num})?
+<INITIAL> "~"?{num}	=> (T.INT(valOf (IntInf.fromString yytext)));
+<INITIAL> "~"?{num}"."{num}([eE][+~]?{num})?
 			=> (mkFloat yysubstr);
 <INITIAL> {ws}		=> (continue ());
 <INITIAL> "(*"		=> (YYBEGIN COMMENT; depth := 1; continue());
