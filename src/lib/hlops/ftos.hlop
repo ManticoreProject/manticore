@@ -1,4 +1,4 @@
-(* ftoa.hlop
+(* ftos.hlop
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -11,6 +11,6 @@
 extern void *M_FloatToString (float) __attribute__((alloc,pure));
 
 define inline @ltoa (f : ml_float / exh : exh) : ml_string =
-    let res : ml_string = ccall M_LongToString (unwrap(f))
+    let res : ml_string = ccall M_FloatToString (unwrap(f))
       return (res)
 ;

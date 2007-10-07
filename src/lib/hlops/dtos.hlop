@@ -1,0 +1,16 @@
+(* dtos.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * HLOp wrapper for double to string conversion
+ *)
+
+#include "types.def"
+
+extern void *M_DoubleToString (double) __attribute__((alloc,pure));
+
+define inline @dtos (f : ml_double / exh : exh) : ml_string =
+    let res : ml_string = ccall M_DoubleToString (unwrap(f))
+      return (res)
+;
