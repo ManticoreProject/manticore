@@ -16,11 +16,11 @@
 #include "request-codes.h"
 #include "../vproc/scheduler.h"
 
-extern UInt32_t CRC32 (void *buf, int nBytes);
+extern uint32_t CRC32 (void *buf, int nBytes);
 
 #define PR_OFFSET(obj, xxx, lab)						\
 	do {									\
-	    UInt32_t _offset = (int)((Addr_t)&(obj.lab) - (Addr_t)&obj);	\
+	    uint32_t _offset = (int)((Addr_t)&(obj.lab) - (Addr_t)&obj);	\
 	    strncpy((char *)(buf+len), #lab, sizeof(#lab));			\
 	    len += sizeof(#lab);						\
 	    buf[len++] = ((_offset >> 8) & 0xff);				\
