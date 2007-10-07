@@ -8,7 +8,7 @@
 
 #include "types.def"
 
-extern void *M_IntToString (long) __attribute__((alloc,pure));
+extern void *M_IntToString (int) __attribute__((alloc,pure));
 
 define inline @itos (n : ml_int / exh : exh) : ml_string =
     let res : ml_string = ccall M_IntToString (unwrap(n))
