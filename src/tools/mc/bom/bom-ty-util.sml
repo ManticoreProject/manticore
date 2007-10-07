@@ -112,6 +112,10 @@ structure BOMTyUtil : sig
 	    | (BTy.T_Raw _, _) => false
 	    | (_, BTy.T_Raw _) => false
 	    | (_, BTy.T_Any) => true
+	  (* the following shouldn't be here, since it isn't really sound, but we need it
+	   * to handle surface-language polymorphism, which is translated to T_Any.
+	   *)
+	    | (BTy.T_Any, _) => true
 	    | (BTy.T_Enum w1, BTy.T_Enum w2) => (w1 <= w2)
 	    | (BTy.T_Enum w, BTy.T_TyCon(BTy.DataTyc{nNullary, ...})) => (w < Word.fromInt nNullary)
             | (ty1, ty2 as BTy.T_TyCon (BTy.DataTyc {cons, ...})) =>

@@ -89,6 +89,10 @@ structure CPSTyUtil : sig
 	    | (CTy.T_Raw _, _) => false
 	    | (_, CTy.T_Raw _) => false
 	    | (_, CTy.T_Any) => true
+	  (* the following shouldn't be here, since it isn't really sound, but we need it
+	   * to handle surface-language polymorphism, which is translated to T_Any.
+	   *)
+	    | (CTy.T_Any, _) => true
 	    | (CTy.T_Enum w1, CTy.T_Enum w2) => (w1 <= w2)
 	    | (CTy.T_Tuple(isMut1, tys1), CTy.T_Tuple(isMut2, tys2)) =>
 		(isMut1 orelse not isMut2)

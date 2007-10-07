@@ -95,6 +95,10 @@ structure CFGTy =
 	    | (T_Any, T_Addr _) => false
 	    | (T_Addr _, T_Any) => false
             | (fromTy, T_Any) => hasUniformRep fromTy
+	  (* the following shouldn't be here, since it isn't really sound, but we need it
+	   * to handle surface-language polymorphism, which is translated to T_Any.
+	   *)
+	    | (T_Any, toTy) => hasUniformRep toTy
             | (T_OpenTuple ty1s, T_OpenTuple ty2s) => let
 		fun ok (_, []) = true
 		  | ok (ty1::r1, ty2::r2) = match(ty1, ty2) andalso ok(r1, r2)
