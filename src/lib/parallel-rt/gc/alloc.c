@@ -87,7 +87,7 @@ Value_t AllocString (VProc_t *vp, const char *s)
     Word_t	*hdr = (Word_t *)(vp->allocPtr);
     hdr[-1] = VEC_HDR(2);
     hdr[0] = (Word_t)(PtrToValue(obj));
-    hdr[1] = (Word_t)len;
+    hdr[1] = (Word_t)len-1;
     vp->allocPtr += WORD_SZB * 3;
 
     return PtrToValue(hdr);

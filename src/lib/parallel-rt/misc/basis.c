@@ -24,7 +24,7 @@ Value_t M_FloatToString (float f)
 Value_t M_LongToString (long n)
 {
     char buf[32];
-    snprintf(buf, sizeof(buf), "%dl", n);
+    snprintf(buf, sizeof(buf), "%ld", n);
     return AllocString (VProcSelf(), buf);
 }
 
