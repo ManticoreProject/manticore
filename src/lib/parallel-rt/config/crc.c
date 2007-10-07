@@ -10,11 +10,11 @@
 
 #include "manticore-rt.h"
 
-#define POLYNOMIAL (UInt32_t)0xedb88320
+#define POLYNOMIAL (uint32_t)0xedb88320
 
-static UInt32_t	Tbl[256];
+static uint32_t	Tbl[256];
 
-static UInt32_t Compute (UInt32_t crc, const unsigned char *buf, int nBytes)
+static uint32_t Compute (uint32_t crc, const unsigned char *buf, int nBytes)
 {
     crc ^= 0xffffffff;
     while (nBytes-- > 0) {
@@ -27,11 +27,11 @@ static UInt32_t Compute (UInt32_t crc, const unsigned char *buf, int nBytes)
 
 /* compute the CRC32 hash of nBytes in the given buffer.
  */
-UInt32_t CRC32 (void *buf, int nBytes)
+uint32_t CRC32 (void *buf, int nBytes)
 {
   /* initialize the table */
-    UInt32_t	i, j;
-    UInt32_t	h = 1;
+    uint32_t	i, j;
+    uint32_t	h = 1;
     Tbl[0] = 0;
     for (i = 128; i != 0; i >>= 1) {
 	h = (h >> 1) ^ ((h & 1) ? POLYNOMIAL : 0);
@@ -40,7 +40,7 @@ UInt32_t CRC32 (void *buf, int nBytes)
 	    Tbl[i+j] = Tbl[j] ^ h;
     }
 
-    UInt32_t crc = Compute(0, (unsigned char *)0, 0);
+    uint32_t crc = Compute(0, (unsigned char *)0, 0);
     return Compute(crc, (unsigned char *)buf, nBytes);
 
 } /* end of CRC32 */

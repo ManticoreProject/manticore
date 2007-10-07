@@ -13,6 +13,7 @@
 #include "manticore-config.h"
 #include <assert.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
 /* #include "machine/manticore-regs.h" */
 #include "header-bits.h"
@@ -34,18 +35,7 @@
 
 /******************** Utility definitions ********************/
 
-typedef unsigned char Byte_t;
-typedef unsigned short UInt16_t;
-typedef short Int16_t;
-typedef int Int32_t;
-typedef unsigned int UInt32_t;
-#if (SIZEOF_LONG == 8)
-typedef long Int64_t;
-typedef unsigned long UInt64_t;
-#elif (SIZEOF_LONG_LONG == 8)
-typedef long long Int64_t;
-typedef unsigned long long UInt64_t;
-#endif
+typedef uint8_t Byte_t;
 
 #define MAX_WORD		((Word_t)(~0))
 #define WORD_SZB		SIZEOF_CHAR_P

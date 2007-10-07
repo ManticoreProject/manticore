@@ -33,7 +33,7 @@ bool		DebugFlg = false;
 static Mutex_t	PrintLock;		/* lock for output routines */
 
 extern int mantEntry;			/* the entry-point of the Manticore code */
-extern Int32_t mantMagic;
+extern int32_t mantMagic;
 
 
 int main (int argc, const char **argv)

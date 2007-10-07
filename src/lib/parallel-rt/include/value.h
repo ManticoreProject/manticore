@@ -41,7 +41,7 @@ typedef struct {
 /* A vector/array/string header */
 typedef struct {
     Value_t	data;
-    UInt32_t	len;	/* length as untagged int */
+    uint32_t	len;	/* length as untagged int */
 } SequenceHdr_t;
 
 STATIC_INLINE FunClosure_t *ValueToClosure (Value_t v)	{ return (FunClosure_t *)ValueToPtr(v); }
@@ -52,7 +52,7 @@ extern Value_t AllocUniform (VProc_t *vp, int nItems, ...);
 extern Value_t AllocNonUniform (VProc_t *vp, int nItems, ...);
 extern Value_t WrapInt (VProc_t *vp, long i);
 extern Value_t AllocString (VProc_t *vp, const char *s);
-extern Value_t AllocRaw (VProc_t *vp, UInt32_t sz);
+extern Value_t AllocRaw (VProc_t *vp, uint32_t sz);
 extern void SayValue (Value_t v);
 
 STATIC_INLINE Value_t Cons (VProc_t *vp, Value_t a, Value_t b)
