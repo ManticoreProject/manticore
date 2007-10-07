@@ -31,8 +31,7 @@ structure TranslateTypes : sig
     fun tr (env, ty) = let
 	  fun tr' ty = (case TypeUtil.prune ty
 		 of Ty.ErrorTy => raise Fail "unexpected ErrorTy"
-		  | Ty.MetaTy _ => BTy.T_Any (* can this happen? *)
-		  | Ty.ClassTy _ => raise Fail "unresolved overload"
+		  | Ty.MetaTy _ => raise Fail "unexpected MetaTy"
 		  | Ty.VarTy _ => BTy.T_Any
 		  | Ty.ConTy(tyArgs, tyc) => (
 		      case TranslateEnv.findTyc (env, tyc)
@@ -97,12 +96,11 @@ structure TranslateTypes : sig
 		    | _ => (* need to use singleton tuple to represent data constructor *)
 			mkDC (dc, BTy.Tuple, [BTy.T_Tuple(false, trArgTy dc)])
 		  (* end case *))
-	      | ([], _) => let
+	      | (_, _) => let
 		  fun mkDC' (i, dc) = mkDC (dc, BTy.TaggedTuple(Word.fromInt i), trArgTy dc)
 		  in
 		    appi mkDC' conFuns
 		  end
-	      | (_, _) => raise Fail ""
 	    (* end case *);
 	    E.insertTyc (env, tyc, BTy.T_TyCon dataTyc);
 	    BTy.T_TyCon dataTyc
