@@ -7,5 +7,4 @@ fun treeAdd t = (case t
         | ND(t1, t2) => treeAdd t1 + treeAdd t2
       (* end case *));
 
-treeAdd (mkTree 10)
-
+print (ltos(treeAdd (mkTree 10)) ^ "\n")
