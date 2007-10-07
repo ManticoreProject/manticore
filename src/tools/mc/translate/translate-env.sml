@@ -31,6 +31,9 @@ structure TranslateEnv : sig
     val lookupVar	: (env * AST.var) -> var_bind
     val handlerOf	: env -> BOM.var
 
+  (* output an environment *)
+    val dump : (TextIO.outstream * env) -> unit
+
   end = struct
 
     structure TTbl = TyCon.Tbl
@@ -100,5 +103,42 @@ structure TranslateEnv : sig
 
   (* handlerOf : env -> B.var *)
     fun handlerOf (E{exh, ...}) = exh
+
+  (* output an environment *)
+    fun dump (outStrm, E{tycEnv, dconEnv, varEnv, ...}) = let
+	  fun pr x = TextIO.output(outStrm, x)
+	  fun prl xs = pr(String.concat xs)
+	  fun prTyc (tyc, ty) = prl [
+		  "    ", TyCon.toString tyc, " = ", BOMTyUtil.toString ty, "\n"
+		]
+	  fun prDcon (dc, Const(n, ty)) = prl [
+		  "    ", DataCon.nameOf dc, " = ", Word.toString n, " : ",
+		  BOMTyUtil.toString ty, "\n"
+		]
+	    | prDcon (dc, DCon dc') = prl [
+		  "    ", DataCon.nameOf dc, " = ", BOMTyCon.dconName dc', "\n"
+		]
+	  fun prVar (x, bind) = let
+		val x' = (case bind
+		       of Var x' => x'
+			| Lambda(BOM.FB{f, ...}) => f
+		      (* end case *))
+		in
+		  prl [
+		      "    ", Var.toString x, " : ", TypeUtil.schemeToString(Var.typeOf x),
+		      " = ", BOM.Var.toString x', " : ",
+		      BOMTyUtil.toString(BOM.Var.typeOf x'), "\n"
+		    ]
+		end
+	  in
+	    pr "***** Translation environment dump *****\n";
+	    pr "  *** Type constructors:\n";
+	    TTbl.appi prTyc tycEnv;
+	    pr "  *** Data constructors:\n";
+	    DTbl.appi prDcon dconEnv;
+	    pr "  *** Variables:\n";
+	    VMap.appi prVar varEnv;
+	    pr "*****\n"
+	  end
 
   end
