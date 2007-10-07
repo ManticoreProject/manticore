@@ -37,7 +37,7 @@
 		  | SOME(#"~", r) => (true, r)
 		  | _ => (false, ss)
 		(* end case *))
-	  val (whole, rest) = Substring.splitl Char.isDigit ss
+	  val (whole, rest) = Substring.splitl Char.isDigit rest
 	  val rest = Substring.triml 1 rest (* remove "." *)
 	  val (frac, rest) = Substring.splitl Char.isDigit rest
 	  val exp = if Substring.isEmpty rest
