@@ -10,6 +10,24 @@
 #include "vproc.h"
 #include "value.h"
 
+/* M_IntToString:
+ */
+Value_t M_IntToString (int32_t n)
+{
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%d", n);
+    return AllocString (VProcSelf(), buf);
+}
+
+/* M_LongToString:
+ */
+Value_t M_LongToString (int64_t n)
+{
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%ld", n);
+    return AllocString (VProcSelf(), buf);
+}
+
 /* M_FloatToString:
  */
 Value_t M_FloatToString (float f)
@@ -19,12 +37,12 @@ Value_t M_FloatToString (float f)
     return AllocString (VProcSelf(), buf);
 }
 
-/* M_LongToString:
+/* M_DoubleToString:
  */
-Value_t M_LongToString (long n)
+Value_t M_DoubleToString (double f)
 {
-    char buf[32];
-    snprintf(buf, sizeof(buf), "%ld", n);
+    char buf[64];
+    snprintf(buf, sizeof(buf), "%f", f);
     return AllocString (VProcSelf(), buf);
 }
 
