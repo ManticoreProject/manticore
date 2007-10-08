@@ -8,7 +8,7 @@
 #include "futures.def"
 
 (* Value_t M_WorkDequeue(VProc_t *vp, Value_t q) *)
-extern void* M_WorkDequeue(void*,void*) __attribute((alloc));
+extern void* M_WorkDequeue(void*,void*) __attribute__((alloc));
 
 define @steal1 (fp : future / exh : exh) : ();
 
