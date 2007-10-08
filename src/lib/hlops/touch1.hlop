@@ -11,11 +11,12 @@
 
 define @get-work1 (q : work_queue / exh : exh) : ();
 
-(* extern void M_Print (void * ) *)
-(* do ccall M_Print ("\n%%%%%%%%% touch1\n\000") *)
+extern void M_Print (void * );
 
 define @touch1 (qf: [work_queue, future] / exh : exh) : any =
+  do ccall M_Print ("\n%%%%%%%%% touch1\n\000")
   let q : work_queue = #0(qf)
+  do ccall M_Print ("\n%%%%%%%%% touch1-2\n\000")
   let fp : future = #1(qf)
   let tmp : any = CAS (&0(fp), EMPTY_F, EVAL_F)
   if Equal (tmp, EMPTY_F)
