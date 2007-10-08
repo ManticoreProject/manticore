@@ -1,0 +1,33 @@
+(* get-work1-all.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+#include "types.def"
+#include "futures.def"
+
+(*   Value_t ListVProcs (VProc_t *self) *)
+extern void *ListVProcs (void *) __attribute__((alloc));
+
+define inline @spawn-on (f : fun (unit / exh -> unit), dst : vproc / exh : exh) : tid;
+define @get-work1 (q : work_queue / exh : exh) : ();
+
+define @get-work1-all (q : work_queue / exh : exh) : unit =
+  fun init (_ : unit / exh : exh) : unit =
+    do @get-work1 (q / exh)
+    return (UNIT)
+  let self : vproc = host_vproc
+  fun spawnOnAll (vps : list) : () =
+    case vps
+      of NIL => return ()
+       | CONS (vp : vproc, rest : list) =>
+           if Equal (vp, self)
+             then apply spawnOnAll (rest)
+             else let _ : tid = @spawn-on (init, vp / exh)
+                  apply spawnOnAll (rest)
+    end (* case *)
+  let vps : list = ccall ListVProcs (self)
+  do apply spawnOnAll (vps)
+  return (UNIT)
+;
