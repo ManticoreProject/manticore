@@ -60,7 +60,6 @@ structure Hash (* : sig
 	    (* ty : T.ty -> bool *)
 	    fun ty T.ErrorTy = false
 	      | ty (T.MetaTy m) = meta m
-	      | ty (T.ClassTy c) = class c
 	      | ty (T.VarTy _) = true
 	      | ty (T.ConTy (ts, _)) = any ty ts
 	      | ty (T.FunTy (t1, t2)) = ty t1 orelse ty t2
@@ -69,12 +68,8 @@ structure Hash (* : sig
 	    and meta (T.MVar {info, ...}) =
 		(case !info
 		   of T.INSTANCE t => ty t
+		    | T.CLASS _ => false
 		    | T.UNIV _ => false)
-	    (* class : T.class -> bool *)
-	    and class (T.Class cir) =
-		 (case !cir
-		    of T.CLASS _ => false
-		     | T.RESOLVED t => ty t)
 	in
 	    ty t
 	end

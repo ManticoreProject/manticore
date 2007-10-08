@@ -73,7 +73,13 @@ structure FutParLet : sig
 	    (*   of pval-bound variables live therein. *)
 	    fun exp (A.LetExp (b, e), pLive) = letExp (b, e, pLive)
 	      | exp (A.IfExp (e1, e2, e3, t), pLive) = ifExp (e1, e2, e3, t, pLive)
-	      | exp (A.CaseExp (e, pes, t), pLive) = todo "CaseExp"
+	      | exp (A.CaseExp (e, ms, t), pLive) = todo "CaseExp"
+	      | exp (A.HandleExp (e, ms, t), pLive) = todo "HandleExp"
+	      | exp (A.RaiseExp (e, t), pLive) = 
+		  let val (e', pLive') = exp (e, pLive)
+		  in
+		      (A.RaiseExp (e', t), pLive')
+		  end
 	      | exp (A.FunExp (x, e, t), pLive) =
 		  let val (e', pLive') = exp (e, pLive)
 		  in

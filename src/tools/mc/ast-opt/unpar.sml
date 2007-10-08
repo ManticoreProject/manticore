@@ -16,7 +16,9 @@ structure Unpar : sig
 
     fun exp (A.LetExp (b, e)) = A.LetExp (binding b, exp e)
       | exp (A.IfExp (e1, e2, e3, t)) = A.IfExp (exp e1, exp e2, exp e3, t)
-      | exp (A.CaseExp (e, ms, t)) = A.CaseExp (e, map match ms, t)
+      | exp (A.CaseExp (e, ms, t)) = A.CaseExp (exp e, map match ms, t)
+      | exp (A.HandleExp (e, ms, t)) = A.HandleExp (exp e, map match ms, t)
+      | exp (A.RaiseExp (e, t)) = A.RaiseExp (exp e, t)
       | exp (A.FunExp (x, e, t)) = A.FunExp (x, exp e, t)
       | exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, t)
       | exp (A.TupleExp es) = A.TupleExp (map exp es)

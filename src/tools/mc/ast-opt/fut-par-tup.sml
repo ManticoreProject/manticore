@@ -80,12 +80,9 @@ structure FutParTup : sig
 	    (* n.b. Type-preserving. *)
 	    and exp (A.LetExp (b, e)) = A.LetExp (binding b, exp e)
 	      | exp (A.IfExp (e1, e2, e3, t)) = A.IfExp (exp e1, exp e2, exp e3, t)
-	      | exp (A.CaseExp (e, pes, t)) = let
-		    fun match (A.PatMatch(p, e)) = A.PatMatch(p, exp e)
-		      | match (A.CondMatch(p, cond, e)) = A.CondMatch(p, exp cond, exp e)
-		in
-		    A.CaseExp (exp e, List.map match pes, t)
-		end
+	      | exp (A.CaseExp (e, ms, t)) = A.CaseExp (exp e, map match ms, t)
+	      | exp (A.HandleExp (e, ms, t)) = A.HandleExp (exp e, map match ms, t) 
+	      | exp (A.RaiseExp (e, t)) = A.RaiseExp (exp e, t)
 	      | exp (A.FunExp (x, e, t)) = A.FunExp (x, exp e, t)
 	      | exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, t)
 	      | exp (A.TupleExp es) = A.TupleExp (map exp es)
@@ -106,6 +103,10 @@ structure FutParTup : sig
 	      | exp (A.SeqExp (e1, e2)) = A.SeqExp (exp e1, exp e2)
 	      | exp (ov as (A.OverloadExp _)) = ov
 						
+	    (* match : A.match -> A.match *)
+	    and match (A.PatMatch (p, e)) = A.PatMatch (p, exp e)
+	      | match (A.CondMatch (p, cond, e)) = A.CondMatch (p, exp cond, exp e)
+
 	    (* binding : A.binding -> A.binding *)
 	    and binding (A.ValBind (p, e)) = A.ValBind (p, exp e)
 	      | binding (A.PValBind (p, e)) = A.PValBind (p, exp e)

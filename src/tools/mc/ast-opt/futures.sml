@@ -7,12 +7,13 @@
  * in transformations of intermediate languages.
  *)
 
-structure Futures (* : sig
+structure Futures : sig
 
     val futureTyc : Types.tycon
     val futureTy  : Types.ty -> Types.ty
 
     val newWorkQueue : Var.var
+    val getWork1All  : Var.var
 
     val future : Var.var
     val touch  : Var.var
@@ -23,6 +24,7 @@ structure Futures (* : sig
     val cancel1 : Var.var
 
     val mkNewWorkQueue : unit -> AST.exp
+    val mkGetWork1All  : unit -> AST.exp 
 
     val mkFuture  : AST.exp * AST.exp -> AST.exp 
     val mkTouch   : AST.exp * AST.exp -> AST.exp
@@ -32,7 +34,7 @@ structure Futures (* : sig
     val mkTouch1  : AST.exp * AST.exp -> AST.exp
     val mkCancel1 : AST.exp * AST.exp -> AST.exp
 
-  end *) =
+  end =
 
   struct
     structure A = AST
@@ -74,6 +76,9 @@ structure Futures (* : sig
     val newWorkQueue = monoVar ("newWorkQueue",
 				B.unitTy --> B.workQueueTy)
 
+    val getWork1All = monoVar ("getWork1All",
+			       B.unitTy --> B.unitTy)
+
     val future = polyVar ("future",
  		          fn tv => (Basis.unitTy --> tv) --> futureTy tv)
 
@@ -97,6 +102,12 @@ structure Futures (* : sig
     fun mkNewWorkQueue () = A.ApplyExp (A.VarExp (newWorkQueue, []),
 					A.TupleExp [],
 					Basis.workQueueTy)
+
+    (* mkNewWorkQueue : unit -> A.exp *)
+    (* Produces an AST expression which is a call to the getWork1All hlop. *)
+    fun mkGetWork1All () = A.ApplyExp (A.VarExp (getWork1All, []),
+				       A.TupleExp [],
+				       Basis.unitTy)
 
     (* mkThunk : A.exp -> A.exp *)
     (* Consumes e; produces (fn u => e) (for fresh u : unit). *)

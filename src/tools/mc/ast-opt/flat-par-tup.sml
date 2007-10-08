@@ -15,6 +15,12 @@ structure FlatParTup : sig
     structure A = AST
     structure T = Types
 
+    (* fail : string -> 'a *)
+    fun fail msg = raise Fail msg
+
+    (* todo : string -> 'a *)
+    fun todo thing = fail ("todo: " ^ thing)
+
     (* id : 'a -> 'a *)
     val id = (fn x => x)
 
@@ -114,6 +120,8 @@ structure FlatParTup : sig
    fun exp (A.LetExp (b, e)) = A.LetExp (binding b, exp e)
       | exp (A.IfExp (e1, e2, e3, t)) = ifExp (e1, e2, e3, t)
       | exp (A.CaseExp (e, ms, t)) = caseExp (e, ms, t)
+      | exp (A.HandleExp (e, ms, t)) = todo "HandleExp"
+      | exp (A.RaiseExp (e, t)) = A.RaiseExp (exp e, t)
       | exp (A.FunExp (x, e, t)) = A.FunExp (x, exp e, t)
       | exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, t)
       | exp (A.TupleExp es) = A.TupleExp (List.map exp es)

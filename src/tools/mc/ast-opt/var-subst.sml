@@ -62,7 +62,9 @@ structure VarSubst (* : sig
 	let fun exp (A.LetExp (b, e)) = A.LetExp (binding b, exp e)
 	      | exp (A.IfExp (e1, e2, e3, t)) =
 		  A.IfExp (exp e1, exp e2, exp e3, t)
-	      | exp (A.CaseExp (e, pes, t)) = todo  "expWalk.exp | CaseExp"
+	      | exp (A.CaseExp (e, ms, t)) = A.CaseExp (exp e, map match ms, t)
+	      | exp (A.HandleExp (e, ms, t)) = A.HandleExp (exp e, map match ms, t)
+	      | exp (A.RaiseExp (e, t)) = A.RaiseExp (exp e, t)
 	      | exp (A.FunExp (x, e, t)) = A.FunExp (x, exp e, t)
 	      | exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, t)
 	      | exp (A.TupleExp es) = A.TupleExp (map exp es)
@@ -70,13 +72,18 @@ structure VarSubst (* : sig
 		  A.RangeExp (exp e1, exp e2, Option.map exp oe3, t)
 	      | exp (A.PTupleExp es) = A.PTupleExp (map exp es)
 	      | exp (A.PArrayExp (es, t)) = A.PArrayExp (map exp es, t)
-	      | exp (A.PCompExp (e, pes, opred)) = todo "expWalk.exp | PCompExp"
+	      | exp (A.PCompExp (e, pes, opred)) = 
+		  A.PCompExp (exp e, 
+			      map (fn (p,e) => (pat s p, exp e)) pes,
+			      Option.map exp opred)
 	      | exp (A.PChoiceExp (es, t)) = A.PChoiceExp (map exp es, t)
 	      | exp (A.SpawnExp e) = A.SpawnExp (exp e) 
 	      | exp (k as A.ConstExp _) = k
 	      | exp (v as A.VarExp (x, ts)) = f (x, ts)
 	      | exp (A.SeqExp (e1, e2)) = A.SeqExp (exp e1, exp e2)
 	      | exp (ov as A.OverloadExp _) = ov
+	    and match (A.PatMatch (p, e)) = A.PatMatch (pat s p, exp e)
+	      | match (A.CondMatch (p, cond, e)) = A.CondMatch (pat s p, exp cond, exp e)
 	    and binding (A.ValBind (p, e)) = A.ValBind (pat s p, exp e)
 	      | binding (A.PValBind (p, e)) = A.PValBind (pat s p, exp e)
 	      | binding _ = todo "expWalk.binding"
