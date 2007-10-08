@@ -1,0 +1,15 @@
+(* yield.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Preempt the current fiber.
+ *)
+
+#include "types.def"
+
+define inline @forward (vp : vproc, sig : signal / exh : exh) noreturn;
+
+define @yield (vp : vproc / exh : exh) : unit = 
+   cont k (_ : unit) = return (UNIT)
+   @forward (vp, k / exh)

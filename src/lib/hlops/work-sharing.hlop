@@ -1,0 +1,71 @@
+(* work-sharing.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Basic work sharing for threads.
+ *)
+
+#include "types.def"
+
+define inline @fiber (f : fiber_fun / exh : exh) : fiber;
+define @new-work-queue(_ : unit / exh : exh) : work_queue;
+define inline @run (vp : vproc, act : sigact, tid : tid, fiber : fiber / exh : exh) noreturn;
+define @atomic-yield (vp : vproc / exh : exh) : unit;
+define @dispatch-action-on-vproc (act : sigact, dst : vproc / exh : exh) : ();
+
+extern void *ListVProcs (void *) __attribute__((alloc));
+extern void* M_WorkDequeue(void*,void*) __attribute((alloc));
+extern void M_WorkEnqueue(void*,void*,void*) __attribute__((alloc));
+
+(* work-sharing returns a function for spawning threads on the work queue *)
+define @work-sharing ( / exh : exh) : spawn_fun = 
+   let q : work_queue = @new-work-queue (UNIT / exh)
+
+   (* work-sharing scheduler action *)
+   cont wsSwitch (s : signal) =
+     let self : vproc = host_vproc
+     (* find work on the shared queue
+      * -- we expect that signals are masked here
+      *)
+     fun findWork ( / exh : exh) =
+	 let w : option = ccall M_WorkDequeue (self / q)
+	 case w
+           of NONE => apply findWork ( / exh)
+	    | SOME (k : fiber) => @run (self, wsSwitch, enum(0), k / exh)
+	 end
+     (* handle signals *)
+     if Equal (s, STOP)
+	then apply findWork ( / exh)
+        else let k : fiber = (fiber)s
+             let tid : tid = enum(0)
+             do ccall M_WorkEnqueue (self, q, k)
+             do @atomic-yield (self / exh)
+             apply findWork (/ exh)
+
+   fun initOnVProcs (vps : list) : () =
+       case vps
+         of NIL => return ()
+          | CONS (vp : vproc, vps : list) => 
+	    if Equal (vp, host_vproc)
+	       then apply initOnVProcs (vps)
+	       else do @dispatch-action-on-vproc (wsSwitch, vp / exh)
+                    apply initOnVProcs (vps)
+       end
+
+   (* entry point for a the scheduler *)
+   fun spawn (f : fiber_fun / exh : exh) =
+       let k : fiber = @fiber (f / exh)
+       do ccall M_WorkEnqueue (host_vproc, q, k)
+       return (UNIT)
+
+   (* At startup, dispatch the scheduler on the vprocs and return the
+    * spawn function to the caller. 
+    *)
+   cont startup (_ : unit) =
+      let vps : list = ListVProcs (host_vproc)
+      do apply initOnVProcs (vps)
+      return (spawn)
+
+   @run (host_vproc, wsSwitch, enum(0), startup / exh)
+;

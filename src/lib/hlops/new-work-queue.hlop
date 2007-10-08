@@ -11,7 +11,7 @@
 (*     Value_t M_NewWorkQueue (VProc_t *vp) *)
 extern void *M_NewWorkQueue (void*);
 
-	define @new-work-queue(_ : unit / exh : exh) : work_queue =
+define @new-work-queue(_ : unit / exh : exh) : work_queue =
   let vp : vproc = host_vproc
   let q : work_queue = ccall M_NewWorkQueue (vp)
   return (q)

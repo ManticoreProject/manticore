@@ -1,0 +1,22 @@
+(* fiber.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Take a function and return a fiber. 
+ *)
+
+#include "types.def"
+
+define inline @thread-exit ( / exh : exh) noreturn;
+
+define inline @fiber (f : fiber_fun / exh : exh) : fiber =
+  (* we must assume that signals are masked when the fiber gets invoked *)
+  cont fiberK (_ : unit) = 
+    let self : vproc = host_vproc
+    (* in case of an exception, just terminate the fiber *)
+    cont exh (exh : exh) = @thread-exit (/ exh)
+    let (_ : unit) = apply f (UNIT / exh)
+    (* NOTE: there is a potential race here with host_vproc. *)
+    @thread-exit (/ exh)
+  return (fiberK)

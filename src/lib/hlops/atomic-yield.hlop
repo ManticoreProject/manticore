@@ -1,0 +1,16 @@
+(* atomic-yield.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Preempt the current fiber.
+ *)
+
+#include "types.def"
+
+define @yield (vp : vproc / exh : exh) : unit;
+
+define @atomic-yield (vp : vproc / exh : exh) : unit =
+   let _ : unit = @yield (vp / exh)
+   do vpstore(ATOMIC, vp, TRUE)
+   return (UNIT)
