@@ -49,7 +49,7 @@ structure HLOp =
 
     local
     (* param_tyToString : param_ty -> string *)
-      fun param_tyToString (PARAM t) = "PARAM " ^ (BOMTyUtil.toString t)
+     fun param_tyToString (PARAM t) = "PARAM " ^ (BOMTyUtil.toString t)
 	| param_tyToString (OPT t) = "OPT " ^ (BOMTyUtil.toString t)
 	| param_tyToString (VEC t) = "VEC " ^ (BOMTyUtil.toString t)
     in

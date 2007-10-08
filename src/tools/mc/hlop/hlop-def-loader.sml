@@ -18,6 +18,7 @@ structure HLOpDefLoader : sig
   (* an environment to keep track of any imports required by the high-level operator *)
     type import_env = BOM.var CFunctions.c_fun AtomTable.hash_table
 
+    val loadPrototypes : unit -> unit
     val load : (import_env * HLOp.hlop) -> hlop_def
 
   end = struct
@@ -68,6 +69,18 @@ structure HLOpDefLoader : sig
 	val parse = parse
 	val defaultSearchPath = Paths.hlopSearchPath
       end)
+
+   fun loadPrototypes () = let
+       val prototypeFile = "prototypes.hlop"
+       in
+         case Loader.load prototypeFile
+	  of SOME pt => let
+              val defs = Expand.cvtPrototypes {fileName=prototypeFile, pt=pt}
+	      in 
+		 List.app HLOpEnv.define defs
+	      end
+	 (* end case *)
+       end (* loadPrototypes *)
 
   (* a cache of previously loaded definitions *)
     val cache : hlop_def ATbl.hash_table = ATbl.mkTable (128, Fail "HLOpDef table")

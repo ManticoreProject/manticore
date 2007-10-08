@@ -10,6 +10,8 @@ structure StdEnv : sig
 
     val env0 : TranslateEnv.env
 
+    val insHLOPs : unit -> TranslateEnv.env
+
   end = struct
 
     structure B = Basis
@@ -65,6 +67,37 @@ structure StdEnv : sig
 	    (B.optionSOME,	E.DCon BOMBasis.optionSOME)
 	  ]
 
+
+    (* hlop : HLOp.hlop -> BOM.lambda *)
+      fun hlop (hlop as HLOp.HLOp{name, sign, ...}) = let
+	    val {params, exh, results} = sign
+	    val paramTys = let
+		  fun get (HLOp.PARAM t) = t
+		    | get (HLOp.OPT t) = raise Fail "hlop.get: OPT"
+		    | get (HLOp.VEC t) = raise Fail "hlop.get: VEC"
+		  in
+		    List.map get params
+		  end
+	    val fty = BTy.T_Fun(paramTys, exh, results)
+	    val f = BV.new (Atom.toString name, fty)
+	  (* mkVars : BTy.ty list -> BV.var list *)
+	    fun mkVars baseName ts = let
+		(* build : string -> BTy.ty list * int -> BV.var list *)
+		  fun build ([], _) = []
+		    | build (t::ts, n) = let
+			val x = baseName ^ Int.toString n
+			in
+			    BV.new (x, t) :: build (ts, n+1)
+			end
+		  in
+		    build (ts, 0)
+		  end
+	    val params = mkVars "arg" paramTys
+	    val exh = mkVars "exh" exh
+	    val body = BOM.mkHLOp (hlop, params, exh)
+	    in
+	      BOM.FB{f=f, params=params, exh=exh, body=body}
+	    end
 
   (***** Predefined operators *****)
     local 
@@ -145,37 +178,6 @@ structure StdEnv : sig
 		}
 	    end
 
-    (* hlop : HLOp.hlop -> BOM.lambda *)
-      fun hlop (hlop as HLOp.HLOp{name, sign, ...}) = let
-	    val {params, exh, results} = sign
-	    val paramTys = let
-		  fun get (HLOp.PARAM t) = t
-		    | get (HLOp.OPT t) = raise Fail "hlop.get: OPT"
-		    | get (HLOp.VEC t) = raise Fail "hlop.get: VEC"
-		  in
-		    List.map get params
-		  end
-	    val fty = BTy.T_Fun(paramTys, exh, results)
-	    val f = BV.new (Atom.toString name, fty)
-	  (* mkVars : BTy.ty list -> BV.var list *)
-	    fun mkVars baseName ts = let
-		(* build : string -> BTy.ty list * int -> BV.var list *)
-		  fun build ([], _) = []
-		    | build (t::ts, n) = let
-			val x = baseName ^ Int.toString n
-			in
-			    BV.new (x, t) :: build (ts, n+1)
-			end
-		  in
-		    build (ts, 0)
-		  end
-	    val params = mkVars "arg" paramTys
-	    val exh = mkVars "exh" exh
-	    val body = BOM.mkHLOp (hlop, params, exh)
-	    in
-	      BOM.FB{f=f, params=params, exh=exh, body=body}
-	    end
-
     (* type shorthands *)
       val i = BTy.T_Raw BTy.T_Int
       val l = BTy.T_Raw BTy.T_Long
@@ -184,8 +186,7 @@ structure StdEnv : sig
       val b = BTy.boolTy
     in 
     val operators = [
-	    (B.listAppend,	hlop H.listAppendOp),
-	    (B.stringConcat,	hlop H.stringConcatOp),
+	    (B.listAppend,	hlop H.listAppendOp),	    
 	    (B.int_lte,		prim2 (P.I32Lte, "lte", i, i, b)),
 	    (B.int_eq,		prim2 (P.I32Eq, "eq", i, i, b)),
 	    (B.long_lte,	prim2 (P.I64Lte, "lte", l, l, b)),
@@ -319,11 +320,10 @@ structure StdEnv : sig
 	    (B.mTake,		hlop H.mTake),
 	    (B.mPut,		hlop H.mPut),
 *)
-	    (B.itos,		hlop H.itosOp),
-	    (B.ltos,		hlop H.ltosOp),
+(*	    (B.itos,		hlop H.itosOp),
+	    (B.ltos,		hlop H.ltosOp), *)
 	    (B.ftos,		hlop H.ftosOp),
 	    (B.dtos,		hlop H.dtosOp),
-	    (B.print,		hlop H.printOp),
 (* FIXME
 	    (B.args,		hlop H.args),
 	    (B.fail,		hlop H.fail),
@@ -342,8 +342,8 @@ structure StdEnv : sig
 
   (* create the initial environment *)
     val env0 = let
-	  val env = E.mkEnv()
-	(* insert a lambda binding *)
+	  val env = E.mkEnv()	
+        (* insert a lambda binding *)
 	  fun insertFun ((x, lambda), env) = E.insertFun (env, x, lambda)
 	(* insert primitive operator definitions *)
 	  val env = List.foldl insertFun env operators
@@ -354,5 +354,22 @@ structure StdEnv : sig
 	    List.app (fn (dc, bdc) => E.insertCon (env, dc, bdc)) dcons;
 	    env
 	  end
+
+  (* enrich the environments with HLOP signatures in prototypes.hlop *)
+    fun insHLOPs () = let
+	val hlops =  [
+	    (B.print,           BasisNames.print),
+	    (B.stringConcat,	Atom.atom "string-concat2"),
+	    (B.itos,            BasisNames.itos),
+	    (B.ltos,            BasisNames.ltos)
+	]
+
+	fun ins ((x, n), env) = (case H.find n
+	    of NONE => raise Fail ("cannot find hlop " ^ Atom.toString n)
+	     | SOME hop => E.insertFun (env, x, hlop hop)
+	    (* end case *))
+        in
+	   List.foldl ins env0 hlops
+        end
 
   end

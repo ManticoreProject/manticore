@@ -19,6 +19,7 @@ structure BOMParser : sig
 
   (* parse a file, returning a parse tree *)
     fun parse (errStrm, filename) = let
+	  val _ = HLOpDefLoader.loadPrototypes ()
 	  val file = TextIO.openIn filename
 	  fun get () = TextIO.input file
 	  val lexer = BOMLex.lex (Error.sourceMap errStrm)

@@ -11,6 +11,7 @@ Library
   structure AST
   structure ASTUtil
   structure Basis
+  structure BasisNames
   structure DataCon
   structure FrontEnd
   structure Literal

@@ -15,6 +15,9 @@
     val cvtFile : (import_env * string * HLOpDefPT.file)
 	  -> (BOM.hlop * bool * BOM.lambda * BOM.var CFunctions.c_fun list) list
 
+    val cvtPrototypes : {fileName : string, pt : HLOpDefPT.file} 
+          -> HLOp.hlop list
+
   end = struct
 
     structure PT = HLOpDefPT
@@ -335,6 +338,37 @@
 	    cvt (exps, [])
 	  end
 
+    fun tyOfPat' env = let
+	fun doit (PT.WildPat NONE) = Ty.T_Any
+	  | doit (PT.WildPat(SOME ty)) = cvtTy(env, ty)
+	  | doit (PT.VarPat(_, ty)) = cvtTy(env, ty)
+    in
+	doit
+    end
+				     
+    fun cvtPrototypes {fileName, pt=PT.FILE defs} = let 
+	fun cvtDefines (PT.Define(_, name, params, exh, retTy, _), (env, defs)) = let
+	    val tyOfPat = tyOfPat' env
+	    val paramTys = List.map (fn p => HLOp.PARAM (tyOfPat p)) params
+	    val exhTys = List.map tyOfPat exh
+	    val (retTy, attrs) = (case retTy
+				   of NONE => ([], [HLOp.NORETURN])
+				    | SOME tys => (cvtTys (env, tys), [])
+				 (* end case *))
+	    val hlop = HLOp.new (
+		       name,
+		       {params=paramTys, exh=exhTys, results=retTy},
+		       attrs) 
+	    in	       
+	      (env, hlop :: defs)
+	    end
+	  | cvtDefines (PT.TypeDef(id, ty), (env, defs)) = (insertTy(env, id, cvtTy(env, ty)), defs)
+	  | cvtDefines (_, (env, defs)) = (env, defs)
+	val (_, defs) = List.foldl cvtDefines (emptyEnv fileName, []) defs
+        in
+	  defs
+        end (* cvtPrototypes *)
+
     fun cvtFile (importEnv, fileName, PT.FILE defs) = let
 	(* this is the first pass, which adds C-function prototypes to the import environment,
 	 * defined types to the translation environment, and HLOp signatures to the HLOp
@@ -363,10 +397,8 @@
 		      val (retTy, attrs) = (case retTy
 			     of NONE => ([], [HLOp.NORETURN])
 			      | SOME tys => (cvtTys(env, tys), [])
-			    (* end case *))
-		      fun tyOfPat (PT.WildPat NONE) = Ty.T_Any
-			| tyOfPat (PT.WildPat(SOME ty)) = cvtTy(env, ty)
-			| tyOfPat (PT.VarPat(_, ty)) = cvtTy(env, ty)
+			    (* end case *))		      
+		      val tyOfPat = tyOfPat' env
 		      val paramTys = List.map (fn p => HLOp.PARAM(tyOfPat p)) params
 		      val exhTys = List.map tyOfPat exh
 		      in

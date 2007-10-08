@@ -67,6 +67,8 @@ structure HLOpEnv : sig
     structure BTy = BOMTy
     structure Basis = BOMBasis
 
+    type env = HLOp.hlop AtomTable.hash_table
+
   (* some standard parameter types *)
     val unitTy = BTy.unitTy
     val boolTy = BTy.boolTy
@@ -165,7 +167,7 @@ structure HLOpEnv : sig
 	  in
 	    List.app ins bindings;
 	    AtomTable.find tbl
-	  end
+	  end 
 
   (* HLOp table *)
     val tbl : HLOp.hlop AtomTable.hash_table = AtomTable.mkTable (128, Fail "HLOp table")
