@@ -47,6 +47,7 @@ structure HLOpEnv : sig
 
   (* work queues *)
     val newWorkQueueOp : HLOp.hlop
+    val getWork1AllOp  : HLOp.hlop
 
   (* futures *)
     val futureOp : HLOp.hlop
@@ -135,6 +136,7 @@ structure HLOpEnv : sig
 
   (* work queue operations *)
     val newWorkQueueOp = newWithExh ("new-work-queue", [unitTy], [workQueueTy], [])
+    val getWork1AllOp = newWithExh ("get-work1-all", [workQueueTy], [unitTy], [])
 
   (* futures *)
     (* FIXME set these up with work queues too *)
@@ -185,6 +187,7 @@ structure HLOpEnv : sig
                 schedulerStartupOp,
                 defaultSchedulerStartupOp,
 		newWorkQueueOp,
+		getWork1AllOp,
 		futureOp,
 		touchOp,
 		cancelOp,

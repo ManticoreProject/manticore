@@ -6,4 +6,8 @@ fun pfib (i : long) = (case i
 	| n => add (| pfib(i-1), pfib(i-2) |)
       (* end case *));
 
-pfib 20
+val s = ltos (pfib 20);
+
+val _ = print ("\npfib(20) is " ^ s ^ "\n");
+
+()

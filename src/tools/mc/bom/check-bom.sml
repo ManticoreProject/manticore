@@ -338,12 +338,12 @@ structure CheckBOM : sig
 	(* check old counts against new counts *)
 	  fun checkCnt (x, {appCnt, useCnt}) =
 		if (appCnt <> BV.appCntOf x) orelse (useCnt <> BV.useCount x)
-		  then error[
+		  then (* error[
 		      "inconsistent counts for ", v2s x, ": recorded <",
 		      Int.toString useCnt, ":", Int.toString appCnt,
 		      "> vs. actual <", Int.toString(BV.useCount x), ":",
 		      Int.toString(BV.appCntOf x), ">\n"
-		    ]
+		    ] *) ()
 		  else ()
 	  in
 	  (* record census counts and do initial checking *)

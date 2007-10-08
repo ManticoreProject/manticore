@@ -330,6 +330,7 @@ structure StdEnv : sig
 *)
 
 	    (F.newWorkQueue,    hlop H.newWorkQueueOp),
+	    (F.getWork1All,     hlop H.getWork1AllOp),
 	    (F.future,          hlop H.futureOp),
 	    (F.touch,           hlop H.touchOp),
 	    (F.cancel,          hlop H.cancelOp),

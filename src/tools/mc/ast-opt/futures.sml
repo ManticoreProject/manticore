@@ -24,7 +24,7 @@ structure Futures : sig
     val cancel1 : Var.var
 
     val mkNewWorkQueue : unit -> AST.exp
-    val mkGetWork1All  : unit -> AST.exp 
+    val mkGetWork1All  : AST.exp -> AST.exp 
 
     val mkFuture  : AST.exp * AST.exp -> AST.exp 
     val mkTouch   : AST.exp * AST.exp -> AST.exp
@@ -77,7 +77,7 @@ structure Futures : sig
 				B.unitTy --> B.workQueueTy)
 
     val getWork1All = monoVar ("getWork1All",
-			       B.unitTy --> B.unitTy)
+			       B.workQueueTy --> B.unitTy)
 
     val future = polyVar ("future",
  		          fn tv => (Basis.unitTy --> tv) --> futureTy tv)
@@ -103,11 +103,9 @@ structure Futures : sig
 					A.TupleExp [],
 					Basis.workQueueTy)
 
-    (* mkNewWorkQueue : unit -> A.exp *)
+    (* mkNewWorkQueue : A.exp -> A.exp *)
     (* Produces an AST expression which is a call to the getWork1All hlop. *)
-    fun mkGetWork1All () = A.ApplyExp (A.VarExp (getWork1All, []),
-				       A.TupleExp [],
-				       Basis.unitTy)
+    fun mkGetWork1All q = A.ApplyExp (A.VarExp (getWork1All, []), q, Basis.unitTy)
 
     (* mkThunk : A.exp -> A.exp *)
     (* Consumes e; produces (fn u => e) (for fresh u : unit). *)

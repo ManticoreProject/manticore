@@ -117,7 +117,9 @@ structure FutParTup : sig
 
 	in
 	    A.LetExp (A.ValBind (A.VarPat q, F.mkNewWorkQueue ()),
-		      exp m)
+		      A.LetExp (A.ValBind (A.WildPat Basis.workQueueTy, 
+					   F.mkGetWork1All (A.VarExp (q, []))),
+				exp m))
 	end
 
     (* futurize : A.module -> A.module *)

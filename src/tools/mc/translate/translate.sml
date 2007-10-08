@@ -136,6 +136,10 @@ structure Translate : sig
 		  B.mkIf(x, trExpToExp(env, e2), trExpToExp(env, e3))))
 	    | AST.CaseExp(e, rules, ty) =>
 		EXP(trExpToV (env, e, fn x => trCase(env, x, rules)))
+	    | AST.HandleExp (e, ms, t) =>
+	        raise Fail "todo: trExp | HandleExp"
+	    | AST.RaiseExp (e, t) =>
+                raise Fail "todo: trExp | RaiseExp"
 	    | f as AST.FunExp(x, e, ty) => let
 		val fty = TypeOf.exp f
 		val fvar = Var.new ("f", fty)
