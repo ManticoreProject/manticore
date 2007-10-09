@@ -1,0 +1,14 @@
+(* future1.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * To create a rope from a list.
+ *)
+
+#include "types.def"
+#include "futures.def"
+
+define @rope-from-list (xs : list) : rope = 
+  return (rope)$0;
+;
