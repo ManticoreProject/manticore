@@ -38,10 +38,6 @@ structure FutParTup : sig
     (* id : 'a -> 'a *)
     val id = fn x => x
 
-    infixr 5 :>: (* same precedence as :: *)
-    (* (:>:) : ('a * 'b) * ('a list * 'b list) -> 'a list * 'b list *)
-    fun (x,y) :>: (xs,ys) = (x::xs, y::ys)
- 
     (* module : A.module -> A.module *)
     fun module m = 
 	let val q = Var.new ("q", Basis.workQueueTy)
@@ -52,28 +48,32 @@ structure FutParTup : sig
 	    (* and produces a LetExp that is a "futurized" ptuple. *)
 	    (* Note: the first member of the list is not futurized (an optimization). *)
 	    fun ptuple (e::es) = 
-  		let (* mkFutBinds : A.exp list -> A.binding list * A.var list *)
-		    fun mkFutBinds ([], n) = ([],[])
-		      | mkFutBinds (e::es, n) =
-			let val fe = F.mkFuture1 (qe, e)
-			    val f_n = Var.newWithKind ("f" ^ Int.toString n,
-						       A.VK_Pat,
-						       TypeOf.exp fe)
-			    val b = A.ValBind (A.VarPat f_n, fe)
-			in
-			    (b, f_n) :>: mkFutBinds (es, n+1)
-			end
-		    (* letMany : A.binding list * A.exp -> A.exp *)
-		    (* pre: there is at least one binding *)
-		    fun letMany (b::[], e) = A.LetExp (b, e)
-		      | letMany (b::bs, e) = A.LetExp (b, letMany (bs, e))
-		      | letMany ([], _) = raise Fail "letMany: argument must have\
-                                                     \ at least one binding"
-		    val (bs, vs) = mkFutBinds (map exp es, 1)
-		    val touches = map (fn v => F.mkTouch1 (qe, A.VarExp (v, []))) vs
-		in
-		    letMany (bs, A.TupleExp (exp e :: touches))
-		end
+  		  let (* mkVar : int * ty -> var *)
+		      fun mkVar (n, t) = 
+			    let val name = "f" ^ Int.toString n
+			    in
+				Var.newWithKind (name, A.VK_Pat, t)
+			    end
+		      (* build : exp list * int * binding list * exp list -> exp *) 
+		      fun build ([], _, bs, tupExps) = 
+			    let val tup = A.TupleExp (exp e :: tupExps)
+			    in
+				foldr A.LetExp tup bs
+			    end
+			| build (e::es, n, bs, tupExps) =
+			    if F.isFutureCand e then
+				let val fe = F.mkFuture1 (qe, exp e)
+				    val f_n = mkVar (n, TypeOf.exp fe)
+				    val b = A.ValBind (A.VarPat f_n, fe)
+				    val t = F.mkTouch1 (qe, A.VarExp (f_n, []))
+				in
+				    build (es, n+1, b::bs, t::tupExps)
+				end
+			    else
+				build (es, n, bs, exp e :: tupExps)
+		  in
+		      build (rev es, 1, [], [])
+		  end
 	      | ptuple [] = raise Fail "ptuple: expected non-empty list of expressions"
 				  
 	    (* exp : A.exp -> A.exp *)
@@ -147,6 +147,12 @@ structure FutParTup : sig
 				 U.fact 11],
 			 U.fact 12]
 
+	(* t4 = (|1, 2, 3|) *)
+	val t4 = U.ptup [U.int 1, U.int 2, U.int 3]
+
+	(* t4 = (|1, fact 20, 3|) *)
+	val t5 = U.ptup [U.int 1, U.fact 20, U.int 3]
+
 	(* test : A.exp -> unit *)
 	fun testPTup e = (PrintAST.print e;
 			  U.describe (SOME "futurizing");
@@ -154,7 +160,7 @@ structure FutParTup : sig
     in
 
         (* test : int -> unit *)
-        val test = U.mkTest testPTup [t0,t1,t2,t3]
+        val test = U.mkTest testPTup [t0,t1,t2,t3,t4,t5]
 
     end
 
