@@ -57,7 +57,6 @@ extern int ASM_VProcSleep;
 #  error unsupported OS
 #endif
 
-
 /* VProcInit:
  *
  * Initialization for the VProc management system.
@@ -65,7 +64,6 @@ extern int ASM_VProcSleep;
 void VProcInit (Options_t *opts)
 {
     NumHardwareProcs = GetNumCPUs();
-    NextVProc = 0;
     NumIdleVProcs = 0;
 
   /* get command-line options */
@@ -83,7 +81,25 @@ void VProcInit (Options_t *opts)
 	Die ("unable to create VProcInfoKey");
     }
 
-  /* allocate nProcs-1 idle vprocs; the last vproc will be created to run
+    /* allocate memory and initialize locks and condition variables for all vprocs.
+     */
+    for (int i = 0;  i < NumVProcs;  i++) {
+      /* allocate the VProc heap; we store the VProc representation in the base
+       * of the heap area.
+       */
+      int nBlocks = 1;
+      VProc_t *vproc = (VProc_t *)AllocMemory (&nBlocks, VP_HEAP_SZB);
+      if ((vproc == 0) || (nBlocks != 1))
+	Die ("unable to allocate vproc heap");
+      
+      VProcs[i] = vproc;
+      MutexInit (&(vproc->lock));
+      CondInit (&(vproc->wait));
+      vproc->oldTop = VProcHeap(vproc);
+      InitVProcHeap (vproc);
+    }
+
+  /* create nProcs-1 idle vprocs; the last vproc will be created to run
    * the initial Manticore thread.
    */
     for (int i = 1;  i < NumVProcs;  i++) {
@@ -100,16 +116,12 @@ void VProcInit (Options_t *opts)
  */
 VProc_t *VProcCreate (VProcFn_t f, void *arg)
 {
-    if (NextVProc >= MAX_NUM_VPROCS)
-	Die ("too many vprocs\n");
 
-  /* allocate the VProc heap; we store the VProc representation in the base
-   * of the heap area.
-   */
-    int nBlocks = 1;
-    VProc_t *vproc = (VProc_t *)AllocMemory (&nBlocks, VP_HEAP_SZB);
-    if ((vproc == 0) || (nBlocks != 1))
-	Die ("unable to allocate vproc heap");
+  if (NextVProc > MAX_NUM_VPROCS) {
+    Die ("Allocated too many VProcs");
+  }
+
+  VProc_t* vproc = VProcs[NextVProc];
 
   /* initialize the vproc structure */
     vproc->inManticore = M_FALSE;
@@ -125,16 +137,10 @@ VProc_t *VProcCreate (VProcFn_t f, void *arg)
     vproc->stdCont = M_UNIT;
     vproc->stdExnCont = M_UNIT;
     vproc->limitPtr = (Addr_t)vproc + VP_HEAP_SZB - ALLOC_BUF_SZB;
-    vproc->oldTop = VProcHeap(vproc);
     SetAllocPtr (vproc);
-    MutexInit (&(vproc->lock));
-    CondInit (&(vproc->wait));
     vproc->idle = true;
 
-    vproc->id = NextVProc;
-    VProcs[NextVProc++] = vproc;
-
-    InitVProcHeap (vproc);
+    vproc->id = NextVProc++;
 
   /* start the vproc's pthread */
     InitData_t data;
@@ -155,7 +161,6 @@ VProc_t *VProcCreate (VProcFn_t f, void *arg)
     MutexUnlock (&(data.lock));
 
     return vproc;
-
 } /* VProcCreate */
 
 
@@ -259,7 +264,7 @@ static void *VProcMain (void *_data)
     sigfillset (&(sa.sa_mask));
     sigaction (SIGUSR1, &sa, 0);
     sigaction (SIGUSR2, &sa, 0);
-    sigaction (SIGSEGV, &sa, 0);
+    //    sigaction (SIGSEGV, &sa, 0);
 
   /* signal that we have started */
     MutexLock (&(data->lock));

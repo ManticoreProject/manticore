@@ -8,7 +8,7 @@ module Migrate
   extern void EnqueueOnVProc (void *, void *, void *, void *) __attribute__((alloc));
   extern void *ListVProcs (void *) __attribute__((alloc));
 
-  fun init (u : enum(0) / exh : cont(any)) : enum(0) =
+  fun init (nIters : int / exh : cont(any)) : enum(0) =
  
       do @default-scheduler-startup (/ exh)
 
@@ -30,12 +30,11 @@ module Migrate
           return ()
 
       fun wasteTime (/ exh : cont(any)) : () =
-	  let x : int = apply fib (31 / exh)
-          let ws : [int] = wrap (x)
-          let s : [any,int] = @itos (ws / exh)
-          apply println (s / exh)
-
-      fun loopForever (/ exh : cont(any)) : () = apply loopForever (/ exh)
+	  fun doit (i : int / exh : cont(any)) : () =
+	      if I32Eq (i, 0) then return () else
+  	      let x : int = apply fib (9 / exh)
+              apply doit (I32Sub(i, 1)/ exh)
+          apply doit (1000000 / exh)
 
       fun migrate (vp : vproc / exh : cont(any)) : () =
 	  if Equal (vp, self)
@@ -43,25 +42,30 @@ module Migrate
 	     else cont k (x : enum(0)) = return ()
 	          let self : vproc = host_vproc
                   do ccall EnqueueOnVProc (self, vp, enum(0), k)
-		  do apply loopForever (/ exh)
+                  (*do apply wasteTime (/ exh)*)
 		  @forward (self, enum(0):signal / exh)
 
-      fun loop (vps : list / exh : cont(any)) : () = 
-	  case vps of 
-	       enum(0):list => do ccall M_Print ("done migrating\n\000")
-			       @forward (host_vproc, enum(0):signal / exh)
-	     | CONS (vp : vproc, vps : list) => 
-	       if Equal (vp, self)
-		  then apply loop (vps / exh)
-	          else do apply wasteTime (/ exh)
-		       do ccall M_Print ("migrating\n\000")
-		       do apply migrate (vp / exh)	   	       
-                       do apply wasteTime (/ exh)
-		       do ccall M_Print ("migrated\n\000")
-		       apply loop (vps / exh)
-          end
+      let vprocs : list = ccall ListVProcs (self)
 
-      let vps : list = ccall ListVProcs (self)
-      do apply loop (vps / exh)
+      fun loop (i : int, vps : list / exh : cont(any)) : () = 
+	  if I32Gt (i, nIters)
+	    then do ccall M_Print ("done migrating\n\000")
+		    @forward (host_vproc, enum(0):signal / exh)
+	    else
+	      case vps of 
+		  enum(0):list => do ccall M_Print ("restarting\n\000")
+				  apply loop (I32Add (i, 1), vprocs / exh)
+		| CONS (vp : vproc, vps : list) => 
+		  if Equal (vp, host_vproc)
+		    then apply loop (i, vps / exh)
+	            else 
+			do ccall M_Print ("migrating\n\000")
+  		        do apply migrate (vp / exh)	   	       
+ 		        do apply wasteTime (/ exh)
+		        do ccall M_Print ("migrated\n\000")
+		        apply loop (i, vps / exh)
+              end
+
+      do apply loop (0, vprocs / exh)
 
       return (enum(0))
