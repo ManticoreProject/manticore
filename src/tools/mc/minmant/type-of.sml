@@ -29,6 +29,8 @@ structure TypeOf : sig
 	    Ty.FunTy(argTy, ty)
 	  end
       | exp (AST.CaseExp(_, _, ty)) = ty
+      | exp (AST.HandleExp (_, _, ty)) = ty
+      | exp (AST.RaiseExp (_, ty)) = ty
       | exp (AST.ApplyExp(_, _, ty)) = ty
       | exp (AST.TupleExp es) = Ty.TupleTy(List.map exp es)
       | exp (AST.RangeExp(_, _, _, ty)) = B.parrayTy ty

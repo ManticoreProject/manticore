@@ -21,7 +21,11 @@ structure FutParArr : sig
     structure B = Basis
 
     (* mkRope : A.exp -> A.exp *)
-    fun mkRope e = raise Fail "todo: mkRope"
+    fun mkRope e = 
+	  let val t = TypeOf.exp e
+	  in
+	      A.ApplyExp (A.VarExp (B.ropeFromList, [t]), e, B.ropeTy t)
+	  end
 
     (* mkList : A.exp list * T.ty -> A.exp *)
     fun mkList (es, t) =

@@ -359,7 +359,8 @@ structure StdEnv : sig
 		  (B.print,		"print"),
 		  (B.stringConcat,	"string-concat2"),
 		  (B.itos,		"itos"),
-		  (B.ltos,		"ltos")
+		  (B.ltos,		"ltos"),
+		  (B.ropeFromList,      "rope-from-list")
 		]  
 	  fun ins ((x, n), env) = (case H.find (Atom.atom n)
 		of NONE => raise Fail ("cannot find hlop " ^ n)
