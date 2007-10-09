@@ -12,11 +12,18 @@
   (* an environment to keep track of any imports required by the high-level operator *)
     type import_env = BOM.var CFunctions.c_fun AtomTable.hash_table
 
-    val cvtFile : (import_env * string * HLOpDefPT.file)
-	  -> (BOM.hlop * bool * BOM.lambda * BOM.var CFunctions.c_fun list) list
+    type hlop_def = {
+	name : BOM.hlop,			(* the HLOp's identifier *)
+	inline : bool,				(* should the HLOp be inlined? *)
+	def : BOM.lambda,			(* the HLOps definition *)
+	externs : (BOM.var * int) list		(* list of external variables (i.e., C functions) *)
+						(* that def references paired with a count of the *)
+						(* number of references *)
+      }
 
-    val cvtPrototypes : {fileName : string, pt : HLOpDefPT.file} 
-          -> HLOp.hlop list
+    val cvtFile : (import_env * string * HLOpDefPT.file) -> hlop_def list
+
+    val cvtPrototypes : {fileName : string, pt : HLOpDefPT.file} -> HLOp.hlop list
 
   end = struct
 
@@ -28,9 +35,19 @@
     structure Basis = BOMBasis
     structure AMap = AtomMap
     structure ATbl = AtomTable
+    structure VTbl = BV.Tbl
 
   (* an environment to keep track of any imports required by the high-level operator *)
     type import_env = BOM.var CFunctions.c_fun AtomTable.hash_table
+
+    type hlop_def = {
+	name : BOM.hlop,			(* the HLOp's identifier *)
+	inline : bool,				(* should the HLOp be inlined? *)
+	def : BOM.lambda,			(* the HLOps definition *)
+	externs : (BOM.var * int) list		(* list of external variables (i.e., C functions) *)
+						(* that def references paired with a count of the *)
+						(* number of references *)
+      }
 
   (* environment for the translation *)
     datatype env = E of {
@@ -339,35 +356,35 @@
 	  end
 
     fun tyOfPat' env = let
-	fun doit (PT.WildPat NONE) = Ty.T_Any
-	  | doit (PT.WildPat(SOME ty)) = cvtTy(env, ty)
-	  | doit (PT.VarPat(_, ty)) = cvtTy(env, ty)
-    in
-	doit
-    end
+	  fun doit (PT.WildPat NONE) = Ty.T_Any
+	    | doit (PT.WildPat(SOME ty)) = cvtTy(env, ty)
+	    | doit (PT.VarPat(_, ty)) = cvtTy(env, ty)
+	   in
+	     doit
+	   end
 				     
     fun cvtPrototypes {fileName, pt=PT.FILE defs} = let 
-	fun cvtDefines (PT.Define(_, name, params, exh, retTy, _), (env, defs)) = let
-	    val tyOfPat = tyOfPat' env
-	    val paramTys = List.map (fn p => HLOp.PARAM (tyOfPat p)) params
-	    val exhTys = List.map tyOfPat exh
-	    val (retTy, attrs) = (case retTy
-				   of NONE => ([], [HLOp.NORETURN])
-				    | SOME tys => (cvtTys (env, tys), [])
-				 (* end case *))
-	    val hlop = HLOp.new (
-		       name,
-		       {params=paramTys, exh=exhTys, results=retTy},
-		       attrs) 
-	    in	       
-	      (env, hlop :: defs)
-	    end
-	  | cvtDefines (PT.TypeDef(id, ty), (env, defs)) = (insertTy(env, id, cvtTy(env, ty)), defs)
-	  | cvtDefines (_, (env, defs)) = (env, defs)
-	val (_, defs) = List.foldl cvtDefines (emptyEnv fileName, []) defs
-        in
-	  defs
-        end (* cvtPrototypes *)
+	  fun cvtDefines (PT.Define(_, name, params, exh, retTy, _), (env, defs)) = let
+		val tyOfPat = tyOfPat' env
+		val paramTys = List.map (fn p => HLOp.PARAM (tyOfPat p)) params
+		val exhTys = List.map tyOfPat exh
+		val (retTy, attrs) = (case retTy
+		       of NONE => ([], [HLOp.NORETURN])
+			| SOME tys => (cvtTys (env, tys), [])
+		      (* end case *))
+		val hlop = HLOp.new (
+		      name,
+		      {params=paramTys, exh=exhTys, results=retTy},
+		      attrs) 
+		in	       
+		  (env, hlop :: defs)
+		end
+	    | cvtDefines (PT.TypeDef(id, ty), (env, defs)) = (insertTy(env, id, cvtTy(env, ty)), defs)
+	    | cvtDefines (_, (env, defs)) = (env, defs)
+	  val (_, defs) = List.foldl cvtDefines (emptyEnv fileName, []) defs
+	  in
+	    defs
+	  end (* cvtPrototypes *)
 
     fun cvtFile (importEnv, fileName, PT.FILE defs) = let
 	(* this is the first pass, which adds C-function prototypes to the import environment,
@@ -416,17 +433,27 @@
 	    | cvtDefs (PT.Define(inline, name, params, exh, retTy, SOME e)::defs) = let
 		val hlop = valOf(Env.find name)
 		val retTy = (case retTy of NONE => [] | SOME tys => tys)
-		val cfuns = ATbl.mkTable (16, Fail "cfun table")
+		val cfuns = VTbl.mkTable (16, Fail "cfun table")
 		fun findCFun name = (case ATbl.find importEnv name
 		       of NONE => raise (fail(env, ["Unknown C function ", Atom.toString name]))
 			| SOME(cf as CFunctions.CFun{var, ...}) => (
-			    ATbl.insert cfuns (name, cf);
+			  (* increment the count of references to the C function *)
+			    case VTbl.find cfuns var
+			     of NONE => VTbl.insert cfuns (var, 1)
+			      | SOME n => VTbl.insert cfuns (var, n+1)
+			    (* end case *);
 			    var)
 		      (* end case *))
 		val (env, doBody) = cvtLambda (findCFun, env, (name, params, exh, retTy, e), Ty.T_Fun)
 		val lambda = doBody env
+		val def = {
+			name = hlop,
+			inline = inline,
+			def = lambda,
+			externs = VTbl.listItemsi cfuns
+		      }
 		in
-		  (hlop, inline, lambda, ATbl.listItems cfuns) :: cvtDefs defs
+		  def :: cvtDefs defs
 		end
 	    | cvtDefs (_::defs) = cvtDefs defs
 	  in

@@ -11,8 +11,9 @@ structure HLOpDefLoader : sig
 				(* otherwise, a copy of the operator is added to the *)
 				(* module. *)
 	defn : BOM.lambda,
-	cfuns : BOM.var CFunctions.c_fun list
-				(* list of C functions that the definition references *)
+	cfuns : (BOM.var * int) list
+				(* list of C functions that the definition references and *)
+				(* theur use counts in the definition. *)
       }
 
   (* an environment to keep track of any imports required by the high-level operator *)
@@ -29,7 +30,7 @@ structure HLOpDefLoader : sig
     type hlop_def = {
 	inline : bool,
 	defn : BOM.lambda,
-	cfuns : BOM.var CFunctions.c_fun list
+	cfuns : (BOM.var * int) list
       }
 
     type import_env = BOM.var CFunctions.c_fun ATbl.hash_table
@@ -93,15 +94,15 @@ structure HLOpDefLoader : sig
 		  case Loader.load fileName
 		   of SOME pt => let
 			val defs = Expand.cvtFile(importEnv, fileName, pt)
-			fun record (hlOp, inline, lambda, cfuns) = (
-			    (* compute census info for the definition; we have to clear the
-			     * imported C function counts, because they get counted with a
+			fun record {name, inline, def, externs} = (
+			    (* compute census info for the definition; we have to decrement the
+			     * imported C function counts, because they get counted when a
 			     * definition is added to the program.
 			     *)
-			      Census.initLambda lambda;
-			      List.app (fn (CFunctions.CFun{var, ...}) => Census.clear var) cfuns;
+			      Census.initLambda def;
+			      List.app (fn (cf, cnt) => BOM.Var.addToCount(cf, ~cnt)) externs;
 			      ATbl.insert cache
-				(HLOp.name hlOp, {inline=inline, defn=lambda, cfuns=cfuns}))
+				(HLOp.name hlOp, {inline=inline, defn=def, cfuns=externs}))
 			in
 			  List.app record defs;
 			  case ATbl.find cache opName

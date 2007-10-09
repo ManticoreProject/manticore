@@ -21,7 +21,7 @@ structure ExpandHLOps : sig
     structure VTbl = B.Var.Tbl
 
   (* record a use of a C function *)
-    fun useCFun (CFunctions.CFun{var, ...}) = Census.incUseCnt var
+    fun useCFun (var, cnt) = B.Var.addToCount(var, cnt)
 
     fun expand (module as B.MODULE{name, externs, body}) = let
 	  val changed = ref false
