@@ -356,16 +356,17 @@ structure StdEnv : sig
   (* enrich env0 with HLOP signatures in prototypes.hlop *)
     fun env () = let
 	  val hlops =  [
-		  (B.print,           BasisNames.print),
-		  (B.stringConcat,	Atom.atom "string-concat2"),
-		  (B.itos,            BasisNames.itos),
-		  (B.ltos,            BasisNames.ltos)
+		  (B.print,		"print"),
+		  (B.stringConcat,	"string-concat2"),
+		  (B.itos,		"itos"),
+		  (B.ltos,		"ltos")
 		]  
-	  fun ins ((x, n), env) = (case H.find n
-		of NONE => raise Fail ("cannot find hlop " ^ Atom.toString n)
+	  fun ins ((x, n), env) = (case H.find (Atom.atom n)
+		of NONE => raise Fail ("cannot find hlop " ^ n)
 		 | SOME hop => E.insertFun (env, x, hlop hop)
 		(* end case *))
 	  in
+	    HLOpDefLoader.loadPrototypes ();
 	    List.foldl ins env0 hlops
 	  end
 
