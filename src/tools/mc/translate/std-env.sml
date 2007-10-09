@@ -8,9 +8,7 @@
 
 structure StdEnv : sig
 
-    val env0 : TranslateEnv.env
-
-    val insHLOPs : unit -> TranslateEnv.env
+    val env : unit -> TranslateEnv.env
 
   end = struct
 
@@ -355,21 +353,20 @@ structure StdEnv : sig
 	    env
 	  end
 
-  (* enrich the environments with HLOP signatures in prototypes.hlop *)
-    fun insHLOPs () = let
-	val hlops =  [
-	    (B.print,           BasisNames.print),
-	    (B.stringConcat,	Atom.atom "string-concat2"),
-	    (B.itos,            BasisNames.itos),
-	    (B.ltos,            BasisNames.ltos)
-	]
-
-	fun ins ((x, n), env) = (case H.find n
-	    of NONE => raise Fail ("cannot find hlop " ^ Atom.toString n)
-	     | SOME hop => E.insertFun (env, x, hlop hop)
-	    (* end case *))
-        in
-	   List.foldl ins env0 hlops
-        end
+  (* enrich env0 with HLOP signatures in prototypes.hlop *)
+    fun env () = let
+	  val hlops =  [
+		  (B.print,           BasisNames.print),
+		  (B.stringConcat,	Atom.atom "string-concat2"),
+		  (B.itos,            BasisNames.itos),
+		  (B.ltos,            BasisNames.ltos)
+		]  
+	  fun ins ((x, n), env) = (case H.find n
+		of NONE => raise Fail ("cannot find hlop " ^ Atom.toString n)
+		 | SOME hop => E.insertFun (env, x, hlop hop)
+		(* end case *))
+	  in
+	    List.foldl ins env0 hlops
+	  end
 
   end

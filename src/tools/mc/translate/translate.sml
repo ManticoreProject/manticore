@@ -399,10 +399,7 @@ structure Translate : sig
 	  else B.mkLet([], B.mkHLOp(HLOpEnv.defaultSchedulerStartupOp, [], [E.handlerOf env]), exp)
 
     fun translate exp = let
-	(* seed the environment with top-level hlops *)
-  	  val _ = HLOpDefLoader.loadPrototypes ()
-	  val env0 = StdEnv.insHLOPs ()
-
+	  val env0 = StdEnv.env ()
           val argTy = BTy.T_Raw RawTypes.T_Int
           val arg = BV.new("_arg", argTy)
 	  val (exh, env) = E.newHandler env0
