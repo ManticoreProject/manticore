@@ -11,6 +11,7 @@ Library
   structure ASTOpt
   structure FlatParTup
   structure FreshVar
+  structure FutParArr
   structure FutParLet	
   structure FutParTup	
   structure Futures
@@ -35,6 +36,7 @@ is
   ast-opt-controls.sml
   flat-par-tup.sml
   fresh-var.sml
+  fut-par-arr.sml
   fut-par-let.sml
   fut-par-tup.sml
   futures.sml

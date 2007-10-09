@@ -47,6 +47,9 @@ structure TestUtils =
     (* ptup : A.exp list -> A.exp *)
     fun ptup es = A.PTupleExp es
 
+    (* parr : A.exp list * T.ty -> A.exp *)
+    fun parr (es, t) = A.PArrayExp (es, t)
+
     (* fact : int -> A.exp *)
     fun fact n =
 	let val f = Var.new ("fact", T.FunTy (Basis.intTy, Basis.intTy))
