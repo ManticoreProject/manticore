@@ -20,9 +20,11 @@ structure Sizes : sig
       | sizeOfRHS (B.E_Update _) = 1
       | sizeOfRHS (B.E_AddrOf _) = 1
       | sizeOfRHS (B.E_Alloc(_, args)) = 1 + List.length args
+      | sizeOfRHS (B.E_GAlloc(_, args)) = 10 + List.length args
+      | sizeOfRHS (B.E_Promote _) = 3
       | sizeOfRHS (B.E_Prim _) = 1
-      | sizeOfRHS (B.E_DCon(_, args)) = 1 + List.length args
-      | sizeOfRHS (B.E_CCall(_, args)) = 1 + List.length args
+      | sizeOfRHS (B.E_DCon(_, args)) = 2 + List.length args
+      | sizeOfRHS (B.E_CCall(_, args)) = 2 + List.length args
       | sizeOfRHS B.E_HostVProc = 1
       | sizeOfRHS (B.E_VPLoad _) = 1
       | sizeOfRHS (B.E_VPStore _) = 1

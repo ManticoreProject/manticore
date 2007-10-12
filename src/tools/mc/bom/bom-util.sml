@@ -82,6 +82,8 @@ structure BOMUtil : sig
       | varsOfRHS (B.E_Update(_, x, y)) = [x, y]
       | varsOfRHS (B.E_AddrOf(_, x)) = [x]
       | varsOfRHS (B.E_Alloc(_, args)) = args
+      | varsOfRHS (B.E_GAlloc(_, args)) = args
+      | varsOfRHS (B.E_Promote x) = [x]
       | varsOfRHS (B.E_Prim p) = PrimUtil.varsOf p
       | varsOfRHS (B.E_DCon(_, args)) = args
       | varsOfRHS (B.E_CCall(f, args)) = f :: args
@@ -97,6 +99,8 @@ structure BOMUtil : sig
 	    | B.E_Update(i, x, y) => B.E_Update(i, subst s x, subst s y)
 	    | B.E_AddrOf(i, x) => B.E_AddrOf(i, subst s x)
 	    | B.E_Alloc(ty, args) => B.E_Alloc(ty, subst'(s, args))
+	    | B.E_GAlloc(ty, args) => B.E_GAlloc(ty, subst'(s, args))
+	    | B.E_Promote x => B.E_Promote(subst s x)
 	    | B.E_Prim p => B.E_Prim(PrimUtil.map (subst s) p)
 	    | B.E_DCon(dc, args) => B.E_DCon(dc, subst'(s, args))
 	    | B.E_CCall(f, args) => B.E_CCall(subst s f, subst'(s, args))
@@ -266,6 +270,8 @@ structure BOMUtil : sig
       | typeOfRHS (B.E_Update _) = []
       | typeOfRHS (B.E_AddrOf(i, x)) = [BTy.T_Addr(BOMTyUtil.select(BV.typeOf x, i))]
       | typeOfRHS (B.E_Alloc(ty, _)) = [ty]
+      | typeOfRHS (B.E_GAlloc(ty, _)) = [ty]
+      | typeOfRHS (B.E_Promote x) = [BV.typeOf x]
       | typeOfRHS (B.E_Prim p) = typeOfPrim p
       | typeOfRHS (B.E_DCon(dc, _)) = [BOMTyUtil.typeOfDCon dc]
       | typeOfRHS (B.E_CCall(cf, _)) = let

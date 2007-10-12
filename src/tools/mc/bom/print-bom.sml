@@ -122,6 +122,8 @@ structure PrintBOM : sig
 		]
 	    | prRHS (B.E_AddrOf(i, y)) = prl ["&", Int.toString i, "(", varUseToString y, ")"]
 	    | prRHS (B.E_Alloc(_, ys)) = (pr "alloc "; prList varUseToString ys)
+	    | prRHS (B.E_GAlloc(_, ys)) = (pr "galloc "; prList varUseToString ys)
+	    | prRHS (B.E_Promote y) = (pr "promote "; pr (varUseToString y))
 	    | prRHS (B.E_Prim p) = pr (PrimUtil.fmt varUseToString p)
 	    | prRHS (B.E_DCon(dc, args)) = (
 		pr(BOMTyCon.dconName dc); prList varUseToString args; pr "\n")

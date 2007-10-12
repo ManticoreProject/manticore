@@ -34,6 +34,8 @@ structure Contract : sig
     val cntUnusedSelect		= ST.newCounter "contract:unused-select"
     val cntSelectConst		= ST.newCounter "contract:select-const"
     val cntReallocElim		= ST.newCounter "contract:realloc-elim"
+    val cntGallocToPromote	= ST.newCounter "contract:galloc-to-promote"
+    val cntPromoteElim		= ST.newCounter "contract:promote-elim"
     val cntDeadFun		= ST.newCounter "contract:dead-fun"
     val cntDeadRecFun		= ST.newCounter "contract:dead-rec-fun"
     val cntDeadCont		= ST.newCounter "contract:dead-cont"
@@ -186,6 +188,33 @@ structure Contract : sig
 			    OK([], U.extend(env, x, tpl)))
 			  else FAIL
 		      end
+		  | _ => FAIL
+		(* end case *))
+	    | B.E_GAlloc(BTy.T_Tuple(false, tys), z::zs) => (case bindingOf z
+		 of B.VK_RHS(B.E_Select(0, tpl)) => let
+		      fun chk (_, []) = true
+			| chk (i, z::zs) = (case bindingOf z
+			     of B.VK_RHS(B.E_Select(j, tpl')) =>
+				  (i = j) andalso BV.same(tpl, tpl') andalso chk(i+1, zs)
+			      | _ => false
+			    (* end case *))
+		      in
+			if (List.length tys = List.length zs+1) andalso chk(1, zs)
+			  then (
+			  (* alloc(#0 tpl, #1 tpl, ..., #n tpl) ==> promote(tpl) *)
+			    ST.tick cntGallocToPromote;
+			    dec' (z::zs);
+			    useCntRef tpl += 1;
+			    OK([([x], B.E_Promote tpl)], env))
+			  else FAIL
+		      end
+		  | _ => FAIL
+		(* end case *))
+	    | B.E_Promote y => (case bindingOf y
+		 of B.VK_RHS(B.E_GAlloc _) => (
+		      ST.tick cntPromoteElim;
+		      useCntRef y := useCntOf x - 1;
+		      OK([], U.extend(env, x, y)))
 		  | _ => FAIL
 		(* end case *))
 	    | B.E_Prim p => PrimContract.contract (env, x, p)

@@ -203,6 +203,18 @@
 			    fn xs => BOM.mkStmt(lhs', BOM.E_Alloc(Ty.T_Tuple(mut, List.map BV.typeOf xs), xs),
 				e'))
 			end
+		    | PT.GAlloc args => let
+			val mut = (case BV.typeOf(hd lhs')
+			       of Ty.T_Tuple(true, _) => true
+				| _ => false
+			      (* end case *))
+			in
+			  cvtSimpleExps(findCFun, env, args,
+			    fn xs => BOM.mkStmt(lhs', BOM.E_GAlloc(Ty.T_Tuple(mut, List.map BV.typeOf xs), xs),
+				e'))
+			end
+		    | PT.Promote arg =>
+			cvtSimpleExp(findCFun, env, arg, fn x => BOM.mkStmt(lhs', BOM.E_Promote x, e'))
 		    | PT.Wrap arg =>
 			cvtSimpleExp(findCFun, env, arg, fn x => BOM.mkStmt(lhs', BOM.wrap x, e'))
 		    | PT.CCall(f, args) =>

@@ -192,6 +192,8 @@ structure Convert : sig
 		  | B.E_Update(i, x, z) => C.Update(i, cv x, cv z)
 		  | B.E_AddrOf(i, x) => C.AddrOf(i, cv x)
 		  | B.E_Alloc(ty, args) => C.Alloc(List.map cv args)
+		  | B.E_GAlloc(ty, args) => (* C.GAlloc(List.map cv args) *) raise Fail "todo"
+		  | B.E_Promote y => (* C.Promote(cv y) *) raise Fail "todo"
 		  | B.E_Prim p => C.Prim(PrimUtil.map cv p)
 		  | B.E_DCon _ => raise Fail "unexpected DCon"
 		  | B.E_CCall(f, args) => C.CCall(cv f, List.map cv args)

@@ -254,6 +254,9 @@ DEBUG*)
 	    | B.E_Alloc(ty, xs) => if hasTyc ty
 		then B.E_Alloc(tyToRepTy ty, List.map (subst s) xs)
 		else BU.substRHS(s, rhs)
+	    | B.E_GAlloc(ty, xs) => if hasTyc ty
+		then B.E_GAlloc(tyToRepTy ty, List.map (subst s) xs)
+		else BU.substRHS(s, rhs)
 	    | B.E_DCon _ => raise Fail "impossible"
 	    | _ => BU.substRHS(s, rhs)
 	  (* end case *))
