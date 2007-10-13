@@ -15,7 +15,6 @@ structure CFGTy =
       = T_Any				(* unknown type; uniform representation *)
       | T_Enum of Word.word		(* unsigned tagged integer; word is max value <= 2^31-1 *)
       | T_Raw of raw_ty			(* raw machine type *)
-      | T_Wrap of raw_ty		(* boxed raw value *)
       | T_Tuple of bool * ty list	(* heap-allocated tuple; the boolean is true for *)
 					(* mutable tuples *)
       | T_OpenTuple of ty list		(* an immutable tuple of unknown size, where we know the prefix. *)
@@ -37,7 +36,6 @@ structure CFGTy =
 	   of (T_Any, T_Any) => true
             | (T_Enum w1, T_Enum w2) => (w1 = w2)
             | (T_Raw rty1, T_Raw rty2) => (rty1 = rty2)
-            | (T_Wrap rty1, T_Wrap rty2) => (rty1 = rty2)
             | (T_Tuple(mut1, ty1s), T_Tuple(mut2, ty2s)) =>
 		(mut1 = mut2) andalso equalList (ty1s, ty2s)
             | (T_OpenTuple ty1s, T_OpenTuple ty2s) => equalList (ty1s, ty2s)
@@ -74,7 +72,6 @@ structure CFGTy =
            of T_Any => false
             | T_Enum _ => false
             | T_Raw _ => false
-            | T_Wrap _ => true
             | T_Tuple _ => true
             | T_OpenTuple _ => true
 	    | T_Addr _ => raise Fail "isBoxed(addr)"
@@ -162,7 +159,6 @@ structure CFGTy =
 	     of T_Any => "any"
 	      | T_Enum w => concat["enum(", Word.fmt StringCvt.DEC w, ")"]
 	      | T_Raw ty => RawTypes.toString ty
-	      | T_Wrap ty => concat["wrap(", RawTypes.toString ty, ")"]
 	      | T_Tuple(false, tys) => concat("(" :: tys2l(tys, [")"]))
 	      | T_Tuple(true, tys) => concat("!(" :: tys2l(tys, [")"]))
 	      | T_OpenTuple tys => concat("(" :: tys2l(tys, [",...)"]))

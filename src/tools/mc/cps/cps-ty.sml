@@ -13,7 +13,6 @@ structure CPSTy =
       = T_Any				(* unknown type; uniform representation *)
       | T_Enum of Word.word		(* unsigned tagged integer; word is max value <= 2^31-1 *)
       | T_Raw of raw_ty			(* raw machine type *)
-      | T_Wrap of raw_ty		(* boxed raw value *)
       | T_Tuple of bool * ty list	(* heap-allocated tuple; the boolean is true for *)
 					(* mutable tuples *)
       | T_Addr of ty			(* address of a tuple's field *)

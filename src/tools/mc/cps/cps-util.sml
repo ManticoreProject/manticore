@@ -23,8 +23,8 @@ structure CPSUtil : sig
       | rhsToString (C.Update(i, x, y)) = concat["Update(", Int.toString i, ", ", v2s x,  ", ", v2s y, ")"]
       | rhsToString (C.AddrOf(i, x)) = concat["AddrOf(", Int.toString i, ", ", v2s x, ")"]
       | rhsToString (C.Alloc xs) = concat["Alloc(", vl2s xs, ")"]
-      | rhsToString (C.Wrap x) = concat["Wrap(", v2s x, ")"]
-      | rhsToString (C.Unwrap x) = concat["Unwrap(", v2s x, ")"]
+      | rhsToString (C.GAlloc xs) = concat["GAlloc(", vl2s xs, ")"]
+      | rhsToString (C.Promote x) = concat["Promote(", v2s x, ")"]
       | rhsToString (C.Prim p) = p2s p
       | rhsToString (C.CCall(cf, xs)) = concat["CCall(", v2s cf, ", [", vl2s xs, "])"]
       | rhsToString (C.HostVProc) = "HostVProc"

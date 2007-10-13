@@ -282,35 +282,19 @@ structure CheckCFG : sig
                                          " does not match allocation"]
 			    (* end case *);
 			    bindVar (env, x))
-			| CFG.E_Wrap(x, y) => (
-			    chkVar (env, y);
-			    case V.typeOf y
-			     of Ty.T_Raw rty => (case V.typeOf x
-				   of Ty.T_Wrap rtx => if (rtx = rty)
-                                         then ()
-                                         else err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
-                                                  " is not ", Ty.toString (Ty.T_Wrap rty)]
-				    | _ => err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
-                                           " is not wrap"]
-				  (* end case *))
-			      | _ => err["variable ", V.toString y, ":", Ty.toString (V.typeOf y),
-                                                     " is not raw"]
+			| CFG.E_GAlloc(x, ys) => (
+			    chkVars (env, ys);
+                            case V.typeOf x
+                             of Ty.T_Tuple tys => ()
+                              | Ty.T_OpenTuple tys => ()
+			      | Ty.T_Any => ()
+                              | _ => err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
+                                         " does not match allocation"]
 			    (* end case *);
 			    bindVar (env, x))
-			| CFG.E_Unwrap(x, y) => (
+			| CFG.E_Promote(x, y) => (
 			    chkVar (env, y);
-			    case V.typeOf y
-			     of Ty.T_Wrap rty => (case V.typeOf x
-				   of Ty.T_Raw rtx => if (rtx = rty)
-                                        then ()
-                                        else err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
-                                                 " is not ", Ty.toString (Ty.T_Raw rty)]
-				    | _ => err["variable ", V.toString x, ":", Ty.toString (V.typeOf x),
-                                           " is not raw"]
-				  (* end case *))
-			      | _ =>  err["variable ", V.toString y, ":", Ty.toString (V.typeOf y),
-                                                    " is not wrap"]
-			    (* end case *);
+(* FIXME: we should check that x and y have the same type *)
 			    bindVar (env, x))
 			| CFG.E_Prim(x, p) => (
 			    chkVars (env, PrimUtil.varsOf p);

@@ -185,7 +185,6 @@ functor HeapTransferFn (
 	 of Ty.T_Any => CTy.C_PTR
 	  | Ty.T_Raw rt => rawTyToCTy rt
 	  | Ty.T_Enum _ => CTy.C_signed CTy.I_int
-	  | Ty.T_Wrap _ => CTy.C_PTR
 	  | Ty.T_Tuple _ => CTy.C_PTR
 	  | Ty.T_OpenTuple _ => CTy.C_PTR
 	  | Ty.T_VProc => CTy.C_PTR

@@ -12,12 +12,6 @@ structure CPSTyUtil : sig
 
     val toString : CPSTy.ty -> string
 
-  (* Construct a wrapped type from a raw type *)
-    val wrap : CPSTy.ty -> CPSTy.ty
-
-  (* Unwrap a wrapped type returning a raw type *)
-    val unwrap : CPSTy.ty -> CPSTy.ty
-
   (* view a type as a function type *)
     val asFunTy : CPSTy.ty -> (CPSTy.ty list * CPSTy.ty list)
 
@@ -51,7 +45,6 @@ structure CPSTyUtil : sig
     fun kindOf CTy.T_Any = CTy.K_UNIFORM
       | kindOf (CTy.T_Enum _) = CTy.K_UNBOXED
       | kindOf (CTy.T_Raw _) = CTy.K_RAW
-      | kindOf (CTy.T_Wrap _) = CTy.K_BOXED
       | kindOf (CTy.T_Tuple _) = CTy.K_BOXED
       | kindOf (CTy.T_Addr _) = CTy.K_TYPE
       | kindOf (CTy.T_Fun _) = CTy.K_BOXED
@@ -63,7 +56,6 @@ structure CPSTyUtil : sig
 	   of (CTy.T_Any, CTy.T_Any) => true
 	   | (CTy.T_Enum w1, CTy.T_Enum w2) => w1 = w2
 	   | (CTy.T_Raw rt1, CTy.T_Raw rt2) => rt1 = rt2
-	   | (CTy.T_Wrap rt1, CTy.T_Wrap rt2) => rt1 = rt2
 	   | (CTy.T_Tuple (m1, tys1), CTy.T_Tuple (m2, tys2)) =>
 		m1 = m2 andalso
 		ListPair.allEq equal (tys1, tys2)
@@ -120,7 +112,6 @@ structure CPSTyUtil : sig
 	     of CTy.T_Any => "any"
 	      | CTy.T_Enum w => concat["enum(", Word.fmt StringCvt.DEC w, ")"]
 	      | CTy.T_Raw ty => RawTypes.toString ty
-	      | CTy.T_Wrap ty => concat["wrap(", RawTypes.toString ty, ")"]
 	      | CTy.T_Tuple(false, tys) => concat("[" :: tys2l(tys, ["]"]))
 	      | CTy.T_Tuple(true, tys) => concat("![" :: tys2l(tys, ["]"]))
 	      | CTy.T_Addr ty => concat["addr(", toString ty, ")"]
@@ -130,13 +121,6 @@ structure CPSTyUtil : sig
 	      | CTy.T_VProc => "vproc"
 	    (* end case *)
 	  end
-
-  (* wrapped raw values are stored in wraps *)
-    fun wrap (CTy.T_Raw rt) = CTy.T_Wrap rt
-      | wrap ty = raise Fail(concat["wrap(", toString ty, ")"])
-
-    fun unwrap (CTy.T_Wrap rt) = CTy.T_Raw rt
-      | unwrap ty = raise Fail(concat["unwrap(", toString ty, ")"])
 
   (* view a type as a function type *)
     fun asFunTy (CTy.T_Fun arg) = arg

@@ -48,8 +48,8 @@ structure Census : sig
       | doExp (C.E_Update(_, x, y)) = (inc x; inc y)
       | doExp (C.E_AddrOf(x, _, y)) = (clr x; inc y)
       | doExp (C.E_Alloc(x, ys)) = (clr x; inc' ys)
-      | doExp (C.E_Wrap(x, y)) = (clr x; inc y)
-      | doExp (C.E_Unwrap(x, y)) = (clr x; inc y)
+      | doExp (C.E_GAlloc(x, ys)) = (clr x; inc' ys)
+      | doExp (C.E_Promote(x, y)) = (clr x; inc y)
       | doExp (C.E_Prim(x, p)) = (clr x; PrimUtil.app inc p)
       | doExp (C.E_CCall(xs, cf, ys)) = (clr' xs; inc cf; inc' ys)
       | doExp (C.E_HostVProc x) = clr x

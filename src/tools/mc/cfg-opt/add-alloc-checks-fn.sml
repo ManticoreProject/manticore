@@ -61,13 +61,7 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 
   (* the amount of storage allocated by an expression *)
     fun expAlloc (CFG.E_Alloc(_, xs)) = Word.fromLargeInt ABI.wordSzB * Word.fromInt(length xs + 1)
-      | expAlloc (CFG.E_Wrap(_, y)) = (case CFG.Var.typeOf y
-	   of CFGTy.T_Raw CFGTy.T_Long => 0w12		(* include header word *)
-	    | CFGTy.T_Raw CFGTy.T_Double => 0w12
-	    | CFGTy.T_Raw CFGTy.T_Vec128 => 0w20
-	    | CFGTy.T_Raw _ => 0w8
-	    | _ => raise Fail "wrap of non-raw type"
-	  (* end case *))
+(* FIXME: do we need to count E_GAlloc or E_Promote? *)
       | expAlloc _ = 0w0
 
     fun transform (CFG.MODULE{name, externs, code}) = let

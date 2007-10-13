@@ -54,8 +54,8 @@ structure CFG =
       | E_Update of (int * var * var)		(* update i'th field (zero-based) *)
       | E_AddrOf of (var * int * var)		(* return address of i'th field (zero-based) *)
       | E_Alloc of var * var list
-      | E_Wrap of var * var			(* wrap raw value *)
-      | E_Unwrap of var * var			(* unwrap value *)
+      | E_GAlloc of var * var list		(* allocate in the global heap *)
+      | E_Promote of var * var			(* promote value to global heap *)
       | E_Prim of var * prim
       | E_CCall of (var list * var * var list)
     (* VProc operations *)
@@ -141,8 +141,8 @@ structure CFG =
       | lhsOfExp (E_Update(_, _, _)) = []
       | lhsOfExp (E_AddrOf(x, _, _)) = [x]
       | lhsOfExp (E_Alloc(x, _)) = [x]
-      | lhsOfExp (E_Wrap(x, _)) = [x]
-      | lhsOfExp (E_Unwrap(x, _)) = [x]
+      | lhsOfExp (E_GAlloc(x, _)) = [x]
+      | lhsOfExp (E_Promote(x, _)) = [x]
       | lhsOfExp (E_Prim(x, _)) = [x]
       | lhsOfExp (E_CCall(res, _, _)) = res
       | lhsOfExp (E_HostVProc x) = [x]
@@ -158,8 +158,8 @@ structure CFG =
       | rhsOfExp (E_Update(_, y, z)) = [y, z]
       | rhsOfExp (E_AddrOf(_, _, y)) = [y]
       | rhsOfExp (E_Alloc(_, args)) = args
-      | rhsOfExp (E_Wrap(_, y)) = [y]
-      | rhsOfExp (E_Unwrap(_, y)) = [y]
+      | rhsOfExp (E_GAlloc(_, args)) = args
+      | rhsOfExp (E_Promote(_, y)) = [y]
       | rhsOfExp (E_Prim(_, p)) = PrimUtil.varsOf p
       | rhsOfExp (E_CCall(_, f, args)) = f::args
       | rhsOfExp (E_HostVProc _) = []
@@ -214,8 +214,10 @@ structure CFG =
     fun mkUpdate arg = mkExp(E_Update arg)
     fun mkAddrOf arg = mkExp(E_AddrOf arg)
     fun mkAlloc arg = mkExp(E_Alloc arg)
-    fun mkWrap arg = mkExp(E_Wrap arg)
-    fun mkUnwrap arg = mkExp(E_Unwrap arg)
+    fun mkGAlloc arg = mkExp(E_GAlloc arg)
+    fun mkPromote arg = mkExp(E_Promote arg)
+    fun mkWrap (x, y) = mkExp(E_Alloc(x, [y]))
+    fun mkUnwrap (x, y) = mkExp(E_Select(x, 0, y))
     fun mkPrim arg = mkExp(E_Prim arg)
     fun mkCCall arg = mkExp(E_CCall arg)
     fun mkHostVProc arg = mkExp(E_HostVProc arg)

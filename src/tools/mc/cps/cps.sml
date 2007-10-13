@@ -28,9 +28,9 @@ structure CPS =
       | Select of (int * var)		(* select i'th field (zero-based) *)
       | Update of (int * var * var)	(* update i'th field (zero-based) *)
       | AddrOf of (int * var)		(* return address of i'th field (zero-based) *)
-      | Alloc of var list
-      | Wrap of var			(* wrap raw value *)
-      | Unwrap of var			(* unwrap value *)
+      | Alloc of var list		(* local-heap allocation *)
+      | GAlloc of var list		(* global-heap allocation *)
+      | Promote of var			(* promote a heap object to the global heap *)
       | Prim of prim
       | CCall of (var * var list)
     (* VProc operations *)

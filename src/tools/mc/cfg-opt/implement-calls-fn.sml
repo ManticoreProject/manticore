@@ -34,12 +34,13 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
    structure Label = CFG.Label
    structure Var = CFG.Var
 
-   fun transform (m as CFG.MODULE{name, externs, code}) =
-      let
-         fun transTyUniformArg (arg : CFGTy.ty) : CFGTy.ty =
-            case arg of
-               CFGTy.T_Raw rt => CFGTy.T_Wrap rt
-             | _ => transTy arg
+    fun wrapRaw rt = CFGTy.T_Tuple(false, [CFGTy.T_Raw rt])
+
+   fun transform (m as CFG.MODULE{name, externs, code}) = let
+         fun transTyUniformArg (arg : CFGTy.ty) : CFGTy.ty = (case arg
+		 of CFGTy.T_Raw rt => wrapRaw rt
+                  | _ => transTy arg
+		(* end case *))
          and transTyStdArgs (args : CFGTy.ty list) : CFGTy.ty =
             case args of
                [] => CFGTy.unitTy
@@ -47,13 +48,12 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
              | args => CFGTy.T_Tuple (false, List.map transTy args)
          and transTyNonUniformArg (arg : CFGTy.ty) : CFGTy.ty =
             case arg of
-               CFGTy.T_Raw rt =>
-                  let
-                     fun wrap () = CFGTy.T_Wrap rt
-                     fun keep () = CFGTy.T_Raw rt
+               CFGTy.T_Raw rt => let
+                  fun wrap () = wrapRaw rt
+                  fun keep () = CFGTy.T_Raw rt
                   in
-                     case rt of
-                        RawTypes.T_Byte => keep ()
+                    case rt
+		     of RawTypes.T_Byte => keep ()
                       | RawTypes.T_Short => keep ()
                       | RawTypes.T_Int => keep ()
                       | RawTypes.T_Long => keep ()
@@ -80,7 +80,6 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                CFGTy.T_Any => CFGTy.T_Any
              | CFGTy.T_Enum w => CFGTy.T_Enum w
              | CFGTy.T_Raw rt => CFGTy.T_Raw rt
-             | CFGTy.T_Wrap rt => CFGTy.T_Wrap rt
              | CFGTy.T_Tuple (m, tys) => CFGTy.T_Tuple (m, List.map transTy tys)
              | CFGTy.T_OpenTuple tys => CFGTy.T_OpenTuple (List.map transTy tys)
              | CFGTy.T_Addr ty => CFGTy.T_Addr (transTy ty)
@@ -129,7 +128,7 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
             case getVarOldType arg of
                CFGTy.T_Raw rt => 
                   let
-                     val newArgTy = CFGTy.T_Wrap rt
+                     val newArgTy = wrapRaw rt
                      val newArg = CFG.Var.new ("argFormalWrap", newArgTy)
                   in 
                      (newArg, [CFG.mkUnwrap(arg,newArg)])
@@ -164,7 +163,7 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                   let
                      fun wrap () =
                         let
-                           val newArgTy = CFGTy.T_Wrap rt
+                           val newArgTy = wrapRaw rt
                            val newArg = CFG.Var.new ("argFormalWrap", newArgTy)
                         in 
                            (newArg, [CFG.mkUnwrap(arg,newArg)])
@@ -235,7 +234,7 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
             case getVarOldType arg of
                CFGTy.T_Raw rt => 
                   let
-                     val newArgTy = CFGTy.T_Wrap rt
+                     val newArgTy = wrapRaw rt
                      val newArg = CFG.Var.new ("argActualWrap", newArgTy)
                   in 
                      ([CFG.mkWrap(newArg, arg)], newArg)
@@ -264,7 +263,7 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                   let
                      fun wrap () =
                         let
-                           val newArgTy = CFGTy.T_Wrap rt
+                           val newArgTy = wrapRaw rt
                            val newArg = CFG.Var.new ("argActualWrap", newArgTy)
                         in 
                            ([CFG.mkWrap(newArg, arg)], newArg)

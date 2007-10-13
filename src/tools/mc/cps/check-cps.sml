@@ -193,28 +193,19 @@ structure CheckCPS : sig
                         else (error  ["type mismatch in Alloc: ", vl2s lhs, " = ", vl2s xs, "\n"];
 			      cerror ["  lhs type ", t2s ty, "\n"];
 			      cerror ["  found    ", tl2s (typesOf xs), "\n"]))
-		  | ([ty], C.Wrap x) => (
-                      chkVar(env, x, "Wrap");
-                      case CV.typeOf x
-                       of CTy.T_Raw rt => 
-                            if CTU.match(CTy.T_Wrap rt, ty)
-                               then ()
-                               else error["type mismatch in Wrap: ",
-                                        vl2s lhs, " = wrap(", v2s x, ")\n"]
-			| ty => error[v2s x, ":", CTU.toString ty, " is not a raw: ",
-                                    vl2s lhs, " = wrap(", v2s x, ")\n"]
-		      (* end case *))
-		  | ([ty], C.Unwrap x) => (
-                      chkVar(env, x, "Unwrap");
-                      case CV.typeOf x
-                       of CTy.T_Wrap rt => 
-                            if CTU.match(CTy.T_Raw rt, ty)
-                               then ()
-                               else error["type mismatch in Unwrap:", 
-                                        vl2s lhs, " = unwrap(", v2s x, ")\n"]
-			| ty => error[v2s x, ":", CTU.toString ty, " is not a wrap: ",
-                                    vl2s lhs, " = unwrap(", v2s x, ")\n"]
-		      (* end case *))
+		  | ([ty], C.GAlloc xs) => (
+                      chkVars(env, xs, "GAlloc");
+                      if (CTU.match(CTy.T_Tuple(true, typesOf xs), ty))
+                        orelse (CTU.match(CTy.T_Tuple(false, typesOf xs), ty))
+                        then ()
+                        else (error  ["type mismatch in GAlloc: ", vl2s lhs, " = ", vl2s xs, "\n"];
+			      cerror ["  lhs type ", t2s ty, "\n"];
+			      cerror ["  found    ", tl2s (typesOf xs), "\n"]))
+		  | ([ty], C.Promote x) => (
+                      chkVar(env, x, "Promote");
+		      if (CTU.equal(ty, CV.typeOf x))
+			then ()
+			else error ["type mismatch in Promote: ", vl2s lhs, " = ", v2s x, "\n"])
 		  | ([ty], C.Prim p) => chkVars(env, PrimUtil.varsOf p, PrimUtil.nameOf p)
 		  | ([ty], C.CCall(cf, args)) => (
 		      chkVar(env, cf, "CCall"); 

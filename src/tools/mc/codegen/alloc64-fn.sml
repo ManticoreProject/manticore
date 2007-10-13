@@ -55,7 +55,6 @@ functor Alloc64Fn (
     fun addrOf {lhsTy : T.ty, mty : M.ty, i : int, base : T.rexp} = let
           fun offsetOf' (M.T_Tuple(_, tys)) = offsetOf {tys=tys, i=i}
 	    | offsetOf' (M.T_OpenTuple tys) = offsetOf {tys=tys, i=i}
-	    | offsetOf' (M.T_Wrap ty) = (0, M.T_Raw ty)
 	    | offsetOf' _ = raise Fail ("offsetOf': non-tuple type " ^ CFGTy.toString mty)
 	  val (offset, _) = offsetOf' mty
 	  in
@@ -66,7 +65,6 @@ functor Alloc64Fn (
     fun select {lhsTy : T.ty, mty : M.ty, i : int, base : T.rexp} = let
           fun offsetOf' (M.T_Tuple(_, tys)) = offsetOf {tys=tys, i=i}
 	    | offsetOf' (M.T_OpenTuple tys) = offsetOf {tys=tys, i=i}
-	    | offsetOf' (M.T_Wrap ty) = (0, M.T_Raw ty)
 	    | offsetOf' _ = raise Fail ("offsetOf': non-tuple type " ^ CFGTy.toString mty)
 	  val (offset, lhsMTy) = offsetOf' mty
 	  val addr = T.ADD(ty, base, intLit offset)
@@ -79,7 +77,6 @@ functor Alloc64Fn (
 
   (* return true if the type may be represented by a pointer into the heap *)
     fun isHeapPointer M.T_Any = true
-      | isHeapPointer (M.T_Wrap _) = true
       | isHeapPointer (M.T_Tuple _) = true
       | isHeapPointer (M.T_OpenTuple _) = true
       | isHeapPointer _ = false
@@ -157,9 +154,7 @@ functor Alloc64Fn (
 	    { ptr=mltGPR ptrReg, stms=ptrMv :: rev (bumpAp :: stms) }
 	  end (* genAlloc *)
 
-  fun genWrap (mty, arg) = genAlloc [(mty, arg)]
-
-  val heapSlopSzB = Word.- (Word.<< (0w1, 0w12), 0w512)
+    val heapSlopSzB = Word.- (Word.<< (0w1, 0w12), 0w512)
 
   (* This expression evaluates to true when the heap has enough space for szB
    * bytes.  There are 4kbytes of heap slop presubtracted from the limit pointer

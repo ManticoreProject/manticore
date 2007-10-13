@@ -18,7 +18,6 @@ structure CFACFG : sig
     datatype value
       = TOP
       | TUPLE of value list
-      | WRAP of value
       | LABELS of CFG.Label.Set.set
       | BOT
 
@@ -46,7 +45,6 @@ structure CFACFG : sig
     datatype value
       = TOP
       | TUPLE of value list
-      | WRAP of value
       | LABELS of LSet.set
       | BOT
 
@@ -56,7 +54,6 @@ structure CFACFG : sig
 	    | v2s (TUPLE[v], l) = "(" :: v2s (v, ")" :: l)
 	    | v2s (TUPLE(v::r), l) =
 		"(" :: v2s (v, List.foldr (fn (v, l) => "," :: v2s(v, l)) (")" :: l) r)
-	    | v2s (WRAP v, l) = "[" :: v2s (v, "]" :: l)
 	    | v2s (LABELS s, l) = let
 		fun f [] = "}" :: l
 		  | f [x] = "$" :: CFG.Label.toString x :: "}" :: l
@@ -117,7 +114,6 @@ structure CFACFG : sig
 		in
 		  changed (vs1, vs2)
 		end
-	    | (WRAP v1, WRAP v2) => changedValue(v1, v2)
 	    | (LABELS s1, LABELS s2) => if (LSet.numItems s1 > LSet.numItems s2)
 		then true
 		else false
@@ -188,7 +184,6 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 		in
 		  TUPLE(join(vs1, vs2))
 		end
-	    | kJoin (k, WRAP v1, WRAP v2) = WRAP(kJoin(k, v1, v2))
 	    | kJoin (_, LABELS labs1, LABELS labs2) = LABELS(LSet.union(labs1, labs2))
 	    | kJoin _ = TOP
 	  in
@@ -286,18 +281,8 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 		  | doExp (CFG.E_Update(i, y, z)) = ()
 		  | doExp (CFG.E_AddrOf(x, i, y)) = addInfo(x, TOP)
 		  | doExp (CFG.E_Alloc(x, xs)) = addInfo(x, TUPLE(List.map valueOf xs))
-		  | doExp (CFG.E_Wrap(x, y)) = addInfo(x, WRAP(valueOf y))
-		  | doExp (CFG.E_Unwrap(x, y)) =
-		      addInfo (x, case valueOf y
-			 of WRAP v => v
-			  | BOT => BOT
-			  | TOP => TOP
-			  | v => raise Fail(concat[
-				"type error: Unwrap(", CFG.Var.toString x, ", ",
-				CFG.Var.toString y, "); valueOf(",
-				CFG.Var.toString y, ") = ", valueToString v
-			      ])
-			(* end case *))
+		  | doExp (CFG.E_GAlloc(x, xs)) = addInfo(x, TUPLE(List.map valueOf xs))
+		  | doExp (CFG.E_Promote(x, y)) = addInfo(x, valueOf y)
 		  | doExp (CFG.E_Prim(x, _)) = ()
 		  | doExp (CFG.E_CCall(x, _, args)) = List.app escape args
 		  | doExp (CFG.E_HostVProc vp) = ()

@@ -26,7 +26,6 @@ structure FlatClosure : sig
     fun cvtTy (CPSTy.T_Any) = CFG.T_Any
       | cvtTy (CPSTy.T_Enum w) = CFG.T_Enum w
       | cvtTy (CPSTy.T_Raw rTy) = CFGTy.T_Raw rTy
-      | cvtTy (CPSTy.T_Wrap rTy) = CFG.T_Wrap rTy
       | cvtTy (CPSTy.T_Tuple(mut, tys)) = CFG.T_Tuple(mut, List.map cvtTy tys)
       | cvtTy (CPSTy.T_Addr ty) = CFG.T_Addr(cvtTy ty)
       | cvtTy (ty as CPSTy.T_Fun(_, [])) = cvtStdContTy ty
@@ -525,15 +524,15 @@ print(concat["lookupVar: ", CPS.Var.toString x, " @ ", locToString(valOf(VMap.fi
                       in
                         ([CFG.mkAlloc(x, ys)] @ binds, env)
                       end
-                  | ((env, [x]), CPS.Wrap y) => let
-                      val (binds, y) = lookupVar (env, y)
+                  | ((env, [x]), CPS.GAlloc ys) => let
+                      val (binds, ys) = lookupVars (env, ys)
                       in
-                        ([CFG.mkWrap(x, y)] @ binds, env)
+                        ([CFG.mkGAlloc(x, ys)] @ binds, env)
                       end
-                  | ((env, [x]), CPS.Unwrap y) => let
+                  | ((env, [x]), CPS.Promote y) => let
                       val (binds, y) = lookupVar (env, y)
                       in
-                        ([CFG.mkUnwrap(x, y)] @ binds, env)
+                        ([CFG.mkPromote(x, y)] @ binds, env)
                       end
                   | ((env, [x]), CPS.Prim p) => let
                       val (mkP, args) = PrimUtil.explode p

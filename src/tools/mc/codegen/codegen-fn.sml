@@ -228,15 +228,8 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 			  emitStms stms;
 			  bindExp ([lhs], [ptr])
 		      end
-		  | gen (M.E_Wrap (lhs, v)) = 
-		      let val {ptr, stms} = BE.Alloc.genWrap (Var.typeOf v, getDefOf v)
-		      in
-			  emitStms stms;
-			  bindExp ([lhs], [ptr])
-		      end
-		  | gen (M.E_Unwrap (lhs, v)) = 
-		      bindExp ([lhs], [select (szOf lhs,
-					       Var.typeOf v, 0, defOf v)])
+		  | gen (M.E_GAlloc(lhs, vs)) = raise Fail "GAlloc" (* FIXME *)
+		  | gen (M.E_Promote (lhs, v)) =  raise Fail "Promote" (* FIXME *)
 		  | gen (M.E_Prim (lhs, p)) = emitStms (genPrim (lhs, p))
 		  | gen (M.E_CCall (lhs, f, args)) = 
 		      let val {stms, result} = 
