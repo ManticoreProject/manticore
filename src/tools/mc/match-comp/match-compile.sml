@@ -350,6 +350,8 @@ structure MatchCompile : sig
 			AST.CaseExp(rewrite' e, List.map f mc, ty)
 		      end
 		    else AST.CaseExp(rewrite' e, rewriteMatch(loc, env, TypeOf.exp e, mc, ty), ty)
+	      | AST.HandleExp(e, mc, ty) => raise Fail "handle" (* FIXME *)
+	      | AST.RaiseExp(e, ty) => AST.RaiseExp(rewrite' e, ty)
 	      | AST.FunExp(x, e, ty) => AST.FunExp(x, rewrite' e, ty)
 	      | AST.ApplyExp(e1, e2, ty) => AST.ApplyExp(rewrite' e1, rewrite' e2, ty)
 	      | AST.TupleExp es => AST.TupleExp(List.map rewrite' es)
