@@ -19,6 +19,7 @@ structure TranslateEnv : sig
     datatype var_bind
       = Lambda of BOM.lambda	(* used for primops and high-level ops *)
       | Var of BOM.var
+      | EqOp			(* either "=" or "<>" *)
 
     val insertTyc	: (env * Types.tycon * BOMTy.ty) -> unit
     val insertCon	: (env * Types.dcon * con_bind) -> unit
@@ -47,6 +48,7 @@ structure TranslateEnv : sig
     datatype var_bind
       = Lambda of BOM.lambda	(* used for primops and high-level ops *)
       | Var of BOM.var
+      | EqOp			(* either "=" or "<>" *)
 
     datatype env = E of {
 	tycEnv : BOM.ty TTbl.hash_table,
@@ -55,12 +57,19 @@ structure TranslateEnv : sig
 	exh : BOM.var			(* current exception handler *)
       }
 
-    fun mkEnv () = E{
-	    tycEnv = TTbl.mkTable (32, Fail "tyc table"),
-	    dconEnv = DTbl.mkTable (64, Fail "dcon table"),
-	    varEnv = VMap.empty,
-	    exh = BOM.Var.new ("*bogus*", BOMTy.T_Any)
-	  }
+    fun mkEnv () = let
+	  val vEnv = List.foldl VMap.insert' VMap.empty [
+		  (Basis.eq,	EqOp),
+		  (Basis.neq,	EqOp)
+		]
+	  in
+	    E{
+		tycEnv = TTbl.mkTable (32, Fail "tyc table"),
+		dconEnv = DTbl.mkTable (64, Fail "dcon table"),
+		varEnv = vEnv,
+		exh = BOM.Var.new ("*bogus*", BOMTy.T_Any)
+	      }
+	  end
 
     fun insertTyc (E{tycEnv, ...}, tyc, bty) = TTbl.insert tycEnv (tyc, bty)
 

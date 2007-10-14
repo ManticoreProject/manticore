@@ -72,7 +72,6 @@ structure Basis : sig
     val int_gte		: AST.var
     val int_lt		: AST.var
     val int_lte		: AST.var
-    val int_eq		: AST.var
     val int_minus	: AST.var
     val int_mod		: AST.var
     val int_neg		: AST.var
@@ -128,6 +127,10 @@ structure Basis : sig
     val string_gte	: AST.var
     val string_lt	: AST.var
     val string_lte	: AST.var
+
+  (* equality operations *)
+    val eq		: AST.var
+    val neq		: AST.var
 
   (* predefined functions *)
     val not		: AST.var
@@ -190,8 +193,10 @@ structure Basis : sig
 	    in
 	      AST.TyScheme([tv], mkTy(AST.VarTy tv))
 	    end
-      fun monoVar (name, ty) = Var.new(Atom.toString name, ty)
-      fun polyVar (name, mkTy) = Var.newPoly(Atom.toString name, forall mkTy)
+      fun monoVar (name, ty) = Var.new(name, ty)
+      fun monoVar' (name, ty) = monoVar(Atom.toString name, ty)
+      fun polyVar (name, mkTy) = Var.newPoly(name, forall mkTy)
+      fun polyVar' (name, mkTy) = polyVar(Atom.toString name, mkTy)
     in
 
     val boolTyc = TyCon.newDataTyc (N.bool, [])
@@ -282,10 +287,10 @@ structure Basis : sig
 			    in
 			      ty ** ty --> ty
 			    end))
-    val stringConcat =	monoVar(N.concat, stringTy ** stringTy --> stringTy)
+    val stringConcat =	monoVar(Atom.toString N.concat, stringTy ** stringTy --> stringTy)
 
     local
-      fun name a = Atom.atom("Int." ^ Atom.toString a)
+      fun name a = "Int." ^ Atom.toString a
     in
     val int_div =       monoVar(name N.div, intTy ** intTy --> intTy)
     val int_gt =        monoVar(name N.gt, intTy ** intTy --> boolTy)
@@ -300,7 +305,7 @@ structure Basis : sig
     end
 
     local
-      fun name a = Atom.atom("Long." ^ Atom.toString a)
+      fun name a = "Long." ^ Atom.toString a
     in
     val long_div =      monoVar(name N.div, longTy ** longTy --> longTy)
     val long_gt =       monoVar(name N.gt, longTy ** longTy --> boolTy)
@@ -315,7 +320,7 @@ structure Basis : sig
     end
 
     local
-      fun name a = Atom.atom("Integer." ^ Atom.toString a)
+      fun name a = "Integer." ^ Atom.toString a
     in
     val integer_div =   monoVar(name N.div, integerTy ** integerTy --> integerTy)
     val integer_gt =    monoVar(name N.gt, integerTy ** integerTy --> boolTy)
@@ -330,7 +335,7 @@ structure Basis : sig
     end
 
     local
-      fun name a = Atom.atom("Float." ^ Atom.toString a)
+      fun name a = "Float." ^ Atom.toString a
     in
     val float_fdiv =    monoVar(name N.fdiv, floatTy ** floatTy --> floatTy)
     val float_gt =      monoVar(name N.gt, floatTy ** floatTy --> boolTy)
@@ -344,7 +349,7 @@ structure Basis : sig
     end
 
     local
-      fun name a = Atom.atom("Double." ^ Atom.toString a)
+      fun name a = "Double." ^ Atom.toString a
     in
     val double_fdiv =   monoVar(name N.fdiv, doubleTy ** doubleTy --> doubleTy)
     val double_gt =     monoVar(name N.gt, doubleTy ** doubleTy --> boolTy)
@@ -358,7 +363,7 @@ structure Basis : sig
     end
 
     local
-      fun name a = Atom.atom("Int." ^ Atom.toString a)
+      fun name a = "Int." ^ Atom.toString a
     in
     val char_gt =       monoVar(name N.gt, charTy ** charTy --> boolTy)
     val char_gte =      monoVar(name N.gte, charTy ** charTy --> boolTy)
@@ -367,7 +372,7 @@ structure Basis : sig
     end
 
     local
-      fun name a = Atom.atom("Int." ^ Atom.toString a)
+      fun name a = "Int." ^ Atom.toString a
     in
     val rune_gt =       monoVar(name N.gt, runeTy ** runeTy --> boolTy)
     val rune_gte =      monoVar(name N.gte, runeTy ** runeTy --> boolTy)
@@ -376,7 +381,7 @@ structure Basis : sig
     end
 
     local
-      fun name a = Atom.atom("Int." ^ Atom.toString a)
+      fun name a = "Int." ^ Atom.toString a
     in
     val string_gt =     monoVar(name N.gt, stringTy ** stringTy --> boolTy)
     val string_gte =    monoVar(name N.gte, stringTy ** stringTy --> boolTy)
@@ -386,12 +391,6 @@ structure Basis : sig
 
 (* TODO do @, ! *)
 
-(* TODO what's up with the equality operators?
-*)
-    val bool_eq =	monoVar(N.eq, boolTy ** boolTy --> boolTy)
-    val int_eq =	monoVar(N.eq, intTy ** intTy --> boolTy)
-    val string_eq =	monoVar(N.eq, stringTy ** stringTy --> boolTy)
-
   (* create a type scheme that binds a kinded type variable *)
     fun tyScheme (cls, mk) = let
 	  val tv = TyVar.newClass (Atom.atom "'a", cls)
@@ -399,8 +398,10 @@ structure Basis : sig
 	    Types.TyScheme([tv], mk(Types.VarTy tv))
 	  end
 
-    val eq = (tyScheme(Types.Order, fn tv => (tv ** tv --> boolTy)),
-	       [bool_eq, int_eq, string_eq])
+    val eqTyScheme = tyScheme(Types.Eq, fn tv => (tv ** tv --> boolTy))
+    val eq = Var.newPoly(Atom.toString N.eq, eqTyScheme)
+    val neq = Var.newPoly(Atom.toString N.neq, eqTyScheme)
+
     val lte = (tyScheme(Types.Order, fn tv => (tv ** tv --> boolTy)),
 	       [int_lte, long_lte, integer_lte, float_lte, double_lte, char_lte, rune_lte, string_lte])
     val lt = (tyScheme(Types.Order, fn tv => (tv ** tv --> boolTy)),
@@ -441,9 +442,13 @@ structure Basis : sig
 		(N.append,	Env.Var listAppend),
 		(N.concat,	Env.Var stringConcat)
 	      ];
+	  (* insert equality operators *)
+	    List.app (AtomTable.insert tbl) [
+		(N.eq,		Env.EqOp eq),
+		(N.neq,		Env.EqOp neq)
+	      ];
 	  (* insert overloaded operators *)
 	    List.app ins [
-		(N.eq,		eq),
 		(N.lte,		lte),
 		(N.lt,		lt),
 		(N.gte,		gte),
@@ -460,32 +465,32 @@ structure Basis : sig
 
 
   (* predefined functions *)
-    val not =		monoVar(N.not, boolTy --> boolTy)
-    val sqrtf =		monoVar(N.sqrtf, floatTy --> floatTy)
-    val lnf =		monoVar(N.lnf, floatTy --> floatTy)
-    val log2f =		monoVar(N.log2f, floatTy --> floatTy)
-    val log10f =	monoVar(N.log10f, floatTy --> floatTy)
-    val powf =		monoVar(N.powf, floatTy ** floatTy --> floatTy)
-    val expf =		monoVar(N.expf, floatTy --> floatTy)
-    val sinf =		monoVar(N.sinf, floatTy --> floatTy)
-    val cosf =		monoVar(N.cosf, floatTy --> floatTy)
-    val tanf =		monoVar(N.tanf, floatTy --> floatTy)
-    val itof =		monoVar(N.itof, intTy --> floatTy)
-    val sqrtd =		monoVar(N.sqrtd, doubleTy --> doubleTy)
-    val lnd =		monoVar(N.lnd, doubleTy --> doubleTy)
-    val log2d =		monoVar(N.log2d, doubleTy --> doubleTy)
-    val log10d =	monoVar(N.log10d, doubleTy --> doubleTy)
-    val powd =		monoVar(N.powd, doubleTy ** doubleTy --> doubleTy)
-    val expd =		monoVar(N.expd, doubleTy --> doubleTy)
-    val cosd =		monoVar(N.cosd, doubleTy --> doubleTy)
-    val sind =		monoVar(N.sind, doubleTy --> doubleTy)
-    val tand =		monoVar(N.tand, doubleTy --> doubleTy)
-    val itod =		monoVar(N.itod, intTy --> doubleTy)
-    val channel =	polyVar(N.channel, fn tv => unitTy --> chanTy tv)
-    val send =		polyVar(N.send, fn tv => chanTy tv ** tv --> unitTy)
-    val sendEvt =	polyVar(N.sendEvt, fn tv => chanTy tv ** tv --> eventTy unitTy)
-    val recv =		polyVar(N.recv, fn tv => chanTy tv --> tv)
-    val recvEvt =	polyVar(N.recvEvt, fn tv => chanTy tv --> eventTy tv)
+    val not =		monoVar'(N.not, boolTy --> boolTy)
+    val sqrtf =		monoVar'(N.sqrtf, floatTy --> floatTy)
+    val lnf =		monoVar'(N.lnf, floatTy --> floatTy)
+    val log2f =		monoVar'(N.log2f, floatTy --> floatTy)
+    val log10f =	monoVar'(N.log10f, floatTy --> floatTy)
+    val powf =		monoVar'(N.powf, floatTy ** floatTy --> floatTy)
+    val expf =		monoVar'(N.expf, floatTy --> floatTy)
+    val sinf =		monoVar'(N.sinf, floatTy --> floatTy)
+    val cosf =		monoVar'(N.cosf, floatTy --> floatTy)
+    val tanf =		monoVar'(N.tanf, floatTy --> floatTy)
+    val itof =		monoVar'(N.itof, intTy --> floatTy)
+    val sqrtd =		monoVar'(N.sqrtd, doubleTy --> doubleTy)
+    val lnd =		monoVar'(N.lnd, doubleTy --> doubleTy)
+    val log2d =		monoVar'(N.log2d, doubleTy --> doubleTy)
+    val log10d =	monoVar'(N.log10d, doubleTy --> doubleTy)
+    val powd =		monoVar'(N.powd, doubleTy ** doubleTy --> doubleTy)
+    val expd =		monoVar'(N.expd, doubleTy --> doubleTy)
+    val cosd =		monoVar'(N.cosd, doubleTy --> doubleTy)
+    val sind =		monoVar'(N.sind, doubleTy --> doubleTy)
+    val tand =		monoVar'(N.tand, doubleTy --> doubleTy)
+    val itod =		monoVar'(N.itod, intTy --> doubleTy)
+    val channel =	polyVar'(N.channel, fn tv => unitTy --> chanTy tv)
+    val send =		polyVar'(N.send, fn tv => chanTy tv ** tv --> unitTy)
+    val sendEvt =	polyVar'(N.sendEvt, fn tv => chanTy tv ** tv --> eventTy unitTy)
+    val recv =		polyVar'(N.recv, fn tv => chanTy tv --> tv)
+    val recvEvt =	polyVar'(N.recvEvt, fn tv => chanTy tv --> eventTy tv)
     val wrap =		let
 			val a' = TyVar.new(Atom.atom "'a")
 			val b' = TyVar.new(Atom.atom "'b")
@@ -495,24 +500,24 @@ structure Basis : sig
 			      (eventTy(AST.VarTy a') ** (AST.VarTy a' --> AST.VarTy b'))
 				--> eventTy(AST.VarTy b')))
 			end
-    val choose =	polyVar(N.choose, fn tv => listTy(eventTy tv) --> eventTy tv)
-    val never =		polyVar(N.never, fn tv => eventTy tv)
-    val sync =		polyVar(N.sync, fn tv => eventTy tv --> tv)
-    val iVar =		polyVar(N.iVar, fn tv => unitTy --> ivarTy tv)
-    val iGet =		polyVar(N.iGet, fn tv => ivarTy tv --> tv)
-    val iPut =		polyVar(N.iPut, fn tv => (ivarTy tv ** tv) --> unitTy)
-    val mVar =		polyVar(N.mVar, fn tv => unitTy --> mvarTy tv)
-    val mGet =		polyVar(N.mGet, fn tv => mvarTy tv --> tv)
-    val mTake =		polyVar(N.mTake, fn tv => mvarTy tv --> tv)
-    val mPut =		polyVar(N.mPut, fn tv => (mvarTy tv ** tv) --> unitTy)
-    val itos =		monoVar(N.itos, intTy --> stringTy)
-    val ltos =		monoVar(N.ltos, longTy --> stringTy)
-    val ftos =		monoVar(N.ftos, floatTy --> stringTy)
-    val dtos =		monoVar(N.dtos, doubleTy --> stringTy)
-    val print =		monoVar(N.print, stringTy --> unitTy)
-    val args =		monoVar(N.args, unitTy --> listTy stringTy)
-    val fail =		polyVar(N.fail, fn tv => stringTy --> tv)
-    val ropeFromList =  polyVar(N.ropeFromList, fn tv => listTy tv --> ropeTy tv)
+    val choose =	polyVar'(N.choose, fn tv => listTy(eventTy tv) --> eventTy tv)
+    val never =		polyVar'(N.never, fn tv => eventTy tv)
+    val sync =		polyVar'(N.sync, fn tv => eventTy tv --> tv)
+    val iVar =		polyVar'(N.iVar, fn tv => unitTy --> ivarTy tv)
+    val iGet =		polyVar'(N.iGet, fn tv => ivarTy tv --> tv)
+    val iPut =		polyVar'(N.iPut, fn tv => (ivarTy tv ** tv) --> unitTy)
+    val mVar =		polyVar'(N.mVar, fn tv => unitTy --> mvarTy tv)
+    val mGet =		polyVar'(N.mGet, fn tv => mvarTy tv --> tv)
+    val mTake =		polyVar'(N.mTake, fn tv => mvarTy tv --> tv)
+    val mPut =		polyVar'(N.mPut, fn tv => (mvarTy tv ** tv) --> unitTy)
+    val itos =		monoVar'(N.itos, intTy --> stringTy)
+    val ltos =		monoVar'(N.ltos, longTy --> stringTy)
+    val ftos =		monoVar'(N.ftos, floatTy --> stringTy)
+    val dtos =		monoVar'(N.dtos, doubleTy --> stringTy)
+    val print =		monoVar'(N.print, stringTy --> unitTy)
+    val args =		monoVar'(N.args, unitTy --> listTy stringTy)
+    val fail =		polyVar'(N.fail, fn tv => stringTy --> tv)
+    val ropeFromList =  polyVar'(N.ropeFromList, fn tv => listTy tv --> ropeTy tv)
 
 (*
     val size =		monoVar(N.size, stringTy --> intTy)

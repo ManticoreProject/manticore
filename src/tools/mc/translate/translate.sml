@@ -206,7 +206,7 @@ structure Translate : sig
 			BIND([t], B.E_Const(lit, ty'))
 		      end
 		(* end case *))
-	    | AST.VarExp(x, _) => EXP(trVtoV(env, x, fn x' => B.mkRet[x']))
+	    | AST.VarExp(x, tys) => EXP(trVtoV(env, x, tys, fn x' => B.mkRet[x']))
 	    | AST.SeqExp _ => let
 	      (* note: the typechecker puts sequences in right-recursive form *)
 		fun tr (AST.SeqExp(e1, e2)) = (
@@ -364,7 +364,7 @@ structure Translate : sig
    *	let t = exp in cxt[t]
    *)
     and trExpToV (env, AST.VarExp(x, tys), cxt : B.var -> B.exp) =
-	  trVtoV (env, x, cxt)
+	  trVtoV (env, x, tys, cxt)
       | trExpToV (env, exp, cxt : B.var -> B.exp) = (case trExp(env, exp)
 	   of BIND([x], rhs) => mkStmt([x], rhs, cxt x)
 	    | EXP e => let
@@ -374,11 +374,17 @@ structure Translate : sig
 		end
 	  (* end case *))
 
-    and trVtoV (env, x, cxt : B.var -> B.exp) = (
+    and trVtoV (env, x, tys, cxt : B.var -> B.exp) = (
 	  case E.lookupVar(env, x)
 	   of E.Var x' => cxt x' (* pass x' directly to the context *)
 	    | E.Lambda lambda => let
 		val lambda as B.FB{f, ...} = BOMUtil.copyLambda lambda
+		in
+		  B.mkFun([lambda], cxt f)
+		end
+	    | E.EqOp => let
+		val [ty] = tys
+		val lambda as B.FB{f, ...} = Equality.mkEqual(env, x, ty)
 		in
 		  B.mkFun([lambda], cxt f)
 		end

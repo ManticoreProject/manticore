@@ -42,6 +42,9 @@ structure TypeUtil : sig
    *)
     val same : (Types.ty * Types.ty) -> bool
 
+  (* return true if the type supports equality *)
+    val eqType : Types.ty -> bool
+
   (* convert various things to strings *)
     val tyvarToString : Types.tyvar -> string
     val fmt : {long : bool} -> Types.ty -> string
@@ -161,7 +164,7 @@ structure TypeUtil : sig
 		    | SOME cls => let
 			val cmv = TypeClass.new cls
 			in
-			  (TVMap.insert(s, tv, cmv), mvs)
+			  (TVMap.insert(s, tv, cmv), cmv :: mvs)
 			end
 		  (* end case *))
 	  val (subst, mvs) = List.foldl f (TVMap.empty, []) tvs
@@ -258,6 +261,20 @@ structure TypeUtil : sig
 	    | _ => false
 	  (* end case *))
 
+  (* return true if the type supports equality *)
+    fun eqType ty = (case prune ty
+	   of Ty.ErrorTy => true
+	    | Ty.MetaTy _ => false (* should have been resolved by now *)
+	    | Ty.VarTy _ => false
+	    | Ty.ConTy([], Ty.AbsTyc{eq, ...}) => eq
+	    | Ty.ConTy([], Ty.DataTyc{cons, ...}) =>
+		List.all (fn (Ty.DCon{argTy=NONE, ...}) => true | _ => false) (!cons)
+	    | Ty.ConTy _ => false
+	    | Ty.FunTy _ => false
+	    | Ty.TupleTy tys => List.all eqType tys
+	  (* end case *))
+
+  (* convert various things to strings *)
   (* smart constructors *)
     fun tupleTy [ty] = ty
       | tupleTy tys = Types.TupleTy tys

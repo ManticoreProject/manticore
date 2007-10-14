@@ -18,6 +18,7 @@ structure Env =
       = Con of AST.dcon
       | Var of AST.var
       | Overload of AST.ty_scheme * AST.var list
+      | EqOp of AST.var
 
     type ty_env = ty_def AtomMap.map		(* TE in the semantics *)
     type tyvar_env = AST.tyvar AtomMap.map	(* TVE in the semantics *)

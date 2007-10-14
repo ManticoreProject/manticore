@@ -15,7 +15,9 @@ structure TypeClass : sig
   (* is a type in a type class (represented as a list of types)? *) 
     val isClass : Types.ty * Types.ty list -> bool
 
-  (* is the type an equality type? *)
+  (* is the type an equality type? Note this function accepts kinded meta
+   * variables (unlike TypeUtil.eqType)
+   *)
     val isEqualityType : Types.ty  -> bool
 
   end = struct
@@ -41,6 +43,8 @@ structure TypeClass : sig
       | isEqualityType (Ty.MetaTy(Ty.MVar{info as ref(Ty.CLASS _), ...})) =
 	  true (* all classes are <= Eq *)
       | isEqualityType (Ty.ConTy([], Ty.AbsTyc{eq, ...})) = eq
+      | isEqualityType (Ty.ConTy([], Ty.DataTyc{cons, ...})) =
+	  List.all (fn (Ty.DCon{argTy=NONE, ...}) => true | _ => false) (!cons)
       | isEqualityType (Ty.TupleTy tys) = List.all isEqualityType tys
       | isEqualityType _ = false
 

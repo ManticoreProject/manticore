@@ -22,6 +22,7 @@ is
   ../hlop/sources.cm
   ../ast-opt/sources.cm
 
+  equality.sml
   std-env.sml
   translate.sml
   translate-controls.sml

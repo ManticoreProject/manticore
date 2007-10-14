@@ -22,7 +22,7 @@ structure Unify : sig
     structure TC = TypeClass
 
 (* FIXME: add a control to enable this flag *)
-    val debugUnify = ref false
+    val debugUnify = ref true
 
   (* does a meta-variable occur in a type? *)
     fun occursIn (mv, ty) = let
@@ -96,7 +96,9 @@ structure Unify : sig
 			    | Ty.Float => isClass Basis.FloatClass
 			    | Ty.Num => isClass Basis.NumClass
 			    | Ty.Order => isClass Basis.OrderClass
-			    | Ty.Eq => TC.isEqualityType ty
+			    | Ty.Eq => if TC.isEqualityType ty
+				then (assignMV(mv, ty); true)
+				else false
 			  (* end case *))
 		    | _ => raise Fail "impossible"
 		  (* end case *)

@@ -82,13 +82,13 @@ structure Typechecker : sig
     fun chkLit (_, PT.IntLit i) = let
 	  val ty = TypeClass.new Ty.Int
 	  in
-	    Overload.add_lit (ty, Basis.IntClass);
+	    Overload.addLit (ty, Basis.IntClass);
 	    (AST.LConst(Literal.Int i, ty), ty)
 	  end
       | chkLit (_, PT.FltLit f) = let
 	  val ty = TypeClass.new Ty.Float
 	  in
-	    Overload.add_lit (ty, Basis.FloatClass);
+	    Overload.addLit (ty, Basis.FloatClass);
 	    (AST.LConst(Literal.Float f, ty), ty)
 	  end
       | chkLit (_, PT.StrLit s) = (AST.LConst(Literal.String s, Basis.stringTy), Basis.stringTy)
@@ -284,10 +284,16 @@ structure Typechecker : sig
 			end
 		    | Env.Overload(tysch, vars) => let
 			val (argTys, resTy, instTy) = chkApp tysch
-			val ovar = ref (AST.Unknown (instTy, vars))
+			val ovar = ref (AST.Unknown(instTy, vars))
 			in
-			  Overload.add_var ovar;
+			  Overload.addVar ovar;
 			  mkApp (AST.OverloadExp ovar, resTy)
+			end
+		    | Env.EqOp eqOp =>  let
+			val ([ty], resTy, _) = chkApp (Var.typeOf eqOp)
+			in
+			  Overload.addEqTy ty;
+			  mkApp (AST.VarExp(eqOp, [ty]), resTy)
 			end
 		  (* end case *)
 		end
@@ -407,7 +413,7 @@ structure Typechecker : sig
 		  val (_, instTy) = TU.instantiate (depth, tysch)
 		  val ovar = ref (AST.Unknown (instTy, vars))
 		  in
-		    Overload.add_var ovar;
+		    Overload.addVar ovar;
 		    (AST.OverloadExp ovar, instTy)
 		  end
 		else (case E.find(ve, x)
