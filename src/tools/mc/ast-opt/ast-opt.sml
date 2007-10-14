@@ -27,7 +27,9 @@ structure ASTOpt : sig
 	  transform {passName = "ptuples", pass = FutParTup.futurize}
 
     fun optimize (module : AST.module) : AST.module = let
-          val module = ptuples module
+          val module = if (Controls.get BasicControl.sequential)
+		then module
+		else ptuples module
           in
             module
           end

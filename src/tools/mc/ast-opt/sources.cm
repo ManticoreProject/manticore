@@ -28,6 +28,7 @@ is
 
   $/basis.cm
   $/smlnj-lib.cm
+  $/controls-lib.cm
 
   ../common/sources.cm
   ../minmant/sources.cm
