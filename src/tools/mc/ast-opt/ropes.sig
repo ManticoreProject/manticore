@@ -20,10 +20,11 @@ signature ROPES = sig
   val concat      : 'a rope * 'a rope -> 'a rope
   val smartConcat : 'a rope * 'a rope -> 'a rope
   val subrope     : 'a rope * int * int -> 'a rope
+  val leaves      : 'a rope -> 'a rope list (* actually a leaf list *)
 
   val toList      : 'a rope -> 'a list
   val fromList    : 'a list -> 'a rope
 
-  val toString    : 'a rope * ('a -> string) -> string
+  val toString    : ('a -> string) -> 'a rope -> string
 
 end

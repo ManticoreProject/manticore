@@ -47,8 +47,16 @@ functor RopesFn (Arch : ARCH) : ROPES =
     (* isEmpty : 'a rope -> bool *)
     fun isEmpty r = (ropeLen(r) = 0)
 
+    (* leaves : 'a rope -> 'a rope list *)
+    (* post: all ropes in the output are leaves *)
+    fun leaves (L as Leaf _) = [L]
+      | leaves (Concat (_, r1, r2)) = leaves r1 @ leaves r2
+
     (* concat : 'a rope * 'a rope -> 'a rope *)
-    fun concat (r1, r2) = Concat(ropeLen(r1)+ropeLen(r2),r1,r2)
+    fun concat (r1, r2) =
+	  if isEmpty r1 then r2
+	  else if isEmpty r2 then r1
+	  else Concat(ropeLen(r1)+ropeLen(r2),r1,r2)
 
     local
 
@@ -88,11 +96,56 @@ functor RopesFn (Arch : ARCH) : ROPES =
 	  | smartBuild (r1 as Concat _, r2 as Concat _) = 
 	      Concat (ropeLen(r1)+ropeLen(r2), r1, r2)
 
-	(* balance : 'a rope -> 'a rope *)
-	(* FIXME: make this do something *)
-	fun balance r = r
+	(* fib : int -> int *)
+	fun fib n =
+	      let fun f (n (* >= 2 *), penult, ult) =
+	              if n=2 then penult + ult
+		      else f (n-1, ult, penult + ult)
+	      in
+		  if n<0 then raise Fail "fib: negative argument"
+		  else if n=0 then 0
+		  else if n=1 then 1
+		  else f (n, 0, 1)
+	      end
+	      
+	(* fibfloor : int -> int *)
+	(* Compute the index of the greatest lower Fibonacci number of the arg. *)
+	(* Note: If the argument is 1, the result is 2. *)
+	(* FIXME This could be implemented more efficiently. *)
+	fun fibfloor n =
+	    let fun find f = if fib(f) > n then f-1 else find(f+1)
+	    in
+		if n<1 then raise Fail "fibfloor: n<1"
+		else find 2
+	    end
+
+	(* concatAllBefore : int * 'a rope list -> 'a rope *)
+	fun concatAllBefore (n, rs) = foldl concat empty (List.take (rs,n))
+
+	(* insert : 'a rope * 'a rope list -> 'a rope list *)
+	fun insert (leaf, ropes) =
+	    let val greatestLowerFib = fibfloor (ropeLen leaf)
+		val bigCat = concatAllBefore (greatestLowerFib-2, ropes)
+		val r = concat (bigCat, leaf)
+		fun build (n, acc) = if n=0 then acc else build (n-1, empty::acc)
+	    in
+		build (greatestLowerFib-2, [r])
+	    end
+
+	(* isBalanced : 'a rope -> bool *)
+	fun isBalanced r = false (* conservative *)
 
     in
+
+	(* balance : 'a rope -> 'a rope *)
+	fun balance r = 
+	    let fun bal ([], acc) = foldr concat empty (rev acc)
+		  | bal (leaf::leaves, acc) = bal (leaves, insert (leaf, acc))
+	    in
+		if isBalanced(r) 
+		then r
+		else bal (leaves r, [])
+	    end
 
         (* smartConcat : 'a rope * 'a rope -> 'a rope *)
         fun smartConcat (r1, r2) = (balance o smartBuild) (r1, r2)
@@ -219,8 +272,8 @@ functor RopesFn (Arch : ARCH) : ROPES =
 		     else if n=0 then []
 		     else List.tabulate (n, fn _ => x)
 
-    (* toString : 'a rope * ('a -> string) -> string *)
-    fun toString (r, show) =
+    (* toString : ('a -> string) -> 'a rope -> string *)
+    fun toString show r =
 	  let val rootString = "C<"
 	      val spaces = copies " "
 	      val indenter = String.concat (spaces (String.size rootString))
