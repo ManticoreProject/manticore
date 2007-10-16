@@ -123,6 +123,7 @@ functor VarDefFn (
 	| mv (x, MTy.CEXP cexp) = let
 	  val r = Cells.newReg ()
 	  in
+(* FIXME? *)
 	      stms := cexpToGPR (r, cexp) :: !stms;
 	      MTy.GPR (wordTy, r)
 	  end

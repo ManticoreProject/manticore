@@ -30,6 +30,7 @@ signature MLRISC_TYPES = sig
     val gprToExp : mlrisc_reg -> T.mlrisc
     val cfgTyToMLRisc : CFGTy.ty -> mlrisc_kind
     val treeToString : mlrisc_tree -> string
+    val cexpToExp : T.ccexp -> T.rexp
 
     val wordTy : T.ty
 

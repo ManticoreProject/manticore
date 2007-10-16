@@ -58,6 +58,9 @@ functor AMD64CopyFn (
 	    | mkCopies (MTy.FPReg (_, v1), MTy.FEXP (fty, e), 
 			(regs, exprs, fregs, fexprs)) = 
 	      (regs, exprs, fregs, (fty,v1,e) :: fexprs) 
+	    | mkCopies (MTy.GPReg (ty, v1), MTy.CEXP e,
+			(regs, exprs, fregs, fexprs)) =
+	      ( regs, (ty,v1,MTy.cexpToExp e) :: exprs, fregs, fexprs )
 	    | mkCopies (_, _, x) = raise Fail "" 
 
 	  val (regs, exprs, fregs, fexprs) = 

@@ -211,11 +211,15 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		    bindExp ([lhs], [mkExp (T.LABEL (BE.LabelCode.getName l))])
 		  | gen (M.E_Select(lhs, i, v)) =  
 		    bindExp ([lhs], [select (szOf lhs, Var.typeOf v, i, defOf v)])
-		  | gen (M.E_Update(i, lhs, rhs)) = (
-		    flushLoads ();
-		    emit (T.STORE (szOf lhs,
-				   T.ADD (ty, defOf lhs, T.LI (T.I.fromInt (ty, wordSzB * i))), 
-					  defOf rhs, ManticoreRegion.memory)))
+		  | gen (M.E_Update(i, lhs, rhs)) = let
+                    (* MLRISC type of the i^th entry *)			
+	            val szI = BE.Types.szOfIx (Var.typeOf lhs, i)
+		    (* byte offset *)
+		    val offset = T.LI (T.I.fromInt (ty, wordSzB * i))
+		    in
+			flushLoads ();
+			emit (T.STORE (szI, T.ADD (ty, defOf lhs, offset), defOf rhs, ManticoreRegion.memory))
+		    end
 		  | gen (M.E_AddrOf(lhs, i, v)) = let
 		      val addr = addrOf(szOf lhs,  Var.typeOf v, i, defOf v)
 		      in
@@ -231,10 +235,9 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		  | gen (M.E_GAlloc(lhs, vs)) = raise Fail "GAlloc" (* FIXME *)
 		  | gen (M.E_Promote (lhs, v)) =  raise Fail "Promote" (* FIXME *)
 		  | gen (M.E_Prim (lhs, p)) = emitStms (genPrim (lhs, p))
-		  | gen (M.E_CCall (lhs, f, args)) = 
-		      let val {stms, result} = 
-			      BE.Transfer.genCCall varDefTbl 
-				{frame=frame, lhs=lhs, f=f, args=args}
+		  | gen (M.E_CCall (lhs, f, args)) = let 
+                    val {stms, result} = BE.Transfer.genCCall varDefTbl 
+					      {frame=frame, lhs=lhs, f=f, args=args}
 		      in
 			  emitStms stms;
 			  bindExp (lhs, result)
@@ -282,7 +285,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 			  val regStrs = map (MTy.treeToString o MTy.regToTree) regs 
 			  val regStrs = map (fn s => comment ("param:"^s^" ")) regStrs
 (* DEBUG *)
-		      in			  			  
+		      in	
 			  funcAnRef := (#create BE.SpillLoc.frameAn) frame :: 
 				       (!funcAnRef);
 			  emitLabel ();

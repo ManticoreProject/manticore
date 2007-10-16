@@ -4,10 +4,12 @@ module Assign
       fun h (x : int / exh : cont(any)) : int = return (999)
       let cell : ![int,fun (int / cont(any) -> int)] = alloc (0,h)
       fun f (x : int / exh : cont(any)) : int = return (#0(cell))
+      let q:[int,int] = alloc(16,12)
       if I32Eq (i,0)
-         then do #0(cell) := 2
-	      do #1(cell) := f
-              (* let g : fun (int / cont(any) -> int) = #1(cell) *)
+         then let z : int = #0(q)
+	      do #0(cell) := z
+	      do #1(cell) := f                	      
               let x : int = apply f (i / exh)
               return (x)
-         else return (1)
+         else let z:int = #1(q)
+	      return (z)

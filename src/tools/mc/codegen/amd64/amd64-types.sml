@@ -37,4 +37,10 @@ functor AMD64TypesFn (
 	(* esac *))
     fun szOf ty = szOfB ty * 8
 
+    fun szOfIx (ty, i) = (case ty
+        of ( Ty.T_Tuple (_, tys) | 
+	     Ty.T_OpenTuple tys ) => szOf (List.nth (tys, i))
+	 | _ => raise Fail "attempt to select from an opaque type"
+        (* end case *))
+
   end (* AMD64TypesFn *)
