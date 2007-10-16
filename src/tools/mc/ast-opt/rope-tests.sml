@@ -23,7 +23,34 @@ structure RopeTests = struct
 		      
   val r0 = R.fromList (range (1, 15))
 
-  fun test 0 = print (R.toString Int.toString r0)
-    | test _ = raise Fail "no such test"
+  (* spinal : int * int -> int rope *)
+  fun spinal (lo, hi) = foldr R.concat R.empty (map R.singleton (range (lo, hi)))
+
+  (* ir2s : int rope -> string *)
+  val ir2s = R.toString Int.toString
+
+  (* balanceTest : bool -> int -> unit *)
+  fun balanceTest showTrees n =
+      let val r = if n<=0 then R.empty else spinal (1, n)
+	  val r' = R.balance r
+	  val pr = if showTrees then print o ir2s else ignore
+      in
+	  print ("Balance Test: " ^ (Int.toString n) ^ "\n\n");
+	  pr r;
+	  print "(* balancing... *)\n\n";
+	  pr r';
+	  print "Depth: ";
+	  print (Int.toString (R.ropeDepth(r')));
+	  print "\n";
+	  print "Length: ";
+	  print (Int.toString (R.ropeLen(r')));
+	  print "\n";
+	  print "F_{n}: ";
+	  print (Int.toString (R.fib (R.ropeDepth(r'))));
+	  print "\n"
+      end
+
+  fun test 0 = print (ir2s r0)
+    | test _ = print "No such test.\n"
 
 end

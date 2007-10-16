@@ -12,12 +12,15 @@ signature ARCH = sig
   val wordSizeBytes : int
 end
 
-functor RopesFn (Arch : ARCH) : ROPES = 
+functor RopesFn (Arch : ARCH) (* : ROPES *) = 
    
   struct
 
     structure A = AST
     structure T = Types
+
+    val debugging = ref false
+    fun dprint s = if !debugging then print s else ()
 
     datatype 'a rope
       = Leaf of int * 'a list
@@ -47,6 +50,9 @@ functor RopesFn (Arch : ARCH) : ROPES =
     (* isEmpty : 'a rope -> bool *)
     fun isEmpty r = (ropeLen(r) = 0)
 
+    (* singleton : 'a -> 'a rope *)
+    fun singleton x = Leaf (1, [x])
+
     (* leaves : 'a rope -> 'a rope list *)
     (* post: all ropes in the output are leaves *)
     fun leaves (L as Leaf _) = [L]
@@ -58,100 +64,111 @@ functor RopesFn (Arch : ARCH) : ROPES =
 	  else if isEmpty r2 then r1
 	  else Concat(ropeLen(r1)+ropeLen(r2),r1,r2)
 
-    local
+    (* mergeLeaves : int * 'a list * 'a list -> 'a rope *)
+    (* Combines two leaves into one when possible. *)
+    (* post: output leaves never exceed maxLeafSize *)
+    fun mergeLeaves (r1 as Leaf(n1,xs1), r2 as Leaf(n2,xs2)) =
+	  let val n = n1+n2
+	  in
+	      if n <= maxLeafSize then
+		  Leaf(n,xs1@xs2)
+	      else
+		  Concat(n,r1,r2)
+	  end
+      | mergeLeaves _ = raise Fail "mergeLeaves: both arguments must be leaves"
 
-	(* mergeLeaves : int * 'a list * 'a list -> 'a rope *)
-	(* Combines two leaves into one when possible. *)
-	(* post: output leaves never exceed maxLeafSize *)
-	fun mergeLeaves (r1 as Leaf(n1,xs1), r2 as Leaf(n2,xs2)) =
-	      let val n = n1+n2
-	      in
-		  if n <= maxLeafSize then
-		      Leaf(n,xs1@xs2)
-		  else
-		      Concat(n,r1,r2)
-	      end
-	  | mergeLeaves _ = raise Fail "mergeLeaves: both arguments must be leaves"
+    (* smartBuild : 'a rope * 'a rope -> 'a rope *)
+    fun smartBuild (r1 as Leaf _, r2 as Leaf _) = mergeLeaves (r1, r2)
+      | smartBuild (r1 as Leaf(n1,xs1), r2 as Concat(n2,r2L,r2R)) =
+	  (case r2L
+	     of Leaf _ => 
+		  let val r = mergeLeaves (r1, r2L)
+		  in
+		      Concat (n1+n2,r,r2R)
+		  end
+	      | _ => Concat (n1+n2,r1,r2)
+ 	    (* end case *))
+      | smartBuild (r1 as Concat(n1,r1L,r1R), r2 as Leaf(n2, xs2)) =
+	  (case r1R
+	     of Leaf _ =>
+		  let val r = mergeLeaves (r1R, r2)
+		  in
+		      Concat (n1+n2, r1R, r2)
+		  end
+	      | _ => Concat (n1+n2, r1, r2)
+	  (* end case *))
+      | smartBuild (r1 as Concat _, r2 as Concat _) = 
+	  Concat (ropeLen(r1)+ropeLen(r2), r1, r2)
 
-	(* smartBuild : 'a rope * 'a rope -> 'a rope *)
-	fun smartBuild (r1 as Leaf _, r2 as Leaf _) = mergeLeaves (r1, r2)
-	  | smartBuild (r1 as Leaf(n1,xs1), r2 as Concat(n2,r2L,r2R)) =
-	      (case r2L
-		 of Leaf _ => 
-		      let val r = mergeLeaves (r1, r2L)
-		      in
-			  Concat (n1+n2,r,r2R)
-		      end
-		  | _ => Concat (n1+n2,r1,r2)
- 	        (* end case *))
-	  | smartBuild (r1 as Concat(n1,r1L,r1R), r2 as Leaf(n2, xs2)) =
-	      (case r1R
-		of Leaf _ =>
-		     let val r = mergeLeaves (r1R, r2)
-		     in
-			 Concat (n1+n2, r1R, r2)
-		     end
-		 | _ => Concat (n1+n2, r1, r2)
-	       (* end case *))
-	  | smartBuild (r1 as Concat _, r2 as Concat _) = 
-	      Concat (ropeLen(r1)+ropeLen(r2), r1, r2)
+    (* fib : int -> int *)
+    fun fib n =
+	let fun f (n (* >= 2 *), penult, ult) =
+	        if n=2 then penult + ult
+		else f (n-1, ult, penult + ult)
+	in
+	    if n<0 then raise Fail "fib: negative argument"
+	    else if n=0 then 0
+	    else if n=1 then 1
+	    else f (n, 0, 1)
+	end
+	
+    (* fibfloor : int -> int *)
+    (* Compute the index of the greatest lower Fibonacci number of the arg. *)
+    (* Note: If the argument is 1, the result is 2. *)
+    (* FIXME This could be implemented more efficiently. *)
+    fun fibfloor n =
+	let fun find f = if fib(f) > n then f-1 else find(f+1)
+	in
+	    dprint "fibfloor\n";
+	    if n<1 then raise Fail "fibfloor: n<1"
+	    else find 2
+	end
+	
+    (* concatAllUpTo : int * 'a rope list -> 'a rope *)
+    (* note: 1-based *)
+    fun concatAllUpTo (n, rs) = 
+	let (* forgiving take *)
+	    fun take' (xs, n) = 
+		let val len = List.length xs
+		in
+		    dprint "take'\n";
+		    if n >= len then xs else List.take (xs, n)
+		end
+	in
+	    dprint "concatAllUpTo\n";
+	    foldr smartBuild empty (take' (rs, n))
+	end
+				  
+    (* insert : 'a rope * 'a rope list -> 'a rope list *)
+    fun insert (leaf, ropes) =
+	let val greatestLowerFib = fibfloor (ropeLen leaf)
+	    val bigCat = concatAllUpTo (greatestLowerFib-1, ropes)
+	    val r = smartBuild (bigCat, leaf)
+	    fun build (n, acc) = if n=0 then acc else build (n-1, empty::acc)
+	    (* forgiving drop *) 
+	    fun drop' (xs, n) = (dprint "drop'\n";
+				 if (length xs) <= n then [] else List.drop (xs, n))
+	in
+	    dprint "insert\n";
+	    if isEmpty(leaf) then ropes
+	    else (build (greatestLowerFib-1, [r])) @ drop' (ropes, greatestLowerFib-1)
+	end
 
-	(* fib : int -> int *)
-	fun fib n =
-	      let fun f (n (* >= 2 *), penult, ult) =
-	              if n=2 then penult + ult
-		      else f (n-1, ult, penult + ult)
-	      in
-		  if n<0 then raise Fail "fib: negative argument"
-		  else if n=0 then 0
-		  else if n=1 then 1
-		  else f (n, 0, 1)
-	      end
-	      
-	(* fibfloor : int -> int *)
-	(* Compute the index of the greatest lower Fibonacci number of the arg. *)
-	(* Note: If the argument is 1, the result is 2. *)
-	(* FIXME This could be implemented more efficiently. *)
-	fun fibfloor n =
-	    let fun find f = if fib(f) > n then f-1 else find(f+1)
-	    in
-		if n<1 then raise Fail "fibfloor: n<1"
-		else find 2
-	    end
-
-	(* concatAllBefore : int * 'a rope list -> 'a rope *)
-	fun concatAllBefore (n, rs) = foldl concat empty (List.take (rs,n))
-
-	(* insert : 'a rope * 'a rope list -> 'a rope list *)
-	fun insert (leaf, ropes) =
-	    let val greatestLowerFib = fibfloor (ropeLen leaf)
-		val bigCat = concatAllBefore (greatestLowerFib-2, ropes)
-		val r = concat (bigCat, leaf)
-		fun build (n, acc) = if n=0 then acc else build (n-1, empty::acc)
-	    in
-		build (greatestLowerFib-2, [r])
-	    end
-
-	(* isBalanced : 'a rope -> bool *)
-	fun isBalanced r = false (* conservative *)
-
-    in
-
-	(* balance : 'a rope -> 'a rope *)
-	fun balance r = 
-	    let fun bal ([], acc) = foldr concat empty (rev acc)
-		  | bal (leaf::leaves, acc) = bal (leaves, insert (leaf, acc))
-	    in
-		if isBalanced(r) 
-		then r
-		else bal (leaves r, [])
-	    end
-
-        (* smartConcat : 'a rope * 'a rope -> 'a rope *)
-        fun smartConcat (r1, r2) = (balance o smartBuild) (r1, r2)
-
-    end (* local *)
-
+    (* isBalanced : 'a rope -> bool *)
+    fun isBalanced r = isEmpty(r) orelse false (* conservative *)
+		       
+    (* balance : 'a rope -> 'a rope *)
+    fun balance r = 
+	let fun bal ([], acc) = foldr smartBuild empty (rev acc)
+	      | bal (leaf::leaves, acc) = bal (leaves, insert (leaf, acc))
+	in
+	    dprint "balance\n";
+	    if isBalanced(r) then r else bal (leaves r, [])
+	end
+	
+    (* smartConcat : 'a rope * 'a rope -> 'a rope *)
+    fun smartConcat (r1, r2) = (balance o smartBuild) (r1, r2)
+			       
     (* sublist : 'a list * int * int -> 'a list *)
     fun sublist (xs, start, len) = 
 	  let fun build ([], n, acc) = 
