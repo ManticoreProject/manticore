@@ -204,7 +204,7 @@ void VProcSleep (VProc_t *vp)
 	SayDebug("[%2d] VProcSleep called\n", vp->id);
 #endif
 
-    if (FetchAndInc(&NumIdleVProcs) == NumVProcs) {
+    if (FetchAndInc(&NumIdleVProcs) == NumVProcs-1) {
       /* all VProcs are idle, so shutdown */
 #ifndef NDEBUG
 	if (DebugFlg)
