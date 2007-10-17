@@ -22,7 +22,7 @@ structure Unify : sig
     structure TC = TypeClass
 
 (* FIXME: add a control to enable this flag *)
-    val debugUnify = ref true
+    val debugUnify = ref false
 
   (* does a meta-variable occur in a type? *)
     fun occursIn (mv, ty) = let

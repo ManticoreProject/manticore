@@ -32,18 +32,16 @@ module Migrate
       fun wasteTime (/ exh : cont(any)) : () =
 	  fun doit (i : int / exh : cont(any)) : () =
 	      if I32Eq (i, 0) then return () else
-  	      let x : int = apply fib (9 / exh)
+  	      let x : int = apply fib (6 / exh)
               apply doit (I32Sub(i, 1)/ exh)
-          apply doit (1000000 / exh)
+          apply doit (10000 / exh)
 
       fun migrate (vp : vproc / exh : cont(any)) : () =
-	  if Equal (vp, self)
-	     then return ()
-	     else cont k (x : enum(0)) = return ()
-	          let self : vproc = host_vproc
-                  do ccall EnqueueOnVProc (self, vp, enum(0), k)
-                  (*do apply wasteTime (/ exh)*)
-		  @forward (self, enum(0):signal / exh)
+	  cont k (x : enum(0)) = return ()
+	  let self : vproc = host_vproc
+          do ccall EnqueueOnVProc (self, vp, enum(0), k)
+          (*do apply wasteTime (/ exh)*)
+          @forward (self, enum(0):signal / exh)
 
       let vprocs : list = ccall ListVProcs (self)
 

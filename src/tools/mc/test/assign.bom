@@ -1,8 +1,10 @@
 module Assign
 
   fun doit (i : int / exh : cont(any)) : int =
-      fun h (x : int / exh : cont(any)) : int = return (999)
-      let cell : ![int,fun (int / cont(any) -> int)] = alloc (0,h)
+      fun h' (x : int / exh : cont(any)) : int = return (999)
+      let h : fun (int / cont(any) -> int) = promote (h')
+      let cell : ![int,fun (int / cont(any) -> int)] = galloc (1234,h)
+(*      let cell :![int,fun (int / cont(any) -> int)] = promote (cell')*)
       fun f (x : int / exh : cont(any)) : int = return (#0(cell))
       let q:[int,int] = alloc(16,12)
       if I32Eq (i,0)

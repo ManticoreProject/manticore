@@ -12,6 +12,8 @@ functor Alloc64Fn (
     structure Spec : TARGET_SPEC
     structure Types : ARCH_TYPES
     structure MLTreeComp : MLTREECOMP 
+    structure VProcOps : VPROC_OPS
+	where MTy = MTy
   ) : ALLOC = struct
 
     structure MTy = MTy
@@ -33,7 +35,6 @@ functor Alloc64Fn (
     fun regExp r = T.REG (ty, r)
     fun move' (ty, r, e) = T.MV (ty, r, e)
     fun move (r, e) = move' (ty, r, e)
-    fun offAp i = T.ADD (ty, regExp apReg, intLit i)
     fun gpReg r = MTy.GPReg (ty, r)
     fun mltGPR r = MTy.GPR (ty, r)
 
@@ -83,7 +84,7 @@ functor Alloc64Fn (
 
     fun setBit (w, i, ty) = if (isHeapPointer ty) then W.orb (w, W.<< (0w1, i)) else w
 
-  fun initObj ((ty, mltree), {i, stms, totalSize, ptrMask}) =
+  fun initObj offAp ((ty, mltree), {i, stms, totalSize, ptrMask}) =
       let val store = MTy.store (offAp totalSize, mltree, memory)
 	  val ptrMask' = setBit (ptrMask, Word.fromInt i, ty)
 	  val totalSize' = alignedTySzB ty + totalSize
@@ -91,9 +92,9 @@ functor Alloc64Fn (
 	  {i=i+1, stms=store :: stms, totalSize=totalSize', ptrMask=ptrMask'}
       end (* initObj *)
 
-    fun allocMixedObj args = let
+    fun allocMixedObj offAp args = let
 	  val {i=nWords, stms, totalSize, ptrMask} = 
-		List.foldl initObj {i=0, stms=[], totalSize=0, ptrMask=0w0} args
+		List.foldl (initObj offAp) {i=0, stms=[], totalSize=0, ptrMask=0w0} args
 	(* create the mixed-object header word *)
 	  val hdrWord = W.toLargeInt (
 		  W.+ (W.orb (W.<< (ptrMask, 0w7), 
@@ -104,17 +105,17 @@ functor Alloc64Fn (
 	    else (totalSize, hdrWord, stms)
 	end (* allocMixedObj *)
 
-    fun allocVectorObj args = let
+    fun allocVectorObj offAp args = let
 	  val {i=nWords, stms, totalSize, ...} =
-	        List.foldl initObj {i=0, stms=[], totalSize=0, ptrMask=0w0} args
+	        List.foldl (initObj offAp) {i=0, stms=[], totalSize=0, ptrMask=0w0} args
 	  val hdrWord = W.toLargeInt(W.+ (W.<< (W.fromInt nWords, 0w3), 0w4))
 	  in
 	    (totalSize, hdrWord, stms)
 	  end
 
-    fun allocRawObj args = let
+    fun allocRawObj offAp args = let
 	  val {i=nWords, stms, totalSize, ...} =
-	        List.foldl initObj {i=0, stms=[], totalSize=0, ptrMask=0w0} args
+	        List.foldl (initObj offAp) {i=0, stms=[], totalSize=0, ptrMask=0w0} args
 	  val hdrWord = W.toLargeInt (W.+ (W.<< (W.fromInt nWords, 0w3), 0w2))
 	  in
 	    (totalSize, hdrWord, stms)
@@ -123,15 +124,15 @@ functor Alloc64Fn (
   (* determine the representation of an allocation and generate the appropriate
    * allocation code.
    *)
-    fun alloc args = let
+    fun alloc offAp args = let
 	  fun lp (hasPtr, hasRaw, (x, _)::xs) = if isHeapPointer x
 		then lp(true, hasRaw, xs)
 		else if CFGTy.hasUniformRep x
 		  then lp (hasPtr, hasRaw, xs)
 		  else lp (hasPtr, true, xs)
-	    | lp (true, true, []) = allocMixedObj args
-	    | lp (true, false, []) = allocVectorObj args
-	    | lp (false, _, []) = allocRawObj args
+	    | lp (true, true, []) = allocMixedObj offAp args
+	    | lp (true, false, []) = allocVectorObj offAp args
+	    | lp (false, _, []) = allocRawObj offAp args
 	  in
 (*allocMixedObj args*)
 	    lp (false, false, args)
@@ -140,7 +141,8 @@ functor Alloc64Fn (
     (* *)
     fun genAlloc [] = { ptr=MTy.EXP (ty, intLit 1), stms=[] }
       | genAlloc args = let
-	  val (totalSize, hdrWord, stms) = alloc args
+	  fun offAp i = T.ADD (ty, regExp apReg, intLit i)
+	  val (totalSize, hdrWord, stms) = alloc offAp args
 	(* store the header word *)
 	  val stms = MTy.store (offAp (~wordSzB), MTy.EXP (ty, T.LI hdrWord), memory) 
 		:: stms
@@ -153,6 +155,33 @@ functor Alloc64Fn (
 	  in
 	    { ptr=mltGPR ptrReg, stms=ptrMv :: rev (bumpAp :: stms) }
 	  end (* genAlloc *)
+
+    fun genGlobalAlloc [] = { ptr=MTy.EXP (ty, intLit 1), stms=[] }
+      | genGlobalAlloc args = let
+	val (vpReg, setVP) = let
+	    val r = Cells.newReg()
+	    val MTy.EXP(_, hostVP) = VProcOps.genHostVP
+            in
+	       (T.REG(ty, r), T.MV(ty, r, hostVP))
+            end
+	val (globalApReg, globalAp, setGAp, globalApAddr) = let
+	    val r = Cells.newReg()
+	    val MTy.EXP(_, gap) = MTy.EXP (64, VProcOps.genVPLoad' (Spec.ABI.globNextW, vpReg))
+            in
+	       (r, T.REG(ty, r), T.MV(ty, r, gap), gap)
+            end
+        fun offAp i = T.ADD (ty, globalAp, intLit i)
+	val (totalSize, hdrWord, stms) = alloc offAp args
+	(* store the header word *)
+	  val stms = MTy.store (offAp (~wordSzB), MTy.EXP (ty, T.LI hdrWord), memory) 
+		:: stms
+
+	(* bump up the allocation pointer *)
+	  val bumpAp = VProcOps.genVPStore' (Spec.ABI.globNextW, vpReg, 
+			T.ADD (64, globalApAddr, intLit (totalSize+wordSzB)))
+	in
+	    { ptr=mltGPR globalApReg, stms=setVP :: setGAp :: rev (bumpAp :: stms) }
+	end
 
     val heapSlopSzB = Word.- (Word.<< (0w1, 0w12), 0w512)
 

@@ -20,6 +20,9 @@ signature ALLOC =
   (* allocate a list of types, and initialize them *)
     val genAlloc : (CFG.ty * MTy.mlrisc_tree) list -> {ptr : MTy.mlrisc_tree, stms : MTy.T.stm list}
 
+  (* allocate a list of types in the global heap, and initialize them *)
+    val genGlobalAlloc : (CFG.ty * MTy.mlrisc_tree) list -> {ptr : MTy.mlrisc_tree, stms : MTy.T.stm list}
+
   (* heap limit check.  evaluates to true when the heap contains sufficient
    * space for the given size.
    *)

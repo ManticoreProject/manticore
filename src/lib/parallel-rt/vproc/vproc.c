@@ -43,6 +43,7 @@ int			NumVProcs;
 int			NumIdleVProcs;
 VProc_t			*VProcs[MAX_NUM_VPROCS];
 int			NextVProc;			/* index of next slot in VProcs */
+int                     NumReadyVProcs = 0;             /* number of fully initialized vprocs */
 
 extern int ASM_VProcSleep;
 
@@ -177,7 +178,7 @@ VProc_t *VProcSelf ()
 /*! \brief send an asynchronous signal to another VProc.
  *  \param vp the target VProc.
  *  \param sig the signal.
- */
+x */
 void VProcSignal (VProc_t *vp, VPSignal_t sig)
 {
 #ifndef NDEBUG
@@ -203,7 +204,7 @@ void VProcSleep (VProc_t *vp)
 	SayDebug("[%2d] VProcSleep called\n", vp->id);
 #endif
 
-    if (FetchAndInc(&NumIdleVProcs) == NumVProcs-1) {
+    if (FetchAndInc(&NumIdleVProcs) == NumVProcs) {
       /* all VProcs are idle, so shutdown */
 #ifndef NDEBUG
 	if (DebugFlg)
@@ -264,7 +265,7 @@ static void *VProcMain (void *_data)
     sigfillset (&(sa.sa_mask));
     sigaction (SIGUSR1, &sa, 0);
     sigaction (SIGUSR2, &sa, 0);
-    //    sigaction (SIGSEGV, &sa, 0);
+    //sigaction (SIGSEGV, &sa, 0);
 
   /* signal that we have started */
     MutexLock (&(data->lock));
@@ -273,6 +274,13 @@ static void *VProcMain (void *_data)
     MutexUnlock (&data->lock);
 
     self->idle = false;
+
+    /* Bring all the vprocs to a state where they can start executing in
+     * parallel.  The pthreads scheduler sometimes delays vprocs for long
+     * stretches of time otherwise.
+     */
+    FetchAndInc(&NumReadyVProcs);
+    while (NumReadyVProcs < NumVProcs);
 
     init (self, arg);
 
@@ -370,6 +378,7 @@ static void IdleVProc (VProc_t *vp, void *arg)
  * 
  */
 static void SegvHandler  (siginfo_t *si, void *_sc) {
+  ucontext_t	*uc = (ucontext_t *)_sc;
   Die ("Received SIGSEGV\n");
 }
 

@@ -12,14 +12,17 @@ extern void* M_WorkDequeue(void*,void*) __attribute__((alloc));
 
 define @steal1 (fp : future / exh : exh) : ();
 
+extern void M_Print (void*);
+
 define @get-work1 (q : work_queue / exh : exh) : () =
   fun loop ( / exh : exh) : () =
     let vp : vproc = host_vproc
-    let w : option = ccall M_WorkDequeue (vp, q)
+    let w : option = ccall M_WorkDequeue (vp, q)    
     case w
       of SOME (fut : future) => @steal1 (fut / exh)
        | NONE => apply loop ( / exh)
     end
+(*  do ccall M_Print ("get-work\n\000")*)
   apply loop ( / exh)
 ;
 

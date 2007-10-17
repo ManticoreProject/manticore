@@ -13,11 +13,6 @@ functor AMD64HeapTransferFn (
   val ty = wordSzB * 8
   fun regExp r = T.REG (ty, r)
 
-  fun genGCCall () = 
-      [T.JMP (T.LABEL RuntimeLabels.initGC, [RuntimeLabels.initGC])]
-(*
-      [T.CALL {funct=T.LABEL RuntimeLabels.initGC, targets=[],
-	       defs=[], uses=[],
-	       region=memory, pops=0}]
-*)
+  fun genGCCall () = [T.JMP (T.LABEL RuntimeLabels.initGC, [RuntimeLabels.initGC])]
+
 end (* AMD64HeapTransferFn *)

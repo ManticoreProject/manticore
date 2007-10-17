@@ -22,3 +22,7 @@
     PR_OFFSET(vp, STD_EXH, stdExnCont);
     PR_OFFSET(vp, ALLOC_PTR, allocPtr);
     PR_OFFSET(vp, LIMIT_PTR, limitPtr);
+    PR_OFFSET(vp, NURSERY_BASE, nurseryBase);
+    PR_OFFSET(vp, OLD_TOP, oldTop);
+    PR_OFFSET(vp, GLOB_TOSPACE, globToSpace);
+    PR_OFFSET(vp, GLOB_NEXT_W, globNextW);

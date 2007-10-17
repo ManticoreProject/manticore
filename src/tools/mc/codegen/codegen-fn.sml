@@ -39,6 +39,11 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
   val ty = MTy.wordTy
   val wordSzB = IntInf.toInt Spec.ABI.wordSzB
 
+  val v2s = Var.toString
+  val i2s = Int.toString
+
+  val ultraVerboseAnnotations = ref true
+
   fun fail s = raise Fail s
   fun newLabel s = Label.label s () 
   fun labelToMLRisc l = newLabel (M.Label.toString l)
@@ -201,6 +206,15 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
                  ListPair.app doBind (lhs, rhs)
               end                 
 
+	  (* Annotate the first MLRISC statement in a group. *)
+	  and annotateAndEmit ([], msg) = ()
+	    | annotateAndEmit (s :: ss, msg) = 
+	      if !ultraVerboseAnnotations 
+	          then emitStms (note (s,msg) :: ss)
+	          else emitStms (s :: ss)
+
+	  and bindExpAndAnnotate (lhs, rhs, msg) = annotateAndEmit (bind (lhs, rhs), msg)
+
 	  (* Construct an MLRISC tree from a CFG expression. *)
 	  and genExp frame = let
 		fun gen (M.E_Var(lhs, rhs)) = 
@@ -209,8 +223,12 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		    bindExp ([lhs], [genLit (szOf lhs, lit)])
 		  | gen (M.E_Label(lhs, l)) = 
 		    bindExp ([lhs], [mkExp (T.LABEL (BE.LabelCode.getName l))])
-		  | gen (M.E_Select(lhs, i, v)) =  
-		    bindExp ([lhs], [select (szOf lhs, Var.typeOf v, i, defOf v)])
+		  | gen (M.E_Select(lhs, i, v)) = let
+	            val stm = select (szOf lhs, Var.typeOf v, i, defOf v)
+                    in
+			bindExpAndAnnotate (lhs, stm, "< let "^v2s lhs^" = "^v2s v^"["^i2s i^"] >")
+(*			bindExp ([lhs], [note (stm, "select")])*)
+		    end
 		  | gen (M.E_Update(i, lhs, rhs)) = let
                     (* MLRISC type of the i^th entry *)			
 	            val szI = BE.Types.szOfIx (Var.typeOf lhs, i)
@@ -225,15 +243,25 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		      in
 		        bindExp ([lhs], [MTy.EXP(ty, addr)])
 		      end
-		  | gen (M.E_Alloc (lhs, vs)) = 
-		      let val {ptr, stms} = 
-			      BE.Alloc.genAlloc (map (fn v => (Var.typeOf v, getDefOf v)) vs)
+		  | gen (M.E_Alloc (lhs, vs)) = let 
+                    val {ptr, stms} = BE.Alloc.genAlloc (map (fn v => (Var.typeOf v, getDefOf v)) vs)
 		      in 
 			  emitStms stms;
 			  bindExp ([lhs], [ptr])
 		      end
-		  | gen (M.E_GAlloc(lhs, vs)) = raise Fail "GAlloc" (* FIXME *)
-		  | gen (M.E_Promote (lhs, v)) =  raise Fail "Promote" (* FIXME *)
+		  | gen (M.E_GAlloc(lhs, vs)) = let 
+                    val {ptr, stms} = BE.Alloc.genGlobalAlloc (map (fn v => (Var.typeOf v, getDefOf v)) vs)
+		      in 
+			  emitStms stms;
+			  bindExp ([lhs], [ptr])
+		      end
+		  | gen (M.E_Promote (lhs, v)) =  let
+                    val {stms, result} = BE.Transfer.genPromote varDefTbl
+						       {frame=frame, lhs=lhs, arg=v}
+		    in
+			emitStms stms;
+			bindExp ([lhs], result)
+		    end
 		  | gen (M.E_Prim (lhs, p)) = emitStms (genPrim (lhs, p))
 		  | gen (M.E_CCall (lhs, f, args)) = let 
                     val {stms, result} = BE.Transfer.genCCall varDefTbl 

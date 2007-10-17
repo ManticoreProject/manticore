@@ -37,6 +37,7 @@ signature RUNTIME_CONSTANTS =
     val stdExnCont : IntInf.int
     val allocPtr : IntInf.int
     val limitPtr : IntInf.int
+    val globNextW : IntInf.int
 
   (* mask to get address of VProc from allocation pointer *)
     val vpMask : IntInf.int

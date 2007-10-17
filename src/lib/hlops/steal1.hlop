@@ -9,10 +9,13 @@
 #include "types.def"
 #include "futures.def"
 
+extern void M_Print (void *);
+
 define @steal1 (fp : future / exh : exh) : () =
   let tmp : any = CAS (&0(fp), EMPTY_F, STOLEN_F)
   if Equal (tmp, EMPTY_F) 
-    then let f : thunk = #1(fp)
+    then 
+         let f : thunk = #1(fp)
          do #1(fp) := (thunk) $0
 	 (* need exn handler for thunk. *)
          (* let exh : exh = ... *)
@@ -23,7 +26,8 @@ define @steal1 (fp : future / exh : exh) : () =
                 let k : cont(any) = (cont(any)) result
                 throw k (result)
            else return ()
-    else return ()
+    else 
+         return ()
 ;
 
 (*
