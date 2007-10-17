@@ -19,6 +19,9 @@ Library
   structure Nester
   structure PrintAST  
   structure PrintTypes
+  signature ROPES
+  functor   RopesFn
+  structure RopeTests
   structure TestUtils	
   structure TypeOf	
   structure Unpar
@@ -43,6 +46,9 @@ is
   futures.sml
   hash.sml
   nester.sml
+  ropes.sig
+  ropes-fn.sml
+  rope-tests.sml
   test-utils.sml
   unpar.sml
   var-subst.sml
