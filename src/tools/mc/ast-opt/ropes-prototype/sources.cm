@@ -8,24 +8,9 @@
 
 Library
 
-  structure ASTOpt
-  structure FlatParTup
-  structure FreshVar
-  structure FutParArr
-  structure FutParLet	
-  structure FutParTup	
-  structure Futures
-  structure Hash
-  structure Nester
-  structure PrintAST  
-  structure PrintTypes
   signature ROPES
   functor   RopesFn
   structure RopeTests
-  structure TestUtils	
-  structure TypeOf	
-  structure Unpar
-  structure VarSubst
 
 is
 
@@ -33,22 +18,11 @@ is
   $/smlnj-lib.cm
   $/controls-lib.cm
 
-  ../common/sources.cm
-  ../minmant/sources.cm
+  ../../common/sources.cm
+  ../../minmant/sources.cm
+  ../sources.cm
 
-  ast-opt.sml
-  ast-opt-controls.sml
-  flat-par-tup.sml
-  fresh-var.sml
-  fut-par-arr.sml
-  fut-par-let.sml
-  fut-par-tup.sml
-  futures.sml
-  hash.sml
-  nester.sml
   ropes.sig
   ropes-fn.sml
   rope-tests.sml
-  test-utils.sml
-  unpar.sml
-  var-subst.sml
+

@@ -22,7 +22,6 @@ structure Basis : sig
     val listTyc		: Types.tycon
     val optionTyc	: Types.tycon
     val parrayTyc	: Types.tycon
-    val ropeTyc         : Types.tycon
     val chanTyc		: Types.tycon
     val ivarTyc		: Types.tycon
     val mvarTyc		: Types.tycon
@@ -39,7 +38,6 @@ structure Basis : sig
     val stringTy	: Types.ty
     val listTy		: Types.ty -> Types.ty
     val optionTy	: Types.ty -> Types.ty
-    val ropeTy          : Types.ty -> Types.ty
     val threadIdTy	: Types.ty
     val parrayTy	: Types.ty -> Types.ty
     val eventTy		: Types.ty -> Types.ty
@@ -171,7 +169,6 @@ structure Basis : sig
     val print		: AST.var
     val args		: AST.var
     val fail		: AST.var
-    val ropeFromList    : AST.var
 
   (* environments *)
     val lookupOp : Atom.atom -> Env.val_bind
@@ -222,13 +219,6 @@ structure Basis : sig
     val optionSOME = DataCon.new optionTyc (N.optionSOME, SOME(tv'))
     end
 
-    local
-	val tv = TyVar.new(Atom.atom "'a")
-	val tv' = AST.VarTy tv
-    in
-    val ropeTyc = TyCon.newDataTyc (N.rope, [tv])
-    end
-
     val exnTyc = TyCon.newAbsTyc (N.exn, 0, false)
 
     val intTyc = TyCon.newAbsTyc (N.int, 0, true)
@@ -264,7 +254,6 @@ structure Basis : sig
     val stringTy = AST.ConTy([], stringTyc)
     fun listTy ty = AST.ConTy([ty], listTyc)
     fun optionTy ty = AST.ConTy([ty], optionTyc)
-    fun ropeTy ty = AST.ConTy([ty], ropeTyc)
 
   (* concurrent and parallel-language predefined types *)
     val threadIdTy = AST.ConTy([], threadIdTyc)
@@ -517,7 +506,6 @@ structure Basis : sig
     val print =		monoVar'(N.print, stringTy --> unitTy)
     val args =		monoVar'(N.args, unitTy --> listTy stringTy)
     val fail =		polyVar'(N.fail, fn tv => stringTy --> tv)
-    val ropeFromList =  polyVar'(N.ropeFromList, fn tv => listTy tv --> ropeTy tv)
 
 (*
     val size =		monoVar(N.size, stringTy --> intTy)

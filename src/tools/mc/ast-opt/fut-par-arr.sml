@@ -19,12 +19,13 @@ structure FutParArr : sig
     structure T = Types
     structure F = Futures
     structure B = Basis
+    structure R = Ropes
 
     (* mkRope : A.exp -> A.exp *)
     fun mkRope e = 
 	  let val t = TypeOf.exp e
 	  in
-	      A.ApplyExp (A.VarExp (B.ropeFromList, [t]), e, B.ropeTy t)
+	      A.ApplyExp (A.VarExp (R.ropeFromList, [t]), e, R.ropeTy t)
 	  end
 
     (* mkList : A.exp list * T.ty -> A.exp *)

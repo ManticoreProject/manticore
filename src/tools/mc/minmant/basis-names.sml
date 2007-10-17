@@ -28,7 +28,6 @@ structure BasisNames =
     val list =		Atom.atom "list"
     val option =	Atom.atom "option"
     val parray =        Atom.atom "parray"
-    val rope =          Atom.atom "rope"
     val chan =		Atom.atom "chan"
     val ivar =		Atom.atom "ivar"
     val mvar =		Atom.atom "mvar"
@@ -105,7 +104,6 @@ structure BasisNames =
     val print =		Atom.atom "print"
     val args =		Atom.atom "args"
     val fail =		Atom.atom "fail"
-    val ropeFromList =  Atom.atom "ropeFromList"
 (*
     val size =		Atom.atom "size"
     val sub =		Atom.atom "sub"
