@@ -178,7 +178,7 @@ VProc_t *VProcSelf ()
 /*! \brief send an asynchronous signal to another VProc.
  *  \param vp the target VProc.
  *  \param sig the signal.
-x */
+ */
 void VProcSignal (VProc_t *vp, VPSignal_t sig)
 {
 #ifndef NDEBUG
@@ -275,12 +275,14 @@ static void *VProcMain (void *_data)
 
     self->idle = false;
 
-    /* Bring all the vprocs to a state where they can start executing in
-     * parallel.  The pthreads scheduler sometimes delays vprocs for long
-     * stretches of time otherwise.
-     */
+  /* Bring all the vprocs to a state where they can start executing in
+   * parallel.  The pthreads scheduler sometimes delays vprocs for long
+   * stretches of time otherwise.
+   */
     FetchAndInc(&NumReadyVProcs);
-    while (NumReadyVProcs < NumVProcs);
+// FIXME: this is bad code; use a condition variable or else remove it.
+    while (NumReadyVProcs < NumVProcs)
+	continue;
 
     init (self, arg);
 
@@ -377,10 +379,12 @@ static void IdleVProc (VProc_t *vp, void *arg)
  *
  * 
  */
-static void SegvHandler  (siginfo_t *si, void *_sc) {
+static void SegvHandler  (siginfo_t *si, void *_sc)
+{
   ucontext_t	*uc = (ucontext_t *)_sc;
   Die ("Received SIGSEGV\n");
-}
+
+} /* end of SegvHandler */
 
 /* SigHandler:
  *
@@ -392,7 +396,7 @@ static void SigHandler (int sig, siginfo_t *si, void *_sc)
    * Enabling the following SayDebug can cause deadlock;
    * if the signal arrives while the VProc/pthread is in the runtime,
    * the PrintLock may already be acquired by this thread for debugging. 
-   * Attempting to re-aquire the PrintLock in the signal handler leads to deadlock
+   * Attempting to re-acquire the PrintLock in the signal handler leads to deadlock
    * (technically, undefined behavior, but deadlock in practice).
    */
 /*
@@ -403,23 +407,23 @@ static void SigHandler (int sig, siginfo_t *si, void *_sc)
 #endif
 */
     switch (sig) {
-    case SIGUSR1:
-    case SIGUSR2: {
-      ucontext_t	*uc = (ucontext_t *)_sc;
-      VProc_t	*self = VProcSelf();
-
-      self->sigPending = M_TRUE;
-      if ((self->inManticore == M_TRUE) && (self->atomic == M_FALSE)) {
-	/* set the limit pointer to zero to force a context switch on
-	 * the next GC test.
-	 */
-	UC_R11(uc) = 0;
+      case SIGUSR1:
+      case SIGUSR2: {
+	ucontext_t	*uc = (ucontext_t *)_sc;
+	VProc_t	*self = VProcSelf();
+  
+	self->sigPending = M_TRUE;
+	if ((self->inManticore == M_TRUE) && (self->atomic == M_FALSE)) {
+	  /* set the limit pointer to zero to force a context switch on
+	   * the next GC test.
+	   */
+	  UC_R11(uc) = 0;
+	}
+	break;
       }
-      break;
-    }
-    case SIGSEGV:
-      SegvHandler (si, _sc);
-      break;
+      case SIGSEGV:
+	SegvHandler (si, _sc);
+	break;
     }
 
 
