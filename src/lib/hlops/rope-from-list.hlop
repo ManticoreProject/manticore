@@ -1,4 +1,4 @@
-(* future1.hlop
+(* rope-from-list.hlop
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -7,8 +7,17 @@
  *)
 
 #include "types.def"
-#include "futures.def"
+#include "ropes.def"
 
 define @rope-from-list (xs : list) : rope = 
-  return (rope)$0;
+
+  fun forgivingTake (ys : list, n : int / exh : exh) : list =
+        case ys
+          of NIL => return ys
+           | CONS (hd : any, tl : list) =>
+               let nMinusOne : int = I32Sub (n, 1)
+	       let ys2 : list = apply forgivingTake (tl, nMinusOne)
+               return (CONS (hd, ys2))
+
+  return (rope)$0
 ;
