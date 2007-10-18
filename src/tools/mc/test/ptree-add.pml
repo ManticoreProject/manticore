@@ -8,4 +8,4 @@ fun treeAdd t = (case t
                         in x + y end
       (* end case *));
 
-print (ltos(treeAdd (mkTree 11)) ^ "\n")
+print (ltos(treeAdd (mkTree 12)) ^ "\n")
