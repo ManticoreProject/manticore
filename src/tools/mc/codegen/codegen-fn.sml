@@ -307,9 +307,9 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 			     defineLabel label)
 			   | M.LK_Local {func=CFG.FUNC{entry, ...}, ...} => 
 			     (case entry
-			       of CFG.Block _ =>  (print "nonentry\n";
+			       of CFG.Block _ =>  
 				  (* CFG.Blocks are only called within their own cluster *)
-				  defineLabel label)
+				  defineLabel label
 				| _ => entryLabel label
 			     (* end case *))
 			   | _ => fail "emitLabel"
