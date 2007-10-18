@@ -293,7 +293,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	  fun genFunc (M.FUNC {lab, entry, body, exit}) =
 	      let fun emitLabel () = let
 		      val label = BE.LabelCode.getName lab
-val _ = print (("CFG function: "^CFG.Label.toString lab)^"\n")
+		  (*val _ = print (("CFG function: "^CFG.Label.toString lab)^"\n")*)
 		      in
 		      (* if this function is the module entry point, output the entry label *)
 		        if M.Label.same (lab, entryLab)
@@ -325,8 +325,8 @@ val _ = print (("CFG function: "^CFG.Label.toString lab)^"\n")
 			  val regStrs = map (MTy.treeToString o MTy.regToTree) regs 
 			  val regStrs = map (fn s => comment ("param:"^s^" ")) regStrs
 (* DEBUG *)
-val _ = BE.VarDef.flushLoads varDefTbl
 		      in	
+			  BE.VarDef.flushLoads varDefTbl;
 			  funcAnRef := (#create BE.SpillLoc.frameAn) frame :: 
 				       (!funcAnRef);
 			  emitLabel ();
@@ -342,7 +342,7 @@ val _ = BE.VarDef.flushLoads varDefTbl
 	      let val _ = BE.VarDef.clear varDefTbl;
 		  val finishers = map genFunc c
 	      in 
-print "new cluster:\n\n";
+		  (*print "new cluster:\n\n";*)
  		  beginCluster 0;
 		  pseudoOp P.text;
 		  app (fn f => f ()) finishers;
