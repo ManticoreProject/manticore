@@ -11,9 +11,7 @@
 extern void *ListVProcs (void *) __attribute__((alloc));
 
 define inline @spawn-on (f : fun (unit / exh -> unit), dst : vproc / exh : exh) : tid;
-define @get-work1 (q : work_queue / exh : exh) : ();
-
-extern void M_Print2 (void*);
+define @get-work1 (q : work_queue / exh : exh) noreturn;
 
 define @get-work1-all (q : work_queue / exh : exh) : unit =
   fun init (_ : unit / exh : exh) : unit =

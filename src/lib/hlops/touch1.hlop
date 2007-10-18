@@ -40,6 +40,7 @@ define @touch1 (qf: [work_queue, future] / exh : exh) : any =
 	       then (* the future-cell writer can resume this thread via k *)
                     do ccall M_Print ("suspending on future\n\000")
                     do @get-work1 (q / exh) (* this should ultimately throw result to k *)
+                    do ccall M_Print ("ERROR: should never get here\n\000")
                     return (tmpX) (* is this line unreachable? - ams *)
 	       else (* the future value is ready *)
                     return (tmpX)

@@ -10,20 +10,40 @@
 (*   Value_t M_WorkDequeue(VProc_t *vp, Value_t q) *)
 extern void* M_WorkDequeue(void*,void*) __attribute__((alloc));
 
-define @steal1 (fp : future / exh : exh) : ();
-
 extern void M_Print (void*);
 
-define @get-work1 (q : work_queue / exh : exh) : () =
-  fun loop ( / exh : exh) : () =
+define @get-work1 (q : work_queue / exh : exh) noreturn =
+
+  cont stealLoop ()  =
+
+    cont steal (fp : future) =
+         let tmp : any = CAS (&0(fp), EMPTY_F, STOLEN_F)
+         if Equal (tmp, EMPTY_F) 
+            then let f : thunk = #1(fp)
+		 do #1(fp) := (thunk) $0
+       	        (* need exn handler for thunk. *)
+                (* let exh : exh = ... *)
+                do ccall M_Print ("stole future\n\000")
+                let resultLocal : any = apply f (UNIT / exh)
+                let result : any = promote (resultLocal)
+                let tmpX : any = CAS(&0(fp), STOLEN_F, result)
+                if Equal (tmpX, STOLEN_F)            
+                   then throw stealLoop ()
+                else do #0(fp) := result
+	             let k : cont(any) = (cont(any)) tmpX
+                     do ccall M_Print ("wake up k\n\000")
+                     throw k (result)
+             else do ccall M_Print ("future is already full\n\000")
+                     throw stealLoop ()
+
     let vp : vproc = host_vproc
     let w : option = ccall M_WorkDequeue (vp, q)    
-(*    do ccall M_Print ("get-work-loop\n\000")*)
     case w
-      of SOME (fut : future) => @steal1 (fut / exh)
-       | NONE => apply loop ( / exh)
+      of SOME (fut : future) => throw steal (fut)
+       | NONE => throw stealLoop ()
     end
-  apply loop ( / exh)
+
+  throw stealLoop ()
 ;
 
 (*

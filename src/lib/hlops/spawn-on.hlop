@@ -20,6 +20,8 @@ define inline @spawn-on (f : fun (unit / exh -> unit), dst : vproc / exh : exh) 
     @dispatch (host_vproc / exh)
   let vp : vproc = host_vproc
   let tid : tid = @new-tid(vp / exh)
+  (* the fiber must be in the global heap before enqueueing on a remote vproc! *)
+  let fiber:cont() = promote (fiber)
   do ccall EnqueueOnVProc(vp, dst, tid, fiber)
   return (tid)
 ;
