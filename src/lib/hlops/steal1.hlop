@@ -10,22 +10,25 @@
 #include "futures.def"
 
 extern void M_Print (void *);
+extern void M_PrintLong (void *);
 
 define @steal1 (fp : future / exh : exh) : () =
   let tmp : any = CAS (&0(fp), EMPTY_F, STOLEN_F)
   if Equal (tmp, EMPTY_F) 
-    then 
-         let f : thunk = #1(fp)
+    then let f : thunk = #1(fp)
          do #1(fp) := (thunk) $0
 	 (* need exn handler for thunk. *)
          (* let exh : exh = ... *)
-         let result : any = apply f (UNIT / exh)
+         do ccall M_Print ("stole future\n\000")
+         let resultLocal : any = apply f (UNIT / exh)
+         let result : any = promote (resultLocal)
          let tmpX : any = CAS(&0(fp), STOLEN_F, result)
-         if NotEqual (tmpX, STOLEN_F)
-           then do #0(fp) := result
-                let k : cont(any) = (cont(any)) result
+         if Equal (tmpX, STOLEN_F)            
+           then return ()
+           else do #0(fp) := result
+	        let k : cont(any) = (cont(any)) tmpX
+                do ccall M_Print ("wake up k\n\000")                
                 throw k (result)
-           else return ()
     else 
          return ()
 ;

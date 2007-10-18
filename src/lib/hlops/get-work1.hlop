@@ -18,11 +18,11 @@ define @get-work1 (q : work_queue / exh : exh) : () =
   fun loop ( / exh : exh) : () =
     let vp : vproc = host_vproc
     let w : option = ccall M_WorkDequeue (vp, q)    
+(*    do ccall M_Print ("get-work-loop\n\000")*)
     case w
       of SOME (fut : future) => @steal1 (fut / exh)
        | NONE => apply loop ( / exh)
     end
-(*  do ccall M_Print ("get-work\n\000")*)
   apply loop ( / exh)
 ;
 
