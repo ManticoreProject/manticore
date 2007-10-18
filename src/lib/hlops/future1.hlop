@@ -25,8 +25,8 @@ define @future1 (qt : [work_queue, thunk] / exh : exh) : future =
   let q : work_queue = #0(qt)
   let thunk : thunk  = #1(qt)
   let e : any = (any)EMPTY_F
-  let cell' : future = alloc(e, thunk)
-  let cell : future = promote(cell')
+  let cell : future = alloc(e, thunk)
+  let cell : future = promote(cell)
   let vp : vproc = host_vproc
   do ccall M_WorkEnqueue (vp, q, cell)
   return (cell)
