@@ -175,9 +175,11 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
     Addr_t	heapBase = (Addr_t)vp;
     MemChunk_t	*scanChunk = vp->globToSpace;
 
+    assert ((vp->globNextW % WORD_SZB) == 0);
+
 #ifndef NDEBUG
-    if (DebugFlg)
-        SayDebug("[%2d] PromoteObj(%p, %p)\n", vp->id, vp, root);
+    /*    if (DebugFlg)
+	  SayDebug("[%2d] PromoteObj(%p, %p)\n", vp->id, vp, root); */
 #endif
   /* NOTE: the following test probably ought to happen before the runtime
    * system gets called.
@@ -186,8 +188,8 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
       /* promote the root to the global heap */
 	root = ForwardObj (vp, root);
 #ifndef NDEBUG
-    if (DebugFlg)
-        SayDebug("[%2d]  ==> %p\n", vp->id, root);
+	/*    if (DebugFlg)
+	      SayDebug("[%2d]  ==> %p\n", vp->id, root); */
 #endif
 
       /* promote any reachable values */

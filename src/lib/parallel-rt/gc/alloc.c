@@ -134,6 +134,7 @@ Value_t GlobalAllocUniform (VProc_t *vp, int nElems, ...)
     va_list	ap;
 
     assert (vp == VProcSelf());
+    assert ((vp->globNextW % WORD_SZB) == 0);
 
   /* first we must ensure that the elements are in the global heap */
     va_start(ap, nElems);
@@ -164,6 +165,7 @@ Value_t GlobalAllocNonUniform (VProc_t *vp, int nElems, ...)
     va_list	ap;
 
     assert (vp == VProcSelf());
+    assert ((vp->globNextW % WORD_SZB) == 0);
 
   /* first we must ensure that the elements are in the global heap */
     va_start(ap, nElems);

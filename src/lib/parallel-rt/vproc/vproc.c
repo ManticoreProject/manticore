@@ -96,8 +96,6 @@ void VProcInit (Options_t *opts)
       VProcs[i] = vproc;
       MutexInit (&(vproc->lock));
       CondInit (&(vproc->wait));
-      vproc->oldTop = VProcHeap(vproc);
-      InitVProcHeap (vproc);
     }
 
   /* create nProcs-1 idle vprocs; the last vproc will be created to run
@@ -125,6 +123,11 @@ VProc_t *VProcCreate (VProcFn_t f, void *arg)
   VProc_t* vproc = VProcs[NextVProc];
 
   /* initialize the vproc structure */
+    vproc->id = NextVProc++;
+
+    vproc->oldTop = VProcHeap(vproc);
+    InitVProcHeap (vproc);
+
     vproc->inManticore = M_FALSE;
     vproc->atomic = M_TRUE;
     vproc->sigPending = M_FALSE;
@@ -140,8 +143,6 @@ VProc_t *VProcCreate (VProcFn_t f, void *arg)
     vproc->limitPtr = (Addr_t)vproc + VP_HEAP_SZB - ALLOC_BUF_SZB;
     SetAllocPtr (vproc);
     vproc->idle = true;
-
-    vproc->id = NextVProc++;
 
   /* start the vproc's pthread */
     InitData_t data;
@@ -265,7 +266,7 @@ static void *VProcMain (void *_data)
     sigfillset (&(sa.sa_mask));
     sigaction (SIGUSR1, &sa, 0);
     sigaction (SIGUSR2, &sa, 0);
-    //sigaction (SIGSEGV, &sa, 0);
+    sigaction (SIGSEGV, &sa, 0);
 
   /* signal that we have started */
     MutexLock (&(data->lock));

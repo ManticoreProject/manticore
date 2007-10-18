@@ -31,13 +31,15 @@ struct struct_qitem {
 Value_t M_NewWorkQueue (VProc_t *vp)
 {
     Mutex_t	*lock = NEW(Mutex_t);
-    MutexInit (lock);
+    MutexInit (lock);   
 
   // allocate dummy queue item
     Value_t qitem = GlobalAllocUniform (vp, 2, M_UNIT, M_NIL);
 
   // allocate queue header
     Value_t workQ = GlobalAllocNonUniform (vp, 3, INT(lock), PTR(qitem), PTR(qitem));
+
+    Say ("Allocated work queue %p\n");
 
     return workQ;
 }
@@ -57,8 +59,8 @@ Value_t M_WorkDequeue (VProc_t *vp, Value_t q)
     else {
 	WorkQItem_t *f = (WorkQItem_t *)ValueToPtr(workQ->front);
 	workQ->front = f->next;
-	MutexUnlock (workQ->lock);
 	f->next = M_NIL;
+	MutexUnlock (workQ->lock);
 	return Some(vp, f->item);
     }
 

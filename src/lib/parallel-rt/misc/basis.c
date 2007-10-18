@@ -53,6 +53,13 @@ void M_Print (char *s)
     Say("[%2d] %s", VProcSelf()->id, s);
 }
 
+/* M_PrintLong:
+ */
+void M_PrintLong (int64_t n)
+{
+    Say("%p\n", n);
+}
+
 Value_t M_PrintFloat (float f)
 {
   Say ("%f\n",f);
