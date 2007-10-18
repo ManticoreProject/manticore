@@ -293,6 +293,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	  fun genFunc (M.FUNC {lab, entry, body, exit}) =
 	      let fun emitLabel () = let
 		      val label = BE.LabelCode.getName lab
+val _ = print (("CFG function: "^CFG.Label.toString lab)^"\n")
 		      in
 		      (* if this function is the module entry point, output the entry label *)
 		        if M.Label.same (lab, entryLab)
@@ -306,9 +307,9 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 			     defineLabel label)
 			   | M.LK_Local {func=CFG.FUNC{entry, ...}, ...} => 
 			     (case entry
-			       of CFG.Block _ => 
+			       of CFG.Block _ =>  (print "nonentry\n";
 				  (* CFG.Blocks are only called within their own cluster *)
-				  defineLabel label
+				  defineLabel label)
 				| _ => entryLabel label
 			     (* end case *))
 			   | _ => fail "emitLabel"
@@ -319,12 +320,12 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		      let val funcAnRef = getAnnotations ()
 			  val frame = BE.SpillLoc.getFuncFrame lab
 (* DEBUG *)
-(*val _ = print (("CFG function: "^CFG.Label.toString lab)^"\n")*)
 			  val _ = comment ("CFG function: "^CFG.Label.toString lab)
 			  val regs = BE.LabelCode.getParamRegs lab
 			  val regStrs = map (MTy.treeToString o MTy.regToTree) regs 
 			  val regStrs = map (fn s => comment ("param:"^s^" ")) regStrs
 (* DEBUG *)
+val _ = BE.VarDef.flushLoads varDefTbl
 		      in	
 			  funcAnRef := (#create BE.SpillLoc.frameAn) frame :: 
 				       (!funcAnRef);
@@ -341,7 +342,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	      let val _ = BE.VarDef.clear varDefTbl;
 		  val finishers = map genFunc c
 	      in 
-(*print "new cluster:\n";*)
+print "new cluster:\n\n";
  		  beginCluster 0;
 		  pseudoOp P.text;
 		  app (fn f => f ()) finishers;
