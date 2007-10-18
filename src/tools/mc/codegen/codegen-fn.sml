@@ -326,6 +326,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 			  val regStrs = map (fn s => comment ("param:"^s^" ")) regStrs
 (* DEBUG *)
 		      in	
+			  (* flush out any stale loads from other functions*)
 			  BE.VarDef.flushLoads varDefTbl;
 			  funcAnRef := (#create BE.SpillLoc.frameAn) frame :: 
 				       (!funcAnRef);
