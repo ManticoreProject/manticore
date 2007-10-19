@@ -167,7 +167,7 @@ structure Translate : sig
 		  end))
 	    | AST.RangeExp(lo, hi, optStep, ty) => raise Fail "RangeExp"
 	    | AST.PTupleExp exps => raise Fail "PTupleExp"
-	    | AST.PArrayExp(exps, ty) => raise Fail "PArrayExp"
+	    | parr as AST.PArrayExp(exps, ty) => trParr (env, parr)
 	    | AST.PCompExp _ => raise Fail "unexpected PCompExp"
 	    | AST.PChoiceExp _ => raise Fail "unexpected PChoiceExp"
 	    | AST.SpawnExp e => let
@@ -220,6 +220,8 @@ structure Translate : sig
 		end
 	    | AST.OverloadExp _ => raise Fail "unresolved overloading"
 	  (* end case *))
+
+    and trParr (env, exp) = TranslateParr.translate trExp (env, exp)
 
     and trExpToExp (env, exp) = toExp(trExp(env, exp))
 

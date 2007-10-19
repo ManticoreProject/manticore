@@ -7,6 +7,7 @@
 Library
 
   structure Translate
+  structure TranslateParr
 
 is
 
@@ -27,4 +28,5 @@ is
   translate.sml
   translate-controls.sml
   translate-env.sml
+  translate-parr.sml
   translate-types.sml
