@@ -1,0 +1,23 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Sources file for the AST optimization phases.
+ *)
+
+Library
+
+  signature ROPES
+  functor   RopesFn
+  structure RopeTests
+
+is
+
+  $/basis.cm
+  $/smlnj-lib.cm
+
+  ropes.sig
+  ropes-fn.sml
+  rope-tests.sml
+
