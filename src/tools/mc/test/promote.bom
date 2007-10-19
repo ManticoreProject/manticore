@@ -6,7 +6,7 @@ module Promote
 
   fun init (i : int/ exh : cont(any)) : int =
 
-    let x:[int] = alloc(1)
+    let x:[int] = alloc(123)
 
     cont k () = 
        do ccall M_AssertNotLocalPtr (x)

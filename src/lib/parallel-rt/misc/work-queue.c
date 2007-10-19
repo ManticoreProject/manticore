@@ -9,6 +9,7 @@
 #include "manticore-rt.h"
 #include "value.h"
 #include "os-threads.h"
+#include "heap.h"
 
 /* An item in the queue */
 typedef struct struct_qitem WorkQItem_t;
@@ -66,11 +67,23 @@ Value_t M_WorkDequeue (VProc_t *vp, Value_t q)
 
 }
 
+
+/* return true of the given address is within the given vproc heap */
+STATIC_INLINE bool inVPHeap (Addr_t heapBase, Addr_t p)
+{
+    return (heapBase == (p & ~VP_HEAP_MASK));
+}
+
+
 /* M_WorkEnqueue:
  */
 void M_WorkEnqueue (VProc_t *vp, Value_t q, Value_t item)
 {
     WorkQueue_t		*workQ = (WorkQueue_t *)ValueToPtr(q);
+    /* item must be a pointer in the global queue, and thus we can
+     * at least be sure that it is not in the local queue
+     */
+    assert (!(inVPHeap ((Addr_t)vp, (Addr_t)item)));
 
     MutexLock (workQ->lock);
     Value_t newItem = GlobalAllocUniform(vp, 2, M_UNIT, M_NIL);

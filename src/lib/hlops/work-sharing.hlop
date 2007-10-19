@@ -26,7 +26,7 @@ define @work-sharing ( / exh : exh) : spawn_fun =
    cont wsSwitch (s : signal) =
      let self : vproc = host_vproc
      (* find work on the shared queue
-      * -- we expect that signals are masked here
+      * -- we expect to be masked
       *)
      fun findWork ( / exh : exh) =
 	 let w : option = ccall M_WorkDequeue (self / q)

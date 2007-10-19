@@ -11,7 +11,7 @@ fun wasteTime (x : long) = let
            in loop (i+1, acc+f) end
         else acc
     in
-(*    print ("wasting time\n");*)
+       print ("wasting time\n");
        loop (0, 0)
     end
 ;

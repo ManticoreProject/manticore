@@ -1,5 +1,7 @@
 module Assign
 
+extern void M_Print (void *);
+
   fun doit (i : int / exh : cont(any)) : int =
       fun h' (x : int / exh : cont(any)) : int = return (999)
       let h : fun (int / cont(any) -> int) = promote (h')
@@ -8,7 +10,8 @@ module Assign
       fun f (x : int / exh : cont(any)) : int = return (#0(cell))
       let q:[int,int] = alloc(16,12)
       if I32Eq (i,0)
-         then let z : int = #0(q)
+         then do ccall M_Print ("hi\n\000")
+              let z : int = #0(q)
 	      do #0(cell) := z
 	      do #1(cell) := f                	      
               let x : int = apply f (i / exh)

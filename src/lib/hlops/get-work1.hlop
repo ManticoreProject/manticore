@@ -33,7 +33,7 @@ define @get-work1 (q : work_queue / exh : exh) noreturn =
 	             let k : cont(any) = (cont(any)) tmpX
                      do ccall M_Print ("wake up k\n\000")
                      throw k (result)
-             else do ccall M_Print ("future is already full\n\000")
+             else (*do ccall M_Print ("future is already full\n\000")*)
                      throw stealLoop ()
 
     let vp : vproc = host_vproc

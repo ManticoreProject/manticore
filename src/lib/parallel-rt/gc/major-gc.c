@@ -177,9 +177,11 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
 
     assert ((vp->globNextW % WORD_SZB) == 0);
 
+    Addr_t scanPtr = vp->globNextW;
+
 #ifndef NDEBUG
-    /*    if (DebugFlg)
-	  SayDebug("[%2d] PromoteObj(%p, %p)\n", vp->id, vp, root); */
+    /* if (DebugFlg)
+       SayDebug("[%2d] PromoteObj(%p, %p)\n", vp->id, vp, root); */
 #endif
   /* NOTE: the following test probably ought to happen before the runtime
    * system gets called.
@@ -192,8 +194,11 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
 	      SayDebug("[%2d]  ==> %p\n", vp->id, root); */
 #endif
 
-      /* promote any reachable values */
-	ScanGlobalToSpace (vp, heapBase, scanChunk, (Word_t *)(vp->globNextW));
+      /* promote any reachable values (scanPtr needs to point at the header word
+       * of the object being promoted)
+       */
+	//	ScanGlobalToSpace (vp, heapBase, scanChunk, (Word_t *)(vp->globNextW));
+	ScanGlobalToSpace (vp, heapBase, scanChunk, ((Word_t*)scanPtr)-1);
     }
 
     return root;
