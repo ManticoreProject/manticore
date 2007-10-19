@@ -9,6 +9,7 @@
 #include <string.h>
 #include "vproc.h"
 #include "value.h"
+#include "heap.h"
 
 /* M_IntToString:
  */
@@ -57,7 +58,7 @@ void M_Print (char *s)
  */
 void M_PrintLong (int64_t n)
 {
-    Say("%p\n", n);
+    Say("%", n);
 }
 
 Value_t M_PrintFloat (float f)
@@ -86,5 +87,22 @@ Value_t M_StringConcat2 (Value_t a, Value_t b)
       // allocate the sequence-header object
 	return AllocNonUniform(vp, 2, PTR(data), INT((Word_t)len));
     }
+
+}
+
+/* return true of the given address is within the given vproc heap */
+STATIC_INLINE bool inVPHeap (Addr_t heapBase, Addr_t p)
+{
+    return (heapBase == (p & ~VP_HEAP_MASK));
+}
+
+void M_AssertNotLocalPtr (Value_t item)
+{
+    /* item must be a pointer in the global queue, and thus we can
+     * at least be sure that it is not in the local queue
+     */
+  if (inVPHeap ((Addr_t)VProcSelf(), (Addr_t)item)) {
+    Die ("Pointer %p is in the local heap when it should be in the global heap\n", item);
+  }
 
 }
