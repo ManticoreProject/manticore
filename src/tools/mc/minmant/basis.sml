@@ -155,6 +155,12 @@ structure Basis : sig
     val channel		: AST.var
     val send		: AST.var
     val recv		: AST.var
+    val sendEvt		: AST.var
+    val recvEvt		: AST.var
+    val wrap		: AST.var
+    val choose		: AST.var
+    val never		: AST.var
+    val sync		: AST.var
     val iVar		: AST.var
     val iGet		: AST.var
     val iPut		: AST.var

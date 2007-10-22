@@ -45,6 +45,10 @@ structure HLOpEnv : sig
     val dequeueOp : HLOp.hlop
     val enqueueOp : HLOp.hlop
 
+  (* events *)
+    val chooseOp : HLOp.hlop
+    val wrapOp : HLOp.hlop
+
   (* work queues *)
     val newWorkQueueOp : HLOp.hlop
     val getWork1AllOp  : HLOp.hlop
@@ -88,6 +92,8 @@ structure HLOpEnv : sig
     val floatTy = BOMBasis.floatTy
     val doubleTy = BOMBasis.doubleTy
     val stringTy = BOMBasis.stringTy
+
+    val evtTy = BOMBasis.evtTy
 
     val workQueueTy = BTy.T_Any
 
@@ -135,6 +141,10 @@ structure HLOpEnv : sig
     val forwardOp = newWithExh ("forward", [vprocTy, signalTy], [], [H.NORETURN])
     val dequeueOp = newWithExh ("dequeue", [vprocTy], [Basis.rdyqItemTy], [])
     val enqueueOp = newWithExh ("enqueue", [vprocTy, tidTy, fiberTy], [], [])
+
+  (* events *)
+    val chooseOp = newWithExh ("event-choose", [evtTy, evtTy], [evtTy], [])
+    val wrapOp = newWithExh ("event-wrap", [evtTy, BTy.T_Fun([BTy.T_Any], [exhTy], [BTy.T_Any])], [evtTy], [])
 
   (* work queue operations *)
     val newWorkQueueOp = newWithExh ("new-work-queue", [unitTy], [workQueueTy], [])

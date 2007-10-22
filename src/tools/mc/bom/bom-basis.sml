@@ -23,15 +23,19 @@ signature BOM_BASIS =
     val signalTy : BOMTy.ty
     val rdyqItemTy : BOMTy.ty
     val workQueueTy : BOMTy.ty
+    val evtTy : BOMTy.ty
 
   (* predefined data constructors *)
     val signalPREEMPT : BOMTy.data_con
     val listCons : BOMTy.data_con
     val optionSOME : BOMTy.data_con
     val rdyq_itemQITEM : BOMTy.data_con
+    val evtCHOOSE : BOMTy.data_con
+    val evtBEVT : BOMTy.data_con
 
     val findTyc : Atom.atom -> BOMTy.tyc option
     val findDCon : Atom.atom -> BOMTy.data_con option
+
   end
 
 structure BOMBasis : BOM_BASIS =
