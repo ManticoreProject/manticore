@@ -282,6 +282,10 @@ structure Translate : sig
 	  (* end case *))
 
     and trCase (env, arg, rules) = let
+	  fun trDConst (dc, exp) = (case TranslateTypes.trDataCon(env, dc)
+		 of E.Const(rep, bty) => (B.P_Const(Literal.Enum rep, bty), trExpToExp (env, exp))
+		  | _ => raise Fail "unexpected constructor"
+		(* end case *))
 	  fun trConPat (dc, tyArgs, pat, exp) = (case TranslateTypes.trDataCon(env, dc)
 		 of E.DCon dc' => let
 		      val (env, args) = (case pat
@@ -316,14 +320,15 @@ structure Translate : sig
 		      (cases, SOME(trExpToExp(E.insertVar(env, x, arg), exp)))
 		  | AST.WildPat ty => (* default case *)
 		      (cases, SOME(trExpToExp(env, exp)))
-		  | AST.ConstPat(AST.DConst(dc, tyArgs)) => raise Fail "DConst"
+		  | AST.ConstPat(AST.DConst(dc, tyArgs)) =>
+		      (trDConst (dc, exp)::cases, NONE)
 		  | AST.ConstPat(AST.LConst(lit, ty)) =>
 		      ((B.P_Const(lit, trLitTy ty), trExpToExp (env, exp))::cases, NONE)
 		(* end case *))
 	    | trRules (AST.PatMatch(pat, exp)::rules, cases) = let
 		val rule' = (case pat
 		       of AST.ConPat(dc, tyArgs, p) => trConPat (dc, tyArgs, p, exp)
-			| AST.ConstPat(AST.DConst(dc, tyArgs)) => raise Fail "DConst"
+			| AST.ConstPat(AST.DConst(dc, tyArgs)) => trDConst (dc, exp)
 			| AST.ConstPat(AST.LConst(lit, ty)) =>
 			    (B.P_Const(lit, trLitTy ty), trExpToExp (env, exp))
 			| _ => raise Fail "exhaustive pattern in case"
@@ -332,16 +337,17 @@ structure Translate : sig
 		  trRules (rules, rule'::cases)
 		end
 	    | trRules (AST.CondMatch _ :: _, _) = raise Fail "unexpected CondMatch"
-	  fun mkCase arg (cases, dflt) = B.mkCase(arg, List.rev cases, dflt)
+	  fun mkCase (arg, (cases, dflt)) = B.mkCase(arg, List.rev cases, dflt)
 	  in
 	    case BV.typeOf arg
 	     of BTy.T_Tuple(false, [ty as BTy.T_Raw rty]) => let
 		  val ty = BTy.T_Raw rty
 		  val arg' = BV.new("_raw", ty)
 		  in
-		    B.mkStmt([arg'], B.unwrap arg, mkCase arg' (trRules (rules, [])))
+		    B.mkStmt([arg'], B.unwrap arg, mkCase (arg', trRules (rules, [])))
 		  end
-	      | _ => mkCase arg (trRules (rules, []))
+	      | _ => mkCase (arg, trRules (rules, []))
+	    (* end case *)
 	  end
 
     and trVarPats (env, pats) = let
