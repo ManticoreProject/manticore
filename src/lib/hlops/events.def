@@ -1,0 +1,21 @@
+(* events.def
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Definitions for the representation of event values.
+ *)
+
+#ifndef _EVENTS_DEF_
+#define _EVENTS_DEF_
+
+#include "types.def"
+
+typedef bool_ref = ![bool];
+
+typedef evt_poll_fn = fun(unit / exh -> bool);
+typedef evt_do_fn = fun(bool_ref / exh -> unit);
+typedef evt_block_fn = fun(bool_ref, cont(any) -> unit);
+
+#endif /* !_EVENTS_DEF_ */
+

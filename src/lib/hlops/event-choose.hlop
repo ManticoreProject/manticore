@@ -1,0 +1,11 @@
+(* event-choose.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+#include "events.def"
+
+define inline @choose (ev1 : evt, ev2 : evt / _ : exh) : evt =
+    return (CHOOSE(ev1, ev2)
+;

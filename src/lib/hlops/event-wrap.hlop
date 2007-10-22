@@ -1,0 +1,22 @@
+(* event-wrap.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+#include "events.def"
+
+define @wrap (ev : evt, f : fun(any / exh -> any) / _ : exh) : evt =
+    fun wrapf (ev : evt / _ exh) : evt =
+	  case ev
+	   of CHOOSE(ev1, ev2) =>
+		let ev1' : evt = wrapf (ev / exh)
+		let ev2' : evt = wrapf (ev / exh)
+		(* in *)
+		  return (CHOOSE(ev1', ev2'))
+	    | BEVT(pollFn, doFn, blockFn) =>
+		fun doFn' (k : cont(any) / exh : exh) = 
+	  end
+    (* in *)
+      apply wrapf (ev / exh)
+;
