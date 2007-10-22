@@ -48,8 +48,8 @@ structure StdEnv : sig
 	    (B.chanTyc, ),
 	    (B.ivarTyc, ),
 	    (B.mvarTyc, ),
-	    (B.eventTyc, ),
 *)
+	    (B.eventTyc,	BOMBasis.evtTy),
 	    (F.futureTyc,       BTy.futureTy)
 	  ]
 

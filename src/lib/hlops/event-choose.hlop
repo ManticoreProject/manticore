@@ -6,6 +6,6 @@
 
 #include "events.def"
 
-define inline @choose (ev1 : evt, ev2 : evt / _ : exh) : evt =
-    return (CHOOSE(ev1, ev2)
+define inline @event-choose (arg : [evt, evt] / _ : exh) : evt =
+    return (CHOOSE(#0(arg), #1(arg))
 ;

@@ -146,8 +146,12 @@ structure HLOpEnv : sig
     fun schedulerStartupOp name = newWithExh (name ^ "-startup", [], [], [])
 
   (* events *)
-    val chooseOp = newWithExh ("event-choose", [evtTy, evtTy], [evtTy], [])
-    val wrapOp = newWithExh ("event-wrap", [evtTy, BTy.T_Fun([BTy.T_Any], [exhTy], [BTy.T_Any])], [evtTy], [])
+    val chooseOp = newWithExh ("event-choose", [pairTy(evtTy, evtTy)], [evtTy], [])
+    val wrapOp = newWithExh (
+	  "event-wrap",
+	  [pairTy(evtTy, BTy.T_Fun([BTy.T_Any], [exhTy], [BTy.T_Any]))],
+	  [evtTy],
+	  [])
 
   (* work queue operations *)
     val newWorkQueueOp = newWithExh ("new-work-queue", [unitTy], [workQueueTy], [])
@@ -159,20 +163,23 @@ structure HLOpEnv : sig
     val touchOp  = newWithExh ("touch",  [futureTy], [BTy.T_Any], [])
     val cancelOp = newWithExh ("cancel", [futureTy], [], [])
 
-    val future1Op = newWithExh ("future1", 
-				[pairTy (workQueueTy, thunkTy)],
-				[futureTy], 
-				[])
+    val future1Op = newWithExh (
+	  "future1", 
+	  [pairTy (workQueueTy, thunkTy)],
+	  [futureTy], 
+	  [])
 
-    val touch1Op  = newWithExh ("touch1",  
-				[pairTy (workQueueTy, futureTy)], 
-				[BTy.T_Any], 
-				[])
+    val touch1Op  = newWithExh (
+	  "touch1",  
+	  [pairTy (workQueueTy, futureTy)], 
+	  [BTy.T_Any], 
+	  [])
 
-    val cancel1Op = newWithExh ("cancel1", 
-				[pairTy (workQueueTy, futureTy)],
-				[], 
-				[])
+    val cancel1Op = newWithExh (
+	  "cancel1", 
+	  [pairTy (workQueueTy, futureTy)],
+	  [], 
+	  [])
 		    
     fun mkTbl nameOf bindings = let
 	  val tbl = AtomTable.mkTable (List.length bindings, Fail "table")

@@ -495,7 +495,10 @@ structure Basis : sig
 			      (eventTy(AST.VarTy a') ** (AST.VarTy a' --> AST.VarTy b'))
 				--> eventTy(AST.VarTy b')))
 			end
+(*
     val choose =	polyVar'(N.choose, fn tv => listTy(eventTy tv) --> eventTy tv)
+*)
+    val choose =	polyVar'(N.choose, fn tv => eventTy tv ** eventTy tv --> eventTy tv)
     val never =		polyVar'(N.never, fn tv => eventTy tv)
     val sync =		polyVar'(N.sync, fn tv => eventTy tv --> tv)
     val iVar =		polyVar'(N.iVar, fn tv => unitTy --> ivarTy tv)
@@ -574,7 +577,13 @@ structure Basis : sig
 	    (N.itod,		Env.Var itod),
 	    (N.channel,		Env.Var channel),
 	    (N.send,		Env.Var send),
+	    (N.sendEvt,		Env.Var sendEvt),
 	    (N.recv,		Env.Var recv),
+	    (N.recvEvt,		Env.Var recvEvt),
+	    (N.wrap,		Env.Var wrap),
+	    (N.choose,		Env.Var choose),
+	    (N.never,		Env.Var never),
+	    (N.sync,		Env.Var sync),
 	    (N.iVar,		Env.Var iVar),
 	    (N.iGet,		Env.Var iGet),
 	    (N.iPut,		Env.Var iPut),
