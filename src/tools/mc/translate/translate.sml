@@ -167,7 +167,13 @@ structure Translate : sig
 		  end))
 	    | AST.RangeExp(lo, hi, optStep, ty) => raise Fail "RangeExp"
 	    | AST.PTupleExp exps => raise Fail "PTupleExp"
-	    | parr as AST.PArrayExp(exps, ty) => trParr (env, parr)
+	    | parr as AST.PArrayExp(exps, ty) => 
+                EXP(trExpsToVs (env, exps, fn xs => let
+                  val rty = raise Fail "todo: construct the appropriate rope ty"
+                  val r = BV.new("_rope", rty)
+                  in
+                    raise Fail "todo: hook in translation to rope"
+	          end))
 	    | AST.PCompExp _ => raise Fail "unexpected PCompExp"
 	    | AST.PChoiceExp _ => raise Fail "unexpected PChoiceExp"
 	    | AST.SpawnExp e => let
