@@ -416,7 +416,11 @@ structure Translate : sig
   (* wrap the body of the program with code to initialize the scheduler. *)
     fun startup (env, exp) = if Controls.get BasicControl.sequential
 	  then exp
-	  else B.mkLet([], B.mkHLOp(HLOpEnv.defaultSchedulerStartupOp, [], [E.handlerOf env]), exp)
+	  else let
+	    val startupOp = HLOpEnv.schedulerStartupOp (Controls.get BasicControl.scheduler)
+	    in
+	      B.mkLet([], B.mkHLOp(startupOp, [], [E.handlerOf env]), exp)
+	    end
 
     fun translate exp = let
 	  val env0 = StdEnv.env ()

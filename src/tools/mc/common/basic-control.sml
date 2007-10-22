@@ -20,6 +20,12 @@ structure BasicControl :  sig
   (* verbosity of diagnostics. *)
     val verbose : int Controls.control
 
+  (* specifies name of top-level scheduler.  If the schduler name is "foo", then
+   * the translate phase will insert a call to the HLOp "@foo-startup" at the
+   * beginning of the program.
+   *)
+    val scheduler : string Controls.control
+
   (* sequential mode *)
     val sequential : bool Controls.control
 
@@ -104,19 +110,33 @@ structure BasicControl :  sig
 	    envName = NONE
 	  };
 
+  (* custom scheduler *)
+    val scheduler = Controls.genControl {
+	    name = "scheduler",
+	    pri = [0, 1, 0],
+	    obscurity = 0,
+	    help = "specify top-level scheduler",
+	    default = "default-scheduler"
+	  }
+
   (* sequential mode *)
     val sequential : bool Controls.control = Controls.genControl {
 	    name = "sequential",
-	    pri = [0, 1],
+	    pri = [0, 1, 1],
 	    obscurity = 0,
 	    help = "compile sequential programs",
 	    default = false
 	  }
 
-    val () = ControlRegistry.register topRegistry {
-	    ctl = Controls.stringControl ControlUtil.Cvt.bool sequential,
-	    envName = NONE
-	  };
+    val () = (
+	  ControlRegistry.register topRegistry {
+	      ctl = Controls.stringControl ControlUtil.Cvt.string scheduler,
+	      envName = NONE
+	    };
+	  ControlRegistry.register topRegistry {
+	      ctl = Controls.stringControl ControlUtil.Cvt.bool sequential,
+	      envName = NONE
+	    })
 
 
     local

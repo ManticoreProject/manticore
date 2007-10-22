@@ -39,11 +39,13 @@ structure HLOpEnv : sig
     val printOp : HLOp.hlop
 
   (* scheduler operations *)
-    val defaultSchedulerStartupOp : HLOp.hlop
     val runOp : HLOp.hlop
     val forwardOp : HLOp.hlop
     val dequeueOp : HLOp.hlop
     val enqueueOp : HLOp.hlop
+
+  (* generate a high-level operator for a custom scheduler startup *)
+    val schedulerStartupOp : string -> HLOp.hlop
 
   (* events *)
     val chooseOp : HLOp.hlop
@@ -135,12 +137,13 @@ structure HLOpEnv : sig
     val printOp = newWithExh ("print", [stringTy], [unitTy], [])
 
   (* scheduler operations *)
-    val defaultSchedulerStartupOp = newWithExh ("default-scheduler-startup", [], [], [])
-    val schedulerStartupOp = newWithExh ("scheduler-startup", [sigActTy], [], [])
     val runOp = newWithExh ("run", [vprocTy, sigActTy, tidTy, fiberTy], [], [H.NORETURN])
     val forwardOp = newWithExh ("forward", [vprocTy, signalTy], [], [H.NORETURN])
     val dequeueOp = newWithExh ("dequeue", [vprocTy], [Basis.rdyqItemTy], [])
     val enqueueOp = newWithExh ("enqueue", [vprocTy, tidTy, fiberTy], [], [])
+
+  (* generate a high-level operator for a scheduler startup *)
+    fun schedulerStartupOp name = newWithExh (name ^ "-startup", [], [], [])
 
   (* events *)
     val chooseOp = newWithExh ("event-choose", [evtTy, evtTy], [evtTy], [])
@@ -196,8 +199,6 @@ structure HLOpEnv : sig
 		enqueueOp,
 		forwardOp,
 		runOp,
-                schedulerStartupOp,
-                defaultSchedulerStartupOp,
 		newWorkQueueOp,
 		getWork1AllOp,
 		futureOp,
