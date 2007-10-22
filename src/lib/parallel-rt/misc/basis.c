@@ -90,6 +90,10 @@ Value_t M_StringConcat2 (Value_t a, Value_t b)
 
 }
 
+Value_t M_Test () {
+  return Some(VProcSelf(), AllocUniform (VProcSelf(), 1, 2));
+}
+
 /* return true of the given address is within the given vproc heap */
 STATIC_INLINE bool inVPHeap (Addr_t heapBase, Addr_t p)
 {
@@ -106,3 +110,4 @@ void M_AssertNotLocalPtr (Value_t item)
   }
 
 }
+

@@ -58,6 +58,7 @@ structure PrimUtil : sig
       | nameOf (P.F32Div _) = "F32Div"
       | nameOf (P.F32Neg _) = "F32Neg"
       | nameOf (P.F32Eq _) = "F32Eq"
+      | nameOf (P.F32Sqrt _) = "F32Sqrt"
       | nameOf (P.F32NEq _) = "F32NEq"
       | nameOf (P.F32Lt _) = "F32Lt"
       | nameOf (P.F32Lte _) = "F32Lte"
@@ -69,6 +70,7 @@ structure PrimUtil : sig
       | nameOf (P.F64Div _) = "F64Div"
       | nameOf (P.F64Neg _) = "F64Neg"
       | nameOf (P.F64Eq _) = "F64Eq"
+      | nameOf (P.F64Sqrt _) = "F64Sqrt"
       | nameOf (P.F64NEq _) = "F64NEq"
       | nameOf (P.F64Lt _) = "F64Lt"
       | nameOf (P.F64Lte _) = "F64Lte"
@@ -121,6 +123,7 @@ structure PrimUtil : sig
       | varsOf (P.F32Mul(a, b)) = [a, b]
       | varsOf (P.F32Div(a, b)) = [a, b]
       | varsOf (P.F32Neg a) = [a]
+      | varsOf (P.F32Sqrt a) = [a]
       | varsOf (P.F32Eq(a, b)) = [a, b]
       | varsOf (P.F32NEq(a, b)) = [a, b]
       | varsOf (P.F32Lt(a, b)) = [a, b]
@@ -132,6 +135,7 @@ structure PrimUtil : sig
       | varsOf (P.F64Mul(a, b)) = [a, b]
       | varsOf (P.F64Div(a, b)) = [a, b]
       | varsOf (P.F64Neg a) = [a]
+      | varsOf (P.F64Sqrt a) = [a]
       | varsOf (P.F64Eq(a, b)) = [a, b]
       | varsOf (P.F64NEq(a, b)) = [a, b]
       | varsOf (P.F64Lt(a, b)) = [a, b]
@@ -198,6 +202,7 @@ structure PrimUtil : sig
       | explode (P.F32Mul(a, b)) = (p2 P.F32Mul, [a, b])
       | explode (P.F32Div(a, b)) = (p2 P.F32Div, [a, b])
       | explode (P.F32Neg a) = (p1 P.F32Neg, [a])
+      | explode (P.F32Sqrt a) = (p1 P.F32Sqrt, [a])
       | explode (P.F32Eq(a, b)) = (p2 P.F32Eq, [a, b])
       | explode (P.F32NEq(a, b)) = (p2 P.F32NEq, [a, b])
       | explode (P.F32Lt(a, b)) = (p2 P.F32Lt, [a, b])
@@ -209,6 +214,7 @@ structure PrimUtil : sig
       | explode (P.F64Mul(a, b)) = (p2 P.F64Mul, [a, b])
       | explode (P.F64Div(a, b)) = (p2 P.F64Div, [a, b])
       | explode (P.F64Neg a) = (p1 P.F64Neg, [a])
+      | explode (P.F64Sqrt a) = (p1 P.F64Sqrt, [a])
       | explode (P.F64Eq(a, b)) = (p2 P.F64Eq, [a, b])
       | explode (P.F64NEq(a, b)) = (p2 P.F64NEq, [a, b])
       | explode (P.F64Lt(a, b)) = (p2 P.F64Lt, [a, b])

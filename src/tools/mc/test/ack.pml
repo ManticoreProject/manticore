@@ -7,7 +7,7 @@ fun ack(m,n) = if m=0 then
 	       else
 		   ~1 (* raise Fail "undefined" *);
 
-ack(4,0)
+ack(4,1)
 (*(| ack(4,1), ack(5,0) |)*)
 
 	

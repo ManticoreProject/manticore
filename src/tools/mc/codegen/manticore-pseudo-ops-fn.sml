@@ -34,8 +34,8 @@ functor ManticorePseudoOpsFn (
       | intSzToSz I64 = 64
       | intSzToSz Iptr = ty
 			 
-    val maxAlign = log2 (Int.max (IntInf.toInt Spec.ABI.wordAlignB, 
-				  IntInf.toInt Spec.ABI.extendedAlignB))
+    val maxAlign = Int.max (IntInf.toInt Spec.ABI.wordAlignB, 
+			    IntInf.toInt Spec.ABI.extendedAlignB)
   
     val text : pseudo_op = PTy.TEXT
     fun global lab = PTy.EXPORT [lab]

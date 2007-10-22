@@ -9,7 +9,6 @@
 
 (*   Value_t M_WorkDequeue(VProc_t *vp, Value_t q) *)
 extern void* M_WorkDequeue(void*,void*) __attribute__((alloc));
-
 extern void M_Print (void*);
 
 define @get-work1 (q : work_queue / exh : exh) noreturn =

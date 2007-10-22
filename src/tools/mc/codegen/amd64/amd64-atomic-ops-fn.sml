@@ -50,4 +50,28 @@ functor AMD64AtomicOpsFn (
   (* word-sized compare and swap operation *)
     val genCompareAndSwapWord = genCompareAndSwap64
 
+   (* 32-bit fetch and add operation *)
+    fun genFetchAndAdd32 {addr, x} = let
+         val r = Cells.newReg ()
+         val r' = T.REG(32, r)
+         val stms = [
+	         copyDef (32, r, x),
+	         T.EXT(IX.LOCK_XADDL(r', addr))
+               ]
+         in
+             (r', stms)
+         end
+
+   (* 64-bit fetch and add operation *)
+    fun genFetchAndAdd64 {addr, x} = let
+         val r = Cells.newReg ()
+         val r' = T.REG(64, r)
+         val stms = [
+	         copyDef (64, r, x),
+	         T.EXT(IX.LOCK_XADDQ(r', addr))
+               ]
+         in
+             (r', stms)
+         end
+
   end

@@ -20,12 +20,28 @@ signature ATOMIC_OPS =
 
   (* 64-bit compare and swap operation *)
     val genCompareAndSwap64 : {
-	    addr : MTy.T.rexp, cmpVal : MTy.T.rexp, newVal : MTy.T.rexp
+	    addr : MTy.T.rexp, 
+            cmpVal : MTy.T.rexp, 
+            newVal : MTy.T.rexp
 	  } -> (MTy.T.ccexp * MTy.T.rexp * MTy.T.stm list)
 
   (* word-sized compare and swap operation *)
     val genCompareAndSwapWord : {
-	    addr : MTy.T.rexp, cmpVal : MTy.T.rexp, newVal : MTy.T.rexp
+	    addr : MTy.T.rexp, 
+            cmpVal : MTy.T.rexp, 
+            newVal : MTy.T.rexp
 	  } -> (MTy.T.ccexp * MTy.T.rexp * MTy.T.stm list)
+
+  (* 32-bit fetch and add operation *)
+    val genFetchAndAdd32 : {
+	    addr : MTy.T.rexp,		(* the memory location *)
+	    x : MTy.T.rexp	        (* the number to add *)
+	  } -> (MTy.T.rexp * MTy.T.stm list)
+
+  (* 64-bit fetch and add operation *)
+    val genFetchAndAdd64 : {
+	    addr : MTy.T.rexp,		(* the memory location *)
+	    x : MTy.T.rexp	        (* the number to add *)
+	  } -> (MTy.T.rexp * MTy.T.stm list)
 
   end

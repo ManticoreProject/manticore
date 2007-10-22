@@ -9,13 +9,14 @@
 
 (*   Value_t ListVProcs (VProc_t *self) *)
 extern void *ListVProcs (void *) __attribute__((alloc));
+extern void M_Print (void*);
 
 define inline @spawn-on (f : fun (unit / exh -> unit), dst : vproc / exh : exh) : tid;
 define @get-work1 (q : work_queue / exh : exh) noreturn;
 
 define @get-work1-all (q : work_queue / exh : exh) : unit =
   fun init (_ : unit / exh : exh) : unit =
-(*	    do ccall M_Print2 ("initon\n\000")*)
+	    do ccall M_Print ("initon\n\000")
     do @get-work1 (q / exh)
     return (UNIT)
   let self : vproc = host_vproc
