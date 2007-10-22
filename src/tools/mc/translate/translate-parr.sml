@@ -26,7 +26,7 @@ structure TranslateParr (* : sig
     val maxLeafSize = Nat.fromInt 16
 
   (* max : nat * nat -> nat *)
-    fun max (m,n) = Nat.max
+    val max = Nat.max
 
   (* add1 : nat -> nat *)
     fun add1 n = Nat.+ (n, natOne)
