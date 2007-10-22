@@ -82,6 +82,22 @@ structure BOMBasis : BOM_BASIS =
 	  ("SOME", BTy.Tuple, [BTy.T_Any])
     val sigactTy = BTy.T_Cont[signalTy]
 
+  (* boolean ref cells *)
+    val boolRefTy = BTy.T_Tuple(true, [BTy.boolTy])
+
+  (* primitive event values *)
+    val evtTyc = BOMTyCon.newDataTyc ("evt", 0)
+    val evtTy = BTy.T_TyCon evtTyc
+    val evtCHOOSE = BOMTyCon.newDataCon evtTyc ("CHOOSE", BTy.TaggedTuple 0w0, [evtTy, evtTy])
+    val evtBEVT = BOMTyCon.newDataCon evtTyc ("BEVT", BTy.TaggedTuple 0w0, [
+	  (* pollFn : unit -> bool *)
+	    BTy.T_Fun([unitTy], [exhTy], [boolTy]),
+          (* doFn : 'a cont -> unit *)
+	    BTy.T_Fun([BTy.T_Cont[BTy.T_Any]], [exhTy], [unitTy]),
+          (* blockFn : (bool ref * 'a cont) -> unit *)
+	    BTy.T_Fun([boolRefTy, BTy.T_Cont[BTy.T_Any]], [exhTy], [unitTy])
+	  ])
+
     (* val workQueueTyc = BTy.AbsTyc {name="work_queue", stamp=Stamp.new(), arity=0} *)
     val workQueueTy = BTy.T_Any (* BTy.T_TyCon workQueueTyc *)
 
