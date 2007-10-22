@@ -111,6 +111,7 @@ structure CaseSimplify : sig
     fun numConsOfTyc (BTy.DataTyc{cons, ...}) = List.length(!cons)
 
     fun repOf (B.DCon{rep, ...}) = rep
+    fun nameOfDCon (B.DCon{name, ...}) = name
 
     val typeOf = BV.typeOf
     val typesOf = List.map typeOf
@@ -214,7 +215,7 @@ DEBUG*)
 			    ([y], B.E_Alloc(ty, tag' :: BU.subst'(s, xs)))
 			  ], xformE(s, tys, e))
 		      end
-		  | (B.Transparent, _) => raise Fail "bogus transparent dcon application"
+		  | (B.Transparent, _) => raise Fail("bogus application of transparent dcon "^name)
 		(* end case *))
 	    | B.E_Stmt(lhs, rhs, e) => let
 		val (s', lhs) = xformVars (s, lhs)
@@ -321,7 +322,7 @@ DEBUG*)
 		  case (repOf dc, dflt)
 		   of (B.Transparent, NONE) => (case ys
 			 of [y] => B.mkStmt([y], B.E_Cast(typeOf y, argument), xformE(s, tys, e))
-			  | _ => raise Fail "bogus transparent rep"
+			  | _ => raise Fail(concat["dcon ", nameOfDCon dc, " has bogus transparent rep"])
 			(* end case *))
 		    | (B.Tuple, NONE) => B.mkStmt(
 			[argument'], B.E_Cast(BV.typeOf argument', argument),
@@ -340,7 +341,7 @@ DEBUG*)
 			    ],
 			    B.mkIf(eq, sel(ys, 1), dflt))
 			end
-		    | _ => raise Fail "bogus dcon rep"
+		    | _ => raise Fail(concat["dcon ", nameOfDCon dc, " has bogus rep"])
 		  (* end case *)
 		end
 	    | consCase (cons as ((dc, _, _)::_), dflt) = let
@@ -363,7 +364,7 @@ DEBUG*)
 			    in
 			      (B.P_Const(Lit.Enum tag, tagTy), action)
 			    end
-			| _ => raise Fail "expected TaggedBox representation"
+			| _ => raise Fail("expected TaggedBox representation for "^nameOfDCon dc)
 		      (* end case *))
 		in
 		  B.mkStmts([
