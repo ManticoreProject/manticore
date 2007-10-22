@@ -38,88 +38,91 @@ structure FutParArr : sig
 	  end
 
     (* module : A.module -> A.module *)
-    fun module m = 
-	let val q = Var.new ("q", Basis.workQueueTy)
-	    val qe = A.VarExp (q, [])
-	    (* parr : A.exp list * A.ty -> A.exp *)
-	    (* Precondition: The argument to the function, a list, must not be empty. *)
-	    (* Consumes a list whose members are the contents of a parallel array, *)
-	    (* and produces a LetExp that is a "futurized" and "roped" parray. *)
-	    (* Note: the first member of the array is not futurized (an optimization). *)
-	    fun parr (e::es, t) = 
-  		  let (* mkVar : int * ty -> var *)
-		      fun mkVar (n, t) = 
-			    let val name = "f" ^ Int.toString n
-			    in
-				Var.newWithKind (name, A.VK_Pat, t)
-			    end
-		      (* build : exp list * int * binding list * exp list -> exp *) 
-		      fun build ([], _, bs, accExps) = 
-			    let val list = mkList (exp e :: accExps, t)
-			    in
-				foldr A.LetExp (mkRope list) bs
-			    end
-			| build (e::es, n, bs, accExps) =
-			    if F.isFutureCand e then
-				let val fe = F.mkFuture1 (qe, exp e)
-				    val f_n = mkVar (n, TypeOf.exp fe)
-				    val b = A.ValBind (A.VarPat f_n, fe)
-				    val t = F.mkTouch1 (qe, A.VarExp (f_n, []))
-				in
-				    build (es, n+1, b::bs, t::accExps)
-				end
-			    else
-				build (es, n, bs, exp e :: accExps)
-		  in
-		      build (rev es, 1, [], [])
-		  end
-	      | parr ([], _) = raise Fail "parr: expected non-empty list of expressions"
-				  
-	    (* exp : A.exp -> A.exp *)
-	    (* n.b. Type-preserving. *)
-	    and exp (A.LetExp (b, e)) = A.LetExp (binding b, exp e)
-	      | exp (A.IfExp (e1, e2, e3, t)) = A.IfExp (exp e1, exp e2, exp e3, t)
-	      | exp (A.CaseExp (e, ms, t)) = A.CaseExp (exp e, map match ms, t)
-	      | exp (A.HandleExp (e, ms, t)) = A.HandleExp (exp e, map match ms, t) 
-	      | exp (A.RaiseExp (e, t)) = A.RaiseExp (exp e, t)
-	      | exp (A.FunExp (x, e, t)) = A.FunExp (x, exp e, t)
-	      | exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, t)
-	      | exp (A.TupleExp es) = A.TupleExp (map exp es)
-	      | exp (A.RangeExp (e1, e2, oe3, t)) = A.RangeExp (exp e1,
-								exp e2,
-								Option.map exp oe3,
-								t)
-	      | exp (A.PTupleExp es) = A.PTupleExp (map exp es)
-	      | exp (A.PArrayExp (es, t)) = parr (es, t)
-	      | exp (A.PCompExp (e, pes, oe)) = 
-		  A.PCompExp (exp e, map (fn (p,e) => (p, exp e)) pes, Option.map exp oe)
-	      | exp (A.PChoiceExp (es, t)) = A.PChoiceExp (map exp es, t)
-	      | exp (A.SpawnExp e) = A.SpawnExp (exp e)
-	      | exp (k as (A.ConstExp _)) = k
-	      | exp (v as (A.VarExp _)) = v
-	      | exp (A.SeqExp (e1, e2)) = A.SeqExp (exp e1, exp e2)
-	      | exp (ov as (A.OverloadExp _)) = ov
-						
-	    (* match : A.match -> A.match *)
-	    and match (A.PatMatch (p, e)) = A.PatMatch (p, exp e)
-	      | match (A.CondMatch (p, cond, e)) = A.CondMatch (p, exp cond, exp e)
+    fun module m = let
+	  val anyChange = ref false
+	  val workQ = Var.new ("workQ", Basis.workQueueTy)
+	  val workQExp = A.VarExp (workQ, [])
+	(* parr : A.exp list * A.ty -> A.exp *)
+	(* Precondition: The argument to the function, a list, must not be empty. *)
+	(* Consumes a list whose members are the contents of a parallel array, *)
+	(* and produces a LetExp that is a "futurized" and "roped" parray. *)
+	(* Note: the first member of the array is not futurized (an optimization). *)
+	  fun parr (e::es, t) = let
+	      (* mkVar : int * ty -> var *)
+		fun mkVar (n, t) = 
+		      let val name = "f" ^ Int.toString n
+		      in
+			  Var.newWithKind (name, A.VK_Pat, t)
+		      end
+		(* build : exp list * int * binding list * exp list -> exp *) 
+		fun build ([], _, bs, accExps) = 
+		      let val list = mkList (exp e :: accExps, t)
+		      in
+			List.foldr A.LetExp (mkRope list) bs
+		      end
+		  | build (e::es, n, bs, accExps) =
+		      if F.isFutureCand e then
+			  let val fe = F.mkFuture1 (workQExp, exp e)
+			      val f_n = mkVar (n, TypeOf.exp fe)
+			      val b = A.ValBind (A.VarPat f_n, fe)
+			      val t = F.mkTouch1 (workQExp, A.VarExp (f_n, []))
+			  in
+			      build (es, n+1, b::bs, t::accExps)
+			  end
+		      else
+			      build (es, n, bs, exp e :: accExps)
+		in
+		  anyChange := true;
+		  build (rev es, 1, [], [])
+		end
+	    | parr ([], _) = raise Fail "parr: expected non-empty list of expressions"
+				
+	(* exp : A.exp -> A.exp *)
+	(* n.b. Type-preserving. *)
+	  and exp (A.LetExp (b, e)) = A.LetExp (binding b, exp e)
+	    | exp (A.IfExp (e1, e2, e3, t)) = A.IfExp (exp e1, exp e2, exp e3, t)
+	    | exp (A.CaseExp (e, ms, t)) = A.CaseExp (exp e, map match ms, t)
+	    | exp (A.HandleExp (e, ms, t)) = A.HandleExp (exp e, map match ms, t) 
+	    | exp (A.RaiseExp (e, t)) = A.RaiseExp (exp e, t)
+	    | exp (A.FunExp (x, e, t)) = A.FunExp (x, exp e, t)
+	    | exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, t)
+	    | exp (A.TupleExp es) = A.TupleExp (map exp es)
+	    | exp (A.RangeExp (e1, e2, oe3, t)) =
+		A.RangeExp(exp e1, exp e2, Option.map exp oe3, t)
+	    | exp (A.PTupleExp es) = A.PTupleExp (map exp es)
+	    | exp (A.PArrayExp (es, t)) = parr (es, t)
+	    | exp (A.PCompExp (e, pes, oe)) = 
+		A.PCompExp(exp e, List.map (fn (p,e) => (p, exp e)) pes, Option.map exp oe)
+	    | exp (A.PChoiceExp (es, t)) = A.PChoiceExp(map exp es, t)
+	    | exp (A.SpawnExp e) = A.SpawnExp (exp e)
+	    | exp (k as (A.ConstExp _)) = k
+	    | exp (v as (A.VarExp _)) = v
+	    | exp (A.SeqExp (e1, e2)) = A.SeqExp (exp e1, exp e2)
+	    | exp (ov as (A.OverloadExp _)) = ov
+					      
+	  (* match : A.match -> A.match *)
+	  and match (A.PatMatch (p, e)) = A.PatMatch (p, exp e)
+	    | match (A.CondMatch (p, cond, e)) = A.CondMatch (p, exp cond, exp e)
 
-	    (* binding : A.binding -> A.binding *)
-	    and binding (A.ValBind (p, e)) = A.ValBind (p, exp e)
-	      | binding (A.PValBind (p, e)) = A.PValBind (p, exp e)
-	      | binding (A.FunBind lams) = A.FunBind (map lambda lams)
-					   
-	    (* lambda : A.lambda -> A.lambda *)
-	    and lambda (A.FB (f, x, b)) = A.FB (f, x, exp b)
+	  (* binding : A.binding -> A.binding *)
+	  and binding (A.ValBind (p, e)) = A.ValBind (p, exp e)
+	    | binding (A.PValBind (p, e)) = A.PValBind (p, exp e)
+	    | binding (A.FunBind lams) = A.FunBind (map lambda lams)
+					 
+	  (* lambda : A.lambda -> A.lambda *)
+	  and lambda (A.FB (f, x, b)) = A.FB (f, x, exp b)
 
-	in
-	    A.LetExp (A.ValBind (A.VarPat q, F.mkNewWorkQueue ()),
-		      A.LetExp (A.ValBind (A.WildPat Basis.workQueueTy, 
-					   F.mkGetWork1All (A.VarExp (q, []))),
-				exp m))
-	end
+	  val m' = exp m
+	  in
+	    if !anyChange
+	      then A.LetExp(
+		  A.ValBind(A.VarPat workQ, F.mkNewWorkQueue ()),
+		  A.LetExp(A.ValBind(A.WildPat Basis.workQueueTy, F.mkGetWork1All workQExp),
+		m'))
+	      else m
+	  end
 
-    (* futurize : A.module -> A.module *)
+  (* futurize : A.module -> A.module *)
     fun futurize m = module m
 
     (**** tests ****)
