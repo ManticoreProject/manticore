@@ -70,7 +70,9 @@ structure PrintBOM : sig
 			    indent i;
 			    if isFirst then pr " of " else pr "  | ";
 			    case pat
-			     of B.P_DCon(B.DCon{name, ...}, args) => (
+			     of B.P_DCon(B.DCon{name, ...}, [arg]) => (
+				  pr name; pr "("; pr(varBindToString arg); pr ")")
+			      | B.P_DCon(B.DCon{name, ...}, args) => (
 				  pr name;
 				  prList varBindToString args)
 			      | B.P_Const const => prConst const
