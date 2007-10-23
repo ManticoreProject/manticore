@@ -41,8 +41,8 @@ typedef ml_string = [string_data, int];
 #define NONE	enum(0):option
 #define QEMPTY	enum(0):rdyq_item
 
-(*typedef fiber_fun = fun (unit / exh -> unit);
+typedef fiber_fun = fun (unit / exh -> unit);
 typedef spawn_fun = fun (fiber_fun / exh -> unit);
-*)
+
 #endif /* !_TYPES_DEF_ */
 

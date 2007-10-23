@@ -15,3 +15,5 @@ define inline @itos (n : ml_int / exh : exh) : ml_string;
 define inline @ltos (n : ml_long / exh : exh) : ml_string;
 define inline @string-lit (s : string_data, len : int) : ml_string;
 define @rope-from-list (xs : list) : rope;
+
+define @dispatch-action (act : sigact, dst : vproc / exh : exh) : ();

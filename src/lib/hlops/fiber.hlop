@@ -20,3 +20,4 @@ define inline @fiber (f : fiber_fun / exh : exh) : fiber =
     (* NOTE: there is a potential race here with host_vproc. *)
     @thread-exit (/ exh)
   return (fiberK)
+;

@@ -28,20 +28,20 @@ define @work-sharing ( / exh : exh) : spawn_fun =
      (* find work on the shared queue
       * -- we expect to be masked
       *)
-     fun findWork ( / exh : exh) =
-	 let w : option = ccall M_WorkDequeue (self / q)
+     cont findWork () =
+	 let w : option = ccall M_WorkDequeue (self, q)
 	 case w
-           of NONE => apply findWork ( / exh)
+           of NONE => throw findWork ()
 	    | SOME (k : fiber) => @run (self, wsSwitch, enum(0), k / exh)
 	 end
      (* handle signals *)
      if Equal (s, STOP)
-	then apply findWork ( / exh)
+	then throw findWork ()
         else let k : fiber = (fiber)s
              let tid : tid = enum(0)
              do ccall M_WorkEnqueue (self, q, k)
              do @atomic-yield (self / exh)
-             apply findWork (/ exh)
+             throw findWork ()
 
    fun initOnVProcs (vps : list) : () =
        case vps

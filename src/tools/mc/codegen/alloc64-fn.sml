@@ -202,4 +202,28 @@ functor Alloc64Fn (
 		  T.SUB (ty, T.REG (ty, Regs.limReg), T.REG (ty, Regs.apReg)),
 		  T.LI (Word.toLargeInt szB))
 
+  (* This expression checks that there are at least szB bytes available in the
+   * global heap.
+   *
+   *  if (ap + szB > lp)
+   *     then continue;
+   *     else doGC ();
+   *)
+(* FIXME: untested *)
+  fun genGlobalAllocCheck szB = let
+      val (vpReg, setVP) = let
+	    val r = Cells.newReg()
+	    val MTy.EXP(_, hostVP) = VProcOps.genHostVP
+            in
+	       (T.REG(ty, r), T.MV(ty, r, hostVP))
+            end
+      val globalAP = VProcOps.genVPLoad' (Spec.ABI.globNextW, vpReg)
+      val globalLP = VProcOps.genVPLoad' (Spec.ABI.globLimit, vpReg)
+      in
+          {stms=[ setVP ],
+	   ccexp=T.CMP (ty, T.Basis.LE,
+			T.SUB (ty, globalLP, globalAP),
+			T.LI (Word.toLargeInt szB))}
+      end
+
 end (* Alloc64Fn *)

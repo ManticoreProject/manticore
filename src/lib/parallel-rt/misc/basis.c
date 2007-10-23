@@ -10,6 +10,7 @@
 #include "vproc.h"
 #include "value.h"
 #include "heap.h"
+#include "../gc/gc-inline.h"
 
 /* M_IntToString:
  */
@@ -54,6 +55,12 @@ void M_Print (char *s)
     Say("[%2d] %s", VProcSelf()->id, s);
 }
 
+void M_PrintDebug (char *s)
+{
+  if (DebugFlg)
+    Say("[%2d] %s", VProcSelf()->id, s);  
+}
+
 /* M_PrintLong:
  */
 void M_PrintLong (int64_t n)
@@ -92,12 +99,6 @@ Value_t M_StringConcat2 (Value_t a, Value_t b)
 
 Value_t M_Test () {
   return Some(VProcSelf(), AllocUniform (VProcSelf(), 1, 2));
-}
-
-/* return true of the given address is within the given vproc heap */
-STATIC_INLINE bool inVPHeap (Addr_t heapBase, Addr_t p)
-{
-    return (heapBase == (p & ~VP_HEAP_MASK));
 }
 
 void M_AssertNotLocalPtr (Value_t item)

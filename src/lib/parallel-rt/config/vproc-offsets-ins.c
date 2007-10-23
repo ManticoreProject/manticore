@@ -26,3 +26,4 @@
     PR_OFFSET(vp, OLD_TOP, oldTop);
     PR_OFFSET(vp, GLOB_TOSPACE, globToSpace);
     PR_OFFSET(vp, GLOB_NEXT_W, globNextW);
+    PR_OFFSET(vp, GLOB_LIMIT, globLimit);
