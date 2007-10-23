@@ -93,12 +93,14 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	  val genGoto = BE.Transfer.genGoto varDefTbl
 	  val genPrim = #gen (Prim.genPrim {varDefTbl=varDefTbl})
 
-	  (* emit floating-point literals *)
-	  val floatTbl = FloatLit.new ()
-	  fun emitFltLit ((sz, f), l) = (
+	  (* emit a literal *)
+	  fun emitLit (l, p) = (
 	      pseudoOp P.alignData;
 	      defineLabel l;
-	      pseudoOp (P.float(sz, [f])))					
+	      pseudoOp p )
+	  (* emit floating-point literals *)
+	  val floatTbl = FloatLit.new ()
+	  fun emitFltLit ((sz, f), l) = emitLit (l, P.float(sz, [f]))
 	  val strTbl = StringLit.new ()
 	  fun emitStrLit (s, l) = (
 	      defineLabel l;
@@ -230,7 +232,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 (*			bindExp ([lhs], [note (stm, "select")])*)
 		    end
 		  | gen (M.E_Update(i, lhs, rhs)) = let
-                    (* MLRISC type of the i^th entry *)			
+                    (* MLRISC type for the i^th entry *)			
 	            val szI = BE.Types.szOfIx (Var.typeOf lhs, i)
 		    (* byte offset *)
 		    val offset = T.LI (T.I.fromInt (ty, wordSzB * i))
@@ -349,7 +351,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		  app (fn f => f ()) finishers;
 		  endCluster []
 	      end (* genCluster *)
-
+	 
 	  fun genLiterals () = (
 	      beginCluster 0;
 	      pseudoOp P.rodata;	      
@@ -361,12 +363,12 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	      FloatLit.appi emitFltLit floatTbl;
 	      (* generate strings *)
 	      StringLit.appi emitStrLit strTbl;
+	      List.app emitLit (!BE.literals);
 	      endCluster []
 	  )
       in
 	  Cells.reset ();	  
 	  app genCluster clusters;
-(*	  genModuleEntry entryFunc;*)
 	  genLiterals () 
       end (* codeGen *) 
 

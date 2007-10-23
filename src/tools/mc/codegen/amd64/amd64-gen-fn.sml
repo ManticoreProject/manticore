@@ -64,12 +64,40 @@ functor AMD64GenFn (structure Spec : TARGET_SPEC) =
       structure CFG = AMD64CFG
       structure TS = AMD64MLTStream
       structure I = AMD64Instr)
-    
+
+  (* literals that MLRISC introduces during instruction selection *)
+    val literals : (Label.label * AMD64PseudoOps.PseudoOps.pseudo_op) list ref = ref []
+
+    (* we negate a float by flipping its high bit with an xor instruction.  doing it
+     * this way requires us to emit a constant value with this high bit set.
+     * we store this constant at negateLabel.
+     *)
+    local
+	structure PTy = PseudoOpsBasisTyp
+	val negateLabel : Label.label option ref = ref NONE
+    in
+    (* callback to negate a float or double *)
+    fun floatNegate ty = (case !negateLabel
+			   of NONE => let
+	      val l = Label.label "negateLitLabel" ()
+	      val mask = Word64.toLargeInt (Word64.<< (0w1, Word.fromInt (ty-1)))
+	      val pOp = PTy.INT {sz=ty, i=[AMD64GasPseudoOps.T.LI mask]}
+	      in
+		  literals := (l, pOp) :: !literals;
+		  negateLabel := SOME l;
+		  l
+	      end
+	    | SOME l => l
+	   (* end case *)) 
+    end (* local *)
+     
     structure AMD64MLTreeComp = AMD64Gen (
       structure I = AMD64Instr
       structure MLTreeUtils = AMD64MLTreeUtils
       structure MLTreeStream = AMD64MLTStream
-      structure ExtensionComp = MLTreeExtComp)
+      structure ExtensionComp = MLTreeExtComp
+      val floatNegate = floatNegate
+     )
 
     structure AMD64SpillLoc = SpillLocFn (structure Frame=AMD64Frame)
     structure BlockPlacement = DefaultBlockPlacement (AMD64CFG)
@@ -234,6 +262,7 @@ functor AMD64GenFn (structure Spec : TARGET_SPEC) =
 	    structure CCall = AMD64SVID (structure T=AMD64MLTree val frameAlign = 16)
 	    structure Types = Types
 	    structure VProcOps = VProcOps )
+	val literals = literals
       
 	  fun compileCFG (cfg as Graph.GRAPH graph) = 
 	      let val CFGGen.CFG.INFO{annotations, ...} = #graph_info graph

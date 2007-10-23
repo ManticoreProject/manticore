@@ -45,6 +45,9 @@ signature BACK_END =
 	where VarDef = VarDef
 	where MTy = MTy
 
+  (* literals that MLRISC introduces during instruction selection *)
+    val literals : (Label.label * ManticorePseudoOps.PseudoOps.pseudo_op) list ref
+
     (* take a control-flow graph, do RA, optimization, etc. and then
      * emit it to the assembly file.
      *)
