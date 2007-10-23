@@ -1,0 +1,15 @@
+(* get-tid.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Get the current thread ID.
+ *
+ * NOTE: for now, thread IDs are just unit values.
+ *)
+
+#include "types.def"
+
+define inline @get-tid (vp : vproc / exh : exh) : tid = 
+  return (enum(0) : tid)
+;

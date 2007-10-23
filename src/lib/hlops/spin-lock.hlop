@@ -1,0 +1,18 @@
+(* spin-lock.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Acquire a spin lock.
+ *)
+
+#include "types.def"
+
+define inline @spin-lock (lock : spin_lock / exh : exh) : unit =
+    fun spin (_ : unit / exh : exh) : unit =
+	  if TAS(&0(lock))
+	    then apply spin (UNIT / exh)
+	    else return UNIT
+    (* in *)
+      apply spin (UNIT / exh)
+;
