@@ -3,7 +3,9 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Enqueue a thread in the host-vproc's ready queue.
+ * Enqueue a thread in the host-vproc's ready queue.  This function
+ * assumes that signals are masked.  Use @atomic-enqueue when signals
+ * are not masked.
  *)
 
 #include "runtime-offsets.def"
