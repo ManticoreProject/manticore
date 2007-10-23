@@ -26,6 +26,9 @@ structure ASTUtil : sig
   (* create an AST list given a list of expressions and a type *)
     val mkList : AST.exp list * AST.ty -> AST.exp
 
+  (* create an AST int based on an SML int *)
+    val mkInt : int -> AST.exp
+
   end = struct
 
     structure A = AST
@@ -76,5 +79,7 @@ structure ASTUtil : sig
 	  in
 	    List.foldr cons' nil' exps
 	  end
+
+    fun mkInt n = A.ConstExp (A.LConst (Literal.Int (IntInf.fromInt n), Basis.intTy))
 
   end

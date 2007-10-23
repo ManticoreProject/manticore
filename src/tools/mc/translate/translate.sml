@@ -128,8 +128,6 @@ structure Translate : sig
 		end
 	  (* end case *))
 
-    val trParr = TranslateParr.translateParr
-
     fun trExp (env, exp) : bom_code = (case prune exp
 	   of AST.LetExp(b, e) =>
 		EXP(trBind (env, b, fn env' => trExpToExp(env', e)))
@@ -169,7 +167,7 @@ structure Translate : sig
 		  end))
 	    | AST.RangeExp(lo, hi, optStep, ty) => raise Fail "RangeExp"
 	    | AST.PTupleExp exps => raise Fail "PTupleExp"
-	    | AST.PArrayExp(exps, ty) => trExp(env, trParr(exps, ty))
+	    | AST.PArrayExp(exps, ty) => raise Fail "PArrayExp"
 	    | AST.PCompExp _ => raise Fail "unexpected PCompExp"
 	    | AST.PChoiceExp _ => raise Fail "unexpected PChoiceExp"
 	    | AST.SpawnExp e => let
