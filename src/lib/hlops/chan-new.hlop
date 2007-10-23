@@ -8,7 +8,7 @@
 
 #include "events.def"
 
-define inline @chan-new (_ : UNIT / exh : exh) : chan =
+define inline @chan-new (_ : unit / exh : exh) : chan =
     let ch : chan = galloc(FALSE, NIL, NIL, NIL, NIL)
-    return ch
+    return (ch)
 ;

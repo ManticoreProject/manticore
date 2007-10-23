@@ -1,0 +1,20 @@
+(* chan-recv.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Receive a message from a channel.
+ *)
+
+#include "events.def"
+
+define @chan-acquire-lock (ch : chan / _ : exh) : unit;
+define @chan-release-lock (ch : chan / _ : exh) : unit;
+define @event-claim (flg : dirty_flag / exh : exh) : bool;
+define @atomic-enqueue (tid : tid, fiber : fiber / exh : exh) : ();
+define @chan-dequeue-send (ch : chan / exh : exh) : option;
+define @chan-enqueue-recv (flg : dirty_flag, tid : tid, k : cont(any) / _ : exh) : unit;
+define @dispatch (vp : vproc / exh : exh) noreturn;
+
+define @chan-recv (ch : chan / _ : exh) : any =
+;

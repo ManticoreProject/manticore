@@ -10,7 +10,7 @@
 #include "events.def"
 
 (* out-of-live version for when we must reverse the tail *)
-@define @chan-dequeue-recv-slowpath (ch : chan / _ : exh) : option =
+define @chan-dequeue-recv-slowpath (ch : chan / _ : exh) : option =
   (* reverse the tail of the queue *)
     fun rev (item : recvq_item, tl : list, hd : list / exh) : option =
 	  case tl
@@ -35,7 +35,7 @@
       end
 ;
 
-@define inline @chan-dequeue-recv (ch : chan / exh : exh) : option =
+define inline @chan-dequeue-recv (ch : chan / exh : exh) : option =
   (* first, try the head of the queue *)
     case CH_GET_RECVQ_HD(ch)
      of NIL => @chan-dequeue-recv-slowpath(ch, exh)

@@ -9,7 +9,7 @@
 
 #include "events.def"
 
-@define inline @chan-enqueue-send (msg : any, tid : tid, k : cont(unit) / _ : exh) : unit =
+define inline @chan-enqueue-send (msg : any, tid : tid, k : cont(unit) / _ : exh) : unit =
 (* QUESTION: since we promote the list, perhaps we should do a local alloc here? *)
     let item : sendq_item = galloc (msg, tid, k)
     let cons : list = CONS(item, CH_GET_SENDQ_TL(ch))
