@@ -48,8 +48,10 @@ structure HLOpEnv : sig
     val schedulerStartupOp : string -> HLOp.hlop
 
   (* events *)
-    val chooseOp : HLOp.hlop
     val wrapOp : HLOp.hlop
+    val chooseOp : HLOp.hlop
+    val alwaysOp : HLOp.hlop
+    val syncOp : HLOp.hlop
 
   (* work queues *)
     val newWorkQueueOp : HLOp.hlop
@@ -146,12 +148,14 @@ structure HLOpEnv : sig
     fun schedulerStartupOp name = newWithExh (name ^ "-startup", [], [], [])
 
   (* events *)
+    val alwaysOp = newWithExh ("event-always", [BTy.T_Any], [evtTy], [])
     val chooseOp = newWithExh ("event-choose", [pairTy(evtTy, evtTy)], [evtTy], [])
     val wrapOp = newWithExh (
 	  "event-wrap",
 	  [pairTy(evtTy, BTy.T_Fun([BTy.T_Any], [exhTy], [BTy.T_Any]))],
 	  [evtTy],
 	  [])
+    val syncOp = newWithExh ("event-sync", [evtTy], [BTy.T_Any], [])
 
   (* work queue operations *)
     val newWorkQueueOp = newWithExh ("new-work-queue", [unitTy], [workQueueTy], [])

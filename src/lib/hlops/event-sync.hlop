@@ -15,13 +15,13 @@ define @event-sync (ev : evt / exh : exh) : any =
   (* optimistically poll the base events *)
     fun poll (ev : evt, enabled : list / exh : exh) : list =
 	  case ev
-	   of BEVT(pollFn, doFn, blockFn) =>
+	   of BEVT_PAT(pollFn, doFn, blockFn) =>
 		let isEnb : bool = pollFn(UNIT / exh)
 		(* in *)
 		  if isEnb
 		    then return(CONS(doFn, enabled))
 		    else return(enabled)
-	    | CHOOSE(ev1, ev2) =>
+	    | CHOOSE_PAT(ev1, ev2) =>
 		let enabled1 = apply poll(ev1, enabled)
 		(* in *)
 		  apply poll(ev2, enabled1)
@@ -34,8 +34,9 @@ define @event-sync (ev : evt / exh : exh) : any =
 	    let flg : bool_ref = galloc(FALSE)
 	    fun block (ev : evt / exh : exh) : unit =
 		  case ev
-		   of BEVT(pollFn, doFn, blockFn) => apply blockFn(flg, resumeK / exh)
-		    | CHOOSE(ev1, ev2) =>
+		   of BEVT_PAT(pollFn, doFn, blockFn) =>
+			apply blockFn(flg, resumeK / exh)
+		    | CHOOSE_PAT(ev1, ev2) =>
 			do apply block (ev1 / exh)
 			apply block (ev2 / exh)
 		  end
@@ -49,7 +50,7 @@ define @event-sync (ev : evt / exh : exh) : any =
 	  (* in *)
 	    fun doit (l : list) : any =
 		  case l
-		   of CONS(doFn, r) =>
+		   of CONS(doFn : evt_do_fn, r : list) =>
 			do apply doFn (k / exh)
 		      (* if we get here, that means that the attempt failed, so try the next one *)
 			apply doit (r / exh)

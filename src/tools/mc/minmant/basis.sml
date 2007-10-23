@@ -160,6 +160,7 @@ structure Basis : sig
     val wrap		: AST.var
     val choose		: AST.var
     val never		: AST.var
+    val always		: AST.var
     val sync		: AST.var
     val iVar		: AST.var
     val iGet		: AST.var
@@ -499,6 +500,7 @@ structure Basis : sig
     val choose =	polyVar'(N.choose, fn tv => listTy(eventTy tv) --> eventTy tv)
 *)
     val choose =	polyVar'(N.choose, fn tv => eventTy tv ** eventTy tv --> eventTy tv)
+    val always =	polyVar'(N.always, fn tv => tv --> eventTy tv)
     val never =		polyVar'(N.never, fn tv => eventTy tv)
     val sync =		polyVar'(N.sync, fn tv => eventTy tv --> tv)
     val iVar =		polyVar'(N.iVar, fn tv => unitTy --> ivarTy tv)

@@ -329,8 +329,10 @@ structure StdEnv : sig
 	    (B.fail,		hlop H.fail),
 *)
 	  (* events *)
-	    (B.choose,		hlop H.chooseOp),
 	    (B.wrap,		hlop H.wrapOp),
+	    (B.choose,		hlop H.chooseOp),
+	    (B.always,		hlop H.alwaysOp),
+	    (B.sync,		hlop H.syncOp),
 
 	  (* futures and work queues *)
 	    (F.newWorkQueue,    hlop H.newWorkQueueOp),

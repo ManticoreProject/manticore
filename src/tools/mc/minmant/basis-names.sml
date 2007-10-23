@@ -88,6 +88,7 @@ structure BasisNames =
     val recvEvt =	Atom.atom "recvEvt"
     val wrap =		Atom.atom "wrap"
     val choose =	Atom.atom "choose"
+    val always =	Atom.atom "always"
     val never =		Atom.atom "never"
     val sync =		Atom.atom "sync"
     val iVar =		Atom.atom "iVar"

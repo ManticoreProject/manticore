@@ -17,5 +17,9 @@ typedef evt_poll_fn = fun(unit / exh -> bool);
 typedef evt_do_fn = fun(bool_ref / exh -> unit);
 typedef evt_block_fn = fun(bool_ref, cont(any) -> unit);
 
+#define CHOOSE_PAT(ev1, ev2)		CHOOSE(ev1 : evt, ev2 : evt)
+#define BEVT_PAT(pollFn, doFn, blkFn)	\
+		BEVT(pollFn : evt_poll_fn, doFn : evt_do_fn, blkFn : evt_block_fn)
+
 #endif /* !_EVENTS_DEF_ */
 
