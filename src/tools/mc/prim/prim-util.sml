@@ -85,6 +85,7 @@ structure PrimUtil : sig
       | nameOf (P.I32FetchAndAdd _) = "I32FetchAndAdd"
       | nameOf (P.CAS _) = "CAS"
       | nameOf (P.BCAS _) = "BCAS"
+      | nameOf (P.TAS _) = "TAS"
 
   (* return the list of variables referenced in a primitive operation *)
     fun varsOf (P.isBoxed a) = [a]
@@ -151,6 +152,7 @@ structure PrimUtil : sig
       | varsOf (P.I32FetchAndAdd(a, b)) = [a, b]
       | varsOf (P.CAS(a, b, c)) = [a, b, c]
       | varsOf (P.BCAS(a, b, c)) = [a, b, c]
+      | varsOf (P.TAS a) = [a]
 
     fun fmt v2s p = (case varsOf p
 	   of [x] => concat[nameOf p, "(", v2s x, ")"]
@@ -230,6 +232,7 @@ structure PrimUtil : sig
       | explode (P.I32FetchAndAdd(a, b)) = (p2 P.I32FetchAndAdd, [a, b])
       | explode (P.CAS(a, b, c)) = (p3 P.CAS, [a, b, c])
       | explode (P.BCAS(a, b, c)) = (p3 P.BCAS, [a, b, c])
+      | explode (P.TAS a) = (p1 P.TAS, [a])
     end (* local *)
 
     fun map f p = let val (mk, args) = explode p in mk(List.map f args) end
@@ -239,6 +242,7 @@ structure PrimUtil : sig
     fun isPure (P.I32FetchAndAdd _) = false
       | isPure (P.CAS _) = false
       | isPure (P.BCAS _) = false
+      | isPure (P.TAS _) = false
       | isPure _ = true
 
   end

@@ -109,6 +109,7 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 		("F32Mul",	mk Prim2 (P.F32Mul,	(f32, f32),	f32)),
 		("F32Div",	mk Prim2 (P.F32Div,	(f32, f32),	f32)),
 		("F32Neg",	mk Prim1 (P.F32Neg,	f32,		f32)),
+		("F32Sqrt",	mk Prim1 (P.F32Sqrt,	f32,		f32)),
 		("F32Eq",	mk Prim2 (P.F32Eq,	(f32, f32),	bTy)),
 		("F32NEq",	mk Prim2 (P.F32NEq,	(f32, f32),	bTy)),
 		("F32Lt",	mk Prim2 (P.F32Lt,	(f32, f32),	bTy)),
@@ -120,6 +121,7 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 		("F64Mul",	mk Prim2 (P.F64Mul,	(f64, f64),	f64)),
 		("F64Div",	mk Prim2 (P.F64Div,	(f64, f64),	f64)),
 		("F64Neg",	mk Prim1 (P.F64Neg,	f64,		f64)),
+		("F64Sqrt",	mk Prim1 (P.F64Sqrt,	f64,		f64)),
 		("F64Eq",	mk Prim2 (P.F64Eq,	(f64, f64),	bTy)),
 		("F64NEq",	mk Prim2 (P.F64NEq,	(f64, f64),	bTy)),
 		("F64Lt",	mk Prim2 (P.F64Lt,	(f64, f64),	bTy)),
@@ -132,8 +134,10 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
                 ("I32ToF64",    mk Prim1 (P.I32ToF64,   i32,            f64)),
                 ("I64ToF32",    mk Prim1 (P.I64ToF32,   i64,            f32)),
                 ("I64ToF64",    mk Prim1 (P.I64ToF64,   i64,            f64)),
+		("I32FetchAndAdd", mk Prim2 (P.I32FetchAndAdd, (i32, i32), i32)),
 		("CAS",		mk Prim3 (P.CAS,	(adrTy, aTy, aTy), aTy)),
-		("BCAS",	mk Prim3 (P.BCAS,	(adrTy, aTy, aTy), bTy))
+		("BCAS",	mk Prim3 (P.BCAS,	(adrTy, aTy, aTy), bTy)),
+		("TAS",		mk Prim1 (P.TAS,	bTy,		bTy))
 	      ];
 	    AtomTable.find tbl
 	  end

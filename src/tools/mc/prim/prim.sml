@@ -77,5 +77,6 @@ structure Prim =
       | I32FetchAndAdd of 'var * 'var
       | CAS of 'var * 'var * 'var	(* compare and swap; returns old value *)
       | BCAS of 'var * 'var * 'var	(* compare and swap; returns bool *)
+      | TAS of 'var			(* test and set *)
 
   end

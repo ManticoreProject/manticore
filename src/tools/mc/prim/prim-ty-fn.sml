@@ -91,6 +91,7 @@ functor PrimTyFn (Ty : sig
 	    | P.I32FetchAndAdd _ => i32Ty
 	    | P.CAS(_, x, _) => Ty.V.typeOf x
 	    | P.BCAS _ => bTy
+	    | P.TAS _ => bTy
 	  (* end case *))
 
   end
