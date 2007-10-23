@@ -176,6 +176,7 @@ structure Basis : sig
     val print		: AST.var
     val args		: AST.var
     val fail		: AST.var
+    val sumP            : AST.var
 
   (* environments *)
     val lookupOp : Atom.atom -> Env.val_bind
@@ -517,6 +518,7 @@ structure Basis : sig
     val print =		monoVar'(N.print, stringTy --> unitTy)
     val args =		monoVar'(N.args, unitTy --> listTy stringTy)
     val fail =		polyVar'(N.fail, fn tv => stringTy --> tv)
+    val sumP =          monoVar'(N.sumP, (parrayTy intTy) --> intTy)
 
 (*
     val size =		monoVar(N.size, stringTy --> intTy)
@@ -599,7 +601,8 @@ structure Basis : sig
 	    (N.dtos,		Env.Var dtos),
 	    (N.print,		Env.Var print),
 	    (N.args,		Env.Var args),
-	    (N.fail,		Env.Var fail)
+	    (N.fail,		Env.Var fail),
+	    (N.sumP,            Env.Var sumP)
 (*
 	    (N.size,		Env.Var size),
 	    (N.sub,		Env.Var sub),

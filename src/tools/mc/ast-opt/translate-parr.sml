@@ -14,7 +14,7 @@ structure TranslateParr : sig
     structure A = AST
     structure R = Ropes
 
-    val maxLeafSize = 16
+    val maxLeafSize = 4 (* This is for testing purposes. *)
 
     datatype 'a leaf 
       = Lf of (int * 'a list)
@@ -50,10 +50,10 @@ structure TranslateParr : sig
   (* Does not raise an exception if it runs out of things to take. *)
     fun takeDrop (xs, n) =
 	let fun build (_, ekat, []) = (rev ekat, [])
-	      | build (n, ekat, x::drop) = 
+	      | build (n, ekat, drop as d::ds) = 
 		  if n = 0
 		  then (rev ekat, drop)
-		  else build (n-1, x::ekat, drop)
+		  else build (n-1, d::ekat, ds)
 	in
 	    build (n, [], xs)
 	end

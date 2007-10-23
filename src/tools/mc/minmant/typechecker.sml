@@ -101,7 +101,13 @@ structure Typechecker : sig
 		val (e', rhsTy) = chkExp (loc, depth, te, ve, e)
 		in
 		  if not(U.unify(lhsTy, rhsTy))
-		    then error (loc, ["type mismatch in val binding"])
+		    then let 
+	              val msg = "type mismatch in val binding:\n\
+                                \on the left:  " ^ TypeUtil.toString lhsTy ^ "\n\
+                                \on the right: " ^ TypeUtil.toString rhsTy ^ ".\n"
+		      in
+                        error (loc, [msg])
+		      end
 		    else ();
 		  (AST.ValBind(pat', e'), ve')
 		end
@@ -367,7 +373,7 @@ structure Typechecker : sig
 		    end
 		val (es', ty) = List.foldr chk ([], Ty.MetaTy (MetaVar.new depth)) es
 	      in
-		  (AST.PArrayExp(es', ty), ty)
+		  (AST.PArrayExp(es', ty), B.parrayTy ty)
 	      end
 	    | PT.PCompExp (e, pbs, eo) => let
 		  val (pes, ve') = chkPBinds (loc, depth, te, ve, pbs)
