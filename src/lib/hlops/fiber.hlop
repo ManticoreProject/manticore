@@ -11,13 +11,13 @@
 define inline @thread-exit ( / exh : exh) noreturn;
 
 define inline @fiber (f : fiber_fun / exh : exh) : fiber =
-  (* we must assume that signals are masked when the fiber gets invoked *)
   cont fiberK (_ : unit) = 
-    let self : vproc = host_vproc
+    let (_ : unit) =
     (* in case of an exception, just terminate the fiber *)
-    cont exh (exn : exn) = @thread-exit (/ exh)
-    let (_ : unit) = apply f (UNIT / exh)
-    (* NOTE: there is a potential race here with host_vproc. *)
-    @thread-exit (/ exh)
+      cont exh (exn : exn) = return ()
+      (* in *)
+	apply f (UNIT / exh)
+    (* in *)
+      @thread-exit (/ exh)
   return (fiberK)
 ;
