@@ -9,9 +9,14 @@ structure Ropes : sig
     val ropeTyc      : Types.tycon
     val ropeTy       : Types.ty -> Types.ty
     val rope         : Atom.atom
-    val ropeFromList : AST.var
+    val ropeLeaf     : Types.ty -> AST.exp
+    val ropeCat      : Types.ty -> AST.exp
 
   end = struct
+
+    structure A = AST
+    structure B = Basis
+    structure T = Types
 
     val rope = Atom.atom "rope"
 	       
@@ -24,22 +29,22 @@ structure Ropes : sig
 
     (* ropeTy : Types.ty -> Types.ty *)
     fun ropeTy ty = AST.ConTy ([ty], ropeTyc)
-			     
+
     local
-
-	(* forall : (Types.ty -> Types.ty) -> AST.ty_scheme *)
-	fun forall mkTy = 
-	    let val tv = TyVar.new (Atom.atom "'a")
-	    in
-		AST.TyScheme ([tv], mkTy (AST.VarTy tv))
-	    end
-
-	(* polyVar : string * (Types.ty -> Types.ty) -> AST.var *)
-	fun polyVar (name, mkTy) = Var.newPoly (name, forall mkTy)
-
+	fun newRopeDCon (name:string, argTys) = 
+	    DataCon.new ropeTyc (Atom.atom name, SOME (T.TupleTy argTys))
+	val tv = AST.VarTy (TyVar.new (Atom.atom "'a"))
+	val intTy = B.intTy
     in
-        val ropeFromList = polyVar ("ropeFromList", 
-				    fn tv => AST.FunTy (Basis.listTy tv, ropeTy tv))
+        val ropeLeafDCon = newRopeDCon ("Leaf", [intTy, B.listTy tv])
+	val ropeCatDCon  = newRopeDCon ("Cat", [intTy, intTy, ropeTy tv, ropeTy tv])
     end (* local *)
-  
+
+    local
+	fun dconExp dcon = (fn t => A.ConstExp (A.DConst (dcon, [t])))
+    in
+        val ropeLeaf = dconExp ropeLeafDCon
+	val ropeCat  = dconExp ropeCatDCon
+    end (* local *)
+			     
   end (* structure Ropes *)

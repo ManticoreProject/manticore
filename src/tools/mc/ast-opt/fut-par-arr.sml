@@ -28,15 +28,6 @@ structure FutParArr : sig
 	      A.ApplyExp (A.VarExp (R.ropeFromList, [t]), e, R.ropeTy t)
 	  end
 
-    (* mkList : A.exp list * T.ty -> A.exp *)
-    fun mkList (es, t) =
-	  let val ::! = A.ConstExp (A.DConst (B.listCons, [t]))
-	      fun cons (x, xs) = A.ApplyExp (::!, A.TupleExp [x, xs], B.listTy t)
-	      val nil' = A.ConstExp (A.DConst (B.listNil, [t]))
-	  in
-	      foldr cons nil' es
-	  end
-
     (* module : A.module -> A.module *)
     fun module m = let
 	  val anyChange = ref false
@@ -56,7 +47,7 @@ structure FutParArr : sig
 		      end
 		(* build : exp list * int * binding list * exp list -> exp *) 
 		fun build ([], _, bs, accExps) = 
-		      let val list = mkList (exp e :: accExps, t)
+		      let val list = ASTUtil.mkList (exp e :: accExps, t)
 		      in
 			List.foldr A.LetExp (mkRope list) bs
 		      end

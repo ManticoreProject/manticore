@@ -4,9 +4,12 @@
  * All rights reserved.
  *)
 
-structure TranslateParr (* : sig
+structure TranslateParr : sig
 
-  end *) = struct
+  (* An AST to AST translation of parrays to ropes. *)
+    val translateParr : AST.exp list * Types.ty -> AST.exp
+
+  end  = struct
 
     structure A = AST
     structure V = Var
@@ -15,37 +18,24 @@ structure TranslateParr (* : sig
     structure BTy = BOMTy
     structure Lit = Literal
     structure E = TranslateEnv
+    structure R = Ropes
 
     val trTy = TranslateTypes.tr
 
-    structure Nat = LargeWord
-    type nat      = Nat.word
-    val natZero   = Nat.fromInt 0
-    val natOne    = Nat.fromInt 1
-
-    val maxLeafSize = Nat.fromInt 16
-
-  (* max : nat * nat -> nat *)
-    val max = Nat.max
-
-  (* add1 : nat -> nat *)
-    fun add1 n = Nat.+ (n, natOne)
-
-  (* sub1 : nat -> nat *)
-    fun sub1 n = Nat.- (n, natOne)
+    val maxLeafSize = 16
 
     datatype 'a leaf 
-      = Lf of (nat * 'a list)
+      = Lf of (int * 'a list)
 
     datatype 'a rope 
       = Leaf of 'a leaf
-      | Cat  of (nat * nat * 'a rope * 'a rope)
+      | Cat  of (int * int * 'a rope * 'a rope)
 		(* length, depth, left, right *)
 
   (* Note the length and depth of ropes are precomputed, so length and depth *)
   (* are constant-time calculations. *)
 
-    val emptyRope = Leaf (Lf (natZero, []))
+    val emptyRope = Leaf (Lf (0, []))
 
   (* ropeLen : 'a rope -> nat *)
   (* Returns the number of elements of data at the leaves of the given rope. *)
@@ -55,11 +45,11 @@ structure TranslateParr (* : sig
   (* ropeDepth : 'a rope -> nat *)
   (* Returns the depth (length of the longest path to a leaf) of given rope. *)
   (* Note that by definition a leaf has depth 0. *)
-    fun ropeDepth (Leaf _) = natZero
+    fun ropeDepth (Leaf _) = 0
       | ropeDepth (Cat (_, d, _, _)) = d
 
   (* isEmpty : 'a rope -> bool *)
-    fun isEmpty r = (ropeLen r = natZero)
+    fun isEmpty r = (ropeLen r = 0)
 
   (* takeDrop : 'a list * nat -> 'a list * 'a list *)
   (* A function to do a "take" and a "drop" in one pass. *)
@@ -68,9 +58,9 @@ structure TranslateParr (* : sig
     fun takeDrop (xs, n) =
 	let fun build (_, ekat, []) = (rev ekat, [])
 	      | build (n, ekat, x::drop) = 
-		  if n = natZero
+		  if n = 0
 		  then (rev ekat, drop)
-		  else build (sub1 n, x::ekat, drop)
+		  else build (n-1, x::ekat, drop)
 	in
 	    build (n, [], xs)
 	end
@@ -78,7 +68,7 @@ structure TranslateParr (* : sig
   (* mergeLeaves : 'a leaf * 'a leaf -> 'a rope *)
   (* This function merges two leaves into a single leaf if the total *)
   (* number of data elements does not exceed maxLeafSize. *)
-  (* Otherwise, it packs maxLeafSize-worth of data into the a left leaf, *)
+  (* Otherwise, it packs maxLeafSize-worth of data into a left leaf, *)
   (* the rest into a right leaf, and concatenates them. *)
     fun mergeLeaves (Lf (len1, xs1), Lf (len2, xs2)) =
 	let val totalLen = len1 + len2
@@ -90,7 +80,7 @@ structure TranslateParr (* : sig
 		     val left  = Lf (maxLeafSize, leftData) 
 		     val right = Lf (totalLen - maxLeafSize, rightData)
 		 in
-		     Cat (totalLen, natOne, Leaf left, Leaf right)
+		     Cat (totalLen, 1, Leaf left, Leaf right)
 		 end
 	end
   
@@ -99,7 +89,7 @@ structure TranslateParr (* : sig
   (* It is appropriate for use when a tree is known in advance to be balanced. *)
     fun cat (r1, r2) = 
 	let val len = ropeLen r1 + ropeLen r2
-	    val d = add1 (max (ropeDepth r1, ropeDepth r2))
+	    val d = 1 + (Int.max (ropeDepth r1, ropeDepth r2))
 	in
 	    Cat (len, d, r1, r2)
 	end
@@ -118,19 +108,15 @@ structure TranslateParr (* : sig
   (* A smart constructor (i.e., with balancing) for ropes. *)
     fun smartCat (r1, r2) = raise Fail "todo: smartCat"
   
-  (* ropeFromExpList : A.exp list -> A.exp rope *)
+  (* ropeFromExps : A.exp list -> A.exp rope *)
   (* Consumes a list of expressions and produces an ideally-balanced *)
   (* rope from them. *)
     fun ropeFromExps es =
 	  let (* makeLeaf : 'a list -> 'a rope *)
 	      (* pre: length xs does not exceed maxLeafSize *)
-	      fun makeLeaf xs =
-		  let val len = Nat.fromInt (length xs)
-		  in
-		      Leaf (Lf (len, xs))
-		  end
+	      fun makeLeaf xs = Leaf (Lf (length xs, xs))
 	      (* makeLeaves : 'a list -> 'a rope list *)
-	      (* To chop up a list and put the data into leaves. *)
+	      (* Chop up a list and put the data into leaves. *)
 	      fun makeLeaves xs =
 		  let fun b ([], acc) = rev acc
 			| b (xs, acc) =
@@ -150,23 +136,39 @@ structure TranslateParr (* : sig
 		| catPairs [r] = [r]
 		| catPairs (r1::r2::rs) = mkCat (r1, r2) :: catPairs rs  
 	      (* ropeFromRopeList : 'a rope list -> 'a rope *)
-	      (* Concatenate ropes in a list *)
+	      (* Iterates pairwise concatenation of ropes till there *)
+	      (* is one rope only. *)
 	      fun ropeFromRopeList []  = emptyRope
 		| ropeFromRopeList [r] = r
 		| ropeFromRopeList rs  = ropeFromRopeList (catPairs rs)
 	  in
 	      ropeFromRopeList (makeLeaves es)
 	  end
-	  
-  (* trExp : (env * A.exp -> 'a) -> env * A.exp -> 'a *)
-    fun translate trExp (env, exp) = 
-	(case exp
-	  of A.PArrayExp (es, t) => 
-	     let val r = ropeFromExps es
-	     in
-		 raise Fail "todo: TranslateParr.translate"
-	     end
-	   | e => trExp (env, e)
-	(* end case *))
-	
+
+    local
+	fun int n = A.ConstExp (A.LConst (Literal.Int (IntInf.fromInt n), Basis.intTy))
+	val list = ASTUtil.mkList
+    in
+      (* ropeAST : 'a rope * T.ty -> A.exp *)
+      (* Turn a rope, as defined in this module, into an AST exp. *)
+        fun ropeAST (Leaf (Lf (len, data)), t) = 
+	      let val leafDCon = R.ropeLeaf t
+		  val tup = A.TupleExp [int len, list (data, t)]
+	      in
+		  A.ApplyExp (leafDCon, tup, R.ropeTy t)
+	      end
+	  | ropeAST (Cat (n, d, r1, r2), t) = 
+	      let val catDCon = R.ropeCat t
+		  val r1' = ropeAST (r1, t)
+		  val r2' = ropeAST (r2, t)
+		  val tup = A.TupleExp [int n, int d, r1', r2']
+	      in
+		  A.ApplyExp (catDCon, tup, R.ropeTy t)
+	      end
+    end (* local *)
+
+  (* translateParr : A.exp list * T.ty -> A.exp *)
+  (* An AST to AST translation of parrays to ropes. *)
+    fun translateParr (es, t) = ropeAST (ropeFromExps es, t)
+
   end

@@ -21,9 +21,15 @@ structure ASTUtil : sig
     val mkFunWithParams : AST.var * AST.var list * AST.exp -> AST.lambda
 
   (* create a function given the function's name, a parameter pattern, and its body *)
-     val mkFunWithPat : AST.var * AST.pat * AST.exp -> AST.lambda
+    val mkFunWithPat : AST.var * AST.pat * AST.exp -> AST.lambda
+
+  (* create an AST list given a list of expressions and a type *)
+    val mkList : AST.exp list * AST.ty -> AST.exp
 
   end = struct
+
+    structure A = AST
+    structure B = Basis
 
     fun mkTupleExp [e] = e
       | mkTupleExp es = AST.TupleExp es
@@ -60,6 +66,15 @@ structure ASTUtil : sig
 	  val param = Var.new ("param", argTy)
 	  in
 	    AST.FB(f, param, AST.CaseExp(AST.VarExp(param, []), [AST.PatMatch(pat, e)], resTy))
+	  end
+
+    fun mkList ([], ty) = A.ConstExp (A.DConst (B.listNil, [ty]))
+      | mkList (exps, ty) = let
+          val ::! = A.ConstExp (A.DConst (B.listCons, [ty]))
+	  fun cons' (x, xs) = A.ApplyExp (::!, A.TupleExp [x, xs], B.listTy ty)
+	  val nil' = mkList ([], ty)
+	  in
+	    List.foldr cons' nil' exps
 	  end
 
   end

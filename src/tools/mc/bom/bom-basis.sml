@@ -20,6 +20,7 @@ signature BOM_BASIS =
     val boolTy : BOMTy.ty
     val listTy : BOMTy.ty
     val optionTy : BOMTy.ty
+    val ropeTy : BOMTy.ty
     val signalTy : BOMTy.ty
     val rdyqItemTy : BOMTy.ty
     val workQueueTy : BOMTy.ty
@@ -29,6 +30,8 @@ signature BOM_BASIS =
     val signalPREEMPT : BOMTy.data_con
     val listCons : BOMTy.data_con
     val optionSOME : BOMTy.data_con
+    val ropeLeaf : BOMTy.data_con
+    val ropeCat : BOMTy.data_con
     val rdyq_itemQITEM : BOMTy.data_con
     val evtCHOOSE : BOMTy.data_con
     val evtBEVT : BOMTy.data_con
@@ -84,6 +87,12 @@ structure BOMBasis : BOM_BASIS =
     val optionTy = BTy.T_TyCon optionTyc
     val optionSOME = BOMTyCon.newDataCon optionTyc
 	  ("SOME", BTy.Tuple, [BTy.T_Any])
+    val ropeTyc = BOMTyCon.newDataTyc ("rope",0)
+    val ropeTy = BTy.T_TyCon ropeTyc
+    val ropeLeaf = BOMTyCon.newDataCon ropeTyc
+          ("Leaf", BTy.TaggedTuple 0w0, [intTy, listTy])
+    val ropeCat = BOMTyCon.newDataCon ropeTyc
+          ("Cat", BTy.TaggedTuple 0w1, [intTy, intTy, ropeTy, ropeTy])
     val sigactTy = BTy.T_Cont[signalTy]
 
   (* boolean ref cells *)
