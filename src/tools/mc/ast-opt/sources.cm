@@ -11,16 +11,17 @@ Library
   structure ASTOpt
   structure FlatParTup
   structure FreshVar
-  structure FutParArr
   structure FutParLet	
-  structure FutParTup	
   structure Futures
+  structure GrandPass
   structure Hash
   structure Nester
   structure PrintAST  
   structure PrintTypes
   structure Ropes
   structure TestUtils	
+  structure TranslateParr
+  structure TranslatePtup
   structure TypeOf	
   structure Unpar
   structure VarSubst
@@ -38,13 +39,15 @@ is
   ast-opt-controls.sml
   flat-par-tup.sml
   fresh-var.sml
-  fut-par-arr.sml
   fut-par-let.sml
   fut-par-tup.sml
   futures.sml
+  grand-pass.sml
   hash.sml
   nester.sml
   ropes.sml
   test-utils.sml
+  translate-parr.sml
+  translate-ptup.sml
   unpar.sml
   var-subst.sml

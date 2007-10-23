@@ -29,7 +29,7 @@ structure ASTOpt : sig
     fun optimize (module : AST.module) : AST.module = let
           val module = if (Controls.get BasicControl.sequential)
 		then module
-		else ptuples module
+		else GrandPass.transform module
           in
             module
           end
