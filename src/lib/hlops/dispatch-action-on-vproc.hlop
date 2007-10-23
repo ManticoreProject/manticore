@@ -13,7 +13,7 @@ define inline @thread-exit ( / exh : exh) noreturn;
 define @dispatch-action-on-vproc (act : sigact, dst : vproc / exh : exh) : () =
    fun initSched (_ : unit / exh : exh) = 
    (* we must mask signals to avoid a race *)
-      do vpstore(ATOMIC, vp, TRUE)f
+      do vpstore(ATOMIC, vp, TRUE)
       @thread-exit (/ exh)
    let k : fiber = @schedule-fiber (act, initSched / exh : exh)
    do @enqueue-on-vproc (dst, enum(0), k / exh)
