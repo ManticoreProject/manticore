@@ -4,6 +4,8 @@
  * All rights reserved.
  *
  * Definitions for the representation of event values.
+ *
+ * NOTE: this implementation is of "primitive" events without output guards.
  *)
 
 #ifndef _EVENTS_DEF_
@@ -11,15 +13,44 @@
 
 #include "types.def"
 
-typedef bool_ref = ![bool];
+(* dirty flags are used to track the state of a synchronization event *)
+
+typedef dirty_flag = ![enum(2)];
+
+(* constants for dirty_flags *)
+#define INIT_EVT	enum(0):enum(2)
+#define WAITING_EVT	enum(1):enum(2)
+#define SYNCHED_EVT	enum(2):enum(2)
+
+
+typedef chan = ![    (* all fields are mutable *)
+    bool,		(* spin lock *)
+    list,		(* sendq head *)
+    list,		(* sendq tail *)
+    list,		(* recvq head *)
+    list		(* recvq tail *)
+  ];
+
+#define CH_TRY_LOCK(ch)		TAS(&0(ch))
+#define CH_CLR_LOCK(ch)		#0(ch) := TRUE
+#define CH_GET_SENDQ_HD(ch)	#1(ch)
+#define CH_SET_SENDQ_HD(ch,x)	#1(ch) := x
+#define CH_GET_SENDQ_TL(ch)	#2(ch)
+#define CH_SET_SENDQ_TL(ch,x)	#2(ch) := x
+#define CH_GET_RECVQ_HD(ch)	#3(ch)
+#define CH_SET_RECVQ_HD(ch,x)	#3(ch) := x
+#define CH_GET_RECVQ_TL(ch)	#4(ch)
+#define CH_SET_RECVQ_TL(ch,x)	#4(ch) := x
+
+typedef sendq_item = [any, tid, cont(unit)];
+typedef recvq_item = [dirty_flag, tid, cont(any)];
 
 typedef evt_poll_fn = fun(unit / exh -> bool);
-typedef evt_do_fn = fun(bool_ref / exh -> unit);
-typedef evt_block_fn = fun(bool_ref, cont(any) -> unit);
+typedef evt_do_fn = fun(dirty_flag / exh -> unit);
+typedef evt_block_fn = fun(dirty_flag, tid, cont(any) -> unit);
 
 #define CHOOSE_PAT(ev1, ev2)		CHOOSE(ev1 : evt, ev2 : evt)
 #define BEVT_PAT(pollFn, doFn, blkFn)	\
 		BEVT(pollFn : evt_poll_fn, doFn : evt_do_fn, blkFn : evt_block_fn)
 
 #endif /* !_EVENTS_DEF_ */
-

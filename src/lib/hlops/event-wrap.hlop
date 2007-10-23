@@ -24,13 +24,13 @@ define @event-wrap (ev : evt, f : fun(any / exh -> any) / _ : exh) : evt =
 			    throw k' (y)
 		      (* in *)
 			apply doFn (k' / exh)
-		fun blockFn (flg : bool_ref, k : cont(any) / exh : exh) : unit =
+		fun blockFn (flg : dirty_flag, tid : tid, k : cont(any) / exh : exh) : unit =
 		      cont k' (x : any) =
 			  let y : any = apply f (x / exh)
 			  (* in *)
 			    throw k' (y)
 		      (* in *)
-			apply blockFn (flg, k' / exh)
+			apply blockFn (flg, tid, k' / exh)
 		(* in *)
 		  return (BEVT(pollFn, doFn', blockFn')
 	  end

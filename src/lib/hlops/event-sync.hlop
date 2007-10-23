@@ -8,6 +8,7 @@
 
 #include "events.def"
 
+define @get-tid (vp : vproc / exh : exh) : tid;
 define @dispatch (vp : vproc / exh : exh) noreturn;
 
 define @event-sync (ev : evt / exh : exh) : any =
@@ -29,18 +30,23 @@ define @event-sync (ev : evt / exh : exh) : any =
 
   (* record the calling thread's continuation in the event waiting queues *)
     fun blockThd (_ : unit / exh : exh) : any =
+	  let tid : tid = @get-tid(host_vproc / exh)
 	  cont resumeK (x : any) = return x
 	  (* in *)
-	    let flg : bool_ref = galloc(FALSE)
+	    let flg : dirty_flag = galloc(INIT_EVT)
 	    fun block (ev : evt / exh : exh) : unit =
 		  case ev
 		   of BEVT_PAT(pollFn, doFn, blockFn) =>
-			apply blockFn(flg, resumeK / exh)
+			apply blockFn(flg, tid, resumeK / exh)
 		    | CHOOSE_PAT(ev1, ev2) =>
 			do apply block (ev1 / exh)
 			apply block (ev2 / exh)
 		  end
 	    do apply block (ev / exh)
+	  (* if we get here, then we are ready to let other threads synchronize
+	   * on this event.
+	   *)
+	    do #0(flg) := WAITING_EVT
 	    (* in *)
 	      @dispatch (host_vproc / exh)
 

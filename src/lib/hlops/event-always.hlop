@@ -11,7 +11,7 @@
 define inline @event-always (x : any / _ : exh) : evt =
     fun pollFn (_ : unit / _ : exh) : bool = return (TRUE)
     fun doFn (k : cont(any) / _ : exh) : unit = throw k(x)
-    fun blockFn (_ : bool_ref, _ : cont(any) / exh : exh) : unit =
+    fun blockFn (_ : dirty_flag, _ : cont(any) / exh : exh) : unit =
 	  throw exh (UNIT)
     (* in *)
       return BEVT(pollFn, doFn, blockFn)
