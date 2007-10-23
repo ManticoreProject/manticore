@@ -1,0 +1,66 @@
+(* event-sync.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * The primitive implementation of the sync operation.
+ *)
+
+#include "events.def"
+
+define @dispatch (vp : vproc / exh : exh) noreturn;
+
+define @event-sync (ev : evt / exh : exh) : any =
+
+  (* optimistically poll the base events *)
+    fun poll (ev : evt, enabled : list / exh : exh) : list =
+	  case ev
+	   of BEVT(pollFn, doFn, blockFn) =>
+		let isEnb : bool = pollFn(UNIT / exh)
+		(* in *)
+		  if isEnb
+		    then return(CONS(doFn, enabled))
+		    else return(enabled)
+	    | CHOOSE(ev1, ev2) =>
+		let enabled1 = apply poll(ev1, enabled)
+		(* in *)
+		  apply poll(ev2, enabled1)
+	  end
+
+  (* record the calling thread's continuation in the event waiting queues *)
+    fun blockThd (_ : unit / exh : exh) : any =
+	  cont resumeK (x : any) = return x
+	  (* in *)
+	    let flg : bool_ref = galloc(FALSE)
+	    fun block (ev : evt / exh : exh) : unit =
+		  case ev
+		   of BEVT(pollFn, doFn, blockFn) => apply blockFn(flg, resumeK / exh)
+		    | CHOOSE(ev1, ev2) =>
+			do apply block (ev1 / exh)
+			apply block (ev2 / exh)
+		  end
+	    do apply block (ev / exh)
+	    (* in *)
+	      @dispatch (host_vproc / exh)
+
+  (* attempt to complete an enabled communication *)
+    fun doEvt (enabled : list / exh : exh) : any =
+	  cont syncK (x : any) = return x
+	  (* in *)
+	    fun doit (l : list) : any =
+		  case l
+		   of CONS(doFn, r) =>
+			do apply doFn (k / exh)
+		      (* if we get here, that means that the attempt failed, so try the next one *)
+			apply doit (r / exh)
+		    | NIL => apply blockThd (UNIT / exh)
+		  end
+
+    let enabled : list = apply poll (ev, NIL)
+
+    (* in *)
+      case enabled
+       of NIL => apply blockThd (UNIT / exh)
+	| enabled => apply doEvt (enabled / exh)
+      end
+;
