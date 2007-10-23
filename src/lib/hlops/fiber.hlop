@@ -15,7 +15,7 @@ define inline @fiber (f : fiber_fun / exh : exh) : fiber =
   cont fiberK (_ : unit) = 
     let self : vproc = host_vproc
     (* in case of an exception, just terminate the fiber *)
-    cont exh (exh : exh) = @thread-exit (/ exh)
+    cont exh (exn : exn) = @thread-exit (/ exh)
     let (_ : unit) = apply f (UNIT / exh)
     (* NOTE: there is a potential race here with host_vproc. *)
     @thread-exit (/ exh)
