@@ -1,0 +1,14 @@
+(* chan-new.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Allocate a new channel.
+ *)
+
+#include "events.def"
+
+define inline @chan-new (_ : UNIT / exh : exh) : chan =
+    let ch : chan = galloc(FALSE, NIL, NIL, NIL, NIL)
+    return ch
+;

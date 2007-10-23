@@ -1,0 +1,48 @@
+(* chan-dequeue-send.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Dequeue an item from the sender queue of a channel.  This function
+ * assumes that the channel is locked.
+ *)
+
+#include "events.def"
+
+(* out-of-live version for when we must reverse the tail *)
+@define @chan-dequeue-send-slowpath (ch : chan / _ : exh) : option =
+  (* reverse the tail of the queue *)
+    fun rev (item : sendq_item, tl : list, hd : list / exh) : option =
+	  case tl
+	   of NIL => (* update head of queue and return item *)
+		let hd = promote(hd)
+		do CH_SET_SENDQ_HD(ch, hd)
+		let result : option = SOME(item)
+		(* in *)
+		  return (result)
+	    | CONS(item' : sendq_item, rest : list) =>
+		let hd : list = CONS(item, hd)
+		(* in *)
+		  apply rev(item', rest, hd / exh)
+	  end
+    let tl = CH_GET_SENDQ_TL(ch)
+    (* in *)
+      case tl
+       of CONS(item : sendq_item, rest : list) =>
+	    do CH_SET_SENDQ_TL(ch, NIL)
+	      apply rev (item, rest / exh)
+	| NIL => return (NONE)
+      end
+;
+
+@define inline @chan-dequeue-send (ch : chan / exh : exh) : option =
+  (* first, try the head of the queue *)
+    case CH_GET_SENDQ_HD(ch)
+     of NIL => @chan-dequeue-send-slowpath(ch, exh)
+      | CONS(item : sendq_item, rest : list) =>
+	  do CH_SET_SENDQ_HD(ch, rest)
+	  let result : option = SOME(item)
+	  (* in *)
+	    return (result)
+    end
+;
