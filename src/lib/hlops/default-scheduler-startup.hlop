@@ -13,7 +13,7 @@ define inline @dequeue (vp : vproc / exh : exh) : rdyq_item;
 define inline @run (vp : vproc, act : sigact, tid : tid, fiber : fiber / exh : exh) noreturn;
 define @scheduler-startup (act : sigact / exh : exh) : ();
 
-extern void M_Print (void *);
+extern void M_PrintDebug (void *);
 
 define @default-scheduler-startup ( / exh : exh) : () = 
   cont switch (s : signal) =
@@ -26,7 +26,7 @@ define @default-scheduler-startup ( / exh : exh) : () =
       @run (vp, switch, tid, fiber / exh)
     if Equal (s, STOP)
       then throw dispatch ()
-      else do ccall M_Print ("preemption\n")
+      else do ccall M_PrintDebug ("preemption\n")
            let k : fiber = (fiber)s
            let tid : tid = enum(0)
            do @enqueue (vp, tid, k / exh)

@@ -11,7 +11,7 @@ define inline @enqueue-on-vproc (dst : vproc, tid : tid, k : fiber / exh : exh) 
 define inline @thread-exit ( / exh : exh) noreturn;
 
 define @dispatch-action-on-vproc (act : sigact, dst : vproc / exh : exh) : () =
-   fun initSched (_ : unit / exh : exh) = 
+   fun initSched (_ : unit / exh : exh) noreturn = 
    (* we must mask signals to avoid a race *)
       do vpstore(ATOMIC, vp, TRUE)
       @thread-exit (/ exh)

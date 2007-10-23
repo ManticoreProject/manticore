@@ -1,0 +1,18 @@
+#include "runtime-offsets.def"
+#include "types.def"
+
+define @is-queue-gt-one (/ exh : exh) : bool =
+  let vp : vproc = host_vproc
+  let hd : rdyq_item = vpload (VP_RDYQ_HD, vp)
+  case hd of 
+     QITEM (_, _, link:rdyq_item) =>
+        case link of 
+           QITEM (_, _, link:rdyq_item) =>
+           return (TRUE)
+	 | QEMPTY =>       
+ 	   return (FALSE)
+        end
+   | QEMPTY =>       
+       return (FALSE)
+  end
+;

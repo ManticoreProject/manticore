@@ -3,7 +3,8 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Preempt the current fiber.
+ * Yield to the parent scheduler, but with the guarantee that signals are masked 
+ * after the yield.
  *)
 
 #include "types.def"

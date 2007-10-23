@@ -10,9 +10,8 @@
 
 extern void EnqueueOnVProc (void *, void *, void *, void *) __attribute__((alloc));
 
-(* NOTE: we should take promotion out fo EnqueueOnVProc and make it a HLOP *)
 define inline @enqueue-on-vproc (dst : vproc, tid : tid, k : fiber / exh : exh) : () =
-  let k : fiber = promote (k)
-  do ccall EnqueueOnVProc(host_vproc, dst, tid, k)
+  let k' : fiber = promote (k)
+  do ccall EnqueueOnVProc(host_vproc, dst, tid, k')
   return ()
 ;
