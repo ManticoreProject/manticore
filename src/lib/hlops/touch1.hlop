@@ -11,7 +11,7 @@
 
 define @get-work1 (q : work_queue / exh : exh) : ();
 
- extern void M_Print (void * ); 
+extern void M_Print (void * ); 
 
 define @touch1 (qf: [work_queue, future] / exh : exh) : any =
   let q : work_queue = #0(qf)
