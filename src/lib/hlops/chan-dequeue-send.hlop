@@ -30,7 +30,7 @@ define @chan-dequeue-send-slowpath (ch : chan / exh : exh) : option =
       case tl
        of CONS(item : sendq_item, rest : list) =>
 	    do CH_SET_SENDQ_TL(ch, NIL)
-	      apply rev (item, rest / exh)
+	      apply rev (item, rest, NIL / exh)
 	| NIL => return (NONE)
       end
 ;

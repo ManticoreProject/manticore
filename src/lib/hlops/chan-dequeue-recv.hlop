@@ -30,7 +30,7 @@ define @chan-dequeue-recv-slowpath (ch : chan / exh : exh) : option =
       case tl
        of CONS(item : recvq_item, rest : list) =>
 	    do CH_SET_RECVQ_TL(ch, NIL)
-	      apply rev (item, rest / exh)
+	      apply rev (item, rest, NIL / exh)
 	| NIL => return (NONE)
       end
 ;
