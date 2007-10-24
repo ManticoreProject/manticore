@@ -102,7 +102,7 @@ structure HLOpDefLoader : sig
 			      Census.initLambda def;
 			      List.app (fn (cf, cnt) => BOM.Var.addToCount(cf, ~cnt)) externs;
 			      ATbl.insert cache
-				(HLOp.name hlOp, {inline=inline, defn=def, cfuns=externs}))
+				(HLOp.name name, {inline=inline, defn=def, cfuns=externs}))
 			in
 			  List.app record defs;
 			  case ATbl.find cache opName
