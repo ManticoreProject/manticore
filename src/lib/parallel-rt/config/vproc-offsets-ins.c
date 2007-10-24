@@ -14,6 +14,7 @@
     PR_OFFSET(vp, VP_ACTION_STK, actionStk);
     PR_OFFSET(vp, VP_RDYQ_HD, rdyQHd);
     PR_OFFSET(vp, VP_RDYQ_TL, rdyQTl);
+    PR_OFFSET(vp, VP_ENTRYQ, entryQ);
     PR_OFFSET(vp, VP_SECONDQ_HD, secondaryQHd);
     PR_OFFSET(vp, VP_SECONDQ_TL, secondaryQTl);
     PR_OFFSET(vp, STD_ARG, stdArg);

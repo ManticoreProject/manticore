@@ -11,9 +11,23 @@
 #include "runtime-offsets.def"
 #include "types.def"
 
-define inline @enqueue (vp : vproc, tid : tid, fiber : fiber / exh : exh) : () =
-  let tl : rdyq_item = vpload (VP_RDYQ_TL, vp)
+(*  let tl : rdyq_item = vpload (VP_RDYQ_TL, vp)
   let qitem : rdyq_item = QITEM (tid, fiber, tl)
   do vpstore (VP_RDYQ_TL, vp, qitem)
-  return ()
+  return () *)
+
+define inline @enqueue (vp : vproc, tid : tid, fiber : fiber / exh : exh) : () =
+  let tl : rdyq_item = vpload (VP_RDYQ_TL, vp)
+(* FIXME! *)
+  let tlLink : ![tid,fiber,any] = vpload (VP_RDYQ_TL, vp)
+  let qitem : rdyq_item = QITEM (tid, fiber, tl)
+  do vpstore (VP_RDYQ_TL, vp, qitem)
+  if Equal (tl, NIL)
+     then (* the queue was empty, so initialize the head pointer *)
+          do vpstore (VP_RDYQ_HD, vp, qitem)
+          return ()
+     else (* set the link field of the tail *)
+          let qitem : any = (any)qitem
+          do #2(tlLink) := qitem
+          return ()
 ;

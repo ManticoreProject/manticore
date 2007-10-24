@@ -39,7 +39,8 @@ define @work-stealers-startup ( / exh : exh) : () =
 	 | CONS (vp : vproc, vps : list) =>
            if Equal (vp, self)
               then let arg :[list,list] = alloc (acc, vps)
-                   @list-append (arg / exh)
+                   let vprocs : list = @list-append (arg / exh)
+                   return (vprocs)
               else apply orderVProcs (self, vps, CONS (vp, acc) / exh)
        end
 
@@ -59,13 +60,14 @@ define @work-stealers-startup ( / exh : exh) : () =
 
       (* (2) *)
       cont steal (vprocs' : list) =
+        do ccall M_Print ("Steal mode\n")
         case vprocs' 
           of NIL => do ccall M_Print ("Work stealer going to sleep\n")
                     throw dispatch ()
-           | CONS (vp : vproc, vrocs' : list) => 
+           | CONS (vp : vproc, vprocs' : list) => 
                  (* (2.1) *)
                  do ccall M_Print ("Sending thief to vproc\n")
-                 cont k (_ : unit) = 
+                 cont k (x : unit) = 
                     do ccall M_Print ("Stealer continuation\n")
                     let hasElts : bool = @is-queue-gt-one ( / exh)
                     if hasElts
@@ -77,11 +79,10 @@ define @work-stealers-startup ( / exh : exh) : () =
 			    do @enqueue-on-vproc (self, tid, fiber / exh)
                             @thread-exit (/ exh)
                        else (* (2.3) *)
-			    cont fiber (_ : unit) = @thread-exit (/ exh)
+			    cont fiber (_ : unit) = throw steal (vprocs')
                             let k : fiber = (fiber)fiber
                             do @enqueue-on-vproc (self, enum(0), k / exh)
                             @thread-exit (/ exh)
-                let k : fiber = (fiber)k
                 do @enqueue-on-vproc (vp, enum(0), k / exh)
                 throw dispatch ()
         end
@@ -94,9 +95,9 @@ define @work-stealers-startup ( / exh : exh) : () =
                  else (* (1) *)
                       throw dispatch ()
          else do ccall M_Print("Handling preemption\n")
-              let k' : fiber = (fiber)s
+              let k : fiber = (fiber)s
               let tid : tid = enum(0)
-              do @enqueue (host_vproc, tid, k' / exh)
+              do @enqueue (host_vproc, tid, k / exh)
               throw dispatch ()
 
    do @scheduler-startup (wsSwitch / exh)

@@ -34,6 +34,7 @@ static void IdleVProc (VProc_t *vp, void *arg);
 static void SigHandler (int sig, siginfo_t *si, void *_sc);
 static int GetNumCPUs ();
 static Value_t Dequeue2 (VProc_t *self);
+static void UnloadEntryQueue (VProc_t *self);
 
 static pthread_key_t	VProcInfoKey;
 
@@ -131,9 +132,10 @@ VProc_t *VProcCreate (VProcFn_t f, void *arg)
     vproc->inManticore = M_FALSE;
     vproc->atomic = M_TRUE;
     vproc->sigPending = M_FALSE;
-    vproc->actionStk = M_NIL;	    /* FIXME: install default action? */
+    vproc->actionStk = M_NIL;
     vproc->rdyQHd = M_NIL;
     vproc->rdyQTl = M_NIL;
+    vproc->entryQ = M_NIL;
     vproc->secondaryQHd = M_NIL;
     vproc->secondaryQTl = M_NIL;
     vproc->stdArg = M_UNIT;
@@ -193,6 +195,23 @@ void VProcSignal (VProc_t *vp, VPSignal_t sig)
 
 } /* end of VProcSignal */
 
+/*! \brief dequeue from the local vproc queue assuming that the queue is nonempty
+ */
+static Value_t LocalDequeue (VProc_t *vp)
+{
+  assert (vp->rdyQHd != M_NIL);
+
+  RdyQItem_t *item = ValueToRdyQItem(vp->rdyQHd);
+  RdyQItem_t *link = ValueToRdyQItem(item->link);
+  if (link == ValueToRdyQItem(M_NIL)) {
+    /* the queue is now empty, so set the head and tail to empty */
+    vp->rdyQHd = vp->rdyQTl = PtrToValue(M_NIL);
+  } else {
+    vp->rdyQHd = PtrToValue(link);
+  }
+  return PtrToValue(item);
+}
+
 /*! \brief put an idle vproc to sleep.
  *  \param vp the vproc that is being put to sleep.
  */
@@ -219,8 +238,8 @@ void VProcSleep (VProc_t *vp)
 	    while (vp->idle) {
 		CondWait (&(vp->wait), &(vp->lock));
 	    }
-	  /* get an item from the secondary queue */
-	    Value_t item = Dequeue2(vp);
+	    UnloadEntryQueue (vp);
+            Value_t item = LocalDequeue (vp);
 #ifndef NDEBUG
         if (DebugFlg)
             SayDebug("[%2d] VProcSleep: waking up; cont = %p\n", vp->id, ValueToRdyQItem(item)->fiber);
@@ -320,19 +339,50 @@ void EnqueueOnVProc (VProc_t *self, VProc_t *vp, Value_t tid, Value_t fiber)
 #endif
 
     MutexLock (&(vp->lock));
-      /* allocate a secondary queue item on the global heap */
-	vp->secondaryQTl = GlobalAllocUniform(self, 3, tid, fiber, vp->secondaryQTl);
+      vp->entryQ = GlobalAllocUniform(self, 3, tid, fiber, vp->entryQ);
       /* if the vproc is idle, then wake it up */
         if (vp->idle) {
 	    vp->idle = false;
 	    CondSignal (&(vp->wait));
-	}
+	} 
     MutexUnlock (&(vp->lock));
 
 } /* end of EnqueueOnVProc */
 
+
+/*! \brief Copy the elements from the VProc entry queue to the VProc local queue
+ *  \param self the calling vproc
+ * WARNING: this code should only be called when the vproc's lock is held!
+ */
+static void UnloadEntryQueue (VProc_t *self)
+{
+  if (self->entryQ != M_NIL) {
+
+    /* Make q the last element of the entry queue */
+    RdyQItem_t *q = ValueToRdyQItem(self->entryQ);
+    while (q->link != M_NIL) {
+      q = ValueToRdyQItem(q->link);
+    }
+
+    if (self->rdyQTl == M_NIL) {
+      /* The local queue is empty */ 
+      assert (self->rdyQHd == M_NIL);
+      self->rdyQHd = self->entryQ;
+    } else {
+      RdyQItem_t *tl = ValueToRdyQItem(self->rdyQTl);
+      tl->link = self->entryQ;
+    }
+
+    self->rdyQTl = PtrToValue(q);
+    /* clear out the entry queue */
+    self->entryQ = M_NIL;
+
+  }
+}
+
 /*! \brief dequeue a fiber from the secondary scheduling queue or else go idle.
  *  \param self the calling vproc
+ *  \return an option that might contain a fiber that will put the vproc to sleep
  */
 Value_t VProcDequeue (VProc_t *self)
 {
@@ -345,15 +395,16 @@ Value_t VProcDequeue (VProc_t *self)
 	SayDebug("[%2d] VProcDequeue called\n", self->id);
 #endif
 
-  /* dequeue an item */
     MutexLock (&(self->lock));
-	item = Dequeue2 (self);
+      UnloadEntryQueue (self);
     MutexUnlock (&(self->lock));
 
-    if (item == M_NIL) {
-      /* the secondary queue is empty, so return an item that will put us to sleep */
+    if (self->rdyQTl == M_NIL) {
+      /* the local queue is empty, so return an item that will put us to sleep */
 	Value_t cont = AllocUniform(self, 1, PtrToValue(&ASM_VProcSleep));
-	item = AllocUniform(self, 3, M_UNIT, cont, M_NIL);
+	item = Some(self, AllocUniform(self, 3, M_UNIT, cont, M_NIL));
+    } else {
+        item = M_NONE;
     }
 
     return item;
@@ -469,10 +520,13 @@ static int GetNumCPUs ()
 /* Dequeue2:
  *
  * Dequeue an item from a VProc's secondary queue.  Return M_NIL if it is empty.
+ * WARNING: this is dead code until we implement 2-level thread queues
  * WARNING: this code should only be called when the vproc's lock is held!
  */
 static Value_t Dequeue2 (VProc_t *self)
 {
+ 
+    assert (1);
 
   /* dequeue an item */
     if (self->secondaryQHd != M_NIL) {

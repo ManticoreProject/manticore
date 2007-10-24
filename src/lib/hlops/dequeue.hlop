@@ -9,16 +9,32 @@
 #include "runtime-offsets.def"
 #include "types.def"
 
-define @dequeue-slow-path (vp : vproc / exh : exh) : rdyq_item;
+extern void *VProcDequeue (void *) __attribute__((alloc));
 
 define inline @dequeue (vp : vproc / exh : exh) : rdyq_item =
-  let hd : rdyq_item = vpload (VP_RDYQ_HD, vp)
-  case hd of 
-     QITEM (_, _, link:rdyq_item) =>
-       do vpstore (VP_RDYQ_HD, vp, link)
-       return (hd)
-   | QEMPTY =>
-       let qitem : rdyq_item = @dequeue-slow-path(vp / exh)
-       return (qitem)
-  end
+  cont dequeueLoop () =
+     let hd : rdyq_item = vpload (VP_RDYQ_HD, vp)
+     case hd of 
+        QITEM (_, _, link:rdyq_item) =>
+        case link of
+              QEMPTY =>  
+              (* the queue is now empty, so set the head and tail to empty *)
+              do vpstore (VP_RDYQ_TL, vp, NIL) (* FIXME: should be QEMPTY *)
+	      do vpstore (VP_RDYQ_HD, vp, NIL) 
+              return (hd)
+	    | QITEM (_, _, _) => do vpstore (VP_RDYQ_HD, vp, link)
+	                         return (hd)
+        end
+      | QEMPTY =>
+          let sleepKopt : option = ccall VProcDequeue(vp)
+          case sleepKopt
+            of NIL => 
+               (* the queue should be nonempty now *)
+               throw dequeueLoop ()
+	     | SOME (sleepK : rdyq_item) => 
+               (* this fiber will put the vproc to sleep *)
+               return (sleepK)
+          end
+     end
+     throw dequeueLoop ()
 ;
