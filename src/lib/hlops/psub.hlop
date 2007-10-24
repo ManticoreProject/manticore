@@ -1,0 +1,49 @@
+(* psub.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * A subscript operator for ropes (which were parrays in the surface program).
+ *)
+
+#include "types.def"
+#include "ropes.def"
+
+define @psub (r : rope, n : int / exh : exh) : any =
+  fun getFromList (xs : list, n : int / exh : exh) : any =
+    case xs
+      of NIL => (* error! *)
+                return (any)$0
+       | CONS (x:any, xs:list) =>
+           let isZero : bool = I32Eq (n, 0:int)
+           if isZero
+             then return (x)
+             else 
+               let newN : int = I32Sub (n, 1:int)
+               let res : any = apply getFromList (xs, newN)
+               return (res)
+    end
+  fun getFromRope (r : rope, n : int / exh : exh) : any =
+    case r
+      of Leaf (len:int, data:list) =>
+           let foundIt : bool = I32Lt (n, len)
+           if foundIt
+             then 
+               let res : any = apply getFromList (data, n / exh)
+               return (res)
+             else (* error! *)
+               return (any)$0
+       | Cat (len:int, depth:int, r1:rope, r2:rope) =>
+           let onTheLeft : bool = I32Lt (n, len)
+           if onTheLeft
+             then
+               let res : any = apply getFromRope (r1, n / exh)
+               return (res)
+             else
+               let newN : int = I32Sub (n, len)
+               let res : any = apply getFromRope (r2, newN / exh)
+               return (res)
+      end
+  let res : any = apply getFromRope (r, n / exh)
+  return (res)
+;

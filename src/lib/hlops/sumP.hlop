@@ -1,4 +1,4 @@
-(* sumP.hlop
+\(* sumP.hlop
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -15,27 +15,29 @@ define @touch1 (qf : [work_queue, future] / exh : exh) : any;
 
 define @sumP (q : work_queue, r : rope / exh : exh) : int =
   fun sumS (ns : list, acc : int / exh : exh) =
-      case ns
-        of NIL => return (acc)
-         | CONS (n : int, ns : list) =>
-             let accX : int = I32Add (n, acc)
-             let res : int = apply sumS (ns, accX / exh)
-             return (res)            
+    case ns
+      of NIL => return (acc)
+       | CONS (n : int, ns : list) =>
+           let accX : int = I32Add (n, acc)
+           let res : int = apply sumS (ns, accX / exh)
+           return (res)            
+    end
   fun sp (r : rope / exh : exh) = 
-      case r
-	of Leaf (len:int, data:list) => 
-             let res : int = apply sumS (data, 0 / exh)
-             return (res)
-         | Cat (len:int, depth:int, r1:rope, r2:rope) =>
-             fun th (u : unit / exh : exh) = apply sp (r2 / exh)
-             let qt : [work_queue, thunk] = alloc (q, th)
-             let f2 : future = @future1 (tup / exh)
-             let s1 : int = apply sp (r1 / exh)
-             let qf : [work_queue, future] = alloc (q, f2)
-             let t2 : any = @touch1 (qf / exh)
-             let s2 : int = (int)t2;
-             let sum : int = I32Add (s1, s2)
-             return (sum)
-   let res : int = apply sp (r / exh)
-   return (res)
+    case r
+      of Leaf (len:int, data:list) => 
+           let res : int = apply sumS (data, 0 / exh)
+           return (res)
+       | Cat (len:int, depth:int, r1:rope, r2:rope) =>
+           fun th (u : unit / exh : exh) = apply sp (r2 / exh)
+           let qt : [work_queue, thunk] = alloc (q, th)
+           let f2 : future = @future1 (tup / exh)
+           let s1 : int = apply sp (r1 / exh)
+           let qf : [work_queue, future] = alloc (q, f2)
+           let t2 : any = @touch1 (qf / exh)
+           let s2 : int = (int)t2;
+           let sum : int = I32Add (s1, s2)
+           return (sum)
+    end
+  let res : int = apply sp (r / exh)
+  return (res)
 ;
