@@ -27,7 +27,6 @@ structure Basis : sig
     val mvarTyc		: Types.tycon
     val eventTyc	: Types.tycon
     val threadIdTyc	: Types.tycon
-    val workQueueTyc    : Types.tycon
 
   (* basis types *)
     val unitTy		: Types.ty
@@ -41,9 +40,6 @@ structure Basis : sig
     val threadIdTy	: Types.ty
     val parrayTy	: Types.ty -> Types.ty
     val eventTy		: Types.ty -> Types.ty
-
-  (* a work queue type (not in surface language) *)
-    val workQueueTy     : Types.ty
 
   (* type classes as lists of types *)
     val IntClass	: Types.ty list
@@ -65,6 +61,7 @@ structure Basis : sig
   (* primitive operators *)
     val listAppend	: AST.var
     val stringConcat	: AST.var
+    val psub            : AST.var
     val int_div		: AST.var
     val int_gt		: AST.var
     val int_gte		: AST.var
@@ -243,10 +240,6 @@ structure Basis : sig
     val mvarTyc = TyCon.newAbsTyc (N.mvar, 1, true)
     val eventTyc = TyCon.newAbsTyc (N.event, 1, false)
     val threadIdTyc = TyCon.newAbsTyc (N.thread_id, 0, true)
-    val workQueueTyc =  TyCon.newAbsTyc (Atom.atom "work_queue", 0, false)
-
-  (* a type for work queues (not part of surface language) *)
-    val workQueueTy = AST.ConTy ([], workQueueTyc)
 
   (* sequential-language predefined types *)
     val unitTy = AST.TupleTy[]
@@ -285,6 +278,7 @@ structure Basis : sig
 			      ty ** ty --> ty
 			    end))
     val stringConcat =	monoVar(Atom.toString N.concat, stringTy ** stringTy --> stringTy)
+    val psub = polyVar(Atom.toString N.psub, fn tv => (parrayTy tv) ** intTy --> tv)
 
     local
       fun name a = "Int." ^ Atom.toString a
@@ -437,7 +431,8 @@ structure Basis : sig
 	  (* insert non-overloaded operators *)
 	    List.app (AtomTable.insert tbl) [
 		(N.append,	Env.Var listAppend),
-		(N.concat,	Env.Var stringConcat)
+		(N.concat,	Env.Var stringConcat),
+                (N.psub,        Env.Var psub)
 	      ];
 	  (* insert equality operators *)
 	    List.app (AtomTable.insert tbl) [

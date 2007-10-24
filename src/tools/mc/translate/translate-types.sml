@@ -48,7 +48,7 @@ structure TranslateTypes : sig
 	  end
 
     and trTyc (env, ab as Ty.AbsTyc{name, ...}) = 
-	if TyCon.same (ab, Basis.workQueueTyc)
+	if TyCon.same (ab, Futures.workQueueTyc)
 	  then BOMBasis.workQueueTy
 	  else raise Fail("Unknown abstract type " ^ Atom.toString name)
       | trTyc (env, tyc as Ty.DataTyc{name, cons, ...}) = let

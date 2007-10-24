@@ -22,7 +22,7 @@ structure GrandPass : sig
     structure V = Var
 
     local
-	val workQVar = V.new ("workQ", B.workQueueTy)
+	val workQVar = V.new ("workQ", F.workQueueTy)
 	val workQ    = A.VarExp (workQVar, [])
 	val needsQ   = ref false
     in
@@ -72,7 +72,7 @@ structure GrandPass : sig
 	    else
 		A.LetExp (A.ValBind (A.VarPat workQVar, 
 				     F.mkNewWorkQueue ()),
-			  A.LetExp (A.ValBind (A.WildPat B.workQueueTy,
+			  A.LetExp (A.ValBind (A.WildPat F.workQueueTy,
 					       F.mkGetWork1All workQ),
 				    m'))
 	end

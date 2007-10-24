@@ -1,2 +1,2 @@
-val h = "hello\n";
+val h = "hello" ^ "\n";
 print h

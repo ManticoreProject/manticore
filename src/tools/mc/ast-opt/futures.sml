@@ -12,6 +12,9 @@ structure Futures : sig
     val futureTyc : Types.tycon
     val futureTy  : Types.ty -> Types.ty
 
+    val workQueueTyc : Types.tycon
+    val workQueueTy  : Types.ty
+
     val newWorkQueue : Var.var
     val getWork1All  : Var.var
 
@@ -54,7 +57,13 @@ structure Futures : sig
 
     (* futureTy : T.ty -> T.ty *)
     fun futureTy t = T.ConTy ([t], futureTyc)
-		    
+		
+    (* workQueueTyc : T.tycon *)
+    val workQueueTyc = TyCon.newAbsTyc (Atom.atom "work_queue", 0, false)
+
+    (* workQueueTy : T.ty *)
+    val workQueueTy = AST.ConTy ([], workQueueTyc)
+
     (* forall : (T.ty -> T.ty) -> T.ty_scheme *)
     fun forall mkTy =
 	let val tv = TyVar.new (Atom.atom "'a")
@@ -76,10 +85,10 @@ structure Futures : sig
 
     (* predefined functions *)
     val newWorkQueue = monoVar ("newWorkQueue",
-				B.unitTy --> B.workQueueTy)
+				B.unitTy --> workQueueTy)
 
     val getWork1All = monoVar ("getWork1All",
-			       B.workQueueTy --> B.unitTy)
+			       workQueueTy --> B.unitTy)
 
     val future = polyVar ("future",
  		          fn tv => (Basis.unitTy --> tv) --> futureTy tv)
@@ -91,19 +100,19 @@ structure Futures : sig
 			  fn tv => futureTy tv --> Basis.unitTy)
 
     val future1 = polyVar ("future1",
-			   fn tv => (B.workQueueTy ** (B.unitTy --> tv)) --> futureTy tv)
+			   fn tv => (workQueueTy ** (B.unitTy --> tv)) --> futureTy tv)
 
     val touch1 = polyVar ("touch1",
-			  fn tv => (B.workQueueTy ** (futureTy tv)) --> tv)
+			  fn tv => (workQueueTy ** (futureTy tv)) --> tv)
 
     val cancel1 = polyVar ("cancel1",
-			   fn tv => (B.workQueueTy ** (futureTy tv)) --> Basis.unitTy)
+			   fn tv => (workQueueTy ** (futureTy tv)) --> Basis.unitTy)
 
     (* mkNewWorkQueue : unit -> A.exp *)
     (* Produces an AST expression which is a call to the newWorkQueue hlop. *)
     fun mkNewWorkQueue () = A.ApplyExp (A.VarExp (newWorkQueue, []),
 					A.TupleExp [],
-					Basis.workQueueTy)
+					workQueueTy)
 
     (* mkNewWorkQueue : A.exp -> A.exp *)
     (* Produces an AST expression which is a call to the getWork1All hlop. *)

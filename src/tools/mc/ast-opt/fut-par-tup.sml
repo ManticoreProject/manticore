@@ -41,7 +41,7 @@ structure FutParTup : sig
     (* module : A.module -> A.module *)
     fun module m = let
 	  val anyChange = ref false
-	  val workQ = Var.new ("workQ", Basis.workQueueTy)
+	  val workQ = Var.new ("workQ", F.workQueueTy)
 	  val workQExp = A.VarExp (workQ, [])
 	(* ptuple : A.exp list -> A.exp *)
 	(* Precondition: The argument to the function, a list, must not be empty. *)
@@ -122,7 +122,7 @@ structure FutParTup : sig
 	    if !anyChange
 	      then A.LetExp(
 		  A.ValBind(A.VarPat workQ, F.mkNewWorkQueue ()),
-		  A.LetExp(A.ValBind(A.WildPat Basis.workQueueTy, F.mkGetWork1All workQExp),
+		  A.LetExp(A.ValBind(A.WildPat F.workQueueTy, F.mkGetWork1All workQExp),
 		m'))
 	      else m
 	  end

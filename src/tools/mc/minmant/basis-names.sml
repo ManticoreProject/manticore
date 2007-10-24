@@ -43,6 +43,7 @@ structure BasisNames =
     val lt =		Atom.atom "<"
     val append =	Atom.atom "@"
     val concat =	Atom.atom "^"
+    val psub =          Atom.atom "!"
     val plus =		Atom.atom "+"
     val minus =		Atom.atom "-"
     val times =		Atom.atom "*"

@@ -48,6 +48,7 @@
     | DCOLON		("::")
     | AT		("@")
     | CONCAT		("^")
+    | PSUB              ("!")
     | PLUS		("+")
     | MINUS		("-")
     | TIMES		("*")
@@ -264,9 +265,14 @@ RelOp
 	| ">" => (Op.gt) | ">=" => (Op.gte)
 	;
 LExp
-	: AExp (( "::" => (Op.listCons) | "@" => (Op.append) ) AExp)*
-		=> (markExp (FULL_SPAN, mkRBinExp(AExp, SR)))
+	: PSubExp (( "::" => (Op.listCons) | "@" => (Op.append) ) PSubExp)*
+		=> (markExp (FULL_SPAN, mkRBinExp(PSubExp, SR)))
 	;
+
+PSubExp
+        : AExp (("!" => (Op.psub)) AExp)*
+                => (markExp (FULL_SPAN, mkLBinExp(AExp, SR)))
+        ;
 
 AExp
 	: MExp (AddOp MExp)*

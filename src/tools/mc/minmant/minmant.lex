@@ -132,6 +132,7 @@
 <INITIAL> "::"	=> (T.DCOLON);
 <INITIAL> "@"	=> (T.AT);
 <INITIAL> "^"	=> (T.CONCAT);
+<INITIAL> "!"   => (T.PSUB);
 <INITIAL> "+"	=> (T.PLUS);
 <INITIAL> "-"	=> (T.MINUS);
 <INITIAL> "*"	=> (T.TIMES);

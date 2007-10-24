@@ -270,8 +270,9 @@ structure Typechecker : sig
 		      in
 			if not(U.unify(argTy, AST.TupleTy[ty1, ty2]))
 			  then error(loc, [
-			      "type mismatch for operator ", Atom.toString bop,
-			      ", argument has type ", TypeUtil.toString(AST.TupleTy[ty1, ty2])
+			      "type mismatch for operator ", Atom.toString bop, "\n",
+			      "operator expects ", TypeUtil.toString argTy, "\n",
+			      "argument has type ", TypeUtil.toString(AST.TupleTy[ty1, ty2])
 			    ])
 			  else ();
 			(argTys, resTy, instTy)
