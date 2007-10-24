@@ -15,8 +15,19 @@ define inline @spawn-on (f : fun (unit / exh -> unit), dst : vproc / exh : exh) 
 define inline @run (vp : vproc, act : sigact, tid : tid, fiber : fiber / exh : exh) noreturn;
 define inline @thread-exit ( / exh : exh) noreturn;
 
-extern void M_Print (void *);
+(* debugging *)
+extern void M_PrintDebug (void *);
 extern void M_PrintInt (int);
+
+(* Scheduler startup takes a scheduler action and installs it on all vprocs in the
+ *  system.  There are two cases for dispatching this action:
+ *   1. We run one action on the current vproc.
+ *   2. For the other vprocs we dispatch a dummy fiber that installs the
+ *      action.
+ * Since dispatching involves the vproc queues and since we do not enforce ordering 
+ * on vproc queue operations, the current vproc waits until all other vprocs are
+ * initialized.
+ *)
 
 define @scheduler-startup (act : sigact / exh : exh) : () =
     let syncPoint : ![int] = galloc(0)
@@ -26,11 +37,12 @@ define @scheduler-startup (act : sigact / exh : exh) : () =
 	   of NIL => return (i)
 	    | CONS (_ : any, rest : list) => apply length (rest, I32Add(i,1))
 	  end
-    fun init (_ : unit / exh : exh) : unit =
-	  do ccall M_Print ("Initializing top-level scheduler\n")
-	  let x : int = I32FetchAndAdd (syncPoint, 1)
-	  let i : int = #0(syncPoint)     
-	  cont k (_ : unit) = @thread-exit ( / exh)
+    fun init (_ : unit / exh : exh) : unit =	  
+          do vpstore (ATOMIC, host_vproc, TRUE)
+	  cont k (_ : unit) = 
+               do ccall M_PrintDebug ("Initializing top-level scheduler\n")
+               let x : int = I32FetchAndAdd (syncPoint, 1)
+               @thread-exit ( / exh)
 	  (* in *)
 	    @run (host_vproc, act, enum(0), k / exh)
     let self : vproc = host_vproc
@@ -52,13 +64,12 @@ define @scheduler-startup (act : sigact / exh : exh) : () =
 	  let vps : list = ccall ListVProcs(self)
 	  let nVProcs : int = apply length (vps, 0)
 	  let nVProcs : int = I32Sub (nVProcs, 1)
-	  do ccall M_PrintInt (nVProcs)
 	  do apply spawnOnAll (vps / exh)
 	(* wait for all vprocs to have started the init function *)
 	  fun spinWait (_ : unit / exh : exh) : () = 
 		let i : int = #0(syncPoint)     
 		if I32Eq (i, nVProcs) then
-		  do ccall M_Print ("All vprocs are ready\n")
+		  do ccall M_PrintDebug ("All vprocs are ready\n")
 		  return ()
 		else
 		  apply spinWait (UNIT / exh)

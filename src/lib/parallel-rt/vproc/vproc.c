@@ -43,7 +43,6 @@ int			NumVProcs;
 int			NumIdleVProcs;
 VProc_t			*VProcs[MAX_NUM_VPROCS];
 int			NextVProc;			/* index of next slot in VProcs */
-int                     NumReadyVProcs = 0;             /* number of fully initialized vprocs */
 
 extern int ASM_VProcSleep;
 
@@ -194,24 +193,6 @@ void VProcSignal (VProc_t *vp, VPSignal_t sig)
 
 } /* end of VProcSignal */
 
-/*! \brief dequeue from the local vproc queue assuming that the queue is nonempty
- */
-static Value_t LocalDequeue (VProc_t *vp)
-{
-  assert (vp->rdyQHd != M_NIL);
-
-  RdyQItem_t *item = ValueToRdyQItem(vp->rdyQHd);
-  RdyQItem_t *link = ValueToRdyQItem(item->link);
-  if (link == ValueToRdyQItem(M_NIL)) {
-    /* the queue is now empty, so set the head and tail to empty */
-    vp->rdyQHd = vp->rdyQTl = PtrToValue(M_NIL);
-  } else {
-    vp->rdyQHd = PtrToValue(link);
-  }
-  return PtrToValue(item);
-}
-
-
 /*! \brief put an idle vproc to sleep.
  *  \param vp the vproc that is being put to sleep.
  */
@@ -219,7 +200,6 @@ void VProcSleep (VProc_t *vp)
 {
     assert (vp == VProcSelf());
 
-	Say("[%2d] VProcSleep called\n", vp->id);
 #ifndef NDEBUG
     if (DebugFlg)
 	SayDebug("[%2d] VProcSleep called\n", vp->id);
@@ -239,9 +219,14 @@ void VProcSleep (VProc_t *vp)
 	    while (vp->idle && (vp->entryQ == M_NIL)) {
 		CondWait (&(vp->wait), &(vp->lock));
 	    }
+
+	    /* take the first element off the entryQ */
+	    assert (vp->entryQ != PtrToValue(M_NIL));
+	    Value_t item = vp->entryQ;
+            RdyQItem_t *q = ValueToRdyQItem(item);
+	    vp->entryQ = q->link;
+	    
 	    UnloadEntryQueue (vp);
-            Value_t item = LocalDequeue (vp);
-            Say("[%2d] VProcSleep: waking up; cont = %p\n", vp->id, ValueToRdyQItem(item)->fiber);
 #ifndef NDEBUG
         if (DebugFlg)
             SayDebug("[%2d] VProcSleep: waking up; cont = %p\n", vp->id, ValueToRdyQItem(item)->fiber);
@@ -297,15 +282,6 @@ static void *VProcMain (void *_data)
 
     self->idle = false;
 
-  /* Bring all the vprocs to a state where they can start executing in
-   * parallel.  The pthreads scheduler sometimes delays vprocs for long
-   * stretches of time otherwise.
-   */
-    FetchAndInc(&NumReadyVProcs);
-// FIXME: this is bad code; use a condition variable or else remove it.
-    while (NumReadyVProcs < NumVProcs)
-	continue;
-
     init (self, arg);
 
     Die("VProcMain returning.\n");
@@ -339,7 +315,6 @@ void EnqueueOnVProc (VProc_t *self, VProc_t *vp, Value_t tid, Value_t fiber)
     if (DebugFlg)
 	SayDebug("[%2d] EnqueueOnVProc(-, %d, %p, %p)\n", self->id, vp->id, tid, fiber);
 #endif
-Say("[%2d] EnqueueOnVProc(-, %d, %p, %p)\n", self->id, vp->id, tid, fiber);
     MutexLock (&(vp->lock));
       vp->entryQ = GlobalAllocUniform(self, 3, tid, fiber, vp->entryQ);
       /* if the vproc is idle, then wake it up */
@@ -351,34 +326,28 @@ Say("[%2d] EnqueueOnVProc(-, %d, %p, %p)\n", self->id, vp->id, tid, fiber);
 
 } /* end of EnqueueOnVProc */
 
-
 /*! \brief Copy the elements from the VProc entry queue to the VProc local queue
  *  \param self the calling vproc
+ *
+ *  rdyQTl -> r3 -> r2 -> r1
+ *  entryQ -> e3 -> e2 -> e1
+ *                                =====>
+ *  rdyQTl -> r3 -> r2 -> r1 -> e3 -> e2 -> e1
+ *  entryQ
+ *
  * WARNING: this code should only be called when the vproc's lock is held!
  */
 void UnloadEntryQueue (VProc_t *self)
 {
-  if (self->entryQ != M_NIL) {
-
-    /* Make q the last element of the entry queue */
-    RdyQItem_t *q = ValueToRdyQItem(self->entryQ);
+  RdyQItem_t *q = ValueToRdyQItem(self->rdyQTl);
+  if (q == ValueToRdyQItem(M_NIL)) {
+    self->rdyQTl = PtrToValue(self->entryQ);
+  } else {
     while (q->link != M_NIL) {
       q = ValueToRdyQItem(q->link);
     }
-
-    if (self->rdyQTl == M_NIL) {
-      /* The local queue is empty */ 
-      assert (self->rdyQHd == M_NIL);
-      self->rdyQHd = self->entryQ;
-    } else {
-      RdyQItem_t *tl = ValueToRdyQItem(self->rdyQTl);
-      tl->link = self->entryQ;
-    }
-
-    self->rdyQTl = PtrToValue(q);
-    /* clear out the entry queue */
-    self->entryQ = M_NIL;
-
+    q->link = self->rdyQTl;
+    self->rdyQTl = M_NIL;
   }
 }
 
@@ -402,7 +371,6 @@ Value_t VProcDequeue (VProc_t *self)
     MutexUnlock (&(self->lock));
 
     if (self->rdyQTl == M_NIL) {
-	Say("[%2d] VProcDequeue called\n", self->id);
       /* the local queue is empty, so return an item that will put us to sleep */
 	Value_t cont = AllocUniform(self, 1, PtrToValue(&ASM_VProcSleep));
 	item = Some(self, AllocUniform(self, 3, M_UNIT, cont, M_NIL));

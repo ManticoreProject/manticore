@@ -13,24 +13,33 @@ extern void *VProcDequeue (void *) __attribute__((alloc));
 
 (* this function is the slow-path of dequeue *)
 define @dequeue-slow-path (vp : vproc / exh : exh) : rdyq_item =
-  let tl : rdyq_item = vpload (VP_RDYQ_TL, vp)
-  case tl of
-     QEMPTY =>
-       let qitem : rdyq_item = ccall VProcDequeue(vp)
-       return (qitem)
-   | QITEM (tid : tid, fiber : fiber, lst : rdyq_item) =>
-       do vpstore (VP_RDYQ_TL, vp, QEMPTY)
-       fun revQueue (tid : tid, fiber : fiber, lst : rdyq_item, acc : rdyq_item) : rdyq_item =
-         let acc : rdyq_item = QITEM (tid, fiber, acc)
-         case lst of 
-            QEMPTY => return (acc)
-          | QITEM (tid : tid, fiber : fiber, lst : rdyq_item) =>
-              apply revQueue (tid, fiber, lst, acc)
-         end
-       let qitem : rdyq_item = apply revQueue (tid, fiber, lst, QEMPTY)
-       let item : [tid, fiber, rdyq_item] = ([tid, fiber, rdyq_item]) qitem
-       let link : rdyq_item = #2 (item)
-       do vpstore (VP_RDYQ_HD, vp, link)
-       return (qitem)
-  end
+  cont loop () =
+     let tl : rdyq_item = vpload (VP_RDYQ_TL, vp)
+     case tl of
+        QEMPTY =>
+	   let sleepKOpt : option = ccall VProcDequeue(vp)
+           case sleepKOpt
+            of NIL => 
+	       (* the queue is nonempty, try again *)
+               throw loop ()
+	     | SOME (sleepK : rdyq_item) =>
+               (* return a fiber that will put the vproc to sleep *)
+               return (sleepK)
+	   end
+      | QITEM (tid : tid, fiber : fiber, lst : rdyq_item) =>
+          do vpstore (VP_RDYQ_TL, vp, QEMPTY)
+          fun revQueue (tid : tid, fiber : fiber, lst : rdyq_item, acc : rdyq_item) : rdyq_item =
+            let acc : rdyq_item = QITEM (tid, fiber, acc)
+            case lst of 
+               QEMPTY => return (acc)
+             | QITEM (tid : tid, fiber : fiber, lst : rdyq_item) =>
+                 apply revQueue (tid, fiber, lst, acc)
+            end
+          let qitem : rdyq_item = apply revQueue (tid, fiber, lst, QEMPTY)
+          let item : [tid, fiber, rdyq_item] = ([tid, fiber, rdyq_item]) qitem
+          let link : rdyq_item = #2 (item)
+          do vpstore (VP_RDYQ_HD, vp, link)
+          return (qitem)
+     end
+  throw loop ()
 ;	  
