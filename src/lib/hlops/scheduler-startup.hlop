@@ -35,12 +35,12 @@ define @scheduler-startup (act : sigact / exh : exh) : () =
 	    @run (host_vproc, act, enum(0), k / exh)
     let self : vproc = host_vproc
   (* spawn the init function on all of the other vprocs *)
-    fun spawnOnAll (vps : list / exh) : () =
+    fun spawnOnAll (vps : list / exh : exh) : () =
 	  case vps
 	   of NIL => return ()
 	    | CONS (vp:vproc, rest:list) =>
 		if Equal(vp, self) then
-		  apply spawnOnAll (rest)
+		  apply spawnOnAll (rest / exh)
 		else
 		  let _ : tid = @spawn-on (init, vp / exh)
 		  (* in *)
@@ -53,9 +53,9 @@ define @scheduler-startup (act : sigact / exh : exh) : () =
 	  let nVProcs : int = apply length (vps, 0)
 	  let nVProcs : int = I32Sub (nVProcs, 1)
 	  do ccall M_PrintInt (nVProcs)
-	  do apply spawnOnAll (vps)
+	  do apply spawnOnAll (vps / exh)
 	(* wait for all vprocs to have started the init function *)
-	  fun spinWait (_ : unit / exh : exh) = 
+	  fun spinWait (_ : unit / exh : exh) : () = 
 		let i : int = #0(syncPoint)     
 		if I32Eq (i, nVProcs) then
 		  do ccall M_Print ("All vprocs are ready\n")
