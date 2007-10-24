@@ -191,6 +191,37 @@ DEBUG*)
 		in
 		  B.mkLet(lhs, xformE(s, typesOf lhs, e1), xformE(s', tys, e2))
 		end
+	    | B.E_Stmt([], B.E_Update(i, y, x), e) => let
+	      (* the typing rule for Update requires both variables to have the same type, so we
+	       * need to ensure that property.
+	       *)
+		val y' = subst s y
+		val x' = subst s x
+		val e' = xformE(s, tys, e)
+		val ty = BTU.select(typeOf y', i)
+		in
+		  if (BTU.equal(ty, typeOf x'))
+		    then B.mkStmt([], B.E_Update(i, y', x'), e')
+		    else let
+		      val tmp = BV.new(BV.nameOf x', ty)
+		      in
+			B.mkStmts([
+			    ([tmp], B.E_Cast(ty, x')),
+			    ([], B.E_Update(i, y', tmp))
+			  ], e')
+		      end
+		end
+	    | B.E_Stmt([y], B.E_Promote x, e) => let
+	      (* the typing rule for Promote requires both sides to have the same type, so we
+	       * need to ensure that property.
+	       *)
+		val x' = subst s x
+		val (s', y') = if hasTyc(typeOf y)
+		      then retype(s, y, typeOf x')
+		      else (s, y)
+		in
+		  B.mkStmt([y'], B.E_Promote x', xformE(s', tys, e))
+		end
 	    | B.E_Stmt([y], B.E_DCon(B.DCon{name, rep, argTy, ...}, xs), e) => (
 		case (rep, xs)
 		 of (B.Transparent, [x]) => let
@@ -248,10 +279,10 @@ DEBUG*)
     and xformRHS (s, rhs) = (case rhs
 	   of B.E_Const(lit, ty) => if hasTyc ty
 		then B.E_Const(lit, tyToRepTy ty)
-		else BU.substRHS(s, rhs)
+		else rhs
 	    | B.E_Cast(ty, x) => if hasTyc ty
 		then B.E_Cast(tyToRepTy ty, subst s x)
-		else BU.substRHS(s, rhs)
+		else B.E_Cast(ty, subst s x)
 	    | B.E_Alloc(ty, xs) => if hasTyc ty
 		then B.E_Alloc(tyToRepTy ty, List.map (subst s) xs)
 		else BU.substRHS(s, rhs)
