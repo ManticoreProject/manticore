@@ -20,6 +20,7 @@ signature BOM_BASIS =
     val boolTy : BOMTy.ty
     val listTy : BOMTy.ty
     val optionTy : BOMTy.ty
+    val parrayTy : BOMTy.ty
     val ropeTy : BOMTy.ty
     val signalTy : BOMTy.ty
     val rdyqItemTy : BOMTy.ty
@@ -88,12 +89,14 @@ structure BOMBasis : BOM_BASIS =
     val optionTy = BTy.T_TyCon optionTyc
     val optionSOME = BOMTyCon.newDataCon optionTyc
 	  ("SOME", BTy.Tuple, [BTy.T_Any])
-    val ropeTyc = BOMTyCon.newDataTyc ("rope",0)
+    val parrayTyc = BOMTyCon.newDataTyc ("parray", 1)
+    val parrayTy = BTy.T_TyCon parrayTyc
+    val ropeTyc = BOMTyCon.newDataTyc ("rope", 0)
     val ropeTy = BTy.T_TyCon ropeTyc
     val ropeLeaf = BOMTyCon.newDataCon ropeTyc
-          ("Leaf", BTy.TaggedTuple 0w0, [intTy, listTy])
+          ("LEAF", BTy.TaggedTuple 0w0, [intTy, listTy])
     val ropeCat = BOMTyCon.newDataCon ropeTyc
-          ("Cat", BTy.TaggedTuple 0w1, [intTy, intTy, ropeTy, ropeTy])
+          ("CAT", BTy.TaggedTuple 0w1, [intTy, intTy, ropeTy, ropeTy])
     val sigactTy = BTy.T_Cont[signalTy]
 
   (* dirty flags *)
@@ -146,6 +149,8 @@ structure BOMBasis : BOM_BASIS =
     val findDCon : Atom.atom -> BOMTy.data_con option = mkTbl (Atom.atom o BOMTyCon.dconName) [
 	    listCons,
             optionSOME,
+            ropeLeaf,
+            ropeCat,
 	    rdyq_itemQITEM,
 	    signalPREEMPT
 	  ]

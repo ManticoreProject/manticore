@@ -145,13 +145,13 @@ structure TranslateParr : sig
       (* ropeAST : 'a rope * T.ty -> A.exp *)
       (* Turn a rope, as defined in this module, into an AST exp. *)
         fun ropeAST (Leaf (Lf (len, data)), t) = 
-	      let val leafDCon = R.ropeLeaf t
+	      let val leafDCon = R.ropeLeafExp t
 		  val tup = A.TupleExp [int len, list (data, t)]
 	      in
 		  A.ApplyExp (leafDCon, tup, R.ropeTy t)
 	      end
 	  | ropeAST (Cat (n, d, r1, r2), t) = 
-	      let val catDCon = R.ropeCat t
+	      let val catDCon = R.ropeCatExp t
 		  val r1' = ropeAST (r1, t)
 		  val r2' = ropeAST (r2, t)
 		  val tup = A.TupleExp [int n, int d, r1', r2']

@@ -84,5 +84,5 @@ structure BOMTy =
 
     val thunkTy = T_Fun([unitTy], [exhTy], [T_Any])
     val futureTy = T_Tuple(true, [T_Any, thunkTy])
-
+    
   end

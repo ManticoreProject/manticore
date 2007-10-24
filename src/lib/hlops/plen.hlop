@@ -9,10 +9,10 @@
 #include "types.def"
 #include "ropes.def"
 
-define inline @plen (r : rope / exh : exh) : int =
+define @plen (r : rope / exh : exh) : ml_int =
   case r
-    of Leaf (len:int, data:list) => return (len)
-     | Cat (len:int, depth:int, r1:rope, r2:rope) => return (len)
+    of LEAF (len:ml_int, data:list) => return (len)
+     | CAT (len:ml_int, depth:ml_int, r1:rope, r2:rope) => return (len)
   end
 ;
 

@@ -20,6 +20,7 @@ structure StdEnv : sig
     structure BV = BOM.Var
     structure F = Futures
     structure E = TranslateEnv
+    structure R = Ropes
 
   (***** Predefined types *****)
 
@@ -43,8 +44,9 @@ structure StdEnv : sig
 	    (B.listTyc,		BOMBasis.listTy),
 	    (B.optionTyc,	BOMBasis.optionTy),
 	    (B.threadIdTyc,	BTy.tidTy),
+	    (B.parrayTyc,       BOMBasis.parrayTy),
+            (R.ropeTyc,         BOMBasis.ropeTy),
 (*
-	    (B.parrayTyc, ),
 	    (B.chanTyc, ),
 	    (B.ivarTyc, ),
 	    (B.mvarTyc, ),
@@ -63,9 +65,10 @@ structure StdEnv : sig
 	    (B.listNil,		E.Const(0w0, BTy.T_Enum(0w0))),
 	    (B.listCons,	E.DCon BOMBasis.listCons),
 	    (B.optionNONE,	E.Const(0w0, BTy.T_Enum(0w0))),
-	    (B.optionSOME,	E.DCon BOMBasis.optionSOME)
+	    (B.optionSOME,	E.DCon BOMBasis.optionSOME),
+            (R.ropeLeaf,        E.DCon BOMBasis.ropeLeaf),
+	    (R.ropeCat,         E.DCon BOMBasis.ropeCat)
 	  ]
-
 
     (* hlop : HLOp.hlop -> BOM.lambda *)
       fun hlop (hlop as HLOp.HLOp{name, sign, ...}) = let
@@ -350,6 +353,9 @@ structure StdEnv : sig
 	    (F.future1,         hlop H.future1Op),
 	    (F.touch1,          hlop H.touch1Op),
 	    (F.cancel1,         hlop H.cancel1Op)
+    
+          (* parray operators *)
+(*	    (B.plen,            hlop H.plen) *)
 	  ]
     end (* local *) 
 
@@ -374,7 +380,8 @@ structure StdEnv : sig
 		  (B.print,		"print"),
 		  (B.stringConcat,	"string-concat2"),
 		  (B.itos,		"itos"),
-		  (B.ltos,		"ltos")
+		  (B.ltos,		"ltos"),
+                  (B.plen,              "plen")
 		]  
 	  fun ins ((x, n), env) = (case H.find (Atom.atom n)
 		of NONE => raise Fail ("cannot find hlop " ^ n)

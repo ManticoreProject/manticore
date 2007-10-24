@@ -173,6 +173,7 @@ structure Basis : sig
     val print		: AST.var
     val args		: AST.var
     val fail		: AST.var
+    val plen            : AST.var
     val sumP            : AST.var
 
   (* environments *)

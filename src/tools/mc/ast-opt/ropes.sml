@@ -9,8 +9,10 @@ structure Ropes : sig
     val ropeTyc      : Types.tycon
     val ropeTy       : Types.ty -> Types.ty
     val rope         : Atom.atom
-    val ropeLeaf     : Types.ty -> AST.exp
-    val ropeCat      : Types.ty -> AST.exp
+    val ropeLeaf     : AST.dcon
+    val ropeCat      : AST.dcon
+    val ropeLeafExp  : Types.ty -> AST.exp
+    val ropeCatExp   : Types.ty -> AST.exp
 
   end = struct
 
@@ -36,15 +38,15 @@ structure Ropes : sig
 	val tv = AST.VarTy (TyVar.new (Atom.atom "'a"))
 	val intTy = B.intTy
     in
-        val ropeLeafDCon = newRopeDCon ("Leaf", [intTy, B.listTy tv])
-	val ropeCatDCon  = newRopeDCon ("Cat", [intTy, intTy, ropeTy tv, ropeTy tv])
+        val ropeLeaf = newRopeDCon ("LEAF", [intTy, B.listTy tv])
+	val ropeCat  = newRopeDCon ("CAT", [intTy, intTy, ropeTy tv, ropeTy tv])
     end (* local *)
 
     local
 	fun dconExp dcon = (fn t => A.ConstExp (A.DConst (dcon, [t])))
     in
-        val ropeLeaf = dconExp ropeLeafDCon
-	val ropeCat  = dconExp ropeCatDCon
+        val ropeLeafExp = dconExp ropeLeaf
+	val ropeCatExp  = dconExp ropeCat
     end (* local *)
 			     
   end (* structure Ropes *)
