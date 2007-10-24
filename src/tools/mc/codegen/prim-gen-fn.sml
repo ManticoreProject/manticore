@@ -132,9 +132,16 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		    | P.I64ToF32 x => fbind (f32ty, v, T.CVTI2F(i64ty, f32ty, defOf x))
 		    | P.I64ToF64 x => fbind (f64ty, v, T.CVTI2F(i64ty, f64ty, defOf x))
 		  (* atomic operations *)
-(* FIXME
-		    | P.I32FetchAndAdd of 'var * 'var
-*)
+		    | P.I32FetchAndAdd(addr, x) => let
+                      val (r, stms) = BE.AtomicOps.genFetchAndAdd32 {
+				 addr=T.LOAD(anyTy, defOf addr, ()),
+				 x=defOf x
+			       }
+		      in
+			  BE.VarDef.flushLoads varDefTbl
+			  @ stms
+			  @ gprBind (anyTy, v, r)
+		      end
 		    | P.CAS(addr, key, new) => let
 			val (_, r, stms) = BE.AtomicOps.genCompareAndSwapWord{
 				    addr = T.LOAD(anyTy, defOf addr, ()),

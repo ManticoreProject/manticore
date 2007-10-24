@@ -72,5 +72,6 @@ extern VProc_t *VProcCreate (VProcFn_t f, void *arg);
 extern VProc_t *VProcSelf ();
 extern void VProcSignal (VProc_t *vp, VPSignal_t sig);
 extern void VProcSleep (VProc_t *vp);
+extern void UnloadEntryQueue (VProc_t *self);
 
 #endif /* !_VPROC_H_ */

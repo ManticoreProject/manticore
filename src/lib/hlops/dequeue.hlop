@@ -19,8 +19,8 @@ define inline @dequeue (vp : vproc / exh : exh) : rdyq_item =
         case link of
               QEMPTY =>  
               (* the queue is now empty, so set the head and tail to empty *)
-              do vpstore (VP_RDYQ_TL, vp, NIL) (* FIXME: should be QEMPTY *)
-	      do vpstore (VP_RDYQ_HD, vp, NIL) 
+              do vpstore (VP_RDYQ_TL, vp, QEMPTY) 
+	      do vpstore (VP_RDYQ_HD, vp, QEMPTY) 
               return (hd)
 	    | QITEM (_, _, _) => do vpstore (VP_RDYQ_HD, vp, link)
 	                         return (hd)

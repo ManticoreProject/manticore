@@ -6,6 +6,7 @@
  * Install an initial scheduler action on the vprocs in a system.
  *)
 
+#include "runtime-offsets.def"
 #include "types.def"
 
 extern void *ListVProcs (void *) __attribute__((alloc));
@@ -13,9 +14,24 @@ extern void *ListVProcs (void *) __attribute__((alloc));
 define inline @spawn-on (f : fun (unit / exh -> unit), dst : vproc / exh : exh) : tid;
 define inline @run (vp : vproc, act : sigact, tid : tid, fiber : fiber / exh : exh) noreturn;
 define inline @thread-exit ( / exh : exh) noreturn;
+define inline @mask-signals (vp : vproc / exh : exh) : ();
+
+extern void M_Print (void *);
+extern void M_PrintInt (int);
 
 define @scheduler-startup (act : sigact / exh : exh) : () =
+  let syncPoint : ![int] = galloc(0)
+
+  fun length (ls : list, i : int) : int =
+      case ls
+        of NIL => return (i)
+	 | CONS (_ : any, rest : list) => apply length (rest, I32Add(i,1))
+      end
+
   fun init (_ : unit / exh : exh) : unit =
+    do ccall M_Print ("Initializing top-level scheduler\n")
+    let x : int = I32FetchAndAdd (syncPoint, 1)
+      let i : int = #0(syncPoint)     
     cont k (_ : unit) = @thread-exit ( / exh)
     @run (host_vproc, act, enum(0), k / exh)
   let self : vproc = host_vproc
@@ -29,9 +45,19 @@ define @scheduler-startup (act : sigact / exh : exh) : () =
                 apply spawnOnAll (rest)
     end
   cont startup (_ : unit) =
+    do @mask-signals (host_vproc / exh)
     (* install the scheduler on remote vprocs *)
     let vps : list = ccall ListVProcs(self)
+    let nVProcs : int = apply length (vps, 0)
+    let nVProcs : int = I32Sub (nVProcs, 1)
+    do ccall M_PrintInt (nVProcs)
     do apply spawnOnAll (vps)
-    return ()
+    cont spinWait () = 
+      let i : int = #0(syncPoint)     
+      if I32Eq (i, nVProcs)
+         then do ccall M_Print ("All vprocs are ready\n")
+              return ()
+         else throw spinWait ()
+    throw spinWait ()
   @run (self, act, enum(0), startup / exh)
 ;

@@ -34,7 +34,6 @@ static void IdleVProc (VProc_t *vp, void *arg);
 static void SigHandler (int sig, siginfo_t *si, void *_sc);
 static int GetNumCPUs ();
 static Value_t Dequeue2 (VProc_t *self);
-static void UnloadEntryQueue (VProc_t *self);
 
 static pthread_key_t	VProcInfoKey;
 
@@ -212,6 +211,7 @@ static Value_t LocalDequeue (VProc_t *vp)
   return PtrToValue(item);
 }
 
+
 /*! \brief put an idle vproc to sleep.
  *  \param vp the vproc that is being put to sleep.
  */
@@ -219,6 +219,7 @@ void VProcSleep (VProc_t *vp)
 {
     assert (vp == VProcSelf());
 
+	Say("[%2d] VProcSleep called\n", vp->id);
 #ifndef NDEBUG
     if (DebugFlg)
 	SayDebug("[%2d] VProcSleep called\n", vp->id);
@@ -235,11 +236,12 @@ void VProcSleep (VProc_t *vp)
     else {
 	MutexLock (&(vp->lock));
 	    vp->idle = true;
-	    while (vp->idle) {
+	    while (vp->idle && (vp->entryQ == M_NIL)) {
 		CondWait (&(vp->wait), &(vp->lock));
 	    }
 	    UnloadEntryQueue (vp);
             Value_t item = LocalDequeue (vp);
+            Say("[%2d] VProcSleep: waking up; cont = %p\n", vp->id, ValueToRdyQItem(item)->fiber);
 #ifndef NDEBUG
         if (DebugFlg)
             SayDebug("[%2d] VProcSleep: waking up; cont = %p\n", vp->id, ValueToRdyQItem(item)->fiber);
@@ -285,7 +287,7 @@ static void *VProcMain (void *_data)
     sigfillset (&(sa.sa_mask));
     sigaction (SIGUSR1, &sa, 0);
     sigaction (SIGUSR2, &sa, 0);
-    sigaction (SIGSEGV, &sa, 0);
+    //    sigaction (SIGSEGV, &sa, 0);
 
   /* signal that we have started */
     MutexLock (&(data->lock));
@@ -337,7 +339,7 @@ void EnqueueOnVProc (VProc_t *self, VProc_t *vp, Value_t tid, Value_t fiber)
     if (DebugFlg)
 	SayDebug("[%2d] EnqueueOnVProc(-, %d, %p, %p)\n", self->id, vp->id, tid, fiber);
 #endif
-
+Say("[%2d] EnqueueOnVProc(-, %d, %p, %p)\n", self->id, vp->id, tid, fiber);
     MutexLock (&(vp->lock));
       vp->entryQ = GlobalAllocUniform(self, 3, tid, fiber, vp->entryQ);
       /* if the vproc is idle, then wake it up */
@@ -354,7 +356,7 @@ void EnqueueOnVProc (VProc_t *self, VProc_t *vp, Value_t tid, Value_t fiber)
  *  \param self the calling vproc
  * WARNING: this code should only be called when the vproc's lock is held!
  */
-static void UnloadEntryQueue (VProc_t *self)
+void UnloadEntryQueue (VProc_t *self)
 {
   if (self->entryQ != M_NIL) {
 
@@ -400,6 +402,7 @@ Value_t VProcDequeue (VProc_t *self)
     MutexUnlock (&(self->lock));
 
     if (self->rdyQTl == M_NIL) {
+	Say("[%2d] VProcDequeue called\n", self->id);
       /* the local queue is empty, so return an item that will put us to sleep */
 	Value_t cont = AllocUniform(self, 1, PtrToValue(&ASM_VProcSleep));
 	item = Some(self, AllocUniform(self, 3, M_UNIT, cont, M_NIL));

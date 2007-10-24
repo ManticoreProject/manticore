@@ -77,6 +77,14 @@ functor AMD64MLTreeFn (structure AMD64Constant : CONSTANT) =
 		    | (IX.LOCK_CMPXCHGQ(re1, re2)) => concat[
 			  "LOCK_CMPXCHGL(", #rexp prt re1, ",", #rexp prt re2, ")"
 			]
+		    | IX.LOCK_XADDL(addr, x) =>
+		      concat[
+			  "LOCK_XADDL(", #rexp prt addr, ",", #rexp prt x, ")"
+		      ]
+		    | IX.LOCK_XADDQ(addr, x) =>
+		      concat[
+			  "LOCK_XADDQ(", #rexp prt addr, ",", #rexp prt x, ")"
+		      ]
 		  (* end case *))
 	    fun showRext _ _ = raise Fail "showRext"
 	    fun showFext _ _ = raise Fail "showFext"

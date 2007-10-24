@@ -65,7 +65,14 @@ void M_PrintDebug (char *s)
  */
 void M_PrintLong (int64_t n)
 {
-    Say("%", n);
+    Say("%d", n);
+}
+
+/* M_PrintLong:
+ */
+void M_PrintInt (int32_t n)
+{
+    Say("%d", n);
 }
 
 Value_t M_PrintFloat (float f)
