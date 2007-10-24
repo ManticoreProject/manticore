@@ -1,0 +1,15 @@
+(* set-tid.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Set the current thread ID.
+ *
+ * NOTE: for now, thread IDs are just unit values.
+ *)
+
+#include "types.def"
+
+define inline @set-tid (vp : vproc / exh : exh) : unit = 
+  return (UNIT)
+;

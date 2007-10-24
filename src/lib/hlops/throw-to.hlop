@@ -1,0 +1,16 @@
+(* throw-to.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Throw a value to another thread.
+ *)
+
+#include "runtime-offsets.def"
+#include "types.def"
+
+define inline @throw-to (vp : vproc, tid : tid, recv : cont(any), v : any / exh : exh) noreturn =
+  do vpstore (CURRENT_TID, vp, tid)
+  do vpstore (ATOMIC, vp, FALSE)
+  throw recv (v)
+;
