@@ -47,7 +47,7 @@ structure HLOpDefLoader : sig
     fun parseErr (filename, srcMap) = let
 	  val errToStr = AntlrRepair.repairToString tokToString srcMap
 	  in
-	    fn err => TextIO.print(concat["Error [", filename, "] ", errToStr err, "\n"])
+	    fn err => TextIO.print(concat["Error ", errToStr err, "\n"])
 	  end
 
   (* parse an input stream, returning a parse tree *)
