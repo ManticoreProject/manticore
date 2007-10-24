@@ -9,9 +9,9 @@
 
 #include "events.def"
 
-define inline @chan-undequeue-send (ch : chan, item : sendq_item / _ : exh) : unit =
+define inline @chan-undequeue-send (ch : chan, item : sendq_item / _ : exh) : () =
     let cons : list = CONS(item, CH_GET_SENDQ_HD(ch))
-    let cons' : list = promote (cons)
-    do CH_SET_SENDQ_HD(ch, cons')
-      return (UNIT)
+    let cons : list = promote (cons)
+    do CH_SET_SENDQ_HD(ch, cons)
+      return ()
 ;

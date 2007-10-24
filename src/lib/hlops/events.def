@@ -47,8 +47,8 @@ typedef sendq_item = [any, tid, cont(unit)];
 typedef recvq_item = [dirty_flag, tid, cont(any)];
 
 typedef evt_poll_fn = fun(unit / exh -> bool);
-typedef evt_do_fn = fun(dirty_flag / exh -> unit);
-typedef evt_block_fn = fun(dirty_flag, tid, cont(any) / exh -> unit);
+typedef evt_do_fn = fun(cont(any) / exh -> unit);
+typedef evt_block_fn = fun([dirty_flag, tid, cont(any)] / exh -> unit);
 
 #define CHOOSE_PAT(ev1, ev2)		CHOOSE(ev1 : evt, ev2 : evt)
 #define BEVT_PAT(pollFn, doFn, blkFn)	\
