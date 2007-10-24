@@ -106,6 +106,7 @@ structure BasisNames =
     val print =		Atom.atom "print"
     val args =		Atom.atom "args"
     val fail =		Atom.atom "fail"
+    val plen =          Atom.atom "plen"
     val sumP =          Atom.atom "sumP"
 (*
     val size =		Atom.atom "size"

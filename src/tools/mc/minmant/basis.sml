@@ -513,6 +513,7 @@ structure Basis : sig
     val print =		monoVar'(N.print, stringTy --> unitTy)
     val args =		monoVar'(N.args, unitTy --> listTy stringTy)
     val fail =		polyVar'(N.fail, fn tv => stringTy --> tv)
+    val plen =          polyVar'(N.plen, fn tv => (parrayTy tv) --> intTy)
     val sumP =          monoVar'(N.sumP, (parrayTy intTy) --> intTy)
 
 (*
@@ -597,6 +598,7 @@ structure Basis : sig
 	    (N.print,		Env.Var print),
 	    (N.args,		Env.Var args),
 	    (N.fail,		Env.Var fail),
+	    (N.plen,            Env.Var plen),
 	    (N.sumP,            Env.Var sumP)
 (*
 	    (N.size,		Env.Var size),

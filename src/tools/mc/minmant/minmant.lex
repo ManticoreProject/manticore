@@ -1,4 +1,3 @@
-
 (* minmant.lex
  *
  * Based on CMSC 22610 Sample code (Winter 2006)
