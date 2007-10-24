@@ -32,7 +32,7 @@ typedef chan = ![    (* all fields are mutable *)
     list		(* recvq tail *)
   ];
 
-#define CH_TRY_LOCK(ch)		TAS(&0(ch))
+#define CH_TRY_LOCK(ch)		BCAS(&0(ch), FALSE, TRUE)
 #define CH_CLR_LOCK(ch)		#0(ch) := TRUE
 #define CH_GET_SENDQ_HD(ch)	#1(ch)
 #define CH_SET_SENDQ_HD(ch,x)	#1(ch) := x

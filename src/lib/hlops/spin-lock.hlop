@@ -10,7 +10,7 @@
 
 define inline @spin-lock (lock : spin_lock / exh : exh) : unit =
     fun spin (_ : unit / exh : exh) : unit =
-	  if TAS(&0(lock))
+	  if BCAS(&0(lock), FALSE, TRUE)
 	    then apply spin (UNIT / exh)
 	    else return (UNIT)
     (* in *)
