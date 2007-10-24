@@ -50,6 +50,7 @@ structure StdEnv : sig
 	    (B.mvarTyc, ),
 *)
 	    (B.eventTyc,	BOMBasis.evtTy),
+	    (B.chanTyc,		BOMBasis.chanTy),
 	    (F.futureTyc,       BTy.futureTy)
 	  ]
 
@@ -333,6 +334,12 @@ structure StdEnv : sig
 	    (B.choose,		hlop H.chooseOp),
 	    (B.always,		hlop H.alwaysOp),
 	    (B.sync,		hlop H.syncOp),
+
+	  (* channels *)
+	    (B.channel,		hlop H.channelOp),
+	    (B.recv,		hlop H.recvOp),
+	    (B.recvEvt,		hlop H.recvEvtOp),
+	    (B.send,		hlop H.sendOp),
 
 	  (* futures and work queues *)
 	    (F.newWorkQueue,    hlop H.newWorkQueueOp),

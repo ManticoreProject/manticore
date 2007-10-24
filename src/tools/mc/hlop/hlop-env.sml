@@ -53,6 +53,12 @@ structure HLOpEnv : sig
     val alwaysOp : HLOp.hlop
     val syncOp : HLOp.hlop
 
+  (* channels *)
+    val channelOp : HLOp.hlop
+    val recvOp : HLOp.hlop
+    val recvEvtOp : HLOp.hlop
+    val sendOp : HLOp.hlop
+
   (* work queues *)
     val newWorkQueueOp : HLOp.hlop
     val getWork1AllOp  : HLOp.hlop
@@ -91,13 +97,13 @@ structure HLOpEnv : sig
     val vprocTy = BTy.T_VProc
     val rawIntTy = BTy.T_Raw BTy.T_Int
     val listTy = Basis.listTy
-    val intTy = BOMBasis.intTy
-    val longTy = BOMBasis.longTy
-    val floatTy = BOMBasis.floatTy
-    val doubleTy = BOMBasis.doubleTy
-    val stringTy = BOMBasis.stringTy
+    val intTy = Basis.intTy
+    val longTy = Basis.longTy
+    val floatTy = Basis.floatTy
+    val doubleTy = Basis.doubleTy
+    val stringTy = Basis.stringTy
 
-    val evtTy = BOMBasis.evtTy
+    val evtTy = Basis.evtTy
 
     val workQueueTy = BTy.T_Any
 
@@ -127,6 +133,7 @@ structure HLOpEnv : sig
   (* high-level operations used to implement Manticore concurrency constructs *)
     val spawnOp = newWithExh ("spawn", [BTy.T_Fun([], [exhTy], [])], [tidTy], [])
     val threadExitOp = newWithExh ("thread-exit", [], [], [H.NORETURN])
+
     val iVarOp = newWithExh ("iVar", [], [ivarTy], [])
     val iGetOp = newWithExh ("iGet", [ivarTy], [BTy.T_Any], [])
     val iPutOp = newWithExh ("iPut", [ivarTy, BTy.T_Any], [], [])
@@ -156,6 +163,11 @@ structure HLOpEnv : sig
 	  [evtTy],
 	  [])
     val syncOp = newWithExh ("event-sync", [evtTy], [BTy.T_Any], [])
+
+    val channelOp = newWithExh ("chan-new", [unitTy], [Basis.chanTy], [])
+    val recvOp = newWithExh ("chan-recv", [Basis.chanTy], [BTy.T_Any], [])
+    val recvEvtOp = newWithExh ("chan-recv-evt", [Basis.chanTy], [evtTy], [])
+    val sendOp = newWithExh ("chan-send", [pairTy(Basis.chanTy, BTy.T_Any)], [unitTy], [])
 
   (* work queue operations *)
     val newWorkQueueOp = newWithExh ("new-work-queue", [unitTy], [workQueueTy], [])

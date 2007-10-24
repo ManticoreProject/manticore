@@ -25,6 +25,7 @@ signature BOM_BASIS =
     val rdyqItemTy : BOMTy.ty
     val workQueueTy : BOMTy.ty
     val evtTy : BOMTy.ty
+    val chanTy : BOMTy.ty
 
   (* predefined data constructors *)
     val signalPREEMPT : BOMTy.data_con
@@ -95,8 +96,8 @@ structure BOMBasis : BOM_BASIS =
           ("Cat", BTy.TaggedTuple 0w1, [intTy, intTy, ropeTy, ropeTy])
     val sigactTy = BTy.T_Cont[signalTy]
 
-  (* boolean ref cells *)
-    val boolRefTy = BTy.T_Tuple(true, [BTy.boolTy])
+  (* dirty flags *)
+    val dirtyFlagTy = BTy.T_Tuple(true, [BTy.T_Enum(0w2)])
 
   (* primitive event values *)
     val evtTyc = BOMTyCon.newDataTyc ("evt", 0)
@@ -108,8 +109,19 @@ structure BOMBasis : BOM_BASIS =
           (* doFn : 'a cont -> unit *)
 	    BTy.T_Fun([BTy.T_Cont[BTy.T_Any]], [exhTy], [unitTy]),
           (* blockFn : (bool ref * 'a cont) -> unit *)
-	    BTy.T_Fun([boolRefTy, BTy.T_Cont[BTy.T_Any]], [exhTy], [unitTy])
+	    BTy.T_Fun([dirtyFlagTy, BTy.T_Cont[BTy.T_Any]], [exhTy], [unitTy])
 	  ])
+
+  (* The BOM type for channels.  This definition must match that given in
+   *
+   *	src/lib/hlops/events.def
+   *)
+    val chanTy = BTy.T_Tuple(true, [
+	    boolTy,			(* spinlock *)
+	    listTy, listTy,		(* send queue (head and tail) *)
+	    listTy, listTy		(* recv queue (head and tail) *)
+	  ])
+
 
     (* val workQueueTyc = BTy.AbsTyc {name="work_queue", stamp=Stamp.new(), arity=0} *)
     val workQueueTy = BTy.T_Any (* BTy.T_TyCon workQueueTyc *)
