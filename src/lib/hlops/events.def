@@ -15,12 +15,13 @@
 
 (* dirty flags are used to track the state of a synchronization event *)
 
-typedef dirty_flag = ![enum(2)];
+typedef event_state = enum(2);
+typedef dirty_flag = ![event_state];
 
-(* constants for dirty_flags *)
-#define INIT_EVT	enum(0):enum(2)
-#define WAITING_EVT	enum(1):enum(2)
-#define SYNCHED_EVT	enum(2):enum(2)
+(* constants for event states *)
+#define INIT_EVT	enum(0):event_state
+#define WAITING_EVT	enum(1):event_state
+#define SYNCHED_EVT	enum(2):event_state
 
 
 typedef chan = ![    (* all fields are mutable *)

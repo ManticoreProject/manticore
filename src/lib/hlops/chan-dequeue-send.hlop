@@ -10,12 +10,12 @@
 #include "events.def"
 
 (* out-of-live version for when we must reverse the tail *)
-define @chan-dequeue-send-slowpath (ch : chan / _ : exh) : option =
+define @chan-dequeue-send-slowpath (ch : chan / exh : exh) : option =
   (* reverse the tail of the queue *)
-    fun rev (item : sendq_item, tl : list, hd : list / exh) : option =
+    fun rev (item : sendq_item, tl : list, hd : list / exh : exh) : option =
 	  case tl
 	   of NIL => (* update head of queue and return item *)
-		let hd = promote(hd)
+		let hd : list = promote(hd)
 		do CH_SET_SENDQ_HD(ch, hd)
 		let result : option = SOME(item)
 		(* in *)
@@ -25,7 +25,7 @@ define @chan-dequeue-send-slowpath (ch : chan / _ : exh) : option =
 		(* in *)
 		  apply rev(item', rest, hd / exh)
 	  end
-    let tl = CH_GET_SENDQ_TL(ch)
+    let tl : list = CH_GET_SENDQ_TL(ch)
     (* in *)
       case tl
        of CONS(item : sendq_item, rest : list) =>
@@ -38,7 +38,7 @@ define @chan-dequeue-send-slowpath (ch : chan / _ : exh) : option =
 define inline @chan-dequeue-send (ch : chan / exh : exh) : option =
   (* first, try the head of the queue *)
     case CH_GET_SENDQ_HD(ch)
-     of NIL => @chan-dequeue-send-slowpath(ch, exh)
+     of NIL => @chan-dequeue-send-slowpath(ch / exh)
       | CONS(item : sendq_item, rest : list) =>
 	  do CH_SET_SENDQ_HD(ch, rest)
 	  let result : option = SOME(item)

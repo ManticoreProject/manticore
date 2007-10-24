@@ -8,11 +8,11 @@
 
 #include "events.def"
 
-define inline @chan-acquire-lock (ch : chan / _ : exh) : unit =
-    fun spin (_ : unit / exh : exh) : unit =
+define inline @chan-acquire-lock (ch : chan / exh : exh) : () =
+    fun spin (_ : unit / exh : exh) : () =
 	  if CH_TRY_LOCK(ch)
 	    then apply spin (UNIT / exh)
-	    else return UNIT
+	    else return ()
     (* in *)
       apply spin (UNIT / exh)
 ;

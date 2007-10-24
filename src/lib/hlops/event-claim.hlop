@@ -6,11 +6,11 @@
  * Attempt to claim an event by setting its dirty flag to SYNCHED_EVT.
  *)
 
-#include "events.hlop"
+#include "events.def"
 
 define inline @event-claim (flg : dirty_flag / exh : exh) : bool =
-    fun spin (_ : UNIT / exh : exh) : bool =
-	  let sts = CAS(&0(flg), WAITING_EVT, SYNCHED_EVT)
+    fun spin (_ : unit / exh : exh) : bool =
+	  let sts : event_state = CAS(&0(flg), WAITING_EVT, SYNCHED_EVT)
 	  (* in *)
 	    case sts
 	     of INIT_EVT => apply spin (UNIT / exh)
@@ -18,5 +18,5 @@ define inline @event-claim (flg : dirty_flag / exh : exh) : bool =
 	      | SYNCHED_EVT => return (FALSE)
 	    end
     (* in *)
-      spin (UNIT / exh)
+      apply spin (UNIT / exh)
 ;

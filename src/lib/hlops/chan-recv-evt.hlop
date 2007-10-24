@@ -8,13 +8,13 @@
 
 #include "events.def"
 
-define @chan-acquire-lock (ch : chan / _ : exh) : unit;
-define @chan-release-lock (ch : chan / _ : exh) : unit;
+define @chan-acquire-lock (ch : chan / _ : exh) : ();
+define @chan-release-lock (ch : chan / _ : exh) : ();
 define @event-claim (flg : dirty_flag / exh : exh) : bool;
 define @atomic-enqueue (tid : tid, fiber : fiber / exh : exh) : ();
 define @chan-dequeue-send (ch : chan / exh : exh) : option;
-define @chan-undequeue-send (ch : chan, item : sendq_item / _ : exh) : unit;
-define @chan-enqueue-recv (flg : dirty_flag, tid : tid, k : cont(any) / _ : exh) : unit;
+define @chan-undequeue-send (ch : chan, item : sendq_item / _ : exh) : ();
+define @chan-enqueue-recv (ch : chan, flg : dirty_flag, tid : tid, k : cont(any) / _ : exh) : ();
 define @dispatch (vp : vproc / exh : exh) noreturn;
 
 define @chan-recv-evt (ch : chan / _ : exh) : evt =
@@ -59,7 +59,7 @@ define @chan-recv-evt (ch : chan / _ : exh) : evt =
 		      do @chan-release-lock (ch / exh)
 		      @dispatch ()
 	      | NONE => (* no luck, so block the receiver *)
-		  do chan-enqueue-recv (ch, flg, tid, resumeK)
+		  do chan-enqueue-recv (ch, flg, tid, resumeK / exh)
 		  do @chan-release-lock (ch / exh)
 		    return (UNIT)
 	    end			    

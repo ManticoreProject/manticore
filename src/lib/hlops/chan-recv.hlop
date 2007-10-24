@@ -8,13 +8,32 @@
 
 #include "events.def"
 
-define @chan-acquire-lock (ch : chan / _ : exh) : unit;
-define @chan-release-lock (ch : chan / _ : exh) : unit;
+define @chan-acquire-lock (ch : chan / _ : exh) : ();
+define @chan-release-lock (ch : chan / _ : exh) : ();
 define @event-claim (flg : dirty_flag / exh : exh) : bool;
 define @atomic-enqueue (tid : tid, fiber : fiber / exh : exh) : ();
 define @chan-dequeue-send (ch : chan / exh : exh) : option;
-define @chan-enqueue-recv (flg : dirty_flag, tid : tid, k : cont(any) / _ : exh) : unit;
+define @chan-enqueue-recv (ch : chan, flg : dirty_flag, tid : tid, k : cont(any) / _ : exh) : ();
 define @dispatch (vp : vproc / exh : exh) noreturn;
 
-define @chan-recv (ch : chan / _ : exh) : any =
+define @chan-recv (ch : chan / exh : exh) : any =
+    let tid : tid = @get-tid(host_vproc / exh)
+    do @chan-acquire-lock (ch / exh)
+    let maybeItem : option = @chan-dequeue-send (ch / exh)
+    (* in *)
+      case maybeItem
+       of SOME(item : sendq_item) =>
+	    do @chan-release-lock (ch / exh)
+	    do @atomic-enqueue (#1(item), #2(item) / exh)
+	    (* in *)
+	      return (#0(item))
+	| NONE =>
+	    cont recvK (x : any) = return (x)
+	    (* in *)
+	      let flag : dirty_flag = galloc(WAITING_EVT)
+	      do @chan-enqueue-recv (ch, flag, tid, recvK / exh)
+	      do @chan-release-lock (ch / exh)
+	      (* in *)
+		@dispatch (host_vproc / exh)
+      end
 ;

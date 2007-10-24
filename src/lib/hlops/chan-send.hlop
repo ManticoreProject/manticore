@@ -8,40 +8,46 @@
 
 #include "events.def"
 
-define @chan-acquire-lock (ch : chan / _ : exh) : unit;
-define @chan-release-lock (ch : chan / _ : exh) : unit;
+define @chan-acquire-lock (ch : chan / _ : exh) : ();
+define @chan-release-lock (ch : chan / _ : exh) : ();
 define @event-claim (flg : dirty_flag / exh : exh) : bool;
 define @atomic-enqueue (tid : tid, fiber : fiber / exh : exh) : ();
 define @chan-dequeue-recv (ch : chan / exh : exh) : option;
-define @chan-enqueue-send (msg : any, tid : tid, k : cont(unit) / _ : exh) : unit;
+define @chan-enqueue-send (ch : chan, msg : any, tid : tid, k : cont(unit) / _ : exh) : ();
+define @get-tid (vp : vproc / exh : exh) : tid;
+define @set-tid (vp : vproc, tid : tid / exh : exh) : ();
+define @throw-to (vp : vproc, tid : tid, recv : cont(any), v : any / exh : exh) noreturn;
 define @dispatch (vp : vproc / exh : exh) noreturn;
 
 define @chan-send (arg : [chan, any] / exh : exh) : any =
     let ch : chan = #0(arg)
     let msg : any = #1(arg)
-    let tid : tid = @get-tid(host_vproc)
+    let tid : tid = @get-tid(host_vproc / exh)
     do @chan-acquire-lock (ch / exh)
     cont sendK (x : unit) = return (x)
     (* in *)
-      fun tryLp (_ : unit / exh : exh) : any
-	    let maybeItem : option = @chan-dequeue-recv(ch)
+      fun tryLp (_ : unit / exh : exh) : any =
+	    let maybeItem : option = @chan-dequeue-recv(ch / exh)
 	    (* in *)
 	      case maybeItem
 	       of SOME(item : recvq_item) =>
 		  (* there is a matching recv, but we must check to make sure
 		   * that some other thread has not already claimed the event.
 		   *)
-		    let success = @event-claim (#0(item))
+		    let success : bool = @event-claim (#0(item) / exh)
 		    (* in *)
 		      if success then (* we got it *)
-??
+			do @chan-release-lock(ch / exh)
+			do @atomic-enqueue (tid, sendK / exh)
+			(* in *)
+			  @throw-to (host_vproc, #1(item), #2(item), msg / exh)
 		      else (* someone else got the event, so try again *)
 			apply tryLp (UNIT / exh)
 		| NONE =>
 		    do @chan-enqueue-send (ch, msg, tid, sendK / exh)
 		    do @chan-release-lock (ch / exh)
 		    (* in *)
-		      @dispatch (host_vproc, exh)
+		      @dispatch (host_vproc / exh)
 	      end
       (* in *)
 	apply tryLp (UNIT / exh)

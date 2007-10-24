@@ -8,7 +8,7 @@
 
 #include "events.def"
 
-define inline @chan-release-lock (ch : chan / _ : exh) : unit =
+define inline @chan-release-lock (ch : chan / _ : exh) : () =
     do CH_CLR_LOCK(ch)
-    return (UNIT)
+    return ()
 ;
