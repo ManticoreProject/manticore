@@ -292,14 +292,22 @@ functor HeapTransferFn (
 	     retTy=CTy.C_PTR, paramTys=[CTy.C_PTR, CTy.C_PTR], 
 	     cArgs=[CCall.ARG VProcOps.genHostVP', convCArg varDefTbl arg], saveAllocPtr=true}
 
-  (* Check whether the heap contains szb free bytes. If it does, apply the
-   * nogc function.  Otherwise, perform the GC with the following steps:
-   * 1. Allocate the root set (roots) in the heap-slop space (assume
-   *    there is ample space).
-   * 2. Put the root set pointer into closReg, and put the return address,
-   *    retKLbl, into retReg.
-   * 3. Call the GC initialization routine, passing it retK in the return 
-   *    continuation register.
+  (* The heap check will check to see if it is necessary to transfer control into the runtime
+   * system.  This can happen for two reasons: there is insufficent space in the heap (obvious)
+   * or the vproc received a preemption.  In the latter case, the runtime might execute other 
+   * allocating code, and thus the heap could have insufficient space after returning from the
+   * runtime system.
+   *
+   * The heap check works as follows. If the check succeeds, apply the nogc function.  Otherwise, 
+   * transfer into the runtime system by doing these steps:
+   *   1. Allocate the root set in the heap (we dedicate heap slop space to ensure this will work).
+   *   2. Put the root set pointer into the closure register, and put the return continuation into the 
+   *      return retister
+   *   3. Call the GC initialization routine passing it the return continuation and the root set.
+   *
+   * The return continuation is somewhat unusual, as it jumps right back to the heap limit test.  It 
+   * must do this step for the reason mentioned earlier: the heap might still have insufficient space
+   * because of preemption.
    *)
   fun genHeapCheck varDefTbl {szb, nogc=(noGCLbl, roots)} =
       let fun argInfo ([], argTys, hcArgs, mlRegs) = 
@@ -314,17 +322,16 @@ functor HeapTransferFn (
 	  val noGCParamRegs = LabelCode.getParamRegs noGCLbl
 	  val noGCLbl = LabelCode.getName noGCLbl
 	  val retKLbl = newLabel "retGCK"
+	  val gcTestLbl = newLabel "gcTest"
 
-	  val rootSet = ListPair.zip (argTys, map MTy.regToTree rootsMLR)
 	  (* heap allocate the root set *)
+	  val rootSet = ListPair.zip (argTys, map MTy.regToTree rootsMLR)
 	  val {ptr=rootReg, stms=allocStms} = Alloc.genAlloc rootSet
 
 	  (* perform the GC *)
 	  val doGCLbl = newLabel "doGC"
 	  val doGCStms = List.concat [
- 	      [T.DEFINE doGCLbl],
-	      (* force the root set into registers *)
-	      Copy.copy {dst=rootsMLR, src=args},
+ 	      [T.DEFINE doGCLbl],	      
 	      (* allocate a heap object for GC roots *)
 	      allocStms,
 	      (* save the root pointer in the closure register *)
@@ -340,18 +347,26 @@ functor HeapTransferFn (
 	      let val ty = Types.szOf mty
 		  val s = select' (ty, M.T_Tuple (false, argTys), i, regExp closReg)
 	      in 
-		  loadArgs (mtys, i + 1, s :: ss)
+		  loadArgs (mtys, i+1, s :: ss)
 	      end
 	  val restoredRoots = loadArgs (argTys, 0, [])
-	  (* generate the return continuation from GC *)
-	  val retKStms = (* jump to the post-gc function *)
-	      genJump (T.LABEL noGCLbl, [noGCLbl], noGCParamRegs, restoredRoots)
+	  (* The return continuation from GC.
+	   * Jump back to the heap limit check to ensure that there is really enough space.
+	   *)
+	  val retKStms = genJump (T.LABEL gcTestLbl, [gcTestLbl], rootsMLR, restoredRoots)
 
-	  (* if the allocation check succeeds (there is sufficient heap space),
-	   * apply noGCLbl.  otherwise, perform the GC. *)
+	  (* If the allocation check succeeds (there is sufficient heap space), apply noGCLbl.  
+	   * otherwise, perform the GC. 
+	   *)
 	  val stms = List.concat [
+ 	     (* force the root set into registers *)
+	      Copy.copy {dst=rootsMLR, src=args},
+	      [T.DEFINE gcTestLbl],	      
+	      (* branch on the heap limit test *)
 	      [T.BCC (Alloc.genAllocCheck szb, doGCLbl)],
-	      genJump (T.LABEL noGCLbl, [noGCLbl], noGCParamRegs, args),
+              (* GC is unnecessary *)
+	      genJump (T.LABEL noGCLbl, [noGCLbl], noGCParamRegs, map MTy.regToTree rootsMLR),
+              (* GC is necessary *)
 	      doGCStms ] 
       in	  
 	  {stms=stms, retKLbl=retKLbl, retKStms=retKStms, liveOut=map MTy.gprToExp noGCParamRegs}
@@ -369,7 +384,7 @@ functor HeapTransferFn (
                  | M.KnownFunc args =>
                    (args, StdConv (List.take (kfncRegs, length args)))
 		 | M.Block vs => (vs, Special)
-	      (* esac *))
+	      (* end case *))
 	  fun bindToParams rs = 
 	      ListPair.app (VarDef.setDefOf varDefTbl) (params, rs)
 	  fun gpReg' (v, r) = MTy.GPReg (Types.szOf (Var.typeOf v), r)
