@@ -142,7 +142,8 @@ structure BOMBasis : BOM_BASIS =
 	    listTyc,
             optionTyc,
 	    rdyqItemTyc,
-	    signalTyc
+	    signalTyc,
+	    evtTyc
 	  ]
 
   (* Data-constructor table *)
@@ -152,7 +153,9 @@ structure BOMBasis : BOM_BASIS =
             ropeLeaf,
             ropeCat,
 	    rdyq_itemQITEM,
-	    signalPREEMPT
+	    signalPREEMPT,
+	    evtCHOOSE,
+	    evtBEVT
 	  ]
 
   end
