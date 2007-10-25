@@ -3,8 +3,9 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  * 
- * A top-level work-stealing scheduler for threads.  We use the following protocol for
- * schedulers:
+ * A top-level work-stealing scheduler for threads.  
+ *
+ * We use the following protocol for schedulers:
  *    (0) make a list of all other vprocs starting after the current vproc
  *    (1) if the local vproc queue has a thread ready, run it.
  *    (2) otherwise, go into steal mode:
@@ -29,7 +30,10 @@ define @is-queue-gt-one (/ exh : exh) : bool;
 define @is-queue-empty (/ exh : exh) : bool;
 
 extern void *ListVProcs (void *) __attribute__((alloc));
+(* debugging *)
 extern void M_Print (void*);
+extern void M_PrintDebug (void*);
+extern void M_PrintLong (long);
 
 define @work-stealers-startup ( / exh : exh) : () =
 
@@ -45,7 +49,9 @@ define @work-stealers-startup ( / exh : exh) : () =
        end
 
    cont wsSwitch (s : signal) =
+      do ccall M_Print ("WS switch\n")
       let self : vproc = host_vproc
+      let x1 : long = 1234 : long
       let vprocs : list = ccall ListVProcs (self)
       (* (0) *)
       let vprocs : list = apply orderVProcs (self, vprocs, NIL / exh)
@@ -76,6 +82,9 @@ define @work-stealers-startup ( / exh : exh) : () =
                             let item : [tid, fiber, rdyq_item] = ([tid, fiber, rdyq_item]) qitem
                             let tid : tid = #0 (item)
                             let fiber : fiber = #1 (item)
+(* BUG: for some reason, self is 0 at this point (but adding x1 fixes it...). *)
+(*                            do ccall M_PrintLong (self)*)
+do ccall M_PrintLong (x1)
 			    do @enqueue-on-vproc (self, tid, fiber / exh)
                             @thread-exit (/ exh)
                        else (* (2.3) *)

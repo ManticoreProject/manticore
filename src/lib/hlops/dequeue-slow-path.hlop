@@ -10,6 +10,7 @@
 #include "types.def"
 
 extern void *VProcDequeue (void *) __attribute__((alloc));
+extern void M_Print (void *);
 
 (* this function is the slow-path of dequeue *)
 define @dequeue-slow-path (vp : vproc / exh : exh) : rdyq_item =

@@ -2,17 +2,19 @@
 #include "types.def"
 
 define @is-queue-gt-one (/ exh : exh) : bool =
+  fun numElts (q : rdyq_item, i : int) : int =
+      case q
+       of QEMPTY => return (i)
+	| QITEM (_, _, link:rdyq_item) => apply numElts (link, I32Add(i,1))
+      end
+
   let vp : vproc = host_vproc
   let hd : rdyq_item = vpload (VP_RDYQ_HD, vp)
-  case hd of 
-     QITEM (_, _, link:rdyq_item) =>
-        case link of 
-           QITEM (_, _, link:rdyq_item) =>
-           return (TRUE)
-	 | QEMPTY =>       
- 	   return (FALSE)
-        end
-   | QEMPTY =>       
-       return (FALSE)
-  end
+  let lenHd : int = apply numElts (hd, 0)
+  if I32Gt (lenHd, 1)
+     then return (TRUE)
+     else let tl : rdyq_item = vpload (VP_RDYQ_TL, vp)
+          let lenTl : int = apply numElts (tl, 0)
+          let gt : bool = I32Gt (lenTl, 1)
+          return (gt)
 ;

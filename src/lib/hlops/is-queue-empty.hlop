@@ -2,13 +2,18 @@
 #include "types.def"
 
 define @is-queue-empty (/ exh : exh) : bool =
+  fun isEmpty (q : rdyq_item) : bool =
+      case q
+        of QITEM (_, _, _) => return (FALSE)
+	 | QEMPTY => return (TRUE)
+      end
+
   let vp : vproc = host_vproc
   let hd : rdyq_item = vpload (VP_RDYQ_HD, vp)
-  case hd of 
-     QITEM (_, _, _) =>
-       return (FALSE)
-   | QEMPTY =>
-       (* TODO: check secondary queue *)
-       return (TRUE)
-  end
+  let tl : rdyq_item = vpload (VP_RDYQ_TL, vp)
+  let empty : bool = apply isEmpty (hd)
+  if empty
+     then let empty : bool = apply isEmpty (tl)
+          return (empty)
+     else return (FALSE)
 ;

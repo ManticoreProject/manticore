@@ -11,10 +11,10 @@
 define inline @thread-exit ( / exh : exh) noreturn;
 
 define inline @fiber (f : fiber_fun / exh : exh) : fiber =
-  cont fiberK (_ : unit) = 
-    let (_ : unit) =
+  cont fiberK (x : unit) = 
+    let x : unit =
     (* in case of an exception, just terminate the fiber *)
-      cont exh (exn : exn) = return ()
+      cont exh (exn : exn) = return (UNIT)
       (* in *)
 	apply f (UNIT / exh)
     (* in *)

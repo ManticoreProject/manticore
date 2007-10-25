@@ -11,7 +11,7 @@
 
 define inline @chan-enqueue-recv (ch : chan, flg : dirty_flag, tid : tid, k : cont(any) / _ : exh) : () =
 (* QUESTION: since we promote the list, perhaps we should do a local alloc here? *)
-    let item : recvq_item = galloc (flg, tid, k)
+    let item : recvq_item = alloc (flg, tid, k)
     let cons : list = CONS(item, CH_GET_RECVQ_TL(ch))
     let l : list = promote (cons)
     do CH_SET_RECVQ_TL(ch, l)

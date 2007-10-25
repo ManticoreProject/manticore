@@ -339,16 +339,16 @@ void EnqueueOnVProc (VProc_t *self, VProc_t *vp, Value_t tid, Value_t fiber)
  */
 void UnloadEntryQueue (VProc_t *self)
 {
-  RdyQItem_t *q = ValueToRdyQItem(self->rdyQTl);
-  if (q == ValueToRdyQItem(M_NIL)) {
-    self->rdyQTl = PtrToValue(self->entryQ);
-  } else {
-    while (q->link != M_NIL) {
-      q = ValueToRdyQItem(q->link);
+    RdyQItem_t *q = ValueToRdyQItem(self->rdyQTl);
+    if (q == ValueToRdyQItem(M_NIL)) {
+      self->rdyQTl = PtrToValue(self->entryQ);
+    } else {
+      while (q->link != M_NIL) {
+	q = ValueToRdyQItem(q->link);
+      }
+      q->link = self->entryQ;
     }
-    q->link = self->rdyQTl;
-    self->rdyQTl = M_NIL;
-  }
+    self->entryQ = M_NIL;
 }
 
 /*! \brief dequeue a fiber from the secondary scheduling queue or else go idle.

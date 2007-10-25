@@ -176,7 +176,6 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
     MemChunk_t	*scanChunk = vp->globToSpace;
 
     assert ((vp->globNextW % WORD_SZB) == 0);
-
 #ifndef NDEBUG
     if (DebugFlg)
 	SayDebug("[%2d] PromoteObj(%p, %p)\n", vp->id, vp, root);
