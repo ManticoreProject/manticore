@@ -94,7 +94,7 @@ structure Census : sig
 		end
 	  fun dec' xs = List.app dec xs
 	  fun del (B.E_Pt(_, t)) = (case t
-		 of B.E_Let(_, e1, e2) => (del e2; del e2)
+		 of B.E_Let(_, e1, e2) => (del e1; del e2)
 		  | B.E_Stmt(_, rhs, e) => (BOMUtil.appRHS dec rhs; del e)
 		  | B.E_Fun(fbs, e) => (List.app delFB fbs; del e)
 		  | B.E_Cont(fb, e) => (delFB fb; del e)
