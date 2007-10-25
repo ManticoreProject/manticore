@@ -181,7 +181,7 @@ functor Alloc64Fn (
 			T.ADD (64, globalApAddr, intLit (totalSize+wordSzB)))
 	in
 	    { ptr=mltGPR globalApReg, stms=setVP :: setGAp :: rev (bumpAp :: stms) }
-	end
+	end (* genGlobalAlloc *)
 
     val heapSlopSzB = Word.- (Word.<< (0w1, 0w12), 0w512)
 

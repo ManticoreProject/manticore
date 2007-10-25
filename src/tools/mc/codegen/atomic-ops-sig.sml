@@ -32,6 +32,24 @@ signature ATOMIC_OPS =
             newVal : MTy.T.rexp
 	  } -> (MTy.T.ccexp * MTy.T.rexp * MTy.T.stm list)
 
+  (* 32-bit test and set operation *)
+    val genTestAndSet32 : {
+	    addr : MTy.T.rexp,		(* the location swapped *)
+	    newVal : MTy.T.var		(* the new value to store *)
+	  } -> (MTy.T.rexp * MTy.T.stm list)
+
+  (* 64-bit test and set operation *)
+    val genTestAndSet64 : {
+	    addr : MTy.T.rexp, 
+            newVal : MTy.T.var
+	  } -> (MTy.T.rexp * MTy.T.stm list)
+
+  (* word-sized test and set operation *)
+    val genTestAndSetWord : {
+	    addr : MTy.T.rexp, 
+            newVal : MTy.T.var
+	  } -> (MTy.T.rexp * MTy.T.stm list)
+
   (* 32-bit fetch and add operation *)
     val genFetchAndAdd32 : {
 	    addr : MTy.T.rexp,		(* the memory location *)

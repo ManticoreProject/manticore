@@ -80,7 +80,9 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 /* FIXME: this code assumes that the signal is always preemption */
 	      
   	        /* Unload the vproc's entry queue */
-  	        UnloadEntryQueue (vp);
+	        MutexLock (&(vp->lock));
+  	          UnloadEntryQueue (vp);
+	        MutexUnlock (&(vp->lock));
 
 		Value_t resumeK = AllocUniform(vp, 3,
 			    PtrToValue(&ASM_Resume),

@@ -75,7 +75,13 @@ functor AMD64MLTreeFn (structure AMD64Constant : CONSTANT) =
 			  "LOCK_CMPXCHGL(", #rexp prt re1, ",", #rexp prt re2, ")"
 			]
 		    | (IX.LOCK_CMPXCHGQ(re1, re2)) => concat[
-			  "LOCK_CMPXCHGL(", #rexp prt re1, ",", #rexp prt re2, ")"
+			  "LOCK_CMPXCHGQ(", #rexp prt re1, ",", #rexp prt re2, ")"
+			]
+		    | (IX.LOCK_XCHGL(re1, re2)) => concat[
+			  "LOCK_XCHGL(", #rexp prt re1, ",", #rexp prt re2, ")"
+			]
+		    | (IX.LOCK_XCHGQ(re1, re2)) => concat[
+			  "LOCK_XCHGQ(", #rexp prt re1, ",", #rexp prt re2, ")"
 			]
 		    | IX.LOCK_XADDL(addr, x) =>
 		      concat[

@@ -25,6 +25,7 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
     structure Var = M.Var
     structure Ty = CFGTy
     structure P = Prim
+    structure Cells = BE.MLTreeComp.I.C
 
     type ctx = {varDefTbl : BE.VarDef.var_def_tbl}
 
@@ -142,6 +143,16 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 			  @ stms
 			  @ gprBind (anyTy, v, r)
 		      end
+(*		    | P.I64FetchAndAdd(addr, x) => let
+                      val (r, stms) = BE.AtomicOps.genFetchAndAdd64 {
+				 addr=T.LOAD(anyTy, defOf addr, ()),
+				 x=defOf x
+			       }
+		      in
+			  BE.VarDef.flushLoads varDefTbl
+			  @ stms
+			  @ gprBind (anyTy, v, r)
+		      end  *)
 		    | P.CAS(addr, key, new) => let
 			val (_, r, stms) = BE.AtomicOps.genCompareAndSwapWord{
 				    addr = T.LOAD(anyTy, defOf addr, ()),
@@ -149,6 +160,18 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 				  }
 			in
 			  BE.VarDef.flushLoads varDefTbl
+			  @ stms
+			  @ gprBind (anyTy, v, r)
+			end
+		    | P.TAS addr => let
+			val tmp = Cells.newReg ()
+			val (r, stms) = BE.AtomicOps.genTestAndSetWord{
+				    addr = T.LOAD(anyTy, defOf addr, ()),
+				    newVal = tmp
+				  }
+			in
+			  BE.VarDef.flushLoads varDefTbl
+			  @ [T.MV (anyTy, tmp, T.LI BE.Spec.trueRep)]
 			  @ stms
 			  @ gprBind (anyTy, v, r)
 			end

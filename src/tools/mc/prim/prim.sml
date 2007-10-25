@@ -75,6 +75,7 @@ structure Prim =
       | I64ToF64 of 'var		(* long -> double conversion *)
     (* atomic operations *)
       | I32FetchAndAdd of 'var * 'var
+      | I64FetchAndAdd of 'var * 'var
       | CAS of 'var * 'var * 'var	(* compare and swap; returns old value *)
       | BCAS of 'var * 'var * 'var	(* compare and swap; returns bool *)
       | TAS of 'var			(* test and set *)

@@ -216,7 +216,7 @@ fun sphereintersect (pos, dir, sp) = let
 	  else (true, slo)
 	  end
     end;
-(*
+
 (*
 % for shading, need normal at a point
 *)
@@ -225,7 +225,7 @@ fun spherenormal (pos, sp) = let
       in
 	vecscale (vecsub pos spos) (1.0/rad)
       end;
-
+(*
 (*
 % compute camera parameters
 *)
