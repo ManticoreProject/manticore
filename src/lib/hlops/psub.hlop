@@ -12,9 +12,8 @@
 define @psub (rn : [rope, ml_int] / exh : exh) : any =
   fun getFromList (xs : list, n : int / exh : exh) : any =
     case xs
-      of NIL => (* error! *)
-                let error : any = (any)$0
-                return (error)
+      of NIL => let EmptyList : exn = (exn)$0 (* FIXME *)
+                throw exh (EmptyList)
        | CONS (x:any, xs:list) =>
            let isZero : bool = I32Eq (n, 0)
            if isZero
@@ -34,8 +33,8 @@ define @psub (rn : [rope, ml_int] / exh : exh) : any =
                let res : any = apply getFromList (data, n / exh)
                return (res)
              else (* error! *)
-               let error : any = (any)$0
-               return (error)
+               let WrongLeaf : exn = (exn)$0
+               throw exh (WrongLeaf)
        | CAT (len:ml_int, depth:ml_int, r1:rope, r2:rope) =>
           let len : int = #0(len) 
           let onTheLeft : bool = I32Lt (n, len)

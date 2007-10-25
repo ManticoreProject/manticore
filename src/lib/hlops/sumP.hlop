@@ -13,16 +13,18 @@
 define @future1 (qt : [work_queue, thunk] / exh : exh) : future;
 define @touch1 (qf : [work_queue, future] / exh : exh) : any;
 
-define @sumP (q : work_queue, r : rope / exh : exh) : ml_int =
-  fun sumS (ns : list, acc : int / exh : exh) : ml_int =
+define @sumP (qr : [work_queue, rope] / exh : exh) : ml_int =
+  let q : work_queue = #0(qr)
+  fun sumS (ns : list, acc : int / exh : exh) : int =
     case ns
       of NIL => return (acc)
-       | CONS (n : int, ns : list) =>
+       | CONS (mln : ml_int, ns : list) =>
+           let n : int = #0(mln)
            let accX : int = I32Add (n, acc)
            let res : int = apply sumS (ns, accX / exh)
            return (res)            
     end
-  fun sp (r : rope / exh : exh) : ml_int = 
+  fun sp (r : rope / exh : exh) : int = 
     case r
       of Leaf (len:int, data:list) => 
            let res : int = apply sumS (data, 0 / exh)
@@ -36,8 +38,10 @@ define @sumP (q : work_queue, r : rope / exh : exh) : ml_int =
            let t2 : any = @touch1 (qf / exh)
            let s2 : int = (int)t2;
            let sum : int = I32Add (s1, s2)
-           return (sum)
+           return sum
     end
+  let r : rope = #1(qr)
   let res : int = apply sp (r / exh)
-  return (res)
+  let ml_res : ml_int = alloc (res)
+  return (ml_res)
 ;
