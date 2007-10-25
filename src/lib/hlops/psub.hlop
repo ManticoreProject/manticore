@@ -9,41 +9,48 @@
 #include "types.def"
 #include "ropes.def"
 
-define @psub (r : rope, n : int / exh : exh) : any =
+define @psub (rn : [rope, ml_int] / exh : exh) : any =
   fun getFromList (xs : list, n : int / exh : exh) : any =
     case xs
       of NIL => (* error! *)
-                return (any)$0
+                let error : any = (any)$0
+                return (error)
        | CONS (x:any, xs:list) =>
-           let isZero : bool = I32Eq (n, 0:int)
+           let isZero : bool = I32Eq (n, 0)
            if isZero
              then return (x)
              else 
-               let newN : int = I32Sub (n, 1:int)
-               let res : any = apply getFromList (xs, newN)
+               let newN : int = I32Sub (n, 1)
+               let res : any = apply getFromList (xs, newN / exh)
                return (res)
     end
   fun getFromRope (r : rope, n : int / exh : exh) : any =
     case r
-      of Leaf (len:int, data:list) =>
+      of LEAF (len:ml_int, data:list) =>
+           let len : int = #0(len)
            let foundIt : bool = I32Lt (n, len)
            if foundIt
              then 
                let res : any = apply getFromList (data, n / exh)
                return (res)
              else (* error! *)
-               return (any)$0
-       | Cat (len:int, depth:int, r1:rope, r2:rope) =>
-           let onTheLeft : bool = I32Lt (n, len)
-           if onTheLeft
-             then
-               let res : any = apply getFromRope (r1, n / exh)
-               return (res)
-             else
-               let newN : int = I32Sub (n, len)
-               let res : any = apply getFromRope (r2, newN / exh)
-               return (res)
+               let error : any = (any)$0
+               return (error)
+       | CAT (len:ml_int, depth:ml_int, r1:rope, r2:rope) =>
+          let len : int = #0(len) 
+          let onTheLeft : bool = I32Lt (n, len)
+            if onTheLeft
+              then
+                let res : any = apply getFromRope (r1, n / exh)
+                return (res)
+              else
+                let newN : int = I32Sub (n, len)
+                let res : any = apply getFromRope (r2, newN / exh)
+                return (res)
       end
+  let r : rope = #0(rn)
+  let mln : ml_int = #1(rn)
+  let n : int = #0(mln)
   let res : any = apply getFromRope (r, n / exh)
   return (res)
 ;
