@@ -393,6 +393,9 @@ structure Contract : sig
 		      (* record a bogus kid to avoid recursive inlining *)
 			val _ = setKID(f, ~1)
 			val body' = doExp(env, body, kid)
+			val fb' = B.FB{f=f, params=params, exh=[], body=body'}
+		      (* reset the kind of f to reflect the contracted body *)
+			val _ = BV.setKind (f, B.VK_Cont fb');
 		      (* we record the kid as a property of f, so that we
 		       * know when it is correct to inline a throw to f
 		       * in the expression e.
@@ -403,7 +406,7 @@ structure Contract : sig
 			  clrKID f;  (* clear KID property *)
 			  if deadCont'()
 			    then e'
-			    else B.mkCont(B.FB{f=f, params=params, exh=[], body=body'}, e')
+			    else B.mkCont(fb', e')
 			end
 		  end
 	    | B.E_If(x, e1, e2) => let
@@ -493,7 +496,7 @@ structure Contract : sig
 		  case bindingOf k
 		   of B.VK_Cont(B.FB{params, body, ...}) =>
 		        if (useCntOf k = 1) andalso (kid = getKID k)
-			  then ( (* beta-reduce function with single call site *)
+			  then ( (* beta-reduce continuation with single throw site *)
 			    markInlined k;
 			    ST.tick cntBetaCont;
 			    appCntRef k -= 1;
