@@ -89,6 +89,7 @@ functor PrimTyFn (Ty : sig
 	    | P.I64ToF32 _ => f32Ty
 	    | P.I64ToF64 _ => f64Ty
 	    | P.I32FetchAndAdd _ => i32Ty
+	    | P.I64FetchAndAdd _ => i64Ty
 	    | P.CAS(_, x, _) => Ty.V.typeOf x
 	    | P.BCAS _ => bTy
 	    | P.TAS _ => bTy

@@ -83,6 +83,7 @@ structure PrimUtil : sig
       | nameOf (P.I64ToF32 _) = "I64ToF32"
       | nameOf (P.I64ToF64 _) = "I64ToF64"
       | nameOf (P.I32FetchAndAdd _) = "I32FetchAndAdd"
+      | nameOf (P.I64FetchAndAdd _) = "I64FetchAndAdd"
       | nameOf (P.CAS _) = "CAS"
       | nameOf (P.BCAS _) = "BCAS"
       | nameOf (P.TAS _) = "TAS"
@@ -150,6 +151,7 @@ structure PrimUtil : sig
       | varsOf (P.I64ToF32 a) = [a]
       | varsOf (P.I64ToF64 a) = [a]
       | varsOf (P.I32FetchAndAdd(a, b)) = [a, b]
+      | varsOf (P.I64FetchAndAdd(a, b)) = [a, b]
       | varsOf (P.CAS(a, b, c)) = [a, b, c]
       | varsOf (P.BCAS(a, b, c)) = [a, b, c]
       | varsOf (P.TAS a) = [a]
@@ -230,6 +232,7 @@ structure PrimUtil : sig
       | explode (P.I64ToF32 a) = (p1 P.I64ToF32, [a])
       | explode (P.I64ToF64 a) = (p1 P.I64ToF64, [a])
       | explode (P.I32FetchAndAdd(a, b)) = (p2 P.I32FetchAndAdd, [a, b])
+      | explode (P.I64FetchAndAdd(a, b)) = (p2 P.I64FetchAndAdd, [a, b])
       | explode (P.CAS(a, b, c)) = (p3 P.CAS, [a, b, c])
       | explode (P.BCAS(a, b, c)) = (p3 P.BCAS, [a, b, c])
       | explode (P.TAS a) = (p1 P.TAS, [a])
@@ -240,6 +243,7 @@ structure PrimUtil : sig
     fun app f p = List.app f (varsOf p)
 
     fun isPure (P.I32FetchAndAdd _) = false
+      | isPure (P.I64FetchAndAdd _) = false
       | isPure (P.CAS _) = false
       | isPure (P.BCAS _) = false
       | isPure (P.TAS _) = false

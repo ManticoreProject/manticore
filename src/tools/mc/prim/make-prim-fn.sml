@@ -135,6 +135,7 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
                 ("I64ToF32",    mk Prim1 (P.I64ToF32,   i64,            f32)),
                 ("I64ToF64",    mk Prim1 (P.I64ToF64,   i64,            f64)),
 		("I32FetchAndAdd", mk Prim2 (P.I32FetchAndAdd, (i32, i32), i32)),
+		("I64FetchAndAdd", mk Prim2 (P.I32FetchAndAdd, (i64, i64), i64)),
 		("CAS",		mk Prim3 (P.CAS,	(adrTy, aTy, aTy), aTy)),
 		("BCAS",	mk Prim3 (P.BCAS,	(adrTy, aTy, aTy), bTy)),
 		("TAS",		mk Prim1 (P.TAS,	bTy,		bTy))
