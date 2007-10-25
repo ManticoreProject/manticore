@@ -21,3 +21,4 @@ define @psub (rn : [rope, ml_int] / exh : exh) : any;
 define @sumP (q : work_queue, r : rope / exh : exh) : ml_int;
 
 define @dispatch-action (act : sigact, dst : vproc / exh : exh) : ();
+define @default-scheduler-startup ( / exh : exh) : ();
