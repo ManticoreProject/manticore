@@ -1,0 +1,21 @@
+module Host
+
+  extern void M_PrintPtr (void *, void *);
+  extern void M_Print (void *);
+
+  fun doit (i : int / exh : cont(any)) : int =
+
+      do @default-scheduler-startup (/ exh)
+      
+      let self : vproc = host_vproc
+
+      do ccall M_PrintPtr ("self", self)
+      cont k1 () = 
+           cont k2 () = 
+                do ccall M_PrintPtr ("self", self)
+                @thread-exit ( / exh) 
+(* compiling this program results in an error, but uncommenting the next line removes the error for some reason*)
+(*          do ccall M_PrintPtr ("k2", k2)*)
+          throw k2 ()
+
+      throw k1 ()
