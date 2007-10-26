@@ -1,4 +1,4 @@
-(* iPut.hlop
+(* ivar-put.hlop
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -11,7 +11,7 @@
 define @enqueue (vp : vproc, tid : tid, fiber : fiber / exh : exh) : ();
 define @forward (vp : vproc, sig : signal / exh : exh) noreturn;
 
-define inline @iPut (ivar : ![list, any, int], x : any / exh : exh) : () = 
+define inline @ivar-put (ivar : ![list, any, int], x : any / exh : exh) : () = 
     let readL : list = #0(ivar)
     let readflag : int = #2(ivar)
     let oldValue : any = CAS (&1(ivar), enum(0), x)

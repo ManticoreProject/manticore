@@ -1,4 +1,4 @@
-(* mTake.hlop
+(* mvar-take.hlop
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -10,7 +10,7 @@
 
 deine @dispatch(vp : vproc) noreturn;
 
-define inline @mTake(mvar : !(list, any, int, int)) : any =
+define inline @mvar-take(mvar : !(list, any, int, int)) : any =
            (* set #3(mvar) to 1 : takeflag *) 
            do #3(mvar) : = 1
            let readList : list = #0(mvar)

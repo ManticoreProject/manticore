@@ -1,4 +1,4 @@
-(* mPut.hlop
+(* mvar-put.hlop
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -15,7 +15,7 @@ extern any CAS() __attribute__(());
 define @enqueue (vp : vproc, tid : tid, fiber : fiber) : ();
 define @forward (vp : vproc, sig : signal ) noreturn;
 
-define inline @mPut (mvar : !(list, any, int), x : any) : unit = 
+define inline @mvar-put (mvar : !(list, any, int), x : any) : unit = 
           let readL : list = #0(mvar)
           let readflag : int = #2(mvar)
           let dummyTid : tid = enum(0)

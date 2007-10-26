@@ -1,4 +1,4 @@
-(* iGet.hlop
+(* ivar-get.hlop
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -10,7 +10,7 @@
 
 define @dispatch (vp : vproc) noreturn;
 
-define inline @iGet (ivar : ![list, any, int]) : any =
+define inline @ivar-get (ivar : ![list, any, int]) : any =
     let readList : list = #0(ivar)
     let value : any = #1(ivar)
     let readFlag : int = #2(ivar)
