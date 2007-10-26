@@ -1,4 +1,4 @@
-(* mGet.hlop
+(* mvar-get.hlop
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -9,9 +9,23 @@
 #include "types.def"
 
 define @dispatch (vp : vproc) noreturn;
-define @relayMsg (mvar : !(list, any, int, int), x : any) : ();
+define @enqueue (vp : vproc, tid : tid, fiber : fiber) : ();
 
-define inline @mGet (mvar : !(list, any, int, int)) : any =
+define inline @mvar-relay-msg (mvar : !(list, any, int), x : any) : unit =     
+    let mvar : !(list, any,int) = #0(arg)
+    let x : any = #1(arg)
+    let readL : list = #0(mvar)
+    let dummyTid : tid = enum(0)
+    case readL
+     of NIL => return (UNIT)
+      | CONS(hd : any, tl : list) =>
+	  let fiber : fiber = #1(((int,cont(any)))hd)
+          do #0(mvar) := tl
+	  do @enqueue(host_vproc, dummyTid, fiber)
+	  return (UNIT)
+    end
+
+define inline @mvar-get (mvar : !(list, any, int, int)) : any =
           let dummyTid : tid = enum(0)
           let readList : list = #0(mvar)
           let value : any = #1(mvar)
@@ -20,7 +34,7 @@ define inline @mGet (mvar : !(list, any, int, int)) : any =
           do #2(mvar) := I32Add(readFlag, 1)
 	  if (takeFlag = 1 :int)
 	    then cont k (x : any) =  
-	           do @relayMsg (mvar, x)
+	           do @mvar-relay-msg (mvar, x)
 	           return (x)
               let item : (enum(0), cont(any)) = alloc (dummyTid, k)
               fun loop () : unit = 

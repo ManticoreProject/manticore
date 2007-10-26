@@ -286,10 +286,10 @@ dnl
 HLOPS_DIR=$MANTICORE_LIBDIR/hlops
 
 if test x"$prefix" = xNONE ; then
-  INC_SEARCH_PATH="$HLOPS_DIR"
+  INC_SEARCH_PATH="$HLOPS_DIR/include"
   HLOP_SEARCH_PATH=".:$HLOPS_DIR"
 else
-  INC_SEARCH_PATH="$HLOPS_DIR:$prefix/lib/hlops"
+  INC_SEARCH_PATH="$HLOPS_DIR/include:$prefix/lib/hlops/include"
   HLOP_SEARCH_PATH=".:$HLOPS_DIR:$prefix/lib/hlops"
 fi
 dnl
