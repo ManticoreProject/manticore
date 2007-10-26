@@ -32,7 +32,7 @@ define @rope-sub (rn : [rope, ml_int] / exh : exh) : any =
              then 
                let res : any = apply getFromList (data, n / exh)
                return (res)
-             else (* error! *)
+             else (* FIXME *)
                let WrongLeaf : exn = (exn)$0
                throw exh (WrongLeaf)
        | CAT (len:ml_int, depth:ml_int, r1:rope, r2:rope) =>

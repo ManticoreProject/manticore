@@ -167,7 +167,7 @@ structure Translate : sig
 		  end))
 	    | AST.RangeExp(lo, hi, optStep, ty) => raise Fail "RangeExp"
 	    | AST.PTupleExp exps => raise Fail "PTupleExp"
-	    | AST.PArrayExp(exps, ty) => raise Fail "PArrayExp"
+	    | AST.PArrayExp(exps, ty) => EXP(trParr(env,exps, ty))
 	    | AST.PCompExp _ => raise Fail "unexpected PCompExp"
 	    | AST.PChoiceExp _ => raise Fail "unexpected PChoiceExp"
 	    | AST.SpawnExp e => let
@@ -222,6 +222,8 @@ structure Translate : sig
 	  (* end case *))
 
     and trExpToExp (env, exp) = toExp(trExp(env, exp))
+
+    and trParr (env, exps, ty) = TranslateParr.tr (env, trExpToV) (exps, ty)
 
     and trBind (env, bind, k : TranslateEnv.env -> B.exp) = (case bind
 	   of AST.ValBind(AST.TuplePat pats, exp) => let

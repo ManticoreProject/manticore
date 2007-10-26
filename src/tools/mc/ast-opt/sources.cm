@@ -20,7 +20,6 @@ Library
   structure PrintTypes
   structure Ropes
   structure TestUtils	
-  structure TranslateParr
   structure TranslatePtup
   structure TypeOf	
   structure Unpar
@@ -47,7 +46,6 @@ is
   nester.sml
   ropes.sml
   test-utils.sml
-  translate-parr.sml
   translate-ptup.sml
   unpar.sml
   var-subst.sml

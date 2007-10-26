@@ -64,7 +64,7 @@ structure FutParLet : sig
 
     (* futurize : A.module -> A.module *)
     fun futurize m = 
-	let val q = Var.new ("q", Basis.workQueueTy) 
+	let val q = Var.new ("q", F.workQueueTy) 
 	    val qe = A.VarExp (q, [])
 	    (* exp : A.exp * VSet.set -> A.exp * VSet.set *)
 	    (* Consumes an expression and the set of pval-bound variables *)

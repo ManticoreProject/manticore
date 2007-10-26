@@ -6,8 +6,7 @@
  * This is an AST-to-AST pass that links together all the ast-opt passes. 
  *
  * This pass currently includes the following AST-to-AST translations:
- * - translation of parallel tuples into futures/touches, and
- * - translation of parallel arrays into ropes.
+ * - translation of parallel tuples into futures/touches
  *)
 
 structure GrandPass : sig
@@ -38,7 +37,7 @@ structure GrandPass : sig
       | exp (A.RangeExp (e1, e2, oe3, t)) = 
 	  A.RangeExp (exp e1, exp e2, Option.map exp oe3, t)
       | exp (A.PTupleExp es) = trPtup es
-      | exp (A.PArrayExp (es, t)) = trParr (es, t)
+      | exp (A.PArrayExp (es, t)) = A.PArrayExp (map exp es, t)
       | exp (A.PCompExp (e, pes, oe)) = 
 	  A.PCompExp (e, map (fn (p,e) => (p, exp e)) pes, Option.map exp oe)
       | exp (A.PChoiceExp (es, t)) = A.PChoiceExp (map exp es, t)
@@ -56,8 +55,6 @@ structure GrandPass : sig
 
     and match (A.PatMatch (p, e)) = A.PatMatch (p, exp e)
       | match (A.CondMatch (p, e1, e2)) = A.CondMatch (p, exp e1, exp e2)
-
-    and trParr arg = TranslateParr.tr exp arg
 
     and trPtup arg = TranslatePtup.tr exp (workQ, needsQ) arg
 
