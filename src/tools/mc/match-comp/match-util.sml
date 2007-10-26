@@ -15,6 +15,9 @@ structure MatchUtil : sig
   (* return true if a list of matches are all simple *)
     val areSimpleMatches : AST.match list -> bool
 
+  (* return true if a pattern is refutable (i.e., inexhaustive) *)
+    val isRefutable : AST.pat -> bool
+
   end = struct
 
     structure VSet = Var.Set
@@ -35,6 +38,7 @@ structure MatchUtil : sig
       | isVarOrWild (AST.WildPat _) = true
       | isVarOrWild _ = false
 
+  (* is a datatype constructor/constant the only one for the type? *)
     fun singletonDC dc = let
 	  val Types.DataTyc{nCons, ...} = DataCon.ownerOf dc
 	  in
@@ -58,5 +62,13 @@ structure MatchUtil : sig
 	  in
 	    List.all f ms
 	  end
+
+  (* return true if a pattern is refutable (i.e., inexhaustive) *)
+    fun isRefutable (AST.ConPat(dc, _, p)) = singletonDC dc andalso isRefutable p
+      | isRefutable (AST.TuplePat ps) = List.exists isRefutable ps
+      | isRefutable (AST.VarPat _) = false
+      | isRefutable (AST.WildPat _) = false
+      | isRefutable (AST.ConstPat(AST.DConst(dc, _))) = singletonDC dc
+      | isRefutable (AST.ConstPat(AST.LConst _)) = false
 
   end
