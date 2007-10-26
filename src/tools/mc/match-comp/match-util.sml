@@ -64,11 +64,11 @@ structure MatchUtil : sig
 	  end
 
   (* return true if a pattern is refutable (i.e., inexhaustive) *)
-    fun isRefutable (AST.ConPat(dc, _, p)) = singletonDC dc andalso isRefutable p
+    fun isRefutable (AST.ConPat(dc, _, p)) = not(singletonDC dc) orelse isRefutable p
       | isRefutable (AST.TuplePat ps) = List.exists isRefutable ps
       | isRefutable (AST.VarPat _) = false
       | isRefutable (AST.WildPat _) = false
-      | isRefutable (AST.ConstPat(AST.DConst(dc, _))) = singletonDC dc
-      | isRefutable (AST.ConstPat(AST.LConst _)) = false
+      | isRefutable (AST.ConstPat(AST.DConst(dc, _))) = not(singletonDC dc)
+      | isRefutable (AST.ConstPat(AST.LConst _)) = true
 
   end
