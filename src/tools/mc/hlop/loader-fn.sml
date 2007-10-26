@@ -150,6 +150,9 @@ functor LoaderFn (F : FILE_TYPE) : sig
 	  fun look [] = (
 		err["unable to find \"", file, "\" in path \"", String.concatWith ":" searchPath, "\n"];
 		NONE)
+	    | look ("."::ps) = if exists file
+		then SOME file
+		else look ps
 	    | look (p::ps) = (case findFileInTree (p, file)
 		 of NONE => look ps
 		  | somePath => somePath
