@@ -24,18 +24,25 @@ fun worker i = let
    val x = wasteTime (i, 0)
    in
       print ("worker " ^ itos i ^ "\n");
-      send (ch, x)
+      send (ch, i)
    end
 ;
 
-fun server () = (
-    spawn (worker 1);
-    spawn (worker 2);
-    let val x1 = recv ch
-        val x2 = recv ch
+val nThreads = 10;
+
+fun server () = let
+    fun spawnLoop i = if i = nThreads
+        then ()
+        else (spawn (worker i); spawnLoop (i+1))
+    fun recvLoop i = if i = nThreads
+        then ()
+        else ( print("received " ^ itos (recv ch) ^ "\n");
+               recvLoop (i+1) )
     in
-       print("received " ^ ltos x1 ^ " " ^ ltos x2 ^ "\n")
-    end )
+        spawnLoop 0;
+	recvLoop 0;
+        print "All threads done\n"
+    end
 ;
 
 server ()

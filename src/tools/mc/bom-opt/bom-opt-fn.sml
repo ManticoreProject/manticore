@@ -61,11 +61,11 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 	  val module = contract module
 	  val module = uncurry module
 	  val module = contract module
-	  val module = inline module
+	  val module = inline module  
 	  val module = contract module
 	  val module = expandAll module
 	  val module = inline module
-	  val module = contract module
+	  val module = contract module  
 	  val module = caseSimplify module
 	  val module = contract module
 	  in

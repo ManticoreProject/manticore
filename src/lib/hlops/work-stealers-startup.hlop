@@ -32,6 +32,7 @@ define @is-queue-empty (/ exh : exh) : bool;
 extern void *ListVProcs (void *) __attribute__((alloc));
 (* debugging *)
 extern void M_Print (void*);
+extern void M_PrintPtr (void *, void *);
 extern void M_PrintDebug (void*);
 extern void M_PrintLong (long);
 
@@ -50,8 +51,9 @@ define @work-stealers-startup ( / exh : exh) : () =
 
    cont wsSwitch (s : signal) =
       do ccall M_Print ("WS switch\n")
+      let self123 : vproc = host_vproc
       let self : vproc = host_vproc
-      let x1 : long = 1234 : long
+(*      let x1 : long = 1234 : long*)
       let vprocs : list = ccall ListVProcs (self)
       (* (0) *)
       let vprocs : list = apply orderVProcs (self, vprocs, NIL / exh)
@@ -64,12 +66,18 @@ define @work-stealers-startup ( / exh : exh) : () =
          let fiber : fiber = #1 (item)
          @run (vp, wsSwitch, tid, fiber / exh)
 
+      (* the maximum number of steal attempts before going to sleep *)
+      let maxStealAttempts : int = 1000
+
+                            do ccall M_PrintPtr ("host",host_vproc)
+
       (* (2) *)
       cont steal (vprocs' : list) =
-        do ccall M_Print ("Steal mode\n")
+(*        do ccall M_Print ("Steal mode\n")*)
         case vprocs' 
-          of NIL => do ccall M_Print ("Work stealer going to sleep\n")
-                    throw dispatch ()
+          of NIL => 
+	         do ccall M_Print ("Work stealer going to sleep\n")
+                 throw dispatch ()
            | CONS (vp : vproc, vprocs' : list) => 
                  (* (2.1) *)
                  do ccall M_Print ("Sending thief to vproc\n")
@@ -83,9 +91,10 @@ define @work-stealers-startup ( / exh : exh) : () =
                             let tid : tid = #0 (item)
                             let fiber : fiber = #1 (item)
 (* BUG: for some reason, self is 0 at this point (but adding x1 fixes it...). *)
-(*                            do ccall M_PrintLong (self)*)
-do ccall M_PrintLong (x1)
-			    do @enqueue-on-vproc (self, tid, fiber / exh)
+                            do ccall M_PrintPtr ("k",k)
+                            do ccall M_PrintPtr ("self",self)
+(*do ccall M_PrintLong (x1)*)
+			    do @enqueue-on-vproc (self123, tid, fiber / exh)
                             @thread-exit (/ exh)
                        else (* (2.3) *)
 			    cont fiber (_ : unit) = throw steal (vprocs')

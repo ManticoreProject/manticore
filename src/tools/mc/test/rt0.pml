@@ -21,13 +21,13 @@ fun fold f = let
       in
 	foldf
       end;
-(*fun hd l = (case l
+fun hd l = (case l
        of nil => fail("expecting a head")
 	| x::xs => x);
 fun tl l = (case l
        of nil => fail("expecting a tail")
 	| x::xs => xs);
-*)
+
 (*
  * convenient vector operations
  *)

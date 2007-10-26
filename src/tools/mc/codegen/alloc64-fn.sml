@@ -134,12 +134,13 @@ functor Alloc64Fn (
 	    | lp (true, false, []) = allocVectorObj offAp args
 	    | lp (false, _, []) = allocRawObj offAp args
 	  in
-(*allocMixedObj args*)
 	    lp (false, false, args)
 	  end
 
-    (* *)
-    fun genAlloc [] = { ptr=MTy.EXP (ty, intLit 1), stms=[] }
+    (* allocate arguments in the local heap *)
+    fun genAlloc [] = 
+        (* an empty allocation generates a nil pointer *)
+	{ ptr=MTy.EXP (ty, intLit 1), stms=[] }
       | genAlloc args = let
 	  fun offAp i = T.ADD (ty, regExp apReg, intLit i)
 	  val (totalSize, hdrWord, stms) = alloc offAp args
@@ -156,7 +157,10 @@ functor Alloc64Fn (
 	    { ptr=mltGPR ptrReg, stms=ptrMv :: rev (bumpAp :: stms) }
 	  end (* genAlloc *)
 
-    fun genGlobalAlloc [] = { ptr=MTy.EXP (ty, intLit 1), stms=[] }
+    (* allocate arguments in the global heap *)
+    fun genGlobalAlloc [] = 
+        (* an empty allocation generates a nil pointer *)
+	{ ptr=MTy.EXP (ty, intLit 1), stms=[] }
       | genGlobalAlloc args = let
 	val (vpReg, setVP) = let
 	    val r = Cells.newReg()

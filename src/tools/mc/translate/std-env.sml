@@ -330,7 +330,6 @@ structure StdEnv : sig
 	    (B.dtos,		hlop H.dtosOp),
 (* FIXME
 	    (B.args,		hlop H.args),
-	    (B.fail,		hlop H.fail),
 *)
 	  (* events *)
 	    (B.wrap,		hlop H.wrapOp),
@@ -381,7 +380,8 @@ structure StdEnv : sig
 		  (B.stringConcat,	"string-concat2"),
 		  (B.itos,		"itos"),
 		  (B.ltos,		"ltos"),
-                  (B.plen,              "plen")
+                  (B.plen,              "plen"),
+		  (B.fail,		"fail")
 		]  
 	  fun ins ((x, n), env) = (case H.find (Atom.atom n)
 		of NONE => raise Fail ("cannot find hlop " ^ n)

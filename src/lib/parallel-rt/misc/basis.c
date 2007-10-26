@@ -61,6 +61,11 @@ void M_PrintDebug (char *s)
     Say("[%2d] %s", VProcSelf()->id, s);  
 }
 
+void M_PrintPtr (char *name, void *ptr)
+{
+  Say("[%2d] &%s=%p\n", VProcSelf()->id, name, ptr);  
+}
+
 /* M_PrintLong:
  */
 void M_PrintLong (int64_t n)
@@ -78,6 +83,11 @@ void M_PrintInt (int32_t n)
 Value_t M_PrintFloat (float f)
 {
   Say ("%f\n",f);
+}
+
+Value_t M_Die (char *message)
+{
+  Die ("%s\n", message);
 }
 
 /* M_StringConcat2:
