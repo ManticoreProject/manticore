@@ -17,7 +17,7 @@ define @chan-enqueue-send (ch : chan, msg : any, tid : tid, k : cont(unit) / _ :
 define @get-tid (vp : vproc / exh : exh) : tid;
 define @set-tid (vp : vproc, tid : tid / exh : exh) : ();
 define @throw-to (vp : vproc, tid : tid, recv : cont(any), v : any / exh : exh) noreturn;
-define @dispatch (vp : vproc / exh : exh) noreturn;
+define inline @thread-exit ( / exh : exh) noreturn;
 
 define @chan-send (arg : [chan, any] / exh : exh) : any =
     let ch : chan = #0(arg)
@@ -47,7 +47,7 @@ define @chan-send (arg : [chan, any] / exh : exh) : any =
 		    do @chan-enqueue-send (ch, msg, tid, sendK / exh)
 		    do @chan-release-lock (ch / exh)
 		    (* in *)
-		      @dispatch (host_vproc / exh)
+		      @thread-exit ( / exh)
 	      end
       (* in *)
 	apply tryLp (UNIT / exh)
