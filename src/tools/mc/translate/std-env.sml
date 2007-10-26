@@ -352,9 +352,6 @@ structure StdEnv : sig
 	    (F.future1,         hlop H.future1Op),
 	    (F.touch1,          hlop H.touch1Op),
 	    (F.cancel1,         hlop H.cancel1Op)
-    
-          (* parray operators *)
-(*	    (B.plen,            hlop H.plen) *)
 	  ]
     end (* local *) 
 
@@ -380,7 +377,8 @@ structure StdEnv : sig
 		  (B.stringConcat,	"string-concat2"),
 		  (B.itos,		"itos"),
 		  (B.ltos,		"ltos"),
-                  (B.plen,              "plen"),
+                  (B.plen,              "rope-length"),
+		  (B.psub,              "rope-sub"),
 		  (B.fail,		"fail")
 		]  
 	  fun ins ((x, n), env) = (case H.find (Atom.atom n)

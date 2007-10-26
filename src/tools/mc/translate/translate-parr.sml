@@ -178,11 +178,14 @@ structure TranslateParr (* : sig
                           trExpToV (env, dAST, fn d =>
                             BOM.mkLet ([r1var], r1BOM,
                               BOM.mkLet ([r2var], r2BOM,
-                                BOM.mkLet ([tupvar], 
-					   BOM.mkStmt ([tupvar],
-						       BOM.E_Alloc (catTupTy, [n,d,r1var,r2var]),
-						       BOM.mkRet [tupvar]),
-					   BOM.mkApply (CAT, [tupvar], [handler])))))))
+                                BOM.mkLet ([tupvar], let val t = BOM.Var.new ("t", catTupTy)
+							 val vs = [n, d, r1var, r2var]
+						     in
+							 BOM.mkStmt([t], 
+								    BOM.E_Alloc(catTupTy, vs),
+								    BOM.mkRet [t])
+						     end,
+      			          BOM.mkApply (CAT, [tupvar], [handler])))))))
 		  end
 	end
     end (* local *)

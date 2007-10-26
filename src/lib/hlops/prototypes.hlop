@@ -18,9 +18,9 @@ define inline @string-lit (s : string_data, len : int) : ml_string;
 
 define inline @fail (s : ml_string / exh : exh) : unit;
 
-define @plen (r : rope / exh : exh) : ml_int;
-define @psub (rn : [rope, ml_int] / exh : exh) : any;
-define @sumP (q : work_queue, r : rope / exh : exh) : ml_int;
+define @rope-length (r : rope / exh : exh) : ml_int;
+define @rope-sub (rn : [rope, ml_int] / exh : exh) : any;
+define @rope-sum (q : work_queue, r : rope / exh : exh) : ml_int;
 
 define @dispatch-action (act : sigact, dst : vproc / exh : exh) : ();
 define @default-scheduler-startup ( / exh : exh) : ();

@@ -12,7 +12,7 @@
 define @rope-length (r : rope / exh : exh) : ml_int =
   case r
    of LEAF(len:ml_int, data:list) => return (len)
-    | CATlen:ml_int, depth:ml_int, r1:rope, r2:rope) => return (len)
+    | CAT (len:ml_int, depth:ml_int, r1:rope, r2:rope) => return (len)
   end
 ;
 
