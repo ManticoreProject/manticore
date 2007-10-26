@@ -1,4 +1,4 @@
-(* plen.hlop
+(* rope-length.hlop
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -9,10 +9,10 @@
 #include "types.def"
 #include "ropes.def"
 
-define @plen (r : rope / exh : exh) : ml_int =
+define @rope-length (r : rope / exh : exh) : ml_int =
   case r
-    of LEAF (len:ml_int, data:list) => return (len)
-     | CAT (len:ml_int, depth:ml_int, r1:rope, r2:rope) => return (len)
+   of LEAF(len:ml_int, data:list) => return (len)
+    | CATlen:ml_int, depth:ml_int, r1:rope, r2:rope) => return (len)
   end
 ;
 

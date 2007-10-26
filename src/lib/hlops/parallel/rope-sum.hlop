@@ -1,4 +1,4 @@
-(* sumP.hlop
+(* rope-sum.hlop
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -13,7 +13,7 @@
 define @future1 (qt : [work_queue, thunk] / exh : exh) : future;
 define @touch1 (qf : [work_queue, future] / exh : exh) : any;
 
-define @sumP (qr : [work_queue, rope] / exh : exh) : ml_int =
+define @rope-sum (qr : [work_queue, rope] / exh : exh) : ml_int =
   let q : work_queue = #0(qr)
   fun sumS (ns : list, acc : int / exh : exh) : int =
     case ns
