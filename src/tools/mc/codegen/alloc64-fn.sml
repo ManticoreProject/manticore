@@ -126,12 +126,12 @@ functor Alloc64Fn (
    *)
     fun alloc offAp args = let
 	  fun lp (hasPtr, hasRaw, (x, _)::xs) = if isHeapPointer x
-		then lp(true, hasRaw, xs)
-		else if CFGTy.hasUniformRep x
-		  then lp (hasPtr, hasRaw, xs)
+		  then lp(true, hasRaw, xs)
+		else if CFGTy.hasUniformRep x 
+  	          then lp (hasPtr, hasRaw, xs)
 		  else lp (hasPtr, true, xs)
-	    | lp (true, true, []) = allocMixedObj offAp args
 	    | lp (true, false, []) = allocVectorObj offAp args
+	    | lp (true, true, []) = allocMixedObj offAp args
 	    | lp (false, _, []) = allocRawObj offAp args
 	  in
 	    lp (false, false, args)

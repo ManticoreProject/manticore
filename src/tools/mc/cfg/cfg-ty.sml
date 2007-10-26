@@ -62,6 +62,7 @@ structure CFGTy =
    *)
     fun hasUniformRep ty = (case ty 
            of T_Raw _ => false
+	    | T_VProc => false
             | _ => true
 	  (* end case *))
 
