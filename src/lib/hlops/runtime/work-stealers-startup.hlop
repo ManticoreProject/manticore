@@ -51,9 +51,7 @@ define @work-stealers-startup ( / exh : exh) : () =
 
    cont wsSwitch (s : signal) =
       do ccall M_Print ("WS switch\n")
-      let self123 : vproc = host_vproc
       let self : vproc = host_vproc
-(*      let x1 : long = 1234 : long*)
       let vprocs : list = ccall ListVProcs (self)
       (* (0) *)
       let vprocs : list = apply orderVProcs (self, vprocs, NIL / exh)
@@ -86,20 +84,17 @@ define @work-stealers-startup ( / exh : exh) : () =
                     let hasElts : bool = @is-queue-gt-one ( / exh)
                     if hasElts
                        then (* (2.2) *)
+                            do ccall M_Print ("Stealer is picking a remote thread\n")
                             let qitem : rdyq_item = @dequeue (host_vproc / exh)
                             let item : [tid, fiber, rdyq_item] = ([tid, fiber, rdyq_item]) qitem
                             let tid : tid = #0 (item)
                             let fiber : fiber = #1 (item)
-(* BUG: for some reason, self is 0 at this point (but adding x1 fixes it...). *)
-                            do ccall M_PrintPtr ("k",k)
-                            do ccall M_PrintPtr ("self",self)
-(*do ccall M_PrintLong (x1)*)
-			    do @enqueue-on-vproc (self123, tid, fiber / exh)
+			    do @enqueue-on-vproc (self, tid, fiber / exh)
                             @thread-exit (/ exh)
                        else (* (2.3) *)
-			    cont fiber (_ : unit) = throw steal (vprocs')
-                            let k : fiber = (fiber)fiber
-                            do @enqueue-on-vproc (self, enum(0), k / exh)
+                            do ccall M_Print ("Stealer is giving up on this vproc\n")
+			    cont fiber (x : unit) = throw steal (vprocs')
+                            do @enqueue-on-vproc (self, enum(0), fiber / exh)
                             @thread-exit (/ exh)
                 do @enqueue-on-vproc (vp, enum(0), k / exh)
                 throw dispatch ()
