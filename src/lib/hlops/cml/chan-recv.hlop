@@ -14,7 +14,7 @@ define @event-claim (flg : dirty_flag / exh : exh) : bool;
 define @atomic-enqueue (tid : tid, fiber : fiber / exh : exh) : ();
 define @chan-dequeue-send (ch : chan / exh : exh) : option;
 define @chan-enqueue-recv (ch : chan, flg : dirty_flag, tid : tid, k : cont(any) / _ : exh) : ();
-define @dispatch (vp : vproc / exh : exh) noreturn;
+define inline @thread-exit ( / exh : exh) noreturn;
 
 define @chan-recv (ch : chan / exh : exh) : any =
     let tid : tid = @get-tid(host_vproc / exh)
@@ -34,6 +34,6 @@ define @chan-recv (ch : chan / exh : exh) : any =
 	      do @chan-enqueue-recv (ch, flag, tid, recvK / exh)
 	      do @chan-release-lock (ch / exh)
 	      (* in *)
-		@dispatch (host_vproc / exh)
+		@thread-exit (/ exh)
       end
 ;
