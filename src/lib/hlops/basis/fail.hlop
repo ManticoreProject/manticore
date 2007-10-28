@@ -1,0 +1,11 @@
+(* fail.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+#include "types.def"
+
+define inline @fail (arg : ml_string / exh : exh) : any =
+    throw exh (arg)
+;
