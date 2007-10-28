@@ -178,6 +178,7 @@ structure Basis : sig
 
   (* environments *)
     val lookupOp : Atom.atom -> Env.val_bind
+    val isOp : AST.var -> bool
     val te0 : Env.ty_env
     val ve0 : Env.var_env
 
@@ -456,6 +457,17 @@ structure Basis : sig
 	    AtomTable.lookup tbl
 	  end
 
+  (* isOp : AST.var -> bool *)
+  (* A predicate to determine if a given var is an infix op. *)
+  (* Note that :: is not included here since it's a dcon. *)
+    fun isOp x =
+	let val ops = 
+                  [listAppend, stringConcat, psub, eq, neq] @
+		  (List.concat (List.map #2 [lte, lt, gte, gt, plus, minus, 
+					     times, fdiv, div, mod]))
+	in
+	    List.exists (fn anOp => Var.same (x, anOp)) ops
+	end
 
   (* predefined functions *)
     val not =		monoVar'(N.not, boolTy --> boolTy)

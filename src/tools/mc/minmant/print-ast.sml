@@ -64,6 +64,12 @@ structure PrintAST : sig
       | atomicExp (A.OverloadExp _) = true
       | atomicExp _ = false
 
+  (* isOp : exp -> bool *)
+  (* A predicate to determine if the given expression is an infix op. *)
+    fun isOp (A.VarExp (x, _)) = Basis.isOp x
+      | isOp (A.ConstExp (A.DConst (dc, _))) = DataCon.same (dc, Basis.listCons)
+      | isOp _ = false
+
   (* FIXME: should have proper pretty printing for types *)
     fun tyScheme ts = pr(TypeUtil.schemeToString ts)
 
@@ -142,12 +148,16 @@ structure PrintAST : sig
 	    pr "(fn"; sp(); var arg; sp(); pr "=>"; sp(); exp body; pr ")";
 	  closeBox())
       | exp (A.ApplyExp (e1, e2, t)) = (
-	  openHBox ();
-	    exp e1;
-	    if atomicExp e2
-	      then (sp(); exp e2)
-	      else (pr "("; exp e2; pr ")");
-	  closeBox ())
+          (* handle cons separately *)
+          if isOp e1
+          then opApp (e1, e2)	  
+          else 
+            (openHBox ();
+             exp e1;
+	     if atomicExp e2
+	     then (sp(); exp e2)
+	     else (pr "("; exp e2; pr ")");
+	     closeBox ()))
       | exp (A.TupleExp es) =
 	  (openVBox (rel 0);
 	   pr "(";
@@ -210,6 +220,23 @@ structure PrintAST : sig
 	   pr ")";
 	   closeBox ())
       | exp (A.OverloadExp ovr) = overload_var (!ovr)
+
+    (* opApp : exp * exp -> unit *)
+    (* print infix ops as expected *)
+    and opApp (opExp, e2) =
+      (case e2
+         of A.TupleExp [e21, e22] =>
+           (openHBox ();
+            if atomicExp e21 
+	    then exp e21
+	    else (pr "("; exp e21; pr ")");
+            exp opExp;
+            if atomicExp e22 
+            then exp e22
+            else (pr "("; exp e22; pr ")");
+            closeBox ())
+	  | _ => raise Fail "expected a two-element tuple"
+        (* end case *))
 
     (* pe : string -> A.match -> unit *)
     and pe s (A.PatMatch(p, e)) = (
