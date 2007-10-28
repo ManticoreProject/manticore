@@ -179,6 +179,7 @@ structure Basis : sig
   (* environments *)
     val lookupOp : Atom.atom -> Env.val_bind
     val isOp : AST.var -> bool
+    val isInfixDCon : AST.dcon -> bool
     val te0 : Env.ty_env
     val ve0 : Env.var_env
 
@@ -468,6 +469,9 @@ structure Basis : sig
 	in
 	    List.exists (fn anOp => Var.same (x, anOp)) ops
 	end
+
+  (* isInfixDCon : AST.dcon -> bool *)
+    fun isInfixDCon dc = DataCon.same (dc, listCons)
 
   (* predefined functions *)
     val not =		monoVar'(N.not, boolTy --> boolTy)

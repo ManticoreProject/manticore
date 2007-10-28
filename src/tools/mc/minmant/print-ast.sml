@@ -64,11 +64,18 @@ structure PrintAST : sig
       | atomicExp (A.OverloadExp _) = true
       | atomicExp _ = false
 
-  (* isOp : exp -> bool *)
+    fun atomicPat (A.ConPat _) = false
+      | atomicPat (A.TuplePat []) = true
+      | atomicPat (A.TuplePat (p::_)) = false
+      | atomicPat (A.VarPat _) = true
+      | atomicPat (A.WildPat _) = true
+      | atomicPat (A.ConstPat _) = true
+
+  (* isInfix : exp -> bool *)
   (* A predicate to determine if the given expression is an infix op. *)
-    fun isOp (A.VarExp (x, _)) = Basis.isOp x
-      | isOp (A.ConstExp (A.DConst (dc, _))) = DataCon.same (dc, Basis.listCons)
-      | isOp _ = false
+    fun isInfix (A.VarExp (x, _)) = Basis.isOp x
+      | isInfix (A.ConstExp (A.DConst (dc, _))) = Basis.isInfixDCon dc
+      | isInfix _ = false
 
   (* FIXME: should have proper pretty printing for types *)
     fun tyScheme ts = pr(TypeUtil.schemeToString ts)
@@ -149,8 +156,8 @@ structure PrintAST : sig
 	  closeBox())
       | exp (A.ApplyExp (e1, e2, t)) = (
           (* handle cons separately *)
-          if isOp e1
-          then opApp (e1, e2)	  
+          if isInfix e1
+          then infixApp (e1, e2)	  
           else 
             (openHBox ();
              exp e1;
@@ -221,9 +228,9 @@ structure PrintAST : sig
 	   closeBox ())
       | exp (A.OverloadExp ovr) = overload_var (!ovr)
 
-    (* opApp : exp * exp -> unit *)
+    (* infixApp : exp * exp -> unit *)
     (* print infix ops as expected *)
-    and opApp (opExp, e2) =
+    and infixApp (opExp, e2) =
       (case e2
          of A.TupleExp [e21, e22] =>
            (openHBox ();
@@ -306,6 +313,9 @@ structure PrintAST : sig
 	   
     (* pat : A.pat -> unit *)
     and pat (A.ConPat (c, ts, p)) = 
+	if Basis.isInfixDCon c
+	then infixPat (c, p)
+	else
 	  (openVBox (rel 0);
 	   dcon c;
 	   pr "(";
@@ -325,6 +335,24 @@ structure PrintAST : sig
       | pat (A.WildPat ty) = pr "_"
       | pat (A.ConstPat c) = const c
 
+    (* infixPat : A.dcon * A.pat -> unit *)
+    and infixPat (dc, p) =
+      (case p
+         of A.TuplePat [p1, p2] =>
+              (openHBox ();
+	       pr "(";
+               if atomicPat p1 
+	       then pat p1
+	       else (pr "("; pat p1; pr ")");
+               dcon dc;
+               if atomicPat p2 
+               then pat p2
+               else (pr "("; pat p2; pr ")");
+	       pr ")";
+               closeBox ())
+	  | _ => raise Fail "expected a two-element tuple"
+        (* end case *))
+         
     (* const : A.const -> unit *)
     and const (A.DConst (c, ts)) = dcon c
       | const (A.LConst (lit, t)) = pr (Literal.toString lit)
