@@ -22,6 +22,60 @@ structure CaseSimplify : sig
     structure Lit = Literal
     structure BU = BOMUtil
 
+  (* A sub-case covers either the boxed, literal, or unboxed rules in a case.
+   * If the rules are not exhaustive for the sub-case, then the default rule is
+   * included too.
+   *)
+    type 'a sub_case = {rules : 'a list, dflt : B.exp option}
+
+    datatype case_class
+      = EnumCase of (Word.word * BTy.ty * B.exp) sub_case
+      | ConsCase of (BTy.data_con * B.var list * B.exp) sub_case
+      | MixedCase of {
+	    enums : (Word.word * BTy.ty * B.exp) sub_case,
+	    cons : (BTy.data_con * B.var list * B.exp) sub_case
+	  }
+      | LitCase of (B.const * B.exp) sub_case
+
+    fun classifyCaseRules (argTy, rules : (B.pat * B.exp) list, dflt) = let
+	  val (nCons, nEnums) = (case argTy
+		 of BTy.T_TyCon(BTy.DataTyc{nNullary, cons, ...}) => (List.length(!cons), nNullary)
+		  | _ => (0, 0)
+		(* end case *))
+	(* classify the rules into a list of those with enum patterns, a list
+	 * of literal patterns, and a list of data constructor patterns.
+	 *)
+	  fun classify ([], enums, lits, cons) = (enums, lits, cons)
+	    | classify ((B.P_Const(Lit.Enum w, ty), e)::rules, enums, lits, cons) =
+		classify (rules, (w, ty, e)::enums, lits, cons)
+	    | classify ((B.P_Const c, e)::rules, enums, lits, cons) =
+		classify (rules, enums, (c, e)::lits, cons)
+	    | classify ((B.P_DCon(dc, ys), e)::rules, enums, lits, cons) =
+		classify (rules, enums, lits, (dc, ys, e)::cons)
+	  in
+	    case (classify (rules, [], [], []))
+	     of (enums, [], []) =>
+		  if (nCons = 0)
+		    then EnumCase{rules=enums, dflt=dflt}
+		  else if (nEnums = List.length enums)
+		    then MixedCase{enums={rules=enums, dflt=NONE}, cons={rules=[], dflt=dflt}}
+		    else MixedCase{enums={rules=enums, dflt=dflt}, cons={rules=[], dflt=dflt}}
+	      | ([], lits, []) => LitCase{rules=lits, dflt=dflt}
+	      | ([], [], cons) =>
+		  if (nEnums = 0)
+		    then ConsCase{rules=cons, dflt=dflt}
+		  else if (nCons = List.length cons)
+		    then MixedCase{enums={rules=[], dflt=dflt}, cons={rules=cons, dflt=NONE}}
+		    else MixedCase{enums={rules=[], dflt=dflt}, cons={rules=cons, dflt=dflt}}
+	      | (enums, [], cons) => let
+		  val enumsCase = {rules=enums, dflt = if (nEnums = List.length enums) then NONE else dflt}
+		  val consCase = {rules=cons, dflt = if (nCons = List.length cons) then NONE else dflt}
+		  in
+		    MixedCase{enums=enumsCase, cons=consCase}
+		  end
+	    (* end case *)
+	  end
+
   (* case conversion structures *)
 
     local
@@ -415,18 +469,6 @@ DEBUG*)
 	      | ([], lits, []) => literalCase (s, tys, argument, lits, dflt)
 	      | ([], [], cons) => consCase (cons, dflt)
 	      | (enums, [], cons) => let
-(*
-(* BEGIN debugging *)
-val _ = print "in CaseSimplify...\n"
-val m = BOM.mkModule (Atom.atom "adHocCaseModule",
-		      [],
-		      BOM.FB {f=BOM.Var.new ("adHocCaseFunction", BTy.T_Any),
-			      params=[],
-			      exh=[],
-			      body=BOM.mkCase(x, rules, dflt)})
-val _ = PrintBOM.print m
-(* END debugging - ams *)
-*)
 		  val tyc = BTU.asTyc(BV.typeOf x)
 		  val enumCover = (List.length enums = numEnumsOfTyc tyc)
 		  val consCover = (List.length cons = numConsOfTyc tyc)
