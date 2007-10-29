@@ -6,12 +6,12 @@
  * A top-level work-stealing scheduler for threads.  
  *
  * We use the following protocol for schedulers:
- *    (0) make a list of all other vprocs starting after the current vproc
- *    (1) if the local vproc queue has a thread ready, run it.
- *    (2) otherwise, go into steal mode:
- *        (2.1) send out a thief thread to the first vproc
- *        (2.2) if a thread is available, put a worker thread back on the original vproc
- *        (2.3) otherwise, do the same for the other vprocs until it seems wise to make the original vproc idle
+ *    (0) Make a list of all other vprocs starting after the current vproc
+ *    (1) If the local vproc queue has a thread ready, run it.
+ *    (2) Otherwise, go into steal mode:
+ *        (2.1) Send out a thief thread to the first vproc
+ *        (2.2) If a thread is available, put a worker thread back on the original vproc
+ *        (2.3) Otherwise, do the same for the other vprocs until it seems wise to make the original vproc idle
  *)
 
 
@@ -30,6 +30,8 @@ define @is-queue-gt-one (/ exh : exh) : bool;
 define @is-queue-empty (/ exh : exh) : bool;
 
 extern void *ListVProcs (void *) __attribute__((alloc));
+extern void VProcPreempt (void *);
+
 (* debugging *)
 extern void M_Print (void*);
 extern void M_PrintPtr (void *, void *);
@@ -67,11 +69,8 @@ define @work-stealers-startup ( / exh : exh) : () =
       (* the maximum number of steal attempts before going to sleep *)
       let maxStealAttempts : int = 1000
 
-                            do ccall M_PrintPtr ("host",host_vproc)
-
       (* (2) *)
       cont steal (vprocs' : list) =
-(*        do ccall M_Print ("Steal mode\n")*)
         case vprocs' 
           of NIL => 
 	         do ccall M_Print ("Work stealer going to sleep\n")
@@ -84,17 +83,21 @@ define @work-stealers-startup ( / exh : exh) : () =
                     let hasElts : bool = @is-queue-gt-one ( / exh)
                     if hasElts
                        then (* (2.2) *)
-                            do ccall M_Print ("Stealer is picking a remote thread\n")
+                            do ccall M_Print ("Stealing a remote thread\n")
                             let qitem : rdyq_item = @dequeue (host_vproc / exh)
                             let item : [tid, fiber, rdyq_item] = ([tid, fiber, rdyq_item]) qitem
                             let tid : tid = #0 (item)
                             let fiber : fiber = #1 (item)
 			    do @enqueue-on-vproc (self, tid, fiber / exh)
+                            (* Wake up the vproc *)
+                            do ccall VProcPreempt (self)
                             @thread-exit (/ exh)
                        else (* (2.3) *)
                             do ccall M_Print ("Stealer is giving up on this vproc\n")
 			    cont fiber (x : unit) = throw steal (vprocs')
                             do @enqueue-on-vproc (self, enum(0), fiber / exh)
+                            (* Wake up the vproc *)
+                            do ccall VProcPreempt (self)
                             @thread-exit (/ exh)
                 do @enqueue-on-vproc (vp, enum(0), k / exh)
                 throw dispatch ()

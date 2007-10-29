@@ -175,6 +175,9 @@ VProc_t *VProcSelf ()
 
 } /* VProcSelf */
 
+void VProcPreempt (VProc_t *vp) {
+  VProcSignal (vp, PreemptSignal);
+}
 
 /*! \brief send an asynchronous signal to another VProc.
  *  \param vp the target VProc.
