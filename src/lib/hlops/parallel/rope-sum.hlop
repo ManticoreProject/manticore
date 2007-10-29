@@ -13,35 +13,40 @@
 define @future1 (qt : [work_queue, thunk] / exh : exh) : future;
 define @touch1 (qf : [work_queue, future] / exh : exh) : any;
 
-define @rope-sum (qr : [work_queue, rope] / exh : exh) : ml_int =
-  let q : work_queue = #0(qr)
-  fun sumS (ns : list, acc : int / exh : exh) : int =
-    case ns
-      of NIL => return (acc)
-       | CONS (mln : ml_int, ns : list) =>
-           let n : int = #0(mln)
-           let accX : int = I32Add (n, acc)
-           let res : int = apply sumS (ns, accX / exh)
-           return (res)            
-    end
-  fun sp (r : rope / exh : exh) : int = 
-    case r
-      of Leaf (len:int, data:list) => 
-           let res : int = apply sumS (data, 0 / exh)
-           return (res)
-       | Cat (len:int, depth:int, r1:rope, r2:rope) =>
-           fun th (u : unit / exh : exh) = apply sp (r2 / exh)
-           let qt : [work_queue, thunk] = alloc (q, th)
-           let f2 : future = @future1 (tup / exh)
-           let s1 : int = apply sp (r1 / exh)
-           let qf : [work_queue, future] = alloc (q, f2)
-           let t2 : any = @touch1 (qf / exh)
-           let s2 : int = (int)t2;
-           let sum : int = I32Add (s1, s2)
-           return sum
-    end
-  let r : rope = #1(qr)
-  let res : int = apply sp (r / exh)
-  let ml_res : ml_int = alloc (res)
-  return (ml_res)
+define @rope-sum (q : work_queue / exh : exh) : fun (rope / exh -> ml_int) =
+  fun rsum (r : rope / exh : exh) : ml_int =
+    fun sumS (ns : list, acc : int / exh : exh) : int =
+      case ns
+        of NIL => return (acc)
+         | CONS (mln : ml_int, ns : list) =>
+             let n : int = #0(mln)
+             let accX : int = I32Add (n, acc)
+             let res : int = apply sumS (ns, accX / exh)
+             return (res)            
+      end
+    fun sumP (r : rope / exh : exh) : ml_int = 
+      case r
+        of LEAF (len:ml_int, data:list) => 
+             let res : int = apply sumS (data, 0 / exh)
+	     let boxedRes : ml_int = alloc (res)
+             return (boxedRes)
+         | CAT (len:ml_int, depth:ml_int, r1:rope, r2:rope) =>
+             fun th (u : unit / exh: exh) : ml_int = 
+               let res : ml_int = apply sumP (r2 / exh)
+               return (res)
+             let qt : [work_queue, thunk] = alloc (q, th)
+             let f2 : future = @future1 (qt / exh)
+             let s1 : ml_int = apply sumP (r1 / exh)
+             let qf : [work_queue, future] = alloc (q, f2)
+             let t2 : any = @touch1 (qf / exh)
+             let s2 : ml_int = (ml_int)t2
+             let n1 : int = #0(s1)
+             let n2 : int = #0(s2)
+             let sum : int = I32Add (n1, n2)
+             let boxedSum : ml_int = alloc (sum)
+             return (boxedSum)
+      end
+    let res : ml_int = apply sumP (r / exh)
+    return (res)
+  return (rsum)
 ;

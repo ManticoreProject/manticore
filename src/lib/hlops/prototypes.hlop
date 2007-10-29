@@ -20,7 +20,7 @@ define inline @fail (arg : ml_string / exh : exh) : any;
 
 define @rope-length (r : rope / exh : exh) : ml_int;
 define @rope-sub (rn : [rope, ml_int] / exh : exh) : any;
-define @rope-sum (q : work_queue, r : rope / exh : exh) : ml_int;
+define @rope-sum (q : work_queue / exh : exh) : fun (rope / exh -> ml_int);
 
 define @dispatch-action (act : sigact, dst : vproc / exh : exh) : ();
 define @default-scheduler-startup ( / exh : exh) : ();
