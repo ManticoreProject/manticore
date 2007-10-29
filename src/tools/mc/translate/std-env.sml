@@ -21,6 +21,7 @@ structure StdEnv : sig
     structure F = Futures
     structure E = TranslateEnv
     structure R = Ropes
+    structure U = UnseenBasis 
 
   (***** Predefined types *****)
 
@@ -379,7 +380,8 @@ structure StdEnv : sig
 		  (B.ltos,		"ltos"),
                   (B.plen,              "rope-length"),
 		  (B.psub,              "rope-sub"),
-		  (B.fail,		"fail")
+		  (B.fail,		"fail"),
+		  (U.sumPQ,             "rope-sum")
 		]  
 	  fun ins ((x, n), env) = (case H.find (Atom.atom n)
 		of NONE => raise Fail ("cannot find hlop " ^ n)

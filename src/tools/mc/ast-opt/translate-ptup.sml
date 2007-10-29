@@ -20,7 +20,7 @@
 
 structure TranslatePtup : sig
 
-    val tr : (AST.exp -> AST.exp) -> (AST.exp * bool ref) -> AST.exp list -> AST.exp
+    val tr : (AST.exp -> AST.exp) -> AST.exp -> AST.exp list -> AST.exp option
 
   end  = 
 
@@ -30,42 +30,45 @@ structure TranslatePtup : sig
     structure T = Types
     structure F = Futures
 
-    (* ptuple : A.exp list -> A.exp *)
-    (* Precondition: The argument to the function, a list, must not be empty. *)
-    (* Consumes a list whose members are the contents of a parallel tuple, *)
-    (* and produces a LetExp that is a "futurized" ptuple. *)
-    (* Note: the first member of the list is not futurized (an optimization). *)
-    fun ptuple _ _ [] = raise Fail "empty parallel tuple"
-      | ptuple trExp (workQ, needsQ) (e::es) = 
-	  let (* mkVar : int * ty -> var *)
-	      fun mkVar (n, t) = 
-		    let val name = "f" ^ Int.toString n
-		    in
-			Var.newWithKind (name, A.VK_Pat, t)
-		    end
-	      (* build : exp list * int * binding list * exp list -> exp *) 
-	      fun build ([], _, bs, tupExps) = 
-		    let val tup = A.TupleExp (trExp e :: tupExps)
-		    in
-			foldr A.LetExp tup bs
-		    end
-		| build (e::es, n, bs, tupExps) =
-		    if F.isFutureCand e then
-			let val _ = (needsQ := true)
-			    val fe = F.mkFuture1 (workQ, trExp e)
-			    val f_n = mkVar (n, TypeOf.exp fe)
-			    val b = A.ValBind (A.VarPat f_n, fe)
-			    val t = F.mkTouch1 (workQ, A.VarExp (f_n, []))
-			in
-			    build (es, n+1, b::bs, t::tupExps)
-			end
-		    else
-			build (es, n, bs, trExp e :: tupExps)
-	      val es' = map trExp es
-	  in
-	      build (rev es', 1, [], [])
-	  end
+    val changed = ref false
 
-    val tr = ptuple
-
+    fun tr trExp workQ es =
+	(* Precondition: The argument to the function, a list, must not be empty. *)
+	(* Consumes a list whose members are the contents of a parallel tuple, *)
+	(* and produces a LetExp that is a "futurized" ptuple. *)
+	(* Note: the first member of the list is not futurized (an optimization). *)
+	let fun ptuple [] = raise Fail "empty parallel tuple"
+	      | ptuple (e::es) = 
+		  let (* mkVar : int * ty -> var *)
+		      fun mkVar (n, t) = 
+			  let val name = "f" ^ Int.toString n
+			  in
+			      Var.newWithKind (name, A.VK_Pat, t)
+			  end
+		      (* build : exp list * int * binding list * exp list -> exp *) 
+		      fun build ([], _, bs, tupExps) = 
+			    let val tup = A.TupleExp (trExp e :: tupExps)
+			    in
+				foldr A.LetExp tup bs
+			    end
+			| build (e::es, n, bs, tupExps) =
+			    if F.isFutureCand e then
+				let val _ = (changed := true)
+				    val fe = F.mkFuture1 (workQ, trExp e)
+				    val f_n = mkVar (n, TypeOf.exp fe)
+				    val b = A.ValBind (A.VarPat f_n, fe)
+				    val t = F.mkTouch1 (workQ, A.VarExp (f_n, []))
+				in
+				    build (es, n+1, b::bs, t::tupExps)
+				end
+			    else
+				build (es, n, bs, trExp e :: tupExps)
+		      val es' = map trExp es
+		  in
+		      build (rev es', 1, [], [])
+		  end
+	    val result = ptuple es
+	in
+	    if !changed then SOME result else NONE
+	end
   end

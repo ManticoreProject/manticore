@@ -21,9 +21,11 @@ structure GrandPass : sig
     structure V = Var
 
     local
+
 	val workQVar = V.new ("workQ", F.workQueueTy)
 	val workQ    = A.VarExp (workQVar, [])
 	val needsQ   = ref false
+
     in
 
     fun exp (A.LetExp (b, e)) = A.LetExp (binding b, exp e)
@@ -36,14 +38,21 @@ structure GrandPass : sig
       | exp (A.TupleExp es) = A.TupleExp (map exp es)
       | exp (A.RangeExp (e1, e2, oe3, t)) = 
 	  A.RangeExp (exp e1, exp e2, Option.map exp oe3, t)
-      | exp (A.PTupleExp es) = trPtup es
+      | exp (ptup as A.PTupleExp es) = 
+	  (case trPTup es
+	     of SOME e => (needsQ := true; e)
+	      | NONE => A.TupleExp (map exp es)
+	    (* end case *))
       | exp (A.PArrayExp (es, t)) = A.PArrayExp (map exp es, t)
       | exp (A.PCompExp (e, pes, oe)) = 
 	  A.PCompExp (e, map (fn (p,e) => (p, exp e)) pes, Option.map exp oe)
       | exp (A.PChoiceExp (es, t)) = A.PChoiceExp (map exp es, t)
       | exp (A.SpawnExp e) = A.SpawnExp (exp e)
       | exp (k as A.ConstExp _) = k
-      | exp (x as A.VarExp _) = x
+      | exp (v as A.VarExp (x, ts)) = 
+	  (case trVar (x, ts)
+	     of SOME e => (needsQ := true; e)
+	      | NONE => v)
       | exp (A.SeqExp (e1, e2)) = A.SeqExp (exp e1, exp e2)
       | exp (x as A.OverloadExp _) = x
 
@@ -56,22 +65,24 @@ structure GrandPass : sig
     and match (A.PatMatch (p, e)) = A.PatMatch (p, exp e)
       | match (A.CondMatch (p, e1, e2)) = A.CondMatch (p, exp e1, exp e2)
 
-    and trPtup arg = TranslatePtup.tr exp (workQ, needsQ) arg
+    and trPTup arg = TranslatePtup.tr exp workQ arg
 
+    and trVar arg = RewriteWithQueues.transform workQ arg
+
+  (* includeQ : A.module -> A.module *)
+  (* Prepend module m with the appropriate let bindings to include the workQueue. *)
+    fun includeQ m =
+	A.LetExp (A.ValBind (A.VarPat workQVar, F.mkNewWorkQueue ()),
+          A.LetExp (A.ValBind (A.WildPat F.workQueueTy, F.mkGetWork1All workQ),
+            m))
+
+  (* transform : A.module -> A.module *)
     fun transform m = 
 	let val m' = exp m
-                     (* NOTE: Since exp is effectful, specifically n setting needsQ, *)
-                     (* it *must* be run before the following conditional is *)
-                     (* evaluated. *)
+            (* NOTE: Since exp is effectful, specifically in setting needsQ, *)
+            (* it must be run before the following conditional is evaluated. *)
 	in
-	    if not (!needsQ)
-	    then m'
-	    else
-		A.LetExp (A.ValBind (A.VarPat workQVar, 
-				     F.mkNewWorkQueue ()),
-			  A.LetExp (A.ValBind (A.WildPat F.workQueueTy,
-					       F.mkGetWork1All workQ),
-				    m'))
+	    (if !needsQ then includeQ else (fn x => x)) m'
 	end
 
     end (* local *)

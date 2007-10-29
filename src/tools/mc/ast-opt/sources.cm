@@ -18,11 +18,13 @@ Library
   structure Nester
   structure PrintAST  
   structure PrintTypes
+  structure RewriteWithQueues
   structure Ropes
   structure TestUtils	
   structure TranslatePtup
   structure TypeOf	
   structure Unpar
+  structure UnseenBasis
   structure VarSubst
 
 is
@@ -44,8 +46,10 @@ is
   grand-pass.sml
   hash.sml
   nester.sml
+  rewrite-with-queues.sml
   ropes.sml
   test-utils.sml
   translate-ptup.sml
   unpar.sml
+  unseen-basis.sml
   var-subst.sml
