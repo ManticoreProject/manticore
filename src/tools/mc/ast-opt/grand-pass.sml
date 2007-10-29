@@ -7,6 +7,7 @@
  *
  * This pass currently includes the following AST-to-AST translations:
  * - translation of parallel tuples into futures/touches
+ * - rewriting of sumP into sumPQ
  *)
 
 structure GrandPass : sig
