@@ -316,8 +316,9 @@ structure CheckBOM : sig
 			else error ["type mismatch in Promote: ", vl2s lhs, " = ", v2s y, "\n"])
 		  | ([ty], B.E_Prim p) => (
                       chkVars(PrimUtil.varsOf p, PrimUtil.nameOf p))
-                  | ([ty], B.E_DCon (dcon, args)) => (
-                      chkVars(args, BOMTyCon.dconName dcon))
+                  | ([ty], B.E_DCon(BTy.DCon{name, argTy, myTyc, ...}, args)) => (
+                      chkVars(args, name);
+		      checkArgTypes (BTU.match, name ^ vl2s args, argTy, typesOf args))
 		  | ([ty], B.E_CCall(cf, args)) => (
 		      chkVar(cf, "CCall"); 
                       chkVars(args, "CCall args"))
