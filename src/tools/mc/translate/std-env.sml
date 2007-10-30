@@ -280,7 +280,7 @@ structure StdEnv : sig
 	    (B.integer_neg,	prim1 (P.I32Neg, "neg", i, i)),
 *)
 	    (B.sqrtf,	        prim1 (P.F32Sqrt, "sqrtf", f, f)),
-	    (B.sqrtd,	        prim1 (P.F64Sqrt, "sqrtd", f, f)),
+	    (B.sqrtd,	        prim1 (P.F64Sqrt, "sqrtd", d, d)),
 
 	    (B.float_neg,	prim1 (P.F32Neg, "neg", f, f)),
 	    (B.double_neg,	prim1 (P.F64Neg, "neg", d, d))
@@ -290,7 +290,6 @@ structure StdEnv : sig
     val predefs = [
 	    (B.not,		prim1 (P.BNot, "not", b, b)),
 (* FIXME
-	    (B.sqrtf,		hlop H.sqrtf),
 	    (B.lnf,		hlop H.lnf),
 	    (B.log2f,		hlop H.log2f),
 	    (B.log10f,		hlop H.log10f),
@@ -302,7 +301,6 @@ structure StdEnv : sig
 *)
 	    (B.itof,		prim1 (P.I32ToF32, "itof", i, f)),
 (* FIXME
-	    (B.sqrtd,		hlop H.sqrtd),
 	    (B.lnd,		hlop H.lnd),
 	    (B.log2d,		hlop H.log2d),
 	    (B.log10d,		hlop H.log10d),
