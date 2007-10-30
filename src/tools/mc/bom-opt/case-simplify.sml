@@ -373,10 +373,10 @@ DEBUG*)
     and xformCase (s : BU.subst, tys : B.ty list, x, rules : (B.pat * B.exp) list, dflt) = let
 	  val argument = subst s x
 	  val dflt = Option.map (fn e => xformE(s, tys, e)) dflt
-	(* generate a case for a list of one or more data constructors, plus an
-	 * optional default case.
+	(* generate a case for a list of one or more rules involving
+	 * data constructors (plus an optional default case).
 	 *)
-	  fun consCase ([(dc, ys, e)], dflt) = let
+	  fun consCase ([(dc, ys, e)], dflt) = let (* the last rule in the list *)
 		val (s, ys) = xformVars(s, ys)
 		val (s, argument') = retype(s, argument, dconToRepTy dc)
 		fun sel ([], _) = xformE(s, tys, e)
@@ -395,29 +395,33 @@ DEBUG*)
 			    end
 		      end
 		in
-		  case (repOf dc, dflt)
-		   of (B.Transparent, NONE) => (case ys
+		  case repOf dc
+		   of B.Transparent => (case ys
 			 of [y] => B.mkStmt([y], B.E_Cast(typeOf y, argument), xformE(s, tys, e))
-			  | _ => raise Fail(concat["dcon ", nameOfDCon dc, " has bogus transparent rep"])
+			  | _ => B.mkStmt(
+			      [argument'], B.E_Cast(BV.typeOf argument', argument),
+			      sel (ys, 0))
 			(* end case *))
-		    | (B.Tuple, NONE) => B.mkStmt(
+		    | B.Tuple => B.mkStmt(
 			[argument'], B.E_Cast(BV.typeOf argument', argument),
 			sel (ys, 0))
-		    | (B.TaggedTuple tag, SOME dflt) => let
-			val ty = BTy.T_Enum(Word.fromInt(BTyc.nCons(BTyc.dconTyc dc)))
-			val tag' = BV.new("tag", ty)
-			val tmp = BV.new("tmp", ty)
-			val eq = BV.new("eq", BTy.boolTy)
-			in
-			  B.mkStmts([
-			      ([argument'], B.E_Cast(BV.typeOf argument', argument)),
-			      ([tag'], B.E_Select(0, argument')),
-			      ([tmp], B.E_Const(Lit.Enum tag, ty)),
-			      ([eq], B.E_Prim(Prim.I64NEq(argument, tmp)))
-			    ],
-			    B.mkIf(eq, sel(ys, 1), dflt))
-			end
-		    | _ => raise Fail(concat["dcon ", nameOfDCon dc, " has bogus rep"])
+		    | B.TaggedTuple tag => (case dflt
+			 of SOME dflt => let
+			      val ty = BTy.T_Enum(Word.fromInt(BTyc.nCons(BTyc.dconTyc dc)))
+			      val tag' = BV.new("tag", ty)
+			      val tmp = BV.new("tmp", ty)
+			      val eq = BV.new("eq", BTy.boolTy)
+			      in
+				B.mkStmts([
+				    ([argument'], B.E_Cast(BV.typeOf argument', argument)),
+				    ([tag'], B.E_Select(0, argument')),
+				    ([tmp], B.E_Const(Lit.Enum tag, ty)),
+				    ([eq], B.E_Prim(Prim.I64NEq(argument, tmp)))
+				  ],
+				  B.mkIf(eq, sel(ys, 1), dflt))
+			      end
+			  | NONE => sel(ys, 1)
+			(* end case *))
 		  (* end case *)
 		end
 	    | consCase (cons as ((dc, _, _)::_), dflt) = let
