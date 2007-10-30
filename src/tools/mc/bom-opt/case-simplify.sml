@@ -376,7 +376,7 @@ DEBUG*)
 	(* generate a case for a list of one or more rules involving
 	 * data constructors (plus an optional default case).
 	 *)
-	  fun consCase ([(dc, ys, e)], dflt) = let (* the last rule in the list *)
+	  fun consCase ([(dc, ys, e)], dflt) = let (* only one rule in the list *)
 		val (s, ys) = xformVars(s, ys)
 		val (s, argument') = retype(s, argument, dconToRepTy dc)
 		fun sel ([], _) = xformE(s, tys, e)
@@ -490,6 +490,7 @@ DEBUG*)
 			 of {rules=[], hasDflt=true} => valOf dflt
 			  | {rules=[], hasDflt=false} => raise Fail "badly-formed sub-case"
 			  | {rules, hasDflt=true} => B.mkCase(argument, List.map enumCase rules, dflt)
+			  | {rules=[(_, _, e)], hasDflt=false} => xformE(s, tys, e)
 			  | {rules, hasDflt=false} => B.mkCase(argument, List.map enumCase rules, NONE)
 			(* end case *))
 		  val consCase = (case cons
@@ -509,68 +510,6 @@ DEBUG*)
 	      | LitCase{rules, ...} => literalCase (s, tys, argument, rules, dflt)
 	    (* end case *)
 	  end
-(*****
-	    case classify (rules, [], [], [])
-	     of (enums, [], []) => B.mkCase(argument, List.map enumCase enums, dflt)
-	      | ([], lits, []) => literalCase (s, tys, argument, lits, dflt)
-	      | ([], [], cons) => consCase (cons, dflt)
-	      | (enums, [], cons) => let
-		  val tyc = BTU.asTyc(BV.typeOf x)
-		  val enumCover = (List.length enums = numEnumsOfTyc tyc)
-		  val consCover = (List.length cons = numConsOfTyc tyc)
-		  val isBoxed = BV.new("isBoxed", BTy.boolTy)
-		  in
-		    case (enumCover, consCover)
-		     of (true, _) => let
-			  val case1 = consCase (cons, dflt)
-			  in
-			    if (numEnumsOfTyc tyc = 1)
-			      then let
-			      (* when there is only one possible enum value, we just do
-			       * an equality test.
-			       *)
-				val [(w, ty, e)] = enums
-				val ty = if hasTyc ty then tyToRepTy ty else ty
-				val tmp = BV.new("t", ty)
-				in
-				  B.mkStmts([
-				      ([tmp], B.E_Const(Lit.Enum w, ty)),
-				      ([isBoxed], B.E_Prim(Prim.I64NEq(argument, tmp)))
-				    ],
-				    B.mkIf(isBoxed, case1, xformE(s, tys, e)))
-				end
-			      else B.mkStmt([isBoxed], B.E_Prim(Prim.isBoxed argument),
-				B.mkIf(isBoxed, case1,
-				  B.mkCase(argument,
-				    List.map enumCase enums,
-				    NONE)))
-			  end
-		      | (false, true) =>
-			  B.mkStmt([isBoxed], B.E_Prim(Prim.isBoxed argument),
-			    B.mkIf(isBoxed,
-			      consCase (cons, NONE),
-			      B.mkCase(argument,
-				List.map enumCase enums,
-				dflt)))
-		      | (false, false) => let
-			(* the default case is shared by both the boxed and unboxed
-			 * sub cases, so we have to wrap it in a function abstraction.
-			 *)
-			  val join = BV.new("join", BTy.T_Fun([], [], tys))
-			  val joinFB = B.FB{f=join, params=[], exh=[], body=valOf dflt}
-			  in
-			    B.mkCont(joinFB,
-			    B.mkStmt([isBoxed], B.E_Prim(Prim.isBoxed argument),
-			      B.mkIf(isBoxed,
-				consCase (cons, SOME(B.mkThrow(join, []))),
-				B.mkCase(argument,
-				  List.map enumCase enums,
-				  SOME(B.mkThrow(join, []))))))
-			  end
-	      | _ => raise Fail "strange case"
-	    (* end case *)
-	  end
-*****)
 
   (* convert a case on literals to a if-then-else tree; note that the default case
    * is required and has already been transformed.
