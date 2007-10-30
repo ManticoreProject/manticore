@@ -1,5 +1,5 @@
 val sqrt = sqrtd;
-(*fun expt a = let fun expt' b = powd(a, b) in expt' end;*)
+fun expt a = let fun expt' b = powd(a, b) in expt' end;
 val pi : double = 3.14159265359;
 (*
  *
@@ -76,9 +76,10 @@ datatype Surfspec
   | Body of vec		(* body color, default 1.,1.,1. *)
   ;
 
+(* BUG: the CFG checker fails on a bogus type for surf *)
 fun ambientsurf surf = (case surf
        of nil => (0.0, 0.0, 0.0)
-	| (Ambient v :: ss) => v
+	| (Ambient v :: ss) => (v : vec)
 	| (_ :: ss) => ambientsurf ss
       (* end case *));
 fun diffusesurf surf = (case surf
@@ -245,9 +246,31 @@ fun spherenormal (pos, sp) = let
       end;
 
 
+fun trace (spheres, pos, dir) = fail "test";
+fun shade (lights, sp, lookpos, dir, dist, contrib) = fail "test";
+
+(*
+% color the given pixel
+*)
+fun tracepixel (spheres, lights, x, y, firstray, scrnx, scrny) = let
+  val pos = lookfrom;
+  val (dir, _) = vecnorm (vecadd (vecadd firstray (vecscale scrnx (itod x)))
+		    (vecscale scrny (itod y)));
+  val (hit, dist, sp) = trace (spheres, pos, dir);  (* pick first intersection *)
+						(* return color of the pixel x,y *)
+  in
+    if hit then
+      shade (lights, sp, pos, dir, dist, (1.0,1.0,1.0))
+    else
+      background
+  end
+;
+
 val pos = (0.0,0.0,~1.0);
 val dir = (0.0,0.0,1.0);
+val x = (Ambient pos) :: nil;
+val y = ambientsurf x;
 val sphere = Sphere((0.0,0.0,0.0), 0.5, s3);
 val (intersects,slo) = sphereintersect (pos, dir, sphere);
-print (dtos slo)
+print ((dtos slo)^"\n")
 

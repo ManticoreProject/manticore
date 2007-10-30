@@ -11,6 +11,7 @@
 #include "value.h"
 #include "heap.h"
 #include "../gc/gc-inline.h"
+#include <math.h>
 
 /* M_IntToString:
  */
@@ -129,3 +130,10 @@ void M_AssertNotLocalPtr (Value_t item)
 
 }
 
+float M_Powf (float x, float y) {
+  return powf (x, y);
+}
+
+double M_Powd (double x, double y) {
+  return pow (x, y);
+}

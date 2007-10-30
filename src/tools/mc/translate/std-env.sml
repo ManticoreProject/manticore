@@ -379,6 +379,8 @@ structure StdEnv : sig
                   (B.plen,              "rope-length"),
 		  (B.psub,              "rope-sub"),
 		  (B.fail,		"fail"),
+		  (B.powf,              "powf"),
+		  (B.powd,              "powd"),
 		  (U.sumPQ,             "rope-sum")
 		]  
 	  fun ins ((x, n), env) = (case H.find (Atom.atom n)

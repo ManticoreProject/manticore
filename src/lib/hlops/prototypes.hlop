@@ -25,3 +25,6 @@ define @rope-sum (q : work_queue / exh : exh) : fun (rope / exh -> ml_int);
 define @dispatch-action (act : sigact, dst : vproc / exh : exh) : ();
 define @default-scheduler-startup ( / exh : exh) : ();
 define inline @enqueue-on-vproc (dst : vproc, tid : tid, k : fiber / exh : exh) : ();
+
+define inline @powf (arg : [ml_float, ml_float] / exh : exh) : ml_float;
+define inline @powd (arg : [ml_double, ml_double] / exh : exh) : ml_double;
