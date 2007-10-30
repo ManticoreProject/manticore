@@ -106,13 +106,13 @@ structure BOMBasis : BOM_BASIS =
     val evtTyc = BOMTyCon.newDataTyc ("evt", 0)
     val evtTy = BTy.T_TyCon evtTyc
     val evtCHOOSE = BOMTyCon.newDataCon evtTyc ("CHOOSE", BTy.TaggedTuple 0w0, [evtTy, evtTy])
-    val evtBEVT = BOMTyCon.newDataCon evtTyc ("BEVT", BTy.TaggedTuple 0w0, [
+    val evtBEVT = BOMTyCon.newDataCon evtTyc ("BEVT", BTy.TaggedTuple 0w1, [
 	  (* pollFn : unit -> bool *)
-	    BTy.T_Fun([unitTy], [exhTy], [boolTy]),
+	    BTy.stdFunTy([], [boolTy]),
           (* doFn : 'a cont -> unit *)
-	    BTy.T_Fun([BTy.T_Cont[BTy.T_Any]], [exhTy], [unitTy]),
+	    BTy.stdFunTy([BTy.T_Cont[BTy.T_Any]], []),
           (* blockFn : (bool ref * 'a cont) -> unit *)
-	    BTy.T_Fun([dirtyFlagTy, BTy.T_Cont[BTy.T_Any]], [exhTy], [unitTy])
+	    BTy.stdFunTy([dirtyFlagTy, tidTy, BTy.T_Cont[BTy.T_Any]], [])
 	  ])
 
   (* The BOM type for channels.  This definition must match that given in
