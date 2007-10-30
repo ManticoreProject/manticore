@@ -281,22 +281,26 @@ AC_SUBST(MANTICORE_RUNSRCDIR)
 AC_SUBST(HEAP_IMAGE_DIR)
 AC_SUBST(INSTALL_SMLNJ_WRAPPER)
 
+dnl source of the high-level-operation definitions
+dnl
+HLOPS_SRCDIR=$MANTICORE_SRCDIR/lib/hlops
+
 dnl where to put the high-level-operation definitions
 dnl
 HLOPS_DIR=$MANTICORE_LIBDIR/hlops
 
 if test x"$prefix" = xNONE ; then
-  INC_SEARCH_PATH="$HLOPS_DIR/include"
+  INC_SEARCH_PATH=".:$HLOPS_DIR/include"
   HLOP_SEARCH_PATH=".:$HLOPS_DIR"
 else
-  INC_SEARCH_PATH="$HLOPS_DIR/include:$prefix/lib/hlops/include"
-  HLOP_SEARCH_PATH=".:$HLOPS_DIR:$prefix/lib/hlops"
+  INC_SEARCH_PATH=".:$prefix/lib/hlops/include"
+  HLOP_SEARCH_PATH=".:$prefix/lib/hlops"
 fi
 dnl
 dnl include source tree paths too
 dnl
-INC_SEARCH_PATH="$INC_SEARCH_PATH:$MANTICORE_SRCDIR/lib/hlops"
-HLOP_SEARCH_PATH="$HLOP_SEARCH_PATH:$MANTICORE_SRCDIR/lib/hlops"
+INC_SEARCH_PATH="$INC_SEARCH_PATH:$HLOPS_SRCDIR/include"
+HLOP_SEARCH_PATH="$HLOP_SEARCH_PATH:$HLOPS_SRCDIR"
 
 AC_SUBST(HLOP_SEARCH_PATH)
 AC_SUBST(INC_SEARCH_PATH)
@@ -398,7 +402,9 @@ AC_CONFIG_HEADERS(src/lib/parallel-rt/include/manticore-config.h:config/config_h
 dnl
 dnl shell scripts
 dnl
-AC_CONFIG_FILES([bin/install-sml-wrapper.sh:config/install-sml-wrapper_sh.in], [chmod +x bin/install-sml-wrapper.sh])
+AC_CONFIG_FILES([
+  bin/install-sml-wrapper.sh:config/install-sml-wrapper_sh.in
+], [chmod +x bin/install-sml-wrapper.sh bin/mc])
 
 dnl
 dnl create machine-specific links
