@@ -84,5 +84,8 @@ structure BOMTy =
 
     val thunkTy = T_Fun([unitTy], [exhTy], [T_Any])
     val futureTy = T_Tuple(true, [T_Any, thunkTy])
-    
+
+  (* standard function types tuple their arguments and results *)
+    fun stdFunTy (argTy, resTy) = T_Fun([tupleTy argTy], [exhTy], [tupleTy resTy])
+
   end
