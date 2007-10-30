@@ -32,18 +32,16 @@ typedef chan = ![    (* all fields are mutable *)
     list		(* recvq tail *)
   ];
 
-#define HASH() HASH_I
-#define HASH_I #
 #define CH_TRY_LOCK(ch)		BCAS(&0(ch), FALSE, TRUE)
-#define CH_CLR_LOCK(ch)		HASH()0(ch) := TRUE
-#define CH_GET_SENDQ_HD(ch)	HASH()1(ch)
-#define CH_SET_SENDQ_HD(ch,x)	HASH()1(ch) := x
-#define CH_GET_SENDQ_TL(ch)	HASH()2(ch)
-#define CH_SET_SENDQ_TL(ch,x)	HASH()2(ch) := x
-#define CH_GET_RECVQ_HD(ch)	HASH()3(ch)
-#define CH_SET_RECVQ_HD(ch,x)	HASH()3(ch) := x
-#define CH_GET_RECVQ_TL(ch)	HASH()4(ch)
-#define CH_SET_RECVQ_TL(ch,x)	HASH()4(ch) := x
+#define CH_CLR_LOCK(ch)		UPDATE(0, ch, TRUE)
+#define CH_GET_SENDQ_HD(ch)	SELECT(1, ch)
+#define CH_SET_SENDQ_HD(ch,x)	UPDATE(1, ch, x)
+#define CH_GET_SENDQ_TL(ch)	SELECT(2, ch)
+#define CH_SET_SENDQ_TL(ch,x)	UPDATE(2, ch, x)
+#define CH_GET_RECVQ_HD(ch)	SELECT(3, ch)
+#define CH_SET_RECVQ_HD(ch,x)	UPDATE(3, ch, x)
+#define CH_GET_RECVQ_TL(ch)	SELECT(4, ch)
+#define CH_SET_RECVQ_TL(ch,x)	UPDATE(4, ch, x)
 
 typedef sendq_item = [any, tid, cont(unit)];
 typedef recvq_item = [dirty_flag, tid, cont(any)];
