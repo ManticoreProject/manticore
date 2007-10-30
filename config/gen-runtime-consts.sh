@@ -24,6 +24,6 @@ function gen {
 }
 
 gen gen-runtime-constants src/tools/mc/driver/runtime-constants.sml
-gen gen-runtime-offsets src/lib/hlops/runtime-offsets.def
+gen gen-runtime-offsets src/lib/hlops/include/runtime-offsets.def
 
 exit 0
