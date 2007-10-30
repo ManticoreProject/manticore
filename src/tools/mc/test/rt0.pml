@@ -117,9 +117,7 @@ fun bodysurf surf = (case surf
 	| (_ :: ss) => bodysurf ss
       (* end case *));
 
-(* BUG: if Sphere has one data constructor, the compiler generates a bogus transparent constructor *)
-datatype Sphere = Sphere of vec * double * Surfspec list (* pos, radius, surface type *)
-		| Placeholder of vec;
+datatype Sphere = Sphere of vec * double * Surfspec list; (* pos, radius, surface type *)
 fun spheresurf (Sphere(pos, rad, surf)) = surf;
 
 fun sphere2s sp = (case sp
@@ -221,7 +219,6 @@ fun sphereintersect (pos, dir, sp) = let
     in
       if (disc < 0.0) then (false, 0.0)  (* imaginary solns only *)
       else let
-(* BUG: the typechecker assigns sqrtd a float type *)
 	  val slo = ~bm - (sqrt disc);
 	  val shi = ~bm + (sqrt disc);
 	  in
