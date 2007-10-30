@@ -26,7 +26,7 @@ structure CaseSimplify : sig
    * If the rules are not exhaustive for the sub-case, then the default rule is
    * included too.
    *)
-    type 'a sub_case = {rules : 'a list, dflt : B.exp option}
+    type 'a sub_case = {rules : 'a list, hasDflt : bool}
 
     datatype case_class
       = EnumCase of (Word.word * BTy.ty * B.exp) sub_case
@@ -38,6 +38,7 @@ structure CaseSimplify : sig
       | LitCase of (B.const * B.exp) sub_case
 
     fun classifyCaseRules (argTy, rules : (B.pat * B.exp) list, dflt) = let
+	  val hasDflt = Option.isSome dflt
 	  val (nCons, nEnums) = (case argTy
 		 of BTy.T_TyCon(BTy.DataTyc{nNullary, cons, ...}) => (List.length(!cons), nNullary)
 		  | _ => (0, 0)
@@ -56,23 +57,24 @@ structure CaseSimplify : sig
 	    case (classify (rules, [], [], []))
 	     of (enums, [], []) =>
 		  if (nCons = 0)
-		    then EnumCase{rules=enums, dflt=dflt}
+		    then EnumCase{rules=enums, hasDflt=hasDflt}
 		  else if (nEnums = List.length enums)
-		    then MixedCase{enums={rules=enums, dflt=NONE}, cons={rules=[], dflt=dflt}}
-		    else MixedCase{enums={rules=enums, dflt=dflt}, cons={rules=[], dflt=dflt}}
-	      | ([], lits, []) => LitCase{rules=lits, dflt=dflt}
+		    then MixedCase{enums={rules=enums, hasDflt=false}, cons={rules=[], hasDflt=hasDflt}}
+		    else MixedCase{enums={rules=enums, hasDflt=hasDflt}, cons={rules=[], hasDflt=hasDflt}}
+	      | ([], lits, []) => LitCase{rules=lits, hasDflt=hasDflt}
 	      | ([], [], cons) =>
 		  if (nEnums = 0)
-		    then ConsCase{rules=cons, dflt=dflt}
+		    then ConsCase{rules=cons, hasDflt=hasDflt}
 		  else if (nCons = List.length cons)
-		    then MixedCase{enums={rules=[], dflt=dflt}, cons={rules=cons, dflt=NONE}}
-		    else MixedCase{enums={rules=[], dflt=dflt}, cons={rules=cons, dflt=dflt}}
+		    then MixedCase{enums={rules=[], hasDflt=hasDflt}, cons={rules=cons, hasDflt=false}}
+		    else MixedCase{enums={rules=[], hasDflt=hasDflt}, cons={rules=cons, hasDflt=hasDflt}}
 	      | (enums, [], cons) => let
-		  val enumsCase = {rules=enums, dflt = if (nEnums = List.length enums) then NONE else dflt}
-		  val consCase = {rules=cons, dflt = if (nCons = List.length cons) then NONE else dflt}
+		  val enumsCase = {rules=enums, hasDflt = (nEnums <> List.length enums)}
+		  val consCase = {rules=cons, hasDflt = (nCons <> List.length cons)}
 		  in
 		    MixedCase{enums=enumsCase, cons=consCase}
 		  end
+	      | _ => raise Fail "strange case"
 	    (* end case *)
 	  end
 
@@ -162,7 +164,6 @@ structure CaseSimplify : sig
    end (* local *)
 
     fun numEnumsOfTyc (BTy.DataTyc{nNullary, ...}) = nNullary
-    fun numConsOfTyc (BTy.DataTyc{cons, ...}) = List.length(!cons)
 
     fun repOf (B.DCon{rep, ...}) = rep
     fun nameOfDCon (B.DCon{name, ...}) = name
@@ -372,16 +373,6 @@ DEBUG*)
     and xformCase (s : BU.subst, tys : B.ty list, x, rules : (B.pat * B.exp) list, dflt) = let
 	  val argument = subst s x
 	  val dflt = Option.map (fn e => xformE(s, tys, e)) dflt
-	(* classify the rules into a list of those with enum patterns, a list
-	 * of literal patterns, and a list of data constructor patterns.
-	 *)
-	  fun classify ([], enums, lits, cons) = (enums, lits, cons)
-	    | classify ((B.P_Const(Lit.Enum w, ty), e)::rules, enums, lits, cons) =
-		classify (rules, (w, ty, e)::enums, lits, cons)
-	    | classify ((B.P_Const c, e)::rules, enums, lits, cons) =
-		classify (rules, enums, (c, e)::lits, cons)
-	    | classify ((B.P_DCon(dc, y), e)::rules, enums, lits, cons) =
-		classify (rules, enums, lits, (dc, y, e)::cons)
 	(* generate a case for a list of one or more data constructors, plus an
 	 * optional default case.
 	 *)
@@ -464,6 +455,57 @@ DEBUG*)
 		  (B.P_Const(Lit.Enum w, ty), xformE(s, tys, e))
 		end
 	  in
+	    case classifyCaseRules (BV.typeOf x, rules, dflt)
+	     of EnumCase{rules, ...} => B.mkCase(argument, List.map enumCase rules, dflt)
+	      | ConsCase{rules, ...} => consCase (rules, dflt)
+	      | MixedCase{enums, cons} => let
+		  val isBoxed = BV.new("isBoxed", BTy.boolTy)
+		  val boxedTest = if (numEnumsOfTyc(BTU.asTyc(BV.typeOf x)) = 1)
+			then let
+			(* when there is only one possible enum value, we just do
+			 * an equality test.
+			 *)
+			  val tmp = BV.new("t", BTy.T_Enum(0w0))
+			  in [
+			    ([tmp], B.E_Const(Lit.Enum 0w0, BTy.T_Enum(0w0))),
+			    ([isBoxed], B.E_Prim(Prim.NotEqual(argument, tmp)))
+			  ] end
+			else [([isBoxed], B.E_Prim(Prim.isBoxed argument))]
+		  val (optFB, dflt) = if (#hasDflt enums) andalso (#hasDflt cons)
+			then let
+			(* the default case is shared by both the boxed and unboxed
+			 * sub cases, so we have to wrap it in a function abstraction.
+			 *)
+			  val join = BV.new("join", BTy.T_Fun([], [], tys))
+			  val joinFB = B.FB{f=join, params=[], exh=[], body=valOf dflt}
+			  in
+			    (SOME joinFB, SOME(B.mkThrow(join, [])))
+			  end			  
+			else (NONE, dflt)
+		  val enumsCase = (case enums
+			 of {rules=[], hasDflt=true} => valOf dflt
+			  | {rules=[], hasDflt=false} => raise Fail "badly-formed sub-case"
+			  | {rules, hasDflt=true} => B.mkCase(argument, List.map enumCase rules, dflt)
+			  | {rules, hasDflt=false} => B.mkCase(argument, List.map enumCase rules, NONE)
+			(* end case *))
+		  val consCase = (case cons
+			 of {rules=[], hasDflt=true} => valOf dflt
+			  | {rules=[], hasDflt=false} => raise Fail "badly-formed sub-case"
+			  | {rules, hasDflt=true} => consCase (rules, dflt)
+			  | {rules, hasDflt=false} => consCase (rules, NONE)
+			(* end case *))
+		  val e = B.mkStmts(boxedTest, B.mkIf(isBoxed, consCase, enumsCase))
+		  in
+		  (* add the join-continuation binding if needed *)
+		    case optFB
+		     of SOME fb => B.mkCont(fb, e)
+		      | NONE => e
+		    (* end case *)
+		  end
+	      | LitCase{rules, ...} => literalCase (s, tys, argument, rules, dflt)
+	    (* end case *)
+	  end
+(*****
 	    case classify (rules, [], [], [])
 	     of (enums, [], []) => B.mkCase(argument, List.map enumCase enums, dflt)
 	      | ([], lits, []) => literalCase (s, tys, argument, lits, dflt)
@@ -521,11 +563,10 @@ DEBUG*)
 				  List.map enumCase enums,
 				  SOME(B.mkThrow(join, []))))))
 			  end
-		    (* end case *)
-		  end
 	      | _ => raise Fail "strange case"
 	    (* end case *)
 	  end
+*****)
 
   (* convert a case on literals to a if-then-else tree; note that the default case
    * is required and has already been transformed.
