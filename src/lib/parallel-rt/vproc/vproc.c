@@ -51,8 +51,13 @@ extern int ASM_VProcSleep;
 #  define UC_R11(uc)	((uc)->uc_mcontext.gregs[REG_R11])
 #  define UC_RIP(uc)	((uc)->uc_mcontext.gregs[REG_RIP])
 #elif defined(TARGET_DARWIN)
-#  define UC_R11(uc)	((uc)->uc_mcontext->ss.r11)
-#  define UC_RIP(uc)	((uc)->uc_mcontext->ss.rip)
+#  if defined(__DARWIN_UNIX03)
+#    define UC_R11(uc)	((uc)->uc_mcontext->__ss.__r11)
+#    define UC_RIP(uc)	((uc)->uc_mcontext->__ss.__rip)
+#  else
+#    define UC_R11(uc)	((uc)->uc_mcontext->ss.r11)
+#    define UC_RIP(uc)	((uc)->uc_mcontext->ss.rip)
+#  endif
 #else
 #  error unsupported OS
 #endif
