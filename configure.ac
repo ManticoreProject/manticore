@@ -41,7 +41,7 @@ case $target_cpu in
   *) AC_MSG_ERROR([target cpu ${target_cpu} is not supported]) ;;
 esac
 case $target_os in
-  linux|linux-gnu) TARGET_OS=TARGET_LINUX; OS=linux ;;
+  linux|linux-gnu) TARGET_OS=TARGET_LINUX; OS=linux; LDFLAGS="$LDFLAGS -lm" ;;
   darwin*) TARGET_OS=TARGET_DARWIN; OS=darwin ;;
   *) AC_MSG_ERROR([target os ${target_os} is not supported]) ;;
 esac

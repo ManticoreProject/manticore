@@ -1,5 +1,5 @@
 val sqrt = sqrtd;
-fun expt a = let fun expt' b = powd(a, b) in expt' end;
+(*fun expt a = let fun expt' b = powd(a, b) in expt' end;*)
 val pi : double = 3.14159265359;
 (*
  *
@@ -80,7 +80,7 @@ datatype Surfspec
 fun ambientsurf surf = (case surf
        of nil => (0.0, 0.0, 0.0)
 	| (Ambient v :: ss) => (v : vec)
-	| (_ :: ss) => ambientsurf ss
+(*	| (_ :: ss) => ambientsurf ss*)
       (* end case *));
 fun diffusesurf surf = (case surf
        of nil => (0.0, 0.0, 0.0)
@@ -271,6 +271,7 @@ val dir = (0.0,0.0,1.0);
 val x = (Ambient pos) :: nil;
 val y = ambientsurf x;
 val sphere = Sphere((0.0,0.0,0.0), 0.5, s3);
-val (intersects,slo) = sphereintersect (pos, dir, sphere);
-print ((dtos slo)^"\n")
+(*val (intersects,slo) = sphereintersect (pos, dir, sphere);
+print ((dtos slo)^"\n") *)
 
+()
