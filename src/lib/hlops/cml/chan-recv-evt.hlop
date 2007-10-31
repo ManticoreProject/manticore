@@ -15,7 +15,7 @@ define @atomic-enqueue (tid : tid, fiber : fiber / exh : exh) : ();
 define @chan-dequeue-send (ch : chan / exh : exh) : option;
 define @chan-undequeue-send (ch : chan, item : sendq_item / _ : exh) : ();
 define @chan-enqueue-recv (ch : chan, flg : dirty_flag, tid : tid, k : cont(any) / _ : exh) : ();
-define inline @thread-exit ( / exh : exh) noreturn;
+define @dispatch (vp : vproc / exh : exh) noreturn;
 
 define @chan-recv-evt (ch : chan / _ : exh) : evt =
     fun pollFn (_ : unit / _ : exh) : bool =
@@ -60,7 +60,7 @@ define @chan-recv-evt (ch : chan / _ : exh) : evt =
 		    else (* the event was claimed, so undo the dequeue *)
 		      do @chan-undequeue-send(ch, item / exh)
 		      do @chan-release-lock (ch / exh)
-		      @thread-exit ( / exh)
+		      @dispatch (host_vproc / exh)
 	      | NONE => (* no luck, so block the receiver *)
 		  do @chan-enqueue-recv (ch, flg, tid, resumeK / exh)
 		  do @chan-release-lock (ch / exh)
