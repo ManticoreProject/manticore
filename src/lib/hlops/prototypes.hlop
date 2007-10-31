@@ -17,6 +17,8 @@ define @ltos (n : ml_long / exh : exh) : ml_string;
 define @string-lit (s : string_data, len : int) : ml_string;
 define @powf (arg : [ml_float, ml_float] / exh : exh) : ml_float;
 define @powd (arg : [ml_double, ml_double] / exh : exh) : ml_double;
+define @int-min (a : int, b : int / exh : exh) : int;
+define @int-max (a : int, b : int / exh : exh) : int;
 define @gettimeofday (_ : unit / _ : exh) : ml_double;
 
 define @list-rev (xs : list / exh : exh) : list;
@@ -26,6 +28,7 @@ define @fail (arg : ml_string / exh : exh) : any;
 define @rope-length (r : rope / exh : exh) : ml_int;
 define @rope-depth (r : rope / exh : exh) : ml_int;
 define @rope-sub (rn : [rope, ml_int] / exh : exh) : any;
+define @rope-sub-ml_int (rn : [rope, ml_int] / exh : exh) : ml_int;
 define @rope-sum (q : work_queue / exh : exh) : fun (rope / exh -> ml_int);
 define @rope-from-leaves (leaves : list / exh : exh) : rope;
 define @simple-cat (r1 : rope, r2 : rope / exh : exh) : rope;

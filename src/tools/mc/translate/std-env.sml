@@ -382,7 +382,7 @@ structure StdEnv : sig
 		  (B.powd,              "powd"),
 		  (B.gettimeofday,	"gettimeofday"),
                   (B.plen,              "rope-length"),
-		  (B.psub,              "rope-sub"),
+		  (B.psub,              "rope-sub-ml_int"),
 		  (U.sumPQ,             "rope-sum"),
 		  (U.tabulateD,         "tabulateD")
 		]  
