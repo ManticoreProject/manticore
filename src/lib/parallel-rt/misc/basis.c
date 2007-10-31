@@ -11,6 +11,7 @@
 #include "value.h"
 #include "heap.h"
 #include "../gc/gc-inline.h"
+#include <sys/time.h>
 #include <math.h>
 
 /* M_IntToString:
@@ -56,41 +57,6 @@ void M_Print (char *s)
     Say("[%2d] %s", VProcSelf()->id, s);
 }
 
-void M_PrintDebug (char *s)
-{
-  if (DebugFlg)
-    Say("[%2d] %s", VProcSelf()->id, s);  
-}
-
-void M_PrintPtr (char *name, void *ptr)
-{
-  Say("[%2d] &%s=%p\n", VProcSelf()->id, name, ptr);  
-}
-
-/* M_PrintLong:
- */
-void M_PrintLong (int64_t n)
-{
-    Say("%d", n);
-}
-
-/* M_PrintLong:
- */
-void M_PrintInt (int32_t n)
-{
-    Say("%d", n);
-}
-
-Value_t M_PrintFloat (float f)
-{
-  Say ("%f\n",f);
-}
-
-Value_t M_Die (char *message)
-{
-  Die ("%s\n", message);
-}
-
 /* M_StringConcat2:
  */
 Value_t M_StringConcat2 (Value_t a, Value_t b)
@@ -115,25 +81,78 @@ Value_t M_StringConcat2 (Value_t a, Value_t b)
 
 }
 
-Value_t M_Test () {
-  return Some(VProcSelf(), AllocUniform (VProcSelf(), 1, 2));
+/* M_GetTimeOfDay:
+ */
+double M_GetTimeOfDay ()
+{
+    struct timeval	now;
+
+    gettimeofday (&now, 0);
+
+    return (double)(now.tv_sec) + 0.000001 * (double)(now.tv_usec);
+
+}
+
+float M_Powf (float x, float y)
+{
+    return powf (x, y);
+}
+
+double M_Powd (double x, double y)
+{
+    return pow (x, y);
+}
+
+
+/***** functions to support debugging *****/
+
+Value_t M_Test ()
+{
+    return Some(VProcSelf(), AllocUniform (VProcSelf(), 1, 2));
 }
 
 void M_AssertNotLocalPtr (Value_t item)
 {
-    /* item must be a pointer in the global queue, and thus we can
-     * at least be sure that it is not in the local queue
-     */
-  if (inVPHeap ((Addr_t)VProcSelf(), (Addr_t)item)) {
-    Die ("Pointer %p is in the local heap when it should be in the global heap\n", item);
-  }
+  /* item must be a pointer in the global queue, and thus we can
+   * at least be sure that it is not in the local queue
+   */
+    if (inVPHeap ((Addr_t)VProcSelf(), (Addr_t)item)) {
+	Die ("Pointer %p is in the local heap when it should be in the global heap\n", item);
+    }
 
 }
 
-float M_Powf (float x, float y) {
-  return powf (x, y);
+Value_t M_Die (char *message)
+{
+    Die ("%s\n", message);
 }
 
-double M_Powd (double x, double y) {
-  return pow (x, y);
+void M_PrintDebug (char *s)
+{
+    if (DebugFlg)
+	Say("[%2d] %s", VProcSelf()->id, s);  
+}
+
+void M_PrintPtr (char *name, void *ptr)
+{
+    Say("[%2d] &%s=%p\n", VProcSelf()->id, name, ptr);  
+}
+
+/* M_PrintLong:
+ */
+void M_PrintLong (int64_t n)
+{
+    Say("%d", n);
+}
+
+/* M_PrintLong:
+ */
+void M_PrintInt (int32_t n)
+{
+    Say("%d", n);
+}
+
+Value_t M_PrintFloat (float f)
+{
+    Say ("%f\n",f);
 }
