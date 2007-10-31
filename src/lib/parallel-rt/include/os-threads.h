@@ -77,6 +77,20 @@ STATIC_INLINE int FetchAndDec (int *ptr)
 
 #else /* !HAVE_BUILTIN_ATOMIC_OPS */
 
+STATIC_INLINE Value_t CompareAndSwap (Value_t *ptr, Value_t old, Value_t new)
+{
+    register Value_t result __asm__ ("%rax");
+
+    __asm__ __volatile__ (
+	"movq %2,%%rbx\n\t"		/* %ebx = new */
+	"movq %1,%%rax\n\t"		/* %eax = 0 */
+	"lock; cmpxchgq %%rbx,%0;\n"	/* cmpxchg %ebx,ptr */
+	    : "=m" (*ptr)
+    	    : "g" (old), "g" (new)
+	    : "memory", "%rax");
+    return result;
+}
+
 STATIC_INLINE int TestAndSwap (int *ptr, int new)
 {
     register int result __asm__ ("%eax");

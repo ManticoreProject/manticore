@@ -52,8 +52,8 @@ extern int ASM_VProcSleep;
 #  define UC_RIP(uc)	((uc)->uc_mcontext.gregs[REG_RIP])
 #elif defined(TARGET_DARWIN)
 #  if defined(__DARWIN_UNIX03)
-#    define UC_R11(uc)	((uc)->uc_mcontext->__ss.__r11)
-#    define UC_RIP(uc)	((uc)->uc_mcontext->__ss.__rip)
+#    define UC_R11(uc)	((uc)->uc_mcontext->ss.r11)
+#    define UC_RIP(uc)	((uc)->uc_mcontext->ss.rip)
 #  else
 #    define UC_R11(uc)	((uc)->uc_mcontext->ss.r11)
 #    define UC_RIP(uc)	((uc)->uc_mcontext->ss.rip)
@@ -222,19 +222,18 @@ void VProcSleep (VProc_t *vp)
 	exit (0);
     }
     else {
+        Value_t item;
+
+        vp->idle = true;
 	MutexLock (&(vp->lock));
-	    vp->idle = true;
-	    while (vp->idle && (vp->entryQ == M_NIL)) {
+	    while (vp->entryQ == M_NIL) {
 		CondWait (&(vp->wait), &(vp->lock));
 	    }
 
-	    /* take the first element off the entryQ */
-	    assert (vp->entryQ != PtrToValue(M_NIL));
-	    Value_t item = vp->entryQ;
-            RdyQItem_t *q = ValueToRdyQItem(item);
-	    vp->entryQ = q->link;
-	    
-	    UnloadEntryQueue (vp);
+	    /* run the first fiber on the entry queue */
+	    item = EmptyEntryQ (vp);
+	    /* copy the rest of the entry queue to the local queue */
+	    UnloadEntryQueue (vp, ValueToRdyQItem(item)->link);
 #ifndef NDEBUG
         if (DebugFlg)
             SayDebug("[%2d] VProcSleep: waking up; cont = %p\n", vp->id, ValueToRdyQItem(item)->fiber);
@@ -323,19 +322,24 @@ void EnqueueOnVProc (VProc_t *self, VProc_t *vp, Value_t tid, Value_t fiber)
     if (DebugFlg)
 	SayDebug("[%2d] EnqueueOnVProc(-, %d, %p, %p)\n", self->id, vp->id, tid, fiber);
 #endif
-    MutexLock (&(vp->lock));
-      vp->entryQ = GlobalAllocUniform(self, 3, tid, fiber, vp->entryQ);
-      /* if the vproc is idle, then wake it up */
-        if (vp->idle) {
-	    vp->idle = false;
-	    CondSignal (&(vp->wait));
-	} 
-    MutexUnlock (&(vp->lock));
 
+    Value_t entryQOld = vp->entryQ;
+    Value_t entryQNew = GlobalAllocUniform(self, 3, tid, fiber, entryQOld);
+    do {
+      entryQOld = vp->entryQ;
+      ValueToRdyQItem(entryQNew)->link = entryQOld;
+    } while (CompareAndSwap (&(vp->entryQ), entryQOld, entryQNew) != entryQOld);
+
+    /* The vproc was idle before enqueuing, so wake it up */
+    if (entryQOld == M_NIL) {       
+      vp->idle = false;
+      CondSignal (&(vp->wait));
+    }
 } /* end of EnqueueOnVProc */
 
 /*! \brief Copy the elements from the VProc entry queue to the VProc local queue
  *  \param self the calling vproc
+ *  \param entryQ the vproc's entry queue
  *
  *  rdyQTl -> r3 -> r2 -> r1
  *  entryQ -> e3 -> e2 -> e1
@@ -343,20 +347,30 @@ void EnqueueOnVProc (VProc_t *self, VProc_t *vp, Value_t tid, Value_t fiber)
  *  rdyQTl -> r3 -> r2 -> r1 -> e3 -> e2 -> e1
  *  entryQ
  *
- * WARNING: this code should only be called when the vproc's lock is held!
  */
-void UnloadEntryQueue (VProc_t *self)
+void UnloadEntryQueue (VProc_t *self, Value_t entryQ)
 {
     RdyQItem_t *q = ValueToRdyQItem(self->rdyQTl);
     if (q == ValueToRdyQItem(M_NIL)) {
-      self->rdyQTl = PtrToValue(self->entryQ);
+      self->rdyQTl = PtrToValue(entryQ);
     } else {
       while (q->link != M_NIL) {
 	q = ValueToRdyQItem(q->link);
       }
-      q->link = self->entryQ;
+      q->link = entryQ;
     }
-    self->entryQ = M_NIL;
+}
+
+/*! \brief Take the elements off the ready queue.
+ *  \param vp the calling vproc
+ *  \return the head of the entry queue
+ */
+Value_t EmptyEntryQ (VProc_t *vp) {
+    Value_t item;
+    do {
+      item = vp->entryQ;
+    } while (CompareAndSwap (&(vp->entryQ), item, M_NIL) != item);
+    return item;
 }
 
 /*! \brief dequeue a fiber from the secondary scheduling queue or else go idle.
@@ -374,9 +388,7 @@ Value_t VProcDequeue (VProc_t *self)
 	SayDebug("[%2d] VProcDequeue called\n", self->id);
 #endif
 
-    MutexLock (&(self->lock));
-      UnloadEntryQueue (self);
-    MutexUnlock (&(self->lock));
+    UnloadEntryQueue (self, EmptyEntryQ (self));
 
     if (self->rdyQTl == M_NIL) {
       /* the local queue is empty, so return an item that will put us to sleep */
