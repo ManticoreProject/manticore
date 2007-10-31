@@ -18,18 +18,18 @@
         | DDARROW       ("==>")
         | ID of Atom.atom
         | HLOP of Atom.atom
-        | NUM of InfInt.int
+        | NUM of IntInf.int
         ;
 
 %defs(
-      structure RW = Rewrites
 
       val zero = IntInf.fromInt 0
 
-      val label_counter = 0 ref
+      val label_counter = ref 0
 
       fun new_label () = let
-          val ret_val = "$rewrite" ^ (Int.toString !label_counter)
+          val ret_val = Atom.atom ("$rewrite" ^
+                                   (Int.toString (!label_counter)))
       in
           label_counter := !label_counter + 1;
           ret_val
@@ -39,29 +39,29 @@
 
 File
         : Rewrite*
-                => ( Rewrite )
+                => ( Rewrite : HLRWDefPT.file )
         ;
 
 Rewrite
         : LabelOpt Pattern DDARROW Pattern Benefit ";"
-                => ( RW.Rewrite {label = LabelOpt,
-                                 lhs = Pattern1,
-                                 rhs = Pattern2,
-                                 weight = Benefit} )
+                => ( HLRWDefPT.Rewrite {label = LabelOpt,
+                                        lhs = Pattern1,
+                                        rhs = Pattern2,
+                                        weight = Benefit} )
         ;
 
 LabelOpt
         : (* empty *)
                 => ( new_label () )
-        | ID
+        | ID COLON
                 => ( ID )
         ;
 
 Pattern
         : IdOrHLOp LP PatternArgs RP
-                => ( RW.Call(IdOrHLOp, PatternArgs) )
+                => ( HLRWDefPT.Call(IdOrHLOp, PatternArgs) )
         | ID
-                => ( RW.Var ID )
+                => ( HLRWDefPT.Var ID )
         ;
 
 PatternArgs

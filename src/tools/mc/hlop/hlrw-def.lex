@@ -35,17 +35,28 @@
 %let hlid = "@"{letter}({idchar}|"-")*;
 %let eol = "\n"|"\r\n"|"\r";
 %let ws = " "|[\t\v\f];
+%let sgood = [\032-\126]&[^\"\\]; (* sgood means "characters good inside strings" *)
+%let filename = "\""{sgood}*"\"";
+
+<INITIAL>"#"{ws}*{dig}+{ws}+{filename}({ws}+{dig}+)*{eol} => (
+	case RunCPP.parseLineDirective yytext
+	 of SOME{lineNo, fileName} => 
+	      AntlrStreamPos.resynch yysm (yypos, {fileName=fileName, lineNo=lineNo, colNo=1})
+	  | _ => ()
+	(* end case *);
+	skip());
 
 <INITIAL>"("            => (T.LP);
 <INITIAL>")"            => (T.RP);
 <INITIAL>"{"            => (T.LBRKT);
 <INITIAL>"}"            => (T.RBRKT);
 <INITIAL>";"            => (T.SEMI);
+<INITIAL>":"            => (T.COLON);
 <INITIAL>","            => (T.COMMA);
 <INITIAL>"==>"          => (T.DDARROW);
 <INITIAL>{id}           => (T.ID (Atom.atom yytext));
 <INITIAL>{hlid}         => (T.HLOP (Atom.atom yytext));
-<INITIAL>{num}          => (T.NUM(valOf (InfInt.fromString yytext)));
+<INITIAL>{num}          => (T.NUM(valOf (IntInf.fromString yytext)));
 <INITIAL>{ws}           => (skip());
 <INITIAL>"(*"           => (YYBEGIN COMMENT; depth := 1; skip());
 <INITIAL>{eol}          => (AntlrStreamPos.markNewLine yysm yypos; skip());

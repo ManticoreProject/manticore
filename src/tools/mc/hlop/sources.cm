@@ -8,6 +8,8 @@ Library
 
   structure HLOpDefLoader
   structure HLOpEnv
+  structure HLRWDefLoader
+  structure Rewrites
 
 is
 
@@ -33,4 +35,6 @@ is
   loader-fn.sml
   expand.sml
   paths.sml
+  hlrw-def-pt.sml
+  hlrw-def-loader.sml
   rewrites.sml

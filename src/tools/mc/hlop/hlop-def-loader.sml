@@ -20,6 +20,8 @@ structure HLOpDefLoader : sig
     type import_env = BOM.var CFunctions.c_fun AtomTable.hash_table
 
     val loadPrototypes : unit -> unit
+(* FIXME: Check that this extension of HLOpDefLoader is acceptable. *)
+    val loadRewrites : HLOp.hlop -> Atom.atom list
     val load : (import_env * HLOp.hlop) -> hlop_def
 
   end = struct
@@ -82,6 +84,25 @@ structure HLOpDefLoader : sig
 	      end
 	 (* end case *)
        end (* loadPrototypes *)
+
+(* FIXME: loadRewrites() should either tie into the existing cache or
+   use its own, that can be used later by load(). *)
+
+   fun loadRewrites (hlOp : HLOp.hlop) = let
+       val opName = HLOp.name hlOp
+       val fileName = OS.Path.joinBaseExt{base=Atom.toString opName,
+                                          ext=SOME "hlop"}
+   in
+       case Loader.load fileName
+        of SOME (HLOpDefPT.FILE defs) => let
+               fun filterRWs (HLOpDefPT.RWImport atomList) = atomList
+                 | filterRWs (_) = []
+           in
+               List.concat (List.map filterRWs defs)
+           end
+         | NONE => raise Fail("unable to load definition for @" ^
+                              Atom.toString opName)
+   end (* loadRewrites *)
 
   (* a cache of previously loaded definitions *)
     val cache : hlop_def ATbl.hash_table = ATbl.mkTable (128, Fail "HLOpDef table")

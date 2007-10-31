@@ -17,7 +17,7 @@ case $1 in
 esac
 
 if test -d $1 ; then
-  find $1 \( -name "*.hlop" -o -name "*.rw" \) -print > $1/.cache
+  find $1 \( -name "*.hlop" -o -name "*.hlrw" \) -print > $1/.cache
   exit 0
 else
   echo "make-file-cache: \"$1\" is not a directory"

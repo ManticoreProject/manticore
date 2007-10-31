@@ -439,6 +439,8 @@
 		      end
 		(* end case *);
 		env)
+(* FIXME: I don't know if rewrites should extend this environment or not. -JDR *)
+	    | insDef (PT.RWImport(_), env) = env
 	  val env = List.foldl insDef (emptyEnv fileName) defs
 	(* this is the second pass, which converts actual HLOp definitions to BOM lambdas *)
 	  fun cvtDefs [] = []

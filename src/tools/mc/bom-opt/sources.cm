@@ -29,6 +29,7 @@ is
   contract.sml
   uncurry.sml
   expand-hlops.sml
+  rewrite-hlops.sml
   inline.sml
   let-float.sml
   literal-case-fn.sml

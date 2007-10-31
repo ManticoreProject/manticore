@@ -49,6 +49,7 @@
 	| KW_throw	("throw")
 	| KW_typedef	("typedef")
 	| KW_unwrap	("unwrap")
+        | KW_use_rw     ("use_rw")
 	| KW_vec128	("vec128")
 	| KW_void	("void")
 	| KW_vproc	("vproc")
@@ -116,6 +117,8 @@ Definition
 		=> (let val (p1, p2) = FunParams in
 		      PT.Define(optInline, HLOP, p1, p2, ReturnTy, SR)
 		    end)
+        | "use_rw" (ID ("," ID)*)? ";"
+                => (PT.RWImport (flatten SR))
 	;
 
 CRetTy

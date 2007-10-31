@@ -8,6 +8,8 @@
 
 #include "types.def"
 
+use_rw strings;
+
 extern void *M_StringConcat2 (void *, void *) __attribute__((pure,alloc));
 
 define inline @string-concat2 (arg : [ml_string, ml_string] / _ : exh) : ml_string =

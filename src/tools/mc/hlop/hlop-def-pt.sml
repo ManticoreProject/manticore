@@ -21,6 +21,7 @@
       = Extern of Atom.atom CFunctions.c_fun
       | TypeDef of Atom.atom * ty
       | Define of (bool * var * var_pat list * var_pat list * ty list option * exp option)
+      | RWImport of Atom.atom list
 
     and exp
       = Let of (var_pat list * rhs * exp)

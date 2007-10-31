@@ -1,0 +1,15 @@
+(* strings.hlrw
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * String related high level rewrites.
+ *)
+
+string_concat2_left : @string-concat2( @string-concat2(x, y), z ) ==>
+                      @string-concat-list( cons(x, cons(y, cons(z, nil()))))
+                      { 1 };
+
+string_concat2_right : @string-concat2( x, @string-concat2(y, z) ) ==>
+                       @string-concat-list( cons(x, cons(y, cons(z, nil()))) )
+                       { 1 };

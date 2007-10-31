@@ -29,17 +29,24 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 	    xform'
 	  end
 
-    val expand = BasicControl.mkKeepPass {
+    fun moduleOptOutput (out, NONE) = ()
+      | moduleOptOutput (out, SOME p) = PrintBOM.output (out, p)
+
+    fun mkModuleOptPass (passName, pass) = BasicControl.mkKeepPass {
 	    preOutput = PrintBOM.output,
 	    preExt = "bom",
-	    postOutput = fn (out, NONE) => () | (out, SOME p) => PrintBOM.output (out, p),
+	    postOutput = moduleOptOutput,
 	    postExt = "bom",
-	    passName = "expand",
-	    pass = ExpandHLOps.expand,
+	    passName = passName,
+	    pass = pass,
 	    registry = BOMOptControls.registry
 	  }
 
+    val expand = mkModuleOptPass ("expand", ExpandHLOps.expand)
+
     val contract = transform {passName = "contract", pass = Contract.contract}
+
+    val rewrite = mkModuleOptPass ("rewrite", RewriteHLOps.rewrite)
 
     fun expandAll module = (case expand module
 	   of SOME module => let
@@ -52,9 +59,21 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 	    | NONE => module
 	  (* end case *))
 
+    fun rewriteAll module = (case rewrite module
+	   of SOME module => let
+		val _ = CheckBOM.check ("rewrite-all:rewrite", module)
+		val module = contract module
+		val _ = CheckBOM.check ("rewrite-all:contract", module)
+		in
+		  rewriteAll module
+		end
+	    | NONE => module
+	  (* end case *))
+
     val uncurry = transform {passName = "uncurry", pass = Uncurry.transform}
     val inline = transform {passName = "inline", pass = Inline.transform}
     val caseSimplify = transform {passName = "case-simplify", pass = CaseSimplify.transform}
+    val rewriteAll = transform {passName = "rewrite-all", pass = rewriteAll}
     val expandAll = transform {passName = "expand-all", pass = expandAll}
 
     fun optimize module = let
@@ -63,6 +82,7 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 	  val module = contract module
 	  val module = inline module  
 	  val module = contract module
+          val module = rewriteAll module
 	  val module = expandAll module
 	  val module = inline module
 	  val module = contract module  

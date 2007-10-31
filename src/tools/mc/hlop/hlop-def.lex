@@ -105,6 +105,7 @@
 		  ("throw",	T.KW_throw),
 		  ("typedef",	T.KW_typedef),
 		  ("unwrap",	T.KW_unwrap),
+                  ("use_rw",    T.KW_use_rw),
 		  ("vec128",	T.KW_vec128),
 		  ("void",	T.KW_void),
 		  ("vproc",	T.KW_vproc),
