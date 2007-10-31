@@ -6,10 +6,12 @@
 
 #include "types.def"
 
-extern double pow (double, double) __attribute((pure));
+extern double M_Powd (double, double) __attribute((pure));
 
 define @double-pow (arg : (ml_double, ml_double) / exh : exh) : ml_double =
-    let y = ccall pow (unwrap(#1(arg)), unwrap(#2(arg)))
-    let res : ml_double = wrap(y)
+    let x : [double] = #0(arg)
+    let y : [double] = #1(arg)
+    let res : double = ccall M_Powd (unwrap (x), unwrap (y))
+    let res : ml_double = wrap(res)
       return res
 ;

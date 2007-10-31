@@ -6,10 +6,12 @@
 
 #include "types.def"
 
-extern float powf (float, float) __attribute((pure));
+extern float M_Powf (float, float) __attribute((pure));
 
 define @float-pow (arg : (ml_float, ml_float) / exh : exh) : ml_float =
-    let y = ccall powf(unwrap(#1(arg)), unwrap(#2(arg)))
-    let res : ml_float = wrap(y)
+    let x : [float] = #0(arg)
+    let y : [float] = #1(arg)
+    let res : float = ccall M_Powf (unwrap (x), unwrap (y))
+    let res : ml_float = wrap(res)
       return res
 ;
