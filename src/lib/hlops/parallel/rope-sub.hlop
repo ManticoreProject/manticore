@@ -20,8 +20,8 @@ define @rope-sub (rn : [rope, ml_int] / exh : exh) : any =
              then return (x)
              else 
                let newN : int = I32Sub (n, 1)
-               let res : any = apply getFromList (xs, newN / exh)
-               return (res)
+               let res1 : any = apply getFromList (xs, newN / exh)
+               return (res1)
     end
   fun getFromRope (r : rope, n : int / exh : exh) : any =
     case r
@@ -30,8 +30,8 @@ define @rope-sub (rn : [rope, ml_int] / exh : exh) : any =
            let foundIt : bool = I32Lt (n, len)
            if foundIt
              then 
-               let res : any = apply getFromList (data, n / exh)
-               return (res)
+               let res2 : any = apply getFromList (data, n / exh)
+               return (res2)
              else (* FIXME *)
                let WrongLeaf : exn = (exn)$0
                throw exh (WrongLeaf)
@@ -40,16 +40,16 @@ define @rope-sub (rn : [rope, ml_int] / exh : exh) : any =
           let onTheLeft : bool = I32Lt (n, len)
             if onTheLeft
               then
-                let res : any = apply getFromRope (r1, n / exh)
-                return (res)
+                let res3 : any = apply getFromRope (r1, n / exh)
+                return (res3)
               else
                 let newN : int = I32Sub (n, len)
-                let res : any = apply getFromRope (r2, newN / exh)
-                return (res)
+                let res4 : any = apply getFromRope (r2, newN / exh)
+                return (res4)
       end
   let r : rope = #0(rn)
   let mln : ml_int = #1(rn)
   let n : int = #0(mln)
-  let res : any = apply getFromRope (r, n / exh)
-  return (res)
+  let res5 : any = apply getFromRope (r, n / exh)
+  return (res5)
 ;

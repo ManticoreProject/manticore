@@ -19,11 +19,16 @@ define @powf (arg : [ml_float, ml_float] / exh : exh) : ml_float;
 define @powd (arg : [ml_double, ml_double] / exh : exh) : ml_double;
 define @gettimeofday (_ : unit / _ : exh) : ml_double;
 
+define @list-rev (xs : list / exh : exh) : list;
+
 define @fail (arg : ml_string / exh : exh) : any;
 
 define @rope-length (r : rope / exh : exh) : ml_int;
 define @rope-sub (rn : [rope, ml_int] / exh : exh) : any;
 define @rope-sum (q : work_queue / exh : exh) : fun (rope / exh -> ml_int);
+
+define @tabulateS (f : fun (ml_int / exh -> any), ml_lo : ml_int, ml_hi : ml_int / exh : exh) : list;
+define @tabulateD (args : [fun (ml_int / exh -> any), work_queue, ml_int, ml_int, ml_int] / exh : exh) : rope;
 
 define @dispatch-action (act : sigact, dst : vproc / exh : exh) : ();
 define @default-scheduler-startup ( / exh : exh) : ();

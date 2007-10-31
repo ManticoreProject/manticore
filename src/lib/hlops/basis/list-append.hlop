@@ -8,7 +8,6 @@
 
 #include "types.def"
 
-
 define inline @list-append (arg : [list, list] / exh : exh) : list =
 
   fun listAppendLoop (l1 : list, l2 : list / exh : exh) : list =
