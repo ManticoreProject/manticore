@@ -377,6 +377,7 @@ structure StdEnv : sig
 		  (B.itos,		"itos"),
 		  (B.ltos,		"ltos"),
 		  (B.fail,		"fail"),
+		  (B.rev,               "list-rev"),
 		  (B.powf,              "powf"),
 		  (B.powd,              "powd"),
 		  (B.gettimeofday,	"gettimeofday"),
