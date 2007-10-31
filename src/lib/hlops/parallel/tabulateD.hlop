@@ -10,26 +10,30 @@
 #include "futures.def"
 #include "ropes.def"
 
+extern void M_Print (void*);
+
 define @tabulateD (args : [(* f *) fun (ml_int / exh -> any),
                            (* q *) work_queue, 
                            (* ml_leafSize *) ml_int,
                            (* ml_lo *) ml_int, 
                            (* ml_hi *) ml_int] / exh : exh) : rope =
+
   let f : fun (ml_int / exh -> any) = #0(args)
   let q : work_queue = #1(args)
   let ml_leafSize : ml_int = #2(args)
   let ml_lo : ml_int = #3(args)
   let ml_hi : ml_int = #4(args)
+
   let leafSize : int = #0(ml_leafSize)
+  let lo : int = #0(ml_lo)
   let hi : int = #0(ml_hi)
-  fun min (a : int, b : int / exh : exh) : int =
-    let chooseA : bool = I32Lt (a, b)
-    if chooseA
-      then return (a)
-      else return (b)
+
   fun mkLeaf (lo : int / exh : exh) : rope = 
-    let loPlusLeaf : int = I32Add (lo, leafSize)
-    let upperLim : int = apply min (loPlusLeaf, hi / exh)
+    let upperLimCand : int = 
+      let loPlusLeaf : int = I32Add (lo, leafSize)
+      let c : int = I32Sub (loPlusLeaf, 1)
+      return (c)
+    let upperLim : int = @int-min (upperLimCand, hi / exh)
     let ml_lo : ml_int = alloc (lo)
     let ml_upperLim : ml_int = alloc (upperLim)
     let data : list = @tabulateS (f, ml_lo, ml_upperLim / exh)
@@ -39,7 +43,8 @@ define @tabulateD (args : [(* f *) fun (ml_int / exh -> any),
       return (t2)
     let ml_len : ml_int = alloc (len)
     return (LEAF (ml_len, data))
-  (* returns a *backward* list of leaf futures *)
+
+  (* returns a *backwards* list of leaf futures *)
   fun build (lo : int, leafFutures : list / exh : exh) : list = 
     let done : bool = I32Gt (lo, hi)
     if done
@@ -55,6 +60,7 @@ define @tabulateD (args : [(* f *) fun (ml_int / exh -> any),
         let newAcc : list = CONS (fut, leafFutures)
         let buildRes : list = apply build (newLo, newAcc / exh)
         return (buildRes)
+
   (* Note: The futures come into this function *backwards*. 
    * Thus the accumulator need not be reversed before returning. 
    * Returns a list of leaves, in left to right order,
@@ -75,11 +81,16 @@ define @tabulateD (args : [(* f *) fun (ml_int / exh -> any),
        end
     let res : list = apply ta (futures, NIL / exh)
     return (res)          
-  let lo : int = #0(ml_lo)
+
+  do ccall M_Print ("tabulateD: about to build leaves...\n\000")
+
   let leaves : list = 
     let futs : list = apply build (lo, NIL / exh)
     let ls : list = apply touchAll (futs / exh)
     return (ls)
+
+  do ccall M_Print ("tabulateD: done building leaves...\n\000")
+
   let finalRes : rope = @rope-from-leaves (leaves / exh)
   return (finalRes)  
 ;

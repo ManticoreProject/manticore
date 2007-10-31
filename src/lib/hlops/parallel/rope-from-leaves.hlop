@@ -9,23 +9,40 @@
 #include "types.def"
 #include "ropes.def"
 
+extern void M_Print (void*);
+
 define @rope-from-leaves (leaves : list / exh : exh) : rope =
-  fun build (rs : list / exh : exh) : rope =
+  fun catPairs (rs : list / exh : exh) : list =
     case rs
-      of NIL => let EmptyList : exn = (exn)$0 (* FIXME *)
-                throw exh (EmptyList)
+      of NIL => return (NIL)
        | CONS (r1 : rope, tail1 : list) =>
            case tail1
-             of NIL => return (r1)
+             of NIL => 
+                  do ccall M_Print ("rope-from-leaves 1\n\000")
+                  return (rs)
               | CONS (r2 : rope, tail2 : list) =>
+                  do ccall M_Print ("rope-from-leaves 2\n\000")
                   let cat : rope = @simple-cat (r1, r2 / exh)
-                  let newTail : rope = apply build (tail2 / exh)
+                  let newTail : rope = apply catPairs (tail2 / exh)
                   let newList : list = CONS (cat, newTail)
-                  let res : rope = apply build (newList / exh)
-                  return (res)
+                  return (newList)
            end
     end
-  let answer : rope = apply build (leaves / exh)
-  return (answer)
+  fun fromList (rs : list / exh : exh) : rope =
+    case rs
+      of NIL => 
+           let zero : ml_int = alloc (0)
+           return (LEAF (zero, NIL))
+       | CONS (q : rope, qs : list) =>
+           case qs
+             of NIL => return (q)
+              | CONS (s : rope, ss : list) =>
+                  let cat : list = apply catPairs (rs / exh)
+                  let res : rope = apply fromList (cat / exh)
+                  return (res)
+           end
+     end
+  let r : rope = apply fromList (leaves / exh)
+  return (r)
 ;
 

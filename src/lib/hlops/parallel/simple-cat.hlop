@@ -10,11 +10,6 @@
 #include "ropes.def"
 
 define @simple-cat (r1 : rope, r2 : rope / exh : exh) : rope =
-  fun max (a : int, b : int / exh : exh) : int =
-    let chooseA : bool = I32Gt (a, b)
-    if chooseA 
-      then return (a) 
-      else return (b)
   let ml_n : ml_int =
     let ml_n1 : ml_int = @rope-length (r1 / exh)
     let ml_n2 : ml_int = @rope-length (r2 / exh)
@@ -28,7 +23,7 @@ define @simple-cat (r1 : rope, r2 : rope / exh : exh) : rope =
     let ml_d2 : ml_int = @rope-depth (r2 / exh)
     let d1 : int = #0(ml_d1)
     let d2 : int = #0(ml_d2)
-    let maxD : int = apply max (d1, d2 / exh)
+    let maxD : int = @int-max (d1, d2 / exh)
     let newD : int = I32Add (maxD, 1)
     let allocD : ml_int = alloc (newD)
     return (allocD)
