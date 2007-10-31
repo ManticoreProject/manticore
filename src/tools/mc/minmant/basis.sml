@@ -175,6 +175,7 @@ structure Basis : sig
     val fail		: AST.var
     val plen            : AST.var
     val sumP            : AST.var
+    val rev             : AST.var
     val gettimeofday	: AST.var
 
   (* environments *)
@@ -533,6 +534,7 @@ structure Basis : sig
     val fail =		polyVar'(N.fail, fn tv => stringTy --> tv)
     val plen =          polyVar'(N.plen, fn tv => (parrayTy tv) --> intTy)
     val sumP =          monoVar'(N.sumP, (parrayTy intTy) --> intTy)
+    val rev =           polyVar'(N.rev, fn tv => listTy tv --> listTy tv)
     val gettimeofday =	monoVar'(N.gettimeofday, unitTy --> doubleTy)
 (*
     val size =		monoVar(N.size, stringTy --> intTy)
