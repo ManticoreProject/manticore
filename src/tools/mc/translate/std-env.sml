@@ -369,18 +369,19 @@ structure StdEnv : sig
 	    env
 	  end
 
-  (* enrich env0 with HLOP signatures in prototypes.hlop *)
+  (* enrich env0 with HLOP signatures from prototypes.hlop *)
     fun env () = let
 	  val hlops =  [
 		  (B.print,		"print"),
 		  (B.stringConcat,	"string-concat2"),
 		  (B.itos,		"itos"),
 		  (B.ltos,		"ltos"),
-                  (B.plen,              "rope-length"),
-		  (B.psub,              "rope-sub"),
 		  (B.fail,		"fail"),
 		  (B.powf,              "powf"),
 		  (B.powd,              "powd"),
+		  (B.gettimeofday,	"gettimeofday"),
+                  (B.plen,              "rope-length"),
+		  (B.psub,              "rope-sub"),
 		  (U.sumPQ,             "rope-sum")
 		]  
 	  fun ins ((x, n), env) = (case H.find (Atom.atom n)
