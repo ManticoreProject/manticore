@@ -16,7 +16,7 @@ structure TranslateParr (* : sig
     structure B = Basis
     structure R = Ropes
 
-    val maxLeafSize = 4 (* This is for testing purposes. *)
+    val maxLeafSize = Ropes.maxLeafSize
 
     datatype 'a leaf 
       = Lf of (int * 'a list)

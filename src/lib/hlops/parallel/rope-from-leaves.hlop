@@ -1,0 +1,31 @@
+(* rope-from-leaves.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Creates a balanced rope from a list of leaves.
+ *)
+
+#include "types.def"
+#include "ropes.def"
+
+define @rope-from-leaves (leaves : list / exh : exh) : rope =
+  fun build (rs : list / exh : exh) : rope =
+    case rs
+      of NIL => let EmptyList : exn = (exn)$0 (* FIXME *)
+                throw exh (EmptyList)
+       | CONS (r1 : rope, tail1 : list) =>
+           case tail1
+             of NIL => return (r1)
+              | CONS (r2 : rope, tail2 : list) =>
+                  let cat : rope = @simple-cat (r1, r2 / exh)
+                  let newTail : rope = apply build (tail2 / exh)
+                  let newList : list = CONS (cat, newTail)
+                  let res : rope = apply build (newList / exh)
+                  return (res)
+           end
+    end
+  let answer : rope = apply build (leaves / exh)
+  return (answer)
+;
+

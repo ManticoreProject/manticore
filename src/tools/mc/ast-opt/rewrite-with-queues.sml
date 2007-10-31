@@ -19,8 +19,6 @@ structure RewriteWithQueues : sig
     structure T = Types
     structure U = UnseenBasis
  		
-    val changed = ref false
-	 
   (* FIXME This obviously wants to be developed into a more general mechanism. *)
 
   (* isSumP : A.var -> bool *)
@@ -32,8 +30,7 @@ structure RewriteWithQueues : sig
   (* transform : A.exp -> A.var * A.ty list -> A.exp option *)
     fun transform q (x, ts) =
 	  if isSumP x
-	  then (changed := true; 
-		SOME (sumP (q, TypeOf.exp (A.VarExp (x, ts)))))
+	  then SOME (sumP (q, TypeOf.exp (A.VarExp (x, ts))))
 	  else NONE
 	
   end

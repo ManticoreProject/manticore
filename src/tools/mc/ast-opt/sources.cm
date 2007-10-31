@@ -21,6 +21,7 @@ Library
   structure RewriteWithQueues
   structure Ropes
   structure TestUtils	
+  structure TranslatePComp
   structure TranslatePtup
   structure TypeOf	
   structure Unpar
@@ -49,6 +50,7 @@ is
   rewrite-with-queues.sml
   ropes.sml
   test-utils.sml
+  translate-pcomp.sml
   translate-ptup.sml
   unpar.sml
   unseen-basis.sml

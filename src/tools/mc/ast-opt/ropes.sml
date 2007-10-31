@@ -6,6 +6,7 @@
 
 structure Ropes : sig
 
+    val maxLeafSize  : int
     val ropeTyc      : Types.tycon
     val ropeTy       : Types.ty -> Types.ty
     val rope         : Atom.atom
@@ -19,6 +20,8 @@ structure Ropes : sig
     structure A = AST
     structure B = Basis
     structure T = Types
+
+    val maxLeafSize = 4 (* This is currently small, for testing purposes. *)
 
     val rope = Atom.atom "rope"
 	       

@@ -45,8 +45,7 @@ structure GrandPass : sig
 	      | NONE => A.TupleExp (map exp es)
 	    (* end case *))
       | exp (A.PArrayExp (es, t)) = A.PArrayExp (map exp es, t)
-      | exp (A.PCompExp (e, pes, oe)) = 
-	  A.PCompExp (e, map (fn (p,e) => (p, exp e)) pes, Option.map exp oe)
+      | exp (A.PCompExp (e, pes, oe)) = (needsQ := true; trPComp (e, pes, oe))
       | exp (A.PChoiceExp (es, t)) = A.PChoiceExp (map exp es, t)
       | exp (A.SpawnExp e) = A.SpawnExp (exp e)
       | exp (k as A.ConstExp _) = k
@@ -69,6 +68,8 @@ structure GrandPass : sig
     and trPTup arg = TranslatePtup.tr exp workQ arg
 
     and trVar arg = RewriteWithQueues.transform workQ arg
+
+    and trPComp arg = TranslatePComp.tr exp workQ arg
 
   (* includeQ : A.module -> A.module *)
   (* Prepend module m with the appropriate let bindings to include the workQueue. *)

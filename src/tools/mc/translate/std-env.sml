@@ -383,7 +383,8 @@ structure StdEnv : sig
 		  (B.gettimeofday,	"gettimeofday"),
                   (B.plen,              "rope-length"),
 		  (B.psub,              "rope-sub"),
-		  (U.sumPQ,             "rope-sum")
+		  (U.sumPQ,             "rope-sum"),
+		  (U.tabulateD,         "tabulateD")
 		]  
 	  fun ins ((x, n), env) = (case H.find (Atom.atom n)
 		of NONE => raise Fail ("cannot find hlop " ^ n)
