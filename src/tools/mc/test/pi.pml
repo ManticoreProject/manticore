@@ -1,4 +1,4 @@
-fun pow1Neg n = if (n mod 2) = 0 then 1.0 else ~1.0;
+fun pow1Neg n = powf (~1.0, itof n);
 
 fun pi n = let
     fun loop (i, acc) = if i >= n
@@ -8,6 +8,7 @@ fun pi n = let
            val k = itof i
            val b = k * 2.0 + 1.0
            in
+               print ( (ftos acc) ^ "\n");
 	       loop (i+1, acc + (a / b))
            end
      in
@@ -15,6 +16,6 @@ fun pi n = let
      end
 ;
 
-val iterations = 1000000;
+val iterations = 1000;
 
 print ("pi approximation: "^ftos (pi iterations)^" for "^itos iterations^" iterations \n")

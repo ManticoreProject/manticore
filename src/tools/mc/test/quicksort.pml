@@ -18,9 +18,19 @@ fun filter (g, ls) = let
 fun intListToString ls = let
     fun loop (ls, acc) =  (case ls
         of nil => acc
-(* FIXME: bug / missing feature in match compiler fails on this case *)
-(*	 | x :: y :: nil => acc ^ (itos x) ^ ", " ^ (itos y)*)
+	 | x :: y :: nil => acc ^ (itos x) ^ ", " ^ (itos y)
 	 | x :: xs => loop (xs, acc ^ (itos x) ^ ", ")
+        (* end case *))
+    in
+       "[" ^ loop (ls, "") ^ "]"
+    end
+;
+
+fun floatListToString ls =  let
+    fun loop (ls, acc) =  (case ls
+        of nil => acc
+	 | x :: y :: nil => acc ^ (ftos x) ^ ", " ^ (ftos y)
+	 | x :: xs => loop (xs, acc ^ (ftos x) ^ ", ")
         (* end case *))
     in
        "[" ^ loop (ls, "") ^ "]"
@@ -45,5 +55,6 @@ fun qs xs = (case xs
     (* end case *));
 
 val xs = 4::3::2::1::nil;
+val ys = 4.0::3.0::2.0::1.0::nil;
 
-print ( (intListToString (qs xs)) ^ "\n")
+print ( (floatListToString (qs ys)) ^ "\n")

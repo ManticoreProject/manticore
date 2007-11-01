@@ -100,7 +100,10 @@ functor AMD64GenFn (structure Spec : TARGET_SPEC) =
      )
 
     structure AMD64SpillLoc = SpillLocFn (structure Frame=AMD64Frame)
-    structure BlockPlacement = DefaultBlockPlacement (AMD64CFG)
+(*    structure BlockPlacement = DefaultBlockPlacement (AMD64CFG)*)
+    structure BlockPlacement = WeightedBlockPlacementFn (
+            structure CFG = AMD64CFG
+            structure InsnProps = AMD64Props)
 
     structure JumpChainElim = JumpChainElimFn (
 	       structure CFG = AMD64CFG
