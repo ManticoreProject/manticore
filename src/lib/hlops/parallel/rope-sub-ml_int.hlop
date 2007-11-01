@@ -36,14 +36,16 @@ define @rope-sub-ml_int (rn : [rope, ml_int] / exh : exh) : ml_int =
                let WrongLeaf : exn = (exn)$0
                throw exh (WrongLeaf)
        | CAT (len:ml_int, depth:ml_int, r1:rope, r2:rope) =>
-          let len : int = #0(len) 
-          let onTheLeft : bool = I32Lt (n, len)
+          let leftLen : int =
+            let t : ml_int = @rope-length (r1 / exh)
+            return (#0(t))
+          let onTheLeft : bool = I32Lt (n, leftLen)
             if onTheLeft
               then
                 let res3 : ml_int = apply getFromRope (r1, n / exh)
                 return (res3)
               else
-                let newN : int = I32Sub (n, len)
+                let newN : int = I32Sub (n, leftLen)
                 let res4 : ml_int = apply getFromRope (r2, newN / exh)
                 return (res4)
       end

@@ -18,10 +18,10 @@ define @rope-from-leaves (leaves : list / exh : exh) : rope =
        | CONS (r1 : rope, tail1 : list) =>
            case tail1
              of NIL => 
-                  do ccall M_Print ("rope-from-leaves 1\n\000")
+                  (* do ccall M_Print ("rope-from-leaves 1\n\000") *)
                   return (rs)
               | CONS (r2 : rope, tail2 : list) =>
-                  do ccall M_Print ("rope-from-leaves 2\n\000")
+                  (* do ccall M_Print ("rope-from-leaves 2\n\000") *)
                   let cat : rope = @simple-cat (r1, r2 / exh)
                   let newTail : rope = apply catPairs (tail2 / exh)
                   let newList : list = CONS (cat, newTail)

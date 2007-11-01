@@ -82,14 +82,14 @@ define @tabulateD (args : [(* f *) fun (ml_int / exh -> any),
     let res : list = apply ta (futures, NIL / exh)
     return (res)          
 
-  do ccall M_Print ("tabulateD: about to build leaves...\n\000")
+  (* do ccall M_Print ("tabulateD: about to build leaves...\n\000") *)
 
   let leaves : list = 
     let futs : list = apply build (lo, NIL / exh)
     let ls : list = apply touchAll (futs / exh)
     return (ls)
 
-  do ccall M_Print ("tabulateD: done building leaves...\n\000")
+  (* do ccall M_Print ("tabulateD: done building leaves...\n\000") *)
 
   let finalRes : rope = @rope-from-leaves (leaves / exh)
   return (finalRes)  
