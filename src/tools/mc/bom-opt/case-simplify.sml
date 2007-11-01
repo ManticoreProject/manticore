@@ -416,7 +416,7 @@ DEBUG*)
 				    ([argument'], B.E_Cast(BV.typeOf argument', argument)),
 				    ([tag'], B.E_Select(0, argument')),
 				    ([tmp], B.E_Const(Lit.Enum tag, ty)),
-				    ([eq], B.E_Prim(Prim.I64NEq(argument, tmp)))
+				    ([eq], B.E_Prim(Prim.NotEqual(argument, tmp)))
 				  ],
 				  B.mkIf(eq, sel(ys, 1), dflt))
 			      end
