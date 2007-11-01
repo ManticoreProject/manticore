@@ -620,6 +620,7 @@ structure Basis : sig
 	    (N.fail,		Env.Var fail),
 	    (N.plen,            Env.Var plen),
 	    (N.sumP,            Env.Var sumP),
+	    (N.rev,             Env.Var rev),
 	    (N.gettimeofday,	Env.Var gettimeofday)
 (*
 	    (N.size,		Env.Var size),
