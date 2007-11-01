@@ -47,10 +47,8 @@ structure TranslateTypes : sig
 	    tr' ty
 	  end
 
-    and trTyc (env, ab as Ty.AbsTyc{name, ...}) = 
-	if TyCon.same (ab, Futures.workQueueTyc)
-	  then BOMBasis.workQueueTy
-	  else raise Fail("Unknown abstract type " ^ Atom.toString name)
+    and trTyc (env, ab as Ty.AbsTyc{name, ...}) =
+	  raise Fail("Unknown abstract type " ^ Atom.toString name)
       | trTyc (env, tyc as Ty.DataTyc{name, cons, ...}) = let
 	(* insert a placeholder representation for tyc to avoid infinite loops *)
 	  val _ = E.insertTyc (env, tyc, BTy.T_Any)

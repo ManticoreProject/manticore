@@ -54,7 +54,8 @@ structure StdEnv : sig
 *)
 	    (B.eventTyc,	BOMBasis.evtTy),
 	    (B.chanTyc,		BOMBasis.chanTy),
-	    (F.futureTyc,       BTy.futureTy)
+	    (F.futureTyc,       BTy.futureTy),
+	    (F.workQueueTyc,	BOMBasis.workQueueTy)
 	  ]
 
 
