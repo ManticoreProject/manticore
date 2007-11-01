@@ -34,6 +34,7 @@ structure DataCon : sig
   (* return the instantiated type/argument type of the data constructor *)
     val typeOf' : AST.dcon * AST.ty list -> AST.ty
     val argTypeOf' : AST.dcon * AST.ty list -> AST.ty option
+    val resultTypeOf' : AST.dcon * AST.ty list -> AST.ty
 
   (* return the datatype type constructor that owns this data constructor *)
     val ownerOf : AST.dcon -> Types.tycon
@@ -85,6 +86,12 @@ structure DataCon : sig
 	  end
 
     fun typeOf' (dc, args) = TypeUtil.apply(typeOf dc, args)
+
+    fun resultTypeOf' (DCon{owner as Types.DataTyc{params, ...}, ...}, args) = let
+	  val ty = AST.ConTy(List.map AST.VarTy params, owner)
+	  in
+	    TypeUtil.apply(AST.TyScheme(params, ty), args)
+	  end
 
     fun argTypeOf' (DCon{owner as Types.DataTyc{params, ...}, argTy, ...}, args) = (
 	  case argTy

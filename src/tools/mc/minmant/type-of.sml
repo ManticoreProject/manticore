@@ -50,7 +50,7 @@ structure TypeOf : sig
     and const (AST.DConst(dc, argTys)) = DataCon.typeOf'(dc, argTys)
       | const (AST.LConst(_, ty)) = ty
 
-    and pat (AST.ConPat(dc, argTys, _)) = DataCon.typeOf' (dc, argTys)
+    and pat (AST.ConPat(dc, argTys, _)) = DataCon.resultTypeOf' (dc, argTys)
       | pat (AST.TuplePat ps) = Ty.TupleTy(List.map pat ps)
       | pat (AST.VarPat x) = monoTy (Var.typeOf x)
       | pat (AST.WildPat ty) = ty
