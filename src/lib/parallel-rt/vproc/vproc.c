@@ -230,10 +230,11 @@ void VProcSleep (VProc_t *vp)
 		CondWait (&(vp->wait), &(vp->lock));
 	    }
 
-	    /* get the first fiber on the entry queue */
-	    item = EmptyEntryQ (vp);
-	    /* copy the rest of the entry queue to the local queue */
-	    UnloadEntryQueue (vp, ValueToRdyQItem(item)->link);
+	  /* get the first fiber on the entry queue */
+	    item = VProcGetEntryQ (vp);
+	    assert (item != M_NIL);
+	  /* copy the rest of the entry queue to the local queue */
+	    VProcPushEntries (vp, ValueToRdyQItem(item)->link);
 #ifndef NDEBUG
         if (DebugFlg)
             SayDebug("[%2d] VProcSleep: waking up; cont = %p\n", vp->id, ValueToRdyQItem(item)->fiber);
@@ -338,39 +339,47 @@ void EnqueueOnVProc (VProc_t *self, VProc_t *vp, Value_t tid, Value_t fiber)
     }
 } /* end of EnqueueOnVProc */
 
-/*! \brief Copy the elements from the VProc entry queue to the VProc local queue
+/*! \brief Push the elements from the VProc entry queue onto the tail of the
+ *      VProc local queue.
  *  \param self the calling vproc
- *  \param entryQ the vproc's entry queue
+ *  \param entries the list of items from the vproc's entry queue.
  *
- *  rdyQTl -> r3 -> r2 -> r1
- *  entryQ -> e3 -> e2 -> e1
+ *  rdyQTl  -> r3 -> r2 -> r1 -> NIL
+ *  entries -> e3 -> e2 -> e1 -> NIL
  *                                =====>
- *  rdyQTl -> r3 -> r2 -> r1 -> e3 -> e2 -> e1
- *  entryQ
+ *  rdyQTl  -> e1 -> e2 -> e3 -> r3 -> r2 -> r1 -> NIL
  *
  */
-void UnloadEntryQueue (VProc_t *self, Value_t entryQ)
+void VProcPushEntries (VProc_t *self, Value_t entries)
 {
-    RdyQItem_t *q = ValueToRdyQItem(self->rdyQTl);
-    if (q == ValueToRdyQItem(M_NIL)) {
-      self->rdyQTl = PtrToValue(entryQ);
-    } else {
-      while (q->link != M_NIL) {
-	q = ValueToRdyQItem(q->link);
-      }
-      q->link = entryQ;
+    Value_t q = self->rdyQTl;
+    RdyQItem_t *p = ValueToRdyQItem(entries);
+
+    while (p != ValueToRdyQItem(M_NIL)) {
+	q = RdyQItem (self, p->tid, p->fiber, q);
+	p = ValueToRdyQItem(p->link);
     }
+
+    self->rdyQTl = q;
+
 }
 
-/*! \brief Take the elements off the ready queue.
+/*! \brief Get the list of entry-queue elements and set the queue empty.
  *  \param vp the calling vproc
- *  \return the head of the entry queue
+ *  \return the list of entry-queue elements
  */
-Value_t EmptyEntryQ (VProc_t *vp) {
+Value_t VProcGetEntryQ (VProc_t *vp)
+{
     Value_t item;
+
+  /* attempt to atomically remove the list of entries while setting the
+   * queue to NIL.  Note that other VProcs may be attempting to add items
+   * at the same time!
+   */
     do {
-      item = vp->entryQ;
+	item = vp->entryQ;
     } while (CompareAndSwap (&(vp->entryQ), item, M_NIL) != item);
+
     return item;
 }
 
@@ -389,7 +398,7 @@ Value_t VProcDequeue (VProc_t *self)
 	SayDebug("[%2d] VProcDequeue called\n", self->id);
 #endif
 
-    UnloadEntryQueue (self, EmptyEntryQ (self));
+    VProcPushEntries (self, VProcGetEntryQ (self));
 
     if (self->rdyQTl == M_NIL) {
       /* the local queue is empty, so return an item that will put us to sleep */

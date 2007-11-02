@@ -30,4 +30,9 @@ typedef struct {	      /* Items in the primary scheduling queue.  This */
 
 STATIC_INLINE RdyQItem_t *ValueToRdyQItem (Value_t v) { return (RdyQItem_t *)ValueToPtr(v); }
 
+STATIC_INLINE Value_t RdyQItem (VProc_t *vp, Value_t tid, Value_t fiber, Value_t link)
+{
+    return AllocUniform (vp, 3, tid, fiber, link);
+}
+
 #endif /* !_SCHEDULER_H_ */

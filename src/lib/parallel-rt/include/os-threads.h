@@ -55,7 +55,7 @@
 
 #ifdef HAVE_BUILTIN_ATOMIC_OPS
 
-STATIC_INLINE bool BooleanCompareAndSwap (void **ptr, void *key, void *new)
+STATIC_INLINE bool BoolCompareAndSwap (Value_t *ptr, Value_t key, Value_t new)
 {
     return __sync_bool_compare_and_swap (ptr, key, new);
 }
@@ -82,9 +82,9 @@ STATIC_INLINE int FetchAndDec (int *ptr)
 
 #else /* !HAVE_BUILTIN_ATOMIC_OPS */
 
-STATIC_INLINE void *CompareAndSwap (void **ptr, void *old, void *new)
+STATIC_INLINE Value_t CompareAndSwap (Value_t *ptr, Value_t old, Value_t new)
 {
-    register uint64_t result __asm__ ("%rax");
+    register Value_t result __asm__ ("%rax");
 
     __asm__ __volatile__ (
 	"movq %2,%%rbx\n\t"		/* %rbx = new */
