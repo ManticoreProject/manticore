@@ -55,9 +55,14 @@
 
 #ifdef HAVE_BUILTIN_ATOMIC_OPS
 
-STATIC_INLINE bool CompareAndSwap (void **ptr, void *key, void *new)
+STATIC_INLINE bool BooleanCompareAndSwap (void **ptr, void *key, void *new)
 {
     return __sync_bool_compare_and_swap (ptr, key, new);
+}
+
+STATIC_INLINE Value_t CompareAndSwap (Value_t *ptr, Value_t key, Value_t new)
+{
+    return __sync_val_compare_and_swap (ptr, key, new);
 }
 
 STATIC_INLINE int TestAndSwap (int *ptr, int new)
@@ -77,14 +82,14 @@ STATIC_INLINE int FetchAndDec (int *ptr)
 
 #else /* !HAVE_BUILTIN_ATOMIC_OPS */
 
-STATIC_INLINE Value_t CompareAndSwap (Value_t *ptr, Value_t old, Value_t new)
+STATIC_INLINE void *CompareAndSwap (void **ptr, void *old, void *new)
 {
-    register Value_t result __asm__ ("%rax");
+    register uint64_t result __asm__ ("%rax");
 
     __asm__ __volatile__ (
-	"movq %2,%%rbx\n\t"		/* %ebx = new */
-	"movq %1,%%rax\n\t"		/* %eax = 0 */
-	"lock; cmpxchgq %%rbx,%0;\n"	/* cmpxchg %ebx,ptr */
+	"movq %2,%%rbx\n\t"		/* %rbx = new */
+	"movq %1,%%rax\n\t"		/* %rax = 0 */
+	"lock; cmpxchgq %%rbx,%0;\n"	/* cmpxchg %rbx,ptr */
 	    : "=m" (*ptr)
     	    : "g" (old), "g" (new)
 	    : "memory", "%rax");

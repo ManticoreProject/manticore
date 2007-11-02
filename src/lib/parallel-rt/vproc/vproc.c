@@ -230,7 +230,7 @@ void VProcSleep (VProc_t *vp)
 		CondWait (&(vp->wait), &(vp->lock));
 	    }
 
-	    /* run the first fiber on the entry queue */
+	    /* get the first fiber on the entry queue */
 	    item = EmptyEntryQ (vp);
 	    /* copy the rest of the entry queue to the local queue */
 	    UnloadEntryQueue (vp, ValueToRdyQItem(item)->link);
@@ -325,10 +325,11 @@ void EnqueueOnVProc (VProc_t *self, VProc_t *vp, Value_t tid, Value_t fiber)
 
     Value_t entryQOld = vp->entryQ;
     Value_t entryQNew = GlobalAllocUniform(self, 3, tid, fiber, entryQOld);
+    Value_t entryQ = (Value_t)&(vp->entryQ);
     do {
       entryQOld = vp->entryQ;
-      ValueToRdyQItem(entryQNew)->link = entryQOld;
-    } while (CompareAndSwap (&(vp->entryQ), entryQOld, entryQNew) != entryQOld);
+      ValueToRdyQItem(entryQNew)->link = entryQOld;      
+    } while (CompareAndSwap (ValueToPtr(entryQ), entryQOld, entryQNew) != entryQOld);
 
     /* The vproc was idle before enqueuing, so wake it up */
     if (entryQOld == M_NIL) {       
