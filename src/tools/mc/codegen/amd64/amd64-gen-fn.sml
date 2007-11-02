@@ -68,27 +68,56 @@ functor AMD64GenFn (structure Spec : TARGET_SPEC) =
   (* literals that MLRISC introduces during instruction selection *)
     val literals : (Label.label * AMD64PseudoOps.PseudoOps.pseudo_op) list ref = ref []
 
-    (* we negate a float by flipping its high bit with an xor instruction.  doing it
-     * this way requires us to emit a constant value with this high bit set.
-     * we store this constant at negateLabel.
+    (* We perform floating-point negation and absolute value by flipping the sign bit.
+     * This approach requires generating literals for the operations.
      *)
     local
 	structure PTy = PseudoOpsBasisTyp
-	val negateLabel : Label.label option ref = ref NONE
+        val signBit32  : Label.label option ref = ref NONE
+        val signBit64  : Label.label option ref = ref NONE
+        val negateSignBit32  : Label.label option ref = ref NONE
+        val negateSignBit64  : Label.label option ref = ref NONE
     in
-    (* callback to negate a float or double *)
-    fun floatNegate ty = (case !negateLabel
-			   of NONE => let
-	      val l = Label.label "negateLitLabel" ()
-	      val mask = Word64.toLargeInt (Word64.<< (0w1, Word.fromInt (ty-1)))
-	      val pOp = PTy.INT {sz=ty, i=[AMD64GasPseudoOps.T.LI mask]}
+    fun emitLabel (pOp, label, labelRef) = (case !labelRef
+        of NONE => let
+	      val l = Label.label label ()	      
 	      in
 		  literals := (l, pOp) :: !literals;
-		  negateLabel := SOME l;
+		  labelRef := SOME l;
 		  l
 	      end
 	    | SOME l => l
-	   (* end case *)) 
+	   (* end case *))
+
+    (* Generates a literal of ty bits with the high bit set and returns the label
+     * of the literal.
+     *)
+    fun signBit ty = let
+        val mask = Word64.toLargeInt (Word64.<< (0w1, Word.fromInt (ty-1)))
+        val pOp = PTy.INT {sz=ty, i=[AMD64GasPseudoOps.T.LI mask]}
+	val signBit = (case ty
+            of 32 => signBit32
+	     | 64 => signBit64
+            (* end case *))
+        in
+	    emitLabel (pOp, "signBit"^Int.toString ty, signBit)   
+	end (* signBit *)
+
+    (* Generates a literal of ty bits with the high bit set to zero and the lower
+     * bits all set to 1 and returns the label of the literal.
+     *)
+    fun negateSignBit ty = let
+        val mask1 = Word64.notb (Word64.<< (0w1, Word.fromInt (ty-1)))
+	val mask2 = Word64.- (Word64.<< (0w1, Word.fromInt (ty-1)), 0w1)
+	val mask = Word64.toLargeInt (Word64.andb (mask1, mask2))
+        val pOp = PTy.INT {sz=ty, i=[AMD64GasPseudoOps.T.LI mask]}
+	val negateSignBit = (case ty
+            of 32 => negateSignBit32
+	     | 64 => negateSignBit64
+            (* end case *))
+        in
+	    emitLabel (pOp, "negateSignBit"^Int.toString ty, negateSignBit)   
+	end (* negateSignBit *)
     end (* local *)
      
     structure AMD64MLTreeComp = AMD64Gen (
@@ -96,7 +125,8 @@ functor AMD64GenFn (structure Spec : TARGET_SPEC) =
       structure MLTreeUtils = AMD64MLTreeUtils
       structure MLTreeStream = AMD64MLTStream
       structure ExtensionComp = MLTreeExtComp
-      val floatNegate = floatNegate
+      val signBit = signBit
+      val negateSignBit = negateSignBit
      )
 
     structure AMD64SpillLoc = SpillLocFn (structure Frame=AMD64Frame)

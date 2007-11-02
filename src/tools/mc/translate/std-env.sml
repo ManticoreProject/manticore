@@ -283,6 +283,9 @@ structure StdEnv : sig
 	    (B.sqrtf,	        prim1 (P.F32Sqrt, "sqrtf", f, f)),
 	    (B.sqrtd,	        prim1 (P.F64Sqrt, "sqrtd", d, d)),
 
+	    (B.absf,	        prim1 (P.F32Abs, "absf", f, f)),
+	    (B.absd,	        prim1 (P.F64Abs, "absd", d, d)),
+
 	    (B.float_neg,	prim1 (P.F32Neg, "neg", f, f)),
 	    (B.double_neg,	prim1 (P.F64Neg, "neg", d, d))
 	  ]

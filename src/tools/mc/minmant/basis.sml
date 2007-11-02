@@ -130,6 +130,7 @@ structure Basis : sig
   (* predefined functions *)
     val not		: AST.var
     val sqrtf		: AST.var
+    val absf		: AST.var
     val lnf		: AST.var
     val log2f		: AST.var
     val log10f		: AST.var
@@ -140,6 +141,7 @@ structure Basis : sig
     val tanf		: AST.var
     val itof		: AST.var
     val sqrtd		: AST.var
+    val absd		: AST.var
     val lnd		: AST.var
     val log2d		: AST.var
     val log10d		: AST.var
@@ -478,6 +480,7 @@ structure Basis : sig
   (* predefined functions *)
     val not =		monoVar'(N.not, boolTy --> boolTy)
     val sqrtf =		monoVar'(N.sqrtf, floatTy --> floatTy)
+    val absf =		monoVar'(N.absf, floatTy --> floatTy)
     val lnf =		monoVar'(N.lnf, floatTy --> floatTy)
     val log2f =		monoVar'(N.log2f, floatTy --> floatTy)
     val log10f =	monoVar'(N.log10f, floatTy --> floatTy)
@@ -488,6 +491,7 @@ structure Basis : sig
     val tanf =		monoVar'(N.tanf, floatTy --> floatTy)
     val itof =		monoVar'(N.itof, intTy --> floatTy)
     val sqrtd =		monoVar'(N.sqrtd, doubleTy --> doubleTy)
+    val absd =		monoVar'(N.absd, doubleTy --> doubleTy)
     val lnd =		monoVar'(N.lnd, doubleTy --> doubleTy)
     val log2d =		monoVar'(N.log2d, doubleTy --> doubleTy)
     val log10d =	monoVar'(N.log10d, doubleTy --> doubleTy)
@@ -576,6 +580,7 @@ structure Basis : sig
              * specially by the typechecker *)
 	    (N.not,		Env.Var not),
 	    (N.sqrtf,		Env.Var sqrtf),
+	    (N.absf,		Env.Var absf),
 	    (N.lnf,		Env.Var lnf),
 	    (N.log2f,		Env.Var log2f),
 	    (N.log10f,		Env.Var log10f),
@@ -586,6 +591,7 @@ structure Basis : sig
 	    (N.tanf,		Env.Var tanf),
 	    (N.itof,		Env.Var itof),
 	    (N.sqrtd,		Env.Var sqrtd),
+	    (N.absd,		Env.Var absd),
 	    (N.lnd,		Env.Var lnd),
 	    (N.log2d,		Env.Var log2d),
 	    (N.log10d,		Env.Var log10d),

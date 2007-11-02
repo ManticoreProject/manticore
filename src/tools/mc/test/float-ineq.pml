@@ -1,4 +1,4 @@
-fun f1 x = let fun g y = x <= y in g end;
+fun f1 x = let fun g y = y <= x in g end;
 
 fun filter (g, ls) = (case ls
     of nil => nil
@@ -18,8 +18,27 @@ fun floatListToString ls =  let
     end
 ;
 
+fun intListToString ls = let
+    fun loop (ls, acc) =  (case ls
+        of nil => acc
+	 | x :: y :: nil => acc ^ (itos x) ^ ", " ^ (itos y)
+	 | x :: xs => loop (xs, acc ^ (itos x) ^ ", ")
+        (* end case *))
+    in
+       "[" ^ loop (ls, "") ^ "]"
+    end
+;
+
 val x : float list = 5.0 :: 1.0 :: nil;
 val y = filter (f1 10.0, x);
+
+val z = if ((f1 1) 2) then "hi" else "";
+
+(*val is = 1 :: 3 :: 4 :: nil;
+val is' = filter (f1 3, is);
+
+val _ = print ((intListToString is')^"\n");
+*)
 
 val _ = print ((floatListToString x)^"\n");
 print ((floatListToString y)^"\n")

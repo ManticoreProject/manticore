@@ -63,6 +63,7 @@ structure BasisNames =
   (* predefined variables *)
     val not =		Atom.atom "not"
     val sqrtf =		Atom.atom "sqrtf"
+    val absf =		Atom.atom "absf"
     val lnf =		Atom.atom "lnf"
     val log2f =		Atom.atom "log2f"
     val log10f =	Atom.atom "log10f"
@@ -73,6 +74,7 @@ structure BasisNames =
     val tanf =		Atom.atom "tanf"
     val itof =		Atom.atom "itof"
     val sqrtd =		Atom.atom "sqrtd"
+    val absd =		Atom.atom "absd"
     val lnd =		Atom.atom "lnd"
     val log2d =		Atom.atom "log2d"
     val log10d =	Atom.atom "log10d"

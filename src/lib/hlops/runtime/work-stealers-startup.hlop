@@ -52,7 +52,7 @@ define @work-stealers-startup ( / exh : exh) : () =
        end
 
    cont wsSwitch (s : signal) =
-      do ccall M_Print ("WS switch\n")
+      (*do ccall M_Print ("WS switch\n")*)
       let self : vproc = host_vproc
       let vprocs : list = ccall ListVProcs (self)
       (* (0) *)
@@ -110,7 +110,7 @@ define @work-stealers-startup ( / exh : exh) : () =
                  then throw steal (vprocs)
                  else (* (1) *)
                       throw dispatch ()
-         else do ccall M_Print("Handling preemption\n")
+         else (*do ccall M_Print("Handling preemption\n")*)
               let k : fiber = (fiber)s
               let tid : tid = enum(0)
               do @enqueue (host_vproc, tid, k / exh)

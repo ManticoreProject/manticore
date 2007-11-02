@@ -48,6 +48,7 @@ structure Prim =
       | F32Div of 'var * 'var
       | F32Neg of 'var
       | F32Sqrt of 'var
+      | F32Abs of 'var
       | F32Eq of 'var * 'var
       | F32NEq of 'var * 'var
       | F32Lt of 'var * 'var
@@ -60,6 +61,7 @@ structure Prim =
       | F64Div of 'var * 'var
       | F64Neg of 'var
       | F64Sqrt of 'var
+      | F64Abs of 'var
       | F64Eq of 'var * 'var
       | F64NEq of 'var * 'var
       | F64Lt of 'var * 'var
