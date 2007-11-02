@@ -60,7 +60,6 @@ structure CheckBOM : sig
 		pr ("** " :: msg))
 	  fun cerror msg = pr ("== "::msg)
 	(* match the parameter types against argument variables *)
-        (* checkArgTypes : string * ty list * ty list -> unit *)
 	  fun checkArgTypes (cmp, ctx, paramTys, argTys) = let
 	      (* chk1 : ty * ty -> unit *)
 	        fun chk1 (pty, aty) =
@@ -121,7 +120,9 @@ structure CheckBOM : sig
 (* FIXME: we should check the kind of the xs, but we don't have a kind for pattern-bound
  * variables yet!
  *)
-	  fun chkPat (B.P_DCon(_, xs)) = List.app insert xs
+	  fun chkPat (B.P_DCon(BTy.DCon{name, argTy, myTyc, ...}, xs)) = (
+		List.app insert xs;
+		checkArgTypes (BTU.match, concat["pattern: ", name, vl2s xs], argTy, typesOf xs))
 	    | chkPat (B.P_Const _) = ()
 	(* *)
 	  fun insertFB (B.FB{f, ...}) = insert f
