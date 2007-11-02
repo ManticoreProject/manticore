@@ -55,6 +55,16 @@ fun mergesort () = let
 
 val n = 10;
 
+fun test1 () = let
+    val ch = mergesort ()
+    in
+        spawn (send (ch, SOME 1));
+        spawn (recv ch; ())
+    end
+;
+
+val x = test1 ();
+
 fun test () = let
     val inCh1 = channel ()
     val inCh2 = channel ()
