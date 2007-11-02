@@ -7,7 +7,11 @@ fun pong () = let
       in
 	print("received " ^ itos i ^ "\n");
 	send (ch, i-1);
-	if (i = 0) then () else pong()
+	if (i = 1) then () else pong()
       end;
 
-(spawn (ping 10); pong())
+val b = gettimeofday ();
+val _ = (spawn (ping 10); pong());
+val e = gettimeofday ();
+
+print ("time elapsed: "^dtos (e-b)^"\n")
