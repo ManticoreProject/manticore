@@ -112,6 +112,7 @@ structure BasisNames =
     val sumP =          Atom.atom "sumP"
     val rev =           Atom.atom "rev"
     val gettimeofday =	Atom.atom "gettimeofday"
+    val compose =       Atom.atom "compose"
 (*
     val size =		Atom.atom "size"
     val sub =		Atom.atom "sub"

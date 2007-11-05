@@ -155,7 +155,7 @@ structure PrintBOM : sig
 		    | _ => (prParams params; pr " / "; prParams exh)
 		  (* end case *);
 		  case BV.typeOf f
-		   of Ty.T_Fun(_, _, [ty]) => (pr ") -> "; pr(BOMTyUtil.toString ty); pr " =\n")
+		   of Ty.T_Fun(_, _, [ty]) => (pr ") : "; pr(BOMTyUtil.toString ty); pr " =\n")
 		    | Ty.T_Fun(_, _, tys) => (
 			pr ") -> (";
 			pr (String.concatWith "," (List.map BOMTyUtil.toString tys));

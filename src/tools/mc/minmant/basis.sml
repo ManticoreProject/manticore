@@ -179,7 +179,7 @@ structure Basis : sig
     val sumP            : AST.var
     val rev             : AST.var
     val gettimeofday	: AST.var
-
+    val compose         : AST.var
   (* environments *)
     val lookupOp : Atom.atom -> Env.val_bind
     val isOp : AST.var -> bool
@@ -202,10 +202,18 @@ structure Basis : sig
 	    in
 	      AST.TyScheme([tv], mkTy(AST.VarTy tv))
 	    end
+      fun forallList (n, mkTy) = let
+	    fun mkTv n = TyVar.new(Atom.atom ("'a" ^ Int.toString n))
+	    val tvs = map mkTv (List.tabulate (n, (fn n => n)))
+            in
+              AST.TyScheme(tvs, mkTy(map AST.VarTy tvs))
+            end
       fun monoVar (name, ty) = Var.new(name, ty)
       fun monoVar' (name, ty) = monoVar(Atom.toString name, ty)
       fun polyVar (name, mkTy) = Var.newPoly(name, forall mkTy)
       fun polyVar' (name, mkTy) = polyVar(Atom.toString name, mkTy)
+      fun polyVarList (name, n, mkTy) = Var.newPoly(name, forallList (n, mkTy))
+      fun polyVarList' (name, n, mkTy) = polyVarList(Atom.toString name, n, mkTy)
     in
 
     val boolTyc = TyCon.newDataTyc (N.bool, [])
@@ -540,6 +548,14 @@ structure Basis : sig
     val sumP =          monoVar'(N.sumP, (parrayTy intTy) --> intTy)
     val rev =           polyVar'(N.rev, fn tv => listTy tv --> listTy tv)
     val gettimeofday =	monoVar'(N.gettimeofday, unitTy --> doubleTy)
+
+    val compose =
+	let fun mkTy ([a,b,c]) = ((a --> b) ** (c --> a)) --> (c --> b)
+	      | mkTy _ = raise Fail "BUG"
+	in
+	    polyVarList' (N.compose, 3, mkTy)
+	end
+				 
 (*
     val size =		monoVar(N.size, stringTy --> intTy)
     val sub =		monoVar(N.sub, stringTy ** intTy --> intTy)
@@ -627,7 +643,9 @@ structure Basis : sig
 	    (N.plen,            Env.Var plen),
 	    (N.sumP,            Env.Var sumP),
 	    (N.rev,             Env.Var rev),
-	    (N.gettimeofday,	Env.Var gettimeofday)
+	    (N.gettimeofday,	Env.Var gettimeofday),
+	    (N.compose,         Env.Var compose)
+
 (*
 	    (N.size,		Env.Var size),
 	    (N.sub,		Env.Var sub),
