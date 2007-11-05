@@ -57,7 +57,6 @@ end = struct
     (* rewrite() - Rewrite the given BOM module, using HLOp rewrites in the
        library path. *)
     fun rewrite (module as B.MODULE{name, externs, body}) = let
-	val changed = ref false
         (* __________________________________________________ *)
         (* XXX Not sure rewrites need to worry about this stuff
         inherrited from the HLOp expander (unless we add C function
@@ -89,10 +88,173 @@ end = struct
         val hlrwGrammar =
             foldl Rewrites.addRWToGrammar (Rewrites.newGrammar ()) hlrws
 
+        val hlrwGrammarHash = Rewrites.getGrammarHash hlrwGrammar
+
+        (* XXX - Couldn't find easy way to get something like "oporelse" *)
+        val myor = fn (a, b) => a orelse b
+
+        (* rwstate - Map from nonterminal name to benefit. *)
+        type rwstate = IntInf.int AtomMap.map
+
+        val emptyState = AtomMap.empty : rwstate
+
+        val isEmptyState : rwstate -> bool = AtomMap.isEmpty
+
+        val { clrFn = clearPPRWState,
+              getFn = getPPRWState,
+              setFn = setPPRWState,
+              peekFn = peekPPRWState } = ProgPt.newProp (fn _ => emptyState)
+
+        val { clrFn = clearVarRWState,
+              getFn = getVarRWState,
+              setFn = setVarRWState,
+              peekFn = peekVarRWState } = B.Var.newProp (fn _ => emptyState)
+
+        (* crossStates() - Utility for creating list of atom lists.
+           Each of these are strings of nonterminals in the grammar that
+           are used to match productions. *)
+        fun crossStates (states) = let
+            fun crossStates' (nt1 :: nt1s, ntss) =
+                let val ntStrings = map (fn nts => nt1 :: nts) ntss
+                in
+                    ntStrings @ crossStates'(nt1s, ntss)
+                end
+              | crossStates' ([], ntss) = []
+        in
+            foldr crossStates' [[]] (List.map AtomMap.listKeys states)
+        end (* crossStates() *)
+        (* __________________________________________________ *)
+        (* mkRWState() - Given a hash key (which should be an atom)
+           into the hlrwGrammarHash, and a list of rewrite states, create
+           a rewrite state based on all permutations of state
+           non-terminals. *)
+        fun mkRWState (rwRHSKey, rwRHSRest) = let
+            val rwState = emptyState
+            val ntStrings = crossStates rwRHSRest
+        in
+            rwState
+        end (* mkRWState *)
+        (* __________________________________________________ *)
+        (* matchExp() - Derive a rewrite state for the current
+           expression.  Result is both bound to the program point (for
+           rewriting in rewriteExp()), and passed up to possibly be
+           associated to a variable by matchBindingExp(). *)
+        fun matchExp (B.E_Pt(ppt, t)) = (case t
+            of B.E_HLOp(hlOp, vars, _) => let
+                   val rwState = mkRWState(H.name hlOp, List.map getVarRWState
+                                                                 vars)
+               in
+                   setPPRWState(ppt, rwState); rwState
+               end
+             | _ => emptyState
+            (* end case *))
+        (* __________________________________________________ *)
+        (* matchRHS() - Derive a rewrite state for the current
+           statement RHS.  Unlike matchExp, there is no program point to
+           associate with the result, so for this to work,
+           matchBindingExp() MUST have a binding variable. *)
+        fun matchRHS (B.E_Alloc(_, vars as [v1, v2])) =
+            mkRWState(Rewrites.tupleAtom, List.map getVarRWState vars)
+          | matchRHS _ = emptyState
+        (* __________________________________________________ *)
+        (* matchBindingExp() - Derive a rewrite state for the
+           expression being bound, associating the state with the binding
+           variable.
+
+           FIXME: This is only set up for the binding occurances of single
+           variables.  Need to talk to someone about any possible cases where
+           the variable list does not contain only one variable. *)
+        fun matchBindingExp (B.E_Let([v], e, _)) =
+            setVarRWState(v, matchExp e)
+          | matchBindingExp (B.E_Stmt([v], r, _)) =
+            setVarRWState(v, matchRHS r)
+          | matchBindingExp _ = ()
+        (* __________________________________________________ *)
+        (* rewriteExp() - First, label the given expression using
+           matchExp().  Next, recursively traverse the children
+           expressions. Then, select and apply the maximum benefit
+           rewrite, if any.  Finally, return a change flag and the
+           (possibly changed) expression.
+
+           JDR: Could have used an option, but I don't like having to "unbox"
+           SOME values so frequently. *)
+        fun rewriteExp (e as B.E_Pt(ppt, t)) = (matchBindingExp t; case t
+            of B.E_Let(lhs, e1, e2) => let
+                   val (changed1, e1') = rewriteExp e1
+                   val (changed2, e2') = rewriteExp e2
+                   val changed = changed1 orelse changed2
+               in
+                   (changed, if changed then B.mkLet(lhs, e1', e2') else e)
+               end
+             | B.E_Stmt (lhs, rhs, e1) => let
+                   val (changed, e1') = rewriteExp e1
+               in
+                   (changed, if changed then B.mkStmt(lhs, rhs, e1') else e)
+               end
+             | B.E_Fun(fbs, e1) => let
+                   val (changes, fbs') = ListPair.unzip (List.map rewriteLambda
+                                                                  fbs)
+                   val (changed1, e1') = rewriteExp e1
+                   val changed = foldl myor false (changed1 :: changes)
+               in
+                   (changed, if changed then B.mkFun(fbs', e1') else e)
+               end
+             | B.E_Cont(fb, e1) => let
+                   val (changedfb, fb') = rewriteLambda fb
+                   val (changed1, e1') = rewriteExp e1
+                   val changed = changedfb orelse changed1
+               in
+                   (changed, if changed then B.mkCont(fb', e1') else e)
+               end
+             | B.E_If(x, e1, e2) => let
+                   val (changed1, e1') = rewriteExp e1
+                   val (changed2, e2') = rewriteExp e2
+                   val changed = changed1 orelse changed2
+               in
+                   (changed, if changed then B.mkIf(x, e1', e2') else e)
+               end
+             | B.E_Case(x, cases, dflt) => let
+                   fun rewriteCase (crntCase as (p, e)) = let
+                       val (changed, e') = rewriteExp e
+                   in
+                       (changed, (p, if changed then e' else e))
+                   end (* rewriteCase *)
+                   val (changes, cases') = ListPair.unzip (List.map rewriteCase
+                                                                    cases)
+                   val (changedd, dflt') = (case dflt
+                       of SOME e => let
+                              val (c, e') = rewriteExp e
+                          in
+                              (c, if c then SOME e' else dflt)
+                          end
+                        | NONE => (false, dflt)
+                       (* end case *))
+                   val changed = foldl myor false (changedd :: changes)
+               in
+                   (changed, if changed then B.mkCase(x, cases', dflt') else e)
+               end
+             | B.E_HLOp(hlOp, args, exns) => (* FIXME: Get the state for the
+               ppt, and rewrite based on max benefit NT that has a rewrite
+               associated with it. *) (false, e)
+             | _ => (false, e)
+            (* end case *))
+        (* rewriteLambda() - Try to rewrite the body of the given BOM
+           lambda.  If any changes were made, reconstruct the BOM lambda,
+           and pass up the change flag. *)
+        and rewriteLambda (l as B.FB {f, params, exh, body}) = let
+            val (changed, body') = rewriteExp body
+        in
+            (changed, if changed then B.FB {f=f, params=params, exh=exh,
+                                            body=body'} 
+                      else l)
+        end (* rewriteLambda() *)
+
+        val (changed, body') = rewriteLambda body
+
     in
         (* DEBUG: print (Rewrites.grammarToString hlrwGrammar); *)
-	if !changed
-	then SOME(B.mkModule(name, getExterns(), body))
+	if changed
+	then SOME(B.mkModule(name, getExterns(), body'))
 	else NONE
     end
 

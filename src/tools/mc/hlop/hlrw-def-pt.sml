@@ -7,6 +7,7 @@
 structure HLRWDefPT = struct
 
      datatype pattern = Call of Atom.atom * pattern list
+                      | Tuple of pattern * pattern
                       | Var of Atom.atom
 
      datatype rewrite = Rewrite of { label  : Atom.atom,

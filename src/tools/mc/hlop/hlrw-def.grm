@@ -60,6 +60,13 @@ LabelOpt
 Pattern
         : IdOrHLOp LP PatternArgs RP
                 => ( HLRWDefPT.Call(IdOrHLOp, PatternArgs) )
+
+        (* XXX - Should this support not just a 2-tuple? (Which
+           corresponds to E_Alloc, which has a list of variable inputs.
+           Will have to ultimately support matching much more of BOM. *)
+        | LP Pattern COMMA Pattern RP
+                => ( HLRWDefPT.Tuple(Pattern1, Pattern2) )
+
         | ID
                 => ( HLRWDefPT.Var ID )
         ;

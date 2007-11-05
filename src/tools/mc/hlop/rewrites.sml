@@ -11,6 +11,8 @@ structure Rewrites = struct
 
     val wildcard = Atom.atom "*"
 
+    val tupleAtom = Atom.atom "(,)"
+
     datatype production = HLRWProduction of {
         name : Atom.atom,
         rhs : Atom.atom list,
@@ -35,6 +37,26 @@ structure Rewrites = struct
     fun getNewNonterminal (grammar as HLRWGrammar prod_list) =
         Atom.atom ("!NT" ^ (Int.toString (length prod_list)))
 
+    (* similarProduction() - Return true if the given production
+       matches the other RHS, and both optional rewrites are none. *)
+    fun similarProduction (HLRWProduction {name, rhs, rw_opt}, rhs',
+                           rw_opt') = let
+        (* This is simplified so I don't have to define an order on
+           rewrites. *)
+        val similarRW = not ((isSome rw_opt) orelse (isSome rw_opt'))
+    in
+        if similarRW then let
+                val similarListSize = (length rhs) = (length rhs')
+            in
+                if similarListSize
+                then ListPair.foldl (fn (a1, a2, acc) =>
+                                        acc andalso (Atom.same (a1, a2))) true
+                                    (rhs, rhs')
+                else similarListSize
+            end
+        else similarRW
+    end (* similarProduction() *)
+
     (* addPatternToGrammar() - Add a rewrite pattern as a production
        in the grammar, returning the non-terminal and new grammar. *)
     fun addPatternToGrammar (pat, grammar, rw_opt) = let
@@ -43,17 +65,48 @@ structure Rewrites = struct
             val (prod_name, g') = addPatternToGrammar(p, g, NONE)
         in
             (prod_name :: alist, g')
-        end (* rwFolder *)
+        end (* rwFolder() *)
+
+        (* matchProduction() - See if an identical production doesn't already
+           exist.  *)
+        fun matchProduction (rhs : Atom.atom list, HLRWGrammar prods) = let
+            fun matchProduction' (rhs,
+                                  (prod as HLRWProduction { name, ... }) ::
+                                  prods) =
+                if similarProduction(prod, rhs, rw_opt)
+                then SOME name
+                else matchProduction' (rhs, prods)
+              | matchProduction' (rhs, []) = NONE
+        in
+            matchProduction'(rhs, prods)
+        end (* matchProduction() *)
+
+        (* addProduction() - Create a new production, unless a dupe
+           already exists, and add to the given grammar. *)
+        fun addProduction (rhs, grammar) =
+            (case matchProduction (rhs, grammar)
+              of SOME prod_name => (prod_name, grammar)
+               | NONE => let
+                     val prod_name = getNewNonterminal grammar
+                     val prod = HLRWProduction { name = prod_name,
+                                                 rhs = rhs,
+                                                 rw_opt = rw_opt }
+                 in
+                     (prod_name, addProductionToGrammar (prod, grammar))
+                 end
+             (* end case *))
 
     in case pat
         of HLRWDefPT.Call(fname, pats) => let
                val (argNTs, grammar') = foldl rwFolder ([], grammar) pats
-               val prod_name = getNewNonterminal grammar'
-               val prod = HLRWProduction { name = prod_name,
-                                           rhs = (fname :: (rev argNTs)),
-                                           rw_opt = rw_opt }
            in
-               (prod_name, addProductionToGrammar (prod, grammar'))
+               addProduction(fname :: (rev argNTs), grammar')
+           end
+         | HLRWDefPT.Tuple(p1, p2) => let
+               val (nt1, grammar') = addPatternToGrammar(p1, grammar, NONE)
+               val (nt2, grammar'') = addPatternToGrammar(p2, grammar', NONE)
+           in
+               addProduction([tupleAtom, nt1, nt2], grammar'')
            end
          | HLRWDefPT.Var(_) => (wildcard, grammar)
     end (* addPatternToGrammar() *)
@@ -70,6 +123,23 @@ structure Rewrites = struct
         String.concat ["{", IntInf.toString weight, ", ", Atom.toString label,
                        "}"]
       | rwOptToString NONE = "{0, -}"
+
+    (* getGrammarHash() - Given a grammar, create a mapping from the
+       first atom in each production's right hand side to a list of
+       productions that have that atom as their thing. *)
+    fun getGrammarHash (HLRWGrammar rewrites) = let
+        fun prodHashFolder (prod as HLRWProduction {rhs, ...}, m) = let
+            val prodKey = hd rhs
+            val prods' = (case AtomMap.find(m, prodKey)
+                           of SOME prods => prod::prods
+                            | NONE => [prod]
+                           (* end case *))
+        in
+            AtomMap.insert(m, prodKey, prods')
+        end (* prodHashFolder() *)
+    in
+        foldl prodHashFolder AtomMap.empty rewrites
+    end (* getGrammarHash() *)
 
     (* productionToString() - Create a string representation of a RW grammar
        production. *)
