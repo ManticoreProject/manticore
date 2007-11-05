@@ -10,9 +10,10 @@
 #include "ropes.def"
 
 define @rope-sub (rn : [rope, ml_int] / exh : exh) : any =
+  let BogusExn : exn = (exn) enum(0)
   fun getFromList (xs : list, n : int / exh : exh) : any =
     case xs
-      of NIL => let EmptyList : exn = (exn)$0 (* FIXME *)
+      of NIL => let EmptyList : exn = BogusExn (* FIXME *)
                 throw exh (EmptyList)
        | CONS (x:any, xs:list) =>
            let isZero : bool = I32Eq (n, 0)
@@ -32,20 +33,22 @@ define @rope-sub (rn : [rope, ml_int] / exh : exh) : any =
              then 
                let res2 : any = apply getFromList (data, n / exh)
                return (res2)
-             else (* FIXME *)
-               let WrongLeaf : exn = (exn)$0
+             else
+               let WrongLeaf : exn = BogusExn (* FIXME *)
                throw exh (WrongLeaf)
        | CAT (len:ml_int, depth:ml_int, r1:rope, r2:rope) =>
-          let len : int = #0(len) 
-          let onTheLeft : bool = I32Lt (n, len)
-            if onTheLeft
-              then
-                let res3 : any = apply getFromRope (r1, n / exh)
-                return (res3)
-              else
-                let newN : int = I32Sub (n, len)
-                let res4 : any = apply getFromRope (r2, newN / exh)
-                return (res4)
+           let leftLen : int =
+             let t : ml_int = @rope-length (r1 / exh)
+             return (#0(t))
+           let onTheLeft : bool = I32Lt (n, leftLen)
+             if onTheLeft
+               then
+                 let res3 : any = apply getFromRope (r1, n / exh)
+                 return (res3)
+               else
+                 let newN : int = I32Sub (n, leftLen)
+                 let res4 : any = apply getFromRope (r2, newN / exh)
+                 return (res4)
       end
   let r : rope = #0(rn)
   let mln : ml_int = #1(rn)

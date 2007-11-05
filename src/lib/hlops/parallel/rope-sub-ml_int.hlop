@@ -10,6 +10,12 @@
 #include "ropes.def"
 
 define @rope-sub-ml_int (rn : [rope, ml_int] / exh : exh) : ml_int =
+  let x : any = @rope-sub (rn / exh)
+  let n : ml_int = (ml_int)x
+  return (n)
+;
+
+(*
   fun getFromList (xs : list, n : int / exh : exh) : ml_int =
     case xs
       of NIL => let EmptyList : exn = (exn)$0 (* FIXME *)
@@ -55,3 +61,4 @@ define @rope-sub-ml_int (rn : [rope, ml_int] / exh : exh) : ml_int =
   let res5 : ml_int = apply getFromRope (r, n / exh)
   return (res5)
 ;
+*)
