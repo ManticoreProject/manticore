@@ -25,6 +25,11 @@ structure TranslateTypes : sig
 	    fn l => appf (0, l)
 	  end
 
+  (* flatten tuple types and wrapped raw values into a list of types *)
+    fun flatten (BTy.T_Tuple(false, [ty as BTy.T_Raw _])) = [ty]
+      | flatten (BTy.T_Tuple(false, tys)) = List.foldr (fn (ty, tys) => flatten ty @ tys) [] tys
+      | flatten ty = [ty]
+
     fun insertConst (env, dc, w, ty) = E.insertCon (env, dc, E.Const(w, ty))
     fun insertDCon (env, dc, dc') = E.insertCon (env, dc, E.DCon dc')
 
