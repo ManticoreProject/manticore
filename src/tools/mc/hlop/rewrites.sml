@@ -9,6 +9,8 @@
 
 structure Rewrites = struct
 
+    structure PT = HLRWDefPT
+
     val wildcard = Atom.atom "*"
 
     val tupleAtom = Atom.atom "(,)"
@@ -37,24 +39,26 @@ structure Rewrites = struct
     fun getNewNonterminal (grammar as HLRWGrammar prod_list) =
         Atom.atom ("!NT" ^ (Int.toString (length prod_list)))
 
+    (* matchRHS() - Match a production against a list of nonterminals. *)
+    fun matchRHS (HLRWProduction {rhs, ...}, rhs') = let
+        val similarSize = (List.length rhs) = (List.length rhs')
+    in
+        if similarSize
+        then ListPair.foldl (fn (a1, a2, acc) =>
+                                acc andalso (Atom.same(a1, a2)))
+                            true (rhs, rhs')
+        else similarSize
+    end (* matchRHS() *)
+
     (* similarProduction() - Return true if the given production
        matches the other RHS, and both optional rewrites are none. *)
-    fun similarProduction (HLRWProduction {name, rhs, rw_opt}, rhs',
+    fun similarProduction (prod as HLRWProduction {name, rhs, rw_opt}, rhs',
                            rw_opt') = let
         (* This is simplified so I don't have to define an order on
            rewrites. *)
         val similarRW = not ((isSome rw_opt) orelse (isSome rw_opt'))
     in
-        if similarRW then let
-                val similarListSize = (length rhs) = (length rhs')
-            in
-                if similarListSize
-                then ListPair.foldl (fn (a1, a2, acc) =>
-                                        acc andalso (Atom.same (a1, a2))) true
-                                    (rhs, rhs')
-                else similarListSize
-            end
-        else similarRW
+        if similarRW then matchRHS(prod, rhs') else similarRW
     end (* similarProduction() *)
 
     (* addPatternToGrammar() - Add a rewrite pattern as a production
@@ -126,8 +130,8 @@ structure Rewrites = struct
 
     (* getGrammarHash() - Given a grammar, create a mapping from the
        first atom in each production's right hand side to a list of
-       productions that have that atom as their thing. *)
-    fun getGrammarHash (HLRWGrammar rewrites) = let
+       productions that have that atom as the first RHS token. *)
+    fun getGrammarHash (HLRWGrammar prods) = let
         fun prodHashFolder (prod as HLRWProduction {rhs, ...}, m) = let
             val prodKey = hd rhs
             val prods' = (case AtomMap.find(m, prodKey)
@@ -138,8 +142,35 @@ structure Rewrites = struct
             AtomMap.insert(m, prodKey, prods')
         end (* prodHashFolder() *)
     in
-        foldl prodHashFolder AtomMap.empty rewrites
+        foldl prodHashFolder AtomMap.empty prods
     end (* getGrammarHash() *)
+
+    (* getGrammarProductionMap() - Create a map from nonterminals in
+       the grammar to their (supposedly sole) production. *)
+    fun getGrammarProductionMap (HLRWGrammar prods) = let
+        fun prodMapFolder (prod as HLRWProduction {name, ...}, m) =
+            AtomMap.insert(m, name, prod)
+    in
+        foldl prodMapFolder AtomMap.empty prods
+    end (* getGrammarProductionMap() *)
+
+    (* getProductionWeight() - Calculate the weight of the given
+       production (not counting benefit of children), which will either
+       be zero, or based on the rewrite weight. *)
+    fun getProductionWeight (HLRWProduction {rw_opt, ...}) = (case rw_opt
+        of NONE => IntInf.fromInt 0
+         | SOME (HLRWDefPT.Rewrite {weight, ...}) => weight
+        (* end case *))
+
+    (* productionHasRW() - Return true if the given production has a
+       rewrite associated with it, false otherwise. *)
+    fun productionHasRW (HLRWProduction {rw_opt = SOME rw, ... }) = true
+      | productionHasRW _ = false
+
+    (* findProduction() - Find the (supposedly sole) production for the given
+       nonterminal in the grammar. *)
+    fun findProduction (nt, HLRWGrammar prods) =
+        List.find (fn HLRWProduction {name, ...} => Atom.same(nt, name)) prods
 
     (* productionToString() - Create a string representation of a RW grammar
        production. *)
