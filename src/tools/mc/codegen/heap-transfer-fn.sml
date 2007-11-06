@@ -285,18 +285,22 @@ functor HeapTransferFn (
 	       cArgs=cArgs, saveAllocPtr=saveAllocPtr}
       end (* genCCall *)
       
-  (* promote an object (arg) to the global heap and bind the global handle to lhs *)
+  (* Promote an object to the global heap.
+   *     
+   * NOTE: this call might trigger a global GC.
+   *)
   fun genPromote varDefTbl {frame, lhs, arg} = 
       ccall {lhs=[lhs], 
 	     name=T.LABEL RuntimeLabels.promote,
 	     retTy=CTy.C_PTR, paramTys=[CTy.C_PTR, CTy.C_PTR], 
 	     cArgs=[CCall.ARG VProcOps.genHostVP', convCArg varDefTbl arg], saveAllocPtr=true}
 
-  (* The heap check will check to see if it is necessary to transfer control into the runtime
-   * system.  This can happen for two reasons: there is insufficent space in the heap (obvious)
-   * or the vproc received a preemption.  In the latter case, the runtime might execute other 
-   * allocating code, and thus the heap could have insufficient space after returning from the
-   * runtime system.
+  (* Generate either a global or local heap check.
+   *
+   * We check if it is necessary to transfer control into the runtime system.  This can happen for
+   * two reasons: there is insufficent space in the heap (obvious) or the vproc received a preemption.  
+   * In the latter case, the runtime might execute other allocating code, and thus the heap could have
+   * insufficient space after returning from the runtime system.
    *
    * The heap check works as follows. If the check succeeds, apply the nogc function.  Otherwise, 
    * transfer into the runtime system by doing these steps:
@@ -309,7 +313,7 @@ functor HeapTransferFn (
    * must do this step for the reason mentioned earlier: the heap might still have insufficient space
    * because of preemption.
    *)
-  fun genHeapCheck varDefTbl {szb, nogc=(noGCLbl, roots)} =
+  fun genHeapCheck varDefTbl {hck, szb, nogc=(noGCLbl, roots)} =
       let fun argInfo ([], argTys, hcArgs, mlRegs) = 
 	      (rev argTys, rev hcArgs, rev mlRegs)
 	    | argInfo (a :: args, argTys, hcArgs, rootsMLR) =
@@ -323,7 +327,7 @@ functor HeapTransferFn (
 	  val noGCLbl = LabelCode.getName noGCLbl
 	  val retKLbl = newLabel "retGCK"
 	  val gcTestLbl = newLabel "gcTest"
-
+ 
 	  (* heap allocate the root set *)
 	  val rootSet = ListPair.zip (argTys, map MTy.regToTree rootsMLR)
 	  val {ptr=rootReg, stms=allocStms} = Alloc.genAlloc rootSet
@@ -350,20 +354,25 @@ functor HeapTransferFn (
 		  loadArgs (mtys, i+1, s :: ss)
 	      end
 	  val restoredRoots = loadArgs (argTys, 0, [])
-	  (* The return continuation from GC.
-	   * Jump back to the heap limit check to ensure that there is really enough space.
-	   *)
-	  val retKStms = genJump (T.LABEL gcTestLbl, [gcTestLbl], rootsMLR, restoredRoots)
+	  (* The return continuation from GC. *)
+	  val retKStms = 
+	      (* Jump back to the heap limit check to ensure that there is really enough space. *)
+	      genJump (T.LABEL gcTestLbl, [gcTestLbl], rootsMLR, restoredRoots)
 
 	  (* If the allocation check succeeds (there is sufficient heap space), apply noGCLbl.  
 	   * otherwise, perform the GC. 
 	   *)
+	  val {stms=allocCheckStms, allocCheck} = (case hck
+              of CFG.HCK_Local => {stms=[], allocCheck=Alloc.genAllocCheck szb}
+	       | CFG.HCK_Global => Alloc.genGlobalAllocCheck szb
+              (* end case *))
 	  val stms = List.concat [
  	     (* force the root set into registers *)
 	      Copy.copy {dst=rootsMLR, src=args},
 	      [T.DEFINE gcTestLbl],	      
 	      (* branch on the heap limit test *)
-	      [T.BCC (Alloc.genAllocCheck szb, doGCLbl)],
+	      allocCheckStms,
+	      [T.BCC (allocCheck, doGCLbl)],
               (* GC is unnecessary *)
 	      genJump (T.LABEL noGCLbl, [noGCLbl], noGCParamRegs, map MTy.regToTree rootsMLR),
               (* GC is necessary *)

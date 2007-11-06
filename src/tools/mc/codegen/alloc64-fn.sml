@@ -225,9 +225,9 @@ functor Alloc64Fn (
       val globalLP = VProcOps.genVPLoad' (Spec.ABI.globLimit, vpReg)
       in
           {stms=[ setVP ],
-	   ccexp=T.CMP (ty, T.Basis.LE,
-			T.SUB (ty, globalLP, globalAP),
-			T.LI (Word.toLargeInt szB))}
+	   allocCheck=T.CMP (ty, T.Basis.LE,
+			     T.SUB (ty, globalLP, globalAP),
+			     T.LI (Word.toLargeInt szB))}
       end
 
 end (* Alloc64Fn *)

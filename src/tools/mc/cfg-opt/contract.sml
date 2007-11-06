@@ -106,7 +106,7 @@ structure Contract : sig
 		  C.Switch(applySubst(env, x),
 		    List.map (fn (tag, jmp) => (tag, contractJump jmp)) cases,
 		    Option.map contractJump dflt)
-	      | C.HeapCheck{szb, nogc} => C.HeapCheck{szb=szb, nogc=contractJump nogc}
+	      | C.HeapCheck{hck, szb, nogc} => C.HeapCheck{hck=hck, szb=szb, nogc=contractJump nogc}
 	    (* end case *)
 	  end
 
@@ -247,7 +247,7 @@ structure Contract : sig
 	      | C.Switch(x, cases, dflt) => (
 		  List.app (fn (_, jmp) => deleteJump jmp) cases;
 		  Option.app deleteJump dflt)
-	      | C.HeapCheck{szb, nogc} => deleteJump nogc
+	      | C.HeapCheck{hck, szb, nogc} => deleteJump nogc
 	    (* end case *)
 	  end
 

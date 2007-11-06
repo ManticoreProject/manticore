@@ -423,7 +423,7 @@ structure CheckCFG : sig
 			      | _ => err["variable ", V.toString x, ":", Ty.toString (V.typeOf x), 
                                                " is not valid argument for switch"]
 			    (* end case *))
-			| CFG.HeapCheck{szb, nogc = (lab, args)} => (
+			| CFG.HeapCheck{hck, szb, nogc = (lab, args)} => (
                             chkLabel lab;
                             chkVars (env, args);
                             case L.typeOf lab
