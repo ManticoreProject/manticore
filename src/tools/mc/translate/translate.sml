@@ -167,7 +167,7 @@ structure Translate : sig
 		  end))
 	    | AST.RangeExp(lo, hi, optStep, ty) => raise Fail "RangeExp"
 	    | AST.PTupleExp exps => raise Fail "PTupleExp"
-	    | AST.PArrayExp(exps, ty) => EXP(trParr(env,exps, ty))
+	    | AST.PArrayExp(exps, ty) => EXP(trParr(env,exps,ty))
 	    | AST.PCompExp _ => raise Fail "unexpected PCompExp"
 	    | AST.PChoiceExp _ => raise Fail "unexpected PChoiceExp"
 	    | AST.SpawnExp e => let
@@ -255,7 +255,7 @@ structure Translate : sig
 		   of BIND([x'], rhs) =>
 			mkStmt([x'], rhs, k env)
 		    | EXP e => let
-			val x' = BV.new("_wild_", TranslateTypes.tr(env, ty))
+			val x' = BV.new("_wild_", trTy(env, ty))
 			in
 			  mkLet([x'], e, k env)
 			end
@@ -358,7 +358,7 @@ structure Translate : sig
 		  tr (pats, env', x'::xs)
 		end
 	    | tr (AST.WildPat ty :: pats, env, xs) = let
-		val x' = BV.new("_wild_", TranslateTypes.tr(env, ty))
+		val x' = BV.new("_wild_", trTy(env, ty))
 		in
 		  tr (pats, env, x'::xs)
 		end
@@ -385,11 +385,21 @@ structure Translate : sig
     and trVtoV (env, x, tys, cxt : B.var -> B.exp) = (
 	  case E.lookupVar(env, x)
 	   of E.Var x' => cxt x' (* pass x' directly to the context *)
-	    | E.Lambda lambda => let
-		val lambda as B.FB{f, ...} = BOMUtil.copyLambda lambda
-		in
-		  B.mkFun([lambda], cxt f)
-		end
+	    | E.Lambda mkLambda => let
+                val sigma = Var.typeOf x (* actually a type scheme *)
+		val rangeTy = (case TypeUtil.apply (sigma, tys)
+			         of A.FunTy (_, r) => r
+				  | _ => raise Fail "expected function type")
+		val rangeTy' = trTy (env, rangeTy)
+		val lam = mkLambda rangeTy'
+		(* FIXME copying the lambda here may not be necessary, *)
+		(*       but not copying broke the compiler *)
+		val lam' as B.FB {f, ...} = BOMUtil.copyLambda lam
+	        in
+		  B.mkFun ([lam'], cxt f)
+                end
+                (* let val lambda as B.FB{f, ...} = BOMUtil.copyLambda lambda
+		   in B.mkFun([lambda], cxt f) end *)
 	    | E.EqOp => let
 		val [ty] = tys
 		val lambda as B.FB{f, ...} = Equality.mkEqual(env, x, ty)

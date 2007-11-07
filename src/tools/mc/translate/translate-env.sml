@@ -17,13 +17,13 @@ structure TranslateEnv : sig
 
   (* variable bindings *)
     datatype var_bind
-      = Lambda of BOM.lambda	(* used for primops and high-level ops *)
+      = Lambda of (BOMTy.ty -> BOM.lambda) (* used for primops and high-level ops *)
       | Var of BOM.var
       | EqOp			(* either "=" or "<>" *)
 
     val insertTyc	: (env * Types.tycon * BOMTy.ty) -> unit
     val insertCon	: (env * Types.dcon * con_bind) -> unit
-    val insertFun	: (env * AST.var * BOM.lambda) -> env
+    val insertFun	: (env * AST.var * (BOMTy.ty -> BOM.lambda)) -> env
     val insertVar	: (env * AST.var * BOM.var) -> env
     val newHandler	: env -> (BOM.var * env)
 
@@ -46,7 +46,7 @@ structure TranslateEnv : sig
       | DCon of BOMTy.data_con
 
     datatype var_bind
-      = Lambda of BOM.lambda	(* used for primops and high-level ops *)
+      = Lambda of (BOMTy.ty -> BOM.lambda) (* used for primops and high-level ops *)
       | Var of BOM.var
       | EqOp			(* either "=" or "<>" *)
 
@@ -130,7 +130,7 @@ structure TranslateEnv : sig
 	  fun prVar (x, bind) = let
 		val x' = (case bind
 		       of Var x' => x'
-			| Lambda(BOM.FB{f, ...}) => f
+			| Lambda _ => raise Fail "prVar | Lambda" (* FIXME *)
 		      (* end case *))
 		in
 		  prl [

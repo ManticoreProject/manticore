@@ -127,7 +127,7 @@ structure Futures : sig
     fun mkFut futvar (qVarExp, e) = 
 	let val te = TypeOf.exp e
 	in
-	    A.ApplyExp (A.VarExp (futvar, []), (* [te]),  *)
+	    A.ApplyExp (A.VarExp (futvar, [te]),
 			A.TupleExp [qVarExp, mkThunk e], 
 			futureTy te)
 	end

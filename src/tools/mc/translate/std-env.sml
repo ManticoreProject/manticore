@@ -45,8 +45,8 @@ structure StdEnv : sig
 	    (B.listTyc,		BOMBasis.listTy),
 	    (B.optionTyc,	BOMBasis.optionTy),
 	    (B.threadIdTyc,	BTy.tidTy),
-	    (B.parrayTyc,       BOMBasis.parrayTy),
-            (R.ropeTyc,         BOMBasis.ropeTy),
+	    (B.parrayTyc,       BOMBasis.ropeTy),
+	    (R.ropeTyc,         BOMBasis.ropeTy),
 (*
 	    (B.chanTyc, ),
 	    (B.ivarTyc, ),
@@ -72,8 +72,22 @@ structure StdEnv : sig
 	    (R.ropeCat,         E.DCon BOMBasis.ropeCat)
 	  ]
 
-    (* hlop : HLOp.hlop -> BOM.lambda *)
-      fun hlop (hlop as HLOp.HLOp{name, sign, ...}) = let
+    (* mkCast : BOM.exp * BOMTy.ty * BOMTy.ty -> BOM.exp *)
+      fun mkCast (e, origTy, newTy) =
+(*	  if BOMTyUtil.match (origTy, newTy)
+                 (* read: can origTy can be used wherever newTy is expected? *)
+	  then e (* if so, casting is unnecessary *)
+	  else *)
+	      let val x = BV.new ("x", origTy)
+		  val c = BV.new ("c", newTy)
+	      in
+		  BOM.mkLet ([x], e,
+                    BOM.mkStmt ([c], BOM.E_Cast (newTy, x),
+                      BOM.mkRet [c]))
+	      end
+	     
+    (* hlop : HLOp.hlop * bool -> (BOMTy.ty -> BOM.lambda) *)
+      fun hlop (hlop as HLOp.HLOp{name, sign, ...}, polyResTy) = let
 	    val {params, exh, results} = sign
 	    val paramTys = let
 		  fun get (HLOp.PARAM t) = t
@@ -82,8 +96,6 @@ structure StdEnv : sig
 		  in
 		    List.map get params
 		  end
-	    val fty = BTy.T_Fun(paramTys, exh, results)
-	    val f = BV.new (Atom.toString name, fty)
 	  (* mkVars : BTy.ty list -> BV.var list *)
 	    fun mkVars baseName ts = let
 		(* build : string -> BTy.ty list * int -> BV.var list *)
@@ -97,11 +109,29 @@ structure StdEnv : sig
 		    build (ts, 0)
 		  end
 	    val params = mkVars "arg" paramTys
-	    val exh = mkVars "exh" exh
-	    val body = BOM.mkHLOp (hlop, params, exh)
-	    in
-	      BOM.FB{f=f, params=params, exh=exh, body=body}
-	    end
+	    val exhVars = mkVars "exh" exh
+	    val h = BOM.mkHLOp (hlop, params, exhVars)
+	    val fty = BTy.T_Fun(paramTys, exh, results)
+	    val f = BV.new (Atom.toString name, fty)	    
+            in
+	      if polyResTy
+	      then let val resTy = (case results 
+				      of [r] => r
+				       | _ => raise Fail "resTy")
+		   in
+		       fn t => 
+			  let val fty' = BTy.T_Fun(paramTys, exh, [t])
+			      val f' = BV.new (Atom.toString name, fty')
+			  in
+			      BOM.FB {f = f', 
+				      params = params, 
+				      exh = exhVars, 
+				      body = mkCast (h, resTy, t)}
+			  end
+		   end
+	      else 
+		  fn _ => BOM.FB {f=f, params=params, exh=exhVars, body=h}
+            end
 
   (***** Predefined operators *****)
     local 
@@ -145,14 +175,14 @@ structure StdEnv : sig
     (* funTy : BV.var * BV.var -> BTy.ty *)
       fun funTy (arg, res) = BTy.T_Fun([BV.typeOf arg], [BTy.exhTy], [BV.typeOf res])
 
-      (* prim1 : (BV.V.var -> BOM.prim) * string  * BV.V.ty * BV.V.ty 
-                  -> BOM.lambda *)
+    (* prim1 : (BV.V.var -> BOM.prim) * string  * BV.V.ty * BV.V.ty 
+                -> (BOMTy.ty -> BOM.lambda) *)
       fun prim1 (rator, f, rawArgTy, rawResTy) = let
 	    val (preStms, rawArg, wrapArg, wrapArgTy) = unwrapArg ("arg", rawArgTy, [])
 	    val (postStms, rawRes, wrapRes, wrapResTy) = wrapRes rawResTy
 	    val stms = preStms @ (([rawRes], BOM.E_Prim(rator rawArg)) :: postStms)
 	    in
-	      BOM.FB{
+	      fn _ => BOM.FB{
 		  f = BV.new(f, BTy.T_Fun([wrapArgTy], [BTy.exhTy], [wrapResTy])),
 		  params = [wrapArg],
 		  exh = [BV.new("_exh", BTy.exhTy)],
@@ -160,9 +190,9 @@ structure StdEnv : sig
 		}
 	    end
 
-      (* prim2 : (BV.V.var * BV.V.var -> BOM.prim) * string 
-                 * BV.V.ty * BV.V.ty * BV.V.ty 
-                 -> BOM.lambda *)
+    (* prim2 : (BV.V.var * BV.V.var -> BOM.prim) * string 
+                * BV.V.ty * BV.V.ty * BV.V.ty 
+               -> (BOMTy.ty -> BOM.lambda) *)
       fun prim2 (rator, f, rawATy, rawBTy, rawResTy) = let
 	    val (preStms, rawB, wrapB, wrapBTy) = unwrapArg ("b", rawBTy, [])
 	    val (preStms, rawA, wrapA, wrapATy) = unwrapArg ("a", rawATy, preStms)
@@ -174,7 +204,7 @@ structure StdEnv : sig
 	    val (postStms, rawRes, wrapRes, wrapResTy) = wrapRes rawResTy
 	    val stms = preStms @ (([rawRes], BOM.E_Prim(rator(rawA, rawB))) :: postStms)
 	    in
-	      BOM.FB{
+	      fn _ => BOM.FB{
 		  f = BV.new(f, BTy.T_Fun([argTy], [BTy.exhTy], [wrapResTy])),
 		  params = [arg],
 		  exh = [BV.new("_exh", BTy.exhTy)],
@@ -190,7 +220,7 @@ structure StdEnv : sig
       val b = BTy.boolTy
     in 
     val operators = [
-	    (B.listAppend,	hlop H.listAppendOp),	    
+	    (B.listAppend,	hlop (H.listAppendOp, true)),	    
 	    (B.int_lte,		prim2 (P.I32Lte, "lte", i, i, b)),
 	    (B.long_lte,	prim2 (P.I64Lte, "lte", l, l, b)),
 	    (B.float_lte,	prim2 (P.F32Lte, "lte", f, f, b)),
@@ -329,32 +359,35 @@ structure StdEnv : sig
 *)
 (*	    (B.itos,		hlop H.itosOp),
 	    (B.ltos,		hlop H.ltosOp), *)
-	    (B.ftos,		hlop H.ftosOp),
-	    (B.dtos,		hlop H.dtosOp),
+	    (B.ftos,		hlop (H.ftosOp, false)),
+	    (B.dtos,		hlop (H.dtosOp, false)),
 (* FIXME
 	    (B.args,		hlop H.args),
 *)
 	  (* events *)
-	    (B.wrap,		hlop H.wrapOp),
-	    (B.choose,		hlop H.chooseOp),
-	    (B.always,		hlop H.alwaysOp),
-	    (B.sync,		hlop H.syncOp),
+	    (B.wrap,		hlop (H.wrapOp, false)),
+	    (B.choose,		hlop (H.chooseOp, false)),
+	    (B.always,		hlop (H.alwaysOp, false)),
+	    (B.sync,		hlop (H.syncOp, true)),
 
 	  (* channels *)
-	    (B.channel,		hlop H.channelOp),
-	    (B.recv,		hlop H.recvOp),
-	    (B.recvEvt,		hlop H.recvEvtOp),
-	    (B.send,		hlop H.sendOp),
+	    (B.channel,		hlop (H.channelOp, false)),
+	    (B.recv,		hlop (H.recvOp, true)),
+	    (B.recvEvt,		hlop (H.recvEvtOp, false)),
+	    (B.send,		hlop (H.sendOp, false)),
 
 	  (* futures and work queues *)
-	    (F.newWorkQueue,    hlop H.newWorkQueueOp),
-	    (F.getWork1All,     hlop H.getWork1AllOp),
-	    (F.future,          hlop H.futureOp),
-	    (F.touch,           hlop H.touchOp),
-	    (F.cancel,          hlop H.cancelOp),
-	    (F.future1,         hlop H.future1Op),
-	    (F.touch1,          hlop H.touch1Op),
-	    (F.cancel1,         hlop H.cancel1Op)
+	    (F.newWorkQueue,    hlop (H.newWorkQueueOp, false)),
+	    (F.getWork1All,     hlop (H.getWork1AllOp, false)),
+	    (F.future,          hlop (H.futureOp, false)),
+	    (F.touch,           hlop (H.touchOp, true)),
+	    (F.cancel,          hlop (H.cancelOp, false)),
+	    (F.future1,         hlop (H.future1Op, false)),
+	    (F.touch1,          hlop (H.touch1Op, true)),
+	    (F.cancel1,         hlop (H.cancel1Op, false)),
+
+          (* parray operations *)
+	    (B.psub,            hlop (H.ropeSubOp, true))
 	  ]
     end (* local *) 
 
@@ -387,13 +420,12 @@ structure StdEnv : sig
                   (B.compose,           "compose"),
 		  (B.gettimeofday,	"gettimeofday"),
                   (B.plen,              "rope-length"),
-		  (B.psub,              "rope-sub"),
 		  (U.sumPQ,             "rope-sum"),
 		  (U.tabulateD,         "tabulateD")
 		]  
 	  fun ins ((x, n), env) = (case H.find (Atom.atom n)
 		of NONE => raise Fail ("cannot find hlop " ^ n)
-		 | SOME hop => E.insertFun (env, x, hlop hop)
+		 | SOME hop => E.insertFun (env, x, hlop (hop, false))
 		(* end case *))
 	  in
 	    HLOpDefLoader.loadPrototypes ();

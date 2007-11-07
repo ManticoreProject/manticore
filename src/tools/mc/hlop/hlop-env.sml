@@ -72,6 +72,9 @@ structure HLOpEnv : sig
     val touch1Op  : HLOp.hlop
     val cancel1Op : HLOp.hlop
 
+  (* parrays (ropes) *)
+    val ropeSubOp : HLOp.hlop
+
     val define : HLOp.hlop -> unit
     val find : Atom.atom -> HLOp.hlop option
 
@@ -179,23 +182,17 @@ structure HLOpEnv : sig
     val touchOp  = newWithExh ("touch",  [futureTy], [BTy.T_Any], [])
     val cancelOp = newWithExh ("cancel", [futureTy], [], [])
 
-    val future1Op = newWithExh (
-	  "future1", 
-	  [pairTy (workQueueTy, thunkTy)],
-	  [futureTy], 
-	  [])
+    val future1Op = 
+      newWithExh ("future1", [pairTy (workQueueTy, thunkTy)], [futureTy], [])
 
-    val touch1Op  = newWithExh (
-	  "touch1",  
-	  [pairTy (workQueueTy, futureTy)], 
-	  [BTy.T_Any], 
-	  [])
+    val touch1Op  = 
+      newWithExh ("touch1", [pairTy (workQueueTy, futureTy)], [BTy.T_Any], [])
 
-    val cancel1Op = newWithExh (
-	  "cancel1", 
-	  [pairTy (workQueueTy, futureTy)],
-	  [], 
-	  [])
+    val cancel1Op = 
+      newWithExh ("cancel1", [pairTy (workQueueTy, futureTy)], [], [])
+
+    val ropeSubOp = 
+      newWithExh ("rope-sub", [pairTy (Basis.ropeTy, intTy)], [BTy.T_Any], [])
 		    
     fun mkTbl nameOf bindings = let
 	  val tbl = AtomTable.mkTable (List.length bindings, Fail "table")
@@ -229,7 +226,8 @@ structure HLOpEnv : sig
 		cancelOp,
 		future1Op,
 		touch1Op,
-		cancel1Op
+		cancel1Op,
+                ropeSubOp
 	      ]
 
   end
