@@ -13,8 +13,6 @@ structure Rewrites = struct
 
     val wildcard = Atom.atom "*"
 
-    val tupleAtom = Atom.atom "(,)"
-
     datatype production = HLRWProduction of {
         name : Atom.atom,
         rhs : Atom.atom list,
@@ -106,12 +104,9 @@ structure Rewrites = struct
            in
                addProduction(fname :: (rev argNTs), grammar')
            end
-         | HLRWDefPT.Tuple(p1, p2) => let
-               val (nt1, grammar') = addPatternToGrammar(p1, grammar, NONE)
-               val (nt2, grammar'') = addPatternToGrammar(p2, grammar', NONE)
-           in
-               addProduction([tupleAtom, nt1, nt2], grammar'')
-           end
+         | HLRWDefPT.Const(_,_) =>
+           raise (Fail
+               "Constants not currently supported in LHS of rewrite patterns.")
          | HLRWDefPT.Var(_) => (wildcard, grammar)
     end (* addPatternToGrammar() *)
 
@@ -190,5 +185,22 @@ structure Rewrites = struct
     in
         String.concat prodStrs
     end (* grammarToString *)
+
+    (* patternToString() - Utility function to make a string from a
+       parse tree pattern. *)
+    fun patternToString (PT.Call(name, pats)) =
+        String.concat [ Atom.toString name, "(",
+                        String.concatWith ", " (List.map patternToString pats),
+                        ")" ]
+        (* FIXME: something to print the constant type? *)
+      | patternToString (PT.Const(lit, ty)) = Literal.toString lit
+      | patternToString (PT.Var(name)) = Atom.toString name
+
+    (* rewriteToString() - Utility function to make a string from a
+       parse tree rewrite. *)
+    fun rewriteToString (PT.Rewrite {label, lhs, rhs, weight}) =
+        String.concat [ Atom.toString label, " : ", patternToString lhs,
+                        " ==> ", patternToString rhs, " {",
+                        IntInf.toString weight, "}" ]
 
 end (* Rewrites *)

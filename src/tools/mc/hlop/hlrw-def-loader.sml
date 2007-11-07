@@ -17,7 +17,9 @@ end = struct
     structure Parser = HLRWDefParseFn(HLRWDefLex)
     structure ATbl = AtomTable
 
-    fun tokToString (HLRWDefTokens.NUM n) = IntInf.toString n
+    fun tokToString (HLRWDefTokens.POSINT n) = IntInf.toString n
+      | tokToString (HLRWDefTokens.NEGINT n) = "-" ^ IntInf.toString(~n)
+      | tokToString (HLRWDefTokens.FLOAT f) = FloatLit.toString f
       | tokToString (HLRWDefTokens.HLOP id) = "@" ^ Atom.toString id
       | tokToString (HLRWDefTokens.ID id) = Atom.toString id
       | tokToString tok = HLRWDefTokens.toString tok

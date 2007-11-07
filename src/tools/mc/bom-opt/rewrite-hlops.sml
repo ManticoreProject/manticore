@@ -160,6 +160,9 @@ end = struct
         String.concat ["{ ", keysAndWeights, " }"]
     end (* rwStateToString() *)
 
+    (* FIXME: Will need to move these into an environment... *)
+    val allocAtom = Atom.atom "alloc"
+
     (* ____________________________________________________________ *)
     (* rewrite() - Rewrite the given BOM module, using HLOp rewrites in the
        library path. *)
@@ -259,8 +262,8 @@ end = struct
            statement RHS.  Unlike matchExp, there is no program point to
            associate with the result, so for this to work,
            matchBindingExp() MUST have a binding variable. *)
-        fun matchRHS (B.E_Alloc(_, vars as [v1, v2])) =
-            mkRWState(Rewrites.tupleAtom, List.map getVarRWState vars)
+        fun matchRHS (B.E_Alloc(_, vars)) =
+            mkRWState(allocAtom, List.map getVarRWState vars)
           | matchRHS _ = emptyRWState
         (* __________________________________________________ *)
         (* matchBindingExp() - Derive a rewrite state for the

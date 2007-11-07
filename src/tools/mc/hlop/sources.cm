@@ -38,3 +38,4 @@ is
   hlrw-def-pt.sml
   hlrw-def-loader.sml
   rewrites.sml
+  hl-def-utils.sml

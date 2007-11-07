@@ -1,4 +1,4 @@
-(* rw-def.lex
+(* hlrw-def.lex
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -23,6 +23,36 @@
     fun eof () = T.EOF
 
     val depth = ref 0
+
+    (* make a FLOAT token from a substring *)
+    val mkFloat = HLDefUtils.mkMkFloat (fn lit => T.FLOAT lit)
+
+    (* idToken() - Create an identifier or a keyword. *)
+    local
+        val kwPairs = [
+            ("addr",T.KW_addr),
+            ("any", T.KW_any),
+            ("byte", T.KW_byte),
+            ("cont", T.KW_cont),
+            ("double", T.KW_double),
+            ("enum", T.KW_enum),
+            ("float", T.KW_float),
+            ("fun", T.KW_fun),
+            ("int", T.KW_int),
+            ("long", T.KW_long),
+            ("short", T.KW_short),
+            ("vec128", T.KW_vec128),
+            ("vproc", T.KW_vproc)
+            ]
+        fun ins ((id, tok), acc) = AtomMap.insert(acc, Atom.atom id, tok)
+        val kwMap = List.foldl ins AtomMap.empty kwPairs
+        fun find (id) = AtomMap.find(kwMap, id)
+    in
+    fun idToken id = (case find id
+                       of SOME tok => tok
+                        | NONE => T.ID id
+                       (* end case *))
+    end (* local *)
 );
 
 %states INITIAL COMMENT;
@@ -39,12 +69,13 @@
 %let filename = "\""{sgood}*"\"";
 
 <INITIAL>"#"{ws}*{dig}+{ws}+{filename}({ws}+{dig}+)*{eol} => (
-	case RunCPP.parseLineDirective yytext
-	 of SOME{lineNo, fileName} => 
-	      AntlrStreamPos.resynch yysm (yypos, {fileName=fileName, lineNo=lineNo, colNo=1})
-	  | _ => ()
-	(* end case *);
-	skip());
+        case RunCPP.parseLineDirective yytext
+         of SOME{lineNo, fileName} => 
+              AntlrStreamPos.resynch yysm (yypos, {fileName=fileName,
+                                                   lineNo=lineNo, colNo=1})
+          | _ => ()
+        (* end case *);
+        skip());
 
 <INITIAL>"("            => (T.LP);
 <INITIAL>")"            => (T.RP);
@@ -54,9 +85,12 @@
 <INITIAL>":"            => (T.COLON);
 <INITIAL>","            => (T.COMMA);
 <INITIAL>"==>"          => (T.DDARROW);
-<INITIAL>{id}           => (T.ID (Atom.atom yytext));
+<INITIAL>{id}           => (idToken (Atom.atom yytext));
 <INITIAL>{hlid}         => (T.HLOP (Atom.atom yytext));
-<INITIAL>{num}          => (T.NUM(valOf (IntInf.fromString yytext)));
+<INITIAL>{num}          => (T.POSINT(valOf (IntInf.fromString yytext)));
+<INITIAL>[~\045]{num}   => (T.NEGINT(valOf (IntInf.fromString yytext)));
+<INITIAL>[~\045]?{num}"."{num}([eE][+~\045]?{num})?
+                        => (mkFloat yysubstr);
 <INITIAL>{ws}           => (skip());
 <INITIAL>"(*"           => (YYBEGIN COMMENT; depth := 1; skip());
 <INITIAL>{eol}          => (AntlrStreamPos.markNewLine yysm yypos; skip());

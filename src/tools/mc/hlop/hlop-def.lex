@@ -31,30 +31,7 @@
     fun mkString () = (T.STRING(String.concat(List.rev(!buf))) before buf := [])
 
   (* make a FLOAT token from a substring *)
-    fun mkFloat ss = let
-	  val (isNeg, rest) = (case Substring.getc ss
-		 of SOME(#"-", r) => (true, r)
-		  | SOME(#"~", r) => (true, r)
-		  | _ => (false, ss)
-		(* end case *))
-	  val (whole, rest) = Substring.splitl Char.isDigit rest
-	  val rest = Substring.triml 1 rest (* remove "." *)
-	  val (frac, rest) = Substring.splitl Char.isDigit rest
-	  val exp = if Substring.isEmpty rest
-		then 0
-		else let
-		  val rest = Substring.triml 1 rest (* remove "e" or "E" *)
-		  in
-		    #1(valOf(Int.scan StringCvt.DEC Substring.getc rest))
-		  end
-	  in
-	    T.FLOAT(FloatLit.float{
-		isNeg = isNeg,
-		whole = Substring.string whole,
-		frac = Substring.string frac,
-		exp = exp
-	      })
-	  end
+    val mkFloat = HLDefUtils.mkMkFloat (fn lit => T.FLOAT lit)
 
   (* eof : unit -> lex_result *)
   (* ml-ulex requires this as well *)

@@ -6,8 +6,12 @@
 
 structure HLRWDefPT = struct
 
+     datatype raw_ty = datatype BOMTyPT.raw_ty
+
+     datatype ty = datatype BOMTyPT.ty
+
      datatype pattern = Call of Atom.atom * pattern list
-                      | Tuple of pattern * pattern
+                      | Const of (Literal.literal * ty)
                       | Var of Atom.atom
 
      datatype rewrite = Rewrite of { label  : Atom.atom,

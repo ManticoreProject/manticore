@@ -8,17 +8,38 @@
 %name HLRWDef;
 
 %tokens
-        : LP            ("(")
+        : KW_addr       ("addr")
+        | KW_any        ("any")
+        | KW_byte       ("byte")
+        | KW_cont       ("cont")
+        | KW_double     ("double")
+        | KW_enum       ("enum")
+        | KW_float      ("float")
+        | KW_fun        ("fun")
+        | KW_int        ("int")
+        | KW_long       ("long")
+        | KW_short      ("short")
+        | KW_vec128     ("vec128")
+        | KW_vproc      ("vproc")
+        | LP            ("(")
         | RP            (")")
+        | LB            ("[")
+        | RB            ("]")
         | LBRKT         ("{")
         | RBRKT         ("}")
         | COLON         (":")
         | SEMI          (";")
         | COMMA         (",")
+        | BANG          ("!")
+        | SLASH         ("/")
+        | ARROW         ("->")
         | DDARROW       ("==>")
         | ID of Atom.atom
         | HLOP of Atom.atom
-        | NUM of IntInf.int
+        | POSINT of IntInf.int
+        | NEGINT of IntInf.int
+        | FLOAT of FloatLit.float
+        | STRING of string
         ;
 
 %defs(
@@ -33,8 +54,14 @@
       in
           label_counter := !label_counter + 1;
           ret_val
-      end
+      end (* new_label() *)
 
+      val dfltIntTy = HLRWDefPT.T_Raw(BOMTy.T_Int)
+      val dfltFloatTy = HLRWDefPT.T_Raw(BOMTy.T_Float)
+      val dfltStringTy = HLRWDefPT.T_Any (* FIXME *)
+
+      fun flatten NONE = []
+        | flatten (SOME(x, xs)) = x::xs
 );
 
 File
@@ -61,14 +88,89 @@ Pattern
         : IdOrHLOp LP PatternArgs RP
                 => ( HLRWDefPT.Call(IdOrHLOp, PatternArgs) )
 
-        (* XXX - Should this support not just a 2-tuple? (Which
-           corresponds to E_Alloc, which has a list of variable inputs.
-           Will have to ultimately support matching much more of BOM. *)
-        | LP Pattern COMMA Pattern RP
-                => ( HLRWDefPT.Tuple(Pattern1, Pattern2) )
+        | Literal
+                => ( HLRWDefPT.Const(Literal))
 
         | ID
                 => ( HLRWDefPT.Var ID )
+        ;
+
+Literal
+        : "enum" "(" POSINT ")" (":" Type)?
+                => (let
+                        val w = Word.fromLargeInt POSINT
+                    in
+                        case SR
+                         of NONE => (Literal.Enum w, HLRWDefPT.T_Enum w)
+                          | SOME ty => (Literal.Enum w, ty)
+                        (* end case *)
+                    end)
+
+        (* XXX - Omitted: state values. *)
+
+        | Int (":" Type)?
+                => (let
+                        val iLit = Literal.Int Int
+                    in case SR
+                        of NONE => (iLit, dfltIntTy)
+                         | SOME ty => (iLit, ty)
+                        (* end case *)
+                    end)
+
+        | FLOAT (":" Type)?
+                => (let
+                        val fLit = Literal.Float FLOAT
+                    in case SR
+                        of NONE => (fLit, dfltFloatTy)
+                         | SOME ty => (fLit, dfltFloatTy)
+                        (* end case *)
+                    end)
+
+        | STRING
+                => (Literal.String STRING, dfltStringTy)
+
+        ;
+
+Int
+        : POSINT => (POSINT)
+        | NEGINT => (NEGINT)
+        ;
+
+Type
+        : "addr" "(" Type ")"
+                => (HLRWDefPT.T_Addr(Type))
+        | "any"
+                => (HLRWDefPT.T_Any)
+        | "enum" "(" POSINT ")"
+                => (HLRWDefPT.T_Enum(Word.fromLargeInt POSINT))
+        | RawType
+                => (HLRWDefPT.T_Raw RawType)
+        | "!" "[" Type ("," Type)* "]"
+                => (HLRWDefPT.T_Tuple(true, Type :: SR))
+        | "[" Type ("," Type)* "]"
+                => (HLRWDefPT.T_Tuple(false, Type :: SR))
+        | "fun" "(" TypeList "/" TypeList "->" TypeList ")"
+                => (HLRWDefPT.T_Fun(TypeList1, TypeList2, TypeList3))
+        | "cont" "(" TypeList ")"
+                => (HLRWDefPT.T_Cont TypeList)
+        | "vproc"
+                => (HLRWDefPT.T_VProc)
+        | ID
+                => (HLRWDefPT.T_TyCon ID)
+        ;
+
+TypeList
+        : (Type ("," Type)* )?  => (flatten SR)
+        ;
+
+RawType
+        : "byte"   => (HLRWDefPT.T_Byte)
+        | "short"  => (HLRWDefPT.T_Short)
+        | "int"    => (HLRWDefPT.T_Int)
+        | "long"   => (HLRWDefPT.T_Long)
+        | "float"  => (HLRWDefPT.T_Float)
+        | "double" => (HLRWDefPT.T_Double)
+        | "vec128" => (HLRWDefPT.T_Vec128)
         ;
 
 PatternArgs
@@ -79,8 +181,8 @@ PatternArgs
         ;
 
 Benefit
-        : LBRKT NUM RBRKT
-                => ( NUM )
+        : LBRKT POSINT RBRKT
+                => ( POSINT )
         | LBRKT RBRKT
                 => ( zero )
         | (* Empty *)
