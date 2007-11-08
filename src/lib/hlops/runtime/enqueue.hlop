@@ -11,6 +11,8 @@
 #include "runtime-offsets.def"
 #include "types.def"
 
+extern void M_Print (void *);
+
 define inline @enqueue (vp : vproc, tid : tid, fiber : fiber / exh : exh) : () =
    let tl : rdyq_item = vpload (VP_RDYQ_TL, vp)
    let qitem : rdyq_item = QITEM (tid, fiber, tl)

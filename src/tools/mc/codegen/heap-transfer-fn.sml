@@ -297,6 +297,37 @@ functor HeapTransferFn (
 	     retTy=CTy.C_PTR, paramTys=[CTy.C_PTR, CTy.C_PTR], 
 	     cArgs=[CCall.ARG VProcOps.genHostVP', convCArg varDefTbl arg], saveAllocPtr=true}
 
+  (* take the GC roots and return MLRISC code for initializing and restoring the roots
+   * and return the root pointer, temporaries for the roots, and values for the roots
+   *)
+  fun processGCRoots varDefTbl (roots : CFG.var list, restoreLoc) = let
+     (* generate information for the roots *)
+      fun loop ([], tys, args, temps) = (rev tys, rev args, rev temps)
+	| loop (root::roots, tys, args, temps) = let
+	   val ty = Var.typeOf root
+	   val arg = VarDef.getDefOf varDefTbl root
+	   val temp = mlrReg root 
+	   in
+	      loop (roots, ty::tys, arg::args, temp::temps)
+	   end
+     (* information for the roots (order matters)
+      *   (types, values, temporaries)
+      *)
+      val (tys, args, temps) = loop (roots, [], [], [])
+     (* allocate the roots *)
+      val {ptr=rootPtr, stms=initRoots} = Alloc.genAlloc (ListPair.zip (tys, map MTy.regToTree temps))
+     (* restore the roots *)
+      fun restore ([], i, rs) = rev rs
+	| restore (ty::tys, i, rs) = let
+            val r = Alloc.select {lhsTy=Types.szOf ty, mty=M.T_Tuple (false, tys), i=i, base=restoreLoc}
+	    in
+	      restore (tys, i+1, r::rs)
+	    end
+      val restoreRoots = restore (tys, 0, [])
+      in
+         { initRoots=initRoots, restoreRoots=restoreRoots, rootPtr=rootPtr, rootTemps=temps, rootArgs=args }
+      end (* processGCRoots *)
+
   (* Generate either a global or local heap check.
    *
    * We check if it is necessary to transfer control into the runtime system.  This can happen for

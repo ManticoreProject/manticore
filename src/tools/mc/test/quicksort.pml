@@ -8,12 +8,20 @@ fun foldl (f, acc, ls) = (case ls
 
 fun rev xs = foldl (cons, nil, xs);   
 
-fun filter (g, ls) = let
+(*fun filter (g, ls) = let
     fun f (x, xs) = if g x then x :: xs else xs
     in
        rev (foldl (f, nil, ls))
     end
+;*)
+
+fun filter (g, ls) = (case ls
+    of nil => nil
+     | x :: xs => if g x then x :: filter (g, xs)
+                         else filter (g, xs)
+    (* end case *))
 ;
+
 
 fun intListToString ls = let
     fun loop (ls, acc) =  (case ls
@@ -29,7 +37,7 @@ fun intListToString ls = let
 fun floatListToString ls =  let
     fun loop (ls, acc) =  (case ls
         of nil => acc
-	 | x :: y :: nil => acc ^ (ftos x) ^ ", " ^ (ftos y)
+	 | x :: nil => acc ^ (ftos x)
 	 | x :: xs => loop (xs, acc ^ (ftos x) ^ ", ")
         (* end case *))
     in
@@ -49,12 +57,15 @@ fun qs xs = (case xs
        fun gt x = x > p
        val xs1 = filter (lte, xs)
        val xs2 = filter (gt, xs)
-       in
+       in	
+	  print ( "p="^(ftos p)^"\n");
+	  print ( "xs1="^(floatListToString xs1) ^ "\n");
+	  print ( "xs2="^(floatListToString xs2) ^ "\n");
           append (qs xs1, p :: qs xs2)
        end 
     (* end case *));
 
 val xs = 4::3::2::1::nil;
-val ys = 4.0::3.0::2.0::1.0::nil;
+val ys = 4.0 :: 3.12 :: 5.0 :: 0.01 :: 3.3 :: nil;
 
 print ( (floatListToString (qs ys)) ^ "\n")

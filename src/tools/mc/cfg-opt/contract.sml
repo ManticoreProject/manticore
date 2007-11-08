@@ -250,6 +250,7 @@ structure Contract : sig
 		  List.app (fn (_, jmp) => deleteJump jmp) cases;
 		  Option.app deleteJump dflt)
 	      | C.HeapCheck{hck, szb, nogc} => deleteJump nogc
+	      | C.AllocCCall{f, args, ret} => deleteJump ret
 	    (* end case *)
 	  end
 
