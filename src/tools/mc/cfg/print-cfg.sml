@@ -121,6 +121,11 @@ structure PrintCFG : sig
 		        indent (i+1); pr "then GC()\n";
 		        indent (i+1); prJump("else", nogc))
                       end
+		  | CFG.AllocCCall {f, args, ret} => (
+		      prl ["ccall-alloc ", varUseToString f, " "];
+		      prList varUseToString args;
+		      pr "\n";
+		      prJump("", ret))
 		  | CFG.If(x, j1, j2) => (
 		      prl ["if ", varUseToString x, "\n"];
 		      indent (i+1); prJump("then", j1);

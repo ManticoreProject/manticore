@@ -34,19 +34,7 @@ end = struct
 		 | _ => raise Fail "addEdge"
 	      (* esac *))
 	  (* get the jump labels of a transfer *)
-	  fun labsOf (M.Goto (l, _)) = [l]
-	    | labsOf (M.If (_, (lt, _), (lf, _) )) = [lt, lf]
-	    | labsOf (M.Switch (_, js, jOpt)) =
-	      let val ls = map (fn (_, (l, _)) => l) js
-	      in
-		  (case jOpt
-		    of SOME (l, _) => l :: ls
-		     | NONE => ls
-		  (* esac *))
-	      end
-	    | labsOf (M.HeapCheck {nogc=(l, _), ...}) = [l]
-	    | labsOf _ = []
-	  val labs = labsOf exit
+	  val labs = CFG.labelsOfXfer exit
       in
 	  foldl addEdge edgeMap labs
       end (* addEdges *)

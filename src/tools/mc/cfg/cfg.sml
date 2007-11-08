@@ -76,6 +76,7 @@ structure CFG =
       | If of (var * jump * jump)
       | Switch of (var * (tag * jump) list * jump option)
       | HeapCheck of {hck : heap_check_kind, szb : word, nogc : jump}
+      | AllocCCall of { f : var, args : var list, ret : jump }            (* jump to ret after calling f(args) *)
 
     and var_kind
       = VK_None
@@ -183,6 +184,7 @@ structure CFG =
 	    x :: (List.foldl f (case dflt of SOME(_, args) => args | _ => []) cases)
 	  end
       | varsOfXfer (HeapCheck{nogc=(_, args), ...}) = args
+      | varsOfXfer (AllocCCall{ret=(_, args), ...}) = args
 
   (* project the list of destination labels in a control transfer; note that this function
    * only looks at jumps.  A control-flow analysis may give better information.
@@ -198,6 +200,7 @@ structure CFG =
 	    List.foldl f (case dflt of SOME(lab, _) => [lab] | _ => []) cases
 	  end
       | labelsOfXfer (HeapCheck{nogc=(lab, _), ...}) = [lab]
+      | labelsOfXfer (AllocCCall{ret=(lab, _), ...}) = [lab]
 
   (* project out the parameters of a convention *)
     fun paramsOfConv (StdFunc{clos, args, ret, exh}) = clos :: args @ [ret, exh]

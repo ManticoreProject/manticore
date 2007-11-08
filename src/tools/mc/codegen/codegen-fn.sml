@@ -189,16 +189,19 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		  Option.app (fn defJmp => emitStms (genGoto defJmp)) jOpt
 	      end
 	    (* invariant: #2 gc = #2 nogc (their arguments are the same) *)
-	    | genTransfer (M.HeapCheck hc) = 
-	      let val {stms, retKLbl, retKStms, liveOut} = BE.Transfer.genHeapCheck varDefTbl hc
-	      in 
+	    | genTransfer (M.HeapCheck hc) = let
+                val {stms, retKLbl, retKStms, liveOut} = BE.Transfer.genHeapCheck varDefTbl hc
+	        in 
 		  (* emit code for the heap-limit test and the transfer into the GC *) 
 		  emitStms stms;
 		  emit (T.LIVE liveOut) ;
 		  (* emit an entypoint and code for the return continuation  *)		  
 		  entryLabel retKLbl;
 		  emitStms retKStms  
-	      end
+	        end
+	    | genTransfer (M.AllocCCall call) = 
+	        emitStms (BE.Transfer.genAllocCCall varDefTbl call)
+	      
 
 	  (* Bind some CFG variables to MLRISC trees, possibly emitting 
 	   * the tree if the variable has a useCount > 1. *)

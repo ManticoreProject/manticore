@@ -284,6 +284,8 @@ functor HeapTransferFn (
 	       retTy=cvtCTy retTy, paramTys=List.map cvtCTy paramTys, 
 	       cArgs=cArgs, saveAllocPtr=saveAllocPtr}
       end (* genCCall *)
+
+  fun genAllocCCall varDefTbl {f, args, ret} = raise Fail "todo"
       
   (* Promote an object to the global heap.
    *     
