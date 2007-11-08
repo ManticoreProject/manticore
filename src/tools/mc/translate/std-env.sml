@@ -74,10 +74,11 @@ structure StdEnv : sig
 
     (* mkCast : BOM.exp * BOMTy.ty * BOMTy.ty -> BOM.exp *)
       fun mkCast (e, origTy, newTy) =
-(*	  if BOMTyUtil.match (origTy, newTy)
-                 (* read: can origTy can be used wherever newTy is expected? *)
-	  then e (* if so, casting is unnecessary *)
-	  else *)
+	  (* FIXME *)
+	  if BOMTyUtil.equal (origTy, newTy)
+                 (* this really should be match, but that wasn't working *)
+	  then e (* cast is unnecessary *)
+	  else 
 	      let val x = BV.new ("x", origTy)
 		  val c = BV.new ("c", newTy)
 	      in
@@ -418,6 +419,7 @@ structure StdEnv : sig
 		  (B.powf,              "powf"),
 		  (B.powd,              "powd"),
                   (B.compose,           "compose"),
+		  (B.map,               "list-map"),
 		  (B.gettimeofday,	"gettimeofday"),
                   (B.plen,              "rope-length"),
 		  (U.sumPQ,             "rope-sum"),
@@ -425,7 +427,7 @@ structure StdEnv : sig
 		]  
 	  fun ins ((x, n), env) = (case H.find (Atom.atom n)
 		of NONE => raise Fail ("cannot find hlop " ^ n)
-		 | SOME hop => E.insertFun (env, x, hlop (hop, false))
+		 | SOME hop => E.insertFun (env, x, hlop (hop, true (* true is the conservative choice here *)))
 		(* end case *))
 	  in
 	    HLOpDefLoader.loadPrototypes ();

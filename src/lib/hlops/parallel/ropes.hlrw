@@ -1,0 +1,16 @@
+(* ropes.hlrw
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Fusion rewrites for ropes.
+ *)
+
+tab_map : @mapD(f,@tabulateD([g,q,lf,lo,hi])) ==>
+          @tabulate([@compose(f,g),q,lf,lo,hi])
+          { 1 };          
+
+map_map : @mapD(f,@mapD(g,lo,hi)) =>
+          @mapD(@compose(f,g),lo,hi)
+          { 1 };
+

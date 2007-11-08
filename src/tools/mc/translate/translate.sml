@@ -392,8 +392,6 @@ structure Translate : sig
 				  | _ => raise Fail "expected function type")
 		val rangeTy' = trTy (env, rangeTy)
 		val lam = mkLambda rangeTy'
-		(* FIXME copying the lambda here may not be necessary, *)
-		(*       but not copying broke the compiler *)
 		val lam' as B.FB {f, ...} = BOMUtil.copyLambda lam
 	        in
 		  B.mkFun ([lam'], cxt f)

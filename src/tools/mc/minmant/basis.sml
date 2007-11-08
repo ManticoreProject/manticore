@@ -60,6 +60,7 @@ structure Basis : sig
 
   (* primitive operators *)
     val listAppend	: AST.var
+    val map             : AST.var
     val stringConcat	: AST.var
     val psub            : AST.var
     val int_div		: AST.var
@@ -197,23 +198,46 @@ structure Basis : sig
       fun ** (t1, t2) = AST.TupleTy[t1, t2]
       infix 9 **
       infixr 8 -->
+
       fun forall mkTy = let
 	    val tv = TyVar.new(Atom.atom "'a")
 	    in
 	      AST.TyScheme([tv], mkTy(AST.VarTy tv))
 	    end
-      fun forallList (n, mkTy) = let
+
+    (* forAllMulti : int * (A.ty -> A.ty) -> A.ty_scheme *)
+    (* Consume a number of type variables and a ty -> ty function. *)
+    (* One must pass in the number of tyvars since there's no way to *)
+    (* look inside mkTy to see how many type variables it expects. *)
+      fun forAllMulti (n, mkTy) = let
 	    fun mkTv n = TyVar.new(Atom.atom ("'a" ^ Int.toString n))
 	    val tvs = map mkTv (List.tabulate (n, (fn n => n)))
             in
               AST.TyScheme(tvs, mkTy(map AST.VarTy tvs))
             end
+
+    (* monoVar : string * A.ty -> A.var *)
       fun monoVar (name, ty) = Var.new(name, ty)
+
+    (* monoVar' : Atom.atom * A.ty -> A.var *)
       fun monoVar' (name, ty) = monoVar(Atom.toString name, ty)
+
+    (* polyVar : string * (A.ty -> A.ty) -> A.var *) 
       fun polyVar (name, mkTy) = Var.newPoly(name, forall mkTy)
+
+    (* polyVar' : Atom.atom * (A.ty -> A.ty) -> A.var *) 
       fun polyVar' (name, mkTy) = polyVar(Atom.toString name, mkTy)
-      fun polyVarList (name, n, mkTy) = Var.newPoly(name, forallList (n, mkTy))
-      fun polyVarList' (name, n, mkTy) = polyVarList(Atom.toString name, n, mkTy)
+
+    (* polyVarMulti : string * int * (A.ty -> A.ty) -> A.var *)
+    (* Consume a name, a number of type variables, and a function to make a type. *)
+    (* See forAllMulti above. *)
+      fun polyVarMulti (name, n, mkTy) = Var.newPoly(name, forAllMulti (n, mkTy))
+
+    (* polyVarMulti' : Atom.atom * int * (A.ty -> A.ty) -> A.var *)
+    (* Consume a name, a number of type variables, and a function to make a type. *)
+    (* See forAllMulti above. *)
+      fun polyVarMulti' (name, n, mkTy) = polyVarMulti(Atom.toString name, n, mkTy)
+
     in
 
     val boolTyc = TyCon.newDataTyc (N.bool, [])
@@ -549,11 +573,19 @@ structure Basis : sig
     val rev =           polyVar'(N.rev, fn tv => listTy tv --> listTy tv)
     val gettimeofday =	monoVar'(N.gettimeofday, unitTy --> doubleTy)
 
+  (* predefined functions with more than one type variable in their types *)
     val compose =
 	let fun mkTy ([a,b,c]) = ((a --> b) ** (c --> a)) --> (c --> b)
-	      | mkTy _ = raise Fail "BUG"
+	      | mkTy _ = raise Fail "BUG: bad type instantiation for compose"
 	in
-	    polyVarList' (N.compose, 3, mkTy)
+	    polyVarMulti' (N.compose, 3, mkTy)
+	end
+
+    val map =
+        let fun mkTy ([a,b]) = ((a --> b) ** (listTy a)) --> (listTy b)
+	      | mkTy _ = raise Fail "BUG: bad type instantiation for map"
+	in
+	    polyVarMulti' (N.map, 2, mkTy)
 	end
 				 
 (*
@@ -644,7 +676,8 @@ structure Basis : sig
 	    (N.sumP,            Env.Var sumP),
 	    (N.rev,             Env.Var rev),
 	    (N.gettimeofday,	Env.Var gettimeofday),
-	    (N.compose,         Env.Var compose)
+	    (N.compose,         Env.Var compose),
+	    (N.map,             Env.Var map)
 
 (*
 	    (N.size,		Env.Var size),
