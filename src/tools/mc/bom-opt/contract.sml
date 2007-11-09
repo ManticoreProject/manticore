@@ -221,7 +221,7 @@ structure Contract : sig
 	    | _ => FAIL
 	  (* end case *))
 
-    fun doExp (env, B.E_Pt(_, t), kid) = (case t
+    fun doExp(env, B.E_Pt(_, t), kid) = (case t
 	   of B.E_Let(lhs, rhs, e) =>
 		if List.all unused lhs andalso pureExp rhs
 		  then (
@@ -528,17 +528,54 @@ structure Contract : sig
 	    lambda'
 	  end
 
-  (* inline an application of the fucntion "\params.body".  args is the list of actuals and
+  (* inline an application of the function "\params.body".  args is the list of actuals and
    * params is the list of formals.
    *)
     and inlineApply {env : BOMUtil.subst, kid, args, params, body : BOM.exp} = let
-	  val env = U.extend' (env, params, args)
+	(* FIXME -- Do this right! *)
+	  fun needsCast (fromTy, toTy) =
+	        (case fromTy
+                   of BTy.T_Any => not (BOMTyUtil.equal (BTy.T_Any, toTy)) 
+		    | BTy.T_Tuple (b, ts) =>
+		        (case toTy
+			   of BTy.T_Tuple (b', ts') => ListPair.exists needsCast (ts, ts')
+			    | _ => false
+			   (* end case *))
+		    | _ => false
+		  (* end case *))
+	  fun mkCasts ([], [], args', bod) = (rev args', bod)
+	    | mkCasts (a::_, [], _, _) = raise Fail "more actuals than formals"
+	    | mkCasts ([], f::_, _, _) = raise Fail "more formals than actuals"
+	    | mkCasts (ac::acs, fm::fms, args', bod) =
+	        let val actTy = BV.typeOf ac
+		    val frmTy = BV.typeOf fm
+		in
+		    if not (needsCast (actTy, frmTy))
+		    then mkCasts (acs, fms, ac::args', bod)
+		    else
+			let val name = 
+				let val x = BV.nameOf ac
+				in 
+				    concat ["_cast",
+					    (if String.isPrefix "_" x then "" else "_"),
+					    x]
+				end
+			    val c = BV.new (name, frmTy)
+			    val _ = Census.incUseCnt c
+			    val bod' = B.mkStmt ([c], B.E_Cast (frmTy, ac), bod)
+			in
+			    mkCasts (acs, fms, c::args', bod')
+			end
+		end
+	  val (args', body') = mkCasts (args, params, [], body)
+	  val env' = U.extend' (env, params, args')
+	  val body'' = doExp (env', body', kid)
 	  fun adjust (arg, param) = (
 		combineAppUseCnts (arg, param);
 		useCntRef arg -= 1)
 	  in
-	    ListPair.app adjust (args, params);
-	    doExp (env, body, kid)
+	    ListPair.app adjust (args', params);
+	    doExp (env', body'', kid)
 	  end
 
     fun contract (module as B.MODULE{name, externs, body}) = let

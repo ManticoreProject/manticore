@@ -10,7 +10,7 @@
 
 define @list-map (arg : [fun (any / exh -> any), list] / exh : exh) : list =
 
-  let f  : fun (any / exh -> exh) = #0(arg)
+  let f  : fun (any / exh -> any) = #0(arg)
   let xs : list = #1(arg)
 
   fun mapf (xs : list, acc : list / exh : exh) : list =
