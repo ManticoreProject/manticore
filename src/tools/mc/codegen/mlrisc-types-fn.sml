@@ -27,6 +27,8 @@ signature MLRISC_TYPES = sig
     val mlriscTypeOf : T.rexp -> T.ty
     val mlriscFTypeOf : T.fexp -> T.ty
     val regToTree : mlrisc_reg -> mlrisc_tree
+    val mlriscToTree : T.mlrisc -> mlrisc_tree
+    val mlriscTreeToRexp : mlrisc_tree -> T.rexp
     val gprToExp : mlrisc_reg -> T.mlrisc
     val cfgTyToMLRisc : CFGTy.ty -> mlrisc_kind
     val treeToString : mlrisc_tree -> string
@@ -88,6 +90,11 @@ functor MLRiscTypesFn (
   fun mlriscToTree (T.CCR cexp) = CEXP cexp
     | mlriscToTree (T.GPR exp) = EXP (mlriscTypeOf exp, exp)
     | mlriscToTree (T.FPR fexp) = FEXP (mlriscFTypeOf fexp, fexp)
+
+  fun mlriscTreeToRexp e = (case treeToMLRisc e
+      of T.GPR e => e
+       | _ => raise Fail "MLRiscTypesFn.mlriscTreeToRexp"
+      (* end case *))
 
   fun regToTree (GPReg (ty, v)) = GPR (ty, v)
     | regToTree (FPReg (fty, fv)) = FPR (fty, fv)

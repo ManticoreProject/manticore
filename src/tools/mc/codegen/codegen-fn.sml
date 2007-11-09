@@ -188,19 +188,17 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		  app emitJump (List.rev exits);
 		  Option.app (fn defJmp => emitStms (genGoto defJmp)) jOpt
 	      end
-	    (* invariant: #2 gc = #2 nogc (their arguments are the same) *)
 	    | genTransfer (M.HeapCheck hc) = let
-                val {stms, retKLbl, retKStms, liveOut} = BE.Transfer.genHeapCheck varDefTbl hc
+                val {stms, retLbl, retStms, liveOut} = BE.Transfer.genHeapCheck varDefTbl hc
 	        in 
 		  (* emit code for the heap-limit test and the transfer into the GC *) 
 		  emitStms stms;
 		  emit (T.LIVE liveOut) ;
 		  (* emit an entypoint and code for the return continuation  *)		  
-		  entryLabel retKLbl;
-		  emitStms retKStms  
+		  entryLabel retLbl;
+		  emitStms retStms  
 	        end
-	    | genTransfer (M.AllocCCall call) = 
-	        emitStms (BE.Transfer.genAllocCCall varDefTbl call)
+	    | genTransfer (M.AllocCCall call) = emitStms (BE.Transfer.genAllocCCall varDefTbl call)
 	      
 
 	  (* Bind some CFG variables to MLRISC trees, possibly emitting 
@@ -261,16 +259,14 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 			  bindExp ([lhs], [ptr])
 		      end
 		  | gen (M.E_Promote (lhs, v)) =  let
-                    val {stms, result} = BE.Transfer.genPromote varDefTbl
-						       {frame=frame, lhs=lhs, arg=v}
+                    val {stms, result} = BE.Transfer.genPromote varDefTbl {lhs=lhs, arg=v}
 		    in
 			emitStms stms;
 			bindExp ([lhs], result)
 		    end
 		  | gen (M.E_Prim (lhs, p)) = emitStms (genPrim (lhs, p))
 		  | gen (M.E_CCall (lhs, f, args)) = let 
-                    val {stms, result} = BE.Transfer.genCCall varDefTbl 
-					      {frame=frame, lhs=lhs, f=f, args=args}
+                    val {stms, result} = BE.Transfer.genCCall varDefTbl {lhs=lhs, f=f, args=args}
 		      in
 			  emitStms stms;
 			  bindExp (lhs, result)

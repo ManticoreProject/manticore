@@ -59,20 +59,19 @@ functor HeapTransferFn (
 
   val szOfVar = Types.szOf o Var.typeOf
   fun newLabel s = Label.label s () 
-  fun fail s = raise Fail s
-  fun regExp r = T.REG (ty, r)
-  fun move (r, e) = T.MV (ty, r, e)
+  fun regExp r = T.REG (MTy.wordTy, r)
+  fun move (r, e) = T.MV (MTy.wordTy, r, e)
   fun move' (r, mlt) = 
       (case MTy.treeToMLRisc mlt
 	of T.GPR e => move (r, e)
-	 | _ => fail "move'"
-      (* esac *))
+	 | _ => raise Fail "move'"
+      (* end case *))
   fun newReg _ = Cells.newReg ()
   fun newFReg _ = Cells.newFreg ()
-  fun gpReg r = MTy.GPReg (ty, r)
-  fun mltGPR r = MTy.GPR (ty, r)
+  fun gpReg r = MTy.GPReg (MTy.wordTy, r)
+  fun mltGPR r = MTy.GPR (MTy.wordTy, r)
   fun regGP (MTy.GPReg (_, r)) = r
-  fun mkExp rexp = MTy.EXP (ty, rexp)
+  fun mkExp rexp = MTy.EXP (MTy.wordTy, rexp)
   val toGPR = T.GPR o regExp o regGP
   fun mlrReg v = 
       let val mty = Var.typeOf v
@@ -80,19 +79,10 @@ functor HeapTransferFn (
 	  (case MTy.cfgTyToMLRisc mty
 	    of MTy.K_INT => MTy.GPReg (Types.szOf mty, newReg ())
 	     | MTy.K_FLOAT => MTy.FPReg (Types.szOf mty, newFReg ())
-	  (* esac *))
+	  (* end case *))
       end (* mlrReg *)
 
-  fun select' (lhsTy, mty, i, e) = 
-      Alloc.select {lhsTy=lhsTy, mty=mty, i=i, base=e}
-  fun select {lhsTy, mty, i, base} =
-      (case Alloc.select {lhsTy=lhsTy, mty=mty, i=i, base=base}
-	of MTy.EXP (_, e) => e
-	 | _ => raise Fail ""
-      (* esac *))
-
-  (* emit a jump by first copying argument registers to parameter registers
-   * and then emitting a jump instruction. *)
+  (* emit a jump by first copying argument registers to parameter registers and then emitting a jump instruction. *)
   fun genJump (target, ls, params, args) =
       let val stms = Copy.copy {src=args, dst=params}
       in
@@ -125,8 +115,7 @@ functor HeapTransferFn (
 	   liveOut=map toGPR stdRegs}
       end (* genStdTransfer *)
 
-  (* if labExp is a label, put it into the jump directly, ow use a 
-   * register temp. *)
+  (* if labExp is a label, put it into the jump directly, ow use a register temp. *)
   fun genTransferTarget labExp = (case labExp
        of T.LABEL _ => (labExp, [])
 	| _ => let val tgtReg = newReg ()
@@ -190,7 +179,7 @@ functor HeapTransferFn (
 	  | Ty.T_OpenTuple _ => CTy.C_PTR
 	  | Ty.T_VProc => CTy.C_PTR
 	  | _ => raise Fail(concat["cfgTyToCTy(", CFGTy.toString ty, ")"])
-	(* esac *))
+	(* end case *))
 
   fun cvtCTy (CFunctions.PointerTy) = CTy.C_PTR
     | cvtCTy (CFunctions.BaseTy rTy) = rawTyToCTy rTy
@@ -201,6 +190,14 @@ functor HeapTransferFn (
       then rs
       else removeReg reg rs
     | removeReg _ [] = []
+
+ (* assign the host vproc pointer to a register *)
+  fun hostVProc () = let
+        val r = newReg()
+	val MTy.EXP(_, hostVP) = VProcOps.genHostVP
+        in
+          (T.REG(ty, r), T.MV(ty, r, hostVP))
+        end
 
   fun ccall {lhs, name, retTy, paramTys, cArgs, saveAllocPtr} = let
       val {callseq, result} = CCall.genCall {
@@ -230,12 +227,7 @@ functor HeapTransferFn (
 	  then saveRegs (removeReg Regs.apReg Regs.saveRegs)
 	  else saveRegs Regs.saveRegs
       (* we need a pointer to the vproc to set the inManticore flag, etc. *)
-      val (vpReg, setVP) = let
-	  val r = newReg()
-	  val MTy.EXP(_, hostVP) = VProcOps.genHostVP
-          in
-	    (T.REG(ty, r), T.MV(ty, r, hostVP))
-          end
+      val (vpReg, setVP) = hostVProc ()
       (* generate a statement to store a value in the vproc inManticore flag *)
       fun setInManticore value = 
 	  VProcOps.genVPStore' (Spec.ABI.inManticore, vpReg, T.LI value)
@@ -264,44 +256,41 @@ functor HeapTransferFn (
   fun mlriscToCArg (T.GPR rexp) = CCall.ARG rexp
     | mlriscToCArg (T.FPR fexp) = CCall.FARG fexp
     | mlriscToCArg _ = raise Fail "impossible"
-  fun convCArg varDefTbl = mlriscToCArg o MTy.treeToMLRisc o (VarDef.getDefOf varDefTbl)
+ (* convert a CFG variable to a C argument *)
+  fun varToCArg varDefTbl = mlriscToCArg o MTy.treeToMLRisc o (VarDef.getDefOf varDefTbl)
+
+  fun getCPrototype f = (case Var.typeOf f
+      of  CFGTy.T_CFun proto => proto
+	| _ => raise Fail(concat["HeapTransferFn.getCPrototype: ", Var.toString f, " not a C function"])
+      (* end case *))
   
-  fun genCCall varDefTbl {frame, lhs, f, args} = let
-      val defOf = VarDef.defOf varDefTbl
-      val getDefOf = VarDef.getDefOf varDefTbl
+  fun genCCall varDefTbl {lhs, f, args} = let
       (* get the C function's prototype *)
-      val cProtoTy as CFunctions.CProto(retTy, paramTys, _) = (
-	  case Var.typeOf f
-	   of CFGTy.T_CFun proto => proto
-	    | _ => raise Fail(concat["genCCall: ", Var.toString f, " not a C function"])
-          (* end case *))
+      val cProtoTy as CFunctions.CProto(retTy, paramTys, _) = getCPrototype f
       (* do we need to save/restore the allocation pointer? *)
       val saveAllocPtr = CFunctions.protoHasAttr CFunctions.A_alloc cProtoTy
-      val cArgs = map (convCArg varDefTbl) args	  
       in
         ccall {lhs=lhs, 
-	       name=defOf f, 
+	       name=VarDef.defOf varDefTbl f, 
 	       retTy=cvtCTy retTy, paramTys=List.map cvtCTy paramTys, 
-	       cArgs=cArgs, saveAllocPtr=saveAllocPtr}
+	       cArgs=map (varToCArg varDefTbl) args, saveAllocPtr=saveAllocPtr}
       end (* genCCall *)
-
-  fun genAllocCCall varDefTbl {f, args, ret} = raise Fail "todo"
       
   (* Promote an object to the global heap.
    *     
    * NOTE: this call might trigger a global GC.
    *)
-  fun genPromote varDefTbl {frame, lhs, arg} = 
+  fun genPromote varDefTbl {lhs, arg} = 
       ccall {lhs=[lhs], 
 	     name=T.LABEL RuntimeLabels.promote,
 	     retTy=CTy.C_PTR, paramTys=[CTy.C_PTR, CTy.C_PTR], 
-	     cArgs=[CCall.ARG VProcOps.genHostVP', convCArg varDefTbl arg], saveAllocPtr=true}
+	     cArgs=[CCall.ARG VProcOps.genHostVP', varToCArg varDefTbl arg], saveAllocPtr=true}
 
-  (* take the GC roots and return MLRISC code for initializing and restoring the roots
-   * and return the root pointer, temporaries for the roots, and values for the roots
+  (* take the CFG variables for the GC roots and return MLRISC code that initializes and restores
+   * the roots and also return the root pointer, register temps for the roots, and values for the roots
    *)
   fun processGCRoots varDefTbl (roots : CFG.var list, restoreLoc) = let
-     (* generate information for the roots *)
+     (* preprocess the roots *)
       fun loop ([], tys, args, temps) = (rev tys, rev args, rev temps)
 	| loop (root::roots, tys, args, temps) = let
 	   val ty = Var.typeOf root
@@ -310,30 +299,71 @@ functor HeapTransferFn (
 	   in
 	      loop (roots, ty::tys, arg::args, temp::temps)
 	   end
-     (* information for the roots (order matters)
-      *   (types, values, temporaries)
-      *)
-      val (tys, args, temps) = loop (roots, [], [], [])
+     (* types, values, and temporary registers for the roots (order matters) *)
+      val (rootTys, rootArgs, rootTemps) = loop (roots, [], [], [])
      (* allocate the roots *)
-      val {ptr=rootPtr, stms=initRoots} = Alloc.genAlloc (ListPair.zip (tys, map MTy.regToTree temps))
+      val {ptr=rootPtr, stms=initRoots} = Alloc.genAlloc (ListPair.zip (rootTys, map MTy.regToTree rootTemps))
      (* restore the roots *)
       fun restore ([], i, rs) = rev rs
 	| restore (ty::tys, i, rs) = let
-            val r = Alloc.select {lhsTy=Types.szOf ty, mty=M.T_Tuple (false, tys), i=i, base=restoreLoc}
+            val r = Alloc.select {lhsTy=Types.szOf ty, mty=M.T_Tuple (false, rootTys), i=i, base=restoreLoc}
 	    in
 	      restore (tys, i+1, r::rs)
 	    end
-      val restoreRoots = restore (tys, 0, [])
+      val restoredRoots = restore (rootTys, 0, [])
       in
-         { initRoots=initRoots, restoreRoots=restoreRoots, rootPtr=rootPtr, rootTemps=temps, rootArgs=args }
+         { initRoots=initRoots, restoredRoots=restoredRoots, rootPtr=rootPtr, rootTemps=rootTemps, rootArgs=rootArgs }
       end (* processGCRoots *)
+
+  fun genAllocCCall' varDefTbl (fLabel, CFunctions.CProto(retTy, paramTys, _), fArgs, retFun, roots) = let
+      val retLabel = LabelCode.getName retFun
+      val (vpReg, setVP) = hostVProc ()
+      val stdEnvPtrOffset = VProcOps.genVPAddrOf (Spec.ABI.stdEnvPtr, vpReg)
+      val {initRoots, restoredRoots, rootPtr, rootTemps, rootArgs} = processGCRoots varDefTbl (roots, stdEnvPtrOffset)
+     (* if the C call returns a value (it is non-void), we pass the return value to the first argument 
+      * position of the return function (ret) 
+      *)
+      val lhs = (case retTy
+	  of CFunctions.VoidTy => []
+	   | _ => [hd roots]
+          (* end case *))
+      val {stms=stmsC, result=resultC} = ccall {lhs=lhs, name=fLabel, 
+               retTy=cvtCTy retTy, paramTys=List.map cvtCTy paramTys, 
+	       cArgs=fArgs, saveAllocPtr=false}
+      in
+         List.concat [
+           (* store dedicated registers and the rootset pointer before entering the C call *)
+	    [ (* by convention we put the rootset pointer into stdEnvPtr *)
+              VProcOps.genVPStore' (Spec.ABI.stdEnvPtr, vpReg, MTy.mlriscTreeToRexp rootPtr),
+	      VProcOps.genVPStore' (Spec.ABI.allocPtr, vpReg, regExp Regs.apReg),
+	      VProcOps.genVPStore' (Spec.ABI.limitPtr, vpReg, regExp Regs.limReg) 
+	    ],
+            stmsC,
+	   (* restore dedicated registers and the roots *) 
+	    [
+	     move (Regs.apReg, (VProcOps.genVPLoad' (Spec.ABI.allocPtr, vpReg))),
+	     move (Regs.limReg, (VProcOps.genVPLoad' (Spec.ABI.limitPtr, vpReg)))
+	    ],
+	   (* jump to the return post-C-call function *)
+	    genJump (T.LABEL retLabel, [retLabel], rootTemps, restoredRoots)	    
+	 ]
+      end (* genAllocCCall' *)
+
+ (* apply a C funcion f to args (f can trigger a garbage collection). *)
+  fun genAllocCCall varDefTbl {f, args, ret=ret as (retFun, roots)} = let
+      val fLabel = VarDef.defOf varDefTbl f
+      val fPrototype = getCPrototype f
+      val fArgs = map (varToCArg varDefTbl) args
+      in
+        genAllocCCall' varDefTbl (fLabel, fPrototype, fArgs, retFun, roots)
+      end
 
   (* Generate either a global or local heap check.
    *
    * We check if it is necessary to transfer control into the runtime system.  This can happen for
-   * two reasons: there is insufficent space in the heap (obvious) or the vproc received a preemption.  
-   * In the latter case, the runtime might execute other allocating code, and thus the heap could have
-   * insufficient space after returning from the runtime system.
+   * two reasons: there is insufficent space in the local or global heaps (obvious) or the vproc received
+   * a preemption.  In the latter case, the runtime might execute other allocating code, and thus the 
+   * heap could have insufficient space after returning from the runtime system.
    *
    * The heap check works as follows. If the check succeeds, apply the nogc function.  Otherwise, 
    * transfer into the runtime system by doing these steps:
@@ -346,101 +376,81 @@ functor HeapTransferFn (
    * must do this step for the reason mentioned earlier: the heap might still have insufficient space
    * because of preemption.
    *)
-  fun genHeapCheck varDefTbl {hck, szb, nogc=(noGCLbl, roots)} =
-      let fun argInfo ([], argTys, hcArgs, mlRegs) = 
-	      (rev argTys, rev hcArgs, rev mlRegs)
-	    | argInfo (a :: args, argTys, hcArgs, rootsMLR) =
-	      argInfo (args, Var.typeOf a :: argTys, 
-		       VarDef.getDefOf varDefTbl a :: hcArgs,
-		       mlrReg a :: rootsMLR)
-	  (*   arg type,  arg,     fresh arg register *)
-	  val (argTys,    args,    rootsMLR) = argInfo (roots, [], [], [])
-	      
-	  val noGCParamRegs = LabelCode.getParamRegs noGCLbl
-	  val noGCLbl = LabelCode.getName noGCLbl
-	  val retKLbl = newLabel "retGCK"
-	  val gcTestLbl = newLabel "gcTest"
- 
-	  (* heap allocate the root set *)
-	  val rootSet = ListPair.zip (argTys, map MTy.regToTree rootsMLR)
-	  val {ptr=rootReg, stms=allocStms} = Alloc.genAlloc rootSet
-
-	  (* perform the GC *)
-	  val doGCLbl = newLabel "doGC"
-	  val doGCStms = List.concat [
+  fun genHeapCheck varDefTbl {hck, szb, nogc=(noGCLbl, roots)} = let
+      val {initRoots, restoredRoots, rootPtr, rootTemps, rootArgs } = processGCRoots varDefTbl (roots, regExp closReg)
+								      
+      val noGCParamRegs = LabelCode.getParamRegs noGCLbl
+      val noGCLbl = LabelCode.getName noGCLbl
+      val retLbl = newLabel "retGC"
+      val gcTestLbl = newLabel "gcTest"
+		      
+     (* perform the GC *)
+      val doGCLbl = newLabel "doGC"
+      val doGCStms = List.concat [
  	      [T.DEFINE doGCLbl],	      
-	      (* allocate a heap object for GC roots *)
-	      allocStms,
-	      (* save the root pointer in the closure register *)
-	      [move' (closReg, rootReg)],
-	      (* put the return address into retReg *)
-	      [move (retReg, T.LABEL retKLbl)],
-	      (* perform the GC *)
-	      Target.genGCCall () ]
+	     (* allocate a heap object for GC roots *)
+	      initRoots,
+	     (* save the root pointer in the closure register *)
+	      [move' (closReg, rootPtr)],
+	     (* put the return address into retReg *)
+	      [move (retReg, T.LABEL retLbl)],
+	     (* jump to the garbage collector *)
+	      Target.genGCCall () 
+          ]
 
-	  (* load the fresh roots that GC produces *)
-	  fun loadArgs ([], i, ss) = rev ss
-	    | loadArgs (mty :: mtys, i, ss) =
-	      let val ty = Types.szOf mty
-		  val s = select' (ty, M.T_Tuple (false, argTys), i, regExp closReg)
-	      in 
-		  loadArgs (mtys, i+1, s :: ss)
-	      end
-	  val restoredRoots = loadArgs (argTys, 0, [])
-	  (* The return continuation from GC. *)
-	  val retKStms = 
-	      (* Jump back to the heap limit check to ensure that there is really enough space. *)
-	      genJump (T.LABEL gcTestLbl, [gcTestLbl], rootsMLR, restoredRoots)
+     (* jump to the heap limit check *)
+      val retStms = genJump (T.LABEL gcTestLbl, [gcTestLbl], rootTemps, restoredRoots)
+	      
+     (* generate code for the type of allocation check *)
+      val {stms=allocCheckStms, allocCheck} = (case hck
+  	  of CFG.HCK_Local => {stms=[], allocCheck=Alloc.genAllocCheck szb}
+	   | CFG.HCK_Global => Alloc.genGlobalAllocCheck szb
+          (* end case *))
 
-	  (* If the allocation check succeeds (there is sufficient heap space), apply noGCLbl.  
-	   * otherwise, perform the GC. 
-	   *)
-	  val {stms=allocCheckStms, allocCheck} = (case hck
-              of CFG.HCK_Local => {stms=[], allocCheck=Alloc.genAllocCheck szb}
-	       | CFG.HCK_Global => Alloc.genGlobalAllocCheck szb
-              (* end case *))
-	  val stms = List.concat [
- 	     (* force the root set into registers *)
-	      Copy.copy {dst=rootsMLR, src=args},
-	      [T.DEFINE gcTestLbl],	      
-	      (* branch on the heap limit test *)
-	      allocCheckStms,
-	      [T.BCC (allocCheck, doGCLbl)],
-              (* GC is unnecessary *)
-	      genJump (T.LABEL noGCLbl, [noGCLbl], noGCParamRegs, map MTy.regToTree rootsMLR),
-              (* GC is necessary *)
-	      doGCStms ] 
+      val stms = List.concat [
+                 (* force the root set into registers *)
+		  Copy.copy {dst=rootTemps, src=rootArgs},
+		  [T.DEFINE gcTestLbl],	      
+		 (* branch on the heap limit test *)
+		  allocCheckStms,
+		  [T.BCC (allocCheck, doGCLbl)],
+		 (* GC is unnecessary *)
+		  genJump (T.LABEL noGCLbl, [noGCLbl], noGCParamRegs, map MTy.regToTree rootTemps),
+		 (* GC is necessary *)
+		  doGCStms 
+             ] 
       in	  
-	  {stms=stms, retKLbl=retKLbl, retKStms=retKStms, liveOut=map MTy.gprToExp noGCParamRegs}
+	  {stms=stms, retLbl=retLbl, retStms=retStms, liveOut=map MTy.gprToExp noGCParamRegs}
       end (* genHeapCheck *)
 
-  fun genFuncEntry varDefTbl (lab, convention) =
-      let datatype conv = Special | StdConv of Regs.gpr list
-	  val (params, stdRegs) = (case convention
-		of M.StdFunc{clos, args as [arg], ret, exh} => 
-		   ([clos, arg, ret, exh], StdConv stdFuncRegs)
-                 | M.StdFunc _ => raise Fail "genFuncEntry: ill-formed StdFunc"
-		 | M.StdCont{clos, args as [arg]} => 
-                   ([clos, arg], StdConv stdContRegs)
-                 | M.StdCont _ => raise Fail "genFuncEntry: ill-formed StdCont"
-                 | M.KnownFunc args =>
-                   (args, StdConv (List.take (kfncRegs, length args)))
-		 | M.Block vs => (vs, Special)
-	      (* end case *))
-	  fun bindToParams rs = 
-	      ListPair.app (VarDef.setDefOf varDefTbl) (params, rs)
-	  fun gpReg' (v, r) = MTy.GPReg (Types.szOf (Var.typeOf v), r)
-	  val {stms, regs} = 
-	      (case stdRegs
-		of Special => (* specialized calling convention or block *)
-		   {stms=[], regs=map mlrReg params}
-		 | StdConv stdRegs => (* standard calling convention *) 
-		   Copy.fresh (ListPair.map gpReg' (params, stdRegs))
-	      (* esac *))
-      in 	
-	  LabelCode.setParamRegs (lab, regs);
-	  bindToParams (map MTy.regToTree regs);
+ (* entry code for a function *)
+  fun genFuncEntry varDefTbl (lab, convention) = let
+        datatype conv = 
+               (* specialized calling convention or block *)
+                Special 
+ 	       (* standard calling convention *) 
+	      | StdConv of Regs.gpr list
+       (* set the parameters according to the calling convention *)
+	val (params, stdRegs) = (case convention
+	    of M.StdFunc{clos, args as [arg], ret, exh} => ([clos, arg, ret, exh], StdConv stdFuncRegs)
+             | M.StdFunc _ => raise Fail "genFuncEntry: ill-formed StdFunc"
+	     | M.StdCont{clos, args as [arg]} => ([clos, arg], StdConv stdContRegs)
+             | M.StdCont _ => raise Fail "genFuncEntry: ill-formed StdCont"
+             | M.KnownFunc args => (args, StdConv (List.take (kfncRegs, length args)))
+	     | M.Block vs => (vs, Special)
+	    (* end case *))
+       (* copy params into param registers *)
+	fun gpReg' (param, paramReg) = MTy.GPReg (szOfVar param, paramReg)
+	val {stms, regs=paramRegs} = (case stdRegs
+	    of Special => {stms=[], regs=map mlrReg params}
+	     | StdConv stdRegs => Copy.fresh (ListPair.map gpReg' (params, stdRegs))
+            (* end case *))
+        in 	
+         (* make param registers available globally *)
+	  LabelCode.setParamRegs (lab, paramRegs);
+         (* bind params to their registers *)
+	  ListPair.app (VarDef.setDefOf varDefTbl) (params, map MTy.regToTree paramRegs);
 	  stms
-      end (* genFuncEntry *)
+         end (* genFuncEntry *)
 
 end (* HeapTransferFn *)

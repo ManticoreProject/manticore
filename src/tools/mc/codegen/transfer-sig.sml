@@ -38,16 +38,16 @@ signature TRANSFER = sig
   (* perform a heap check, possibly triggering the GC *)
     val genHeapCheck : 
 	VarDef.var_def_tbl -> {hck : CFG.heap_check_kind, szb : word, nogc : CFG.jump}
-	  -> {stms : stms, retKLbl : Label.label, retKStms : stms, liveOut : MTy.T.mlrisc list}
+	  -> {stms : stms, retLbl : Label.label, retStms : stms, liveOut : MTy.T.mlrisc list}
 
   (* promote an object to the global heap *)
     val genPromote : VarDef.var_def_tbl -> 
- 	{frame : SpillLoc.frame, lhs: CFG.var, arg: CFG.var} -> 
+ 	{lhs: CFG.var, arg: CFG.var} -> 
 		     {stms : stms, result : MTy.mlrisc_tree list}
 
   (* apply a C function f to args.  the result goes in lhs. *)
     val genCCall : VarDef.var_def_tbl ->
-	{frame : SpillLoc.frame, lhs: CFG.var list, f : CFG.var, args: CFG.var list} -> 
+	{lhs: CFG.var list, f : CFG.var, args: CFG.var list} -> 
 		   {stms : stms, result : MTy.mlrisc_tree list}
 
   (* apply a C funcion f to args (f can trigger a garbage collection). *)
@@ -56,8 +56,6 @@ signature TRANSFER = sig
 		   stms
 
   (* entry to a labelled function *)
-    val genFuncEntry :
-	VarDef.var_def_tbl ->
-	(CFG.label * CFG.convention) -> stms
+    val genFuncEntry :VarDef.var_def_tbl -> (CFG.label * CFG.convention) -> stms
 
   end (* TRANSFER *)

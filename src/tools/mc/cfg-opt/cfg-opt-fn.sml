@@ -20,6 +20,7 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
 	  }
 
     structure AddAllocChecks = AddAllocChecksFn (Target)
+    structure AllocCCalls = AllocCCallsFn (Target)
     structure ImplementCalls = ImplementCallsFn (Target)
 
   (* wrap transformation passes with keep controls *)
@@ -27,6 +28,7 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
     val specialCalls = transform {passName = "specialize-calls", pass = SpecializeCalls.transform}
     val implCalls = transform {passName = "implement-calls", pass = ImplementCalls.transform}
     val allocChecks = transform {passName = "alloc-checks", pass = AddAllocChecks.transform}
+    val allocCCalls = transform {passName = "alloc-c-calls", pass = AllocCCalls.transform}
 
     fun optimize module = let
           val _ = CheckCFG.check module
