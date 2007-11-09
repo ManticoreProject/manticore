@@ -76,7 +76,7 @@ structure CFG =
       | If of (var * jump * jump)
       | Switch of (var * (tag * jump) list * jump option)
       | HeapCheck of {hck : heap_check_kind, szb : word, nogc : jump}
-      | AllocCCall of { f : var, args : var list, ret : jump }            (* jump to ret after calling f(args) *)
+      | AllocCCall of {f : var, args : var list, ret : jump}            (* jump to ret after calling f(args) *)
 
     and var_kind
       = VK_None
@@ -249,5 +249,46 @@ structure CFG =
 	    externs = externs,
 	    code = code
 	  }
+
+    fun substVar env v = (case Var.Map.find (env, v)
+            of NONE => v
+	     | SOME v' => v'
+            (* end case *))
+
+    fun substExp env e = let
+        val substVar = substVar env
+        in 
+            (case e
+	      of E_Var (lhs, rhs) => mkVar (lhs, List.map substVar rhs)
+	       | E_Cast (lhs, ty, rhs) => mkCast (lhs, ty, substVar rhs)
+	       | E_Select (lhs, i, rhs) => mkSelect (lhs, i, substVar rhs)
+	       | E_Update (i, v1, v2) => mkUpdate (i, substVar v1, substVar v2)
+	       | E_AddrOf (lhs, i, rhs) => mkAddrOf (lhs, i, substVar rhs)
+	       | E_Alloc (lhs, rhs) => mkAlloc (lhs, List.map substVar rhs)
+	       | E_GAlloc (lhs, rhs) => mkGAlloc (lhs, List.map substVar rhs)
+	       | E_Promote (lhs, rhs) => mkPromote (lhs, substVar rhs)
+	       | E_Prim (lhs, prim) => mkPrim (lhs, PrimUtil.map substVar prim)
+	       | E_CCall (lhs, f, rhs) => mkCCall (lhs, substVar f, List.map substVar rhs)
+	       | E_VPLoad (lhs, offset, rhs) => mkVPLoad (lhs, offset, substVar rhs)
+	       | E_VPStore (offset, v1, v2) => mkVPStore (offset, substVar v1, substVar v2)
+	       | e => e
+            (* end case *))
+         end
+
+    fun substTransfer env transfer = let
+        val sv = substVar env
+	fun sj (l, args) = (l, List.map sv args)
+        in 
+           (case transfer
+	     of StdApply{f, clos, args, ret, exh} => StdApply{f=sv f, clos=sv clos, args=List.map sv args, ret=sv ret, exh=sv exh}
+	      | StdThrow{k, clos, args} => StdThrow{k=sv k, clos=sv clos, args=List.map sv args}
+	      | Apply{f, args} => Apply{f=sv f, args=List.map sv args}
+	      | Goto jmp => Goto (sj jmp)
+	      | If(v, jmp1, jmp2) => If(sv v, sj jmp1, sj jmp2)
+	      | Switch(x, cases, dflt) => Switch(sv x, List.map (fn (c, j) => (c, sj j)) cases, Option.map sj dflt)
+	      | HeapCheck{hck, szb, nogc} => HeapCheck{hck=hck, szb=szb, nogc=sj nogc}
+	      | AllocCCall{f, args, ret} => AllocCCall{f=sv f, args=List.map sv args, ret=sj ret}
+	    (* end case *))
+         end
 
   end
