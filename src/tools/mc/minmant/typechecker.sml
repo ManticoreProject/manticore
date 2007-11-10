@@ -310,7 +310,9 @@ structure Typechecker : sig
 		val resTy = AST.MetaTy(MetaVar.new depth)
 		in
 		  if not(U.unify(ty1, AST.FunTy(ty2, resTy)))
-		    then error(loc, ["type mismatch in application"])
+		    then error(loc, ["type mismatch in application\n",
+				     "* expected ", TypeUtil.toString ty1, "\n",
+				     "* found    ", TypeUtil.toString ty2])
 		    else ();
 		  (AST.ApplyExp(e1', e2', resTy), resTy)
 		end

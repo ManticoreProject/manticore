@@ -143,6 +143,7 @@ structure CFGTy =
             | (T_OpenTuple ty1s, T_OpenTuple ty2s) => ListPair.all isValidCast (ty1s, ty2s)
             | (T_StdFun _, T_StdFun _) => true
             | (T_StdCont _, T_StdCont _) => true
+	    | (T_Tuple (false,ts), T_Tuple (false, ts')) => ListPair.all isValidCast (ts, ts')
             | _ => equal (fromTy, toTy)
 	  (* end case *))
 

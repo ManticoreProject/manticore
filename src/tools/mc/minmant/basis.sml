@@ -61,6 +61,7 @@ structure Basis : sig
   (* primitive operators *)
     val listAppend	: AST.var
     val map             : AST.var
+    val foldl           : AST.var
     val stringConcat	: AST.var
     val psub            : AST.var
     val int_div		: AST.var
@@ -587,6 +588,13 @@ structure Basis : sig
 	in
 	    polyVarMulti' (N.map, 2, mkTy)
 	end
+
+    val foldl =
+	let fun mkTy ([a,b]) = (AST.TupleTy[(a ** b) --> b, b, listTy a]) --> a
+	      | mkTy _ = raise Fail "BUG: bad type instantiation for map"
+	in
+	    polyVarMulti' (N.foldl, 2, mkTy)
+	end
 				 
 (*
     val size =		monoVar(N.size, stringTy --> intTy)
@@ -677,8 +685,8 @@ structure Basis : sig
 	    (N.rev,             Env.Var rev),
 	    (N.gettimeofday,	Env.Var gettimeofday),
 	    (N.compose,         Env.Var compose),
-	    (N.map,             Env.Var map)
-
+	    (N.map,             Env.Var map),
+	    (N.foldl,           Env.Var foldl)
 (*
 	    (N.size,		Env.Var size),
 	    (N.sub,		Env.Var sub),

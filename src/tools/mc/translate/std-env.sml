@@ -419,6 +419,7 @@ structure StdEnv : sig
 		  (B.powf,              "powf"),
 		  (B.powd,              "powd"),
                   (B.compose,           "compose"),
+		  (B.foldl,             "list-foldl"),
 		  (B.map,               "list-map"),
 		  (B.gettimeofday,	"gettimeofday"),
                   (B.plen,              "rope-length"),

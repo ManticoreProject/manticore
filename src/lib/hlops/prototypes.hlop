@@ -23,6 +23,7 @@ define @gettimeofday (_ : unit / _ : exh) : ml_double;
 define @compose (fg:[fun(any/exh->any),fun(any/exh->any)] / exh:exh) : fun(any/exh->any);
 define @list-rev (xs : list / exh : exh) : list;
 define @list-map (arg : [fun(any/exh->any), list] / exh:exh) : list;
+define @list-foldl (arg : [fun([any,any]/exh->any), any, list] / exh:exh) : any;
 define @fail (arg : ml_string / exh : exh) : any;
 
 define @rope-length (r : rope / exh : exh) : ml_int;
