@@ -21,16 +21,31 @@ structure RewriteWithQueues : sig
  		
   (* FIXME This obviously wants to be developed into a more general mechanism. *)
 
-  (* isSumP : A.var -> bool *)
-    fun isSumP x = Var.same (x, Basis.sumP)
+  (* sumP : A.exp * A.ty list -> A.exp *)				  
+    fun sumP (q, ts) = 
+	let val t = TypeOf.exp (A.VarExp (B.sumP, ts))
+	in
+	    A.ApplyExp (A.VarExp (U.sumPQ, []), q, t)
+	end
 
-  (* sumP : A.exp * A.ty -> A.exp *)				  
-    fun sumP (q, t) = A.ApplyExp (A.VarExp (U.sumPQ, []), q, t)
+  (* reduceP : A.exp * A.ty list => A.exp *)
+    fun reduceP (q, ts) = 
+      (case ts
+	 of [alpha, beta] => 
+	      let val t = TypeOf.exp (A.VarExp (B.reduceP, ts))
+	      in
+		  A.ApplyExp (A.VarExp (U.reducePQ, ts), q, t)
+	      end
+	  | _ => raise Fail "reduceP: expected two type args"
+        (* end case *))
 
   (* transform : A.exp -> A.var * A.ty list -> A.exp option *)
     fun transform q (x, ts) =
-	  if isSumP x
-	  then SOME (sumP (q, TypeOf.exp (A.VarExp (x, ts))))
-	  else NONE
+	  if Var.same (x, B.sumP) then 
+	      SOME (sumP (q, ts))
+	  else if Var.same (x, B.reduceP) then
+	      SOME (reduceP (q, ts))
+	  else 
+	      NONE
 	
   end

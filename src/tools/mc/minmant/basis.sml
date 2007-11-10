@@ -179,6 +179,7 @@ structure Basis : sig
     val fail		: AST.var
     val plen            : AST.var
     val sumP            : AST.var
+    val reduceP         : AST.var
     val rev             : AST.var
     val gettimeofday	: AST.var
     val compose         : AST.var
@@ -591,9 +592,16 @@ structure Basis : sig
 
     val foldl =
 	let fun mkTy ([a,b]) = (AST.TupleTy[(a ** b) --> b, b, listTy a]) --> a
-	      | mkTy _ = raise Fail "BUG: bad type instantiation for map"
+	      | mkTy _ = raise Fail "BUG: bad type instantiation for foldl"
 	in
 	    polyVarMulti' (N.foldl, 2, mkTy)
+	end
+
+    val reduceP =
+	let fun mkTy ([a,b]) = (AST.TupleTy[(a**a)-->b, b, parrayTy a]) --> b
+	      | mkTy _ = raise Fail "BUG: bad type instantiation for reduceP"
+	in
+	    polyVarMulti' (N.reduceP, 2, mkTy)
 	end
 				 
 (*
@@ -686,7 +694,8 @@ structure Basis : sig
 	    (N.gettimeofday,	Env.Var gettimeofday),
 	    (N.compose,         Env.Var compose),
 	    (N.map,             Env.Var map),
-	    (N.foldl,           Env.Var foldl)
+	    (N.foldl,           Env.Var foldl),
+	    (N.reduceP,         Env.Var reduceP)
 (*
 	    (N.size,		Env.Var size),
 	    (N.sub,		Env.Var sub),

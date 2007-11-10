@@ -13,7 +13,8 @@
 structure UnseenBasis : sig
 
   (* predefined functions *)
-    val sumPQ : AST.var
+    val reducePQ  : AST.var
+    val sumPQ     : AST.var
     val tabulateD : AST.var
 
   end = struct
@@ -33,17 +34,40 @@ structure UnseenBasis : sig
 	    AST.TyScheme ([tv], mkTy (AST.VarTy tv))
 	end
 
+    fun forAllMulti (n, mkTy) = 
+	let fun mkTv n = TyVar.new (Atom.atom ("'a" ^ Int.toString n))
+	    val tvs = map mkTv (List.tabulate (n, fn n => n))
+	in
+	    AST.TyScheme (tvs, mkTy (map AST.VarTy tvs))
+	end
+
     fun polyVar (name, mkTy) = Var.newPoly (name, forall mkTy)
 
+    fun polyVarMulti (name, n, mkTy) = Var.newPoly (name, forAllMulti (n, mkTy))
+
+    val qTy = F.workQueueTy
+
+    val reducePQ =
+	let fun mkTy ([a,b]) =
+		  let val fnTy = (a ** a) --> b
+		      val tupTy = T.TupleTy [fnTy, b, qTy, B.parrayTy a]
+		  in
+		      tupTy --> b
+		  end
+	      | mkTy _ = raise Fail "BUG: bad instantiation for reducePQ"
+	in
+	    polyVarMulti ("reducePQ", 2, mkTy)
+	end
+
     val sumPQ = 
-	let val t = F.workQueueTy --> ((B.parrayTy B.intTy) --> B.intTy)
+	let val t = qTy --> ((B.parrayTy B.intTy) --> B.intTy)
 	in
 	    Var.new ("sumPQ", t)
 	end
 
     val tabulateD = 
 	let fun mkTy tv = 
-		let val (intTy, qTy) = (B.intTy, F.workQueueTy)
+		let val intTy = B.intTy
 		    val tupTy = T.TupleTy [intTy --> tv, qTy, intTy, intTy, intTy]
 		in
 		    tupTy --> (B.parrayTy tv)    
