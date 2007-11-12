@@ -1,4 +1,11 @@
 (* alloc-c-calls-fn.sml
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Calls to C functions that allocate can trigger garbage collections.  In this pass, we
+ * transform such calls in CFG from the generic RHS form to the special AllocCCall control
+ * transfer.
  *)
 
 functor AllocCCallsFn (Target : TARGET_SPEC) : sig
@@ -10,7 +17,8 @@ functor AllocCCallsFn (Target : TARGET_SPEC) : sig
     structure VSet = CFG.Var.Set
     structure VMap = CFG.Var.Map
 
-    fun deleteList (vSet, vs) = List.foldl (fn (v, vSet) => VSet.delete (vSet, v)) vSet vs
+    fun deleteList (vSet, vs) = 
+           List.foldl (fn (v, vSet) => VSet.delete (vSet, v) handle NotFound => vSet) vSet vs
     val addList = VSet.addList
 
     fun getCPrototype f = (case CFG.Var.typeOf f
@@ -21,7 +29,7 @@ functor AllocCCallsFn (Target : TARGET_SPEC) : sig
     fun transform (CFG.MODULE{name, externs, code}) = let
        (* compute the free variables of an expression *)
 	fun freeVarsOfExp (e, fvs) = deleteList (addList (fvs, CFG.rhsOfExp e), CFG.lhsOfExp e)
-	fun freeVarsOfXfer transfer = addList (VSet.empty, CFG.varsOfXfer transfer)
+	fun freeVarsOfXfer transfer = deleteList (addList (VSet.empty, CFG.varsOfXfer transfer), CFG.lhsOfXfer transfer)
 
        (* if the function body contains a C call that allocates, split the body at that point *)
 	fun splitFunBody ([], _, _) = NONE
@@ -30,7 +38,7 @@ functor AllocCCallsFn (Target : TARGET_SPEC) : sig
 		val saveAllocPtr = CFunctions.protoHasAttr CFunctions.A_alloc (getCPrototype f)
 	        in
 		   if saveAllocPtr
-		      then SOME (lhs, f, args, preds, es, fvs)
+		      then SOME (lhs, f, args, preds, es, deleteList (fvs, lhs))
 		      else splitFunBody (es, e :: preds, freeVarsOfExp (e, fvs))
 	        end
 	     | e => splitFunBody (es, e :: preds, freeVarsOfExp (e, fvs))
@@ -39,30 +47,26 @@ functor AllocCCallsFn (Target : TARGET_SPEC) : sig
 	fun revBody (CFG.FUNC{lab, entry, body, exit}) = CFG.FUNC{lab=lab, entry=entry, body=List.rev body, exit=exit}
 
 	fun rewriteFunc func = let
-           (* keep splitting the body of the function until we have no more calls to C functions that allocate *)
+           (* keep splitting the function body until we have no more calls to C functions that allocate *)
 	    fun loop (func as CFG.FUNC{lab, entry, body, exit}, funcs) = (case splitFunBody (body, [], freeVarsOfXfer exit)
                 of NONE => revBody func :: funcs
                 (* split the function func *)
-		 | SOME (lhs, f, cArgs, preds, es, fvs') => let
+		 | SOME (lhs, f, cArgs, preds, body, fvs') => let
                   (* free variables in f'' *)
 		   val freeVars = VSet.listItems fvs'
-                  (* a mapping to alpha-convert freeVars *)
-		   val env = List.foldl (fn (v, env) => VMap.insert (env, v, CFG.Var.copy v)) VMap.empty freeVars
+		   val freshFreeVars = List.map CFG.Var.copy freeVars
+                  (* a mapping to alpha-convert the split function *)
+		   val env = List.foldl VMap.insert' VMap.empty (ListPair.zip (freeVars, freshFreeVars))
                    val lab' = CFG.Label.new(
 			      "allocCCall",
-			      CFGTy.T_Block(List.map CFG.Var.typeOf freeVars))
-		   val export = (case CFG.Label.kindOf lab
-				  of CFG.LK_Local{export, ...} => export
-				   | _ => raise Fail "bogus label kind"
-				 (* end case *))                  
+			      CFGTy.T_Block(List.map CFG.Var.typeOf (lhs @ freshFreeVars)))
                   (* f' is the new function up to and including the C call and f'' is the function after the C call *)
-		   val func' = CFG.mkFunc(lab, entry, es, CFG.AllocCCall {
-		                   f = f,
-				   args = cArgs,
-				   (* FIXME: make a new var for lhs *)
-				   ret = (lab', lhs @ freeVars)
-                                 }, export)
-		   val func'' = CFG.mkLocalFunc (lab', CFG.Block (lhs @ freeVars), List.map (CFG.substExp env) preds, CFG.substTransfer env exit)
+		   val func' = CFG.rewriteFunc (func, body, CFG.AllocCCall {lhs = List.map CFG.Var.copy lhs,
+									    f = f,
+									    args = cArgs,
+									    ret = (lab', freeVars)
+					       })
+		   val func'' = CFG.mkLocalFunc (lab', CFG.Block (lhs @ freshFreeVars), List.map (CFG.substExp env) preds, CFG.substTransfer env exit)
 		   in
 		       loop (func', func'' :: funcs)
 		   end (* loop *)
@@ -70,7 +74,8 @@ functor AllocCCallsFn (Target : TARGET_SPEC) : sig
             in
 	       loop (revBody func, [])
 	    end
-
+			       
+(*	val code = List.concat (List.map rewriteFunc code)*)
 	val module = CFG.mkModule (name, externs, code)
 	in
 	   Census.census module;

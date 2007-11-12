@@ -76,7 +76,7 @@ structure CFG =
       | If of (var * jump * jump)
       | Switch of (var * (tag * jump) list * jump option)
       | HeapCheck of {hck : heap_check_kind, szb : word, nogc : jump}
-      | AllocCCall of {f : var, args : var list, ret : jump}            (* jump to ret after calling f(args) *)
+      | AllocCCall of {lhs : var list, f : var, args : var list, ret : jump}            (* jump to ret after calling f(args) *)
 
     and var_kind
       = VK_None
@@ -184,7 +184,11 @@ structure CFG =
 	    x :: (List.foldl f (case dflt of SOME(_, args) => args | _ => []) cases)
 	  end
       | varsOfXfer (HeapCheck{nogc=(_, args), ...}) = args
-      | varsOfXfer (AllocCCall{ret=(_, args), ...}) = args
+      | varsOfXfer (AllocCCall{lhs, args, ret=(_, rArgs), ...}) = lhs @ args @ rArgs
+
+   (* project the lhs variables of a control transfer *)
+    fun lhsOfXfer (AllocCCall{lhs, ...}) = lhs
+      | lhsOfXfer _ = []
 
   (* project the list of destination labels in a control transfer; note that this function
    * only looks at jumps.  A control-flow analysis may give better information.
@@ -250,11 +254,26 @@ structure CFG =
 	    code = code
 	  }
 
+   (* rewrite a function with a new body and exit *)
+    fun rewriteFunc (FUNC {lab, entry, ...}, body, exit) = let
+            val func = FUNC{lab = lab, entry = entry, body = body, exit = exit}
+	    val lk = (case Label.kindOf lab
+		       of LK_Local {export, ...} => LK_Local {func=func, export=export}
+			| lk => lk
+		     (* end case *))
+            in
+	        Label.setKind (lab, lk);
+		List.app (fn x => Var.setKind(x, VK_Param func)) (paramsOfConv entry);
+		func
+            end
+
+   (* substitute a variable w.r.t. an environment *)
     fun substVar env v = (case Var.Map.find (env, v)
             of NONE => v
 	     | SOME v' => v'
             (* end case *))
 
+   (* variable substitution over an expression *)
     fun substExp env e = let
         val substVar = substVar env
         in 
@@ -275,6 +294,7 @@ structure CFG =
             (* end case *))
          end
 
+   (* variable substitution over an transfer *)
     fun substTransfer env transfer = let
         val sv = substVar env
 	fun sj (l, args) = (l, List.map sv args)
@@ -287,7 +307,7 @@ structure CFG =
 	      | If(v, jmp1, jmp2) => If(sv v, sj jmp1, sj jmp2)
 	      | Switch(x, cases, dflt) => Switch(sv x, List.map (fn (c, j) => (c, sj j)) cases, Option.map sj dflt)
 	      | HeapCheck{hck, szb, nogc} => HeapCheck{hck=hck, szb=szb, nogc=sj nogc}
-	      | AllocCCall{f, args, ret} => AllocCCall{f=sv f, args=List.map sv args, ret=sj ret}
+	      | AllocCCall{lhs, f, args, ret} => AllocCCall{lhs=lhs, f=sv f, args=List.map sv args, ret=sj ret}
 	    (* end case *))
          end
 

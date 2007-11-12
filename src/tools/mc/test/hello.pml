@@ -1,2 +1,1 @@
-val h = "\n" ^ Hello!" ^ "\n";
-print h
+print ("hi\n")

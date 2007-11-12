@@ -445,30 +445,39 @@ structure CheckCFG : sig
                               | _ => err["label ", L.toString lab, ":", Ty.toString (L.typeOf lab),
                                          " is not heap-check target"]
 			    (* end case *))
-			| CFG.AllocCCall{f, args, ret = (lab, rArgs)} => (
-                            chkLabel lab;
-			    chkVars (env, f::args);
-                            chkVars (env, rArgs);
-                            case L.typeOf lab
-			     of Ty.T_StdFun _ => err["ret target is standard fun"]
-                              | Ty.T_StdCont _ => err["ret target is standard cont"]
-                              | Ty.T_Block argTys => 
-                                  ((ListPair.appEq (fn (arg, argTy) =>
-                                                    if Ty.equal (V.typeOf arg, argTy)
-                                                       then ()
-                                                    else err["variable ", V.toString arg, ":", Ty.toString (V.typeOf arg),
-                                                             " does not match ",
-                                                             "argument type ", Ty.toString argTy])
-                                                   (rArgs, argTys))
-                                   handle ListPair.UnequalLengths =>
-                                      err["variables (", String.concatWith "," (List.map V.toString rArgs),
-                                          ") do not match ", 
-                                          "variables (", String.concatWith "," (List.map Ty.toString argTys),
-                                          ")"])
-                              | _ => err["label ", L.toString lab, ":", Ty.toString (L.typeOf lab),
-                                         " is not heap-check target"]
-			    (* end case *))
-		      (* end case *))
+			| CFG.AllocCCall{lhs, f, args, ret = (lab, rArgs)} => let
+			      val rArgs = lhs @ rArgs
+			      val env = bindVars (env, lhs)
+			      in (
+                                 chkLabel lab;
+				 chkVars (env, f::args);
+				 chkVars (env, rArgs);
+			        case (V.typeOf f, lhs)
+				 of (CFGTy.T_CFun (CFunctions.CProto (CFunctions.VoidTy, _, _)), x :: _) => 
+				       err["incorrect c function type for, ", V.toString f]
+				  | _ => ()
+			         (* end case *);
+				 case L.typeOf lab
+				  of Ty.T_StdFun _ => err["ret target is standard fun"]
+				   | Ty.T_StdCont _ => err["ret target is standard cont"]
+				   | Ty.T_Block argTys => 
+                                     ((ListPair.appEq (fn (arg, argTy) =>
+							  if Ty.equal (V.typeOf arg, argTy)
+							  then ()
+							  else err["variable ", V.toString arg, ":", Ty.toString (V.typeOf arg),
+								   " does not match ",
+								"argument type ", Ty.toString argTy])
+                                                      (rArgs, argTys))
+                                      handle ListPair.UnequalLengths =>
+					     err["variables (", String.concatWith "," (List.map V.toString rArgs),
+						 ") do not match ", 
+						 "variables (", String.concatWith "," (List.map Ty.toString argTys),
+						 ")"])
+				   | _ => err["label ", L.toString lab, ":", Ty.toString (L.typeOf lab),
+                                              " is not heap-check target"]
+ 			         (* end case *))
+			      end
+ 		         (* end case *))
 		and chkJump (env, (lab, args)) = (
 		      chkLabel lab;
 		      chkVars (env, args);

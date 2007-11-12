@@ -45,6 +45,8 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
           val _ = CheckCFG.check module
 	  val module = allocChecks module
           val _ = CheckCFG.check module
+          val module = allocCCalls module
+	  val _ = CheckCFG.check module
 	  in
 	    module
 	  end

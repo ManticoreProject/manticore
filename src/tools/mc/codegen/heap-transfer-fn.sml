@@ -83,28 +83,28 @@ functor HeapTransferFn (
       end (* mlrReg *)
 
   (* emit a jump by first copying argument registers to parameter registers and then emitting a jump instruction. *)
-  fun genJump (target, ls, params, args) =
-      let val stms = Copy.copy {src=args, dst=params}
+  fun genJump (target, ls, params, args) = let
+      val stms = Copy.copy {src=args, dst=params}
       in
 	  stms @ [T.JMP (target, ls)]
       end (* genJump *)
 
-  fun genGoto varDefTbl (l, args) =
-      let val useDefOf = VarDef.useDefOf varDefTbl
-	  val name = LabelCode.getName l
-	  val params = LabelCode.getParamRegs l
-	  val args' = map useDefOf args
-	  val argRegs = map (fn (MTy.GPReg (ty, _)) => MTy.GPReg (ty, newReg())
-			      | (MTy.FPReg (ty, _)) => MTy.FPReg (ty, newFReg()) )
+  fun genGoto varDefTbl (l, args) = let
+      val useDefOf = VarDef.useDefOf varDefTbl
+      val name = LabelCode.getName l
+      val params = LabelCode.getParamRegs l
+      val args' = map useDefOf args
+      val argRegs = map (fn (MTy.GPReg (ty, _)) => MTy.GPReg (ty, newReg())
+			  | (MTy.FPReg (ty, _)) => MTy.FPReg (ty, newFReg()) )
 			params
-	  val stms = Copy.copy {src=args', dst=argRegs}
+      val stms = Copy.copy {src=args', dst=argRegs}
       in
-	  stms @ genJump (T.LABEL name, [name], params, map MTy.regToTree argRegs)
+         stms @ genJump (T.LABEL name, [name], params, map MTy.regToTree argRegs)
       end (* genGoto *)
 
-  fun genStdTransfer varDefTbl (tgtReg, args, argRegs, stdRegs) =
-      let val getDefOf = VarDef.getDefOf varDefTbl
-	  val stdRegs = map gpReg stdRegs 
+  fun genStdTransfer varDefTbl (tgtReg, args, argRegs, stdRegs) = let
+      val getDefOf = VarDef.getDefOf varDefTbl
+      val stdRegs = map gpReg stdRegs 
       in
 	  {stms=List.concat [
 	   (* copy the arguments into temp registers *)
@@ -118,47 +118,44 @@ functor HeapTransferFn (
   (* if labExp is a label, put it into the jump directly, ow use a register temp. *)
   fun genTransferTarget labExp = (case labExp
        of T.LABEL _ => (labExp, [])
-	| _ => let val tgtReg = newReg ()
-	       in (regExp tgtReg, [move (tgtReg, labExp)]) end
+	| _ => let 
+	      val tgtReg = newReg ()
+	      in
+	         (regExp tgtReg, [move (tgtReg, labExp)]) 
+	      end
        (* end case *))
 
-  fun genApply varDefTbl {f, args} = 
-      let val defOf = VarDef.defOf varDefTbl
-	  val argRegs = map newReg args
-          val kfncRegs = List.take (kfncRegs, length argRegs)
-	  val (lab, mvInstr) = genTransferTarget (defOf f)
-	  val {stms, liveOut} =
-	      genStdTransfer varDefTbl (lab, args, argRegs, kfncRegs)
+  fun genApply varDefTbl {f, args} = let
+      val defOf = VarDef.defOf varDefTbl
+      val argRegs = map newReg args
+      val kfncRegs = List.take (kfncRegs, length argRegs)
+      val (lab, mvInstr) = genTransferTarget (defOf f)
+      val {stms, liveOut} = genStdTransfer varDefTbl (lab, args, argRegs, kfncRegs)
       in
 	  {stms=mvInstr @ stms, liveOut=liveOut}
       end 
-    (* genApply *)
 
-  fun genStdApply varDefTbl {f, clos, args as [arg], ret, exh} = 
-      let val defOf = VarDef.defOf varDefTbl 
-          val args = [clos, arg, ret, exh] 
-          val argRegs = map newReg args 
-	  val (lab, mvInstr) = genTransferTarget (defOf f)
-          val {stms, liveOut} = 
-	      genStdTransfer varDefTbl (lab, args, argRegs, stdFuncRegs) 
+  fun genStdApply varDefTbl {f, clos, args as [arg], ret, exh} = let
+      val defOf = VarDef.defOf varDefTbl 
+      val args = [clos, arg, ret, exh] 
+      val argRegs = map newReg args 
+      val (lab, mvInstr) = genTransferTarget (defOf f)
+      val {stms, liveOut} = genStdTransfer varDefTbl (lab, args, argRegs, stdFuncRegs) 
       in
 	  {stms=mvInstr @ stms, liveOut=liveOut}
       end 
     | genStdApply _ _ = raise Fail "genStdApply: ill-formed StdApply"
-    (* genStdApply *)
 
-  fun genStdThrow varDefTbl {k, clos, args as [arg]} = 
-      let val defOf = VarDef.defOf varDefTbl
-          val args = [clos, arg]
-	  val argRegs = map newReg args
-	  val (labK, mvInstr) = genTransferTarget (defOf k)
-	  val {stms, liveOut} = 
-	      genStdTransfer varDefTbl (labK, args, argRegs, stdContRegs)
+  fun genStdThrow varDefTbl {k, clos, args as [arg]} = let
+      val defOf = VarDef.defOf varDefTbl
+      val args = [clos, arg]
+      val argRegs = map newReg args
+      val (labK, mvInstr) = genTransferTarget (defOf k)
+      val {stms, liveOut} = genStdTransfer varDefTbl (labK, args, argRegs, stdContRegs)
       in 
 	  {stms=mvInstr @ stms, liveOut=liveOut}
       end 
     | genStdThrow _ _ = raise Fail "genStdThrow: ill-formed StdThrow"
-    (* genStdThrow *)
 
   structure Ty = CFGTy
   structure CTy = CTypes
@@ -236,8 +233,7 @@ functor HeapTransferFn (
     	  then let
              val apReg = T.REG(ty, Regs.apReg)
 	     val save = VProcOps.genVPStore' (Spec.ABI.allocPtr, vpReg, apReg)
-	     val restore = T.MV(ty, Regs.apReg,
-				VProcOps.genVPLoad' (Spec.ABI.allocPtr, vpReg))
+	     val restore = T.MV(ty, Regs.apReg,	VProcOps.genVPLoad' (Spec.ABI.allocPtr, vpReg))
              in
 	        ([save], [restore])
              end
@@ -289,9 +285,9 @@ functor HeapTransferFn (
   (* take the CFG variables for the GC roots and return MLRISC code that initializes and restores
    * the roots and also return the root pointer, register temps for the roots, and values for the roots
    *)
-  fun processGCRoots varDefTbl (roots : CFG.var list, restoreLoc) = let
+  fun processGCRoots varDefTbl (roots, restoreLoc) = let
      (* preprocess the roots *)
-      fun loop ([], tys, args, temps) = (rev tys, rev args, rev temps)
+      fun loop ([], tys, args, temps) = (List.rev tys, List.rev args, List.rev temps)
 	| loop (root::roots, tys, args, temps) = let
 	   val ty = Var.typeOf root
 	   val arg = VarDef.getDefOf varDefTbl root
@@ -302,9 +298,9 @@ functor HeapTransferFn (
      (* types, values, and temporary registers for the roots (order matters) *)
       val (rootTys, rootArgs, rootTemps) = loop (roots, [], [], [])
      (* allocate the roots *)
-      val {ptr=rootPtr, stms=initRoots} = Alloc.genAlloc (ListPair.zip (rootTys, map MTy.regToTree rootTemps))
+      val {ptr=rootPtr, stms=initRoots} = Alloc.genAlloc (ListPair.zip (rootTys, List.map MTy.regToTree rootTemps))
      (* restore the roots *)
-      fun restore ([], i, rs) = rev rs
+      fun restore ([], i, rs) = List.rev rs
 	| restore (ty::tys, i, rs) = let
             val r = Alloc.select {lhsTy=Types.szOf ty, mty=M.T_Tuple (false, rootTys), i=i, base=restoreLoc}
 	    in
@@ -312,50 +308,53 @@ functor HeapTransferFn (
 	    end
       val restoredRoots = restore (rootTys, 0, [])
       in
-         { initRoots=initRoots, restoredRoots=restoredRoots, rootPtr=rootPtr, rootTemps=rootTemps, rootArgs=rootArgs }
+         {initRoots=initRoots, restoredRoots=restoredRoots, rootPtr=rootPtr, rootTemps=rootTemps, rootArgs=rootArgs}
       end (* processGCRoots *)
 
-  fun genAllocCCall' varDefTbl (fLabel, CFunctions.CProto(retTy, paramTys, _), fArgs, retFun, roots) = let
+  fun genAllocCCall' varDefTbl (lhs, fLabel, CFunctions.CProto(retTy, paramTys, _), fArgs, retFun, roots) = let
       val retLabel = LabelCode.getName retFun
+      val retParams = LabelCode.getParamRegs retFun
       val (vpReg, setVP) = hostVProc ()
-      val stdEnvPtrOffset = VProcOps.genVPAddrOf (Spec.ABI.stdEnvPtr, vpReg)
-      val {initRoots, restoredRoots, rootPtr, rootTemps, rootArgs} = processGCRoots varDefTbl (roots, stdEnvPtrOffset)
+      val (vpReg', setVP') = hostVProc ()
+      val stdEnvPtrOffset = VProcOps.genVPAddrOf (Spec.ABI.stdEnvPtr, vpReg')
+      val {initRoots, restoredRoots, rootPtr, rootTemps, rootArgs} = 
+	     processGCRoots varDefTbl (roots, T.LOAD (MTy.wordTy, stdEnvPtrOffset, ManticoreRegion.memory))
      (* if the C call returns a value (it is non-void), we pass the return value to the first argument 
       * position of the return function (ret) 
-      *)
-      val lhs = (case retTy
-	  of CFunctions.VoidTy => []
-	   | _ => [hd roots]
-          (* end case *))
+      *)      
       val {stms=stmsC, result=resultC} = ccall {lhs=lhs, name=fLabel, 
                retTy=cvtCTy retTy, paramTys=List.map cvtCTy paramTys, 
 	       cArgs=fArgs, saveAllocPtr=false}
       in
          List.concat [
+	    Copy.copy {dst=rootTemps, src=rootArgs},
+	    initRoots,
+	    [setVP],
            (* store dedicated registers and the rootset pointer before entering the C call *)
 	    [ (* by convention we put the rootset pointer into stdEnvPtr *)
               VProcOps.genVPStore' (Spec.ABI.stdEnvPtr, vpReg, MTy.mlriscTreeToRexp rootPtr),
 	      VProcOps.genVPStore' (Spec.ABI.allocPtr, vpReg, regExp Regs.apReg),
 	      VProcOps.genVPStore' (Spec.ABI.limitPtr, vpReg, regExp Regs.limReg) 
 	    ],
-            stmsC,
+            stmsC,	    
 	   (* restore dedicated registers and the roots *) 
 	    [
-	     move (Regs.apReg, (VProcOps.genVPLoad' (Spec.ABI.allocPtr, vpReg))),
-	     move (Regs.limReg, (VProcOps.genVPLoad' (Spec.ABI.limitPtr, vpReg)))
+	     setVP',
+	     move (Regs.apReg, (VProcOps.genVPLoad' (Spec.ABI.allocPtr, vpReg'))),
+	     move (Regs.limReg, (VProcOps.genVPLoad' (Spec.ABI.limitPtr, vpReg')))
 	    ],
 	   (* jump to the return post-C-call function *)
-	    genJump (T.LABEL retLabel, [retLabel], rootTemps, restoredRoots)	    
+	    genJump (T.LABEL retLabel, [retLabel], retParams, resultC @ restoredRoots)
 	 ]
       end (* genAllocCCall' *)
 
  (* apply a C funcion f to args (f can trigger a garbage collection). *)
-  fun genAllocCCall varDefTbl {f, args, ret=ret as (retFun, roots)} = let
+  fun genAllocCCall varDefTbl {lhs, f, args, ret=ret as (retFun, roots)} = let
       val fLabel = VarDef.defOf varDefTbl f
       val fPrototype = getCPrototype f
       val fArgs = map (varToCArg varDefTbl) args
       in
-        genAllocCCall' varDefTbl (fLabel, fPrototype, fArgs, retFun, roots)
+        genAllocCCall' varDefTbl (lhs, fLabel, fPrototype, fArgs, retFun, roots)
       end
 
   (* Generate either a global or local heap check.
@@ -442,7 +441,7 @@ functor HeapTransferFn (
        (* copy params into param registers *)
 	fun gpReg' (param, paramReg) = MTy.GPReg (szOfVar param, paramReg)
 	val {stms, regs=paramRegs} = (case stdRegs
-	    of Special => {stms=[], regs=map mlrReg params}
+	    of Special => {stms=[], regs=List.map mlrReg params}
 	     | StdConv stdRegs => Copy.fresh (ListPair.map gpReg' (params, stdRegs))
             (* end case *))
         in 	

@@ -70,6 +70,7 @@ structure Census : sig
 	  List.app (fn (_, jmp) => doJump jmp) cases;
 	  Option.app doJump dflt)
       | doExit (C.HeapCheck{nogc, ...}) = doJump nogc
+      | doExit (C.AllocCCall{lhs, f, args, ret}) = (List.app inc lhs; inc f; inc' args; doJump ret)
 
   (* initialize the census count of a function's label *)
     fun initFun (C.FUNC{lab, ...}) = (

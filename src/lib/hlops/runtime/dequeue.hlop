@@ -3,7 +3,7 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Dequeue the next thread from the host-vproc's ready queue.
+ * Dequeue the next thread from the host-vprocs ready queue.
  *)
 
 #include "runtime-offsets.def"

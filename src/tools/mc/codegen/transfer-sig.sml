@@ -52,7 +52,7 @@ signature TRANSFER = sig
 
   (* apply a C funcion f to args (f can trigger a garbage collection). *)
     val genAllocCCall : VarDef.var_def_tbl ->
-	{f : CFG.var, args: CFG.var list, ret : CFG.jump} -> 
+	{lhs : CFG.var list, f : CFG.var, args: CFG.var list, ret : CFG.jump} -> 
 		   stms
 
   (* entry to a labelled function *)

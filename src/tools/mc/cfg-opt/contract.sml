@@ -107,8 +107,8 @@ structure Contract : sig
 		    List.map (fn (tag, jmp) => (tag, contractJump jmp)) cases,
 		    Option.map contractJump dflt)
 	      | C.HeapCheck{hck, szb, nogc} => C.HeapCheck{hck=hck, szb=szb, nogc=contractJump nogc}
-	      | C.AllocCCall{f, args, ret} => 
-                   C.AllocCCall{f=applySubst(env, f), args=applySubst'(env, args), ret=contractJump ret}
+	      | C.AllocCCall{lhs, f, args, ret} => 
+                   C.AllocCCall{lhs=lhs, f=applySubst(env, f), args=applySubst'(env, args), ret=contractJump ret}
 	    (* end case *)
 	  end
 
@@ -250,7 +250,7 @@ structure Contract : sig
 		  List.app (fn (_, jmp) => deleteJump jmp) cases;
 		  Option.app deleteJump dflt)
 	      | C.HeapCheck{hck, szb, nogc} => deleteJump nogc
-	      | C.AllocCCall{f, args, ret} => deleteJump ret
+	      | C.AllocCCall{lhs, f, args, ret} => deleteJump ret
 	    (* end case *)
 	  end
 

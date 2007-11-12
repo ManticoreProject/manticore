@@ -69,32 +69,32 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
         BE.Alloc.addrOf {lhsTy=lhsTy, mty=mty, i=i, base=e}
   val szOf = BE.Types.szOf o Var.typeOf
 
-  fun codeGen {dst, code=M.MODULE {name, externs, code}} = 
-      let val mlStrm = BE.MLTreeComp.selectInstructions (BE.CFGGen.build ())
-	  (* extract operations from the emitter's streams *)
-	  val Stream.STREAM { 
-	      beginCluster, getAnnotations, comment, emit, defineLabel, 
-	      entryLabel, exitBlock, pseudoOp, endCluster, ...} = mlStrm
-	  val emit = fn stm => emit (note (stm, BE.MLTreeUtils.stmToString stm))
-	  val endCluster = BE.compileCFG o endCluster
-	  val emitStms = app emit
-
-	  val varDefTbl = BE.VarDef.newTbl ()
-	  val getDefOf = BE.VarDef.getDefOf varDefTbl
-	  val setDefOf = BE.VarDef.setDefOf varDefTbl
-	  val defOf = BE.VarDef.defOf varDefTbl
-	  val fdefOf = BE.VarDef.fdefOf varDefTbl
-	  val cdefOf = BE.VarDef.cdefOf varDefTbl
-	  val bind = BE.VarDef.bind varDefTbl
-	  fun flushLoads () = (case BE.VarDef.flushLoads varDefTbl
+  fun codeGen {dst, code=M.MODULE {name, externs, code}} = let
+      val mlStrm = BE.MLTreeComp.selectInstructions (BE.CFGGen.build ())
+     (* extract operations from the emitter's streams *)
+      val Stream.STREAM { 
+	  beginCluster, getAnnotations, comment, emit, defineLabel, 
+	  entryLabel, exitBlock, pseudoOp, endCluster, ...} = mlStrm
+      val emit = fn stm => emit (note (stm, BE.MLTreeUtils.stmToString stm))
+      val endCluster = BE.compileCFG o endCluster
+      val emitStms = app emit
+		     
+      val varDefTbl = BE.VarDef.newTbl ()
+      val getDefOf = BE.VarDef.getDefOf varDefTbl
+      val setDefOf = BE.VarDef.setDefOf varDefTbl
+      val defOf = BE.VarDef.defOf varDefTbl
+      val fdefOf = BE.VarDef.fdefOf varDefTbl
+      val cdefOf = BE.VarDef.cdefOf varDefTbl
+      val bind = BE.VarDef.bind varDefTbl
+      fun flushLoads () = (case BE.VarDef.flushLoads varDefTbl
 	      of [] => ()
 	       | stms => (comment "flushLoads"; emitStms (rev stms))
-	      (* esac *))
-	  val genGoto = BE.Transfer.genGoto varDefTbl
-	  val genPrim = #gen (Prim.genPrim {varDefTbl=varDefTbl})
-
-	  (* emit a literal *)
-	  fun emitLit (l, p) = (
+	      (* end case *))
+      val genGoto = BE.Transfer.genGoto varDefTbl
+      val genPrim = #gen (Prim.genPrim {varDefTbl=varDefTbl})
+		    
+      (* emit a literal *)
+      fun emitLit (l, p) = (
 	      pseudoOp P.alignData;
 	      defineLabel l;
 	      pseudoOp p )
@@ -291,11 +291,11 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	  val entryFunc as M.FUNC{lab=entryLab, ...} :: _ = code
 	  val clusters = GenClusters.clusters code
 
-	  fun genFunc (M.FUNC {lab, entry, body, exit}) =
-	      let fun emitLabel () = let
-		      val label = BE.LabelCode.getName lab
+	  fun genFunc (M.FUNC {lab, entry, body, exit}) = let
+	      fun emitLabel () = let
+		  val label = BE.LabelCode.getName lab
 		  (*val _ = print (("CFG function: "^CFG.Label.toString lab)^"\n")*)
-		      in
+	          in
 		      (* if this function is the module entry point, output the entry label *)
 		        if M.Label.same (lab, entryLab)
                            then (pseudoOp (P.global RuntimeLabels.entry);
@@ -317,14 +317,14 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 			(* end case *))
 		      end (* emitLabel *)		  
 		  val stms = BE.Transfer.genFuncEntry varDefTbl (lab, entry)
-		  fun finish () = 
-		      let val funcAnRef = getAnnotations ()
-			  val frame = BE.SpillLoc.getFuncFrame lab
+		  fun finish () = let
+		      val funcAnRef = getAnnotations ()
+		      val frame = BE.SpillLoc.getFuncFrame lab
 (* DEBUG *)
-			  val _ = comment ("CFG function: "^CFG.Label.toString lab)
-			  val regs = BE.LabelCode.getParamRegs lab
-			  val regStrs = map (MTy.treeToString o MTy.regToTree) regs 
-			  val regStrs = map (fn s => comment ("param:"^s^" ")) regStrs
+		      val _ = comment ("CFG function: "^CFG.Label.toString lab)
+		      val regs = BE.LabelCode.getParamRegs lab
+		      val regStrs = map (MTy.treeToString o MTy.regToTree) regs 
+		      val regStrs = map (fn s => comment ("param:"^s^" ")) regStrs
 (* DEBUG *)
 		      in	
 			  (* flush out any stale loads from other functions*)
@@ -340,11 +340,10 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 		  finish
 	      end (* genFunc *)
 
-	  fun genCluster c =
-	      let val _ = BE.VarDef.clear varDefTbl;
-		  val finishers = map genFunc c
+	  fun genCluster c = let
+	      val _ = BE.VarDef.clear varDefTbl;
+	      val finishers = map genFunc c
 	      in 
-		  (*print "new cluster:\n\n";*)
  		  beginCluster 0;
 		  pseudoOp P.text;
 		  app (fn f => f ()) finishers;
