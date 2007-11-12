@@ -27,7 +27,7 @@ structure TranslatePComp : sig
 			val leafSize' = ASTUtil.mkInt Ropes.maxLeafSize
 			val lo' = trExp lo
 			val hi' = trExp hi
-			val tup = A.TupleExp [f, workQ, leafSize', lo', hi']
+			val tup = A.TupleExp [workQ, f, leafSize', lo', hi']
 			val resTy = B.parrayTy t
            	    in
 			A.ApplyExp (A.VarExp (U.tabulateD, [t]), tup, resTy)

@@ -12,14 +12,14 @@
 
 extern void M_Print (void*);
 
-define @tabulateD (args : [(* f *) fun (ml_int / exh -> any),
-                           (* q *) work_queue, 
+define @tabulateD (args : [(* q *) work_queue, 
+                           (* f *) fun (ml_int / exh -> any),
                            (* ml_leafSize *) ml_int,
                            (* ml_lo *) ml_int, 
                            (* ml_hi *) ml_int] / exh : exh) : rope =
 
-  let f : fun (ml_int / exh -> any) = #0(args)
-  let q : work_queue = #1(args)
+  let q : work_queue = #0(args)
+  let f : fun (ml_int / exh -> any) = #1(args)
   let ml_leafSize : ml_int = #2(args)
   let ml_lo : ml_int = #3(args)
   let ml_hi : ml_int = #4(args)
@@ -36,7 +36,8 @@ define @tabulateD (args : [(* f *) fun (ml_int / exh -> any),
     let upperLim : int = @int-min (upperLimCand, hi / exh)
     let ml_lo : ml_int = alloc (lo)
     let ml_upperLim : ml_int = alloc (upperLim)
-    let data : list = @tabulateS (f, ml_lo, ml_upperLim / exh)
+    let tup : [fun (ml_int / exh -> any), ml_int, ml_int] = alloc (f, ml_lo, ml_upperLim)
+    let data : list = @list-tabulate (tup / exh)
     let len : int = 
       let t1 : int  = I32Sub (upperLim, lo)
       let t2 : int = I32Add (t1, 1)

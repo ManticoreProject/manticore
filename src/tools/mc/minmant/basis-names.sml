@@ -115,7 +115,10 @@ structure BasisNames =
     val gettimeofday =	Atom.atom "gettimeofday"
     val compose =       Atom.atom "compose"
     val map =           Atom.atom "map"
+    val app =           Atom.atom "app"
+    val tabulate =      Atom.atom "tabulate"
     val foldl =         Atom.atom "foldl"
+
 (*
     val size =		Atom.atom "size"
     val sub =		Atom.atom "sub"

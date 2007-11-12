@@ -183,6 +183,9 @@ structure Basis : sig
     val rev             : AST.var
     val gettimeofday	: AST.var
     val compose         : AST.var
+    val app             : AST.var
+    val tabulate        : AST.var
+
   (* environments *)
     val lookupOp : Atom.atom -> Env.val_bind
     val isOp : AST.var -> bool
@@ -574,6 +577,10 @@ structure Basis : sig
     val sumP =          monoVar'(N.sumP, (parrayTy intTy) --> intTy)
     val rev =           polyVar'(N.rev, fn tv => listTy tv --> listTy tv)
     val gettimeofday =	monoVar'(N.gettimeofday, unitTy --> doubleTy)
+    val app =           polyVar'(N.app, fn tv => (tv --> unitTy) ** (listTy tv) --> unitTy)
+    val tabulate =      polyVar'(N.tabulate, 
+			         fn tv => (AST.TupleTy [intTy --> tv, intTy, intTy])
+                                   --> (listTy tv))
 
   (* predefined functions with more than one type variable in their types *)
     val compose =
@@ -694,7 +701,9 @@ structure Basis : sig
 	    (N.gettimeofday,	Env.Var gettimeofday),
 	    (N.compose,         Env.Var compose),
 	    (N.map,             Env.Var map),
+            (N.app,             Env.Var app),
 	    (N.foldl,           Env.Var foldl),
+            (N.tabulate,        Env.Var tabulate),
 	    (N.reduceP,         Env.Var reduceP)
 (*
 	    (N.size,		Env.Var size),

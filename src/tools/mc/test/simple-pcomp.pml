@@ -1,4 +1,4 @@
-val pc = [| x*x | x in [| 1 to 30 |] |];
+val pc = [| x*x | x in [| 1 to 10 |] |];
 
 fun catw (sep, ss) =
   (case ss
@@ -17,5 +17,5 @@ fun parrString a =
       "[" ^ (catw (",", build (0, nil))) ^ "]"
   end;
 
-print ("RESULT: " ^ (parrString pc) ^ "\n")
+print ("RESULT: " ^ (parrString pc) ^ "\n     (expected 1^2 .. 10^2)\n")
 

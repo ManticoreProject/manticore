@@ -68,7 +68,7 @@ structure UnseenBasis : sig
     val tabulateD = 
 	let fun mkTy tv = 
 		let val intTy = B.intTy
-		    val tupTy = T.TupleTy [intTy --> tv, qTy, intTy, intTy, intTy]
+		    val tupTy = T.TupleTy [qTy, intTy --> tv, intTy, intTy, intTy]
 		in
 		    tupTy --> (B.parrayTy tv)    
 		end

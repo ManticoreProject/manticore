@@ -410,6 +410,7 @@ structure StdEnv : sig
   (* enrich env0 with HLOP signatures from prototypes.hlop *)
     fun env () = let
 	  val hlops =  [
+                  (B.app,               "list-app"),
 		  (B.print,		"print"),
 		  (B.stringConcat,	"string-concat2"),
 		  (B.itos,		"itos"),
@@ -421,6 +422,7 @@ structure StdEnv : sig
                   (B.compose,           "compose"),
 		  (B.foldl,             "list-foldl"),
 		  (B.map,               "list-map"),
+		  (B.tabulate,          "list-tabulate"),
 		  (B.gettimeofday,	"gettimeofday"),
                   (B.plen,              "rope-length"),
 		  (U.reducePQ,          "rope-reduce"),
