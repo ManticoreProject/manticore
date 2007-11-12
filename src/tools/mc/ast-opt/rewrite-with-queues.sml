@@ -19,7 +19,7 @@ structure RewriteWithQueues : sig
     structure T = Types
     structure U = UnseenBasis
  		
-  (* FIXME This obviously wants to be developed into a more general mechanism. *)
+  (* FIXME refactor this code... *)
 
   (* sumP : A.exp * A.ty list -> A.exp *)				  
     fun sumP (q, ts) = 
@@ -29,12 +29,14 @@ structure RewriteWithQueues : sig
 	end
 
   (* reduceP : A.exp * A.ty list => A.exp *)
+  (* Consumes a work queue and a pair of types (in a length-two list) *)
+  (*   representing the instantiating types in the reduction type. *)
     fun reduceP (q, ts) = 
       (case ts
-	 of [alpha, beta] => 
-	      let val t = TypeOf.exp (A.VarExp (B.reduceP, ts))
+	 of [alpha, beta] =>
+	      let val funTy = TypeOf.exp (A.VarExp (B.reduceP, ts))
 	      in
-		  A.ApplyExp (A.VarExp (U.reducePQ, ts), q, t)
+		  A.ApplyExp (A.VarExp (U.reducePQ, [alpha, beta]), q, funTy)
 	      end
 	  | _ => raise Fail "reduceP: expected two type args"
         (* end case *))

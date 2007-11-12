@@ -423,7 +423,7 @@ structure StdEnv : sig
 		  (B.map,               "list-map"),
 		  (B.gettimeofday,	"gettimeofday"),
                   (B.plen,              "rope-length"),
-		  (B.reduceP,           "rope-reduce"),
+		  (U.reducePQ,          "rope-reduce"),
 		  (U.sumPQ,             "rope-sum"),
 		  (U.tabulateD,         "tabulateD")
 		]  

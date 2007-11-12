@@ -50,9 +50,9 @@ structure UnseenBasis : sig
     val reducePQ =
 	let fun mkTy ([a,b]) =
 		  let val fnTy = (a ** a) --> b
-		      val tupTy = T.TupleTy [fnTy, b, qTy, B.parrayTy a]
+		      val tupTy = T.TupleTy [fnTy, b, B.parrayTy a]
 		  in
-		      tupTy --> b
+		      qTy --> (tupTy --> b)
 		  end
 	      | mkTy _ = raise Fail "BUG: bad instantiation for reducePQ"
 	in
