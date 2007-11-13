@@ -46,10 +46,7 @@ functor HeapTransferFn (
 
   type stms = MTy.T.stm list
 
-  val apReg = Regs.apReg
-  val ty = MTy.wordTy
   val iTy = Types.szOf (CFGTy.T_Raw CFGTy.T_Int)
-  val memory = ManticoreRegion.memory
 
   val kfncRegs = Regs.argRegs
   val stdFuncRegs as [closReg, argReg, retReg, exhReg] = 
@@ -73,8 +70,8 @@ functor HeapTransferFn (
   fun regGP (MTy.GPReg (_, r)) = r
   fun mkExp rexp = MTy.EXP (MTy.wordTy, rexp)
   val toGPR = T.GPR o regExp o regGP
-  fun mlrReg v = 
-      let val mty = Var.typeOf v
+  fun mlrReg v = let 
+      val mty = Var.typeOf v
       in
 	  (case MTy.cfgTyToMLRisc mty
 	    of MTy.K_INT => MTy.GPReg (Types.szOf mty, newReg ())
@@ -193,7 +190,7 @@ functor HeapTransferFn (
         val r = newReg()
 	val MTy.EXP(_, hostVP) = VProcOps.genHostVP
         in
-          (T.REG(ty, r), T.MV(ty, r, hostVP))
+          (T.REG(MTy.wordTy, r), T.MV(MTy.wordTy, r, hostVP))
         end
 
   fun ccall {lhs, name, retTy, paramTys, cArgs, saveAllocPtr} = let
@@ -206,17 +203,15 @@ functor HeapTransferFn (
 	    saveRestoreDedicated=fn _ => {save=[], restore=[]},
 	    callComment=NONE
 	  } 
-      (* for each caller-save register, allocate a fresh temporary and
-       * generate save/restore operations that copy the dedicated registers
-       * to/from the temporaries.
+      (* for each caller-save register, allocate a fresh temporary and generate save/restore operations that
+       * copy the dedicated registers to/from the temporaries.
        *)
       fun saveRegs rs = let
 	  fun loop ([], (tmps, ss)) = {
-	        saves=T.COPY (ty, tmps, ss),
-		restores=T.COPY (ty, ss, tmps)
+	        saves=T.COPY (MTy.wordTy, tmps, ss),
+		restores=T.COPY (MTy.wordTy, ss, tmps)
 	      }
-	    | loop (r :: rs, (tmps, ss)) =
-	      loop (rs, (newReg () :: tmps, r :: ss))
+	    | loop (r :: rs, (tmps, ss)) = loop (rs, (newReg () :: tmps, r :: ss))
           in
 	    loop (rs, ([], []))
           end (* saveRegs *)
@@ -231,9 +226,9 @@ functor HeapTransferFn (
       (* statements to save/restore the allocation pointer from the vproc *)
       val (saveAP, restoreAP) = if saveAllocPtr
     	  then let
-             val apReg = T.REG(ty, Regs.apReg)
+             val apReg = T.REG(MTy.wordTy, Regs.apReg)
 	     val save = VProcOps.genVPStore' (Spec.ABI.allocPtr, vpReg, apReg)
-	     val restore = T.MV(ty, Regs.apReg,	VProcOps.genVPLoad' (Spec.ABI.allocPtr, vpReg))
+	     val restore = T.MV(MTy.wordTy, Regs.apReg,	VProcOps.genVPLoad' (Spec.ABI.allocPtr, vpReg))
              in
 	        ([save], [restore])
              end
@@ -314,7 +309,9 @@ functor HeapTransferFn (
   fun genAllocCCall' varDefTbl (lhs, fLabel, CFunctions.CProto(retTy, paramTys, _), fArgs, retFun, roots) = let
       val retLabel = LabelCode.getName retFun
       val retParams = LabelCode.getParamRegs retFun
+     (* pre-C-Call vproc pointer *)
       val (vpReg, setVP) = hostVProc ()
+     (* post-C-call vproc pointer*)
       val (vpReg', setVP') = hostVProc ()
       val stdEnvPtrOffset = VProcOps.genVPAddrOf (Spec.ABI.stdEnvPtr, vpReg')
       val {initRoots, restoredRoots, rootPtr, rootTemps, rootArgs} = 
@@ -336,8 +333,9 @@ functor HeapTransferFn (
 	      VProcOps.genVPStore' (Spec.ABI.allocPtr, vpReg, regExp Regs.apReg),
 	      VProcOps.genVPStore' (Spec.ABI.limitPtr, vpReg, regExp Regs.limReg) 
 	    ],
+           (* call the C function *)
             stmsC,	    
-	   (* restore dedicated registers and the roots *) 
+	   (* restore dedicated registers *) 
 	    [
 	     setVP',
 	     move (Regs.apReg, (VProcOps.genVPLoad' (Spec.ABI.allocPtr, vpReg'))),
