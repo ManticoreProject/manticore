@@ -186,6 +186,7 @@ structure Basis : sig
     val compose         : AST.var
     val app             : AST.var
     val tabulate        : AST.var
+    val tabulateStep    : AST.var
 
   (* NOT IN THE SURFACE LANGUAGE *)
     val workQueueTyc    : Types.tycon
@@ -587,6 +588,9 @@ structure Basis : sig
     val tabulate =      polyVar'(N.tabulate, 
 			         fn tv => (AST.TupleTy [intTy --> tv, intTy, intTy])
                                    --> (listTy tv))
+    val tabulateStep =  polyVar'(N.tabulateStep,
+				 fn tv => (AST.TupleTy [intTy --> tv, intTy, intTy, intTy])
+                                   --> (listTy tv))
 
   (* predefined functions with more than one type variable in their types *)
     val compose =
@@ -737,6 +741,7 @@ structure Basis : sig
 	    (N.foldl,           Env.Var foldl),
 	    (N.foldr,           Env.Var foldr),
             (N.tabulate,        Env.Var tabulate),
+	    (N.tabulateStep,    Env.Var tabulateStep),
 	    (N.reduceP,         Env.Var reduceP)
 (*
 	    (N.size,		Env.Var size),

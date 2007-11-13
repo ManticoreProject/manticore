@@ -27,6 +27,8 @@ define @list-app (args: [fun(any/exh->unit), list] / exh:exh) : unit;
 define @list-foldl (args: [fun([any,any]/exh->any), any, list] / exh:exh) : any;
 define @list-foldr (args: [fun([any,any]/exh->any), any, list] / exh:exh) : any;
 define @list-tabulate (args: [fun(ml_int/exh->any), ml_int, ml_int] / exh:exh) : list;
+define @list-tabulate-step (args: [fun(ml_int/exh->any), ml_int, ml_int, ml_int] / exh:exh) : list;
+
 define @fail (arg : ml_string / exh : exh) : any;
 
 define @rope-length (r : rope / exh : exh) : ml_int;
@@ -37,6 +39,7 @@ define @simple-cat (r1 : rope, r2 : rope / exh : exh) : rope;
 
 define @tabulateS (f: fun(ml_int/exh->any), ml_lo:ml_int, ml_hi:ml_int / exh:exh) : list;
 define @tabulateD (args: [work_queue, fun(ml_int/exh->any), ml_int, ml_int, ml_int] / exh : exh) : rope;
+define @steppedTabulateD (agrs: [work_queue, fun(ml_int/exh->any), ml_int, ml_int, ml_int, ml_int] / exh:exh) : rope;
 define @rope-reduce (q:work_queue / exh:exh) : fun([fun([any,any]/exh->any), any, rope] / exh -> any);
 define @rope-map (q:work_queue / exh:exh) : fun([fun(any/exh->any), rope] / exh -> rope);
 

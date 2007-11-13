@@ -36,18 +36,27 @@ structure TranslatePComp : sig
 		     val lfSize = ASTUtil.mkInt R.maxLeafSize
 		 in
 		     (case e1
-		        of A.RangeExp (lo, hi, optStep, t) => 
-			     (case optStep
-			        of NONE =>
-				     let val lo' = trExp lo
-					 val hi' = trExp hi
-					 val tup = A.TupleExp [workQ, f, lfSize, lo', hi']
-				     in
-					 A.ApplyExp (A.VarExp (U.tabulateD, [t]), tup, resTy)
-				     end
-				 | SOME step =>
-				     raise Fail "todo: in pcomp, gappy range"
-			       (* end case *))
+		        of A.RangeExp (lo, hi, optStep, rangeEltTy) =>
+			     let val lo' = trExp lo
+				 val hi' = trExp hi
+				 val tabD = A.VarExp (U.tabulateD, [t])
+			     in
+				 (case optStep
+			            of NONE =>
+				         let val tup = A.TupleExp [workQ, f, lfSize, lo', hi']
+					 in
+					     A.ApplyExp (tabD, tup, resTy)
+					 end
+				     | SOME step =>
+				         let val n = Var.new ("n", rangeEltTy) 
+					     val stepTabD = A.VarExp (U.steppedTabulateD, [t])
+					     val step' = trExp step
+					     val tup = A.TupleExp [workQ, f, lfSize, lo', hi', step']
+					 in
+					     A.ApplyExp (stepTabD, tup, resTy)
+					 end
+  				   (* end case *))
+			     end
 			 | _ (* not a range exp *) =>
 			     let val e1' = trExp e1
 				 val mapPQ = A.VarExp (B.mapPQ, [t1, t])

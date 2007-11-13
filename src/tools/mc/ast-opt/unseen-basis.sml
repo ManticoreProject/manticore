@@ -16,6 +16,7 @@ structure UnseenBasis : sig
     val reducePQ  : AST.var
     val sumPQ     : AST.var
     val tabulateD : AST.var
+    val steppedTabulateD : AST.var
 
   end = struct
 
@@ -74,6 +75,17 @@ structure UnseenBasis : sig
 		end
 	in
 	    polyVar ("tabulateD", mkTy)
+	end
+
+    val steppedTabulateD = 
+	let fun mkTy tv = 
+		let val intTy = B.intTy
+		    val tupTy = T.TupleTy [qTy, intTy --> tv, intTy, intTy, intTy, intTy]
+		in
+		    tupTy --> (B.parrayTy tv)    
+		end
+	in
+	    polyVar ("steppedTabulateD", mkTy)
 	end
 
   end

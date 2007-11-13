@@ -424,12 +424,14 @@ structure StdEnv : sig
 		  (B.foldr,             "list-foldr"),
 		  (B.map,               "list-map"),
 		  (B.tabulate,          "list-tabulate"),
+		  (B.tabulateStep,      "list-tabulate-step"),
 		  (B.gettimeofday,	"gettimeofday"),
                   (B.plen,              "rope-length"),
 		  (B.mapPQ,             "rope-map"),
 		  (U.reducePQ,          "rope-reduce"),
 		  (U.sumPQ,             "rope-sum"),
-		  (U.tabulateD,         "tabulateD")
+		  (U.tabulateD,         "tabulateD"),
+		  (U.steppedTabulateD,  "steppedTabulateD")
 		]  
 	  fun ins ((x, n), env) = (case H.find (Atom.atom n)
 		of NONE => raise Fail ("cannot find hlop " ^ n)
