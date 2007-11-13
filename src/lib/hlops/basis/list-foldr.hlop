@@ -18,7 +18,7 @@ define @list-foldr (arg : [fun ([any, any] / exh -> any), any, list] / exh : exh
     case xs
       of NIL => return (z)
        | CONS(x:any, tl:list) =>
-           let t : any = apply foldr (xs / exh)
+           let t : any = apply foldr (tl / exh)
            let tup : [any, any] = alloc (x, t)
            let r : any = apply f (tup / exh)
            return (r)
