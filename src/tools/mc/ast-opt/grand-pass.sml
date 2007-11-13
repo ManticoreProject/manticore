@@ -23,7 +23,7 @@ structure GrandPass : sig
 
     local
 
-	val workQVar = V.new ("workQ", F.workQueueTy)
+	val workQVar = V.new ("workQ", B.workQueueTy)
 	val workQ    = A.VarExp (workQVar, [])
 	val needsQ   = ref false
 
@@ -75,7 +75,7 @@ structure GrandPass : sig
   (* Prepend module m with the appropriate let bindings to include the workQueue. *)
     fun includeQ m =
 	A.LetExp (A.ValBind (A.VarPat workQVar, F.mkNewWorkQueue ()),
-          A.LetExp (A.ValBind (A.WildPat F.workQueueTy, F.mkGetWork1All workQ),
+          A.LetExp (A.ValBind (A.WildPat B.workQueueTy, F.mkGetWork1All workQ),
             m))
 
   (* transform : A.module -> A.module *)

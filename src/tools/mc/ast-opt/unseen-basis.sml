@@ -45,7 +45,7 @@ structure UnseenBasis : sig
 
     fun polyVarMulti (name, n, mkTy) = Var.newPoly (name, forAllMulti (n, mkTy))
 
-    val qTy = F.workQueueTy
+    val qTy = B.workQueueTy
 
     val reducePQ =
 	let fun mkTy ([a,b]) =

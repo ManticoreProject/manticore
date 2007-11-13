@@ -55,7 +55,7 @@ structure StdEnv : sig
 	    (B.eventTyc,	BOMBasis.evtTy),
 	    (B.chanTyc,		BOMBasis.chanTy),
 	    (F.futureTyc,       BTy.futureTy),
-	    (F.workQueueTyc,	BOMBasis.workQueueTy)
+	    (B.workQueueTyc,	BOMBasis.workQueueTy)
 	  ]
 
 
@@ -426,6 +426,7 @@ structure StdEnv : sig
 		  (B.tabulate,          "list-tabulate"),
 		  (B.gettimeofday,	"gettimeofday"),
                   (B.plen,              "rope-length"),
+		  (B.mapPQ,             "rope-map"),
 		  (U.reducePQ,          "rope-reduce"),
 		  (U.sumPQ,             "rope-sum"),
 		  (U.tabulateD,         "tabulateD")

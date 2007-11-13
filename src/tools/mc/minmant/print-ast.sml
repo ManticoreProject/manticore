@@ -237,7 +237,9 @@ structure PrintAST : sig
             if atomicExp e21 
 	    then exp e21
 	    else (pr "("; exp e21; pr ")");
-            exp opExp;
+            sp ();
+	    exp opExp;
+	    sp ();
             if atomicExp e22 
             then exp e22
             else (pr "("; exp e22; pr ")");
