@@ -62,6 +62,7 @@ structure Basis : sig
     val listAppend	: AST.var
     val map             : AST.var
     val foldl           : AST.var
+    val foldr           : AST.var
     val stringConcat	: AST.var
     val psub            : AST.var
     val int_div		: AST.var
@@ -597,12 +598,17 @@ structure Basis : sig
 	    polyVarMulti' (N.map, 2, mkTy)
 	end
 
-    val foldl =
-	let fun mkTy ([a,b]) = (AST.TupleTy[(a ** b) --> b, b, listTy a]) --> a
-	      | mkTy _ = raise Fail "BUG: bad type instantiation for foldl"
-	in
-	    polyVarMulti' (N.foldl, 2, mkTy)
-	end
+    local 
+	fun mkMkTy fname =
+	    let fun mkTy ([a,b]) = (AST.TupleTy[(a ** b) --> b, b, listTy a]) --> a
+		  | mkTy _ = raise Fail ("BUG: bad type instatiation for " ^ fname)
+	    in
+		mkTy
+	    end
+    in
+        val foldl = polyVarMulti' (N.foldl, 2, mkMkTy "foldl")
+	val foldr = polyVarMulti' (N.foldr, 2, mkMkTy "foldr")
+    end (* local *)
 
     val reduceP =
 	let fun mkTy ([a,b]) = (AST.TupleTy[(a**a)-->b, b, parrayTy a]) --> b
@@ -703,6 +709,7 @@ structure Basis : sig
 	    (N.map,             Env.Var map),
             (N.app,             Env.Var app),
 	    (N.foldl,           Env.Var foldl),
+	    (N.foldr,           Env.Var foldr),
             (N.tabulate,        Env.Var tabulate),
 	    (N.reduceP,         Env.Var reduceP)
 (*

@@ -118,6 +118,7 @@ structure BasisNames =
     val app =           Atom.atom "app"
     val tabulate =      Atom.atom "tabulate"
     val foldl =         Atom.atom "foldl"
+    val foldr =         Atom.atom "foldr"
 
 (*
     val size =		Atom.atom "size"

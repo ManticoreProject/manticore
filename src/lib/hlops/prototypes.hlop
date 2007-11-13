@@ -25,6 +25,7 @@ define @list-rev (xs : list / exh : exh) : list;
 define @list-map (args: [fun(any/exh->any), list] / exh:exh) : list;
 define @list-app (args: [fun(any/exh->unit), list] / exh:exh) : unit;
 define @list-foldl (args: [fun([any,any]/exh->any), any, list] / exh:exh) : any;
+define @list-foldr (args: [fun([any,any]/exh->any), any, list] / exh:exh) : any;
 define @list-tabulate (args: [fun(ml_int/exh->any), ml_int, ml_int] / exh:exh) : list;
 define @fail (arg : ml_string / exh : exh) : any;
 

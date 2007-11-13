@@ -421,6 +421,7 @@ structure StdEnv : sig
 		  (B.powd,              "powd"),
                   (B.compose,           "compose"),
 		  (B.foldl,             "list-foldl"),
+		  (B.foldr,             "list-foldr"),
 		  (B.map,               "list-map"),
 		  (B.tabulate,          "list-tabulate"),
 		  (B.gettimeofday,	"gettimeofday"),

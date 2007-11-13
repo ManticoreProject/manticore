@@ -1,0 +1,29 @@
+(* list-foldr.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Built-in list foldr function.
+ *)
+
+#include "types.def"
+
+define @list-foldr (arg : [fun ([any, any] / exh -> any), any, list] / exh : exh) : any =
+
+  let f : fun ([any, any] / exh -> any) = #0(arg)
+  let z : any = #1(arg)
+  let xs : list = #2(arg)
+
+  fun foldr (xs : list / exh : exh) : any =
+    case xs
+      of NIL => return (z)
+       | CONS(x:any, tl:list) =>
+           let t : any = apply foldr (xs / exh)
+           let tup : [any, any] = alloc (x, t)
+           let r : any = apply f (tup / exh)
+           return (r)
+     end
+
+   let theAnswer : any = apply foldr (xs / exh)
+   return (theAnswer)
+;
