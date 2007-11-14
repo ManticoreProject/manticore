@@ -130,10 +130,10 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		  (* conversions *)
 		    | P.I32ToI64X x => gprBind (i32ty, v, T.SX(i32ty, i64ty, defOf x))
 		    | P.I32ToI64 x => gprBind (i32ty, v, T.ZX(i32ty, i64ty, defOf x))
-		    | P.I32ToF32 x => fbind (f32ty, v, T.CVTI2F(i32ty, f32ty, defOf x))
-		    | P.I32ToF64 x => fbind (f64ty, v, T.CVTI2F(i32ty, f64ty, defOf x))
-		    | P.I64ToF32 x => fbind (f32ty, v, T.CVTI2F(i64ty, f32ty, defOf x))
-		    | P.I64ToF64 x => fbind (f64ty, v, T.CVTI2F(i64ty, f64ty, defOf x))
+		    | P.I32ToF32 x => fbind (f32ty, v, T.CVTI2F(f32ty, i32ty, defOf x))
+		    | P.I32ToF64 x => fbind (f64ty, v, T.CVTI2F(f64ty, i32ty, defOf x))
+		    | P.I64ToF32 x => fbind (f32ty, v, T.CVTI2F(f32ty, i64ty, defOf x))
+		    | P.I64ToF64 x => fbind (f64ty, v, T.CVTI2F(f64ty, i64ty, defOf x))
 		  (* atomic operations *)
 		    | P.I32FetchAndAdd(addr, x) => let
 			val (r, stms) = BE.AtomicOps.genFetchAndAdd32 {
