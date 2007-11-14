@@ -185,6 +185,7 @@ functor HeapTransferFn (
       else removeReg reg rs
     | removeReg _ [] = []
 
+
  (* assign the host vproc pointer to a register *)
   fun hostVProc () = let
         val r = newReg()
@@ -193,11 +194,12 @@ functor HeapTransferFn (
           (T.REG(MTy.wordTy, r), T.MV(MTy.wordTy, r, hostVP))
         end
 
-  fun ccall {lhs, name, retTy, paramTys, cArgs, saveAllocPtr} = let
+  fun ccall {lhs, name, retTy, paramTys, cArgs, allocates, saveAllocationPointer} = let
+      val conv = if allocates then "ccall-bare" else "ccall"
       val {callseq, result} = CCall.genCall {
 	    name=name, 
 	    args=cArgs,
-	    proto={conv="", retTy=retTy, paramTys=paramTys},
+	    proto={conv=conv, retTy=retTy, paramTys=paramTys},
 	    paramAlloc=fn _ => false,
 	    structRet=fn _ => T.REG (64, retReg),
 	    saveRestoreDedicated=fn _ => {save=[], restore=[]},
@@ -215,16 +217,16 @@ functor HeapTransferFn (
           in
 	    loop (rs, ([], []))
           end (* saveRegs *)
-      val {saves, restores} = if saveAllocPtr
-	  then saveRegs (removeReg Regs.apReg Regs.saveRegs)
-	  else saveRegs Regs.saveRegs
+      val {saves, restores} = if saveAllocationPointer
+          then saveRegs (removeReg Regs.apReg Regs.saveRegs)
+          else saveRegs Regs.saveRegs
       (* we need a pointer to the vproc to set the inManticore flag, etc. *)
       val (vpReg, setVP) = hostVProc ()
       (* generate a statement to store a value in the vproc inManticore flag *)
       fun setInManticore value = 
 	  VProcOps.genVPStore' (Spec.ABI.inManticore, vpReg, T.LI value)
       (* statements to save/restore the allocation pointer from the vproc *)
-      val (saveAP, restoreAP) = if saveAllocPtr
+      val (saveAP, restoreAP) = if saveAllocationPointer
     	  then let
              val apReg = T.REG(MTy.wordTy, Regs.apReg)
 	     val save = VProcOps.genVPStore' (Spec.ABI.allocPtr, vpReg, apReg)
@@ -232,10 +234,11 @@ functor HeapTransferFn (
              in
 	        ([save], [restore])
              end
-           else ([], [])
+           else ([], []) 
+
       val stms = setVP :: saveAP @ [setInManticore(Spec.falseRep), saves]
 		 @ callseq
-		 @ (restores :: restoreAP) @ [setInManticore(Spec.trueRep)]
+		 @ restores :: restoreAP @ [setInManticore(Spec.trueRep)]
       fun convResult (T.GPR e, v) = MTy.EXP (szOfVar v, e)
 	| convResult (T.FPR e, v) = MTy.FEXP (szOfVar v, e)
 	| convResult _ = raise Fail "convResult"
@@ -256,15 +259,15 @@ functor HeapTransferFn (
       (* end case *))
   
   fun genCCall varDefTbl {lhs, f, args} = let
-      (* get the C function's prototype *)
+     (* get the C function's prototype *)
       val cProtoTy as CFunctions.CProto(retTy, paramTys, _) = getCPrototype f
-      (* do we need to save/restore the allocation pointer? *)
-      val saveAllocPtr = CFunctions.protoHasAttr CFunctions.A_alloc cProtoTy
+     (* check if the C function might allocate *)
+      val allocates = CFunctions.protoHasAttr CFunctions.A_alloc cProtoTy
       in
         ccall {lhs=lhs, 
 	       name=VarDef.defOf varDefTbl f, 
 	       retTy=cvtCTy retTy, paramTys=List.map cvtCTy paramTys, 
-	       cArgs=map (varToCArg varDefTbl) args, saveAllocPtr=saveAllocPtr}
+	       cArgs=map (varToCArg varDefTbl) args, allocates=allocates, saveAllocationPointer=allocates}
       end (* genCCall *)
       
   (* Promote an object to the global heap.
@@ -275,7 +278,7 @@ functor HeapTransferFn (
       ccall {lhs=[lhs], 
 	     name=T.LABEL RuntimeLabels.promote,
 	     retTy=CTy.C_PTR, paramTys=[CTy.C_PTR, CTy.C_PTR], 
-	     cArgs=[CCall.ARG VProcOps.genHostVP', varToCArg varDefTbl arg], saveAllocPtr=true}
+	     cArgs=[CCall.ARG VProcOps.genHostVP', varToCArg varDefTbl arg], allocates=true, saveAllocationPointer=true}
 
   (* take the CFG variables for the GC roots and return MLRISC code that initializes and restores
    * the roots and also return the root pointer, register temps for the roots, and values for the roots
@@ -321,7 +324,7 @@ functor HeapTransferFn (
       *)      
       val {stms=stmsC, result=resultC} = ccall {lhs=lhs, name=fLabel, 
                retTy=cvtCTy retTy, paramTys=List.map cvtCTy paramTys, 
-	       cArgs=fArgs, saveAllocPtr=false}
+	       cArgs=fArgs, allocates=true, saveAllocationPointer=false}
       in
          List.concat [
 	    Copy.copy {dst=rootTemps, src=rootArgs},

@@ -75,7 +75,7 @@ functor AllocCCallsFn (Target : TARGET_SPEC) : sig
 	       loop (revBody func, [])
 	    end
 			       
-(*	val code = List.concat (List.map rewriteFunc code)*)
+	val code = List.concat (List.map rewriteFunc code)
 	val module = CFG.mkModule (name, externs, code)
 	in
 	   Census.census module;
