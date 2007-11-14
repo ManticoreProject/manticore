@@ -2,7 +2,7 @@ val xBase : double = ~2.0;
 val yBase : double = 1.25;
 val side : double = 2.5;
 
-val sz : int = 16; (* 1024; *)
+val sz : int = 128; (* 1024; *)
 val maxCount : int = 255;
 
 val delta : double = side / (itod sz);
@@ -28,10 +28,12 @@ fun pixel (i, j) = let
 	loop (0, c_re, c_im)
       end;
 
-(* TRY COMMENTING OUT THIS DEF OF PIXEL AND OBSERVE THE ERROR... *)
-fun pixel (i,j) = i;
-
-val img = [| [| pixel(i, j) | j in [| 0 to sz-1 |] |] | i in [| 0 to sz-1 |] |];
+val img = 
+  let val axis = [| n | n in [| 0 to sz-1 |] |] (* FIXME this eta-equiv trick should not be necessary *)
+                                                (* should just be [| 0 to sz-1 |] *)
+  in
+      [| [| pixel(i, j) | j in axis |] | i in axis |]
+  end;
 
 (* catw : string * string parray -> string *)
 fun catw (sep, strPar) =
