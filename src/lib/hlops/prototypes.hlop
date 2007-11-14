@@ -35,6 +35,7 @@ define @rope-length (r : rope / exh : exh) : ml_int;
 define @rope-depth (r : rope / exh : exh) : ml_int;
 define @rope-sum (q : work_queue / exh : exh) : fun (rope / exh -> ml_int);
 define @rope-from-leaves (leaves : list / exh : exh) : rope;
+define @rope-app (args : [fun(any/exh->unit), rope] / exh:exh) : unit;
 define @simple-cat (r1 : rope, r2 : rope / exh : exh) : rope;
 
 define @tabulateS (f: fun(ml_int/exh->any), ml_lo:ml_int, ml_hi:ml_int / exh:exh) : list;

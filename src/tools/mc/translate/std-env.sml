@@ -426,6 +426,7 @@ structure StdEnv : sig
 		  (B.tabulate,          "list-tabulate"),
 		  (B.tabulateStep,      "list-tabulate-step"),
 		  (B.gettimeofday,	"gettimeofday"),
+		  (B.parrayApp,         "rope-app"),
                   (B.plen,              "rope-length"),
 		  (B.mapPQ,             "rope-map"),
 		  (U.reducePQ,          "rope-reduce"),

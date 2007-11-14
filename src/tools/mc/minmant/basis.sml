@@ -185,8 +185,9 @@ structure Basis : sig
     val gettimeofday	: AST.var
     val compose         : AST.var
     val app             : AST.var
-    val tabulate        : AST.var
-    val tabulateStep    : AST.var
+    val tabulate        : AST.var (* FIXME make these one function *)
+    val tabulateStep    : AST.var (* FIXME *)
+    val parrayApp       : AST.var
 
   (* NOT IN THE SURFACE LANGUAGE *)
     val workQueueTyc    : Types.tycon
@@ -211,44 +212,17 @@ structure Basis : sig
       infix 9 **
       infixr 8 -->
 
-      fun forall mkTy = let
-	    val tv = TyVar.new(Atom.atom "'a")
-	    in
-	      AST.TyScheme([tv], mkTy(AST.VarTy tv))
-	    end
+      structure U = BasisUtils
 
-    (* forAllMulti : int * (A.ty -> A.ty) -> A.ty_scheme *)
-    (* Consume a number of type variables and a ty -> ty function. *)
-    (* One must pass in the number of tyvars since there's no way to *)
-    (* look inside mkTy to see how many type variables it expects. *)
-      fun forAllMulti (n, mkTy) = let
-	    fun mkTv n = TyVar.new(Atom.atom ("'a" ^ Int.toString n))
-	    val tvs = map mkTv (List.tabulate (n, (fn n => n)))
-            in
-              AST.TyScheme(tvs, mkTy(map AST.VarTy tvs))
-            end
+      val forall = U.forall
+      val forallMulti = U.forallMulti
+      val monoVar = U.monoVar
+      val polyVar = U.polyVar
+      val polyVarMulti = U.polyVarMulti
 
-    (* monoVar : string * A.ty -> A.var *)
-      fun monoVar (name, ty) = Var.new(name, ty)
-
-    (* monoVar' : Atom.atom * A.ty -> A.var *)
-      fun monoVar' (name, ty) = monoVar(Atom.toString name, ty)
-
-    (* polyVar : string * (A.ty -> A.ty) -> A.var *) 
-      fun polyVar (name, mkTy) = Var.newPoly(name, forall mkTy)
-
-    (* polyVar' : Atom.atom * (A.ty -> A.ty) -> A.var *) 
-      fun polyVar' (name, mkTy) = polyVar(Atom.toString name, mkTy)
-
-    (* polyVarMulti : string * int * (A.ty -> A.ty) -> A.var *)
-    (* Consume a name, a number of type variables, and a function to make a type. *)
-    (* See forAllMulti above. *)
-      fun polyVarMulti (name, n, mkTy) = Var.newPoly(name, forAllMulti (n, mkTy))
-
-    (* polyVarMulti' : Atom.atom * int * (A.ty -> A.ty) -> A.var *)
-    (* Consume a name, a number of type variables, and a function to make a type. *)
-    (* See forAllMulti above. *)
-      fun polyVarMulti' (name, n, mkTy) = polyVarMulti(Atom.toString name, n, mkTy)
+      fun monoVar' (at, ty) = monoVar (Atom.toString at, ty)
+      fun polyVar' (at, mkTy) = polyVar (Atom.toString at, mkTy)
+      fun polyVarMulti' (at, n, mkTy) = polyVarMulti (Atom.toString at, n, mkTy)
 
     in
 
@@ -585,6 +559,7 @@ structure Basis : sig
     val rev =           polyVar'(N.rev, fn tv => listTy tv --> listTy tv)
     val gettimeofday =	monoVar'(N.gettimeofday, unitTy --> doubleTy)
     val app =           polyVar'(N.app, fn tv => (tv --> unitTy) ** (listTy tv) --> unitTy)
+    val parrayApp =     polyVar'(N.parrayApp, fn tv => (tv --> unitTy) ** (parrayTy tv) --> unitTy)
     val tabulate =      polyVar'(N.tabulate, 
 			         fn tv => (AST.TupleTy [intTy --> tv, intTy, intTy])
                                    --> (listTy tv))
@@ -738,6 +713,7 @@ structure Basis : sig
 	    (N.compose,         Env.Var compose),
 	    (N.map,             Env.Var map),
             (N.app,             Env.Var app),
+	    (N.parrayApp,       Env.Var parrayApp),
 	    (N.foldl,           Env.Var foldl),
 	    (N.foldr,           Env.Var foldr),
             (N.tabulate,        Env.Var tabulate),

@@ -74,6 +74,7 @@
 		("else",	T.KW_else),
 		("end",		T.KW_end),
 		("exception",	T.KW_exception),
+		("fn",          T.KW_fn),
 		("fun",		T.KW_fun),
 		("handle",	T.KW_handle),
 		("if",		T.KW_if),

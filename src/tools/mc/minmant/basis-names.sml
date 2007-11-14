@@ -121,6 +121,8 @@ structure BasisNames =
     val foldl =         Atom.atom "foldl"
     val foldr =         Atom.atom "foldr"
 
+    val parrayApp =     Atom.atom "parrayApp"
+
 (*
     val size =		Atom.atom "size"
     val sub =		Atom.atom "sub"

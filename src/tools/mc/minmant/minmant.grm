@@ -18,6 +18,7 @@
     | KW_else		("else")
     | KW_end		("end")
     | KW_exception	("exception")
+    | KW_fn             ("fn")
     | KW_fun		("fun")
     | KW_handle		("handle")
     | KW_if		("if")

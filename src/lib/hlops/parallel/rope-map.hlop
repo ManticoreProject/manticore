@@ -1,0 +1,52 @@
+(* rope-map.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * For mapping a function over the elements of the leaves of a rope in parallel.
+ *)
+
+#include "types.def"
+#include "futures.def"
+#include "ropes.def"
+
+(* use_rw ropes; *)
+
+define @rope-map (q : work_queue / exh : exh) :
+  fun ([fun (any / exh -> any), rope] / exh -> rope) =
+
+  fun map (args : [(* f *) fun (any / exh -> any),
+                   (* r *) rope] / exh : exh) : rope =
+
+    let f : fun (any / exh -> any) = #0(args)
+    let r : rope = #1(args)
+
+    fun m (r : rope / exh : exh) : rope = 
+      case r
+        of LEAF(len:ml_int, data:list) => 
+             let tup : [fun (any / exh -> exh), list] = alloc (f, data)
+             let newData : list = @list-map (tup / exh)
+             let newLeaf : rope = LEAF(len, newData)
+             return (newLeaf)
+         | CAT(len:ml_int, depth:ml_int, r1:rope, r2:rope) =>
+             fun th (u : unit / exh : exh) : rope =
+               let result : rope = apply m (r2 / exh)
+               return (result)
+             let qt : [work_queue, thunk] = alloc (q, th)
+             let fut : future = @future1 (qt / exh)
+             let qf : [work_queue, future] = alloc (q, fut)
+             let newR1 : rope = apply m (r1 / exh)
+             let newR2 : rope = @touch1 (qf / exh)
+             let newR : rope = @simple-cat (newR1, newR2 / exh)
+             return (newR)
+      end (* case *)
+      (* end definition of m *)
+
+    let newR : rope = apply m (r / exh)
+    return (newR)
+    (* end definition of map *)
+
+  return (map)
+;
+  
+        

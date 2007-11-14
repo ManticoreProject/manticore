@@ -12,6 +12,7 @@ Library
   structure ASTUtil
   structure Basis
   structure BasisNames
+  structure BasisUtils
   structure DataCon
   structure FrontEnd
   structure Literal
@@ -40,6 +41,7 @@ is
   ast.sml
   ast-util.sml
   basis.sml
+  basis-utils.sml
   data-con.sml
   env.sml
   front-end.sml
