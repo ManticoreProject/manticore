@@ -1,0 +1,27 @@
+(* queue-length.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ * 
+ * Find the number of some type of elements on the ready queue.
+ *)
+
+#include "runtime-offsets.def"
+#include "types.def"
+
+define @queue-length (pred : fun (fgs / exh -> bool) / exh : exh) : int =
+  let vp : vproc = host_vproc
+  fun numElts (q : rdyq_item, i : int) : int =
+      case q
+       of QEMPTY => return (i)
+	| QITEM (fgs : fgs, _, link:rdyq_item) => 
+          let b : bool = apply pred (fgs /exh)
+          let i : int = if b then return (I32Add(i,1)) else return (i)
+           apply numElts (link, i)
+      end   
+   let hd : rdyq_item = vpload (VP_RDYQ_HD, vp)
+   let hdLen : int = apply numElts (hd, 0)
+   let tl : rdyq_item = vpload (VP_RDYQ_TL, vp)
+   let tlLen : int = apply numElts (tl, 0)
+   return (I32Add (hdLen, tlLen))
+;
