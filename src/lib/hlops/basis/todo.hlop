@@ -1,0 +1,16 @@
+(* todo.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+#include "types.def"
+
+extern void *M_StringConcat2 (void *, void *) __attribute__((pure,alloc));
+
+define inline @todo (thing : ml_string / exh : exh) : any =
+  let prefix : ml_string = alloc ("todo: ", 6)
+  let msg : ml_string = ccall M_StringConcat2 (prefix, thing)
+ (* FIXME *)
+  throw exh (msg)
+;
