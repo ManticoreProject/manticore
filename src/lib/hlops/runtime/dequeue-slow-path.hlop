@@ -9,6 +9,8 @@
 #include "runtime-offsets.def"
 #include "types.def"
 
+define @reverse-queue (tid : tid, fiber : fiber, lst : rdyq_item, rest : rdyq_item / exh : exh) : rdyq_item;
+
 extern void *VProcDequeue (void *) __attribute__((alloc));
 extern void M_Print (void *);
 
@@ -29,14 +31,7 @@ define @dequeue-slow-path (vp : vproc / exh : exh) : rdyq_item =
 	   end
       | QITEM (tid : tid, fiber : fiber, lst : rdyq_item) =>
           do vpstore (VP_RDYQ_TL, vp, QEMPTY)
-          fun revQueue (tid : tid, fiber : fiber, lst : rdyq_item, acc : rdyq_item) : rdyq_item =
-            let acc : rdyq_item = QITEM (tid, fiber, acc)
-            case lst of 
-               QEMPTY => return (acc)
-             | QITEM (tid : tid, fiber : fiber, lst : rdyq_item) =>
-                 apply revQueue (tid, fiber, lst, acc)
-            end
-          let qitem : rdyq_item = apply revQueue (tid, fiber, lst, QEMPTY)
+          let qitem : rdyq_item = @reverse-queue (tid, fiber, lst, QEMPTY / exh)
           let item : [tid, fiber, rdyq_item] = ([tid, fiber, rdyq_item]) qitem
           let link : rdyq_item = #2 (item)
           do vpstore (VP_RDYQ_HD, vp, link)

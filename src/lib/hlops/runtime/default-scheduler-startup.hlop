@@ -8,9 +8,9 @@
 
 #include "types.def"
 
-define inline @enqueue (vp : vproc, tid : tid, fiber : fiber / exh : exh) : ();
+define inline @enqueue (vp : vproc, fgs : fgs, fiber : fiber / exh : exh) : ();
 define inline @dequeue (vp : vproc / exh : exh) : rdyq_item;
-define inline @run (vp : vproc, act : sigact, tid : tid, fiber : fiber / exh : exh) noreturn;
+define inline @run (vp : vproc, act : sigact, fgs : fgs, fiber : fiber / exh : exh) noreturn;
 define @scheduler-startup (act : sigact / exh : exh) : ();
 define @get-fgs (vp : vproc / exh : exh) : fgs;
 
@@ -22,16 +22,16 @@ define @default-scheduler-startup ( / exh : exh) : () =
     let vp : vproc = host_vproc
     cont dispatch () =
       let qitem : rdyq_item = @dequeue (vp / exh)
-      let item : [tid, fiber, rdyq_item] = ([tid, fiber, rdyq_item]) qitem
-      let tid : tid = #0 (item)
+      let item : [fgs, fiber, rdyq_item] = ([fgs, fiber, rdyq_item]) qitem
+      let fgs : fgs = #0 (item)
       let fiber : fiber = #1 (item)
-      @run (vp, switch, tid, fiber / exh)
+      @run (vp, switch, fgs, fiber / exh)
     if Equal (s, STOP)
       then throw dispatch ()
       else do ccall M_Print ("preemption\n")
            let k : fiber = (fiber)s
-           let tid : tid = @get-fgs (vp / exh)
-           do @enqueue (vp, tid, k / exh)
+           let fgs : fgs = @get-fgs (vp / exh)
+           do @enqueue (vp, fgs, k / exh)
            throw dispatch () 
   do @scheduler-startup (switch / exh)
   return ()
