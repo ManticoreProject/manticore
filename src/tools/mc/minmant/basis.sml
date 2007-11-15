@@ -178,6 +178,7 @@ structure Basis : sig
     val print		: AST.var
     val args		: AST.var
     val fail		: AST.var
+    val todo            : AST.var
     val plen            : AST.var
     val sumP            : AST.var
     val reduceP         : AST.var
@@ -554,6 +555,7 @@ structure Basis : sig
     val print =		monoVar'(N.print, stringTy --> unitTy)
     val args =		monoVar'(N.args, unitTy --> listTy stringTy)
     val fail =		polyVar'(N.fail, fn tv => stringTy --> tv)
+    val todo =          polyVar'(N.todo, fn tv => stringTy --> tv)
     val plen =          polyVar'(N.plen, fn tv => (parrayTy tv) --> intTy)
     val sumP =          monoVar'(N.sumP, (parrayTy intTy) --> intTy)
     val rev =           polyVar'(N.rev, fn tv => listTy tv --> listTy tv)
@@ -706,6 +708,7 @@ structure Basis : sig
 	    (N.print,		Env.Var print),
 	    (N.args,		Env.Var args),
 	    (N.fail,		Env.Var fail),
+            (N.todo,            Env.Var todo),
 	    (N.plen,            Env.Var plen),
 	    (N.sumP,            Env.Var sumP),
 	    (N.rev,             Env.Var rev),

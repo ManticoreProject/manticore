@@ -432,6 +432,7 @@ structure StdEnv : sig
 		  (U.reducePQ,          "rope-reduce"),
 		  (U.sumPQ,             "rope-sum"),
 		  (U.tabulateD,         "tabulateD"),
+		  (B.todo,              "todo"),
 		  (U.steppedTabulateD,  "steppedTabulateD")
 		]  
 	  fun ins ((x, n), env) = (case H.find (Atom.atom n)
