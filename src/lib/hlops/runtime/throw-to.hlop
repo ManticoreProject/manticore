@@ -9,8 +9,10 @@
 #include "runtime-offsets.def"
 #include "types.def"
 
-define inline @throw-to (vp : vproc, tid : tid, recv : cont(any), v : any / exh : exh) noreturn =
-  do vpstore (CURRENT_TID, vp, tid)
+define inline @set-fgs (vp : vproc, fgs : fgs / exh : exh) : unit;
+
+define inline @throw-to (vp : vproc, fgs : fgs, recv : cont(any), v : any / exh : exh) noreturn =
   do vpstore (ATOMIC, vp, FALSE)
+  let _ : fgs =  @set-fgs (vp, fgs / exh)
   throw recv (v)
 ;

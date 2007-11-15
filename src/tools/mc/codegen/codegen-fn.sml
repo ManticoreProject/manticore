@@ -114,6 +114,9 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	    | genLit (ty, Literal.StateVal n) =
 	      (* we want the two low bits of the state-value representation to be zero *)
 		MTy.EXP(ty, T.LI(T.I.fromWord (ty, Word.<<(n, 0w2))))
+	    | genLit (ty, Literal.Tag n) =
+               (* use same encoding as enumerations for tagged values *)
+	        MTy.EXP (ty, T.LI(T.I.fromWord (ty, encodeEnum n)))
 	    | genLit (ty, Literal.Int i) = MTy.EXP(ty, T.LI i)
 	    | genLit (fty, Literal.Float f) = let
 		val lbl = FloatLit.addLit (floatTbl, (fty, f))

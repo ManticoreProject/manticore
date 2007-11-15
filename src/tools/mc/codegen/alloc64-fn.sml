@@ -84,13 +84,13 @@ functor Alloc64Fn (
 
     fun setBit (w, i, ty) = if (isHeapPointer ty) then W.orb (w, W.<< (0w1, i)) else w
 
-  fun initObj offAp ((ty, mltree), {i, stms, totalSize, ptrMask}) =
-      let val store = MTy.store (offAp totalSize, mltree, memory)
-	  val ptrMask' = setBit (ptrMask, Word.fromInt i, ty)
-	  val totalSize' = alignedTySzB ty + totalSize
-      in
-	  {i=i+1, stms=store :: stms, totalSize=totalSize', ptrMask=ptrMask'}
-      end (* initObj *)
+    fun initObj offAp ((ty, mltree), {i, stms, totalSize, ptrMask}) = let
+	val store = MTy.store (offAp totalSize, mltree, memory)
+	val ptrMask' = setBit (ptrMask, Word.fromInt i, ty)
+	val totalSize' = alignedTySzB ty + totalSize
+        in
+	   {i=i+1, stms=store :: stms, totalSize=totalSize', ptrMask=ptrMask'}
+        end (* initObj *)
 
     fun allocMixedObj offAp args = let
 	  val {i=nWords, stms, totalSize, ptrMask} = 

@@ -242,7 +242,7 @@ void VProcSleep (VProc_t *vp)
 	MutexUnlock (&(vp->lock));
 	FetchAndDec(&NumIdleVProcs);
 	vp->stdCont = ValueToRdyQItem(item)->fiber;
-	vp->currentTId = ValueToRdyQItem(item)->tid;
+	vp->currentFG = ValueToRdyQItem(item)->tid;
     }
 
 }

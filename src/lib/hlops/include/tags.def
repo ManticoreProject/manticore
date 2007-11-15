@@ -1,0 +1,10 @@
+(* tags.def
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Tags for association lists.
+ *)
+
+(* unique identifier for threads *)
+#define TAG_UID 1

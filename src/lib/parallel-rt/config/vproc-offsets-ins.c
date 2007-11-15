@@ -10,7 +10,7 @@
     PR_OFFSET(vp, IN_MANTICORE, inManticore);
     PR_OFFSET(vp, ATOMIC, atomic);
     PR_OFFSET(vp, SIG_PENDING, sigPending);
-    PR_OFFSET(vp, CURRENT_TID, currentTId);
+    PR_OFFSET(vp, CURRENT_FG, currentFG);
     PR_OFFSET(vp, VP_ACTION_STK, actionStk);
     PR_OFFSET(vp, VP_RDYQ_HD, rdyQHd);
     PR_OFFSET(vp, VP_RDYQ_TL, rdyQTl);

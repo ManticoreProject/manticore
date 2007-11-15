@@ -22,12 +22,14 @@ define inline @list-append (arg : [list, list] / exh : exh) : list;
 
 (* scheduling hlops *)
 define inline @fiber (f : fiber_fun / exh : exh) : fiber;
-define inline @run (vp : vproc, act : sigact, tid : tid, fiber : fiber / exh : exh) noreturn;
-define inline @enqueue-on-vproc (dst : vproc, tid : tid, k : fiber / exh : exh) : ();
+define inline @run (vp : vproc, act : sigact, fgs : fgs, fiber : fiber / exh : exh) noreturn;
+define inline @enqueue-on-vproc (dst : vproc, fgs : fgs, k : fiber / exh : exh) : ();
 define inline @thread-exit ( / exh : exh) noreturn;
 define @scheduler-startup (act : sigact / exh : exh) : ();
 define @is-queue-gt-one (/ exh : exh) : bool;
 define @is-queue-empty (/ exh : exh) : bool;
+define @new-fgs (pinned : bool / exh : exh) : fgs;
+define @get-fgs (vp : vproc / exh : exh) : fgs;
 
 extern void *ListVProcs (void *) __attribute__((alloc));
 extern void VProcPreempt (void *);
@@ -61,10 +63,10 @@ define @work-stealers-startup ( / exh : exh) : () =
       cont dispatch () =
          let vp : vproc = host_vproc
          let qitem : rdyq_item = @dequeue (vp / exh)
-         let item : [tid, fiber, rdyq_item] = ([tid, fiber, rdyq_item]) qitem
-         let tid : tid = #0 (item)
+         let item : [fgs, fiber, rdyq_item] = ([fgs, fiber, rdyq_item]) qitem
+         let fgs : fgs = #0 (item)
          let fiber : fiber = #1 (item)
-         @run (vp, wsSwitch, tid, fiber / exh)
+         @run (vp, wsSwitch, fgs, fiber / exh)
 
       (* the maximum number of steal attempts before going to sleep *)
       let maxStealAttempts : int = 1000
@@ -78,28 +80,25 @@ define @work-stealers-startup ( / exh : exh) : () =
            | CONS (vp : vproc, vprocs' : list) => 
                  (* (2.1) *)
                  do ccall M_Print ("Sending thief to vproc\n")
-                 cont k (x : unit) = 
-                    do ccall M_Print ("Stealer continuation\n")
+                 cont thiefFiber (x : unit) = 
+                    do ccall M_Print ("Thief fiber\n")
                     let hasElts : bool = @is-queue-gt-one ( / exh)
                     if hasElts
                        then (* (2.2) *)
                             do ccall M_Print ("Stealing a remote thread\n")
                             let qitem : rdyq_item = @dequeue (host_vproc / exh)
-                            let item : [tid, fiber, rdyq_item] = ([tid, fiber, rdyq_item]) qitem
-                            let tid : tid = #0 (item)
+                            let item : [fgs, fiber, rdyq_item] = ([fgs, fiber, rdyq_item]) qitem
+                            let fgs : fgs = #0 (item)
                             let fiber : fiber = #1 (item)
-			    do @enqueue-on-vproc (self, tid, fiber / exh)
+			    do @enqueue-on-vproc (self, fgs, fiber / exh)
                             (* Wake up the vproc *)
                             do ccall VProcPreempt (self)
                             @thread-exit (/ exh)
                        else (* (2.3) *)
-                            do ccall M_Print ("Stealer is giving up on this vproc\n")
-			    cont fiber (x : unit) = throw steal (vprocs')
-                            do @enqueue-on-vproc (self, enum(0), fiber / exh)
-                            (* Wake up the vproc *)
-                            do ccall VProcPreempt (self)
-                            @thread-exit (/ exh)
-                do @enqueue-on-vproc (vp, enum(0), k / exh)
+                            do ccall M_Print ("Theif is giving up on this vproc\n")
+                            throw steal (vprocs')
+                let thiefFGS : fgs = @new-fgs (TRUE / exh)
+                do @enqueue-on-vproc (vp, thiefFGS, thiefFiber / exh)
                 throw dispatch ()
         end
 
@@ -112,8 +111,8 @@ define @work-stealers-startup ( / exh : exh) : () =
                       throw dispatch ()
          else (*do ccall M_Print("Handling preemption\n")*)
               let k : fiber = (fiber)s
-              let tid : tid = enum(0)
-              do @enqueue (host_vproc, tid, k / exh)
+              let fgs : fgs = @get-fgs (self / exh)
+              do @enqueue (host_vproc, fgs, k / exh)
               throw dispatch ()
 
    do @scheduler-startup (wsSwitch / exh)

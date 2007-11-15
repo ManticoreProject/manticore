@@ -28,6 +28,7 @@
 	| KW_else	("else")
 	| KW_end	("end")
 	| KW_enum	("enum")
+	| KW_tag        ("tag")
 	| KW_extern	("extern")
 	| KW_float	("float")
 	| KW_fun	("fun")
@@ -289,6 +290,8 @@ Literal
 			| SOME ty => (Literal.Enum w, ty)
 		      (* end case *)
 		    end)
+        | "tag" "(" POSINT ")"
+                 => (Literal.Tag (Word.fromLargeInt POSINT), PT.T_Any)
 	| "$" POSINT
 		=> (Literal.StateVal(Word.fromLargeInt POSINT), PT.T_Any)
 	| Int (":" Type)?

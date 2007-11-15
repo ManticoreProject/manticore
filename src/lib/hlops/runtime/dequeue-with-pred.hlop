@@ -1,0 +1,23 @@
+(* dequeue-with-pred.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Dequeue the next thread from the host-vprocs ready queue.
+ *)
+
+#include "runtime-offsets.def"
+#include "types.def"
+
+define @dequeue-slow-path (vp : vproc / exh : exh) : rdyq_item;
+
+define inline @dequeue-with-pred (vp : vproc, pred : fun (tgs -> bool) / exh : exh) : option =
+  let hd : rdyq_item = vpload (VP_RDYQ_HD, vp)
+  (* TODO *)
+  case hd
+    of QITEM (_, _, link:rdyq_item) => do vpstore (VP_RDYQ_HD, vp, link)
+                                      return (hd)
+     | QEMPTY => let item : rdyq_item = @dequeue-slow-path (vp / exh)
+                 return (item)
+  end
+;

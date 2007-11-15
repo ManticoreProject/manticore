@@ -11,13 +11,13 @@
 define @chan-acquire-lock (ch : chan / _ : exh) : ();
 define @chan-release-lock (ch : chan / _ : exh) : ();
 define @event-claim (flg : dirty_flag / exh : exh) : bool;
-define @atomic-enqueue (tid : tid, fiber : fiber / exh : exh) : ();
+define @atomic-enqueue (fgs : fgs, fiber : fiber / exh : exh) : ();
 define @chan-dequeue-send (ch : chan / exh : exh) : option;
-define @chan-enqueue-recv (ch : chan, flg : dirty_flag, tid : tid, k : cont(any) / _ : exh) : ();
+define @chan-enqueue-recv (ch : chan, flg : dirty_flag, fgs : fgs, k : cont(any) / _ : exh) : ();
 define @dispatch (vp : vproc / exh : exh) noreturn;
 
 define @chan-recv (ch : chan / exh : exh) : any =
-    let tid : tid = @get-tid(host_vproc / exh)
+    let fgs : fgs = @get-fgs(host_vproc / exh)
     do @chan-acquire-lock (ch / exh)
     let maybeItem : option = @chan-dequeue-send (ch / exh)
     (* in *)
@@ -31,7 +31,7 @@ define @chan-recv (ch : chan / exh : exh) : any =
 	    cont recvK (x : any) = return (x)
 	    (* in *)
 	      let flag : dirty_flag = galloc(WAITING_EVT)
-	      do @chan-enqueue-recv (ch, flag, tid, recvK / exh)
+	      do @chan-enqueue-recv (ch, flag, fgs, recvK / exh)
 	      do @chan-release-lock (ch / exh)
 	      (* in *)
 		@dispatch (host_vproc / exh)

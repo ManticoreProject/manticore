@@ -71,7 +71,7 @@ structure BOMTy =
     val boolTy = T_Enum(0w1)	(* false = 0, true = 1 *)
     val exnTy = T_Any
     val exhTy = T_Cont[exnTy]
-    val tidTy = T_Enum(0w0);
+    val tidTy = T_Any
     val fiberTy = T_Cont[unitTy]
     val workQueueTy = T_Any
 

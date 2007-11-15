@@ -61,6 +61,7 @@
 		  ("else",	T.KW_else),
 		  ("end",	T.KW_end),
 		  ("enum",	T.KW_enum),
+		  ("tag",       T.KW_tag),
 		  ("extern",	T.KW_extern),
 		  ("float",	T.KW_float),
 		  ("fun",	T.KW_fun),

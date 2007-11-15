@@ -7,8 +7,10 @@
 #include "runtime-offsets.def"
 #include "types.def"
 
+define inline @set-fgs (vp : vproc, fgs : fgs / exh : exh) : unit;
+
 define inline @switch-to (vp : vproc, tid : tid, fiber : fiber / exh : exh) noreturn =
-  do vpstore (CURRENT_TID, vp, tid)
   do vpstore (ATOMIC, vp, FALSE)
+  let _ : unit =  @set-fgs (vp, tid / exh)
   throw fiber (UNIT)
 ;

@@ -211,8 +211,8 @@ structure Translate : sig
 	      (* note: the typechecker puts sequences in right-recursive form *)
 		fun tr (AST.SeqExp(e1, e2)) = (
 		      case trExp(env, e1)
-		       of BIND(lhs, rhs) => B.mkStmt(lhs, rhs, tr e2)
-			| EXP e1' => B.mkLet([BV.new("unused", BTy.unitTy)], e1', tr e2)
+		       of BIND(lhs, rhs) => B.mkStmt(lhs, rhs, tr e2)                                                          
+			| EXP e1' => B.mkLet([BV.new("unused", BTy.T_Any)], e1', tr e2)
 		      (* end case *))
 		  | tr e = trExpToExp(env, e)
 		in

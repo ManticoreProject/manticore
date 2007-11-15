@@ -1,0 +1,17 @@
+(* new-fgs.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Create a new fiber group.
+ *)
+
+#include "types.def"
+
+define @new-fgs (pinned : bool / exh : exh) : fgs = 
+  let lock : spin_lock = galloc (FALSE)
+  let killed : ![bool] = galloc (FALSE)
+  let al : ![assoc_list] = galloc (ANIL)
+  let fgs : fgs = galloc (lock, killed, pinned, NONE, al)
+  return (fgs)
+;

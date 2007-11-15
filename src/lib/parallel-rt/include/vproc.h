@@ -18,7 +18,7 @@ struct struct_vproc {
     Value_t	inManticore;	/*!< true, when executing Manticore code */
     Value_t	atomic;		/*!< true, when in a vproc-atomic region */
     Value_t	sigPending;	/*!< true, when there is a pending signal */
-    Value_t	currentTId;	/*!< thread ID of current thread */
+    Value_t	currentFG;	/*!< fiber group of the current thread */
     Value_t	actionStk;	/*!< the top of the signal-action stack */
     Value_t	rdyQHd;		/*!< the head of the primary ready queue */
     Value_t	rdyQTl;		/*!< the head of the primary ready queue */

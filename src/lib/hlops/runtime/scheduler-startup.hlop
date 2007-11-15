@@ -14,6 +14,7 @@ extern void *ListVProcs (void *) __attribute__((alloc));
 define inline @spawn-on (f : fun (unit / exh -> unit), dst : vproc / exh : exh) : tid;
 define inline @run (vp : vproc, act : sigact, tid : tid, fiber : fiber / exh : exh) noreturn;
 define inline @thread-exit ( / exh : exh) noreturn;
+define @new-fgs (pinned : bool / exh : exh) : fgs;
 
 (* debugging *)
 extern void M_PrintDebug (void *);
@@ -60,8 +61,9 @@ define @scheduler-startup (act : sigact / exh : exh) : () =
                let x : int = I32FetchAndAdd (syncPoint, 1)
                do apply spinWait (UNIT / exh)
                @thread-exit ( / exh)
+          let fgs : fgs = @new-fgs (TRUE / exh)
 	  (* in *)
-	    @run (host_vproc, act, enum(0), k / exh)
+	    @run (host_vproc, act, fgs, k / exh)
 
   (* spawn the init function on all of the other vprocs *)
     fun spawnOnAll (vps : list / exh : exh) : () =
@@ -71,7 +73,7 @@ define @scheduler-startup (act : sigact / exh : exh) : () =
 		if Equal(vp, self) then
 		  apply spawnOnAll (rest / exh)
 		else
-		  let _ : tid = @spawn-on (init, vp / exh)
+		  let _ : fgs = @spawn-on (init, vp / exh)
 		  (* in *)
 		    apply spawnOnAll (rest / exh)
 	  end
@@ -82,6 +84,8 @@ define @scheduler-startup (act : sigact / exh : exh) : () =
 	  (* in *)
 	  apply spinWait (UNIT / exh)
    
+   let fgs : fgs = @new-fgs (TRUE / exh)
+
     (* in *)
-      @run (self, act, enum(0), startup / exh)
+      @run (self, act, fgs, startup / exh)
 ;

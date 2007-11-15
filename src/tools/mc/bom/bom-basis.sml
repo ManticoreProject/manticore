@@ -77,6 +77,20 @@ structure BOMBasis : BOM_BASIS =
     val rdyq_itemQITEM = BOMTyCon.newDataCon rdyqItemTyc
 	  ("QITEM", BTy.Tuple, [tidTy, fiberTy, rdyqItemTy])
 
+   (* association lists
+    *  In surface language syntax, association lists look like the following:
+    *    type tag = any                (* maybe we should have a distinct type for tags? *)
+    *    datatype assoc_list = 
+    *           ANIL
+    *         | ACONS of (tag * any * assoc_list)
+    *  where the first element is the tag, the second is associated data, and the third is
+    *  the rest of the list.
+    *)
+    val assocListTyc = BOMTyCon.newDataTyc ("assoc_list", 1)
+    val assocListTy = BTy.T_TyCon assocListTyc
+    val assocListCons = BOMTyCon.newDataCon assocListTyc
+           ("ACONS", BTy.Tuple, [BTy.T_Any, BTy.T_Any, assocListTy])
+
   (* other predefined datatypes *)
     val signalTyc = BOMTyCon.newDataTyc ("signal", 1) 
     val signalTy = BTy.T_TyCon signalTyc
@@ -143,7 +157,8 @@ structure BOMBasis : BOM_BASIS =
             optionTyc,
 	    rdyqItemTyc,
 	    signalTyc,
-	    evtTyc
+	    evtTyc,
+	    assocListTyc
 	  ]
 
   (* Data-constructor table *)
@@ -155,7 +170,8 @@ structure BOMBasis : BOM_BASIS =
 	    rdyq_itemQITEM,
 	    signalPREEMPT,
 	    evtCHOOSE,
-	    evtBEVT
+	    evtBEVT,
+	    assocListCons
 	  ]
 
   end
