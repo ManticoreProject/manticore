@@ -30,6 +30,7 @@ define @list-tabulate (args: [fun(ml_int/exh->any), ml_int, ml_int] / exh:exh) :
 define @list-tabulate-step (args: [fun(ml_int/exh->any), ml_int, ml_int, ml_int] / exh:exh) : list;
 
 define @fail (arg : ml_string / exh : exh) : any;
+define @todo (thing : ml_string / exh : exh) : any;
 
 define @rope-length (r : rope / exh : exh) : ml_int;
 define @rope-depth (r : rope / exh : exh) : ml_int;
