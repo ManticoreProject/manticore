@@ -234,6 +234,7 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 			List.app (addJump o #2) cases;
 			Option.app addJump dflt)
 		    | CFG.HeapCheck{nogc, ...} => addJump nogc
+		    | CFG.AllocCCall{ret, ...} => addJump ret
 		  (* end case *)
 		end
 	  in

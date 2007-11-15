@@ -64,6 +64,7 @@ functor PrimTyFn (Ty : sig
 	    | P.F32Div _ => f32Ty
 	    | P.F32Neg _ => f32Ty
 	    | P.F32Sqrt _ => f32Ty
+	    | P.F32Abs _ => f32Ty
 	    | P.F32Eq _ => f32Ty
 	    | P.F32NEq _ => f32Ty
 	    | P.F32Lt _ => f32Ty
@@ -76,6 +77,7 @@ functor PrimTyFn (Ty : sig
 	    | P.F64Div _ => f64Ty
 	    | P.F64Neg _ => f64Ty
 	    | P.F64Sqrt _ => f64Ty
+	    | P.F64Abs _ => f64Ty
 	    | P.F64Eq _ => f64Ty
 	    | P.F64NEq _ => f64Ty
 	    | P.F64Lt _ => f64Ty
