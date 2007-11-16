@@ -47,7 +47,7 @@ extern void M_PrintDebug (void*);
 extern void M_PrintLong (long);
 
 define @work-stealers-startup ( / exh : exh) : () =
-
+  
    fun isUnpinned (fgs : fgs / exh : exh) : bool =
        let pinned : bool = #2(fgs)
        return (BNot (pinned))
@@ -75,7 +75,9 @@ define @work-stealers-startup ( / exh : exh) : () =
    fun addToSleeping (vp : vproc / exh : exh) : () =
        fun doit (_ : unit / exh : exh) : unit =
            let rest : list = #0(sleeping)
-           do #0(sleeping) := CONS (vp, rest)
+           let sleepingVProcs : list = CONS (vp, rest)
+           let sleepingVProcs : list = promote (sleepingVProcs)
+           do #0(sleeping) := sleepingVProcs
            return (UNIT)
        apply withLock (sleepingLock, doit / exh)
   (* given some number of stealable threads, resuscitate at most that many sleeping vprocs *)
@@ -83,7 +85,7 @@ define @work-stealers-startup ( / exh : exh) : () =
        let resuscitates : ![list] = galloc (NIL)
        fun doit (_ : unit / exh : exh) : unit =
            fun takeN (i : int, ss : list, rs : list / exh : exh) : list =
-               if I32Gte (i, n)
+               if I32Lte (i, n)
                   then case ss
 			of NIL => 
 			   do #0(sleeping) := ss
@@ -114,6 +116,7 @@ define @work-stealers-startup ( / exh : exh) : () =
                    case vps
 		    of NIL => return ()
 		     | CONS (vp : vproc, rest : list) =>
+                        do ccall M_Print ("Attempting to resuscitate\n")
                         do @enqueue-on-vproc (vp, dummyFgs, dummyK / exh)
                         apply dispatchOn (rest / exh)
                    end
@@ -170,7 +173,7 @@ define @work-stealers-startup ( / exh : exh) : () =
                                 @thread-exit (/ exh)
                             end
                        else (* (2.3) *)
-                            do ccall M_Print ("Theif is giving up on this vproc\n")
+                            do ccall M_Print ("Thief is giving up on this vproc\n")
                             throw steal (vprocs')
                 let thiefFGS : fgs = @new-fgs (TRUE / exh)
                 do @enqueue-on-vproc (vp, thiefFGS, thiefFiber / exh)
@@ -188,6 +191,7 @@ define @work-stealers-startup ( / exh : exh) : () =
               let k : fiber = (fiber)s
               let fgs : fgs = @get-fgs (self / exh)
               do @enqueue (host_vproc, fgs, k / exh)
+             (* altert sleeping vprocs if new work is available*)
               do apply resuscitateVProcs ( / exh)
               throw dispatch ()
 
