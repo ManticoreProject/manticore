@@ -28,7 +28,7 @@ fun worker i = let
    end
 ;
 
-val nThreads = 10;
+val nThreads = 8;
 
 fun server () = let
     fun spawnLoop i = if i = nThreads
@@ -41,7 +41,11 @@ fun server () = let
     in
         spawnLoop 0;
 	recvLoop 0;
-        print "All threads done\n"
+        print "Phase 1 complete\n";
+        wasteTime (0, 0);
+        spawnLoop 0;
+	recvLoop 0;
+        print "Phase 2 complete\n"
     end
 ;
 
