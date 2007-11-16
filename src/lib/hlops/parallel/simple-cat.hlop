@@ -10,7 +10,7 @@
 #include "types.def"
 #include "ropes.def"
 
-(* extern void M_Print (void *); *)
+(* extern void M_Print (void * ); *)
 
 define @simple-cat (r1 : rope, r2 : rope / exh : exh) : rope =
   let n1 : int = 
