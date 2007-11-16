@@ -51,10 +51,10 @@ extern int ASM_VProcSleep;
 #  define UC_R11(uc)	((uc)->uc_mcontext.gregs[REG_R11])
 #  define UC_RIP(uc)	((uc)->uc_mcontext.gregs[REG_RIP])
 #elif defined(TARGET_DARWIN)
-#  if defined(__DARWIN_UNIX03)
+#  if defined(__DARWIN_UNIX03) && defined(_DARWIN_FEATURE_UNIX_CONFORMANCE)
 #    define UC_R11(uc)	((uc)->uc_mcontext->__ss.__r11)
 #    define UC_RIP(uc)	((uc)->uc_mcontext->__ss.__rip)
-#  else
+#  else /* Tiger */
 #    define UC_R11(uc)	((uc)->uc_mcontext->ss.r11)
 #    define UC_RIP(uc)	((uc)->uc_mcontext->ss.rip)
 #  endif
