@@ -2,7 +2,7 @@ val xBase : double = ~2.0;
 val yBase : double = 1.25;
 val side : double = 2.5;
 
-val sz : int = 128; (* 1024; *)
+val sz : int = 32; (* 1024; *)
 val maxCount : int = 255;
 
 val delta : double = side / (itod sz);
