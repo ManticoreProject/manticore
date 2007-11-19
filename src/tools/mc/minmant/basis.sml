@@ -186,8 +186,7 @@ structure Basis : sig
     val gettimeofday	: AST.var
     val compose         : AST.var
     val app             : AST.var
-    val tabulate        : AST.var (* FIXME make these one function *)
-    val tabulateStep    : AST.var (* FIXME *)
+    val tab             : AST.var
     val parrayApp       : AST.var
 
   (* NOT IN THE SURFACE LANGUAGE *)
@@ -562,11 +561,8 @@ structure Basis : sig
     val gettimeofday =	monoVar'(N.gettimeofday, unitTy --> doubleTy)
     val app =           polyVar'(N.app, fn tv => (tv --> unitTy) ** (listTy tv) --> unitTy)
     val parrayApp =     polyVar'(N.parrayApp, fn tv => (tv --> unitTy) ** (parrayTy tv) --> unitTy)
-    val tabulate =      polyVar'(N.tabulate, 
-			         fn tv => (AST.TupleTy [intTy --> tv, intTy, intTy])
-                                   --> (listTy tv))
-    val tabulateStep =  polyVar'(N.tabulateStep,
-				 fn tv => (AST.TupleTy [intTy --> tv, intTy, intTy, intTy])
+    val tab =           polyVar'(N.tab,
+				 fn tv => (AST.TupleTy [intTy --> tv, intTy, intTy, intTy, intTy])
                                    --> (listTy tv))
 
   (* predefined functions with more than one type variable in their types *)
@@ -719,8 +715,7 @@ structure Basis : sig
 	    (N.parrayApp,       Env.Var parrayApp),
 	    (N.foldl,           Env.Var foldl),
 	    (N.foldr,           Env.Var foldr),
-            (N.tabulate,        Env.Var tabulate),
-	    (N.tabulateStep,    Env.Var tabulateStep),
+            (N.tab,             Env.Var tab),
 	    (N.reduceP,         Env.Var reduceP)
 (*
 	    (N.size,		Env.Var size),
