@@ -15,8 +15,7 @@ structure UnseenBasis : sig
   (* predefined functions *)
     val reducePQ  : AST.var
     val sumPQ     : AST.var
-    val tabulateD : AST.var
-    val steppedTabulateD : AST.var
+    val tabD : AST.var
 
   end = struct
 
@@ -66,18 +65,7 @@ structure UnseenBasis : sig
 	    Var.new ("sumPQ", t)
 	end
 
-    val tabulateD = 
-	let fun mkTy tv = 
-		let val intTy = B.intTy
-		    val tupTy = T.TupleTy [qTy, intTy --> tv, intTy, intTy, intTy]
-		in
-		    tupTy --> (B.parrayTy tv)    
-		end
-	in
-	    polyVar ("tabulateD", mkTy)
-	end
-
-    val steppedTabulateD = 
+    val tabD = 
 	let fun mkTy tv = 
 		let val intTy = B.intTy
 		    val tupTy = T.TupleTy [qTy, intTy --> tv, intTy, intTy, intTy, intTy]
@@ -85,7 +73,7 @@ structure UnseenBasis : sig
 		    tupTy --> (B.parrayTy tv)    
 		end
 	in
-	    polyVar ("steppedTabulateD", mkTy)
+	    polyVar ("tabD", mkTy)
 	end
 
   end

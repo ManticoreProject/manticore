@@ -40,23 +40,13 @@ structure TranslatePComp : sig
 		         of A.RangeExp (lo, hi, optStep, rangeEltTy) =>
 			      let val lo' = trExp lo
 				  val hi' = trExp hi
-				  val tabD = A.VarExp (U.tabulateD, [t])
+                                  val step = (case optStep
+                                                of NONE => ASTUtil.mkInt 1
+                                                 | SOME s => trExp s)
+				  val tabD = A.VarExp (U.tabD, [t])
+				  val tup = A.TupleExp [workQ, f, lfSize, lo', hi', step]
 			      in
-				  (case optStep
-			             of NONE =>
-					  let val tup = A.TupleExp [workQ, f, lfSize, lo', hi']
-					  in
-					      A.ApplyExp (tabD, tup, resTy)
-					  end
-				      | SOME step =>
-				          let val n = Var.new ("n", rangeEltTy) 
-					      val stepTabD = A.VarExp (U.steppedTabulateD, [t])
-					      val step' = trExp step
-					      val tup = A.TupleExp [workQ, f, lfSize, lo', hi', step']
-					  in
-					      A.ApplyExp (stepTabD, tup, resTy)
-					  end
-  				  (* end case *))
+				  A.ApplyExp (tabD, tup, resTy)
 			      end
 			  | _ (* not a range exp *) =>
 			      let val e1' = trExp e1
