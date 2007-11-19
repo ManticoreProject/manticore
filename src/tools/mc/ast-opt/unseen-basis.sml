@@ -20,7 +20,6 @@ structure UnseenBasis : sig
   end = struct
 
     structure B = Basis
-    structure F = Futures
     structure T = Types
 
     val --> = T.FunTy
