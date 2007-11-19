@@ -4,7 +4,8 @@
  * All rights reserved.
  *
  * Tags for association lists.
+ *
  *)
 
 (* unique identifier for threads *)
-#define TAG_UID 1
+#define TAG_FID tag(fid)

@@ -1,0 +1,25 @@
+(* assoc-list-lookup.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * If a key exists in an association list, return its associated element.
+ *
+ *)
+
+#include "types.def"
+
+define @assoc-list-lookup (atag : assoc_tag, alist : ![assoc_list] / exh : exh) : option =
+  fun alistLookup (atag : assoc_tag, alist : assoc_list / exh : exh) : option =
+      case alist
+       of ANIL => return (NONE)
+	| ACONS (atag' : assoc_tag, elt : any, alist : assoc_list) => 
+	  if Equal (atag, atag')
+	     then let v : option = SOME (elt)
+                  return (v)
+             else apply alistLookup (atag, alist / exh)
+       end
+  let alist : assoc_list = #0(alist)
+  let v : option = apply alistLookup (atag, alist / exh)
+  return (v)
+;

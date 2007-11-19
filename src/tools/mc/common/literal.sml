@@ -13,7 +13,7 @@ structure Literal : sig
       | StateVal of word		(* special constant used to represent a state value. *)
 					(* The runtime representation of this value will be *)
 					(* distinct from both boxed and unboxed values. *)
-      | Tag of word                     (* special constant used to distinguish elements *)
+      | Tag of string                   (* special constant used to distinguish elements *)
                                         (* in association lists. *)
       | Int of IntegerLit.integer	(* Int, Long, and Integer types *)
       | Float of FloatLit.float		(* Float and Double types *)
@@ -43,7 +43,7 @@ structure Literal : sig
       | StateVal of word		(* special constant used to represent a state value. *)
 					(* The runtime representation of this value will be *)
 					(* distinct from both boxed and unboxed values. *)
-      | Tag of word                     (* special constant used to distinguish elements *)
+      | Tag of string                   (* special constant used to distinguish elements *)
                                         (* in association lists. *)
       | Int of IntegerLit.integer	(* Int, Long, and Integer types *)
       | Float of FloatLit.float		(* Float and Double types *)
@@ -72,7 +72,7 @@ structure Literal : sig
 
     fun toString (Enum n) = concat["enum(", Word.fmt StringCvt.DEC n, ")"]
       | toString (StateVal n) = "$" ^ Word.fmt StringCvt.DEC n
-      | toString (Tag n) = concat ["tag(", Word.fmt StringCvt.DEC n, ")"]
+      | toString (Tag t) = concat ["tag(", t, ")"]
       | toString (Int i) = IntegerLit.toString i
       | toString (Float flt) = FloatLit.toString flt
       | toString (Char wc) = concat["'", wcharToStr wc, "'"]
@@ -89,7 +89,7 @@ structure Literal : sig
 
     fun compare (Enum a, Enum b) = Word.compare(a, b)
       | compare (StateVal n1, StateVal n2) = Word.compare(n1, n2)
-      | compare (Tag n1, Tag n2) = Word.compare (n1, n2)
+      | compare (Tag n1, Tag n2) = String.compare (n1, n2)
       | compare (Int i1, Int i2) = IntegerLit.compare(i1, i2)
       | compare (Float f1, Float f2) = FloatLit.compare(f1, f2)
       | compare (Char c1, Char c2) = Word.compare(c1, c2)
@@ -120,7 +120,7 @@ structure Literal : sig
     in
     fun hash (Enum w) = h(w, enumCd)
       | hash (StateVal w) = h(w, stateCd)
-      | hash (Tag w) = h(w, tagCd)
+      | hash (Tag w) = h(HashString.hashString w, tagCd)
       | hash (Int i) = h(IntegerLit.hash i, intCd)
       | hash (Float f) = h(FloatLit.hash f, floatCd)
       | hash (Char c) = h(c, charCd)

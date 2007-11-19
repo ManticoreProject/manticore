@@ -290,8 +290,8 @@ Literal
 			| SOME ty => (Literal.Enum w, ty)
 		      (* end case *)
 		    end)
-        | "tag" "(" POSINT ")"
-                 => (Literal.Tag (Word.fromLargeInt POSINT), PT.T_Any)
+        | "tag" "(" ID ")"
+                 => (Literal.Tag (Atom.toString ID), PT.T_Any)
 	| "$" POSINT
 		=> (Literal.StateVal(Word.fromLargeInt POSINT), PT.T_Any)
 	| Int (":" Type)?

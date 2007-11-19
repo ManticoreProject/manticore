@@ -43,6 +43,7 @@ int			NumVProcs;
 int			NumIdleVProcs;
 VProc_t			*VProcs[MAX_NUM_VPROCS];
 int			NextVProc;			/* index of next slot in VProcs */
+int                     FiberIdCounter = 0;                   /* fiber id counter */
 
 extern int ASM_VProcSleep;
 
@@ -560,3 +561,12 @@ static Value_t Dequeue2 (VProc_t *self)
 	return M_NIL;
 
 } /* end of Dequeue2 */
+
+/*! \brief returns a unique fiber id
+ *
+ * 
+ */
+int FreshFiberId ()
+{
+  return FetchAndInc (&FiberIdCounter);
+}

@@ -48,9 +48,12 @@ extern void VProcPreempt (void *);
 
 (* debugging *)
 extern void M_Print (void*);
+extern void M_PrintInt (int);
 extern void M_PrintPtr (void *, void *);
 extern void M_PrintDebug (void*);
 extern void M_PrintLong (long);
+
+define @get-fid (vp : vproc / exh : exh) : fid;
 
 define @work-stealers-startup ( / exh : exh) : () =
   
@@ -194,7 +197,9 @@ define @work-stealers-startup ( / exh : exh) : () =
                  then throw steal (vprocs)
                  else (* (1) *)
                       throw dispatch ()
-         else (*do ccall M_Print("Handling preemption\n")*)
+         else (*do ccall M_Print("Handling preemption for thread\n")*)            
+              let fid : fid = @get-fid (self / exh)
+              do ccall M_PrintInt (fid)
               let k : fiber = (fiber)s
               let fgs : fgs = @get-fgs (self / exh)
               do @enqueue (host_vproc, fgs, k / exh)

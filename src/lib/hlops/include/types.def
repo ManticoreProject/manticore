@@ -23,11 +23,16 @@ typedef sigact = cont(signal);
 
 typedef spin_lock = ![bool];
 
+typedef assoc_tag = any;
+
 (* fiber-group storage 
  *   (lock, killed, pinned, parent (optional), auxilliary storage)
  *)
 typedef fgs = [spin_lock, ![bool], bool, option, ![assoc_list]];
 typedef tid = fgs;
+(* unique fiber id *)
+typedef fid = int;
+#define ALIST_OFFSET 4
 
 typedef ml_int = [int];
 typedef ml_long = [long];
@@ -52,9 +57,9 @@ typedef ml_string = [string_data, int];
 typedef fiber_fun = fun (unit / exh -> unit);
 typedef spawn_fun = fun (fiber_fun / exh -> unit);
 
-/* macros for accessing and updating fields.  These work around problems
+(* macros for accessing and updating fields.  These work around problems
  * with the CPP and the "#" symbol.
- */
+ *)
 #define HASH_SYM	#
 #define SELECT(i,x)	HASH_SYM i(x)
 #define UPDATE(i,x,y)	HASH_SYM i(x) := y
