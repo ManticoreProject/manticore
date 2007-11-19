@@ -9,11 +9,16 @@
 #include "types.def"
 #include "ropes.def"
 
+extern void M_Print (void *);
+
 define @rope-sub (rn : [rope, ml_int] / exh : exh) : any =
+
   let BogusExn : exn = (exn) enum(0)
+ 
   fun getFromList (xs : list, n : int / exh : exh) : any =
     case xs
       of NIL => let EmptyList : exn = BogusExn (* FIXME *)
+                do ccall M_Print ("rope-sub.getFromList given empty list\n\000")
                 throw exh (EmptyList)
        | CONS (x:any, xs:list) =>
            let isZero : bool = I32Eq (n, 0)
@@ -24,6 +29,12 @@ define @rope-sub (rn : [rope, ml_int] / exh : exh) : any =
                let res1 : any = apply getFromList (xs, newN / exh)
                return (res1)
     end
+
+  fun cat2 (s1 : ml_string, s2 : ml_string) : ml_string =
+    let tup : [ml_string, ml_string] = alloc (s1, s2)
+    let ans : ml_string = @string-concat2 (tup / exh)
+    return (ans)
+
   fun getFromRope (r : rope, n : int / exh : exh) : any =
     case r
       of LEAF (len:ml_int, data:list) =>
@@ -35,6 +46,25 @@ define @rope-sub (rn : [rope, ml_int] / exh : exh) : any =
                return (res2)
              else
                let WrongLeaf : exn = BogusExn (* FIXME *)
+               do ccall M_Print ("rope-sub.getFromRope: wrong leaf\n\000")
+               let nStr : ml_string =
+                 let ml_n : ml_int = alloc (n)
+                 let s : ml_string = @itos (ml_n / exh)
+                 return (s)
+               let lenStr : ml_string = 
+                 let ml_len : ml_int = alloc(len)
+                 let s : ml_string = @itos (ml_len / exh)
+                 return (s)
+               let msg : ml_string =
+                 let prefix : ml_string = alloc ("index, then len: ", 17)
+                 let comma : ml_string = alloc (",", 1)
+                 let s0 : ml_string = apply cat2 (prefix, nStr)
+                 let s1 : ml_string = apply cat2 (s0, comma)
+                 let s2 : ml_string = apply cat2 (s1, lenStr)
+                 let stuff : ml_string = alloc (" <<<<\n", 6)
+                 let s3 : ml_string = apply cat2 (s2, stuff)
+                 return (s3)
+               let _ : unit = @print (msg / exh)
                throw exh (WrongLeaf)
        | CAT (len:ml_int, depth:ml_int, r1:rope, r2:rope) =>
            let leftLen : int =

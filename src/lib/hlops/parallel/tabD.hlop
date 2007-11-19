@@ -11,7 +11,7 @@
 #include "futures.def"
 #include "ropes.def"
 
-extern void M_Print (void*);
+(* extern void M_Print (void * ); *)
 
 define @tabD (args : [(* q *) work_queue, 
                       (* f *) fun (ml_int / exh -> any),
@@ -32,30 +32,32 @@ define @tabD (args : [(* q *) work_queue,
   let hi : int = #0(ml_hi)
   let step : int = #0(ml_step)
 
+  let leafOffset : int =
+    let o : int = I32Mul (step, leafSize)
+    return (o)
+
   fun mkLeaf (lo : int / exh : exh) : rope = 
     let upperLimCand : int = 
-      let stepMinus1 : int = I32Sub (step, 1)
-      let s : int = I32Mul (stepMinus1, leafSize)
-      let c : int = I32Add (lo, s)
-      return (c)
+      let c0 : int = I32Add (lo, leafOffset)
+      let c1 : int = I32Sub (c0, 1)
+      return (c1)
     let upperLim : int = @int-min (upperLimCand, hi / exh)
     let ml_lo : ml_int = alloc (lo)
     let ml_upperLim : ml_int = alloc (upperLim)
     let tup : [fun (ml_int / exh -> any), ml_int, ml_int, ml_int] = 
           alloc (f, ml_lo, ml_upperLim, ml_step)
-    let data : list = @list-tabulate-step (tup / exh)
+    let data : list = @list-tab (tup / exh)
     let len : int = 
       let t1 : int = I32Sub (upperLim, lo)
       let t2 : int = I32Div (t1, step)
-      let t3 : int = I32Sub (t2, 1)
+      let t3 : int = I32Add (t2, 1)
       return (t3)
     let ml_len : ml_int = alloc (len)
     return (LEAF (ml_len, data))
 
   (* returns a *backwards* list of leaf futures *)
   fun build (lo : int, leafFutures : list / exh : exh) : list = 
-    let done : bool = I32Gt (lo, hi)
-    if done
+    if I32Gt (lo, hi)
       then
         return (leafFutures)
       else
@@ -64,8 +66,9 @@ define @tabD (args : [(* q *) work_queue,
           return (thunkRes)
         let qt : [work_queue, thunk] = alloc (q, th)
         let fut : future = @future1 (qt / exh)
-        let s : int = I32Mul (leafSize, step)
-        let newLo : int = I32Add (lo, s)
+        let newLo : int = 
+          let a : int = I32Add (lo, leafOffset)
+          return (a)
         let newAcc : list = CONS (fut, leafFutures)
         let buildRes : list = apply build (newLo, newAcc / exh)
         return (buildRes)

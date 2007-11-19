@@ -10,23 +10,25 @@
 #include "types.def"
 #include "ropes.def"
 
-(* extern void M_Print (void * ); *)
+extern void M_Print (void * );
 
 define @simple-cat (r1 : rope, r2 : rope / exh : exh) : rope =
   let n1 : int = 
     let ml_n1 : ml_int = @rope-length (r1 / exh)
-    return (#0(ml_n1))
+    return (unwrap(ml_n1))
   let n2 : int = 
     let ml_n2 : ml_int = @rope-length (r2 / exh)
-    return (#0(ml_n2))
+    return (unwrap(ml_n2))
   let r1IsEmpty : bool = I32Eq(n1,0)
   if r1IsEmpty
     then 
+      do ccall M_Print ("r1 empty\n\000")
       return (r2)
     else
       let r2IsEmpty : bool = I32Eq(n2,0)
       if r2IsEmpty
         then
+	  do ccall M_Print ("r2 empty\n\000")
           return (r1)
         else
          let ml_n : ml_int =

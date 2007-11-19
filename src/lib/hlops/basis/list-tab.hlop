@@ -9,6 +9,8 @@
 
 #include "types.def"
 
+(* extern void M_Print (void * ); *)
+
 define @list-tab (args : [(* f *) fun (ml_int / exh -> any), 
                           (* ml_lo *) ml_int,
                           (* ml_hi *) ml_int,
