@@ -1,9 +1,10 @@
-(* tabulateD.hlop
+(* tabD.hlop
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
  * To build an 'a rope out of tabulation of the given (int -> 'a) function.
+ * A lower limit, an upper limit, and a step size are all given.
  *)
 
 #include "types.def"
@@ -12,36 +13,42 @@
 
 extern void M_Print (void*);
 
-define @tabulateD (args : [(* q *) work_queue, 
-                           (* f *) fun (ml_int / exh -> any),
-                           (* ml_leafSize *) ml_int,
-                           (* ml_lo *) ml_int, 
-                           (* ml_hi *) ml_int] / exh : exh) : rope =
+define @tabD (args : [(* q *) work_queue, 
+                      (* f *) fun (ml_int / exh -> any),
+                      (* ml_leafSize *) ml_int,
+                      (* ml_lo *) ml_int, 
+                      (* ml_hi *) ml_int,
+                      (* ml_step *) ml_int] / exh : exh) : rope =
 
   let q : work_queue = #0(args)
   let f : fun (ml_int / exh -> any) = #1(args)
   let ml_leafSize : ml_int = #2(args)
   let ml_lo : ml_int = #3(args)
   let ml_hi : ml_int = #4(args)
+  let ml_step : ml_int = #5(args)
 
   let leafSize : int = #0(ml_leafSize)
   let lo : int = #0(ml_lo)
   let hi : int = #0(ml_hi)
+  let step : int = #0(ml_step)
 
   fun mkLeaf (lo : int / exh : exh) : rope = 
     let upperLimCand : int = 
-      let loPlusLeaf : int = I32Add (lo, leafSize)
-      let c : int = I32Sub (loPlusLeaf, 1)
+      let stepMinus1 : int = I32Sub (step, 1)
+      let s : int = I32Mul (stepMinus1, leafSize)
+      let c : int = I32Add (lo, s)
       return (c)
     let upperLim : int = @int-min (upperLimCand, hi / exh)
     let ml_lo : ml_int = alloc (lo)
     let ml_upperLim : ml_int = alloc (upperLim)
-    let tup : [fun (ml_int / exh -> any), ml_int, ml_int] = alloc (f, ml_lo, ml_upperLim)
-    let data : list = @list-tabulate (tup / exh)
+    let tup : [fun (ml_int / exh -> any), ml_int, ml_int, ml_int] = 
+          alloc (f, ml_lo, ml_upperLim, ml_step)
+    let data : list = @list-tabulate-step (tup / exh)
     let len : int = 
-      let t1 : int  = I32Sub (upperLim, lo)
-      let t2 : int = I32Add (t1, 1)
-      return (t2)
+      let t1 : int = I32Sub (upperLim, lo)
+      let t2 : int = I32Div (t1, step)
+      let t3 : int = I32Sub (t2, 1)
+      return (t3)
     let ml_len : ml_int = alloc (len)
     return (LEAF (ml_len, data))
 
@@ -57,7 +64,8 @@ define @tabulateD (args : [(* q *) work_queue,
           return (thunkRes)
         let qt : [work_queue, thunk] = alloc (q, th)
         let fut : future = @future1 (qt / exh)
-        let newLo : int = I32Add (lo, leafSize)
+        let s : int = I32Mul (leafSize, step)
+        let newLo : int = I32Add (lo, s)
         let newAcc : list = CONS (fut, leafFutures)
         let buildRes : list = apply build (newLo, newAcc / exh)
         return (buildRes)
@@ -83,14 +91,10 @@ define @tabulateD (args : [(* q *) work_queue,
     let res : list = apply ta (futures, NIL / exh)
     return (res)          
 
-  (* do ccall M_Print ("tabulateD: about to build leaves...\n\000") *)
-
   let leaves : list = 
     let futs : list = apply build (lo, NIL / exh)
     let ls : list = apply touchAll (futs / exh)
     return (ls)
-
-  (* do ccall M_Print ("tabulateD: done building leaves...\n\000") *)
 
   let finalRes : rope = @rope-from-leaves (leaves / exh)
   return (finalRes)  
