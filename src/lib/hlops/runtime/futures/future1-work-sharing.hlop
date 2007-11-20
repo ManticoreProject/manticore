@@ -41,14 +41,14 @@ define @future1-work-sharing ( / exh : exh) : future_spawn_fn =
 
   cont switch (s : signal) =
 
-      (* this scheduler cannot migrate vprocs *)
+      (* NOTE: this scheduler cannot migrate vprocs *)
        let self : vproc = host_vproc
 
-       fun findWork () =
+       fun findWork () : () =
            let eltOpt : option = @locked-queue-dequeue (q / exh)
            case eltOpt
 	    of NONE => apply findWork ()
-	     | SOME (k : fiber) => @run (self, 
+	     | SOME (k : fiber) => @run (self, switch, fgs, k / exh)
            end
 
        if Equal (s, STOP)

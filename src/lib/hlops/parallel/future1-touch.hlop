@@ -1,0 +1,47 @@
+(* future1-touch.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Touch a one-toucher future.
+ *)
+
+#include "types.def"
+#include "futures.def"
+
+define @get-work1 (q : work_queue / exh : exh) : ();
+
+extern void M_Print (void * ); 
+
+define @future1-touch (arg: [future] / exh : exh) : any =
+  let fp : future = #0(arg)
+  let tmp : any = CAS (&0(fp), EMPTY_F, EVAL_F)
+
+  if Equal (tmp, EMPTY_F)
+    then (* the future is ready for evaluation *)
+         let f : thunk = #1(fp)
+         do #1(fp) := (thunk) $0
+         (* may need exn handler for thunk. *)
+         (* let exh : exh = ... *)
+         (*do ccall M_Print ("applying thunk\n\000")*)
+         let resultLocal : any = apply f (UNIT / exh)
+         let result : any = promote (resultLocal)
+         do #0(fp) := result (* one toucher, multiple touches *)
+         return (result)
+
+    else if Equal (tmp, STOLEN_F)
+         then (* someone else is evaluating the future*)
+              cont kLocal (result: any) = 
+                   do ccall M_Print ("returning from wait\n\000")
+                   return (result)
+              let k : cont(any) = promote (kLocal)
+ 	        let tmpX : any = CAS (&0(fp), STOLEN_F, k)
+                if Equal (tmpX, STOLEN_F)
+	           then (* the future-cell writer can resume this thread via k *)
+                        do ccall M_Print ("suspending on future\n\000")
+                        @thread-exit ( / exh)
+	          else (* the future value is ready *)
+                       return (tmpX)
+           else (* the future value is ready *)
+                return (tmp)
+;
