@@ -1,4 +1,6 @@
-val pc = [| x*x | x in [| 1 to 10 |] |];
+(* Test of a simple parallel comprehension. *)
+
+(*** Utility Functions ***)
 
 fun catw (sep, ss) =
   (case ss
@@ -17,5 +19,11 @@ fun parrString a =
       "[" ^ (catw (",", build (0, nil))) ^ "]"
   end;
 
-print ("RESULT: " ^ (parrString pc) ^ "\n     (expected 1^2 .. 10^2)\n")
+(*** Test Code ***)
+
+val pc = [| x*x | x in [| 1 to 20 |] |];
+
+val s = parrString pc;
+
+print ("RESULT: " ^ s ^ "\n     (expected 1, 4, 9, ..., 400)\n")
 

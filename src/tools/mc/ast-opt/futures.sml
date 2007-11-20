@@ -39,9 +39,11 @@ structure Futures : sig
   end =
 
   struct
+
     structure A = AST
-    structure T = Types
     structure B = Basis
+    structure T = Types
+    structure U = UnseenBasis
     
     (* fail : string -> 'a *)
     fun fail msg = raise Fail msg
@@ -74,12 +76,14 @@ structure Futures : sig
     fun ** (t1, t2) = T.TupleTy [t1, t2]
     infixr 8 **
 
+    val qTy = U.workQueueTy
+
     (* predefined functions *)
     val newWorkQueue = monoVar ("newWorkQueue",
-				B.unitTy --> B.workQueueTy)
+				B.unitTy --> qTy)
 
     val getWork1All = monoVar ("getWork1All",
-			       B.workQueueTy --> B.unitTy)
+			       qTy --> B.unitTy)
 
     val future = polyVar ("future",
  		          fn tv => (Basis.unitTy --> tv) --> futureTy tv)
@@ -91,19 +95,19 @@ structure Futures : sig
 			  fn tv => futureTy tv --> Basis.unitTy)
 
     val future1 = polyVar ("future1",
-			   fn tv => (B.workQueueTy ** (B.unitTy --> tv)) --> futureTy tv)
+			   fn tv => (qTy ** (B.unitTy --> tv)) --> futureTy tv)
 
     val touch1 = polyVar ("touch1",
-			  fn tv => (B.workQueueTy ** (futureTy tv)) --> tv)
+			  fn tv => (qTy ** (futureTy tv)) --> tv)
 
     val cancel1 = polyVar ("cancel1",
-			   fn tv => (B.workQueueTy ** (futureTy tv)) --> Basis.unitTy)
+			   fn tv => (qTy ** (futureTy tv)) --> Basis.unitTy)
 
     (* mkNewWorkQueue : unit -> A.exp *)
     (* Produces an AST expression which is a call to the newWorkQueue hlop. *)
     fun mkNewWorkQueue () = A.ApplyExp (A.VarExp (newWorkQueue, []),
 					A.TupleExp [],
-					B.workQueueTy)
+					qTy)
 
     (* mkNewWorkQueue : A.exp -> A.exp *)
     (* Produces an AST expression which is a call to the getWork1All hlop. *)

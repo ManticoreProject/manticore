@@ -25,6 +25,7 @@ Library
   structure TyVar
   structure Var
   structure Stamp
+  structure UnseenBasis
   structure VarRep
 
 is
@@ -58,4 +59,5 @@ is
   type-of.sml
   type-util.sml
   unify.sml
+  unseen-basis.sml
   var.sml

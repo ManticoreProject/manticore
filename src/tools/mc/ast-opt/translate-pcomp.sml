@@ -20,10 +20,18 @@ structure TranslatePComp : sig
     structure R = Ropes
     structure U = UnseenBasis
 
+    fun parrayElementType t =
+	(case t
+	   of A.ConTy ([t'], k) =>
+	        if TyCon.same (k, B.parrayTyc)
+		then t'
+		else raise Fail "not a parray"
+	    | _ =>  raise Fail "not a parray")
+
     fun tr trExp workQ (e, pes, oe) =
 	  (case (pes, oe)
 	     of ([], _) => raise Fail "no pbinds at all"
-	      | ([(p1, e1)], NONE) =>  (* first I'll build the one pattern, no predicate case, and iter. refine it *)
+	      | ([(p1, e1)], NONE) =>  (* first I'll build the one pbind, no predicate case, and iter. refine it *)
 		                       (* these and subsequent cases will eventually be unified together *)
                    let val t  = TypeOf.exp e
 		       val t1 = TypeOf.pat p1
@@ -50,7 +58,7 @@ structure TranslatePComp : sig
 			      end
 			  | _ (* not a range exp *) =>
 			      let val e1' = trExp e1
-				  val mapPQ = A.VarExp (B.mapPQ, [t1, t])
+				  val mapPQ = A.VarExp (U.mapPQ, [t1, t])
 				  val mapResTy =
 				      (case TypeOf.exp mapPQ
 				         of A.FunTy (_, rty) => rty
@@ -63,8 +71,39 @@ structure TranslatePComp : sig
 			      end
 		       (* end case *))
 		   end
+	      | (pes as [(p1, e1), (p2, e2)], NONE) =>  (* the two pbind, no predicate case *)
+                  let val e' = trExp e
+		      val t = TypeOf.exp e
+		      fun build ([], _, xs, ps, es) =
+			    let val (xs, ps, es) = (rev xs, rev ps, rev es)
+				val tupExp = A.TupleExp (map (fn x => A.VarExp (x, [])) xs)
+				val tupPat = A.TuplePat ps
+				val arg = Var.new ("arg", TypeOf.exp tupExp)
+				val m = A.PatMatch (tupPat, e')
+				val f = A.FunExp (arg, A.CaseExp (A.VarExp (arg, []), [m], t), t)
+				val t1 = parrayElementType (TypeOf.exp e1)
+				val t2 = parrayElementType (TypeOf.exp e2)
+				val map2 = A.VarExp (U.map2PQ, [t1, t2, t])
+				val mapResTy = 
+				    (case TypeOf.exp map2
+				       of A.FunTy (_, rty) => rty
+					| _ => raise Fail "expected function type"
+				      (* end case *)) 
+			    in
+				A.ApplyExp (A.ApplyExp (map2, workQ, mapResTy),
+					    A.TupleExp [f, A.TupleExp es], 
+					    B.parrayTy t)
+			    end
+			| build ((p,a)::tl, n, xs, ps, es) =
+			    let val x = Var.new ("x" ^ Int.toString n, TypeOf.pat p)
+			    in
+				build (tl, n+1, x::xs, p::ps, trExp(a)::es)
+			    end
+		  in
+		      build (pes, 1, [], [], [])
+		  end
 	      | (pe::_, NONE) => (* the multiple pbind, no pred case *)
-                                 (* NOTE this isn't really built to deal with ranges yet *)
+                                 (* NOTE this isn't built to deal with ranges yet *)
 		                 (* FIXME magicalMap! *)
 		  let val e' = trExp e
 		      val t = TypeOf.exp e

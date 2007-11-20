@@ -25,7 +25,6 @@ Library
   structure TranslatePtup
   structure TypeOf	
   structure Unpar
-  structure UnseenBasis
   structure VarSubst
 
 is
@@ -53,5 +52,4 @@ is
   translate-pcomp.sml
   translate-ptup.sml
   unpar.sml
-  unseen-basis.sml
   var-subst.sml

@@ -189,11 +189,6 @@ structure Basis : sig
     val tab             : AST.var
     val parrayApp       : AST.var
 
-  (* NOT IN THE SURFACE LANGUAGE *)
-    val workQueueTyc    : Types.tycon
-    val workQueueTy     : Types.ty
-    val mapPQ           : AST.var
-
   (* environments *)
     val lookupOp : Atom.atom -> Env.val_bind
     val isOp : AST.var -> bool
@@ -599,27 +594,6 @@ structure Basis : sig
 	    polyVarMulti' (N.reduceP, 2, mkTy)
 	end
 
-    (* workQueueTyc : T.tycon *)
-    val workQueueTyc = TyCon.newAbsTyc (Atom.atom "work_queue", 0, false)
-
-    (* workQueueTy : T.ty *)
-    val workQueueTy = AST.ConTy ([], workQueueTyc)
-
-    val mapPQ =
-	let fun mkTy ([a,b]) =
-		  let val qTy = workQueueTy
-		      val fnTy = a --> b
-		      val tupTy = AST.TupleTy [fnTy, parrayTy a]
-		  in
-		      qTy --> (tupTy --> (parrayTy b))
-		  end
-	      | mkTy _ = raise Fail "BUG: bad instantiation for mapPQ"
-	in
-	    polyVarMulti ("mapPQ", 2, mkTy)
-	end
-
-
-				 
 (*
     val size =		monoVar(N.size, stringTy --> intTy)
     val sub =		monoVar(N.sub, stringTy ** intTy --> intTy)

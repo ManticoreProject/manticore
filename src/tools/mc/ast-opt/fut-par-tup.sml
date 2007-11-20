@@ -29,8 +29,9 @@ structure FutParTup : sig
 
     structure A = AST
     structure B = Basis
-    structure T = Types
     structure F = Futures
+    structure T = Types
+    structure U = UnseenBasis
 
     infixr **
     (* (**) : ('a -> 'b) * ('c -> 'd) -> ('a * 'c) -> ('b * 'd) *)
@@ -42,7 +43,7 @@ structure FutParTup : sig
     (* module : A.module -> A.module *)
     fun module m = let
 	  val anyChange = ref false
-	  val workQ = Var.new ("workQ", B.workQueueTy)
+	  val workQ = Var.new ("workQ", U.workQueueTy)
 	  val workQExp = A.VarExp (workQ, [])
 	(* ptuple : A.exp list -> A.exp *)
 	(* Precondition: The argument to the function, a list, must not be empty. *)
@@ -123,7 +124,7 @@ structure FutParTup : sig
 	    if !anyChange
 	      then A.LetExp(
 		  A.ValBind(A.VarPat workQ, F.mkNewWorkQueue ()),
-		  A.LetExp(A.ValBind(A.WildPat B.workQueueTy, F.mkGetWork1All workQExp),
+		  A.LetExp(A.ValBind(A.WildPat U.workQueueTy, F.mkGetWork1All workQExp),
 		m'))
 	      else m
 	  end

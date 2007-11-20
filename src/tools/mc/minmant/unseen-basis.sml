@@ -12,10 +12,18 @@
 
 structure UnseenBasis : sig
 
+  (* elements not in the surface language *)
+
+    val workQueueTyc : Types.tycon
+
+    val workQueueTy  : Types.ty
+
   (* predefined functions *)
-    val reducePQ  : AST.var
-    val sumPQ     : AST.var
-    val tabD : AST.var
+    val mapPQ    : AST.var
+    val map2PQ   : AST.var
+    val reducePQ : AST.var
+    val sumPQ    : AST.var
+    val tabD     : AST.var
 
   end = struct
 
@@ -23,28 +31,41 @@ structure UnseenBasis : sig
     structure T = Types
 
     val --> = T.FunTy
-    fun ** (t1, t2) = T.TupleTy[t1, t2]
+    fun ** (t1, t2) = T.TupleTy [t1, t2]
     infix 9 **
     infixr 8 -->
-	   
-    fun forall mkTy =
-	let val tv = TyVar.new (Atom.atom "'a")
+	  
+    val (polyVar, polyVarMulti) = (BasisUtils.polyVar, BasisUtils.polyVarMulti)
+
+    val workQueueTyc = TyCon.newAbsTyc (Atom.atom "work_queue", 0, false)
+
+    val workQueueTy = AST.ConTy ([], workQueueTyc)
+
+    val qTy = workQueueTy
+
+    val mapPQ =
+	let fun mkTy ([a,b]) =
+		  let val fnTy = a --> b
+		      val argTy = AST.TupleTy [fnTy, B.parrayTy a]
+		  in
+		      qTy --> (argTy --> (B.parrayTy b))
+		  end
+	      | mkTy _ = raise Fail "BUG: bad instantiation for mapPQ"
 	in
-	    AST.TyScheme ([tv], mkTy (AST.VarTy tv))
+	    polyVarMulti ("mapPQ", 2, mkTy)
 	end
-
-    fun forAllMulti (n, mkTy) = 
-	let fun mkTv n = TyVar.new (Atom.atom ("'a" ^ Int.toString n))
-	    val tvs = map mkTv (List.tabulate (n, fn n => n))
+				 
+    val map2PQ =
+	let fun mkTy ([a,b,c]) = 
+		  let val fnTy = (a ** b) --> c
+		      val argTy = AST.TupleTy [fnTy, B.parrayTy a, B.parrayTy b]
+		  in
+		      qTy --> (argTy --> (B.parrayTy c))
+		  end
+	      | mkTy _ = raise Fail "BUG: bad instantiation for map2PQ"
 	in
-	    AST.TyScheme (tvs, mkTy (map AST.VarTy tvs))
+	    polyVarMulti ("map2PQ", 3, mkTy)
 	end
-
-    fun polyVar (name, mkTy) = Var.newPoly (name, forall mkTy)
-
-    fun polyVarMulti (name, n, mkTy) = Var.newPoly (name, forAllMulti (n, mkTy))
-
-    val qTy = B.workQueueTy
 
     val reducePQ =
 	let fun mkTy ([a,b]) =
