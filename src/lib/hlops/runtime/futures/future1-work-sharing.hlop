@@ -1,0 +1,63 @@
+(* future1-work-sharing.hlop
+ * 
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Work sharing for futures.
+ *)
+
+#include "types.def"
+#include "locked-queue.def"
+#include "futures.def"
+
+extern void *ListVProcs (void *) __attribute__((alloc));
+
+(* debugging *)
+extern void M_PrintDebug (void*);
+
+define @future1-work-sharing ( / exh : exh) : future_spawn_fn =
+
+ (* fiber-group storage for the parent *)
+  let parentFGS : fgs = @get-fgs (host_vproc / exh)
+
+ (* shared queue for the workers *)
+  let q : locked_queue = @locked-queue-new ( / exh)
+
+ (* spawn a future *)
+  fun spawn (fut : future / exh : exh) : () = 
+      (* FIXME: do something about the exception handler *)
+      fun wrap (_ : unit / exh : exh) : unit =
+          let arg : [future] = wrap (fut)
+          let _ : any = @fut-touch1 (arg)
+          return (UNIT)
+      let k : fiber = @fiber (wrap / exh)
+      @locked-queue-enqueue (q, thunk / exh)
+
+ (* make the spawn function accessible to computations via fiber-group storage *)
+  let parent : option = SOME (parentFGS)
+  let fgs : fgs = @new-fgs (TRUE, parent / exh)
+  let assocListRef : ![assoc_list] = SELECT(ALIST_OFFSET, fgs)
+  do @assoc-list-add (TAG_SPAWN_FUTURE, spawn, assocListRef)
+
+  cont switch (s : signal) =
+
+      (* this scheduler cannot migrate vprocs *)
+       let self : vproc = host_vproc
+
+       fun findWork () =
+           let eltOpt : option = @locked-queue-dequeue (q / exh)
+           case eltOpt
+	    of NONE => apply findWork ()
+	     | SOME (k : fiber) => @run (self, 
+           end
+
+       if Equal (s, STOP)
+          then apply findWork ()
+          else do @locked-queue-enqueue (q, s / exh)
+               let _ : unit = @atomic-yield (self / exh)
+               apply findWork ()
+
+  do @scheduler-startup (switch / exh)
+  let _ : unit =  @set-fgs (host_vproc, fgs / exh)
+  return (spawn)
+;

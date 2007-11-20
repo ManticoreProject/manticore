@@ -34,7 +34,7 @@ define inline @thread-exit ( / exh : exh) noreturn;
 define @scheduler-startup (act : sigact / exh : exh) : ();
 define @is-queue-gt-one (/ exh : exh) : bool;
 define @is-queue-empty (/ exh : exh) : bool;
-define @new-fgs (pinned : bool / exh : exh) : fgs;
+define @new-fgs (pinned : bool, parent : option / exh : exh) : fgs;
 define @get-fgs (vp : vproc / exh : exh) : fgs;
 
 define @queue-length (pred : fun (fgs / exh -> bool) / exh : exh) : int;
@@ -119,7 +119,7 @@ define @work-stealers-startup ( / exh : exh) : () =
        let stealableFibers : int = I32Sub (stealableFibers,1)
        if I32Gt(stealableFibers, 0)
           then let rs : list = apply resuscitates (stealableFibers / exh)
-               let dummyFgs : fgs = @new-fgs (TRUE / exh)
+               let dummyFgs : fgs = @new-fgs (TRUE, NONE / exh)
                cont dummyK (u : unit) = @thread-exit ( / exh)
                fun dispatchOn (vps : list / exh : exh) : () =
                    case vps
@@ -185,7 +185,7 @@ define @work-stealers-startup ( / exh : exh) : () =
                        else (* (2.3) *)
                             do ccall M_Print ("Thief is giving up on this vproc\n")
                             throw steal (vprocs')
-                let thiefFGS : fgs = @new-fgs (TRUE / exh)
+                let thiefFGS : fgs = @new-fgs (TRUE, NONE / exh)
                 do @enqueue-on-vproc (vp, thiefFGS, thiefFiber / exh)
                 throw dispatch ()
         end

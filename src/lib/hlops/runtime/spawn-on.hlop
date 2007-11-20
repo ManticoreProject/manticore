@@ -11,7 +11,7 @@
 extern void EnqueueOnVProc (void *, void *, void *, void *) __attribute__((alloc));
 
 define @dispatch (vp : vproc / exh : exh) noreturn;
-define @new-fgs (pinned : bool / exh : exh) : fgs;
+define @new-fgs (pinned : bool, parent : option / exh : exh) : fgs;
 
 define inline @spawn-on (f : fun (unit / exh -> unit), dst : vproc / exh : exh) : fgs =
   cont fiber (x : unit) =
@@ -19,7 +19,7 @@ define inline @spawn-on (f : fun (unit / exh -> unit), dst : vproc / exh : exh) 
     let (_ : unit) = apply f (UNIT / exh)
     @dispatch (host_vproc / exh)
   let vp : vproc = host_vproc
-  let fgs : fgs = @new-fgs(TRUE / exh)
+  let fgs : fgs = @new-fgs(TRUE, NONE / exh)
   (* the fiber must be in the global heap before enqueueing on a remote vproc! *)
   let fiber:fiber = promote (fiber)
   do ccall EnqueueOnVProc(vp, dst, fgs, fiber)

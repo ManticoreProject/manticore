@@ -1,0 +1,36 @@
+(* locked-queue-dequeue.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Non-blocking dequeue.
+ *)
+
+#include "locked-queue.def"
+
+define inline @spin-lock (lock : spin_lock / exh : exh) : unit;
+define inline @spin-unlock (lock : spin_lock / exh : exh) : unit;
+
+define @locked-queue-dequeue (q : locked_queue / exh : exh) : option =
+  
+  let spinLock : spin_lock = #0(q)
+  let _ : unit = @spin-lock (spinLock / exh)
+
+    let qHdRef : ![queue_elt] = SELECT(LOCKED_QUEUE_HD, q)
+    let qTlRef : ![queue_elt] = SELECT(LOCKED_QUEUE_TL, q)
+    let qHd : queue_elt = unwrap (qHdRef)
+    if Equal (qHd, QEMPTY)
+       then let _ : unit = @spin-unlock (spinLock / exh)
+            return (NONE)
+       else let qNext : any = SELECT(QUEUE_ELT_TL, qHd)
+            let qNext : locked_queue = (locked_queue)qNext
+            do if Equal (qHdRef, qTlRef)
+                  then do qTlRef := QEMPTY
+                       return ()
+                  else return ()
+            do qHdRef := qNext
+            let elt : any = SELECT(QUEUE_ELT_HD, qHd)
+            let v : option = SOME (elt)
+            let _ : unit = @spin-unlock (spinLock / exh)
+            return (v)
+;

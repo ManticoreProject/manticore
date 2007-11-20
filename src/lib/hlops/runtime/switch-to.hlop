@@ -9,8 +9,8 @@
 
 define inline @set-fgs (vp : vproc, fgs : fgs / exh : exh) : unit;
 
-define inline @switch-to (vp : vproc, tid : tid, fiber : fiber / exh : exh) noreturn =
+define inline @switch-to (vp : vproc, fgs : fgs, fiber : fiber / exh : exh) noreturn =
   do vpstore (ATOMIC, vp, FALSE)
-  let _ : unit =  @set-fgs (vp, tid / exh)
+  let _ : unit =  @set-fgs (vp, fgs / exh)
   throw fiber (UNIT)
 ;

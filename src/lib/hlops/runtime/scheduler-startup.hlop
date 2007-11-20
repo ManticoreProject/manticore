@@ -14,7 +14,7 @@ extern void *ListVProcs (void *) __attribute__((alloc));
 define inline @spawn-on (f : fun (unit / exh -> unit), dst : vproc / exh : exh) : tid;
 define inline @run (vp : vproc, act : sigact, tid : tid, fiber : fiber / exh : exh) noreturn;
 define inline @thread-exit ( / exh : exh) noreturn;
-define @new-fgs (pinned : bool / exh : exh) : fgs;
+define @new-fgs (pinned : bool, parent : option / exh : exh) : fgs;
 
 (* debugging *)
 extern void M_PrintDebug (void *);
@@ -61,7 +61,7 @@ define @scheduler-startup (act : sigact / exh : exh) : () =
                let x : int = I32FetchAndAdd (syncPoint, 1)
                do apply spinWait (UNIT / exh)
                @thread-exit ( / exh)
-          let fgs : fgs = @new-fgs (TRUE / exh)
+          let fgs : fgs = @new-fgs (TRUE, NONE / exh)
 	  (* in *)
 	    @run (host_vproc, act, fgs, k / exh)
 
@@ -84,7 +84,7 @@ define @scheduler-startup (act : sigact / exh : exh) : () =
 	  (* in *)
 	  apply spinWait (UNIT / exh)
    
-   let fgs : fgs = @new-fgs (TRUE / exh)
+   let fgs : fgs = @new-fgs (TRUE, NONE / exh)
 
     (* in *)
       @run (self, act, fgs, startup / exh)

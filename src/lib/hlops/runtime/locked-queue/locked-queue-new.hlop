@@ -1,0 +1,19 @@
+(* locked-queue-new.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Allocate an empty locked queue.
+ *)
+
+#include "locked-queue.def"
+
+define @locked-queue-new ( / exh : exh) : locked_queue =
+  let spinLock : spin_lock = galloc (FALSE)
+  let qHd : ![queue_elt] = galloc (EMPTYQ)
+  let qTl : ![queue_elt] = galloc (EMPTYQ)
+  let rdyqHd : ![queue_elt] = galloc (EMPTYQ)
+  let rdyqHd : ![queue_elt] = galloc (EMPTYQ)
+  let lockedQ : locked_queue = galloc (spinLock, qHd, qTl, rdyqHd, rdyqTl)
+  return (lockedQ)
+;

@@ -23,5 +23,7 @@ typedef future = ![any, thunk]; (* state, thunk *)
 typedef work_queue = any;
 typedef rope = any;
 
+typedef future_spawn_fn = fun (future / exh -> ());
+
 #endif /* !_FUTURES_DEF_ */
 

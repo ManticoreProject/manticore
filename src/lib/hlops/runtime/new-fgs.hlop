@@ -8,10 +8,10 @@
 
 #include "types.def"
 
-define @new-fgs (pinned : bool / exh : exh) : fgs = 
+define @new-fgs (pinned : bool, parent : option / exh : exh) : fgs = 
   let lock : spin_lock = galloc (FALSE)
   let killed : ![bool] = galloc (FALSE)
   let al : ![assoc_list] = galloc (ANIL)
-  let fgs : fgs = galloc (lock, killed, pinned, NONE, al)
+  let fgs : fgs = galloc (lock, killed, pinned, parent, al)
   return (fgs)
 ;

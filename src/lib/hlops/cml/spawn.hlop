@@ -9,13 +9,13 @@
 #include "types.def"
 
 define @enqueue (vp : vproc, tid : tid, fiber : fiber / exh : exh) : ();
-define @new-fgs (pinned : bool / exh : exh) : fgs;
+define @new-fgs (pinned : bool, parent : option / exh : exh) : fgs;
 define inline @fiber (f : fiber_fun / exh : exh) : fiber;
 
 define inline @spawn (f : fiber_fun / exh : exh) : tid =
   let fiber : fiber = @fiber (f / exh)
   let vp : vproc = host_vproc
-  let tid : tid = @new-fgs (FALSE / exh)
+  let tid : tid = @new-fgs (FALSE, NONE / exh)
   do @enqueue (vp, tid, fiber / exh)
   return (tid)
 ;

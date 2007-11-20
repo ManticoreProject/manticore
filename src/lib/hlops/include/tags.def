@@ -4,8 +4,13 @@
  * All rights reserved.
  *
  * Tags for association lists.
- *
  *)
 
+#ifndef _TAGS_DEF_
+#define _TAGS_DEF_
+
 (* unique identifier for threads *)
-#define TAG_FID tag(fid)
+#define TAG_FID                tag(fid)
+#define TAG_SPAWN_FUTURE       tag(spawn-future)
+
+#endif /*! _TAGS_DEF_ */

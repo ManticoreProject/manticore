@@ -29,16 +29,8 @@ fun intListToString ls = let
     end
 ;
 
-val x : float list = 5.0 :: 1.0 :: nil;
+val x : float list = 5.0 :: ~1.0 :: 1002.123 :: 1.0 :: 20.0 :: nil;
 val y = filter (f1 10.0, x);
-
-val z = if ((f1 1) 2) then "hi" else "";
-
-(*val is = 1 :: 3 :: 4 :: nil;
-val is' = filter (f1 3, is);
-
-val _ = print ((intListToString is')^"\n");
-*)
 
 val _ = print ((floatListToString x)^"\n");
 print ((floatListToString y)^"\n")
