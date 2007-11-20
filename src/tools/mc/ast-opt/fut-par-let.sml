@@ -19,8 +19,9 @@ structure FutParLet : sig
 
     structure A = AST
     structure B = Basis
-    structure T = Types
     structure F = Futures
+    structure T = Types
+    structure U = UnseenBasis
 
     (* fail : string -> 'a *)
     fun fail msg = raise Fail msg
@@ -65,7 +66,7 @@ structure FutParLet : sig
 
     (* futurize : A.module -> A.module *)
     fun futurize m = 
-	let val q = Var.new ("q", B.workQueueTy) 
+	let val q = Var.new ("q", U.workQueueTy) 
 	    val qe = A.VarExp (q, [])
 	    (* exp : A.exp * VSet.set -> A.exp * VSet.set *)
 	    (* Consumes an expression and the set of pval-bound variables *)
