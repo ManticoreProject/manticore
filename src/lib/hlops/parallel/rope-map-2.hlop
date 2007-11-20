@@ -1,0 +1,124 @@
+(* rope-map-2.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * For mapping a function over the elements of the leaves of two ropes in parallel.
+ *)
+
+#include "types.def"
+#include "futures.def"
+#include "ropes.def"
+
+(* use_rw ropes; *)
+
+define @future1 (qt : [work_queue, thunk] / exh : exh) : future;
+define @touch1 (qf : [work_queue, future] / exh : exh) : any;
+define @rope-depth (r : rope / exh : exh) : ml_int;
+define @simple-cat (r1 : rope, r2 : rope / exh : exh) : rope;
+
+define @rope-map-2 (q : work_queue / exh : exh) :
+  fun ([fun (any / exh -> fun (any / exh -> any)), rope, rope] / exh -> rope) =
+
+  fun depth (r : rope) : int =
+    let ml_d : ml_int = @rope-depth (r / exh)
+    return (unwrap(ml_d))
+  (* end fun depth *)
+
+  fun map_2 (args : [(* f *)  fun (any / exh -> fun (any / exh -> any)),
+                     (* r1 *) rope,
+                     (* r2 *) rope] / exh : exh) : rope =
+
+    let f : fun (any, any / exh -> any) =
+      let curriedF : fun (any / exh -> fun (any / exh -> any)) = #0(args)
+      fun uncurriedF (any1 : any, any2 : any / exh : exh) : any =
+        let res1 : fun (any / exh -> any) = apply curriedF (any1 / exh)
+        let res2 : any = apply res1 (any2 / exh)
+        return (res2)
+      return (uncurriedF)
+
+    let r1 : rope = #1(args)
+    let r2 : rope = #2(args)
+
+    let CompilerBug : exn = (exn)enum(0)
+
+    fun m_list_2 (list1 : list, list2 : list / exh : exh) : list =
+      case list1
+        of NIL => return (NIL)
+         | CONS(h1:any, t1:list) =>
+             case list2
+               of NIL => return (NIL)
+                | CONS(h2:any, t2:list) =>
+                    let h : any = apply f (h1, h2 / exh)
+                    let t : list = apply m_list_2 (t1, t2 / exh)
+                    return (CONS(h,t))
+              end (* case *)
+       end (* case *)
+    (* end fun m_list_2 *)
+
+    fun m_rope_2 (r1 : rope, r2 : rope) : rope = 
+      let d1 : int = apply depth (r1)
+      let d2 : int = apply depth (r2)
+      if I32Eq(d1, d2) then
+        (* ropes are the same depth *)
+        (* if both leaves, map over the lists at the leaves *)
+        case r1
+          of LEAF(len1:ml_int, data1:list) => 
+               case r2
+                 of LEAF(len2:ml_int, data2:list) => 
+                      let newData : list = apply m_list_2 (data1, data2 / exh)
+                      let newLen : ml_int =
+                        let n1 : int = unwrap(len1)
+                        let n2 : int = unwrap(len2)
+                        let n : int = @int-min (n1, n2 / exh)
+                        let wn : ml_int = alloc(n)
+                        return (wn) 
+                      return (LEAF(newLen, newData))
+                  | CAT(_:ml_int, _:ml_int, _:rope, _:rope) => 
+                      throw exh (CompilerBug) (* they should both be leaves if depth equal *)
+               end (* case *)
+          | CAT(len1:ml_int, d1:ml_int, r11:rope, r12:rope) => 
+              (* if both cats, recur over them  *)
+              case r2
+                of CAT(len2:ml_int, d2:ml_int, r21:rope, r22:rope) =>
+                     fun th (u : unit / exh : exh) : rope =
+                       let result : rope = apply m_rope_2 (r12, r22)
+                       return (result)
+                     let qt : [work_queue, thunk] = alloc (q, th)
+                     let fut : future = @future1 (qt / exh)
+                     let qf : [work_queue, future] = alloc (q, fut) 
+                     let newLeft : rope = apply m_rope_2 (r11, r21)
+                     let newRight : rope = @touch1 (qf / exh)
+                     let newRope : rope = @simple-cat (newLeft, newRight / exh)
+                     return (newRope)
+                 | LEAF(_:ml_int, _:list) =>
+                     throw exh (CompilerBug) (* should both be CATs if depths equal *)
+              end (* case *)
+        end (* case *)
+      else if I32Gt(d1, d2) then
+        case r1
+          of CAT(_:ml_int, _:ml_int, lsub1:rope, _:rope) =>
+               let newRope : rope = apply m_rope_2 (lsub1, r2)
+               return (newRope)
+           | LEAF(_:ml_int, _:list) =>
+               throw exh (CompilerBug) (* can't be a leaf if its depth is > d2 *)
+        end (* case *)
+      else (* d2 > d1 *)
+        case r2
+          of CAT(_:ml_int, _:ml_int, lsub2:rope, _:rope) =>
+               let newRope : rope = apply m_rope_2 (r1, lsub2)
+               return (newRope) 
+           | LEAF(_:ml_int, _:list) =>
+               throw exh (CompilerBug) (* can't be a leaf if its depth is > d2 *)
+        end (* case *)    
+     (* end fun m_rope_2 *)
+
+
+    let res : rope = apply m_rope_2 (r1, r2)    
+    return (res)
+    (* end fun map_2 *)
+
+  return (map_2)
+;
+  
+        

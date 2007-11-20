@@ -73,7 +73,28 @@ structure TranslatePComp : sig
 		   end
 	      | (pes as [(p1, e1), (p2, e2)], NONE) =>  (* the two pbind, no predicate case *)
                   let val e' = trExp e
-		      val t = TypeOf.exp e
+		      val te = TypeOf.exp e
+		      val resTy = B.parrayTy te
+		      val t1 = TypeOf.pat p1
+		      val t2 = TypeOf.pat p2
+		      val x1 = Var.new ("x1", t1)
+		      val x2 = Var.new ("x2", t2)
+		      val ce = A.CaseExp (A.TupleExp [A.VarExp (x1, []), A.VarExp (x2, [])],
+					  [A.PatMatch (A.TuplePat [p1, p2], e')],
+					  te)
+		      val f = A.FunExp (x1, 
+					A.FunExp (x2, ce, te), 
+					A.FunTy (TypeOf.pat p2, te))		      
+		      val map2PQ = A.VarExp (U.map2PQ, [t1, t2, te])
+		      val mapResTy = (case TypeOf.exp map2PQ
+				        of A.FunTy (_, range) => range
+					 | _ => raise Fail "expected function type")
+		  in
+		      A.ApplyExp (A.ApplyExp (map2PQ, workQ, mapResTy),
+				  A.TupleExp [f, trExp e1, trExp e2],
+				  resTy)
+		  end
+(*
 		      fun build ([], _, xs, ps, es) =
 			    let val (xs, ps, es) = (rev xs, rev ps, rev es)
 				val tupExp = A.TupleExp (map (fn x => A.VarExp (x, [])) xs)
@@ -102,6 +123,7 @@ structure TranslatePComp : sig
 		  in
 		      build (pes, 1, [], [], [])
 		  end
+*)
 	      | (pe::_, NONE) => (* the multiple pbind, no pred case *)
                                  (* NOTE this isn't built to deal with ranges yet *)
 		                 (* FIXME magicalMap! *)

@@ -57,7 +57,7 @@ structure UnseenBasis : sig
 				 
     val map2PQ =
 	let fun mkTy ([a,b,c]) = 
-		  let val fnTy = (a ** b) --> c
+		  let val fnTy = a --> (b --> c)
 		      val argTy = AST.TupleTy [fnTy, B.parrayTy a, B.parrayTy b]
 		  in
 		      qTy --> (argTy --> (B.parrayTy c))
