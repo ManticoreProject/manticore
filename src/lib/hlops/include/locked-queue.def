@@ -1,0 +1,25 @@
+(* locked-queue.def
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Definitions for the representation of locked-queues.
+ *)
+
+#ifndef _LOCKED_QUEUE_DEF_
+#define _LOCKED-QUEUE_DEF_
+
+#include "types.def"
+
+typedef queue_elt = [any, ![any]]
+typedef locked_queue = [spin_lock, ![queue_elt], ![queue_elt], ![queue_elt], ![queue_elt]]
+
+#define LOCKED_QUEUE_HD 1
+#define LOCKED_QUEUE_TL 2
+
+#define EMPTYQ	enum(0):queue_elt
+
+#define QUEUE_ELT_HD    0
+#define QUEUE_ELT_TL    1
+
+#endif /* !_LOCKED_QUEUE_DEF_ */
