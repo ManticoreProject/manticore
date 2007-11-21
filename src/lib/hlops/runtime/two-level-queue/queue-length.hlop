@@ -9,13 +9,16 @@
 #include "runtime-offsets.def"
 #include "types.def"
 
+extern void M_Print (void*);
+extern void M_PrintPtr (void *, void *);
+
 define @queue-length (pred : fun (fgs / exh -> bool) / exh : exh) : int =
   let vp : vproc = host_vproc
   fun numElts (q : rdyq_item, i : int) : int =
       case q
        of QEMPTY => return (i)
-	| QITEM (fgs : fgs, _, link:rdyq_item) => 
-          let b : bool = apply pred (fgs /exh)
+	| QITEM (fgs : fgs, _, link:rdyq_item) =>           
+          let b : bool = if Equal (fgs, NIL) then return (FALSE) else apply pred (fgs /exh)
           let i : int = if b then return (I32Add(i,1)) else return (i)
            apply numElts (link, i)
       end   

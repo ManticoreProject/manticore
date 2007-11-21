@@ -16,6 +16,7 @@ define inline @thread-exit ( / exh : exh) noreturn;
 (* debugging *)
 extern void M_PrintDebug (void *);
 extern void M_PrintInt (int);
+extern void M_PrintPtr (void *, void *);
 
 (* Scheduler startup takes a scheduler action and installs it on all vprocs in the
  * system.  There are two cases for dispatching this action:
@@ -87,7 +88,7 @@ define @scheduler-startup (mkAct : fun (vproc / exh -> sigact), fgs : fgs, vps :
 	  do apply spawnOnAll (vps / exh)
 	  (* in *)
 	  apply spinWait (UNIT / exh)
-   
+
   (* make the scheduler instance for the host vproc *)
    let act : sigact = apply mkAct (host_vproc / exh)
     (* in *)

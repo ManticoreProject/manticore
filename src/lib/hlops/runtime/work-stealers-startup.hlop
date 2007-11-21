@@ -51,6 +51,7 @@ extern void VProcPreempt (void *);
 
 (* debugging *)
 extern void M_Print (void*);
+extern void M_Die (void*);
 extern void M_PrintInt (int);
 extern void M_PrintPtr (void *, void *);
 extern void M_PrintDebug (void*);
@@ -211,6 +212,7 @@ define @work-stealers-startup ( / exh : exh) : () =
 		do ccall M_PrintInt (fid) *)
 		let k : fiber = (fiber)s
 		let fgs : fgs = @get-fgs (self / exh)
+                do ccall M_PrintPtr ("fgs", fgs)
 		do @enqueue (host_vproc, fgs, k / exh)
 	       (* (4) *)
 		do apply resuscitateVProcs ( / exh)

@@ -42,7 +42,7 @@ fun server () = let
         spawnLoop 0;
 	recvLoop 0;
         print "Phase 1 complete\n";
-        wasteTime (0, 0);
+	wasteTime (0, 0);
         spawnLoop 0;
 	recvLoop 0;
         print "Phase 2 complete\n"

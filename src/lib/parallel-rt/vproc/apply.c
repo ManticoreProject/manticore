@@ -72,6 +72,7 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 		*rp++ = &(vp->actionStk);
 		*rp++ = &(vp->rdyQHd);
 		*rp++ = &(vp->rdyQTl);
+		*rp++ = &(vp->currentFG);
 		*rp++ = 0;
 		MinorGC (vp, roots);
 	    }

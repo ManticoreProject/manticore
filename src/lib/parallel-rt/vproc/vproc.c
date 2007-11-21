@@ -404,7 +404,7 @@ Value_t VProcDequeue (VProc_t *self)
     if (self->rdyQTl == M_NIL) {
       /* the local queue is empty, so return an item that will put us to sleep */
 	Value_t cont = AllocUniform(self, 1, PtrToValue(&ASM_VProcSleep));
-	item = Some(self, AllocUniform(self, 3, M_UNIT, cont, M_NIL));
+	item = Some(self, AllocUniform(self, 3, M_NIL, cont, M_NIL));
     } else {
         item = M_NONE;
     }
