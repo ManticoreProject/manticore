@@ -8,7 +8,7 @@ dnl NOTE: MANTICORE_DIST_VERSION is an M4 variable defined in config/aclocal.m4
 dnl
 AC_INIT(manticore,MANTICORE_DIST_VERSION,http://manticore.cs.uchicago.edu)
 
-AC_PREREQ(2.52)
+AC_PREREQ(2.59)
 AC_CONFIG_AUX_DIR(config)
 
 dnl
