@@ -60,7 +60,7 @@ structure PrintBOM : sig
 		      prExp (i, e))
 		  | B.E_Fun(fb::fbs, e) => (
 		      prLambda(i, "fun ", fb);
-		      List.app (fn fb => prLambda(i, "and ", fb)) fbs;
+		      List.app (fn fb => (indent i; prLambda(i, "and ", fb))) fbs;
 		      prExp (i, e))
 		  | B.E_Fun _ => raise Fail "empty function binding"
 		  | B.E_Cont(fb, e) => (prLambda(i, "cont ", fb); prExp (i, e))
@@ -178,7 +178,8 @@ structure PrintBOM : sig
 	     of MODULE(B.MODULE{name, externs, body}) => (
 		  prl ["module ", Atom.toString name, "\n"];
 		  List.app prExtern externs;
-		  prLambda (2, "  fun ", body))
+		  indent 2;
+		  prLambda (2, "fun ", body))
 	      | EXP e => prExp(0, e)
 	    (* end case *)
 	  end
