@@ -31,6 +31,7 @@ structure HLOpEnv : sig
   (* Basis functions *)
     val listAppendOp : HLOp.hlop
     val stringConcatOp : HLOp.hlop
+    val stringConcatListOp : HLOp.hlop
     val stringLitOp : HLOp.hlop
     val itosOp : HLOp.hlop
     val ltosOp : HLOp.hlop
@@ -131,6 +132,7 @@ structure HLOpEnv : sig
   (* high-level operations used to implement Manticore language constructs *)
     val listAppendOp = newWithExh("list-append", [pairTy(listTy, listTy)], [listTy], [])
     val stringConcatOp = newWithExh("string-concat2", [pairTy(stringTy, stringTy)], [stringTy], [])
+    val stringConcatListOp = newWithExh("string-concat-list", [listTy], [stringTy], [])
     val stringLitOp = new("string-lit", [BTy.T_Any, rawIntTy], [stringTy], [])
 
   (* high-level operations used to implement Manticore concurrency constructs *)

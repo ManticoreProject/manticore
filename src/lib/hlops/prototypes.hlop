@@ -12,6 +12,7 @@
 
 define @print (s : ml_string / exh : exh) : unit;
 define @string-concat2 (arg : [ml_string, ml_string] / _ : exh) : ml_string;
+define @string-concat-list (arg : list / _ :exh) : ml_string;
 define @itos (n : ml_int / exh : exh) : ml_string;
 define @ltos (n : ml_long / exh : exh) : ml_string;
 define @string-lit (s : string_data, len : int) : ml_string;

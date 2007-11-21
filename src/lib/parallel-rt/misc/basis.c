@@ -81,6 +81,44 @@ Value_t M_StringConcat2 (Value_t a, Value_t b)
 
 }
 
+/* M_StringConcatList:
+ * XXX - Could this somehow be defined in the HLOp language?  I'm not
+ * familiar enough with it, so I don't know. -JDR
+ */
+Value_t M_StringConcatList (Value_t l)
+{
+    VProc_t *vp = VProcSelf();
+    uint32_t len = 0;
+    Value_t data = M_NIL;
+    ListCons_t * list_p = (ListCons_t *)ValueToPtr(l);
+    ListCons_t * crnt_p = NULL;
+    SequenceHdr_t * crnt_str = NULL;
+    Byte_t * buf = NULL;
+
+    crnt_p = list_p;
+    while (crnt_p != NULL) {
+        crnt_str = (SequenceHdr_t *)ValueToPtr(crnt_p->hd);
+        /* XXX Do we support/want to support really long strings?  If
+           so, overflow detection would be a good thing here. */
+        len += crnt_str->len;
+        crnt_p = (ListCons_t *)ValueToPtr(crnt_p->tl);
+    }
+
+    data = AllocRaw(vp, len + 1);
+    buf = (Byte_t *)ValueToPtr(data);
+
+    crnt_p = list_p;
+    while (crnt_p != NULL) {
+        crnt_str = (SequenceHdr_t *)crnt_p->hd;
+        memcpy(buf, ValueToPtr(crnt_str->data), crnt_str->len);
+        buf += crnt_str->len;
+        crnt_p = (ListCons_t *)ValueToPtr(crnt_p->tl);
+    }
+
+    *buf = 0;
+    return AllocNonUniform(vp, 2, PTR(data), INT((Word_t)len));
+}
+
 /* M_GetTimeOfDay:
  */
 double M_GetTimeOfDay ()
