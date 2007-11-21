@@ -3,8 +3,6 @@ dnl
 dnl COPYRIGHT (c) 2007 The Manticore Project (manticore.cs.uchicago.edu)
 dnl All rights reserved.
 dnl
-dnl This the configuration script for autoconf version 2.59.  The
-dnl file configure.in is for older versions.
 
 dnl NOTE: MANTICORE_DIST_VERSION is an M4 variable defined in config/aclocal.m4
 dnl
