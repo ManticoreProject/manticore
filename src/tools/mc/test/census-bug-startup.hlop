@@ -1,0 +1,45 @@
+(* To run:
+
+./mc -Cscheduler=census-bug fib.pml
+
+*)
+
+#include "types.def"
+
+define inline @thread-exit ( / exh : exh) noreturn;
+define inline @run (vp : vproc, act : sigact, tid : tid, fiber : fiber / exh : exh) noreturn;
+
+define @census-bug (f : fiber_fun, act : sigact, fgs : fgs / exh : exh) : () =
+
+(* uncommenting this line corrects the census count *)    
+(*   let f : fiber_fun = f*)
+
+   fun g ( / exh : exh) : () =
+      let _ : unit = apply f (UNIT / exh)
+       return ()
+ 
+   cont k (_:unit) = 
+        do apply g ( / exh)
+        @thread-exit ( / exh)
+
+   let _ : unit = apply f (UNIT  / exh)
+
+   @run (host_vproc, act, fgs, k / exh)
+;
+
+extern void M_Print (void *);
+define @new-fgs (pinned : bool, parent : option / exh : exh) : fgs;
+
+define @census-bug-startup ( / exh : exh) : () = 
+
+  fun f (_ : unit / exh : exh) : unit =
+      do ccall M_Print ("f")
+      return (UNIT)
+
+  cont switch (s : signal) = return ()
+  let fgs : fgs = @new-fgs (TRUE, NONE / exh)
+
+  do @census-bug (f, switch, fgs / exh)
+
+ return ()  
+;
