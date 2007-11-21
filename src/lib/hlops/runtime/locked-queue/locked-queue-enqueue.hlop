@@ -15,6 +15,7 @@ extern void M_Print (void *);
 
 define @locked-queue-enqueue (q : locked_queue, elt : any / exh : exh) : () =
 
+ (* place an element at the end of the queue tail *)
   fun queueSnoc (elt : any, qt : queue_elt / exh : exh) : queue_elt =
       let rest : ![any] = galloc (LOCKED_QUEUE_EMPTY)
       let qElt : queue_elt = galloc (elt, rest)
