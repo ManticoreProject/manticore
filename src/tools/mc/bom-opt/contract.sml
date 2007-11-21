@@ -533,49 +533,43 @@ structure Contract : sig
    *)
     and inlineApply {env : BOMUtil.subst, kid, args, params, body : BOM.exp} = let
 	(* FIXME -- Do this right! *)
-	  fun needsCast (fromTy, toTy) =
-	        (case fromTy
-                   of BTy.T_Any => not (BOMTyUtil.equal (BTy.T_Any, toTy)) 
-		    | BTy.T_Tuple (b, ts) =>
-		        (case toTy
-			   of BTy.T_Tuple (b', ts') => ListPair.exists needsCast (ts, ts')
-			    | _ => false
-			   (* end case *))
-		    | _ => false
-		  (* end case *))
-	  fun mkCasts ([], [], args', bod) = (rev args', bod)
+	  fun needsCast (fromTy, toTy) = (case fromTy
+		 of BTy.T_Any => not (BOMTyUtil.equal (BTy.T_Any, toTy)) 
+		  | BTy.T_Tuple(b, ts) => (case toTy
+		       of BTy.T_Tuple (b', ts') => ListPair.exists needsCast (ts, ts')
+			| _ => false
+		      (* end case *))
+		  | _ => false
+		(* end case *))
+	  fun mkCasts ([], [], args', casts) = (List.rev args', List.rev casts)
 	    | mkCasts (a::_, [], _, _) = raise Fail "more actuals than formals"
 	    | mkCasts ([], f::_, _, _) = raise Fail "more formals than actuals"
-	    | mkCasts (ac::acs, fm::fms, args', bod) =
-	        let val actTy = BV.typeOf ac
-		    val frmTy = BV.typeOf fm
+	    | mkCasts (ac::acs, fm::fms, args', casts) = let
+		val actTy = BV.typeOf ac
+		val fmTy = BV.typeOf fm
 		in
-		    if not (needsCast (actTy, frmTy))
-		    then mkCasts (acs, fms, ac::args', bod)
-		    else
-			let val name = 
-				let val x = BV.nameOf ac
-				in 
-				    concat ["_cast",
-					    (if String.isPrefix "_" x then "" else "_"),
-					    x]
-				end
-			    val c = BV.new (name, frmTy)
-			    val _ = Census.incUseCnt c
-			    val bod' = B.mkStmt ([c], B.E_Cast (frmTy, ac), bod)
-			in
-			    mkCasts (acs, fms, c::args', bod')
-			end
+		  if not (needsCast (actTy, fmTy))
+		    then mkCasts (acs, fms, ac::args', casts)
+		    else let
+		      val name = let val x = BV.nameOf ac
+			    in 
+			      concat ["_cast", (if String.isPrefix "_" x then "" else "_"), x]
+			    end
+		      val c = BV.new (name, fmTy)
+		      val _ = Census.incUseCnt c (* because the adjust will decrement the count *)
+		      val cast = ([c], B.E_Cast(fmTy, ac))
+		      in
+			mkCasts (acs, fms, c::args', cast::casts)
+		      end
 		end
-	  val (args', body') = mkCasts (args, params, [], body)
+	  val (args', casts) = mkCasts (args, params, [], [])
 	  val env' = U.extend' (env, params, args')
-	  val body'' = doExp (env', body', kid)
 	  fun adjust (arg, param) = (
 		combineAppUseCnts (arg, param);
 		useCntRef arg -= 1)
 	  in
 	    ListPair.app adjust (args', params);
-	    doExp (env', body'', kid)
+	    B.mkStmts (casts, doExp (env', body, kid))
 	  end
 
     fun contract (module as B.MODULE{name, externs, body}) = let
