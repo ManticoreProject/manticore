@@ -17,21 +17,22 @@ extern void M_PrintDebug (void*);
 
 define @future1-work-sharing ( / exh : exh) : future_spawn_fn =
 
- (* fiber-group storage for the parent *)
+ (* fiber-group storage of the parent *)
   let parentFGS : fgs = @get-fgs (host_vproc / exh)
 
  (* shared queue for the workers *)
   let q : locked_queue = @locked-queue-new ( / exh)
 
  (* spawn a future *)
-  fun spawn (fut : future / exh : exh) : () = 
+  fun spawn (fut : future / exh : exh) : unit = 
       (* FIXME: do something about the exception handler *)
       fun wrap (_ : unit / exh : exh) : unit =
           let arg : [future] = wrap (fut)
           let _ : any = @fut-touch1 (arg)
           return (UNIT)
       let k : fiber = @fiber (wrap / exh)
-      @locked-queue-enqueue (q, thunk / exh)
+      do @locked-queue-enqueue (q, fut / exh)
+      return (UNIT)
 
  (* make the spawn function accessible to computations via fiber-group storage *)
   let parent : option = SOME (parentFGS)

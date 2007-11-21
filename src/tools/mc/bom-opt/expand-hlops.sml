@@ -97,6 +97,7 @@ structure ExpandHLOps : sig
 		      end
 		(* end case *))																			
 	  in
+            Census.initLambda body;
 	    if !changed
 	      then SOME(B.mkModule(name, getExterns(), body))
 	      else NONE

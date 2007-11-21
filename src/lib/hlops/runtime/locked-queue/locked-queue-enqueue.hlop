@@ -11,28 +11,39 @@
 define inline @spin-lock (lock : spin_lock / exh : exh) : unit;
 define inline @spin-unlock (lock : spin_lock / exh : exh) : unit;
 
+extern void M_Print (void *);
+
 define @locked-queue-enqueue (q : locked_queue, elt : any / exh : exh) : () =
 
-  fun queueSnoc (elt : any, q : queue_elt / exh : exh) : () =
-      let qElt : queue_elt = galloc (elt, EMPTYQ)
-      let qEltRef : ![queue_elt] = galloc (elt)
-      UPDATE(QUEUE_ELT_TL, q, qEltRef)
+  fun queueSnoc (elt : any, qt : queue_elt / exh : exh) : queue_elt =
+      let rest : ![any] = galloc (LOCKED_QUEUE_EMPTY)
+      let qElt : queue_elt = galloc (elt, rest)
 
- (* promote elt before entering the lock *)
+      do if Equal (qt, LOCKED_QUEUE_EMPTY) 
+            then return () 
+            else let qElt : any = (any)qElt
+                 let tl : ![any] = SELECT(QUEUE_ELT_TL, qt)
+                 do #0(tl) := qElt
+                 return ()
+
+      return (qElt)
+
+ (* promote elt before acquiring the lock *)
   let elt : any = promote (elt)
 
   let spinLock : spin_lock = #0(q)
   let _ : unit = @spin-lock (spinLock / exh)
 
-    let qHdRef : ![queue_elt] = SELECT (LOCKED_QUEUE_HD, q)
-    let qTlRef : ![queue_elt] = SELECT (LOCKED_QUEUE_TL, q)
+    let qHdRef : ![queue_elt] = SELECT(LOCKED_QUEUE_HD, q)
+    let qHd : queue_elt = unwrap (qHdRef)
+    let qTlRef : ![queue_elt] = SELECT(LOCKED_QUEUE_TL, q)
     let qTl : queue_elt = unwrap (qTlRef)
     let qTl : queue_elt = apply queueSnoc (elt, qTl / exh)
 
-    do qTlRef := qTl
-    do if Equal (qHdRef, QEMPTY) 
-          then    (* the queue was empty *)
-               do qHdRef := qTl
+    do #0(qTlRef) := qTl
+    do if Equal (qHd, LOCKED_QUEUE_EMPTY) 
+          then (* the queue was empty *)
+               do #0(qHdRef) := qTl
                return ()
           else return ()
 

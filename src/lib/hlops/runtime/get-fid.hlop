@@ -21,10 +21,10 @@ define @get-fid (vp : vproc / exh : exh) : fid =
   let fid : option = @assoc-list-lookup (TAG_FID, alistRef / exh)
   case fid
    of NONE => 
-      let id : int = ccall FreshFiberId ()
-      let id : [int] = wrap (id)
+      let idNum : int = ccall FreshFiberId ()
+      let id : [int] = wrap (idNum)
       do @assoc-list-add (TAG_FID, id, alistRef / exh)
-      return (id)
+      return (idNum)
     | SOME (fid : [fid]) => 
       let fid : fid = #0(fid)
       return (fid)

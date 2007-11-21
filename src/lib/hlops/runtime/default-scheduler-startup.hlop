@@ -3,29 +3,39 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Install the default initial scheduler action on the vprocs in a system.
+ * The default scheduler action that does not support load balancing for threads.
  *)
 
 #include "types.def"
+#include "locked-queue.def"
 
 define inline @enqueue (vp : vproc, fgs : fgs, fiber : fiber / exh : exh) : ();
 define inline @dequeue (vp : vproc / exh : exh) : rdyq_item;
 define inline @run (vp : vproc, act : sigact, fgs : fgs, fiber : fiber / exh : exh) noreturn;
-define @scheduler-startup (act : sigact / exh : exh) : ();
+
+define @scheduler-startup (mkAct : fun (vproc / exh -> sigact), fgs : fgs, vps : list / exh : exh) : ();
+
 define @get-fgs (vp : vproc / exh : exh) : fgs;
+define @new-fgs (pinned : bool, parent : option / exh : exh) : fgs;
+
+extern void *ListVProcs (void *) __attribute__((alloc));
 
 extern void M_PrintDebug (void *);
 extern void M_Print (void *);
+extern void M_PrintLong (long);
 
 define @default-scheduler-startup ( / exh : exh) : () = 
+
   cont switch (s : signal) =
     let vp : vproc = host_vproc
+
     cont dispatch () =
       let qitem : rdyq_item = @dequeue (vp / exh)
       let item : [fgs, fiber, rdyq_item] = ([fgs, fiber, rdyq_item]) qitem
       let fgs : fgs = #0 (item)
       let fiber : fiber = #1 (item)
       @run (vp, switch, fgs, fiber / exh)
+
     if Equal (s, STOP)
       then throw dispatch ()
       else do ccall M_Print ("preemption\n")
@@ -33,6 +43,14 @@ define @default-scheduler-startup ( / exh : exh) : () =
            let fgs : fgs = @get-fgs (vp / exh)
            do @enqueue (vp, fgs, k / exh)
            throw dispatch () 
-  do @scheduler-startup (switch / exh)
+
+  fun mkSwitch (_ : vproc / exh : exh) : sigact = return (switch)
+
+ (* get handles for all vprocs *)
+  let vps : list = ccall ListVProcs(host_vproc)
+ (* fiber-group storage for the top-level scheduler *)
+  let fgs : fgs = @new-fgs (TRUE, NONE / exh)
+ (* install the scheduler on all vprocs *)
+  do @scheduler-startup (mkSwitch, fgs, vps / exh)
   return ()
 ;

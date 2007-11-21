@@ -9,19 +9,16 @@
 #include "runtime-offsets.def"
 #include "types.def"
 
-extern void *ListVProcs (void *) __attribute__((alloc));
-
-define inline @spawn-on (f : fun (unit / exh -> unit), dst : vproc / exh : exh) : tid;
+define inline @spawn-on (f : fun (unit / exh -> unit), fgs : fgs, dst : vproc / exh : exh) : ();
 define inline @run (vp : vproc, act : sigact, tid : tid, fiber : fiber / exh : exh) noreturn;
 define inline @thread-exit ( / exh : exh) noreturn;
-define @new-fgs (pinned : bool, parent : option / exh : exh) : fgs;
 
 (* debugging *)
 extern void M_PrintDebug (void *);
 extern void M_PrintInt (int);
 
 (* Scheduler startup takes a scheduler action and installs it on all vprocs in the
- *  system.  There are two cases for dispatching this action:
+ * system.  There are two cases for dispatching this action:
  *   1. We run one action on the current vproc.
  *   2. For the other vprocs we dispatch a dummy fiber that installs the
  *      action.
@@ -29,20 +26,20 @@ extern void M_PrintInt (int);
  * on vproc queue operations, the vprocs synchronize on the syncPoint barrier.
  *)
 
-define @scheduler-startup (act : sigact / exh : exh) : () =
+define @scheduler-startup (mkAct : fun (vproc / exh -> sigact), fgs : fgs, vps : list / exh : exh) : () =
     let syncPoint : ![int] = galloc(0)
 
     let self : vproc = host_vproc
 
-  (* length of a list *)
+   (* length of a list *)
     fun length (ls : list, i : int) : int =
 	  case ls
 	   of NIL => return (i)
 	    | CONS (_ : any, rest : list) => apply length (rest, I32Add(i,1))
 	  end
 
-    let vps : list = ccall ListVProcs(self)
     let nVProcs : int = apply length (vps, 0)
+   (* only count other vprocs *)
     let nVProcs : int = I32Sub (nVProcs, 1)
 
    (* wait for all vprocs to have started the init function *)
@@ -53,19 +50,25 @@ define @scheduler-startup (act : sigact / exh : exh) : () =
 	else
 	  apply spinWait (UNIT / exh)
 
+(* FIXME: eliminating this binding causes a bogus use count *)
+   let mkAct : fun (vproc / exh -> sigact) = mkAct
+
+   (* activate the scheduler *)
     fun init (_ : unit / exh : exh) : unit =	  
           do vpstore (ATOMIC, host_vproc, TRUE)
-	  cont k (_ : unit) = 
+         (* dummy fiber synchronizes on the barrier and then exits immediately to activate the scheduler *)
+	  cont dummyK (_ : unit) = 
                do vpstore (ATOMIC, host_vproc, TRUE)
                do ccall M_Print ("Initializing top-level scheduler\n")
                let x : int = I32FetchAndAdd (syncPoint, 1)
                do apply spinWait (UNIT / exh)
                @thread-exit ( / exh)
-          let fgs : fgs = @new-fgs (TRUE, NONE / exh)
+        (* make the scheduler instance for the host vproc *)
+         let act : sigact = apply mkAct (host_vproc / exh)
 	  (* in *)
-	    @run (host_vproc, act, fgs, k / exh)
+	    @run (host_vproc, act, fgs, dummyK / exh)
 
-  (* spawn the init function on all of the other vprocs *)
+   (* spawn the init function on all of the other vprocs *)
     fun spawnOnAll (vps : list / exh : exh) : () =
 	  case vps
 	   of NIL => return ()
@@ -73,10 +76,11 @@ define @scheduler-startup (act : sigact / exh : exh) : () =
 		if Equal(vp, self) then
 		  apply spawnOnAll (rest / exh)
 		else
-		  let _ : fgs = @spawn-on (init, vp / exh)
+		  do @spawn-on (init, fgs, vp / exh)
 		  (* in *)
 		    apply spawnOnAll (rest / exh)
 	  end
+
     cont startup (_ : unit) =
 	  do vpstore(ATOMIC, self, TRUE)
 	(* install the scheduler on remote vprocs *)
@@ -84,8 +88,8 @@ define @scheduler-startup (act : sigact / exh : exh) : () =
 	  (* in *)
 	  apply spinWait (UNIT / exh)
    
-   let fgs : fgs = @new-fgs (TRUE, NONE / exh)
-
+  (* make the scheduler instance for the host vproc *)
+   let act : sigact = apply mkAct (host_vproc / exh)
     (* in *)
       @run (self, act, fgs, startup / exh)
 ;

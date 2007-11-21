@@ -29,14 +29,17 @@ define inline @list-append (arg : [list, list] / exh : exh) : list;
 (* scheduling hlops *)
 define inline @fiber (f : fiber_fun / exh : exh) : fiber;
 define inline @run (vp : vproc, act : sigact, fgs : fgs, fiber : fiber / exh : exh) noreturn;
-define inline @enqueue-on-vproc (dst : vproc, fgs : fgs, k : fiber / exh : exh) : ();
 define inline @thread-exit ( / exh : exh) noreturn;
-define @scheduler-startup (act : sigact / exh : exh) : ();
-define @is-queue-gt-one (/ exh : exh) : bool;
-define @is-queue-empty (/ exh : exh) : bool;
+
+define @scheduler-startup (mkAct : fun (vproc / exh -> sigact), fgs : fgs, vps : list / exh : exh) : ();
+
 define @new-fgs (pinned : bool, parent : option / exh : exh) : fgs;
 define @get-fgs (vp : vproc / exh : exh) : fgs;
+define @get-fid (vp : vproc / exh : exh) : fid;
 
+define inline @enqueue-on-vproc (dst : vproc, fgs : fgs, k : fiber / exh : exh) : ();
+define @is-queue-gt-one (/ exh : exh) : bool;
+define @is-queue-empty (/ exh : exh) : bool;
 define @queue-length (pred : fun (fgs / exh -> bool) / exh : exh) : int;
 define inline @dequeue-with-pred (vp : vproc, pred : fun (fgs / exh -> bool) / exh : exh) : option;
 
@@ -53,14 +56,15 @@ extern void M_PrintPtr (void *, void *);
 extern void M_PrintDebug (void*);
 extern void M_PrintLong (long);
 
-define @get-fid (vp : vproc / exh : exh) : fid;
-
 define @work-stealers-startup ( / exh : exh) : () =
   
    fun isUnpinned (fgs : fgs / exh : exh) : bool =
        let pinned : bool = #2(fgs)
        return (BNot (pinned))
 
+  (* given a host vproc and a list of vprocs, order those vprocs by the order in which the work stealer 
+   * should visit them 
+   *)
    fun orderVProcs (self : vproc, vps : list, acc : list / exh : exh) : list = 
        case vps
         of NIL => return (acc)
@@ -72,14 +76,17 @@ define @work-stealers-startup ( / exh : exh) : () =
               else apply orderVProcs (self, vps, CONS (vp, acc) / exh)
        end
 
+  (* apply a function while holding a lock *)
    fun withLock (lock : spin_lock, f : fun (unit / exh -> unit) / exh : exh) : () =
        let _ : unit = @spin-lock (lock / exh)
        let _ : unit = apply f (UNIT / exh)
        let _ : unit = @spin-unlock (lock / exh)
        return ()
 
+  (* put schedulers to sleep *)
    let sleepingLock : spin_lock = galloc (FALSE)
    let sleeping : ![list] = galloc (NIL)
+
   (* add the vproc to the sleeping list *)
    fun addToSleeping (vp : vproc / exh : exh) : () =
        fun doit (_ : unit / exh : exh) : unit =
@@ -89,6 +96,7 @@ define @work-stealers-startup ( / exh : exh) : () =
            do #0(sleeping) := sleepingVProcs
            return (UNIT)
        apply withLock (sleepingLock, doit / exh)
+
   (* given some number of stealable threads, resuscitate at most that many sleeping vprocs *)
    fun resuscitates (n : int / exh : exh) : list =
        let resuscitates : ![list] = galloc (NIL)
@@ -113,6 +121,7 @@ define @work-stealers-startup ( / exh : exh) : () =
        do apply withLock (sleepingLock, doit / exh)
        let rs : list = #0(resuscitates)
        return (rs)
+
   (* resuscitate any sleeping vprocs if there are stealable threads on the ready queue *)
    fun resuscitateVProcs (  / exh : exh) : () =
        let stealableFibers : int = @queue-length (isUnpinned / exh)
@@ -133,80 +142,87 @@ define @work-stealers-startup ( / exh : exh) : () =
                return ()
           else return ()
 
-   cont wsSwitch (s : signal) =
-      (*do ccall M_Print ("WS switch\n")*)
-      let self : vproc = host_vproc
-      let vprocs : list = ccall ListVProcs (self)
+   fun mkWsSwitch (self : vproc / exh : exh) : sigact = 
+       let vprocs : list = ccall ListVProcs (self)
       (* (0) *)
-      let vprocs : list = apply orderVProcs (self, vprocs, NIL / exh)
+       let vprocs : list = apply orderVProcs (self, vprocs, NIL / exh)
 
-      cont dispatch () =
-         let vp : vproc = host_vproc
-         let qitem : rdyq_item = @dequeue (vp / exh)
-         let item : [fgs, fiber, rdyq_item] = ([fgs, fiber, rdyq_item]) qitem
-         let fgs : fgs = #0 (item)
-         let fiber : fiber = #1 (item)
-         @run (vp, wsSwitch, fgs, fiber / exh)
+       cont wsSwitch (s : signal) =
+	  (*do ccall M_Print ("WS switch\n")*)
+	  cont dispatch () =
+	     let vp : vproc = host_vproc
+	     let qitem : rdyq_item = @dequeue (vp / exh)
+	     let item : [fgs, fiber, rdyq_item] = ([fgs, fiber, rdyq_item]) qitem
+	     let fgs : fgs = #0 (item)
+	     let fiber : fiber = #1 (item)
+	     @run (vp, wsSwitch, fgs, fiber / exh)
 
-      (* the maximum number of steal attempts before going to sleep *)
-      let maxStealAttempts : int = 1000
+	  (* the maximum number of steal attempts before going to sleep *)
+	  let maxStealAttempts : int = 1000
 
-      (* (2) *)
-      cont steal (vprocs' : list) =
-        case vprocs' 
-          of NIL =>
-	         do ccall M_Print ("Going to sleep\n")
-                (* (3) *)
-                 do apply addToSleeping (self / exh)
-                 throw dispatch ()
-           | CONS (vp : vproc, vprocs' : list) => 
-                 (* (2.1) *)
-                 do ccall M_Print ("Sending thief to vproc\n")
-                 cont thiefFiber (x : unit) = 
-                    do ccall M_Print ("Thief fiber\n")
-                    let hasElts : bool = @is-queue-gt-one ( / exh)
-                    if hasElts
-                       then (* (2.2) *)
-                            do ccall M_Print ("Stealing a remote thread\n")
-                            let qitemOpt : option = @dequeue-with-pred (host_vproc, isUnpinned / exh)
-                            case qitemOpt
-			     of NONE => 
-				do ccall M_Print ("Nothing to steal on this vproc\n")
-                                throw steal (vprocs')
-			      | SOME (qitem : rdyq_item) =>
-                                let item : [fgs, fiber, rdyq_item] = ([fgs, fiber, rdyq_item]) qitem
-                                let fgs : fgs = #0 (item)
-                                let fiber : fiber = #1 (item)
-			        do @enqueue-on-vproc (self, fgs, fiber / exh)
-                                (* Wake up the vproc *)
-                                do ccall VProcPreempt (self)
-                                @thread-exit (/ exh)
-                            end
-                       else (* (2.3) *)
-                            do ccall M_Print ("Thief is giving up on this vproc\n")
-                            throw steal (vprocs')
-                let thiefFGS : fgs = @new-fgs (TRUE, NONE / exh)
-                do @enqueue-on-vproc (vp, thiefFGS, thiefFiber / exh)
-                throw dispatch ()
-        end
+	  (* (2) *)
+	  cont steal (vprocs' : list) =
+	    case vprocs' 
+	      of NIL =>
+		     do ccall M_Print ("Going to sleep\n")
+		    (* (3) *)
+		     do apply addToSleeping (self / exh)
+		     throw dispatch ()
+	       | CONS (vp : vproc, vprocs' : list) => 
+		     (* (2.1) *)
+		     do ccall M_Print ("Sending thief to vproc\n")
+		     cont thiefFiber (x : unit) = 
+			do ccall M_Print ("Thief fiber\n")
+		      let hasElts : bool = @is-queue-gt-one ( / exh)
+		      if hasElts
+			 then (* (2.2) *)
+			      do ccall M_Print ("Stealing a remote thread\n")
+			      let qitemOpt : option = @dequeue-with-pred (host_vproc, isUnpinned / exh)
+			      case qitemOpt
+			       of NONE => 
+				  do ccall M_Print ("Nothing to steal on this vproc\n")
+				  throw steal (vprocs')
+				| SOME (qitem : rdyq_item) =>
+				  let item : [fgs, fiber, rdyq_item] = ([fgs, fiber, rdyq_item]) qitem
+				  let fgs : fgs = #0 (item)
+				  let fiber : fiber = #1 (item)
+				  do @enqueue-on-vproc (self, fgs, fiber / exh)
+				  (* Wake up the vproc *)
+				  do ccall VProcPreempt (self)
+				  @thread-exit (/ exh)
+			      end
+			 else (* (2.3) *)
+			      do ccall M_Print ("Thief is giving up on this vproc\n")
+			      throw steal (vprocs')
+		  let thiefFGS : fgs = @new-fgs (TRUE, NONE / exh)
+		  do @enqueue-on-vproc (vp, thiefFGS, thiefFiber / exh)
+		  throw dispatch ()
+	  end
 
-      (* signal handling *)      
-      if Equal (s, STOP) 
-         then let qEmpty : bool = @is-queue-empty ( / exh)
-              if qEmpty
-                 then throw steal (vprocs)
-                 else (* (1) *)
-                      throw dispatch ()
-         else (*do ccall M_Print("Handling preemption for thread\n")*)            
-              let fid : fid = @get-fid (self / exh)
-              do ccall M_PrintInt (fid)
-              let k : fiber = (fiber)s
-              let fgs : fgs = @get-fgs (self / exh)
-              do @enqueue (host_vproc, fgs, k / exh)
-             (* (4) *)
-              do apply resuscitateVProcs ( / exh)
-              throw dispatch ()
+	(* signal handling *)      
+	if Equal (s, STOP) 
+	   then let qEmpty : bool = @is-queue-empty ( / exh)
+		if qEmpty
+		   then throw steal (vprocs)
+		   else (* (1) *)
+			throw dispatch ()
+	   else (*do ccall M_Print("Handling preemption for thread\n")*)            
+(*		let fid : fid = @get-fid (self / exh)
+		do ccall M_PrintInt (fid) *)
+		let k : fiber = (fiber)s
+		let fgs : fgs = @get-fgs (self / exh)
+		do @enqueue (host_vproc, fgs, k / exh)
+	       (* (4) *)
+		do apply resuscitateVProcs ( / exh)
+		throw dispatch ()
 
-   do @scheduler-startup (wsSwitch / exh)
+     return (wsSwitch)
+
+  (* get handles for all vprocs *)
+   let vps : list = ccall ListVProcs(host_vproc)
+  (* fiber-group storage for the top-level scheduler *)
+   let fgs : fgs = @new-fgs (TRUE, NONE / exh)
+  (* install the scheduler on all vprocs *)
+   do @scheduler-startup (mkWsSwitch, fgs, vps / exh)
    return ()
 ;

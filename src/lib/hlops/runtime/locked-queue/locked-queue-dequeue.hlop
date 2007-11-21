@@ -18,17 +18,22 @@ define @locked-queue-dequeue (q : locked_queue / exh : exh) : option =
 
     let qHdRef : ![queue_elt] = SELECT(LOCKED_QUEUE_HD, q)
     let qTlRef : ![queue_elt] = SELECT(LOCKED_QUEUE_TL, q)
+    let qTl : queue_elt = unwrap (qTlRef)
     let qHd : queue_elt = unwrap (qHdRef)
-    if Equal (qHd, QEMPTY)
-       then let _ : unit = @spin-unlock (spinLock / exh)
+    if Equal (qHd, LOCKED_QUEUE_EMPTY)
+       then (* the queue is empty *)
+            let _ : unit = @spin-unlock (spinLock / exh)
             return (NONE)
-       else let qNext : any = SELECT(QUEUE_ELT_TL, qHd)
-            let qNext : locked_queue = (locked_queue)qNext
-            do if Equal (qHdRef, qTlRef)
-                  then do qTlRef := QEMPTY
+       else (* the queue is nonempty, so take an element off the queue head *)
+            let qNextRef : ![any] = SELECT(QUEUE_ELT_TL, qHd)
+            let qNext : any = #0(qNextRef)
+            let qNext : queue_elt = (queue_elt)qNext
+            do if Equal (qHd, qTl)
+                  then (* there is one element on the queue, so clear out the tail *)
+                       do #0(qTlRef) := LOCKED_QUEUE_EMPTY
                        return ()
                   else return ()
-            do qHdRef := qNext
+            do #0(qHdRef) := qNext
             let elt : any = SELECT(QUEUE_ELT_HD, qHd)
             let v : option = SOME (elt)
             let _ : unit = @spin-unlock (spinLock / exh)

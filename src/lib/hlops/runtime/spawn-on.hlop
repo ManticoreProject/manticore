@@ -8,20 +8,15 @@
 
 #include "types.def"
 
-extern void EnqueueOnVProc (void *, void *, void *, void *) __attribute__((alloc));
-
 define @dispatch (vp : vproc / exh : exh) noreturn;
-define @new-fgs (pinned : bool, parent : option / exh : exh) : fgs;
+define inline @enqueue-on-vproc (dst : vproc, fgs : fgs, k : fiber / exh : exh) : ();
 
-define inline @spawn-on (f : fun (unit / exh -> unit), dst : vproc / exh : exh) : fgs =
+define inline @spawn-on (f : fun (unit / exh -> unit), fgs : fgs, dst : vproc / exh : exh) : () =
   cont fiber (x : unit) =
     cont exh (exn : exn) = @dispatch (host_vproc / exh)
     let (_ : unit) = apply f (UNIT / exh)
     @dispatch (host_vproc / exh)
   let vp : vproc = host_vproc
-  let fgs : fgs = @new-fgs(TRUE, NONE / exh)
-  (* the fiber must be in the global heap before enqueueing on a remote vproc! *)
-  let fiber:fiber = promote (fiber)
-  do ccall EnqueueOnVProc(vp, dst, fgs, fiber)
-  return (fgs)
+  do @enqueue-on-vproc (dst, fgs, fiber / exh)
+  return ()
 ;
