@@ -32,8 +32,8 @@ define inline @dequeue-with-pred (vp : vproc, pred : fun (fgs / exh -> bool) / e
  (* search the ready queue (both the head and tail lists) for a thread matching the predicate *)
   fun loop (hd : rdyq_item, front : rdyq_item / exh : exh) : option =
       case hd
-       of QITEM (fgs:fgs, k:fiber, link:rdyq_item) => 
-           let b : bool = apply pred (fgs / exh)
+       of QITEM (fgs:fgs, k:fiber, link:rdyq_item) =>
+           let b : bool = if Equal (fgs, NIL) then return (FALSE) else apply pred (fgs /exh)
            if b
               then (* found something that satisfies the predicate *)
                    let lst : rdyq_item = apply reverseQueue (front, link / exh)

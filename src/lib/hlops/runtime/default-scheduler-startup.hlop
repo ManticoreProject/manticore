@@ -23,6 +23,7 @@ extern void *ListVProcs (void *) __attribute__((alloc));
 extern void M_PrintDebug (void *);
 extern void M_Print (void *);
 extern void M_PrintLong (long);
+extern void M_PrintPtr (void *, void *);
 
 define @default-scheduler-startup ( / exh : exh) : () = 
 

@@ -11,12 +11,14 @@
 
 define inline @fiber (f : fiber_fun) : fiber;
 define inline @run (vp : vproc, act : sigact, tid : tid, fiber : fiber / exh : exh) noreturn;
+define @new-fgs (pinned : bool, parent : option / exh : exh) : fgs;
 
 define inline @schedule-fiber (act : sigact, f : fiber_fun / exh : exh) : fiber =
    fun init (_ : unit / exh : exh) : unit = 
        do vpstore(ATOMIC, host_vproc, TRUE)
+       let fgs : fgs = @new-fgs (FALSE, NONE)
        let k : fiber = @fiber (f / exh)
-       do @run (host_vproc, act, enum(0), k / exh)
+       do @run (host_vproc, act, fgs, k / exh)
        return (UNIT)
    (* k looks like a normal fiber, but it runs f under the action act *)
    let k : fiber = @fiber (init / exh)

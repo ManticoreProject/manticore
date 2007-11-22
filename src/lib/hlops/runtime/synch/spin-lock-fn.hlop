@@ -1,0 +1,39 @@
+(* spin-lock-fn.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Generic spin locks that are parameterized over a name, a container type and an offset that gives
+ * the location of the lock.
+ *)
+
+#ifndef _SPIN_LOCK_FN_
+#define _SPIN_LOCK_FN_
+
+#include "types.def"
+
+#define define_spin_lock(sl_name, sl_ty, sl_offset)                                                     \
+                                                                                                        \
+define inline @spin-lock-sl_name (lock : sl_ty / exh : exh) : unit =                                    \
+    fun spin (_ : unit / exh : exh) : unit =                                                            \
+	if BCAS(&sl_offset(lock),FALSE,TRUE)                                                            \
+           then return (UNIT)                                                                           \
+           else apply spin (UNIT / exh)                                                                 \
+    (* in *)                                                                                            \
+      apply spin (UNIT / exh)                                                                           \
+;                                                                                                       \
+                                                                                                        \
+define inline @spin-unlock-sl_name (lock : sl_ty / exh : exh) : unit =                                  \
+    do #sl_offset(lock) := FALSE                                                                        \
+    return (UNIT)                                                                                       \
+;                                                                                                       \
+                                                                                                        \
+(* apply a function while holding a lock *)                                                             \
+define inline @with-lock-sl_name (lock : sl_ty, f : fun (unit / exh -> unit) / exh : exh) : unit =      \
+    let _ : unit = @spin-lock-sl_name (lock / exh)                                                      \
+    let _ : unit = apply f (UNIT / exh)                                                                 \
+    let _ : unit = @spin-unlock-sl_name (lock / exh)                                                    \
+    return (UNIT)                                                                                       \
+;
+
+#endif /*! _SPIN_LOCK_FN_ */

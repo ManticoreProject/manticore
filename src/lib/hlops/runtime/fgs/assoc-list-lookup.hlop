@@ -8,18 +8,22 @@
  *)
 
 #include "types.def"
+#include "../synch/spin-lock-fn.hlop"
+define_spin_lock(fgs, fgs, FGS_LOCK_OFFSET)
 
-define @assoc-list-lookup (atag : assoc_tag, alist : ![assoc_list] / exh : exh) : option =
+define @assoc-list-lookup (atag : assoc_tag, fgs : fgs / exh : exh) : option =
+  let _ : unit = @spin-lock-fgs (fgs / exh)
   fun alistLookup (atag : assoc_tag, alist : assoc_list / exh : exh) : option =
       case alist
        of ANIL => return (NONE)
 	| ACONS (atag' : assoc_tag, elt : any, alist : assoc_list) => 
 	  if Equal (atag, atag')
-	     then let v : option = SOME (elt)
+	      then let v : option = SOME (elt)
                   return (v)
-             else apply alistLookup (atag, alist / exh)
+              else apply alistLookup (atag, alist / exh)
        end
-  let alist : assoc_list = #0(alist)
-  let v : option = apply alistLookup (atag, alist / exh)
-  return (v)
+   let alist : assoc_list = SELECT(FGS_ALIST_OFFSET, fgs)
+   let _ : unit = @spin-unlock-fgs (fgs / exh)
+   let v : option = apply alistLookup (atag, alist / exh) 
+   return (v)
 ;

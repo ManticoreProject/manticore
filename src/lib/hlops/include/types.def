@@ -28,11 +28,12 @@ typedef assoc_tag = any;
 (* fiber-group storage 
  *   (lock, killed, pinned, parent (optional), auxilliary storage)
  *)
-typedef fgs = [spin_lock, ![bool], bool, option, ![assoc_list]];
+typedef fgs = ![bool, bool, bool, option, assoc_list];
 typedef tid = fgs;
 (* unique fiber id *)
 typedef fid = int;
-#define ALIST_OFFSET 4
+#define FGS_ALIST_OFFSET 4
+#define FGS_LOCK_OFFSET  0
 
 typedef ml_int = [int];
 typedef ml_long = [long];

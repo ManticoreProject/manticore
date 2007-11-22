@@ -51,9 +51,6 @@ define @scheduler-startup (mkAct : fun (vproc / exh -> sigact), fgs : fgs, vps :
 	else
 	  apply spinWait (UNIT / exh)
 
-(* FIXME: eliminating this binding causes a bogus use count *)
-   let mkAct : fun (vproc / exh -> sigact) = mkAct
-
    (* activate the scheduler *)
     fun init (_ : unit / exh : exh) : unit =	  
           do vpstore (ATOMIC, host_vproc, TRUE)
