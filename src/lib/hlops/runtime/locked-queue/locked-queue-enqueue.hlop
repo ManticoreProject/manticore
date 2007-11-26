@@ -10,6 +10,8 @@
 #include "../synch/spin-lock-fn.hlop"
 define_spin_lock(lq, locked_queue, LOCKED_QUEUE_LOCK)
 
+define inline @enqueue (vp : vproc, fgs : fgs, fiber : fiber / exh : exh) : ();
+
 extern void M_Print (void *);
 
 define @locked-queue-enqueue (q : locked_queue, elt : any / exh : exh) : () =
@@ -19,7 +21,12 @@ define @locked-queue-enqueue (q : locked_queue, elt : any / exh : exh) : () =
 
   let _ : unit = @spin-lock-lq (q / exh)
 
-   (* place an element at the end of the queue tail *)
+   (* exit the enqueue operation *)
+    cont exitK () = 
+         let _ : unit = @spin-unlock-lq (q / exh)
+         return ()
+
+   (* place an element at the queue tail *)
     fun queueSnoc (elt : any, qt : queue_elt / exh : exh) : queue_elt =
 	let qElt : queue_elt = galloc (elt, LOCKED_QUEUE_EMPTY)
 	do if Equal (qt, LOCKED_QUEUE_EMPTY) 
@@ -28,6 +35,28 @@ define @locked-queue-enqueue (q : locked_queue, elt : any / exh : exh) : () =
                    do UPDATE(QUEUE_ELT_TL, qt, qElt)
 		   return ()
 	return (qElt)
+
+   (* check for blocked threads*)
+    let bqHd : queue_elt = SELECT(LOCKED_QUEUE_BLOCKED_HD, q)
+    do if Equal (bqHd, NIL)
+       then return ()
+       else (* dequeue from the blocked queue *)
+            let bqTl : queue_elt = SELECT(LOCKED_QUEUE_BLOCKED_TL, q)
+            let bqNext : any = SELECT(QUEUE_ELT_TL, bqTl)
+            let bqNext : queue_elt = (queue_elt)bqNext
+            do if Equal (bqHd, bqTl)
+                  then do UPDATE(LOCKED_QUEUE_BLOCKED_TL, q, LOCKED_QUEUE_EMPTY)
+                       return ()
+                  else return ()
+            do UPDATE(LOCKED_QUEUE_BLOCKED_HD, q, bqNext)
+            let blockedThread : [cont(any), fgs] = SELECT(QUEUE_ELT_HD, bqHd)
+            (* enqueue a fiber that resumes the thread with the queue value *)
+            let blockedK : cont(any) = #0(blockedThread)
+            let blockedFGS : fgs = #1(blockedThread)
+            cont k (x : unit) = throw blockedK (elt)
+            do @enqueue (host_vproc, blockedFGS, k / exh)
+            (* nothing left to do here *)
+            throw exitK ()
 
     let qHd : queue_elt = SELECT(LOCKED_QUEUE_HD, q)
     let qTl : queue_elt = SELECT(LOCKED_QUEUE_TL, q)

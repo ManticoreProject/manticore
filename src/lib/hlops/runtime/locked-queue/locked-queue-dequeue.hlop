@@ -18,7 +18,7 @@ define @locked-queue-dequeue (q : locked_queue / exh : exh) : option =
     let qHd : queue_elt = SELECT(LOCKED_QUEUE_HD, q)
     if Equal (qHd, LOCKED_QUEUE_EMPTY)
        then (* the queue is empty *)
-  let _ : unit = @spin-unlock-lq (q / exh)
+            let _ : unit = @spin-unlock-lq (q / exh)
             return (NONE)
        else (* the queue is nonempty, so take an element off the queue head *)
             let qNext : any = SELECT(QUEUE_ELT_TL, qHd)
@@ -30,7 +30,8 @@ define @locked-queue-dequeue (q : locked_queue / exh : exh) : option =
                   else return ()
             do UPDATE(LOCKED_QUEUE_HD, q, qNext)
             let elt : any = SELECT(QUEUE_ELT_HD, qHd)
+           (* FIXME: need to lift the allocation out of here somehow, as it may trigger GC while holding the lock *)
             let v : option = SOME (elt)
-  let _ : unit = @spin-unlock-lq (q / exh)
+            let _ : unit = @spin-unlock-lq (q / exh)
             return (v)
 ;
