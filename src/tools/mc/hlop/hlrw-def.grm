@@ -19,6 +19,7 @@
         | KW_int        ("int")
         | KW_long       ("long")
         | KW_short      ("short")
+        | KW_typedef    ("typedef")
         | KW_vec128     ("vec128")
         | KW_vproc      ("vproc")
         | LP            ("(")
@@ -30,6 +31,7 @@
         | COLON         (":")
         | SEMI          (";")
         | COMMA         (",")
+        | EQ            ("=")
         | BANG          ("!")
         | SLASH         ("/")
         | ARROW         ("->")
@@ -71,10 +73,13 @@ File
 
 Rewrite
         : LabelOpt Pattern DDARROW Pattern Benefit ";"
-                => ( HLRWDefPT.Rewrite {label = LabelOpt,
-                                        lhs = Pattern1,
-                                        rhs = Pattern2,
-                                        weight = Benefit} )
+                => ( HLRWDefPT.RewriteDef(
+                         HLRWDefPT.Rewrite {label = LabelOpt,
+                                            lhs = Pattern1,
+                                            rhs = Pattern2,
+                                            weight = Benefit}) )
+        | "typedef" ID "=" Type ";"
+                => ( HLRWDefPT.TypeDef(ID, Type) )
         ;
 
 LabelOpt

@@ -19,6 +19,9 @@ structure HLRWDefPT = struct
                                      rhs    : pattern,
                                      weight : IntInf.int }
 
-     type file = rewrite list
+     datatype defn = RewriteDef of rewrite
+                   | TypeDef of Atom.atom * ty
+
+     type file = defn list
 
 end (* HLRWDefPT *)

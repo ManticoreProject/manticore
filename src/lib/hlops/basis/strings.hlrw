@@ -6,14 +6,16 @@
  * String related high level rewrites.
  *)
 
+#include "types.def"
+
 string_concat2_left : @string-concat2(alloc(@string-concat2(alloc(x, y)), z))
                       ==>
-                      @string-concat-list(alloc(x,
-                                                alloc(y, alloc(z, enum(0)))))
+                      @string-concat-list(CONS(x,
+                                               CONS(y, CONS(z, NIL))))
                       { 1 };
 
 string_concat2_right : @string-concat2(alloc(x, @string-concat2(alloc(y, z))))
                        ==>
-                       @string-concat-list(alloc(x,
-                                                 alloc(y, alloc(z, enum(0)))))
+                       @string-concat-list(CONS(x,
+                                                CONS(y, CONS(z, NIL))))
                        { 1 };

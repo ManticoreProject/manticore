@@ -10,6 +10,7 @@
 structure Rewrites = struct
 
     structure PT = HLRWDefPT
+    structure BTy = BOMTy
 
     val wildcard = Atom.atom "*"
 
@@ -110,9 +111,9 @@ structure Rewrites = struct
          | HLRWDefPT.Var(_) => (wildcard, grammar)
     end (* addPatternToGrammar() *)
 
-    (* addRWToGrammar() - Convert a rewrite pattern to a set of
+    (* addRWToGrammar() - Convert a rewrite definition to a set of
        productions, and use these to extend the given grammar. *)
-    fun addRWToGrammar (rw as HLRWDefPT.Rewrite {lhs,...}, grammar : grammar) =
+    fun addRWToGrammar (rw as PT.Rewrite {lhs,...}, grammar : grammar) =
         #2 (addPatternToGrammar(lhs, grammar, SOME rw))
 
     (* rwOptToString() - Convert an optional rewrite to a label, weight pair.
@@ -202,5 +203,58 @@ structure Rewrites = struct
         String.concat [ Atom.toString label, " : ", patternToString lhs,
                         " ==> ", patternToString rhs, " {",
                         IntInf.toString weight, "}" ]
+
+    (* ____________________________________________________________ *)
+    (* The following is based on the HLOp environment stuff.
+       XXX - Not sure if this should just go in a separate module. *)
+
+    datatype rw_env = RWEnv of { hlrwGrammar : grammar,
+                                 tyEnv : BOMTy.ty AtomMap.map }
+
+    fun emptyEnv () =
+        RWEnv { hlrwGrammar = newGrammar (),
+                tyEnv = AtomMap.empty }
+
+    fun insertTy (RWEnv {hlrwGrammar, tyEnv}, id, ty) =
+        RWEnv { hlrwGrammar = hlrwGrammar,
+                tyEnv = AtomMap.insert(tyEnv, id, ty) }
+
+    fun findTy (RWEnv {tyEnv, ...}, id) = 
+        AtomMap.find(tyEnv, id)
+
+    (* cvtTy() - Convert a parse tree type to its corresponding BOM type.
+
+       XXX - This is essentially duplicate code from expand.sml.  Maybe this
+       should/could be moved into the BOMTyPT structure? *)
+    fun cvtTy (env, ty) = (case ty
+        of PT.T_Any => BTy.T_Any
+         | (PT.T_Enum w) => BTy.T_Enum w
+         | (PT.T_Raw rty) => BTy.T_Raw rty
+         | (PT.T_Tuple(mut, tys)) => BTy.T_Tuple(mut, cvtTys(env, tys))
+         | (PT.T_Addr ty) => BTy.T_Addr(cvtTy(env, ty))
+         | (PT.T_Fun(argTys, exhTys, resTys)) =>
+           BTy.T_Fun(cvtTys(env, argTys), cvtTys(env, exhTys),
+                     cvtTys(env, resTys))
+         | (PT.T_Cont tys) => BTy.T_Cont(cvtTys(env, tys))
+         | (PT.T_CFun cproto) => BTy.T_CFun cproto
+         | (PT.T_VProc) => BTy.T_VProc
+         | (PT.T_TyCon tyc) => (case findTy(env, tyc)
+               of SOME ty => ty
+                | NONE => (case BOMBasis.findTyc tyc
+                      of SOME tyc => BTy.T_TyCon tyc
+                       | NONE => raise (Fail ("unknown type: " ^
+                                              (Atom.toString tyc)))
+                      (* end case *))
+               (* end case *))
+        (* end case *))
+    (* cvtTys() - Covert a list of parse tree types to a list of
+       corresponding BOM types. *)
+    and cvtTys (env, tys) = List.map (fn ty => cvtTy (env, ty)) tys
+
+    fun addRWDefnToEnv (PT.RewriteDef (rw), RWEnv{hlrwGrammar, tyEnv}) =
+        RWEnv { hlrwGrammar = addRWToGrammar(rw, hlrwGrammar),
+                tyEnv = tyEnv }
+      | addRWDefnToEnv (PT.TypeDef(id, ty), env as RWEnv{hlrwGrammar, tyEnv}) =
+        insertTy(env, id, cvtTy(env, ty))
 
 end (* Rewrites *)

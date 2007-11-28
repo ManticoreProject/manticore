@@ -21,6 +21,33 @@ end = struct
     structure RW = Rewrites
     structure PT = RW.PT (* XXX - Hack *)
 
+    val rw_ctl = Controls.genControl {
+         name = "skip-rewrites",
+         pri = [5, 0],
+         obscurity = 1,
+         help = "skip the HLOp rewriting pass",
+         default = false
+         }
+
+    val _ = ControlRegistry.register BOMOptControls.registry {
+        ctl = Controls.stringControl ControlUtil.Cvt.bool rw_ctl,
+        envName = NONE
+        }
+
+    (* ____________________________________________________________ *)
+    (* XXX - Stolen from expand.sml; perhaps this stuff could get
+       moved into a separate structure? *)
+    structure MkPrim = MakePrimFn (
+        type var = BOM.var
+        type ty = BTy.ty
+	val anyTy = BTy.T_Any
+	val boolTy = BTy.boolTy
+	val addrTy = BTy.T_Addr(BTy.T_Any)
+	val rawTy = BTy.T_Raw)
+
+    datatype prim_info = datatype MkPrim.prim_info
+    val findPrim = MkPrim.findPrim
+
     (* ____________________________________________________________ *)
     (* findHLOps() - Find the set of HLOps in a given BOM module. *)
     fun findHLOps (module as B.MODULE{name, externs, body}) = let
@@ -228,45 +255,68 @@ end = struct
         (* end case *))
 
     (* rwEnvToString() - Utility function for displaying a rewrite
-       environment (mapping rewrite metavariables to BOM variables). *)
-    fun rwEnvToString rw_env = let
+       metavariable environment (mapping rewrite metavariables to BOM
+       variables). *)
+    fun mvEnvToString mv_env = let
         fun vPairToString (a, v) =
             String.concat [Atom.toString a, " : ", B.Var.toString v]
-        val kvStrs = List.map vPairToString (AtomMap.listItemsi rw_env)
+        val kvStrs = List.map vPairToString (AtomMap.listItemsi mv_env)
         val kvPairs = String.concatWith ", " kvStrs
     in
         String.concat ["{", kvPairs, "}"]
     end (* rwEnvToString() *)
 
-    (* cvtLitTy() - Convert a literal parse tree type to its corresponding
-       BOM type.
+    (* mkCvtCtorCont() - Return a continuation function for the a
+       rewrite constructor (which will map into either a data
+       constructor, or primop.
 
-       XXX - This is essentially duplicate code from expand.sml.  Maybe this
-       should/could be moved into the BOMTyPT structure? *)
-    fun cvtLitTy (ty) = (case ty
-        of PT.T_Any => BTy.T_Any
-         | (PT.T_Enum w) => BTy.T_Enum w
-         | (PT.T_Raw rty) => BTy.T_Raw rty
-         | (PT.T_Tuple(mut, tys)) => BTy.T_Tuple(mut, cvtLitTys(tys))
-         | (PT.T_Addr ty) => BTy.T_Addr(cvtLitTy(ty))
-         | (PT.T_Fun(argTys, exhTys, resTys)) =>
-           BTy.T_Fun(cvtLitTys(argTys), cvtLitTys(exhTys),
-                     cvtLitTys(resTys))
-         | (PT.T_Cont tys) => BTy.T_Cont(cvtLitTys(tys))
-         | (PT.T_CFun cproto) => BTy.T_CFun cproto
-         | (PT.T_VProc) => BTy.T_VProc
-         | (PT.T_TyCon tyc) =>
-           raise (Fail "Tycons not currently supported in rewrite language.")
-        (* end case *))
-    (* cvtLitTys() - Covert a list of literal parse tree types to a list of
-       corresponding BOM types. *)
-    and cvtLitTys (tys) = List.map cvtLitTy tys
+       FIXME: Is there a case where alloc could yield a mutable tuple?
+       Currently assuming not.
+       FIXME: Parts of this are redundant w.r.t. HLOp expansion code.
+       Consider moving this.
+       TODO: Consider looking at making a ctor environment and using
+       this either at parse time or have the continuation specialize
+       at construction time. *)
+    fun mkCvtCtorCont (ctor, k : BOM.var -> BOM.exp) = let
+        fun cvtCtorCont xs = let
+            val rhs =
+                if Atom.same(ctor, allocAtom)
+                then BOM.E_Alloc(BTy.T_Tuple(false, map BOM.Var.typeOf xs), xs)
+                else (case (findPrim ctor, xs)
+                       of (NONE, _) =>
+                          (case BOMBasis.findDCon ctor
+                            of NONE =>
+                               raise (Fail ("Unknown ctor in rewrite: " ^
+                                            (Atom.toString ctor)))
+                             | SOME dc => BOM.E_DCon(dc, xs)
+                           (* end case *))
+                        | (SOME(Prim1{mk, ...}), [x]) => BOM.E_Prim(mk x)
+                        | (SOME(Prim2{mk, ...}), [x, y]) =>
+                          BOM.E_Prim(mk(x, y))
+                        | (SOME(Prim3{mk, ...}), [x, y, z]) =>
+                          BOM.E_Prim(mk(x, y, z))
+                        | (SOME(_), _) =>
+                          raise (Fail ("Arity mismatch for primop " ^
+                                       (Atom.toString ctor)))
+                      (* end case *))
+            val rhs_tys = BU.typeOfRHS rhs
+            val lhs = map (fn rhs_ty => B.Var.new("_t", rhs_ty)) rhs_tys
+        in
+            (* XXX - Is there a better way to do or force this? *)
+            if (length lhs) <> 1
+            then raise (Fail "Expecting ctor RHS have a single binding var.")
+            else BOM.mkStmt(lhs, rhs, k (hd lhs))
+        end (* cvtCtorCont() *)
+    in
+        cvtCtorCont
+    end (* mkCvtCtorCont() *)
 
     (* cvtPat() - Convert a rewrite pattern into a BOM binding
        expression, passing the bound temporary to a BOM expression
        continuation, k.  *)
-    fun cvtPat (rw_pat, rw_env, exns, k : BOM.var -> BOM.exp) = (case rw_pat
-        of RW.PT.Var (var_name) => k(AtomMap.lookup(rw_env, var_name))
+    fun cvtPat (rw_pat, rw_env, mv_env, exns,
+                k : BOM.var -> BOM.exp) = (case rw_pat
+        of RW.PT.Var (var_name) => k(AtomMap.lookup(mv_env, var_name))
            (* FIXME: Again, per the allocAtom definition, I would like to have
               some kind of environment for looking up and differentiating
               between constructors and HLOps. *)
@@ -275,11 +325,11 @@ end = struct
            in
                if String.sub(ctor_str, 0) = #"@"
                then cvtHLOp(Atom.atom(String.extract(ctor_str, 1, NONE)),
-                            pats, rw_env, exns, k)
-               else cvtCtor(ctor_str, pats, rw_env, exns, k)
+                            pats, rw_env, mv_env, exns, k)
+               else cvtCtor(ctor, pats, rw_env, mv_env, exns, k)
            end
          | RW.PT.Const (lit, lit_ty) => let
-               val ty = cvtLitTy lit_ty
+               val ty = Rewrites.cvtTy (rw_env, lit_ty)
                val tmp = B.Var.new("_t", ty)
            in
                BOM.mkStmt([tmp], BOM.E_Const(lit, ty), k tmp)
@@ -289,37 +339,27 @@ end = struct
        and a list of BOM variables.  The resulting list is passed to the
        continuation, which creates the rest of a BOM expression.
        Note: This was stolen almost verbatim from expand.sml. *)
-    and cvtPats (rw_pats, rw_env, exns, k : BOM.var list -> BOM.exp) = let
+    and cvtPats (rw_pats, rw_env, mv_env, exns,
+                 k : BOM.var list -> BOM.exp) = let
         fun cvtPats' ([], tmps) = k(List.rev tmps)
-          | cvtPats' (p::ps, tmps) = cvtPat(p, rw_env, exns,
+          | cvtPats' (p::ps, tmps) = cvtPat(p, rw_env, mv_env, exns,
                                             fn t => cvtPats'(ps, t::tmps))
     in
         cvtPats'(rw_pats, [])
     end (* cvtPats() *)
     (* cvtCtor() - Convert a data constructor pattern into BOM binding
-       syntax.
-       FIXME: Typical comments about a constructor/primitive environment.
-       FIXME: Is there a case where alloc could yield a mutable tuple?
-       Currently assuming not. *)
-    and cvtCtor (ctor_str, pats, rw_env, exns, k) =
-        if ctor_str = allocStr
-        then cvtPats(pats, rw_env, exns,
-                     fn xs => let
-                            val alloc_ty =
-                                BTy.T_Tuple(false, map BOM.Var.typeOf xs)
-                            val tmp = B.Var.new("_t", alloc_ty)
-                        in
-                            BOM.mkStmt([tmp], BOM.E_Alloc(alloc_ty, xs),
-                                       k tmp)
-                        end)
-        else raise (Fail ("Unknown ctor in rewrite: " ^ ctor_str))
+       syntax. *)
+    and cvtCtor (ctor, pats, rw_env, mv_env, exns, k) =
+        cvtPats(pats, rw_env, mv_env, exns, mkCvtCtorCont(ctor, k))
     (* cvtHLOp() - Covert a HLOp application pattern into BOM syntax.
+
        FIXME: Exn handlers seem hacked here.  How do I even know the
        actual HLOp has exn handling arguments that are similar to the
        HLOp being replaced? *)
-    and cvtHLOp (hlopAtom, pats, rw_env, exns, k) = (case HLOpEnv.find hlopAtom
+    and cvtHLOp (hlopAtom, pats, rw_env, mv_env, exns,
+                 k) = (case HLOpEnv.find hlopAtom
         of SOME hlop =>
-           cvtPats(pats, rw_env, exns,
+           cvtPats(pats, rw_env, mv_env, exns,
                    fn xs => let
                           val e = BOM.mkHLOp(hlop, xs, exns)
                           val (tty :: tys) = BU.typeOfExp(e)
@@ -338,15 +378,16 @@ end = struct
     (* mkExpFromRWPat() - Given a pattern and a meta-variable
        environment that references BOM variables, construct a new BOM
        term for the given pattern. *)
-    fun mkExpFromRWPat (rw_pat, rw_env, t as B.E_HLOp(hlOp, args, exns)) =
-        cvtPat(rw_pat, rw_env, exns, fn v => BOM.mkRet [v])
-      | mkExpFromRWPat (_, _, _) =
+    fun mkExpFromRWPat (rw_pat, rw_env, mv_env,
+                        t as B.E_HLOp(hlOp, args, exns)) =
+        cvtPat(rw_pat, rw_env, mv_env, exns, fn v => BOM.mkRet [v])
+      | mkExpFromRWPat (_, _, _, _) =
         raise (Fail "Currently expect to be replacing a HLOP.")
 
     (* ____________________________________________________________ *)
-    (* rewrite() - Rewrite the given BOM module, using HLOp rewrites in the
+    (* rewrite'() - Rewrite the given BOM module, using HLOp rewrites in the
        library path. *)
-    fun rewrite (module as B.MODULE{name, externs, body}) = let
+    fun rewrite' (module as B.MODULE{name, externs, body}) = let
         (* __________________________________________________ *)
         (* XXX Not sure rewrites need to worry about this stuff
         inherrited from the HLOp expander (unless we add C function
@@ -373,10 +414,12 @@ end = struct
             List.concat (List.map (fn (_, hlop) => HLRWDefLoader.load hlop)
                                   (ATbl.listItemsi hlopEnv))
 
-        val hlrws = List.concat hlrwFiles
+        val hlrwDefs = List.concat hlrwFiles
 
-        val hlrwGrammar =
-            foldl Rewrites.addRWToGrammar (Rewrites.newGrammar ()) hlrws
+        val rw_env =
+            foldl Rewrites.addRWDefnToEnv (Rewrites.emptyEnv ()) hlrwDefs
+
+        val (Rewrites.RWEnv {hlrwGrammar, ...}) = rw_env
 
         val hlrwGrammarHash = Rewrites.getGrammarHash hlrwGrammar
 
@@ -533,17 +576,21 @@ end = struct
                                                     lhs = rw_lhs,
                                                     rhs = rw_rhs, ...}) =
                               Option.valOf rw_opt
-                          val rw_env = matchRWPatToTerm(rw_lhs, t)
-                          val new_exp = mkExpFromRWPat(rw_rhs, rw_env, t)
+                          val mv_env = matchRWPatToTerm(rw_lhs, t)
+                          val new_exp =
+                              mkExpFromRWPat(rw_rhs, rw_env, mv_env, t)
                       in
-                          (* +DEBUG
-                          print ("Apply RW: " ^ (Atom.toString rw_label) ^
-                                 "\n");
-                          print ("rw_env = " ^ (rwEnvToString rw_env) ^ "\n");
-                          print "new_exp = \n";
-                          PrintBOM.printExp new_exp;
-                             -DEBUG *)
-                          (false, e)
+                          (* +DEBUG *)
+                          if Controls.get BOMOptControls.debug
+                          then (print ("Apply RW: " ^ 
+                                       (Atom.toString rw_label) ^ "\n");
+                                print ("mv_env = " ^ (mvEnvToString mv_env) ^
+                                       "\n");
+                                print "new_exp = \n";
+                                PrintBOM.printExp new_exp)
+                          else ();
+                          (* -DEBUG *)
+                          (true, new_exp)
                       end
                     | _ => (false, e)
                end
@@ -568,5 +615,7 @@ end = struct
 	then SOME(B.mkModule(name, getExterns(), body'))
 	else NONE
     end
+
+    fun rewrite m = if Controls.get rw_ctl then NONE else rewrite' m
 
 end (* RewriteHLOps struct *)

@@ -41,6 +41,7 @@
             ("int", T.KW_int),
             ("long", T.KW_long),
             ("short", T.KW_short),
+            ("typedef", T.KW_typedef),
             ("vec128", T.KW_vec128),
             ("vproc", T.KW_vproc)
             ]
@@ -79,11 +80,17 @@
 
 <INITIAL>"("            => (T.LP);
 <INITIAL>")"            => (T.RP);
+<INITIAL>"["            => (T.LB);
+<INITIAL>"]"            => (T.RB);
 <INITIAL>"{"            => (T.LBRKT);
 <INITIAL>"}"            => (T.RBRKT);
-<INITIAL>";"            => (T.SEMI);
 <INITIAL>":"            => (T.COLON);
+<INITIAL>";"            => (T.SEMI);
 <INITIAL>","            => (T.COMMA);
+<INITIAL>"="            => (T.EQ);
+<INITIAL>"!"            => (T.BANG);
+<INITIAL>"/"            => (T.SLASH);
+<INITIAL>"->"           => (T.ARROW);
 <INITIAL>"==>"          => (T.DDARROW);
 <INITIAL>{id}           => (idToken (Atom.atom yytext));
 <INITIAL>{hlid}         => (T.HLOP (Atom.atom yytext));

@@ -96,7 +96,7 @@ Value_t M_StringConcatList (Value_t l)
     Byte_t * buf = NULL;
 
     crnt_p = list_p;
-    while (crnt_p != NULL) {
+    while (crnt_p != (ListCons_t *)M_NIL) {
         crnt_str = (SequenceHdr_t *)ValueToPtr(crnt_p->hd);
         /* XXX Do we support/want to support really long strings?  If
            so, overflow detection would be a good thing here. */
@@ -108,7 +108,7 @@ Value_t M_StringConcatList (Value_t l)
     buf = (Byte_t *)ValueToPtr(data);
 
     crnt_p = list_p;
-    while (crnt_p != NULL) {
+    while (crnt_p != (ListCons_t *)M_NIL) {
         crnt_str = (SequenceHdr_t *)crnt_p->hd;
         memcpy(buf, ValueToPtr(crnt_str->data), crnt_str->len);
         buf += crnt_str->len;
