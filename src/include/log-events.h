@@ -18,8 +18,11 @@
 
 DEF_EVENT(NoEvent,		0,	"an undefined event")
 
+/* Preemption events */
+DEF_EVENT(PreemptSignal,	0,	"preemption signal occurs")
+
 /* GC events */
 DEF_EVENT(MinorGCStart,		0,	"minor GC starts")
-DEF_EVENT(MinorGCEnd,		1,	"minor GC ends")
+DEF_EVENT(MinorGCEnd,		0,	"minor GC ends")
 DEF_EVENT(MajorGCStart,		0,	"major GC starts")
-DEF_EVENT(MajorGCEnd,		1,	"major GC ends")
+DEF_EVENT(MajorGCEnd,		0,	"major GC ends")

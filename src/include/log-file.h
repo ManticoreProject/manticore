@@ -51,10 +51,9 @@ typedef struct {
 } LogFileHeader_t;
 
 typedef struct {
-    TimeStamp_t		timeStamp;	// time stamp
-    uint32_t		tid;		// thread ID
+    TimeStamp_t		timestamp;	// time stamp
     uint32_t		event;		// event code
-    uint32_t		data[4];	// upto 16 bytes of extra data
+    uint32_t		data[5];	// upto 20 bytes of extra data
 } LogEvent_t;
 
 typedef struct {
