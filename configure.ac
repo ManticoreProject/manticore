@@ -161,6 +161,7 @@ if test x"$ac_cv_func_posix_memalign" != xyes ; then
     AC_CHECK_FUNCS(valloc)
   fi
 fi
+AC_CHECK_FUNCS(clock_gettime)
 
 AC_CHECK_FUNCS(sigtimedwait nanosleep)
 
@@ -395,7 +396,7 @@ dnl ***** CM files *****
   src/tools/mc/codegen/wrapper.cm:src/tools/mc/codegen/wrapper_cm.in
   src/tools/mc/test-codegen/sources.cm:src/tools/mc/test-codegen/sources_cm.in
 )
-AC_CONFIG_HEADERS(src/lib/parallel-rt/include/manticore-config.h:config/config_h.in)
+AC_CONFIG_HEADERS(src/include/manticore-config.h:config/config_h.in)
 
 dnl
 dnl shell scripts
