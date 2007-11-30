@@ -13,12 +13,14 @@
 #endif
 #include "os-memory.h"
 #include "os-threads.h"
+#include "atomic-ops.h"
 #include "vproc.h"
 #include "heap.h"
 #include "gc.h"
 #include "options.h"
 #include "value.h"
 #include "scheduler.h"
+#include "inline-log.h"
 
 typedef struct {		/* data passed to VProcMain */
     VProc_t	*vp;		/* the host vproc */
@@ -83,6 +85,12 @@ void VProcInit (Options_t *opts)
     SayDebug("%d/%d processors allocated to vprocs\n", NumVProcs, NumHardwareProcs);
 #endif
 
+#ifdef ENABLE_LOGGING
+  /* initialize the log file */
+    const char *logFile = GetStringOpt(opts, "-log", DFLT_LOG_FILE);
+    LogFileInit (logFile, NumVProcs, NumHardwareProcs);
+#endif
+
     if (pthread_key_create (&VProcInfoKey, 0) != 0) {
 	Die ("unable to create VProcInfoKey");
     }
@@ -101,6 +109,9 @@ void VProcInit (Options_t *opts)
       VProcs[i] = vproc;
       MutexInit (&(vproc->lock));
       CondInit (&(vproc->wait));
+#ifdef ENABLE_LOGGING
+      LogInit (vproc);
+#endif
     }
 
   /* create nProcs-1 idle vprocs; the last vproc will be created to run
@@ -121,11 +132,11 @@ void VProcInit (Options_t *opts)
 VProc_t *VProcCreate (VProcFn_t f, void *arg)
 {
 
-  if (NextVProc > MAX_NUM_VPROCS) {
-    Die ("Allocated too many VProcs");
-  }
-
-  VProc_t* vproc = VProcs[NextVProc];
+    if (NextVProc > MAX_NUM_VPROCS) {
+	Die ("Allocated too many VProcs");
+    }
+  
+    VProc_t* vproc = VProcs[NextVProc];
 
   /* initialize the vproc structure */
     vproc->id = NextVProc++;
@@ -181,8 +192,9 @@ VProc_t *VProcSelf ()
 
 } /* VProcSelf */
 
-void VProcPreempt (VProc_t *vp) {
-  VProcSignal (vp, PreemptSignal);
+void VProcPreempt (VProc_t *vp)
+{
+    VProcSignal (vp, PreemptSignal);
 }
 
 /*! \brief send an asynchronous signal to another VProc.
@@ -208,6 +220,8 @@ void VProcSignal (VProc_t *vp, VPSignal_t sig)
 void VProcSleep (VProc_t *vp)
 {
     assert (vp == VProcSelf());
+
+    LogEvent0 (vp, VProcSleepEvt);
 
 #ifndef NDEBUG
     if (DebugFlg)
@@ -417,6 +431,8 @@ Value_t VProcDequeue (VProc_t *self)
  */
 static void IdleVProc (VProc_t *vp, void *arg)
 {
+    LogEvent0 (vp, VProcStartIdleEvt);
+
 #ifndef NDEBUG
     if (DebugFlg)
 	SayDebug("[%2d] IdleVProc starting\n", vp->id);

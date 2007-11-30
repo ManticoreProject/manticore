@@ -15,6 +15,7 @@
 #include "heap.h"
 #include "os-threads.h"
 #include "asm-offsets.h"
+#include "inline-log.h"
 
 static void MainVProc (VProc_t *vp, void *arg);
 static void PingLoop ();
@@ -78,6 +79,8 @@ int main (int argc, const char **argv)
  */ 
 static void MainVProc (VProc_t *vp, void *arg)
 {
+    LogEvent0 (vp, VProcStartMainEvt);
+
 #ifndef NDEBUG
     if (DebugFlg)
 	SayDebug("[%2d] MainVProc starting\n", vp->id);
@@ -95,6 +98,10 @@ static void MainVProc (VProc_t *vp, void *arg)
     Say("res = ");
     SayValue (resV);
     Say("\n");
+
+#ifdef ENABLE_LOGGING
+    FinishLog ();
+#endif
 
     exit (0);
 

@@ -28,3 +28,4 @@
     PR_OFFSET(vp, GLOB_TOSPACE, globToSpace);
     PR_OFFSET(vp, GLOB_NEXT_W, globNextW);
     PR_OFFSET(vp, GLOB_LIMIT, globLimit);
+    PR_OFFSET(vp, LOG, log);

@@ -9,29 +9,30 @@
 CC =		@CC@
 CFLAGS =	@CFLAGS@ @PTHREAD_CFLAGS@
 LDFLAGS =	
-CPPFLAGS =	-I. -I../include -I../../../include -D@TARGET_OS@ -D@TARGET_CPU@
+CPPFLAGS =	-I. -I../include -I../../../include -D@TARGET_OS@ -D@TARGET_CPU@ -DENABLE_LOGGING
 AR =		ar
 ARFLAGS =	rcv
 RANLIB =	ranlib
 
-TARGET		= libmanticore.a
+TARGET =	libmanticore.a
 
-VPATH		= ../include:../gc:../vproc:../misc:../machine:../config
+VPATH =		../include:../gc:../vproc:../misc:../machine:../config
 
-GC_SRCS 	= minor-gc.c \
-		  major-gc.c \
-		  global-gc.c \
-		  heap.c \
-		  unix-memory.c \
-		  alloc.c
+GC_SRCS = 	minor-gc.c \
+		major-gc.c \
+		global-gc.c \
+		heap.c \
+		unix-memory.c \
+		alloc.c
 
-VPROC_SRCS	= vproc.c
+VPROC_SRCS =	vproc.c
 
-MISC_SRCS	= main.c \
-		  apply.c \
-		  basis.c \
-		  options.c \
-		  work-queue.c
+MISC_SRCS =	main.c \
+		apply.c \
+		basis.c \
+		options.c \
+		work-queue.c \
+		log.c
 
 C_SRCS		= $(GC_SRCS) $(VPROC_SRCS) $(MISC_SRCS)
 C_OBJS		= $(patsubst %.c,%.o,$(C_SRCS))

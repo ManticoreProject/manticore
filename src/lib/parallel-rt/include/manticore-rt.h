@@ -81,6 +81,7 @@ typedef uint8_t Byte_t;
 typedef struct struct_opts Options_t;
 typedef struct struct_vproc VProc_t;
 typedef struct struct_chunk MemChunk_t;
+typedef struct struct_logbuf LogBuffer_t;
 
 STATIC_INLINE bool ValueIsBoxed (Value_t v) { return (((Addr_t)v & 0x3) == 0); }
 

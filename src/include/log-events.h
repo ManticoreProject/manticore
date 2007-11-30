@@ -13,16 +13,19 @@
  */
 
 #ifndef LOG_VERSION
-#define LOG_VERSION	0x20071128	/* date of last change to this file */
+#define LOG_VERSION	0x20071130	/* date of last change to this file */
 #endif
 
 DEF_EVENT(NoEvent,		0,	"an undefined event")
 
-/* Preemption events */
-DEF_EVENT(PreemptSignal,	0,	"preemption signal occurs")
+/* VProc events */
+DEF_EVENT(VProcStartIdleEvt,	0,	"start idle vproc")
+DEF_EVENT(VProcStartMainEvt,	0,	"start main vproc")
+DEF_EVENT(VProcSleepEvt,	0,	"vproc going to sleep")
+DEF_EVENT(PreemptSignalEvt,	0,	"preemption signal occurs")
 
 /* GC events */
-DEF_EVENT(MinorGCStart,		0,	"minor GC starts")
-DEF_EVENT(MinorGCEnd,		0,	"minor GC ends")
-DEF_EVENT(MajorGCStart,		0,	"major GC starts")
-DEF_EVENT(MajorGCEnd,		0,	"major GC ends")
+DEF_EVENT(MinorGCStartEvt,	0,	"minor GC starts")
+DEF_EVENT(MinorGCEndEvt,	0,	"minor GC ends")
+DEF_EVENT(MajorGCStartEvt,	0,	"major GC starts")
+DEF_EVENT(MajorGCEndEvt,	0,	"major GC ends")

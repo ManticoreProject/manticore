@@ -1,11 +1,15 @@
 /* inline-log.h
  *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
  * Inline operations for recording log entries.
  */
 
 #ifndef _INLINE_LOG_H_
 #define _INLINE_LOG_H_
 
+#ifdef ENABLE_LOGGING
 #include "log.h"
 #include "atomic-ops.h"
 
@@ -118,4 +122,15 @@ STATIC_INLINE void LogEvent5 (
 
 }
 
-#endf /* !_INLINE_LOG_H_ */
+#else /* !ENABLE_LOGGING */
+
+#define LogEvent0(VP, EVT)
+#define LogEvent1(VP, EVT, A)
+#define LogEvent2(VP, EVT, A, B)
+#define LogEvent3(VP, EVT, A, B, C)
+#define LogEvent4(VP, EVT, A, B, C, D)
+#define LogEvent5(VP, EVT, A, B, C, D, E)
+
+#endif
+#endif /* !_INLINE_LOG_H_ */
+

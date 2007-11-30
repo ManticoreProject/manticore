@@ -60,6 +60,8 @@ bool GetFlagOpt (Options_t *opts, const char *flg)
 
 }
 
+/* GetIntOpt:
+ */
 int GetIntOpt (Options_t *opts, const char *opt, int dflt)
 {
     for (int i = 0;  i < opts->argc;  i++) {
@@ -79,6 +81,29 @@ int GetIntOpt (Options_t *opts, const char *opt, int dflt)
 
     return dflt;
 }
+
+/* GetStringOpt:
+ */
+const char *GetStringOpt (Options_t *opts, const char *opt, const char *dflt)
+{
+    for (int i = 0;  i < opts->argc;  i++) {
+	if (strcmp(opt, opts->argv[i]) == 0) {
+	    if (++i < opts->argc) {
+		const char *arg = opts->argv[i];
+		CompressOpts (opts, i-1, 2);
+		return arg;
+	    } else {
+		CompressOpts (opts, i-1, 1);
+		Error("%s: missing argument for `%s' option\n", opts->cmd, opt);
+		opts->errors = true;
+		return dflt;
+	    }
+	}
+    }
+
+    return dflt;
+
+} /* end of GetStringOpt */
 
 /* get a size option; the suffixes "k" and "m" are supported */
 Addr_t GetSizeOpt (Options_t *opts, const char *opt, Addr_t dfltScale, Addr_t dflt)
