@@ -1,0 +1,27 @@
+# Makefile
+#
+# COPYRIGHT (c) 2007 Manticore project. (http://manticore.cs.uchicago.edu)
+# All rights reserved.
+#
+# @configure_output@
+#
+
+CC =		@CC@
+CFLAGS =	@CFLAGS@ @PTHREAD_CFLAGS@
+LDFLAGS =	
+CPPFLAGS =	-I. -I../../include
+
+TARGET =	log-dump
+
+SRCS =		log-dump.c
+OBJS =		$(patsubst %.c,%.o,$(SRCS))
+
+$(TARGET):	$(OBJS) ../../include/log-file.h ../../include/log-events.h
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $(TARGET) $(OBJS)
+
+.PHONY:		clean
+
+clean:
+	rm -rf $(OBJS) $(TARGET)
+	rm -rf *.dSYM
+
