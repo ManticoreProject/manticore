@@ -12,6 +12,9 @@
 #ifdef ENABLE_LOGGING
 #include "log.h"
 #include "atomic-ops.h"
+#ifdef HAVE_MACH_ABSOLUTE_TIME
+#  include <mach/mach_time.h>
+#endif
 
 // get the pointer to the next log entry
 STATIC_INLINE LogEvent_t *NextLogEvent (VProc_t *vp)
@@ -33,7 +36,7 @@ STATIC_INLINE LogEvent_t *NextLogEvent (VProc_t *vp)
 STATIC_INLINE void LogTimestamp (LogEvent_t *ep)
 {
 #if HAVE_MACH_ABSOLUTE_TIME
-    ep->timeStamp = mach_absolute_time();
+    ep->timestamp.ts_mach = mach_absolute_time();
 #elif HAVE_CLOCK_GETTIME
     clock_gettime (CLOCK_REALTIME, &(ep->timestamp.ts_timespec));
 #else
@@ -46,7 +49,6 @@ STATIC_INLINE void LogEvent0 (VProc_t *vp, uint32_t evt)
     LogEvent_t *ep = NextLogEvent(vp);
 
     LogTimestamp (ep);
-    ep->tid = tid;
     ep->event = evt;
 
 }
@@ -56,7 +58,6 @@ STATIC_INLINE void LogEvent1 (VProc_t *vp, uint32_t evt, uint32_t a)
     LogEvent_t *ep = NextLogEvent(vp);
 
     LogTimestamp (ep);
-    ep->tid = tid;
     ep->event = evt;
     ep->data[0] = a;
 
@@ -67,7 +68,6 @@ STATIC_INLINE void LogEvent2 (VProc_t *vp, uint32_t evt, uint32_t a, uint32_t b)
     LogEvent_t *ep = NextLogEvent(vp);
 
     LogTimestamp (ep);
-    ep->tid = tid;
     ep->event = evt;
     ep->data[0] = a;
     ep->data[1] = b;
@@ -81,7 +81,6 @@ STATIC_INLINE void LogEvent3 (
     LogEvent_t *ep = NextLogEvent(vp);
 
     LogTimestamp (ep);
-    ep->tid = tid;
     ep->event = evt;
     ep->data[0] = a;
     ep->data[1] = b;
@@ -96,7 +95,6 @@ STATIC_INLINE void LogEvent4 (
     LogEvent_t *ep = NextLogEvent(vp);
 
     LogTimestamp (ep);
-    ep->tid = tid;
     ep->event = evt;
     ep->data[0] = a;
     ep->data[1] = b;
@@ -112,7 +110,6 @@ STATIC_INLINE void LogEvent5 (
     LogEvent_t *ep = NextLogEvent(vp);
 
     LogTimestamp (ep);
-    ep->tid = tid;
     ep->event = evt;
     ep->data[0] = a;
     ep->data[1] = b;

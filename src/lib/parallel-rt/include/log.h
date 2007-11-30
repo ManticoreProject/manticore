@@ -11,7 +11,7 @@
 #include "manticore-rt.h"
 #include "log-file.h"
 
-extern void LogFileInit (const char *name, int nvps, int ncpus);
+extern void InitLogFile (const char *name, int nvps, int ncpus);
 extern void InitLog (VProc_t *vp);
 extern void SwapLogBuffers (VProc_t *vp);
 extern void FinishLog ();

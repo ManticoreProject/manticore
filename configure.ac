@@ -138,6 +138,18 @@ if test x"$enable_debug" = xyes ; then
 fi
 
 dnl
+dnl check for --enable-logging 
+dnl
+AC_ARG_ENABLE(logging,
+  AC_HELP_STRING([--enable-logging], [enable logging of events]))
+if test x"$enable_logging" = xyes ; then
+  ENABLE_LOGGING=true
+else
+  ENABLE_LOGGING=false
+fi
+AC_SUBST(ENABLE_LOGGING)
+
+dnl
 dnl For various reasons, "gcc -E" doesn't work as a cpp command, so we look for
 dnl the old cpp.
 dnl

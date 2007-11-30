@@ -88,7 +88,7 @@ void VProcInit (Options_t *opts)
 #ifdef ENABLE_LOGGING
   /* initialize the log file */
     const char *logFile = GetStringOpt(opts, "-log", DFLT_LOG_FILE);
-    LogFileInit (logFile, NumVProcs, NumHardwareProcs);
+    InitLogFile (logFile, NumVProcs, NumHardwareProcs);
 #endif
 
     if (pthread_key_create (&VProcInfoKey, 0) != 0) {
@@ -110,7 +110,7 @@ void VProcInit (Options_t *opts)
       MutexInit (&(vproc->lock));
       CondInit (&(vproc->wait));
 #ifdef ENABLE_LOGGING
-      LogInit (vproc);
+      InitLog (vproc);
 #endif
     }
 

@@ -9,7 +9,8 @@
 CC =		@CC@
 CFLAGS =	@CFLAGS@ @PTHREAD_CFLAGS@
 LDFLAGS =	
-CPPFLAGS =	-I. -I../include -I../../../include -D@TARGET_OS@ -D@TARGET_CPU@ -DENABLE_LOGGING
+X =		@CPPFLAGS@
+CPPFLAGS =	-I. -I../include -I../../../include -D@TARGET_OS@ -D@TARGET_CPU@
 AR =		ar
 ARFLAGS =	rcv
 RANLIB =	ranlib
@@ -33,6 +34,11 @@ MISC_SRCS =	main.c \
 		options.c \
 		work-queue.c \
 		log.c
+
+ifeq (@ENABLE_LOGGING@,true)
+  CPPFLAGS += -DENABLE_LOGGING
+  MISC_SRCS += log.c
+endif
 
 C_SRCS		= $(GC_SRCS) $(VPROC_SRCS) $(MISC_SRCS)
 C_OBJS		= $(patsubst %.c,%.o,$(C_SRCS))
@@ -66,5 +72,7 @@ gen-runtime-offsets:	gen-runtime-offsets.c manticore-rt.h vproc.h vproc-offsets-
 .PHONY:		clean
 
 clean:
-	rm -rf $(OBJS) $(TARGET) gen-asm-offsets gen-runtime-constants asm-offsets.h
+	rm -rf $(OBJS) $(TARGET)
+	rm -rf gen-asm-offsets gen-runtime-constants asm-offsets.h
+	rm -rf *.dSYM
 
