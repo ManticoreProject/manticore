@@ -12,6 +12,7 @@
 #ifdef ENABLE_LOGGING
 #include "log.h"
 #include "atomic-ops.h"
+#include "vproc.h"
 #ifdef HAVE_MACH_ABSOLUTE_TIME
 #  include <mach/mach_time.h>
 #endif
@@ -33,14 +34,14 @@ STATIC_INLINE LogEvent_t *NextLogEvent (VProc_t *vp)
 
 }
 
-STATIC_INLINE void LogTimestamp (LogEvent_t *ep)
+STATIC_INLINE void LogTimestamp (LogTS_t *ts)
 {
 #if HAVE_MACH_ABSOLUTE_TIME
-    ep->timestamp.ts_mach = mach_absolute_time();
+    ts->ts_mach = mach_absolute_time();
 #elif HAVE_CLOCK_GETTIME
-    clock_gettime (CLOCK_REALTIME, &(ep->timestamp.ts_timespec));
+    clock_gettime (CLOCK_REALTIME, &(ts->ts_timespec));
 #else
-    gettimeofday (&(ep->timestamp.ts_timeval), 0);
+    gettimeofday (&(ts->ts_timeval), 0);
 #endif
 }
 
@@ -48,7 +49,7 @@ STATIC_INLINE void LogEvent0 (VProc_t *vp, uint32_t evt)
 {
     LogEvent_t *ep = NextLogEvent(vp);
 
-    LogTimestamp (ep);
+    LogTimestamp (&(ep->timestamp));
     ep->event = evt;
 
 }
@@ -57,7 +58,7 @@ STATIC_INLINE void LogEvent1 (VProc_t *vp, uint32_t evt, uint32_t a)
 {
     LogEvent_t *ep = NextLogEvent(vp);
 
-    LogTimestamp (ep);
+    LogTimestamp (&(ep->timestamp));
     ep->event = evt;
     ep->data[0] = a;
 
@@ -67,7 +68,7 @@ STATIC_INLINE void LogEvent2 (VProc_t *vp, uint32_t evt, uint32_t a, uint32_t b)
 {
     LogEvent_t *ep = NextLogEvent(vp);
 
-    LogTimestamp (ep);
+    LogTimestamp (&(ep->timestamp));
     ep->event = evt;
     ep->data[0] = a;
     ep->data[1] = b;
@@ -80,42 +81,11 @@ STATIC_INLINE void LogEvent3 (
 {
     LogEvent_t *ep = NextLogEvent(vp);
 
-    LogTimestamp (ep);
+    LogTimestamp (&(ep->timestamp));
     ep->event = evt;
     ep->data[0] = a;
     ep->data[1] = b;
     ep->data[2] = c;
-
-}
-
-STATIC_INLINE void LogEvent4 (
-    VProc_t *vp, uint32_t evt,
-    uint32_t a, uint32_t b, uint32_t c, uint32_t d)
-{
-    LogEvent_t *ep = NextLogEvent(vp);
-
-    LogTimestamp (ep);
-    ep->event = evt;
-    ep->data[0] = a;
-    ep->data[1] = b;
-    ep->data[2] = c;
-    ep->data[3] = d;
-
-}
-
-STATIC_INLINE void LogEvent5 (
-    VProc_t *vp, uint32_t evt,
-    uint32_t a, uint32_t b, uint32_t c, uint32_t d, uint32_t e)
-{
-    LogEvent_t *ep = NextLogEvent(vp);
-
-    LogTimestamp (ep);
-    ep->event = evt;
-    ep->data[0] = a;
-    ep->data[1] = b;
-    ep->data[2] = c;
-    ep->data[3] = d;
-    ep->data[4] = e;
 
 }
 
@@ -125,8 +95,6 @@ STATIC_INLINE void LogEvent5 (
 #define LogEvent1(VP, EVT, A)
 #define LogEvent2(VP, EVT, A, B)
 #define LogEvent3(VP, EVT, A, B, C)
-#define LogEvent4(VP, EVT, A, B, C, D)
-#define LogEvent5(VP, EVT, A, B, C, D, E)
 
 #endif
 #endif /* !_INLINE_LOG_H_ */

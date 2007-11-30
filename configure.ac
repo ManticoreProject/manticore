@@ -398,6 +398,7 @@ dnl
 AC_CONFIG_FILES(\
 dnl ***** Makefiles *****
   src/lib/parallel-rt/build/Makefile
+  src/tools/log-dump/Makefile
   src/tools/mc/Makefile
 dnl ***** SML source files *****
   src/tools/mc/common/run-cpp.sml:src/tools/mc/common/run-cpp_sml.in

@@ -101,17 +101,14 @@ void VProcInit (Options_t *opts)
       /* allocate the VProc heap; we store the VProc representation in the base
        * of the heap area.
        */
-      int nBlocks = 1;
-      VProc_t *vproc = (VProc_t *)AllocMemory (&nBlocks, VP_HEAP_SZB);
-      if ((vproc == 0) || (nBlocks != 1))
-	Die ("unable to allocate vproc heap");
-      
-      VProcs[i] = vproc;
-      MutexInit (&(vproc->lock));
-      CondInit (&(vproc->wait));
-#ifdef ENABLE_LOGGING
-      InitLog (vproc);
-#endif
+	int nBlocks = 1;
+	VProc_t *vproc = (VProc_t *)AllocMemory (&nBlocks, VP_HEAP_SZB);
+	if ((vproc == 0) || (nBlocks != 1))
+	    Die ("unable to allocate vproc heap");
+	
+	VProcs[i] = vproc;
+	MutexInit (&(vproc->lock));
+	CondInit (&(vproc->wait));
     }
 
   /* create nProcs-1 idle vprocs; the last vproc will be created to run
@@ -160,6 +157,10 @@ VProc_t *VProcCreate (VProcFn_t f, void *arg)
     vproc->limitPtr = (Addr_t)vproc + VP_HEAP_SZB - ALLOC_BUF_SZB;
     SetAllocPtr (vproc);
     vproc->idle = true;
+
+#ifdef ENABLE_LOGGING
+    InitLog (vproc);
+#endif
 
   /* start the vproc's pthread */
     InitData_t data;
@@ -343,15 +344,16 @@ void EnqueueOnVProc (VProc_t *self, VProc_t *vp, Value_t tid, Value_t fiber)
     Value_t entryQNew = GlobalAllocUniform(self, 3, tid, fiber, entryQOld);
     Value_t entryQ = (Value_t)&(vp->entryQ);
     do {
-      entryQOld = vp->entryQ;
-      ValueToRdyQItem(entryQNew)->link = entryQOld;      
+	entryQOld = vp->entryQ;
+	ValueToRdyQItem(entryQNew)->link = entryQOld;      
     } while (CompareAndSwap (ValueToPtr(entryQ), entryQOld, entryQNew) != entryQOld);
 
     /* The vproc was idle before enqueuing, so wake it up */
     if (entryQOld == M_NIL) {       
-      vp->idle = false;
-      CondSignal (&(vp->wait));
+	vp->idle = false;
+	CondSignal (&(vp->wait));
     }
+
 } /* end of EnqueueOnVProc */
 
 /*! \brief Push the elements from the VProc entry queue onto the tail of the
@@ -407,6 +409,8 @@ Value_t VProcDequeue (VProc_t *self)
     Value_t	item;
 
     assert (self->atomic);
+
+    LogEvent0 (self, VProcDequeueEvt);
 
 #ifndef NDEBUG
     if (DebugFlg)
@@ -482,12 +486,14 @@ static void SigHandler (int sig, siginfo_t *si, void *_sc)
 	ucontext_t	*uc = (ucontext_t *)_sc;
 	VProc_t	*self = VProcSelf();
   
+	LogEvent0 (self, PreemptSignalEvt);
+
 	self->sigPending = M_TRUE;
 	if ((self->inManticore == M_TRUE) && (self->atomic == M_FALSE)) {
 	  /* set the limit pointer to zero to force a context switch on
 	   * the next GC test.
 	   */
-	  UC_R11(uc) = 0;
+	    UC_R11(uc) = 0;
 	}
 	break;
       }
@@ -544,7 +550,7 @@ static int GetNumCPUs ()
 static Value_t Dequeue2 (VProc_t *self)
 {
  
-    assert (1);
+    assert (false);
 
   /* dequeue an item */
     if (self->secondaryQHd != M_NIL) {
@@ -584,5 +590,5 @@ static Value_t Dequeue2 (VProc_t *self)
  */
 int FreshFiberId ()
 {
-  return FetchAndInc (&FiberIdCounter);
+    return FetchAndInc (&FiberIdCounter);
 }

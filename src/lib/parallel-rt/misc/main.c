@@ -99,6 +99,8 @@ static void MainVProc (VProc_t *vp, void *arg)
     SayValue (resV);
     Say("\n");
 
+    LogEvent0 (vp, VProcExitMainEvt);
+
 #ifdef ENABLE_LOGGING
     FinishLog ();
 #endif

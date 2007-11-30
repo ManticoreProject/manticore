@@ -9,7 +9,7 @@
  *
  * where NAME is the name of the symbolic constant used for the event, SZ is the
  * number of 32-bit arguments to the event, and DESC is a string describing the
- * event.
+ * event.  The NAME should end in "Evt".
  */
 
 #ifndef LOG_VERSION
@@ -21,7 +21,9 @@ DEF_EVENT(NoEvent,		0,	"an undefined event")
 /* VProc events */
 DEF_EVENT(VProcStartIdleEvt,	0,	"start idle vproc")
 DEF_EVENT(VProcStartMainEvt,	0,	"start main vproc")
+DEF_EVENT(VProcExitMainEvt,	0,	"exit main vproc")
 DEF_EVENT(VProcSleepEvt,	0,	"vproc going to sleep")
+DEF_EVENT(VProcDequeueEvt,	0,	"dequeue from secondary scheduling queue")
 DEF_EVENT(PreemptSignalEvt,	0,	"preemption signal occurs")
 
 /* GC events */

@@ -18,6 +18,7 @@
 #include "vproc.h"
 #include "gc-inline.h"
 #include "internal-heap.h"
+#include "inline-log.h"
 
 static void ScanGlobalToSpace (
 	VProc_t *vp, Addr_t heapBase, MemChunk_t *scanChunk, Word_t *scanPtr);
@@ -66,9 +67,11 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     assert (VProcHeap(vp) < vp->oldTop);
     assert (vp->oldTop < top);
 
+    LogEvent0 (vp, MajorGCStartEvt);
+
 #ifndef NDEBUG
     if (DebugFlg)
-	SayDebug("[%2d] Major GC starting\n",vp->id);
+	SayDebug("[%2d] Major GC starting\n", vp->id);
 #endif
 
   /* process the roots */
@@ -161,6 +164,8 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     Addr_t youngSzB = top - vp->oldTop;
     memcpy ((void *)VProcHeap(vp), (void *)(vp->oldTop), youngSzB);
     vp->oldTop = VProcHeap(vp) + youngSzB;
+
+    LogEvent0 (vp, MajorGCEndEvt);
 
 } /* end of MajorGC */
 

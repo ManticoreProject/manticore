@@ -27,8 +27,7 @@ struct timespec {
 #define LOG_MAGIC	0x6D616E7469636F72	// "manticor"
 #define DFLT_LOG_FILE	"LOG"
 
-enum {				    // different formats of timestamps, but they should
-				    // all be 64-bit quantities.
+enum {				    // different formats of timestamps.
     LOGTS_TIMEVAL,			// struct timeval returned by gettimeofday
     LOGTS_TIMESPEC,			// struct timespec returned by clock_gettime
     LOGTS_MACH_ABSOLUTE			// uint64_t returned by mach_absolute_time
@@ -44,6 +43,7 @@ typedef struct {
     uint64_t		magic;		// to identify log files
     uint32_t		version;	// version stamp
     uint32_t		bufSzB;		// buffer size
+    LogTS_t		startTime;	// start time for run
     uint32_t		tsKind;		// timestamp format
     char		clockName[32];	// a string describing the clock
     uint32_t		resolution;	// clock resolution in nanoseconds
@@ -53,9 +53,9 @@ typedef struct {
 } LogFileHeader_t;
 
 typedef struct {
-    LogTS_t		timestamp;	// time stamp
+    LogTS_t		timestamp;	// time stamp (16 bytes)
     uint32_t		event;		// event code
-    uint32_t		data[5];	// upto 20 bytes of extra data
+    uint32_t		data[3];	// upto 12 bytes of extra data
 } LogEvent_t;
 
 struct struct_logbuf {
@@ -69,6 +69,7 @@ struct struct_logbuf {
 #define DEF_EVENT(NAME, SZ, DESC)	NAME,
 enum {
 #include "log-events.h"
+    NumLogEvents
 };
 #undef DEF_EVENT
 

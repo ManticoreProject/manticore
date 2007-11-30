@@ -11,6 +11,7 @@
 #include "gc.h"
 #include "vproc.h"
 #include "gc-inline.h"
+#include "inline-log.h"
 
 extern Addr_t	MajorGCThreshold; /* when the size of the nursery goes below this limit */
 				/* it is time to do a GC. */
@@ -40,6 +41,8 @@ STATIC_INLINE Value_t ForwardObj (Value_t v, Word_t **nextW)
  */
 void MinorGC (VProc_t *vp, Value_t **roots)
 {
+    LogEvent0 (vp, MinorGCStartEvt);
+
     Addr_t	nurseryBase = vp->nurseryBase;
     Addr_t	allocSzB = vp->allocPtr - nurseryBase - WORD_SZB;
     Word_t	*nextScan = (Word_t *)(vp->oldTop); /* current top of to space */
@@ -111,6 +114,9 @@ void MinorGC (VProc_t *vp, Value_t **roots)
 	    vp->allocPtr - vp->nurseryBase - WORD_SZB,
 	    (int)avail);
 #endif
+
+    LogEvent0 (vp, MinorGCEndEvt);
+
     if (avail < MajorGCThreshold) {
       /* time to do a major collection. */
 	MajorGC (vp, roots, (Addr_t)nextScan);
