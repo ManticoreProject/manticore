@@ -32,8 +32,7 @@ MISC_SRCS =	main.c \
 		apply.c \
 		basis.c \
 		options.c \
-		work-queue.c \
-		log.c
+		work-queue.c
 
 ifeq (@ENABLE_LOGGING@,true)
   CPPFLAGS += -DENABLE_LOGGING
