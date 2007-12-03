@@ -11,12 +11,13 @@
 extern void *ListVProcs (void *) __attribute__((alloc));
 extern void M_Print (void*);
 
-define inline @spawn-on (f : fun (unit / exh -> unit), dst : vproc / exh : exh) : tid;
+define inline @spawn-on (f : fun (unit / exh -> unit), fgs : fgs, dst : vproc / exh : exh) : ();
 define @get-work1 (q : work_queue / exh : exh) noreturn;
+define @get-fgs (vp : vproc / exh : exh) : fgs;
 
 define @get-work1-all (q : work_queue / exh : exh) : unit =
   fun init (_ : unit / exh : exh) : unit =
-	    do ccall M_Print ("initon\n\000")
+	    do ccall M_Print ("initon\n")
     do @get-work1 (q / exh)
     return (UNIT)
   let self : vproc = host_vproc
@@ -26,7 +27,8 @@ define @get-work1-all (q : work_queue / exh : exh) : unit =
        | CONS (vp : vproc, rest : list) =>
            if Equal (vp, self)
              then apply spawnOnAll (rest)
-             else let _ : tid = @spawn-on (init, vp / exh)
+             else let fgs : fgs = @get-fgs (self / exh)
+                  do @spawn-on (init, fgs, vp / exh)
                   apply spawnOnAll (rest)
     end (* case *)
   let vps : list = ccall ListVProcs (self)
