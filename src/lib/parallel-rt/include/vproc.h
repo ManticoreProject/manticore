@@ -46,6 +46,11 @@ struct struct_vproc {
     Mutex_t	lock;	      /*!< lock for VProc state */
     Cond_t	wait;	      /*!< for waiting when idle */
     bool	idle;	      /*!< true when the VProc is idle */
+			      /* GC stats */
+#ifndef NO_GC_STATS
+    int32_t	nLocalPtrs;
+    int32_t	nGlobPtrs;
+#endif
     LogBuffer_t	*log;	      /*!< current buffer for logging events */
     LogBuffer_t	*prevLog;     /*!< previous buffer for logging events */
 };

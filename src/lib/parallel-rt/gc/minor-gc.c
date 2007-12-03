@@ -16,6 +16,12 @@
 extern Addr_t	MajorGCThreshold; /* when the size of the nursery goes below this limit */
 				/* it is time to do a GC. */
 
+#ifdef NO_GC_STATS
+#  define INCR_STAT(cntr) 	do { } while (0)
+#else
+#  define INCR_STAT(cntr)	do { (cntr)++; } while (0)
+#endif
+
 /* Copy an object to the old region */
 STATIC_INLINE Value_t ForwardObj (Value_t v, Word_t **nextW)
 {
@@ -57,13 +63,21 @@ void MinorGC (VProc_t *vp, Value_t **roots)
 	SayDebug("[%2d] Minor GC starting\n", vp->id);
 #endif
 
+#ifndef NO_GC_STATS
+    vp->nLocalPtrs = 0;
+    vp->nGlobPtrs = 0;
+#endif
+    
   /* process the roots */
     for (int i = 0;  roots[i] != 0;  i++) {
 	Value_t p = *roots[i];
 	if (isPtr(p)) {
 	    if (inAddrRange(nurseryBase, allocSzB, ValueToAddr(p))) {
+		INCR_STAT(vp->nLocalPtrs);
 		*roots[i] = ForwardObj(p, &nextW);
 	    }
+	    else
+		INCR_STAT(vp->nGlobPtrs);
 	}
     }
 
@@ -79,8 +93,13 @@ void MinorGC (VProc_t *vp, Value_t **roots)
 	    while (tagBits != 0) {
 		if (tagBits & 0x1) {
 		    Value_t v = *scanP;
-		    if (isPtr(v) && inAddrRange(nurseryBase, allocSzB, ValueToAddr(v))) {
-			*scanP = ForwardObj(v, &nextW);
+		    if (isPtr(v)) {
+			if (inAddrRange(nurseryBase, allocSzB, ValueToAddr(v))) {
+			    INCR_STAT(vp->nLocalPtrs);
+			    *scanP = ForwardObj(v, &nextW);
+			}
+			else
+			    INCR_STAT(vp->nGlobPtrs);
 		    }
 		}
 		tagBits >>= 1;
@@ -93,8 +112,13 @@ void MinorGC (VProc_t *vp, Value_t **roots)
 	    int len = GetVectorLen(hdr);
 	    for (int i = 0;  i < len;  i++, nextScan++) {
 		Value_t v = *(Value_t *)nextScan;
-		if (isPtr(v) && inAddrRange(nurseryBase, allocSzB, ValueToAddr(v))) {
-		    *nextScan = (Word_t)ForwardObj(v, &nextW);
+		if (isPtr(v)) {
+		    if (inAddrRange(nurseryBase, allocSzB, ValueToAddr(v))) {
+			INCR_STAT(vp->nLocalPtrs);
+			*nextScan = (Word_t)ForwardObj(v, &nextW);
+		    }
+		    else
+			INCR_STAT(vp->nGlobPtrs);
 		}
 	    }
 	}
@@ -113,7 +137,11 @@ void MinorGC (VProc_t *vp, Value_t **roots)
 	    vp->id, (Addr_t)nextScan - vp->oldTop,
 	    vp->allocPtr - vp->nurseryBase - WORD_SZB,
 	    (int)avail);
-#endif
+#ifndef NO_GC_STATS
+	SayDebug("[%2d] pointers scanned: %d local / %d global\n",
+	    vp->id, vp->nLocalPtrs, vp->nGlobPtrs);
+#endif /* !NO_GC_STATS */
+#endif /* !NDEBUG */
 
     LogEvent0 (vp, MinorGCEndEvt);
 
