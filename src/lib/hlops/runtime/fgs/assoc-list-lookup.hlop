@@ -3,27 +3,55 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * If a key exists in an association list, return its associated element.
- *
+ * Lookup a tag in the association list.  If the tag exists, return its associated value,
+ * but otherwise initialize the tag with a fresh associated value and return it.
  *)
 
 #include "types.def"
+#include "runtime-offsets.def"q
+
 #include "../synch/spin-lock-fn.hlop"
 define_spin_lock(fgs, fgs, FGS_LOCK_OFFSET)
 
-define @assoc-list-lookup (atag : assoc_tag, fgs : fgs / exh : exh) : option =
+define @assoc-list-add (atag : assoc_tag, init : fun(unit / exh -> any), fgs : fgs / exh : exh) : any =
   let _ : unit = @spin-lock-fgs (fgs / exh)
-  fun alistLookup (atag : assoc_tag, alist : assoc_list / exh : exh) : option =
+  let l : assoc_list = SELECT(FGS_ALIST_OFFSET, fgs)
+ (* initialize the element if the tag is not found, and return the element otherwise *)
+  fun lookup (atag : assoc_tag, alist : assoc_list / exh : exh) : any =
+    case alist
+     of ANIL => 
+        let elt : any = apply init (UNIT / exh)
+        let lNew : assoc_list = ACONS (atag, elt, l)
+        let lNew : assoc_list = promote (lNew)
+        do UPDATE(FGS_ALIST_OFFSET, fgs, lNew)
+        let _ : unit = @spin-unlock-fgs (fgs / exh)
+        return (elt)
+      | ACONS (atag' : assoc_tag, elt : any, alist : assoc_list) => 
+	if Equal (atag, atag')
+	   then let _ : unit = @spin-unlock-fgs (fgs / exh)
+                return (elt)
+           else apply lookup (atag, alist / exh)
+    end
+  apply lookup (atag, l / exh)
+;
+
+(* assoc-list-lookup
+ * - atag: tag to lookup
+ * - init: function that initializes the item if none exists
+ * - fgs: fiber group storage that contains the assoication list
+ *)
+define @assoc-list-lookup (atag : assoc_tag, init : fun(unit / exh -> any), fgs : fgs / exh : exh) : any =
+   let alist : assoc_list = SELECT(FGS_ALIST_OFFSET, fgs)
+  (* find the tag in the association list, seeding a fresh element if none exists *)
+   fun lookup (atag : assoc_tag, alist : assoc_list / exh : exh) : any =
       case alist
-       of ANIL => return (NONE)
+       of ANIL => (* seed a fresh element *)                   
+                   let elt : any = @assoc-list-add (atag, init, fgs / exh)
+                   return (elt)
 	| ACONS (atag' : assoc_tag, elt : any, alist : assoc_list) => 
 	  if Equal (atag, atag')
-	      then let v : option = SOME (elt)
-                  return (v)
-              else apply alistLookup (atag, alist / exh)
-       end
-   let alist : assoc_list = SELECT(FGS_ALIST_OFFSET, fgs)
-   let _ : unit = @spin-unlock-fgs (fgs / exh)
-   let v : option = apply alistLookup (atag, alist / exh) 
-   return (v)
+	      then return (elt)
+              else apply lookup (atag, alist / exh)
+     end
+   apply lookup (atag, alist / exh)
 ;

@@ -13,18 +13,18 @@
 #include "types.def"
 
 #define define_spin_lock(sl_name, sl_ty, sl_offset)                                                     \
-                                                                                                        \
 define inline @spin-lock-sl_name (lock : sl_ty / exh : exh) : unit =                                    \
     fun spin (_ : unit / exh : exh) : unit =                                                            \
 	if BCAS(&sl_offset(lock),FALSE,TRUE)                                                            \
-           then return (UNIT)                                                                           \
+           then do vpstore(ATOMIC, host_vproc, TRUE)                                                    \
+                return (UNIT)                                                                           \
            else apply spin (UNIT / exh)                                                                 \
-    (* in *)                                                                                            \
       apply spin (UNIT / exh)                                                                           \
 ;                                                                                                       \
                                                                                                         \
 define inline @spin-unlock-sl_name (lock : sl_ty / exh : exh) : unit =                                  \
-    do #sl_offset(lock) := FALSE                                                                        \
+    do UPDATE(sl_offset,lock,FALSE)                                                                     \
+    do vpstore(ATOMIC, host_vproc, FALSE)                                                               \
     return (UNIT)                                                                                       \
 ;                                                                                                       \
                                                                                                         \

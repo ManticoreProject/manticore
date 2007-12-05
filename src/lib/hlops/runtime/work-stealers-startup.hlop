@@ -205,7 +205,7 @@ define @work-stealers-startup ( / exh : exh) : () =
 		   then throw steal (vprocs)
 		   else (* (1) *)
 			throw dispatch ()
-	   else (*do ccall M_Print("Handling preemption for thread\n")*)            
+	   else (*do ccall M_Print("Handling preemption for thread\n")*)
 		let fid : fid = @get-fid (self / exh)
 		do ccall M_PrintInt (fid)
 		let k : fiber = (fiber)s

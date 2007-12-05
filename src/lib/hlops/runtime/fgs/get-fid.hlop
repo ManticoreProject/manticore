@@ -10,22 +10,18 @@
 #include "tags.def"
 
 define @get-fgs (vp : vproc / exh : exh) : fgs;
-define @assoc-list-lookup (atag : assoc_tag, fgs : fgs / exh : exh) : option;
-define @assoc-list-add (atag : assoc_tag, elt : any, fgs : fgs / exh : exh) : ();
+define @assoc-list-lookup (atag : assoc_tag, init : fun(unit / exh -> any), fgs : fgs / exh : exh) : any;
 
 extern int FreshFiberId ();
 
 define @get-fid (vp : vproc / exh : exh) : fid =
   let fgs : fgs = @get-fgs (vp / exh)
-  let fid : option = @assoc-list-lookup (TAG_FID, fgs / exh)
-  case fid
-   of NONE => 
+  fun init (_ : unit / exh : exh) : any =
       let idNum : int = ccall FreshFiberId ()
       let id : [int] = wrap (idNum)
-      do @assoc-list-add (TAG_FID, id, fgs / exh)
-      return (idNum)
-    | SOME (fid : [fid]) => 
-      let fid : fid = #0(fid)
-      return (fid)
-  end      
+      return (id)
+  let fidW : any = @assoc-list-lookup (TAG_FID, init, fgs / exh)
+  let fidW : [fid] = ([fid])fidW
+  let fid : fid = SELECT(0,fidW)
+  return (fid)
 ;
