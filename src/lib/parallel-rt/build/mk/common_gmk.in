@@ -1,0 +1,108 @@
+# common.gmk
+#
+# COPYRIGHT (c) 2007 Manticore project. (http://manticore.cs.uchicago.edu)
+# All rights reserved.
+#
+# Common definitions shared by all of the runtime-system makefiles.
+#
+# @configure_output@
+#
+
+#
+# determine the buid options
+#
+ifeq (,$(findstring logging,$(BUILD_OPTIONS)))
+  ENABLE_LOGGING=false
+else
+  ENABLE_LOGGING=true
+endif
+ifeq (,$(findstring debug,$(BUILD_OPTIONS)))
+  ENABLE_DEBUG=false
+else
+  ENABLE_DEBUG=true
+endif
+
+#
+# directories
+#
+
+#
+# tools and flags
+#
+CC =		@CC@
+CFLAGS =	@CFLAGS@ @PTHREAD_CFLAGS@
+LDFLAGS =
+INCLUDES =	-I. -I../../include -I../../../../include
+CPPFLAGS =	@CPPFLAGS@ $(INCLUDES) -D@TARGET_OS@ -D@TARGET_CPU@
+AR =		ar
+ARFLAGS =	rcv
+RANLIB =	ranlib
+
+#
+# View path
+#
+VPATH =		../../include:../../gc:../../vproc:../../misc:../../machine:../../config
+
+GC_SRCS = 	minor-gc.c \
+		major-gc.c \
+		global-gc.c \
+		heap.c \
+		unix-memory.c \
+		alloc.c
+
+VPROC_SRCS =	vproc.c
+
+MISC_SRCS =	main.c \
+		apply.c \
+		basis.c \
+		options.c \
+		work-queue.c
+
+ifeq ($(ENABLE_LOGGING),true)
+  CPPFLAGS += -DENABLE_LOGGING
+  MISC_SRCS += log.c
+endif
+
+ifeq ($(ENABLE_DEBUG),true)
+  CPPFLAGS += -DNO_INLINE
+  CFLAGS += -g3
+else
+  CPPFLAGS += -DNDEBUG
+  CFLAGS += -O2
+endif
+
+C_SRCS		= $(GC_SRCS) $(VPROC_SRCS) $(MISC_SRCS)
+C_OBJS		= $(patsubst %.c,%.o,$(C_SRCS))
+
+ASM_SRCS	= asm-glue.S asm-scheduler.S
+ASM_OBJS	= $(patsubst %.S,%.o,$(ASM_SRCS))
+
+OBJS		= $(C_OBJS) $(ASM_OBJS)
+
+$(TARGET):	$(OBJS)
+	$(AR) $(ARFLAGS) $(TARGET) $(OBJS)
+	$(RANLIB) $(TARGET)
+
+main.o:		asm-offsets.h
+
+$(ASM_OBJS): %.o : %.S asm-offsets.h
+	$(CC) -c @CFLAGS@ -DNOT_C_SOURCE $(CPPFLAGS) -o $@ $<
+
+asm-offsets.h:		gen-asm-offsets
+	./gen-asm-offsets > asm-offsets.h
+
+gen-asm-offsets:	gen-asm-offsets.c manticore-rt.h vproc.h request-codes.h vproc-offsets-ins.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o gen-asm-offsets $< ../../config/crc.c
+
+gen-runtime-constants:	gen-runtime-constants.c manticore-rt.h vproc.h vproc-offsets-ins.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o gen-runtime-constants $< ../../config/crc.c
+
+gen-runtime-offsets:	gen-runtime-offsets.c manticore-rt.h vproc.h vproc-offsets-ins.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o gen-runtime-offsets $< ../../config/crc.c
+
+.PHONY:		clean
+
+clean:
+	rm -rf $(OBJS) $(TARGET)
+	rm -rf gen-asm-offsets gen-runtime-constants asm-offsets.h
+	rm -rf *.dSYM

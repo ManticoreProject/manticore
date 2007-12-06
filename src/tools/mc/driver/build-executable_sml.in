@@ -24,15 +24,21 @@ structure BuildExecutable : sig
     val isCrossCompiler = (@CROSS_COMPILING@ = 1)
     val ccCmd =  "@CC@"
     val cFlags = "@CFLAGS@"
-    val ldFlags = cat [
+    fun ldFlags libName = cat [
 	    "-L@MANTICORE_LIBDIR@",
-	    "-L@MANTICORE_SRCDIR@/lib/parallel-rt/build",
+	    "-L@MANTICORE_SRCDIR@/lib/parallel-rt/build/" ^ libName,
 	    "@LDFLAGS@",
-	    "-lmanticore",
+	    "-l" ^ libName,
 	    "-lpthread"
 	  ]
 
-    fun cmd asmFile = cat [ccCmd, cFlags, asmFile, ldFlags]
+    fun cmd asmFile = let
+	  val logging = if Controls.get BasicControl.logging then "-log" else ""
+	  val debug = if Controls.get BasicControl.debug then "-debug" else ""
+	  val libName = concat ["mcrt", logging, debug]
+	  in
+	    cat [ccCmd, cFlags, asmFile, ldFlags libName]
+	  end
 
     fun build {verbose, asmFile, outFile} = if isCrossCompiler
 	  then (

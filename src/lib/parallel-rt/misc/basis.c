@@ -167,8 +167,10 @@ Value_t M_Die (char *message)
 
 void M_PrintDebug (char *s)
 {
+#ifndef NDEBUG
     if (DebugFlg)
-	Say("[%2d] %s", VProcSelf()->id, s);  
+	SayDebug("[%2d] %s", VProcSelf()->id, s);  
+#endif
 }
 
 void M_PrintPtr (char *name, void *ptr)

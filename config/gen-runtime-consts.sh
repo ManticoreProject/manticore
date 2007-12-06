@@ -7,10 +7,7 @@
 # the runtime-constants.sml file.
 #
 
-BUILD_DIR=src/lib/parallel-rt/build
-DRIVER_DIR=src/tools/mc/driver
-PROG=gen-runtime-constants
-OUTFILE=runtime-constants.sml
+BUILD_DIR=src/lib/parallel-rt/build/config
 
 function gen {
   PROG=$1

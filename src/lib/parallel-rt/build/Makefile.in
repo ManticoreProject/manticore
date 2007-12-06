@@ -3,75 +3,30 @@
 # COPYRIGHT (c) 2007 Manticore project. (http://manticore.cs.uchicago.edu)
 # All rights reserved.
 #
+# The Makefile for building all versions of the runtime system.
+#
 # @configure_output@
 #
 
-CC =		@CC@
-CFLAGS =	@CFLAGS@ @PTHREAD_CFLAGS@
-LDFLAGS =	
-X =		@CPPFLAGS@
-CPPFLAGS =	-I. -I../include -I../../../include -D@TARGET_OS@ -D@TARGET_CPU@
-AR =		ar
-ARFLAGS =	rcv
-RANLIB =	ranlib
+BUILD_DIRS =	mcrt mcrt-log mcrt-debug mcrt-log-debug
 
-TARGET =	libmanticore.a
 
-VPATH =		../include:../gc:../vproc:../misc:../machine:../config
-
-GC_SRCS = 	minor-gc.c \
-		major-gc.c \
-		global-gc.c \
-		heap.c \
-		unix-memory.c \
-		alloc.c
-
-VPROC_SRCS =	vproc.c
-
-MISC_SRCS =	main.c \
-		apply.c \
-		basis.c \
-		options.c \
-		work-queue.c
-
-ifeq (@ENABLE_LOGGING@,true)
-  CPPFLAGS += -DENABLE_LOGGING
-  MISC_SRCS += log.c
-endif
-
-C_SRCS		= $(GC_SRCS) $(VPROC_SRCS) $(MISC_SRCS)
-C_OBJS		= $(patsubst %.c,%.o,$(C_SRCS))
-
-ASM_SRCS	= asm-glue.S asm-scheduler.S
-ASM_OBJS	= $(patsubst %.S,%.o,$(ASM_SRCS))
-
-OBJS		= $(C_OBJS) $(ASM_OBJS)
-
-$(TARGET):	$(OBJS)
-	$(AR) $(ARFLAGS) $(TARGET) $(OBJS)
-	$(RANLIB) $(TARGET)
-
-main.o:		asm-offsets.h
-
-$(ASM_OBJS): %.o : %.S asm-offsets.h
-	$(CC) -c @CFLAGS@ -DNOT_C_SOURCE $(CPPFLAGS) -o $@ $<
-
-asm-offsets.h:		gen-asm-offsets
-	./gen-asm-offsets > asm-offsets.h
-
-gen-asm-offsets:	gen-asm-offsets.c manticore-rt.h vproc.h request-codes.h vproc-offsets-ins.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) -o gen-asm-offsets $< ../config/crc.c
-
-gen-runtime-constants:	gen-runtime-constants.c manticore-rt.h vproc.h vproc-offsets-ins.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) -o gen-runtime-constants $< ../config/crc.c
-
-gen-runtime-offsets:	gen-runtime-offsets.c manticore-rt.h vproc.h vproc-offsets-ins.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) -o gen-runtime-offsets $< ../config/crc.c
+.PHONY:		build
+build:
+	for dir in $(BUILD_DIRS) ; do \
+	  (cd $$dir; $(MAKE) build || exit 1) \
+	done
 
 .PHONY:		clean
-
 clean:
-	rm -rf $(OBJS) $(TARGET)
-	rm -rf gen-asm-offsets gen-runtime-constants asm-offsets.h
-	rm -rf *.dSYM
+	for dir in $(BUILD_DIRS) ; do \
+	  (cd $$dir; $(MAKE) clean || exit 1) \
+	done
 
+.PHONY:		distclean
+distclean:
+	rm -rf $(BUILD_DIRS)
+	rm -rf Makefile mk/common.gmk config/Makefile
+
+.PHONY:		devclean
+devclean:	distclean

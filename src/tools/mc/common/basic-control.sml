@@ -29,6 +29,12 @@ structure BasicControl :  sig
   (* sequential mode *)
     val sequential : bool Controls.control
 
+  (* link with debug version of runtime mode *)
+    val debug : bool Controls.control
+
+  (* enable logging mode *)
+    val logging : bool Controls.control
+
   (* wrap a 'pre -> 'post pass with a tracing diagnostic, controled by the 
    * "verbose" control.
    *)
@@ -105,11 +111,6 @@ structure BasicControl :  sig
 	    default = 0
 	  }
 
-    val () = ControlRegistry.register topRegistry {
-	    ctl = Controls.stringControl ControlUtil.Cvt.int verbose,
-	    envName = NONE
-	  };
-
   (* custom scheduler *)
     val scheduler = Controls.genControl {
 	    name = "scheduler",
@@ -128,13 +129,43 @@ structure BasicControl :  sig
 	    default = false
 	  }
 
+  (* link with debug version of runtime mode *)
+    val debug : bool Controls.control = Controls.genControl {
+	    name = "debug",
+	    pri = [0, 1, 2],
+	    obscurity = 0,
+	    help = "include debugging support",
+	    default = false
+	  }
+
+  (* enable logging mode *)
+    val logging : bool Controls.control = Controls.genControl {
+	    name = "log",
+	    pri = [0, 1, 3],
+	    obscurity = 0,
+	    help = "enable logging of event history",
+	    default = false
+	  }
+
     val () = (
+	  ControlRegistry.register topRegistry {
+	      ctl = Controls.stringControl ControlUtil.Cvt.int verbose,
+	      envName = NONE
+	    };
 	  ControlRegistry.register topRegistry {
 	      ctl = Controls.stringControl ControlUtil.Cvt.string scheduler,
 	      envName = NONE
 	    };
 	  ControlRegistry.register topRegistry {
 	      ctl = Controls.stringControl ControlUtil.Cvt.bool sequential,
+	      envName = NONE
+	    };
+	  ControlRegistry.register topRegistry {
+	      ctl = Controls.stringControl ControlUtil.Cvt.bool debug,
+	      envName = NONE
+	    };
+	  ControlRegistry.register topRegistry {
+	      ctl = Controls.stringControl ControlUtil.Cvt.bool logging,
 	      envName = NONE
 	    })
 

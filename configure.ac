@@ -398,6 +398,8 @@ dnl
 AC_CONFIG_FILES(\
 dnl ***** Makefiles *****
   src/lib/parallel-rt/build/Makefile
+  src/lib/parallel-rt/build/config/Makefile
+  src/lib/parallel-rt/build/mk/common.gmk:src/lib/parallel-rt/build/mk/common_gmk.in
   src/tools/log-dump/Makefile
   src/tools/mc/Makefile
 dnl ***** SML source files *****
@@ -431,6 +433,29 @@ dnl
 dnl generate the runtime-constants files
 dnl
 AC_CONFIG_COMMANDS([runtime-consts], [config/gen-runtime-consts.sh])
+
+dnl
+dnl generate makefiles for runtime library builds
+dnl
+dnl usage: MK_BUILD_DIR(<build-dir>, <options>)
+dnl
+AC_DEFUN([MK_BUILD_DIR], [
+    if test ! -d src/lib/parallel-rt/build/$1 ; then
+      mkdir src/lib/parallel-rt/build/$1
+    fi
+    [sed -e 's,@BUILD_TARGET@,$1,g' -e 's,@BUILD_OPTIONS@,$2,g' \
+      src/lib/parallel-rt/build/mk/Makefile.in \
+        > src/lib/parallel-rt/build/$1/Makefile.in]
+    AC_CONFIG_FILES(src/lib/parallel-rt/build/$1/Makefile)
+  ])
+
+
+if test $CROSS_COMPILING = 0 ; then
+    MK_BUILD_DIR(mcrt, [])
+    MK_BUILD_DIR(mcrt-debug, [debug])
+    MK_BUILD_DIR(mcrt-log, [logging])
+    MK_BUILD_DIR(mcrt-log-debug, [logging debug])
+fi
 
 AC_OUTPUT
 

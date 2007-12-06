@@ -6,6 +6,10 @@
  * Generate offsets for assembly access to runtime data structures.
  */
 
+#ifdef NO_INLINE
+#undef NO_INLINE /* because the unused inline functions refer to globals */
+#endif
+
 #include <stdlib.h>
 #include "manticore-rt.h"
 #include <stdio.h>

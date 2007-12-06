@@ -1,0 +1,24 @@
+# Makefile.in
+#
+# COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu/)
+# All rights reserved.
+#
+# Generic makefile for the runtime system libraries.
+#
+# @configure_input@
+#
+
+# the target build options
+#
+BUILD_OPTIONS =	@BUILD_OPTIONS@
+
+# the target library name
+#
+TARGET =	lib@BUILD_TARGET@.a
+
+.PHONY:	build
+build:		$(TARGET)
+
+# Include common definitions for run-time builds
+#
+include ../mk/common.gmk
