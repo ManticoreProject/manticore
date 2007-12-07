@@ -277,5 +277,16 @@ static void ScanGlobalToSpace (
  */
 static void GetGlobalChunk (VProc_t *vp)
 {
-    Die ("GetGlobalChunk unimplemented\n");
+    MemChunk_t	*chunk;
+
+    MutexLock (&HeapLock);
+	chunk = GetChunk ();
+	UpdateBIBOP (chunk);
+    MutexUnlock (&HeapLock);
+
+    chunk->sts = VPROC_CHUNK(vp->id);
+    vp->globToSpace = chunk;
+    vp->globNextW = chunk->baseAddr + WORD_SZB;
+    vp->globLimit = chunk->baseAddr + chunk->szB;
+
 }

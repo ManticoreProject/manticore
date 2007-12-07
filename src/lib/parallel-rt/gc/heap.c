@@ -23,7 +23,9 @@ Addr_t		MaxNurserySzB;	/* limit on size of nursery in vproc heap */
 Addr_t		MajorGCThreshold; /* when the size of the nursery goes below this limit */
 				/* it is time to do a GC. */
 
-static MemChunk_t *FreeChunks;	/* list of free chunks */
+MemChunk_t	*ToSpaceChunks; /* list of chunks in to-space */
+MemChunk_t	*FromSpaceChunks; /* list of chunks is from-space */
+MemChunk_t	*FreeChunks;	/* list of free chunks */
 
 /* The BIBOP maps addresses to the memory chunks containing the address.
  * It is used by the global collector and access to it is protected by
@@ -93,6 +95,33 @@ void InitVProcHeap (VProc_t *vp)
 	UpdateBIBOP (chunk);
 
     MutexUnlock (&HeapLock);
+
+}
+
+/* Get a memory chunk from the free list or by allocating fresh memory; the
+ * size of the chunk will be HEAP_CHUNK_SZB bytes.  The chunk is added to the
+ * to-space list.
+ * NOTE: this function should only be called when the HeapLock is held.
+ */
+MemChunk_t *GetChunk ()
+{
+    MemChunk_t	*chunk;
+
+    if (FreeChunks == (MemChunk_t *)0) {
+	chunk = AllocChunk (HEAP_CHUNK_SZB);
+	if (chunk == 0) {
+	    Die ("unable to allocate memory for global heap\n");
+	}
+    }
+    else {
+	chunk = FreeChunks;
+	FreeChunks = chunk->next;
+    }
+
+    chunk->next = ToSpaceChunks;
+    ToSpaceChunks = chunk;
+
+    return chunk;
 
 }
 

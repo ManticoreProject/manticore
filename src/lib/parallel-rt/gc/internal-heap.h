@@ -10,6 +10,7 @@
 #define _INTERNAL_HEAP_H_
 
 #include "manticore-rt.h"
+#include "heap.h"
 
 typedef enum {
     FREE_CHUNK,
@@ -28,8 +29,22 @@ struct struct_chunk {
     Status_t	sts;		/* current status of chunk */
 };
 
+Mutex_t		HeapLock;	/* lock for protecting heap data structures */
+MemChunk_t	*ToSpaceChunks; /* list of chunks in to-space */
+MemChunk_t	*FromSpaceChunks; /* list of chunks is from-space */
+MemChunk_t	*FreeChunks;	/* list of free chunks */
+
+/* Get a memory chunk from the free list or by allocating fresh memory; the
+ * size of the chunk will be HEAP_CHUNK_SZB bytes.  The chunk is added to the
+ * to-space list.
+ * NOTE: this function should only be called when the HeapLock is held.
+ */
+extern MemChunk_t *GetChunk ();
+
+extern void UpdateBIBOP (MemChunk_t *chunk);
+
+/* interface to the OS memory system */
 extern MemChunk_t *AllocChunk (Addr_t szb);
 extern void FreeChunk (MemChunk_t *);
-extern void UpdateBIBOP (MemChunk_t *chunk);
 
 #endif /* !_INTERNAL_HEAP_H_ */
