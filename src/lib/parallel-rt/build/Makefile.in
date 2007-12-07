@@ -14,13 +14,13 @@ BUILD_DIRS =	mcrt mcrt-log mcrt-debug mcrt-log-debug
 .PHONY:		build
 build:
 	for dir in $(BUILD_DIRS) ; do \
-	  (cd $$dir; $(MAKE) build || exit 1) \
+	  (cd $$dir; $(MAKE) build) || exit 1; \
 	done
 
 .PHONY:		clean
 clean:
 	for dir in $(BUILD_DIRS) ; do \
-	  (cd $$dir; $(MAKE) clean || exit 1) \
+	  (cd $$dir; $(MAKE) clean) || exit 1; \
 	done
 
 .PHONY:		distclean
