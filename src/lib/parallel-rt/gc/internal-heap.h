@@ -29,10 +29,23 @@ struct struct_chunk {
     Status_t	sts;		/* current status of chunk */
 };
 
-Mutex_t		HeapLock;	/* lock for protecting heap data structures */
-MemChunk_t	*ToSpaceChunks; /* list of chunks in to-space */
-MemChunk_t	*FromSpaceChunks; /* list of chunks is from-space */
-MemChunk_t	*FreeChunks;	/* list of free chunks */
+/********** Global heap **********/
+
+#define HEAP_CHUNK_SZB		((Addr_t)(4*ONE_MEG))
+
+extern Mutex_t		HeapLock;	/* lock for protecting heap data structures */
+extern Addr_t		GlobalVM;	/* amount of memory allocated to Global heap */
+					/*  (includingfree chunks). */
+extern Addr_t		FreeVM;		/* amount of free memory in free list */
+extern Addr_t		ToSpaceSz;	/* amount of memory being used for to-space */
+extern Addr_t		ToSpaceLimit;	/* if ToSpaceSz exceeds this value, then do a */
+					/* global GC */
+extern Addr_t		TotalVM;	/* total memory used by heap (including vproc */
+					/* local heaps) */
+extern MemChunk_t	*ToSpaceChunks; /* list of chunks in to-space */
+extern MemChunk_t	*FromSpaceChunks; /* list of chunks is from-space */
+extern MemChunk_t	*FreeChunks;	/* list of free chunks */
+extern bool		GlobalGCInProgress; /* true, when a global GC has been initiated */
 
 /* Get a memory chunk from the free list or by allocating fresh memory; the
  * size of the chunk will be HEAP_CHUNK_SZB bytes.  The chunk is added to the
@@ -46,5 +59,9 @@ extern void UpdateBIBOP (MemChunk_t *chunk);
 /* interface to the OS memory system */
 extern MemChunk_t *AllocChunk (Addr_t szb);
 extern void FreeChunk (MemChunk_t *);
+
+/* GC routines */
+extern void InitGlobalGC ();
+extern void StartGlobalGC (VProc_t *self, Value_t **roots);
 
 #endif /* !_INTERNAL_HEAP_H_ */

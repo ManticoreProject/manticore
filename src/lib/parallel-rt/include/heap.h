@@ -33,16 +33,6 @@ STATIC_INLINE void SetAllocPtr (VProc_t *vp)
 }
 
 
-/********** Global heap **********/
-
-#define HEAP_CHUNK_SZB		((Addr_t)(4*ONE_MEG))
-
-extern Addr_t	GlobalVM;	/* amount of memory allocated to Global heap (including */
-				/* free chunks). */
-extern Addr_t	FreeVM;		/* amount of free memory in free list */
-extern Addr_t	TotalVM;	/* total memory used by heap (including vproc local heaps) */
-
-
 /********** Exported functions **********/
 
 extern void HeapInit (Options_t *opts);

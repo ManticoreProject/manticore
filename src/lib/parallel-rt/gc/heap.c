@@ -71,8 +71,15 @@ void HeapInit (Options_t *opts)
     MutexInit (&HeapLock);
     GlobalVM = 0;
     FreeVM = 0;
-    FreeChunks = 0;
-/* ??? */
+    ToSpaceSz = 0;
+    ToSpaceLimit = 16 * ONE_MEG;  /* FIXME: what should this be? */
+    TotalVM = 0;
+    ToSpaceChunks = (MemChunk_t *)0;
+    FromSpaceChunks = (MemChunk_t *)0;
+    FreeChunks = (MemChunk_t *)0;
+    GlobalGCInProgress = false;
+
+    InitGlobalGC ();
 
 } /* end of HeapInit */
 
@@ -91,6 +98,8 @@ void InitVProcHeap (VProc_t *vp)
 	vp->globToSpace = chunk;
 	vp->globNextW = chunk->baseAddr + WORD_SZB;
 	vp->globLimit = chunk->baseAddr + chunk->szB;
+	vp->globalGCPending = false;
+	vp->globalGCInProgress = false;
 
 	UpdateBIBOP (chunk);
 

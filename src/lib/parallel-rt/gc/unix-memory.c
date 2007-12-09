@@ -13,6 +13,7 @@
 #include <errno.h>
 #include "os-memory.h"
 #include "heap.h"
+#include "internal-heap.h"
 #include <stdio.h>
 
 #define PROT_ALL        PROT_EXEC|PROT_READ|PROT_WRITE

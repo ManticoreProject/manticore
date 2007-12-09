@@ -41,6 +41,10 @@ struct struct_vproc {
     Addr_t	globNextW;	/*!< pointer to next word to allocate in */
 				/* global heap */
     Addr_t	globLimit;	/*!< limit pointer for global heap */
+    bool	globalGCPending; /*!< true when the vproc has been signaled that */
+				/* global GC has started, but this vproc has not */
+				/* started yet. */
+    bool	globalGCInProgress; /*!< true when this vproc has started global collection */
     int		id;	      /*!< index of this vproc in VProcs[] array */
     OSThread_t	hostID;	      /*!< PThread ID of host */
     Mutex_t	lock;	      /*!< lock for VProc state */

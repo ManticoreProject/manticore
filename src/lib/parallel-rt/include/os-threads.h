@@ -147,6 +147,7 @@ STATIC_INLINE bool BarrierWait (Barrier_t *b)
 	if (++(b->nWaiting) < b->nProcs)
 	    CondWait (&(b->wait), &(b->lock));
 	else {
+	    b->nWaiting = 0;  // reset state
 	    CondBroadcast (&(b->wait));
 	    result = true;
 	}
