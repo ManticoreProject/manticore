@@ -22,7 +22,6 @@
 
 static void ScanGlobalToSpace (
 	VProc_t *vp, Addr_t heapBase, MemChunk_t *scanChunk, Word_t *scanPtr);
-static void GetGlobalChunk (VProc_t *vp);
 
 /* Forward an object into the global-heap chunk reserved for the current VP */
 STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
@@ -35,7 +34,7 @@ STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
 	Word_t *nextW = (Word_t *)vp->globNextW;
 	int len = GetLength(hdr);
 	if (nextW+len >= (Word_t *)(vp->globLimit)) {
-	    GetGlobalChunk (vp);
+	    GetChunkForVProc (vp);
 	    nextW = (Word_t *)vp->globNextW;
 	}
 	Word_t *newObj = nextW;
@@ -273,23 +272,5 @@ static void ScanGlobalToSpace (
 	    scanTop = (Word_t *)(scanChunk->usedTop);
 
     } while (scanPtr < scanTop);
-
-}
-
-/* GetGlobalChunk:
- */
-static void GetGlobalChunk (VProc_t *vp)
-{
-    MemChunk_t	*chunk;
-
-    MutexLock (&HeapLock);
-	chunk = GetChunk ();
-	UpdateBIBOP (chunk);
-    MutexUnlock (&HeapLock);
-
-    chunk->sts = VPROC_CHUNK(vp->id);
-    vp->globToSpace = chunk;
-    vp->globNextW = chunk->baseAddr + WORD_SZB;
-    vp->globLimit = chunk->baseAddr + chunk->szB;
 
 }

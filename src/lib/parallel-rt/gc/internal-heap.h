@@ -52,7 +52,7 @@ extern bool		GlobalGCInProgress; /* true, when a global GC has been initiated */
  * to-space list.
  * NOTE: this function should only be called when the HeapLock is held.
  */
-extern MemChunk_t *GetChunk ();
+extern void GetChunkForVProc ();
 
 extern void UpdateBIBOP (MemChunk_t *chunk);
 

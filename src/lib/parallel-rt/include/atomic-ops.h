@@ -8,7 +8,16 @@
  * we have machine-specific assembly code.  The operations are
  * as follows:
  *
- *	bool CompareAndSwap (void **ptr, void *key, void *new)
+ *	void *CompareAndSwap (void **ptr, void *key, void *new)
+ *	{
+ *	    void *old = *ptr;
+ *	    if (old == key) {
+ *		*ptr = new;
+ *	    }
+ *	    return old;
+ *	}
+ *
+ *	bool BoolCompareAndSwap (void **ptr, void *key, void *new)
  *	{
  *	    if (*ptr == key) {
  *		*ptr = new;
@@ -46,12 +55,22 @@
 
 #ifdef HAVE_BUILTIN_ATOMIC_OPS
 
-STATIC_INLINE bool BoolCompareAndSwap (Value_t *ptr, Value_t key, Value_t new)
+STATIC_INLINE bool BoolCompareAndSwapValue (Value_t *ptr, Value_t key, Value_t new)
 {
     return __sync_bool_compare_and_swap (ptr, key, new);
 }
 
-STATIC_INLINE Value_t CompareAndSwap (Value_t *ptr, Value_t key, Value_t new)
+STATIC_INLINE bool BoolCompareAndSwapWord (Word_t *ptr, Word_t key, Word_t new)
+{
+    return __sync_bool_compare_and_swap (ptr, key, new);
+}
+
+STATIC_INLINE Value_t CompareAndSwapValue (Value_t *ptr, Value_t key, Value_t new)
+{
+    return __sync_val_compare_and_swap (ptr, key, new);
+}
+
+STATIC_INLINE Word_t CompareAndSwapWord (Word_t *ptr, Word_t key, Word_t new)
 {
     return __sync_val_compare_and_swap (ptr, key, new);
 }
@@ -73,9 +92,23 @@ STATIC_INLINE int FetchAndDec (int *ptr)
 
 #else /* !HAVE_BUILTIN_ATOMIC_OPS */
 
-STATIC_INLINE Value_t CompareAndSwap (Value_t *ptr, Value_t old, Value_t new)
+STATIC_INLINE Value_t CompareAndSwapValue (Value_t *ptr, Value_t old, Value_t new)
 {
     register Value_t result __asm__ ("%rax");
+
+    __asm__ __volatile__ (
+	"movq %2,%%rbx\n\t"		/* %rbx = new */
+	"movq %1,%%rax\n\t"		/* %rax = 0 */
+	"lock; cmpxchgq %%rbx,%0;\n"	/* cmpxchg %rbx,ptr */
+	    : "=m" (*ptr)
+    	    : "g" (old), "g" (new)
+	    : "memory", "%rax");
+    return result;
+}
+
+STATIC_INLINE Word_t CompareAndSwapWord (Word_t *ptr, Word_t old, Word_t new)
+{
+    register Word_t result __asm__ ("%rax");
 
     __asm__ __volatile__ (
 	"movq %2,%%rbx\n\t"		/* %rbx = new */

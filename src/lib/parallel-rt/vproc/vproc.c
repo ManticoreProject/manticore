@@ -346,7 +346,7 @@ void EnqueueOnVProc (VProc_t *self, VProc_t *vp, Value_t tid, Value_t fiber)
     do {
 	entryQOld = vp->entryQ;
 	ValueToRdyQItem(entryQNew)->link = entryQOld;      
-    } while (CompareAndSwap (ValueToPtr(entryQ), entryQOld, entryQNew) != entryQOld);
+    } while (CompareAndSwapValue (ValueToPtr(entryQ), entryQOld, entryQNew) != entryQOld);
 
     /* The vproc was idle before enqueuing, so wake it up */
     if (entryQOld == M_NIL) {       
@@ -395,7 +395,7 @@ Value_t VProcGetEntryQ (VProc_t *vp)
    */
     do {
 	item = vp->entryQ;
-    } while (CompareAndSwap (&(vp->entryQ), item, M_NIL) != item);
+    } while (CompareAndSwapValue (&(vp->entryQ), item, M_NIL) != item);
 
     return item;
 }

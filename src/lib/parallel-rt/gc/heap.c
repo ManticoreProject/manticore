@@ -107,30 +107,38 @@ void InitVProcHeap (VProc_t *vp)
 
 }
 
-/* Get a memory chunk from the free list or by allocating fresh memory; the
+
+/* GetChunkForVProc:
+ *
+ * Get a memory chunk from the free list or by allocating fresh memory; the
  * size of the chunk will be HEAP_CHUNK_SZB bytes.  The chunk is added to the
  * to-space list.
  * NOTE: this function should only be called when the HeapLock is held.
  */
-MemChunk_t *GetChunk ()
+void GetChunkForVProc (VProc_t *vp)
 {
     MemChunk_t	*chunk;
 
-    if (FreeChunks == (MemChunk_t *)0) {
-	chunk = AllocChunk (HEAP_CHUNK_SZB);
-	if (chunk == 0) {
-	    Die ("unable to allocate memory for global heap\n");
+    MutexLock (&HeapLock);
+	if (FreeChunks == (MemChunk_t *)0) {
+	    chunk = AllocChunk (HEAP_CHUNK_SZB);
+	    UpdateBIBOP (chunk);
+	    if (chunk == 0) {
+		Die ("unable to allocate memory for global heap\n");
+	    }
 	}
-    }
-    else {
-	chunk = FreeChunks;
-	FreeChunks = chunk->next;
-    }
+	else {
+	    chunk = FreeChunks;
+	    FreeChunks = chunk->next;
+	}
+	chunk->next = ToSpaceChunks;
+	ToSpaceChunks = chunk;
+    MutexUnlock (&HeapLock);
 
-    chunk->next = ToSpaceChunks;
-    ToSpaceChunks = chunk;
-
-    return chunk;
+    chunk->sts = VPROC_CHUNK(vp->id);
+    vp->globToSpace = chunk;
+    vp->globNextW = chunk->baseAddr + WORD_SZB;
+    vp->globLimit = chunk->baseAddr + chunk->szB;
 
 }
 
