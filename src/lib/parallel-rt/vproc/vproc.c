@@ -480,9 +480,8 @@ static void SigHandler (int sig, siginfo_t *si, void *_sc)
       case SIGUSR2: /* Global GC signal */
 	LogEvent0 (self, GCSignalEvt);
 	self->sigPending = M_TRUE;
-	self->globalGCPending = true
+	self->globalGCPending = true;
 	break;
-      }
       default:
 	Die ("bogus signal %d\n", sig);
 	break;
