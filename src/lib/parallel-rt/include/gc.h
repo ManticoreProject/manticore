@@ -13,6 +13,7 @@
 
 extern void MinorGC (VProc_t *vp, Value_t **roots);
 extern void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top);
+extern void StartGlobalGC (VProc_t *vp, Value_t **roots);
 extern Value_t PromoteObj (VProc_t *vp, Value_t root);
 
 #endif /* !_GC_H_ */
