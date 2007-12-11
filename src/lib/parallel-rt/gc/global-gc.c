@@ -100,7 +100,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	    CondWait (&FollowerWait, &GCLock);
 	}
 	else {
-	    LogEvent0 (vp, GlobalGCInitEvt);
+	    LogEvent0 (self, GlobalGCInitEvt);
 #ifndef NDEBUG
 	    if (DebugFlg)
 		SayDebug("[%2d] Initiating global GC\n", self->id);
@@ -173,7 +173,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 #endif
     }
 
-    LogEvent0 (vp, GlobalGCEndEvt);
+    LogEvent0 (self, GlobalGCEndEvt);
 
 } /* end of StartGlobalGC */
 

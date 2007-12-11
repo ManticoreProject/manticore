@@ -15,12 +15,11 @@
 #include <sys/time.h>
 #include <time.h>
 
-#ifndef HAVE_STRUCT_TIMESPEC
-struct timespec {
-    uint32_t		tv_sec;
-    uint32_t		tv_usec;
-};
-#endif
+/* a 64-bit time value represented as seconds and fraction pair */
+typedef struct {
+    uint32_t		sec;	/* whole seconds */
+    uint32_t		frac;	/* fractional seconds (either uSec or nSec) */
+} TimeValue_t;
 
 #define LOGBLOCK_SZB	(8*1024)
 #define LOGBUF_SZ	((LOGBLOCK_SZB/sizeof(LogEvent_t))-1)
@@ -34,8 +33,7 @@ enum {				    // different formats of timestamps.
 };
 
 typedef union {			    // union of timestamp reps.
-    struct timespec	ts_timespec;	// LOGTS_TIMEVAL
-    struct timeval	ts_timeval;	// LOGTS_TIMESPEC
+    TimeValue_t		ts_val;		// either LOGTS_TIMEVAL or LOGTS_TIMESPEC
     uint64_t		ts_mach;	// LOGTS_MACH_ABSOLUTE
 } LogTS_t;
 
@@ -53,9 +51,9 @@ typedef struct {
 } LogFileHeader_t;
 
 typedef struct {
-    LogTS_t		timestamp;	// time stamp (16 bytes)
+    LogTS_t		timestamp;	// time stamp (8 bytes)
     uint32_t		event;		// event code
-    uint32_t		data[3];	// upto 12 bytes of extra data
+    uint32_t		data[5];	// upto 20 bytes of extra data
 } LogEvent_t;
 
 struct struct_logbuf {
