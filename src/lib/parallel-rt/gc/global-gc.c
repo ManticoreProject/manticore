@@ -90,6 +90,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 
     self->globalGCInProgress = true;
     self->globalGCPending = false;
+    self->sigPending = false;
 
     MutexLock (&GCLock);
 	if (GlobalGCInProgress) {

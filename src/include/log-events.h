@@ -25,6 +25,7 @@ DEF_EVENT(VProcExitMainEvt,	0,	"exit main vproc")
 DEF_EVENT(VProcSleepEvt,	0,	"vproc going to sleep")
 DEF_EVENT(VProcDequeueEvt,	0,	"dequeue from secondary scheduling queue")
 DEF_EVENT(PreemptSignalEvt,	0,	"preemption signal occurs")
+DEF_EVENT(GCSignalEvt,		0,	"GC signal occurs")
 
 /* GC events */
 DEF_EVENT(MinorGCStartEvt,	0,	"minor GC starts")

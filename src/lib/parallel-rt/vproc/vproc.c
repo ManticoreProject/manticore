@@ -206,7 +206,7 @@ void VProcSignal (VProc_t *vp, VPSignal_t sig)
 {
 #ifndef NDEBUG
     if (DebugFlg)
-	SayDebug("[%2d] VProcSignal called\n", vp->id);
+	SayDebug("[%2d] VProcSignal: sig = %d\n", vp->id, sig);
 #endif
 
     if (sig == GCSignal) pthread_kill (vp->hostID, SIGUSR1);
@@ -296,7 +296,6 @@ static void *VProcMain (void *_data)
     sigfillset (&(sa.sa_mask));
     sigaction (SIGUSR1, &sa, 0);
     sigaction (SIGUSR2, &sa, 0);
-    //    sigaction (SIGSEGV, &sa, 0);
 
   /* signal that we have started */
     MutexLock (&(data->lock));
@@ -449,23 +448,15 @@ static void IdleVProc (VProc_t *vp, void *arg)
 
 } /* end of IdleVProc */
 
-/* SegvHandler
- *
- * 
- */
-static void SegvHandler  (siginfo_t *si, void *_sc)
-{
-  ucontext_t	*uc = (ucontext_t *)_sc;
-  Die ("Received SIGSEGV\n");
-
-} /* end of SegvHandler */
-
 /* SigHandler:
  *
  * A per-vproc handler for SIGUSR1 and SIGUSR2 signals.
  */
 static void SigHandler (int sig, siginfo_t *si, void *_sc)
 {
+    ucontext_t	*uc = (ucontext_t *)_sc;
+    VProc_t	*self = VProcSelf();
+
   /* WARNING:
    * Enabling the following SayDebug can cause deadlock;
    * if the signal arrives while the VProc/pthread is in the runtime,
@@ -480,28 +471,29 @@ static void SigHandler (int sig, siginfo_t *si, void *_sc)
                  self->id, self->inManticore, self->atomic, UC_RIP(uc));
 #endif
 */
-    switch (sig) {
-      case SIGUSR1:
-      case SIGUSR2: {
-	ucontext_t	*uc = (ucontext_t *)_sc;
-	VProc_t	*self = VProcSelf();
-  
-	LogEvent0 (self, PreemptSignalEvt);
 
+    switch (sig) {
+      case SIGUSR1: /* Preemption signal */
+	LogEvent0 (self, PreemptSignalEvt);
 	self->sigPending = M_TRUE;
-	if ((self->inManticore == M_TRUE) && (self->atomic == M_FALSE)) {
-	  /* set the limit pointer to zero to force a context switch on
-	   * the next GC test.
-	   */
-	    UC_R11(uc) = 0;
-	}
+	break;
+      case SIGUSR2: /* Global GC signal */
+	LogEvent0 (self, GCSignalEvt);
+	self->sigPending = M_TRUE;
+	self->globalGCPending = true
 	break;
       }
-      case SIGSEGV:
-	SegvHandler (si, _sc);
+      default:
+	Die ("bogus signal %d\n", sig);
 	break;
     }
 
+    if ((self->inManticore == M_TRUE) && (self->atomic == M_FALSE)) {
+      /* set the limit pointer to zero to force a context switch on
+       * the next GC test.
+       */
+	UC_R11(uc) = 0;
+    }
 
 } /* SigHandler */
 
@@ -550,7 +542,7 @@ static int GetNumCPUs ()
 static Value_t Dequeue2 (VProc_t *self)
 {
  
-    assert (false);
+    assert (false);  /* currently, this code path is not being used */
 
   /* dequeue an item */
     if (self->secondaryQHd != M_NIL) {
@@ -586,7 +578,7 @@ static Value_t Dequeue2 (VProc_t *self)
 
 /*! \brief returns a unique fiber id
  *
- * 
+ * FIXME: this function should not be in the runtime!
  */
 int FreshFiberId ()
 {

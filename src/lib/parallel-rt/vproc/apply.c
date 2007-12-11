@@ -61,7 +61,7 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 	  /* check to see if we actually need to do a GC, since this request
 	   * might be from a pending signal.
 	   */
-	    if (vp->limitPtr < vp->allocPtr) {
+	    if ((vp->limitPtr < vp->allocPtr) || vp->globalGCPending) {
 	      /* request a minor GC; the protocol is that
 	       * the stdCont register holds the return address (which is
 	       * not in the heap) and that the stdEnvPtr holds the GC root.
@@ -75,9 +75,11 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 		*rp++ = &(vp->currentFG);
 		*rp++ = 0;
 		MinorGC (vp, roots);
+		if (vp->globalGCPending)
+		    StartGlobalGC (vp, roots);
 	    }
 	  /* check for pending signals */
-	    if (vp->sigPending == M_TRUE) {
+	    else if (vp->sigPending == M_TRUE) {
 /* FIXME: this code assumes that the signal is always preemption */
 	      
   	    /* Unload the vproc's entry queue */
