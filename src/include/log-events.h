@@ -13,7 +13,7 @@
  */
 
 #ifndef LOG_VERSION
-#define LOG_VERSION	0x20071130	/* date of last change to this file */
+#define LOG_VERSION	0x20071211	/* date of last change to this file */
 #endif
 
 DEF_EVENT(NoEvent,		0,	"an undefined event")
@@ -31,3 +31,7 @@ DEF_EVENT(MinorGCStartEvt,	0,	"minor GC starts")
 DEF_EVENT(MinorGCEndEvt,	0,	"minor GC ends")
 DEF_EVENT(MajorGCStartEvt,	0,	"major GC starts")
 DEF_EVENT(MajorGCEndEvt,	0,	"major GC ends")
+DEF_EVENT(GlobalGCInitEvt,	0,	"global GC initiated")
+DEF_EVENT(GlobalGCVPStartEvt,	0,	"global GC starts for vproc")
+DEF_EVENT(GlobalGCVPDoneEvt,	0,	"global GC ends for vproc")
+DEF_EVENT(GlobalGCEndEvt,	0,	"global GC finished")
