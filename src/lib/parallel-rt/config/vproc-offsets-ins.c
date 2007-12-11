@@ -25,7 +25,6 @@
     PR_OFFSET(vp, LIMIT_PTR, limitPtr);
     PR_OFFSET(vp, NURSERY_BASE, nurseryBase);
     PR_OFFSET(vp, OLD_TOP, oldTop);
-    PR_OFFSET(vp, GLOB_TOSPACE, globToSpace);
     PR_OFFSET(vp, GLOB_NEXT_W, globNextW);
     PR_OFFSET(vp, GLOB_LIMIT, globLimit);
     PR_OFFSET(vp, LOG, log);
