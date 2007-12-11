@@ -6,6 +6,7 @@
 
 Library
 
+  structure ListMapMaker
   structure Translate
 
 is
@@ -23,6 +24,7 @@ is
   ../ast-opt/sources.cm
 
   equality.sml
+  list-map-maker.sml
   std-env.sml
   translate.sml
   translate-controls.sml
