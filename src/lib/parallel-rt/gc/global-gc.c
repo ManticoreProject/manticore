@@ -13,6 +13,7 @@
 #include "gc-inline.h"
 #include "atomic-ops.h"
 #include "bibop.h"
+#include "inline-log.h"
 
 static Mutex_t		GCLock;
 static Cond_t		LeaderWait;
@@ -21,7 +22,15 @@ static int		nReadyForGC;	// number of vprocs that are ready for GC
 static Barrier_t	GCBarrier;	// for synchronizing on GC completion
 
 static void GlobalGC (VProc_t *vp, Value_t **roots);
+static void ScanGlobalToSpace (VProc_t *vp, MemChunk_t *scanChunk, Word_t *scanPtr);
 
+
+
+/* return true if a value is a from-space pointer */
+STATIC_INLINE bool isFromSpacePtr (Value_t p)
+{
+    return (isPtr(p) && AddrToChunk(ValueToAddr(p))->sts == FROM_SP_CHUNK);
+}
 
 /* Forward an object into the global-heap chunk reserved for the current VP */
 STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
@@ -91,6 +100,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	    CondWait (&FollowerWait, &GCLock);
 	}
 	else {
+	    LogEvent0 (vp, GlobalGCInitEvt);
 #ifndef NDEBUG
 	    if (DebugFlg)
 		SayDebug("[%2d] Initiating global GC\n", self->id);
@@ -99,7 +109,23 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	    leaderVProc = true;
 	    nReadyForGC = 0;
 	}
+      /* add the vproc's pages to the from-space list */
+	MemChunk_t *p = self->globToSpTl;
+	if (p != (MemChunk_t *)0) {
+	    p->next = FromSpaceChunks;
+	    FromSpaceChunks = p;
+	}
     MutexUnlock (&GCLock);
+
+  /* finish the GC setup for this vproc */
+    for (MemChunk_t *p = self->globToSpHd;  p != (MemChunk_t *)0;  p = p->next) {
+	p->sts = FROM_SP_CHUNK;
+    }
+    self->globToSpTl->usedTop = self->globNextW - WORD_SZB;
+    self->globToSpTl = (MemChunk_t *)0;
+    self->globToSpHd = (MemChunk_t *)0;
+  /* allocate the initial chunk for the vproc */
+    GetChunkForVProc (self);
 
     if (leaderVProc) {
       /* signal the vprocs that global GC is starting and then wait for them
@@ -125,7 +151,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
   /* synchronize on every vproc finishing GC */
     BarrierWait (&GCBarrier);
 
-  /* thereclaim from-space pages */
+  /* the leader reclaims the from-space pages */
     if (leaderVProc) {
 	MutexLock (&HeapLock);
 	    MemChunk_t *cp = FromSpaceChunks;
@@ -147,12 +173,18 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 #endif
     }
 
+    LogEvent0 (vp, GlobalGCEndEvt);
+
 } /* end of StartGlobalGC */
 
 /* GlobalGC:
  */
 static void GlobalGC (VProc_t *vp, Value_t **roots)
 {
+    MemChunk_t	*scanChunk = vp->globToSpHd;
+    Word_t	*scanPtr = (Word_t *)(scanChunk->baseAddr);
+
+    LogEvent0 (vp, GlobalGCVPStartEvt);
 
 #ifndef NDEBUG
     if (DebugFlg)
@@ -162,19 +194,85 @@ static void GlobalGC (VProc_t *vp, Value_t **roots)
   /* scan the vproc's roots */
     for (int i = 0;  roots[i] != 0;  i++) {
 	Value_t p = *roots[i];
-	if (isPtr(p)) {
-	    if (AddrToChunk(ValueToAddr(p))->sts == FROM_SP_CHUNK) {
-		*roots[i] = ForwardObj(vp, p);
-	    }
+	if (isFromSpacePtr(p)) {
+	    *roots[i] = ForwardObj(vp, p);
 	}
     }
 
-    Die("GlobalGC unimplemented\n");
+  /* scan to-space chunks */
+    ScanGlobalToSpace (vp, scanChunk, scanPtr);
 
-    /* scan to-space chunks */
-
-    /* reclaim from-space chunks */
-
-    /* assign a chunk to each vproc */
+    LogEvent0 (vp, GlobalGCVPDoneEvt);
 
 } /* end of GlobalGC */
+
+/* Scan the to-space objects that have been copied by this vproc */
+static void ScanGlobalToSpace (
+    VProc_t *vp,
+    MemChunk_t *scanChunk,
+    Word_t *scanPtr)
+{
+    Word_t	*scanTop;
+
+    if (vp->globToSpTl == scanChunk) {
+      /* NOTE: we must subtract WORD_SZB here because globNextW points to the first
+       * data word of the next object (not the header word)!
+       */
+	scanTop = (Word_t *)(vp->globNextW - WORD_SZB);
+    }
+    else
+	scanTop = (Word_t *)(scanChunk->usedTop);
+
+    do {
+	while (scanPtr < scanTop) {
+	    Word_t hdr = *scanPtr++;	// get object header
+	    if (isMixedHdr(hdr)) {
+	      // a record
+		Word_t tagBits = GetMixedBits(hdr);
+		Word_t *scanP = scanPtr;
+		while (tagBits != 0) {
+		    if (tagBits & 0x1) {
+			Value_t p = *(Value_t *)scanP;
+			if (isFromSpacePtr(p)) {
+			    *scanP = (Word_t)ForwardObj(vp, p);
+			}
+		    }
+		    tagBits >>= 1;
+		    scanP++;
+		}
+		scanPtr += GetMixedSizeW(hdr);
+	    }
+	    else if (isVectorHdr(hdr)) {
+	      // an array of pointers
+		int len = GetVectorLen(hdr);
+		for (int i = 0;  i < len;  i++, scanPtr++) {
+		    Value_t v = (Value_t)*scanPtr;
+		    if (isFromSpacePtr(v)) {
+			*scanPtr = (Word_t)ForwardObj(vp, v);
+		    }
+		}
+	    }
+	    else {
+		assert (isRawHdr(hdr));
+	      // we can just skip raw objects
+		scanPtr += GetRawSizeW(hdr);
+	    }
+	}
+
+      /* recompute the scan top, switching chunks if necessary */
+	if (vp->globToSpTl == scanChunk)
+	    scanTop = (Word_t *)(vp->globNextW - WORD_SZB);
+	else if (scanPtr == (Word_t *)scanChunk->usedTop) {
+	    scanChunk = scanChunk->next;
+	    assert (scanChunk != (MemChunk_t *)0);
+	    assert ((scanChunk->baseAddr < vp->globNextW)
+		&& (vp->globNextW < scanChunk->baseAddr+scanChunk->szB));
+	    scanTop = (Word_t *)(vp->globNextW - WORD_SZB);
+	    scanPtr = (Word_t *)(scanChunk->baseAddr);
+	}
+	else
+	    scanTop = (Word_t *)(scanChunk->usedTop);
+
+    } while (scanPtr < scanTop);
+
+}

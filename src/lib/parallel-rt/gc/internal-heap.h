@@ -42,7 +42,6 @@ extern Addr_t		ToSpaceLimit;	/* if ToSpaceSz exceeds this value, then do a */
 					/* global GC */
 extern Addr_t		TotalVM;	/* total memory used by heap (including vproc */
 					/* local heaps) */
-extern MemChunk_t	*ToSpaceChunks; /* list of chunks in to-space */
 extern MemChunk_t	*FromSpaceChunks; /* list of chunks is from-space */
 extern MemChunk_t	*FreeChunks;	/* list of free chunks */
 extern bool		GlobalGCInProgress; /* true, when a global GC has been initiated */
@@ -56,8 +55,6 @@ extern void GetChunkForVProc ();
 
 extern void UpdateBIBOP (MemChunk_t *chunk);
 
-/* interface to the OS memory system */
-extern MemChunk_t *AllocChunk (Addr_t szb);
 extern void FreeChunk (MemChunk_t *);
 
 /* GC routines */

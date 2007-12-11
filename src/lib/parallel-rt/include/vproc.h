@@ -32,15 +32,22 @@ struct struct_vproc {
     Value_t	stdExnCont;	/*!< holds value of standard exception-cont. reg. */
     Addr_t	allocPtr;	/*!< allocation pointer */
     Addr_t	limitPtr;	/*!< heap-limit pointer */
+			      /* logging support */
+    LogBuffer_t	*log;	        /*!< current buffer for logging events */
+    LogBuffer_t	*prevLog;       /*!< previous buffer for logging events */
 			      /* GC parameters */
     Addr_t	nurseryBase;	/*!< Base address of current nursery area */
     Addr_t	oldTop;		/*!< Old objects live in the space from the */
 				/* heap base to the oldTop. */
-    MemChunk_t	*globToSpace;	/*!< a to-space chunk in the global heap to promote */
-				/* objects into. */
+    MemChunk_t	*globToSpHd;	/*!< pointer to the head of the list of global-heap */
+				/* to-space memory chunks allocated by this vproc. */
+    MemChunk_t	*globToSpTl;	/*!< pointer to the tail of the list of global-heap */
+				/* to-space memory chunks allocated by this vproc. */
+				/* This chunk is the current allocation chunk for */
+				/* the vproc. */
     Addr_t	globNextW;	/*!< pointer to next word to allocate in */
 				/* global heap */
-    Addr_t	globLimit;	/*!< limit pointer for global heap */
+    Addr_t	globLimit;	/*!< limit pointer for to-space chunk */
     bool	globalGCPending; /*!< true when the vproc has been signaled that */
 				/* global GC has started, but this vproc has not */
 				/* started yet. */
@@ -55,8 +62,6 @@ struct struct_vproc {
     int32_t	nLocalPtrs;
     int32_t	nGlobPtrs;
 #endif
-    LogBuffer_t	*log;	      /*!< current buffer for logging events */
-    LogBuffer_t	*prevLog;     /*!< previous buffer for logging events */
 };
 
 typedef enum {

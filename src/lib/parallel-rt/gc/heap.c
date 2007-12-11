@@ -87,23 +87,13 @@ void HeapInit (Options_t *opts)
  */
 void InitVProcHeap (VProc_t *vp)
 {
-    MutexLock (&HeapLock);  /* can we do this inside AllocChunk? */
+    vp->globToSpHd = (MemChunk_t *)0;
+    vp->globToSpTl = (MemChunk_t *)0;
+    vp->globalGCPending = false;
+    vp->globalGCInProgress = false;
 
-      /* provision the vproc with a to-space chunk in the global heap */
-/* FIXME: eventually, we should check the free list first! */
-	MemChunk_t *chunk = AllocChunk (HEAP_CHUNK_SZB);
-	if (chunk == 0)
-	    Die ("unable to allocate vproc to-space chunk\n");
-	chunk->sts = VPROC_CHUNK(vp->id);
-	vp->globToSpace = chunk;
-	vp->globNextW = chunk->baseAddr + WORD_SZB;
-	vp->globLimit = chunk->baseAddr + chunk->szB;
-	vp->globalGCPending = false;
-	vp->globalGCInProgress = false;
-
-	UpdateBIBOP (chunk);
-
-    MutexUnlock (&HeapLock);
+  /* allocate the initial chunk for the vproc */
+    GetChunkForVProc (vp);
 
 }
 
@@ -113,61 +103,53 @@ void InitVProcHeap (VProc_t *vp)
  * Get a memory chunk from the free list or by allocating fresh memory; the
  * size of the chunk will be HEAP_CHUNK_SZB bytes.  The chunk is added to the
  * to-space list.
- * NOTE: this function should only be called when the HeapLock is held.
  */
 void GetChunkForVProc (VProc_t *vp)
 {
+    void	*memObj;
     MemChunk_t	*chunk;
 
     MutexLock (&HeapLock);
 	if (FreeChunks == (MemChunk_t *)0) {
-	    chunk = AllocChunk (HEAP_CHUNK_SZB);
-	    UpdateBIBOP (chunk);
-	    if (chunk == 0) {
+	  /* no free chunks, so allocate storage from OS */
+	    int nPages = HEAP_CHUNK_SZB >> PAGE_BITS;
+	    memObj = AllocMemory(&nPages, BIBOP_PAGE_SZB);
+	    MemChunk_t *chunk = NEW(MemChunk_t);
+	    if ((memObj == (void *)0) || (chunk == (MemChunk_t *)0)) {
 		Die ("unable to allocate memory for global heap\n");
 	    }
+	    chunk->baseAddr = (Addr_t)memObj;
+	    chunk->szB = nPages * BIBOP_PAGE_SZB;
+	    UpdateBIBOP (chunk);
 	}
 	else {
 	    chunk = FreeChunks;
 	    FreeChunks = chunk->next;
 	}
-	chunk->next = ToSpaceChunks;
-	ToSpaceChunks = chunk;
     MutexUnlock (&HeapLock);
 
+  /* add to the tail of the vproc's list of to-space chunks */
+    chunk->next = (MemChunk_t *)0;
+    if (vp->globToSpHd == (MemChunk_t *)0) {
+	vp->globToSpHd = chunk;
+	vp->globToSpTl = chunk;
+    }
+    else {
+	vp->globToSpTl->usedTop = vp->globNextW - WORD_SZB;
+	vp->globToSpTl->next = chunk;
+	vp->globToSpTl = chunk;
+    }
+
     chunk->sts = VPROC_CHUNK(vp->id);
-    vp->globToSpace = chunk;
     vp->globNextW = chunk->baseAddr + WORD_SZB;
     vp->globLimit = chunk->baseAddr + chunk->szB;
 
-}
-
-MemChunk_t *AllocChunk (Addr_t szb)
-{
-  /* round size up to multiple of BIBOP pagesize */
-    szb = ROUNDUP(szb, BIBOP_PAGE_SZB);
-    int nPages = szb >> PAGE_BITS;
-
-    void *memObj = AllocMemory(&nPages, BIBOP_PAGE_SZB);
-    if (memObj == 0)
-	return 0;
-
-    MemChunk_t *chunk = NEW(MemChunk_t);
-    if (chunk == 0)
-	Die("unable to malloc memory\n");
-
-    chunk->baseAddr = (Addr_t)memObj;
-    chunk->szB = nPages * BIBOP_PAGE_SZB;
-    chunk->next = 0;
-
 #ifndef NDEBUG
     if (DebugFlg)
-	SayDebug("AllocChunk: %ld Kb at %p\n", szb/1024, memObj);
+	SayDebug("AllocChunk: %ld Kb at %p\n", chunk->szB/1024, memObj);
 #endif
 
-    return chunk;
-
-} /* end of AllocChunk */
+}
 
 /* UpdateBIBOP:
  *

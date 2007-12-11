@@ -60,8 +60,11 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     Addr_t	heapBase = (Addr_t)vp;
     Addr_t	oldBase = VProcHeap(vp);
     Addr_t	oldSzB = vp->oldTop - oldBase;
+  /* NOTE: we must subtract WORD_SZB here because globNextW points to the first
+   * data word of the next object (not the header word)!
+   */
     Word_t	*globScan = (Word_t *)(vp->globNextW - WORD_SZB);
-    MemChunk_t	*scanChunk = vp->globToSpace;
+    MemChunk_t	*scanChunk = vp->globToSpTl;
 
     assert (VProcHeap(vp) < vp->oldTop);
     assert (vp->oldTop < top);
@@ -149,11 +152,14 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 
 #ifndef NDEBUG
     if (DebugFlg) {
-	unsigned long nBytesCopied;
-	if (vp->globToSpace == scanChunk)
-	    nBytesCopied = (unsigned long)(vp->globNextW - (Addr_t)globScan - WORD_SZB);
-	else
-	    nBytesCopied = -1;  /* FIXME */
+	unsigned long nBytesCopied = 0;
+	while (scanChunk != (MemChunk_t *)0) {
+	    if (scanChunk->next == (MemChunk_t *)0)
+		nBytesCopied += (unsigned long)(vp->globNextW - (Addr_t)globScan - WORD_SZB);
+	    else
+		nBytesCopied += (unsigned long)(scanChunk->usedTop - scanChunk->baseAddr);
+	    scanChunk = scanChunk->next;
+	}
 	SayDebug("[%2d] Major GC finished: %ld/%ld bytes live\n",
 	    vp->id, nBytesCopied, oldSzB);
     }
@@ -180,7 +186,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 Value_t PromoteObj (VProc_t *vp, Value_t root)
 {
     Addr_t	heapBase = (Addr_t)vp;
-    MemChunk_t	*scanChunk = vp->globToSpace;
+    MemChunk_t	*scanChunk = vp->globToSpTl;
 
     assert ((vp->globNextW % WORD_SZB) == 0);
 #ifndef NDEBUG
@@ -217,7 +223,7 @@ static void ScanGlobalToSpace (
 {
     Word_t	*scanTop;
 
-    if (vp->globToSpace == scanChunk)
+    if (vp->globToSpTl == scanChunk)
 	scanTop = (Word_t *)(vp->globNextW - WORD_SZB);
     else
 	scanTop = (Word_t *)(scanChunk->usedTop);
@@ -259,10 +265,10 @@ static void ScanGlobalToSpace (
 	}
 
       /* recompute the scan top, switching chunks if necessary */
-	if (vp->globToSpace == scanChunk)
+	if (scanChunk->next == (MemChunk_t *)0)
 	    scanTop = (Word_t *)(vp->globNextW - WORD_SZB);
 	else if (scanPtr == (Word_t *)scanChunk->usedTop) {
-	    scanChunk = vp->globToSpace;
+	    scanChunk = scanChunk->next;
 	    assert ((scanChunk->baseAddr < vp->globNextW)
 		&& (vp->globNextW < scanChunk->baseAddr+scanChunk->szB));
 	    scanTop = (Word_t *)(vp->globNextW - WORD_SZB);
