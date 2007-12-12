@@ -18,14 +18,16 @@ Mutex_t		HeapLock;	/* lock for protecting heap data structures */
 Addr_t		GlobalVM;	/* amount of memory allocated to Global heap (including */
 				/* free chunks). */
 Addr_t		FreeVM;		/* amount of free memory in free list */
+Addr_t		ToSpaceSz;	/* amount of memory being used for to-space */
+Addr_t		ToSpaceLimit;	/* if ToSpaceSz exceeds this value, then do a */
+				/* global GC */
 Addr_t		TotalVM = 0;	/* total memory used by heap (including vproc local heaps) */
 Addr_t		MaxNurserySzB;	/* limit on size of nursery in vproc heap */
 Addr_t		MajorGCThreshold; /* when the size of the nursery goes below this limit */
 				/* it is time to do a GC. */
-
-MemChunk_t	*ToSpaceChunks; /* list of chunks in to-space */
 MemChunk_t	*FromSpaceChunks; /* list of chunks is from-space */
 MemChunk_t	*FreeChunks;	/* list of free chunks */
+extern bool	GlobalGCInProgress; /* true, when a global GC has been initiated */
 
 /* The BIBOP maps addresses to the memory chunks containing the address.
  * It is used by the global collector and access to it is protected by
@@ -74,7 +76,6 @@ void HeapInit (Options_t *opts)
     ToSpaceSz = 0;
     ToSpaceLimit = 16 * ONE_MEG;  /* FIXME: what should this be? */
     TotalVM = 0;
-    ToSpaceChunks = (MemChunk_t *)0;
     FromSpaceChunks = (MemChunk_t *)0;
     FreeChunks = (MemChunk_t *)0;
     GlobalGCInProgress = false;
