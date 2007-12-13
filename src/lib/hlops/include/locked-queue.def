@@ -7,7 +7,7 @@
  *)
 
 #ifndef _LOCKED_QUEUE_DEF_
-#define _LOCKED-QUEUE_DEF_
+#define _LOCKED_QUEUE_DEF_
 
 #include "types.def"
 
