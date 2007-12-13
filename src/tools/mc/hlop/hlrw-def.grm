@@ -64,6 +64,15 @@
 
       fun flatten NONE = []
         | flatten (SOME(x, xs)) = x::xs
+
+      val listTyTerm = HLRWDefPT.T_TyCon(Atom.atom "list")
+
+      val nilPat = HLRWDefPT.Const((Literal.Enum(Word.fromInt 0), listTyTerm))
+
+      fun listToDConList [] = nilPat
+        | listToDConList (pat :: ps) = HLRWDefPT.Call(Atom.atom "CONS",
+                                                      [pat, listToDConList ps])
+
 );
 
 File
@@ -93,8 +102,11 @@ Pattern
         : IdOrHLOp LP PatternArgs RP
                 => ( HLRWDefPT.Call(IdOrHLOp, PatternArgs) )
 
+        | LB PatternArgs RB
+                => ( listToDConList(PatternArgs) )
+
         | Literal
-                => ( HLRWDefPT.Const(Literal))
+                => ( HLRWDefPT.Const(Literal) )
 
         | ID
                 => ( HLRWDefPT.Var ID )
