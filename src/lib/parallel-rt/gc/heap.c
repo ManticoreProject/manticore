@@ -27,7 +27,7 @@ Addr_t		MajorGCThreshold; /* when the size of the nursery goes below this limit 
 				/* it is time to do a GC. */
 MemChunk_t	*FromSpaceChunks; /* list of chunks is from-space */
 MemChunk_t	*FreeChunks;	/* list of free chunks */
-extern bool	GlobalGCInProgress; /* true, when a global GC has been initiated */
+bool		GlobalGCInProgress; /* true, when a global GC has been initiated */
 
 /* The BIBOP maps addresses to the memory chunks containing the address.
  * It is used by the global collector and access to it is protected by
