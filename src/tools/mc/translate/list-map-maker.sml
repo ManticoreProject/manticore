@@ -11,6 +11,10 @@ structure ListMapMaker : sig
     val mkMap : int -> BOM.exp
     val test  : int -> unit
 
+  (* The following will retrieve the desired map function from a cache, or
+   * synthesize the appropriate function, stash it in the cache, and return it. *)
+    val getMapFunction : int -> BOM.exp
+
   end = struct
 
     structure A = AST
@@ -24,6 +28,8 @@ structure ListMapMaker : sig
     val tupTy = BTy.T_Tuple
     val anyTy = BTy.T_Any
     val exhTy = BTy.exhTy
+
+    val nilConst = (Literal.Enum 0w0, listTy)
 
     (* copies : int * 'a -> 'a list *)
     fun copies (n, x) = List.tabulate (n, fn _ => x)
@@ -60,7 +66,7 @@ structure ListMapMaker : sig
 
     local
 	val revHLOp = HLOpEnv.listRevOp
-	val nilPat = raise Fail "todo: nilPat"
+	val nilPat = B.P_Const nilConst
 	fun mkConsPat (hdVar, tlVar) = B.P_DCon (BB.listCons, [hdVar, tlVar])
 	fun zip3Eq (xs, ys, zs) =
 	    let fun f ([], [], [], acc) = rev acc
@@ -76,7 +82,7 @@ structure ListMapMaker : sig
 	    let fun f (k, acc) =
 		    if k>n 
 		    then acc
-		    else f (k+1, BV.new (prefix ^ Int.toString n, t) :: acc)
+		    else f (k+1, BV.new (prefix ^ Int.toString k, t) :: acc)
 	    in
 		if (n<1)
 		then raise Fail "mkVars: BUG"
@@ -134,7 +140,7 @@ structure ListMapMaker : sig
 		end
 	      | mkInnermostCase _ = raise Fail "mkInnermostCase: BUG"
 	    val innermostCase = mkInnermostCase (listVars, hdVars, tlVars)
-	    val body = buildCase (zip3Eq (listVars, hdVars, tlVars), innermostCase)
+	    val body = buildCase (tl (zip3Eq (listVars, hdVars, tlVars)), innermostCase)
 	in
 	    B.FB {f = thisFuncVar,
 		  params = rev (accVar::listVars),
@@ -158,7 +164,8 @@ structure ListMapMaker : sig
     (* e.g., mkMap(2) will generate a function of type *)
     (*  ('a * 'b -> 'c) * ('a list) * ('b list) -> ('c list) *)
     fun mkMap (arity: int) : B.exp = 
-	let val fTy = BTy.T_Fun ([tupTy (false, copies (arity, anyTy))],
+	let val _ = if (arity < 2) then raise Fail "mkMap: arity must be at least 2" else ()
+	    val fTy = BTy.T_Fun ([tupTy (false, copies (arity, anyTy))],
 				 [exhTy],
 				 [anyTy])
 	    val fVar = BV.new ("f", fTy)
@@ -175,37 +182,62 @@ structure ListMapMaker : sig
 		    List.tabulate (arity, mk)
 		end
 	    val argVar = BV.new ("arg", argTy)
-	    val nilVar = raise Fail "todo"
+	    val nilVar = BV.new ("nil", listTy)
 	    val resultVar = BV.new ("result", listTy)
 	    val body = B.mkStmt ([fVar], B.E_Select (0, argVar),
                         mkListSelectors (listVars, argVar,
-                         B.mkLet ([resultVar],
-                          B.mkApply (lamVar innerMap, listVars @ nilVar, []),
-                           B.mkRet [resultVar])))
-	    val lam = B.FB {f = mapVar,
-			    params = argVar :: listVars,
-			    exh = [exhVar],
-			    body = body}
+                         B.mkStmt ([nilVar], B.E_Const nilConst, 
+                          B.mkFun ([fPrime],
+                           B.mkFun ([innerMap],
+                            B.mkLet ([resultVar],
+                             B.mkApply (lamVar innerMap, listVars @ [nilVar], []),
+                              B.mkRet [resultVar]))))))
+	    val thisMap = B.FB {f = mapVar,
+				params = argVar :: listVars,
+				exh = [exhVar],
+				body = body}
 	in
-	    B.mkFun ([fPrime, innerMap, lam], B.mkRet [mapVar])
+	    B.mkFun ([thisMap], B.mkRet [mapVar])
 	end
     end (* locals for mkMap *)
 
+    exception Absent
+    structure IHT = IntHashTable
+    val (mapFunctionCache : BOM.exp IHT.hash_table) = IHT.mkTable (8, Absent)
+
+    local
+	val insert = IHT.insert mapFunctionCache
+	val lookup = IHT.lookup mapFunctionCache
+    in
+    fun getMapFunction (arity: int) : BOM.exp = 
+	let fun deal () =
+		let val mapN = mkMap arity
+		in
+		    mapN before insert (arity, mapN)
+		end
+	in
+	    lookup arity handle Absent => deal ()
+	end
+    end (* locals for getMapFunction *)
+
     (* TESTS FOLLOW *)
 
-    fun println s = (print s; print "\n")
-
-    val f0 = BV.new ("f", BTy.T_Fun ([tupTy (false, [anyTy, anyTy])],
-				     [anyTy],
-				     [anyTy]))
-
-    val exh0 = BV.new ("exh", anyTy)
-
+    local 
+	fun println s = (print s; print "\n")
+	val f0 = BV.new ("f", BTy.T_Fun ([tupTy (false, [anyTy, anyTy])],
+					 [anyTy],
+					 [anyTy]))
+	val exh0 = BV.new ("exh", anyTy)
+    in
     fun test 0 = 
 	  let val f' = mkFPrime (2, f0, exh0)
 	  in
 	      PrintBOM.printExp (B.mkFun ([f'], B.mkRet [exh0]))
 	  end
+      | test 1 = PrintBOM.printExp (mkMap 2)
+      | test 2 = PrintBOM.printExp (mkMap 3)
+      | test 3 = PrintBOM.printExp (getMapFunction 4)
       | test _ = println "No such test."
+    end (* local *)
 
-  end
+  end (* struct *)

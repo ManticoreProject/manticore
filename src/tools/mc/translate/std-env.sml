@@ -410,33 +410,36 @@ structure StdEnv : sig
   (* enrich env0 with HLOP signatures from prototypes.hlop *)
     fun env () = let
 	  val hlops =  [
-                  (B.app,               "list-app"),
-		  (B.print,		"print"),
-		  (B.stringConcat,	"string-concat2"),
-		  (B.itos,		"itos"),
-		  (B.ltos,		"ltos"),
-		  (B.fail,		"fail"),
-		  (B.rev,               "list-rev"),
-		  (B.powf,              "powf"),
-		  (B.powd,              "powd"),
-                  (B.compose,           "compose"),
-		  (B.foldl,             "list-foldl"),
-		  (B.foldr,             "list-foldr"),
-		  (B.map,               "list-map"),
-		  (B.tab,               "list-tab"),
-		  (B.gettimeofday,	"gettimeofday"),
-		  (B.parrayApp,         "rope-app"),
-                  (B.plen,              "rope-length"),
-		  (U.mapPQ,             "rope-map"),
-		  (U.map2PQ,            "rope-map-2"),
-		  (U.reducePQ,          "rope-reduce"),
-		  (U.sumPQ,             "rope-sum"),
-		  (U.tabD,              "tabD"),
-		  (B.todo,              "todo")
+	      (* The boolean indicates whether or not "polymorphic any" is part of the result type. *)
+	      (* Note since list is a complete BOM type (not a tycon), the fact that a function *)
+	      (*   like map or reverse returns an 'a or 'b list doesn't influence this boolean. *)
+	      (* Note this infrastructure will change on adoption of System F. *)
+                  (B.app,               "list-app", false),
+		  (B.print,		"print", false),
+		  (B.stringConcat,	"string-concat2", false),
+		  (B.itos,		"itos", false),
+		  (B.fail,		"fail", true),
+		  (B.rev,               "list-rev", false),
+		  (B.powf,              "powf", false),
+		  (B.powd,              "powd", false),
+                  (B.compose,           "compose", true),
+		  (B.foldl,             "list-foldl", true),
+		  (B.foldr,             "list-foldr", true),
+		  (B.map,               "list-map", false),
+		  (B.tab,               "list-tab", false),
+		  (B.gettimeofday,	"gettimeofday", false),
+		  (B.parrayApp,         "rope-app", false),
+                  (B.plen,              "rope-length", false),
+		  (U.mapPQ,             "rope-map", false),
+		  (U.map2PQ,            "rope-map-2", false),
+		  (U.reducePQ,          "rope-reduce", true),
+		  (U.sumPQ,             "rope-sum", false),
+		  (U.tabD,              "tabD", false),
+		  (B.todo,              "todo", false)
 		]  
-	  fun ins ((x, n), env) = (case H.find (Atom.atom n)
+	  fun ins ((x, n, polyResTy), env) = (case H.find (Atom.atom n)
 		of NONE => raise Fail ("cannot find hlop " ^ n)
-		 | SOME hop => E.insertFun (env, x, hlop (hop, true (* true is the conservative choice here *)))
+		 | SOME hop => E.insertFun (env, x, hlop (hop, polyResTy))
 		(* end case *))
 	  in
 	    HLOpDefLoader.loadPrototypes ();
