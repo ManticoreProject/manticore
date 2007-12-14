@@ -196,14 +196,16 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	      Option.app (fn defJmp => emitStms (genGoto defJmp)) jOpt
 	  end
 	| genTransfer (M.HeapCheck hc) = let
-          val {stms, retLbl, retStms, liveOut} = BE.Transfer.genHeapCheck varDefTbl hc
+          val {stms, return} = BE.Transfer.genHeapCheck varDefTbl hc
 	  in 
 	      (* emit code for the heap-limit test and the transfer into the GC *) 
 	      emitStms stms;
-	      emit (T.LIVE liveOut) ;
-	      (* emit an entypoint and code for the return continuation  *)		  
-	      entryLabel retLbl;
-	      emitStms retStms  
+	      Option.app (fn (retLbl, retStms, liveOut) => (
+		  (* emit code for the return function *)
+		   emit (T.LIVE liveOut);
+		   entryLabel retLbl;
+		   emitStms retStms))
+	         return
 	  end
 	| genTransfer (M.AllocCCall call) = emitStms (BE.Transfer.genAllocCCall varDefTbl call)
 	      

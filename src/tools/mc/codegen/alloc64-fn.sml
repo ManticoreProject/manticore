@@ -209,7 +209,7 @@ functor Alloc64Fn (
   (* This expression checks that there are at least szB bytes available in the
    * global heap.
    *
-   *  if (ap + szB > lp)
+   *  if (globNextW + szB > globLimit)
    *     then continue;
    *     else doGC ();
    *)

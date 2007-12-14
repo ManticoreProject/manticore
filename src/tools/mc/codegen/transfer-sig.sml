@@ -38,7 +38,7 @@ signature TRANSFER = sig
   (* perform a heap check, possibly triggering the GC *)
     val genHeapCheck : 
 	VarDef.var_def_tbl -> {hck : CFG.heap_check_kind, szb : word, nogc : CFG.jump}
-	  -> {stms : stms, retLbl : Label.label, retStms : stms, liveOut : MTy.T.mlrisc list}
+	  -> {stms : stms, return : (Label.label * stms * MTy.T.mlrisc list) Option.option}
 
   (* promote an object to the global heap *)
     val genPromote : VarDef.var_def_tbl -> 
