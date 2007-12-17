@@ -120,7 +120,7 @@ structure BasisNames =
     val tab =           Atom.atom "tab"
     val foldl =         Atom.atom "foldl"
     val foldr =         Atom.atom "foldr"
-
+    val concatWith =    Atom.atom "concatWith"
     val parrayApp =     Atom.atom "parrayApp"
 
 (*

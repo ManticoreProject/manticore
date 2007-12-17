@@ -410,13 +410,14 @@ structure StdEnv : sig
   (* enrich env0 with HLOP signatures from prototypes.hlop *)
     fun env () = let
 	  val hlops =  [
-	      (* The boolean indicates whether or not "polymorphic any" is part of the result type. *)
-	      (* Note since list is a complete BOM type (not a tycon), the fact that a function *)
+	      (* The boolean indicates if "polymorphic any" is part of the result type. *)
+	      (* Note since "list" is a complete BOM type (not a tycon), the fact that a function *)
 	      (*   like map or reverse returns an 'a or 'b list doesn't influence this boolean. *)
 	      (* Note this infrastructure will change on adoption of System F. *)
                   (B.app,               "list-app", false),
 		  (B.print,		"print", false),
 		  (B.stringConcat,	"string-concat2", false),
+                  (B.stringConcatWith,  "string-concat-with", false),
 		  (B.itos,		"itos", false),
 		  (B.fail,		"fail", true),
 		  (B.rev,               "list-rev", false),

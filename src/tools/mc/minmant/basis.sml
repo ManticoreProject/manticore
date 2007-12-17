@@ -64,6 +64,7 @@ structure Basis : sig
     val foldl           : AST.var
     val foldr           : AST.var
     val stringConcat	: AST.var
+    val stringConcatWith : AST.var
     val psub            : AST.var
     val int_div		: AST.var
     val int_gt		: AST.var
@@ -297,7 +298,8 @@ structure Basis : sig
 			    in
 			      ty ** ty --> ty
 			    end))
-    val stringConcat =	monoVar(Atom.toString N.concat, stringTy ** stringTy --> stringTy)
+    val stringConcat = monoVar(Atom.toString N.concat, stringTy ** stringTy --> stringTy)
+    val stringConcatWith = monoVar(Atom.toString N.concatWith, stringTy ** (listTy stringTy) --> stringTy) 
     val psub = polyVar(Atom.toString N.psub, fn tv => (parrayTy tv) ** intTy --> tv)
 
     local
@@ -690,7 +692,8 @@ structure Basis : sig
 	    (N.foldl,           Env.Var foldl),
 	    (N.foldr,           Env.Var foldr),
             (N.tab,             Env.Var tab),
-	    (N.reduceP,         Env.Var reduceP)
+	    (N.reduceP,         Env.Var reduceP),
+	    (N.concatWith,      Env.Var stringConcatWith)
 (*
 	    (N.size,		Env.Var size),
 	    (N.sub,		Env.Var sub),
