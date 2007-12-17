@@ -100,6 +100,7 @@ structure TranslateTypes : sig
 		    | _ => (* need to use singleton tuple to represent data constructor *)
 			mkDC (dc, BTy.Tuple, [BTy.T_Tuple(false, trArgTy dc)])
 		  (* end case *))
+	      | ([], [dc1, dc2]) => raise Fail "FIXME"
 	      | (_, _) => let
 		  fun mkDC' (i, dc) = mkDC (dc, BTy.TaggedTuple(Word.fromInt i), trArgTy dc)
 		  in

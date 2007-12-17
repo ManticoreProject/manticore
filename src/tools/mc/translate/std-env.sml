@@ -116,22 +116,18 @@ structure StdEnv : sig
 	    val f = BV.new (Atom.toString name, fty)	    
             in
 	      if polyResTy
-	      then let val resTy = (case results 
-				      of [r] => r
-				       | _ => raise Fail "resTy")
-		   in
-		       fn t => 
-			  let val fty' = BTy.T_Fun(paramTys, exh, [t])
-			      val f' = BV.new (Atom.toString name, fty')
-			  in
-			      BOM.FB {f = f', 
-				      params = params, 
-				      exh = exhVars, 
-				      body = mkCast (h, resTy, t)}
-			  end
-		   end
-	      else 
-		  fn _ => BOM.FB {f=f, params=params, exh=exhVars, body=h}
+		then let
+		  val resTy = (case results of [r] => r | _ => raise Fail "resTy")
+		  fun mkFB ty = let
+			val fty' = BTy.T_Fun(paramTys, exh, [ty])
+			val f' = BV.new (Atom.toString name, fty')
+			in
+			  BOM.FB{f = f', params = params, exh = exhVars, body = mkCast(h, resTy, ty)}
+			end
+		  in
+		    mkFB	  
+		  end
+		else fn _ => BOM.FB{f=f, params=params, exh=exhVars, body=h}
             end
 
   (***** Predefined operators *****)
@@ -358,8 +354,8 @@ structure StdEnv : sig
 	    (B.mTake,		hlop H.mTake),
 	    (B.mPut,		hlop H.mPut),
 *)
-(*	    (B.itos,		hlop H.itosOp),
-	    (B.ltos,		hlop H.ltosOp), *)
+	    (B.itos,		hlop (H.itosOp, false)),
+	    (B.ltos,		hlop (H.ltosOp, false)),
 	    (B.ftos,		hlop (H.ftosOp, false)),
 	    (B.dtos,		hlop (H.dtosOp, false)),
 (* FIXME
