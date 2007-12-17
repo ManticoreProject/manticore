@@ -147,7 +147,7 @@ void GetChunkForVProc (VProc_t *vp)
 
 #ifndef NDEBUG
     if (DebugFlg)
-	SayDebug("AllocChunk: %ld Kb at %p\n", chunk->szB/1024, memObj);
+	SayDebug("AllocChunk: %ld Kb at %p\n", chunk->szB/1024, chunk->baseAddr);
 #endif
 
 }
