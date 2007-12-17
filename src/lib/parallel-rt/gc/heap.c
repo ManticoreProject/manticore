@@ -61,7 +61,7 @@ void HeapInit (Options_t *opts)
   /* initialize the BIBOP */
 #ifdef SIXTYFOUR_BIT_WORDS
     for (int i = 0;  i < L2_TBLSZ; i++)
-	FreeL2Tbl[i] = 0;
+	FreeL2Tbl[i] = (MemChunk_t *)0;
     for (int i = 0;  i < L1_TBLSZ;  i++)
 	BIBOP[i] = FreeL2Tbl;
 #else
