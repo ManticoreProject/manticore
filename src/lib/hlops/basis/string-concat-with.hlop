@@ -3,7 +3,7 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Concatenation of string with given intermediate string.
+ * Concatenation of strings with given intermediate string.
  * ex: string-concat-with (" andalso ", [Crosby, Stills, Nash]) 
  *                         --> "Crosby andalso Stills andalso Nash"
  *)
@@ -16,10 +16,8 @@ define @string-concat-list (arg : list / _ : exh) : ml_string;
 
 define @string-concat-with (arg : [ml_string, list] / exh : exh) : ml_string =
   
-  do ccall M_Print ("1\n\000")
   let sep : ml_string = #0(arg)
-  
-  (*let strings : list = #1(arg)
+  let strings : list  = #1(arg)
 
   fun build (ss : list, acc : list / ) : list =
     case ss
@@ -36,7 +34,5 @@ define @string-concat-with (arg : [ml_string, list] / exh : exh) : ml_string =
    (* end fun build *)
 
   let newList : list = apply build (strings, NIL)
-  @string-concat-list (newList / exh) *)
-
-  return (sep)
+  @string-concat-list (newList / exh)
 ;
