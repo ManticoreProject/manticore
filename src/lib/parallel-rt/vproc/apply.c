@@ -75,8 +75,6 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 		*rp++ = &(vp->currentFG);
 		*rp++ = 0;
 		MinorGC (vp, roots);
-		if (vp->globalGCPending)
-		    StartGlobalGC (vp, roots);
 	    }
 	  /* check for pending signals */
 	    else if (vp->sigPending == M_TRUE) {

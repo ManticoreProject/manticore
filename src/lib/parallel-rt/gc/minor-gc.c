@@ -146,7 +146,7 @@ void MinorGC (VProc_t *vp, Value_t **roots)
 
     LogEvent0 (vp, MinorGCEndEvt);
 
-    if (avail < MajorGCThreshold) {
+    if ((avail < MajorGCThreshold) || vp->globalGCPending) {
       /* time to do a major collection. */
 	MajorGC (vp, roots, (Addr_t)nextScan);
     }

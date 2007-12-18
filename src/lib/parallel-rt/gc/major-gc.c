@@ -172,7 +172,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 
     LogEvent0 (vp, MajorGCEndEvt);
 
-    if (ToSpaceSz >= ToSpaceLimit)
+    if (vp->globalGCPending || (ToSpaceSz >= ToSpaceLimit))
 	StartGlobalGC (vp, roots);
 
 } /* end of MajorGC */
