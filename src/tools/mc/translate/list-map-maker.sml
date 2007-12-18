@@ -8,12 +8,15 @@
 
 structure ListMapMaker : sig
 
+  (* these are intended to be removed from the signature *)
     val mkMap : int -> BOM.exp
+    val mkListToTup : int -> BOM.exp
     val test  : int -> unit
 
   (* The following will retrieve the desired map function from a cache, or
    * synthesize the appropriate function, stash it in the cache, and return it. *)
     val getMapFunction : int -> BOM.exp
+    val getListToTupFunction : int -> BOM.exp
 
   end = struct
 
@@ -64,29 +67,32 @@ structure ListMapMaker : sig
 	    build (arity, [], [])
 	end
 
+    (* mkVars : string * int * BTy.ty -> BV.var list *)
+    (* P: to build a list of numbered variable names, all of same type, backwards. *)
+    (* ex: mkVars ("foo", 3, any) --> [foo3 : any, foo2 : any, foo1 : any] *)
+    fun mkVars (prefix: string, n: int, t: BTy.ty) : BV.var list =
+	let fun f (k, acc) =
+		if k>n 
+		then acc
+		else f (k+1, BV.new (prefix ^ Int.toString k, t) :: acc)
+	in
+	    if (n<1)
+	    then raise Fail "mkVars: BUG"
+	    else f (1, [])
+	end
+
+    val nilPat = B.P_Const nilConst
+    
+    fun mkConsPat (hdVar, tlVar) = B.P_DCon (BB.listCons, [hdVar, tlVar])
+
     local
 	val revHLOp = HLOpEnv.listRevOp
-	val nilPat = B.P_Const nilConst
-	fun mkConsPat (hdVar, tlVar) = B.P_DCon (BB.listCons, [hdVar, tlVar])
 	fun zip3Eq (xs, ys, zs) =
 	    let fun f ([], [], [], acc) = rev acc
 		  | f (x::xs, y::ys, z::zs, acc) = f (xs, ys, zs, (x,y,z)::acc)
 		  | f _ = raise Fail "unequal lengths"
 	    in
 		f (xs, ys, zs, [])
-	    end
-	(* mkVars : string * int * BTy.ty -> BV.var list *)
-	(* P: to build a list of numbered variable names, all of same type, backwards. *)
-	(* ex: mkVars ("foo", 3, any) --> [foo3 : any, foo2 : any, foo1 : any] *)
-	fun mkVars (prefix: string, n: int, t: BTy.ty) : BV.var list =
-	    let fun f (k, acc) =
-		    if k>n 
-		    then acc
-		    else f (k+1, BV.new (prefix ^ Int.toString k, t) :: acc)
-	    in
-		if (n<1)
-		then raise Fail "mkVars: BUG"
-		else f (1, [])
 	    end
     in
     (* mkInnerMap : int * BV.var * BV.var -> B.lambda *)
@@ -219,6 +225,49 @@ structure ListMapMaker : sig
 	    lookup arity handle Absent => deal ()
 	end
     end (* locals for getMapFunction *)
+
+    fun mkListToTup (arity : int) : BOM.exp = 
+	let fun raiseExn () = raise Fail "todo"
+	    val returnTy = tupTy (false, copies (arity, anyTy))
+	    val xss = BV.new ("xss", listTy)
+	    val xsVars = mkVars ("xs", arity, listTy) (* these are backwards *)
+	    val tlVars = mkVars ("tl", arity, listTy) (* these are backwards *)
+	    val tlN = hd tlVars
+            val innermostCase =
+		let val consPat = mkConsPat (BV.new("_",listTy), BV.new("_",listTy))
+		    val retval = 
+			let val result = BV.new ("result", returnTy)
+			in
+			    B.mkStmt ([result],
+                              B.E_Alloc (returnTy, rev xsVars),
+                                B.mkRet [result])
+			end
+		in
+		    B.mkCase (tlN,
+                      [(consPat, raiseExn ()),
+                       (nilPat, retval)],
+                      NONE)
+		end
+	    fun build ([xs1], [tl1], e) = 
+		  B.mkCase (xss,
+                    [(nilPat, raiseExn ()),
+		     (mkConsPat (xs1, tl1), e)],
+                    NONE)
+	      | build (xsK::xsTl, tlK::(tlTl as tlKPred::_), e) = 
+		  let val e' = B.mkCase (tlKPred,
+                                 [(nilPat, raiseExn ()),
+				  (mkConsPat (xsK, tlK), e)],
+                                 NONE)
+                  in
+		      build (xsTl, tlTl, e')
+		  end
+	      | build _ = raise Fail "mkListToTup: BUG"
+	in
+	    build (xsVars, tlVars, innermostCase)
+	end
+
+    fun getListToTupFunction (arity : int) : BOM.exp = 
+	raise Fail "todo"
 
     (* TESTS FOLLOW *)
 
