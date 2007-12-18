@@ -209,8 +209,8 @@ void VProcSignal (VProc_t *vp, VPSignal_t sig)
 	SayDebug("[%2d] VProcSignal: sig = %d\n", vp->id, sig);
 #endif
 
-    if (sig == GCSignal) pthread_kill (vp->hostID, SIGUSR1);
-    else if (sig == PreemptSignal) pthread_kill (vp->hostID, SIGUSR2);
+    if (sig == PreemptSignal) pthread_kill (vp->hostID, SIGUSR1);
+    else if (sig == GCSignal) pthread_kill (vp->hostID, SIGUSR2);
     else Die("bogus signal");
 
 } /* end of VProcSignal */
