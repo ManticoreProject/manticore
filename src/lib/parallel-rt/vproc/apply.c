@@ -77,7 +77,7 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 		MinorGC (vp, roots);
 	    }
 	  /* check for pending signals */
-	    else if (vp->sigPending == M_TRUE) {
+	    if (vp->sigPending == M_TRUE) {
 /* FIXME: this code assumes that the signal is always preemption */
 	      
   	    /* Unload the vproc's entry queue */
