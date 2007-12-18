@@ -15,7 +15,6 @@ Library
   structure Futures
   structure GrandPass
   structure Hash
-  structure MapCalculus
   structure Nester
   structure PrintAST  
   structure PrintTypes
@@ -46,7 +45,6 @@ is
   futures.sml
   grand-pass.sml
   hash.sml
-  map-calculus.sml
   nester.sml
   rewrite-with-queues.sml
   ropes.sml

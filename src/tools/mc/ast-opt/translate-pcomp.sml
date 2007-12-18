@@ -125,10 +125,11 @@ structure TranslatePComp : sig
 		  end
 *)
 	      | (pe::_, NONE) => (* the multiple pbind, no pred case *)
-                                 (* NOTE this isn't built to deal with ranges yet *)
+                                 (* FIXME this isn't built to deal with ranges yet *)
 		                 (* FIXME magicalMap! *)
 		  let val e' = trExp e
-		      val t = TypeOf.exp e
+		      val t  = TypeOf.exp e
+		      (* build : (pat * exp) list * int * var list * pat list * exp list -> exp *)
 		      fun build ([], _, xs, ps, es) =
 			    let val (xs, ps, es) = (rev xs, rev ps, rev es)
 				val tupExp = A.TupleExp (map (fn x => A.VarExp (x, [])) xs)
@@ -137,16 +138,16 @@ structure TranslatePComp : sig
 				val arg = Var.new ("arg", TypeOf.exp tupExp)
 				val m = A.PatMatch (tupPat, caseExp)
 				val f = A.FunExp (arg, A.CaseExp (A.VarExp (arg, []), [m], t), t)
-				val magicalMap = raise Fail "todo"
+				val mapP_k = raise Fail "todo" (* VariableArityMaps.fromTy (TypeOf.exp tupFrom) *)
 			    in
-				A.ApplyExp (magicalMap, 
+				A.ApplyExp (mapP_k, 
 					    A.TupleExp [f, A.TupleExp es], 
 					    B.parrayTy t)
 			    end
-			| build ((p,a)::tl, n, xs, ps, es) =
+			| build ((p,e)::tl, n, xs, ps, es) =
 			    let val x = Var.new ("x" ^ Int.toString n, TypeOf.pat p)
 			    in
-				build (tl, n+1, x::xs, p::ps, trExp(a)::es)
+				build (tl, n+1, x::xs, p::ps, trExp(e)::es)
 			    end
 		  in
 		      build (pes, 1, [], [], [])
