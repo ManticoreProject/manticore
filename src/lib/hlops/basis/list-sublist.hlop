@@ -1,0 +1,52 @@
+(* list-sublist.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Built-in list sublist function.
+ *)
+
+#include "types.def"
+
+define @list-sublist (xs : list, start : int, length : int / exh : exh) : list =
+
+  (* FIXME *)
+  let Subscript : exn = (exn) enum(0)
+
+  fun sub1 (n : int / ) : int =
+    let m : int = I32Sub(n,1)
+    return (m)
+
+  fun take (xs : list, n : int, acc : list / ) : list =
+    if I32Eq(n,0) then
+      @list-rev (acc / exh)
+    else
+      case xs
+        of NIL => throw exh (Subscript)
+         | CONS (x:any, r:list) =>
+             let newN : int = apply sub1(n)
+             let newAcc : list = CONS (x, acc)
+             apply take (r, newN, newAcc)
+      end (* case *)
+  (* end fun take *)
+
+  (* Note this customized drop calls take when it's finished. *)
+  fun drop (xs : list, n : int / ) : list =
+    if I32Eq(n,0) then
+      apply (xs, length, NIL)
+    else
+      case xs
+        of NIL => throw exh (Subscript)
+         | CONS (_:any, r:list) => 
+	     let newN : int = apply sub1(n)
+             apply drop (r, newN)
+      end (* case *)
+  (* end fun drop *)
+  
+  if I32Lt(start, 0) then
+    throw exh (Subscript)
+  else if I32Lt(length, 0) then
+    throw exh (Subscript)
+  else 
+    apply drop (xs, start)
+;

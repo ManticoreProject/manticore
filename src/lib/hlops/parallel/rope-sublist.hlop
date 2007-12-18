@@ -1,0 +1,59 @@
+(* rope-sublist.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Consumes a rope, a start position and a length.
+ * Returns a list of data from that position of that length,
+ *  and a boolean indicating whether all the data requested was available.
+ *
+ * That is, if the rope doesn't contain enough data to fulfill the request,
+ *  the function returns as much data as it has and false.
+ *)
+
+#include "types.def"
+#include "ropes.def"
+
+define @list-append (arg : [list, list] / exh : exh) : list;
+define @list-sublist (xs : list, start : int, length : int / exh : exh) : list;
+
+extern void M_Print (void *);
+
+define @rope-sublist (r : rope, start : int, len : int / exh : exh) : [list, bool] =
+
+  fun rope_len_int (r : rope / ) : int =
+    let t : ml_int = @rope-length (r / exh)
+    return (unwrap(ml_int))
+
+  (* Invariant: n is not greater than the length of r. *)
+  fun sub (r : rope, st : int, n : int / ) : list =
+    case r
+      of LEAF (ml_len:ml_int, data:list) =>
+           @list-sublist (data, st, n / exh)
+       | CAT (ml_len:ml_int, _:ml_int, r1:rope, r2:rope) =>
+           let val n1 : int = apply rope_len_int (r1)     
+           if I32Lte(n1,n) then
+             apply sub (r1, st, n)
+           else
+             let leftLen : int =  I32Sub(n1,st)
+             let d1 : list = apply sub (r1, st, leftLen)
+             let d2 : list = 
+               let rightLen : int = I32Sub(n,leftLen)
+               apply sub (r2, 0, rightLen)
+             let tup : [list, list] = alloc(d1, d2)
+             @list-append (tup / exh)
+    end (* case *)
+  (* end fun sub *) 
+
+  let rLen : int = rope_len_int (r)
+  let longEnough : bool = I32Lte(rLen, len)
+  let data : list =
+    (* This check enforces the invariant of the call to sub. *)
+    if longEnough then
+      apply sub (r, start, len)
+    else
+      let available : int = I32Sub(rLen, start)
+      apply sub (r, start, available)
+  let result : [list, bool] = alloc (data, longEnough)
+  return (result)
+;

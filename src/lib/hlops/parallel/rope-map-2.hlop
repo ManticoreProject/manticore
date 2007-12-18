@@ -113,7 +113,6 @@ define @rope-map-2 (q : work_queue / exh : exh) :
         end (* case *)    
      (* end fun m_rope_2 *)
 
-
     let res : rope = apply m_rope_2 (r1, r2)    
     return (res)
     (* end fun map_2 *)
