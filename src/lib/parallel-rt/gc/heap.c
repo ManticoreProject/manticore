@@ -115,7 +115,7 @@ void GetChunkForVProc (VProc_t *vp)
 	  /* no free chunks, so allocate storage from OS */
 	    int nPages = HEAP_CHUNK_SZB >> PAGE_BITS;
 	    memObj = AllocMemory(&nPages, BIBOP_PAGE_SZB);
-	    MemChunk_t *chunk = NEW(MemChunk_t);
+	    chunk = NEW(MemChunk_t);
 	    if ((memObj == (void *)0) || (chunk == (MemChunk_t *)0)) {
 		Die ("unable to allocate memory for global heap\n");
 	    }
