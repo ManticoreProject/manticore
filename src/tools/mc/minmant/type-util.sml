@@ -114,7 +114,7 @@ structure TypeUtil : sig
   (* return the string representation of a type scheme *)
     fun schemeToString (Ty.TyScheme([], ty)) = toString ty
       | schemeToString (Ty.TyScheme(tvs, ty)) = concat[
-	    "[", String.concatWith "," (List.map tyvarToString tvs), "]", toString ty
+	    "forall [", String.concatWith "," (List.map tyvarToString tvs), "] =>\n  ", toString ty
 	  ]
 
   (* return the "head-normal form" by pruning an instantiated meta
