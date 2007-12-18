@@ -4,4 +4,11 @@ fun fib (i : long) = (case i
 	| n => fib(i-1) + fib(i-2)
       (* end case *));
 
-print(ltos(fib 31) ^ "\n")
+fun try (n : long) = let
+      val f = fib(n)
+      val s = ltos(f)
+      in
+        print ("fib(" ^ ltos(n) ^ " is " ^ s ^ ".\n")
+      end;
+
+app (try, 0::1::5::10::20::31::nil)
