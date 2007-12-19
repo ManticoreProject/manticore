@@ -27,8 +27,8 @@ structure RopeMapMaker : sig
 
     val listTy = BB.listTy
     val tupTy = BTy.T_Tuple
-    val ropeTy = BTy.ropeTy
-    val intTy = BTy.T_Raw RawTypes.T_Int
+    val ropeTy = BB.ropeTy
+    val rawIntTy = BTy.T_Raw BTy.T_Int
     val anyTy = BTy.T_Any
     val exnTy = BTy.exnTy
     val exhTy = BTy.exhTy
@@ -130,28 +130,34 @@ structure RopeMapMaker : sig
 
   (* mkLeafCaseBody : B.var * B.var * B.var * B.var -> B.exp *)
     fun mkLeafCaseBody (dataVar : B.var, startPosVar : B.var, othersVar : B.var, indexVar : B.var) : B.exp =
-	raise Fail "todo"
+	raise Fail "todo: mkLeafCaseBody"
 
   (* mkCatCaseBody : B.var * B.var * B.var * B.var -> B.exp *)
     fun mkCatCaseBody (innerMapVar : B.var, startPosVar : B.var, lVar : B.var, rVar : B.var) : B.exp =
-	raise Fail "todo"
+	raise Fail "todo: mkCatCaseBody"
 	
   (* mkInnerMap : int * B.var * B.var -> B.lambda *)
     fun mkInnerMap (arity : int, indexVar : B.var, othersVar : B.var) : B.lambda =
-      let val fTy = BTy.T_Fun ([ropeTy, intTy], [], [ropeTy])
+      let val fTy = BTy.T_Fun ([ropeTy, rawIntTy], [], [ropeTy])
 	  val fVar = BV.new ("rmap" ^ Int.toString arity, fTy)
-	  val ropeListVar = BV.new ("ropes", listTy)
-	  val ropeVars = List.tabulate (arity,
-				     fn n => BV.new ("rope" ^ Int.toString (n+1), ropeTy))
 	  val shortestVar = BV.new ("short", ropeTy)
-	  val startPosVar = BV.new ("start", intTy)
+	  val startPosVar = BV.new ("start", rawIntTy)
 	  val dataVar = BV.new ("data", listTy)
 	  val leafCaseBody = mkLeafCaseBody (dataVar, startPosVar, othersVar, indexVar)
 	  val shortLVar = BV.new ("shortL", ropeTy)
 	  val shortRVar = BV.new ("shortR", ropeTy)
 	  val catCaseBody = mkCatCaseBody (fVar, startPosVar, shortLVar, shortRVar)
+	  val leafPat = B.P_DCon (BB.ropeLeaf, [dataVar])
+	  val catPat = B.P_DCon (BB.ropeCat, [shortLVar, shortRVar])
+	  val body = B.mkCase (shortestVar,
+			       [(leafPat, leafCaseBody),
+				(catPat, catCaseBody)],
+			       NONE)
       in
-	  raise Fail "todo"
+	  B.FB {f = fVar,
+		params = [shortestVar, startPosVar],
+		exh = [],
+		body = body}
       end
 
   (* mkMap : int -> B.exp *)
@@ -160,16 +166,30 @@ structure RopeMapMaker : sig
 	    val lengthExn = BV.new ("Length", exnTy)
 	    fun mkRaise () = B.mkThrow (exh, [lengthExn])
 	    val l2t = mkListToTup (arity, mkRaise)
-            val argTy = 
-		let val fTy = BTy.T_Fun (copies (arity, anyTy), [exhTy], [anyTy])
-		in
-		    tupTy (false, fTy :: copies (arity, ropeTy))
-		end
+            val fTy = BTy.T_Fun (copies (arity, anyTy), [exhTy], [anyTy])
+	    val f = BV.new ("f", fTy)
+	    val argTy = tupTy (false, fTy :: copies (arity, ropeTy)) 
 	    val rmapTy = BTy.T_Fun ([argTy], [exhTy], [ropeTy])
 	    val rmapVar = BV.new ("rope_map_" ^ Int.toString arity, rmapTy)
-
+	    val ropeListVar = BV.new ("ropes", listTy)
+	    val ropeVars = List.tabulate (arity,
+				       fn n => BV.new ("rope" ^ Int.toString (n+1), ropeTy))
+	    val indexVar = BV.new ("i", rawIntTy)
+	    val shortestVar = BV.new ("s", ropeTy)
+	    val othersVar = BV.new ("others", listTy)
+	    val innerMap as B.FB {f=rmapn, ...} = mkInnerMap (arity, indexVar, othersVar)
+	    val body = mkList (ropeListVar, ropeVars,
+                         B.mkLet ([indexVar, shortestVar, othersVar], 
+                           B.mkHLOp (HLOpEnv.extractShortestRopeOp, [ropeListVar], [exh]),
+                             B.mkFun ([innerMap],
+                               B.mkApply (rmapn, [shortestVar], []))))
+	    val rmapLam = B.FB {f = rmapVar,
+				params = f::ropeVars,
+				exh = [exh],
+				body = body}
 	in
-	    raise Fail "todo"
+            (* FIXME: mkMap should return a B.lambda *)
+	    B.mkFun ([rmapLam], B.mkRet [rmapVar])
 	end
 
     structure MapFnCache = CacheFn(struct 
