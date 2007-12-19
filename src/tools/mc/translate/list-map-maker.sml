@@ -10,13 +10,11 @@ structure ListMapMaker : sig
 
   (* these are intended to be removed from the signature *)
     val mkMap : int -> BOM.exp
-    val mkListToTup : int -> BOM.exp
     val test  : int -> unit
 
   (* The following will retrieve the desired map function from a cache, or
    * synthesize the appropriate function, stash it in the cache, and return it. *)
     val getMapFunction : int -> BOM.exp
-    val getListToTupFunction : int -> BOM.exp
 
   end = struct
 
@@ -30,6 +28,7 @@ structure ListMapMaker : sig
     val listTy = BB.listTy
     val tupTy = BTy.T_Tuple
     val anyTy = BTy.T_Any
+    val exnTy = BTy.exnTy
     val exhTy = BTy.exhTy
 
     val nilConst = (Literal.Enum 0w0, listTy)
@@ -207,67 +206,12 @@ structure ListMapMaker : sig
 	end
     end (* locals for mkMap *)
 
-    exception Absent
-    structure IHT = IntHashTable
-    val (mapFunctionCache : BOM.exp IHT.hash_table) = IHT.mkTable (8, Absent)
+    structure MapFnCache = CacheFn(struct 
+				       type t = B.exp
+				       val mkItem = mkMap
+				     end)
 
-    local
-	val insert = IHT.insert mapFunctionCache
-	val lookup = IHT.lookup mapFunctionCache
-    in
-    fun getMapFunction (arity: int) : BOM.exp = 
-	let fun deal () =
-		let val mapN = mkMap arity
-		in
-		    mapN before insert (arity, mapN)
-		end
-	in
-	    lookup arity handle Absent => deal ()
-	end
-    end (* locals for getMapFunction *)
-
-    fun mkListToTup (arity : int) : BOM.exp = 
-	let fun raiseExn () = raise Fail "todo"
-	    val returnTy = tupTy (false, copies (arity, anyTy))
-	    val xss = BV.new ("xss", listTy)
-	    val xsVars = mkVars ("xs", arity, listTy) (* these are backwards *)
-	    val tlVars = mkVars ("tl", arity, listTy) (* these are backwards *)
-	    val tlN = hd tlVars
-            val innermostCase =
-		let val consPat = mkConsPat (BV.new("_",listTy), BV.new("_",listTy))
-		    val retval = 
-			let val result = BV.new ("result", returnTy)
-			in
-			    B.mkStmt ([result],
-                              B.E_Alloc (returnTy, rev xsVars),
-                                B.mkRet [result])
-			end
-		in
-		    B.mkCase (tlN,
-                      [(consPat, raiseExn ()),
-                       (nilPat, retval)],
-                      NONE)
-		end
-	    fun build ([xs1], [tl1], e) = 
-		  B.mkCase (xss,
-                    [(nilPat, raiseExn ()),
-		     (mkConsPat (xs1, tl1), e)],
-                    NONE)
-	      | build (xsK::xsTl, tlK::(tlTl as tlKPred::_), e) = 
-		  let val e' = B.mkCase (tlKPred,
-                                 [(nilPat, raiseExn ()),
-				  (mkConsPat (xsK, tlK), e)],
-                                 NONE)
-                  in
-		      build (xsTl, tlTl, e')
-		  end
-	      | build _ = raise Fail "mkListToTup: BUG"
-	in
-	    build (xsVars, tlVars, innermostCase)
-	end
-
-    fun getListToTupFunction (arity : int) : BOM.exp = 
-	raise Fail "todo"
+    val getMapFunction : int -> BOM.exp = MapFnCache.getItem
 
     (* TESTS FOLLOW *)
 

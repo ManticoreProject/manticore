@@ -7,6 +7,7 @@
 Library
 
   structure ListMapMaker
+  structure RopeMapMaker
   structure Translate
 
 is
@@ -23,8 +24,10 @@ is
   ../hlop/sources.cm
   ../ast-opt/sources.cm
 
+  cache-fn.sml
   equality.sml
   list-map-maker.sml
+  rope-map-maker.sml
   std-env.sml
   translate.sml
   translate-controls.sml
