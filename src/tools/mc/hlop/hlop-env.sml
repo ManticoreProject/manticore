@@ -80,6 +80,11 @@ structure HLOpEnv : sig
     val define : HLOp.hlop -> unit
     val find : Atom.atom -> HLOp.hlop option
 
+  (* some hlops, not in the surface language, for use in rope maps *)
+    val extractShortestRopeOp : HLOp.hlop
+    val curriedRopeSublistOp : HLOp.hlop
+    val insertAtOp : HLOp.hlop
+    
   end = struct
 
     structure H = HLOp
@@ -95,6 +100,7 @@ structure HLOpEnv : sig
     val exhTy = BTy.exhTy
     val tidTy = BTy.tidTy
     val fiberTy = BTy.fiberTy
+    val anyTy = BTy.T_Any
 
     val signalTy = Basis.signalTy
     val sigActTy = BTy.T_Cont[signalTy]
@@ -107,6 +113,7 @@ structure HLOpEnv : sig
     val floatTy = Basis.floatTy
     val doubleTy = Basis.doubleTy
     val stringTy = Basis.stringTy
+    val ropeTy = Basis.ropeTy
 
     val evtTy = Basis.evtTy
 
@@ -198,6 +205,22 @@ structure HLOpEnv : sig
     val ropeSubOp = 
       newWithExh ("rope-sub", [pairTy (Basis.ropeTy, intTy)], [BTy.T_Any], [])
 		    
+  (* some hlops, not in the surface language, for use in rope maps *)
+    val extractShortestRopeOp = 
+	let val tupTy = BTy.T_Tuple (false, [ropeTy, listTy, rawIntTy])
+	in
+	    newWithExh ("extract-shortest-rope", [listTy], [tupTy], [])
+	end
+
+    val curriedRopeSublistOp =
+	let val tTy = BTy.T_Tuple (false, [listTy, boolTy])
+	    val fTy = BTy.T_Fun ([ropeTy], [exhTy], [tTy])
+	in
+	    newWithExh ("curried-rope-sublist", [rawIntTy, rawIntTy], [fTy], [])
+	end
+
+    val insertAtOp = newWithExh ("insert-at", [anyTy, listTy, rawIntTy], [listTy], [])
+
     fun mkTbl nameOf bindings = let
 	  val tbl = AtomTable.mkTable (List.length bindings, Fail "table")
 	  fun ins v = AtomTable.insert tbl (nameOf v, v)

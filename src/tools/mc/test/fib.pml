@@ -8,7 +8,7 @@ fun try (n : long) = let
       val f = fib(n)
       val s = ltos(f)
       in
-        print ("fib(" ^ ltos(n) ^ " is " ^ s ^ ".\n")
+        print ("fib(" ^ ltos(n) ^ ") is " ^ s ^ ".\n")
       end;
 
 app (try, 0::1::5::10::20::31::nil)
