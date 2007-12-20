@@ -217,7 +217,7 @@ structure StdEnv : sig
       val b = BTy.boolTy
     in 
     val operators = [
-	    (B.listAppend,	hlop (H.listAppendOp, true)),	    
+	    (B.listAppend,	hlop (H.listAppendOp, false)),	    
 	    (B.int_lte,		prim2 (P.I32Lte, "lte", i, i, b)),
 	    (B.long_lte,	prim2 (P.I64Lte, "lte", l, l, b)),
 	    (B.float_lte,	prim2 (P.F32Lte, "lte", f, f, b)),
@@ -226,9 +226,8 @@ structure StdEnv : sig
 	    (B.integer_lte,	hlop H.integerLteOp),
 	    (B.char_lte,	prim2 (P., "lte", ?, ?, ?)?),
 	    (B.rune_lte,	prim2 (P., "lte", ?, ?, ?)?),
-	    (B.string_lte,	hlop H.stringLteOp),
+	    (B.string_lte,	hlop (H.stringLteOp, false)),  
 *)
-  
 	    (B.int_lt,		prim2 (P.I32Lt, "lt", i, i, b)),
 	    (B.float_lt,	prim2 (P.F32Lt, "lt", f, f, b)),
 	    (B.double_lt,	prim2 (P.F64Lt, "lt", d, d, b)),
