@@ -8,7 +8,7 @@
  * (The lookup index type could be generalized as a possible improvement.)
  *)
 
-functor CacheFn(M : sig
+functor CacheFn (M : sig
 
     type t
     val mkItem : int -> t
@@ -21,18 +21,19 @@ functor CacheFn(M : sig
 
     structure IHT = IntHashTable
 
-    val NotFound = LibBase.NotFound
-
-    val cache : M.t IHT.hash_table = IHT.mkTable (8, NotFound)
+    val cache : M.t IHT.hash_table = IHT.mkTable (8, Fail "CacheFn")
 				     
-    val ins = IHT.insert cache
+    val insert = IHT.insert cache
+    val find = IHT.find cache
 	      
-    val lkp = IHT.lookup cache
-	      
-    fun getItem (n : int) : M.t =
-	let fun remember itemN = itemN before ins (n, itemN)
-	in
-	    lkp n handle NotFound => remember (M.mkItem n)
+    fun getItem (n : int) : M.t = (case find n
+	   of NONE => let
+		val item = M.mkItem n
+		in
+		  insert (n, itemN); item
+		end
+	    | SOME item => item
+	  (* end case *))
 	end
 
   end
