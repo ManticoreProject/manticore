@@ -43,17 +43,18 @@ structure Types =
 	    class : ty_class option     (* optional type class *)
 	  }
 
-    and tycon
-      = AbsTyc of {
+    and tycon = Tyc of {
 	    stamp : Stamp.stamp,	(* unique stamp *)
 	    name : Atom.atom,		(* the type name *)
 	    arity : int,		(* number of type parameters *)
-	    eq : bool			(* is it an equality type? *)
-	  }
-      | DataTyc of {
-	    stamp : Stamp.stamp,	(* unique stamp *)
-	    name : Atom.atom,		(* the type name *)
 	    params : tyvar list,	(* type parameters *)
+	    props : PropList.holder,
+	    def : tycon_def		(* definition of tyc *)
+	  }
+
+    and tycon_def
+      = AbsTyc
+      | DataTyc of {
 	    nCons : int ref,		(* number of constructors *)
 	    cons : dcon list ref	(* list of data constructors *)
 	  }

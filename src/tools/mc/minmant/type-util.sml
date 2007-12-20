@@ -261,15 +261,13 @@ structure TypeUtil : sig
 	    | _ => false
 	  (* end case *))
 
+(* QUESTION: do we really need both this function and TypeClass.isEqualityType? *)
   (* return true if the type supports equality *)
     fun eqType ty = (case prune ty
 	   of Ty.ErrorTy => true
 	    | Ty.MetaTy _ => false (* should have been resolved by now *)
 	    | Ty.VarTy _ => false
-	    | Ty.ConTy([], Ty.AbsTyc{eq, ...}) => eq
-	    | Ty.ConTy([], Ty.DataTyc{cons, ...}) =>
-		List.all (fn (Ty.DCon{argTy=NONE, ...}) => true | _ => false) (!cons)
-	    | Ty.ConTy _ => false
+	    | Ty.ConTy([], tyc) => TyCon.isEqTyc tyc
 	    | Ty.FunTy _ => false
 	    | Ty.TupleTy tys => List.all eqType tys
 	  (* end case *))

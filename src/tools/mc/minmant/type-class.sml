@@ -42,9 +42,7 @@ structure TypeClass : sig
 	  isEqualityType ty before info := Ty.INSTANCE ty)
       | isEqualityType (Ty.MetaTy(Ty.MVar{info as ref(Ty.CLASS _), ...})) =
 	  true (* all classes are <= Eq *)
-      | isEqualityType (Ty.ConTy([], Ty.AbsTyc{eq, ...})) = eq
-      | isEqualityType (Ty.ConTy([], Ty.DataTyc{cons, ...})) =
-	  List.all (fn (Ty.DCon{argTy=NONE, ...}) => true | _ => false) (!cons)
+      | isEqualityType (Ty.ConTy(_, tyc)) = TyCon.isEqTyc tyc
       | isEqualityType (Ty.TupleTy tys) = List.all isEqualityType tys
       | isEqualityType _ = false
 

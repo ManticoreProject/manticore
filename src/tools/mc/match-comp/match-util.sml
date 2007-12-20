@@ -40,13 +40,13 @@ structure MatchUtil : sig
 
   (* is a datatype constructor/constant the only one for the type? *)
     fun singletonDC dc = let
-	  val Types.DataTyc{nCons, ...} = DataCon.ownerOf dc
+	  val Types.Tyc{def=Types.DataTyc{nCons, ...}, ...} = DataCon.ownerOf dc
 	  in
 	    !nCons = 1
 	  end
 
     fun isSimplePat (AST.ConPat(dc, _, p)) = let
-	  val Types.DataTyc{nCons, ...} = DataCon.ownerOf dc
+	  val Types.Tyc{def=Types.DataTyc{nCons, ...}, ...} = DataCon.ownerOf dc
 	  in
 	    singletonDC dc andalso isVarOrWild p
 	  end

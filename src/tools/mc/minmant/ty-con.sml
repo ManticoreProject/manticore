@@ -34,36 +34,72 @@ structure TyCon : sig
   (* hash tables keyed by type constructors *)
     structure Tbl : MONO_HASH_TABLE where type Key.hash_key = Types.tycon
 
+  (* per-type properties *)
+    val newProp : (Types.tycon -> 'a) -> {
+	    clrFn : Types.tycon -> unit,
+	    getFn : Types.tycon -> 'a,
+	    peekFn : Types.tycon -> 'a option,
+	    setFn : (Types.tycon * 'a) -> unit
+	  }
+    val newFlag : unit -> {
+	    getFn : Types.tycon -> bool,
+	    setFn : Types.tycon * bool -> unit
+	  }
+
+  (* equality type property *)
+    val isEqTyc : Types.tycon -> bool
+    val markEqTyc : Types.tycon -> unit
+
   end = struct
 
     datatype tycon = datatype Types.tycon
 
-  (* create a new abstract type constructor *)
-    fun newAbsTyc (name, arity, eq) = AbsTyc{
+  (* per-type properties *)
+    fun propsOf (Tyc{props, ...}) = props
+    fun newProp mkProp = PropList.newProp (propsOf, mkProp)
+    fun newFlag () = PropList.newFlag propsOf
+
+  (* equality type property *)
+    local
+      val {getFn, setFn} = newFlag ()
+    in
+    val isEqTyc = getFn
+    fun markEqTyc tyc = setFn(tyc, true)
+    end
+
+    fun newTyc (name, arity, params, def) = Tyc{
 	    name = name,
 	    stamp = Stamp.new(),
 	    arity = arity,
-	    eq = eq
+	    params = params,
+	    props = PropList.newHolder(),
+	    def = def
 	  }
+
+  (* create a new abstract type constructor *)
+    local
+      val params = Vector.fromList(List.map Atom.atom ["'a", "'b", "'c", "'d", "'e"])
+    in
+    fun newAbsTyc (name, arity, eq) = let
+	  fun mkParam i = TyVar.new(Vector.sub(params, i))
+	  val tyc = newTyc (name, arity, List.tabulate(arity, mkParam), Types.AbsTyc)
+	  in
+	    if eq then markEqTyc tyc else ();
+	    tyc
+	  end
+    end
 
   (* create a new datatype tyc; it will have an empty constructor list *)
-    fun newDataTyc (name, params) = DataTyc{
-	    name = name,
-	    stamp = Stamp.new(),
-	    params = params,
-	    nCons = ref 0,
-	    cons = ref[]
-	  }
+    fun newDataTyc (name, params) = 
+	  newTyc (name, List.length params, params, Types.DataTyc{nCons = ref 0, cons = ref[]})
 
   (* return the name of a type constructor *)
-    fun nameOf (AbsTyc{name, ...}) = name
-      | nameOf (DataTyc{name, ...}) = name
+    fun nameOf (Tyc{name, ...}) = name
 
 (* FIXME: should include type parameters! *)
     fun toString tyc = Atom.toString(nameOf tyc)
 
-    fun stampOf (AbsTyc{stamp, ...}) = stamp
-      | stampOf (DataTyc{stamp, ...}) = stamp
+    fun stampOf (Tyc{stamp, ...}) = stamp
 
   (* return true if two type constructors are the same *)
     fun same (tyc1, tyc2) = Stamp.same(stampOf tyc1, stampOf tyc2)
@@ -72,14 +108,12 @@ structure TyCon : sig
     fun compare (tyc1, tyc2) = Stamp.compare(stampOf tyc1, stampOf tyc2)
 
   (* return the arity of a type constructor *)
-    fun arityOf (AbsTyc{arity, ...}) = arity
-      | arityOf (DataTyc{params, ...}) = List.length params
+    fun arityOf (Tyc{arity, ...}) = arity
 
     structure Tbl = HashTableFn (
       struct
 	type hash_key = tycon
-	fun hashVal (AbsTyc{stamp, ...}) = Stamp.hash stamp
-	  | hashVal (DataTyc{stamp, ...}) = Stamp.hash stamp
+	fun hashVal (Tyc{stamp, ...}) = Stamp.hash stamp
 	val sameKey = same
       end)
 

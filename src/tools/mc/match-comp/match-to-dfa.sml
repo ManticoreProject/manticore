@@ -164,7 +164,7 @@ structure MatchToDFA : sig
 	(* cvtFn and coverFn for datatype patterns *)
 	  fun cvtDataty (DFA.CON(dc, _, _)) = DC.idOf dc
 	    | cvtDataty pat = raise Fail "coverage.cvtDataty: bogus pattern"
-	  fun coverDataty (Ty.DataTyc{nCons, ...}) s = (S.numItems s = !nCons)
+	  fun coverDataty (Ty.Tyc{def=Ty.DataTyc{nCons, ...}, ...}) s = (S.numItems s = !nCons)
 	(* check the coverage of a list of patterns *)
 	  fun chk [] = PARTIAL
 	    | chk (DFA.ANY :: r) = ALL

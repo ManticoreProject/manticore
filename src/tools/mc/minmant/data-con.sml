@@ -49,19 +49,23 @@ structure DataCon : sig
 
     datatype dcon = datatype AST.dcon
 
-    fun new (tyc as Types.DataTyc{nCons, cons, ...}) (name, argTy) = let
-	  val id = !nCons
-	  val dcon = DCon{id = id, name = name, owner = tyc, argTy = argTy}
+    fun new (tyc as Types.Tyc{def=Types.DataTyc{nCons, cons}, ...}) = let
+	  fun add (name, argTy) = let
+		val id = !nCons
+		val dcon = DCon{id = id, name = name, owner = tyc, argTy = argTy}
+		in
+		  nCons := id + 1;
+		  cons := !cons @ [dcon];
+		  dcon
+		end
 	  in
-	    nCons := id + 1;
-	    cons := !cons @ [dcon];
-	    dcon
+	    add
 	  end
 
     fun same (DCon{owner=o1, id=a, ...}, DCon{owner=o2, id=b, ...}) =
 	  (a = b) andalso TyCon.same(o1, o2)
 
-    fun hash (DCon{owner=Types.DataTyc{stamp, ...}, id, ...}) =
+    fun hash (DCon{owner=Types.Tyc{stamp, ...}, id, ...}) =
 	  (0w7 * Stamp.hash stamp) + Word.fromInt id
 
     fun compare (DCon{owner=o1, id=a, ...}, DCon{owner=o2, id=b, ...}) = (
@@ -76,7 +80,7 @@ structure DataCon : sig
 
     fun ownerOf (DCon{owner, ...}) = owner
 
-    fun typeOf (DCon{owner as Types.DataTyc{params, ...}, argTy, ...}) = let
+    fun typeOf (DCon{owner as Types.Tyc{params, ...}, argTy, ...}) = let
 	  val ty = AST.ConTy(List.map AST.VarTy params, owner)
 	  in
 	    case argTy
@@ -87,13 +91,13 @@ structure DataCon : sig
 
     fun typeOf' (dc, args) = TypeUtil.apply(typeOf dc, args)
 
-    fun resultTypeOf' (DCon{owner as Types.DataTyc{params, ...}, ...}, args) = let
+    fun resultTypeOf' (DCon{owner as Types.Tyc{params, ...}, ...}, args) = let
 	  val ty = AST.ConTy(List.map AST.VarTy params, owner)
 	  in
 	    TypeUtil.apply(AST.TyScheme(params, ty), args)
 	  end
 
-    fun argTypeOf' (DCon{owner as Types.DataTyc{params, ...}, argTy, ...}, args) = (
+    fun argTypeOf' (DCon{owner as Types.Tyc{params, ...}, argTy, ...}, args) = (
 	  case argTy
 	   of NONE => NONE
 	    | SOME ty => SOME(TypeUtil.apply(AST.TyScheme(params, ty), args))

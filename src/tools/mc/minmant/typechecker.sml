@@ -645,6 +645,10 @@ structure Typechecker : sig
 		      (* end case *))
 		val (ve', cons') = chkCons (loc, AtomSet.empty, cons, ve, [])
 		in
+(* FIXME: need to check and mark datatypes that are eq types
+      | isEqualityType (Ty.ConTy([], Ty.DataTyc{cons, ...})) =
+	  List.all (fn (Ty.DCon{argTy=NONE, ...}) => true | _ => false) (!cons)
+*)
 		  next(te, ve')
 		end
 	    | PT.ExnDecl(id, optTy) => raise Fail "ExceptionDecl"
