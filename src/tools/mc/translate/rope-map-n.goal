@@ -1,0 +1,58 @@
+(* rope-map-n.goal
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * This is a sketch of the hlop that RopeMapMaker is intended to produce.
+ *)
+
+let q : work_queue = ...
+
+fun rope_len_int ...
+
+fun list_to_tup[n] ...
+
+fun rope_map_[n] (f : fun [any,...,any/exh->any], r1 : rope, ..., r[n] : rope / exh : exh) 
+                 : rope =
+
+  (* build a list of all ropes *)
+  let list1 : list = CONS(r[n], NIL)
+  let list2 : list = CONS(r[n-1], list1)
+  ...
+  let ropes : list = CONS(r1, list[n-1])
+
+  (* calculate
+   * - i, the index of the shortest rope in "ropes",
+   * - s, the shortest rope in "ropes", and
+   * - others, the list of all ropes except "s" in their original order *)
+  let (i : int, s : rope, others : list) = @extract-shortest-rope (ropes / exh)  
+
+  (* We'll borrow the structure of the shortest rope in mapping over all ropes. *)
+  fun rmap[n] (short : rope, start : int / ) : rope =
+    case short
+      of LEAF(ml_len:ml_int, data:list) =>
+           let len : int = unwrap(ml_len)
+           let get : fun (rope / exh -> [list, bool]) = @curried-rope-sublist (start, len)
+           let othersX : list = 
+	     let arg : [fun (any / exh -> any), list, ..., list] =
+               alloc (get, others1, ..., others[n-1]) (* FIXME figure out how to do this... *)
+             @list-map-[n] (arg / exh)
+           let all : list = @insert-at (data, othersX, i / exh)
+           let (d1 : list, ..., d[n] : list) = apply list-to-tup[n] (all)
+           let dataX : list = apply list-map-[n] (f, d1, ..., d[n])
+           return (LEAF (ml_len, dataX))
+       | CAT (ml_len:ml_int, d:ml_int, shortL:rope, shortR:rope) =>
+           let lenL : int = apply rope_len_int (shortL)
+           let startR : int = I32Add (start, lenL)
+           fun thunk (u : unit / exh : exh) : rope = apply rmap[n] (shortR, startR)
+           let qt : [work_queue, thunk] = alloc (q, th)
+           let shortRX_F : future = @future1 (qt / exh)
+           let shortLX : rope = apply rmap[n] (shortL, start)
+           let qf : [work_queue, future] = alloc (q, shortRX_F)
+           let shortRX : rope = @touch1 (qf / exh) 
+           return (CAT (ml_len, d, shortLX, shortRX))
+    end (* case *)
+  (* end fun rmap[n] *)
+
+  apply rmap[n] (s)
+;
