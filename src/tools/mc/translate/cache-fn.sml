@@ -3,8 +3,7 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * A functor that builds a cache of items of type t.
- * Items are looked up with ints.
+ * A functor that builds a cache of items of type t indexed by integers.
  * (The lookup index type could be generalized as a possible improvement.)
  *)
 
