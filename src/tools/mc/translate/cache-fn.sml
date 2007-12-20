@@ -33,6 +33,5 @@ functor CacheFn (M : sig
 		end
 	    | SOME item => item
 	  (* end case *))
-	end
 
   end
