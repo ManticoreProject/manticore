@@ -115,28 +115,46 @@ structure TranslateEnv : sig
 
   (* output an environment *)
     fun dump (outStrm, E{tycEnv, dconEnv, varEnv, ...}) = let
+	  val w2s = Word.fmt StringCvt.DEC
 	  fun pr x = TextIO.output(outStrm, x)
 	  fun prl xs = pr(String.concat xs)
 	  fun prTyc (tyc, ty) = prl [
-		  "    ", TyCon.toString tyc, " = ", BOMTyUtil.toString ty, "\n"
+		  "    ", TyCon.toString tyc, "  :->  ", BOMTyUtil.toString ty, "\n"
 		]
 	  fun prDcon (dc, Const(n, ty)) = prl [
-		  "    ", DataCon.nameOf dc, " = ", Word.toString n, " : ",
+		  "    ", DataCon.nameOf dc, "  :->  ", w2s n, " : ",
 		  BOMTyUtil.toString ty, "\n"
 		]
-	    | prDcon (dc, DCon dc') = prl [
-		  "    ", DataCon.nameOf dc, " = ", BOMTyCon.dconName dc', "\n"
-		]
+	    | prDcon (dc, DCon(BOMTy.DCon{name, rep, argTy, ...})) = let
+		val argTy = (case argTy
+		       of [ty] => [BOMTyUtil.toString ty]
+			| ty::tys => "(" :: BOMTyUtil.toString ty
+			    :: (List.foldr (fn (ty, r) => ", " :: BOMTyUtil.toString ty :: r)
+				[")"] tys)
+		      (* end case *))
+		val rep = (case rep
+		       of BOMTy.Transparent => "<transparent>"
+			| BOMTy.Tuple => "<tuple>"
+			| BOMTy.TaggedTuple tag => concat["<tagged-tuple(", w2s tag, ")>"]
+		      (* end case *))
+		in
+		  prl [
+		      "    ", DataCon.nameOf dc, "  :->  ", name,
+		      " of ", String.concat argTy, "; ", rep, "\n"
+		    ]
+		end
 	  fun prVar (x, bind) = let
-		val x' = (case bind
-		       of Var x' => x'
-			| Lambda _ => raise Fail "prVar | Lambda" (* FIXME *)
+		val bind = (case bind
+		       of Var x' => concat[
+			      BOM.Var.toString x', " : ", BOMTyUtil.toString(BOM.Var.typeOf x')
+			    ]
+			| Lambda _ => "<lambda>"
+			| EqOp => "<eq>"
 		      (* end case *))
 		in
 		  prl [
 		      "    ", Var.toString x, " : ", TypeUtil.schemeToString(Var.typeOf x),
-		      " = ", BOM.Var.toString x', " : ",
-		      BOMTyUtil.toString(BOM.Var.typeOf x'), "\n"
+		      "  :->  ", bind, "\n"
 		    ]
 		end
 	  in

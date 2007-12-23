@@ -437,6 +437,20 @@ structure Translate : sig
 		}
 	  val module = B.mkModule(Atom.atom "Main", [], mainFun)
 	  in
+	    if (Controls.get TranslateControls.keepEnv)
+	      then let
+		val outName = (case Controls.get BasicControl.keepPassBaseName
+		       of NONE => "translate.env"
+			| SOME baseName => concat [
+			      baseName, ".", "translate.env"
+			    ]
+		      (* end case *))
+		val outFile = TextIO.openOut outName
+		in
+		  E.dump (outFile, env);
+		  TextIO.closeOut outFile
+		end
+	      else ();
 	    Census.census module;
 	    module
 	  end

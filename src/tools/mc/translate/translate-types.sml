@@ -25,6 +25,14 @@ structure TranslateTypes : sig
 	    fn l => appf (0, l)
 	  end
 
+  (* a property to track the mapping from AST type constructors to BOM kinds *)
+    local
+      val {getFn, setFn, ...} = TyCon.newProp (fn _ => BTy.K_UNIFORM)
+    in
+    val getTycKind = getFn
+    val setTycKind = setFn
+    end
+
   (* flatten tuple types and wrapped raw values into a list of types *)
     fun flatten (BTy.T_Tuple(false, [ty as BTy.T_Raw _])) = [ty]
       | flatten (BTy.T_Tuple(false, tys)) = List.foldr (fn (ty, tys) => flatten ty @ tys) [] tys
@@ -32,6 +40,18 @@ structure TranslateTypes : sig
 
     fun insertConst (env, dc, w, ty) = E.insertCon (env, dc, E.Const(w, ty))
     fun insertDCon (env, dc, dc') = E.insertCon (env, dc, E.DCon dc')
+
+  (* return the BOM kind of the argument of an AST data constructor; this code
+   * looks at the top-level structure of the type to determine the kind.
+   *)
+    fun bomKindOfArgTy dc = (case DataCon.argTypeOf dc
+	   of SOME(Ty.FunTy _) => BTy.K_BOXED
+	    | SOME(Ty.TupleTy []) => BTy.K_UNBOXED
+	    | SOME(Ty.TupleTy _) => BTy.K_BOXED
+(* FIXME: need to initialize abstract tycs!!! *)
+	    | SOME(Ty.ConTy(_, tyc)) => getTycKind tyc
+	    | _ => BTy.K_UNIFORM
+	  (* end case *))
 
     fun tr (env, ty) = let
 	  fun tr' ty = (case TypeUtil.prune ty
@@ -71,13 +91,6 @@ structure TranslateTypes : sig
 		fun assignConstRep (i, dc) =
 		      insertConst (env, dc, Word.fromInt i, BTy.T_Enum(Word.fromInt nConsts - 0w1))
 		val _ = appi assignConstRep consts
-	      (* assign representations for the constructor functions *)
-		val newDataCon = BTyc.newDataCon dataTyc
-		fun mkDC (dc, rep, tys) = let
-		      val dc' = newDataCon (DataCon.nameOf dc, rep, tys)
-		      in
-			insertDCon (env, dc, dc')
-		      end
 	      (* translate the argument type of a data constructor; for tuples of two, or more,
 	       * components, we flatten the representation.
 	       *)
@@ -85,6 +98,14 @@ structure TranslateTypes : sig
 		       of BTy.T_Tuple(false, tys as _::_::_) => tys
 			| ty => [ty]
 		      (* end case *))
+	      (* assign representations for the constructor functions *)
+		val newDataCon = BTyc.newDataCon dataTyc
+		fun mkDC (dc, rep, tys) = let
+		      val dc' = newDataCon (DataCon.nameOf dc, rep, tys)
+		      in
+			insertDCon (env, dc, dc')
+		      end
+		fun mkTaggedDC (i, dc) = mkDC (dc, BTy.TaggedTuple(Word.fromInt i), trArgTy dc)
 		in
 		  case (consts, conFuns)
 		   of (_::_, []) => setRep (BTy.T_Enum(Word.fromInt nConsts - 0w1), BTy.K_UNBOXED)
@@ -95,36 +116,27 @@ structure TranslateTypes : sig
 			  mkDC (dc, BTy.Transparent, [ty])
 			end
 		    | (_, [dc]) => (
-			case bomKindOfType (env, valOf(DataCon.argTypeOf dc))
+			case bomKindOfArgTy dc
 			 of BTy.K_BOXED => mkDC (dc, BTy.Transparent, trArgTy dc)
 			  | _ => (* need to use singleton tuple to represent data constructor *)
 			      mkDC (dc, BTy.Tuple, [BTy.T_Tuple(false, trArgTy dc)])
 			(* end case *))
-		    | ([], [dc1, dc2]) => raise Fail "FIXME"
-		    | (_, _) => let
-			fun mkDC' (i, dc) = mkDC (dc, BTy.TaggedTuple(Word.fromInt i), trArgTy dc)
-			in
-			  appi mkDC' conFuns
-			end
+		    | ([], [dc1, dc2]) => (case (bomKindOfArgTy dc1, bomKindOfArgTy dc2)
+			 of (BTy.K_BOXED, BTy.K_UNBOXED) => (
+			      mkDC (dc1, BTy.Transparent, trArgTy dc1);
+			      mkDC (dc2, BTy.Transparent, trArgTy dc2))
+			  | (BTy.K_UNBOXED, BTy.K_BOXED) => (
+			      mkDC (dc1, BTy.Transparent, trArgTy dc1);
+			      mkDC (dc2, BTy.Transparent, trArgTy dc2))
+			  | _ => (
+			      mkTaggedDC(0, dc1); mkTaggedDC(1, dc2))
+			(* end case *))
+		    | (_, _) => appi mkTaggedDC conFuns
 		  (* end case *);
 		  E.insertTyc (env, tyc, BTy.T_TyCon dataTyc);
+(* FIXME: set the BOM kind of the tyc *)
 		  BTy.T_TyCon dataTyc
 		end
-	  (* end case *))
-
-  (* return the BOM kind of an AST type; this code looks at the top-level structure
-   * of the type to determine the kind.
-   *)
-    and bomKindOfType (env, ty) = (case ty
-	   of (Ty.FunTy _) => BTy.K_BOXED
-	    | (Ty.TupleTy []) => BTy.K_UNBOXED
-	    | (Ty.TupleTy _) => BTy.K_BOXED
-	    | (Ty.ConTy(_, tyc)) => (
-		case TranslateEnv.findTyc (env, tyc)
-		 of SOME ty => BOMTyUtil.kindOf ty
-		  | NONE => BOMTyUtil.kindOf (trTyc (env, tyc))
-		(* end case *))
-	    | _ => BTy.K_UNIFORM
 	  (* end case *))
 
     fun trScheme (env, Ty.TyScheme(_, ty)) = tr (env, ty)
