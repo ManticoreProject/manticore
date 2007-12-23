@@ -112,10 +112,7 @@ structure TypeUtil : sig
 	  ]
 
   (* return the string representation of a type scheme *)
-    fun schemeToString (Ty.TyScheme([], ty)) = toString ty
-      | schemeToString (Ty.TyScheme(tvs, ty)) = concat[
-	    "forall [", String.concatWith "," (List.map tyvarToString tvs), "] =>\n  ", toString ty
-	  ]
+    val schemeToString = fmtScheme {long=false}
 
   (* return the "head-normal form" by pruning an instantiated meta
    * variables.
@@ -267,7 +264,7 @@ structure TypeUtil : sig
 	   of Ty.ErrorTy => true
 	    | Ty.MetaTy _ => false (* should have been resolved by now *)
 	    | Ty.VarTy _ => false
-	    | Ty.ConTy([], tyc) => TyCon.isEqTyc tyc
+	    | Ty.ConTy(_, tyc) => TyCon.isEqTyc tyc
 	    | Ty.FunTy _ => false
 	    | Ty.TupleTy tys => List.all eqType tys
 	  (* end case *))
