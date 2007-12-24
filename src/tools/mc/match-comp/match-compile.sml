@@ -314,7 +314,7 @@ structure MatchCompile : sig
 *)
     fun raiseExn exn (loc : Err.span, env : Env.env, ty : AST.ty) =
 	  AST.ApplyExp(
-	    AST.VarExp(Basis.fail, []),
+	    AST.VarExp(Basis.fail, [ty]),
 	    AST.ConstExp(AST.LConst(Literal.String exn, Basis.stringTy)),
 	    ty)
     val raiseMatchFail = raiseExn "Match"
