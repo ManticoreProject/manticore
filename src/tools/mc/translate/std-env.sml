@@ -61,15 +61,19 @@ structure StdEnv : sig
 
   (***** Predefined data constructors *****)
 
+  (* a data-constructor binding for constructors with unflattened arguments *)
+    fun mkDCon dc = E.DCon(dc, FlattenRep.flattenId, FlattenRep.unflattenId)
+
     val dcons = [
 	    (B.boolFalse,	E.Const(0w0, BOMBasis.boolTy)),
 	    (B.boolTrue,	E.Const(0w1, BOMBasis.boolTy)),
 	    (B.listNil,		E.Const(0w0, BTy.T_Enum(0w0))),
-	    (B.listCons,	E.DCon BOMBasis.listCons),
+	    (B.listCons,	mkDCon BOMBasis.listCons),
 	    (B.optionNONE,	E.Const(0w0, BTy.T_Enum(0w0))),
-	    (B.optionSOME,	E.DCon BOMBasis.optionSOME),
-            (R.ropeLeaf,        E.DCon BOMBasis.ropeLeaf),
-	    (R.ropeCat,         E.DCon BOMBasis.ropeCat)
+	    (B.optionSOME,	mkDCon BOMBasis.optionSOME),
+(* FIXME: once rope constructors have flattened reps, this code will have to be fixed! *)
+            (R.ropeLeaf,        mkDCon BOMBasis.ropeLeaf),
+	    (R.ropeCat,         mkDCon BOMBasis.ropeCat)
 	  ]
 
     (* mkCast : BOM.exp * BOMTy.ty * BOMTy.ty -> BOM.exp *)

@@ -7,13 +7,15 @@
 structure TranslateEnv : sig
 
     type env
+    type flatten_fn = FlattenRep.flatten_fn
+    type unflatten_fn = FlattenRep.unflatten_fn
 
     val mkEnv : unit -> env
 
   (* data-constructor bindings *)
     datatype con_bind
       = Const of word * BOMTy.ty
-      | DCon of BOMTy.data_con
+      | DCon of (BOMTy.data_con * flatten_fn * unflatten_fn)
 
   (* variable bindings *)
     datatype var_bind
@@ -45,9 +47,12 @@ structure TranslateEnv : sig
     structure DTbl = DataCon.Tbl
     structure VMap = Var.Map
 
+    type unflatten_fn = FlattenRep.unflatten_fn
+    type flatten_fn = FlattenRep.flatten_fn
+
     datatype con_bind
       = Const of word * BOMTy.ty
-      | DCon of BOMTy.data_con
+      | DCon of (BOMTy.data_con * flatten_fn * unflatten_fn)
 
     datatype var_bind
       = Lambda of (BOMTy.ty -> BOM.lambda) (* used for primops and high-level ops *)
@@ -130,7 +135,7 @@ structure TranslateEnv : sig
 		  "    ", DataCon.nameOf dc, "  :->  ", w2s n, " : ",
 		  BOMTyUtil.toString ty, "\n"
 		]
-	    | prDcon (dc, DCon(BOMTy.DCon{name, rep, argTy, ...})) = let
+	    | prDcon (dc, DCon(BOMTy.DCon{name, rep, argTy, ...}, _, _)) = let
 		val argTy = (case argTy
 		       of [ty] => [BOMTyUtil.toString ty]
 			| ty::tys => "(" :: BOMTyUtil.toString ty

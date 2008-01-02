@@ -78,7 +78,7 @@ structure Translate : sig
 		in
 		  BIND([t], B.E_Const(Lit.Enum w, ty))
 		end
-	    | E.DCon dc' => let
+	    | E.DCon(dc', _, _) => let
 		val (exh, env) = E.newHandler env
 		val dataTy = BOMTyCon.dconResTy dc'
 		val (fb as B.FB{f, ...}) = (case BOMTyCon.dconArgTy dc'
@@ -287,7 +287,7 @@ structure Translate : sig
 		  | _ => raise Fail "unexpected constructor"
 		(* end case *))
 	  fun trConPat (dc, tyArgs, pat, exp) = (case TranslateTypes.trDataCon(env, dc)
-		 of E.DCon dc' => let
+		 of E.DCon(dc', _, _) => let
 		      val (env, args) = (case pat
 			     of AST.TuplePat pats => trVarPats (env, pats)
 			      | _ => trVarPats (env, [pat])
