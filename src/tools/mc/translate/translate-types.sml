@@ -106,32 +106,46 @@ structure TranslateTypes : sig
 		      end
 		fun mkTaggedDC (i, dc) = mkDC (dc, BTy.TaggedTuple(Word.fromInt i), trArgTy dc)
 		in
-(* FIXME: call setRep on the types *)
 		  case (consts, conFuns)
 		   of (_::_, []) => setRep (BTy.T_Enum(Word.fromInt nConsts - 0w1), BTy.K_UNBOXED)
-		    | ([], [dc]) => let
-			val ty = tr (env, valOf (DataCon.argTypeOf dc))
-			in
-			  setRep (ty, BOMTyUtil.kindOf ty);
-			  mkDC (dc, BTy.Transparent, [ty])
-			end
+		    | ([], [dc]) => (case trArgTy dc
+			 of [ty] => (
+			      setRep (ty, BOMTyUtil.kindOf ty);
+			      mkDC (dc, BTy.Transparent, [ty]))
+			  | tys => (
+			      setRep (BTy.T_Tuple(false, tys), BTy.K_BOXED);
+			      mkDC (dc, BTy.Tuple, tys))
+			(* end case *))
 		    | (_, [dc]) => (
 			case bomKindOfArgTy dc
-			 of BTy.K_BOXED => mkDC (dc, BTy.Transparent, trArgTy dc)
+			 of BTy.K_BOXED => (case trArgTy dc
+			       of [ty] => mkDC (dc, BTy.Transparent, [ty])
+				| tys => mkDC (dc, BTy.Tuple, tys)
+			      (* end case *))
 			  | _ => (* need to use singleton tuple to represent data constructor *)
 			      mkDC (dc, BTy.Tuple, [BTy.T_Tuple(false, trArgTy dc)])
-			(* end case *))
+			(* end case *);
+			setRep (BTy.T_Any, BTy.K_UNIFORM))
 		    | ([], [dc1, dc2]) => (case (bomKindOfArgTy dc1, bomKindOfArgTy dc2)
 			 of (BTy.K_BOXED, BTy.K_UNBOXED) => (
 			      mkDC (dc1, BTy.Tuple, trArgTy dc1);
-			      mkDC (dc2, BTy.Transparent, trArgTy dc2))
+			      mkDC (dc2, BTy.Transparent, trArgTy dc2);
+			      setRep (BTy.T_Any, BTy.K_UNIFORM))
 			  | (BTy.K_UNBOXED, BTy.K_BOXED) => (
 			      mkDC (dc1, BTy.Transparent, trArgTy dc1);
-			      mkDC (dc2, BTy.Tuple, trArgTy dc2))
+			      mkDC (dc2, BTy.Tuple, trArgTy dc2);
+			      setRep (BTy.T_Any, BTy.K_UNIFORM))
 			  | _ => (
-			      mkTaggedDC(0, dc1); mkTaggedDC(1, dc2))
+			      mkTaggedDC (0, dc1);
+			      mkTaggedDC (1, dc2);
+			      setRep (BTy.T_Any, BTy.K_BOXED))
 			(* end case *))
-		    | (_, _) => appi mkTaggedDC conFuns
+		    | ([], _) => (
+			appi mkTaggedDC conFuns;
+			setRep (BTy.T_Any, BTy.K_BOXED))
+		    | (_, _) =>  (
+			appi mkTaggedDC conFuns;
+			setRep (BTy.T_Any, BTy.K_UNIFORM))
 		  (* end case *);
 		  E.insertTyc (env, tyc, BTy.T_TyCon dataTyc);
 		  BTy.T_TyCon dataTyc
