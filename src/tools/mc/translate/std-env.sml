@@ -48,7 +48,6 @@ structure StdEnv : sig
 	    (B.parrayTyc,       BTy.K_BOXED,	BOMBasis.ropeTy),
 	    (R.ropeTyc,         BTy.K_BOXED,	BOMBasis.ropeTy),
 (*
-	    (B.chanTyc, ),
 	    (B.ivarTyc, ),
 	    (B.mvarTyc, ),
 *)
@@ -62,7 +61,14 @@ structure StdEnv : sig
   (***** Predefined data constructors *****)
 
   (* a data-constructor binding for constructors with unflattened arguments *)
-    fun mkDCon dc = E.DCon(dc, FlattenRep.flattenId, FlattenRep.unflattenId)
+    fun mkDCon dc = let
+	  val rep = (case BOMTyCon.dconArgTy dc
+		 of [ty] => FlattenRep.ATOM ty
+		  | tys => FlattenRep.TUPLE(tys, List.map FlattenRep.ATOM tys)
+		(* end case *))
+	  in
+	    E.DCon(dc, rep)
+	  end
 
     val dcons = [
 	    (B.boolFalse,	E.Const(0w0, BOMBasis.boolTy)),

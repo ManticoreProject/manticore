@@ -11,4 +11,4 @@ fun add (p1, p2) = let
 	PT(x1+x2, y1+y2)
       end;
 
-add (zero, zero)
+(zero, add)

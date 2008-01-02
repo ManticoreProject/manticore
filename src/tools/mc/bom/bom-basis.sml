@@ -77,15 +77,15 @@ structure BOMBasis : BOM_BASIS =
     val rdyq_itemQITEM = BOMTyCon.newDataCon rdyqItemTyc
 	  ("QITEM", BTy.Tuple, [tidTy, fiberTy, rdyqItemTy])
 
-   (* association lists
-    *  In surface language syntax, association lists look like the following:
-    *    type tag = any                (* maybe we should have a distinct type for tags? *)
-    *    datatype assoc_list = 
-    *           ANIL
-    *         | ACONS of (tag * any * assoc_list)
-    *  where the first element is the tag, the second is associated data, and the third is
-    *  the rest of the list.
-    *)
+  (* association lists
+   * In the surface language syntax, association lists look like the following:
+   *    type tag = any                (* maybe we should have a distinct type for tags? *)
+   *    datatype assoc_list
+   *      = ANIL
+   *      | ACONS of (tag * any * assoc_list)
+   *  where the first element is the tag, the second is associated data, and the third is
+   *  the rest of the list.
+   *)
     val assocListTyc = BOMTyCon.newDataTyc ("assoc_list", 1)
     val assocListTy = BTy.T_TyCon assocListTyc
     val assocListCons = BOMTyCon.newDataCon assocListTyc
@@ -107,10 +107,13 @@ structure BOMBasis : BOM_BASIS =
     val parrayTy = BTy.T_TyCon parrayTyc
     val ropeTyc = BOMTyCon.newDataTyc ("rope", 0)
     val ropeTy = BTy.T_TyCon ropeTyc
+(* FIXME: the rope constructors should have flat representations *)
     val ropeLeaf = BOMTyCon.newDataCon ropeTyc
           ("LEAF", BTy.TaggedTuple 0w0, [intTy, listTy])
     val ropeCat = BOMTyCon.newDataCon ropeTyc
           ("CAT", BTy.TaggedTuple 0w1, [intTy, intTy, ropeTy, ropeTy])
+
+  (* other predefined types *)
     val sigactTy = BTy.T_Cont[signalTy]
 
   (* dirty flags *)

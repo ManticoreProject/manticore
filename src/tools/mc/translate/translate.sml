@@ -78,7 +78,7 @@ structure Translate : sig
 		in
 		  BIND([t], B.E_Const(Lit.Enum w, ty))
 		end
-	    | E.DCon(dc', _, _) => let
+	    | E.DCon(dc', repTr) => let
 		val (exh, env) = E.newHandler env
 		val dataTy = BOMTyCon.dconResTy dc'
 		val (fb as B.FB{f, ...}) = (case BOMTyCon.dconArgTy dc'
@@ -94,23 +94,25 @@ structure Translate : sig
 				  body = B.mkStmt([res], B.E_DCon(dc', [arg]), B.mkRet[res])
 				}
 			    end
-			| tys => let
+			| dstTys => let
 			  (* constructor with multiple arguments (or zero arguments); the
 			   * lambda will take a tuple and deconstruct it to build the data value.
 			   *)
-			    val argTy = BTy.tupleTy tys
+			    val srcTys = FlattenRep.srcTys repTr
+			    val argTy = BTy.tupleTy srcTys
 			    val arg = BV.new("arg", argTy)
-			    val (tmps, binds) = let
+			    val (srcArgs, binds) = let
 				  fun f (ty, (i, xs, binds)) = let
 					val x = BV.new("_t"^Int.toString i, ty)
 					val b = ([x], B.E_Select(i, arg))
 					in
 					  (i+1, x::xs, b::binds)
 					end
-				  val (_, xs, binds) = List.foldl f (0, [], []) tys
+				  val (_, xs, binds) = List.foldl f (0, [], []) srcTys
 				  in
 				    (List.rev xs, List.rev binds)
 				  end
+			    val (binds', dstArgs) = FlattenRep.flatten (repTr, srcArgs)
 			    val res = BV.new("data", dataTy)
 			    val f = BV.new(BOMTyCon.dconName dc',
 				    BTy.T_Fun([argTy], [BTy.exhTy], [dataTy]))
@@ -118,7 +120,7 @@ structure Translate : sig
 			      B.FB{
 				  f = f, params = [arg], exh = [exh],
 				  body = B.mkStmts(
-				    binds @ [([res], B.E_DCon(dc', tmps))],
+				    binds @ binds' @ [([res], B.E_DCon(dc', dstArgs))],
 				    B.mkRet[res])
 				}
 			    end
@@ -287,13 +289,14 @@ structure Translate : sig
 		  | _ => raise Fail "unexpected constructor"
 		(* end case *))
 	  fun trConPat (dc, tyArgs, pat, exp) = (case TranslateTypes.trDataCon(env, dc)
-		 of E.DCon(dc', _, _) => let
-		      val (env, args) = (case pat
+		 of E.DCon(dc', repTr) => let
+		      val (env, srcArgs) = (case pat
 			     of AST.TuplePat pats => trVarPats (env, pats)
 			      | _ => trVarPats (env, [pat])
 			    (* end case *))
+		      val (dstArgs, binds) = FlattenRep.unflatten(repTr, srcArgs)
 		      in
-			(B.P_DCon(dc', args), trExpToExp(env, exp))
+			(B.P_DCon(dc', dstArgs), BOM.mkStmts(binds, trExpToExp(env, exp)))
 		      end
 		  | _ => raise Fail "unexpected constant"
 		(* end case *))
