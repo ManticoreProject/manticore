@@ -78,7 +78,7 @@ structure FlattenRep : sig
 
   (* return the flatten function for a representation tree *)
     fun flatten (ATOM _, xs) = ([], xs)
-      | flatten (TUPLE(_, reps), xs) = let
+      | flatten (rep as TUPLE(_, reps), xs) = let
 	  fun sel (arg, _, []) = []
 	    | sel (arg, i, x::xs) = ([x], B.E_Select(i, arg)) :: sel(arg, i+1, xs)
 	  fun flat ([], []) = ([], [])
@@ -96,14 +96,17 @@ structure FlattenRep : sig
 			end
 		  (* end case *)
 		end
-	    | flat _ = raise Fail "arity mismatch"
+	    | flat _ = raise Fail(concat[
+		  "flatten(", fmt {long=true} rep, ", ", Int.toString(List.length xs),
+		  "): arity mismatch"
+		])
 	  in
 	    flat(xs, reps)
 	  end
 
   (* return the unflatten function for a representation tree *)
     fun unflatten (ATOM _, xs) = (xs, [])
-      | unflatten (TUPLE(_, reps), xs) = let
+      | unflatten (rep as TUPLE(_, reps), xs) = let
 	  fun unflat ([], []) = ([], [])
 	    | unflat (x::xs, rep::reps) = let
 		val (ys, binds) = unflat (xs, reps)
@@ -119,7 +122,10 @@ structure FlattenRep : sig
 			end
 		  (* end case *)
 		end
-	    | unflat _ = raise Fail "arity mismatch"
+	    | unflat _ = raise Fail(concat[
+		  "unflatten(", fmt {long=true} rep, ", ", Int.toString(List.length xs),
+		  "): arity mismatch"
+		])
 	  in
 	    unflat(xs, reps)
 	  end
