@@ -16,7 +16,7 @@ structure TranslateTypes : sig
 
   end = struct
 
-    structure Ty = Types;
+    structure Ty = Types
     structure BTy = BOMTy
     structure BTyc = BOMTyCon
     structure E = TranslateEnv
@@ -37,9 +37,7 @@ structure TranslateTypes : sig
     end
 
   (* flatten tuple types and wrapped raw values into a list of types *)
-    fun flatten (BTy.T_Tuple(false, [ty as BTy.T_Raw _])) = [ty]
-      | flatten (BTy.T_Tuple(false, tys)) = List.foldr (fn (ty, tys) => flatten ty @ tys) [] tys
-      | flatten ty = [ty]
+    fun flatten ty = #2(FlattenRep.flatten ty)
 
     fun insertConst (env, dc, w, ty) = E.insertCon (env, dc, E.Const(w, ty))
     fun insertDCon (env, dc, dc') = E.insertCon (env, dc, E.DCon dc')

@@ -26,6 +26,7 @@ is
 
   cache-fn.sml
   equality.sml
+  flatten-rep.sml
   list-map-maker.sml
   rope-map-maker.sml
   std-env.sml
