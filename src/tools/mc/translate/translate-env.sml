@@ -17,7 +17,11 @@ structure TranslateEnv : sig
 
   (* variable bindings *)
     datatype var_bind
-      = Lambda of (BOMTy.ty -> BOM.lambda) (* used for primops and high-level ops *)
+      = Lambda			(* bound to a lambda generator.  The type argument is
+				 * the result type.  Note that the generator creates a
+				 * fresh copy of the lambda term.
+				 *)
+	  of (BOMTy.ty -> BOM.lambda)
       | Var of BOM.var
       | EqOp			(* either "=" or "<>" *)
 
@@ -119,7 +123,8 @@ structure TranslateEnv : sig
 	  fun pr x = TextIO.output(outStrm, x)
 	  fun prl xs = pr(String.concat xs)
 	  fun prTyc (tyc, ty) = prl [
-		  "    ", TyCon.toString tyc, "  :->  ", BOMTyUtil.toString ty, "\n"
+		  "    ", TyCon.toString tyc, "  :->  ", BOMTyUtil.toString ty,
+		  " :: ", BOMTyUtil.kindToString(BOMTyUtil.kindOf ty), "\n"
 		]
 	  fun prDcon (dc, Const(n, ty)) = prl [
 		  "    ", DataCon.nameOf dc, "  :->  ", w2s n, " : ",

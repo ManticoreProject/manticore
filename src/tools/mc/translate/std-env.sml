@@ -29,33 +29,33 @@ structure StdEnv : sig
     fun wrapTy rty = BOMTyUtil.wrap(BTy.T_Raw rty)
 
     val types = [
-	    (B.boolTyc,		BTy.boolTy),
-	    (B.intTyc,		wrapTy BTy.T_Int),
-	    (B.longTyc,		wrapTy BTy.T_Long),
+	    (B.boolTyc,		BTy.K_UNBOXED,	BTy.boolTy),
+	    (B.intTyc,		BTy.K_BOXED,	wrapTy BTy.T_Int),
+	    (B.longTyc,		BTy.K_BOXED,	wrapTy BTy.T_Long),
 (*
 	    (B.integerTyc,  ),
 *)
-	    (B.floatTyc,	wrapTy BTy.T_Float),
-	    (B.doubleTyc,	wrapTy BTy.T_Double),
+	    (B.floatTyc,	BTy.K_BOXED,	wrapTy BTy.T_Float),
+	    (B.doubleTyc,	BTy.K_BOXED,	wrapTy BTy.T_Double),
 (*
 	    (B.charTyc, ),
 	    (B.runeTyc, ),
 *)
-	    (B.stringTyc,	BOMBasis.stringTy),
-	    (B.listTyc,		BOMBasis.listTy),
-	    (B.optionTyc,	BOMBasis.optionTy),
-	    (B.threadIdTyc,	BTy.tidTy),
-	    (B.parrayTyc,       BOMBasis.ropeTy),
-	    (R.ropeTyc,         BOMBasis.ropeTy),
+	    (B.stringTyc,	BTy.K_BOXED,	BOMBasis.stringTy),
+	    (B.listTyc,		BTy.K_UNIFORM,	BOMBasis.listTy),
+	    (B.optionTyc,	BTy.K_UNIFORM,	BOMBasis.optionTy),
+	    (B.threadIdTyc,	BOMTyUtil.kindOf(BTy.tidTy), BTy.tidTy),
+	    (B.parrayTyc,       BTy.K_BOXED,	BOMBasis.ropeTy),
+	    (R.ropeTyc,         BTy.K_BOXED,	BOMBasis.ropeTy),
 (*
 	    (B.chanTyc, ),
 	    (B.ivarTyc, ),
 	    (B.mvarTyc, ),
 *)
-	    (B.eventTyc,	BOMBasis.evtTy),
-	    (B.chanTyc,		BOMBasis.chanTy),
-	    (F.futureTyc,       BTy.futureTy),
-	    (U.workQueueTyc,	BOMBasis.workQueueTy)
+	    (B.eventTyc,	BTy.K_BOXED,	BOMBasis.evtTy),
+	    (B.chanTyc,		BTy.K_BOXED,	BOMBasis.chanTy),
+	    (F.futureTyc,       BTy.K_BOXED,	BTy.futureTy),
+	    (U.workQueueTyc,	BTy.K_BOXED,	BOMBasis.workQueueTy)
 	  ]
 
 
@@ -109,25 +109,27 @@ structure StdEnv : sig
 		  in
 		    build (ts, 0)
 		  end
-	    val params = mkVars "arg" paramTys
-	    val exhVars = mkVars "exh" exh
-	    val h = BOM.mkHLOp (hlop, params, exhVars)
-	    val fty = BTy.T_Fun(paramTys, exh, results)
-	    val f = BV.new (Atom.toString name, fty)	    
-            in
-	      if polyResTy
-		then let
-		  val resTy = (case results of [r] => r | _ => raise Fail "resTy")
-		  fun mkFB ty = let
-			val fty' = BTy.T_Fun(paramTys, exh, [ty])
-			val f' = BV.new (Atom.toString name, fty')
-			in
-			  BOM.FB{f = f', params = params, exh = exhVars, body = mkCast(h, resTy, ty)}
-			end
+(* FIXME: perhaps it would be more robust to compare resTy with ty in mkFB and add the
+ * cast when they are different?
+ *)
+	    val castResult = if polyResTy
+		  then let
+		    val resTy = (case results of [r] => r | _ => raise Fail "resTy")
+		    in
+		      fn (h, ty) => mkCast(h, resTy, ty)
+		    end
+		  else fn (h, ty) => h
+	    fun mkFB ty = let
+		  val params = mkVars "arg" paramTys
+		  val exhVars = mkVars "exh" exh
+		  val h = BOM.mkHLOp (hlop, params, exhVars)
+		  val fty = BTy.T_Fun(paramTys, exh, [ty])
+		  val f = BV.new (Atom.toString name, fty)
 		  in
-		    mkFB	  
+		    BOM.FB{f=f, params=params, exh=exhVars, body=castResult(h, ty)}
 		  end
-		else fn _ => BOM.FB{f=f, params=params, exh=exhVars, body=h}
+            in
+	      mkFB
             end
 
   (***** Predefined operators *****)
@@ -172,14 +174,13 @@ structure StdEnv : sig
     (* funTy : BV.var * BV.var -> BTy.ty *)
       fun funTy (arg, res) = BTy.T_Fun([BV.typeOf arg], [BTy.exhTy], [BV.typeOf res])
 
-    (* prim1 : (BV.V.var -> BOM.prim) * string  * BV.V.ty * BV.V.ty 
-                -> (BOMTy.ty -> BOM.lambda) *)
-      fun prim1 (rator, f, rawArgTy, rawResTy) = let
+    (* create a lambda generator for a unary BOM primop. *)
+      fun prim1 (rator, f, rawArgTy, rawResTy) _ = let
 	    val (preStms, rawArg, wrapArg, wrapArgTy) = unwrapArg ("arg", rawArgTy, [])
 	    val (postStms, rawRes, wrapRes, wrapResTy) = wrapRes rawResTy
 	    val stms = preStms @ (([rawRes], BOM.E_Prim(rator rawArg)) :: postStms)
 	    in
-	      fn _ => BOM.FB{
+	      BOM.FB{
 		  f = BV.new(f, BTy.T_Fun([wrapArgTy], [BTy.exhTy], [wrapResTy])),
 		  params = [wrapArg],
 		  exh = [BV.new("_exh", BTy.exhTy)],
@@ -187,10 +188,8 @@ structure StdEnv : sig
 		}
 	    end
 
-    (* prim2 : (BV.V.var * BV.V.var -> BOM.prim) * string 
-                * BV.V.ty * BV.V.ty * BV.V.ty 
-               -> (BOMTy.ty -> BOM.lambda) *)
-      fun prim2 (rator, f, rawATy, rawBTy, rawResTy) = let
+    (* create a lambda generator for a binary BOM primop. *)
+      fun prim2 (rator, f, rawATy, rawBTy, rawResTy) _ = let
 	    val (preStms, rawB, wrapB, wrapBTy) = unwrapArg ("b", rawBTy, [])
 	    val (preStms, rawA, wrapA, wrapATy) = unwrapArg ("a", rawATy, preStms)
 	    val argTy = BTy.T_Tuple(false, [wrapATy, wrapBTy])
@@ -201,7 +200,7 @@ structure StdEnv : sig
 	    val (postStms, rawRes, wrapRes, wrapResTy) = wrapRes rawResTy
 	    val stms = preStms @ (([rawRes], BOM.E_Prim(rator(rawA, rawB))) :: postStms)
 	    in
-	      fn _ => BOM.FB{
+	      BOM.FB{
 		  f = BV.new(f, BTy.T_Fun([argTy], [BTy.exhTy], [wrapResTy])),
 		  params = [arg],
 		  exh = [BV.new("_exh", BTy.exhTy)],
@@ -389,7 +388,15 @@ structure StdEnv : sig
 
   (* create the initial environment *)
     val env0 = let
-	  val env = E.mkEnv()	
+	  val env = E.mkEnv()
+	(* insert a type constructor binding *)
+	  fun insertTyc (tyc, k, bty) = (
+		TranslateTypes.setTycKind (tyc, k);
+		case bty
+		 of BTy.T_TyCon(BTy.DataTyc{kind, ...}) => kind := k
+		  | _ => ()
+		(* end case *);
+		E.insertTyc (env, tyc, bty))
         (* insert a lambda binding *)
 	  fun insertFun ((x, lambda), env) = E.insertFun (env, x, lambda)
 	(* insert primitive operator definitions *)
@@ -397,7 +404,7 @@ structure StdEnv : sig
 	(* insert high-level operator definitions *)
 	  val env = List.foldl insertFun env predefs
 	  in
-	    List.app (fn (tyc, bty) => E.insertTyc (env, tyc, bty)) types;
+	    List.app insertTyc types;
 	    List.app (fn (dc, bdc) => E.insertCon (env, dc, bdc)) dcons;
 	    env
 	  end
@@ -405,33 +412,34 @@ structure StdEnv : sig
   (* enrich env0 with HLOP signatures from prototypes.hlop *)
     fun env () = let
 	  val hlops =  [
-	      (* The boolean indicates if "polymorphic any" is part of the result type. *)
-	      (* Note since "list" is a complete BOM type (not a tycon), the fact that a function *)
-	      (*   like map or reverse returns an 'a or 'b list doesn't influence this boolean. *)
-	      (* Note this infrastructure will change on adoption of System F. *)
-                  (B.app,               "list-app", false),
-		  (B.print,		"print", false),
-		  (B.stringConcat,	"string-concat2", false),
-                  (B.stringConcatWith,  "string-concat-with", false),
-		  (B.itos,		"itos", false),
-		  (B.fail,		"fail", true),
-		  (B.rev,               "list-rev", false),
-		  (B.powf,              "powf", false),
-		  (B.powd,              "powd", false),
-                  (B.compose,           "compose", true),
-		  (B.foldl,             "list-foldl", true),
-		  (B.foldr,             "list-foldr", true),
-		  (B.map,               "list-map", false),
-		  (B.tab,               "list-tab", false),
-		  (B.gettimeofday,	"gettimeofday", false),
-		  (B.parrayApp,         "rope-app", false),
-                  (B.plen,              "rope-length", false),
-		  (U.mapPQ,             "rope-map", false),
-		  (U.map2PQ,            "rope-map-2", false),
-		  (U.reducePQ,          "rope-reduce", true),
-		  (U.sumPQ,             "rope-sum", false),
-		  (U.tabD,              "tabD", false),
-		  (B.todo,              "todo", false)
+	      (* The boolean indicates if "polymorphic any" is part of the result type.
+	       * Note since "list" is a complete BOM type (not a tycon), the fact that a function
+	       * like map or reverse returns an 'a or 'b list doesn't influence this boolean.
+	       * Note this infrastructure will change on adoption of System F.
+	       *)
+                  (B.app,               "list-app",		false),
+		  (B.print,		"print",		false),
+		  (B.stringConcat,	"string-concat2",	false),
+                  (B.stringConcatWith,  "string-concat-with",	false),
+		  (B.itos,		"itos",			false),
+		  (B.fail,		"fail",			true),
+		  (B.rev,               "list-rev",		false),
+		  (B.powf,              "powf",			false),
+		  (B.powd,              "powd",			false),
+                  (B.compose,           "compose",		true),
+		  (B.foldl,             "list-foldl",		true),
+		  (B.foldr,             "list-foldr",		true),
+		  (B.map,               "list-map",		false),
+		  (B.tab,               "list-tab",		false),
+		  (B.gettimeofday,	"gettimeofday",		false),
+		  (B.parrayApp,         "rope-app",		false),
+                  (B.plen,              "rope-length",		false),
+		  (U.mapPQ,             "rope-map",		false),
+		  (U.map2PQ,            "rope-map-2",		false),
+		  (U.reducePQ,          "rope-reduce",		true),
+		  (U.sumPQ,             "rope-sum",		false),
+		  (U.tabD,              "tabD",			false),
+		  (B.todo,              "todo",			false)
 		]  
 	  fun ins ((x, n, polyResTy), env) = (case H.find (Atom.atom n)
 		of NONE => raise Fail ("cannot find hlop " ^ n)

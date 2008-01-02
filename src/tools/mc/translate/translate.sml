@@ -387,14 +387,14 @@ structure Translate : sig
 	   of E.Var x' => cxt x' (* pass x' directly to the context *)
 	    | E.Lambda mkLambda => let
                 val sigma = Var.typeOf x (* actually a type scheme *)
-		val rangeTy = (case TypeUtil.apply (sigma, tys)
-			         of A.FunTy (_, r) => r
-				  | _ => raise Fail "expected function type")
+		val rangeTy = (case TypeUtil.apply(sigma, tys)
+		       of A.FunTy (_, r) => r
+			| _ => raise Fail "expected function type"
+		      (* end case *))
 		val rangeTy' = trTy (env, rangeTy)
-		val lam = mkLambda rangeTy'
-		val lam' as B.FB {f, ...} = BOMUtil.copyLambda lam
+		val fb as B.FB{f, ...} = mkLambda rangeTy'
 	        in
-		  B.mkFun ([lam'], cxt f)
+		  B.mkFun ([fb], cxt f)
                 end
                 (* let val lambda as B.FB{f, ...} = BOMUtil.copyLambda lambda
 		   in B.mkFun([lambda], cxt f) end *)

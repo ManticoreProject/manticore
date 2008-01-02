@@ -11,6 +11,9 @@ structure TranslateTypes : sig
 
     val trDataCon : TranslateEnv.env * AST.dcon -> TranslateEnv.con_bind
 
+  (* record the BOM kind of the representation of an AST type constructor *)
+    val setTycKind : Types.tycon * BOMTy.kind -> unit
+
   end = struct
 
     structure Ty = Types;
@@ -46,9 +49,8 @@ structure TranslateTypes : sig
    *)
     fun bomKindOfArgTy dc = (case DataCon.argTypeOf dc
 	   of SOME(Ty.FunTy _) => BTy.K_BOXED
-	    | SOME(Ty.TupleTy []) => BTy.K_UNBOXED
+	    | SOME(Ty.TupleTy[]) => BTy.K_UNBOXED
 	    | SOME(Ty.TupleTy _) => BTy.K_BOXED
-(* FIXME: need to initialize abstract tycs!!! *)
 	    | SOME(Ty.ConTy(_, tyc)) => getTycKind tyc
 	    | _ => BTy.K_UNIFORM
 	  (* end case *))
@@ -86,7 +88,7 @@ structure TranslateTypes : sig
 		val nConsts = List.length consts
 		val dataTyc as BTy.DataTyc{rep, kind, ...} =
 		      BOMTyCon.newDataTyc (Atom.toString name, nConsts)
-		fun setRep (ty, k) = (rep := ty; kind := k)
+		fun setRep (ty, k) = (rep := ty; kind := k; setTycKind(tyc, k))
 	      (* assign representations for the constants *)
 		fun assignConstRep (i, dc) =
 		      insertConst (env, dc, Word.fromInt i, BTy.T_Enum(Word.fromInt nConsts - 0w1))
@@ -94,10 +96,7 @@ structure TranslateTypes : sig
 	      (* translate the argument type of a data constructor; for tuples of two, or more,
 	       * components, we flatten the representation.
 	       *)
-		fun trArgTy dc = (case tr (env, valOf (DataCon.argTypeOf dc))
-		       of BTy.T_Tuple(false, tys as _::_::_) => tys
-			| ty => [ty]
-		      (* end case *))
+		fun trArgTy dc = flatten (tr (env, valOf (DataCon.argTypeOf dc)))
 	      (* assign representations for the constructor functions *)
 		val newDataCon = BTyc.newDataCon dataTyc
 		fun mkDC (dc, rep, tys) = let
@@ -107,6 +106,7 @@ structure TranslateTypes : sig
 		      end
 		fun mkTaggedDC (i, dc) = mkDC (dc, BTy.TaggedTuple(Word.fromInt i), trArgTy dc)
 		in
+(* FIXME: call setRep on the types *)
 		  case (consts, conFuns)
 		   of (_::_, []) => setRep (BTy.T_Enum(Word.fromInt nConsts - 0w1), BTy.K_UNBOXED)
 		    | ([], [dc]) => let
@@ -123,18 +123,17 @@ structure TranslateTypes : sig
 			(* end case *))
 		    | ([], [dc1, dc2]) => (case (bomKindOfArgTy dc1, bomKindOfArgTy dc2)
 			 of (BTy.K_BOXED, BTy.K_UNBOXED) => (
-			      mkDC (dc1, BTy.Transparent, trArgTy dc1);
+			      mkDC (dc1, BTy.Tuple, trArgTy dc1);
 			      mkDC (dc2, BTy.Transparent, trArgTy dc2))
 			  | (BTy.K_UNBOXED, BTy.K_BOXED) => (
 			      mkDC (dc1, BTy.Transparent, trArgTy dc1);
-			      mkDC (dc2, BTy.Transparent, trArgTy dc2))
+			      mkDC (dc2, BTy.Tuple, trArgTy dc2))
 			  | _ => (
 			      mkTaggedDC(0, dc1); mkTaggedDC(1, dc2))
 			(* end case *))
 		    | (_, _) => appi mkTaggedDC conFuns
 		  (* end case *);
 		  E.insertTyc (env, tyc, BTy.T_TyCon dataTyc);
-(* FIXME: set the BOM kind of the tyc *)
 		  BTy.T_TyCon dataTyc
 		end
 	  (* end case *))
