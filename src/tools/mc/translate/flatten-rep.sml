@@ -62,9 +62,26 @@ structure FlattenRep : sig
 
     fun mkTmp ty = BV.new("_t", ty)
 
-  (* compute the representation tree for a BOM type *)
-    fun flattenRep (BTy.T_Tuple(false, tys)) = TUPLE(tys, List.map flattenRep tys)
-      | flattenRep ty = ATOM ty
+  (* compute the representation tree for a BOM type that is the translation of the argument
+   * type of a data constructor.
+   *)
+    fun flattenRep ty = let
+	  fun repOf (BTy.T_Tuple(false, tys)) = TUPLE(tys, List.map repOf tys)
+	    | repOf ty = ATOM ty
+	  in
+	  (* NOTE: we need to treat the case where the argument type is a singleton tuple
+	   * type specially.  This case arises when the argument is a wrapped raw type (there
+	   * are not singleton tuples in the AST) and we add an extra TUPLE wrapper to ensure
+	   * that the correct code is produced by flatten/unflatten.  For example, the constructor
+	   *
+	   *    FOO of double
+	   *
+	   * will have the rep tree "[[double]]".
+	   *)
+	    case ty
+	     of BTy.T_Tuple(false, [_]) => TUPLE([ty], [repOf ty])
+	      | _ => repOf ty
+	  end
 
   (* return the types of the AST arguments *)
     fun srcTys (ATOM ty) = [ty]

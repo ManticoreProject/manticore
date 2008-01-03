@@ -167,8 +167,8 @@ structure Translate : sig
 		  in
 		    B.mkStmt([t], B.E_Alloc(ty, xs), B.mkRet [t])
 		  end))
-	    | AST.RangeExp(lo, hi, optStep, ty) => raise Fail "RangeExp"
-	    | AST.PTupleExp exps => raise Fail "PTupleExp"
+	    | AST.RangeExp(lo, hi, optStep, ty) => raise Fail "unexpected RangeExp"
+	    | AST.PTupleExp exps => raise Fail "unexpected PTupleExp"
 	    | AST.PArrayExp(exps, ty) => EXP(trParr(env,exps,ty))
 	    | AST.PCompExp _ => raise Fail "unexpected PCompExp"
 	    | AST.PChoiceExp _ => raise Fail "unexpected PChoiceExp"
@@ -288,18 +288,44 @@ structure Translate : sig
 		 of E.Const(rep, bty) => (B.P_Const(Literal.Enum rep, bty), trExpToExp (env, exp))
 		  | _ => raise Fail "unexpected constructor"
 		(* end case *))
-	  fun trConPat (dc, tyArgs, pat, exp) = (case TranslateTypes.trDataCon(env, dc)
-		 of E.DCon(dc', repTr) => let
-		      val (env, srcArgs) = (case pat
-			     of AST.TuplePat pats => trVarPats (env, pats)
-			      | _ => trVarPats (env, [pat])
-			    (* end case *))
-		      val (dstArgs, binds) = FlattenRep.unflatten(repTr, srcArgs)
+	  fun trConPat (dc, tyArgs, pat, exp) = let
+		val E.DCon(dc', repTr) = TranslateTypes.trDataCon(env, dc)
+		fun mkArgs tys = List.map (fn ty => BV.new("_t", ty)) tys
+		fun mkTuple (x, tys) = let
+		      val args = mkArgs tys
 		      in
-			(B.P_DCon(dc', dstArgs), BOM.mkStmts(binds, trExpToExp(env, exp)))
+			(args, ([x], B.E_Alloc(BTy.tupleTy tys, args)))
 		      end
-		  | _ => raise Fail "unexpected constant"
-		(* end case *))
+		fun finish (env, args, binds) =
+		      (B.P_DCon(dc', args), BOM.mkStmts(binds, trExpToExp(env, exp)))
+		in
+		(* Since the argument pattern might be a single variable, we may need to generate
+		 * some glue to agree with the arity of the BOM constructor.
+		 *)
+		  case (pat, BOMTyCon.dconArgTy dc')
+		   of (AST.TuplePat pats, _) => let
+			val (env', srcArgs) = trVarPats (env, pats)
+			val (dstArgs, binds) = FlattenRep.unflatten(repTr, srcArgs)
+			in
+			  finish (env', dstArgs, binds)
+			end
+		    | (AST.VarPat x, [_]) => let
+			val (x', env') = trVar(env, x)
+			val (dstArgs, binds) = FlattenRep.unflatten(repTr, [x'])
+			in
+			  finish (env', dstArgs, binds)
+			end
+		    | (AST.VarPat x, tys) => let
+			val (x', env') = trVar(env, x)
+			val (srcArgs, alloc) = mkTuple (x', FlattenRep.srcTys repTr)
+			val (dstArgs, binds) = FlattenRep.unflatten(repTr, srcArgs)
+			in
+			  finish (env', dstArgs, binds@[alloc])
+			end
+		    | (AST.WildPat _, tys) => finish (env, mkArgs tys, [])
+		    | _ => raise Fail "expected simple pattern"
+		  (* end case *)
+		end
 	(* translate the type of a literal; if it is wrapped, then replace the wrapped
 	 * type with a raw type.
 	 *)
