@@ -200,6 +200,10 @@ static void GlobalGC (VProc_t *vp, Value_t **roots)
 	}
     }
 
+/* FIXME: the vproc's heap is also a source of roots.  Since it has just
+ * been collected, it only contains live objects.
+ */
+
   /* scan to-space chunks */
     ScanGlobalToSpace (vp, scanChunk, scanPtr);
 

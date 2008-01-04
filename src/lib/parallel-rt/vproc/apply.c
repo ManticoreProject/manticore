@@ -78,11 +78,8 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 	    }
 	  /* check for pending signals */
 	    if (vp->sigPending == M_TRUE) {
-/* FIXME: this code assumes that the signal is always preemption */
-	      
   	    /* Unload the vproc's entry queue */
 		VProcPushEntries (vp, VProcGetEntryQ (vp));
-
 		Value_t resumeK = AllocUniform(vp, 3,
 			    PtrToValue(&ASM_Resume),
 			    vp->stdCont,
