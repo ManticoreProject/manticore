@@ -23,16 +23,16 @@ enum {
 
 int main ()
 {
-  printf ("(* log-events.def\n");
-  printf ("*\n");
-  printf (" * WARNING: this file is generated; do not edit!!!\n");
-  printf (" *)\n");
-  printf ("\n#ifndef _LOG_EVENTS_\n");
-  printf ("\n#define _LOG_EVENTS_\n\n");
+    printf ("(* log-events.def\n");
+    printf ("*\n");
+    printf (" * WARNING: this file is generated; do not edit!!!\n");
+    printf (" *)\n");
+    printf ("\n#ifndef _LOG_EVENTS_\n");
+    printf ("\n#define _LOG_EVENTS_\n\n");
 
 #include "log-events.h"
 
-  printf ("\n#endif /* !_LOG_EVENTS_DEF_ */\n");
+    printf ("\n#endif /* !_LOG_EVENTS_DEF_ */\n");
 
-  return 0;
+    return 0;
 }

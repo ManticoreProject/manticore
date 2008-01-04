@@ -182,23 +182,24 @@ void M_PrintPtr (char *name, void *ptr)
  */
 void M_PrintLong (int64_t n)
 {
-    Say("%d", n);
+    Say("%ld", n);
 }
 
-/* M_PrintLong:
+/* M_PrintInt:
  */
 void M_PrintInt (int32_t n)
 {
     Say("%d\n", n);
 }
 
-Value_t M_PrintFloat (float f)
+void M_PrintFloat (float f)
 {
     Say ("%f\n",f);
 }
 
+/* FIXME: eventually, this code should be in assembler to reduce overhead */
 #include "inline-log.h"
 void M_LogEvent0 (void *vp, int evt) 
 {
-  LogEvent0 (vp, evt);
+    LogEvent0 (vp, evt);
 }
