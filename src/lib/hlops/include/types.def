@@ -65,5 +65,9 @@ typedef spawn_fun = fun (fiber_fun / exh -> unit);
 #define SELECT(i,x)	HASH_SYM i(x)
 #define UPDATE(i,x,y)	HASH_SYM i(x) := y
 
+(* logging events *)
+typedef log_event = int;
+typedef log_data = int;
+
 #endif /* !_TYPES_DEF_ */
 

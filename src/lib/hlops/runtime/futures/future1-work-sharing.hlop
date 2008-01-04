@@ -3,62 +3,81 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Work sharing for futures.
+ * Work sharing for one-toucher futures.
  *)
 
 #include "types.def"
 #include "locked-queue.def"
 #include "futures.def"
+#include "tags.def"
 
 extern void *ListVProcs (void *) __attribute__((alloc));
-
 (* debugging *)
 extern void M_PrintDebug (void*);
+extern void M_Print (void*);
+
+define @assoc-list-lookup (atag : assoc_tag, init : fun(unit / exh -> any), fgs : fgs / exh : exh) : any;
+
+define @future1-touch (arg : [work_queue, future] / exh : exh) : any;
+
+define inline @fiber (f : fiber_fun / exh : exh) : fiber;
+define @atomic-yield (vp : vproc / exh : exh) : unit;
+
+define @locked-queue-new ( / exh : exh) : locked_queue;
+define @locked-queue-dequeue (q : locked_queue / exh : exh) : option;
+define @locked-queue-enqueue (q : locked_queue, elt : any / exh : exh) : ();
+
+define @scheduler-startup (mkAct : fun (vproc / exh -> sigact), fgs : fgs, vps : list / exh : exh) : ();
 
 define @future1-work-sharing ( / exh : exh) : future_spawn_fn =
-
- (* fiber-group storage of the parent *)
-  let parentFGS : fgs = @get-fgs (host_vproc / exh)
 
  (* shared queue for the workers *)
   let q : locked_queue = @locked-queue-new ( / exh)
 
  (* spawn a future *)
   fun spawn (fut : future / exh : exh) : unit = 
-      (* FIXME: do something about the exception handler *)
-      fun wrap (_ : unit / exh : exh) : unit =
-          let arg : [future] = wrap (fut)
-          let _ : any = @fut-touch1 (arg)
+     (* wrapper function that touches the future *)
+      fun wrapper (_ : unit / exh : exh) : unit =
+          let arg : [work_queue, future] = alloc (UNIT, fut)
+         (* FIXME: do something about the exception handler *)
+          let _ : any = @future1-touch (arg / exh)
           return (UNIT)
-      let k : fiber = @fiber (wrap / exh)
-      do @locked-queue-enqueue (q, fut / exh)
+     (* construct a fiber for the future and put it on the work queue *)
+      let k : fiber = @fiber (wrapper / exh)
+      do @locked-queue-enqueue (q, k / exh)
       return (UNIT)
 
- (* make the spawn function accessible to computations via fiber-group storage *)
+
+ (* Initialize fiber-group storage. *)
+  let parentFGS : fgs = @get-fgs (host_vproc / exh)
+ (* fiber group storage for the future scheduler *)
   let parent : option = SOME (parentFGS)
   let fgs : fgs = @new-fgs (TRUE, parent / exh)
-  let assocListRef : ![assoc_list] = SELECT(ALIST_OFFSET, fgs)
-  do @assoc-list-add (TAG_SPAWN_FUTURE, spawn, assocListRef)
+ (* add the spawn function to the fiber group storage *)
+  fun init (_ : unit / exh : exh) : any = return (spawn)
+  let _ : any = @assoc-list-lookup (TAG_SPAWN_FUTURE, init, fgs / exh)
 
-  cont switch (s : signal) =
+ (* return the scheduler action *)
+  fun mkSwitch (self : vproc / exh : exh) : sigact = 
+      cont switch (s : signal) =
+           cont findWork () =
+               let eltOpt : option = @locked-queue-dequeue (q / exh)
+               case eltOpt
+    	        of NONE => throw findWork ()
+		 | SOME (k : fiber) => 
+		   @run (self, switch, fgs, k / exh)
+               end
 
-      (* NOTE: this scheduler cannot migrate vprocs *)
-       let self : vproc = host_vproc
+           if Equal (s, STOP)
+              then throw findWork ()
+              else do @locked-queue-enqueue (q, s / exh)
+                   let _ : unit = @atomic-yield (self / exh)
+                   throw findWork ()
+      return (switch)
 
-       fun findWork () : () =
-           let eltOpt : option = @locked-queue-dequeue (q / exh)
-           case eltOpt
-	    of NONE => apply findWork ()
-	     | SOME (k : fiber) => @run (self, switch, fgs, k / exh)
-           end
-
-       if Equal (s, STOP)
-          then apply findWork ()
-          else do @locked-queue-enqueue (q, s / exh)
-               let _ : unit = @atomic-yield (self / exh)
-               apply findWork ()
-
-  do @scheduler-startup (switch / exh)
-  let _ : unit =  @set-fgs (host_vproc, fgs / exh)
+ (* Initialize the scheduler on the vprocs. *)
+  let vps : list = ccall ListVProcs(host_vproc)
+  do @scheduler-startup (mkSwitch, fgs, vps / exh)
+ (* TODO: spawn a scheduler on the host vproc? *)
   return (spawn)
 ;

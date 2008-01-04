@@ -51,4 +51,5 @@ int main ()
 
     printf ("#endif /* !_RUNTIME_OFFSETS_DEF_ */\n");
 
+    return 0;
 }

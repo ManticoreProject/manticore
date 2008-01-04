@@ -8,7 +8,7 @@
 
 #include "locked-queue.def"
 #include "../synch/spin-lock-fn.hlop"
-define_spin_lock(lq, locked_queue, LOCKED_QUEUE_LOCK)
+define_spin_lock(lq,locked_queue,LOCKED_QUEUE_LOCK)
 
 define inline @enqueue (vp : vproc, fgs : fgs, fiber : fiber / exh : exh) : ();
 

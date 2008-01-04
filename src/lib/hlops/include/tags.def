@@ -11,6 +11,6 @@
 
 (* unique identifier for threads *)
 #define TAG_FID                tag(fid)
-#define TAG_SPAWN_FUTURE       tag(spawn-future)
+#define TAG_SPAWN_FUTURE       tag(spawn_future)
 
 #endif /*! _TAGS_DEF_ */

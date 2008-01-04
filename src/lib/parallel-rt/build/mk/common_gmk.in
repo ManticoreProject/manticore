@@ -100,9 +100,12 @@ gen-runtime-constants:	gen-runtime-constants.c manticore-rt.h vproc.h vproc-offs
 gen-runtime-offsets:	gen-runtime-offsets.c manticore-rt.h vproc.h vproc-offsets-ins.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o gen-runtime-offsets $< ../../config/crc.c
 
+gen-log-events:		  gen-log-events.c
+			  $(CC) $(CPPFLAGS) $(CFLAGS) -o gen-log-events $< 
+
 .PHONY:		clean
 
 clean:
 	rm -rf $(OBJS) $(TARGET)
-	rm -rf gen-asm-offsets gen-runtime-constants asm-offsets.h
+	rm -rf gen-asm-offsets gen-runtime-constants gen-log-events asm-offsets.h
 	rm -rf *.dSYM

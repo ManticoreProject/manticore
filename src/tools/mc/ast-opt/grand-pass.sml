@@ -75,9 +75,9 @@ structure GrandPass : sig
   (* includeQ : A.module -> A.module *)
   (* Prepend module m with the appropriate let bindings to include the workQueue. *)
     fun includeQ m =
-	A.LetExp (A.ValBind (A.VarPat workQVar, F.mkNewWorkQueue ()),
-          A.LetExp (A.ValBind (A.WildPat U.workQueueTy, F.mkGetWork1All workQ),
-            m))
+	A.LetExp (A.ValBind (A.VarPat workQVar, F.mkNewWorkQueue ()), m)
+          (*A.LetExp (A.ValBind (A.WildPat U.workQueueTy, F.mkGetWork1All workQ),
+            m))*)
 
   (* transform : A.module -> A.module *)
     fun transform m = 

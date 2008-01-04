@@ -18,6 +18,9 @@ define @scheduler-startup (mkAct : fun (vproc / exh -> sigact), fgs : fgs, vps :
 define @get-fgs (vp : vproc / exh : exh) : fgs;
 define @new-fgs (pinned : bool, parent : option / exh : exh) : fgs;
 
+#include "log-events.def"
+define @log-event0 (evt : int) : unit;
+
 extern void *ListVProcs (void *) __attribute__((alloc));
 
 extern void M_PrintDebug (void *);
@@ -26,6 +29,8 @@ extern void M_PrintLong (long);
 extern void M_PrintPtr (void *, void *);
 
 define @default-scheduler-startup ( / exh : exh) : () = 
+ (* log something more interesting here *)
+  let _ : unit = @log-event0 (NoEvent)
 
   cont switch (s : signal) =
     let vp : vproc = host_vproc

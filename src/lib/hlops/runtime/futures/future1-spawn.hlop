@@ -3,27 +3,28 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Spawn a future.
+ * Spawn a one-toucher future.
  *)
 
 #include "types.def"
 #include "futures.def"
+#include "runtime-offsets.def"
+#include "tags.def"
 
-define @future1-spawn (arg : [thunk] / exh : exh) : future =
+define @future1-work-sharing ( / exh : exh) : future_spawn_fn;
+define @get-fgs (vp : vproc / exh : exh) : fgs;
+define @assoc-list-lookup (atag : assoc_tag, init : fun(unit / exh -> any), fgs : fgs / exh : exh) : any;
 
+(* NB: arg contains a placeholder for the work queue *)
+define @future1-spawn (arg : [work_queue, thunk] / exh : exh) : future =
+
+  (* initialize the futures scheduler and return its spawn function *)
+  fun init (_ : unit / exh : exh) : any =
+      let spawnFn : future_spawn_fn = @future1-work-sharing ( / exh)
+      return (spawnFn)
   let fgs : fgs = @get-fgs (host_vproc / exh)
-  let assocListRef : ![assoc_list] = SELECT(ALIST_OFFSET, fgs)
-  let spawnFnOpt : option = @assoc-list-lookup (TAG_SPAWN_FUTURE, assocListRef / exh)
-
- (* get the spawn function for the futures scheduler, creating a new scheduler if this spawn is the first
-  * spawn for the thread.
-  *)
-  let spawnFun : future_spawn_fn = case spawnFnOpt
-      of NONE =>
-         let spawnFun : future_spawn_fn = @future1-work-sharing ( / exh)
-         return (spawnFun)
-       | SOME (spawnFn : fun (future -> ())) => return (spawnFn)
-      end
+  (* obtain the spawn function *)
+  let spawnFn : future_spawn_fn = @assoc-list-lookup (TAG_SPAWN_FUTURE, init, fgs / exh)
 
   (* allocate the future1 cell
      a future1 cell consists of two words:
@@ -35,12 +36,12 @@ define @future1-spawn (arg : [thunk] / exh : exh) : future =
             WAITING   cont
        2) a _thunk_ word 
    *)
-  let thunk : thunk = #0(arg)
-  let cell : future = alloc(EMPTY_F:any, thunk)
-  let cell : future = promote(cell)
+  let thunk : thunk = #1(arg)
+  let cell : future = alloc (EMPTY_F, thunk)
+  let cell : future = promote (cell)
 
  (* add the future to the scheduling queue *)
-  do apply spawnFun (cell / exh)
+  let _ : unit = apply spawnFn (cell / exh)
  
   return (cell) 
 ;

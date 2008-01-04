@@ -35,6 +35,10 @@ define @list-tab (args: [fun(ml_int/exh->any), ml_int, ml_int, ml_int] / exh:exh
 define @fail (arg : ml_string / exh : exh) : any;
 define @todo (thing : ml_string / exh : exh) : any;
 
+(* futures *)
+define @future1-spawn (arg : [any, thunk] / exh : exh) : future;
+define @future1-touch (arg2 : [work_queue, future] / exh : exh) : any;
+
 define @rope-app (args : [fun(any/exh->unit), rope] / exh:exh) : unit;
 define @rope-depth (r : rope / exh : exh) : ml_int;
 define @rope-from-leaves (leaves : list / exh : exh) : rope;

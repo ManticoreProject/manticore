@@ -57,7 +57,7 @@ define @scheduler-startup (mkAct : fun (vproc / exh -> sigact), fgs : fgs, vps :
          (* dummy fiber synchronizes on the barrier and then exits immediately to activate the scheduler *)
 	  cont dummyK (_ : unit) = 
                do vpstore (ATOMIC, host_vproc, TRUE)
-               do ccall M_Print ("Initializing top-level scheduler\n")
+               do ccall M_Print ("Initializing scheduler\n")
                let x : int = I32FetchAndAdd (syncPoint, 1)
                do apply spinWait (UNIT / exh)
                @thread-exit ( / exh)

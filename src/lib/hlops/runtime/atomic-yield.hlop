@@ -8,6 +8,7 @@
  *)
 
 #include "types.def"
+#include "runtime-offsets.def"
 
 define @yield (vp : vproc / exh : exh) : unit;
 
@@ -15,3 +16,4 @@ define @atomic-yield (vp : vproc / exh : exh) : unit =
    let _ : unit = @yield (vp / exh)
    do vpstore(ATOMIC, vp, TRUE)
    return (UNIT)
+;

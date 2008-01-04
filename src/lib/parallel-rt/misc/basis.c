@@ -189,10 +189,16 @@ void M_PrintLong (int64_t n)
  */
 void M_PrintInt (int32_t n)
 {
-    Say("%d", n);
+    Say("%d\n", n);
 }
 
 Value_t M_PrintFloat (float f)
 {
     Say ("%f\n",f);
+}
+
+#include "inline-log.h"
+void M_LogEvent0 (void *vp, int evt) 
+{
+  LogEvent0 (vp, evt);
 }
