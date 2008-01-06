@@ -4,6 +4,9 @@
  * All rights reserved.
  *
  * Mapping from AST types and variables to their BOL representations.
+ *
+ * FIXME: we need to cleanup the way this stuff is handled.  Right now, things are being defined
+ * all over the place (some in the compiler and some in prototypes.hlop).
  *)
 
 structure StdEnv : sig
@@ -96,9 +99,17 @@ structure StdEnv : sig
                     BOM.mkStmt ([c], BOM.E_Cast (newTy, x),
                       BOM.mkRet [c]))
 	      end
-	     
-    (* hlop : HLOp.hlop * bool -> (BOMTy.ty -> BOM.lambda) *)
-      fun hlop (hlop as HLOp.HLOp{name, sign, ...}, polyResTy) = let
+
+    (* create wrapper code for a high-level operation.
+     *
+     *		hlop (h, hasPolyResult) resTy
+     *
+     * returns a BOM lambda that is the wrapper for the operator h.  The hasPolyResult
+     * argument is a boolean flag that is true when the result type of the high-level
+     * operation is polymorphic.  In this case, the resTy argument specifies the result
+     * type as determined by the context of use.  Otherwise, resTy is ignored.
+     *)
+      fun hlop (hlop as HLOp.HLOp{name, sign, ...}, hasPolyResult) = let
 	    val {params, exh, results} = sign
 	    val paramTys = let
 		  fun get (HLOp.PARAM t) = t
@@ -122,7 +133,7 @@ structure StdEnv : sig
 (* FIXME: perhaps it would be more robust to compare resTy with ty in mkFB and add the
  * cast when they are different?
  *)
-	    val castResult = if polyResTy
+	    val castResult = if hasPolyResult
 		  then let
 		    val resTy = (case results of [r] => r | _ => raise Fail "resTy")
 		    in
@@ -332,36 +343,22 @@ structure StdEnv : sig
 	    (B.lnf,		hlop H.lnf),
 	    (B.log2f,		hlop H.log2f),
 	    (B.log10f,		hlop H.log10f),
-	    (B.powf,		hlop H.powf),
+	    (B.powf,		hlop (H.powf, false)),	(* in prototypes.hlop *)
 	    (B.expf,		hlop H.expf),
 	    (B.sinf,		hlop H.sinf),
 	    (B.cosf,		hlop H.cosf),
 	    (B.tanf,		hlop H.tanf),
-*)
-	    (B.itof,		prim1 (P.I32ToF32, "itof", i, f)),
-(* FIXME
 	    (B.lnd,		hlop H.lnd),
 	    (B.log2d,		hlop H.log2d),
 	    (B.log10d,		hlop H.log10d),
-	    (B.powd,		hlop H.powd),
+	    (B.powd,		hlop (H.powd, false)),	(* in prototypes.hlop *)
 	    (B.expd,		hlop H.expd),
 	    (B.sind,		hlop H.sind),
 	    (B.cosd,		hlop H.cosd),
 	    (B.tand,		hlop H.tand),
 *)
+	    (B.itof,		prim1 (P.I32ToF32, "itof", i, f)),
 	    (B.itod,		prim1 (P.I32ToF64, "itod", i, d)),
-(* FIXME
-	    (B.channel,		hlop H.channel),
-	    (B.send,		hlop H.send),
-	    (B.recv,		hlop H.recv),
-	    (B.iVar,		hlop H.iVar),
-	    (B.iGet,		hlop H.iGet),
-	    (B.iPut,		hlop H.iPut),
-	    (B.mVar,		hlop H.mVar),
-	    (B.mGet,		hlop H.mGet),
-	    (B.mTake,		hlop H.mTake),
-	    (B.mPut,		hlop H.mPut),
-*)
 	    (B.itos,		hlop (H.itosOp, false)),
 	    (B.ltos,		hlop (H.ltosOp, false)),
 	    (B.ftos,		hlop (H.ftosOp, false)),
@@ -380,6 +377,17 @@ structure StdEnv : sig
 	    (B.recv,		hlop (H.recvOp, true)),
 	    (B.recvEvt,		hlop (H.recvEvtOp, false)),
 	    (B.send,		hlop (H.sendOp, false)),
+
+(* FIXME
+	  (* synchronous memory *)
+	    (B.iVar,		hlop H.iVar),
+	    (B.iGet,		hlop H.iGet),
+	    (B.iPut,		hlop H.iPut),
+	    (B.mVar,		hlop H.mVar),
+	    (B.mGet,		hlop H.mGet),
+	    (B.mTake,		hlop H.mTake),
+	    (B.mPut,		hlop H.mPut),
+*)
 
 	  (* futures and work queues *)
 	    (F.newWorkQueue,    hlop (H.newWorkQueueOp, false)),
@@ -422,11 +430,6 @@ structure StdEnv : sig
   (* enrich env0 with HLOP signatures from prototypes.hlop *)
     fun env () = let
 	  val hlops =  [
-	      (* The boolean indicates if "polymorphic any" is part of the result type.
-	       * Note since "list" is a complete BOM type (not a tycon), the fact that a function
-	       * like map or reverse returns an 'a or 'b list doesn't influence this boolean.
-	       * Note this infrastructure will change on adoption of System F.
-	       *)
                   (B.app,               "list-app",		false),
 		  (B.print,		"print",		false),
 		  (B.stringConcat,	"string-concat2",	false),
