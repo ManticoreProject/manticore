@@ -1,0 +1,18 @@
+#ifdef ENABLE_LOGGING
+
+(* logging events *)
+typedef log_event = int;
+typedef log_data = int;
+
+#include "log-events.def"
+
+define @log-event0 (evt : log_event) : ();
+
+#define LOG_EVENT0(evt)	@log-event0(evt)
+
+#else /* !ENABLE_LOGGING */
+
+#define LOG_EVENT0(evt) return ()
+
+#endif
+
