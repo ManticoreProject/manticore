@@ -52,7 +52,7 @@ Value_t M_DoubleToString (double f)
 
 /* M_Print:
  */
-void M_Print (char *s)
+void M_Print (const char *s)
 {
     Say("[%2d] %s", VProcSelf()->id, s);
 }
@@ -160,12 +160,12 @@ void M_AssertNotLocalPtr (Value_t item)
 
 }
 
-Value_t M_Die (char *message)
+Value_t M_Die (const char *message)
 {
     Die ("%s\n", message);
 }
 
-void M_PrintDebug (char *s)
+void M_PrintDebug (const char *s)
 {
 #ifndef NDEBUG
     if (DebugFlg)
@@ -173,7 +173,7 @@ void M_PrintDebug (char *s)
 #endif
 }
 
-void M_PrintPtr (char *name, void *ptr)
+void M_PrintPtr (const char *name, void *ptr)
 {
     Say("[%2d] &%s=%p\n", VProcSelf()->id, name, ptr);  
 }
