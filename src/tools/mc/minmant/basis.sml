@@ -559,7 +559,7 @@ structure Basis : sig
     val app =           polyVar'(N.app, fn tv => (tv --> unitTy) ** (listTy tv) --> unitTy)
     val parrayApp =     polyVar'(N.parrayApp, fn tv => (tv --> unitTy) ** (parrayTy tv) --> unitTy)
     val tab =           polyVar'(N.tab,
-				 fn tv => (AST.TupleTy [intTy --> tv, intTy, intTy, intTy, intTy])
+				 fn tv => (AST.TupleTy [intTy --> tv, intTy, intTy, intTy])
                                    --> (listTy tv))
 
   (* predefined functions with more than one type variable in their types *)

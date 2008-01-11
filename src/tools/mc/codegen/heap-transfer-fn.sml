@@ -442,7 +442,7 @@ functor HeapTransferFn (
 		 continueStms
           ]
       in
-	  {stms=getChunkStms @ chkStms, return=NONE}
+	  {stms=chkStms @ getChunkStms, return=NONE}
       end (* genHeapCheck *)
 
  (* Generate the entry code for a function. *)

@@ -77,7 +77,7 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 		MinorGC (vp, roots);
 	    }
 	  /* check for pending signals */
-	    if (vp->sigPending == M_TRUE) {
+	    if ((vp->sigPending == M_TRUE) && (vp->atomic == M_FALSE)) {
   	    /* Unload the vproc's entry queue */
 		VProcPushEntries (vp, VProcGetEntryQ (vp));
 		Value_t resumeK = AllocUniform(vp, 3,

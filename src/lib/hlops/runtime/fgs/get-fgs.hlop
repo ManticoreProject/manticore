@@ -8,8 +8,10 @@
 
 #include "runtime-offsets.def"
 #include "types.def"
+#include "../basis/assert.hlop"
 
 define @get-fgs (vp : vproc / exh : exh) : fgs =
   let fgs : fgs = vpload (CURRENT_FG, vp)
+  do assert(NotEqual (fgs, NIL))
   return (fgs)
 ;

@@ -1,5 +1,6 @@
 val sqrt = sqrtd;
 (*fun expt a = let fun expt' b = powd(a, b) in expt' end;*)
+fun expt a = fail "todo";
 val pi : double = 3.14159265359;
 (*
  *
@@ -228,12 +229,12 @@ fun sphereintersect (pos, dir, sp) = let
 	      else (true, shi)
 	  else (true, slo)
 	  end
-    end;
+    end
 
 (*
 % for shading, need normal at a point
 *)
-fun spherenormal (pos, sp) = let
+and spherenormal (pos, sp) = let
     fun unpack1 sp = (case sp
         of Sphere(center, rad, _) => center)
     fun unpack2 sp = (case sp
@@ -243,16 +244,114 @@ fun spherenormal (pos, sp) = let
     val rad = unpack2 sp
       in
 	vecscale (vecsub pos spos) (1.0/rad)
-      end;
+      end
 
+and trace (spheres, pos, dir) = let
+    (* make a list of the distances to intersection for each hit object *)
+    fun sphmap l = (case l
+	   of nil => nil
+	    | (x::xs) => let
+	      val (hit, where') = sphereintersect (pos, dir, x)
+	      in
+		if hit then
+		  (where', x) :: (sphmap xs)
+		else
+		  (sphmap xs)
+	      end)
+    val dists = sphmap spheres;
+    (* return a sphere and its distance *)
+    in
+      case dists
+       of nil => (false, INFINITY, (hd spheres))  (* missed all *)
+        | first::rest => let
+	    fun min ((d1, s1), (d2, s2)) = if (d1 < d2) then (d1,s1) else (d2,s2)
+	    val (mindist, sp) = fold min first rest
+	    in
+	      (true, mindist, sp)
+	    end
+    end
 
-fun trace (spheres, pos, dir) = fail "test";
-fun shade (lights, sp, lookpos, dir, dist, contrib) = fail "test";
+and lightray (l, pos, norm, refl, surf) = let
+    val (ldir, dist) = lightdirection (l, pos);
+    val cosangle = vecdot ldir norm;  (* lightray is this far off normal *)
+    val (inshadow, lcolor) = shadowed (pos, ldir, lightcolor l);
+    in
+    if (inshadow) then (0.0,0.0,0.0)
+    else let
+	val diff = diffusesurf surf;
+	val spow = specpowsurf surf;  (* assumed trans is same as refl *)
+	in
+	if (cosangle <= 0.0) then let (* opposite side *)
+	    val bodycol = bodysurf surf;
+	    val cosalpha = ~(vecdot refl ldir);
+	    val diffcont = vecmult (vecscale diff (~cosangle)) lcolor;
+	    val speccont = if (cosalpha <= 0.0) then (0.0,0.0,0.0)
+		else vecmult (vecscale bodycol (expt cosalpha spow)) lcolor;
+	    in vecadd diffcont speccont
+	end else let
+	    val spec = specularsurf surf;
+	    val cosalpha = vecdot refl ldir;  (* this far off refl ray (for spec) *)
+	    val diffcont = vecmult (vecscale diff cosangle) lcolor;
+	    val speccont = if (cosalpha <= 0.0) then (0.0,0.0,0.0)
+		else vecmult (vecscale spec (expt cosalpha spow)) lcolor;
+	    in vecadd diffcont speccont
+	end
+    end
+end
+
+and lightdirection (dir, pt) = (case dir
+       of (Directional(dir, col)) => let
+	    val (d,_) = vecnorm dir in (d, INFINITY) end
+	| (Point(pos, col)) => vecnorm (vecsub pos pt)
+      (* end case *))
+
+and shadowed (pos, dir, lcolor) = let (* need to offset just a bit *)
+    val (hit, dist, sp) = trace (world, vecadd pos (vecscale dir EPSILON), dir);
+    in
+      if (not hit) then (false, lcolor)
+      else (true, lcolor)  (* for now *)
+    end
+
+and reflectray (pos, newdir, lights, intens, contrib, color) = fail "todo"
+and transmitray (lights, color, pos, dir, index, intens, contrib, norm) = fail "todo"
+    
+and shade (lights, sp, lookpos, dir, dist, contrib) = let
+    val hitpos = vecadd lookpos (vecscale dir dist);
+    val ambientlight = (1.0, 1.0, 1.0);  (* full contribution as default *)
+    val surf = spheresurf sp;
+    val amb = vecmult ambientlight (ambientsurf surf);
+    (*  reflected_ray_dir = incoming_dir - (2 cos theta) norm; *)
+    val norm = spherenormal (hitpos, sp);
+    val refl = vecadd dir (vecscale norm ((~2.0)*(vecdot dir norm)));
+    (*  diff is diffuse and specular contribution *)
+    fun lightray' l = lightray (l, hitpos, norm, refl, surf)
+    val diff = vecsum (map lightray' lights);
+    val transmitted = transmitsurf surf;
+    val simple = vecadd amb diff;
+    (* calculate transmitted ray; it adds onto "simple" *)
+    val trintensity = vecscale (bodysurf surf) transmitted;
+    val (tir, trcol) = if (transmitted < EPSILON) then (false, simple)
+                    else let
+                      val index = refractsurf surf;
+                      in
+			transmitray (lights, simple, hitpos, dir, index, trintensity,
+			  contrib, norm)
+                      end
+    (*  reflected ray; in case of TIR, add transmitted component *)
+    val reflsurf = vecscale (specularsurf surf) (reflectsurf surf);
+    val reflectiv = if tir then (vecadd trintensity reflsurf) else reflsurf;
+    val rcol = if (zerovector reflectiv) then
+             trcol
+           else
+             reflectray (hitpos, refl, lights, reflectiv, contrib, trcol);
+   in
+     rcol
+   end
 
 (*
 % color the given pixel
 *)
-fun tracepixel (spheres, lights, x, y, firstray, scrnx, scrny) = let
+and tracepixel (spheres, lights, x, y, firstray, scrnx, scrny) = let
   val pos = lookfrom;
   val (dir, _) = vecnorm (vecadd (vecadd firstray (vecscale scrnx (itod x)))
 		    (vecscale scrny (itod y)));
@@ -271,7 +370,7 @@ val dir = (0.0,0.0,1.0);
 val x = (Ambient pos) :: nil;
 val y = ambientsurf x;
 val sphere = Sphere((0.0,0.0,0.0), 0.5, s3);
-(*val (intersects,slo) = sphereintersect (pos, dir, sphere);
-print ((dtos slo)^"\n") *)
 
-()
+val (intersects,slo) = sphereintersect (pos, dir, sphere);
+print ((dtos slo)^"\n") 
+

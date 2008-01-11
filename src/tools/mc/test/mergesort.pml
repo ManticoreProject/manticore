@@ -1,4 +1,9 @@
-(* Test the mergesort example from the CML book.
+(* mergesort.pml
+ * 
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Mergesort process network (borrowed from Concurrent Programming in ML Section 4.1).
  *) 
 
 fun split (inCh, outCh1, outCh2) = let
@@ -27,67 +32,54 @@ fun merge (inCh1, inCh2, outCh) = let
 
 fun mergesort () = let
     val ch = channel ()
-    val x1 = recv ch
     in
-       spawn (
-        (case x1
-          of NONE => send (ch, NONE)
-	   | SOME x => let
-             val x2 = recv ch
-             in
-		 (case x2
-                   of NONE => ( send (ch, x1); send (ch, NONE) )
-		    | SOME x => let
-                      val ch1 = mergesort ()
-                      val ch2 = mergesort ()
-		      in
-			  send (ch, x1);
-			  send (ch, x2);
-			  split (ch, ch1, ch2);
-			  merge (ch1, ch2, ch)
-		      end
-                 (* end case *))
-             end
-         (* end case *)) );
+       spawn (let
+        val x1 = recv ch
+        in case x1
+            of NONE => send (ch, NONE)
+	     | SOME x => let
+		   val x2 = recv ch
+                   in
+		      (case x2
+			of NONE => ( send (ch, x1); send (ch, NONE) )
+			 | SOME x => let
+			       val ch1 = mergesort ()
+			       val ch2 = mergesort ()
+			       in
+			          send (ch1, x1);
+				  send (ch2, x2);
+				  split (ch, ch1, ch2);
+				  merge (ch1, ch2, ch)
+			       end
+                      (* end case *))
+                  end
+              (* end case *)
+           end);
          ch
     end
 ;
 
-val n = 10;
+val n = 90000;
 
-fun test1 () = let
+fun doit () = let
     val ch = mergesort ()
-    in
-        spawn (send (ch, SOME 1));
-        spawn (recv ch; ())
-    end
-;
-
-val x = test1 ();
-
-fun test () = let
-    val inCh1 = channel ()
-    val inCh2 = channel ()
-    val outCh1 = channel ()
-    val outCh2 = channel ()
-
-    fun inLoop (i, inCh, x) = if i < n
-        then ( send (inCh, SOME (i*2 + (if x then 1 else 0))); 
-               print ( "sent " ^ itos i ^ "\n"); 
-               inLoop (i+1, inCh, x) )
-        else send (inCh, NONE)
-
-    fun outLoop (i, outCh) = (case recv outCh
-        of NONE => print "outLoop done\n"
-	 | SOME x => ( print ( "out loop iteration=" ^ itos x ^ " on thread " ^ itos i ^ "\n" ); outLoop (i, outCh) )
+    fun f i = n - i
+    val ls = tab (f, 0, n, 1)
+    fun sendLs ls = (case ls
+        of nil => send (ch, NONE)
+	 | x :: xs => (send (ch, SOME x); sendLs xs)
         (* end case *))
-
+    fun recvLs () = (case (recv ch)
+        of NONE => ()
+	 | SOME i => (print ((itos i)^"\n"); recvLs ())
+        (* end case *))
     in
-        spawn (inLoop (0, inCh1, true));
-	spawn (inLoop (0, inCh2, false));
-	spawn (outLoop (1, outCh1));
-        merge (inCh1, inCh2, outCh1)
+       	print "start sorting\n";
+	sendLs ls;
+	print "done sending\n";
+	recvLs ();
+	print "done sorting\n"
     end
 ;
 
-test ()
+doit ()

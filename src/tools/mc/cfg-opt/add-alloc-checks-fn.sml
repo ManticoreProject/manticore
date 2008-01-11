@@ -170,7 +170,7 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 	          end
 
 	  val code = List.foldr (addAllocChecks CFG.HCK_Local) [] code
-(*	  val code = List.foldr (addAllocChecks CFG.HCK_Global) [] code*)
+	  val code = List.foldr (addAllocChecks CFG.HCK_Global) [] code
 	  val module = CFG.mkModule(name, externs, code)
 
 	  in

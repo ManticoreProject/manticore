@@ -11,7 +11,7 @@ fun pong () = let
       end;
 
 val b = gettimeofday ();
-val _ = (spawn (ping 10); pong());
+val _ = (spawn (ping 1000); pong());
 val e = gettimeofday ();
 
 print ("time elapsed: "^dtos (e-b)^"\n")

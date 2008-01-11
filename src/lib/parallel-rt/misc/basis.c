@@ -165,6 +165,12 @@ Value_t M_Die (const char *message)
     Die ("%s\n", message);
 }
 
+Value_t M_AssertFail (const char *check, char *file, int line)
+{
+  Die ("Assert failed at %s:%d (%s)\n", VProcSelf()->id, file, line, check);
+}
+
+
 void M_PrintDebug (const char *s)
 {
 #ifndef NDEBUG

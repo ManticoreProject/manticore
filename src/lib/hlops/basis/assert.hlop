@@ -1,0 +1,21 @@
+(* assert.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * C-style assert.
+ *   TODO: only do the check when debugging is enabled.
+ *)
+
+#ifndef _ASSERT_FN_
+#define _ASSERT_FN_
+
+extern void M_AssertFail (void*, void*, int);
+
+#define assert(check)                                               \
+  if check                                                          \
+     then return ()                                                 \
+     else do ccall M_AssertFail (#check, __FILE__, __LINE__)        \
+          return ()                                                 \
+
+#endif /*! _ASSERT_FN */
