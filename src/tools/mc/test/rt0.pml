@@ -312,7 +312,19 @@ and shadowed (pos, dir, lcolor) = let (* need to offset just a bit *)
       else (true, lcolor)  (* for now *)
     end
 
-and reflectray (pos, newdir, lights, intens, contrib, color) = fail "todo"
+and reflectray (pos, newdir, lights, intens, contrib, color) = let
+    val newcontrib = vecmult intens contrib;
+    in
+    if (zerovector newcontrib) then color
+    else let
+	val nearpos = vecadd pos (vecscale newdir EPSILON);
+	val (hit, dist, sp) = trace (world, nearpos, newdir);
+	val newcol = if (hit) then shade (lights, sp, nearpos, newdir, dist, newcontrib)
+	else background
+	in (vecadd color (vecmult newcol intens))
+    end
+end
+
 and transmitray (lights, color, pos, dir, index, intens, contrib, norm) = fail "todo"
     
 and shade (lights, sp, lookpos, dir, dist, contrib) = let
