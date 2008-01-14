@@ -130,4 +130,11 @@ structure BasisNames =
     val concat =	Atom.atom "concat"
 *)
 
+  (* extras *)
+    val image =		Atom.atom "image"
+    val newImage =	Atom.atom "newImage"
+    val updateImage =	Atom.atom "updateImage"
+    val outputImage =	Atom.atom "outputImage"
+    val freeImage =	Atom.atom "freeImage"
+
   end

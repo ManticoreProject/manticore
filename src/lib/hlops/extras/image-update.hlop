@@ -6,9 +6,9 @@
 
 #include "types.def"
 
-extern void M_UpdateImage (void *img, int row, int col, float r, float g, float b);
+extern void M_UpdateImage (void *, int, int, float, float, float);
 
-define inline image-update (arg : [any, int, int, float, float, float] / exh : exh) : unit =
-  let () = M_UpdateImage (#0(arg), #1(arg), #2(arg), #3(arg), #4(arg), #5(arg))
+define inline @image-update (arg : [any, ml_int, ml_int, ml_float, ml_float, ml_float] / exh : exh) : unit =
+  let () = ccall M_UpdateImage (#0(arg), unwrap(#1(arg)), unwrap(#2(arg)), unwrap(#3(arg)), unwrap(#4(arg)), unwrap(#5(arg)))
     return (UNIT)
 ;

@@ -77,6 +77,12 @@ structure HLOpEnv : sig
   (* parrays (ropes) *)
     val ropeSubOp : HLOp.hlop
 
+  (* extras *)
+    val newImageOp	: HLOp.hlop
+    val updateImageOp	: HLOp.hlop
+    val outputImageOp	: HLOp.hlop
+    val freeImageOp	: HLOp.hlop
+
     val define : HLOp.hlop -> unit
     val find : Atom.atom -> HLOp.hlop option
 
@@ -128,13 +134,13 @@ structure HLOpEnv : sig
   (* new : string * BTy.ty list * BTy.ty list * H.attributes list -> H.hlop *)
     fun new (name, params, res, attrs) =
 	  H.new (Atom.atom name, 
-		 {params= List.map HLOp.PARAM params, exh=[], results=res}, 
+		 {params = List.map HLOp.PARAM params, exh=[], results=res}, 
 		 attrs)
 
   (* newWithExh : string * BTy.ty list * BTy.ty list * H.attributes list -> H.hlop *)
     fun newWithExh (name, params, res, attrs) =
 	  H.new (Atom.atom name,
-		 {params = map H.PARAM params, exh = [exhTy], results = res},
+		 {params = List.map H.PARAM params, exh = [exhTy], results = res},
 		 attrs)
 
   (* high-level operations used to implement Manticore language constructs *)
@@ -194,40 +200,41 @@ structure HLOpEnv : sig
     val cancelOp = newWithExh ("cancel", [futureTy], [], [])
 
     val future1Op = 
-      newWithExh ("future1", [pairTy (workQueueTy, thunkTy)], [futureTy], [])
+	  newWithExh ("future1", [pairTy (workQueueTy, thunkTy)], [futureTy], [])
 
     val touch1Op  = 
-      newWithExh ("touch1", [pairTy (workQueueTy, futureTy)], [BTy.T_Any], [])
+	  newWithExh ("touch1", [pairTy (workQueueTy, futureTy)], [BTy.T_Any], [])
 
     val cancel1Op = 
-      newWithExh ("cancel1", [pairTy (workQueueTy, futureTy)], [], [])
+	  newWithExh ("cancel1", [pairTy (workQueueTy, futureTy)], [], [])
 
     val ropeSubOp = 
-      newWithExh ("rope-sub", [pairTy (Basis.ropeTy, intTy)], [BTy.T_Any], [])
+	  newWithExh ("rope-sub", [pairTy (Basis.ropeTy, intTy)], [BTy.T_Any], [])
 		    
   (* some hlops, not in the surface language, for use in rope maps *)
-    val extractShortestRopeOp = 
-	let val tupTy = BTy.T_Tuple (false, [ropeTy, listTy, rawIntTy])
-	in
+    val extractShortestRopeOp = let
+	  val tupTy = BTy.T_Tuple (false, [ropeTy, listTy, rawIntTy])
+	  in
 	    newWithExh ("extract-shortest-rope", [listTy], [tupTy], [])
-	end
+	  end
 
-    val curriedRopeSublistOp =
-	let val tTy = BTy.T_Tuple (false, [listTy, boolTy])
-	    val fTy = BTy.T_Fun ([ropeTy], [exhTy], [tTy])
-	in
+    val curriedRopeSublistOp = let
+	  val tTy = BTy.T_Tuple (false, [listTy, boolTy])
+	  val fTy = BTy.T_Fun ([ropeTy], [exhTy], [tTy])
+	  in
 	    newWithExh ("curried-rope-sublist", [rawIntTy, rawIntTy], [fTy], [])
-	end
+	  end
 
     val insertAtOp = newWithExh ("insert-at", [anyTy, listTy, rawIntTy], [listTy], [])
 
-    fun mkTbl nameOf bindings = let
-	  val tbl = AtomTable.mkTable (List.length bindings, Fail "table")
-	  fun ins v = AtomTable.insert tbl (nameOf v, v)
-	  in
-	    List.app ins bindings;
-	    AtomTable.find tbl
-	  end 
+  (* extras *)
+    val newImageOp = newWithExh ("image-new", [pairTy(intTy, intTy)], [BTy.T_Any], [])
+    val updateImageOp = newWithExh (
+	  "image-update",
+	  [BTy.T_Tuple(false, [BTy.T_Any, intTy, intTy, floatTy, floatTy, floatTy])],
+	  [unitTy], [])
+    val outputImageOp = newWithExh ("image-output", [pairTy(BTy.T_Any, stringTy)], [unitTy], [])
+    val freeImageOp = newWithExh ("image-free", [BTy.T_Any], [unitTy], [])
 
   (* HLOp table *)
     val tbl : HLOp.hlop AtomTable.hash_table = AtomTable.mkTable (128, Fail "HLOp table")

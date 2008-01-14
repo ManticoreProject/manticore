@@ -190,6 +190,13 @@ structure Basis : sig
     val tab             : AST.var
     val parrayApp       : AST.var
 
+  (* extras *)
+    val imageTyc 	: Types.tycon
+    val newImage	: AST.var
+    val updateImage	: AST.var
+    val outputImage	: AST.var
+    val freeImage	: AST.var
+
   (* environments *)
     val lookupOp : Atom.atom -> Env.val_bind
     val isOp : AST.var -> bool
@@ -199,16 +206,17 @@ structure Basis : sig
 
   end = struct
 
+    structure U = BasisUtils
+    structure N = BasisNames
+
     nonfix div mod
 
     local
-      structure N = BasisNames
       val --> = AST.FunTy
       fun ** (t1, t2) = AST.TupleTy[t1, t2]
       infix 9 **
       infixr 8 -->
 
-      structure U = BasisUtils
 
       val forall = U.forall
       val forallMulti = U.forallMulti
@@ -603,6 +611,15 @@ structure Basis : sig
     val concat =	monoVar(N.concat, listTy stringTy --> stringTy)
 *)
 
+  (* extras *)
+    val imageTyc = TyCon.newAbsTyc (N.image, 0, false)
+    val imageTy = AST.ConTy([], imageTyc)
+
+    val newImage = monoVar' (N.newImage, intTy ** intTy --> imageTy)
+    val updateImage = monoVar' (N.updateImage, AST.TupleTy[imageTy, intTy, intTy, floatTy, floatTy, floatTy] --> unitTy)
+    val outputImage = monoVar' (N.outputImage, imageTy ** stringTy --> unitTy)
+    val freeImage = monoVar' (N.freeImage, imageTy --> unitTy)
+
   (* the predefined type environment *)
     val te0 = Env.fromList [
 	    (N.unit,		Env.TyDef(Types.TyScheme([], unitTy))),
@@ -622,7 +639,9 @@ structure Basis : sig
 	    (N.chan,		Env.TyCon chanTyc),
 	    (N.ivar,		Env.TyCon ivarTyc),
 	    (N.mvar,		Env.TyCon mvarTyc),
-	    (N.event,		Env.TyCon eventTyc)
+	    (N.event,		Env.TyCon eventTyc),
+	  (* extras *)
+	    (N.image,		Env.TyCon imageTyc)
 	  ]
 
     val ve0 = Env.fromList [
@@ -693,13 +712,18 @@ structure Basis : sig
 	    (N.foldr,           Env.Var foldr),
             (N.tab,             Env.Var tab),
 	    (N.reduceP,         Env.Var reduceP),
-	    (N.concatWith,      Env.Var stringConcatWith)
+	    (N.concatWith,      Env.Var stringConcatWith),
 (*
 	    (N.size,		Env.Var size),
 	    (N.sub,		Env.Var sub),
 	    (N.substring,	Env.Var substring),
 	    (N.concat,		Env.Var concat),
 *)
+	  (* extras *)
+	    (N.newImage,	Env.Var newImage),
+	    (N.updateImage,	Env.Var updateImage),
+	    (N.outputImage,	Env.Var outputImage),
+	    (N.freeImage,	Env.Var freeImage)
 	  ]
 
     end (* local *)

@@ -56,8 +56,11 @@ structure StdEnv : sig
 *)
 	    (B.eventTyc,	BTy.K_BOXED,	BOMBasis.evtTy),
 	    (B.chanTyc,		BTy.K_BOXED,	BOMBasis.chanTy),
+	  (* internal types *)
 	    (F.futureTyc,       BTy.K_BOXED,	BTy.futureTy),
-	    (U.workQueueTyc,	BTy.K_BOXED,	BOMBasis.workQueueTy)
+	    (U.workQueueTyc,	BTy.K_BOXED,	BOMBasis.workQueueTy),
+	  (* extras *)
+	    (B.imageTyc,	BTy.K_BOXED,	BTy.T_Any)
 	  ]
 
 
@@ -400,7 +403,13 @@ structure StdEnv : sig
 	    (F.cancel1,         hlop (H.cancel1Op, false)),
 
           (* parray operations *)
-	    (B.psub,            hlop (H.ropeSubOp, true))
+	    (B.psub,            hlop (H.ropeSubOp, true)),
+
+	  (* extras *)
+	    (B.newImage,	hlop (H.newImageOp, false)),
+	    (B.updateImage,	hlop (H.updateImageOp, false)),
+	    (B.outputImage,	hlop (H.outputImageOp, false)),
+	    (B.freeImage,	hlop (H.freeImageOp, false))
 	  ]
     end (* local *) 
 

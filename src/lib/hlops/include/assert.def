@@ -11,6 +11,7 @@
 
 extern void M_AssertFail (void*, void*, int);
 
+#define NDEBUG
 #ifdef NDEBUG
 #  define assert(check)	return()
 #else
@@ -18,7 +19,8 @@ extern void M_AssertFail (void*, void*, int);
 	if check							\
 	  then return ()						\
 	  else do ccall M_AssertFail (#check, __FILE__, __LINE__)	\
-	    return ()
+	    return () \
+
 #endif
 
 #endif /*! _ASSERT_DEF_ */

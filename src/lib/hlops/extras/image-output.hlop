@@ -6,10 +6,12 @@
 
 #include "types.def"
 
-extern void void M_OutputImage (void *img, void *file);
+extern void M_OutputImage (void *, void *);
 
-define inline image-output (arg : [any, ml_string] / exh : exh) : unit =
+define @string-data (s : ml_string) : any;
+
+define inline @image-output (arg : [any, ml_string] / exh : exh) : unit =
   let file : any = @string-data(#1(arg))
-  let () = M_OutputImage (#0(arg), file)
+  let () = ccall M_OutputImage (#0(arg), file)
     return (UNIT)
 ;

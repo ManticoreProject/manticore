@@ -449,6 +449,7 @@ and shadowed (pos, dir, lcolor) = let (* need to offset just a bit *)
 (*
 % "main" routine
 *)
+(* parallel version
 fun ray winsize = let
     val lights = testlights;
     val (firstray, scrnx, scrny) = camparams (lookfrom, lookat, vup, fov, winsize);
@@ -456,16 +457,29 @@ fun ray winsize = let
     in
       [| [| f(i, j) | j in [| 0 to winsize-1 |] |] | i in [| 0 to winsize-1 |] |]
     end;
+*)
 
-ray 1024
-
-(* SML version of the code
+(* sequential version of the code *)
 fun ray winsize = let
     val lights = testlights;
     val (firstray, scrnx, scrny) = camparams (lookfrom, lookat, vup, fov, winsize);
-    fun f (i, j) = tracepixel (world, lights, i, j, firstray, scrnx, scrny);
+    val img = newImage (winsize, winsize)
+    fun f (i, j) = let
+	  val (r, g, b) = tracepixel (world, lights, i, j, firstray, scrnx, scrny)
+	  in
+	    updateImage (img, i, j, r, g, b)
+	  end
+    fun lp i = if (i < winsize)
+	  then let
+	    fun lp' j = if (j < winsize)
+		  then (f(i, j); lp'(j+1))
+		  else ()
+	    in
+	      lp' 0; lp(i+1)
+	    end
+	  else ();
     in
-      Array2.tabulate Array2.RowMajor (winsize, winsize, f)
+      lp 0; outputImage(img, "out.ppm"); freeImage img
     end;
 
 (*
@@ -490,3 +504,5 @@ fun run (outFile, sz) = let
 
 run ("out.ppm", 1024)
 *)
+
+ray 1024

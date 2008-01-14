@@ -6,9 +6,9 @@
 
 #include "types.def"
 
-extern void M_FreeImage (void *img);
+extern void M_FreeImage (void *);
 
-define inline image-free (img : any / exh : exh) : unit =
-  let () = M_FreeImage (img)
+define inline @image-free (img : any / exh : exh) : unit =
+  let () = ccall M_FreeImage (img)
     return (UNIT)
 ;
