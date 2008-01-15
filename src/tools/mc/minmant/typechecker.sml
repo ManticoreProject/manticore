@@ -101,13 +101,11 @@ structure Typechecker : sig
 		val (e', rhsTy) = chkExp (loc, depth, te, ve, e)
 		in
 		  if not(U.unify(lhsTy, rhsTy))
-		    then let 
-	              val msg = "type mismatch in val binding:\n\
-                                \on the left:  " ^ TypeUtil.toString lhsTy ^ "\n\
-                                \on the right: " ^ TypeUtil.toString rhsTy ^ ".\n"
-		      in
-                        error (loc, [msg])
-		      end
+		    then error (loc, [
+	              	"type mismatch in val binding:\n\
+                        \  lhs: ", TypeUtil.toString lhsTy, "\n\
+                        \  rhs: ", TypeUtil.toString rhsTy, ".\n"
+		      ])
 		    else ();
 		  (AST.ValBind(pat', e'), ve')
 		end

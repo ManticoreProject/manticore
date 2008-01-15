@@ -129,13 +129,13 @@ structure CheckBOM : sig
 	  fun chkFB (lambda as B.FB{f, params, exh, body}) = (let
                 val (argTys, exhTys, retTys) =
                       case BV.typeOf f
-                       of BTy.T_Fun(argTys, exhTys, retTys) =>
-                              (argTys, exhTys, retTys)
-                        | BTy.T_Cont(argTys) =>
-                              (argTys, [], [])
-                        | ty => (error["expected function/continuation type for ",
-                                       v2s f, ":", BTU.toString(BV.typeOf f)];
-                                 ([],[],[]))
+                       of BTy.T_Fun(argTys, exhTys, retTys) => (argTys, exhTys, retTys)
+                        | BTy.T_Cont(argTys) => (argTys, [], [])
+                        | ty => (error[
+			      "expected function/continuation type for ",
+			      v2s f, ":", BTU.toString(BV.typeOf f)
+			    ];
+			    ([],[],[]))
                       (* end case *)
                 in
 		chkBinding (f, B.VK_Fun lambda);
