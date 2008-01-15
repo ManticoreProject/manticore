@@ -92,17 +92,18 @@ STATIC_INLINE int FetchAndDec (int *ptr)
 
 #else /* !HAVE_BUILTIN_ATOMIC_OPS */
 
-STATIC_INLINE Value_t CompareAndSwapValue (Value_t *ptr, Value_t old, Value_t new)
+STATIC_INLINE Value_t CompareAndSwapValue (volatile Value_t *ptr, Value_t old, Value_t new)
 {
-    register Value_t result __asm__ ("%rax");
+  Value_t result;
 
     __asm__ __volatile__ (
 	"movq %2,%%rbx\n\t"		/* %rbx = new */
 	"movq %1,%%rax\n\t"		/* %rax = 0 */
-	"lock; cmpxchgq %%rbx,%0;\n"	/* cmpxchg %rbx,ptr */
-	    : "=m" (*ptr)
-    	    : "g" (old), "g" (new)
-	    : "memory", "%rax");
+	"lock; cmpxchgq %%rbx,%3;\n\t"	/* cmpxchg %rbx,ptr */
+        "movq %%rax,%0;\n"
+	    : "=r" (result)
+ 	    : "g" (old), "g" (new), "m" (*ptr)
+  	    : "memory", "%rax", "%rbx");
     return result;
 }
 
