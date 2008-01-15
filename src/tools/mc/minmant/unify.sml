@@ -38,32 +38,31 @@ structure Unify : sig
 	    occurs ty
 	  end
 
-  (* adjust the depth of any non-instantiated meta-variable that is bound
-   * deeper than the given depth.
-   *)
-    fun adjustDepth (ty, depth) = let
-	  fun adjust Ty.ErrorTy = ()
-	    | adjust (Ty.MetaTy(Ty.MVar{info, ...})) = (case !info
-		 of Ty.UNIV d => if (depth < d) then info := Ty.UNIV d else ()
-		  | Ty.CLASS _ => ()
-		  | Ty.INSTANCE ty => adjust ty
-		(* end case *))
-	    | adjust (Ty.VarTy _) = raise Fail "unexpected type variable"
-	    | adjust (Ty.ConTy(args, _)) = List.app adjust args
-	    | adjust (Ty.FunTy(ty1, ty2)) = (adjust ty1; adjust ty2)
-	    | adjust (Ty.TupleTy tys) = List.app adjust tys
-	  in
-	    adjust ty
-	  end
-
   (* unify two types *)
     fun unifyRC (ty1, ty2, reconstruct) = let
 	  val mv_changes = ref []
-	  fun assignMV (mv as Types.MVar {info, ...}, ty) = (
+	  fun assignMV (info, newInfo) = (
 		if reconstruct
 		  then mv_changes := (info, !info) :: !mv_changes
 		  else ();
-		MV.instantiate (mv, ty))
+		info := newInfo)
+	(* adjust the depth of any non-instantiated meta-variable that is bound
+	 * deeper than the given depth.
+	 *)
+	  fun adjustDepth (ty, depth) = let
+		fun adjust Ty.ErrorTy = ()
+		  | adjust (Ty.MetaTy(Ty.MVar{info, ...})) = (case !info
+		       of Ty.UNIV d => if (depth < d) then assignMV(info, Ty.UNIV depth) else ()
+			| Ty.CLASS _ => ()
+			| Ty.INSTANCE ty => adjust ty
+		      (* end case *))
+		  | adjust (Ty.VarTy _) = raise Fail "unexpected type variable"
+		  | adjust (Ty.ConTy(args, _)) = List.app adjust args
+		  | adjust (Ty.FunTy(ty1, ty2)) = (adjust ty1; adjust ty2)
+		  | adjust (Ty.TupleTy tys) = List.app adjust tys
+		in
+		  adjust ty
+		end
 	  fun uni (ty1, ty2) = (case (TU.prune ty1, TU.prune ty2)
 		 of (Ty.ErrorTy, ty2) => true
 		  | (ty1, Ty.ErrorTy) => true
@@ -72,7 +71,7 @@ structure Unify : sig
 		  | (Ty.MetaTy mv1, ty2) => unifyWithMV (ty2, mv1)
 		  | (ty1, Ty.MetaTy mv2) => unifyWithMV (ty1, mv2)
 		  | (Ty.ConTy(tys1, tyc1), Ty.ConTy(tys2, tyc2)) =>
-		    (TyCon.same(tyc1, tyc2)) andalso ListPair.allEq uni (tys1, tys2)
+		      (TyCon.same(tyc1, tyc2)) andalso ListPair.allEq uni (tys1, tys2)
 		  | (Ty.FunTy(ty11, ty12), Ty.FunTy(ty21, ty22)) =>
 		      uni(ty11, ty21) andalso uni(ty12, ty22)
 		  | (Ty.TupleTy tys1, Ty.TupleTy tys2) =>
@@ -82,13 +81,13 @@ structure Unify : sig
 	(* unify a type with an uninstantiated meta-variable *)
 	  and unifyWithMV (ty, mv as Ty.MVar{info, ...}) = let
 		fun isClass cls = if TC.isClass(ty, cls)
-		      then (assignMV(mv, ty); true)
+		      then (assignMV(info, Ty.INSTANCE ty); true)
 		      else false
 		in
 		  case !info
 		   of Ty.UNIV d => if (occursIn(mv, ty))
 			then false
-			else (adjustDepth(ty, d); assignMV(mv, ty); true)
+			else (adjustDepth(ty, d); assignMV(info, Ty.INSTANCE ty); true)
 		    | Ty.CLASS cls => if occursIn(mv, ty)
 			then false
 			else (case cls
@@ -97,32 +96,32 @@ structure Unify : sig
 			    | Ty.Num => isClass Basis.NumClass
 			    | Ty.Order => isClass Basis.OrderClass
 			    | Ty.Eq => if TC.isEqualityType ty
-				then (assignMV(mv, ty); true)
+				then (assignMV(info, Ty.INSTANCE ty); true)
 				else false
 			  (* end case *))
 		    | _ => raise Fail "impossible"
 		  (* end case *)
 		end
 	  and unifyMV (mv1 as Ty.MVar{info=info1, ...}, mv2 as Ty.MVar{info=info2, ...}) = let
-		fun assign (mv1, mv2) = (assignMV(mv1, Ty.MetaTy mv2); true)
+		fun assign (info1, mv2) = (assignMV(info1, Ty.INSTANCE(Ty.MetaTy mv2)); true)
 		in
 		  case (!info1, !info2)
 		   of (Ty.UNIV d1, Ty.UNIV d2) => if (d1 < d2)
-			then assign(mv2, mv1)
-			else assign(mv1, mv2)
-		    | (Ty.UNIV _, _) => assign(mv1, mv2)
-		    | (_, Ty.UNIV _) => assign(mv2, mv1)
+			then assign(info2, mv1)
+			else assign(info1, mv2)
+		    | (Ty.UNIV _, _) => assign(info1, mv2)
+		    | (_, Ty.UNIV _) => assign(info2, mv1)
 		    | (Ty.CLASS cl1, Ty.CLASS cl2) => (case (cl1, cl2)
 			 of (Ty.Int, Ty.Float) => false
 			  | (Ty.Float, Ty.Int) => false
-			  | (Ty.Int, _) => assign (mv2, mv1)
-			  | (_, Ty.Int) => assign (mv1, mv2)
-			  | (Ty.Float, _) => assign (mv2, mv1)
-			  | (_, Ty.Float) => assign (mv1, mv2)
-			  | (Ty.Num, _) => assign (mv2, mv1)
-			  | (_, Ty.Num) => assign (mv1, mv2)
-			  | (Ty.Order, _) => assign (mv2, mv1)
-			  | (_, Ty.Order) => assign (mv1, mv2)
+			  | (Ty.Int, _) => assign (info2, mv1)
+			  | (_, Ty.Int) => assign (info1, mv2)
+			  | (Ty.Float, _) => assign (info2, mv1)
+			  | (_, Ty.Float) => assign (info1, mv2)
+			  | (Ty.Num, _) => assign (info2, mv1)
+			  | (_, Ty.Num) => assign (info1, mv2)
+			  | (Ty.Order, _) => assign (info2, mv1)
+			  | (_, Ty.Order) => assign (info1, mv2)
 			  | _ => true
 			(* end case *))
 		    | _ => raise Fail "impossible"
@@ -152,6 +151,7 @@ structure Unify : sig
 	      else ();
 	    res
 	  end
+
     fun unifiable (ty1, ty2) = unifyRC (ty1, ty2, true)
 			   
   end
