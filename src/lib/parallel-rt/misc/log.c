@@ -10,6 +10,7 @@
 #include <fcntl.h>
 #include <strings.h>
 #include <stdio.h>
+#include <string.h>
 #include <errno.h>
 #ifdef HAVE_MACH_ABSOLUTE_TIME
 #  include <mach/mach_time.h>
