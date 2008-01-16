@@ -167,7 +167,7 @@ Value_t M_Die (const char *message)
 
 Value_t M_AssertFail (const char *check, char *file, int line)
 {
-  Die ("Assert failed at %s:%d (%s)\n", VProcSelf()->id, file, line, check);
+  Die ("Assert failed at %s:%d (%s)\n", file, line, check);
 }
 
 

@@ -6,10 +6,12 @@
 
 #include "runtime-offsets.def"
 #include "types.def"
+#include "assert.def"
 
 define @switch-to (vp : vproc, fgs : fgs, fiber : fiber / exh : exh) noreturn;
 
 define inline @run (vp : vproc, act : sigact, fgs : fgs, fiber : fiber / exh : exh) noreturn =
+  do assert(NotEqual(fgs, NIL))
   let stk : [sigact, any] = vpload (VP_ACTION_STK, vp)
   let item : [sigact, any] = alloc (act, (any)stk)
   do vpstore (VP_ACTION_STK, vp, item)

@@ -231,7 +231,7 @@ structure HLOpEnv : sig
     val newImageOp = newWithExh ("image-new", [pairTy(intTy, intTy)], [BTy.T_Any], [])
     val updateImageOp = newWithExh (
 	  "image-update",
-	  [BTy.T_Tuple(false, [BTy.T_Any, intTy, intTy, floatTy, floatTy, floatTy])],
+	  [BTy.T_Tuple(false, [BTy.T_Any, intTy, intTy, doubleTy, doubleTy, doubleTy])],
 	  [unitTy], [])
     val outputImageOp = newWithExh ("image-output", [pairTy(BTy.T_Any, stringTy)], [unitTy], [])
     val freeImageOp = newWithExh ("image-free", [BTy.T_Any], [unitTy], [])

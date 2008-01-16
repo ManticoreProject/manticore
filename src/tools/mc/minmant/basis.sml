@@ -616,7 +616,7 @@ structure Basis : sig
     val imageTy = AST.ConTy([], imageTyc)
 
     val newImage = monoVar' (N.newImage, intTy ** intTy --> imageTy)
-    val updateImage = monoVar' (N.updateImage, AST.TupleTy[imageTy, intTy, intTy, floatTy, floatTy, floatTy] --> unitTy)
+    val updateImage = monoVar' (N.updateImage, AST.TupleTy[imageTy, intTy, intTy, doubleTy, doubleTy, doubleTy] --> unitTy)
     val outputImage = monoVar' (N.outputImage, imageTy ** stringTy --> unitTy)
     val freeImage = monoVar' (N.freeImage, imageTy --> unitTy)
 

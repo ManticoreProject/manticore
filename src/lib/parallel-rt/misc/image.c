@@ -9,7 +9,7 @@
 
 #define MAX_SZ		4096
 
-typedef unsigned char Pixel_t[4];
+typedef unsigned char Pixel_t[8];
 
 typedef struct {
     unsigned int	wid, ht;
@@ -49,7 +49,7 @@ void M_FreeImage (Image_t *img)
 
 /* M_UpdateImage
  */
-void M_UpdateImage (Image_t *img, unsigned int row, unsigned int col, float r, float g, float b)
+void M_UpdateImage (Image_t *img, unsigned int row, unsigned int col, double r, double g, double b)
 {
     if ((img == 0) || (img->wid <= col) || (img->ht <= row))
 	return;

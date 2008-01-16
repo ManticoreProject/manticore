@@ -52,7 +52,7 @@ extern void VProcPreempt (void *);
 
 (* debugging *)
 extern void M_Print (void*);
-extern void M_Die (void*);
+
 extern void M_PrintInt (int);
 extern void M_PrintPtr (void *, void *);
 extern void M_PrintDebug (void*);
