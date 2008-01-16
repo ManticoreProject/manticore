@@ -47,9 +47,23 @@ void M_FreeImage (Image_t *img)
     }
 }
 
-/* M_UpdateImage
+/* M_UpdateImage3f
  */
-void M_UpdateImage (Image_t *img, unsigned int row, unsigned int col, double r, double g, double b)
+void M_UpdateImage3f (Image_t *img, unsigned int row, unsigned int col, float r, float g, float b)
+{
+    if ((img == 0) || (img->wid <= col) || (img->ht <= row))
+	return;
+
+    int i = (img->wid * row) + col;
+    img->pixels[i][0] = (unsigned char)(255.0 * r);
+    img->pixels[i][1] = (unsigned char)(255.0 * g);
+    img->pixels[i][2] = (unsigned char)(255.0 * b);
+    img->pixels[i][3] = 255;
+}
+
+/* M_UpdateImage3d
+ */
+void M_UpdateImage3d (Image_t *img, unsigned int row, unsigned int col, double r, double g, double b)
 {
     if ((img == 0) || (img->wid <= col) || (img->ht <= row))
 	return;
