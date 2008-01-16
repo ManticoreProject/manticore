@@ -1,8 +1,3 @@
-(* mand.pml
- *
- * Sequential version of mandelbrot program.
- *)
-
 val xBase : double = ~2.0;
 val yBase : double = 1.25;
 val side : double = 2.5;
@@ -11,7 +6,7 @@ val sz : int = 1024;
 val maxCount : int = 1000;
 val maxCount' = itof (maxCount-1);
 
-val delta : double = side / (itod(sz-1));
+val delta : double = side / (itod (sz-1));
 
 val img = newImage (sz, sz);
 
@@ -32,26 +27,25 @@ fun pixel (i, j) = let
 		    end
 	      end
 	    else cnt
-      val cnt = loop (0, c_re, c_im)
-      val (r, g, b) = if cnt = maxCount
-	    then (0.2, 0.0, 0.0)
-	    else let
+      in
+	loop (0, c_re, c_im)
+      end;
+
+fun pix2rgb cnt = if cnt = maxCount
+    then (0.2, 0.0, 0.0)
+    else let
 	      val w = itof cnt / maxCount'
 	      in
 		(w, w, 0.25 + w*0.75)
-	      end
-      in
-	updateImage3f (img, i, j, r, g, b)
-      end;
+	      end;
 
-fun lp i = if (i < sz)
-      then let
-	fun lp' j = if (j < sz)
-	      then (pixel(i, j); lp'(j+1))
-	      else ()
-	in
-	  lp' 0; lp(i+1)
-	end
-      else ();
+fun output (i, j, (r, g, b)) = updateImage3f (img, i, j, r, g, b);
 
-(lp 0; outputImage(img, "mand.ppm"); freeImage img)
+val _ = 
+  let val axis = [| n | n in [| 0 to sz-1 |] |] (* FIXME this eta-equiv trick should not be necessary *)
+                                                (* should just be [| 0 to sz-1 |] *)
+  in
+      [| [| output (i, j, pix2rgb (pixel(i, j))) | j in axis |] | i in axis |]
+  end;
+
+(outputImage(img, "mand.ppm"); freeImage img)
