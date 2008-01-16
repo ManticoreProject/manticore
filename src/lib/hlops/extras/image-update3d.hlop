@@ -1,0 +1,14 @@
+(* image-update3d.hlop
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+#include "types.def"
+
+extern void M_UpdateImage3d (void *, int, int, double, double, double);
+
+define inline @image-update3d (arg : [any, ml_int, ml_int, ml_double, ml_double, ml_double] / exh : exh) : unit =
+  let () = ccall M_UpdateImage3d (#0(arg), unwrap(#1(arg)), unwrap(#2(arg)), unwrap(#3(arg)), unwrap(#4(arg)), unwrap(#5(arg)))
+    return (UNIT)
+;
