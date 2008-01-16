@@ -1,11 +1,19 @@
+(* mand.pml
+ *
+ * Sequential version of mandelbrot program.
+ *)
+
 val xBase : double = ~2.0;
 val yBase : double = 1.25;
 val side : double = 2.5;
 
-val sz : int = 1024;
-val maxCount : int = 255;
+val sz : int = 32;
+val maxCount : int = 1000;
+val maxCount' = itof (maxCount-1);
 
-val delta : double = side / (itod sz);
+val delta : double = side / (itod(sz-1));
+
+val img = newImage (sz, sz);
 
 fun pixel (i, j) = let
       val c_re = xBase + (delta * itod j)
@@ -15,7 +23,7 @@ fun pixel (i, j) = let
 	      val z_re_sq = z_re * z_re
 	      val z_im_sq = z_im * z_im
 	      in
-		if ((z_re_sq + z_im_sq) > 4.0)
+		if ((z_re_sq + z_im_sq) >= 4.0)
 		  then cnt
 		  else let
 		    val z_re_im = z_re * z_im
@@ -24,10 +32,26 @@ fun pixel (i, j) = let
 		    end
 	      end
 	    else cnt
+      val cnt = loop (0, c_re, c_im)
+      val (r, g, b) = if cnt = maxCount
+	    then (0.2, 0.0, 0.0)
+	    else (*let
+	      val w = itof cnt / maxCount'
+	      in
+		(w, w, 0.25 + w*0.75)
+	      end*) (0.1, 0.1, 1.0)
       in
-	loop (0, c_re, c_im)
+	updateImage3f (img, i, j, r, g, b)
       end;
 
-val img = [| [| pixel(i, j) | j in [| 0 to sz-1 |] |] | i in [| 0 to sz-1 |] |];
+fun lp i = if (i < sz)
+      then let
+	fun lp' j = if (j < sz)
+	      then (pixel(i, j); lp'(j+1))
+	      else ()
+	in
+	  lp' 0; lp(i+1)
+	end
+      else ();
 
-()
+(lp 0; outputImage(img, "mand.ppm"); freeImage img)

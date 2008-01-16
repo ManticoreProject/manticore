@@ -5,7 +5,7 @@ val side : double = 2.5;
 val sz : int = 32; (* 1024; *)
 val maxCount : int = 255;
 
-val delta : double = side / (itod sz);
+val delta : double = side / (itod (sz-1));
 
 fun pixel (i, j) = let
       val c_re = xBase + (delta * itod j)
@@ -15,7 +15,7 @@ fun pixel (i, j) = let
 	      val z_re_sq = z_re * z_re
 	      val z_im_sq = z_im * z_im
 	      in
-		if ((z_re_sq + z_im_sq) > 4.0)
+		if ((z_re_sq + z_im_sq) >= 4.0)
 		  then cnt
 		  else let
 		    val z_re_im = z_re * z_im

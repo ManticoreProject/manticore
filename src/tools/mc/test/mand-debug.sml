@@ -5,7 +5,7 @@ val side : real = 2.5
 val sz : int = 32 (* 1024; *)
 val maxCount : int = 255
 
-val delta : real = side / (real sz)
+val delta : real = side / (real(sz-1))
 
 fun pixel (i, j) = let
       val c_re = xBase + (delta * real j)
