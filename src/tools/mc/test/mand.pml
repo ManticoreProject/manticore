@@ -3,9 +3,9 @@
  * Sequential version of mandelbrot program.
  *)
 
-val xBase : double = ~2.0;
-val yBase : double = 1.25;
-val side : double = 2.5;
+val xBase : double = ~1.5;
+val yBase : double = 1.0;
+val side : double = 2.0;
 
 val sz : int = 1024;
 val maxCount : int = 1000;
@@ -14,6 +14,30 @@ val maxCount' = itof (maxCount-1);
 val delta : double = side / (itod(sz-1));
 
 val img = newImage (sz, sz);
+
+fun max (a : float, b) = if (a > b) then a else b;
+fun min (a : float, b) = if (a < b) then a else b;
+fun weight (scale : float, center) = let
+      fun sqr x = x*x
+      fun f x = 1.0 / (scale * sqr(x - center) + 1.5)
+      in
+	f
+      end;
+
+val red = weight (10.0, 0.75);
+val green = weight (10.0, 0.5);
+val blue = weight (10.0, 0.25);
+
+fun color cnt = if (cnt = maxCount)
+      then (0.0, 0.0, 0.0)
+      else let
+	val w = itof cnt / maxCount'
+	val r = min(1.0, max(0.0, 1.25*(w-0.75) + red w))
+	val g = min(1.0, max(0.1, 1.0*(w-0.5) + green w))
+	val b = min(1.0, max(0.2, 0.75*(w-0.25) + blue w))
+	in
+	  (r, g, b)
+	end;
 
 fun pixel (i, j) = let
       val c_re = xBase + (delta * itod j)
@@ -32,14 +56,7 @@ fun pixel (i, j) = let
 		    end
 	      end
 	    else cnt
-      val cnt = loop (0, c_re, c_im)
-      val (r, g, b) = if cnt = maxCount
-	    then (0.2, 0.0, 0.0)
-	    else let
-	      val w = itof cnt / maxCount'
-	      in
-		(w, w, 0.25 + w*0.75)
-	      end
+      val (r, g, b) = color (loop (0, c_re, c_im))
       in
 	updateImage3f (img, i, j, r, g, b)
       end;
