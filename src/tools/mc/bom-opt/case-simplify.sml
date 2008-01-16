@@ -190,7 +190,7 @@ structure CaseSimplify : sig
 	    | ty2ty (BTy.T_Fun(argTys, exh, resTys)) =
 		BTy.T_Fun(tys2tys argTys, tys2tys exh, tys2tys resTys)
 	    | ty2ty (BTy.T_Cont tys) = BTy.T_Cont(tys2tys tys)
-	    | ty2ty (BTy.T_TyCon(BTy.DataTyc{rep, ...})) = !rep
+	    | ty2ty (BTy.T_TyCon(BTy.DataTyc{rep, ...})) = ty2ty (!rep)
 	    | ty2ty ty = ty
 	  and tys2tys [] = []
 	    | tys2tys (ty::r) = ty2ty ty :: tys2tys r
@@ -218,9 +218,11 @@ print(concat["retype(_, ", BV.toString x, ", ", BTy.toString ty, ") = ", BV.toSt
 DEBUG*)
 	    (BU.extend(s, x, x'), x')
 	  end
+
   (* if a variable has a TyCon type, the retype it *)
     fun xformVar (s, x) = if hasTyc(typeOf x)
 	  then retype(s, x, tyToRepTy(typeOf x))
+
 	  else (s, x)
 
   (* apply xformVar over a list of variables *)
