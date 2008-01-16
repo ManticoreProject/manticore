@@ -222,7 +222,6 @@ DEBUG*)
   (* if a variable has a TyCon type, the retype it *)
     fun xformVar (s, x) = if hasTyc(typeOf x)
 	  then retype(s, x, tyToRepTy(typeOf x))
-
 	  else (s, x)
 
   (* apply xformVar over a list of variables *)
