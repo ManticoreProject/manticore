@@ -457,7 +457,7 @@ fun ray winsize = let
     fun f (i, j) = let
 	  val (r, g, b) = tracepixel (world, lights, i, j, firstray, scrnx, scrny)
 	  in
-	    updateImage (img, i, j, r, g, b)
+	    updateImage3d (img, i, j, r, g, b)
 	  end
     fun lp i = if (i < winsize)
 	  then let

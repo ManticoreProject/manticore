@@ -8,9 +8,9 @@ val ht = 256;
 val img = newImage (wid, ht);
 
 fun setGrey (i, j) = let
-      val g = itod(i + j) / 510.0
+      val g = itof(i + j) / 510.0
       in
-	updateImage (img, i, j, g, g, g)
+	updateImage3f (img, i, j, g, g, g)
       end;
 
 fun lp i = if (i < ht)

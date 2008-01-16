@@ -193,7 +193,8 @@ structure Basis : sig
   (* extras *)
     val imageTyc 	: Types.tycon
     val newImage	: AST.var
-    val updateImage	: AST.var
+    val updateImage3f	: AST.var
+    val updateImage3d	: AST.var
     val outputImage	: AST.var
     val freeImage	: AST.var
 
@@ -616,7 +617,8 @@ structure Basis : sig
     val imageTy = AST.ConTy([], imageTyc)
 
     val newImage = monoVar' (N.newImage, intTy ** intTy --> imageTy)
-    val updateImage = monoVar' (N.updateImage, AST.TupleTy[imageTy, intTy, intTy, doubleTy, doubleTy, doubleTy] --> unitTy)
+    val updateImage3f = monoVar' (N.updateImage3f, AST.TupleTy[imageTy, intTy, intTy, floatTy, floatTy, floatTy] --> unitTy)
+    val updateImage3d = monoVar' (N.updateImage3d, AST.TupleTy[imageTy, intTy, intTy, doubleTy, doubleTy, doubleTy] --> unitTy)
     val outputImage = monoVar' (N.outputImage, imageTy ** stringTy --> unitTy)
     val freeImage = monoVar' (N.freeImage, imageTy --> unitTy)
 
@@ -721,7 +723,8 @@ structure Basis : sig
 *)
 	  (* extras *)
 	    (N.newImage,	Env.Var newImage),
-	    (N.updateImage,	Env.Var updateImage),
+	    (N.updateImage3f,	Env.Var updateImage3f),
+	    (N.updateImage3d,	Env.Var updateImage3d),
 	    (N.outputImage,	Env.Var outputImage),
 	    (N.freeImage,	Env.Var freeImage)
 	  ]

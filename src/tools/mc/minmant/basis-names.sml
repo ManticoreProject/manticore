@@ -133,7 +133,8 @@ structure BasisNames =
   (* extras *)
     val image =		Atom.atom "image"
     val newImage =	Atom.atom "newImage"
-    val updateImage =	Atom.atom "updateImage"
+    val updateImage3f =	Atom.atom "updateImage3f"
+    val updateImage3d =	Atom.atom "updateImage3d"
     val outputImage =	Atom.atom "outputImage"
     val freeImage =	Atom.atom "freeImage"
 
