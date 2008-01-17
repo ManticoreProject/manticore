@@ -45,6 +45,7 @@ fun vecnorm ((x,y,z) : vec) = let
 fun vecscale ((x,y,z) : vec) = let fun scale a = (a*x, a*y, a*z) in scale end;
 fun vecdot ((x1,y1,z1) : vec) = let fun dot (x2,y2,z2) = x1*x2 + y1*y2 + z1*z2 in dot end;
 fun veccross ((x1,y1,z1) : vec) = let fun cross (x2,y2,z2) = (y1*z2-y2*z1, z1*x2-z2*x1, x1*y2-x2*y1) in cross end;
+fun vec2s ( (x1,y1,z1):vec) = "["^dtos x1^", "^dtos y1^", "^dtos z1^"]";
 (* Note the following code is broken for negative vectors, but it was in the original
  * version.
  *)
@@ -55,12 +56,12 @@ fun zerovector ((x,y,z) : vec) =
  * type declarations
  *)
 datatype Light
-  = Directional of (vec * vec)		(* direction, color *)
-  | Point of (vec * vec)		(* position, color *)
+  = (*Directional of (vec * vec)		(* direction, color *)
+  | *) Point of (vec * vec)		(* position, color *)
   ;
 fun lightcolor l = (case l
-       of (Directional(_, c)) => c
-	| (Point(_, c)) => c
+       of (* (Directional(_, c)) => c
+	| *) (Point(_, c)) => c
       (* end case *));
 datatype Surfspec
   = Ambient of vec	(* all but specpow default to zero *)
@@ -238,6 +239,23 @@ fun camparams (lookfrom, lookat, vup, fov, winsize) = let
     end;
 
 (*
+ * refract a ray through a surface (ala Foley, vanDamm, p. 757)
+ *   outputs a new direction, and if total internal reflection occurred or not
+ *)
+fun refractray (newindex, olddir, innorm) = let
+    val dotp = ~(vecdot olddir innorm);
+    val (norm, k, nr) = if (dotp < 0.0)
+	then (vecscale innorm (~1.0), ~dotp, 1.0/newindex)
+	else (innorm, dotp, newindex);   (* trans. only with air *)
+    val disc = 1.0 - nr*nr*(1.0-k*k);
+    in if (disc < 0.0) then (true, (0.0,0.0,0.0)) (* total internal reflection *)
+    else let
+	val t = nr * k - (sqrtd disc);
+	in (false, vecadd (vecscale norm t) (vecscale olddir nr))
+    end
+end;
+
+(*
 % color the given pixel
 *)
 fun tracepixel (spheres, lights, x, y, firstray, scrnx, scrny) = let
@@ -302,6 +320,7 @@ def testshade _ =
 *)
 
 and shade (lights, sp, lookpos, dir, dist, contrib) = let
+val _ = print (vec2s dir^"\n")
     val hitpos = vecadd lookpos (vecscale dir dist);
     val ambientlight = (1.0, 1.0, 1.0);  (* full contribution as default *)
     val surf = spheresurf sp;
@@ -310,7 +329,7 @@ and shade (lights, sp, lookpos, dir, dist, contrib) = let
     val norm = spherenormal (hitpos, sp);
     val refl = vecadd dir (vecscale norm ((~2.0)*(vecdot dir norm)));
     (*  diff is diffuse and specular contribution *)
-    fun lightray' l = lightray (l, hitpos, norm, refl, surf)
+    fun lightray' l =  lightray (l, hitpos, norm, refl, surf)
     val diff = vecsum (map lightray' lights);
     val transmitted = transmitsurf surf;
     val simple = vecadd amb diff;
@@ -373,23 +392,6 @@ and reflectray (pos, newdir, lights, intens, contrib, color) = let
 end
 
 (*
- * refract a ray through a surface (ala Foley, vanDamm, p. 757)
- *   outputs a new direction, and if total internal reflection occurred or not
- *)
-and refractray (newindex, olddir, innorm) = let
-    val dotp = ~(vecdot olddir innorm);
-    val (norm, k, nr) = if (dotp < 0.0)
-	then (vecscale innorm (~1.0), ~dotp, 1.0/newindex)
-	else (innorm, dotp, newindex);   (* trans. only with air *)
-    val disc = 1.0 - nr*nr*(1.0-k*k);
-    in if (disc < 0.0) then (true, (0.0,0.0,0.0)) (* total internal reflection *)
-    else let
-	val t = nr * k - (sqrt disc);
-	in (false, vecadd (vecscale norm t) (vecscale olddir nr))
-    end
-end
-
-(*
  * For a given light l, surface hit at pos, with norm and refl components
  * to incoming ray, figure out which side of the surface the light is on,
  * and if it's shadowed by another object in the world.  Return light's
@@ -424,9 +426,9 @@ and lightray (l, pos, norm, refl, surf) = let
 end
 
 and lightdirection (dir, pt) = (case dir
-       of (Directional(dir, col)) => let
+       of (* (Directional(dir, col)) => let
 	    val (d,_) = vecnorm dir in (d, INFINITY) end
-	| (Point(pos, col)) => vecnorm (vecsub pos pt)
+	| *) (Point(pos, col)) => vecnorm (vecsub pos pt)
       (* end case *))
 
 and shadowed (pos, dir, lcolor) = let (* need to offset just a bit *)
@@ -437,19 +439,6 @@ and shadowed (pos, dir, lcolor) = let (* need to offset just a bit *)
     end;
 
 (*
-% "main" routine
-*)
-(* parallel version
-fun ray winsize = let
-    val lights = testlights;
-    val (firstray, scrnx, scrny) = camparams (lookfrom, lookat, vup, fov, winsize);
-    fun f (i, j) = tracepixel (world, lights, i, j, firstray, scrnx, scrny);
-    in
-      [| [| f(i, j) | j in [| 0 to winsize-1 |] |] | i in [| 0 to winsize-1 |] |]
-    end;
-*)
-
-(* sequential version of the code *)
 fun ray winsize = let
     val lights = testlights;
     val (firstray, scrnx, scrny) = camparams (lookfrom, lookat, vup, fov, winsize);
@@ -462,37 +451,34 @@ fun ray winsize = let
     fun lp i = if (i < winsize)
 	  then let
 	    fun lp' j = if (j < winsize)
-		  then (f(i, j); lp'(j+1))
+		  then (print (itos i^" "^itos j^"\n");f(i, j); lp'(j+1))
 		  else ()
 	    in
 	      lp' 0; lp(i+1)
 	    end
 	  else ();
     in
-      lp 0; outputImage(img, "out.ppm"); freeImage img
+       f(10, 13)
+      (*lp 0; outputImage(img, "out.ppm"); freeImage img*)
     end;
-
-(*
-fun run (outFile, sz) = let
-      val outS = BinIO.openOut outFile
-      fun out x = BinIO.output1(outS, Word8.fromInt(Real.round(x * 255.0)))
-      fun outRGB (r, g, b) = (out r; out g; out b)
-      fun pr s = BinIO.output(outS, Byte.stringToBytes s)
-      val t0 = Time.now()
-      val img = ray sz
-      val t = Time.-(Time.now(), t0)
-      in
-	print(concat[
-	    Time.fmt 3 t, " seconds\n"
-	  ]);
-        pr "P6\n";
-	pr(concat[Int.toString sz, " ", Int.toString sz, "\n"]);
-	pr "255\n";
-	Array2.app Array2.RowMajor outRGB img;
-	BinIO.closeOut outS
-      end;
-
-run ("out.ppm", 1024)
 *)
 
-ray 1024
+val testpos = (0.0,~10.0,0.0);
+val testdir = (~0.23446755301152356,0.9434245773614214,~0.23446755301152356);
+val testhitpos = (~1.9015720859580605, ~2.3486648004165893, ~1.9015720859580605);
+
+fun testshade () = let
+   val (hit, dist, sp) = trace (world, testpos, testdir)
+   in
+     print "shade\n";
+     shade (testlights, sp, testpos, testdir, dist, (1.0,1.0,1.0))
+   end
+;
+
+testshade ()
+
+(*
+val winsize = 32;
+val (firstray, scrnx, scrny) = camparams (lookfrom, lookat, vup, fov, winsize);
+tracepixel (world, testlights, 10, 13, firstray, scrnx, scrny)
+*)
