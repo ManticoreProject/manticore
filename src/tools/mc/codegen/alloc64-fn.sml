@@ -145,8 +145,7 @@ functor Alloc64Fn (
 	  fun offAp i = T.ADD (ty, regExp apReg, intLit i)
 	  val (totalSize, hdrWord, stms) = alloc offAp args
 	(* store the header word *)
-	  val stms = MTy.store (offAp (~wordSzB), MTy.EXP (ty, T.LI hdrWord), memory) 
-		:: stms
+	  val stms = MTy.store (offAp (~wordSzB), MTy.EXP (ty, T.LI hdrWord), memory) :: stms
 	(* ptrReg points to the first data word of the object *)
 	  val ptrReg = Cells.newReg ()
 	(* copy the original allocation pointer into ptrReg *)

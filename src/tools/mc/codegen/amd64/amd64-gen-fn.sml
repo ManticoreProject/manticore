@@ -68,6 +68,9 @@ functor AMD64GenFn (structure Spec : TARGET_SPEC) =
   (* literals that MLRISC introduces during instruction selection *)
     val literals : (Label.label * AMD64PseudoOps.PseudoOps.pseudo_op) list ref = ref []
 
+   (* we cannot guarantee that pointers to floats are 16-byte aligned *)
+    val floats16ByteAligned = false
+
     (* We perform floating-point negation and absolute value by flipping the sign bit.
      * This approach requires generating literals for the operations.
      *)
@@ -127,6 +130,7 @@ functor AMD64GenFn (structure Spec : TARGET_SPEC) =
       structure ExtensionComp = MLTreeExtComp
       val signBit = signBit
       val negateSignBit = negateSignBit
+      val floats16ByteAligned = floats16ByteAligned
      )
 
     structure AMD64SpillLoc = SpillLocFn (structure Frame=AMD64Frame)
@@ -225,7 +229,8 @@ functor AMD64GenFn (structure Spec : TARGET_SPEC) =
 		getFrameAn (!annotations)
 	    end
 	structure Int = IntRA
-	structure Float = FloatRA)
+	structure Float = FloatRA
+        val floats16ByteAligned = floats16ByteAligned)
     end (* local *)
 
     structure GraphViewer = GraphViewer (Dot)
