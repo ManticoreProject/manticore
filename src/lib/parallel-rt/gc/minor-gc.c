@@ -88,7 +88,7 @@ void MinorGC (VProc_t *vp, Value_t **roots)
 	if (isMixedHdr(hdr)) {
 	  // a record
 	    Word_t tagBits = GetMixedBits(hdr);
-	    assert (tagBits < (1 << GetMixedSizeW(hdr)));
+	    assert ((uint64_t)tagBits < (1l << (uint64_t)GetMixedSizeW(hdr)));
 	    Value_t *scanP = (Value_t *)nextScan;
 	    while (tagBits != 0) {
 		if (tagBits & 0x1) {

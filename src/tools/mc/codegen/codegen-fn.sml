@@ -141,8 +141,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	  emitStms stms;
 	  exitBlock liveOut )
 
-      (* Generate code for a control transfer, e.g., a function or
-       * a continuation call or a heap-limit check. *)
+      (* Generate code for a control transfer, e.g., a function or a continuation call or a heap-limit check. *)
       fun genTransfer (M.StdApply args) =
 	  genStdTransfer (BE.Transfer.genStdApply varDefTbl args)
 	| genTransfer (M.StdThrow args) =

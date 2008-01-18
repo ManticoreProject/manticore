@@ -97,8 +97,8 @@ functor Alloc64Fn (
 		List.foldl (initObj offAp) {i=0, stms=[], totalSize=0, ptrMask=0w0} args
 	(* create the mixed-object header word *)
 	  val hdrWord = W.toLargeInt (
-		  W.+ (W.orb (W.<< (ptrMask, 0w7), 
-			      W.<< (W.fromInt nWords, 0w1)), 0w1) )
+		  W.orb (W.orb (W.<< (ptrMask, 0w7), 
+				W.<< (W.fromInt nWords, 0w1)), 0w1) )
 	in	  
 	  if ((IntInf.fromInt totalSize) > Spec.ABI.maxObjectSzB)
 	    then raise Fail "object size too large"
