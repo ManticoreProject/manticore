@@ -17,7 +17,6 @@ define @assoc-list-lookup (atag : assoc_tag, init : fun(unit / exh -> any), fgs 
 
 (* NB: arg contains a placeholder for the work queue *)
 define @future1-spawn (arg : [work_queue, thunk] / exh : exh) : future =
-
   (* initialize the futures scheduler and return its spawn function *)
   fun init (_ : unit / exh : exh) : any =
       let spawnFn : future_spawn_fn = @future1-work-sharing ( / exh)
@@ -25,7 +24,6 @@ define @future1-spawn (arg : [work_queue, thunk] / exh : exh) : future =
   let fgs : fgs = @get-fgs (host_vproc / exh)
   (* obtain the spawn function *)
   let spawnFn : future_spawn_fn = @assoc-list-lookup (TAG_SPAWN_FUTURE, init, fgs / exh)
-
   (* allocate the future1 cell
      a future1 cell consists of two words:
        1) a _state_ word, with one of the following values:
@@ -39,7 +37,6 @@ define @future1-spawn (arg : [work_queue, thunk] / exh : exh) : future =
   let thunk : thunk = #1(arg)
   let cell : future = alloc (EMPTY_F, thunk)
   let cell : future = promote (cell)
-
  (* add the future to the scheduling queue *)
   let _ : unit = apply spawnFn (cell / exh)
  

@@ -18,17 +18,6 @@ extern void M_Print (void*);
 
 define @assoc-list-lookup (atag : assoc_tag, init : fun(unit / exh -> any), fgs : fgs / exh : exh) : any;
 
-define @future1-touch (arg : [work_queue, future] / exh : exh) : any;
-
-define inline @fiber (f : fiber_fun / exh : exh) : fiber;
-define @atomic-yield (vp : vproc / exh : exh) : unit;
-
-define @locked-queue-new ( / exh : exh) : locked_queue;
-define @locked-queue-dequeue (q : locked_queue / exh : exh) : option;
-define @locked-queue-enqueue (q : locked_queue, elt : any / exh : exh) : ();
-
-define @scheduler-startup (mkAct : fun (vproc / exh -> sigact), fgs : fgs, vps : list / exh : exh) : ();
-
 define @future1-work-sharing ( / exh : exh) : future_spawn_fn =
 
  (* shared queue for the workers *)
@@ -46,7 +35,6 @@ define @future1-work-sharing ( / exh : exh) : future_spawn_fn =
       let k : fiber = @fiber (wrapper / exh)
       do @locked-queue-enqueue (q, k / exh)
       return (UNIT)
-
 
  (* Initialize fiber-group storage. *)
   let parentFGS : fgs = @get-fgs (host_vproc / exh)
@@ -78,6 +66,5 @@ define @future1-work-sharing ( / exh : exh) : future_spawn_fn =
  (* Initialize the scheduler on the vprocs. *)
   let vps : list = ccall ListVProcs(host_vproc)
   do @scheduler-startup (mkSwitch, fgs, vps / exh)
- (* TODO: spawn a scheduler on the host vproc? *)
   return (spawn)
 ;

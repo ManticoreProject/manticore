@@ -10,9 +10,6 @@
 #include "futures.def"
 #include "ropes.def"
 
-define @future1 (qt : [work_queue, thunk] / exh : exh) : future;
-define @touch1 (qf : [work_queue, future] / exh : exh) : any;
-
 define @rope-sum (q : work_queue / exh : exh) : fun (rope / exh -> ml_int) =
   fun rsum (r : rope / exh : exh) : ml_int =
     fun sumS (ns : list, acc : int / exh : exh) : int =
@@ -35,10 +32,10 @@ define @rope-sum (q : work_queue / exh : exh) : fun (rope / exh -> ml_int) =
                let res : ml_int = apply sumP (r2 / exh)
                return (res)
              let qt : [work_queue, thunk] = alloc (q, th)
-             let f2 : future = @future1 (qt / exh)
+             let f2 : future = @future1-spawn (qt / exh)
              let s1 : ml_int = apply sumP (r1 / exh)
              let qf : [work_queue, future] = alloc (q, f2)
-             let t2 : any = @touch1 (qf / exh)
+             let t2 : any = @future1-touch (qf / exh)
              let s2 : ml_int = (ml_int)t2
              let n1 : int = #0(s1)
              let n2 : int = #0(s2)

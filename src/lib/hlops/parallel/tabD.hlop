@@ -65,7 +65,7 @@ define @tabD (args : [(* q *) work_queue,
           let thunkRes : rope = apply mkLeaf (lo / exh)
           return (thunkRes)
         let qt : [work_queue, thunk] = alloc (q, th)
-        let fut : future = @future1 (qt / exh)
+        let fut : future = @future1-spawn (qt / exh)
         let newLo : int = 
           let a : int = I32Add (lo, leafOffset)
           return (a)
@@ -80,7 +80,7 @@ define @tabD (args : [(* q *) work_queue,
   fun touchAll (futures : list / exh : exh) : list = 
     fun touch (fut : future / exh : exh) : any =
       let qf : [work_queue, future] = alloc (q, fut)
-      let t : any = @touch1 (qf / exh)
+      let t : any = @future1-touch (qf / exh)
       return (t)
     fun ta (frs : list, acc : list / exh : exh) : list =
       case frs

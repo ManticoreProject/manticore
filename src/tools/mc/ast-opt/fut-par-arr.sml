@@ -108,8 +108,9 @@ structure FutParArr : sig
 	    if !anyChange
 	      then A.LetExp(
 		  A.ValBind(A.VarPat workQ, F.mkNewWorkQueue ()),
-		  A.LetExp(A.ValBind(A.WildPat Basis.workQueueTy, F.mkGetWork1All workQExp),
-		m'))
+	          m)
+		  (*A.LetExp(A.ValBind(A.WildPat Basis.workQueueTy, F.mkGetWork1All workQExp),*)
+		)
 	      else m
 	  end
 

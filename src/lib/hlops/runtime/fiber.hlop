@@ -8,8 +8,6 @@
 
 #include "types.def"
 
-define inline @thread-exit ( / exh : exh) noreturn;
-
 define inline @fiber (f : fiber_fun / exh : exh) : fiber =
   cont fiberK (x : unit) = 
     let x : unit =

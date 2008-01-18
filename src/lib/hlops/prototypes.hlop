@@ -39,6 +39,7 @@ define @todo (thing : ml_string / exh : exh) : any;
 define @future1-spawn (arg : [any, thunk] / exh : exh) : future;
 define @future1-touch (arg2 : [work_queue, future] / exh : exh) : any;
 
+(* ropes *)
 define @rope-app (args : [fun(any/exh->unit), rope] / exh:exh) : unit;
 define @rope-depth (r : rope / exh : exh) : ml_int;
 define @rope-from-leaves (leaves : list / exh : exh) : rope;
@@ -50,8 +51,13 @@ define @rope-sum (q : work_queue / exh : exh) : fun (rope / exh -> ml_int);
 define @simple-cat (r1 : rope, r2 : rope / exh : exh) : rope;
 define @tabD (agrs: [work_queue, fun(ml_int/exh->any), ml_int, ml_int, ml_int, ml_int] / exh:exh) : rope;
 
+(* scheduling operations *)
 define @dispatch-action (act : sigact, dst : vproc / exh : exh) : ();
 define @default-scheduler-startup ( / exh : exh) : ();
 define @enqueue-on-vproc (dst : vproc, tid : tid, k : fiber / exh : exh) : ();
+define inline @fiber (f : fiber_fun / exh : exh) : fiber;
+define @atomic-yield (vp : vproc / exh : exh) : unit;
+define @atomic-yield (vp : vproc / exh : exh) : unit;
+define inline @thread-exit ( / exh : exh) noreturn;
 
 define @generic-hlop-test (n : int / exh : exh) : any;

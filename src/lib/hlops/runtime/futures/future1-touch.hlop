@@ -9,7 +9,6 @@
 #include "types.def"
 #include "futures.def"
 
-define inline @thread-exit ( / exh : exh) noreturn;
 extern void M_Print (void*);
 
 define @future1-touch (arg : [work_queue, future] / exh : exh) : any =

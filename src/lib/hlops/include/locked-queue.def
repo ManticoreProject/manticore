@@ -26,4 +26,8 @@ typedef locked_queue = ![bool, queue_elt, queue_elt, queue_elt, queue_elt];
 #define QUEUE_ELT_HD    0
 #define QUEUE_ELT_TL    1
 
+define @locked-queue-new ( / exh : exh) : locked_queue;
+define @locked-queue-dequeue (q : locked_queue / exh : exh) : option;
+define @locked-queue-enqueue (q : locked_queue, elt : any / exh : exh) : ();
+
 #endif /* !_LOCKED_QUEUE_DEF_ */

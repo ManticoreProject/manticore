@@ -49,7 +49,8 @@ fun qs xs = (case xs
 
 fun mkList i = if (i <= 0) then nil else ~i :: i :: mkList (i-1);
 
-val xs = mkList 50;
+val xs = mkList 100;
 val sl = qs xs;
 
-print ( (intListToString sl) ^ "\n")
+sl 
+(*print ( (intListToString sl) ^ "\n")*)
