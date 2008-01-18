@@ -29,7 +29,7 @@ functor CacheFn (M : sig
 	   of NONE => let
 		val item = M.mkItem n
 		in
-		  insert (n, itemN); item
+		  insert (n, item); item
 		end
 	    | SOME item => item
 	  (* end case *))
