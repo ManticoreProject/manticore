@@ -25,13 +25,23 @@ structure RopeMapMaker : sig
     structure BV = B.Var
     structure MB = Basis
 
-    val listTy = BB.listTy
-    val tupTy = BTy.T_Tuple
-    val ropeTy = BB.ropeTy
-    val rawIntTy = BTy.T_Raw BTy.T_Int
     val anyTy = BTy.T_Any
-    val exnTy = BTy.exnTy
+    val boolTy = BB.boolTy
     val exhTy = BTy.exhTy
+    val exnTy = BTy.exnTy
+    val futureTy = BTy.futureTy
+    val intTy = BB.intTy
+    val listTy = BB.listTy
+    val rawIntTy = BTy.T_Raw BTy.T_Int
+    val ropeTy = BB.ropeTy
+    val tupTy = BTy.T_Tuple
+    val unitTy = BTy.unitTy
+    val workQueueTy = BTy.workQueueTy
+
+  (* iPairTy : BTy.ty * BTy.ty -> BTy.ty *)
+  (* Consumes two types. *)
+  (* Produces the corresponding immutable pair type. *)
+    fun iPairTy (t1 : BTy.ty, t2 : BTy.ty) : BTy.ty = BTy.T_Tuple (false, [t1, t2])
 
     val nilConst = (Literal.Enum 0w0, listTy)
 
@@ -117,7 +127,8 @@ structure RopeMapMaker : sig
   (* Said list needs to be built with incremental CONSes. *)
     fun mkList (wholeList : B.var, ys : B.var list, e : B.exp) : B.exp =
 	let val nilVar = BV.new ("nil", listTy)
-	    fun build ([y], [], prev) = B.mkStmt ([wholeList], mkCons (y, prev), e)
+	    (* build var list * var list * var -> exp *)
+            fun build ([y], [], prev) = B.mkStmt ([wholeList], mkCons (y, prev), e)
 	      | build (y::ys, curr::more, prev) = 
 		  B.mkStmt ([curr], mkCons (y, prev), build (ys, more, curr))
 	      | build _ = raise Fail "mkList: BUG"
@@ -128,43 +139,98 @@ structure RopeMapMaker : sig
               build (rev ys, listVars, nilVar))
 	end
 
-  (* mkLeafCaseBody : B.var * B.var * B.var * B.var -> B.exp *)
-    fun mkLeafCaseBody (dataVar : B.var, startPosVar : B.var, othersVar : B.var, indexVar : B.var) : B.exp =
-	raise Fail "todo: mkLeafCaseBody"
+  (* mkLeafCase : int *  B.var * B.var * B.var * B.var -> B.pat * B.exp *)
+    fun mkLeafCase (arity, shortV, startV, iV, exhV) : B.pat * B.exp =
+	let (* variables *)
+	    val mlLenV = BV.new ("ml_len", intTy)
+	    val dataV = BV.new ("data", listTy)
+	    val othersVs = mkVars ("others", arity-1, listTy) (* backwards *) 
+            val lenV = BV.new ("len", rawIntTy)
+	    val getV = BTy.T_Fun ([ropeTy], [exhTy], [iPairTy (listTy, boolTy)])
+	    val othersXV = BV.new ("othersX", listTy)
+	    val allV = BV.new ("all", listTy)
+	    val dVs = mkVars ("d", arity, listTy) (* backwards *)
+	    val dataXV = BV.new ("dataX", listTy)
+	    val eV = BV.new ("e", ropeTy)
+	    (* *)
+	    val leafPat = B.P_DCon (BB.ropeLeaf, [mlLenV, dataV])
+	    val leafBody = raise Fail "todo: leafBody"
+	in	
+	    (leafPat, leafBody)
+	end 
+     
+  (* mkCatBody : B.var * B.var * B.var * B.var -> B.exp *)
+    fun mkCatBody (shortV, startV, innerMapV, mlLenV, mlDepthV, shortLV, shortRV, exhV) : B.exp =
+	let (* types *)
+	    val thunkTy = BTy.T_Fun ([unitTy], [exhTy], [ropeTy])
+	    val qtTy = iPairTy (workQueueTy, thunkTy)
+	    val qfTy = iPairTy (workQueueTy, futureTy)
+	    (* variables *)
+	    val lenLV = BV.new ("lenL", rawIntTy)
+	    val startRV = BV.new ("startR", rawIntTy)
+	    val thunkV = BV.new ("thunk", thunkTy)
+	    val qtV = BV.new ("qt", qtTy)
+	    val shortRX_FV = BV.new ("shortRX_F", futureTy)
+	    val shortLXV = BV.new ("shortLX", ropeTy)
+	    val qfV = BV.new ("qf", qfTy)
+	    val shortRXV = BV.new ("shortRX", ropeTy)
+	    val cV = BV.new ("c", ropeTy)
+	    (* misc *)
+	    val thunkLam = B.FB {f = thunkV,
+				 params = [BV.new ("u", unitTy)],
+				 exh = [exhV],
+				 body = B.mkApply (innerMapV, [shortRV, startRV], [])}
+	    (* apply innerMapV (shortRV, startRV) *)
+	    val retVal = B.E_DCon (BB.ropeCat, [mlLenV, mlDepthV, shortLXV, shortRXV])
+	in
+	    B.mkLet ([lenLV], B.mkHLOp (HLOpEnv.ropeLengthIntOp, [shortLV], [exhV]),
+             B.mkStmt ([startRV], B.E_Prim (Prim.I32Add (startV, lenLV)),
+              B.mkFun ([thunkLam], 
+               B.mkStmt ([qtV], B.E_Alloc (qtTy, [raise Fail "qV", thunkV]),
+                B.mkLet ([shortRX_FV], B.mkHLOp (HLOpEnv.future1Op, [qtV], [exhV]),
+                 B.mkLet ([shortLXV], B.mkApply (innerMapV, [shortLV, startV], []),
+                  B.mkStmt ([qfV], B.E_Alloc (qfTy, [raise Fail "qV", shortRX_FV]),
+                   B.mkLet ([shortRXV], B.mkHLOp (HLOpEnv.touch1Op, [qfV], [exhV]),
+                    B.mkStmt ([cV], retVal,
+                     B.mkRet [cV])))))))))
+	end
 
-  (* mkCatCaseBody : B.var * B.var * B.var * B.var -> B.exp *)
-    fun mkCatCaseBody (innerMapVar : B.var, startPosVar : B.var, lVar : B.var, rVar : B.var) : B.exp =
-	raise Fail "todo: mkCatCaseBody"
-	
-  (* mkInnerMap : int * B.var * B.var -> B.lambda *)
-    fun mkInnerMap (arity : int, indexVar : B.var, othersVar : B.var) : B.lambda =
-      let val fTy = BTy.T_Fun ([ropeTy, rawIntTy], [], [ropeTy])
-	  val fVar = BV.new ("rmap" ^ Int.toString arity, fTy)
-	  val shortestVar = BV.new ("short", ropeTy)
-	  val startPosVar = BV.new ("start", rawIntTy)
-	  val dataVar = BV.new ("data", listTy)
-	  val leafCaseBody = mkLeafCaseBody (dataVar, startPosVar, othersVar, indexVar)
-	  val shortLVar = BV.new ("shortL", ropeTy)
-	  val shortRVar = BV.new ("shortR", ropeTy)
-	  val catCaseBody = mkCatCaseBody (fVar, startPosVar, shortLVar, shortRVar)
-	  val leafPat = B.P_DCon (BB.ropeLeaf, [dataVar])
-	  val catPat = B.P_DCon (BB.ropeCat, [shortLVar, shortRVar])
-	  val body = B.mkCase (shortestVar,
-			       [(leafPat, leafCaseBody),
-				(catPat, catCaseBody)],
-			       NONE)
-      in
-	  B.FB {f = fVar,
-		params = [shortestVar, startPosVar],
-		exh = [],
-		body = body}
-      end
+  (* mkCatCase : B.var * B.var * B.var * B.var -> B.pat * B.exp *)
+    fun mkCatCase (shortV : B.var, startV : B.var, innerMapV : B.var, exhV : B.var) 
+                  : B.pat * B.exp =
+	let val mlLenV = BV.new ("ml_len", intTy)
+	    val mlDepthV = BV.new ("ml_d", intTy)
+	    val shortLV = BV.new ("shortL", ropeTy)
+	    val shortRV = BV.new ("shortR", ropeTy)
+	    val catPat = B.P_DCon (BB.ropeCat, [mlLenV, mlDepthV, shortLV, shortRV])
+	    val catBody = mkCatBody (shortV, startV, innerMapV, 
+				     mlLenV, mlDepthV, shortLV, shortRV, exhV)
+
+	in
+	    (catPat, catBody)
+	end
+
+  (* mkInnerMap : int * B.var * B.var * B.var -> B.lambda *)
+    fun mkInnerMap (arity : int, indexV : B.var, othersV : B.var, exhV : B.var) : B.lambda =
+	let val innerMapV = BV.new ("rmap" ^ Int.toString arity,  
+			     BTy.T_Fun ([ropeTy, rawIntTy], [], [ropeTy]))
+	    val shortV = BV.new ("short", ropeTy)
+	    val startV = BV.new ("start", rawIntTy)
+	    val leafCase = mkLeafCase (arity, shortV, startV, indexV, exhV)
+	    val catCase = mkCatCase (shortV, startV, innerMapV, exhV)
+	    val body = B.mkCase (shortV, [leafCase, catCase], NONE)
+	in
+	    B.FB {f = innerMapV,
+		  params = [shortV, startV],
+		  exh = [],
+		  body = body}
+	end
 
   (* mkMap : int -> B.exp *)
     fun mkMap (arity : int) : B.exp =
-	let val exh = BV.new ("exh", exhTy)
+	let val exhV = BV.new ("exh", exhTy)
 	    val lengthExn = BV.new ("Length", exnTy)
-	    fun mkRaise () = B.mkThrow (exh, [lengthExn])
+	    fun mkRaise () = B.mkThrow (exhV, [lengthExn])
 	    val l2t = mkListToTup (arity, mkRaise)
             val fTy = BTy.T_Fun (copies (arity, anyTy), [exhTy], [anyTy])
 	    val f = BV.new ("f", fTy)
@@ -177,15 +243,15 @@ structure RopeMapMaker : sig
 	    val indexVar = BV.new ("i", rawIntTy)
 	    val shortestVar = BV.new ("s", ropeTy)
 	    val othersVar = BV.new ("others", listTy)
-	    val innerMap as B.FB {f=rmapn, ...} = mkInnerMap (arity, indexVar, othersVar)
+	    val innerMap as B.FB {f=rmapn, ...} = mkInnerMap (arity, indexVar, othersVar, exhV)
 	    val body = mkList (ropeListVar, ropeVars,
                          B.mkLet ([indexVar, shortestVar, othersVar], 
-                           B.mkHLOp (HLOpEnv.extractShortestRopeOp, [ropeListVar], [exh]),
+                           B.mkHLOp (HLOpEnv.extractShortestRopeOp, [ropeListVar], [exhV]),
                              B.mkFun ([innerMap],
                                B.mkApply (rmapn, [shortestVar], []))))
 	    val rmapLam = B.FB {f = rmapVar,
 				params = f::ropeVars,
-				exh = [exh],
+				exh = [exhV],
 				body = body}
 	in
             (* FIXME: mkMap should return a B.lambda *)
