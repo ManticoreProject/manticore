@@ -447,6 +447,7 @@ structure StdEnv : sig
 		  (B.itos,		"itos",			false),
 		  (B.fail,		"fail",			true),
 		  (B.rev,               "list-rev",		false),
+		  (B.nth,               "list-nth",             true),
 		  (B.powf,              "powf",			false),
 		  (B.powd,              "powd",			false),
                   (B.compose,           "compose",		true),

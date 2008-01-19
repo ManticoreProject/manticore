@@ -24,6 +24,7 @@ define @int-max (a : int, b : int / exh : exh) : int;
 define @gettimeofday (_ : unit / _ : exh) : ml_double;
 define @compose (fg:[fun(any/exh->any),fun(any/exh->any)] / exh:exh) : fun(any/exh->any);
 define @list-rev (xs : list / exh : exh) : list;
+define @list-nth (args: [list, ml_int] / exh : exh) : any;
 define @list-map (args: [fun(any/exh->any), list] / exh:exh) : list;
 define @list-map-2 (arg : [fun ([any, any] / exh -> any), list, list] / exh : exh) : list;
 
@@ -44,6 +45,7 @@ define @rope-app (args : [fun(any/exh->unit), rope] / exh:exh) : unit;
 define @rope-depth (r : rope / exh : exh) : ml_int;
 define @rope-from-leaves (leaves : list / exh : exh) : rope;
 define @rope-length (r : rope / exh : exh) : ml_int;
+define @rope-length-int (r : rope / exh : exh) : int;
 define @rope-map (q:work_queue / exh:exh) : fun([fun(any/exh->any), rope] / exh -> rope);
 define @rope-map-2 (q:work_queue / exh:exh) : fun([fun(any/exh->fun(any/exh->any)), rope, rope] / exh -> rope);
 define @rope-reduce (q:work_queue / exh:exh) : fun([fun([any,any]/exh->any), any, rope] / exh -> any);

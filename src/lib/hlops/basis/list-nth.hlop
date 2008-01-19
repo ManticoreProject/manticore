@@ -1,0 +1,37 @@
+(* list-nth.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Index-into-list function.
+ *)
+
+#include "types.def"
+
+define @list-nth (arg : [list, ml_int] / exh : exh) : any =
+
+  let SubscriptExn : exn = (exn) enum(0)
+
+  fun getIt (xs : list, i : int / ) : any =
+    case xs
+      of NIL => throw exh (SubscriptExn)
+       | CONS (hd : any, tl : list) =>
+           if I32Eq(i,0) then
+             return (hd)
+           else
+             let j : int = I32Sub (i, 1)
+             let r : any = apply getIt (tl, j)
+             return (r)
+     end (* case *)
+  (* end fun getIt *)
+
+  let data : list = #0(arg)
+  let ml_n : ml_int = #1(arg)
+  let n : int = unwrap(ml_n)
+
+  if I32Lt(n,0) then 
+    throw exh (SubscriptExn)
+  else
+    let res : any = apply getIt (data, n)
+    return (res)
+;
