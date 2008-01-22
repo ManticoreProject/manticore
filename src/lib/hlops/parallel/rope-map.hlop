@@ -12,11 +12,8 @@
 
 (* use_rw ropes; *)
 
-define @rope-map (q : work_queue / exh : exh) :
-  fun ([fun (any / exh -> any), rope] / exh -> rope) =
-
-  fun map (args : [(* f *) fun (any / exh -> any),
-                   (* r *) rope] / exh : exh) : rope =
+define @rope-map (args : [(* f *) fun (any / exh -> any),
+                          (* r *) rope] / exh : exh) : rope =
 
     let f : fun (any / exh -> any) = #0(args)
     let r : rope = #1(args)
@@ -32,11 +29,9 @@ define @rope-map (q : work_queue / exh : exh) :
              fun th (u : unit / exh : exh) : rope =
                let result : rope = apply m (r2 / exh)
                return (result)
-             let qt : [work_queue, thunk] = alloc (q, th)
-             let fut : future = @future1-spawn (qt / exh)
-             let qf : [work_queue, future] = alloc (q, fut)
+             let fut : future = @future1-spawn (th / exh)
              let newR1 : rope = apply m (r1 / exh)
-             let newR2 : rope = @future1-touch (qf / exh)
+             let newR2 : rope = @future1-touch (fut / exh)
              let newR : rope = @simple-cat (newR1, newR2 / exh)
              return (newR)
       end (* case *)
@@ -44,9 +39,6 @@ define @rope-map (q : work_queue / exh : exh) :
 
     let newR : rope = apply m (r / exh)
     return (newR)
-    (* end definition of map *)
-
-  return (map)
 ;
   
         

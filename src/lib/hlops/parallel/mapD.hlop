@@ -13,12 +13,10 @@
 (* use_rw ropes; *)
 
 define @mapD (args : [(* f *) fun (any / exh -> any),
-                      (* q *) work_queue,
                       (* r *) rope] / exh : exh) : rope =
 
   let f : fun (any / exh -> any) = #0(args)
-  let q : work_queue = #1(args)
-  let r : rope = #2(args)
+  let r : rope = #1(args)
 
   fun m (r : rope / exh : exh) : rope = 
     case r
@@ -30,11 +28,9 @@ define @mapD (args : [(* f *) fun (any / exh -> any),
            fun th (u : unit / exh : exh) : rope =
              let result : rope = apply m (r2 / exh)
              return (result)
-           let qt : [work_queue, thunk] = alloc (q, th)
-           let fut : future = @future1-spawn (qt / exh)
-           let qf : [work_queue, future] = alloc (q, fut)
+           let fut : future = @future1-spawn (th / exh)
            let newR1 : rope = apply m (r1 / exh)
-           let newR2 : rope = @future1-touch (qf / exh)
+           let newR2 : rope = @future1-touch (fut / exh)
            let newR : rope = @simple-cat (newR1, newR2 / exh)
            return (newR)
     end (* case *)

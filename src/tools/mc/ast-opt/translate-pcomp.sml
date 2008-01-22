@@ -8,7 +8,6 @@ structure TranslatePComp : sig
 
   (* An AST to AST translation of parallel comprehensions. *)
     val tr : (AST.exp -> AST.exp) 
-             -> AST.exp 
              -> AST.exp * (AST.pat * AST.exp) list * AST.exp option 
              -> AST.exp
 
@@ -28,7 +27,7 @@ structure TranslatePComp : sig
 		else raise Fail "not a parray"
 	    | _ =>  raise Fail "not a parray")
 
-    fun tr trExp workQ (e, pes, oe) =
+    fun tr trExp (e, pes, oe) =
 	  (case (pes, oe)
 	     of ([], _) => raise Fail "no pbinds at all"
 	      | ([(p1, e1)], NONE) =>  (* first I'll build the one pbind, no predicate case, and iter. refine it *)
@@ -52,20 +51,15 @@ structure TranslatePComp : sig
                                                 of NONE => ASTUtil.mkInt 1
                                                  | SOME s => trExp s)
 				  val tabD = A.VarExp (U.tabD, [t])
-				  val tup = A.TupleExp [workQ, f, lfSize, lo', hi', step]
+				  val tup = A.TupleExp [f, lfSize, lo', hi', step]
 			      in
 				  A.ApplyExp (tabD, tup, resTy)
 			      end
 			  | _ (* not a range exp *) =>
 			      let val e1' = trExp e1
-				  val mapPQ = A.VarExp (U.mapPQ, [t1, t])
-				  val mapResTy =
-				      (case TypeOf.exp mapPQ
-				         of A.FunTy (_, rty) => rty
-					  | _ => raise Fail "expected function type"
-				      (* end case *))
+				  val mapP = A.VarExp (U.mapP, [t1, t])
 			      in
-				  A.ApplyExp (A.ApplyExp (mapPQ, workQ, mapResTy),
+				  A.ApplyExp (mapP,
 					      A.TupleExp [f, e1'], 
 					      resTy)
 			      end
@@ -85,12 +79,9 @@ structure TranslatePComp : sig
 		      val f = A.FunExp (x1, 
 					A.FunExp (x2, ce, te), 
 					A.FunTy (TypeOf.pat p2, te))		      
-		      val map2PQ = A.VarExp (U.map2PQ, [t1, t2, te])
-		      val mapResTy = (case TypeOf.exp map2PQ
-				        of A.FunTy (_, range) => range
-					 | _ => raise Fail "expected function type")
+		      val map2P = A.VarExp (U.map2P, [t1, t2, te])
 		  in
-		      A.ApplyExp (A.ApplyExp (map2PQ, workQ, mapResTy),
+		      A.ApplyExp (map2P,
 				  A.TupleExp [f, trExp e1, trExp e2],
 				  resTy)
 		  end

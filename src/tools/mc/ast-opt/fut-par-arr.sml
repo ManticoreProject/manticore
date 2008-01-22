@@ -31,8 +31,6 @@ structure FutParArr : sig
     (* module : A.module -> A.module *)
     fun module m = let
 	  val anyChange = ref false
-	  val workQ = Var.new ("workQ", Basis.workQueueTy)
-	  val workQExp = A.VarExp (workQ, [])
 	(* parr : A.exp list * A.ty -> A.exp *)
 	(* Precondition: The argument to the function, a list, must not be empty. *)
 	(* Consumes a list whose members are the contents of a parallel array, *)
@@ -53,10 +51,10 @@ structure FutParArr : sig
 		      end
 		  | build (e::es, n, bs, accExps) =
 		      if F.isFutureCand e then
-			  let val fe = F.mkFuture1 (workQExp, exp e)
+			  let val fe = F.mkFuture1 (exp e)
 			      val f_n = mkVar (n, TypeOf.exp fe)
 			      val b = A.ValBind (A.VarPat f_n, fe)
-			      val t = F.mkTouch1 (workQExp, A.VarExp (f_n, []))
+			      val t = F.mkTouch1 (A.VarExp (f_n, []))
 			  in
 			      build (es, n+1, b::bs, t::accExps)
 			  end
@@ -106,11 +104,7 @@ structure FutParArr : sig
 	  val m' = exp m
 	  in
 	    if !anyChange
-	      then A.LetExp(
-		  A.ValBind(A.VarPat workQ, F.mkNewWorkQueue ()),
-	          m)
-		  (*A.LetExp(A.ValBind(A.WildPat Basis.workQueueTy, F.mkGetWork1All workQExp),*)
-		)
+	      then m'
 	      else m
 	  end
 

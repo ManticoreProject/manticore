@@ -15,17 +15,14 @@
 define @rope-depth (r : rope / exh : exh) : ml_int;
 define @simple-cat (r1 : rope, r2 : rope / exh : exh) : rope;
 
-define @rope-map-2 (q : work_queue / exh : exh) :
-  fun ([fun (any / exh -> fun (any / exh -> any)), rope, rope] / exh -> rope) =
+define @rope-map-2 (args : [(* f *)  fun (any / exh -> fun (any / exh -> any)),
+                            (* r1 *) rope,
+                            (* r2 *) rope] / exh : exh) : rope =
 
-  fun depth (r : rope) : int =
-    let ml_d : ml_int = @rope-depth (r / exh)
-    return (unwrap(ml_d))
-  (* end fun depth *)
-
-  fun map_2 (args : [(* f *)  fun (any / exh -> fun (any / exh -> any)),
-                     (* r1 *) rope,
-                     (* r2 *) rope] / exh : exh) : rope =
+    fun depth (r : rope) : int =
+      let ml_d : ml_int = @rope-depth (r / exh)
+      return (unwrap(ml_d))
+    (* end fun depth *)
 
     let f : fun (any, any / exh -> any) =
       let curriedF : fun (any / exh -> fun (any / exh -> any)) = #0(args)
@@ -82,11 +79,9 @@ define @rope-map-2 (q : work_queue / exh : exh) :
                      fun th (u : unit / exh : exh) : rope =
                        let result : rope = apply m_rope_2 (r12, r22)
                        return (result)
-                     let qt : [work_queue, thunk] = alloc (q, th)
-                     let fut : future = @future1-spawn (qt / exh)
-                     let qf : [work_queue, future] = alloc (q, fut) 
+                     let fut : future = @future1-spawn (th / exh)
                      let newLeft : rope = apply m_rope_2 (r11, r21)
-                     let newRight : rope = @future1-touch (qf / exh)
+                     let newRight : rope = @future1-touch (fut / exh)
                      let newRope : rope = @simple-cat (newLeft, newRight / exh)
                      return (newRope)
                  | LEAF(_:ml_int, _:list) =>

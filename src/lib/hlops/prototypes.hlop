@@ -46,12 +46,12 @@ define @rope-depth (r : rope / exh : exh) : ml_int;
 define @rope-from-leaves (leaves : list / exh : exh) : rope;
 define @rope-length (r : rope / exh : exh) : ml_int;
 define @rope-length-int (r : rope / exh : exh) : int;
-define @rope-map (q:work_queue / exh:exh) : fun([fun(any/exh->any), rope] / exh -> rope);
-define @rope-map-2 (q:work_queue / exh:exh) : fun([fun(any/exh->fun(any/exh->any)), rope, rope] / exh -> rope);
-define @rope-reduce (q:work_queue / exh:exh) : fun([fun([any,any]/exh->any), any, rope] / exh -> any);
-define @rope-sum (q : work_queue / exh : exh) : fun (rope / exh -> ml_int);
+define @rope-map (args : [fun (any / exh -> any), rope] / exh : exh) : rope;
+define @rope-map-2 (args : [fun (any / exh -> fun (any / exh -> any)), rope, rope] / exh : exh) : rope;
+define @rope-reduce (args : [fun ([any, any] / exh -> any), any, rope] / exh : exh) : any;
+define @rope-sum (r : rope / exh : exh) : ml_int;
 define @simple-cat (r1 : rope, r2 : rope / exh : exh) : rope;
-define @tabD (agrs: [work_queue, fun(ml_int/exh->any), ml_int, ml_int, ml_int, ml_int] / exh:exh) : rope;
+define @tabD (agrs: [fun(ml_int/exh->any), ml_int, ml_int, ml_int, ml_int] / exh:exh) : rope;
 
 (* scheduling operations *)
 define @dispatch-action (act : sigact, dst : vproc / exh : exh) : ();

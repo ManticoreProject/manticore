@@ -41,11 +41,24 @@ fun pix2rgb cnt = if cnt = maxCount
 
 fun output (i, j, (r, g, b)) = updateImage3f (img, i, j, r, g, b);
 
-val _ = 
+val data = 
   let val axis = [| n | n in [| 0 to sz-1 |] |] (* FIXME this eta-equiv trick should not be necessary *)
                                                 (* should just be [| 0 to sz-1 |] *)
   in
-      [| [| output (i, j, pix2rgb (pixel(i, j))) | j in axis |] | i in axis |]
+      [| [| pix2rgb (pixel(i, j)) | j in axis |] | i in axis |]
   end;
 
-(outputImage(img, "mand.ppm"); freeImage img)
+fun outputImg i = if i < sz
+        then let
+          fun loop j = if j < sz
+              then (
+                   output (i, j, (data!i)!j);
+                   loop (j+1)
+                )
+              else outputImg (i+1)
+          in
+             loop 0
+          end
+        else ();
+
+(outputImg 0; outputImage(img, "mand.ppm"); freeImage img)

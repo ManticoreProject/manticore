@@ -58,7 +58,7 @@ structure StdEnv : sig
 	    (B.chanTyc,		BTy.K_BOXED,	BOMBasis.chanTy),
 	  (* internal types *)
 	    (F.futureTyc,       BTy.K_BOXED,	BTy.futureTy),
-	    (U.workQueueTyc,	BTy.K_BOXED,	BOMBasis.workQueueTy),
+(*	    (U.workQueueTyc,	BTy.K_BOXED,	BOMBasis.workQueueTy),*)
 	  (* extras *)
 	    (B.imageTyc,	BTy.K_BOXED,	BTy.T_Any)
 	  ]
@@ -393,8 +393,8 @@ structure StdEnv : sig
 *)
 
 	  (* futures and work queues *)
-	    (F.newWorkQueue,    hlop (H.newWorkQueueOp, false)),
-	    (F.getWork1All,     hlop (H.getWork1AllOp, false)),
+(*	    (F.newWorkQueue,    hlop (H.newWorkQueueOp, false)),
+	    (F.getWork1All,     hlop (H.getWork1AllOp, false)), *)
 	    (F.future,          hlop (H.futureOp, false)),
 	    (F.touch,           hlop (H.touchOp, true)),
 	    (F.cancel,          hlop (H.cancelOp, false)),
@@ -458,11 +458,18 @@ structure StdEnv : sig
 		  (B.gettimeofday,	"gettimeofday",		false),
 		  (B.parrayApp,         "rope-app",		false),
                   (B.plen,              "rope-length",		false),
-		  (U.mapPQ,             "rope-map",		false),
+
+(*		  (U.mapPQ,             "rope-map",		false),
 		  (U.map2PQ,            "rope-map-2",		false),
 		  (U.reducePQ,          "rope-reduce",		true),
 		  (U.sumPQ,             "rope-sum",		false),
-		  (U.tabD,              "tabD",			false),
+		  (U.tabD,              "tabD",			false), *)
+
+		  (U.mapP,             "rope-map",		false),
+		  (B.reduceP,          "rope-reduce",		true),
+		  (B.sumP,             "rope-sum",		false),
+		  (U.tabD,             "tabD",			false),
+
 		  (B.todo,              "todo",			false),
 		  (F.touch1,            "future1-touch",        false),
                   (F.future1,           "future1-spawn",        false)

@@ -13,19 +13,17 @@
 
 (* extern void M_Print (void * ); *)
 
-define @tabD (args : [(* q *) work_queue, 
-                      (* f *) fun (ml_int / exh -> any),
+define @tabD (args : [(* f *) fun (ml_int / exh -> any),
                       (* ml_leafSize *) ml_int,
                       (* ml_lo *) ml_int, 
                       (* ml_hi *) ml_int,
                       (* ml_step *) ml_int] / exh : exh) : rope =
 
-  let q : work_queue = #0(args)
-  let f : fun (ml_int / exh -> any) = #1(args)
-  let ml_leafSize : ml_int = #2(args)
-  let ml_lo : ml_int = #3(args)
-  let ml_hi : ml_int = #4(args)
-  let ml_step : ml_int = #5(args)
+  let f : fun (ml_int / exh -> any) = #0(args)
+  let ml_leafSize : ml_int = #1(args)
+  let ml_lo : ml_int = #2(args)
+  let ml_hi : ml_int = #3(args)
+  let ml_step : ml_int = #4(args)
 
   let leafSize : int = #0(ml_leafSize)
   let lo : int = #0(ml_lo)
@@ -64,8 +62,7 @@ define @tabD (args : [(* q *) work_queue,
         fun th (u : unit / exh : exh) : rope =
           let thunkRes : rope = apply mkLeaf (lo / exh)
           return (thunkRes)
-        let qt : [work_queue, thunk] = alloc (q, th)
-        let fut : future = @future1-spawn (qt / exh)
+        let fut : future = @future1-spawn (th / exh)
         let newLo : int = 
           let a : int = I32Add (lo, leafOffset)
           return (a)
@@ -79,8 +76,7 @@ define @tabD (args : [(* q *) work_queue,
    * ready to be made into a balanced rope. *)
   fun touchAll (futures : list / exh : exh) : list = 
     fun touch (fut : future / exh : exh) : any =
-      let qf : [work_queue, future] = alloc (q, fut)
-      let t : any = @future1-touch (qf / exh)
+      let t : any = @future1-touch (fut / exh)
       return (t)
     fun ta (frs : list, acc : list / exh : exh) : list =
       case frs

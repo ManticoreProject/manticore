@@ -12,12 +12,9 @@
 
 (* use_rw ropes; *)
 
-define @rope-reduce (q : work_queue / exh : exh) :
-  fun ([fun ([any, any] / exh -> any), any, rope] / exh -> any) =
-
-  fun reduce (args : [(* f *) fun ([any, any] / exh -> any),
-                      (* z *) any,
-                      (* r *) rope] / exh : exh) : any =
+define @rope-reduce (args : [(* f *) fun ([any, any] / exh -> any),
+                            (* z *) any,
+                            (* r *) rope] / exh : exh) : any =
 
     let f : fun ([any, any] / exh -> any) = #0(args)
     let z : any  = #1(args)
@@ -33,11 +30,9 @@ define @rope-reduce (q : work_queue / exh : exh) :
              fun th (u : unit / exh : exh) : rope =
                let result : rope = apply red (r2 / exh)
                return (result)
-             let qt : [work_queue, thunk] = alloc (q, th)
-             let fut : future = @future1-spawn (qt / exh)
-             let qf : [work_queue, future] = alloc (q, fut)
+             let fut : future = @future1-spawn (th / exh)
              let newR1 : any = apply red (r1 / exh)
-             let newR2 : any = @future1-touch (qf / exh)
+             let newR2 : any = @future1-touch (fut / exh)
              let tup : [any, any] = alloc (newR2, newR1)
                                (* note: the application to newR2, newR1 yields *)
                                (* "less surprise" given the fact that we use *)
@@ -52,8 +47,6 @@ define @rope-reduce (q : work_queue / exh : exh) :
     let answer : any = apply red (r / exh)
     return (answer)
     (* end definition of reduce *)
-
-  return (reduce)
 ;
   
         

@@ -34,9 +34,8 @@ define @future1-work-sharing ( / exh : exh) : future_spawn_fn =
               if Equal (tmpX, STOLEN_F)            
                  then return ()
                  else do #0(fut) := result
-	              let k : cont(any) = (cont(any)) tmpX
-                      cont k' (_ : unit) = throw k (result)
-                      do @locked-queue-enqueue (q, k' / exh)
+	              let k : fiber = (fiber) tmpX
+                      do @locked-queue-enqueue (q, k / exh)
                       return ()
           else (* future cell is already full *)
 		return ()

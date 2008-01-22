@@ -25,9 +25,9 @@ define @future1-touch (fp : future / exh : exh) : any =
          return (result)
     else if Equal (tmp, STOLEN_F)
            then (* someone else is evaluating the future; we need to block *)
-                cont kLocal (result: any) = 
-                     return (result)
-                let k : cont(any) = promote (kLocal)
+                cont kLocal (_ : unit) = return (#0(fp))
+                let kLocal : fiber = (fiber)kLocal
+                let k : fiber = promote (kLocal)
    	        let tmpX : any = CAS (&0(fp), STOLEN_F, k)
  	        if Equal (tmpX, STOLEN_F)
 	           then (* transfer control to the futures scheduler *)

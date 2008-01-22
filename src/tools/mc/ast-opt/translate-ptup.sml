@@ -20,7 +20,7 @@
 
 structure TranslatePtup : sig
 
-    val tr : (AST.exp -> AST.exp) -> AST.exp -> AST.exp list -> AST.exp option
+    val tr : (AST.exp -> AST.exp) -> AST.exp list -> AST.exp option
 
   end  = 
 
@@ -32,7 +32,7 @@ structure TranslatePtup : sig
 
     val changed = ref false
 
-    fun tr trExp workQ es =
+    fun tr trExp es =
 	(* Precondition: The argument to the function, a list, must not be empty. *)
 	(* Consumes a list whose members are the contents of a parallel tuple, *)
 	(* and produces a LetExp that is a "futurized" ptuple. *)
