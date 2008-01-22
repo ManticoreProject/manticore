@@ -38,7 +38,7 @@ define @todo (thing : ml_string / exh : exh) : any;
 
 (* futures *)
 define @future1-spawn (thunk : thunk / exh : exh) : future;
-define @future1-touch (fp : future : exh) : any;
+define @future1-touch (fp : future / exh : exh) : any;
 
 (* ropes *)
 define @rope-app (args : [fun(any/exh->unit), rope] / exh:exh) : unit;
