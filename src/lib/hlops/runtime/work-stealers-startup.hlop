@@ -50,13 +50,7 @@ define_spin_lock(sl,spin_lock,0)
 extern void *ListVProcs (void *) __attribute__((alloc));
 extern void VProcPreempt (void *);
 
-(* debugging *)
-extern void M_Print (void*);
-
-extern void M_PrintInt (int);
-extern void M_PrintPtr (void *, void *);
-extern void M_PrintDebug (void*);
-extern void M_PrintLong (long);
+#include "debugging.def"
 
 define @work-stealers-startup ( / exh : exh) : () =
 

@@ -1,0 +1,18 @@
+(* debugging.def
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Debugging stubs.
+ *)
+
+#ifndef _DEBUGGING_DEF_
+#define _DEBUGGING_DEF_
+
+extern void M_Print (void*);
+extern void M_PrintInt (int);
+extern void M_PrintPtr (void *, void *);
+extern void M_PrintDebug (void*);
+extern void M_PrintLong (long);
+
+#endif /* !_DEBUGGING_DEF_ */

@@ -8,8 +8,7 @@
 
 #include "types.def"
 #include "futures.def"
-
-extern void M_Print (void*);
+#include "debugging.def"
 
 define @future1-touch (fp : future / exh : exh) : any =
   let tmp : any = CAS (&0(fp), EMPTY_F, EVAL_F)

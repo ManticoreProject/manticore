@@ -10,11 +10,9 @@
 #include "locked-queue.def"
 #include "futures.def"
 #include "tags.def"
+#include "debugging.def"
 
 extern void *ListVProcs (void *) __attribute__((alloc));
-(* debugging *)
-extern void M_PrintDebug (void*);
-extern void M_Print (void*);
 
 define @assoc-list-lookup (atag : assoc_tag, init : fun(unit / exh -> any), fgs : fgs / exh : exh) : any;
 
@@ -23,12 +21,32 @@ define @future1-work-sharing ( / exh : exh) : future_spawn_fn =
  (* shared queue for the workers *)
   let q : locked_queue = @locked-queue-new ( / exh)
 
+  fun steal (fut : future / exh : exh) : () =
+      let tmp : any = CAS (&0(fut), EMPTY_F, STOLEN_F)
+      if Equal (tmp, EMPTY_F) 
+         then let f : thunk = #1(fut)
+              do #1(fut) := (thunk) $0
+       	      (* need exn handler for thunk. *)
+              (* let exh : exh = ... *)
+              let resultLocal : any = apply f (UNIT / exh)
+              let result : any = promote (resultLocal)
+              let tmpX : any = CAS(&0(fut), STOLEN_F, result)
+              if Equal (tmpX, STOLEN_F)            
+                 then return ()
+                 else do #0(fut) := result
+	              let k : cont(any) = (cont(any)) tmpX
+                      cont k' (_ : unit) = throw k (result)
+                      do @locked-queue-enqueue (q, k' / exh)
+                      return ()
+          else (* future cell is already full *)
+		return ()
+
  (* spawn a future *)
   fun spawn (fut : future / exh : exh) : unit = 
      (* wrapper function that touches the future *)
       fun wrapper (_ : unit / exh : exh) : unit =
          (* FIXME: do something about the exception handler *)
-          let _ : any = @future1-touch (fut / exh)
+          do apply steal (fut / exh)
           return (UNIT)
      (* construct a fiber for the future and put it on the work queue *)
       let k : fiber = @fiber (wrapper / exh)
