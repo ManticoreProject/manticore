@@ -26,13 +26,13 @@ structure Futures : sig
     val mkNewWorkQueue : unit -> AST.exp
     val mkGetWork1All  : AST.exp -> AST.exp 
 
-    val mkFuture  : AST.exp * AST.exp -> AST.exp 
-    val mkTouch   : AST.exp * AST.exp -> AST.exp
-    val mkCancel  : AST.exp * AST.exp -> AST.exp
+    val mkFuture  : AST.exp -> AST.exp 
+    val mkTouch   : AST.exp -> AST.exp
+    val mkCancel  : AST.exp -> AST.exp
 
-    val mkFuture1 : AST.exp * AST.exp -> AST.exp
-    val mkTouch1  : AST.exp * AST.exp -> AST.exp
-    val mkCancel1 : AST.exp * AST.exp -> AST.exp
+    val mkFuture1 : AST.exp -> AST.exp
+    val mkTouch1  : AST.exp -> AST.exp
+    val mkCancel1 : AST.exp -> AST.exp
 
     val isFutureCand : AST.exp -> bool
 
@@ -117,13 +117,13 @@ structure Futures : sig
     (* Consumes e; produces (fn u => e) (for fresh u : unit). *)
     fun mkThunk e = A.FunExp (Var.new ("_", Basis.unitTy), e, TypeOf.exp e)
 
-    (* mkFut : var -> A.exp * A.exp -> A.exp *)
+    (* mkFut : var -> A.exp -> A.exp *)
     (* Consumes futvar -> q and e; produces futvar (q, fn u => e). *)
-    fun mkFut futvar (qVarExp, e) = 
+    fun mkFut futvar e = 
 	let val te = TypeOf.exp e
 	in
 	    A.ApplyExp (A.VarExp (futvar, [te]),
-			A.TupleExp [qVarExp, mkThunk e], 
+			mkThunk e,
 			futureTy te)
 	end
 
@@ -157,13 +157,13 @@ structure Futures : sig
 		   | _ => raise Fail (mkMsg t)
 	    end
 
-        (* mkTch : var -> A.exp * A.exp -> A.exp *)
-	fun mkTch touchvar (qvar, e) =
+        (* mkTch : var -> A.exp -> A.exp *)
+	fun mkTch touchvar e =
 	    if (isFuture e) then
 		let val t = typeOfFuture e
 		    val touch = A.VarExp (touchvar, [t])
 		in
-		    A.ApplyExp (touch, A.TupleExp [qvar, e], t)
+		    A.ApplyExp (touch, e, t)
 		end
 	    else
 		let val ts = Var.toString touchvar
@@ -171,12 +171,12 @@ structure Futures : sig
 		    raise Fail (ts ^ ": argument is not a future")
 		end
 
-	(* mkCan : var -> A.exp * A.exp -> A.exp *)
-	fun mkCan cancelvar (qvar, e) =
+	(* mkCan : var -> A.exp -> A.exp *)
+	fun mkCan cancelvar e =
 	    if (isFuture e) then
 		let val cancel = A.VarExp (cancelvar, [typeOfFuture e])
 		in
-		    A.ApplyExp (cancel, A.TupleExp [qvar, e], Basis.unitTy)
+		    A.ApplyExp (cancel, e, Basis.unitTy)
 		end
 	    else
 		let val cs = Var.toString cancelvar

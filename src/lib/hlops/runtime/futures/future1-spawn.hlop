@@ -34,7 +34,6 @@ define @future1-spawn (thunk : thunk / exh : exh) : future =
             WAITING   cont
        2) a _thunk_ word 
    *)
-  let thunk : thunk = #1(arg)
   let cell : future = alloc (EMPTY_F, thunk)
   let cell : future = promote (cell)
  (* add the future to the scheduling queue *)
