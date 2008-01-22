@@ -342,7 +342,7 @@ structure StdEnv : sig
   (* predefined functions *)
     val predefs = [
 	    (B.not,		prim1 (P.BNot, "not", b, b)),
-(* FIXME
+(* FIXME --- note some of these are defined below from prototypes.hlop
 	    (B.lnf,		hlop H.lnf),
 	    (B.log2f,		hlop H.log2f),
 	    (B.log10f,		hlop H.log10f),
@@ -448,8 +448,14 @@ structure StdEnv : sig
 		  (B.fail,		"fail",			true),
 		  (B.rev,               "list-rev",		false),
 		  (B.nth,               "list-nth",             true),
-		  (B.powf,              "powf",			false),
-		  (B.powd,              "powd",			false),
+		  (B.powf,              "float-pow",		false),
+		  (B.sinf,              "float-tan",		false),
+		  (B.cosf,              "float-tan",		false),
+		  (B.tanf,              "float-tan",		false),
+		  (B.powd,              "double-pow",		false),
+		  (B.sind,              "double-sin",		false),
+		  (B.cosd,              "double-cos",		false),
+		  (B.tand,              "double-tan",		false),
                   (B.compose,           "compose",		true),
 		  (B.foldl,             "list-foldl",		true),
 		  (B.foldr,             "list-foldr",		true),

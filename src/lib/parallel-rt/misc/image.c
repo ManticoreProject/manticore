@@ -9,6 +9,16 @@
 
 #define MAX_SZ		4096
 
+STATIC_INLINE float clampf (float f)
+{
+    if (f < 0.0) return 0.0; else if (f > 1.0) return 1.0; else return f;
+}
+
+STATIC_INLINE double clampd (double d)
+{
+    if (d < 0.0) return 0.0; else if (d > 1.0) return 1.0; else return d;
+}
+
 typedef unsigned char Pixel_t[8];
 
 typedef struct {
@@ -55,9 +65,9 @@ void M_UpdateImage3f (Image_t *img, unsigned int row, unsigned int col, float r,
 	return;
 
     int i = (img->wid * row) + col;
-    img->pixels[i][0] = (unsigned char)(255.0 * r);
-    img->pixels[i][1] = (unsigned char)(255.0 * g);
-    img->pixels[i][2] = (unsigned char)(255.0 * b);
+    img->pixels[i][0] = (unsigned char)(255.0 * clampf(r));
+    img->pixels[i][1] = (unsigned char)(255.0 * clampf(g));
+    img->pixels[i][2] = (unsigned char)(255.0 * clampf(b));
     img->pixels[i][3] = 255;
 }
 
@@ -69,9 +79,9 @@ void M_UpdateImage3d (Image_t *img, unsigned int row, unsigned int col, double r
 	return;
 
     int i = (img->wid * row) + col;
-    img->pixels[i][0] = (unsigned char)(255.0 * r);
-    img->pixels[i][1] = (unsigned char)(255.0 * g);
-    img->pixels[i][2] = (unsigned char)(255.0 * b);
+    img->pixels[i][0] = (unsigned char)(255.0 * clampd(r));
+    img->pixels[i][1] = (unsigned char)(255.0 * clampd(g));
+    img->pixels[i][2] = (unsigned char)(255.0 * clampd(b));
     img->pixels[i][3] = 255;
 }
 

@@ -131,17 +131,6 @@ double M_GetTimeOfDay ()
 
 }
 
-float M_Powf (float x, float y)
-{
-    return powf (x, y);
-}
-
-double M_Powd (double x, double y)
-{
-    return pow (x, y);
-}
-
-
 /***** functions to support debugging *****/
 
 Value_t M_Test ()

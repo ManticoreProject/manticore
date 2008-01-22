@@ -1,4 +1,4 @@
-(* double-sqrt.hlop
+(* double-cos.hlop
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -6,10 +6,10 @@
 
 #include "types.def"
 
-extern double sqrt (double) __attribute__((pure));
+extern double cos (double) __attribute__((pure));
 
-define @double-sqrt (x : ml_double / exh : exh) : ml_double =
-    let y : double = ccall sqrt (unwrap(x))
+define @double-cos (x : ml_double / exh : exh) : ml_double =
+    let y : double = ccall cos (unwrap(x))
     let res : ml_double = wrap(y)
       return (res)
 ;
