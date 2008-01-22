@@ -11,8 +11,7 @@
 
 extern void M_Print (void*);
 
-define @future1-touch (arg : [work_queue, future] / exh : exh) : any =
-  let fp : future = #1(arg)
+define @future1-touch (fp : future / exh : exh) : any =
   let tmp : any = CAS (&0(fp), EMPTY_F, EVAL_F)
 
   if Equal (tmp, EMPTY_F)

@@ -16,7 +16,7 @@ define @get-fgs (vp : vproc / exh : exh) : fgs;
 define @assoc-list-lookup (atag : assoc_tag, init : fun(unit / exh -> any), fgs : fgs / exh : exh) : any;
 
 (* NB: arg contains a placeholder for the work queue *)
-define @future1-spawn (arg : [work_queue, thunk] / exh : exh) : future =
+define @future1-spawn (thunk : thunk / exh : exh) : future =
   (* initialize the futures scheduler and return its spawn function *)
   fun init (_ : unit / exh : exh) : any =
       let spawnFn : future_spawn_fn = @future1-work-sharing ( / exh)

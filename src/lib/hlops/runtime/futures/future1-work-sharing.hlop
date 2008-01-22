@@ -27,9 +27,8 @@ define @future1-work-sharing ( / exh : exh) : future_spawn_fn =
   fun spawn (fut : future / exh : exh) : unit = 
      (* wrapper function that touches the future *)
       fun wrapper (_ : unit / exh : exh) : unit =
-          let arg : [work_queue, future] = alloc (UNIT, fut)
          (* FIXME: do something about the exception handler *)
-          let _ : any = @future1-touch (arg / exh)
+          let _ : any = @future1-touch (fut / exh)
           return (UNIT)
      (* construct a fiber for the future and put it on the work queue *)
       let k : fiber = @fiber (wrapper / exh)
