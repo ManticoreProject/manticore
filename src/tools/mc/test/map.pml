@@ -20,5 +20,6 @@ fun printAll bs =
       | b::tl => (print (b2s b ^ "\n");
 		  printAll tl));
 
-printAll (map (pos, range (~3, 3)))
+(printAll (map (pos, range (~3, 3)));
+ print "(expected F F F F T T T)\n")
 

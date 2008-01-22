@@ -139,22 +139,52 @@ structure RopeMapMaker : sig
               build (rev ys, listVars, nilVar))
 	end
 
-  (* mkLeafCase : int *  B.var * B.var * B.var * B.var -> B.pat * B.exp *)
-    fun mkLeafCase (arity, shortV, startV, iV, exhV) : B.pat * B.exp =
+  (* mkLeafCase : int *  B.var * B.var * B.var * B.var * B.var -> B.pat * B.exp *)
+    fun mkLeafCase (arity, shortV, startV, iV, othersV, exhV) : B.pat * B.exp =
 	let (* variables *)
 	    val mlLenV = BV.new ("ml_len", intTy)
 	    val dataV = BV.new ("data", listTy)
 	    val othersVs = mkVars ("others", arity-1, listTy) (* backwards *) 
             val lenV = BV.new ("len", rawIntTy)
-	    val getV = BTy.T_Fun ([ropeTy], [exhTy], [iPairTy (listTy, boolTy)])
+	    val getV = BV.new ("get", BTy.T_Fun ([ropeTy], [exhTy], [iPairTy (listTy, boolTy)]))
 	    val othersXV = BV.new ("othersX", listTy)
+	    val argTy =  raise Fail "todo: [fun (any / exh -> any), list, ..., list]"
+	    val argV = BV.new ("arg", argTy)
 	    val allV = BV.new ("all", listTy)
-	    val dVs = mkVars ("d", arity, listTy) (* backwards *)
+	    val dVs = rev (mkVars ("d", arity, listTy)) (* forwards *)
 	    val dataXV = BV.new ("dataX", listTy)
 	    val eV = BV.new ("e", ropeTy)
-	    (* *)
+	    (* misc *)
+            (* prependOtherVs : B.var list * B.exp -> B.exp *)
+	    fun prependOtherVs (vs, e) =
+		let fun mkNth n = 
+                        (* FIXME -- This tupling/alloc should be rejiggered -- eliminated. *)
+			let val nStr = Int.toString n
+			    val nV = BV.new ("n" ^ nStr, intTy)
+			    val tupTy =  iPairTy (listTy, intTy)
+			    val tupV  = BV.new ("tup" ^ nStr, tupTy)
+			in
+			    B.mkStmt ([nV], B.E_Const (Literal.Int (IntInf.fromInt n), intTy),
+                             B.mkStmt ([tupV], B.E_Alloc (tupTy, [othersV, nV]),
+                              B.mkHLOp (HLOpEnv.listNthOp, [tupV], [exhV])))
+			end
+		    fun p ([], _, e) = e
+		      | p (v::vs, n, e) = B.mkLet ([v], mkNth n, p (vs, n+1, e))
+		in
+		    p (vs, 0, e)
+		end
 	    val leafPat = B.P_DCon (BB.ropeLeaf, [mlLenV, dataV])
-	    val leafBody = raise Fail "todo: leafBody"
+	    val leafBody = 
+              prependOtherVs (othersVs, 
+               B.mkStmt ([lenV], B.unwrap mlLenV,
+                B.mkLet ([getV], B.mkHLOp (raise Fail "todo: HLOpEnv.CURRIED_ROPE_SUBLIST, [startV, lenV], [exhV]"),
+                 B.mkStmt ([argV], B.E_Alloc (argTy, getV::(rev othersVs)),
+                  B.mkLet ([othersXV], raise Fail "todo: apply list-map-[n] (arg / exh)",
+                   B.mkLet ([allV], raise Fail "todo: @insert-at (data, othersX, i / exh)",
+                    B.mkLet (dVs, raise Fail "todo: apply list-to-tup-[n] (all)",
+                     B.mkLet ([dataXV], raise Fail "todo: apply list-map-[n] (f, d1, ..., dn)",
+                      B.mkStmt ([eV], raise Fail "todo: LEAF (ml_len, dataX)",
+                       B.mkRet [eV])))))))))
 	in	
 	    (leafPat, leafBody)
 	end 
@@ -216,7 +246,7 @@ structure RopeMapMaker : sig
 			     BTy.T_Fun ([ropeTy, rawIntTy], [], [ropeTy]))
 	    val shortV = BV.new ("short", ropeTy)
 	    val startV = BV.new ("start", rawIntTy)
-	    val leafCase = mkLeafCase (arity, shortV, startV, indexV, exhV)
+	    val leafCase = mkLeafCase (arity, shortV, startV, indexV, othersV, exhV)
 	    val catCase = mkCatCase (shortV, startV, innerMapV, exhV)
 	    val body = B.mkCase (shortV, [leafCase, catCase], NONE)
 	in

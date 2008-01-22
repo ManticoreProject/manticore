@@ -31,6 +31,7 @@ structure HLOpEnv : sig
   (* Basis functions *)
     val listAppendOp : HLOp.hlop
     val listRevOp : HLOp.hlop
+    val listNthOp : HLOp.hlop
     val stringConcatOp : HLOp.hlop
     val stringConcatListOp : HLOp.hlop
     val stringLitOp : HLOp.hlop
@@ -76,6 +77,7 @@ structure HLOpEnv : sig
 
   (* parrays (ropes) *)
     val ropeSubOp : HLOp.hlop
+    val ropeLengthIntOp : HLOp.hlop
 
   (* extras *)
     val newImageOp	: HLOp.hlop
@@ -147,6 +149,7 @@ structure HLOpEnv : sig
   (* high-level operations used to implement Manticore language constructs *)
     val listAppendOp = newWithExh("list-append", [pairTy(listTy, listTy)], [listTy], [])
     val listRevOp = newWithExh("list-rev", [listTy], [listTy], [])
+    val listNthOp = newWithExh("list-nth", [pairTy(listTy, intTy)], [anyTy], [])
     val stringConcatOp = newWithExh("string-concat2", [pairTy(stringTy, stringTy)], [stringTy], [])
     val stringConcatListOp = newWithExh("string-concat-list", [listTy], [stringTy], [])
     val stringLitOp = new("string-lit", [BTy.T_Any, rawIntTy], [stringTy], [])
@@ -211,7 +214,10 @@ structure HLOpEnv : sig
 
     val ropeSubOp = 
 	  newWithExh ("rope-sub", [pairTy (Basis.ropeTy, intTy)], [BTy.T_Any], [])
-		    
+		
+    val ropeLengthIntOp =
+	  newWithExh ("rope-length-int", [ropeTy], [intTy], [])
+    
   (* some hlops, not in the surface language, for use in rope maps *)
     val extractShortestRopeOp = let
 	  val tupTy = BTy.T_Tuple (false, [ropeTy, listTy, rawIntTy])
@@ -266,7 +272,8 @@ structure HLOpEnv : sig
 		future1Op,
 		touch1Op,
 		cancel1Op,
-                ropeSubOp
+                ropeSubOp,
+		ropeLengthIntOp
 	      ]
 
   end

@@ -34,17 +34,16 @@ fun rope_map_[n] (f : fun [any,...,any/exh->any], r1 : rope, ..., r[n] : rope / 
            let others[n-1] : list = @list-nth (others, [n-1] / exh)
            let len : int = unwrap(ml_len)
            let get : fun (rope / exh -> [list, bool]) = @curried-rope-sublist (start, len / exh)
-           let othersX : list =
-	     let arg : [fun (any / exh -> any), list, ..., list] =
+           let arg : [fun (any / exh -> any), list, ..., list] =
                alloc (get, others1, ..., others[n-1])
-             @list-map-[n] (arg / exh)
+           let othersX : list = apply list-map-[n] (arg / exh)
            let all : list = @insert-at (data, othersX, i / exh)
            let (d1 : list, ..., d[n] : list) = apply list-to-tup[n] (all)
            let dataX : list = apply list-map-[n] (f, d1, ..., d[n])
            let e : rope = LEAF (ml_len, dataX)
            return (e)
        | CAT (ml_len:ml_int, d:ml_int, shortL:rope, shortR:rope) =>
-           let lenL : int = @rope_len_int (shortL / exh)
+           let lenL : int = @rope-length-int (shortL / exh)
            let startR : int = I32Add (start, lenL)
            fun thunk (u : unit / exh : exh) : rope = apply rmap[n] (shortR, startR)
            let qt : [work_queue, thunk] = alloc (q, thunk)
