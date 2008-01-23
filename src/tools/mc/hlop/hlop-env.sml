@@ -71,9 +71,9 @@ structure HLOpEnv : sig
     val touchOp  : HLOp.hlop
     val cancelOp : HLOp.hlop
 
-    val future1Op : HLOp.hlop
-    val touch1Op  : HLOp.hlop
-    val cancel1Op : HLOp.hlop
+    val future1SpawnOp  : HLOp.hlop
+    val future1TouchOp  : HLOp.hlop
+    val future1CancelOp : HLOp.hlop
 
   (* parrays (ropes) *)
     val ropeSubOp : HLOp.hlop
@@ -203,14 +203,14 @@ structure HLOpEnv : sig
     val touchOp  = newWithExh ("touch",  [futureTy], [BTy.T_Any], [])
     val cancelOp = newWithExh ("cancel", [futureTy], [], [])
 
-    val future1Op = 
-	  newWithExh ("future1", [pairTy (workQueueTy, thunkTy)], [futureTy], [])
+    val future1SpawnOp = 
+	  newWithExh ("future1Spawn", [thunkTy], [futureTy], [])
 
-    val touch1Op  = 
-	  newWithExh ("touch1", [pairTy (workQueueTy, futureTy)], [BTy.T_Any], [])
+    val future1TouchOp  = 
+	  newWithExh ("future1Touch", [futureTy], [BTy.T_Any], [])
 
-    val cancel1Op = 
-	  newWithExh ("cancel1", [pairTy (workQueueTy, futureTy)], [], [])
+    val future1CancelOp = 
+	  newWithExh ("future1Cancel", [futureTy], [], [])
 
     val ropeSubOp = 
 	  newWithExh ("rope-sub", [pairTy (Basis.ropeTy, intTy)], [BTy.T_Any], [])
@@ -269,9 +269,9 @@ structure HLOpEnv : sig
 		futureOp,
 		touchOp,
 		cancelOp,
-		future1Op,
-		touch1Op,
-		cancel1Op,
+		future1SpawnOp,
+		future1TouchOp,
+		future1CancelOp,
                 ropeSubOp,
 		ropeLengthIntOp
 	      ]

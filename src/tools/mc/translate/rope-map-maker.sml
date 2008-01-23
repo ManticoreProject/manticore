@@ -208,19 +208,17 @@ structure RopeMapMaker : sig
     fun mkCatBody (shortV, startV, innerMapV, mlLenV, mlDepthV, shortLV, shortRV, exhV) : B.exp =
 	let (* types *)
 	    val thunkTy = BTy.T_Fun ([unitTy], [exhTy], [ropeTy])
-	    val qtTy = iPairTy (workQueueTy, thunkTy)
-	    val qfTy = iPairTy (workQueueTy, futureTy)
 	    (* variables *)
 	    val lenLV = BV.new ("lenL", rawIntTy)
 	    val startRV = BV.new ("startR", rawIntTy)
 	    val thunkV = BV.new ("thunk", thunkTy)
-	    val qtV = BV.new ("qt", qtTy)
 	    val shortRX_FV = BV.new ("shortRX_F", futureTy)
 	    val shortLXV = BV.new ("shortLX", ropeTy)
-	    val qfV = BV.new ("qf", qfTy)
 	    val shortRXV = BV.new ("shortRX", ropeTy)
 	    val cV = BV.new ("c", ropeTy)
 	    (* misc *)
+	    val fut1Spawn = HLOpEnv.future1SpawnOp
+	    val fut1Touch = HLOpEnv.future1TouchOp
 	    val thunkLam = B.FB {f = thunkV,
 				 params = [BV.new ("u", unitTy)],
 				 exh = [exhV],
@@ -231,13 +229,11 @@ structure RopeMapMaker : sig
 	    B.mkLet ([lenLV], B.mkHLOp (HLOpEnv.ropeLengthIntOp, [shortLV], [exhV]),
              B.mkStmt ([startRV], B.E_Prim (Prim.I32Add (startV, lenLV)),
               B.mkFun ([thunkLam], 
-               B.mkStmt ([qtV], B.E_Alloc (qtTy, [raise Fail "qV", thunkV]),
-                B.mkLet ([shortRX_FV], B.mkHLOp (HLOpEnv.future1Op, [qtV], [exhV]),
-                 B.mkLet ([shortLXV], B.mkApply (innerMapV, [shortLV, startV], []),
-                  B.mkStmt ([qfV], B.E_Alloc (qfTy, [raise Fail "qV", shortRX_FV]),
-                   B.mkLet ([shortRXV], B.mkHLOp (HLOpEnv.touch1Op, [qfV], [exhV]),
-                    B.mkStmt ([cV], retVal,
-                     B.mkRet [cV])))))))))
+               B.mkLet ([shortRX_FV], B.mkHLOp (fut1Spawn, [thunkV], [exhV]),
+                B.mkLet ([shortLXV], B.mkApply (innerMapV, [shortLV, startV], []),
+                 B.mkLet ([shortRXV], B.mkHLOp (fut1Touch, [shortRX_FV], [exhV]),
+                   B.mkStmt ([cV], retVal,
+                    B.mkRet [cV])))))))
 	end
 
   (* mkCatCase : B.var * B.var * B.var * B.var -> B.pat * B.exp *)
