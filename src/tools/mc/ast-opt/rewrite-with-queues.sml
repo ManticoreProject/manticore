@@ -14,6 +14,11 @@ structure RewriteWithQueues : sig
 
   end = struct
 
+    fun transform _ = raise Fail "The function you have called, \
+                                 \RewriteWithQueues.transform, \ 
+                                 \has been disconnected."
+
+(*
     structure A = AST
     structure B = Basis
     structure T = Types
@@ -50,4 +55,6 @@ structure RewriteWithQueues : sig
 	  else 
 	      NONE
 	
+*)
+
   end

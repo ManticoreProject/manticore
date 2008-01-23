@@ -26,9 +26,7 @@ define @rope-map (args : [(* f *) fun (any / exh -> any),
              let newLeaf : rope = LEAF(len, newData)
              return (newLeaf)
          | CAT(len:ml_int, depth:ml_int, r1:rope, r2:rope) =>
-             fun th (u : unit / exh : exh) : rope =
-               let result : rope = apply m (r2 / exh)
-               return (result)
+             fun th (u : unit / exh : exh) : rope = apply m (r2 / exh)
              let fut : future = @future1-spawn (th / exh)
              let newR1 : rope = apply m (r1 / exh)
              let newR2 : rope = @future1-touch (fut / exh)

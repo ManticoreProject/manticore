@@ -16,17 +16,17 @@ structure Futures : sig
     val touch  : Var.var
     val cancel : Var.var
 
-    val future1 : Var.var
-    val touch1  : Var.var
-    val cancel1 : Var.var
+    val future1Spawn  : Var.var
+    val future1Touch  : Var.var
+    val future1Cancel : Var.var
 
     val mkFuture  : AST.exp -> AST.exp 
     val mkTouch   : AST.exp -> AST.exp
     val mkCancel  : AST.exp -> AST.exp
 
-    val mkFuture1 : AST.exp -> AST.exp
-    val mkTouch1  : AST.exp -> AST.exp
-    val mkCancel1 : AST.exp -> AST.exp
+    val mkFuture1Spawn  : AST.exp -> AST.exp
+    val mkFuture1Touch  : AST.exp -> AST.exp
+    val mkFuture1Cancel : AST.exp -> AST.exp
 
     val isFutureCand : AST.exp -> bool
 
@@ -79,14 +79,14 @@ structure Futures : sig
     val cancel = polyVar ("cancel",
 			  fn tv => futureTy tv --> Basis.unitTy)
 
-    val future1 = polyVar ("future1",
-			   fn tv => ((B.unitTy --> tv)) --> futureTy tv)
+    val future1Spawn = polyVar ("future1Spawn",
+			         fn tv => (B.unitTy --> tv) --> futureTy tv)
 
-    val touch1 = polyVar ("touch1",
-			  fn tv => ((futureTy tv)) --> tv)
+    val future1Touch = polyVar ("future1Touch",
+			         fn tv => (futureTy tv) --> tv)
 
-    val cancel1 = polyVar ("cancel1",
-			   fn tv => ((futureTy tv)) --> Basis.unitTy)
+    val future1Cancel = polyVar ("future1Cancel",
+			          fn tv => (futureTy tv) --> Basis.unitTy)
 
     (* mkThunk : A.exp -> A.exp *)
     (* Consumes e; produces (fn u => e) (for fresh u : unit). *)
@@ -106,7 +106,7 @@ structure Futures : sig
     val mkFuture = mkFut future
  
     (* mkFuture1 : A.exp * A.exp -> A.exp *)
-    val mkFuture1 = mkFut future1 
+    val mkFuture1Spawn = mkFut future1Spawn 
 
     local
 
@@ -169,7 +169,7 @@ structure Futures : sig
     (* mkTouch1 : A.exp -> A.exp * A.exp *)
     (* Precondition: The argument must be a future. *)
     (* The function raises Fail if the precondition is not met. *)
-    val mkTouch1 = mkTch touch1
+    val mkFuture1Touch = mkTch future1Touch
 
     (* mkCancel : A.exp -> A.exp * A.exp *)
     (* Precondition: The argument e1 must be a future. *)
@@ -179,13 +179,13 @@ structure Futures : sig
     (* mkCancel1 : A.exp -> A.exp * A.exp *)
     (* Precondition: The argument e1 must be a future. *)
     (* The function raises Fail if the precondition is not met. *)
-    val mkCancel1 = mkCan cancel1
+    val mkFuture1Cancel = mkCan future1Cancel
 
     end (* local *)
 
     (* isFutureCand : A.exp -> bool *)
     (* Determines whether a particular expression should be made a future or not. *)
-    (* TODO: This predicate is currently minimally sophisticated, but can be made arbitrarily so. *)
+    (* TODO: This predicate is minimally sophisticated ATM, but can be made arbitrarily so. *)
     fun isFutureCand e =
 	  let fun exp (A.LetExp (b, e)) = binding b orelse exp e
 		| exp (A.IfExp (e1, e2, e3, _)) = List.exists exp [e1, e2, e3]

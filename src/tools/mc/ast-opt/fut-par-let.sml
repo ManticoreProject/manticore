@@ -66,9 +66,7 @@ structure FutParLet : sig
 
     (* futurize : A.module -> A.module *)
     fun futurize m = 
-	let val q = Var.new ("q", U.workQueueTy) 
-	    val qe = A.VarExp (q, [])
-	    (* exp : A.exp * VSet.set -> A.exp * VSet.set *)
+	let (* exp : A.exp * VSet.set -> A.exp * VSet.set *)
 	    (* Consumes an expression and the set of pval-bound variables *)
 	    (*   live in the expression. *)
 	    (* Produces a rewritten-with-futures-etc. expression and the set *)
@@ -148,7 +146,7 @@ structure FutParLet : sig
 	      | exp (k as A.ConstExp _, _) = (k, VSet.empty)
 	      | exp (v as A.VarExp (x, ts), pLive) = 
 		  if VSet.member (pLive, x) 
-		  then (F.mkTouch (qe, v), VSet.singleton x)
+		  then (F.mkTouch v, VSet.singleton x)
 		  else (v, VSet.empty)
 	      | exp (A.SeqExp (e1, e2), pLive) = 
 		  let val (e1', live1) = exp (e1, pLive)
@@ -183,7 +181,7 @@ structure FutParLet : sig
 		     | A.TuplePat ps => todo "letExp | PValBind | TuplePat"
 		     | A.VarPat x =>
 		         let val (e1', live1) = exp (e1, pLive)
-			     val e1f = F.mkFuture (qe, e1')
+			     val e1f = F.mkFuture e1'
 			     val xf  = Var.new (Var.nameOf x ^ "f", TypeOf.exp e1f)
 			     val e2' = 
 				 let val s = VarSubst.singleton (x, xf)
@@ -241,7 +239,7 @@ structure FutParLet : sig
 		      val canT = VSet.difference (VSet.intersection (pLive, pLiveF), pLiveT)
 		      val canF = VSet.difference (VSet.intersection (pLive, pLiveT), pLiveF)
 		      (* cancel : A.var * A.exp -> A.exp *)
-		      fun cancel (x, e) = A.SeqExp (F.mkCancel (qe, A.VarExp (x, [])), e)
+		      fun cancel (x, e) = A.SeqExp (F.mkCancel (A.VarExp (x, [])), e)
                       (*                                 ^^               *)
                       (* ??? Is it OK not to instantiate the 'a future? ??? *)
 		      val e2' = VSet.foldl cancel e2' canT
@@ -252,8 +250,7 @@ structure FutParLet : sig
 		  end
 
 	in
-	    A.LetExp (A.ValBind (A.VarPat q, F.mkNewWorkQueue ()),
-		      #1 (exp (m, VSet.empty)))
+	    #1 (exp (m, VSet.empty))
 	end
 	    
     (**** tests ****)

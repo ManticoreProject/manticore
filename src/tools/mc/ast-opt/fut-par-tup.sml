@@ -63,10 +63,10 @@ structure FutParTup : sig
 			  end
 		      | build (e::es, n, bs, tupExps) =
 			  if F.isFutureCand e then
-			      let val fe = F.mkFuture1 (exp e)
+			      let val fe = F.mkFuture1Spawn (exp e)
 				  val f_n = mkVar (n, TypeOf.exp fe)
 				  val b = A.ValBind (A.VarPat f_n, fe)
-				  val t = F.mkTouch1 (A.VarExp (f_n, []))
+				  val t = F.mkFuture1Touch (A.VarExp (f_n, []))
 			      in
 				  build (es, n+1, b::bs, t::tupExps)
 			      end

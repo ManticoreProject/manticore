@@ -399,8 +399,9 @@ structure StdEnv : sig
 	    (F.touch,           hlop (H.touchOp, true)),
 	    (F.cancel,          hlop (H.cancelOp, false)),
 (*	    (F.future1,         hlop (H.future1Op, false)),
-	    (F.touch1,          hlop (H.touch1Op, true)),*)
-	    (F.cancel1,         hlop (H.cancel1Op, false)),
+	    (F.touch1,          hlop (H.touch1Op, true)),
+	    (F.future1Cancel,   hlop (H.cancel1Op, false)),
+*)
 
           (* parray operations *)
 	    (B.psub,            hlop (H.ropeSubOp, true)),
@@ -472,13 +473,14 @@ structure StdEnv : sig
 		  (U.tabD,              "tabD",			false), *)
 
 		  (U.mapP,             "rope-map",		false),
+		  (U.map2P,            "rope-map-2",            false),
 		  (B.reduceP,          "rope-reduce",		true),
 		  (B.sumP,             "rope-sum",		false),
 		  (U.tabD,             "tabD",			false),
 
 		  (B.todo,              "todo",			false),
-		  (F.touch1,            "future1-touch",        false),
-                  (F.future1,           "future1-spawn",        false)
+		  (F.future1Touch,      "future1-touch",        false),
+                  (F.future1Spawn,      "future1-spawn",        false)
 		]  
 	  fun ins ((x, n, polyResTy), env) = (case H.find (Atom.atom n)
 		of NONE => raise Fail ("cannot find hlop " ^ n)

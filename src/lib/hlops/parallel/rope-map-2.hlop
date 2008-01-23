@@ -109,8 +109,6 @@ define @rope-map-2 (args : [(* f *)  fun (any / exh -> fun (any / exh -> any)),
     let res : rope = apply m_rope_2 (r1, r2)    
     return (res)
     (* end fun map_2 *)
-
-  return (map_2)
 ;
   
         

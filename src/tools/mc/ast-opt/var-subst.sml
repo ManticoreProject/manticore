@@ -106,10 +106,10 @@ structure VarSubst (* : sig
     (* Given a subst like [x -> xf] and an expression (x + 2), *)
     (*   produces ((touch xf) + 2). *)
     (* n.b. Type-preserving when x : 'a and xf : 'a future. *)
-    fun touchExp (qvar, s) =
+    fun touchExp s =
 	let fun f (x, ts) = (case VarMap.find (s, x)
 				  of NONE => A.VarExp (x, ts)
-				   | SOME x' => F.mkTouch (qvar, A.VarExp (x', ts)))
+				   | SOME x' => F.mkTouch (A.VarExp (x', ts)))
 	in
 	    expWalk f s
 	end

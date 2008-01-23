@@ -60,7 +60,7 @@ structure GrandPass : sig
 
     and trPTup arg = TranslatePtup.tr exp arg
 
-(*    and trVar arg = RewriteWithQueues.transform arg*)
+(*    and trVar arg = RewriteWithQueues.transform arg *)
 
     and trPComp arg = TranslatePComp.tr exp arg
 
