@@ -38,19 +38,19 @@ structure UnseenBasis : sig
 		  in
 		      (argTy --> (B.parrayTy b))
 		  end
-	      | mkTy _ = raise Fail "BUG: bad instantiation for mapPQ"
+	      | mkTy _ = raise Fail "BUG: bad instantiation for mapP"
 	in
 	    polyVarMulti ("mapP", 2, mkTy)
 	end
 				 
     val map2P =
 	let fun mkTy ([a,b,c]) = 
-		  let val fnTy = a --> (b --> c)
+		  let val fnTy = (a ** b) --> c
 		      val argTy = AST.TupleTy [fnTy, B.parrayTy a, B.parrayTy b]
 		  in
 		      (argTy --> (B.parrayTy c))
 		  end
-	      | mkTy _ = raise Fail "BUG: bad instantiation for map2PQ"
+	      | mkTy _ = raise Fail "BUG: bad instantiation for map2P"
 	in
 	    polyVarMulti ("map2P", 3, mkTy)
 	end

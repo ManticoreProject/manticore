@@ -79,13 +79,13 @@ structure Futures : sig
     val cancel = polyVar ("cancel",
 			  fn tv => futureTy tv --> Basis.unitTy)
 
-    val future1Spawn = polyVar ("future1Spawn",
+    val future1Spawn = polyVar ("future1-spawn",
 			         fn tv => (B.unitTy --> tv) --> futureTy tv)
 
-    val future1Touch = polyVar ("future1Touch",
+    val future1Touch = polyVar ("future1-touch",
 			         fn tv => (futureTy tv) --> tv)
 
-    val future1Cancel = polyVar ("future1Cancel",
+    val future1Cancel = polyVar ("future1-cancel",
 			          fn tv => (futureTy tv) --> Basis.unitTy)
 
     (* mkThunk : A.exp -> A.exp *)

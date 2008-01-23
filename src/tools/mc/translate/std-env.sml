@@ -465,18 +465,11 @@ structure StdEnv : sig
 		  (B.gettimeofday,	"gettimeofday",		false),
 		  (B.parrayApp,         "rope-app",		false),
                   (B.plen,              "rope-length",		false),
-
-(*		  (U.mapPQ,             "rope-map",		false),
-		  (U.map2PQ,            "rope-map-2",		false),
-		  (U.reducePQ,          "rope-reduce",		true),
-		  (U.sumPQ,             "rope-sum",		false),
-		  (U.tabD,              "tabD",			false), *)
-
-		  (U.mapP,             "rope-map",		false),
-		  (U.map2P,            "rope-map-2",            false),
-		  (B.reduceP,          "rope-reduce",		true),
-		  (B.sumP,             "rope-sum",		false),
-		  (U.tabD,             "tabD",			false),
+		  (U.mapP,              "rope-map",		false),
+		  (U.map2P,             "rope-map-2-alt",       false),
+		  (B.reduceP,           "rope-reduce",		true),
+		  (B.sumP,              "rope-sum",		false),
+		  (U.tabD,              "tabD",			false),
 
 		  (B.todo,              "todo",			false),
 		  (F.future1Touch,      "future1-touch",        false),

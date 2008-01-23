@@ -23,7 +23,8 @@ define @rope-sublist (r : rope, start : int, len : int / exh : exh) : [list, boo
 
   fun rope_len_int (r : rope / ) : int =
     let t : ml_int = @rope-length (r / exh)
-    return (unwrap(ml_int))
+    let u : int = unwrap (t)
+    return (u)
 
   (* Invariant: n is not greater than the length of r. *)
   fun sub (r : rope, st : int, n : int / ) : list =
@@ -31,7 +32,7 @@ define @rope-sublist (r : rope, start : int, len : int / exh : exh) : [list, boo
       of LEAF (ml_len:ml_int, data:list) =>
            @list-sublist (data, st, n / exh)
        | CAT (ml_len:ml_int, _:ml_int, r1:rope, r2:rope) =>
-           let val n1 : int = apply rope_len_int (r1)     
+           let n1 : int = apply rope_len_int (r1)     
            if I32Lte(n1,n) then
              apply sub (r1, st, n)
            else
@@ -45,7 +46,7 @@ define @rope-sublist (r : rope, start : int, len : int / exh : exh) : [list, boo
     end (* case *)
   (* end fun sub *) 
 
-  let rLen : int = rope_len_int (r)
+  let rLen : int = apply rope_len_int (r)
   let longEnough : bool = I32Lte(rLen, len)
   let data : list =
     (* This check enforces the invariant of the call to sub. *)

@@ -66,24 +66,23 @@ structure TranslatePComp : sig
 		       (* end case *))
 		   end
 	      | (pes as [(p1, e1), (p2, e2)], NONE) =>  (* the two pbind, no predicate case *)
-                  let val e' = trExp e
-		      val te = TypeOf.exp e
-		      val resTy = B.parrayTy te
+                  let val te = TypeOf.exp e
+		      val e' = trExp e		 
 		      val t1 = TypeOf.pat p1
 		      val t2 = TypeOf.pat p2
-		      val x1 = Var.new ("x1", t1)
-		      val x2 = Var.new ("x2", t2)
-		      val ce = A.CaseExp (A.TupleExp [A.VarExp (x1, []), A.VarExp (x2, [])],
-					  [A.PatMatch (A.TuplePat [p1, p2], e')],
-					  te)
-		      val f = A.FunExp (x1, 
-					A.FunExp (x2, ce, te), 
-					A.FunTy (TypeOf.pat p2, te))		      
+		      val argTy = A.TupleTy [t1, t2]
+		      val q = Var.new ("q", argTy)
+		      val f = Var.new ("f", A.FunTy (argTy, te))
+		      val fBody = A.CaseExp (A.VarExp (q, []),
+					     [A.PatMatch (A.TuplePat [p1, p2], e')],
+					     te)
+		      val fLam = A.FB (f, q, fBody)
 		      val map2P = A.VarExp (U.map2P, [t1, t2, te])
+		      val resTy = B.parrayTy te
 		  in
-		      A.ApplyExp (map2P,
-				  A.TupleExp [f, trExp e1, trExp e2],
-				  resTy)
+		      A.LetExp (A.FunBind [fLam],
+		       A.ApplyExp (map2P, 
+                        A.TupleExp [A.VarExp (f, []), trExp e1, trExp e2], resTy))
 		  end
 (*
 		      fun build ([], _, xs, ps, es) =

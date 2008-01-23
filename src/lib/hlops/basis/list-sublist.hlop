@@ -33,7 +33,8 @@ define @list-sublist (xs : list, start : int, length : int / exh : exh) : list =
   (* Note this customized drop calls take when it's finished. *)
   fun drop (xs : list, n : int / ) : list =
     if I32Eq(n,0) then
-      apply (xs, length, NIL)
+      let z : list = apply take (xs, length, NIL)
+      return (z)
     else
       case xs
         of NIL => throw exh (Subscript)

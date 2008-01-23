@@ -22,7 +22,8 @@ define @extract-shortest-rope (rs : list / exh : exh) : [rope, list, int] =
 
   fun rope_len_int (r : rope / ) : int =
     let t : ml_int = @rope-length (r / exh)
-    return (unwrap(ml_int))
+    let u : int = unwrap (t)
+    return (u)
 
   (* Exclude the item at position n of given list. *)
   (* 0-based. *)

@@ -204,13 +204,13 @@ structure HLOpEnv : sig
     val cancelOp = newWithExh ("cancel", [futureTy], [], [])
 
     val future1SpawnOp = 
-	  newWithExh ("future1Spawn", [thunkTy], [futureTy], [])
+	  newWithExh ("future1-spawn", [thunkTy], [futureTy], [])
 
     val future1TouchOp  = 
-	  newWithExh ("future1Touch", [futureTy], [BTy.T_Any], [])
+	  newWithExh ("future1-touch", [futureTy], [BTy.T_Any], [])
 
     val future1CancelOp = 
-	  newWithExh ("future1Cancel", [futureTy], [], [])
+	  newWithExh ("future1-cancel", [futureTy], [], [])
 
     val ropeSubOp = 
 	  newWithExh ("rope-sub", [pairTy (Basis.ropeTy, intTy)], [BTy.T_Any], [])
