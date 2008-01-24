@@ -481,7 +481,7 @@ DEBUG*)
 			(* the default case is shared by both the boxed and unboxed
 			 * sub cases, so we have to wrap it in a function abstraction.
 			 *)
-			  val join = BV.new("join", BTy.T_Fun([], [], tys))
+			  val join = BV.new("join", BTy.T_Cont [])
 			  val joinFB = B.FB{f=join, params=[], exh=[], body=valOf dflt}
 			  in
 			    (SOME joinFB, SOME(B.mkThrow(join, [])))
