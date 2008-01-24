@@ -447,6 +447,7 @@ structure StdEnv : sig
                   (B.stringConcatWith,  "string-concat-with",	false),
 		  (B.itos,		"itos",			false),
 		  (B.fail,		"fail",			true),
+		  (B.length,            "list-length",          false),
 		  (B.rev,               "list-rev",		false),
 		  (B.nth,               "list-nth",             true),
 		  (B.powf,              "float-pow",		false),

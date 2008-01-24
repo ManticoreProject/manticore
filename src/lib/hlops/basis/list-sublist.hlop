@@ -74,11 +74,14 @@ define @list-sublist (xs : list, start : int, length : int / exh : exh) : list =
 
   if I32Lt(start, 0) then
     do ccall M_Print ("@list-sublist 2\n\000")
+    do ccall M_Print ("err: start less than zero\n\000")
     throw exh (Subscript)
   else if I32Lt(length, 0) then
     do ccall M_Print ("@list-sublist 3\n\000")
+    do ccall M_Print ("err: length less than zero\n\000")
     throw exh (Subscript)
   else 
+   (* FIXME also check if the list isn't long enough to satisfy the request *)
     do ccall M_Print ("@list-sublist 4.1\n\000")
     let ans : list = apply drop (xs, start)
     do ccall M_Print ("@list-sublist 4.2\n\000")

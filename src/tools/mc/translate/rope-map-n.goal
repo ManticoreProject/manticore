@@ -27,14 +27,14 @@ fun rope_map_[n] (f : fun [any,...,any/exh->any], r1 : rope, ..., r[n] : rope / 
   fun rmap[n] (short : rope, start : int / ) : rope =
     case short
       of LEAF(ml_len:ml_int, data:list) =>
-           let others1 : list = @list-nth (others, 0 / exh)
-           ...
-           let others[n-1] : list = @list-nth (others, [n-1] / exh)
            let len : int = unwrap(ml_len)
+           let others1 : rope = @list-nth (others, 0 / exh)
+           ...
+           let others[n-1] : rope = @list-nth (others, [n-1] / exh)
+           (* FIXME : This needs to be rethought. *)
            let get : fun (rope / exh -> [list, bool]) = @curried-rope-sublist (start, len / exh)
-           let arg : [fun (any / exh -> any), list, ..., list] =
-               alloc (get, others1, ..., others[n-1])
-           let othersX : list = apply list-map-[n-1] (arg / exh)
+           let arg : [fun (any / exh -> any), list] = alloc (get, others)
+           let othersX : list = apply list-map (arg / exh)
            let all : list = @insert-at (data, othersX, i / exh)
            let (d1 : list, ..., d[n] : list) = apply list-to-tup[n] (all)
            let dataX : list = apply list-map-[n] (f, d1, ..., d[n])

@@ -184,6 +184,7 @@ structure Basis : sig
     val sumP            : AST.var
     val reduceP         : AST.var
     val rev             : AST.var
+    val length          : AST.var
     val nth             : AST.var
     val gettimeofday	: AST.var
     val compose         : AST.var
@@ -565,6 +566,7 @@ structure Basis : sig
     val plen =          polyVar'(N.plen, fn tv => (parrayTy tv) --> intTy)
     val sumP =          monoVar'(N.sumP, (parrayTy intTy) --> intTy)
     val rev =           polyVar'(N.rev, fn tv => listTy tv --> listTy tv)
+    val length =        polyVar'(N.length, fn tv => listTy tv --> intTy)
     val nth =           polyVar'(N.nth, fn tv => (listTy tv ** intTy) --> tv)
     val gettimeofday =	monoVar'(N.gettimeofday, unitTy --> doubleTy)
     val app =           polyVar'(N.app, fn tv => (tv --> unitTy) ** (listTy tv) --> unitTy)
@@ -707,6 +709,7 @@ structure Basis : sig
 	    (N.plen,            Env.Var plen),
 	    (N.sumP,            Env.Var sumP),
 	    (N.rev,             Env.Var rev),
+            (N.length,          Env.Var length),
 	    (N.nth,             Env.Var nth),
 	    (N.gettimeofday,	Env.Var gettimeofday),
 	    (N.compose,         Env.Var compose),
