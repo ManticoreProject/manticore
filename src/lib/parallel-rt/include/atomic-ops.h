@@ -55,37 +55,37 @@
 
 #ifdef HAVE_BUILTIN_ATOMIC_OPS
 
-STATIC_INLINE bool BoolCompareAndSwapValue (Value_t *ptr, Value_t key, Value_t new)
+STATIC_INLINE bool BoolCompareAndSwapValue (volatile Value_t *ptr, Value_t key, Value_t new)
 {
     return __sync_bool_compare_and_swap (ptr, key, new);
 }
 
-STATIC_INLINE bool BoolCompareAndSwapWord (Word_t *ptr, Word_t key, Word_t new)
+STATIC_INLINE bool BoolCompareAndSwapWord (volatile Word_t *ptr, Word_t key, Word_t new)
 {
     return __sync_bool_compare_and_swap (ptr, key, new);
 }
 
-STATIC_INLINE Value_t CompareAndSwapValue (Value_t *ptr, Value_t key, Value_t new)
+STATIC_INLINE Value_t CompareAndSwapValue (volatile Value_t *ptr, Value_t key, Value_t new)
 {
     return __sync_val_compare_and_swap (ptr, key, new);
 }
 
-STATIC_INLINE Word_t CompareAndSwapWord (Word_t *ptr, Word_t key, Word_t new)
+STATIC_INLINE Word_t CompareAndSwapWord (volatile Word_t *ptr, Word_t key, Word_t new)
 {
     return __sync_val_compare_and_swap (ptr, key, new);
 }
 
-STATIC_INLINE int TestAndSwap (int *ptr, int new)
+STATIC_INLINE int TestAndSwap (volatile int *ptr, int new)
 {
     return __sync_val_compare_and_swap (ptr, 0, new);
 }
 
-STATIC_INLINE int FetchAndInc (int *ptr)
+STATIC_INLINE int FetchAndInc (volatile int *ptr)
 {
     return __sync_fetch_and_add(ptr, 1);
 }
 
-STATIC_INLINE int FetchAndDec (int *ptr)
+STATIC_INLINE int FetchAndDec (volatile int *ptr)
 {
     return __sync_fetch_and_sub(ptr, 1);
 }
@@ -94,48 +94,50 @@ STATIC_INLINE int FetchAndDec (int *ptr)
 
 STATIC_INLINE Value_t CompareAndSwapValue (volatile Value_t *ptr, Value_t old, Value_t new)
 {
-  Value_t result;
+    Value_t result;
 
     __asm__ __volatile__ (
-	"movq %2,%%rbx\n\t"		/* %rbx = new */
-	"movq %1,%%rax\n\t"		/* %rax = 0 */
-	"lock; cmpxchgq %%rbx,%3;\n\t"	/* cmpxchg %rbx,ptr */
-        "movq %%rax,%0;\n"
+	"movq %2,%%rcx\n\t"		/* %rcx = new */
+	"movq %1,%%rax\n\t"		/* %rax = old */
+	"lock; cmpxchgq %%rcx,%3;\n\t"	/* cmpxchg %rcx,ptr */
+        "movq %%rax,%0;\n"		/* result = %rax */
 	    : "=r" (result)
  	    : "g" (old), "g" (new), "m" (*ptr)
-  	    : "memory", "%rax", "%rbx");
+  	    : "memory", "%rax", "%rcx");
     return result;
 }
 
-STATIC_INLINE Word_t CompareAndSwapWord (Word_t *ptr, Word_t old, Word_t new)
+STATIC_INLINE Word_t CompareAndSwapWord (volatile Word_t *ptr, Word_t old, Word_t new)
 {
-    register Word_t result __asm__ ("%rax");
+    Word_t result;
 
     __asm__ __volatile__ (
-	"movq %2,%%rbx\n\t"		/* %rbx = new */
-	"movq %1,%%rax\n\t"		/* %rax = 0 */
-	"lock; cmpxchgq %%rbx,%0;\n"	/* cmpxchg %rbx,ptr */
-	    : "=m" (*ptr)
-    	    : "g" (old), "g" (new)
-	    : "memory", "%rax");
+	"movq %2,%%rcx\n\t"		/* %rcx = new */
+	"movq %1,%%rax\n\t"		/* %rax = old */
+	"lock; cmpxchgq %%rcx,%3;\n\t"	/* cmpxchg %rcx,ptr */
+        "movq %%rax,%0;\n"		/* result = %rax */
+	    : "=r" (result)
+ 	    : "g" (old), "g" (new), "m" (*ptr)
+  	    : "memory", "%rax", "%rcx");
     return result;
 }
 
-STATIC_INLINE int TestAndSwap (int *ptr, int new)
+STATIC_INLINE int TestAndSwap (volatile int *ptr, int new)
 {
-    register int result __asm__ ("%eax");
+    int result;
 
     __asm__ __volatile__ (
-	"movl %1,%%ebx\n\t"		/* %ebx = new */
+	"movl %1,%%ecx\n\t"		/* %ecx = new */
 	"xorl %%eax,%%eax\n\t"		/* %eax = 0 */
-	"lock; cmpxchgl %%ebx,%0;\n"	/* cmpxchg %ebx,ptr */
-	    : "=m" (*ptr)
-	    : "g" (new)
+	"lock; cmpxchgl %%ecx,%2;\n\t"	/* cmpxchg %ecx,ptr */
+	"movl %%eax,%0;\n"		/* result = %eax */
+	    : "=r" (result)
+	    : "g" (new), "m" (*ptr)
 	    : "memory", "%eax");
     return result;
 }
 
-STATIC_INLINE int FetchAndInc (int *ptr)
+STATIC_INLINE int FetchAndInc (volatile int *ptr)
 {
     int		incr = 1;
     __asm__ __volatile__ (
@@ -145,7 +147,7 @@ STATIC_INLINE int FetchAndInc (int *ptr)
     return incr;
 }
 
-STATIC_INLINE int FetchAndDec (int *ptr)
+STATIC_INLINE int FetchAndDec (volatile int *ptr)
 {
     int		incr = -1;
     __asm__ __volatile__ (
