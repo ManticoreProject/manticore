@@ -6,8 +6,6 @@
  * This is a sketch of the hlop that RopeMapMaker is intended to produce.
  *)
 
-let q : work_queue = ...
-
 fun list_to_tup[n] ...
 
 fun rope_map_[n] (f : fun [any,...,any/exh->any], r1 : rope, ..., r[n] : rope / exh : exh) 
