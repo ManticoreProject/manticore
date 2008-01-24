@@ -9,10 +9,18 @@
 #include "types.def"
 #include "ropes.def"
 
+extern void M_Print (void *);
+
 define @rope-length (r : rope / exh : exh) : ml_int =
+  do ccall M_Print ("@rope-length 0\n\000")
+  (* FIXME it's segfaulting right around here *)
   case r
-   of LEAF(len:ml_int, data:list) => return (len)
-    | CAT (len:ml_int, depth:ml_int, r1:rope, r2:rope) => return (len)
-  end
+    of LEAF(len:ml_int, _:list) => 
+         do ccall M_Print ("@rope-length 1\n\000")
+         return (len)
+     | CAT (len:ml_int, _:ml_int, _:rope, _:rope) => 
+         do ccall M_Print ("@rope-length 2\n\000")
+         return (len)
+  end (* case *)
 ;
 

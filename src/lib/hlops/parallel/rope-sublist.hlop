@@ -21,17 +21,25 @@ extern void M_Print (void *);
 
 define @rope-sublist (r : rope, start : int, len : int / exh : exh) : [list, bool] =
 
+  do ccall M_Print ("@rope-sublist 0\n\000")
+
   fun rope_len_int (r : rope / ) : int =
+    do ccall M_Print ("rope-len-int 0\n\000")
     let t : ml_int = @rope-length (r / exh)
+    do ccall M_Print ("rope-len-int 1\n\000")
     let u : int = unwrap (t)
     return (u)
+
+  do ccall M_Print ("@rope-sublist 1\n\000")
 
   (* Invariant: n is not greater than the length of r. *)
   fun sub (r : rope, st : int, n : int / ) : list =
     case r
       of LEAF (ml_len:ml_int, data:list) =>
+           do ccall M_Print ("@rope-sublist 2\n\000")
            @list-sublist (data, st, n / exh)
        | CAT (ml_len:ml_int, _:ml_int, r1:rope, r2:rope) =>
+           do ccall M_Print ("@rope-sublist 3\n\000")
            let n1 : int = apply rope_len_int (r1)     
            if I32Lte(n1,n) then
              apply sub (r1, st, n)
@@ -46,15 +54,21 @@ define @rope-sublist (r : rope, start : int, len : int / exh : exh) : [list, boo
     end (* case *)
   (* end fun sub *) 
 
+  do ccall M_Print ("@rope-sublist 4.1\n\000")
   let rLen : int = apply rope_len_int (r)
+  do ccall M_Print ("@rope-sublist 4.2\n\000")
   let longEnough : bool = I32Lte(rLen, len)
+  do ccall M_Print ("@rope-sublist 4.3\n\000")
   let data : list =
     (* This check enforces the invariant of the call to sub. *)
     if longEnough then
+      do ccall M_Print ("@rope-sublist 5\n\000")
       apply sub (r, start, len)
     else
+      do ccall M_Print ("@rope-sublist 6\n\000")
       let available : int = I32Sub(rLen, start)
       apply sub (r, start, available)
+  do ccall M_Print ("@rope-sublist 7\n\000")
   let result : [list, bool] = alloc (data, longEnough)
   return (result)
 ;
