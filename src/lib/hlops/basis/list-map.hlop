@@ -19,21 +19,19 @@ define @list-map (arg : [fun (any / exh -> any), list] / exh : exh) : list =
   fun mapf (xs : list, acc : list / exh : exh) : list =
     case xs
       of NIL => 
-           print_debug("@list-map 1\n\000")           
+           print_debug("@list-map")           
            let cca : list = @list-rev (acc / exh)
            return (cca)
        | CONS(x:any, tl:list) =>
-           print_debug("@list-map 2.1\n\000")           
+           print_debug("@list-map")           
            let fx : any = apply f (x / exh)
-           print_debug("@list-map 2.2\n\000")           
+           print_debug("@list-map")           
            let newAcc : list = CONS (fx, acc)
-           print_debug("@list-map 2.3\n\000")           
+           print_debug("@list-map")           
            let res : list = apply mapf (tl, newAcc / exh)
-           print_debug("@list-map 2.4\n\000")           
+           print_debug("@list-map")           
            return (res)
      end
 
-   let theAnswer : list = apply mapf (xs, NIL / exh)
-   print_debug("@list-map 3\n\000")           
-   return (theAnswer)
+   apply mapf (xs, NIL / exh)
 ;

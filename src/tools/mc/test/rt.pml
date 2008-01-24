@@ -141,15 +141,14 @@ val greensurf = (Ambient (0.0,0.1,0.0)) :: (Diffuse (0.0,0.3,0.0)) ::
 	     (Specular (0.4,0.8,0.4)) :: nil;
 val bluesurf = (Ambient (0.0,0.0,0.1)) :: (Diffuse (0.0,0.0,0.3)) ::
 	    (Specular (0.4,0.4,0.8)) :: nil;
-
-(*%%%%%%
-%% interesting transmission test
-% testspheres = ((Sphere (0.,0.,0.) 2. redsurf)::
-% 	       (Sphere ((-2.1),(-2.),(-2.2)) .5 bluesurf)::
-% 	       (Sphere ((-2.8),3.5,(-1.8)) 1.7 greensurf)::nil);
-% testlights = (Directional (1.,(-1.),1.) (1.,1.,1.))::
-% 	     (Point ((-3.),(-3.),(-3.)) (1.,1.,1.))::nil;
-%%%%%%%
+(*
+val testspheres = ((Sphere ((0.0,0.0,0.0), 2.0, redsurf))::
+ 	       (Sphere (((~2.1),(~2.0),(~2.2)), 0.5, bluesurf))::
+ 	       (Sphere (((~2.8),3.5,(~1.8)), 1.7, greensurf)::nil));
+val testlights = (Directional ((1.0,(~1.0),1.0), (1.0,1.0,1.0)))::
+ 	     (Point (((~3.0),(~3.0),(~3.0)), (1.0,1.0,1.0))::nil);
+*)
+(*%%%%%
 %% trivial transmission test
 % testspheres = ((Sphere ((-1.5),0.,0.) 3. redsurf)::
 % 	       (Sphere (1.5, 7.5, 0.) 4. greensurf)::nil);
@@ -181,6 +180,7 @@ val testspheres =
 val testlights = Point((4.0,3.0,2.0), (0.288675,0.288675,0.288675)) ::
               Point((1.0, ~4.0,4.0), (0.288675,0.288675,0.288675)) ::
               Point((~3.0,1.0,5.0), (0.288675,0.288675,0.288675)) :: nil;
+
 val lookfrom = (2.1, 1.3, 1.7);
 val background = (0.078, 0.361, 0.753);
 val world = testspheres;

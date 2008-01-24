@@ -7,8 +7,8 @@
  *)
 
 #include "types.def"
-#include "locked-queue.def"
 #include "logging.def"
+#include "debugging.def"
 
 define inline @enqueue (vp : vproc, fgs : fgs, fiber : fiber / exh : exh) : ();
 define inline @dequeue (vp : vproc / exh : exh) : rdyq_item;
@@ -21,15 +21,7 @@ define @new-fgs (pinned : bool, parent : option / exh : exh) : fgs;
 
 extern void *ListVProcs (void *) __attribute__((alloc));
 
-extern void M_PrintDebug (void *);
-extern void M_Print (void *);
-extern void M_PrintLong (long);
-extern void M_PrintPtr (void *, void *);
-
 define @default-scheduler-startup ( / exh : exh) : () = 
- (* log something more interesting here *)
-  let () = LOG_EVENT0(NoEvent)
-
   cont switch (s : signal) =
     let vp : vproc = host_vproc
 
@@ -42,7 +34,7 @@ define @default-scheduler-startup ( / exh : exh) : () =
 
     if Equal (s, STOP)
       then throw dispatch ()
-      else do ccall M_Print ("preemption\n")
+      else let () = LOG_EVENT0(RTPreemptionEvt)
            let k : fiber = (fiber)s
            let fgs : fgs = @get-fgs (vp / exh)
            do @enqueue (vp, fgs, k / exh)

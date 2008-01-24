@@ -531,4 +531,4 @@ fun run (outFile, sz) = let
 run ("out.ppm", 1024)
 *)
 
-ray 1024
+ray 512

@@ -36,3 +36,6 @@ DEF_EVENT(GlobalGCInitEvt,	0,	"global GC initiated")
 DEF_EVENT(GlobalGCVPStartEvt,	0,	"global GC starts for vproc")
 DEF_EVENT(GlobalGCVPDoneEvt,	0,	"global GC ends for vproc")
 DEF_EVENT(GlobalGCEndEvt,	0,	"global GC finished")
+
+/* Runtime events */
+DEF_EVENT(RTPreemptionEvt,      0,      "preemption handler")

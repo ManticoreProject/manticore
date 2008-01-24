@@ -8,15 +8,11 @@
 
 #include "runtime-offsets.def"
 #include "types.def"
+#include "debugging.def"
 
 define inline @spawn-on (f : fun (unit / exh -> unit), fgs : fgs, dst : vproc / exh : exh) : ();
 define inline @run (vp : vproc, act : sigact, tid : tid, fiber : fiber / exh : exh) noreturn;
 define inline @thread-exit ( / exh : exh) noreturn;
-
-(* debugging *)
-extern void M_PrintDebug (void *);
-extern void M_PrintInt (int);
-extern void M_PrintPtr (void *, void *);
 
 (* Scheduler startup takes a scheduler action and installs it on all vprocs in the
  * system.  There are two cases for dispatching this action:
@@ -57,7 +53,7 @@ define @scheduler-startup (mkAct : fun (vproc / exh -> sigact), fgs : fgs, vps :
          (* dummy fiber synchronizes on the barrier and then exits immediately to activate the scheduler *)
 	  cont dummyK (_ : unit) = 
                do vpstore (ATOMIC, host_vproc, TRUE)
-               do ccall M_Print ("Initializing scheduler\n")
+               print_debug("initializing scheduler")
                let x : int = I32FetchAndAdd (syncPoint, 1)
                do apply spinWait (UNIT / exh)
                @thread-exit ( / exh)
