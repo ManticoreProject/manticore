@@ -14,5 +14,9 @@ extern void M_PrintInt (int);
 extern void M_PrintPtr (void *, void *);
 extern void M_PrintDebug (void*);
 extern void M_PrintLong (long);
+extern void M_PrintDebugMsg (void*, void*, int);
 
-#endif /* !_DEBUGGING_DEF_ */
+#  define print_debug(msg)                                    \
+             do ccall M_PrintDebugMsg (msg, __FILE__, __LINE__)                      \
+
+#endif /*! _DEBUGGING_DEF_ */

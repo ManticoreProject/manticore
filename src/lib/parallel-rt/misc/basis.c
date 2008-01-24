@@ -168,6 +168,14 @@ void M_PrintDebug (const char *s)
 #endif
 }
 
+void M_PrintDebugMsg (const char *msg, char *file, int line)
+{
+#ifndef NDEBUG
+    if (DebugFlg)  
+      SayDebug ("[ %s ] at %s:%d\n", msg, file, line);
+#endif
+}
+
 void M_PrintPtr (const char *name, void *ptr)
 {
     Say("[%2d] &%s=%p\n", VProcSelf()->id, name, ptr);  
