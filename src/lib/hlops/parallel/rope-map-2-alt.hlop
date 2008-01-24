@@ -66,25 +66,37 @@ define @rope-map-2-alt (args : [fun ([any, any] / exh -> any), rope, rope] / exh
     return (res)
   (* end fun smap2 *)
 
+  fun mapHash1 (xs : list / ) : list = 
+    fun hash1 (arg : [list, bool] / exh : exh) : list = 
+      let res : list = #0(arg)
+      return (res)
+    let arg : [fun ([list, bool] / exh -> list), list] = alloc (hash1, xs)
+    let ans : list = @list-map (arg / exh)
+    return (ans)
+  (* end fun mapHash1 *)
+
   fun rmap2 (shortest : rope, start: int / ) : rope =
     case shortest
       of LEAF (ml_len : ml_int, data : list) =>
            do ccall M_Print ("hi LEAF 1\n\000")           
-           let others1 : list = 
+(*           let others1 : rope = 
              let n : ml_int = wrap(0)
              let arg : [list, ml_int] = alloc (others, n)
-             @list-nth (arg / exh)
+             @list-nth (arg / exh) *)
            do ccall M_Print ("hi LEAF 2.1\n\000")           
            let len : int = unwrap (ml_len)
            do ccall M_Print ("hi LEAF 2.2\n\000")           
            let get : fun (rope / exh -> [list, bool]) = 
              @curried-rope-sublist (start, len / exh)
-           (* FIXME -- BUG: I have not taken the bools into account. *)
            do ccall M_Print ("hi LEAF 2.3\n\000")           
            let othersX : list =
-             let arg : [fun (any / exh -> any), list] = alloc (get, others1)
+             let arg : [fun (any / exh -> any), list] = alloc (get, others)
              do ccall M_Print ("hi LEAF 2.4\n\000")           
-             @list-map (arg / exh)
+             let res1 : list = @list-map (arg / exh)
+             do ccall M_Print ("hi LEAF 2.5\n\000")           
+             let res2 : list = apply mapHash1 (res1)
+             do ccall M_Print ("hi LEAF 2.6\n\000")           
+             return (res2)
            do ccall M_Print ("hi LEAF 3\n\000")           
            let all : list = @insert-at (data, othersX, i / exh)
            let ds : [any, any] =  apply list_to_tup_2 (all)

@@ -8,7 +8,18 @@
 
 #include "types.def"
 
+extern void M_Print (void *);
+
 define @list-sublist (xs : list, start : int, length : int / exh : exh) : list =
+
+  (* print_int is just for debugging. *)
+  fun print_int (n : int / ) : unit =
+    let w : ml_int = wrap(n)
+    let s : ml_string = @itos (w / exh)
+    let u : unit = @print (s / exh)
+    do ccall M_Print (" \n\000")
+    return (u)
+  (* end fun print_int *)
 
   (* FIXME *)
   let Subscript : exn = (exn) enum(0)
@@ -18,36 +29,58 @@ define @list-sublist (xs : list, start : int, length : int / exh : exh) : list =
     return (m)
 
   fun take (xs : list, n : int, acc : list / ) : list =
+    do ccall M_Print ("@list-sublist.take 0\n\000")
     if I32Eq(n,0) then
-      @list-rev (acc / exh)
+      do ccall M_Print ("@list-sublist.take 1\n\000")
+      let t : list = @list-rev (acc / exh)
+      return (t)
     else
       case xs
-        of NIL => throw exh (Subscript)
+        of NIL => 
+             do ccall M_Print ("@list-sublist.take 2\n\000")
+             let u : unit = apply print_int (n)
+             throw exh (Subscript)
          | CONS (x:any, r:list) =>
+             do ccall M_Print ("@list-sublist.take 3\n\000")
+             let u : unit = apply print_int (n)
              let newN : int = apply sub1(n)
              let newAcc : list = CONS (x, acc)
-             apply take (r, newN, newAcc)
+             let t : list = apply take (r, newN, newAcc)
+             return (t)
       end (* case *)
   (* end fun take *)
 
   (* Note this customized drop calls take when it's finished. *)
   fun drop (xs : list, n : int / ) : list =
+    do ccall M_Print ("@list-sublist.drop 0.1\n\000")
     if I32Eq(n,0) then
+      do ccall M_Print ("@list-sublist.drop 0.2\n\000")
       let z : list = apply take (xs, length, NIL)
+      do ccall M_Print ("@list-sublist.drop 0.3\n\000")
       return (z)
     else
       case xs
-        of NIL => throw exh (Subscript)
+        of NIL => 
+             do ccall M_Print ("@list-sublist.drop 1\n\000")
+             throw exh (Subscript)
          | CONS (_:any, r:list) => 
+             do ccall M_Print ("@list-sublist.drop 2\n\000")
 	     let newN : int = apply sub1(n)
              apply drop (r, newN)
       end (* case *)
   (* end fun drop *)
   
+  do ccall M_Print ("@list-sublist 1\n\000")
+
   if I32Lt(start, 0) then
+    do ccall M_Print ("@list-sublist 2\n\000")
     throw exh (Subscript)
   else if I32Lt(length, 0) then
+    do ccall M_Print ("@list-sublist 3\n\000")
     throw exh (Subscript)
   else 
-    apply drop (xs, start)
+    do ccall M_Print ("@list-sublist 4.1\n\000")
+    let ans : list = apply drop (xs, start)
+    do ccall M_Print ("@list-sublist 4.2\n\000")
+    return (ans)
 ;

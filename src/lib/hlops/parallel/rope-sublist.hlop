@@ -30,7 +30,7 @@ define @rope-sublist (r : rope, start : int, len : int / exh : exh) : [list, boo
     let u : int = unwrap (t)
     return (u)
 
-  do ccall M_Print ("@rope-sublist 1\n\000")
+  do ccall M_Print ("@rope-sublist 1.5\n\000")
 
   (* Invariant: n is not greater than the length of r. *)
   fun sub (r : rope, st : int, n : int / ) : list =
@@ -44,12 +44,12 @@ define @rope-sublist (r : rope, start : int, len : int / exh : exh) : [list, boo
            if I32Lte(n1,n) then
              apply sub (r1, st, n)
            else
-             let leftLen : int =  I32Sub(n1,st)
+             let leftLen : int = I32Sub (n1, st)
              let d1 : list = apply sub (r1, st, leftLen)
              let d2 : list = 
                let rightLen : int = I32Sub(n,leftLen)
                apply sub (r2, 0, rightLen)
-             let tup : [list, list] = alloc(d1, d2)
+             let tup : [list, list] = alloc (d1, d2)
              @list-append (tup / exh)
     end (* case *)
   (* end fun sub *) 
