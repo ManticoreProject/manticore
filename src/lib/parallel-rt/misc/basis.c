@@ -54,7 +54,11 @@ Value_t M_DoubleToString (double f)
  */
 void M_Print (const char *s)
 {
+#ifdef NDEBUG
+    Say("%s", s);
+#else  
     Say("[%2d] %s", VProcSelf()->id, s);
+#endif
 }
 
 /* M_StringConcat2:

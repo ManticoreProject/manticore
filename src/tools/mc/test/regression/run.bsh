@@ -1,0 +1,16 @@
+#!/bin/bash
+
+for f in *.pml
+do
+  fname=${f%.pml}
+  if [ -e "$fname.ok" ]
+  then (cd ../ && ./mc regression/$f 2> /dev/null
+       ./a.out > regression/$fname.test)
+       x=`diff $fname.test $fname.ok|wc -l`
+       rm "$fname.test"
+       if [ $x -eq "0" ]
+       then echo "Check succeeded for $f."
+       else echo "Check failed for $f."
+       fi
+  fi
+done
