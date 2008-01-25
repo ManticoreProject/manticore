@@ -161,11 +161,21 @@ functor LoaderFn (F : FILE_TYPE) : sig
 	    look searchPath
 	  end
 
+  (* compute the list of #defines for the CPP *)
+    fun defines () = let
+	  fun add (true, d, l) = (d, NONE)::l
+	    | add (false, d, l) = l
+	  in
+	    add (Controls.get BasicControl.logging, "ENABLE_LOGGING",
+	    add (not(Controls.get BasicControl.debug), "NDEBUG",
+	      []))
+	  end
+
     fun load file = (case findFile (defaultSearchPath, file)
 	   of SOME path => let
 		val {inStrm, reap} = RunCPP.run{
 			noLines = false,
-			defs = [],
+			defs = defines(),
 			includes = defaultIncludes,
 			input = path
 		      }
