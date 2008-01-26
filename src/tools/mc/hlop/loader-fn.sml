@@ -40,8 +40,9 @@ functor LoaderFn (F : FILE_TYPE) : sig
     val defaultSearchPath =
 	  String.fields (fn #":" => true | _ => false) F.defaultSearchPath
 
-    fun err msg = TextIO.print(concat("Error: " :: msg))
-    fun warn msg = TextIO.print(concat("Warning: " :: msg))
+    fun say msg = TextIO.output(TextIO.stdErr, String.concat msg)
+    fun err msg = say ("Error: " :: msg)
+    fun warn msg = say ("Warning: " :: msg)
 
   (* does a file exist and is it readable *)
     fun exists path = OS.FileSys.access(path, [OS.FileSys.A_READ])
