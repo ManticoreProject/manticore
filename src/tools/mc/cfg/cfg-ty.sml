@@ -153,29 +153,27 @@ structure CFGTy =
 	    | tys2l (ty::tys, l) =
 		toString ty ::
 		  (List.foldr (fn (ty, l) => "," :: toString ty :: l) l tys)
-	  fun args2s [] = "[]"
-	    | args2s [ty] = toString ty
-	    | args2s tys = concat("[" :: tys2l(tys, ["]"]))
+	  fun args2s tys = concat(tys2l(tys, []))
 	  in
 	    case ty
 	     of T_Any => "any"
 	      | T_Enum w => concat["enum(", Word.fmt StringCvt.DEC w, ")"]
 	      | T_Raw ty => RawTypes.toString ty
-	      | T_Tuple(false, tys) => concat("(" :: tys2l(tys, [")"]))
-	      | T_Tuple(true, tys) => concat("!(" :: tys2l(tys, [")"]))
-	      | T_OpenTuple tys => concat("(" :: tys2l(tys, [",...)"]))
+	      | T_Tuple(false, tys) => concat("[" :: tys2l(tys, ["]"]))
+	      | T_Tuple(true, tys) => concat("![" :: tys2l(tys, ["]"]))
+	      | T_OpenTuple tys => concat("[" :: tys2l(tys, [",...]"]))
 	      | T_Addr ty => concat["addr(", toString ty, ")"]
 	      | T_CFun proto => CFunctions.protoToString proto
 	      | T_VProc => "vproc"
 	      | T_StdFun{clos, args, ret, exh} => concat[
-		    "fun(", toString clos, ",", args2s args, ",",
-		    toString ret, ",", toString exh, ")"
+		    "fun(", toString clos, "/", args2s args, "/",
+		    toString ret, "/", toString exh, ")"
 		  ]
 	      | T_StdCont{clos, args} =>  concat[
-		    "cont(", toString clos, ",", args2s args, ")"
+		    "cont(", toString clos, "/", args2s args, ")"
 		  ]
-	      | T_KnownFunc tys => concat("kfnc(" :: tys2l(tys, [")"]))
-	      | T_Block tys => concat("blck(" :: tys2l(tys, [")"]))
+	      | T_KnownFunc tys => concat("kfun(" :: tys2l(tys, [")"]))
+	      | T_Block tys => concat("block(" :: tys2l(tys, [")"]))
 	    (* end case *)
 	  end
 
@@ -187,8 +185,8 @@ structure CFGTy =
 		      }
 		  | T_StdCont _ => cpTy
 		  | ty => raise Fail(concat[
-			"stdContTy(", toString cpTy, ", ", "[",
-			String.concatWith "," (List.map toString argTy), "])"
+			"stdContTy(", toString cpTy, "/",
+			String.concatWith "," (List.map toString argTy), ")"
 		      ])
 		(* end case *))
 	  in
