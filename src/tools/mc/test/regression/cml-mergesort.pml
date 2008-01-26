@@ -59,7 +59,7 @@ fun mergesort () = let
     end
 ;
 
-val n = 10;
+val n = 57;
 
 fun doit () = let
     val ch = mergesort ()
@@ -71,14 +71,13 @@ fun doit () = let
         (* end case *))
     fun recvLs () = (case (recv ch)
         of NONE => ()
-	 | SOME i => (print ((itos i)^"\n"); recvLs ())
+	 | SOME i => (print ((itos i)^" "); recvLs ())
         (* end case *))
     in
-       	print "start sorting\n";
 	sendLs ls;
-	print "done sending\n";
+	print "[ ";
 	recvLs ();
-	print "done sorting\n"
+	print "]\n"
     end
 ;
 

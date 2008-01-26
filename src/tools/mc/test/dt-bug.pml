@@ -14,6 +14,6 @@ fun t sp = let
     end
 ;
 
-val _ = print (dtos (t (Sphere ((1.0,1.0,1.0), 1.0, nil))));
-val _ = print (dtos (t (Sphere ((1.0,2.0,1.0), 1.0, nil))));
+val _ = print (dtos (t (Sphere ((1.0,1.0,1.0), 1.0, nil)))^"\n");
+val _ = print (dtos (t (Sphere ((1.0,2.0,1.0), 1.0, nil)))^"\n");
 ()

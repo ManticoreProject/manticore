@@ -11,4 +11,8 @@ fun add (p1, p2) = let
 	PT(x1+x2, y1+y2)
       end;
 
-(zero, add)
+fun p2s p = (case p
+    of PT (x,y) => ftos x^" "^ftos y^"\n"
+    (* end case *));
+
+print (p2s (add (PT (1.0, 1.0), PT (2.0, 3.234))))

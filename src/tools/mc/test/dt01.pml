@@ -9,4 +9,7 @@ fun lightcolor l = (case l
        of (Directional(_, c)) => c
 	| (Point(_, c)) => c
       (* end case *));
-lightcolor
+
+fun v2s (x,y,z) = ftos x^" "^ftos y^" "^ftos z;
+
+print (v2s (lightcolor (Point ((0.0,0.0,0.0), (2.3,4.3,1.1)))))
