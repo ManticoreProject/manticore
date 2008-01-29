@@ -16,6 +16,8 @@ TARGET =	log-dump
 SRCS =		log-dump.c
 OBJS =		$(patsubst %.c,%.o,$(SRCS))
 
+build:		$(TARGET)
+
 $(TARGET):	$(OBJS) ../../include/log-file.h ../../include/log-events.h
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $(TARGET) $(OBJS)
 

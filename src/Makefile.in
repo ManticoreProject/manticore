@@ -1,0 +1,42 @@
+# Makefile
+#
+# COPYRIGHT (c) 2008 Manticore project. (http://manticore.cs.uchicago.edu)
+# All rights reserved.
+#
+# @configure_output@
+#
+
+#### Start of system configuration section. ####
+
+TOOL_DIRS =	tools/mc tools/log-dump
+LIB_DIRS =	lib/parallel-rt lib/hlops
+SUBDIRS =	$(TOOL_DIRS) $(LIB_DIRS)
+
+SHELL =		@SHELL@
+@SET_MAKE@
+
+#### End of system configuration section. ####
+
+build:
+	for dir in $(SUBDIRS); do \
+	  (cd $$dir && $(MAKE) build) || exit $$?; \
+	done
+
+local-install:
+	for dir in $(SUBDIRS); do \
+	  (cd $$dir && $(MAKE) local-install) || exit $$?; \
+	done
+
+install:
+	for dir in $(SUBDIRS); do \
+	  (cd $$dir && $(MAKE) install) || exit $$?; \
+	done
+
+#################### Cleanup ####################
+
+CLEAN_SUBDIRS =		$(SUBDIRS)
+DISTCLEAN_FILES =	include/manticore-config.h
+DEVCLEAN_FILES =
+
+include @MANTICORE_MKDIR@/clean-rules.gmk
+
