@@ -105,9 +105,9 @@ static inline uint64_t GetTimestamp (LogTS_t *ts)
     if (Hdr->tsKind == LOGTS_MACH_ABSOLUTE)
 	return ts->ts_mach / 1000;
     else if (Hdr->tsKind == LOGTS_TIMESPEC)
-	return ts->ts_timespec.tv_sec * 1000000 + ts->ts_timespec.tv_nsec / 1000;
+	return ts->ts_val.sec * 1000000 + ts->ts_val.frac / 1000;
     else /* Hdr->tsKind == LOGTS_TIMEVAL */
-	return ts->ts_timeval.tv_sec * 1000000 + ts->ts_timeval.tv_usec;
+	return ts->ts_val.sec * 1000000 + ts->ts_val.frac;
 }
 
 static void LoadLogFile (const char *file)
@@ -222,3 +222,4 @@ static void Usage (int sts)
     fprintf (stderr, "usage: log-dump [-o outfile] [-log logfile]\n");
     exit (sts);
 }
+
