@@ -7,9 +7,7 @@
  * but otherwise initialize the tag with a fresh associated value and return it.
  *)
 
-#include "types.def"
-#include "runtime-offsets.def"
-
+#include "fgs.def"
 #include "../synch/spin-lock-fn.hlop"
 define_spin_lock(fgs, fgs, FGS_LOCK_OFFSET)
 

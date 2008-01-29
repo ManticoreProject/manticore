@@ -1,5 +1,12 @@
-#include "runtime-offsets.def"
-#include "types.def"
+(* is-queue-gt-one.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ * 
+ * Returns true if the vproc queue contains more than one thread.
+ *)
+
+#include "vproc-queue.def"
 
 define @is-queue-gt-one (/ exh : exh) : bool =
   fun numElts (q : rdyq_item, i : int) : int =

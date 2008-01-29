@@ -6,8 +6,7 @@
  * Get the current fiber group.
  *)
 
-#include "runtime-offsets.def"
-#include "types.def"
+#include "fgs.def"
 #include "assert.def"
 
 define @get-fgs (vp : vproc / exh : exh) : fgs =

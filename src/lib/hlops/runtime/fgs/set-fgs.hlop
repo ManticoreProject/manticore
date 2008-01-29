@@ -6,8 +6,7 @@
  * Set the current fiber group.
  *)
 
-#include "runtime-offsets.def"
-#include "types.def"
+#include "fgs.def"
 
 define inline @set-fgs (vp : vproc, fgs : fgs / exh : exh) : unit = 
     do vpstore (CURRENT_FG, vp, fgs)

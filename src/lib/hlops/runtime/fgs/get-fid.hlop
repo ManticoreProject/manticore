@@ -6,10 +6,9 @@
  * Get the fiber id number.
  *)
 
-#include "types.def"
+#include "fgs.def"
 #include "tags.def"
 
-define @get-fgs (vp : vproc / exh : exh) : fgs;
 define @assoc-list-lookup (atag : assoc_tag, init : fun(unit / exh -> any), fgs : fgs / exh : exh) : any;
 
 extern int FreshFiberId ();

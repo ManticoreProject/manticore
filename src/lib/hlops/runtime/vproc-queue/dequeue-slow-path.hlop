@@ -6,13 +6,11 @@
  * Dequeue the next thread from the host-vprocs ready queue.
  *)
 
-#include "runtime-offsets.def"
-#include "types.def"
+#include "vproc-queue.def"
 
 define @reverse-queue (fgs : fgs, fiber : fiber, lst : rdyq_item, rest : rdyq_item / exh : exh) : rdyq_item;
 
 extern void *VProcDequeue (void *) __attribute__((alloc));
-extern void M_Print (void *);
 
 (* this function is the slow-path of dequeue *)
 define @dequeue-slow-path (vp : vproc / exh : exh) : rdyq_item =

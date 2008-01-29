@@ -6,7 +6,7 @@
  * Create a new fiber group.
  *)
 
-#include "types.def"
+#include "fgs.def"
 
 define @new-fgs (pinned : bool, parent : option / exh : exh) : fgs = 
   let fgs : fgs = galloc (FALSE, FALSE, pinned, parent, ANIL)

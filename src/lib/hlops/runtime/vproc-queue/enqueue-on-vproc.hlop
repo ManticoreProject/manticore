@@ -6,12 +6,12 @@
  * Enqueue a thread on a remote vproc.
  *)
 
-#include "types.def"
+#include "vproc-queue.def"
 
 extern void EnqueueOnVProc (void *, void *, void *, void *) __attribute__((alloc));
 
-define inline @enqueue-on-vproc (dst : vproc, tid : tid, k : fiber / exh : exh) : () =
+define inline @enqueue-on-vproc (dst : vproc, fgs : fgs, k : fiber / exh : exh) : () =
   let k : fiber = promote (k)
-  do ccall EnqueueOnVProc(host_vproc, dst, tid, k)
+  do ccall EnqueueOnVProc(host_vproc, dst, fgs, k)
   return ()
 ;

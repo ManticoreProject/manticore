@@ -445,7 +445,11 @@ static void IdleVProc (VProc_t *vp, void *arg)
   /* Run code that will immediately put this VProc to sleep. */
     RunManticore (vp, (Addr_t)&ASM_VProcSleep, M_UNIT, M_UNIT);
 
-    Die("unexpected return from RunManticore in IdleVProc\n");
+#ifndef NDEBUG
+    if (DebugFlg)
+	SayDebug("[%2d] return from RunManticore in idle vproc\n", vp->id);
+#endif
+    exit (0);
 
 } /* end of IdleVProc */
 

@@ -3,7 +3,7 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Definitions for the representation of locked-queues.
+ * Types and HLops for locked-queues.
  *)
 
 #ifndef _LOCKED_QUEUE_DEF_

@@ -12,6 +12,7 @@
 #define _EVENTS_DEF_
 
 #include "types.def"
+#include "fgs.def"
 
 (* dirty flags are used to track the state of a synchronization event *)
 
@@ -43,12 +44,12 @@ typedef chan = ![    (* all fields are mutable *)
 #define CH_GET_RECVQ_TL(ch)	SELECT(4, ch)
 #define CH_SET_RECVQ_TL(ch,x)	UPDATE(4, ch, x)
 
-typedef sendq_item = [any, tid, cont(unit)];
-typedef recvq_item = [dirty_flag, tid, cont(any)];
+typedef sendq_item = [any, fgs, cont(unit)];
+typedef recvq_item = [dirty_flag, fgs, cont(any)];
 
 typedef evt_poll_fn = fun(unit / exh -> bool);
 typedef evt_do_fn = fun(cont(any) / exh -> unit);
-typedef evt_block_fn = fun([dirty_flag, tid, cont(any)] / exh -> unit);
+typedef evt_block_fn = fun([dirty_flag, fgs, cont(any)] / exh -> unit);
 
 #define CHOOSE_PAT(ev1, ev2)		CHOOSE(ev1 : evt, ev2 : evt)
 #define BEVT_PAT(pollFn, doFn, blkFn)	\

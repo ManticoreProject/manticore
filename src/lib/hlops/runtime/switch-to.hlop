@@ -6,8 +6,7 @@
 
 #include "runtime-offsets.def"
 #include "types.def"
-
-define inline @set-fgs (vp : vproc, fgs : fgs / exh : exh) : unit;
+#include "fgs.def"
 
 define inline @switch-to (vp : vproc, fgs : fgs, fiber : fiber / exh : exh) noreturn =
   let _ : unit =  @set-fgs (vp, fgs / exh)

@@ -6,12 +6,11 @@
  * The default scheduler action that does not support load balancing for threads.
  *)
 
-#include "types.def"
 #include "logging.def"
 #include "debugging.def"
+#include "vproc-queue.def"
+#include "fgs.def"
 
-define inline @enqueue (vp : vproc, fgs : fgs, fiber : fiber / exh : exh) : ();
-define inline @dequeue (vp : vproc / exh : exh) : rdyq_item;
 define inline @run (vp : vproc, act : sigact, fgs : fgs, fiber : fiber / exh : exh) noreturn;
 
 define @scheduler-startup (mkAct : fun (vproc / exh -> sigact), fgs : fgs, vps : list / exh : exh) : ();

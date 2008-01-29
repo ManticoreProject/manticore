@@ -8,6 +8,7 @@
 
 #include "runtime-offsets.def"
 #include "types.def"
+#include "vproc-queue.def"
 
 define @reverse-queue (fgs : fgs, fiber : fiber, lst : rdyq_item, rest : rdyq_item / exh : exh) : rdyq_item =
   fun revQueue (fgs : fgs, fiber : fiber, lst : rdyq_item, acc : rdyq_item) : rdyq_item =

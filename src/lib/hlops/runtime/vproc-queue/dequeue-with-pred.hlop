@@ -6,8 +6,7 @@
  * Dequeue the first thread that satisfies the predicate.
  *)
 
-#include "runtime-offsets.def"
-#include "types.def"
+#include "vproc-queue.def"
 
 define @dequeue-slow-path (vp : vproc / exh : exh) : rdyq_item;
 define @reverse-queue (fgs : fgs, fiber : fiber, lst : rdyq_item, rest : rdyq_item / exh : exh) : rdyq_item;

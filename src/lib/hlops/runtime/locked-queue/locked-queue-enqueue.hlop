@@ -7,16 +7,14 @@
  *)
 
 #include "locked-queue.def"
+#include "vproc-queue.def"
 #include "../synch/spin-lock-fn.hlop"
 define_spin_lock(lq,locked_queue,LOCKED_QUEUE_LOCK)
 
-define inline @enqueue (vp : vproc, fgs : fgs, fiber : fiber / exh : exh) : ();
-
-extern void M_Print (void *);
 
 define @locked-queue-enqueue (q : locked_queue, elt : any / exh : exh) : () =
 
- (* promote elt *before* acquiring the lock *)
+(* promote elt *before* acquiring the lock *)
   let elt : any = promote (elt)
 
   let _ : unit = @spin-lock-lq (q / exh)

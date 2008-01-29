@@ -7,6 +7,7 @@
  *)
 
 #include "types.def"
+#include "fgs.def"
 
 define @dequeue (vp : vproc / exh : exh) : (fgs, fiber);
 define @switch-to (vp : vproc, fgs : fgs, fiber : fiber / exh : exh) noreturn;

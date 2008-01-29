@@ -25,5 +25,9 @@ typedef rope = any;
 
 typedef future_spawn_fn = fun (future / exh -> unit);
 
+(* one-toucher futures *)
+define @future1-spawn (thunk : thunk / exh : exh) : future;
+define @future1-touch (fp : future / exh : exh) : any;
+
 #endif /* !_FUTURES_DEF_ */
 

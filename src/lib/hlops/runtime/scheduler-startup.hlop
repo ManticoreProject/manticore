@@ -9,6 +9,7 @@
 #include "runtime-offsets.def"
 #include "types.def"
 #include "debugging.def"
+#include "fgs.def"
 
 define inline @spawn-on (f : fun (unit / exh -> unit), fgs : fgs, dst : vproc / exh : exh) : ();
 define inline @run (vp : vproc, act : sigact, tid : tid, fiber : fiber / exh : exh) noreturn;

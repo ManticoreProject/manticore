@@ -6,11 +6,7 @@
  * Find the number of some type of elements on the ready queue.
  *)
 
-#include "runtime-offsets.def"
-#include "types.def"
-
-extern void M_Print (void*);
-extern void M_PrintPtr (void *, void *);
+#include "vproc-queue.def"
 
 define @queue-length (pred : fun (fgs / exh -> bool) / exh : exh) : int =
   let vp : vproc = host_vproc

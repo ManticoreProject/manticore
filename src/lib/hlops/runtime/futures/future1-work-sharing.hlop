@@ -11,10 +11,9 @@
 #include "futures.def"
 #include "tags.def"
 #include "debugging.def"
+#include "fgs.def"
 
 extern void *ListVProcs (void *) __attribute__((alloc));
-
-define @assoc-list-lookup (atag : assoc_tag, init : fun(unit / exh -> any), fgs : fgs / exh : exh) : any;
 
 define @future1-work-sharing ( / exh : exh) : future_spawn_fn =
 

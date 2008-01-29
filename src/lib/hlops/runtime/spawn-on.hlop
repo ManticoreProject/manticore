@@ -7,9 +7,10 @@
  *)
 
 #include "types.def"
+#include "vproc-queue.def"
+#include "fgs.def"
 
 define @dispatch (vp : vproc / exh : exh) noreturn;
-define inline @enqueue-on-vproc (dst : vproc, fgs : fgs, k : fiber / exh : exh) : ();
 
 define inline @spawn-on (f : fun (unit / exh -> unit), fgs : fgs, dst : vproc / exh : exh) : () =
   cont fiber (x : unit) =

@@ -43,10 +43,6 @@ define @list-tab (args: [fun(ml_int/exh->any), ml_int, ml_int, ml_int] / exh:exh
 define @fail (arg : ml_string / exh : exh) : any;
 define @todo (thing : ml_string / exh : exh) : any;
 
-(* futures *)
-define @future1-spawn (thunk : thunk / exh : exh) : future;
-define @future1-touch (fp : future / exh : exh) : any;
-
 (* ropes *)
 define @rope-app (args : [fun(any/exh->unit), rope] / exh:exh) : unit;
 define @rope-depth (r : rope / exh : exh) : ml_int;
@@ -64,9 +60,7 @@ define @tabD (agrs: [fun(ml_int/exh->any), ml_int, ml_int, ml_int, ml_int] / exh
 (* scheduling operations *)
 define @dispatch-action (act : sigact, dst : vproc / exh : exh) : ();
 define @default-scheduler-startup ( / exh : exh) : ();
-define @enqueue-on-vproc (dst : vproc, tid : tid, k : fiber / exh : exh) : ();
 define inline @fiber (f : fiber_fun / exh : exh) : fiber;
-define @atomic-yield (vp : vproc / exh : exh) : unit;
 define @atomic-yield (vp : vproc / exh : exh) : unit;
 define inline @thread-exit ( / exh : exh) noreturn;
 

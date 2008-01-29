@@ -7,15 +7,12 @@
  * assumes that signals are not masked.
  *)
 
-#include "runtime-offsets.def"
-#include "types.def"
+#include "vproc-queue.def"
 
-define inline @enqueue (vp : vproc, tid : tid, fiber : fiber / exh : exh) : ();
-
-define inline @atomic-enqueue (tid : tid, fiber : fiber / exh : exh) : () =
+define inline @atomic-enqueue (fgs : fgs, fiber : fiber / exh : exh) : () =
   let vp : vproc = host_vproc
   do vpstore(ATOMIC, vp, TRUE)
-  do @enqueue (host_vproc, tid, fiber / exh)
+  do @enqueue (host_vproc, fgs, fiber / exh)
   do vpstore(ATOMIC, vp, FALSE)
   return ()
 ;
