@@ -28,6 +28,7 @@ define @double-pow (arg : [ml_double, ml_double] / exh : exh) : ml_double;
 define @int-min (a : int, b : int / exh : exh) : int;
 define @int-max (a : int, b : int / exh : exh) : int;
 define @gettimeofday (_ : unit / _ : exh) : ml_double;
+define @read-int (_ : unit / _ : exh) : ml_int;
 define @compose (fg:[fun(any/exh->any),fun(any/exh->any)] / exh:exh) : fun(any/exh->any);
 define @list-length (xs : list / exh : exh) : ml_int;
 define @list-rev (xs : list / exh : exh) : list;

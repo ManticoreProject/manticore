@@ -187,6 +187,7 @@ structure Basis : sig
     val length          : AST.var
     val nth             : AST.var
     val gettimeofday	: AST.var
+    val readint 	: AST.var
     val compose         : AST.var
     val app             : AST.var
     val tab             : AST.var
@@ -569,6 +570,7 @@ structure Basis : sig
     val length =        polyVar'(N.length, fn tv => listTy tv --> intTy)
     val nth =           polyVar'(N.nth, fn tv => (listTy tv ** intTy) --> tv)
     val gettimeofday =	monoVar'(N.gettimeofday, unitTy --> doubleTy)
+    val readint =	monoVar'(N.readint, unitTy --> intTy)
     val app =           polyVar'(N.app, fn tv => (tv --> unitTy) ** (listTy tv) --> unitTy)
     val parrayApp =     polyVar'(N.parrayApp, fn tv => (tv --> unitTy) ** (parrayTy tv) --> unitTy)
     val tab =           polyVar'(N.tab,
@@ -712,6 +714,7 @@ structure Basis : sig
             (N.length,          Env.Var length),
 	    (N.nth,             Env.Var nth),
 	    (N.gettimeofday,	Env.Var gettimeofday),
+	    (N.readint,	        Env.Var readint),
 	    (N.compose,         Env.Var compose),
 	    (N.map,             Env.Var map),
             (N.app,             Env.Var app),

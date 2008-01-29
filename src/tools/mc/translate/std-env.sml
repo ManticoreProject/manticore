@@ -464,6 +464,7 @@ structure StdEnv : sig
 		  (B.map,               "list-map",		false),
 		  (B.tab,               "list-tab",		false),
 		  (B.gettimeofday,	"gettimeofday",		false),
+		  (B.readint,	        "read-int",		false),
 		  (B.parrayApp,         "rope-app",		false),
                   (B.plen,              "rope-length",		false),
 		  (U.mapP,              "rope-map",		false),
