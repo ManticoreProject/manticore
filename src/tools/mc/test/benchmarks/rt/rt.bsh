@@ -5,15 +5,15 @@ PARFLAGS=""
 SEQFLAGS="-Csequential=true"
 
 SIZES="128 256 512 1024 2048"
-PROCS="0 1 2"
+PROCS="0 1 2 3 4 5 6 7 8"
 
 DATE=$( date +"%F-%k-%M" )
 LOG_FILE_NAME=perf-$DATE
 echo "Logging performance results to $LOG_FILE_NAME"
 
-$MC $PARFLAGS rt-parr.pml
+$MC $PARFLAGS rt-parr.pml 2> /dev/null
 mv a.out rt-parr
-$MC $SEQFLAGS rt.pml
+$MC $SEQFLAGS rt.pml 2> /dev/null
 mv a.out rt-seq
 
 for p in $PROCS
@@ -25,7 +25,7 @@ do
        if [ "$p" -eq "0" ] ; then       
              echo "$s." | ./rt-seq >> $LOG_FILE_NAME
        else
-             echo "$s." | ./rt-parr >> $LOG_FILE_NAME
+             echo "$s." | ./rt-parr -p $p >> $LOG_FILE_NAME
        fi
    done
 done
