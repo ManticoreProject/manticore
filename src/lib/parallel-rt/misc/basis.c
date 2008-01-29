@@ -211,3 +211,8 @@ void M_LogEvent0 (void *vp, int evt)
 {
     LogEvent0 (vp, evt);
 }
+
+void M_LogEventPtr (void *vp, int evt, uint64_t ptr)
+{
+    LogEvent2 (vp, evt, (uint32_t)(ptr << 32l), (uint32_t)ptr);
+}

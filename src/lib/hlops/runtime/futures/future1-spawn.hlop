@@ -11,6 +11,7 @@
 #include "runtime-offsets.def"
 #include "tags.def"
 #include "fgs.def"
+#include "logging.def"
 
 define @future1-work-sharing ( / exh : exh) : future_spawn_fn;
 
@@ -37,5 +38,7 @@ define @future1-spawn (thunk : thunk / exh : exh) : future =
  (* add the future to the scheduling queue *)
   let _ : unit = apply spawnFn (cell / exh)
  
+  do LOG_PTR(RTFuture1SpawnEvt, cell)
+
   return (cell) 
 ;

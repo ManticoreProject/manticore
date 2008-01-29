@@ -39,3 +39,6 @@ DEF_EVENT(GlobalGCEndEvt,	0,	"global GC finished")
 
 /* Runtime events */
 DEF_EVENT(RTPreemptionEvt,      0,      "preemption handler")
+DEF_EVENT(RTFuture1SpawnEvt,    0,      "spawned future1")
+DEF_EVENT(RTFuture1TouchEvt,    0,      "touched future1")
+DEF_EVENT(RTFuture1StealEvt,    0,      "stole future1")

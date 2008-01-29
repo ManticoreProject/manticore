@@ -12,6 +12,7 @@
 #include "tags.def"
 #include "debugging.def"
 #include "fgs.def"
+#include "logging.def"
 
 extern void *ListVProcs (void *) __attribute__((alloc));
 
@@ -29,6 +30,7 @@ define @future1-work-sharing ( / exh : exh) : future_spawn_fn =
               (* let exh : exh = ... *)
               let resultLocal : any = apply f (UNIT / exh)
               let result : any = promote (resultLocal)
+              do LOG_PTR(RTFuture1StealEvt, fut)
               let tmpX : any = CAS(&0(fut), STOLEN_F, result)
               if Equal (tmpX, STOLEN_F)            
                  then return ()

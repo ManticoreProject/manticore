@@ -9,6 +9,7 @@
 #include "types.def"
 #include "futures.def"
 #include "ropes.def"
+#include "debugging.def"
 
 (* use_rw ropes; *)
 

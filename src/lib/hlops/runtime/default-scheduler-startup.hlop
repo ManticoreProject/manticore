@@ -33,7 +33,7 @@ define @default-scheduler-startup ( / exh : exh) : () =
 
     if Equal (s, STOP)
       then throw dispatch ()
-      else let () = LOG_EVENT0(RTPreemptionEvt)
+      else do LOG_EVENT0(RTPreemptionEvt)
            let k : fiber = (fiber)s
            let fgs : fgs = @get-fgs (vp / exh)
            do @enqueue (vp, fgs, k / exh)

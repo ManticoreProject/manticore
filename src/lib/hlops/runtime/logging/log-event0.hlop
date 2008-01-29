@@ -6,11 +6,11 @@
  * Log an event with zero bytes of auxilliary storage.
  *)
 
-#include "types.def"
+#include "logging.def"
 
 extern void M_LogEvent0 (void*, int);
 
-define inline @log-event0 (evt : log_event) : unit =
+define inline @log-event0 (evt : log_event) : () =
   do ccall M_LogEvent0 (host_vproc, evt)
-  return (UNIT)
+  return ()
 ;

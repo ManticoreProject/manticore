@@ -4,15 +4,19 @@
 typedef log_event = int;
 typedef log_data = int;
 
+#include "types.def"
 #include "log-events.def"
 
 define @log-event0 (evt : log_event) : ();
+define @log-event-ptr (evt : log_event, ptr : any) : ();
 
 #define LOG_EVENT0(evt)	@log-event0(evt)
+#define LOG_PTR(evt,p) @log-event-ptr (evt, p)
 
 #else /* !ENABLE_LOGGING */
 
 #define LOG_EVENT0(evt) return ()
+#define LOG_PTR(evt,ptr) return ()
 
 #endif
 
