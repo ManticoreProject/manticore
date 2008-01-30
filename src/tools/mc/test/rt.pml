@@ -478,8 +478,13 @@ fun ray winsize = let
 	      lp' 0; lp(i+1)
 	    end
 	  else ();
+    val t0 = gettimeofday()
+    val _ = lp 0
+    val t = gettimeofday() - t0
     in
-      lp 0; outputImage(img, "out.ppm"); freeImage img
+      print("computed scene in " ^ dtos t ^ " seconds\n");
+      outputImage(img, "out.ppm");
+      freeImage img
     end;
 
 (* sequential version of the code that builds the image first as a list *)
@@ -497,16 +502,16 @@ fun ray' winsize = let
 	      lp(i+1, lp' (0, is))
 	    end
 	  else is
-    val b = gettimeofday ();
+    val t0 = gettimeofday();
     val vs = lp (0, nil)
-    val e = gettimeofday ();
+    val t = gettimeofday() - t0;
     fun output vs = (case vs
-        of nil => ()
-	 | (i,j,(r,g,b)) :: vs => (updateImage3d (img, i, j, r, g, b); output vs)
-        (* end case *))
+	   of nil => ()
+	    | (i,j,(r,g,b)) :: vs => (updateImage3d (img, i, j, r, g, b); output vs)
+	  (* end case *))
     in
       output vs; outputImage(img, "out.ppm"); freeImage img;
-      print (dtos (e-b)^"\n")
+      print("computed scene in " ^ dtos t ^ " seconds\n")
     end;
 
 (*

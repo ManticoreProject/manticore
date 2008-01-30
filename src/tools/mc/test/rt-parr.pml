@@ -456,9 +456,9 @@ fun ray winsize = let
     val lights = testlights;
     val (firstray, scrnx, scrny) = camparams (lookfrom, lookat, vup, fov, winsize);
     fun f (i, j) = tracepixel (world, lights, i, j, firstray, scrnx, scrny);
-    val b = gettimeofday ();
+    val t0 = gettimeofday()
     val scene = [| [| f(i, j) | j in [| 0 to winsize-1 |] |] | i in [| 0 to winsize-1 |] |]
-    val e = gettimeofday ();
+    val t = gettimeofday() - t0
     fun output i = if i < winsize
         then let
           fun loop j = if j < winsize
@@ -473,59 +473,11 @@ fun ray winsize = let
              loop 0
           end
         else ()
-
     in      
+      print("computed scene in " ^ dtos t ^ "\n");
       output 0;
       outputImage(img, "out.ppm"); 
-      freeImage img;
-      print (dtos (e-b)^"\n")
+      freeImage img
     end;
-
-
-(* sequential version of the code *)
-(*fun ray winsize = let
-    val lights = testlights;
-    val (firstray, scrnx, scrny) = camparams (lookfrom, lookat, vup, fov, winsize);
-    val img = newImage (winsize, winsize)
-    fun f (i, j) = let
-	  val (r, g, b) = tracepixel (world, lights, i, j, firstray, scrnx, scrny)
-	  in
-	    updateImage3d (img, i, j, r, g, b)
-	  end
-    fun lp i = if (i < winsize)
-	  then let
-	    fun lp' j = if (j < winsize)
-		  then (f(i, j); lp'(j+1))
-		  else ()
-	    in
-	      lp' 0; lp(i+1)
-	    end
-	  else ();
-    in
-      lp 0; outputImage(img, "out.ppm"); freeImage img
-    end;
-*)
-(*
-fun run (outFile, sz) = let
-      val outS = BinIO.openOut outFile
-      fun out x = BinIO.output1(outS, Word8.fromInt(Real.round(x * 255.0)))
-      fun outRGB (r, g, b) = (out r; out g; out b)
-      fun pr s = BinIO.output(outS, Byte.stringToBytes s)
-      val t0 = Time.now()
-      val img = ray sz
-      val t = Time.-(Time.now(), t0)
-      in
-	print(concat[
-	    Time.fmt 3 t, " seconds\n"
-	  ]);
-        pr "P6\n";
-	pr(concat[Int.toString sz, " ", Int.toString sz, "\n"]);
-	pr "255\n";
-	Array2.app Array2.RowMajor outRGB img;
-	BinIO.closeOut outS
-      end;
-
-run ("out.ppm", 1024)
-*)
 
 ray (readint ())
