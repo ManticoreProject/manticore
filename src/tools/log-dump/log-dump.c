@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 #include <assert.h>
 #include "log-file.h"
+#include "log-info.h"
 
 /* object allocation in the C heap */
 #define MALLOC(sz)		malloc(sz)
@@ -190,11 +191,13 @@ static void LoadLogFile (const char *file)
 
 /* the event table */
 typedef struct {
-    const char	*tag;
-    const char	*desc;
+    const char		*tag;	/* name of the event */
+    LogEventKind_t	kind;	/* kind: independent/start/stop */
+    const char		*desc;	/* description */
 } EventInfo_t;
 
-#define DEF_EVENT(ID, NARGS, DESC)	[ID] = { .tag = #ID, .desc = DESC },
+#define DEF_EVENT(ID, NARGS, KIND, DESC) \
+	[ID] = { .tag = #ID, .kind = KIND, .desc = DESC },
 
 EventInfo_t	Info[NumLogEvents] = {
 #include "log-events.h"

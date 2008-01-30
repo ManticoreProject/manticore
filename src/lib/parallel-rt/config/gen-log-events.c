@@ -11,14 +11,14 @@
 #include <string.h>
 
 /* define the predefined log-event codes */
-#define DEF_EVENT(NAME, SZ, DESC)	NAME,
+#define DEF_EVENT(NAME, SZ, KIND, DESC)	NAME,
 enum {
 #include "log-events.h"
     NumLogEvents
 };
 #undef DEF_EVENT
 
-#define DEF_EVENT(NAME, SZ, DESC)       \
+#define DEF_EVENT(NAME, SZ, KIND, DESC)	\
         printf ("#define " #NAME " %d\n", NAME);
 
 int main ()

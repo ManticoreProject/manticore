@@ -4,7 +4,7 @@
  * All rights reserved.
  *
  * This file describes the layout of log files and is used by both the runtime
- * to generate logs and by the 
+ * to generate logs and by tools used to analyse log files.
  */
 
 #ifndef _LOG_FILE_H_
@@ -64,7 +64,7 @@ struct struct_logbuf {
 };
 
 /* define the predefined log-event codes */
-#define DEF_EVENT(NAME, SZ, DESC)	NAME,
+#define DEF_EVENT(NAME, SZ, KIND, DESC)	NAME,
 enum {
 #include "log-events.h"
     NumLogEvents
