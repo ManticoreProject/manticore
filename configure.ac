@@ -280,13 +280,14 @@ dnl ******************** Paths ********************
 MANTICORE_ROOT=`pwd`
 MANTICORE_DOCDIR=$MANTICORE_ROOT/doc
 MANTICORE_SRCDIR=$MANTICORE_ROOT/src
-MANTICORE_LIBDIR=$MANTICORE_ROOT/src/lib
+MANTICORE_LIBDIR=$MANTICORE_ROOT/lib
 MANTICORE_BINDIR=$MANTICORE_ROOT/bin
 MANTICORE_MKDIR=$MANTICORE_ROOT/mk
 MANTICORE_RUNSRCDIR=$MANTICORE_SRCDIR/lib/parallel-rt
 HEAP_IMAGE_DIR=$MANTICORE_BINDIR/.heap
 INSTALL_SMLNJ_WRAPPER=$MANTICORE_BINDIR/install-sml-wrapper.sh
 
+AC_SUBST(MANTICORE_ROOT)
 AC_SUBST(MANTICORE_DOCDIR)
 AC_SUBST(MANTICORE_SRCDIR)
 AC_SUBST(MANTICORE_LIBDIR)
@@ -400,6 +401,9 @@ dnl generate run-time config files
 dnl
 AC_CONFIG_FILES(\
 dnl ***** Makefiles *****
+  Makefile
+  src/Makefile
+  src/lib/hlops/Makefile
   src/lib/parallel-rt/build/Makefile
   src/lib/parallel-rt/build/config/Makefile
   src/lib/parallel-rt/build/mk/common.gmk:src/lib/parallel-rt/build/mk/common_gmk.in

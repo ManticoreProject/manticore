@@ -1,0 +1,43 @@
+# Makefile
+#
+# COPYRIGHT (c) 2008 Manticore project. (http://manticore.cs.uchicago.edu)
+# All rights reserved.
+#
+# @configure_output@
+#
+
+#### Start of system configuration section. ####
+
+#
+# directories for the install target
+#
+PREFIX =		@prefix@
+INSTALL_BINDIR =	$(PREFIX)/bin
+INSTALL_HEAPDIR =	$(INSTALL_BINDIR)/.heap
+INSTALL_LIBDIR =	$(PREFIX)/lib
+INSTALL_INCDIR =	$(PREFIX)/include
+
+#
+# directories for the local-install target
+#
+SRCDIR =	@MANTICORE_ROOT@/src
+LIBDIR =	@MANTICORE_ROOT@/lib
+BINDIR =	@MANTICORE_ROOT@/bin
+INCDIR =	@MANTICORE_ROOT@/include
+CONFIGDIR =	@MANTICORE_ROOT@/config
+
+#### End of system configuration section. ####
+
+.PHONY:		build install local-install \
+		clean local-distclean local-devclean
+
+build:
+	$(CONFIGDIR)/make-file-cache.sh $(SRCDIR)/lib/hlops
+
+#################### Cleanup ####################
+
+CLEAN_SUBDIRS =		$(SUBDIRS)
+DISTCLEAN_FILES =	include/manticore-config.h
+DEVCLEAN_FILES =
+
+include @MANTICORE_MKDIR@/clean-rules.gmk
