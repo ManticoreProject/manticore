@@ -35,8 +35,6 @@ enum {				    // different formats of timestamps.
 typedef union {			    // union of timestamp reps.
     TimeValue_t		ts_val;		// either LOGTS_TIMEVAL or LOGTS_TIMESPEC
     uint64_t		ts_mach;	// LOGTS_MACH_ABSOLUTE
-    struct timespec            ts_timespec;
-    struct timeval             ts_timeval;
 } LogTS_t;
 
 typedef struct {
