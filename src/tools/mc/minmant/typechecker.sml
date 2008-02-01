@@ -648,7 +648,12 @@ structure Typechecker : sig
 		  if isEqTy then TyCon.markEqTyc tyc else ();
 		  next(te, ve')
 		end
-	    | PT.ExnDecl(id, optTy) => raise Fail "ExceptionDecl"
+	    | PT.ExnDecl(id, optTy) => let
+		val optTy' = Option.map (fn ty => chkTy(loc, te, Env.empty, ty)) optTy
+		val exnCon = Exn.new (id, optTy')
+		in
+		  next (te, E.insert (ve, id, E.Con exnCon))
+		end
 	    | PT.ValueDecl valDcl => let
 		val (bind, ve) = chkValDcl(loc, 0, te, ve, valDcl)
 		val (e, ty) = next(te, ve)
