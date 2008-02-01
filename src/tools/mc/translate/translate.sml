@@ -453,16 +453,16 @@ structure Translate : sig
 	      B.mkLet([], B.mkHLOp(startupOp, [], [E.handlerOf env]), exp)
 	    end
 
-    fun translate exp = let
+    fun translate (AST.Module{exns, body}) = let
 	  val env0 = StdEnv.env ()
           val argTy = BTy.T_Raw RawTypes.T_Int
           val arg = BV.new("_arg", argTy)
 	  val (exh, env) = E.newHandler env0
 	  val mainFun = B.FB{
-		  f = BV.new("main", BTy.T_Fun([argTy], [BTy.exhTy], [trTy(env, TypeOf.exp exp)])),
+		  f = BV.new("main", BTy.T_Fun([argTy], [BTy.exhTy], [trTy(env, TypeOf.exp body)])),
 		  params = [arg],
 		  exh = [exh],
-		  body = startup (env, trExpToExp(env, exp))
+		  body = startup (env, trExpToExp(env, body))
 		}
 	  val module = B.mkModule(Atom.atom "Main", [], mainFun)
 	  in

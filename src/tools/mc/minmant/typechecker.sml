@@ -8,7 +8,7 @@
 
 structure Typechecker : sig
 
-    val check : Error.err_stream * ParseTree.program -> AST.module option
+    val check : Error.err_stream * ParseTree.program -> AST.module
 
   end = struct
 
@@ -377,41 +377,41 @@ structure Typechecker : sig
 		  (AST.PArrayExp(es', ty), B.parrayTy ty)
 	      end
 	    | PT.PCompExp (e, pbs, eo) => let
-		  val (pes, ve') = chkPBinds (loc, depth, te, ve, pbs)
-		  val (e', resTy) = chkExp (loc, depth, te, ve', e)
-		  val eo' = (case eo of
-				 (SOME exp) => let
-				      val (exp', ty) = chkExp (loc, depth, te, ve', exp)
-				  in
-				    if not(U.unify (ty, B.boolTy))
-				      then error (loc, ["type mismatch in parray comprehension 'where' clause"])
-				      else ();
-				    SOME exp'
-				  end
-			       | NONE => NONE
-			    (* end case *))
-	      in
+		val (pes, ve') = chkPBinds (loc, depth, te, ve, pbs)
+		val (e', resTy) = chkExp (loc, depth, te, ve', e)
+		val eo' = (case eo
+			 of (SOME exp) => let
+			      val (exp', ty) = chkExp (loc, depth, te, ve', exp)
+			      in
+				if not(U.unify (ty, B.boolTy))
+				  then error (loc, ["type mismatch in parray comprehension 'where' clause"])
+				  else ();
+				SOME exp'
+			      end
+			  | NONE => NONE
+			(* end case *))
+		in
 		  (AST.PCompExp (e', pes, eo'), B.parrayTy resTy)
-	      end
+		end
 	    | PT.SpawnExp e => let
-		  val (e', ty) = chkExp (loc, depth, te, ve, e)
-	      in
-		if not(U.unify (ty, B.unitTy))
-		  then error(loc, ["type mismatch in spawn"])
-		  else ();
-		(AST.SpawnExp e', B.threadIdTy)
-	      end
+		val (e', ty) = chkExp (loc, depth, te, ve, e)
+		in
+		  if not(U.unify (ty, B.unitTy))
+		    then error(loc, ["type mismatch in spawn"])
+		    else ();
+		  (AST.SpawnExp e', B.threadIdTy)
+		end
 	    | PT.SeqExp es => let
-		  fun chk [e] = chkExp(loc, depth, te, ve, e)
-		    | chk (e::r) = let
-			  val (e', _) = chkExp (loc, depth, te, ve, e)
-			  val (e'', ty) = chk r
+		fun chk [e] = chkExp(loc, depth, te, ve, e)
+		  | chk (e::r) = let
+		      val (e', _) = chkExp (loc, depth, te, ve, e)
+		      val (e'', ty) = chk r
 		      in
-			  (AST.SeqExp(e', e''), ty)
+			(AST.SeqExp(e', e''), ty)
 		      end
-	      in
+		in
 		  chk es
-	      end
+		end
 	    | PT.IdExp x => if Atom.same (x, BasisNames.uMinus)
 		then let
 		(* Unary minus is being handled specially as
@@ -662,10 +662,11 @@ structure Typechecker : sig
 	  fun chkDcls (te, ve, []) = chkExp(span, 0, te, ve, exp)
 	    | chkDcls (te, ve, d::ds) =
 	        chkTopDcl (span, te, ve, d, fn (te, ve) => chkDcls (te, ve, ds))
-	  val ret = SOME (#1 (chkDcls (Basis.te0, Basis.ve0, dcls)))
+	  val (body, ty) = chkDcls (Basis.te0, Basis.ve0, dcls)
+(* FIXME: what should the type of a program be? *)
 	  in
 	    Overload.resolve ();
-	    ret
+	    AST.Module{exns = Exn.listExceptions (), body = body}
 	  end
 
     val check = BasicControl.mkTracePassSimple {passName = "check", pass = check}

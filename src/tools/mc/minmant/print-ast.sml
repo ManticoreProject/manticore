@@ -16,7 +16,7 @@ structure PrintAST : sig
     structure T = Types
     structure S = TextIOPP
 
-    val str = ref (S.openOut {dst = TextIO.stdErr, wid = 80})
+    val str = ref (S.openOut {dst = TextIO.stdErr, wid = 85})
 
     val openHBox   = (fn () => S.openHBox (!str))
     val openVBox   = (fn i => S.openVBox (!str) i)
@@ -26,32 +26,32 @@ structure PrintAST : sig
     val closeBox   = (fn () => S.closeBox (!str))
     val flush      = (fn () => S.flushStream (!str))
 
-    (* rel : int -> S.indent *)
+  (* rel : int -> S.indent *)
     fun rel n = S.Rel n
 
-    (* abs : int -> S.indent *)
+  (* abs : int -> S.indent *)
     fun abs n = S.Abs n
 
-    (* pr: string -> unit *)
+  (* pr: string -> unit *)
     val pr = (fn s => S.string (!str) s)
 
-    (* ln: unit -> unit *)
+  (* ln: unit -> unit *)
     fun ln () = S.newline (!str)
 
-    (* sp : unit -> unit *)
+  (* sp : unit -> unit *)
     fun sp () = S.space (!str) 1
 
-    (* prln : string -> unit *)
+  (* prln : string -> unit *)
     fun prln s = (pr s; ln ())
 
-    (* appwith : (unit -> unit) -> ('a -> unit) -> 'a list -> unit *)
-    fun appwith s f xs =
-	let fun aw [] = ()
-	      | aw (x::[]) = f x
-	      | aw (x::xs) = (f x; s (); aw xs)
-	in
+  (* appwith : (unit -> unit) -> ('a -> unit) -> 'a list -> unit *)
+    fun appwith s f xs = let
+	  fun aw [] = ()
+	    | aw (x::[]) = f x
+	    | aw (x::xs) = (f x; s (); aw xs)
+	  in
 	    aw xs
-	end
+	  end
 
   (* is an expression syntactically atomic? *)
     fun atomicExp (A.TupleExp _) = true
@@ -80,23 +80,23 @@ structure PrintAST : sig
   (* FIXME: should have proper pretty printing for types *)
     fun tyScheme ts = pr(TypeUtil.schemeToString ts)
 
-    (* exp : A.exp -> unit *)
-    fun exp (A.LetExp (b, e)) = 
-	  (openVBox (rel 0);
-	   pr "let";
-	   openVBox (abs 4);
-	   ln ();
-	   binding b;
-	   closeBox ();
-	   ln ();
-	   pr "in";
-	   openVBox (abs 4);
-	   ln ();
-	   exp e;
-	   closeBox ();
-	   ln ();
-	   pr "end";
-	   closeBox ())
+  (* exp : A.exp -> unit *)
+    fun exp (A.LetExp (b, e)) = (
+	  openVBox (rel 0);
+	    pr "let";
+	    openVBox (abs 4);
+	      ln ();
+	      binding b;
+	    closeBox ();
+	    ln ();
+	    pr "in";
+	    openVBox (abs 4);
+	      ln ();
+	      exp e;
+	    closeBox ();
+	    ln ();
+	    pr "end";
+	  closeBox ())
       |	exp (A.IfExp (ec, et, ef, t)) = 
 	  (openVBox (rel 0);
 	   pr "if (";
@@ -228,8 +228,8 @@ structure PrintAST : sig
 	   closeBox ())
       | exp (A.OverloadExp ovr) = overload_var (!ovr)
 
-    (* infixApp : exp * exp -> unit *)
-    (* print infix ops as expected *)
+  (* infixApp : exp * exp -> unit *)
+  (* print infix ops as expected *)
     and infixApp (opExp, e2) =
       (case e2
          of A.TupleExp [e21, e22] =>
@@ -247,7 +247,7 @@ structure PrintAST : sig
 	  | _ => raise Fail "expected a two-element tuple"
         (* end case *))
 
-    (* pe : string -> A.match -> unit *)
+  (* pe : string -> A.match -> unit *)
     and pe s (A.PatMatch(p, e)) = (
 	  openVBox (rel 0);
 	    pr s;
@@ -269,7 +269,7 @@ structure PrintAST : sig
 	    ln ();
 	  closeBox ())
 
-    (* pbind : A.pat * A.exp -> unit *)
+  (* pbind : A.pat * A.exp -> unit *)
     and pbind (p, e) =
 	  (openVBox (rel 0);
 	   pat p;
@@ -277,7 +277,7 @@ structure PrintAST : sig
 	   exp e;
 	   closeBox ())
 
-    (* binding : A.binding -> unit *)
+  (* binding : A.binding -> unit *)
     and binding (A.ValBind (p, e)) =
 	  (openVBox (rel 0);
 	   pr "val ";
@@ -301,7 +301,7 @@ structure PrintAST : sig
 		   app (lambda "and") ds;
 		   closeBox ()))
 
-    (* lambda : string -> A.lambda -> unit *)
+  (* lambda : string -> A.lambda -> unit *)
     and lambda kw (A.FB (f, x, b)) =
 	  (openVBox (rel 0);
 	   pr kw;
@@ -313,7 +313,7 @@ structure PrintAST : sig
 	   exp b;
 	   closeBox ())
 	   
-    (* pat : A.pat -> unit *)
+  (* pat : A.pat -> unit *)
     and pat (A.ConPat (c, ts, p)) = 
 	if Basis.isInfixDCon c
 	then infixPat (c, p)
@@ -337,7 +337,7 @@ structure PrintAST : sig
       | pat (A.WildPat ty) = pr "_"
       | pat (A.ConstPat c) = const c
 
-    (* infixPat : A.dcon * A.pat -> unit *)
+  (* infixPat : A.dcon * A.pat -> unit *)
     and infixPat (dc, p) =
       (case p
          of A.TuplePat [p1, p2] =>
@@ -355,41 +355,60 @@ structure PrintAST : sig
 	  | _ => raise Fail "expected a two-element tuple"
         (* end case *))
          
-    (* const : A.const -> unit *)
+  (* const : A.const -> unit *)
     and const (A.DConst (c, ts)) = dcon c
       | const (A.LConst (lit, t)) = pr (Literal.toString lit)
 
-    (* dcon : T.dcon -> unit *)
-    and dcon (T.DCon {name, ...}) = pr (Atom.toString name)
+  (* dcon : T.dcon -> unit *)
+    and dcon (T.DCon{name, ...}) = pr (Atom.toString name)
 
-    (* overload_var : A.overload_var -> unit *)
+  (* overload_var : A.overload_var -> unit *)
     and overload_var (A.Unknown (t, vs)) = raise Fail "overload_var.Unknown"
       | overload_var (A.Instance v) = var v
 				    
-    (* var : A.var -> unit *)
-    and var (VarRep.V {name, ...}) = pr name
-				     
-    (* module : A.module -> unit *)
-    fun module m = exp m
+  (* var : A.var -> unit *)
+    and var (VarRep.V{name, ...}) = pr name
+
+  (* prettyprint an exception declaration *)
+    fun ppExn (T.DCon{name, argTy, ...}) = (
+	  openHVBox ();
+	    pr "exception"; sp(); pr (Atom.toString name);
+	    case argTy
+	     of SOME ty => (
+		  openHBox();
+		    sp(); pr "of"; sp(); pr(TypeUtil.toString ty);
+		  closeBox ())
+	      | NONE => ()
+	    (* end case *);
+	  closeBox(); ln())
+
+  (* module : A.module -> unit *)
+    fun module (A.Module{exns, body}) = (
+	  openVBox (abs 0);
+	    List.app ppExn exns;
+	    openHBox ();
+	      exp body;
+	    closeBox ();
+	    ln ();
+	  closeBox ())
 		   
-    (* output : TextIO.outstream * A.module -> unit *)
+  (* output : TextIO.outstream * A.module -> unit *)
     fun output (outS : TextIO.outstream, m : A.module) = let
           val oldStr = !str
-          val () = str := S.openOut {dst = outS, wid = 80}
-          val () = module m
-	  val () = S.closeStream (!str)
-          val () = str := oldStr
 	  in
-	    ()
+	    str := S.openOut {dst = outS, wid = 80};
+            module m;
+	    S.closeStream (!str);
+            str := oldStr
 	  end
 				 
-    (* print : A.module -> unit *)
+  (* print : A.module -> unit *)
     fun print m = (module m;
 		   ln ();
 		   flush ())
 		  
-    (* printComment : string -> unit *)       
-    (* for debugging purposes *)
+  (* printComment : string -> unit *)       
+  (* for debugging purposes *)
     fun printComment s = (prln ("(* " ^ s ^ " *)");
 			  flush ())
 

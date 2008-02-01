@@ -257,7 +257,7 @@ structure Basis : sig
     val optionSOME = DataCon.new optionTyc (N.optionSOME, SOME(tv'))
     end
 
-    val exnTyc = TyCon.newAbsTyc (N.exn, 0, false)
+    val exnTyc = Exn.exnTyc
 
     val intTyc = TyCon.newAbsTyc (N.int, 0, true)
     val longTyc = TyCon.newAbsTyc (N.long, 0, true)

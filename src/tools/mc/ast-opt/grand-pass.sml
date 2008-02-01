@@ -22,49 +22,49 @@ structure GrandPass : sig
     structure V = Var
     structure U = UnseenBasis
 
-    fun exp (A.LetExp (b, e)) = A.LetExp (binding b, exp e)
-      | exp (A.IfExp (e1, e2, e3, t)) = A.IfExp (exp e1, exp e2, exp e3, t)
-      | exp (A.CaseExp (e, ms, t)) = A.CaseExp (exp e, map match ms, t)
-      | exp (A.HandleExp (e, ms, t)) = A.HandleExp (exp e, map match ms, t)
-      | exp (A.RaiseExp (e, t)) = A.RaiseExp (exp e, t)
-      | exp (A.FunExp (x, e, t)) = A.FunExp (x, exp e, t)
-      | exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, t)
-      | exp (A.TupleExp es) = A.TupleExp (map exp es)
-      | exp (A.RangeExp (e1, e2, oe3, t)) = 
-	  A.RangeExp (exp e1, exp e2, Option.map exp oe3, t)
-      | exp (ptup as A.PTupleExp es) = 
+    fun trExp (A.LetExp (b, e)) = A.LetExp (binding b, trExp e)
+      | trExp (A.IfExp (e1, e2, e3, t)) = A.IfExp (trExp e1, trExp e2, trExp e3, t)
+      | trExp (A.CaseExp (e, ms, t)) = A.CaseExp (trExp e, map match ms, t)
+      | trExp (A.HandleExp (e, ms, t)) = A.HandleExp (trExp e, map match ms, t)
+      | trExp (A.RaiseExp (e, t)) = A.RaiseExp (trExp e, t)
+      | trExp (A.FunExp (x, e, t)) = A.FunExp (x, trExp e, t)
+      | trExp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (trExp e1, trExp e2, t)
+      | trExp (A.TupleExp es) = A.TupleExp (map trExp es)
+      | trExp (A.RangeExp (e1, e2, oe3, t)) = 
+	  A.RangeExp (trExp e1, trExp e2, Option.map trExp oe3, t)
+      | trExp (ptup as A.PTupleExp es) = 
 	  (case trPTup es
 	     of SOME e => e
-	      | NONE => A.TupleExp (map exp es)
+	      | NONE => A.TupleExp (map trExp es)
 	    (* end case *))
-      | exp (A.PArrayExp (es, t)) = A.PArrayExp (map exp es, t)
-      | exp (A.PCompExp (e, pes, oe)) = trPComp (e, pes, oe)
-      | exp (A.PChoiceExp (es, t)) = A.PChoiceExp (map exp es, t)
-      | exp (A.SpawnExp e) = A.SpawnExp (exp e)
-      | exp (k as A.ConstExp _) = k
-      | exp (v as A.VarExp (x, ts)) = v
+      | trExp (A.PArrayExp (es, t)) = A.PArrayExp (map trExp es, t)
+      | trExp (A.PCompExp (e, pes, oe)) = trPComp (e, pes, oe)
+      | trExp (A.PChoiceExp (es, t)) = A.PChoiceExp (map trExp es, t)
+      | trExp (A.SpawnExp e) = A.SpawnExp (trExp e)
+      | trExp (k as A.ConstExp _) = k
+      | trExp (v as A.VarExp (x, ts)) = v
 (*	  (case trVar (x, ts)
 	     of SOME e => e
 	      | NONE => v) *)
-      | exp (A.SeqExp (e1, e2)) = A.SeqExp (exp e1, exp e2)
-      | exp (x as A.OverloadExp _) = x
+      | trExp (A.SeqExp (e1, e2)) = A.SeqExp (trExp e1, trExp e2)
+      | trExp (x as A.OverloadExp _) = x
 
-    and binding (A.ValBind (p, e)) = A.ValBind (p, exp e)
-      | binding (A.PValBind (p, e)) = A.PValBind (p, exp e)
+    and binding (A.ValBind (p, e)) = A.ValBind (p, trExp e)
+      | binding (A.PValBind (p, e)) = A.PValBind (p, trExp e)
       | binding (A.FunBind lams) = A.FunBind (map lambda lams)
 
-    and lambda (A.FB (f, x, e)) = A.FB (f, x, exp e)
+    and lambda (A.FB (f, x, e)) = A.FB (f, x, trExp e)
 
-    and match (A.PatMatch (p, e)) = A.PatMatch (p, exp e)
-      | match (A.CondMatch (p, e1, e2)) = A.CondMatch (p, exp e1, exp e2)
+    and match (A.PatMatch (p, e)) = A.PatMatch (p, trExp e)
+      | match (A.CondMatch (p, e1, e2)) = A.CondMatch (p, trExp e1, trExp e2)
 
-    and trPTup arg = TranslatePtup.tr exp arg
+    and trPTup arg = TranslatePtup.tr trExp arg
 
 (*    and trVar arg = RewriteWithQueues.transform arg *)
 
-    and trPComp arg = TranslatePComp.tr exp arg
+    and trPComp arg = TranslatePComp.tr trExp arg
 
   (* transform : A.module -> A.module *)
-    fun transform m = exp m
+    fun transform (AST.Module{exns, body}) = AST.Module{exns=exns, body=trExp body}
 
   end

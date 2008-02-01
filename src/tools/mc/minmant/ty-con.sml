@@ -63,6 +63,7 @@ structure TyCon : sig
     local
       val {getFn, setFn} = newFlag ()
     in
+(* QUESTION: should we support equality on monomorphic datatypes with equality-type arguments? *)
     val isEqTyc = getFn
     fun markEqTyc tyc = setFn(tyc, true)
     end

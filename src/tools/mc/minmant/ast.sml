@@ -73,6 +73,9 @@ structure AST =
       | varKindToString VK_Fun = "Fun"
       | varKindToString VK_Prim = "Prim"
 
-    type module = exp
+    datatype module = Module of {
+	exns : dcon list,
+	body : exp
+      }
 
   end

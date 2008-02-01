@@ -21,11 +21,8 @@
 structure FutParTup : sig
 
     val futurize : AST.module -> AST.module
-    val test : int -> unit
 
-  end  = 
-
-  struct
+  end = struct
 
     structure A = AST
     structure B = Basis
@@ -40,8 +37,7 @@ structure FutParTup : sig
     (* id : 'a -> 'a *)
     val id = fn x => x
 
-    (* module : A.module -> A.module *)
-    fun module m = let
+    fun transform m = let
 	  val anyChange = ref false
 	(* ptuple : A.exp list -> A.exp *)
 	(* Precondition: The argument to the function, a list, must not be empty. *)
@@ -124,46 +120,7 @@ structure FutParTup : sig
 	      else m
 	  end
 
-    (* futurize : A.module -> A.module *)
-    fun futurize m = module m
-
-    (**** tests ****)
-
-    local
-
-	structure U = TestUtils
-
-	(* test cases *)
-
-	(* t0 = (| fact 10, fact 11 |) *)
-	val t0 = U.ptup [U.fact 10, U.fact 11]
-
-	(* t1 = (| (| fact 10, fact 11|), (| fact 10, fact 11 |) |) *)
-	val t1 = U.ptup [t0, t0]
-
-	(* t2 = (| fact 10, fact 11, fact 12, fact 13, fact 14 |) *)
-	val t2 = U.ptup (map U.fact [10,11,12,13,14])
-
-	(* t3 = (| (| fact 10, fact 11 |), fact 12 |) *)
-	val t3 = U.ptup [U.ptup [U.fact 10,
-				 U.fact 11],
-			 U.fact 12]
-
-	(* t4 = (|1, 2, 3|) *)
-	val t4 = U.ptup [U.int 1, U.int 2, U.int 3]
-
-	(* t4 = (|1, fact 20, 3|) *)
-	val t5 = U.ptup [U.int 1, U.fact 20, U.int 3]
-
-	(* test : A.exp -> unit *)
-	fun testPTup e = (PrintAST.print e;
-			  U.describe (SOME "futurizing");
-			  PrintAST.print (futurize e))
-    in
-
-        (* test : int -> unit *)
-        val test = U.mkTest testPTup [t0,t1,t2,t3,t4,t5]
-
-    end
+  (* futurize : A.module -> A.module *)
+    fun futurize (AST.Module{exns, body}) = AST.Module{exns=exns, body=transform body}
 
   end

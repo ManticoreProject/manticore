@@ -15,15 +15,11 @@ structure FrontEnd : sig
   (* parse and typecheck a file *)
     fun load (errStrm, file) = (
 	  case Parser.parseFile (errStrm, file)
-	   of SOME pt => (
-		Typechecker.check (errStrm, pt))
+	   of SOME pt => SOME(Typechecker.check (errStrm, pt))
 	    | NONE => NONE
 	  (* end case *))
 
-    val load =
-       BasicControl.mkTracePassSimple
-       {passName = "load",
-        pass = load}
+    val load = BasicControl.mkTracePassSimple {passName = "load", pass = load}
 
   end
 

@@ -522,16 +522,17 @@ structure MatchCompile : sig
 	    { shared = shared, match = treeToAST (flattenTree tree) }
 	  end
 
-    fun compile (errStrm, exp : AST.module) = let
+    fun compile (errStrm, module as AST.Module{exns, body}) = let
 	  val base = (case Controls.get BasicControl.keepPassBaseName
 		 of NONE => "match-comp"
 		  | SOME fname => fname ^ ".match-comp"
 		(* end case *))
-	  val _ = dumpAST (base ^ ".pre.ast", exp)
-	  val exp = rewrite ((0, 0), Env.new errStrm, exp)
+	  val _ = dumpAST (base ^ ".pre.ast", module)
+	  val exp = rewrite ((0, 0), Env.new errStrm, body)
+	  val module' = AST.Module{exns = exns, body = exp}
 	  in
-	    dumpAST (base ^ ".post.ast", exp);
-	    exp
+	    dumpAST (base ^ ".post.ast", module');
+	    module'
 	  end
 
   end
