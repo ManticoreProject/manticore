@@ -18,13 +18,19 @@ structure PrintAST : sig
 
     val str = ref (S.openOut {dst = TextIO.stdErr, wid = 85})
 
-    val openHBox   = (fn () => S.openHBox (!str))
-    val openVBox   = (fn i => S.openVBox (!str) i)
-    val openHVBox  = (fn i => S.openHVBox (!str))
-    val openHOVBox = (fn i => S.openHOVBox (!str))
-    val openBox    = (fn i => S.openBox (!str))
-    val closeBox   = (fn () => S.closeBox (!str))
-    val flush      = (fn () => S.flushStream (!str))
+  (* for debugging boxes *)
+    fun debug _ = ()
+(*
+    fun debug s = print s
+*)
+
+    fun openHBox () = (debug "(openHBox\n"; S.openHBox (!str))
+    fun openVBox i = (debug "(openVBox\n"; S.openVBox (!str) i)
+    fun openHVBox i = (debug "(openHVBox\n"; S.openHVBox (!str) i)
+    fun openHOVBox i = (debug "(openHOVBox\n"; S.openHOVBox (!str) i)
+    fun openBox i = (debug "(openBox\n"; S.openBox (!str) i)
+    fun closeBox () = (debug "closeBox)\n"; S.closeBox (!str))
+    fun flush () = (S.flushStream (!str))
 
   (* rel : int -> S.indent *)
     fun rel n = S.Rel n
@@ -128,7 +134,7 @@ structure PrintAST : sig
 	     closeBox ();
 	  closeBox ())
       | exp (A.HandleExp(e, matches, ty)) = (
-	  openHVBox (rel 2);
+	  openHOVBox (rel 2);
 	    openHBox ();
 	      pr "(";
 	      exp e;
@@ -138,12 +144,11 @@ structure PrintAST : sig
 	    pr "handle";
 	    sp ();
 	    openVBox (abs 2);
-	      ln ();
 	      case matches
 	       of m::ms => (pe " of" m;  app (pe "  |") ms)
-		| nil => raise Fail "case without any branches"
+		| nil => raise Fail "handle without any branches"
 	      (* end case *);
-	      pr "(* end case *))";
+	      pr "(* end handle *))";
 	    closeBox ();
 	 closeBox ())
       | exp (A.RaiseExp(e, ty)) = (
@@ -371,7 +376,7 @@ structure PrintAST : sig
 
   (* prettyprint an exception declaration *)
     fun ppExn (T.DCon{name, argTy, ...}) = (
-	  openHVBox ();
+	  openHOVBox (abs 0);
 	    pr "exception"; sp(); pr (Atom.toString name);
 	    case argTy
 	     of SOME ty => (
@@ -380,6 +385,7 @@ structure PrintAST : sig
 		  closeBox ())
 	      | NONE => ()
 	    (* end case *);
+	    pr ";";
 	  closeBox(); ln())
 
   (* module : A.module -> unit *)
@@ -403,14 +409,11 @@ structure PrintAST : sig
 	  end
 				 
   (* print : A.module -> unit *)
-    fun print m = (module m;
-		   ln ();
-		   flush ())
+    fun print m = (module m; ln (); flush ())
 		  
   (* printComment : string -> unit *)       
   (* for debugging purposes *)
-    fun printComment s = (prln ("(* " ^ s ^ " *)");
-			  flush ())
+    fun printComment s = (prln ("(* " ^ s ^ " *)"); flush ())
 
   end
 
