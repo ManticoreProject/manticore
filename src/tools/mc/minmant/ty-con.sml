@@ -59,11 +59,13 @@ structure TyCon : sig
     fun newProp mkProp = PropList.newProp (propsOf, mkProp)
     fun newFlag () = PropList.newFlag propsOf
 
-  (* equality type property *)
+  (* equality type property.  This property is set for abstract types when they
+   * are defined and for datatypes after their constructors are checked (see
+   * typechecker.sml).
+   *)
     local
       val {getFn, setFn} = newFlag ()
     in
-(* QUESTION: should we support equality on monomorphic datatypes with equality-type arguments? *)
     val isEqTyc = getFn
     fun markEqTyc tyc = setFn(tyc, true)
     end
