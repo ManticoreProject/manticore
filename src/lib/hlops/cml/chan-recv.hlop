@@ -30,7 +30,8 @@ define @chan-recv (ch : chan / exh : exh) : any =
 	| NONE =>
 	    cont recvK (x : any) = return (x)
 	    (* in *)
-	      let flag : dirty_flag = galloc(WAITING_EVT)
+	      let flag : dirty_flag = alloc(WAITING_EVT)
+              let flag : dirty_flag = promote (flag)
 	      do @chan-enqueue-recv (ch, flag, fgs, recvK / exh)
 	      do @chan-release-lock (ch / exh)
 	      (* in *)

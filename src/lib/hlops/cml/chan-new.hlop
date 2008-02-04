@@ -9,6 +9,7 @@
 #include "events.def"
 
 define inline @chan-new (_ : unit / exh : exh) : chan =
-    let ch : chan = galloc(FALSE, NIL, NIL, NIL, NIL)
+    let ch : chan = alloc(FALSE, NIL, NIL, NIL, NIL)
+    let ch : chan = promote (ch)
     return (ch)
 ;

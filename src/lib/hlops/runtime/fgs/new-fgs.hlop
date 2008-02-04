@@ -9,6 +9,7 @@
 #include "fgs.def"
 
 define @new-fgs (pinned : bool, parent : option / exh : exh) : fgs = 
-  let fgs : fgs = galloc (FALSE, FALSE, pinned, parent, ANIL)
+  let fgs : fgs = alloc (FALSE, FALSE, pinned, parent, ANIL)
+  let fgs : fgs = promote (fgs)
   return (fgs)
 ;

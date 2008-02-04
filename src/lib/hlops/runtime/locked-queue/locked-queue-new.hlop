@@ -5,7 +5,7 @@
  *
  * Allocate an empty locked queue.
  *
- * We represent queues as a linked structure.
+ * We represent queues as linked structures.
  *     hd -> elt1 -> elt2 -> elt3
  *                             ^
  *                             |
@@ -15,6 +15,7 @@
 #include "locked-queue.def"
 
 define @locked-queue-new ( / exh : exh) : locked_queue =
-  let lockedQ : locked_queue = galloc (FALSE, LOCKED_QUEUE_EMPTY, LOCKED_QUEUE_EMPTY, LOCKED_QUEUE_EMPTY, LOCKED_QUEUE_EMPTY)
+  let lockedQ : locked_queue = alloc (FALSE, LOCKED_QUEUE_EMPTY, LOCKED_QUEUE_EMPTY, LOCKED_QUEUE_EMPTY, LOCKED_QUEUE_EMPTY)
+  let lockedQ : locked_queue = promote (lockedQ)
   return (lockedQ)
 ;

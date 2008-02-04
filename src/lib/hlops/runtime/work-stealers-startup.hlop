@@ -64,8 +64,10 @@ define @work-stealers-startup ( / exh : exh) : () =
        end
 
   (* put schedulers to sleep *)
-   let sleepingLock : spin_lock = galloc (FALSE)
-   let sleeping : ![list] = galloc (NIL)
+   let sleepingLock : spin_lock = alloc (FALSE)
+   let sleepingLock : spin_lock = promote(sleepingLock)
+   let sleeping : ![list] = alloc (NIL)
+   let sleeping : ![list] = promote(sleeping)
 
   (* add the vproc to the sleeping list *)
    fun addToSleeping (vp : vproc / exh : exh) : () =
@@ -80,7 +82,8 @@ define @work-stealers-startup ( / exh : exh) : () =
 
   (* given some number of stealable threads, resuscitate at most that many sleeping vprocs *)
    fun resuscitates (n : int / exh : exh) : list =
-       let resuscitates : ![list] = galloc (NIL)
+       let resuscitates : ![list] = alloc (NIL)
+       let resuscitates : ![list] = promote(resuscitates)
        fun doit (_ : unit / exh : exh) : unit =
            fun takeN (i : int, ss : list, rs : list / exh : exh) : list =
                if I32Lte (i, n)

@@ -25,7 +25,8 @@ define @locked-queue-blocking-dequeue (q : locked_queue / exh : exh) : any =
 
    (* place an element at the blocked queue tail *)
     fun queueSnoc (elt : any, qt : queue_elt / exh : exh) : queue_elt =
-	let qElt : queue_elt = galloc (elt, LOCKED_QUEUE_EMPTY)
+	let qElt : queue_elt = alloc (elt, LOCKED_QUEUE_EMPTY)
+        let qElt : queue_elt = promote (qElt)
 	do if Equal (qt, LOCKED_QUEUE_EMPTY) 
 	      then return () 
 	      else let qElt : any = (any)qElt
