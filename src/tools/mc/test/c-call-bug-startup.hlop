@@ -1,3 +1,6 @@
+(*
+ * to compile: ./mc -Cdebug=true -Cscheduler=c-call-bug triv.pm
+ *)
 #include "types.def"
 extern void M_Print (void*);
 
