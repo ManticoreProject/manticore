@@ -307,6 +307,9 @@ HLOPS_DIR=$MANTICORE_LIBDIR/hlops
 
 if test x"$prefix" = xNONE ; then
   INC_SEARCH_PATH=".:$HLOPS_DIR/include"
+dnl FIXME: the following should be
+dnl HLOP_SEARCH_PATH=".:$HLOPS_DIR"
+dnl but we need the install script first
   HLOP_SEARCH_PATH=".:$HLOPS_SRCDIR"
 else
   INC_SEARCH_PATH=".:$prefix/lib/hlops/include"
