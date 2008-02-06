@@ -197,7 +197,7 @@ typedef struct {
 } EventInfo_t;
 
 #define DEF_EVENT(ID, NARGS, KIND, DESC) \
-	[ID] = { .tag = #ID, .kind = KIND, .desc = DESC },
+	[ID] = { .tag = #ID, .kind = KIND, .desc = DESC },	\
 
 EventInfo_t	Info[NumLogEvents] = {
 #include "log-events.h"

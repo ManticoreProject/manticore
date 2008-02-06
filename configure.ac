@@ -307,7 +307,7 @@ HLOPS_DIR=$MANTICORE_LIBDIR/hlops
 
 if test x"$prefix" = xNONE ; then
   INC_SEARCH_PATH=".:$HLOPS_DIR/include"
-  HLOP_SEARCH_PATH=".:$HLOPS_DIR"
+  HLOP_SEARCH_PATH=".:$HLOPS_SRCDIR"
 else
   INC_SEARCH_PATH=".:$prefix/lib/hlops/include"
   HLOP_SEARCH_PATH=".:$prefix/lib/hlops"

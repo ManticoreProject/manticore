@@ -30,3 +30,6 @@ distclean:
 
 .PHONY:		devclean
 devclean:	distclean
+
+.PHONY:         local-install
+local-install:

@@ -1,0 +1,38 @@
+#include "locked-queue.def"
+#include "debugging.def"
+#include "testing.def"
+
+
+
+(* test fifo ordering *)
+define @test-q-1 (/ exh : exh) : bool =
+  let nElts : int = 1012
+  let q : locked_queue = @locked-queue-new (/ exh)
+  fun enq (i : int / exh : exh) : () = 
+      if I32Eq (i,0)
+         then return ()
+         else let wi : [int] = wrap (i)
+              let wi : any = (any)wi
+              do @locked-queue-enqueue (q, wi / exh)
+              apply enq (I32Sub(i,1) / exh)
+  fun deq (i : int / exh : exh) : bool =
+      let jOpt : option = @locked-queue-dequeue (q / exh)
+      case jOpt
+       of NONE => let b : bool = I32Eq(i,0)
+                  return (b)
+	| SOME (wj:[int]) => 
+                     let j :int = unwrap(wj)
+                     if I32Eq (i,j)
+		       then let i : int =  I32Sub (i,1)
+                            apply deq (i / exh)
+                       else return (FALSE)
+      end
+  do apply enq (nElts /exh)
+  apply deq ( nElts / exh)
+;
+
+define @locked-queue-test-startup ( / exh : exh) : () =
+  do @default-scheduler-startup (/ exh)
+  do_test(test-q-1)
+  return ()
+;

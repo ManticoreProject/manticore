@@ -15,9 +15,6 @@ define inline @run (vp : vproc, act : sigact, fgs : fgs, fiber : fiber / exh : e
 
 define @scheduler-startup (mkAct : fun (vproc / exh -> sigact), fgs : fgs, vps : list / exh : exh) : ();
 
-define @get-fgs (vp : vproc / exh : exh) : fgs;
-define @new-fgs (pinned : bool, parent : option / exh : exh) : fgs;
-
 extern void *ListVProcs (void *) __attribute__((alloc));
 
 define @default-scheduler-startup ( / exh : exh) : () = 
