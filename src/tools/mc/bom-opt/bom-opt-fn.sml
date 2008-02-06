@@ -44,14 +44,18 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 
     val expand = mkModuleOptPass ("expand", ExpandHLOps.expand)
 
-    val contract = transform {passName = "contract", pass = Contract.contract}
+    val contract = transform {passName = "contract", pass = Contract.contract {removeExterns=true}}
+    val contract' = transform {passName = "contract", pass = Contract.contract {removeExterns=false}}
 
     val rewrite = mkModuleOptPass ("rewrite", RewriteHLOps.rewrite)
 
     fun expandAll module = (case expand module
 	   of SOME module => let
 		val _ = CheckBOM.check ("expand-all:expand", module)
-		val module = contract module
+	      (* NOTE: we don't remove externs here because references may be hiding inside
+	       * unexpanded HLOps.
+	       *)
+		val module = contract' module
 		val _ = CheckBOM.check ("expand-all:contract", module)
 		in
 		  expandAll module
@@ -59,10 +63,14 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 	    | NONE => module
 	  (* end case *))
 
+(* FIXME: rewriting and expansion should be interleaved!!! *)
     fun rewriteAll module = (case rewrite module
 	   of SOME module => let
 		val _ = CheckBOM.check ("rewrite-all:rewrite", module)
-		val module = contract module
+	      (* NOTE: we don't remove externs here because references may be hiding inside
+	       * unexpanded HLOps.
+	       *)
+		val module = contract' module
 		val _ = CheckBOM.check ("rewrite-all:contract", module)
 		in
 		  rewriteAll module

@@ -12,7 +12,11 @@
 
 structure Contract : sig
 
-    val contract : BOM.module -> BOM.module
+    type flags = {
+	removeExterns : bool	(* if true, remove unused externs. *)
+      }
+
+    val contract : flags -> BOM.module -> BOM.module
 
   end = struct
 
@@ -23,6 +27,10 @@ structure Contract : sig
     structure C = Census
     structure U = BOMUtil
     structure ST = Stats
+
+    type flags = {
+	removeExterns : bool	(* if true, remove unused externs. *)
+      }
 
   (********** Counters for statistics **********)
     val cntUnusedStmt		= ST.newCounter "contract:unused-stmt"
@@ -578,7 +586,7 @@ structure Contract : sig
 	    B.mkStmts (casts, doExp (env', body, kid))
 	  end
 
-    fun contract (module as B.MODULE{name, externs, body}) = let
+    fun contract (flags : flags) (module as B.MODULE{name, externs, body}) = let
 	  fun ticks () = ST.sum {from = firstCounter, to = lastCounter}
 	  fun loop (body, prevSum) = let
 		val _ = ST.tick cntIters
@@ -586,7 +594,7 @@ structure Contract : sig
 		val sum = ticks()
 		in
 (*DEBUG*
-print(concat["contract: ", Int.toString(sum - prevSum), " ticks\n"]);(* *)
+print(concat["contract: ", Int.toString(sum - prevSum), " ticks\n"]);
 if (prevSum <> sum) then (
     print "******************** after one iteration of contract ********************\n";
     PrintBOM.print(B.MODULE{name=name, externs=externs, body=body}))
@@ -604,7 +612,9 @@ if (prevSum <> sum) then (
 		  ST.tick cntUnusedCFun;
 		  false)
 		else true
-	  val externs = List.filter removeUnusedExtern externs
+	  val externs = if #removeExterns flags
+		then List.filter removeUnusedExtern externs
+		else externs
 	  in
 	    ST.tick cntPhases;
 	    B.MODULE{name=name, externs=externs, body=body}
