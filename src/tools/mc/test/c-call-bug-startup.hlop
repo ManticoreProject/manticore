@@ -1,0 +1,14 @@
+#include "types.def"
+extern void M_Print (void*);
+
+define @test (/ exh: exh) : () =
+  do ccall M_Print ("hi\n")
+  return ()
+;
+
+define @c-call-bug-startup ( / exh : exh) : () =
+  (* uncommenting this line will let this program compile *)
+(*  do ccall M_Print ("hi\n")*)
+  do @test (/ exh)
+  return ()
+;
