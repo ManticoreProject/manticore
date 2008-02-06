@@ -66,3 +66,7 @@ define @atomic-yield (vp : vproc / exh : exh) : unit;
 define inline @thread-exit ( / exh : exh) noreturn;
 
 define @generic-hlop-test (n : int / exh : exh) : any;
+
+(* testing operations *)
+define @wait (secs : double, done : ![bool] / exh : exh) : ();
+define @test-deadlock (f : fun (unit / exh -> bool), inParallel : bool  / exh : exh, exhDone : exh, exhAns : exh) : ();

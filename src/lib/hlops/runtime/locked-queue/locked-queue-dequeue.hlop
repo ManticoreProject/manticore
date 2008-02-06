@@ -30,8 +30,7 @@ define @locked-queue-dequeue (q : locked_queue / exh : exh) : option =
                   else return ()
             do UPDATE(LOCKED_QUEUE_HD, q, qNext)
             let elt : any = SELECT(QUEUE_ELT_HD, qHd)
-           (* FIXME: need to lift the allocation out of here somehow, as it may trigger GC while holding the lock *)
-            let v : option = SOME (elt)
             let _ : unit = @spin-unlock-lq (q / exh)
+            let v : option = SOME (elt)
             return (v)
 ;

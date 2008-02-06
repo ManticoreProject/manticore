@@ -11,13 +11,28 @@
 
 #include "types.def"
 #include "assert.def"
+#include "debugging.def"
 
 #ifdef NDEBUG
 #define do_test(test)
+#define do_concurrent_test(test)
 #else
+
 #define do_test(test)			\
 	let b : bool = @test(/exh)	\
-	do assert(Equal(b,TRUE))
+	do assert(Equal(b,TRUE))        \
+
+#define do_concurrent_test(hlop)                                           \
+        cont exhDeadlock (_ : any) =                                       \
+             print_debug("Deadlock")                                       \
+             assert (FALSE)                                                \
+        cont exhIncorrectAns (_ : any) =                                   \
+             print_debug("Wrong answer")                                   \
+             assert (FALSE)                                                \
+        fun f (_ : unit / exh : exh) : bool =                              \
+        @hlop (/exh)                                                       \
+        do @test-deadlock (f, TRUE / exh, exhDeadlock, exhIncorrectAns)    \
+
 #endif
 
 #endif /*! _TESTING_DEF_ */

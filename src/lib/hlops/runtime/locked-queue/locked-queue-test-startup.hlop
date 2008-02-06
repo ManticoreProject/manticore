@@ -1,12 +1,9 @@
 #include "locked-queue.def"
-#include "debugging.def"
 #include "testing.def"
-
-
 
 (* test fifo ordering *)
 define @test-q-1 (/ exh : exh) : bool =
-  let nElts : int = 1012
+  let nElts : int = 1080
   let q : locked_queue = @locked-queue-new (/ exh)
   fun enq (i : int / exh : exh) : () = 
       if I32Eq (i,0)
@@ -32,7 +29,6 @@ define @test-q-1 (/ exh : exh) : bool =
 ;
 
 define @locked-queue-test-startup ( / exh : exh) : () =
-  do @default-scheduler-startup (/ exh)
-  do_test(test-q-1)
+  do_concurrent_test(test-q-1)
   return ()
 ;
