@@ -40,15 +40,14 @@ define @rope-sublist (r : rope, start : int, len : int / exh : exh) : [list, boo
            @list-sublist (data, st, n / exh)
        | CAT (ml_len:ml_int, _:ml_int, r1:rope, r2:rope) =>
            do ccall M_Print ("@rope-sublist 3\n\000")
-           let n1 : int = apply rope_len_int (r1)     
-           if I32Lte(n1,n) then
+           let lenR1 : int = apply rope_len_int (r1)     
+           let leftAmt : int = I32Sub(lenR1, st)
+           let rightAmt : int = I32Sub(n, leftAmt)
+           if I32Lte(n, leftAmt) then
              apply sub (r1, st, n)
            else
-             let leftLen : int = I32Sub (n1, st)
-             let d1 : list = apply sub (r1, st, leftLen)
-             let d2 : list = 
-               let rightLen : int = I32Sub(n,leftLen)
-               apply sub (r2, 0, rightLen)
+             let d1 : list = apply sub (r1, st, leftAmt)
+             let d2 : list = apply sub (r2, 0, rightAmt)              
              let tup : [list, list] = alloc (d1, d2)
              @list-append (tup / exh)
     end (* case *)
@@ -57,7 +56,7 @@ define @rope-sublist (r : rope, start : int, len : int / exh : exh) : [list, boo
   do ccall M_Print ("@rope-sublist 4.1\n\000")
   let rLen : int = apply rope_len_int (r)
   do ccall M_Print ("@rope-sublist 4.2\n\000")
-  let longEnough : bool = I32Lte(rLen, len)
+  let longEnough : bool = I32Lte(len, rLen)
   do ccall M_Print ("@rope-sublist 4.3\n\000")
   let data : list =
     (* This check enforces the invariant of the call to sub. *)

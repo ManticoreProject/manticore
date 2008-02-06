@@ -19,3 +19,4 @@ define inline @dequeue (vp : vproc / exh : exh) : rdyq_item =
                  return (item)
   end
 ;
+
