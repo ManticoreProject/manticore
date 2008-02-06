@@ -9,10 +9,15 @@
 #ifndef _TESTING_DEF_
 #define _TESTING_DEF_
 
+#include "types.def"
 #include "assert.def"
 
-#define do_test(test)                         \
-           let b : bool = @test(/exh)         \
-           do assert(Equal(b,TRUE))           \
+#ifdef NDEBUG
+#define do_test(test)
+#else
+#define do_test(test)			\
+	let b : bool = @test(/exh)	\
+	do assert(Equal(b,TRUE))
+#endif
 
 #endif /*! _TESTING_DEF_ */
