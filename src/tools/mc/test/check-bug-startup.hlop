@@ -1,0 +1,17 @@
+(*
+ * Run me by saying
+ *    mc -Cdebug=true -Cscheduler=check-bug triv.pml
+ *) 
+
+#include "types.def"
+#include "debugging.def"
+
+define @check-bug-startup ( / exh : exh) : () =
+ (* The BOM checker should complain about using an integer literal as the argument to F64Lt,
+  * but it does not. 
+  *)
+  if F64Lt (1:double, 2.0:double)
+    then return ()
+    else print_debug("success")
+         return ()
+;
