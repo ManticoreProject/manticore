@@ -25,7 +25,8 @@ define @locked-queue-dequeue (q : locked_queue / exh : exh) : option =
             let qNext : queue_elt = (queue_elt)qNext
             do if Equal (qHd, qTl)
                   then (* there is one element on the queue, so clear out the tail *)
-                       do UPDATE(LOCKED_QUEUE_TL, q, LOCKED_QUEUE_EMPTY)
+                       let emptyQ : queue_elt = (queue_elt)LOCKED_QUEUE_EMPTY
+                       do UPDATE(LOCKED_QUEUE_TL, q, emptyQ)
                        return ()
                   else return ()
             do UPDATE(LOCKED_QUEUE_HD, q, qNext)

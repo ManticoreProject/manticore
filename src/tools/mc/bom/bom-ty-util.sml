@@ -118,6 +118,7 @@ structure BOMTyUtil : sig
 	    | (BTy.T_Any, _) => true 
 	    | (BTy.T_Enum w1, BTy.T_Enum w2) => (w1 <= w2)
 	    | (BTy.T_Enum w, BTy.T_TyCon(BTy.DataTyc{nNullary, ...})) => (w < Word.fromInt nNullary)
+	    | (BTy.T_Enum _, BTy.T_Tuple _) => true
             | (ty1, ty2 as BTy.T_TyCon (BTy.DataTyc {cons, ...})) =>
                 equal(ty1, ty2) orelse
                 List.exists (fn BTy.DCon {rep, argTy, ...} =>

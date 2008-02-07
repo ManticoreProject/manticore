@@ -25,7 +25,9 @@ define inline @thread-exit ( / exh : exh) noreturn;
  *)
 
 define @scheduler-startup (mkAct : fun (vproc / exh -> sigact), fgs : fgs, vps : list / exh : exh) : () =
-    let syncPoint : ![int] = galloc(0)
+    let syncPoint : ![int] = alloc(0)
+   (* since vprocs share it, promote syncPoint *)
+    let syncPoint : ![int] = promote(syncPoint)
 
     let self : vproc = host_vproc
 

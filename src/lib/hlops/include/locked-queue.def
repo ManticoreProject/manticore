@@ -21,7 +21,7 @@ typedef locked_queue = ![bool, queue_elt, queue_elt, queue_elt, queue_elt];
 #define LOCKED_QUEUE_BLOCKED_HD     3
 #define LOCKED_QUEUE_BLOCKED_TL     4
 
-#define LOCKED_QUEUE_EMPTY	enum(0):queue_elt
+#define LOCKED_QUEUE_EMPTY	enum(0)
 
 #define QUEUE_ELT_HD    0
 #define QUEUE_ELT_TL    1

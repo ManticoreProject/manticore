@@ -82,7 +82,7 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 	        VProcPushEntries (vp, VProcGetEntryQ (vp));
 
 	  /* check for pending signals */
-	    if ((vp->sigPending == M_TRUE) && (vp->atomic == M_FALSE) && (vp->inManticore == M_TRUE)) {
+	    if ((vp->sigPending == M_TRUE) && (vp->atomic == M_FALSE)) {
   	    
 		Value_t resumeK = AllocUniform(vp, 3,
 			    PtrToValue(&ASM_Resume),

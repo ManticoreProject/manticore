@@ -144,6 +144,7 @@ structure CFGTy =
             | (T_StdFun _, T_StdFun _) => true
             | (T_StdCont _, T_StdCont _) => true
 	    | (T_Tuple (false,ts), T_Tuple (false, ts')) => ListPair.all isValidCast (ts, ts')
+	    | (T_Enum _, T_Tuple _) => true
             | _ => equal (fromTy, toTy)
 	  (* end case *))
 

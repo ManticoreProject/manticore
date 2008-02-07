@@ -44,7 +44,8 @@ define @locked-queue-enqueue (q : locked_queue, elt : any / exh : exh) : () =
             let bqNext : any = SELECT(QUEUE_ELT_TL, bqTl)
             let bqNext : queue_elt = (queue_elt)bqNext
             do if Equal (bqHd, bqTl)
-                  then do UPDATE(LOCKED_QUEUE_BLOCKED_TL, q, LOCKED_QUEUE_EMPTY)
+                  then let emptyQ : queue_elt = (queue_elt)LOCKED_QUEUE_EMPTY
+		       do UPDATE(LOCKED_QUEUE_BLOCKED_TL, q, emptyQ)
                        return ()
                   else return ()
             do UPDATE(LOCKED_QUEUE_BLOCKED_HD, q, bqNext)

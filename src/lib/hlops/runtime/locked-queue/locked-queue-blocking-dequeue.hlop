@@ -10,9 +10,6 @@
 #include "../synch/spin-lock-fn.hlop"
 define_spin_lock(lq, locked_queue, LOCKED_QUEUE_LOCK)
 
-define inline @thread-exit ( / exh : exh) noreturn;
-define @get-fgs (vp : vproc / exh : exh) : fgs;
-
 define @locked-queue-blocking-dequeue (q : locked_queue / exh : exh) : any =
 
   cont blockedK (v : any) = return (v)
@@ -20,6 +17,9 @@ define @locked-queue-blocking-dequeue (q : locked_queue / exh : exh) : any =
    * to be optimistic and promote while holding the lock?
    *)
   let blockedK : cont(any) = promote (blockedK)
+  let fgs : fgs = @get-fgs (host_vproc / exh)
+  let blockedThread : [cont(any), fgs] = alloc (blockedK, fgs)
+  let blockedThread : [cont(any), fgs] = promote(blockedThread)
   
   let _ : unit = @spin-lock-lq (q / exh)
 
@@ -39,8 +39,6 @@ define @locked-queue-blocking-dequeue (q : locked_queue / exh : exh) : any =
     if Equal (qHd, LOCKED_QUEUE_EMPTY)
        then (* the queue is empty, so block the current thread *)
             let bqTl : queue_elt = SELECT(LOCKED_QUEUE_BLOCKED_TL, q)
-            let fgs : fgs = @get-fgs (host_vproc / exh)
-            let blockedThread : [cont(any), fgs] = galloc (blockedK, fgs)
             let bqTl : queue_elt = apply queueSnoc (blockedThread, bqTl)
             do UPDATE(LOCKED_QUEUE_TL, q, bqTl)
             let bqHd : queue_elt = SELECT(LOCKED_QUEUE_HD, q)

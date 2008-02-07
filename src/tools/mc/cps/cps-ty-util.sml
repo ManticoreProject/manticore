@@ -86,6 +86,7 @@ structure CPSTyUtil : sig
 	   *)
 	    | (CTy.T_Any, _) => true
 	    | (CTy.T_Enum w1, CTy.T_Enum w2) => (w1 <= w2)
+	    | (CTy.T_Enum _, CTy.T_Tuple _) => true
 	    | (CTy.T_Tuple(isMut1, tys1), CTy.T_Tuple(isMut2, tys2)) =>
 		(isMut1 orelse not isMut2)
 		andalso ListPair.allEq match (tys1, tys2)
