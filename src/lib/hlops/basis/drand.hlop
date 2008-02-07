@@ -1,0 +1,19 @@
+(* drand.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Returns a random double in the range [lo, hi)
+ *) 
+
+#include "types.def"
+
+extern double M_DRand (double, double);
+
+define @drand (lo : ml_double, hi : ml_double / exh : exh) : ml_double =
+  let lo : double = unwrap (lo)
+  let hi : double = unwrap (hi)
+  let r : double = ccall M_DRand (lo, hi)
+  let r : ml_double = wrap(r)
+  return (r)
+;
