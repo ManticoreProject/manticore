@@ -8,10 +8,12 @@
 
 #include "runtime-offsets.def"
 #include "types.def"
+#include "assert.def"
 
 define inline @forward (vp : vproc, sig : signal / exh : exh) noreturn =
   do vpstore(ATOMIC, vp, TRUE)
   let tos : [sigact, any] = vpload(VP_ACTION_STK, vp)
+  do assert(NotEqual(tos, NIL))
   let rest : any = #1(tos)
   do vpstore(VP_ACTION_STK, vp, rest)
   let act : sigact = #0(tos)

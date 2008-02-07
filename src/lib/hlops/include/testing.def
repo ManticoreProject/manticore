@@ -20,10 +20,16 @@
 
 extern void M_PrintTestingMsg (void*, void*, int);
 
-#define do_test(test)			\
-	let b : bool = @test(/exh)	\
-	do assert(Equal(b,TRUE))        \
+(* test a sequential program *)
+#define do_test(test)			                                            \
+	let b : bool = @test(/exh)	                                            \
+        do if Equal(b,FALSE)                                                        \
+              then do ccall M_PrintTestingMsg ("Answer", __FILE__, __LINE__)        \
+                   return ()                                                        \
+              else return ()                                                        \
+	do assert(Equal(b,TRUE))                                                    \
 
+(* test a concurrent program, waiting wait_secs until declaring deadlock *)
 #define do_concurrent_test(hlop, wait_secs)                                      \
         cont exhDeadlock (_ : any) =                                             \
              do ccall M_PrintTestingMsg ("Deadlock", __FILE__, __LINE__)         \

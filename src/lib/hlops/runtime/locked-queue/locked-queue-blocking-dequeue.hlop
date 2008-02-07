@@ -15,6 +15,7 @@ define @locked-queue-blocking-dequeue (q : locked_queue / exh : exh) : any =
   cont blockedK (v : any) = return (v)
   (* QUESTION: is the best policy to be pessimistic about blocking and promote before acquiring the lock or
    * to be optimistic and promote while holding the lock?
+   * TODO: add a fast track for when the queue is not empty and fall back to the slow track below otherwise.
    *)
   let blockedK : cont(any) = promote (blockedK)
   let fgs : fgs = @get-fgs (host_vproc / exh)

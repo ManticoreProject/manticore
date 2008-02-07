@@ -25,8 +25,6 @@
 #include "types.def"
 #include "vproc-queue.def"
 
-define inline @list-append (arg : [list, list] / exh : exh) : list;
-
 define @scheduler-startup (mkAct : fun (vproc / exh -> sigact), fgs : fgs, vps : list / exh : exh) : ();
 
 (* instantiate a standard spin lock *)
@@ -133,6 +131,9 @@ define @work-stealers-startup ( / exh : exh) : () =
        let vprocs : list = apply orderVProcs (self, vprocs, NIL / exh)
 
        cont wsSwitch (s : signal) =
+          let m : bool = vpload (ATOMIC, host_vproc)
+          do assert(Equal(m,TRUE))
+
 	  cont dispatch () =
 	     let vp : vproc = host_vproc
 	     let qitem : rdyq_item = @dequeue (vp / exh)
