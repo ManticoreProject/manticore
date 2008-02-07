@@ -235,12 +235,31 @@ structure CheckBOM : sig
 		(* end case *))
 	  and chkRHS (lhs, rhs) = (case (typesOf lhs, rhs)
 		 of ([ty], B.E_Const(lit, ty')) => (
+		    (* first, check the literal against ty' *)
+		      case (lit, ty')
+		       of (Literal.Enum w, BTy.T_Enum _) => ()
+			| (Literal.StateVal w, _) => () (* what is the type of StateVals? *)
+			| (Literal.Tag s, _) => () (* what is the type of Tags? *)
+			| (Literal.Int _, BTy.T_Raw BTy.T_Byte) => ()
+			| (Literal.Int _, BTy.T_Raw BTy.T_Short) => ()
+			| (Literal.Int _, BTy.T_Raw BTy.T_Int) => ()
+			| (Literal.Int _, BTy.T_Raw BTy.T_Long) => ()
+			| (Literal.Float _, BTy.T_Raw BTy.T_Float) => ()
+			| (Literal.Float _, BTy.T_Raw BTy.T_Double) => ()
+			| (Literal.Char _, BTy.T_Raw BTy.T_Int) => ()
+			| (Literal.String _, BTy.T_Any) => ()
+			| _ => error[
+			    "literal has bogus type: ",  vl2s lhs, " = ", 
+			    Literal.toString lit, ":", BTU.toString ty', "\n"
+			    ]
+		      (* end case *);
+		    (* then check ty' against ty *)
 		      if BTU.equal(ty', ty)
 			then ()
 			else error[
 			    "type mismatch in Const: ",  vl2s lhs, " = ", 
 			    Literal.toString lit, ":", BTU.toString ty', 
-			    " (* expected ", BTU.toString ty, " *)\n"
+			    "; expected ", BTU.toString ty, "\n"
 			  ])
 		  | ([ty], B.E_Cast(ty', x)) => (
 		      chkVar (x, "Cast");

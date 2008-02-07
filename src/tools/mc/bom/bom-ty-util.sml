@@ -145,7 +145,8 @@ structure BOMTyUtil : sig
 	  (* end case *))
              
   (* is a cast from the first type to the second type valid? *)
-    fun validCast (ty1, ty2) =
+    fun validCast (BTy.T_Raw rty1, BTy.T_Raw rty2) = (rty1 = rty2)
+      | validCast (ty1, ty2) =
 	  isKind (kindOf ty1) (kindOf ty2)
 	    orelse match (ty1, ty2)
 

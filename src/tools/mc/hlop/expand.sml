@@ -161,6 +161,7 @@
 			  | PT.Cast(ty, arg) =>
 			      cvtSimpleExp(findCFun, env, arg, fn x =>
 				BOM.mkStmt(lhs', BOM.E_Cast(cvtTy(env, ty), x), e'))
+(* FIXME: we should check that lit and ty match! *)
 	                  | PT.Const(lit, ty) => BOM.mkStmt(lhs', BOM.E_Const(lit, cvtTy(env, ty)), e')
 			  | PT.Unwrap arg =>
 			      cvtSimpleExp(findCFun, env, arg, fn x =>
@@ -308,6 +309,7 @@
 		  val ty = cvtTy(env, ty)
 		  val tmp = newTmp ty
 		  in
+(* FIXME: we should check that lit and ty match! *)
 		    BOM.mkStmt([tmp], BOM.E_Const(lit, ty), k tmp)
 		  end
 	    | PT.Cast(ty, e) =>

@@ -294,18 +294,28 @@ Literal
                  => (Literal.Tag (Atom.toString ID), PT.T_Any)
 	| "$" POSINT
 		=> (Literal.StateVal(Word.fromLargeInt POSINT), PT.T_Any)
-	| Int (":" Type)?
+	| Int (":" IntTy)?
 		=> (case SR
 		   of NONE => (Literal.Int Int, dfltIntTy)
 		    | SOME ty => (Literal.Int Int, ty)
 		  (* end case *))
-	| FLOAT (":" Type)?
+	| FLOAT (":" FloatTy)?
 		=> (case SR
 		   of NONE => (Literal.Float FLOAT, dfltFloatTy)
 		    | SOME ty => (Literal.Float FLOAT, ty)
 		  (* end case *))
 	| STRING
 		=> (Literal.String STRING, dfltStringTy)
+	;
+
+IntTy	: "byte"	=> (PT.T_Raw PT.T_Byte)
+	| "short"	=> (PT.T_Raw PT.T_Short)
+	| "int"		=> (PT.T_Raw PT.T_Int)
+	| "long"	=> (PT.T_Raw PT.T_Long)
+	;
+
+FloatTy	: "float"	=> (PT.T_Raw PT.T_Float)
+	| "double"	=> (PT.T_Raw PT.T_Double)
 	;
 
 Int	: POSINT	=> (POSINT)
