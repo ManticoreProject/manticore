@@ -173,11 +173,17 @@ void M_PrintDebug (const char *s)
 #endif
 }
 
-void M_PrintDebugMsg (const char *msg, char *file, int line)
+void M_PrintDebugMsg (Value_t alwaysPrint, const char *msg, char *file, int line)
 {
 #ifndef NDEBUG
-      SayDebug ("[ %s ] at %s:%d\n", msg, file, line);
+  if(DebugFlg || (alwaysPrint==M_TRUE))
+    SayDebug ("[%2d] \"%s\" at %s:%d\n", VProcSelf()->id, msg, file, line);
 #endif
+}
+
+void M_PrintTestingMsg (const char *msg, char *file, int line)
+{
+      Say ("[%2d] Test failed: \"%s\" at %s:%d\n", VProcSelf()->id, msg, file, line);
 }
 
 void M_PrintPtr (const char *name, void *ptr)
@@ -221,4 +227,9 @@ void M_LogEvent0 (void *vp, int evt)
 void M_LogEventPtr (void *vp, int evt, uint64_t ptr)
 {
     LogEvent2 (vp, evt, (uint32_t)(ptr << 32l), (uint32_t)ptr);
+}
+
+double M_DRand (double lo, double hi)
+{
+  return (((double)rand() / ((double)(RAND_MAX)+(double)(1)) ) * (hi-lo)) + lo;
 }

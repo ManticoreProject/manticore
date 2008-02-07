@@ -126,7 +126,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	  end
 	| genLit (ty, Literal.Int i) = MTy.EXP(ty, T.LI i)
 	| genLit (fty, Literal.Float f) = let
-	      val lbl = FloatLit.addLit (floatTbl, (fty, f))
+	  val lbl = FloatLit.addLit (floatTbl, (fty, f))
 	  in
 	      MTy.FEXP (fty, T.FLOAD (fty, T.LABEL lbl, ()))
 	  end
@@ -227,7 +227,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
       (* Construct an MLRISC tree from a CFG expression. *)
       and genExp frame = let
 	  fun gen (M.E_Var(lhs, rhs)) = 
-	      ListPair.app setDefOf (lhs, map getDefOf rhs)
+	      ListPair.app setDefOf (lhs, List.map getDefOf rhs)
 	    | gen (M.E_Const(lhs, lit)) = 
 	      bindExp ([lhs], [genLit (szOf lhs, lit)])
 	    | gen (M.E_Label(lhs, l)) = 

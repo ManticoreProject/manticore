@@ -15,23 +15,25 @@
 
 #ifdef NDEBUG
 #define do_test(test)
-#define do_concurrent_test(test)
+#define do_concurrent_test(hlop)
 #else
+
+extern void M_PrintTestingMsg (void*, void*, int);
 
 #define do_test(test)			\
 	let b : bool = @test(/exh)	\
 	do assert(Equal(b,TRUE))        \
 
-#define do_concurrent_test(hlop)                                           \
-        cont exhDeadlock (_ : any) =                                       \
-             print_debug("Deadlock")                                       \
-             assert (FALSE)                                                \
-        cont exhIncorrectAns (_ : any) =                                   \
-             print_debug("Wrong answer")                                   \
-             assert (FALSE)                                                \
-        fun f (_ : unit / exh : exh) : bool =                              \
-        @hlop (/exh)                                                       \
-        do @test-deadlock (f, TRUE / exh, exhDeadlock, exhIncorrectAns)    \
+#define do_concurrent_test(hlop, wait_secs)                                      \
+        cont exhDeadlock (_ : any) =                                             \
+             do ccall M_PrintTestingMsg ("Deadlock", __FILE__, __LINE__)         \
+             assert (FALSE)                                                      \
+        cont exhIncorrectAns (_ : any) =                                         \
+             do ccall M_PrintTestingMsg ("Answer", __FILE__, __LINE__)           \
+             assert (FALSE)                                                      \
+        fun f (_ : unit / exh : exh) : bool =                                    \
+              @hlop (/exh)                                                       \
+        do @test-deadlock (f, wait_secs, exhDeadlock, exhIncorrectAns / exh)     \
 
 #endif
 

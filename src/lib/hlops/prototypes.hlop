@@ -35,6 +35,8 @@ define @list-rev (xs : list / exh : exh) : list;
 define @list-nth (args: [list, ml_int] / exh : exh) : any;
 define @list-map (args: [fun(any/exh->any), list] / exh:exh) : list;
 define @list-map-2 (arg : [fun ([any, any] / exh -> any), list, list] / exh : exh) : list;
+(* random numbers*)
+define @drand (lo : ml_double, hi : ml_double / exh : exh) : ml_double;
 
 define @list-app (args: [fun(any/exh->unit), list] / exh:exh) : unit;
 define @list-foldl (args: [fun([any,any]/exh->any), any, list] / exh:exh) : any;
@@ -63,10 +65,11 @@ define @dispatch-action (act : sigact, dst : vproc / exh : exh) : ();
 define @default-scheduler-startup ( / exh : exh) : ();
 define inline @fiber (f : fiber_fun / exh : exh) : fiber;
 define @atomic-yield (vp : vproc / exh : exh) : unit;
+define @yield (vp : vproc / exh : exh) : unit;
 define inline @thread-exit ( / exh : exh) noreturn;
 
 define @generic-hlop-test (n : int / exh : exh) : any;
 
 (* testing operations *)
 define @wait (secs : double, done : ![bool] / exh : exh) : ();
-define @test-deadlock (f : fun (unit / exh -> bool), inParallel : bool  / exh : exh, exhDone : exh, exhAns : exh) : ();
+define @test-deadlock (f : fun (unit / exh -> bool), waitSecs : double, exhDeadlock : exh, exhIncorrectAns : exh / exh : exh) : ();

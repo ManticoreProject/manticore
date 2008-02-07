@@ -34,6 +34,7 @@ define @scheduler-startup (mkAct : fun (vproc / exh -> sigact), fgs : fgs, vps :
 define_spin_lock(sl,spin_lock,0)
 
 #include "debugging.def"
+#include "assert.def"
 
 extern void *ListVProcs (void *) __attribute__((alloc));
 extern void VProcPreempt (void *);
@@ -80,10 +81,10 @@ define @work-stealers-startup ( / exh : exh) : () =
        let _ : unit = @with-lock-sl (sleepingLock, doit / exh)
        return ()
 
-  (* given some number of stealable threads, resuscitate at most that many sleeping vprocs *)
-   fun resuscitates (n : int / exh : exh) : list =
-       let resuscitates : ![list] = alloc (NIL)
-       let resuscitates : ![list] = promote(resuscitates)
+  (* given some number of stealable threads, wake at most that many sleeping vprocs *)
+   fun wakes (n : int / exh : exh) : list =
+       let wakes : ![list] = alloc (NIL)
+       let wakes : ![list] = promote(wakes)
        fun doit (_ : unit / exh : exh) : unit =
            fun takeN (i : int, ss : list, rs : list / exh : exh) : list =
                if I32Lte (i, n)
@@ -100,24 +101,25 @@ define @work-stealers-startup ( / exh : exh) : () =
            let sleepingVProcs : list = #0(sleeping)
            let rs : list = apply takeN (0, sleepingVProcs, NIL / exh)
            let rs : list = promote (rs)
-           do #0(resuscitates) := rs
+           do #0(wakes) := rs
            return (UNIT)
        let _ : unit = @with-lock-sl (sleepingLock, doit / exh)
-       let rs : list = #0(resuscitates)
+       let rs : list = #0(wakes)
        return (rs)
 
-  (* resuscitate any sleeping vprocs if there are stealable threads on the ready queue *)
-   fun resuscitateVProcs (  / exh : exh) : () =
+  (* wake any sleeping vprocs if there are stealable threads on the ready queue *)
+   fun wakeVProcs (  / exh : exh) : () =
        let stealableFibers : int = @queue-length (isUnpinned / exh)
-       let stealableFibers : int = I32Sub (stealableFibers,1)
        if I32Gt(stealableFibers, 0)
-          then let rs : list = apply resuscitates (stealableFibers / exh)
-               cont dummyK (u : unit) = @thread-exit ( / exh)
+          then let rs : list = apply wakes (stealableFibers / exh)
+               cont dummyK (u : unit) = 
+                    print_debug("dummy")
+                    @thread-exit ( / exh)
                fun dispatchOn (vps : list / exh : exh) : () =
                    case vps
 		    of NIL => return ()
 		     | CONS (vp : vproc, rest : list) =>
-                        print_debug("Attempting to resuscitate\n")
+                        print_debug("Attempting to wake")
                         do @enqueue-on-vproc (vp, wsFGS, dummyK / exh)
                         apply dispatchOn (rest / exh)
                    end
@@ -139,32 +141,30 @@ define @work-stealers-startup ( / exh : exh) : () =
 	     let fiber : fiber = #1 (item)
 	     @run (vp, wsSwitch, fgs, fiber / exh)
 
-	  (* the maximum number of steal attempts before going to sleep *)
-	  let maxStealAttempts : int = 1000
-
 	  (* (2) *)
 	  cont steal (vprocs' : list) =
 	    case vprocs' 
 	      of NIL =>
-		     print_debug("Thief is giving up on all vprocs\n")
+		     print_debug("Thief is giving up on all vprocs")
 		    (* (3) *)
 		     do apply addToSleeping (self / exh)
 		     @thread-exit ( / exh)
 	       | CONS (vp : vproc, vprocs' : list) => 
 		    (* (2.1) *)
-		     print_debug("Sending thief to vproc\n")
+		     print_debug("Sending thief to vproc")
 		     cont thiefFiber (x : unit) = 
-			print_debug("Thief fiber\n")
+			print_debug("Thief fiber")
 		        let hasElts : bool = @is-queue-gt-one ( / exh)
 		        if hasElts
 			   then (* (2.2) *)
-			        print_debug("Stealing a remote thread\n")
+			        print_debug("Stealing a remote thread")
 			        let qitemOpt : option = @dequeue-with-pred (host_vproc, isUnpinned / exh)
 			        case qitemOpt
   				 of NONE => 
-				    print_debug("Nothing to steal on this vproc\n")
+				    print_debug("Nothing to steal on this vproc")
 			            throw steal (vprocs')
 				  | SOME (qitem : rdyq_item) =>
+                                    print_debug("Stole a thread")
 				    let item : [fgs, fiber, rdyq_item] = ([fgs, fiber, rdyq_item]) qitem
 				    let fgs : fgs = #0 (item)
 				    let fiber : fiber = #1 (item)
@@ -174,7 +174,7 @@ define @work-stealers-startup ( / exh : exh) : () =
 				    @thread-exit (/ exh)
 			        end
 			else (* (2.3) *)
-			     print_debug("Thief is giving up on this vproc\n")
+			     print_debug("Thief is giving up on this vproc")
 			     throw steal (vprocs')
 		    do @enqueue-on-vproc (vp, wsFGS, thiefFiber / exh)
 		    throw dispatch ()
@@ -192,7 +192,7 @@ define @work-stealers-startup ( / exh : exh) : () =
 		let fgs : fgs = @get-fgs (self / exh)
 		do @enqueue (host_vproc, fgs, k / exh)
 	       (* (4) *)
-		do apply resuscitateVProcs ( / exh)
+		do apply wakeVProcs ( / exh)
 		throw dispatch ()
 
      return (wsSwitch)

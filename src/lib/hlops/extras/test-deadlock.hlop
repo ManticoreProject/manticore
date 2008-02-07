@@ -9,16 +9,8 @@
 #include "vproc-queue.def"
 #include "fgs.def"
 
-define @work-stealers-startup ( / exh : exh) : ();
-
-define @test-deadlock (f : fun (unit / exh -> bool), inParallel : bool  / exh : exh, exhDeadlock : exh, exhIncorrectAns : exh) : () =
-  let waitSecs : double = 2.0:double
-  do if inParallel
-       then do @work-stealers-startup (/ exh)
-	    return ()
-       else do @default-scheduler-startup (/ exh)
-	    return ()
- (* flag for no deadlock *)
+define @test-deadlock (f : fun (unit / exh -> bool), waitSecs : double, exhDeadlock : exh, exhIncorrectAns : exh / exh : exh) : () =
+  (* flag for no deadlock *)
   let done : ![bool] = alloc (FALSE)
  (* flag for the correct answer *)
   let ans  : ![bool] = alloc (FALSE)

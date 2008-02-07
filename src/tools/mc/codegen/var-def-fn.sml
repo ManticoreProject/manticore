@@ -58,7 +58,7 @@ functor VarDefFn (
       (case getDefOf vdt v
 	of MTy.FEXP (_, fe) => fe
 	 | MTy.FPR (fty, r) => T.FREG (fty, r)
-	 | _ => raise Fail "fdefOf"
+	 | _ => raise Fail ("fdefOf: cannot locate "^CFG.Var.toString v)
       (* esac *))
 
   fun cdefOf vdt v = 

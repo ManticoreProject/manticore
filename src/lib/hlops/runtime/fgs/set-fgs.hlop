@@ -7,8 +7,10 @@
  *)
 
 #include "fgs.def"
+#include "assert.def"
 
 define inline @set-fgs (vp : vproc, fgs : fgs / exh : exh) : unit = 
+    do assert(NotEqual(fgs,NIL))
     do vpstore (CURRENT_FG, vp, fgs)
     return (UNIT)
 ;

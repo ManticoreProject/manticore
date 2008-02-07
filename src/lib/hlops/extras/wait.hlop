@@ -8,6 +8,7 @@
  *)
 
 #include "types.def"
+#include "runtime-offsets.def"
 
 define @wait (secs : double, done : ![bool] / exh : exh) : () =
   let t0 : [double] = @gettimeofday (UNIT /exh)
@@ -21,7 +22,7 @@ define @wait (secs : double, done : ![bool] / exh : exh) : () =
          then return ()
       else if done
          then return ()
-      else let _ : unit = @atomic-yield (host_vproc / exh)
+      else let _ : unit = @yield (host_vproc / exh)
            apply loop (/ exh)
   apply loop (/ exh)
 ;
