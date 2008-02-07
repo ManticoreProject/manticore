@@ -237,7 +237,10 @@ structure CheckBOM : sig
 		 of ([ty], B.E_Const(lit, ty')) => (
 		    (* first, check the literal against ty' *)
 		      case (lit, ty')
-		       of (Literal.Enum w, BTy.T_Enum _) => ()
+		       of (Literal.Enum _, BTy.T_Enum _) => ()
+			| (Literal.Enum _, BTy.T_TyCon _) => ()
+(* NOTE: the following shouldn't be necessary, but case-simplify doesn't put in enum types! *)
+			| (Literal.Enum _, BTy.T_Any) => ()
 			| (Literal.StateVal w, _) => () (* what is the type of StateVals? *)
 			| (Literal.Tag s, _) => () (* what is the type of Tags? *)
 			| (Literal.Int _, BTy.T_Raw BTy.T_Byte) => ()
