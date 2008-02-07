@@ -13,6 +13,7 @@
 
 #include "types.def"
 #include "ropes.def"
+#include "debugging.def"
 
 define @list-append (arg : [list, list] / exh : exh) : list;
 define @list-sublist (xs : list, start : int, length : int / exh : exh) : list;
@@ -21,16 +22,16 @@ extern void M_Print (void *);
 
 define @rope-sublist (r : rope, start : int, len : int / exh : exh) : [list, bool] =
 
-  do ccall M_Print ("@rope-sublist 0\n\000")
+  print_ppt()
 
   fun rope_len_int (r : rope / ) : int =
-    do ccall M_Print ("rope-len-int 0\n\000")
+    print_ppt()
     let t : ml_int = @rope-length (r / exh)
-    do ccall M_Print ("rope-len-int 1\n\000")
-    let u : int = unwrap (t)
+    print_ppt()
+    let u : int = unwrap(t)
     return (u)
 
-  do ccall M_Print ("@rope-sublist 1.5\n\000")
+  print_ppt()
 
   (* Invariant: n is not greater than the length of r. *)
   fun sub (r : rope, st : int, n : int / ) : list =

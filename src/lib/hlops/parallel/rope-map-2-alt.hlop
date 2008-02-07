@@ -9,6 +9,7 @@
 #include "types.def"
 #include "futures.def"
 #include "ropes.def"
+#include "debugging.def"
 
 extern void M_Print (void *); (* for debugging *)
 
@@ -57,8 +58,6 @@ define @rope-map-2-alt (args : [fun ([any, any] / exh -> any), rope, rope] / exh
   let others : list = #1(x)
   let i : int = #2(x)
 
-  do ccall M_Print ("hi1\n\000")
-
   (* smap stands for "sequential map" *)
   fun smap2 (f : fun ([any, any] / exh -> any), xs : list, ys : list) : list =
     let arg : [fun ([any, any] / exh -> any), list, list] = alloc (f, xs, ys)
@@ -78,7 +77,7 @@ define @rope-map-2-alt (args : [fun ([any, any] / exh -> any), rope, rope] / exh
   fun rmap2 (shortest : rope, start: int / ) : rope =
     case shortest
       of LEAF (ml_len : ml_int, data : list) =>
-           do ccall M_Print ("hi LEAF 1\n\000")           
+	   print_msg  ("BANANA")
 (*           let others1 : rope = 
              let n : ml_int = wrap(0)
              let arg : [list, ml_int] = alloc (others, n)
@@ -97,9 +96,11 @@ define @rope-map-2-alt (args : [fun ([any, any] / exh -> any), rope, rope] / exh
              let res2 : list = apply mapHash1 (res1)
              do ccall M_Print ("hi LEAF 2.6\n\000")           
              return (res2)
-           do ccall M_Print ("hi LEAF 3\n\000")           
+           do ccall M_Print ("hi LEAF 3.0\n\000")           
            let all : list = @insert-at (data, othersX, i / exh)
+           do ccall M_Print ("hi LEAF 3.1\n\000")           
            let ds : [any, any] =  apply list_to_tup_2 (all)
+           do ccall M_Print ("hi LEAF 3.2\n\000")           
            let d1 : list = #0(ds)
            let d2 : list = #1(ds)
            let dataX : list = apply smap2 (f, d1, d2)

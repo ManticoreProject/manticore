@@ -22,4 +22,7 @@ extern void M_PrintDebugMsg (void*, void*, void*, int);
 #  define print_msg(msg)                                                 \
              do ccall M_PrintDebugMsg (TRUE, msg, __FILE__, __LINE__)    \
 
+#  define print_ppt() \
+             do ccall M_PrintDebugMsg (TRUE, "Hi!", __FILE__, __LINE__) \
+             
 #endif /*! _DEBUGGING_DEF_ */

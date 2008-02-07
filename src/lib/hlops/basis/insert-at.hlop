@@ -14,9 +14,6 @@
 #include "types.def"
 #include "ropes.def"
 
-define @list-append (arg : [list, list] / exh : exh) : list;
-define @list-sublist (xs : list, start : int, length : int / exh : exh) : list;
-
 extern void M_Print (void *);
 
 define @insert-at (elt : any, data : list, pos : int / exh : exh) : list =
@@ -32,7 +29,7 @@ define @insert-at (elt : any, data : list, pos : int / exh : exh) : list =
              throw exh (Subscript)
        | CONS (hd:any, tl:list) =>
            if I32Eq(p,0) then
-             return (tl)
+             return (CONS(elt,xs))
            else
              let q : int = I32Sub(p,1)
              let newTl : list = apply ins (tl, q)
