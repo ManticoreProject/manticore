@@ -21,20 +21,20 @@ define @insert-at (elt : any, data : list, pos : int / exh : exh) : list =
   let Subscript : exn = (exn) enum(0)
 
   fun ins (xs : list, p : int / ) : list =
-    case xs
-      of NIL =>
-           if I32Eq(p,0) then
-             return (CONS(elt,NIL))
-           else
-             throw exh (Subscript)
-       | CONS (hd:any, tl:list) =>
-           if I32Eq(p,0) then
-             return (CONS(elt,xs))
-           else
-             let q : int = I32Sub(p,1)
+    if I32Eq(p, 0) then
+      return (CONS (elt, xs))
+    else if I32Gt(p, 0) then
+      case xs
+        of NIL => (* list too short *)
+                  throw exh (Subscript)
+         | CONS (hd : any, tl : list) =>
+             let q : int = I32Sub (p, 1)
              let newTl : list = apply ins (tl, q)
-             return (CONS(hd,newTl))
-    end (* case *)
+             return (CONS (hd, newTl))
+      end (* case *)
+    else
+      (* negative position *)
+      throw exh (Subscript)
   (* end fun ins *)
 
   apply ins (data, pos)

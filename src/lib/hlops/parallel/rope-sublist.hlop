@@ -19,28 +19,27 @@ define @list-append (arg : [list, list] / exh : exh) : list;
 define @list-sublist (xs : list, start : int, length : int / exh : exh) : list;
 
 extern void M_Print (void *);
+extern void M_PrintInt (int);
 
 define @rope-sublist (r : rope, start : int, len : int / exh : exh) : [list, bool] =
 
-  print_ppt()
+  (* FIXME exn *)
+  let Subscript : exn = (exn)enum(0)
+  let Length : exn = (exn)enum(0)
 
   fun rope_len_int (r : rope / ) : int =
-    print_ppt()
     let t : ml_int = @rope-length (r / exh)
-    print_ppt()
-    let u : int = unwrap(t)
-    return (u)
-
-  print_ppt()
+    return (unwrap(t))
+  (* end fun rope_len_int *)
 
   (* Invariant: n is not greater than the length of r. *)
+  (* FIXME? This allows for bad (too big) start pos with 0 length. *)
   fun sub (r : rope, st : int, n : int / ) : list =
+    if I32Eq (n, 0) then return (NIL) else 
     case r
       of LEAF (ml_len:ml_int, data:list) =>
-           do ccall M_Print ("@rope-sublist 2\n\000")
            @list-sublist (data, st, n / exh)
        | CAT (ml_len:ml_int, _:ml_int, r1:rope, r2:rope) =>
-           do ccall M_Print ("@rope-sublist 3\n\000")
            let lenR1 : int = apply rope_len_int (r1)     
            let leftAmt : int = I32Sub(lenR1, st)
            let rightAmt : int = I32Sub(n, leftAmt)
@@ -54,21 +53,20 @@ define @rope-sublist (r : rope, start : int, len : int / exh : exh) : [list, boo
     end (* case *)
   (* end fun sub *) 
 
-  do ccall M_Print ("@rope-sublist 4.1\n\000")
-  let rLen : int = apply rope_len_int (r)
-  do ccall M_Print ("@rope-sublist 4.2\n\000")
-  let longEnough : bool = I32Lte(len, rLen)
-  do ccall M_Print ("@rope-sublist 4.3\n\000")
-  let data : list =
-    (* This check enforces the invariant of the call to sub. *)
-    if longEnough then
-      do ccall M_Print ("@rope-sublist 5\n\000")
-      apply sub (r, start, len)
-    else
-      do ccall M_Print ("@rope-sublist 6\n\000")
-      let available : int = I32Sub(rLen, start)
-      apply sub (r, start, available)
-  do ccall M_Print ("@rope-sublist 7\n\000")
-  let result : [list, bool] = alloc (data, longEnough)
-  return (result)
+  if I32Lt (start, 0) then
+    do ccall M_Print ("subscript\n\000")
+    throw exh (Subscript)
+  else if I32Lt (len, 0) then
+    do ccall M_Print ("length\n\000")
+    throw exh (Length)
+  else
+    let rLen : int = apply rope_len_int (r)
+    let enoughData : bool = I32Lte (len, rLen)
+    let data : list =
+      if enoughData then
+        apply sub (r, start, len)
+      else
+        apply sub (r, start, I32Sub(rLen, start))
+    let result : [list, bool] = alloc (data, enoughData)
+    return (result)
 ;

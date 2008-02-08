@@ -17,8 +17,7 @@ extern void M_Print (void *);
 define @rope-sublist (r : rope, start : int, len : int / exh : exh) : [list, bool];
 
 define @curried-rope-sublist (start : int, len : int / exh : exh) : fun (rope / exh -> [list, bool]) =
-  do ccall M_Print ("@curried... 0\n\000")
-  fun sub (r : rope / exh : exh) : [list, bool] = @rope-sublist (r, start, len / exh)
-  do ccall M_Print ("@curried... 1\n\000")
+  fun sub (r : rope / exh : exh) : [list, bool] = 
+    @rope-sublist (r, start, len / exh)
   return (sub)
 ;
