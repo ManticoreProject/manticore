@@ -35,22 +35,36 @@ define @rope-sublist (r : rope, start : int, len : int / exh : exh) : [list, boo
   (* Invariant: n is not greater than the length of r. *)
   (* FIXME? This allows for bad (too big) start pos with 0 length. *)
   fun sub (r : rope, st : int, n : int / ) : list =
-    if I32Eq (n, 0) then return (NIL) else 
-    case r
-      of LEAF (ml_len:ml_int, data:list) =>
-           @list-sublist (data, st, n / exh)
-       | CAT (ml_len:ml_int, _:ml_int, r1:rope, r2:rope) =>
-           let lenR1 : int = apply rope_len_int (r1)     
-           let leftAmt : int = I32Sub(lenR1, st)
-           let rightAmt : int = I32Sub(n, leftAmt)
-           if I32Lte(n, leftAmt) then
-             apply sub (r1, st, n)
-           else
-             let d1 : list = apply sub (r1, st, leftAmt)
-             let d2 : list = apply sub (r2, 0, rightAmt)              
-             let tup : [list, list] = alloc (d1, d2)
-             @list-append (tup / exh)
-    end (* case *)
+    if I32Eq (n, 0) then 
+      return (NIL) 
+    else 
+      case r
+        of LEAF (ml_len:ml_int, data:list) =>
+             @list-sublist (data, st, n / exh)
+         | CAT (ml_len:ml_int, _:ml_int, rL:rope, rR:rope) =>
+             let leftLen : int = apply rope_len_int (rL)    
+             let allOnLeft : bool = 
+               if I32Lt (st, leftLen) then
+                 if I32Lt (I32Add (st, n), leftLen) then
+                   return (TRUE) 
+                 else
+                   return (FALSE)
+               else
+                 return (FALSE)		
+             let allOnRight : bool = I32Gte (st, leftLen)
+             if allOnLeft then
+               apply sub (rL, st, n)
+             else if allOnRight then
+               apply sub (rR, I32Sub (st, leftLen), n)
+             else
+               let leftAmt : int = I32Sub (leftLen, st)
+               let rightAmt : int = I32Sub (n, leftAmt)
+               let d1 : list = apply sub (rL, st, leftAmt)
+               let d2 : list = apply sub (rR, 0, rightAmt)
+               let tup : [list, list] = alloc (d1, d2)
+               @list-append (tup / exh)
+      end (* case *)
+    (* end if *)
   (* end fun sub *) 
 
   if I32Lt (start, 0) then
