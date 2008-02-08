@@ -2,6 +2,9 @@
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
+ *
+ * Ths functor can be used to establish a mapping from atoms to a particular
+ * instance of the Prim.prim datatype.
  *)
 
 signature PRIM_TYPES =
