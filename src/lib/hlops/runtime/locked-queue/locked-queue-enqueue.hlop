@@ -7,67 +7,42 @@
  *)
 
 #include "locked-queue.def"
-#include "vproc-queue.def"
-#include "../synch/spin-lock-fn.hlop"
-define_spin_lock(lq,locked_queue,LOCKED_QUEUE_LOCK)
+#include "locked-queue-local.def"
 
+#include "assert.def"
+#include "vproc-queue.def"
 
 define @locked-queue-enqueue (q : locked_queue, elt : any / exh : exh) : () =
 
-(* promote elt *before* acquiring the lock *)
-  let elt : any = promote (elt)
+ (* promote elt *before* acquiring the lock *)
+  let qElt : in_place_queue_elt = LOCKED_QUEUE_NEW_ELT(elt)
+  let qElt : in_place_queue_elt = promote (qElt)  
+
+  cont noneB () = 
+       (* "impossible" *)
+       let _ : unit = @spin-unlock-lq (q / exh)
+       do assert (FALSE)
+       return ()
+  cont someB (blockedThread : any) =
+       let _ : unit = @spin-unlock-lq (q / exh)
+       let blockedThread : blocked_thread = (blocked_thread)blockedThread
+       let blockedK : cont(any) = SELECT(BLOCKED_THREAD_CONT, blockedThread)
+       let blockedFgs : fgs = SELECT(BLOCKED_THREAD_FGS, blockedThread)
+       cont unblockK (x : unit) =
+            throw blockedK (elt)
+       let unblockK : fiber = (fiber)unblockK
+        @atomic-enqueue (blockedFgs, unblockK / exh)
 
   let _ : unit = @spin-lock-lq (q / exh)
 
-   (* exit the enqueue operation *)
-    cont exitK () = 
-         let _ : unit = @spin-unlock-lq (q / exh)
-         return ()
-
-   (* place an element at the queue tail *)
-    fun queueSnoc (elt : any, qt : queue_elt / exh : exh) : queue_elt =       
-	let qElt : queue_elt = alloc (elt, LOCKED_QUEUE_EMPTY)
-        let qElt : queue_elt = promote (qElt)
-	do if Equal (qt, LOCKED_QUEUE_EMPTY) 
-	      then return () 
-	      else let qElt : any = (any)qElt
-                   do UPDATE(QUEUE_ELT_TL, qt, qElt)
-		   return ()
-	return (qElt)
-
-   (* check for blocked threads*)
-    let bqHd : queue_elt = SELECT(LOCKED_QUEUE_BLOCKED_HD, q)
-    do if Equal (bqHd, NIL)
-       then return ()
-       else (* dequeue from the blocked queue *)
-            let bqTl : queue_elt = SELECT(LOCKED_QUEUE_BLOCKED_TL, q)
-            let bqNext : any = SELECT(QUEUE_ELT_TL, bqTl)
-            let bqNext : queue_elt = (queue_elt)bqNext
-            do if Equal (bqHd, bqTl)
-                  then let emptyQ : queue_elt = (queue_elt)LOCKED_QUEUE_EMPTY
-		       do UPDATE(LOCKED_QUEUE_BLOCKED_TL, q, emptyQ)
-                       return ()
-                  else return ()
-            do UPDATE(LOCKED_QUEUE_BLOCKED_HD, q, bqNext)
-            let blockedThread : [cont(any), fgs] = SELECT(QUEUE_ELT_HD, bqHd)
-            (* enqueue a fiber that resumes the thread with the queue value *)
-            let blockedK : cont(any) = #0(blockedThread)
-            let blockedFGS : fgs = #1(blockedThread)
-            cont k (x : unit) = throw blockedK (elt)
-            do @enqueue (host_vproc, blockedFGS, k / exh)
-            (* nothing left to do here *)
-            throw exitK ()
-
-    let qHd : queue_elt = SELECT(LOCKED_QUEUE_HD, q)
-    let qTl : queue_elt = SELECT(LOCKED_QUEUE_TL, q)
-    let qTl : queue_elt = apply queueSnoc (elt, qTl / exh)
-
-    do UPDATE(LOCKED_QUEUE_TL, q, qTl)
-    do if Equal (qHd, LOCKED_QUEUE_EMPTY) 
-          then (* the queue was empty *)
-               do UPDATE(LOCKED_QUEUE_HD, q, qTl)
-               return ()
-          else return ()
+ (* check for blocked threads first *)
+  let bqHd : in_place_queue_elt = SELECT(LOCKED_QUEUE_BLOCKED_HD, q)
+  do if Equal (bqHd, NIL)
+        then (* nothing is blocked; enqueue the element *)
+             @in-place-enqueue-lq (q, qElt / exh)
+        else (* unblock the thread and pass it the element *)
+             do @in-place-dequeue-bq (q, noneB, someB / exh)
+             assert(FALSE)
 
   let _ : unit = @spin-unlock-lq (q / exh)
 

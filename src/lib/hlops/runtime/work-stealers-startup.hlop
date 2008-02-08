@@ -16,7 +16,7 @@
  *    (3) If the other vprocs have nothing available to steal, add the current vproc to the sleeping list
  *        and go to sleep.
  *    (4) When a preemption arrives, check the local ready queue.  If several unpinned threads are
- *        available, then resuscitate some vprocs.  Then run the next thread in the ready queue.
+ *        available, then wake some vprocs.  Then run the next thread in the ready queue.
  * 
  *)
 
@@ -185,13 +185,12 @@ define @work-stealers-startup ( / exh : exh) : () =
 	(* signal handling *)      
 	if Equal (s, STOP) 
 	   then let qEmpty : bool = @is-queue-empty ( / exh)
-		if qEmpty
-		   then do apply steal (vprocs / exh)
-                        throw dispatch ()
-		   else (* (1) *)
-			throw dispatch ()
-	   else print_msg("preempt")
-                let k : fiber = (fiber)s
+		do if qEmpty
+		      then apply steal (vprocs / exh)
+		      else return ()
+                (* (1) *)
+		throw dispatch ()
+	   else let k : fiber = (fiber)s
 		let fgs : fgs = @get-fgs (self / exh)
 		do @enqueue (host_vproc, fgs, k / exh)
 	       (* (4) *)

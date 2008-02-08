@@ -3,62 +3,39 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Non-blocking locked dequeue.
+ * Blocking dequeue.
  *)
 
 #include "locked-queue.def"
-#include "../synch/spin-lock-fn.hlop"
-define_spin_lock(lq, locked_queue, LOCKED_QUEUE_LOCK)
+#include "locked-queue-local.def"
+#include "assert.def"
+#include "debugging.def"
 
 define @locked-queue-blocking-dequeue (q : locked_queue / exh : exh) : any =
 
-  cont blockedK (v : any) = return (v)
-  (* QUESTION: is the best policy to be pessimistic about blocking and promote before acquiring the lock or
-   * to be optimistic and promote while holding the lock?
-   * TODO: add a fast track for when the queue is not empty and fall back to the slow track below otherwise.
+  (* TODO: add a fast track for when the queue is not empty and fall back to the slow track
+   * below otherwise.
    *)
+  cont blockedK (v : any) = return (v)
   let blockedK : cont(any) = promote (blockedK)
   let fgs : fgs = @get-fgs (host_vproc / exh)
   let blockedThread : [cont(any), fgs] = alloc (blockedK, fgs)
-  let blockedThread : [cont(any), fgs] = promote(blockedThread)
+  let bqElt : in_place_queue_elt = LOCKED_QUEUE_NEW_ELT(blockedThread)
+  let bqElt : in_place_queue_elt = promote(bqElt)
   
+  cont none () = 
+       do @in-place-enqueue-bq (q, bqElt / exh)
+       let _ : unit = @spin-unlock-lq (q / exh)
+       @thread-exit (/ exh)
+  cont some (elt : any) =
+       let _ : unit = @spin-unlock-lq (q / exh)
+       return (elt)
+
   let _ : unit = @spin-lock-lq (q / exh)
-
-   (* place an element at the blocked queue tail *)
-    fun queueSnoc (elt : any, qt : queue_elt / exh : exh) : queue_elt =
-	let qElt : queue_elt = alloc (elt, LOCKED_QUEUE_EMPTY)
-        let qElt : queue_elt = promote (qElt)
-	do if Equal (qt, LOCKED_QUEUE_EMPTY) 
-	      then return () 
-	      else let qElt : any = (any)qElt
-                   do UPDATE(QUEUE_ELT_TL, qt, qElt)
-		   return ()
-	return (qElt)
-
-    let qTl : queue_elt = SELECT(LOCKED_QUEUE_TL, q)
-    let qHd : queue_elt = SELECT(LOCKED_QUEUE_HD, q)
-    if Equal (qHd, LOCKED_QUEUE_EMPTY)
-       then (* the queue is empty, so block the current thread *)
-            let bqTl : queue_elt = SELECT(LOCKED_QUEUE_BLOCKED_TL, q)
-            let bqTl : queue_elt = apply queueSnoc (blockedThread, bqTl)
-            do UPDATE(LOCKED_QUEUE_TL, q, bqTl)
-            let bqHd : queue_elt = SELECT(LOCKED_QUEUE_HD, q)
-            do if Equal (bqHd, LOCKED_QUEUE_EMPTY)
-                  then do UPDATE(LOCKED_QUEUE_HD,  q, bqTl)
-                       return ()
-                  else return ()
-            let _ : unit = @spin-unlock-lq (q / exh)
-            @thread-exit( / exh)
-       else (* the queue is nonempty, so take an element off the queue head *)
-            let qNext : any = SELECT(QUEUE_ELT_TL, qHd)
-            let qNext : queue_elt = (queue_elt)qNext
-            do if Equal (qHd, qTl)
-                  then (* there is one element on the queue, so clear out the tail *)
-                       do UPDATE(LOCKED_QUEUE_TL, q, LOCKED_QUEUE_EMPTY)
-                       return ()
-                  else return ()
-            do UPDATE(LOCKED_QUEUE_HD, q, qNext)
-            let elt : any = SELECT(QUEUE_ELT_HD, qHd)
-            let _ : unit = @spin-unlock-lq (q / exh)
-            throw k (elt)
+  (* FIXME: this function can cause allocations for the none and some continuations while
+   * holding the lock... 
+   *)
+  do @in-place-dequeue-lq (q, none, some / exh)
+  do assert(FALSE)
+  throw exh(NIL)
 ;

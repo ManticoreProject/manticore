@@ -6,32 +6,20 @@
  * Non-blocking locked dequeue.
  *)
 
+#include "assert.def"
 #include "locked-queue.def"
-#include "../synch/spin-lock-fn.hlop"
-define_spin_lock(lq, locked_queue, LOCKED_QUEUE_LOCK)
+#include "locked-queue-local.def"
 
 define @locked-queue-dequeue (q : locked_queue / exh : exh) : option =
-  
-  let _ : unit = @spin-lock-lq (q / exh)
+  cont none () = 
+       let _ : unit = @spin-unlock-lq (q / exh)
+       return (NONE)
+  cont some (elt : any) = 
+       let _ : unit = @spin-unlock-lq (q / exh)
+       return (SOME (elt))
 
-    let qTl : queue_elt = SELECT(LOCKED_QUEUE_TL, q)
-    let qHd : queue_elt = SELECT(LOCKED_QUEUE_HD, q)
-    if Equal (qHd, LOCKED_QUEUE_EMPTY)
-       then (* the queue is empty *)
-            let _ : unit = @spin-unlock-lq (q / exh)
-            return (NONE)
-       else (* the queue is nonempty, so take an element off the queue head *)
-            let qNext : any = SELECT(QUEUE_ELT_TL, qHd)
-            let qNext : queue_elt = (queue_elt)qNext
-            do if Equal (qHd, qTl)
-                  then (* there is one element on the queue, so clear out the tail *)
-                       let emptyQ : queue_elt = (queue_elt)LOCKED_QUEUE_EMPTY
-                       do UPDATE(LOCKED_QUEUE_TL, q, emptyQ)
-                       return ()
-                  else return ()
-            do UPDATE(LOCKED_QUEUE_HD, q, qNext)
-            let elt : any = SELECT(QUEUE_ELT_HD, qHd)
-            let _ : unit = @spin-unlock-lq (q / exh)
-            let v : option = SOME (elt)
-            return (v)
+  let _ : unit = @spin-lock-lq (q / exh)
+  do @in-place-dequeue-lq (q, none, some / exh)
+  do assert(FALSE)
+  return (NONE)
 ;

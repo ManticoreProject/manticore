@@ -9,13 +9,7 @@
 
 define @work-stealers-startup ( / exh : exh) : ();
 
-(* test parallel enqueue and dequeue *)
-define @test-q-2 (/ exh : exh) : bool =
-  let nElts : int = 2000
-  let done :![bool] = alloc (FALSE)
-  let q : locked_queue = @locked-queue-new (/ exh)
-
-  fun randomWait (/exh: exh) : () =
+define @random-wait (done : ![bool] /exh: exh) : () =
      (* percentage of the time that we do not wait *)
       let pWait : double = 0.9:double
       let one : ml_double = wrap(1.0:double)
@@ -25,11 +19,38 @@ define @test-q-2 (/ exh : exh) : bool =
       if F64Lt (p, pWait)
          then return ()
          else @wait (0.1:double, done / exh)
+;
+
+(* test blocking *)
+define @test-q-3 ( /exh : exh) : bool =
+  let done :![bool] = alloc (FALSE)
+  let q : locked_queue = @locked-queue-new (/ exh)
+
+  fun doEnq (_ : unit / exh : exh) : unit = 
+      let wi : [int] = wrap (999)
+      let wi : any = (any)wi
+      do @locked-queue-enqueue (q, wi / exh)
+      return (UNIT)
+  let k : fiber = @fiber (doEnq / exh)
+  let fgs : fgs = @new-fgs (FALSE, NONE / exh)
+  do @enqueue-on-vproc (host_vproc, fgs, k / exh)   
+
+  let i : [int] = @locked-queue-blocking-dequeue (q / exh)
+  let i : int = unwrap(i)
+  let b:  bool = I32Eq(i,999)
+  return (b)
+;
+
+(* test parallel enqueue and dequeue *)
+define @test-q-2 (/ exh : exh) : bool =
+  let nElts : int = 2000
+  let done :![bool] = alloc (FALSE)
+  let q : locked_queue = @locked-queue-new (/ exh)
 
   fun enq (i : int / exh : exh) : () = 
       if I32Eq (i,0)
          then return ()
-         else do apply randomWait (/exh)
+         else do @random-wait (done/exh)
               let wi : [int] = wrap (i)
               let wi : any = (any)wi
               do @locked-queue-enqueue (q, wi / exh)
@@ -85,25 +106,10 @@ define @test-q-1 (/ exh : exh) : bool =
   do apply enq (nElts /exh)
   apply deq ( nElts / exh)
 ;
-#include "runtime-constants.def"
+
 define @locked-queue-test-startup ( / exh : exh) : () =
   do @work-stealers-startup (/ exh)
-  fun doit (i : int / exh : exh ) : () =
-      if I32Eq(i,0)
-         then return ()
-         else let i : int = I32Sub(i,1)
-              let done : ![bool] = alloc(FALSE)
-              do @wait (0.1:double, done / exh)
-              apply doit (i / exh)
-  fun f (_ : unit / exh : exh) : unit =
-print_msg("F")
-      do apply doit (100 / exh)
-      return (UNIT)
-  let k : fiber = @fiber (f / exh)
-  let fgs : fgs = @new-fgs (FALSE, NONE / exh)
-  do @enqueue-on-vproc (host_vproc, fgs, k / exh)
-
-  do vpstore (ATOMIC, host_vproc, FALSE)
-  do apply doit (100 / exh)
+  do_test(test-q-1)
+  do_test(test-q-3)
   return ()
 ;

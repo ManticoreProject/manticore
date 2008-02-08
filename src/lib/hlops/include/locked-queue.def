@@ -10,10 +10,13 @@
 #define _LOCKED_QUEUE_DEF_
 
 #include "types.def"
+#include "fgs.def"
+#include "in-place-queue.def"
 
-typedef queue_elt = ![any, any];
 (* lock, head, tail, blocked fiber head, blocked fiber tail *)
-typedef locked_queue = ![bool, queue_elt, queue_elt, queue_elt, queue_elt];
+typedef locked_queue = ![bool, in_place_queue_elt, in_place_queue_elt, in_place_queue_elt, in_place_queue_elt];
+
+#define LOCKED_QUEUE_EMPTY          IN_PLACE_QUEUE_EMPTY
 
 #define LOCKED_QUEUE_LOCK           0
 #define LOCKED_QUEUE_HD             1
@@ -21,13 +24,14 @@ typedef locked_queue = ![bool, queue_elt, queue_elt, queue_elt, queue_elt];
 #define LOCKED_QUEUE_BLOCKED_HD     3
 #define LOCKED_QUEUE_BLOCKED_TL     4
 
-#define LOCKED_QUEUE_EMPTY	enum(0)
+typedef blocked_thread = [cont(any), fgs];
+#define BLOCKED_THREAD_CONT         0
+#define BLOCKED_THREAD_FGS          1
 
-#define QUEUE_ELT_HD    0
-#define QUEUE_ELT_TL    1
-
+#define LOCKED_QUEUE_NEW_ELT(elt) IN_PLACE_QUEUE_NEW(elt)
 define @locked-queue-new ( / exh : exh) : locked_queue;
 define @locked-queue-dequeue (q : locked_queue / exh : exh) : option;
 define @locked-queue-enqueue (q : locked_queue, elt : any / exh : exh) : ();
+define @locked-queue-blocking-dequeue (q : locked_queue / exh : exh) : any;
 
 #endif /* !_LOCKED_QUEUE_DEF_ */

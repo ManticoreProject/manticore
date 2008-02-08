@@ -1,0 +1,37 @@
+(*
+ * Run me by saying
+ *    mc -Cdebug=true -Cscheduler=work-stealers-test triv.pml
+ *) 
+
+#include "locked-queue.def"
+#include "testing.def"
+#include "vproc-queue.def"
+
+define @work-stealers-startup ( / exh : exh) : ();
+
+(* should break action-stack invariant *)
+#include "runtime-offsets.def"
+define @work-stealers-test-startup ( / exh : exh) : () =
+  do @work-stealers-startup (/ exh)
+              let done : ![bool] = alloc(FALSE)
+
+  fun doit (i : int / exh : exh ) : () =
+      if I32Eq(i,0)
+         then return ()
+         else let i : int = I32Sub(i,1)
+              do @wait (0.1:double, done / exh)
+              apply doit (i / exh)
+
+  fun f (_ : unit / exh : exh) : unit =
+      print_msg("F")
+      do apply doit (100 / exh)
+      return (UNIT)
+
+  let k : fiber = @fiber (f / exh)
+  let fgs : fgs = @new-fgs (FALSE, NONE / exh)
+  do @enqueue-on-vproc (host_vproc, fgs, k / exh)
+
+  do vpstore (ATOMIC, host_vproc, FALSE)
+  do apply doit (100 / exh)
+  return ()
+;
