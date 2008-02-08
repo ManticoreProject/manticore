@@ -130,12 +130,6 @@ structure CFG =
 	val tyToString = CFGTy.toString
       end)
 
-  (* return the function that a label is bound to, or NONE if it is external *)
-    fun funcOfLabel lab = (case Label.kindOf lab
-	   of LK_Local{func, ...} => SOME func
-	    | _ => NONE
-	  (* end case *))
-
   (* project out the lhs variables of an expression *)
     fun lhsOfExp (E_Var(xs, _)) = xs
       | lhsOfExp (E_Const(x, _)) = [x]
@@ -152,59 +146,6 @@ structure CFG =
       | lhsOfExp (E_HostVProc x) = [x]
       | lhsOfExp (E_VPLoad(x, _, _)) = [x]
       | lhsOfExp (E_VPStore _) = []
-
-  (* project out the rhs variable of an expression *)
-    fun rhsOfExp (E_Var(_, ys)) = ys
-      | rhsOfExp (E_Const _) = []
-      | rhsOfExp (E_Cast(_, _, y)) = [y]
-      | rhsOfExp (E_Label _) = []
-      | rhsOfExp (E_Select(_, _, y)) = [y]
-      | rhsOfExp (E_Update(_, y, z)) = [y, z]
-      | rhsOfExp (E_AddrOf(_, _, y)) = [y]
-      | rhsOfExp (E_Alloc(_, args)) = args
-      | rhsOfExp (E_GAlloc(_, args)) = args
-      | rhsOfExp (E_Promote(_, y)) = [y]
-      | rhsOfExp (E_Prim(_, p)) = PrimUtil.varsOf p
-      | rhsOfExp (E_CCall(_, f, args)) = f::args
-      | rhsOfExp (E_HostVProc _) = []
-      | rhsOfExp (E_VPLoad(_, _, x)) = [x]
-      | rhsOfExp (E_VPStore(_, x, y)) = [x, y]
-
-  (* project the list of variables in a control transfer.  Note that the order must agree with
-   * the parameter order of paramsOfConv below.
-   *)
-    fun varsOfXfer (StdApply{f, clos, args, ret, exh}) = f :: clos :: args @ [ret, exh]
-      | varsOfXfer (StdThrow{k, clos, args}) = k :: clos :: args
-      | varsOfXfer (Apply{f, args}) = f::args
-      | varsOfXfer (Goto(_, args)) = args
-      | varsOfXfer (If(x, (_, args1), (_, args2))) = x :: args1 @ args2
-      | varsOfXfer (Switch(x, cases, dflt)) = let
-	  fun f ((_, (_, args)), l) = args @ l
-	  in
-	    x :: (List.foldl f (case dflt of SOME(_, args) => args | _ => []) cases)
-	  end
-      | varsOfXfer (HeapCheck{nogc=(_, args), ...}) = args
-      | varsOfXfer (AllocCCall{lhs, args, ret=(_, rArgs), ...}) = lhs @ args @ rArgs
-
-   (* project the lhs variables of a control transfer *)
-    fun lhsOfXfer (AllocCCall{lhs, ...}) = lhs
-      | lhsOfXfer _ = []
-
-  (* project the list of destination labels in a control transfer; note that this function
-   * only looks at jumps.  A control-flow analysis may give better information.
-   *)
-    fun labelsOfXfer (StdApply _) = []
-      | labelsOfXfer (StdThrow _) = []
-      | labelsOfXfer (Apply _) = []
-      | labelsOfXfer (Goto(lab, _)) = [lab]
-      | labelsOfXfer (If(x, (lab1, _), (lab2, _))) = [lab1, lab2]
-      | labelsOfXfer (Switch(x, cases, dflt)) = let
-	  fun f ((_, (lab, _)), l) = lab :: l
-	  in
-	    List.foldl f (case dflt of SOME(lab, _) => [lab] | _ => []) cases
-	  end
-      | labelsOfXfer (HeapCheck{nogc=(lab, _), ...}) = [lab]
-      | labelsOfXfer (AllocCCall{ret=(lab, _), ...}) = [lab]
 
   (* project out the parameters of a convention *)
     fun paramsOfConv (StdFunc{clos, args, ret, exh}) = clos :: args @ [ret, exh]
@@ -253,62 +194,5 @@ structure CFG =
 	    externs = externs,
 	    code = code
 	  }
-
-   (* rewrite a function with a new body and exit *)
-    fun rewriteFunc (FUNC {lab, entry, ...}, body, exit) = let
-            val func = FUNC{lab = lab, entry = entry, body = body, exit = exit}
-	    val lk = (case Label.kindOf lab
-		       of LK_Local {export, ...} => LK_Local {func=func, export=export}
-			| lk => lk
-		     (* end case *))
-            in
-	        Label.setKind (lab, lk);
-		List.app (fn x => Var.setKind(x, VK_Param func)) (paramsOfConv entry);
-		func
-            end
-
-   (* substitute a variable w.r.t. an environment *)
-    fun substVar env v = (case Var.Map.find (env, v)
-            of NONE => v
-	     | SOME v' => v'
-            (* end case *))
-
-   (* variable substitution over an expression *)
-    fun substExp env e = let
-        val substVar = substVar env
-        in 
-            (case e
-	      of E_Var (lhs, rhs) => mkVar (lhs, List.map substVar rhs)
-	       | E_Cast (lhs, ty, rhs) => mkCast (lhs, ty, substVar rhs)
-	       | E_Select (lhs, i, rhs) => mkSelect (lhs, i, substVar rhs)
-	       | E_Update (i, v1, v2) => mkUpdate (i, substVar v1, substVar v2)
-	       | E_AddrOf (lhs, i, rhs) => mkAddrOf (lhs, i, substVar rhs)
-	       | E_Alloc (lhs, rhs) => mkAlloc (lhs, List.map substVar rhs)
-	       | E_GAlloc (lhs, rhs) => mkGAlloc (lhs, List.map substVar rhs)
-	       | E_Promote (lhs, rhs) => mkPromote (lhs, substVar rhs)
-	       | E_Prim (lhs, prim) => mkPrim (lhs, PrimUtil.map substVar prim)
-	       | E_CCall (lhs, f, rhs) => mkCCall (lhs, substVar f, List.map substVar rhs)
-	       | E_VPLoad (lhs, offset, rhs) => mkVPLoad (lhs, offset, substVar rhs)
-	       | E_VPStore (offset, v1, v2) => mkVPStore (offset, substVar v1, substVar v2)
-	       | e => e
-            (* end case *))
-         end
-
-   (* variable substitution over an transfer *)
-    fun substTransfer env transfer = let
-        val sv = substVar env
-	fun sj (l, args) = (l, List.map sv args)
-        in 
-           (case transfer
-	     of StdApply{f, clos, args, ret, exh} => StdApply{f=sv f, clos=sv clos, args=List.map sv args, ret=sv ret, exh=sv exh}
-	      | StdThrow{k, clos, args} => StdThrow{k=sv k, clos=sv clos, args=List.map sv args}
-	      | Apply{f, args} => Apply{f=sv f, args=List.map sv args}
-	      | Goto jmp => Goto (sj jmp)
-	      | If(v, jmp1, jmp2) => If(sv v, sj jmp1, sj jmp2)
-	      | Switch(x, cases, dflt) => Switch(sv x, List.map (fn (c, j) => (c, sj j)) cases, Option.map sj dflt)
-	      | HeapCheck{hck, szb, nogc} => HeapCheck{hck=hck, szb=szb, nogc=sj nogc}
-	      | AllocCCall{lhs, f, args, ret} => AllocCCall{lhs=lhs, f=sv f, args=List.map sv args, ret=sj ret}
-	    (* end case *))
-         end
 
   end

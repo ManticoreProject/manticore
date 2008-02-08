@@ -34,7 +34,7 @@ end = struct
 		 | _ => raise Fail "addEdge"
 	      (* esac *))
 	  (* get the jump labels of a transfer *)
-	  val labs = CFG.labelsOfXfer exit
+	  val labs = CFGUtil.labelsOfXfer exit
       in
 	  foldl addEdge edgeMap labs
       end (* addEdges *)

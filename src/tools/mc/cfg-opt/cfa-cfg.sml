@@ -155,7 +155,7 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 	 * set its parameters to TOP.
 	 *)
 	  fun doLab lab = if not(isEscaping lab)
-		then (case CFG.funcOfLabel lab
+		then (case CFGUtil.funcOfLabel lab
 		   of SOME(CFG.FUNC{entry, ...}) => (
 			setSites (lab, Unknown);
 			List.app (fn x => addInfo(x, TOP)) (CFG.paramsOfConv entry))
@@ -302,7 +302,7 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 		  | doXfer (CFG.AllocCCall{ret, args, ...}) = (
 		      List.app escape args;
 		      doJump ret)
-		and doJump (lab, args) = (case CFG.funcOfLabel lab
+		and doJump (lab, args) = (case CFGUtil.funcOfLabel lab
 		       of SOME func => doFunc (func, List.map valueOf args)
 			| _ => raise Fail "jump to unknown label"
 		      (* end case *))
@@ -368,7 +368,7 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 	     of CFG.StdApply{f, ...} => labelSet f
 	      | CFG.StdThrow{k, ...} => labelSet k
 	      | CFG.Apply{f, ...} => labelSet f
-	      | _ => LSet.addList(LSet.empty, CFG.labelsOfXfer xfer)
+	      | _ => LSet.addList(LSet.empty, CFGUtil.labelsOfXfer xfer)
 	    (* end case *)
 	  end
 

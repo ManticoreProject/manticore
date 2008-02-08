@@ -96,7 +96,7 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 			       fun f (lab, sz) = if FB.Set.member(fbSet, lab)
 				     then 0w0
 				     else let
-				       val sz' = funcAlloc (valOf(CFG.funcOfLabel lab))
+				       val sz' = funcAlloc (valOf(CFGUtil.funcOfLabel lab))
 				       in
 				         Word.max(sz', sz)
 				       end
