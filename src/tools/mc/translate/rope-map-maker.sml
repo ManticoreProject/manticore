@@ -179,14 +179,14 @@ structure RopeMapMaker : sig
                B.mkStmt ([lenV], B.unwrap mlLenV,
                B.mkLet  ([getV], B.mkHLOp (HLOpEnv.curriedRopeSublistOp, [startV, lenV], [exhV]),
                B.mkStmt ([argV], B.E_Alloc (argTy, [getV, othersV]),
-             (* let sublists : list = @list-map (arg / exh) *)
+               B.mkLet  ([sublistsV], B.mkHLOp (HLOpEnv.listMapOp, [argV], [exhV]),
                B.mkLet  ([others_V], raise Fail "apply mapHash1 (sublists)",
                B.mkLet  ([allV], B.mkHLOp (HLOpEnv.insertAtOp, [dataV, others_V, iV], [exhV]),
                B.mkLet  ([dsV], B.mkApply (l2tV, [allV], []),
              (* let d1 : list = #0(ds) etc. *)
                B.mkLet  ([data_V], B.mkApply (listMapFun arity, fV :: dVs, [exhV]),
                B.mkStmt ([eV], B.E_DCon (BB.ropeLeaf, [mlLenV, data_V]),
-               B.mkRet [eV]))))))))
+               B.mkRet [eV])))))))))
 	in	
 	    (leafPat, leafBody)
 	end 

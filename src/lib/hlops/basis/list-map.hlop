@@ -11,25 +11,18 @@
 
 define @list-map (arg : [fun (any / exh -> any), list] / exh : exh) : list =
 
-  print_debug("@list-map 0\n\000")           
-  
   let f  : fun (any / exh -> any) = #0(arg)
   let xs : list = #1(arg)
 
   fun mapf (xs : list, acc : list / exh : exh) : list =
     case xs
       of NIL => 
-           print_debug("@list-map")           
            let cca : list = @list-rev (acc / exh)
            return (cca)
        | CONS(x:any, tl:list) =>
-           print_debug("@list-map")           
            let fx : any = apply f (x / exh)
-           print_debug("@list-map")           
            let newAcc : list = CONS (fx, acc)
-           print_debug("@list-map")           
            let res : list = apply mapf (tl, newAcc / exh)
-           print_debug("@list-map")           
            return (res)
      end
 

@@ -30,6 +30,7 @@ structure HLOpEnv : sig
 
   (* Basis functions *)
     val listAppendOp : HLOp.hlop
+    val listMapOp : HLOp.hlop
     val listRevOp : HLOp.hlop
     val listNthOp : HLOp.hlop
     val stringConcatOp : HLOp.hlop
@@ -148,6 +149,13 @@ structure HLOpEnv : sig
 
   (* high-level operations used to implement Manticore language constructs *)
     val listAppendOp = newWithExh("list-append", [pairTy(listTy, listTy)], [listTy], [])
+
+    val listMapOp = 
+	let val fnTy = BTy.T_Fun ([anyTy], [exhTy], [anyTy])
+	in
+	    newWithExh("list-map", [pairTy(fnTy, listTy)], [listTy], [])
+	end
+
     val listRevOp = newWithExh("list-rev", [listTy], [listTy], [])
     val listNthOp = newWithExh("list-nth", [pairTy(listTy, intTy)], [anyTy], [])
     val stringConcatOp = newWithExh("string-concat2", [pairTy(stringTy, stringTy)], [stringTy], [])
