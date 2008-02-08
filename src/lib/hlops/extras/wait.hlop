@@ -9,6 +9,8 @@
 
 #include "types.def"
 #include "runtime-offsets.def"
+#include "debugging.def"
+#include "assert.def"
 
 define @wait (secs : double, done : ![bool] / exh : exh) : () =
   let t0 : [double] = @gettimeofday (UNIT /exh)

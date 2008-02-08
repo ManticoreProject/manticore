@@ -111,13 +111,13 @@ define @work-stealers-startup ( / exh : exh) : () =
        if I32Gt(stealableFibers, 0)
           then let rs : list = apply wakes (stealableFibers / exh)
                cont dummyK (u : unit) = 
-                    print_debug("dummy")
+                    print_msg("dummy")
                     @thread-exit ( / exh)
                fun dispatchOn (vps : list / exh : exh) : () =
                    case vps
 		    of NIL => return ()
 		     | CONS (vp : vproc, rest : list) =>
-                        print_debug("Attempting to wake")
+                        print_msg("Attempting to wake")
                         do @enqueue-on-vproc (vp, wsFGS, dummyK / exh)
                         apply dispatchOn (rest / exh)
                    end
@@ -143,53 +143,55 @@ define @work-stealers-startup ( / exh : exh) : () =
 	     @run (vp, wsSwitch, fgs, fiber / exh)
 
 	  (* (2) *)
-	  cont steal (vprocs' : list) =
+	  fun steal (vprocs' : list / exh : exh) : () =
 	    case vprocs' 
 	      of NIL =>
-		     print_debug("Thief is giving up on all vprocs")
+		     print_msg("Thief is giving up on all vprocs")
 		    (* (3) *)
 		     do apply addToSleeping (self / exh)
-		     @thread-exit ( / exh)
+		     return ()
 	       | CONS (vp : vproc, vprocs' : list) => 
 		    (* (2.1) *)
-		     print_debug("Sending thief to vproc")
+		     print_msg("Sending thief to vproc")
 		     cont thiefFiber (x : unit) = 
-			print_debug("Thief fiber")
+			print_msg("Thief fiber")
 		        let hasElts : bool = @is-queue-gt-one ( / exh)
 		        if hasElts
 			   then (* (2.2) *)
-			        print_debug("Stealing a remote thread")
+			        print_msg("Stealing a remote thread")
 			        let qitemOpt : option = @dequeue-with-pred (host_vproc, isUnpinned / exh)
 			        case qitemOpt
   				 of NONE => 
-				    print_debug("Nothing to steal on this vproc")
-			            throw steal (vprocs')
+				    print_msg("Nothing to steal on this vproc")
+			            do apply steal (vprocs' / exh)
+                                    @thread-exit ( / exh)
 				  | SOME (qitem : rdyq_item) =>
-                                    print_debug("Stole a thread")
+                                    print_msg("Stole a thread")
 				    let item : [fgs, fiber, rdyq_item] = ([fgs, fiber, rdyq_item]) qitem
 				    let fgs : fgs = #0 (item)
 				    let fiber : fiber = #1 (item)
 				    do @enqueue-on-vproc (self, fgs, fiber / exh)
 				   (* Wake up the vproc *)
-				    do ccall VProcPreempt (self)
-				    @thread-exit (/ exh)
+(*				    do ccall VProcPreempt (self)*)
+				    @thread-exit ( / exh)
 			        end
-			else (* (2.3) *)
-			     print_debug("Thief is giving up on this vproc")
-			     throw steal (vprocs')
-		    do @enqueue-on-vproc (vp, wsFGS, thiefFiber / exh)
-		    throw dispatch ()
+			   else (* (2.3) *)
+			        print_msg("Thief is giving up on this vproc")
+			        do apply steal (vprocs' / exh)
+                                @thread-exit ( / exh)
+		    @enqueue-on-vproc (vp, wsFGS, thiefFiber / exh)
 	    end
 
 	(* signal handling *)      
 	if Equal (s, STOP) 
 	   then let qEmpty : bool = @is-queue-empty ( / exh)
 		if qEmpty
-		   then throw steal (vprocs)
+		   then do apply steal (vprocs / exh)
+                        throw dispatch ()
 		   else (* (1) *)
 			throw dispatch ()
-	   else let fid : fid = @get-fid (self / exh)
-		let k : fiber = (fiber)s
+	   else print_msg("preempt")
+                let k : fiber = (fiber)s
 		let fgs : fgs = @get-fgs (self / exh)
 		do @enqueue (host_vproc, fgs, k / exh)
 	       (* (4) *)

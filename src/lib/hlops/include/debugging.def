@@ -16,9 +16,11 @@ extern void M_PrintDebug (void*);
 extern void M_PrintLong (long);
 extern void M_PrintDebugMsg (void*, void*, void*, int);
 
+(* prints when the compiler debugging flag is set and the runtime flag is set *)
 #  define print_debug(msg)                                               \
              do ccall M_PrintDebugMsg (FALSE, msg, __FILE__, __LINE__)   \
 
+(* prints when the compiler debugging flag is set *)
 #  define print_msg(msg)                                                 \
              do ccall M_PrintDebugMsg (TRUE, msg, __FILE__, __LINE__)    \
 
