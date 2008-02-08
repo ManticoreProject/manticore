@@ -126,6 +126,7 @@ structure RopeMapMaker : sig
   (* Produces an expression that binds x to the *list* of vars in e. *)
   (* Said list needs to be built with incremental CONSes. *)
   (* FIXME no it doesn't! Just inline them... *)
+  (*       .. but how??? *)
     fun mkList (wholeList : B.var, ys : B.var list, e : B.exp) : B.exp =
 	let val nilVar = BV.new ("nil", listTy)
 	    (* build var list * var list * var -> exp *)
@@ -145,63 +146,47 @@ structure RopeMapMaker : sig
 	let (* variables *)
 	    val mlLenV = BV.new ("ml_len", intTy)
 	    val dataV = BV.new ("data", listTy)
-	    val othersVs = mkVars ("others", arity-1, listTy) (* backwards *) 
             val lenV = BV.new ("len", rawIntTy)
 	    val getV = BV.new ("get", BTy.T_Fun ([ropeTy], [exhTy], [iPairTy (listTy, boolTy)]))
-	    val othersXV = BV.new ("othersX", listTy)
 	    val argTy =  
 		let val fty = BTy.T_Fun ([anyTy], [exhTy], [anyTy])
 		in
-		    BTy.T_Tuple (false, fty :: copies (arity-1, listTy))
+		    BTy.T_Tuple (false, [fty, listTy])
 		end
 	    val argV = BV.new ("arg", argTy)
+	    val sublistsV = BV.new ("sublists", listTy)
+	    val others_V = BV.new ("others_", listTy)
 	    val allV = BV.new ("all", listTy)
+	    val dsV = BV.new ("ds", BTy.T_Tuple (false, copies (arity, anyTy)))
 	    val dVs = rev (mkVars ("d", arity, listTy)) (* forwards *)
-	    val dataXV = BV.new ("dataX", listTy)
+	    val data_V = BV.new ("data_", listTy)
 	    val eV = BV.new ("e", ropeTy)
 	    (* misc *)
 	    (* listMapFun : int -> B.var *)
 	    fun listMapFun n = 
 		let val m = ListMapMaker.getMapFunction n
 		in 
-		    (* NB This expects a highly specific return val from ListMapMaker. *)
-		    (*    This may need to be reengineered. *)
+		    (* FIXME This expects a highly specific return val from ListMapMaker. *)
+		    (*       This may need to be reengineered. *)
 		    case m
 		      of B.E_Pt (_, B.E_Fun (_, B.E_Pt (_, B.E_Ret [fV]))) => fV
 		       | _ => raise Fail ("compiler error: unexpected return from\
                                           \ request for list-map function of arity "
 					  ^ (Int.toString arity))
 		end 		
-            (* prependOtherVs : B.var list * B.exp -> B.exp *)
-	    fun prependOtherVs (vs, e) =
-		let fun mkNth n = 
-                        (* FIXME -- This tupling/alloc should be rejiggered -- eliminated. *)
-			let val nStr = Int.toString n
-			    val nV = BV.new ("n" ^ nStr, intTy)
-			    val tupTy =  iPairTy (listTy, intTy)
-			    val tupV  = BV.new ("tup" ^ nStr, tupTy)
-			in
-			    B.mkStmt ([nV], B.E_Const (Literal.Int (IntInf.fromInt n), intTy),
-                             B.mkStmt ([tupV], B.E_Alloc (tupTy, [othersV, nV]),
-                              B.mkHLOp (HLOpEnv.listNthOp, [tupV], [exhV])))
-			end
-		    fun p ([], _, e) = e
-		      | p (v::vs, n, e) = B.mkLet ([v], mkNth n, p (vs, n+1, e))
-		in
-		    p (vs, 0, e)
-		end
 	    val leafPat = B.P_DCon (BB.ropeLeaf, [mlLenV, dataV])
 	    val leafBody = 
-              prependOtherVs (othersVs, 
                B.mkStmt ([lenV], B.unwrap mlLenV,
-                B.mkLet ([getV], B.mkHLOp (HLOpEnv.curriedRopeSublistOp, [startV, lenV], [exhV]),
-                 B.mkStmt ([argV], B.E_Alloc (argTy, getV::(rev othersVs)),
-                  B.mkLet ([othersXV], B.mkApply (listMapFun (arity-1), [argV], [exhV]),
-                   B.mkLet ([allV], B.mkHLOp (HLOpEnv.insertAtOp, [dataV, othersXV, iV], [exhV]),
-                    B.mkLet (dVs, B.mkApply (l2tV, [allV], []),
-                     B.mkLet ([dataXV], B.mkApply (listMapFun arity, fV :: dVs, [exhV]),
-                      B.mkStmt ([eV], B.E_DCon (BB.ropeLeaf, [mlLenV, dataXV]),
-                       B.mkRet [eV])))))))))
+               B.mkLet  ([getV], B.mkHLOp (HLOpEnv.curriedRopeSublistOp, [startV, lenV], [exhV]),
+               B.mkStmt ([argV], B.E_Alloc (argTy, [getV, othersV]),
+             (* let sublists : list = @list-map (arg / exh) *)
+               B.mkLet  ([others_V], raise Fail "apply mapHash1 (sublists)",
+               B.mkLet  ([allV], B.mkHLOp (HLOpEnv.insertAtOp, [dataV, others_V, iV], [exhV]),
+               B.mkLet  ([dsV], B.mkApply (l2tV, [allV], []),
+             (* let d1 : list = #0(ds) etc. *)
+               B.mkLet  ([data_V], B.mkApply (listMapFun arity, fV :: dVs, [exhV]),
+               B.mkStmt ([eV], B.E_DCon (BB.ropeLeaf, [mlLenV, data_V]),
+               B.mkRet [eV]))))))))
 	in	
 	    (leafPat, leafBody)
 	end 
@@ -214,28 +199,28 @@ structure RopeMapMaker : sig
 	    val lenLV = BV.new ("lenL", rawIntTy)
 	    val startRV = BV.new ("startR", rawIntTy)
 	    val thunkV = BV.new ("thunk", thunkTy)
-	    val shortRX_FV = BV.new ("shortRX_F", futureTy)
-	    val shortLXV = BV.new ("shortLX", ropeTy)
-	    val shortRXV = BV.new ("shortRX", ropeTy)
+	    val shortR_FV = BV.new ("shortR_F", futureTy)
+	    val shortL_V = BV.new ("shortL_", ropeTy)
+	    val shortR_V = BV.new ("shortR_", ropeTy)
 	    val cV = BV.new ("c", ropeTy)
 	    (* misc *)
 	    val fut1Spawn = HLOpEnv.future1SpawnOp
 	    val fut1Touch = HLOpEnv.future1TouchOp
 	    val thunkLam = B.FB {f = thunkV,
-				 params = [BV.new ("u", unitTy)],
+				 params = [BV.new ("_", unitTy)],
 				 exh = [exhV],
 				 body = B.mkApply (innerMapV, [shortRV, startRV], [])}
 	    (* apply innerMapV (shortRV, startRV) *)
-	    val retVal = B.E_DCon (BB.ropeCat, [mlLenV, mlDepthV, shortLXV, shortRXV])
+	    val retVal = B.E_DCon (BB.ropeCat, [mlLenV, mlDepthV, shortL_V, shortR_V])
 	in
 	    B.mkLet ([lenLV], B.mkHLOp (HLOpEnv.ropeLengthIntOp, [shortLV], [exhV]),
-             B.mkStmt ([startRV], B.E_Prim (Prim.I32Add (startV, lenLV)),
-              B.mkFun ([thunkLam], 
-               B.mkLet ([shortRX_FV], B.mkHLOp (fut1Spawn, [thunkV], [exhV]),
-                B.mkLet ([shortLXV], B.mkApply (innerMapV, [shortLV, startV], []),
-                 B.mkLet ([shortRXV], B.mkHLOp (fut1Touch, [shortRX_FV], [exhV]),
-                   B.mkStmt ([cV], retVal,
-                    B.mkRet [cV])))))))
+            B.mkStmt ([startRV], B.E_Prim (Prim.I32Add (startV, lenLV)),
+            B.mkFun ([thunkLam], 
+            B.mkLet ([shortR_FV], B.mkHLOp (fut1Spawn, [thunkV], [exhV]),
+            B.mkLet ([shortL_V], B.mkApply (innerMapV, [shortLV, startV], []),
+            B.mkLet ([shortR_V], B.mkHLOp (fut1Touch, [shortR_FV], [exhV]),
+            B.mkStmt ([cV], retVal,
+            B.mkRet [cV])))))))
 	end
 
   (* mkCatCase : B.var * B.var * B.var * B.var -> B.pat * B.exp *)
