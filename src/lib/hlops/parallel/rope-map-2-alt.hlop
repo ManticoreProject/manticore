@@ -49,8 +49,8 @@ define @rope-map-2-alt (args : [fun ([any, any] / exh -> any), rope, rope] / exh
     end (* case *)
     (* end fun list_to_tup_2 *)
 
-  let list1 : list = CONS (r2, NIL)
-  let ropes : list = CONS (r1, list1)
+  (* build a list of all ropes *)
+  let ropes : list = CONS (r2, CONS (r1, NIL))
 
   let x : [rope, list, int] = @extract-shortest-rope (ropes / exh)
   let s : rope = #0(x)

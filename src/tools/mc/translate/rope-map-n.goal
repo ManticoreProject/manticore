@@ -12,32 +12,33 @@ fun rope_map_[n] (f : fun [any,...,any/exh->any], r1 : rope, ..., r[n] : rope / 
                  : rope =
 
   (* build a list of all ropes *)
-  let list1 : list = CONS(r[n], NIL)
-  let list2 : list = CONS(r[n-1], list1)
-  ...
-  let ropes : list = CONS(r1, list[n-1])
+  let ropes : list = CONS (r1, ... (CONS (rn, NIL) ... )
 
   (* calculate
    * - i, the index of the shortest rope in "ropes",
    * - s, the shortest rope in "ropes", and
    * - others, the list of all ropes except "s" in their original order *)
-  let (i : int, s : rope, others : list) = @extract-shortest-rope (ropes / exh)  
+  let x : [rope, list, int] = @extract-shortest-rope (ropes / exh)  
+  let s : rope      = #0(x)
+  let others : list = #1(x)
+  let i : int       = #2(x)
 
   (* We'll borrow the structure of the shortest rope in mapping over all ropes. *)
   fun rmap[n] (short : rope, start : int / ) : rope =
     case short
       of LEAF(ml_len:ml_int, data:list) =>
            let len : int = unwrap(ml_len)
-           let others1 : rope = @list-nth (others, 0 / exh)
-           ...
-           let others[n-1] : rope = @list-nth (others, [n-1] / exh)
-           (* FIXME : This needs to be rethought. *)
-           let get : fun (rope / exh -> [list, bool]) = @curried-rope-sublist (start, len / exh)
+           let get : fun (rope / exh -> [list, bool]) = 
+             @curried-rope-sublist (start, len / exh)
            let arg : [fun (any / exh -> any), list] = alloc (get, others)
-           let othersX : list = apply list-map (arg / exh)
+           let sublists : list = @list-map (arg / exh)
+           let others_ : list = apply mapHash1 (sublists)
            let all : list = @insert-at (data, othersX, i / exh)
-           let (d1 : list, ..., d[n] : list) = apply list-to-tup[n] (all)
-           let dataX : list = apply list-map-[n] (f, d1, ..., d[n])
+           let ds : [any, ..., any] = apply list-to-tup[n] (all) 
+           let d1 : list = #0(ds)
+           ...
+           let dn : list = #[n-1](ds)
+           let data_ : list = apply list-map-[n] (f, d1, ..., d[n])
            let e : rope = LEAF (ml_len, dataX)
            return (e)
        | CAT (ml_len:ml_int, d:ml_int, shortL:rope, shortR:rope) =>

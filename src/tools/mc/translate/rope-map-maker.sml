@@ -45,12 +45,12 @@ structure RopeMapMaker : sig
 
     val nilConst = (Literal.Enum 0w0, listTy)
 
-    (* copies : int * 'a -> 'a list *)
+  (* copies : int * 'a -> 'a list *)
     fun copies (n, x) = List.tabulate (n, fn _ => x)
 
-    (* mkVars : string * int * BTy.ty -> BV.var list *)
-    (* P: to build a list of numbered variable names, all of same type, backwards. *)
-    (* ex: mkVars ("foo", 3, any) --> [foo3 : any, foo2 : any, foo1 : any] *)
+  (* mkVars : string * int * BTy.ty -> BV.var list *)
+  (* P: to build a list of numbered variable names, all of same type, backwards. *)
+  (* ex: mkVars ("foo", 3, any) --> [foo3 : any, foo2 : any, foo1 : any] *)
     fun mkVars (prefix: string, n: int, t: BTy.ty) : BV.var list =
 	let fun f (k, acc) =
 		if k>n 
@@ -125,6 +125,7 @@ structure RopeMapMaker : sig
   (* mkList : B.var * B.var list * B.exp -> B.exp *)
   (* Produces an expression that binds x to the *list* of vars in e. *)
   (* Said list needs to be built with incremental CONSes. *)
+  (* FIXME no it doesn't! Just inline them... *)
     fun mkList (wholeList : B.var, ys : B.var list, e : B.exp) : B.exp =
 	let val nilVar = BV.new ("nil", listTy)
 	    (* build var list * var list * var -> exp *)
