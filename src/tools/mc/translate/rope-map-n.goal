@@ -31,8 +31,10 @@ fun rope_map_[n] (f : fun [any,...,any/exh->any], r1 : rope, ..., r[n] : rope / 
            let get : fun (rope / exh -> [list, bool]) = 
              @curried-rope-sublist (start, len / exh)
            let arg : [fun (any / exh -> any), list] = alloc (get, others)
+           fun hash1 (t : [list, bool] / exh : exh) : list = #0(t) 
            let sublists : list = @list-map (arg / exh)
-           let others_ : list = apply mapHash1 (sublists)
+           let arg : [fun (any / exh -> any), list] = alloc (hash1, sublists)
+           let others_ : list = @list-map (arg / exh)
            let all : list = @insert-at (data, othersX, i / exh)
            let ds : [any, ..., any] = apply list-to-tup[n] (all) 
            let d1 : list = #0(ds)

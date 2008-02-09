@@ -141,52 +141,81 @@ structure RopeMapMaker : sig
               build (rev ys, listVars, nilVar))
 	end
 
+  (* listMapFun : int -> B.var *)
+    fun listMapFun n = 
+	let val m = ListMapMaker.getMapFunction n
+	in 
+	    (* FIXME This expects a highly specific return val from ListMapMaker. *)
+	    (*       This may need to be reengineered. *)
+	    case m
+	     of B.E_Pt (_, B.E_Fun (_, B.E_Pt (_, B.E_Ret [fV]))) => fV
+	      | _ => raise Fail ("compiler error: unexpected return from\
+                                 \ request for list-map function of arity "
+				 ^ (Int.toString n))
+	end 		
+
+  (* foldr' : ('a * 'b -> 'b) * 'a list * 'b -> 'b *)
+    fun foldr' (f, xs, z) = foldr f z xs
+
+  (* numberFrom : 'a list -> ('a * int) list *)
+    fun numberFrom (xs, n) = 
+	let fun nf ([], _, acc) = rev acc
+	      | nf (x::xs, n, acc) = nf (xs, n+1, (x,n)::acc)
+	in
+	    nf (xs, n, [])
+	end 
+
   (* mkLeafCase : int * B.var * B.var * B.var * B.var * B.var * B.var * B.var -> B.pat * B.exp *)
     fun mkLeafCase (arity, shortV, startV, fV, iV, othersV, l2tV, exhV) : B.pat * B.exp =
-	let (* variables *)
-	    val mlLenV = BV.new ("ml_len", intTy)
-	    val dataV = BV.new ("data", listTy)
-            val lenV = BV.new ("len", rawIntTy)
-	    val getV = BV.new ("get", BTy.T_Fun ([ropeTy], [exhTy], [iPairTy (listTy, boolTy)]))
-	    val argTy =  
+	let (* types *)
+            val argTy = (* a type for arguments to @list-map *)
 		let val fty = BTy.T_Fun ([anyTy], [exhTy], [anyTy])
 		in
 		    BTy.T_Tuple (false, [fty, listTy])
-		end
-	    val argV = BV.new ("arg", argTy)
+		end  
+            (* variables *)
+	    val mlLenV = BV.new ("ml_len", intTy)
+ 	    val dataV = BV.new ("data", listTy)
+            val lenV = BV.new ("len", rawIntTy)
+	    val getV = BV.new ("get", BTy.T_Fun ([ropeTy], [exhTy], [iPairTy (listTy, boolTy)]))
+            val argV = BV.new ("arg", argTy)
+	    val hash1V = BV.new ("hash1", BTy.T_Fun ([iPairTy (listTy, boolTy)], [exhTy], [listTy]))
 	    val sublistsV = BV.new ("sublists", listTy)
 	    val others_V = BV.new ("others_", listTy)
 	    val allV = BV.new ("all", listTy)
 	    val dsV = BV.new ("ds", BTy.T_Tuple (false, copies (arity, anyTy)))
-	    val dVs = rev (mkVars ("d", arity, listTy)) (* forwards *)
+	    val dVs = mkVars ("d", arity, listTy) (* backwards *)
 	    val data_V = BV.new ("data_", listTy)
 	    val eV = BV.new ("e", ropeTy)
+	    (* lams *)
+	    val hash1Lam = (* FIXME This could be an HLOp instead of a local fn. *)
+		let val tV = BV.new ("t", iPairTy (listTy, boolTy))
+		    val resV = BV.new ("res", listTy)
+		    val b = B.mkStmt ([resV], B.E_Select (0, tV), B.mkRet [resV])
+		in
+		    B.FB {f = hash1V,
+			  params = [tV],
+			  exh = [BV.new ("exh", exhTy)],
+			  body = b}
+		end
 	    (* misc *)
-	    (* listMapFun : int -> B.var *)
-	    fun listMapFun n = 
-		let val m = ListMapMaker.getMapFunction n
-		in 
-		    (* FIXME This expects a highly specific return val from ListMapMaker. *)
-		    (*       This may need to be reengineered. *)
-		    case m
-		      of B.E_Pt (_, B.E_Fun (_, B.E_Pt (_, B.E_Ret [fV]))) => fV
-		       | _ => raise Fail ("compiler error: unexpected return from\
-                                          \ request for list-map function of arity "
-					  ^ (Int.toString arity))
-		end 		
+	    fun mkSel ((dn, n), e) = B.mkStmt ([dn], B.E_Select (n, dsV), e)
+	    (* and finally...*)
 	    val leafPat = B.P_DCon (BB.ropeLeaf, [mlLenV, dataV])
 	    val leafBody = 
                B.mkStmt ([lenV], B.unwrap mlLenV,
                B.mkLet  ([getV], B.mkHLOp (HLOpEnv.curriedRopeSublistOp, [startV, lenV], [exhV]),
                B.mkStmt ([argV], B.E_Alloc (argTy, [getV, othersV]),
+               B.mkFun  ([hash1Lam],
                B.mkLet  ([sublistsV], B.mkHLOp (HLOpEnv.listMapOp, [argV], [exhV]),
-               B.mkLet  ([others_V], raise Fail "apply mapHash1 (sublists)",
+               B.mkStmt ([argV], B.E_Alloc (argTy, [hash1V, sublistsV]),
+               B.mkLet  ([others_V], B.mkHLOp (HLOpEnv.listMapOp, [argV], [exhV]),
                B.mkLet  ([allV], B.mkHLOp (HLOpEnv.insertAtOp, [dataV, others_V, iV], [exhV]),
                B.mkLet  ([dsV], B.mkApply (l2tV, [allV], []),
-             (* let d1 : list = #0(ds) etc. *)
-               B.mkLet  ([data_V], B.mkApply (listMapFun arity, fV :: dVs, [exhV]),
+               foldr'   (mkSel, numberFrom (rev dVs, 0),
+               B.mkLet  ([data_V], B.mkApply (listMapFun arity, fV :: (rev dVs), [exhV]),
                B.mkStmt ([eV], B.E_DCon (BB.ropeLeaf, [mlLenV, data_V]),
-               B.mkRet [eV])))))))))
+               B.mkRet [eV]))))))))))))
 	in	
 	    (leafPat, leafBody)
 	end 
@@ -203,13 +232,14 @@ structure RopeMapMaker : sig
 	    val shortL_V = BV.new ("shortL_", ropeTy)
 	    val shortR_V = BV.new ("shortR_", ropeTy)
 	    val cV = BV.new ("c", ropeTy)
+	    (* lams *)
+	    val thunkLam = B.FB {f = thunkV,
+				 params = [BV.new ("_", unitTy)],
+				 exh = [BV.new ("exh", exhTy)],
+				 body = B.mkApply (innerMapV, [shortRV, startRV], [])}
 	    (* misc *)
 	    val fut1Spawn = HLOpEnv.future1SpawnOp
 	    val fut1Touch = HLOpEnv.future1TouchOp
-	    val thunkLam = B.FB {f = thunkV,
-				 params = [BV.new ("_", unitTy)],
-				 exh = [exhV],
-				 body = B.mkApply (innerMapV, [shortRV, startRV], [])}
 	    (* apply innerMapV (shortRV, startRV) *)
 	    val retVal = B.E_DCon (BB.ropeCat, [mlLenV, mlDepthV, shortL_V, shortR_V])
 	in
@@ -273,11 +303,11 @@ structure RopeMapMaker : sig
 	    val othersVar = BV.new ("others", listTy)
 	    val innerMap as B.FB {f=rmapn, ...} = mkInnerMap (arity, f, l2tV, indexVar, othersVar, exhV)
 	    val body = B.mkFun ([l2t],
-                        mkList (ropeListVar, ropeVars,
-                         B.mkLet ([indexVar, shortestVar, othersVar], 
-                          B.mkHLOp (HLOpEnv.extractShortestRopeOp, [ropeListVar], [exhV]),
-                            B.mkFun ([innerMap],
-                             B.mkApply (rmapn, [shortestVar], [])))))
+                       mkList (ropeListVar, ropeVars,
+                       B.mkLet ([indexVar, shortestVar, othersVar], 
+                         B.mkHLOp (HLOpEnv.extractShortestRopeOp, [ropeListVar], [exhV]),
+                       B.mkFun ([innerMap],
+                       B.mkApply (rmapn, [shortestVar], [])))))
 	    val rmapLam = B.FB {f = rmapVar,
 				params = f::ropeVars,
 				exh = [exhV],
@@ -323,6 +353,9 @@ structure RopeMapMaker : sig
 	  in
 	      showMe (mkList (x, vars, mkRaise ()))
 	  end
+      | test 4 = showMe (mkMap 2)
+      | test 5 = showMe (mkMap 3)
+      | test 6 = showMe (mkMap 6)
       | test _ = println "No such test."
     end (* local *)
 
