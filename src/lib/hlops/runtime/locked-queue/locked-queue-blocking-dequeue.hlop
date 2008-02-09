@@ -19,7 +19,7 @@ define @locked-queue-blocking-dequeue (q : locked_queue / exh : exh) : any =
   cont blockedK (v : any) = return (v)
   let blockedK : cont(any) = promote (blockedK)
   let fgs : fgs = @get-fgs (host_vproc / exh)
-  let blockedThread : [cont(any), fgs] = alloc (blockedK, fgs)
+  let blockedThread : blocked_thread = BLOCKED_THREAD_NEW(blockedK, fgs)
   let bqElt : in_place_queue_elt = LOCKED_QUEUE_NEW_ELT(blockedThread)
   let bqElt : in_place_queue_elt = promote(bqElt)
   

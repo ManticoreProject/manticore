@@ -41,23 +41,19 @@ define @future1-work-sharing ( / exh : exh) : future_spawn_fn =
           else (* future cell is already full *)
 		return ()
 
- (* spawn a future *)
   fun spawn (fut : future / exh : exh) : unit = 
      (* wrapper function that touches the future *)
       fun wrapper (_ : unit / exh : exh) : unit =
          (* FIXME: do something about the exception handler *)
           do apply steal (fut / exh)
           return (UNIT)
-     (* construct a fiber for the future and put it on the work queue *)
       let k : fiber = @fiber (wrapper / exh)
       do @locked-queue-enqueue (q, k / exh)
       return (UNIT)
 
  (* Initialize fiber-group storage. *)
   let parentFGS : fgs = @get-fgs (host_vproc / exh)
- (* fiber group storage for the future scheduler *)
-  let parent : option = SOME (parentFGS)
-  let fgs : fgs = @new-fgs (TRUE, parent / exh)
+  let fgs : fgs = @new-fgs (TRUE, SOME (parentFGS) / exh)
  (* add the spawn function to the fiber group storage *)
   fun init (_ : unit / exh : exh) : any = return (spawn)
   let _ : any = @assoc-list-lookup (TAG_SPAWN_FUTURE, init, fgs / exh)
@@ -65,19 +61,23 @@ define @future1-work-sharing ( / exh : exh) : future_spawn_fn =
  (* return the scheduler action *)
   fun mkSwitch (self : vproc / exh : exh) : sigact = 
       cont switch (s : signal) =
-           cont findWork () =
+(*           cont findWork () =
                let eltOpt : option = @locked-queue-dequeue (q / exh)
                case eltOpt
     	        of NONE => throw findWork ()
 		 | SOME (k : fiber) => 
 		   @run (self, switch, fgs, k / exh)
                end
+*)
+           cont dispatch () = 
+                let k : fiber = @locked-queue-blocking-dequeue (q / exh)
+                @run (self, switch, fgs, k / exh)
 
            if Equal (s, STOP)
-              then throw findWork ()
+              then throw dispatch ()
               else do @locked-queue-enqueue (q, s / exh)
                    let _ : unit = @atomic-yield (self / exh)
-                   throw findWork ()
+                   throw dispatch ()
       return (switch)
 
  (* Initialize the scheduler on the vprocs. *)

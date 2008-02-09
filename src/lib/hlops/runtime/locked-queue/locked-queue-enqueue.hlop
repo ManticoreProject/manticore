@@ -8,7 +8,6 @@
 
 #include "locked-queue.def"
 #include "locked-queue-local.def"
-
 #include "assert.def"
 #include "vproc-queue.def"
 
@@ -28,10 +27,11 @@ define @locked-queue-enqueue (q : locked_queue, elt : any / exh : exh) : () =
        let blockedThread : blocked_thread = (blocked_thread)blockedThread
        let blockedK : cont(any) = SELECT(BLOCKED_THREAD_CONT, blockedThread)
        let blockedFgs : fgs = SELECT(BLOCKED_THREAD_FGS, blockedThread)
+       let vp : vproc = SELECT(BLOCKED_THREAD_VPROC, blockedThread)
        cont unblockK (x : unit) =
             throw blockedK (elt)
        let unblockK : fiber = (fiber)unblockK
-        @atomic-enqueue (blockedFgs, unblockK / exh)
+       @enqueue-on-vproc (vp, blockedFgs, unblockK / exh)
 
   let _ : unit = @spin-lock-lq (q / exh)
 
