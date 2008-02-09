@@ -14,7 +14,7 @@ structure RopeMapMaker : sig
 
   (* The following will retrieve the desired map function from a cache, or
    * synthesize the appropriate function, stash it in the cache, and return it. *)
-    val getMapFunction : int -> BOM.exp
+    val getMapFunction : int -> BOM.lambda
 
   end = struct
 
@@ -142,17 +142,8 @@ structure RopeMapMaker : sig
 	end
 
   (* listMapFun : int -> B.var *)
-    fun listMapFun n = 
-	let val m = ListMapMaker.getMapFunction n
-	in 
-	    (* FIXME This expects a highly specific return val from ListMapMaker. *)
-	    (*       This may need to be reengineered. *)
-	    case m
-	     of B.E_Pt (_, B.E_Fun (_, B.E_Pt (_, B.E_Ret [fV]))) => fV
-	      | _ => raise Fail ("compiler error: unexpected return from\
-                                 \ request for list-map function of arity "
-				 ^ (Int.toString n))
-	end 		
+    fun listMapFun n = (case ListMapMaker.getMapFunction n
+			  of B.FB {f, ...} => f) 
 
   (* foldr' : ('a * 'b -> 'b) * 'a list * 'b -> 'b *)
     fun foldr' (f, xs, z) = foldr f z xs
@@ -284,8 +275,8 @@ structure RopeMapMaker : sig
 		  body = body}
 	end
 
-  (* mkMap : int -> B.exp *)
-    fun mkMap (arity : int) : B.exp =
+  (* mkMap : int -> B.lambda *)
+    fun mkMap (arity : int) : B.lambda =
 	let val exhV = BV.new ("exh", exhTy)
 	    val lengthExn = BV.new ("Length", exnTy)
 	    fun mkRaise () = B.mkThrow (exhV, [lengthExn])
@@ -308,21 +299,19 @@ structure RopeMapMaker : sig
                          B.mkHLOp (HLOpEnv.extractShortestRopeOp, [ropeListVar], [exhV]),
                        B.mkFun ([innerMap],
                        B.mkApply (rmapn, [shortestVar], [])))))
-	    val rmapLam = B.FB {f = rmapVar,
-				params = f::ropeVars,
-				exh = [exhV],
-				body = body}
 	in
-            (* FIXME: mkMap should return a B.lambda *)
-	    B.mkFun ([rmapLam], B.mkRet [rmapVar])
+	    B.FB {f = rmapVar,
+		  params = f::ropeVars,
+		  exh = [exhV],
+		  body = body}
 	end
 
     structure MapFnCache = CacheFn(struct 
-				     type t = B.exp
+				     type t = B.lambda
 				     val mkItem = mkMap
 				   end)
 
-    val getMapFunction : int -> BOM.exp = MapFnCache.getItem
+    val getMapFunction : int -> B.lambda = MapFnCache.getItem
 
     (* TESTS FOLLOW *)
 
@@ -342,16 +331,16 @@ structure RopeMapMaker : sig
 		B.mkFun ([f], B.mkRet [fVar])	    
 	    end
 
-	val showMe = PrintBOM.printExp
+	fun showMe (lam as B.FB {f, ...}) = PrintBOM.printExp (B.mkFun ([lam], B.mkRet [f]))
     in
-    fun test 0 = showMe (mkListToTupExp (2, mkRaise))
-      | test 1 = showMe (mkListToTupExp (3, mkRaise))
-      | test 2 = showMe (mkListToTupExp (6, mkRaise))
+    fun test 0 = PrintBOM.printExp (mkListToTupExp (2, mkRaise))
+      | test 1 = PrintBOM.printExp (mkListToTupExp (3, mkRaise))
+      | test 2 = PrintBOM.printExp (mkListToTupExp (6, mkRaise))
       | test 3 = 
 	  let val x = BV.new ("x", listTy)
 	      val vars = map (fn n => BV.new ("y" ^ Int.toString n, anyTy)) [1,2,3,4,5]
 	  in
-	      showMe (mkList (x, vars, mkRaise ()))
+	      PrintBOM.printExp (mkList (x, vars, mkRaise ()))
 	  end
       | test 4 = showMe (mkMap 2)
       | test 5 = showMe (mkMap 3)

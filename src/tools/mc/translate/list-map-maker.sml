@@ -9,12 +9,12 @@
 structure ListMapMaker : sig
 
   (* these are intended to be removed from the signature *)
-    val mkMap : int -> BOM.exp
+    val mkMap : int -> BOM.lambda
     val test  : int -> unit
 
   (* The following will retrieve the desired map function from a cache, or
    * synthesize the appropriate function, stash it in the cache, and return it. *)
-    val getMapFunction : int -> BOM.exp
+    val getMapFunction : int -> BOM.lambda
 
   end = struct
 
@@ -168,7 +168,7 @@ structure ListMapMaker : sig
     (* The arity is be the number of arguments to the function to be mapped. *)
     (* e.g., mkMap(2) will generate a function of type *)
     (*  ('a * 'b -> 'c) * ('a list) * ('b list) -> ('c list) *)
-    fun mkMap (arity: int) : B.exp = 
+    fun mkMap (arity: int) : B.lambda = 
 	let val _ = if (arity < 2) then raise Fail "mkMap: arity must be at least 2" else ()
 	    val fTy = BTy.T_Fun ([tupTy (false, copies (arity, anyTy))],
 				 [exhTy],
@@ -190,33 +190,34 @@ structure ListMapMaker : sig
 	    val nilVar = BV.new ("nil", listTy)
 	    val resultVar = BV.new ("result", listTy)
 	    val body = B.mkStmt ([fVar], B.E_Select (0, argVar),
-                        mkListSelectors (listVars, argVar,
-                         B.mkStmt ([nilVar], B.E_Const nilConst, 
-                          B.mkFun ([fPrime],
-                           B.mkFun ([innerMap],
-                            B.mkLet ([resultVar],
-                             B.mkApply (lamVar innerMap, listVars @ [nilVar], []),
-                              B.mkRet [resultVar]))))))
-	    val thisMap = B.FB {f = mapVar,
-				params = argVar :: listVars,
-				exh = [exhVar],
-				body = body}
+                       mkListSelectors (listVars, argVar,
+                       B.mkStmt ([nilVar], B.E_Const nilConst, 
+                       B.mkFun ([fPrime],
+                       B.mkFun ([innerMap],
+                       B.mkLet ([resultVar],
+                       B.mkApply (lamVar innerMap, listVars @ [nilVar], []),
+                       B.mkRet [resultVar]))))))
 	in
-	    B.mkFun ([thisMap], B.mkRet [mapVar])
+	    B.FB {f = mapVar,
+		  params = argVar :: listVars,
+		  exh = [exhVar],
+		  body = body}
 	end
     end (* locals for mkMap *)
 
     structure MapFnCache = CacheFn(struct 
-				       type t = B.exp
+				       type t = B.lambda
 				       val mkItem = mkMap
 				     end)
 
-    val getMapFunction : int -> BOM.exp = MapFnCache.getItem
+    val getMapFunction : int -> B.lambda = MapFnCache.getItem
 
     (* TESTS FOLLOW *)
 
     local 
 	fun println s = (print s; print "\n")
+	fun printLam (lam as B.FB {f, ...}) = 
+	    PrintBOM.printExp (B.mkFun ([lam], B.mkRet [f]))
 	val f0 = BV.new ("f", BTy.T_Fun ([tupTy (false, [anyTy, anyTy])],
 					 [anyTy],
 					 [anyTy]))
@@ -227,9 +228,9 @@ structure ListMapMaker : sig
 	  in
 	      PrintBOM.printExp (B.mkFun ([f'], B.mkRet [exh0]))
 	  end
-      | test 1 = PrintBOM.printExp (mkMap 2)
-      | test 2 = PrintBOM.printExp (mkMap 3)
-      | test 3 = PrintBOM.printExp (getMapFunction 4)
+      | test 1 = printLam (mkMap 2)
+      | test 2 = printLam (mkMap 3)
+      | test 3 = printLam (getMapFunction 4)
       | test _ = println "No such test."
     end (* local *)
 
