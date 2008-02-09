@@ -81,8 +81,8 @@ structure TranslatePComp : sig
 		      val resTy = B.parrayTy te
 		  in
 		      A.LetExp (A.FunBind [fLam],
-		       A.ApplyExp (map2P, 
-                        A.TupleExp [A.VarExp (f, []), trExp e1, trExp e2], resTy))
+		      A.ApplyExp (map2P, 
+                      A.TupleExp [A.VarExp (f, []), trExp e1, trExp e2], resTy))
 		  end
 (*
 		      fun build ([], _, xs, ps, es) =
