@@ -387,7 +387,7 @@ structure StdEnv : sig
 	    (B.iGet,		hlop H.iGet),
 	    (B.iPut,		hlop H.iPut),
 	    (B.mVar,		hlop H.mVar),
-	    (B.mGet,		hlop H.mGet),
+    (B.mGet,		hlop H.mGet),
 	    (B.mTake,		hlop H.mTake),
 	    (B.mPut,		hlop H.mPut),
 *)
@@ -413,6 +413,7 @@ structure StdEnv : sig
 	    (B.outputImage,	hlop (H.outputImageOp, false)),
 	    (B.freeImage,	hlop (H.freeImageOp, false))
 	  ]
+
     end (* local *) 
 
   (* create the initial environment *)

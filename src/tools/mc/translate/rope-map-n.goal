@@ -39,7 +39,7 @@ fun rope_map_[n] (f : fun [any,...,any/exh->any], r1 : rope, ..., r[n] : rope / 
            let ds : [any, ..., any] = apply list-to-tup[n] (all) 
            let d1 : list = #0(ds)
            ...
-           let dn : list = #[n-1](ds)
+           let d[n] : list = #[n-1](ds)
            let data_ : list = apply list-map-[n] (f, d1, ..., d[n])
            let e : rope = LEAF (ml_len, dataX)
            return (e)

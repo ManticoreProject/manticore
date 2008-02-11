@@ -65,7 +65,7 @@ structure FutParLet : sig
     fun futureMap vs = todo "futureMap"
 
     (* futurize : A.module -> A.module *)
-    fun futurize m = 
+    fun futurize (A.Module {exns, body}) = 
 	let (* exp : A.exp * VSet.set -> A.exp * VSet.set *)
 	    (* Consumes an expression and the set of pval-bound variables *)
 	    (*   live in the expression. *)
@@ -92,6 +92,7 @@ structure FutParLet : sig
 		  in
 		      (A.ApplyExp (e1', e2', t), pLive')
 		  end
+	      | exp (m as A.VarArityOpExp _, pLive) = (m, pLive)
 	      | exp (A.TupleExp es, pLive) =
 		  let val ess = map (fn e => exp (e, pLive)) es
 		    val (es', ss) = ListPair.unzip ess
@@ -250,7 +251,7 @@ structure FutParLet : sig
 		  end
 
 	in
-	    #1 (exp (m, VSet.empty))
+	    A.Module {exns = exns, body = #1 (exp (body, VSet.empty))}
 	end
 	    
     (**** tests ****)
@@ -307,9 +308,13 @@ structure FutParLet : sig
 	    end
 
 	(* testPVal : A.exp -> unit *)
-	fun testPVal e = (PrintAST.print e;
-			  PrintAST.printComment "-->";
-			  PrintAST.print (futurize e))
+	fun testPVal e = 
+	    let val m = A.Module {exns = [], body = e}
+	    in
+		PrintAST.print m;
+		PrintAST.printComment "-->";
+		PrintAST.print (futurize m)
+	    end
 
     in
         (* test : int -> unit *)

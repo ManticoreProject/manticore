@@ -34,6 +34,7 @@ structure TranslateEnv : sig
     val findTyc		: (env * Types.tycon) -> BOMTy.ty option
     val findDCon	: (env * Types.dcon) -> con_bind option
     val lookupVar	: (env * AST.var) -> var_bind
+    val lookupVarArity  : (env * AST.var) -> var_bind
     val handlerOf	: env -> BOM.var
 
   (* output an environment *)
@@ -113,6 +114,11 @@ structure TranslateEnv : sig
 	   of SOME x' => x'
 	    | NONE => raise Fail(concat["lookupVar(_, ", Var.toString x, ")"])
 	  (* end case *))
+
+    fun lookupVarArity (E{varEnv, ...}, x) = (case VMap.find(varEnv, x)
+           of SOME x' => x'
+            | NONE => raise Fail(concat["lookupVarArity(_, ", Var.toString x, ")"])
+          (* end case *))
 
   (* handlerOf : env -> B.var *)
     fun handlerOf (E{exh, ...}) = exh

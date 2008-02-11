@@ -83,6 +83,7 @@ structure FutParTup : sig
 	    | exp (A.RaiseExp (e, t)) = A.RaiseExp (exp e, t)
 	    | exp (A.FunExp (x, e, t)) = A.FunExp (x, exp e, t)
 	    | exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, t)
+	    | exp (m as A.VarArityOpExp _) = m
 	    | exp (A.TupleExp es) = A.TupleExp (map exp es)
 	    | exp (A.RangeExp (e1, e2, oe3, t)) = A.RangeExp (exp e1,
 							      exp e2,

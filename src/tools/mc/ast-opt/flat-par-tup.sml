@@ -73,7 +73,7 @@ structure FlatParTup : sig
     fun flattenTup (A.PTupleExp es) = A.PTupleExp (flattenExps es)
       | flattenTup (A.TupleExp es)  = A.TupleExp  (flattenExps es)
       | flattenTup e = (print "ARRGGH: ";
-			PrintAST.print e;
+			PrintAST.printExp e;
 			raise Fail "flattenTup: expected a tuple")
 
 
@@ -124,6 +124,7 @@ structure FlatParTup : sig
       | exp (A.RaiseExp (e, t)) = A.RaiseExp (exp e, t)
       | exp (A.FunExp (x, e, t)) = A.FunExp (x, exp e, t)
       | exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, t)
+      | exp (m as A.VarArityOpExp _) = m
       | exp (A.TupleExp es) = A.TupleExp (List.map exp es)
       | exp (A.RangeExp (e1, e2, oe3, t)) = A.RangeExp (exp e1, 
 							exp e2, 
@@ -254,7 +255,7 @@ structure FlatParTup : sig
     and lambda (A.FB (v1, v2, e)) = A.FB (v1, v2, exp e)
 
     (* flatten : A.module -> A.module *)
-    fun flattenModule m = exp m
+    fun flattenModule (A.Module {exns, body}) = A.Module {exns = exns, body = exp body}
 
     (**** tests ****)
 
@@ -343,8 +344,9 @@ structure FlatParTup : sig
         (* test : int -> unit *)
         val test = 
 	    let val testCases = [t0,t1,t2,t3,t4,t5,t6,t7,t8,t9]
+		fun mkModule e = A.Module {exns = [], body = e}
 	    in
-		U.mkTest testExp testCases
+		U.mkTest testExp (map mkModule testCases)
 	    end
 
     end (* local *)

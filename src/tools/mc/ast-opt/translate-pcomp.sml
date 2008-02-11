@@ -84,36 +84,27 @@ structure TranslatePComp : sig
 		      A.ApplyExp (map2P, 
                       A.TupleExp [A.VarExp (f, []), trExp e1, trExp e2], resTy))
 		  end
-(*
-		      fun build ([], _, xs, ps, es) =
-			    let val (xs, ps, es) = (rev xs, rev ps, rev es)
-				val tupExp = A.TupleExp (map (fn x => A.VarExp (x, [])) xs)
-				val tupPat = A.TuplePat ps
-				val arg = Var.new ("arg", TypeOf.exp tupExp)
-				val m = A.PatMatch (tupPat, e')
-				val f = A.FunExp (arg, A.CaseExp (A.VarExp (arg, []), [m], t), t)
-				val t1 = parrayElementType (TypeOf.exp e1)
-				val t2 = parrayElementType (TypeOf.exp e2)
-				val map2 = A.VarExp (U.map2PQ, [t1, t2, t])
-				val mapResTy = 
-				    (case TypeOf.exp map2
-				       of A.FunTy (_, rty) => rty
-					| _ => raise Fail "expected function type"
-				      (* end case *)) 
-			    in
-				A.ApplyExp (A.ApplyExp (map2, workQ, mapResTy),
-					    A.TupleExp [f, A.TupleExp es], 
-					    B.parrayTy t)
-			    end
-			| build ((p,a)::tl, n, xs, ps, es) =
-			    let val x = Var.new ("x" ^ Int.toString n, TypeOf.pat p)
-			    in
-				build (tl, n+1, x::xs, p::ps, trExp(a)::es)
-			    end
+	      | (pes as [(p1, e1), (p2, e2), (p3, e3)], NONE) => (* 3 pbinds, no pred *)
+		  let val te = TypeOf.exp e
+		      val e' = trExp e
+		      val t1 = TypeOf.pat p1
+		      val t2 = TypeOf.pat p2
+		      val t3 = TypeOf.pat p3
+		      val argTy = A.TupleTy [t1, t2, t3]
+		      val funTy = A.FunTy (argTy, te)
+		      val arg = Var.new ("arg", argTy)
+		      val f = Var.new ("f", funTy)
+		      val b = A.CaseExp (A.VarExp (arg, []),
+					 [A.PatMatch (A.TuplePat [p1, p2, p3], e')],
+					 te)
+		      val lam = A.FB (f, arg, b)
+		      val mapP3 = A.VarArityOpExp (A.MapP, 3)
+		      val resTy = B.parrayTy te
+		      val tup = A.VarExp (f, []) :: (map trExp [e1, e2, e3])
 		  in
-		      build (pes, 1, [], [], [])
-		  end
-*)
+		      A.LetExp (A.FunBind [lam],
+                      A.ApplyExp (mapP3, A.TupleExp tup, resTy))
+		  end				
 	      | (pe::_, NONE) => (* the multiple pbind, no pred case *)
                                  (* FIXME this isn't built to deal with ranges yet *)
 		                 (* FIXME magicalMap! *)

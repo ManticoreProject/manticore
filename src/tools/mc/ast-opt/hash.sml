@@ -104,7 +104,7 @@ structure Hash (* : sig
 	fun tst (n, ts) = 
 	    let val h = mkHash (n, ts)
 	    in
-		PrintAST.print h;
+		PrintAST.printExp h;
 		PrintAST.printComment (TypeUtil.toString (TypeOf.exp h))
 	    end
 

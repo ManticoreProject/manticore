@@ -14,7 +14,7 @@ structure ListMapMaker : sig
 
   (* The following will retrieve the desired map function from a cache, or
    * synthesize the appropriate function, stash it in the cache, and return it. *)
-    val getMapFunction : int -> BOM.lambda
+    val gen : int -> BOM.lambda
 
   end = struct
 
@@ -38,6 +38,7 @@ structure ListMapMaker : sig
 
     (* mkFPrime : int * BV.var -> B.lambda *)
     (* P: to construct an inner "de-tupled" version of the function being mapped. *)
+    (* FIXME? Should I rely on the optimizer to do this? *)
     fun mkFPrime (arity: int, f: BV.var, exh: BV.var) : B.lambda =
 	let fun build (n: int, xs: BV.var list, manyAny: BTy.ty list) : B.lambda =
 		if n>0 then 
@@ -51,8 +52,8 @@ structure ListMapMaker : sig
 			val tupVar = BV.new ("tup", tTy)
 			val rVar = BV.new ("r", anyTy)
 			val body = B.mkStmt ([tupVar], B.E_Alloc (tTy, xs),
-                                     B.mkLet ([rVar], B.mkApply (f, xs, [exh]),
-                                       B.mkRet [rVar]))
+                                   B.mkLet  ([rVar], B.mkApply (f, xs, [exh]),
+                                   B.mkRet [rVar]))
 		    in
 			B.FB {f = BV.new ("fPrime", fPrimeTy),
 			      params = xs,
@@ -102,7 +103,7 @@ structure ListMapMaker : sig
 	    val tlVars = mkVars ("tl", arity, listTy)     (* remember, these are backwards *)
 	    val accVar = BV.new ("acc", listTy)
 	    val thisFuncVar = 
-		let val t = BTy.T_Fun (copies (arity+1, listTy), (* one extra for accumulator *)
+		let val t = BTy.T_Fun (copies (arity+1, listTy), (* one extra argument for accumulator *)
 				       [exhTy],
 				       [listTy])
 		in
@@ -133,9 +134,9 @@ structure ListMapMaker : sig
 			    val r = BV.new ("r", listTy)
 			in
 			    B.mkLet ([newHd], B.mkApply (fPrime, rev hds, []),
-                             B.mkStmt ([newAcc], B.E_DCon (BB.listCons, [newHd, accVar]),
-                              B.mkLet ([r], B.mkApply (thisFuncVar, rev (newAcc::tls), []),
-                               B.mkRet [r])))
+                            B.mkStmt ([newAcc], B.E_DCon (BB.listCons, [newHd, accVar]),
+                            B.mkLet ([r], B.mkApply (thisFuncVar, rev (newAcc::tls), []),
+                            B.mkRet [r])))
 			end                               
 		in
 		    B.mkCase (listN,
@@ -210,7 +211,7 @@ structure ListMapMaker : sig
 				       val mkItem = mkMap
 				     end)
 
-    val getMapFunction : int -> B.lambda = MapFnCache.getItem
+    val gen : int -> B.lambda = MapFnCache.getItem
 
     (* TESTS FOLLOW *)
 
@@ -230,7 +231,7 @@ structure ListMapMaker : sig
 	  end
       | test 1 = printLam (mkMap 2)
       | test 2 = printLam (mkMap 3)
-      | test 3 = printLam (getMapFunction 4)
+      | test 3 = printLam (gen 4)
       | test _ = println "No such test."
     end (* local *)
 

@@ -21,6 +21,8 @@ structure Ropes : sig
     structure B = Basis
     structure T = Types
 
+    exception VariableArityType
+
     val maxLeafSize = 4 (* This is currently small, for testing purposes. *)
 
     val rope = Atom.atom "rope"
@@ -51,5 +53,5 @@ structure Ropes : sig
         val ropeLeafExp = dconExp ropeLeaf
 	val ropeCatExp  = dconExp ropeCat
     end (* local *)
-			     
+
   end (* structure Ropes *)

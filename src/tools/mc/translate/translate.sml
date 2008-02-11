@@ -155,6 +155,7 @@ structure Translate : sig
 	        EXP(trExpToV (env, e1, fn f =>
 		  trExpToV (env, e2, fn arg =>
 		    B.mkApply(f, [arg], [E.handlerOf env]))))
+	    | AST.VarArityOpExp (oper, i) => raise Fail "todo"
 	    | AST.TupleExp[] => let
 		val t = BV.new("_unit", BTy.unitTy)
 		in

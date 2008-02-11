@@ -14,7 +14,7 @@ structure RopeMapMaker : sig
 
   (* The following will retrieve the desired map function from a cache, or
    * synthesize the appropriate function, stash it in the cache, and return it. *)
-    val getMapFunction : int -> BOM.lambda
+    val gen : int -> BOM.lambda
 
   end = struct
 
@@ -142,7 +142,7 @@ structure RopeMapMaker : sig
 	end
 
   (* listMapFun : int -> B.var *)
-    fun listMapFun n = (case ListMapMaker.getMapFunction n
+    fun listMapFun n = (case ListMapMaker.gen n
 			  of B.FB {f, ...} => f) 
 
   (* foldr' : ('a * 'b -> 'b) * 'a list * 'b -> 'b *)
@@ -311,7 +311,7 @@ structure RopeMapMaker : sig
 				     val mkItem = mkMap
 				   end)
 
-    val getMapFunction : int -> B.lambda = MapFnCache.getItem
+    val gen : int -> B.lambda = MapFnCache.getItem
 
     (* TESTS FOLLOW *)
 

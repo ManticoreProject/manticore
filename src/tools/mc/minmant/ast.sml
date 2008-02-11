@@ -22,6 +22,7 @@ structure AST =
       | RaiseExp of (exp * ty)				(* ty is result type *)
       | FunExp of (var * exp * ty)			(* ty is result type *)
       | ApplyExp of exp * exp * ty			(* ty is result type *)
+      | VarArityOpExp of var_arity_op * int                 
       | TupleExp of exp list
       | RangeExp of (exp * exp * exp option * ty)	(* ty is element type *)
       | PTupleExp of exp list
@@ -40,6 +41,9 @@ structure AST =
       | FunBind of lambda list
 
     and lambda = FB of (var * var * exp)
+
+    and var_arity_op 
+      = MapP
 
     and match
       = PatMatch of pat * exp

@@ -29,6 +29,7 @@ structure GrandPass : sig
       | trExp (A.RaiseExp (e, t)) = A.RaiseExp (trExp e, t)
       | trExp (A.FunExp (x, e, t)) = A.FunExp (x, trExp e, t)
       | trExp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (trExp e1, trExp e2, t)
+      | trExp (m as A.VarArityOpExp _) = m
       | trExp (A.TupleExp es) = A.TupleExp (map trExp es)
       | trExp (A.RangeExp (e1, e2, oe3, t)) = 
 	  A.RangeExp (trExp e1, trExp e2, Option.map trExp oe3, t)

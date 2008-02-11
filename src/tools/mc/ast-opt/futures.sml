@@ -194,6 +194,7 @@ structure Futures : sig
 		| exp (A.RaiseExp (e, _)) = exp e
 		| exp (A.FunExp (x, e, _)) = true
 		| exp (A.ApplyExp (e1, e2, _)) = true
+		| exp (A.VarArityOpExp _) = false
 		| exp (A.TupleExp es) = List.exists exp es
 		| exp (A.RangeExp (e1, e2, oe3, _)) = 
 		    exp e1 orelse exp e2 orelse optExp oe3

@@ -6,8 +6,9 @@
 
 structure PrintAST : sig
 
-    val output : TextIO.outstream * AST.module -> unit
-    val print  : AST.module -> unit
+    val output       : TextIO.outstream * AST.module -> unit
+    val print        : AST.module -> unit
+    val printExp     : AST.exp -> unit
     val printComment : string -> unit
 
   end = struct
@@ -170,6 +171,12 @@ structure PrintAST : sig
 	     then (sp(); exp e2)
 	     else (pr "("; exp e2; pr ")");
 	     closeBox ()))
+      | exp (A.VarArityOpExp (oper, n)) = (
+          openHBox ();
+            var_arity_op oper;
+            pr "_";
+            pr (Int.toString n);
+          closeBox ())
       | exp (A.TupleExp es) =
 	  (openVBox (rel 0);
 	   pr "(";
@@ -251,6 +258,8 @@ structure PrintAST : sig
             closeBox ())
 	  | _ => raise Fail "expected a two-element tuple"
         (* end case *))
+
+    and var_arity_op (A.MapP) = pr "mapP"
 
   (* pe : string -> A.match -> unit *)
     and pe s (A.PatMatch(p, e)) = (
@@ -410,6 +419,9 @@ structure PrintAST : sig
 				 
   (* print : A.module -> unit *)
     fun print m = (module m; ln (); flush ())
+
+  (* printExp : A.exp -> unit *)
+    fun printExp e = (exp e; ln (); flush ())
 		  
   (* printComment : string -> unit *)       
   (* for debugging purposes *)
