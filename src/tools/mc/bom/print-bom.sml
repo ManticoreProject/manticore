@@ -104,9 +104,9 @@ structure PrintBOM : sig
 		      prList varUseToString args;
 		      pr "\n")
 		  | B.E_Ret xs => (
-		      pr "return ";
+		      pr "return (";
 		      prList varUseToString xs;
-		      pr "\n")
+		      pr ")\n")
 		  | B.E_HLOp(hlop, args, []) => (
 		      pr(HLOp.toString hlop); pr " ";
 		      prList varUseToString args;
