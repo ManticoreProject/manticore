@@ -26,7 +26,6 @@ functor AllocCCallsFn (Target : TARGET_SPEC) : sig
 	    | _ => raise Fail(concat["HeapTransferFn.getCPrototype: ", CFG.Var.toString f, " not a C function"])
 	  (* end case *))
 
-(* QUESTION: isn't this a live variables computation? *)
   (* compute the live variables of an expression *)
     fun liveVarsOfExp (e, fvs) =
 	  deleteList (addList (fvs, CFGUtil.rhsOfExp e), CFG.lhsOfExp e)
@@ -36,21 +35,19 @@ functor AllocCCallsFn (Target : TARGET_SPEC) : sig
   (* if the function body contains a C call that allocates, split the body at that point *)
     fun splitFunBody ([], _, _) = NONE
       | splitFunBody (e :: es, preds, fvs) = (case e
-	   of CFG.E_CCall (lhs, f, args) => let
-	       val saveAllocPtr = CFunctions.protoHasAttr CFunctions.A_alloc (getCPrototype f)
-	       in
-		 if saveAllocPtr
+	   of CFG.E_CCall (lhs, f, args) => 
+	        if (CFunctions.protoHasAttr CFunctions.A_alloc (getCPrototype f))
 		   then SOME (lhs, f, args, preds, es, deleteList (fvs, lhs))
 		   else splitFunBody (es, e :: preds, liveVarsOfExp (e, fvs))
-	       end
 	    | e => splitFunBody (es, e :: preds, liveVarsOfExp (e, fvs))
 	  (* end case *))
 	
-    fun revBody (CFG.FUNC{lab, entry, body, exit}) = CFG.FUNC{lab=lab, entry=entry, body=List.rev body, exit=exit}
+    fun revBody (CFG.FUNC{lab, entry, body, exit}) = 
+	CFG.FUNC{lab=lab, entry=entry, body=List.rev body, exit=exit}
 
     fun rewriteFunc func = let
 	(* keep splitting the function body until we have no more calls to C functions that allocate *)
-	  fun loop (func as CFG.FUNC{lab, entry, body, exit}, funcs) = (
+	  fun split (func as CFG.FUNC{lab, entry, body, exit}, funcs) = (
 		case splitFunBody (body, [], liveVarsOfXfer exit)
 		 of NONE => revBody func :: funcs
 		(* split the function func *)
@@ -74,11 +71,11 @@ functor AllocCCallsFn (Target : TARGET_SPEC) : sig
 			    CFG.Block(lhs @ freshLiveVars),
 			    List.map (CFGUtil.substExp env) preds, CFGUtil.substTransfer env exit)
 		      in
-			  loop (func', func'' :: funcs)
-		      end (* loop *)
+			  split (func', func'' :: funcs)
+		      end (* split *)
 	      (* end case *))
 	  in
-	    loop (revBody func, [])
+	    split (revBody func, [])
 	  end
 			       
     fun transform (CFG.MODULE{name, externs, code}) = let
