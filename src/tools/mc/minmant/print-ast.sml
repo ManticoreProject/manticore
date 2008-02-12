@@ -171,7 +171,7 @@ structure PrintAST : sig
 	     then (sp(); exp e2)
 	     else (pr "("; exp e2; pr ")");
 	     closeBox ()))
-      | exp (A.VarArityOpExp (oper, n)) = (
+      | exp (A.VarArityOpExp (oper, n, t)) = (
           openHBox ();
             var_arity_op oper;
             pr "_";

@@ -32,8 +32,7 @@ structure TypeOf : sig
       | exp (AST.HandleExp (_, _, ty)) = ty
       | exp (AST.RaiseExp (_, ty)) = ty
       | exp (AST.ApplyExp(_, _, ty)) = ty
-      | exp (AST.VarArityOpExp _) = raise Fail "variable arity operators are \
-                                    \supposed to be introduced after typechecking"
+      | exp (AST.VarArityOpExp (_, _, ty)) = ty
       | exp (AST.TupleExp es) = Ty.TupleTy(List.map exp es)
       | exp (AST.RangeExp(_, _, _, ty)) = B.parrayTy ty
       | exp (AST.PTupleExp es) = Ty.TupleTy(List.map exp es)

@@ -98,9 +98,14 @@ structure TranslatePComp : sig
 					 [A.PatMatch (A.TuplePat [p1, p2, p3], e')],
 					 te)
 		      val lam = A.FB (f, arg, b)
-		      val mapP3 = A.VarArityOpExp (A.MapP, 3)
 		      val resTy = B.parrayTy te
 		      val tup = A.VarExp (f, []) :: (map trExp [e1, e2, e3])
+		      val mapP3 = 
+			  let val tupTy = A.TupleTy (funTy :: (map TypeOf.exp [e1, e2, e3]))
+			      val ty = A.FunTy (tupTy, resTy)
+			  in
+			      A.VarArityOpExp (A.MapP, 3, ty)
+			  end
 		  in
 		      A.LetExp (A.FunBind [lam],
                       A.ApplyExp (mapP3, A.TupleExp tup, resTy))

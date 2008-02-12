@@ -155,7 +155,7 @@ structure Translate : sig
 	        EXP(trExpToV (env, e1, fn f =>
 		  trExpToV (env, e2, fn arg =>
 		    B.mkApply(f, [arg], [E.handlerOf env]))))
-	    | AST.VarArityOpExp (oper, i) => raise Fail "todo"
+	    | AST.VarArityOpExp (oper, i, ty) => trVarArityOp(env, oper, i)
 	    | AST.TupleExp[] => let
 		val t = BV.new("_unit", BTy.unitTy)
 		in
@@ -227,6 +227,14 @@ structure Translate : sig
     and trExpToExp (env, exp) = toExp(trExp(env, exp))
 
     and trParr (env, exps, ty) = TranslateParr.tr (env, trExpToV) (exps, ty)
+
+    and trVarArityOp (env, oper, n) = (case oper
+           of AST.MapP => let
+                val mapn as B.FB {f,...} = RopeMapMaker.gen n          
+	        in
+                  EXP(B.mkFun ([mapn], B.mkRet [f]))
+	        end
+           (* end case *))
 
     and trBind (env, bind, k : TranslateEnv.env -> B.exp) = (case bind
 	   of AST.ValBind(AST.TuplePat pats, exp) => let

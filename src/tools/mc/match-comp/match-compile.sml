@@ -354,6 +354,7 @@ structure MatchCompile : sig
 	      | AST.RaiseExp(e, ty) => AST.RaiseExp(rewrite' e, ty)
 	      | AST.FunExp(x, e, ty) => AST.FunExp(x, rewrite' e, ty)
 	      | AST.ApplyExp(e1, e2, ty) => AST.ApplyExp(rewrite' e1, rewrite' e2, ty)
+	      | AST.VarArityOpExp _ => exp
 	      | AST.TupleExp es => AST.TupleExp(List.map rewrite' es)
 	      | AST.RangeExp(e1, e2, e3, ty) =>
 		  AST.RangeExp(rewrite' e1, rewrite' e2, Option.map rewrite' e3, ty)

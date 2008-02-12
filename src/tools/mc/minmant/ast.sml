@@ -22,7 +22,7 @@ structure AST =
       | RaiseExp of (exp * ty)				(* ty is result type *)
       | FunExp of (var * exp * ty)			(* ty is result type *)
       | ApplyExp of exp * exp * ty			(* ty is result type *)
-      | VarArityOpExp of var_arity_op * int                 
+      | VarArityOpExp of var_arity_op * int * ty        (* ty is operator type *)                 
       | TupleExp of exp list
       | RangeExp of (exp * exp * exp option * ty)	(* ty is element type *)
       | PTupleExp of exp list
