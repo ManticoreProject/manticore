@@ -39,7 +39,7 @@ structure ListMapMaker : sig
     (* mkFPrime : int * BV.var -> B.lambda *)
     (* P: to construct an inner "de-tupled" version of the function being mapped. *)
     (* FIXME? Should I rely on the optimizer to do this? *)
-    fun mkFPrime (arity: int, f: BV.var, exh: BV.var) : B.lambda =
+    fun mkFPrime (arity: int, fV: BV.var, exhV: BV.var) : B.lambda =
 	let fun build (n: int, xs: BV.var list, manyAny: BTy.ty list) : B.lambda =
 		if n>0 then 
 		    let val x = BV.new ("any" ^ Int.toString n, anyTy)
@@ -49,11 +49,11 @@ structure ListMapMaker : sig
 		else if n=0 then
 		    let val fPrimeTy = BTy.T_Fun (manyAny, [], [anyTy])  
 			val tTy = tupTy (false, manyAny)
-			val tupVar = BV.new ("tup", tTy)
-			val rVar = BV.new ("r", anyTy)
-			val body = B.mkStmt ([tupVar], B.E_Alloc (tTy, xs),
-                                   B.mkLet  ([rVar], B.mkApply (f, xs, [exh]),
-                                   B.mkRet [rVar]))
+			val tupV = BV.new ("tup", tTy)
+			val rV = BV.new ("r", anyTy)
+			val body = B.mkStmt ([tupV], B.E_Alloc (tTy, xs),
+                                   B.mkLet  ([rV], B.mkApply (fV, [tupV], [exhV]),
+                                   B.mkRet [rV]))
 		    in
 			B.FB {f = BV.new ("fPrime", fPrimeTy),
 			      params = xs,
@@ -104,7 +104,7 @@ structure ListMapMaker : sig
 	    val accVar = BV.new ("acc", listTy)
 	    val thisFuncVar = 
 		let val t = BTy.T_Fun (copies (arity+1, listTy), (* one extra argument for accumulator *)
-				       [exhTy],
+				       [],
 				       [listTy])
 		in
 		    BV.new ("map_" ^ Int.toString arity, t)
@@ -150,14 +150,14 @@ structure ListMapMaker : sig
 	in
 	    B.FB {f = thisFuncVar,
 		  params = rev (accVar::listVars),
-		  exh = [exh],
+		  exh = [],
 		  body = body}
 	end
 
     end (* locals for mkInnerMap  *)
 
     local
-	fun lamVar (B.FB {f, ...}) = f
+	fun lamV (B.FB {f, ...}) = f
 	fun mkListSelectors (ls: BV.var list, tuple: BV.var, e: B.exp) : B.exp =
 	    let fun go ([], _, exp) = exp
 		  | go (ln::ls, n, exp) = 
@@ -174,34 +174,30 @@ structure ListMapMaker : sig
 	    val fTy = BTy.T_Fun ([tupTy (false, copies (arity, anyTy))],
 				 [exhTy],
 				 [anyTy])
-	    val fVar = BV.new ("f", fTy)
-	    val exhVar = BV.new ("exh", exhTy)
-	    val fPrime = mkFPrime (arity, fVar, exhVar)
-	    val innerMap = mkInnerMap (arity, lamVar fPrime, exhVar)
-	    val argTy = tupTy (false, fTy::copies(arity, listTy))
-	    val mapTy = BTy.T_Fun ([argTy], [exhTy], [listTy])
-	    val mapVar = BV.new ("list_map_" ^ Int.toString arity, mapTy) 
-	    val fVar = BV.new ("f", fTy)
-	    val listVars =
+	    val fV = BV.new ("f", fTy)
+	    val exhV = BV.new ("exh", exhTy)
+	    val fPrime = mkFPrime (arity, fV, exhV)
+	    val innerMap = mkInnerMap (arity, lamV fPrime, exhV)
+	    val argsTy = fTy :: copies (arity, listTy)
+	    val mapTy = BTy.T_Fun (argsTy, [exhTy], [listTy])
+	    val mapV = BV.new ("list_map_" ^ Int.toString arity, mapTy) 
+	    val listVs =
 		let fun mk n = BV.new ("list" ^ Int.toString (n+1), listTy)
 		in
 		    List.tabulate (arity, mk)
 		end
-	    val argVar = BV.new ("arg", argTy)
-	    val nilVar = BV.new ("nil", listTy)
-	    val resultVar = BV.new ("result", listTy)
-	    val body = B.mkStmt ([fVar], B.E_Select (0, argVar),
-                       mkListSelectors (listVars, argVar,
-                       B.mkStmt ([nilVar], B.E_Const nilConst, 
+	    val nilV = BV.new ("nil", listTy)
+	    val resultV = BV.new ("result", listTy)
+	    val body = B.mkStmt ([nilV], B.E_Const nilConst, 
                        B.mkFun ([fPrime],
                        B.mkFun ([innerMap],
-                       B.mkLet ([resultVar],
-                       B.mkApply (lamVar innerMap, listVars @ [nilVar], []),
-                       B.mkRet [resultVar]))))))
+                       B.mkLet ([resultV],
+                       B.mkApply (lamV(innerMap), listVs @ [nilV], []),
+                       B.mkRet [resultV]))))
 	in
-	    B.FB {f = mapVar,
-		  params = argVar :: listVars,
-		  exh = [exhVar],
+	    B.FB {f = mapV,
+		  params = fV :: listVs,
+		  exh = [exhV],
 		  body = body}
 	end
     end (* locals for mkMap *)

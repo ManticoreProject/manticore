@@ -224,14 +224,14 @@ structure HLOpEnv : sig
 	  newWithExh ("rope-sub", [pairTy (Basis.ropeTy, intTy)], [BTy.T_Any], [])
 		
     val ropeLengthIntOp =
-	  newWithExh ("rope-length-int", [ropeTy], [intTy], [])
+	  newWithExh ("rope-length-int", [ropeTy], [rawIntTy], [])
     
   (* some hlops, not in the surface language, for use in rope maps *)
-    val extractShortestRopeOp = let
-	  val tupTy = BTy.T_Tuple (false, [ropeTy, listTy, rawIntTy])
-	  in
-	    newWithExh ("extract-shortest-rope", [listTy], [tupTy], [])
-	  end
+    val extractShortestRopeOp =
+	let val retTy = BTy.T_Tuple (false, [ropeTy, listTy, rawIntTy])
+	in
+	    newWithExh ("extract-shortest-rope", [listTy], [retTy], [])
+	end
 
     val curriedRopeSublistOp = let
 	  val tTy = BTy.T_Tuple (false, [listTy, boolTy])
