@@ -90,8 +90,8 @@ define @work-stealers-startup ( / exh : exh) : () =
 			of NIL => 
 			   do #0(sleeping) := ss
 			   return (rs)
-			 | CONS (r : vproc, rest : list) =>
-                           let rs : list = CONS (r, rs)
+			 | CONS (vp : vproc, rest : list) =>
+                           let rs : list = CONS (vp, rs)
 			   apply takeN (I32Sub (i,1), rest, rs / exh)
                        end
                   else do #0(sleeping) := ss
@@ -106,21 +106,21 @@ define @work-stealers-startup ( / exh : exh) : () =
        return (rs)
 
   (* wake any sleeping vprocs if there are stealable threads on the ready queue *)
-   fun wakeVProcs (  / exh : exh) : () =
+   fun wakeVProcs ( / exh : exh) : () =
        let stealableFibers : int = @queue-length (isUnpinned / exh)
        if I32Gt(stealableFibers, 0)
-          then let rs : list = apply wakes (stealableFibers / exh)
-               cont dummyK (u : unit) = 
-                    print_msg("dummy")
+          then cont dummyK (u : unit) = 
+                    print_debug("dummy")
                     @thread-exit ( / exh)
                fun dispatchOn (vps : list / exh : exh) : () =
                    case vps
 		    of NIL => return ()
-		     | CONS (vp : vproc, rest : list) =>
-                        print_msg("Attempting to wake")
+		     | CONS (vp : vproc, rest : list) =>		       
+                        print_debug("Attempting to wake")
                         do @enqueue-on-vproc (vp, wsFGS, dummyK / exh)
                         apply dispatchOn (rest / exh)
                    end
+               let rs : list = apply wakes (stealableFibers / exh)
                do apply dispatchOn (rs / exh)
                return ()
           else return ()
@@ -146,27 +146,27 @@ define @work-stealers-startup ( / exh : exh) : () =
 	  fun steal (vprocs' : list / exh : exh) : () =
 	    case vprocs' 
 	      of NIL =>
-		     print_msg("Thief is giving up on all vprocs")
+		     print_debug("Thief is giving up on all vprocs")
 		    (* (3) *)
 		     do apply addToSleeping (self / exh)
 		     return ()
 	       | CONS (vp : vproc, vprocs' : list) => 
 		    (* (2.1) *)
-		     print_msg("Sending thief to vproc")
+		     print_debug("Sending thief to vproc")
 		     cont thiefFiber (x : unit) = 
-			print_msg("Thief fiber")
+			print_debug("Thief fiber")
 		        let hasElts : bool = @is-queue-gt-one ( / exh)
 		        if hasElts
 			   then (* (2.2) *)
-			        print_msg("Stealing a remote thread")
+			        print_debug("Stealing a remote thread")
 			        let qitemOpt : option = @dequeue-with-pred (host_vproc, isUnpinned / exh)
 			        case qitemOpt
   				 of NONE => 
-				    print_msg("Nothing to steal on this vproc")
+				    print_debug("Nothing to steal on this vproc")
 			            do apply steal (vprocs' / exh)
                                     @thread-exit ( / exh)
 				  | SOME (qitem : rdyq_item) =>
-                                    print_msg("Stole a thread")
+                                    print_debug("Stole a thread")
 				    let item : [fgs, fiber, rdyq_item] = ([fgs, fiber, rdyq_item]) qitem
 				    let fgs : fgs = #0 (item)
 				    let fiber : fiber = #1 (item)
@@ -176,7 +176,7 @@ define @work-stealers-startup ( / exh : exh) : () =
 				    @thread-exit ( / exh)
 			        end
 			   else (* (2.3) *)
-			        print_msg("Thief is giving up on this vproc")
+			        print_debug("Thief is giving up on this vproc")
 			        do apply steal (vprocs' / exh)
                                 @thread-exit ( / exh)
 		    @enqueue-on-vproc (vp, wsFGS, thiefFiber / exh)

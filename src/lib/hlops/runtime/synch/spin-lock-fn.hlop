@@ -14,26 +14,27 @@
 #include "runtime-offsets.def"
 
 #define define_spin_lock(sl_name, sl_ty, sl_offset)                                                     \
-define inline @spin-lock-sl_name (lock : sl_ty / exh : exh) : unit =                                    \
-    fun spin (_ : unit / exh : exh) : unit =                                                            \
+define inline @spin-lock-sl_name (lock : sl_ty / exh : exh) : bool =                                    \
+    fun spin (_ : unit / exh : exh) : bool =                                                            \
 	if BCAS(&sl_offset(lock),FALSE,TRUE)                                                            \
-           then do vpstore(ATOMIC, host_vproc, TRUE)                                                    \
-                return (UNIT)                                                                           \
+           then let mask : bool = vpload (ATOMIC, host_vproc)                                           \
+                do vpstore(ATOMIC, host_vproc, TRUE)                                                    \
+                return (mask)                                                                           \
            else apply spin (UNIT / exh)                                                                 \
       apply spin (UNIT / exh)                                                                           \
 ;                                                                                                       \
                                                                                                         \
-define inline @spin-unlock-sl_name (lock : sl_ty / exh : exh) : unit =                                  \
+define inline @spin-unlock-sl_name (lock : sl_ty, mask : bool / exh : exh) : unit =                     \
     do UPDATE(sl_offset,lock,FALSE)                                                                     \
-    do vpstore(ATOMIC, host_vproc, FALSE)                                                               \
+    do vpstore(ATOMIC, host_vproc, mask)                                                                \
     return (UNIT)                                                                                       \
 ;                                                                                                       \
                                                                                                         \
 (* apply a function while holding a lock *)                                                             \
 define inline @with-lock-sl_name (lock : sl_ty, f : fun (unit / exh -> unit) / exh : exh) : unit =      \
-    let _ : unit = @spin-lock-sl_name (lock / exh)                                                      \
+    let mask : bool = @spin-lock-sl_name (lock / exh)                                                   \
     let _ : unit = apply f (UNIT / exh)                                                                 \
-    let _ : unit = @spin-unlock-sl_name (lock / exh)                                                    \
+    let _ : unit = @spin-unlock-sl_name (lock, mask / exh)                                              \
     return (UNIT)                                                                                       \
 ;
 

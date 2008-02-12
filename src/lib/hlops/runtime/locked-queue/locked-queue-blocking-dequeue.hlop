@@ -22,16 +22,17 @@ define @locked-queue-blocking-dequeue (q : locked_queue / exh : exh) : any =
   let blockedThread : blocked_thread = BLOCKED_THREAD_NEW(blockedK, fgs)
   let bqElt : in_place_queue_elt = LOCKED_QUEUE_NEW_ELT(blockedThread)
   let bqElt : in_place_queue_elt = promote(bqElt)
+
+  let mask : bool = @spin-lock-lq (q / exh)
   
   cont none () = 
        do @in-place-enqueue-bq (q, bqElt / exh)
-       let _ : unit = @spin-unlock-lq (q / exh)
+       let _ : unit = @spin-unlock-lq (q, mask / exh)
        @thread-exit (/ exh)
   cont some (elt : any) =
-       let _ : unit = @spin-unlock-lq (q / exh)
+       let _ : unit = @spin-unlock-lq (q, mask / exh)
        return (elt)
 
-  let _ : unit = @spin-lock-lq (q / exh)
   (* FIXME: this function can cause allocations for the none and some continuations while
    * holding the lock... 
    *)

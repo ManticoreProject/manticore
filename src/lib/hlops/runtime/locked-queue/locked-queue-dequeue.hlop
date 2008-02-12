@@ -11,14 +11,14 @@
 #include "locked-queue-local.def"
 
 define @locked-queue-dequeue (q : locked_queue / exh : exh) : option =
+  let mask : bool = @spin-lock-lq (q / exh)
   cont none () = 
-       let _ : unit = @spin-unlock-lq (q / exh)
+       let _ : unit = @spin-unlock-lq (q, mask / exh)
        return (NONE)
   cont some (elt : any) = 
-       let _ : unit = @spin-unlock-lq (q / exh)
+       let _ : unit = @spin-unlock-lq (q, mask / exh)
        return (SOME (elt))
 
-  let _ : unit = @spin-lock-lq (q / exh)
   do @in-place-dequeue-lq (q, none, some / exh)
   do assert(FALSE)
   return (NONE)

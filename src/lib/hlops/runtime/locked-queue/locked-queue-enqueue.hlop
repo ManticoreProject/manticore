@@ -17,13 +17,15 @@ define @locked-queue-enqueue (q : locked_queue, elt : any / exh : exh) : () =
   let qElt : in_place_queue_elt = LOCKED_QUEUE_NEW_ELT(elt)
   let qElt : in_place_queue_elt = promote (qElt)  
 
+  let mask : bool = @spin-lock-lq (q / exh)
+
   cont noneB () = 
        (* "impossible" *)
-       let _ : unit = @spin-unlock-lq (q / exh)
+       let _ : unit = @spin-unlock-lq (q, mask / exh)
        do assert (FALSE)
        return ()
   cont someB (blockedThread : any) =
-       let _ : unit = @spin-unlock-lq (q / exh)
+       let _ : unit = @spin-unlock-lq (q, mask / exh)
        let blockedThread : blocked_thread = (blocked_thread)blockedThread
        let blockedK : cont(any) = SELECT(BLOCKED_THREAD_CONT, blockedThread)
        let blockedFgs : fgs = SELECT(BLOCKED_THREAD_FGS, blockedThread)
@@ -32,8 +34,6 @@ define @locked-queue-enqueue (q : locked_queue, elt : any / exh : exh) : () =
             throw blockedK (elt)
        let unblockK : fiber = (fiber)unblockK
        @enqueue-on-vproc (vp, blockedFgs, unblockK / exh)
-
-  let _ : unit = @spin-lock-lq (q / exh)
 
  (* check for blocked threads first *)
   let bqHd : in_place_queue_elt = SELECT(LOCKED_QUEUE_BLOCKED_HD, q)
@@ -44,7 +44,7 @@ define @locked-queue-enqueue (q : locked_queue, elt : any / exh : exh) : () =
              do @in-place-dequeue-bq (q, noneB, someB / exh)
              assert(FALSE)
 
-  let _ : unit = @spin-unlock-lq (q / exh)
+  let _ : unit = @spin-unlock-lq (q, mask / exh)
 
   return ()
 ;
