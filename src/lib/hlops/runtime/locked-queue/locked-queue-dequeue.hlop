@@ -19,7 +19,7 @@ define @locked-queue-dequeue (q : locked_queue / exh : exh) : option =
        let _ : unit = @spin-unlock-lq (q, mask / exh)
        return (SOME (elt))
 
-  do @in-place-dequeue-lq (q, none, some / exh)
+  do @in-place-deq-hd-lq (q, none, some / exh)
   do assert(FALSE)
   return (NONE)
 ;

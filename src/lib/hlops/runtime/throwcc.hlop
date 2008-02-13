@@ -1,0 +1,14 @@
+(* throwcc.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Throw to the continuation.
+ *)
+
+#include "types.def"
+
+define @throwcc (arg : [cont(any), any], x : any / exh : exh) : any =
+  let k : cont(any) = #0(arg)
+  let x : any = #1(arg)
+  throw k(x)

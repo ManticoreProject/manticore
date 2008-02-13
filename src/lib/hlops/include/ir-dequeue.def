@@ -1,0 +1,28 @@
+(* ir-dequeue.def
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Types and HLops for input-restricted dequeues.
+ *)
+
+#ifndef _IR_DEQUEUE_DEF_
+#define _IR_DEQUEUE_DEF_
+
+#include "types.def"
+
+typedef ir_dequeue_elt = ![any, any, any];
+
+#define IR_DEQUEUE_ELT_DATA    0
+#define IR_DEQUEUE_ELT_NEXT    1
+#define IR_DEQUEUE_ELT_PREV    2
+
+#define IR_DEQUEUE_EMPTY	            enum(0)
+#define IR_DEQUEUE_NEW(elt)		    alloc (elt, IR_DEQUEUE_EMPTY, IR_DEQUEUE_EMPTY)
+
+typedef ir_dequeue = ![ir_dequeue_elt, ir_dequeue_elt];
+
+#define IR_DEQUEUE_HD         0
+#define IR_DEQUEUE_TL         1
+
+#endif /* !_IR_DEQUEUE_DEF_ */

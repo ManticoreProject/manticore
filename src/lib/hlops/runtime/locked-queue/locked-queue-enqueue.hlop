@@ -39,9 +39,9 @@ define @locked-queue-enqueue (q : locked_queue, elt : any / exh : exh) : () =
   let bqHd : in_place_queue_elt = SELECT(LOCKED_QUEUE_BLOCKED_HD, q)
   do if Equal (bqHd, NIL)
         then (* nothing is blocked; enqueue the element *)
-             @in-place-enqueue-lq (q, qElt / exh)
+             @in-place-enq-tl-lq (q, qElt / exh)
         else (* unblock the thread and pass it the element *)
-             do @in-place-dequeue-bq (q, noneB, someB / exh)
+             do @in-place-deq-hd-bq (q, noneB, someB / exh)
              assert(FALSE)
 
   let _ : unit = @spin-unlock-lq (q, mask / exh)

@@ -6,11 +6,10 @@
 #include "locked-queue.def"
 #include "testing.def"
 #include "vproc-queue.def"
+#include "runtime-offsets.def"
 
 define @work-stealers-startup ( / exh : exh) : ();
 
-(* should break action-stack invariant *)
-#include "runtime-offsets.def"
 define @work-stealers-test-startup ( / exh : exh) : () =
   do @work-stealers-startup (/ exh)
               let done : ![bool] = alloc(FALSE)
@@ -23,7 +22,6 @@ define @work-stealers-test-startup ( / exh : exh) : () =
               apply doit (i / exh)
 
   fun f (_ : unit / exh : exh) : unit =
-      print_msg("F")
       do apply doit (100 / exh)
       return (UNIT)
 

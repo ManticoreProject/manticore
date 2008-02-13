@@ -22,6 +22,7 @@ structure StdEnv : sig
     structure BTy = BOMTy
     structure BV = BOM.Var
     structure F = Futures
+    structure RB = RuntimeBasis
     structure E = TranslateEnv
     structure R = Ropes
     structure U = UnseenBasis 
@@ -58,7 +59,7 @@ structure StdEnv : sig
 	    (B.chanTyc,		BTy.K_BOXED,	BOMBasis.chanTy),
 	  (* internal types *)
 	    (F.futureTyc,       BTy.K_BOXED,	BTy.futureTy),
-(*	    (U.workQueueTyc,	BTy.K_BOXED,	BOMBasis.workQueueTy),*)
+	    (RB.contTyc,        BTy.K_BOXED,    BTy.T_Cont [BTy.T_Any]),
 	  (* extras *)
 	    (B.imageTyc,	BTy.K_BOXED,	BTy.T_Any)
 	  ]

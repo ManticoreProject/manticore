@@ -21,26 +21,23 @@
 #define _IN_PLACE_QUEUE_FN_
 
 #define define_in_place_queue(q_name, q_ty, q_hd_offset, q_tl_offset)                                     \
-define @in-place-enqueue-q_name (q : q_ty, qElt : in_place_queue_elt / exh : exh) : () =                  \
-  fun qSnoc (qElt : in_place_queue_elt, qt : in_place_queue_elt / exh : exh) : in_place_queue_elt =       \
-    do if Equal (qt, IN_PLACE_QUEUE_EMPTY)                                                                \
-          then return ()                                                                                  \
-          else let qElt : any = (any)qElt      								  \
-               do UPDATE(IN_PLACE_QUEUE_ELT_TL, qt, qElt) 						  \
-	       return () 			    							  \			
-    return (qElt)     											  \
+define @in-place-enq-tl-q_name (q : q_ty, qElt : in_place_queue_elt / exh : exh) : () =                   \
   let qHd : in_place_queue_elt = SELECT(q_hd_offset, q) 						  \
   let qTl : in_place_queue_elt = SELECT(q_tl_offset, q) 						  \
-  let qTl : in_place_queue_elt = apply qSnoc (qElt, qTl / exh) 						  \
-  do UPDATE(q_tl_offset, q, qTl)       	     	    	  						  \
+  do if Equal (qTl, IN_PLACE_QUEUE_EMPTY)                                                                 \
+          then return ()                                                                                  \
+          else let qElt : any = (any)qElt      								  \
+               do UPDATE(IN_PLACE_QUEUE_ELT_TL, qTl, qElt) 						  \
+	       return () 			    							  \
+  do UPDATE(q_tl_offset, q, qElt)       	     	    	  				          \
   if Equal (qHd, IN_PLACE_QUEUE_EMPTY)  								  \
      then (* the queue was empty *) 									  \
-          do UPDATE(q_hd_offset, q, qTl) 								  \
+          do UPDATE(q_hd_offset, q, qElt) 								  \
           return () 		    									  \
      else return () 											  \
 ;    	  	 											  \
 													  \
-define @in-place-dequeue-q_name (q : q_ty, none : cont(), some : cont(any) / exh : exh) : () = 		  \
+define @in-place-deq-hd-q_name (q : q_ty, none : cont(), some : cont(any) / exh : exh) : () = 		  \
   let qTl : in_place_queue_elt = SELECT(q_tl_offset, q)        	 	     	   	     		  \
   let qHd : in_place_queue_elt = SELECT(q_hd_offset, q) 						  \
   if Equal (qHd, IN_PLACE_QUEUE_EMPTY) 		     							  \
@@ -59,7 +56,5 @@ define @in-place-dequeue-q_name (q : q_ty, none : cont(), some : cont(any) / exh
           let elt : any = SELECT(IN_PLACE_QUEUE_ELT_HD, qHd) 						  \
           throw some (elt) 										  \
 ; 	  	     											  \
-
-
   
 #endif /*!  _IN_PLACE_QUEUE_FN_ */

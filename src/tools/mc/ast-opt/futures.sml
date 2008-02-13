@@ -50,20 +50,17 @@ structure Futures : sig
 
     (* futureTy : T.ty -> T.ty *)
     fun futureTy t = T.ConTy ([t], futureTyc)
-		
-    (* forall : (T.ty -> T.ty) -> T.ty_scheme *)
+
     fun forall mkTy =
 	let val tv = TyVar.new (Atom.atom "'a")
 	in
 	    T.TyScheme ([tv], mkTy (A.VarTy tv))
 	end
 
-    (* monoVar : string * T.ty -> Var.var *)
     fun monoVar (name, ty) = Var.new (name, ty)
 
-    (* polyVar : string * (T.ty -> T.ty) -> Var.var *)
     fun polyVar (name, mkTy) = Var.newPoly (name, forall mkTy)
-
+		
     val --> = T.FunTy
     infixr 8 -->
 
