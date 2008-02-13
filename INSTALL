@@ -1,8 +1,8 @@
-These are the installation instructions for the Manticore compiler
-and runtime system.  This document is organized into three sections:
-the first lists the requirements for building the system and running
-Manticore programs; the second give installation instructions for
-the distribution; and the third gives installation instructions for
+These are the installation instructions for the Manticore compiler and
+runtime system.  This document is organized into three sections: the
+first lists the requirements for building the system and running
+Manticore programs; the second give installation instructions for the
+distribution; and the third gives installation instructions for
 building from the svn repository.
 
 
@@ -10,13 +10,13 @@ building from the svn repository.
 REQUIREMENTS
 ------------
 
-Manticore currently only supports the x86-64 (a.k.a. AMD64) architecture
-running the Linux operating system.  It is possible to build the
-compiler on other systems (see below), but we have not ported the
-runtime or code generator to them yet.
+Manticore currently only supports the x86-64 (a.k.a. AMD64)
+architecture running the Linux operating system.  It is possible to
+build the compiler on other systems (see below), but we have not
+ported the runtime or code generator to them yet.
 
-Manticore is implemented in a mix of C and SML code.  You will need
-a recent version of SML/NJ (version 110.64+) installed.  Furthermore,
+Manticore is implemented in a mix of C and SML code.  You will need a
+recent version of SML/NJ (version 110.64+) installed.  Furthermore,
 your installation should include the MLRISC library.
 
 
@@ -30,8 +30,8 @@ BUILDING FROM SVN
 -----------------
 
 Building and installing the system from svn sources follows the same
-steps as above, but you first must initialize the configuration script.
-To do so, run the following two commands:
+steps as above, but you first must initialize the configuration
+script.  To do so, run the following two commands:
 
 	autoheader -Iconfig
 	autoconf -Iconfig
