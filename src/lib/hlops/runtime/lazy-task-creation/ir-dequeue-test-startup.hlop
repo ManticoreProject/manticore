@@ -22,16 +22,17 @@ define @test-dq-1 (/ exh : exh) : bool =
                           (* ml_step *) ml_int] = alloc (f, lo, hi, step)
       @list-tab(a / exh)
 
-  fun checkIncrease (prev : int, max : int, ls : list / exh : exh) : () =
+  fun checkFn (check : fun(int, int / exh -> bool), prev : int, max : int, ls : list / exh : exh) : () =
       case ls
        of NIL => return ()
 	| CONS (x: ml_int, xs : list) =>
 	  let x : int = unwrap(x)
-          if I32Lte(x,prev)
+          let b : bool = apply check (x, prev / exh)
+          if NotEqual(b,TRUE)
              then throw exit()
           else if I32Gt(x,max)
              then throw exit()
-          else apply checkIncrease (x, max, xs/ exh)
+          else apply checkFn (check, x, max, xs/ exh)
       end
 
   fun toList (deq : ir_dequeue, ls : list /) : list =
@@ -46,7 +47,8 @@ define @test-dq-1 (/ exh : exh) : bool =
       cont some (x : any) = 
            let ls' : list = CONS(x, ls)
            apply toListRev (deq, ls' /)
-      @ird-pop-tl (deq, none, some / exh)
+      do @ird-pop-tl (deq, none, some / exh)
+      throw exit()
   fun fromList (deq : ir_dequeue, ls : list / ) : () =
       case ls
        of NIL => return ()
@@ -56,12 +58,25 @@ define @test-dq-1 (/ exh : exh) : bool =
           apply fromList (deq, xs)
       end
 
+  let nElts : int = 300
   let deq : ir_dequeue = alloc(IR_DEQUEUE_EMPTY,IR_DEQUEUE_EMPTY)
+
+  fun checkInc (x : int, prev : int / exh : exh) : bool =
+      let b : bool = I32Gt(x,prev)
+      return (b)
+  fun checkDec (x : int, prev : int / exh : exh) : bool =
+      let b : bool = I32Lt(x,prev)
+      return (b)
   
-  let ls0 : list = apply buildLs (2/ )
+  let ls0 : list = apply buildLs (nElts/ )
   do apply fromList(deq, ls0)
   let lsInc : list = apply toList(deq, NIL /)
-  do apply checkIncrease(-1, 2, lsInc / exh)
+  do apply checkFn(checkInc, -1, I32Add(nElts,1), lsInc / exh)
+
+  let ls0 : list = apply buildLs (nElts/ )
+  do apply fromList(deq, ls0)
+  let lsInc : list = apply toListRev(deq, NIL /)
+  do apply checkFn(checkDec, I32Add(nElts,1), I32Add(nElts,1), lsInc / exh)
 
   return(TRUE)
 ;

@@ -1,6 +1,7 @@
 #include "types.def"
 #include "runtime-offsets.def"
 #include "ir-dequeue.def"
+#include "debugging.def"
 
 define @ird-push-hd(deq : ir_dequeue, elt : ir_dequeue_elt / exh : exh) : () =
   let oldHd : ir_dequeue_elt = SELECT(IR_DEQUEUE_HD, deq)
@@ -46,7 +47,7 @@ define @ird-pop-hd(deq : ir_dequeue, none : cont(), some : cont(any) / exh : exh
 ;
 
 define @ird-pop-tl(deq : ir_dequeue, none : cont(), some : cont(any) / exh : exh) noreturn =
-  let oldTl : ir_dequeue_elt = SELECT(IR_DEQUEUE_HD, deq)
+  let oldTl : ir_dequeue_elt = SELECT(IR_DEQUEUE_TL, deq)
  (* exit if the dequeue is empty *)
   do if Equal(oldTl, IR_DEQUEUE_EMPTY)
         then throw none ()
@@ -55,7 +56,7 @@ define @ird-pop-tl(deq : ir_dequeue, none : cont(), some : cont(any) / exh : exh
  (* update the next head element's prev pointer *)
   do if Equal(nextTl, IR_DEQUEUE_EMPTY)
         then return ()
-        else let empty : any = (ir_dequeue_elt)IR_DEQUEUE_EMPTY
+        else let empty : any = (any)IR_DEQUEUE_EMPTY
              do UPDATE(IR_DEQUEUE_ELT_NEXT, nextTl, empty)
              return () 
  (* update the stack head *)
