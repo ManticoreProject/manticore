@@ -12,6 +12,8 @@ structure PrintCFG : sig
 
     val print : CFG.module -> unit
 
+    val printFunc : CFG.func -> unit
+
   end = struct
 
     type flags = {types : bool}
@@ -167,5 +169,13 @@ structure PrintCFG : sig
 	  end
 
     fun print m = output {types=false} (TextIO.stdErr, m)
+
+    fun printFunc f = let
+          val m = CFG.MODULE {name = Atom.atom "ad-hoc",
+			      externs = [],
+			      code = [f]}
+          in
+            print m
+          end
 
   end

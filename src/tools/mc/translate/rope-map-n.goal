@@ -8,8 +8,12 @@
 
 fun list_to_tup[n] ...
 
-fun rope_map_[n] (f : fun [any,...,any/exh->any], r1 : rope, ..., r[n] : rope / exh : exh) 
-                 : rope =
+fun rope_map_[n] (arg: [fun ([any,...,any]/exh->any), rope, ..., rope] / exh : exh) : rope =
+
+  let f : fun ([any, ..., any] / exh -> any) = #0(arg)
+  let r1 : rope = #1(arg)
+  ...
+  let r[n] : rope = #[n](arg)
 
   (* build a list of all ropes *)
   let ropes : list = CONS (r1, ... (CONS (rn, NIL) ... )

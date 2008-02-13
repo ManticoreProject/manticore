@@ -262,8 +262,14 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 		      else addInfo
 	      (* record that a given variable escapes *)
 		fun escape x = escapingValue (valueOf x)
-		fun doFunc (CFG.FUNC{lab, entry, body, exit}, args) = (
-		      ListPair.appEq addInfo (CFG.paramsOfConv entry, args);
+		fun doFunc (f as CFG.FUNC{lab, entry, body, exit}, args) = (
+		      (ListPair.appEq addInfo (CFG.paramsOfConv entry, args))
+		       handle ex => (print "CFACFG.analyze.doFunc: uncaught exn while analyzing function:\n"; 
+				     PrintCFG.printFunc f;
+				     print "args:\n ";
+				     print (String.concatWith "\n " (map valueToString args));
+				     print "\n";
+				     raise ex);
 		      if isMarked lab
 			then ()
 			else (
@@ -272,7 +278,8 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 			  doXfer exit;
 			  unmark lab))
 		and doExp (CFG.E_Var(xs, ys)) =
-		      ListPair.appEq (fn (x, y) => addInfo(x, valueOf y)) (xs, ys)
+		      (ListPair.appEq (fn (x, y) => addInfo(x, valueOf y)) (xs, ys)
+                       handle ex => (print "CFACFG.analyze.doExp: uncaught exn\n"; raise ex))
 		  | doExp (CFG.E_Const _) = ()
 		  | doExp (CFG.E_Cast(x, _, y)) = addInfo(x, valueOf y)
 		  | doExp (CFG.E_Label(x, lab)) = addInfo(x, LABELS(LSet.singleton lab))

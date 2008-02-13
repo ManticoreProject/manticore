@@ -56,7 +56,8 @@ structure CFGTy =
             | _ => false
 	  (* end case *))
 
-    and equalList (tys1, tys2) = ListPair.allEq equal (tys1, tys2)
+    and equalList (tys1, tys2) = (ListPair.allEq equal (tys1, tys2)
+				  handle UnequalLengths => (print "CFGTy.equalList\n"; raise UnequalLengths))
   (* return true if the type has a single-word uniform representation; this includes
    * anything represented by a pointer or a tagged integer.
    *)
