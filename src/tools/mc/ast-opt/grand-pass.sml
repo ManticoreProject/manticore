@@ -22,6 +22,7 @@ structure GrandPass : sig
     structure V = Var
     structure U = UnseenBasis
 
+  (* trExp : exp -> exp *)
     fun trExp (A.LetExp (A.PValBind (pat, e), body)) = trExp (LTCPVal.trPval (pat, e, body))
       | trExp (A.LetExp (b, e)) = A.LetExp (binding b, trExp e)
       | trExp (A.IfExp (e1, e2, e3, t)) = A.IfExp (trExp e1, trExp e2, trExp e3, t)
@@ -62,11 +63,9 @@ structure GrandPass : sig
 
     and trPTup arg = TranslatePtup.tr trExp arg
 
-(*    and trVar arg = RewriteWithQueues.transform arg *)
-
     and trPComp arg = TranslatePComp.tr trExp arg
 
   (* transform : A.module -> A.module *)
-    fun transform (AST.Module{exns, body}) = AST.Module{exns=exns, body=trExp body}
+    fun transform (A.Module {exns, body}) = A.Module {exns = exns, body = trExp body} 
 
   end

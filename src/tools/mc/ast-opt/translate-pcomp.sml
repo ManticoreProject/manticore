@@ -59,9 +59,7 @@ structure TranslatePComp : sig
 			      let val e1' = trExp e1
 				  val mapP = A.VarExp (U.mapP, [t1, t])
 			      in
-				  A.ApplyExp (mapP,
-					      A.TupleExp [f, e1'], 
-					      resTy)
+				  A.ApplyExp (mapP, A.TupleExp [f, e1'], resTy)				   
 			      end
 		       (* end case *))
 		   end
@@ -80,7 +78,7 @@ structure TranslatePComp : sig
 					 te)
 		      val lam = A.FB (f, arg, b)
 		      val resTy = B.parrayTy te
-		      val tup = A.VarExp (f, []) :: List.map trExp es
+		      val tup = A.VarExp (f, []) :: (List.map trExp es)
 		      val mapPn =
 			  let val tupTy = A.TupleTy (funTy :: (List.map TypeOf.exp es))
 			      val ty = A.FunTy (tupTy, resTy)
