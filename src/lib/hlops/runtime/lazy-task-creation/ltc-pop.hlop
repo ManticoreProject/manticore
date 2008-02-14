@@ -1,0 +1,41 @@
+(* ltc-pop.def
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Pop an element from the lazy task queue.
+ *)
+
+#include "ltc.def"
+#include "types.def"
+#include "runtime-offsets.def"
+#include "debugging.def"
+
+define @ltc-pop(arg : unit / exh : exh) : any =
+ (* initialize the ltc scheduler and return its spawn function *)
+  fun init (_ : unit / exh : exh) : any =
+     (* scheduler should always be instantiated by now *)
+      do assert(FALSE)
+      throw exh(NIL)
+  let fgs : fgs = @get-fgs (host_vproc / exh)
+ (* obtain the spawn function *)
+  let ltq : ir_dequeue = @assoc-list-lookup (TAG_LTC, init, fgs / exh)
+
+ (* pop an element from the head of the lazy task queue while holding the lock *)
+  let mask : bool = @spin-lock-ird (ltq / exh)
+
+    cont none () = 
+	 let _ : unit = @spin-unlock-ird (ltq, mask / exh)
+	(* there is nothing to pop; invoke the scheduler to potentially steal work. *)
+	 @thread-exit( /exh)
+    cont some (f : any) =
+	 let _ : unit = @spin-unlock-ird (ltq, mask / exh)
+        (* execute the context and then invoke the scheduler. *)
+	 let f : ctx_fun = (ctx_fun)f
+	 do apply f (UNIT / exh)
+	 @thread-exit ( / exh)
+
+    do @ird-pop-hd(ltq, none, some / exh)
+
+  return (UNIT)
+;

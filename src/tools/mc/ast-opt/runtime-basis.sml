@@ -65,7 +65,7 @@ structure RuntimeBasis
 	AU.mkApplyExp(AU.mkVarExp(callcc, [ty]), [e])
 
     fun mkThrowcc (ty, k, e) =
-	AU.mkApplyExp(AU.mkVarExp(throwcc, [ty]), [AU.mkVarExp(k, [ty]), e])
+	AU.mkApplyExp(AU.mkVarExp(throwcc, [ty]), [A.VarExp(k, [contTy(ty)]), e])
 
    (* ivars *)
     val ivarTyc = TyCon.newAbsTyc (Atom.atom "ivar", 1, false)
@@ -80,7 +80,7 @@ structure RuntimeBasis
     val ivarGet = polyVar("ivarGet",
 			  fn tv => ivarTy(tv) --> tv)
 
-    fun ivarVar (name, ty) = let
+    fun ivarVar (ty, name) = let
 	val ty = ivarTy(ty)
         in
            (monoVar(name, ty), ty)
@@ -91,20 +91,20 @@ structure RuntimeBasis
 
     fun mkIvarGet (ivar, ty) = 
 	AU.mkApplyExp(AU.mkVarExp(ivarGet, [ty]),
-		      [AU.mkVarExp(ivar, [ty])])
+		      [A.VarExp(ivar, [ivarTy(ty)])])
 
     fun mkIvarPut ((ivar, ty), e) = 
 	AU.mkApplyExp(AU.mkVarExp(ivarPut, [ty]),
-		      [AU.mkVarExp(ivar, [ty]), e])
+		      [A.VarExp(ivar, [ivarTy(ty)]), e])
 
    (* lazy task creation *)
     val ltcPush = monoVar ("ltcPush", 
-			   Basis.unitTy --> Basis.unitTy)
+			   (Basis.unitTy --> voidTy) --> voidTy)
 
     val ltcPop  = monoVar ("ltcPop", Basis.unitTy --> voidTy)
 
     fun mkLtcPush (ctx) = 
-	AU.mkApplyExp (AU.mkVarExp(ltcPush, []), [AU.mkVarExp(ctx, [])])
+	AU.mkApplyExp (A.VarExp(ltcPush, []), [A.VarExp(ctx, [])])
 
     val mkLtcPop =
 	AU.mkApplyExp (A.VarExp(ltcPop, []), [])
@@ -125,6 +125,6 @@ structure RuntimeBasis
 	AU.mkApplyExp(A.VarExp(setOnceCell, []) , [])
 
     fun mkSetCell (cell) =
-	AU.mkApplyExp(A.VarExp(setCell, []), [A.VarExp(cell, [setOnceCellTy])])
+	AU.mkApplyExp(A.VarExp(setCell, []), [A.VarExp(cell, [])])
 			   
   end

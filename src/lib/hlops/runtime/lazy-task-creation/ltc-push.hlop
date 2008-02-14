@@ -1,0 +1,33 @@
+(* ltc-push.def
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Push an element on the lazy-task queue.
+ *)
+
+#include "ltc.def"
+#include "types.def"
+#include "runtime-offsets.def"
+#include "debugging.def"
+
+define @ltc-push(arg : [ctx_fun] / exh : exh) : unit =
+  (* initialize the ltc scheduler and return its spawn function *)
+  fun init (_ : unit / exh : exh) : any =
+      let ltq : ir_dequeue = @ltc-startup ( / exh)
+      return (ltq)
+  let fgs : fgs = @get-fgs (host_vproc / exh)
+  (* obtain the spawn function *)
+  let ltq : ir_dequeue = @assoc-list-lookup (TAG_LTC, init, fgs / exh)
+
+  let f : ctx_fun = #0(arg)
+  let elt : ir_dequeue_elt = IR_DEQUEUE_NEW(f)
+  let elt : ir_dequeue_elt = promote(elt)
+
+ (* push the context onto the lazy task queue head while holding the lock*)
+  let mask : bool = @spin-lock-ird (ltq / exh)
+    do @ird-push-hd(ltq, elt / exh)
+  let _ : unit = @spin-unlock-ird (ltq, mask / exh)
+
+  return (UNIT)
+;

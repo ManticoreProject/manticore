@@ -4,7 +4,6 @@
  *) 
 
 #include "ir-dequeue.def"
-#include "./ir-dequeue.hlop"
 #include "testing.def"
 #include "vproc-queue.def"
 #include "runtime-offsets.def"
@@ -35,19 +34,23 @@ define @test-dq-1 (/ exh : exh) : bool =
           else apply checkFn (check, x, max, xs/ exh)
       end
 
-  fun toList (deq : ir_dequeue, ls : list /) : list =
+  fun toList (nElts: int, deq : ir_dequeue, ls : list /) : list =
       cont none () = return (ls)
-      cont some (x : any) = 
+      cont some (x : [int]) = 
            let ls' : list = CONS(x, ls)
-           apply toList (deq, ls' /)
-      do @ird-pop-hd (deq, none, some / exh)
+           apply toList (I32Sub(nElts,1), deq, ls' /)
+      do if I32Lt(nElts, 0)
+            then throw none ()
+            else @ird-pop-hd (deq, none, some / exh)
       throw exit()
-  fun toListRev (deq : ir_dequeue, ls : list /) : list =
+  fun toListRev (nElts : int, deq : ir_dequeue, ls : list /) : list =
       cont none () = return (ls)
       cont some (x : any) = 
            let ls' : list = CONS(x, ls)
-           apply toListRev (deq, ls' /)
-      do @ird-pop-tl (deq, none, some / exh)
+           apply toListRev (I32Sub(nElts,1), deq, ls' /)
+      do if I32Lt(nElts, 0)
+           then throw none()
+           else @ird-pop-tl (deq, none, some / exh)
       throw exit()
   fun fromList (deq : ir_dequeue, ls : list / ) : () =
       case ls
@@ -58,8 +61,8 @@ define @test-dq-1 (/ exh : exh) : bool =
           apply fromList (deq, xs)
       end
 
-  let nElts : int = 300
-  let deq : ir_dequeue = alloc(IR_DEQUEUE_EMPTY,IR_DEQUEUE_EMPTY)
+  let nElts : int = 10
+  let deq : ir_dequeue = IR_DEQUEUE()
 
   fun checkInc (x : int, prev : int / exh : exh) : bool =
       let b : bool = I32Gt(x,prev)
@@ -69,14 +72,19 @@ define @test-dq-1 (/ exh : exh) : bool =
       return (b)
   
   let ls0 : list = apply buildLs (nElts/ )
-  do apply fromList(deq, ls0)
-  let lsInc : list = apply toList(deq, NIL /)
-  do apply checkFn(checkInc, -1, I32Add(nElts,1), lsInc / exh)
 
-  let ls0 : list = apply buildLs (nElts/ )
   do apply fromList(deq, ls0)
-  let lsInc : list = apply toListRev(deq, NIL /)
-  do apply checkFn(checkDec, I32Add(nElts,1), I32Add(nElts,1), lsInc / exh)
+  let ls : list = apply toList(nElts, deq, NIL /)
+  do apply checkFn(checkInc, -1, I32Add(nElts,1), ls / exh)
+
+  let ls : list = apply toListRev(nElts, deq, NIL /)
+  do apply checkFn(checkDec, I32Add(nElts,1), I32Add(nElts,1), ls / exh)
+
+  do apply fromList(deq, ls0)
+  let ls : list = apply toList(I32Div(nElts,2), deq, NIL /)
+  do apply checkFn(checkInc, I32Sub(I32Div(nElts,2),1), I32Add(nElts, 1), ls / exh)  
+  let ls : list = apply toListRev(I32Div(nElts,2), deq, NIL /)
+  do apply checkFn(checkDec, I32Div(nElts,2), I32Add(nElts,1), ls / exh)
 
   return(TRUE)
 ;

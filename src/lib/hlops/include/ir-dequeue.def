@@ -20,9 +20,21 @@ typedef ir_dequeue_elt = ![any, any, any];
 #define IR_DEQUEUE_EMPTY	            enum(0)
 #define IR_DEQUEUE_NEW(elt)		    alloc (elt, IR_DEQUEUE_EMPTY, IR_DEQUEUE_EMPTY)
 
-typedef ir_dequeue = ![ir_dequeue_elt, ir_dequeue_elt];
+(* lock bit, head, tail *)
+typedef ir_dequeue = ![bool, ir_dequeue_elt, ir_dequeue_elt];
 
-#define IR_DEQUEUE_HD         0
-#define IR_DEQUEUE_TL         1
+#define IR_DEQUEUE_LOCK       0
+#define IR_DEQUEUE_HD         1
+#define IR_DEQUEUE_TL         2
+
+#define IR_DEQUEUE()          alloc(FALSE, IR_DEQUEUE_EMPTY, IR_DEQUEUE_EMPTY)
+
+define @ird-push-hd(deq : ir_dequeue, elt : ir_dequeue_elt / exh : exh) : ();
+define @ird-pop-hd(deq : ir_dequeue, none : cont(), some : cont(any) / exh : exh) noreturn;
+define @ird-pop-tl(deq : ir_dequeue, none : cont(), some : cont(any) / exh : exh) noreturn;
+
+(* spin lock *)
+#include "../synch/spin-lock-fn.hlop"
+define_spin_lock(ird, ir_dequeue, IR_DEQUEUE_LOCK)
 
 #endif /* !_IR_DEQUEUE_DEF_ */

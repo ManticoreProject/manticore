@@ -1,0 +1,20 @@
+(* ltc.def
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Lazy task creation.
+ *)
+
+#include "ir-dequeue.def"
+
+#ifndef _LTC_DEF_
+#define _LTC_DEF_
+
+typedef ctx_fun = fun(unit / exh -> any);
+
+define @ltc-startup ( / exh : exh) : ir_dequeue;
+define @ltc-pop(arg : unit / exh : exh) : any;
+define @ltc-push(arg : [ctx_fun] / exh : exh) : unit;
+
+#endif /*!  _LTC_DEF_ */

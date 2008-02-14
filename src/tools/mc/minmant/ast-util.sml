@@ -33,7 +33,7 @@ structure ASTUtil : sig
     val mkApplyExp : (AST.exp * AST.exp list) -> AST.exp
 
   (* create a sequence of expressions *)
-    val mkSeqExp : (AST.exp * AST.exp list) -> AST.exp
+    val mkSeqExp : (AST.exp list * AST.exp) -> AST.exp
 
   (* create an if expression *)
     val mkIfExp : (AST.exp * AST.exp * AST.exp) -> AST.exp
@@ -97,10 +97,8 @@ structure ASTUtil : sig
     fun mkApplyExp (e, es) = 
 	A.ApplyExp (e, mkTupleExp(es), TypeUtil.rangeType(TypeOf.exp(e)))
 
-    fun mkSeqExp (e, es) = 
+    fun mkSeqExp (es, e) = 
 	List.foldr (fn (e, seqExp) => A.SeqExp (e, seqExp)) e es
-
-    val mkTuple = A.TupleExp []
 
     fun mkIfExp (e1, e2, e3) = A.IfExp(e1, e2, e3, TypeOf.exp(e2))
 

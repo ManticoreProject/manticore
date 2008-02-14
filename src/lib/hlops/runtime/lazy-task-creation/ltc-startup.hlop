@@ -1,0 +1,18 @@
+(* ltc-startup.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Scheduler for lazy task creation.
+ *)
+
+#include "ltc.def"
+#include "types.def"
+#include "runtime-offsets.def"
+#include "debugging.def"
+
+extern void *ListVProcs (void *) __attribute__((alloc));
+
+define @ltc-startup ( / exh : exh) : ir_dequeue =
+;
+

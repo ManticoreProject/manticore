@@ -25,8 +25,6 @@
 #include "types.def"
 #include "vproc-queue.def"
 
-define @scheduler-startup (mkAct : fun (vproc / exh -> sigact), fgs : fgs, vps : list / exh : exh) : ();
-
 (* instantiate a standard spin lock *)
 #include "synch/spin-lock-fn.hlop"
 define_spin_lock(sl,spin_lock,0)

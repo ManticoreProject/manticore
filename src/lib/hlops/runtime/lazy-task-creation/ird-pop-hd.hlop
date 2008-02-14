@@ -1,0 +1,32 @@
+(* ird-pop-hd.def
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Pop an element from the head of the input-restricted dequeue.
+ *)
+
+#include "types.def"
+#include "runtime-offsets.def"
+#include "ir-dequeue.def"
+#include "debugging.def"
+
+define @ird-pop-hd(deq : ir_dequeue, none : cont(), some : cont(any) / exh : exh) noreturn =
+  let oldHd : ir_dequeue_elt = SELECT(IR_DEQUEUE_HD, deq)
+ (* exit if the dequeue is empty *)
+  do if Equal(oldHd, IR_DEQUEUE_EMPTY)
+        then throw none ()
+        else return ()
+  let nextHd : ir_dequeue_elt = SELECT(IR_DEQUEUE_ELT_NEXT, oldHd)
+ (* update the next head element's prev pointer *)
+  do if Equal(nextHd, IR_DEQUEUE_EMPTY)
+     then return ()
+     else let empty : any = (any)IR_DEQUEUE_EMPTY
+          do UPDATE(IR_DEQUEUE_ELT_PREV, nextHd, empty)
+          return () 
+ (* update the stack head *)
+  do UPDATE(IR_DEQUEUE_HD, deq, nextHd)
+ (* return the element *)
+  let elt : any = SELECT(IR_DEQUEUE_ELT_DATA, oldHd)
+  throw some(elt)
+;

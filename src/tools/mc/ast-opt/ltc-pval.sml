@@ -47,25 +47,28 @@ structure LTCPVal =
 
     fun expand (v, e, body) = let
         val ty = TypeOf.exp(e)
+	val bodyTy = TypeOf.exp(body)
 	val doneCell = RB.setOnceCellVar
-	val ivar = RB.ivarVar("ivar", ty)
-	val retK = RB.mkContVar(ty, "retK")
+	val ivar = RB.ivarVar(ty, "ivar")
+	val retK = RB.mkContVar(bodyTy, "retK")
 	val ctx = RB.monoVar("ctx", Basis.unitTy --> RB.voidTy)
         val ctxExp =
-	    A.FunExp (ctx,
+	    A.FunExp (Var.new("x", Basis.unitTy),
 		AU.mkIfExp(RB.mkSetCell(doneCell),
 			   RB.mkLtcPop,
-			   RB.mkThrowcc(ty, retK, VarSubst.exp' (VarSubst.singleton(v, v)) (RB.mkIvarGet(ivar)) body)),
+			   RB.mkThrowcc(bodyTy, retK, VarSubst.exp' (VarSubst.singleton(v, v)) (RB.mkIvarGet(ivar)) body)),
 		Basis.unitTy --> RB.voidTy)
-        val body = AU.mkSeqExp(
-		     RuntimeBasis.mkLtcPush(ctx),
-		   [ RB.mkIvarPut(ivar, e),
-		     RB.mkLtcPop
-		   ])
+        val body = AU.mkSeqExp(		     
+		   [ RuntimeBasis.mkLtcPush(ctx),
+		     RB.mkIvarPut(ivar, e)		     
+		   ],
+		   RB.mkLtcPop)
         in
-	   RB.mkCallcc(ty,
-	      AU.mkLetExp(mkBindVars ([doneCell, #1(ivar), ctx], [RB.mkSetOnceCell, RB.mkIvar(ty), ctxExp]),
-			  body))
+	   RB.mkCallcc(bodyTy,
+	      A.FunExp (retK,
+			 AU.mkLetExp(mkBindVars ([doneCell, #1(ivar), ctx], [RB.mkSetOnceCell, RB.mkIvar(ty), ctxExp]),
+				     body),
+			RB.contTy(bodyTy) --> bodyTy))
         end
 
     and trPval (A.VarPat v, e, body) = expand (v, e, body)
