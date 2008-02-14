@@ -8,7 +8,7 @@
 
 #include "types.def"
 
-define inline @ivar-new () : (list, any, int) = 
+define inline @ivar-new (_ : unit) : [list, any, int] = 
     let x : ![list, any, int] = alloc (enum(0), enum(0), 0)
     return (x)
 ;

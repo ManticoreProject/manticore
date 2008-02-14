@@ -6,11 +6,12 @@
  * get function for i-variable.
  *)
 
-#include "types.def"
+#include "ivar.def"
 
 define @dispatch (vp : vproc) noreturn;
 
-define inline @ivar-get (ivar : ![list, any, int]) : any =
+define inline @ivar-get (arg : [ivar]) : any =
+    let ivar : ivar = #0(arg)
     let readList : list = #0(ivar)
     let value : any = #1(ivar)
     let readFlag : int = #2(ivar)

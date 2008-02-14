@@ -6,12 +6,14 @@
  * put function for i-variable.
  *)
 
-#include "types.def"
+#include "ivar.def"
 
 define @enqueue (vp : vproc, tid : tid, fiber : fiber / exh : exh) : ();
 define @forward (vp : vproc, sig : signal / exh : exh) noreturn;
 
-define inline @ivar-put (ivar : ![list, any, int], x : any / exh : exh) : () = 
+define inline @ivar-put (arg : [ivar, any] / exh : exh) : unit = 
+    let ivar : ivar = #0(arg)
+    let x : any = #1(arg)
     let readL : list = #0(ivar)
     let readflag : int = #2(ivar)
     let oldValue : any = CAS (&1(ivar), enum(0), x)

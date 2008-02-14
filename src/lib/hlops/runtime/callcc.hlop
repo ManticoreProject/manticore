@@ -8,7 +8,7 @@
 
 #include "types.def"
 
-define @callcc (arg : [fun(cont(any) -> any)] / exh : exh) : any =
+define @callcc (arg : [fun(cont(any) / exh -> any)] / exh : exh) : any =
   let f : fun(cont(any) -> any) = #0(arg)
   cont k(x : any) = return (x)
   apply f (k)

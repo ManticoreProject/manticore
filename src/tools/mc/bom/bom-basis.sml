@@ -25,6 +25,7 @@ signature BOM_BASIS =
     val signalTy : BOMTy.ty
     val rdyqItemTy : BOMTy.ty
     val workQueueTy : BOMTy.ty
+    val ivarTy : BOMTy.ty
     val evtTy : BOMTy.ty
     val chanTy : BOMTy.ty
 
@@ -131,6 +132,10 @@ structure BOMBasis : BOM_BASIS =
           (* blockFn : (bool ref * 'a cont) -> unit *)
 	    BTy.stdFunTy([dirtyFlagTy, tidTy, BTy.T_Cont[BTy.T_Any]], [])
 	  ])
+
+  (* ivars *)
+    val ivarTyc = BOMTyCon.newDataTyc ("ivar", 0)
+    val ivarTy = BTy.T_TyCon ivarTyc
 
   (* The BOM type for channels.  This definition must match that given in
    *

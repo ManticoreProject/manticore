@@ -10,6 +10,8 @@
 #include "futures.def"
 #include "ropes.def"
 #include "fgs.def"
+#include "ivar.def"
+#include "ltc.def"
 
 define @print (s : ml_string / exh : exh) : unit;
 define @string-concat2 (arg : [ml_string, ml_string] / _ : exh) : ml_string;
@@ -65,6 +67,7 @@ define @tabD (agrs: [fun(ml_int/exh->any), ml_int, ml_int, ml_int, ml_int] / exh
 
 (* scheduling operations *)
 define @dispatch-action (act : sigact, dst : vproc / exh : exh) : ();
+define @scheduler-startup (mkAct : fun (vproc / exh -> sigact), fgs : fgs, vps : list / exh : exh) : ();
 define @default-scheduler-startup ( / exh : exh) : ();
 define inline @fiber (f : fiber_fun / exh : exh) : fiber;
 define @atomic-yield (vp : vproc / exh : exh) : unit;
@@ -77,3 +80,7 @@ define @generic-hlop-test (n : int / exh : exh) : any;
 (* testing operations *)
 define @wait (secs : double, done : ![bool] / exh : exh) : ();
 define @test-deadlock (f : fun (unit / exh -> bool), waitSecs : double, exhDeadlock : exh, exhIncorrectAns : exh / exh : exh) : ();
+
+(* exported first-class continuations *)
+define @callcc (arg : [fun(cont(any) / exh -> any)] / exh : exh) : any;
+define @throwcc (arg : [cont(any), any], x : any / exh : exh) : any;

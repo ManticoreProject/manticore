@@ -34,7 +34,7 @@ define @ird-pop-hd(deq : ir_dequeue, none : cont(), some : cont(any) / exh : exh
 define @ird-pop-tl(deq : ir_dequeue, none : cont(), some : cont(any) / exh : exh) noreturn;
 
 (* spin lock *)
-#include "../synch/spin-lock-fn.hlop"
+#include "../runtime/synch/spin-lock-fn.hlop"
 define_spin_lock(ird, ir_dequeue, IR_DEQUEUE_LOCK)
 
 #endif /* !_IR_DEQUEUE_DEF_ */

@@ -68,7 +68,7 @@ structure RuntimeBasis
 	AU.mkApplyExp(AU.mkVarExp(throwcc, [ty]), [A.VarExp(k, [contTy(ty)]), e])
 
    (* ivars *)
-    val ivarTyc = TyCon.newAbsTyc (Atom.atom "ivar", 1, false)
+(*    val ivarTyc = TyCon.newAbsTyc (Atom.atom "ivar", 1, false)
     fun ivarTy t = T.ConTy([t], ivarTyc)
 
     val ivarNew = polyVar("ivarNew",
@@ -79,6 +79,13 @@ structure RuntimeBasis
 
     val ivarGet = polyVar("ivarGet",
 			  fn tv => ivarTy(tv) --> tv)
+*)
+
+    val ivarTyc = Basis.ivarTyc
+    fun ivarTy t = T.ConTy([t], ivarTyc)
+    val ivarNew = Basis.iVar
+    val ivarGet = Basis.iGet
+    val ivarPut = Basis.iPut
 
     fun ivarVar (ty, name) = let
 	val ty = ivarTy(ty)

@@ -16,6 +16,7 @@ structure StdEnv : sig
   end = struct
 
     structure B = Basis
+    structure RB = RuntimeBasis
     structure P = Prim
     structure H = HLOpEnv
     structure TTbl = TyCon.Tbl
@@ -51,8 +52,9 @@ structure StdEnv : sig
 	    (B.threadIdTyc,	BOMTyUtil.kindOf(BTy.tidTy), BTy.tidTy),
 	    (B.parrayTyc,       BTy.K_BOXED,	BOMBasis.ropeTy),
 	    (R.ropeTyc,         BTy.K_BOXED,	BOMBasis.ropeTy),
+
+            (RB.ivarTyc,         BTy.K_BOXED,   BOMBasis.ivarTy),
 (*
-	    (B.ivarTyc, ),
 	    (B.mvarTyc, ),
 *)
 	    (B.eventTyc,	BTy.K_BOXED,	BOMBasis.evtTy),
@@ -382,12 +384,7 @@ structure StdEnv : sig
 	    (B.recvEvt,		hlop (H.recvEvtOp, false)),
 	    (B.send,		hlop (H.sendOp, false)),
 
-(* FIXME
-	  (* synchronous memory *)
-	    (B.iVar,		hlop H.iVar),
-	    (B.iGet,		hlop H.iGet),
-	    (B.iPut,		hlop H.iPut),
-	    (B.mVar,		hlop H.mVar),
+(*	    (B.mVar,		hlop H.mVar),
     (B.mGet,		hlop H.mGet),
 	    (B.mTake,		hlop H.mTake),
 	    (B.mPut,		hlop H.mPut),
@@ -477,7 +474,20 @@ structure StdEnv : sig
 
 		  (B.todo,              "todo",			false),
 		  (F.future1Touch,      "future1-touch",        false),
-                  (F.future1Spawn,      "future1-spawn",        false)
+                  (F.future1Spawn,      "future1-spawn",        false),
+
+     	         (* ivars *)
+		  (RB.ivarNew,          "ivar-new",             false),
+		  (RB.ivarGet,          "ivar-get",             false),
+		  (RB.ivarPut,          "ivar-put",             false),
+
+                 (* continuations *)
+                  (RB.callcc,            "callcc",               false),
+		  (RB.throwcc,           "throwcc",              false),
+
+                 (* lazy task creation *)
+                  (RB.ltcPop,            "ltc-pop",              false),
+                  (RB.ltcPush,           "ltc-push",             false)
 		]  
 	  fun ins ((x, n, polyResTy), env) = (case H.find (Atom.atom n)
 		of NONE => raise Fail ("cannot find hlop " ^ n)
