@@ -57,6 +57,8 @@ structure TypeUtil : sig
     val tupleTy : Types.ty list -> Types.ty
     val funTy : Types.ty list * Types.ty list -> Types.ty
 
+    val rangeType : Types.ty -> Types.ty
+
   end = struct
 
     structure MV = MetaVar
@@ -275,6 +277,9 @@ structure TypeUtil : sig
       | tupleTy tys = Types.TupleTy tys
 
     fun funTy (dom, rng) = Types.FunTy(tupleTy dom, tupleTy rng)
+
+    fun rangeType (Types.FunTy (_, rng)) = rng
+      | rangeType _ = raise Fail "rangeType"
 
   end
 

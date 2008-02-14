@@ -1,62 +1,74 @@
-structure LTCPVal : sig
-
-    val transform : AST.module -> AST.module
-
-  end = struct
+structure LTCPVal =
+  struct
 
     structure A = AST
     structure B = Basis
+    structure T = Types
+    structure RB = RuntimeBasis
+    structure AU = ASTUtil
 
-    fun splitCtx (pvEnv, ctx, e) = (case e
-        of A.ApplyExp (e1, e2, ty) => let
-	   fun ctx1 (e) = A.ApplyExp (e, e2, ty)
-	   fun ctx2 (e) = A.ApplyExp (e1, e, ty)
-           in
-	       (case splitCtx (pvEnv, ctx1, e1)
-		 of NONE => splitCtx (pvEnv, ctx2, e2)
-		  | split => split
-	       (* end case *))
-           end
-	 | A.VarExp (v, tys) => (case Var.Map.lookup (pvEnv, v)
-           of NONE => NONE
-	    | SOME _ => SOME (v, tys, ctx)
-           (* end case *))
-        (* end case *))
+    val --> = T.FunTy
+    infixr 8 -->
 
-   (* build an environment mapping pvals to their state components (done flags and ivars) *)
-    fun rememberPVals (e) = let
-        val pvEnv = ref Var.Map.empty
-        fun ins (v) = let
-            val doneFlg = raise Fail ""
-            val ivar = raise Fail ""
-            in
-	       pvEnv := Var.Map.insert(!pvEnv, v, (doneFlg, ivar))
-            end
-        fun exp (e) = (case e
-             of A.LetExp (bind, e) => (case bind
-                of A.PValBind (pat, e) => ((case pat
-                   of A.VarPat v => ins(v)
-		    | (A.WildPat _ | A.ConstPat _ ) => ()
-		    | _ => raise Fail "todo"
-		   (* end case *));
-                   exp(e))
-		 | _ => ()
-                (* end case *))
-             (* end case *))
+    fun ** (t1, t2) = T.TupleTy [t1, t2]
+    infixr 8 **
+
+   (*
+
+    The rule [| e |] expands pval bindings in e into explicit concurrent operations.
+    
+    [|  
+        let pval x = e1
         in
-	   exp(e);
-	   !pvEnv
-        end (* rememberPVals *)
+	   e2
+        end
+    |]
 
-    fun rewriteLambda (pvEnv, fb as A.FB (f, p, e)) = (case splitCtx (pvEnv, fn x => x, e)
-        of NONE => fb
-	 | SOME _ => raise Fail "todo"
-        (* end case *))
+     =
 
-    fun transform (A.Module {exns, body}) = let
-	val env = rememberPVals(body)
+    callcc(fn k => let
+        val doneCell = setOnceCell()
+	val iv = ivarNew()
+        fun ctx () = if setCell(doneCell)
+            then ltcPop()
+            else throw k( [| e2[x -> ivarGet(iv)] |] )
+	in
+           ltcPush(ctx);
+           ivarPut(iv, e1);
+           ltcPop();
+	end)
+
+    The rules applies inductively for the other expression forms.
+
+    *)
+
+    fun mkBindVar (v, e) = A.ValBind(A.VarPat v, e)
+    fun mkBindVars (vs, es) = ListPair.map mkBindVar (vs, es)
+
+    fun expand (v, e, body) = let
+        val ty = TypeOf.exp(e)
+	val doneCell = RB.setOnceCellVar
+	val ivar = RB.ivarVar("ivar", ty)
+	val retK = RB.mkContVar(ty, "retK")
+	val ctx = RB.monoVar("ctx", Basis.unitTy --> RB.voidTy)
+        val ctxExp =
+	    A.FunExp (ctx,
+		AU.mkIfExp(RB.mkSetCell(doneCell),
+			   RB.mkLtcPop,
+			   RB.mkThrowcc(ty, retK, VarSubst.exp' (VarSubst.singleton(v, v)) (RB.mkIvarGet(ivar)) body)),
+		Basis.unitTy --> RB.voidTy)
+        val body = AU.mkSeqExp(
+		     RuntimeBasis.mkLtcPush(ctx),
+		   [ RB.mkIvarPut(ivar, e),
+		     RB.mkLtcPop
+		   ])
         in
-	    raise Fail "todo"
-        end (* transform *)
+	   RB.mkCallcc(ty,
+	      AU.mkLetExp(mkBindVars ([doneCell, #1(ivar), ctx], [RB.mkSetOnceCell, RB.mkIvar(ty), ctxExp]),
+			  body))
+        end
+
+    and trPval (A.VarPat v, e, body) = expand (v, e, body)
+      | trPval _ = raise Fail "todo"
 
   end (* LTCPVal *)

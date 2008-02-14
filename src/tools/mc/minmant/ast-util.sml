@@ -29,6 +29,18 @@ structure ASTUtil : sig
   (* create an AST int based on an SML int *)
     val mkInt : int -> AST.exp
 
+  (* create an expression that applies a function *)
+    val mkApplyExp : (AST.exp * AST.exp list) -> AST.exp
+
+  (* create a sequence of expressions *)
+    val mkSeqExp : (AST.exp * AST.exp list) -> AST.exp
+
+  (* create an if expression *)
+    val mkIfExp : (AST.exp * AST.exp * AST.exp) -> AST.exp
+
+  (* create an expression for a variable and its concete types *)
+    val mkVarExp : (AST.var * AST.ty list) -> AST.exp
+
   end = struct
 
     structure A = AST
@@ -81,5 +93,18 @@ structure ASTUtil : sig
 	  end
 
     fun mkInt n = A.ConstExp (A.LConst (Literal.Int (IntInf.fromInt n), Basis.intTy))
+
+    fun mkApplyExp (e, es) = 
+	A.ApplyExp (e, mkTupleExp(es), TypeUtil.rangeType(TypeOf.exp(e)))
+
+    fun mkSeqExp (e, es) = 
+	List.foldr (fn (e, seqExp) => A.SeqExp (e, seqExp)) e es
+
+    val mkTuple = A.TupleExp []
+
+    fun mkIfExp (e1, e2, e3) = A.IfExp(e1, e2, e3, TypeOf.exp(e2))
+
+    fun mkVarExp (v, tys) =
+	A.VarExp (v, [TypeUtil.apply(Var.typeOf(v), tys)])
 
   end

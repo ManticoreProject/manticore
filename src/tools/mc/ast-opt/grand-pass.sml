@@ -22,7 +22,8 @@ structure GrandPass : sig
     structure V = Var
     structure U = UnseenBasis
 
-    fun trExp (A.LetExp (b, e)) = A.LetExp (binding b, trExp e)
+    fun trExp (A.LetExp (A.PValBind (pat, e), body)) = trExp (LTCPVal.trPval (pat, e, body))
+      | trExp (A.LetExp (b, e)) = A.LetExp (binding b, trExp e)
       | trExp (A.IfExp (e1, e2, e3, t)) = A.IfExp (trExp e1, trExp e2, trExp e3, t)
       | trExp (A.CaseExp (e, ms, t)) = A.CaseExp (trExp e, map match ms, t)
       | trExp (A.HandleExp (e, ms, t)) = A.HandleExp (trExp e, map match ms, t)

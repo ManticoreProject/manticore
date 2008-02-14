@@ -1,6 +1,6 @@
 (*
  * Run me by saying
- *    mc -Cdebug=true -Cscheduler=work-stealers-test triv.pml
+ *    mc -Cdebug=true -Cscheduler=ir-dequeue-test triv.pml
  *) 
 
 #include "ir-dequeue.def"

@@ -4,7 +4,7 @@
  * All rights reserved.
  *)
 
-structure VarSubst (* : sig
+ (* : sig
 
     type subst
 
@@ -14,8 +14,9 @@ structure VarSubst (* : sig
     val pat       : subst -> AST.pat -> AST.pat
     val touchExp  : subst -> AST.exp -> AST.exp
 
-  end *) =
+  end *)
 
+structure VarSubst = 
   struct
   
     structure A = AST
@@ -102,6 +103,14 @@ structure VarSubst (* : sig
 	in
 	    expWalk f s
 	end
+
+    fun exp' s e = let
+        fun f (x, ts) = (case VarMap.find (s, x)
+			      of NONE => A.VarExp (x, ts)
+			       | SOME x' => e)
+        in
+	   expWalk f s
+        end
 
     (* touchExp : subst -> A.exp * A.exp -> A.exp *)
     (* Given a subst like [x -> xf] and an expression (x + 2), *)
