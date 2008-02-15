@@ -53,7 +53,7 @@ structure StdEnv : sig
 	    (B.parrayTyc,       BTy.K_BOXED,	BOMBasis.ropeTy),
 	    (R.ropeTyc,         BTy.K_BOXED,	BOMBasis.ropeTy),
 
-            (RB.ivarTyc,         BTy.K_BOXED,   BOMBasis.ivarTy),
+            (B.ivarTyc,         BTy.K_BOXED,   BOMBasis.ivarTy),
 (*
 	    (B.mvarTyc, ),
 *)
@@ -473,21 +473,25 @@ structure StdEnv : sig
 		  (U.tabD,              "tabD",			false),
 
 		  (B.todo,              "todo",			false),
+
+                 (* one-toucher futures *)
 		  (F.future1Touch,      "future1-touch",        false),
                   (F.future1Spawn,      "future1-spawn",        false),
 
      	         (* ivars *)
-		  (RB.ivarNew,          "ivar-new",             false),
-		  (RB.ivarGet,          "ivar-get",             false),
-		  (RB.ivarPut,          "ivar-put",             false),
+		  (B.iVar,              "ivar-new",             false),
+		  (B.iGet,              "ivar-get",             false),
+		  (B.iPut,              "ivar-put",             false),
 
                  (* continuations *)
                   (RB.callcc,            "callcc",               false),
 		  (RB.throwcc,           "throwcc",              false),
 
+		  (RB.threadExit,        "thread-exit",          false),
+
                  (* lazy task creation *)
                   (RB.ltcPop,            "ltc-pop",              false),
-                  (RB.ltcPush,           "ltc-push",             false)
+                  (RB.ltcPush,           "ltc-push",             false)		  
 		]  
 	  fun ins ((x, n, polyResTy), env) = (case H.find (Atom.atom n)
 		of NONE => raise Fail ("cannot find hlop " ^ n)

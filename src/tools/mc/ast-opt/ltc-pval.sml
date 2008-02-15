@@ -32,38 +32,50 @@ structure LTCPVal =
             throw k( [| e2[x -> ivarGet(iv)] |] )
 	in
            ltcPush(ctx);
-           ivarPut(iv, e1);
-           ltcPop();
+           let val x = e1
+           in
+              if (ltcPop())
+                 then [| e2 |]
+                 else (
+                    ivarPut(iv, e1);
+		    threadExit())
+            end
 	end)
 
-    The rules applies inductively for the other expression forms.
+    The rule applies inductively for the other syntactic forms.
 
     *)
 
     fun mkBindVar (v, e) = A.ValBind(A.VarPat v, e)
     fun mkBindVars (vs, es) = ListPair.map mkBindVar (vs, es)
 
-    fun expand (v, e, body) = let
+    fun ivarTy ty = AST.ConTy([ty], Basis.ivarTyc)
+
+    fun expand (x, e, body) = let
         val ty = TypeOf.exp(e)
 	val bodyTy = TypeOf.exp(body)
-	val ivar = RB.ivarVar(ty, "ivar")
-	val retK = RB.mkContVar(bodyTy, "retK")
+	val ivar = RB.monoVar("ivar", ivarTy(ty))
+	val retK = RB.monoVar("retK", RB.contTy(bodyTy))
 	val ctx = RB.monoVar("ctx", Basis.unitTy --> RB.voidTy)
         val ctxExp =
 	    A.FunExp (Var.new("x", Basis.unitTy),
-		      RB.mkThrowcc(bodyTy, retK, VarSubst.exp' (VarSubst.singleton(v, v)) (RB.mkIvarGet(ivar)) body),
+		      RB.mkThrowcc(bodyTy, retK, 
+		            VarSubst.exp' (VarSubst.singleton(x, x)) (RB.mkIVarGet(ty, ivar)) body),
 		Basis.unitTy --> RB.voidTy)
-        val body = AU.mkSeqExp(		     
-		   [ RuntimeBasis.mkLtcPush(ctx),
-		     RB.mkIvarPut(ivar, e)		     
-		   ],
-		   RB.mkLtcPop)
+        val body = AU.mkInt(10000)
+(*	    AU.mkSeqExp([RuntimeBasis.mkLtcPush(ctx)],
+		AU.mkLetExp(mkBindVars([x], [e]),	
+		  AU.mkIfExp (RB.mkLtcPop,
+		      VarSubst.exp' (VarSubst.singleton(x, x)) (RB.mkIVarGet(ty, ivar)) body,
+			      AU.mkSeqExp([RB.mkIVarPut(ty, ivar, e)],
+					  RB.mkLtcPop))))*)
         in
 	   RB.mkCallcc(bodyTy,
 	      A.FunExp (retK,
-			 AU.mkLetExp(mkBindVars ([#1(ivar), ctx], [RB.mkIvar(ty), ctxExp]),
-				     body),
-			RB.contTy(bodyTy) --> bodyTy))
+			body,
+(*			 AU.mkLetExp(mkBindVars ([ivar(*, ctx*)], [RB.mkIVarNew(ty)(*, ctxExp*)]),
+				     body), *)
+			bodyTy))
         end
 
     and trPval (A.VarPat v, e, body) = expand (v, e, body)

@@ -6,9 +6,9 @@
  * create function for i-variable.
  *)
 
-#include "types.def"
+#include "ivar.def"
 
-define inline @ivar-new (_ : unit) : [list, any, int] = 
-    let x : ![list, any, int] = alloc (enum(0), enum(0), 0)
+define inline @ivar-new (_ : unit / exh : exh) : ivar = 
+    let x : ivar = alloc (enum(0), enum(0), 0)
     return (x)
 ;

@@ -11,7 +11,7 @@
 #include "runtime-offsets.def"
 #include "debugging.def"
 
-define @ltc-pop(arg : unit / exh : exh) : any =
+define @ltc-pop(arg : unit / exh : exh) : bool =
  (* initialize the ltc scheduler and return its spawn function *)
   fun init (_ : unit / exh : exh) : any =
      (* scheduler should always be instantiated by now *)
@@ -26,14 +26,10 @@ define @ltc-pop(arg : unit / exh : exh) : any =
 
     cont none () = 
 	 let _ : unit = @spin-unlock-ird (ltq, mask / exh)
-	(* there is nothing to pop; invoke the scheduler to potentially steal work. *)
-	 @thread-exit( /exh)
+         return(FALSE)
     cont some (f : any) =
 	 let _ : unit = @spin-unlock-ird (ltq, mask / exh)
-        (* execute the context and then invoke the scheduler. *)
-	 let f : ctx_fun = (ctx_fun)f
-	 do apply f (UNIT / exh)
-	 @thread-exit ( / exh)
+         return(TRUE)
 
     do @ird-pop-hd(ltq, none, some / exh)
 

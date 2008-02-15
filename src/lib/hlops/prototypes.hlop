@@ -73,6 +73,7 @@ define inline @fiber (f : fiber_fun / exh : exh) : fiber;
 define @atomic-yield (vp : vproc / exh : exh) : unit;
 define @yield (vp : vproc / exh : exh) : unit;
 define inline @thread-exit ( / exh : exh) noreturn;
+define inline @exit (_ : unit / exh : exh) noreturn;
 define inline @spawn (f : fiber_fun / exh : exh) : fgs;
 
 define @generic-hlop-test (n : int / exh : exh) : any;
@@ -82,5 +83,5 @@ define @wait (secs : double, done : ![bool] / exh : exh) : ();
 define @test-deadlock (f : fun (unit / exh -> bool), waitSecs : double, exhDeadlock : exh, exhIncorrectAns : exh / exh : exh) : ();
 
 (* exported first-class continuations *)
-define @callcc (arg : [fun(cont(any) / exh -> any)] / exh : exh) : any;
+define @callcc (arg : fun(cont(any) / exh -> any) / exh : exh) : any;
 define @throwcc (arg : [cont(any), any], x : any / exh : exh) : any;

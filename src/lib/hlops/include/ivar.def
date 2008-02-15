@@ -11,9 +11,9 @@
 #ifndef _IVAR_DEF_
 #define _IVAR_DEF_
 
-typedef ivar = [list, any, int];
+typedef ivar = ![list, any, int];
 
-define inline @ivar-new (_ : unit) : ivar;
+define inline @ivar-new (_ : unit / exh : exh) : ivar;
 define inline @ivar-put (arg : [ivar, any] / exh : exh) : unit;
 define inline @ivar-get (arg : [ivar]) : any;
 

@@ -134,8 +134,9 @@ structure BOMBasis : BOM_BASIS =
 	  ])
 
   (* ivars *)
-    val ivarTyc = BOMTyCon.newDataTyc ("ivar", 0)
-    val ivarTy = BTy.T_TyCon ivarTyc
+    val ivarTy = BTy.T_Tuple(true, [
+               listTy, BTy.T_Any, BTy.T_Raw BTy.T_Int
+	    ])
 
   (* The BOM type for channels.  This definition must match that given in
    *
