@@ -8,8 +8,6 @@
 #include "vproc-queue.def"
 #include "cml.def"
 
-define @work-stealers-startup ( / exh : exh) : ();
-
 define @random-wait (done : ![bool] /exh: exh) : () =
      (* percentage of the time that we do not wait *)
       let pWait : double = 0.90:double

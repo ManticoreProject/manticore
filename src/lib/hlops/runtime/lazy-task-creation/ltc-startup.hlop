@@ -19,7 +19,7 @@ define @rand-int(lo : int, hi : int / exh : exh) : int =
   let hi : double = wrap(I32ToF64(hi))
   let r : ml_double = @drand (lo, hi / exh)
   let r : double = unwrap(r)
-  let r : int = F32ToI32(r)
+  let r : int = F64ToI32(r)
   return (r)
 ;
 
@@ -27,14 +27,14 @@ define @pick-random-elt (ls : list / exh : exh) : any =
   let len : ml_int = @list-length(ls /exh)
   let r : int = @rand-int(0, unwrap(len) / exh)
   let r : ml_int = wrap(r)
-  let arg : [list, ml_int] = alloc(ltqs, r)
+  let arg : [list, ml_int] = alloc(ls, r)
   let elt : any = @list-nth(arg / exh)
   return (elt)
 ;
 
 define @ltc-startup ( / exh : exh) : ir_dequeue =
 
-  let vps : list = ccall ListVProcs(host_vproc)
+(*  let vps : list = ccall ListVProcs(host_vproc)
 
   fun f (_ :any / exh : exh) : ltq =
       let ltq : ir_dequeue = IR_DEQUEUE()
@@ -83,7 +83,7 @@ define @ltc-startup ( / exh : exh) : ir_dequeue =
   let _ : any = @assoc-list-lookup (TAG_LTC, init, fgs / exh)
 
   do @scheduler-startup (mkSwitch, fgs, vps / exh)
-
-  return (ltq)
+*)
+  return (enum(0))
 ;
 

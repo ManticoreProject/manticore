@@ -12,6 +12,7 @@
 #include "fgs.def"
 #include "ivar.def"
 #include "ltc.def"
+#include "scheduling-ops.def"
 
 define @print (s : ml_string / exh : exh) : unit;
 define @string-concat2 (arg : [ml_string, ml_string] / _ : exh) : ml_string;
@@ -65,17 +66,6 @@ define @rope-sum (r : rope / exh : exh) : ml_int;
 define @simple-cat (r1 : rope, r2 : rope / exh : exh) : rope;
 define @tabD (agrs: [fun(ml_int/exh->any), ml_int, ml_int, ml_int, ml_int] / exh:exh) : rope;
 
-(* scheduling operations *)
-define @dispatch-action (act : sigact, dst : vproc / exh : exh) : ();
-define @scheduler-startup (mkAct : fun (vproc / exh -> sigact), fgs : fgs, vps : list / exh : exh) : ();
-define @default-scheduler-startup ( / exh : exh) : ();
-define inline @fiber (f : fiber_fun / exh : exh) : fiber;
-define @atomic-yield (vp : vproc / exh : exh) : unit;
-define @yield (vp : vproc / exh : exh) : unit;
-define inline @thread-exit ( / exh : exh) noreturn;
-define inline @exit (_ : unit / exh : exh) noreturn;
-define inline @spawn (f : fiber_fun / exh : exh) : fgs;
-
 define @generic-hlop-test (n : int / exh : exh) : any;
 
 (* testing operations *)
@@ -84,4 +74,4 @@ define @test-deadlock (f : fun (unit / exh -> bool), waitSecs : double, exhDeadl
 
 (* exported first-class continuations *)
 define @callcc (arg : fun(cont(any) / exh -> any) / exh : exh) : any;
-define @throwcc (arg : [cont(any), any], x : any / exh : exh) : any;
+define @throwcc (arg : [cont(any), any] / exh : exh) : any;

@@ -7,14 +7,26 @@
  *)
 
 #include "types.def"
+#include "fgs.def"
 
 #ifndef _IVAR_DEF_
 #define _IVAR_DEF_
 
+(* list of blocked threads, value, spin lock*)
 typedef ivar = ![list, any, int];
+typedef ivar_item = [fgs, cont(any)];
+
+#define IVAR_BLOCKED_LIST           0
+#define IVAR_VALUE                  1
+#define IVAR_SPIN_LOCK              2
+
+#define IVAR_ITEM_FGS               0
+#define IVAR_ITEM_CONT              1
+
+#define IVAR_EMPTY_VAL              enum(0)
 
 define inline @ivar-new (_ : unit / exh : exh) : ivar;
 define inline @ivar-put (arg : [ivar, any] / exh : exh) : unit;
-define inline @ivar-get (arg : [ivar]) : any;
+define inline @ivar-get (arg : ivar / exh : exh) : any;
 
 #endif /*!  _IVAR_DEF_ */

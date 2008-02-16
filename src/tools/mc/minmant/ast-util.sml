@@ -103,6 +103,6 @@ structure ASTUtil : sig
     fun mkIfExp (e1, e2, e3) = A.IfExp(e1, e2, e3, TypeOf.exp(e2))
 
     fun mkVarExp (v, tys) =
-	A.VarExp (v, [TypeUtil.apply(Var.typeOf(v), tys)])
+	A.VarExp (v, tys)
 
   end

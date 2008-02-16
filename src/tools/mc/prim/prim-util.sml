@@ -84,6 +84,7 @@ structure PrimUtil : sig
       | nameOf (P.I32ToF64 _) = "I32ToF64"
       | nameOf (P.I64ToF32 _) = "I64ToF32"
       | nameOf (P.I64ToF64 _) = "I64ToF64"
+      | nameOf (P.F64ToI32 _) = "F64ToI32"
       | nameOf (P.I32FetchAndAdd _) = "I32FetchAndAdd"
       | nameOf (P.I64FetchAndAdd _) = "I64FetchAndAdd"
       | nameOf (P.CAS _) = "CAS"
@@ -154,6 +155,7 @@ structure PrimUtil : sig
       | varsOf (P.I32ToF64 a) = [a]
       | varsOf (P.I64ToF32 a) = [a]
       | varsOf (P.I64ToF64 a) = [a]
+      | varsOf (P.F64ToI32 a) = [a]
       | varsOf (P.I32FetchAndAdd(a, b)) = [a, b]
       | varsOf (P.I64FetchAndAdd(a, b)) = [a, b]
       | varsOf (P.CAS(a, b, c)) = [a, b, c]
@@ -237,6 +239,7 @@ structure PrimUtil : sig
       | explode (P.I32ToF64 a) = (p1 P.I32ToF64, [a])
       | explode (P.I64ToF32 a) = (p1 P.I64ToF32, [a])
       | explode (P.I64ToF64 a) = (p1 P.I64ToF64, [a])
+      | explode (P.F64ToI32 a) = (p1 P.F64ToI32, [a])
       | explode (P.I32FetchAndAdd(a, b)) = (p2 P.I32FetchAndAdd, [a, b])
       | explode (P.I64FetchAndAdd(a, b)) = (p2 P.I64FetchAndAdd, [a, b])
       | explode (P.CAS(a, b, c)) = (p3 P.CAS, [a, b, c])

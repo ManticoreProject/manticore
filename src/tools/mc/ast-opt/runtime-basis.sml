@@ -44,25 +44,21 @@ structure RuntimeBasis
 
     val voidTy = T.VarTy (TyVar.new (Atom.atom "'a"))
 
-    fun monoVar (name, ty) = Var.new (name, ty)
-
-    fun polyVar (name, mkTy) = Var.newPoly (name, forall mkTy)
-
    (* first-class continuations *)
     val contTyc = TyCon.newAbsTyc (Atom.atom "cont", 1, false)
     fun contTy t = T.ConTy([t], contTyc)
 
-    val callcc = polyVar ("callcc",
+    val callcc = BasisUtils.polyVar ("callcc",
 			  fn tv => (contTy(tv) --> tv) --> tv)
 
-    val throwcc = polyVar ("throwcc",
+    val throwcc = BasisUtils.polyVar ("throwcc",
 			fn tv => AST.TupleTy [contTy(tv), tv] --> voidTy)
 
     fun mkCallcc (ty, e) =
 	AU.mkApplyExp(AU.mkVarExp(callcc, [ty]), [e])
 
     fun mkThrowcc (ty, k, e) =
-	AU.mkApplyExp(AU.mkVarExp(throwcc, [ty]), [A.VarExp(k, [contTy(ty)]), e])
+	AU.mkApplyExp(AU.mkVarExp(throwcc, [ty]), [A.VarExp(k, []), e])
 
    (* ivars *)
     fun mkIVarNew (ty) =
@@ -70,17 +66,17 @@ structure RuntimeBasis
 
     fun mkIVarGet (ty, ivar) = 
 	AU.mkApplyExp(AU.mkVarExp(Basis.iGet, [ty]),
-		      [A.VarExp(ivar, [ty])])
+		      [A.VarExp(ivar, [])])
 
     fun mkIVarPut (ty, ivar, e) = 
 	AU.mkApplyExp(AU.mkVarExp(Basis.iPut, [ty]),
-		      [A.VarExp(ivar, [ty]), e])
+		      [A.VarExp(ivar, []), e])
 
    (* lazy task creation *)
-    val ltcPush = monoVar ("ltcPush", 
+    val ltcPush = BasisUtils.monoVar ("ltcPush", 
 			   (Basis.unitTy --> voidTy) --> voidTy)
 
-    val ltcPop  = monoVar ("ltcPop", Basis.unitTy --> Basis.boolTy)
+    val ltcPop  = BasisUtils.monoVar ("ltcPop", Basis.unitTy --> Basis.boolTy)
 
     fun mkLtcPush (ctx) = 
 	AU.mkApplyExp (A.VarExp(ltcPush, []), [A.VarExp(ctx, [])])
@@ -88,19 +84,20 @@ structure RuntimeBasis
     val mkLtcPop =
 	AU.mkApplyExp (A.VarExp(ltcPop, []), [])
 
-    val threadExit = monoVar("threadExit", voidTy)
+    val threadExit = BasisUtils.monoVar("threadExit", Basis.unitTy --> voidTy)
+    val mkThreadExit = AU.mkApplyExp(A.VarExp(threadExit, []), [])
 
    (* set once cells *)
     val setOnceCellTyc = TyCon.newAbsTyc(Atom.atom "set_once_cell", 0, false)
     val setOnceCellTy = T.ConTy([], setOnceCellTyc)
 			
-    val setOnceCell = monoVar ("setOnceCell", 
+    val setOnceCell = BasisUtils.monoVar ("setOnceCell", 
 			       Basis.unitTy --> setOnceCellTy)
 		      
-    val setCell  = monoVar ("setCell", 
+    val setCell  = BasisUtils.monoVar ("setCell", 
 			    setOnceCellTy --> Basis.boolTy)
 		   
-    val setOnceCellVar = monoVar("doneCell", setOnceCellTy)
+    val setOnceCellVar = BasisUtils.monoVar("doneCell", setOnceCellTy)
 			 
     val mkSetOnceCell = 
 	AU.mkApplyExp(A.VarExp(setOnceCell, []) , [])

@@ -7,9 +7,12 @@
  *)
 
 #include "types.def"
+#include "assert.def"
 
 define inline @forward (vp : vproc, sig : signal / exh : exh) noreturn;
 
-define inline @exit (_ : unit / exh : exh) noreturn = 
-  @forward (host_vproc, STOP / exh)
+define inline @exit (_ : unit / exh : exh) : any = 
+  do @forward (host_vproc, STOP / exh)
+  do assert(FALSE)
+  return(enum(0))
 ;

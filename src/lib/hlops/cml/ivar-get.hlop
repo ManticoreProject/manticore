@@ -7,34 +7,31 @@
  *)
 
 #include "ivar.def"
+#include "debugging.def"
 
-define @dispatch (vp : vproc) noreturn;
-
-define inline @ivar-get (arg : [ivar]) : any =
-    let ivar : ivar = #0(arg)
+define inline @ivar-get (ivar : ivar / exh : exh) : any =
     let readList : list = #0(ivar)
     let value : any = #1(ivar)
-    let readFlag : int = #2(ivar)
-    do #2(ivar) := I32Add(readFlag, 1)
-    let dummyTid : tid = enum(0)
-    case value
-     of enum(0) =>
+    let readFlag : int = I32FetchAndAdd(&2(ivar), 1)
+    let fgs : fgs = @get-fgs(host_vproc / exh)
+    if Equal(value, IVAR_EMPTY_VAL)
+       then
           (* atomic update, kinda like fetch and increment *)
           cont k (x : any) = return (x)
-          let item : [enum(0), cont(any)] = alloc (dummyTid, k)
+          let item : ivar_item = alloc (fgs, k)
           (* atomic update *)
           fun loop () : () = 
              let tmp : list = #0(ivar)
              let newlist : list = CONS(item, tmp)
+             let newlist : list = promote(newlist)
              let flag : bool = CAS(&0(ivar), tmp, newlist)
              if BEq(flag, enum(0))
                then apply loop ()
                else return () 
           do apply loop()
           do #2(ivar) := I32Sub(readFlag, 1)
-          @dispatch (host_vproc)
-      | x : any =>
+          @dispatch (host_vproc / exh)
+        else
           do #2(ivar) := I32Sub(readFlag, 1)
-          return (x)                        
-    end
+          return (value)
 ;

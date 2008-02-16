@@ -7,43 +7,48 @@
  *)
 
 #include "ivar.def"
-
-define @enqueue (vp : vproc, tid : tid, fiber : fiber / exh : exh) : ();
-define @forward (vp : vproc, sig : signal / exh : exh) noreturn;
+#include "vproc-queue.def"
+#include "debugging.def"
+#include "assert.def"
 
 define inline @ivar-put (arg : [ivar, any] / exh : exh) : unit = 
     let ivar : ivar = #0(arg)
     let x : any = #1(arg)
-    let readL : list = #0(ivar)
-    let readflag : int = #2(ivar)
-    let oldValue : any = CAS (&1(ivar), enum(0), x)
-    let dummyTid : tid = enum(0)
-    case oldValue
-     of enum(0) =>
-          fun spin () : () =
-        	if BEq(#2(ivar), 0)
-		  then return ()
-		  else apply spin ()
-          do apply spin ()
+    let x : any = (any)x
+    let x : any = promote(x)
+    let readL : list = SELECT(IVAR_BLOCKED_LIST, ivar)
+    let oldValue : any = CAS (&IVAR_VALUE(ivar), enum(0), x)
+    if Equal(oldValue,IVAR_EMPTY_VAL)
+       then
+          fun spin (/ exh : exh) : () =
+              if I32Eq (#2(ivar), 0)
+                 then return ()
+                 else apply spin (/ exh)
+          do apply spin (/ exh)
           case readL
-           of enum(0) => return ()
-            | CONS(hd : any, tl : list) =>                      
-        	let fiber : cont(any) = #1(([int, cont(any)])hd)
-        	do @enqueue(host_vproc, dummyTid, fiber / exh)
+           of NIL =>               
+	      return (UNIT)
+            | CONS(hd : any, tl : list) =>                              	
+                let fgs : fgs = #0((ivar_item)hd)
+                let k' : cont(any) = #1((ivar_item)hd)
+                cont k (_ : unit) = throw k'(x)
+                let k : fiber = (fiber)k
+        	do @enqueue(host_vproc, fgs, k / exh)
         	fun wakeRead(l : list) : () =
                       case l 
                 	of enum(0) => return ()
-                	 | CONS(hd' : any, tl' : list) =>
-                             let fiber' : cont(any) = #1(([int, cont(any)])hd')
-                             let k : cont(any) = throw fiber'(x) 
-                             do @enqueue(host_vproc, dummyTid, k / exh)
+                	 | CONS(hd' : any, tl' : list) =>                             
+                             let fgs : fgs = #0((ivar_item)hd')
+                             let k' : cont(any) = #1((ivar_item)hd')
+                             cont k (_ : unit) = throw k'(x)
+                             let k : fiber = (fiber)k
+                             do @enqueue(host_vproc, fgs, k / exh)
                              apply wakeRead(tl')
                        end
-        	do apply wakeRead(tl)
-        	return () 
+        	do apply wakeRead(tl)                
+        	return (UNIT) 
           end
-      | _ => 
-          let vp : vproc = host_vproc
-          @forward (vp, STOP)
-    end
+        else
+          do assert(NotEqual(oldValue, IVAR_EMPTY_VAL))
+          @thread-exit (/exh)
 ;

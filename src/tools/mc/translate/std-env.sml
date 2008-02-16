@@ -479,15 +479,15 @@ structure StdEnv : sig
                   (F.future1Spawn,      "future1-spawn",        false),
 
      	         (* ivars *)
-		  (B.iVar,              "ivar-new",             false),
-		  (B.iGet,              "ivar-get",             false),
-		  (B.iPut,              "ivar-put",             false),
+		  (B.iVar,              "ivar-new",              true),
+		  (B.iGet,              "ivar-get",              true),
+		  (B.iPut,              "ivar-put",              false),
 
                  (* continuations *)
                   (RB.callcc,            "callcc",               false),
 		  (RB.throwcc,           "throwcc",              false),
 
-		  (RB.threadExit,        "thread-exit",          false),
+		  (RB.threadExit,        "exit",                 true),
 
                  (* lazy task creation *)
                   (RB.ltcPop,            "ltc-pop",              false),

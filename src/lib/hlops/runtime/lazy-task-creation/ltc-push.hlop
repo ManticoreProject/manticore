@@ -8,10 +8,11 @@
 
 #include "ltc.def"
 #include "types.def"
+#include "fgs.def"
 #include "runtime-offsets.def"
 #include "debugging.def"
 
-define @ltc-push(arg : [ctx_fun] / exh : exh) : unit =
+define @ltc-push(f : ctx_fun / exh : exh) : unit =
   (* initialize the ltc scheduler and return its spawn function *)
   fun init (_ : unit / exh : exh) : any =
       let ltq : ir_dequeue = @ltc-startup ( / exh)
@@ -20,7 +21,7 @@ define @ltc-push(arg : [ctx_fun] / exh : exh) : unit =
   (* obtain the spawn function *)
   let ltq : ir_dequeue = @assoc-list-lookup (TAG_LTC, init, fgs / exh)
 
-  let f : ctx_fun = #0(arg)
+(*  let f : ctx_fun = #0(arg)*)
   let elt : ir_dequeue_elt = IR_DEQUEUE_NEW(f)
   let elt : ir_dequeue_elt = promote(elt)
 

@@ -8,11 +8,10 @@
 #include "vproc-queue.def"
 #include "runtime-offsets.def"
 
-define @work-stealers-startup ( / exh : exh) : ();
-
 define @work-stealers-test-startup ( / exh : exh) : () =
   do @work-stealers-startup (/ exh)
-              let done : ![bool] = alloc(FALSE)
+  let done : ![bool] = alloc(FALSE)
+  let done : ![bool] = promote(done)
 
   fun doit (i : int / exh : exh ) : () =
       if I32Eq(i,0)

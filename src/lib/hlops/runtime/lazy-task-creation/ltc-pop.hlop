@@ -10,6 +10,8 @@
 #include "types.def"
 #include "runtime-offsets.def"
 #include "debugging.def"
+#include "assert.def"
+#include "fgs.def"
 
 define @ltc-pop(arg : unit / exh : exh) : bool =
  (* initialize the ltc scheduler and return its spawn function *)

@@ -7,6 +7,7 @@
  *)
 
 #include "ir-dequeue.def"
+#include "tags.def"
 
 #ifndef _LTC_DEF_
 #define _LTC_DEF_
@@ -15,6 +16,6 @@ typedef ctx_fun = fun(unit / exh -> any);
 
 define @ltc-startup ( / exh : exh) : ir_dequeue;
 define @ltc-pop(arg : unit / exh : exh) : any;
-define @ltc-push(arg : [ctx_fun] / exh : exh) : unit;
+define @ltc-push(f : ctx_fun / exh : exh) : unit;
 
 #endif /*!  _LTC_DEF_ */

@@ -75,6 +75,7 @@ structure Prim =
       | I32ToF64 of 'var		(* int -> double conversion *)
       | I64ToF32 of 'var		(* long -> float conversion *)
       | I64ToF64 of 'var		(* long -> double conversion *)
+      | F64ToI32 of 'var                (* double -> int conversion *)
     (* atomic operations *)
       | I32FetchAndAdd of 'var * 'var
       | I64FetchAndAdd of 'var * 'var

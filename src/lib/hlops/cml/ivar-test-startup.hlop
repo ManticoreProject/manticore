@@ -1,0 +1,68 @@
+(*
+ * Run me by saying
+ *    mc -Cdebug=true -Cscheduler=ivar-test triv.pml
+ *) 
+
+#include "ivar.def"
+#include "testing.def"
+#include "vproc-queue.def"
+#include "runtime-offsets.def"
+
+define @test2 (/ exh : exh) : bool =
+  let nThreads : int = 2
+  let elt : int = 1024
+  
+  cont k () = return(FALSE)
+  let k : cont() = promote(k)
+
+  let i : ![int] = alloc(nThreads)
+  let i : ![int] = promote(i)
+
+  let iv: ivar = @ivar-new(UNIT / exh)
+  fun get (_ : unit / exh : exh) : unit =
+      let x : any = @ivar-get(iv / exh)
+      let x : [int] = ([int])x
+      let z : int = unwrap(x)
+      let i : int = I32FetchAndAdd(&0(i), 1)
+      if I32Eq(z, elt)
+         then return (UNIT)
+         else throw k()
+
+  fun gets (i : int / exh : exh) : () =
+      if I32Eq(i,0)
+         then return ()
+         else let f : fgs = @spawn (get / exh)
+              apply gets(I32Sub(i,1) / exh)
+
+  do apply gets(nThreads / exh)
+
+  fun wait ( /exh : exh) : () =
+      if I32Eq (i, nThreads)
+         then return()
+         else apply wait(/exh)
+
+  let x : [int] = wrap(elt)
+  let arg : [ivar,any] = alloc(iv,x)
+  let _ : unit = @ivar-put (arg / exh)
+
+  do apply wait(/exh)
+      
+  return(TRUE)
+;
+
+define @test1 (/ exh : exh) : bool =
+  let iv: ivar = @ivar-new(UNIT / exh)
+  let x : [int] = wrap(1024)
+  let arg : [ivar,any] = alloc(iv,x)
+  let _ : unit = @ivar-put(arg / exh)
+  let y : any = @ivar-get(iv / exh)  
+  let y : [int] = ([int])y
+  return(Equal (x, unwrap(y)))
+;
+
+define @ivar-test-startup ( / exh : exh) : () =
+  do @work-stealers-startup (/ exh)
+  do_concurrent_test(test1, 20.0:double)
+  do_concurrent_test(test2, 20.0:double) 
+  return ()
+;
