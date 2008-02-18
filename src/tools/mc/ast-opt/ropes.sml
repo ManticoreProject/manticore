@@ -23,7 +23,8 @@ structure Ropes : sig
 
     exception VariableArityType
 
-    val maxLeafSize = 4 (* This is currently small, for testing purposes. *)
+    val maxLeafSize = Controls.get BasicControl.maxLeafSize
+                      (* Default is 4, for easy testing. *)
 
     val rope = Atom.atom "rope"
 	       

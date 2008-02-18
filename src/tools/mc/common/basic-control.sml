@@ -35,6 +35,9 @@ structure BasicControl :  sig
   (* enable logging mode *)
     val logging : bool Controls.control
 
+  (* maximum leaf size in ropes *)  
+    val maxLeafSize : int Controls.control 
+
   (* wrap a 'pre -> 'post pass with a tracing diagnostic, controled by the 
    * "verbose" control.
    *)
@@ -111,6 +114,14 @@ structure BasicControl :  sig
 	    default = 0
 	  }
 
+    val maxLeafSize : int Controls.control = Controls.genControl {
+            name = "max-leaf-size",
+            pri = [0, 0],  (* FIXME What should this be? *)
+            obscurity = 0, (* FIXME What should this be? *)
+            help = "sets the upper bound on number of data items at leaves of ropes",
+            default = 4
+          }
+
   (* custom scheduler *)
     val scheduler = Controls.genControl {
 	    name = "scheduler",
@@ -167,7 +178,11 @@ structure BasicControl :  sig
 	  ControlRegistry.register topRegistry {
 	      ctl = Controls.stringControl ControlUtil.Cvt.bool logging,
 	      envName = NONE
-	    })
+	    };
+          ControlRegistry.register topRegistry {
+              ctl = Controls.stringControl ControlUtil.Cvt.int maxLeafSize,
+              envName = NONE
+            })
 
 
     local
