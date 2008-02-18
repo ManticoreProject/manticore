@@ -42,7 +42,7 @@ functor VarDefFn (
   fun getAndClrDefOf vdt = Tbl.remove vdt
 
   fun useDefOf vdt v = if (CFG.Var.useCount v = 1)
-	then getAndClrDefOf vdt v
+	then getAndClrDefOf vdt v 
 	else getDefOf vdt v
 
   fun setDefOf vdt (v,e) = Tbl.insert vdt (v,e)

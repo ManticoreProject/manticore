@@ -1,0 +1,127 @@
+(* ltc-scheduler.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Scheduler for lazy task creation.
+ *)
+
+#include "ltc.def"
+#include "fgs.def"
+#include "types.def"
+#include "runtime-offsets.def"
+#include "debugging.def"
+#include "assert.def"
+
+extern void *ListVProcs (void *) __attribute__((alloc));
+
+(* returns a random number within lower and upper bounds *)
+define @rand-int(lo : int, hi : int / exh : exh) : int =
+  let lo : ml_double = wrap(I32ToF64(lo))
+  let hi : ml_double = wrap(I32ToF64(hi))
+  let r : ml_double = @drand (lo, hi / exh)
+  let r : double = unwrap(r)
+  let r : int = F64ToI32(r)
+  return (r)
+;
+
+(* pick an element uniformly at random from the list *)
+define @pick-random-elt(ls : list / exh : exh) : any =
+  let len : ml_int = @list-length(ls /exh)
+  let r : int = @rand-int(0, unwrap(len) / exh)
+  let r : ml_int = wrap(r)
+  let arg : [list, ml_int] = alloc(ls, r)
+  let elt : any = @list-nth(arg / exh)
+  return (elt)
+;
+
+define @wrap-vps(vps : list / exh : exh) : list =
+  fun loop (vps : list, wvps : list) : list =
+      case vps
+       of NIL => return(wvps)
+	| CONS(vp : vproc, vps : list) => 
+	  let wvp : [vproc] = alloc(vp)
+	  apply loop(vps, CONS(wvp, wvps))
+       end
+  apply loop (vps, NIL)
+;
+
+define @ltc-scheduler (fgs : fgs / exh : exh) : ltq_fun =
+
+  let vps : list = ccall ListVProcs(host_vproc)
+  let vps' : list = @wrap-vps(vps / exh)
+
+ (* create a mapping from vprocs to their lazy task queues. *)
+  fun mkLtqMp (vps : list, mp : list / exh : exh) : list =
+      case vps
+       of NIL => return(mp)
+	| CONS(vp : vproc, vps : list) =>
+          let ltq : ir_dequeue = IR_DEQUEUE()
+          let elt : [vproc, ir_dequeue] = alloc(vp, ltq)
+	  apply mkLtqMp(vps, CONS(elt, mp) / exh)
+      end
+  let vpLtqMp : list = apply mkLtqMp(vps, NIL / exh)
+  let vpLtqMp : list = promote(vpLtqMp)
+
+ (* find the lazy task queue for a vproc. *)
+  fun findLtq (vp : vproc, ltqAlist : list / exh : exh) : ir_dequeue =
+      case ltqAlist
+       of NIL => throw exh(tag(findAtq))
+	| CONS(vpLtq : [vproc, ir_dequeue], rest : list) =>
+	  if Equal(vp, #0(vpLtq))
+             then return (#1(vpLtq))
+             else apply findLtq (vp, rest / exh)
+      end
+
+  fun popSelf (ltq : ir_dequeue, none : cont(), some : cont(fiber) / exh : exh) : () =
+      do @ird-pop-hd(ltq, none, some / exh)
+      return ()
+  fun popOther (ltq : ir_dequeue, none : cont(), some : cont(fiber) / exh : exh) : () = 
+      do @ird-pop-tl(ltq, none, some / exh)
+      return ()
+
+ (* attempt to pop an element from the lazy task queue. *)
+  cont pop (popFn : fun (ir_dequeue, cont(), cont(fiber) / exh ->), 
+            ltq : ir_dequeue, 
+            none : cont(), some : cont(fiber)) =
+       let mask : bool = @spin-lock-ird (ltq / exh)
+        cont none' () =
+             let _ : unit = @spin-unlock-ird (ltq, mask / exh)
+             throw none()
+        cont some'(k : fiber) = 
+             let _ : unit = @spin-unlock-ird (ltq, mask / exh)
+             throw some(k)
+        let mask : bool = @spin-lock-ird (ltq / exh)
+        do apply popFn (ltq, none, some / exh)
+        throw exh(tag(ltcPop))
+
+  fun mkSwitch (self : vproc / exh : exh) : sigact =
+      let selfLtq : ir_dequeue = apply findLtq (self, vpLtqMp / exh)      
+      cont switch (s: signal) =
+           cont dispatch (k : fiber) =
+                @run(self, switch, fgs, k / exh)
+          (* try to steal a frame from one of the other vprocs. *)
+           cont steal () =
+                let victim : any = @pick-random-elt(vps / exh)
+                let victim : [vproc] = ([vproc])victim
+                let victimLtq : ir_dequeue = apply findLtq (#0(victim), vpLtqMp / exh)
+                throw pop(popOther, victimLtq, steal, dispatch)
+
+           if Equal(s, STOP)
+              then throw pop(popSelf, selfLtq, steal, dispatch)
+              else let _ : unit = @atomic-yield(self / exh)
+                   let k : fiber = (fiber)s
+                   throw k(UNIT)
+      return(switch)
+
+ (* make the lazy task queue accessible to fibers. we must use a lookup function, since computations
+  * must obtain access to the lazy task queues of their own vprocs.
+  *)
+  fun ltqFn (/exh : exh) : ir_dequeue = 
+      apply findLtq (host_vproc, vpLtqMp / exh)
+
+  do @scheduler-startup (mkSwitch, fgs, vps / exh)
+
+  return (ltqFn)
+;
+

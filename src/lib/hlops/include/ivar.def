@@ -14,14 +14,14 @@
 
 (* list of blocked threads, value, spin lock*)
 typedef ivar = ![list, any, int];
-typedef ivar_item = [fgs, cont(any)];
+typedef blocked_thread = [fgs, cont(any)];
 
 #define IVAR_BLOCKED_LIST           0
 #define IVAR_VALUE                  1
 #define IVAR_SPIN_LOCK              2
 
-#define IVAR_ITEM_FGS               0
-#define IVAR_ITEM_CONT              1
+#define BLOCKED_THREAD_FGS               0
+#define BLOCKED_THREAD_CONT              1
 
 #define IVAR_EMPTY_VAL              enum(0)
 

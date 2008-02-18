@@ -34,6 +34,7 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
     val i64ty = 64
     val f32ty = 32
     val f64ty = 64
+    val boolTy = 64
 
     fun wordLit i = T.LI (T.I.fromInt (i64ty, i))
 
@@ -138,23 +139,23 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		  (* atomic operations *)
 		    | P.I32FetchAndAdd(addr, x) => let
 			val (r, stms) = BE.AtomicOps.genFetchAndAdd32 {
-				 addr=T.LOAD(anyTy, defOf addr, ()),
+				 addr=T.LOAD(i32ty, defOf addr, ()),
 				 x=defOf x
 			       }
 			in
 			  BE.VarDef.flushLoads varDefTbl
 			  @ stms
-			  @ gprBind (anyTy, v, r)
+			  @ gprBind (i32ty, v, r)
 			end
 		    | P.I64FetchAndAdd(addr, x) => let
 			val (r, stms) = BE.AtomicOps.genFetchAndAdd64 {
-				 addr=T.LOAD(anyTy, defOf addr, ()),
+				 addr=T.LOAD(i64ty, defOf addr, ()),
 				 x=defOf x
 			       }
 			in
 			  BE.VarDef.flushLoads varDefTbl
 			  @ stms
-			  @ gprBind (anyTy, v, r)
+			  @ gprBind (i64ty, v, r)
 			end
 		    | P.CAS(addr, key, new) => let
 			val (_, r, stms) = BE.AtomicOps.genCompareAndSwapWord{
@@ -169,18 +170,18 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		    | P.TAS addr => let
 			val tmp = Cells.newReg ()
 			val (r, stms) = BE.AtomicOps.genTestAndSetWord{
-				    addr = T.LOAD(anyTy, defOf addr, ()),
+				    addr = T.LOAD(boolTy, defOf addr, ()),
 				    newVal = tmp
 				  }
 			in
 			  BE.VarDef.flushLoads varDefTbl
-			  @ [T.MV (anyTy, tmp, T.LI BE.Spec.trueRep)]
+			  @ [T.MV (boolTy, tmp, T.LI BE.Spec.trueRep)]
 			  @ stms
-			  @ gprBind (anyTy, v, r)
+			  @ gprBind (boolTy, v, r)
 			end
 		    | P.BCAS(addr, key, new) => let
 			val (cc, _, stms) = BE.AtomicOps.genCompareAndSwapWord{
-				    addr = T.LOAD(anyTy, defOf addr, ()),
+				    addr = T.LOAD(boolTy, defOf addr, ()),
 				    cmpVal = defOf key, newVal = defOf new
 				  }
 			in

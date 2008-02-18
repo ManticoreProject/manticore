@@ -13,15 +13,26 @@
 #include "debugging.def"
 
 define @ltc-push(f : ctx_fun / exh : exh) : unit =
-  (* initialize the ltc scheduler and return its spawn function *)
-  fun init (_ : unit / exh : exh) : any =
-      let ltq : ir_dequeue = @ltc-startup ( / exh)
-      return (ltq)
   let fgs : fgs = @get-fgs (host_vproc / exh)
-  (* obtain the spawn function *)
-  let ltq : ir_dequeue = @assoc-list-lookup (TAG_LTC, init, fgs / exh)
+  let ltqFnOpt : option = @assoc-list-query(TAG_LTC, fgs / exh)
+  let ltq : ir_dequeue = case ltqFnOpt
+                          of NONE => 
+			    (* allocate fgs for the lazy task creation workers *)
+                             let fgs : fgs = @new-fgs(TRUE, SOME(fgs) / exh)
+                             let _ : unit = @set-fgs(host_vproc, fgs / exh)
+   		            (* initialize the ltc scheduler and return its spawn function *)
+			     fun init (_ : unit / exh : exh) : any =
+				 let ltqFn : ltq_fun = @ltc-scheduler (fgs / exh)
+                                 return (ltqFn)
+                            (* obtain the spawn function *)
+                              let ltqFn : ltq_fun  = @assoc-list-lookup (TAG_LTC, init, fgs / exh)                            
+                              let ltq : ir_dequeue = apply ltqFn (/exh)
+                              return(ltq)
+ 			    | SOME(ltqFn : ltq_fun) =>
+			      let ltq : ir_dequeue = apply ltqFn (/exh)
+                              return(ltq)
+                          end
 
-(*  let f : ctx_fun = #0(arg)*)
   let elt : ir_dequeue_elt = IR_DEQUEUE_NEW(f)
   let elt : ir_dequeue_elt = promote(elt)
 

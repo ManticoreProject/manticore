@@ -18,10 +18,11 @@ define @ltc-pop(arg : unit / exh : exh) : bool =
   fun init (_ : unit / exh : exh) : any =
      (* scheduler should always be instantiated by now *)
       do assert(FALSE)
-      throw exh(NIL)
+      @thread-exit(/exh)
   let fgs : fgs = @get-fgs (host_vproc / exh)
  (* obtain the spawn function *)
-  let ltq : ir_dequeue = @assoc-list-lookup (TAG_LTC, init, fgs / exh)
+  let ltqFn : ltq_fun = @assoc-list-lookup (TAG_LTC, init, fgs / exh)
+  let ltq : ir_dequeue = apply ltqFn (/exh)
 
  (* pop an element from the head of the lazy task queue while holding the lock *)
   let mask : bool = @spin-lock-ird (ltq / exh)
@@ -29,11 +30,12 @@ define @ltc-pop(arg : unit / exh : exh) : bool =
     cont none () = 
 	 let _ : unit = @spin-unlock-ird (ltq, mask / exh)
          return(FALSE)
-    cont some (f : any) =
+    cont some (_ : any) =
 	 let _ : unit = @spin-unlock-ird (ltq, mask / exh)
          return(TRUE)
 
     do @ird-pop-hd(ltq, none, some / exh)
 
-  return (UNIT)
+  do assert(FALSE)
+  return (FALSE)
 ;

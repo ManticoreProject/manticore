@@ -17,8 +17,8 @@ define inline @ivar-put (arg : [ivar, any] / exh : exh) : unit =
     let x : any = (any)x
     let x : any = promote(x)
     let readL : list = SELECT(IVAR_BLOCKED_LIST, ivar)
-    let oldValue : any = CAS (&IVAR_VALUE(ivar), enum(0), x)
-    if Equal(oldValue,IVAR_EMPTY_VAL)
+    let oldValue : any = CAS (&IVAR_VALUE(ivar), IVAR_EMPTY_VAL, x)
+    if Equal(oldValue, IVAR_EMPTY_VAL)
        then
           fun spin (/ exh : exh) : () =
               if I32Eq (#2(ivar), 0)
@@ -29,23 +29,18 @@ define inline @ivar-put (arg : [ivar, any] / exh : exh) : unit =
            of NIL =>               
 	      return (UNIT)
             | CONS(hd : any, tl : list) =>                              	
-                let fgs : fgs = #0((ivar_item)hd)
-                let k' : cont(any) = #1((ivar_item)hd)
-                cont k (_ : unit) = throw k'(x)
-                let k : fiber = (fiber)k
-        	do @enqueue(host_vproc, fgs, k / exh)
         	fun wakeRead(l : list) : () =
                       case l 
-                	of enum(0) => return ()
+                	of NIL => return ()
                 	 | CONS(hd' : any, tl' : list) =>                             
-                             let fgs : fgs = #0((ivar_item)hd')
-                             let k' : cont(any) = #1((ivar_item)hd')
+                             let fgs : fgs = #0((blocked_thread)hd')
+                             let k' : cont(any) = #1((blocked_thread)hd')
                              cont k (_ : unit) = throw k'(x)
                              let k : fiber = (fiber)k
                              do @enqueue(host_vproc, fgs, k / exh)
                              apply wakeRead(tl')
                        end
-        	do apply wakeRead(tl)                
+        	do apply wakeRead(readL)
         	return (UNIT) 
           end
         else

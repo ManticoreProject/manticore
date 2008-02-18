@@ -13,8 +13,9 @@
 #define _LTC_DEF_
 
 typedef ctx_fun = fun(unit / exh -> any);
+typedef ltq_fun = fun (/exh -> ir_dequeue);
 
-define @ltc-startup ( / exh : exh) : ir_dequeue;
+define @ltc-scheduler (fgs : fgs / exh : exh) : ltq_fun;
 define @ltc-pop(arg : unit / exh : exh) : any;
 define @ltc-push(f : ctx_fun / exh : exh) : unit;
 

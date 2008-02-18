@@ -9,7 +9,7 @@
 #include "runtime-offsets.def"
 
 define @test2 (/ exh : exh) : bool =
-  let nThreads : int = 2
+  let nThreads : int = 20
   let elt : int = 1024
   
   cont k () = return(FALSE)
@@ -36,8 +36,10 @@ define @test2 (/ exh : exh) : bool =
 
   do apply gets(nThreads / exh)
 
+  let _ : unit = @yield(host_vproc / exh)
+
   fun wait ( /exh : exh) : () =
-      if I32Eq (i, nThreads)
+      if I32Eq (#0(i), nThreads)
          then return()
          else apply wait(/exh)
 
@@ -57,12 +59,12 @@ define @test1 (/ exh : exh) : bool =
   let _ : unit = @ivar-put(arg / exh)
   let y : any = @ivar-get(iv / exh)  
   let y : [int] = ([int])y
-  return(Equal (x, unwrap(y)))
+  return(I32Eq (1024, unwrap(y)))
 ;
 
 define @ivar-test-startup ( / exh : exh) : () =
   do @work-stealers-startup (/ exh)
   do_concurrent_test(test1, 20.0:double)
-  do_concurrent_test(test2, 20.0:double) 
+  do_concurrent_test(test2, 20.0:double)
   return ()
 ;

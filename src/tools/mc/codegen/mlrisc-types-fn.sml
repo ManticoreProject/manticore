@@ -107,6 +107,9 @@ functor MLRiscTypesFn (
   fun store (dst, GPR(ty, r), rg) = T.STORE(ty, dst, T.REG(ty, r), rg)
     | store (dst, FPR(fty, r), rg) = T.FSTORE(fty, dst, T.FREG(fty, r), rg)
     | store (dst, EXP(ty, rexp), rg) = T.STORE(ty, dst, rexp, rg)
+(*      if (ty = mlriscTypeOf rexp)
+         then T.STORE(ty, dst, rexp, rg)
+         else raise Fail "incorrect type for mlrisc expression"*)
     | store (dst, FEXP(fty, fexp), rg) = T.FSTORE(fty, dst, fexp, rg)
     | store (dst, CEXP cexp, rg) = T.STORE(ty, dst, cexpToExp cexp, rg)
 
