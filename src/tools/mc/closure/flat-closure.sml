@@ -124,6 +124,9 @@ structure FlatClosure : sig
 
     fun newEnv externEnv ep = E{ep = ep, env = externEnv}
 
+  (* create a new environment that gives a fresh name to the environment pointer *)
+    fun envWithFreshEP (E{ep, env}) = E{ep = CFG.Var.copy ep, env=env}
+
     fun insertVar (E{ep, env}, x, x') = E{ep=ep, env=VMap.insert(env, x, x')}
 
     fun findVar (E{env, ...}, x) = (case VMap.find(env, x)
@@ -560,6 +563,7 @@ print(concat["lookupVar: ", CPS.Var.toString x, " @ ", locToString(valOf(VMap.fi
                 (* end case *))
         (* create a standard function convention for a list of parameters *)
           and stdFunConvention (env, args, [ret, exh]) = let
+		val env = envWithFreshEP env
                 val (env, args) = newLocals (env, args)
                 val (env, ret) = newLocal (env, ret)
                 val (env, exh) = newLocal (env, exh)
@@ -571,6 +575,7 @@ print(concat["lookupVar: ", CPS.Var.toString x, " @ ", locToString(valOf(VMap.fi
                   (env, conv)
                 end
 	    | stdFunConvention (env, args, [ret]) = let
+		val env = envWithFreshEP env
                 val (env, args) = newLocals (env, args)
                 val (env, ret) = newLocal (env, ret)
                 val conv = CFG.KnownFunc(envPtrOf env :: args @ [ret])
