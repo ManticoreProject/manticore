@@ -53,7 +53,7 @@ structure CPSTyUtil : sig
 
   (* compare types for equality *)
     fun equal (ty1, ty2) = (case (ty1, ty2)
-	   of (CTy.T_Any, CTy.T_Any) => true
+          of (CTy.T_Any, CTy.T_Any) => true
 	   | (CTy.T_Enum w1, CTy.T_Enum w2) => w1 = w2
 	   | (CTy.T_Raw rt1, CTy.T_Raw rt2) => rt1 = rt2
 	   | (CTy.T_Tuple (m1, tys1), CTy.T_Tuple (m2, tys2)) =>
@@ -75,16 +75,12 @@ structure CPSTyUtil : sig
    *)
     fun match (ty1, ty2) = (case (ty1, ty2)
 	   of (CTy.T_Addr ty1, CTy.T_Addr ty2) => equal(ty1, ty2)
-	    | (CTy.T_Addr _, _) => false
-	    | (_, CTy.T_Addr _) => false
 	    | (CTy.T_Raw rty1, CTy.T_Raw rty2) => (rty1 = rty2)
-	    | (CTy.T_Raw _, _) => false
-	    | (_, CTy.T_Raw _) => false
-	    | (_, CTy.T_Any) => true
+	    | (fromTy, CTy.T_Any) => isKind CTy.K_UNIFORM (kindOf fromTy)
 	  (* the following shouldn't be here, since it isn't really sound, but we need it
 	   * to handle surface-language polymorphism, which is translated to T_Any.
 	   *)
-	    | (CTy.T_Any, _) => true
+	    | (CTy.T_Any, toTy) => isKind CTy.K_UNIFORM (kindOf toTy)
 	    | (CTy.T_Enum w1, CTy.T_Enum w2) => (w1 <= w2)
 	    | (CTy.T_Enum _, CTy.T_Tuple _) => true
 	    | (CTy.T_Tuple(isMut1, tys1), CTy.T_Tuple(isMut2, tys2)) =>

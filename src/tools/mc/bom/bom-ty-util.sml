@@ -72,7 +72,7 @@ structure BOMTyUtil : sig
 
   (* compare types for equality *)
     fun equal (ty1, ty2) = (case (ty1, ty2)
-	   of (BTy.T_Any, BTy.T_Any) => true
+          of (BTy.T_Any, BTy.T_Any) => true
 	   | (BTy.T_Enum w1, BTy.T_Enum w2) => w1 = w2
 	   | (BTy.T_Raw rt1, BTy.T_Raw rt2) => rt1 = rt2
 	   | (BTy.T_Tuple (m1, tys1), BTy.T_Tuple (m2, tys2)) =>
@@ -106,16 +106,12 @@ structure BOMTyUtil : sig
    *)
     fun match (ty1, ty2) = (case (ty1, ty2)
 	   of (BTy.T_Addr ty1, BTy.T_Addr ty2) => equal(ty1, ty2)
-	    | (BTy.T_Addr _, _) => false
-	    | (_, BTy.T_Addr _) => false
 	    | (BTy.T_Raw rty1, BTy.T_Raw rty2) => (rty1 = rty2)
-	    | (BTy.T_Raw _, _) => false
-	    | (_, BTy.T_Raw _) => false
-	    | (_, BTy.T_Any) => true
+	    | (fromTy, BTy.T_Any) => isKind BTy.K_UNIFORM (kindOf fromTy)
 	  (* the following shouldn't be here, since it isn't really sound, but we need it
 	   * to handle surface-language polymorphism, which is translated to T_Any.
 	   *)
-	    | (BTy.T_Any, _) => true 
+	    | (BTy.T_Any, toTy) => isKind BTy.K_UNIFORM (kindOf toTy)
 	    | (BTy.T_Enum w1, BTy.T_Enum w2) => (w1 <= w2)
 	    | (BTy.T_Enum w, BTy.T_TyCon(BTy.DataTyc{nNullary, ...})) => (w < Word.fromInt nNullary)
 	    | (BTy.T_Enum _, BTy.T_Tuple _) => true

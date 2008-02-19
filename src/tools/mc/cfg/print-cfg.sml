@@ -35,7 +35,7 @@ structure PrintCFG : sig
 		end
 	  fun varBindToString x = if (#types flags)
 		then String.concat[
-		    CFG.Var.toString x, "#", Int.toString(CFG.Var.useCount x), ":", CFGTy.toString(CFG.Var.typeOf x)
+		    CFG.Var.toString x, "#", Int.toString(CFG.Var.useCount x), ":", CFGTyUtil.toString(CFG.Var.typeOf x)
 		  ]
 		else CFG.Var.toString x
 	  fun varUseToString x = CFG.Var.toString x
@@ -78,7 +78,7 @@ structure PrintCFG : sig
 		case e
 		 of (CFG.E_Var(_, ys)) => prList varUseToString ys
 		  | (CFG.E_Const(_, lit)) => pr(Literal.toString lit)
-		  | (CFG.E_Cast(_, ty, y)) => prl["(", CFGTy.toString ty, ")", varUseToString y]
+		  | (CFG.E_Cast(_, ty, y)) => prl["(", CFGTyUtil.toString ty, ")", varUseToString y]
 		  | (CFG.E_Label(_, lab)) => pr(labelToString lab)
 		  | (CFG.E_Select(_, i, x)) =>
 		      prl ["#", Int.toString i, " ", varUseToString x]

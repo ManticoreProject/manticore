@@ -10,6 +10,7 @@ Library
 
   structure CFG
   structure CFGTy
+  structure CFGTyUtil
   structure CFGUtil
   structure CheckCFG
   structure PrintCFG
@@ -26,6 +27,7 @@ is
 
   cfg.sml
   cfg-ty.sml
+  cfg-ty-util.sml
   cfg-util.sml
   check-cfg.sml
   print-cfg.sml

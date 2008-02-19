@@ -114,7 +114,7 @@ structure CFG =
 	type ty = ty
 	val defaultKind = LK_None
 	val kindToString = labelKindToString
-	val tyToString = CFGTy.toString
+	val tyToString = CFGTyUtil.toString
       end)
 
     fun varKindToString VK_None = "None"
@@ -127,7 +127,7 @@ structure CFG =
 	type ty = ty
 	val defaultKind = VK_None
 	val kindToString = varKindToString
-	val tyToString = CFGTy.toString
+	val tyToString = CFGTyUtil.toString
       end)
 
   (* project out the lhs variables of an expression *)

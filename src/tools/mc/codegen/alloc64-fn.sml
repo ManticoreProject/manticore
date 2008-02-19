@@ -46,7 +46,7 @@ functor Alloc64Fn (
 		if (j >= i) then (sz, ty)
 		else offset (tys, j+1, alignedTySzB ty + sz)
 	    | offset ([], _, _) = raise Fail(concat[
-		  "offset ", Int.toString(length tys), " of type ", CFGTy.toString (M.T_Tuple (false, tys))
+		  "offset ", Int.toString(length tys), " of type ", CFGTyUtil.toString (M.T_Tuple (false, tys))
 		])
 	  in 
 	    offset (tys, 0, 0) 
@@ -56,7 +56,7 @@ functor Alloc64Fn (
     fun addrOf {lhsTy : T.ty, mty : M.ty, i : int, base : T.rexp} = let
           fun offsetOf' (M.T_Tuple(_, tys)) = offsetOf {tys=tys, i=i}
 	    | offsetOf' (M.T_OpenTuple tys) = offsetOf {tys=tys, i=i}
-	    | offsetOf' _ = raise Fail ("offsetOf': non-tuple type " ^ CFGTy.toString mty)
+	    | offsetOf' _ = raise Fail ("offsetOf': non-tuple type " ^ CFGTyUtil.toString mty)
 	  val (offset, _) = offsetOf' mty
 	  in
 	    T.ADD (ty, base, intLit offset)
@@ -66,7 +66,7 @@ functor Alloc64Fn (
     fun select {lhsTy : T.ty, mty : M.ty, i : int, base : T.rexp} = let
           fun offsetOf' (M.T_Tuple(_, tys)) = offsetOf {tys=tys, i=i}
 	    | offsetOf' (M.T_OpenTuple tys) = offsetOf {tys=tys, i=i}
-	    | offsetOf' _ = raise Fail ("offsetOf': non-tuple type " ^ CFGTy.toString mty)
+	    | offsetOf' _ = raise Fail ("offsetOf': non-tuple type " ^ CFGTyUtil.toString mty)
 	  val (offset, lhsMTy) = offsetOf' mty
 	  val addr = T.ADD(ty, base, intLit offset)
 	  in 
@@ -127,7 +127,7 @@ functor Alloc64Fn (
     fun alloc offAp args = let
 	  fun lp (hasPtr, hasRaw, (x, _)::xs) = if isHeapPointer x
 		  then lp(true, hasRaw, xs)
-		else if CFGTy.hasUniformRep x 
+		else if CFGTyUtil.hasUniformRep x 
   	          then lp (hasPtr, hasRaw, xs)
 		  else lp (hasPtr, true, xs)
 	    | lp (true, false, []) = allocVectorObj offAp args

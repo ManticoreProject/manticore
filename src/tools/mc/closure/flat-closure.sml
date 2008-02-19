@@ -54,8 +54,8 @@ structure FlatClosure : sig
   (* convert a continuation type to a standard-continuation type *)
     and cvtStdContTy ty = CFG.T_OpenTuple[cvtStdContTyAux ty]
     and cvtStdContTyAux (CPSTy.T_Fun(argTys, [])) =
-	  CFGTy.stdContTy(CFGTy.T_Any, List.map cvtTy argTys)
-      | cvtStdContTyAux (CPSTy.T_Any) = CFGTy.stdContTy(CFGTy.T_Any, [CFGTy.T_Any])
+	  CFGTyUtil.stdContTy(CFGTy.T_Any, List.map cvtTy argTys)
+      | cvtStdContTyAux (CPSTy.T_Any) = CFGTyUtil.stdContTy(CFGTy.T_Any, [CFGTy.T_Any])
       | cvtStdContTyAux ty = raise Fail("bogus continuation type " ^ CPSTyUtil.toString ty)
 
   (* assign labels to functions and continuations *)
@@ -113,7 +113,7 @@ structure FlatClosure : sig
           fun f (x, loc, false) = (print(concat[", ", CPS.Var.toString x, "->", locToString loc]); false)
             | f (x, loc, true) = (print(concat[CPS.Var.toString x, "->", locToString loc]); false)
           in
-            print(concat["E{ep = ", CFG.Var.toString ep, " : ", CFGTy.toString(CFG.Var.typeOf ep), "\n"]);
+            print(concat["E{ep = ", CFG.Var.toString ep, " : ", CFGTyUtil.toString(CFG.Var.typeOf ep), "\n"]);
             print "  env = {";
             VMap.foldli f true env;
             print "}\n}\n"
@@ -248,7 +248,7 @@ print(concat["lookupVar: ", CPS.Var.toString x, " @ ", locToString(valOf(VMap.fi
           val (_, binds, clos, cfgArgs) =
                 CPS.Var.Set.foldl mkArgs (1, [], env, []) fv
           val cfgArgs = List.rev cfgArgs
-	  val ep = newEP (CFGTy.stdContTy(CFGTy.T_Any, List.map CFG.Var.typeOf params')
+	  val ep = newEP (CFGTyUtil.stdContTy(CFGTy.T_Any, List.map CFG.Var.typeOf params')
 		  :: List.map CFG.Var.typeOf cfgArgs)
           in
             (binds, cfgArgs, E{ep = ep, env = clos}, params')
@@ -469,7 +469,7 @@ print(concat["lookupVar: ", CPS.Var.toString x, " @ ", locToString(valOf(VMap.fi
                               val (binds, k'::args') = lookupVars(env, k::args)
                               val (binds, xfer) = let
 				    val cp = CFG.Var.new(CFG.Var.nameOf k',
-					   CFGTy.selectTy(0, CFG.Var.typeOf k'))
+					   CFGTyUtil.select(CFG.Var.typeOf k', 0))
 				  (* if k has kind VK_Cont, then we can refer directly
 				   * to its label
 				   *)

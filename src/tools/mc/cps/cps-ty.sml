@@ -38,5 +38,4 @@ structure CPSTy =
   (* a continuation type has no return or exception continuations *)
     fun contTy paramTys = T_Fun(paramTys, [])
 
-
   end
