@@ -1,7 +1,10 @@
-This directory contains Manticore programs and some scripts for benchmarking.  Below is a list of the scripts you can use.
+This directory contains Manticore programs and some scripts for benchmarking.
 
-- benchmark.bsh: get timing results for a Manticore program given different numbers of processors and input sizes.
+- benchmark.bsh: get timing results for a Manticore program given different numbers of processors and input
+sizes.
 
-E.g. benchmarking the rt-parr.pml for sizes 128 and 256 and for sequential execution and parallel execution on 1 and 2 processors (the -s specifies an optional sequential counterpart).
+  For example, the command below benchmarks rt-parr.pml for 128 and 256 pixes in sequential mode and in
+  parallel mode on 1 and 2 processors.  The -q option is optional and causes the benchmark script to
+  use its argument to compile the sequential mode benchmark.
 
-  benchmark.bsh -e rt-parr -s rt-parr-seq -p 0 -p 1 -p 2 -s 128 -s 256
+    benchmark.bsh -e rt-parr -q rt -p 0 -p 1 -p 2 -s 128 -s 256
