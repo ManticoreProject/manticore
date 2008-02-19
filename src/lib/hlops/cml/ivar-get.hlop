@@ -18,7 +18,6 @@ define inline @ivar-get (ivar : ivar / exh : exh) : any =
        then
           (* atomic update, kinda like fetch and increment *)
           cont k (x : any) = 
-print_msg("woken")
                return (x)
           let blockedThread : blocked_thread = alloc (fgs, k)
           (* atomic update *)

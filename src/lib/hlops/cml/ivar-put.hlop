@@ -16,7 +16,6 @@ define inline @ivar-put (arg : [ivar, any] / exh : exh) : unit =
     let x : any = #1(arg)
     let x : any = (any)x
     let x : any = promote(x)
-    let readL : list = SELECT(IVAR_BLOCKED_LIST, ivar)
     let oldValue : any = CAS (&IVAR_VALUE(ivar), IVAR_EMPTY_VAL, x)
     if Equal(oldValue, IVAR_EMPTY_VAL)
        then
@@ -25,6 +24,7 @@ define inline @ivar-put (arg : [ivar, any] / exh : exh) : unit =
                  then return ()
                  else apply spin (/ exh)
           do apply spin (/ exh)
+          let readL : list = SELECT(IVAR_BLOCKED_LIST, ivar)
           case readL
            of NIL =>               
 	      return (UNIT)
@@ -37,7 +37,6 @@ define inline @ivar-put (arg : [ivar, any] / exh : exh) : unit =
                              let k' : cont(any) = #1((blocked_thread)hd')
                              cont k (_ : unit) = throw k'(x)
                              let k : fiber = (fiber)k
-print_msg("waking")
                              do @enqueue(host_vproc, fgs, k / exh)
                              apply wakeRead(tl')
                        end

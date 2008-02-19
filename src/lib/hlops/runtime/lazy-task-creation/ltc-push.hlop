@@ -15,23 +15,21 @@
 define @ltc-push(f : fiber_fun / exh : exh) : unit =
   let fgs : fgs = @get-fgs (host_vproc / exh)
   let ltqFnOpt : option = @assoc-list-query(TAG_LTC, fgs / exh)
-  let ltq : ir_dequeue = case ltqFnOpt
+  let ltqFn : ltq_fun = case ltqFnOpt
                           of NONE => 
 			    (* allocate fgs for the lazy task creation workers *)
                              let fgs : fgs = @new-fgs(TRUE, SOME(fgs) / exh)
                              let _ : unit = @set-fgs(host_vproc, fgs / exh)
    		            (* initialize the ltc scheduler and return its spawn function *)
 			     fun init (_ : unit / exh : exh) : any =
-				 let ltqFn : ltq_fun = @ltc-scheduler (fgs / exh)
-                                 return (ltqFn)
+				 @ltc-scheduler (fgs / exh)
                             (* obtain the spawn function *)
                               let ltqFn : ltq_fun  = @assoc-list-lookup (TAG_LTC, init, fgs / exh)                            
-                              let ltq : ir_dequeue = apply ltqFn (/exh)
-                              return(ltq)
+                              return(ltqFn)
  			    | SOME(ltqFn : ltq_fun) =>
-			      let ltq : ir_dequeue = apply ltqFn (/exh)
-                              return(ltq)
+                              return(ltqFn)
                           end
+  let ltq : ir_dequeue = apply ltqFn (/exh)
 
   let k : fiber = @fiber(f / exh)
   let elt : ir_dequeue_elt = IR_DEQUEUE_NEW(k)
