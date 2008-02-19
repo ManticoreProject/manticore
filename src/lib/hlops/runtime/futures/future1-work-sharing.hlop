@@ -62,8 +62,13 @@ define @future1-work-sharing ( / exh : exh) : future_spawn_fn =
   fun mkSwitch (self : vproc / exh : exh) : sigact = 
       cont switch (s : signal) =
            cont dispatch () = 
-                let k : fiber = @locked-queue-blocking-dequeue (q / exh)
-                @run (self, switch, fgs, k / exh)
+                let kOpt : option = @locked-queue-dequeue (q / exh)
+               (* FIXME: do something besides busy waiting.  *)
+                case kOpt 
+		 of NONE => throw dispatch()
+		  | SOME (k:fiber) =>
+                    @run (self, switch, fgs, k / exh)
+		end
 
            if Equal (s, STOP)
               then throw dispatch ()
