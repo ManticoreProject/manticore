@@ -10,7 +10,7 @@ fun lightcolor l = (case l
 	| (Point(_, c)) => c
       (* end case *));
 
-fun v2s (x,y,z) = ftos x^" "^ftos y^" "^ftos z;
+fun v2s (x,y,z) = ftos x^" "^ftos y^" "^ftos z^"\n";
 
 print (v2s (lightcolor (Point ((0.0,0.0,0.0), (2.3,4.3,1.1)))))
 
