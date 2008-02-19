@@ -65,11 +65,12 @@ structure BOMBasis : BOM_BASIS =
     local
       fun wrap ty = BOMTyUtil.wrap(BTy.T_Raw ty)
     in
+    val rawIntTy = BTy.T_Raw BTy.T_Int
     val intTy = wrap BTy.T_Int
     val longTy = wrap BTy.T_Long
     val floatTy = wrap BTy.T_Float
     val doubleTy = wrap BTy.T_Double
-    val stringTy = BTy.T_Tuple(false, [BTy.T_Any, BTy.T_Raw BTy.T_Int])
+    val stringTy = BTy.T_Tuple(false, [BTy.T_Any, rawIntTy])
     end
 
   (* ready queue items *)
@@ -96,23 +97,26 @@ structure BOMBasis : BOM_BASIS =
     val signalTyc = BOMTyCon.newDataTyc ("signal", 1) 
     val signalTy = BTy.T_TyCon signalTyc
     val signalPREEMPT = BOMTyCon.newDataCon signalTyc ("PREEMPT", BTy.Transparent, [fiberTy])
+
     val listTyc = BOMTyCon.newDataTyc ("list", 1)
     val listTy = BTy.T_TyCon listTyc
     val listCons = BOMTyCon.newDataCon listTyc
 	  ("CONS", BTy.Tuple, [BTy.T_Any, listTy])
+
     val optionTyc = BOMTyCon.newDataTyc ("option", 1)
     val optionTy = BTy.T_TyCon optionTyc
     val optionSOME = BOMTyCon.newDataCon optionTyc
 	  ("SOME", BTy.Tuple, [BTy.T_Any])
+
     val parrayTyc = BOMTyCon.newDataTyc ("parray", 1)
     val parrayTy = BTy.T_TyCon parrayTyc
+
     val ropeTyc = BOMTyCon.newDataTyc ("rope", 0)
     val ropeTy = BTy.T_TyCon ropeTyc
-(* FIXME: the rope constructors should have flat representations *)
     val ropeLeaf = BOMTyCon.newDataCon ropeTyc
-          ("LEAF", BTy.TaggedTuple 0w0, [intTy, listTy])
+          ("LEAF", BTy.TaggedTuple 0w0, [rawIntTy, listTy])
     val ropeCat = BOMTyCon.newDataCon ropeTyc
-          ("CAT", BTy.TaggedTuple 0w1, [intTy, intTy, ropeTy, ropeTy])
+          ("CAT",  BTy.TaggedTuple 0w1, [rawIntTy, rawIntTy, ropeTy, ropeTy])
 
   (* other predefined types *)
     val sigactTy = BTy.T_Cont[signalTy]

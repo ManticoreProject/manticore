@@ -1,3 +1,3 @@
-val a = [| "Hello", "World" |];
+val a = [| "This", "is", "a", "self-describing", "parallel", "array", "of", "strings." |];
 
-print "Hi\n"
+print (itos (plen a))

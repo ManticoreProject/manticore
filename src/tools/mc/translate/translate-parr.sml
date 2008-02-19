@@ -4,17 +4,20 @@
  * All rights reserved.
  *)
 
-structure TranslateParr (* : sig
+structure TranslateParr  : sig
 
   (* An AST to BOM translation of parrays to ropes. *)
-  (* tr : (TranslateEnv.env * (A.STexp -> BOM.exp)) -> (AST.exp list * AST.ty) -> BOM.exp *)
-    val tr : (TranslateEnv.env * (AST.exp -> BOM.exp)) -> (AST.exp list * AST.ty) -> BOM.exp 
+    val tr : TranslateEnv.env * (TranslateEnv.env * AST.exp * (BOM.Var.var -> BOM.exp) -> BOM.exp)
+             -> AST.exp list * AST.ty -> BOM.exp
 
-  end *) = struct
+  end  = struct
 
-    structure A = AST
-    structure B = Basis
-    structure R = Ropes
+    structure A   = AST
+    structure AB  = Basis
+    structure R   = Ropes
+    structure B   = BOM
+    structure BB  = BOMBasis
+    structure BTy = BOMTy
 
     val maxLeafSize = Ropes.maxLeafSize
 
@@ -141,56 +144,41 @@ structure TranslateParr (* : sig
 	  end
 
     local
-	val mkInt  = ASTUtil.mkInt
+	val ropeTy = BB.ropeTy
+	val rawIntTy = BTy.T_Raw BTy.T_Int
+	fun rawInt n = B.E_Const (Literal.Int (IntInf.fromInt n), rawIntTy)
 	val mkList = ASTUtil.mkList
-	val catTupTy = 
-	    let val intTy  = BOMBasis.intTy
-		val ropeTy = BOMBasis.ropeTy
-	    in
-		BOMTy.T_Tuple (false, [intTy, intTy, ropeTy, ropeTy])
-	    end
     in
+  (* ropeBOM : env * (env * A.exp * (BV.var -> B.exp)) -> _ rope * A.ty -> B.exp *)
     fun ropeBOM (env, trExpToV) (r, t) =
-	let val handler = TranslateEnv.handlerOf env
+	let val nV = B.Var.new ("n", rawIntTy)
+	    val rV = B.Var.new ("r", ropeTy)
 	in case r
 	     of Leaf (Lf (len, data)) =>
-	          let val leafAST = R.ropeLeafExp t
-		      val lenAST  = mkInt len
-		      val dataAST = mkList (data, t)
-		      val tupAST = A.TupleExp [lenAST, dataAST]
+	          let val dataAST = mkList (data, t)
 		  in
-                      trExpToV (env, leafAST, fn LEAF =>
-		        trExpToV (env, tupAST, fn tup =>
-                          BOM.mkApply (LEAF, [tup], [handler])))
+                      trExpToV (env, dataAST, fn dataV =>
+                      B.mkStmt ([nV], rawInt(len),
+                      B.mkStmt ([rV], B.E_DCon (BB.ropeLeaf, [nV, dataV]),
+                      B.mkRet [rV])))
 		  end
 	      | Cat (n, d, r1, r2) =>
-	          let val catAST = R.ropeCatExp t
-                      val nAST = mkInt n
-		      val dAST = mkInt d
+	          let val dV = B.Var.new ("d", rawIntTy)	   
 		      val r1BOM = ropeBOM (env, trExpToV) (r1, t)
 		      val r2BOM = ropeBOM (env, trExpToV) (r2, t)
-		      val r1var = BOM.Var.new ("r1", BOMBasis.ropeTy)
-		      val r2var = BOM.Var.new ("r2", BOMBasis.ropeTy)
-		      val tupvar = BOM.Var.new ("_tup", catTupTy)			  
+		      val r1V = B.Var.new ("r1", ropeTy)
+		      val r2V = B.Var.new ("r2", ropeTy)
 		  in
-                      trExpToV (env, catAST, fn CAT =>
-		        trExpToV (env, nAST, fn n =>
-                          trExpToV (env, dAST, fn d =>
-                            BOM.mkLet ([r1var], r1BOM,
-                              BOM.mkLet ([r2var], r2BOM,
-                                BOM.mkLet ([tupvar], let val t = BOM.Var.new ("t", catTupTy)
-							 val vs = [n, d, r1var, r2var]
-						     in
-							 BOM.mkStmt([t], 
-								    BOM.E_Alloc(catTupTy, vs),
-								    BOM.mkRet [t])
-						     end,
-      			          BOM.mkApply (CAT, [tupvar], [handler])))))))
+		      B.mkStmt ([nV], rawInt(n),
+                      B.mkStmt ([dV], rawInt(d),
+                      B.mkLet  ([r1V], r1BOM,
+                      B.mkLet  ([r2V], r2BOM,
+                      B.mkStmt ([rV], B.E_DCon (BB.ropeCat, [nV, dV, r1V, r2V]),
+                      B.mkRet [rV])))))
 		  end
 	end
     end (* local *)
 
-  (* tr : (TranslateEnv.env * (A.exp -> BOM.exp)) -> exp rope -> BOM.exp *)
     fun tr (env, trExpToV) (es, t) = ropeBOM (env, trExpToV) (ropeFromExps es, t)
 
   end
