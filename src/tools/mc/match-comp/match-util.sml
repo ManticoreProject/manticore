@@ -39,17 +39,13 @@ structure MatchUtil : sig
       | isVarOrWild _ = false
 
   (* is a datatype constructor/constant the only one for the type? *)
-    fun singletonDC dc = let
-	  val Types.Tyc{def=Types.DataTyc{nCons, ...}, ...} = DataCon.ownerOf dc
+    fun singletonDC dc = not (Exn.isExn dc) andalso
+	  let val Types.Tyc{def=Types.DataTyc{nCons, ...}, ...} = DataCon.ownerOf dc
 	  in
 	    !nCons = 1
 	  end
 
-    fun isSimplePat (AST.ConPat(dc, _, p)) = let
-	  val Types.Tyc{def=Types.DataTyc{nCons, ...}, ...} = DataCon.ownerOf dc
-	  in
-	    singletonDC dc andalso isVarOrWild p
-	  end
+    fun isSimplePat (AST.ConPat(dc, _, p)) = singletonDC dc andalso isVarOrWild p
       | isSimplePat (AST.TuplePat ps) = List.all isVarOrWild ps
       | isSimplePat (AST.VarPat _) = true
       | isSimplePat (AST.WildPat _) = true

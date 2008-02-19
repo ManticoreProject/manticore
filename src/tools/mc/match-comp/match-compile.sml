@@ -322,6 +322,8 @@ structure MatchCompile : sig
 
     fun rewrite (loc, env, exp : AST.exp) : AST.exp = let
 	  fun rewrite' e = rewrite (loc, env, e)
+	  fun rewriteSimplePatMatch (AST.PatMatch(p, e)) = AST.PatMatch(p, rewrite' e)
+	    | rewriteSimplePatMatch _ = raise Fail "impossible"
 	  in
 	    case exp
 	     of AST.LetExp(AST.ValBind(pat, rhs), e) =>
@@ -343,14 +345,12 @@ structure MatchCompile : sig
 		  AST.IfExp(rewrite' e1, rewrite' e2, rewrite' e3, ty)
 	      | AST.CaseExp(e, mc, ty) =>
 		  if MatchUtil.areSimpleMatches mc
-		    then let
-		      fun f (AST.PatMatch(p, e)) = AST.PatMatch(p, rewrite' e)
-		        | f _ = raise Fail "impossible"
-		      in
-			AST.CaseExp(rewrite' e, List.map f mc, ty)
-		      end
+		    then AST.CaseExp(rewrite' e, List.map rewriteSimplePatMatch mc, ty)
 		    else AST.CaseExp(rewrite' e, rewriteMatch(loc, env, TypeOf.exp e, mc, ty), ty)
-	      | AST.HandleExp(e, mc, ty) => raise Fail "handle" (* FIXME *)
+	      | AST.HandleExp(e, mc, ty) =>
+		  if MatchUtil.areSimpleMatches mc
+		    then AST.HandleExp(rewrite' e, List.map rewriteSimplePatMatch mc, ty)
+		    else AST.HandleExp(rewrite' e, rewriteMatch(loc, env, TypeOf.exp e, mc, ty), ty)
 	      | AST.RaiseExp(e, ty) => AST.RaiseExp(rewrite' e, ty)
 	      | AST.FunExp(x, e, ty) => AST.FunExp(x, rewrite' e, ty)
 	      | AST.ApplyExp(e1, e2, ty) => AST.ApplyExp(rewrite' e1, rewrite' e2, ty)
