@@ -30,9 +30,7 @@ define @rope-from-leaves (leaves : list / exh : exh) : rope =
     end
   fun fromList (rs : list / exh : exh) : rope =
     case rs
-      of NIL => 
-           let zero : ml_int = alloc (0)
-           return (LEAF (zero, NIL))
+      of NIL => return (LEAF (0, NIL))
        | CONS (q : rope, qs : list) =>
            case qs
              of NIL => return (q)

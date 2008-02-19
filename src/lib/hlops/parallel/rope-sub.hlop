@@ -11,42 +11,37 @@
 
 extern void M_Print (void *);
 
-define @rope-sub (rn : [rope, ml_int] / exh : exh) : any =
+define @rope-sub (arg : [rope, ml_int] / exh : exh) : any =
 
-  let BogusExn : exn = (exn) enum(0)
+  let WrongLeaf : exn = (exn) enum(0)
  
-  fun getFromList (xs : list, n : int / exh : exh) : any =
-    case xs
-      of NIL => let EmptyList : exn = BogusExn (* FIXME *)
-                do ccall M_Print ("rope-sub.getFromList given empty list\n\000")
-                throw exh (EmptyList)
-       | CONS (x:any, xs:list) =>
-           let isZero : bool = I32Eq (n, 0)
-           if isZero
-             then return (x)
-             else 
-               let newN : int = I32Sub (n, 1)
-               let res1 : any = apply getFromList (xs, newN / exh)
-               return (res1)
-    end
+  let r : rope     = #0(arg)
+  let mln : ml_int = #1(arg)
+  let n : int      = unwrap(mln)
+
+  fun getFromList (xs : list, n : int / ) : any =
+    let wn : ml_int = wrap(n)
+    let tup : [list, ml_int] = alloc (xs, wn)
+    let x : any = @list-nth (tup / exh)
+    return (x)
+  (* end fun getFromList *)
 
   fun cat2 (s1 : ml_string, s2 : ml_string) : ml_string =
     let tup : [ml_string, ml_string] = alloc (s1, s2)
     let ans : ml_string = @string-concat2 (tup / exh)
     return (ans)
+  (* end fun cat2 *)
 
-  fun getFromRope (r : rope, n : int / exh : exh) : any =
+  fun getFromRope (r : rope, n : int / ) : any =
     case r
-      of LEAF (len:ml_int, data:list) =>
-           let len : int = #0(len)
+      of LEAF (len:int, data:list) =>
            let foundIt : bool = I32Lt (n, len)
            if foundIt
              then 
-               let res2 : any = apply getFromList (data, n / exh)
+               let res2 : any = apply getFromList (data, n)
                return (res2)
              else
-               let WrongLeaf : exn = BogusExn (* FIXME *)
-               do ccall M_Print ("rope-sub.getFromRope: wrong leaf\n\000")
+               (* this else branch prints an error msg and throws an exn *)
                let nStr : ml_string =
                  let ml_n : ml_int = alloc (n)
                  let s : ml_string = @itos (ml_n / exh)
@@ -66,23 +61,19 @@ define @rope-sub (rn : [rope, ml_int] / exh : exh) : any =
                  return (s3)
                let _ : unit = @print (msg / exh)
                throw exh (WrongLeaf)
-       | CAT (len:ml_int, depth:ml_int, r1:rope, r2:rope) =>
-           let leftLen : int =
-             let t : ml_int = @rope-length (r1 / exh)
-             return (#0(t))
+       | CAT (len:int, depth:int, r1:rope, r2:rope) =>
+           let leftLen : int = @rope-length-int (r1 / exh)
            let onTheLeft : bool = I32Lt (n, leftLen)
              if onTheLeft
                then
-                 let res3 : any = apply getFromRope (r1, n / exh)
+                 let res3 : any = apply getFromRope (r1, n)
                  return (res3)
                else
                  let newN : int = I32Sub (n, leftLen)
-                 let res4 : any = apply getFromRope (r2, newN / exh)
+                 let res4 : any = apply getFromRope (r2, newN)
                  return (res4)
       end
-  let r : rope = #0(rn)
-  let mln : ml_int = #1(rn)
-  let n : int = #0(mln)
-  let res5 : any = apply getFromRope (r, n / exh)
+
+  let res5 : any = apply getFromRope (r, n)
   return (res5)
 ;

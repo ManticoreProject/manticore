@@ -4,6 +4,7 @@
  * All rights reserved.
  *
  * For reducing the elements of a rope over its leaves in parallel, with a given associative operator.
+ * Currently uses foldl at the lists at the leaves.
  *)
 
 #include "types.def"
@@ -20,31 +21,31 @@ define @rope-reduce (args : [(* f *) fun ([any, any] / exh -> any),
     let z : any  = #1(args)
     let r : rope = #2(args)
 
-    fun red (r : rope / exh : exh) : any = 
+    fun reduce (r : rope / ) : any = 
       case r
-        of LEAF(len:ml_int, data:list) =>
+        of LEAF(len:int, data:list) =>
              let tup : [fun ([any, any] / exh -> any), any, list] = alloc (f, z, data)
              let x : any = @list-foldl (tup / exh)
              return (x)
-         | CAT(len:ml_int, depth:ml_int, r1:rope, r2:rope) =>
+         | CAT(len:int, depth:int, r1:rope, r2:rope) =>
              fun th (u : unit / exh : exh) : rope =
-               let result : rope = apply red (r2 / exh)
+               let result : rope = apply reduce (r2)
                return (result)
              let fut : future = @future1-spawn (th / exh)
-             let newR1 : any = apply red (r1 / exh)
+             let newR1 : any = apply reduce (r1)
              let newR2 : any = @future1-touch (fut / exh)
              let tup : [any, any] = alloc (newR2, newR1)
                                (* note: the application to newR2, newR1 yields *)
                                (* "less surprise" given the fact that we use *)
                                (* foldl at the leaves *)
-                               (* POSSIBILITY: define a family of reduction operators *)
+                               (* FIXME: define a family of reduction operators *)
                                (* providing different orders of reduction *)
              let res : any = apply f (tup / exh)
              return (res)
       end (* case *)
       (* end definition of red *)
 
-    let answer : any = apply red (r / exh)
+    let answer : any = apply reduce (r)
     return (answer)
     (* end definition of reduce *)
 ;

@@ -12,12 +12,8 @@
 
 define @rope-length-int (r : rope / exh : exh) : int =
   case r
-   of LEAF(ml_len : ml_int, _ : list) => 
-        let n : int = unwrap(ml_len)
-        return(n)
-    | CAT (ml_len : ml_int, _ : ml_int, _ : rope, _ : rope) => 
-        let n : int = unwrap(ml_len)
-        return(n)
+   of LEAF(n : int, _ : list) => return (n)
+    | CAT (n : int, d : int, _ : rope, _ : rope) => return (n)
   end
 ;
 

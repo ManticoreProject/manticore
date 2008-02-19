@@ -25,14 +25,12 @@ define @tabD (args : [(* f *) fun (ml_int / exh -> any),
   let ml_hi : ml_int = #3(args)
   let ml_step : ml_int = #4(args)
 
-  let leafSize : int = #0(ml_leafSize)
-  let lo : int = #0(ml_lo)
-  let hi : int = #0(ml_hi)
-  let step : int = #0(ml_step)
+  let leafSize : int = unwrap(ml_leafSize)
+  let lo : int       = unwrap(ml_lo)
+  let hi : int       = unwrap(ml_hi)
+  let step : int     = unwrap(ml_step)
 
-  let leafOffset : int =
-    let o : int = I32Mul (step, leafSize)
-    return (o)
+  let leafOffset : int = I32Mul (step, leafSize)
 
   fun mkLeaf (lo : int / exh : exh) : rope = 
     let upperLimCand : int = 
@@ -50,8 +48,7 @@ define @tabD (args : [(* f *) fun (ml_int / exh -> any),
       let t2 : int = I32Div (t1, step)
       let t3 : int = I32Add (t2, 1)
       return (t3)
-    let ml_len : ml_int = alloc (len)
-    return (LEAF (ml_len, data))
+    return (LEAF (len, data))
 
   (* returns a *backwards* list of leaf futures *)
   fun build (lo : int, leafFutures : list / exh : exh) : list = 

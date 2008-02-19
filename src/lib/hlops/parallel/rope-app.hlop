@@ -31,10 +31,10 @@ define @rope-app (args : [(* f *) fun (any / exh -> unit),
 
   fun app (r : rope / exh : exh) : unit = 
     case r
-      of LEAF(len:ml_int, data:list) => 
+      of LEAF(n:int, data:list) => 
            let u : unit = apply listapp (data / exh)
            return (u)
-       | CAT(len:ml_int, depth:ml_int, r1:rope, r2:rope) =>
+       | CAT(n:int, d:int, r1:rope, r2:rope) =>
            let _ : unit = apply app (r1 / exh)
            let u : unit = apply app (r2 / exh)
        	   return (u)

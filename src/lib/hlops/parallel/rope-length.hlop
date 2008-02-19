@@ -11,15 +11,13 @@
 #include "debugging.def"
 
 define @rope-length (r : rope / exh : exh) : ml_int =
-  print_debug("@rope-length 0\n\000")
-  (* FIXME it's segfaulting right around here *)
   case r
-    of LEAF(len:ml_int, _:list) => 
-         print_debug("@rope-length 1\n\000")
-         return (len)
-     | CAT (len:ml_int, _:ml_int, _:rope, _:rope) => 
-         print_debug("@rope-length 2\n\000")
-         return (len)
+    of LEAF(n:int, _:list) => 
+         let w : ml_int = wrap(n)
+         return (w)
+     | CAT (n:int, d:int, _:rope, _:rope) => 
+         let w : ml_int = wrap(n)
+         return (w)
   end (* case *)
 ;
 

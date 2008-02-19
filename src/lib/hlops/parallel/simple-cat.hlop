@@ -3,8 +3,8 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Builds a rope out of two. Does very little analysis (hence, simple).
- * Analysis: checks if either rope is empty, in which case it does not cat.
+ * Builds a rope out of two. 
+ * Checks if either rope is empty, in which case it does no concatenation.
  *)
 
 #include "types.def"
@@ -13,37 +13,20 @@
 extern void M_Print (void * );
 
 define @simple-cat (r1 : rope, r2 : rope / exh : exh) : rope =
-  let n1 : int = 
-    let ml_n1 : ml_int = @rope-length (r1 / exh)
-    return (unwrap(ml_n1))
-  let n2 : int = 
-    let ml_n2 : ml_int = @rope-length (r2 / exh)
-    return (unwrap(ml_n2))
-  let r1IsEmpty : bool = I32Eq(n1,0)
-  if r1IsEmpty
-    then 
-      do ccall M_Print ("r1 empty\n\000")
-      return (r2)
-    else
-      let r2IsEmpty : bool = I32Eq(n2,0)
-      if r2IsEmpty
-        then
-	  do ccall M_Print ("r2 empty\n\000")
-          return (r1)
-        else
-         let ml_n : ml_int =
-           let n : int = I32Add (n1, n2)
-           let allocN : ml_int = alloc (n)
-           return (allocN)
-         let ml_d : ml_int =
-           let ml_d1 : ml_int = @rope-depth (r1 / exh)
-           let ml_d2 : ml_int = @rope-depth (r2 / exh)
-           let d1 : int = #0(ml_d1)
-           let d2 : int = #0(ml_d2)
-           let maxD : int = @int-max (d1, d2 / exh)
-           let newD : int = I32Add (maxD, 1)
-           let allocD : ml_int = alloc (newD)
-           return (allocD)
-         return (CAT (ml_n, ml_d, r1, r2))
+
+  let n1 : int = @rope-length-int (r1 / exh)
+  let n2 : int = @rope-length-int (r2 / exh)
+
+  if I32Eq (n1, 0) then 
+    return (r2)
+  else if I32Eq (n2, 0) then
+    return (r1)
+  else
+    let n  : int  = I32Add (n1, n2)
+    let d1 : int  = @rope-depth (r1 / exh)
+    let d2 : int  = @rope-depth (r2 / exh)
+    let d  : int  = @int-max (d1, d2 / exh)
+    let c  : rope = CAT (n, d, r1, r2)
+    return (c)
 ;
 

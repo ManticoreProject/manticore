@@ -10,28 +10,28 @@
 
 define @list-nth (arg : [list, ml_int] / exh : exh) : any =
 
-  let SubscriptExn : exn = (exn) enum(0)
+  let Subscript : exn = (exn) enum(0)
 
-  fun getIt (xs : list, i : int / ) : any =
+  fun nth (xs : list, i : int / ) : any =
     case xs
-      of NIL => throw exh (SubscriptExn)
+      of NIL => throw exh (Subscript)
        | CONS (hd : any, tl : list) =>
            if I32Eq(i,0) then
              return (hd)
            else
              let j : int = I32Sub (i, 1)
-             let r : any = apply getIt (tl, j)
+             let r : any = apply nth (tl, j)
              return (r)
      end (* case *)
-  (* end fun getIt *)
+  (* end fun nth *)
 
   let data : list = #0(arg)
   let ml_n : ml_int = #1(arg)
   let n : int = unwrap(ml_n)
 
   if I32Lt(n,0) then 
-    throw exh (SubscriptExn)
+    throw exh (Subscript)
   else
-    let res : any = apply getIt (data, n)
+    let res : any = apply nth (data, n)
     return (res)
 ;

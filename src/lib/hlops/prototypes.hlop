@@ -54,7 +54,7 @@ define @todo (thing : ml_string / exh : exh) : any;
 
 (* ropes *)
 define @rope-app (args : [fun(any/exh->unit), rope] / exh:exh) : unit;
-define @rope-depth (r : rope / exh : exh) : ml_int;
+define @rope-depth (r : rope / exh : exh) : int;
 define @rope-from-leaves (leaves : list / exh : exh) : rope;
 define @rope-length (r : rope / exh : exh) : ml_int;
 define @rope-length-int (r : rope / exh : exh) : int;

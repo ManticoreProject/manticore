@@ -30,8 +30,7 @@ fun rope_map_[n] (arg: [fun ([any,...,any]/exh->any), rope, ..., rope] / exh : e
   (* We'll borrow the structure of the shortest rope in mapping over all ropes. *)
   fun rmap[n] (short : rope, start : int / ) : rope =
     case short
-      of LEAF(ml_len:ml_int, data:list) =>
-           let len : int = unwrap(ml_len)
+      of LEAF(len:int, data:list) =>
            let get : fun (rope / exh -> [list, bool]) = 
              @curried-rope-sublist (start, len / exh)
            let arg : [fun (any / exh -> any), list] = alloc (get, others)
@@ -45,16 +44,16 @@ fun rope_map_[n] (arg: [fun ([any,...,any]/exh->any), rope, ..., rope] / exh : e
            ...
            let d[n] : list = #[n-1](ds)
            let data_ : list = apply list-map-[n] (f, d1, ..., d[n])
-           let e : rope = LEAF (ml_len, dataX)
+           let e : rope = LEAF (len, dataX)
            return (e)
-       | CAT (ml_len:ml_int, d:ml_int, shortL:rope, shortR:rope) =>
+       | CAT (len:int, d:int, shortL:rope, shortR:rope) =>
            let lenL : int = @rope-length-int (shortL / exh)
            let startR : int = I32Add (start, lenL)
            fun thunk (u : unit / exh : exh) : rope = apply rmap[n] (shortR, startR)
            let shortR_F : future = @future1-spawn (thunk / exh)  
            let shortL_ : rope = apply rmap[n] (shortL, start)
            let shortR_ : rope = @future1-touch (shortRX_F / exh)
-           let c : rope = CAT (ml_len, d, shortL_, shortR_)
+           let c : rope = CAT (len, d, shortL_, shortR_)
            return (c)
     end (* case *)
   (* end fun rmap[n] *)

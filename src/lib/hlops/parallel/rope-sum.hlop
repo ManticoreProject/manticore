@@ -11,35 +11,36 @@
 #include "ropes.def"
 
 define @rope-sum (r : rope / exh : exh) : ml_int =
-    fun sumS (ns : list, acc : int / exh : exh) : int =
-      case ns
-        of NIL => return (acc)
-         | CONS (mln : ml_int, ns : list) =>
-             let n : int = #0(mln)
-             let accX : int = I32Add (n, acc)
-             let res : int = apply sumS (ns, accX / exh)
-             return (res)            
-      end
-    fun sumP (r : rope / exh : exh) : ml_int = 
-      case r
-        of LEAF (len:ml_int, data:list) => 
-             let res : int = apply sumS (data, 0 / exh)
-	     let boxedRes : ml_int = alloc (res)
-             return (boxedRes)
-         | CAT (len:ml_int, depth:ml_int, r1:rope, r2:rope) =>
-             fun th (u : unit / exh: exh) : ml_int = 
-               let res : ml_int = apply sumP (r2 / exh)
-               return (res)
-             let f2 : future = @future1-spawn (th / exh)
-             let s1 : ml_int = apply sumP (r1 / exh)
-             let t2 : any = @future1-touch (f2 / exh)
-             let s2 : ml_int = (ml_int)t2
-             let n1 : int = #0(s1)
-             let n2 : int = #0(s2)
-             let sum : int = I32Add (n1, n2)
-             let boxedSum : ml_int = alloc (sum)
-             return (boxedSum)
-      end
-    let res : ml_int = apply sumP (r / exh)
-    return (res)
+
+  fun sumS (ns : list, acc : int / ) : int =
+    case ns
+      of NIL => return (acc)
+       | CONS (mln : [int], ns : list) =>
+           let n : int = unwrap(mln)
+           let newAcc : int = I32Add (n, acc)
+           let res : int = apply sumS (ns, newAcc)
+           return (res)            
+    end
+  (* end fun sumS *)
+
+  fun sumP (r : rope / ) : int = 
+    case r
+      of LEAF (n:int, data:list) => apply sumS (data, 0)
+       | CAT (n:int, d:int, r1:rope, r2:rope) =>
+           fun th (u : unit / exh: exh) : [int] = 
+             let s : int = apply sumP (r2)
+             let w : [int] = wrap(s)  
+             return (w)
+           let f2 : future = @future1-spawn (th / exh)
+           let s1 : int = apply sumP (r1)
+           let t2 : [int] = @future1-touch (f2 / exh)
+           let s2 : int = unwrap(t2)
+           let sum : int = I32Add (s1, s2)
+           return (sum)
+    end
+  (* end fun sumP *)
+
+  let s : int = apply sumP (r)
+  let w : [int] = wrap(s)
+  return (w)
 ;

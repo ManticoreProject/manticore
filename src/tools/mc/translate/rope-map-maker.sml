@@ -167,7 +167,6 @@ structure RopeMapMaker : sig
 		    BTy.T_Tuple (false, [fty, listTy])
 		end  
             (* variables *)
-	    val mlLenV = BV.new ("ml_len", intTy)
  	    val dataV = BV.new ("data", listTy)
             val lenV = BV.new ("len", rawIntTy)
 	    val getV = BV.new ("get", BTy.T_Fun ([ropeTy], [exhTy], [iPairTy (listTy, boolTy)]))
@@ -195,9 +194,8 @@ structure RopeMapMaker : sig
 	    (* misc *)
 	    fun mkSel ((dn, n), e) = B.mkStmt ([dn], B.E_Select (n, dsV), e)
 	    (* and finally...*)
-	    val leafPat = B.P_DCon (BB.ropeLeaf, [mlLenV, dataV])
+	    val leafPat = B.P_DCon (BB.ropeLeaf, [lenV, dataV])
 	    val leafBody = 
-               B.mkStmt ([lenV], B.unwrap mlLenV,
                B.mkLet  ([getV], B.mkHLOp (HLOpEnv.curriedRopeSublistOp, [startV, lenV], [exhV]),
                B.mkStmt ([arg1V], B.E_Alloc (argTy, [getV, othersV]),
                B.mkFun  ([hash1Lam],
@@ -208,14 +206,14 @@ structure RopeMapMaker : sig
                B.mkLet  ([dsV], B.mkApply (l2tV, [allV], []),
                foldr'   (mkSel, numberFrom (rev dVs, 0),
                B.mkLet  ([data_V], B.mkApply (listMapFunV arity, fV :: (rev dVs), [exhV]),
-               B.mkStmt ([eV], B.E_DCon (BB.ropeLeaf, [mlLenV, data_V]),
-               B.mkRet [eV]))))))))))))
+               B.mkStmt ([eV], B.E_DCon (BB.ropeLeaf, [lenV, data_V]),
+               B.mkRet [eV])))))))))))
 	in	
 	    (leafPat, leafBody)
 	end 
      
   (* mkCatBody : B.var * B.var * B.var * B.var -> B.exp *)
-    fun mkCatBody (shortV, startV, innerMapV, mlLenV, mlDepthV, shortLV, shortRV, exhV) : B.exp =
+    fun mkCatBody (shortV, startV, innerMapV, lenV, depthV, shortLV, shortRV, exhV) : B.exp =
 	let (* types *)
 	    val thunkTy = BTy.T_Fun ([unitTy], [exhTy], [ropeTy])
 	    (* variables *)
@@ -235,7 +233,7 @@ structure RopeMapMaker : sig
 	    val fut1Spawn = HLOpEnv.future1SpawnOp
 	    val fut1Touch = HLOpEnv.future1TouchOp
 	    (* apply innerMapV (shortRV, startRV) *)
-	    val retVal = B.E_DCon (BB.ropeCat, [mlLenV, mlDepthV, shortL_V, shortR_V])
+	    val retVal = B.E_DCon (BB.ropeCat, [lenV, depthV, shortL_V, shortR_V])
 	in
 	    B.mkLet ([lenLV], B.mkHLOp (HLOpEnv.ropeLengthIntOp, [shortLV], [exhV]),
             B.mkStmt ([startRV], B.E_Prim (Prim.I32Add (startV, lenLV)),
@@ -250,13 +248,13 @@ structure RopeMapMaker : sig
   (* mkCatCase : B.var * B.var * B.var * B.var -> B.pat * B.exp *)
     fun mkCatCase (shortV : B.var, startV : B.var, innerMapV : B.var, exhV : B.var) 
                   : B.pat * B.exp =
-	let val mlLenV = BV.new ("ml_len", intTy)
-	    val mlDepthV = BV.new ("ml_d", intTy)
+	let val lenV = BV.new ("len", rawIntTy)
+	    val depthV = BV.new ("d", rawIntTy)
 	    val shortLV = BV.new ("shortL", ropeTy)
 	    val shortRV = BV.new ("shortR", ropeTy)
-	    val catPat = B.P_DCon (BB.ropeCat, [mlLenV, mlDepthV, shortLV, shortRV])
+	    val catPat = B.P_DCon (BB.ropeCat, [lenV, depthV, shortLV, shortRV])
 	    val catBody = mkCatBody (shortV, startV, innerMapV, 
-				     mlLenV, mlDepthV, shortLV, shortRV, exhV)
+				     lenV, depthV, shortLV, shortRV, exhV)
 
 	in
 	    (catPat, catBody)

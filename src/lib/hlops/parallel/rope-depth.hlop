@@ -9,13 +9,10 @@
 #include "types.def"
 #include "ropes.def"
 
-define @rope-depth (r : rope / exh : exh) : ml_int =
+define @rope-depth (r : rope / exh : exh) : int =
   case r
-    of LEAF(len:ml_int, data:list) => 
-         let zero : ml_int = alloc (0)
-         return (zero)
-     | CAT (len:ml_int, depth:ml_int, r1:rope, r2:rope) => 
-         return (depth)
+    of LEAF(n:int, _:list) => return (0)
+     | CAT (n:int, d:int, _:rope, _:rope) => return (d)
   end
 ;
 
