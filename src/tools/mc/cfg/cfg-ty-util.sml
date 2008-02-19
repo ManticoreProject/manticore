@@ -47,7 +47,7 @@ structure CFGTyUtil : sig
       | kindOf (CTy.T_Addr _) = CTy.K_TYPE
       | kindOf (CTy.T_CFun _) = CTy.K_UNIFORM
 (* FIXME? vproc pointers cannot be classified as having uniform reps; so maybe a special kind is appropriate... *)
-      | kindOf CTy.T_VProc = CTy.K_RAW  
+      | kindOf CTy.T_VProc = CTy.K_TYPE
       | kindOf (CTy.T_StdFun _) = CTy.K_BOXED
       | kindOf (CTy.T_StdCont _) = CTy.K_BOXED
       | kindOf (CTy.T_KnownFunc _) = CTy.K_TYPE
