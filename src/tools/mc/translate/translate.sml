@@ -150,10 +150,19 @@ structure Translate : sig
 		  B.mkIf(x, trExpToExp(env, e2), trExpToExp(env, e3))))
 	    | AST.CaseExp(e, rules, ty) =>
 		EXP(trExpToV (env, e, fn x => trCase(env, x, rules)))
-	    | AST.HandleExp (e, ms, t) =>
-	        raise Fail "todo: trExp | HandleExp"
-	    | AST.RaiseExp (e, t) =>
-                raise Fail "todo: trExp | RaiseExp"
+	    | AST.HandleExp(e, mc, ty) => let
+		val (exn, body) = (case mc
+		       of [AST.PatMatch(AST.VarPat x, e')] => raise Fail "HandleExp"
+			| [AST.PatMatch(AST.WildPat _, e')] => raise Fail "HandleExp"
+			| _ => raise Fail "non-simple exception handler"
+		      (* end case *))
+		val (exh, env') = E.newHandler env
+		val handler = B.FB{f = exh, params = [exn], exh = [], body = body}
+		in
+		  EXP(B.mkCont(handler, trExpToExp(env', e)))
+		end
+	    | AST.RaiseExp(e, ty) =>
+		EXP(trExpToV (env, e, fn exn => B.mkThrow(E.handlerOf env, [exn])))
 	    | f as AST.FunExp(x, e, ty) => let
 		val fty = TypeOf.exp f
 		val fvar = Var.new ("f", fty)
