@@ -59,7 +59,7 @@ int main (int argc, const char **argv)
   /* get the time quantum in milliseconds */
     TimeQ = GetIntOpt(opts, "-q", DFLT_TIME_Q_MS);
 
-/* FIXME: for testing purposes, we pass an integer argument to the Manticore code */
+  /* FIXME: for testing purposes, we pass an integer argument to the Manticore code */
     int arg = GetIntOpt(opts, "-a", 1);
 
   /* create the main vproc */
