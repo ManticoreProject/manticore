@@ -42,7 +42,7 @@ do
    for s in $SIZES
    do
        echo "evaluating $PROG_NAME for $p processor[s] at size $s"
-       echo -n "$p $s " >> $LOG_FILE_NAME
+       echo -n -e "$p\t$s\t " >> $LOG_FILE_NAME
        if [ "$p" -eq "0" ] ; then       
              echo "$s." | ./$SEQ_PROG_EXE >> $LOG_FILE_NAME
        else
