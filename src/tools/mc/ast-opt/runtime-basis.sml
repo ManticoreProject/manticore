@@ -52,7 +52,7 @@ structure RuntimeBasis
 			  fn tv => (contTy(tv) --> tv) --> tv)
 
     val throwcc = BasisUtils.polyVar ("throwcc",
-			fn tv => AST.TupleTy [contTy(tv), tv] --> voidTy)
+			fn tv => AST.TupleTy [contTy(tv), tv] --> Basis.unitTy)
 
     fun mkCallcc (ty, e) =
 	AU.mkApplyExp(AU.mkVarExp(callcc, [ty]), [e])

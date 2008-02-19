@@ -28,7 +28,7 @@ define @rand-int(lo : int, hi : int / exh : exh) : int =
 (* pick an element uniformly at random from the list *)
 define @pick-random-elt(ls : list / exh : exh) : any =
   let len : ml_int = @list-length(ls /exh)
-  let r : int = @rand-int(0, unwrap(len) / exh)
+  let r : int = @rand-int(0, I32Sub(unwrap(len), 1) / exh)
   let r : ml_int = wrap(r)
   let arg : [list, ml_int] = alloc(ls, r)
   let elt : any = @list-nth(arg / exh)
@@ -66,52 +66,58 @@ define @ltc-scheduler (fgs : fgs / exh : exh) : ltq_fun =
  (* find the lazy task queue for a vproc. *)
   fun findLtq (vp : vproc, ltqAlist : list / exh : exh) : ir_dequeue =
       case ltqAlist
-       of NIL => throw exh(tag(findAtq))
+       of NIL => 
+	  do assert(FALSE)
+	  throw exh(tag(findAtq))
 	| CONS(vpLtq : [vproc, ir_dequeue], rest : list) =>
 	  if Equal(vp, #0(vpLtq))
              then return (#1(vpLtq))
              else apply findLtq (vp, rest / exh)
       end
 
-  fun popSelf (ltq : ir_dequeue, none : cont(), some : cont(fiber) / exh : exh) : () =
-      do @ird-pop-hd(ltq, none, some / exh)
-      return ()
-  fun popOther (ltq : ir_dequeue, none : cont(), some : cont(fiber) / exh : exh) : () = 
-      do @ird-pop-tl(ltq, none, some / exh)
-      return ()
+  fun popTl (ltq : ir_dequeue / exh : exh) : option =      
+      let mask : bool = @spin-lock-ird (ltq / exh)
+        let elt : option = @ird-pop-tl(ltq / exh)
+      let _ : unit = @spin-unlock-ird (ltq, mask / exh)
+      return(elt)
 
- (* attempt to pop an element from the lazy task queue. *)
-  cont pop (popFn : fun (ir_dequeue, cont(), cont(fiber) / exh ->), 
-            ltq : ir_dequeue, 
-            none : cont(), some : cont(fiber)) =
-       let mask : bool = @spin-lock-ird (ltq / exh)
-        cont none' () =
-             let _ : unit = @spin-unlock-ird (ltq, mask / exh)
-             throw none()
-        cont some'(k : fiber) = 
-             let _ : unit = @spin-unlock-ird (ltq, mask / exh)
-             throw some(k)
-        let mask : bool = @spin-lock-ird (ltq / exh)
-        do apply popFn (ltq, none, some / exh)
-        throw exh(tag(ltcPop))
+  fun popHd (ltq : ir_dequeue / exh : exh) : option =      
+      let mask : bool = @spin-lock-ird (ltq / exh)
+        let elt : option = @ird-pop-hd(ltq / exh)
+      let _ : unit = @spin-unlock-ird (ltq, mask / exh)
+      return(elt)
 
   fun mkSwitch (self : vproc / exh : exh) : sigact =
       let selfLtq : ir_dequeue = apply findLtq (self, vpLtqMp / exh)      
       cont switch (s: signal) =
            cont dispatch (k : fiber) =
                 @run(self, switch, fgs, k / exh)
+
           (* try to steal a frame from one of the other vprocs. *)
            cont steal () =
-                let victim : any = @pick-random-elt(vps / exh)
+                let victim : any = @pick-random-elt(vps' / exh)
                 let victim : [vproc] = ([vproc])victim
+                do if Equal(#0(victim), self)
+                      then throw steal()
+                      else return()
                 let victimLtq : ir_dequeue = apply findLtq (#0(victim), vpLtqMp / exh)
-                throw pop(popOther, victimLtq, steal, dispatch)
+                let kOpt : option = apply popTl (victimLtq / exh)
+                case kOpt
+		 of NONE => throw steal()
+		  | SOME(k : fiber) => 
+		    print_msg("stole fiber")
+		    throw dispatch (k)
+                end
 
            if Equal(s, STOP)
-              then throw pop(popSelf, selfLtq, steal, dispatch)
+              then let kOpt : option = apply popHd(selfLtq / exh)
+                   case kOpt
+		    of NONE => throw steal()
+		     | SOME(k : fiber) => throw dispatch(k)
+                   end
               else let _ : unit = @atomic-yield(self / exh)
                    let k : fiber = (fiber)s
-                   throw k(UNIT)
+                   throw dispatch(k)
       return(switch)
 
  (* make the lazy task queue accessible to fibers. we must use a lookup function, since computations

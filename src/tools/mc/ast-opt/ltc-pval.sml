@@ -37,7 +37,7 @@ structure LTCPVal =
               if (ltcPop())
                  then [| e2 |]
                  else (
-                    ivarPut(iv, e1);
+                    ivarPut(iv, x);
 		    threadExit())
             end
 	end)
@@ -56,19 +56,19 @@ structure LTCPVal =
 	val e2Ty = TypeOf.exp(e2)
 	val ivar = BasisUtils.monoVar("ivar", ivarTy(ty))
 	val retK = BasisUtils.monoVar("retK", RB.contTy(e2Ty))
-	val ctx = BasisUtils.monoVar("ctx", Basis.unitTy --> RB.voidTy)
+	val ctx = BasisUtils.monoVar("ctx", Basis.unitTy --> Basis.unitTy)
+	val e2' = VarSubst.exp' (VarSubst.singleton(x, x)) (RB.mkIVarGet(ty, ivar)) e2
         val ctxExp =
-	    A.FunExp (BasisUtils.monoVar("x", Basis.unitTy),
+	    A.FunExp (BasisUtils.monoVar("dummyVar", Basis.unitTy),
 		      RB.mkThrowcc(e2Ty, retK, 
-(* FIXME: freshen the names in e2 *)
-		            VarSubst.exp' (VarSubst.singleton(x, x)) (RB.mkIVarGet(ty, ivar)) e2),
-		Basis.unitTy --> RB.voidTy)
+		            AU.copyExp(e2')),
+		Basis.unitTy)
         val e2 = 
 	    AU.mkSeqExp([RuntimeBasis.mkLtcPush(ctx)],
 		AU.mkLetExp(mkBindVars([x], [e1]),	
 		  AU.mkIfExp (RB.mkLtcPop,
 			      VarSubst.exp' (VarSubst.singleton(x, x)) (A.VarExp(x,[])) e2,
-			      AU.mkSeqExp([RB.mkIVarPut(ty, ivar, e1)],
+			      AU.mkSeqExp([RB.mkIVarPut(ty, ivar, A.VarExp(x,[]))],
 					  RB.mkThreadExit))))
         in
 	   RB.mkCallcc(e2Ty,

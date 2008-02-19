@@ -35,23 +35,29 @@ define @test-dq-1 (/ exh : exh) : bool =
       end
 
   fun toList (nElts: int, deq : ir_dequeue, ls : list /) : list =
-      cont none () = return (ls)
-      cont some (x : [int]) = 
-           let ls' : list = CONS(x, ls)
-           apply toList (I32Sub(nElts,1), deq, ls' /)
+      cont exit () = return (ls)
       do if I32Lt(nElts, 0)
-            then throw none ()
-            else @ird-pop-hd (deq, none, some / exh)
-      throw exit()
-  fun toListRev (nElts : int, deq : ir_dequeue, ls : list /) : list =
-      cont none () = return (ls)
-      cont some (x : any) = 
-           let ls' : list = CONS(x, ls)
-           apply toListRev (I32Sub(nElts,1), deq, ls' /)
+            then throw exit ()
+            else return()
+      let xOpt : option = @ird-pop-hd (deq / exh)
+      case xOpt
+       of NONE => throw exit ()
+	| SOME(x : [int]) =>
+          let ls' : list = CONS(x, ls)
+          apply toList (I32Sub(nElts,1), deq, ls' /)      
+      end
+  fun toListRev (nElts: int, deq : ir_dequeue, ls : list /) : list =
+      cont exit () = return (ls)
       do if I32Lt(nElts, 0)
-           then throw none()
-           else @ird-pop-tl (deq, none, some / exh)
-      throw exit()
+            then throw exit ()
+            else return() 
+      let xOpt : option = @ird-pop-tl (deq / exh)
+      case xOpt
+       of NONE => throw exit ()
+	| SOME(x : [int]) =>
+          let ls' : list = CONS(x, ls)
+          apply toListRev (I32Sub(nElts,1), deq, ls' /)      
+      end
   fun fromList (deq : ir_dequeue, ls : list / ) : () =
       case ls
        of NIL => return ()
@@ -65,24 +71,30 @@ define @test-dq-1 (/ exh : exh) : bool =
   let deq : ir_dequeue = IR_DEQUEUE()
 
   fun checkInc (x : int, prev : int / exh : exh) : bool =
+do ccall M_PrintInt(x)
       let b : bool = I32Gt(x,prev)
       return (b)
   fun checkDec (x : int, prev : int / exh : exh) : bool =
+(*do ccall M_PrintInt(prev)*)
+do ccall M_PrintInt(x)
       let b : bool = I32Lt(x,prev)
-      return (b)
+      return (TRUE)
   
   let ls0 : list = apply buildLs (nElts/ )
-
+(*
   do apply fromList(deq, ls0)
   let ls : list = apply toList(nElts, deq, NIL /)
   do apply checkFn(checkInc, -1, I32Add(nElts,1), ls / exh)
+*)
 
-  let ls : list = apply toListRev(nElts, deq, NIL /)
+(*  let ls : list = apply toListRev(nElts, deq, NIL /)
   do apply checkFn(checkDec, I32Add(nElts,1), I32Add(nElts,1), ls / exh)
+*)
 
   do apply fromList(deq, ls0)
   let ls : list = apply toList(I32Div(nElts,2), deq, NIL /)
   do apply checkFn(checkInc, I32Sub(I32Div(nElts,2),1), I32Add(nElts, 1), ls / exh)  
+print_msg("")
   let ls : list = apply toListRev(I32Div(nElts,2), deq, NIL /)
   do apply checkFn(checkDec, I32Div(nElts,2), I32Add(nElts,1), ls / exh)
 

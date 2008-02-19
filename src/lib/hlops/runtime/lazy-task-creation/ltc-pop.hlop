@@ -27,15 +27,13 @@ define @ltc-pop(arg : unit / exh : exh) : bool =
  (* pop an element from the head of the lazy task queue while holding the lock *)
   let mask : bool = @spin-lock-ird (ltq / exh)
 
-    cont none () = 
-	 let _ : unit = @spin-unlock-ird (ltq, mask / exh)
-         return(FALSE)
-    cont some (_ : any) =
-	 let _ : unit = @spin-unlock-ird (ltq, mask / exh)
-         return(TRUE)
+    let kOpt : option = @ird-pop-hd(ltq / exh)
+    let isNonEmpty : bool = case kOpt
+			     of NONE => return (FALSE)
+			      | SOME(k : fiber) => return(TRUE)
+                            end
 
-    do @ird-pop-hd(ltq, none, some / exh)
+  let _ : unit = @spin-unlock-ird (ltq, mask / exh)
 
-  do assert(FALSE)
-  return (FALSE)
+  return(isNonEmpty)
 ;

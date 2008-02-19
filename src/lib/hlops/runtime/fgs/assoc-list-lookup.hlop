@@ -49,18 +49,12 @@ define @assoc-list-add (atag : assoc_tag, init : fun(unit / exh -> any), fgs : f
  * - fgs: fiber group storage that contains the assoication list
  *)
 define @assoc-list-lookup (atag : assoc_tag, init : fun(unit / exh -> any), fgs : fgs / exh : exh) : any =
-   let alist : assoc_list = SELECT(FGS_ALIST_OFFSET, fgs)
-  (* find the tag in the association list, initializing a fresh element if none exists *)
-   fun lookup (alist : assoc_list / exh : exh) : any =
-       case alist
-	of ANIL =>
-	   (* initialize a fresh element *)                   
-	    let elt : any = @assoc-list-add (atag, init, fgs / exh)
-	    return (elt)
-	 | ACONS (atag' : assoc_tag, elt : any, alist : assoc_list) => 
-	   if Equal (atag, atag')
-	       then return (elt)
-	       else apply lookup (alist / exh)
-       end
-   apply lookup (alist / exh)
+  let eltOpt : option = @assoc-list-query(atag, fgs / exh)
+  case eltOpt
+   of NONE =>
+     (* initialize a fresh element *)                   
+      let elt : any = @assoc-list-add(atag, init, fgs / exh)
+      return (elt)
+    | SOME (elt : any) => return(elt)
+  end
 ;

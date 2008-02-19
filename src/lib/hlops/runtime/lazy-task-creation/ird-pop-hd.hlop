@@ -11,7 +11,9 @@
 #include "ir-dequeue.def"
 #include "debugging.def"
 
-define @ird-pop-hd(deq : ir_dequeue, none : cont(), some : cont(any) / exh : exh) noreturn =
+define @ird-pop-hd(deq : ir_dequeue / exh : exh) : option =
+  cont none () = return(NONE)
+  let empty : any = (any)IR_DEQUEUE_EMPTY
   let oldHd : ir_dequeue_elt = SELECT(IR_DEQUEUE_HD, deq)
  (* exit if the dequeue is empty *)
   do if Equal(oldHd, IR_DEQUEUE_EMPTY)
@@ -20,13 +22,14 @@ define @ird-pop-hd(deq : ir_dequeue, none : cont(), some : cont(any) / exh : exh
   let nextHd : ir_dequeue_elt = SELECT(IR_DEQUEUE_ELT_NEXT, oldHd)
  (* update the next head element's prev pointer *)
   do if Equal(nextHd, IR_DEQUEUE_EMPTY)
-     then return ()
-     else let empty : any = (any)IR_DEQUEUE_EMPTY
-          do UPDATE(IR_DEQUEUE_ELT_PREV, nextHd, empty)
+     then let emptyElt : ir_dequeue_elt = (ir_dequeue_elt)IR_DEQUEUE_EMPTY
+          do UPDATE(IR_DEQUEUE_TL, deq, emptyElt)
+          return ()
+     else do UPDATE(IR_DEQUEUE_ELT_PREV, nextHd, empty)
           return () 
  (* update the stack head *)
   do UPDATE(IR_DEQUEUE_HD, deq, nextHd)
  (* return the element *)
   let elt : any = SELECT(IR_DEQUEUE_ELT_DATA, oldHd)
-  throw some(elt)
+  return (SOME(elt))
 ;

@@ -41,6 +41,9 @@ structure ASTUtil : sig
   (* create an expression for a variable and its concete types *)
     val mkVarExp : (AST.var * AST.ty list) -> AST.exp
 
+  (* make a fresh copy of an expression *)
+    val copyExp : AST.exp -> AST.exp
+
   end = struct
 
     structure A = AST
@@ -104,5 +107,63 @@ structure ASTUtil : sig
 
     fun mkVarExp (v, tys) =
 	A.VarExp (v, tys)
+
+    fun copyPat s p =
+	let fun f (A.ConPat (c, ts, p)) = A.ConPat (c, ts, f p)
+	      | f (A.TuplePat ps) = A.TuplePat (map f ps)
+	      | f (v as A.VarPat x) = 
+		let val x' = Var.copy x
+		in
+		    Var.Tbl.insert s (x, x');
+		    A.VarPat x'
+		end
+	      | f (A.WildPat t) = A.WildPat t
+	      | f (k as A.ConstPat _) = k
+	in
+	    f p
+	end
+
+    fun copyExpWalk s e =
+	let fun exp (A.LetExp (b, e)) = A.LetExp (binding b, exp e)
+	      | exp (A.IfExp (e1, e2, e3, t)) =
+		  A.IfExp (exp e1, exp e2, exp e3, t)
+	      | exp (A.CaseExp (e, ms, t)) = A.CaseExp (exp e, map match ms, t)
+	      | exp (A.HandleExp (e, ms, t)) = A.HandleExp (exp e, map match ms, t)
+	      | exp (A.RaiseExp (e, t)) = A.RaiseExp (exp e, t)
+	      | exp (A.FunExp (x, e, t)) = A.FunExp (x, exp e, t)
+	      | exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, t)
+	      | exp (m as A.VarArityOpExp _) = m
+	      | exp (A.TupleExp es) = A.TupleExp (map exp es)
+	      | exp (A.RangeExp (e1, e2, oe3, t)) =
+		  A.RangeExp (exp e1, exp e2, Option.map exp oe3, t)
+	      | exp (A.PTupleExp es) = A.PTupleExp (map exp es)
+	      | exp (A.PArrayExp (es, t)) = A.PArrayExp (map exp es, t)
+	      | exp (A.PCompExp (e, pes, opred)) = 
+		  A.PCompExp (exp e, 
+			      map (fn (p,e) => (copyPat s p, exp e)) pes,
+			      Option.map exp opred)
+	      | exp (A.PChoiceExp (es, t)) = A.PChoiceExp (map exp es, t)
+	      | exp (A.SpawnExp e) = A.SpawnExp (exp e) 
+	      | exp (k as A.ConstExp _) = k
+	      | exp (v as A.VarExp (x, ts)) = 
+		(case Var.Tbl.find s x
+		  of NONE => v
+		   | SOME v' => A.VarExp (v', ts))
+	      | exp (A.SeqExp (e1, e2)) = A.SeqExp (exp e1, exp e2)
+	      | exp (ov as A.OverloadExp _) = ov
+	    and match (A.PatMatch (p, e)) = A.PatMatch (copyPat s p, exp e)
+	      | match (A.CondMatch (p, cond, e)) = A.CondMatch (copyPat s p, exp cond, exp e)
+	    and binding (A.ValBind (p, e)) = A.ValBind (copyPat s p, exp e)
+	      | binding (A.PValBind (p, e)) = A.PValBind (copyPat s p, exp e)
+	      | binding _ = raise Fail "todo"
+	in
+	    exp e
+	end
+
+    fun copyExp e =
+	let val s = Var.Tbl.mkTable (256, Fail "copyExp")
+	in
+	    copyExpWalk s e
+	end
 
   end

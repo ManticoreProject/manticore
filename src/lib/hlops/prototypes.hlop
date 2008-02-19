@@ -74,4 +74,4 @@ define @test-deadlock (f : fun (unit / exh -> bool), waitSecs : double, exhDeadl
 
 (* exported first-class continuations *)
 define @callcc (arg : fun(cont(any) / exh -> any) / exh : exh) : any;
-define @throwcc (arg : [cont(any), any] / exh : exh) : any;
+define @throwcc (arg : [cont(any), any] / exh : exh) : unit;

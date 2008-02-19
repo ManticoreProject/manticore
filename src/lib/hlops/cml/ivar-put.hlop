@@ -37,6 +37,7 @@ define inline @ivar-put (arg : [ivar, any] / exh : exh) : unit =
                              let k' : cont(any) = #1((blocked_thread)hd')
                              cont k (_ : unit) = throw k'(x)
                              let k : fiber = (fiber)k
+print_msg("waking")
                              do @enqueue(host_vproc, fgs, k / exh)
                              apply wakeRead(tl')
                        end

@@ -19,16 +19,16 @@ define @ird-push-hd(deq : ir_dequeue, elt : ir_dequeue_elt / exh : exh) : () =
   let empty : any = (any)IR_DEQUEUE_EMPTY
  (* initialize the new head *)
   do UPDATE (IR_DEQUEUE_ELT_PREV, elt, empty)  
-  do if NotEqual(oldHd, IR_DEQUEUE_EMPTY)
+  do if Equal(oldHd, IR_DEQUEUE_EMPTY)
         then 
-            (* redirect the old hd to the new hd *)
-             let elt : any = (any)elt
-             do UPDATE(IR_DEQUEUE_ELT_PREV, oldHd, elt)
-             return ()
-        else 
              (* the stack is empty; point the tail to the element. *)
              do UPDATE(IR_DEQUEUE_TL, deq, elt)
-             return ()
+             return ()            
+        else
+             (* redirect the old hd to the new hd *)
+             let elt : any = (any)elt
+             do UPDATE(IR_DEQUEUE_ELT_PREV, oldHd, elt)
+             return () 
  (* update the stack head *)
   do UPDATE(IR_DEQUEUE_HD, deq, elt)  
   return ()

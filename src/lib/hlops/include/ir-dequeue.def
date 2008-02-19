@@ -30,8 +30,8 @@ typedef ir_dequeue = ![bool, ir_dequeue_elt, ir_dequeue_elt];
 #define IR_DEQUEUE()          alloc(FALSE, IR_DEQUEUE_EMPTY, IR_DEQUEUE_EMPTY)
 
 define @ird-push-hd(deq : ir_dequeue, elt : ir_dequeue_elt / exh : exh) : ();
-define @ird-pop-hd(deq : ir_dequeue, none : cont(), some : cont(any) / exh : exh) noreturn;
-define @ird-pop-tl(deq : ir_dequeue, none : cont(), some : cont(any) / exh : exh) noreturn;
+define @ird-pop-hd(deq : ir_dequeue / exh : exh) : option;
+define @ird-pop-tl(deq : ir_dequeue / exh : exh) : option;
 
 (* spin lock *)
 #include "../runtime/synch/spin-lock-fn.hlop"

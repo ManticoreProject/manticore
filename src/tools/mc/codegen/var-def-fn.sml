@@ -39,10 +39,8 @@ functor VarDefFn (
 
   fun clear vdt = Tbl.clear vdt
 
-  fun getAndClrDefOf vdt = Tbl.remove vdt
-
   fun useDefOf vdt v = if (CFG.Var.useCount v = 1)
-	then getAndClrDefOf vdt v 
+	then Tbl.remove vdt v handle Fail "varDefTbl" => raise Fail ("varDefTbl: useDefOf "^CFG.Var.toString v)
 	else getDefOf vdt v
 
   fun setDefOf vdt (v,e) = Tbl.insert vdt (v,e)
