@@ -14,7 +14,7 @@
 
 typedef ltq_fun = fun (/exh -> ir_dequeue);
 
-define @ltc-scheduler (fgs : fgs / exh : exh) : ltq_fun;
+define @ltc-scheduler ( / exh : exh) : ltq_fun;
 define @ltc-pop(arg : unit / exh : exh) : any;
 define @ltc-push(f : fiber_fun / exh : exh) : unit;
 

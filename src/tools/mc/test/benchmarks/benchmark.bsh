@@ -1,0 +1,54 @@
+#!/bin/bash
+
+MC="sml @SMLcmdname=mc @SMLload=../../mc"
+PARFLAGS=""
+SEQFLAGS="-Csequential=true"
+
+usage="usage: benchmark.bsh -e prog_name -q sequential_prog_name -s size ... -p num_procs ..."
+SEQ_PROG_NAME=""
+while getopts ":s:p:e:q:" options; do
+  case $options in
+    s ) SIZES="$SIZES $OPTARG";;
+    p ) PROCS="$PROCS $OPTARG";;
+    e ) PROG_NAME="$OPTARG";;
+    q ) SEQ_PROG_NAME="$OPTARG";;
+    h ) echo $usage;;
+    \? ) echo $usage
+         exit 1;;
+    * ) echo $usage
+          exit 1;;
+
+  esac
+done
+
+DATE=$( date +"%F-%k-%M" )
+LOG_FILE_NAME=$PROG_NAME-$DATE.times
+echo "Logging performance results to $LOG_FILE_NAME"
+
+#compile the parallel version
+$MC $PARFLAGS $PROG_NAME.pml 2> /dev/null
+mv a.out $PROG_NAME
+# compile the sequential version
+if [ -z $SEQ_PROG_NAME ]
+then
+    SEQ_PROG_NAME=$PROG_NAME
+    SEQ_PROG_EXE=$PROG_NAME-seq
+fi
+$MC $SEQFLAGS $SEQ_PROG_NAME.pml 2> /dev/null
+mv a.out $SEQ_PROG_EXE
+
+for p in $PROCS
+do   
+   for s in $SIZES
+   do
+       echo "evaluating $PROG_NAME for $p processor[s] at size $s"
+       echo -n "$p $s " >> $LOG_FILE_NAME
+       if [ "$p" -eq "0" ] ; then       
+             echo "$s." | ./$SEQ_PROG_EXE >> $LOG_FILE_NAME
+       else
+             echo "$s." | ./$PROG_NAME -p $p >> $LOG_FILE_NAME
+       fi
+   done
+done
+
+rm -f *.ppm *.s $PROG_NAME $SEQ_PROG_EXE

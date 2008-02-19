@@ -46,7 +46,7 @@ define @wrap-vps(vps : list / exh : exh) : list =
   apply loop (vps, NIL)
 ;
 
-define @ltc-scheduler (fgs : fgs / exh : exh) : ltq_fun =
+define @ltc-scheduler ( / exh : exh) : ltq_fun =
 
   let vps : list = ccall ListVProcs(host_vproc)
   let vps' : list = @wrap-vps(vps / exh)
@@ -74,6 +74,19 @@ define @ltc-scheduler (fgs : fgs / exh : exh) : ltq_fun =
              then return (#1(vpLtq))
              else apply findLtq (vp, rest / exh)
       end
+
+ (* make the lazy task queue accessible to fibers. we use a lookup function, since computations
+  * must obtain access to the lazy task queues of their own vprocs.
+  *)
+  fun ltqFn (/exh : exh) : ir_dequeue = 
+      apply findLtq (host_vproc, vpLtqMp / exh)
+
+ (* Initialize fiber-group storage. *)
+  let parentFGS : fgs = @get-fgs (host_vproc / exh)
+  let fgs : fgs = @new-fgs (TRUE, SOME (parentFGS) / exh)
+ (* add the spawn function to the fiber group storage *)
+  fun init (_ : unit / exh : exh) : any = return (ltqFn)
+  let _ : any = @assoc-list-lookup (TAG_LTC, init, fgs / exh)
 
   fun popTl (ltq : ir_dequeue / exh : exh) : option =      
       let mask : bool = @spin-lock-ird (ltq / exh)
@@ -121,12 +134,6 @@ define @ltc-scheduler (fgs : fgs / exh : exh) : ltq_fun =
                    let k : fiber = (fiber)s
                    throw dispatch(k)
       return(switch)
-
- (* make the lazy task queue accessible to fibers. we must use a lookup function, since computations
-  * must obtain access to the lazy task queues of their own vprocs.
-  *)
-  fun ltqFn (/exh : exh) : ir_dequeue = 
-      apply findLtq (host_vproc, vpLtqMp / exh)
 
   do @scheduler-startup (mkSwitch, fgs, vps / exh)
 
