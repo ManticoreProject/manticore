@@ -8,8 +8,16 @@
 
 Library
 
+  structure Util
+
+  signature ARCH
+
   signature ROPES
   functor   RopesFn
+
+  signature RANGES
+  functor   RangesFn
+
   structure RopeTests
 
 is
@@ -17,7 +25,11 @@ is
   $/basis.cm
   $/smlnj-lib.cm
 
+  util.sml
+  arch.sig
   ropes.sig
   ropes-fn.sml
+  ranges.sig
+  ranges-fn.sml
   rope-tests.sml
 

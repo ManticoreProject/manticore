@@ -7,12 +7,7 @@
  * N.B. Not directly used in the compiler.
  *)
 
-signature ARCH = sig
-  val cacheLineSizeBytes : int
-  val wordSizeBytes : int
-end
-
-functor RopesFn (Arch : ARCH) (* : ROPES *) = 
+functor RopesFn (Arch : ARCH) : ROPES  = 
    
   struct
 
@@ -97,24 +92,12 @@ functor RopesFn (Arch : ARCH) (* : ROPES *) =
       | smartBuild (r1 as Concat _, r2 as Concat _) = 
 	  Concat (ropeLen(r1)+ropeLen(r2), r1, r2)
 
-    (* fib : int -> int *)
-    fun fib n =
-	let fun f (n (* >= 2 *), penult, ult) =
-	        if n=2 then penult + ult
-		else f (n-1, ult, penult + ult)
-	in
-	    if n<0 then raise Fail "fib: negative argument"
-	    else if n=0 then 0
-	    else if n=1 then 1
-	    else f (n, 0, 1)
-	end
-	
     (* fibfloor : int -> int *)
     (* Compute the index of the greatest lower Fibonacci number of the arg. *)
     (* Note: If the argument is 1, the result is 2. *)
     (* FIXME This could be implemented more efficiently. *)
     fun fibfloor n =
-	let fun find f = if fib(f) > n then f-1 else find(f+1)
+	let fun find f = if Util.fib(f) > n then f-1 else find(f+1)
 	in
 	    dprint "fibfloor\n";
 	    if n<1 then raise Fail "fibfloor: n<1"
