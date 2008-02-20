@@ -152,8 +152,16 @@ structure Translate : sig
 		EXP(trExpToV (env, e, fn x => trCase(env, x, rules)))
 	    | AST.HandleExp(e, mc, ty) => let
 		val (exn, body) = (case mc
-		       of [AST.PatMatch(AST.VarPat x, e')] => raise Fail "HandleExp"
-			| [AST.PatMatch(AST.WildPat _, e')] => raise Fail "HandleExp"
+		       of [AST.PatMatch(AST.VarPat exn, e')] => let
+			    val (exn', env') = trVar (env, exn)
+			    in
+			      (exn', trExpToExp(env', e'))
+			    end
+			| [AST.PatMatch(AST.WildPat _, e')] => let
+			    val exn = BV.new ("exn", BTy.exnTy)
+			    in
+			      (exn, trExpToExp(env, e'))
+			    end
 			| _ => raise Fail "non-simple exception handler"
 		      (* end case *))
 		val (exh, env') = E.newHandler env
@@ -163,14 +171,14 @@ structure Translate : sig
 		end
 	    | AST.RaiseExp(e, ty) =>
 		EXP(trExpToV (env, e, fn exn => B.mkThrow(E.handlerOf env, [exn])))
-	    | f as AST.FunExp(x, e, ty) => let
-		val fty = TypeOf.exp f
-		val fvar = Var.new ("f", fty)
-		val env' = E.insertVar (env, fvar, BV.new ("f", trTy(env, fty)))
-		val fdef = AST.FB(fvar, x, e)
-		val letExp = AST.LetExp (AST.FunBind[fdef], AST.VarExp (fvar, []))
+	    | AST.FunExp(x, body, ty) => let
+		val ty' = trTy(env, ty)
+		val (x', env) = trVar(env, x)
+		val f = BV.new("anon", BTy.T_Fun([BV.typeOf x'], [BTy.exhTy], [ty']))
+		val (exh, env) = E.newHandler env
+		val fb = B.FB{f = f, params = [x'], exh = [exh], body = trExpToExp(env, body)}
 		in
-		  trExp (env', letExp)
+		  EXP(B.mkFun([fb], B.mkRet[f]))
 		end
 	    | AST.ApplyExp(e1, e2, ty) => 
 	        EXP(trExpToV (env, e1, fn f =>
