@@ -1,16 +1,15 @@
 #!/bin/bash
 
-MC="sml @SMLcmdname=mc @SMLload=../../mc"
-PARFLAGS=""
-SEQFLAGS="-Csequential=true"
+LEAF_SIZE="128"
 
 usage="usage: benchmark.bsh -e prog_name -q sequential_prog_name -s size ... -p num_procs ..."
 SEQ_PROG_NAME=""
-while getopts ":s:p:e:q:" options; do
+while getopts ":s:p:e:q:l:" options; do
   case $options in
     s ) SIZES="$SIZES $OPTARG";;
     p ) PROCS="$PROCS $OPTARG";;
     e ) PROG_NAME="$OPTARG";;
+    l ) LEAF_SIZE="$OPTARG";;
     q ) SEQ_PROG_NAME="$OPTARG";;
     h ) echo $usage;;
     \? ) echo $usage
@@ -20,6 +19,11 @@ while getopts ":s:p:e:q:" options; do
 
   esac
 done
+
+MC="sml @SMLcmdname=mc @SMLload=../../mc"
+PARFLAGS="-Cmax-leaf-size=$LEAF_SIZE"
+SEQFLAGS="-Csequential=true"
+
 
 DATE=$( date +"%F-%k-%M" )
 LOG_FILE_NAME=$PROG_NAME-$DATE.times
