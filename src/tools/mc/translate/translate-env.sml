@@ -72,7 +72,7 @@ structure TranslateEnv : sig
 		tycEnv = TTbl.mkTable (32, Fail "tyc table"),
 		dconEnv = DTbl.mkTable (64, Fail "dcon table"),
 		varEnv = vEnv,
-		exh = BOM.Var.new ("*bogus*", BOMTy.T_Any)
+		exh = BOM.Var.new ("*bogus*", BOMTy.exhTy)
 	      }
 	  end
 
