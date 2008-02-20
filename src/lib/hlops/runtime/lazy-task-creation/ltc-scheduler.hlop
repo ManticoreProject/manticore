@@ -108,8 +108,6 @@ define @ltc-scheduler ( / exh : exh) : ltq_fun =
 
           (* try to steal a frame from one of the other vprocs. *)
            cont steal () =
-               (* brittle! this code must be preemptible, otherwise fibers blocked on ivars will never get to run *)
-              do vpstore (ATOMIC, self, FALSE)
                 let victim : any = @pick-random-elt(vps' / exh)
                 let victim : [vproc] = ([vproc])victim
                 do if Equal(#0(victim), self)
@@ -118,9 +116,10 @@ define @ltc-scheduler ( / exh : exh) : ltq_fun =
                 let victimLtq : ir_dequeue = apply findLtq (#0(victim), vpLtqMp / exh)
                 let kOpt : option = apply popTl (victimLtq / exh)
                 case kOpt
-		 of NONE => throw steal()
+		 of NONE => 
+		    let _ : unit = @atomic-yield(self / exh)
+		    throw steal()
 		  | SOME(k : fiber) => 
-             do vpstore (ATOMIC, self, TRUE)
 		    throw dispatch (k)
                 end
 
