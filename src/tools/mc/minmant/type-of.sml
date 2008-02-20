@@ -23,11 +23,7 @@ structure TypeOf : sig
 
     fun exp (AST.LetExp(_, e)) = exp e
       | exp (AST.IfExp(_, _, _, ty)) = ty
-      | exp (AST.FunExp(arg, _, ty)) = let
-	  val Ty.TyScheme([], argTy) = Var.typeOf arg
-	  in
-	    Ty.FunTy(argTy, ty)
-	  end
+      | exp (AST.FunExp(param, _, ty)) = Ty.FunTy(Var.monoTypeOf param, ty)
       | exp (AST.CaseExp(_, _, ty)) = ty
       | exp (AST.HandleExp (_, _, ty)) = ty
       | exp (AST.RaiseExp (_, ty)) = ty
