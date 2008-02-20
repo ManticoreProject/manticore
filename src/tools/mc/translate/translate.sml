@@ -18,22 +18,18 @@ structure Translate : sig
     structure Lit = Literal
     structure E = TranslateEnv
 
-    local
-	fun lamName (B.FB {f,...}) = f
-	fun compareLam (lam1, lam2) = BV.compare (lamName lam1, lamName lam2)
-    in
-    structure LambdaSet = RedBlackSetFn (struct
-                            type ord_key = B.lambda
-                            val compare = compareLam
-                          end)
-    end (* locals for LambdaSet *)
+    structure LambdaSet = RedBlackSetFn (
+      struct
+	type ord_key = B.lambda
+	fun compare (B.FB{f, ...}, B.FB{f=g, ...}) = BV.compare (f, g)
+      end)
 
-    val RopeMapSet = ref(LambdaSet.empty)
+    val ropeMapSet = ref(LambdaSet.empty)
 
     val trTy = TranslateTypes.tr
 
     val rawIntTy = BTy.T_Raw BTy.T_Int
-    fun rawInt(n) = B.E_Const (Literal.Int (IntInf.fromInt n), rawIntTy)
+    fun rawInt(n) = B.E_Const(Literal.Int(IntInf.fromInt n), rawIntTy)
 
   (* prune out overload nodes.
    * NOTE: we should probably have a pass that does this before
@@ -280,13 +276,13 @@ structure Translate : sig
     and trParr (env, exps, ty) = TranslateParr.tr (env, trExpToV) (exps, ty)
 
     and trVarArityOp (env, oper, n) = (case oper
-           of AST.MapP => 
-	        let val mapn as B.FB {f, ...} = RopeMapMaker.gen n
+           of AST.MapP => let
+		val mapn as B.FB{f, ...} = RopeMapMaker.gen n
 		in
-		    RopeMapSet := LambdaSet.add (!RopeMapSet, mapn);
-		    EXP (B.mkRet [f])
+		  ropeMapSet := LambdaSet.add (!ropeMapSet, mapn);
+		  EXP(B.mkRet [f])
 		end
-           (* end case *))
+	  (* end case *))
 
     and trBind (env, bind, k : TranslateEnv.env -> B.exp) = (case bind
 	   of AST.ValBind(AST.TuplePat pats, exp) => let
@@ -519,10 +515,14 @@ structure Translate : sig
           val argTy = BTy.T_Raw RawTypes.T_Int
           val arg = BV.new("_arg", argTy)
 	  val (exh, env) = E.newHandler env0
-	  val _ = RopeMapSet := LambdaSet.empty
+	  val _ = ropeMapSet := LambdaSet.empty
 	  val body' = trExpToExp (env, body)
-	  val ropeMaps = LambdaSet.listItems(!RopeMapSet)
-	  val body'' = B.mkFun (ropeMaps, body')
+	  val body'' = (case LambdaSet.listItems(!ropeMapSet)
+		 of [] => body'
+		  | fbs => (
+		      ropeMapSet := LambdaSet.empty;
+		      B.mkFun(fbs, body'))
+		(* end case *))
 	  val mainFun = B.FB{
 		  f = BV.new("main", BTy.T_Fun([argTy], [BTy.exhTy], [trTy(env, TypeOf.exp body)])),
 		  params = [arg],
