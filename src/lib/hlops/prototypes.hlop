@@ -39,6 +39,7 @@ define @list-length (xs : list / exh : exh) : ml_int;
 define @list-rev (xs : list / exh : exh) : list;
 define @list-nth (args: [list, ml_int] / exh : exh) : any;
 define @list-map (args: [fun(any/exh->any), list] / exh:exh) : list;
+define @list-filter (arg: [fun(any/exh->bool), list] / exh:exh) : list;
 define @list-sublist (xs : list, start : int, length : int / exh : exh) : list;
 define @list-map-2 (arg : [fun ([any, any] / exh -> any), list, list] / exh : exh) : list;
 (* random numbers*)

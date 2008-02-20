@@ -23,3 +23,4 @@ define @locked-queue-dequeue (q : locked_queue / exh : exh) : option =
   do assert(FALSE)
   return (NONE)
 ;
+

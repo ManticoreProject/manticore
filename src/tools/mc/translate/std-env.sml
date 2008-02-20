@@ -461,6 +461,7 @@ structure StdEnv : sig
 		  (B.foldl,             "list-foldl",		true),
 		  (B.foldr,             "list-foldr",		true),
 		  (B.map,               "list-map",		false),
+                  (B.filter,            "list-filter",          false),
 		  (B.tab,               "list-tab",		false),
 		  (B.gettimeofday,	"gettimeofday",		false),
 		  (B.readint,	        "read-int",		false),

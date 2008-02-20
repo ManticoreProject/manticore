@@ -61,6 +61,7 @@ structure Basis : sig
   (* primitive operators *)
     val listAppend	: AST.var
     val map             : AST.var
+    val filter          : AST.var
     val foldl           : AST.var
     val foldr           : AST.var
     val stringConcat	: AST.var
@@ -220,7 +221,6 @@ structure Basis : sig
       fun ** (t1, t2) = AST.TupleTy[t1, t2]
       infix 9 **
       infixr 8 -->
-
 
       val forall = U.forall
       val forallMulti = U.forallMulti
@@ -592,6 +592,13 @@ structure Basis : sig
 	    polyVarMulti' (N.map, 2, mkTy)
 	end
 
+    val filter =
+	let fun mkTy [a] = ((a --> boolTy) ** (listTy a)) --> (listTy a)
+	      | mkTy _ = raise Fail "BUG: bad type instantiation for filter"
+	in
+	    polyVarMulti' (N.filter, 1, mkTy)
+	end
+
     local 
 	fun mkMkTy fname =
 	    let fun mkTy ([a,b]) = (AST.TupleTy[(a ** b) --> b, b, listTy a]) --> a
@@ -717,6 +724,7 @@ structure Basis : sig
 	    (N.readint,	        Env.Var readint),
 	    (N.compose,         Env.Var compose),
 	    (N.map,             Env.Var map),
+	    (N.filter,          Env.Var filter),
             (N.app,             Env.Var app),
 	    (N.parrayApp,       Env.Var parrayApp),
 	    (N.foldl,           Env.Var foldl),

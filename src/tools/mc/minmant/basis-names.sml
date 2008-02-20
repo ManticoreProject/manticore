@@ -119,6 +119,7 @@ structure BasisNames =
     val readint =	Atom.atom "readint"
     val compose =       Atom.atom "compose"
     val map =           Atom.atom "map"
+    val filter =        Atom.atom "filter"
     val app =           Atom.atom "app"
     val tab =           Atom.atom "tab"
     val foldl =         Atom.atom "foldl"
