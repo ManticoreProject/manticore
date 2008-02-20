@@ -62,7 +62,7 @@ structure PrintBOM : sig
 		      prLambda(i, "fun ", fb);
 		      List.app (fn fb => (indent i; prLambda(i, "and ", fb))) fbs;
 		      prExp (i, e))
-		  | B.E_Fun _ => print "<** empty function binding** >\n"
+		  | B.E_Fun _ => pr "<** empty function binding** >\n"
 		  | B.E_Cont(fb, e) => (prLambda(i, "cont ", fb); prExp (i, e))
 		  | B.E_If(x, e1, e2) => prIf(i, x, e1, e2)
 		  | B.E_Case(x, cases, dflt) => let
