@@ -8,7 +8,7 @@ fun treeAdd t = (case t
        of LF => 0.0
         | ND(x, t1, t2) => let
           pval l = treeAdd(t1)
-          pval r = treeAdd(t2) + x
+          val r = treeAdd(t2) + x
           in
 	      l + r
           end
