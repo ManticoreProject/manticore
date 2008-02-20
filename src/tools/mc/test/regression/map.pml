@@ -2,7 +2,7 @@
 
 fun pos n = (n > 0);
 
-fun range (lo, hi) =
+fun fromto (lo, hi) =
   let fun build (curr, acc) = 
 	    if (curr > hi)
 	    then rev acc
@@ -16,10 +16,10 @@ fun b2s b = if b then "true" else "false";
 
 fun printAll bs =
   (case bs
-     of nil => ()
-      | b::tl => (print (b2s b ^ "\n");
+     of nil => print "\n"
+      | b::tl => (print (b2s b ^ " ");
 		  printAll tl));
 
-(printAll (map (pos, range (~3, 3)));
- print "(expected F F F F T T T)\n")
+printAll (map (pos, fromto (~3, 3)))
+
 
