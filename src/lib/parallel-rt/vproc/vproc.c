@@ -278,10 +278,10 @@ static void *VProcMain (void *_data)
 	SayDebug("[%2d] VProcMain: initializing ...\n", self->id);
 #endif
 
-#ifdef HAVE_PTHREAD_SETAFFINITY_NP
+#ifdef HAVE_PTHREAD_SETAFFINITY_NP 
     cpu_set_t	cpus;
     CPU_ZERO(&cpus);
-    CPU_SET(NumVProcs, &cpus);
+    CPU_SET(self->id, &cpus);
     if (pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpus) == -1) {
 	Warning("[%2d] unable to set affinity\n", NumVProcs);
     }
