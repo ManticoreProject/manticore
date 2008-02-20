@@ -116,10 +116,10 @@ structure BasicControl :  sig
 
     val maxLeafSize : int Controls.control = Controls.genControl {
             name = "max-leaf-size",
-            pri = [0, 0],  (* FIXME What should this be? *)
-            obscurity = 0, (* FIXME What should this be? *)
+            pri = [0, 0], 
+            obscurity = 0,
             help = "sets the upper bound on number of data items at leaves of ropes",
-            default = 4
+            default = 256
           }
 
   (* custom scheduler *)
