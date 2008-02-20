@@ -32,6 +32,9 @@ structure Translate : sig
 
     val trTy = TranslateTypes.tr
 
+    val rawIntTy = BTy.T_Raw BTy.T_Int
+    fun rawInt(n) = B.E_Const (Literal.Int (IntInf.fromInt n), rawIntTy)
+
   (* prune out overload nodes.
    * NOTE: we should probably have a pass that does this before
    * AST optimization.
@@ -197,7 +200,26 @@ structure Translate : sig
 		  in
 		    B.mkStmt([t], B.E_Alloc(ty, xs), B.mkRet [t])
 		  end))
-	    | AST.RangeExp(lo, hi, optStep, ty) => raise Fail "unexpected RangeExp"
+	    | AST.RangeExp(lo, hi, optStep, ty) => let
+                (* FIXME This assumes int ranges for the time being. *)
+                val step = Option.getOpt (optStep, ASTUtil.mkInt(1))
+		fun rawIntV name = BV.new (name, rawIntTy)
+		val loV = rawIntV "lo"
+		val hiV = rawIntV "hi"
+		val stepV = rawIntV "step"
+		val maxLfSzV = rawIntV "maxLeafSize"
+	        in
+                  EXP(trExpToV (env, lo, fn loW =>
+                      trExpToV (env, hi, fn hiW =>
+                      trExpToV (env, step, fn stepW =>
+                      B.mkStmt ([loV], B.unwrap(loW),
+                      B.mkStmt ([hiV], B.unwrap(hiW),
+                      B.mkStmt ([stepV], B.unwrap(stepW),
+                      B.mkStmt ([maxLfSzV], rawInt(Ropes.maxLeafSize),
+                      B.mkHLOp(HLOpEnv.ropeFromRangeOp, 
+			       [loV, hiV, stepV, maxLfSzV],
+			       [E.handlerOf env])))))))))
+                end
 	    | AST.PTupleExp exps => raise Fail "unexpected PTupleExp"
 	    | AST.PArrayExp(exps, ty) => EXP(trParr(env,exps,ty))
 	    | AST.PCompExp _ => raise Fail "unexpected PCompExp"

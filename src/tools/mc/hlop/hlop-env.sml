@@ -77,9 +77,15 @@ structure HLOpEnv : sig
     val future1CancelOp : HLOp.hlop
 
   (* parrays (ropes) *)
-    val ropeSubOp : HLOp.hlop
+    val ropeSubOp       : HLOp.hlop
     val ropeLengthIntOp : HLOp.hlop
+    val ropeFromRangeOp : HLOp.hlop
 
+  (* some hlops, not in the surface language, for use in rope maps *)
+    val extractShortestRopeOp : HLOp.hlop
+    val curriedRopeSublistOp : HLOp.hlop
+    val insertAtOp : HLOp.hlop
+    
   (* extras *)
     val newImageOp	: HLOp.hlop
     val updateImage3fOp	: HLOp.hlop
@@ -90,11 +96,6 @@ structure HLOpEnv : sig
     val define : HLOp.hlop -> unit
     val find : Atom.atom -> HLOp.hlop option
 
-  (* some hlops, not in the surface language, for use in rope maps *)
-    val extractShortestRopeOp : HLOp.hlop
-    val curriedRopeSublistOp : HLOp.hlop
-    val insertAtOp : HLOp.hlop
-    
   end = struct
 
     structure H = HLOp
@@ -225,6 +226,12 @@ structure HLOpEnv : sig
 		
     val ropeLengthIntOp =
 	  newWithExh ("rope-length-int", [ropeTy], [rawIntTy], [])
+
+    val ropeFromRangeOp =
+	  newWithExh ("rope-from-range", 
+		      [rawIntTy, rawIntTy, rawIntTy, rawIntTy],
+		      [ropeTy], 
+		      [])
     
   (* some hlops, not in the surface language, for use in rope maps *)
     val extractShortestRopeOp =

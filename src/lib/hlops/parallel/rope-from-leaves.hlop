@@ -13,7 +13,7 @@ extern void M_Print (void*);
 
 define @rope-from-leaves (leaves : list / exh : exh) : rope =
 
-  fun catPairs (rs : list / exh : exh) : list =
+  fun catPairs (rs : list / ) : list =
     case rs
       of NIL => return (NIL)
        | CONS (r1 : rope, tail1 : list) =>
@@ -21,28 +21,28 @@ define @rope-from-leaves (leaves : list / exh : exh) : rope =
              of NIL => return (rs)
               | CONS (r2 : rope, tail2 : list) =>
                   let cat : rope = @simple-cat (r1, r2 / exh)
-                  let newTail : rope = apply catPairs (tail2 / exh)
+                  let newTail : rope = apply catPairs (tail2)
                   let newList : list = CONS (cat, newTail)
                   return (newList)
            end
     end
   (* end fun catPairs *)
 
-  fun fromList (rs : list / exh : exh) : rope =
+  fun fromList (rs : list / ) : rope =
     case rs
       of NIL => return (LEAF (0, NIL))
        | CONS (q : rope, qs : list) =>
            case qs
              of NIL => return (q)
               | CONS (s : rope, ss : list) =>
-                  let cat : list = apply catPairs (rs / exh)
-                  let res : rope = apply fromList (cat / exh)
+                  let cat : list = apply catPairs (rs)
+                  let res : rope = apply fromList (cat)
                   return (res)
            end
      end
   (* end fun fromList *)
 
-  let r : rope = apply fromList (leaves / exh)
+  let r : rope = apply fromList (leaves)
   return (r)
 ;
 
