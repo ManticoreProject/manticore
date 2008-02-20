@@ -49,10 +49,9 @@ structure StdEnv : sig
 	    (B.stringTyc,	BTy.K_BOXED,	BOMBasis.stringTy),
 	    (B.listTyc,		BTy.K_UNIFORM,	BOMBasis.listTy),
 	    (B.optionTyc,	BTy.K_UNIFORM,	BOMBasis.optionTy),
+	    (B.exnTyc,		BTy.K_BOXED,	BTy.exnTy),
 	    (B.threadIdTyc,	BOMTyUtil.kindOf(BTy.tidTy), BTy.tidTy),
 	    (B.parrayTyc,       BTy.K_BOXED,	BOMBasis.ropeTy),
-	    (R.ropeTyc,         BTy.K_BOXED,	BOMBasis.ropeTy),
-
             (B.ivarTyc,         BTy.K_BOXED,   BOMBasis.ivarTy),
 (*
 	    (B.mvarTyc, ),
@@ -62,6 +61,7 @@ structure StdEnv : sig
 	  (* internal types *)
 	    (F.futureTyc,       BTy.K_BOXED,	BTy.futureTy),
 	    (RB.contTyc,        BTy.K_BOXED,    BTy.T_Cont [BTy.T_Any]),
+	    (R.ropeTyc,         BTy.K_BOXED,	BOMBasis.ropeTy),
 	  (* extras *)
 	    (B.imageTyc,	BTy.K_BOXED,	BTy.T_Any)
 	  ]

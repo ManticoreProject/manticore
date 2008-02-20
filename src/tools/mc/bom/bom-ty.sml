@@ -42,7 +42,6 @@ structure BOMTy =
 	  kind : kind ref		(* kind of the representation: either UNBOXED, BOXED, *)
 					(* or UNIFORM *)
 	}
-(* QUESTION: are we using the following? *)
       | AbsTyc of {
 	  name : string,
 	  stamp : Stamp.stamp,
@@ -69,8 +68,15 @@ structure BOMTy =
 
     val unitTy = T_Enum(0w0)
     val boolTy = T_Enum(0w1)	(* false = 0, true = 1 *)
-    val exnTy = T_Any
+
+    val exnTyc = AbsTyc{
+	    name = "exn",
+	    stamp = Stamp.new(),
+	    arity = 0
+	  }
+    val exnTy = T_TyCon exnTyc
     val exhTy = T_Cont[exnTy]
+
     val tidTy = T_Any
     val fiberTy = T_Cont[unitTy]
     val workQueueTy = T_Any

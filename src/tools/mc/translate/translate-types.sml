@@ -88,14 +88,6 @@ structure TranslateTypes : sig
 		fun assignConstRep (i, dc) =
 		      insertConst (env, dc, Word.fromInt i, BTy.T_Enum(Word.fromInt nConsts - 0w1))
 		val _ = appi assignConstRep consts
-	      (* translate the argument type of a data constructor; for tuples of two, or more,
-	       * components, we flatten the representation.
-	       *)
-		fun trArgTy dc = let
-		      val rep = FlattenRep.flattenRep (tr (env, valOf (DataCon.argTypeOf dc)))
-		      in
-			(rep, FlattenRep.dstTys rep)
-		      end
 	      (* assign representations for the constructor functions *)
 		val newDataCon = BTyc.newDataCon dataTyc
 		fun mkDC (dc, rep, repTr, tys) = let
@@ -104,11 +96,11 @@ structure TranslateTypes : sig
 			insertDCon (env, dc, repTr, dc')
 		      end
 		fun mkDC' (dc, rep, (repTr, tys)) = mkDC (dc, rep, repTr, tys)
-		fun mkTaggedDC (i, dc) = mkDC' (dc, BTy.TaggedTuple(Word.fromInt i), trArgTy dc)
+		fun mkTaggedDC (i, dc) = mkDC' (dc, BTy.TaggedTuple(Word.fromInt i), trArgTy(env, dc))
 		in
 		  case (consts, conFuns)
 		   of (_::_, []) => setRep (BTy.T_Enum(Word.fromInt nConsts - 0w1), BTy.K_UNBOXED)
-		    | ([], [dc]) => (case trArgTy dc
+		    | ([], [dc]) => (case trArgTy(env, dc)
 			 of (repTr, [ty]) => (
 			      setRep (ty, BOMTyUtil.kindOf ty);
 			      mkDC (dc, BTy.Transparent, repTr, [ty]))
@@ -118,7 +110,7 @@ structure TranslateTypes : sig
 			(* end case *))
 		    | (_, [dc]) => (
 			case bomKindOfArgTy dc
-			 of BTy.K_BOXED => (case trArgTy dc
+			 of BTy.K_BOXED => (case trArgTy(env, dc)
 			       of (repTr, [ty]) => mkDC (dc, BTy.Transparent, repTr, [ty])
 				| (repTr, tys) => mkDC (dc, BTy.Tuple, repTr, tys)
 			      (* end case *))
@@ -131,12 +123,12 @@ structure TranslateTypes : sig
 			setRep (BTy.T_Any, BTy.K_UNIFORM))
 		    | ([], [dc1, dc2]) => (case (bomKindOfArgTy dc1, bomKindOfArgTy dc2)
 			 of (BTy.K_BOXED, BTy.K_UNBOXED) => (
-			      mkDC' (dc1, BTy.Tuple, trArgTy dc1);
-			      mkDC' (dc2, BTy.Transparent, trArgTy dc2);
+			      mkDC' (dc1, BTy.Tuple, trArgTy(env, dc1));
+			      mkDC' (dc2, BTy.Transparent, trArgTy(env, dc2));
 			      setRep (BTy.T_Any, BTy.K_UNIFORM))
 			  | (BTy.K_UNBOXED, BTy.K_BOXED) => (
-			      mkDC' (dc1, BTy.Transparent, trArgTy dc1);
-			      mkDC' (dc2, BTy.Tuple, trArgTy dc2);
+			      mkDC' (dc1, BTy.Transparent, trArgTy(env, dc1));
+			      mkDC' (dc2, BTy.Tuple, trArgTy(env, dc2));
 			      setRep (BTy.T_Any, BTy.K_UNIFORM))
 			  | _ => (
 			      mkTaggedDC (0, dc1);
@@ -155,11 +147,36 @@ structure TranslateTypes : sig
 		end
 	  (* end case *))
 
+  (* translate the argument type of a data constructor; for tuples of two, or more,
+   * components, we flatten the representation.
+   *)
+    and trArgTy (env, dc) = let
+	  val rep = FlattenRep.flattenRep (tr (env, valOf (DataCon.argTypeOf dc)))
+	  in
+	    (rep, FlattenRep.dstTys rep)
+	  end
+
     fun trScheme (env, Ty.TyScheme(_, ty)) = tr (env, ty)
 
-    fun trDataCon (env, dc as Ty.DCon{owner, ...}) = (case E.findDCon(env, dc)
-	   of SOME dc' => dc'
-	    | NONE => (ignore (trTyc(env, owner)); trDataCon (env, dc))
-	  (* end case *))
+    fun trDataCon (env, dc) = (case E.findDCon(env, dc)
+	     of SOME dc' => dc'
+	      | NONE => if Exn.isExn dc
+		  then let
+(* NOTE: we may want to use a flat representation for exn values! *)
+		    val tys = (case DataCon.argTypeOf dc
+			   of SOME ty => [BTy.T_Any, tr (env, ty)]
+			    | NONE => [BTy.T_Any]
+			  (* end case *))
+		    val dc' = BTyc.newExnCon (DataCon.nameOf dc, tys)
+		    val repTr = FlattenRep.TUPLE(tys, List.map FlattenRep.ATOM tys)
+		    val result = E.DCon(dc', repTr)
+		    in
+		      E.insertCon (env, dc, result);
+		      result
+		    end
+		  else (
+		    ignore (trTyc(env, DataCon.ownerOf dc));
+		    valOf (E.findDCon(env, dc)))
+	    (* end case *))
 
   end

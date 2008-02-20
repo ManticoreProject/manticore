@@ -18,6 +18,9 @@ structure BOMTyCon : sig
     val dconTyc : BOMTy.data_con -> BOMTy.tyc
     val dconResTy : BOMTy.data_con -> BOMTy.ty	(* the tyc as a ty *)
 
+  (* new exception datacon *)
+    val newExnCon : (string * BOMTy.ty list) -> BOMTy.data_con
+
   end = struct
 
     datatype tyc = datatype BOMTy.tyc
@@ -55,5 +58,13 @@ structure BOMTyCon : sig
     fun dconArgTy (DCon{argTy, ...}) = argTy
     fun dconTyc (DCon{myTyc, ...}) = myTyc
     fun dconResTy (DCon{myTyc, ...}) = BOMTy.T_TyCon myTyc
+
+    fun newExnCon (name, tys) = DCon{
+	    name = name,
+	    stamp = Stamp.new(),
+	    rep = Tuple,
+	    argTy = tys,
+	    myTyc = BOMTy.exnTyc
+	  }
 
   end
