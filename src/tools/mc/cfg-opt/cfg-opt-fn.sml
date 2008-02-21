@@ -18,11 +18,18 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
 	    pass = pass,
 	    registry = CFGOptControls.registry
 	  }
+    fun analyze {passName, pass} = BasicControl.mkTracePassSimple {
+            passName = passName,
+            pass = pass
+          }
 
     structure AddAllocChecks = AddAllocChecksFn (Target)
     structure AllocCCalls = AllocCCallsFn (Target)
     structure ImplementCalls = ImplementCallsFn (Target)
 
+  (* wrap analysis passes *)
+    val census = analyze {passName = "census", pass = Census.census}
+    val cfa = analyze {passName = "cfa", pass = CFACFG.analyze}
   (* wrap transformation passes with keep controls *)
     val contract = transform {passName = "contract", pass = Contract.transform}
     val specialCalls = transform {passName = "specialize-calls", pass = SpecializeCalls.transform}
@@ -32,15 +39,16 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
 
     fun optimize module = let
           val _ = CheckCFG.check module
-	  val _ = Census.census module
+	  val _ = census module
 	  val module = contract module
           val _ = CheckCFG.check module
-	  val _ = CFACFG.analyze module
+	  val _ = cfa module
 	  val module = specialCalls module
+          val _ = CFACFG.clearInfo module
           val _ = CheckCFG.check module
           val module = implCalls module
           val _ = CheckCFG.check module
-	  val _ = Census.census module
+	  val _ = census module
 	  val module = contract module
           val _ = CheckCFG.check module
 	  val module = allocChecks module
@@ -50,7 +58,6 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
 	  in
 	    module
 	  end
-
 
     val optimize = BasicControl.mkKeepPassSimple {
 	    output = PrintCFG.output {types=true},
