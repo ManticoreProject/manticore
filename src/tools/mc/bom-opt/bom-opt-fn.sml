@@ -10,7 +10,7 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 
   end = struct
 
-  (* a wrapper for BOM optimization passes.  The wrapper includes a invariant check. *)
+  (* a wrapper for BOM optimization passes.  The wrapper includes an invariant check. *)
     fun transform {passName, pass} = let
 	  val xform = BasicControl.mkKeepPassSimple {
 		  output = PrintBOM.output,
