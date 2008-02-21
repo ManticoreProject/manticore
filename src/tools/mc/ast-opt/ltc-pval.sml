@@ -39,7 +39,7 @@ structure LTCPVal =
            let val x = e1
            in
               if (ltcPop())
-                 then [| e2Susp(fn () => x) |]
+                 then e2Susp(fn () => x)
                  else (
                     iPut(iv, x);
 		    threadExit())

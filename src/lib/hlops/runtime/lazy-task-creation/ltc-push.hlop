@@ -12,7 +12,7 @@
 #include "runtime-offsets.def"
 #include "debugging.def"
 
-define @ltc-push(f : fiber_fun / exh : exh) : unit =
+define inline @ltc-push(f : fiber_fun / exh : exh) : unit =
   let fgs : fgs = @get-fgs (host_vproc / exh)
  (* initialize the ltc scheduler and return its spawn function *)
   fun init (_ : unit / exh : exh) : any =
@@ -23,12 +23,8 @@ define @ltc-push(f : fiber_fun / exh : exh) : unit =
 
   let k : fiber = @fiber(f / exh)
   let elt : ir_dequeue_elt = IR_DEQUEUE_NEW(k)
-  let elt : ir_dequeue_elt = promote(elt)
 
  (* push the context onto the lazy task queue head while holding the lock *)
-  let mask : bool = @spin-lock-ird (ltq / exh)
-    do @ird-push-hd(ltq, elt / exh)
-  let _ : unit = @spin-unlock-ird (ltq, mask / exh)
-
+  do @ltc-push-hd(ltq, elt / exh)
   return (UNIT)
 ;

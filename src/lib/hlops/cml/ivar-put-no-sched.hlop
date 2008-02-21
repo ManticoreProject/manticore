@@ -25,8 +25,8 @@ define inline @ivar-put-no-sched (arg : [ivar, any] / exh : exh) : list =
                  then return ()
                  else apply spin (/ exh)
           do apply spin (/ exh)
-          let readL : list = SELECT(IVAR_BLOCKED_LIST, ivar)
-          return(readL)
+          let blockedThreads : list = SELECT(IVAR_BLOCKED_LIST, ivar)
+          return(blockedThreads)
         else
           do assert(NotEqual(oldValue, IVAR_EMPTY_VAL))
           @thread-exit (/exh)

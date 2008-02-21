@@ -28,5 +28,6 @@ typedef blocked_thread = [fgs, cont(any)];
 define inline @ivar-new (_ : unit / exh : exh) : ivar;
 define inline @ivar-put (arg : [ivar, any] / exh : exh) : unit;
 define inline @ivar-get (arg : ivar / exh : exh) : any;
+define inline @ivar-put-no-sched (arg : [ivar, any] / exh : exh) : list;
 
 #endif /*!  _IVAR_DEF_ */

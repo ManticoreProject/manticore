@@ -94,6 +94,7 @@ define @ltc-scheduler ( / exh : exh) : ltq_fun =
       let _ : unit = @spin-unlock-ird (ltq, mask / exh)
       return(elt)
 
+(* FIXME: eliminate this duplicate code *)
   fun popHd (ltq : ir_dequeue / exh : exh) : option =      
       let mask : bool = @spin-lock-ird (ltq / exh)
         let elt : option = @ird-pop-hd(ltq / exh)

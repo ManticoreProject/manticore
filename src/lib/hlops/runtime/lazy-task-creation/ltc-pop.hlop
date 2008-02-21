@@ -13,7 +13,7 @@
 #include "assert.def"
 #include "fgs.def"
 
-define @ltc-pop(arg : unit / exh : exh) : bool =
+define inline @ltc-pop(arg : unit / exh : exh) : bool =
  (* initialize the ltc scheduler and return its spawn function *)
   fun init (_ : unit / exh : exh) : any =
      (* scheduler should always be instantiated by now *)

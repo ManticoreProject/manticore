@@ -492,7 +492,8 @@ structure StdEnv : sig
 
                  (* lazy task creation *)
                   (RB.ltcPop,            "ltc-pop",              false),
-                  (RB.ltcPush,           "ltc-push",             false)		  
+                  (RB.ltcPush,           "ltc-push",             false),
+		  (RB.ltcIPut,           "ltc-ivar-put",         false)
 		]  
 	  fun ins ((x, n, polyResTy), env) = (case H.find (Atom.atom n)
 		of NONE => raise Fail ("cannot find hlop " ^ n)

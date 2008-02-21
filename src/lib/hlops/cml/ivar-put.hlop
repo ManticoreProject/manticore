@@ -3,7 +3,9 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * put function for i-variable.
+ * Put function for ivars.  
+ * 
+ * The default scheduling decision for the moment is to enqueue unblocked threads on the host vproc.
  *)
 
 #include "ivar.def"
@@ -12,38 +14,18 @@
 #include "assert.def"
 
 define inline @ivar-put (arg : [ivar, any] / exh : exh) : unit = 
-    let ivar : ivar = #0(arg)
-    let x : any = #1(arg)
-    let x : any = (any)x
-    let x : any = promote(x)
-    let oldValue : any = CAS (&IVAR_VALUE(ivar), IVAR_EMPTY_VAL, x)
-    if Equal(oldValue, IVAR_EMPTY_VAL)
-       then
-          fun spin (/ exh : exh) : () =
-              if I32Eq (#2(ivar), 0)
-                 then return ()
-                 else apply spin (/ exh)
-          do apply spin (/ exh)
-          let readL : list = SELECT(IVAR_BLOCKED_LIST, ivar)
-          case readL
-           of NIL =>               
-	      return (UNIT)
-            | CONS(hd : any, tl : list) =>                              	
-        	fun wakeRead(l : list) : () =
-                      case l 
-                	of NIL => return ()
-                	 | CONS(hd' : any, tl' : list) =>                             
-                             let fgs : fgs = #0((blocked_thread)hd')
-                             let k' : cont(any) = #1((blocked_thread)hd')
-                             cont k (_ : unit) = throw k'(x)
-                             let k : fiber = (fiber)k
-                             do @enqueue(host_vproc, fgs, k / exh)
-                             apply wakeRead(tl')
-                       end
-        	do apply wakeRead(readL)
-        	return (UNIT) 
-          end
-        else
-          do assert(NotEqual(oldValue, IVAR_EMPTY_VAL))
-          @thread-exit (/exh)
+  let x : any = #1(arg)
+  let x : any = (any)x
+  let blockedThreads : list = @ivar-put-no-sched(arg / exh)
+  fun unblock (elt : any / exh : exh) : unit =
+     (* unpack fgs and the blocked continuation *)
+      let fgs : fgs = #0((blocked_thread)hd')
+      let k' : cont(any) = #1((blocked_thread)hd')     
+     (* make a fiber that passes the ivar value to the blocked continuation *)
+      cont k (_ : unit) = throw k'(x)
+      let k : fiber = (fiber)k
+      do @enqueue(host_vproc, fgs, k / exh)
+      return(UNIT)
+  let arg : [fun (any / exh -> unit), list] = alloc(unblock, blockedThreads)
+  @list-app(arg / exh)
 ;
