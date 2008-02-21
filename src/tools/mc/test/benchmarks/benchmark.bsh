@@ -23,7 +23,7 @@ done
 MC="sml @SMLcmdname=mc @SMLload=../../mc"
 SEQFLAGS="-Csequential=true"
 
-DATE=$( date +"%F-%k-%M" )
+DATE=$( date +"%F-%H-%M-%S" )
 LOG_FILE_NAME=$PROG_NAME-$DATE.times
 echo "Logging performance results to $LOG_FILE_NAME"
 
@@ -35,11 +35,11 @@ SEQ_PROG_EXE=$PROG_NAME-seq
 $MC $SEQFLAGS $SEQ_PROG_NAME.pml 2> /dev/null
 mv a.out $SEQ_PROG_EXE
 
-echo "# nProcs\timgSize\tmaxLeafSize\ttime(s)" >> $LOG_FILE_NAME 
+echo -e "#nProcs\t\tsize\t\tmaxLeafSize\ttime(s)" >> $LOG_FILE_NAME 
 
-for lfs in $LEAF_SIZES
+for LFS in $LEAF_SIZES
 do
-    PARFLAGS="-Cmax-leaf-size=$lfs"
+    PARFLAGS="-Cmax-leaf-size=$LFS"
     #compile the parallel version
     $MC $PARFLAGS $PROG_NAME.pml 2> /dev/null
     mv a.out $PROG_NAME
@@ -48,7 +48,7 @@ do
         for s in $SIZES
 	do
 	    echo "evaluating $PROG_NAME for $p processor[s] at image size $s and maxLeafSize $lfs"
-	    echo -n -e "$p\t$s\t$lfs\t" >> $LOG_FILE_NAME
+	    echo -n -e "$p\t\t$s\t\t$LFS\t\t" >> $LOG_FILE_NAME
 	    if [ "$p" -eq "0" ] ; then       
 		echo "$s." | ./$SEQ_PROG_EXE >> $LOG_FILE_NAME
 	    else

@@ -22,9 +22,8 @@ define inline @ltc-push(f : fiber_fun / exh : exh) : unit =
   let ltq : ir_dequeue = apply ltqFn (/exh)
 
   let k : fiber = @fiber(f / exh)
-  let elt : ir_dequeue_elt = IR_DEQUEUE_NEW(k)
 
  (* push the context onto the lazy task queue head while holding the lock *)
-  do @ltc-push-hd(ltq, elt / exh)
+  let _ : unit = @ltc-push-hd(ltq, k / exh)
   return (UNIT)
 ;

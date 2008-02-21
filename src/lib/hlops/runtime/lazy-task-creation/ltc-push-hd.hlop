@@ -13,8 +13,10 @@
 #include "debugging.def"
 
 define inline @ltc-push-hd(ltq : ir_dequeue, elt : any / exh : exh) : unit =
+  let elt : ir_dequeue_elt = IR_DEQUEUE_NEW(elt)
   let elt : ir_dequeue_elt = promote(elt)
   let mask : bool = @spin-lock-ird (ltq / exh)
     do @ird-push-hd(ltq, elt / exh)
   let _ : unit = @spin-unlock-ird (ltq, mask / exh)
+  return(UNIT)
 ;

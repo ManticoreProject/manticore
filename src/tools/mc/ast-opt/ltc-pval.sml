@@ -41,7 +41,7 @@ structure LTCPVal =
               if (ltcPop())
                  then e2Susp(fn () => x)
                  else (
-                    iPut(iv, x);
+                    ltcIPut(iv, x);
 		    threadExit())
             end
 	end)
@@ -74,7 +74,7 @@ structure LTCPVal =
 		AU.mkLetExp(mkBindVars([x], [e1]),	
 		  AU.mkIfExp (RB.mkLtcPop,
 			      AU.mkApplyExp(A.VarExp(e2Susp, []), [A.FunExp (dummyVar(), A.VarExp(x, []), e1Ty)]),
-			      AU.mkSeqExp([RB.mkIVarPut(e1Ty, ivar, A.VarExp(x,[]))],
+			      AU.mkSeqExp([RB.mkLtcIPut(e1Ty, ivar, A.VarExp(x,[]))],
 					  RB.mkThreadExit))))
 		     
         val ctxExp =

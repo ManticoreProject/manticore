@@ -6,7 +6,7 @@
  * This file contains prototypes scheduling operations.
  *)
 
-#include "types.def"
+
 
 (* control transfers *)
 define @atomic-yield (vp : vproc / exh : exh) : unit;

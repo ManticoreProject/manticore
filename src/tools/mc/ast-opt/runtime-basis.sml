@@ -81,6 +81,10 @@ structure RuntimeBasis
     fun ivarTy ty = AST.ConTy([ty], Basis.ivarTyc)
     val ltcIPut = BasisUtils.polyVar("ltcIPut", fn tv => (ivarTy(tv) ** tv) --> Basis.unitTy)
 
+    fun mkLtcIPut (ty, ivar, e) = 
+	AU.mkApplyExp(AU.mkVarExp(ltcIPut, [ty]),
+		      [A.VarExp(ivar, []), e])
+
     fun mkLtcPush (ctx) = 
 	AU.mkApplyExp (A.VarExp(ltcPush, []), [A.VarExp(ctx, [])])
 

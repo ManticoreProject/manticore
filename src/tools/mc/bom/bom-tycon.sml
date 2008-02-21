@@ -52,6 +52,7 @@ structure BOMTyCon : sig
 	  end
 
     fun tycName (DataTyc{name, ...}) = name
+      | tycName (AbsTyc{name, ...}) = name
     fun nCons (DataTyc{cons, ...}) = List.length(!cons)
 
     fun dconName (DCon{name, ...}) = name
