@@ -1,0 +1,33 @@
+(* ivar-put-no-sched.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Put function for ivars without making scheduling decisions.  This HLop takes an ivar and a value,
+ * puts the value into the ivar, and then returns the list of blocked threads.
+ *)
+
+#include "ivar.def"
+#include "vproc-queue.def"
+#include "debugging.def"
+#include "assert.def"
+
+define inline @ivar-put-no-sched (arg : [ivar, any] / exh : exh) : list = 
+    let ivar : ivar = #0(arg)
+    let x : any = #1(arg)
+    let x : any = (any)x
+    let x : any = promote(x)
+    let oldValue : any = CAS (&IVAR_VALUE(ivar), IVAR_EMPTY_VAL, x)
+    if Equal(oldValue, IVAR_EMPTY_VAL)
+       then
+          fun spin (/ exh : exh) : () =
+              if I32Eq (#2(ivar), 0)
+                 then return ()
+                 else apply spin (/ exh)
+          do apply spin (/ exh)
+          let readL : list = SELECT(IVAR_BLOCKED_LIST, ivar)
+          return(readL)
+        else
+          do assert(NotEqual(oldValue, IVAR_EMPTY_VAL))
+          @thread-exit (/exh)
+;
