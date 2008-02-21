@@ -19,8 +19,6 @@ structure TranslateParr  : sig
     structure BB  = BOMBasis
     structure BTy = BOMTy
 
-    val maxLeafSize = Ropes.maxLeafSize
-
     datatype 'a leaf 
       = Lf of (int * 'a list)
               (* length, data *)
@@ -69,7 +67,8 @@ structure TranslateParr  : sig
   (* Otherwise, it packs maxLeafSize-worth of data into a left leaf, *)
   (* the rest into a right leaf, and concatenates them. *)
     fun mergeLeaves (Lf (len1, xs1), Lf (len2, xs2)) =
-	let val totalLen = len1 + len2
+	let val maxLeafSize = R.maxLeafSize ()
+	    val totalLen = len1 + len2
 	    val xs = xs1 @ xs2
 	in
 	    if totalLen <= maxLeafSize
@@ -110,7 +109,8 @@ structure TranslateParr  : sig
   (* Consumes a list of expressions and produces an ideally-balanced *)
   (* rope from them. *)
     fun ropeFromExps es =
-	  let (* makeLeaf : 'a list -> 'a rope *)
+	  let val maxLeafSize = R.maxLeafSize ()
+	      (* makeLeaf : 'a list -> 'a rope *)
 	      (* pre: length xs does not exceed maxLeafSize *)
 	      fun makeLeaf xs = Leaf (Lf (length xs, xs))
 	      (* makeLeaves : 'a list -> 'a rope list *)

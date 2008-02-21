@@ -6,7 +6,7 @@
 
 structure Ropes : sig
 
-    val maxLeafSize  : int
+    val maxLeafSize  : unit -> int
     val ropeTyc      : Types.tycon
     val ropeTy       : Types.ty -> Types.ty
     val rope         : Atom.atom
@@ -23,8 +23,7 @@ structure Ropes : sig
 
     exception VariableArityType
 
-    val maxLeafSize = Controls.get BasicControl.maxLeafSize
-                      (* Default is 4, for easy testing. *)
+    fun maxLeafSize () = Controls.get BasicControl.maxLeafSize
 
     val rope = Atom.atom "rope"
 	       

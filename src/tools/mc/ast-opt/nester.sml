@@ -181,7 +181,7 @@ structure Nester (* : sig
 		      | vpat _ = fail "vpat: expected VarExp"
 		    val p = A.TuplePat (map vpat vs)
 		    val body = 
-			let val m = A.PatMatch (p, Unpar.noPTups e')
+			let val m = A.PatMatch (p, Unpar.unparTupInExp e')
 			in
 			    A.CaseExp (A.VarExp (x, []), [m], nestedTy)
 			end

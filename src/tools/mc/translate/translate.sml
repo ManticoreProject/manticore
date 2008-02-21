@@ -211,7 +211,7 @@ structure Translate : sig
                       B.mkStmt ([loV], B.unwrap(loW),
                       B.mkStmt ([hiV], B.unwrap(hiW),
                       B.mkStmt ([stepV], B.unwrap(stepW),
-                      B.mkStmt ([maxLfSzV], rawInt(Ropes.maxLeafSize),
+                      B.mkStmt ([maxLfSzV], rawInt(Ropes.maxLeafSize()),
                       B.mkHLOp(HLOpEnv.ropeFromRangeOp, 
 			       [loV, hiV, stepV, maxLfSzV],
 			       [E.handlerOf env])))))))))

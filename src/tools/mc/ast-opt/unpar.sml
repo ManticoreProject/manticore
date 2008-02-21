@@ -3,15 +3,18 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * The function noPTups recursively turns parallel tuples into sequential tuples.
+ * The function unparTup recursively turns parallel tuples into sequential tuples.
  *)
 
 structure Unpar : sig
 
    (* translate parallel tuples into tuples *)
     val unparTup : AST.module -> AST.module
+
+    val unparTupInExp : AST.exp -> AST.exp
+
    (* translate parallel expressions into their sequential counterparts *)
-    val unpar : AST.module -> AST.module
+    val unpar    : AST.module -> AST.module
 
   end = struct
 
@@ -19,7 +22,7 @@ structure Unpar : sig
 
     datatype unpar = PTUP | ALL
 
-    fun unpar' unPar = 
+    fun unparExp what = 
 	let fun exp (A.LetExp (b, e)) = A.LetExp (binding b, exp e)
 	      | exp (A.IfExp (e1, e2, e3, t)) = A.IfExp (exp e1, exp e2, exp e3, t)
 	      | exp (A.CaseExp (e, ms, t)) = A.CaseExp (exp e, map match ms, t)
@@ -35,7 +38,7 @@ structure Unpar : sig
 								t)
 	      | exp (A.PTupleExp es) = 
 		(* eliminate parallel tuples *)
-		if (unPar = PTUP orelse unPar = ALL)
+		if (what = PTUP orelse what = ALL)
 		   then A.TupleExp (map exp es)
 		   else A.PTupleExp es
 	      | exp (A.PArrayExp (es, t)) = A.PArrayExp (map exp es, t)
@@ -53,7 +56,7 @@ structure Unpar : sig
 	    and binding (A.ValBind (p, e)) = A.ValBind (p, exp e)
 	      | binding (A.PValBind (p, e)) = 
 		(* eliminate pvals *)
-		if (unPar = ALL)
+		if (what = ALL)
 		   then A.ValBind (p, exp e)
 		   else A.PValBind (p, exp e)
 	      | binding (A.FunBind lams) = A.FunBind (map lambda lams)
@@ -66,7 +69,10 @@ structure Unpar : sig
 	    exp
 	end
 
-    fun unparTup (A.Module {exns, body}) = A.Module {exns = exns, body = unpar' PTUP body} 
-    fun unpar (A.Module {exns, body}) = A.Module {exns = exns, body = unpar' ALL body} 
+    fun unparTupInExp e = unparExp PTUP e
+
+    fun unparTup (A.Module {exns, body}) = A.Module {exns = exns, body = unparExp PTUP body} 
+
+    fun unpar (A.Module {exns, body}) = A.Module {exns = exns, body = unparExp ALL body} 
 
   end

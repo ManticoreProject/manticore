@@ -13,6 +13,9 @@
 
 (* use_rw ropes; *)
 
+extern void M_Print(void*);
+extern void M_PrintInt(int);
+
 define @rope-map (args : [(* f *) fun (any / exh -> any),
                           (* r *) rope] / exh : exh) : rope =
 
@@ -25,6 +28,9 @@ define @rope-map (args : [(* f *) fun (any / exh -> any),
              let tup : [fun (any / exh -> exh), list] = alloc (f, data)
              let newData : list = @list-map (tup / exh)
              let newLeaf : rope = LEAF(len, newData)
+             (* do ccall M_Print("leaf size \000")
+             do ccall M_PrintInt(len)
+             do ccall M_Print("\n\000") *)
              return (newLeaf)
          | CAT(len:int, depth:int, r1:rope, r2:rope) =>
              fun th (u : unit / exh : exh) : rope = apply m (r2 / exh)

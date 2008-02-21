@@ -41,7 +41,7 @@ structure TranslatePComp : sig
 					   t)
 		       val f = A.FunExp (x1, c1, t)
 		       val resTy = B.parrayTy t
-		       val lfSize = ASTUtil.mkInt R.maxLeafSize
+		       val lfSize = ASTUtil.mkInt (R.maxLeafSize ())
 		   in
 		       (case e1
 		         of A.RangeExp (lo, hi, optStep, rangeEltTy) =>
