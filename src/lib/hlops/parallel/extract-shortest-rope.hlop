@@ -67,7 +67,9 @@ define @extract-shortest-rope (rs : list / exh : exh) : [rope, list, int] =
    (* end fun extr *)
 
   case rs 
-    of NIL => throw exh (EmptyListExn)
+    of NIL => 
+         let msg : ml_string = alloc ("Empty", 5)
+         @fail (msg / exh)
      | CONS (rhd : rope, rtl : list) =>
          let rhdN : int = @rope-length-int (rhd / exh)
          apply extr (rtl, rhd, rhdN, 0, 1)

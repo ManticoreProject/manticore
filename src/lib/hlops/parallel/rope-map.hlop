@@ -16,8 +16,8 @@
 extern void M_Print(void*);
 extern void M_PrintInt(int);
 
-define @rope-map (args : [(* f *) fun (any / exh -> any),
-                          (* r *) rope] / exh : exh) : rope =
+define inline @rope-map (args : [(* f *) fun (any / exh -> any),
+                                 (* r *) rope] / exh : exh) : rope =
 
   do ccall M_Print ("=============>>> called rope-map\n\000")
 

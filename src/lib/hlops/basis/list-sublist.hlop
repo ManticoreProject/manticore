@@ -14,10 +14,6 @@ extern void M_PrintInt (int);
 
 define @list-sublist (xs : list, start : int, length : int / exh : exh) : list =
 
-  (* FIXME *)
-  let Length : exn = (exn) enum(0)
-  let Subscript : exn = (exn) enum(0)
-
   (* FIXME rewrite with tail calls to improve efficiency *)
   (* INV: start and length are both nonnegative *)
   (* FIXME? This currently allows too-big start pos with length 0. Should it? *)
@@ -27,7 +23,8 @@ define @list-sublist (xs : list, start : int, length : int / exh : exh) : list =
     else (* length is positive *)
       case xs
         of NIL => (* ran out of elements *)
-                  throw exh (Length)
+             let msg : ml_string = alloc ("Length", 6)
+             @fail (msg / exh)
          | CONS (hd : any, tl : list) =>
              if I32Gt (start, 0) then
                apply sub (tl, I32Sub(start,1), length)
@@ -40,11 +37,13 @@ define @list-sublist (xs : list, start : int, length : int / exh : exh) : list =
   if I32Lt (start, 0) then 
     (* negative start pos *)
     do ccall M_Print ("@list-sublist: negative start pos\n\000")
-    throw exh (Subscript)
+    let msg : ml_string = alloc ("Subscript", 9)
+    @fail (msg / exh)
   else if I32Lt (length, 0) then
     (* negative length *)
     do ccall M_Print ("@list-sublist: negative length\n\000")
-    throw exh (Length)
+    let msg : ml_string = alloc ("Length", 6)
+    @fail (msg / exh)
   else
     apply sub (xs, start, length)
 ;

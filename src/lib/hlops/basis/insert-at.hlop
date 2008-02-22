@@ -18,15 +18,14 @@ extern void M_Print (void *);
 
 define @insert-at (elt : any, data : list, pos : int / exh : exh) : list =
 
-  let Subscript : exn = (exn) enum(0)
-
   fun ins (xs : list, p : int / ) : list =
     if I32Eq(p, 0) then
       return (CONS (elt, xs))
     else if I32Gt(p, 0) then
       case xs
         of NIL => (* list too short *)
-                  throw exh (Subscript)
+             let msg : ml_string = alloc ("Subscript", 9)
+             @fail (msg / exh)
          | CONS (hd : any, tl : list) =>
              let q : int = I32Sub (p, 1)
              let newTl : list = apply ins (tl, q)
@@ -34,7 +33,8 @@ define @insert-at (elt : any, data : list, pos : int / exh : exh) : list =
       end (* case *)
     else
       (* negative position *)
-      throw exh (Subscript)
+      let msg : ml_string = alloc ("Subscript", 9)
+      @fail (msg / exh)
   (* end fun ins *)
 
   apply ins (data, pos)

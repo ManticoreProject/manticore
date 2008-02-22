@@ -7,5 +7,6 @@
 #include "types.def"
 
 define inline @fail (arg : ml_string / exh : exh) : any =
-    throw exh (arg)
+    let e : exn = (exn)arg
+    throw exh (e)
 ;

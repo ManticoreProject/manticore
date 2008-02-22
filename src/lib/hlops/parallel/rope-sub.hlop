@@ -60,7 +60,8 @@ define @rope-sub (arg : [rope, ml_int] / exh : exh) : any =
                  let s3 : ml_string = apply cat2 (s2, stuff)
                  return (s3)
                let _ : unit = @print (msg / exh)
-               throw exh (WrongLeaf)
+               let msg : ml_string = alloc ("WrongLeaf", 9)
+               @fail (msg / exh)
        | CAT (len:int, depth:int, r1:rope, r2:rope) =>
            let leftLen : int = @rope-length-int (r1 / exh)
            let onTheLeft : bool = I32Lt (n, leftLen)

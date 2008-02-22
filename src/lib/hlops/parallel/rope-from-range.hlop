@@ -9,13 +9,13 @@
 #include "types.def"
 #include "ropes.def"
 
+(* use_rw ropes; *)
+
 extern void M_Print (void*);
 
 define @rope-from-leaves (leaves : list / exh : exh) : rope;
 
-define @rope-from-range (lo : int, hi : int, gap : int, maxLeafSize : int / exh : exh) : rope =
-
-  let CompilerBug : exn = (exn)enum(0)
+define inline @rope-from-range (lo : int, hi : int, gap : int, maxLeafSize : int / exh : exh) : rope =
 
   (* divide *)
   (* To split a list into two parts, with the first part having given length. *)
@@ -55,7 +55,9 @@ define @rope-from-range (lo : int, hi : int, gap : int, maxLeafSize : int / exh 
   (* A function to build the actual list of numbers described by the range. *)
   fun buildList (curr : int, acc : list / ) : list =
     if I32Lt (curr, lo) then
-      throw exh (CompilerBug) (* This will only happen if I made a mistake. - ams *)
+      (* This will only happen if I made a mistake. - ams *)
+      let msg : ml_string = alloc ("compiler bug", 12)
+      @fail (msg / exh)
     else if I32Eq (curr, lo) then
       let w : [int] = wrap(lo)
       return (CONS (w, acc))
@@ -67,6 +69,7 @@ define @rope-from-range (lo : int, hi : int, gap : int, maxLeafSize : int / exh 
   (* end fun buildList *)
 
   if I32Gt (lo, hi) then
+    (* downward ranges not supported ATM *)
     return (LEAF (0, NIL))
   else
     let span : int = I32Sub (hi, lo)

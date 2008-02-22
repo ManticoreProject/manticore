@@ -10,11 +10,11 @@
 
 define @list-nth (arg : [list, ml_int] / exh : exh) : any =
 
-  let Subscript : exn = (exn) enum(0)
-
   fun nth (xs : list, i : int / ) : any =
     case xs
-      of NIL => throw exh (Subscript)
+      of NIL => 
+           let msg : ml_string = alloc ("Subscript", 9)
+           @fail (msg / exh)
        | CONS (hd : any, tl : list) =>
            if I32Eq(i,0) then
              return (hd)
@@ -30,7 +30,8 @@ define @list-nth (arg : [list, ml_int] / exh : exh) : any =
   let n : int = unwrap(ml_n)
 
   if I32Lt(n,0) then 
-    throw exh (Subscript)
+    let msg : ml_string = alloc ("Subscript", 9)
+    @fail (msg / exh)
   else
     let res : any = apply nth (data, n)
     return (res)
