@@ -30,6 +30,7 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
   (* wrap analysis passes *)
     val census = analyze {passName = "census", pass = Census.census}
     val cfa = analyze {passName = "cfa", pass = CFACFG.analyze}
+    val cfaClear = CFACFG.clearInfo
   (* wrap transformation passes with keep controls *)
     val contract = transform {passName = "contract", pass = Contract.transform}
     val specialCalls = transform {passName = "specialize-calls", pass = SpecializeCalls.transform}
@@ -44,14 +45,16 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
           val _ = CheckCFG.check module
 	  val _ = cfa module
 	  val module = specialCalls module
-          val _ = CFACFG.clearInfo module
+          val _ = cfaClear module
           val _ = CheckCFG.check module
           val module = implCalls module
           val _ = CheckCFG.check module
 	  val _ = census module
 	  val module = contract module
           val _ = CheckCFG.check module
+	  val _ = cfa module
 	  val module = allocChecks module
+          val _ = cfaClear module
           val _ = CheckCFG.check module
           val module = allocCCalls module
 	  val _ = CheckCFG.check module
