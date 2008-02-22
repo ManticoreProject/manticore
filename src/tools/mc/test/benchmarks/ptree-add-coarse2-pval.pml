@@ -1,4 +1,4 @@
-(* same as parallel tree add, but goes into sequential code above a certain depth *)
+(* same as coarse parallel tree add, but does the add twice to measure the overhead of promoting the tree *)
 datatype tree = LF | ND of (int * double * tree * tree);
 
 fun mkTree d = if (d <= 0) 
@@ -27,8 +27,9 @@ fun treeAdd t = (case t
       (* end case *));
 
 val t = mkTree(d);
-val b = gettimeofday ();
 val x = treeAdd (t);
+val b = gettimeofday ();
+val y = treeAdd (t);
 val e = gettimeofday ();
 
 print (dtos(e-b) ^ "\n")
