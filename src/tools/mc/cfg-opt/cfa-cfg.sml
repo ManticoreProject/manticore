@@ -211,8 +211,9 @@ structure CFACFG : sig
     fun update (i, y, z) = (case valueOf y
 	   of TUPLE vs => let
 		fun upd (0, v::r, ac) = TUPLE ((rev ac) @ ((valueOf z)::r))
+		  | upd (0, [], ac) = TUPLE ((rev ac) @ [valueOf z])
 		  | upd (i, v::r, ac) = upd(i-1, r, v::ac)
-		  | upd (i, [], _) = BOT (* or should this be TOP? *)
+		  | upd (i, [], ac) = upd(i-1, [], BOT (* or should this be TOP? *) :: ac)
 		in
 		  upd (i, vs, [])
 		end
