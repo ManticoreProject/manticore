@@ -10,7 +10,6 @@
 #include "debugging.def"
 
 define inline @ivar-get (ivar : ivar / exh : exh) : any =
-    let readList : list = #0(ivar)
     let readFlag : int = I32FetchAndAdd(&2(ivar), 1)
     let value : any = #1(ivar)
     let fgs : fgs = @get-fgs(host_vproc / exh)
