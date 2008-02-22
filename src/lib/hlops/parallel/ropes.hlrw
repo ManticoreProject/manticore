@@ -6,11 +6,15 @@
  * Fusion rewrites for ropes.
  *)
 
-tab_map : @mapD(f,@tabulateD([g,q,lf,lo,hi])) ==>
-          @tabulate([@compose(f,g),q,lf,lo,hi])
+map_range : @rope-map([f,@rope-from-range(lo,hi,gap,lfSize)]) ==>
+            @tabD([f,lfSize,lo,hi,step])
+            { 1 };
+
+tab_map : @rope-map([f,@tabD([g,lf,lo,hi,step])]) ==>
+          @tabD([@compose(f,g),lf,lo,hi,step])
           { 1 };          
 
-map_map : @mapD(f,@mapD(g,lo,hi)) =>
-          @mapD(@compose(f,g),lo,hi)
+map_map : @rope-map([f,@rope-map(g,r)]) ==>
+          @rope-map([@compose(f,g),r])
           { 1 };
 
