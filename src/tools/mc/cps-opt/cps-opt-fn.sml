@@ -10,10 +10,33 @@ functor CPSOptFn (Spec : TARGET_SPEC) : sig
 
   end = struct
 
+  (* a wrapper for CPS optimization passes *)
+    fun transform {passName, pass} = BasicControl.mkKeepPassSimple {
+	    output = PrintCPS.output,
+	    ext = "cps",
+	    passName = passName,
+	    pass = pass,
+	    registry = CPSOptControls.registry
+	  }
+    fun analyze {passName, pass} = BasicControl.mkTracePassSimple {
+            passName = passName,
+            pass = pass
+          }
+
+  (* wrap analysis passes *)
+    val cfa = analyze {passName = "cfa", pass = CFACPS.analyze}
+  (* wrap transformation passes with keep controls *)
+
     fun optimize module = let
-          in
-            module
-          end
+	  val _ = CheckCPS.check ("cps-optimize:pre", module)
+(*
+          val _ = cfa module
+          val _ = CFACPS.clearInfo module
+*)
+	  val _ = CheckCPS.check ("cps-optimize:post", module)
+	  in
+	    module
+	  end
 
     val optimize = BasicControl.mkKeepPassSimple {
 	    output = PrintCPS.output,

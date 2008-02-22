@@ -9,6 +9,7 @@
 Library
 
   functor CPSOptFn
+  structure CFACPS
 
 is
 
@@ -22,6 +23,6 @@ is
   ../prim/sources.cm
   ../cps/sources.cm
 
+  cfa-cps.sml
   cps-opt-controls.sml
   cps-opt-fn.sml
-
