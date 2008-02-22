@@ -276,24 +276,26 @@ structure CFACPS : sig
                 fun doLambda fb = printLambda fb
 		in
 		  case e
-		   of CPS.Let (_, _, e) => doExp e
+		   of CPS.Let (xs, _, e) => 
+                        (List.app (fn x => print(concat["valueOf(", CPS.Var.toString x, ") = ",
+                                                        valueToString (valueOf x), "\n"])) xs;
+
+                         doExp e)
                     | CPS.Fun (fbs, e) => (List.app doLambda fbs; doExp e)
                     | CPS.Cont (fb, e) => (doLambda fb; doExp e)
                     | CPS.If (_, e1, e2) => (doExp e1; doExp e2)
                     | CPS.Switch (_, cases, dflt) =>
                         (List.app (doExp o #2) cases;
                          Option.app doExp dflt)
-                    | CPS.Apply (f, _, _) => 
-                        print(concat["valueOf(", CPS.Var.toString f, ") = ",
-                                     valueToString (valueOf f), "\n"])
-                    | CPS.Throw (f, _) => 
-                        print(concat["valueOf(", CPS.Var.toString f, ") = ",
-                                     valueToString (valueOf f), "\n"])
+                    | CPS.Apply (_, _, _) => ()
+                    | CPS.Throw (_, _) => ()
 		  (* end case *)
 		end
           and printLambda (CPS.FB {f, body, ...}) = (
                 print(concat["callSitesOf(", CPS.Var.toString f, ") = ", 
-                             callSitesToString (getSites f), "\n"]);
+                             callSitesToString (getSites f), "\n",
+                             "valueOf(", CPS.Var.toString f, ") = ",
+                             valueToString (valueOf f), "\n"]);
                 printExp body)
 	  in
 	    printLambda body
