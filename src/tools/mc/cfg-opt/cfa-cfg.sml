@@ -114,12 +114,11 @@ structure CFACFG : sig
 		in
 		  changed (vs1, vs2)
 		end
-	    | (LABELS s1, LABELS s2) => if (LSet.numItems s1 > LSet.numItems s2)
-		then true
-		else false
-	    | _ => raise Fail "non-monotonic change"
+	    | (LABELS s1, LABELS s2) => if LSet.isSubset (s2, s1)
+		then (LSet.numItems s2 < LSet.numItems s1)
+		else raise Fail "non-monotonic change"
+	    | _ => raise Fail "type error"
 	  (* end case *))
-handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToString old, ")\n"]); raise ex)
 
   (* this global reference is used to mark when a value changes during an anlysis pass;
    * it is global (ugh!) because I wanted to lift the escapingValue code out of the
@@ -185,7 +184,9 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 		  TUPLE(join(vs1, vs2))
 		end
 	    | kJoin (_, LABELS labs1, LABELS labs2) = LABELS(LSet.union(labs1, labs2))
-	    | kJoin _ = TOP
+	    | kJoin _ = (
+	      (* since the value are going to top, we can't track them so they may be escaping *)
+		escapingValue v1; escapingValue v2; TOP)
 	  in
 	    kJoin (maxDepth, v1, v2)
 	  end
@@ -203,6 +204,23 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 	    | TOP => TOP
 	    | v => raise Fail(concat[
 		  "type error: select(", Int.toString i, ", ", CFG.Var.toString y,
+		  "); valueOf(", CFG.Var.toString y, ") = ", valueToString v
+		])
+	  (* end case *))
+  (* update the i'th component of a tuple. *)
+    fun update (i, y, z) = (case valueOf y
+	   of TUPLE vs => let
+		fun upd (0, v::r, ac) = TUPLE ((rev ac) @ ((valueOf z)::r))
+		  | upd (i, v::r, ac) = upd(i-1, r, v::ac)
+		  | upd (i, [], _) = BOT (* or should this be TOP? *)
+		in
+		  upd (i, vs, [])
+		end
+	    | BOT => BOT
+	    | TOP => (escapingValue (valueOf z); TOP)
+	    | v => raise Fail(concat[
+		  "type error: update(", Int.toString i, ", ", CFG.Var.toString y, 
+                  ", ", CFG.Var.toString z,
 		  "); valueOf(", CFG.Var.toString y, ") = ", valueToString v
 		])
 	  (* end case *))
@@ -255,21 +273,13 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 				"\n"
 			      ])
 			    else ()
-			end
-			  handle ex => (
-			    print(concat["addInfo(", CFG.Var.toString x, ", _): uncaught exception\n"]);
-			    raise ex))
+			end)
 		      else addInfo
+                val addInfo' = fn (x, y) => addInfo (x, valueOf y)
 	      (* record that a given variable escapes *)
 		fun escape x = escapingValue (valueOf x)
 		fun doFunc (f as CFG.FUNC{lab, entry, body, exit}, args) = (
-		      (ListPair.appEq addInfo (CFG.paramsOfConv entry, args))
-		       handle ex => (print "CFACFG.analyze.doFunc: uncaught exn while analyzing function:\n"; 
-				     PrintCFG.printFunc f;
-				     print "args:\n ";
-				     print (String.concatWith "\n " (map valueToString args));
-				     print "\n";
-				     raise ex);
+		      ListPair.appEq addInfo' (CFG.paramsOfConv entry, args);
 		      if isMarked lab
 			then ()
 			else (
@@ -278,21 +288,25 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 			  doXfer exit;
 			  unmark lab))
 		and doExp (CFG.E_Var(xs, ys)) =
-		      (ListPair.appEq (fn (x, y) => addInfo(x, valueOf y)) (xs, ys)
-                       handle ex => (print "CFACFG.analyze.doExp: uncaught exn\n"; raise ex))
-		  | doExp (CFG.E_Const _) = ()
+		      ListPair.appEq addInfo' (xs, ys)
+		  | doExp (CFG.E_Const (x, _)) = addInfo(x, TOP)
 		  | doExp (CFG.E_Cast(x, _, y)) = addInfo(x, valueOf y)
 		  | doExp (CFG.E_Label(x, lab)) = addInfo(x, LABELS(LSet.singleton lab))
 		  | doExp (CFG.E_Select(x, i, y)) =
-(* FIXME: if x is mutable, then we should just bind it to top. *)
 		      addInfo(x, select(i, y))
-		  | doExp (CFG.E_Update(i, y, z)) = ()
+		  | doExp (CFG.E_Update(i, y, z)) = 
+                      (escape z; addInfo(y, update(i, y, z)))
 		  | doExp (CFG.E_AddrOf(x, i, y)) = addInfo(x, TOP)
 		  | doExp (CFG.E_Alloc(x, xs)) = addInfo(x, TUPLE(List.map valueOf xs))
 		  | doExp (CFG.E_GAlloc(x, xs)) = addInfo(x, TUPLE(List.map valueOf xs))
 		  | doExp (CFG.E_Promote(x, y)) = addInfo(x, valueOf y)
-		  | doExp (CFG.E_Prim(x, _)) = ()
-		  | doExp (CFG.E_CCall(x, _, args)) = List.app escape args
+		  | doExp (CFG.E_Prim(x, prim)) = 
+                      (if PrimUtil.isPure prim 
+                          then ()
+                          else List.app escape (PrimUtil.varsOf prim);
+                       addInfo(x, TOP))
+		  | doExp (CFG.E_CCall(xs, _, args)) = 
+                      (List.app escape args; List.app (fn x => addInfo(x, TOP)) xs)
 		  | doExp (CFG.E_HostVProc vp) = ()
 		  | doExp (CFG.E_VPLoad(x, _, vp)) = addInfo(x, TOP)
 		  | doExp (CFG.E_VPStore(_, vp, x)) = escape x
@@ -310,7 +324,7 @@ handle ex => (print(concat["changedValue(", valueToString new, ", ", valueToStri
 		      List.app escape args;
 		      doJump ret)
 		and doJump (lab, args) = (case CFGUtil.funcOfLabel lab
-		       of SOME func => doFunc (func, List.map valueOf args)
+		       of SOME func => doFunc (func, args)
 			| _ => raise Fail "jump to unknown label"
 		      (* end case *))
 		and doApply (f, args) = (case valueOf f
