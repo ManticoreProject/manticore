@@ -191,6 +191,7 @@ structure CaseSimplify : sig
 		BTy.T_Fun(tys2tys argTys, tys2tys exh, tys2tys resTys)
 	    | ty2ty (BTy.T_Cont tys) = BTy.T_Cont(tys2tys tys)
 	    | ty2ty (BTy.T_TyCon(BTy.DataTyc{rep, ...})) = ty2ty (!rep)
+	    | ty2ty (BTy.T_TyCon(BTy.AbsTyc _)) = BTy.T_Any
 	    | ty2ty ty = ty
 	  and tys2tys [] = []
 	    | tys2tys (ty::r) = ty2ty ty :: tys2tys r

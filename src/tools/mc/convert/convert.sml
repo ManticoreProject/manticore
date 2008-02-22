@@ -36,9 +36,7 @@ structure Convert : sig
       | cvtTy (BTy.T_Cont tys) = CTy.contTy(List.map cvtTy tys)
       | cvtTy (BTy.T_CFun cproto) = CTy.T_CFun cproto
       | cvtTy (BTy.T_VProc) = CTy.T_VProc
-(* FIXME *)
-      | cvtTy (BTy.T_TyCon tyc) = CTy.T_Any
- (*raise Fail("unexpected tycon " ^ BOMTyCon.tycName tyc)*)
+      | cvtTy (BTy.T_TyCon tyc) = raise Fail("unexpected tycon " ^ BOMTyCon.tycName tyc)
 
   (* create a new CPS variable using the name of a BOM variable *)
     fun newVar (v, ty') = CV.new(BV.nameOf v, ty')
