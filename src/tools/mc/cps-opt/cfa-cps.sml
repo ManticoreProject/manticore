@@ -144,14 +144,15 @@ structure CFACPS : sig
 	    | (TUPLE vs1, TUPLE vs2) => let
 		fun changed ([], []) = false
 		  | changed (x::xs, y::ys) = changedValue(x, y) orelse changed(xs, ys)
-		  | changed _ = raise Fail "tuple mis-match"
+		  | changed (l, []) = true
+		  | changed ([], l) = raise Fail "non-monotonic change"
 		in
 		  changed (vs1, vs2)
 		end
 	    | (LAMBDAS s1, LAMBDAS s2) => if VSet.isSubset (s2, s1)
 		then (VSet.numItems s2 < VSet.numItems s1)
 		else raise Fail "non-monotonic change"
-	    | _ => raise Fail "type error"
+	    | _ => raise Fail "non-monotonic change"
 	  (* end case *))
 
   (* this global reference is used to mark when a value changes during an anlysis pass;
@@ -220,7 +221,8 @@ structure CFACPS : sig
 	    | kJoin (k, TUPLE vs1, TUPLE vs2) = let
 		fun join ([], []) = []
 		  | join (x::xs, y::ys) = kJoin(k-1, x, y) :: join(xs, ys)
-                  | join _ = raise Fail "tuple mis-match"
+                  | join ([], l) = l
+                  | join (l, []) = l
 		in
 		  TUPLE(join(vs1, vs2))
 		end
@@ -236,8 +238,8 @@ structure CFACPS : sig
     fun select (i, y) = (case valueOf y
 	   of TUPLE vs => let
 		fun sel (0, v::_) = v
-		  | sel (i, v::r) = sel(i-1, r)
-		  | sel (i, []) = raise Fail "tuple mis-match"
+		  | sel (j, v::r) = sel(j-1, r)
+		  | sel (j, []) = BOT (* or should this be TOP? *)
 		in
 		  sel (i, vs)
 		end
@@ -252,8 +254,9 @@ structure CFACPS : sig
     fun update (i, y, z) = (case valueOf y
 	   of TUPLE vs => let
 		fun upd (0, v::r, ac) = TUPLE ((rev ac) @ ((valueOf z)::r))
+		  | upd (0, [], ac) = TUPLE ((rev ac) @ [valueOf z])
 		  | upd (i, v::r, ac) = upd(i-1, r, v::ac)
-		  | upd (i, [], _) = raise Fail "tuple mis-match"
+		  | upd (i, [], ac) = upd(i-1, [], BOT (* or should this be TOP? *) :: ac)
 		in
 		  upd (i, vs, [])
 		end
@@ -391,23 +394,23 @@ structure CFACPS : sig
                        of LAMBDAS fs => VSet.app (fn f => doApplyAux (f, args, conts)) fs
                         | BOT => ()
                         | TOP => (List.app escape args; List.app escape conts)
-                        | _ => raise Fail "type error")
+                        | _ => raise Fail "type error: doApply")
                 and doApplyAux (f, args, conts) = (case CPS.Var.kindOf f 
                        of CPS.VK_Fun (fb as CPS.FB {f, params, rets, body}) => (
                             ListPair.appEq addInfo' (params, args);
                             ListPair.appEq addInfo' (rets, conts))
-                        | _ => raise Fail "type error"
+                        | _ => raise Fail "type error: doApplyAux"
                       (* end case *))
                 and doThrow (f, args) = (case valueOf f
                        of LAMBDAS fs => VSet.app (fn f => doThrowAux (f, args)) fs
                         | BOT => ()
                         | TOP => List.app escape args
-                        | _ => raise Fail "type error")
+                        | _ => raise Fail "type error: doThrow")
                 and doThrowAux (f, args) = (case CPS.Var.kindOf f 
                        of CPS.VK_Cont (fb as CPS.FB {f, params, rets, body}) => (
                             ListPair.appEq addInfo' (params, args);
                             ListPair.appEq addInfo' (rets, []))
-                        | _ => raise Fail "type error"
+                        | _ => raise Fail "type error: doThrowAux"
                       (* end case *))
 		in
 		  changed := false;
