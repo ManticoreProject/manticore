@@ -28,12 +28,10 @@ functor CPSOptFn (Spec : TARGET_SPEC) : sig
   (* wrap transformation passes with keep controls *)
 
     fun optimize module = let
-	  val _ = CheckCPS.check ("cps-optimize:pre", module)
 (*
           val _ = cfa module
           val _ = CFACPS.clearInfo module
 *)
-	  val _ = CheckCPS.check ("cps-optimize:post", module)
 	  in
 	    module
 	  end
