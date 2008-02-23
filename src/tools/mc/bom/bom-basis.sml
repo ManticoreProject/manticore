@@ -39,6 +39,9 @@ signature BOM_BASIS =
     val evtCHOOSE : BOMTy.data_con
     val evtBEVT : BOMTy.data_con
 
+  (* predefined exception constructors *)
+    val exnFail : BOMTy.data_con
+
     val findTyc : Atom.atom -> BOMTy.tyc option
     val findDCon : Atom.atom -> BOMTy.data_con option
 
@@ -153,8 +156,11 @@ structure BOMBasis : BOM_BASIS =
 	  ])
 
 
-    (* val workQueueTyc = BTy.AbsTyc {name="work_queue", stamp=Stamp.new(), arity=0} *)
+  (* val workQueueTyc = BTy.AbsTyc {name="work_queue", stamp=Stamp.new(), arity=0} *)
     val workQueueTy = BTy.T_Any (* BTy.T_TyCon workQueueTyc *)
+
+  (* predefined exception constructors *)
+    val exnFail = BOMTyCon.newExnCon ("Fail", [stringTy])
 
     fun mkTbl nameOf bindings = let
 	  val tbl = AtomTable.mkTable (List.length bindings, Fail "table")
@@ -184,7 +190,8 @@ structure BOMBasis : BOM_BASIS =
 	    signalPREEMPT,
 	    evtCHOOSE,
 	    evtBEVT,
-	    assocListCons
+	    assocListCons,
+	    exnFail
 	  ]
 
   end
