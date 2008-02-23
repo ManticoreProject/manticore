@@ -8,9 +8,10 @@
 
 extern void *M_StringConcat2 (void *, void *) __attribute__((pure,alloc));
 
+define @fail (arg : ml_string / exh : exh) : any;
+
 define inline @todo (thing : ml_string / exh : exh) : any =
-  let prefix : ml_string = alloc ("todo: ", 6)
+  let prefix : ml_string = @"TODO: "
   let msg : ml_string = ccall M_StringConcat2 (prefix, thing)
- (* FIXME *)
-  throw exh (msg)
+  @fail (msg, exh)
 ;
