@@ -20,8 +20,6 @@ extern void M_Print (void *);
 
 define @extract-shortest-rope (rs : list / exh : exh) : [rope, list, int] =
 
-  let EmptyListExn : exn = (exn) enum(0)
-
   (* Exclude the item at position n of given list. *)
   (* 0-based. *)
   (* In the case where n is higher than the highest index, return nil. *)
@@ -68,7 +66,7 @@ define @extract-shortest-rope (rs : list / exh : exh) : [rope, list, int] =
 
   case rs 
     of NIL => 
-         let msg : ml_string = alloc ("Empty", 5)
+         let msg : ml_string = @"Empty"
          @fail (msg / exh)
      | CONS (rhd : rope, rtl : list) =>
          let rhdN : int = @rope-length-int (rhd / exh)

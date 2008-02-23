@@ -56,7 +56,7 @@ define inline @rope-from-range (lo : int, hi : int, gap : int, maxLeafSize : int
   fun buildList (curr : int, acc : list / ) : list =
     if I32Lt (curr, lo) then
       (* This will only happen if I made a mistake. - ams *)
-      let msg : ml_string = alloc ("compiler bug", 12)
+      let msg : ml_string = @"compiler bug"
       @fail (msg / exh)
     else if I32Eq (curr, lo) then
       let w : [int] = wrap(lo)

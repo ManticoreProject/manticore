@@ -42,6 +42,8 @@ define @rope-sub (arg : [rope, ml_int] / exh : exh) : any =
                return (res2)
              else
                (* this else branch prints an error msg and throws an exn *)
+               (* begin FIXME -- this string-building can be cleaned up *)
+               (* low priority *)
                let nStr : ml_string =
                  let ml_n : ml_int = alloc (n)
                  let s : ml_string = @itos (ml_n / exh)
@@ -59,8 +61,9 @@ define @rope-sub (arg : [rope, ml_int] / exh : exh) : any =
                  let stuff : ml_string = alloc (" <<<<\n", 6)
                  let s3 : ml_string = apply cat2 (s2, stuff)
                  return (s3)
+               (* end FIXME *)
                let _ : unit = @print (msg / exh)
-               let msg : ml_string = alloc ("WrongLeaf", 9)
+               let msg : ml_string = @"WrongLeaf"
                @fail (msg / exh)
        | CAT (len:int, depth:int, r1:rope, r2:rope) =>
            let leftLen : int = @rope-length-int (r1 / exh)
