@@ -13,5 +13,5 @@ define @fail (arg : ml_string / exh : exh) : any;
 define inline @todo (thing : ml_string / exh : exh) : any =
   let prefix : ml_string = @"TODO: "
   let msg : ml_string = ccall M_StringConcat2 (prefix, thing)
-  @fail (msg, exh)
+  @fail (msg / exh)
 ;
