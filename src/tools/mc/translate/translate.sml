@@ -233,6 +233,7 @@ structure Translate : sig
 	    | AST.ConstExp(AST.DConst(dc, tys)) => trDConExp (env, dc)
 	    | AST.ConstExp(AST.LConst(lit as Literal.String s, _)) => let
 		val t1 = BV.new("_data", BTy.T_Any)
+(* FIXME: the type used for the length should be architecture dependent *)
 		val t2 = BV.new("_len", BTy.T_Raw BTy.T_Int)
 		in
 		  EXP(B.mkStmts([
@@ -341,6 +342,7 @@ structure Translate : sig
 	  (* end case *))
 
     and trCase (env, arg, rules) = let
+	(* translation of nullary constructors *)
 	  fun trDConst (dc, exp) = (case TranslateTypes.trDataCon(env, dc)
 		 of E.Const(rep, bty) => (B.P_Const(Literal.Enum rep, bty), trExpToExp (env, exp))
 		  | _ => raise Fail "unexpected constructor"
