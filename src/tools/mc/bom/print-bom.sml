@@ -130,7 +130,7 @@ structure PrintBOM : sig
 	    | prRHS (B.E_Promote y) = (pr "promote "; pr (varUseToString y))
 	    | prRHS (B.E_Prim p) = pr (PrimUtil.fmt varUseToString p)
 	    | prRHS (B.E_DCon(dc, args)) = (
-		pr(BOMTyCon.dconName dc); prList varUseToString args; pr "\n")
+		pr(BOMTyCon.dconName dc); pr "("; prList' varUseToString args; pr ")\n")
 	    | prRHS (B.E_CCall(f, args)) = (
 		prl ["ccall ", varUseToString f, " "];
 		prList varUseToString args)
