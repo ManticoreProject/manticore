@@ -100,12 +100,12 @@ structure CFACPS : sig
   (* property to track call-sites *)
     val {getFn=getSites, clrFn=clrSites, setFn=setSites, ...} =
 	  CPS.Var.newProp (fn _ => Known(VSet.empty))
-  (* property to track the estimated value of variables *)
-    val {getFn=valueOf, clrFn=clrVar, peekFn=peekVar, setFn=setVar} =
-	  CPS.Var.newProp (fn _ => BOT)
-
-  (* *)
     val callSitesOf = getSites
+  (* property to track the estimated value of variables *)
+    val {getFn=getValue, clrFn=clrValue, peekFn=peekValue, setFn=setValue} =
+	  CPS.Var.newProp (fn _ => BOT)
+    val valueOf = getValue
+
   (* return true if the given label escapes *)
     fun isEscaping lab = (case callSitesOf lab of Unknown => true | _ => false)
 
@@ -115,12 +115,12 @@ structure CFACPS : sig
     fun clearInfo (CPS.MODULE{body, ...}) = let
           fun doLambda (CPS.FB {f, params, rets, body}) = (
                 clrSites f;
-                clrVar f;
-                List.app clrVar params;
-                List.app clrVar rets;
+                clrValue f;
+                List.app clrValue params;
+                List.app clrValue rets;
                 doExp body)
           and doExp e = (case e 
-                 of CPS.Let (xs, _, e) => (List.app clrVar xs; doExp e)
+                 of CPS.Let (xs, _, e) => (List.app clrValue xs; doExp e)
                   | CPS.Fun (fbs, e) => (List.app doLambda fbs; doExp e)
                   | CPS.Cont (fb, e) => (doLambda fb; doExp e)
                   | CPS.If (_, e1, e2) => (doExp e1; doExp e2)
@@ -168,15 +168,15 @@ structure CFACPS : sig
    * it changed.
    *)
     fun addInfo (x, BOT) = ()
-      | addInfo (x, v) = (case peekVar x
+      | addInfo (x, v) = (case peekValue x
 	   of NONE => (
 		changed := true;
-		setVar(x, v))
+		setValue(x, v))
 	    | SOME oldV => let
 		val newV = joinValues(oldV, v)
 		in
 		  if changedValue(newV, oldV)
-		    then (changed := true; setVar(x, newV))
+		    then (changed := true; setValue(x, newV))
 		    else ()
 		end
 	  (* end case *))
@@ -235,7 +235,7 @@ structure CFACPS : sig
 	  end
 
   (* select the i'th component of a tuple. *)
-    fun select (i, y) = (case valueOf y
+    fun select (i, y) = (case getValue y
 	   of TUPLE vs => let
 		fun sel (0, v::_) = v
 		  | sel (j, v::r) = sel(j-1, r)
@@ -251,51 +251,54 @@ structure CFACPS : sig
 		])
 	  (* end case *))
   (* update the i'th component of a tuple. *)
-    fun update (i, y, z) = (case valueOf y
+    fun update (i, y, z) = (case getValue y
 	   of TUPLE vs => let
-		fun upd (0, v::r, ac) = TUPLE ((rev ac) @ ((valueOf z)::r))
-		  | upd (0, [], ac) = TUPLE ((rev ac) @ [valueOf z])
+		fun upd (0, v::r, ac) = TUPLE ((rev ac) @ (z::r))
+		  | upd (0, [], ac) = TUPLE ((rev ac) @ [z])
 		  | upd (i, v::r, ac) = upd(i-1, r, v::ac)
 		  | upd (i, [], ac) = upd(i-1, [], BOT (* or should this be TOP? *) :: ac)
 		in
 		  upd (i, vs, [])
 		end
 	    | BOT => BOT
-	    | TOP => (escapingValue (valueOf z); TOP)
+	    | TOP => (escapingValue z; TOP)
 	    | v => raise Fail(concat[
 		  "type error: update(", Int.toString i, ", ", CPS.Var.toString y, 
-                  ", ", CPS.Var.toString z,
-		  "); valueOf(", CPS.Var.toString y, ") = ", valueToString v
+                  ", ", valueToString z,
+		  "); getValue(", CPS.Var.toString y, ") = ", valueToString v
 		])
 	  (* end case *))
 
 (* +DEBUG *)
     fun printResults body = let
+          fun printCallSitesOf f =
+                print(concat["callSitesOf(", CPS.Var.toString f, ") = ",
+                             callSitesToString (getSites f), "\n"])
+          fun printValueOf x =
+                print(concat["getValue(", CPS.Var.toString x, ") = ",
+                             valueToString (getValue x), "\n"])
           fun printExp e = let
                 fun doExp e = printExp e
                 fun doLambda fb = printLambda fb
 		in
 		  case e
 		   of CPS.Let (xs, _, e) => 
-                        (List.app (fn x => print(concat["valueOf(", CPS.Var.toString x, ") = ",
-                                                        valueToString (valueOf x), "\n"])) xs;
-
-                         doExp e)
+                        (List.app printValueOf xs; doExp e)
                     | CPS.Fun (fbs, e) => (List.app doLambda fbs; doExp e)
                     | CPS.Cont (fb, e) => (doLambda fb; doExp e)
                     | CPS.If (_, e1, e2) => (doExp e1; doExp e2)
                     | CPS.Switch (_, cases, dflt) =>
                         (List.app (doExp o #2) cases;
                          Option.app doExp dflt)
-                    | CPS.Apply (_, _, _) => ()
-                    | CPS.Throw (_, _) => ()
+                    | CPS.Apply (f, _, _) => (print "Apply:: "; printValueOf f)
+                    | CPS.Throw (f, _) => (print "Throw:: "; printValueOf f)
 		  (* end case *)
 		end
-          and printLambda (CPS.FB {f, body, ...}) = (
-                print(concat["callSitesOf(", CPS.Var.toString f, ") = ", 
-                             callSitesToString (getSites f), "\n",
-                             "valueOf(", CPS.Var.toString f, ") = ",
-                             valueToString (valueOf f), "\n"]);
+          and printLambda (CPS.FB {f, params, rets, body, ...}) = (
+                printValueOf f;
+                printCallSitesOf f;
+                List.app printValueOf params;
+                List.app printValueOf rets;
                 printExp body)
 	  in
 	    printLambda body
@@ -313,7 +316,7 @@ structure CFACPS : sig
                        of Unknown => ()
                         | Known s => setSites(dstVar, Known(VSet.add(s, srcVar)))
                       (* end case *))
-                fun addSet f = (case valueOf f
+                fun addSet f = (case getValue f
                        of LAMBDAS fs => VSet.app add fs
                         | _ => ())
                 fun doExp e = computeExp (e, srcVar)
@@ -340,21 +343,21 @@ structure CFACPS : sig
 	  fun onePass () = let
 		val addInfo = if !debugFlg
 		      then (fn (x, v) => let
-			val prevV = valueOf x
+			val prevV = getValue x
 			in
 			  addInfo (x, v);
-			  if changedValue(valueOf x, prevV) 
+			  if changedValue(getValue x, prevV) 
 			    then print(concat[
 				"addInfo(", CPS.Var.toString x,  ", ", valueToString v, 
-				"): ", valueToString prevV, " ==> ", valueToString(valueOf x),
+				"): ", valueToString prevV, " ==> ", valueToString(getValue x),
 				"\n"
 			      ])
 			    else ()
 			end)
 		      else addInfo
-                val addInfo' = fn (x, y) => addInfo (x, valueOf y)
+                val addInfo' = fn (x, y) => addInfo (x, getValue y)
 	      (* record that a given variable escapes *)
-		fun escape x = escapingValue (valueOf x)
+		fun escape x = escapingValue (getValue x)
                 fun doLambda (CPS.FB {f, body, ...}) = (
                       addInfo(f, LAMBDAS(VSet.singleton f));
                       doExp body)
@@ -368,15 +371,16 @@ structure CFACPS : sig
                   | doExp (CPS.Throw (f, args)) = doThrow (f, args)
 		and doRhs (xs, CPS.Var ys) =
 		      ListPair.appEq addInfo' (xs, ys)
-                  | doRhs ([x], CPS.Cast (_, y)) = addInfo(x, valueOf y)
-                  | doRhs ([x], CPS.Const _) = ()
+                  | doRhs ([x], CPS.Cast (_, y)) = addInfo(x, getValue y)
+                  | doRhs ([x], CPS.Const _) = addInfo(x, TOP)
                   | doRhs ([x], CPS.Select (i, y)) = addInfo(x, select(i, y))
 		  | doRhs ([], CPS.Update(i, y, z)) = 
-                      addInfo(y, update(i, y, z))
-		  | doRhs ([x], CPS.AddrOf(i, y)) = addInfo(x, TOP)
-		  | doRhs ([x], CPS.Alloc xs) = addInfo(x, TUPLE(List.map valueOf xs))
-		  | doRhs ([x], CPS.GAlloc xs) = addInfo(x, TUPLE(List.map valueOf xs))
-		  | doRhs ([x], CPS.Promote y) = addInfo(x, valueOf y)
+                      (escape z; addInfo(y, update(i, y, getValue z)))
+		  | doRhs ([x], CPS.AddrOf(i, y)) = 
+                      (addInfo(x, TOP); addInfo(y, update(i, y, TOP)))
+		  | doRhs ([x], CPS.Alloc xs) = addInfo(x, TUPLE(List.map getValue xs))
+		  | doRhs ([x], CPS.GAlloc xs) = addInfo(x, TUPLE(List.map getValue xs))
+		  | doRhs ([x], CPS.Promote y) = addInfo(x, getValue y)
 		  | doRhs ([x], CPS.Prim prim) = 
                       (if PrimUtil.isPure prim
                           then ()
@@ -392,7 +396,7 @@ structure CFACPS : sig
                          String.concatWith "," (List.map CPS.Var.toString xs), 
                          "], ", CPSUtil.rhsToString rhs, ")"
                       ])
-                and doApply (f, args, conts) = (case valueOf f
+                and doApply (f, args, conts) = (case getValue f
                        of LAMBDAS fs => VSet.app (fn f => doApplyAux (f, args, conts)) fs
                         | BOT => ()
                         | TOP => (List.app escape args; List.app escape conts)
@@ -403,7 +407,7 @@ structure CFACPS : sig
                             ListPair.appEq addInfo' (rets, conts))
                         | _ => raise Fail "type error: doApplyAux"
                       (* end case *))
-                and doThrow (f, args) = (case valueOf f
+                and doThrow (f, args) = (case getValue f
                        of LAMBDAS fs => VSet.app (fn f => doThrowAux (f, args)) fs
                         | BOT => ()
                         | TOP => List.app escape args
@@ -425,8 +429,8 @@ structure CFACPS : sig
 	    case body
 	     of CPS.FB{f, params, rets, ...} => (
                   setSites (f, Unknown);
-                  List.app (fn x => setVar (x, TOP)) params;
-                  List.app (fn x => setVar (x, TOP)) rets)
+                  List.app (fn x => setValue (x, TOP)) params;
+                  List.app (fn x => setValue (x, TOP)) rets)
 	    (* end case *);
 	  (* iterate to a fixed point *)
 	    iterate ();
