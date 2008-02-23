@@ -28,10 +28,8 @@ functor CPSOptFn (Spec : TARGET_SPEC) : sig
   (* wrap transformation passes with keep controls *)
 
     fun optimize module = let
-(*
           val _ = cfa module
           val _ = CFACPS.clearInfo module
-*)
 	  in
 	    module
 	  end
