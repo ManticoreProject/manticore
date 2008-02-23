@@ -89,16 +89,8 @@ structure BOMTyUtil : sig
 	   | (BTy.T_CFun c_proto1, BTy.T_CFun c_proto2) =>
 		c_proto1 = c_proto2
 	   | (BTy.T_VProc, BTy.T_VProc) => true
-	   | (BTy.T_TyCon tyc1, BTy.T_TyCon tyc2) => eqTyc (tyc1, tyc2)
+	   | (BTy.T_TyCon tyc1, BTy.T_TyCon tyc2) => BOMTyCon.sameTyc (tyc1, tyc2)
 	   | _ => false
-	  (* end case *))
-	  
-    and eqTyc (tyc1, tyc2) = (case (tyc1, tyc2)
-	   of (BTy.DataTyc {stamp = stamp1, ...}, BTy.DataTyc {stamp = stamp2, ...}) =>
-		Stamp.same (stamp1, stamp2)
-	    | (BTy.AbsTyc {stamp = stamp1, ...}, BTy.AbsTyc {stamp = stamp2, ...}) =>
-		Stamp.same (stamp1, stamp2)
-	    | _ => false
 	  (* end case *))
 
   (* does the first type "match" the second type (i.e., can values of the first

@@ -11,6 +11,7 @@ structure BOMTyCon : sig
     val newDataTyc : (string * int) -> BOMTy.tyc
     val tycName : BOMTy.tyc -> string
     val nCons : BOMTy.tyc -> int
+    val sameTyc : (BOMTy.tyc * BOMTy.tyc) -> bool
 
     val newDataCon : BOMTy.tyc -> (string * BOMTy.dcon_rep * BOMTy.ty list) -> BOMTy.data_con
     val dconName : BOMTy.data_con -> string
@@ -20,6 +21,9 @@ structure BOMTyCon : sig
 
   (* new exception datacon *)
     val newExnCon : (string * BOMTy.ty list) -> BOMTy.data_con
+
+  (* is a BOM data constructor an exception constructor *)
+    val isExnCon : BOMTy.data_con -> bool
 
   end = struct
 
@@ -55,6 +59,10 @@ structure BOMTyCon : sig
       | tycName (AbsTyc{name, ...}) = name
     fun nCons (DataTyc{cons, ...}) = List.length(!cons)
 
+    fun sameTyc (DataTyc{stamp = a, ...}, DataTyc{stamp = b, ...}) = Stamp.same (a, b)
+      | sameTyc (AbsTyc{stamp = a, ...}, AbsTyc{stamp = b, ...}) = Stamp.same (a, b)
+      | sameTyc _ = false
+
     fun dconName (DCon{name, ...}) = name
     fun dconArgTy (DCon{argTy, ...}) = argTy
     fun dconTyc (DCon{myTyc, ...}) = myTyc
@@ -67,5 +75,8 @@ structure BOMTyCon : sig
 	    argTy = tys,
 	    myTyc = BOMTy.exnTyc
 	  }
+
+  (* is a BOM data constructor an exception constructor *)
+    fun isExnCon (DCon{myTyc, ...}) = sameTyc(myTyc, BOMTy.exnTyc)
 
   end
