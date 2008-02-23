@@ -36,12 +36,13 @@ structure CaseSimplify : sig
 	    cons : (BTy.data_con * B.var list * B.exp) sub_case
 	  }
       | LitCase of (B.const * B.exp) sub_case
+      | ExnCase of (BTy.data_con * B.var list * B.exp) sub_case
 
     fun classifyCaseRules (argTy, rules : (B.pat * B.exp) list, dflt) = let
 	  val hasDflt = Option.isSome dflt
-	  val (nCons, nEnums) = (case argTy
-		 of BTy.T_TyCon(BTy.DataTyc{nNullary, cons, ...}) => (List.length(!cons), nNullary)
-		  | _ => (0, 0)
+	  val (isExn, nCons, nEnums) = (case argTy
+		 of BTy.T_TyCon(BTy.DataTyc{nNullary, cons, ...}) => (false, List.length(!cons), nNullary)
+		  | ty => (BOMTyUtil.equal(BTy.exnTy, ty), 0, 0)
 		(* end case *))
 	(* classify the rules into a list of those with enum patterns, a list
 	 * of literal patterns, and a list of data constructor patterns.
@@ -63,7 +64,9 @@ structure CaseSimplify : sig
 		    else MixedCase{enums={rules=enums, hasDflt=hasDflt}, cons={rules=[], hasDflt=hasDflt}}
 	      | ([], lits, []) => LitCase{rules=lits, hasDflt=hasDflt}
 	      | ([], [], cons) =>
-		  if (nEnums = 0)
+		  if isExn
+		    then ExnCase{rules=cons, hasDflt=hasDflt}
+		  else if (nEnums = 0)
 		    then ConsCase{rules=cons, hasDflt=hasDflt}
 		  else if (nCons = List.length cons)
 		    then MixedCase{enums={rules=[], hasDflt=hasDflt}, cons={rules=cons, hasDflt=false}}
@@ -279,19 +282,33 @@ DEBUG*)
 		in
 		  B.mkStmt([y'], B.E_Promote x', xformE(s', tys, e))
 		end
-	    | B.E_Stmt([y], B.E_DCon(B.DCon{name, rep, argTy, ...}, xs), e) => (
+	    | B.E_Stmt([y], B.E_DCon(dc as B.DCon{name, rep, argTy, ...}, xs), e) => (
 		case (rep, xs)
 		 of (B.Transparent, [x]) => let
 		      val (s', y') = retype (s, y, tyToRepTy(typeOf x))
 		      in
 			B.mkLet([y'], B.mkRet[subst s x], xformE(s', tys, e))
 		      end
-		  | (B.Tuple, _) => let
-		      val ty = tyToRepTy(BTy.T_Tuple(false, argTy))
-		      val (s', y') = retype (s, y, ty)
-		      in
-			B.mkStmt([y'], B.E_Alloc(ty, BU.subst'(s, xs)), xformE(s', tys, e))
-		      end
+		  | (B.Tuple, _) => if BOMTyCon.isExnCon dc
+		      then let
+			val ty = tyToRepTy(BTy.T_Tuple(false, BTy.T_Any::argTy))
+			val (s', y') = retype (s, y, ty)
+			val tag = BV.new("_tag", BTy.T_Any)
+			in
+(* FIXME: using tag literals for exceptions is not going to be correct if the same name is
+ * declared multiple times!
+ *)
+			  B.mkStmts([
+			      ([tag], B.E_Const(Literal.Tag(BOMTyCon.dconName dc), BTy.T_Any)),
+			      ([y'], B.E_Alloc(ty, tag::BU.subst'(s, xs)))
+			    ], xformE(s', tys, e))
+			end
+		      else let
+			val ty = tyToRepTy(BTy.T_Tuple(false, argTy))
+			val (s', y') = retype (s, y, ty)
+			in
+			  B.mkStmt([y'], B.E_Alloc(ty, BU.subst'(s, xs)), xformE(s', tys, e))
+			end
 		  | (B.TaggedTuple tag, _) => let
 		      val tagTy = BTy.T_Enum tag
 		      val tag' = BV.new(name, tagTy)
@@ -510,6 +527,7 @@ DEBUG*)
 		    (* end case *)
 		  end
 	      | LitCase{rules, ...} => literalCase (s, tys, argument, rules, dflt)
+	      | ExnCase _ => raise Fail "exception cases not implemented yet" (* FIXME *)
 	    (* end case *)
 	  end
 
