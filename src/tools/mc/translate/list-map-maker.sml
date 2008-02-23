@@ -28,7 +28,6 @@ structure ListMapMaker : sig
     val listTy = BB.listTy
     val tupTy = BTy.T_Tuple
     val anyTy = BTy.T_Any
-    val exnTy = BTy.exnTy
     val exhTy = BTy.exhTy
 
     val nilConst = (Literal.Enum 0w0, listTy)

@@ -41,6 +41,9 @@ structure BOMUtil : sig
    *)
     val copyExp : (subst * BOM.exp) -> BOM.exp
 
+  (* make a raw int expression from an int *)
+    val rawInt : int -> BOM.rhs
+
   (* return the type of a BOM term *)
     val typeOfExp : BOM.exp -> BOM.ty list
     val typeOfRHS : BOM.rhs -> BOM.ty list
@@ -282,6 +285,10 @@ structure BOMUtil : sig
       | typeOfRHS (B.E_HostVProc) = [BTy.T_VProc]
       | typeOfRHS (B.E_VPLoad _) = [BTy.T_Any]
       | typeOfRHS (B.E_VPStore _) = []
+
+  (* rawInt : int -> B.rhs *)
+    fun rawInt(n) = B.E_Const (Literal.Int (IntInf.fromInt n), 
+			       BTy.T_Raw BTy.T_Int)
 
     fun typeOfExp (B.E_Pt(_, t)) = (case t
 	   of (B.E_Let(_, _, e)) => typeOfExp e

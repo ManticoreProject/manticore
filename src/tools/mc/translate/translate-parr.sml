@@ -18,6 +18,7 @@ structure TranslateParr  : sig
     structure B   = BOM
     structure BB  = BOMBasis
     structure BTy = BOMTy
+    structure BU  = BOMUtil
 
     datatype 'a leaf 
       = Lf of (int * 'a list)
@@ -146,7 +147,6 @@ structure TranslateParr  : sig
     local
 	val ropeTy = BB.ropeTy
 	val rawIntTy = BTy.T_Raw BTy.T_Int
-	fun rawInt n = B.E_Const (Literal.Int (IntInf.fromInt n), rawIntTy)
 	val mkList = ASTUtil.mkList
     in
   (* ropeBOM : env * (env * A.exp * (BV.var -> B.exp)) -> _ rope * A.ty -> B.exp *)
@@ -158,7 +158,7 @@ structure TranslateParr  : sig
 	          let val dataAST = mkList (data, t)
 		  in
                       trExpToV (env, dataAST, fn dataV =>
-                      B.mkStmt ([nV], rawInt(len),
+                      B.mkStmt ([nV], BU.rawInt(len),
                       B.mkStmt ([rV], B.E_DCon (BB.ropeLeaf, [nV, dataV]),
                       B.mkRet [rV])))
 		  end
@@ -169,8 +169,8 @@ structure TranslateParr  : sig
 		      val r1V = B.Var.new ("r1", ropeTy)
 		      val r2V = B.Var.new ("r2", ropeTy)
 		  in
-		      B.mkStmt ([nV], rawInt(n),
-                      B.mkStmt ([dV], rawInt(d),
+		      B.mkStmt ([nV], BU.rawInt(n),
+                      B.mkStmt ([dV], BU.rawInt(d),
                       B.mkLet  ([r1V], r1BOM,
                       B.mkLet  ([r2V], r2BOM,
                       B.mkStmt ([rV], B.E_DCon (BB.ropeCat, [nV, dV, r1V, r2V]),

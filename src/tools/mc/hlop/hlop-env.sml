@@ -33,6 +33,7 @@ structure HLOpEnv : sig
     val listMapOp : HLOp.hlop
     val listRevOp : HLOp.hlop
     val listNthOp : HLOp.hlop
+    val failOp : HLOp.hlop
     val stringConcatOp : HLOp.hlop
     val stringConcatListOp : HLOp.hlop
     val stringLitOp : HLOp.hlop
@@ -159,6 +160,9 @@ structure HLOpEnv : sig
 
     val listRevOp = newWithExh("list-rev", [listTy], [listTy], [])
     val listNthOp = newWithExh("list-nth", [pairTy(listTy, intTy)], [anyTy], [])
+
+    val failOp = newWithExh("fail", [stringTy], [anyTy], [])
+
     val stringConcatOp = newWithExh("string-concat2", [pairTy(stringTy, stringTy)], [stringTy], [])
     val stringConcatListOp = newWithExh("string-concat-list", [listTy], [stringTy], [])
     val stringLitOp = new("string-lit", [BTy.T_Any, rawIntTy], [stringTy], [])

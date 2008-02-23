@@ -34,6 +34,7 @@ structure RopeMapMaker : sig
     val listTy = BB.listTy
     val rawIntTy = BTy.T_Raw BTy.T_Int
     val ropeTy = BB.ropeTy
+    val stringTy = BB.stringTy
     val tupTy = BTy.T_Tuple
     val unitTy = BTy.unitTy
     val workQueueTy = BTy.workQueueTy
@@ -67,14 +68,14 @@ structure RopeMapMaker : sig
     fun mkConsPat (hdVar, tlVar) = B.P_DCon (BB.listCons, [hdVar, tlVar])
 
   (* mkListToTup : int * (unit -> B.exp) -> B.lambda *)
-  (* Consumes an arity and a mkRaise function. *)
+  (* Consumes an arity and a mkFail function. *)
   (* (The latter is for inserting raises in the generated code.) *)
   (* Produces a function that turns a list of lists of that many elements *)
   (* into a tuple of lists of that many elements. *)
   (* The lists need not have a common element type. *)
   (* This is a function that can't be typed in H-M systems; it's just *)
   (* for local, under-the-hood use. *)
-    fun mkListToTup (arity : int, mkRaise : unit -> B.exp) : B.lambda =
+    fun mkListToTup (arity : int, mkFail : unit -> B.exp) : B.lambda =
 	let val returnTy = tupTy (false, copies (arity, listTy))
 	    val xss = BV.new ("xss", listTy)
 	    val xsVars = mkVars ("xs", arity, listTy) (* these are backwards *)
@@ -91,18 +92,18 @@ structure RopeMapMaker : sig
 			end
 		in
 		    B.mkCase (tlN,
-                      [(consPat, mkRaise ()),
+                      [(consPat, mkFail ()),
                        (nilPat, retval)],
                       NONE)
 		end
 	    fun build ([xs1], [tl1], e) = 
 		  B.mkCase (xss,
-                    [(nilPat, mkRaise ()),
+                    [(nilPat, mkFail ()),
 		     (mkConsPat (xs1, tl1), e)],
                     NONE)
 	      | build (xsK::xsTl, tlK::(tlTl as tlKPred::_), e) = 
 		  let val e' = B.mkCase (tlKPred,
-                                 [(nilPat, mkRaise ()),
+                                 [(nilPat, mkFail ()),
 				  (mkConsPat (xsK, tlK), e)],
                                  NONE)
                   in
@@ -287,9 +288,11 @@ structure RopeMapMaker : sig
   (* mkMap : int -> B.lambda *)
     fun mkMap (arity : int) : B.lambda =
 	let val exhV = BV.new ("exh", exhTy)
-	    val lengthExn = BV.new ("Length", exnTy)
-	    fun mkRaise () = B.mkThrow (exhV, [lengthExn])
-	    val l2t as B.FB {f=l2tV, ...} = mkListToTup (arity, mkRaise)
+	    val msgDataV = BV.new ("msgData", anyTy)
+	    val msgLenV = BV.new ("msgLen", rawIntTy)
+	    val msgV = BV.new ("msg", BB.stringTy)
+	    fun mkFail () = B.mkHLOp (HLOpEnv.failOp, [msgV], [exhV])
+	    val l2t as B.FB {f=l2tV, ...} = mkListToTup (arity, mkFail)
 	    val listMapN = listMapFun arity
             val fTy = BTy.T_Fun ([tupTy (false, copies (arity, anyTy))], [exhTy], [anyTy])
 	    val fV = BV.new ("f", fTy)
@@ -307,7 +310,10 @@ structure RopeMapMaker : sig
 	    val innerMap as B.FB {f=rmapn, ...} = mkInnerMap (arity, fV, l2tV, indexV, othersV, exhV)
 	    val zeroV = BV.new ("zero", rawIntTy)
 	    val body = deconstructTuple (fV :: ropeVs, argV,
-                       B.mkStmt ([lengthExn], B.E_Const (Literal.Enum(0w0), exnTy),
+                       B.mkStmt ([msgDataV], B.E_Const (Literal.String "Length", anyTy),
+                       B.mkStmt ([msgLenV], BOMUtil.rawInt(6),
+                       B.mkStmt ([msgV], B.E_Alloc (iPairTy (stringTy, rawIntTy), 
+						    [msgDataV, msgLenV]),
                        B.mkFun ([l2t],
                        B.mkFun ([listMapN],
                        mkList (ropeListV, ropeVs,
@@ -317,7 +323,7 @@ structure RopeMapMaker : sig
                        B.mkStmt ([indexV], B.E_Select (2, esrV),
                        B.mkFun ([innerMap],
                        B.mkStmt ([zeroV], B.E_Const (Literal.Int 0, rawIntTy),
-                       B.mkApply (rmapn, [shortestV, zeroV], []))))))))))))
+                       B.mkApply (rmapn, [shortestV, zeroV], []))))))))))))))
 	in
 	    B.FB {f = rmapV,
 		  params = [argV],
