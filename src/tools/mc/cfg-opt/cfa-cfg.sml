@@ -210,18 +210,18 @@ structure CFACFG : sig
   (* update the i'th component of a tuple. *)
     fun update (i, y, z) = (case valueOf y
 	   of TUPLE vs => let
-		fun upd (0, v::r, ac) = TUPLE ((rev ac) @ ((valueOf z)::r))
-		  | upd (0, [], ac) = TUPLE ((rev ac) @ [valueOf z])
+		fun upd (0, v::r, ac) = TUPLE ((rev ac) @ (z::r))
+		  | upd (0, [], ac) = TUPLE ((rev ac) @ [z])
 		  | upd (i, v::r, ac) = upd(i-1, r, v::ac)
 		  | upd (i, [], ac) = upd(i-1, [], BOT (* or should this be TOP? *) :: ac)
 		in
 		  upd (i, vs, [])
 		end
 	    | BOT => BOT
-	    | TOP => (escapingValue (valueOf z); TOP)
+	    | TOP => (escapingValue z; TOP)
 	    | v => raise Fail(concat[
 		  "type error: update(", Int.toString i, ", ", CFG.Var.toString y, 
-                  ", ", CFG.Var.toString z,
+                  ", ", valueToString z,
 		  "); valueOf(", CFG.Var.toString y, ") = ", valueToString v
 		])
 	  (* end case *))
@@ -296,8 +296,9 @@ structure CFACFG : sig
 		  | doExp (CFG.E_Select(x, i, y)) =
 		      addInfo(x, select(i, y))
 		  | doExp (CFG.E_Update(i, y, z)) = 
-                      (escape z; addInfo(y, update(i, y, z)))
-		  | doExp (CFG.E_AddrOf(x, i, y)) = addInfo(x, TOP)
+                      (escape z; addInfo(y, update(i, y, valueOf z)))
+		  | doExp (CFG.E_AddrOf(x, i, y)) = 
+                      (addInfo(x, TOP); addInfo(y, update(i, y, TOP)))
 		  | doExp (CFG.E_Alloc(x, xs)) = addInfo(x, TUPLE(List.map valueOf xs))
 		  | doExp (CFG.E_GAlloc(x, xs)) = addInfo(x, TUPLE(List.map valueOf xs))
 		  | doExp (CFG.E_Promote(x, y)) = addInfo(x, valueOf y)
@@ -308,7 +309,7 @@ structure CFACFG : sig
                        addInfo(x, TOP))
 		  | doExp (CFG.E_CCall(xs, _, args)) = 
                       (List.app escape args; List.app (fn x => addInfo(x, TOP)) xs)
-		  | doExp (CFG.E_HostVProc vp) = ()
+		  | doExp (CFG.E_HostVProc x) = addInfo(x, TOP)
 		  | doExp (CFG.E_VPLoad(x, _, vp)) = addInfo(x, TOP)
 		  | doExp (CFG.E_VPStore(_, vp, x)) = escape x
 		and doXfer (CFG.StdApply{f, clos, args, ret, exh}) =
