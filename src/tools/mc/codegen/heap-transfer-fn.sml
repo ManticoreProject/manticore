@@ -89,16 +89,11 @@ functor HeapTransferFn (
       end (* genJump *)
 
   fun genGoto varDefTbl (l, args) = let
-      val useDefOf = VarDef.useDefOf varDefTbl
       val name = LabelCode.getName l
       val params = LabelCode.getParamRegs l
-      val args' = map useDefOf args
-      val argRegs = map (fn (MTy.GPReg (ty, _)) => MTy.GPReg (ty, newReg())
-			  | (MTy.FPReg (ty, _)) => MTy.FPReg (ty, newFReg()) )
-			params
-      val stms = Copy.copy {src=args', dst=argRegs}
+      val args' = List.map (VarDef.useDefOf varDefTbl) args
       in
-         stms @ genJump (T.LABEL name, [name], params, map MTy.regToTree argRegs)
+         Copy.copy {src=args', dst=params} @ [T.JMP (T.LABEL name, [name])]
       end (* genGoto *)
 
   fun genStdTransfer varDefTbl (tgtReg, args, argRegs, stdRegs) = let

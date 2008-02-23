@@ -52,7 +52,6 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 
   fun fail s = raise Fail s
   fun newLabel s = Label.label s () 
-  fun labelToMLRisc l = newLabel (M.Label.toString l)
   fun newReg _ = Cells.newReg ()
   fun newFReg _ = Cells.newFreg ()
   fun mkExp e = MTy.EXP (ty, e)
