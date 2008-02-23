@@ -49,6 +49,7 @@
       | Select of (int * simple_exp)		(* select i'th field (zero-based) *)
       | AddrOf of (int * simple_exp)		(* address of i'th field (zero-based) *)
       | Const of (Literal.literal * ty)
+      | MLString of string			(* ML string literal *)
       | Cast of (ty * simple_exp)
       | Unwrap of simple_exp			(* unwrap value *)
       | Prim of (Atom.atom * simple_exp list)	(* prim-op or data constructor *)

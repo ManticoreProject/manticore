@@ -27,8 +27,18 @@
   (* add a string to the buffer *)
     fun addStr s = (buf := s :: !buf)
 
+  (* flag to mark ML string literals *)
+    val isMLString = ref false
+
   (* make a string from buf *)
-    fun mkString () = (T.STRING(String.concat(List.rev(!buf))) before buf := [])
+    fun mkString () = let
+	  val s = String.concat(List.rev(!buf))
+	  in
+	    buf := [];
+	    if !isMLString
+	      then T.ML_STRING s
+	      else T.STRING s
+	  end
 
   (* make a FLOAT token from a substring *)
     val mkFloat = HLDefUtils.mkMkFloat (fn lit => T.FLOAT lit)
@@ -159,7 +169,8 @@ DEBUG*)
 <INITIAL>{ws}		=> (skip ());
 <INITIAL>{eol}		=> (AntlrStreamPos.markNewLine yysm yypos; skip());
 <INITIAL>"(*"		=> (YYBEGIN COMMENT; depth := 1; skip());
-<INITIAL> "\""		=> (YYBEGIN STRING; skip());
+<INITIAL> "@\""		=> (isMLString := true; YYBEGIN STRING; skip());
+<INITIAL> "\""		=> (isMLString := false; YYBEGIN STRING; skip());
 
 <STRING>{esc}		=> (addStr(valOf(String.fromString yytext)); continue());
 <STRING>{sgood}+	=> (addStr yytext; continue());

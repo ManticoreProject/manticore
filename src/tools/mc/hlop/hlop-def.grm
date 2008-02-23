@@ -82,6 +82,7 @@
 	| NEGINT of IntInf.int		(* negative integer *)
 	| FLOAT of FloatLit.float
 	| STRING of string
+	| ML_STRING of string
 	;
 
 %defs(
@@ -245,6 +246,7 @@ NonSelectExp
 	| ID "(" Args ")"		=> (PT.Prim(ID, Args))
 	| "(" Type ")" SimpleExp	=> (PT.Cast(Type, SimpleExp))
 	| Literal			=> (PT.Const(Literal))
+	| ML_STRING			=> (PT.MLString(ML_STRING))
 	| "host_vproc"			=> (PT.HostVProc)
 	| "vpload" "(" POSINT "," SimpleExp ")"
 					=> (PT.VPLoad(POSINT, SimpleExp))
