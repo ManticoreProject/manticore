@@ -23,7 +23,7 @@ define @list-sublist (xs : list, start : int, length : int / exh : exh) : list =
     else (* length is positive *)
       case xs
         of NIL => (* ran out of elements *)
-             let msg : ml_string = alloc ("Length", 6)
+             let msg : ml_string = @"Length"
              @fail (msg / exh)
          | CONS (hd : any, tl : list) =>
              if I32Gt (start, 0) then
@@ -37,12 +37,12 @@ define @list-sublist (xs : list, start : int, length : int / exh : exh) : list =
   if I32Lt (start, 0) then 
     (* negative start pos *)
     do ccall M_Print ("@list-sublist: negative start pos\n\000")
-    let msg : ml_string = alloc ("Subscript", 9)
+    let msg : ml_string = @"Subscript"
     @fail (msg / exh)
   else if I32Lt (length, 0) then
     (* negative length *)
     do ccall M_Print ("@list-sublist: negative length\n\000")
-    let msg : ml_string = alloc ("Length", 6)
+    let msg : ml_string = @"Length"
     @fail (msg / exh)
   else
     apply sub (xs, start, length)

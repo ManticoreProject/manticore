@@ -24,7 +24,7 @@ define @insert-at (elt : any, data : list, pos : int / exh : exh) : list =
     else if I32Gt(p, 0) then
       case xs
         of NIL => (* list too short *)
-             let msg : ml_string = alloc ("Subscript", 9)
+             let msg : ml_string = @"Subscript"
              @fail (msg / exh)
          | CONS (hd : any, tl : list) =>
              let q : int = I32Sub (p, 1)
@@ -33,7 +33,7 @@ define @insert-at (elt : any, data : list, pos : int / exh : exh) : list =
       end (* case *)
     else
       (* negative position *)
-      let msg : ml_string = alloc ("Subscript", 9)
+      let msg : ml_string = @"Subscript"
       @fail (msg / exh)
   (* end fun ins *)
 

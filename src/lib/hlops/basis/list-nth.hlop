@@ -9,11 +9,10 @@
 #include "types.def"
 
 define @list-nth (arg : [list, ml_int] / exh : exh) : any =
-
   fun nth (xs : list, i : int / ) : any =
     case xs
       of NIL => 
-           let msg : ml_string = alloc ("Subscript", 9)
+           let msg : ml_string = @"Subscript"
            @fail (msg / exh)
        | CONS (hd : any, tl : list) =>
            if I32Eq(i,0) then
@@ -30,7 +29,7 @@ define @list-nth (arg : [list, ml_int] / exh : exh) : any =
   let n : int = unwrap(ml_n)
 
   if I32Lt(n,0) then 
-    let msg : ml_string = alloc ("Subscript", 9)
+    let msg : ml_string = @"Subscript"
     @fail (msg / exh)
   else
     let res : any = apply nth (data, n)
