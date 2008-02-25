@@ -6,7 +6,7 @@
 
 Library
 
-  structure FlatClosure
+  structure Closure
 
 is
 
@@ -20,6 +20,7 @@ is
   ../cps/sources.cm
   ../cfg/sources.cm
 
+  closure.sml
   closure-controls.sml
   free-vars.sml
   flat-closure.sml

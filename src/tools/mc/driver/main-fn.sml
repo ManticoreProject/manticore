@@ -55,7 +55,7 @@ functor MainFn (
 	  val _ = CheckCPS.check ("convert", cps)
 	  val cps = CPSOpt.optimize cps
 	  val _ = CheckCPS.check ("cps-optimize", cps)
-	  val cfg = FlatClosure.convert cps
+	  val cfg = Closure.convert cps
 	  val _ = CheckCFG.check cfg
 	  val cfg = CFGOpt.optimize cfg
 	  val _ = CheckCFG.check cfg

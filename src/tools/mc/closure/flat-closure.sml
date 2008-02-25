@@ -196,10 +196,6 @@ structure FlatClosure : sig
 		  "unbound variable ", CPS.Var.toString x, "; ep = ", CFG.Var.toString ep
 		])
           (* end case *))
-(*
-val lookupVar = fn (environ as E{ep, env}, x) => let val (binds, x') = lookupVar(environ, x) in
-print(concat["lookupVar: ", CPS.Var.toString x, " @ ", locToString(valOf(VMap.find(env, x))), " --> ", CFG.Var.toString x', "\n"]); (binds, x') end
-*)
 
     fun lookupVars (env, xs) = let
           fun lookup ([], binds, xs) = (binds, xs)
