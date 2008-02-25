@@ -22,6 +22,7 @@ define @assoc-list-add (atag : assoc_tag, init : fun(unit / exh -> any), fgs : f
      (* NOTE: subtle case here!  we return elt at the end of this function, so we must get a handle
       * on its promoted value here
       *)
+      let elt : any = (any)elt
       let elt : any = promote(elt)
       let alistSrc : assoc_list = SELECT(FGS_ALIST_OFFSET, fgs)
       let alistNew : assoc_list = ACONS (atag, elt, alistSrc)
