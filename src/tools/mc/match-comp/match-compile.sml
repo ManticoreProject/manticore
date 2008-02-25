@@ -313,12 +313,9 @@ structure MatchCompile : sig
     val raiseBindFail = raiseExn Env.exnBindFail
 *)
     fun raiseExn exn (loc : Err.span, env : Env.env, ty : AST.ty) =
-	  AST.ApplyExp(
-	    AST.VarExp(Basis.fail, [ty]),
-	    AST.ConstExp(AST.LConst(Literal.String exn, Basis.stringTy)),
-	    ty)
-    val raiseMatchFail = raiseExn "Match"
-    val raiseBindFail = raiseExn "Bind"
+	  AST.RaiseExp(AST.ConstExp(AST.DConst(exn, [])), ty)
+    val raiseMatchFail = raiseExn Basis.exnMatch
+    val raiseBindFail = raiseExn Basis.exnBind
 
     fun rewrite (loc, env, exp : AST.exp) : AST.exp = let
 	  fun rewrite' e = rewrite (loc, env, e)

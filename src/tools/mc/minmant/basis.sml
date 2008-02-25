@@ -55,6 +55,12 @@ structure Basis : sig
     val optionNONE	: AST.dcon
     val optionSOME	: AST.dcon
 
+  (* exceptions *)
+    val exnBind		: AST.dcon
+    val exnFail		: AST.dcon
+    val exnDiv		: AST.dcon
+    val exnMatch	: AST.dcon
+
   (* overloaded operators *)
     val neg : (Types.ty_scheme * AST.var list)
 
@@ -288,6 +294,12 @@ structure Basis : sig
     val stringTy = AST.ConTy([], stringTyc)
     fun listTy ty = AST.ConTy([ty], listTyc)
     fun optionTy ty = AST.ConTy([ty], optionTyc)
+
+  (* exceptions *)
+    val exnBind = Exn.new (N.exnBind, NONE)
+    val exnDiv = Exn.new (N.exnDiv, NONE)
+    val exnFail = Exn.new (N.exnFail, SOME stringTy)
+    val exnMatch = Exn.new (N.exnMatch, NONE)
 
   (* concurrent and parallel-language predefined types *)
     val threadIdTy = AST.ConTy([], threadIdTyc)
@@ -666,6 +678,10 @@ structure Basis : sig
 	    (N.listCons,	Env.Con listCons),
 	    (N.optionNONE,	Env.Con optionNONE),
 	    (N.optionSOME,	Env.Con optionSOME),
+	    (N.exnBind,		Env.Con exnBind),
+	    (N.exnDiv,		Env.Con exnDiv),
+	    (N.exnFail,		Env.Con exnFail),
+	    (N.exnMatch,	Env.Con exnMatch),
 	    (* Unary minus is overloaded, so it's being handled
              * specially by the typechecker *)
 	    (N.not,		Env.Var not),

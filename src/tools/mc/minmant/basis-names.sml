@@ -60,6 +60,12 @@ structure BasisNames =
     val optionNONE =	Atom.atom "NONE"
     val optionSOME =	Atom.atom "SOME"
 
+  (* pre-defined exception constructors *)
+    val exnBind =	Atom.atom "Bind"
+    val exnDiv =	Atom.atom "Div"
+    val exnFail =	Atom.atom "Fail"
+    val exnMatch =	Atom.atom "Match"
+
   (* predefined variables *)
     val not =		Atom.atom "not"
     val sqrtf =		Atom.atom "sqrtf"
