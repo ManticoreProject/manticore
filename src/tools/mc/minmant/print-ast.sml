@@ -142,11 +142,9 @@ structure PrintAST : sig
 	      pr ")";
 	    closeBox ();
 	    sp ();
-	    pr "handle";
-	    sp ();
 	    openVBox (abs 2);
 	      case matches
-	       of m::ms => (pe " of" m;  app (pe "  |") ms)
+	       of m::ms => (pe " handle" m;  app (pe "  |") ms)
 		| nil => raise Fail "handle without any branches"
 	      (* end case *);
 	      pr "(* end handle *))";
@@ -352,22 +350,17 @@ structure PrintAST : sig
       | pat (A.ConstPat c) = const c
 
   (* infixPat : A.dcon * A.pat -> unit *)
-    and infixPat (dc, p) =
-      (case p
-         of A.TuplePat [p1, p2] =>
-              (openHBox ();
-	       pr "(";
-               if atomicPat p1 
-	       then pat p1
-	       else (pr "("; pat p1; pr ")");
-               dcon dc;
-               if atomicPat p2 
-               then pat p2
-               else (pr "("; pat p2; pr ")");
-	       pr ")";
+    and infixPat (dc, p) = (case p
+	   of A.TuplePat [p1, p2] => (
+		openHBox ();
+		 pr "(";
+		 if atomicPat p1 then pat p1 else (pr "("; pat p1; pr ")");
+		 dcon dc;
+		 if atomicPat p2 then pat p2 else (pr "("; pat p2; pr ")");
+		 pr ")";
                closeBox ())
-	  | _ => raise Fail "expected a two-element tuple"
-        (* end case *))
+	    | _ => raise Fail "expected a two-element tuple"
+	  (* end case *))
          
   (* const : A.const -> unit *)
     and const (A.DConst (c, ts)) = dcon c
