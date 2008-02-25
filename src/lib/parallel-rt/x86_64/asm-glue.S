@@ -8,8 +8,8 @@
  *	%rax	-- standard arg
  *	%rdi	-- standard ep
  *	%rsi	-- standard return continuation
- *	%rbx	-- standard exception handler
- *	%rcx	-- allocation pointer
+ *	%r9	-- standard exception handler
+ *	%rdx	-- allocation pointer
  *	%r11	-- limit pointer
  */
 
@@ -53,9 +53,9 @@ _GSYM(ASM_Apply):
 	movq	%rdx,%rax		/* standard argument */
 	movq	%rcx,%rdi		/* environment pointer */
 	movq	%r8,%rsi		/* return continuation */
-	movq	%r9,%rbx		/* exception continuation */
+	movq	%r9,%r9		/* exception continuation */
       /* load Manticore state */
-	movq	ALLOC_PTR(%r10),%rcx	/* load allocation pointer */
+	movq	ALLOC_PTR(%r10),%rdx	/* load allocation pointer */
 	movq	LIMIT_PTR(%r10),%r11	/* limit pointer */
 	movq	$M_TRUE,IN_MANTICORE(%r10) /* we are running manticore code now! */
 	jmp	*%r12
@@ -93,7 +93,7 @@ switch_to_c:
 	movq	%rax,%r10
 #else
       /* compute the vproc pointer from the allocation pointer */
-	movq	%rcx,%r10
+	movq	%rdx,%r10
 	andq	$VP_MASK,%r10
 #endif
       /* mark that we are not running Manticore code anymore */
@@ -102,8 +102,8 @@ switch_to_c:
 	movq	%rax,STD_ARG(%r10)
 	movq	%rdi,STD_EP(%r10)
 	movq	%rsi,STD_CONT(%r10)
-	movq	%rbx,STD_EXH(%r10)
-	movq	%rcx,ALLOC_PTR(%r10)
+	movq	%r9,STD_EXH(%r10)
+	movq	%rdx,ALLOC_PTR(%r10)
       /* restore C callee-save registers */
 	movq	RBX_OFF(%rbp),%rbx
 	movq	R12_OFF(%rbp),%r12

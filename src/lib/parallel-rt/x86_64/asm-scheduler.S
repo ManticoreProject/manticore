@@ -8,8 +8,8 @@
  *	%rax	-- standard arg (a.k.a. arg0)
  *	%rdi	-- standard ep (a.k.a. arg1)
  *	%rsi	-- standard return continuation (a.k.a. arg2)
- *	%rbx	-- standard exception handler (a.k.a. arg3)
- *	%rcx	-- allocation pointer
+ *	%r9	-- standard exception handler (a.k.a. arg3)
+ *	%rdx	-- allocation pointer
  *	%r11	-- limit pointer
  */
 
