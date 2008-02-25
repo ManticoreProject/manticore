@@ -107,9 +107,10 @@ structure BOMTyUtil : sig
 	    | (BTy.T_Enum w1, BTy.T_Enum w2) => (w1 <= w2)
 	    | (BTy.T_Enum w, BTy.T_TyCon(BTy.DataTyc{nNullary, ...})) => (w < Word.fromInt nNullary)
 	    | (BTy.T_Enum _, BTy.T_Tuple _) => true
-            | (ty1, ty2 as BTy.T_TyCon (BTy.DataTyc {cons, ...})) =>
+            | (ty1, ty2 as BTy.T_TyCon(BTy.DataTyc {cons, ...})) => equal(ty1, ty2)
+(* Do we really want to support coercions between datatypes?  (jhr; 2008-02-25)
                 equal(ty1, ty2) orelse
-                List.exists (fn BTy.DCon {rep, argTy, ...} =>
+                List.exists (fn BTy.DCon{rep, argTy, ...} =>
                              let
                                 val matchTy =
                                    case rep of
@@ -119,6 +120,7 @@ structure BOMTyUtil : sig
                              in
                                 equal (matchTy, ty1)
                              end) (!cons)
+*)
 	    | (BTy.T_Tuple(isMut1, tys1), BTy.T_Tuple(isMut2, tys2)) =>
 		(isMut1 orelse not isMut2)
 		andalso ListPair.allEq match (tys1, tys2)

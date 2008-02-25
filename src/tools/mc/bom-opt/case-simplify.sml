@@ -210,6 +210,7 @@ structure CaseSimplify : sig
 	    | (BTy.Tuple, []) => BTy.unitTy
 	    | (BTy.Tuple, _) => BTy.T_Tuple(false, List.map tyToRepTy argTy)
 	    | (BTy.TaggedTuple tag, _) => BTy.T_Tuple(false, BTy.T_Enum tag :: List.map tyToRepTy argTy)
+	    | (BTy.ExnRep, _) => BTy.T_Tuple(false, BTy.T_Any :: (List.map tyToRepTy argTy))
 	  (* end case *))
 
   (* variable to variable substitution *)
@@ -289,26 +290,12 @@ DEBUG*)
 		      in
 			B.mkLet([y'], B.mkRet[subst s x], xformE(s', tys, e))
 		      end
-		  | (B.Tuple, _) => if BOMTyCon.isExnCon dc
-		      then let
-			val ty = tyToRepTy(BTy.T_Tuple(false, BTy.T_Any::argTy))
-			val (s', y') = retype (s, y, ty)
-			val tag = BV.new("_tag", BTy.T_Any)
-			in
-(* FIXME: using tag literals for exceptions is not going to be correct if the same name is
- * declared multiple times!
- *)
-			  B.mkStmts([
-			      ([tag], B.E_Const(Literal.Tag(BOMTyCon.dconName dc), BTy.T_Any)),
-			      ([y'], B.E_Alloc(ty, tag::BU.subst'(s, xs)))
-			    ], xformE(s', tys, e))
-			end
-		      else let
-			val ty = tyToRepTy(BTy.T_Tuple(false, argTy))
-			val (s', y') = retype (s, y, ty)
-			in
-			  B.mkStmt([y'], B.E_Alloc(ty, BU.subst'(s, xs)), xformE(s', tys, e))
-			end
+		  | (B.Tuple, _) => let
+		      val ty = tyToRepTy(BTy.T_Tuple(false, argTy))
+		      val (s', y') = retype (s, y, ty)
+		      in
+			B.mkStmt([y'], B.E_Alloc(ty, BU.subst'(s, xs)), xformE(s', tys, e))
+		      end
 		  | (B.TaggedTuple tag, _) => let
 		      val tagTy = BTy.T_Enum tag
 		      val tag' = BV.new(name, tagTy)
@@ -321,6 +308,19 @@ DEBUG*)
 			  ], xformE(s, tys, e))
 		      end
 		  | (B.Transparent, _) => raise Fail("bogus application of transparent dcon "^name)
+		  | (B.ExnRep, args) => let
+		      val ty = tyToRepTy(BTy.T_Tuple(false, BTy.T_Any::argTy))
+		      val (s', y') = retype (s, y, ty)
+		      val tag = BV.new("_tag", BTy.T_Any)
+		      in
+(* FIXME: using tag literals for exceptions is not going to be correct if the same name is
+ * declared multiple times!
+ *)
+			B.mkStmts([
+			    ([tag], B.E_Const(Literal.Tag(BOMTyCon.dconName dc), BTy.T_Any)),
+			    ([y'], B.E_Alloc(ty, tag::BU.subst'(s, xs)))
+			  ], xformE(s', tys, e))
+		      end
 		(* end case *))
 	    | B.E_Stmt(lhs, rhs, e) => let
 		val (s', lhs) = xformVars (s, lhs)
@@ -441,6 +441,7 @@ DEBUG*)
 			      end
 			  | NONE => sel(ys, 1)
 			(* end case *))
+		    | B.ExnRep => raise Fail "exception constructor"
 		  (* end case *)
 		end
 	    | consCase (cons as ((dc, _, _)::_), dflt) = let
@@ -463,6 +464,7 @@ DEBUG*)
 			    in
 			      (B.P_Const(Lit.Enum tag, tagTy), action)
 			    end
+			| B.ExnRep => raise Fail "exception constructor"
 			| _ => raise Fail("expected TaggedBox representation for "^nameOfDCon dc)
 		      (* end case *))
 		in

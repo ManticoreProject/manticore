@@ -71,7 +71,7 @@ structure BOMTyCon : sig
     fun newExnCon (name, tys) = DCon{
 	    name = name,
 	    stamp = Stamp.new(),
-	    rep = Tuple,
+	    rep = ExnRep,
 	    argTy = tys,
 	    myTyc = BOMTy.exnTyc
 	  }

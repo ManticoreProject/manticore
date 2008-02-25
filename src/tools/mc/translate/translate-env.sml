@@ -147,6 +147,7 @@ structure TranslateEnv : sig
 		       of BOMTy.Transparent => "<transparent>"
 			| BOMTy.Tuple => "<tuple>"
 			| BOMTy.TaggedTuple tag => concat["<tagged-tuple(", w2s tag, ")>"]
+			| BOMTy.ExnRep => "<exn>"
 		      (* end case *))
 		in
 		  prl [
