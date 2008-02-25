@@ -157,9 +157,9 @@ structure Translate : sig
 			      (exn', trExpToExp(env', e'))
 			    end
 			| [AST.PatMatch(AST.WildPat _, e')] => let
-			    val exn = BV.new ("exn", BTy.exnTy)
+			    val exn' = BV.new ("exn", BTy.exnTy)
 			    in
-			      (exn, trExpToExp(env, e'))
+			      (exn', trExpToExp(env, e'))
 			    end
 			| _ => raise Fail "non-simple exception handler"
 		      (* end case *))

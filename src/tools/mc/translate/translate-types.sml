@@ -164,8 +164,8 @@ structure TranslateTypes : sig
 		  then let
 (* NOTE: we may want to use a flat representation for exn values! *)
 		    val tys = (case DataCon.argTypeOf dc
-			   of SOME ty => [BTy.T_Any, tr (env, ty)]
-			    | NONE => [BTy.T_Any]
+			   of SOME ty => [tr (env, ty)]
+			    | NONE => []
 			  (* end case *))
 		    val dc' = BTyc.newExnCon (DataCon.nameOf dc, tys)
 		    val repTr = FlattenRep.TUPLE(tys, List.map FlattenRep.ATOM tys)

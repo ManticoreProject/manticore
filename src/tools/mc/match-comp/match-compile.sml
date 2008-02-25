@@ -143,6 +143,7 @@ structure MatchCompile : sig
 	    VMap.foldli ext env vmap
 	  end
 
+  (* a high-level representation of the decision tree for a pattern match *)
     datatype decision_tree
       = CALL of AST.var * AST.var list
       | CASE of (AST.var * (simple_pat * decision_tree) list)
@@ -206,6 +207,7 @@ structure MatchCompile : sig
     fun dfaToTrees (loc, env0 : env, dfa, raiseExn, resTy) = let
 	  val {shared, infoOf} = analyseDFA dfa
 	  val root = DFA.initialState dfa
+	  val rootArg = DFA.getArg dfa
 	  val stateFuns = STbl.mkTable (8, Fail "shared state funs")
 	  fun lookupPath (pmap, path) = (case PMap.find(pmap, path)
 		 of SOME x => x
@@ -277,7 +279,7 @@ structure MatchCompile : sig
 		      in
 			IF(env, e, next(env, pmap, t), next(env, pmap, f))
 		      end
-		  | DFA.ERROR => ACTION(env, raiseExn(loc, env, resTy))
+		  | DFA.ERROR => ACTION(env, raiseExn(loc, rootArg, resTy))
 		(* end case *))
 	  and defShared q = let
 		val {pvs, fvs} = infoOf q
@@ -300,22 +302,21 @@ structure MatchCompile : sig
 		  STbl.insert stateFuns (q, funct); funct
 		end
 	  val fns = List.map defShared shared
-	  val pmap = PMap.singleton (DFA.ROOT(DFA.getArg dfa), DFA.getArg dfa)
+	  val pmap = PMap.singleton (DFA.ROOT(rootArg), rootArg)
 	  val tree = next(env0, pmap, root)
 	  in
 	    {fns = fns, tree = tree}
 	  end
 
   (* create the AST to raise an exception (either MatchFail or BindFail) *)
-(*
-    fun raiseExn getExn (loc : Err.span, env : Env.env, ty : AST.ty) = AST.E_RAISE(AST.E_CON(getExn env, loc), ty)
-    val raiseMatchFail = raiseExn Env.exnMatchFail
-    val raiseBindFail = raiseExn Env.exnBindFail
-*)
-    fun raiseExn exn (loc : Err.span, env : Env.env, ty : AST.ty) =
+    fun raiseExn exn (loc : Err.span, rootArg : AST.var, ty : AST.ty) =
 	  AST.RaiseExp(AST.ConstExp(AST.DConst(exn, [])), ty)
     val raiseMatchFail = raiseExn Basis.exnMatch
     val raiseBindFail = raiseExn Basis.exnBind
+
+  (* create the AST to reraise an exception in a handle match *)
+    fun reraiseExn (loc : Err.span, rootArg : AST.var, ty : AST.ty) =
+	  AST.RaiseExp(AST.VarExp(rootArg, []), ty)
 
     fun rewrite (loc, env, exp : AST.exp) : AST.exp = let
 	  fun rewrite' e = rewrite (loc, env, e)
@@ -347,7 +348,7 @@ structure MatchCompile : sig
 	      | AST.HandleExp(e, mc, ty) =>
 		  if MatchUtil.areSimpleMatches mc
 		    then AST.HandleExp(rewrite' e, List.map rewriteSimplePatMatch mc, ty)
-		    else AST.HandleExp(rewrite' e, rewriteMatch(loc, env, TypeOf.exp e, mc, ty), ty)
+		    else AST.HandleExp(rewrite' e, rewriteHandle(loc, env, mc, ty), ty)
 	      | AST.RaiseExp(e, ty) => AST.RaiseExp(rewrite' e, ty)
 	      | AST.FunExp(x, e, ty) => AST.FunExp(x, rewrite' e, ty)
 	      | AST.ApplyExp(e1, e2, ty) => AST.ApplyExp(rewrite' e1, rewrite' e2, ty)
@@ -435,6 +436,28 @@ structure MatchCompile : sig
 	   (* check for nonexhaustive match *)
 	    if (DFA.errorCount dfa <> 0)
 	      then Err.warnNonexhaustiveMatch(Env.errStrm env, loc)
+	      else ();
+	    case shared
+	     of NONE => [AST.PatMatch(AST.VarPat arg, match)]
+	      | SOME fb => [AST.PatMatch(AST.VarPat arg, AST.LetExp(fb, match))]
+	    (* end case *)
+ 	  end
+
+  (* rewrite a handle match. *)
+    and rewriteHandle (loc, env, cases, resTy) = let
+	  val arg = newVar Basis.exnTy
+	  val dfa = MatchToDFA.rulesToDFA (loc, arg, cases)
+	  val {shared, match} = dfaToAST (loc, env, dfa, reraiseExn, resTy)
+	  val final = DFA.finalStates dfa
+	  in
+(* NOTE: perhaps we should issue an error message for each
+ * redundant match with more precise location information???
+ *)
+	  (* check for redundant matches; note that M_DEFAULT cannot cause
+	   * a redundant match, since it would have been filtered out above.
+	   *)
+	    if (List.exists (fn q => DFA.rCount q = 0) final)
+	      then Err.errRedundantMatch(Env.errStrm env, loc)
 	      else ();
 	    case shared
 	     of NONE => [AST.PatMatch(AST.VarPat arg, match)]
