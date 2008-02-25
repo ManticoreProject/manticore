@@ -20,7 +20,6 @@ fun filter (g, ls) = let
 fun intListToString ls = let
     fun loop (ls, acc) =  (case ls
         of nil => acc
-(* FIXME: bug / missing feature in match compiler fails on this case *)
 (*         | x :: y :: nil => acc ^ (itos x) ^ ", " ^ (itos y)*)
 	 | x :: xs => loop (xs, acc ^ (itos x) ^ ", ")
         (* end case *))
@@ -49,8 +48,10 @@ fun qs xs = (case xs
 
 fun mkList i = if (i <= 0) then nil else ~i :: i :: mkList (i-1);
 
-val xs = mkList 100;
-val sl = qs xs;
+val xs = mkList (readint());
+(*val sl = qs xs;*)
+val _ = print "str\n";
+val str = intListToString xs;
+val _ = print "done\n";
 
-sl 
-(*print ( (intListToString sl) ^ "\n")*)
+print (str^ "\n")

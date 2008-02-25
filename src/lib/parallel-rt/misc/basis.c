@@ -229,6 +229,11 @@ void M_LogEventPtr (void *vp, int evt, uint64_t ptr)
     LogEvent2 (vp, evt, (uint32_t)(ptr << 32l), (uint32_t)ptr);
 }
 
+void M_LogEvent1 (void *vp, int evt, uint32_t v)
+{
+    LogEvent1 (vp, evt, v);
+}
+
 double M_DRand (double lo, double hi)
 {
   return (((double)rand() / ((double)(RAND_MAX)+(double)(1)) ) * (hi-lo)) + lo;

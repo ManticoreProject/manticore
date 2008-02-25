@@ -33,6 +33,7 @@ structure PrimUtil : sig
       | nameOf (P.I32Mul _) = "I32Mul"
       | nameOf (P.I32Div _) = "I32Div"
       | nameOf (P.I32Mod _) = "I32Mod"
+      | nameOf (P.I32ShiftLeft _) = "I32ShiftLeft"
       | nameOf (P.I32Neg _) = "I32Neg"
       | nameOf (P.I32Eq _) = "I32Eq"
       | nameOf (P.I32NEq _) = "I32NEq"
@@ -104,6 +105,7 @@ structure PrimUtil : sig
       | varsOf (P.I32Mul(a, b)) = [a, b]
       | varsOf (P.I32Div(a, b)) = [a, b]
       | varsOf (P.I32Mod(a, b)) = [a, b]
+      | varsOf (P.I32ShiftLeft(a, b)) = [a, b]
       | varsOf (P.I32Neg a) = [a]
       | varsOf (P.I32Eq(a, b)) = [a, b]
       | varsOf (P.I32NEq(a, b)) = [a, b]
@@ -188,6 +190,7 @@ structure PrimUtil : sig
       | explode (P.I32Mul(a, b)) = (p2 P.I32Mul, [a, b])
       | explode (P.I32Div(a, b)) = (p2 P.I32Div, [a, b])
       | explode (P.I32Mod(a, b)) = (p2 P.I32Mod, [a, b])
+      | explode (P.I32ShiftLeft(a, b)) = (p2 P.I32ShiftLeft, [a, b])
       | explode (P.I32Neg a) = (p1 P.I32Neg, [a])
       | explode (P.I32Eq(a, b)) = (p2 P.I32Eq, [a, b])
       | explode (P.I32NEq(a, b)) = (p2 P.I32NEq, [a, b])

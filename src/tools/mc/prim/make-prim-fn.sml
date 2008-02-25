@@ -88,6 +88,7 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 		("I32Mul",	mk Prim2 (P.I32Mul,	(i32, i32),	i32)),
 		("I32Div",	mk Prim2 (P.I32Div,	(i32, i32),	i32)),
 		("I32Mod",	mk Prim2 (P.I32Mod,	(i32, i32),	i32)),
+		("I32ShiftLeft",	mk Prim2 (P.I32ShiftLeft,	(i32, i32),	i32)),
 		("I32Neg",	mk Prim1 (P.I32Neg,	i32,		i32)),
 		("I32Eq",	mk Prim2 (P.I32Eq,	(i32, i32),	bTy)),
 		("I32NEq",	mk Prim2 (P.I32NEq,	(i32, i32),	bTy)),

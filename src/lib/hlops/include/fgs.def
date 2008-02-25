@@ -17,8 +17,9 @@
 typedef fgs = ![bool, bool, bool, option, assoc_list];
 typedef tid = fgs;
 
-#define FGS_ALIST_OFFSET 4
-#define FGS_LOCK_OFFSET  0
+#define FGS_ALIST_OFFSET     4
+#define FGS_LOCK_OFFSET      0
+#define FGS_PARENT_OFFSET    3
 
 define @new-fgs (pinned : bool, parent : option / exh : exh) : fgs;
 define @get-fgs (vp : vproc / exh : exh) : fgs;
@@ -30,5 +31,7 @@ define @get-fid (vp : vproc / exh : exh) : fid;
 
 define @assoc-list-lookup (atag : assoc_tag, init : fun(unit / exh -> any), fgs : fgs / exh : exh) : any;
 define @assoc-list-query (atag : assoc_tag, fgs : fgs / exh : exh) : option;
+
+define inline @uid (uidTag : assoc_tag, vp : vproc / exh : exh) : int;
 
 #endif /*! _FGS_DEF_ */

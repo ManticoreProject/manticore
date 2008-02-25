@@ -1,0 +1,53 @@
+(* uid.hlop
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Generates unique ids without atomic operations.
+ *)
+
+#include "fgs.def"
+#include "tags.def"
+#include "runtime-offsets.def"
+#include "assert.def"
+#include "debugging.def"
+
+extern int GetNumVProcs ();
+
+define inline @uid (uidTag : assoc_tag, vp : vproc / exh : exh) : int =
+ (* number of bits reserved for the vproc id (must be > number of vprocs) *)
+  let nReservedBits : int = 5
+
+ (* initialize a uid counter for each vproc *)
+  fun initCounters (i : int, acc : list / exh : exh) : list =
+      if I32Eq(i,0)
+	 then return(acc)
+	 else let uidCounter : ![int] = alloc(0)
+              apply initCounters (I32Sub(i,1), CONS(uidCounter, acc) / exh)
+
+ (* returns the counter for a vproc id (assuming that vproc ids are zero indexed) *)
+  fun getCounter (vpId : int, counters : list / exh : exh) : ![int] =
+      case counters
+       of NIL =>
+	  do assert(FALSE)
+	  throw exh(enum(0))
+	| CONS(counter : ![int], counters : list) =>
+	  if I32Eq(vpId, 0)
+	     then return(counter)
+	     else apply getCounter(I32Sub(vpId, 1), counters / exh)
+      end
+
+  let fgs : fgs = @get-fgs (vp / exh)
+  fun init (_ : unit / exh : exh) : any =
+      let nVProcs : int = ccall GetNumVProcs()
+      apply initCounters (nVProcs, NIL / exh)
+
+  let counters : any = @assoc-list-lookup (uidTag, init, fgs / exh)
+  let counters : list = (list)counters
+  let vpId : int = vpload(VPROC_ID, host_vproc)
+  let counter : ![int] = apply getCounter(vpId, counters / exh)
+  let uid : int = SELECT(0, counter)
+  do UPDATE(0, counter, I32Add(uid, 1))
+  let uid : int = I32Add(I32ShiftLeft(vpId, I32Sub(32, nReservedBits)), uid)
+  return (uid)
+;

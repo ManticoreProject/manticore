@@ -7,6 +7,7 @@
  *)
 
 #include "logging.def"
+#include "debugging.def"
 
 extern void M_LogEventPtr (void*, int, void*);
 

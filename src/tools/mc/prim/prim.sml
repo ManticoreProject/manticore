@@ -23,6 +23,7 @@ structure Prim =
       | I32Mul of 'var * 'var
       | I32Div of 'var * 'var
       | I32Mod of 'var * 'var
+      | I32ShiftLeft of 'var * 'var
       | I32Neg of 'var
       | I32Eq of 'var * 'var
       | I32NEq of 'var * 'var

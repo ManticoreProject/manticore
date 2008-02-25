@@ -7,6 +7,9 @@ LOG=out
 
 rm -f $LOG
 
+# allow core dumps
+ulimit -c unlimited
+
 for f in *.pml
 do
   fname=${f%.pml}

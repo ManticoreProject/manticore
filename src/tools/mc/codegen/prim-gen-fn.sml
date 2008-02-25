@@ -80,6 +80,7 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		    | P.I32Mul a => genArith2 (i32ty, T.MULS, a)
 		    | P.I32Div a => genArith2 (i32ty, divs, a)
 		    | P.I32Mod a => genArith2 (i32ty, rems, a)
+		    | P.I32ShiftLeft a => genArith2 (i32ty, T.SLL, a)
 		    | P.I32Neg a => genArith1 (i32ty, T.NEG, a)
 		    | P.I32Eq a => genCmp (i32ty, T.EQ, a)
 		    | P.I32NEq a => genCmp (i32ty, T.NE, a)

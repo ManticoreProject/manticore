@@ -1,3 +1,11 @@
+(* logging.def
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Logging stubs.
+ *)
+
 #ifdef ENABLE_LOGGING
 
 (* logging events *)
@@ -8,15 +16,16 @@ typedef log_data = int;
 #include "log-events.def"
 
 define @log-event0 (evt : log_event) : ();
+define inline @log-event1 (evt : log_event, x : int) : ();
 define @log-event-ptr (evt : log_event, ptr : any) : ();
 
 #define LOG_EVENT0(evt)	@log-event0(evt)
 #define LOG_PTR(evt,p) @log-event-ptr (evt, p)
 
-#else /* !ENABLE_LOGGING */
+#else
 
 #define LOG_EVENT0(evt) return ()
 #define LOG_PTR(evt,ptr) return ()
 
-#endif
+#endif  /* !ENABLE_LOGGING */
 

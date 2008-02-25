@@ -39,6 +39,7 @@ functor PrimTyFn (Ty : sig
 	    | P.I32Mul _ => i32Ty
 	    | P.I32Div _ => i32Ty
 	    | P.I32Mod _ => i32Ty
+	    | P.I32ShiftLeft _ => i32Ty
 	    | P.I32Neg _ => i32Ty
 	    | P.I32Eq _ => i32Ty
 	    | P.I32NEq _ => i32Ty

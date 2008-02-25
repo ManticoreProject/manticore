@@ -37,7 +37,7 @@ define @future1-spawn (thunk : thunk / exh : exh) : future =
   let cell : future = promote (cell)
  (* add the future to the scheduling queue *)
   let _ : unit = apply spawnFn (cell / exh)
- 
+
   do LOG_PTR(RTFuture1SpawnEvt, cell)
 
   return (cell) 

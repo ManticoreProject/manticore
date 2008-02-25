@@ -7,6 +7,9 @@ LOG=out
 
 rm -f $LOG
 
+# allow core dumps
+ulimit -c unlimited
+
 cd parallel
 
 for f in *.pml

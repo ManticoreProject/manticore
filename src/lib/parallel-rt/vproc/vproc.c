@@ -588,3 +588,8 @@ int FreshFiberId ()
 {
     return FetchAndInc (&FiberIdCounter);
 }
+
+int GetNumVProcs ()
+{
+  return NumVProcs;
+}
