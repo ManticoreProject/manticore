@@ -9,6 +9,10 @@ fun intListToString ls = let
     end
 ;
 
+(* NOTE: This implementation works.
+ * fun intListToString ls = "[" ^ (concatWith (",", map (itos, ls))) ^ "]";
+ *)
+
 fun tabulate (f, lo, hi) = let
     fun loop (i, acc) = if (i < hi)
         then f(i) :: loop(i+1, acc)
@@ -18,5 +22,7 @@ fun tabulate (f, lo, hi) = let
     end;
 
 fun f i = i;
+
 val ls = tabulate (f, 0, 700);
+
 print (intListToString ls^"\n")

@@ -13,6 +13,8 @@
     val add       : subst -> AST.var * AST.var -> subst 
     val pat       : subst -> AST.pat -> AST.pat
     val touchExp  : subst -> AST.exp -> AST.exp
+    
+    val subst1    : AST.var * AST.var * AST.exp -> AST.exp 
 
   end *)
 
@@ -23,26 +25,26 @@ structure VarSubst =
     structure T = Types
     structure F = Futures
     
-    (* fail : string -> 'a *)
+  (* fail : string -> 'a *)
     fun fail msg = raise Fail msg
 
-    (* todo : string -> 'a *)
+  (* todo : string -> 'a *)
     fun todo thing = fail ("todo: " ^ thing)
 			 
     structure VarMap = Var.Map
 
     type subst = Var.var VarMap.map
 
-    (* id : subst *)
+  (* id : subst *)
     val id : subst = VarMap.empty
 
-    (* add : subst -> A.var * A.var -> subst *)
+  (* add : subst -> A.var * A.var -> subst *)
     fun add s (k, v) = VarMap.insert (s, k, v)
 
-    (* singleton : A.var * A.var -> subst *)
+  (* singleton : A.var * A.var -> subst *)
     val singleton = add id
 
-    (* pat : subst -> A.pat -> A.pat *)
+  (* pat : subst -> A.pat -> A.pat *)
     fun pat s p =
 	let fun f (A.ConPat (c, ts, p)) = A.ConPat (c, ts, f p)
 	      (*                                       ^^           *)
@@ -58,7 +60,7 @@ structure VarSubst =
 	    f p
 	end
 
-    (* expWalk : (A.var * A.ty list -> A.exp) -> subst -> A.exp -> A.exp *)
+  (* expWalk : (A.var * A.ty list -> A.exp) -> subst -> A.exp -> A.exp *)
     fun expWalk f s e =
 	let fun exp (A.LetExp (b, e)) = A.LetExp (binding b, exp e)
 	      | exp (A.IfExp (e1, e2, e3, t)) =
@@ -93,9 +95,9 @@ structure VarSubst =
 	    exp e
 	end
 	
-    (* exp : subst -> A.exp -> A.exp *)
-    (* Given a subst like [x -> y] and an expression (x + 2), *)
-    (*   produces (y + 2). *)
+  (* exp : subst -> A.exp -> A.exp *)
+  (* Given a subst like [x -> y] and an expression (x + 2), *)
+  (*   produces (y + 2). *)
     fun exp s =
 	let fun f (x, ts) = (case VarMap.find (s, x)
 			      of NONE => A.VarExp (x, ts)
@@ -112,10 +114,10 @@ structure VarSubst =
 	   expWalk f s
         end
 
-    (* touchExp : subst -> A.exp * A.exp -> A.exp *)
-    (* Given a subst like [x -> xf] and an expression (x + 2), *)
-    (*   produces ((touch xf) + 2). *)
-    (* n.b. Type-preserving when x : 'a and xf : 'a future. *)
+  (* touchExp : subst -> A.exp * A.exp -> A.exp *)
+  (* Given a subst like [x -> xf] and an expression (x + 2), *)
+  (*   produces ((touch xf) + 2). *)
+  (* n.b. Type-preserving when x : 'a and xf : 'a future. *)
     fun touchExp s =
 	let fun f (x, ts) = (case VarMap.find (s, x)
 				  of NONE => A.VarExp (x, ts)
@@ -123,5 +125,9 @@ structure VarSubst =
 	in
 	    expWalk f s
 	end
+
+  (* subst1 : A.var * A.var * A.exp -> A.exp *)
+  (* Substitute one variable for another in an expression. *)
+    fun subst1 (from, to, e) = exp (singleton (from, to)) e
 
   end

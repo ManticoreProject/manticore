@@ -26,6 +26,9 @@ structure TestUtils =
     (* varPat : var -> A.pat *)
     fun varPat x = A.VarPat x
 
+    (* pairTy : A.ty * A.ty -> A.ty *)
+    fun pairTy (t1, t2) = T.TupleTy [t1, t2]
+
     (* apply : A.exp -> A.exp -> A.exp *)
     fun apply e1 e2 = 
 	let val (dty, rty) = (case TypeOf.exp e1
@@ -52,21 +55,34 @@ structure TestUtils =
 
     (* fact : int -> A.exp *)
     fun fact n =
-	let val f = Var.new ("fact", T.FunTy (Basis.intTy, Basis.intTy))
+	let val f = Var.new ("fact", T.FunTy (B.intTy, B.intTy))
 	in
 	    apply (A.VarExp (f, [])) (int n)
 	end
 
-    val isZeroVar = Var.new ("isZero", T.FunTy (Basis.intTy, Basis.boolTy))
+    val isZeroVar = Var.new ("isZero", T.FunTy (B.intTy, B.boolTy))
+
+    (* mkPair : int -> int * int *)
+    fun mkPair n =
+	let val f = Var.new ("mkPair", T.FunTy (B.intTy,
+						pairTy (B.intTy, B.intTy)))
+	in
+	    apply (A.VarExp (f, [])) (int n)
+	end
 
     (* isZero : int -> A.exp *)
     fun isZero n = apply (A.VarExp (isZeroVar, [])) (int n)
+
+    val addV = Var.new ("add", T.FunTy (pairTy (B.intTy, B.intTy), B.intTy))
+
+    (* add : A.exp * A.exp -> A,exp *)
+    fun add (e1, e2) = apply (A.VarExp (addV, [])) (A.TupleExp [e1, e2])
 
     (* ifexp : A.exp * A.exp * A.exp -> A.exp *)
     fun ifexp (e1, e2, e3) =
 	let val t2 = TypeOf.exp e2
 	in
-	    if not (TypeUtil.same (TypeOf.exp e1, Basis.boolTy)) then
+	    if not (TypeUtil.same (TypeOf.exp e1, B.boolTy)) then
 		fail "ifexp: first expression not boolean"
 	    else if TypeUtil.same (t2, TypeOf.exp e3) then
 		A.IfExp (e1, e2, e3, t2)
@@ -86,11 +102,10 @@ structure TestUtils =
     fun plet (x, e, e') = A.LetExp (A.PValBind (A.VarPat x, e), e')
 		
     (* trueExp : A.exp *)
-    val trueExp = A.ConstExp (A.DConst (Basis.boolTrue, []))
+    val trueExp = A.ConstExp (A.DConst (B.boolTrue, []))
 
     (* falseExp : A.exp *)
-    val falseExp = A.ConstExp (A.DConst (Basis.boolFalse, []))
-
+    val falseExp = A.ConstExp (A.DConst (B.boolFalse, []))
 
     local
 	val tv = TyVar.new(Atom.atom "'a")

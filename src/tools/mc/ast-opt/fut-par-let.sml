@@ -38,6 +38,12 @@ structure FutParLet : sig
 
     structure VSet = Var.Set
 
+
+  (* For those variables that are bound with a pval and embedded in a pattern,
+   * we will maintain a list of selector functions to extract those variables
+   * from their patters at use sites. See PValBind below for more details. *)
+    val selectors : A.exp Var.Tbl.hash_table = Var.Tbl.mkTable (128, Fail "not found")
+
     (* grandUnion : VSet.set list -> VSet.set *)
     (* Computes the union of all the sets in the given list. *)
     val grandUnion = List.foldl VSet.union VSet.empty
@@ -60,9 +66,6 @@ structure FutParLet : sig
 	in
 	    VSet.fromList o vs
 	end
-
-    (* futureMap : VSet.set -> VarSubst.subst *)
-    fun futureMap vs = todo "futureMap"
 
     (* futurize : A.module -> A.module *)
     fun futurize (A.Module {exns, body}) = 
@@ -146,8 +149,18 @@ structure FutParLet : sig
 		  end
 	      | exp (k as A.ConstExp _, _) = (k, VSet.empty)
 	      | exp (v as A.VarExp (x, ts), pLive) = 
-		  if VSet.member (pLive, x) 
-		  then (F.mkTouch v, VSet.singleton x)
+		  if   VSet.member (pLive, x) 
+		  then 
+		      let val touchV = F.mkTouch v
+			  val optSel = Var.Tbl.find selectors x
+		      in
+			  (case optSel
+			     of NONE => (touchV, VSet.singleton x)
+			      | SOME (s as A.FunExp (_, _, resTy)) => 
+				  (A.ApplyExp (s, touchV, resTy), VSet.singleton x)
+			      | SOME _ => raise Fail "compiler bug" (* shouldn't happen *)
+		          (* end case *))
+		      end
 		  else (v, VSet.empty)
 	      | exp (A.SeqExp (e1, e2), pLive) = 
 		  let val (e1', live1) = exp (e1, pLive)
@@ -177,29 +190,94 @@ structure FutParLet : sig
 		      (A.LetExp (b', e2'), pliveOut)
 		  end
 	      | letExp (A.PValBind (p, e1), e2, pLive) = 
-		  (case p
+                  (case p
 		    of A.ConPat (c, ts, p) => todo "letExp | PValBind | ConPat"
+                       (*
+                           let pval Foo(x,y) = f(z)
+                           in
+                               if somebool then
+                                 19
+                               else
+                                 min(x,y)
+                           end
+                         -->
+                           let val tf = future (fn () => f(z))
+                           in
+                               if somebool then
+                                 (cancel tf; 19)
+                               else
+                                 (min(#1(touch(tf)),#2(touch(tf))))                       
+                           end
+                        *)
 		     | A.TuplePat ps => todo "letExp | PValBind | TuplePat"
+		         (* let fun collectVars [] = []
+			       | collectVars (p::ps) = 
+				   (case p
+				      of A.VarPat x => x :: (collectVars ps)
+				       | A.WildPat _ => collectVars ps
+				       | A.ConstPat _ => collectVars ps
+				       | A.ConPat _ => raise Fail "nested tuple pats in pvals not yet supported"
+				       | A.TuplePat _ => raise Fail "nested tuple pats in pvals not yet supported"
+				   (* end case *))
+			     fun oneBasedPosition x =
+				 let fun pos (n, []) = raise Fail "not found"
+				       | pos (n, A.VarPat(y)::ys) = 
+					   if Var.same(x,y) then n else pos (n+1, ys)
+				       | pos (n, _::ys) = pos (n+1, ys)
+				 in
+				     pos (1, ps)
+				 end
+			     fun recordSelector v =
+				 let val pos = oneBasedPosition v
+				     val h = Hash.mkHash (pos, map TypeOf.pat ps)
+				 in
+				     Var.Tbl.insert selectors (v, h)
+				 end
+			     val vs = collectVars ps
+			     val (e1', live1) = exp (e1, pLive)
+			     val e1f = F.mkFuture e1'
+			     val tf = Var.new ("tf", TypeOf.exp e1f)
+			     (* rewrite all vars in the tuple pat to tf *)
+			     (* FIXME This is too lossy! *)
+			     val e2' = List.foldl (fn (v, e) => VarSubst.subst1(v,tf,e)) e2 vs
+			     val _ = List.app recordSelector vs
+			     val (e2t, live2) = exp (e2', plus (pLive, tf))
+			     val pLive' = 
+				 let val s = grandUnion [VSet.singleton tf, live1, live2]
+				 in
+				     List.foldl (fn (v, s) => minus (s, v)) s vs
+				 end
+			 in
+			     (A.LetExp (A.ValBind (A.VarPat tf, e1f), e2t), pLive')
+			 end *)
 		     | A.VarPat x =>
 		         let val (e1', live1) = exp (e1, pLive)
 			     val e1f = F.mkFuture e1'
 			     val xf  = Var.new (Var.nameOf x ^ "f", TypeOf.exp e1f)
-			     val e2' = 
-				 let val s = VarSubst.singleton (x, xf)
-				 in
-				     VarSubst.exp s e2
-				 end
+			     val e2' = VarSubst.subst1 (x, xf, e2)
 			     val (e2t, live2) = exp (e2', plus (pLive, xf))
-			     val pliveOut = 
+			     val pLive' = 
 				 let val s = grandUnion [VSet.singleton xf, live1, live2]
 				 in
 				     minus (s, x)
 				 end
 			 in
-			     (A.LetExp (A.ValBind (A.VarPat xf, e1f), e2t), pliveOut)
+			     (A.LetExp (A.ValBind (A.VarPat xf, e1f), e2t), pLive')
 			 end
-		     | A.WildPat t =>  todo "letExp | PValBind | WildPat"
- 		     | A.ConstPat k => todo "letExp | PValBind | ConstPat"
+		     | A.WildPat t =>
+                       (* This is an odd case:
+                            let pval _ = f(x) in y end
+                          Note any such application of f is only being evaluated for its
+                          effect. We have a choice: package it as a future and 
+                          evaluate it at some undetermined point in time, or
+                          evaluate it at the binding site and keep going.
+                          For the time being, let's take the latter, more conservative
+                          strategy, which should save the programmer from self-foot-shooting.
+                        *)
+                        (A.LetExp (A.ValBind (p, e1), e2), pLive)
+ 		     | A.ConstPat k => 
+                        (* Similar to WildPat case. *)
+                        (A.LetExp (A.ValBind (p, e1), e2), pLive)
 		  (* end case *))
 		  
 	      (*
@@ -216,8 +294,6 @@ structure FutParLet : sig
                        [x -> #n (touch f)] e'     (* if f is a tuple *)
                    (* where n is the position of x in (vs p) *)
 		   end
-		   
-		   (We don't have exceptions yet.)
 	       
                -ams
 	       *)
@@ -251,7 +327,8 @@ structure FutParLet : sig
 		  end
 
 	in
-	    A.Module {exns = exns, body = #1 (exp (body, VSet.empty))}
+	    (Var.Tbl.clear(selectors);
+	     A.Module {exns = exns, body = #1 (exp (body, VSet.empty))})
 	end
 	    
     (**** tests ****)
@@ -307,6 +384,23 @@ structure FutParLet : sig
 		U.plet (x, U.fact 10, U.plet (y, U.fact 11, i))
 	    end
 
+	(* t5 = let pval (a, b) = mkPair 20 in
+                if true then 0 else a+b 
+         *)
+	val t5 = 
+	    let val a = Var.new ("a", Basis.intTy)
+		val b = Var.new ("b", Basis.intTy)
+		val ae = A.VarExp (a, [])
+		val be = A.VarExp (b, [])
+		val i = U.ifexp (U.trueExp,
+				 U.int 0,
+				 U.add (ae, be))
+	    in
+		A.LetExp (A.PValBind (A.TuplePat [A.VarPat a, A.VarPat b],
+				      U.mkPair 20),
+			  i)
+	    end
+
 	(* testPVal : A.exp -> unit *)
 	fun testPVal e = 
 	    let val m = A.Module {exns = [], body = e}
@@ -318,7 +412,7 @@ structure FutParLet : sig
 
     in
         (* test : int -> unit *)
-        val test = U.mkTest testPVal [t0,t1,t2,t3,t4]
+        val test = U.mkTest testPVal [t0,t1,t2,t3,t4,t5]
     end
 
   end

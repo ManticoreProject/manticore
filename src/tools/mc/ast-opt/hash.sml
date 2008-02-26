@@ -79,14 +79,14 @@ structure Hash (* : sig
     (* Pre: n is on [1, length ts]. *)
     (* Pre: There are no free type variables in the list of types. *)
     (* Given a list of types (assumed to be members of a tuple), return #n. *) 
-    (* n.b. n is 1-based, in keeping with #. *)
+    (* n.b. n is 1-based, in keeping with ML's #. *)
     fun mkHash (n, ts) =
 	let val resultTy = List.nth (ts, n-1)
 	    val (tuplePat, xn) = patAndVar (ts, n)
 	    val arg = Var.new ("t", T.TupleTy ts)
 	    val loneBranch = A.PatMatch (tuplePat, A.VarExp (xn, []))
-	    val caise = A.CaseExp (A.VarExp (arg, []), [loneBranch], resultTy)
-	    val hashFn = A.FunExp (arg, caise, resultTy)
+	    val kase = A.CaseExp (A.VarExp (arg, []), [loneBranch], resultTy)
+	    val hashFn = A.FunExp (arg, kase, resultTy)
 	in
 	    if List.exists containsTyvar ts then
 		fail "mkHash: passed unresolved polymorphic type"
