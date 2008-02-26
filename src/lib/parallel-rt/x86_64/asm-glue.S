@@ -3,18 +3,14 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Manticore runtime conventions on the AMD64:
- *
- *	%rax	-- standard arg
- *	%rdi	-- standard ep
- *	%rsi	-- standard return continuation
- *	%r9	-- standard exception handler
- *	%rdx	-- allocation pointer
- *	%r11	-- limit pointer
  */
 
 #include "asm-defs.h"
 #include "asm-offsets.h"
+#include "registers.h"	
+
+#define TMP_REG1            %r10          /* must be caller save */
+#define TMP_REG2            %r15          /* must be caller save */	
 
 /* Stack frame layout */
 #define RBX_OFF		(-2*8)	/* offset off %rbp for saving %rbx */
@@ -50,13 +46,13 @@ _GSYM(ASM_Apply):
       /* setup standard arguments to the Manticore function */
 	movq	%rdi,%r10		/* save vproc pointer in %r10 */
 	movq	%rsi,%r12		/* save code pointer in %r12 */
-	movq	%rdx,%rax		/* standard argument */
-	movq	%rcx,%rdi		/* environment pointer */
-	movq	%r8,%rsi		/* return continuation */
-	movq	%r9,%r9		/* exception continuation */
+	movq	%rdx,STD_ARG_REG	/* standard argument */
+	movq	%r8,STD_CONT_REG	/* return continuation */	
+	movq	%rcx,STD_EP_REG		/* environment pointer */
+	movq	%r9,STD_EXH_REG		/* exception continuation */
       /* load Manticore state */
-	movq	ALLOC_PTR(%r10),%rdx	/* load allocation pointer */
-	movq	LIMIT_PTR(%r10),%r11	/* limit pointer */
+	movq	ALLOC_PTR(%r10),ALLOC_PTR_REG	/* load allocation pointer */
+	movq	LIMIT_PTR(%r10),LIMIT_PTR_REG	/* limit pointer */
 	movq	$M_TRUE,IN_MANTICORE(%r10) /* we are running manticore code now! */
 	jmp	*%r12
 
@@ -64,46 +60,46 @@ _GSYM(ASM_Apply):
 	.p2align 3
 	.globl	_GSYM(ASM_UncaughtExn)
 _GSYM(ASM_UncaughtExn):
-	movq	$REQ_UncaughtExn, %r9
+	movq	$REQ_UncaughtExn, TMP_REG1
 	jmp	switch_to_c
 
 /* code address for return continuation */
 	.p2align 3
 	.globl	_GSYM(ASM_Return)
 _GSYM(ASM_Return):
-	movq	$REQ_Return, %r9
+	movq	$REQ_Return, TMP_REG1
 	jmp	switch_to_c
 
 /* code address for putting the host vproc to sleep */
 	.p2align 3
 	.globl	_GSYM(ASM_VProcSleep)
 _GSYM(ASM_VProcSleep):
-	movq	$REQ_Sleep, %r9
+	movq	$REQ_Sleep, TMP_REG1
 	jmp	switch_to_c
 
 	.p2align 3
 	.globl	_GSYM(ASM_InvokeGC)
 _GSYM(ASM_InvokeGC):
-	movq	$REQ_GC, %r9
+	movq	$REQ_GC, TMP_REG1
 
 switch_to_c:
 	/* the sequential GC does not store the VProc at the base of its heap */
 #ifdef SEQUENTIAL_RT
 	call	VProcSelf
-	movq	%rax,%r10
+	movq	%rax,TMP_REG2
 #else
       /* compute the vproc pointer from the allocation pointer */
-	movq	%rdx,%r10
-	andq	$VP_MASK,%r10
+	movq	ALLOC_PTR_REG,TMP_REG2
+	andq	$VP_MASK,TMP_REG2
 #endif
       /* mark that we are not running Manticore code anymore */
-	movq	$M_FALSE,IN_MANTICORE(%r10)
+	movq	$M_FALSE,IN_MANTICORE(TMP_REG2)
       /* save Manticore state */
-	movq	%rax,STD_ARG(%r10)
-	movq	%rdi,STD_EP(%r10)
-	movq	%rsi,STD_CONT(%r10)
-	movq	%r9,STD_EXH(%r10)
-	movq	%rdx,ALLOC_PTR(%r10)
+	movq	STD_ARG_REG,STD_ARG(TMP_REG2)
+	movq	STD_EP_REG,STD_EP(TMP_REG2)
+	movq	STD_CONT_REG,STD_CONT(TMP_REG2)
+	movq	STD_EXH_REG,STD_EXH(TMP_REG2)
+	movq	ALLOC_PTR_REG,ALLOC_PTR(TMP_REG2)
       /* restore C callee-save registers */
 	movq	RBX_OFF(%rbp),%rbx
 	movq	R12_OFF(%rbp),%r12
@@ -111,7 +107,7 @@ switch_to_c:
 	movq	R14_OFF(%rbp),%r14
 	movq	R15_OFF(%rbp),%r15
       /* return request code */
-	movq	%r9,%rax
+	movq	TMP_REG1,%rax
 	leave
 	ret
 
