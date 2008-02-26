@@ -26,8 +26,8 @@ structure CFGTy =
      *)
       | T_StdFun of {clos : ty, args : ty list, ret : ty, exh : ty}
       | T_StdCont of {clos : ty, args : ty list}
-      | T_KnownFunc of ty list
-      | T_Block of ty list
+      | T_KnownFunc of {args : ty list}
+      | T_Block of {args : ty list}
 
     val unitTy = T_Enum(0w0)
     val boolTy = T_Enum(0w1)	(* false = 0, true = 1 *)
@@ -38,6 +38,7 @@ structure CFGTy =
       | K_BOXED		(* heap pointer *)
       | K_UNBOXED	(* tagged integer *)
       | K_UNIFORM	(* either K_BOXED or K_UNBOXED *)
+      | K_ANY           (* pointer sized, can be cast to/from any *)
       | K_TYPE		(* type (any of the above kinds) *)
 
   end

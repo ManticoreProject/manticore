@@ -39,14 +39,16 @@ structure CFG =
 	    clos : var,		  (* closure parameter *)
 	    args : var list	  (* argument parameters *)
 	  }
-      | KnownFunc		(* a function/continuation for which we know all of its call sites *)
+      | KnownFunc of {		(* a function/continuation for which we know all of its call sites *)
 				(* and only known functions are called from those sites (Serrano's *)
 				(* "T" property).  It uses a specialized calling convention. *)
-	  of var list		  (* parameters *)
-      | Block			(* a function/continuation for which we know all of its call sites *)
+	    args : var list	  (* parameters *)
+          }
+      | Block of {		(* a function/continuation for which we know all of its call sites *)
 				(* and it is the only function called at those sites (Serrano's *)
 				(* "X" property) *)
-	  of var list		  (* parameters *)
+	   args : var list	  (* parameters *)
+         }
 
     and exp
       = E_Var of var list * var list            (* parallel assignment *)
@@ -150,8 +152,8 @@ structure CFG =
   (* project out the parameters of a convention *)
     fun paramsOfConv (StdFunc{clos, args, ret, exh}) = clos :: args @ [ret, exh]
       | paramsOfConv (StdCont{clos, args}) = clos::args
-      | paramsOfConv (KnownFunc params) = params
-      | paramsOfConv (Block params) = params
+      | paramsOfConv (KnownFunc{args}) = args
+      | paramsOfConv (Block{args}) = args
 
   (* smart constructors that set the kind field of the lhs variables *)
     fun mkExp e = (

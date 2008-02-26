@@ -136,20 +136,20 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 				     in
 				       (clos' :: args', CFG.StdCont{clos=clos', args=args'})
 				     end
-				   | CFG.KnownFunc params => let
-			  	     val params' = List.map CFG.Var.copy params
+				   | CFG.KnownFunc{args} => let
+			  	     val args' = List.map CFG.Var.copy args
 				     in
-				       (params', CFG.KnownFunc params')
+				       (args', CFG.KnownFunc{args=args'})
 				     end
-				   | CFG.Block params => let
-				     val params' = List.map CFG.Var.copy params
+				   | CFG.Block{args} => let
+				     val args' = List.map CFG.Var.copy args
 				     in
-				       (params', CFG.Block params')
+				       (args', CFG.Block {args=args'})
 				     end
 			       (* end case *))
 		         val lab' = CFG.Label.new(
 				    checkLabel,
-				    CFGTy.T_Block(List.map CFG.Var.typeOf freeVars))
+				    CFGTy.T_Block{args = List.map CFG.Var.typeOf freeVars})
 		         val export = (case CFG.Label.kindOf lab
 			       of CFG.LK_Local{export, ...} => export
 				| _ => raise Fail "bogus label kind"
@@ -159,7 +159,11 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 			          szb = getAlloc lab,
 			          nogc = (lab', freeVars)
 			       }, export)
-		         val f'' = CFG.mkLocalFunc(lab', CFG.Block(CFG.paramsOfConv entry), body, exit)
+		         val f'' = CFG.mkLocalFunc(
+                                   lab', 
+                                   CFG.Block{args = CFG.paramsOfConv entry}, 
+                                   body, 
+                                   exit)
 		         in
 		           f' :: f'' :: fs
 		         end

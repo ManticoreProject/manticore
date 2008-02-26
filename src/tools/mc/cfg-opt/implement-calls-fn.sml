@@ -90,8 +90,8 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                                   ret = transTy ret, exh = transTy exh}
              | CFGTy.T_StdCont {clos, args} =>
                   CFGTy.T_StdCont {clos = transTy clos, args = [transTyStdArgs args]}
-             | CFGTy.T_KnownFunc args => CFGTy.T_KnownFunc (transTyKFncArgs args)
-             | CFGTy.T_Block tys => CFGTy.T_Block (List.map transTy tys)
+             | CFGTy.T_KnownFunc {args} => CFGTy.T_KnownFunc {args = transTyKFncArgs args}
+             | CFGTy.T_Block {args} => CFGTy.T_Block {args = List.map transTy args}
 
          local
             val {getFn, peekFn, setFn, clrFn, ...} = 
@@ -218,11 +218,11 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                       (CFG.StdCont {clos = clos, args = [arg]}, 
                        binds)
                    end
-              | CFG.KnownFunc args =>
+              | CFG.KnownFunc {args} =>
                    let
                       val (args, binds) = transFormalKFncArgs args
                    in
-                      (CFG.KnownFunc args, binds)
+                      (CFG.KnownFunc {args = args}, binds)
                    end
               | _ => (c, []))
          fun transExp (exp : CFG.exp) : CFG.exp =

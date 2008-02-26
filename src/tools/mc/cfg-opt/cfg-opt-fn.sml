@@ -10,14 +10,25 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
 
   end = struct
 
-  (* a wrapper for CFG optimization passes *)
-    fun transform {passName, pass} = BasicControl.mkKeepPassSimple {
-	    output = PrintCFG.output {types=true},
-	    ext = "cfg",
-	    passName = passName,
-	    pass = pass,
-	    registry = CFGOptControls.registry
-	  }
+  (* a wrapper for CFG optimization passes.  The wrapper includes an invariant check. *)
+    fun transform {passName, pass} = let
+	  val xform = BasicControl.mkKeepPassSimple {
+		  output = PrintCFG.output {types = true},
+		  ext = "cfg",
+		  passName = passName,
+		  pass = pass,
+		  registry = CFGOptControls.registry
+		}
+	  fun xform' module = let
+		val module = xform module
+		val _ = CheckCFG.check (passName, module)
+		in
+		  module
+		end
+	  in
+	    xform'
+	  end
+
     fun analyze {passName, pass} = BasicControl.mkTracePassSimple {
             passName = passName,
             pass = pass
@@ -39,25 +50,18 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
     val allocCCalls = transform {passName = "alloc-c-calls", pass = AllocCCalls.transform}
 
     fun optimize module = let
-          val _ = CheckCFG.check module
 	  val _ = census module
 	  val module = contract module
-          val _ = CheckCFG.check module
 	  val _ = cfa module
 	  val module = specialCalls module
           val _ = cfaClear module
-          val _ = CheckCFG.check module
           val module = implCalls module
-          val _ = CheckCFG.check module
 	  val _ = census module
 	  val module = contract module
-          val _ = CheckCFG.check module
 	  val _ = cfa module
 	  val module = allocChecks module
           val _ = cfaClear module
-          val _ = CheckCFG.check module
           val module = allocCCalls module
-	  val _ = CheckCFG.check module
 	  in
 	    module
 	  end

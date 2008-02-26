@@ -30,24 +30,27 @@ structure CFGTyUtil : sig
 	    | CTy.K_BOXED => "BOXED"
 	    | CTy.K_UNBOXED => "UNBOXED"
 	    | CTy.K_UNIFORM => "UNIFORM"
+	    | CTy.K_ANY => "ANY"
 	    | CTy.K_TYPE => "TYPE"
 	  (* end case *))
 
   (* isKind k1 k2 --- returns true if k2 is a subkind of k1 *)
     fun isKind CTy.K_TYPE _ = true
+      | isKind CTy.K_ANY CTy.K_UNIFORM = true
+      | isKind CTy.K_ANY CTy.K_BOXED = true
+      | isKind CTy.K_ANY CTy.K_UNBOXED = true
       | isKind CTy.K_UNIFORM CTy.K_BOXED = true
       | isKind CTy.K_UNIFORM CTy.K_UNBOXED = true
       | isKind k1 k2 = (k1 = k2)
 
-    fun kindOf CTy.T_Any = CTy.K_UNIFORM
+    fun kindOf CTy.T_Any = CTy.K_ANY
       | kindOf (CTy.T_Enum _) = CTy.K_UNBOXED
       | kindOf (CTy.T_Raw _) = CTy.K_RAW
       | kindOf (CTy.T_Tuple _) = CTy.K_BOXED
       | kindOf (CTy.T_OpenTuple _) = CTy.K_BOXED
       | kindOf (CTy.T_Addr _) = CTy.K_TYPE
       | kindOf (CTy.T_CFun _) = CTy.K_UNIFORM
-(* FIXME? vproc pointers cannot be classified as having uniform reps; so maybe a special kind is appropriate... *)
-      | kindOf CTy.T_VProc = CTy.K_TYPE
+      | kindOf CTy.T_VProc = CTy.K_ANY
       | kindOf (CTy.T_StdFun _) = CTy.K_BOXED
       | kindOf (CTy.T_StdCont _) = CTy.K_BOXED
       | kindOf (CTy.T_KnownFunc _) = CTy.K_TYPE
@@ -72,8 +75,12 @@ structure CFGTyUtil : sig
             | (CTy.T_StdCont{clos = clos1, args = args1}, 
                CTy.T_StdCont{clos = clos2, args = args2}) =>
                   equal (clos1, clos2) andalso equalList (args1, args2)
-            | (CTy.T_KnownFunc tys1, CTy.T_KnownFunc tys2) => equalList (tys1, tys2)
-            | (CTy.T_Block tys1, CTy.T_Block tys2) => equalList (tys1, tys2)
+            | (CTy.T_KnownFunc{args = args1}, 
+               CTy.T_KnownFunc{args = args2}) => 
+                  equalList (args1, args2)
+            | (CTy.T_Block{args = args1}, 
+               CTy.T_Block{args = args2}) => 
+                  equalList (args1, args2)
             | _ => false
 	  (* end case *))
     and equalList (tys1, tys2) = ListPair.allEq equal (tys1, tys2)
@@ -83,37 +90,17 @@ structure CFGTyUtil : sig
    *)
     fun hasUniformRep ty = isKind CTy.K_UNIFORM (kindOf ty)
 
-(*
-  (* return true if the type is represented by a pointer (including pointers
-   * that lie outside the heap).
-   *)
-    fun isBoxed ty = (case ty 
-           of T_Any => false
-            | T_Enum _ => false
-            | T_Raw _ => false
-            | T_Tuple _ => true
-            | T_OpenTuple _ => true
-	    | T_Addr _ => raise Fail "isBoxed(addr)"
-            | T_StdFun _ => true
-            | T_StdCont _ => true
-            | T_KnownFunc _ => true
-            | T_Block _ => true
-	    | T_CFun _ => true
-	    | T_VProc => true
-	  (* end case *))
-*)
-
   (* does the first type "match" the second type (i.e., can values of the first
    * type be used wherever the second type is expected)?
    *)
     fun match (fromTy, toTy) = (case (fromTy, toTy)
            of (CTy.T_Addr ty1, CTy.T_Addr ty2) => equal(ty1, ty2)
 	    | (CTy.T_Raw rty1, CTy.T_Raw rty2) => (rty1 = rty2)
-	    | (fromTy, CTy.T_Any) => isKind CTy.K_UNIFORM (kindOf fromTy)
+	    | (fromTy, CTy.T_Any) => isKind CTy.K_ANY (kindOf fromTy)
 	  (* the following shouldn't be here, since it isn't really sound, but we need it
 	   * to handle surface-language polymorphism, which is translated to T_Any.
 	   *)
-	    | (CTy.T_Any, toTy) => isKind CTy.K_UNIFORM (kindOf toTy)
+	    | (CTy.T_Any, toTy) => isKind CTy.K_ANY (kindOf toTy)
 	    | (CTy.T_Enum w1, CTy.T_Enum w2) => (w1 <= w2)
 	    | (CTy.T_Enum _, CTy.T_Tuple _) => true
 	    | (CTy.T_Tuple(isMut1, tys1), CTy.T_Tuple(isMut2, tys2)) =>
@@ -145,8 +132,14 @@ structure CFGTyUtil : sig
               (* Note contravariance for arguments! *)
                   (match (clos2, clos1) orelse validCast (clos2, clos1)) andalso
                   ListPair.allEq match (args2, args1)
-            | (CTy.T_KnownFunc tys1, CTy.T_KnownFunc tys2) => ListPair.allEq match (tys2, tys1)
-            | (CTy.T_Block tys1, CTy.T_Block tys2) => ListPair.allEq match (tys2, tys1)
+            | (CTy.T_KnownFunc{args = args1},
+               CTy.T_KnownFunc{args = args2}) => 
+              (* Note contravariance for arguments! *)
+                   ListPair.allEq match (args2, args1)
+            | (CTy.T_Block{args = args1}, 
+               CTy.T_Block{args = args2}) => 
+              (* Note contravariance for arguments! *)
+                   ListPair.allEq match (args2, args1)
             | _ => equal (fromTy, toTy)
 	  (* end case *))
 
@@ -181,8 +174,8 @@ structure CFGTyUtil : sig
 	      | CTy.T_StdCont{clos, args} =>  concat[
 		    "cont(", toString clos, "/", args2s args, ")"
 		  ]
-	      | CTy.T_KnownFunc tys => concat("kfun(" :: tys2l(tys, [")"]))
-	      | CTy.T_Block tys => concat("block(" :: tys2l(tys, [")"]))
+	      | CTy.T_KnownFunc{args} => concat("kfun(" :: tys2l(args, [")"]))
+	      | CTy.T_Block{args} => concat("block(" :: tys2l(args, [")"]))
 	    (* end case *)
 	  end
 

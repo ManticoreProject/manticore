@@ -41,8 +41,9 @@ structure FlatClosure : sig
             ret = cvtStdContTy retTy,
             exh = cvtStdContTy exhTy
           }
-      | cvtStdFunTyAux (CPSTy.T_Fun(argTys, [retTy])) =
-	  CFGTy.T_KnownFunc(CFGTy.T_Any :: List.map cvtTy argTys @ [cvtStdContTy retTy])
+      | cvtStdFunTyAux (CPSTy.T_Fun(argTys, [retTy])) = CFGTy.T_KnownFunc{
+            args = CFGTy.T_Any :: List.map cvtTy argTys @ [cvtStdContTy retTy]
+          }
       | cvtStdFunTyAux (CPSTy.T_Any) = CFGTy.T_StdFun{
             clos = CFGTy.T_Any,
             args = [CFGTy.T_Any],
@@ -315,9 +316,9 @@ structure FlatClosure : sig
                                   else (args, params)
                             val lab = CFG.Label.new(
                                   lab,
-                                  CFGTy.T_Block(List.map CFG.Var.typeOf params))
+                                  CFGTy.T_Block{args = List.map CFG.Var.typeOf params})
                             in
-                              cvtExp (branchEnv, lab, CFG.Block params, e);
+                              cvtExp (branchEnv, lab, CFG.Block{args = params}, e);
                               (lab, args)
                             end
                       in
@@ -440,10 +441,13 @@ structure FlatClosure : sig
                                                       end
                                                  | _ => let
                                                       val (binds, f', ep) = bindEP ()
-                                                      val cp = CFG.Var.new(CFG.Var.nameOf f',
-                                                              CFG.T_KnownFunc(
-								CFGTy.T_Any :: List.map CFG.Var.typeOf args
-								  @ [CFG.Var.typeOf ret]))
+                                                      val cp = CFG.Var.new(
+                                                               CFG.Var.nameOf f',
+                                                               CFG.T_KnownFunc{
+                                                               args = 
+                                                               CFGTy.T_Any :: 
+                                                               List.map CFG.Var.typeOf args @
+							       [CFG.Var.typeOf ret]})
                                                       val b = CFG.mkSelect(cp, 1, f')
                                                       in
                                                         (cp, ep, b :: binds @ argBinds)
@@ -574,7 +578,7 @@ structure FlatClosure : sig
 		val env = envWithFreshEP env
                 val (env, args) = newLocals (env, args)
                 val (env, ret) = newLocal (env, ret)
-                val conv = CFG.KnownFunc(envPtrOf env :: args @ [ret])
+                val conv = CFG.KnownFunc{args = envPtrOf env :: args @ [ret]}
                 in
                   (env, conv)
                 end

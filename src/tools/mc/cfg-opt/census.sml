@@ -36,8 +36,8 @@ structure Census : sig
   (* update the census counts for the variables bound in an entry convention *)
     fun doEntry (C.StdFunc{clos, args, ret, exh}) = (clr clos; clr' args; clr ret; clr exh)
       | doEntry (C.StdCont{clos, args}) = (clr clos; clr' args)
-      | doEntry (C.KnownFunc xs) = clr' xs
-      | doEntry (C.Block xs) = clr' xs
+      | doEntry (C.KnownFunc{args}) = clr' args
+      | doEntry (C.Block{args}) = clr' args
 
   (* update the census counts for the variables in an expression *)
     fun doExp (C.E_Var(xs, ys)) = (clr' xs; inc' ys)

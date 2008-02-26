@@ -52,13 +52,14 @@ structure PrintCFG : sig
 		end
 	  fun prFunc (CFG.FUNC{lab, entry, body, exit}) = let
 		val (kind, params) = (case (CFG.Label.kindOf lab, entry)
-		       of (CFG.LK_Local{export=SOME name, ...}, CFG.StdFunc{clos, args, ret, exh}) =>
+		       of (CFG.LK_Local{export=SOME name, ...}, 
+                           CFG.StdFunc{clos, args, ret, exh}) =>
 			    ("export function ", clos :: args @ [ret, exh])
 			| (CFG.LK_Local _, CFG.StdFunc{clos, args, ret, exh}) =>
 			    ("function ", clos :: args @ [ret, exh])
 			| (CFG.LK_Local _, CFG.StdCont{clos, args}) => ("cont ", clos::args)
-			| (CFG.LK_Local _, CFG.KnownFunc args) => ("local function ", args)
-			| (CFG.LK_Local _, CFG.Block args) => ("block ", args)
+			| (CFG.LK_Local _, CFG.KnownFunc{args}) => ("local function ", args)
+			| (CFG.LK_Local _, CFG.Block{args}) => ("block ", args)
 			| _ => raise Fail "bogus function"
 		      (* end case *))
 		in
@@ -124,10 +125,12 @@ structure PrintCFG : sig
 		        indent (i+1); prJump("else", nogc))
                       end
 		  | CFG.AllocCCall {lhs, f, args, ret=(l,rArgs)} => (
-		      prl ["ccall-alloc ", String.concat (List.map varUseToString lhs), " = ", varUseToString f, " "];
+		      prl ["ccall-alloc "];
+                      prList varUseToString lhs;
+                      prl [" = ", varUseToString f, " "];
 		      prList varUseToString args;
 		      pr "\n";
-		      prJump("", (l,lhs@rArgs)))
+		      indent (i+1); prJump("", (l,lhs@rArgs)))
 		  | CFG.If(x, j1, j2) => (
 		      prl ["if ", varUseToString x, "\n"];
 		      indent (i+1); prJump("then", j1);

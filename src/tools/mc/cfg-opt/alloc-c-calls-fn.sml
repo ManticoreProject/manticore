@@ -59,7 +59,7 @@ functor AllocCCallsFn (Target : TARGET_SPEC) : sig
 		      val env = List.foldl VMap.insert' VMap.empty (ListPair.zip (liveVars, freshLiveVars))
 		      val lab' = CFG.Label.new(
 				 "allocCCall",
-				 CFGTy.T_Block(List.map CFG.Var.typeOf (lhs @ freshLiveVars)))
+				 CFGTy.T_Block{args = List.map CFG.Var.typeOf (lhs @ freshLiveVars)})
 		    (* f' is the new function up to and including the C call and f'' is the function after the C call *)
 		      val func' = CFGUtil.rewriteFunc (func, body, CFG.AllocCCall{
 			      lhs = List.map CFG.Var.copy lhs,
@@ -68,7 +68,7 @@ functor AllocCCallsFn (Target : TARGET_SPEC) : sig
 			      ret = (lab', liveVars)
 			    })
 		      val func'' = CFG.mkLocalFunc (lab',
-			    CFG.Block(lhs @ freshLiveVars),
+			    CFG.Block{args = lhs @ freshLiveVars},
 			    List.map (CFGUtil.substExp env) preds, CFGUtil.substTransfer env exit)
 		      in
 			  split (func', func'' :: funcs)

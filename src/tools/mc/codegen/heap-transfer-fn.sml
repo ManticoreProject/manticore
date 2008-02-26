@@ -453,8 +453,8 @@ functor HeapTransferFn (
              | M.StdFunc _ => raise Fail "genFuncEntry: ill-formed StdFunc"
 	     | M.StdCont{clos, args as [arg]} => ([clos, arg], StdConv stdContRegs)
              | M.StdCont _ => raise Fail "genFuncEntry: ill-formed StdCont"
-             | M.KnownFunc args => (args, StdConv (List.take (kfncRegs, length args)))
-	     | M.Block vs => (vs, Special)
+             | M.KnownFunc{args} => (args, StdConv (List.take (kfncRegs, length args)))
+	     | M.Block{args} => (args, Special)
 	    (* end case *))
        (* copy params into param registers *)
 	fun gpReg' (param, paramReg) = MTy.GPReg (szOfVar param, paramReg)
