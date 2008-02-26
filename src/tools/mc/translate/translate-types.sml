@@ -161,19 +161,25 @@ structure TranslateTypes : sig
     fun trDataCon (env, dc) = (case E.findDCon(env, dc)
 	     of SOME dc' => dc'
 	      | NONE => if Exn.isExn dc
-		  then let
+		  then (case DataCon.argTypeOf dc
+		     of NONE => let (* nullary exception constructor *)
+			  val dc' = BTyc.newExnCon (DataCon.nameOf dc, [])
+			  val result = E.ExnConst dc'
+			  in
+			    E.insertCon (env, dc, result);
+			    result
+			  end
+		      | SOME ty => let
 (* NOTE: we may want to use a flat representation for exn values! *)
-		    val tys = (case DataCon.argTypeOf dc
-			   of SOME ty => [tr (env, ty)]
-			    | NONE => []
-			  (* end case *))
-		    val dc' = BTyc.newExnCon (DataCon.nameOf dc, tys)
-		    val repTr = FlattenRep.TUPLE(tys, List.map FlattenRep.ATOM tys)
-		    val result = E.DCon(dc', repTr)
-		    in
-		      E.insertCon (env, dc, result);
-		      result
-		    end
+			  val ty' = tr (env, ty)
+			  val dc' = BTyc.newExnCon (DataCon.nameOf dc, [ty'])
+			  val repTr = FlattenRep.TUPLE([ty'], [FlattenRep.ATOM ty'])
+			  val result = E.DCon(dc', repTr)
+			  in
+			    E.insertCon (env, dc, result);
+			    result
+			  end
+		    (* end case *))
 		  else (
 		    ignore (trTyc(env, DataCon.ownerOf dc));
 		    valOf (E.findDCon(env, dc)))

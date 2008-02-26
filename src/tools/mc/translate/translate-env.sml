@@ -12,7 +12,8 @@ structure TranslateEnv : sig
 
   (* data-constructor bindings *)
     datatype con_bind
-      = Const of word * BOMTy.ty
+      = Const of word * BOMTy.ty	(* nullary data constructors *)
+      | ExnConst of BOMTy.data_con	(* nullary exception constructors *)
       | DCon of (BOMTy.data_con * FlattenRep.rep_tree)
 
   (* variable bindings *)
@@ -48,6 +49,7 @@ structure TranslateEnv : sig
 
     datatype con_bind
       = Const of word * BOMTy.ty
+      | ExnConst of BOMTy.data_con
       | DCon of (BOMTy.data_con * FlattenRep.rep_tree)
 
     datatype var_bind
@@ -135,6 +137,9 @@ structure TranslateEnv : sig
 	  fun prDcon (dc, Const(n, ty)) = prl [
 		  "    ", DataCon.nameOf dc, "  :->  ", w2s n, " : ",
 		  BOMTyUtil.toString ty, "\n"
+		]
+	    | prDcon (dc, ExnConst(BOMTy.DCon{name, ...})) = prl [
+		  "    ", DataCon.nameOf dc, "  :->  ", name, "; <exn>\n"
 		]
 	    | prDcon (dc, DCon(BOMTy.DCon{name, rep, argTy, ...}, repTr)) = let
 		val argTy = (case argTy

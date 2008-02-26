@@ -268,10 +268,10 @@ structure CheckBOM : sig
 		      chkVar (x, "Cast");
 		      if BTU.match(ty', ty) andalso BTU.validCast(BV.typeOf x, ty')
 			then ()
-			else (error  ["type mismatch in Cast:\n"];
-			      cerror ["  lhs: ", vl2s lhs, "\n"];
-                              cerror ["(ty'): ", BTU.toString ty', "\n"];
-                              cerror ["    x: ", v2s' x, "\n"]))
+			else error [
+			    "type mismatch in Cast:", vl2s' lhs, " = (", BTU.toString ty',
+			    ")", v2s' x, "\n"
+			  ])
 		  | ([ty], B.E_Select(i, x)) => (
                       chkVar(x, "Select");
                       case BV.typeOf x

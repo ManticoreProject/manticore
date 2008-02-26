@@ -89,6 +89,11 @@ structure Translate : sig
 		in
 		  BIND([t], B.E_Const(Lit.Enum w, ty))
 		end
+	    | E.ExnConst dc' => let
+		val t = BV.new("exn" ^ DataCon.nameOf dc, BTy.exnTy)
+		in
+		  BIND([t], B.E_DCon(dc', []))
+		end
 	    | E.DCon(dc', repTr) => let
 		val (exh, env) = E.newHandler env
 		val dataTy = BOMTyCon.dconResTy dc'
