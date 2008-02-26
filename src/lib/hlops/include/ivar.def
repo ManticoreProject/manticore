@@ -6,11 +6,11 @@
  * Synchronous memory.
  *)
 
-#include "types.def"
-#include "fgs.def"
-
 #ifndef _IVAR_DEF_
 #define _IVAR_DEF_
+
+#include "types.def"
+#include "fgs.def"
 
 (* list of blocked threads, value, spin lock*)
 typedef ivar = ![list, any, int];

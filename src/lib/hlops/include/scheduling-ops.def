@@ -6,7 +6,8 @@
  * This file contains prototypes scheduling operations.
  *)
 
-
+#ifndef _SCHEDULING_OPS_DEF_
+#define _SCHEDULING_OPS_DEF_
 
 (* control transfers *)
 define @atomic-yield (vp : vproc / exh : exh) : unit;
@@ -24,3 +25,5 @@ define @work-stealers-startup ( / exh : exh) : ();
 (* process creation *)
 define inline @fiber (f : fiber_fun / exh : exh) : fiber;
 define inline @spawn (f : fiber_fun / exh : exh) : fgs;
+
+#endif /* !_SCHEDULING_OPS_DEF_ */
