@@ -18,7 +18,7 @@ define inline @ivar-get (ivar : ivar / exh : exh) : any =
           (* atomic update, kinda like fetch and increment *)
           cont k (x : any) = 
                return (x)
-          let blockedThread : blocked_thread = alloc (fgs, k)
+          let blockedThread : ivar_blocked_thread = alloc (fgs, k)
           (* atomic update *)
           fun loop () : () = 
              let blocks : list = #0(ivar)

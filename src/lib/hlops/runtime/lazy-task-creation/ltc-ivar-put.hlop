@@ -15,6 +15,7 @@
 define inline @ltc-ivar-put (arg : [ivar, any] / exh : exh) : unit = 
   let x : any = #1(arg)
   let x : any = (any)x
+
   let fgs : fgs = @get-fgs (host_vproc / exh)
  (* ltc scheduler should have initialized by now *)
   fun init (_ : unit / exh : exh) : any =
@@ -25,7 +26,7 @@ define inline @ltc-ivar-put (arg : [ivar, any] / exh : exh) : unit =
   let ltq : ir_dequeue = apply ltqFn (/exh)
   let blockedThreads : list = @ivar-put-no-sched(arg / exh)
   fun pushHd (elt : any / exh : exh) : unit =
-      let k' : cont(any) = #1((blocked_thread)elt)
+      let k' : cont(any) = #1((ivar_blocked_thread)elt)
       cont k (_ : unit) = throw k'(x)
       let k : fiber = (fiber)k
       let _ : unit = @ltc-push-hd(ltq, k / exh)

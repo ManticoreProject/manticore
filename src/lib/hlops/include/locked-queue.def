@@ -25,7 +25,7 @@ typedef locked_queue = ![bool, in_place_queue_elt, in_place_queue_elt, in_place_
 #define LOCKED_QUEUE_BLOCKED_TL     4
 
 (* vproc is the vproc on which the thread blocked *)
-typedef blocked_thread = [cont(any), fgs, vproc];
+typedef locked_queue_blocked_thread = [cont(any), fgs, vproc];
 #define LOCKED_QUEUE_BLOCKED_THREAD_CONT     0
 #define LOCKED_QUEUE_BLOCKED_THREAD_FGS      1
 #define LOCKED_QUEUE_BLOCKED_THREAD_VPROC    2

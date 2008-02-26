@@ -14,7 +14,7 @@
 
 (* list of blocked threads, value, spin lock*)
 typedef ivar = ![list, any, int];
-typedef blocked_thread = [fgs, cont(any)];
+typedef ivar_blocked_thread = [fgs, cont(any)];
 
 #define IVAR_BLOCKED_LIST           0
 #define IVAR_VALUE                  1
