@@ -32,6 +32,6 @@ define @get-fid (vp : vproc / exh : exh) : fid;
 define @assoc-list-lookup (atag : assoc_tag, init : fun(unit / exh -> any), fgs : fgs / exh : exh) : any;
 define @assoc-list-query (atag : assoc_tag, fgs : fgs / exh : exh) : option;
 
-define inline @uid (uidTag : assoc_tag, vp : vproc / exh : exh) : int;
+define inline @get-uid (uidTag : assoc_tag, vp : vproc / exh : exh) : int;
 
 #endif /*! _FGS_DEF_ */

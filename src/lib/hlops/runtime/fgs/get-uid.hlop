@@ -14,7 +14,7 @@
 
 extern int GetNumVProcs ();
 
-define inline @uid (uidTag : assoc_tag, vp : vproc / exh : exh) : int =
+define inline @get-uid (uidTag : assoc_tag, vp : vproc / exh : exh) : int =
  (* number of bits reserved for the vproc id (must be > number of vprocs) *)
   let nReservedBits : int = 5
 

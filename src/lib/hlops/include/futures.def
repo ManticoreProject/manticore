@@ -10,24 +10,28 @@
 #define _FUTURES_DEF_
 
 #include "types.def"
+#include "locked-queue.def"
+#include "fiber-cancellation.def"
 
 typedef thunk = fun (unit / exh -> any);
 
-typedef future = ![any, thunk]; (* state, thunk *)
+typedef future = ![any, thunk, cancel_cell]; (* state, thunk, cancelled *)
 
 (* constants for futures *)
 #define EMPTY_F  $0
 #define STOLEN_F $1
 #define EVAL_F   $2
 
-typedef work_queue = any;
-typedef rope = any;
+#define FUTURE1_STATE_OFF            0
+#define FUTURE1_THUNK_OFF            1
+#define FUTURE1_CANCEL_CELL_OFF      2
 
-typedef future_spawn_fn = fun (future / exh -> unit);
-
-(* one-toucher futures *)
+(* external interface for one-toucher futures *)
 define @future1-spawn (thunk : thunk / exh : exh) : future;
 define @future1-touch (fp : future / exh : exh) : any;
+define inline @future1-cancel (fut : future / exh : exh) : unit;
+(* internal interface for one-toucher futures *)
+define inline @future1-steal (futuresQ : locked_queue, fut : future / exh : exh) : ();
 
 #endif /* !_FUTURES_DEF_ */
 

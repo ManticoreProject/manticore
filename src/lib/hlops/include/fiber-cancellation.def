@@ -1,0 +1,24 @@
+(* fiber-cancellation.hlop
+ * 
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Support for cancelling fibers.
+ *)
+
+#ifndef _FIBER_CANCELLATION_DEF_
+#define _FIBER_CANCELLATION_DEF_
+
+#include "types.def"
+
+typedef cancel_cell = ![bool];
+
+define inline @cancel-cell (/ exh : exh) : cancel_cell;
+define inline @cancellable-fiber (  cancelCell : cancel_cell, 
+				    fgs : fgs, 
+				    k : fiber, 
+				    cleanupFun : fun( / exh -> ) / exh : exh) : fiber;
+define inline @cancel-fiber (cancelCell : cancel_cell / exh : exh) : unit;
+
+#endif /*! _FIBER_CANCELLATION_DEF_ */
+

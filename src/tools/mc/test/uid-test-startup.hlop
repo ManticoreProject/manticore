@@ -6,11 +6,11 @@
 define @uid-test-startup ( / exh : exh) : () = 
   do @default-scheduler-startup(/exh)
 
-  let i1 : int = @uid(tag(uid), host_vproc / exh)
-   do ccall M_PrintInt(i1)
-  let i2 : int = @uid(tag(uid), host_vproc / exh)
-   do ccall M_PrintInt(i1)
-  let i3 : int = @uid(tag(uid), host_vproc / exh)
-
+  let i1 : int = @get-uid(tag(uid), host_vproc / exh)
+  let i2 : int = @get-uid(tag(uid), host_vproc / exh)
+  do assert(BNot(I32Eq(i1, i2)))
+  let i3 : int = @get-uid(tag(uid), host_vproc / exh)
+  do assert(BNot(I32Eq(i2, i3)))
+  do assert(BNot(I32Eq(i1, i3)))
   return()
 ;

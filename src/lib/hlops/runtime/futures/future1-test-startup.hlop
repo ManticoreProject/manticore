@@ -61,7 +61,7 @@ define @test-cancel ( / exh : exh) : bool =
 *)
 
 define @test1 (/ exh : exh) : bool =
-  let n : int = 10
+  let n : int = 31
   fun f (_ : unit / exh : exh) : [int] =
       let x : int = @fib(n / exh)
       let wx : [int] = wrap(x)
@@ -69,9 +69,8 @@ define @test1 (/ exh : exh) : bool =
 
   let fut : future = @future1-spawn(f / exh)  
   let ans1 : int = @fib(n / exh)
-  let ans2 : any = @future1-touch(f / exh)
+  let ans2 : any = @future1-touch(fut / exh)
   let ans2 : [int] = ([int])ans2
-  
   return(I32Eq(ans1, unwrap(ans2)))
 ;
 

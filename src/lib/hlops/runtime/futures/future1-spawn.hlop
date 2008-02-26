@@ -13,16 +13,16 @@
 #include "fgs.def"
 #include "logging.def"
 
-define @future1-work-sharing ( / exh : exh) : future_spawn_fn;
+define @future1-work-sharing ( / exh : exh) : locked_queue;
 
-define @future1-spawn (thunk : thunk / exh : exh) : future =
+define @future1-spawn (thunk : thunk / exh : exh) : future =  
   (* initialize the futures scheduler and return its spawn function *)
   fun init (_ : unit / exh : exh) : any =
-      let spawnFn : future_spawn_fn = @future1-work-sharing ( / exh)
-      return (spawnFn)
+      let futuresQ : locked_queue = @future1-work-sharing ( / exh)
+      return (futuresQ)
   let fgs : fgs = @get-fgs (host_vproc / exh)
   (* obtain the spawn function *)
-  let spawnFn : future_spawn_fn = @assoc-list-lookup (TAG_SPAWN_FUTURE, init, fgs / exh)
+  let futuresQ : locked_queue = @assoc-list-lookup (TAG_SPAWN_FUTURE, init, fgs / exh)
   (* allocate the future1 cell
      a future1 cell consists of two words:
        1) a _state_ word, with one of the following values:
@@ -33,12 +33,21 @@ define @future1-spawn (thunk : thunk / exh : exh) : future =
             WAITING   cont
        2) a _thunk_ word 
    *)
-  let cell : future = alloc (EMPTY_F, thunk)
-  let cell : future = promote (cell)
+
+  let cancelCell : cancel_cell = @cancel-cell(/exh)
+  let fut : future = alloc (EMPTY_F, thunk, cancelCell)
+  let fut : future = promote (fut)
+
  (* add the future to the scheduling queue *)
-  let _ : unit = apply spawnFn (cell / exh)
+  fun wrapper (_ : unit / exh : exh) : unit =      
+      do @future1-steal (futuresQ, fut / exh)
+      return (UNIT)
+  let k : fiber = @fiber (wrapper / exh)
+  fun cleanupFun (/ exh : exh) : () = return()
+  let k : fiber = @cancellable-fiber(cancelCell, fgs, k, cleanupFun / exh)
+  do @locked-queue-enqueue (futuresQ, k / exh)
 
-  do LOG_PTR(RTFuture1SpawnEvt, cell)
+  do LOG_PTR(RTFuture1SpawnEvt, fut)
 
-  return (cell) 
+  return (fut) 
 ;

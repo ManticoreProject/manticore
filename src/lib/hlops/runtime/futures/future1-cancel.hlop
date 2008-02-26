@@ -1,0 +1,18 @@
+(* future1-cancel.hlop
+ * 
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Cancel a one-toucher future.
+ *)
+
+#include "types.def"
+#include "futures.def"
+#include "runtime-offsets.def"
+#include "logging.def"
+
+define @future1-cancel (fut : future / exh : exh) : unit =
+  let cancelCell : cancel_cell = SELECT(FUTURE1_CANCEL_CELL_OFF, fut)
+  let _ : unit = @cancel-fiber(cancelCell / exh)
+  return(UNIT)
+;

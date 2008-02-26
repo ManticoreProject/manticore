@@ -7,55 +7,23 @@
  *)
 
 #include "types.def"
-#include "locked-queue.def"
 #include "futures.def"
 #include "tags.def"
 #include "debugging.def"
 #include "fgs.def"
 #include "logging.def"
+#include "scheduler-ops.def"
 
-extern void *ListVProcs (void *) __attribute__((alloc));
-
-define @future1-work-sharing ( / exh : exh) : future_spawn_fn =
+define @future1-work-sharing ( / exh : exh) : locked_queue =
 
  (* shared queue for the workers *)
   let q : locked_queue = @locked-queue-new ( / exh)
-
-  fun steal (fut : future / exh : exh) : () =
-      let tmp : any = CAS (&0(fut), EMPTY_F, STOLEN_F)
-      if Equal (tmp, EMPTY_F) 
-         then let f : thunk = #1(fut)
-              do #1(fut) := (thunk) $0
-       	      (* need exn handler for thunk. *)
-              (* let exh : exh = ... *)
-              let resultLocal : any = apply f (UNIT / exh)
-              let result : any = promote (resultLocal)
-              do LOG_PTR(RTFuture1StealEvt, fut)
-              let tmpX : any = CAS(&0(fut), STOLEN_F, result)
-              if Equal (tmpX, STOLEN_F)            
-                 then return ()
-                 else do #0(fut) := result
-	              let k : fiber = (fiber) tmpX
-                      do @locked-queue-enqueue (q, k / exh)
-                      return ()
-          else (* future cell is already full *)
-		return ()
-
-  fun spawn (fut : future / exh : exh) : unit = 
-     (* wrapper function that touches the future *)
-      fun wrapper (_ : unit / exh : exh) : unit =
-         (* FIXME: do something about the exception handler *)
-          do apply steal (fut / exh)
-          return (UNIT)
-      let k : fiber = @fiber (wrapper / exh)
-      do @locked-queue-enqueue (q, k / exh)
-      return (UNIT)
 
  (* Initialize fiber-group storage. *)
   let parentFGS : fgs = @get-fgs (host_vproc / exh)
   let fgs : fgs = @new-fgs (TRUE, SOME (parentFGS) / exh)
  (* add the spawn function to the fiber group storage *)
-  fun init (_ : unit / exh : exh) : any = return (spawn)
+  fun init (_ : unit / exh : exh) : any = return (q)
   let _ : any = @assoc-list-lookup (TAG_SPAWN_FUTURE, init, fgs / exh)
 
  (* return the scheduler action *)
@@ -63,9 +31,10 @@ define @future1-work-sharing ( / exh : exh) : future_spawn_fn =
       cont switch (s : signal) =
            cont dispatch () = 
                 let kOpt : option = @locked-queue-dequeue (q / exh)
-               (* FIXME: do something besides busy waiting.  *)
                 case kOpt 
-		 of NONE => throw dispatch()
+		 of NONE => 
+		    let _ : unit = @atomic-yield (self / exh)
+		    throw dispatch()
 		  | SOME (k:fiber) =>
                     @run (self, switch, fgs, k / exh)
 		end
@@ -81,5 +50,5 @@ define @future1-work-sharing ( / exh : exh) : future_spawn_fn =
   let vps : list = ccall ListVProcs(host_vproc)
   do @scheduler-startup (mkSwitch, fgs, vps / exh)
 
-  return (spawn)
+  return (q)
 ;
