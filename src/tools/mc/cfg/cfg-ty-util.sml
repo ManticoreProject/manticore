@@ -75,9 +75,9 @@ structure CFGTyUtil : sig
             | (CTy.T_StdCont{clos = clos1, args = args1}, 
                CTy.T_StdCont{clos = clos2, args = args2}) =>
                   equal (clos1, clos2) andalso equalList (args1, args2)
-            | (CTy.T_KnownFunc{args = args1}, 
-               CTy.T_KnownFunc{args = args2}) => 
-                  equalList (args1, args2)
+            | (CTy.T_KnownFunc{clos = clos1, args = args1}, 
+               CTy.T_KnownFunc{clos = clos2, args = args2}) => 
+                  equal (clos1, clos2) andalso equalList (args1, args2)
             | (CTy.T_Block{args = args1}, 
                CTy.T_Block{args = args2}) => 
                   equalList (args1, args2)
@@ -132,14 +132,15 @@ structure CFGTyUtil : sig
               (* Note contravariance for arguments! *)
                   (match (clos2, clos1) orelse validCast (clos2, clos1)) andalso
                   ListPair.allEq match (args2, args1)
-            | (CTy.T_KnownFunc{args = args1},
-               CTy.T_KnownFunc{args = args2}) => 
+            | (CTy.T_KnownFunc{clos = clos1, args = args1},
+               CTy.T_KnownFunc{clos = clos2, args = args2}) => 
               (* Note contravariance for arguments! *)
-                   ListPair.allEq match (args2, args1)
+                  (match (clos2, clos1) orelse validCast (clos2, clos1)) andalso
+                  ListPair.allEq match (args2, args1)
             | (CTy.T_Block{args = args1}, 
                CTy.T_Block{args = args2}) => 
               (* Note contravariance for arguments! *)
-                   ListPair.allEq match (args2, args1)
+                  ListPair.allEq match (args2, args1)
             | _ => equal (fromTy, toTy)
 	  (* end case *))
 
@@ -171,10 +172,12 @@ structure CFGTyUtil : sig
 		    "fun(", toString clos, "/", args2s args, "/",
 		    toString ret, "/", toString exh, ")"
 		  ]
-	      | CTy.T_StdCont{clos, args} =>  concat[
+	      | CTy.T_StdCont{clos, args} => concat[
 		    "cont(", toString clos, "/", args2s args, ")"
 		  ]
-	      | CTy.T_KnownFunc{args} => concat("kfun(" :: tys2l(args, [")"]))
+	      | CTy.T_KnownFunc{clos, args} => concat[
+                    "kfun(", toString clos, "/", args2s args, ")"
+                  ]
 	      | CTy.T_Block{args} => concat("block(" :: tys2l(args, [")"]))
 	    (* end case *)
 	  end

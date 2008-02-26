@@ -73,7 +73,7 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                               (transTyNonUniformArg arg) ::
                               (loop (args, gprs - 1)))
             in
-               loop (args, Target.maxGPRArgs)
+               loop (args, Target.maxGPRArgs - 1 (* for the closure *))
             end
          and transTy (ty : CFGTy.ty) : CFGTy.ty =
             case ty of
@@ -90,7 +90,8 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                                   ret = transTy ret, exh = transTy exh}
              | CFGTy.T_StdCont {clos, args} =>
                   CFGTy.T_StdCont {clos = transTy clos, args = [transTyStdArgs args]}
-             | CFGTy.T_KnownFunc {args} => CFGTy.T_KnownFunc {args = transTyKFncArgs args}
+             | CFGTy.T_KnownFunc {clos, args} => 
+                  CFGTy.T_KnownFunc {clos = transTy clos, args = transTyKFncArgs args}
              | CFGTy.T_Block {args} => CFGTy.T_Block {args = List.map transTy args}
 
          local
@@ -199,7 +200,7 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                                  (arg :: args, bindsArg @ bindsArgs)
                               end)
             in
-               loop (args, Target.maxGPRArgs)
+               loop (args, Target.maxGPRArgs - 1 (* for the closure *))
             end
          fun transConvention (c : CFG.convention) : (CFG.convention * CFG.exp list) =
             (List.app updVarType (CFG.paramsOfConv c);
@@ -218,11 +219,12 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                       (CFG.StdCont {clos = clos, args = [arg]}, 
                        binds)
                    end
-              | CFG.KnownFunc {args} =>
+              | CFG.KnownFunc {clos, args} =>
                    let
                       val (args, binds) = transFormalKFncArgs args
                    in
-                      (CFG.KnownFunc {args = args}, binds)
+                      (CFG.KnownFunc {clos = clos, args = args}, 
+                       binds)
                    end
               | _ => (c, []))
          fun transExp (exp : CFG.exp) : CFG.exp =
@@ -299,7 +301,7 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                                  (bindsArg @ bindsArgs, arg :: args)
                               end)
             in
-               loop (args, Target.maxGPRArgs)
+               loop (args, Target.maxGPRArgs - 1 (* for the closure *))
             end
          fun transTransfer (t : CFG.transfer) : (CFG.exp list * CFG.transfer) =
             case t of
@@ -316,11 +318,11 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                   in
                      (binds, CFG.StdThrow {k = k, clos = clos, args = [arg]})
                   end
-             | CFG.Apply {f, args} =>
+             | CFG.Apply {f, clos, args} =>
                   let
                      val (binds, args) = transActualKFncArgs args
                   in
-                     (binds, CFG.Apply {f = f, args = args})
+                     (binds, CFG.Apply {f = f, clos = clos, args = args})
                   end
              | _ => ([], t)
 	  fun transFunc (CFG.FUNC {lab, entry, body, exit} : CFG.func) : CFG.func = let

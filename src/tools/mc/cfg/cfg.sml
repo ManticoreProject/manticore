@@ -42,7 +42,8 @@ structure CFG =
       | KnownFunc of {		(* a function/continuation for which we know all of its call sites *)
 				(* and only known functions are called from those sites (Serrano's *)
 				(* "T" property).  It uses a specialized calling convention. *)
-	    args : var list	  (* parameters *)
+	    clos : var,		  (* closure parameter *)
+	    args : var list	  (* argument parameters *)
           }
       | Block of {		(* a function/continuation for which we know all of its call sites *)
 				(* and it is the only function called at those sites (Serrano's *)
@@ -73,7 +74,7 @@ structure CFG =
     and transfer
       = StdApply of {f : var, clos : var, args : var list, ret : var, exh : var}
       | StdThrow of {k : var, clos : var, args : var list}
-      | Apply of {f : var, args : var list}
+      | Apply of {f : var, clos : var, args : var list}
       | Goto of jump
       | If of (var * jump * jump)
       | Switch of (var * (tag * jump) list * jump option)
@@ -152,7 +153,7 @@ structure CFG =
   (* project out the parameters of a convention *)
     fun paramsOfConv (StdFunc{clos, args, ret, exh}) = clos :: args @ [ret, exh]
       | paramsOfConv (StdCont{clos, args}) = clos::args
-      | paramsOfConv (KnownFunc{args}) = args
+      | paramsOfConv (KnownFunc{clos, args}) = clos::args
       | paramsOfConv (Block{args}) = args
 
   (* smart constructors that set the kind field of the lhs variables *)

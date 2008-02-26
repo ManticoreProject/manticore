@@ -314,8 +314,8 @@ structure CFACFG : sig
 		  | doExp (CFG.E_VPStore(_, vp, x)) = escape x
 		and doXfer (CFG.StdApply{f, clos, args, ret, exh}) =
 		      doApply (f, clos :: args @ [ret, exh])
-		  | doXfer (CFG.StdThrow{k, clos, args}) = doApply (k, clos::args)
-		  | doXfer (CFG.Apply{f, args}) = doApply (f, args)
+		  | doXfer (CFG.StdThrow{k, clos, args}) = doApply (k, clos :: args)
+		  | doXfer (CFG.Apply{f, clos, args}) = doApply (f, clos :: args)
 		  | doXfer (CFG.Goto jmp) = doJump jmp
 		  | doXfer (CFG.If(_, jmp1, jmp2)) = (doJump jmp1; doJump jmp2)
 		  | doXfer (CFG.Switch(x, cases, dflt)) = (

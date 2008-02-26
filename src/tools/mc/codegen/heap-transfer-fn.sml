@@ -119,8 +119,9 @@ functor HeapTransferFn (
 	      end
        (* end case *))
 
-  fun genApply varDefTbl {f, args} = let
+  fun genApply varDefTbl {f, clos, args} = let
       val defOf = VarDef.defOf varDefTbl
+      val args = clos :: args
       val argRegs = List.map newReg args
       val kfncRegs = List.take (kfncRegs, length argRegs)
       val (lab, mvInstr) = genTransferTarget (defOf f)
@@ -449,11 +450,13 @@ functor HeapTransferFn (
 	      | StdConv of Regs.gpr list
        (* set the parameters according to the calling convention *)
 	val (params, stdRegs) = (case convention
-	    of M.StdFunc{clos, args as [arg], ret, exh} => ([clos, arg, ret, exh], StdConv stdFuncRegs)
+	    of M.StdFunc{clos, args as [arg], ret, exh} => 
+                 ([clos, arg, ret, exh], StdConv stdFuncRegs)
              | M.StdFunc _ => raise Fail "genFuncEntry: ill-formed StdFunc"
 	     | M.StdCont{clos, args as [arg]} => ([clos, arg], StdConv stdContRegs)
              | M.StdCont _ => raise Fail "genFuncEntry: ill-formed StdCont"
-             | M.KnownFunc{args} => (args, StdConv (List.take (kfncRegs, length args)))
+             | M.KnownFunc{clos, args} => 
+                 (clos :: args, StdConv (List.take (kfncRegs, 1 + length args)))
 	     | M.Block{args} => (args, Special)
 	    (* end case *))
        (* copy params into param registers *)

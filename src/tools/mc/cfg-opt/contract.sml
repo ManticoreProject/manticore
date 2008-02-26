@@ -95,8 +95,9 @@ structure Contract : sig
 		    clos = applySubst(env, clos),
 		    args = applySubst'(env, args)
 		  }
-	      | C.Apply{f, args} => C.Apply{
+	      | C.Apply{f, clos, args} => C.Apply{
 		    f = applySubst(env, f),
+                    clos = applySubst(env, clos),
 		    args = applySubst'(env, args)
 		  }
 	      | C.Goto jmp => C.Goto(contractJump jmp)

@@ -82,7 +82,7 @@ structure CFGUtil : sig
    *)
     fun varsOfXfer (StdApply{f, clos, args, ret, exh}) = f :: clos :: args @ [ret, exh]
       | varsOfXfer (StdThrow{k, clos, args}) = k :: clos :: args
-      | varsOfXfer (Apply{f, args}) = f::args
+      | varsOfXfer (Apply{f, clos, args}) = f:: clos :: args
       | varsOfXfer (Goto(_, args)) = args
       | varsOfXfer (If(x, (_, args1), (_, args2))) = x :: args1 @ args2
       | varsOfXfer (Switch(x, cases, dflt)) = let
@@ -166,7 +166,7 @@ structure CFGUtil : sig
 	    case transfer
 	     of StdApply{f, clos, args, ret, exh} => StdApply{f=sv f, clos=sv clos, args=List.map sv args, ret=sv ret, exh=sv exh}
 	      | StdThrow{k, clos, args} => StdThrow{k=sv k, clos=sv clos, args=List.map sv args}
-	      | Apply{f, args} => Apply{f=sv f, args=List.map sv args}
+	      | Apply{f, clos, args} => Apply{f=sv f, clos=sv clos, args=List.map sv args}
 	      | Goto jmp => Goto(sj jmp)
 	      | If(v, jmp1, jmp2) => If(sv v, sj jmp1, sj jmp2)
 	      | Switch(x, cases, dflt) => Switch(sv x, List.map (fn (c, j) => (c, sj j)) cases, Option.map sj dflt)

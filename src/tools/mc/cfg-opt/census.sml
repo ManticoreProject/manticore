@@ -36,7 +36,7 @@ structure Census : sig
   (* update the census counts for the variables bound in an entry convention *)
     fun doEntry (C.StdFunc{clos, args, ret, exh}) = (clr clos; clr' args; clr ret; clr exh)
       | doEntry (C.StdCont{clos, args}) = (clr clos; clr' args)
-      | doEntry (C.KnownFunc{args}) = clr' args
+      | doEntry (C.KnownFunc{clos, args}) = (clr clos; clr' args)
       | doEntry (C.Block{args}) = clr' args
 
   (* update the census counts for the variables in an expression *)
@@ -62,7 +62,7 @@ structure Census : sig
   (* update the census counts for the variables in a exit transfer *)
     fun doExit (C.StdApply{f, clos, args, ret, exh}) = (inc f; inc clos; inc' args; inc ret; inc exh)
       | doExit (C.StdThrow{k, clos, args}) = (inc k; inc clos; inc' args)
-      | doExit (C.Apply{f, args}) = (inc f; inc' args)
+      | doExit (C.Apply{f, clos, args}) = (inc f; inc clos; inc' args)
       | doExit (C.Goto jmp) = doJump jmp
       | doExit (C.If(x, jmp1, jmp2)) = (inc x; doJump jmp1; doJump jmp2)
       | doExit (C.Switch(x, cases, dflt)) = (

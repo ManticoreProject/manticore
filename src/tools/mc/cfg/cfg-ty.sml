@@ -26,7 +26,7 @@ structure CFGTy =
      *)
       | T_StdFun of {clos : ty, args : ty list, ret : ty, exh : ty}
       | T_StdCont of {clos : ty, args : ty list}
-      | T_KnownFunc of {args : ty list}
+      | T_KnownFunc of {clos : ty, args : ty list}
       | T_Block of {args : ty list}
 
     val unitTy = T_Enum(0w0)

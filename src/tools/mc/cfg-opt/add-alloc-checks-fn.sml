@@ -136,10 +136,11 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 				     in
 				       (clos' :: args', CFG.StdCont{clos=clos', args=args'})
 				     end
-				   | CFG.KnownFunc{args} => let
+				   | CFG.KnownFunc{clos, args} => let
+                                     val clos' = CFG.Var.copy clos
 			  	     val args' = List.map CFG.Var.copy args
 				     in
-				       (args', CFG.KnownFunc{args=args'})
+				       (clos' :: args', CFG.KnownFunc{clos=clos', args=args'})
 				     end
 				   | CFG.Block{args} => let
 				     val args' = List.map CFG.Var.copy args

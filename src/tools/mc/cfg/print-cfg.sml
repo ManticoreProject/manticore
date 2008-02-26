@@ -54,11 +54,13 @@ structure PrintCFG : sig
 		val (kind, params) = (case (CFG.Label.kindOf lab, entry)
 		       of (CFG.LK_Local{export=SOME name, ...}, 
                            CFG.StdFunc{clos, args, ret, exh}) =>
-			    ("export function ", clos :: args @ [ret, exh])
+			    ("export stdfun ", clos :: args @ [ret, exh])
 			| (CFG.LK_Local _, CFG.StdFunc{clos, args, ret, exh}) =>
-			    ("function ", clos :: args @ [ret, exh])
-			| (CFG.LK_Local _, CFG.StdCont{clos, args}) => ("cont ", clos::args)
-			| (CFG.LK_Local _, CFG.KnownFunc{args}) => ("local function ", args)
+			    ("stdfun ", clos :: args @ [ret, exh])
+			| (CFG.LK_Local _, CFG.StdCont{clos, args}) => 
+                            ("cont ", clos::args)
+			| (CFG.LK_Local _, CFG.KnownFunc{clos,args}) => 
+                            ("kfun ", clos::args)
 			| (CFG.LK_Local _, CFG.Block{args}) => ("block ", args)
 			| _ => raise Fail "bogus function"
 		      (* end case *))
@@ -112,7 +114,7 @@ structure PrintCFG : sig
 		      prApply("stdApply", f, clos :: args @ [ret, exh])
 		  | CFG.StdThrow{k, clos, args} =>
 		      prApply("stdThrow", k, clos :: args)
-		  | CFG.Apply{f, args} => prApply("apply", f, args)
+		  | CFG.Apply{f, clos, args} => prApply("apply", f, clos :: args)
 		  | CFG.Goto jmp => prJump("goto", jmp)
 		  | CFG.HeapCheck{hck, szb, nogc} => let 
                       val check = (case hck

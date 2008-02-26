@@ -131,16 +131,14 @@ structure CheckCFG : sig
                       checkArgTypes(TyU.equal, concat["StdCont ", l2s lab, " args"],
                                     argTys, typesOf args);
                       addVars(VSet.empty, clos::args))
-                  | (CFG.KnownFunc {args}, Ty.T_KnownFunc {args = argTys}) => (let
-                      val (clos :: args) =  args
-                      val (closTy :: argTys) = argTys
-                      in
+                  | (CFG.KnownFunc {clos, args}, 
+                     Ty.T_KnownFunc {clos = closTy, args = argTys}) => (
+                      (* FIXME: closure types not set by assignLabels *)
                       checkArgTypes(TyU.match, concat["KnownFunc ", l2s lab, " clos"],
                                     [closTy], typesOf [clos]);
                       checkArgTypes(TyU.equal, concat["KnownFunc ", l2s lab, " args"],
                                     argTys, typesOf args);
-                      addVars(VSet.empty, clos::args)
-                      end)
+                      addVars(VSet.empty, clos::args))
                   | (CFG.Block {args}, Ty.T_Block {args = argTys}) => (
                       checkArgTypes(TyU.equal, concat["Block ", l2s lab, " args"],
                                     argTys, typesOf args);
@@ -357,11 +355,14 @@ structure CheckCFG : sig
                                            argTys, typesOf args))
                         | ty => error[v2s k, ":", TyU.toString ty, " is not a stdcont\n"]
                       (* end case *))
-                  | CFG.Apply{f, args} => (
+                  | CFG.Apply{f, clos, args} => (
                       chkVar (env, f, "Apply");
                       case V.typeOf f 
-                       of Ty.T_KnownFunc {args = argTys} => (
+                       of Ty.T_KnownFunc {clos = closTy, args = argTys} => (
+                            chkVar (env, clos, "Apply clos");
                             chkVars (env, args, "Apply args");
+                            checkArgTypes (TyU.match, concat ["Apply ", v2s f, " clos"], 
+                                           [closTy], typesOf [clos]);
                             checkArgTypes (TyU.match, concat ["Apply ", v2s f, " args"], 
                                            argTys, typesOf args))
                         | ty => error[v2s f, ":", TyU.toString ty, "is not a known\n"]

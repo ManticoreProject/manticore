@@ -42,7 +42,8 @@ structure FlatClosure : sig
             exh = cvtStdContTy exhTy
           }
       | cvtStdFunTyAux (CPSTy.T_Fun(argTys, [retTy])) = CFGTy.T_KnownFunc{
-            args = CFGTy.T_Any :: List.map cvtTy argTys @ [cvtStdContTy retTy]
+            clos = CFGTy.T_Any,
+            args = List.map cvtTy argTys @ [cvtStdContTy retTy]
           }
       | cvtStdFunTyAux (CPSTy.T_Any) = CFGTy.T_StdFun{
             clos = CFGTy.T_Any,
@@ -444,8 +445,8 @@ structure FlatClosure : sig
                                                       val cp = CFG.Var.new(
                                                                CFG.Var.nameOf f',
                                                                CFG.T_KnownFunc{
+                                                               clos = CFGTy.T_Any,
                                                                args = 
-                                                               CFGTy.T_Any :: 
                                                                List.map CFG.Var.typeOf args @
 							       [CFG.Var.typeOf ret]})
                                                       val b = CFG.mkSelect(cp, 1, f')
@@ -455,7 +456,8 @@ structure FlatClosure : sig
 						(* end case *))
 					  val xfer = CFG.Apply{
                                                   f = cp,
-                                                  args = ep :: args @ [ret]
+                                                  clos = ep,
+                                                  args = args @ [ret]
                                                 }
                                           in
                                             (binds', xfer)
@@ -578,7 +580,7 @@ structure FlatClosure : sig
 		val env = envWithFreshEP env
                 val (env, args) = newLocals (env, args)
                 val (env, ret) = newLocal (env, ret)
-                val conv = CFG.KnownFunc{args = envPtrOf env :: args @ [ret]}
+                val conv = CFG.KnownFunc{clos = envPtrOf env, args = args @ [ret]}
                 in
                   (env, conv)
                 end

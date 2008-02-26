@@ -23,7 +23,7 @@ signature TRANSFER = sig
 
   (* known functions *)
     val genApply : VarDef.var_def_tbl -> {
-	    f : CFG.var, args : CFG.var list
+	    f : CFG.var, clos : CFG.var, args : CFG.var list
 	  } -> {stms : stms, liveOut : MTy.T.mlrisc list}
 
   (* standard functions *)
