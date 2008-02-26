@@ -20,8 +20,8 @@ typedef blocked_thread = [fgs, cont(any)];
 #define IVAR_VALUE                  1
 #define IVAR_SPIN_LOCK              2
 
-#define BLOCKED_THREAD_FGS               0
-#define BLOCKED_THREAD_CONT              1
+#define IVAR_BLOCKED_THREAD_FGS     0
+#define IVAR_BLOCKED_THREAD_CONT    1
 
 #define IVAR_EMPTY_VAL              enum(0)
 

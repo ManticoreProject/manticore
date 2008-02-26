@@ -27,9 +27,9 @@ define @locked-queue-enqueue (q : locked_queue, elt : any / exh : exh) : () =
   cont someB (blockedThread : any) =
        let _ : unit = @spin-unlock-lq (q, mask / exh)
        let blockedThread : blocked_thread = (blocked_thread)blockedThread
-       let blockedK : cont(any) = SELECT(BLOCKED_THREAD_CONT, blockedThread)
-       let blockedFgs : fgs = SELECT(BLOCKED_THREAD_FGS, blockedThread)
-       let vp : vproc = SELECT(BLOCKED_THREAD_VPROC, blockedThread)
+       let blockedK : cont(any) = SELECT(LOCKED_QUEUE_BLOCKED_THREAD_CONT, blockedThread)
+       let blockedFgs : fgs = SELECT(LOCKED_QUEUE_BLOCKED_THREAD_FGS, blockedThread)
+       let vp : vproc = SELECT(LOCKED_QUEUE_BLOCKED_THREAD_VPROC, blockedThread)
        cont unblockK (x : unit) =
             throw blockedK (elt)
        let unblockK : fiber = (fiber)unblockK

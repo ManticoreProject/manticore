@@ -13,7 +13,7 @@
 #include "fgs.def"
 #include "logging.def"
 #include "fiber-cancellation.def"
-#include "scheduler-ops.def"
+#include "scheduling-ops.def"
 
 define inline @cancellable-fiber (  cancelCell : cancel_cell, 
 				    fgs : fgs, 

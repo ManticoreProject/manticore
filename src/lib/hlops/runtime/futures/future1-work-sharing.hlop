@@ -12,7 +12,7 @@
 #include "debugging.def"
 #include "fgs.def"
 #include "logging.def"
-#include "scheduler-ops.def"
+#include "scheduling-ops.def"
 
 define @future1-work-sharing ( / exh : exh) : locked_queue =
 

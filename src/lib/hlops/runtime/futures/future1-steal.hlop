@@ -12,7 +12,7 @@
 #include "tags.def"
 #include "debugging.def"
 #include "logging.def"
-#include "scheduler-ops.def"
+#include "scheduling-ops.def"
 
 define inline @future1-steal (futuresQ : locked_queue, fut : future / exh : exh) : () =
   let tmp : any = CAS (&0(fut), EMPTY_F, STOLEN_F)
