@@ -290,7 +290,7 @@ structure CFACFG : sig
 			  unmark lab))
 		and doExp (CFG.E_Var(xs, ys)) =
 		      ListPair.appEq addInfo' (xs, ys)
-		  | doExp (CFG.E_Const (x, _)) = addInfo(x, TOP)
+		  | doExp (CFG.E_Const (x, _, _)) = addInfo(x, TOP)
 		  | doExp (CFG.E_Cast(x, _, y)) = addInfo(x, valueOf y)
 		  | doExp (CFG.E_Label(x, lab)) = addInfo(x, LABELS(LSet.singleton lab))
 		  | doExp (CFG.E_Select(x, i, y)) =

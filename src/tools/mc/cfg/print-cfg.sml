@@ -80,7 +80,9 @@ structure PrintCFG : sig
 		(* end case *);
 		case e
 		 of (CFG.E_Var(_, ys)) => prList varUseToString ys
-		  | (CFG.E_Const(_, lit)) => pr(Literal.toString lit)
+		  | (CFG.E_Const(_, lit, ty)) => prl[
+                        Literal.toString lit, ":", CFGTyUtil.toString ty
+                      ]
 		  | (CFG.E_Cast(_, ty, y)) => prl["(", CFGTyUtil.toString ty, ")", varUseToString y]
 		  | (CFG.E_Label(_, lab)) => pr(labelToString lab)
 		  | (CFG.E_Select(_, i, x)) =>

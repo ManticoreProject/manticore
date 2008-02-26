@@ -227,7 +227,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
       and genExp frame = let
 	  fun gen (M.E_Var(lhs, rhs)) = 
 	      ListPair.app setDefOf (lhs, List.map getDefOf rhs)
-	    | gen (M.E_Const(lhs, lit)) = 
+	    | gen (M.E_Const(lhs, lit, _)) = 
 	      bindExp ([lhs], [genLit (szOf lhs, lit)])
 	    | gen (M.E_Label(lhs, l)) = 
 	      bindExp ([lhs], [mkExp (T.LABEL (BE.LabelCode.getName l))])

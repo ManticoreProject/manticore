@@ -41,7 +41,7 @@ structure Census : sig
 
   (* update the census counts for the variables in an expression *)
     fun doExp (C.E_Var(xs, ys)) = (clr' xs; inc' ys)
-      | doExp (C.E_Const(x, _)) = clr x
+      | doExp (C.E_Const(x, _, _)) = clr x
       | doExp (C.E_Cast(x, _, y)) = (clr x; inc y)
       | doExp (C.E_Label(x, lab)) = (clr x; incLab lab)
       | doExp (C.E_Select(x, _, y)) = (clr x; inc y)

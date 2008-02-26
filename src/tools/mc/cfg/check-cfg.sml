@@ -159,17 +159,35 @@ structure CheckCFG : sig
                       chkVars (env, ys, "Var");
                       checkArgTypes (TyU.equal, "Var", typesOf xs, typesOf ys);
                       addVars (env, xs))
-                  | CFG.E_Const (x, lit) => (let
+                  | CFG.E_Const (x, lit, ty) => (let
                       fun err () = error[
                              "type mismatch in Const: ", v2s' x, " = ",
                              Literal.toString lit, "\n"]
                       in 
-                      case (V.typeOf x, lit)
-                       of (Ty.T_Enum wt, Lit.Enum w) => if Word.<= (w, wt) 
-                            then ()
-                            else err ()
-                        | _ => ()
-                      (* end case *);
+		    (* first, check the literal against ty *)
+		      case (lit, ty)
+		       of (Literal.Enum _, Ty.T_Enum _) => ()
+(* NOTE: the following shouldn't be necessary, but case-simplify doesn't put in enum types! *)
+			| (Literal.Enum _, Ty.T_Any) => ()
+			| (Literal.StateVal w, _) => () (* what is the type of StateVals? *)
+			| (Literal.Tag s, _) => () (* what is the type of Tags? *)
+			| (Literal.Int _, Ty.T_Raw Ty.T_Byte) => ()
+			| (Literal.Int _, Ty.T_Raw Ty.T_Short) => ()
+			| (Literal.Int _, Ty.T_Raw Ty.T_Int) => ()
+			| (Literal.Int _, Ty.T_Raw Ty.T_Long) => ()
+			| (Literal.Float _, Ty.T_Raw Ty.T_Float) => ()
+			| (Literal.Float _, Ty.T_Raw Ty.T_Double) => ()
+			| (Literal.Char _, Ty.T_Raw Ty.T_Int) => ()
+			| (Literal.String _, Ty.T_Any) => ()
+			| _ => error[
+			    "literal has bogus type: ",  v2s x, " = ", 
+			    Literal.toString lit, ":", TyU.toString ty, "\n"
+			    ]
+		      (* end case *);
+		    (* then check ty against x *)
+		      if TyU.equal(ty, V.typeOf x)
+			then ()
+			else err ();
                       addVar (env, x)
                       end)
                   | CFG.E_Cast (x, ty', y) => (let
@@ -286,7 +304,11 @@ structure CheckCFG : sig
                   | CFG.E_Prim (x, p) => (
                       chkVars (env, PrimUtil.varsOf p, PrimUtil.nameOf p);
                       addVar (env, x))
-                  | CFG.E_CCall (xs, cf, args) => (
+                  | CFG.E_CCall (xs as [x], cf, args) => (
+                      chkVar (env, cf, "CCall");
+                      chkVars (env, args, "CCall args");
+                      addVars (env, xs))
+                  | CFG.E_CCall (xs as [], cf, args) => (
                       chkVar (env, cf, "CCall");
                       chkVars (env, args, "CCall args");
                       addVars (env, xs))

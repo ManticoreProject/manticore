@@ -93,18 +93,19 @@ structure CheckCPS : sig
  *)
 	  fun chkExp (env, e) = (case e
 		 of C.Let(lhs, rhs, e) => (
+		      chkBindings (lhs, C.VK_Let rhs);
 		      chkRHS(env, lhs, rhs);
 		      chkExp (addVars(env, lhs), e))
 		  | C.Fun(fbs, e) => let
 		      val env = List.foldl addFB env fbs
 		      in
-			List.app (fn fb => chkFB(env, fb)) fbs;
+			List.app (fn fb => chkFB(env, fb, C.VK_Fun)) fbs;
 			chkExp(env, e)
 		      end
 		  | C.Cont(fb, e) => let
 		      val env = addFB (fb, env)
 		      in
-			chkFB(env, fb); 
+			chkFB(env, fb, C.VK_Cont); 
                         chkExp(env, e)
 		      end
 		  | C.If(x, e1, e2) => (
@@ -113,8 +114,44 @@ structure CheckCPS : sig
                       chkExp(env, e2))
 		  | C.Switch(x, cases, dflt) => (
 		      chkVar(env, x, "Switch");
-		      List.app (fn (_, e) => chkExp (env, e)) cases;
-		      Option.app (fn e => chkExp (env, e)) dflt)
+                      case CV.typeOf x
+                       of CTy.T_Enum wt => let
+                            fun chkCase (tag, exp) = (
+			           if (tag <= wt)
+                                      then ()
+                                      else (
+                                        error ["case out of range for Switch\n"];
+                                        cerror ["  expected  ", CTU.toString (CV.typeOf x), "\n"];
+                                        cerror ["  but found ", Word.toString tag, "\n"]);
+                                   chkExp (env, exp))
+                            in
+                              List.app chkCase cases;
+                              Option.app (fn e => chkExp (env, e)) dflt
+                            end
+                        | CTy.T_Raw rt => let
+                            fun chkCase (tag, exp) = 
+                                   chkExp (env, exp)
+                            fun chk () = (
+                                   List.app chkCase cases; 
+                                   Option.app (fn e => chkExp (env, e)) dflt)
+                            fun bad () = (
+                                   error ["type mismatch in Switch argument\n"];
+                                   cerror ["  but found ", CTU.toString (CV.typeOf x), "\n"])
+                            in
+                              case rt
+                               of RawTypes.T_Byte => chk ()
+                                | RawTypes.T_Short => chk ()
+                                | RawTypes.T_Int => chk ()
+                                | RawTypes.T_Long => chk ()
+                                | RawTypes.T_Float => bad ()
+                                | RawTypes.T_Double => bad ()
+                                | RawTypes.T_Vec128 => bad ()
+                            end
+                        | _ => (
+                            error ["type mismatch in Switch argument\n"];
+                            cerror ["  expected  ", "enum or raw", "\n"];
+                            cerror ["  but found ", CTU.toString (CV.typeOf x), "\n"])
+		      (* end case *))
 		  | C.Apply(f, args, rets) => (
 		      chkVar (env, f, "Apply");
 		      case CV.typeOf f
@@ -137,6 +174,27 @@ structure CheckCPS : sig
 	  and chkRHS (env, lhs, rhs) = (case (List.map CV.typeOf lhs, rhs)
 		 of (tys, C.Var xs) => chkVars(env, xs, "Var")
 		  | ([ty], C.Const(lit, ty')) => (
+		    (* first, check the literal against ty' *)
+		      case (lit, ty')
+		       of (Literal.Enum _, CTy.T_Enum _) => ()
+(* NOTE: the following shouldn't be necessary, but case-simplify doesn't put in enum types! *)
+			| (Literal.Enum _, CTy.T_Any) => ()
+			| (Literal.StateVal w, _) => () (* what is the type of StateVals? *)
+			| (Literal.Tag s, _) => () (* what is the type of Tags? *)
+			| (Literal.Int _, CTy.T_Raw CTy.T_Byte) => ()
+			| (Literal.Int _, CTy.T_Raw CTy.T_Short) => ()
+			| (Literal.Int _, CTy.T_Raw CTy.T_Int) => ()
+			| (Literal.Int _, CTy.T_Raw CTy.T_Long) => ()
+			| (Literal.Float _, CTy.T_Raw CTy.T_Float) => ()
+			| (Literal.Float _, CTy.T_Raw CTy.T_Double) => ()
+			| (Literal.Char _, CTy.T_Raw CTy.T_Int) => ()
+			| (Literal.String _, CTy.T_Any) => ()
+			| _ => error[
+			    "literal has bogus type: ",  vl2s lhs, " = ", 
+			    Literal.toString lit, ":", CTU.toString ty', "\n"
+			    ]
+		      (* end case *);
+		    (* then check ty' against ty *)
 		      if CTU.equal(ty', ty)
 			then ()
 			else error[
@@ -148,8 +206,10 @@ structure CheckCPS : sig
 		      chkVar (env, x, "Cast");
 		      if CTU.match(ty', ty) andalso CTU.validCast(CV.typeOf x, ty')
 			then ()
-			else error["type mismatch in Cast: ", 
-                                 vl2s lhs, " = (", CTU.toString ty', ")(", v2s' x, ")\n"])
+			else error[
+                            "type mismatch in Cast: ", vl2s' lhs, " = (", CTU.toString ty', 
+                            ")(", v2s' x, ")\n"
+                          ])
 		  | ([ty], C.Select(i, x)) => (
                       chkVar(env, x, "Select");
                       case CV.typeOf x
@@ -206,7 +266,8 @@ structure CheckCPS : sig
 		      if (CTU.equal(ty, CV.typeOf x))
 			then ()
 			else error ["type mismatch in Promote: ", vl2s lhs, " = ", v2s x, "\n"])
-		  | ([ty], C.Prim p) => chkVars(env, PrimUtil.varsOf p, PrimUtil.nameOf p)
+		  | ([ty], C.Prim p) => (
+                      chkVars(env, PrimUtil.varsOf p, PrimUtil.nameOf p))
 		  | ([ty], C.CCall(cf, args)) => (
 		      chkVar(env, cf, "CCall"); 
                       chkVars(env, args, "CCall args"))
@@ -234,7 +295,7 @@ structure CheckCPS : sig
                                   IntInf.toString n, ", ", v2s vp, ", ", v2s x, ")\n"])
 		  | _ => error["bogus rhs for ", vl2s lhs, "\n"]
 		(* end case *))
-	  and chkFB (env, fb as C.FB{f, params, rets, body}) = (let
+	  and chkFB (env, fb as C.FB{f, params, rets, body}, vk) = (let
                 val (argTys, retTys) =
                       case CV.typeOf f
                        of CTy.T_Fun(argTys, retTys) =>
@@ -244,7 +305,10 @@ structure CheckCPS : sig
                                  ([],[]))
                       (* end case *)
                 in
+                chkBinding (f, vk fb);
+                chkBindings (params, C.VK_Param fb);
                 checkArgTypes(CTU.equal, concat["Fun ", v2s f, " params"], argTys, typesOf params);
+                chkBindings (rets, C.VK_Param fb);
                 checkArgTypes(CTU.equal, concat["Fun ", v2s f, " rets"], retTys, typesOf rets);
 		chkExp (addVars(addVars(env, params), rets), body)
                 end)
@@ -252,7 +316,7 @@ structure CheckCPS : sig
 		(fn (cf, env) => VSet.add(env, CFunctions.varOf cf))
 		  VSet.empty externs
 	  in
-	    chkFB (env, body);
+	    chkFB (env, body, C.VK_Fun);
 if !anyErrors
   then (
     print "******************** broken CPS ********************\n";

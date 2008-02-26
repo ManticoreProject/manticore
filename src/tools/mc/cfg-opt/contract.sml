@@ -123,7 +123,7 @@ structure Contract : sig
 		  ST.tick cntVarRename;
 		  ListPair.appEq mergeUseCounts (lhs, rhs);
 		  doRest (rename' (env, lhs, rhs)))
-	      | C.E_Const(x, lit) => let
+	      | C.E_Const(x, lit, ty) => let
 		  val (rest, exit) = doRest env
 		  in
 		    if unused x

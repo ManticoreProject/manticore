@@ -249,7 +249,7 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                      val newArgTy = CFGTy.unitTy
                      val newArg = CFG.Var.new ("argActualUnit", newArgTy)
                   in
-                     ([CFG.mkConst (newArg, Literal.unitLit)], newArg)
+                     ([CFG.mkConst (newArg, Literal.unitLit, newArgTy)], newArg)
                   end
              | [arg] => transActualUniformArg arg
              | args => 

@@ -502,7 +502,7 @@ structure FlatClosure : sig
                       in
                         ([CFG.mkVar(lhs, ys)] @ binds, env)
                       end
-		  | ((env, [x]), CPS.Const(lit, ty)) => ([CFG.mkConst(x, lit)], env)
+		  | ((env, [x]), CPS.Const(lit, ty)) => ([CFG.mkConst(x, lit, cvtTy ty)], env)
 		  | ((env, [x]), CPS.Cast(ty, y)) => let
                       val (binds, y) = lookupVar(env, y)
                       in
