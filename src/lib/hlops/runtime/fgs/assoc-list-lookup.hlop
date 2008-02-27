@@ -3,57 +3,20 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Lookup a tag in the association list.  If the tag exists, return its associated value,
- * but otherwise initialize the tag with a fresh associated value and return it.
+ * Lookup a tag in the association list.  If the tag exists in the association list _or_ in the assocation
+ * list of a parent fgs, return its associated value, but otherwise initialize the tag with a fresh
+ * associated value and return it.
  *)
 
 #include "fgs.def"
-#include "../synch/spin-lock-fn.hlop"
-define_spin_lock(fgs, fgs, FGS_LOCK_OFFSET)
 
-(* assoc-list-add: initialize atag in the assocation list if necessary, and return the assoicated value.  
- *   - atag: tag to add
- *   - init: function that initializes the item if none exists
- *   - fgs: fiber group storage that contains the assoication list
- *)
-define @assoc-list-add (atag : assoc_tag, init : fun(unit / exh -> any), fgs : fgs / exh : exh) : any =
-  fun initTag (/ exh : exh) : any =
-      let elt : any = apply init (UNIT / exh)
-     (* NOTE: subtle case here!  we return elt at the end of this function, so we must get a handle
-      * on its promoted value here
-      *)
-      let elt : any = (any)elt
-      let elt : any = promote(elt)
-      let alistSrc : assoc_list = SELECT(FGS_ALIST_OFFSET, fgs)
-      let alistNew : assoc_list = ACONS (atag, elt, alistSrc)
-      let alistNew : assoc_list = promote (alistNew)
-      do UPDATE(FGS_ALIST_OFFSET, fgs, alistNew)
-      return(elt)
-  let mask : bool = @spin-lock-fgs (fgs / exh)
-  let eltOpt : option = @assoc-list-query(atag, fgs / exh)
-  let elt : any = 
-	    case eltOpt
-	     of NONE =>
-	      (* no other fiber has initialized the tag, so initialize it *)
-		apply initTag(/exh)
-	      | SOME (elt : any) => 
-		return(elt)
-            end
-  let _ : unit = @spin-unlock-fgs (fgs, mask / exh)
-  return(elt)
-;
-
-(* assoc-list-lookup: speculative check for a tag
- * - atag: tag to lookup
- * - init: function that initializes the item if none exists
- * - fgs: fiber group storage that contains the assoication list
- *)
 define @assoc-list-lookup (atag : assoc_tag, init : fun(unit / exh -> any), fgs : fgs / exh : exh) : any =
   let eltOpt : option = @assoc-list-query(atag, fgs / exh)
   case eltOpt
    of NONE =>
      (* go to slow path and initialize the tag *)
-      let elt : any = @assoc-list-add(atag, init, fgs / exh)
+      let elt : any = apply init (UNIT / exh)
+      let elt : any = @assoc-list-add(atag, elt, fgs / exh)
       return (elt)
     | SOME (elt : any) => 
      (* tag already exists, so return its entry without locking *)

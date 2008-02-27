@@ -17,15 +17,13 @@
 define inline @future1-steal (futuresQ : locked_queue, fut : future / exh : exh) : () =
   let tmp : any = CAS (&0(fut), EMPTY_F, STOLEN_F)
   if Equal (tmp, EMPTY_F) 
-     then let f : thunk = #1(fut)
-          do #1(fut) := (thunk) $0
-          let resultLocal : any = apply f (UNIT / exh)
-          let result : any = promote (resultLocal)
+     then let result : any = @future1-eval(fut / exh)
           do LOG_PTR(RTFuture1StealEvt, fut)
           let tmpX : any = CAS(&0(fut), STOLEN_F, result)
           if Equal (tmpX, STOLEN_F)            
              then return ()
-             else do #0(fut) := result
+             else (* unblock the future *)
+		  do UPDATE(FUTURE1_STATE_OFF, fut, result)
 	          let k : fiber = (fiber) tmpX
                   do @locked-queue-enqueue (futuresQ, k / exh)
                   return ()

@@ -15,7 +15,19 @@
 
 typedef thunk = fun (unit / exh -> any);
 
-typedef future = ![any, thunk, cancel_cell]; (* state, thunk, cancelled *)
+(* allocate the future1 cell
+ *   a future1 cell consists of two words:
+ *     1) a _state_ word, with one of the following values:
+ *          EMPTY_F
+ *          STOLEN_F
+ *          EVAL_F
+ *          FULL      value
+ *          WAITING   cont
+ *     2) a _thunk_ word 
+ *     3) a cancel cell for cancelling the future's evaluation
+ *     4) fiber-group storage for the future (tracks parent->child relationships)
+ *)
+typedef future = ![any, thunk, cancel_cell, fgs]; 
 
 (* constants for futures *)
 #define EMPTY_F  $0
@@ -25,6 +37,7 @@ typedef future = ![any, thunk, cancel_cell]; (* state, thunk, cancelled *)
 #define FUTURE1_STATE_OFF            0
 #define FUTURE1_THUNK_OFF            1
 #define FUTURE1_CANCEL_CELL_OFF      2
+#define FUTURE1_FGS_OFF              3
 
 (* external interface for one-toucher futures *)
 define @future1-spawn (thunk : thunk / exh : exh) : future;
@@ -32,6 +45,12 @@ define @future1-touch (fp : future / exh : exh) : any;
 define inline @future1-cancel (fut : future / exh : exh) : unit;
 (* internal interface for one-toucher futures *)
 define inline @future1-steal (futuresQ : locked_queue, fut : future / exh : exh) : ();
+define inline @future1-eval (fut : future / exh : exh) : any;
+
+(* tags *)
+#define TAG_SPAWN_FUTURE1          tag(spawn_future1)
+#define TAG_CHILD_FUTURES1         tag(child_futures1)
+#define TAG_CANCEL_CELL_FUTURE1    tag(cancel_cell_future1)
 
 #endif /* !_FUTURES_DEF_ */
 

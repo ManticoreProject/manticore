@@ -24,7 +24,7 @@ define @future1-work-sharing ( / exh : exh) : locked_queue =
   let fgs : fgs = @new-fgs (TRUE, SOME (parentFGS) / exh)
  (* add the spawn function to the fiber group storage *)
   fun init (_ : unit / exh : exh) : any = return (q)
-  let _ : any = @assoc-list-lookup (TAG_SPAWN_FUTURE, init, fgs / exh)
+  let _ : any = @assoc-list-lookup (TAG_SPAWN_FUTURE1, init, fgs / exh)
 
  (* return the scheduler action *)
   fun mkSwitch (self : vproc / exh : exh) : sigact = 

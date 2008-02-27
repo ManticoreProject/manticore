@@ -12,26 +12,26 @@
 #include "fgs.def"
 #include "logging.def"
 
-define @future1-touch (fp : future / exh : exh) : any =
-  let tmp : any = CAS (&0(fp), EMPTY_F, EVAL_F)
+define @future1-touch (fut : future / exh : exh) : any =
+  let tmp : any = CAS (&0(fut), EMPTY_F, EVAL_F)
 
   if Equal (tmp, EMPTY_F)
     then (* the future is ready for evaluation *)
-         let f : thunk = #1(fp)
-         do #1(fp) := (thunk) $0
-         (* may need exn handler for thunk. *)
-         (* let exh : exh = ... *)
-         let resultLocal : any = apply f (UNIT / exh)
-         let result : any = promote (resultLocal)
-         do LOG_PTR(RTFuture1TouchEvt, fp)
-         do #0(fp) := result (* one toucher, multiple touches *)
+         let result : any = @future1-eval(fut / exh)
+         do LOG_PTR(RTFuture1TouchEvt, fut)
+         do UPDATE(FUTURE1_STATE_OFF, fut, result)
          return (result)
     else if Equal (tmp, STOLEN_F)
            then (* someone else is evaluating the future; we need to block *)
-                cont kLocal (_ : unit) = return (#0(fp))
+                let fgs : fgs = @get-fgs(host_vproc /exh)
+                cont kLocal (_ : unit) = 
+                    (* reset the fgs *)
+                     let _ : unit = @set-fgs(host_vproc, fgs / exh)
+                    (* resume the future *)
+		     return (SELECT(FUTURE1_STATE_OFF, fut))
                 let kLocal : fiber = (fiber)kLocal
                 let k : fiber = promote (kLocal)
-   	        let tmpX : any = CAS (&0(fp), STOLEN_F, k)
+   	        let tmpX : any = CAS (&0(fut), STOLEN_F, k)
  	        if Equal (tmpX, STOLEN_F)
 	           then (* transfer control to the futures scheduler *)
                         @thread-exit (/ exh)

@@ -12,9 +12,6 @@
 (* tag for fiber-group ids *)
 #define TAG_FID                tag(fid)
 
-(* tag for spawning futures *)
-#define TAG_SPAWN_FUTURE       tag(spawn_future)
-
 (* tag for lazy task creation *)
 #define TAG_LTC                tag(ltc)
 

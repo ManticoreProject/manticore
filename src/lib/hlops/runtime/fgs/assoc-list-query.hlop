@@ -1,28 +1,14 @@
 (* assoc-list-query.hlop
  *
- * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Query the value of a tag in the association list.  
+ * Returns the value assocated with atag in fgs, if it exists.
  *)
 
 #include "fgs.def"
 
-(* assoc-list-lookup
- * - atag: tag to lookup
- * - fgs: fiber group storage that contains the assoication list
- *)
 define @assoc-list-query (atag : assoc_tag, fgs : fgs / exh : exh) : option =
-  (* find the tag in the association list, initializing a fresh element if none exists *)
-   fun alistLookup (alist : assoc_list / exh : exh) : option =
-       case alist
-	of ANIL =>
-	   return(NONE)
-	 | ACONS (atag' : assoc_tag, elt : any, alist : assoc_list) => 
-	   if Equal (atag, atag')
-	       then return (SOME(elt))
-	       else apply alistLookup (alist / exh)
-       end
   (* find the tag in the fiber group storage, recursively checking parents for the tag
    * if it is not found in the child.
    *)
@@ -31,7 +17,7 @@ define @assoc-list-query (atag : assoc_tag, fgs : fgs / exh : exh) : option =
 	of NONE => return(NONE)
 	 | SOME(fgs : fgs) =>
 	   let alist : assoc_list = SELECT(FGS_ALIST_OFFSET, fgs)
-           let eltOpt : option = apply alistLookup(alist / exh)
+           let eltOpt : option = @assoc-list-find(atag, alist / exh)
            case eltOpt
 	    of NONE => 
 	       apply fgsLookup(SELECT(FGS_PARENT_OFFSET, fgs) / exh)

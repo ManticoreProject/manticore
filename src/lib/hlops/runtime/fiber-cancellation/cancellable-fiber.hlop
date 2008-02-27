@@ -22,14 +22,16 @@ define inline @cancellable-fiber (  cancelCell : cancel_cell,
 
  (* scheduler action that hosts the fiber k, killing it if necessary *)
   cont switch (s : signal) =
-       if Equal(s, STOP)
-	  then @forward(host_vproc, STOP / exh)
-          else if SELECT(0, cancelCell)
-		  then do apply cleanupFun (/exh)
-                       @forward(host_vproc, STOP / exh)
-           else let _ : unit = @atomic-yield(host_vproc / exh)
-                let k : fiber = (fiber)s
-                @run(host_vproc, switch, fgs, k / exh)
+       if SELECT(0, cancelCell)
+          then (* this fiber was cancelled; cleanup and terminate *)
+               do apply cleanupFun (/exh)
+               @forward(host_vproc, STOP / exh)
+       else if Equal(s, STOP)
+	    then @forward(host_vproc, STOP / exh)
+       else (* preemption *)
+            let _ : unit = @atomic-yield(host_vproc / exh)
+            let k : fiber = (fiber)s
+            @run(host_vproc, switch, fgs, k / exh)
 
   cont kWrapper (_ : unit) =
        @run(host_vproc, switch, fgs, k / exh)
