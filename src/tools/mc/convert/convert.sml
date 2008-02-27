@@ -235,10 +235,13 @@ structure Convert : sig
 		end
 	  val (externs', env) = List.foldr cvtExtern ([], E.empty) externs
 	  val env = bindLambda (body, env)
+	  val C.Fun([body'],_) = C.mkFun([cvtLambda(env,body)],
+					 C.Throw(C.Var.new("?",CTy.T_Any),[]))
 	  in
 	    C.MODULE{
-		name = name, externs = externs',
-		body = cvtLambda (env, body)
+		name = name, 
+		externs = externs',
+		body = body'
 	      }
 	  end
 
