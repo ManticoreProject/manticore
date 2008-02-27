@@ -71,7 +71,13 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 			cbind (v, T.CMP(anyTy, T.NE, T.ANDB(anyTy, defOf p, wordLit 1), wordLit 0))
 		    | P.Equal a => genCmp (anyTy, T.EQ, a)
 		    | P.NotEqual a => genCmp (anyTy, T.NE, a)
-		    | P.BNot a => genArith1 (i64ty, T.NOTB, a)
+		    | P.BNot a => let
+		      val dst = Cells.newReg()
+		      in
+			  [T.MV(anyTy, dst, T.COND(anyTy, T.CMP (anyTy, T.Basis.EQ, T.LI BE.Spec.trueRep, defOf(a)), 
+						   T.LI BE.Spec.falseRep, T.LI BE.Spec.trueRep))] @
+			  gprBind(anyTy, v, T.REG(anyTy, dst))
+                      end
 		    | P.BEq a => genCmp (anyTy, T.EQ, a)
 		    | P.BNEq a => genCmp (anyTy, T.NE, a)
 		   (* 32-bit integer primitives *)				  
