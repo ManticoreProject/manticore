@@ -100,15 +100,17 @@ structure Translate : sig
 		val (fb as B.FB{f, ...}) = (case BOMTyCon.dconArgTy dc'
 		       of [ty] => let
 			  (* constructor with a single argument *)
-			    val arg = BV.new("arg", ty)
+			    val [srcTy] = FlattenRep.srcTys repTr
+			    val srcArg = BV.new("arg", srcTy)
 			    val res = BV.new("data", dataTy)
 			    val f = BV.new(BOMTyCon.dconName dc',
-				    BTy.T_Fun([ty], [BTy.exhTy], [dataTy]))
+				    BTy.T_Fun([srcTy], [BTy.exhTy], [dataTy]))
+			    val (binds', [dstArg]) = FlattenRep.flatten (repTr, [srcArg]) 
+			    val body = B.mkStmts(
+				    binds' @ [([res], B.E_DCon(dc', [dstArg]))],
+				    B.mkRet[res])
 			    in
-			      B.FB{
-				  f = f, params = [arg], exh = [exh],
-				  body = B.mkStmt([res], B.E_DCon(dc', [arg]), B.mkRet[res])
-				}
+			      B.FB{f = f, params = [srcArg], exh = [exh], body = body}
 			    end
 			| dstTys => let
 			  (* constructor with multiple arguments (or zero arguments); the
