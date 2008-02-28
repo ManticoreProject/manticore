@@ -5,30 +5,36 @@
  *      parrSplit(arr)           returns ([| arr[0], ... arr[n/2] |], [| arr[n/2], ... arr[n] |])
  *)
 
-fun parr2ls (a) = let
-    val len = plen a
-    fun build (curr, acc) =
-        if curr=len
-           then rev acc
-           else build (curr+1, (itos (a!curr)) :: acc)
-    in
-       build(0, nil)
-    end
-;
+fun max (m:int, n) = (if m>n then m else n);
 
+fun min (m:int, n) = (if m>n then n else m);
+
+fun parString a =
+  let val len = plen a
+      fun build (curr, acc) =
+        if curr=len
+        then rev acc
+        else build (curr+1, (itos (a!curr)) :: acc)
+  in
+      "[|" ^ (concatWith (",", build (0, nil))) ^ "|]"
+  end;
+
+(*
 fun parrSplit (arr) = let
     val n = plen(arr)
     in
         (parrSubseq(arr, 0, n div 2), parrSubseq(arr, n div 2, n))
     end
 ;
+*)
 
 fun bitonicSort (arr) = if (plen(arr) = 1)
 	  then arr
           else let
-              val (bot, top) = parrSplit(arr)
-	      val mins = [| min(b,t) | x in bot, y in top |]
-	      val mins = [| max(b,t) | x in bot, y in top |]
+              val (bot, top) = pdivide(arr) (* parrSplit(arr) *)
+	      (* FIXME I think bot/top need to be padded to same length b/c of zip semantics. -ams *)
+	      val mins = [| min(b,t) | b in bot, t in top |]
+	      val maxs = [| max(b,t) | b in bot, t in top |]
 	      in
 		   pappend(bitonicSort(mins), bitonicSort(maxs))
 	      end
@@ -37,7 +43,7 @@ fun bitonicSort (arr) = if (plen(arr) = 1)
 fun batcherSort (arr) = if (plen(arr) = 1)
           then arr
           else let
-	      val (bot, top) = parrSplit(arr)
+	      val (bot, top) = pdivide(arr) (* parrSplit(arr) *)
 	      pval sortedBot = batcherSort(bot)
 	      val  sortedTop = batcherSort(top)
 	      in
@@ -45,7 +51,7 @@ fun batcherSort (arr) = if (plen(arr) = 1)
 	      end
 ;
 
-val xs1 = [0,1,2,19,10,0,1,6,~1];
+val xs1 = [|0,1,2,19,10,0,1,6,~1|];
 val ys1 = batcherSort(xs1);
 
-print("result: "^parr2ls ys1^"\n")
+print("result: " ^ parString ys1 ^ "\n")
