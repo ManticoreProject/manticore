@@ -10,8 +10,9 @@ structure CFACFG : sig
 
     datatype call_sites
       = Unknown				(* possible unknown call sites *)
-      | Known of CFG.Label.Set.set	(* only called from known locations; the labels are the *)
-					(* entry labels of the functions that call the target *)
+      | Known of CFG.Label.Set.set	(* only called from known locations; the labels *)
+                                        (* are the entry labels of the functions that call *)
+                                        (* the target *)
 
     val callSitesOf : CFG.label -> call_sites
 
@@ -35,12 +36,55 @@ structure CFACFG : sig
 
   end = struct
 
+    val debugFlg = ref false
+    val resultsFlg = ref false
+    val recAnalFlg = ref false
+    val () = List.app (fn ctl => ControlRegistry.register CFGOptControls.registry {
+	      ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
+	      envName = NONE
+	    }) [
+	      Controls.control {
+		  ctl = debugFlg,
+		  name = "cfa-debug",
+		  pri = [0, 1],
+		  obscurity = 0,
+		  help = "debug cfa"
+		},
+	      Controls.control {
+		  ctl = resultsFlg,
+		  name = "cfa-results",
+		  pri = [0, 1],
+		  obscurity = 0,
+		  help = "print results of cfa"
+		},
+	      Controls.control {
+		  ctl = recAnalFlg,
+		  name = "cfa-rec-anal",
+		  pri = [0, 1],
+		  obscurity = 0,
+		  help = "recursively analyze functions at transfers"
+		}
+	    ]
+
     structure LSet = CFG.Label.Set
 
     datatype call_sites
       = Unknown			(* possible unknown call sites *)
       | Known of LSet.set	(* only called from known locations; the labels are the *)
 				(* entry labels of the functions that call the target *)
+
+    fun callSitesToString v = let
+	  fun v2s (Unknown, l) = "?" :: l
+	    | v2s (Known s, l) = let
+		fun f [] = "}" :: l
+		  | f [x] = "$" :: CFG.Label.toString x :: "}" :: l
+		  | f (x::r) = "$" :: CFG.Label.toString x :: "," :: f r
+		in
+		  "{" :: f (LSet.listItems s)
+		end
+	  in
+	    concat (v2s(v, []))
+	  end
 
     datatype value
       = TOP
@@ -67,11 +111,13 @@ structure CFACFG : sig
 	  end
 
   (* property to track call-sites *)
-    val {getFn=callSitesOf, clrFn=clrLabel, setFn=setSites, ...} =
+    val {getFn=getSites, clrFn=clrSites, setFn=setSites, ...} =
 	  CFG.Label.newProp (fn _ => Known(LSet.empty))
+    val callSitesOf = getSites
   (* property to track the estimated value of variables *)
-    val {getFn=valueOf, clrFn=clrVar, peekFn=peekVar, setFn=setVar} =
+    val {getFn=getValue, clrFn=clrValue, peekFn=peekValue, setFn=setValue} =
 	  CFG.Var.newProp (fn _ => BOT)
+    val valueOf = getValue
 
   (* return true if the given label escapes *)
     fun isEscaping lab = (case callSitesOf lab of Unknown => true | _ => false)
@@ -81,10 +127,10 @@ structure CFACFG : sig
    *)
     fun clearInfo (CFG.MODULE{code, ...}) = let
 	  fun doFunct (CFG.FUNC{lab, entry, body, ...}) = (
-		clrLabel lab;
-		List.app clrVar (CFG.paramsOfConv entry);
+		clrSites lab;
+		List.app clrValue (CFG.paramsOfConv entry);
 		List.app doExp body)
-	  and doExp exp = List.app clrVar (CFG.lhsOfExp exp)
+	  and doExp exp = List.app clrValue (CFG.lhsOfExp exp)
 	  in
 	    List.app doFunct code
 	  end
@@ -133,15 +179,15 @@ structure CFACFG : sig
    * it changed.
    *)
     fun addInfo (x, BOT) = ()
-      | addInfo (x, v) = (case peekVar x
+      | addInfo (x, v) = (case peekValue x
 	   of NONE => (
 		changed := true;
-		setVar(x, v))
+		setValue(x, v))
 	    | SOME oldV => let
 		val newV = joinValues(oldV, v)
 		in
 		  if changedValue(newV, oldV)
-		    then (changed := true; setVar(x, newV))
+		    then (changed := true; setValue(x, newV))
 		    else ()
 		end
 	  (* end case *))
@@ -192,7 +238,7 @@ structure CFACFG : sig
 	  end
 
   (* select the i'th component of a tuple. *)
-    fun select (i, y) = (case valueOf y
+    fun select (i, y) = (case getValue y
 	   of TUPLE vs => let
 		fun sel (0, v::_) = v
 		  | sel (i, v::r) = sel(i-1, r)
@@ -204,11 +250,11 @@ structure CFACFG : sig
 	    | TOP => TOP
 	    | v => raise Fail(concat[
 		  "type error: select(", Int.toString i, ", ", CFG.Var.toString y,
-		  "); valueOf(", CFG.Var.toString y, ") = ", valueToString v
+		  "); getValue(", CFG.Var.toString y, ") = ", valueToString v
 		])
 	  (* end case *))
   (* update the i'th component of a tuple. *)
-    fun update (i, y, z) = (case valueOf y
+    fun update (i, y, z) = (case getValue y
 	   of TUPLE vs => let
 		fun upd (0, v::r, ac) = TUPLE ((rev ac) @ (z::r))
 		  | upd (0, [], ac) = TUPLE ((rev ac) @ [z])
@@ -222,9 +268,27 @@ structure CFACFG : sig
 	    | v => raise Fail(concat[
 		  "type error: update(", Int.toString i, ", ", CFG.Var.toString y, 
                   ", ", valueToString z,
-		  "); valueOf(", CFG.Var.toString y, ") = ", valueToString v
+		  "); getValue(", CFG.Var.toString y, ") = ", valueToString v
 		])
 	  (* end case *))
+
+(* +DEBUG *)
+    fun printResults code = let
+          fun printCallSitesOf l =
+                print(concat["callSitesOf(", CFG.Label.toString l, ") = ",
+                             callSitesToString (getSites l), "\n"])
+          fun printValueOf x =
+                print(concat["getValue(", CFG.Var.toString x, ") = ",
+                             valueToString (getValue x), "\n"])
+          fun printExp e = List.app printValueOf (CFG.lhsOfExp e)
+          and printFunct (CFG.FUNC{lab, entry, body, ...}) = (
+                printCallSitesOf lab;
+                List.app printValueOf (CFG.paramsOfConv entry);
+                List.app printExp body)
+	  in
+	    List.app printFunct code
+	  end
+(* -DEBUG *)
 
   (* compute the call-sites of labels.  We visit every function and add its label
    * to the call sites of any known targets.  Note that this function is called
@@ -233,11 +297,11 @@ structure CFACFG : sig
    *)
     fun computeCallSites code = let
 	  fun compute (CFG.FUNC{lab=srcLab, exit, ...}) = let
-		fun add dstLab = (case callSitesOf dstLab
+		fun add dstLab = (case getSites dstLab
 		       of Unknown => ()
 			| Known s => setSites(dstLab, Known(LSet.add(s, srcLab)))
 		      (* end case *))
-		fun addSet f = (case valueOf f
+		fun addSet f = (case getValue f
 		       of LABELS s => LSet.app add s
 			| _ => ()
 		      (* end case *))
@@ -262,46 +326,60 @@ structure CFACFG : sig
 
     fun analyze (CFG.MODULE{code, ...}) = let
 	  fun onePass () = let
-		val addInfo = if Controls.get CFGOptControls.debug
+                val () = if !debugFlg 
+                           then print(concat["onePass()\n"]) 
+                           else ();
+		val addInfo = if !debugFlg
 		      then (fn (x, v) => let
-			val prevV = valueOf x
+			val prevV = getValue x
 			in
 			  addInfo (x, v);
-			  if changedValue(valueOf x, prevV) 
+			  if changedValue(getValue x, prevV) 
 			    then print(concat[
 				"addInfo(", CFG.Var.toString x,  ", ", valueToString v, 
-				"): ", valueToString prevV, " ==> ", valueToString(valueOf x),
+				"): ", valueToString prevV, " ==> ", valueToString(getValue x),
 				"\n"
 			      ])
 			    else ()
 			end)
 		      else addInfo
-                val addInfo' = fn (x, y) => addInfo (x, valueOf y)
+                val addInfo' = fn (x, y) => addInfo (x, getValue y)
 	      (* record that a given variable escapes *)
-		fun escape x = escapingValue (valueOf x)
+		fun escape x = escapingValue (getValue x)
 		fun doFunc (f as CFG.FUNC{lab, entry, body, exit}, args) = (
+                      if !debugFlg 
+                        then print(concat["doFunc(",CFG.Label.toString lab,")\n"]) 
+                        else ();
 		      ListPair.appEq addInfo' (CFG.paramsOfConv entry, args);
-		      if isMarked lab
-			then ()
-			else (
-			  mark lab;
-			  List.app doExp body;
-			  doXfer exit;
-			  unmark lab))
+                      if !recAnalFlg
+                        then 
+                          if isMarked lab
+                            then ()
+                            else (
+                              mark lab;
+                              List.app doExp body;
+                              doXfer exit;
+                              unmark lab)
+                        else 
+                          if isMarked lab
+                            then ()
+                            else (
+                              changed := true; 
+                              mark lab))
 		and doExp (CFG.E_Var(xs, ys)) =
 		      ListPair.appEq addInfo' (xs, ys)
 		  | doExp (CFG.E_Const (x, _, _)) = addInfo(x, TOP)
-		  | doExp (CFG.E_Cast(x, _, y)) = addInfo(x, valueOf y)
+		  | doExp (CFG.E_Cast(x, _, y)) = addInfo(x, getValue y)
 		  | doExp (CFG.E_Label(x, lab)) = addInfo(x, LABELS(LSet.singleton lab))
 		  | doExp (CFG.E_Select(x, i, y)) =
 		      addInfo(x, select(i, y))
 		  | doExp (CFG.E_Update(i, y, z)) = 
-                      (escape z; addInfo(y, update(i, y, valueOf z)))
+                      (escape z; addInfo(y, update(i, y, getValue z)))
 		  | doExp (CFG.E_AddrOf(x, i, y)) = 
                       (addInfo(x, TOP); addInfo(y, update(i, y, TOP)))
-		  | doExp (CFG.E_Alloc(x, xs)) = addInfo(x, TUPLE(List.map valueOf xs))
-		  | doExp (CFG.E_GAlloc(x, xs)) = addInfo(x, TUPLE(List.map valueOf xs))
-		  | doExp (CFG.E_Promote(x, y)) = addInfo(x, valueOf y)
+		  | doExp (CFG.E_Alloc(x, xs)) = addInfo(x, TUPLE(List.map getValue xs))
+		  | doExp (CFG.E_GAlloc(x, xs)) = addInfo(x, TUPLE(List.map getValue xs))
+		  | doExp (CFG.E_Promote(x, y)) = addInfo(x, getValue y)
 		  | doExp (CFG.E_Prim(x, prim)) = 
                       (if PrimUtil.isPure prim 
                           then ()
@@ -329,19 +407,19 @@ structure CFACFG : sig
 		       of SOME func => doFunc (func, args)
 			| _ => raise Fail "jump to unknown label"
 		      (* end case *))
-		and doApply (f, args) = (case valueOf f
+		and doApply (f, args) = (case getValue f
 		       of LABELS targets => LSet.app (fn lab => doJump(lab, args)) targets
 			| BOT => ()
 			| TOP => List.app escape args
 			| v => raise Fail(concat[
 			      "type error: doApply(", CFG.Var.toString f, ", [",
 			      String.concatWith "," (List.map CFG.Var.toString args),
-			      "]); valueOf(", CFG.Var.toString f, ") = ", valueToString v,
+			      "]); getValue(", CFG.Var.toString f, ") = ", valueToString v,
 			      "\n"
 			    ])
 		      (* end case *))
 	      (* analyse standard functions and continuations *)
-		fun doStdFunc (f as CFG.FUNC{lab, entry, body, exit}) = let
+		fun doTopFuncA (f as CFG.FUNC{lab, entry, body, exit}) = let
 		      fun anal () = (
 			    mark lab;
 			    List.app doExp body;
@@ -351,39 +429,53 @@ structure CFACFG : sig
 			case entry
 			 of CFG.StdFunc _ => anal()
 			  | CFG.StdCont _ => anal()
-			  | _ => ()
+			  | _ => anal ()
 			(* end case *)
 		      end
+                fun doTopFuncB (f as CFG.FUNC{lab, entry, body, exit}) = let
+                      fun anal () = (
+                            List.app doExp body;
+                            doXfer exit)
+                      in
+			case entry
+			 of CFG.StdFunc _ => anal()
+			  | CFG.StdCont _ => anal()
+			  | _ => if isMarked lab then anal () else ()
+                      end
+                val doTopFunc = if !recAnalFlg then doTopFuncA else doTopFuncB
 		in
 		  changed := false;
-		  List.app doStdFunc code;
+		  List.app doTopFunc code;
 		  !changed
 		end
 	  fun iterate () = if onePass() then iterate() else ()
 	  in
 	  (* initialize the arguments to the module entry to top *)
 	    case code
-	     of CFG.FUNC{entry=CFG.StdFunc{clos, args, ret, exh}, ...} :: _ => (
-		  setVar (clos, TOP); List.app (fn x => setVar (x, TOP)) args;
-		  setVar (ret, TOP); setVar (exh, TOP))
+	     of CFG.FUNC{lab, entry=CFG.StdFunc{clos, args, ret, exh}, ...} :: _ => (
+                  setSites (lab, Unknown);
+		  setValue (clos, TOP); List.app (fn x => setValue (x, TOP)) args;
+		  setValue (ret, TOP); setValue (exh, TOP))
 	      | _ => raise Fail "strange module entry"
 	    (* end case *);
 	  (* iterate to a fixed point *)
 	    iterate ();
 	  (* compute call-side information for labels *)
-	    computeCallSites code
+	    computeCallSites code;
+          (* print results of cfa *)
+            if !resultsFlg then printResults code else ()
 	  end
 
   (* return the set of labels that a control transfer targets; the empty set
    * is used to represent unknown control flow.
    *)
     fun labelsOf xfer = let
-	  fun labelSet f = (case valueOf f
+	  fun labelSet f = (case getValue f
 		 of LABELS s => s
 		  | TOP => LSet.empty
 		  | BOT => LSet.empty	(* because of dead code! *)
 		  | v => raise Fail(concat[
-			"labelsOf: valueOf(", CFG.Var.toString f, ") = ", valueToString v
+			"labelsOf: getValue(", CFG.Var.toString f, ") = ", valueToString v
 		      ])
 		(* end case *))
 	  in
