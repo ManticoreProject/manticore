@@ -17,6 +17,7 @@ structure CFGTyUtil : sig
     val toString : CFGTy.ty -> string
 
     val stdContTy : CFGTy.ty * CFGTy.ty list -> CFGTy.ty
+    val kwnContTy : CFGTy.ty * CFGTy.ty list -> CFGTy.ty
 
   (* select i'th type component from a tuple *)
     val select : CFGTy.ty * int -> CFGTy.ty
@@ -191,6 +192,22 @@ structure CFGTyUtil : sig
 		  | CTy.T_StdCont _ => cpTy
 		  | ty => raise Fail(concat[
 			"stdContTy(", toString cpTy, "/",
+			String.concatWith "," (List.map toString argTy), ")"
+		      ])
+		(* end case *))
+	  in
+	    cpTy
+	  end
+
+    fun kwnContTy (cpTy, argTy) = let
+	  val cpTy = (case cpTy
+		 of CTy.T_Any => CTy.T_KnownFunc{
+			clos=CTy.T_OpenTuple[CTy.T_KnownFunc{clos=CTy.T_Any, args=argTy}],
+			args=argTy
+		      }
+		  | CTy.T_KnownFunc _ => cpTy
+		  | ty => raise Fail(concat[
+			"kwnContTy(", toString cpTy, "/",
 			String.concatWith "," (List.map toString argTy), ")"
 		      ])
 		(* end case *))
