@@ -30,7 +30,8 @@ define @rope-subseq (arg : [rope, ml_int, ml_int] / exh : exh) : rope =
   fun split (r : rope, lo : int, hi : int / exh : exh) : rope =
       case r
        of LEAF (len : int, data : list) =>
-          let len : int = I32Add(lo,hi)
+          let len : int = I32Sub(hi,lo)
+          let len : int = MAX(len,0)
 	  let data : list = @list-sublist(data, lo, len/ exh)
           let lf : rope = LEAF(len, data)
           return(lf)
