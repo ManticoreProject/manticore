@@ -387,7 +387,7 @@ structure CheckCFG : sig
                                            [closTy], typesOf [clos]);
                             checkArgTypes (TyU.match, concat ["Apply ", v2s f, " args"], 
                                            argTys, typesOf args))
-                        | ty => error[v2s f, ":", TyU.toString ty, "is not a known\n"]
+                        | ty => error[v2s f, ":", TyU.toString ty, " is not a known\n"]
                       (* end case *))
                   | CFG.Goto jmp => chkJump (env, jmp, "Goto")
                   | CFG.If(x, j1, j2) => (
@@ -447,7 +447,7 @@ structure CheckCFG : sig
                        chkVars (env, args, "AllocCCall");
                        case V.typeOf f
                         of Ty.T_CFun (CFunctions.CProto (retTy, argTys, _)) => ()
-                         | ty => error[v2s f, ":", TyU.toString ty, "is not a cfun\n"]
+                         | ty => error[v2s f, ":", TyU.toString ty, " is not a cfun\n"]
                        (* end case *);
                        chkJump (addVars (env, lhs), (l,lhs@rargs), "AllocCCall"))
                 (* end case *))
