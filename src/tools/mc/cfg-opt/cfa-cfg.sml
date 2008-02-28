@@ -38,7 +38,7 @@ structure CFACFG : sig
 
     val debugFlg = ref false
     val resultsFlg = ref false
-    val recAnalFlg = ref false
+    val oldAnalFlg = ref false
     val () = List.app (fn ctl => ControlRegistry.register CFGOptControls.registry {
 	      ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
 	      envName = NONE
@@ -58,11 +58,11 @@ structure CFACFG : sig
 		  help = "print results of cfa"
 		},
 	      Controls.control {
-		  ctl = recAnalFlg,
-		  name = "cfa-rec-anal",
+		  ctl = oldAnalFlg,
+		  name = "cfa-old-anal",
 		  pri = [0, 1],
 		  obscurity = 0,
-		  help = "recursively analyze functions at transfers"
+		  help = "repeatedly analyze blocks at transfers"
 		}
 	    ]
 
@@ -351,7 +351,7 @@ structure CFACFG : sig
                         then print(concat["doFunc(",CFG.Label.toString lab,")\n"]) 
                         else ();
 		      ListPair.appEq addInfo' (CFG.paramsOfConv entry, args);
-                      if !recAnalFlg
+                      if !oldAnalFlg
                         then 
                           if isMarked lab
                             then ()
@@ -442,7 +442,7 @@ structure CFACFG : sig
 			  | CFG.StdCont _ => anal()
 			  | _ => if isMarked lab then anal () else ()
                       end
-                val doTopFunc = if !recAnalFlg then doTopFuncA else doTopFuncB
+                val doTopFunc = if !oldAnalFlg then doTopFuncA else doTopFuncB
 		in
 		  changed := false;
 		  List.app doTopFunc code;
