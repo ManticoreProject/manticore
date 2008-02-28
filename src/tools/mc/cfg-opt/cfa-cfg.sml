@@ -276,10 +276,10 @@ structure CFACFG : sig
     fun printResults code = let
           fun printCallSitesOf l =
                 print(concat["callSitesOf(", CFG.Label.toString l, ") = ",
-                             callSitesToString (getSites l), "\n"])
+                             callSitesToString (callSitesOf l), "\n"])
           fun printValueOf x =
-                print(concat["getValue(", CFG.Var.toString x, ") = ",
-                             valueToString (getValue x), "\n"])
+                print(concat["valueOf(", CFG.Var.toString x, ") = ",
+                             valueToString (valueOf x), "\n"])
           fun printExp e = List.app printValueOf (CFG.lhsOfExp e)
           and printFunct (CFG.FUNC{lab, entry, body, ...}) = (
                 printCallSitesOf lab;
@@ -326,9 +326,6 @@ structure CFACFG : sig
 
     fun analyze (CFG.MODULE{code, ...}) = let
 	  fun onePass () = let
-                val () = if !debugFlg 
-                           then print(concat["onePass()\n"]) 
-                           else ();
 		val addInfo = if !debugFlg
 		      then (fn (x, v) => let
 			val prevV = getValue x
@@ -347,9 +344,6 @@ structure CFACFG : sig
 	      (* record that a given variable escapes *)
 		fun escape x = escapingValue (getValue x)
 		fun doFunc (f as CFG.FUNC{lab, entry, body, exit}, args) = (
-                      if !debugFlg 
-                        then print(concat["doFunc(",CFG.Label.toString lab,")\n"]) 
-                        else ();
 		      ListPair.appEq addInfo' (CFG.paramsOfConv entry, args);
                       if !oldAnalFlg
                         then 
