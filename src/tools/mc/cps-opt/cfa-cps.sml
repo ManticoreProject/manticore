@@ -1,6 +1,6 @@
-(* cfa-ps.sml
+(* cfa-cps.sml
  *
- * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *)
 
@@ -106,8 +106,8 @@ structure CFACPS : sig
 	  CPS.Var.newProp (fn _ => BOT)
     val valueOf = getValue
 
-  (* return true if the given label escapes *)
-    fun isEscaping lab = (case callSitesOf lab of Unknown => true | _ => false)
+  (* return true if the given lambda variable escapes *)
+    fun isEscaping f = (case callSitesOf f of Unknown => true | _ => false)
 
   (* clear CFA annotations from the variables of a module.  Note that we can
    * restrict the traversal to binding instances.
@@ -162,7 +162,7 @@ structure CFACPS : sig
     val changed = ref false
 
   (* depth limit on approximate values *)
-    val maxDepth = 3
+    val maxDepth = 5
 
   (* update the approximate value of a variable by some delta and record if
    * it changed.
@@ -226,7 +226,38 @@ structure CFACPS : sig
 		in
 		  TUPLE(join(vs1, vs2))
 		end
-	    | kJoin (_, LAMBDAS fs1, LAMBDAS fs2) = LAMBDAS(VSet.union(fs1, fs2))
+	    | kJoin (k, LAMBDAS fs1, LAMBDAS fs2) = let
+              (* join params and rets of joined lambdas *)
+                fun getParamsRets f = (case CPS.Var.kindOf f
+                       of CPS.VK_Fun (CPS.FB {params, rets, ...}) => (params, rets)
+                        | CPS.VK_Cont (CPS.FB {params, rets, ...}) => (params, rets)
+                        | vk => raise Fail(concat[
+                              "type error: kJoin.getParamsRets(", CPS.Var.toString f,
+                              "); Var.kindOf(", CPS.Var.toString f, ") = ", CPS.varKindToString vk
+                            ])
+                     (* end case *))
+                val SOME f1 = VSet.find (fn _ => true) fs1
+                val (params1, rets1) = getParamsRets f1
+                val SOME f2 = VSet.find (fn _ => true) fs2
+                val (params2, rets2) = getParamsRets f2
+                val params' = ListPair.mapEq (fn (x1,x2) => kJoin(k-1, getValue x1, getValue x2)) 
+                                             (params1, params2)
+                val rets' = ListPair.mapEq (fn (x1,x2) => kJoin(k-1, getValue x1, getValue x2)) 
+                                           (rets1, rets2)
+              (* join isEscaping of joined lambdas *)
+                val isEscaping = isEscaping f1 orelse isEscaping f2
+                val fs = VSet.union (fs1, fs2)
+                val () = VSet.app (fn f => let
+                                   val (params, rets) = getParamsRets f
+                                   in
+                                     if isEscaping then setSites(f, Unknown) else ();
+                                     ListPair.app addInfo (params, params');
+                                     ListPair.app addInfo (rets, rets')
+                                   end)
+                                  fs
+                in
+                  LAMBDAS fs
+                end
 	    | kJoin _ = (
 	      (* since the value are going to top, we can't track them so they may be escaping *)
 		escapingValue v1; escapingValue v2; TOP)
@@ -247,7 +278,7 @@ structure CFACPS : sig
 	    | TOP => TOP
 	    | v => raise Fail(concat[
 		  "type error: select(", Int.toString i, ", ", CPS.Var.toString y,
-		  "); valueOf(", CPS.Var.toString y, ") = ", valueToString v
+		  "); getValue(", CPS.Var.toString y, ") = ", valueToString v
 		])
 	  (* end case *))
   (* update the i'th component of a tuple. *)
