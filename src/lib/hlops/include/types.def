@@ -62,5 +62,8 @@ typedef spawn_fun = fun (fiber_fun / exh -> unit);
 				    | SOME (x : ty) => return(x)                           \
                                   end                                                      \
 
+#define MAX(x,y)    if I32Gt(x,y) then return(x) else return(y)
+#define MIN(x,y)    if I32Lt(x,y) then return(x) else return(y)
+
 #endif /* !_TYPES_DEF_ */
 

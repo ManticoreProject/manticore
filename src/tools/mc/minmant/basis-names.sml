@@ -118,6 +118,7 @@ structure BasisNames =
     val plen =          Atom.atom "plen"
     val prev =          Atom.atom "prev"
     val pdivide =       Atom.atom "pdivide"
+    val psubseq =       Atom.atom "psubseq"
     val pappend =       Atom.atom "pappend"
     val sumP =          Atom.atom "sumP"
     val reduceP =       Atom.atom "reduceP"

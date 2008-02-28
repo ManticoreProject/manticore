@@ -1,0 +1,21 @@
+(*
+ * Run me by saying
+ *    mc -Cdebug=true -Cscheduler=rope-subseq-test triv.pml
+ *) 
+
+#include "ropes.def"
+#include "testing.def"
+
+define @rope-subseq-test-startup ( /exh : exh) : () =
+
+  let iw : ml_int = wrap(1)
+  let emp : rope = LEAF(1,CONS(iw, NIL))
+  let r : rope = @simple-cat (emp, emp / exh)
+
+  let lo : ml_int = wrap(0)
+  let hi : ml_int = wrap(1)
+  let arg : [rope, ml_int, ml_int] = alloc(r, lo, hi)
+  let r' : rope = @rope-subseq(arg / exh)
+
+  return ()
+;

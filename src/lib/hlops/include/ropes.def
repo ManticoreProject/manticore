@@ -13,5 +13,7 @@
 
 typedef rope = any;
 
+define @rope-subseq (arg : [rope, ml_int, ml_int] / exh : exh) : rope;
+
 #endif /* !_ROPES_DEF_ */
 

@@ -469,6 +469,7 @@ structure StdEnv : sig
                   (B.plen,              "rope-length",		false),
                   (B.prev,              "rope-rev",             false),
                   (B.pdivide,           "rope-divide",          false),
+                  (B.psubseq,           "rope-subseq",          false),
                   (B.pappend,           "rope-unbal-append",    false),
 		  (U.mapP,              "rope-map",		false),
 		  (B.reduceP,           "rope-reduce",		true),

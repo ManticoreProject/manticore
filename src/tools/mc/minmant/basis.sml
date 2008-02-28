@@ -190,6 +190,7 @@ structure Basis : sig
     val plen            : AST.var
     val prev            : AST.var
     val pdivide         : AST.var        
+    val psubseq         : AST.var        
     val pappend         : AST.var
     val sumP            : AST.var
     val reduceP         : AST.var
@@ -582,6 +583,7 @@ structure Basis : sig
     val plen =          polyVar'(N.plen, fn tv => (parrayTy tv) --> intTy)
     val prev =          polyVar'(N.prev, fn tv => (parrayTy tv) --> (parrayTy tv))
     val pdivide =       polyVar'(N.pdivide, fn tv => (parrayTy tv) --> ((parrayTy tv) ** (parrayTy tv)))
+    val psubseq =       polyVar'(N.psubseq, fn tv => (AST.TupleTy [(parrayTy tv), intTy, intTy]) --> (parrayTy tv))
     val pappend =       polyVar'(N.pappend, fn tv => ((parrayTy tv) ** (parrayTy tv)) --> (parrayTy tv))
     val sumP =          monoVar'(N.sumP, (parrayTy intTy) --> intTy)
     val rev =           polyVar'(N.rev, fn tv => listTy tv --> listTy tv)
@@ -740,6 +742,7 @@ structure Basis : sig
 	    (N.plen,            Env.Var plen),
             (N.prev,            Env.Var prev),
 	    (N.pdivide,         Env.Var pdivide),
+	    (N.psubseq,         Env.Var psubseq),
             (N.pappend,         Env.Var pappend),
 	    (N.sumP,            Env.Var sumP),
 	    (N.rev,             Env.Var rev),
