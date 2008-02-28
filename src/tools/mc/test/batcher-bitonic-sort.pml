@@ -3,8 +3,6 @@
  * New operators we need to get this example working:
  *   1. parrSubseq(arr,lo,hi)    returns the parray [| arr[lo], ..., arr[hi-1] |]   *or*
  *      parrSplit(arr)           returns ([| arr[0], ... arr[n/2] |], [| arr[n/2], ... arr[n] |])
- *   2. parrConcat(arr1,arr2)    concatenates arr1 and arr2 (we'll need this to be log time and balancing for benchmarks)
- *   3. parrRev(arr)             reverse arr
  *)
 
 fun parr2ls (a) = let
@@ -32,7 +30,7 @@ fun bitonicSort (arr) = if (plen(arr) = 1)
 	      val mins = [| min(b,t) | x in bot, y in top |]
 	      val mins = [| max(b,t) | x in bot, y in top |]
 	      in
-		   parrConcat(bitonicSort(mins), bitonicSort(maxs))
+		   pappend(bitonicSort(mins), bitonicSort(maxs))
 	      end
 ;
 
@@ -41,9 +39,9 @@ fun batcherSort (arr) = if (plen(arr) = 1)
           else let
 	      val (bot, top) = parrSplit(arr)
 	      pval sortedBot = batcherSort(bot)
-	      val sortedTop  = batcherSort(top)
+	      val  sortedTop = batcherSort(top)
 	      in
-		    bitonicSort(parrConcat(sortedBot, parrRev(sortedTop)))
+		    bitonicSort(pappend(sortedBot, prev(sortedTop)))
 	      end
 ;
 

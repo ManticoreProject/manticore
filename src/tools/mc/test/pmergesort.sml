@@ -1,25 +1,25 @@
-fun parrString a =
-  let val len = plen a
-      fun build (curr, acc) =
-        if curr=len
-        then rev acc
-        else build (curr+1, (itos (a!curr)) :: acc)
-  in
-      "[" ^ (concatWith (",", build (0, nil))) ^ "]"
-  end
-;
+structure PMergesort =
+  struct
 
-fun valOf opt = (case opt
-		  of NONE => fail "option"
-		   | SOME v => v)
-;
+    fun len (_, s1, s2) = s2-s1
+    val pappend = (op @)
+    val plen = List.length
+    val psub = List.nth
 
-fun len (s1, s2) = s2-s1;
+    fun psubseq (arr, i, j) = let
+  	  val begin = List.drop (arr, i)
+          in
+	      List.take(begin, j-i)
+          end
 
-fun psub (arr,p = arr!p
+    fun psplit (arr) = let
+	val n = List.length(arr)
+        in
+            (psubseq(arr, 0, n div 2), psubseq(arr, n div 2, n))
+        end
 
-(* assume that b>a. *)
-fun binarySearch' (arr, a, b, x) = if (b = a)
+    (* assume that b>a. *)
+    fun binarySearch' (arr, a, b, x) = if (b = a)
         then a
         else let
           val p = (b+a) div 2
@@ -30,13 +30,19 @@ fun binarySearch' (arr, a, b, x) = if (b = a)
 	      binarySearch'(arr, a, b, x)
           end
 
-fun binarySearch (arr, a, b, x) = let
+    fun binarySearch (arr, a, b, x) = let
 	val (a, b) = if (a < b) then (a, b) else (b, a)
         in
 	    binarySearch' (arr, a, b, x)
         end
 
-fun pMerge (lArr, rArr) = let
+    fun bsEx () = let
+	val xs = [1,4,5,6,10,100]
+        in
+	    binarySearch(xs, 0, plen(xs), 1001)
+        end
+
+    fun pMerge (lArr, rArr) = let
         fun loop ( l as (lArr, l1, l2), r as (rArr, r1, r2) ) =
 	    if (len(l) < len(r))
   	       then loop(r, l)
@@ -44,8 +50,8 @@ fun pMerge (lArr, rArr) = let
 	       then pappend(psubseq(l), psubseq(r))
 	    else if (len(l) = 1)
 	       then if (psub(lArr,l1) < psub(rArr,r1))
-	               then [| psub(lArr,l1), psub(rArr,r1) |]
-		       else [| psub(rArr,r1), psub(lArr,l1) |]
+	               then [ psub(lArr,l1), psub(rArr,r1) ]
+		       else [ psub(rArr,r1), psub(lArr,l1) ]
 	    else let
 	       val lPvt = len(l) div 2 + l1
 	       val j = binarySearch(rArr, r1, r2, psub(lArr,lPvt))
@@ -58,17 +64,27 @@ fun pMerge (lArr, rArr) = let
             loop( (lArr, 0, plen(lArr)), (rArr, 0, plen(rArr)) )
         end
 
-fun pMergesort (arr) = if (plen(arr) = 1)
+    fun mergeEx () = let
+	val xs = [~121,3,7]
+	val ys = [2,10,100,500]
+        in
+          pMerge(xs, ys)
+        end
+
+    fun pMergesort (arr) = if (plen(arr) = 1)
         then arr
         else let
 	  val (lArr, rArr) = psplit(arr)
-	  pval lArr = pMergesort(lArr)
+	  val lArr = pMergesort(lArr)
 	  val rArr = pMergesort(rArr)
 	  in
 	     pMerge(lArr, rArr)
 	  end
 
-val arr = [| 1, 3, 10, 15, 100 |];
-val pOpts = [| valOf (binarySearch(arr, 0, plen arr-1, i)) | i in arr |];
+    fun sortEx () = let
+	val xs = [7,5,~32,34,23432,3,1]
+	in
+	    pMergesort(xs)
+	end
 
-()
+  end

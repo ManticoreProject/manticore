@@ -1,22 +1,22 @@
 structure BatcherBitonicSort = 
   struct
 
-    fun parrSubseq (arr, i, j) = let
+    fun psubseq (arr, i, j) = let
   	  val begin = List.drop (arr, i)
           in
 	      List.take(begin, j-i)
           end
 
-    fun parrSplit (arr) = let
+    fun psplit (arr) = let
 	val n = List.length(arr)
         in
-            (parrSubseq(arr, 0, n div 2), parrSubseq(arr, n div 2, n))
+            (psubseq(arr, 0, n div 2), psubseq(arr, n div 2, n))
         end
 
     fun bitonicSort (arr) = if (List.length(arr) = 1)
 	   then arr
 	   else let
-              val (bot, top) = parrSplit(arr)
+              val (bot, top) = psplit(arr)
 	      val mins = ListPair.map Int.min (bot, top)
 	      val maxs = ListPair.map Int.max (bot, top)
 	      in
@@ -29,7 +29,7 @@ structure BatcherBitonicSort =
     fun batcherSort (arr) = if (List.length(arr) = 1)
 	    then arr
 	    else let
-              val (bot, top) = parrSplit(arr)		    
+              val (bot, top) = psplit(arr)		    
 	      val sortedBot = batcherSort(bot)
 	      val sortedTop = batcherSort(top)
 	      in
