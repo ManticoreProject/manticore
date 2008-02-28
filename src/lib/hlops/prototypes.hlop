@@ -63,6 +63,7 @@ define @rope-map (args : [fun (any / exh -> any), rope] / exh : exh) : rope;
 define @rope-reduce (args : [fun ([any, any] / exh -> any), any, rope] / exh : exh) : any;
 define @rope-rev (r : rope / exh : exh) : rope;
 define @rope-sum (r : rope / exh : exh) : ml_int;
+define @rope-divide (r : rope / exh : exh) : [rope, rope];
 define @rope-unbal-append (arg : [rope, rope] / exh : exh) : rope;
 define @simple-cat (r1 : rope, r2 : rope / exh : exh) : rope;
 define @tabD (agrs: [fun(ml_int/exh->any), ml_int, ml_int, ml_int, ml_int] / exh:exh) : rope;

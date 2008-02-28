@@ -189,6 +189,7 @@ structure Basis : sig
     val todo            : AST.var
     val plen            : AST.var
     val prev            : AST.var
+    val pdivide         : AST.var        
     val pappend         : AST.var
     val sumP            : AST.var
     val reduceP         : AST.var
@@ -580,6 +581,7 @@ structure Basis : sig
     val todo =          polyVar'(N.todo, fn tv => stringTy --> tv)
     val plen =          polyVar'(N.plen, fn tv => (parrayTy tv) --> intTy)
     val prev =          polyVar'(N.prev, fn tv => (parrayTy tv) --> (parrayTy tv))
+    val pdivide =       polyVar'(N.pdivide, fn tv => (parrayTy tv) --> ((parrayTy tv) ** (parrayTy tv)))
     val pappend =       polyVar'(N.pappend, fn tv => ((parrayTy tv) ** (parrayTy tv)) --> (parrayTy tv))
     val sumP =          monoVar'(N.sumP, (parrayTy intTy) --> intTy)
     val rev =           polyVar'(N.rev, fn tv => listTy tv --> listTy tv)
@@ -737,6 +739,7 @@ structure Basis : sig
             (N.todo,            Env.Var todo),
 	    (N.plen,            Env.Var plen),
             (N.prev,            Env.Var prev),
+	    (N.pdivide,         Env.Var pdivide),
             (N.pappend,         Env.Var pappend),
 	    (N.sumP,            Env.Var sumP),
 	    (N.rev,             Env.Var rev),
