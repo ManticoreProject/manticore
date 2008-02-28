@@ -1,7 +1,8 @@
 (* Parallel version of Batcher's bitonic sort
  * 
  * New operators we need to get this example working:
- *   1. parrSubseq(arr,lo,hi)    returns the parray [a[lo], ..., a[hi-1]]
+ *   1. parrSubseq(arr,lo,hi)    returns the parray [| arr[lo], ..., arr[hi-1] |]   *or*
+ *      parrSplit(arr)           returns ([| arr[0], ... arr[n/2] |], [| arr[n/2], ... arr[n] |])
  *   2. parrConcat(arr1,arr2)    concatenates arr1 and arr2 (we'll need this to be log time and balancing for benchmarks)
  *   3. parrRev(arr)             reverse arr
  *)
@@ -15,36 +16,35 @@ fun parr2ls (a) = let
     in
        build(0, nil)
     end
+;
 
-
-fun bitonicSort (arr) = let
+fun parrSplit (arr) = let
     val n = plen(arr)
     in
-       if (n = 1)
-	  then arr
-          else let
-              val bot = parrSubseq(arr, 0, n div 2)
-	      val top = parrSubseq(arr, n div 2, n)
-	      val mins = [| min(b,t) | x <- bot, y <- top |]
-	      val mins = [| max(b,t) | x <- bot, y <- top |]
-	      in
-		   parrConcat(bitonicSort(mins), bitonicSort(maxs))
-	      end
+        (parrSubseq(arr, 0, n div 2), parrSubseq(arr, n div 2, n))
     end
 ;
 
-fun batcherSort (arr) = let
-    val n = plen
-    in
-       if (n = 1)
+fun bitonicSort (arr) = if (plen(arr) = 1)
+	  then arr
+          else let
+              val (bot, top) = parrSplit(arr)
+	      val mins = [| min(b,t) | x in bot, y in top |]
+	      val mins = [| max(b,t) | x in bot, y in top |]
+	      in
+		   parrConcat(bitonicSort(mins), bitonicSort(maxs))
+	      end
+;
+
+fun batcherSort (arr) = if (plen(arr) = 1)
           then arr
           else let
-	      pval bot = batcherSort(parrSubseq(arr, 0, n div 2))
-	      pval top = batcherSort(parrSubseq(arr, n div 2, n))
+	      val (bot, top) = parrSplit(arr)
+	      pval sortedBot = batcherSort(bot)
+	      val sortedTop  = batcherSort(top)
 	      in
-		    bitonicSort(parrConcat(bot, parrRev(top)))
+		    bitonicSort(parrConcat(sortedBot, parrRev(sortedTop)))
 	      end
-    end
 ;
 
 val xs1 = [0,1,2,19,10,0,1,6,~1];
