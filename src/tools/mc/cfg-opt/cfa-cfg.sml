@@ -429,7 +429,7 @@ structure CFACFG : sig
 			case entry
 			 of CFG.StdFunc _ => anal()
 			  | CFG.StdCont _ => anal()
-			  | _ => anal ()
+			  | _ => ()
 			(* end case *)
 		      end
                 fun doTopFuncB (f as CFG.FUNC{lab, entry, body, exit}) = let
