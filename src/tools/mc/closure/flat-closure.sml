@@ -398,7 +398,7 @@ structure FlatClosure : sig
                                                           | _ => let
                                                              val (binds, _, ep) = bindEP ()
                                                              in
-                                                               (cp, ep, b :: binds @ argBinds)
+                                                               (cp, ep, b :: binds)
                                                              end
                                                         (* end case *)
                                                       end
@@ -413,7 +413,7 @@ structure FlatClosure : sig
                                                                })
                                                       val b = CFG.mkSelect(cp, 1, f')
                                                       in
-                                                        (cp, ep, b :: binds @ argBinds)
+                                                        (cp, ep, b :: binds)
                                                       end
 						(* end case *))
 					  val xfer = CFG.StdApply{
@@ -436,7 +436,7 @@ structure FlatClosure : sig
                                                           | _ => let
                                                              val (binds, _, ep) = bindEP ()
                                                              in
-                                                               (cp, ep, b :: binds @ argBinds)
+                                                               (cp, ep, b :: binds)
                                                              end
                                                         (* end case *)
                                                       end
@@ -451,7 +451,7 @@ structure FlatClosure : sig
 							       [CFG.Var.typeOf ret]})
                                                       val b = CFG.mkSelect(cp, 1, f')
                                                       in
-                                                        (cp, ep, b :: binds @ argBinds)
+                                                        (cp, ep, b :: binds)
                                                       end
 						(* end case *))
 					  val xfer = CFG.Apply{

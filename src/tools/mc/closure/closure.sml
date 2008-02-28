@@ -12,11 +12,13 @@ structure Closure : sig
 
     structure ConvertStyle =
        struct
-          datatype t = FLAT
+          datatype t = Flat | FlatWithCFA
           val toString = 
-             fn FLAT => "flat"
+             fn Flat => "flat"
+              | FlatWithCFA => "flatWithCFA"
           val fromString =
-             fn "flat" => SOME FLAT
+             fn "flat" => SOME Flat
+              | "flatWithCFA" => SOME FlatWithCFA
               | _ => NONE
           val cvt = {tyName = "convertStyle",
                      fromString = fromString,
@@ -29,7 +31,7 @@ structure Closure : sig
             pri = [5, 0],
             obscurity = 1,
             help = "closure convert style",
-            default = FLAT
+            default = Flat
           }
     val () = ControlRegistry.register ClosureControls.registry {
             ctl = Controls.stringControl ConvertStyle.cvt convertStyle,
@@ -38,7 +40,8 @@ structure Closure : sig
 
     val convert = fn cps =>
        case Controls.get convertStyle of
-          FLAT => FlatClosure.convert cps
+          Flat => FlatClosure.convert cps
+        | FlatWithCFA => FlatClosureWithCFA.convert cps
 
     val convert = BasicControl.mkKeepPass {
 	    preOutput = PrintCPS.output,
