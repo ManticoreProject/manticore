@@ -12,8 +12,6 @@
 extern void M_Print (void *);
 
 define @rope-sub (arg : [rope, ml_int] / exh : exh) : any =
-
-  let WrongLeaf : exn = (exn) enum(0)
  
   let r : rope     = #0(arg)
   let mln : ml_int = #1(arg)
