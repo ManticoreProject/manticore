@@ -244,7 +244,7 @@ structure CheckCFG : sig
                       chkVar (env, z, "Update");
                       case V.typeOf y
                        of Ty.T_Tuple(true, tys) => 
-			    if TyU.equal (V.typeOf z, List.nth (tys, i))
+			    if (i < List.length tys) andalso TyU.equal (V.typeOf z, List.nth (tys, i))
 			      then ()
 			      else err ()
 			| ty => err ()
