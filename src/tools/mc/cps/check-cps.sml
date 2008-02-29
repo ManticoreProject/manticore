@@ -228,7 +228,7 @@ structure CheckCPS : sig
                       chkVar(env, y, "Update");
                       case CV.typeOf x
                        of CTy.T_Tuple(true, tys) => 
-			    if CTU.equal(CV.typeOf y, List.nth (tys, i))
+			    if (i < List.length tys) andalso CTU.equal(CV.typeOf y, List.nth (tys, i))
 			      then ()
 			      else error["type mismatch in Update: ",
 				     "#", Int.toString i, "(", v2s x, ") := ", v2s y, "\n"]

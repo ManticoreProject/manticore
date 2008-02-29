@@ -290,7 +290,7 @@ structure CheckBOM : sig
                       chkVar(y, "Update");
                       case BV.typeOf x
                        of BTy.T_Tuple(true, tys) => 
-			    if BTU.equal(BV.typeOf y, List.nth (tys, i))
+			    if (i < List.length tys) andalso BTU.equal(BV.typeOf y, List.nth (tys, i))
 			      then ()
 			      else error["type mismatch in Update: ",
 				     "#", Int.toString i, "(", v2s x, ") := ", v2s y, "\n"]
