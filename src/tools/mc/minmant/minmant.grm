@@ -28,6 +28,7 @@
     | KW_of		("of")
     | KW_orelse		("orelse")
     | KW_pval		("pval")
+    | KW_dval		("dval")
     | KW_raise		("raise")
     | KW_spawn		("spawn")
     | KW_then		("then")
@@ -188,6 +189,8 @@ ValueDecl
 		=> (mark PT.MarkVDecl (KW_val_SPAN, PT.ValVDecl(Pat, Exp)))
 	| "pval" Pat "=" Exp
 		=> (mark PT.MarkVDecl (KW_pval_SPAN, PT.PValVDecl(Pat, Exp)))
+	| "dval" Pat "=" Exp
+		=> (mark PT.MarkVDecl (KW_dval_SPAN, PT.DValVDecl(Pat, Exp)))
 	| "fun" FunDef ("and" FunDef)*
 		=> (mark PT.MarkVDecl (KW_fun_SPAN, PT.FunVDecl(FunDef :: SR)))
 	;

@@ -155,6 +155,7 @@ structure ASTUtil : sig
 	      | match (A.CondMatch (p, cond, e)) = A.CondMatch (copyPat s p, exp cond, exp e)
 	    and binding (A.ValBind (p, e)) = A.ValBind (copyPat s p, exp e)
 	      | binding (A.PValBind (p, e)) = A.PValBind (copyPat s p, exp e)
+	      | binding (A.DValBind (p, e)) = A.DValBind (copyPat s p, exp e)
 	      | binding _ = raise Fail "todo"
 	in
 	    exp e

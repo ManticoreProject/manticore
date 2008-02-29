@@ -84,6 +84,7 @@
 		("of",		T.KW_of),
 		("orelse",	T.KW_orelse),
 		("pval",	T.KW_pval),
+		("dval",	T.KW_dval),
 		("raise",	T.KW_raise),
 		("spawn",       T.KW_spawn),
 		("then",	T.KW_then),

@@ -34,7 +34,7 @@ fun batcherSort (arr) = if (plen(arr) = 1)
           then arr
           else let
 	      val (bot, top) = pdivide(arr)
-	      val sortedBot = batcherSort(bot)
+	      pval sortedBot = batcherSort(bot)
 	      val sortedTop = batcherSort(top)
 	      in
 		  bitonicSort(pappend(sortedBot, prev(sortedTop)))

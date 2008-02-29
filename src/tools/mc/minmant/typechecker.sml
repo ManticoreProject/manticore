@@ -118,6 +118,15 @@ structure Typechecker : sig
 		    else ();
 		  (AST.PValBind(pat', e'), ve')
 		end
+	    | PT.DValVDecl(pat, e) => let
+		val (pat', ve', lhsTy) = chkPat(loc, depth, te, ve, pat)
+		val (e', rhsTy) = chkExp (loc, depth, te, ve, e)
+		in
+		  if not(U.unify(lhsTy, rhsTy))
+		    then error (loc, ["type mismatch in pval binding"])
+		    else ();
+		  (AST.DValBind(pat', e'), ve')
+		end
 	    | PT.FunVDecl fbs => let
 		val depth' = depth+1
 	      (* create variable bindings for the functions *)

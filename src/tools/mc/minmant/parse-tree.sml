@@ -38,6 +38,7 @@ structure ParseTree =
       = MarkVDecl of val_decl mark
       | ValVDecl of pat * exp
       | PValVDecl of pat * exp
+      | DValVDecl of pat * exp
       | FunVDecl of funct list
 
   (* function definitions *)

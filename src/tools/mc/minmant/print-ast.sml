@@ -304,6 +304,13 @@ structure PrintAST : sig
 	   pr " = ";
 	   exp e;
 	   closeBox ())
+      | binding (A.DValBind (p, e)) =
+	  (openVBox (rel 0);
+	   pr "dval ";
+	   pat p;
+	   pr " = ";
+	   exp e;
+	   closeBox ())
       | binding (A.FunBind lams) = 
 	  (case lams
 	     of [] => raise Fail "empty FunBind"

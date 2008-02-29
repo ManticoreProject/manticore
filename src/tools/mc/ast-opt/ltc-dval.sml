@@ -1,4 +1,4 @@
-structure LTCPVal =
+structure LTCDVal =
   struct
 
     structure A = AST
@@ -15,10 +15,10 @@ structure LTCPVal =
 
    (*
 
-    The rule [| e |] expands pval bindings in e into explicit concurrent operations.
+    The rule [| e |] expands dval bindings in e into explicit concurrent operations.
     
     [|  
-        let pval x = e1
+        let dval x = e1
         in
 	   e2
         end
@@ -92,7 +92,13 @@ structure LTCPVal =
 			e2Ty))
         end
 
-    and trPval (A.VarPat v, e1, e2) = expand (v, e1, e2)
-      | trPval _ = raise Fail "todo"
+    fun transform (A.Module {exns, body}) = let
+	in
+	   A.Module {exns=exns, body=body}
+        end
+(*
+    and trDval (A.VarPat v, e1, e2) = expand (v, e1, e2)
+      | trDval _ = raise Fail "todo"
+*)
 
-  end (* LTCPVal *)
+  end (* LTCDval *)

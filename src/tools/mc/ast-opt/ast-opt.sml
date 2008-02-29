@@ -26,10 +26,32 @@ structure ASTOpt : sig
     val ptuples : AST.module -> AST.module = 
 	  transform {passName = "ptuples", pass = FutParTup.futurize}
 
+    val dvals : AST.module -> AST.module =
+	transform {passName="dvals", pass=LTCDVal.transform}
+
+    val pvals : AST.module -> AST.module =
+	transform {passName="pvals", pass=FutParLet.futurize}
+
+    val translatePvals = Controls.genControl {
+	    name = "translate-pvals",
+	    pri = [5, 0],
+	    obscurity = 1,
+	    help = "Translate pvals.",
+	    default = false
+	  }
+
     fun optimize (module : AST.module) : AST.module = let
 	  val module = if (Controls.get BasicControl.sequential)
 		          then Unpar.unpar module
-		          else GrandPass.transform module
+		          else let
+		            val module = dvals(module)
+		            val module = if (Controls.get translatePvals)
+					    then pvals(module)
+					    else module
+			    val module = GrandPass.transform module
+			    in
+				module
+			    end
           in
             module
           end
