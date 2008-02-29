@@ -17,6 +17,9 @@ signature ALLOC =
   (* compute the address of the ith element off of a 'base' address *)
     val addrOf : {lhsTy : MTy.T.ty, mty : CFG.ty, i : int, base : MTy.T.rexp} -> MTy.T.rexp
 
+  (* subscript the ith element from the array *)
+    val arraySub : {i : MTy.T.rexp, array : MTy.T.rexp} -> MTy.T.rexp
+
   (* allocate a list of types, and initialize them *)
     val genAlloc : (CFG.ty * MTy.mlrisc_tree) list -> {ptr : MTy.mlrisc_tree, stms : MTy.T.stm list}
 

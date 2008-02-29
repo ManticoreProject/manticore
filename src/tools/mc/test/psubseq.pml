@@ -10,7 +10,7 @@
 
   val nums = [| 1 to 1000 |];
 
-  val numsPart = psubseq (nums, 1, 2);
+  val numsPart = psubseq (nums, 13, 40);
 
   (print ("numsPart: ");
    print (parString numsPart);

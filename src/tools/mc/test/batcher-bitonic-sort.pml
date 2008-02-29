@@ -34,7 +34,6 @@ fun batcherSort (arr) = if (plen(arr) = 1)
           then arr
           else let
 	      val (bot, top) = pdivide(arr)
-val _ = print (itos (plen(bot))^"\n")
 	      val sortedBot = batcherSort(bot)
 	      val sortedTop = batcherSort(top)
 	      in
