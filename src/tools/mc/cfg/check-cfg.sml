@@ -209,7 +209,7 @@ structure CheckCFG : sig
                       case L.kindOf l
                        of CFG.LK_None => error["no kind label ", l2s l, " in Label\n"]
                         | CFG.LK_Extern _ => ()
-			| CFG.LK_Local _ => if TyU.equal (V.typeOf x, L.typeOf l)
+			| CFG.LK_Local _ => if TyU.match (V.typeOf x, L.typeOf l)
                             then ()
                             else err ()
                       (* end case *);

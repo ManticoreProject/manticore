@@ -16,42 +16,6 @@ structure FlatClosureWithCFA : sig
 
   end = struct
   
-   structure CFACPS = struct
-      open CFACPS
-
-    fun callSitesToString v = let
-	  fun v2s (Unknown, l) = "?" :: l
-	    | v2s (Known s, l) = let
-		fun f [] = "}" :: l
-		  | f [x] = CPS.Var.toString x :: "}" :: l
-		  | f (x::r) = CPS.Var.toString x :: "," :: f r
-		in
-		  "{" :: f (CPS.Var.Set.listItems s)
-		end
-	  in
-	    concat (v2s(v, []))
-	  end
-
-    fun valueToString v = let
-	  fun v2s (TOP, l) = "T" :: l
-	    | v2s (TUPLE[], l) = "()" :: l
-	    | v2s (TUPLE[v], l) = "(" :: v2s (v, ")" :: l)
-	    | v2s (TUPLE(v::r), l) =
-		"(" :: v2s (v, List.foldr (fn (v, l) => "," :: v2s(v, l)) (")" :: l) r)
-	    | v2s (LAMBDAS s, l) = let
-		fun f [] = "}" :: l
-		  | f [x] = CPS.Var.toString x :: "}" :: l
-		  | f (x::r) = CPS.Var.toString x :: "," :: f r
-		in
-		  "{" :: f (CPS.Var.Set.listItems s)
-		end
-	    | v2s (BOT, l) = "#" :: l
-	  in
-	    concat (v2s(v, []))
-	  end
-   end
-
-
     val cfa = BasicControl.mkTracePassSimple {
             passName = "cfa",
             pass = CFACPS.analyze
@@ -87,6 +51,127 @@ structure FlatClosureWithCFA : sig
           CFG.T_Tuple(mut, List.map cvtTyBot tys)
       | cvtTy (CPSTy.T_Addr ty, CFACPS.TOP) = CFG.T_Addr(cvtTyTop ty)
       | cvtTy (CPSTy.T_Addr ty, CFACPS.BOT) = CFG.T_Addr(cvtTyBot ty)
+      | cvtTy (ty as CPSTy.T_Fun(_, []), v) = cvtStdContTy (ty, v, CFGTy.T_Any)
+      | cvtTy (ty as CPSTy.T_Fun _, v) = cvtStdFunTy (ty, v, CFGTy.T_Any)
+      | cvtTy (CPSTy.T_CFun cproto, _) = CFGTy.T_CFun cproto
+      | cvtTy (CPSTy.T_VProc, CFACPS.TOP) = CFGTy.T_VProc
+      | cvtTy (CPSTy.T_VProc, CFACPS.BOT) = CFGTy.T_VProc
+      | cvtTy (ty, v) = raise Fail(concat[
+           "bogus type ", CPSTyUtil.toString ty, " : ", CFACPS.valueToString v])
+    and cvtTyTop ty = cvtTy (ty, CFACPS.TOP)
+    and cvtTyBot ty = cvtTy (ty, CFACPS.BOT)
+
+  (* convert a function type to a standard-function type, guided by CFA values *)
+    and cvtStdFunTy (ty, v, closTy) = 
+          CFG.T_Tuple(false, [closTy, cvtStdFunTyAux (ty, v, closTy)])
+    and cvtStdFunTyAux (ty, CFACPS.TOP, closTy) = cvtStdFunTyAuxStd (ty, closTy)
+      | cvtStdFunTyAux (ty, CFACPS.BOT, closTy) = cvtStdFunTyAuxStd (ty, closTy)
+      | cvtStdFunTyAux (ty, v as CFACPS.LAMBDAS fs, closTy) = 
+          if CPS.Var.Set.isEmpty fs then cvtStdFunTyAuxStd (ty, closTy)
+          else let
+          val SOME f = CPS.Var.Set.find (fn _ => true) fs
+          val CPS.VK_Fun (CPS.FB {params, rets, ...}) = CPS.Var.kindOf f
+          in
+             if CFACPS.isEscaping f
+                then cvtStdFunTyAuxStd (ty, closTy)
+             else cvtStdFunTyAuxKwn (ty, (params, rets), closTy)
+          end
+      | cvtStdFunTyAux (ty, v, closTy) = raise Fail(concat[
+          "bogus function type ", CPSTyUtil.toString ty, " : ", CFACPS.valueToString v])
+    and cvtStdFunTyAuxStd (CPSTy.T_Fun(argTys, [retTy, exhTy]), closTy) = CFGTy.T_StdFun{
+            clos = closTy,
+            args = List.map cvtTyTop argTys,
+            ret = cvtStdContTy (retTy, CFACPS.TOP, CFGTy.T_Any),
+            exh = cvtStdContTy (exhTy, CFACPS.TOP, CFGTy.T_Any)
+          }
+      | cvtStdFunTyAuxStd (CPSTy.T_Any, closTy) = CFGTy.T_StdFun{
+            clos = closTy,
+            args = [CFGTy.T_Any],
+            ret = cvtStdContTy (CPSTy.T_Any, CFACPS.TOP, CFGTy.T_Any),
+            exh = cvtStdContTy (CPSTy.T_Any, CFACPS.TOP, CFGTy.T_Any)
+          }
+      | cvtStdFunTyAuxStd (ty, closTy) = raise Fail(concat[
+          "bogus function type ", CPSTyUtil.toString ty])
+    and cvtStdFunTyAuxKwn (CPSTy.T_Fun(argTys, retTys), (args, rets), closTy) = let
+          fun cvtTy' (ty, x) = cvtTy (ty, CFACPS.valueOf x)
+          fun cvtStdContTy' (ty, x) = cvtStdContTy (ty, CFACPS.valueOf x, CFGTy.T_Any)
+          in
+            CFGTy.T_KnownFunc{
+              clos = closTy,
+              args = (ListPair.mapEq cvtTy' (argTys, args)) @ 
+                     (ListPair.mapEq cvtStdContTy' (retTys, rets))
+            }
+          end
+      | cvtStdFunTyAuxKwn (ty, (args, rets), closTy) = raise Fail(concat[
+          "bogus function type ", CPSTyUtil.toString ty])
+
+  (* convert a continuation type to a standard-continuation type, guided by CFA values *)
+    and cvtStdContTy (ty, v, closTy) = CFG.T_OpenTuple[cvtStdContTyAux (ty, v, closTy)]
+    and cvtStdContTyAux (ty, CFACPS.TOP, closTy) = cvtStdContTyAuxStd (ty, closTy)
+      | cvtStdContTyAux (ty, CFACPS.BOT, closTy) = cvtStdContTyAuxStd (ty, closTy)
+      | cvtStdContTyAux (ty, CFACPS.LAMBDAS fs, closTy) = 
+          if CPS.Var.Set.isEmpty fs then cvtStdContTyAuxStd (ty, closTy)
+          else let
+          val SOME f = CPS.Var.Set.find (fn _ => true) fs
+          val CPS.VK_Cont (CPS.FB {params, rets = [], ...}) = CPS.Var.kindOf f
+          in
+             if CFACPS.isEscaping f
+                then cvtStdContTyAuxStd (ty, closTy)
+             else cvtStdContTyAuxKwn (ty, params, closTy)
+          end
+      | cvtStdContTyAux (ty, v, closTy) = raise Fail(concat[
+          "bogus continuation type ", CPSTyUtil.toString ty, " : ", CFACPS.valueToString v])
+    and cvtStdContTyAuxStd (CPSTy.T_Fun(argTys, []), closTy) = let
+          val argTys = List.map cvtTyTop argTys
+          in
+            CFGTy.T_StdCont{
+                clos=CFGTy.T_OpenTuple[CFGTy.T_StdCont{clos=closTy, args=argTys}],
+                args=argTys
+            }
+          end
+      | cvtStdContTyAuxStd (CPSTy.T_Any, closTy) = 
+          CFGTy.T_StdCont{
+              clos=CFGTy.T_OpenTuple[CFGTy.T_StdCont{clos=closTy, args=[CFGTy.T_Any]}],
+              args=[CFGTy.T_Any]
+          }
+      | cvtStdContTyAuxStd (ty, closTy) = raise Fail(concat[
+          "bogus continuation type ", CPSTyUtil.toString ty])
+    and cvtStdContTyAuxKwn (CPSTy.T_Fun(argTys, []), args, closTy) = let
+          fun cvtTy' (ty, x) = cvtTy (ty, CFACPS.valueOf x)
+          val argTys = ListPair.mapEq cvtTy' (argTys, args)
+          in
+            CFGTy.T_KnownFunc{
+              clos = CFGTy.T_OpenTuple[CFGTy.T_KnownFunc{clos=closTy, args=argTys}],
+              args = argTys
+            }
+          end
+      | cvtStdContTyAuxKwn (ty, args, closTy) = raise Fail(concat[
+          "bogus continuation type ", CPSTyUtil.toString ty])
+
+
+  (* convert from CPS types to CFG types, guided by CFA values; *)
+  (* BOT values can arise in CFA from dead code. *)
+    fun cvtTy (CPSTy.T_Any, _) = CFG.T_Any
+      | cvtTy (CPSTy.T_Enum w, CFACPS.TOP) = CFG.T_Enum w
+      | cvtTy (CPSTy.T_Enum w, CFACPS.BOT) = CFG.T_Enum w
+      | cvtTy (CPSTy.T_Raw rTy, CFACPS.TOP) = CFGTy.T_Raw rTy
+      | cvtTy (CPSTy.T_Raw rTy, CFACPS.TUPLE _) = CFGTy.T_Raw rTy (* datatypes *)
+      | cvtTy (CPSTy.T_Raw rTy, CFACPS.BOT) = CFGTy.T_Raw rTy
+      | cvtTy (CPSTy.T_Tuple(mut, tys), CFACPS.TOP) = 
+          CFG.T_Tuple(mut, List.map cvtTyTop tys)
+      | cvtTy (CPSTy.T_Tuple(mut, tys), CFACPS.TUPLE vs) = let
+          val tysLen = List.length tys
+          val vsLen = List.length vs
+          val vs' = if tysLen <= vsLen
+                       then List.take (vs, tysLen)
+                    else vs @ (List.tabulate (tysLen - vsLen, fn _ => CFACPS.TOP))
+          in
+            CFG.T_Tuple(mut, ListPair.map cvtTy (tys, vs'))
+          end
+      | cvtTy (CPSTy.T_Tuple(mut, tys), CFACPS.BOT) = 
+          CFG.T_Tuple(mut, List.map cvtTyBot tys)
+      | cvtTy (CPSTy.T_Addr ty, CFACPS.TOP) = CFG.T_Addr(cvtTyTop ty)
+      | cvtTy (CPSTy.T_Addr ty, CFACPS.BOT) = CFG.T_Addr(cvtTyBot ty)
       | cvtTy (ty as CPSTy.T_Fun(_, []), v) = cvtStdContTy (ty, v)
       | cvtTy (ty as CPSTy.T_Fun _, v) = cvtStdFunTy (ty, v)
       | cvtTy (CPSTy.T_CFun cproto, _) = CFGTy.T_CFun cproto
@@ -101,14 +186,16 @@ structure FlatClosureWithCFA : sig
     and cvtStdFunTy (ty, v) = CFG.T_Tuple(false, [CFG.T_Any, cvtStdFunTyAux (ty, v)])
     and cvtStdFunTyAux (ty, CFACPS.TOP) = cvtStdFunTyAuxStd ty
       | cvtStdFunTyAux (ty, CFACPS.BOT) = cvtStdFunTyAuxStd ty
-      | cvtStdFunTyAux (ty, v as CFACPS.LAMBDAS fs) = (let
+      | cvtStdFunTyAux (ty, v as CFACPS.LAMBDAS fs) = 
+          if CPS.Var.Set.isEmpty fs then cvtStdFunTyAuxStd ty
+          else let
           val SOME f = CPS.Var.Set.find (fn _ => true) fs
           val CPS.VK_Fun (CPS.FB {params, rets, ...}) = CPS.Var.kindOf f
           in
              if CFACPS.isEscaping f
                 then cvtStdFunTyAuxStd ty
              else cvtStdFunTyAuxKwn (ty, (params, rets))
-          end)
+          end
       | cvtStdFunTyAux (ty, v) = raise Fail(concat[
           "bogus function type ", CPSTyUtil.toString ty, " : ", CFACPS.valueToString v])
     and cvtStdFunTyAuxStd (CPSTy.T_Fun(argTys, [retTy, exhTy])) = CFGTy.T_StdFun{
@@ -142,7 +229,9 @@ structure FlatClosureWithCFA : sig
     and cvtStdContTy (ty, v) = CFG.T_OpenTuple[cvtStdContTyAux (ty, v)]
     and cvtStdContTyAux (ty, CFACPS.TOP) = cvtStdContTyAuxStd ty
       | cvtStdContTyAux (ty, CFACPS.BOT) = cvtStdContTyAuxStd ty
-      | cvtStdContTyAux (ty, CFACPS.LAMBDAS fs) = let
+      | cvtStdContTyAux (ty, CFACPS.LAMBDAS fs) = 
+          if CPS.Var.Set.isEmpty fs then cvtStdContTyAuxStd ty
+          else let
           val SOME f = CPS.Var.Set.find (fn _ => true) fs
           val CPS.VK_Cont (CPS.FB {params, rets = [], ...}) = CPS.Var.kindOf f
           in
@@ -153,7 +242,7 @@ structure FlatClosureWithCFA : sig
       | cvtStdContTyAux (ty, v) = raise Fail(concat[
           "bogus continuation type ", CPSTyUtil.toString ty, " : ", CFACPS.valueToString v])
     and cvtStdContTyAuxStd (CPSTy.T_Fun(argTys, [])) =
-	  CFGTyUtil.stdContTy(CFGTy.T_Any, List.map cvtTyTop argTys)
+          CFGTyUtil.stdContTy(CFGTy.T_Any, List.map cvtTyTop argTys)
       | cvtStdContTyAuxStd (CPSTy.T_Any) = 
           CFGTyUtil.stdContTy(CFGTy.T_Any, [CFGTy.T_Any])
       | cvtStdContTyAuxStd ty = raise Fail(concat[
@@ -161,10 +250,7 @@ structure FlatClosureWithCFA : sig
     and cvtStdContTyAuxKwn (CPSTy.T_Fun(argTys, []), args) = let
           fun cvtTy' (ty, x) = cvtTy (ty, CFACPS.valueOf x)
           in
-            CFGTy.T_KnownFunc{
-              clos = CFGTy.T_Any,
-              args = ListPair.mapEq cvtTy' (argTys, args)
-            }
+            CFGTyUtil.kwnContTy(CFGTy.T_Any, ListPair.mapEq cvtTy' (argTys, args))
           end
       | cvtStdContTyAuxKwn (ty, _) = raise Fail(concat[
           "bogus continuation type ", CPSTyUtil.toString ty])
@@ -172,6 +258,20 @@ structure FlatClosureWithCFA : sig
     fun cvtTyOfVar x =
        ((cvtTy (CPS.Var.typeOf x, CFACPS.valueOf x))
         handle Fail s => raise Fail(concat["cvtTyOfVar(", CPS.Var.toString x, ") ==> ", s]))
+    val cvtTyOfVar = fn x => let
+          val ty = CPS.Var.typeOf x
+          val v = CFACPS.valueOf x
+          val ty' = cvtTyOfVar x
+          in
+            if Controls.get ClosureControls.debug
+              then print(concat[
+                "cvtTyOfVar(", CPS.Var.toString x, " : ",
+                "typeOf => ", CPSTyUtil.toString ty, " ; ",
+                "valueOf => ", CFACPS.valueToString v, ") => ", CFGTyUtil.toString ty', "\n"])
+              else ();
+            ty'
+          end
+
 
   (* assign labels to functions and continuations *)
     local
@@ -214,8 +314,8 @@ structure FlatClosureWithCFA : sig
       | Global of int           (* at the ith slot of the current closure *)
       | EnclFun                 (* the enclosing function (or one that shares the *)
                                 (* same closure). *)
-      | EnclCont		(* the enclosing continuation function *)
-      | Extern of CFG.label	(* bound to an external variable (e.g., C function *)
+      | EnclCont                (* the enclosing continuation function *)
+      | Extern of CFG.label     (* bound to an external variable (e.g., C function *)
 
   (* an envrionment for mapping from CPS variables to CFG variables.  We also
    * track the current closure.
@@ -261,11 +361,29 @@ structure FlatClosureWithCFA : sig
     fun newVar x = CFG.Var.new (
           CPS.Var.nameOf x,
           cvtTyOfVar x)
+    val newVar = fn x => let
+          val x' = newVar x
+          in
+            if Controls.get ClosureControls.debug
+              then print(concat[
+                "newVar(", CPS.Var.toString x, ") => ", CFG.Var.toString x', "\n"])
+              else ();
+            x'
+          end
 
     fun newEP [] =
       (* NOTE: T_Enum(0w0) is the correct type here, but that causes problems in CheckCFG. *)
-	  CFG.Var.new ("ep", CFGTy.T_Any)
+          CFG.Var.new ("ep", CFGTy.T_Any)
       | newEP tys = CFG.Var.new ("ep", CFGTy.T_Tuple(false, tys))
+    val newEP = fn tys => let
+          val x' = newEP tys
+          in
+            if Controls.get ClosureControls.debug
+              then print(concat[
+                "newEP(_) => ", CFG.Var.toString x', "\n"])
+              else ();
+            x'
+          end
 
     fun newLocal (env, x) = let
           val x' = newVar x
@@ -289,6 +407,15 @@ structure FlatClosureWithCFA : sig
           in
             (CFG.mkLabel(labVar, lab), labVar)
           end
+    val bindLabel = fn lab => let
+          val (bind, x') = bindLabel lab
+          in
+            if Controls.get ClosureControls.debug
+              then print(concat[
+                "bindLabel(", CFG.Label.toString lab, ") => ", CFG.Var.toString x', "\n"])
+              else ();
+            (bind, x')
+          end
 
   (* lookup a CPS variable in the environment.  If it has to be fetched from
    * a closure, we introduce a new temporary for it.
@@ -309,21 +436,23 @@ structure FlatClosureWithCFA : sig
                 in
                   ([CFG.mkAlloc(tmp, [ep, lab]), b], tmp)
                 end
-	    | SOME EnclCont => ([], ep)
-	    | SOME(Extern lab) => let
+            | SOME EnclCont => ([], ep)
+            | SOME(Extern lab) => let
                 val tmp = newVar x
                 in
                   ([CFG.mkLabel(tmp, lab)], tmp)
                 end
             | NONE => raise Fail(concat[
-		  "unbound variable ", CPS.Var.toString x, "; ep = ", CFG.Var.toString ep
-		])
+                  "unbound variable ", CPS.Var.toString x, "; ep = ", CFG.Var.toString ep
+                ])
           (* end case *))
     val lookupVar = fn (env, x) => let
           val (binds, x') = lookupVar (env, x)
           in
-            print(concat[
-              "lookupVar(_,", CPS.Var.toString x, ") => ", CFG.Var.toString x', "\n"]);
+            if Controls.get ClosureControls.debug
+              then print(concat[
+                "lookupVar(_,", CPS.Var.toString x, ") => ", CFG.Var.toString x', "\n"])
+              else ();
             (binds, x')
           end
 
@@ -361,22 +490,22 @@ structure FlatClosureWithCFA : sig
    * environment for the continuation's body.
    *)
     fun mkContClosure externEnv (env, params, fv, mkContTy) = let
-	  val params' = List.map newVar params
+          val params' = List.map newVar params
           fun mkArgs (x, (i, binds, clos, xs)) = let
                 val (b, x') = lookupVar(env, x)
                 in
                   (i+1, b@binds, VMap.insert(clos, x, Global i), x'::xs)
                 end
-	(* the initial environment is the externs plus the parameters *)
-	  val env = ListPair.foldl
-		(fn (x, x', env) => VMap.insert(env, x, Local x'))
-		  externEnv (params, params')
+        (* the initial environment is the externs plus the parameters *)
+          val env = ListPair.foldl
+                (fn (x, x', env) => VMap.insert(env, x, Local x'))
+                  externEnv (params, params')
           val (_, binds, clos, cfgArgs) =
                 CPS.Var.Set.foldl mkArgs (1, [], env, []) fv
           val cfgArgs = List.rev cfgArgs
-	  val ep = newEP (
+          val ep = newEP (
                 mkContTy(CFGTy.T_Any, List.map CFG.Var.typeOf params')
-		:: List.map CFG.Var.typeOf cfgArgs)
+                :: List.map CFG.Var.typeOf cfgArgs)
           in
             (binds, cfgArgs, E{ep = ep, env = clos}, params')
           end
@@ -384,20 +513,20 @@ structure FlatClosureWithCFA : sig
     fun convert (m as CPS.MODULE{name, externs, body}) = let
           val () = cfa m
           val blocks = ref []
-	(* construct an initial environment that maps the CPS externs to CFG labels *)
-	  val (externs, externEnv) = let
-		fun cvt (CFunctions.CFun{var, name, retTy, argTys, attrs}, (cfs, env)) = let
-		      val lab = CFG.Label.new(name, cvtTyOfVar var)
-		      val cf = CFG.mkCFun{var=lab, name=name, argTys=argTys, retTy=retTy, attrs=attrs}
-		      in
-			(cf::cfs, VMap.insert(env, var, Extern lab))
-		      end
-		in
-		  List.foldl cvt ([], VMap.empty) externs
-		end
-	  val newEnv = newEnv externEnv
-	  val mkFunClosure = mkFunClosure externEnv
-	  val mkContClosure = mkContClosure externEnv
+        (* construct an initial environment that maps the CPS externs to CFG labels *)
+          val (externs, externEnv) = let
+                fun cvt (CFunctions.CFun{var, name, retTy, argTys, attrs}, (cfs, env)) = let
+                      val lab = CFG.Label.new(name, cvtTyOfVar var)
+                      val cf = CFG.mkCFun{var=lab, name=name, argTys=argTys, retTy=retTy, attrs=attrs}
+                      in
+                        (cf::cfs, VMap.insert(env, var, Extern lab))
+                      end
+                in
+                  List.foldl cvt ([], VMap.empty) externs
+                end
+          val newEnv = newEnv externEnv
+          val mkFunClosure = mkFunClosure externEnv
+          val mkContClosure = mkContClosure externEnv
         (* convert an expression to a CFG FUNC; note that this function will convert
          * any nested functions first.
          *)
@@ -432,10 +561,10 @@ structure FlatClosureWithCFA : sig
                                     | EnclFun => (
                                         needsEP := true;
                                         (insertVar(bEnv, x, EnclFun), args, params))
-				    | EnclCont => (
+                                    | EnclCont => (
                                         needsEP := true;
                                         (insertVar(bEnv, x, EnclCont), args, params))
-				    | Extern _ => raise Fail "unexpected extern in free-var list"
+                                    | Extern _ => raise Fail "unexpected extern in free-var list"
                                   (* end case *))
                             val (branchEnv, args, params) =
                                   CPS.Var.Set.foldr f (branchEnv, [], []) (FV.freeVarsOfExp e)
@@ -457,7 +586,7 @@ structure FlatClosureWithCFA : sig
                          of CPS.Let(lhs, rhs, e) => let
                               val (binds, env') = cvtRHS(env, lhs, rhs)
                               in
-                        	cvt (env', e, binds @ stms)
+                                cvt (env', e, binds @ stms)
                               end
                           | CPS.Fun(fbs, e) => let
                               val (binds, env) = cvtFunc(env, fbs)
@@ -473,13 +602,13 @@ structure FlatClosureWithCFA : sig
                               val (binds, x) = lookupVar(env, x)
                               in
                                 finish(binds @ stms,
-				  CFG.If(x, branch("then", e1), branch("else", e2)))
+                                  CFG.If(x, branch("then", e1), branch("else", e2)))
                               end
                           | CPS.Switch(x, cases, dflt) => let
                               val (binds, x) = lookupVar(env, x)
                               in
                                 finish(binds @ stms,
-				  CFG.Switch(x,
+                                  CFG.Switch(x,
                                     List.map (fn (i,e) => (i, branch("case", e))) cases,
                                     case dflt 
                                      of NONE => NONE
@@ -490,12 +619,12 @@ structure FlatClosureWithCFA : sig
                               in
                                 cvtApply (env, f, args, rets, finish)
                               end
-			  | CPS.Throw(k, args) => let
+                          | CPS.Throw(k, args) => let
                               val finish = fn (binds, xfer) => finish (binds @ stms, xfer)
                               in
                                 cvtThrow (env, k, args, finish)
                               end
-			(* end case *)
+                        (* end case *)
                       end
                 in
                   cvt (env, e, [])
@@ -507,8 +636,8 @@ structure FlatClosureWithCFA : sig
                       in
                         ([CFG.mkVar(lhs, ys)] @ binds, env)
                       end
-		  | ((env, [x]), CPS.Const(lit, ty)) => ([CFG.mkConst(x, lit, cvtTyTop ty)], env)
-		  | ((env, [x]), CPS.Cast(ty, y)) => let
+                  | ((env, [x]), CPS.Const(lit, ty)) => ([CFG.mkConst(x, lit, cvtTyTop ty)], env)
+                  | ((env, [x]), CPS.Cast(ty, y)) => let
                       val (binds, y') = lookupVar(env, y)
                       in
                         ([CFG.mkCast(x, cvtTy (ty, CFACPS.valueOf y), y')] @ binds, env)
@@ -555,22 +684,22 @@ structure FlatClosureWithCFA : sig
                       in
                         ([CFG.mkCCall(res, f, args)] @ binds, env)
                       end
-		  | ((env, [vp]), CPS.HostVProc) => ([CFG.mkHostVProc(vp)], env)
-		  | ((env, [x]), CPS.VPLoad(offset, vp)) => let
+                  | ((env, [vp]), CPS.HostVProc) => ([CFG.mkHostVProc(vp)], env)
+                  | ((env, [x]), CPS.VPLoad(offset, vp)) => let
                       val (binds, vp) = lookupVar(env, vp)
                       in
                         ([CFG.mkVPLoad(x, offset, vp)] @ binds, env)
                       end
-		  | ((env, []), CPS.VPStore(offset, vp, x)) => let
+                  | ((env, []), CPS.VPStore(offset, vp, x)) => let
                       val (binds, [vp, x]) = lookupVars(env, [vp, x])
                       in
                         ([CFG.mkVPStore(offset, vp, x)] @ binds, env)
                       end
-		  | (_, rhs) => raise Fail("ill-formed RHS binding: " ^ CPSUtil.rhsToString rhs)
+                  | (_, rhs) => raise Fail("ill-formed RHS binding: " ^ CPSUtil.rhsToString rhs)
                 (* end case *))
         (* create a standard function convention for a list of parameters *)
           and stdFuncConvention (env, args, [ret, exh]) = let
-		val env = envWithFreshEP env
+                val env = envWithFreshEP env
                 val (env, args) = newLocals (env, args)
                 val (env, ret) = newLocal (env, ret)
                 val (env, exh) = newLocal (env, exh)
@@ -585,7 +714,7 @@ structure FlatClosureWithCFA : sig
                 raise Fail "non-standard apply convention"
         (* create a known function convention for a list of parameters *)
           and kwnFuncConvention (env, args, rets) = let
-		val env = envWithFreshEP env
+                val env = envWithFreshEP env
                 val (env, args) = newLocals (env, args)
                 val (env, rets) = newLocals (env, rets)
                 val conv = CFG.KnownFunc{
@@ -637,7 +766,7 @@ structure FlatClosureWithCFA : sig
                 val conv = 
                       mkEntry{clos = envPtrOf lambdaEnv, args = params'}
                 val (bindLab, labVar) = bindLabel (labelOf f)
-		val contEnv = insertVar (lambdaEnv, f, EnclCont)  (* to support recursive conts *)
+                val contEnv = insertVar (lambdaEnv, f, EnclCont)  (* to support recursive conts *)
                 val (env', k') = newLocal (env, f)
                 val binds = CFG.mkAlloc(k', labVar :: clos) :: bindLab :: binds
                 in
@@ -648,7 +777,10 @@ structure FlatClosureWithCFA : sig
           and cvtApply (env, f, args, rets, finish) = (case CFACPS.valueOf f
                  of CFACPS.TOP => cvtStdApply (env, f, NONE, args, rets, finish)
                   | CFACPS.BOT => cvtStdApply (env, f, NONE, args, rets, finish)
-                  | CFACPS.LAMBDAS gs => let
+                  | CFACPS.LAMBDAS gs => 
+                      if CPS.Var.Set.isEmpty gs 
+                        then cvtStdApply (env, f, NONE, args, rets, finish)
+                      else let
                       val SOME g = CPS.Var.Set.find (fn _ => true) gs
                       val fTgt = if CPS.Var.Set.numItems gs = 1 then SOME g else NONE
                       in
@@ -753,7 +885,10 @@ structure FlatClosureWithCFA : sig
           and cvtThrow (env, k, args, finish) = (case CFACPS.valueOf k 
                  of CFACPS.TOP => cvtStdThrow (env, k, NONE, args, finish)
                   | CFACPS.BOT => cvtStdThrow (env, k, NONE, args, finish)
-                  | CFACPS.LAMBDAS gs => let
+                  | CFACPS.LAMBDAS gs => 
+                      if CPS.Var.Set.isEmpty gs 
+                        then cvtStdThrow (env, k, NONE, args, finish)
+                      else let
                       val SOME g = CPS.Var.Set.find (fn _ => true) gs
                       val kTgt = if CPS.Var.Set.numItems gs = 1 then SOME g else NONE
                       in
@@ -813,21 +948,11 @@ structure FlatClosureWithCFA : sig
             FV.analyze m;
             assignLabels body;
             cvtModLambda body;
-	  (* we need to rebuild the entry function so that it has an exported lambda *)
-	    let val CFG.FUNC{lab, entry, body, exit} :: r = !blocks
-	    val init = CFG.mkExportFunc(lab, entry, body, exit, Atom.toString name ^ "_init")
-	    in
-	      CFG.mkModule(name, externs, init::r)
-	    end
+          (* we need to rebuild the entry function so that it has an exported lambda *)
+            let val CFG.FUNC{lab, entry, body, exit} :: r = !blocks
+            val init = CFG.mkExportFunc(lab, entry, body, exit, Atom.toString name ^ "_init")
+            in
+              CFG.mkModule(name, externs, init::r)
+            end
           end
-
-(*
-    val convert = fn m =>
-       let
-          val _ = convert m
-       in
-          FlatClosure.convert m
-       end
-*)
-
   end
