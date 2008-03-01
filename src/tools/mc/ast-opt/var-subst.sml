@@ -90,6 +90,7 @@ structure VarSubst =
 	      | match (A.CondMatch (p, cond, e)) = A.CondMatch (pat s p, exp cond, exp e)
 	    and binding (A.ValBind (p, e)) = A.ValBind (pat s p, exp e)
 	      | binding (A.PValBind (p, e)) = A.PValBind (pat s p, exp e)
+	      | binding (A.DValBind (p, e)) = A.DValBind (pat s p, exp e)
 	      | binding _ = todo "expWalk.binding"
 	in
 	    exp e

@@ -2,8 +2,8 @@ fun pfib i = (case i
        of 0 => 0
 	| 1 => 1
 	| n => let
-         pval x = pfib(i-1)
-         pval y = pfib(i-2)
+         dval x = pfib(i-1)
+         dval y = pfib(i-2)
          in
 	      x + y
 	 end

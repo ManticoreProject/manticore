@@ -59,6 +59,11 @@ structure Unpar : sig
 		if (what = ALL)
 		   then A.ValBind (p, exp e)
 		   else A.PValBind (p, exp e)
+	      | binding (A.DValBind (p, e)) = 
+		(* eliminate dvals *)
+		if (what = ALL)
+		   then A.ValBind (p, exp e)
+		   else A.DValBind (p, exp e)
 	      | binding (A.FunBind lams) = A.FunBind (map lambda lams)
 					   
 	    and lambda (A.FB (f, x, e)) = A.FB (f, x, exp e)
