@@ -1,0 +1,43 @@
+(*
+ * Run me by saying
+ *    mc -Cdebug=true -Cscheduler=array-test triv.pml
+ *) 
+
+#include "array.def"
+#include "testing.def"
+#include "vproc-queue.def"
+#include "runtime-offsets.def"
+#include "scheduling-ops.def"
+
+define @test-sub(/ exh: exh) : bool =
+  let i : int = 10234
+  let wi : ml_int = wrap (i)
+  let wlen : [int] = wrap (10)
+  let arg : [ml_int, any] = alloc(wlen, wi)
+  let arr : array = @array(arg / exh)
+  let wi : ml_int = ArraySub(arr, 0)
+  return(I32Eq(unwrap(wi), i))
+;
+
+define @test-update(/ exh: exh) : bool =
+  let i : int = 9999
+  let wi : ml_int = wrap (i)
+
+  let init : int = 10234
+  let winit : ml_int = wrap (i)
+
+  let wlen : [int] = wrap (10)
+  let arg : [ml_int, any] = alloc(wlen, winit)
+
+  let arr : array = @array(arg / exh)
+  let _ : bool = ArrayUpdate(arr, 4, wi)
+  let wi : ml_int = ArraySub(arr, 4)
+
+  return(I32Eq(unwrap(wi), i))
+;
+
+define @array-test-startup ( /exh : exh) : () =
+  do_test(test-sub)
+  do_test(test-update)
+  return()
+;

@@ -1,0 +1,18 @@
+(* array.def
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Types and HLops for arrays
+ *)
+
+#ifndef _ARRAY_DEF_
+#define _ARRAY_DEF_
+
+#include "types.def"
+
+typedef array = any;
+
+define @array (arg : [ml_int, any] / exh : exh) : array;
+
+#endif /* !_ARRAY_DEF_ */

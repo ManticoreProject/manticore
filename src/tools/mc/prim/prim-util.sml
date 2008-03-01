@@ -86,6 +86,8 @@ structure PrimUtil : sig
       | nameOf (P.I64ToF32 _) = "I64ToF32"
       | nameOf (P.I64ToF64 _) = "I64ToF64"
       | nameOf (P.F64ToI32 _) = "F64ToI32"
+      | nameOf (P.ArraySub _) = "ArraySub"
+      | nameOf (P.ArrayUpdate _) = "ArrayUpdate"
       | nameOf (P.I32FetchAndAdd _) = "I32FetchAndAdd"
       | nameOf (P.I64FetchAndAdd _) = "I64FetchAndAdd"
       | nameOf (P.CAS _) = "CAS"
@@ -160,6 +162,8 @@ structure PrimUtil : sig
       | varsOf (P.F64ToI32 a) = [a]
       | varsOf (P.I32FetchAndAdd(a, b)) = [a, b]
       | varsOf (P.I64FetchAndAdd(a, b)) = [a, b]
+      | varsOf (P.ArraySub(a, b)) = [a, b]
+      | varsOf (P.ArrayUpdate(a, b, c)) = [a, b, c]
       | varsOf (P.CAS(a, b, c)) = [a, b, c]
       | varsOf (P.BCAS(a, b, c)) = [a, b, c]
       | varsOf (P.TAS a) = [a]
@@ -245,6 +249,8 @@ structure PrimUtil : sig
       | explode (P.F64ToI32 a) = (p1 P.F64ToI32, [a])
       | explode (P.I32FetchAndAdd(a, b)) = (p2 P.I32FetchAndAdd, [a, b])
       | explode (P.I64FetchAndAdd(a, b)) = (p2 P.I64FetchAndAdd, [a, b])
+      | explode (P.ArraySub(a, b)) = (p2 P.ArraySub, [a, b])
+      | explode (P.ArrayUpdate(a, b, c)) = (p3 P.ArrayUpdate, [a, b, c])
       | explode (P.CAS(a, b, c)) = (p3 P.CAS, [a, b, c])
       | explode (P.BCAS(a, b, c)) = (p3 P.BCAS, [a, b, c])
       | explode (P.TAS a) = (p1 P.TAS, [a])
@@ -259,6 +265,8 @@ structure PrimUtil : sig
       | isPure (P.CAS _) = false
       | isPure (P.BCAS _) = false
       | isPure (P.TAS _) = false
+      | isPure (P.ArraySub _) = false
+      | isPure (P.ArrayUpdate _) = false
       | isPure _ = true
 
   end

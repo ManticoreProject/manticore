@@ -1,0 +1,17 @@
+(* array.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Create an array.
+ *)
+
+#include "array.def"
+
+extern void* M_NewArray (void*, int, void*);
+
+define @array (arg : [ml_int, any] / exh : exh) : array =
+  let wlen : ml_int = SELECT(0, arg)
+  let arr : array = ccall M_NewArray(host_vproc, unwrap(wlen), SELECT(1, arg))
+  return (arr)
+;

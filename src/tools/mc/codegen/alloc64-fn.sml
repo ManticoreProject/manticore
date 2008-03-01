@@ -79,11 +79,8 @@ functor Alloc64Fn (
   (* subscript the ith element from the array
    *   NOTE: for now we assume boxed array elements.
    *)
-    fun arraySub {array : T.rexp, i : T.rexp} = let
-	val addr = T.ADD(MTy.wordTy, array, T.MULU(MTy.wordTy, i, intLit wordSzB))
-        in
-	    MTy.EXP(MTy.wordTy, T.LOAD(MTy.wordTy, addr, memory))
-	end
+    fun arrayAddrOf {array : T.rexp, i : T.rexp} = 
+	T.ADD(MTy.wordTy, array, T.MULU(MTy.wordTy, i, intLit wordSzB))
 
   (* return true if the type may be represented by a pointer into the heap *)
     fun isHeapPointer M.T_Any = true
