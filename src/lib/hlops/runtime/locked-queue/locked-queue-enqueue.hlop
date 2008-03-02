@@ -48,4 +48,3 @@ define @locked-queue-enqueue (q : locked_queue, elt : any / exh : exh) : () =
 
   return ()
 ;
-
