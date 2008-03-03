@@ -30,8 +30,6 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
     structure VSet = FB.Set
     structure ABI = Target.ABI
 
-    fun sizeOf ty = ABI.wordSzB (* FIXME *)
-
   (* construct the flow graph for a module *)
     fun makeGraph code = let
 	(* return the outgoing targets of a function *)
