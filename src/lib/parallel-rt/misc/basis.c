@@ -249,14 +249,14 @@ double M_DRand (double lo, double hi)
 Value_t M_NewArray (VProc_t *vp, int nElems, Value_t elt)
 {
 
-  /* We must promote the initial element in the global heap. */
-  Value_t gElt = PromoteObj(vp, elt);
-
   Word_t *obj = (Word_t*)(vp->globNextW);
   obj[-1] = VEC_HDR(nElems);
   for (int i = 0;  i < nElems;  i++) {
-    obj[i] = (Word_t)gElt;
+    obj[i] = (Word_t)elt;
   }
+
+  /* FIXME: should do GC instead */
+  assert(vp->globNextW + WORD_SZB * (nElems+1) < vp->globLimit);
 
   vp->globNextW += WORD_SZB * (nElems+1);
   return PtrToValue(obj);
