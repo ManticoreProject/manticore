@@ -82,6 +82,15 @@ functor Alloc64Fn (
     fun arrayAddrOf {array : T.rexp, i : T.rexp} = 
 	T.ADD(MTy.wordTy, array, T.MULU(MTy.wordTy, i, intLit wordSzB))
 
+  (* returns an expression that computes the length of an array
+   *   WARNING: this function uses the vector header tag to compute the length.
+   *   WARNING: we treat array lengths as 32-bit values even though the header stores up to 61 bits
+   *)
+    fun arrayLength (array) =
+	T.SRL (32, 
+	       T.LOAD (32, T.SUB(MTy.wordTy, array, intLit wordSzB), memory), 
+	       intLit(3))
+
   (* return true if the type may be represented by a pointer into the heap *)
     fun isHeapPointer M.T_Any = true
       | isHeapPointer (M.T_Tuple _) = true

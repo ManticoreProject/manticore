@@ -152,4 +152,11 @@ structure BasisNames =
     val outputImage =	Atom.atom "outputImage"
     val freeImage =	Atom.atom "freeImage"
 
+  (* arrays *)
+    val arrayTyc =      Atom.atom "array"
+    val array =         Atom.atom "array"
+    val aupdate =       Atom.atom "aupdate"
+    val asub =          Atom.atom "asub"
+    val alength =       Atom.atom "alength"
+
   end

@@ -63,7 +63,9 @@ structure StdEnv : sig
 	    (RB.contTyc,        BTy.K_BOXED,    BTy.T_Cont [BTy.T_Any]),
 	    (R.ropeTyc,         BTy.K_BOXED,	BOMBasis.ropeTy),
 	  (* extras *)
-	    (B.imageTyc,	BTy.K_BOXED,	BTy.T_Any)
+	    (B.imageTyc,	BTy.K_BOXED,	BTy.T_Any),
+          (* arrays *)
+	    (B.arrayTyc,        BTy.K_BOXED,    BTy.T_Any)
 	  ]
 
 
@@ -496,7 +498,13 @@ structure StdEnv : sig
                  (* lazy task creation *)
                   (RB.ltcPop,            "ltc-pop",              false),
                   (RB.ltcPush,           "ltc-push",             false),
-		  (RB.ltcIPut,           "ltc-ivar-put",         false)
+		  (RB.ltcIPut,           "ltc-ivar-put",         false),
+
+	         (* arrays *)
+		  (B.array,              "array",                true),
+		  (B.aupdate,            "array-update",         false),
+		  (B.asub,               "array-sub",            true),
+		  (B.alength,            "array-length",         false)
 		]  
 	  fun ins ((x, n, polyResTy), env) = (case H.find (Atom.atom n)
 		of NONE => raise Fail ("cannot find hlop " ^ n)

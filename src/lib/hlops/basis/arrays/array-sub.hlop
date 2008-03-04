@@ -1,0 +1,23 @@
+(* array-sub.hlop
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Subscript an array.
+ *)
+
+#include "array.def"
+#include "assert.def"
+
+define @array-sub (arg : [array, ml_int] / exh : exh) : any =
+  let arr : array = SELECT(0, arg)
+  let wi : ml_int = SELECT(1, arg)
+  let i : int = unwrap(wi)
+
+  let len : int = ArrayLength(arr)
+  do assert(I32Gte(i,0))
+  do assert(I32Lt(i,len))
+
+  let x : any = ArraySub(arr, i)
+  return(x)
+;

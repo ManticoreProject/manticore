@@ -212,6 +212,13 @@ structure Basis : sig
     val outputImage	: AST.var
     val freeImage	: AST.var
 
+  (* arrays *)
+    val arrayTyc        : Types.tycon
+    val array           : AST.var
+    val aupdate         : AST.var
+    val asub            : AST.var
+    val alength         : AST.var
+
   (* environments *)
     val lookupOp : Atom.atom -> Env.val_bind
     val isOp : AST.var -> bool
@@ -655,6 +662,14 @@ structure Basis : sig
     val outputImage = monoVar' (N.outputImage, imageTy ** stringTy --> unitTy)
     val freeImage = monoVar' (N.freeImage, imageTy --> unitTy)
 
+  (* arrays *)
+    val arrayTyc = TyCon.newAbsTyc (N.arrayTyc, 1, false)
+    fun arrayTy ty = AST.ConTy([ty], arrayTyc)
+    val array =	polyVar'(N.array, fn tv => (intTy ** tv) --> arrayTy tv)
+    val aupdate = polyVar'(N.aupdate, fn tv => AST.TupleTy [arrayTy tv, intTy, tv] --> unitTy)
+    val asub = polyVar'(N.asub, fn tv => AST.TupleTy [arrayTy tv, intTy] --> tv)
+    val alength = polyVar'(N.alength, fn tv => arrayTy tv --> intTy)
+
   (* the predefined type environment *)
     val te0 = Env.fromList [
 	    (N.unit,		Env.TyDef(Types.TyScheme([], unitTy))),
@@ -676,7 +691,9 @@ structure Basis : sig
 	    (N.mvar,		Env.TyCon mvarTyc),
 	    (N.event,		Env.TyCon eventTyc),
 	  (* extras *)
-	    (N.image,		Env.TyCon imageTyc)
+	    (N.image,		Env.TyCon imageTyc),
+	  (* arrays *)
+	    (N.arrayTyc,        Env.TyCon arrayTyc)
 	  ]
 
     val ve0 = Env.fromList [
@@ -771,7 +788,12 @@ structure Basis : sig
 	    (N.updateImage3f,	Env.Var updateImage3f),
 	    (N.updateImage3d,	Env.Var updateImage3d),
 	    (N.outputImage,	Env.Var outputImage),
-	    (N.freeImage,	Env.Var freeImage)
+	    (N.freeImage,	Env.Var freeImage),
+	  (* arrays *)
+	    (N.array,           Env.Var array),
+	    (N.aupdate,         Env.Var aupdate),
+	    (N.asub,            Env.Var asub),
+	    (N.alength,         Env.Var alength)
 	  ]
 
     end (* local *)

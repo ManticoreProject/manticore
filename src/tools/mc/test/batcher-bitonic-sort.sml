@@ -1,3 +1,11 @@
+(* batcher-bitonic-sort.sml
+ * 
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Prototype for Batcher's bitonic sort.
+ *)
+
 structure BatcherBitonicSort = 
   struct
 
@@ -37,7 +45,7 @@ structure BatcherBitonicSort =
 	      end
 
     val xs1 = [8,7,6,5,4,3,2,1]
-    val xs1 = [0,1,2,19,10,0,1,6,~1]
+    val xs1 = [0,1,2,19,10,0,1,~1]
     val ys1 = batcherSort(xs1)
 
   end

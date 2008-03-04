@@ -20,6 +20,9 @@ signature ALLOC =
   (* subscript the ith element from the array *)
     val arrayAddrOf : {i : MTy.T.rexp, array : MTy.T.rexp} -> MTy.T.rexp
 
+  (* returns an expression that computes the length of an array *)
+    val arrayLength : MTy.T.rexp -> MTy.T.rexp
+
   (* allocate a list of types, and initialize them *)
     val genAlloc : (CFG.ty * MTy.mlrisc_tree) list -> {ptr : MTy.mlrisc_tree, stms : MTy.T.stm list}
 

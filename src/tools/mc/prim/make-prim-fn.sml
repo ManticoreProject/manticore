@@ -143,6 +143,7 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
                 ("F64ToI32",    mk Prim1 (P.F64ToI32,   f64,            i32)),
 		("ArraySub",	mk Prim2 (P.ArraySub,	(adrTy, aTy),	aTy)),
 		("ArrayUpdate",	mk Prim3 (P.ArrayUpdate,(adrTy, aTy, aTy), aTy)),
+                ("ArrayLength", mk Prim1 (P.ArrayLength,adrTy,          i32)),
 		("I32FetchAndAdd", mk Prim2 (P.I32FetchAndAdd, (i32, i32), i32)),
 		("I64FetchAndAdd", mk Prim2 (P.I32FetchAndAdd, (i64, i64), i64)),
 		("CAS",		mk Prim3 (P.CAS,	(adrTy, aTy, aTy), aTy)),

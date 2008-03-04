@@ -156,6 +156,8 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 			 @ [T.STORE(anyTy, addr, defOf x, ManticoreRegion.memory)]
 			 @ gprBind(i32ty, v, T.LI BE.Spec.trueRep)
                       end
+                    | P.ArrayLength array => 
+		      gprBind(i32ty, v, BE.Alloc.arrayLength(defOf(array)))
 		  (* atomic operations *)
 		    | P.I32FetchAndAdd(addr, x) => let
 			val (r, stms) = BE.AtomicOps.genFetchAndAdd32 {

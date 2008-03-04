@@ -96,6 +96,7 @@ functor PrimTyFn (Ty : sig
 	    | P.I64FetchAndAdd _ => i64Ty
 	    | P.ArraySub (_, x) => Ty.V.typeOf x
 	    | P.ArrayUpdate _ => bTy
+	    | P.ArrayLength _ => i32Ty
 	    | P.CAS(_, x, _) => Ty.V.typeOf x
 	    | P.BCAS _ => bTy
 	    | P.TAS _ => bTy

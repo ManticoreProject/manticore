@@ -80,6 +80,7 @@ structure Prim =
     (* array operations *)
       | ArraySub of 'var * 'var
       | ArrayUpdate of 'var * 'var * 'var
+      | ArrayLength of 'var
     (* atomic operations *)
       | I32FetchAndAdd of 'var * 'var
       | I64FetchAndAdd of 'var * 'var
