@@ -33,8 +33,10 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
   (* construct the flow graph for a module *)
     fun makeGraph code = let
 	(* return the outgoing targets of a function *)
-	  fun toNode (CFG.FUNC{lab, exit, ...}) =
-		(lab, CFG.Label.Set.listItems(CFA.labelsOf exit))
+	  fun toNode (CFG.FUNC{lab, exit, ...}) = (case CFA.labelsOf exit
+                 of NONE => (lab, [])
+                  | SOME ls => (lab, CFG.Label.Set.listItems ls)
+                (* end case *))
           val toNode = fn f =>
              if Controls.get CFGOptControls.debug
                 then let
@@ -90,7 +92,6 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 		        * safe from infinite loops.
 		        *)
 		         val alloc = let
-			       val labs = CFA.labelsOf exit
 			       fun f (lab, sz) = if FB.Set.member(fbSet, lab)
 				     then 0w0
 				     else let
@@ -99,7 +100,10 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 				         Word.max(sz', sz)
 				       end
 			       in
-			         CFG.Label.Set.foldl f 0w0 labs
+			         case CFA.labelsOf exit
+                                  of NONE => 0w0
+                                   | SOME labs => CFG.Label.Set.foldl f 0w0 labs
+                                 (* end case *)
 			       end
 		       (* add in any data allocated in this function *)
 		         val alloc = List.foldl (fn (e, sz) => sz + expAlloc e) alloc body
@@ -113,9 +117,9 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 	   (* add allocation checks as needed *)
 	     fun rewrite (f as CFG.FUNC{lab, entry, body, exit}, fs) = 
                  if FB.Set.member(fbSet, lab) orelse CFA.isEscaping lab
-                  (* now we always insert local allocation checks, but only insert global allocation checks
-		   * when the amount of data allocated is > 0
-		   *)
+                  (* now we always insert local allocation checks, but only insert global 
+                   * allocation checks when the amount of data allocated is > 0
+                   *)
                   then if hcKind = CFG.HCK_Local orelse Word.> (getAlloc lab, 0w0)  
                             then let
 		              val (freeVars, entry') = (case entry (* rename parameters *)

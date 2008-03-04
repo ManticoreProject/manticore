@@ -24,10 +24,10 @@ structure CFACFG : sig
 
     val valueOf : CFG.var -> value
 
-  (* return the set of labels that a control transfer targets; the empty set
-   * is used to represent unknown control flow.
+  (* return the set of labels that a control transfer targets; 
+   * NONE is used to represent unknown control flow.
    *)
-    val labelsOf : CFG.transfer -> CFG.Label.Set.set
+    val labelsOf : CFG.transfer -> CFG.Label.Set.set option
 
   (* return true if the given label escapes *)
     val isEscaping : CFG.label -> bool
@@ -38,7 +38,6 @@ structure CFACFG : sig
 
     val debugFlg = ref false
     val resultsFlg = ref false
-    val oldAnalFlg = ref false
     val () = List.app (fn ctl => ControlRegistry.register CFGOptControls.registry {
 	      ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
 	      envName = NONE
@@ -56,13 +55,6 @@ structure CFACFG : sig
 		  pri = [0, 1],
 		  obscurity = 0,
 		  help = "print results of cfa"
-		},
-	      Controls.control {
-		  ctl = oldAnalFlg,
-		  name = "cfa-old-anal",
-		  pri = [0, 1],
-		  obscurity = 0,
-		  help = "repeatedly analyze blocks at transfers"
 		}
 	    ]
 
@@ -134,15 +126,6 @@ structure CFACFG : sig
 	  in
 	    List.app doFunct code
 	  end
-
-  (* marks on entry labels to avoid infinite loops in the analysis *)
-    local
-      val {getFn, setFn, ...} = CFG.Label.newProp(fn _ => 0)
-    in
-    fun isMarked lab = (getFn lab > 0)
-    fun mark lab = setFn(lab, getFn lab + 1)
-    fun unmark lab = setFn(lab, getFn lab - 1)
-    end
 
   (* test if a new approximate value is different from an old value; this
    * code assumes that values change according to the lattice order.
@@ -281,12 +264,12 @@ structure CFACFG : sig
                 print(concat["valueOf(", CFG.Var.toString x, ") = ",
                              valueToString (valueOf x), "\n"])
           fun printExp e = List.app printValueOf (CFG.lhsOfExp e)
-          and printFunct (CFG.FUNC{lab, entry, body, ...}) = (
+          and printFunc (CFG.FUNC{lab, entry, body, ...}) = (
                 printCallSitesOf lab;
                 List.app printValueOf (CFG.paramsOfConv entry);
                 List.app printExp body)
 	  in
-	    List.app printFunct code
+	    List.app printFunc code
 	  end
 (* -DEBUG *)
 
@@ -343,23 +326,8 @@ structure CFACFG : sig
                 val addInfo' = fn (x, y) => addInfo (x, getValue y)
 	      (* record that a given variable escapes *)
 		fun escape x = escapingValue (getValue x)
-		fun doFunc (f as CFG.FUNC{lab, entry, body, exit}, args) = (
-		      ListPair.appEq addInfo' (CFG.paramsOfConv entry, args);
-                      if !oldAnalFlg
-                        then 
-                          if isMarked lab
-                            then ()
-                            else (
-                              mark lab;
-                              List.app doExp body;
-                              doXfer exit;
-                              unmark lab)
-                        else 
-                          if isMarked lab
-                            then ()
-                            else (
-                              changed := true; 
-                              mark lab))
+		fun doFunc (f as CFG.FUNC{lab, entry, body, exit}, args) =
+		      ListPair.appEq addInfo' (CFG.paramsOfConv entry, args)
 		and doExp (CFG.E_Var(xs, ys)) =
 		      ListPair.appEq addInfo' (xs, ys)
 		  | doExp (CFG.E_Const (x, _, _)) = addInfo(x, TOP)
@@ -412,31 +380,9 @@ structure CFACFG : sig
 			      "\n"
 			    ])
 		      (* end case *))
-	      (* analyse standard functions and continuations *)
-		fun doTopFuncA (f as CFG.FUNC{lab, entry, body, exit}) = let
-		      fun anal () = (
-			    mark lab;
-			    List.app doExp body;
-			    doXfer exit;
-			    unmark lab)
-		      in
-			case entry
-			 of CFG.StdFunc _ => anal()
-			  | CFG.StdCont _ => anal()
-			  | _ => ()
-			(* end case *)
-		      end
-                fun doTopFuncB (f as CFG.FUNC{lab, entry, body, exit}) = let
-                      fun anal () = (
-                            List.app doExp body;
-                            doXfer exit)
-                      in
-			case entry
-			 of CFG.StdFunc _ => anal()
-			  | CFG.StdCont _ => anal()
-			  | _ => if isMarked lab then anal () else ()
-                      end
-                val doTopFunc = if !oldAnalFlg then doTopFuncA else doTopFuncB
+                fun doTopFunc (f as CFG.FUNC{lab, entry, body, exit}) = (
+                      List.app doExp body;
+                      doXfer exit)
 		in
 		  changed := false;
 		  List.app doTopFunc code;
@@ -465,9 +411,9 @@ structure CFACFG : sig
    *)
     fun labelsOf xfer = let
 	  fun labelSet f = (case getValue f
-		 of LABELS s => s
-		  | TOP => LSet.empty
-		  | BOT => LSet.empty	(* because of dead code! *)
+		 of LABELS s => SOME s
+		  | TOP => NONE
+		  | BOT => NONE (* because of dead code *)
 		  | v => raise Fail(concat[
 			"labelsOf: getValue(", CFG.Var.toString f, ") = ", valueToString v
 		      ])
@@ -477,7 +423,7 @@ structure CFACFG : sig
 	     of CFG.StdApply{f, ...} => labelSet f
 	      | CFG.StdThrow{k, ...} => labelSet k
 	      | CFG.Apply{f, ...} => labelSet f
-	      | _ => LSet.addList(LSet.empty, CFGUtil.labelsOfXfer xfer)
+	      | _ => SOME (LSet.addList(LSet.empty, CFGUtil.labelsOfXfer xfer))
 	    (* end case *)
 	  end
 
