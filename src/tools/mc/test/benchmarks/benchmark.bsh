@@ -52,7 +52,7 @@ do
     do   
         for s in $SIZES
 	do
-	    echo "evaluating $PROG_NAME for $p processor[s] at image size $s and maxLeafSize $lfs"
+	    echo "evaluating $PROG_NAME for $p processor[s] at image size $s and maxLeafSize $LFS"
 	    echo -n -e "$p\t\t$s\t\t$LFS\t\t" >> $LOG_FILE_NAME
 	    if [ "$p" -eq "0" ] ; then       
 		echo "$s." | ./$SEQ_PROG_EXE >> $LOG_FILE_NAME
