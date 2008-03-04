@@ -10,6 +10,10 @@ map_range : @rope-map([f,@rope-from-range(lo,hi,gap,lfSize)]) ==>
             @tabD([f,lfSize,lo,hi,step])
             { 1 };
 
+map_dist : @rope-map([f,@dist([n,x])]) ==>
+           @dist([n,f(x)])
+           { 1 };
+
 tab_map : @rope-map([f,@tabD([g,lf,lo,hi,step])]) ==>
           @tabD([@compose(f,g),lf,lo,hi,step])
           { 1 };          

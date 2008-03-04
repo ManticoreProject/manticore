@@ -115,13 +115,6 @@ structure BasisNames =
     val args =		Atom.atom "args"
     val fail =		Atom.atom "fail"
     val todo =          Atom.atom "todo"
-    val plen =          Atom.atom "plen"
-    val prev =          Atom.atom "prev"
-    val pdivide =       Atom.atom "pdivide"
-    val psubseq =       Atom.atom "psubseq"
-    val pappend =       Atom.atom "pappend"
-    val sumP =          Atom.atom "sumP"
-    val reduceP =       Atom.atom "reduceP"
     val rev =           Atom.atom "rev"
     val length =        Atom.atom "length"
     val nth =           Atom.atom "nth"
@@ -135,7 +128,17 @@ structure BasisNames =
     val foldl =         Atom.atom "foldl"
     val foldr =         Atom.atom "foldr"
     val concatWith =    Atom.atom "concatWith"
-    val parrayApp =     Atom.atom "parrayApp"
+
+(* parray operations *)
+    val plen =          Atom.atom "plen"
+    val prev =          Atom.atom "prev"
+    val pdivide =       Atom.atom "pdivide"
+    val psubseq =       Atom.atom "psubseq"
+    val pappend =       Atom.atom "pappend"
+    val sumP =          Atom.atom "sumP"
+    val reduceP =       Atom.atom "reduceP"
+    val papp =          Atom.atom "papp"
+    val dist =          Atom.atom "dist"
 
 (*
     val size =		Atom.atom "size"

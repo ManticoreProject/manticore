@@ -16,13 +16,13 @@ fun parrString a =
         then rev acc
         else build (curr+1, (itos (a!curr)) :: acc)
   in
-      "[" ^ (catw (",", build (0, nil))) ^ "]"
+      "[" ^ (concatWith (",", build (0, nil))) ^ "]"
   end;
 
 (*** Test Code ***)
 
-(* val pc = [| x*x | x in [| 1 to 20 |] |]; *)
-val pc = [| x*x | x in [| 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20 |] |];
+val pc = [| x*x | x in [| 1 to 20 |] |];
+(* val pc = [| x*x | x in [| 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20 |] |]; *)
 
 val s = parrString pc;
 

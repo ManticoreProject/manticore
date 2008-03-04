@@ -467,7 +467,7 @@ structure StdEnv : sig
 		  (B.tab,               "list-tab",		false),
 		  (B.gettimeofday,	"gettimeofday",		false),
 		  (B.readint,	        "read-int",		false),
-		  (B.parrayApp,         "rope-app",		false),
+		  (B.papp,              "rope-app",		false),
                   (B.plen,              "rope-length",		false),
                   (B.prev,              "rope-rev",             false),
                   (B.pdivide,           "rope-divide",          false),
@@ -476,8 +476,8 @@ structure StdEnv : sig
 		  (U.mapP,              "rope-map",		false),
 		  (B.reduceP,           "rope-reduce",		true),
 		  (B.sumP,              "rope-sum",		false),
+		  (B.dist,              "dist",                 false),
 		  (U.tabD,              "tabD",			false),
-
 		  (B.todo,              "todo",			false),
 
                  (* one-toucher futures *)

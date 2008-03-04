@@ -187,13 +187,6 @@ structure Basis : sig
     val args		: AST.var
     val fail		: AST.var
     val todo            : AST.var
-    val plen            : AST.var
-    val prev            : AST.var
-    val pdivide         : AST.var        
-    val psubseq         : AST.var        
-    val pappend         : AST.var
-    val sumP            : AST.var
-    val reduceP         : AST.var
     val rev             : AST.var
     val length          : AST.var
     val nth             : AST.var
@@ -202,7 +195,17 @@ structure Basis : sig
     val compose         : AST.var
     val app             : AST.var
     val tab             : AST.var
-    val parrayApp       : AST.var
+
+ (* parray operations *)
+    val plen            : AST.var
+    val prev            : AST.var
+    val pdivide         : AST.var        
+    val psubseq         : AST.var        
+    val pappend         : AST.var
+    val sumP            : AST.var
+    val reduceP         : AST.var
+    val papp            : AST.var
+    val dist            : AST.var
 
   (* extras *)
     val imageTyc 	: Types.tycon
@@ -593,13 +596,14 @@ structure Basis : sig
     val psubseq =       polyVar'(N.psubseq, fn tv => (AST.TupleTy [(parrayTy tv), intTy, intTy]) --> (parrayTy tv))
     val pappend =       polyVar'(N.pappend, fn tv => ((parrayTy tv) ** (parrayTy tv)) --> (parrayTy tv))
     val sumP =          monoVar'(N.sumP, (parrayTy intTy) --> intTy)
+    val dist =          polyVar'(N.dist, fn tv => ((intTy ** tv) --> (parrayTy tv)))
     val rev =           polyVar'(N.rev, fn tv => listTy tv --> listTy tv)
     val length =        polyVar'(N.length, fn tv => listTy tv --> intTy)
     val nth =           polyVar'(N.nth, fn tv => (listTy tv ** intTy) --> tv)
     val gettimeofday =	monoVar'(N.gettimeofday, unitTy --> doubleTy)
     val readint =	monoVar'(N.readint, unitTy --> intTy)
     val app =           polyVar'(N.app, fn tv => (tv --> unitTy) ** (listTy tv) --> unitTy)
-    val parrayApp =     polyVar'(N.parrayApp, fn tv => (tv --> unitTy) ** (parrayTy tv) --> unitTy)
+    val papp =          polyVar'(N.papp, fn tv => (tv --> unitTy) ** (parrayTy tv) --> unitTy)
     val tab =           polyVar'(N.tab,
 				 fn tv => (AST.TupleTy [intTy --> tv, intTy, intTy, intTy])
                                    --> (listTy tv))
@@ -762,6 +766,7 @@ structure Basis : sig
 	    (N.psubseq,         Env.Var psubseq),
             (N.pappend,         Env.Var pappend),
 	    (N.sumP,            Env.Var sumP),
+	    (N.dist,            Env.Var dist),
 	    (N.rev,             Env.Var rev),
             (N.length,          Env.Var length),
 	    (N.nth,             Env.Var nth),
@@ -771,7 +776,7 @@ structure Basis : sig
 	    (N.map,             Env.Var map),
 	    (N.filter,          Env.Var filter),
             (N.app,             Env.Var app),
-	    (N.parrayApp,       Env.Var parrayApp),
+	    (N.papp,            Env.Var papp),
 	    (N.foldl,           Env.Var foldl),
 	    (N.foldr,           Env.Var foldr),
             (N.tab,             Env.Var tab),
