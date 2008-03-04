@@ -7,12 +7,15 @@
 structure CFACFG : sig
 
     val analyze : CFG.module -> unit
+    val clearInfo : CFG.module -> unit
 
     datatype call_sites
       = Unknown				(* possible unknown call sites *)
       | Known of CFG.Label.Set.set	(* only called from known locations; the labels *)
                                         (* are the entry labels of the functions that call *)
                                         (* the target *)
+
+    val callSitesToString : call_sites -> string
 
     val callSitesOf : CFG.label -> call_sites
 
@@ -22,17 +25,17 @@ structure CFACFG : sig
       | LABELS of CFG.Label.Set.set
       | BOT
 
+    val valueToString : value -> string
+
     val valueOf : CFG.var -> value
+
+  (* return true if the given label escapes *)
+    val isEscaping : CFG.label -> bool
 
   (* return the set of labels that a control transfer targets; 
    * NONE is used to represent unknown control flow.
    *)
     val labelsOf : CFG.transfer -> CFG.Label.Set.set option
-
-  (* return true if the given label escapes *)
-    val isEscaping : CFG.label -> bool
-
-    val clearInfo : CFG.module -> unit
 
   end = struct
 
@@ -102,13 +105,29 @@ structure CFACFG : sig
 	    concat (v2s(v, []))
 	  end
 
+    fun valueFromType ty = (case ty
+           of CFGTy.T_Any => BOT (* or should this be TOP? *)
+            | CFGTy.T_Enum _ => TOP
+            | CFGTy.T_Raw _ => TOP
+            | CFGTy.T_Tuple (true, tys) => TUPLE(List.map (fn _ => TOP) tys)
+            | CFGTy.T_Tuple (false, tys) => TUPLE(List.map valueFromType tys)
+            | CFGTy.T_OpenTuple tys => TUPLE(List.map valueFromType tys)
+            | CFGTy.T_Addr _ => TOP
+            | CFGTy.T_CFun _ => TOP
+            | CFGTy.T_VProc => TOP
+            | CFGTy.T_StdFun _ => LABELS(LSet.empty)
+            | CFGTy.T_StdCont _ => LABELS(LSet.empty)
+            | CFGTy.T_KnownFunc _ => LABELS(LSet.empty)
+            | CFGTy.T_Block _ => LABELS(LSet.empty)
+          (* end case *))
+
   (* property to track call-sites *)
     val {getFn=getSites, clrFn=clrSites, setFn=setSites, ...} =
 	  CFG.Label.newProp (fn _ => Known(LSet.empty))
     val callSitesOf = getSites
   (* property to track the estimated value of variables *)
     val {getFn=getValue, clrFn=clrValue, peekFn=peekValue, setFn=setValue} =
-	  CFG.Var.newProp (fn _ => BOT)
+	  CFG.Var.newProp (fn x => valueFromType (CFG.Var.typeOf x))
     val valueOf = getValue
 
   (* return true if the given label escapes *)
@@ -156,24 +175,20 @@ structure CFACFG : sig
     val changed = ref false
 
   (* depth limit on approximate values *)
-    val maxDepth = 3
+    val maxDepth = 5
 
   (* update the approximate value of a variable by some delta and record if
    * it changed.
    *)
     fun addInfo (x, BOT) = ()
-      | addInfo (x, v) = (case peekValue x
-	   of NONE => (
-		changed := true;
-		setValue(x, v))
-	    | SOME oldV => let
-		val newV = joinValues(oldV, v)
-		in
-		  if changedValue(newV, oldV)
-		    then (changed := true; setValue(x, newV))
-		    else ()
-		end
-	  (* end case *))
+      | addInfo (x, v) = let
+          val oldV = getValue x
+          val newV = joinValues(oldV, v)
+          in
+            if changedValue(newV, oldV)
+              then (changed := true; setValue(x, newV))
+              else ()
+          end
 
   (* if a value escapes (e.g., is passed to an escaping function), we need to mark any
    * labels that it contains as escaping too.
@@ -183,10 +198,11 @@ structure CFACFG : sig
 	 * set its parameters to TOP.
 	 *)
 	  fun doLab lab = if not(isEscaping lab)
-		then (case CFGUtil.funcOfLabel lab
-		   of SOME(CFG.FUNC{entry, ...}) => (
-			setSites (lab, Unknown);
-			List.app (fn x => addInfo(x, TOP)) (CFG.paramsOfConv entry))
+		then (
+                  setSites (lab, Unknown);
+                  case CFGUtil.funcOfLabel lab
+		   of SOME(CFG.FUNC{entry, ...}) => 
+			List.app (fn x => addInfo(x, TOP)) (CFG.paramsOfConv entry)
 		    | _ => ()
 		  (* end case *))
 		else ()
@@ -212,7 +228,7 @@ structure CFACFG : sig
 		in
 		  TUPLE(join(vs1, vs2))
 		end
-	    | kJoin (_, LABELS labs1, LABELS labs2) = LABELS(LSet.union(labs1, labs2))
+	    | kJoin (_, LABELS ls1, LABELS ls2) = LABELS(LSet.union(ls1, ls2))
 	    | kJoin _ = (
 	      (* since the value are going to top, we can't track them so they may be escaping *)
 		escapingValue v1; escapingValue v2; TOP)
@@ -225,7 +241,10 @@ structure CFACFG : sig
 	   of TUPLE vs => let
 		fun sel (0, v::_) = v
 		  | sel (i, v::r) = sel(i-1, r)
-		  | sel (i, []) = BOT (* or should this be TOP? *)
+                  | sel (_, []) = raise Fail(concat[
+                        "type error: select(", Int.toString i, ", ", CFG.Var.toString y,
+                        "); getValue(", CFG.Var.toString y, ") = ", valueToString (TUPLE vs)
+                      ])
 		in
 		  sel (i, vs)
 		end
@@ -240,9 +259,12 @@ structure CFACFG : sig
     fun update (i, y, z) = (case getValue y
 	   of TUPLE vs => let
 		fun upd (0, v::r, ac) = TUPLE ((rev ac) @ (z::r))
-		  | upd (0, [], ac) = TUPLE ((rev ac) @ [z])
 		  | upd (i, v::r, ac) = upd(i-1, r, v::ac)
-		  | upd (i, [], ac) = upd(i-1, [], BOT (* or should this be TOP? *) :: ac)
+                  | upd (_, [], ac) = raise Fail(concat[
+                        "type error: update(", Int.toString i, ", ", CFG.Var.toString y,
+                        ", ", valueToString z,
+                        "); getValue(", CFG.Var.toString y, ") = ", valueToString (TUPLE vs)
+                      ])
 		in
 		  upd (i, vs, [])
 		end
@@ -326,15 +348,11 @@ structure CFACFG : sig
                 val addInfo' = fn (x, y) => addInfo (x, getValue y)
 	      (* record that a given variable escapes *)
 		fun escape x = escapingValue (getValue x)
-		fun doFunc (f as CFG.FUNC{lab, entry, body, exit}, args) =
-		      ListPair.appEq addInfo' (CFG.paramsOfConv entry, args)
-		and doExp (CFG.E_Var(xs, ys)) =
-		      ListPair.appEq addInfo' (xs, ys)
-		  | doExp (CFG.E_Const (x, _, _)) = addInfo(x, TOP)
+		fun doExp (CFG.E_Var(xs, ys)) = ListPair.appEq addInfo' (xs, ys)
 		  | doExp (CFG.E_Cast(x, _, y)) = addInfo(x, getValue y)
+		  | doExp (CFG.E_Const (x, _, _)) = addInfo(x, TOP)
 		  | doExp (CFG.E_Label(x, lab)) = addInfo(x, LABELS(LSet.singleton lab))
-		  | doExp (CFG.E_Select(x, i, y)) =
-		      addInfo(x, select(i, y))
+		  | doExp (CFG.E_Select(x, i, y)) = addInfo(x, select(i, y))
 		  | doExp (CFG.E_Update(i, y, z)) = 
                       (escape z; addInfo(y, update(i, y, getValue z)))
 		  | doExp (CFG.E_AddrOf(x, i, y)) = 
@@ -350,9 +368,9 @@ structure CFACFG : sig
 		  | doExp (CFG.E_CCall(xs, _, args)) = 
                       (List.app escape args; List.app (fn x => addInfo(x, TOP)) xs)
 		  | doExp (CFG.E_HostVProc x) = addInfo(x, TOP)
-		  | doExp (CFG.E_VPLoad(x, _, vp)) = addInfo(x, TOP)
-		  | doExp (CFG.E_VPStore(_, vp, x)) = escape x
-		and doXfer (CFG.StdApply{f, clos, args, ret, exh}) =
+		  | doExp (CFG.E_VPLoad(x, _, _)) = addInfo(x, TOP)
+		  | doExp (CFG.E_VPStore(_, _, z)) = escape z
+		fun doXfer (CFG.StdApply{f, clos, args, ret, exh}) =
 		      doApply (f, clos :: args @ [ret, exh])
 		  | doXfer (CFG.StdThrow{k, clos, args}) = doApply (k, clos :: args)
 		  | doXfer (CFG.Apply{f, clos, args}) = doApply (f, clos :: args)
@@ -380,6 +398,8 @@ structure CFACFG : sig
 			      "\n"
 			    ])
 		      (* end case *))
+		and doFunc (f as CFG.FUNC{lab, entry, body, exit}, args) =
+		      ListPair.appEq addInfo' (CFG.paramsOfConv entry, args)
                 fun doTopFunc (f as CFG.FUNC{lab, entry, body, exit}) = (
                       List.app doExp body;
                       doXfer exit)
