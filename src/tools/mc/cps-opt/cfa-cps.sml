@@ -7,6 +7,7 @@
 structure CFACPS : sig
 
     val analyze : CPS.module -> unit
+    val clearInfo : CPS.module -> unit
 
     datatype call_sites
       = Unknown                         (* possible unknown call sites *)
@@ -30,8 +31,6 @@ structure CFACPS : sig
 
   (* return true if the given lambda variable escapes *)
     val isEscaping : CPS.var -> bool
-
-    val clearInfo : CPS.module -> unit
 
   end = struct
 
@@ -287,7 +286,7 @@ structure CFACPS : sig
            of TUPLE vs => let
                 fun sel (0, v::_) = v
                   | sel (j, v::r) = sel(j-1, r)
-                  | sel (j, []) = raise Fail(concat[
+                  | sel (_, []) = raise Fail(concat[
                         "type error: select(", Int.toString i, ", ", CPS.Var.toString y,
                         "); getValue(", CPS.Var.toString y, ") = ", valueToString (TUPLE vs)
                       ])
@@ -311,7 +310,6 @@ structure CFACPS : sig
                         ", ", valueToString z,
                         "); getValue(", CPS.Var.toString y, ") = ", valueToString (TUPLE vs)
                       ])
-
                 in
                   upd (i, vs, [])
                 end
