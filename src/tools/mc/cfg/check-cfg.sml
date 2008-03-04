@@ -113,8 +113,7 @@ structure CheckCFG : sig
           fun chkEntry (lab, entry) = (case (entry, L.typeOf lab) 
                  of (CFG.StdFunc {clos, args, ret, exh},
                      Ty.T_StdFun {clos = closTy, args = argTys, ret = retTy, exh = exhTy}) => (
-                      (* FIXME: closure types not set by assignLabels *)
-                      checkArgTypes(TyU.match, concat["StdFun ", l2s lab, " clos"],
+                      checkArgTypes(TyU.equal, concat["StdFun ", l2s lab, " clos"],
                                     [closTy], typesOf [clos]);
                       checkArgTypes(TyU.equal, concat["StdFun ", l2s lab, " args"],
                                     argTys, typesOf args);
@@ -125,16 +124,14 @@ structure CheckCFG : sig
                       addVars(VSet.empty, clos::ret::exh::args))
                   | (CFG.StdCont {clos, args},
                      Ty.T_StdCont {clos = closTy, args = argTys}) => (
-                      (* FIXME: closure types not set by assignLabels *)
-                      checkArgTypes(TyU.match, concat["StdCont ", l2s lab, " clos"],
+                      checkArgTypes(TyU.equal, concat["StdCont ", l2s lab, " clos"],
                                     [closTy], typesOf [clos]);
                       checkArgTypes(TyU.equal, concat["StdCont ", l2s lab, " args"],
                                     argTys, typesOf args);
                       addVars(VSet.empty, clos::args))
                   | (CFG.KnownFunc {clos, args}, 
                      Ty.T_KnownFunc {clos = closTy, args = argTys}) => (
-                      (* FIXME: closure types not set by assignLabels *)
-                      checkArgTypes(TyU.match, concat["KnownFunc ", l2s lab, " clos"],
+                      checkArgTypes(TyU.equal, concat["KnownFunc ", l2s lab, " clos"],
                                     [closTy], typesOf [clos]);
                       checkArgTypes(TyU.equal, concat["KnownFunc ", l2s lab, " args"],
                                     argTys, typesOf args);

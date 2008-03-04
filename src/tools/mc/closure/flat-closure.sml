@@ -34,7 +34,8 @@ structure FlatClosure : sig
       | cvtTy (CPSTy.T_VProc) = CFGTy.T_VProc
 
   (* convert a function type to a standard-function type *)
-    and cvtStdFunTy ty = CFG.T_Tuple(false, [CFG.T_Any, cvtStdFunTyAux ty])
+    and cvtStdFunTy ty = 
+          CFG.T_Tuple(false, [CFG.T_Any, cvtStdFunTyAux ty])
     and cvtStdFunTyAux (CPSTy.T_Fun(argTys, [retTy, exhTy])) = CFGTy.T_StdFun{
             clos = CFGTy.T_Any,
             args = List.map cvtTy argTys,
@@ -45,20 +46,32 @@ structure FlatClosure : sig
             clos = CFGTy.T_Any,
             args = List.map cvtTy argTys @ [cvtStdContTy retTy]
           }
-      | cvtStdFunTyAux (CPSTy.T_Any) = CFGTy.T_StdFun{
+      | cvtStdFunTyAux CPSTy.T_Any = CFGTy.T_StdFun{
             clos = CFGTy.T_Any,
             args = [CFGTy.T_Any],
             ret = cvtStdContTy CPSTy.T_Any,
             exh = cvtStdContTy CPSTy.T_Any
           }
-      | cvtStdFunTyAux ty = raise Fail("bogus function type " ^ CPSTyUtil.toString ty)
+      | cvtStdFunTyAux ty = raise Fail(concat[
+          "bogus function type ", CPSTyUtil.toString ty])
 
   (* convert a continuation type to a standard-continuation type *)
     and cvtStdContTy ty = CFG.T_OpenTuple[cvtStdContTyAux ty]
-    and cvtStdContTyAux (CPSTy.T_Fun(argTys, [])) =
-	  CFGTyUtil.stdContTy(CFGTy.T_Any, List.map cvtTy argTys)
-      | cvtStdContTyAux (CPSTy.T_Any) = CFGTyUtil.stdContTy(CFGTy.T_Any, [CFGTy.T_Any])
-      | cvtStdContTyAux ty = raise Fail("bogus continuation type " ^ CPSTyUtil.toString ty)
+    and cvtStdContTyAux (CPSTy.T_Fun(argTys, [])) = let
+          val argTys = List.map cvtTy argTys
+          in
+            CFGTy.T_StdCont{
+                clos=CFGTy.T_OpenTuple[CFGTy.T_StdCont{clos=CFGTy.T_Any, args=argTys}],
+                args=argTys
+            }
+          end
+      | cvtStdContTyAux CPSTy.T_Any = 
+          CFGTy.T_StdCont{
+              clos=CFGTy.T_OpenTuple[CFGTy.T_StdCont{clos=CFGTy.T_Any, args=[CFGTy.T_Any]}],
+              args=[CFGTy.T_Any]
+          }
+      | cvtStdContTyAux ty = raise Fail(concat[
+          "bogus continuation type ", CPSTyUtil.toString ty])
 
   (* assign labels to functions and continuations *)
     local
@@ -66,14 +79,16 @@ structure FlatClosure : sig
             CPS.Var.newProp (fn f => raise Fail(concat["labelOf(", CPS.Var.toString f, ")"]))
     in
     fun assignLabels lambda = let
-          fun assignFB (CPS.FB{f, body, ...}) = let
-                val lab = CFG.Label.new(CPS.Var.nameOf f, cvtStdFunTyAux(CPS.Var.typeOf f))
+          fun assignFB (CPS.FB{f, body, ...}) = let 
+                val fTy = CPS.Var.typeOf f
+                val lab = CFG.Label.new(CPS.Var.nameOf f, cvtStdFunTyAux(fTy))
                 in
                   setFn (f, lab);
                   assignExp body
                 end
           and assignKB (CPS.FB{f, body, ...}) = let
-                val lab = CFG.Label.new(CPS.Var.nameOf f, cvtStdContTyAux(CPS.Var.typeOf f))
+                val fTy = CPS.Var.typeOf f
+                val lab = CFG.Label.new(CPS.Var.nameOf f, cvtStdContTyAux(fTy))
                 in
                   setFn (f, lab);
                   assignExp body
@@ -343,14 +358,16 @@ structure FlatClosure : sig
                              * code-pointer/environment-pointer pair and converting the function's body.
                              *)
                               fun cvtFB (CPS.FB{f, params, rets, body}, (binds, env)) = let
+                                    val (fbEnv, conv, convTy) = 
+                                          stdFunConvention (sharedEnv, params, rets)
                                     val lab = labelOf f
-                                    val (fbEnv, conv) = stdFunConvention (sharedEnv, params, rets)
-                                    val (bindLab, labVar) = bindLabel (labelOf f)
+                                    val () = CFG.Label.setType (lab, convTy)
+                                    val (bindLab, labVar) = bindLabel lab
                                     val (env', f') = newLocal (env, f)
                                     val binds = CFG.mkAlloc(f', [ep, labVar]) :: bindLab :: binds
                                     in
                                     (* convert the function itself *)
-                                      cvtExp (fbEnv, labelOf f, conv, body);
+                                      cvtExp (fbEnv, lab, conv, body);
                                       (binds, env')
                                     end
                               val (binds, env') = List.foldl cvtFB (bindEP::binds, env) fbs
@@ -569,39 +586,65 @@ structure FlatClosure : sig
                 val (env, args) = newLocals (env, args)
                 val (env, ret) = newLocal (env, ret)
                 val (env, exh) = newLocal (env, exh)
+                val clos = envPtrOf env
                 val conv = CFG.StdFunc{
-                        clos = envPtrOf env,
+                        clos = clos,
                         args = args, ret = ret, exh = exh
                       }
+                val convTy = CFGTy.T_StdFun {
+                        clos = CFG.Var.typeOf clos,
+                        args = List.map CFG.Var.typeOf args,
+                        ret = CFG.Var.typeOf ret,
+                        exh = CFG.Var.typeOf exh
+                      }
                 in
-                  (env, conv)
+                  (env, conv, convTy)
                 end
 	    | stdFunConvention (env, args, [ret]) = let
 		val env = envWithFreshEP env
                 val (env, args) = newLocals (env, args)
                 val (env, ret) = newLocal (env, ret)
-                val conv = CFG.KnownFunc{clos = envPtrOf env, args = args @ [ret]}
+                val clos = envPtrOf env
+                val conv = CFG.KnownFunc{clos = clos, args = args @ [ret]}
+                val convTy = CFGTy.T_KnownFunc {
+                        clos = CFG.Var.typeOf clos,
+                        args = List.map CFG.Var.typeOf (args @ [ret])
+                      }
                 in
-                  (env, conv)
+                  (env, conv, convTy)
                 end
         (* convert a bound continuation *)
           and cvtCont (env, CPS.FB{f, params, body, ...}) = let
-                val (binds, clos, lambdaEnv, params') = mkContClosure (env, params, FV.envOfFun f)
-                val conv = CFG.StdCont{clos = envPtrOf lambdaEnv, args = params'}
-                val (bindLab, labVar) = bindLabel (labelOf f)
+                val (binds, clos, lambdaEnv, params') = 
+                      mkContClosure (env, params, FV.envOfFun f)
+                val clos' = envPtrOf lambdaEnv
+                val conv = CFG.StdCont{
+                        clos = clos',
+                        args = params'
+                      }
+                val convTy = CFGTy.T_StdCont{
+                        clos = CFG.Var.typeOf clos',
+                        args = List.map CFG.Var.typeOf params'
+                      }
+                val lab = labelOf f
+                val () = CFG.Label.setType (lab, convTy)
+                val (bindLab, labVar) = bindLabel lab
 		val contEnv = insertVar (lambdaEnv, f, EnclCont)  (* to support recursive conts *)
                 val (env', k') = newLocal (env, f)
                 val binds = CFG.mkAlloc(k', labVar :: clos) :: bindLab :: binds
                 in
-                  cvtExp (contEnv, labelOf f, conv, body);
+                  cvtExp (contEnv, lab, conv, body);
                   (binds, env')
                 end
         (* create the calling convention for the module *)
           fun cvtModLambda (CPS.FB{f, params, rets, body}) = let
                 val ep = CFG.Var.new ("dummyEP", CFGTy.T_Any)
-                val (env, conv) = stdFunConvention (E{ep = ep, env = externEnv}, params, rets)
+                val (env, conv, convTy) = 
+                      stdFunConvention (E{ep = ep, env = externEnv}, params, rets)
+                val lab = labelOf f
+                val () = CFG.Label.setType (lab, convTy)
                 in
-                  cvtExp (env, labelOf f, conv, body)
+                  cvtExp (env, lab, conv, body)
                 end
           in
             FV.analyze m;
