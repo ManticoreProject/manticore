@@ -29,11 +29,11 @@ structure BasisUtils : sig
   (* One must pass in the number of tyvars since there's no way to *)
   (* look inside mkTy to see how many type variables it expects. *)
     fun forallMulti (n, mkTy) = let
-        fun mkTv n = TyVar.new(Atom.atom ("'a" ^ Int.toString n))
-	val tvs = map mkTv (List.tabulate (n, (fn n => n)))
-        in
-          A.TyScheme(tvs, mkTy(map AST.VarTy tvs))
-        end
+	  fun mkTv n = TyVar.new(Atom.atom ("'a" ^ Int.toString n))
+	  val tvs = List.tabulate (n, mkTv)
+	  in
+	    A.TyScheme(tvs, mkTy(List.map AST.VarTy tvs))
+	  end
 
   (* monoVar : string * A.ty -> A.var *)
     fun monoVar (name, ty) = Var.new(name, ty)
