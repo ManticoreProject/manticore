@@ -1,3 +1,8 @@
+(* NOTE: this test crashes because the intListToString function is constructing a string
+ * that is too large for the runtime.  This is a minor issue for our current needs, so don't
+ * worry about passing this regression pre-ICFP'08.
+ *)
+
 fun intListToString ls = let
     fun loop (ls, acc) =  (case ls
         of nil => acc
@@ -8,10 +13,6 @@ fun intListToString ls = let
        "[" ^ loop (ls, "") ^ "]"
     end
 ;
-
-(* NOTE: This implementation works.
- * fun intListToString ls = "[" ^ (concatWith (",", map (itos, ls))) ^ "]";
- *)
 
 fun tabulate (f, lo, hi) = let
     fun loop (i, acc) = if (i < hi)
