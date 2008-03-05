@@ -106,7 +106,8 @@ structure LTCDVal :> sig
 
     and trExp (e) = (case e
         of A.LetExp (A.DValBind (pat, e1), e2) => (case pat
-           of A.VarPat v => expand (v, e1, e2)
+           of A.VarPat v => expand(v, e1, e2)
+	    | A.WildPat ty => expand(Var.new("wild", ty), e1, e2)
 	    | _ => raise Fail "todo"
            (* end case *))	   
 	 | A.LetExp (binding, e) => A.LetExp(trBinding(binding), trExp(e))

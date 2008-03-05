@@ -1,20 +1,13 @@
-(* pmergesort-ip.sml
+(* pmergesort-ip.pml
  * 
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Prototype for an in-place version of parallel mergesort.
+ * Copying version of parallel mergesort using arrays.
  *)
 
-structure PMergesortInPlace =
-  struct
-
-    val aupdate = Array.update
-    val asub = Array.sub
-    val alength = Array.length
-    val array = Array.array
-
     fun len (_, s1, s2) = s2-s1
+;
 
     (* assume that b>a. *)
     fun binarySearch' (arr, a, b, x) = if (b = a)
@@ -27,6 +20,7 @@ structure PMergesortInPlace =
           in
 	      binarySearch'(arr, a, b, x)
           end
+;
 
    (* find j such that arr[j] <= x <= arr[j+1] *)
     fun binarySearch (arr, a, b, x) = let
@@ -34,9 +28,11 @@ structure PMergesortInPlace =
         in
 	    binarySearch' (arr, a, b, x)
         end
+;
 
    (* copy l into d *)
-    fun copy ( d as (dArr, d1, d2), l as (lArr, l1, l2) ) = let
+    fun copy ( (dArr, d1, d2), (lArr, l1, l2) ) = let
+	    val l = (lArr, l1, l2)
 	    fun loop (i) = if (i >= 0)
                 then (aupdate(dArr, d1+i, asub(lArr, l1+i));
 		      loop(i-1))
@@ -44,10 +40,12 @@ structure PMergesortInPlace =
             in
 	       loop(len(l)-1)
 	    end
+;
 
    (* merge sorted arrays arr[p..q] and arr[q..r] into the sorted array dArr[p..r] *)
     fun pMerge (dArr, arr, p, q, r) = let	
-	fun loop ( d as (dArr, d1, d2), l as (lArr, l1, l2), r as (rArr, r1, r2) ) =
+	fun loop (d, l, r) = (case (d, l, r)
+			       of ((dArr, d1, d2), (lArr, l1, l2), (rArr, r1, r2)) =>
             if (len(l) < len(r))
 	       then loop(d, r, l)
 	    else if (len(l) = 0 orelse len(r) = 0)
@@ -62,24 +60,26 @@ structure PMergesortInPlace =
                val lLen' = len(l) div 2
 	       val j = binarySearch(rArr, r1, r2, asub(lArr, lLen' + l1)) 
 	       val rLen' = j - r1
-	       val c1 = loop( (dArr, d1, lLen' + rLen' + d1), (lArr, l1, lLen' + l1), (rArr, r1, j) )
+	       dval c1 = loop( (dArr, d1, lLen' + rLen' + d1), (lArr, l1, lLen' + l1), (rArr, r1, j) )
 	       val c2 = loop( (dArr, lLen' + rLen'+ d1, d2), (lArr, lLen' + l1, l2), (rArr, j, r2) )
 	       in
 		    ()
-	       end
+	       end)
         in
 	   loop( (dArr, p, r), (arr, p, q), (arr, q, r) )
 	end
+;
 
     fun pMergesort' (dArr, dArr', arr, p, r) = if (r-p > 1)
         then let
           val q = (p+r) div 2
-          val _ = pMergesort' (dArr', dArr, arr, p, q)
+          dval _ = pMergesort' (dArr', dArr, arr, p, q)
           val _ = pMergesort' (dArr', dArr, arr, q, r)
           in
              pMerge(dArr, dArr', p, q, r)
           end
         else aupdate(dArr, p, asub(arr, p)) 
+;
 
    (* parallel merge sort *)
     fun pMergesort (arr) = let
@@ -89,32 +89,47 @@ structure PMergesortInPlace =
 	   pMergesort'(dArr, dArr', arr, 0, alength(arr));
 	   dArr
         end
+;
 
-  end
+fun arr2s (elt2s, arr) = let
+    val n = alength(arr)
+    fun loop (i, str) = if (i >= 0)
+        then loop(i-1, elt2s (asub(arr, i))^", "^str)
+        else str
+    in
+        "["^loop(n-1, "")^"]"
+    end
+;
 
-structure PMEx = 
-  struct
+fun genRandomDoubleArr (n) = let
+    val arr : double array = array(n, 0.0:double)
+    fun loop (i) = if (i < n)
+        then (aupdate(arr, i, drand(0.0:double, 100.0:double)); 
+	      loop(i+1))
+        else ()
+    in
+       loop(0);
+       arr
+    end
+;
 
-    open PMergesortInPlace
+(* grab the input size x from stdin, generate a random array of length x, 
+ * and sort it.
+ *)
+fun timeTest () = let
+    val n = readint()
 
-    fun mergeEx () = let
-	val xs = [1,2,10,11,101]
-	val ys = [~2,5,9,100,102]
-	val n1 = 1
-	val nzs = List.tabulate (n1, fn _ => 0)
-	val arr = Array.fromList(nzs@xs@ys)
-	val n = alength(arr)
-	val dArr = Array.array (n, 0)
-        in
-          pMerge(dArr, arr, n1, List.length(xs) + n1, n);
-	  Array.foldr (op ::) [] dArr
-        end
+    val arr = genRandomDoubleArr(n)
 
-    fun sortEx () = let
-	val xs = [20,123,~24,232222,10000,5,3,~100,67,2,1,~12]
-	val arr = pMergesort(Array.fromList(xs))
-	in
-	  Array.foldr (op ::) [] arr	    
-	end    
+(*    val _ = print (arr2s (dtos, arr)^"\n"); *)
 
-  end
+    val b = gettimeofday ()
+    val arr = pMergesort(arr)
+    val e = gettimeofday ()
+    in
+(*        print (arr2s (dtos, arr)^"\n");*)
+        print (dtos (e-b)^"\n")
+    end
+;
+
+timeTest()

@@ -77,11 +77,11 @@ functor Alloc64Fn (
 	  end (* select *)
 
   (* get the address of the ith element of the array
-   *   FIXME: we must treat i as a 32-bit quantity
    *   NOTE: for now we assume boxed array elements.
    *)
     fun arrayAddrOf {array : T.rexp, i : T.rexp} = 
-	T.ADD(MTy.wordTy, array, T.MULU(MTy.wordTy, i, intLit wordSzB))
+	T.ADD(MTy.wordTy, array, 	     
+		    T.MULU(64, T.ZX (64, 32, i), intLit(wordSzB)))
 
   (* returns an expression that computes the length of an array
    *   WARNING: this function uses the vector header tag to compute the length.
