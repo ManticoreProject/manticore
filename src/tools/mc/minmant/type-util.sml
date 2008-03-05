@@ -85,8 +85,12 @@ structure TypeUtil : sig
 		concat["(", toS ty1, ") -> ", toS ty2]
 	    | toS (Ty.FunTy(ty1, ty2)) = concat[toS ty1, " -> ", toS ty2]
 	    | toS (Ty.TupleTy []) = "unit"
-	    | toS (Ty.TupleTy tys) =
-		concat["(", String.concatWith " * " (List.map toS tys), ")"]
+	    | toS (Ty.TupleTy tys) = let
+		fun toS' (ty as Ty.FunTy _) = concat["(", toS ty, ")"]
+		  | toS' ty = toS ty
+		in
+		  concat["(", String.concatWith " * " (List.map toS' tys), ")"]
+		end
 	  in
 	    toS
 	  end
