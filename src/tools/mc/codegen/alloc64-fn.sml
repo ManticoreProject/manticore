@@ -76,7 +76,8 @@ functor Alloc64Fn (
 	    (* esac *)
 	  end (* select *)
 
-  (* subscript the ith element from the array
+  (* get the address of the ith element of the array
+   *   FIXME: we must treat i as a 32-bit quantity
    *   NOTE: for now we assume boxed array elements.
    *)
     fun arrayAddrOf {array : T.rexp, i : T.rexp} = 

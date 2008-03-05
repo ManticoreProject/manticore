@@ -192,6 +192,8 @@ structure Basis : sig
     val nth             : AST.var
     val gettimeofday	: AST.var
     val readint 	: AST.var
+    val readfloat 	: AST.var
+    val drand           : AST.var
     val compose         : AST.var
     val app             : AST.var
     val tab             : AST.var
@@ -602,6 +604,8 @@ structure Basis : sig
     val nth =           polyVar'(N.nth, fn tv => (listTy tv ** intTy) --> tv)
     val gettimeofday =	monoVar'(N.gettimeofday, unitTy --> doubleTy)
     val readint =	monoVar'(N.readint, unitTy --> intTy)
+    val readfloat =	monoVar'(N.readfloat, unitTy --> floatTy)
+    val drand =	        monoVar'(N.drand, (doubleTy ** doubleTy) --> doubleTy)
     val app =           polyVar'(N.app, fn tv => (tv --> unitTy) ** (listTy tv) --> unitTy)
     val papp =          polyVar'(N.papp, fn tv => (tv --> unitTy) ** (parrayTy tv) --> unitTy)
     val tab =           polyVar'(N.tab,
@@ -772,6 +776,8 @@ structure Basis : sig
 	    (N.nth,             Env.Var nth),
 	    (N.gettimeofday,	Env.Var gettimeofday),
 	    (N.readint,	        Env.Var readint),
+	    (N.readfloat,	        Env.Var readfloat),
+	    (N.drand,	        Env.Var drand),
 	    (N.compose,         Env.Var compose),
 	    (N.map,             Env.Var map),
 	    (N.filter,          Env.Var filter),

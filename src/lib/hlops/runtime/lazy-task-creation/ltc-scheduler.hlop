@@ -19,7 +19,8 @@ extern void *ListVProcs (void *) __attribute__((alloc));
 define @rand-int(lo : int, hi : int / exh : exh) : int =
   let lo : ml_double = wrap(I32ToF64(lo))
   let hi : ml_double = wrap(I32ToF64(hi))
-  let r : ml_double = @drand (lo, hi / exh)
+  let arg : [ml_double, ml_double] = alloc(lo, hi)
+  let r : ml_double = @drand (arg / exh)
   let r : double = unwrap(r)
   let r : int = F64ToI32(r)
   return (r)

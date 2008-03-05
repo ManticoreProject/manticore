@@ -217,6 +217,13 @@ int M_ReadInt ()
   return i;
 }
 
+int M_ReadFloat ()
+{
+  float i;
+  scanf ("%f\n", &i);
+  return i;
+}
+
 /* FIXME: eventually, this code should be in assembler to reduce overhead */
 #include "inline-log.h"
 void M_LogEvent0 (void *vp, int evt) 
