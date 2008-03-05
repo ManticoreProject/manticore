@@ -48,9 +48,6 @@ functor HeapTransferFn (
 
   type stms = MTy.T.stm list
 
-  val iTy = Types.szOf (CFGTy.T_Raw CFGTy.T_Int)
-
-  val kfncRegs = Regs.argRegs
   val stdFuncRegs as [closReg, argReg, retReg, exhReg] = 
       [Regs.closReg, Regs.argReg, Regs.retReg, Regs.exhReg]
   val stdContRegs as [closReg, argReg] = 
@@ -81,12 +78,9 @@ functor HeapTransferFn (
 	  (* end case *))
       end (* mlrReg *)
 
-  (* emit a jump by first copying argument registers to parameter registers and then emitting a jump instruction. *)
-  fun genJump (target, ls, params, args) = let
-      val stms = Copy.copy {src=args, dst=params}
-      in
-	  stms @ [T.JMP (target, ls)]
-      end (* genJump *)
+  (* jump to target *)
+  fun genJump (target, labels, paramRegs, argRegs) = 
+      Copy.copy {src=argRegs, dst=paramRegs} @ [T.JMP (target, labels)]
 
   fun genGoto varDefTbl (l, args) = let
       val name = LabelCode.getName l
@@ -96,17 +90,16 @@ functor HeapTransferFn (
          Copy.copy {src=args', dst=params} @ [T.JMP (T.LABEL name, [name])]
       end (* genGoto *)
 
-  fun genStdTransfer varDefTbl (tgtReg, args, argRegs, stdRegs) = let
+  fun genStdTransfer varDefTbl (target, args, argRegs, paramRegs) = let
       val getDefOf = VarDef.getDefOf varDefTbl
-      val stdRegs = map gpReg stdRegs 
+      val paramGPRegs = List.map gpReg paramRegs
       in
-	  {stms=List.concat [
-	   (* copy the arguments into temp registers *)
-	   Copy.copy {src=map getDefOf args, 
-		      dst=map gpReg argRegs},
-	   (* jump to the function with fresh arguments *)
-	   genJump (tgtReg, [] (* FIXME: get these values from CFA *), stdRegs, map mltGPR argRegs)],
-	   liveOut=map toGPR stdRegs}
+	  {stms=List.concat [	   
+	     (* copy arguments to parameters and jump to the target *)
+	     Copy.copy {dst=paramGPRegs, src=List.map getDefOf args},
+	     [T.JMP(target, [])]
+	   ],
+	   liveOut=List.map toGPR paramGPRegs}
       end (* genStdTransfer *)
 
   (* if labExp is a label, put it into the jump directly, ow use a register temp. *)
@@ -123,9 +116,9 @@ functor HeapTransferFn (
       val defOf = VarDef.defOf varDefTbl
       val args = clos :: args
       val argRegs = List.map newReg args
-      val kfncRegs = List.take (kfncRegs, length argRegs)
+      val paramRegs = List.take (Regs.argRegs, List.length argRegs)
       val (lab, mvInstr) = genTransferTarget (defOf f)
-      val {stms, liveOut} = genStdTransfer varDefTbl (lab, args, argRegs, kfncRegs)
+      val {stms, liveOut} = genStdTransfer varDefTbl (lab, args, argRegs, paramRegs)
       in
 	  {stms=mvInstr @ stms, liveOut=liveOut}
       end 
@@ -456,7 +449,7 @@ functor HeapTransferFn (
 	     | M.StdCont{clos, args as [arg]} => ([clos, arg], StdConv stdContRegs)
              | M.StdCont _ => raise Fail "genFuncEntry: ill-formed StdCont"
              | M.KnownFunc{clos, args} => 
-                 (clos :: args, StdConv (List.take (kfncRegs, 1 + length args)))
+                 (clos :: args, StdConv (List.take (Regs.argRegs, 1 + length args)))
 	     | M.Block{args} => (args, Special)
 	    (* end case *))
        (* copy params into param registers *)

@@ -12,7 +12,6 @@ signature TRANSFER = sig
     structure VarDef : VAR_DEF where MTy = MTy
     structure SpillLoc : SPILL_LOC
 
-    val kfncRegs : CellsBasis.cell list
     val stdFuncRegs : CellsBasis.cell list
     val stdContRegs : CellsBasis.cell list
 
