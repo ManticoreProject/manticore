@@ -613,45 +613,44 @@ structure Basis : sig
                                    --> (listTy tv))
 
   (* predefined functions with more than one type variable in their types *)
-    val compose =
-	let fun mkTy ([a,b,c]) = ((a --> b) ** (c --> a)) --> (c --> b)
-	      | mkTy _ = raise Fail "BUG: bad type instantiation for compose"
-	in
+    val compose = let
+	  fun mkTy [a,b,c] = ((a --> b) ** (c --> a)) --> (c --> b)
+	    | mkTy _ = raise Fail "BUG: bad type instantiation for compose"
+	  in
 	    polyVarMulti' (N.compose, 3, mkTy)
-	end
+	  end
 
-    val map =
-        let fun mkTy ([a,b]) = ((a --> b) ** (listTy a)) --> (listTy b)
-	      | mkTy _ = raise Fail "BUG: bad type instantiation for map"
-	in
+    val map = let
+	  fun mkTy [a,b] = ((a --> b) ** (listTy a)) --> (listTy b)
+	    | mkTy _ = raise Fail "BUG: bad type instantiation for map"
+	  in
 	    polyVarMulti' (N.map, 2, mkTy)
-	end
+	  end
 
-    val filter =
-	let fun mkTy [a] = ((a --> boolTy) ** (listTy a)) --> (listTy a)
-	      | mkTy _ = raise Fail "BUG: bad type instantiation for filter"
-	in
-	    polyVarMulti' (N.filter, 1, mkTy)
-	end
+    val filter = let
+	  fun mkTy a = ((a --> boolTy) ** (listTy a)) --> (listTy a)
+	  in
+	    polyVar' (N.filter, mkTy)
+	  end
 
     local 
-	fun mkMkTy fname =
-	    let fun mkTy ([a,b]) = (AST.TupleTy[(a ** b) --> b, b, listTy a]) --> a
-		  | mkTy _ = raise Fail ("BUG: bad type instatiation for " ^ fname)
+      fun mkMkTy fname = let
+	    fun mkTy [a,b] = (AST.TupleTy[(a ** b) --> b, b, listTy a]) --> a
+	      | mkTy _ = raise Fail ("BUG: bad type instatiation for " ^ fname)
 	    in
-		mkTy
+	      mkTy
 	    end
     in
-        val foldl = polyVarMulti' (N.foldl, 2, mkMkTy "foldl")
-	val foldr = polyVarMulti' (N.foldr, 2, mkMkTy "foldr")
+    val foldl = polyVarMulti' (N.foldl, 2, mkMkTy "foldl")
+    val foldr = polyVarMulti' (N.foldr, 2, mkMkTy "foldr")
     end (* local *)
 
-    val reduceP =
-	let fun mkTy ([a,b]) = (AST.TupleTy[(a**a)-->b, b, parrayTy a]) --> b
-	      | mkTy _ = raise Fail "BUG: bad type instantiation for reduceP"
-	in
+    val reduceP = let
+	  fun mkTy [a,b] = (AST.TupleTy[(a**a)-->b, b, parrayTy a]) --> b
+	    | mkTy _ = raise Fail "BUG: bad type instantiation for reduceP"
+	  in
 	    polyVarMulti' (N.reduceP, 2, mkTy)
-	end
+	  end
 
 (*
     val size =		monoVar(N.size, stringTy --> intTy)
