@@ -157,7 +157,7 @@ structure BOMTyUtil : sig
 	      | BTy.T_Addr ty => concat["addr(", toString ty, ")"]
 	      | BTy.T_Fun(paramTys, exhTys, retTys) => let
 		  fun f1 [] = "-;" :: f2 exhTys
-		    | f1 [ty] = toString ty :: ";" :: f2 exhTys
+		    | f1 [ty] = toString ty :: "/" :: f2 exhTys
 		    | f1 (ty::tys) = toString ty :: "," :: f1 tys
 		  and f2 [] = "-) -> (" :: f3 retTys
 		    | f2 [ty] = toString ty :: ") -> (" :: f3 retTys
