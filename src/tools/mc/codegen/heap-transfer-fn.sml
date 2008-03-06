@@ -57,10 +57,10 @@ functor HeapTransferFn (
   fun newLabel s = Label.label s () 
   fun regExp r = T.REG (MTy.wordTy, r)
   fun move (r, e) = T.MV (MTy.wordTy, r, e)
-  fun move' (r, mlt) = 
+  fun moveMLTree (r, mlt) = 
       (case MTy.treeToMLRisc mlt
 	of T.GPR e => move (r, e)
-	 | _ => raise Fail "move'"
+	 | _ => raise Fail "moveMLTree"
       (* end case *))
   fun newReg _ = Cells.newReg ()
   fun newFReg _ = Cells.newFreg ()
@@ -95,9 +95,12 @@ functor HeapTransferFn (
       val paramGPRegs = List.map gpReg paramRegs
       in
 	  {stms=List.concat [	   
-	     (* copy arguments to parameters and jump to the target *)
-	     Copy.copy {dst=paramGPRegs, src=List.map getDefOf args},
-	     [T.JMP(target, [])]
+	    (* copy arguments into temp registers;  this breaks up the live ranges, which 
+	     * should help the register allocator.
+	     *)
+	     Copy.copy {dst=List.map gpReg argRegs, src=List.map getDefOf args},
+	    (* jump to the target *)
+	     genJump(target, [], paramGPRegs, List.map mltGPR argRegs)
 	   ],
 	   liveOut=List.map toGPR paramGPRegs}
       end (* genStdTransfer *)
@@ -108,7 +111,7 @@ functor HeapTransferFn (
 	| _ => let 
 	      val tgtReg = newReg ()
 	      in
-	         (regExp tgtReg, [move (tgtReg, labExp)]) 
+	         (regExp(tgtReg), [move (tgtReg, labExp)]) 
 	      end
        (* end case *))
 
@@ -172,7 +175,6 @@ functor HeapTransferFn (
       then rs
       else removeReg reg rs
     | removeReg _ [] = []
-
 
  (* assign the host vproc pointer to a register *)
   fun hostVProc () = let
@@ -376,7 +378,7 @@ functor HeapTransferFn (
 	     (* allocate a heap object for GC roots *)
 	      initRoots,
 	     (* save the root pointer in the closure register *)
-	      [move' (closReg, rootPtr)],
+	      [moveMLTree (closReg, rootPtr)],
 	     (* put the return address into retReg *)
 	      [move (retReg, T.LABEL retLab)],
 	     (* jump to the garbage collector *)
