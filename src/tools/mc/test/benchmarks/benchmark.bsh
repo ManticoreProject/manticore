@@ -21,7 +21,8 @@ while getopts ":s:p:e:q:l:" options; do
 done
 
 MC="sml @SMLcmdname=mc @SMLload=../../mc"
-SEQFLAGS="-Csequential=true"
+MCFLAGS="-Cclos.convert-style=flatWithCFA"
+SEQFLAGS="$MCFLAGS -Csequential=true"
 
 DATE=$( date +"%F-%H-%M-%S" )
 LOG_FILE_NAME=$PROG_NAME-$DATE.times
@@ -36,7 +37,7 @@ $MC $SEQFLAGS $SEQ_PROG_NAME.pml 2> /dev/null
 mv a.out $SEQ_PROG_EXE
 
 ARCH=$( uname -m )
-OS=$( uname -o )
+OS="blah" #$( uname -o )
 MACHINE=$( uname -n )
 
 echo -e "#ARCH $ARCH OS: $OS MACHINE: $MACHINE" >> $LOG_FILE_NAME
@@ -44,7 +45,7 @@ echo -e "#nProcs\t\tsize\t\tmaxLeafSize\ttime(s)" >> $LOG_FILE_NAME
 
 for LFS in $LEAF_SIZES
 do
-    PARFLAGS="-Cmax-leaf-size=$LFS"
+    PARFLAGS="$MCFLAGS -Cmax-leaf-size=$LFS"
     #compile the parallel version
     $MC $PARFLAGS $PROG_NAME.pml 2> /dev/null
     mv a.out $PROG_NAME
