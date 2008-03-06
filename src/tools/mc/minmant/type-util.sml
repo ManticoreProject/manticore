@@ -170,7 +170,7 @@ structure TypeUtil : sig
 			  (TVMap.insert(s, tv, cmv), cmv :: mvs)
 			end
 		  (* end case *))
-	  val (subst, mvs) = List.foldl f (TVMap.empty, []) tvs
+	  val (subst, mvs) = List.foldr f (TVMap.empty, []) tvs
 	  in
 	    (mvs, applySubst (subst, ty))
 	  end
