@@ -4,38 +4,33 @@
  * All rights reserved.
  *
  * Pop an element from the tail of the deque.
+ *  NOTE: this implementation assumes sequential consistency.
  *)
 
 #include "debugging.def"
 #include "the.def"
 
 define @the-pop-tl(deq : the_deque / exh : exh) : option =
-
   cont none () = return(NONE)
 
   let t : int = SELECT(THE_T_OFF, deq)
-  do if I32Lt(t, 0)
-     then throw none ()
-     else return ()
   do UPDATE(THE_T_OFF, deq, I32Sub(t, 1))
 
   let h : int = SELECT(THE_H_OFF, deq)
 
   do if I32Gt(h, t)
-        then do UPDATE(THE_T_OFF, deq, t)
+        then (* the deque is empty *)
              let mask : bool = @spin-lock-the (deq / exh)
-             do UPDATE(THE_T_OFF, deq, I32Sub(t, 1))
-             let h : int = SELECT(THE_H_OFF, deq)
-             do if I32Gt(h, t)
-                   then do UPDATE(THE_T_OFF, deq, t)
-                        let _ : unit = @spin-unlock-the (deq, mask / exh)
-                        throw none()
-                   else return()
+            (* reset the hd and tl pointers to the bottom of the array *)
+             do UPDATE(THE_H_OFF, deq, 0)
+             do UPDATE(THE_T_OFF, deq, -1)
              let _ : unit = @spin-unlock-the (deq, mask / exh)
-             return()
+             throw none()
          else return ()
 
   let arr : array = SELECT(THE_ARR_OFF, deq)
   let frame : any = @array-sub-ub(arr, t / exh)
+ (* IMPORTANT: a pointer to frame still exists in the array; erase it to avoid a space leak *)
+  do @array-update-ub (arr, t, enum(0) / exh)
   return(SOME(frame))
 ;

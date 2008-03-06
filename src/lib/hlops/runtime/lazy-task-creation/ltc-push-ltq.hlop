@@ -12,7 +12,7 @@
 #include "runtime-offsets.def"
 #include "debugging.def"
 
-define inline @ltc-push-hd(ltq : ir_dequeue, elt : any / exh : exh) : unit =
+define inline @ltc-push-ltq(ltq : ir_dequeue, elt : any / exh : exh) : unit =
   let elt : ir_dequeue_elt = IR_DEQUEUE_NEW(elt)
   let elt : ir_dequeue_elt = promote(elt)
   let mask : bool = @spin-lock-ird (ltq / exh)

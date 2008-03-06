@@ -6,18 +6,18 @@
  * Lazy task creation.
  *)
 
-#include "ir-dequeue.def"
+#include "the.def"
 #include "tags.def"
 
 #ifndef _LTC_DEF_
 #define _LTC_DEF_
 
-typedef ltq_fun = fun (/exh -> ir_dequeue);
+typedef ltq_fun = fun (/exh -> the_deque);
 
 define @ltc-scheduler ( / exh : exh) : ltq_fun;
-define inline  @ltc-pop(arg : unit / exh : exh) : any;
+define inline @ltc-pop(arg : unit / exh : exh) : any;
 define inline @ltc-push(f : fiber_fun / exh : exh) : unit;
 define inline @ltc-ivar-put (arg : [ivar, any] / exh : exh) : unit;
-define inline @ltc-push-hd(ltq : ir_dequeue, elt : any / exh : exh) : unit;
+(*define inline @ltc-push-ltq(ltq : the_deque, elt : any / exh : exh) : unit;*)
 
 #endif /*!  _LTC_DEF_ */

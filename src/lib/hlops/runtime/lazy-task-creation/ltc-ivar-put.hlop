@@ -23,14 +23,14 @@ define inline @ltc-ivar-put (arg : [ivar, any] / exh : exh) : unit =
       @thread-exit(/exh)
  (* obtain the spawn function *)
   let ltqFn : ltq_fun  = @assoc-list-lookup (TAG_LTC, init, fgs / exh)
-  let ltq : ir_dequeue = apply ltqFn (/exh)
+  let ltq : the_deque = apply ltqFn (/exh)
   let blockedThreads : list = @ivar-put-no-sched(arg / exh)
-  fun pushHd (elt : any / exh : exh) : unit =
+  fun push (elt : any / exh : exh) : unit =
       let k' : cont(any) = #1((ivar_blocked_thread)elt)
       cont k (_ : unit) = throw k'(x)
       let k : fiber = (fiber)k
-      let _ : unit = @ltc-push-hd(ltq, k / exh)
+      do @the-push-tl(ltq, k / exh)
       return(UNIT)
-  let arg : [fun (any / exh -> unit), list] = alloc(pushHd, blockedThreads)
+  let arg : [fun (any / exh -> unit), list] = alloc(push, blockedThreads)
   @list-app(arg / exh)
 ;

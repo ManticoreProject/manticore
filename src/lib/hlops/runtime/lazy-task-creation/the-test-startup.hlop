@@ -10,10 +10,80 @@
 
 define @work-stealers-startup ( / exh : exh) : ();
 
-define @test-pops(/ exh: exh) : bool =
+define @test-pop-tl-elts(/ exh: exh) : bool =
   cont fail () = return(FALSE)
 
-  let deq : the_deque = @the(/exh)
+  let deq : the_deque = @the-new(/exh)
+
+  let elt0 : ml_int = wrap(999)
+  do @the-push-tl(deq, elt0/ exh)
+  let elt1 : ml_int = wrap(123)
+  do @the-push-tl(deq, elt1/ exh)
+
+  let eltp1 : option = @the-pop-hd(deq/ exh)
+  let eltp1 : ml_int = VAL_OF(eltp1, ml_int, exh)
+  do if I32Eq(unwrap(eltp1), unwrap(elt0))
+        then return()
+        else throw fail()
+
+  let elt3 : option = @the-pop-tl(deq/ exh)
+  let elt3 : ml_int = VAL_OF(elt3, ml_int, exh)
+
+  do if I32Eq(unwrap(elt1), unwrap(elt3))
+	then return()
+        else throw fail()
+
+  (* do it again *)  
+
+  let deq : the_deque = @the-new(/exh)
+
+  let elt0 : ml_int = wrap(999)
+  do @the-push-tl(deq, elt0/ exh)
+  let elt1 : ml_int = wrap(123)
+  do @the-push-tl(deq, elt1/ exh)
+
+  let eltp1 : option = @the-pop-hd(deq/ exh)
+  let eltp1 : ml_int = VAL_OF(eltp1, ml_int, exh)
+  do if I32Eq(unwrap(eltp1), unwrap(elt0))
+        then return()
+        else throw fail()
+
+  let elt3 : option = @the-pop-tl(deq/ exh)
+  let elt3 : ml_int = VAL_OF(elt3, ml_int, exh)
+
+  do if I32Eq(unwrap(elt1), unwrap(elt3))
+	then return()
+        else throw fail()
+
+  return(TRUE)
+;
+
+define @test-pop-tl-single-elt(/ exh: exh) : bool =
+  cont fail () = return(FALSE)
+
+  let deq : the_deque = @the-new(/exh)
+
+  let elt0 : ml_int = wrap(999)
+  do @the-push-tl(deq, elt0/ exh)
+  let elt1 : ml_int = wrap(123)
+  do @the-push-tl(deq, elt1/ exh)
+
+  let eltp1 : option = @the-pop-hd(deq/ exh)
+  let eltp1 : ml_int = VAL_OF(eltp1, ml_int, exh)
+  do if I32Eq(unwrap(eltp1), unwrap(elt0))
+        then return()
+        else throw fail()
+
+  let elt3 : option = @the-pop-tl(deq/ exh)
+  let elt3 : ml_int = VAL_OF(elt3, ml_int, exh)
+
+  return(I32Eq(unwrap(elt1), unwrap(elt3)))
+;
+
+define @test-pop-hd-single-elt(/ exh: exh) : bool =
+  cont fail () = return(FALSE)
+
+  let deq : the_deque = @the-new(/exh)
 
   let elt0 : ml_int = wrap(999)
   do @the-push-tl(deq, elt0/ exh)
@@ -33,7 +103,7 @@ define @test-pops(/ exh: exh) : bool =
 ;
 
 define @test-pop(/ exh: exh) : bool =
-  let deq : the_deque = @the(/exh)
+  let deq : the_deque = @the-new(/exh)
 
   let elt0 : ml_int = wrap(999)
   do @the-push-tl(deq, elt0/ exh)
@@ -48,7 +118,7 @@ define @test-pop(/ exh: exh) : bool =
 ;
 
 define @test2(/ exh: exh) : bool =
-  let deq : the_deque = @the(/exh)
+  let deq : the_deque = @the-new(/exh)
 
   let elt : ml_int = wrap(999)
   do @the-push-tl(deq, elt/ exh)
@@ -63,7 +133,7 @@ define @test2(/ exh: exh) : bool =
 ;
 
 define @test1(/ exh: exh) : bool =
-  let deq : the_deque = @the(/exh)
+  let deq : the_deque = @the-new(/exh)
 
   let elt0 : ml_int = wrap(999)
   do @the-push-tl(deq, elt0/ exh)
@@ -84,6 +154,8 @@ define @the-test-startup ( /exh : exh) : () =
   do_test(test1)
   do_test(test2)
   do_test(test-pop)
-  do_test(test-pops)
+  do_test(test-pop-hd-single-elt)
+  do_test(test-pop-tl-single-elt)
+  do_test(test-pop-tl-elts)
   return ()
 ;

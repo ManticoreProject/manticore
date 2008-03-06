@@ -3,7 +3,7 @@
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Definitions for a concurrent deque implementation that follows Dijkstra's THE protocol.
+ * Definitions for a concurrent deque implementation that follows the THE protocol used in Cilk-5.
  *)
 
 #ifndef _THE_DEF_
@@ -24,7 +24,7 @@ typedef the_deque = ![int, int, int, array, bool];
 define @the-pop-tl(deq : the_deque / exh : exh) : option;
 define @the-push-tl(deq : the_deque, elt : any / exh : exh) : ();
 define @the-pop-hd(deq : the_deque / exh : exh) : option;
-define @the( / exh : exh) : the_deque;
+define @the-new( / exh : exh) : the_deque;
 
 (* spin lock *)
 #include "../runtime/synch/spin-lock-fn.hlop"

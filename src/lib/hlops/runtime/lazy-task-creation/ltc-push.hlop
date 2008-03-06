@@ -19,11 +19,10 @@ define inline @ltc-push(f : fiber_fun / exh : exh) : unit =
       @ltc-scheduler ( / exh)
  (* obtain the spawn function *)
   let ltqFn : ltq_fun  = @assoc-list-lookup (TAG_LTC, init, fgs / exh)
-  let ltq : ir_dequeue = apply ltqFn (/exh)
+  let ltq : the_deque = apply ltqFn (/exh)
 
   let k : fiber = @fiber(f / exh)
-
  (* push the context onto the lazy task queue head while holding the lock *)
-  let _ : unit = @ltc-push-hd(ltq, k / exh)
+  do @the-push-tl(ltq, k / exh)
   return (UNIT)
 ;

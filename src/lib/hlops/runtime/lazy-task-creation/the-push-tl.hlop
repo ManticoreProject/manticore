@@ -4,6 +4,7 @@
  * All rights reserved.
  *
  * Push an element on the head of the deque.
+ *  NOTE: this implementation assumes sequential consistency.
  *)
 
 #include "the.def"
@@ -14,12 +15,15 @@ define @the-push-tl(deq : the_deque, elt : any / exh : exh) : () =
 
   let t : int = SELECT(THE_T_OFF, deq)
   let t : int = I32Add(t, 1)
-  do UPDATE(THE_T_OFF, deq, t )
-
+ (* the tail pointer grows upwards; check that the pointer is legal *)
   do assert(I32Lt(t, THE_DEQUE_LEN))
   
+ (* put the element into the array *)
   let arr : array = SELECT(THE_ARR_OFF, deq)
   do @array-update-ub(arr, t, elt / exh)
+
+ (* update the tail pointer *)
+  do UPDATE(THE_T_OFF, deq, t)
 
   return()
 ;

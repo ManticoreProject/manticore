@@ -22,18 +22,12 @@ define inline @ltc-pop(arg : unit / exh : exh) : bool =
   let fgs : fgs = @get-fgs (host_vproc / exh)
  (* obtain the spawn function *)
   let ltqFn : ltq_fun = @assoc-list-lookup (TAG_LTC, init, fgs / exh)
-  let ltq : ir_dequeue = apply ltqFn (/exh)
+  let ltq : the_deque = apply ltqFn (/exh)
 
- (* pop an element from the head of the lazy task queue while holding the lock *)
-  let mask : bool = @spin-lock-ird (ltq / exh)
-
-    let kOpt : option = @ird-pop-hd(ltq / exh)
-    let isNonEmpty : bool = case kOpt
+  let kOpt : option = @the-pop-tl(ltq / exh)
+  let isNonEmpty : bool = case kOpt
 			     of NONE => return (FALSE)
 			      | SOME(k : fiber) => return(TRUE)
                             end
-
-  let _ : unit = @spin-unlock-ird (ltq, mask / exh)
-
   return(isNonEmpty)
 ;
