@@ -24,7 +24,7 @@ fun tl (xs) = (case xs
 ;
 
 fun fst (x, _) = x;
-fun snd (_, x) = x;
+fun snd (_, x:bool) = x;
 
 fun compose (f, g) = let
     fun h (x) = f(g(x))
@@ -428,7 +428,6 @@ fun readParticles () = let
 fun fmax (x, y) = if x < y then y else x;
 
 fun debug () = let
-
     val nSteps = 1
     val dt = 1.0
 
@@ -450,7 +449,7 @@ fun debug () = let
 val ex1 = 
     Particle (MassPnt(1.0, (2.0, 3.0)), (~1.0, 2.0)) ::
     Particle (MassPnt(2.0, (2.0, 1.0)), (1.0, 0.0)) ::
-    Particle (MassPnt(2.0, (12.0, 1.0)), (1.0, 3.0)) ::
+    Particle (MassPnt(2.0, (12.0, 1.0)), (1.0, 30000.0)) ::
     nil
 ;
 
@@ -460,4 +459,5 @@ val (ps, i) = naiveStep(1.0, ex1);
 val _ = bhTree( ((1.0, 1.0), (2.0, 2.0)), map(p2m, ps));
 val (ps, directNos, farNos) = oneStep(1.0, ex1);
 
-print ("[barnes hut benchmark] number of interactions: "^itos i^"\n")
+val _ = print ("[barnes hut benchmark] number of interactions(naive): "^itos i^"\n");
+print ("[barnes hut benchmark] number of interactions(bh): "^itos directNos^" "^itos farNos^"\n")
