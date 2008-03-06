@@ -289,7 +289,7 @@ fun boundingBox (mps) = let
 ;
 
 (* Returns the maximal side length of an area. *)
-fun maxSideLen((x1,y1), (x2,y2)) = let
+fun maxSideLen ((x1,y1), (x2,y2)) = let
     val dx = absf(x1-x2)
     val dy = absf(y1-y2)
     in
