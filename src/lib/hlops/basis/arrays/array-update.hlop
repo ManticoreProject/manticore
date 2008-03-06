@@ -15,14 +15,7 @@ define @array-update (arg : [array, ml_int, any] / exh : exh) : unit =
   let i : int = unwrap(wi)
   let x : any = SELECT(2, arg)
 
-  let len : int = ArrayLength(arr)
-  do assert(I32Gte(i,0))
-  do assert(I32Lt(i,len))
+  do @array-update-ub(arr, i, x / exh)
 
- (* since the array is in the global heap, x must also be in the global heap *)
-  let x : any = (any)x
-  let x : any = promote(x)
-
-  let _ : bool  = ArrayUpdate(arr, i, x)
   return(UNIT)
 ;

@@ -18,4 +18,7 @@ define @array-length (arr : array / exh : exh) : ml_int;
 define @array-update (arg : [array, ml_int, any] / exh : exh) : unit;
 define @array-sub (arg : [array, ml_int] / exh : exh) : any;
 
+define inline @array-update-ub (arr : array, i : int, x : any / exh : exh) : ();
+define inline @array-sub-ub (arr : array, i : int / exh : exh) : any;
+
 #endif /* !_ARRAY_DEF_ */

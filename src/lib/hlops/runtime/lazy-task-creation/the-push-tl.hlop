@@ -1,0 +1,25 @@
+(* the-push-tl.hlop
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Push an element on the head of the deque.
+ *)
+
+#include "the.def"
+#include "debugging.def"
+#include "assert.def"
+
+define @the-push-tl(deq : the_deque, elt : any / exh : exh) : () =
+
+  let t : int = SELECT(THE_T_OFF, deq)
+  let t : int = I32Add(t, 1)
+  do UPDATE(THE_T_OFF, deq, t )
+
+  do assert(I32Lt(t, THE_DEQUE_LEN))
+  
+  let arr : array = SELECT(THE_ARR_OFF, deq)
+  do @array-update-ub(arr, t, elt / exh)
+
+  return()
+;

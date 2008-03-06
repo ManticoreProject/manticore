@@ -14,10 +14,6 @@ define @array-sub (arg : [array, ml_int] / exh : exh) : any =
   let wi : ml_int = SELECT(1, arg)
   let i : int = unwrap(wi)
 
-  let len : int = ArrayLength(arr)
-  do assert(I32Gte(i,0))
-  do assert(I32Lt(i,len))
-
-  let x : any = ArraySub(arr, i)
+  let x: any = @array-sub-ub(arr, i / exh)
   return(x)
 ;

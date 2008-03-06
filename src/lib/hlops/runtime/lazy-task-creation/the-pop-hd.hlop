@@ -1,0 +1,34 @@
+(* the-pop-hd.hlop
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Pop an element from the head of the deque.
+ *)
+
+#include "debugging.def"
+#include "the.def"
+
+define @the-pop-hd(deq : the_deque / exh : exh) : option =
+
+  cont none () = return(NONE)
+
+  let mask : bool = @spin-lock-the (deq / exh)
+
+  let h : int = SELECT(THE_H_OFF, deq)
+  let h : int = I32Add(h, 1)
+
+  let t : int = SELECT(THE_T_OFF, deq)
+
+  let eltOpt : option = 
+      if I32Gt(h, t)
+         then return(NONE)
+         else do UPDATE(THE_H_OFF, deq, h)
+              let arr : array = SELECT(THE_ARR_OFF, deq)
+              let frame : any = @array-sub-ub(arr, h / exh)
+              return(SOME(frame))
+
+  let _ : unit = @spin-unlock-the (deq, mask / exh)
+
+  return(eltOpt)
+;

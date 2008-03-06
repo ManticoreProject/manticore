@@ -1,0 +1,41 @@
+(* the-pop-tl.hlop
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Pop an element from the tail of the deque.
+ *)
+
+#include "debugging.def"
+#include "the.def"
+
+define @the-pop-tl(deq : the_deque / exh : exh) : option =
+
+  cont none () = return(NONE)
+
+  let t : int = SELECT(THE_T_OFF, deq)
+  do if I32Lt(t, 0)
+     then throw none ()
+     else return ()
+  do UPDATE(THE_T_OFF, deq, I32Sub(t, 1))
+
+  let h : int = SELECT(THE_H_OFF, deq)
+
+  do if I32Gt(h, t)
+        then do UPDATE(THE_T_OFF, deq, t)
+             let mask : bool = @spin-lock-the (deq / exh)
+             do UPDATE(THE_T_OFF, deq, I32Sub(t, 1))
+             let h : int = SELECT(THE_H_OFF, deq)
+             do if I32Gt(h, t)
+                   then do UPDATE(THE_T_OFF, deq, t)
+                        let _ : unit = @spin-unlock-the (deq, mask / exh)
+                        throw none()
+                   else return()
+             let _ : unit = @spin-unlock-the (deq, mask / exh)
+             return()
+         else return ()
+
+  let arr : array = SELECT(THE_ARR_OFF, deq)
+  let frame : any = @array-sub-ub(arr, t / exh)
+  return(SOME(frame))
+;
