@@ -185,7 +185,7 @@ functor Alloc64Fn (
             end
 	val (globalApReg, globalAp, setGAp, globalApAddr) = let
 	    val r = Cells.newReg()
-	    val MTy.EXP(_, gap) = MTy.EXP (64, VProcOps.genVPLoad' (Spec.ABI.globNextW, vpReg))
+	    val MTy.EXP(_, gap) = MTy.EXP (64, VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.globNextW, vpReg))
             in
 	       (r, T.REG(ty, r), T.MV(ty, r, gap), gap)
             end
@@ -196,7 +196,7 @@ functor Alloc64Fn (
 		:: stms
 
 	(* bump up the allocation pointer *)
-	  val bumpAp = VProcOps.genVPStore' (Spec.ABI.globNextW, vpReg, 
+	  val bumpAp = VProcOps.genVPStore' (MTy.wordTy, Spec.ABI.globNextW, vpReg, 
 			T.ADD (64, globalApAddr, intLit (totalSize+wordSzB)))
 	in
 	    { ptr=mltGPR globalApReg, stms=setVP :: setGAp :: rev (bumpAp :: stms) }
@@ -236,8 +236,8 @@ functor Alloc64Fn (
             in
 	       (T.REG(ty, r), T.MV(ty, r, hostVP))
             end
-      val globalAP = VProcOps.genVPLoad' (Spec.ABI.globNextW, vpReg)
-      val globalLP = VProcOps.genVPLoad' (Spec.ABI.globLimit, vpReg)
+      val globalAP = VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.globNextW, vpReg)
+      val globalLP = VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.globLimit, vpReg)
       in
           {stms=[ setVP ],
 	   allocCheck=T.CMP (ty, T.Basis.LE,

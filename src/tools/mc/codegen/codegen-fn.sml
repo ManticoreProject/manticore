@@ -282,9 +282,9 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	    | gen (M.E_HostVProc lhs) =
 	      bindExp ([lhs], [BE.VProcOps.genHostVP])
 	    | gen (M.E_VPLoad(lhs, offset, vproc)) =
-	      bindExp ([lhs], [BE.VProcOps.genVPLoad varDefTbl (offset, vproc)])
+	      bindExp ([lhs], [BE.VProcOps.genVPLoad varDefTbl (szOf(lhs), offset, vproc)])
 	    | gen (M.E_VPStore(offset, vproc, v)) =
-	      emitStms [BE.VProcOps.genVPStore varDefTbl (offset, vproc, v)]
+	      emitStms [BE.VProcOps.genVPStore varDefTbl (szOf(v), offset, vproc, v)]
          in
 	    gen
          end (* genExp *)

@@ -214,13 +214,13 @@ functor HeapTransferFn (
       val (vpReg, setVP) = hostVProc ()
       (* generate a statement to store a value in the vproc inManticore flag *)
       fun setInManticore value = 
-	  VProcOps.genVPStore' (Spec.ABI.inManticore, vpReg, T.LI value)
+	  VProcOps.genVPStore' (MTy.wordTy, Spec.ABI.inManticore, vpReg, T.LI value)
       (* statements to save/restore the allocation pointer from the vproc *)
       val (saveAP, restoreAP) = if saveAllocationPointer
     	  then let
              val apReg = T.REG(MTy.wordTy, Regs.apReg)
-	     val save = VProcOps.genVPStore' (Spec.ABI.allocPtr, vpReg, apReg)
-	     val restore = T.MV(MTy.wordTy, Regs.apReg,	VProcOps.genVPLoad' (Spec.ABI.allocPtr, vpReg))
+	     val save = VProcOps.genVPStore' (MTy.wordTy, Spec.ABI.allocPtr, vpReg, apReg)
+	     val restore = T.MV(MTy.wordTy, Regs.apReg,	VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.allocPtr, vpReg))
              in
 	        ([save], [restore])
              end
@@ -319,17 +319,17 @@ functor HeapTransferFn (
 	    [setVP],
            (* store dedicated registers and the rootset pointer before entering the C call *)
 	    [ (* by convention we put the rootset pointer into stdEnvPtr *)
-              VProcOps.genVPStore' (Spec.ABI.stdEnvPtr, vpReg, MTy.mlriscTreeToRexp rootPtr),
-	      VProcOps.genVPStore' (Spec.ABI.allocPtr, vpReg, regExp Regs.apReg),
-	      VProcOps.genVPStore' (Spec.ABI.limitPtr, vpReg, regExp Regs.limReg) 
+              VProcOps.genVPStore' (MTy.wordTy, Spec.ABI.stdEnvPtr, vpReg, MTy.mlriscTreeToRexp rootPtr),
+	      VProcOps.genVPStore' (MTy.wordTy, Spec.ABI.allocPtr, vpReg, regExp Regs.apReg),
+	      VProcOps.genVPStore' (MTy.wordTy, Spec.ABI.limitPtr, vpReg, regExp Regs.limReg) 
 	    ],
            (* call the C function *)
             stmsC,	    
 	   (* restore dedicated registers *) 
 	    [
 	     setVP',
-	     move (Regs.apReg, (VProcOps.genVPLoad' (Spec.ABI.allocPtr, vpReg'))),
-	     move (Regs.limReg, (VProcOps.genVPLoad' (Spec.ABI.limitPtr, vpReg')))
+	     move (Regs.apReg, (VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.allocPtr, vpReg'))),
+	     move (Regs.limReg, (VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.limitPtr, vpReg')))
 	    ],
 	   (* jump to the return post-C-call function *)
 	    genJump (T.LABEL retLabel, [retLabel], retParams, resultC @ restoredRoots)
