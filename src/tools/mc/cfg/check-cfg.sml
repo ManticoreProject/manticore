@@ -392,7 +392,7 @@ structure CheckCFG : sig
                       if TyU.equal (V.typeOf x, Ty.boolTy)
                          then ()
                          else (
-                           error ["type mismatch in If condition\n"];
+                           error ["type mismatch in If(", V.toString x, ")\n"];
                            cerror ["  expected  ", TyU.toString Ty.boolTy, "\n"];
                            cerror ["  but found ", TyU.toString (V.typeOf x), "\n"]);
                       chkJump (env, j1, "If/true");
@@ -405,7 +405,7 @@ structure CheckCFG : sig
 			           if (tag <= wt)
                                       then ()
                                       else (
-                                        error ["case out of range for Switch\n"];
+                                        error ["case out of range for Switch(", V.toString x, ")\n"];
                                         cerror ["  expected  ", TyU.toString (V.typeOf x), "\n"];
                                         cerror ["  but found ", Word.toString tag, "\n"]);
                                    chkJump (env, jmp, "Switch/case"))
