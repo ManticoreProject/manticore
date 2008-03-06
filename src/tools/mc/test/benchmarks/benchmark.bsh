@@ -37,10 +37,13 @@ $MC $SEQFLAGS $SEQ_PROG_NAME.pml 2> /dev/null
 mv a.out $SEQ_PROG_EXE
 
 ARCH=$( uname -m )
-OS="blah" #$( uname -o )
+OS=$( uname -s )
 MACHINE=$( uname -n )
+SVN_REVISION=$( svn info | grep Revision )
 
-echo -e "#ARCH $ARCH OS: $OS MACHINE: $MACHINE" >> $LOG_FILE_NAME
+echo -e "#ARCH:\t$ARCH OS:\t$OS MACHINE:\t$MACHINE" >> $LOG_FILE_NAME
+echo -e "#MCFLAGS\t$MCFLAGS" >> $LOG_FILE_NAME
+echo -e "#SVN $SVN_REVISION" >> $LOG_FILE_NAME
 echo -e "#nProcs\t\tsize\t\tmaxLeafSize\ttime(s)" >> $LOG_FILE_NAME 
 
 for LFS in $LEAF_SIZES
