@@ -324,10 +324,10 @@ structure Typechecker : sig
 		  (AST.ApplyExp(e1', e2', resTy), resTy)
 		end
 	    | PT.ConstExp const => let
-		  val (const', ty) = chkLit (loc, const)
-	      in
+		val (const', ty) = chkLit (loc, const)
+		in
 		  (AST.ConstExp const', ty)
-	      end
+		end
 	    | PT.TupleExp es => let
 		  fun chk (e, (es, tys)) = let
 		      val (e', ty) = chkExp(loc, depth, te, ve, e)
