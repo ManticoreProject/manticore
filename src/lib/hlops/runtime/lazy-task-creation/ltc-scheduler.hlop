@@ -17,7 +17,7 @@
 extern void *ListVProcs (void *) __attribute__((alloc));
 
 (* returns a random number within lower and upper bounds *)
-define @rand-int(lo : int, hi : int / exh : exh) : int =
+define inline @rand-int(lo : int, hi : int / exh : exh) : int =
   let lo : ml_double = wrap(I32ToF64(lo))
   let hi : ml_double = wrap(I32ToF64(hi))
   let arg : [ml_double, ml_double] = alloc(lo, hi)
