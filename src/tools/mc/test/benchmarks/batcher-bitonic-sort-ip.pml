@@ -8,30 +8,34 @@
 
 datatype dir = ASCENDING | DESCENDING;
 
+    fun compare (arr, dir, i, j) = let
+        val comp = asub(arr, i) > asub(arr, j)
+        val exchange = (case dir
+			 of ASCENDING => comp
+			  | DESCENDING => not(comp)
+                       (* end case *))
+        in
+	    if exchange
+	        then let
+		    val t = asub(arr, i)
+		    in
+		        aupdate(arr, i, asub(arr, j));
+			aupdate(arr, j, t)
+		    end
+             else ()
+        end
+;
+
+    fun compareLoop (arr, dir, m, lo, i) = if (i < lo+m)
+	then (compare(arr, dir, i, i+m);
+	      compareLoop(arr, dir, m, lo, i+1))
+	else ()
+;
+
     fun bitonicMerge (arr, lo, n, dir) = if (n > 1)
         then let
           val m = n div 2
-	  fun compare (i, j) = let
-              val comp = asub(arr, i) > asub(arr, j)
-              val exchange = (case dir
-                  of ASCENDING => comp
-                   | DESCENDING => not(comp)
-                  (* end case *))
-  	      in
-	         if exchange
-		    then let
-			 val t = asub(arr, i)
-		         in
-			     aupdate(arr, i, asub(arr, j));
-			     aupdate(arr, j, t)
-		         end
-                 else ()
-	      end
-          fun compareLoop (i) = if (i < lo+m)
-              then (compare(i, i+m);
-		    compareLoop(i+1))
-              else ()
-	  val _ = compareLoop(lo)
+	  val _ = compareLoop(arr, dir, m, lo, lo)
 	  dval _ = bitonicMerge(arr, lo,   m, dir);
           in
 	      bitonicMerge(arr, lo+m, m, dir)
