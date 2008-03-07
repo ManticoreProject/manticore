@@ -635,7 +635,7 @@ structure Basis : sig
 
     local 
       fun mkMkTy fname = let
-	    fun mkTy [a,b] = (AST.TupleTy[(a ** b) --> b, b, listTy a]) --> a
+	    fun mkTy [a,b] = (AST.TupleTy[(a ** b) --> b, b, listTy a]) --> b
 	      | mkTy _ = raise Fail ("BUG: bad type instatiation for " ^ fname)
 	    in
 	      mkTy
