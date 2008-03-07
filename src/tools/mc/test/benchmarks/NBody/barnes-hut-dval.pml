@@ -221,10 +221,7 @@ fun bhTree (a, ps) =
        then Node(hd(ps),nil)
        else let
           val (a1, a2, a3, a4) = cut(a)
-	  val xm = (case a1
-		     of (_, (xm, ym)) => xm)
-	  val ym = (case a1
-		     of (_, (xm, ym)) => ym)
+	  val (_, (xm, ym)) = a1
 
 	  fun f (MassPnt (_, (x, y))) = (x < xm, y < ym)
 	  val flags = map (f, ps)
@@ -437,12 +434,16 @@ fun debug () = let
         then let
           val (bhPs, dNos, fNos) = oneStep (dt, ps)
 	  val (naivePs, nNos) = naiveStep(dt, ps)
+          val _ = print ("[barnes hut benchmark] number of interactions(naive): "^itos nNos^"\n");
+          val _ = print ("[barnes hut benchmark] number of interactions(bh): "^itos dNos^" "^itos fNos^"\n");
+
 	  in
              iter(bhPs, i+1, fmax(err, maxErr(naivePs,bhPs)))
           end
         else err
+    val err = iter(ps, 0, 0.0)
     in
-       iter(ps, 0, 0.0)
+       print("Error for BH:"^ftos err^"\n")
     end
 ;
 
@@ -453,11 +454,4 @@ val ex1 =
     nil
 ;
 
-fun p2m (Particle(mp, _)) = mp;
-
-val (ps, i) = naiveStep(1.0, ex1);
-val _ = bhTree( ((1.0, 1.0), (2.0, 2.0)), map(p2m, ps));
-val (ps, directNos, farNos) = oneStep(1.0, ex1);
-
-val _ = print ("[barnes hut benchmark] number of interactions(naive): "^itos i^"\n");
-print ("[barnes hut benchmark] number of interactions(bh): "^itos directNos^" "^itos farNos^"\n")
+debug()
