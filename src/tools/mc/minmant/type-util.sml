@@ -179,8 +179,15 @@ structure TypeUtil : sig
    * the types have the correct kinds for the corresponding type variables.
    *)
     fun apply (Ty.TyScheme([], ty), []) = ty
-      | apply (Ty.TyScheme(tvs, ty), tys) = let
+      | apply (sigma as Ty.TyScheme(tvs, ty), tys) = let
 	  fun ins (tv, ty, s) = TVMap.insert(s, tv, ty)
+	  fun println s = (print s; print "\n")
+          (* val _ = (println "=====> In TypeUtil.apply";
+		   print "scheme: ";
+		   println (schemeToString sigma);
+		   print "types:  ";
+		   println (String.concatWith "," (map toString tys));
+		   print "\n") *)
 	  in
 	    applySubst (ListPair.foldlEq ins TVMap.empty (tvs, tys), ty)
 	  end
