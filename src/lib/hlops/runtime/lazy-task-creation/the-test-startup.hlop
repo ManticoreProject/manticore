@@ -154,6 +154,6 @@ define @the-test-startup ( /exh : exh) : () =
   do_test(test-pop)
   do_test(test-pop-hd-single-elt)
   do_test(test-pop-tl-single-elt)
-  do_test(test-pop-tl-elts)
+  do_test(test-pop-tl-elts) 
   return ()
 ;

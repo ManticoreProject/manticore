@@ -4,7 +4,10 @@
  * All rights reserved.
  *
  * Pop an element from the tail of the deque.
- *  NOTE: this implementation assumes sequential consistency.
+ *  NOTE: the fetch-and-add instructions are not technically necessary, but to remove them
+ *    we would need a read barrier after each of the updates to the tail pointer.  Since
+ *    the fetch-and-add operation is the cheapest operation in our primops that can
+ *    provide such a barrier, I use it of a potentially cheaper instruction.  
  *)
 
 #include "debugging.def"
@@ -14,30 +17,29 @@
 define @the-pop-tl(deq : the_deque / exh : exh) : option =
   cont none () = return(NONE)
 
-  let t : int = SELECT(THE_T_OFF, deq)
-  let t : int = I32Sub(t, 1)
-  do UPDATE(THE_T_OFF, deq, t)
+  let t : int = I32FetchAndAdd(&THE_T_OFF(deq), -1)
+  let t : int = I32Add(t, -1)
 
   let h : int = SELECT(THE_H_OFF, deq)
 
   do if I32Gt(h, t)
         then (* contention with a thief *)
-
+             let t : int = I32FetchAndAdd(&THE_T_OFF(deq), 1)
              let t : int = I32Add(t, 1)
-             do UPDATE(THE_T_OFF, deq, t)
 
              let mask : bool = @spin-lock-the (deq / exh)
+
             (* restart the protocol *)
-             let t : int = I32Sub(t, 1)
-             do UPDATE(THE_T_OFF, deq, t)
+             let t : int = I32FetchAndAdd(&THE_T_OFF(deq), -1)
+             let t : int = I32Add(t, -1)
 
              let h : int = SELECT(THE_H_OFF, deq)
              do if I32Gt(h, t)
 		   then (* the deque is empty *)
+                        let t : int = I32FetchAndAdd(&THE_T_OFF(deq), 1)
                         let t : int = I32Add(t, 1)
-                        do UPDATE(THE_T_OFF, deq, t)
 
-                        let _ : unit = @spin-unlock-the (deq, mask / exh)
+                        let _ : unit = @spin-unlock-the (deq, mask / exh) 
                         throw none()
                    else return()
 
@@ -45,12 +47,13 @@ define @the-pop-tl(deq : the_deque / exh : exh) : option =
              return()
          else return()
 
-  do assert(I32Lt(t, THE_DEQUE_LEN))
-  do assert(I32Gte(t, 0))
+  do assert(I32Lt(SELECT(THE_T_OFF, deq), THE_DEQUE_LEN))
+  do assert(I32Gte(SELECT(THE_T_OFF, deq), 0))
 
   let arr : array = SELECT(THE_ARR_OFF, deq)
   let frame : any = @array-sub-ub(arr, t / exh)
  (* IMPORTANT: a pointer to frame still exists in the array; erase it to avoid a space leak *)
   do @array-update-ub (arr, t, enum(0) / exh)
+
   return(SOME(frame))
 ;

@@ -4,7 +4,6 @@
  * All rights reserved.
  *
  * Push an element on the head of the deque.
- *  NOTE: this implementation assumes sequential consistency.
  *)
 
 #include "the.def"
@@ -23,6 +22,7 @@ define @the-push-tl(deq : the_deque, elt : any / exh : exh) : () =
   do @array-update-ub(arr, t, elt / exh)
 
  (* update the tail pointer *)
+  (* NOTE: need a memory barrier here if stores are not guaranteed to be seen in order. *)
   do UPDATE(THE_T_OFF, deq, I32Add(t, 1))
 
   return()
