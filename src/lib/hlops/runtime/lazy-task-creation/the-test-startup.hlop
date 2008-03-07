@@ -123,8 +123,6 @@ define @test2(/ exh: exh) : bool =
   let elt : ml_int = wrap(999)
   do @the-push-tl(deq, elt/ exh)
   do @the-push-tl(deq, elt/ exh)
-  do @the-push-tl(deq, elt/ exh)
-  let elt2 : option = @the-pop-tl(deq/ exh)
   let elt2 : option = @the-pop-tl(deq/ exh)
   let elt2 : option = @the-pop-tl(deq/ exh)
   let elt2 : option = @the-pop-tl(deq/ exh)

@@ -9,24 +9,44 @@
 
 #include "debugging.def"
 #include "the.def"
+#include "assert.def"
 
 define @the-pop-tl(deq : the_deque / exh : exh) : option =
   cont none () = return(NONE)
 
   let t : int = SELECT(THE_T_OFF, deq)
-  do UPDATE(THE_T_OFF, deq, I32Sub(t, 1))
+  let t : int = I32Sub(t, 1)
+  do UPDATE(THE_T_OFF, deq, t)
 
   let h : int = SELECT(THE_H_OFF, deq)
 
   do if I32Gt(h, t)
-        then (* the deque is empty *)
+        then (* contention with a thief *)
+
+             let t : int = I32Add(t, 1)
+             do UPDATE(THE_T_OFF, deq, t)
+
              let mask : bool = @spin-lock-the (deq / exh)
-            (* reset the hd and tl pointers to the bottom of the array *)
-             do UPDATE(THE_H_OFF, deq, 0)
-             do UPDATE(THE_T_OFF, deq, -1)
+            (* restart the protocol *)
+             let t : int = I32Sub(t, 1)
+             do UPDATE(THE_T_OFF, deq, t)
+
+             let h : int = SELECT(THE_H_OFF, deq)
+             do if I32Gt(h, t)
+		   then (* the deque is empty *)
+                        let t : int = I32Add(t, 1)
+                        do UPDATE(THE_T_OFF, deq, t)
+
+                        let _ : unit = @spin-unlock-the (deq, mask / exh)
+                        throw none()
+                   else return()
+
              let _ : unit = @spin-unlock-the (deq, mask / exh)
-             throw none()
-         else return ()
+             return()
+         else return()
+
+  do assert(I32Lt(t, THE_DEQUE_LEN))
+  do assert(I32Gte(t, 0))
 
   let arr : array = SELECT(THE_ARR_OFF, deq)
   let frame : any = @array-sub-ub(arr, t / exh)

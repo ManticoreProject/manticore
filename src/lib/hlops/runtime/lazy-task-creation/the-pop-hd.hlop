@@ -17,16 +17,24 @@ define @the-pop-hd(deq : the_deque / exh : exh) : option =
   let mask : bool = @spin-lock-the (deq / exh)
 
   let h : int = SELECT(THE_H_OFF, deq)
+  let h : int = I32Add(h, 1)
+  do UPDATE(THE_H_OFF, deq, h)
+
   let t : int = SELECT(THE_T_OFF, deq)
 
   let eltOpt : option = 
       if I32Gt(h, t)
-         then return(NONE)
-         else do UPDATE(THE_H_OFF, deq, I32Add(h, 1))
+         then 
+              let h : int = I32Sub(h, 1)
+              do UPDATE(THE_H_OFF, deq, h)
+
+              return(NONE)
+         else 
               let arr : array = SELECT(THE_ARR_OFF, deq)
-              let frame : any = @array-sub-ub(arr, h / exh)
+              let frame : any = @array-sub-ub(arr, I32Sub(h, 1) / exh)
              (* IMPORTANT: a pointer to frame still exists in the array; erase it to avoid a space leak *)
-              do @array-update-ub (arr, h, enum(0) / exh)
+              do @array-update-ub (arr, I32Sub(h, 1), enum(0) / exh)
+
               return(SOME(frame))
 
   let _ : unit = @spin-unlock-the (deq, mask / exh)
