@@ -50,9 +50,10 @@
         then let
           val m = n div 2
 	  val _ = sortingNetwork(arr, dir, 0, lo, m, lg(m))
-	  dval _ = bitonicMerge(arr, lo,   m, dir);
+	  dval _ = bitonicMerge(arr, lo,   m, dir)
+          val _ = bitonicMerge(arr, lo+m, m, dir)
           in
-	      bitonicMerge(arr, lo+m, m, dir)
+	      ()
           end
         else ()
 ;
