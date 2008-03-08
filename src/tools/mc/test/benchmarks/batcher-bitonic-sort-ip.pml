@@ -6,7 +6,17 @@
  * In-place version of Batcher's bitonic sort.
  *)
 
-datatype dir = ASCENDING | DESCENDING;
+    fun lg (n) = let
+	fun loop (x, y) = if (x = 1)
+            then y
+            else loop(x div 2, y + 1)
+        in
+           loop(n, 0)
+        end
+;
+
+    datatype dir = ASCENDING | DESCENDING
+;
 
     fun compare (arr, dir, i, j) = let
         val comp = asub(arr, i) > asub(arr, j)
@@ -26,16 +36,20 @@ datatype dir = ASCENDING | DESCENDING;
         end
 ;
 
-    fun compareLoop (arr, dir, m, lo, i) = if (i < lo+m)
-	then (compare(arr, dir, i, i+m);
-	      compareLoop(arr, dir, m, lo, i+1))
-	else ()
+    fun sortingNetwork (arr, dir, i, lo, m, lvl) = if (lvl > 0)
+        then let
+          dval _ = sortingNetwork(arr, dir, 2*i, lo, m, lvl-1)
+          val _ = sortingNetwork(arr, dir, 2*i+1, lo, m, lvl-1)
+          in
+             ()
+          end
+        else compare(arr, dir, i+lo, i+lo+m)
 ;
 
     fun bitonicMerge (arr, lo, n, dir) = if (n > 1)
         then let
           val m = n div 2
-	  val _ = compareLoop(arr, dir, m, lo, lo)
+	  val _ = sortingNetwork(arr, dir, 0, lo, m, lg(m))
 	  dval _ = bitonicMerge(arr, lo,   m, dir);
           in
 	      bitonicMerge(arr, lo+m, m, dir)

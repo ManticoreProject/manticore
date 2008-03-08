@@ -5,7 +5,7 @@
  *
  * Prototype for an in-place version of Batcher's bitonic sort.
  *)
-oooooooooooooooooooooooooooooooooooo
+
 structure BatcherBitonicSortInPlace = 
   struct
 
@@ -16,32 +16,48 @@ structure BatcherBitonicSortInPlace =
 
     datatype dir = ASCENDING | DESCENDING
 
+    fun compare (arr, dir, i, j) = let
+        val comp = asub(arr, i) > asub(arr, j)
+        val exchange = (case dir
+			 of ASCENDING => comp
+			  | DESCENDING => not(comp)
+                       (* end case *))
+        in
+	    if exchange
+	        then let
+		    val t = asub(arr, i)
+		    in
+		        aupdate(arr, i, asub(arr, j));
+			aupdate(arr, j, t)
+		    end
+             else ()
+        end
+
+    fun lg (n) = let
+	fun loop (x, y) = if (x = 1)
+            then y
+            else loop(x div 2, y + 1)
+        in
+           loop(n, 0)
+        end
+
+    fun sortingNetwork (arr, dir, i, lo, m, lvl) = if (lvl > 0)
+        then let
+          val _ = sortingNetwork(arr, dir, 2*i, lo, m, lvl-1)
+          val _ = sortingNetwork(arr, dir, 2*i+1, lo, m, lvl-1)
+          in
+             ()
+          end
+        else compare(arr, dir, i+lo, i+lo+m)
+
     fun bitonicMerge (arr, lo, n, dir) = if (n > 1)
         then let
           val m = n div 2
-	  fun compare (i, j) = let
-              val comp = asub(arr, i) > asub(arr, j)
-              val exchange = if (dir=ASCENDING)
-                  then comp
-                  else not(comp)
-  	      in
-	         if exchange
-		    then let
-			 val t = asub(arr, i)
-		         in
-			     aupdate(arr, i, asub(arr, j));
-			     aupdate(arr, j, t)
-		         end
-                 else ()
-	      end
-          fun compareLoop (i) = if (i < lo+m)
-              then (compare(i, i+m);
-		    compareLoop(i+1))
-              else ()
+	  val _ = sortingNetwork(arr, dir, 0, lo, m, lg(m))
+	  val _ = bitonicMerge(arr, lo,   m, dir)
+	  val _ = bitonicMerge(arr, lo+m, m, dir)
           in
-              compareLoop(lo);
-	      bitonicMerge(arr, lo,   m, dir);
-	      bitonicMerge(arr, lo+m, m, dir)
+	      ()
           end
         else ()
 
