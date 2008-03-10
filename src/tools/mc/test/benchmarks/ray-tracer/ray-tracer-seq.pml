@@ -141,15 +141,14 @@ val greensurf = (Ambient (0.0,0.1,0.0)) :: (Diffuse (0.0,0.3,0.0)) ::
 	     (Specular (0.4,0.8,0.4)) :: nil;
 val bluesurf = (Ambient (0.0,0.0,0.1)) :: (Diffuse (0.0,0.0,0.3)) ::
 	    (Specular (0.4,0.4,0.8)) :: nil;
-
-(*%%%%%%
-%% interesting transmission test
-% testspheres = ((Sphere (0.,0.,0.) 2. redsurf)::
-% 	       (Sphere ((-2.1),(-2.),(-2.2)) .5 bluesurf)::
-% 	       (Sphere ((-2.8),3.5,(-1.8)) 1.7 greensurf)::nil);
-% testlights = (Directional (1.,(-1.),1.) (1.,1.,1.))::
-% 	     (Point ((-3.),(-3.),(-3.)) (1.,1.,1.))::nil;
-%%%%%%%
+(*
+val testspheres = ((Sphere ((0.0,0.0,0.0), 2.0, redsurf))::
+ 	       (Sphere (((~2.1),(~2.0),(~2.2)), 0.5, bluesurf))::
+ 	       (Sphere (((~2.8),3.5,(~1.8)), 1.7, greensurf)::nil));
+val testlights = (Directional ((1.0,(~1.0),1.0), (1.0,1.0,1.0)))::
+ 	     (Point (((~3.0),(~3.0),(~3.0)), (1.0,1.0,1.0))::nil);
+*)
+(*%%%%%
 %% trivial transmission test
 % testspheres = ((Sphere ((-1.5),0.,0.) 3. redsurf)::
 % 	       (Sphere (1.5, 7.5, 0.) 4. greensurf)::nil);
@@ -181,6 +180,7 @@ val testspheres =
 val testlights = Point((4.0,3.0,2.0), (0.288675,0.288675,0.288675)) ::
               Point((1.0, ~4.0,4.0), (0.288675,0.288675,0.288675)) ::
               Point((~3.0,1.0,5.0), (0.288675,0.288675,0.288675)) :: nil;
+
 val lookfrom = (2.1, 1.3, 1.7);
 val background = (0.078, 0.361, 0.753);
 val world = testspheres;
@@ -226,7 +226,6 @@ fun spherenormal (pos, sp) = let
 % compute camera parameters
 *)
 fun dtor x = x * pi / 180.0;
-fun tand x = x;
 fun camparams (lookfrom, lookat, vup, fov, winsize) = let
     val initfirstray = vecsub lookat lookfrom;   (* pre-normalized! *)
     val (lookdir, dist) = vecnorm initfirstray;
@@ -450,40 +449,18 @@ and shadowed (pos, dir, lcolor) = let (* need to offset just a bit *)
 (*
 % "main" routine
 *)
-(* parallel version *)
+(* parallel version
 fun ray winsize = let
-    val img = newImage (winsize, winsize)
     val lights = testlights;
     val (firstray, scrnx, scrny) = camparams (lookfrom, lookat, vup, fov, winsize);
     fun f (i, j) = tracepixel (world, lights, i, j, firstray, scrnx, scrny);
-    val b = gettimeofday ();
-    val scene = [| [| f(i, j) | j in [| 0 to winsize-1 |] |] | i in [| 0 to winsize-1 |] |]
-    val e = gettimeofday ();
-    fun output i = if i < winsize
-        then let
-          fun loop j = if j < winsize
-              then let
-                val (r, g, b) = (scene!i)!j
-                in
-                   updateImage3d (img, i, j, r, g, b); 
-                   loop (j+1)
-                end
-              else output (i+1)
-          in
-             loop 0
-          end
-        else ()
-
-    in      
-      output 0;
-      outputImage(img, "out.ppm"); 
-      freeImage img;
-      print (dtos (e-b)^"\n")
+    in
+      [| [| f(i, j) | j in [| 0 to winsize-1 |] |] | i in [| 0 to winsize-1 |] |]
     end;
-
+*)
 
 (* sequential version of the code *)
-(*fun ray winsize = let
+fun ray winsize = let
     val lights = testlights;
     val (firstray, scrnx, scrny) = camparams (lookfrom, lookat, vup, fov, winsize);
     val img = newImage (winsize, winsize)
@@ -504,7 +481,34 @@ fun ray winsize = let
     in
       lp 0; outputImage(img, "out.ppm"); freeImage img
     end;
-*)
+
+(* sequential version of the code that builds the image first as a list *)
+fun ray' winsize = let
+    val lights = testlights;
+    val (firstray, scrnx, scrny) = camparams (lookfrom, lookat, vup, fov, winsize);
+    val img = newImage (winsize, winsize)
+    fun f (i, j) = tracepixel (world, lights, i, j, firstray, scrnx, scrny)
+    fun lp (i, is) = if (i < winsize)
+	  then let
+	    fun lp' (j, is) = if (j < winsize)
+		  then lp'(j+1, (i,j,f(i,j)) :: is)
+		  else is
+	    in
+	      lp(i+1, lp' (0, is))
+	    end
+	  else is
+    val b = gettimeofday ();
+    val vs = lp (0, nil)
+    val e = gettimeofday ();
+    fun output vs = (case vs
+        of nil => ()
+	 | (i,j,(r,g,b)) :: vs => (updateImage3d (img, i, j, r, g, b); output vs)
+        (* end case *))
+    in
+      output vs; outputImage(img, "out.ppm"); freeImage img;
+      print (dtos (e-b)^"\n")
+    end;
+
 (*
 fun run (outFile, sz) = let
       val outS = BinIO.openOut outFile
@@ -528,4 +532,4 @@ fun run (outFile, sz) = let
 run ("out.ppm", 1024)
 *)
 
-ray (readint ())
+ray' (readint ())
