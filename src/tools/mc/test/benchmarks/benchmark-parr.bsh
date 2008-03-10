@@ -1,15 +1,15 @@
 #!/bin/bash
 
-GOTO_SEQ_SIZES=""
+LEAF_SIZES="4"
 
-usage="usage: benchmark.bsh -e prog_name -q sequential_prog_name -s size ... -p num_procs ... -l seq_sz ..."
+usage="usage: benchmark-parr.bsh -e prog_name -q sequential_prog_name -s size ... -p num_procs ... -l max_leaf_sze ..."
 SEQ_PROG_NAME=""
 while getopts ":s:p:e:q:l:" options; do
   case $options in
     s ) SIZES="$SIZES $OPTARG";;
     p ) PROCS="$PROCS $OPTARG";;
     e ) PROG_NAME="$OPTARG";;
-    l ) GOTO_SEQ_SIZES="$GOTO_SEQ_SIZES $OPTARG";;
+    l ) LEAF_SIZES="$LEAF_SIZES $OPTARG";;
     q ) SEQ_PROG_NAME="$OPTARG";;
     h ) echo $usage;;
     \? ) echo $usage
@@ -46,28 +46,25 @@ echo -e "#MCFLAGS\t$MCFLAGS" >> $LOG_FILE_NAME
 echo -e "#SVN $SVN_REVISION" >> $LOG_FILE_NAME
 echo -e "#nProcs\t\tsize\t\tmaxLeafSize\ttime(s)" >> $LOG_FILE_NAME 
 
-PARFLAGS="$MCFLAGS"
-#run the macro expander on the source program
-m4 $PROG_NAME/$PROG_NAME.pml > $PROG_NAME.pml
-#compile the parallel version
-$MC $PARFLAGS $PROG_NAME.pml 2> /dev/null
-mv a.out $PROG_NAME
-
-for seq_sz in $GOTO_SEQ_SIZES
+for LFS in $LEAF_SIZES
 do
+    PARFLAGS="$MCFLAGS -Cmax-leaf-size=$LFS"
+    #compile the parallel version
+    $MC $PARFLAGS $PROG_NAME.pml 2> /dev/null
+    mv a.out $PROG_NAME
     for p in $PROCS
     do   
         for s in $SIZES
 	do
-	    echo "evaluating $PROG_NAME for $p processor[s] at image size $s and sequential size $seq_sz"
-	    echo -n -e "$p\t\t$s\t\t$seq_sz\t\t" >> $LOG_FILE_NAME
+	    echo "evaluating $PROG_NAME for $p processor[s] at image size $s and maxLeafSize $LFS"
+	    echo -n -e "$p\t\t$s\t\t$LFS\t\t" >> $LOG_FILE_NAME
 	    if [ "$p" -eq "0" ] ; then       
-		echo "$seq_sz $s." | ./$SEQ_PROG_EXE >> $LOG_FILE_NAME
+		echo "$s." | ./$SEQ_PROG_EXE >> $LOG_FILE_NAME
 	    else
-		echo "$seq_sz $s." | ./$PROG_NAME -p $p >> $LOG_FILE_NAME
+		echo "$s." | ./$PROG_NAME -p $p >> $LOG_FILE_NAME
 	    fi
 	done
     done
 done
 
-rm -f *.ppm *.s $PROG_NAME $SEQ_PROG_EXE $PROG_NAME.pml
+rm -f *.ppm *.s $PROG_NAME $SEQ_PROG_EXE
