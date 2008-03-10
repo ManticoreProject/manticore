@@ -40,6 +40,8 @@
 divert(-1)
 changequote({,})   #change quotes to curly braces 
 divert(0)
+define({_SEQ_SZ_LG_}, {10})dnl
+define({_SEQ_SZ_}, {1024})dnl
 define({_SORTING_NETWORK_}, {
   define({_SORTING_NETWORK_FN_}, {$1})dnl
   define({_VAL_}, {$2})dnl
@@ -58,7 +60,7 @@ define({_SORTING_NETWORK_}, {
 ;
 })dnl
 _SORTING_NETWORK_({seqSortingNetwork}, {val}, {false}, {seqSortingNetwork})
-_SORTING_NETWORK_({sortingNetwork}, {dval}, {lvl>5}, {seqSortingNetwork})
+_SORTING_NETWORK_({sortingNetwork}, {dval}, {(lg(m)-lvl) < _SEQ_SZ_LG_}, {seqSortingNetwork})
 
 define({_BITONIC_MERGE_}, {
   define({_BITONIC_MERGE_FN_}, {$1})dnl
@@ -80,7 +82,7 @@ define({_BITONIC_MERGE_}, {
 ;
 })dnl
 _BITONIC_MERGE_({seqBitonicMerge}, {val}, {false}, {seqBitonicMerge})
-_BITONIC_MERGE_({bitonicMerge}, {dval}, {true}, {seqBitonicMerge})
+_BITONIC_MERGE_({bitonicMerge}, {dval}, {(n < _SEQ_SZ_)}, {seqBitonicMerge})
 
 define({_BATCHER_SORT_}, {
   define({_BATCHER_SORT_FN_}, {$1})dnl
@@ -101,7 +103,7 @@ define({_BATCHER_SORT_}, {
 ;
 })dnl
 _BATCHER_SORT_({seqBatcherSort}, {val}, {false}, {seqBatcherSort})
-_BATCHER_SORT_({batcherSort}, {dval}, {true}, {seqBatcherSort})
+_BATCHER_SORT_({batcherSort}, {dval}, {(n < _SEQ_SZ_)}, {seqBatcherSort})
 
 fun pow2 (n) = if (n=0) then 1 else 2 * pow2(n-1);
 
@@ -136,13 +138,17 @@ fun timeTest () = let
 
     val arr = genRandomDoubleArr(n)
 
-(*    val _ = print (arr2s (dtos, arr)^"\n"); *)
+ifdef({DEBUG}, {
+    val _ = print (arr2s (dtos, arr)^"\n"); 
+})dnl
 
     val b = gettimeofday ()
     val _ = batcherSort(arr, 0, alength(arr), ASCENDING)
     val e = gettimeofday ()
     in
-(*        print (arr2s (dtos, arr)^"\n");*)
+ifdef({DEBUG}, {
+        print (arr2s (dtos, arr)^"\n");
+})dnl
         print (dtos (e-b)^"\n")
     end
 ;

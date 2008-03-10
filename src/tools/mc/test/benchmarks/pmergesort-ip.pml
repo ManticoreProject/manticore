@@ -121,13 +121,13 @@ fun timeTest () = let
 
     val arr = genRandomDoubleArr(n)
 
-(*    val _ = print (arr2s (dtos, arr)^"\n"); *)
+    val _ = print (arr2s (dtos, arr)^"\n"); 
 
     val b = gettimeofday ()
     val arr = pMergesort(arr)
     val e = gettimeofday ()
     in
-(*        print (arr2s (dtos, arr)^"\n");*)
+        print (arr2s (dtos, arr)^"\n");
         print (dtos (e-b)^"\n")
     end
 ;
