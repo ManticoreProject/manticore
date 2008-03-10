@@ -50,7 +50,7 @@ structure TicTacToe = struct
 
   val rows  = [[0,1,2],[3,4,5],[6,7,8]]
   val cols  = [[0,3,6],[1,4,7],[2,5,8]]
-  val diags = [[0,4,7],[2,4,6]]
+  val diags = [[0,4,8],[2,4,6]]
 
   (* hasTrip : board * player -> int list -> bool *)
   fun hasTrip (b, p) t = List.all (playerOccupies p b) t
@@ -62,7 +62,7 @@ structure TicTacToe = struct
   fun hasCol (b, p) = List.exists (hasTrip (b, p)) cols
 
   (* hasDiag : board * player -> bool *)
-  fun hasDiag (b, p) = List.exists (hasTrip (b, p)) rows
+  fun hasDiag (b, p) = List.exists (hasTrip (b, p)) diags
 
   (* isFull : board -> bool *)
   fun isFull b = List.all isSome b
@@ -75,7 +75,7 @@ structure TicTacToe = struct
 
   (* isCat : board -> bool *)
   fun isCat b = isFull b andalso not (isWinFor b X) 
-                      (* andalso not (isWinFor b O) // X moves last *)
+                         andalso not (isWinFor b O) (* X moves last *)
 
   (* score : board -> int *)
   (* -1 if O wins, 1 if X wins, 0 otherwise. *)
@@ -132,6 +132,7 @@ structure TicTacToe = struct
   (* listmax : int list -> int *)
   val listmin = listExtreme (fn (a:int, b) => if (a<b) then a else b)
 
+  (*
   (* minimaxVal : board gtree * player -> int *)
   fun minimaxVal (t : board gtree, p : player) : int =
         (case t
@@ -154,6 +155,7 @@ structure TicTacToe = struct
 	  print " nodes in the full minimax tree.\n";
 	  map (fn t => (top t, minimaxVal(t,X))) ts'
       end
+  *)
 
   (* I think you actually want to build the tree and score it at the same time. *)
   (* p is the player to move *)
@@ -173,6 +175,17 @@ structure TicTacToe = struct
 		   | O => Node ((b, listmin scores), trees)
 	    end
 
+  (* DEBUGGING *)	
+
+  fun addMap ([], ns) = ns
+    | addMap (ns, []) = ns
+    | addMap (n::ns, m::ms) = (n+m)::addMap(ns,ms)
+
+  fun pathLengths (t : 'a gtree) : int list =
+    (case t
+      of Leaf _ => [1]
+       | Node (_, ts) => 0 :: (foldl addMap [] (map pathLengths ts)))
+
   fun go () = let
     val t = minimax' (empty, X)
     in
@@ -180,5 +193,6 @@ structure TicTacToe = struct
     end
 
   (* alpha-beta pruning *)
+  (* TBD *)
   
 end

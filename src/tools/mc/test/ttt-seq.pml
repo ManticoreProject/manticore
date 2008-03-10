@@ -27,7 +27,7 @@ fun playerEq tup =
   case tup
     of (X, X) => true
      | (O, O) => true
-     | (X, O) => false
+     | (X, O) => false (* NOTE This function was broken with a wildcard for false. *)
      | (O, X) => false;
 
 (* playerOccupies : player * board * int -> bool *)
@@ -67,7 +67,7 @@ val rows  = ((0::1::2::nil)::(3::4::5::nil)::(6::7::8::nil)::nil);
 
 val cols  = ((0::3::6::nil)::(1::4::7::nil)::(2::5::8::nil)::nil);
 
-val diags = ((0::4::7::nil)::(2::4::6::nil)::nil);
+val diags = ((0::4::8::nil)::(2::4::6::nil)::nil);
 
 (* all : ('a -> bool) * 'a list -> bool *)
 fun all (pred, xs) =
@@ -108,8 +108,8 @@ fun isWinFor (b, p) = hasRow(b,p) orelse hasCol(b,p) orelse hasDiag(b,p);
 fun isWin b = isWinFor (b, X) orelse isWinFor (b, O);
 
 (* isCat : board -> bool *)
-fun isCat b = isFull b andalso not (isWinFor (b, X)) 
-                    (* andalso not (isWinFor (b, O)) // X moves last *);
+fun isCat b = isFull(b) andalso not (isWinFor (b, X)) 
+                        andalso not (isWinFor (b, O));
 
 (* score : board -> int *)
 (* -1 if O wins, 1 if X wins, 0 otherwise. *)
@@ -119,9 +119,15 @@ fun score b =
   else if isWinFor (b, O) then ~1 
   else 0;
 
+(*
 datatype 'a gtree (* general tree *)
   = Leaf of 'a
   | Node of 'a * ('a gtree list);
+*)
+
+datatype tttTree
+  = Leaf of (board * int)
+  | Node of ((board * int) * (tttTree list));
 
 (* allMoves : board -> int list *)
 fun allMoves b = let 
@@ -159,7 +165,7 @@ fun add (m:int, n) = m+n;
 fun sum L = foldl (add, 0, L);
 
 (* size : 'a gtree -> int *)
-fun size (t : (board * int) gtree) =
+fun size (t : tttTree) =
   case t
     of Leaf _ => 1
      | Node (_, ts) => (sum (map (size, ts))) + 1;
@@ -167,7 +173,7 @@ fun size (t : (board * int) gtree) =
 (* BUGS? The following doesn't make it past the translate phase.
          Nor does it make it without the type ascription on t.
 (* size : 'a gtree -> int *)
-fun size (t : (board * int) gtree) =
+fun size (t : tttTree) =
   case t
     of Leaf _ => 1
      | Node (_, ts) => let
@@ -213,26 +219,26 @@ fun minimax (b : board, p : player) =
 	 | O => Node ((b, listmin scores), trees)
     end;
 
-
 val T = minimax (empty, X);
 
-val (_,result) = top(T);
+val (_, result) = top(T);
 
 (print ("The outcome of the game is ");
  print (itos(result));
  print " (expecting 0).\nThe size of T is ";
  print (itos(size(T)));
- print " (expecting 672346).\n")
+ print " (expecting 549946).\n")
+
+(* A bunch of debugging follows. *)
 
 (*
-
 fun btos b = if b then "true" else "false";
 
 fun println s = (print s; print "\n");
 
 fun otos o = (case o of NONE => "NONE" | SOME _ => "SOME");
 
-fun Ltos ns = concatWith(",",map(itos,ns)) ^ ",nil";
+fun Ltos ns = concatWith(",",map(itos,ns));
 
 fun Btos b = let
   fun str op =
@@ -241,7 +247,7 @@ fun Btos b = let
        | SOME X => "X"
        | SOME O => "O"
   in
-    "<" ^ concatWith("|", map (str, b)) ^ ">"
+    concatWith(",", map (str, b))
   end;
 
 val sqs = 0::1::2::3::4::5::6::7::8::nil;
@@ -268,5 +274,64 @@ in
 end
 *)
 
-println(btos(playerEq(X,O)))
+fun addMap (ms, ns) =
+  case ms
+   of nil => ns
+    | m::mtl => (case ns
+        of nil => ms
+         | n::ntl =>
+             (m+n)::addMap(mtl,ntl));
+
+fun pathLengths t =
+  (case t
+    of Leaf b => (1 :: nil)
+     | Node (b, ts) => 0 :: (foldl(addMap,nil,map(pathLengths,ts))));
+
+fun zip2 (xs, ys) =
+  (case xs
+    of nil => (case ys
+         of nil => nil
+          | yh::yt => fail "")
+     | xh::xt => (case ys
+         of nil => fail ""
+          | yh::yt => (xh,yh) :: zip2(xt,yt)));
+
+fun boardEq (b1, b2) = let
+  fun same (a, b) =
+        (case a
+          of NONE => (case b
+               of NONE => true
+                | SOME q => false)
+           | SOME p => (case b
+               of NONE => false
+                | SOME q => playerEq (p, q))) 
+  in
+    all (same, zip2 (b1, b2))
+  end;
+
+fun mem (x, s) =
+  case s
+   of nil => false
+    | e::es => boardEq(x,e) orelse mem(x,es);
+
+fun ins (x, s) = if mem(x,s) then s else (x::s);
+
+fun union (s1, s2) = foldl(ins, s1, s2);
+
+fun foo arg = if isSome(arg) then 1 else 0;
+
+val wins5 = let
+  fun ct b = sum (map (foo, b))
+  fun accrue arg = (case arg
+        of (s, Leaf(b,i)) => if ct(b)=5 then ins(b,s) else s
+         | (s, Node(b,ts)) => let
+             fun accrue' t = accrue (s, t)
+             in
+               foldl (union, nil, map (accrue', ts))
+             end)
+  in
+    accrue (nil, T)
+  end;
+
+app(compose(println,Btos),wins5)
 *)
