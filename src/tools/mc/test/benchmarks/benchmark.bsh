@@ -33,6 +33,7 @@ if [ -z $SEQ_PROG_NAME ] ; then
     SEQ_PROG_NAME=$PROG_NAME
 fi
 SEQ_PROG_EXE=$PROG_NAME-seq
+cp $PROG_NAME/$SEQ_PROG_NAME .
 $MC $SEQFLAGS $SEQ_PROG_NAME.pml 2> /dev/null
 mv a.out $SEQ_PROG_EXE
 
@@ -70,4 +71,4 @@ do
     done
 done
 
-rm -f *.ppm *.s $PROG_NAME $SEQ_PROG_EXE $PROG_NAME.pml
+rm -f *.ppm *.s $PROG_NAME $SEQ_PROG_EXE $SEQ_PROG_NAME.pml $PROG_NAME.pml
