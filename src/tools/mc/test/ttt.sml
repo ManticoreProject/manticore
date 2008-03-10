@@ -161,9 +161,12 @@ structure TicTacToe = struct
   fun minimax' (b : board, p : player) : (board * int) gtree =
         if isWin b orelse isCat b then Leaf (b, score b)
 	else 
-	    let val moves = map (fn i => moveTo b (p, i)) (allMoves b)
-		val trees = map (fn b => minimax' (b, other p)) moves
-		val scores = map (#2 o top) trees
+	    let fun moveTo' i = moveTo b (p, i)
+                fun minimax'' b = minimax' (b, other p)
+                fun select2 (_, s) = s
+	        val moves = map moveTo' (allMoves b)
+		val trees = map minimax'' moves
+		val scores = map (select2 o top) trees
 	    in
 		case p
                   of X => Node ((b, listmax scores), trees)

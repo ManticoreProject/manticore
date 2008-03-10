@@ -27,7 +27,8 @@ fun playerEq tup =
   case tup
     of (X, X) => true
      | (O, O) => true
-     | _ => false;
+     | (X, O) => false
+     | (O, X) => false;
 
 (* playerOccupies : player * board * int -> bool *)
 fun playerOccupies (p, b, i) =
@@ -80,7 +81,6 @@ fun exists (pred, xs) =
     of nil => false
      | x::xs => (pred x) orelse (exists (pred, xs));
 
-
 (* hasTriple : board * player -> int list -> bool *)
 fun hasTriple (b, p) = let
   fun occ i = playerOccupies (p, b, i)
@@ -96,7 +96,7 @@ fun hasRow (b, p) = exists (hasTriple (b, p), rows);
 fun hasCol (b, p) = exists (hasTriple (b, p), cols);
 
 (* hasDiag : board * player -> bool *)
-fun hasDiag (b, p) = exists (hasTriple (b, p), rows);
+fun hasDiag (b, p) = exists (hasTriple (b, p), diags);
 
 (* isFull : board -> bool *)
 fun isFull b = all (isSome, b);
@@ -114,7 +114,10 @@ fun isCat b = isFull b andalso not (isWinFor (b, X))
 (* score : board -> int *)
 (* -1 if O wins, 1 if X wins, 0 otherwise. *)
 (* This coarse heuristic function suffices b/c we can build the *whole* tree. *)
-fun score b = if isWinFor (b, X) then 1 else if isWinFor (b, O) then ~1 else 0;
+fun score b = 
+  if isWinFor (b, X) then 1 
+  else if isWinFor (b, O) then ~1 
+  else 0;
 
 datatype 'a gtree (* general tree *)
   = Leaf of 'a
@@ -132,13 +135,22 @@ fun allMoves b = let
   end;
 
 (* other : player -> player *)
-fun other p = (case p of X => O | O => X);
+fun other p =
+  case p 
+    of X => O 
+     | O => X;
 
 (* top : 'a gtree -> 'a *)
 fun top t =
   case t
     of Leaf x => x
      | Node (x, _) => x;
+
+(* immChildren : 'a gtree -> 'a list *)
+fun immChildren t =
+  case t
+    of Leaf _ => nil (* raise Fail "" *)
+     | Node (_, ts) => map (top, ts);
 
 (* add : int * int -> int *)
 fun add (m:int, n) = m+n;
@@ -201,15 +213,60 @@ fun minimax (b : board, p : player) =
 	 | O => Node ((b, listmin scores), trees)
     end;
 
+
 val T = minimax (empty, X);
 
-val (_, result) = top(T);
+val (_,result) = top(T);
 
-()
-(*
 (print ("The outcome of the game is ");
  print (itos(result));
  print " (expecting 0).\nThe size of T is ";
  print (itos(size(T)));
  print " (expecting 672346).\n")
-*0
+
+(*
+
+fun btos b = if b then "true" else "false";
+
+fun println s = (print s; print "\n");
+
+fun otos o = (case o of NONE => "NONE" | SOME _ => "SOME");
+
+fun Ltos ns = concatWith(",",map(itos,ns)) ^ ",nil";
+
+fun Btos b = let
+  fun str op =
+    case op
+      of NONE => " "
+       | SOME X => "X"
+       | SOME O => "O"
+  in
+    "<" ^ concatWith("|", map (str, b)) ^ ">"
+  end;
+
+val sqs = 0::1::2::3::4::5::6::7::8::nil;
+
+val allX = let fun f _ = SOME X in map(f,sqs) end;
+
+val tree0 = Node ((nil, 1), Leaf(nil,1)::Leaf(nil,1)::nil);
+
+val aBoard = SOME(X)::SOME(X)::NONE::SOME(O)::SOME(O)::SOME(O)::NONE::NONE::NONE::nil;
+
+val aTree = minimax(aBoard,X);
+
+(*
+let fun str (b, s) = "(" ^ Btos(b) ^ "," ^ itos(s) ^ ")"
+in
+  app(compose(println,str),immChildren(aTree))
+end  
+*)
+
+(*
+let fun occ i = playerOccupies(X,aBoard,i)
+in
+    app(compose(println,btos),map(occ,sqs))
+end
+*)
+
+println(btos(playerEq(X,O)))
+*)
