@@ -15,7 +15,7 @@ undefine({len})dnl
     fun len (_, s1, s2) = s2-s1
 ;
 
-    fun minval (x, y) = if x < y then x else y
+    fun maxval (x, y) = if x > y then x else y
 ;
 
     (* assume that b>a. *)
@@ -86,7 +86,7 @@ define({_PMERGE_}, {
 ;
 })dnl
 _PMERGE_({seqMerge}, {val}, {false}, {seqMerge})
-_PMERGE_({pMerge'}, {dval}, {(minval(len(r), len(l)) >= _SEQ_SZ_)}, {seqMerge})
+_PMERGE_({pMerge'}, {dval}, {(maxval(len(r), len(l)) < _SEQ_SZ_)}, {seqMerge})
 
    (* merge sorted arrays arr[p..q] and arr[q..r] into the sorted array dArr[p..r] *)
     fun pMerge (dArr, arr, p, q, r) = 
@@ -112,7 +112,7 @@ define({_PMERGESORT_}, {
 ;
 })dnl
 _PMERGESORT_({seqMergesort}, {val}, {false}, {seqMergesort})
-_PMERGESORT_({pMergesort'}, {dval}, {((r-p) >= _SEQ_SZ_)}, {seqMergesort})
+_PMERGESORT_({pMergesort'}, {dval}, {((r-p) < _SEQ_SZ_)}, {seqMergesort})
 
    (* parallel merge sort *)
     fun pMergesort (arr) = let
