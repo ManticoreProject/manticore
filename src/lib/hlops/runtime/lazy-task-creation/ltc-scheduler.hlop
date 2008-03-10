@@ -78,6 +78,7 @@ define @ltc-scheduler ( / exh : exh) : ltq_fun =
 		    let _ : unit = @atomic-yield(self / exh)
 		    throw steal()
 		  | SOME(k : fiber) => 
+                    do assert(NotEqual(k, enum(0)))
 		    throw dispatch (k)
                 end
 

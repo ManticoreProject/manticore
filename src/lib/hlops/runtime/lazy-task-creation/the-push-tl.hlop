@@ -12,6 +12,8 @@
 
 define @the-push-tl(deq : the_deque, elt : any / exh : exh) : () =
 
+  do assert(NotEqual(elt, NIL))
+
   let t : int = SELECT(THE_T_OFF, deq)
 
  (* the tail pointer grows upwards; check that the pointer is legal *)

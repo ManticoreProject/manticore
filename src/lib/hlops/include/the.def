@@ -19,7 +19,7 @@
 #define THE_LOCK_OFF                   4
 typedef the_deque = ![int, int, int, array, bool];
 
-#define THE_DEQUE_LEN                  1024
+#define THE_DEQUE_LEN                  2048
 
 define @the-pop-tl(deq : the_deque / exh : exh) : option;
 define @the-push-tl(deq : the_deque, elt : any / exh : exh) : ();
