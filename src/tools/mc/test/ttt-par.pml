@@ -134,6 +134,9 @@ fun isWin b = isWinFor (b, X) orelse isWinFor (b, O);
 fun isCat b = isFull(b) andalso not (isWinFor (b, X)) 
                         andalso not (isWinFor (b, O));
 
+(* gameOver : board -> bool *)
+fun gameOver b = isWin(b) orelse isCat(b);
+
 (* score : board -> int *)
 (* -1 if O wins, 1 if X wins, 0 otherwise. *)
 (* This coarse heuristic function suffices b/c we can build the *whole* tree. *)
@@ -192,7 +195,7 @@ fun maxP a = reduceP (max, ~2, a);
 (* p is the player to move *)
 (* X is max, O is min *)
 fun minimax (b : board, p : player) =
-  if (isWin(b) orelse isCat(b)) then
+  if gameOver(b) then
     mkLeaf (b, score b)
   else let
     fun select2 (_, s) = s
@@ -204,6 +207,7 @@ fun minimax (b : board, p : player) =
       Rose ((b, selectFrom scores), trees)
     end;
 
+(*
 val T = minimax (empty, X);
 
 val (_, result) = top(T);
@@ -213,3 +217,16 @@ val (_, result) = top(T);
  print " (expecting 0).\nThe size of T is ";
  print (itos(size(T)));
  print " (expecting 549946).\n")
+*)
+
+fun alpha_beta () = let
+  fun maxT (board, a, b) =
+    if gameOver(board) then
+      mkLeaf (b, score b)
+    else
+      todo "else branch"
+  in
+    todo "alpha_beta"
+  end;
+
+()
