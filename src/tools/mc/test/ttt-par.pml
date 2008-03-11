@@ -143,8 +143,10 @@ fun score b =
   else 0;
 
 datatype tttTree          (* monomorphic b/c there were bugs *)
-  = Leaf of (board * int)
-  | Node of ((board * int) * (tttTree parray));
+  = Rose of ((board * int) * (tttTree parray));
+
+(* mkLeaf : board * int -> tttTree *)
+fun mkLeaf (b, i) = Rose ((b, i), [||])
 
 (* allMoves : board -> int parray *)
 fun allMoves b = let 
@@ -164,10 +166,8 @@ fun other p =
      | O => X;
 
 (* top : tttTree -> 'a *)
-fun top t =
-  case t
-    of Leaf x => x
-     | Node (x, _) => x;
+fun top t = case t
+  of Rose (x, _) => x;
 
 (* add : int * int -> int *)
 fun add (m:int, n) = m+n;
@@ -175,11 +175,9 @@ fun add (m:int, n) = m+n;
 (* sum : int parray -> int *)
 fun sum A = reduceP (add, 0, A);
 
-(* size : 'a gtree -> int *)
-fun size (t : tttTree) =
-  case t
-    of Leaf b => 1
-     | Node (b, ts) => (sum [| size t | t in ts |]) + 1;
+(* size : 'a rose_tree -> int *)
+fun size (t : tttTree) = case t
+  of Rose (_, ts) => (sum [| size t | t in ts |]) + 1;
 
 fun min (m:int, n) = (if m<n then m else n);
 
@@ -195,7 +193,7 @@ fun maxP a = reduceP (max, ~2, a);
 (* X is max, O is min *)
 fun minimax (b : board, p : player) =
   if (isWin(b) orelse isCat(b)) then
-    Leaf (b, score b)
+    mkLeaf (b, score b)
   else let
     fun select2 (_, s) = s
     val moves = [| moveTo (b, p, i) | i in allMoves(b) |]
@@ -203,7 +201,7 @@ fun minimax (b : board, p : player) =
     val scores = [| select2(top(t)) | t in trees |]
     val selectFrom = (case p of X => maxP | O => minP)
     in
-      Node ((b, selectFrom scores), trees)
+      Rose ((b, selectFrom scores), trees)
     end;
 
 val T = minimax (empty, X);
