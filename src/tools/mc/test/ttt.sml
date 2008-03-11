@@ -8,7 +8,7 @@ structure TicTacToe = struct
      3 4 5
      6 7 8 *)
 
-  val empty : board = [NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE]
+  val empty : board = List.tabulate (9, fn _ => NONE)
 
   exception IllegalMove
 
@@ -82,11 +82,13 @@ structure TicTacToe = struct
   (* This coarse heuristic function suffices b/c we can build the *whole* tree. *)
   fun score b = if isWinFor b X then 1 else if isWinFor b O then ~1 else 0
 
-  (* FIXME rose tree *)
+  datatype 'a rose_tree (* general tree *)
+    = Rose of 'a * ('a rose_tree list)
 
-  datatype 'a gtree (* general tree *)
-    = Leaf of 'a
-    | Node of 'a * ('a gtree list)
+  (* mkLeaf : 'a -> 'a rose_tree *)
+  fun mkLeaf x = Rose (x, [])
+
+  type game_tree = (board * int) rose_tree
 
   (* allMoves : board -> int list *)
   fun allMoves b = 
@@ -101,13 +103,11 @@ structure TicTacToe = struct
   fun other X = O
     | other O = X
 
-  (* top : 'a gtree -> 'a *)
-  fun top (Leaf x) = x
-    | top (Node (x, _)) = x
+  (* top : 'a rose_tree -> 'a *)
+  fun top (Rose (x, _)) = x
 
-  (* size : 'a gtree -> int *)
-  fun size (Leaf _) = 1
-    | size (Node (x, ts)) = 1 + (foldl op+ 0 (map size ts))
+  (* size : 'a rose_tree -> int *)
+  fun size (Rose (x, ts)) = 1 + (foldl op+ 0 (map size ts))
 
   (* listExtreme : (('a * 'a) -> 'a) -> 'a list -> 'a *)
   fun listExtreme e (n::ns) = foldl e n ns
@@ -126,57 +126,60 @@ structure TicTacToe = struct
   (* A list of all possible successor states given a board and a player to move. *)
   fun successors (b : board, p : player) : board list = map (moveTo (b, p)) (allMoves b)
     
-  (* minimax : player -> board -> (board * int) gtree *)
+  (* minimax : player -> board -> game_tree *)
   (* Build the tree and score it at the same time. *)
   (* p is the player to move *)
   (* X is max, O is min *)
-  fun minimax (p : player) (b : board) =
+  fun minimax (p : player) (b : board) : game_tree =
         if gameOver(b) then
-	  Leaf (b, score b)
+	  mkLeaf (b, score b)
 	else let 
           val trees = map (minimax (other p)) (successors (b, p))
 	  val scores = map (#2 o top) trees
+	  val selectFrom = (case p of X => listmax | O => listmin)
 	  in
-	    case p
-             of X => Node ((b, listmax scores), trees)
-	      | O => Node ((b, listmin scores), trees)
+		Rose ((b, selectFrom scores), trees)
 	  end
 
   (* DEBUGGING *)	
 
-  fun addMap ([], ns) = ns
-    | addMap (ns, []) = ns
-    | addMap (n::ns, m::ms) = (n+m)::addMap(ns,ms)
+  (* addMaps : int list * int list -> int list *)
+  fun addMaps ([], ms) = ms
+    | addMaps (ns, []) = ns
+    | addMaps (n::ns, m::ms) = (n+m)::addMaps(ns,ms)
 
-  fun pathLengths (t : 'a gtree) : int list =
+  (* pathLengths : 'a rose_tree -> int list *)
+  fun pathLengths (t : 'a rose_tree) : int list =
     (case t
-      of Leaf _ => [1]
-       | Node (_, ts) => 0 :: (foldl addMap [] (map pathLengths ts)))
+      of Rose (x, []) => [1]
+       | Rose (_, ts) => 0 :: (foldl addMaps [] (map pathLengths ts)))
 
+  (* go : unit -> (board * int) * int *)
   fun go () = let
     val t = minimax X empty
     in
       (top(t), size(t))
     end
 
+  (* max : int * int -> int *)
   fun max (m:int, n) = (if m>n then m else n)
 
+  (* min : int * int -> int *)
   fun min (m:int, n) = (if m<n then m else n)
 
-  (* FIXME -- BROKEN! *)
   (* build a tree with alpha-beta pruning *)
-  fun alpha_beta () = let
+  fun alpha_beta () : game_tree = let
     fun max_tree (b, alpha, beta) =
       if gameOver(b) then
-        Leaf (b, score b)
+        mkLeaf (b, score b)
       else let
-        fun loop ([], al, ts) = Node ((b, al), ts)
+        fun loop ([], al, ts) = Rose ((b, al), ts)
 	  | loop (s::ss, al, ts) = let
               val t = min_tree (s, al, beta)
               val al' = max (al, #2 (top t))
               in
 	        if (al' >= beta) then 
-                  Node ((b, al'), t::ts)
+                  Rose ((b, al'), t::ts)
                 else 
                   loop (ss, al', t::ts)
 	      end
@@ -185,15 +188,15 @@ structure TicTacToe = struct
         end     
     and min_tree (b, alpha, beta) =
       if gameOver(b) then
-        Leaf (b, score b)
+        mkLeaf (b, score b)
       else let
-        fun loop ([], bt, ts) = Node ((b, bt), ts)
+        fun loop ([], bt, ts) = Rose ((b, bt), ts)
 	  | loop (s::ss, bt, ts) = let
               val t = max_tree (s, alpha, bt)
               val bt' = min (bt, #2 (top t))
               in
 	        if (bt' <= alpha) then 
-	          Node ((b, bt'), t::ts) 
+	          Rose ((b, bt'), t::ts) 
                 else 
 		  loop (ss, bt', t::ts)
 	      end
@@ -205,12 +208,13 @@ structure TicTacToe = struct
     in
       max_tree (empty, neg_inf, pos_inf)
     end
-
-  fun btos b = let
+ 
+  (* btos : board -> string *)
+  fun btos (b : board) : string = let
     fun stos NONE = " "
       | stos (SOME X) = "X"
       | stos _ = "O"
-    fun build ([], _, acc) = acc
+    fun build ([], _, acc) = concat (rev acc)
       | build (s::ss, n, acc) = let
           val sep = if (n=2) orelse (n=5) then 
 		      "\n------\n" 
@@ -219,32 +223,42 @@ structure TicTacToe = struct
                     else
                       "|"
           in
-            build (ss, n+1, acc ^ (stos s) ^ sep)
+            build (ss, n+1, sep :: stos s :: acc)
           end
     in
-      build (b, 0, "")
+      build (b, 0, [])
     end
 
-  fun left_spine (Leaf x) = [x]
-    | left_spine (Node (x, [])) = [x]
-    | left_spine (Node (x, t::_)) = x::left_spine(t)
+  (* left_spine : 'a rose_tree -> 'a list *)
+  fun left_spine (Rose (x, [])) = [x]
+    | left_spine (Rose (x, t::_)) = x::left_spine(t)
 
+  (* fringe : 'a rose_tree -> 'a list *)
+  fun fringe (Rose (x, [])) = [x]
+    | fringe (Rose (_, ts)) = List.concat (map fringe ts)
+
+  (* a_path : 'a rose_tree -> 'a list *)
+  fun a_path (Rose (x, [])) = [x]
+    | a_path (Rose (x, _::_::t::_)) = x :: a_path(t)
+    | a_path (Rose (x, _::t::_)) = x :: a_path(t)
+    | a_path (Rose (x, t::_)) = x :: a_path(t)
+
+  (* goAB : unit -> (board * int) * int *)
   fun goAB () = let
     val t = alpha_beta ()
-    val foo = map (fn (b, i) => (btos b, i)) (left_spine t)
+    val leftmost = map (fn (b, i) => (btos b, i)) (left_spine t)
+    val p = map (fn (b, i) => (btos b, i)) (a_path t)
     fun println s = (print s; print "\n")
     fun pr (s, n) = (print s;
 		     println ("\t" ^ "\t" ^ (Int.toString n));
 		     print "\n")
     in
-      app pr foo;
+      app pr p;
       (top(t), size(t))
     end  
   
+  (* fringeAB : unit -> unit *)
   fun fringeAB () = let
-    fun fringe (Leaf x) = [x]
-      | fringe (Node (x, [])) = [x]
-      | fringe (Node (_, ts)) = List.concat (map fringe ts)
     val t = alpha_beta ()
     fun println s = (print s; print "\n")
     fun pr (s, n) = (print s;

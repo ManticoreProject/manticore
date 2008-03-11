@@ -190,12 +190,12 @@ fun minimax (b : board, p : player) =
     val moves = [| moveTo (b, p, i) | i in allMoves(b) |]
     val trees = [| minimax (b, other p) | b in moves |]
     val scores = [| select2(top(t)) | t in trees |]
+    val selectFrom = (case p of X => maxP | O => minP)
     in
-      case p
-        of X => Node ((b, maxP scores), trees)
-	 | O => Node ((b, minP scores), trees)
+      Node ((b, selectFrom scores), trees)
     end;
 
+(*
 val T = minimax (empty, X);
 
 val (_, result) = top(T);
@@ -205,3 +205,6 @@ val (_, result) = top(T);
  print " (expecting 0).\nThe size of T is ";
  print (itos(size(T)));
  print " (expecting 549946).\n")
+*)
+
+()
