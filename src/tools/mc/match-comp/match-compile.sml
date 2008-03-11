@@ -334,6 +334,8 @@ structure MatchCompile : sig
 		      end
 	      | AST.LetExp(AST.PValBind _, e) => (* should have been compiled away *)
 		  raise Fail "unexpected PValBind"
+	      | AST.LetExp(AST.DValBind _, e) => (* should have been compiled away *)
+		  raise Fail "unexpected DValBind"
 	      | AST.LetExp(AST.FunBind fbs, e) => let
 		  fun rewriteFB (AST.FB(f, x, e)) = AST.FB(f, x, rewrite' e)
 		  in
