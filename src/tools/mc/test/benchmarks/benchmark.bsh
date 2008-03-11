@@ -20,6 +20,8 @@ while getopts ":s:p:e:q:l:" options; do
   esac
 done
 
+PROG_EXE=$PROG_NAME-run
+
 MC="sml @SMLcmdname=mc @SMLload=../../mc"
 MCFLAGS="-Cclos.convert-style=flatWithCFA"
 SEQFLAGS="$MCFLAGS -Csequential=true"
@@ -32,8 +34,9 @@ echo "Logging performance results to $LOG_FILE_NAME"
 if [ -z $SEQ_PROG_NAME ] ; then
     SEQ_PROG_NAME=$PROG_NAME
 fi
+
 SEQ_PROG_EXE=$PROG_NAME-seq
-cp $PROG_NAME/$SEQ_PROG_NAME .
+m4 $PROG_NAME/$SEQ_PROG_NAME.pml > $SEQ_PROG_NAME.pml
 $MC $SEQFLAGS $SEQ_PROG_NAME.pml 2> /dev/null
 mv a.out $SEQ_PROG_EXE
 
@@ -52,7 +55,7 @@ PARFLAGS="$MCFLAGS"
 m4 $PROG_NAME/$PROG_NAME.pml > $PROG_NAME.pml
 #compile the parallel version
 $MC $PARFLAGS $PROG_NAME.pml 2> /dev/null
-mv a.out $PROG_NAME
+mv a.out $PROG_EXE
 
 for seq_sz in $GOTO_SEQ_SIZES
 do
@@ -65,10 +68,10 @@ do
 	    if [ "$p" -eq "0" ] ; then       
 		echo "$seq_sz $s." | ./$SEQ_PROG_EXE >> $LOG_FILE_NAME
 	    else
-		echo "$seq_sz $s." | ./$PROG_NAME -p $p >> $LOG_FILE_NAME
+		echo "$seq_sz $s." | ./$PROG_EXE -p $p >> $LOG_FILE_NAME
 	    fi
 	done
     done
 done
 
-rm -f *.ppm *.s $PROG_NAME $SEQ_PROG_EXE $SEQ_PROG_NAME.pml $PROG_NAME.pml
+rm -f *.ppm *.s $PROG_EXE $SEQ_PROG_EXE $SEQ_PROG_NAME.pml $PROG_NAME.pml

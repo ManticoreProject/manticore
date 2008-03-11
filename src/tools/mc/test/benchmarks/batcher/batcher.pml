@@ -16,6 +16,9 @@
         end
 ;
 
+fun pow2 (n) = if (n=0) then 1 else 2 * pow2(n-1)
+;
+
     datatype dir = ASCENDING | DESCENDING
 ;
 
@@ -40,8 +43,11 @@
 divert(-1)
 changequote({,})   #change quotes to curly braces 
 divert(0)
-define({_SEQ_SZ_LG_}, {10})dnl
-define({_SEQ_SZ_}, {1024})dnl
+
+val seqSq = readint();
+define({_SEQ_SZ_LG_}, {seqSz})dnl
+define({_SEQ_SZ_}, {pow2(seqSz)})dnl
+
 define({_SORTING_NETWORK_}, {
   define({_SORTING_NETWORK_FN_}, {$1})dnl
   define({_VAL_}, {$2})dnl
@@ -104,8 +110,6 @@ define({_BATCHER_SORT_}, {
 })dnl
 _BATCHER_SORT_({seqBatcherSort}, {val}, {false}, {seqBatcherSort})
 _BATCHER_SORT_({batcherSort}, {dval}, {(n < _SEQ_SZ_)}, {seqBatcherSort})
-
-fun pow2 (n) = if (n=0) then 1 else 2 * pow2(n-1);
 
 fun arr2s (elt2s, arr) = let
     val n = alength(arr)

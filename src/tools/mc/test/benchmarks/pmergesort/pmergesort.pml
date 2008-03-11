@@ -9,8 +9,11 @@
 divert(-1)
 changequote({,})   #change quotes to curly braces 
 divert(0)
-define({_SEQ_SZ_}, {1024})dnl
 undefine({len})dnl
+
+
+val seqSq = readint();
+define({_SEQ_SZ_}, {seqSq})dnl
 
     fun len (_, s1, s2) = s2-s1
 ;

@@ -9,7 +9,9 @@
 divert(-1)
 changequote({,})   #change quotes to curly braces 
 divert(0)
-define({_SEQ_SZ_}, {10})dnl
+
+val seqSz = readint();
+define({_SEQ_SZ_}, {seqSz})dnl
 
 define({_PFIB_}, {
   define({_PFIB_FN_}, {$1})dnl
