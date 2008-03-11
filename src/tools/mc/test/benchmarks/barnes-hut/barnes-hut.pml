@@ -404,7 +404,7 @@ fun splitAt (n, ls) = let
 
 (* List size at which parallel map switches to sequential evaluation.
  *)
-val seqSz = 1;
+val seqSz = readint();
 
 (* Map the function f over the list ls in parallel.
  *
@@ -451,15 +451,6 @@ fun oneStep' (dt, ps) = let
     in
        (parMap(computeNewParticle, length(ps), ps), 0, 0)
     end
-(*
-    val preAcs = map(let fun f (mp) = accelOf(t, len, mp) in f end, mps)
-    fun f (ax, ay) = (gravConst * ax, gravConst * ay)
-    val acs = map(f, preAcs)
-    val ps' = applyAccels(dt, acs, ps)
-    in
-        (move(dt, ps'), 0, 0)
-    end     
-*)
 ;
 
 (* Execute a single iteration (tree construction, accelaration calculation, and
@@ -520,6 +511,28 @@ fun readParticles () = let
     end
 ;
 
+fun timeTest () = let
+    val nSteps = readint()
+    val particles = readParticles()
+    val dt = 2.0
+
+    fun iter (ps, i) = if (i<nSteps)
+        then let
+          val (bhPs, dNos, fNos) = oneStep' (dt, ps)
+          in
+             iter(bhPs, i+1)
+          end
+        else ps
+
+    val b = gettimeofday ()
+    val _ = iter(particles, 0)	   
+    val e = gettimeofday ()
+    in
+        print (dtos (e-b)^"\n")
+    end
+;
+
+
 fun debug () = let
     val nSteps = 1
     val dt = 2.0
@@ -547,11 +560,4 @@ print (concatWith(", ", map(part2s, naivePs))^"\n");
     end
 ;
 
-val ex1 = 
-    Particle (MassPnt(1.0, (2.0, 3.0)), (~1.0, 2.0)) ::
-    Particle (MassPnt(2.0, (2.0, 1.0)), (1.0, 0.0)) ::
-    Particle (MassPnt(2.0, (12.0, 1.0)), (1.0, 30000.0)) ::
-    nil
-;
-
-debug()
+timeTest()
