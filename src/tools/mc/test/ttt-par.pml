@@ -69,7 +69,13 @@ val cols = [| [| n, n+3, n+6 |] | n in [| 0 to 2 |] |];
 
 val diags = [| [| 0, 4, 8 |], [| 2, 4, 6 |] |];
 
+(*
 (* all : ('a -> bool) * 'a list -> bool *)
+(* *** FIXME *** error in case simplify on this version of "all". *)
+(* When the function is written as below (uncommented), it goes through.
+ * See the file list-all.pml which is an as-yet unsuccessful attempt
+ * to isolate this bug. -ams
+ *)
 fun all (pred, xs) = let
   fun f arg = (case arg
           of nil => true
@@ -77,6 +83,11 @@ fun all (pred, xs) = let
   in
     f xs
   end;
+*)
+
+fun all (pred, xs) = case xs
+  of nil => true
+   | h::t => pred(h) andalso all(pred,t);
 
 (* allP : ('a -> bool) * 'a parray -> bool *)
 fun allP (pred, xs) = let
@@ -175,10 +186,10 @@ fun min (m:int, n) = (if m<n then m else n);
 fun max (m:int, n) = (if m>n then m else n);
 
 (* minP : int parray -> int *)
-fun minP a = reduceP (min, ~2, a); (* ~2 is -INF in this domain! *)
+fun minP a = reduceP (min, 2, a); (* 2 is INF in this domain! *)
 
 (* maxP : int parray -> int *)
-fun maxP a = reduceP (max, 2, a);
+fun maxP a = reduceP (max, ~2, a);
  
 (* p is the player to move *)
 (* X is max, O is min *)
@@ -195,7 +206,6 @@ fun minimax (b : board, p : player) =
       Node ((b, selectFrom scores), trees)
     end;
 
-(*
 val T = minimax (empty, X);
 
 val (_, result) = top(T);
@@ -205,6 +215,3 @@ val (_, result) = top(T);
  print " (expecting 0).\nThe size of T is ";
  print (itos(size(T)));
  print " (expecting 549946).\n")
-*)
-
-()
