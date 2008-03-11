@@ -41,8 +41,8 @@ structure TicTacToe = struct
 	else (* i<0 *)
 	    raise Subscript
 
-  (* moveTo : board -> player * int -> board *)
-  fun moveTo b (p,i:int) = 
+  (* moveTo : (board * player) -> int -> board *)
+  fun moveTo (b : board, p : player) (i:int) = 
         if isOccupied(b,i) then
 	  raise IllegalMove
 	else
@@ -82,6 +82,8 @@ structure TicTacToe = struct
   (* This coarse heuristic function suffices b/c we can build the *whole* tree. *)
   fun score b = if isWinFor b X then 1 else if isWinFor b O then ~1 else 0
 
+  (* FIXME rose tree *)
+
   datatype 'a gtree (* general tree *)
     = Leaf of 'a
     | Node of 'a * ('a gtree list)
@@ -98,21 +100,6 @@ structure TicTacToe = struct
   (* other : player -> player *)
   fun other X = O
     | other O = X
-
-  (* deepen : board gtree * player -> board gtree *)  
-  (* The given player is the one who gets to make the next move. *)
-  fun deepen (t, p) = 
-        (case t
-	   of Leaf b => if isWinFor b (other p) then t 
-			else if isCat b then t
-			else let
-                          val nextMoves = map (fn i => moveTo b (p, i)) (allMoves b)
-			  val trees = map Leaf nextMoves
-			  val deepTrees = map (fn t => deepen (t, other p)) trees
-			in
-		          Node (b, deepTrees)
-			end
-	    | Node _ => raise Fail "shouldn't call deepen on a node")
 
   (* top : 'a gtree -> 'a *)
   fun top (Leaf x) = x
@@ -132,48 +119,28 @@ structure TicTacToe = struct
   (* listmax : int list -> int *)
   val listmin = listExtreme (fn (a:int, b) => if (a<b) then a else b)
 
-  (*
-  (* minimaxVal : board gtree * player -> int *)
-  fun minimaxVal (t : board gtree, p : player) : int =
-        (case t
-	   of Leaf b => score b
-	    | Node (b, ts) => 
-	        let val ts' = map (fn t => minimaxVal (t, other p)) ts
-		in
-		    case p
-		      of X => listmax ts'
-		       | O => listmin ts'
-		end)
+  (* gameOver : board -> bool *)
+  fun gameOver b = isWin(b) orelse isCat(b)
 
-  (* minimax1 *)
-  fun minimax1 () =
-      let val b0 = empty
-	  val ts = map (fn i => moveTo b0 (X, i)) (allMoves b0)
-	  val ts' = map ((fn t => deepen (t, O)) o Leaf) ts
-      in
-	  print (Int.toString (size (Node (b0, ts'))));
-	  print " nodes in the full minimax tree.\n";
-	  map (fn t => (top t, minimaxVal(t,X))) ts'
-      end
-  *)
-
-  (* I think you actually want to build the tree and score it at the same time. *)
+  (* successors : board * player -> board list *)
+  (* A list of all possible successor states given a board and a player to move. *)
+  fun successors (b : board, p : player) : board list = map (moveTo (b, p)) (allMoves b)
+    
+  (* minimax : player -> board -> (board * int) gtree *)
+  (* Build the tree and score it at the same time. *)
   (* p is the player to move *)
   (* X is max, O is min *)
-  fun minimax' (b : board, p : player) : (board * int) gtree =
-        if isWin b orelse isCat b then Leaf (b, score b)
-	else 
-	    let fun moveTo' i = moveTo b (p, i)
-                fun minimax'' b = minimax' (b, other p)
-                fun select2 (_, s) = s
-	        val moves = map moveTo' (allMoves b)
-		val trees = map minimax'' moves
-		val scores = map (select2 o top) trees
-	    in
-		case p
-                  of X => Node ((b, listmax scores), trees)
-		   | O => Node ((b, listmin scores), trees)
-	    end
+  fun minimax (p : player) (b : board) =
+        if gameOver(b) then
+	  Leaf (b, score b)
+	else let 
+          val trees = map (minimax (other p)) (successors (b, p))
+	  val scores = map (#2 o top) trees
+	  in
+	    case p
+             of X => Node ((b, listmax scores), trees)
+	      | O => Node ((b, listmin scores), trees)
+	  end
 
   (* DEBUGGING *)	
 
@@ -187,12 +154,104 @@ structure TicTacToe = struct
        | Node (_, ts) => 0 :: (foldl addMap [] (map pathLengths ts)))
 
   fun go () = let
-    val t = minimax' (empty, X)
+    val t = minimax X empty
     in
       (top(t), size(t))
     end
 
-  (* alpha-beta pruning *)
-  (* TBD *)
+  fun max (m:int, n) = (if m>n then m else n)
+
+  fun min (m:int, n) = (if m<n then m else n)
+
+  (* FIXME -- BROKEN! *)
+  (* build a tree with alpha-beta pruning *)
+  fun alpha_beta () = let
+    fun max_tree (b, alpha, beta) =
+      if gameOver(b) then
+        Leaf (b, score b)
+      else let
+        fun loop ([], al, ts) = Node ((b, al), ts)
+	  | loop (s::ss, al, ts) = let
+              val t = min_tree (s, al, beta)
+              val al' = max (al, #2 (top t))
+              in
+	        if (al' >= beta) then 
+                  Node ((b, al'), t::ts)
+                else 
+                  loop (ss, al', t::ts)
+	      end
+        in
+          loop (successors (b, X), alpha, [])
+        end     
+    and min_tree (b, alpha, beta) =
+      if gameOver(b) then
+        Leaf (b, score b)
+      else let
+        fun loop ([], bt, ts) = Node ((b, bt), ts)
+	  | loop (s::ss, bt, ts) = let
+              val t = max_tree (s, alpha, bt)
+              val bt' = min (bt, #2 (top t))
+              in
+	        if (bt' <= alpha) then 
+	          Node ((b, bt'), t::ts) 
+                else 
+		  loop (ss, bt', t::ts)
+	      end
+        in
+          loop (successors (b, O), beta, [])
+        end
+      val neg_inf = ~1
+      val pos_inf = 1
+    in
+      max_tree (empty, neg_inf, pos_inf)
+    end
+
+  fun btos b = let
+    fun stos NONE = " "
+      | stos (SOME X) = "X"
+      | stos _ = "O"
+    fun build ([], _, acc) = acc
+      | build (s::ss, n, acc) = let
+          val sep = if (n=2) orelse (n=5) then 
+		      "\n------\n" 
+		    else if (n=8) then
+                      "\n"
+                    else
+                      "|"
+          in
+            build (ss, n+1, acc ^ (stos s) ^ sep)
+          end
+    in
+      build (b, 0, "")
+    end
+
+  fun left_spine (Leaf x) = [x]
+    | left_spine (Node (x, [])) = [x]
+    | left_spine (Node (x, t::_)) = x::left_spine(t)
+
+  fun goAB () = let
+    val t = alpha_beta ()
+    val foo = map (fn (b, i) => (btos b, i)) (left_spine t)
+    fun println s = (print s; print "\n")
+    fun pr (s, n) = (print s;
+		     println ("\t" ^ "\t" ^ (Int.toString n));
+		     print "\n")
+    in
+      app pr foo;
+      (top(t), size(t))
+    end  
   
+  fun fringeAB () = let
+    fun fringe (Leaf x) = [x]
+      | fringe (Node (x, [])) = [x]
+      | fringe (Node (_, ts)) = List.concat (map fringe ts)
+    val t = alpha_beta ()
+    fun println s = (print s; print "\n")
+    fun pr (s, n) = (print s;
+		     println ("\t" ^ "\t" ^ (Int.toString n));
+		     print "\n")
+    in
+      app pr (map (fn (b,i) => (btos b, i)) (fringe t))
+    end    
+
 end
