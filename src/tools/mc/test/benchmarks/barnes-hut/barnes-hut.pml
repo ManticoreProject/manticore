@@ -1,4 +1,4 @@
-(* barnes-hut-dval.pml
+(* barnes-hut.pml
  *
  * Simple Barnes-Hut benchmark borrowed from Chakravarty and Keller.
  *)
@@ -25,6 +25,7 @@ fun tl (xs) = (case xs
 
 fun fst (x, _) = x;
 fun snd (_, x:bool) = x;
+fun sndv (_, x:particle) = x;
 
 fun compose (f, g) = let
     fun h (x) = f(g(x))
@@ -32,6 +33,13 @@ fun compose (f, g) = let
         h
     end
 ;
+
+fun fmax (x, y) = if x > y then x else y;
+fun fmin (x, y) = if x < y then x else y;
+
+fun vec2s (x, y) = "("^ftos x^", "^ftos y^") ";
+fun mp2s (MassPnt (f, pt)) = "MassPnt("^ftos f^", "^vec2s pt^")";
+fun part2s (Particle (mp, veloc)) = "Particle("^mp2s mp^", "^vec2s veloc^")";
 
 fun zip (xs, ys) = let
     fun loop (xs, ys, zs) = (case (xs, ys)
@@ -92,11 +100,18 @@ fun transpose (rows) = (case rows
     (* end case *))
 ;
 
-val gravConst : float = 6.670 / 100000000000.0;  (* 6.670e-11 *)
+val gravConst : float = 1.0 (*6.670 / 100000000000.0*);  (* 6.670e-11 *)
 val epsilon = 1.0 / 100000000000000000000.0;     (* 1.0e-20 *)
 (* precision (a cell is *far away* if `l/d < theta') *)
 val theta  = 0.8;
 
+fun samePt ((x1, y1), (x2, y2)) = 
+    absf(x1-x2) < epsilon andalso absf(y1-y2) < epsilon
+;
+
+fun sameMpt (MassPnt(m1, pt1), MassPnt(m2, pt2)) =
+    absf(m1-m2) < epsilon andalso samePt(pt1, pt2)
+;
 
 fun particle2mpnt (p) = (case p
     of Particle (mp, _) => mp
@@ -138,32 +153,39 @@ fun accel (mp1, mp2) = (case (mp1, mp2)
     (* end case *))
 ;
 
+fun applyAccel (dt) = let 
+    fun f (p, (ax, ay)) = (case p
+        of Particle (mp, (vx, vy)) => 
+	   Particle(mp, (vx+ax * dt, vy+ay * dt))
+        (* end case *))
+    in
+      f
+    end
+;
+
 (*
  * Calculate the new velocity of each particle after the time `dt' under the
  * corresponding accelaration in `acs'.
  *)
-fun applyAccels (dt, acs, ps) = let
-    fun f (p, (ax, ay)) = (case p
-        of Particle (mp, (vx, vy)) =>
-	   Particle(mp, (vx+ax * dt, vy+ay * dt))
+fun applyAccels (dt, acs, ps) = 
+    map (applyAccel(dt), (zip(ps, acs)))
+;
+
+fun moveParticle (dt, p) = (case p
+        of Particle (MassPnt (m, (x, y)), (vx, vy)) =>
+	   Particle (MassPnt (m, (x + vx * dt, y + vy * dt)), (vx, vy))
         (* end case *))
-    in
-        map (f, (zip(ps, acs)))
-    end
 ;
 
 (*
  * Given a set of particles, move them according to their velocities during a
  *`dt' time interval.
  *)
-fun move (dt, ps) = let
-    fun f (p) = (case p
-        of Particle (MassPnt (m, (x, y)), (vx, vy)) =>
-	   Particle (MassPnt (m, (x + vx * dt, y + vy * dt)), (vx, vy))
-        (* end case *))
-     in
-        map (f, ps)
-     end
+fun move (dt, ps : particle list) = let 
+    fun f (p) = moveParticle(dt, p)
+    in
+       map (f, ps)
+    end
 ;
 
 (* One step of the n-body simulation using the O(n^2) algorithm. 
@@ -218,7 +240,7 @@ fun centroid (mps : mass_pnt list) = let
 
 fun bhTree (a, ps) =
     if (length(ps) = 1)
-       then Node(hd(ps),nil)
+       then Node(hd(ps), nil)
        else let
           val (a1, a2, a3, a4) = cut(a)
 	  val (_, (xm, ym)) = a1
@@ -238,7 +260,7 @@ fun bhTree (a, ps) =
 		    
 	  fun f (_, ps) = (case ps
 			    of nil => false
-			     | _ => true)
+			     | x :: xs => true)
 	  val childs = map (bhTree, filter(f, zip( a1:: a2:: a3:: a4:: nil,
 						   ps1:: ps2:: ps3:: ps4:: nil)))
 	  val cd = centroid (map(mp, childs))
@@ -250,21 +272,13 @@ fun bhTree (a, ps) =
 
 fun minimum (xs) = (case xs
     of nil => fail "minimum"
-     | x :: xs => let
-	   fun f (x, min) = if x < min then x else min
-	   in
-	     foldl(f, x, xs)
-           end
+     | x :: xs => foldl(fmin, x, xs)
     (* end case *))
 ;
 
 fun maximum (xs) = (case xs
     of nil => fail "maximum"
-     | x :: xs => let
-	   fun f (x, max) = if x > max then x else max
-	   in
-	     foldl(f, x, xs)
-           end
+     | x :: xs => foldl(fmax, x, xs)
     (* end case *))
 ;
 
@@ -313,10 +327,10 @@ fun superimp (fs) = let
 ;
 
 fun combine arg = (case arg
-    of (nil, _, _) => nil
-     | (f :: fs, xs, ys) => if f
-       then hd(xs) :: combine(fs, tl(xs), ys)
-       else hd(ys) :: combine(fs, xs, tl(ys))
+    of (nil, _, _, zs) => rev(zs)
+     | (f :: fs, xs, ys, zs) => if f
+       then combine(fs, tl(xs), ys, hd(xs)::zs)
+       else combine(fs, xs, tl(ys), hd(ys)::zs)
     (* end case *))
 ;
 
@@ -359,11 +373,93 @@ fun accels (acs: (mass_pnt tree * float * mass_pnt list)) = (case acs
 	   val (closeAcss, directNos, farNos) = unzip3(map(f, ts))
 	   val closeAcs = map(superimp, transpose(closeAcss))
            in
-	      (combine(direct, farAcs, closeAcs),
+	      (combine(direct, farAcs, closeAcs, nil),
 	       sumi(directNos),
 	       sumi(farNos) + sumi(noFarAcs))
            end
      (* end case *))
+;
+
+(* Compute the acceleration of a mass particle in the Barnes-Hut tree.
+ *)
+fun accelOf (ac : (mass_pnt tree * float * mass_pnt)) = (case ac
+    of (Node(crd, nil), len, mp) => fst(accel(crd, mp))
+     | (Node(crd, ts), len, mp) => 
+       if sameMpt(crd, mp)
+          then (0.0, 0.0)
+       else if (isFar(len, crd, mp))
+          then fst(accel(crd, mp))
+       else superimp(map(let fun f (t) = accelOf(t, len / 2.0, mp) in f end, ts))
+    (* end case *))
+;
+
+fun splitAt (n, ls) = let
+    fun split (i, x :: xs, ys) = if (i < n)
+        then split(i+1, xs, x :: ys)
+        else (rev(ys), x :: xs)
+    in
+        split(0, ls, nil)
+    end
+;
+
+(* List size at which parallel map switches to sequential evaluation.
+ *)
+val seqSz = 1;
+
+(* Map the function f over the list ls in parallel.
+ *
+ *    PREDCONDITION: n = length(ls)
+ *)
+fun parMap (f, n, ls) = (case ls
+    of nil => nil
+     | _ => if (n <= seqSz)
+        then map(f, ls)
+        else let
+          val n1 = n div 2
+  	  val (xs, ys) = splitAt(n1, ls)
+          dval fxs = parMap(f, n1, xs)
+	  val fys = parMap(f, n-n1, ys)
+          in
+	     fxs @ fys
+          end
+   (* end case *))
+;
+
+(* Execute a single iteration (tree construction, accelaration calculation, and
+ * update of the velocities and positions).  The first argument determines the
+ * time interval. 
+ *
+ * PRECONDITION: The particles must contain at least one element.
+ *
+ * * In addition to the new particles, the number of direct and far-field
+ *   interactions is computed.
+ *)
+fun oneStep' (dt, ps) = let
+    val mps = map(particleMP, ps)
+    val box = boundingBox(mps)
+    val len = maxSideLen(box)
+    val t = bhTree(box, mps)
+    val applyAccel = applyAccel(dt)
+
+    fun computeNewParticle (Particle(mp, v)) = let
+	val (ax, ay) = accelOf(t, len, mp)
+        val acc = (gravConst * ax, gravConst * ay)
+        val p = applyAccel(Particle(mp, v), acc)
+        in
+	  moveParticle(dt, p)
+        end
+    in
+       (parMap(computeNewParticle, length(ps), ps), 0, 0)
+    end
+(*
+    val preAcs = map(let fun f (mp) = accelOf(t, len, mp) in f end, mps)
+    fun f (ax, ay) = (gravConst * ax, gravConst * ay)
+    val acs = map(f, preAcs)
+    val ps' = applyAccels(dt, acs, ps)
+    in
+        (move(dt, ps'), 0, 0)
+    end     
+*)
 ;
 
 (* Execute a single iteration (tree construction, accelaration calculation, and
@@ -394,7 +490,7 @@ fun oneStep (dt, ps) = let
  *
  * PRECONDITION: Both lists are of equal length.
  *)
-fun maxErr (rvs, vs) = let
+fun maxErr (rvs, vs) = let    
     fun compare (Particle (MassPnt (_, (x1, y1)), _),
 		 Particle (MassPnt (_, (x2, y2)), _)) = let
 	val dx = absf(x1-x2)
@@ -405,7 +501,9 @@ fun maxErr (rvs, vs) = let
 	    dr / r
         end
     in
-       maximum(zipWith(compare, rvs, vs))
+       if (length(rvs) = length(vs))
+          then maximum(zipWith(compare, rvs, vs))
+          else fail "unequal lengths"
     end
 ;
 
@@ -422,22 +520,24 @@ fun readParticles () = let
     end
 ;
 
-fun fmax (x, y) = if x < y then y else x;
-
 fun debug () = let
     val nSteps = 1
-    val dt = 1.0
+    val dt = 2.0
 
     val ps = readParticles()
 
     fun iter (ps, i, err) = if (i<nSteps)
         then let
-          val (bhPs, dNos, fNos) = oneStep (dt, ps)
+          val (bhPs, dNos, fNos) = oneStep' (dt, ps)
 	  val (naivePs, nNos) = naiveStep(dt, ps)
           val _ = print ("[barnes hut benchmark] number of interactions(naive): "^itos nNos^"\n");
           val _ = print ("[barnes hut benchmark] number of interactions(bh): "^itos dNos^" "^itos fNos^"\n");
-
 	  in
+(*
+print (concatWith(", ", map(part2s, ps))^"\n");
+print (concatWith(", ", map(part2s, bhPs))^"\n");
+print (concatWith(", ", map(part2s, naivePs))^"\n");
+*)
              iter(bhPs, i+1, fmax(err, maxErr(naivePs,bhPs)))
           end
         else err
