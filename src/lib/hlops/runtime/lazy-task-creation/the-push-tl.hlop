@@ -12,16 +12,37 @@
 
 define @the-push-tl(deq : the_deque, elt : any / exh : exh) : () =
 
+  fun copyDeque (arr : array, i : int / ) : () =
+      if I32Lt(i, THE_DEQUE_LEN)
+	 then let elt : any = @array-sub-ub(arr, i / exh)
+              do @array-update-ub(arr, I32Sub(SELECT(THE_H_OFF, deq), i), NIL / exh)
+              do @array-update-ub(arr, I32Sub(SELECT(THE_H_OFF, deq), i), elt / exh)
+              apply copyDeque(arr, I32Add(i, 1) /)
+         else return()
+
+  fun freeSpace (t : int /) : int =
+      if I32Lt(t, THE_DEQUE_LEN)
+	 then return(t)
+         else let mask : bool = @spin-lock-the (deq / exh)
+              do apply copyDeque(SELECT(THE_ARR_OFF, deq), SELECT(THE_H_OFF, deq) /)
+              let t : int = I32Sub(t, SELECT(THE_T_OFF, deq))
+              do UPDATE(THE_H_OFF, deq, 0)
+              do UPDATE(THE_T_OFF, deq, t)
+              let _ : unit = @spin-unlock-the (deq, mask / exh)
+              return(t)
+
   do assert(NotEqual(elt, NIL))
 
   let t : int = SELECT(THE_T_OFF, deq)
+ (* possibly need to free space if the tail has reached the end of the deque *)
+  let t : int = apply freeSpace(t /)
 
- (* the tail pointer grows upwards; check that the pointer is legal *)
+ (* sanity check *)
   do assert(I32Lt(t, THE_DEQUE_LEN))
   do assert(I32Gte(t, 0))
+
  (* put the element into the array *)
-  let arr : array = SELECT(THE_ARR_OFF, deq)
-  do @array-update-ub(arr, t, elt / exh)
+  do @array-update-ub(SELECT(THE_ARR_OFF, deq), t, elt / exh)
 
  (* update the tail pointer *)
   (* NOTE: need a memory barrier here if stores are not guaranteed to be seen in order. *)

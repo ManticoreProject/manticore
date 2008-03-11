@@ -12,6 +12,7 @@
 
 #include "debugging.def"
 #include "the.def"
+#include "assert.def"
 
 define @the-pop-hd(deq : the_deque / exh : exh) : option =
 
