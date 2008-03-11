@@ -156,12 +156,13 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	      defineLabel labT;
 	      emitStms (genGoto jT)
 	  end
-	| genTransfer (M.Switch (v, js, jOpt)) = let		  
+	| genTransfer (M.Switch (v, cases, defaultCase)) = let		  
          (* put the switch value into reg *)
-	  val {reg, mv} = freshMv (defOf v)
-	  val _ = emit mv		  
-	  (* compare the value with each branch *)
-	  fun compareCase i = let
+	  val {reg, mv} = freshMv(defOf v)
+	  val _ = emit(mv)
+
+	  (* compare the value with one of the cases *)
+	  fun compareCase (i) = let
 	      (* encode the case values according to the type of the switch value *)
 	      val c = (case Var.typeOf v                      
 			of CFGTy.T_Enum _ => 
@@ -170,33 +171,39 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 			 | _ => i
 		      (* end case *))
 	      in
-	          T.CMP (MTy.wordTy, T.EQ, T.REG (MTy.wordTy, reg), wordLit c)
+	          T.CMP (MTy.wordTy, T.EQ, T.REG (MTy.wordTy, reg), wordLit(c))
 	      end (* compareCase *)
-				  
-	  fun genTest ((i, (l, [])), exits) = 
+
+         (* emit branching instructions; also return code that calls the exit functions
+	  *)
+	  fun genCase ((i, (l, [])), exits) = 
 	      (* if the jump target has no arguments, put it directly into the branch instruction *) 
-	      (emit (T.BCC (compareCase i, BE.LabelCode.getName l));
+	      (emit (T.BCC (compareCase(i), BE.LabelCode.getName(l)));
 	       exits)		      
-	    | genTest ((i, jmp), exits) = let
-              val labT = newLabel "S_case"
-	      val jmpStms = genGoto jmp
+	    | genCase ((i, handleCase), exits) = let
+              val labT = newLabel("S_case")
 	      in		
-		  emit (T.BCC (compareCase i, labT));
-		  (labT, jmpStms) :: exits
+                 (* branching instructions *)
+		  emit (T.BCC (compareCase(i), labT));
+                 (* code for handling the case if it is chosen *)
+		  (labT, genGoto(handleCase)) :: exits
 	      end
 
 	 (* exit the code block if the value equals the case *)
-	  val exits = foldl genTest [] js
+	  val exits = List.foldl genCase [] cases
+         (* emit the default case *)
+          val _ = Option.app (fn defJmp => emitStms (genGoto(defJmp))) defaultCase
 		      
-	  fun emitJump (labT, jmpStms) = (defineLabel labT; emitStms jmpStms )
+	  fun emitExit (labT, exitStms) = (
+	      defineLabel(labT); 
+	      emitStms(exitStms) )
 	  in		  
-	      app emitJump (List.rev exits);
-	      Option.app (fn defJmp => emitStms (genGoto defJmp)) jOpt
+	      List.app emitExit(List.rev(exits))
 	  end
 	| genTransfer (M.HeapCheck hc) = let
           val {stms, return} = BE.Transfer.genHeapCheck varDefTbl hc
 	  in 
-	      (* emit code for the heap-limit test and the transfer into the GC *) 
+	      (* emit code for the heap-limit check and the transfer into the GC *) 
 	      emitStms stms;
 	      Option.app (fn (retLbl, retStms, liveOut) => (
 		  (* emit code for the return function *)
