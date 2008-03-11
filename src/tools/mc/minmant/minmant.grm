@@ -24,6 +24,7 @@
     | KW_if		("if")
     | KW_in		("in")
     | KW_let		("let")
+    | KW_local		("local")
     | KW_mod		("mod")
     | KW_of		("of")
     | KW_orelse		("orelse")
@@ -128,8 +129,10 @@
 );
 
 Program
-	: (TopDecl ";")* Exp
-		=> ({span=FULL_SPAN, tree=(SR, Exp)})
+	: Exp
+		=> ({span=FULL_SPAN, tree=([], Exp)})
+	| TopDecl (";"? TopDecl)* ";" Exp
+		=> ({span=FULL_SPAN, tree=(TopDecl::SR, Exp)})
 	;
 
 TopDecl
@@ -141,6 +144,8 @@ TopDecl
 		=> (mark PT.MarkDecl (FULL_SPAN, PT.ExnDecl(NAME, SR)))
 	| ValueDecl
 		=> (markDecl (ValueDecl_SPAN, PT.ValueDecl ValueDecl))
+	| "local" (TopDecl ";"?)* "in" (TopDecl ";"?)* "end"
+		=> (markDecl (FULL_SPAN, PT.LocalDecl(SR1, SR2)))
 	;
 
 TyParams
@@ -189,6 +194,7 @@ ValueDecl
 		=> (mark PT.MarkVDecl (KW_val_SPAN, PT.ValVDecl(Pat, Exp)))
 	| "pval" Pat "=" Exp
 		=> (mark PT.MarkVDecl (KW_pval_SPAN, PT.PValVDecl(Pat, Exp)))
+(* the following is temporary *)
 	| "dval" Pat "=" Exp
 		=> (mark PT.MarkVDecl (KW_dval_SPAN, PT.DValVDecl(Pat, Exp)))
 	| "fun" FunDef ("and" FunDef)*

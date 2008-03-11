@@ -27,6 +27,7 @@ structure ParseTree =
       | DataDecl of (tyvar list * tyid * con_decl list)
       | ExnDecl of (conid * ty option)
       | ValueDecl of val_decl
+      | LocalDecl of (decl list * decl list)
 
   (* data-constructor definitions *)
     and con_decl
@@ -38,7 +39,7 @@ structure ParseTree =
       = MarkVDecl of val_decl mark
       | ValVDecl of pat * exp
       | PValVDecl of pat * exp
-      | DValVDecl of pat * exp
+      | DValVDecl of pat * exp	(* temporaray *)
       | FunVDecl of funct list
 
   (* function definitions *)

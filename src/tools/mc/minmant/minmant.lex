@@ -80,11 +80,12 @@
 		("if",		T.KW_if),
 		("in",		T.KW_in),
 		("let",		T.KW_let),
+		("local",	T.KW_let),
 		("mod",		T.KW_mod),
 		("of",		T.KW_of),
 		("orelse",	T.KW_orelse),
 		("pval",	T.KW_pval),
-		("dval",	T.KW_dval),
+		("dval",	T.KW_dval),	(* temporaray *)
 		("raise",	T.KW_raise),
 		("spawn",       T.KW_spawn),
 		("then",	T.KW_then),

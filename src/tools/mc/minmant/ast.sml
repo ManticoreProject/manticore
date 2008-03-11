@@ -38,7 +38,7 @@ structure AST =
     and binding
       = ValBind of pat * exp
       | PValBind of pat * exp
-      | DValBind of pat * exp
+      | DValBind of pat * exp	(* temporary *)
       | FunBind of lambda list
 
     and lambda = FB of (var * var * exp)

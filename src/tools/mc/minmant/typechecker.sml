@@ -474,40 +474,32 @@ structure Typechecker : sig
 		end
 	  (* end case *))
 
-    and chkPBinds (loc, depth, te, ve, pbs) =
-	(case pbs of
-	     [] => ([], ve)
-	   | pb::pbs => let
-		 val (pe, ve1) = chkPBind (loc, depth, te, ve, pb)
-		 val (pes, ve2) = chkPBinds (loc, depth, te, ve, pbs)
-		 val newve1 = List.filter (fn x => not (E.inDomain (ve, x)))
-					  (AtomMap.listKeys ve1)
+    and chkPBinds (loc, depth, te, ve, pbs) = (case pbs
+	   of [] => ([], ve)
+	    | pb::pbs => let
+		val (pe, ve1) = chkPBind (loc, depth, te, ve, pb)
+		val (pes, ve2) = chkPBinds (loc, depth, te, ve, pbs)
+(* FIXME: the following code doesn't work when "pb" contains a shadowing definition *)
+		val newve1 = List.filter (fn x => not (E.inDomain (ve, x))) (AtomMap.listKeys ve1)
+		in
+		  if List.exists (fn x => E.inDomain(ve2, x)) newve1
+		    then error (loc, ["conflicting pattern bindings in parray comprehension"])
+		    else ();
+		  (pe::pes, AtomMap.unionWith #1 (ve1, ve2))
+		end
+	  (* end case *))
 
-		 fun notInVE2 [] = true
-		   | notInVE2 (atom::atoms) =
-		     if E.inDomain (ve2, atom)
-		     then false
-		     else notInVE2 atoms
-	     in
-	       if notInVE2 newve1
-		 then ()
-		 else error (loc, ["conflicting pattern bindings in parray comprehension"]);
-	       (pe::pes, AtomMap.unionWith #1 (ve1, ve2))
-	     end
-	(* end case *))
-
-    and chkPBind (loc, depth, te, ve, pb) =
-	(case pb of
-	     PT.MarkPBind{span, tree} => chkPBind(span, depth, te, ve, tree)
-	   | PT.PBind (pat, exp) => let
-		 val (exp', resTy) = chkExp(loc, depth, te, ve, exp)
-		 val (pat', ve', resTy') = chkPat (loc, depth, te, ve, pat)
-	     in
+    and chkPBind (loc, depth, te, ve, pb) = (case pb
+	   of PT.MarkPBind{span, tree} => chkPBind(span, depth, te, ve, tree)
+	    | PT.PBind (pat, exp) => let
+		val (exp', resTy) = chkExp(loc, depth, te, ve, exp)
+		val (pat', ve', resTy') = chkPat (loc, depth, te, ve, pat)
+		in
 		 if not(U.unify(resTy, B.parrayTy resTy'))
-		 then error(loc, ["type mismatch in pattern binding"])
-		 else ();
+		   then error(loc, ["type mismatch in pattern binding"])
+		   else ();
 		 ((pat', exp'), ve')
-	     end
+		end
 	(* end case *))
 
     and chkPat (loc, depth, te, ve, pat) = (case pat
@@ -669,14 +661,17 @@ structure Typechecker : sig
 		in
 		  (AST.LetExp(bind, e), ty)
 		end
+	    | PT.LocalDecl(localDcls, dcls) => raise Fail "LocalDecl"
 	  (* end case *))
+
+    and chkTopDcls (span, te, ve, [], next) = next(te, ve)
+      | chkTopDcls (span, te, ve, d::ds, next) =
+	  chkTopDcl (span, te, ve, d, fn (te, ve) => chkTopDcls (span, te, ve, ds, next))
 
     fun check (es, {span, tree=(dcls, exp)}) = let
 	  val _ = errStrm := es
-	  fun chkDcls (te, ve, []) = chkExp(span, 0, te, ve, exp)
-	    | chkDcls (te, ve, d::ds) =
-	        chkTopDcl (span, te, ve, d, fn (te, ve) => chkDcls (te, ve, ds))
-	  val (body, ty) = chkDcls (Basis.te0, Basis.ve0, dcls)
+	  val (body, ty) = chkTopDcls (span, Basis.te0, Basis.ve0, dcls,
+		fn (te, ve) => chkExp(span, 0, te, ve, exp))
 (* FIXME: what should the type of a program be? *)
 	  in
 	    Overload.resolve ();
