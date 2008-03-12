@@ -2,6 +2,36 @@ local
 (* definitions to match the Manticore basis *)
 type double = real
 val sqrtd = Math.sqrt
+fun fail msg = raise Fail msg
+val powd = Math.pow
+val itod = real
+val dtos = Real.toString
+val tand = Math.tan
+val gettimeofday = Time.toReal o Time.now
+
+abstype image = IMG of (Word8.word * Word8.word * Word8.word) Array2.array
+with
+fun newImage (wid, ht) = IMG(Array2.array(ht, wid, (0w0, 0w0, 0w0)))
+fun updateImage3d (IMG img, i, j, r, g, b) = let
+      fun cvt x = Word8.fromInt(Real.round(x * 255.0))
+      in
+	Array2.update(img, j, i, (cvt r, cvt g, cvt b))
+      end
+fun freeImage _ = ()
+fun outputImage (IMG img, outFile) = let
+      val outS = BinIO.openOut outFile
+      fun out x = BinIO.output1(outS, x)
+      fun outRGB (r, g, b) = (out r; out g; out b)
+      fun pr s = BinIO.output(outS, Byte.stringToBytes s)
+      val (h, w) = Array2.dimensions img
+      in
+        pr "P6\n";
+	pr(concat[Int.toString w, " ", Int.toString h, "\n"]);
+	pr "255\n";
+	Array2.app Array2.RowMajor outRGB img;
+	BinIO.closeOut outS
+      end
+end
 
 val sqrt = sqrtd;
 fun expt a = let fun expt' b = powd(a, b) in expt' end;
@@ -459,26 +489,32 @@ in
 
 (* sequential version of the code *)
 fun ray winsize = let
-    val lights = testlights;
-    val (firstray, scrnx, scrny) = camparams (lookfrom, lookat, vup, fov, winsize);
-    val img = newImage (winsize, winsize)
-    fun f (i, j) = let
-	  val (r, g, b) = tracepixel (world, lights, i, j, firstray, scrnx, scrny)
-	  in
-	    updateImage3d (img, i, j, r, g, b)
-	  end
-    fun lp i = if (i < winsize)
-	  then let
-	    fun lp' j = if (j < winsize)
-		  then (f(i, j); lp'(j+1))
-		  else ()
+      val lights = testlights;
+      val (firstray, scrnx, scrny) = camparams (lookfrom, lookat, vup, fov, winsize);
+      val img = newImage (winsize, winsize)
+      fun f (i, j) = let
+	    val (r, g, b) = tracepixel (world, lights, i, j, firstray, scrnx, scrny)
 	    in
-	      lp' 0; lp(i+1)
+	      updateImage3d (img, i, j, r, g, b)
 	    end
-	  else ();
-    in
-      lp 0; outputImage(img, "out.ppm"); freeImage img
-    end;
+      fun lp i = if (i < winsize)
+	    then let
+	      fun lp' j = if (j < winsize)
+		    then (f(i, j); lp'(j+1))
+		    else ()
+	      in
+		lp' 0; lp(i+1)
+	      end
+	    else ();
+      val t0 = Time.now()
+      val _ = lp 0;
+      val t = Time.-(Time.now(), t0)
+      in
+	print(concat[
+	    Time.fmt 3 t, " seconds\n"
+	  ]);
+	outputImage(img, "out.ppm"); freeImage img
+      end;
 
 (* sequential version of the code that builds the image first as a list *)
 fun ray' winsize = let
@@ -504,7 +540,7 @@ fun ray' winsize = let
         (* end case *))
     in
       output vs; outputImage(img, "out.ppm"); freeImage img;
-      print (dtos (e-b)^"\n")
+      print (dtos (e-b) ^ " seconds\n")
     end;
 
 (*
@@ -532,4 +568,5 @@ run ("out.ppm", 1024)
 
 end;
 
-ray' (readint ())
+fun run sz = ray sz;
+
