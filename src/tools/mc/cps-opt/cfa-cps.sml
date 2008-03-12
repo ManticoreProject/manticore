@@ -29,6 +29,9 @@ structure CFACPS : sig
 
     val valueOf : CPS.var -> value
 
+  (* returs true if the given variable is only a proxy *)
+    val isProxy : CPS.var -> bool
+
   (* return true if the given lambda variable escapes *)
     val isEscaping : CPS.var -> bool
 
@@ -100,6 +103,11 @@ structure CFACPS : sig
             concat (v2s(v, []))
           end
 
+  (* property to track proxy variables *)
+    val {getFn=getIsProxy, setFn=setIsProxy, ...} =
+          CPS.Var.newProp (fn _ => false)
+    val isProxy = getIsProxy
+
     fun valueFromType ty = (case ty
            of CPSTy.T_Any => BOT (* or should this be TOP? *)
             | CPSTy.T_Enum _ => TOP
@@ -107,7 +115,29 @@ structure CFACPS : sig
             | CPSTy.T_Tuple (true, tys) => TUPLE(List.map (fn _ => TOP) tys)
             | CPSTy.T_Tuple (false, tys) => TUPLE(List.map valueFromType tys)
             | CPSTy.T_Addr _ => TOP
-            | CPSTy.T_Fun _ => LAMBDAS(VSet.empty)
+            | (ty as CPSTy.T_Fun (paramTys,retTys)) => let
+                val params = map (fn ty => CPS.Var.new("cfaProxyParam", ty)) paramTys
+                val () = app (fn x => setIsProxy(x, true)) params
+                val rets = map (fn ty => CPS.Var.new("cfaProxyRet", ty)) retTys
+                val () = app (fn x => setIsProxy(x, true)) rets
+                val f = CPS.Var.new("cfaProxyF", ty)
+                val () = setIsProxy(f, true)
+                val z = CPS.Var.new("cfaProxyZ", CPSTy.T_Fun([],[]))
+                val () = setIsProxy(z, true)
+                val lambda = CPS.FB {
+                        f = f,
+                        params = params,
+                        rets = rets,
+                        body = CPS.Throw (z, [])
+                    }
+                val () = app (fn x => CPS.Var.setKind(x, CPS.VK_Param lambda)) params
+                val () = app (fn x => CPS.Var.setKind(x, CPS.VK_Param lambda)) rets
+                val () = if null retTys 
+                            then CPS.Var.setKind(f, CPS.VK_Cont lambda)
+                            else CPS.Var.setKind(f, CPS.VK_Fun lambda)
+                in 
+                  LAMBDAS(VSet.singleton f)
+                end 
             | CPSTy.T_CFun _ => TOP
             | CPSTy.T_VProc => TOP
           (* end case *))
@@ -195,7 +225,7 @@ structure CFACPS : sig
   (* if a value escapes (e.g., is passed to an escaping function), we need to mark any
    * labels that it contains as escaping too.
   *)
-    and escapingValue (LAMBDAS ls) = let
+    and escapingValue (LAMBDAS fs) = let
         (* for each escaping function, we set its call site to Unknown and
          * set its parameters to TOP.
          *)
@@ -216,7 +246,7 @@ structure CFACPS : sig
                   (* end case *))
                 else ()
           in
-            VSet.app doVar ls
+            VSet.app doVar fs
           end
       | escapingValue (TUPLE vs) = List.app escapingValue vs
       | escapingValue _ = ()
@@ -237,12 +267,7 @@ structure CFACPS : sig
                 in
                   TUPLE(join(vs1, vs2))
                 end
-            | kJoin (k, v1 as LAMBDAS fs1, v2 as LAMBDAS fs2) = 
-                if VSet.isEmpty fs1
-                  then v2
-                else if VSet.isEmpty fs2
-                  then v1
-                else let
+            | kJoin (k, v1 as LAMBDAS fs1, v2 as LAMBDAS fs2) = let
               (* join params and rets of joined lambdas *)
                 fun getParamsRets f = (case CPS.Var.kindOf f
                        of CPS.VK_Fun (CPS.FB {params, rets, ...}) => (params, rets)
@@ -326,10 +351,10 @@ structure CFACPS : sig
     fun printResults body = let
           fun printCallSitesOf f =
                 print(concat["callSitesOf(", CPS.Var.toString f, ") = ",
-                             callSitesToString (getSites f), "\n"])
+                             callSitesToString (callSitesOf f), "\n"])
           fun printValueOf x =
                 print(concat["getValue(", CPS.Var.toString x, ") = ",
-                             valueToString (getValue x), "\n"])
+                             valueToString (valueOf x), "\n"])
           fun printExp e = let
                 fun doExp e = printExp e
                 fun doLambda fb = printLambda fb
