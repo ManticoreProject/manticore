@@ -76,9 +76,7 @@ structure FlatClosureWithCFA : sig
     and cvtStdFunTy (ty, v) = CFG.T_Tuple(false, [CFG.T_Any, cvtStdFunTyAux (ty, v)])
     and cvtStdFunTyAux (ty, CFA.TOP) = cvtStdFunTyAuxStd ty
       | cvtStdFunTyAux (ty, CFA.BOT) = cvtStdFunTyAuxStd ty
-      | cvtStdFunTyAux (ty, v as CFA.LAMBDAS fs) = 
-          if CPS.Var.Set.isEmpty fs then cvtStdFunTyAuxStd ty
-          else let
+      | cvtStdFunTyAux (ty, v as CFA.LAMBDAS fs) = let
           val SOME f = CPS.Var.Set.find (fn _ => true) fs
           val CPS.VK_Fun (CPS.FB {params, rets, ...}) = CPS.Var.kindOf f
           in
@@ -123,9 +121,7 @@ structure FlatClosureWithCFA : sig
     and cvtStdContTy (ty, v) = CFG.T_OpenTuple[cvtStdContTyAux (ty, v)]
     and cvtStdContTyAux (ty, CFA.TOP) = cvtStdContTyAuxStd ty
       | cvtStdContTyAux (ty, CFA.BOT) = cvtStdContTyAuxStd ty
-      | cvtStdContTyAux (ty, CFA.LAMBDAS fs) = 
-          if CPS.Var.Set.isEmpty fs then cvtStdContTyAuxStd ty
-          else let
+      | cvtStdContTyAux (ty, CFA.LAMBDAS fs) = let
           val SOME f = CPS.Var.Set.find (fn _ => true) fs
           val CPS.VK_Cont (CPS.FB {params, rets = [], ...}) = CPS.Var.kindOf f
           in
@@ -696,12 +692,12 @@ structure FlatClosureWithCFA : sig
           and cvtApply (env, f, args, rets, finish) = (case CFA.valueOf f
                  of CFA.TOP => cvtStdApply (env, f, NONE, args, rets, finish)
                   | CFA.BOT => cvtStdApply (env, f, NONE, args, rets, finish)
-                  | CFA.LAMBDAS gs => 
-                      if CPS.Var.Set.isEmpty gs 
-                        then cvtStdApply (env, f, NONE, args, rets, finish)
-                      else let
+                  | CFA.LAMBDAS gs => let
                       val SOME g = CPS.Var.Set.find (fn _ => true) gs
-                      val fTgt = if CPS.Var.Set.numItems gs = 1 then SOME g else NONE
+                      val gs = CPS.Var.Set.filter (not o CFA.isProxy) gs
+                      val fTgt = if CPS.Var.Set.numItems gs = 1 
+                                    then CPS.Var.Set.find (fn _ => true) gs
+                                 else NONE
                       in
                         if CFA.isEscaping g
                           then cvtStdApply (env, f, fTgt, args, rets, finish)
@@ -806,12 +802,12 @@ structure FlatClosureWithCFA : sig
           and cvtThrow (env, k, args, finish) = (case CFA.valueOf k 
                  of CFA.TOP => cvtStdThrow (env, k, NONE, args, finish)
                   | CFA.BOT => cvtStdThrow (env, k, NONE, args, finish)
-                  | CFA.LAMBDAS gs => 
-                      if CPS.Var.Set.isEmpty gs 
-                        then cvtStdThrow (env, k, NONE, args, finish)
-                      else let
+                  | CFA.LAMBDAS gs => let
                       val SOME g = CPS.Var.Set.find (fn _ => true) gs
-                      val kTgt = if CPS.Var.Set.numItems gs = 1 then SOME g else NONE
+                      val gs = CPS.Var.Set.filter (not o CFA.isProxy) gs
+                      val kTgt = if CPS.Var.Set.numItems gs = 1 
+                                    then CPS.Var.Set.find (fn _ => true) gs
+                                 else NONE
                       in
                         if CFA.isEscaping g
                           then cvtStdThrow (env, k, kTgt, args, finish)
