@@ -108,6 +108,12 @@ structure CFACPS : sig
           CPS.Var.newProp (fn _ => false)
     val isProxy = getIsProxy
 
+  (* create an approximate value from a type.  These values are used to initialize
+   * the approximation property for variables.  Note that for functions and continuations,
+   * we need to create a proxy function (instead of using the empty set of lambdas).
+   * This requirement is necessary to avoid problems when an unreachable function
+   * calls a reachable function.
+   *)
     fun valueFromType ty = (case ty
            of CPSTy.T_Any => BOT (* or should this be TOP? *)
             | CPSTy.T_Enum _ => TOP
@@ -115,7 +121,7 @@ structure CFACPS : sig
             | CPSTy.T_Tuple (true, tys) => TUPLE(List.map (fn _ => TOP) tys)
             | CPSTy.T_Tuple (false, tys) => TUPLE(List.map valueFromType tys)
             | CPSTy.T_Addr _ => TOP
-            | (ty as CPSTy.T_Fun (paramTys,retTys)) => let
+            | (ty as CPSTy.T_Fun(paramTys, retTys)) => let
                 val params = map (fn ty => CPS.Var.new("cfaProxyParam", ty)) paramTys
                 val () = app (fn x => setIsProxy(x, true)) params
                 val rets = map (fn ty => CPS.Var.new("cfaProxyRet", ty)) retTys
@@ -129,7 +135,7 @@ structure CFACPS : sig
                         params = params,
                         rets = rets,
                         body = CPS.Throw (z, [])
-                    }
+		      }
                 val () = app (fn x => CPS.Var.setKind(x, CPS.VK_Param lambda)) params
                 val () = app (fn x => CPS.Var.setKind(x, CPS.VK_Param lambda)) rets
                 val () = if null retTys 
