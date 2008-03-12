@@ -19,8 +19,8 @@ extern void M_PrintInt(int);
 define inline @rope-map (args : [(* f *) fun (any / exh -> any),
                                  (* r *) rope] / exh : exh) : rope =
 
-  print_debug ("=============>>> called rope-map\n\000")
-
+  print_msg ("=============>>> called rope-map\n\000")
+  
   let f : fun (any / exh -> any) = #0(args)
   let r : rope = #1(args)
 

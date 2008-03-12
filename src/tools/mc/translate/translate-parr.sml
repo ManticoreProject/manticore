@@ -110,10 +110,9 @@ structure TranslateParr  : sig
   (* Consumes a list of expressions and produces an ideally-balanced *)
   (* rope from them. *)
     fun ropeFromExps es =
-	  let val maxLeafSize = R.maxLeafSize ()
+	  let val maxLeafSize = R.maxLeafSize ()	    
 	      (* makeLeaf : 'a list -> 'a rope *)
 	      (* pre: length xs does not exceed maxLeafSize *)
-	      fun makeLeaf xs = Leaf (Lf (length xs, xs))
 	      (* makeLeaves : 'a list -> 'a rope list *)
 	      (* Chop up a list and put the data into leaves. *)
 	      fun makeLeaves xs =

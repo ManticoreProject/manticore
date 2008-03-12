@@ -17,6 +17,9 @@
 define @future1-work-sharing ( / exh : exh) : locked_queue;
 
 define @future1-spawn (thunk : thunk / exh : exh) : future =  
+
+  print_debug (">>>>> called @future1-spawn\n")
+
  (* get the fiber-group storage of the caller *)
   let parentFGS : fgs = @get-fgs (host_vproc / exh)
 

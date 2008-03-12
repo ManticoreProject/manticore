@@ -156,9 +156,14 @@ structure TicTacToe = struct
 
   (* go : unit -> (board * int) * int *)
   fun go () = let
-    val t = minimax X empty
+    val gettimeofday = Time.toReal o Time.now
+    val t0 = gettimeofday ()
+    val tree = minimax X empty
+    val t1 = gettimeofday ()
     in
-      (top(t), size(t))
+      print (Real.toString (t1-t0));
+      print " seconds to build the tree\n";
+      (top(tree), size(tree))
     end
 
   (* max : int * int -> int *)

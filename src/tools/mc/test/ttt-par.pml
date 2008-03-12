@@ -27,8 +27,7 @@ fun playerEq tup =
   case tup
     of (X, X) => true
      | (O, O) => true
-     | (X, O) => false (* NOTE This function was broken with a wildcard for false. *)
-     | (O, X) => false;
+     | _ => false;
 
 (* playerOccupies : player * board * int -> bool *)
 fun playerOccupies (p, b, i) =
@@ -151,6 +150,7 @@ datatype tttTree          (* monomorphic b/c there were bugs *)
 (* mkLeaf : board * int -> tttTree *)
 fun mkLeaf (b, i) = Rose ((b, i), [||])
 
+(*
 (* allMoves : board -> int parray *)
 fun allMoves b = let 
   fun f (n, L, acc) =
@@ -160,6 +160,29 @@ fun allMoves b = let
        | NONE::more => f (n+1, more, pappend (acc, [|n|])))
   in
     f (0, b, [||])
+  end;
+*)
+
+fun allMoves b = let
+  fun f (n, L, acc) = (case L
+    of nil => acc
+     | SOME(_)::more => f (n+1, more, acc)
+     | NONE::more => f (n+1, more, n::acc))
+  val empties = f (0, b, nil)
+  in
+    case empties
+     (* This case does what filter would do if we had it! *)
+     of a::b::c::d::e::f::g::h::i::nil => [|a,b,c,d,e,f,g,h,i|]
+      | a::b::c::d::e::f::g::h::nil => [|a,b,c,d,e,f,g,h|]
+      | a::b::c::d::e::f::g::nil => [|a,b,c,d,e,f,g|]
+      | a::b::c::d::e::f::nil => [|a,b,c,d,e,f|]
+      | a::b::c::d::e::nil => [|a,b,c,d,e|]
+      | a::b::c::d::nil => [|a,b,c,d|]
+      | a::b::c::nil => [|a,b,c|]
+      | a::b::nil => [|a,b|]
+      | a::nil => [|a|]
+      | nil => [||]
+      | _ => fail "shouldn't"
   end;
 
 (* other : player -> player *)
@@ -175,15 +198,17 @@ fun top t = case t
 (* add : int * int -> int *)
 fun add (m:int, n) = m+n;
 
-(* sum : int parray -> int *)
-fun sum A = reduceP (add, 0, A);
+(* sumP : int parray -> int *)
+fun sumP ns = reduceP (add, 0, ns);
 
 (* size : 'a rose_tree -> int *)
 fun size (t : tttTree) = case t
-  of Rose (_, ts) => (sum [| size t | t in ts |]) + 1;
+  of Rose (_, ts) => (sumP [| size t | t in ts |]) + 1;
 
+(* min : int * int -> int *)
 fun min (m:int, n) = (if m<n then m else n);
 
+(* max : int * int -> int *)
 fun max (m:int, n) = (if m>n then m else n);
 
 (* minP : int parray -> int *)
@@ -192,41 +217,96 @@ fun minP a = reduceP (min, 2, a); (* 2 is INF in this domain! *)
 (* maxP : int parray -> int *)
 fun maxP a = reduceP (max, ~2, a);
  
+(* select2 : 'a * 'b -> 'b *)
+fun select2 (_, s) = s;
+
+(* successors : board * player -> board parray *)
+fun successors (b, p) = [| moveTo (b, p, i) | i in (allMoves b) |];
+
 (* p is the player to move *)
 (* X is max, O is min *)
 fun minimax (b : board, p : player) =
   if gameOver(b) then
     mkLeaf (b, score b)
   else let
-    fun select2 (_, s) = s
-    val moves = [| moveTo (b, p, i) | i in allMoves(b) |]
-    val trees = [| minimax (b, other p) | b in moves |]
+    val trees  = [| minimax (b, other p) | b in (successors (b, p)) |]
     val scores = [| select2(top(t)) | t in trees |]
     val selectFrom = (case p of X => maxP | O => minP)
     in
       Rose ((b, selectFrom scores), trees)
     end;
 
-(*
-val T = minimax (empty, X);
+val t0 = gettimeofday();
+val T  = minimax (empty, X);
+val t1 = gettimeofday();
 
-val (_, result) = top(T);
+val (b, result) = top(T);
+
+val t2 = gettimeofday();
+val s = size(T);
+val t3 = gettimeofday();
+
+val build_tree_time = t1 - t0;
+
+val size_time = t3 - t2; 
 
 (print ("The outcome of the game is ");
  print (itos(result));
  print " (expecting 0).\nThe size of T is ";
- print (itos(size(T)));
- print " (expecting 549946).\n")
-*)
+ print (itos(s));
+ print " (expecting 549946).\n";
+ print "Time to build the tree: ";
+ print (dtos(build_tree_time));
+ print "\nTime to compute the size of the tree: ";
+ print (dtos(size_time));
+ print "\n")
 
-fun alpha_beta () = let
-  fun maxT (board, a, b) =
-    if gameOver(board) then
-      mkLeaf (b, score b)
-    else
-      todo "else branch"
+(* FIXME ==>
+
+fun successorsSeq (b, p) = let
+  fun m i = moveTo (b, p, i)
   in
-    todo "alpha_beta"
+    map (m, allMoves b)
   end;
 
-()
+fun alpha_beta () = let
+  fun maxT (board, alpha, beta) =
+    if gameOver(board) then
+      mkLeaf (board, score board)
+    else let
+      fun loop (bs, a, ts) = (case bs
+        of nil => Rose ((board, a), ts)
+	 | bh::bt => let
+             val t = minT (bh, a, beta)
+	     val a' = max (a, select2 (top t))
+	     in
+               if (a' >= beta) then
+                 Rose ((board, a'), t::ts)
+	       else
+		 loop (bt, a', t::ts)
+             end)
+        in
+	  loop (successorsSeq (board, X), alpha, nil)
+	end
+  and minT (board, alpha, beta) =
+    if gameOver(board) then
+      mkLeaf (board, score board)
+    else let
+      fun loop (bs, b, ts) = (case bs
+        of nil => Rose ((board, b), ts)
+	 | bh::bt => let
+             val t = maxT (bh, alpha, b)
+	     val b' = min (b, select2 (top t))
+	     in
+               if (b' <= alpha) then
+                 Rose ((board, b'), t::ts)
+	       else
+		 loop (bt, b', t::ts)
+             end)
+        in
+	  loop (successorsSeq (board, O), beta, nil)
+	end
+  in
+    maxT (empty, ~1, 1)
+  end;
+*)

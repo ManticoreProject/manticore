@@ -126,8 +126,10 @@ datatype 'a gtree (* general tree *)
 *)
 
 datatype tttTree
-  = Leaf of (board * int)
-  | Node of ((board * int) * (tttTree list));
+  = Rose of ((board * int) * (tttTree list));
+
+(* mkLeaf : board * int -> tttTree *)
+fun mkLeaf (b, i) = Rose ((b, i), nil);
 
 (* allMoves : board -> int list *)
 fun allMoves b = let 
@@ -147,16 +149,16 @@ fun other p =
      | O => X;
 
 (* top : 'a gtree -> 'a *)
-fun top t =
-  case t
-    of Leaf x => x
-     | Node (x, _) => x;
+fun top t = case t
+  of Rose (x, ts) => x;
 
+(*
 (* immChildren : 'a gtree -> 'a list *)
 fun immChildren t =
   case t
     of Leaf _ => nil (* raise Fail "" *)
      | Node (_, ts) => map (top, ts);
+*)
 
 (* add : int * int -> int *)
 fun add (m:int, n) = m+n;
@@ -165,10 +167,8 @@ fun add (m:int, n) = m+n;
 fun sum L = foldl (add, 0, L);
 
 (* size : 'a gtree -> int *)
-fun size (t : tttTree) =
-  case t
-    of Leaf _ => 1
-     | Node (_, ts) => (sum (map (size, ts))) + 1;
+fun size (t : tttTree) = case t
+  of Rose (_, ts) => (sum (map (size, ts))) + 1;
 
 (* BUGS? The following doesn't make it past the translate phase.
          Nor does it make it without the type ascription on t.
@@ -205,7 +205,7 @@ fun listmax (L : int list) = listExtreme (max, L);
 (* X is max, O is min *)
 fun minimax (b : board, p : player) =
   if (isWin(b) orelse isCat(b)) then
-    Leaf (b, score b)
+    mkLeaf (b, score b)
   else let
     fun moveTo' i = moveTo (b, p, i)
     fun minimax' b = minimax (b, other p)
@@ -215,19 +215,34 @@ fun minimax (b : board, p : player) =
     val scores = map (compose (select2, top), trees)
     in
       case p
-        of X => Node ((b, listmax scores), trees)
-	 | O => Node ((b, listmin scores), trees)
+        of X => Rose ((b, listmax scores), trees)
+	 | O => Rose ((b, listmin scores), trees)
     end;
 
-val T = minimax (empty, X);
+val t0 = gettimeofday();
+val T  = minimax (empty, X);
+val t1 = gettimeofday();
 
-val (_, result) = top(T);
+val (b, result) = top(T);
+
+val t2 = gettimeofday();
+val s = size(T);
+val t3 = gettimeofday();
+
+val build_tree_time = t1 - t0;
+
+val size_time = t3 - t2; 
 
 (print ("The outcome of the game is ");
  print (itos(result));
  print " (expecting 0).\nThe size of T is ";
- print (itos(size(T)));
- print " (expecting 549946).\n")
+ print (itos(s));
+ print " (expecting 549946).\n";
+ print "Time to build the tree: ";
+ print (dtos(build_tree_time));
+ print "\nTime to compute the size of the tree: ";
+ print (dtos(size_time));
+ print "\n")
 
 (* A bunch of debugging follows. *)
 
