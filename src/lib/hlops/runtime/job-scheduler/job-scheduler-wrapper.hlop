@@ -1,0 +1,44 @@
+(* job-scheduler-wrapper.hlop
+ * 
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Wraps a fiber in another fiber that handles job scheduling.
+ *)
+
+#include "types.def"
+#include "tags.def"
+#include "debugging.def"
+#include "fgs.def"
+#include "logging.def"
+#include "scheduling-ops.def"
+
+define @job-scheduler-wrapper (j : int,                                      (* job id *)
+			       fgs : fgs,                                    (* fgs for the job *)
+			       jobScheduler : cont(int, int, fiber, fiber),    (* upcall into the job scheduler *)
+			       k : fiber) : fiber =                          (* fiber to wrap *)
+
+
+  cont switch (s : signal) = 
+       case s
+	of STOP => 
+	   @forward(host_vproc, STOP / exh)
+	 | PREEMPT (k : fiber) =>
+	   @atomic-yield(host_vproc / exh)
+	   @run(host_vproc, switch, fgs, k / exh)
+	 | CHANGE_DESIRE (d : int, resumeK : fiber, suspendK : fiber) =>
+	   cont resumeK' (_ : unit) = 
+                cont k(_ : unit) = throw resumeK(UNIT)
+                @run(host_vproc, switch, fgs, k / exh)
+	   cont suspendK' (_ : unit) = 
+                cont k(_ : unit) = throw suspendK(UNIT)
+                @run(host_vproc, switch, fgs, k / exh)
+           throw jobScheduler(j, d, resumeK', suspendK')
+       end
+
+  cont kWrapper (_ : unit) =
+       @run(host_vproc, switch, fgs, k / exh)
+
+  return(kWrapper)
+
+;
