@@ -3,6 +3,38 @@
  * Simple Barnes-Hut benchmark borrowed from Chakravarty and Keller.
  *)
 
+(* List size at which parallel map switches to sequential evaluation.
+ *)
+val seqSz = readint();
+
+fun splitAt (n, ls) = let
+    fun split (i, x :: xs, ys) = if (i < n)
+        then split(i+1, xs, x :: ys)
+        else (rev(ys), x :: xs)
+    in
+        split(0, ls, nil)
+    end
+;
+
+(* Map the function f over the list ls in parallel.
+ *
+ *    PREDCONDITION: n = length(ls)
+ *)
+fun parMap (f, n, ls) = (case ls
+    of nil => nil
+     | _ => if (n <= seqSz)
+        then map(f, ls)
+        else let
+          val n1 = n div 2
+  	  val (xs, ys) = splitAt(n1, ls)
+          dval fxs = parMap(f, n1, xs)
+	  val fys = parMap(f, n-n1, ys)
+          in
+	     fxs @ fys
+          end
+   (* end case *))
+;
+
 type vector = (float * float);
 type point = vector;
 type veloc = vector;
@@ -246,6 +278,19 @@ fun bhTree (a, ps) =
 	  val (_, (xm, ym)) = a1
 
 	  fun f (MassPnt (_, (x, y))) = (x < xm, y < ym)
+
+	  fun putParticleInQd (p, (ps1, ps2, ps3, ps4)) = let
+	      val (fx, fy) = f(p)
+	      val ps1 = if (fx andalso fy) then p :: ps1 else ps1
+	      val ps2 = if (not(fx) andalso fy) then p :: ps2 else ps2
+	      val ps3 = if (fx andalso not(fy)) then p :: ps3 else ps3
+	      val ps4 = if (not(fx) andalso not(fy)) then p :: ps4 else ps4
+              in
+	         (ps1, ps2, ps3, ps4)
+              end	      
+          val (ps1, ps2, ps3, ps4) = foldl (putParticleInQd, (nil, nil, nil, nil), ps)
+          val (ps1, ps2, ps3, ps4) = (rev(ps1), rev(ps2), rev(ps3), rev(ps4))
+(*
 	  val flags = map (f, ps)
 	  val pzs = zip(ps, flags)
 		    
@@ -257,7 +302,7 @@ fun bhTree (a, ps) =
 	  val ps3 = map(fst, filter(f3, pzs))
 	  fun f4 (_, (fx, fy)) = not(fx) andalso not(fy)
 	  val ps4 = map(fst, filter(f4, pzs))
-		    
+*)
 	  fun f (_, ps) = (case ps
 			    of nil => false
 			     | x :: xs => true)
@@ -346,6 +391,16 @@ fun split (f, xs) = let
     end
 ;
 
+fun timeToEval (f) = let
+    val b = gettimeofday ()
+    val v = f()
+    val e = gettimeofday ()
+    in
+       print (dtos (e-b)^"\n");
+       v
+    end
+;
+
 (* Calculates the acceleration on a set of particles according to the given
  * Barnes-Hut tree (whose bounding box has a maximum side length as given in
  * the second argument).
@@ -393,38 +448,6 @@ fun accelOf (ac : (mass_pnt tree * float * mass_pnt)) = (case ac
     (* end case *))
 ;
 
-fun splitAt (n, ls) = let
-    fun split (i, x :: xs, ys) = if (i < n)
-        then split(i+1, xs, x :: ys)
-        else (rev(ys), x :: xs)
-    in
-        split(0, ls, nil)
-    end
-;
-
-(* List size at which parallel map switches to sequential evaluation.
- *)
-val seqSz = readint();
-
-(* Map the function f over the list ls in parallel.
- *
- *    PREDCONDITION: n = length(ls)
- *)
-fun parMap (f, n, ls) = (case ls
-    of nil => nil
-     | _ => if (n <= seqSz)
-        then map(f, ls)
-        else let
-          val n1 = n div 2
-  	  val (xs, ys) = splitAt(n1, ls)
-          dval fxs = parMap(f, n1, xs)
-	  val fys = parMap(f, n-n1, ys)
-          in
-	     fxs @ fys
-          end
-   (* end case *))
-;
-
 (* Execute a single iteration (tree construction, accelaration calculation, and
  * update of the velocities and positions).  The first argument determines the
  * time interval. 
@@ -448,8 +471,10 @@ fun oneStep' (dt, ps) = let
         in
 	  moveParticle(dt, p)
         end
+    val n = length(ps)
+    val ps' = parMap(computeNewParticle, n, ps)
     in
-       (parMap(computeNewParticle, length(ps), ps), 0, 0)
+       (ps', 0, 0)
     end
 ;
 
@@ -524,17 +549,17 @@ fun timeTest () = let
           end
         else ps
 
-    val b = gettimeofday ()
-    val _ = iter(particles, 0)	   
-    val e = gettimeofday ()
+
+    val _ = timeToEval(let fun f () = iter(particles, 0) in f end)
+
     in
-        print (dtos (e-b)^"\n")
+       ()
     end
 ;
 
 
 fun debug () = let
-    val nSteps = 1
+    val nSteps = readint()
     val dt = 2.0
 
     val ps = readParticles()
