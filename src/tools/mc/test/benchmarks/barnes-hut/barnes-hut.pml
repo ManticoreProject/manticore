@@ -132,7 +132,7 @@ fun transpose (rows) = (case rows
     (* end case *))
 ;
 
-val gravConst : float = 1.0 (*6.670 / 100000000000.0*);  (* 6.670e-11 *)
+val gravConst : float = (*6.670 / 100000000000.0*) 1.0;  (* 6.670e-11 *)
 val epsilon = 1.0 / 100000000000000000000.0;     (* 1.0e-20 *)
 (* precision (a cell is *far away* if `l/d < theta') *)
 val theta  = 0.8;
@@ -270,8 +270,14 @@ fun centroid (mps : mass_pnt list) = let
     end
 ;
 
+fun lenIsOne (ls) = (case ls
+    of nil => fail "lenIsOne"
+     | x :: nil => true
+     | _ => false
+    (* end case *))
+
 fun bhTree (a, ps) =
-    if (length(ps) = 1)
+    if (lenIsOne(ps))
        then Node(hd(ps), nil)
        else let
           val (a1, a2, a3, a4) = cut(a)
@@ -289,7 +295,6 @@ fun bhTree (a, ps) =
 	         (ps1, ps2, ps3, ps4)
               end	      
           val (ps1, ps2, ps3, ps4) = foldl (putParticleInQd, (nil, nil, nil, nil), ps)
-          val (ps1, ps2, ps3, ps4) = (rev(ps1), rev(ps2), rev(ps3), rev(ps4))
 (*
 	  val flags = map (f, ps)
 	  val pzs = zip(ps, flags)
