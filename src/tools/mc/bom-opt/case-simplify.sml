@@ -529,7 +529,15 @@ DEBUG*)
 		    (* end case *)
 		  end
 	      | LitCase{rules, ...} => literalCase (s, tys, argument, rules, dflt)
-	      | ExnCase _ => raise Fail "exception cases not implemented yet" (* FIXME *)
+	      | ExnCase{rules, hasDflt=true} => let
+(*
+		fun exnCase [] = Option.valOf dflt
+		  | exnCase ((dc, ys, e)::r) = ??
+*)
+		in
+		  raise Fail "exception cases not implemented yet" (* FIXME *)
+		end
+	      | ExnCase _ => raise Fail "exception case w/o default"
 	    (* end case *)
 	  end
 
