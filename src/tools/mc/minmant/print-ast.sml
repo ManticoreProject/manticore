@@ -121,11 +121,11 @@ structure PrintAST : sig
 	   closeBox ();
 	   closeBox ())
       | exp (A.CaseExp (e, pes, t)) = (
-	  openVBox (rel 0);
+	  openVBox (rel 2);
 	     pr "(case (";
 	     exp e;
 	     pr ")";
-	     openVBox (abs 2);
+	     openVBox (abs 1);
 	       ln ();
 	       case pes
 		of m::ms => (pe " of" m;  app (pe "  |") ms)
@@ -265,7 +265,8 @@ structure PrintAST : sig
 	    pr s;
 	    pr " ";
 	    pat p;
-	    pr " => ";
+	    pr " =>";
+	    ln ();
 	    exp e;
 	    ln ();
 	  closeBox ())
@@ -328,7 +329,8 @@ structure PrintAST : sig
 	   var f;
 	   pr " ";
 	   var x;
-	   pr " = ";
+	   pr " =";
+	   ln ();
 	   exp b;
 	   closeBox ())
 	   
