@@ -149,7 +149,7 @@ structure FutParLet : sig
 		  end
 	      | exp (k as A.ConstExp _, _) = (k, VSet.empty)
 	      | exp (v as A.VarExp (x, ts), pLive) = 
-		  if   VSet.member (pLive, x) 
+		  if VSet.member (pLive, x) 
 		  then 
 		      let val touchV = F.mkFuture1Touch v
 			  val optSel = Var.Tbl.find selectors x

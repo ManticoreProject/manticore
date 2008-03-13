@@ -66,6 +66,10 @@ structure GrandPass : sig
     and trPComp arg = TranslatePComp.tr trExp arg
 
   (* transform : A.module -> A.module *)
-    fun transform (A.Module {exns, body}) = A.Module {exns = exns, body = trExp body} 
+    fun transform (A.Module {exns, body}) = let
+      val body' = trExp body
+      in
+        A.Module {exns = exns, body = body'}
+      end
 
   end

@@ -273,4 +273,6 @@ structure TicTacToe = struct
       app pr (map (fn (b,i) => (btos b, i)) (fringe t))
     end    
 
+  val _ = go()
+
 end

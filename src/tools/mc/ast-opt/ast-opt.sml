@@ -32,7 +32,7 @@ structure ASTOpt : sig
     val pvals : AST.module -> AST.module =
 	transform {passName="pvals", pass=FutParLet.futurize}
 
-    val translatePvals = Controls.genControl {
+    val translatePVals = Controls.genControl {
 	    name = "translate-pvals",
 	    pri = [5, 0],
 	    obscurity = 1,
@@ -40,12 +40,16 @@ structure ASTOpt : sig
 	    default = false
 	  }
 
+    val _ = ControlRegistry.register BasicControl.topRegistry {
+      ctl = Controls.stringControl ControlUtil.Cvt.bool translatePVals,
+      envName = NONE}
+
     fun optimize (module : AST.module) : AST.module = let
 	  val module = if (Controls.get BasicControl.sequential)
 		          then Unpar.unpar module
 		          else let
 		            val module = dvals(module)
-			    val module = if (Controls.get translatePvals)
+			    val module = if (Controls.get translatePVals)
 					 then pvals(module)
 					 else module
 			    val module = GrandPass.transform module
