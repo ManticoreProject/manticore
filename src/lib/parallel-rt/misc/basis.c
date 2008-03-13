@@ -135,6 +135,24 @@ double M_GetTimeOfDay ()
 
 }
 
+/* M_GetNumProcs:
+ *
+ * Return the number of hardware processors.
+ */
+int M_GetNumProcs ()
+{
+    return NumHardwareProcs;
+}
+
+/* M_GetNumVProcs:
+ *
+ * Return the number of enabled vprocs.
+ */
+int M_GetNumVProcs ()
+{
+    return NumVProcs;
+}
+
 /***** functions to support debugging *****/
 
 Value_t M_Test ()
