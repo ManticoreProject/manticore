@@ -112,6 +112,7 @@ structure TranslateParr  : sig
     fun ropeFromExps es =
 	  let val maxLeafSize = R.maxLeafSize ()	    
 	      (* makeLeaf : 'a list -> 'a rope *)
+	      fun makeLeaf xs = Leaf (Lf (length xs, xs))	
 	      (* pre: length xs does not exceed maxLeafSize *)
 	      (* makeLeaves : 'a list -> 'a rope list *)
 	      (* Chop up a list and put the data into leaves. *)
