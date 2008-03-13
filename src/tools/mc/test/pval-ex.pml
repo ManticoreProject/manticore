@@ -1,23 +1,14 @@
+(* Test cancel for correct runtime behavior.
+ *   (run me by saying either echo 0|./a.out or echo 1|./a.out.)
+ *)
 fun fib (i : long) = 
   if (i=0) then 0
   else if (i=1) then 1
   else fib(i-1) + fib(i-2);
 
-(*(case i
-       of 0 => 0
-	| 1 => 1
-	| n => fib(i-1) + fib(i-2)
-      (* end case *));
-*)
-
-let pval x = fib (20)
+let pval x = (print "in pval\n"; fib (40))
 in
-  if false
-  then print ("done\n")
-  else print (ltos(x))
-(*   if (readint() = 0)
-      then print(ltos(x))
-      else (
-	  print("should cancel previous fib\n");
-	  print(ltos(fib(10))^": previous fib should be cancelled\n"))*)
+  if (readint() = 0)
+     then print ("should terminate quickly with fib(30)="^ltos(fib(30))^"\n")
+     else print ("should terminate slowly with fib(40)="^ltos(x)^"\n")
 end
