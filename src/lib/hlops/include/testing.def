@@ -15,7 +15,7 @@
 
 #ifdef NDEBUG
 #define do_test(test)
-#define do_concurrent_test(hlop)
+#define do_concurrent_test(hlop, time)
 #else
 
 extern void M_PrintTestingMsg (void*, void*, int);

@@ -45,9 +45,9 @@ structure ASTOpt : sig
 		          then Unpar.unpar module
 		          else let
 		            val module = dvals(module)
-		            val module = if (Controls.get translatePvals)
-					    then pvals(module)
-					    else module
+			    val module = if (Controls.get translatePvals)
+					 then pvals(module)
+					 else module
 			    val module = GrandPass.transform module
 			    in
 				module

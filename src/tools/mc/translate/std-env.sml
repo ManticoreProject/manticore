@@ -487,6 +487,7 @@ structure StdEnv : sig
                  (* one-toucher futures *)
 		  (F.future1Touch,      "future1-touch",        false),
                   (F.future1Spawn,      "future1-spawn",        false),
+		  (F.future1Cancel,     "future1-cancel",       false),
 
      	         (* ivars *)
 		  (B.iVar,              "ivar-new",              true),

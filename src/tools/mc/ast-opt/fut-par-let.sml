@@ -151,7 +151,7 @@ structure FutParLet : sig
 	      | exp (v as A.VarExp (x, ts), pLive) = 
 		  if   VSet.member (pLive, x) 
 		  then 
-		      let val touchV = F.mkTouch v
+		      let val touchV = F.mkFuture1Touch v
 			  val optSel = Var.Tbl.find selectors x
 		      in
 			  (case optSel
@@ -252,7 +252,7 @@ structure FutParLet : sig
 			 end *)
 		     | A.VarPat x =>
 		         let val (e1', live1) = exp (e1, pLive)
-			     val e1f = F.mkFuture e1'
+			     val e1f = F.mkFuture1Spawn e1'
 			     val xf  = Var.new (Var.nameOf x ^ "f", TypeOf.exp e1f)
 			     val e2' = VarSubst.subst1 (x, xf, e2)
 			     val (e2t, live2) = exp (e2', plus (pLive, xf))
@@ -316,7 +316,7 @@ structure FutParLet : sig
 		      val canT = VSet.difference (VSet.intersection (pLive, pLiveF), pLiveT)
 		      val canF = VSet.difference (VSet.intersection (pLive, pLiveT), pLiveF)
 		      (* cancel : A.var * A.exp -> A.exp *)
-		      fun cancel (x, e) = A.SeqExp (F.mkCancel (A.VarExp (x, [])), e)
+		      fun cancel (x, e) = A.SeqExp (F.mkFuture1Cancel (A.VarExp (x, [])), e)
                       (*                                 ^^               *)
                       (* ??? Is it OK not to instantiate the 'a future? ??? *)
 		      val e2' = VSet.foldl cancel e2' canT

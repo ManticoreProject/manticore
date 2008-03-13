@@ -12,7 +12,7 @@
 #include "logging.def"
 #include "assert.def"
 
-define @future1-cancel (fut : future / exh : exh) : unit =
+define inline @future1-cancel (fut : future / exh : exh) : unit =
   let cancelCellOpt : option = @assoc-list-query(TAG_CANCEL_CELL_FUTURE1, SELECT(FUTURE1_FGS_OFF, fut) / exh)
   let cancelCell : cancel_cell = VAL_OF(cancelCellOpt, cancel_cell, exh)
   let _ : unit = @cancel-fiber(cancelCell / exh)
