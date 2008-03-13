@@ -1,0 +1,30 @@
+(*
+ * Run me by saying
+ *    mc -Cdebug=true -Cscheduler=the-test triv.pml
+ *) 
+
+#include "barrier-call.def"
+#include "testing.def"
+#include "vproc-queue.def"
+#include "runtime-offsets.def"
+#include "scheduling-ops.def"
+
+define @test-call1(/ exh: exh) : bool =
+
+  cont k (args : list) = 
+       return(TRUE)
+
+  let bc : barrier_call = @barrier-call-new(k / exh)
+  ADD_CALLER(bc)
+  ADD_CALLER(bc)
+  
+  do @barrier-call(bc, NIL / exh)
+  do @barrier-call(bc, NIL / exh)
+  return(FALSE)
+;
+
+define @barrier-call-test-startup ( /exh : exh) : () =
+  do @work-stealers-startup (/ exh)
+  do_concurrent_test(test-call1, 5.0:double)
+  return()
+;
