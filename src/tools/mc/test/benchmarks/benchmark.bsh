@@ -1,5 +1,20 @@
 #!/bin/bash
 
+# To generate timing results, run this script in the benchmark directory with the following command-line arguments.
+# Generate timing results for a benchmark.
+#   INPUT: 
+#           -e prog_name               name of the program you wish to benchmark.  The pml file be located at benchmarks/prog_name/prog_name.pml
+#           -q seq_prog_name           optional name of the sequential program for benchmarking.  The pml file should be located at prog_name/seq_prog_name.pml.
+#           -s size                    integer size for testing.
+#           -l seq_sz                  integer size for switching to the sequential base case.
+#           -p num_procs               number of processors.  Using -p 0 causes sequential compilation.
+#
+# To make a new benchmark for program prog, 
+#    1. Create the directory benchmark/prog.
+#    2. Places prog.pml in benchmark/prog.
+#    3. Modify prog.pml so that it takes two integer arguments from stdin, the sequential base case size
+#       and the input size and have it report the time to evaluate.
+
 GOTO_SEQ_SIZES=""
 
 usage="usage: benchmark.bsh -e prog_name -q sequential_prog_name -s size ... -p num_procs ... -l seq_sz ..."
@@ -20,8 +35,14 @@ while getopts ":s:p:e:q:l:" options; do
   esac
 done
 
+if [ -z "$PROCS" ]; then
+    echo "Enter at least one choice for the number of processors"
+    exit 1
+fi
+
 PROG_EXE=$PROG_NAME-run
 
+# compiler flags
 MC="sml @SMLcmdname=mc @SMLload=../../mc"
 MCFLAGS="-Cclos.convert-style=flatWithCFA"
 SEQFLAGS="$MCFLAGS -Csequential=true"
@@ -31,20 +52,20 @@ LOG_FILE_NAME=$PROG_NAME-$DATE.times
 echo "Logging performance results to $LOG_FILE_NAME"
 
 # compile the sequential version
-if [ -z $SEQ_PROG_NAME ] ; then
+if [ -z "$SEQ_PROG_NAME" ] ; then
     SEQ_PROG_NAME=$PROG_NAME
 fi
-
 SEQ_PROG_EXE=$PROG_NAME-seq
 m4 $PROG_NAME/$SEQ_PROG_NAME.pml > $SEQ_PROG_NAME.pml
+echo "Compiling sequential program: $MC $SEQFLAGS $SEQ_PROG_NAME.pml"
 $MC $SEQFLAGS $SEQ_PROG_NAME.pml 2> /dev/null
 mv a.out $SEQ_PROG_EXE
 
+# metadata
 ARCH=$( uname -m )
 OS=$( uname -s )
 MACHINE=$( uname -n )
 SVN_REVISION=$( svn info | grep Revision )
-
 echo -e "#ARCH:\t$ARCH OS:\t$OS MACHINE:\t$MACHINE" >> $LOG_FILE_NAME
 echo -e "#MCFLAGS\t$MCFLAGS" >> $LOG_FILE_NAME
 echo -e "#SVN $SVN_REVISION" >> $LOG_FILE_NAME
@@ -54,6 +75,7 @@ PARFLAGS="$MCFLAGS"
 #run the macro expander on the source program
 m4 $PROG_NAME/$PROG_NAME.pml > $PROG_NAME.pml
 #compile the parallel version
+echo "Compiling parallel program: $MC $PARFLAGS $PROG_NAME.pml"
 $MC $PARFLAGS $PROG_NAME.pml 2> /dev/null
 mv a.out $PROG_EXE
 
@@ -74,4 +96,5 @@ do
     done
 done
 
+# clean up
 rm -f *.ppm *.s $PROG_EXE $SEQ_PROG_EXE $SEQ_PROG_NAME.pml $PROG_NAME.pml

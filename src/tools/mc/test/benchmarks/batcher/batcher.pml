@@ -5,6 +5,8 @@
  *
  * In-place version of Batcher's bitonic sort with sequential base cases for the 
  * functions containing dvals.
+ *  INPUT:  takes two arguments from stdin: 1. sequential base case size; 2. log-sized input.
+ *     i.e.,    echo "1024 15"|./a.out       (sequential base case of 1024 and array of size 2^15)
  *)
 
     fun lg (n) = let
@@ -44,9 +46,10 @@ divert(-1)
 changequote({,})   #change quotes to curly braces 
 divert(0)
 
-val seqSq = readint();
+val seqSz = readint();
+val seqSzP2 = pow2(seqSz);
 define({_SEQ_SZ_LG_}, {seqSz})dnl
-define({_SEQ_SZ_}, {pow2(seqSz)})dnl
+define({_SEQ_SZ_}, {seqSzP2})dnl
 
 define({_SORTING_NETWORK_}, {
   define({_SORTING_NETWORK_FN_}, {$1})dnl
