@@ -191,6 +191,8 @@ structure TypeUtil : sig
 	  in
 	    applySubst (ListPair.foldlEq ins TVMap.empty (tvs, tys), ty)
 	  end
+handle ex => (print(concat["apply(", schemeToString(Ty.TyScheme(tvs, ty)), ", [",
+String.concatWith "," (List.map toString tys), "])\n"]); raise ex)
 
   (* close a type w.r.t. to a set of non-generic variables (i.e., those
    * variables whose depth is less than or equal to the given depth).

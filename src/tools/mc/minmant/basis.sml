@@ -216,6 +216,8 @@ structure Basis : sig
     val updateImage3d	: AST.var
     val outputImage	: AST.var
     val freeImage	: AST.var
+    val getNumProcs	: AST.var
+    val getNumVProcs	: AST.var
 
   (* arrays *)
     val arrayTyc        : Types.tycon
@@ -669,6 +671,9 @@ structure Basis : sig
     val outputImage = monoVar' (N.outputImage, imageTy ** stringTy --> unitTy)
     val freeImage = monoVar' (N.freeImage, imageTy --> unitTy)
 
+    val getNumProcs =	monoVar' (N.getNumProcs, unitTy --> intTy)
+    val getNumVProcs =	monoVar' (N.getNumVProcs, unitTy --> intTy)
+
   (* arrays *)
     val arrayTyc = TyCon.newAbsTyc (N.arrayTyc, 1, false)
     fun arrayTy ty = AST.ConTy([ty], arrayTyc)
@@ -799,6 +804,8 @@ structure Basis : sig
 	    (N.updateImage3d,	Env.Var updateImage3d),
 	    (N.outputImage,	Env.Var outputImage),
 	    (N.freeImage,	Env.Var freeImage),
+	    (N.getNumProcs,	Env.Var getNumProcs),
+	    (N.getNumVProcs,	Env.Var getNumVProcs),
 	  (* arrays *)
 	    (N.array,           Env.Var array),
 	    (N.aupdate,         Env.Var aupdate),

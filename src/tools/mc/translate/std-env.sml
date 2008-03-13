@@ -411,7 +411,9 @@ structure StdEnv : sig
 	    (B.updateImage3f,	hlop (H.updateImage3fOp, false)),
 	    (B.updateImage3d,	hlop (H.updateImage3dOp, false)),
 	    (B.outputImage,	hlop (H.outputImageOp, false)),
-	    (B.freeImage,	hlop (H.freeImageOp, false))
+	    (B.freeImage,	hlop (H.freeImageOp, false)),
+	    (B.getNumProcs,	hlop (H.getNumProcs, false)),
+	    (B.getNumVProcs,	hlop (H.getNumVProcs, false))
 	  ]
 
     end (* local *) 

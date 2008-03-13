@@ -93,6 +93,8 @@ structure HLOpEnv : sig
     val updateImage3dOp	: HLOp.hlop
     val outputImageOp	: HLOp.hlop
     val freeImageOp	: HLOp.hlop
+    val getNumProcs	: HLOp.hlop
+    val getNumVProcs    : HLOp.hlop
 
     val define : HLOp.hlop -> unit
     val find : Atom.atom -> HLOp.hlop option
@@ -265,6 +267,8 @@ structure HLOpEnv : sig
 	  [unitTy], [])
     val outputImageOp = newWithExh ("image-output", [pairTy(BTy.T_Any, stringTy)], [unitTy], [])
     val freeImageOp = newWithExh ("image-free", [BTy.T_Any], [unitTy], [])
+    val getNumProcs = newWithExh ("get-num-procs", [unitTy], [intTy], [])
+    val getNumVProcs = newWithExh ("get-num-vprocs", [unitTy], [intTy], [])
 
   (* HLOp table *)
     val tbl : HLOp.hlop AtomTable.hash_table = AtomTable.mkTable (128, Fail "HLOp table")

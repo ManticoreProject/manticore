@@ -156,6 +156,8 @@ structure BasisNames =
     val updateImage3d =	Atom.atom "updateImage3d"
     val outputImage =	Atom.atom "outputImage"
     val freeImage =	Atom.atom "freeImage"
+    val getNumProcs =	Atom.atom "getNumProcs"
+    val getNumVProcs =	Atom.atom "getNumVProcs"
 
   (* arrays *)
     val arrayTyc =      Atom.atom "array"
