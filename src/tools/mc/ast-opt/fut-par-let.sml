@@ -76,7 +76,7 @@ structure FutParLet : sig
 	    (*   of pval-bound variables live therein. *)
 	    fun exp (A.LetExp (b, e), pLive) = letExp (b, e, pLive)
 	      | exp (A.IfExp (e1, e2, e3, t), pLive) = ifExp (e1, e2, e3, t, pLive)
-	      | exp (A.CaseExp (e, ms, t), pLive) = todo "CaseExp"
+	      | exp (A.CaseExp (e, ms, t), pLive) = caseExp (e, ms, t, pLive)
 	      | exp (A.HandleExp (e, ms, t), pLive) = todo "HandleExp"
 	      | exp (A.RaiseExp (e, t), pLive) = 
 		  let val (e', pLive') = exp (e, pLive)
@@ -303,6 +303,7 @@ structure FutParLet : sig
 		  in
 		      (A.LetExp (A.FunBind lams', e'), live1)
 		  end
+	      | letExp (A.DValBind _, _, _) = raise Fail "todo"
 		  
 	    (* lambda : VSet.set -> A.lambda -> A.lambda *)
 	    and lambda pLive (A.FB (f, x, e)) = A.FB (f, x, #1 (exp (e, pLive)))
@@ -326,6 +327,47 @@ structure FutParLet : sig
 		      (A.IfExp (e1', e2', e3', t), pLiveOut)
 		  end
 
+	    (* caseExp : A.exp * A.match list * T.ty * VSet.set -> A.exp * VSet.set *)
+	    and caseExp (e, ms, t, pLive) = let
+              fun cancel (x, e) = A.SeqExp (F.mkFuture1Cancel (A.VarExp (x, [])), e)
+              val (e', pLive') = exp (e, pLive)
+	      val mss = map (fn m => match (m, pLive)) ms
+	      val (ms', pLiveHd::pLiveTl) = ListPair.unzip mss
+              fun loop ([], _, _, matchAcc, setAcc) = (rev matchAcc, setAcc)
+		| loop (m::ms, currLive, os as nextLive::others, matchAcc, setAcc) = let
+                    val (m', live') = match (m, currLive)
+		    val othersLive = grandUnion os 
+		    val cancelUs = VSet.difference (VSet.intersection (pLive, othersLive),
+						    currLive)
+		    in
+		      case m'
+		       of A.PatMatch (p, e) => let
+                            val e' = VSet.foldl cancel e cancelUs
+			    val m'' = A.PatMatch (p, e')
+                            in
+                              loop (ms, nextLive, others @ [currLive], 
+				    m''::matchAcc, VSet.union (setAcc, live'))
+			    end
+			| A.CondMatch (p, e1, e2) => raise Fail "todo"
+                    end
+		| loop _ = raise Fail "unexpected arg"
+	      val (ms', pLive'') = loop (ms, pLiveHd, pLiveTl, [], VSet.empty)
+	      in
+		(A.CaseExp (e', ms', t), VSet.union (pLive', pLive''))
+              end
+ 
+	    (* match : A.match * VSet.set -> A.match * VSet.set *)
+	    and match (A.PatMatch (p, e), pLive) = let
+                  val (e', pLive') = exp (e, pLive)
+                  in
+		    (A.PatMatch (p, e'), pLive')
+                  end
+	      | match (A.CondMatch (p, e1, e2), pLive) = let
+                  val (e1', pLive1) = exp (e1, pLive)
+		  val (e2', pLive2) = exp (e2, pLive)
+                  in
+		    (A.CondMatch (p, e1', e2'), VSet.union (pLive1, pLive2))
+		  end
 	in
 	    (Var.Tbl.clear(selectors);
 	     A.Module {exns = exns, body = #1 (exp (body, VSet.empty))})
@@ -401,6 +443,55 @@ structure FutParLet : sig
 			  i)
 	    end
 
+	(* t6 = let pval a = fact(100) 
+         *          pval b = fact(99)
+         *      in
+         *        case true
+         *         of true => a 
+         *          | false => b
+         *      end
+         *)
+	val t6 = let
+          val a = Var.new ("a", Basis.intTy)
+	  val b = Var.new ("b", Basis.intTy)
+	  val truPat = A.ConstPat (A.DConst (Basis.boolTrue, []))
+	  val flsPat = A.ConstPat (A.DConst (Basis.boolFalse, []))
+          in
+	    A.LetExp (A.PValBind (A.VarPat a, U.fact 100),
+            A.LetExp (A.PValBind (A.VarPat b, U.fact 99),
+            A.CaseExp (U.trueExp,
+                       [A.PatMatch (truPat, A.VarExp (a, [])),
+			A.PatMatch (flsPat, A.VarExp (b, []))],
+		       Basis.intTy)))
+	end
+
+	(* t6 = let pval a = fact(100) 
+         *          pval b = fact(99)
+         *      in
+         *        case 1
+         *         of 0 => a 
+         *          | 1 => a+b
+         *          | 2 => b
+         *          | _ => 0
+         *      end
+         *)
+	val t7 = let
+          val a = Var.new ("a", Basis.intTy)
+	  val b = Var.new ("b", Basis.intTy)
+	  val ae = A.VarExp (a, [])
+	  val be = A.VarExp (b, [])
+	  fun k n = A.ConstPat (A.LConst (Literal.Int (IntInf.fromInt n), Basis.intTy))
+          in
+	    A.LetExp (A.PValBind (A.VarPat a, U.fact 100),
+            A.LetExp (A.PValBind (A.VarPat b, U.fact 99),
+            A.CaseExp (U.int 1,
+                       [A.PatMatch (k 0, ae),
+			A.PatMatch (k 1, U.add (ae, be)),
+			A.PatMatch (k 2, be),
+			A.PatMatch (A.WildPat Basis.intTy, U.int 0)],
+		       Basis.intTy)))
+	end
+
 	(* testPVal : A.exp -> unit *)
 	fun testPVal e = 
 	    let val m = A.Module {exns = [], body = e}
@@ -412,7 +503,7 @@ structure FutParLet : sig
 
     in
         (* test : int -> unit *)
-        val test = U.mkTest testPVal [t0,t1,t2,t3,t4,t5]
+        val test = U.mkTest testPVal [t0,t1,t2,t3,t4,t5,t6,t7]
     end
 
   end
