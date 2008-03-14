@@ -308,52 +308,53 @@ structure FutParLet : sig
 	    (* lambda : VSet.set -> A.lambda -> A.lambda *)
 	    and lambda pLive (A.FB (f, x, e)) = A.FB (f, x, #1 (exp (e, pLive)))
 						
+	    (* cancel : A.var * A.exp -> A.exp *)
+	    and cancel (x, e) = A.SeqExp (F.mkFuture1Cancel (A.VarExp (x, [])), e)
+            (*                                 ^^               *)
+            (* ??? Is it OK not to instantiate the 'a future? ??? *)
+
 	    (* ifExp : A.exp * A.exp * A.exp * T.ty * VSet.set -> A.exp * VSet.set *)
-	    and ifExp (e1, e2, e3, t, pLive) =
-		  let val (e1', pLiveC) = exp (e1, pLive)
-		      val (e2', pLiveT) = exp (e2, pLive)
-		      val (e3', pLiveF) = exp (e3, pLive)
-		      (* compute the variables that need to be cancelled *)
-		      val canT = VSet.difference (VSet.intersection (pLive, pLiveF), pLiveT)
-		      val canF = VSet.difference (VSet.intersection (pLive, pLiveT), pLiveF)
-		      (* cancel : A.var * A.exp -> A.exp *)
-		      fun cancel (x, e) = A.SeqExp (F.mkFuture1Cancel (A.VarExp (x, [])), e)
-                      (*                                 ^^               *)
-                      (* ??? Is it OK not to instantiate the 'a future? ??? *)
-		      val e2' = VSet.foldl cancel e2' canT
-		      val e3' = VSet.foldl cancel e3' canF
-		      val pLiveOut = grandUnion [pLiveC, pLiveT, pLiveF]
-		  in
-		      (A.IfExp (e1', e2', e3', t), pLiveOut)
-		  end
+	    and ifExp (e1, e2, e3, t, pLive) = let 
+              val (e1', pLiveC) = exp (e1, pLive)
+	      val (e2', pLiveT) = exp (e2, pLive)
+	      val (e3', pLiveF) = exp (e3, pLive)
+	      (* compute the variables that need to be cancelled *)
+	      val canT = VSet.difference (VSet.intersection (pLive, pLiveF), pLiveT)
+	      val canF = VSet.difference (VSet.intersection (pLive, pLiveT), pLiveF)
+	      val e2' = VSet.foldl cancel e2' canT
+	      val e3' = VSet.foldl cancel e3' canF
+	      val pLive' = grandUnion [pLiveC, pLiveT, pLiveF]
+              in
+		(A.IfExp (e1', e2', e3', t), pLive')
+              end
 
 	    (* caseExp : A.exp * A.match list * T.ty * VSet.set -> A.exp * VSet.set *)
 	    and caseExp (e, ms, t, pLive) = let
-              fun cancel (x, e) = A.SeqExp (F.mkFuture1Cancel (A.VarExp (x, [])), e)
               val (e', pLive') = exp (e, pLive)
-	      val mss = map (fn m => match (m, pLive)) ms
-	      val (ms', pLiveHd::pLiveTl) = ListPair.unzip mss
+	      val mvs = map (fn m => match (m, pLive)) ms
+	      val (ms', pLiveHd::pLiveTl) = ListPair.unzip mvs
               fun loop ([], _, _, matchAcc, setAcc) = (rev matchAcc, setAcc)
-		| loop (m::ms, currLive, os as nextLive::others, matchAcc, setAcc) = let
-                    val (m', live') = match (m, currLive)
-		    val othersLive = grandUnion os 
+		| loop (m::ms, currLive, others, matchAcc, setAcc) = let
+		    val othersLive = grandUnion others
 		    val cancelUs = VSet.difference (VSet.intersection (pLive, othersLive),
 						    currLive)
 		    in
-		      case m'
+		      case m
 		       of A.PatMatch (p, e) => let
                             val e' = VSet.foldl cancel e cancelUs
-			    val m'' = A.PatMatch (p, e')
+			    val m' = A.PatMatch (p, e')
+			    val mAcc = m'::matchAcc
+			    val sAcc = VSet.union (setAcc, currLive)
                             in
-                              loop (ms, nextLive, others @ [currLive], 
-				    m''::matchAcc, VSet.union (setAcc, live'))
+			      case others
+			       of [] => (rev mAcc, sAcc)
+				| h::t => loop (ms, h, t @ [currLive], mAcc, sAcc)
 			    end
 			| A.CondMatch (p, e1, e2) => raise Fail "todo"
                     end
-		| loop _ = raise Fail "unexpected arg"
-	      val (ms', pLive'') = loop (ms, pLiveHd, pLiveTl, [], VSet.empty)
+	      val (ms'', pLive'') = loop (ms', pLiveHd, pLiveTl, [], VSet.empty)
 	      in
-		(A.CaseExp (e', ms', t), VSet.union (pLive', pLive''))
+		(A.CaseExp (e', ms'', t), VSet.union (pLive', pLive''))
               end
  
 	    (* match : A.match * VSet.set -> A.match * VSet.set *)
