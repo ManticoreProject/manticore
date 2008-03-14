@@ -478,7 +478,7 @@ fun ray winsize = let
       output 0;
       outputImage(img, "out.ppm"); 
       freeImage img;
-      print (itos winsize ^ " " ^ itos(getNumProcs()) ^ " " ^ dtos (e-b) ^ "\n")
+      print (dtos (e-b) ^ "\n")
     end;
 
 ray (readint ())
