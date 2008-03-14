@@ -108,11 +108,35 @@ structure CFACPS : sig
           CPS.Var.newProp (fn _ => false)
     val isProxy = getIsProxy
 
-  (* create an approximate value from a type.  These values are used to initialize
-   * the approximation property for variables.  Note that for functions and continuations,
-   * we need to create a proxy function (instead of using the empty set of lambdas).
-   * This requirement is necessary to avoid problems when an unreachable function
-   * calls a reachable function.
+
+  (* create an approximate value for a function type. *)
+    fun valueFromFunType (paramTys, retTys) = let
+          val ty = CPSTy.T_Fun(paramTys, retTys)
+          val params = map (fn ty => CPS.Var.new("cfaProxyParam", ty)) paramTys
+          val () = app (fn x => setIsProxy(x, true)) params
+          val rets = map (fn ty => CPS.Var.new("cfaProxyRet", ty)) retTys
+          val () = app (fn x => setIsProxy(x, true)) rets
+          val f = CPS.Var.new("cfaProxyF", ty)
+          val () = setIsProxy(f, true)
+          val z = CPS.Var.new("cfaProxyZ", CPSTy.T_Fun([],[]))
+          val () = setIsProxy(z, true)
+          val lambda = CPS.FB {
+                   f = f,
+                   params = params,
+                   rets = rets,
+                   body = CPS.Throw (z, [])
+	        }
+           val () = app (fn x => CPS.Var.setKind(x, CPS.VK_Param lambda)) params
+           val () = app (fn x => CPS.Var.setKind(x, CPS.VK_Param lambda)) rets
+           val () = if null retTys 
+                        then CPS.Var.setKind(f, CPS.VK_Cont lambda)
+                        else CPS.Var.setKind(f, CPS.VK_Fun lambda)
+           in 
+             LAMBDAS(VSet.singleton f)
+           end 
+
+  (* create an approximate value from a type.  These values are used 
+   * to initialize the abstract value property for variables.  
    *)
     fun valueFromType ty = (case ty
            of CPSTy.T_Any => BOT (* or should this be TOP? *)
@@ -121,29 +145,7 @@ structure CFACPS : sig
             | CPSTy.T_Tuple (true, tys) => TUPLE(List.map (fn _ => TOP) tys)
             | CPSTy.T_Tuple (false, tys) => TUPLE(List.map valueFromType tys)
             | CPSTy.T_Addr _ => TOP
-            | (ty as CPSTy.T_Fun(paramTys, retTys)) => let
-                val params = map (fn ty => CPS.Var.new("cfaProxyParam", ty)) paramTys
-                val () = app (fn x => setIsProxy(x, true)) params
-                val rets = map (fn ty => CPS.Var.new("cfaProxyRet", ty)) retTys
-                val () = app (fn x => setIsProxy(x, true)) rets
-                val f = CPS.Var.new("cfaProxyF", ty)
-                val () = setIsProxy(f, true)
-                val z = CPS.Var.new("cfaProxyZ", CPSTy.T_Fun([],[]))
-                val () = setIsProxy(z, true)
-                val lambda = CPS.FB {
-                        f = f,
-                        params = params,
-                        rets = rets,
-                        body = CPS.Throw (z, [])
-		      }
-                val () = app (fn x => CPS.Var.setKind(x, CPS.VK_Param lambda)) params
-                val () = app (fn x => CPS.Var.setKind(x, CPS.VK_Param lambda)) rets
-                val () = if null retTys 
-                            then CPS.Var.setKind(f, CPS.VK_Cont lambda)
-                            else CPS.Var.setKind(f, CPS.VK_Fun lambda)
-                in 
-                  LAMBDAS(VSet.singleton f)
-                end 
+            | CPSTy.T_Fun _ => LAMBDAS(VSet.empty)
             | CPSTy.T_CFun _ => TOP
             | CPSTy.T_VProc => TOP
           (* end case *))
@@ -273,7 +275,10 @@ structure CFACPS : sig
                 in
                   TUPLE(join(vs1, vs2))
                 end
-            | kJoin (k, v1 as LAMBDAS fs1, v2 as LAMBDAS fs2) = let
+            | kJoin (k, v1 as LAMBDAS fs1, v2 as LAMBDAS fs2) = 
+                if VSet.isEmpty fs1 then v2
+                else if VSet.isEmpty fs2 then v1
+                else let
               (* join params and rets of joined lambdas *)
                 fun getParamsRets f = (case CPS.Var.kindOf f
                        of CPS.VK_Fun (CPS.FB {params, rets, ...}) => (params, rets)
@@ -423,6 +428,45 @@ structure CFACPS : sig
             computeLambda body
           end
 
+  (* In order to avoid problems when an unreachable function calls a
+   * reachable function, we "bump" the abstract value of any variable
+   * of function type from LAMBDAS {} to LAMBDAS {proxy}, for a proxy
+   * function.  The proxy function provides a variable identifier to 
+   * carry the isEscaping property of the variable.
+   *
+   * It is more efficient to only "bump" the abstract value of 
+   * variables that would otherwise be LAMBDAS {}, rather than 
+   * initialize all variables of function type to LAMBDAS {proxy},
+   * which overwhelms the LAMBDAS sets with proxies (and may also
+   * have termination problems due to creating an infinite regress
+   * of proxy functions).
+   *)
+    fun bumpInfo body = let
+          fun bumpValue x = (case (CPS.Var.typeOf x, getValue x) 
+                 of (CPSTy.T_Fun (params,rets), LAMBDAS fs) =>
+                      if VSet.isEmpty fs 
+                         then addInfo (x, valueFromFunType (params, rets))
+                         else ()
+                  | _ => ()
+                (* end case *))
+          fun doLambda (CPS.FB {f, params, rets, body}) = (
+                List.app bumpValue params;
+                List.app bumpValue rets;
+                doExp body)
+          and doExp e = (case e 
+                 of CPS.Let (xs, _, e) => (List.app bumpValue xs; doExp e)
+                  | CPS.Fun (fbs, e) => (List.app doLambda fbs; doExp e)
+                  | CPS.Cont (fb, e) => (doLambda fb; doExp e)
+                  | CPS.If (_, e1, e2) => (doExp e1; doExp e2)
+                  | CPS.Switch (_, cases, dflt) => 
+                      (List.app (doExp o #2) cases; Option.app doExp dflt)
+                  | CPS.Apply _ => ()
+                  | CPS.Throw _ => ()
+                (* end case *))
+          in
+            doLambda body
+          end
+
     fun analyze (CPS.MODULE{body, ...}) = let
           fun onePass () = let
                 val addInfo = if !debugFlg
@@ -440,6 +484,7 @@ structure CFACPS : sig
                         end)
                       else addInfo
                 val addInfo' = fn (x, y) => addInfo (x, getValue y)
+                val eqInfo' = fn (x, y) => (addInfo' (x, y); addInfo' (y, x))
               (* record that a given variable escapes *)
                 fun escape x = escapingValue (getValue x)
                 fun doLambda (CPS.FB {f, body, ...}) = (
@@ -453,26 +498,31 @@ structure CFACPS : sig
                       (List.app (doExp o #2) cases; Option.app doExp dflt)
                   | doExp (CPS.Apply (f, args, conts)) = doApply (f, args, conts)
                   | doExp (CPS.Throw (f, args)) = doThrow (f, args)
-                and doRhs (xs, CPS.Var ys) = ListPair.appEq addInfo' (xs, ys)
-                  | doRhs ([x], CPS.Cast (ty, y)) = addInfo(x, getValue y)
-                  | doRhs ([x], CPS.Const _) = addInfo(x, TOP)
-                  | doRhs ([x], CPS.Select (i, y)) = addInfo(x, select(i, y))
+                and doRhs (xs, CPS.Var ys) = ListPair.appEq eqInfo' (xs, ys)
+                  | doRhs ([x], CPS.Cast (ty, y)) = eqInfo' (x, y)
+                  | doRhs ([x], CPS.Const _) = addInfo (x, TOP)
+                  | doRhs ([x], CPS.Select (i, y)) = 
+                      (addInfo (x, select (i, y)); 
+                       addInfo (y, update(i, y, getValue x)))
                   | doRhs ([], CPS.Update(i, y, z)) = 
-                      (escape z; addInfo(y, update(i, y, getValue z)))
+                      (addInfo (z, select (i, y));
+                       addInfo (y, update (i, y, getValue z)))
                   | doRhs ([x], CPS.AddrOf(i, y)) = 
-                      (addInfo(x, TOP); addInfo(y, update(i, y, TOP)))
-                  | doRhs ([x], CPS.Alloc xs) = addInfo(x, TUPLE(List.map getValue xs))
-                  | doRhs ([x], CPS.GAlloc xs) = addInfo(x, TUPLE(List.map getValue xs))
-                  | doRhs ([x], CPS.Promote y) = addInfo(x, getValue y)
+                      (addInfo (y, update (i, y, TOP));
+                       addInfo (x, TOP))
+                  | doRhs ([x], CPS.Alloc xs) = addInfo (x, TUPLE(List.map getValue xs))
+                  | doRhs ([x], CPS.GAlloc xs) = addInfo (x, TUPLE(List.map getValue xs))
+                  | doRhs ([x], CPS.Promote y) = eqInfo' (x, y)
                   | doRhs ([x], CPS.Prim prim) = 
                       (if PrimUtil.isPure prim
                           then ()
                           else List.app escape (PrimUtil.varsOf prim);
-                       addInfo(x, TOP))
+                       addInfo (x, TOP))
                   | doRhs (xs, CPS.CCall (_, args)) =
-                      (List.app escape args; List.app (fn x => addInfo(x, TOP)) xs)
-                  | doRhs ([x], CPS.HostVProc) = addInfo(x, TOP)
-                  | doRhs ([x], CPS.VPLoad _) = addInfo(x, TOP)
+                      (List.app escape args; 
+                       List.app (fn x => addInfo (x, TOP)) xs)
+                  | doRhs ([x], CPS.HostVProc) = addInfo (x, TOP)
+                  | doRhs ([x], CPS.VPLoad _) = addInfo (x, TOP)
                   | doRhs ([], CPS.VPStore (_, y, z)) = escape z
                   | doRhs (xs, rhs) = raise Fail(concat[
                          "type error: doRhs([", 
@@ -486,8 +536,8 @@ structure CFACPS : sig
                         | _ => raise Fail "type error: doApply")
                 and doApplyAux (f, args, conts) = (case CPS.Var.kindOf f 
                        of CPS.VK_Fun (fb as CPS.FB {f, params, rets, body}) => (
-                            ListPair.appEq addInfo' (params, args);
-                            ListPair.appEq addInfo' (rets, conts))
+                            ListPair.appEq eqInfo' (params, args);
+                            ListPair.appEq eqInfo' (rets, conts))
                         | _ => raise Fail "type error: doApplyAux"
                       (* end case *))
                 and doThrow (f, args) = (case getValue f
@@ -497,8 +547,8 @@ structure CFACPS : sig
                         | _ => raise Fail "type error: doThrow")
                 and doThrowAux (f, args) = (case CPS.Var.kindOf f 
                        of CPS.VK_Cont (fb as CPS.FB {f, params, rets, body}) => (
-                            ListPair.appEq addInfo' (params, args);
-                            ListPair.appEq addInfo' (rets, []))
+                            ListPair.appEq eqInfo' (params, args);
+                            ListPair.appEq eqInfo' (rets, []))
                         | _ => raise Fail "type error: doThrowAux"
                       (* end case *))
                 in
@@ -517,6 +567,12 @@ structure CFACPS : sig
             (* end case *);
           (* iterate to a fixed point *)
             iterate ();
+          (* "bump" the abstract value of variables of function type
+           * from LAMBDAS {} to LAMBDAS {proxy} 
+           *)
+            (changed := false; 
+             bumpInfo body; 
+             if !changed then iterate () else ());
           (* compute call-site information for variables *)
             computeCallSites body;
           (* print results of cfa *)
