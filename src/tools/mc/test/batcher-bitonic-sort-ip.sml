@@ -14,6 +14,33 @@ structure BatcherBitonicSortInPlace =
     val alength = Array.length
     val array = Array.array
 
+    fun bubbleSort (arr) = let
+	val n = alength(arr)
+	fun swap (arr, i, j) = let
+	    val t = asub(arr, i)
+	    in
+	       aupdate(arr, i, asub(arr, j));
+	       aupdate(arr, j, t)
+            end
+	fun loop1 (i) = let
+	    fun loop2 (j) = if (j >= i)
+                then (
+                      if (asub(arr, j-1) > asub(arr, j))
+                         then swap (arr, j, j-1)
+                         else ();
+		      loop2(j-1))
+                else ()
+            in
+               if (i < n)
+		  then (
+		   loop2(n-1);
+		   loop1(i+1))
+	          else ()
+            end
+         in
+	    loop1(1)
+         end
+
     datatype dir = ASCENDING | DESCENDING
 
     fun compare (arr, dir, i, j) = let
@@ -79,13 +106,20 @@ structure BatcherBitonicSortInPlace =
            end
         else ()
 
+
     val xs1 = [8,7,6,5,4,3,2,1]
-    val xs1 = [0,1,2,19,10,0,1,~1]
+    val xs1 = [
+	1234,34,3,4,33,3432,334233,~4,~234,34,3,4,333,~3432,34233,~4,
+	234,34,3,4,33,3432,34233,~4,234,34,3,4,333,~3432,34233,~4
+    ]
     fun checkBatcherSort(ls) = let
 	val arr = Array.fromList(ls)
+	val arr' = copyArr(arr)
         in
 	    batcherSort(arr, 0, alength(arr), ASCENDING);
-	    Array.foldr (op ::) [] arr
+	    bubbleSort(arr');
+	    (Array.foldr (op ::) [] arr, Array.foldr (op ::) [] arr')
+	    arrayEq(arr, arr')
         end
     val ys1 = checkBatcherSort(xs1)
 
