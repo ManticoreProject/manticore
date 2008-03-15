@@ -470,6 +470,7 @@ structure StdEnv : sig
 		  (B.gettimeofday,	"gettimeofday",		false),
 		  (B.readint,	        "read-int",		false),
 		  (B.readfloat,	        "read-float",		false),
+		  (B.readdouble,        "read-double",		false),
 		  (B.drand,	        "drand",		false),
 		  (B.papp,              "rope-app",		false),
                   (B.plen,              "rope-length",		false),

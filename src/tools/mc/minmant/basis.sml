@@ -193,6 +193,7 @@ structure Basis : sig
     val gettimeofday	: AST.var
     val readint 	: AST.var
     val readfloat 	: AST.var
+    val readdouble 	: AST.var
     val drand           : AST.var
     val compose         : AST.var
     val app             : AST.var
@@ -607,6 +608,7 @@ structure Basis : sig
     val gettimeofday =	monoVar'(N.gettimeofday, unitTy --> doubleTy)
     val readint =	monoVar'(N.readint, unitTy --> intTy)
     val readfloat =	monoVar'(N.readfloat, unitTy --> floatTy)
+    val readdouble =	monoVar'(N.readdouble, unitTy --> doubleTy)
     val drand =	        monoVar'(N.drand, (doubleTy ** doubleTy) --> doubleTy)
     val app =           polyVar'(N.app, fn tv => (tv --> unitTy) ** (listTy tv) --> unitTy)
     val papp =          polyVar'(N.papp, fn tv => (tv --> unitTy) ** (parrayTy tv) --> unitTy)
@@ -781,6 +783,7 @@ structure Basis : sig
 	    (N.gettimeofday,	Env.Var gettimeofday),
 	    (N.readint,	        Env.Var readint),
 	    (N.readfloat,	        Env.Var readfloat),
+	    (N.readdouble,	        Env.Var readdouble),
 	    (N.drand,	        Env.Var drand),
 	    (N.compose,         Env.Var compose),
 	    (N.map,             Env.Var map),

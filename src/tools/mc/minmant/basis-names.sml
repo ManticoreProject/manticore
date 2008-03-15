@@ -121,6 +121,7 @@ structure BasisNames =
     val gettimeofday =	Atom.atom "gettimeofday"
     val readint =	Atom.atom "readint"
     val readfloat =	Atom.atom "readfloat"
+    val readdouble =	Atom.atom "readdouble"
     val drand =	        Atom.atom "drand"
     val compose =       Atom.atom "compose"
     val map =           Atom.atom "map"

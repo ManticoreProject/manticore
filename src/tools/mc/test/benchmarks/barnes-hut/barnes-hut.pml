@@ -35,13 +35,19 @@ fun parMap (f, n, ls) = (case ls
    (* end case *))
 ;
 
-type vector = (float * float);
+type real = float;
+type vector = (real * real);
 type point = vector;
 type veloc = vector;
 type accel = vector;
 type area = (point * point);
-datatype mass_pnt = MassPnt of (float * point);
+datatype mass_pnt = MassPnt of (real * point);
 datatype particle = Particle of (mass_pnt * veloc);
+
+val sqrt = sqrtf;
+val abs = absf;
+val rtos = ftos;
+val readreal = readfloat;
 
 fun hd (xs) = (case xs
     of nil => fail "hd"
@@ -69,8 +75,8 @@ fun compose (f, g) = let
 fun fmax (x, y) = if x > y then x else y;
 fun fmin (x, y) = if x < y then x else y;
 
-fun vec2s (x, y) = "("^ftos x^", "^ftos y^") ";
-fun mp2s (MassPnt (f, pt)) = "MassPnt("^ftos f^", "^vec2s pt^")";
+fun vec2s (x, y) = "("^rtos x^", "^rtos y^") ";
+fun mp2s (MassPnt (f, pt)) = "MassPnt("^rtos f^", "^vec2s pt^")";
 fun part2s (Particle (mp, veloc)) = "Particle("^mp2s mp^", "^vec2s veloc^")";
 
 fun zip (xs, ys) = let
@@ -132,17 +138,17 @@ fun transpose (rows) = (case rows
     (* end case *))
 ;
 
-val gravConst : float = (*6.670 / 100000000000.0*) 1.0;  (* 6.670e-11 *)
+val gravConst = (*6.670 / 100000000000.0*) 1.0;  (* 6.670e-11 *)
 val epsilon = 1.0 / 100000000000000000000.0;     (* 1.0e-20 *)
 (* precision (a cell is *far away* if `l/d < theta') *)
 val theta  = 0.8;
 
 fun samePt ((x1, y1), (x2, y2)) = 
-    absf(x1-x2) < epsilon andalso absf(y1-y2) < epsilon
+    abs(x1-x2) < epsilon andalso abs(y1-y2) < epsilon
 ;
 
 fun sameMpt (MassPnt(m1, pt1), MassPnt(m2, pt2)) =
-    absf(m1-m2) < epsilon andalso samePt(pt1, pt2)
+    abs(m1-m2) < epsilon andalso samePt(pt1, pt2)
 ;
 
 fun particle2mpnt (p) = (case p
@@ -172,7 +178,7 @@ fun accel (mp1, mp2) = (case (mp1, mp2)
 	  val dx = x1 - x2
 	  val dy = y1 - y2
 	  val rsqr = (dx * dx) + (dy * dy)	   
-          val r = sqrtf(rsqr)
+          val r = sqrt(rsqr)
           in
 	   if (r < epsilon)
 	   then ((0.0, 0.0), 0)
@@ -245,7 +251,7 @@ fun naiveStep (dt, ps) = let
 
 datatype 'a tree = Node of ('a * 'a tree list);
 
-fun cut ((x1:float, y1:float), (x2:float, y2:float)) = let
+fun cut ((x1, y1), (x2, y2)) = let
     val xm = x1 + (x2 - x1) / 2.0
     val ym = y1 + (y2 - y1) / 2.0
     val a1 = ((x1, y1), (xm, ym))
@@ -351,8 +357,8 @@ fun boundingBox (mps) = let
 
 (* Returns the maximal side length of an area. *)
 fun maxSideLen ((x1,y1), (x2,y2)) = let
-    val dx = absf(x1-x2)
-    val dy = absf(y1-y2)
+    val dx = abs(x1-x2)
+    val dy = abs(y1-y2)
     in
         if (dx > dy) then dx else dy
     end
@@ -361,7 +367,7 @@ fun maxSideLen ((x1,y1), (x2,y2)) = let
 fun isFar (l, MassPnt (_, (x1, y1)), MassPnt (_, (x2, y2))) = let
     val dx = x2-x1
     val dy = y2-y1
-    val r = sqrtf ((dx * dx) + (dy * dy))
+    val r = sqrt ((dx * dx) + (dy * dy))
     in
        if (r < epsilon)
           then false
@@ -413,7 +419,7 @@ fun timeToEval (f) = let
  * * In addition to the accelerations, the number of direct and far-field
  *   interactions is computed.
  *)       
-fun accels (acs: (mass_pnt tree * float * mass_pnt list)) = (case acs
+fun accels (acs) = (case acs
     of (_, _, nil) => (nil, 0, 0)
      | (Node (crd, nil), len, mps) => let
 	   fun f (mp) = accel(crd, mp)
@@ -442,7 +448,7 @@ fun accels (acs: (mass_pnt tree * float * mass_pnt list)) = (case acs
 
 (* Compute the acceleration of a mass particle in the Barnes-Hut tree.
  *)
-fun accelOf (ac : (mass_pnt tree * float * mass_pnt)) = (case ac
+fun accelOf (ac) = (case ac
     of (Node(crd, nil), len, mp) => fst(accel(crd, mp))
      | (Node(crd, ts), len, mp) => 
        if sameMpt(crd, mp)
@@ -514,10 +520,10 @@ fun oneStep (dt, ps) = let
 fun maxErr (rvs, vs) = let    
     fun compare (Particle (MassPnt (_, (x1, y1)), _),
 		 Particle (MassPnt (_, (x2, y2)), _)) = let
-	val dx = absf(x1-x2)
-	val dy = absf(y1-y2)
-	val dr = sqrtf(dx * dx + dy * dy)
-	val r = sqrtf(x1 * x1 + y1 * y1)
+	val dx = abs(x1-x2)
+	val dy = abs(y1-y2)
+	val dr = sqrt(dx * dx + dy * dy)
+	val r = sqrt(x1 * x1 + y1 * y1)
         in
 	    dr / r
         end
@@ -530,8 +536,8 @@ fun maxErr (rvs, vs) = let
 
 fun readParticles () = let
     val nParticles = readint ()
-    fun readVec () = (readfloat(), readfloat())
-    fun readMassPnt () = MassPnt (readfloat(), readVec())
+    fun readVec () = (readreal(), readreal())
+    fun readMassPnt () = MassPnt (readreal(), readVec())
     fun readParticle () = Particle (readMassPnt(), readVec())
     fun doit (i, ps) = if (i>0)
         then doit(i-1, readParticle()::ps)
@@ -586,7 +592,7 @@ print (concatWith(", ", map(part2s, naivePs))^"\n");
         else err
     val err = iter(ps, 0, 0.0)
     in
-       print("Error for BH:"^ftos err^"\n")
+       print("Error for BH:"^rtos err^"\n")
     end
 ;
 
