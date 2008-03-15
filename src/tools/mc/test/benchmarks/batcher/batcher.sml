@@ -149,7 +149,12 @@ structure BatcherBitonicSortInPlace =
 	arr
     end
 
+fun pow2 (n) = if (n=0) then 1 else 2 * pow2(n-1)
+;
+
+
     fun run (sz) = let
+	val sz = pow2(sz)
 	val arr = genRandomDoubleArr(sz)
 	val b = gettimeofday()
 	val _ = batcherSort(arr, 0, alength(arr), ASCENDING)
