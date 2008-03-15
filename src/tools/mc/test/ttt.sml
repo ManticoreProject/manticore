@@ -208,12 +208,84 @@ structure TicTacToe = struct
         in
           loop (successors (b, O), beta, [])
         end
-      val neg_inf = ~1
-      val pos_inf = 1
+      val neg_inf = ~2
+      val pos_inf = 2
     in
       max_tree (empty, neg_inf, pos_inf)
     end
  
+  val mkLeafP = mkLeaf
+  val plen = List.length
+  val pnil = nil
+
+  (* Manticore-ish version *)
+  fun alpha_beta_mant () : game_tree = let
+    fun maxT (b, alpha, beta) =
+      if gameOver(b) then
+        mkLeafP (b, score b)
+      else let
+        val (s,ss) = (case successors (b, X)
+          of s::ss => (s,ss)
+           | nil => raise Fail "huh?")
+	val t0 = minT (s, alpha, beta)
+	val alpha' = max (alpha, #2 (top t0))
+	fun minT' s = let
+          val t = minT (s, alpha', beta)
+          val a = max (alpha, #2 (top t))
+          in 
+	    if (a >= beta) then NONE
+	    else SOME(t)
+          end
+        val n = plen ss
+	fun loop (ss, i) =
+          if (i >= n) then SOME pnil
+	  else case (minT'(List.nth(ss,i)), loop(ss,i+1))
+	    of (NONE, _) => NONE
+	     | (_, NONE) => NONE
+	     | (SOME ti, SOME ts) => SOME (ti :: ts)
+	val children = (case loop (ss, 1)
+          of NONE => [t0]
+	   | SOME(ts) => t0::ts)
+	val maxScore = listmax (map (#2 o top) children)
+        in
+          Rose ((b, maxScore), children)
+        end     
+    and minT (b, alpha, beta) =
+      if gameOver(b) then
+        mkLeafP (b, score b)
+      else let
+        val (s,ss) = (case successors (b, X)
+          of s::ss => (s,ss)
+           | nil => raise Fail "huh?")
+	val t0 = maxT (s, alpha, beta)
+	val beta' = min (beta, #2 (top t0))
+	fun maxT' s = let
+          val t = maxT (s, alpha, beta')
+          val b = min (beta, #2 (top t))
+          in 
+	    if (b <= alpha) then NONE
+	    else SOME(t)
+          end
+        val n = plen ss
+	fun loop (ss, i) =
+          if (i >= n) then SOME pnil
+	  else case (maxT'(List.nth(ss,i)), loop(ss,i+1))
+	    of (NONE, _) => NONE
+	     | (_, NONE) => NONE
+	     | (SOME ti, SOME ts) => SOME (ti :: ts)
+	val children = (case loop (ss, 1)
+          of NONE => [t0]
+	   | SOME(ts) => t0::ts)
+	val minScore = listmin (map (#2 o top) children)
+        in
+          Rose ((b, minScore), children)
+        end     
+    val neg_inf = ~2
+    val pos_inf = 2
+    in
+      maxT (empty, neg_inf, pos_inf)
+    end
+
   (* btos : board -> string *)
   fun btos (b : board) : string = let
     fun stos NONE = " "
