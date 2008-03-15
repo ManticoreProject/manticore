@@ -236,7 +236,7 @@ fun timeTest () = let
     val arr = genRandomDoubleArr(n)
 
     val b = gettimeofday ()
-(*    val _ = batcherSort(arr, 0, alength(arr), ASCENDING)*)
+    val _ = batcherSort(arr, 0, alength(arr), ASCENDING)
     val e = gettimeofday ()
     in
         print (dtos (e-b)^"\n")
