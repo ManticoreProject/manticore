@@ -56,7 +56,7 @@ if [ -z "$SEQ_PROG_NAME" ] ; then
     SEQ_PROG_NAME=$PROG_NAME
 fi
 SEQ_PROG_EXE=$PROG_NAME-seq
-m4 $PROG_NAME/$SEQ_PROG_NAME.pml > $SEQ_PROG_NAME.pml
+cp $PROG_NAME/$SEQ_PROG_NAME.pml $SEQ_PROG_NAME.pml
 echo "Compiling sequential program: $MC $SEQFLAGS $SEQ_PROG_NAME.pml"
 $MC $SEQFLAGS $SEQ_PROG_NAME.pml 2> /dev/null
 mv a.out $SEQ_PROG_EXE
@@ -73,7 +73,7 @@ echo -e "#nProcs\t\tsize\t\tmaxLeafSize\ttime(s)" >> $LOG_FILE_NAME
 
 PARFLAGS="$MCFLAGS"
 #run the macro expander on the source program
-m4 $PROG_NAME/$PROG_NAME.pml > $PROG_NAME.pml
+cp $PROG_NAME/$PROG_NAME.pml $PROG_NAME.pml
 #compile the parallel version
 echo "Compiling parallel program: $MC $PARFLAGS $PROG_NAME.pml"
 $MC $PARFLAGS $PROG_NAME.pml 2> /dev/null
@@ -88,9 +88,9 @@ do
 	    echo "evaluating $PROG_NAME for $p processor[s] at image size $s and sequential size $seq_sz"
 	    echo -n -e "$p\t\t$s\t\t$seq_sz\t\t" >> $LOG_FILE_NAME
 	    if [ "$p" -eq "0" ] ; then       
-		echo cat plummer.particles | ./$SEQ_PROG_EXE >> $LOG_FILE_NAME
+		cat plummer.particles | ./$SEQ_PROG_EXE >> $LOG_FILE_NAME
 	    else
-		echo cat plummer.particles | ./$PROG_EXE -p $p >> $LOG_FILE_NAME
+		cat plummer.particles | ./$PROG_EXE -p $p >> $LOG_FILE_NAME
 	    fi
 	done
     done

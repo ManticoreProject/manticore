@@ -10,7 +10,16 @@ divert(-1)
 changequote({,})   #change quotes to curly braces 
 divert(0)
 
-val seqSz = readint();
+    fun lg (n) = let
+	fun loop (x, y) = if (x = 1)
+            then y
+            else loop(x div 2, y + 1)
+        in
+           loop(n, 0)
+        end
+;
+
+val seqSz = lg(readint());
 define({_SEQ_SZ_}, {seqSz})dnl
 
 define({_PFIB_}, {

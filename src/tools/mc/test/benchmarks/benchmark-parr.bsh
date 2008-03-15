@@ -9,7 +9,7 @@
 #           -p num_procs               number of processors.  Using -p 0 causes sequential compilation.
 #
 
-LEAF_SIZES="4"
+LEAF_SIZES=""
 
 usage="usage: benchmark-parr.bsh -e prog_name -q sequential_prog_name -s size ... -p num_procs ... -l max_leaf_sze ..."
 SEQ_PROG_NAME=""
@@ -51,6 +51,8 @@ echo "Compiling sequential program: $MC $SEQFLAGS $PROG_NAME/$SEQ_PROG_NAME.pml"
 $MC $SEQFLAGS $PROG_NAME/$SEQ_PROG_NAME.pml 2> /dev/null
 mv a.out $SEQ_PROG_EXE
 
+PROG_EXE=$PROG_NAME-run
+
 ARCH=$( uname -m )
 OS=$( uname -s )
 MACHINE=$( uname -n )
@@ -67,7 +69,7 @@ do
     #compile the parallel version
     echo "Compiling parallel program: $MC $PARFLAGS $PROG_NAME/$PROG_NAME.pml"
     $MC $PARFLAGS $PROG_NAME/$PROG_NAME.pml 2> /dev/null
-    mv a.out $PROG_NAME
+    mv a.out $PROG_EXE
     for p in $PROCS
     do   
         for s in $SIZES
@@ -77,10 +79,10 @@ do
 	    if [ "$p" -eq "0" ] ; then       
 		echo "$s." | ./$SEQ_PROG_EXE >> $LOG_FILE_NAME
 	    else
-		echo "$s." | ./$PROG_NAME -p $p >> $LOG_FILE_NAME
+		echo "$s." | ./$PROG_EXE -p $p >> $LOG_FILE_NAME
 	    fi
 	done
     done
 done
 
-rm -f *.ppm *.s $PROG_NAME $SEQ_PROG_EXE
+rm -f *.ppm *.s $PROG_EXE $SEQ_PROG_EXE

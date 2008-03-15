@@ -68,6 +68,11 @@ structure BatcherBitonicSortInPlace =
            loop(n, 0)
         end
 
+    fun sortingLoop (arr, dir, m, lo, i) = if (i < lo+m)
+        then (compare(arr, dir, i, i+m);
+	      sortingLoop(arr, dir, m, lo, i+1))
+        else ()
+
     fun sortingNetwork (arr, dir, i, lo, m, lvl) = if (lvl > 0)
         then let
           val _ = sortingNetwork(arr, dir, 2*i, lo, m, lvl-1)
@@ -80,7 +85,8 @@ structure BatcherBitonicSortInPlace =
     fun bitonicMerge (arr, lo, n, dir) = if (n > 1)
         then let
           val m = n div 2
-	  val _ = sortingNetwork(arr, dir, 0, lo, m, lg(m))
+(*	  val _ = sortingNetwork(arr, dir, 0, lo, m, lg(m))*)
+val _ = sortingLoop(arr, dir, m, lo, 0)
 	  val _ = bitonicMerge(arr, lo,   m, dir)
 	  val _ = bitonicMerge(arr, lo+m, m, dir)
           in
