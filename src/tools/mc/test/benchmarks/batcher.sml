@@ -13,7 +13,9 @@ structure BatcherBitonicSortInPlace =
     val asub = Array.sub
     val alength = Array.length
     val array = Array.array
+    type double = real
 
+(*
     fun bubbleSort (arr) = let
 	val n = alength(arr)
 	fun swap (arr, i, j) = let
@@ -40,11 +42,11 @@ structure BatcherBitonicSortInPlace =
          in
 	    loop1(1)
          end
-
+*)
     datatype dir = ASCENDING | DESCENDING
 
-    fun compare (arr, dir, i, j) = let
-        val comp = asub(arr, i) > asub(arr, j)
+    fun compare (arr : double array, dir, i : int, j : int) = let
+        val comp = Real.>(asub(arr, i), asub(arr, j))
         val exchange = (case dir
 			 of ASCENDING => comp
 			  | DESCENDING => not(comp)
@@ -60,7 +62,7 @@ structure BatcherBitonicSortInPlace =
              else ()
         end
 
-    fun lg (n) = let
+    fun lg (n:int) = let
 	fun loop (x, y) = if (x = 1)
             then y
             else loop(x div 2, y + 1)
@@ -85,15 +87,15 @@ structure BatcherBitonicSortInPlace =
     fun bitonicMerge (arr, lo, n, dir) = if (n > 1)
         then let
           val m = n div 2
-(*	  val _ = sortingNetwork(arr, dir, 0, lo, m, lg(m))*)
-val _ = sortingLoop(arr, dir, m, lo, 0)
+	  val _ = sortingNetwork(arr, dir, 0, lo, m, lg(m))
+(*val _ = sortingLoop(arr, dir, m, lo, 0)*)
 	  val _ = bitonicMerge(arr, lo,   m, dir)
 	  val _ = bitonicMerge(arr, lo+m, m, dir)
           in
 	      ()
           end
         else ()
-
+(*
     val xs = [1,3,7,8,17,4,2,0]
     fun checkBitMerge () = let
 	val xArr = Array.fromList xs
@@ -101,7 +103,7 @@ val _ = sortingLoop(arr, dir, m, lo, 0)
 	   bitonicMerge(xArr, 0, alength(xArr), ASCENDING);
 	   Array.foldr (op ::) [] xArr
         end
-
+*)
     fun batcherSort (arr, lo, n, dir) = if (n > 1)
         then let
            val m = n div 2
@@ -112,12 +114,14 @@ val _ = sortingLoop(arr, dir, m, lo, 0)
            end
         else ()
 
-
+(*
     val xs1 = [8,7,6,5,4,3,2,1]
     val xs1 = [
 	1234,34,3,4,33,3432,334233,~4,~234,34,3,4,333,~3432,34233,~4,
 	234,34,3,4,33,3432,34233,~4,234,34,3,4,333,~3432,34233,~4
     ]
+
+
     fun checkBatcherSort(ls) = let
 	val arr = Array.fromList(ls)
 	val arr' = copyArr(arr)
@@ -128,5 +132,30 @@ val _ = sortingLoop(arr, dir, m, lo, 0)
 	    arrayEq(arr, arr')
         end
     val ys1 = checkBatcherSort(xs1)
+*)
+
+    val r = Random.rand(0, 1000)
+    fun drand () = Random.randReal(r)
+    val gettimeofday = Time.toReal o Time.now
+
+    fun genRandomDoubleArr (n) = let
+	val arr : double array = array(n, 0.0:double)
+	fun loop (i) = if (i < n)
+		       then (aupdate(arr, i, drand()); 
+			     loop(i+1))
+		       else ()
+    in
+	loop(0);
+	arr
+    end
+
+    fun run (sz) = let
+	val arr = genRandomDoubleArr(sz)
+	val b = gettimeofday()
+	val _ = batcherSort(arr, 0, alength(arr), ASCENDING)
+	val e = gettimeofday()
+        in
+	  e-b
+        end
 
   end
