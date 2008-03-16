@@ -3,9 +3,7 @@
  * Simple Barnes-Hut benchmark borrowed from Chakravarty and Keller.
  *)
 
-(* need to fill these in *)
-fun readint () = raise Fail "todo"
-fun readfloat () = raise Fail "todo"
+structure BarnesHut = struct
 
 type float = real
 
@@ -525,23 +523,11 @@ fun maxErr (rvs, vs) = let
           else fail "unequal lengths"
     end
 
-
-fun readParticles () = let
-    val nParticles = readint ()
-    fun readVec () = (readfloat(), readfloat())
-    fun readMassPnt () = MassPnt (readfloat(), readVec())
-    fun readParticle () = Particle (readMassPnt(), readVec())
-    fun doit (i, ps) = if (i>0)
-        then doit(i-1, readParticle()::ps)
-        else rev(ps)
-    in
-        doit (nParticles, nil)
-    end
-
+fun toParticle (m1, m2, m3, v1, v2) = Particle (MassPnt(m1, (m2, m3)), (v1, v2))
 
 fun timeTest () = let
-    val nSteps = readint()
-    val particles = readint()
+    val nSteps = 1
+    val particles = List.map toParticle Particles.particles
     val dt = 2.0
 
     fun iter (ps, i) = if (i<nSteps)
@@ -556,7 +542,7 @@ fun timeTest () = let
     val t = timeToEval(let fun f () = iter(particles, 0) in f end)
 
     in
-       ()
+       t
     end
 
 
@@ -589,3 +575,4 @@ print (concatWith(", ", map(part2s, naivePs))^"\n");
 
 *)
 
+end

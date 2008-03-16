@@ -1,7 +1,7 @@
 HC      = ghc
 HCFLAGS = -O
 
-nbodygen: NBodyGen.hs
+nbodygen: NBodyGenSML.hs
 	$(HC) $(HCFLAGS) -o $@ $<
 
 nbody: NBody.hs
