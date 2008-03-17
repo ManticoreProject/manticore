@@ -7,10 +7,14 @@
  *)
 
 #include "types.def"
-
-define inline @forward (vp : vproc, sig : signal / exh : exh) noreturn;
+#include "scheduling-ops.def"
+#include "runtime-offsets.def"
+#include "assert.def"
+#include "debugging.def"
 
 define @yield (vp : vproc / exh : exh) : unit = 
+  do vpstore(ATOMIC, vp, TRUE)
+do assert (Equal(vp, host_vproc))
    cont k (_ : unit) = return (UNIT)
   (* FIXME: this coercion should be unnecessary *)
    let k : any = (any)k

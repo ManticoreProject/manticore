@@ -458,7 +458,7 @@ fun accelOf (ac : (mass_pnt tree * float * mass_pnt)) = (case ac
  * * In addition to the new particles, the number of direct and far-field
  *   interactions is computed.
  *)
-fun oneStep' (dt, ps) = let
+fun oneStep' (dt, n, ps) = let
     val mps = map(particleMP, ps)
     val box = boundingBox(mps)
     val len = maxSideLen(box)
@@ -472,8 +472,10 @@ fun oneStep' (dt, ps) = let
         in
 	  moveParticle(dt, p)
         end
-    val n = length(ps)
+val b = gettimeofday()
     val ps' = map(computeNewParticle, ps)
+val e = gettimeofday()
+val _ = print(dtos (e-b)^"\n")
     in
        (ps', 0, 0)
     end
@@ -528,11 +530,12 @@ fun toParticle (m1, m2, m3, v1, v2) = Particle (MassPnt(m1, (m2, m3)), (v1, v2))
 fun timeTest () = let
     val nSteps = 1
     val particles = List.map toParticle Particles.particles
+    val n = List.length particles
     val dt = 2.0
 
     fun iter (ps, i) = if (i<nSteps)
         then let
-          val (bhPs, dNos, fNos) = oneStep' (dt, ps)
+          val (bhPs, dNos, fNos) = oneStep' (dt, n, ps)
           in
              iter(bhPs, i+1)
           end

@@ -7,5 +7,5 @@
 #include "events.def"
 
 define inline @event-choose (arg : [evt, evt] / _ : exh) : evt =
-    return (CHOOSE(#0(arg), #1(arg))
+    return (CHOOSE(#0(arg), #1(arg)))
 ;

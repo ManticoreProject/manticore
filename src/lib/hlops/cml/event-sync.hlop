@@ -9,7 +9,6 @@
 #include "events.def"
 
 define @get-fgs (vp : vproc / exh : exh) : fgs;
-define @dispatch (vp : vproc / exh : exh) noreturn;
 
 define @event-sync (ev : evt / exh : exh) : any =
 
@@ -50,7 +49,7 @@ define @event-sync (ev : evt / exh : exh) : any =
 	   *)
 	    do #0(flg) := WAITING_EVT
 	    (* in *)
-	      @dispatch (host_vproc / exh)
+	      @thread-exit(/exh)
 
   (* attempt to complete an enabled communication *)
     fun doEvt (enabled : list / exh : exh) : any =

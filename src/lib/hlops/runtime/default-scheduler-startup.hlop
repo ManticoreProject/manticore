@@ -10,16 +10,16 @@
 #include "debugging.def"
 #include "vproc-queue.def"
 #include "fgs.def"
-
-define inline @run (vp : vproc, act : sigact, fgs : fgs, fiber : fiber / exh : exh) noreturn;
-
-define @scheduler-startup (mkAct : fun (vproc / exh -> sigact), fgs : fgs, vps : list / exh : exh) : ();
+#include "scheduling-ops.def"
+#include "assert.def"
 
 extern void *ListVProcs (void *) __attribute__((alloc));
 
 define @default-scheduler-startup ( / exh : exh) : () = 
   cont switch (s : signal) =
     let vp : vproc = host_vproc
+    let atomic : bool = vpload(ATOMIC, vp)
+    do assert(atomic)
 
     cont dispatch () =
       let qitem : rdyq_item = @dequeue (vp / exh)
@@ -34,6 +34,7 @@ define @default-scheduler-startup ( / exh : exh) : () =
            let k : fiber = (fiber)s
            let fgs : fgs = @get-fgs (vp / exh)
            do @enqueue (vp, fgs, k / exh)
+(*print_msg("preempt")*)
            throw dispatch () 
 
   fun mkSwitch (_ : vproc / exh : exh) : sigact = return (switch)

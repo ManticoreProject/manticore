@@ -7,6 +7,7 @@
  *)
 
 #include "events.def"
+#include "debugging.def"
 
 define @chan-acquire-lock (ch : chan / _ : exh) : ();
 define @chan-release-lock (ch : chan / _ : exh) : ();
@@ -14,7 +15,6 @@ define @event-claim (flg : dirty_flag / exh : exh) : bool;
 define @atomic-enqueue (fgs : fgs, fiber : fiber / exh : exh) : ();
 define @chan-dequeue-send (ch : chan / exh : exh) : option;
 define @chan-enqueue-recv (ch : chan, flg : dirty_flag, fgs : fgs, k : cont(any) / _ : exh) : ();
-define @dispatch (vp : vproc / exh : exh) noreturn;
 
 define @chan-recv (ch : chan / exh : exh) : any =
     let fgs : fgs = @get-fgs(host_vproc / exh)
@@ -35,6 +35,6 @@ define @chan-recv (ch : chan / exh : exh) : any =
 	      do @chan-enqueue-recv (ch, flag, fgs, recvK / exh)
 	      do @chan-release-lock (ch / exh)
 	      (* in *)
-		@dispatch (host_vproc / exh)
+                @thread-exit(/exh)
       end
 ;

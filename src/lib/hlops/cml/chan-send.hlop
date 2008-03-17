@@ -7,6 +7,7 @@
  *)
 
 #include "events.def"
+#include "assert.def"
 
 define @chan-acquire-lock (ch : chan / _ : exh) : ();
 define @chan-release-lock (ch : chan / _ : exh) : ();
@@ -16,7 +17,6 @@ define @chan-dequeue-recv (ch : chan / exh : exh) : option;
 define @chan-enqueue-send (ch : chan, msg : any, fgs : fgs, k : cont(unit) / _ : exh) : ();
 define @get-fgs (vp : vproc / exh : exh) : fgs;
 define @throw-to (vp : vproc, fgs : fgs, recv : cont(any), v : any / exh : exh) noreturn;
-define @dispatch (vp : vproc / exh : exh) noreturn;
 
 define @chan-send (arg : [chan, any] / exh : exh) : any =
     let ch : chan = #0(arg)
@@ -46,7 +46,7 @@ define @chan-send (arg : [chan, any] / exh : exh) : any =
 		    do @chan-enqueue-send (ch, msg, fgs, sendK / exh)
 		    do @chan-release-lock (ch / exh)
 		    (* in *)
-		      @dispatch (host_vproc / exh)
+		      @thread-exit(/exh)
 	      end
       (* in *)
 	apply tryLp (UNIT / exh)

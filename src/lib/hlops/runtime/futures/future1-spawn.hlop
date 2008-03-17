@@ -28,7 +28,7 @@ define @future1-spawn (thunk : thunk / exh : exh) : future =
 
  (* create the cancel cell for the future *)
   let cancelCell : cancel_cell = @cancel-cell(/exh)
-  let cancelCell : cancel_cell =  @assoc-list-add(TAG_CANCEL_CELL_FUTURE1, cancelCell, fgs / exh)
+  let cancelCell : cancel_cell = @assoc-list-add(TAG_CANCEL_CELL_FUTURE1, cancelCell, fgs / exh)
 
   let fut : future = alloc (EMPTY_F, thunk, cancelCell, fgs)
   let fut : future = promote (fut)

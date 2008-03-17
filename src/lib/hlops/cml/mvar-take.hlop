@@ -8,8 +8,6 @@
 
 #include "types.def"
 
-deine @dispatch(vp : vproc) noreturn;
-
 define inline @mvar-take(mvar : !(list, any, int, int)) : any =
            (* set #3(mvar) to 1 : takeflag *) 
            do #3(mvar) : = 1
@@ -33,7 +31,7 @@ define inline @mvar-take(mvar : !(list, any, int, int)) : any =
                      else return (enum(0)) 
                  do apply loop ()
 		 do #2(mvar) := I32Sub(readFlag, 1)
-		 @dispatch(host_vproc)
+		 @thread-exit(/exh)
             | x : any =>
 	        do #2(mvar) := I32Sub(readFlag, 1)
                 fun spin (; exh : cont(any)) : unit =
