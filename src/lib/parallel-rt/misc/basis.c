@@ -237,15 +237,15 @@ int M_ReadInt ()
 
 float M_ReadFloat ()
 {
-  double i;
-  scanf ("%f\n", &i);
+  float i;
+  scanf ("%f", &i);
   return (float)i;
 }
 
 double M_ReadDouble ()
 {
   double i;
-  scanf ("%f\n", &i);
+  scanf ("%lf", &i);
   return i;
 }
 
