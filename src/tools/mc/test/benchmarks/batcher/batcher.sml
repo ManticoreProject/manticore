@@ -6,8 +6,11 @@
  * Prototype for an in-place version of Batcher's bitonic sort.
  *)
 
-structure BatcherBitonicSortInPlace = 
-  struct
+structure BatcherBitonicSortInPlace : sig
+
+    val run : int -> real
+
+  end = struct
 
     val aupdate = Array.update
     val asub = Array.sub
