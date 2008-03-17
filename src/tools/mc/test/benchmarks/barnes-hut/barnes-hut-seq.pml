@@ -482,7 +482,7 @@ fun oneStep' (dt, n, ps) = let
         in
 	  moveParticle(dt, p)
         end
-    val ps' = parMap(computeNewParticle, n, ps)
+    val ps' = map(computeNewParticle, ps)
     in
        (ps', 0, 0)
     end
