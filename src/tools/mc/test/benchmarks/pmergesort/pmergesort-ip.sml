@@ -6,8 +6,13 @@
  * Prototype for an in-place version of parallel mergesort.
  *)
 
-structure PMergesortInPlace =
-  struct
+structure PMergesortInPlace : sig
+
+    type double = real
+
+    val pMergesort : double array -> double array
+
+  end = struct
 
     val aupdate = Array.update
     val asub = Array.sub
@@ -93,8 +98,11 @@ structure PMergesortInPlace =
 
   end
 
-structure PMEx = 
-  struct
+structure PMEx : sig
+
+    val run : int -> real
+
+  end = struct
 
     open PMergesortInPlace
 
@@ -103,9 +111,9 @@ structure PMEx =
     val gettimeofday = Time.toReal o Time.now
 
     fun genRandomDoubleArr (n) = let
-	val arr : double array = array(n, 0.0:double)
+	val arr : double array = Array.array(n, 0.0:double)
 	fun loop (i) = if (i < n)
-		       then (aupdate(arr, i, drand()); 
+		       then (Array.update(arr, i, drand()); 
 			     loop(i+1))
 		       else ()
     in
