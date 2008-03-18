@@ -61,20 +61,17 @@ structure LTCDVal :> sig
 
     *)
 
-    val promoteOnlyFlg = ref false
-    val () = List.app (fn ctl => ControlRegistry.register BasicControl.topRegistry {
-              ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
-              envName = NONE
-            }) [
-              Controls.control {
-                  ctl = promoteOnlyFlg,
-                  name = "dval-promote-only",
-                  pri = [0, 1],
-                  obscurity = 0,
-                  help = "only generate promotions"
-                }
-	     ]
+    val promoteOnlyFlg = Controls.genControl {
+	    name = "ltc-promote-only",
+	    pri = [5, 0],
+	    obscurity = 1,
+	    help = "Only do promotions for LTC.",
+	    default = false
+	  }
 
+    val _ = ControlRegistry.register BasicControl.topRegistry {
+      ctl = Controls.stringControl ControlUtil.Cvt.bool promoteOnlyFlg,
+      envName = NONE}
 
     fun mkBindVar (v, e) = A.ValBind(A.VarPat v, e)
     fun mkBindVars (vs, es) = ListPair.map mkBindVar (vs, es)
@@ -156,7 +153,7 @@ structure LTCDVal :> sig
 
     and trExp (e) = (case e
         of A.LetExp (A.DValBind (pat, e1), e2) => (case pat
-           of A.VarPat v => if (!promoteOnlyFlg)
+           of A.VarPat v => if (Controls.get promoteOnlyFlg)
 			    then promoteOnly(v, e1, e2)
 			    else expand(v, e1, e2)
 	    | A.WildPat ty => expand(Var.new("wild", ty), e1, e2)
