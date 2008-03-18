@@ -18,6 +18,7 @@ define @ltc-scheduler ( / exh : exh) : ltq_fun;
 define inline @ltc-pop(arg : unit / exh : exh) : any;
 define inline @ltc-push(f : fiber_fun / exh : exh) : unit;
 define inline @ltc-ivar-put (arg : [ivar, any] / exh : exh) : unit;
-(*define inline @ltc-push-ltq(ltq : the_deque, elt : any / exh : exh) : unit;*)
+
+define @promote-only(f : fiber_fun / exh : exh) : unit;
 
 #endif /*!  _LTC_DEF_ */

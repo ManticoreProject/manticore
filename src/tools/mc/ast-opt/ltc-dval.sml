@@ -61,6 +61,21 @@ structure LTCDVal :> sig
 
     *)
 
+    val promoteOnlyFlg = ref false
+    val () = List.app (fn ctl => ControlRegistry.register BasicControl.topRegistry {
+              ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
+              envName = NONE
+            }) [
+              Controls.control {
+                  ctl = promoteOnlyFlg,
+                  name = "dval-promote-only",
+                  pri = [0, 1],
+                  obscurity = 0,
+                  help = "only generate promotions"
+                }
+	     ]
+
+
     fun mkBindVar (v, e) = A.ValBind(A.VarPat v, e)
     fun mkBindVars (vs, es) = ListPair.map mkBindVar (vs, es)
 
@@ -68,7 +83,42 @@ structure LTCDVal :> sig
     fun dummyVar () = BasisUtils.monoVar("dummyVar", Basis.unitTy)
     val unitExp = A.TupleExp []
 
-    fun expand (x, e1, e2) = let
+    (* For experimentation only: attempt to isolate the cost of promotion for LTC.
+     *)
+    fun promoteOnly (x, e1, e2) = let
+        val e1Ty = TypeOf.exp(e1)
+	val e2Ty = TypeOf.exp(e2)
+	val ivar = BasisUtils.monoVar("ivar", ivarTy(e1Ty))
+	val retK = BasisUtils.monoVar("retK", RB.contTy(e2Ty))
+	val ctx = BasisUtils.monoVar("ctx", Basis.unitTy --> Basis.unitTy)
+
+	val e2Susp = BasisUtils.monoVar("e2Susp", (Basis.unitTy --> e1Ty) --> e2Ty)
+	val selFn = BasisUtils.monoVar("selFn", Basis.unitTy --> e1Ty)
+	val e2SuspFun = AU.mkFunWithParams (e2Susp, [selFn], 
+			    trExp(VarSubst.exp' (VarSubst.singleton(x, x)) (AU.mkApplyExp(A.VarExp(selFn,[]), [unitExp])) 
+					  e2))
+
+        val eBody = 
+	    AU.mkSeqExp([RuntimeBasis.mkPromoteOnly(ctx)],
+		AU.mkLetExp(mkBindVars([x], [trExp(e1)]),	
+			    AU.mkApplyExp(A.VarExp(e2Susp, []), [A.FunExp (dummyVar(), A.VarExp(x, []), e1Ty)])))
+		     
+        val ctxExp =
+	    A.FunExp (dummyVar(),
+		      RB.mkThrowcc(e2Ty, retK, 
+		            AU.mkApplyExp(A.VarExp(e2Susp, []), [A.FunExp(dummyVar(), RB.mkIVarGet(e1Ty, ivar), e1Ty)])),
+		Basis.unitTy)
+        in
+	   RB.mkCallcc(e2Ty,
+	      A.FunExp (retK,
+			 AU.mkLetExp(A.FunBind [e2SuspFun] ::
+				     mkBindVars ([ivar,             ctx], 
+						 [RB.mkIVarNew(e1Ty), ctxExp]),
+				     eBody),
+			e2Ty))
+        end
+
+    and expand (x, e1, e2) = let
         val e1Ty = TypeOf.exp(e1)
 	val e2Ty = TypeOf.exp(e2)
 	val ivar = BasisUtils.monoVar("ivar", ivarTy(e1Ty))
@@ -106,7 +156,9 @@ structure LTCDVal :> sig
 
     and trExp (e) = (case e
         of A.LetExp (A.DValBind (pat, e1), e2) => (case pat
-           of A.VarPat v => expand(v, e1, e2)
+           of A.VarPat v => if (!promoteOnlyFlg)
+			    then promoteOnly(v, e1, e2)
+			    else expand(v, e1, e2)
 	    | A.WildPat ty => expand(Var.new("wild", ty), e1, e2)
 	    | _ => raise Fail "todo"
            (* end case *))	   

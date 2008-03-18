@@ -88,6 +88,14 @@ structure RuntimeBasis
     fun mkLtcPush (ctx) = 
 	AU.mkApplyExp (A.VarExp(ltcPush, []), [A.VarExp(ctx, [])])
 
+(* EXPERIMENTATION *)
+    val promoteOnly = BasisUtils.monoVar ("promoteOnly", 
+			   (Basis.unitTy --> voidTy) --> voidTy)
+
+    fun mkPromoteOnly (ctx) = 
+	AU.mkApplyExp (A.VarExp(promoteOnly, []), [A.VarExp(ctx, [])])
+(* EXPERIMENTATION *)
+
     val mkLtcPop =
 	AU.mkApplyExp (A.VarExp(ltcPop, []), [])
 

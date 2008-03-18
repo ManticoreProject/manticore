@@ -13,16 +13,18 @@
 #include "debugging.def"
 
 define inline @ltc-push(f : fiber_fun / exh : exh) : unit =
+
   let fgs : fgs = @get-fgs (host_vproc / exh)
  (* initialize the ltc scheduler and return its spawn function *)
   fun init (_ : unit / exh : exh) : any =
       @ltc-scheduler ( / exh)
- (* obtain the spawn function *)
+ (* obtain the lazy task queue *)
   let ltqFn : ltq_fun  = @assoc-list-lookup (TAG_LTC, init, fgs / exh)
   let ltq : the_deque = apply ltqFn (/exh)
 
+ (* push the frame onto the lazy task queue *)
   let k : fiber = @fiber(f / exh)
- (* push the context onto the lazy task queue head while holding the lock *)
   do @the-push-tl(ltq, k / exh)
+
   return (UNIT)
 ;

@@ -505,6 +505,8 @@ structure StdEnv : sig
                   (RB.ltcPop,            "ltc-pop",              false),
                   (RB.ltcPush,           "ltc-push",             false),
 		  (RB.ltcIPut,           "ltc-ivar-put",         false),
+(* EXPERIMENTATION *)
+                  (RB.promoteOnly,       "promote-only",             false),
 
 	         (* arrays *)
 		  (B.array,              "array",                true),
