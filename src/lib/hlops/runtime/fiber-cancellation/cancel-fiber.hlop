@@ -14,6 +14,6 @@
 #include "fiber-cancellation.def"
 
 define inline @cancel-fiber (cancelCell : cancel_cell / exh : exh) : unit =
-  do UPDATE(0, cancelCell, TRUE)
+  do UPDATE(CANCELED_OFF, cancelCell, TRUE)
   return(UNIT)
 ;

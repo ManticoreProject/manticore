@@ -12,7 +12,34 @@
 #include "fiber-cancellation.def"
 
 define inline @cancel-cell (/ exh : exh) : cancel_cell =
-  let cancelCell : cancel_cell = alloc(FALSE)
+  fun optJoin (opt : option / exh : exh) : option =
+      case opt
+       of NONE => 
+return(NONE)
+	| SOME (opt : option) =>
+print_msg("")
+	  return(opt)
+      end
+
+  let fgs : fgs = @get-fgs (host_vproc / exh)
+do ccall M_PrintPtr("fgs1", fgs)
+  let parent : option = @assoc-list-query(tag(cancelCell), fgs / exh)
+  let parent : option = apply optJoin(parent / exh)
+  
+  let cancelCell : cancel_cell = alloc(FALSE, NIL, parent)
   let cancelCell : cancel_cell = promote(cancelCell)
+
+ (* add self to the children of the running fiber *)
+  do case parent
+      of NONE => return()
+       | SOME (c : cancel_cell) => 
+print_msg("")
+         let children : list = SELECT(CHILDREN_OFF, c)
+         let newChildren : list = CONS(cancelCell, children)
+         let newChildren : list = promote(newChildren)
+	 do UPDATE(CHILDREN_OFF, c, newChildren)
+         return ()
+     end
+
   return(cancelCell)
 ;

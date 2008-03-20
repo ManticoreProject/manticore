@@ -21,19 +21,19 @@ define @future1-spawn (thunk : thunk / exh : exh) : future =
   print_debug (">>>>> called @future1-spawn\n")
 
  (* get the fiber-group storage of the caller *)
-  let parentFGS : fgs = @get-fgs (host_vproc / exh)
+  let fgs : fgs = @get-fgs (host_vproc / exh)
 
  (* create fgs for the future *)
-  let fgs : fgs = @new-fgs (TRUE, SOME (parentFGS) / exh)
+(*  let fgs : fgs = @new-fgs (TRUE, SOME (parentFGS) / exh) *)
 
  (* create the cancel cell for the future *)
   let cancelCell : cancel_cell = @cancel-cell(/exh)
-  let cancelCell : cancel_cell = @assoc-list-add(TAG_CANCEL_CELL_FUTURE1, cancelCell, fgs / exh)
+(*  let cancelCell : cancel_cell = @assoc-list-add(TAG_CANCEL_CELL_FUTURE1, cancelCell, fgs / exh)*)
 
   let fut : future = alloc (EMPTY_F, thunk, cancelCell, fgs)
   let fut : future = promote (fut)
 
- (* initialize the children list *)
+(* (* initialize the children list *)
   let children : ![list] = alloc(NIL)
   let children : ![list] =  @assoc-list-add(TAG_CHILD_FUTURES1, children, parentFGS / exh)  
  (* add a future to a children list *)
@@ -56,20 +56,21 @@ define @future1-spawn (thunk : thunk / exh : exh) : future =
 	      apply kill(children / exh)
           end
       apply kill(SELECT(0, children) / exh)
+*)
 
   (* initialize the futures scheduler and return its spawn function *)
   fun initSched (_ : unit / exh : exh) : any =
       let futuresQ : locked_queue = @future1-work-sharing ( / exh)
       return (futuresQ)
   (* obtain the futures queue *)
-  let futuresQ : locked_queue = @assoc-list-lookup (TAG_SPAWN_FUTURE1, initSched, parentFGS / exh)
+  let futuresQ : locked_queue = @assoc-list-lookup (TAG_SPAWN_FUTURE1, initSched, fgs / exh)
 
  (* create the fiber for evaluating the future *)
   fun wrapper (_ : unit / exh : exh) : unit =
       do @future1-steal (futuresQ, fut / exh)
       return (UNIT)
   let k : fiber = @fiber (wrapper / exh)
-  let k : fiber = @cancellable-fiber(cancelCell, fgs, k, cleanupFun / exh)
+  let k : fiber = @cancelable-fiber(cancelCell, k / exh)
  (* add the future to the scheduling queue *)
   do @locked-queue-enqueue (futuresQ, k / exh)
 

@@ -42,16 +42,14 @@ define @wait-for-empty-q( / exh : exh) : () =
   let fgs: fgs = @get-fgs(host_vproc/exh)
   let futuresQ : locked_queue = @assoc-list-lookup (TAG_SPAWN_FUTURE1, die, fgs / exh)
   fun waitForEmpty () : () =
-      let v: option = @locked-queue-dequeue(futuresQ / exh)
-      case v
-       of NONE => return()
-	| SOME(_ : any) => apply waitForEmpty ()
-      end
+      if Equal(SELECT(2, futuresQ), enum(0))
+        then return()
+        else apply waitForEmpty()
   apply waitForEmpty ()  
 ;
 
 define @test-cancel-nested ( / exh : exh) : bool =
-  let n : int = 15
+  let n : int = 30
 
   let done : ![bool] = alloc(FALSE)
   let done : ![bool] = promote(done)
@@ -61,7 +59,7 @@ define @test-cancel-nested ( / exh : exh) : bool =
       do UPDATE(0, done, TRUE)
       return(NIL)
   let fut : future = @future1-spawn(f / exh)
-  let ans1 : int = @fib(12 / exh)  
+  let ans1 : int = @fib(20 / exh)  
   let _ : unit = @future1-cancel(fut / exh)
 
   do @wait-for-empty-q (/exh)
@@ -131,10 +129,11 @@ define @test1 (/ exh : exh) : bool =
 define @future1-test-startup ( /exh : exh) : () =
   do @default-scheduler-startup (/exh)
 
-  do_concurrent_test(test1, 5.0:double)
+(*  do_concurrent_test(test1, 5.0:double)
   do_concurrent_test(test2, 5.0:double)
   do_concurrent_test(test-cancel, 5.0:double)
   do_concurrent_test(test-cancel2, 5.0:double)
+*)
   do_concurrent_test(test-cancel-nested, 20.0:double)
 
   return ()

@@ -10,14 +10,17 @@
 #define _FIBER_CANCELLATION_DEF_
 
 #include "types.def"
+#include "fgs.def"
 
-typedef cancel_cell = ![bool];
+                    (* [canceled, children, parent] *)
+typedef cancel_cell = ![bool,     list,     option];
+
+#define CANCELED_OFF       0
+#define CHILDREN_OFF       1
+#define PARENT_OFF         2
 
 define inline @cancel-cell (/ exh : exh) : cancel_cell;
-define inline @cancellable-fiber (  cancelCell : cancel_cell, 
-				    fgs : fgs, 
-				    k : fiber, 
-				    cleanupFun : fun( / exh -> ) / exh : exh) : fiber;
+define @cancelable-fiber (cancelCell : cancel_cell, k : fiber / exh : exh) : fiber;
 define inline @cancel-fiber (cancelCell : cancel_cell / exh : exh) : unit;
 
 #endif /*! _FIBER_CANCELLATION_DEF_ */

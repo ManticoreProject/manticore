@@ -11,10 +11,23 @@
 #include "runtime-offsets.def"
 #include "logging.def"
 #include "assert.def"
+#include "debugging.def"
 
 define inline @future1-cancel (fut : future / exh : exh) : unit =
-  let cancelCellOpt : option = @assoc-list-query(TAG_CANCEL_CELL_FUTURE1, SELECT(FUTURE1_FGS_OFF, fut) / exh)
-  let cancelCell : cancel_cell = VAL_OF(cancelCellOpt, cancel_cell, exh)
-  let _ : unit = @cancel-fiber(cancelCell / exh)
+  fun cancel (cancelCell : cancel_cell / exh : exh) : () =
+      fun cancelChildren (children : list / exh : exh) : () =
+          case children
+	   of NIL => return()
+	    | CONS(c : cancel_cell, children : list) =>
+	      do apply cancel(c / exh)
+              apply cancelChildren(children / exh)
+          end
+print_msg("")
+      let _ : unit = @cancel-fiber(cancelCell / exh)
+      let children : list = SELECT(CHILDREN_OFF, cancelCell)
+      apply cancelChildren (children / exh)      
+
+  let cancelCell : cancel_cell = SELECT(FUTURE1_CANCEL_CELL_OFF, fut)
+  do apply cancel(cancelCell / exh)
   return(UNIT)
 ;

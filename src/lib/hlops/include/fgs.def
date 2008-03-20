@@ -55,6 +55,8 @@ define @assoc-list-add (atag : assoc_tag, elt : any, fgs : fgs / exh : exh) : an
  *)
 define @assoc-list-find (atag : assoc_tag, alist : assoc_list / exh : exh) : option;
 
+define @assoc-list-modify (atag : assoc_tag, elt : any, fgs : fgs / exh : exh) : any;
+
 (** UIDs **)
 define inline @get-uid (uidTag : assoc_tag, vp : vproc / exh : exh) : int;
 
