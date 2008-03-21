@@ -46,15 +46,12 @@ do assert (Equal(self, host_vproc))
 		    let _ : unit = @atomic-yield (self / exh)
 		    throw dispatch()
 		  | SOME (k:fiber) =>
-do ccall M_PrintPtr("fgs",fgs)
                     @run (self, switch, fgs, k / exh)
 		end
 
            if Equal (s, STOP)
               then throw dispatch ()
-              else   let tos : [sigact, any] = vpload(VP_ACTION_STK, self)
-  do assert(NotEqual(tos, NIL))
-                   do @locked-queue-enqueue (q, s / exh)
+              else do @locked-queue-enqueue (q, s / exh)
                    let _ : unit = @atomic-yield (self / exh)
                    throw dispatch ()
 

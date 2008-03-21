@@ -23,10 +23,10 @@ define @future1-touch (fut : future / exh : exh) : any =
          return (result)
     else if Equal (tmp, STOLEN_F)
            then (* someone else is evaluating the future; we need to block *)
-                let fgs : fgs = @get-fgs(host_vproc /exh)
+(*                let fgs : fgs = @get-fgs(host_vproc /exh) *)
                 cont kLocal (_ : unit) = 
                     (* reset the fgs *)
-                     let _ : unit = @set-fgs(host_vproc, fgs / exh)
+(*                     let _ : unit = @set-fgs(host_vproc, fgs / exh)*)
                     (* resume the future *)
 		     return (SELECT(FUTURE1_STATE_OFF, fut))
                 let kLocal : fiber = (fiber)kLocal

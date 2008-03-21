@@ -14,15 +14,11 @@
 define inline @cancel-cell (/ exh : exh) : cancel_cell =
   fun optJoin (opt : option / exh : exh) : option =
       case opt
-       of NONE => 
-return(NONE)
-	| SOME (opt : option) =>
-print_msg("")
-	  return(opt)
+       of NONE => return(NONE)
+	| SOME (opt : option) => return(opt)
       end
 
   let fgs : fgs = @get-fgs (host_vproc / exh)
-do ccall M_PrintPtr("fgs1", fgs)
   let parent : option = @assoc-list-query(tag(cancelCell), fgs / exh)
   let parent : option = apply optJoin(parent / exh)
   
@@ -33,7 +29,6 @@ do ccall M_PrintPtr("fgs1", fgs)
   do case parent
       of NONE => return()
        | SOME (c : cancel_cell) => 
-print_msg("")
          let children : list = SELECT(CHILDREN_OFF, c)
          let newChildren : list = CONS(cancelCell, children)
          let newChildren : list = promote(newChildren)

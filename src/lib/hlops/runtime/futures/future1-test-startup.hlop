@@ -49,7 +49,7 @@ define @wait-for-empty-q( / exh : exh) : () =
 ;
 
 define @test-cancel-nested ( / exh : exh) : bool =
-  let n : int = 30
+  let n : int = 40
 
   let done : ![bool] = alloc(FALSE)
   let done : ![bool] = promote(done)
@@ -59,11 +59,43 @@ define @test-cancel-nested ( / exh : exh) : bool =
       do UPDATE(0, done, TRUE)
       return(NIL)
   let fut : future = @future1-spawn(f / exh)
-  let ans1 : int = @fib(20 / exh)  
+  let ans1 : int = @fib(15 / exh)  
   let _ : unit = @future1-cancel(fut / exh)
 
   do @wait-for-empty-q (/exh)
   return(BNot(SELECT(0, done)))
+;
+
+define @test-cancel3 (/exh : exh) : bool =
+  let sv : ![bool] = alloc(TRUE)
+  let sv : ![bool] = promote(sv)
+
+  fun loopForever () : () = 
+      do UPDATE(0, sv, FALSE)
+      apply loopForever ()
+  fun f (_ : unit / exh : exh) : any =      
+      do apply loopForever ()
+      return(NIL)
+  fun f2 (_ : unit / exh : exh) : any =
+      let fut : future = @future1-spawn(f / exh)
+      let _ : any = @future1-touch(fut/ exh)
+      return(NIL)
+
+  fun f3 (_ : unit / exh : exh) : any =
+      let p : int = @fib(34 / exh)
+      return(NIL)
+
+  let fut : future = @future1-spawn(f2 / exh)
+  let fut3 : future = @future1-spawn(f3 / exh)
+  let fut4 : future = @future1-spawn(f3 / exh)
+
+  let _ : unit = @future1-cancel(fut / exh)
+  let _ : unit = @yield(host_vproc / exh)
+  let ans1 : any = @future1-touch(fut3 / exh)
+  let ans1 : any = @future1-touch(fut4 / exh)
+  do UPDATE(0, sv, TRUE)
+
+  return(SELECT(0, sv))
 ;
 
 define @test-cancel2 (/exh : exh) : bool =
@@ -132,9 +164,13 @@ define @future1-test-startup ( /exh : exh) : () =
 (*  do_concurrent_test(test1, 5.0:double)
   do_concurrent_test(test2, 5.0:double)
   do_concurrent_test(test-cancel, 5.0:double)
+
   do_concurrent_test(test-cancel2, 5.0:double)
 *)
+  do_concurrent_test(test-cancel3, 5.0:double)
+(*
   do_concurrent_test(test-cancel-nested, 20.0:double)
+*)
 
   return ()
 ;

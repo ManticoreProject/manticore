@@ -22,7 +22,6 @@ define inline @future1-cancel (fut : future / exh : exh) : unit =
 	      do apply cancel(c / exh)
               apply cancelChildren(children / exh)
           end
-print_msg("")
       let _ : unit = @cancel-fiber(cancelCell / exh)
       let children : list = SELECT(CHILDREN_OFF, cancelCell)
       apply cancelChildren (children / exh)      
