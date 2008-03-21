@@ -243,6 +243,7 @@ structure FutParLet : sig
 			     val _ = List.app recordSelector vs
 			     val (e2t, live2) = exp (e2', plus (pLive, tf))
 			     val pLive' = 
+
 				 let val s = grandUnion [VSet.singleton tf, live1, live2]
 				 in
 				     List.foldl (fn (v, s) => minus (s, v)) s vs
@@ -466,7 +467,7 @@ structure FutParLet : sig
 		       Basis.intTy)))
 	end
 
-	(* t6 = let pval a = fact(100) 
+	(* t7 = let pval a = fact(100) 
          *          pval b = fact(99)
          *      in
          *        case 1
@@ -491,7 +492,27 @@ structure FutParLet : sig
 			A.PatMatch (k 2, be),
 			A.PatMatch (A.WildPat Basis.intTy, U.int 0)],
 		       Basis.intTy)))
-	end
+	  end
+
+	(* t8 = let 
+             pval x = fact(100)
+             pval y = x
+             in
+               if b
+               then ... x ...
+               else ... y ...
+             end
+         *)
+	val t8 = let
+	    val x = Var.new ("x", Basis.intTy)
+	    val y = Var.new ("y", Basis.intTy)
+	    val xe = A.VarExp (x, [])
+	    val ye = A.VarExp (y, [])
+	    in
+	      A.LetExp (A.PValBind (A.VarPat x, U.fact 100),
+              A.LetExp (A.PValBind (A.VarPat y, xe),
+              U.ifexp  (U.trueExp, xe, ye)))
+	    end
 
 	(* testPVal : A.exp -> unit *)
 	fun testPVal e = 
@@ -504,7 +525,7 @@ structure FutParLet : sig
 
     in
         (* test : int -> unit *)
-        val test = U.mkTest testPVal [t0,t1,t2,t3,t4,t5,t6,t7]
+        val test = U.mkTest testPVal [t0,t1,t2,t3,t4,t5,t6,t7,t8]
     end
 
   end
