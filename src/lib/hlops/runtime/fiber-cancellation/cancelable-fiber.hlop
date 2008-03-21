@@ -29,7 +29,7 @@ define @cancelable-fiber (cancelCell : cancel_cell, k : fiber / exh : exh) : fib
   cont terminate() =
        let fgs : fgs = @get-fgs (host_vproc / exh)
       (* pop the cancel frame *)
-       let _ : any = @assoc-list-modify(tag(cancelCell), SOME(SELECT(PARENT_OFF, cancelCell)), fgs / exh)
+       let _ : any = @assoc-list-modify(tag(cancelCell), SELECT(PARENT_OFF, cancelCell), fgs / exh)
       (* avoid a space leak *)
        do UPDATE(CHILDREN_OFF, cancelCell, NIL)
        @forward(host_vproc, STOP / exh)
