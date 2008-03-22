@@ -508,6 +508,8 @@ structure StdEnv : sig
 (* EXPERIMENTATION *)
                   (RB.promoteOnly,       "promote-only",             false),
 
+		  (B.por,              "p-or-hook",                true),
+
 	         (* arrays *)
 		  (B.array,              "array",                true),
 		  (B.aupdate,            "array-update",         false),

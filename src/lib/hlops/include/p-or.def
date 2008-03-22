@@ -4,6 +4,7 @@
 typedef por_fun = fun(unit / exh -> option);
 
 define @p-or (f1 : por_fun, f2 : por_fun / exh : exh) : option;
+define @p-or-hook (arg: [por_fun, por_fun] / exh : exh) : option;
 
 typedef por_state = any;
 

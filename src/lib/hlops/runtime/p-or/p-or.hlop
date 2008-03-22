@@ -71,7 +71,9 @@ define @p-or (f1 : por_fun, f2 : por_fun / exh : exh) : option =
   let c2 : cancel_cell = @cancel-cell(/exh)
 
   let k1 : fiber = apply handlerK(c1, f2 / exh)
-  fun cleanupFun () : () = return ()
+  fun cleanupFun () : () = 
+      print_msg("")
+      return ()
   let k1 : fiber = @cancelable-fiber(c2, k1, cleanupFun / exh)
 
   let _ : unit = @ltc-push-fiber(k1 / exh)
