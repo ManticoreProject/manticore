@@ -31,7 +31,8 @@ define @future1-touch (fut : future / exh : exh) : any =
 		     return (SELECT(FUTURE1_STATE_OFF, fut))
                 let kLocal : fiber = (fiber)kLocal
                 (* make the future cancelable *)
-                let kLocal : fiber = @cancelable-fiber(SELECT(FUTURE1_CANCEL_CELL_OFF, fut), kLocal / exh)
+                fun cleanupFun () : () = return ()
+                let kLocal : fiber = @cancelable-fiber(SELECT(FUTURE1_CANCEL_CELL_OFF, fut), kLocal, cleanupFun / exh)
                 let k : fiber = promote (kLocal)
    	        let tmpX : any = CAS (&0(fut), STOLEN_F, k)
  	        if Equal (tmpX, STOLEN_F)

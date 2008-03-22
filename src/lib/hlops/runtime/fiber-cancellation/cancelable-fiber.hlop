@@ -16,7 +16,7 @@
 #include "scheduling-ops.def"
 #include "assert.def"
 
-define @cancelable-fiber (cancelCell : cancel_cell, k : fiber / exh : exh) : fiber =
+define @cancelable-fiber (cancelCell : cancel_cell, k : fiber, cleanupFn : fun ( / -> ) / exh : exh) : fiber =
 
   fun cancelChildren (children : list / exh : exh) : () =
       case children
@@ -32,6 +32,7 @@ define @cancelable-fiber (cancelCell : cancel_cell, k : fiber / exh : exh) : fib
        let _ : any = @assoc-list-modify(tag(cancelCell), SELECT(PARENT_OFF, cancelCell), fgs / exh)
       (* avoid a space leak *)
        do UPDATE(CHILDREN_OFF, cancelCell, NIL)
+       do apply cleanupFn()
        @forward(host_vproc, STOP / exh)
 
   cont dispatch (wrapper : sigact, k : fiber) =

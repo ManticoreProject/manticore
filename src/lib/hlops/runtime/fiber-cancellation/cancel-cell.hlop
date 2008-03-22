@@ -12,6 +12,7 @@
 #include "fiber-cancellation.def"
 
 define inline @cancel-cell (/ exh : exh) : cancel_cell =
+
   fun optJoin (opt : option / exh : exh) : option =
       case opt
        of NONE => return(NONE)
@@ -35,6 +36,14 @@ define inline @cancel-cell (/ exh : exh) : cancel_cell =
 	 do UPDATE(CHILDREN_OFF, c, newChildren)
          return ()
      end
+
+  (* if some other fiber has canceled parent, that fiber may or may not have seen the
+   * update to the parent's child list. therefore, we could have a situation where
+   * cancelCell gets to run even when parent has been canceled.  we fix this problem
+   * by polling below.
+   *)
+
+  let _ : unit = @yield(host_vproc /exh)
 
   return(cancelCell)
 ;

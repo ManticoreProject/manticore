@@ -14,6 +14,17 @@
 #include "fiber-cancellation.def"
 
 define inline @cancel-fiber (cancelCell : cancel_cell / exh : exh) : unit =
-  do UPDATE(CANCELED_OFF, cancelCell, TRUE)
+  fun cancel (cancelCell : cancel_cell / exh : exh) : () =
+      fun cancelChildren (children : list / exh : exh) : () =
+          case children
+	   of NIL => return()
+	    | CONS(c : cancel_cell, children : list) =>
+              do UPDATE(CANCELED_OFF, cancelCell, TRUE)
+	      do apply cancel(c / exh)
+              apply cancelChildren(children / exh)
+          end
+      let children : list = SELECT(CHILDREN_OFF, cancelCell)
+      apply cancelChildren (children / exh)      
+  do apply cancel(cancelCell / exh)
   return(UNIT)
 ;

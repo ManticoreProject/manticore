@@ -20,7 +20,7 @@ typedef cancel_cell = ![bool,     list,     option];
 #define PARENT_OFF         2
 
 define inline @cancel-cell (/ exh : exh) : cancel_cell;
-define @cancelable-fiber (cancelCell : cancel_cell, k : fiber / exh : exh) : fiber;
+define @cancelable-fiber (cancelCell : cancel_cell, k : fiber, cleanupFn : fun ( / -> ) / exh : exh) : fiber;
 define inline @cancel-fiber (cancelCell : cancel_cell / exh : exh) : unit;
 
 #endif /*! _FIBER_CANCELLATION_DEF_ */

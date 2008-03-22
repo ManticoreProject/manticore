@@ -70,7 +70,8 @@ define @future1-spawn (thunk : thunk / exh : exh) : future =
       do @future1-steal (futuresQ, fut / exh)
       return (UNIT)
   let k : fiber = @fiber (wrapper / exh)
-  let k : fiber = @cancelable-fiber(cancelCell, k / exh)
+  fun cleanupFun () : () = return ()
+  let k : fiber = @cancelable-fiber(cancelCell, k, cleanupFun / exh)
  (* add the future to the scheduling queue *)
   do @locked-queue-enqueue (futuresQ, k / exh)
 

@@ -14,19 +14,7 @@
 #include "debugging.def"
 
 define inline @future1-cancel (fut : future / exh : exh) : unit =
-  fun cancel (cancelCell : cancel_cell / exh : exh) : () =
-      fun cancelChildren (children : list / exh : exh) : () =
-          case children
-	   of NIL => return()
-	    | CONS(c : cancel_cell, children : list) =>
-	      do apply cancel(c / exh)
-              apply cancelChildren(children / exh)
-          end
-      let _ : unit = @cancel-fiber(cancelCell / exh)
-      let children : list = SELECT(CHILDREN_OFF, cancelCell)
-      apply cancelChildren (children / exh)      
-
   let cancelCell : cancel_cell = SELECT(FUTURE1_CANCEL_CELL_OFF, fut)
-  do apply cancel(cancelCell / exh)
+  @cancel-fiber(cancelCell / exh)
   return(UNIT)
 ;
