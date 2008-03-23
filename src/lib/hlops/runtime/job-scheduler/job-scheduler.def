@@ -1,0 +1,29 @@
+(* job-scheduler.hlop
+ * 
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ *)
+
+#include "types.def"
+#include "barrier-call.def"
+#include "fgs.def"
+
+#ifndef _JOB_SCHEDULER_
+#define _JOB_SCHEDULER_
+
+#define JS_VP_OFF             0
+#define JS_JID_OFF            1
+#define JS_DESIRE_OFF         2
+#define JS_PREV_DESIRE_OFF    3
+#define JS_FGS_OFF            4
+#define JS_RESUMEK_OFF        5
+typedef desire_req = [vproc, int, int, int, fgs, cont(list)];
+
+typedef job_id = int;
+
+typedef job_scheduler = [cont(desire_req), fun(/ -> option)];
+
+define @job-scheduler ( / exh : exh) : job_scheduler;
+
+#endif /*! _JOB_SCHEDULER_ */

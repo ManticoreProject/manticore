@@ -26,26 +26,26 @@ define @cancelable-fiber (cancelCell : cancel_cell, k : fiber, cleanupFn : fun (
           apply cancelChildren(children / exh)
       end
 
-  cont terminate() =
+  cont terminate () =
        let fgs : fgs = @get-fgs (host_vproc / exh)
       (* pop the cancel frame *)
        let _ : any = @assoc-list-modify(tag(cancelCell), SELECT(PARENT_OFF, cancelCell), fgs / exh)
       (* avoid a space leak *)
        do UPDATE(CHILDREN_OFF, cancelCell, NIL)
-       do apply cleanupFn()
        @forward(host_vproc, STOP / exh)
 
-  cont dispatch (wrapper : sigact, k : fiber) =
+  cont dispatch (wrapper : sigact, k : fiber) =       
        if SELECT(CANCELED_OFF, cancelCell)
           then (* cancel the fiber *)
                 do apply cancelChildren(SELECT(CHILDREN_OFF, cancelCell) / exh)
+       do apply cleanupFn()
                 throw terminate()
           else let fgs : fgs = @get-fgs (host_vproc / exh)
                (* push the cancel frame *)
                let _ : any = @assoc-list-modify(tag(cancelCell), SOME(cancelCell), fgs/ exh)
                @run(host_vproc, wrapper, fgs, k / exh)
 
- (* scheduler action that hosts the fiber k, killing it if necessary *)
+ (* scheduler action polls for cancelation *)
   cont wrapper (s : signal) =
        if Equal(s, STOP)
 	  then throw terminate()
@@ -54,6 +54,7 @@ define @cancelable-fiber (cancelCell : cancel_cell, k : fiber, cleanupFn : fun (
             throw dispatch(wrapper, k)
 
   cont kWrapper (_ : unit) =
+       do vpstore(ATOMIC, host_vproc, TRUE)
        let fgs : fgs = @get-fgs (host_vproc / exh)
        let _ : any = @assoc-list-add(tag(cancelCell), SOME(cancelCell), fgs / exh)
        throw dispatch(wrapper, k)

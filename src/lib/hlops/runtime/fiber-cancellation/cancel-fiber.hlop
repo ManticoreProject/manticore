@@ -19,10 +19,10 @@ define inline @cancel-fiber (cancelCell : cancel_cell / exh : exh) : unit =
           case children
 	   of NIL => return()
 	    | CONS(c : cancel_cell, children : list) =>
-              do UPDATE(CANCELED_OFF, cancelCell, TRUE)
 	      do apply cancel(c / exh)
               apply cancelChildren(children / exh)
           end
+      do UPDATE(CANCELED_OFF, cancelCell, TRUE)
       let children : list = SELECT(CHILDREN_OFF, cancelCell)
       apply cancelChildren (children / exh)      
   do apply cancel(cancelCell / exh)

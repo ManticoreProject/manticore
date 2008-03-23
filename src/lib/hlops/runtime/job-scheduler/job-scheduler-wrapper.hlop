@@ -15,29 +15,36 @@
 
 define @job-scheduler-wrapper (j : int,                                      (* job id *)
 			       fgs : fgs,                                    (* fgs for the job *)
-			       jobScheduler : cont(int, int, fiber, fiber),    (* upcall into the job scheduler *)
-			       k : fiber) : fiber =                          (* fiber to wrap *)
+			       threadManager : cont(int, int, fiber, fiber),    (* upcall into the thread manager *)
+			       k : fiber) : fiber =                          (* scheduler to wrap *)
 
 
-  cont switch (s : signal) = 
-       case s
-	of STOP => 
-	   @forward(host_vproc, STOP / exh)
-	 | PREEMPT (k : fiber) =>
-	   @atomic-yield(host_vproc / exh)
-	   @run(host_vproc, switch, fgs, k / exh)
-	 | CHANGE_DESIRE (d : int, resumeK : fiber, suspendK : fiber) =>
-	   cont resumeK' (_ : unit) = 
+  cont wrapper (s : signal) = 
+
+       let fgs : fgs = @get-fgs(host_vproc/exh)
+       let desire : option = @assoc-list-query(tag(desire), fgs / exh)
+
+       let k : fiber = (fiber)s
+
+       do case desire
+	   of NONE => return()
+	    | SOME (changeDesire : [int, fiber, fiber]) =>
+	      cont resumeK' (_ : unit) = 
                 cont k(_ : unit) = throw resumeK(UNIT)
-                @run(host_vproc, switch, fgs, k / exh)
-	   cont suspendK' (_ : unit) = 
+                @run(host_vproc, wrapper, fgs, k / exh)
+	      cont suspendK' (_ : unit) = 
                 cont k(_ : unit) = throw suspendK(UNIT)
-                @run(host_vproc, switch, fgs, k / exh)
-           throw jobScheduler(j, d, resumeK', suspendK')
-       end
+                @run(host_vproc, wrapper, fgs, k / exh)
+              throw threadManager(j, d, resumeK', suspendK')
+           end
+
+       if Equal(s, STOP) 
+	  then @forward(host_vproc, STOP / exh)
+          else @atomic-yield(host_vproc / exh)
+	       @run(host_vproc, wrapper, fgs, k / exh)
 
   cont kWrapper (_ : unit) =
-       @run(host_vproc, switch, fgs, k / exh)
+       @run(host_vproc, wrapper, fgs, k / exh)
 
   return(kWrapper)
 

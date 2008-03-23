@@ -1,0 +1,88 @@
+(*
+ * Run me by saying
+ *    mc -Cdebug=true -Cscheduler=the-test triv.pml
+ *) 
+
+#include "job-scheduler.def"
+#include "testing.def"
+#include "vproc-queue.def"
+#include "runtime-offsets.def"
+#include "scheduling-ops.def"
+
+define @car (ls : list / exh : exh) : any =
+  case ls
+   of NIL => throw exh(tag(error))
+    | CONS(x : any, xs : list) => return(x)
+  end
+;
+define @cdr (ls : list / exh : exh) : list =
+  case ls
+   of NIL => throw exh(tag(error))
+    | CONS(x : any, xs : list) => return(xs)
+  end
+;
+(*
+define @test2(/ exh: exh) : bool =
+
+  let fgs : fgs = @new-fgs(FALSE, NONE / exh)
+  let vps : list = ccall ListVProcs(host_vproc)
+
+  let sp : ![int] = alloc(0)
+  let sp : ![int] = promote(sp)
+
+  cont success(vps : list) = 
+       let _ : int = I32FetchAndAdd(&0(sp), 1)
+       @thread-exit(/exh)
+
+  let bc : barrier_call = @job-scheduler(/exh)
+
+  ADD_CALLER(bc)
+  ADD_CALLER(bc)
+
+  fun thd (_ : unit / exh : exh) : unit =
+      let desireReq : desire_req = alloc(host_vproc, 0, 0, fgs, success)
+      do @barrier-call(bc, desireReq / exh)      
+      return(UNIT)
+
+  let vp1 : any = @car(vps / exh)
+  let vps : list = @cdr(vps / exh)
+  let vp2 : any = @car(vps / exh)
+
+  let k1 : fiber = @fiber(thd /exh)
+  let k2 : fiber = @fiber(thd /exh)
+
+  do @enqueue-on-vproc(vp1, fgs, k1 / exh)
+  do @enqueue-on-vproc(vp2, fgs, k2 / exh)
+
+  fun wait () : () =
+      if I32Lt(SELECT(0,sp), 2)
+         then apply wait()
+         else return()
+  do apply wait()
+  return(TRUE)
+;
+*)
+
+define @test1(/ exh: exh) : bool =
+  let fgs : fgs = @new-fgs(FALSE, NONE / exh)
+
+  cont success(allotment : list) = 
+print_msg("success")
+       return(TRUE)
+
+  let jsp : job_scheduler = @job-scheduler(/exh)
+  
+  let addJob : fun(/-> option) = SELECT(1, jsp)
+  let vp : option = apply addJob(/)
+
+  let upcall : cont(desire_req) = SELECT(0, jsp)
+  let desireReq : desire_req = alloc(host_vproc, 0, 0, 0, fgs, success)
+  throw upcall(desireReq)
+;
+
+define @job-scheduler-test-startup ( /exh : exh) : () =
+  do @work-stealers-startup (/ exh)
+  do_test(test1)
+(*  do_concurrent_test(test2, 2.0:double)*)
+  return()
+;

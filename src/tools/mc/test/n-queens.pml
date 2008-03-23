@@ -1,4 +1,14 @@
-val seqSz = readint();
+val seqSz = 1;
+
+fun timeToEval (f) = let
+    val b = gettimeofday ()
+    val v = f()
+    val e = gettimeofday ()
+    in
+       print (dtos (e-b)^"\n");
+       v
+    end
+;
 
 (*
 ;;; NQUEENS -- Compute number of solutions to 8-queens problem.
@@ -58,9 +68,12 @@ fun try (x, y, z) = (case x
 
 fun queens (n) = let
     fun f (i) = i
-    val x = try(rev(tab(f, 0, n, 1)), nil, nil)
+    fun doit () = 
+	(case try(rev(tab(f, 0, n, 1)), nil, nil)
+	  of NONE => print "error\n"
+	   | _ => print "success\n")
     in
-      x
+       timeToEval(doit)
     end
 ;
 

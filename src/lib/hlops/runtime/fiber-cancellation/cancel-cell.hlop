@@ -26,7 +26,7 @@ define inline @cancel-cell (/ exh : exh) : cancel_cell =
   let cancelCell : cancel_cell = alloc(FALSE, NIL, parent)
   let cancelCell : cancel_cell = promote(cancelCell)
 
- (* add self to the children of the running fiber *)
+ (* add this cancel cell to the children of the running fiber *)
   do case parent
       of NONE => return()
        | SOME (c : cancel_cell) => 
