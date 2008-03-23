@@ -39,6 +39,8 @@
     | KW_where		("where")
     | LP		("(")
     | RP		(")")
+    | LB		("[")
+    | RB		("]")
     | LPB		("(|")
     | RPB		("|)")
     | LBB		("[|")
@@ -312,8 +314,11 @@ AtomicExp
 	| STRING		=> (markExp (FULL_SPAN, PT.ConstExp(PT.StrLit STRING)))
 	| "(" ")"		=> (markExp (FULL_SPAN, PT.TupleExp[]))
 	| "(" Exp optExps ")"	=> (markExp (FULL_SPAN, optExps Exp))
+	| "[" "]"		=> (markExp (FULL_SPAN, PT.ListExp[]))
+	| "[" Exp optCommaExps "]"
+				=> (markExp (FULL_SPAN, PT.ListExp(optCommaExps Exp)))
 	| "(|" Exp optCommaExps "|)"
-				=> (markExp (FULL_SPAN, PT.PTupleExp (optCommaExps Exp)))
+				=> (markExp (FULL_SPAN, PT.PTupleExp(optCommaExps Exp)))
 	| "[|" "|]"		=> (markExp (FULL_SPAN, PT.PArrayExp[]))
 	| "[|" Exp PArrayBody "|]"
 				=> (markExp (FULL_SPAN, PArrayBody Exp))

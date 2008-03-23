@@ -122,6 +122,8 @@
 
 <INITIAL> "("	=> (T.LP);
 <INITIAL> ")"	=> (T.RP);
+<INITIAL> "["	=> (T.LB);
+<INITIAL> "]"	=> (T.RB);
 <INITIAL> "(|"  => (T.LPB);
 <INITIAL> "|)"  => (T.RPB);
 <INITIAL> "[|"  => (T.LBB);

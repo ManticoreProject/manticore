@@ -329,15 +329,40 @@ structure Typechecker : sig
 		  (AST.ConstExp const', ty)
 		end
 	    | PT.TupleExp es => let
-		  fun chk (e, (es, tys)) = let
+		fun chk (e, (es, tys)) = let
 		      val (e', ty) = chkExp(loc, depth, te, ve, e)
-		  in
-		      (e'::es, ty::tys)
-		  end
-		  val (es', tys) = List.foldr chk ([], []) es
-	      in
+		      in
+			(e'::es, ty::tys)
+		      end
+		val (es', tys) = List.foldr chk ([], []) es
+		in
 		  (AST.TupleExp es', mkTupleTy tys)
-	      end
+		end
+	    | PT.ListExp es => let
+		val elemTy = AST.MetaTy(MetaVar.new depth)
+		val listTy = Ty.ConTy([elemTy], Basis.listTyc)
+		fun chk (e, (es, tys)) = let
+		      val (e', ty) = chkExp(loc, depth, te, ve, e)
+		      in
+			if not(U.unify(elemTy, ty))
+			  then error(loc, [
+			      "type mismatch in list expression\n",
+			      "* expected ", TypeUtil.toString elemTy, "\n",
+			      "* found    ", TypeUtil.toString ty])
+			  else ();
+			(e'::es, ty::tys)
+		      end
+		val (es', tys) = List.foldr chk ([], []) es
+		fun cons (e1, e2) = AST.ApplyExp(
+			AST.ConstExp(AST.DConst(Basis.listCons, [elemTy])),
+			AST.TupleExp[e1, e2],
+			listTy)
+		val exp = List.foldr cons
+		      (AST.ConstExp(AST.DConst(Basis.listNil, [elemTy])))
+			es'
+		in
+		  (exp, listTy)
+		end
 	    | PT.RangeExp (e1, e2, eo) => let
 		  val (e1', ty1) = chkExp (loc, depth, te, ve, e1)
 		  val (e2', ty2) = chkExp (loc, depth, te, ve, e2)

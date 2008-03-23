@@ -70,6 +70,7 @@ structure ParseTree =
       | ApplyExp of (exp * exp)		(* application *)
       | ConstExp of const
       | TupleExp of exp list
+      | ListExp of exp list
       | RangeExp of (exp * exp * exp option)
       | PTupleExp of exp list
       | PArrayExp of exp list
