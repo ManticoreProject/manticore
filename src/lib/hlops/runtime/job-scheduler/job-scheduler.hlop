@@ -14,6 +14,11 @@
 
 extern void *ListVProcs (void *) __attribute__((alloc));
 
+define inline @vproc-id(vp : vproc/ exh: exh) : int =
+  let vpId : int = vpload(VPROC_ID, vp)
+  return(vpId)
+;
+
 define @job-scheduler ( / exh : exh) : job_scheduler =
 
   (*FIXME*)
@@ -70,23 +75,32 @@ define @job-scheduler ( / exh : exh) : job_scheduler =
       end
 
   cont scheduler (desireReqs : list) =
+print_msg("")
       fun resumeSched (desireReqs : list / exh : exh) : () =
 	  case desireReqs
 	   of NIL => return()
 	    | CONS(desireReq : desire_req, desireReqs : list) =>
-	     (* do something simple now...keep assigning new vprocs to the jobs each time until
-	      * there are none left.
+	     (* do something simple for now...keep assigning new vprocs to the jobs each time 
+	      * until there are none left.
 	      *)
 	      let d : int = SELECT(JS_DESIRE_OFF, desireReq)
 	      let jid : int = SELECT(JS_JID_OFF, desireReq)
 	      let allotment : list = apply jobAllotment(jid, vpMp, NIL / exh)
 	      let newVP : option = apply allocAvailVP (jid / exh)
-	      let newAllotment : list = case newVP
+(*	      let newAllotment : list = case newVP
 					 of NONE => return(allotment)
 					  | SOME(vp : vproc) =>
 					    let vp : [vproc] = alloc(vp)
 					    return(CONS(vp, allotment))
-					end
+					end *)
+ (*FIXME: just return the new allotment for now *)
+	      let newAllotment : list = case newVP
+					 of NONE => return(allotment)
+					  | SOME(vp : vproc) =>
+					    let vp : [vproc] = alloc(vp)
+					    return(CONS(vp, NIL))
+					end 
+
               (* resume the job with the new allotment *)
 	      let resumeK : cont(list) = SELECT(JS_RESUMEK_OFF, desireReq)
 	      cont resume (_ : unit) = throw resumeK(newAllotment)
@@ -109,7 +123,13 @@ define @job-scheduler ( / exh : exh) : job_scheduler =
   let jid : ![int] = promote(jid)
   fun addJob () : option =
       let id : int = I32FetchAndAdd(&0(jid), 1)
-      apply allocAvailVP(id / exh)
+      let vp : option = apply allocAvailVP(id / exh)
+      case vp
+       of NONE => return(NONE)
+	| SOME(vp : vproc) =>
+	  let ret : [job_id, vproc] = alloc(id, vp)
+          return(SOME(ret))
+      end
 
   (* lets jobs upcall into the job scheduler *)
   cont upcall (desireReq : desire_req) = 

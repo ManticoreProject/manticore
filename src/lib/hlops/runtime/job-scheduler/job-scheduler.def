@@ -12,6 +12,12 @@
 #ifndef _JOB_SCHEDULER_
 #define _JOB_SCHEDULER_
 
+#define JS_WORKER_DESIRE_OFF     0
+#define JS_WORKER_VPROC_OFF      1
+#define JS_WORKER_RESUMEK_OFF    2
+#define JS_WORKER_EXIT_OFF       3
+typedef desire = ![int, vproc, fiber, fiber];
+
 #define JS_VP_OFF             0
 #define JS_JID_OFF            1
 #define JS_DESIRE_OFF         2
@@ -20,10 +26,15 @@
 #define JS_RESUMEK_OFF        5
 typedef desire_req = [vproc, int, int, int, fgs, cont(list)];
 
-typedef job_id = int;
-
 typedef job_scheduler = [cont(desire_req), fun(/ -> option)];
-
 define @job-scheduler ( / exh : exh) : job_scheduler;
+
+typedef job_id = int;
+typedef job = [job_id, job_scheduler, barrier_call];
+define @job-scheduler-wrapper (fgs : fgs,                                    (* fgs for the job *)
+                               mkAct : fun (vproc / exh -> sigact),          (* get a new scheduler instance *)
+                               jobScheduler : job_scheduler,                 (* job scheduler *)
+			       k : fiber                                     (* initial fiber *)
+			       / exh : exh) : unit;
 
 #endif /*! _JOB_SCHEDULER_ */

@@ -21,11 +21,91 @@ define @cdr (ls : list / exh : exh) : list =
     | CONS(x : any, xs : list) => return(xs)
   end
 ;
-(*
-define @test2(/ exh: exh) : bool =
+
+define inline @vproc-id(vp : vproc/ exh: exh) : int =
+  let vpId : int = vpload(VPROC_ID, vp)
+  return(vpId)
+;
+
+define @fib (n : int / exh : exh) : int =
+  fun fib (n : int / ) : int =
+      if I32Lte(n,1)
+         then return(n)
+         else let p : int = apply fib(I32Sub(n,1) /)
+              let q : int = apply fib(I32Sub(n,2) /)
+              return(I32Add(p,q))
+  apply fib (n /)
+;
+
+define @test3(/ exh: exh) : bool =
+  cont fail () = return(FALSE)
+  cont exh (_ : any) = return(FALSE)
+
+  fun f (_ : unit / exh : exh) : unit = throw fail()
+  let dummyK : fiber = @fiber(f /exh)
 
   let fgs : fgs = @new-fgs(FALSE, NONE / exh)
-  let vps : list = ccall ListVProcs(host_vproc)
+
+  let sp : ![int] = alloc(0)
+  let sp : ![int] = promote(sp)
+
+  fun thd (_ : unit / exh : exh) : unit =
+      let x : int = @fib(38 / exh)
+      let _ : int = I32FetchAndAdd(&0(sp), 1)
+      return(UNIT)
+
+  let jsp : job_scheduler = @job-scheduler(/exh)
+  let upcall : cont(desire_req) = SELECT(0, jsp)
+  let addJob : fun(/-> option) = SELECT(1, jsp)
+
+  fun mkAct (self : vproc / exh : exh) : sigact =
+
+      let desire : desire = alloc(1, self, dummyK, dummyK)
+      let desire : desire = promote(desire)
+      let _ : any = @assoc-list-add(tag(desire), desire, fgs / exh) 
+
+      cont sched (s : signal) =           
+
+           cont dispatch (k : fiber) =
+                @run(host_vproc, sched, fgs, k / exh)
+
+           if Equal(s, STOP)
+              then print_msg("stop")
+                   @thread-exit(/exh)
+             else let k : fiber = (fiber)s
+
+                  cont resumeK (_ : unit) = 
+                       print_msg("resumeK")
+   	               throw dispatch(k)
+
+                  let resumeK : fiber = (fiber)resumeK
+                  let resumeK : fiber = promote(resumeK)
+
+                  do UPDATE(JS_WORKER_RESUMEK_OFF,  desire, resumeK)
+                  do UPDATE(JS_WORKER_EXIT_OFF,  desire, resumeK)
+
+                  let _ : unit = @atomic-yield(host_vproc / exh)
+                  print_msg("preempt")
+	          throw dispatch(k)
+
+      return(sched)
+
+  let k : fiber = @fiber (thd / exh)
+  let _ : unit = @job-scheduler-wrapper(fgs, mkAct, jsp, k / exh)
+
+  fun wait () : () =
+      if I32Lt(SELECT(0,sp), 1)
+         then apply wait()
+         else return()
+  do apply wait()
+  return(TRUE)
+;
+
+(*
+define @test2(/ exh: exh) : bool =
+  cont fail () = return(FALSE)
+
+  let fgs : fgs = @new-fgs(FALSE, NONE / exh)
 
   let sp : ![int] = alloc(0)
   let sp : ![int] = promote(sp)
@@ -34,25 +114,36 @@ define @test2(/ exh: exh) : bool =
        let _ : int = I32FetchAndAdd(&0(sp), 1)
        @thread-exit(/exh)
 
-  let bc : barrier_call = @job-scheduler(/exh)
+  let jsp : job_scheduler = @job-scheduler(/exh)
+  let upcall : cont(desire_req) = SELECT(0, jsp)
+  let addJob : fun(/-> option) = SELECT(1, jsp)
 
-  ADD_CALLER(bc)
-  ADD_CALLER(bc)
+  fun thd2 (_ : unit / exh : exh) : unit =
+      let desireReq : desire_req = alloc(host_vproc, 0, 0, 0, fgs, success)
+      throw upcall(desireReq)
 
-  fun thd (_ : unit / exh : exh) : unit =
-      let desireReq : desire_req = alloc(host_vproc, 0, 0, fgs, success)
-      do @barrier-call(bc, desireReq / exh)      
-      return(UNIT)
+  (* create a job and if successful, spawn thd as that job *)
+  fun thd1 (_ : unit / exh : exh) : unit =
+      let vp : option = apply addJob(/)
+      do case vp
+	  of NONE => throw fail()
+	   | SOME(vp : vproc) =>
+             let k : fiber = @fiber(thd2 /exh)
+	     do @enqueue-on-vproc(vp, fgs, k /exh)
+             return()
+          end
 
-  let vp1 : any = @car(vps / exh)
-  let vps : list = @cdr(vps / exh)
-  let vp2 : any = @car(vps / exh)
+      let desireReq : desire_req = alloc(host_vproc, 0, 0, 0, fgs, success)
+      throw upcall(desireReq)
 
-  let k1 : fiber = @fiber(thd /exh)
-  let k2 : fiber = @fiber(thd /exh)
-
-  do @enqueue-on-vproc(vp1, fgs, k1 / exh)
-  do @enqueue-on-vproc(vp2, fgs, k2 / exh)
+  let vp : option = apply addJob(/)
+  do case vp
+      of NONE => throw fail()
+       | SOME(vp : vproc) =>
+         let k : fiber = @fiber(thd1 /exh)
+	 do @enqueue-on-vproc(vp, fgs, k /exh)
+         return()
+      end
 
   fun wait () : () =
       if I32Lt(SELECT(0,sp), 2)
@@ -61,8 +152,8 @@ define @test2(/ exh: exh) : bool =
   do apply wait()
   return(TRUE)
 ;
-*)
 
+(* let a single job upcall into the job scheduler *)
 define @test1(/ exh: exh) : bool =
   let fgs : fgs = @new-fgs(FALSE, NONE / exh)
 
@@ -79,10 +170,12 @@ print_msg("success")
   let desireReq : desire_req = alloc(host_vproc, 0, 0, 0, fgs, success)
   throw upcall(desireReq)
 ;
+*)
 
 define @job-scheduler-test-startup ( /exh : exh) : () =
-  do @work-stealers-startup (/ exh)
-  do_test(test1)
-(*  do_concurrent_test(test2, 2.0:double)*)
+(*  do @work-stealers-startup (/ exh)*)
+  do @default-scheduler-startup (/exh)
+(*  do_test(test1) *)
+  do_test(test3)
   return()
 ;
