@@ -31,7 +31,7 @@ define @the-push-tl(deq : the_deque, elt : any / exh : exh) : () =
               let _ : unit = @spin-unlock-the (deq, mask / exh)
               return(t)
 
-  do assert(NotEqual(elt, NIL))
+(*  do assert(NotEqual(elt, NIL))*)
 
   let t : int = SELECT(THE_T_OFF, deq)
  (* possibly need to free space if the tail has reached the end of the deque *)

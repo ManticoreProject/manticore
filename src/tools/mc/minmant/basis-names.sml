@@ -159,6 +159,7 @@ structure BasisNames =
     val freeImage =	Atom.atom "freeImage"
     val getNumProcs =	Atom.atom "getNumProcs"
     val getNumVProcs =	Atom.atom "getNumVProcs"
+    val ltcWaitForAll =	Atom.atom "ltcWaitForAll"
     val por =           Atom.atom "por"
 
   (* arrays *)

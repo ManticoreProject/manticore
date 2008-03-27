@@ -44,6 +44,8 @@ fun timeToEval (f) = let
 
 *)
 
+exception Foo of int
+
 fun isOK (row, dist, placed) = (case placed
     of nil => true
      | p :: ps => p <> row+dist andalso p <> row-dist andalso isOK(row, dist+1, ps)
@@ -52,31 +54,33 @@ fun isOK (row, dist, placed) = (case placed
 
 fun try (x, y, z) = (case x
     of nil => (case y
-       of nil => SOME z
+       of nil => (raise Foo 1)
 	| _ => NONE
        (* end case *))
      | x :: xs => let
-       fun f1 () = if (isOK(x, 1, z))
-           then try(xs@y, nil, x :: z)
-           else NONE
-       fun f2 () = try(xs, x::y, z)
-       in
-	   por(f1, f2)
-       end
+	   val l = if (isOK(x, 1, z))
+		   then try(xs@y, nil, x :: z)
+		   else NONE
+           in
+	      case l
+	       of NONE => try(xs, x::y, z)
+		| _ => l
+           end
     (* end case *))
 ;
 
 fun queens (n) = let
     fun f (i) = i
-    fun doit () = 
-	(case try(rev(tab(f, 0, n, 1)), nil, nil)
-	  of NONE => print "error\n"
-	   | _ => 
-	     (* wait for the system to clear out all canceled fibers *)
-	     ltcWaitForAll())
+    fun doit () = let
+	 val v = try(rev(tab(f, 0, n, 1)), nil, nil)	    
+          in
+             case v
+	      of NONE => print "error\n"
+	       | _ => print "success\n"
+         end
+    val t1 = gettimeofday()
     in
-       timeToEval(doit);
-       print "success\n"
+      doit()  handle _ => print (dtos (gettimeofday() - t1))
     end
 ;
 

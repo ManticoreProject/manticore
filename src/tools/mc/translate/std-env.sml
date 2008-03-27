@@ -507,8 +507,9 @@ structure StdEnv : sig
 		  (RB.ltcIPut,           "ltc-ivar-put",         false),
 (* EXPERIMENTATION *)
                   (RB.promoteOnly,       "promote-only",             false),
+		  (B.ltcWaitForAll,     "ltc-wait-for-all",     false),
 
-		  (B.por,              "p-or-hook",                true),
+		  (B.por,              "p-or-hook",                true),		  
 
 	         (* arrays *)
 		  (B.array,              "array",                true),

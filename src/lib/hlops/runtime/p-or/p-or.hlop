@@ -68,7 +68,7 @@ define @p-or (f1 : por_fun, f2 : por_fun / exh : exh) : option =
       return(k)
 
   fun cleanupFun () : () = 
-      print_msg("cleanup")
+(*      print_msg("cleanup")*)
       return ()
 
   let c1 : cancel_cell = @cancel-cell(/exh)

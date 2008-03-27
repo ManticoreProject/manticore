@@ -57,12 +57,25 @@ define @ltc-scheduler ( / exh : exh) : ltq_fun =
  (* Initialize fiber-group storage. *)
   let parentFGS : fgs = @get-fgs (host_vproc / exh)
 
+  (* for experimentation purposes *)
+  let nFinished : ![int] = alloc(0)
+  let nFinished : ![int] = promote(nFinished)
+
   fun mkSwitch (self : vproc / exh : exh) : sigact =
 
       let fgs : fgs = @new-fgs (TRUE, SOME (parentFGS) / exh)
      (* add the spawn function to the fiber group storage *)
       fun init (_ : unit / exh : exh) : any = return (ltqFn)
       let _ : any = @assoc-list-lookup (TAG_LTC, init, fgs / exh)
+
+      fun init (_ : unit / exh : exh) : any = return (nFinished)
+      let _ : any = @assoc-list-lookup(tag(allStealing), init, fgs / exh)
+      fun stealMode () : () = 
+	  let _ : int = I32FetchAndAdd(&0(nFinished), 1)
+          return()                    
+      fun workMode () : () = 
+	  let _ : int = I32FetchAndAdd(&0(nFinished), -1)
+          return()                    
 
       let vpId : int = @vproc-id(/exh)
       let selfLtq : the_deque = @array-sub-ub(ltqTbl, vpId / exh)
@@ -81,13 +94,16 @@ define @ltc-scheduler ( / exh : exh) : ltq_fun =
 		    throw steal()
 		  | SOME(k : fiber) => 
                     do assert(NotEqual(k, enum(0)))
+                    do apply workMode()
 		    throw dispatch (k)
                 end
 
            if Equal(s, STOP)
               then let kOpt : option = @the-pop-tl(selfLtq / exh)
                    case kOpt
-		    of NONE => throw steal()
+		    of NONE => 
+                       do apply stealMode()
+		       throw steal()
 		     | SOME(k : fiber) => throw dispatch(k)
                    end
               else let _ : unit = @atomic-yield(self / exh)

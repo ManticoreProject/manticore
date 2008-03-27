@@ -8,6 +8,7 @@
 
 #include "the.def"
 #include "tags.def"
+#include "ivar.def"
 
 #ifndef _LTC_DEF_
 #define _LTC_DEF_
@@ -20,6 +21,8 @@ define inline @ltc-push(f : fiber_fun / exh : exh) : unit;
 define inline @ltc-push-fiber(k : fiber / exh : exh) : unit;
 define inline @ltc-ivar-put (arg : [ivar, any] / exh : exh) : unit;
 
+(* experimentation *)
+define inline @ltc-wait-for-all(_ : unit / exh : exh) : unit;
 define @promote-only(f : fiber_fun / exh : exh) : unit;
 
 #endif /*!  _LTC_DEF_ */
