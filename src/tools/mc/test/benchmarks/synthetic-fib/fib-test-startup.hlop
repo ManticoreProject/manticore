@@ -6,6 +6,7 @@
 #include "scheduling-ops.def"
 #include "the.def"
 #include "ltc.def"
+#include "fiber-cancellation.def"
 
 define inline @dtos (f : ml_double / exh : exh) : ml_string;
 
@@ -89,6 +90,70 @@ define @fib-trans (n : int / exh : exh) : int =
   return(#0(n))
 ;
 
+(* measure cancelation *)
+define @fib-cancel (n : int / exh : exh) : int =
+  fun fib (n : [int] / exh : exh) : [int] =
+      let raw : int = #0(n)
+      if I32Lte(raw, 1)
+         then
+          let wlit : [int] = alloc(raw)
+          return(wlit)
+         else
+           let raw : int = #0(n)
+
+           cont retK (x : [int]) = return(x)
+           let iv : ivar = @ivar-new(UNIT/ exh)
+
+           let cc : cancel_cell = @cancel-cell(/exh)
+
+           fun bodyP (selFn : fun (unit / exh -> [int]) / exh : exh) : [int] =
+	       let a : [int] = alloc(I32Sub(raw,2))
+               let q : [int] = apply fib(a / exh)
+               let p : [int] = apply selFn(UNIT / exh)
+               let p : int = #0(p)
+               let q : int = #0(q)
+               let r : [int] = alloc(I32Add(p,q))
+               return(r)           
+	   cont k(_ : unit) =
+                fun f (_ : unit / exh : exh) : [int] =
+                    let v : any = @ltc-ivar-get(iv, cc / exh)
+                    let v : [int] = ([int])v
+                    return(v)
+                let x : [int] = apply bodyP(f / exh)
+                cont k(_ : unit) = 
+                      throw retK(x)
+                let k : fiber = (fiber)k
+                let _ : unit = @ltc-push-fiber(k / exh)
+                @thread-exit(/exh)
+
+          fun cleanupFun () : () = 
+               return ()
+           let k : fiber = @cancelable-fiber(cc, k, cleanupFun / exh)
+           
+           let _ : unit = @ltc-push-fiber(k / exh)
+           
+           (*eval the body *)
+           let a : [int] = alloc(I32Sub(raw,1))
+           let p : [int] = apply fib(a / exh)
+
+           let x : bool = @ltc-pop(UNIT / exh)
+           do case x
+	       of TRUE => return()
+		| FALSE =>
+		  let arg : [ivar, any] = alloc(iv, p)
+	          let _ : unit = @ltc-ivar-put(arg / exh)
+                  @thread-exit(/exh)
+              end
+
+          fun f (_ : unit / exh : exh) : [int] =
+              return(p)
+
+	  apply bodyP (f / exh)
+
+  let n : [int] = alloc(n)
+  let n : [int] = apply fib (n / exh)
+  return(#0(n))
+;
 
 define @fib-promote (n : int / exh : exh) : int =
   cont k(p : [int]) = return(1)
@@ -285,9 +350,19 @@ define @fib-test-startup ( /exh : exh) : () =
   let s : ml_string = @dtos(t / exh)
   let _ : unit = @print(s / exh)
 *)
-
+(*
   let b : ml_double = @gettimeofday(UNIT/exh)
   let i : int = @fib-trans(33 / exh)
+  let e : ml_double = @gettimeofday(UNIT/exh)
+  let b : double = unwrap(b)
+  let e : double = unwrap(e)
+  let t : double = F64Sub(e,b)
+  let t : ml_double = wrap(t)
+  let s : ml_string = @dtos(t / exh)
+  let _ : unit = @print(s / exh)
+*)
+  let b : ml_double = @gettimeofday(UNIT/exh)
+  let i : int = @fib-cancel(27 / exh)
   let e : ml_double = @gettimeofday(UNIT/exh)
   let b : double = unwrap(b)
   let e : double = unwrap(e)

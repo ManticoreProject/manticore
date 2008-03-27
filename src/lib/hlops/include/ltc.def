@@ -22,6 +22,7 @@ define inline @ltc-push-fiber(k : fiber / exh : exh) : unit;
 define inline @ltc-ivar-put (arg : [ivar, any] / exh : exh) : unit;
 
 (* experimentation *)
+define @ltc-ivar-get (ivar : ivar, c : cancel_cell / exh : exh) : any;
 define inline @ltc-wait-for-all(_ : unit / exh : exh) : unit;
 define @promote-only(f : fiber_fun / exh : exh) : unit;
 
