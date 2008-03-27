@@ -1,0 +1,22 @@
+(* p-or-hook.hlop
+ * 
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Work sharing for one-toucher futures.
+ *)
+
+#include "types.def"
+#include "ltc.def"
+#include "p-or.def"
+#include "tags.def"
+#include "debugging.def"
+#include "fgs.def"
+#include "logging.def"
+#include "scheduling-ops.def"
+#include "fiber-cancellation.def"
+#include "assert.def"
+
+define @p-or-hook (arg: [por_fun, por_fun] / exh : exh) : option =
+  @p-or(#0(arg), #1(arg) / exh)
+;
