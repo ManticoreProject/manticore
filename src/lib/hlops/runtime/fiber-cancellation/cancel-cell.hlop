@@ -23,7 +23,7 @@ define inline @cancel-cell (/ exh : exh) : cancel_cell =
   let parent : option = @assoc-list-query(tag(cancelCell), fgs / exh)
   let parent : option = apply optJoin(parent / exh)
   
-  let cancelCell : cancel_cell = alloc(FALSE, NIL, parent)
+  let cancelCell : cancel_cell = alloc(FALSE, NIL, parent, TRUE)
   let cancelCell : cancel_cell = promote(cancelCell)
 
  (* add this cancel cell to the children of the running fiber *)
@@ -43,7 +43,7 @@ define inline @cancel-cell (/ exh : exh) : cancel_cell =
    * by polling below.
    *)
 
-  let _ : unit = @yield(host_vproc /exh)
+(*  let _ : unit = @yield(host_vproc /exh)*)
 
   return(cancelCell)
 ;

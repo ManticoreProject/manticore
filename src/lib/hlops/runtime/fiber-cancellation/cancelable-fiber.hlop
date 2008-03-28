@@ -18,12 +18,29 @@
 
 define @cancelable-fiber (cancelCell : cancel_cell, k : fiber, cleanupFn : fun ( / -> ) / exh : exh) : fiber =
 
+fun waitForAll(ccs1 : list, ccs2 : list) : () =
+    cont exit () = return()
+    do if Equal(ccs1, NIL)
+         then if Equal (ccs2, NIL)
+           then throw exit()
+           else return()
+        else return()
+    case ccs1
+     of NIL => apply waitForAll(ccs2, NIL)
+      | CONS(c : cancel_cell, cs : list) =>
+	if Equal(SELECT(IS_FINISHED_OFF, cancelCell), TRUE)
+	   then apply waitForAll(cs, ccs2)
+           else apply waitForAll(cs, CONS(c, ccs2))
+    end
+
+
   fun cancelChildren (children : list / exh : exh) : () =
       case children
        of NIL => return()
 	| CONS(c : cancel_cell, children : list) =>
 	  let _ : unit = @cancel-fiber(c / exh)
-          apply cancelChildren(children / exh)
+          do apply cancelChildren(children / exh)
+          apply waitForAll(children, NIL) 
       end
 
   cont terminate () =
@@ -32,9 +49,11 @@ define @cancelable-fiber (cancelCell : cancel_cell, k : fiber, cleanupFn : fun (
        let _ : any = @assoc-list-modify(tag(cancelCell), SELECT(PARENT_OFF, cancelCell), fgs / exh)
       (* avoid a space leak *)
        do UPDATE(CHILDREN_OFF, cancelCell, NIL)
+do UPDATE(IS_FINISHED_OFF, cancelCell, TRUE)
        @forward(host_vproc, STOP / exh)
 
   cont dispatch (wrapper : sigact, k : fiber) =       
+do UPDATE(IS_FINISHED_OFF, cancelCell, FALSE)
        if SELECT(CANCELED_OFF, cancelCell)
           then (* cancel the fiber *)
                 do apply cancelChildren(SELECT(CHILDREN_OFF, cancelCell) / exh)

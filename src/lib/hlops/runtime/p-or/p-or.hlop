@@ -68,6 +68,7 @@ define @p-or (f1 : por_fun, f2 : por_fun / exh : exh) : option =
       return(k)
 
   fun cleanupFun () : () = 
+(*do ccall M_PrintPtr("cancel", retK)*)
 (*      print_msg("cleanup")*)
       return ()
 
