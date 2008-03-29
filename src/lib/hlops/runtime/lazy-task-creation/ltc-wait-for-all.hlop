@@ -23,9 +23,20 @@ define inline @ltc-wait-for-all(_ : unit / exh : exh) : unit =
   let nFinished : ![int] = VAL_OF(nFinishedOpt, ![int], exh)
   let n : int = ccall M_GetNumVProcs ()
   fun wait () : () =
-      if I32Eq(SELECT(0, nFinished), I32Sub(n, 1))
+      if I32Gte(SELECT(0, nFinished), I32Sub(n, 1))
          then return()
-         else apply wait()
+         else (*do ccall M_PrintInt(SELECT(0, nFinished))*)
+              apply wait()
   do apply wait ()
+ 
+  fun initCnt (_ : unit / exh : exh) : any =
+      let c : ![int] = alloc (0)
+      let c : ![int] = promote(c)
+      return(c)
+  let fgs : fgs = @get-fgs(host_vproc / exh)
+ let cnt : any = @assoc-list-lookup(tag(cancelCnt), initCnt, fgs / exh)
+ let cnt : ![int] = (![int])cnt
+
+do ccall M_PrintInt(SELECT(0, cnt))
   return(UNIT)
 ;

@@ -6,7 +6,7 @@ TEMP_FILE="tmp.pml"
 cat $MANT_FILES > $TEMP_FILE
 
 MC="sml @SMLcmdname=mc @SMLload=../../mc"
-MANT_FLAGS="-Cclos.convert-style=flatWithCFA -Cscheduler=work-stealers"
+MANT_FLAGS="-Cclos.convert-style=flatWithCFA"
 
 $MC $MANT_FLAGS $TEMP_FILE
 

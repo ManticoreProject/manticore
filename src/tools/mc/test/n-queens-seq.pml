@@ -76,7 +76,7 @@ fun queens (n) = let
           in
              case v
 	      of NONE => print "error\n"
-	       | _ => print "success\n"
+	       | _ => ()
          end
     val t1 = gettimeofday()
     in

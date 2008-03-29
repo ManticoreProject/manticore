@@ -54,16 +54,17 @@ fun isOK (row, dist, placed) = (case placed
 
 fun try (x, y, z) = (case x
     of nil => (case y
-       of nil => (raise Foo 1)
+       of nil => SOME z
 	| _ => NONE
        (* end case *))
      | x :: xs => let
 	   val l = if (isOK(x, 1, z))
 		   then try(xs@y, nil, x :: z)
 		   else NONE
+	   val r = try(xs, x::y, z)
            in
 	      case l
-	       of NONE => try(xs, x::y, z)
+	       of NONE => r
 		| _ => l
            end
     (* end case *))
@@ -76,11 +77,10 @@ fun queens (n) = let
           in
              case v
 	      of NONE => print "error\n"
-	       | _ => print "success\n"
+	       | _ => ()
          end
-    val t1 = gettimeofday()
     in
-      doit()  handle _ => print (dtos (gettimeofday() - t1))
+      timeToEval(doit)
     end
 ;
 

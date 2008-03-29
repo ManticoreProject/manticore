@@ -61,9 +61,21 @@ define @ltc-scheduler ( / exh : exh) : ltq_fun =
   let nFinished : ![int] = alloc(0)
   let nFinished : ![int] = promote(nFinished)
 
+(* cancelation count *)
+      let cancelCnt : ![int] = alloc (0)
+      let cancelCnt : ![int] = promote(cancelCnt)
+
+
   fun mkSwitch (self : vproc / exh : exh) : sigact =
 
       let fgs : fgs = @new-fgs (TRUE, SOME (parentFGS) / exh)
+
+(* counter for number of cancelations*)
+  fun initCnt (_ : unit / exh : exh) : any =
+      return(cancelCnt)
+ let cnt : any = @assoc-list-lookup(tag(cancelCnt), initCnt, fgs / exh)
+
+
      (* add the spawn function to the fiber group storage *)
       fun init (_ : unit / exh : exh) : any = return (ltqFn)
       let _ : any = @assoc-list-lookup (TAG_LTC, init, fgs / exh)
@@ -93,8 +105,8 @@ define @ltc-scheduler ( / exh : exh) : ltq_fun =
 		    let _ : unit = @atomic-yield(self / exh)
 		    throw steal()
 		  | SOME(k : fiber) => 
-                    do assert(NotEqual(k, enum(0)))
-                    do apply workMode()
+                    do assert(NotEqual(k, enum(0)))                                        
+                    (*do apply workMode() *)
 		    throw dispatch (k)
                 end
 
@@ -102,9 +114,10 @@ define @ltc-scheduler ( / exh : exh) : ltq_fun =
               then let kOpt : option = @the-pop-tl(selfLtq / exh)
                    case kOpt
 		    of NONE => 
-                       do apply stealMode()
+                       (*do apply stealMode()*)
 		       throw steal()
-		     | SOME(k : fiber) => throw dispatch(k)
+		     | SOME(k : fiber) =>                        
+                       throw dispatch(k)
                    end
               else let _ : unit = @atomic-yield(self / exh)
                    let k : fiber = (fiber)s

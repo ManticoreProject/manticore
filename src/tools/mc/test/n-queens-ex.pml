@@ -56,12 +56,14 @@ fun try (x, y, z) = (case x
 	| _ => NONE
        (* end case *))
      | x :: xs => let
-       fun f1 () = if (isOK(x, 1, z))
+       dval x1 =   if (isOK(x, 1, z))
            then try(xs@y, nil, x :: z)
            else NONE
-       fun f2 () = try(xs, x::y, z)
+       val x2 = try(xs, x::y, z)
        in
-	   por(f1, f2)
+	   case x1
+	    of NONE => x2
+	     | SOME _ => x1
        end
     (* end case *))
 ;
@@ -71,9 +73,9 @@ fun queens (n) = let
     fun doit () = 
 	(case try(rev(tab(f, 0, n, 1)), nil, nil)
 	  of NONE => print "error\n"
-	   | _ => 
+	   | _ => ()
 	     (* wait for the system to clear out all canceled fibers *)
-	     ltcWaitForAll())
+	     (*ltcWaitForAll()*))
     in
        timeToEval(doit);
        print "success\n"

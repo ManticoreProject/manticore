@@ -71,12 +71,11 @@ fun queens (n) = let
     fun doit () = 
 	(case try(rev(tab(f, 0, n, 1)), nil, nil)
 	  of NONE => print "error\n"
-	   | _ => 
+	   | _ => (
 	     (* wait for the system to clear out all canceled fibers *)
-	     ltcWaitForAll())
+	     ltcWaitForAll() ) )
     in
-       timeToEval(doit);
-       print "success\n"
+       timeToEval(doit)
     end
 ;
 
