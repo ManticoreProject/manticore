@@ -19,10 +19,18 @@
     (actions (astk v ...))                                   ; action stack
     (fiber-queue (fq v ...))                                 ; fiber queue
     (signal (stop) (preempt e))                              ; signals for fibers
-    (v number (λ (x ...) e) (unit) signal)
-    (x variable)
+    (v number (λ (x ...) e) (unit) signal (ffi-val any))
+    (x (variable-except λ if begin let letrec fix
+                        fun abort letcont run forward
+                        deq-vp enq-on-vp mask-preemption
+                        unmask-preemption host-vp
+                        new-fls set-fls get-fls
+                        ffi-call ffi-val ffi-peek
+                        ; FIXME add the other primops
+                        ))                                  ; language variables must not include primops
     (e 
      x v (e e ...) (if e e e) (begin e e ...) (let ((x e)) e) (letrec ((x e)) e) (fix e) (fun (x x ...) e e)
+     (ffi-call x e ...) (ffi-peek e)
      (abort e) (letcont x x ... e e)
      (run e e) (forward e)
      (deq-vp) (enq-on-vp e e) 
@@ -32,6 +40,7 @@
      (ref e) (deref e) (cas e e e)
      (handle e (stop-handler e) (preempt-handler e)))     
     (E hole (v ... E e ...) (if E e e) (begin E e e ...) (let ((x E)) e)
+       (ffi-call x v ... E e ...) (ffi-peek E)
        (enq E e) (enq v E) (deq E) 
        (run E e) (run v E) (forward E)
        (enq-on-vp E e) (enq-on-vp v E) 
@@ -42,6 +51,12 @@
        (handle v (stop-handler E) (preempt-handler e))
        (handle v (stop-handler v) (preempt-handler E))))
   
+  (define-metafunction peek
+    lang
+    [(ffi-val any_1)
+     any_1]
+    [e_1 e_1])
+  
   (define multiprocessor-machine
     (reduction-relation
      lang
@@ -49,6 +64,14 @@
      (--> (in-hole E_1 ((λ (x_1 ...) e_1) v_1 ...))
           (in-hole E_1 (multi-subst ((x_1 ...) (v_1 ...) e_1)))
           "βv")
+     
+     (--> (in-hole E_1 (ffi-call x_1 v_2 ...))
+          (in-hole E_1 (ffi-val ,(eval (term (x_1 '(peek v_2) ...)))))
+          "ffi-call")
+     
+     (--> (in-hole E_1 (ffi-peek (ffi-val v_1)))
+          (in-hole E_1 v_1)
+          "ffi-peek")
      
      ))
   
@@ -112,6 +135,13 @@
      (begin (ssubst (x_1 e_1 e_s)) ...)]
     [(x_1 e_1 (fix e_2))
      (fix (ssubst (x_1 e_1 e_2)))]
+    ;; ffi
+    [(x_1 e_1 (ffi-call e_s ...))
+     (ffi-call (ssubst (x_1 e_1 e_s)) ...)]
+    [(x_1 e_1 (ffi-peek e_2))
+     (ffi-peek (ssubst (x_1 e_1 e_2)))]
+    [(x_1 e_1 (ffi-val any_1))
+     (ffi-val any_1)]
     ;; vproc signals
     [(x_1 e_1 (stop))
      (stop)]
@@ -161,7 +191,13 @@
     (traces lang multiprocessor-machine e))
   
   (define e1
-    (term ((λ (x) 1) (λ (y) 1))))
+    (term ((λ (x y) (x y)) (λ (y) 2) 123)))
+  
+  (define e2
+    (term (ffi-call cons 1 2)))
+  
+  (define e3
+    (term ((λ (ls) (ffi-peek (ffi-call car ls))) ,e2)))
 
   )
   
