@@ -11,7 +11,7 @@
 #include "ropes.def"
 #include "debugging.def"
 
-(* use_rw ropes; *)
+use_rw ropes;
 
 extern void M_Print(void*);
 extern void M_PrintInt(int);

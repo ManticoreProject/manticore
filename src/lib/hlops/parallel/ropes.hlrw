@@ -6,10 +6,10 @@
  * Fusion rewrites for ropes.
  *)
 
-map_range : @rope-map([f,@rope-from-range(lo,hi,gap,lfSize)]) ==>
-            @tabD([f,lfSize,lo,hi,step])
+map_range : @rope-map(alloc(f,@rope-from-range(lo,hi,gap,lfSize))) ==>
+            @tabD(alloc(f,alloc(lfSize),alloc(lo),alloc(hi),alloc(gap)))
             { 1 };
-
+(*
 map_dist : @rope-map([f,@dist([n,x])]) ==>
            @dist([n,f(x)])
            { 1 };
@@ -21,4 +21,4 @@ tab_map : @rope-map([f,@tabD([g,lf,lo,hi,step])]) ==>
 map_map : @rope-map([f,@rope-map(g,r)]) ==>
           @rope-map([@compose(f,g),r])
           { 1 };
-
+*)

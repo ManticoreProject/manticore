@@ -570,24 +570,29 @@ end = struct
                    val ntWtPairOpt = getRWStateMaxPair(ppRWState, rwMap)
                in case ntWtPairOpt
                    of SOME (nt, _) => let
+                          val debug = Controls.get BOMOptControls.debug
                           val prod = AtomMap.lookup(rwMap, nt)
                           val (Rewrites.HLRWProduction {rw_opt, ...}) = prod
                           val (rw as RW.PT.Rewrite {label = rw_label,
                                                     lhs = rw_lhs,
                                                     rhs = rw_rhs, ...}) =
                               Option.valOf rw_opt
+                          val _ = if debug then
+                                      (print ("Apply RW: " ^ 
+                                              (Atom.toString rw_label) ^ "\n"))
+                                  else ()
                           val mv_env = matchRWPatToTerm(rw_lhs, t)
+                          val _ = if debug then
+                                      (print ("mv_env = " ^
+                                              (mvEnvToString mv_env) ^ "\n"))
+                                  else ()
                           val new_exp =
                               mkExpFromRWPat(rw_rhs, rw_env, mv_env, t)
                       in
                           (* +DEBUG *)
-                          if Controls.get BOMOptControls.debug
-                          then (print ("Apply RW: " ^ 
-                                       (Atom.toString rw_label) ^ "\n");
-                                print ("mv_env = " ^ (mvEnvToString mv_env) ^
-                                       "\n");
-                                print "new_exp = \n";
-                                PrintBOM.printExp new_exp)
+                          if debug then 
+                              (print "new_exp = \n";
+                               PrintBOM.printExp new_exp)
                           else ();
                           (* -DEBUG *)
                           (true, new_exp)
