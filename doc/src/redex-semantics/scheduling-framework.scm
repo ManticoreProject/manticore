@@ -7,7 +7,7 @@
            (lib "mred.ss" "mred")
            (lib "plt-match.ss"))
   
-  (provide make-multiprocessor)
+  (provide make-multiprocessor mp-stepper)
   
   (define-language lang
     (MP ((VP ...) global-store provision-map))               ; multiprocessor state
@@ -431,7 +431,7 @@
   ; make-vproc : int * e -> VP
   ; given a vproc id and an initial expression, construct a vproc machine state
   (define (make-vproc n e)
-    (term (vp ,n (astk) (fq) 0 1 ,e)))
+    (term (vp ,n (astk) (fq) 1 1 ,e)))
   
   ; make-multiprocessor : listof(e) -> MP
   ; given a list of expressions, construct a multipocessor machine state. element e_i in the list
@@ -446,6 +446,9 @@
       ; store locations 0 and 1 must be seeded to start the machine.
       ; location 1 is empty FLS.
       `((,@vps) (store (0 0) (1 (ffi-val ()))) (pmap))))
+  
+  (define (mp-stepper es)
+    (stepper lang multiprocessor-machine es))
   
   (define e1
     (term ((λ (x y) (x y)) (λ (y) 2) 123)))
@@ -468,9 +471,5 @@
             (let ((x1 (get-from-fls fls "x")))
               (let ((x2 (get-from-fls fls "x")))
                 (get-from-fls fls "y")))
-            )))
-  
-  (define (mp-traces es)
-    (stepper lang multiprocessor-machine (make-multiprocessor es)))
-  
+            )))     
   )
