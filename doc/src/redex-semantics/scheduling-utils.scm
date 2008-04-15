@@ -8,6 +8,8 @@
            (lib "mred.ss" "mred")
            (lib "plt-match.ss"))
   
+  (provide lift set-bang init-top-level-schedulers round-robin)
+  
   ; emulate set-bang using compare-and-swap
   (define (set-bang l v)
     (term (cas ,l (deref ,l) ,v)))

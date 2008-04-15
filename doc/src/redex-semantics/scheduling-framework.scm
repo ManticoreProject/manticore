@@ -7,7 +7,7 @@
            (lib "mred.ss" "mred")
            (lib "plt-match.ss"))
   
-  (provide make-multiprocessor mp-stepper)
+  (provide lang multiprocessor-machine make-multiprocessor mp-stepper)
   
   (define-language lang
     (MP ((VP ...) global-store provision-map))               ; multiprocessor state
