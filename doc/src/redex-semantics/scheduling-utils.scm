@@ -95,4 +95,25 @@
   
   (define (fib1 n)
     (fib (term (fib ,n))))
+  
+  (define (deq-empty)
+    (let ([deq '()])
+      (let ([deq-push-tl (λ (elt)
+                           (set! deq (cons elt deq)))]
+            [deq-pop-tl (λ ()
+                          (if (null? deq)
+                              0
+                              (let ([hd (car deq)])
+                                (set! deq (cdr deq))
+                                hd)))]
+            [deq-pop-hd (λ ()
+                          (letrec ([loop (λ (ls acc)
+                                           (match ls
+                                             (`() 0)
+                                             (`(,l1) (begin
+                                                           (set! deq (reverse acc))
+                                                           l1))
+                                             (`(,l1 ,ls ...) (loop ls (cons l1 acc)))))])
+                            (loop deq '())))])
+        (list deq-push-tl deq-pop-tl deq-pop-hd))))
   )
