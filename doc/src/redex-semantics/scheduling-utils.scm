@@ -6,7 +6,7 @@
            (lib "list.ss")
            (lib "class.ss")
            (lib "mred.ss" "mred")
-           (lib "plt-match.ss"))
+           (lib "match.ss"))
   
   (provide lift set-bang init-top-level-schedulers round-robin)
   
@@ -107,13 +107,11 @@
                                 (set! deq (cdr deq))
                                 hd)))]
             [deq-pop-hd (λ ()
-                          (letrec ([loop (λ (ls acc)
-                                           (match ls
-                                             (`() 0)
-                                             (`(,l1) (begin
-                                                           (set! deq (reverse acc))
-                                                           l1))
-                                             (`(,l1 ,ls ...) (loop ls (cons l1 acc)))))])
-                            (loop deq '())))])
+                          (match deq
+                            (`() 0)
+                            (`(,@(deq1 ...) ,elt) (begin
+                                                    (set! deq deq1)
+                                                    elt))))])
         (list deq-push-tl deq-pop-tl deq-pop-hd))))
+  
   )
