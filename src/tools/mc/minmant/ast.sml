@@ -18,6 +18,7 @@ structure AST =
       = LetExp of binding * exp
       | IfExp of (exp * exp * exp * ty)			(* ty is result type *)
       | CaseExp of (exp * match list * ty)		(* ty is result type *)
+      | PCaseExp of (exp list * pmatch list * ty)       (* ty is result type *)
       | HandleExp of (exp * match list * ty)		(* ty is result type *)
       | RaiseExp of (exp * ty)				(* ty is result type *)
       | FunExp of (var * exp * ty)			(* ty is result type *)
@@ -50,12 +51,20 @@ structure AST =
       = PatMatch of pat * exp
       | CondMatch of pat * exp * exp		(* conditional match; not used yet *)
 
+    and pmatch
+      = PMatch of ppat list * exp
+
     and pat
       = ConPat of dcon * ty list * pat	(* data-constructor application *)
       | TuplePat of pat list
       | VarPat of var
       | WildPat of ty
       | ConstPat of const
+
+    and ppat
+      = NDWildPat of ty
+      | HandlePat of pat
+      | Pat of pat 
 
     and const
       = DConst of dcon * ty list

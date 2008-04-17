@@ -71,6 +71,7 @@
 		("case",	T.KW_case),
 		("datatype",	T.KW_datatype),
 		("div",		T.KW_div),
+		("dval",	T.KW_dval),	(* temporary *)
 		("else",	T.KW_else),
 		("end",		T.KW_end),
 		("exception",	T.KW_exception),
@@ -84,8 +85,9 @@
 		("mod",		T.KW_mod),
 		("of",		T.KW_of),
 		("orelse",	T.KW_orelse),
+		("otherwise",   T.KW_otherwise),
+		("pcase",       T.KW_pcase),
 		("pval",	T.KW_pval),
-		("dval",	T.KW_dval),	(* temporaray *)
 		("raise",	T.KW_raise),
 		("spawn",       T.KW_spawn),
 		("then",	T.KW_then),
@@ -150,7 +152,9 @@
 <INITIAL> "->"	=> (T.ARROW);
 <INITIAL> "=>"	=> (T.DARROW);
 <INITIAL> "_"	=> (T.WILD);
+<INITIAL> "?"   => (T.NDWILD);
 <INITIAL> "|?|" => (T.PCHOICE);
+<INITIAL> "&"   => (T.AMP);
 <INITIAL> {id}	=> (idToken yytext);
 <INITIAL> {tyvarid}	=> (T.TYVAR(Atom.atom yytext));
 <INITIAL> "~"?{num}	=> (T.INT(valOf (IntInf.fromString yytext)));

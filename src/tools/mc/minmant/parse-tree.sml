@@ -61,6 +61,7 @@ structure ParseTree =
       | LetExp of (val_decl list * exp)
       | IfExp of (exp * exp * exp)
       | CaseExp of (exp * match list)
+      | PCaseExp of (exp list * pmatch list)
       | HandleExp of (exp * match list)
       | RaiseExp of exp
       | AndAlsoExp of (exp * exp)
@@ -85,6 +86,11 @@ structure ParseTree =
       = MarkMatch of match mark
       | Match of (pat * exp)
 
+    and pmatch (* parallel matches, for use in pcase *)
+      = MarkPMatch of pmatch mark
+      | PMatch of (ppat list * exp)
+      | Otherwise of exp
+
     and pbind
       = MarkPBind of pbind mark
       | PBind of (pat * exp)
@@ -98,6 +104,12 @@ structure ParseTree =
       | WildPat
       | IdPat of vid			(* either variable or nullary constant *)
       | ConstraintPat of pat * ty	(* type constraint *)
+
+    and ppat (* parallel patterns, for use in pcase *)
+      = MarkPPat of ppat mark
+      | NDWildPat (* non-deterministic wildcard *)
+      | HandlePat of pat
+      | Pat of pat
 
   (* literal values *)
     and const

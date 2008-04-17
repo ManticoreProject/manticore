@@ -28,6 +28,8 @@
     | KW_mod		("mod")
     | KW_of		("of")
     | KW_orelse		("orelse")
+    | KW_otherwise      ("otherwise")
+    | KW_pcase          ("pcase")
     | KW_pval		("pval")
     | KW_dval		("dval")
     | KW_raise		("raise")
@@ -67,7 +69,9 @@
     | ARROW		("->")
     | DARROW		("=>")
     | WILD		("_")
+    | NDWILD            ("?")
     | PCHOICE		("|?|")
+    | AMP               ("&")
     | TYVAR of Atom.atom
     | NAME of Atom.atom
     | INT of IntInf.int
@@ -89,9 +93,12 @@
   fun markExp (_, e as PT.MarkExp _) = e
     | markExp (sp, tr) = mark PT.MarkExp (sp, tr)
   val markMatch = mark PT.MarkMatch
+  val markPMatch = mark PT.MarkPMatch
   val markPBind = mark PT.MarkPBind
   fun markPat (_, p as PT.MarkPat _) = p
     | markPat (sp, tr) = mark PT.MarkPat (sp, tr)
+  fun markPPat (_, p as PT.MarkPPat _) = p
+    | markPPat (sp, tr) = mark PT.MarkPPat (sp, tr)
 
 (* construct a left-associative type application *)
   fun mkTyApp (arg, []) = arg
@@ -222,6 +229,8 @@ Exp
 		=> (markExp (FULL_SPAN, PT.SpawnExp(Exp)))
 	| "case" Exp "of" MatchRules
 		=> (markExp (FULL_SPAN, PT.CaseExp(Exp, MatchRules)))
+        | "pcase" Exp ("&" Exp)* "of" PMatchRules
+                => (markExp (FULL_SPAN, PT.PCaseExp(Exp :: SR, PMatchRules)))
 	;
 
 ClosedExp
@@ -239,6 +248,13 @@ MatchRules
 	| %try Pat "=>" Exp
 		=> ([markMatch (FULL_SPAN, PT.Match(Pat, Exp))])
 	;
+
+PMatchRules
+        : %try PPat ("&" PPat)* "=>" ClosedExp "|" PMatchRules
+                => (markPMatch (PPat_SPAN, PT.PMatch(PPat :: SR, ClosedExp)) :: PMatchRules)
+        | %try "otherwise" "=>" Exp
+                => ([markPMatch (FULL_SPAN, PT.Otherwise Exp)])
+        ;
 
 ChoiceExp
 	: OrelseExp ("|?|" OrelseExp)*
@@ -347,6 +363,12 @@ optCommaExps
 PBind
 	: Pat "in" Exp		=> (markPBind (FULL_SPAN, PT.PBind (Pat, Exp)))
 	;
+
+PPat
+        : "?" => (markPPat (FULL_SPAN, PT.NDWildPat))
+	| "handle" Pat => (markPPat (FULL_SPAN, PT.HandlePat Pat))
+	| Pat => (markPPat (FULL_SPAN, PT.Pat Pat))
+        ;
 
 Pat
 	: InfixPat (":" Type)?	=> (case SR
