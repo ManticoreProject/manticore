@@ -140,9 +140,17 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 	  emitStms stms;
 	  exitBlock liveOut )
 
+      fun annotateFirstStm ([], msg) = []
+	| annotateFirstStm (stm :: stms, msg) = note(stm, "stdApply") :: stms
+
       (* Generate code for a control transfer, e.g., a function or a continuation call or a heap-limit check. *)
-      fun genTransfer (M.StdApply args) =
-	  genStdTransfer (BE.Transfer.genStdApply varDefTbl args)
+      fun genTransfer (M.StdApply args) = let
+	  val {stms, liveOut} = (BE.Transfer.genStdApply varDefTbl args)
+	  val stms = annotateFirstStm(stms, "stdApply")
+          in
+             emitStms stms;
+	     exitBlock liveOut
+          end	 
 	| genTransfer (M.StdThrow args) =
 	  genStdTransfer (BE.Transfer.genStdThrow varDefTbl args)
 	| genTransfer (M.Apply args) = 

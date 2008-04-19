@@ -25,10 +25,10 @@ structure AMD64Regs : MANTICORE_REGS = struct
     val dedicatedFRegs = []
   
     val allRegs = C.Regs CellsBasis.GP {from=0, to=15, step=1}
-    val allRegsSet = foldl C.addReg C.empty allRegs
+    val allRegsSet = List.foldl C.addReg C.empty allRegs
   
     val miscRegs =
-	let val rSet = foldl C.rmvReg allRegsSet dedicatedRegs
+	let val rSet = List.foldl C.rmvReg allRegsSet dedicatedRegs
 	in 
 	    C.getReg rSet 
 	end

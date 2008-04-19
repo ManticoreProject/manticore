@@ -76,7 +76,84 @@ functor HeapTransferFn (
 	    of MTy.K_INT => MTy.GPReg (Types.szOf mty, newReg ())
 	     | MTy.K_FLOAT => MTy.FPReg (Types.szOf mty, newFReg ())
 	  (* end case *))
-      end (* mlrReg *)
+      end
+
+  datatype location_kind = K_GPR | K_FPR | K_MEM
+
+  structure SA = StagedAllocationFn (
+                   structure T = T
+		   structure TargetLang =
+                      struct
+		          datatype location_kind = datatype location_kind
+		      end
+		   val memSize = 8)
+
+  structure CallingConventions =
+    struct
+	(* FIXME *)
+	val maxAlign = 16
+
+	fun stdApply () = let
+	    val cGpr = SA.freshCounter()
+	    val states = [
+		SA.WIDEN(fn w => Int.max(MTy.wordTy, w)),
+		SA.ARGCOUNTER cGpr,
+		SA.REGS_BY_ARGS (cGpr, List.map (fn r => (MTy.wordTy, r)) stdFuncRegs)
+	    ]
+	    in
+	       {c0=SA.init [cGpr], cStep=SA.mkStep states, finish=fn _ => raise Fail "impossible"}
+            end
+
+	fun stdCont () = let
+	    val cGpr = SA.freshCounter()
+	    val states = [
+		SA.WIDEN(fn w => Int.max(MTy.wordTy, w)),
+		SA.ARGCOUNTER cGpr,
+		SA.REGS_BY_ARGS (cGpr, List.map (fn r => (MTy.wordTy, r)) stdContRegs)
+	    ]
+	    in
+	       {c0=SA.init [cGpr], cStep=SA.mkStep states, finish=fn _ => raise Fail "impossible"}
+            end
+
+	fun apply () = let
+	    val cFrame = SA.freshCounter()
+	    val cGpr = SA.freshCounter()
+	    val cFpr = SA.freshCounter()
+	    val states = [
+		SA.CHOICE [
+		(* pass in general-purpose register *)
+		(fn (w, k, str) => k = K_GPR, SA.SEQ [
+					      SA.WIDEN(fn w => Int.max(MTy.wordTy, w)),
+					      SA.ARGCOUNTER cGpr,
+					      SA.REGS_BY_ARGS (cGpr, List.map (fn r => (MTy.wordTy, r)) Regs.argRegs) 
+		]),
+		(* pass in floating-point register *)
+		(fn (w, k, str) => k = K_FPR, SA.SEQ [
+					      (* FIXME: get the size right *)
+					      SA.WIDEN(fn w => Int.max(64, w)),
+					      SA.ARGCOUNTER cFpr,
+					      SA.REGS_BY_ARGS (cFpr, List.map (fn r => (64, r)) Regs.availFRegs) 
+                ]),  		   
+		(* pass in a heap-allocated frame *)
+		(fn (w, k, str) => k = K_MEM,
+		 SA.OVERFLOW {counter=cFrame, blockDirection=SA.UP, maxAlign=maxAlign}) 
+		],
+		(* pass in a heap-allocated frame *)
+		SA.OVERFLOW {counter=cFrame, blockDirection=SA.UP, maxAlign=maxAlign}
+	    ]
+	    in
+	       {c0=SA.init [cFrame, cGpr, cFpr], cStep=SA.mkStep states, finish=fn str => SA.find(str, cFrame)}
+            end
+    end (* CallingConventions *)
+
+  (* if labExp is a label, put it into the jump directly; otherwise use a register temp. *)
+  fun genTransferTarget labExp = (case labExp
+       of T.LABEL _ => (labExp, [])
+	| _ => let 
+	      val tgtReg = newReg ()
+	      in
+	         (regExp(tgtReg), [move (tgtReg, labExp)]) 
+	      end)
 
   (* jump to target *)
   fun genJump (target, labels, paramRegs, argRegs) = 
@@ -88,65 +165,133 @@ functor HeapTransferFn (
       val args' = List.map (VarDef.useDefOf varDefTbl) args
       in
          Copy.copy {src=args', dst=params} @ [T.JMP (T.LABEL name, [name])]
-      end (* genGoto *)
+      end
 
-  fun genStdTransfer varDefTbl (target, args, argRegs, paramRegs) = let
+  (* convert a finalized location to a MLRISC tree *) 
+  fun saInfoToTree (w, SA.REG (ty, r), K_GPR) = MTy.GPR (w, r)
+    | saInfoToTree (w, SA.REG (ty, r), K_FPR) = MTy.FPR (w, r)
+    | saInfoToTree (w, SA.BLOCK_OFFSET offB, _) = MTy.EXP(w, T.LI (T.I.fromInt(MTy.wordTy, offB)))
+    | saInfoToTree (w, SA.NARROW (loc, w', k), _) = saInfoToTree (w', loc, k)
+    | saInfoToTree _ = raise Fail "impossible"
+
+  (* copy an argument to a parameter location *)
+  fun copyArgToParam frame (param, arg) = (case param
+      of MTy.GPR (ty, r) => Copy.copy {dst=[MTy.GPReg(ty, r)], src=[arg]}
+       | MTy.FPR (ty, r) => Copy.copy {dst=[MTy.FPReg(ty, r)], src=[arg]}
+       (* put the argument on the frame *)
+       | MTy.EXP (ty, offset) => (case arg
+         of MTy.EXP (_, e) =>
+	    [T.STORE (ty, T.ADD(MTy.wordTy, offset, Option.valOf frame), e, ManticoreRegion.memory)]
+	  | MTy.FEXP (_, e) =>
+	    [T.FSTORE (ty, T.ADD(MTy.wordTy, offset, Option.valOf frame), e, ManticoreRegion.memory)])
+       | _ => raise Fail "impossible")				 
+
+  fun treeToReg (MTy.GPR (ty, r), regs) = MTy.GPReg (ty, r) :: regs
+    | treeToReg (MTy.FPR (ty, r), regs) = MTy.FPReg (ty, r) :: regs
+    | treeToReg (_, regs) = regs
+
+  (* filter out non registers *)
+  fun treesToRegs mlts = List.rev (List.foldl treeToReg [] mlts)
+
+  fun genStdTransfer varDefTbl (target, args, params) = let
       val getDefOf = VarDef.getDefOf varDefTbl
-      val paramGPRegs = List.map gpReg paramRegs
+      val argTmpRegs = List.map newReg args
       in
 	  {stms=List.concat [	   
-	    (* copy arguments into temp registers;  this breaks up the live ranges, which 
-	     * should help the register allocator.
-	     *)
-	     Copy.copy {dst=List.map gpReg argRegs, src=List.map getDefOf args},
-	    (* jump to the target *)
-	     genJump(target, [], paramGPRegs, List.map mltGPR argRegs)
+	   (* copy arguments into temp registers;  this breaks up the live ranges, which 
+	    * should help the register allocator.
+	    *)
+	   Copy.copy {dst=List.map gpReg argTmpRegs, src=List.map getDefOf args},
+	   Copy.copy {dst=params, src=List.map mltGPR argTmpRegs},
+	   (* jump to the target *)
+	   [T.JMP (target, [])]
 	   ],
-	   liveOut=List.map toGPR paramGPRegs}
-      end (* genStdTransfer *)
+	   liveOut=List.map toGPR params}
+      end
 
-  (* if labExp is a label, put it into the jump directly, ow use a register temp. *)
-  fun genTransferTarget labExp = (case labExp
-       of T.LABEL _ => (labExp, [])
-	| _ => let 
-	      val tgtReg = newReg ()
-	      in
-	         (regExp(tgtReg), [move (tgtReg, labExp)]) 
-	      end
-       (* end case *))
+  fun kindOf cfgTy = (case MTy.cfgTyToMLRisc cfgTy
+      of MTy.K_INT => K_GPR
+       | MTy.K_COND => K_GPR
+       | MTy.K_FLOAT => K_FPR)
 
-  fun genApply varDefTbl {f, clos, args} = let
-      val defOf = VarDef.defOf varDefTbl
-      val args = clos :: args
-      val argRegs = List.map newReg args
-      val paramRegs = List.take (Regs.argRegs, List.length argRegs)
-      val (lab, mvInstr) = genTransferTarget (defOf f)
-      val {stms, liveOut} = genStdTransfer varDefTbl (lab, args, argRegs, paramRegs)
+  (* convert an argument to a location for staged allocation *)
+  fun tyToLoc ty = (Types.szOf ty, kindOf ty, MTy.wordTy div 8)
+
+  (* determine the staged-allocation locations for some parameter types *)
+  fun paramLocations (str0, step, paramTys) = let
+      fun getLocationInfo (loc, (str, lis)) = let
+	  val (str, li) = step(str, loc)
+          in
+             (str, li :: lis)
+          end
+      val locs = List.map tyToLoc paramTys
+      val (str, lis) = List.foldl getLocationInfo (str0, []) locs
       in
-	  {stms=mvInstr @ stms, liveOut=liveOut}
-      end 
+         (str, List.rev lis)
+      end
 
   fun genStdApply varDefTbl {f, clos, args as [arg], ret, exh} = let
       val defOf = VarDef.defOf varDefTbl 
       val args = [clos, arg, ret, exh] 
-      val argRegs = List.map newReg args 
+      (* generate the finite automata for generating the call *)
+      val {c0, cStep, finish} = CallingConventions.stdApply()
+      val paramTys = List.map Var.typeOf args
+      (* determine the destinations of parameters (all should be in gprs) *)
+      val (_, lis) = paramLocations(c0, cStep, paramTys)
+      val params = List.map saInfoToTree lis
+      val paramRegs = treesToRegs params
       val (lab, mvInstr) = genTransferTarget (defOf f)
-      val {stms, liveOut} = genStdTransfer varDefTbl (lab, args, argRegs, stdFuncRegs) 
+      val {stms, liveOut} = genStdTransfer varDefTbl (lab, args, paramRegs) 
       in
-	  {stms=mvInstr @ stms, liveOut=liveOut}
+          {stms=mvInstr @ stms, liveOut=liveOut}
       end 
-    | genStdApply _ _ = raise Fail "genStdApply: ill-formed StdApply"
+    | genStdApply _ _ = raise Fail "genStdApply: ill-formed StdApply"  
 
   fun genStdThrow varDefTbl {k, clos, args as [arg]} = let
       val defOf = VarDef.defOf varDefTbl
       val args = [clos, arg]
-      val argRegs = List.map newReg args
+      (* generate the finite automata for generating the call *)
+      val {c0, cStep, finish} = CallingConventions.stdCont()
+      val paramTys = List.map Var.typeOf args
+      (* determine the destinations of parameters (all should be in gprs) *)
+      val (_, lis) = paramLocations(c0, cStep, paramTys)
+      val params = List.map saInfoToTree lis
+      val paramRegs = treesToRegs params
       val (labK, mvInstr) = genTransferTarget (defOf k)
-      val {stms, liveOut} = genStdTransfer varDefTbl (labK, args, argRegs, stdContRegs)
+      val {stms, liveOut} = genStdTransfer varDefTbl (labK, args, paramRegs)
       in 
 	  {stms=mvInstr @ stms, liveOut=liveOut}
       end 
     | genStdThrow _ _ = raise Fail "genStdThrow: ill-formed StdThrow"
+
+  fun genApply varDefTbl {f, clos, args} = let
+      val defOf = VarDef.defOf varDefTbl
+      val getDefOf = VarDef.getDefOf varDefTbl
+      val args = clos :: args
+      (* generate the finite automata for generating the call *)
+      val {c0, cStep, finish} = CallingConventions.apply()
+      val paramTys = List.map Var.typeOf args
+      (* determine the destinations of parameters (all should be in gprs) *)
+      val (str, lis) = paramLocations(c0, cStep, paramTys)
+      val params = List.map saInfoToTree lis
+      val paramRegs = treesToRegs params
+      (* TODO: assign a register to be the standard frame pointer *)
+      (* if there are more arguments than registers, allocate a frame for the call *)
+      val nFrameArgs = finish str
+      val frameOpt = if nFrameArgs > 0
+                        then SOME (raise Fail "todo")
+                        else NONE
+      val (target, mvInstr) = genTransferTarget (defOf f)
+      in
+	  {stms=List.concat [
+	   mvInstr,
+	   (* TODO: allocate the frame and pass it in place of the NONE *)
+	   List.concat (ListPair.map (copyArgToParam frameOpt) (params, List.map getDefOf args)),
+	   (* jump to the target *)
+	   [T.JMP (target, [])]
+	   ],
+	   liveOut=List.map MTy.gprToExp paramRegs}
+      end
 
   fun rawTyToCTy Ty.T_Byte = CTy.C_signed CTy.I_char
     | rawTyToCTy Ty.T_Short = CTy.C_signed CTy.I_short
@@ -171,10 +316,7 @@ functor HeapTransferFn (
     | cvtCTy (CFunctions.VoidTy) = CTy.C_void
 				   
   (* remove a register from a list of registers *)
-  fun removeReg reg (r::rs) = if CellsBasis.sameCell(reg, r)
-      then rs
-      else removeReg reg rs
-    | removeReg _ [] = []
+  fun removeReg reg regs = List.filter (not o (fn r => CellsBasis.sameCell(reg, r))) regs
 
  (* assign the host vproc pointer to a register *)
   fun hostVProc () = let

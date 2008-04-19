@@ -2,7 +2,7 @@
 #
 
 MC="sml @SMLcmdname=mc @SMLload=../../mc"
-MCFLAGS=""
+MCFLAGS="-Cclos.convert-style=flatWithCFA"
 LOG=out
 
 rm -f $LOG

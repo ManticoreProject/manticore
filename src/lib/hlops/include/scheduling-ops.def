@@ -16,8 +16,10 @@ define inline @thread-exit ( / exh : exh) noreturn;
 define inline @exit (_ : unit / exh : exh) : any;
 define inline @dispatch (vp : vproc / exh : exh) noreturn;
 define @dispatch-action (act : sigact, dst : vproc / exh : exh) : ();
+define inline @spawn-on (f : fun (unit / exh -> unit), fgs : fgs, dst : vproc / exh : exh) : ();
 
 (* scheduler initialization *)
+define @scheduler-hook (vps : list / exh : exh) : ();
 define @scheduler-startup (mkAct : fun (vproc / exh -> sigact), fgs : fgs, vps : list / exh : exh) : ();
 define @default-scheduler-startup ( / exh : exh) : ();
 define @work-stealers-startup ( / exh : exh) : ();

@@ -8,27 +8,30 @@
 #include "vproc-queue.def"
 #include "runtime-offsets.def"
 
+define @test-steal( / exh : exh) : bool =
+  cont k () = return(TRUE)
+
+  let host : vproc = host_vproc
+
+  fun loop () : () = 
+      let vp : vproc = host_vproc
+      if Equal(vp, host)
+         then apply loop()
+         else return()
+
+  fun f (_ : unit / exh : exh) : unit = 
+      do apply loop()
+      throw k()
+
+  let _ : fgs = @spawn(f / exh)
+
+  do apply loop()
+
+  return(FALSE)
+;
+
 define @work-stealers-test-startup ( / exh : exh) : () =
   do @work-stealers-startup (/ exh)
-  let done : ![bool] = alloc(FALSE)
-  let done : ![bool] = promote(done)
-
-  fun doit (i : int / exh : exh ) : () =
-      if I32Eq(i,0)
-         then return ()
-         else let i : int = I32Sub(i,1)
-              do @wait (0.1:double, done / exh)
-              apply doit (i / exh)
-
-  fun f (_ : unit / exh : exh) : unit =
-      do apply doit (100 / exh)
-      return (UNIT)
-
-  let k : fiber = @fiber (f / exh)
-  let fgs : fgs = @new-fgs (FALSE, NONE / exh)
-  do @enqueue-on-vproc (host_vproc, fgs, k / exh)
-
-  do vpstore (ATOMIC, host_vproc, FALSE)
-  do apply doit (100 / exh)
+  do_concurrent_test(test-steal, 10.0:double)
   return ()
 ;

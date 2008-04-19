@@ -10,10 +10,7 @@
 #include "types.def"
 #include "debugging.def"
 #include "fgs.def"
-
-define inline @spawn-on (f : fun (unit / exh -> unit), fgs : fgs, dst : vproc / exh : exh) : ();
-define inline @run (vp : vproc, act : sigact, tid : tid, fiber : fiber / exh : exh) noreturn;
-define inline @thread-exit ( / exh : exh) noreturn;
+#include "scheduling-ops.def"
 
 (* Scheduler startup takes a scheduler action and installs it on all vprocs in the
  * system.  There are two cases for dispatching this action:
@@ -25,6 +22,9 @@ define inline @thread-exit ( / exh : exh) noreturn;
  *)
 
 define @scheduler-startup (mkAct : fun (vproc / exh -> sigact), fgs : fgs, vps : list / exh : exh) : () =
+   (* initialize the scheduler pointer for the vprocs *)
+    do @scheduler-hook (vps / exh)
+ 
     let syncPoint : ![int] = alloc(0)
    (* since vprocs share it, promote syncPoint *)
     let syncPoint : ![int] = promote(syncPoint)
@@ -49,7 +49,7 @@ define @scheduler-startup (mkAct : fun (vproc / exh -> sigact), fgs : fgs, vps :
 	  return ()
 	else
 	  apply spinWait (UNIT / exh)
-
+	  
    (* activate the scheduler *)
     fun init (_ : unit / exh : exh) : unit =	  
           do vpstore (ATOMIC, host_vproc, TRUE)

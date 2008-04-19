@@ -91,10 +91,8 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 			    PtrToValue(&ASM_Resume),
 			    vp->stdCont,
 			    vp->stdEnvPtr);
-		SchedActStkItem_t *item = ValueToSchedActStkItem(vp->actionStk);
-		assert (item != ValueToSchedActStkItem(M_NIL));
-		vp->actionStk = item->link;
-		envP = item->act;
+
+		envP = vp->schedCont;
 		codeP = ValueToAddr(ValueToCont(envP)->cp);
 		arg = resumeK;
 		retCont = M_UNIT;

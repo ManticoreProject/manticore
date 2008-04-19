@@ -96,6 +96,13 @@ structure BOMBasis : BOM_BASIS =
     val assocListCons = BOMTyCon.newDataCon assocListTyc
            ("ACONS", BTy.Tuple, [BTy.T_Any, BTy.T_Any, assocListTy])
 
+    val schedSignTyc = BOMTyCon.newDataTyc("sched_sign", 1)
+    val schedSignTy = BTy.T_TyCon schedSignTyc
+    val schedSignPreempt = 
+	BOMTyCon.newDataCon schedSignTyc ("PREEMPT", BTy.TaggedTuple 0w0, [fiberTy])
+    val schedSignChangeDesire = 
+	BOMTyCon.newDataCon schedSignTyc ("CHANGE_DESIRE", BTy.TaggedTuple 0w1, [intTy, fiberTy, fiberTy])
+
   (* other predefined datatypes *)
     val signalTyc = BOMTyCon.newDataTyc ("signal", 1) 
     val signalTy = BTy.T_TyCon signalTyc

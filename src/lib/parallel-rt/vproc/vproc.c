@@ -145,6 +145,7 @@ VProc_t *VProcCreate (VProcFn_t f, void *arg)
     vproc->atomic = M_TRUE;
     vproc->sigPending = M_FALSE;
     vproc->actionStk = M_NIL;
+    vproc->schedCont = M_NIL;
     vproc->rdyQHd = M_NIL;
     vproc->rdyQTl = M_NIL;
     vproc->entryQ = M_NIL;
