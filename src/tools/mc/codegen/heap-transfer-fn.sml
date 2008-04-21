@@ -48,10 +48,8 @@ functor HeapTransferFn (
 
   type stms = MTy.T.stm list
 
-  val stdFuncRegs as [closReg, argReg, retReg, exhReg] = 
-      [Regs.closReg, Regs.argReg, Regs.retReg, Regs.exhReg]
-  val stdContRegs as [closReg, argReg] = 
-      [Regs.closReg, Regs.argReg]
+  val stdFuncRegs = [Regs.closReg, Regs.argReg, Regs.retReg, Regs.exhReg]
+  val stdContRegs = [Regs.closReg, Regs.argReg]
 
   fun newLabel s = Label.label s () 
   fun newReg _ = Cells.newReg ()
@@ -122,22 +120,18 @@ functor HeapTransferFn (
 	    val states = [
 		SA.CHOICE [
 		(* pass in general-purpose register *)
-		(fn (w, k, str) => k = K_GPR, SA.SEQ [
-					      SA.WIDEN(fn w => Int.max(MTy.wordTy, w)),
-					      SA.ARGCOUNTER cGpr,
-					      SA.REGS_BY_ARGS (cGpr, List.map (fn r => (MTy.wordTy, r)) Regs.argRegs) 
+		(fn (w, k, str) => k = K_GPR, 
+		 SA.SEQ [
+		 SA.WIDEN(fn w => Int.max(MTy.wordTy, w)),
+		 SA.ARGCOUNTER cGpr,
+		 SA.REGS_BY_ARGS (cGpr, List.map (fn r => (MTy.wordTy, r)) Regs.argRegs) 
 		]),
 		(* pass in floating-point register *)
-		(fn (w, k, str) => k = K_FPR, SA.SEQ [
-					      (* FIXME: get the size right *)
-					      SA.WIDEN(fn w => Int.max(64, w)),
-					      SA.ARGCOUNTER cFpr,
-					      SA.REGS_BY_ARGS (cFpr, List.map (fn r => (64, r)) Regs.argFRegs) 
-                ]),  		   
-		(* pass in scratch space *)
-		(fn (w, k, str) => k = K_MEM,
-		 SA.OVERFLOW {counter=cScratch, blockDirection=SA.UP, maxAlign=maxAlign}) 
-		],
+		(fn (w, k, str) => k = K_FPR, 
+		 SA.SEQ [
+		 SA.ARGCOUNTER cFpr,
+		 SA.REGS_BY_ARGS (cFpr, List.map (fn r => (64, r)) Regs.argFRegs) 
+                ])],
 		(* pass in scratch space *)
 		SA.OVERFLOW {counter=cScratch, blockDirection=SA.UP, maxAlign=maxAlign}
 	    ]
@@ -168,10 +162,10 @@ functor HeapTransferFn (
       end
 
   (* convert a finalized location to a MLRISC tree *) 
-  fun saInfoToTree (w, SA.REG (ty, r), K_GPR) = MTy.GPR (w, r)
-    | saInfoToTree (w, SA.REG (ty, r), K_FPR) = MTy.FPR (w, r)
-    | saInfoToTree (w, SA.BLOCK_OFFSET offB, _) = MTy.EXP(w, T.LI (T.I.fromInt(MTy.wordTy, offB)))
-    | saInfoToTree (w, SA.NARROW (loc, w', k), _) = saInfoToTree (w', loc, k)
+  fun saInfoToTree (ty, SA.REG (_, r), K_GPR) = MTy.GPR (ty, r)
+    | saInfoToTree (ty, SA.REG (_, r), K_FPR) = MTy.FPR (ty, r)
+    | saInfoToTree (ty, SA.BLOCK_OFFSET offB, _) = MTy.EXP(ty, T.LI (T.I.fromInt(MTy.wordTy, offB)))
+    | saInfoToTree (ty, SA.NARROW (loc, ty', k), _) = saInfoToTree (ty, loc, k)
     | saInfoToTree _ = raise Fail "impossible"
 
   (* given an offset for a parameter, return its location in scratch space *)
@@ -228,13 +222,13 @@ functor HeapTransferFn (
   fun tyToLoc ty = (Types.szOf ty, kindOfCFGTy ty, MTy.wordTy div 8)
 
   (* determine the staged-allocation locations for some parameter types *)
-  fun paramLocations (str0, step, paramLocs) = let
-      fun getLocationInfo (loc, (str, paramLocs)) = let
-	  val (str, li) = step(str, loc)
+  fun paramLocations (str0, step, paramSlots) = let
+      fun finalizeLoc (slot, (str, paramLocs)) = let
+	  val (str, slot) = step(str, slot)
           in
-             (str, li :: paramLocs)
+             (str, slot :: paramLocs)
           end
-      val (str, paramLocs) = List.foldl getLocationInfo (str0, []) paramLocs
+      val (str, paramLocs) = List.foldl finalizeLoc (str0, []) paramSlots
       in
          (str, List.rev paramLocs)
       end
@@ -291,7 +285,6 @@ functor HeapTransferFn (
            then raise Fail "too many arguments"
            else {stms=List.concat [
 		 mvInstr,
-		 (* TODO: allocate the scratch and pass it in place of the NONE *)
 		 List.concat (ListPair.map copyArgToParam (params, List.map getDefOf args)),
 		 (* jump to the target *)
 		 [T.JMP (target, [])]
@@ -333,7 +326,7 @@ functor HeapTransferFn (
 	    args=cArgs,
 	    proto={conv=conv, retTy=retTy, paramTys=paramTys},
 	    paramAlloc=fn _ => false,
-	    structRet=fn _ => T.REG (64, retReg),
+	    structRet=fn _ => T.REG (64, Regs.retReg),
 	    saveRestoreDedicated=fn _ => {save=[], restore=[]},
 	    callComment=NONE
 	  } 
@@ -509,7 +502,7 @@ functor HeapTransferFn (
    * because of preemption.
    *)
   fun genHeapCheck varDefTbl {hck=CFG.HCK_Local, szb, nogc=(noGCLab, roots)} = let
-      val {initRoots, restoredRoots, rootPtr, rootTemps, rootArgs } = processGCRoots varDefTbl (roots, regTree closReg)
+      val {initRoots, restoredRoots, rootPtr, rootTemps, rootArgs } = processGCRoots varDefTbl (roots, regTree Regs.closReg)
 								      
       val noGCParamRegs = LabelCode.getParamRegs noGCLab
       val noGCLab = LabelCode.getName noGCLab
@@ -523,9 +516,9 @@ functor HeapTransferFn (
 	     (* allocate a heap object for GC roots *)
 	      initRoots,
 	     (* save the root pointer in the closure register *)
-	      [moveMLTree (closReg, rootPtr)],
+	      [moveMLTree (Regs.closReg, rootPtr)],
 	     (* put the return address into retReg *)
-	      [move (retReg, T.LABEL retLab)],
+	      [move (Regs.retReg, T.LABEL retLab)],
 	     (* jump to the garbage collector *)
 	      Target.genGCCall () 
           ]
@@ -603,13 +596,7 @@ functor HeapTransferFn (
           end
        | _ => raise Fail "impossible")				 
 
-  fun setEntry varDefTbl (lab, locals, args, assignStms) = (
-        (* make param registers available globally *)
-        LabelCode.setParamRegs (lab, locals);
-	(* bind params to their registers *)
-	ListPair.app (VarDef.setDefOf varDefTbl) (args, List.map MTy.regToTree locals);
-	assignStms)
-
+  (* bind parameters to fresh, local registers *)
   fun bindParams {params, paramKinds} = let
       fun f (param, k, {stms, regs}) = let
 	  val {stms=stms', regs=regs'} = bindParam (param, k)
@@ -620,6 +607,13 @@ functor HeapTransferFn (
       in
          {stms=stms, regs=List.rev regs}
       end
+
+  fun setEntry varDefTbl (lab, locals, args, assignStms) = (
+        (* make param registers available globally *)
+        LabelCode.setParamRegs (lab, locals);
+	(* bind params to their registers *)
+	ListPair.app (VarDef.setDefOf varDefTbl) (args, List.map MTy.regToTree locals);
+	assignStms)
 
  (* generate the entry code for a function *)
   fun genFuncEntry varDefTbl (lab, conv as M.StdFunc {clos, args as [arg], ret, exh}) = let
