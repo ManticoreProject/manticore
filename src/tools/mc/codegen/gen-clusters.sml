@@ -36,7 +36,7 @@ end = struct
 	  (* get the jump labels of a transfer *)
 	  val labs = CFGUtil.labelsOfXfer exit
       in
-	  foldl addEdge edgeMap labs
+	  List.foldl addEdge edgeMap labs
       end (* addEdges *)
 
   (* clusters takes a list of functions, and returns the clusters of those
@@ -47,27 +47,21 @@ end = struct
    * G. Although this technique is inefficient, it's simpler than coding
    * the CCS manually or with Union Find, and probably won't make a difference.
    *)
-  fun clusters code =
-      let fun insLab (func as M.FUNC {lab, ...}, (edgeMap, labMap)) =
-	      (LM.insert (edgeMap, lab, LS.empty), LM.insert (labMap, lab, func))
-	  (* initialize the edgeMap with empty edges, and map each function label
-	   * back to its function in the labMap *)
-	  val (edgeMap, labMap) = foldl insLab (LM.empty, LM.empty) code
-	  fun getFunc l = (case LM.find (labMap, l)
-			    of SOME f => f
-			     | NONE => raise Fail "getFunc"
-			  (* esac *))
-	  (* build the graph of jump edges *)
-	  val edgeMap = foldl addEdges edgeMap code
-	  fun follow l = (case LM.find (edgeMap, l)
-			   of SOME lSet => LS.listItems lSet
-			    | _ => raise Fail "follow"
-			 (* esac *))
-	  val sccs = SCC.topOrder' {roots=LM.listKeys labMap, follow=follow}
-	  fun toCluster (SCC.SIMPLE l) = [getFunc l]
-	    | toCluster (SCC.RECURSIVE ls) = map getFunc ls
+  fun clusters code = let
+      fun insLab (func as M.FUNC {lab, ...}, (edgeMap, labMap)) =
+	  (LM.insert (edgeMap, lab, LS.empty), LM.insert (labMap, lab, func))
+      (* initialize the edgeMap with empty edges, and map each function label
+       * back to its function in the labMap *)
+      val (edgeMap, labMap) = List.foldl insLab (LM.empty, LM.empty) code
+      fun getFunc l = Option.valOf (LM.find (labMap, l))
+      (* build the graph of jump edges *)
+      val edgeMap = List.foldl addEdges edgeMap code
+      fun follow l = LS.listItems (Option.valOf (LM.find (edgeMap, l)))
+      val sccs = SCC.topOrder' {roots=LM.listKeys labMap, follow=follow}
+      fun toCluster (SCC.SIMPLE l) = [getFunc l]
+	| toCluster (SCC.RECURSIVE ls) = List.map getFunc ls
       in
-	  map toCluster sccs
-      end (* clusters *)
+	  List.map toCluster sccs
+      end
 
-end (* GenClusters *)
+end

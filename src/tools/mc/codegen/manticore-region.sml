@@ -5,13 +5,14 @@
  *
  *)
 
-structure ManticoreRegion : REGION = struct
+structure ManticoreRegion : REGION = 
+  struct
 
-  type region = unit
-  fun toString () = ""
-  val memory = ()
-  val stack = ()
-  val readonly = ()
-  val spill = ()
+    type region = unit
+    fun toString () = ""
+    val memory = ()
+    val stack = ()
+    val readonly = ()
+    val spill = ()
 
-end (* ManticoreRegion *)
+  end

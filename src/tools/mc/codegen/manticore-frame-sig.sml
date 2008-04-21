@@ -22,4 +22,4 @@ signature MANTICORE_FRAME = sig
 
     val frameOffset : loc -> int
 
-end (* MANTICORE_FRAME *)
+end

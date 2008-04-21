@@ -65,7 +65,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
   fun freshMv e = let val r = newReg ()
 	in
 	  {reg=r, mv=move (r, e)}
-	end (* freshMv *)
+	end
   fun note (stm, msg) = T.ANNOTATION(stm, #create MLRiscAnnotations.COMMENT msg)
   fun select (lhsTy, mty, i, e) = BE.Alloc.select {lhsTy=lhsTy, mty=mty, i=i, base=e}
   fun addrOf (lhsTy, mty, i, e) = BE.Alloc.addrOf {lhsTy=lhsTy, mty=mty, i=i, base=e}

@@ -30,4 +30,3 @@
     PR_OFFSET(vp, GLOB_LIMIT, globLimit);
     PR_OFFSET(vp, LOG, log);
     PR_OFFSET(vp, VPROC_ID, id);
-    PR_OFFSET(vp, SCRATCH, scratch);

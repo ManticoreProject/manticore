@@ -12,6 +12,9 @@ structure AMD64Regs : MANTICORE_REGS = struct
     type fpr = CellsBasis.cell
   
     structure C = AMD64Cells
+
+    val gprWidths = [8, 16, 32, 64]
+    val fprWidths = [32, 64]
   
     val argReg = C.rax
     val closReg = C.rdi

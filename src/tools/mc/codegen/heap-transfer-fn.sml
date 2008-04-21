@@ -10,7 +10,7 @@ signature TARGET_TRANSFER_HEAP = sig
     type stm
 	 
     val genGCCall : unit -> stm list
-end (* TARGET_TRANSFER_HEAP *)
+end
 
 functor HeapTransferFn (
     structure MTy : MLRISC_TYPES
@@ -88,13 +88,11 @@ functor HeapTransferFn (
 
   structure CallingConventions =
     struct
-	(* FIXME *)
-	val maxAlign = 16
 
 	fun stdApply () = let
 	    val cGpr = SA.freshCounter()
 	    val states = [
-		SA.WIDEN(fn w => Int.max(MTy.wordTy, w)),
+		SA.WIDEN (fn w => Int.max(MTy.wordTy, w)),
 		SA.ARGCOUNTER cGpr,
 		SA.REGS_BY_ARGS (cGpr, List.map (fn r => (MTy.wordTy, r)) stdFuncRegs)
 	    ]
@@ -105,7 +103,7 @@ functor HeapTransferFn (
 	fun stdCont () = let
 	    val cGpr = SA.freshCounter()
 	    val states = [
-		SA.WIDEN(fn w => Int.max(MTy.wordTy, w)),
+		SA.WIDEN (fn w => Int.max(MTy.wordTy, w)),
 		SA.ARGCOUNTER cGpr,
 		SA.REGS_BY_ARGS (cGpr, List.map (fn r => (MTy.wordTy, r)) stdContRegs)
 	    ]
@@ -122,18 +120,19 @@ functor HeapTransferFn (
 		(* pass in general-purpose register *)
 		(fn (w, k, str) => k = K_GPR, 
 		 SA.SEQ [
-		 SA.WIDEN(fn w => Int.max(MTy.wordTy, w)),
+		 SA.WIDEN (fn w => Int.max(MTy.wordTy, w)),
 		 SA.ARGCOUNTER cGpr,
 		 SA.REGS_BY_ARGS (cGpr, List.map (fn r => (MTy.wordTy, r)) Regs.argRegs) 
 		]),
 		(* pass in floating-point register *)
 		(fn (w, k, str) => k = K_FPR, 
 		 SA.SEQ [
+		 SA.WIDEN (fn w => List.foldl Int.max w Regs.fprWidths),
 		 SA.ARGCOUNTER cFpr,
 		 SA.REGS_BY_ARGS (cFpr, List.map (fn r => (64, r)) Regs.argFRegs) 
                 ])],
 		(* pass in scratch space *)
-		SA.OVERFLOW {counter=cScratch, blockDirection=SA.UP, maxAlign=maxAlign}
+		SA.OVERFLOW {counter=cScratch, blockDirection=SA.UP, maxAlign=List.foldl Int.max 0 Regs.gprWidths div 8}
 	    ]
 	    in
 	       {c0=SA.init [cScratch, cGpr, cFpr], cStep=SA.mkStep states, finish=fn str => SA.find(str, cScratch)}
@@ -161,33 +160,26 @@ functor HeapTransferFn (
          Copy.copy {src=args', dst=params} @ [T.JMP (T.LABEL name, [name])]
       end
 
-  (* convert a finalized location to a MLRISC tree *) 
-  fun saInfoToTree (ty, SA.REG (_, r), K_GPR) = MTy.GPR (ty, r)
-    | saInfoToTree (ty, SA.REG (_, r), K_FPR) = MTy.FPR (ty, r)
-    | saInfoToTree (ty, SA.BLOCK_OFFSET offB, _) = MTy.EXP(ty, T.LI (T.I.fromInt(MTy.wordTy, offB)))
-    | saInfoToTree (ty, SA.NARROW (loc, ty', k), _) = saInfoToTree (ty, loc, k)
-    | saInfoToTree _ = raise Fail "impossible"
-
   (* given an offset for a parameter, return its location in scratch space *)
-  fun scratchLoc offset = let
-      val (vpReg, setVP) = hostVProc ()
-      in
-         (setVP, T.ADD(MTy.wordTy, offset, VProcOps.genVPAddrOf (Spec.ABI.scratch, vpReg)))
-      end
+  fun scratchLoc offset = T.ADD(MTy.wordTy, offset, T.REG(MTy.wordTy, Regs.argReg))
+
+  (* convert a finalized location to a MLRISC tree *) 
+  fun locToTree (ty, SA.REG (ty', r), K_GPR) = 
+      if (ty' < ty)
+         then MTy.EXP (ty, T.ZX (ty, ty', T.REG (ty', r)))           (* type conversion is necessary *)
+         else MTy.GPR (ty, r)
+    | locToTree (ty, SA.REG (ty', r), K_FPR) = MTy.FPR (ty, r)
+    (* effective address of the block offset *)
+    | locToTree (ty, SA.BLOCK_OFFSET off, _) = MTy.EXP (ty, scratchLoc (T.LI (T.I.fromInt(MTy.wordTy, off))))
+    | locToTree (ty, SA.NARROW (loc, ty', k), _) = locToTree(ty', loc, k)
 
   (* copy an argument to a parameter location *)
-  fun copyArgToParam (param, arg) = (case param
-      of MTy.GPR (ty, r) => Copy.copy {dst=[MTy.GPReg(ty, r)], src=[arg]}
-       | MTy.FPR (ty, r) => Copy.copy {dst=[MTy.FPReg(ty, r)], src=[arg]}
+  fun copyArgToParam (param, arg) = (case (param, arg)
+      of (MTy.GPR (ty, r), _) => Copy.copy {dst=[MTy.GPReg(ty, r)], src=[arg]}
+       | (MTy.FPR (ty, r), _) => Copy.copy {dst=[MTy.FPReg(ty, r)], src=[arg]}
        (* put the argument in scratch space *)
-       | MTy.EXP (ty, off) => let
-         val (setVP, offset) = scratchLoc off
-         in
-            case arg
-             of MTy.EXP (_, e) => [setVP, T.STORE (ty, offset, e, ManticoreRegion.memory)]
-	      | MTy.FEXP (_, e) => [setVP, T.FSTORE (ty, offset, e, ManticoreRegion.memory)]
-         end
-       | _ => raise Fail "impossible")				 
+       | (MTy.EXP (ty, offset), MTy.EXP (_, e)) => [T.STORE (ty, offset, e, ManticoreRegion.memory)]
+       | (MTy.EXP (ty, offset), MTy.FEXP (_, e)) => [T.FSTORE (ty, offset, e, ManticoreRegion.memory)])
 
   (* discard non-register trees *)
   fun treeToReg (MTy.GPR (ty, r), regs) = MTy.GPReg (ty, r) :: regs
@@ -208,8 +200,7 @@ functor HeapTransferFn (
 	   Copy.copy {dst=List.map (fn r => MTy.GPReg (MTy.wordTy, r)) argTmpRegs, src=List.map getDefOf args},
 	   Copy.copy {dst=params, src=List.map (fn r => MTy.GPR (MTy.wordTy, r)) argTmpRegs},
 	   (* jump to the target *)
-	   [T.JMP (target, [])]
-	   ],
+	   [T.JMP (target, [])]],
 	   liveOut=List.map (T.GPR o regTree o (fn MTy.GPReg (_, r) => r)) params}
       end
 
@@ -241,7 +232,7 @@ functor HeapTransferFn (
       (* determine the destinations of parameters (all should be in gprs) *)
       val paramSlots = List.map (fn _ => (MTy.wordTy, K_GPR, MTy.wordTy div 8)) args
       val (_, paramLocs) = paramLocations(c0, cStep, paramSlots)
-      val params = List.map saInfoToTree paramLocs
+      val params = List.map locToTree paramLocs
       val paramRegs = treesToRegs params
       val (lab, mvInstr) = genTransferTarget (defOf f)
       val {stms, liveOut} = genStdTransfer varDefTbl (lab, args, paramRegs) 
@@ -258,7 +249,7 @@ functor HeapTransferFn (
       (* determine the destinations of parameters (all should be in gprs) *)
       val paramSlots = List.map (fn _ => (MTy.wordTy, K_GPR, MTy.wordTy div 8)) args
       val (_, paramLocs) = paramLocations(c0, cStep, paramSlots)
-      val params = List.map saInfoToTree paramLocs
+      val params = List.map locToTree paramLocs
       val paramRegs = treesToRegs params
       val (labK, mvInstr) = genTransferTarget (defOf k)
       val {stms, liveOut} = genStdTransfer varDefTbl (labK, args, paramRegs)
@@ -266,8 +257,6 @@ functor HeapTransferFn (
 	  {stms=mvInstr @ stms, liveOut=liveOut}
       end 
     | genStdThrow _ _ = raise Fail "genStdThrow: ill-formed StdThrow"
-
-  val maxScratchArgs = 1024
 
   fun genApply varDefTbl {f, clos, args} = let
       val defOf = VarDef.defOf varDefTbl
@@ -278,17 +267,15 @@ functor HeapTransferFn (
       val locs = List.map (tyToLoc o Var.typeOf) args
       (* determine the destinations of parameters (all should be in gprs) *)
       val (str, paramLocs) = paramLocations(c0, cStep, locs)
-      val params = List.map saInfoToTree paramLocs
+      val params = List.map locToTree paramLocs
       val (target, mvInstr) = genTransferTarget (defOf f)
       in
-        if (getNumScratchArgs str > maxScratchArgs)
-           then raise Fail "too many arguments"
+        if (getNumScratchArgs str > 0)
+           then raise Fail "todo: allocate scratch space for extra arguments"
            else {stms=List.concat [
 		 mvInstr,
 		 List.concat (ListPair.map copyArgToParam (params, List.map getDefOf args)),
-		 (* jump to the target *)
-		 [T.JMP (target, [])]
-		 ],
+		 [T.JMP (target, [])]],
 		 liveOut=List.map MTy.gprToExp (treesToRegs params)}
       end
 
@@ -579,22 +566,19 @@ functor HeapTransferFn (
       of (MTy.GPR (ty, r), K_GPR) => Copy.fresh [MTy.GPReg(ty, r)]
        | (MTy.FPR (ty, r), K_FPR) => Copy.fresh [MTy.GPReg(ty, r)]
        (* load the parameter from scratch space *)
-       | (MTy.EXP (ty, off), K_GPR) => let
+       | (MTy.EXP (ty, offset), K_GPR) => let
 	  val tmp = newReg()
-         val (setVP, offset) = scratchLoc off
           in
-	      {stms=[setVP, T.MV (ty, tmp, T.LOAD(ty, offset, ManticoreRegion.memory))],
+	      {stms=[T.MV (ty, tmp, T.LOAD(ty, offset, ManticoreRegion.memory))],
 	       regs=[MTy.GPReg(ty, tmp)]}
           end
        (* load the parameter from scratch space *)
-       | (MTy.EXP (ty, off), K_FPR) => let
+       | (MTy.EXP (ty, offset), K_FPR) => let
 	  val tmp = newFReg()
-         val (setVP, offset) = scratchLoc off
           in
 	      {stms=[T.FMV (ty, tmp, T.FLOAD(ty, offset, ManticoreRegion.memory))],
 	       regs=[MTy.FPReg(ty, tmp)]}
-          end
-       | _ => raise Fail "impossible")				 
+          end)
 
   (* bind parameters to fresh, local registers *)
   fun bindParams {params, paramKinds} = let
@@ -623,7 +607,7 @@ functor HeapTransferFn (
       val paramSlots = List.map (fn _ => (MTy.wordTy, K_GPR, MTy.wordTy div 8)) args
       (* determine the destinations of parameters (all should be in gprs) *)
       val (_, paramLocs) = paramLocations(c0, cStep, paramSlots)
-      val params = List.map saInfoToTree paramLocs
+      val params = List.map locToTree paramLocs
       val {stms, regs} = Copy.fresh (treesToRegs params)
       in
           setEntry varDefTbl (lab, regs, args, stms)
@@ -635,7 +619,7 @@ functor HeapTransferFn (
       val paramSlots = List.map (fn _ => (MTy.wordTy, K_GPR, MTy.wordTy div 8)) args
       (* determine the destinations of parameters (all should be in gprs) *)
       val (_, paramLocs) = paramLocations(c0, cStep, paramSlots)
-      val params = List.map saInfoToTree paramLocs
+      val params = List.map locToTree paramLocs
       val {stms, regs} = Copy.fresh (treesToRegs params)
       in
           setEntry varDefTbl (lab, regs, args, stms)
@@ -647,12 +631,10 @@ functor HeapTransferFn (
       val paramSlots = List.map (tyToLoc o Var.typeOf) args
       (* determine the destinations of parameters *)
       val (str, paramLocs) = paramLocations(c0, cStep, paramSlots)
-      val params = List.map saInfoToTree paramLocs
+      val params = List.map locToTree paramLocs
       val {stms, regs} = bindParams {params=params, paramKinds=List.map #3 paramLocs}
       in
-	  if (getNumScratchArgs str > maxScratchArgs)
-             then raise Fail "too many scratch args"
-	     else setEntry varDefTbl (lab, regs, args, stms)
+	  setEntry varDefTbl (lab, regs, args, stms)
       end
     | genFuncEntry varDefTbl (lab, conv as M.Block {args}) = 
       setEntry varDefTbl (lab, List.map varToFreshReg args, args, [])

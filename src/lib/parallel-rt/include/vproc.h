@@ -58,7 +58,6 @@ struct struct_vproc {
     Mutex_t	lock;	      /*!< lock for VProc state */
     Cond_t	wait;	      /*!< for waiting when idle */
     bool	idle;	      /*!< true when the VProc is idle */
-    Value_t scratch[1024];    /*!< scratch storage for manticore programs */
 			      /* GC stats */
 #ifndef NO_GC_STATS
     int32_t	nLocalPtrs;

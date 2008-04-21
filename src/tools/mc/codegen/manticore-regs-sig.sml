@@ -11,22 +11,25 @@ signature MANTICORE_REGS = sig
     type gpr = CellsBasis.cell
     type fpr = CellsBasis.cell
 
-    val argReg : gpr		(* function argument register *)	   
-    val closReg : gpr		(* closure-pointer register *)
-    val retReg : gpr		(* return-continuation register *)
-    val exhReg : gpr		(* exception register *)
-    val spReg : gpr		(* stack-pointer register *)
-    val fpReg : gpr option	(* frame-pointer register *)
-    val apReg : gpr		(* allocation-pointer register *)
-    val limReg : gpr		(* heap limit register *)
+    val gprWidths : int list            (* legal widths for general-purpose registers *)
+    val fprWidths : int list            (* legal widths for floating-point registers *)
+
+    val argReg : gpr       		(* function argument register *)	   
+    val closReg : gpr		        (* closure-pointer register *)
+    val retReg : gpr		        (* return-continuation register *)
+    val exhReg : gpr		        (* exception register *)
+    val spReg : gpr   		        (* stack-pointer register *)
+    val fpReg : gpr option	        (* frame-pointer register *)
+    val apReg : gpr     		(* allocation-pointer register *)
+    val limReg : gpr	        	(* heap limit register *)
     val dedicatedRegs : gpr list	(* dedicated general-purpose registers *)
 					(* (this includes spReg and apReg) *)
     val dedicatedFRegs : fpr list	(* dedicated floating-point registers *) 
 
-  (* Invariants:
-   *   allRegs = dedicatedRegs + miscRegs
-   *   availRegs <= miscRegs + saveRegs
-   *)
+    (* Invariants:
+     *   allRegs = dedicatedRegs + miscRegs
+     *   availRegs <= miscRegs + saveRegs
+     *)
     val miscRegs : gpr list     (* non-dedicated general-purpose registers *)
     val saveRegs : gpr list     (* caller-save registers *)
     val availRegs : gpr list    (* registers available for allocation *)
@@ -40,4 +43,4 @@ signature MANTICORE_REGS = sig
     val availFRegs : gpr list	(* registers available for allocation *)
     val allFRegs : fpr list	(* all of the floating-point registers *)
 
-  end (* MANTICORE_REGS *)
+  end
