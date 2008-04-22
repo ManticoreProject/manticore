@@ -53,6 +53,7 @@ structure AST =
 
     and pmatch
       = PMatch of ppat list * exp
+      | Otherwise of exp
 
     and pat
       = ConPat of dcon * ty list * pat	(* data-constructor application *)

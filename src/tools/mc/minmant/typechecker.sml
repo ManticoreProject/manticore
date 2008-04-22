@@ -44,6 +44,14 @@ structure Typechecker : sig
   (* a pattern for when there is an error *)
     val bogusPat = AST.TuplePat[]
 
+  (* a utility *)
+    fun unzip3 tups = let
+      fun u ([], xs, ys, zs) = (xs, ys, zs)
+	| u ((x,y,z)::t, xs, ys, zs) = u (t, x::xs, y::ys, z::zs)
+      in
+        u (List.rev tups, [], [], [])
+      end
+   
   (* typecheck type expressions as described in Section 6.4 *)
     fun chkTy (loc, te, tve, ty) = (case ty
 	   of PT.MarkTy{span, tree} => chkTy(span, te, tve, tree)
@@ -220,6 +228,21 @@ structure Typechecker : sig
 		in
 		  (AST.CaseExp(e', matches, resTy), resTy)
 		end
+	    | PT.PCaseExp(es, pms) => let
+                val (es', tys) = let
+                  fun chk e = chkExp (loc, depth, te, ve, e)
+                  in
+                    ListPair.unzip (List.map chk es)
+		  end
+		val resTy = AST.MetaTy(MetaVar.new depth)
+		val pms' = let
+                  fun chk m = chkPMatch(loc, depth, te, ve, tys, resTy, m)
+                  in
+                    List.map chk pms
+                  end
+                in
+                  (AST.PCaseExp(es', pms', resTy), resTy)
+                end
 	    | PT.HandleExp(e, cases) => let
 		val (e', resTy) = chkExp (loc, depth, te, ve, e)
 		val matches = List.map
@@ -499,6 +522,37 @@ structure Typechecker : sig
 		end
 	  (* end case *))
 
+    and chkPMatch (loc, depth, te, ve, argTys, resTy, pmatch) = (case pmatch
+          of PT.MarkPMatch{span, tree} => chkPMatch(span, depth, te, ve, argTys, resTy, tree)
+	   | PT.PMatch (ps, e) => let
+	       fun chkPPats ([], ps', ve, argTys) = (rev ps', ve, rev argTys)
+		 | chkPPats (p::ps, ps', ve, argTys) = let
+                     val (p', ve', t') = chkPPat(loc, depth, te, ve, p)
+                     in
+                       chkPPats(ps, p'::ps', ve', t'::argTys)
+		     end
+               val (ps', ve', argTys') = chkPPats(ps, [], ve, [])
+               val (e', resTy') = chkExp(loc, depth, te, ve', e)
+               fun u (argTy, argTy') = if not(U.unify(argTy, argTy'))
+                                         then error(loc, ["type mismatch in pcase pattern"])
+                                         else ();
+               in
+		 ListPair.app u (argTys, argTys');
+                 if not(U.unify(resTy, resTy'))
+                   then error(loc, ["type mismatch in pcase"])
+                   else ();
+                 AST.PMatch (ps', e')
+               end
+	   | PT.Otherwise e => let
+               val (e', resTy') = chkExp(loc, depth, te, ve, e)
+               in
+                 if not(U.unify(resTy, resTy'))
+                   then error(loc, ["type mismatch in pcase"])
+                   else ();
+                 AST.Otherwise e'
+               end
+         (* end case *))
+
     and chkPBinds (loc, depth, te, ve, pbs) = (case pbs
 	   of [] => ([], ve)
 	    | pb::pbs => let
@@ -527,6 +581,21 @@ structure Typechecker : sig
 		end
 	(* end case *))
 
+    and chkPPat(loc, depth, te, ve, p) : (AST.ppat * Env.var_env * AST.ty) = (case p
+          of PT.MarkPPat{span, tree} => chkPPat(span, depth, te, ve, tree)
+	   | PT.NDWildPat => let
+               val ty = AST.MetaTy(MetaVar.new depth)
+               in
+                 (AST.NDWildPat ty, ve, ty)
+	       end
+	   | PT.HandlePat p => raise Fail "todo: chkPPat HandlePat" (* FIXME *)
+	   | PT.Pat p => let
+               val (p', ve', ty') = chkPat (loc, depth, te, ve, p)
+               in
+                 (AST.Pat p', ve', ty')
+               end            
+        (* end case *))
+ 
     and chkPat (loc, depth, te, ve, pat) = (case pat
 	   of PT.MarkPat{span, tree} => chkPat(span, depth, te, ve, tree)
 	    | PT.ConPat(conid, pat) => let
