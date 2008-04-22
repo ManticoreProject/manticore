@@ -44,7 +44,7 @@ PROG_EXE=$PROG_NAME-run
 
 # compiler flags
 MC="sml @SMLcmdname=mc @SMLload=../../mc"
-MCFLAGS="-Cclos.convert-style=flatWithCFA"
+MCFLAGS="-Cclos.convert-style=flatWithCFA -Ctranslate-pvals=true"
 SEQFLAGS="$MCFLAGS -Csequential=true"
 
 DATE=$( date +"%F-%H-%M-%S" )
