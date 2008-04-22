@@ -10,20 +10,6 @@
 functor AMD64GenFn (structure Spec : TARGET_SPEC) =
   struct
 
-  (* MLRISC CFG visualization *)
-    val mlriscCFGVis : bool Controls.control = Controls.genControl {
-           name = "mlriscCFGVis",
-	   pri  = [5, 0],   (* what is this? *)
-	   obscurity = 0,
-	   help = "generate dot files from the MLRISC CFG",
-	   default = false
-        }
-
-    val () = ControlRegistry.register CodegenControls.registry {
-	    ctl = Controls.stringControl ControlUtil.Cvt.bool mlriscCFGVis,
-	    envName = NONE
-	  };
-
     structure AMD64Frame = AMD64FrameFn (structure Spec = Spec)
     structure AMD64Constant = AMD64ConstantFn (structure AMD64Frame=AMD64Frame)
   
@@ -100,11 +86,10 @@ functor AMD64GenFn (structure Spec : TARGET_SPEC) =
         val pOp = PTy.INT {sz=ty, i=[AMD64GasPseudoOps.T.LI mask]}
 	val signBit = (case ty
             of 32 => signBit32
-	     | 64 => signBit64
-            (* end case *))
+	     | 64 => signBit64)
         in
 	    emitLabel (pOp, "signBit"^Int.toString ty, signBit)   
-	end (* signBit *)
+	end
 
     (* Generates a literal of ty bits with the high bit set to zero and the lower
      * bits all set to 1 and returns the label of the literal.
@@ -116,11 +101,10 @@ functor AMD64GenFn (structure Spec : TARGET_SPEC) =
         val pOp = PTy.INT {sz=ty, i=[AMD64GasPseudoOps.T.LI mask]}
 	val negateSignBit = (case ty
             of 32 => negateSignBit32
-	     | 64 => negateSignBit64
-            (* end case *))
+	     | 64 => negateSignBit64)
         in
 	    emitLabel (pOp, "negateSignBit"^Int.toString ty, negateSignBit)   
-	end (* negateSignBit *)
+	end
     end (* local *)
      
     structure AMD64MLTreeComp = AMD64Gen (
@@ -134,7 +118,6 @@ functor AMD64GenFn (structure Spec : TARGET_SPEC) =
      )
 
     structure AMD64SpillLoc = SpillLocFn (structure Frame=AMD64Frame)
-(*    structure BlockPlacement = DefaultBlockPlacement (AMD64CFG)*)
     structure BlockPlacement = WeightedBlockPlacementFn (
             structure CFG = AMD64CFG
             structure InsnProps = AMD64Props)
@@ -238,6 +221,20 @@ functor AMD64GenFn (structure Spec : TARGET_SPEC) =
                 structure CFG = AMD64CFG
 		structure GraphViewer = GraphViewer
 		structure Asm = AMD64AsmEmit)
+
+    (* MLRISC CFG visualization *)
+    val mlriscCFGVis : bool Controls.control = Controls.genControl {
+           name = "mlrisc-cfg-vis",
+	   pri  = [5, 0],   
+	   obscurity = 0,
+	   help = "generate dot files from the MLRISC CFG",
+	   default = false
+        }
+
+    val () = ControlRegistry.register CodegenControls.registry {
+	    ctl = Controls.stringControl ControlUtil.Cvt.bool mlriscCFGVis,
+	    envName = NONE
+	  };
   
     structure BackEnd : BACK_END =
       struct
@@ -300,10 +297,10 @@ functor AMD64GenFn (structure Spec : TARGET_SPEC) =
 	    structure CCall = AMD64SVID (structure T=AMD64MLTree val frameAlign = 16)
 	    structure Types = Types
 	    structure VProcOps = VProcOps )
-	val literals = literals
-      
-	  fun compileCFG (cfg as Graph.GRAPH graph) = 
-	      let val CFGGen.CFG.INFO{annotations, ...} = #graph_info graph
+	val literals = literals		      
+		       
+	fun compileCFG (cfg as Graph.GRAPH graph) = 
+	    let val CFGGen.CFG.INFO{annotations, ...} = #graph_info graph
 	      in 
 		  case (#get AMD64SpillLoc.frameAn) (!annotations)
 		   of NONE => Emit.asmEmit (cfg, #nodes graph ())

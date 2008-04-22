@@ -22,22 +22,20 @@ end = struct
 
   type cluster = CFG.func list
 
-  fun addEdges (M.FUNC {lab, exit, ...}, edgeMap) =
-      let (* add an undirected edge: lab <-> l *)
-	  fun addEdge (l, edgeMap) =
-	      (case (LM.find (edgeMap, lab), LM.find (edgeMap, l))
-		of (SOME labLs, SOME lLs) =>
-		   let val edgeMap = LM.insert (edgeMap, lab, LS.add (labLs, l))
-		   in 
-		       LM.insert (edgeMap, l, LS.add (lLs, lab))
-		   end
-		 | _ => raise Fail "addEdge"
-	      (* esac *))
-	  (* get the jump labels of a transfer *)
-	  val labs = CFGUtil.labelsOfXfer exit
+  fun addEdges (M.FUNC {lab, exit, ...}, edgeMap) = let
+      (* add an undirected edge: lab <-> l *)
+      fun addEdge (l, edgeMap) = (case (LM.find (edgeMap, lab), LM.find (edgeMap, l))
+	  of (SOME labLs, SOME lLs) => let
+              val edgeMap = LM.insert (edgeMap, lab, LS.add (labLs, l))
+	      in 
+		 LM.insert (edgeMap, l, LS.add (lLs, lab))
+	     end
+	   | _ => raise Fail "addEdge")
+      (* get the jump labels of a transfer *)
+      val labs = CFGUtil.labelsOfXfer exit
       in
 	  List.foldl addEdge edgeMap labs
-      end (* addEdges *)
+      end
 
   (* clusters takes a list of functions, and returns the clusters of those
    * functions.  The function builds clusters by first creating the undirected

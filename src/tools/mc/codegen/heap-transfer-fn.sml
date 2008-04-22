@@ -409,7 +409,7 @@ functor HeapTransferFn (
      (* restore the roots *)
       fun restore ([], i, rs) = List.rev rs
 	| restore (ty::tys, i, rs) = let
-            val r = Alloc.select {lhsTy=Types.szOf ty, mty=M.T_Tuple (false, rootTys), i=i, base=restoreLoc}
+            val r = Alloc.select {lhsTy=ty, mty=M.T_Tuple (false, rootTys), i=i, base=restoreLoc}
 	    in
 	      restore (tys, i+1, r::rs)
 	    end

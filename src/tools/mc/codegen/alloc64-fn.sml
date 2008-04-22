@@ -26,62 +26,48 @@ functor Alloc64Fn (
 
     val wordSzB = IntInf.toInt Spec.ABI.wordSzB
     val wordAlignB = IntInf.toInt Spec.ABI.wordAlignB
-    val ty = MTy.wordTy
 
-    val memory = ManticoreRegion.memory
-    val apReg = Regs.apReg
-
-    fun intLit i = T.LI (T.I.fromInt (ty, i))
-    fun regExp r = T.REG (ty, r)
-    fun move' (ty, r, e) = T.MV (ty, r, e)
-    fun move (r, e) = move' (ty, r, e)
-    fun gpReg r = MTy.GPReg (ty, r)
-    fun mltGPR r = MTy.GPR (ty, r)
-
-    val alignedTySzB = Types.alignedTySzB
+    fun wordLit i = T.LI (T.I.fromInt (MTy.wordTy, i))
 
   (* return the offset and type of the i'th element of a list of fields *)
-    fun offsetOf {tys, i} = let
+    fun tupleOffset {tys, i} = let
 	  fun offset (ty :: tys, j, sz) =
-		if (j >= i) then (sz, ty)
-		else offset (tys, j+1, alignedTySzB ty + sz)
+		if (j >= i) then sz
+		else offset (tys, j+1, Types.alignedTySzB ty + sz)
 	    | offset ([], _, _) = raise Fail(concat[
-		  "offset ", Int.toString(length tys), " of type ", CFGTyUtil.toString (M.T_Tuple (false, tys))
+		  "offset ", Int.toString(List.length tys), " of type ", CFGTyUtil.toString (M.T_Tuple (false, tys))
 		])
 	  in 
 	    offset (tys, 0, 0) 
-	  end (* offsetOf *)
-
-  (* compute the address of the ith element off of a 'base' address *)
-    fun addrOf {lhsTy : T.ty, mty : M.ty, i : int, base : T.rexp} = let
-          fun offsetOf' (M.T_Tuple(_, tys)) = offsetOf {tys=tys, i=i}
-	    | offsetOf' (M.T_OpenTuple tys) = offsetOf {tys=tys, i=i}
-	    | offsetOf' _ = raise Fail ("offsetOf': non-tuple type " ^ CFGTyUtil.toString mty)
-	  val (offset, _) = offsetOf' mty
-	  in
-	    T.ADD (ty, base, intLit offset)
 	  end
 
-  (* select the ith element off of a 'base' address *)
-    fun select {lhsTy : T.ty, mty : M.ty, i : int, base : T.rexp} = let
-          fun offsetOf' (M.T_Tuple(_, tys)) = offsetOf {tys=tys, i=i}
-	    | offsetOf' (M.T_OpenTuple tys) = offsetOf {tys=tys, i=i}
-	    | offsetOf' _ = raise Fail ("offsetOf': non-tuple type " ^ CFGTyUtil.toString mty)
-	  val (offset, lhsMTy) = offsetOf' mty
-	  val addr = T.ADD(ty, base, intLit offset)
-	  in 
-	    case MTy.cfgTyToMLRisc lhsMTy
-	     of MTy.K_FLOAT => MTy.FEXP (lhsTy, T.FLOAD (lhsTy, addr, memory))
-	      | MTy.K_INT => MTy.EXP (lhsTy, T.LOAD (lhsTy, addr, memory))
-	    (* esac *)
-	  end (* select *)
+  (* compute the address of the ith element off of a 'base' address *)
+    fun tupleAddrOf {mty : CFG.ty, i : int, base : T.rexp} = let
+	  val offset = (case mty
+            of ( CFG.T_Tuple (_, tys) |
+		 CFG.T_OpenTuple tys  ) => tupleOffset {tys=tys, i=i}
+	     | _ => raise Fail ("cannot offset from type "^CFGTyUtil.toString mty))
+	  in
+	    T.ADD (MTy.wordTy, base, wordLit offset)
+	  end
 
-  (* get the address of the ith element of the array
-   *   NOTE: for now we assume boxed array elements.
-   *)
-    fun arrayAddrOf {array : T.rexp, i : T.rexp} = 
-	T.ADD(MTy.wordTy, array, 	     
-		    T.MULU(64, T.ZX (64, 32, i), intLit(wordSzB)))
+  (* compute the address of the ith element off the base address *)
+    fun arrayAddrOf {lhsTy : CFG.ty, i : T.rexp, base : T.rexp} = 
+	T.ADD (MTy.wordTy, base, T.MULS(MTy.wordTy, wordLit (Types.alignedTySzB lhsTy), i))
+
+  (* select the ith element off of a 'base' address *)
+    fun select {lhsTy : CFG.ty, mty : CFG.ty, i : int, base : T.rexp} = let
+          val (offset, lhsTyI) = (case mty
+            of ( CFG.T_Tuple (_, tys) |
+		 CFG.T_OpenTuple tys  ) => (tupleOffset {tys=tys, i=i}, List.nth(tys, i))
+	     | _ => raise Fail ("cannot offset from type "^CFGTyUtil.toString mty))
+	  val addr = T.ADD(MTy.wordTy, base, wordLit offset)
+	  val ty = Types.szOf lhsTy
+	  in 
+	    case MTy.cfgTyToMLRisc lhsTyI
+	     of MTy.K_FLOAT => MTy.FEXP (ty, T.FLOAD (ty, addr, ManticoreRegion.memory))
+	      | MTy.K_INT => MTy.EXP (ty, T.LOAD (ty, addr, ManticoreRegion.memory))
+	  end
 
   (* returns an expression that computes the length of an array
    *   WARNING: this function uses the vector header tag to compute the length.
@@ -89,21 +75,21 @@ functor Alloc64Fn (
    *)
     fun arrayLength (array) =
 	T.SRL (32, 
-	       T.LOAD (32, T.SUB(MTy.wordTy, array, intLit wordSzB), memory), 
-	       intLit(3))
+	       T.LOAD (32, T.SUB(MTy.wordTy, array, wordLit wordSzB), ManticoreRegion.memory), 
+	       wordLit(3))
 
   (* return true if the type may be represented by a pointer into the heap *)
-    fun isHeapPointer M.T_Any = true
-      | isHeapPointer (M.T_Tuple _) = true
-      | isHeapPointer (M.T_OpenTuple _) = true
+    fun isHeapPointer CFG.T_Any = true
+      | isHeapPointer (CFG.T_Tuple _) = true
+      | isHeapPointer (CFG.T_OpenTuple _) = true
       | isHeapPointer _ = false
 
     fun setBit (w, i, ty) = if (isHeapPointer ty) then W.orb (w, W.<< (0w1, i)) else w
 
     fun initObj offAp ((ty, mltree), {i, stms, totalSize, ptrMask}) = let
-	val store = MTy.store (offAp totalSize, mltree, memory)
+	val store = MTy.store (offAp totalSize, mltree, ManticoreRegion.memory)
 	val ptrMask' = setBit (ptrMask, Word.fromInt i, ty)
-	val totalSize' = alignedTySzB ty + totalSize
+	val totalSize' = Types.alignedTySzB ty + totalSize
         in
 	   {i=i+1, stms=store :: stms, totalSize=totalSize', ptrMask=ptrMask'}
         end (* initObj *)
@@ -156,51 +142,51 @@ functor Alloc64Fn (
     (* allocate arguments in the local heap *)
     fun genAlloc [] = 
         (* an empty allocation generates a nil pointer *)
-	{ ptr=MTy.EXP (ty, intLit 1), stms=[] }
+	{ ptr=MTy.EXP (MTy.wordTy, wordLit 1), stms=[] }
       | genAlloc args = let
-	  fun offAp i = T.ADD (ty, regExp apReg, intLit i)
+	  fun offAp i = T.ADD (MTy.wordTy, T.REG(MTy.wordTy, Regs.apReg), wordLit i)
 	  val (totalSize, hdrWord, stms) = alloc offAp args
 	(* store the header word *)
-	  val stms = MTy.store (offAp (~wordSzB), MTy.EXP (ty, T.LI hdrWord), memory) :: stms
+	  val stms = MTy.store (offAp (~wordSzB), MTy.EXP (MTy.wordTy, T.LI hdrWord), ManticoreRegion.memory) :: stms
 	(* ptrReg points to the first data word of the object *)
 	  val ptrReg = Cells.newReg ()
 	(* copy the original allocation pointer into ptrReg *)
-	  val ptrMv = move (ptrReg, regExp apReg)
+	  val ptrMv = T.MV (MTy.wordTy, ptrReg, T.REG(MTy.wordTy, Regs.apReg))
 	(* bump up the allocation pointer *)
-	  val bumpAp = move (apReg, offAp (totalSize+wordSzB))
+	  val bumpAp = T.MV (MTy.wordTy, Regs.apReg, offAp (totalSize+wordSzB))
 	  in
-	    { ptr=mltGPR ptrReg, stms=ptrMv :: rev (bumpAp :: stms) }
+	    { ptr=MTy.GPR (MTy.wordTy, ptrReg), stms=ptrMv :: rev (bumpAp :: stms) }
 	  end (* genAlloc *)
 
     (* allocate arguments in the global heap *)
     fun genGlobalAlloc [] = 
         (* an empty allocation generates a nil pointer *)
-	{ ptr=MTy.EXP (ty, intLit 1), stms=[] }
+	{ ptr=MTy.EXP (MTy.wordTy, wordLit 1), stms=[] }
       | genGlobalAlloc args = let
 	val (vpReg, setVP) = let
 	    val r = Cells.newReg()
 	    val MTy.EXP(_, hostVP) = VProcOps.genHostVP
             in
-	       (T.REG(ty, r), T.MV(ty, r, hostVP))
+	       (T.REG(MTy.wordTy, r), T.MV(MTy.wordTy, r, hostVP))
             end
 	val (globalApReg, globalAp, setGAp, globalApAddr) = let
 	    val r = Cells.newReg()
 	    val MTy.EXP(_, gap) = MTy.EXP (64, VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.globNextW, vpReg))
             in
-	       (r, T.REG(ty, r), T.MV(ty, r, gap), gap)
+	       (r, T.REG(MTy.wordTy, r), T.MV(MTy.wordTy, r, gap), gap)
             end
-        fun offAp i = T.ADD (ty, globalAp, intLit i)
+        fun offAp i = T.ADD (MTy.wordTy, globalAp, wordLit i)
 	val (totalSize, hdrWord, stms) = alloc offAp args
 	(* store the header word *)
-	  val stms = MTy.store (offAp (~wordSzB), MTy.EXP (ty, T.LI hdrWord), memory) 
+	  val stms = MTy.store (offAp (~wordSzB), MTy.EXP (MTy.wordTy, T.LI hdrWord), ManticoreRegion.memory) 
 		:: stms
 
 	(* bump up the allocation pointer *)
 	  val bumpAp = VProcOps.genVPStore' (MTy.wordTy, Spec.ABI.globNextW, vpReg, 
-			T.ADD (64, globalApAddr, intLit (totalSize+wordSzB)))
+			T.ADD (64, globalApAddr, wordLit (totalSize+wordSzB)))
 	in
-	    { ptr=mltGPR globalApReg, stms=setVP :: setGAp :: rev (bumpAp :: stms) }
-	end (* genGlobalAlloc *)
+	    { ptr=MTy.GPR (MTy.wordTy, globalApReg), stms=setVP :: setGAp :: rev (bumpAp :: stms) }
+	end
 
     val heapSlopSzB = Word.- (Word.<< (0w1, 0w12), 0w512)
 
@@ -214,11 +200,11 @@ functor Alloc64Fn (
    *)
   fun genAllocCheck szB =
       if Word.<= (szB, heapSlopSzB)
-      then T.CMP (ty, T.Basis.LE, 
-		  T.SUB (ty, T.REG (ty, Regs.limReg), T.REG (ty, Regs.apReg)),
+      then T.CMP (MTy.wordTy, T.Basis.LE, 
+		  T.SUB (MTy.wordTy, T.REG (MTy.wordTy, Regs.limReg), T.REG (MTy.wordTy, Regs.apReg)),
 		  T.LI 0)
-      else T.CMP (ty, T.Basis.LE, 
-		  T.SUB (ty, T.REG (ty, Regs.limReg), T.REG (ty, Regs.apReg)),
+      else T.CMP (MTy.wordTy, T.Basis.LE, 
+		  T.SUB (MTy.wordTy, T.REG (MTy.wordTy, Regs.limReg), T.REG (MTy.wordTy, Regs.apReg)),
 		  T.LI (Word.toLargeInt szB))
 
   (* This expression checks that there are at least szB bytes available in the
@@ -234,14 +220,14 @@ functor Alloc64Fn (
 	    val r = Cells.newReg()
 	    val MTy.EXP(_, hostVP) = VProcOps.genHostVP
             in
-	       (T.REG(ty, r), T.MV(ty, r, hostVP))
+	       (T.REG(MTy.wordTy, r), T.MV(MTy.wordTy, r, hostVP))
             end
       val globalAP = VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.globNextW, vpReg)
       val globalLP = VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.globLimit, vpReg)
       in
           {stms=[ setVP ],
-	   allocCheck=T.CMP (ty, T.Basis.LE,
-			     T.SUB (ty, globalLP, globalAP),
+	   allocCheck=T.CMP (MTy.wordTy, T.Basis.LE,
+			     T.SUB (MTy.wordTy, globalLP, globalAP),
 			     T.LI (Word.toLargeInt szB))}
       end
 

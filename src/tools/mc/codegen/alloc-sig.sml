@@ -11,14 +11,14 @@ signature ALLOC =
     
     structure MTy : MLRISC_TYPES
 
-  (* select the ith element off of a 'base' address *)
-    val select : {lhsTy : MTy.T.ty, mty : CFG.ty, i : int, base : MTy.T.rexp} -> MTy.mlrisc_tree
+  (* select the ith element off the base address *)
+    val select : {lhsTy : CFG.ty, mty : CFG.ty, i : int, base : MTy.T.rexp} -> MTy.mlrisc_tree
 
-  (* compute the address of the ith element off of a 'base' address *)
-    val addrOf : {lhsTy : MTy.T.ty, mty : CFG.ty, i : int, base : MTy.T.rexp} -> MTy.T.rexp
+  (* compute the address of the ith element off the base address *)
+    val tupleAddrOf : {mty : CFG.ty, i : int, base : MTy.T.rexp} -> MTy.T.rexp
 
-  (* subscript the ith element from the array *)
-    val arrayAddrOf : {i : MTy.T.rexp, array : MTy.T.rexp} -> MTy.T.rexp
+  (* compute the address of the ith element off the base address *)
+    val arrayAddrOf : {lhsTy : CFG.ty, i : MTy.T.rexp, base : MTy.T.rexp} -> MTy.T.rexp
 
   (* returns an expression that computes the length of an array *)
     val arrayLength : MTy.T.rexp -> MTy.T.rexp

@@ -94,10 +94,15 @@ functor PrimTyFn (Ty : sig
 	    | P.F64ToI32 _ => i32Ty
 	    | P.I32FetchAndAdd _ => i32Ty
 	    | P.I64FetchAndAdd _ => i64Ty
-	    | P.ArraySub (_, x) => Ty.V.typeOf x
-	    | P.ArrayUpdate _ => bTy
-	    | P.ArrayLength _ => i32Ty
 	    | P.CAS(_, x, _) => Ty.V.typeOf x
+	    | P.ArrayLoadI64 _ => i64Ty
+	    | P.ArrayLoadI32 _ => i32Ty
+	    | P.ArrayLoadF64 _ => f64Ty
+	    | P.ArrayLoadF32 _ => f32Ty
+	    | P.ArrayStoreI64 _ => i32Ty
+	    | P.ArrayStoreI32 _ => i32Ty
+	    | P.ArrayStoreF64 _ => i32Ty
+	    | P.ArrayStoreF32 _ => i32Ty
 	    | P.BCAS _ => bTy
 	    | P.TAS _ => bTy
 	  (* end case *))

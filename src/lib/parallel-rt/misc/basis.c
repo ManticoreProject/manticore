@@ -220,7 +220,7 @@ void M_PrintLong (int64_t n)
  */
 void M_PrintInt (int32_t n)
 {
-    Say("%d\n", n);
+    Say("%d\t", n);
 }
 
 void M_PrintFloat (float f)

@@ -77,10 +77,16 @@ structure Prim =
       | I64ToF32 of 'var		(* long -> float conversion *)
       | I64ToF64 of 'var		(* long -> double conversion *)
       | F64ToI32 of 'var                (* double -> int conversion *)
-    (* array operations *)
-      | ArraySub of 'var * 'var
-      | ArrayUpdate of 'var * 'var * 'var
-      | ArrayLength of 'var
+    (* array load operations *)
+      | ArrayLoadI64 of 'var * 'var
+      | ArrayLoadI32 of 'var * 'var
+      | ArrayLoadF64 of 'var * 'var
+      | ArrayLoadF32 of 'var * 'var
+    (* array store operations *)
+      | ArrayStoreI64 of 'var * 'var * 'var
+      | ArrayStoreI32 of 'var * 'var * 'var
+      | ArrayStoreF64 of 'var * 'var * 'var
+      | ArrayStoreF32 of 'var * 'var * 'var
     (* atomic operations *)
       | I32FetchAndAdd of 'var * 'var
       | I64FetchAndAdd of 'var * 'var

@@ -143,21 +143,64 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		    | P.I64ToF32 x => fbind (f32ty, v, T.CVTI2F(f32ty, i64ty, defOf x))
 		    | P.I64ToF64 x => fbind (f64ty, v, T.CVTI2F(f64ty, i64ty, defOf x))
 		    | P.F64ToI32 x => gprBind (i32ty, v, T.CVTF2I(i32ty, T.Basis.TO_NEAREST, f64ty, fdefOf x))
-                  (* array operations *)
-                    | P.ArraySub (array, i) => let
-		      val addr = BE.Alloc.arrayAddrOf{array=defOf(array), i=defOf(i)}
+		  (* array load operations *)
+		    | P.ArrayLoadI64 (base, i) => let
+		      val ty = Var.typeOf v
+                      val addr = BE.Alloc.arrayAddrOf{lhsTy=ty, i=defOf i, base=defOf base}
                       in
-		         gprBind(anyTy, v, T.LOAD(anyTy, addr, ManticoreRegion.memory))
+		         gprBind(BE.Types.szOf ty, v, T.LOAD(BE.Types.szOf ty, addr, ManticoreRegion.memory))
                       end
-                    | P.ArrayUpdate (array, i, x) => let
-		      val addr = BE.Alloc.arrayAddrOf{array=defOf(array), i=defOf(i)}
+		    | P.ArrayLoadI32 (base, i) => let
+		      val ty = Var.typeOf v
+                      val addr = BE.Alloc.arrayAddrOf{lhsTy=ty, i=defOf i, base=defOf base}
                       in
-			 BE.VarDef.flushLoads varDefTbl
-			 @ [T.STORE(anyTy, addr, defOf x, ManticoreRegion.memory)]
-			 @ gprBind(i32ty, v, T.LI BE.Spec.trueRep)
+		         gprBind(BE.Types.szOf ty, v, T.LOAD(BE.Types.szOf ty, addr, ManticoreRegion.memory))
                       end
-                    | P.ArrayLength array => 
-		      gprBind(i32ty, v, BE.Alloc.arrayLength(defOf(array)))
+		    | P.ArrayLoadF64 (base, i) => let
+		      val ty = Var.typeOf v
+                      val addr = BE.Alloc.arrayAddrOf{lhsTy=ty, i=defOf i, base=defOf base}
+                      in
+		         fbind(BE.Types.szOf ty, v, T.FLOAD(BE.Types.szOf ty, addr, ManticoreRegion.memory))
+                      end
+		    | P.ArrayLoadF32 (base, i) => let
+		      val ty = Var.typeOf v
+                      val addr = BE.Alloc.arrayAddrOf{lhsTy=ty, i=defOf i, base=defOf base}
+                      in
+		         fbind(BE.Types.szOf ty, v, T.FLOAD(BE.Types.szOf ty, addr, ManticoreRegion.memory))
+                      end
+		  (* array store operations *)
+		    | P.ArrayStoreI64 (base, i, x) => let
+	              val ty = Var.typeOf x
+		      val addr = BE.Alloc.arrayAddrOf{lhsTy=ty, i=defOf i, base=defOf base}
+                      in
+			  BE.VarDef.flushLoads varDefTbl @
+			  [T.STORE(BE.Types.szOf ty, addr, defOf x, ManticoreRegion.memory)] @
+			  gprBind(i32ty, v, T.LI BE.Spec.trueRep)
+                      end
+		    | P.ArrayStoreI32 (base, i, x) => let
+	              val ty = Var.typeOf x
+		      val addr = BE.Alloc.arrayAddrOf{lhsTy=ty, i=defOf i, base=defOf base}
+                      in
+			  BE.VarDef.flushLoads varDefTbl @
+			  [T.STORE(BE.Types.szOf ty, addr, defOf x, ManticoreRegion.memory)] @
+			  gprBind(i32ty, v, T.LI BE.Spec.trueRep)
+                      end
+		    | P.ArrayStoreF64 (base, i, x) => let
+	              val ty = Var.typeOf x
+		      val addr = BE.Alloc.arrayAddrOf{lhsTy=ty, i=defOf i, base=defOf base}
+                      in
+			  BE.VarDef.flushLoads varDefTbl @
+			  [T.FSTORE(BE.Types.szOf ty, addr, fdefOf x, ManticoreRegion.memory)] @
+			  gprBind(i32ty, v, T.LI BE.Spec.trueRep)
+                      end
+		    | P.ArrayStoreF32 (base, i, x) => let
+	              val ty = Var.typeOf x
+		      val addr = BE.Alloc.arrayAddrOf{lhsTy=ty, i=defOf i, base=defOf base}
+                      in
+			  BE.VarDef.flushLoads varDefTbl @
+			  [T.FSTORE(BE.Types.szOf ty, addr, fdefOf x, ManticoreRegion.memory)] @
+			  gprBind(i32ty, v, T.LI BE.Spec.trueRep)
+                      end
 		  (* atomic operations *)
 		    | P.I32FetchAndAdd(addr, x) => let
 			val (r, stms) = BE.AtomicOps.genFetchAndAdd32 {
@@ -217,7 +260,6 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 			  PrimUtil.fmt CFG.Var.toString p, ")"
 			])
 *)
-		  (* esac *)
 		end (* gen *)
 	  in
 	    {gen=gen}
