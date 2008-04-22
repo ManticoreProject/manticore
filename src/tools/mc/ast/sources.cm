@@ -1,19 +1,72 @@
 (* sources.cm
  *
- * COPYRIGHT (c) 2006 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * COPYRIGHT (c) 2008 John Reppy (http://www.cs.uchicago.edu/~jhr)
  * All rights reserved.
+ *
+ * Manticore frontend.
  *)
 
 Library
 
   structure AST
+  structure ASTUtil
+  structure DataCon
+  structure Exn
+  structure Literal
   structure PrintAST
+  structure PrintTypes
+  structure TyCon
+  structure Types
+  structure TypeUtil
+  structure TypeOf
+  structure TyVar
+  structure Var
+  structure Stamp
+  structure VarRep
+
+  structure Basis
+  structure BasisNames
+  structure BasisUtils
+
+(*
+  structure FrontEnd
+*)
 
 is
 
   $/basis.cm
   $/smlnj-lib.cm
+  $/pp-lib.cm
+  $/controls-lib.cm
+
   ../common/sources.cm
 
+  parser.cm
+
   ast.sml
+  ast-util.sml
+  data-con.sml
+  env.sml
+  exn.sml
+  meta-var.sml
+  mant-controls.sml
+  overload.sml
   print-ast.sml
+  print-types.sml
+  typechecker.sml
+  ty-con.sml
+  ty-var.sml
+  types.sml
+  type-class.sml
+  type-of.sml
+  type-util.sml
+  unify.sml
+  var.sml
+
+  basis.sml
+  basis-utils.sml
+
+
+(*
+  front-end.sml
+*)

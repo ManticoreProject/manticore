@@ -7,8 +7,12 @@
 structure AST =
   struct
 
-  (* source file information *)
-    type info = unit (* FIXME *)
+    datatype ty_scheme = datatype Types.ty_scheme
+    datatype ty = datatype Types.ty
+    datatype tyvar = datatype Types.tyvar
+    datatype dcon = datatype Types.dcon
+
+    type info = unit   (* source file information *)
 
     type label = Atom.atom
 
@@ -16,10 +20,47 @@ structure AST =
 
     datatype sig_vis = OPAQUE | TRANSLUCENT
 
-    datatype top_dec
-      = TD_Module of (info * mod_name * module_type option * module)
-      | TD_Exn of exn_def
-      | TD_Dec of dec
+    type sig_name = Stamp.stamp
+
+    datatype comp_unit
+      = CU_MODULE of {		(* module definition *)
+	  module : module_ref,
+	  def : module_exp,
+	  preds : module_ref list (* the external modules that this module references *)
+	}
+      | CU_FUNCTOR of {		(* parameterized module definition *)
+	  module : module_ref,	  (* formal parameters are in module_ref *)
+	  def : module_exp
+	}
+      | CU_SIGNATURE of {	(* placeholder for a signature; the useful information is *)
+				(* represented as an environment. *)
+	  name : Atom.atom,
+	  id : Stamp.stamp
+	}
+
+    and module_exp
+      = MEXP_BODY of top_dec list
+      | MEXP_NAME of module_ref
+
+    and top_dec
+      = TD_Module of (info * module_ref * module_type option * module)
+      | TD_DCon of dcon
+      | TD_Binding of binding
+
+    and module_ref = MOD of {                        (* reference to a module *)
+          name : Atom.atom,
+	  id : Stamp.stamp,                          (* unique id *)
+	  formals : module_ref list option,          (* formal parameters to a functor *)
+	  binding : module_bind_site ref
+        }
+ 
+    and module_bind_site  	    (* describes where a module name is defined (or bound) *)
+      = MB_Import of {		    (* externally defined module *)
+	    lib : Stamp.stamp	    (* the stamp of the library containing the module *)
+	  }
+      | MB_Nest of module_ref 	    (* nested module; module ref is parent *)
+      | MB_Bind of comp_unit	    (* module bound in the current file *)
+      | MB_Formal		    (* formal parameter to functor *)
 
     and module_type
       = OPAQUE of info * sign
@@ -30,61 +71,85 @@ structure AST =
       | SIG_Body of info * spec list
 
     and spec
-      = S_Module of (info * mod_name * module_type)
-      | S_Exn of exn_name
+      = S_Module of (info * module_ref * module_type)
+      | S_Dcon of dcon
       | S_Val of var
 
     and module
-      = M_Id of info * mod_name
+      = M_Id of info * module_ref
       | M_Body of info * top_dec list
 
-    and exn_def
-      = EX_Alias of (info * exn_name * exn_name)
-      | EX_Exn of (info * exn_name)
-
     and exp
-      = E_Lit of (info * Literal.literal)
-      | E_Var of (info * var)
-      | E_Con of (info * datacon)
-      | E_Record of (info * exp field list)
-      | E_Let of (info * dec list * exp)
-      | E_App of (info * exp * exp)
-      | E_TyApp of (info * exp * ty list)
-      | E_Handle of (info * exp * match)
-      | E_Case of (info * exp * match)
-      | E_Fn of (info * match)
-    (* parallel forms *)
-      | E_PArray of (info * exp list)
-      | E_PComp of (info * exp * pbind list * exp option)
-      | E_Spawn of (info * exp)
+      = LetExp of (binding * exp)
+      | IfExp of (exp * exp * exp * ty)			(* ty is result type *)
+      | CaseExp of (exp * match list * ty)		(* ty is result type *)
+      | PCaseExp of (exp list * pmatch list * ty)       (* ty is result type *)
+      | HandleExp of (exp * match list * ty)		(* ty is result type *)
+      | RaiseExp of (exp * ty)				(* ty is result type *)
+      | FunExp of (var * exp * ty)			(* ty is result type *)
+      | ApplyExp of exp * exp * ty			(* ty is result type *)
+      | VarArityOpExp of var_arity_op * int * ty        (* ty is operator type *)                 
+      | TupleExp of exp list
+      | RangeExp of (exp * exp * exp option * ty)	(* ty is element type *)
+      | PTupleExp of exp list
+      | PArrayExp of exp list * ty			(* ty is element type *)
+      | PCompExp of (exp * (pat * exp) list * exp option)
+      | PChoiceExp of (exp list * ty)			(* ty is result type *)
+      | SpawnExp of exp
+      | ConstExp of const
+      | VarExp of (var * ty list)
+      | SeqExp of (exp * exp)
+      | OverloadExp of overload_var ref
 
-    and dec
-      = D_Val of (info * pat * exp)
-      | D_Rec of (info * (var * exp) list)
+    and binding
+      = ValBind of pat * exp
+      | PValBind of pat * exp
+      | FunBind of lambda list
 
-    and pbind
-      = PBind of (info * pat * exp)
+    and lambda = FB of (var * var * exp)
+
+    and var_arity_op 
+      = MapP
 
     and match
-      = Case of info * rule list
+      = PatMatch of pat * exp
+      | CondMatch of pat * exp * exp		(* conditional match; not used yet *)
 
-    and rule
-      = Rule of (info * pat * exp option * exp)
+    and pmatch
+      = PMatch of ppat list * exp
+      | Otherwise of exp
 
     and pat
-      = P_Wild of info
-      | P_Lit of info * literal
-      | P_Var of info * var
-      | P_Con of info * datacon * ty list * pat list
-      | P_Record of info * pat field list
-      | P_As of info * var * pat
+      = ConPat of dcon * ty list * pat	(* data-constructor application *)
+      | TuplePat of pat list
+      | VarPat of var
+      | WildPat of ty
+      | ConstPat of const
 
-    and ty
-      = T_Var of info * ty_var
-      | T_Record of (info * ty field list)
-      | T_TyCon of (info * ty list * tycon)
-      | T_Fun of (info * ty * ty)
+    and ppat
+      = NDWildPat of ty
+      | HandlePat of pat
+      | Pat of pat 
 
-    withtype var = (var_binding, ty) VarRep.var_rep
+    and const
+      = DConst of dcon * ty list
+      | LConst of (Literal.literal * ty)
+
+    and overload_var
+      = Unknown of (ty * var list)
+      | Instance of var
+
+    and var_kind
+      = VK_None
+      | VK_Pat			(* bound in a pattern *)
+      | VK_Fun			(* bound to a function *)
+      | VK_Prim			(* builtin function or operator *)
+
+    withtype var = (var_kind, ty_scheme ref) VarRep.var_rep
+
+    fun varKindToString VK_None = "None"
+      | varKindToString VK_Pat = "Pat"
+      | varKindToString VK_Fun = "Fun"
+      | varKindToString VK_Prim = "Prim"
 
   end
