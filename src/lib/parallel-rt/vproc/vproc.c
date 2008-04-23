@@ -95,6 +95,9 @@ void VProcInit (Options_t *opts)
 	Die ("unable to create VProcInfoKey");
     }
 
+/* FIXME: we should allocate and initialize the vproc objects in the pthreads so
+ * that we get the right memory affinity on NUMA machines.
+ */
     /* allocate memory and initialize locks and condition variables for all vprocs.
      */
     for (int i = 0;  i < NumVProcs;  i++) {
@@ -580,15 +583,6 @@ static Value_t Dequeue2 (VProc_t *self)
 	return M_NIL;
 
 } /* end of Dequeue2 */
-
-/*! \brief returns a unique fiber id
- *
- * FIXME: this function should not be in the runtime!
- */
-int FreshFiberId ()
-{
-    return FetchAndInc (&FiberIdCounter);
-}
 
 int GetNumVProcs ()
 {

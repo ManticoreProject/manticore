@@ -22,10 +22,10 @@ struct struct_vproc {
     Value_t	actionStk;	/*!< the top of the signal-action stack */
     Value_t     schedCont;      /*!< continuation that invokes the current scheduler */
     Value_t	rdyQHd;		/*!< the head of the primary ready queue */
-    Value_t	rdyQTl;		/*!< the head of the primary ready queue */
-    Value_t     entryQ;         /*!< the head of the entry queue for the vproc */
+    Value_t	rdyQTl;		/*!< the tail of the primary ready queue */
+    Value_t     entryQ;         /*!< the head of the entry queue (stack) for the vproc */
     Value_t	secondaryQHd;	/*!< the head of the secondary ready queue */
-    Value_t	secondaryQTl;	/*!< the head of the secondary ready queue */
+    Value_t	secondaryQTl;	/*!< the tail of the secondary ready queue */
 			      /* VProc registers */
     Value_t	stdArg;		/*!< holds value of standard argument reg. */
     Value_t	stdEnvPtr;	/*!< holds value of standard environment-pointer reg. */
