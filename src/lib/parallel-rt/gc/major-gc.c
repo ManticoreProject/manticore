@@ -8,7 +8,7 @@
  * case where the amount of free space falls below some threshold.  
  *
  * TODO:
- *	check for global GC.  How?
+ *	update ToSpaceSize
  */
 
 #include "manticore-rt.h"
@@ -172,6 +172,9 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 
     LogEvent0 (vp, MajorGCEndEvt);
 
+/* FIXME: there are additional roots in the vproc that we need to consider (e.g.,
+ * the entryq.
+ */
     if (vp->globalGCPending || (ToSpaceSz >= ToSpaceLimit))
 	StartGlobalGC (vp, roots);
 
