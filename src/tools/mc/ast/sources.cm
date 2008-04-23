@@ -28,6 +28,8 @@ Library
   structure BasisNames
   structure BasisUtils
 
+  structure Typechecker
+
 (*
   structure FrontEnd
 *)

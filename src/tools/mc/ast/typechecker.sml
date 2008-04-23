@@ -126,15 +126,6 @@ structure Typechecker : sig
 		    else ();
 		  (AST.PValBind(pat', e'), ve')
 		end
-	    | PT.DValVDecl(pat, e) => let
-		val (pat', ve', lhsTy) = chkPat(loc, depth, te, ve, pat)
-		val (e', rhsTy) = chkExp (loc, depth, te, ve, e)
-		in
-		  if not(U.unify(lhsTy, rhsTy))
-		    then error (loc, ["type mismatch in pval binding"])
-		    else ();
-		  (AST.DValBind(pat', e'), ve')
-		end
 	    | PT.FunVDecl fbs => let
 		val depth' = depth+1
 	      (* create variable bindings for the functions *)
@@ -581,7 +572,7 @@ structure Typechecker : sig
 		end
 	(* end case *))
 
-    and chkPPat(loc, depth, te, ve, p) : (AST.ppat * Env.var_env * AST.ty) = (case p
+    and chkPPat (loc, depth, te, ve, p) : (AST.ppat * Env.var_env * AST.ty) = (case p
           of PT.MarkPPat{span, tree} => chkPPat(span, depth, te, ve, tree)
 	   | PT.NDWildPat => let
                val ty = AST.MetaTy(MetaVar.new depth)
@@ -769,7 +760,7 @@ structure Typechecker : sig
 (* FIXME: what should the type of a program be? *)
 	  in
 	    Overload.resolve ();
-	    AST.Module{exns = Exn.listExceptions (), body = body}
+	    raise Fail ""
 	  end
 
     val check = BasicControl.mkTracePassSimple {passName = "check", pass = check}

@@ -203,9 +203,6 @@ ValueDecl
 		=> (mark PT.MarkVDecl (KW_val_SPAN, PT.ValVDecl(Pat, Exp)))
 	| "pval" Pat "=" Exp
 		=> (mark PT.MarkVDecl (KW_pval_SPAN, PT.PValVDecl(Pat, Exp)))
-(* the following is temporary *)
-	| "dval" Pat "=" Exp
-		=> (mark PT.MarkVDecl (KW_dval_SPAN, PT.DValVDecl(Pat, Exp)))
 	| "fun" FunDef ("and" FunDef)*
 		=> (mark PT.MarkVDecl (KW_fun_SPAN, PT.FunVDecl(FunDef :: SR)))
 	;

@@ -16,13 +16,46 @@ structure ParseTree =
     type conid = Atom.atom
     type vid = Atom.atom
     type opid = Atom.atom	(* operator IDs; e.g., "=", "<=", "<", "::", ... *)
+    type modid = Atom.atom      (* module identifiers *)
+    type sigid = Atom.atom      (* signature identifiers *)
 
   (* a term marked with a source-map span *)
     type 'a mark = {span : Error.span, tree : 'a}
 
+  (* qualified names *)
+    type 'a path = (Atom.atom list * 'a) mark
+
+    datatype comp_unit
+      = MarkCU of comp_unit mark
+      | SignatureCU of (sigid * sign)
+      | ModuleCU of (modid * sign option * module)
+      | ParamModuleCU of (modid * (modid * sign) list * sign option * module)
+
+    and sign
+      = MarkSig of sign mark
+      | NameSig of (sigid * decl list)
+      | ExpSig of spec list
+    
+  (* signature specifications *)
+    and spec
+      = MarkSpec of spec mark
+      | IncludeSpec of sign
+      | ModuleSpec of (modid * sign)
+      | TypeSpec of decl
+      | ConstSpec of (conid * tyvar list)
+      | ValSpec of (vid * tyvar list)
+
+  (* module expressions *)
+    and module
+      = MarkMod of module mark
+      | DeclsMod of decl list
+      | NameMod of modid path
+      | ApplyMod of (modid * module list)
+
   (* top-level declarations *)
-    datatype decl
+    and decl
       = MarkDecl of decl mark
+      | ModuleDecl of (modid * sign option * module)
       | TyDecl of (tyvar list * tyid * ty)
       | DataDecl of (tyvar list * tyid * con_decl list)
       | ExnDecl of (conid * ty option)
@@ -39,7 +72,6 @@ structure ParseTree =
       = MarkVDecl of val_decl mark
       | ValVDecl of pat * exp
       | PValVDecl of pat * exp
-      | DValVDecl of pat * exp	(* temporaray *)
       | FunVDecl of funct list
 
   (* function definitions *)
@@ -50,7 +82,7 @@ structure ParseTree =
   (* types *)
     and ty
       = MarkTy of ty mark
-      | NamedTy of (ty list * tyid)
+      | NamedTy of (ty list * tyid path)
       | VarTy of tyvar
       | TupleTy of ty list
       | FunTy of (ty * ty)
@@ -78,7 +110,7 @@ structure ParseTree =
       | PCompExp of (exp * pbind list * exp option)
       | SpawnExp of exp
       | SeqExp of exp list		(* sequence of two or more expressions *)
-      | IdExp of vid			(* either variable or nullary constant *)
+      | IdExp of vid path		(* either variable or nullary constant *)
       | ConstraintExp of exp * ty	(* type constraint *)
 
   (* pattern matching rules *)
@@ -97,12 +129,12 @@ structure ParseTree =
 
     and pat
       = MarkPat of pat mark
-      | BinaryPat of pat * conid * pat	(* infix pattern *)
-      | ConPat of conid * pat
+      | BinaryPat of pat * conid path * pat	(* infix pattern *)
+      | ConPat of conid path * pat
       | TuplePat of pat list
       | ConstPat of const
       | WildPat
-      | IdPat of vid			(* either variable or nullary constant *)
+      | IdPat of vid path		(* either variable or nullary constant *)
       | ConstraintPat of pat * ty	(* type constraint *)
 
     and ppat (* parallel patterns, for use in pcase *)
