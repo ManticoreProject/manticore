@@ -1,0 +1,62 @@
+(* mlb.grm
+ *
+ * COPYRIGHT (c) 2008 John Reppy (http://www.cs.uchicago.edu/~jhr)
+ * All rights reserved.
+ *
+ *)
+
+%name MLB;
+
+%tokens
+    : KW_and		("and")
+    | KW_bas            ("bas")
+    | KW_basis          ("basis")
+    | KW_in             ("in")
+    | KW_let            ("let")
+    | KW_end            ("end")
+    | KW_open           ("open")
+    | KW_local          ("local")
+    | KW_signature      ("signature")
+    | KW_functor        ("functor")
+    | KW_structure      ("structure")
+    | EQ             ("=")
+    | SEMI           (";")
+    | NAME of Atom.atom
+    | STRING of string
+    ;
+
+%defs (
+  structure PT = ParseTree
+
+(* apply a mark constructor to a span and a tree *)
+  fun mark cons (span : AntlrStreamPos.span, tr) = cons{span = span, tree = tr}
+
+  val markBasDec = mark PT.MarkBasDec
+
+);
+
+BasExp
+        : "bas" BasDec "end" => (mark PT.MarkBasExp (FULL_SPAN, PT.DecBasExp BasDec))
+        | NAME => (mark PT.MarkBasExp (FULL_SPAN, PT.IdBasExp NAME))
+        | "let" BasDec "in" BasExp "end" => (mark PT.MarkBasExp (FULL_SPAN, PT.LocalDeclBasExp(BasDec, BasExp)))
+        ;
+
+BasDec
+        : "basis" BasBind => (markBasDec(FULL_SPAN, PT.BasisBasDec BasBind))
+        | "local" BasDec "in" BasDec "end" => (markBasDec(FULL_SPAN, PT.LocalBasDec (BasDec1, BasDec2)))
+(*        | "open" BasDec* => markBasDec(FULL_SPAN, PT.OpenBasDec SR)*)
+        | "structure" ModBind => (markBasDec(FULL_SPAN, PT.StructureBasDec ModBind))
+        | "signature" ModBind => (markBasDec(FULL_SPAN, PT.SignatureBasDec ModBind))
+        | "functor" ModBind => (markBasDec(FULL_SPAN, PT.FunctorBasDec ModBind))
+(* FIXME: add this sequencing operator *)
+(*        | BasDec (";" BasDec)* => markBasDec(FULL_SPAN, PT.SeqBasDec (BasDec :: SR))*)
+        | STRING => (markBasDec(FULL_SPAN, PT.ImportBasDec STRING))
+        ;
+
+BasBind
+        : NAME "=" BasExp ("and" NAME "=" BasExp)* => (mark PT.MarkBasBind (FULL_SPAN, PT.BindBasBind ((NAME, BasExp) :: SR)))
+        ;
+
+ModBind
+        : NAME "=" NAME ("and" NAME "=" NAME)* => (mark PT.MarkModBind (FULL_SPAN, PT.BindModBind ((NAME1, NAME2) :: SR)))
+        ;

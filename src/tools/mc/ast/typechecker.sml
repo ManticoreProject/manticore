@@ -689,6 +689,7 @@ structure Typechecker : sig
 	    chk (tvs, Env.empty, [])
 	  end
 
+  (* create an environment *)
     fun freshEnv outerEnv = Env.freshEnv(Basis.te0, Basis.ve0, outerEnv)
 
     fun chkTopDcl loc (ptDecl, (env, astDecls)) = (case ptDecl
