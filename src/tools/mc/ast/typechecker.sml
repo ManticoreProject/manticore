@@ -747,7 +747,13 @@ structure Typechecker : sig
 		in
 		  (env, AST.TD_Binding bind :: astDecls)
 		end
-	    | PT.ModuleDecl (id, sign, PT.DeclsMod decls) => let
+	    | PT.ModuleDecl (id, sign, module) => chkModule loc (id, sign, module, (env, astDecls))
+	    | PT.LocalDecl(localDcls, dcls) => raise Fail "LocalDecl"
+	  (* end case *))
+
+    and chkModule loc (id, sign, module, (env, astDecls)) = (case module
+        of PT.MarkMod {span, tree} => chkModule span (id, sign, tree, (env, astDecls))
+	 | PT.DeclsMod decls => let
 		val (modEnv, modAstDecls) = chkTopDcls(loc, decls, freshEnv(SOME env))
 		val modRef = AST.MOD {name=id, id=Stamp.new(), formals=NONE}
 		val module = AST.M_Body((), modAstDecls)
@@ -755,9 +761,8 @@ structure Typechecker : sig
 		  (Env.insertModEnv(env, id, modEnv), 
 		   AST.TD_Module((), modRef, NONE, module) :: astDecls)
 	        end
-	    | PT.ModuleDecl (id, sign, PT.NamedMod mid) => raise Fail "NamedMod"
-	    | PT.LocalDecl(localDcls, dcls) => raise Fail "LocalDecl"
-	  (* end case *))
+	 | _ => raise Fail "todo"
+       (* end case *))
 
     and chkTopDcls (loc, ptDecls, env) = let
         val (env', astDecls) = List.foldl (chkTopDcl loc) (env, []) ptDecls

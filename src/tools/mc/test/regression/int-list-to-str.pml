@@ -26,4 +26,4 @@ fun f i = i;
 
 val ls = tabulate (f, 0, 700);
 
-print (intListToString ls^"\n")
+fun main _ = print (intListToString ls^"\n")

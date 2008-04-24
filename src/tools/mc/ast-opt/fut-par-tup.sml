@@ -20,7 +20,7 @@
 
 structure FutParTup : sig
 
-    val futurize : AST.module -> AST.module
+    val futurize : AST.exp -> AST.exp
 
   end = struct
 
@@ -122,6 +122,6 @@ structure FutParTup : sig
 	  end
 
   (* futurize : A.module -> A.module *)
-    fun futurize (AST.Module{exns, body}) = AST.Module{exns=exns, body=transform body}
+    fun futurize body = transform body
 
   end

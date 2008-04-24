@@ -12,7 +12,7 @@
 
 structure GrandPass : sig
 
-    val transform : AST.module -> AST.module
+    val transform : AST.exp -> AST.exp
 
   end = struct
 
@@ -54,7 +54,6 @@ structure GrandPass : sig
 
     and binding (A.ValBind (p, e)) = A.ValBind (p, trExp e)
       | binding (A.PValBind (p, e)) = A.PValBind (p, trExp e)
-      | binding (A.DValBind (p, e)) = A.DValBind (p, trExp e)
       | binding (A.FunBind lams) = A.FunBind (map lambda lams)
 
     and lambda (A.FB (f, x, e)) = A.FB (f, x, trExp e)
@@ -66,11 +65,7 @@ structure GrandPass : sig
 
     and trPComp arg = TranslatePComp.tr trExp arg
 
-  (* transform : A.module -> A.module *)
-    fun transform (A.Module {exns, body}) = let
-      val body' = trExp body
-      in
-        A.Module {exns = exns, body = body'}
-      end
+  (* transform : A.exp -> A.exp *)
+    fun transform body = trExp body
 
   end

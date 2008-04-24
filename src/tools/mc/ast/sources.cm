@@ -23,6 +23,8 @@ Library
   structure Var
   structure Stamp
   structure VarRep
+  structure ChkCompUnit
+  structure UnseenBasis
 
   structure Basis
   structure BasisNames
@@ -62,7 +64,9 @@ is
   unify.sml
   var.sml
   path.sml
+  chk-compunit.sml
 
+  unseen-basis.sml
   basis.sml
   basis-utils.sml
 

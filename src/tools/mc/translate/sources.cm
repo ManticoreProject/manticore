@@ -19,7 +19,7 @@ is
 
   ../common/sources.cm
   ../prim/sources.cm
-  ../minmant/sources.cm
+  ../ast/sources.cm
   ../bom/sources.cm
   ../hlop/sources.cm
   ../ast-opt/sources.cm

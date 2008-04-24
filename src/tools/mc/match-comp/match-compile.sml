@@ -9,7 +9,7 @@
 structure MatchCompile : sig
 
   (* expand bindings and pattern matches to simplified form *)
-    val compile : Error.err_stream * AST.module -> AST.module
+    val compile : Error.err_stream * AST.exp -> AST.exp
 
   end = struct
 
@@ -27,7 +27,7 @@ structure MatchCompile : sig
 	  then let
 	    val outStrm = TextIO.openOut outFile
 	    in
-	      PrintAST.output (outStrm, ast);
+	      PrintAST.outputExp (outStrm, ast);
 	      TextIO.closeOut outStrm
 	    end
 	  else ()
@@ -334,8 +334,6 @@ structure MatchCompile : sig
 		      end
 	      | AST.LetExp(AST.PValBind _, e) => (* should have been compiled away *)
 		  raise Fail "unexpected PValBind"
-	      | AST.LetExp(AST.DValBind _, e) => (* should have been compiled away *)
-		  raise Fail "unexpected DValBind"
 	      | AST.LetExp(AST.FunBind fbs, e) => let
 		  fun rewriteFB (AST.FB(f, x, e)) = AST.FB(f, x, rewrite' e)
 		  in
@@ -545,17 +543,16 @@ structure MatchCompile : sig
 	    { shared = shared, match = treeToAST (flattenTree tree) }
 	  end
 
-    fun compile (errStrm, module as AST.Module{exns, body}) = let
+    fun compile (errStrm, body : AST.exp) = let
 	  val base = (case Controls.get BasicControl.keepPassBaseName
 		 of NONE => "match-comp"
 		  | SOME fname => fname ^ ".match-comp"
 		(* end case *))
-	  val _ = dumpAST (base ^ ".pre.ast", module)
-	  val exp = rewrite ((0, 0), Env.new errStrm, body)
-	  val module' = AST.Module{exns = exns, body = exp}
+	  val _ = dumpAST (base ^ ".pre.ast", body)
+	  val body = rewrite ((0, 0), Env.new errStrm, body)
 	  in
-	    dumpAST (base ^ ".post.ast", module');
-	    module'
+	    dumpAST (base ^ ".post.ast", body);
+	    body
 	  end
 
   end

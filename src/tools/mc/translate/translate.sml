@@ -6,7 +6,7 @@
 
 structure Translate : sig
 
-    val translate : AST.module -> BOM.module
+    val translate : AST.exp -> BOM.module
 
   end = struct
 
@@ -519,7 +519,7 @@ structure Translate : sig
 	      B.mkLet([], B.mkHLOp(startupOp, [], [E.handlerOf env]), exp)
 	    end
 
-    fun translate (AST.Module{exns, body}) = let
+    fun translate body = let
 	  val env0 = StdEnv.env ()
           val argTy = BTy.T_Raw RawTypes.T_Int
           val arg = BV.new("_arg", argTy)
@@ -559,7 +559,7 @@ structure Translate : sig
 	  end
 
     val translate = BasicControl.mkKeepPass {
-	    preOutput = PrintAST.output,
+	    preOutput = PrintAST.outputExp,
 	    preExt = "ast",
 	    postOutput = PrintBOM.output,
 	    postExt = "bom",

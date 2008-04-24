@@ -18,4 +18,4 @@ val _ = cmp lte;
 val _ = cmp gt;
 val _ = cmp gte;
 
-()
+fun main _ = ()

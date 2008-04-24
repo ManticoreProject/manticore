@@ -7,6 +7,7 @@
 structure PrintAST : sig
 
     val output       : TextIO.outstream * AST.comp_unit -> unit
+    val outputExp    : TextIO.outstream * AST.exp -> unit
     val print        : AST.comp_unit -> unit
     val printExp     : AST.exp -> unit
     val printComment : string -> unit
@@ -404,6 +405,15 @@ structure PrintAST : sig
 	*)
 
     fun compUnit (decls) = raise Fail "todo"
+
+    fun outputExp (outS : TextIO.outstream, e) = let
+          val oldStr = !str
+	  in
+	    str := S.openOut {dst = outS, wid = 80};
+            exp e;
+	    S.closeStream (!str);
+            str := oldStr
+	  end
 
   (* output : TextIO.outstream * A.module -> unit *)
     fun output (outS : TextIO.outstream, c) = let

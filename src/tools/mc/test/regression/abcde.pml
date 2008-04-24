@@ -9,4 +9,4 @@ and c x = d x
 and d x = e x
 and e x = d x;
 
-a 13
+fun main _ = a 13

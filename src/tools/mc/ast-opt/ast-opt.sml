@@ -9,7 +9,7 @@
 
 structure ASTOpt : sig
 
-    val optimize : AST.module -> AST.module
+    val optimize : AST.exp -> AST.exp
 
   end = struct
 
@@ -23,12 +23,10 @@ structure ASTOpt : sig
 	  }
 
   (* replace parallel tuples with futures and touches *)
-    val ptuples : AST.module -> AST.module = 
+(*    val ptuples : AST.module -> AST.module = 
 	  transform {passName = "ptuples", pass = FutParTup.futurize}
-
-    val dvals : AST.module -> AST.module =
-	transform {passName="dvals", pass=LTCDVal.transform}
-
+*)
+(*
     val pvals : AST.module -> AST.module =
 	transform {passName="pvals", pass=FutParLet.futurize}
 
@@ -43,25 +41,27 @@ structure ASTOpt : sig
     val _ = ControlRegistry.register BasicControl.topRegistry {
       ctl = Controls.stringControl ControlUtil.Cvt.bool translatePVals,
       envName = NONE}
+*)
 
-    fun optimize (module : AST.module) : AST.module = let
-	  val module = if (Controls.get BasicControl.sequential)
-		          then Unpar.unpar module
+    fun optimize (exp : AST.exp) : AST.exp = let
+	  val exp = if (Controls.get BasicControl.sequential)
+		          then Unpar.unpar exp
 		          else let
-		            val module = dvals(module)
-			    val module = if (Controls.get translatePVals)
-					 then pvals(module)
-					 else module
-			    val module = GrandPass.transform module
+(* FIXME: re-enable pvals *)
+(*			    val exp = if (Controls.get translatePVals)
+					 then pvals(exp)
+					 else exp
+*)
+			    val exp = GrandPass.transform exp
 			    in
-				module
+				exp
 			    end
           in
-            module
+            exp
           end
 
     val optimize = BasicControl.mkKeepPassSimple {
-	    output = PrintAST.output,
+	    output = PrintAST.outputExp,
 	    ext = "ast",
 	    passName = "ast-optimize",
 	    pass = optimize,

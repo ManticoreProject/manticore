@@ -43,8 +43,8 @@ CM_FILES =		bom-opt/sources.cm \
 			cps/sources.cm \
 			driver/sources.cm \
 			$(ROOT_CM) \
-			minmant/parser.cm \
-			minmant/sources.cm \
+			ast/parser.cm \
+			ast/sources.cm \
 			prim/sources.cm \
 			test-bom/bom-parse.cm \
 			translate/sources.cm

@@ -15,4 +15,4 @@ fun p2s p = (case p
     of PT (x,y) => ftos x^" "^ftos y^"\n"
     (* end case *));
 
-print (p2s (add (PT (1.0, 1.0), PT (2.0, 3.234))))
+fun main _ = print (p2s (add (PT (1.0, 1.0), PT (2.0, 3.234))))

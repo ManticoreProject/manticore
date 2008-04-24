@@ -12,4 +12,4 @@ fun lightcolor l = (case l
 
 fun v2s (x,y,z) = ftos x^" "^ftos y^" "^ftos z;
 
-print (v2s (lightcolor (Point ((0.0,0.0,0.0), (2.3,4.3,1.1)))))
+fun main () = print (v2s (lightcolor (Point ((0.0,0.0,0.0), (2.3,4.3,1.1)))))

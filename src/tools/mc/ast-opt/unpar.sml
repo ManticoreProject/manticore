@@ -9,12 +9,12 @@
 structure Unpar : sig
 
    (* translate parallel tuples into tuples *)
-    val unparTup : AST.module -> AST.module
+    val unparTup : AST.exp -> AST.exp
 
     val unparTupInExp : AST.exp -> AST.exp
 
    (* translate parallel expressions into their sequential counterparts *)
-    val unpar    : AST.module -> AST.module
+    val unpar    : AST.exp -> AST.exp
 
   end = struct
 
@@ -59,11 +59,6 @@ structure Unpar : sig
 		if (what = ALL)
 		   then A.ValBind (p, exp e)
 		   else A.PValBind (p, exp e)
-	      | binding (A.DValBind (p, e)) = 
-		(* eliminate dvals *)
-		if (what = ALL)
-		   then A.ValBind (p, exp e)
-		   else A.DValBind (p, exp e)
 	      | binding (A.FunBind lams) = A.FunBind (map lambda lams)
 					   
 	    and lambda (A.FB (f, x, e)) = A.FB (f, x, exp e)
@@ -76,8 +71,8 @@ structure Unpar : sig
 
     fun unparTupInExp e = unparExp PTUP e
 
-    fun unparTup (A.Module {exns, body}) = A.Module {exns = exns, body = unparExp PTUP body} 
+    fun unparTup body = unparExp PTUP body
 
-    fun unpar (A.Module {exns, body}) = A.Module {exns = exns, body = unparExp ALL body} 
+    fun unpar body = unparExp ALL body
 
   end

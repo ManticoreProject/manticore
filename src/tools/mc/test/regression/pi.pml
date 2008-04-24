@@ -17,4 +17,4 @@ fun pi n = let
 
 val iterations = 1000;
 
-print ("pi approximation: "^ftos (pi iterations)^" for "^itos iterations^" iterations \n")
+fun main _ = print ("pi approximation: "^ftos (pi iterations)^" for "^itos iterations^" iterations \n")

@@ -146,7 +146,7 @@ Program
 	;
 
 Module
-        : "struct" Decl* "end" => (mark PT.MarkMod (FULL_SPAN, PT.DeclsMod Decl))
+        : "struct" (Decl ";"?)* "end" => (mark PT.MarkMod (FULL_SPAN, PT.DeclsMod SR))
         | QualifiedId => (mark PT.MarkMod (FULL_SPAN, PT.NamedMod QualifiedId))
         ; 
 

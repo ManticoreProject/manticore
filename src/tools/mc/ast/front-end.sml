@@ -8,14 +8,14 @@
 
 structure FrontEnd : sig
 
-    val load : (Error.err_stream * string) -> (Env.module_env * AST.comp_unit) option
+    val load : (Error.err_stream * string) -> AST.exp option
 
   end = struct
 
   (* parse and typecheck a file *)
     fun load (errStrm, file) = (
 	  case Parser.parseFile (errStrm, file)
-	   of SOME pt => SOME(Typechecker.check (errStrm, pt))
+	   of SOME pt => SOME(ChkCompUnit.check (errStrm, pt))
 	    | NONE => NONE
 	  (* end case *))
 

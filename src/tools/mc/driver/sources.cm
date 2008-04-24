@@ -31,7 +31,8 @@ is
   ../cps-opt/sources.cm
   ../cps/sources.cm
   ../match-comp/sources.cm
-  ../minmant/sources.cm
+(*  ../minmant/sources.cm*)
+  ../ast/sources.cm
   ../prim/sources.cm
   ../test-bom/bom-parse.cm
   ../translate/sources.cm
