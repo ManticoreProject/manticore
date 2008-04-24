@@ -19,18 +19,38 @@ structure Path : sig
       | ERROR
 	(* error in checking the path *)
 
-    val checkValId : (Env.env * Atom.atom ParseTree.path) -> Env.module_env result
+  (* check that the path exists and if so return the module environment of the path *)
+    val checkModPath : (Env.module_env * Atom.atom ParseTree.path) -> Env.module_env result
+
+    val findTy : (Env.module_env * Atom.atom ParseTree.path) -> Env.ty_def option
+    val findVar : (Env.module_env * Atom.atom ParseTree.path) -> Env.val_bind option
+
+    val toString : (('a -> string) * 'a ParseTree.path) -> string
+
+    (* returns unqualified names *)
+    val unqualId : 'a ParseTree.path -> 'a option
+
+    val pathId : 'a ParseTree.path -> 'a
 
   end = struct
 
-    datatype result
+    datatype 'a result
       = UNQUAL of Atom.atom
-      | QUAL of (UnitEnv.env * Atom.atom)
+      | QUAL of ('a * Atom.atom)
       | ERROR
 
-    fun check (env, {tree=([], x), span}) = UNQUAL x
-      | check (env, {tree=(path, x), span}) = let
+    fun unqualId ({tree=([], id), span}) = SOME id
+      | unqualId _ = NONE
+
+    fun pathId ({tree=(_, id), span}) = id
+
+    fun toString (ts, {tree=(path, x), span}) = 
+	String.concatWith "." (List.map Atom.toString path @ [ts x])
+
+    fun checkModPath (env, {tree=([], x), span}) = UNQUAL x
+      | checkModPath (env, {tree=(path, x), span}) = let
         fun find (_, []) = ERROR
+	  (* we have reached the last qualified name in the path *)
 	  | find (env, [id]) = (case Env.findModEnv (env, id)
             of NONE => ERROR
 	     | SOME env => QUAL (env, x))
@@ -40,5 +60,15 @@ structure Path : sig
 	in
             find (env, path)
         end
+
+    fun findTy (env, path) = (case checkModPath (env, path)
+        of UNQUAL x => Env.findTyEnv(env, x)
+	 | QUAL (env', x) => Env.findTyEnv(env', x)
+	 | ERROR => NONE)
+
+    fun findVar (env, path) = (case checkModPath (env, path)
+        of UNQUAL x => Env.findVarEnv(env, x)
+	 | QUAL (env', x) => Env.findVarEnv(env', x)
+	 | ERROR => NONE)
 
   end

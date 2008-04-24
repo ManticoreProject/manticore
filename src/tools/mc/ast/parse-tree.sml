@@ -25,13 +25,8 @@ structure ParseTree =
   (* qualified names *)
     type 'a path = (Atom.atom list * 'a) mark
 
-    datatype comp_unit
-      = MarkCU of comp_unit mark
-      | SignatureCU of (sigid * sign)
-      | ModuleCU of (modid * sign option * module)
-      | ParamModuleCU of (modid * (modid * sign) list * sign option * module)
-
-    and sign
+   (* signature expressions *)
+    datatype sign
       = MarkSig of sign mark
       | NameSig of (sigid * decl list)
       | ExpSig of spec list
@@ -49,7 +44,7 @@ structure ParseTree =
     and module
       = MarkMod of module mark
       | DeclsMod of decl list
-      | NameMod of modid path
+      | NamedMod of modid path
       | ApplyMod of (modid * module list)
 
   (* top-level declarations *)
@@ -134,7 +129,7 @@ structure ParseTree =
       | TuplePat of pat list
       | ConstPat of const
       | WildPat
-      | IdPat of vid path		(* either variable or nullary constant *)
+      | IdPat of vid    		(* either variable or nullary constant *)
       | ConstraintPat of pat * ty	(* type constraint *)
 
     and ppat (* parallel patterns, for use in pcase *)
@@ -149,6 +144,6 @@ structure ParseTree =
       | FltLit of FloatLit.float
       | StrLit of string
 
-    type program = (decl list * exp) mark
+    type program = decl list mark
 
   end

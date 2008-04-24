@@ -403,7 +403,7 @@ structure PrintAST : sig
 	  closeBox ())
 	*)
 
-    fun compUnit (A.CU_MODULE {module, def, preds}) = raise Fail "todo"
+    fun compUnit (decls) = raise Fail "todo"
 
   (* output : TextIO.outstream * A.module -> unit *)
     fun output (outS : TextIO.outstream, c) = let

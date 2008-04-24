@@ -26,7 +26,8 @@ structure Env =
     datatype module_env = ModEnv of {           (* environment for modules *)
 	       tyEnv : ty_env,
 	       varEnv : var_env,
-	       modEnv : module_env AtomMap.map
+	       modEnv : module_env AtomMap.map,
+	       outerEnv : module_env option     (* environment of the enclosing module *)
 	     }
 
     val empty = AtomMap.empty
@@ -35,12 +36,37 @@ structure Env =
     val inDomain = AtomMap.inDomain
     fun fromList l = List.foldl AtomMap.insert' AtomMap.empty l
 
-    fun findTyEnv (ModEnv {tyEnv, ...}, tv) = find (tyEnv, tv)
-    fun findVarEnv (ModEnv {varEnv, ...}, v) = find (varEnv, v)
-    fun findModEnv (ModEnv {modEnv, ...}, m) = find (modEnv, m)
+    (* lookup a variable in the scope of the current module *)
+    fun findInEnv (ModEnv (fields as {outerEnv, ...}), select, x) = (case find(select fields, x)
+        of NONE => 
+	   (* x is not bound in this module, so check the enclosing module *)
+	   (case outerEnv
+	     of NONE => NONE
+	      | SOME env => findInEnv(env, select, x))
+	 (* found a value *)
+	 | SOME v => SOME v)	      
 
-    fun insertTyEnv (ModEnv {tyEnv, ...}, tv, x) = insert (tyEnv, tv, x)
-    fun insertVarEnv (ModEnv {varEnv, ...}, v, x) = insert (varEnv, v, x)
-    fun insertModEnv (ModEnv {modEnv, ...}, v, x) = insert (modEnv, v, x)
+    fun findTyEnv (env, tv) = findInEnv (env, #tyEnv, tv)
+    fun findVarEnv (env, v) = findInEnv (env, #varEnv, v)
+    fun findModEnv (env, v) = findInEnv (env, #modEnv, v)
+
+    fun insertTyEnv (ModEnv {tyEnv, varEnv, modEnv, outerEnv}, tv, x) = 
+	ModEnv{tyEnv=insert (tyEnv, tv, x), varEnv=varEnv, modEnv=modEnv, outerEnv=outerEnv}
+    fun insertVarEnv (ModEnv {varEnv, tyEnv, modEnv, outerEnv}, v, x) = 
+	ModEnv{tyEnv=tyEnv, varEnv=insert (varEnv, v, x), modEnv=modEnv, outerEnv=outerEnv}
+    fun insertModEnv (ModEnv {modEnv, tyEnv, varEnv, outerEnv}, v, x) = 
+	ModEnv{tyEnv=tyEnv, varEnv=varEnv, modEnv=insert (modEnv, v, x), outerEnv=outerEnv}
+
+    val inDomainTyEnv = Option.isSome o findTyEnv
+    val inDomainVarEnv = Option.isSome o findVarEnv
+
+    fun union (ModEnv{varEnv=ve1, tyEnv=te1, modEnv=me1, outerEnv=oe1},  
+	       ModEnv{varEnv=ve2, tyEnv=te2, modEnv=me2, outerEnv=oe2}) = 
+	ModEnv{modEnv=AtomMap.unionWith #1 (me1, me2), 
+	       tyEnv=AtomMap.unionWith #1 (te1, te2), 
+	       outerEnv=oe1,
+	       varEnv=AtomMap.unionWith #1 (ve1, ve2)}
+
+    fun freshEnv (tyEnv, varEnv, outerEnv) = ModEnv{tyEnv=tyEnv, varEnv=varEnv, modEnv=empty, outerEnv=outerEnv}
 
   end

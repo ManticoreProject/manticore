@@ -39,6 +39,8 @@
     | KW_type		("type")
     | KW_val		("val")
     | KW_where		("where")
+    | KW_struct         ("struct")
+    | KW_structure      ("structure")
     | LP		("(")
     | RP		(")")
     | LB		("[")
@@ -72,6 +74,7 @@
     | NDWILD            ("?")
     | PCHOICE		("|?|")
     | AMP               ("&")
+    | DOT               (".")
     | TYVAR of Atom.atom
     | NAME of Atom.atom
     | INT of IntInf.int
@@ -138,13 +141,16 @@
 );
 
 Program
-	: Exp
-		=> ({span=FULL_SPAN, tree=([], Exp)})
-	| TopDecl (";"? TopDecl)* ";" Exp
-		=> ({span=FULL_SPAN, tree=(TopDecl::SR, Exp)})
+	: Decl (";"? Decl)*
+		=> ({span=FULL_SPAN, tree=Decl::SR})
 	;
 
-TopDecl
+Module
+        : "struct" Decl* "end" => (mark PT.MarkMod (FULL_SPAN, PT.DeclsMod Decl))
+        | QualifiedId => (mark PT.MarkMod (FULL_SPAN, PT.NamedMod QualifiedId))
+        ; 
+
+Decl
 	: "type" TyParams NAME "=" Type
 		=> (markDecl (KW_type_SPAN, PT.TyDecl(TyParams, NAME, Type)))
 	| "datatype" TyParams NAME "=" ConsDecl ("|" ConsDecl)*
@@ -153,8 +159,10 @@ TopDecl
 		=> (mark PT.MarkDecl (FULL_SPAN, PT.ExnDecl(NAME, SR)))
 	| ValueDecl
 		=> (markDecl (ValueDecl_SPAN, PT.ValueDecl ValueDecl))
-	| "local" (TopDecl ";"?)* "in" (TopDecl ";"?)* "end"
+	| "local" (Decl ";"?)* "in" (Decl ";"?)* "end"
 		=> (markDecl (FULL_SPAN, PT.LocalDecl(SR1, SR2)))
+(* no signatures for now *)
+        | "structure" NAME "=" Module => (markDecl (FULL_SPAN, PT.ModuleDecl(NAME, NONE, Module)))
 	;
 
 TyParams
@@ -176,21 +184,21 @@ TupleType
 	;
 
 TyApp
-	: NAME (NAME => (NAME_SPAN, NAME))*
-		=> (mkTyApp (markTy(NAME_SPAN, PT.NamedTy([], NAME)), SR))
-	| TYVAR (NAME => (NAME_SPAN, NAME))*
+	: QualifiedId (QualifiedId => (FULL_SPAN, QualifiedId))*
+		=> (mkTyApp (markTy(FULL_SPAN, PT.NamedTy([], QualifiedId)), SR))
+	| TYVAR (QualifiedId => (FULL_SPAN, QualifiedId))*
 		=> (mkTyApp (markTy(TYVAR_SPAN, PT.VarTy TYVAR), SR))
 	| "(" Type optTypes			=> (markTy (FULL_SPAN, optTypes Type))
 	;
 
 optTypes
-	: ")" NAME?
-		=> (case NAME
+	: ")" QualifiedId?
+		=> (case QualifiedId
 		     of SOME id => (fn ty => PT.NamedTy([ty], id))
 		      | _ => (fn ty => ty)
 		    (* end case *))
-	| ( "," Type)+ ")" NAME
-		=> (fn ty => PT.NamedTy(ty::SR, NAME))
+	| ( "," Type)+ ")" QualifiedId
+		=> (fn ty => PT.NamedTy(ty::SR, QualifiedId))
 	;
 
 ConsDecl
@@ -317,11 +325,15 @@ MExp
 
 ApplyExp
 	: AtomicExp AtomicExp*	=> (markExp (FULL_SPAN, mkApply(AtomicExp1, AtomicExp2)))
-	| "~" AtomicExp		=> (markExp (FULL_SPAN, PT.ApplyExp(PT.IdExp Op.uMinus, AtomicExp)))
+	| "~" AtomicExp		=> (markExp (FULL_SPAN, PT.ApplyExp(PT.IdExp {span=FULL_SPAN, tree=([], Op.uMinus)}, AtomicExp)))
 	;
 
+QualifiedId
+        : (NAME ".")* NAME => ({span=FULL_SPAN, tree=(SR, NAME)})
+        ;
+
 AtomicExp
-	: NAME			=> (markExp (FULL_SPAN, PT.IdExp NAME))
+	: QualifiedId		=> (markExp (FULL_SPAN, PT.IdExp QualifiedId))
 	| INT			=> (markExp (FULL_SPAN, PT.ConstExp(PT.IntLit INT)))
 	| FLOAT			=> (markExp (FULL_SPAN, PT.ConstExp(PT.FltLit FLOAT)))
 	| STRING		=> (markExp (FULL_SPAN, PT.ConstExp(PT.StrLit STRING)))
@@ -375,13 +387,13 @@ Pat
 	;
 
 InfixPat
-	: ApplyPat ("::" ApplyPat => (FULL_SPAN, Op.listCons, ApplyPat))*
+	: ApplyPat ("::" ApplyPat => (FULL_SPAN, {span=FULL_SPAN, tree=([], Op.listCons)}, ApplyPat))*
 		=> (markPat (FULL_SPAN, mkRBinPat (ApplyPat, SR)))
 	;
 
 ApplyPat
 	: AtomicPat		=> (AtomicPat)
-	| NAME AtomicPat	=> (markPat (FULL_SPAN, PT.ConPat(NAME, AtomicPat)))
+	| QualifiedId AtomicPat	=> (markPat (FULL_SPAN, PT.ConPat(QualifiedId, AtomicPat)))
 	;
 
 AtomicPat

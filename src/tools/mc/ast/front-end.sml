@@ -8,7 +8,7 @@
 
 structure FrontEnd : sig
 
-    val load : (Error.err_stream * string) -> AST.module option
+    val load : (Error.err_stream * string) -> (Env.module_env * AST.comp_unit) option
 
   end = struct
 

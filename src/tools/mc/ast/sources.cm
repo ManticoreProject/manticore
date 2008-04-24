@@ -29,10 +29,7 @@ Library
   structure BasisUtils
 
   structure Typechecker
-
-(*
   structure FrontEnd
-*)
 
 is
 
@@ -64,11 +61,9 @@ is
   type-util.sml
   unify.sml
   var.sml
+  path.sml
 
   basis.sml
   basis-utils.sml
 
-
-(*
   front-end.sml
-*)

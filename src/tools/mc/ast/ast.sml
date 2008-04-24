@@ -22,23 +22,7 @@ structure AST =
 
     type sig_name = Stamp.stamp
 
-    datatype comp_unit
-      = CU_MODULE of {		(* module definition *)
-	  module : module_ref,
-	  def : module_exp,
-	  preds : module_ref list (* the external modules that this module references *)
-	}
-      | CU_FUNCTOR of {		(* parameterized module definition *)
-	  module : module_ref,	  (* formal parameters are in module_ref *)
-	  def : module_exp
-	}
-      | CU_SIGNATURE of {	(* placeholder for a signature; the useful information is *)
-				(* represented as an environment. *)
-	  name : Atom.atom,
-	  id : Stamp.stamp
-	}
-
-    and module_exp
+    datatype module_exp
       = MEXP_BODY of top_dec list
       | MEXP_NAME of module_ref
 
@@ -50,18 +34,9 @@ structure AST =
     and module_ref = MOD of {                        (* reference to a module *)
           name : Atom.atom,
 	  id : Stamp.stamp,                          (* unique id *)
-	  formals : module_ref list option,          (* formal parameters to a functor *)
-	  binding : module_bind_site ref
+	  formals : module_ref list option          (* formal parameters to a functor *)
         }
  
-    and module_bind_site  	    (* describes where a module name is defined (or bound) *)
-      = MB_Import of {		    (* externally defined module *)
-	    lib : Stamp.stamp	    (* the stamp of the library containing the module *)
-	  }
-      | MB_Nest of module_ref 	    (* nested module; module ref is parent *)
-      | MB_Bind of comp_unit	    (* module bound in the current file *)
-      | MB_Formal		    (* formal parameter to functor *)
-
     and module_type
       = OPAQUE of info * sign
       | TRANSLUCENT of info * sign
@@ -146,6 +121,8 @@ structure AST =
       | VK_Prim			(* builtin function or operator *)
 
     withtype var = (var_kind, ty_scheme ref) VarRep.var_rep
+
+    type comp_unit = top_dec list
 
     fun varKindToString VK_None = "None"
       | varKindToString VK_Pat = "Pat"

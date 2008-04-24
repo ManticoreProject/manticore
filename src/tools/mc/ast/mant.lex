@@ -94,7 +94,9 @@
 		("to",          T.KW_to),
 		("type",	T.KW_type),
 		("val",		T.KW_val),
-		("where",       T.KW_where)
+		("where",       T.KW_where),
+		("struct",      T.KW_struct),
+		("structure",   T.KW_structure)
 	      ];
 	      AtomTable.find tbl
 	  end
@@ -155,6 +157,7 @@
 <INITIAL> "?"   => (T.NDWILD);
 <INITIAL> "|?|" => (T.PCHOICE);
 <INITIAL> "&"   => (T.AMP);
+<INITIAL> "."   => (T.DOT);
 <INITIAL> {id}	=> (idToken yytext);
 <INITIAL> {tyvarid}	=> (T.TYVAR(Atom.atom yytext));
 <INITIAL> "~"?{num}	=> (T.INT(valOf (IntInf.fromString yytext)));
