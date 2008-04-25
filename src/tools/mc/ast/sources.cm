@@ -12,7 +12,6 @@ Library
   structure ASTUtil
   structure DataCon
   structure Exn
-  structure Literal
   structure PrintAST
   structure PrintTypes
   structure TyCon
@@ -21,19 +20,7 @@ Library
   structure TypeOf
   structure TyVar
   structure Var
-  structure Stamp
   structure VarRep
-  structure ChkCompUnit
-  structure UnseenBasis
-  structure Env
-  structure ParseTree
-
-  structure Basis
-  structure BasisNames
-  structure BasisUtils
-
-  structure Typechecker
-  structure FrontEnd
 
 is
 
@@ -44,32 +31,18 @@ is
 
   ../common/sources.cm
 
-  parser.cm
-
   ast.sml
   ast-util.sml
   data-con.sml
-  env.sml
   exn.sml
   meta-var.sml
   mant-controls.sml
-  overload.sml
   print-ast.sml
   print-types.sml
-  typechecker.sml
   ty-con.sml
   ty-var.sml
   types.sml
   type-class.sml
   type-of.sml
   type-util.sml
-  unify.sml
   var.sml
-  path.sml
-  chk-compunit.sml
-
-  unseen-basis.sml
-  basis.sml
-  basis-utils.sml
-
-  front-end.sml
