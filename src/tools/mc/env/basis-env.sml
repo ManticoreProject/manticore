@@ -12,12 +12,11 @@ structure BasisEnv : sig
     val te0 : Env.ty_env
     val ve0 : Env.var_env
 
+(* FIXME: this operation shouldn't be exported, but the typechecker deals with
+ * it in an ad hoc manner (unlike the other overloaded operators).
+ *)
   (* overloaded unary operators *)
     val neg : (Types.ty_scheme * AST.var list)
-
-  (* equality operations *)
-    val eq		: AST.var
-    val neq		: AST.var
 
   end = struct
 
@@ -55,9 +54,9 @@ structure BasisEnv : sig
 	    Types.TyScheme([tv], mk(Types.VarTy tv))
 	  end
 
-    val eqTyScheme = tyScheme(Types.Eq, fn tv => (tv ** tv --> boolTy))
-    val eq = Var.newPoly(Atom.toString N.eq, eqTyScheme)
-    val neq = Var.newPoly(Atom.toString N.neq, eqTyScheme)
+    fun eqTyScheme () = tyScheme(Types.Eq, fn tv => (tv ** tv --> boolTy))
+    val eq = Var.newPoly(Atom.toString N.eq, eqTyScheme())
+    val neq = Var.newPoly(Atom.toString N.neq, eqTyScheme())
 
     val lte = (tyScheme(Types.Order, fn tv => (tv ** tv --> boolTy)),
 	       [int_lte, long_lte, integer_lte, float_lte, double_lte, char_lte, rune_lte, string_lte])

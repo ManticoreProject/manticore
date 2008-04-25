@@ -61,11 +61,6 @@ structure Basis : sig
     val exnDiv		: AST.dcon
     val exnMatch	: AST.dcon
 
-(*
-  (* overloaded operators *)
-    val neg : (Types.ty_scheme * AST.var list)
-*)
-
   (* primitive operators *)
     val listAppend	: AST.var
     val map             : AST.var
@@ -135,10 +130,6 @@ structure Basis : sig
     val string_gte	: AST.var
     val string_lt	: AST.var
     val string_lte	: AST.var
-
-  (* equality operations *)
-    val eq		: AST.var
-    val neq		: AST.var
 
   (* predefined functions *)
     val not		: AST.var
@@ -330,12 +321,12 @@ structure Basis : sig
     val OrderClass = NumClass @ [charTy, runeTy, stringTy]
 
   (* operator symbols *) 
-    val listAppend =	Var.newPoly(Atom.toString N.append,
-			  forall(fn tv => let
-			    val ty = listTy tv
-			    in
-			      ty ** ty --> ty
-			    end))
+    val listAppend = Var.newPoly(Atom.toString N.append,
+	  forall(fn tv => let
+	    val ty = listTy tv
+	    in
+	      ty ** ty --> ty
+	    end))
     val stringConcat = monoVar(Atom.toString N.concat, stringTy ** stringTy --> stringTy)
     val stringConcatWith = monoVar(Atom.toString N.concatWith, stringTy ** (listTy stringTy) --> stringTy) 
     val psub = polyVar(Atom.toString N.psub, fn tv => (parrayTy tv) ** intTy --> tv)
