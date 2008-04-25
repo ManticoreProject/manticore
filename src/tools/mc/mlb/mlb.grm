@@ -36,7 +36,7 @@
 );
 
 BasDecs
-        : BasDec (";"? BasDec)* => (BasDec :: SR)
+        : BasDec (";"? BasDec)* => ({span=FULL_SPAN, tree=BasDec :: SR})
         ;
 
 BasDec

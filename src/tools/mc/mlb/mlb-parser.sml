@@ -9,7 +9,7 @@
 structure MLBParser : sig
 
   (* parse a file; return NONE if there are syntax errors *)
-    val parseFile : (Error.err_stream * string) -> MLBParseTree.bas_dec list
+    val parseFile : (Error.err_stream * string) -> MLBParseTree.mlb option
 
   end = struct
 
@@ -29,11 +29,11 @@ structure MLBParser : sig
 	  val lexer = MLBLex.lex (Error.sourceMap errStrm) (lexErr errStrm)
 	  in
 	    case MLBParser.parse lexer (MLBLex.streamify get)
-	     of (SOME pt, _, []) => (TextIO.closeIn file; pt)
+	     of (SOME pt, _, []) => (TextIO.closeIn file; SOME pt)
 	      | (_, _, errs) => (
 		  TextIO.closeIn file;
 		  List.app (parseErr errStrm) errs;
-		  [])
+		  NONE)
 	    (* end case *)
 	  end
        

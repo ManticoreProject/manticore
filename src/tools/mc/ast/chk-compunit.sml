@@ -12,7 +12,7 @@ structure ChkCompUnit : sig
     val check : (Error.err_stream * ParseTree.program) -> AST.exp
 
   (* check multiple compilation units *)
-    val check' : (Error.err_stream * ParseTree.program list) -> AST.exp
+    val check' : (Error.err_stream * ParseTree.program) list -> AST.exp
 
   end = struct
 
@@ -45,10 +45,10 @@ structure ChkCompUnit : sig
 	end
 
   (* check multiple compilation units *)
-    fun check' (err, programs) = let
+    fun check' programs = let
 	(* typecheck the compilation units individually *)
 	val env0 = Env.freshEnv(Basis.te0, Basis.ve0, NONE)
-	fun f (program, (env, declss)) = let
+	fun f ((err, program), (env, declss)) = let
             val (env', decls) = Typechecker.check'(err, env, program)
             in
 	        (env', decls :: declss)

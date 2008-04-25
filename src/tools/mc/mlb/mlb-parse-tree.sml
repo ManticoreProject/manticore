@@ -41,4 +41,6 @@ structure MLBParseTree =
       = MarkModBind of mod_bind mark
       | BindModBind of (id * id) list
 
+    type mlb = bas_dec list mark
+
   end (* MLBParseTree *)

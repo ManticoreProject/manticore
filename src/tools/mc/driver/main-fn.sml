@@ -50,10 +50,10 @@ functor MainFn (
 
   (* load the AST specified by an MLB file *)
     fun mlbToAST (errStrm, file) = let
-        val parseTrees = MLB.load(errStrm, file)       (* load the parse trees for the compilation units*)
-	val _ = checkForErrors errStrm
-	val ast = ChkCompUnit.check'(errStrm, parseTrees)
-	val _ = checkForErrors errStrm
+        val ptsAndErrStrms = MLB.load(errStrm, file)           (* load the parse trees for the compilation units *)
+	val _ = checkForErrors errStrm                         (* check for errors loading the MLB file *)
+	val ast = ChkCompUnit.check' ptsAndErrStrms
+	val _ = List.app (checkForErrors o #1) ptsAndErrStrms  (* check for typing errors *)
         in
 	   ast
         end
