@@ -43,7 +43,7 @@ CM_FILES =		bom-opt/sources.cm \
 			cps/sources.cm \
 			driver/sources.cm \
 			$(ROOT_CM) \
-			ast/parser.cm \
+			parser/parser.cm \
 			ast/sources.cm \
 			mlb/parser.cm \
 			mlb/sources.cm \
