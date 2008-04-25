@@ -1,3 +1,0 @@
-This directory contains a front-end for Manticore based on the MinML front-end
-used in CMSC 22610 (Winter 2007).  It is essentially a stripped-down version of
-core SML.
