@@ -37,6 +37,7 @@ is
 
   ../common/sources.cm
   ../ast/sources.cm
+  ../env/sources.cm
 
   ast-opt.sml
   ast-opt-controls.sml

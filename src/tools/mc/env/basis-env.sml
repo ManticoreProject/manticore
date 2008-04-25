@@ -16,7 +16,7 @@ structure BasisEnv : sig
  * it in an ad hoc manner (unlike the other overloaded operators).
  *)
   (* overloaded unary operators *)
-    val neg : (Types.ty_scheme * AST.var list)
+    val neg	: (Types.ty_scheme * AST.var list)
 
   end = struct
 
@@ -53,10 +53,6 @@ structure BasisEnv : sig
 	  in
 	    Types.TyScheme([tv], mk(Types.VarTy tv))
 	  end
-
-    fun eqTyScheme () = tyScheme(Types.Eq, fn tv => (tv ** tv --> boolTy))
-    val eq = Var.newPoly(Atom.toString N.eq, eqTyScheme())
-    val neq = Var.newPoly(Atom.toString N.neq, eqTyScheme())
 
     val lte = (tyScheme(Types.Order, fn tv => (tv ** tv --> boolTy)),
 	       [int_lte, long_lte, integer_lte, float_lte, double_lte, char_lte, rune_lte, string_lte])

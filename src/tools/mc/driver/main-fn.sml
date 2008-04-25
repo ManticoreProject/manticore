@@ -41,22 +41,27 @@ functor MainFn (
     fun prHdr msg = print(concat["******************** ", msg,  " ********************\n"])
 
   (* load the AST corresponding to a single .pml file *)
-    fun srcToAST (errStrm, file) = let
-          val astMaybe = FrontEnd.load (errStrm, file)
-          val _ = checkForErrors errStrm
-          in
-            valOf astMaybe
-          end
+    fun srcToAST (errStrm, file) = (case Parser.parseFile (errStrm, file)
+	   of SOME pt => let
+		val ast = Typechecker.check (errStrm, pt)
+		in
+		  checkForErrors errStrm;
+		  ast
+		end
+	    | NONE => (
+		Error.report (TextIO.stdErr, errStrm);
+		raise Error)
+	  (* end case *))
 
   (* load the AST specified by an MLB file *)
     fun mlbToAST (errStrm, file) = let
-        val ptsAndErrStrms = MLB.load(errStrm, file)           (* load the parse trees for the compilation units *)
-	val _ = checkForErrors errStrm                         (* check for errors loading the MLB file *)
-	val ast = ChkCompUnit.check' ptsAndErrStrms
-	val _ = List.app (checkForErrors o #1) ptsAndErrStrms  (* check for typing errors *)
-        in
-	   ast
-        end
+	  val ptsAndErrStrms = MLB.load(errStrm, file)	(* load the parse trees for the compilation units *)
+	  val _ = checkForErrors errStrm		(* check for errors loading the MLB file *)
+	  val ast = Typechecker.check' ptsAndErrStrms
+	  in
+	    List.app (checkForErrors o #1) ptsAndErrStrms;
+	    ast
+	  end
 
   (* the compiler's backend *)
     fun bomToCFG bom = let

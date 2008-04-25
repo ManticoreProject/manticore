@@ -43,7 +43,6 @@ is
   data-con.sml
   exn.sml
   meta-var.sml
-  mant-controls.sml
   print-ast.sml
   print-types.sml
   ty-con.sml

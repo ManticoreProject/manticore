@@ -8,8 +8,9 @@
 
 Library
 
-  structure Env
   structure BasisEnv
+  structure Env
+  structure UnseenBasis
 
 is
 
@@ -22,3 +23,5 @@ is
 
   basis-env.sml
   env.sml
+  unseen-basis.sml
+

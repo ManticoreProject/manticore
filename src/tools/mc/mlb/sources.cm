@@ -16,10 +16,14 @@ is
   $/smlnj-lib.cm
   $/pp-lib.cm
   $/controls-lib.cm
+  $/ml-lpt-lib.cm
 
   ../common/sources.cm
+  ../parser/parser.cm
   ../ast/sources.cm
 
-  parser.cm
-
+  mlb.lex : ml-ulex
+  mlb.grm : ml-antlr
   mlb.sml
+  mlb-parse-tree.sml
+  mlb-parser.sml

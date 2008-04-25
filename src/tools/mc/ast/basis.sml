@@ -61,6 +61,10 @@ structure Basis : sig
     val exnDiv		: AST.dcon
     val exnMatch	: AST.dcon
 
+  (* equality operations *)
+    val eq		: AST.var
+    val neq		: AST.var
+
   (* primitive operators *)
     val listAppend	: AST.var
     val map             : AST.var
@@ -319,6 +323,18 @@ structure Basis : sig
     val FloatClass = [floatTy, doubleTy]
     val NumClass = IntClass @ FloatClass
     val OrderClass = NumClass @ [charTy, runeTy, stringTy]
+
+    local
+    fun eqTyScheme () = let
+	  val tv = TyVar.newClass (Atom.atom "'a", Types.Eq)
+	  val tv' = Types.VarTy tv
+	  in
+	    Types.TyScheme([tv], tv' ** tv' --> boolTy)
+	  end
+    in
+    val eq = Var.newPoly(Atom.toString N.eq, eqTyScheme())
+    val neq = Var.newPoly(Atom.toString N.neq, eqTyScheme())
+    end
 
   (* operator symbols *) 
     val listAppend = Var.newPoly(Atom.toString N.append,

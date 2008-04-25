@@ -75,7 +75,7 @@ structure MLB : sig
   (* load a PML file *)
     and loadPML (errStrms, file, pts) = let 
 	val errStrm = List.hd errStrms
-        val ptOpt = FrontEnd.load'(errStrm, file)
+        val ptOpt = Parser.parseFile (errStrm, file)
         in
 	   checkForErrors errStrms;
 	   case ptOpt
