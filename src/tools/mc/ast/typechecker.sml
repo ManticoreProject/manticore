@@ -8,7 +8,12 @@
 
 structure Typechecker : sig
 
+  (* check as a single compilation unit *)
     val check : Error.err_stream * ParseTree.program -> (Env.module_env * AST.comp_unit)
+
+  (* check as one piece of a compilation unit *)
+    val check' : (Error.err_stream * Env.module_env * ParseTree.program) -> 
+		 (Env.module_env * AST.comp_unit)
 
   end = struct
 
@@ -771,14 +776,18 @@ structure Typechecker : sig
 	   (env', List.rev astDecls)
         end
 
-    fun check (es, {span, tree=ptDecls}) = let
+    fun check' (es, env, {span, tree=ptDecls}) = let
 	  val _ = errStrm := es
-	  val (env, astDecls) = chkTopDcls (span, ptDecls, freshEnv NONE)
+	  val (env, astDecls) = chkTopDcls (span, ptDecls, env)
 	  in
 	    Overload.resolve ();
 	    (env, astDecls)
 	  end
 
+    fun check (es, prog) = check' (es, freshEnv NONE, prog)
+
     val check = BasicControl.mkTracePassSimple {passName = "check", pass = check}
+
+    val check' = BasicControl.mkTracePassSimple {passName = "check", pass = check'}
 
   end

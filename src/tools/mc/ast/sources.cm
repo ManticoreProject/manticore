@@ -25,6 +25,8 @@ Library
   structure VarRep
   structure ChkCompUnit
   structure UnseenBasis
+  structure Env
+  structure ParseTree
 
   structure Basis
   structure BasisNames

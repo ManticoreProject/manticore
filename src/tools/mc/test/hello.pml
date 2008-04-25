@@ -1,1 +1,1 @@
-print ("hello"^" world"^"\n")
+fun main _ = print ("hello"^" world"^"\n")

@@ -1,4 +1,4 @@
-(* parse-tree.sml
+(* mlb-parse-tree.sml
  *
  * COPYRIGHT (c) 2008 John Reppy (http://www.cs.uchicago.edu/~jhr)
  * All rights reserved.
@@ -6,7 +6,7 @@
  * Parse-tree representation of MLB files.
  *)
 
-structure ParseTree =
+structure MLBParseTree =
   struct
 
     type id = Atom.atom
@@ -29,7 +29,7 @@ structure ParseTree =
       | SignatureBasDec of mod_bind                (* basis signature binding *)
       | FunctorBasDec of mod_bind                  (* basis functor binding *)
       | SeqBasDec of bas_dec list                  (* sequential *)
-      | ImportBasDec of string                     (* import ML basis or source *)
+      | ImportBasDec of id                         (* import ML basis or source *)
 
   (* binds bases *)
     and bas_bind
@@ -41,4 +41,4 @@ structure ParseTree =
       = MarkModBind of mod_bind mark
       | BindModBind of (id * id) list
 
-  end (* ParseTree *)
+  end (* MLBParseTree *)

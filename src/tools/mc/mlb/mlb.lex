@@ -18,15 +18,6 @@
   (* the depth int ref will be used for keeping track of comment depth *)
     val depth = ref 0
 
-  (* list of string fragments to concatenate *)
-    val buf : string list ref = ref []
-
-  (* add a string to the buffer *)
-    fun addStr s = (buf := s :: !buf)
-
-  (* make a string from buf *)
-    fun mkString () = (T.STRING(String.concat(List.rev(!buf))) before buf := [])
-
   (* eof : unit -> lex_result *)
   (* ml-ulex requires this as well *)
     fun eof () = T.EOF
@@ -64,11 +55,11 @@
     end
 );
 
-%states INITIAL STRING COMMENT;
+%states INITIAL COMMENT;
 
 %let letter = [a-zA-Z];
 %let dig = [0-9];
-%let idchar = {letter}|{dig}|"_"|"'";
+%let idchar = {letter}|{dig}|"_"|"'"|"."|"-";
 %let id = {letter}{idchar}*;
 %let esc = "\\"[abfnrtv\\\"]|"\\"{dig}{dig}{dig};
 %let sgood = [\032-\126]&[^\"\\]; (* sgood means "characters good inside strings" *)
@@ -79,21 +70,6 @@
 <INITIAL> {id}	=> (idToken yytext);
 <INITIAL> {ws}		=> (continue ());
 <INITIAL> "(*"		=> (YYBEGIN COMMENT; depth := 1; continue());
-<INITIAL> "\""		=> (YYBEGIN STRING; continue());
-
-<STRING>{esc}		=> (addStr(valOf(String.fromString yytext)); continue());
-<STRING>{sgood}+	=> (addStr yytext; continue());
-<STRING>"\""		=> (YYBEGIN INITIAL; mkString());
-<STRING>"\\".		=> (lexErr(yypos, [
-				"bad escape character `", String.toString yytext,
-				"' in string literal"
-			      ]);
-			    continue());
-<STRING>.		=> (lexErr(yypos, [
-				"bad character `", String.toString yytext,
-				"' in string literal"
-			      ]);
-			    continue());
 
 <INITIAL> . => (
 	lexErr(yypos, ["bad character `", String.toString yytext, "'"]);

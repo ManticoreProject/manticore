@@ -40,12 +40,23 @@ functor MainFn (
 
     fun prHdr msg = print(concat["******************** ", msg,  " ********************\n"])
 
+  (* load the AST corresponding to a single .pml file *)
     fun srcToAST (errStrm, file) = let
           val astMaybe = FrontEnd.load (errStrm, file)
           val _ = checkForErrors errStrm
           in
             valOf astMaybe
           end
+
+  (* load the AST specified by an MLB file *)
+    fun mlbToAST (errStrm, file) = let
+        val parseTrees = MLB.load(errStrm, file)       (* load the parse trees for the compilation units*)
+	val _ = checkForErrors errStrm
+	val ast = ChkCompUnit.check'(errStrm, parseTrees)
+	val _ = checkForErrors errStrm
+        in
+	   ast
+        end
 
   (* the compiler's backend *)
     fun bomToCFG bom = let
@@ -93,8 +104,8 @@ functor MainFn (
 	    codegen (verbose, asmFile, cfg)
 	  end
 
-    fun mantC (verbose, errStrm, srcFile, asmFile) = let
-          val ast = srcToAST(errStrm, srcFile)
+    fun mantC loadASTFn (verbose, errStrm, srcFile, asmFile) = let
+          val ast = loadASTFn(errStrm, srcFile)
           val _ = checkForErrors errStrm
           val ast = ASTOpt.optimize ast
 	  val ast = MatchCompile.compile (errStrm, ast)
@@ -105,6 +116,12 @@ functor MainFn (
 	  in
 	    codegen (verbose, asmFile, cfg)
 	  end
+
+  (* compile a single PML file *)
+    val standaloneC = mantC srcToAST
+
+  (* compile an MLB file *)
+    val mlbC = mantC mlbToAST
 
     fun doFile file = BackTrace.monitor (fn () => let
 	  val verbose = (Controls.get BasicControl.verbose > 0)
@@ -120,8 +137,9 @@ functor MainFn (
 		  OS.Path.joinBaseExt {base = base, ext = SOME "s"}))
 	  in
 	    case OS.Path.splitBaseExt file
-	     of {base, ext=SOME "bom"} => doit bomC base
-	      | {base, ext=SOME "pml"} => doit mantC base
+	     of {base, ext=SOME "bom"} => doit bomC base             (* FIXME: we can probably remove this *)
+	      | {base, ext=SOME "pml"} => doit standaloneC base
+	      | {base, ext=SOME "mlb"} => doit mlbC base
 	      | _ => raise Fail "unknown source file extension"
 	    (* end case *)
 	  end)

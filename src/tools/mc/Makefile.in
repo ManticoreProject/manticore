@@ -45,6 +45,8 @@ CM_FILES =		bom-opt/sources.cm \
 			$(ROOT_CM) \
 			ast/parser.cm \
 			ast/sources.cm \
+			mlb/parser.cm \
+			mlb/sources.cm \
 			prim/sources.cm \
 			test-bom/bom-parse.cm \
 			translate/sources.cm

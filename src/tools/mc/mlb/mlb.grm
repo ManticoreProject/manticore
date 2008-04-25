@@ -3,6 +3,7 @@
  * COPYRIGHT (c) 2008 John Reppy (http://www.cs.uchicago.edu/~jhr)
  * All rights reserved.
  *
+ * ML Antlr specification for the MLB language.
  *)
 
 %name MLB;
@@ -19,14 +20,13 @@
     | KW_signature      ("signature")
     | KW_functor        ("functor")
     | KW_structure      ("structure")
-    | EQ             ("=")
-    | SEMI           (";")
+    | EQ                ("=")
+    | SEMI              (";")
     | NAME of Atom.atom
-    | STRING of string
     ;
 
 %defs (
-  structure PT = ParseTree
+  structure PT = MLBParseTree
 
 (* apply a mark constructor to a span and a tree *)
   fun mark cons (span : AntlrStreamPos.span, tr) = cons{span = span, tree = tr}
@@ -35,10 +35,8 @@
 
 );
 
-BasExp
-        : "bas" BasDec "end" => (mark PT.MarkBasExp (FULL_SPAN, PT.DecBasExp BasDec))
-        | NAME => (mark PT.MarkBasExp (FULL_SPAN, PT.IdBasExp NAME))
-        | "let" BasDec "in" BasExp "end" => (mark PT.MarkBasExp (FULL_SPAN, PT.LocalDeclBasExp(BasDec, BasExp)))
+BasDecs
+        : BasDec (";"? BasDec)* => (BasDec :: SR)
         ;
 
 BasDec
@@ -50,7 +48,13 @@ BasDec
         | "functor" ModBind => (markBasDec(FULL_SPAN, PT.FunctorBasDec ModBind))
 (* FIXME: add this sequencing operator *)
 (*        | BasDec (";" BasDec)* => markBasDec(FULL_SPAN, PT.SeqBasDec (BasDec :: SR))*)
-        | STRING => (markBasDec(FULL_SPAN, PT.ImportBasDec STRING))
+        | NAME => (markBasDec(FULL_SPAN, PT.ImportBasDec NAME))
+        ;
+
+BasExp
+        : "bas" BasDec "end" => (mark PT.MarkBasExp (FULL_SPAN, PT.DecBasExp BasDec))
+        | NAME => (mark PT.MarkBasExp (FULL_SPAN, PT.IdBasExp NAME))
+        | "let" BasDec "in" BasExp "end" => (mark PT.MarkBasExp (FULL_SPAN, PT.LocalDeclBasExp(BasDec, BasExp)))
         ;
 
 BasBind

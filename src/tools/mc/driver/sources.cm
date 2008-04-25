@@ -32,6 +32,7 @@ is
   ../cps/sources.cm
   ../match-comp/sources.cm
 (*  ../minmant/sources.cm*)
+  ../mlb/sources.cm
   ../ast/sources.cm
   ../prim/sources.cm
   ../test-bom/bom-parse.cm

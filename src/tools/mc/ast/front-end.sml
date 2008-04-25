@@ -10,6 +10,8 @@ structure FrontEnd : sig
 
     val load : (Error.err_stream * string) -> AST.exp option
 
+    val load' : (Error.err_stream * string) -> ParseTree.program option
+
   end = struct
 
   (* parse and typecheck a file *)
@@ -18,6 +20,8 @@ structure FrontEnd : sig
 	   of SOME pt => SOME(ChkCompUnit.check (errStrm, pt))
 	    | NONE => NONE
 	  (* end case *))
+
+    fun load' (errStrm, file) = Parser.parseFile (errStrm, file)
 
     val load = BasicControl.mkTracePassSimple {passName = "load", pass = load}
 

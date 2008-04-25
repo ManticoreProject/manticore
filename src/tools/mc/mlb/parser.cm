@@ -1,18 +1,17 @@
 (* parser.cm
  *
- * COPYRIGHT (c) 2007 John Reppy (http://www.cs.uchicago.edu/~jhr)
+ * COPYRIGHT (c) 2008 John Reppy (http://www.cs.uchicago.edu/~jhr)
  * All rights reserved.
  *
  * Based on CMSC 22610 Sample code (Winter 2007)
  *)
 
 Library
-(*
+
   structure Error
-  structure Parser
-*)
+  structure MLBParser
   structure MLBLex
-  structure ParseTree
+  structure MLBParseTree
 
 is
   $/basis.cm
@@ -23,5 +22,5 @@ is
 
   mlb.lex : ml-ulex
   mlb.grm : ml-antlr
-  parse-tree.sml
-(*  parser.sml*)
+  mlb-parse-tree.sml
+  mlb-parser.sml
