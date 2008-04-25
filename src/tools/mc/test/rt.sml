@@ -8,6 +8,8 @@ val itod = real;
 val tand = Math.tan;
 val dtos = Real.toString;
 
+fun readint () = 1024;
+
 fun gettimeofday () = Time.toReal(Time.now());
 
 datatype image = IMAGE of {

@@ -3,29 +3,22 @@
  * COPYRIGHT (c) 2008 John Reppy (http://www.cs.uchicago.edu/~jhr)
  * All rights reserved.
  *
- * Manticore frontend.
+ * Environments for typechecking
  *)
 
 Library
 
-  structure Typechecker
+  structure Env
+  structure BasisEnv
 
 is
 
   $/basis.cm
   $/smlnj-lib.cm
-  $/pp-lib.cm
-  $/controls-lib.cm
 
   ../common/sources.cm
   ../parser/parser.cm
   ../ast/sources.cm
-  ../env/sources.cm
 
-  chk-compunit.sml
-  overload.sml
-  path.sml
-  tc-controls.sml
-  typechecker.sml
-  unify.sml
-
+  basis-env.sml
+  env.sml

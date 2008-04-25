@@ -304,7 +304,7 @@ structure Typechecker : sig
 			(argTys, resTy, instTy)
 		      end
 		in
-		  case Basis.lookupOp bop
+		  case BasisEnv.lookupOp bop
 		   of Env.Con dc => let
 			val (argTys, resTy, _) = chkApp (DataCon.typeOf dc)
 			in
@@ -470,7 +470,7 @@ structure Typechecker : sig
 		then let
 		(* Unary minus is being handled specially as
 		 * an overloaded variable *)
-		  val (tysch, vars) = B.neg
+		  val (tysch, vars) = BasisEnv.neg
 		  val (_, instTy) = TU.instantiate (depth, tysch)
 		  val ovar = ref (AST.Unknown (instTy, vars))
 		  in
@@ -695,7 +695,7 @@ structure Typechecker : sig
 	  end
 
   (* create an environment *)
-    fun freshEnv outerEnv = Env.freshEnv(Basis.te0, Basis.ve0, outerEnv)
+    fun freshEnv outerEnv = Env.freshEnv(BasisEnv.te0, BasisEnv.ve0, outerEnv)
 
     fun chkTopDcl loc (ptDecl, (env, astDecls)) = (case ptDecl
            of PT.MarkDecl{span, tree} => chkTopDcl span (tree, (env, astDecls))
@@ -791,3 +791,4 @@ structure Typechecker : sig
     val check' = BasicControl.mkTracePassSimple {passName = "check", pass = check'}
 
   end
+

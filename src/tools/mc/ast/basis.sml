@@ -61,8 +61,10 @@ structure Basis : sig
     val exnDiv		: AST.dcon
     val exnMatch	: AST.dcon
 
+(*
   (* overloaded operators *)
     val neg : (Types.ty_scheme * AST.var list)
+*)
 
   (* primitive operators *)
     val listAppend	: AST.var
@@ -233,8 +235,6 @@ structure Basis : sig
 
     structure U = BasisUtils
     structure N = BasisNames
-
-    nonfix div mod
 
     local
       val --> = AST.FunTy
@@ -438,6 +438,18 @@ structure Basis : sig
     val string_gte =    monoVar(name N.gte, stringTy ** stringTy --> boolTy)
     val string_lt =     monoVar(name N.lt, stringTy ** stringTy --> boolTy)
     val string_lte =    monoVar(name N.lte, stringTy ** stringTy --> boolTy)
+    end
+
+    local
+      fun eqTyScheme () = let
+	    val tv = TyVar.newClass (Atom.atom "'a", Types.Eq)
+	    val tv' = Types.VarTy tv
+	    in
+	      Types.TyScheme([tv], tv' ** tv' --> boolTy)
+	    end
+    in
+    val eq = Var.newPoly(Atom.toString N.eq, eqTyScheme())
+    val neq = Var.newPoly(Atom.toString N.neq, eqTyScheme())
     end
 
   (* predefined functions *)

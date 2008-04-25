@@ -5,18 +5,48 @@
  *)
 
 
-structure Basis : sig
+structure BasisEnv : sig
 
     val lookupOp : Atom.atom -> Env.val_bind
 
     val te0 : Env.ty_env
     val ve0 : Env.var_env
 
+  (* overloaded unary operators *)
+    val neg : (Types.ty_scheme * AST.var list)
+
+  (* equality operations *)
+    val eq		: AST.var
+    val neq		: AST.var
+
   end = struct
+
+    structure U = BasisUtils
+    structure N = BasisNames
+
+    nonfix div mod
 
     open Basis
 
 (* TODO do @, ! *)
+
+    local
+      val --> = AST.FunTy
+      fun ** (t1, t2) = AST.TupleTy[t1, t2]
+      infix 9 **
+      infixr 8 -->
+
+      val forall = U.forall
+      val forallMulti = U.forallMulti
+      val monoVar = U.monoVar
+      val polyVar = U.polyVar
+      val polyVarMulti = U.polyVarMulti
+
+      fun monoVar' (at, ty) = monoVar (Atom.toString at, ty)
+      fun polyVar' (at, mkTy) = polyVar (Atom.toString at, mkTy)
+      fun polyVarMulti' (at, n, mkTy) = polyVarMulti (Atom.toString at, n, mkTy)
+
+    in
 
   (* create a type scheme that binds a kinded type variable *)
     fun tyScheme (cls, mk) = let
@@ -226,4 +256,5 @@ structure Basis : sig
 	    (N.alength,         Env.Var alength)
 	  ]
 
+    end (* local *)
   end

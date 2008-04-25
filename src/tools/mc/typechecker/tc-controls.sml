@@ -1,18 +1,18 @@
-(* minmant-controls.sml
+(* tc-controls.sml
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu/)
  * All rights reserved.
  *
- * Minmant controls.
+ * Controls for the typechecker
  *)
 
-structure MinmantControls =
+structure TCControls =
   struct
 
     val (registry, debug) = BasicControl.newRegistryWithDebug {
-	    name = "Minmant",
+	    name = "tc",
 	    pri = 1,
-	    help = "Minmant controls"
+	    help = "Typechecker controls"
 	  }
 
   end

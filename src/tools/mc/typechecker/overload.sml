@@ -21,7 +21,7 @@ structure Overload : sig
 
     val debugFlg = ref false
 
-    val () = List.app (fn ctl => ControlRegistry.register MinmantControls.registry {
+    val () = List.app (fn ctl => ControlRegistry.register TCControls.registry {
 	      ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
 	      envName = NONE
 	    }) [

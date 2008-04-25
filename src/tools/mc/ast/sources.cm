@@ -10,11 +10,15 @@ Library
 
   structure AST
   structure ASTUtil
+  structure Basis
+  structure BasisUtils
   structure DataCon
   structure Exn
+  structure MetaVar
   structure PrintAST
   structure PrintTypes
   structure TyCon
+  structure TypeClass
   structure Types
   structure TypeUtil
   structure TypeOf
@@ -30,9 +34,12 @@ is
   $/controls-lib.cm
 
   ../common/sources.cm
+  ../parser/parser.cm	(* may change to ../parse-tree *)
 
   ast.sml
   ast-util.sml
+  basis.sml
+  basis-utils.sml
   data-con.sml
   exn.sml
   meta-var.sml
