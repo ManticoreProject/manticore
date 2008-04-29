@@ -31,7 +31,9 @@ TARGET =		@TARGET@
 HEAP_IMAGE =		$(PROGRAM).@SMLNJ_HEAP_SUFFIX@
 ROOT_CM =		driver/$(TARGET).cm
 
-CM_FILES =		bom-opt/sources.cm \
+CM_FILES =		ast-opt/sources.cm \
+			ast/sources.cm \
+			bom-opt/sources.cm \
 			bom/sources.cm \
 			cfg-opt/sources.cm \
 			cfg/sources.cm \
@@ -42,14 +44,14 @@ CM_FILES =		bom-opt/sources.cm \
 			cps-opt/sources.cm \
 			cps/sources.cm \
 			driver/sources.cm \
-			$(ROOT_CM) \
-			parser/parser.cm \
-			ast/sources.cm \
-			mlb/parser.cm \
+			env/sources.cm \
+			hlop/sources.cm \
+			match-comp/sources.cm \
 			mlb/sources.cm \
 			prim/sources.cm \
-			test-bom/bom-parse.cm \
-			translate/sources.cm
+			translate/sources.cm \
+			typechecker/sources.cm \
+			$(ROOT_CM)
 
 build:		local-install
 
