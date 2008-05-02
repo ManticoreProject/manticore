@@ -28,7 +28,7 @@ structure ParseTree =
    (* signature expressions *)
     datatype sign
       = MarkSig of sign mark
-      | NameSig of (sigid * decl list)
+      | NameSig of (sigid * ty_decl list)
       | ExpSig of spec list
     
   (* signature specifications *)
@@ -36,9 +36,9 @@ structure ParseTree =
       = MarkSpec of spec mark
       | IncludeSpec of sign
       | ModuleSpec of (modid * sign)
-      | TypeSpec of decl
+      | TypeSpec of ty_decl
       | ConstSpec of (conid * tyvar list)
-      | ValSpec of (vid * tyvar list)
+      | ValSpec of (vid * tyvar list * ty)
 
   (* module expressions *)
     and module
@@ -51,11 +51,17 @@ structure ParseTree =
     and decl
       = MarkDecl of decl mark
       | ModuleDecl of (modid * sign option * module)
-      | TyDecl of (tyvar list * tyid * ty)
-      | DataDecl of (tyvar list * tyid * con_decl list)
+      | TyDecl of ty_decl
       | ExnDecl of (conid * ty option)
       | ValueDecl of val_decl
       | LocalDecl of (decl list * decl list)
+      | SignDecl of (sigid * sign)
+
+  (* type declarations *)
+    and ty_decl
+      = MarkTyDecl of ty_decl mark
+      | TypeTyDecl of (tyvar list * tyid * ty)
+      | DataTyDecl of (tyvar list * tyid * con_decl list)
 
   (* data-constructor definitions *)
     and con_decl

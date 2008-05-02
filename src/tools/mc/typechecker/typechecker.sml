@@ -696,15 +696,16 @@ structure Typechecker : sig
   (* create an environment *)
     fun freshEnv outerEnv = Env.freshEnv(BasisEnv.te0, BasisEnv.ve0, outerEnv)
 
-    fun chkTopDcl loc (ptDecl, (env, astDecls)) = (case ptDecl
-           of PT.MarkDecl{span, tree} => chkTopDcl span (tree, (env, astDecls))
-	    | PT.TyDecl(tvs, id, ty) => let
+  (* check type declarations *)
+    fun chkTyDcl loc (ptTyDecl, env) = (case ptTyDecl
+           of PT.MarkTyDecl {span, tree} => chkTyDcl loc (tree, env)
+	    | PT.TypeTyDecl(tvs, id, ty) => let
 		val (tve, tvs') = chkTyVars (loc, tvs)
 		val ty' = chkTy (loc, env, tve, ty)
 		in
-		  (Env.insertTyEnv(env, id, Env.TyDef(AST.TyScheme(tvs', ty'))), astDecls)
+		  Env.insertTyEnv(env, id, Env.TyDef(AST.TyScheme(tvs', ty')))
 		end
-	    | PT.DataDecl(tvs, id, cons) => let
+	    | PT.DataTyDecl(tvs, id, cons) => let
 		val (tve, tvs') = chkTyVars (loc, tvs)
 		val tyc = TyCon.newDataTyc(id, tvs')
 	      (* update the type environment before checking the constructors so that
@@ -739,8 +740,13 @@ structure Typechecker : sig
 		val isEqTy = List.all (fn (Ty.DCon{argTy=NONE, ...}) => true | _ => false) cons'
 		in
 		  if isEqTy then TyCon.markEqTyc tyc else ();
-		  (env', astDecls)
+		  env'
 		end
+          (* end case *))
+
+    fun chkTopDcl loc (ptDecl, (env, astDecls)) = (case ptDecl
+           of PT.MarkDecl{span, tree} => chkTopDcl span (tree, (env, astDecls))
+	    | PT.TyDecl tyDecl => (chkTyDcl loc (tyDecl, env), astDecls)
 	    | PT.ExnDecl(id, optTy) => let
 		val optTy' = Option.map (fn ty => chkTy(loc, env, Env.empty, ty)) optTy
 		val exnCon = Exn.new (id, optTy')

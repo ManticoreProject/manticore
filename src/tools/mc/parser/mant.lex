@@ -96,7 +96,9 @@
 		("val",		T.KW_val),
 		("where",       T.KW_where),
 		("struct",      T.KW_struct),
-		("structure",   T.KW_structure)
+		("structure",   T.KW_structure),
+		("sig",         T.KW_sig),
+		("signature",   T.KW_signature)
 	      ];
 	      AtomTable.find tbl
 	  end

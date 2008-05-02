@@ -41,6 +41,8 @@
     | KW_where		("where")
     | KW_struct         ("struct")
     | KW_structure      ("structure")
+    | KW_sig            ("sig")
+    | KW_signature      ("signature")
     | LP		("(")
     | RP		(")")
     | LB		("[")
@@ -102,6 +104,7 @@
     | markPat (sp, tr) = mark PT.MarkPat (sp, tr)
   fun markPPat (_, p as PT.MarkPPat _) = p
     | markPPat (sp, tr) = mark PT.MarkPPat (sp, tr)
+  val markTyDecl = mark PT.MarkTyDecl
 
 (* construct a left-associative type application *)
   fun mkTyApp (arg, []) = arg
@@ -150,19 +153,33 @@ Module
         | QualifiedId => (mark PT.MarkMod (FULL_SPAN, PT.NamedMod QualifiedId))
         ; 
 
-Decl
-	: "type" TyParams NAME "=" Type
-		=> (markDecl (KW_type_SPAN, PT.TyDecl(TyParams, NAME, Type)))
+Signature
+        : "sig" (Spec ";"?)* "end" => (mark PT.MarkSig (FULL_SPAN, PT.ExpSig SR))
+(*        | NAME "where" (Spec ";"?)*  => (mark PT.MarkSig (FULL_SPAN, PT.NameSig(NAME, SR)))*)
+        ;
+
+Spec
+        : TyDecl => (mark PT.MarkSpec (FULL_SPAN, PT.TypeSpec TyDecl))
+        | "val" TyParams NAME ":" Type => (mark PT.MarkSpec (FULL_SPAN, PT.ValSpec(NAME, TyParams, Type)))
+        ;
+
+TyDecl
+        : "type" TyParams NAME "=" Type
+		=> (markTyDecl (KW_type_SPAN, PT.TypeTyDecl(TyParams, NAME, Type)))
 	| "datatype" TyParams NAME "=" ConsDecl ("|" ConsDecl)*
-		=> (markDecl (KW_datatype_SPAN, PT.DataDecl(TyParams, NAME, ConsDecl :: SR)))
+		=> (markTyDecl (KW_datatype_SPAN, PT.DataTyDecl(TyParams, NAME, ConsDecl :: SR)))
+        ;
+
+Decl
+	: TyDecl => (markDecl (FULL_SPAN, PT.TyDecl TyDecl))
 	| "exception" NAME ("of" Type)?
-		=> (mark PT.MarkDecl (FULL_SPAN, PT.ExnDecl(NAME, SR)))
+		=> (markDecl (FULL_SPAN, PT.ExnDecl(NAME, SR)))
 	| ValueDecl
 		=> (markDecl (ValueDecl_SPAN, PT.ValueDecl ValueDecl))
 	| "local" (Decl ";"?)* "in" (Decl ";"?)* "end"
 		=> (markDecl (FULL_SPAN, PT.LocalDecl(SR1, SR2)))
-(* no signatures for now *)
         | "structure" NAME "=" Module => (markDecl (FULL_SPAN, PT.ModuleDecl(NAME, NONE, Module)))
+        | "signature" NAME "=" Signature => (markDecl (FULL_SPAN, PT.SignDecl(NAME, Signature)))
 	;
 
 TyParams
