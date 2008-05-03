@@ -153,6 +153,7 @@
 <INITIAL> ";"	=> (T.SEMI);
 <INITIAL> "|"	=> (T.BAR);
 <INITIAL> ":"	=> (T.COLON);
+<INITIAL> ":"	=> (T.SEAL);
 <INITIAL> "->"	=> (T.ARROW);
 <INITIAL> "=>"	=> (T.DARROW);
 <INITIAL> "_"	=> (T.WILD);

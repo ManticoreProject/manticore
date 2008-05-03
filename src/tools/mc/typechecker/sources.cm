@@ -22,6 +22,7 @@ is
   ../ast/sources.cm
   ../env/sources.cm
 
+  match-sig.sml
   overload.sml
   path.sml
   tc-controls.sml

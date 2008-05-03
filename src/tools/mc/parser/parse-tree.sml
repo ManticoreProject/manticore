@@ -50,7 +50,7 @@ structure ParseTree =
   (* top-level declarations *)
     and decl
       = MarkDecl of decl mark
-      | ModuleDecl of (modid * sign option * module)
+      | ModuleDecl of (modid * bool * sign option * module)
       | TyDecl of ty_decl
       | ExnDecl of (conid * ty option)
       | ValueDecl of val_decl

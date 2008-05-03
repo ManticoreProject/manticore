@@ -70,6 +70,7 @@
     | SEMI		(";")
     | BAR		("|")
     | COLON		(":")
+    | SEAL		(":>")
     | ARROW		("->")
     | DARROW		("=>")
     | WILD		("_")
@@ -155,7 +156,7 @@ Module
 
 Signature
         : "sig" (Spec ";"?)* "end" => (mark PT.MarkSig (FULL_SPAN, PT.ExpSig SR))
-(*        | NAME "where" (Spec ";"?)*  => (mark PT.MarkSig (FULL_SPAN, PT.NameSig(NAME, SR)))*)
+        | NAME => (mark PT.MarkSig (FULL_SPAN, PT.NameSig(NAME, [])))
         ;
 
 Spec
@@ -178,7 +179,9 @@ Decl
 		=> (markDecl (ValueDecl_SPAN, PT.ValueDecl ValueDecl))
 	| "local" (Decl ";"?)* "in" (Decl ";"?)* "end"
 		=> (markDecl (FULL_SPAN, PT.LocalDecl(SR1, SR2)))
-        | "structure" NAME "=" Module => (markDecl (FULL_SPAN, PT.ModuleDecl(NAME, NONE, Module)))
+        | "structure" NAME "=" Module => (markDecl (FULL_SPAN, PT.ModuleDecl(NAME, false, NONE, Module)))
+        | "structure" NAME ":" Signature "=" Module => (markDecl (FULL_SPAN, PT.ModuleDecl(NAME, false, SOME Signature, Module)))
+        | "structure" NAME ":>" Signature "=" Module => (markDecl (FULL_SPAN, PT.ModuleDecl(NAME, true, SOME Signature, Module)))
         | "signature" NAME "=" Signature => (markDecl (FULL_SPAN, PT.SignDecl(NAME, Signature)))
 	;
 

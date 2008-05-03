@@ -744,6 +744,30 @@ structure Typechecker : sig
 		end
           (* end case *))
 
+    fun chkSpec loc (spec, env) = (case spec
+        of PT.MarkSpec {tree, span} => chkSpec span (tree, env)
+	 | PT.TypeSpec tyDecl => chkTyDcl loc (tyDecl, env)
+	 | PT.ValSpec (x, tvs, ty) => let
+           val ty = chkTy(loc, env, Env.empty, ty)
+	   val x' = Var.new(Atom.toString x, ty)
+           in
+	       Env.insertVarEnv(env, x, Env.Var x')
+           end
+        (* end case *))
+
+    fun chkSpecs loc (specs, env) = List.foldl (chkSpec loc) env specs
+
+  (* check that a signature is well formed and return the resulting environment *)
+    fun chkSignature loc (sign, env) = (case sign
+            of PT.MarkSig {tree, span} => chkSignature span (tree, env)
+	     | PT.ExpSig specs => let
+               val sigEnv = Env.freshEnv(Env.empty, Env.empty, SOME env)
+               in
+		  chkSpecs loc (specs, sigEnv)
+               end
+             | PT.NameSig (id, tyRevls) => raise Fail "todo"
+            (* end case *))
+
     fun chkTopDcl loc (ptDecl, (env, astDecls)) = (case ptDecl
            of PT.MarkDecl{span, tree} => chkTopDcl span (tree, (env, astDecls))
 	    | PT.TyDecl tyDecl => (chkTyDcl loc (tyDecl, env), astDecls)
@@ -758,18 +782,31 @@ structure Typechecker : sig
 		in
 		  (env, AST.TD_Binding bind :: astDecls)
 		end
-	    | PT.ModuleDecl (id, sign, module) => chkModule loc (id, sign, module, (env, astDecls))
-	    | PT.LocalDecl(localDcls, dcls) => raise Fail "LocalDecl"
+	    | PT.ModuleDecl (id, sealed, sign, module) => chkModule loc (id, sealed, sign, module, (env, astDecls))
+	    | PT.LocalDecl (localDcls, dcls) => raise Fail "LocalDecl"
+	    | PT.SignDecl (id, sign) => let
+              val sigEnv = chkSignature loc (sign, env)
+              in
+                 (Env.insertSigEnv(env, id, sigEnv), astDecls)
+              end
 	  (* end case *))
 
-    and chkModule loc (id, sign, module, (env, astDecls)) = (case module
-        of PT.MarkMod {span, tree} => chkModule span (id, sign, tree, (env, astDecls))
+    and chkModule loc (id, sealed, sign, module, (env, astDecls)) = (case module
+        of PT.MarkMod {span, tree} => chkModule span (id, sealed, sign, tree, (env, astDecls))
 	 | PT.DeclsMod decls => let
 		val (modEnv, modAstDecls) = chkTopDcls(loc, decls, freshEnv(SOME env))
 		val modRef = AST.MOD {name=id, id=Stamp.new(), formals=NONE}
 		val module = AST.M_Body((), modAstDecls)
+		val modEnv' = (case sign
+                    of SOME sign => let
+                       val sigEnv = chkSignature loc (sign, env)
+                       in
+			   MatchSig.match{err=(!errStrm), modEnv=modEnv, sigEnv=sigEnv}
+                       end
+		     | NONE => modEnv
+                   (* end case *))
                 in
-		  (Env.insertModEnv(env, id, modEnv), 
+		  (Env.insertModEnv(env, id, modEnv'), 
 		   AST.TD_Module((), modRef, NONE, module) :: astDecls)
 	        end
 	 | _ => raise Fail "todo"
