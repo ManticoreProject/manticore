@@ -9,8 +9,8 @@ structure AMD64TargetSpec = TargetSpecFn (
     val abiName = "??"
     val osName = "darwin"
     structure ABI = RuntimeConstants
-    val maxGPRArgs = 4
-    val maxFPRArgs = 0
+    val maxGPRArgs = 8
+    val maxFPRArgs = 6
     val maxVPRArgs = 0)
 
 structure CodeGen = AMD64GenFn (structure Spec = AMD64TargetSpec)
