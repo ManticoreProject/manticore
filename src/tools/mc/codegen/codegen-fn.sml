@@ -73,6 +73,14 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
     | annotateStms (stm :: stms, msg) = annotate(stm, "stdApply") :: stms
 
   fun codeGen {dst, code=M.MODULE {name, externs, code}} = let
+      val _ =
+         if BE.Spec.maxGPRArgs <> List.length BE.Regs.argRegs
+            then raise Fail "BE.Spec.maxGPRArgs <> List.length BE.Regs.argRegs"
+         else ()
+      val _ =
+         if BE.Spec.maxFPRArgs <> List.length BE.Regs.argFRegs
+            then raise Fail "BE.Spec.maxFPRArgs <> List.length BE.Regs.argFRegs"
+         else ()
       val mlStrm = BE.MLTreeComp.selectInstructions (BE.CFGGen.build ())
      (* extract operations from the emitter's streams *)
       val Stream.STREAM { beginCluster, getAnnotations, comment, emit, defineLabel, 
