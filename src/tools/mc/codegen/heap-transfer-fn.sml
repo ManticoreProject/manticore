@@ -227,7 +227,7 @@ functor HeapTransferFn (
        | MTy.K_FLOAT => K_FPR)
 
   (* convert an argument to a location for staged allocation *)
-  fun tyToLoc ty = (Types.szOf ty, kindOfCFGTy ty, MTy.wordTy div 8)
+  fun tyToSlot ty = (Types.szOf ty, kindOfCFGTy ty, MTy.wordTy div 8)
 
   (* determine the staged-allocation locations for some parameter types *)
   fun paramLocations (str0, step, paramSlots) = let
@@ -278,13 +278,13 @@ functor HeapTransferFn (
       val defOf = VarDef.defOf varDefTbl
       val getDefOf = VarDef.getDefOf varDefTbl
       val args = clos :: args
-      val paramSlots = List.map (tyToLoc o Var.typeOf) args
+      val paramSlots = List.map (tyToSlot o Var.typeOf) args
       (* finalize locations for passing arguments *)
       val (_, paramLocs) = CallingConventions.apply paramSlots
       val params = List.map locToTree paramLocs
       val (target, mvInstr) = genTransferTarget (defOf f)
       in
-         {stms=List.concat [
+         {stms=List.concat [		 
 		 mvInstr,
 		 List.concat (ListPair.map copyArgToParam (params, List.map getDefOf args)),
 		 [T.JMP (target, [])]],
@@ -576,7 +576,7 @@ functor HeapTransferFn (
   (* bind a parameter *)
   fun bindParam (param, k) = (case (param, k)
       of (MTy.GPR (ty, r), K_GPR) => Copy.fresh [MTy.GPReg(ty, r)]
-       | (MTy.FPR (ty, r), K_FPR) => Copy.fresh [MTy.GPReg(ty, r)]
+       | (MTy.FPR (ty, r), K_FPR) => Copy.fresh [MTy.FPReg(ty, r)]
        (* load the parameter from scratch space *)
        | (MTy.EXP (ty, offset), K_GPR) => let
 	  val tmp = newReg()
@@ -635,7 +635,7 @@ functor HeapTransferFn (
       end
     | genFuncEntry varDefTbl (lab, conv as M.KnownFunc {clos, args}) = let
       val args = clos :: args
-      val paramSlots = List.map (tyToLoc o Var.typeOf) args
+      val paramSlots = List.map (tyToSlot o Var.typeOf) args
       (* finalize locations for the parameters *)
       val (_, paramLocs) = CallingConventions.apply paramSlots
       val params = List.map locToTree paramLocs

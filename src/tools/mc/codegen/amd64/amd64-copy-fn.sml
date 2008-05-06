@@ -61,9 +61,9 @@ functor AMD64CopyFn (
 	    | mkCopies (MTy.GPReg (ty, v1), MTy.CEXP e,
 			(regs, exprs, fregs, fexprs)) =
 	      ( regs, (ty,v1,MTy.cexpToExp e) :: exprs, fregs, fexprs )
-	    | mkCopies (src, dst, _) = 
-              raise Fail (concat ["mkCopies (", MTy.treeToString (MTy.regToTree src), 
-                                  ",", MTy.treeToString dst, ")"])
+	    | mkCopies (dst, src, _) = 
+              raise Fail (concat ["mkCopies {dst=", MTy.treeToString (MTy.regToTree dst), 
+                                  ",src=", MTy.treeToString src, "}"])
 
 	  val (regs, exprs, fregs, fexprs) = 
 	      ListPair.foldl mkCopies ([], [], [], []) (dst, src)
