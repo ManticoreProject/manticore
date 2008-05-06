@@ -25,7 +25,6 @@ Library
   structure TranslatePtup
   structure TypeOf	
   structure Unpar
-  structure VarSubst
   structure LTCDVal
   structure RuntimeBasis
 
@@ -55,6 +54,5 @@ is
   translate-pcomp.sml
   translate-ptup.sml
   unpar.sml
-  var-subst.sml
   ltc-dval.sml
   runtime-basis.sml

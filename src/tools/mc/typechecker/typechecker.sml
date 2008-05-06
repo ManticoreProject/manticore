@@ -748,7 +748,8 @@ structure Typechecker : sig
         of PT.MarkSpec {tree, span} => chkSpec span (tree, env)
 	 | PT.TypeSpec tyDecl => chkTyDcl loc (tyDecl, env)
 	 | PT.ValSpec (x, tvs, ty) => let
-           val ty = chkTy(loc, env, Env.empty, ty)
+	   val (tve, tvs') = chkTyVars (loc, tvs)
+           val ty = chkTy(loc, env, tve, ty)
 	   val x' = Var.new(Atom.toString x, ty)
            in
 	       Env.insertVarEnv(env, x, Env.Var x')
@@ -791,7 +792,7 @@ structure Typechecker : sig
 		in
 		  (env, AST.TD_Binding bind :: astDecls)
 		end
-	    | PT.ModuleDecl (id, sealed, sign, module) => chkModule loc (id, sealed, sign, module, (env, astDecls))
+	    | PT.ModuleDecl (id, sign, module) => chkModule loc (id, sign, module, (env, astDecls))
 	    | PT.LocalDecl (localDcls, dcls) => raise Fail "LocalDecl"
 	    | PT.SignDecl (id, sign) => let
               val sigEnv = chkSignature loc (sign, env)
@@ -800,23 +801,25 @@ structure Typechecker : sig
               end
 	  (* end case *))
 
-    and chkModule loc (id, sealed, sign, module, (env, astDecls)) = (case module
-        of PT.MarkMod {span, tree} => chkModule span (id, sealed, sign, tree, (env, astDecls))
+    and chkModule loc (id, sign, module, (env, astDecls)) = (case module
+        of PT.MarkMod {span, tree} => chkModule span (id, sign, tree, (env, astDecls))
 	 | PT.DeclsMod decls => let
 		val (modEnv, modAstDecls) = chkTopDcls(loc, decls, freshEnv(SOME env))
-		val modRef = AST.MOD {name=id, id=Stamp.new(), formals=NONE}
-		val module = AST.M_Body(loc, modAstDecls)
-		val modEnv' = (case sign
+		val (modEnv', modAstDecls') = (case sign
                     of SOME sign => let
                        val sigEnv = chkSignature loc (sign, env)
+		       val env = MatchSig.match{err=(!errStrm), loc=loc, modEnv=modEnv, sigEnv=sigEnv}
+(* FIXME *)
+		       val modAstDecls' = modAstDecls
                        in
-			   MatchSig.match{err=(!errStrm), loc=loc, modEnv=modEnv, sigEnv=sigEnv}
+			   (env, modAstDecls')
                        end
-		     | NONE => modEnv
+		     | NONE => (modEnv, modAstDecls)
                    (* end case *))
+		val modRef = AST.MOD {name=id, id=Stamp.new(), formals=NONE}
                 in
 		  (Env.insertModEnv(env, id, modEnv'), 
-		   AST.TD_Module(loc, modRef, NONE, module) :: astDecls)
+		   AST.TD_Module(loc, modRef, NONE, AST.M_Body(loc, modAstDecls')) :: astDecls)
 	        end
 	 | _ => raise Fail "todo"
        (* end case *))

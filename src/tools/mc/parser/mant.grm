@@ -179,9 +179,8 @@ Decl
 		=> (markDecl (ValueDecl_SPAN, PT.ValueDecl ValueDecl))
 	| "local" (Decl ";"?)* "in" (Decl ";"?)* "end"
 		=> (markDecl (FULL_SPAN, PT.LocalDecl(SR1, SR2)))
-        | "structure" NAME "=" Module => (markDecl (FULL_SPAN, PT.ModuleDecl(NAME, false, NONE, Module)))
-        | "structure" NAME ":" Signature "=" Module => (markDecl (FULL_SPAN, PT.ModuleDecl(NAME, false, SOME Signature, Module)))
-        | "structure" NAME ":>" Signature "=" Module => (markDecl (FULL_SPAN, PT.ModuleDecl(NAME, true, SOME Signature, Module)))
+        | "structure" NAME "=" Module => (markDecl (FULL_SPAN, PT.ModuleDecl(NAME, NONE, Module)))
+        | "structure" NAME ":" Signature "=" Module => (markDecl (FULL_SPAN, PT.ModuleDecl(NAME, SOME Signature, Module)))
         | "signature" NAME "=" Signature => (markDecl (FULL_SPAN, PT.SignDecl(NAME, Signature)))
 	;
 

@@ -39,7 +39,6 @@ structure AST =
  
     and module_type
       = OPAQUE of info * sign
-      | TRANSLUCENT of info * sign
 
     and sign
       = SIG_Id of info * sig_name

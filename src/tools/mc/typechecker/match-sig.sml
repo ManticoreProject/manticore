@@ -30,22 +30,16 @@ structure MatchSig :> sig
     fun substDCon tbl (Ty.DCon {id, name, owner, argTy}) =
 	Ty.DCon {id=id, name=name, owner=owner, argTy=Option.map (substTy tbl) argTy}
 
+    and substTyCon tbl tyc = Option.getOpt (TyCon.Tbl.find tbl tyc, tyc)
+
   (* tycon substitution *)
     and substTy tbl ty = (case ty
         of Ty.MetaTy (Ty.MVar {stamp, info=ref (Ty.INSTANCE ty)}) =>
 	   Ty.MetaTy (Ty.MVar {stamp=Stamp.new(), info=ref (Ty.INSTANCE (substTy tbl ty))})
-	 | Ty.ConTy (tys, tc) => let
-	   val Ty.Tyc{stamp, name, arity, params, props, def} = Option.getOpt (TyCon.Tbl.find tbl tc, tc)
-	   val def = (case def
-		       of Ty.DataTyc {nCons, cons} => (
-			  cons := List.map (substDCon tbl) (!cons);
-			  Ty.DataTyc{nCons=nCons, cons=cons})
-			| def => def
-                     (* end case *))
-	   val tyc = Ty.Tyc{stamp=stamp, name=name, arity=arity, params=params, props=props, def=def}
-           in
-	       Ty.ConTy(List.map (substTy tbl) tys, tyc)
-           end
+	 | Ty.ConTy (tys, tyc) => (case TyCon.Tbl.find tbl tyc
+           of NONE => Ty.ConTy(List.map (substTy tbl) tys, tyc)
+	    | SOME tyc' => Ty.ConTy(List.map (substTy tbl) tys, tyc')
+           (* end case *))
 	 | Ty.FunTy (ty1, ty2) => Ty.FunTy(substTy tbl ty1, substTy tbl ty2)
 	 | Ty.TupleTy tys => Ty.TupleTy (List.map (substTy tbl) tys)
 	 | ty => ty
@@ -73,29 +67,52 @@ structure MatchSig :> sig
 	   (tyc', finishFn)
         end
 
-    fun copyTyCon tbl (tyc, env) = (case TyCon.Tbl.find tbl tyc
-				      of NONE => freshTyCon tbl tyc
-				       | SOME tyc => (tyc, fn () => ())
-				    (* end case *))
-
+    fun copyTyCon tbl (tyc, env) = 
+	(case TyCon.Tbl.find tbl tyc
+	  of NONE => freshTyCon tbl tyc
+	   | SOME tyc => (tyc, fn () => ())
+	(* end case *))
+	
     fun copyTyDef tbl (id, Env.TyDef tys, (env, finishFns)) = 
 	(Env.insert(env, id, Env.TyDef (substTyScheme tbl tys)), finishFns)
-      | copyTyDef tbl (id : Atom.atom, Env.TyCon tyc, (env, finishFns)) = let
+      | copyTyDef tbl (id, Env.TyCon tyc, (env, finishFns)) = let
 	val (tyc', finishFn) = copyTyCon tbl (tyc, env)
 	in
           (Env.insert(env, id, Env.TyCon tyc'), finishFn :: finishFns)
         end
 
-  (* FIXME *)
-    fun deepCopy (Env.ModEnv{tyEnv=sigTyEnv, varEnv=sigVarEnv, modEnv=sigModEnv, ...},
-		  Env.ModEnv{tyEnv=modTyEnv, varEnv=modVarEnv, modEnv=modModEnv, sigEnv, outerEnv, ...}) = let
-	val tbl = TyCon.Tbl.mkTable(128, NotFound)
-	val (tyEnv', tyFinishFns) = Env.Map.foldli (copyTyDef tbl) (Env.empty, []) sigTyEnv
-	val varEnv' = sigVarEnv
-	val modEnv' = sigModEnv
+    fun copyVarDef tbl (id, vbind, env) = (case vbind
+        of Env.Con (Ty.DCon {id=dcid, name, owner, argTy}) => let
+	   val dcon = Ty.DCon{id=dcid, name=name, owner=substTyCon tbl owner, argTy=Option.map (substTy tbl) argTy}
+           in
+              Env.insert(env, id, Env.Con dcon)
+           end
+	 | Env.Var v => let
+	   val ty = Var.typeOf v
+	   in
+	       (*Var.setType(v, ref (substTyScheme tbl ty));*)
+	       Env.insert(env, id, Env.Var v)
+	   end
+	 | _ => raise Fail "impossible"
+      (* end case *))
+
+    fun copyMod tbl (Env.ModEnv{tyEnv=mTyEnv, varEnv=mVarEnv, modEnv=mModEnv, sigEnv, outerEnv, ...}) = let
+	val (tyEnv', tyFinishFns) = Env.Map.foldli (copyTyDef tbl) (Env.empty, []) mTyEnv
+	val varEnv' = Env.Map.foldli (copyVarDef tbl) Env.empty mVarEnv
+	val modEnv' = Env.Map.foldli (fn (id, m, env) => Env.Map.insert(env, id, copyMod tbl m)) Env.empty mModEnv
         in
 	  List.app (fn f => f()) (List.rev tyFinishFns);
 	  Env.ModEnv{stamp=Stamp.new(), tyEnv=tyEnv', varEnv=varEnv', modEnv=modEnv', sigEnv=sigEnv, outerEnv=outerEnv}
+        end
+
+  (* takes environments for a module and its constraining signature and returns the residual signature for the 
+   * module. this signature contains fresh variables for type constructors and variable definitions and 
+   * data constructors.
+   *)
+    fun deepCopy (sigEnv, modEnv) = let
+	val tbl = TyCon.Tbl.mkTable(128, NotFound)
+        in
+	   copyMod tbl modEnv
 	end
 
   (* data cons must be sorted *)
