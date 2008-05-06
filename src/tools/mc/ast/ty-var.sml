@@ -17,6 +17,9 @@ structure TyVar : sig
   (* return true if two type variables are the same (i.e., have the same stamp) *)
     val same : AST.tyvar * AST.tyvar -> bool
 
+  (* compare two type variables *)
+    val compare : AST.tyvar * AST.tyvar -> order
+
   (* finite maps on type variables *)
     structure Map : ORD_MAP where type Key.ord_key = AST.tyvar
 
@@ -33,10 +36,12 @@ structure TyVar : sig
   (* return true if two type variables are the same (i.e., have the same stamp) *)
     fun same (TVar{stamp=a, ...}, TVar{stamp=b, ...}) = Stamp.same(a, b)
 
+    fun compare (TVar{stamp = a, ...}, TVar{stamp = b, ...}) = Stamp.compare(a, b)
+
     structure Map = RedBlackMapFn (
       struct
 	type ord_key = tyvar
-	fun compare (TVar{stamp = a, ...}, TVar{stamp = b, ...}) = Stamp.compare(a, b)
+	val compare = compare 
       end)
 
   end

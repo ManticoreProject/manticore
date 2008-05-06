@@ -14,12 +14,24 @@ structure Unify : sig
   (* nondestructively check if two types are unifiable. *)
     val unifiable : Types.ty * Types.ty -> bool
 
+  (* nondestructively check if two type schemes are unifiable. *)
+    val unifiableTS : Types.ty_scheme * Types.ty_scheme -> bool
+
   end = struct
 
     structure Ty = Types
     structure MV = MetaVar
     structure TU = TypeUtil
     structure TC = TypeClass
+  (* type-variable equality assumptions *)
+    structure TVA = BinarySetFn (
+                        type ord_key = (Types.tyvar * Types.tyvar)
+                        fun compare ((tv11, tv12), (tv21, tv22)) = 
+			    (case (TyVar.compare(tv11, tv21), TyVar.compare(tv12, tv22))
+                              of (EQUAL, c2) => c2
+			       | (c1, _) => c1
+                            (* end case *))
+                        )
 
 (* FIXME: add a control to enable this flag *)
     val debugUnify = ref false
@@ -39,7 +51,7 @@ structure Unify : sig
 	  end
 
   (* unify two types *)
-    fun unifyRC (ty1, ty2, reconstruct) = let
+    fun unifyRC (tvAssum : TVA.set, ty1, ty2, reconstruct) = let
 	  val mv_changes = ref []
 	  fun assignMV (info, newInfo) = (
 		if reconstruct
@@ -76,6 +88,8 @@ structure Unify : sig
 		      uni(ty11, ty21) andalso uni(ty12, ty22)
 		  | (Ty.TupleTy tys1, Ty.TupleTy tys2) =>
 		      ListPair.allEq uni (tys1, tys2)
+		  | (Ty.VarTy tv1, Ty.VarTy tv2) =>
+		      TVA.member (tvAssum, (tv1, tv2))
 		  | _ => false
 	       (* end case *))
 	(* unify a type with an uninstantiated meta-variable *)
@@ -142,7 +156,7 @@ structure Unify : sig
 			TypeUtil.fmt {long=true} ty2, ")\n"
 		      ])
 		    else ()
-	  val res = unifyRC (ty1, ty2, false)
+	  val res = unifyRC (TVA.empty, ty1, ty2, false)
 	  in
 	    if !debugUnify
 	      then if res
@@ -152,6 +166,13 @@ structure Unify : sig
 	    res
 	  end
 
-    fun unifiable (ty1, ty2) = unifyRC (ty1, ty2, true)
+    fun unifiable (ty1, ty2) = unifyRC (TVA.empty, ty1, ty2, true)
+
+    fun unifiableTS (Ty.TyScheme (tvs1, ty1), Ty.TyScheme (tvs2, ty2)) = let
+	(* construct ty-var equality assumptions *)
+	val tvAssum = List.foldl TVA.add' TVA.empty (ListPair.zip (tvs1, tvs2) @ ListPair.zip (tvs2, tvs1))
+	in
+	    (List.length tvs1 = List.length tvs2) andalso unifyRC(tvAssum, ty1, ty2, true)
+	end
 			   
   end

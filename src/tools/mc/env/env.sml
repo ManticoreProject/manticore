@@ -33,6 +33,7 @@ structure Env =
 	   outerEnv : module_env option     (* environment of the enclosing module *)
          }
 
+    structure Map = AtomMap
     val empty = AtomMap.empty
     val find = AtomMap.find
     val insert = AtomMap.insert
@@ -52,6 +53,7 @@ structure Env =
     fun findTyEnv (env, tv) = findInEnv (env, #tyEnv, tv)
     fun findVarEnv (env, v) = findInEnv (env, #varEnv, v)
     fun findModEnv (env, v) = findInEnv (env, #modEnv, v)
+    fun findSigEnv (env, v) = findInEnv (env, #sigEnv, v)
 
     fun insertTyEnv (ModEnv {stamp, tyEnv, varEnv, modEnv, sigEnv, outerEnv}, tv, x) = 
 	ModEnv{stamp=stamp, tyEnv=insert (tyEnv, tv, x), varEnv=varEnv, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}

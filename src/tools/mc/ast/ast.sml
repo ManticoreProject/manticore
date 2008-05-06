@@ -12,7 +12,7 @@ structure AST =
     datatype tyvar = datatype Types.tyvar
     datatype dcon = datatype Types.dcon
 
-    type info = unit   (* source file information *)
+    type info = Error.span   (* source file information *)
 
     type label = Atom.atom
 

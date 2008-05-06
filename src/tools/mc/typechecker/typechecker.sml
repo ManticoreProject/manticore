@@ -765,7 +765,16 @@ structure Typechecker : sig
                in
 		  chkSpecs loc (specs, sigEnv)
                end
-             | PT.NameSig (id, tyRevls) => raise Fail "todo"
+             | PT.NameSig (id, tyRevls) => (case Env.findSigEnv(env, id)
+               of NONE => (error (loc, ["cannot find signature ", Atom.toString id]);
+			   env)
+		| SOME sigEnv => let
+		   val env' = Env.freshEnv(Env.empty, Env.empty, SOME env)
+                   val env' as Env.ModEnv{tyEnv, ...} = List.foldl (chkTyDcl loc) env' tyRevls
+                   in
+		      MatchSig.reveal (sigEnv, tyEnv)
+		   end
+               (* end case *))
             (* end case *))
 
     fun chkTopDcl loc (ptDecl, (env, astDecls)) = (case ptDecl
@@ -796,18 +805,18 @@ structure Typechecker : sig
 	 | PT.DeclsMod decls => let
 		val (modEnv, modAstDecls) = chkTopDcls(loc, decls, freshEnv(SOME env))
 		val modRef = AST.MOD {name=id, id=Stamp.new(), formals=NONE}
-		val module = AST.M_Body((), modAstDecls)
+		val module = AST.M_Body(loc, modAstDecls)
 		val modEnv' = (case sign
                     of SOME sign => let
                        val sigEnv = chkSignature loc (sign, env)
                        in
-			   MatchSig.match{err=(!errStrm), modEnv=modEnv, sigEnv=sigEnv}
+			   MatchSig.match{err=(!errStrm), loc=loc, modEnv=modEnv, sigEnv=sigEnv}
                        end
 		     | NONE => modEnv
                    (* end case *))
                 in
 		  (Env.insertModEnv(env, id, modEnv'), 
-		   AST.TD_Module((), modRef, NONE, module) :: astDecls)
+		   AST.TD_Module(loc, modRef, NONE, module) :: astDecls)
 	        end
 	 | _ => raise Fail "todo"
        (* end case *))
