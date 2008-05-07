@@ -18,7 +18,7 @@ is
   $/controls-lib.cm
 
   ../common/sources.cm
-  ../parser/parser.cm
+  ../parse-tree/sources.cm
   ../ast/sources.cm
   ../env/sources.cm
 

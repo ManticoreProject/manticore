@@ -19,6 +19,7 @@ is
   $/ml-lpt-lib.cm
 
   ../common/sources.cm
+  ../parse-tree/sources.cm
   ../parser/parser.cm
   ../ast/sources.cm
 
