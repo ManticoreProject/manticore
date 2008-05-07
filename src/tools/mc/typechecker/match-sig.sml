@@ -35,7 +35,7 @@ structure MatchSig :> sig
   (* tycon substitution *)
     and substTy tbl ty = (case ty
         of Ty.MetaTy (Ty.MVar {stamp, info=ref (Ty.INSTANCE ty)}) =>
-	   Ty.MetaTy (Ty.MVar {stamp=Stamp.new(), info=ref (Ty.INSTANCE (substTy tbl ty))})
+	   Ty.MetaTy (Ty.MVar {stamp=stamp, info=ref (Ty.INSTANCE (substTy tbl ty))})
 	 | Ty.ConTy (tys, tyc) => (case TyCon.Tbl.find tbl tyc
            of NONE => Ty.ConTy(List.map (substTy tbl) tys, tyc)
 	    | SOME tyc' => Ty.ConTy(List.map (substTy tbl) tys, tyc')
@@ -89,9 +89,10 @@ structure MatchSig :> sig
            end
 	 | Env.Var v => let
 	   val ty = Var.typeOf v
+	   val v' = Var.copy v
+	   val ty' = substTyScheme tbl ty
 	   in
-	       (*Var.setType(v, ref (substTyScheme tbl ty));*)
-	       Env.insert(env, id, Env.Var v)
+	       Env.insert(env, id, Env.Var v')
 	   end
 	 | _ => raise Fail "impossible"
       (* end case *))

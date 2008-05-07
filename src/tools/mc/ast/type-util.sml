@@ -59,6 +59,7 @@ structure TypeUtil : sig
 
     val rangeType : Types.ty -> Types.ty
 
+
   end = struct
 
     structure MV = MetaVar

@@ -694,7 +694,7 @@ structure Typechecker : sig
 	  end
 
   (* create an environment *)
-    fun freshEnv outerEnv = Env.freshEnv(BasisEnv.te0, BasisEnv.ve0, outerEnv)
+    fun freshEnv outerEnv = Env.freshEnv(Env.empty, Env.empty, outerEnv)
 
   (* check type declarations *)
     fun chkTyDcl loc (ptTyDecl, env) = (case ptTyDecl
@@ -778,7 +778,53 @@ structure Typechecker : sig
                (* end case *))
             (* end case *))
 
-    fun chkTopDcl loc (ptDecl, (env, astDecls)) = (case ptDecl
+    fun pairEnvs (modEnv, residualEnv) = let
+	fun f (id, xr, ps) = (case Env.Map.find(modEnv, id)
+            of NONE => ps
+	     | SOME xm => (xm, xr) :: ps
+            (* end case *))
+        in
+	   Env.Map.foldli f [] residualEnv
+        end
+
+    fun getVars ((Env.Var x1, Env.Var x2), ps) = (x1, x2) :: ps
+      | getVars (_, ps) = ps
+
+  (* build a mapping from variable definitions in the module's var environment to
+   * fresh variable definitions in the residual signature.
+   *)
+    fun buildVarSubst (modVarEnv, residualVarEnv) = let
+	val valBindSubstPairs = pairEnvs (modVarEnv, residualVarEnv)
+	val varBindSubstPairs = List.foldl getVars [] valBindSubstPairs
+        in 
+	   List.foldl VarSubst.add VarSubst.id varBindSubstPairs
+        end
+
+    fun chkModule loc (id, sign, module, (env, astDecls)) = (case module
+        of PT.MarkMod {span, tree} => chkModule span (id, sign, tree, (env, astDecls))
+	 | PT.DeclsMod decls => let
+		val (modEnv, modAstDecls) = chkTopDcls(loc, decls, freshEnv(SOME env))
+		val (modEnv', modAstDecls') = (case sign
+                    of SOME sign => let
+                       val sigEnv = chkSignature loc (sign, env)
+		       val env = MatchSig.match{err=(!errStrm), loc=loc, modEnv=modEnv, sigEnv=sigEnv}		       
+		       val s = buildVarSubst (Env.varEnv modEnv, Env.varEnv env)
+		       val modAstDecls' = VarSubst.topDecs s modAstDecls
+                       in
+			   (env, modAstDecls')
+                       end
+		     | NONE => (modEnv, modAstDecls)
+                   (* end case *))
+		val modRef = AST.MOD {name=id, id=Stamp.new(), formals=NONE}
+                in
+		  (Env.insertModEnv(env, id, modEnv'), 
+		   AST.TD_Module(loc, modRef, NONE, AST.M_Body(loc, modAstDecls')) :: astDecls)
+	        end
+	 | _ => raise Fail "todo"
+       (* end case *))
+
+
+    and chkTopDcl loc (ptDecl, (env, astDecls)) = (case ptDecl
            of PT.MarkDecl{span, tree} => chkTopDcl span (tree, (env, astDecls))
 	    | PT.TyDecl tyDecl => (chkTyDcl loc (tyDecl, env), astDecls)
 	    | PT.ExnDecl(id, optTy) => let
@@ -800,29 +846,6 @@ structure Typechecker : sig
                  (Env.insertSigEnv(env, id, sigEnv), astDecls)
               end
 	  (* end case *))
-
-    and chkModule loc (id, sign, module, (env, astDecls)) = (case module
-        of PT.MarkMod {span, tree} => chkModule span (id, sign, tree, (env, astDecls))
-	 | PT.DeclsMod decls => let
-		val (modEnv, modAstDecls) = chkTopDcls(loc, decls, freshEnv(SOME env))
-		val (modEnv', modAstDecls') = (case sign
-                    of SOME sign => let
-                       val sigEnv = chkSignature loc (sign, env)
-		       val env = MatchSig.match{err=(!errStrm), loc=loc, modEnv=modEnv, sigEnv=sigEnv}
-(* FIXME *)
-		       val modAstDecls' = modAstDecls
-                       in
-			   (env, modAstDecls')
-                       end
-		     | NONE => (modEnv, modAstDecls)
-                   (* end case *))
-		val modRef = AST.MOD {name=id, id=Stamp.new(), formals=NONE}
-                in
-		  (Env.insertModEnv(env, id, modEnv'), 
-		   AST.TD_Module(loc, modRef, NONE, AST.M_Body(loc, modAstDecls')) :: astDecls)
-	        end
-	 | _ => raise Fail "todo"
-       (* end case *))
 
     and chkTopDcls (loc, ptDecls, env) = let
         val (env', astDecls) = List.foldl (chkTopDcl loc) (env, []) ptDecls
@@ -882,7 +905,8 @@ structure Typechecker : sig
 
   (* check a compilation unit *)
     fun check (err, program) = let
-	val (env, decls) = check'' (err, freshEnv NONE, program)
+	val env0 = Env.freshEnv(BasisEnv.te0, BasisEnv.ve0, NONE)
+	val (env, decls) = check'' (err, env0, program)
 	in
 	    declsToExp (decls, makeEntryPoint(env, "main"))
 	end

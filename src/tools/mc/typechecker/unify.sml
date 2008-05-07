@@ -84,11 +84,11 @@ structure Unify : sig
 		  | (ty1, Ty.MetaTy mv2) => unifyWithMV (ty1, mv2)
 		  | (Ty.ConTy(tys1, tyc1), Ty.ConTy(tys2, tyc2)) =>
 		      (TyCon.same(tyc1, tyc2)) andalso ListPair.allEq uni (tys1, tys2)
-		  | (Ty.FunTy(ty11, ty12), Ty.FunTy(ty21, ty22)) =>
+		  | (Ty.FunTy(ty11, ty12), Ty.FunTy(ty21, ty22)) => 
 		      uni(ty11, ty21) andalso uni(ty12, ty22)
 		  | (Ty.TupleTy tys1, Ty.TupleTy tys2) =>
 		      ListPair.allEq uni (tys1, tys2)
-		  | (Ty.VarTy tv1, Ty.VarTy tv2) =>
+		  | (Ty.VarTy tv1, Ty.VarTy tv2) => 
 		      TVA.member (tvAssum, (tv1, tv2))
 		  | _ => false
 	       (* end case *))

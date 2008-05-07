@@ -40,6 +40,8 @@ structure Env =
     val inDomain = AtomMap.inDomain
     fun fromList l = List.foldl AtomMap.insert' AtomMap.empty l
 
+    fun varEnv (ModEnv{varEnv, ...}) = varEnv
+
     (* lookup a variable in the scope of the current module *)
     fun findInEnv (ModEnv (fields as {outerEnv, ...}), select, x) = (case find(select fields, x)
         of NONE => 

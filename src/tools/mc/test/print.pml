@@ -1,6 +1,6 @@
 signature PRINT = 
   sig
-(*    val 'a with : string * ('a -> string) * ('a list) -> unit*)
+    val 'a with : (string * ('a -> string) * ('a list)) -> unit
     val int : int -> unit
     val ints : int list -> unit
     val ln : string -> unit

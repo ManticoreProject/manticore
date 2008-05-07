@@ -333,7 +333,7 @@ structure PrintAST : sig
       | overload_var (A.Instance v) = var v
 				    
   (* var : A.var -> unit *)
-    and var (VarRep.V{name, ...}) = pr name
+    and var (v as VarRep.V{name, ...}) = pr (Var.toString v)
 
   (* prettyprint an exception declaration *)
     fun ppExn (T.DCon{name, argTy, ...}) = (
