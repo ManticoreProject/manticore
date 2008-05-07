@@ -1,0 +1,24 @@
+(* manticore.grm
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+%name Manticore;
+
+%tokens
+      : KW__prim	("_prim")
+      | KW__primcode	("_primcode")
+      ;
+
+%import "sml.grm";
+%import "bom.grm";
+
+Decl
+        : "type" TyParams NAME "=" "_prim" "(" BOMType ")"
+		=> (markTyDecl (KW_type_SPAN, PT.TypeTyDecl(TyParams, NAME, Type)))
+	| "val" Pat "=" "_prim" "(" BOMLambda ")"
+		=> ()
+	| "_primcode" "(" BOMDecls ")"
+		=> ()
+	;
