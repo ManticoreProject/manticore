@@ -757,7 +757,7 @@ structure Typechecker : sig
 	 | PT.ValSpec (x, tvs, ty) => let
 	   val (tve, tvs') = chkTyVars (loc, tvs)
            val ty = chkTy(loc, env, tve, ty)
-	   val x' = Var.new(Atom.toString x, ty)
+	   val x' = Var.newPoly(Atom.toString x, Ty.TyScheme(tvs', ty))
            in
 	       Env.insertVarEnv(env, x, Env.Var x')
            end
