@@ -25,13 +25,17 @@ structure Env =
     type var_env = val_bind AtomMap.map		(* VE in the semantics *)
     datatype module_env
       = ModEnv of {           (* environment for modules *)
-	   stamp : Stamp.stamp,
+	   modRef : AST.module_ref,
 	   tyEnv : ty_env,
 	   varEnv : var_env,
 	   modEnv : module_env AtomMap.map,
 	   sigEnv : module_env AtomMap.map,
 	   outerEnv : module_env option     (* environment of the enclosing module *)
          }
+
+  (* type realization environment *)
+    structure RealizationEnv = TyCon.Map
+    type realization_env = ty_def RealizationEnv.map
 
     structure Map = AtomMap
     val empty = AtomMap.empty
@@ -57,27 +61,28 @@ structure Env =
     fun findModEnv (env, v) = findInEnv (env, #modEnv, v)
     fun findSigEnv (env, v) = findInEnv (env, #sigEnv, v)
 
-    fun insertTyEnv (ModEnv {stamp, tyEnv, varEnv, modEnv, sigEnv, outerEnv}, tv, x) = 
-	ModEnv{stamp=stamp, tyEnv=insert (tyEnv, tv, x), varEnv=varEnv, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
-    fun insertVarEnv (ModEnv {stamp, varEnv, tyEnv, modEnv, sigEnv, outerEnv}, v, x) = 
-	ModEnv{stamp=stamp, tyEnv=tyEnv, varEnv=insert (varEnv, v, x), modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
-    fun insertModEnv (ModEnv {stamp, modEnv, sigEnv, tyEnv, varEnv, outerEnv}, v, x) = 
-	ModEnv{stamp=stamp, tyEnv=tyEnv, varEnv=varEnv, modEnv=insert (modEnv, v, x), sigEnv=sigEnv, outerEnv=outerEnv}
-    fun insertSigEnv (ModEnv {stamp, modEnv, sigEnv, tyEnv, varEnv, outerEnv}, v, x) = 
-	ModEnv{stamp=stamp, tyEnv=tyEnv, varEnv=varEnv, modEnv=modEnv, sigEnv=insert (sigEnv, v, x), outerEnv=outerEnv}
+    fun insertTyEnv (ModEnv {modRef, tyEnv, varEnv, modEnv, sigEnv, outerEnv}, tv, x) = 
+	ModEnv{modRef=modRef, tyEnv=insert (tyEnv, tv, x), varEnv=varEnv, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
+    fun insertVarEnv (ModEnv {modRef, varEnv, tyEnv, modEnv, sigEnv, outerEnv}, v, x) = 
+	ModEnv{modRef=modRef, tyEnv=tyEnv, varEnv=insert (varEnv, v, x), modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
+    fun insertModEnv (ModEnv {modRef, modEnv, sigEnv, tyEnv, varEnv, outerEnv}, v, x) = 
+	ModEnv{modRef=modRef, tyEnv=tyEnv, varEnv=varEnv, modEnv=insert (modEnv, v, x), sigEnv=sigEnv, outerEnv=outerEnv}
+    fun insertSigEnv (ModEnv {modRef, modEnv, sigEnv, tyEnv, varEnv, outerEnv}, v, x) = 
+	ModEnv{modRef=modRef, tyEnv=tyEnv, varEnv=varEnv, modEnv=modEnv, sigEnv=insert (sigEnv, v, x), outerEnv=outerEnv}
 
     val inDomainTyEnv = Option.isSome o findTyEnv
     val inDomainVarEnv = Option.isSome o findVarEnv
 
-    fun union (ModEnv{stamp=s1, varEnv=ve1, tyEnv=te1, modEnv=me1, sigEnv=se1, outerEnv=oe1},  
-	       ModEnv{stamp=s2, varEnv=ve2, tyEnv=te2, modEnv=me2, sigEnv=se2, outerEnv=oe2}) = 
-	ModEnv{stamp=s1,
+    fun union (ModEnv{modRef=s1, varEnv=ve1, tyEnv=te1, modEnv=me1, sigEnv=se1, outerEnv=oe1},  
+	       ModEnv{modRef=s2, varEnv=ve2, tyEnv=te2, modEnv=me2, sigEnv=se2, outerEnv=oe2}) = 
+	ModEnv{modRef=s1,
 	       modEnv=AtomMap.unionWith #1 (me1, me2), 
 	       tyEnv=AtomMap.unionWith #1 (te1, te2), 
 	       outerEnv=oe1,
 	       sigEnv=se1,
 	       varEnv=AtomMap.unionWith #1 (ve1, ve2)}
 
-    fun freshEnv (tyEnv, varEnv, outerEnv) = ModEnv{stamp=Stamp.new(), tyEnv=tyEnv, varEnv=varEnv, modEnv=empty, sigEnv=empty, outerEnv=outerEnv}
+    fun freshEnv (modRef, tyEnv, varEnv, outerEnv) = 
+	ModEnv{modRef=modRef, tyEnv=tyEnv, varEnv=varEnv, modEnv=empty, sigEnv=empty, outerEnv=outerEnv}
 
   end

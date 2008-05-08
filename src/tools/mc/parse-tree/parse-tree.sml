@@ -62,6 +62,7 @@ structure ParseTree =
       = MarkTyDecl of ty_decl mark
       | TypeTyDecl of (tyvar list * tyid * ty)
       | DataTyDecl of (tyvar list * tyid * con_decl list)
+      | AbsTyDecl of (tyvar list * tyid)
 
   (* data-constructor definitions *)
     and con_decl

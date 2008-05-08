@@ -9,6 +9,7 @@
 Library
 
   structure Typechecker
+  structure MatchSig
 
 is
 

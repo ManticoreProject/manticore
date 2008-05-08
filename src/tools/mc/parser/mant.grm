@@ -165,8 +165,11 @@ Spec
         ;
 
 TyDecl
-        : "type" TyParams NAME "=" Type
-		=> (markTyDecl (KW_type_SPAN, PT.TypeTyDecl(TyParams, NAME, Type)))
+        : "type" TyParams NAME ("=" Type)?
+		=> ((case SR
+		     of NONE => markTyDecl (KW_type_SPAN, PT.AbsTyDecl(TyParams, NAME))
+		      | SOME ty => markTyDecl (KW_type_SPAN, PT.TypeTyDecl(TyParams, NAME, ty))
+		    (* end case *)))
 	| "datatype" TyParams NAME "=" ConsDecl ("|" ConsDecl)*
 		=> (markTyDecl (KW_datatype_SPAN, PT.DataTyDecl(TyParams, NAME, ConsDecl :: SR)))
         ;

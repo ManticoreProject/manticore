@@ -59,7 +59,17 @@ structure TranslateTypes : sig
 		  | Ty.ConTy(tyArgs, tyc) => (
 		      case TranslateEnv.findTyc (env, tyc)
 		       of SOME ty => ty
-			| NONE => trTyc (env, tyc)
+			| NONE => 
+			  (case tyc
+			    of Ty.Tyc{def=Ty.AbsTyc, ...} => 
+			       (* look for the concrete type of the constructor *)
+			       (case MatchSig.realizationOfTyc tyc
+				 of SOME (Env.TyCon tyc) => trTyc(env, tyc)
+				  | SOME (Env.TyDef tys) => trScheme(env, tys)
+				  | NONE => trTyc (env, tyc)				
+			       (* end case *))
+			     | _ => trTyc (env, tyc)
+			  (* end case *))
 		      (* end case *))
 		  | Ty.FunTy(ty1, ty2) => BTy.T_Fun([tr' ty1], [BTy.exhTy], [tr' ty2])
 		  | Ty.TupleTy [] => BTy.unitTy
@@ -68,6 +78,8 @@ structure TranslateTypes : sig
 	  in
 	    tr' ty
 	  end
+
+    and trScheme (env, Ty.TyScheme(_, ty)) = tr (env, ty)
 
     and trTyc (env, tyc as Ty.Tyc{name, def, ...}) = (case def
 	   of Ty.AbsTyc => raise Fail("Unknown abstract type " ^ Atom.toString name)
@@ -155,8 +167,6 @@ structure TranslateTypes : sig
 	  in
 	    (rep, FlattenRep.dstTys rep)
 	  end
-
-    fun trScheme (env, Ty.TyScheme(_, ty)) = tr (env, ty)
 
     fun trDataCon (env, dc) = (case E.findDCon(env, dc)
 	     of SOME dc' => dc'

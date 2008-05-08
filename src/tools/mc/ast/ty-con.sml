@@ -31,6 +31,9 @@ structure TyCon : sig
   (* return the arity of a type constructor *)
     val arityOf : Types.tycon -> int
 
+  (* dictionaries keyed by type constructors *)
+    structure Map : ORD_MAP where type Key.ord_key = Types.tycon
+
   (* hash tables keyed by type constructors *)
     structure Tbl : MONO_HASH_TABLE where type Key.hash_key = Types.tycon
 
@@ -112,6 +115,10 @@ structure TyCon : sig
 
   (* return the arity of a type constructor *)
     fun arityOf (Tyc{arity, ...}) = arity
+
+    structure Map = BinaryMapFn (
+      type ord_key = tycon
+      val compare = compare)
 
     structure Tbl = HashTableFn (
       struct

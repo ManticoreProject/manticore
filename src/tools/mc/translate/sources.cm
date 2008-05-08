@@ -23,6 +23,7 @@ is
   ../env/sources.cm
   ../bom/sources.cm
   ../hlop/sources.cm
+  ../typechecker/sources.cm
 (* FIXME: we shouldn't depend on stuff from another transform phase! *)
   ../ast-opt/sources.cm
 

@@ -694,7 +694,7 @@ structure Typechecker : sig
 	  end
 
   (* create an environment *)
-    fun freshEnv outerEnv = Env.freshEnv(Env.empty, Env.empty, outerEnv)
+    fun freshEnv (modRef, outerEnv) = Env.freshEnv(modRef, Env.empty, Env.empty, outerEnv)
 
   (* check type declarations *)
     fun chkTyDcl loc (ptTyDecl, env) = (case ptTyDecl
@@ -705,6 +705,13 @@ structure Typechecker : sig
 		in
 		  Env.insertTyEnv(env, id, Env.TyDef(AST.TyScheme(tvs', ty')))
 		end
+	    | PT.AbsTyDecl (tvs, id) => let
+                val (tve, tvs') = chkTyVars(loc, tvs)
+		val tyc = TyCon.newAbsTyc(id, List.length tvs', false)
+		val env' = Env.insertTyEnv(env, id, Env.TyCon tyc)
+                in
+		  env'
+                end
 	    | PT.DataTyDecl(tvs, id, cons) => let
 		val (tve, tvs') = chkTyVars (loc, tvs)
 		val tyc = TyCon.newDataTyc(id, tvs')
@@ -759,10 +766,11 @@ structure Typechecker : sig
     fun chkSpecs loc (specs, env) = List.foldl (chkSpec loc) env specs
 
   (* check that a signature is well formed and return the resulting environment *)
-    fun chkSignature loc (sign, env) = (case sign
-            of PT.MarkSig {tree, span} => chkSignature span (tree, env)
+    fun chkSignature loc (id, sign, env) = (case sign
+            of PT.MarkSig {tree, span} => chkSignature span (id, tree, env)
 	     | PT.ExpSig specs => let
-               val sigEnv = Env.freshEnv(Env.empty, Env.empty, SOME env)
+	       val modRef = AST.MOD{name=Option.getOpt(id, Atom.atom "sign"), id=Stamp.new(), formals=NONE}
+               val sigEnv = Env.freshEnv(modRef, Env.empty, Env.empty, SOME env)
                in
 		  chkSpecs loc (specs, sigEnv)
                end
@@ -770,7 +778,8 @@ structure Typechecker : sig
                of NONE => (error (loc, ["cannot find signature ", Atom.toString id]);
 			   env)
 		| SOME sigEnv => let
-		   val env' = Env.freshEnv(Env.empty, Env.empty, SOME env)
+	           val modRef = AST.MOD{name=id, id=Stamp.new(), formals=NONE}
+		   val env' = Env.freshEnv(modRef, Env.empty, Env.empty, SOME env)
                    val env' as Env.ModEnv{tyEnv, ...} = List.foldl (chkTyDcl loc) env' tyRevls
                    in
 		      MatchSig.reveal (sigEnv, tyEnv)
@@ -803,10 +812,11 @@ structure Typechecker : sig
     fun chkModule loc (id, sign, module, (env, astDecls)) = (case module
         of PT.MarkMod {span, tree} => chkModule span (id, sign, tree, (env, astDecls))
 	 | PT.DeclsMod decls => let
-		val (modEnv, modAstDecls) = chkTopDcls(loc, decls, freshEnv(SOME env))
+		val modRef = AST.MOD {name=id, id=Stamp.new(), formals=NONE}
+		val (modEnv, modAstDecls) = chkTopDcls(loc, decls, freshEnv(modRef, SOME env))
 		val (modEnv', modAstDecls') = (case sign
                     of SOME sign => let
-                       val sigEnv = chkSignature loc (sign, env)
+                       val sigEnv = chkSignature loc (NONE, sign, env)
 		       val env = MatchSig.match{err=(!errStrm), loc=loc, modEnv=modEnv, sigEnv=sigEnv}		       
 		       val s = buildVarSubst (Env.varEnv modEnv, Env.varEnv env)
 		       val modAstDecls' = VarSubst.topDecs s modAstDecls
@@ -815,7 +825,6 @@ structure Typechecker : sig
                        end
 		     | NONE => (modEnv, modAstDecls)
                    (* end case *))
-		val modRef = AST.MOD {name=id, id=Stamp.new(), formals=NONE}
                 in
 		  (Env.insertModEnv(env, id, modEnv'), 
 		   AST.TD_Module(loc, modRef, NONE, AST.M_Body(loc, modAstDecls')) :: astDecls)
@@ -841,7 +850,7 @@ structure Typechecker : sig
 	    | PT.ModuleDecl (id, sign, module) => chkModule loc (id, sign, module, (env, astDecls))
 	    | PT.LocalDecl (localDcls, dcls) => raise Fail "LocalDecl"
 	    | PT.SignDecl (id, sign) => let
-              val sigEnv = chkSignature loc (sign, env)
+              val sigEnv = chkSignature loc (SOME id, sign, env)
               in
                  (Env.insertSigEnv(env, id, sigEnv), astDecls)
               end
@@ -888,8 +897,9 @@ structure Typechecker : sig
 
   (* check multiple compilation units *)
     fun check' programs = let
+	val dummyModRef = AST.MOD{name=Atom.atom "dummy", id=Stamp.new(), formals=NONE}
 	(* typecheck the compilation units individually *)
-	  val env0 = Env.freshEnv(BasisEnv.te0, BasisEnv.ve0, NONE)
+	  val env0 = Env.freshEnv(dummyModRef, BasisEnv.te0, BasisEnv.ve0, NONE)
 	  fun f ((err, program), (env, declss)) = let
 		val (env', decls) = check''(err, env, program)
 		in
@@ -905,7 +915,8 @@ structure Typechecker : sig
 
   (* check a compilation unit *)
     fun check (err, program) = let
-	val env0 = Env.freshEnv(BasisEnv.te0, BasisEnv.ve0, NONE)
+	val dummyModRef = AST.MOD{name=Atom.atom "dummy", id=Stamp.new(), formals=NONE}
+	val env0 = Env.freshEnv(dummyModRef, BasisEnv.te0, BasisEnv.ve0, NONE)
 	val (env, decls) = check'' (err, env0, program)
 	in
 	    declsToExp (decls, makeEntryPoint(env, "main"))
