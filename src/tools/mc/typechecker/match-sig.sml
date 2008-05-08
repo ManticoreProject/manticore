@@ -130,7 +130,7 @@ structure MatchSig :> sig
 	    (case Env.find(tyEnv, id)
               of NONE => tyEnv
 	       | SOME tyd => let
-		     val tyc' = TyCon.newAbsTyc(name, arity, false)
+		     val tyc' = TyCon.duplicate tyc
 		     in
 		        setFn(tyc', SOME tyd);
 		        TyCon.Tbl.insert tbl (tyc, tyc');
