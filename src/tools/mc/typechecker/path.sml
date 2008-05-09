@@ -19,11 +19,9 @@ structure Path : sig
       | ERROR
 	(* error in checking the path *)
 
-  (* check that the path exists and if so return the module environment of the path *)
-    val checkModPath : (Env.module_env * Atom.atom ParseTree.path) -> Env.module_env result
-
     val findTy : (Env.module_env * Atom.atom ParseTree.path) -> Env.ty_def option
     val findVar : (Env.module_env * Atom.atom ParseTree.path) -> Env.val_bind option
+    val findMod : (Env.module_env * Atom.atom ParseTree.path) -> Env.module_env option
 
     val toString : (('a -> string) * 'a ParseTree.path) -> string
 
@@ -69,6 +67,11 @@ structure Path : sig
     fun findVar (env, path) = (case checkModPath (env, path)
         of UNQUAL x => Env.findVarEnv(env, x)
 	 | QUAL (env', x) => Env.findVarEnv(env', x)
+	 | ERROR => NONE)
+
+    fun findMod (env, path) = (case checkModPath (env, path)
+        of UNQUAL x => Env.findModEnv(env, x)
+	 | QUAL (env', x) => Env.findModEnv(env', x)
 	 | ERROR => NONE)
 
   end

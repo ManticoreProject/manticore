@@ -16,9 +16,6 @@ structure TyCon : sig
   (* create a new datatype tyc; it will have an empty constructor list *)
     val newDataTyc : (Atom.atom * AST.tyvar list) -> Types.tycon
 
-  (* create a tyc that has a fresh propery list, but otherwise is the same *)
-    val duplicate : Types.tycon -> Types.tycon
-
   (* return the name of a type constructor *)
     val nameOf : Types.tycon -> Atom.atom
 
@@ -101,16 +98,6 @@ structure TyCon : sig
   (* create a new datatype tyc; it will have an empty constructor list *)
     fun newDataTyc (name, params) = 
 	  newTyc (name, List.length params, params, Types.DataTyc{nCons = ref 0, cons = ref[]})
-
-  (* create a tyc that has a fresh propery list, but otherwise is the same *)
-    fun duplicate (Tyc{name, stamp, arity, params, def, ...}) =	Tyc{
-             name=name, 
-	     stamp=stamp, 
-	     params=params,
-	     arity=arity,
-	     def=def, 
-	     props=PropList.newHolder()
-          }
 
   (* return the name of a type constructor *)
     fun nameOf (Tyc{name, ...}) = name

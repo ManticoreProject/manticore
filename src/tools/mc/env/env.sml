@@ -45,6 +45,7 @@ structure Env =
     fun fromList l = List.foldl AtomMap.insert' AtomMap.empty l
 
     fun varEnv (ModEnv{varEnv, ...}) = varEnv
+    fun modRef (ModEnv{modRef, ...}) = modRef
 
     (* lookup a variable in the scope of the current module *)
     fun findInEnv (ModEnv (fields as {outerEnv, ...}), select, x) = (case find(select fields, x)
@@ -84,5 +85,9 @@ structure Env =
 
     fun freshEnv (modRef, tyEnv, varEnv, outerEnv) = 
 	ModEnv{modRef=modRef, tyEnv=tyEnv, varEnv=varEnv, modEnv=empty, sigEnv=empty, outerEnv=outerEnv}
+
+    structure ModuleEnv = BinaryMapFn (
+                type ord_key = AST.module_ref
+		fun compare (AST.MOD{id=id1, ...}, AST.MOD{id=id2, ...}) = Stamp.compare (id1, id2))
 
   end

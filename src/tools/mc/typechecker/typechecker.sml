@@ -809,11 +809,11 @@ structure Typechecker : sig
 	   List.foldl VarSubst.add VarSubst.id varBindSubstPairs
         end
 
-    fun chkModule loc (id, sign, module, (env, astDecls)) = (case module
-        of PT.MarkMod {span, tree} => chkModule span (id, sign, tree, (env, astDecls))
+    fun chkModule loc (id, sign, module, (env, moduleEnv, astDecls)) = (case module
+        of PT.MarkMod {span, tree} => chkModule span (id, sign, tree, (env, moduleEnv, astDecls))
 	 | PT.DeclsMod decls => let
 		val modRef = AST.MOD {name=id, id=Stamp.new(), formals=NONE}
-		val (modEnv, modAstDecls) = chkTopDcls(loc, decls, freshEnv(modRef, SOME env))
+		val (modEnv, moduleEnv, modAstDecls) = chkTopDcls(loc, decls, freshEnv(modRef, SOME env), moduleEnv)
 		val (modEnv', modAstDecls') = (case sign
                     of SOME sign => let
                        val sigEnv = chkSignature loc (NONE, sign, env)
@@ -825,57 +825,72 @@ structure Typechecker : sig
                        end
 		     | NONE => (modEnv, modAstDecls)
                    (* end case *))
+		val body = AST.M_Body(loc, modAstDecls')
                 in
 		  (Env.insertModEnv(env, id, modEnv'), 
-		   AST.TD_Module(loc, modRef, NONE, AST.M_Body(loc, modAstDecls')) :: astDecls)
+		   Env.ModuleEnv.insert(moduleEnv, modRef, (modEnv', body)),
+		   AST.TD_Module(loc, modRef, NONE, body) :: astDecls)
 	        end
-	 | _ => raise Fail "todo"
+	 | PT.NamedMod modName => (case Path.findMod(env, modName)
+               of NONE => (error(loc, ["cannot find module ", qidToString modName]);
+			   (env, moduleEnv, astDecls))
+		| SOME modEnv => let
+		      val modRefN = AST.MOD {name=id, id=Stamp.new(), formals=NONE}
+		      val body = AST.M_Id(loc, Env.modRef modEnv)
+		      in
+	                 (Env.insertModEnv(env, id, modEnv),
+			  Env.ModuleEnv.insert(moduleEnv, modRefN, (modEnv, body)),
+			  AST.TD_Module(loc, modRefN, NONE, body) :: astDecls)
+                      end 
+                 (* end case *))
        (* end case *))
 
-
-    and chkTopDcl loc (ptDecl, (env, astDecls)) = (case ptDecl
-           of PT.MarkDecl{span, tree} => chkTopDcl span (tree, (env, astDecls))
-	    | PT.TyDecl tyDecl => (chkTyDcl loc (tyDecl, env), astDecls)
+    and chkTopDcl loc (ptDecl, (env, moduleEnv, astDecls)) = (case ptDecl
+           of PT.MarkDecl{span, tree} => chkTopDcl span (tree, (env, moduleEnv, astDecls))
+	    | PT.TyDecl tyDecl => (chkTyDcl loc (tyDecl, env), moduleEnv, astDecls)
 	    | PT.ExnDecl(id, optTy) => let
 		val optTy' = Option.map (fn ty => chkTy(loc, env, Env.empty, ty)) optTy
 		val exnCon = Exn.new (id, optTy')
 		in
-		  (Env.insertVarEnv (env, id, Env.Con exnCon), astDecls)
+		  (Env.insertVarEnv (env, id, Env.Con exnCon), moduleEnv, astDecls)
 		end
 	    | PT.ValueDecl valDcl => let
 		val (bind, env) = chkValDcl(loc, 0, env, valDcl)
 		in
-		  (env, AST.TD_Binding bind :: astDecls)
+		  (env, moduleEnv, AST.TD_Binding bind :: astDecls)
 		end
-	    | PT.ModuleDecl (id, sign, module) => chkModule loc (id, sign, module, (env, astDecls))
+	    | PT.ModuleDecl (id, sign, module) => chkModule loc (id, sign, module, (env, moduleEnv, astDecls))
 	    | PT.LocalDecl (localDcls, dcls) => raise Fail "LocalDecl"
 	    | PT.SignDecl (id, sign) => let
               val sigEnv = chkSignature loc (SOME id, sign, env)
               in
-                 (Env.insertSigEnv(env, id, sigEnv), astDecls)
+                 (Env.insertSigEnv(env, id, sigEnv), moduleEnv, astDecls)
               end
 	  (* end case *))
 
-    and chkTopDcls (loc, ptDecls, env) = let
-        val (env', astDecls) = List.foldl (chkTopDcl loc) (env, []) ptDecls
+    and chkTopDcls (loc, ptDecls, env, moduleEnv) = let
+        val (env', moduleEnv, astDecls) = List.foldl (chkTopDcl loc) (env, moduleEnv, []) ptDecls
         in
-	   (env', List.rev astDecls)
+	   (env', moduleEnv, List.rev astDecls)
         end
 
   (* convert top-level declarations into expressions *)
-    fun declsToExp (decls, exp) = List.foldl declToExp exp (List.rev decls)
+    fun declsToExp moduleEnv (decls, exp) = List.foldl (declToExp moduleEnv) exp (List.rev decls)
 
   (* convert a top-level declaration into an expression *)
-    and declToExp (decl, exp) = (case decl
-	   of AST.TD_Module(info, modRef, sign, module) => moduleToExp (modRef, module, exp)
+    and declToExp moduleEnv (decl, exp) = (case decl
+	   of AST.TD_Module(info, modRef, sign, module) => moduleToExp moduleEnv (modRef, module, exp)
 	    | AST.TD_DCon dcon => exp
 	    | AST.TD_Binding binding => AST.LetExp(binding, exp)
 	  (* end case *))   
 
   (* convert a module into an expression *)
-    and moduleToExp (modRef, module, exp) = (case module
-	   of AST.M_Id _ => exp   (* FIXME: should use some special variable representation for modules *)
-	    | AST.M_Body (info, decls) => declsToExp (decls, exp)
+    and moduleToExp moduleEnv (modRef, module, exp) = (case module
+	   of AST.M_Id (info, modRef) => (case Env.ModuleEnv.find(moduleEnv, modRef)
+              of NONE => raise Fail "impossible"
+	       | SOME (env as Env.ModEnv{modRef, ...}, module) => moduleToExp moduleEnv(modRef, module, exp)
+              (* end case *))
+	    | AST.M_Body (info, decls) => declsToExp moduleEnv (decls, exp)
 	  (* end case *))
 
   (* call the entry-point function for the program *)
@@ -887,12 +902,12 @@ structure Typechecker : sig
 	    | _ => raise Fail ("error: could not find entry point "^entryPoint)
 	  (* end case *))
 
-    fun check'' (es, env, {span, tree=ptDecls}) = let
+    fun check'' (es, env, moduleEnv, {span, tree=ptDecls}) = let
 	  val _ = errStrm := es
-	  val (env, astDecls) = chkTopDcls (span, ptDecls, env)
+	  val (env, moduleEnv, astDecls) = chkTopDcls (span, ptDecls, env, moduleEnv)
 	  in
 	    Overload.resolve ();
-	    (env, astDecls)
+	    (env, moduleEnv, astDecls)
 	  end
 
   (* check multiple compilation units *)
@@ -900,26 +915,26 @@ structure Typechecker : sig
 	val dummyModRef = AST.MOD{name=Atom.atom "dummy", id=Stamp.new(), formals=NONE}
 	(* typecheck the compilation units individually *)
 	  val env0 = Env.freshEnv(dummyModRef, BasisEnv.te0, BasisEnv.ve0, NONE)
-	  fun f ((err, program), (env, declss)) = let
-		val (env', decls) = check''(err, env, program)
+	  fun f ((err, program), (env, moduleEnv, declss)) = let
+		val (env', moduleEnv', decls) = check''(err, env, moduleEnv, program)
 		in
-		  (env', decls :: declss)
+		  (env', moduleEnv', decls :: declss)
 		end
-	  val (env, declss) = List.foldl f (env0, []) programs
+	  val (env, moduleEnv, declss) = List.foldl f (env0, Env.ModuleEnv.empty, []) programs
         (* flatten the top-level declarations of the compilation units *)
 	  val decls = List.concat (List.rev declss)
 	  in
 	  (* convert the compilation units into a single AST expression *)
-	    declsToExp(decls, makeEntryPoint(env, "main"))
+	    declsToExp moduleEnv (decls, makeEntryPoint(env, "main"))
 	  end
 
   (* check a compilation unit *)
     fun check (err, program) = let
 	val dummyModRef = AST.MOD{name=Atom.atom "dummy", id=Stamp.new(), formals=NONE}
 	val env0 = Env.freshEnv(dummyModRef, BasisEnv.te0, BasisEnv.ve0, NONE)
-	val (env, decls) = check'' (err, env0, program)
+	val (env, moduleEnv, decls) = check'' (err, env0, Env.ModuleEnv.empty, program)
 	in
-	    declsToExp (decls, makeEntryPoint(env, "main"))
+	    declsToExp moduleEnv (decls, makeEntryPoint(env, "main"))
 	end
 
     val check = BasicControl.mkTracePassSimple {passName = "check", pass = check}

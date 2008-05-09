@@ -162,14 +162,6 @@ structure Unify : sig
 		    | _ => raise Fail "impossible"
 		  (* end case *)
 		end
-(*	  and unifyTyScheme (CTX{tvAssum, realizations}, Ty.TyScheme (tvs1, ty1), Ty.TyScheme (tvs2, ty2)) = let
-	      (* construct ty-var equality assumptions *)
-	      val tvAssum = List.foldl TVA.add' tvAssum (ListPair.zip (tvs1, tvs2) @ ListPair.zip (tvs2, tvs1))
-	      val ctx = CTX{tvAssum=tvAssum, realizations=realizations}
-              in
-	          (List.length tvs1 = List.length tvs2) andalso uni(ty1, ty2)
-              end
-*)
 	  val ty = uni (ty1, ty2)
 	  in
 	    if reconstruct
