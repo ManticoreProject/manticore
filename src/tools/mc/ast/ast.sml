@@ -34,7 +34,7 @@ structure AST =
     and module_ref = MOD of {                        (* reference to a module *)
           name : Atom.atom,
 	  id : Stamp.stamp,                          (* unique id *)
-	  formals : module_ref list option          (* formal parameters to a functor *)
+	  formals : module_ref list option           (* formal parameters to a functor *)
         }
  
     and module_type

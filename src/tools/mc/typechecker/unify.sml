@@ -14,36 +14,12 @@ structure Unify : sig
   (* nondestructively check if two types are unifiable. *)
     val unifiable : Types.ty * Types.ty -> bool
 
-  (* nondestructively check if two type schemes are unifiable. *)
-    val match : (Env.realization_env * Types.ty_scheme * Types.ty_scheme) -> bool
-
   end = struct
 
     structure Ty = Types
     structure MV = MetaVar
     structure TU = TypeUtil
     structure TC = TypeClass
-  (* type-variable equality assumptions *)
-    structure TVA = BinarySetFn (
-                        type ord_key = (Types.tyvar * Types.tyvar)
-                        fun compare ((tv11, tv12), (tv21, tv22)) = 
-			    (case (TyVar.compare(tv11, tv21), TyVar.compare(tv12, tv22))
-                              of (EQUAL, c2) => c2
-			       | (c1, _) => c1
-                            (* end case *))
-                        )
-
-  (* context for unification *)
-    datatype ctx
-      = CTX of {
-	     tvAssum : TVA.set,                        (* type-variable equality assumptions *)
-	     realizations : Env.realization_env        (* type realizations *)
-           }
-
-    fun getRealizationTy (realizations, tyc) = (case Env.RealizationEnv.find(realizations, tyc)
-        of SOME (Env.TyDef (Ty.TyScheme ([], ty))) => SOME ty
-	 | _ => NONE
-        (* end case *))
 
 (* FIXME: add a control to enable this flag *)
     val debugUnify = ref false
@@ -63,7 +39,7 @@ structure Unify : sig
 	  end
 
   (* unify two types *)
-    fun unifyRC (CTX{tvAssum, realizations}, ty1, ty2, reconstruct) = let
+    fun unifyRC (ty1, ty2, reconstruct) = let
 	  val mv_changes = ref []
 	  fun assignMV (info, newInfo) = (
 		if reconstruct
@@ -90,23 +66,12 @@ structure Unify : sig
 	  fun uni (ty1, ty2) = (case (TU.prune ty1, TU.prune ty2)
 		 of (Ty.ErrorTy, ty2) => true
 		  | (ty1, Ty.ErrorTy) => true
-		  | (Ty.VarTy tv1, Ty.VarTy tv2) => 
-		      TVA.member (tvAssum, (tv1, tv2))
-		  | (ty, Ty.VarTy tv2) => true
 		  | (ty1 as Ty.MetaTy mv1, ty2 as Ty.MetaTy mv2) =>
 		      MetaVar.same(mv1, mv2) orelse unifyMV(mv1, mv2)
 		  | (Ty.MetaTy mv1, ty2) => unifyWithMV (ty2, mv1)
 		  | (ty1, Ty.MetaTy mv2) => unifyWithMV (ty1, mv2)
 		  | (Ty.ConTy(tys1, tyc1), Ty.ConTy(tys2, tyc2)) =>
-		    (case getRealizationTy(realizations, tyc1)
-		      of NONE => (TyCon.same(tyc1, tyc2)) andalso ListPair.allEq uni (tys1, tys2)
-		       | SOME ty1 => uni(ty1, ty2)
-		    (* end case *))
-		  | (Ty.ConTy([], tyc1), ty2) => 
-		    (case getRealizationTy(realizations, tyc1)
-		      of NONE => false
-		       | SOME ty1 => uni(ty1, ty2)
-		    (* end case *))
+		    (TyCon.same(tyc1, tyc2)) andalso ListPair.allEq uni (tys1, tys2)
 		  | (Ty.FunTy(ty11, ty12), Ty.FunTy(ty21, ty22)) => 
 		      uni(ty11, ty21) andalso uni(ty12, ty22)
 		  | (Ty.TupleTy tys1, Ty.TupleTy tys2) =>
@@ -177,7 +142,7 @@ structure Unify : sig
 			TypeUtil.fmt {long=true} ty2, ")\n"
 		      ])
 		    else ()
-	  val res = unifyRC (CTX{tvAssum=TVA.empty, realizations=Env.RealizationEnv.empty}, ty1, ty2, false)
+	  val res = unifyRC (ty1, ty2, false)
 	  in
 	    if !debugUnify
 	      then if res
@@ -187,14 +152,6 @@ structure Unify : sig
 	    res
 	  end
 
-    fun unifiable (ty1, ty2) = unifyRC (CTX{tvAssum=TVA.empty, realizations=Env.RealizationEnv.empty}, ty1, ty2, true)
+    fun unifiable (ty1, ty2) = unifyRC (ty1, ty2, true)
 
-    fun match (realizations, Ty.TyScheme (tvs1, ty1), Ty.TyScheme (tvs2, ty2)) = let
-	(* construct ty-var equality assumptions *)
-	val tvAssum = List.foldl TVA.add' TVA.empty (ListPair.zip (tvs1, tvs2) @ ListPair.zip (tvs2, tvs1))
-	val ctx = CTX{tvAssum=tvAssum, realizations=realizations}
-        in
-	   (List.length tvs1 <= List.length tvs2) andalso unifyRC(ctx, ty1, ty2, true)
-	end
-			   
   end

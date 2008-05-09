@@ -828,7 +828,7 @@ structure Typechecker : sig
 		val body = AST.M_Body(loc, modAstDecls')
                 in
 		  (Env.insertModEnv(env, id, modEnv'), 
-		   Env.ModuleEnv.insert(moduleEnv, modRef, (modEnv', body)),
+		   Env.ModuleEnv.insert(moduleEnv, modRef, (modEnv, modEnv', body)),
 		   AST.TD_Module(loc, modRef, NONE, body) :: astDecls)
 	        end
 	 | PT.NamedMod modName => (case Path.findMod(env, modName)
@@ -836,10 +836,18 @@ structure Typechecker : sig
 			   (env, moduleEnv, astDecls))
 		| SOME modEnv => let
 		      val modRefN = AST.MOD {name=id, id=Stamp.new(), formals=NONE}
-		      val body = AST.M_Id(loc, Env.modRef modEnv)
+		      val signEnv = (case sign
+                          of SOME sign => let
+				 val sigEnv = chkSignature loc (NONE, sign, env)
+			     in
+				 MatchSig.match{err=(!errStrm), loc=loc, modEnv=modEnv, sigEnv=sigEnv}
+			     end
+			   | NONE => modEnv
+                         (* end case *))
+		      val body = AST.M_Id(loc, modRefN)
 		      in
-	                 (Env.insertModEnv(env, id, modEnv),
-			  Env.ModuleEnv.insert(moduleEnv, modRefN, (modEnv, body)),
+	                 (Env.insertModEnv(env, id, signEnv),
+			  Env.ModuleEnv.insert(moduleEnv, modRefN, (modEnv, signEnv, body)),
 			  AST.TD_Module(loc, modRefN, NONE, body) :: astDecls)
                       end 
                  (* end case *))
@@ -874,21 +882,43 @@ structure Typechecker : sig
 	   (env', moduleEnv, List.rev astDecls)
         end
 
+    fun bindSigIdVar (vSig, vMod, binds) =
+	AST.ValBind(AST.VarPat vSig, ASTUtil.mkVarExp(vMod, [])) :: binds
+
+    fun bindSigIdVars (sigVars, modVars, exp) = 
+	ASTUtil.mkLetExp(ListPair.foldl bindSigIdVar [] (sigVars, modVars), exp)
+
+    fun rebindSigVars (sigEnv, modEnv, exp) = let
+	val sigVarEnv = Env.varEnv sigEnv
+	val modVarEnv = Env.varEnv modEnv
+	fun f (id, Env.Var sigVar, (sigVars, modVars)) = (case Env.Map.find(modVarEnv, id)
+            of SOME (Env.Var modVar) => (sigVar :: sigVars, modVar :: modVars)
+	     | _ => (sigVars, modVars)
+            (* end case *))
+	  | f (_, _, (sigVars, modVars)) = (sigVars, modVars)
+        val (sigVars, modVars) = Env.Map.foldli f ([], []) sigVarEnv
+	in
+	    bindSigIdVars (sigVars, modVars, exp)
+	end
+
   (* convert top-level declarations into expressions *)
     fun declsToExp moduleEnv (decls, exp) = List.foldl (declToExp moduleEnv) exp (List.rev decls)
 
   (* convert a top-level declaration into an expression *)
     and declToExp moduleEnv (decl, exp) = (case decl
-	   of AST.TD_Module(info, modRef, sign, module) => moduleToExp moduleEnv (modRef, module, exp)
+	   of AST.TD_Module(info, modRef, sign, module) => 
+	      moduleToExp moduleEnv (modRef, module, exp)
 	    | AST.TD_DCon dcon => exp
-	    | AST.TD_Binding binding => AST.LetExp(binding, exp)
+	    | AST.TD_Binding binding => ASTUtil.mkLetExp([binding], exp)
 	  (* end case *))   
 
   (* convert a module into an expression *)
     and moduleToExp moduleEnv (modRef, module, exp) = (case module
-	   of AST.M_Id (info, modRef) => (case Env.ModuleEnv.find(moduleEnv, modRef)
-              of NONE => raise Fail "impossible"
-	       | SOME (env as Env.ModEnv{modRef, ...}, module) => moduleToExp moduleEnv(modRef, module, exp)
+	   of AST.M_Id (info, modRef' as AST.MOD{name, ...}) => 
+	      (case Env.ModuleEnv.find(moduleEnv, modRef)
+		of NONE => raise Fail ("cannot find module "^Atom.toString name)
+		 | SOME (modEnv as Env.ModEnv{modRef, ...}, sigEnv, module) => 
+		   rebindSigVars(sigEnv, modEnv, exp)
               (* end case *))
 	    | AST.M_Body (info, decls) => declsToExp moduleEnv (decls, exp)
 	  (* end case *))
@@ -898,7 +928,7 @@ structure Typechecker : sig
 	  case Env.findVarEnv(env, Atom.atom entryPoint)
 	   of SOME (Env.Var entryPoint) => 
 	      (* FIXME: pass command-line args *)
-		AST.ApplyExp(AST.VarExp(entryPoint, []), AST.TupleExp[AST.TupleExp[], AST.TupleExp[]], Basis.unitTy)
+		AST.ApplyExp(AST.VarExp(entryPoint, []), AST.TupleExp[AST.TupleExp[], AST.TupleExp[]], Ty.TupleTy[Ty.TupleTy[], Ty.TupleTy[]])
 	    | _ => raise Fail ("error: could not find entry point "^entryPoint)
 	  (* end case *))
 

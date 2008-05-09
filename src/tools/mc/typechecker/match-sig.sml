@@ -99,12 +99,13 @@ structure MatchSig :> sig
 	 | _ => raise Fail "impossible"
       (* end case *))
 
-    fun copyMod tbl (Env.ModEnv{modRef=AST.MOD{name, formals, ...}, 
+    fun copyMod tbl (Env.ModEnv{modRef=modRef as AST.MOD{name, formals, ...}, 
 				tyEnv=mTyEnv, varEnv=mVarEnv, modEnv=mModEnv, 
 				sigEnv, outerEnv, ...}) = let
 	val (tyEnv', tyFinishFns) = Env.Map.foldli (copyTyDef tbl) (Env.empty, []) mTyEnv
 	val varEnv' = Env.Map.foldli (copyVarDef tbl) Env.empty mVarEnv
 	val modEnv' = Env.Map.foldli (fn (id, m, env) => Env.Map.insert(env, id, copyMod tbl m)) Env.empty mModEnv
+	val AST.MOD{name, formals, ...} = modRef
 	val modRef = AST.MOD{name=name, id=Stamp.new(), formals=formals}
         in
 	  List.app (fn f => f()) (List.rev tyFinishFns);
@@ -164,7 +165,7 @@ structure MatchSig :> sig
 	fun match (id, Env.TyDef sigTs) = (case findIt(modTyEnv, id)
             of Env.TyDef modTs => 
 	       (* match typedefs *)
-	       if Unify.match(realizationEnv, modTs, sigTs)
+	       if MatchTy.match(realizationEnv, modTs, sigTs)
 	       then ()
 	       else error (loc, [
 			   "types for ", Atom.toString id, " are not equal\n",
@@ -206,7 +207,7 @@ structure MatchSig :> sig
 	       val sigTyS = Var.typeOf sigVar
 	       val modTyS = Var.typeOf modVar
 	       in
-	           if Unify.match(realizationEnv, sigTyS, modTyS)
+	           if MatchTy.match(realizationEnv, sigTyS, modTyS)
 	              then ()
 	              else error(loc, ["failed to match value specification ", Atom.toString id, "\n",
 				       "signature: ", TypeUtil.schemeToString sigTyS, "\n",
@@ -214,11 +215,11 @@ structure MatchSig :> sig
 				])
                end
 	     | Env.Con dcon =>
-	       if Unify.match(realizationEnv, Var.typeOf sigVar, DataCon.typeOf dcon)
+	       if MatchTy.match(realizationEnv, Var.typeOf sigVar, DataCon.typeOf dcon)
 	          then ()
 	          else error(loc, ["cannot unify types for ", Atom.toString id])
 	     | Env.Overload (ts, _) =>
-	       if Unify.match(realizationEnv, Var.typeOf sigVar, ts)
+	       if MatchTy.match(realizationEnv, Var.typeOf sigVar, ts)
 	          then ()
 	          else error(loc, ["cannot unify types for ", Atom.toString id])
 	     | Env.EqOp _ => error(loc, ["invalid eq op"])

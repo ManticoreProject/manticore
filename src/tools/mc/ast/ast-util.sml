@@ -105,8 +105,7 @@ structure ASTUtil : sig
 
     fun mkIfExp (e1, e2, e3) = A.IfExp(e1, e2, e3, TypeOf.exp(e2))
 
-    fun mkVarExp (v, tys) =
-	A.VarExp (v, tys)
+    fun mkVarExp (v, tys) = A.VarExp (v, tys)
 
     fun copyPat s p =
 	let fun f (A.ConPat (c, ts, p)) = A.ConPat (c, ts, f p)
