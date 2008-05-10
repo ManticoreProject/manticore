@@ -9,6 +9,7 @@
 Library
 
   structure BasisEnv
+  structure BindingEnv
   structure Env
   structure UnseenBasis
 
@@ -21,6 +22,7 @@ is
   ../parse-tree/sources.cm
   ../ast/sources.cm
 
+  binding-env.sml
   basis-env.sml
   env.sml
   unseen-basis.sml

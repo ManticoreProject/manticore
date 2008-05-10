@@ -27,6 +27,7 @@ Library
   structure Stamp
   structure Stats
   structure VarRep
+  structure BasisNames
 
   functor VarFn
 
@@ -56,3 +57,4 @@ is
   var-fn.sml
   var-rep.sml
 
+  basis-names.sml

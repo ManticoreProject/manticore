@@ -18,8 +18,6 @@ structure AST =
 
     type 'a field = (info * label * 'a)
 
-    datatype sig_vis = OPAQUE | TRANSLUCENT
-
     type sig_name = Stamp.stamp
 
     datatype module_exp

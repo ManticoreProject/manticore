@@ -10,6 +10,7 @@ Library
 
   structure Typechecker
   structure MatchSig
+  structure BindingAnalysis
 
 is
 
@@ -26,7 +27,9 @@ is
   match-sig.sml
   overload.sml
   path.sml
+  qualified-id.sml
   tc-controls.sml
   typechecker.sml
   unify.sml
   match-ty.sml
+  binding-analysis.sml

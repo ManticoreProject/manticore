@@ -1,4 +1,3 @@
-
 (* types.sml
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)

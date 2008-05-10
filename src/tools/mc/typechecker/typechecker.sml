@@ -21,6 +21,7 @@ structure Typechecker : sig
     structure TU = TypeUtil
     structure B = Basis
     structure Ty = Types
+    structure BA = BindingAnalysis
 
     val atos = Atom.toString
     fun qidToString path = Path.toString (Atom.toString, path)
@@ -888,6 +889,25 @@ structure Typechecker : sig
     fun bindSigIdVars (sigVars, modVars, exp) = 
 	ASTUtil.mkLetExp(ListPair.foldl bindSigIdVar [] (sigVars, modVars), exp)
 
+  (* bind variable definitions in the external signature to actual definitions in the module.
+   * i.e., 
+   *      structure Foo = struct
+   *        val foo<101> = 3
+   *      end
+   *      
+   *      structure F : sig
+   *           val foo<100> : int
+   *         end                     = Foo
+   *
+   *                                          rebindSigVars(sigOf(F), envOf(Foo), exp)    ==>
+   *      let val foo<101> = 3
+   *      in
+   *          let val foo<100> = foo<101>
+   *          in
+   *             exp
+   *          end
+   *      end
+   *)
     fun rebindSigVars (sigEnv, modEnv, exp) = let
 	val sigVarEnv = Env.varEnv sigEnv
 	val modVarEnv = Env.varEnv modEnv

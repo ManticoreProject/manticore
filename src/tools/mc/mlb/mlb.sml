@@ -14,6 +14,7 @@ structure MLB : sig
   end = struct
 
     structure PT = MLBParseTree
+    structure PPT = ProgramParseTree.PML1
 
     exception Error
 

@@ -9,7 +9,8 @@
 Library
 
   structure ParseTree
-  structure BasisNames
+
+structure ProgramParseTree
 
 is
   
@@ -19,6 +20,8 @@ is
   $/controls-lib.cm
 
   ../common/sources.cm
+  ../ast/sources.cm
 
+  pml-parse-tree-fn.sml
+  prog-parse-tree.sml
   parse-tree.sml
-  basis-names.sml
