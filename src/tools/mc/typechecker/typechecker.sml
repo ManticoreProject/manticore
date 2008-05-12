@@ -21,7 +21,7 @@ structure Typechecker : sig
     structure TU = TypeUtil
     structure B = Basis
     structure Ty = Types
-    structure BA = BindingAnalysis
+    structure BA = BoundVariableCheck
 
     val atos = Atom.toString
     fun qidToString path = Path.toString (Atom.toString, path)

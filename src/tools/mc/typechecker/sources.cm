@@ -10,7 +10,7 @@ Library
 
   structure Typechecker
   structure MatchSig
-  structure BindingAnalysis
+  structure BoundVariableCheck
 
 is
 
@@ -32,4 +32,4 @@ is
   typechecker.sml
   unify.sml
   match-ty.sml
-  binding-analysis.sml
+  bound-variable-check.sml

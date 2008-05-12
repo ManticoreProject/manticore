@@ -42,10 +42,15 @@ structure BindingEnv =
          }
 
     fun insertVal _ = raise Fail ""
+    fun insertMod _ = raise Fail ""
+    fun insertCon _ = raise Fail ""
+    fun insertTy _ = raise Fail ""
+    fun insertDataTy _ = raise Fail ""
 
     fun findMod _ = raise Fail ""
     fun findVar _ = raise Fail ""
     fun findTy _ = raise Fail ""
     fun findSig _ = raise Fail ""
+    fun findBinaryOp _ = raise Fail ""
 
   end
