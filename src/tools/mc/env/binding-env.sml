@@ -18,9 +18,14 @@ structure BindingEnv =
     type mod_binder = PT2.mod_binder
     type sig_id = PT2.sig_id
 
+  (* value identifiers may be data constructors, variables, or overloaded variables. *)
+    datatype val_bind
+      = Con of var_binder
+      | Var of var_binder
+
     structure Map = AtomMap
     type ty_env = ty_binder Map.map
-    type var_env = var_binder Map.map
+    type var_env = val_bind Map.map
     type mod_env = mod_binder Map.map
     type sig_env = sig_id Map.map
     datatype env
@@ -54,7 +59,6 @@ structure BindingEnv =
 	Env{tyEnv=tyEnv, varEnv=Map.insert(varEnv, id, x), modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
     fun insertMod (Env{tyEnv, varEnv, modEnv, sigEnv, outerEnv}, id, x) = 
 	Env{tyEnv=tyEnv, varEnv=varEnv, modEnv=Map.insert(modEnv, id, x), sigEnv=sigEnv, outerEnv=outerEnv}
-    val insertCon = insertVal
     fun insertTy (Env{tyEnv, varEnv, modEnv, sigEnv, outerEnv}, id, x) = 
 	Env{tyEnv=Map.insert(tyEnv, id, x), varEnv=varEnv, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
     fun insertSig (Env{tyEnv, varEnv, modEnv, sigEnv, outerEnv}, id, x) = 

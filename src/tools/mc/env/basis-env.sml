@@ -14,7 +14,7 @@ structure BasisEnv : sig
 
     val bEnv0 : BindingEnv.env
     val mEnv0 : ModuleEnv.env
-    val lookupOpPT : Atom.atom -> ProgramParseTree.var
+    val lookupOpPT : Atom.atom -> BindingEnv.val_bind
     val lookupOpAST : ProgramParseTree.var -> ModuleEnv.val_bind
 
 (* FIXME: this operation shouldn't be exported, but the typechecker deals with
@@ -394,26 +394,40 @@ structure BasisEnv : sig
 
     (* new stuff *)
 
-      fun bind (n, x) = let
+      fun bindTy (n, x) = let
 	      val v = PPT.Var.new(Atom.toString n, ())
               in
+	        MEnv.setTyDef(v, SOME x);
                 ((n, v), (v, x))
               end
 
-    (* split the predefined variables into two binding pairs
-     *   ParseTree1 -> ParseTree2        and
-     *   ParseTree2 -> AST entry
-     *)
-      fun binds predefines = let
-	    val pds = List.map bind predefines
+      fun bindTys predefines = let
+	    val pds = List.map bindTy predefines
+            in
+	      ListPair.unzip pds
+	    end
+
+      fun bindVal (n, x) = let
+	      val v = PPT.Var.new(Atom.toString n, ())
+	      val v' = (case x
+			 of MEnv.Con _ => BEnv.Con v
+			  | _ => BEnv.Var v
+		       (* end case *))
+              in
+	        MEnv.setValBind(v, SOME x);
+                ((n, v'), (v, x))
+              end
+
+      fun bindVals predefines = let
+	    val pds = List.map bindVal predefines
             in
 	      ListPair.unzip pds
 	    end
 
       val (bEnv0, mEnv0) = let	     
 
-	     val (predefinedTyBinds, predefinedTys) = binds predefinedTypes'
-	     val (predefinedVarBinds, predefinedVars) = binds predefinedVars'
+	     val (predefinedTyBinds, predefinedTys) = bindTys predefinedTypes'
+	     val (predefinedVarBinds, predefinedVars) = bindVals predefinedVars'
 
            (* create the top-level binding environment *)
 	     val BEnv.Env {modEnv, sigEnv, outerEnv, ...} = BEnv.empty NONE
@@ -466,11 +480,11 @@ structure BasisEnv : sig
 		(N.mod,		mod)
 	      ]
 
-	  val (consBinds, cons) = binds cons
-	  val (nonOverloadedOpsBinds, nonOverloadedOps) = binds nonOverloadedOps
-	  val (eqOpsBinds, eqOps) = binds eqOps
-	  val (ovOpsBinds, ovOps) = binds ovOps
+	  val (consBinds, cons) = bindVals cons
+	  val (nonOverloadedOpsBinds, nonOverloadedOps) = bindVals nonOverloadedOps
+	  val (eqOpsBinds, eqOps) = bindVals eqOps
 	  val ovOps = List.map (fn (id, info) => (id, MEnv.Overload info)) ovOps
+	  val (ovOpsBinds, ovOps) = bindVals ovOps
 
 	  val bEnv = BEnv.fromList (List.concat [
 		       consBinds, nonOverloadedOpsBinds, eqOpsBinds, ovOpsBinds

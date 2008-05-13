@@ -20,7 +20,7 @@ structure QualifiedId : sig
 	(* error in checking the qid *)
 
     val findTy : (BindingEnv.env * Atom.atom ParseTree.path) -> BindingEnv.ty_binder option
-    val findVar : (BindingEnv.env * Atom.atom ParseTree.path) -> BindingEnv.var_binder option
+    val findVar : (BindingEnv.env * Atom.atom ParseTree.path) -> BindingEnv.val_bind option
     val findMod : (BindingEnv.env * Atom.atom ParseTree.path) -> BindingEnv.mod_binder option
 
     val toString : (('a -> string) * 'a ParseTree.path) -> string

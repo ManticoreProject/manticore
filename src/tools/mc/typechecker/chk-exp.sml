@@ -425,8 +425,7 @@ structure ChkExp :> sig
 		in
 		  chk es
 		end
-	    | PT.IdExp x => (* if PT.Var.same (x, BasisNames.uMinus)
-		then let
+	    | PT.IdExp x => (* let
 		(* Unary minus is being handled specially as
 		 * an overloaded variable *)
 		  val (tysch, vars) = BasisEnv.neg
@@ -435,8 +434,8 @@ structure ChkExp :> sig
 		  in
 		    Overload.addVar ovar;
 		    (AST.OverloadExp ovar, instTy)
-		  end
-		else *) (case Env.findVar(env, x)
+		  end 
+		else *)  (case Env.getValBind x (* Env.findVar(env, x) *)
 		   of SOME(Env.Con dc) => let
 			val (argTys, ty) = TU.instantiate (depth, DataCon.typeOf dc)
 			in
@@ -559,7 +558,7 @@ structure ChkExp :> sig
 	    | PT.ConPat(conid, pat) => let
 		val (pat, env', ty) = chkPat (loc, depth, env, pat)
 		in
-		  case Env.findVar(env, conid)
+		  case Env.getValBind conid (*Env.findVar(env, conid)*)
 		   of SOME(Env.Con dc) => (case TU.instantiate (depth, DataCon.typeOf dc)
 			 of (tyArgs, AST.FunTy(argTy, resTy)) => (
 			      if not(U.unify(argTy, ty))
@@ -594,7 +593,7 @@ structure ChkExp :> sig
 		in
 		  (AST.WildPat ty, env, ty)
 		end
-	    | PT.IdPat x => (case Env.findVar(env, x)
+	    | PT.IdPat x => (case Env.getValBind x (*Env.findVar(env, x)*)
 		 of SOME(Env.Con dc) => (case DataCon.argTypeOf dc
 		       of NONE => let
 			    val (tyArgs, ty) = TU.instantiate (depth, DataCon.typeOf dc)

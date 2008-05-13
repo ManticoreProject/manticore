@@ -78,10 +78,23 @@ structure ModuleEnv =
     fun findMod (env, v) = findInEnv (env, #modEnv, v)
     fun findSig (env, v) = findInEnv (env, #sigEnv, v)
 
+    val {
+           getFn=getValBind : ProgramParseTree.Var.var -> val_bind option, 
+	   setFn=setValBind : (ProgramParseTree.Var.var * val_bind option) -> unit, ...
+        } = 
+	   ProgramParseTree.Var.newProp (fn _ => NONE)
+
+    val {
+           getFn=getTyDef : ProgramParseTree.Var.var -> ty_def option, 
+	   setFn=setTyDef : (ProgramParseTree.Var.var * ty_def option) -> unit, ...
+        } = 
+	   ProgramParseTree.Var.newProp (fn _ => NONE)
+
     fun insertTy (ModEnv {modRef, tyEnv, varEnv, modEnv, sigEnv, outerEnv}, tv, x) = 
 	ModEnv{modRef=modRef, tyEnv=VarMap.insert (tyEnv, tv, x), varEnv=varEnv, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
-    fun insertVar (ModEnv {modRef, varEnv, tyEnv, modEnv, sigEnv, outerEnv}, v, x) = 
-	ModEnv{modRef=modRef, tyEnv=tyEnv, varEnv=VarMap.insert (varEnv, v, x), modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
+    fun insertVar (ModEnv {modRef, varEnv, tyEnv, modEnv, sigEnv, outerEnv}, v, x) = (
+	setValBind(v, SOME x);
+	ModEnv{modRef=modRef, tyEnv=tyEnv, varEnv=VarMap.insert (varEnv, v, x), modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv})
     fun insertMod (ModEnv {modRef, modEnv, sigEnv, tyEnv, varEnv, outerEnv}, v, x) = 
 	ModEnv{modRef=modRef, tyEnv=tyEnv, varEnv=varEnv, modEnv=VarMap.insert (modEnv, v, x), sigEnv=sigEnv, outerEnv=outerEnv}
     fun insertSig (ModEnv {modRef, modEnv, sigEnv, tyEnv, varEnv, outerEnv}, v, x) = 
@@ -100,8 +113,5 @@ structure ModuleEnv =
 		fun compare (AST.MOD{id=id1, ...}, AST.MOD{id=id2, ...}) = Stamp.compare (id1, id2))
 
     type module_map = (env * env * AST.module) ModuleMap.map
-
-
-    
 
   end (* ModuleEnv *)

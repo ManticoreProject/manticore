@@ -1,8 +1,8 @@
 (* dt00.pml -- testing the handling of datatypes *)
 
-datatype pt = PT of (float * float);
+datatype pt = PT of (float * float)
 
-val zero = PT(0.0, 0.0);
+val zero = PT(0.0, 0.0)
 
 fun add (p1, p2) = let
       val PT(x1, y1) = p1
@@ -13,6 +13,6 @@ fun add (p1, p2) = let
 
 fun p2s p = (case p
     of PT (x,y) => ftos x^" "^ftos y^"\n"
-    (* end case *));
+    (* end case *))
 
-print (p2s (add (PT (1.0, 1.0), PT (2.0, 3.234))))
+val _ print (p2s (add (PT (1.0, 1.0), PT (2.0, 3.234))))

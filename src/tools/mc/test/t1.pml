@@ -13,6 +13,16 @@ val x = 34
 val z = S.x
 *)
 
-type t = int
+fun f x = case x of x :: xs => 2 | nil => 1
+val z = print (itos (f nil))
 
-val _ = print (ftos 2.4^"\n")
+(*
+fun f y = (case y of nil => 1 | x :: xs => 2)
+
+fun g y = let
+    fun f y = 1
+    val z = y
+    in f end
+
+val _ = print (ftos 2.4^itos (f nil)^"\n")
+*)

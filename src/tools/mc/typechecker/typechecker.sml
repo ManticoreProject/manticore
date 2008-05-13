@@ -643,6 +643,7 @@ structure Typechecker : sig
 		       of NONE => let
 			    val (tyArgs, ty) = TU.instantiate (depth, DataCon.typeOf dc)
 			    in
+print (DataCon.nameOf dc^"\n");
 			      (AST.ConstPat(AST.DConst(dc, tyArgs)), env, ty)
 			    end
 			| _ => (
@@ -655,6 +656,7 @@ structure Typechecker : sig
 		      val ty = AST.MetaTy(MetaVar.new depth)
 		      val x' = Var.new(Atom.toString x, ty)
 		      in
+print (Atom.toString x^" (var)\n")
 			(AST.VarPat x', Env.insertVarEnv(env, x, Env.Var x'), ty)
 		      end
 		(* end case *))
