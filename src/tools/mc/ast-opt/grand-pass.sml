@@ -26,7 +26,7 @@ structure GrandPass : sig
     fun trExp (A.LetExp (b, e)) = A.LetExp (binding b, trExp e)
       | trExp (A.IfExp (e1, e2, e3, t)) = A.IfExp (trExp e1, trExp e2, trExp e3, t)
       | trExp (A.CaseExp (e, ms, t)) = A.CaseExp (trExp e, map match ms, t)
-      | trExp (A.PCaseExp _) = raise Fail "todo: GrandPass.trExp PCaseExp"
+      | trExp (A.PCaseExp (es, pms, t)) = trPCase (es, pms, t)
       | trExp (A.HandleExp (e, ms, t)) = A.HandleExp (trExp e, map match ms, t)
       | trExp (A.RaiseExp (e, t)) = A.RaiseExp (trExp e, t)
       | trExp (A.FunExp (x, e, t)) = A.FunExp (x, trExp e, t)
@@ -64,6 +64,8 @@ structure GrandPass : sig
     and trPTup arg = TranslatePtup.tr trExp arg
 
     and trPComp arg = TranslatePComp.tr trExp arg
+
+    and trPCase arg = TranslatePCase.tr trExp arg
 
   (* transform : A.exp -> A.exp *)
     fun transform body = trExp body
