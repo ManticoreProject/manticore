@@ -12,6 +12,11 @@ structure BasisEnv : sig
     val te0 : Env.ty_env
     val ve0 : Env.var_env
 
+    val bEnv0 : BindingEnv.env
+    val mEnv0 : ModuleEnv.env
+    val lookupOpPT : Atom.atom -> ProgramParseTree.var
+    val lookupOpAST : ProgramParseTree.var -> ModuleEnv.val_bind
+
 (* FIXME: this operation shouldn't be exported, but the typechecker deals with
  * it in an ad hoc manner (unlike the other overloaded operators).
  *)
@@ -22,6 +27,9 @@ structure BasisEnv : sig
 
     structure U = BasisUtils
     structure N = BasisNames
+    structure PPT = ProgramParseTree
+    structure BEnv = BindingEnv
+    structure MEnv = ModuleEnv
 
     nonfix div mod
 
@@ -45,80 +53,7 @@ structure BasisEnv : sig
       fun polyVar' (at, mkTy) = polyVar (Atom.toString at, mkTy)
       fun polyVarMulti' (at, n, mkTy) = polyVarMulti (Atom.toString at, n, mkTy)
 
-    in
-
-  (* create a type scheme that binds a kinded type variable *)
-    fun tyScheme (cls, mk) = let
-	  val tv = TyVar.newClass (Atom.atom "'a", cls)
-	  in
-	    Types.TyScheme([tv], mk(Types.VarTy tv))
-	  end
-
-    val lte = (tyScheme(Types.Order, fn tv => (tv ** tv --> boolTy)),
-	       [int_lte, long_lte, integer_lte, float_lte, double_lte, char_lte, rune_lte, string_lte])
-    val lt = (tyScheme(Types.Order, fn tv => (tv ** tv --> boolTy)),
-	       [int_lt, long_lt, integer_lt, float_lt, double_lt, char_lt, rune_lt, string_lt])
-    val gte = (tyScheme(Types.Order, fn tv => (tv ** tv --> boolTy)),
-	       [int_gte, long_gte, integer_gte, float_gte, double_gte, char_gte, rune_gte, string_gte])
-    val gt = (tyScheme(Types.Order, fn tv => (tv ** tv --> boolTy)),
-	       [int_gt, long_gt, integer_gt, float_gt, double_gt, char_gt, rune_gt, string_gt])
-
-    val plus = (tyScheme(Types.Num, fn tv => (tv ** tv --> tv)),
-	       [int_plus, long_plus, integer_plus, float_plus, double_plus])
-    val minus = (tyScheme(Types.Num, fn tv => (tv ** tv --> tv)),
-	       [int_minus, long_minus, integer_minus, float_minus, double_minus])
-    val times = (tyScheme(Types.Num, fn tv => (tv ** tv --> tv)),
-	       [int_times, long_times, integer_times, float_times, double_times])
-
-    val fdiv = (tyScheme(Types.Float, fn tv => (tv ** tv --> tv)),
-		[float_fdiv, double_fdiv])
-
-    val div = (tyScheme(Types.Int, fn tv => (tv ** tv --> tv)),
-	       [int_div, long_div, integer_div])
-    val mod = (tyScheme(Types.Int, fn tv => (tv ** tv --> tv)),
-	       [int_mod, long_mod, integer_mod])
-
-    val neg = (tyScheme(Types.Num, fn tv => (tv --> tv)),
-		[int_neg, long_neg, integer_neg, float_neg, double_neg])
-
-    val lookupOp = let
-	  val tbl = AtomTable.mkTable (16, Fail "lookupOp")
-	  fun ins (id, info) = AtomTable.insert tbl (id, Env.Overload info)
-	  in
-	  (* insert constructors *)
-	    List.app (AtomTable.insert tbl) [
-		(N.listCons,	Env.Con listCons)
-	      ];
-	  (* insert non-overloaded operators *)
-	    List.app (AtomTable.insert tbl) [
-		(N.append,	Env.Var listAppend),
-		(N.concat,	Env.Var stringConcat),
-                (N.psub,        Env.Var psub)
-	      ];
-	  (* insert equality operators *)
-	    List.app (AtomTable.insert tbl) [
-		(N.eq,		Env.EqOp eq),
-		(N.neq,		Env.EqOp neq)
-	      ];
-	  (* insert overloaded operators *)
-	    List.app ins [
-		(N.lte,		lte),
-		(N.lt,		lt),
-		(N.gte,		gte),
-		(N.gt,		gt),
-		(N.plus,	plus),
-		(N.minus,	minus),
-		(N.times,	times),
-		(N.fdiv,	fdiv),
-		(N.div,		div),
-		(N.mod,		mod)
-	      ];
-	    AtomTable.lookup tbl
-	  end
-
-
-  (* the predefined type environment *)
-    val te0 = Env.fromList [
+      val predefinedTypes = [
 	    (N.unit,		Env.TyDef(Types.TyScheme([], unitTy))),
 	    (N.bool,		Env.TyCon boolTyc),
 	    (N.int,		Env.TyCon intTyc),
@@ -143,7 +78,7 @@ structure BasisEnv : sig
 	    (N.arrayTyc,        Env.TyCon arrayTyc)
 	  ]
 
-    val ve0 = Env.fromList [
+      val predefinedVars =  [
 	    (N.boolTrue,	Env.Con boolTrue),
 	    (N.boolFalse,	Env.Con boolFalse),
 	    (N.listNil,		Env.Con listNil),
@@ -250,6 +185,304 @@ structure BasisEnv : sig
 	    (N.asub,            Env.Var asub),
 	    (N.alength,         Env.Var alength)
 	  ]
+
+      val predefinedTypes' = [
+	    (N.unit,		MEnv.TyDef(Types.TyScheme([], unitTy))),
+	    (N.bool,		MEnv.TyCon boolTyc),
+	    (N.int,		MEnv.TyCon intTyc),
+	    (N.long,		MEnv.TyCon longTyc),
+	    (N.integer,		MEnv.TyCon integerTyc),
+	    (N.float,		MEnv.TyCon floatTyc),
+	    (N.double,		MEnv.TyCon doubleTyc),
+	    (N.char,		MEnv.TyCon charTyc),
+	    (N.rune,		MEnv.TyCon runeTyc),
+	    (N.string,		MEnv.TyCon stringTyc),
+	    (N.list,		MEnv.TyCon listTyc),
+	    (N.option,		MEnv.TyCon optionTyc),
+	    (N.thread_id,	MEnv.TyCon threadIdTyc),
+	    (N.parray,		MEnv.TyCon parrayTyc),
+	    (N.chan,		MEnv.TyCon chanTyc),
+	    (N.ivar,		MEnv.TyCon ivarTyc),
+	    (N.mvar,		MEnv.TyCon mvarTyc),
+	    (N.event,		MEnv.TyCon eventTyc),
+	  (* extras *)
+	    (N.image,		MEnv.TyCon imageTyc),
+	  (* arrays *)
+	    (N.arrayTyc,        MEnv.TyCon arrayTyc)
+	  ]
+
+      val predefinedVars' =  [
+	    (N.boolTrue,	MEnv.Con boolTrue),
+	    (N.boolFalse,	MEnv.Con boolFalse),
+	    (N.listNil,		MEnv.Con listNil),
+	    (N.listCons,	MEnv.Con listCons),
+	    (N.optionNONE,	MEnv.Con optionNONE),
+	    (N.optionSOME,	MEnv.Con optionSOME),
+	    (N.exnBind,		MEnv.Con exnBind),
+	    (N.exnDiv,		MEnv.Con exnDiv),
+	    (N.exnFail,		MEnv.Con exnFail),
+	    (N.exnMatch,	MEnv.Con exnMatch),
+	    (* Unary minus is overloaded, so it's being handled
+             * specially by the typechecker *)
+	    (N.not,		MEnv.Var not),
+	    (N.sqrtf,		MEnv.Var sqrtf),
+	    (N.absf,		MEnv.Var absf),
+	    (N.lnf,		MEnv.Var lnf),
+	    (N.log2f,		MEnv.Var log2f),
+	    (N.log10f,		MEnv.Var log10f),
+	    (N.powf,		MEnv.Var powf),
+	    (N.expf,		MEnv.Var expf),
+	    (N.sinf,		MEnv.Var sinf),
+	    (N.cosf,		MEnv.Var cosf),
+	    (N.tanf,		MEnv.Var tanf),
+	    (N.itof,		MEnv.Var itof),
+	    (N.sqrtd,		MEnv.Var sqrtd),
+	    (N.absd,		MEnv.Var absd),
+	    (N.lnd,		MEnv.Var lnd),
+	    (N.log2d,		MEnv.Var log2d),
+	    (N.log10d,		MEnv.Var log10d),
+	    (N.powd,		MEnv.Var powd),
+	    (N.expd,		MEnv.Var expd),
+	    (N.sind,		MEnv.Var sind),
+	    (N.cosd,		MEnv.Var cosd),
+	    (N.tand,		MEnv.Var tand),
+	    (N.itod,		MEnv.Var itod),
+	    (N.channel,		MEnv.Var channel),
+	    (N.send,		MEnv.Var send),
+	    (N.sendEvt,		MEnv.Var sendEvt),
+	    (N.recv,		MEnv.Var recv),
+	    (N.recvEvt,		MEnv.Var recvEvt),
+	    (N.wrap,		MEnv.Var wrap),
+	    (N.choose,		MEnv.Var choose),
+	    (N.never,		MEnv.Var never),
+	    (N.sync,		MEnv.Var sync),
+	    (N.iVar,		MEnv.Var iVar),
+	    (N.iGet,		MEnv.Var iGet),
+	    (N.iPut,		MEnv.Var iPut),
+	    (N.mVar,		MEnv.Var mVar),
+	    (N.mGet,		MEnv.Var mGet),
+	    (N.mTake,		MEnv.Var mTake),
+	    (N.mPut,		MEnv.Var mPut),
+	    (N.itos,		MEnv.Var itos),
+	    (N.ltos,		MEnv.Var ltos),
+	    (N.ftos,		MEnv.Var ftos),
+	    (N.dtos,		MEnv.Var dtos),
+	    (N.print,		MEnv.Var print),
+	    (N.args,		MEnv.Var args),
+	    (N.fail,		MEnv.Var fail),
+            (N.todo,            MEnv.Var todo),
+	    (N.plen,            MEnv.Var plen),
+            (N.prev,            MEnv.Var prev),
+	    (N.pdivide,         MEnv.Var pdivide),
+	    (N.psubseq,         MEnv.Var psubseq),
+            (N.pappend,         MEnv.Var pappend),
+	    (N.sumP,            MEnv.Var sumP),
+	    (N.dist,            MEnv.Var dist),
+	    (N.rev,             MEnv.Var rev),
+            (N.length,          MEnv.Var length),
+	    (N.nth,             MEnv.Var nth),
+	    (N.gettimeofday,	MEnv.Var gettimeofday),
+	    (N.readint,	        MEnv.Var readint),
+	    (N.readfloat,	MEnv.Var readfloat),
+	    (N.readdouble,	MEnv.Var readdouble),
+	    (N.drand,	        MEnv.Var drand),
+	    (N.compose,         MEnv.Var compose),
+	    (N.map,             MEnv.Var map),
+	    (N.filter,          MEnv.Var filter),
+            (N.app,             MEnv.Var app),
+	    (N.papp,            MEnv.Var papp),
+	    (N.foldl,           MEnv.Var foldl),
+	    (N.foldr,           MEnv.Var foldr),
+            (N.tab,             MEnv.Var tab),
+	    (N.reduceP,         MEnv.Var reduceP),
+	    (N.concatWith,      MEnv.Var stringConcatWith),
+(*
+	    (N.size,		MEnv.Var size),
+	    (N.sub,		MEnv.Var sub),
+	    (N.substring,	MEnv.Var substring),
+	    (N.concat,		MEnv.Var concat),
+*)
+	  (* extras *)
+	    (N.newImage,	MEnv.Var newImage),
+	    (N.updateImage3f,	MEnv.Var updateImage3f),
+	    (N.updateImage3d,	MEnv.Var updateImage3d),
+	    (N.outputImage,	MEnv.Var outputImage),
+	    (N.freeImage,	MEnv.Var freeImage),
+	    (N.getNumProcs,	MEnv.Var getNumProcs),
+	    (N.getNumVProcs,	MEnv.Var getNumVProcs),
+	    (N.ltcWaitForAll,	MEnv.Var ltcWaitForAll),
+	    (N.por,	        MEnv.Var por),
+	  (* arrays *)
+	    (N.array,           MEnv.Var array),
+	    (N.aupdate,         MEnv.Var aupdate),
+	    (N.asub,            MEnv.Var asub),
+	    (N.alength,         MEnv.Var alength)
+	  ]
+    in
+
+  (* create a type scheme that binds a kinded type variable *)
+    fun tyScheme (cls, mk) = let
+	  val tv = TyVar.newClass (Atom.atom "'a", cls)
+	  in
+	    Types.TyScheme([tv], mk(Types.VarTy tv))
+	  end
+
+    val lte = (tyScheme(Types.Order, fn tv => (tv ** tv --> boolTy)),
+	       [int_lte, long_lte, integer_lte, float_lte, double_lte, char_lte, rune_lte, string_lte])
+    val lt = (tyScheme(Types.Order, fn tv => (tv ** tv --> boolTy)),
+	       [int_lt, long_lt, integer_lt, float_lt, double_lt, char_lt, rune_lt, string_lt])
+    val gte = (tyScheme(Types.Order, fn tv => (tv ** tv --> boolTy)),
+	       [int_gte, long_gte, integer_gte, float_gte, double_gte, char_gte, rune_gte, string_gte])
+    val gt = (tyScheme(Types.Order, fn tv => (tv ** tv --> boolTy)),
+	       [int_gt, long_gt, integer_gt, float_gt, double_gt, char_gt, rune_gt, string_gt])
+
+    val plus = (tyScheme(Types.Num, fn tv => (tv ** tv --> tv)),
+	       [int_plus, long_plus, integer_plus, float_plus, double_plus])
+    val minus = (tyScheme(Types.Num, fn tv => (tv ** tv --> tv)),
+	       [int_minus, long_minus, integer_minus, float_minus, double_minus])
+    val times = (tyScheme(Types.Num, fn tv => (tv ** tv --> tv)),
+	       [int_times, long_times, integer_times, float_times, double_times])
+
+    val fdiv = (tyScheme(Types.Float, fn tv => (tv ** tv --> tv)),
+		[float_fdiv, double_fdiv])
+
+    val div = (tyScheme(Types.Int, fn tv => (tv ** tv --> tv)),
+	       [int_div, long_div, integer_div])
+    val mod = (tyScheme(Types.Int, fn tv => (tv ** tv --> tv)),
+	       [int_mod, long_mod, integer_mod])
+
+    val neg = (tyScheme(Types.Num, fn tv => (tv --> tv)),
+		[int_neg, long_neg, integer_neg, float_neg, double_neg])
+
+    val lookupOp = let
+	  val tbl = AtomTable.mkTable (16, Fail "lookupOp")
+	  fun ins (id, info) = AtomTable.insert tbl (id, Env.Overload info)
+	  in
+	  (* insert constructors *)
+	    List.app (AtomTable.insert tbl) [
+		(N.listCons,	Env.Con listCons)
+	      ];
+	  (* insert non-overloaded operators *)
+	    List.app (AtomTable.insert tbl) [
+		(N.append,	Env.Var listAppend),
+		(N.concat,	Env.Var stringConcat),
+                (N.psub,        Env.Var psub)
+	      ];
+	  (* insert equality operators *)
+	    List.app (AtomTable.insert tbl) [
+		(N.eq,		Env.EqOp eq),
+		(N.neq,		Env.EqOp neq)
+	      ];
+	  (* insert overloaded operators *)
+	    List.app ins [
+		(N.lte,		lte),
+		(N.lt,		lt),
+		(N.gte,		gte),
+		(N.gt,		gt),
+		(N.plus,	plus),
+		(N.minus,	minus),
+		(N.times,	times),
+		(N.fdiv,	fdiv),
+		(N.div,		div),
+		(N.mod,		mod)
+	      ];
+	    AtomTable.lookup tbl
+	  end
+
+      val te0 = Env.fromList predefinedTypes
+      val ve0 = Env.fromList predefinedVars
+
+    (* new stuff *)
+
+      fun bind (n, x) = let
+	      val v = PPT.Var.new(Atom.toString n, ())
+              in
+                ((n, v), (v, x))
+              end
+
+    (* split the predefined variables into two binding pairs
+     *   ParseTree1 -> ParseTree2        and
+     *   ParseTree2 -> AST entry
+     *)
+      fun binds predefines = let
+	    val pds = List.map bind predefines
+            in
+	      ListPair.unzip pds
+	    end
+
+      val (bEnv0, mEnv0) = let	     
+
+	     val (predefinedTyBinds, predefinedTys) = binds predefinedTypes'
+	     val (predefinedVarBinds, predefinedVars) = binds predefinedVars'
+
+           (* create the top-level binding environment *)
+	     val BEnv.Env {modEnv, sigEnv, outerEnv, ...} = BEnv.empty NONE
+	     val bEnv0 = BEnv.Env{modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv, 
+				  varEnv=BEnv.fromList predefinedVarBinds, 
+				  tyEnv=BEnv.fromList predefinedTyBinds
+				 }
+
+           (* create the top-level module environment *)
+	     val modRef = AST.MOD{id=Stamp.new(), name=Atom.atom "Basis", formals=NONE}
+	     val MEnv.ModEnv {modRef, modEnv, sigEnv, outerEnv, ...} = MEnv.fresh (modRef, NONE)
+	     val mEnv0 = MEnv.ModEnv{modRef=modRef, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv,
+				     tyEnv=MEnv.fromList predefinedTys, 
+				     varEnv=MEnv.fromList predefinedVars
+				    }
+
+             in
+	        (bEnv0, mEnv0)
+	     end
+
+    val (lookupOpPT, lookupOpAST) = let
+
+        (* constructors *)
+	  val cons = [
+		(N.listCons,	MEnv.Con listCons)
+	      ]
+        (* non-overloaded operators *)
+	  val nonOverloadedOps = [
+		(N.append,	MEnv.Var listAppend),
+		(N.concat,	MEnv.Var stringConcat),
+                (N.psub,        MEnv.Var psub)
+	      ]
+        (* equality operators *)
+	  val eqOps = [
+		(N.eq,		MEnv.EqOp eq),
+		(N.neq,		MEnv.EqOp neq)
+	      ]
+        (* overloaded operators *)
+	  val ovOps = [
+		(N.lte,		lte),
+		(N.lt,		lt),
+		(N.gte,		gte),
+		(N.gt,		gt),
+		(N.plus,	plus),
+		(N.minus,	minus),
+		(N.times,	times),
+		(N.fdiv,	fdiv),
+		(N.div,		div),
+		(N.mod,		mod)
+	      ]
+
+	  val (consBinds, cons) = binds cons
+	  val (nonOverloadedOpsBinds, nonOverloadedOps) = binds nonOverloadedOps
+	  val (eqOpsBinds, eqOps) = binds eqOps
+	  val (ovOpsBinds, ovOps) = binds ovOps
+	  val ovOps = List.map (fn (id, info) => (id, MEnv.Overload info)) ovOps
+
+	  val bEnv = BEnv.fromList (List.concat [
+		       consBinds, nonOverloadedOpsBinds, eqOpsBinds, ovOpsBinds
+		     ])
+	  fun lookupOpPT id = Option.valOf(BEnv.Map.find(bEnv, id))
+
+	  val mEnv = MEnv.fromList (List.concat [
+		       cons, nonOverloadedOps, eqOps, ovOps
+		     ])
+	  fun lookupOpAST id = Option.valOf(MEnv.VarMap.find(mEnv, id))
+	  in
+	    (lookupOpPT, lookupOpAST)
+	  end
 
     end (* local *)
   end

@@ -51,10 +51,10 @@ structure QualifiedId : sig
 	  (* we have reached the last qualified name in the path *)
 	  | find (env, [id]) = (case BindingEnv.findMod (env, id)
             of NONE => ERROR
-	     | SOME env => QUAL (env, x))
+	     | SOME (_, env) => QUAL (env, x))
 	  | find (env, id :: path) = (case BindingEnv.findMod (env, id)
             of NONE => ERROR
-	     | SOME env => find (env, path))
+	     | SOME (_, env) => find (env, path))
 	in
             find (env, path)
         end
@@ -70,8 +70,8 @@ structure QualifiedId : sig
 	 | ERROR => NONE)
 
     fun findMod (env, path) = (case checkModPath (env, path)
-        of UNQUAL x => BindingEnv.findMod(env, x)
-	 | QUAL (env', x) => BindingEnv.findMod(env', x)
+        of UNQUAL x => Option.map #1 (BindingEnv.findMod(env, x))
+	 | QUAL (env', x) => Option.map #1 (BindingEnv.findMod(env', x))
 	 | ERROR => NONE)
 
   end

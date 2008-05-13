@@ -41,7 +41,8 @@ functor MainFn (
     fun prHdr msg = print(concat["******************** ", msg,  " ********************\n"])
 
   (* load the AST corresponding to a single .pml file *)
-    fun srcToAST (errStrm, file) = (case Parser.parseFile (errStrm, file)
+    fun srcToAST (errStrm, file) = raise Fail ""
+(*(case Parser.parseFile (errStrm, file)
 	   of SOME pt => let
 		val ast = Typechecker.check (errStrm, pt)
 		in
@@ -52,12 +53,16 @@ functor MainFn (
 		Error.report (TextIO.stdErr, errStrm);
 		raise Error)
 	  (* end case *))
+*)
 
   (* load the AST specified by an MLB file *)
     fun mlbToAST (errStrm, file) = let
 	  val ptsAndErrStrms = MLB.load(errStrm, file)	(* load the parse trees for the compilation units *)
 	  val _ = checkForErrors errStrm		(* check for errors loading the MLB file *)
-	  val ast = Typechecker.check' ptsAndErrStrms
+	  fun chk (strm, pt1) =  (strm, BoundVariableCheck.check (errStrm, pt1))
+	  val ptsAndErrStrms = List.map chk ptsAndErrStrms         (* check for unbound variables *)
+	  val _ = List.app (checkForErrors o #1) ptsAndErrStrms;
+	  val ast = ChkProgram.check ptsAndErrStrms
 	  in
 	    List.app (checkForErrors o #1) ptsAndErrStrms;
 	    ast
@@ -143,7 +148,7 @@ functor MainFn (
 	  in
 	    case OS.Path.splitBaseExt file
 	     of {base, ext=SOME "bom"} => doit bomC base             (* FIXME: we can probably remove this *)
-	      | {base, ext=SOME "pml"} => doit standaloneC base
+(*	      | {base, ext=SOME "pml"} => doit standaloneC base*)
 	      | {base, ext=SOME "mlb"} => doit mlbC base
 	      | _ => raise Fail "unknown source file extension"
 	    (* end case *)

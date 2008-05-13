@@ -9,7 +9,7 @@
 structure BoundVariableCheck :> sig
 
   (* check for unbound variables *)
-    val check : ProgramParseTree.PML1.program -> (ProgramParseTree.PML2.program * BindingEnv.env)
+    val check : (Error.err_stream * ProgramParseTree.PML1.program) -> ProgramParseTree.PML2.program
 
   end = struct
 
@@ -21,7 +21,13 @@ structure BoundVariableCheck :> sig
     val atos = Atom.toString
     fun qidToString path = QualifiedId.toString (Atom.toString, path)
 
-    fun error _ = raise Fail ""
+  (* FIXME: the following is a hack to avoid threading the error stream through
+   * all of the typechecking code.  Eventually, we should fix this, since otherwise
+   * it is a space leak.
+   *)
+    val errStrm = ref(Error.mkErrStream "<bogus>")
+
+    fun error (span, msg) = Error.errorAt (!errStrm, span, msg)
 
     fun chkList loc (chkX, xs, env) = let
 	   fun f (x, (xs, env)) = let
@@ -43,7 +49,7 @@ structure BoundVariableCheck :> sig
 	    | PT1.NamedTy (tys, id) => let
 		  val (tys, env) = chkTys loc (tys, env)
 	          in
-		     case BEnv.findTy(env, id)
+		     case QualifiedId.findTy(env, id)
 		      of NONE => (PT2.NamedTy (tys, Var.new("dummy", ())), env)
 		       | SOME id' => (PT2.NamedTy (tys, id'), env)
 		  end
@@ -75,6 +81,7 @@ structure BoundVariableCheck :> sig
 	          in
 		     (PT2.IdPat vb', env)
 		  end
+	    | PT1.WildPat => (PT2.WildPat, env)
            (* end case *))
 
     fun chkPPat loc (pat, env) = (case pat
@@ -99,6 +106,31 @@ structure BoundVariableCheck :> sig
 		  val (exp, env) = chkExp loc (exp, env)
 	          in
 		     (PT2.ValVDecl(pat, exp), env)
+		  end
+	    | PT1.PValVDecl (pat, exp) => let
+		  val (pat, env) = chkPat loc (pat, env)
+		  val (exp, env) = chkExp loc (exp, env)
+	          in
+		     (PT2.PValVDecl(pat, exp), env)
+		  end
+	    | PT1.FunVDecl functs => let
+(* FIXME: support mutually recursive functions *)
+		  fun chkFunct loc (PT1.MarkFunct {span, tree}, env) = let
+		          val (tree, env) = chkFunct span (tree, env)
+		          in
+		            (PT2.MarkFunct{span=span, tree=tree}, env)
+		          end
+		    | chkFunct loc (PT1.Funct (f, pat, exp), env) = let
+			  val f' = Var.new(Atom.toString f, ())
+			  val env = BEnv.insertVal(env, f, f')
+			  val (pat, env) = chkPat loc (pat, env)
+			  val (exp, env) = chkExp loc (exp, env)
+			  in
+			     (PT2.Funct (f', pat, exp), env)
+			  end
+		  val (functs, env) = chkList loc (chkFunct, functs, env)
+	          in
+		     (PT2.FunVDecl functs, env)
 		  end
            (* end case *))
 
@@ -140,6 +172,10 @@ structure BoundVariableCheck :> sig
            (* end case *))
 
     and chkPMatches loc (pmatches, env) = chkList loc (chkPMatch, pmatches, env)
+
+    and chkConst (PT1.IntLit x) = PT2.IntLit x
+      | chkConst (PT1.FltLit x) = PT2.FltLit x
+      | chkConst (PT1.StrLit x) = PT2.StrLit x
 
     and chkExp loc (exp, env) = (case exp
            of PT1.MarkExp {span, tree} => let
@@ -199,7 +235,7 @@ structure BoundVariableCheck :> sig
 		  val (exp1, env) = chkExp loc (exp1, env)
 		  val (exp2, env) = chkExp loc (exp2, env)
 	          in
-		     (PT2.BinaryExp (exp1, BEnv.findBinaryOp(env, id), exp2), env)
+		     (PT2.BinaryExp (exp1, BasisEnv.lookupOpPT id, exp2), env)
 		  end
 	    | PT1.PChoiceExp exps => let
 		  val (exps, env) = chkExps loc (exps, env)
@@ -219,6 +255,42 @@ structure BoundVariableCheck :> sig
 		   | SOME var => 
 		       (PT2.IdExp var, env)
 	          (* end case *))
+	    | PT1.ConstExp const => (PT2.ConstExp (chkConst const), env)
+	    | PT1.TupleExp exps => let
+		  val (exps, env) = chkExps loc (exps, env)
+	          in
+		     (PT2.TupleExp exps, env)
+	          end
+	    | PT1.ListExp exps => let
+		  val (exps, env) = chkExps loc (exps, env)
+	          in
+		     (PT2.ListExp exps, env)
+	          end
+	    | PT1.RangeExp (exp1, exp2, expOpt) => let
+		  val (exp1, env) = chkExp loc (exp1, env)
+		  val (exp2, env) = chkExp loc (exp2, env)
+		  val (expOpt, env) = (case expOpt
+					of NONE => (NONE, env)
+					 | SOME exp => let
+					       val (exp, env) = chkExp loc (exp, env)
+					       in
+					         (SOME exp, env)
+					       end
+				      (* end case *))
+	          in
+		     (PT2.RangeExp (exp1, exp2, expOpt), env)
+		  end
+	    | PT1.SeqExp exps => let
+		  val (exps, env) = chkExps loc (exps, env)
+	          in
+		     (PT2.SeqExp exps, env)
+	          end
+	    | PT1.ConstraintExp (exp, ty) => let
+		  val (exp, env) = chkExp loc (exp, env)
+		  val (ty, env) = chkTy loc (ty, env)
+	          in
+		     (PT2.ConstraintExp (exp, ty), env)
+	          end
             (* end case *))
 
     and chkExps loc (exps, env) = chkList loc (chkExp, exps, env)
@@ -299,9 +371,19 @@ structure BoundVariableCheck :> sig
 	          in
 		     (PT2.MarkMod {span=span, tree=tree}, env)
 		  end
+	    | PT1.DeclsMod decls => let
+		  val (decls, env) = chkDecls loc (decls, env)
+	          in
+		     (PT2.DeclsMod decls, env)
+		  end
+	    | PT1.NamedMod id => (case QualifiedId.findMod(env, id)
+                    of NONE => (error(loc, ["unbound module ", qidToString id]);
+			       (PT2.NamedMod (Var.new("dummy", ())), env))
+		     | SOME id' => (PT2.NamedMod id', env)
+                    (* end case *))
            (* end case *))
 
-    fun chkDecl loc (decl, env) = (case decl
+    and chkDecl loc (decl, env) = (case decl
            of PT1.MarkDecl {span, tree} => let
 		  val (tree, env) = chkDecl span (tree, env)
 	          in
@@ -317,8 +399,8 @@ structure BoundVariableCheck :> sig
 				end
 	                 (* end case *))
 		  val mb' = Var.new(Atom.toString mb, ())
-		  val env = BEnv.insertMod(env, mb', mb)
-		  val (module, env) = chkModule loc (module, env)
+		  val (module, env') = chkModule loc (module, BEnv.empty (SOME env))
+		  val env = BEnv.insertMod(env, mb, (mb', env'))
 	          in
 	             (PT2.ModuleDecl(mb', sign, module), env)
 	          end
@@ -362,11 +444,11 @@ structure BoundVariableCheck :> sig
 
     and chkDecls loc (decls, env) = chkList loc (chkDecl, decls, env)
 
-    fun check {span, tree} = let
-	val env0 = BEnv.topLevelEnv NONE
-	val (tree', env) = chkDecls span (tree, env0)
-        in
-	   ({span=span, tree=tree'}, env)
+    fun check (es, {span, tree}) = let
+	val _ = errStrm := es
+	val (tree', env) = chkDecls span (tree, BasisEnv.bEnv0)
+        in		  
+	   {span=span, tree=tree'}
         end
 
   end (* BoundVariableCheck *)

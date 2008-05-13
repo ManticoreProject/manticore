@@ -1,35 +1,36 @@
-(* typechecker.sml
+(* chk-exp.sml
  *
- * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Based on CMSC 22610 Sample code (Winter 2007)
+ * Type check expression and value declarations.
  *)
 
-structure Typechecker : sig
+structure ChkExp :> sig 
 
-  (* check a compilation unit *)
-    val check : (Error.err_stream * ParseTree.program) -> AST.exp
+  (* type check an expression *)
+    val checkExp : Error.err_stream -> (Error.span * ProgramParseTree.PML2.exp * ModuleEnv.env) 
+		       -> (AST.exp * Types.ty)
 
-  (* check multiple compilation units *)
-    val check' : (Error.err_stream * ParseTree.program) list -> AST.exp
+  (* type check a value declaration *)
+    val checkValDecl : Error.err_stream -> (Error.span * ProgramParseTree.PML2.val_decl * ModuleEnv.env) 
+		           -> (AST.binding * ModuleEnv.env)
 
   end = struct
 
-    structure PT = ParseTree
+    structure PPT = ProgramParseTree
+    structure PT = PPT.PML2
     structure U = Unify
     structure TU = TypeUtil
-    structure B = Basis
     structure Ty = Types
+    structure Env = ModuleEnv
 
-    structure BA = BoundVariableCheck
-    structure CT = ChkTy
-    structure CE = ChkExp
-    structure CM = ChkModule
-    structure CU = ChkProgram
-
-    val atos = Atom.toString
-    fun qidToString path = Path.toString (Atom.toString, path)
+    fun unzip3 tups = let
+      fun u ([], xs, ys, zs) = (xs, ys, zs)
+	| u ((x,y,z)::t, xs, ys, zs) = u (t, x::xs, y::ys, z::zs)
+      in
+        u (List.rev tups, [], [], [])
+      end
 
   (* FIXME: the following is a hack to avoid threading the error stream through
    * all of the typechecking code.  Eventually, we should fix this, since otherwise
@@ -38,12 +39,6 @@ structure Typechecker : sig
     val errStrm = ref(Error.mkErrStream "<bogus>")
 
     fun error (span, msg) = Error.errorAt (!errStrm, span, msg)
-
-  (* "smart" tuple type constructor *)
-    val mkTupleTy = TU.tupleTy
-
-  (* create a single-parameter lambda from one that has a pattern parameter *)
-    val mkLambda = ASTUtil.mkFunWithPat
 
   (* a type expression for when there is an error *)
     val bogusTy = AST.ErrorTy
@@ -54,47 +49,7 @@ structure Typechecker : sig
   (* a pattern for when there is an error *)
     val bogusPat = AST.TuplePat[]
 
-  (* a utility *)
-    fun unzip3 tups = let
-      fun u ([], xs, ys, zs) = (xs, ys, zs)
-	| u ((x,y,z)::t, xs, ys, zs) = u (t, x::xs, y::ys, z::zs)
-      in
-        u (List.rev tups, [], [], [])
-      end
-   
-  (* typecheck type expressions as described in Section 6.4 *)
-    fun chkTy (loc, env, tve, ty) = (case ty
-	   of PT.MarkTy{span, tree} => chkTy(span, env, tve, tree)
-	    | PT.NamedTy(tyArgs, id) => let
-		val tyArgs' = List.map (fn ty => chkTy(loc, env, tve, ty)) tyArgs
-		in
-		  case Path.findTy(env, id)
-		   of SOME(Env.TyDef(AST.TyScheme(tvs, ty))) =>
-			if (List.length tvs <> List.length tyArgs')
-			  then (
-			    error(loc, ["arity mismatch for ", qidToString id]);
-			    bogusTy)
-			  else TU.substitute (ty, ListPair.zip(tvs, tyArgs'))
-		    | SOME(Env.TyCon tyc') =>
-			if (TyCon.arityOf tyc' <> List.length tyArgs')
-			  then (
-			    error(loc, ["arity mismatch for ", qidToString id]);
-			    bogusTy)
-			  else AST.ConTy(tyArgs', tyc')
-		    | NONE => (
-			error(loc, ["undefined type constructor ", qidToString id]);
-			bogusTy)
-		  (* end case *)
-		end
-	    | PT.VarTy tv => (case Env.find(tve, tv)
-		 of SOME tv' => AST.VarTy tv'
-		  | NONE => (error(loc, ["unbound type variable ", atos tv]); bogusTy)
-		(* end case *))
-	    | PT.TupleTy tys =>
-		mkTupleTy(List.map (fn ty => chkTy(loc, env, tve, ty)) tys)
-	    | PT.FunTy(ty1, ty2) =>
-		AST.FunTy(chkTy(loc, env, tve, ty1), chkTy(loc, env, tve, ty2))
-	  (* end case *))
+    val idToString = ProgramParseTree.Var.toString
 
   (* typecheck a literal *)
     fun chkLit (_, PT.IntLit i) = let
@@ -142,41 +97,41 @@ structure Typechecker : sig
 		fun bindFun (fb, (fs, names)) = (case fb
 		       of PT.MarkFunct{span, tree} => bindFun (tree, (fs, names))
 			| PT.Funct(f, _, _) => let
-			    val f' = Var.new(Atom.toString f,
+			    val f' = Var.new(PPT.Var.nameOf f,
 				  AST.FunTy(
 				    AST.MetaTy(MetaVar.new depth'),
 				    AST.MetaTy(MetaVar.new depth')))
 			    in
-			      if AtomSet.member(names, f)
+			      if PPT.Var.Set.member(names, f)
 				then (
 				  error(loc, [
-				      "duplicate name ", Atom.toString f,
+				      "duplicate name ", PPT.Var.nameOf f,
 				      "in function binding"
 				    ]);
 				  ((f, f')::fs, names))
-				else ((f, f')::fs, AtomSet.add(names, f))
+				else ((f, f')::fs, PPT.Var.Set.add(names, f))
 			    end
 		      (* end case *))
-		val (fs, _) = List.foldr bindFun ([], AtomSet.empty) fbs
+		val (fs, _) = List.foldr bindFun ([], PPT.Var.Set.empty) fbs
 	      (* insert the function variables into an environment for checking
 	       * the function bodies.
 	       *)
 	        val env' = List.foldl
-		      (fn ((f, f'), env) => Env.insertVarEnv(env, f, Env.Var f'))
+		      (fn ((f, f'), env) => Env.insertVar(env, f, Env.Var f'))
 			env fs
 	      (* typecheck the functions *)
 		fun chkFun loc (fb, fbs) = (case fb
 		       of PT.MarkFunct{span, tree} => chkFun span (tree, fbs)
 			| PT.Funct(f, param, body) => let
-			    val SOME(Env.Var f') = Env.findVarEnv(env', f)
+			    val SOME(Env.Var f') = Env.findVar(env', f)
 			    val AST.TyScheme(_, funTy) = Var.typeOf f'
 			    val (param', env'', paramTy) = chkPat (loc, depth', env', param)
 			    val (body', bodyTy) = chkExp (loc, depth', env'', body)
 			    in
 			      if not(U.unify(funTy, AST.FunTy(paramTy, bodyTy)))
-				then error(loc, ["type mismatch in function ", Atom.toString f])
+				then error(loc, ["type mismatch in function ", PPT.Var.nameOf f])
 				else ();
-			      mkLambda(f', param', body') :: fbs
+			      ASTUtil.mkFunWithPat(f', param', body') :: fbs
 			    end
 		      (* end case *))
 		val fbs' = List.foldr (chkFun loc) [] fbs
@@ -185,7 +140,7 @@ structure Typechecker : sig
 	       *)
 		fun close ((f, f'), env) = (
 		      Var.closeTypeOf (depth, f');
-		      Env.insertVarEnv(env, f, Env.Var f'))
+		      Env.insertVar(env, f, Env.Var f'))
 	        val env' = List.foldl close env fs
 		in
 		  (AST.FunBind fbs', env')
@@ -301,7 +256,7 @@ structure Typechecker : sig
 		      in
 			if not(U.unify(argTy, AST.TupleTy[ty1, ty2]))
 			  then error(loc, [
-			      "type mismatch for operator ", Atom.toString bop, "\n",
+			      "type mismatch for operator ", PPT.Var.nameOf bop, "\n",
 			      "operator expects ", TypeUtil.toString argTy, "\n",
 			      "argument has type ", TypeUtil.toString(AST.TupleTy[ty1, ty2])
 			    ])
@@ -309,7 +264,7 @@ structure Typechecker : sig
 			(argTys, resTy, instTy)
 		      end
 		in
-		  case BasisEnv.lookupOp bop
+		  case BasisEnv.lookupOpAST bop
 		   of Env.Con dc => let
 			val (argTys, resTy, _) = chkApp (DataCon.typeOf dc)
 			in
@@ -360,7 +315,7 @@ structure Typechecker : sig
 		      end
 		val (es', tys) = List.foldr chk ([], []) es
 		in
-		  (AST.TupleExp es', mkTupleTy tys)
+		  (AST.TupleExp es', TU.tupleTy tys)
 		end
 	    | PT.ListExp es => let
 		val elemTy = AST.MetaTy(MetaVar.new depth)
@@ -408,7 +363,7 @@ structure Typechecker : sig
 		  if not(U.unify (ty1, TypeClass.new Types.Num))
 		  then error (loc, ["range elements must have numeric type"])
 		  else ();
-		  (AST.RangeExp(e1', e2', eo', ty1), B.parrayTy ty1)
+		  (AST.RangeExp(e1', e2', eo', ty1), Basis.parrayTy ty1)
 	      end
 	    | PT.PTupleExp es => let
 		  fun chk (e, (es, tys)) = let
@@ -418,7 +373,7 @@ structure Typechecker : sig
 		  end
 		  val (es', tys) = List.foldr chk ([], []) es
 	      in
-		  (AST.PTupleExp es', mkTupleTy tys)
+		  (AST.PTupleExp es', TU.tupleTy tys)
 	      end
 	    | PT.PArrayExp es => let
 		fun chk (e, (es, ty)) =
@@ -432,7 +387,7 @@ structure Typechecker : sig
 		    end
 		val (es', ty) = List.foldr chk ([], Ty.MetaTy (MetaVar.new depth)) es
 	      in
-		  (AST.PArrayExp(es', ty), B.parrayTy ty)
+		  (AST.PArrayExp(es', ty), Basis.parrayTy ty)
 	      end
 	    | PT.PCompExp (e, pbs, eo) => let
 		val (pes, env') = chkPBinds (loc, depth, env, pbs)
@@ -441,7 +396,7 @@ structure Typechecker : sig
 			 of (SOME exp) => let
 			      val (exp', ty) = chkExp (loc, depth, env', exp)
 			      in
-				if not(U.unify (ty, B.boolTy))
+				if not(U.unify (ty, Basis.boolTy))
 				  then error (loc, ["type mismatch in parray comprehension 'where' clause"])
 				  else ();
 				SOME exp'
@@ -449,15 +404,15 @@ structure Typechecker : sig
 			  | NONE => NONE
 			(* end case *))
 		in
-		  (AST.PCompExp (e', pes, eo'), B.parrayTy resTy)
+		  (AST.PCompExp (e', pes, eo'), Basis.parrayTy resTy)
 		end
 	    | PT.SpawnExp e => let
 		val (e', ty) = chkExp (loc, depth, env, e)
 		in
-		  if not(U.unify (ty, B.unitTy))
+		  if not(U.unify (ty, Basis.unitTy))
 		    then error(loc, ["type mismatch in spawn"])
 		    else ();
-		  (AST.SpawnExp e', B.threadIdTy)
+		  (AST.SpawnExp e', Basis.threadIdTy)
 		end
 	    | PT.SeqExp es => let
 		fun chk [e] = chkExp(loc, depth, env, e)
@@ -470,8 +425,7 @@ structure Typechecker : sig
 		in
 		  chk es
 		end
-	    | PT.IdExp x => if Option.isSome (Path.unqualId x) andalso 
-			       Atom.same (Option.valOf(Path.unqualId x), BasisNames.uMinus)
+	    | PT.IdExp x => (* if PT.Var.same (x, BasisNames.uMinus)
 		then let
 		(* Unary minus is being handled specially as
 		 * an overloaded variable *)
@@ -482,7 +436,7 @@ structure Typechecker : sig
 		    Overload.addVar ovar;
 		    (AST.OverloadExp ovar, instTy)
 		  end
-		else (case Path.findVar(env, x)
+		else *) (case Env.findVar(env, x)
 		   of SOME(Env.Con dc) => let
 			val (argTys, ty) = TU.instantiate (depth, DataCon.typeOf dc)
 			in
@@ -494,11 +448,11 @@ structure Typechecker : sig
 			  (AST.VarExp(x', argTys), ty)
 			end
 		    | NONE => (
-			error(loc, ["undefined identifier \"", qidToString x, "\""]);
+			error(loc, ["undefined identifier \"", idToString x, "\""]);
 			bogusExp)
 		  (* end case *))
 	    | PT.ConstraintExp(e, ty) => let
-		val constraintTy = chkTy (loc, env, Env.empty, ty)
+		val constraintTy = ChkTy.checkTy (!errStrm) (loc, ty, Env.TyVarMap.empty, env)
 		val (e', ty') = chkExp (loc, depth, env, e)
 		in
 		   if not(U.unify(ty', constraintTy))
@@ -557,17 +511,19 @@ structure Typechecker : sig
 
     and chkPBinds (loc, depth, env, pbs) = (case pbs
 	   of [] => ([], env)
-	    | pb::pbs => let
+	    | pb::pbs => 		  raise Fail "FIXME: union looks wrong"
+(*let
 		val (pe, env1 as Env.ModEnv{varEnv=ve1, ...}) = chkPBind (loc, depth, env, pb)
 		val (pes, env2  as Env.ModEnv{varEnv=ve2, ...}) = chkPBinds (loc, depth, env, pbs)
 (* FIXME: the following code doesn't work when "pb" contains a shadowing definition *)
-		val newve1 = List.filter (fn x => not (Env.inDomainVarEnv (env, x))) (AtomMap.listKeys ve1)
+		val newve1 = List.filter (fn x => not (Env.inDomainVar (env, x))) (AtomMap.listKeys ve1)
 		in
-		  if List.exists (fn x => Env.inDomainVarEnv(env2, x)) newve1
+		  if List.exists (fn x => Env.inDomainVar(env2, x)) newve1
 		    then error (loc, ["conflicting pattern bindings in parray comprehension"])
 		    else ();
-		  (pe::pes, Env.union(env1, env2))
+(*		  (pe::pes, Env.union(env1, env2))*)
 		end
+*)
 	  (* end case *))
 
     and chkPBind (loc, depth, env, pb) = (case pb
@@ -576,14 +532,14 @@ structure Typechecker : sig
 		val (exp', resTy) = chkExp(loc, depth, env, exp)
 		val (pat', env', resTy') = chkPat (loc, depth, env, pat)
 		in
-		 if not(U.unify(resTy, B.parrayTy resTy'))
+		 if not(U.unify(resTy, Basis.parrayTy resTy'))
 		   then error(loc, ["type mismatch in pattern binding"])
 		   else ();
 		 ((pat', exp'), env')
 		end
 	(* end case *))
 
-    and chkPPat (loc, depth, env, p) : (AST.ppat * Env.module_env * AST.ty) = (case p
+    and chkPPat (loc, depth, env, p) : (AST.ppat * Env.env * AST.ty) = (case p
           of PT.MarkPPat{span, tree} => chkPPat(span, depth, env, tree)
 	   | PT.NDWildPat => let
                val ty = AST.MetaTy(MetaVar.new depth)
@@ -603,7 +559,7 @@ structure Typechecker : sig
 	    | PT.ConPat(conid, pat) => let
 		val (pat, env', ty) = chkPat (loc, depth, env, pat)
 		in
-		  case Path.findVar(env, conid)
+		  case Env.findVar(env, conid)
 		   of SOME(Env.Con dc) => (case TU.instantiate (depth, DataCon.typeOf dc)
 			 of (tyArgs, AST.FunTy(argTy, resTy)) => (
 			      if not(U.unify(argTy, ty))
@@ -613,12 +569,12 @@ structure Typechecker : sig
 			  | _ => (
 			      error(loc, [
 				  "application of nullary constructor ",
-				  qidToString conid
+				  idToString conid
 				]);
 			      (bogusPat, env', bogusTy))
 			(* end case *))
 		    | _ => (
-			error(loc, ["unbound data constructor ", qidToString conid]);
+			error(loc, ["unbound data constructor ", idToString conid]);
 			(bogusPat, env', bogusTy))
 		  (* end case *)
 		end
@@ -638,7 +594,7 @@ structure Typechecker : sig
 		in
 		  (AST.WildPat ty, env, ty)
 		end
-	    | PT.IdPat x => (case Env.findVarEnv(env, x)
+	    | PT.IdPat x => (case Env.findVar(env, x)
 		 of SOME(Env.Con dc) => (case DataCon.argTypeOf dc
 		       of NONE => let
 			    val (tyArgs, ty) = TU.instantiate (depth, DataCon.typeOf dc)
@@ -647,19 +603,19 @@ structure Typechecker : sig
 			    end
 			| _ => (
 			    error(loc, [
-				"data constructor ", Atom.toString x, " in variable pattern"
+				"data constructor ", PPT.Var.nameOf x, " in variable pattern"
 			      ]);
 			    (bogusPat, env, bogusTy))
 		      (* end case *))
 		  | _ => let
 		      val ty = AST.MetaTy(MetaVar.new depth)
-		      val x' = Var.new(Atom.toString x, ty)
+		      val x' = Var.new(PPT.Var.nameOf x, ty)
 		      in
-			(AST.VarPat x', Env.insertVarEnv(env, x, Env.Var x'), ty)
+			(AST.VarPat x', Env.insertVar(env, x, Env.Var x'), ty)
 		      end
 		(* end case *))
 	    | PT.ConstraintPat(p, ty) => let
-		val constraintTy = chkTy (loc, env, Env.empty, ty)
+		val constraintTy = ChkTy.checkTy (!errStrm) (loc, ty, Env.TyVarMap.empty, env)
 		val (p', env, ty') = chkPat (loc, depth, env, p)
 		in
 		   if not(U.unify(ty', constraintTy))
@@ -679,322 +635,16 @@ structure Typechecker : sig
 	  in
 	    case tys
 	     of [ty] => (pats', env', ty)
-	      | _ => (pats', env', mkTupleTy tys)
+	      | _ => (pats', env', TU.tupleTy tys)
 	    (* end case *)
 	  end
 
-  (* check a list of type variables *)
-    fun chkTyVars (loc, tvs) = let
-	  fun chk ([], tve, tvs) = (tve, List.rev tvs)
-	    | chk (tv::rest, tve, tvs) = let
-		val tv' = TyVar.new tv
-		in
-		  if Env.inDomain(tve, tv)
-		    then (
-		      error (loc, ["duplicate type variable ", Atom.toString tv]);
-		      chk (rest, tve, tv'::tvs))
-		    else chk (rest, Env.insert(tve, tv, tv'), tv'::tvs)
-		end
-	  in
-	    chk (tvs, Env.empty, [])
-	  end
+    fun checkExp err (loc, exp, env) = chkExp(loc, 0, env, exp)
 
-  (* create an environment *)
-    fun freshEnv (modRef, outerEnv) = Env.freshEnv(modRef, Env.empty, Env.empty, outerEnv)
-
-  (* check type declarations *)
-    fun chkTyDcl loc (ptTyDecl, env) = (case ptTyDecl
-           of PT.MarkTyDecl {span, tree} => chkTyDcl loc (tree, env)
-	    | PT.TypeTyDecl(tvs, id, ty) => let
-		val (tve, tvs') = chkTyVars (loc, tvs)
-		val ty' = chkTy (loc, env, tve, ty)
-		in
-		  Env.insertTyEnv(env, id, Env.TyDef(AST.TyScheme(tvs', ty')))
-		end
-	    | PT.AbsTyDecl (tvs, id) => let
-                val (tve, tvs') = chkTyVars(loc, tvs)
-		val tyc = TyCon.newAbsTyc(id, List.length tvs', false)
-		val env' = Env.insertTyEnv(env, id, Env.TyCon tyc)
-                in
-		  env'
-                end
-	    | PT.DataTyDecl(tvs, id, cons) => let
-		val (tve, tvs') = chkTyVars (loc, tvs)
-		val tyc = TyCon.newDataTyc(id, tvs')
-	      (* update the type environment before checking the constructors so that
-	       * recursive types work.
-	      *)
-		val env = Env.insertTyEnv(env, id, Env.TyCon tyc)
-		val newCon = DataCon.new tyc
-		fun chkCons (_, ids, [], env, cons) = (env, List.rev cons)
-		  | chkCons (loc', ids, con::rest, env, cons) = (case con
-		       of PT.MarkConDecl{span, tree} =>
-			    chkCons (span, ids, tree::rest, env, cons)
-			| PT.ConDecl(conid, optTy) =>
-			    if AtomSet.member(ids, conid)
-			      then (
-				error (loc', [
-				    "duplicate constructor ", Atom.toString conid,
-				    " in datatype ", Atom.toString id
-				  ]);
-				chkCons (loc, ids, rest, env, cons))
-			      else let
-				val optTy' = Option.map
-				      (fn ty => chkTy(loc, env, tve, ty)) optTy
-				val con' = newCon(conid, optTy')
-				in
-				  chkCons (loc,
-				    AtomSet.add(ids, conid), rest,
-				    Env.insertVarEnv (env, conid, Env.Con con'), con'::cons)
-				end
-		      (* end case *))
-		val (env', cons') = chkCons (loc, AtomSet.empty, cons, env, [])
-	       (* datatypes that have only nullary constructors are equality types *)
-		val isEqTy = List.all (fn (Ty.DCon{argTy=NONE, ...}) => true | _ => false) cons'
-		in
-		  if isEqTy then TyCon.markEqTyc tyc else ();
-		  env'
-		end
-          (* end case *))
-
-    fun chkSpec loc (spec, env) = (case spec
-        of PT.MarkSpec {tree, span} => chkSpec span (tree, env)
-	 | PT.TypeSpec tyDecl => chkTyDcl loc (tyDecl, env)
-	 | PT.ValSpec (x, tvs, ty) => let
-	   val (tve, tvs') = chkTyVars (loc, tvs)
-           val ty = chkTy(loc, env, tve, ty)
-	   val x' = Var.newPoly(Atom.toString x, Ty.TyScheme(tvs', ty))
-           in
-	       Env.insertVarEnv(env, x, Env.Var x')
-           end
-        (* end case *))
-
-    fun chkSpecs loc (specs, env) = List.foldl (chkSpec loc) env specs
-
-  (* check that a signature is well formed and return the resulting environment *)
-    fun chkSignature loc (id, sign, env) = (case sign
-            of PT.MarkSig {tree, span} => chkSignature span (id, tree, env)
-	     | PT.ExpSig specs => let
-	       val modRef = AST.MOD{name=Option.getOpt(id, Atom.atom "sign"), id=Stamp.new(), formals=NONE}
-               val sigEnv = Env.freshEnv(modRef, Env.empty, Env.empty, SOME env)
-               in
-		  chkSpecs loc (specs, sigEnv)
-               end
-             | PT.NameSig (id, tyRevls) => (case Env.findSigEnv(env, id)
-               of NONE => (error (loc, ["cannot find signature ", Atom.toString id]);
-			   env)
-		| SOME sigEnv => let
-	           val modRef = AST.MOD{name=id, id=Stamp.new(), formals=NONE}
-		   val env' = Env.freshEnv(modRef, Env.empty, Env.empty, SOME env)
-                   val env' as Env.ModEnv{tyEnv, ...} = List.foldl (chkTyDcl loc) env' tyRevls
-                   in
-		      MatchSig.reveal (sigEnv, tyEnv)
-		   end
-               (* end case *))
-            (* end case *))
-
-    fun pairEnvs (modEnv, residualEnv) = let
-	fun f (id, xr, ps) = (case Env.Map.find(modEnv, id)
-            of NONE => ps
-	     | SOME xm => (xm, xr) :: ps
-            (* end case *))
-        in
-	   Env.Map.foldli f [] residualEnv
-        end
-
-    fun getVars ((Env.Var x1, Env.Var x2), ps) = (x1, x2) :: ps
-      | getVars (_, ps) = ps
-
-  (* build a mapping from variable definitions in the module's var environment to
-   * fresh variable definitions in the residual signature.
-   *)
-    fun buildVarSubst (modVarEnv, residualVarEnv) = let
-	val valBindSubstPairs = pairEnvs (modVarEnv, residualVarEnv)
-	val varBindSubstPairs = List.foldl getVars [] valBindSubstPairs
-        in 
-	   List.foldl VarSubst.add VarSubst.id varBindSubstPairs
-        end
-
-    fun chkModule loc (id, sign, module, (env, moduleEnv, astDecls)) = (case module
-        of PT.MarkMod {span, tree} => chkModule span (id, sign, tree, (env, moduleEnv, astDecls))
-	 | PT.DeclsMod decls => let
-		val modRef = AST.MOD {name=id, id=Stamp.new(), formals=NONE}
-		val (modEnv, moduleEnv, modAstDecls) = chkTopDcls(loc, decls, freshEnv(modRef, SOME env), moduleEnv)
-		val (modEnv', modAstDecls') = (case sign
-                    of SOME sign => let
-                       val sigEnv = chkSignature loc (NONE, sign, env)
-		       val env = MatchSig.match{err=(!errStrm), loc=loc, modEnv=modEnv, sigEnv=sigEnv}		       
-		       val s = buildVarSubst (Env.varEnv modEnv, Env.varEnv env)
-		       val modAstDecls' = VarSubst.topDecs s modAstDecls
-                       in
-			   (env, modAstDecls')
-                       end
-		     | NONE => (modEnv, modAstDecls)
-                   (* end case *))
-		val body = AST.M_Body(loc, modAstDecls')
-                in
-		  (Env.insertModEnv(env, id, modEnv'), 
-		   Env.ModuleEnv.insert(moduleEnv, modRef, (modEnv, modEnv', body)),
-		   AST.TD_Module(loc, modRef, NONE, body) :: astDecls)
-	        end
-	 | PT.NamedMod modName => (case Path.findMod(env, modName)
-               of NONE => (error(loc, ["cannot find module ", qidToString modName]);
-			   (env, moduleEnv, astDecls))
-		| SOME modEnv => let
-		      val modRefN = AST.MOD {name=id, id=Stamp.new(), formals=NONE}
-		      val signEnv = (case sign
-                          of SOME sign => let
-				 val sigEnv = chkSignature loc (NONE, sign, env)
-			     in
-				 MatchSig.match{err=(!errStrm), loc=loc, modEnv=modEnv, sigEnv=sigEnv}
-			     end
-			   | NONE => modEnv
-                         (* end case *))
-		      val body = AST.M_Id(loc, modRefN)
-		      in
-	                 (Env.insertModEnv(env, id, signEnv),
-			  Env.ModuleEnv.insert(moduleEnv, modRefN, (modEnv, signEnv, body)),
-			  AST.TD_Module(loc, modRefN, NONE, body) :: astDecls)
-                      end 
-                 (* end case *))
-       (* end case *))
-
-    and chkTopDcl loc (ptDecl, (env, moduleEnv, astDecls)) = (case ptDecl
-           of PT.MarkDecl{span, tree} => chkTopDcl span (tree, (env, moduleEnv, astDecls))
-	    | PT.TyDecl tyDecl => (chkTyDcl loc (tyDecl, env), moduleEnv, astDecls)
-	    | PT.ExnDecl(id, optTy) => let
-		val optTy' = Option.map (fn ty => chkTy(loc, env, Env.empty, ty)) optTy
-		val exnCon = Exn.new (id, optTy')
-		in
-		  (Env.insertVarEnv (env, id, Env.Con exnCon), moduleEnv, astDecls)
-		end
-	    | PT.ValueDecl valDcl => let
-		val (bind, env) = chkValDcl(loc, 0, env, valDcl)
-		in
-		  (env, moduleEnv, AST.TD_Binding bind :: astDecls)
-		end
-	    | PT.ModuleDecl (id, sign, module) => chkModule loc (id, sign, module, (env, moduleEnv, astDecls))
-	    | PT.LocalDecl (localDcls, dcls) => raise Fail "LocalDecl"
-	    | PT.SignDecl (id, sign) => let
-              val sigEnv = chkSignature loc (SOME id, sign, env)
-              in
-                 (Env.insertSigEnv(env, id, sigEnv), moduleEnv, astDecls)
-              end
-	  (* end case *))
-
-    and chkTopDcls (loc, ptDecls, env, moduleEnv) = let
-        val (env', moduleEnv, astDecls) = List.foldl (chkTopDcl loc) (env, moduleEnv, []) ptDecls
-        in
-	   (env', moduleEnv, List.rev astDecls)
-        end
-
-    fun bindSigIdVar (vSig, vMod, binds) =
-	AST.ValBind(AST.VarPat vSig, ASTUtil.mkVarExp(vMod, [])) :: binds
-
-    fun bindSigIdVars (sigVars, modVars, exp) = 
-	ASTUtil.mkLetExp(ListPair.foldl bindSigIdVar [] (sigVars, modVars), exp)
-
-  (* bind variable definitions in the external signature to actual definitions in the module.
-   * i.e., 
-   *      structure Foo = struct
-   *        val foo<101> = 3
-   *      end
-   *      
-   *      structure F : sig
-   *           val foo<100> : int
-   *         end                     = Foo
-   *
-   *                                          rebindSigVars(sigOf(F), envOf(Foo), exp)    ==>
-   *      let val foo<101> = 3
-   *      in
-   *          let val foo<100> = foo<101>
-   *          in
-   *             exp
-   *          end
-   *      end
-   *)
-    fun rebindSigVars (sigEnv, modEnv, exp) = let
-	val sigVarEnv = Env.varEnv sigEnv
-	val modVarEnv = Env.varEnv modEnv
-	fun f (id, Env.Var sigVar, (sigVars, modVars)) = (case Env.Map.find(modVarEnv, id)
-            of SOME (Env.Var modVar) => (sigVar :: sigVars, modVar :: modVars)
-	     | _ => (sigVars, modVars)
-            (* end case *))
-	  | f (_, _, (sigVars, modVars)) = (sigVars, modVars)
-        val (sigVars, modVars) = Env.Map.foldli f ([], []) sigVarEnv
-	in
-	    bindSigIdVars (sigVars, modVars, exp)
-	end
-
-  (* convert top-level declarations into expressions *)
-    fun declsToExp moduleEnv (decls, exp) = List.foldl (declToExp moduleEnv) exp (List.rev decls)
-
-  (* convert a top-level declaration into an expression *)
-    and declToExp moduleEnv (decl, exp) = (case decl
-	   of AST.TD_Module(info, modRef, sign, module) => 
-	      moduleToExp moduleEnv (modRef, module, exp)
-	    | AST.TD_DCon dcon => exp
-	    | AST.TD_Binding binding => ASTUtil.mkLetExp([binding], exp)
-	  (* end case *))   
-
-  (* convert a module into an expression *)
-    and moduleToExp moduleEnv (modRef, module, exp) = (case module
-	   of AST.M_Id (info, modRef' as AST.MOD{name, ...}) => 
-	      (case Env.ModuleEnv.find(moduleEnv, modRef)
-		of NONE => raise Fail ("cannot find module "^Atom.toString name)
-		 | SOME (modEnv as Env.ModEnv{modRef, ...}, sigEnv, module) => 
-		   rebindSigVars(sigEnv, modEnv, exp)
-              (* end case *))
-	    | AST.M_Body (info, decls) => declsToExp moduleEnv (decls, exp)
-	  (* end case *))
-
-  (* call the entry-point function for the program *)
-    fun makeEntryPoint (env, entryPoint) = (
-	  case Env.findVarEnv(env, Atom.atom entryPoint)
-	   of SOME (Env.Var entryPoint) => 
-	      (* FIXME: pass command-line args *)
-		AST.ApplyExp(AST.VarExp(entryPoint, []), AST.TupleExp[AST.TupleExp[], AST.TupleExp[]], Ty.TupleTy[Ty.TupleTy[], Ty.TupleTy[]])
-	    | _ => raise Fail ("error: could not find entry point "^entryPoint)
-	  (* end case *))
-
-    fun check'' (es, env, moduleEnv, {span, tree=ptDecls}) = let
-	  val _ = errStrm := es
-	  val (env, moduleEnv, astDecls) = chkTopDcls (span, ptDecls, env, moduleEnv)
-	  in
-	    Overload.resolve ();
-	    (env, moduleEnv, astDecls)
-	  end
-
-  (* check multiple compilation units *)
-    fun check' programs = let
-	val dummyModRef = AST.MOD{name=Atom.atom "dummy", id=Stamp.new(), formals=NONE}
-	(* typecheck the compilation units individually *)
-	  val env0 = Env.freshEnv(dummyModRef, BasisEnv.te0, BasisEnv.ve0, NONE)
-	  fun f ((err, program), (env, moduleEnv, declss)) = let
-		val (env', moduleEnv', decls) = check''(err, env, moduleEnv, program)
-		in
-		  (env', moduleEnv', decls :: declss)
-		end
-	  val (env, moduleEnv, declss) = List.foldl f (env0, Env.ModuleEnv.empty, []) programs
-        (* flatten the top-level declarations of the compilation units *)
-	  val decls = List.concat (List.rev declss)
-	  in
-	  (* convert the compilation units into a single AST expression *)
-	    declsToExp moduleEnv (decls, makeEntryPoint(env, "main"))
-	  end
-
-  (* check a compilation unit *)
-    fun check (err, program) = let
-	val dummyModRef = AST.MOD{name=Atom.atom "dummy", id=Stamp.new(), formals=NONE}
-	val env0 = Env.freshEnv(dummyModRef, BasisEnv.te0, BasisEnv.ve0, NONE)
-	val (env, moduleEnv, decls) = check'' (err, env0, Env.ModuleEnv.empty, program)
-	in
-	    declsToExp moduleEnv (decls, makeEntryPoint(env, "main"))
-	end
-
-    val check = BasicControl.mkTracePassSimple {passName = "check", pass = check}
-
-    val check' = BasicControl.mkTracePassSimple {passName = "check", pass = check'}
+    fun checkValDecl err (loc, valDecl, env) = let
+	    val _ = errStrm := err
+	    in
+	       chkValDcl(loc, 0, env, valDecl)
+            end
 
   end
-

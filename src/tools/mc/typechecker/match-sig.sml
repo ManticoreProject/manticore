@@ -1,3 +1,12 @@
+(* match-sig.sml
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Signature matching.
+ *)
+
+
 structure MatchSig :> sig
 
   (* check that the module's signature matches the given signature, and return the

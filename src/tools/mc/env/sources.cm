@@ -8,6 +8,8 @@
 
 Library
 
+  structure ModuleEnv
+
   structure BasisEnv
   structure BindingEnv
   structure Env
@@ -21,6 +23,8 @@ is
   ../common/sources.cm
   ../parse-tree/sources.cm
   ../ast/sources.cm
+
+  module-env.sml
 
   binding-env.sml
   basis-env.sml

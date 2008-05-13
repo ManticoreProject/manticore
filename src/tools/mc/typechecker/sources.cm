@@ -9,6 +9,7 @@
 Library
 
   structure Typechecker
+  structure ChkProgram
   structure MatchSig
   structure BoundVariableCheck
 
@@ -23,6 +24,11 @@ is
   ../parse-tree/sources.cm
   ../ast/sources.cm
   ../env/sources.cm
+
+  chk-ty.sml
+  chk-exp.sml
+  chk-module.sml
+  chk-program.sml
 
   match-sig.sml
   overload.sml

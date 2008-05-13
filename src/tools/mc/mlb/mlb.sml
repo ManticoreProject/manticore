@@ -9,7 +9,7 @@
 structure MLB : sig
     
   (* load the compilation unit of an MLB file *)
-    val load : (Error.err_stream * string) -> (Error.err_stream * ParseTree.program) list
+    val load : (Error.err_stream * string) -> (Error.err_stream * ProgramParseTree.PML1.program) list
 
   end = struct
 

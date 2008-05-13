@@ -86,7 +86,7 @@
     ;
 
 %defs (
-  structure PT = ParseTree
+  structure PT = ProgramParseTree.PML1
   structure Op = BasisNames
 
 (* apply a mark constructor to a span and a tree *)

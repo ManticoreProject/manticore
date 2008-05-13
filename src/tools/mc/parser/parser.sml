@@ -9,7 +9,7 @@
 structure Parser : sig
 
   (* parse a file; return NONE if there are syntax errors *)
-    val parseFile : (Error.err_stream * string) -> ParseTree.program option
+    val parseFile : (Error.err_stream * string) -> ProgramParseTree.PML1.program option
 
   end = struct
 

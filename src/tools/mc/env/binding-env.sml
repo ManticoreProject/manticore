@@ -1,3 +1,11 @@
+(* binding-env.sml
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Environment for the bound-variable check.
+ *)
+
 structure BindingEnv =
   struct
 
@@ -10,47 +18,60 @@ structure BindingEnv =
     type mod_binder = PT2.mod_binder
     type sig_id = PT2.sig_id
 
-    structure AM = AtomMap
-    type ty_env = ty_binder AM.map
-    type var_env = var_binder AM.map
-    type mod_env = mod_binder AM.map
-    type sig_env = sig_id AM.map
+    structure Map = AtomMap
+    type ty_env = ty_binder Map.map
+    type var_env = var_binder Map.map
+    type mod_env = mod_binder Map.map
+    type sig_env = sig_id Map.map
     datatype env
       = Env of {
 	     tyEnv    : ty_env,
 	     varEnv   : var_env,
-	     modEnv   : mod_env,
+	     modEnv   : (mod_binder * env) Map.map,
 	     sigEnv  : sig_env,
 	     outerEnv : env option       (* enclosing module *)
            }
 
     fun freshEnv outerEnv = Env {
-           tyEnv = AM.empty,
-	   varEnv = AM.empty,
-	   modEnv = AM.empty,
-	   sigEnv = AM.empty,
+           tyEnv = Map.empty,
+	   varEnv = Map.empty,
+	   modEnv = Map.empty,
+	   sigEnv = Map.empty,
 	   outerEnv = outerEnv
          }
 
-(* FIXME: tie this in with the basis environment *)
-    fun topLevelEnv outerEnv = Env {
-           tyEnv = AM.empty,
-	   varEnv = AM.empty,
-	   modEnv = AM.empty,
-	   sigEnv = AM.empty,
+    fun empty outerEnv = Env {
+           tyEnv = Map.empty,
+	   varEnv = Map.empty,
+	   modEnv = Map.empty,
+	   sigEnv = Map.empty,
 	   outerEnv = outerEnv
          }
 
-    fun insertVal _ = raise Fail ""
-    fun insertMod _ = raise Fail ""
-    fun insertCon _ = raise Fail ""
-    fun insertTy _ = raise Fail ""
-    fun insertDataTy _ = raise Fail ""
+    fun fromList ls = List.foldl Map.insert' Map.empty ls
 
-    fun findMod _ = raise Fail ""
-    fun findVar _ = raise Fail ""
-    fun findTy _ = raise Fail ""
-    fun findSig _ = raise Fail ""
-    fun findBinaryOp _ = raise Fail ""
+    fun insertVal (Env{tyEnv, varEnv, modEnv, sigEnv, outerEnv}, id, x) = 
+	Env{tyEnv=tyEnv, varEnv=Map.insert(varEnv, id, x), modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
+    fun insertMod (Env{tyEnv, varEnv, modEnv, sigEnv, outerEnv}, id, x) = 
+	Env{tyEnv=tyEnv, varEnv=varEnv, modEnv=Map.insert(modEnv, id, x), sigEnv=sigEnv, outerEnv=outerEnv}
+    val insertCon = insertVal
+    fun insertTy (Env{tyEnv, varEnv, modEnv, sigEnv, outerEnv}, id, x) = 
+	Env{tyEnv=Map.insert(tyEnv, id, x), varEnv=tyEnv, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
+    val insertDataTy = insertTy
+
+    (* lookup a variable in the scope of the current module *)
+    fun findInEnv (Env (fields as {outerEnv, ...}), select, x) = (case Map.find(select fields, x)
+        of NONE => 
+	   (* x is not bound in this module, so check the enclosing module *)
+	   (case outerEnv
+	     of NONE => NONE
+	      | SOME env => findInEnv(env, select, x))
+	 (* found a value *)
+	 | SOME v => SOME v)	      
+
+    fun findTy (env, tv) = findInEnv (env, #tyEnv, tv)
+    fun findVar (env, v) = findInEnv (env, #varEnv, v)
+    fun findMod (env, v) = findInEnv (env, #modEnv, v)
+    fun findSig (env, v) = findInEnv (env, #sigEnv, v)
 
   end
