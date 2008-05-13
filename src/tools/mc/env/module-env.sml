@@ -50,15 +50,28 @@ structure ModuleEnv =
     fun varEnv (ModEnv{varEnv, ...}) = varEnv
     fun modRef (ModEnv{modRef, ...}) = modRef
 
-    (* lookup a variable in the scope of the current module *)
-    fun findInEnv (ModEnv (fields as {outerEnv, ...}), select, x) = (case VarMap.find(select fields, x)
-        of NONE => 
-	   (* x is not bound in this module, so check the enclosing module *)
-	   (case outerEnv
-	     of NONE => NONE
-	      | SOME env => findInEnv(env, select, x))
-	 (* found a value *)
-	 | SOME v => SOME v)	      
+  (* lookup a variable in the scope of the current module *)
+    fun findInEnv (ModEnv (fields as {outerEnv, modEnv, ...}), select, x) = 
+	(case VarMap.find(select fields, x)
+          of NONE => let
+		 val envs = VarMap.listItems modEnv
+		 val envs = (case outerEnv
+			      of NONE => envs
+			       | SOME outerEnv => outerEnv :: envs
+			    (* end case *))
+                 in
+		   findInEnvs(envs, select, x)
+		 end
+	   (* found a value *)
+	   | SOME v => SOME v
+	(* end case *))
+
+  (* lookup a variable in several modules *)
+    and findInEnvs ([], select, x) = NONE
+      | findInEnvs (env  :: envs, select, x) = (case findInEnv(env, select, x)
+           of NONE => findInEnvs (envs, select, x)
+	    | SOME v => SOME v
+	   (* end case *))
 
     fun findTy (env, tv) = findInEnv (env, #tyEnv, tv)
     fun findVar (env, v) = findInEnv (env, #varEnv, v)

@@ -1,9 +1,9 @@
 (* match-ty.sml
  *
- * COPYRIGHT (c) 2007 John Reppy (http://www.cs.uchicago.edu/~jhr)
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Based on CMSC 22610 Sample code (Winter 2007)
+ * Match two types.
  *)
 
 structure MatchTy : sig
@@ -11,7 +11,7 @@ structure MatchTy : sig
   (* nondestructively check if two type schemes are unifiable. the left-hand type scheme
    * comes from the specification and the right comes from the module.
    *)
-    val match : (Env.realization_env * Types.ty_scheme * Types.ty_scheme) -> bool
+    val match : (ModuleEnv.realization_env * Types.ty_scheme * Types.ty_scheme) -> bool
 
   end = struct
 
@@ -19,6 +19,7 @@ structure MatchTy : sig
     structure MV = MetaVar
     structure TU = TypeUtil
     structure TC = TypeClass
+    structure Env = ModuleEnv
   (* type-variable equality assumptions *)
     structure TVA = BinarySetFn (
                         type ord_key = (Types.tyvar * Types.tyvar)

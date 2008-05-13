@@ -8,7 +8,6 @@
 
 Library
 
-  structure Typechecker
   structure ChkProgram
   structure MatchSig
   structure BoundVariableCheck
@@ -35,7 +34,6 @@ is
   path.sml
   qualified-id.sml
   tc-controls.sml
-  typechecker.sml
   unify.sml
   match-ty.sml
   bound-variable-check.sml

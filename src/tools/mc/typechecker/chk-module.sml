@@ -118,8 +118,7 @@ structure ChkModule :> sig
 		   val env' = Env.fresh(modRef, SOME env)
                    val env' as Env.ModEnv{tyEnv, ...} = List.foldl (chkTyDcl loc) env' tyRevls
                    in
-		      raise Fail "fixme"
-(*MatchSig.reveal (sigEnv, tyEnv)*)
+		      MatchSig.reveal (sigEnv, tyEnv)
 		   end
                (* end case *))
             (* end case *))
@@ -154,8 +153,7 @@ structure ChkModule :> sig
 		val (modEnv', modAstDecls') = (case sign
                     of SOME sign => let
                        val sigEnv = chkSignature loc (NONE, sign, env)
-		       val env = raise Fail ""
-(*MatchSig.match{err=(!errStrm), loc=loc, modEnv=modEnv, sigEnv=sigEnv}		       *)
+		       val env = MatchSig.match{err=(!errStrm), loc=loc, modEnv=modEnv, sigEnv=sigEnv}
 		       val s = buildVarSubst (Env.varEnv modEnv, Env.varEnv env)
 		       val modAstDecls' = VarSubst.topDecs s modAstDecls
                        in
@@ -178,8 +176,7 @@ structure ChkModule :> sig
                           of SOME sign => let
 				 val sigEnv = chkSignature loc (NONE, sign, env)
 			     in
-				 raise Fail ""
-(*MatchSig.match{err=(!errStrm), loc=loc, modEnv=modEnv, sigEnv=sigEnv}*)
+				MatchSig.match{err=(!errStrm), loc=loc, modEnv=modEnv, sigEnv=sigEnv}
 			     end
 			   | NONE => modEnv
                          (* end case *))

@@ -12,17 +12,19 @@ structure MatchSig :> sig
   (* check that the module's signature matches the given signature, and return the
    * final signature for sealing the module
    *)
-    val match : {err : Error.err_stream, loc : Error.span, modEnv : Env.module_env, sigEnv : Env.module_env} -> Env.module_env
+    val match : {err : Error.err_stream, loc : Error.span, modEnv : ModuleEnv.env, sigEnv : ModuleEnv.env} -> ModuleEnv.env
 
   (* takes a signature and some type revelations and returns the signature with those types revealed *)
-    val reveal : (Env.module_env * Env.ty_env) -> Env.module_env
+    val reveal : (ModuleEnv.env * ModuleEnv.ty_env) -> ModuleEnv.env
 
   (* get the concrete definition of an abstract type *)
-    val realizationOfTyc : Types.tycon -> Env.ty_def option
+    val realizationOfTyc : Types.tycon -> ModuleEnv.ty_def option
 
   end = struct
 
     structure Ty = Types
+    structure Env = ModuleEnv
+    structure BVar = ProgramParseTree.Var
 
   (* FIXME: the following is a hack to avoid threading the error stream through
    * all of the typechecking code.  Eventually, we should fix this, since otherwise
@@ -31,6 +33,8 @@ structure MatchSig :> sig
     val errStrm = ref(Error.mkErrStream "<bogus>")
 
     fun error (span, msg) = Error.errorAt (!errStrm, span, "matching signatures: " :: msg)
+
+    val varToString = ProgramParseTree.Var.nameOf
 
     exception DeclNotFound
     exception NotFound 
@@ -86,24 +90,24 @@ structure MatchSig :> sig
 	(* end case *))
 	
     fun copyTyDef tbl (id, Env.TyDef tys, (env, finishFns)) = 
-	(Env.insert(env, id, Env.TyDef (substTyScheme tbl tys)), finishFns)
+	(Env.VarMap.insert(env, id, Env.TyDef (substTyScheme tbl tys)), finishFns)
       | copyTyDef tbl (id, Env.TyCon tyc, (env, finishFns)) = let
 	val (tyc', finishFn) = copyTyCon tbl (tyc, env)
 	in
-          (Env.insert(env, id, Env.TyCon tyc'), finishFn :: finishFns)
+          (Env.VarMap.insert(env, id, Env.TyCon tyc'), finishFn :: finishFns)
         end
 
     fun copyVarDef tbl (id, vbind, env) = (case vbind
         of Env.Con (Ty.DCon {id=dcid, name, owner, argTy}) => let
 	   val dcon = Ty.DCon{id=dcid, name=name, owner=substTyCon tbl owner, argTy=Option.map (substTy tbl) argTy}
            in
-              Env.insert(env, id, Env.Con dcon)
+              Env.VarMap.insert(env, id, Env.Con dcon)
            end
 	 | Env.Var v => let
 	   val ty' = substTyScheme tbl (Var.typeOf v)
 	   val v' = Var.newPoly(Var.nameOf v, ty')
 	   in
-	       Env.insert(env, id, Env.Var v')
+	       Env.VarMap.insert(env, id, Env.Var v')
 	   end
 	 | _ => raise Fail "impossible"
       (* end case *))
@@ -111,9 +115,9 @@ structure MatchSig :> sig
     fun copyMod tbl (Env.ModEnv{modRef=modRef as AST.MOD{name, formals, ...}, 
 				tyEnv=mTyEnv, varEnv=mVarEnv, modEnv=mModEnv, 
 				sigEnv, outerEnv, ...}) = let
-	val (tyEnv', tyFinishFns) = Env.Map.foldli (copyTyDef tbl) (Env.empty, []) mTyEnv
-	val varEnv' = Env.Map.foldli (copyVarDef tbl) Env.empty mVarEnv
-	val modEnv' = Env.Map.foldli (fn (id, m, env) => Env.Map.insert(env, id, copyMod tbl m)) Env.empty mModEnv
+	val (tyEnv', tyFinishFns) = Env.VarMap.foldli (copyTyDef tbl) (Env.VarMap.empty, []) mTyEnv
+	val varEnv' = Env.VarMap.foldli (copyVarDef tbl) Env.VarMap.empty mVarEnv
+	val modEnv' = Env.VarMap.foldli (fn (id, m, env) => Env.VarMap.insert(env, id, copyMod tbl m)) Env.VarMap.empty mModEnv
 	val AST.MOD{name, formals, ...} = modRef
 	val modRef = AST.MOD{name=name, id=Stamp.new(), formals=formals}
         in
@@ -137,18 +141,18 @@ structure MatchSig :> sig
 	val Env.ModEnv{tyEnv=sigTyEnv, varEnv=sigVarEnv, modEnv=sigModEnv, ...} = sigEnv
 	val Env.ModEnv{modRef, tyEnv, varEnv, modEnv, outerEnv, sigEnv} = modEnv
 	fun abstractTyDef (id, Env.TyCon (tyc as Ty.Tyc{name, arity, def=Ty.AbsTyc, ...}), tyEnv) = 
-	    (case Env.find(tyEnv, id)
+	    (case Env.VarMap.find(tyEnv, id)
               of NONE => tyEnv
 	       | SOME tyd => let
 		     val tyc' = TyCon.newAbsTyc(TyCon.nameOf tyc, TyCon.arityOf tyc, false)
 		     in
 		        setFn(tyc', SOME tyd);
 		        TyCon.Tbl.insert tbl (tyc, tyc');
-		        Env.insert(#1(Env.Map.remove(tyEnv, id)), id, Env.TyCon tyc')
+		        Env.VarMap.insert(#1(Env.VarMap.remove(tyEnv, id)), id, Env.TyCon tyc')
 		     end
             (* end case *))
 	  | abstractTyDef (_, _, tyEnv) = tyEnv
-	val tyEnv' = Env.Map.foldli abstractTyDef tyEnv sigTyEnv
+	val tyEnv' = Env.VarMap.foldli abstractTyDef tyEnv sigTyEnv
 	val modEnv' = Env.ModEnv{modRef=modRef, tyEnv=tyEnv', varEnv=sigVarEnv, modEnv=sigModEnv, sigEnv=sigEnv, outerEnv=outerEnv}
 
         in
@@ -169,7 +173,7 @@ structure MatchSig :> sig
              (* end case *))
 
     fun matchTypes loc realizationEnv (modTyEnv, sigTyEnv) = let
-	val findIt = declOf o Env.find
+	val findIt = declOf o Env.VarMap.find
 	(* match each type definition in the signature to a corresponding type definition in the module *)
 	fun match (id, Env.TyDef sigTs) = (case findIt(modTyEnv, id)
             of Env.TyDef modTs => 
@@ -177,40 +181,40 @@ structure MatchSig :> sig
 	       if MatchTy.match(realizationEnv, modTs, sigTs)
 	       then ()
 	       else error (loc, [
-			   "types for ", Atom.toString id, " are not equal\n",
+			   "types for ", varToString id, " are not equal\n",
 			   "\tsignature: ", TypeUtil.schemeToString sigTs, "\n",
 			   "\tmodule: ", TypeUtil.schemeToString modTs])
-	     | Env.TyCon _ => error (loc, ["cannot match typedef with tycon for ", Atom.toString id])
+	     | Env.TyCon _ => error (loc, ["cannot match typedef with tycon for ", varToString id])
            (* end case *))
 	  | match (id, Env.TyCon sigTc) = (case (sigTc, findIt(modTyEnv, id))
             of (Ty.Tyc{arity=a1, def=Ty.AbsTyc, ...}, Env.TyDef (Ty.TyScheme (tvs, _))) => 
 	     (* the type in the signature is abstract *)
 	       if a1 <> List.length tvs
-	          then error (loc, ["mismatched type arities for ", Atom.toString id])
+	          then error (loc, ["mismatched type arities for ", varToString id])
                   else ()
 	     | (Ty.Tyc{arity=a1, def=Ty.AbsTyc, ...}, Env.TyCon (Ty.Tyc{arity=a2, ...})) => 
 	     (* the type in the signature is abstract *)
 	       if a1 <> a2
-	          then error (loc, ["mismatched type arities for ", Atom.toString id])
+	          then error (loc, ["mismatched type arities for ", varToString id])
                   else ()
 	     | (Ty.Tyc{arity=a1, def=Ty.DataTyc{nCons=ncs1, cons=cs1}, ...}, 
 		Env.TyCon (Ty.Tyc{arity=a2, def=Ty.DataTyc{nCons=ncs2, cons=cs2}, ...})) =>
 	       (* the type in the signature is a datatype *)
 	       if a1 <> a2
-                  then error (loc, ["mismatched type arities for ", Atom.toString id])
+                  then error (loc, ["mismatched type arities for ", varToString id])
                else if !ncs1 <> !ncs2
-                  then error (loc, ["mismatched number of data constructors for ", Atom.toString id])
+                  then error (loc, ["mismatched number of data constructors for ", varToString id])
                else ListPair.app (matchDCons loc) (!cs1, !cs2)
             (* end case *))
 
 	fun doMatch (id, tydef) = match (id, tydef) 
-	    handle DeclNotFound => error (loc, ["missing type declaration ", Atom.toString id])
+	    handle DeclNotFound => error (loc, ["missing type declaration ", varToString id])
 	in
-	    Env.Map.appi doMatch sigTyEnv
+	    Env.VarMap.appi doMatch sigTyEnv
 	end
 
     fun matchVars loc realizationEnv (modVarEnv, sigVarEnv) = let
-	val findIt = declOf o Env.find
+	val findIt = declOf o Env.VarMap.find
 	fun match (id, Env.Var sigVar) = (case findIt(modVarEnv, id)
             of Env.Var modVar => let
 	       val sigTyS = Var.typeOf sigVar
@@ -218,7 +222,7 @@ structure MatchSig :> sig
 	       in
 	           if MatchTy.match(realizationEnv, sigTyS, modTyS)
 	              then ()
-	              else error(loc, ["failed to match value specification ", Atom.toString id, "\n",
+	              else error(loc, ["failed to match value specification ", varToString id, "\n",
 				       "signature: ", TypeUtil.schemeToString sigTyS, "\n",
 				       "structure: ", TypeUtil.schemeToString modTyS
 				])
@@ -226,33 +230,55 @@ structure MatchSig :> sig
 	     | Env.Con dcon =>
 	       if MatchTy.match(realizationEnv, Var.typeOf sigVar, DataCon.typeOf dcon)
 	          then ()
-	          else error(loc, ["cannot unify types for ", Atom.toString id])
+	          else error(loc, ["cannot unify types for ", varToString id])
 	     | Env.Overload (ts, _) =>
 	       if MatchTy.match(realizationEnv, Var.typeOf sigVar, ts)
 	          then ()
-	          else error(loc, ["cannot unify types for ", Atom.toString id])
+	          else error(loc, ["cannot unify types for ", varToString id])
 	     | Env.EqOp _ => error(loc, ["invalid eq op"])
             (* end case *))
 	  | match (id, Env.Con sigDCon) = (case findIt(modVarEnv, id)
             of Env.Con modDCon => matchDCons loc (sigDCon, modDCon)
-	     | _ => error (loc, ["incompatible data con", Atom.toString id])
+	     | _ => error (loc, ["incompatible data con", varToString id])
 	    (* end case *))
-	  | match (id, _) = error(loc, ["invalid value specification ", Atom.toString id])
+	  | match (id, _) = error(loc, ["invalid value specification ", varToString id])
 	fun doMatch (id, vardef) = match(id, vardef)
-	    handle DeclNotFound => error (loc, ["missing var declaration ", Atom.toString id])
+	    handle DeclNotFound => error (loc, ["missing var declaration ", varToString id])
 	in
-	   Env.Map.appi doMatch sigVarEnv
+	   Env.VarMap.appi doMatch sigVarEnv
+	end
+
+    val cvtVar = Atom.atom o BVar.nameOf
+
+    fun cvtEnv env = let
+	   fun ins (v, x, env) = AtomMap.insert(env, cvtVar v, x)
+           in
+	      Env.VarMap.foldli ins AtomMap.empty env
+	   end
+
+  (* takes a constraining environment and a module environment, and returns the list of
+   * matching elements. if the module environment is missing an element
+   *)
+    fun matchElts (cEnv, mEnv) = let
+	val cEnv = cvtEnv cEnv
+	val mEnv = cvtEnv mEnv
+	fun find (id, cX, matches) = (case AtomMap.find(mEnv, id)
+               of NONE => (id, cX, NONE) :: matches
+		| SOME mX => (id, cX, SOME mX) :: matches
+               (* end case *))
+	in
+	  List.rev (AtomMap.foldli find [] cEnv)
 	end
 
   (* FIXME *)
     fun matchMods err loc realizationEnv (modEnv, sigEnv) = let
-	val findIt = declOf o Env.find
+	val findIt = declOf o Env.VarMap.find
 	fun doMatch (id, sigEnv) = (match{err=err, loc=loc, modEnv=findIt(modEnv, id), sigEnv=sigEnv};
 raise Fail "";
 				    ())
-	    handle DeclNotFound => error (loc, ["missing module declaration", Atom.toString id])
+	    handle DeclNotFound => error (loc, ["missing module declaration", varToString id])
         in 
-           Env.Map.appi doMatch sigEnv;
+           Env.VarMap.appi doMatch sigEnv;
 	   ()
         end
 
@@ -267,12 +293,12 @@ raise Fail "";
 	 * adds to the realization environment the realization of the type in the module.
 	 *)
 	fun addRealization (id, Env.TyCon (tyc as Ty.Tyc {def=Ty.AbsTyc, ...}), realizationEnv) = 
-	    (case Env.find(modTyEnv, id)
+	    (case Env.VarMap.find(modTyEnv, id)
 	      of SOME tyd => TyCon.Map.insert(realizationEnv, tyc, tyd)
 	       | NONE => realizationEnv
 	    (* end case *))
 	  | addRealization (_, _, realizationEnv) = realizationEnv
-	val realizationEnv = Env.Map.foldli addRealization TyCon.Map.empty sigTyEnv
+	val realizationEnv = Env.VarMap.foldli addRealization TyCon.Map.empty sigTyEnv
 
         in
 	   matchTypes loc realizationEnv (modTyEnv, sigTyEnv);

@@ -425,11 +425,12 @@ structure BasisEnv : sig
            (* create the top-level module environment *)
 	     val modRef = AST.MOD{id=Stamp.new(), name=Atom.atom "Basis", formals=NONE}
 	     val MEnv.ModEnv {modRef, modEnv, sigEnv, outerEnv, ...} = MEnv.fresh (modRef, NONE)
-	     val mEnv0 = MEnv.ModEnv{modRef=modRef, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv,
+	     val basisEnv = MEnv.ModEnv{modRef=modRef, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv,
 				     tyEnv=MEnv.fromList predefinedTys, 
 				     varEnv=MEnv.fromList predefinedVars
 				    }
-
+	     val modRef = AST.MOD{id=Stamp.new(), name=Atom.atom "TopLevel", formals=NONE}
+	     val mEnv0 = MEnv.fresh(modRef, SOME basisEnv)
              in
 	        (bEnv0, mEnv0)
 	     end

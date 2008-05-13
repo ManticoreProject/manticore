@@ -349,7 +349,47 @@ structure BoundVariableCheck :> sig
 
     and chkConDecls loc (conDecls, env) = chkList loc (chkConDecl, conDecls, env)
 
-    fun chkSign loc (sign, env) = (case sign
+    fun chkSpec loc (spec, env) = (case spec
+           of PT1.MarkSpec {span, tree} => let
+		  val (tree, env) = chkSpec span (tree, env)
+	          in
+		     (PT2.MarkSpec {span=span, tree=tree}, env)
+		  end
+	    | PT1.IncludeSpec sign => let
+		  val (sign, env) = chkSign loc (sign, env)
+	          in
+		      (PT2.IncludeSpec sign, env)
+		  end
+	    | PT1.ModuleSpec (mb, sign) => let
+		  val (sign, env) = chkSign loc (sign, env)
+		  val mb' = Var.new(Atom.toString mb, ())
+		  val env = BEnv.insertMod(env, mb, (mb', env))
+	          in
+		      (PT2.ModuleSpec (mb', sign), env)
+		  end
+	    | PT1.TypeSpec tyDecl => let
+		  val (tyDecl, env) = chkTyDecl loc (tyDecl, env)
+	          in
+		     (PT2.TypeSpec tyDecl, env)
+		  end
+	    | PT1.ConstSpec (cb, tvs) => let
+		  val cb' = Var.new(Atom.toString cb, ())
+		  val env = BEnv.insertVal(env, cb, cb')
+	          in
+		     (PT2.ConstSpec (cb', tvs), env)
+		  end
+	    | PT1.ValSpec (vb, tvs, ty) => let
+		  val (ty, env) = chkTy loc (ty, env)
+		  val vb' = Var.new(Atom.toString vb, ())
+		  val env = BEnv.insertVal(env, vb, vb')
+		  in
+		     (PT2.ValSpec (vb', tvs, ty), env)
+		  end
+          (* end case *))
+
+    and chkSpecs loc (specs, env) = chkList loc (chkSpec, specs, env)
+
+    and chkSign loc (sign, env) = (case sign
            of PT1.MarkSig {span, tree} => let
 		  val (tree, env) = chkSign span (tree, env)
 	          in
@@ -363,6 +403,11 @@ structure BoundVariableCheck :> sig
 				  (PT2.NameSig(Var.new("dummy", ()), tyDecls), env))
 		       | SOME id' => (PT2.NameSig(id', tyDecls), env)
 	          end
+	    | PT1.ExpSig specs => let
+		  val (specs, env) = chkSpecs loc (specs, env)
+	          in
+		     (PT2.ExpSig specs, env)
+		  end
           (* end case *))
 
     fun chkModule loc (sign, env) = (case sign
@@ -399,8 +444,8 @@ structure BoundVariableCheck :> sig
 				end
 	                 (* end case *))
 		  val mb' = Var.new(Atom.toString mb, ())
-		  val (module, env') = chkModule loc (module, BEnv.empty (SOME env))
-		  val env = BEnv.insertMod(env, mb, (mb', env'))
+		  val (module, modEnv) = chkModule loc (module, BEnv.empty (SOME env))
+		  val env = BEnv.insertMod(env, mb, (mb', modEnv))
 	          in
 	             (PT2.ModuleDecl(mb', sign, module), env)
 	          end
@@ -436,7 +481,8 @@ structure BoundVariableCheck :> sig
 		  end
 	    | PT1.SignDecl (id, sign) => let
 		  val id' = Var.new(Atom.toString id, ())
-		  val (sign, env) = chkSign loc (sign, env)
+		  val (sign, sigEnv) = chkSign loc (sign, BEnv.empty (SOME env))
+		  val env = BEnv.insertSig(env, id, id')
 		  in
 		     (PT2.SignDecl (id', sign), env)
 		  end

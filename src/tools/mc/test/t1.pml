@@ -1,6 +1,12 @@
-structure S =
-  struct 
-    val df = 3
+signature S =
+  sig
+    val x : int
   end
-val z = S.df + 1
 
+structure S : S =
+  struct 
+    val x = 34
+  end
+
+val x = 34
+val z = S.x
