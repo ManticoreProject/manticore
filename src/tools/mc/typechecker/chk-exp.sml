@@ -116,14 +116,13 @@ structure ChkExp :> sig
 	      (* insert the function variables into an environment for checking
 	       * the function bodies.
 	       *)
-	        val env' = List.foldl
-		      (fn ((f, f'), env) => Env.insertVar(env, f, Env.Var f'))
-			env fs
+		val _ = List.app (fn (f, f') => Env.bindVal(f, Env.Var f')) fs
+		val env' = env
 	      (* typecheck the functions *)
 		fun chkFun loc (fb, fbs) = (case fb
 		       of PT.MarkFunct{span, tree} => chkFun span (tree, fbs)
 			| PT.Funct(f, param, body) => let
-			    val SOME(Env.Var f') = Env.findVar(env', f)
+			    val SOME(Env.Var f') = Env.getValBind f
 			    val AST.TyScheme(_, funTy) = Var.typeOf f'
 			    val (param', env'', paramTy) = chkPat (loc, depth', env', param)
 			    val (body', bodyTy) = chkExp (loc, depth', env'', body)
@@ -138,10 +137,10 @@ structure ChkExp :> sig
 	      (* close over the types of the functions and build an environment
 	       * for checking the scope of the declaration.
 	       *)
-		fun close ((f, f'), env) = (
+		fun close (f, f') = (
 		      Var.closeTypeOf (depth, f');
-		      Env.insertVar(env, f, Env.Var f'))
-	        val env' = List.foldl close env fs
+		      Env.bindVal(f, Env.Var f'))
+	        val _ = List.app close fs
 		in
 		  (AST.FunBind fbs', env')
 		end
@@ -435,7 +434,7 @@ structure ChkExp :> sig
 		    Overload.addVar ovar;
 		    (AST.OverloadExp ovar, instTy)
 		  end 
-		else *)  (case Env.getValBind x (* Env.findVar(env, x) *)
+		else *)  (case Env.getValBind x
 		   of SOME(Env.Con dc) => let
 			val (argTys, ty) = TU.instantiate (depth, DataCon.typeOf dc)
 			in
@@ -451,7 +450,7 @@ structure ChkExp :> sig
 			bogusExp)
 		  (* end case *))
 	    | PT.ConstraintExp(e, ty) => let
-		val constraintTy = ChkTy.checkTy (!errStrm) (loc, ty, Env.TyVarMap.empty, env)
+		val constraintTy = ChkTy.checkTy (!errStrm) (loc, ty, Env.TyVarMap.empty)
 		val (e', ty') = chkExp (loc, depth, env, e)
 		in
 		   if not(U.unify(ty', constraintTy))
@@ -558,7 +557,7 @@ structure ChkExp :> sig
 	    | PT.ConPat(conid, pat) => let
 		val (pat, env', ty) = chkPat (loc, depth, env, pat)
 		in
-		  case Env.getValBind conid (*Env.findVar(env, conid)*)
+		  case Env.getValBind conid
 		   of SOME(Env.Con dc) => (case TU.instantiate (depth, DataCon.typeOf dc)
 			 of (tyArgs, AST.FunTy(argTy, resTy)) => (
 			      if not(U.unify(argTy, ty))
@@ -593,7 +592,7 @@ structure ChkExp :> sig
 		in
 		  (AST.WildPat ty, env, ty)
 		end
-	    | PT.IdPat x => (case Env.getValBind x (*Env.findVar(env, x)*)
+	    | PT.IdPat x => (case Env.getValBind x
 		 of SOME(Env.Con dc) => (case DataCon.argTypeOf dc
 		       of NONE => let
 			    val (tyArgs, ty) = TU.instantiate (depth, DataCon.typeOf dc)
@@ -610,11 +609,12 @@ structure ChkExp :> sig
 		      val ty = AST.MetaTy(MetaVar.new depth)
 		      val x' = Var.new(PPT.Var.nameOf x, ty)
 		      in
-			(AST.VarPat x', Env.insertVar(env, x, Env.Var x'), ty)
+			Env.bindVal(x, Env.Var x');
+			(AST.VarPat x', env, ty)
 		      end
 		(* end case *))
 	    | PT.ConstraintPat(p, ty) => let
-		val constraintTy = ChkTy.checkTy (!errStrm) (loc, ty, Env.TyVarMap.empty, env)
+		val constraintTy = ChkTy.checkTy (!errStrm) (loc, ty, Env.TyVarMap.empty)
 		val (p', env, ty') = chkPat (loc, depth, env, p)
 		in
 		   if not(U.unify(ty', constraintTy))

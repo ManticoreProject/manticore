@@ -9,7 +9,7 @@
 structure ChkTy :> sig
 
   (* check a type for well formedness *)
-    val checkTy : Error.err_stream -> (Error.span * ProgramParseTree.PML2.ty * ModuleEnv.tyvar_env * ModuleEnv.env) 
+    val checkTy : Error.err_stream -> (Error.span * ProgramParseTree.PML2.ty * ModuleEnv.tyvar_env) 
 		      -> AST.ty
 
   (* check a list of type variables *)
@@ -36,12 +36,12 @@ structure ChkTy :> sig
     val idToString = ProgramParseTree.Var.toString
 
   (* typecheck type expressions as described in Section 6.4 *)
-    fun chkTy (loc, env, tve, ty) = (case ty
-	   of PT.MarkTy{span, tree} => chkTy(span, env, tve, tree)
+    fun chkTy (loc, tve, ty) = (case ty
+	   of PT.MarkTy{span, tree} => chkTy(span, tve, tree)
 	    | PT.NamedTy(tyArgs, id) => let
-		val tyArgs' = List.map (fn ty => chkTy(loc, env, tve, ty)) tyArgs
+		val tyArgs' = List.map (fn ty => chkTy(loc, tve, ty)) tyArgs
 		in
-		  case Env.findTy(env, id)
+		  case Env.getTyDef id
 		   of SOME(Env.TyDef(AST.TyScheme(tvs, ty))) =>
 			if (List.length tvs <> List.length tyArgs')
 			  then (
@@ -64,9 +64,9 @@ structure ChkTy :> sig
 		  | NONE => (error(loc, ["unbound type variable ", Atom.toString tv]); bogusTy)
 		(* end case *))
 	    | PT.TupleTy tys =>
-		TU.tupleTy(List.map (fn ty => chkTy(loc, env, tve, ty)) tys)
+		TU.tupleTy(List.map (fn ty => chkTy(loc, tve, ty)) tys)
 	    | PT.FunTy(ty1, ty2) =>
-		AST.FunTy(chkTy(loc, env, tve, ty1), chkTy(loc, env, tve, ty2))
+		AST.FunTy(chkTy(loc, tve, ty1), chkTy(loc, tve, ty2))
 	  (* end case *))
 
   (* check a list of type variables *)
@@ -87,6 +87,6 @@ structure ChkTy :> sig
 
     fun checkTyVars err (loc, tvs) = chkTyVars(loc, tvs)
 
-    fun checkTy err (loc, ty, tve, env) = chkTy(loc, env, tve, ty)
+    fun checkTy err (loc, ty, tve) = chkTy(loc, tve, ty)
 
   end (* ChkTy *)

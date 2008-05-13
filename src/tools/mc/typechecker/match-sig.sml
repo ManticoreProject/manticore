@@ -159,6 +159,28 @@ structure MatchSig :> sig
 	   copyMod tbl modEnv'
 	end
 
+    val cvtVar = Atom.atom o BVar.nameOf
+
+    fun cvtEnv env = let
+	   fun ins (v, x, env) = AtomMap.insert(env, cvtVar v, x)
+           in
+	      Env.VarMap.foldli ins AtomMap.empty env
+	   end
+
+  (* takes a constraining environment and a module environment, and returns the list of
+   * matching elements. if the module environment is missing an element
+   *)
+    fun matchElts (cEnv, mEnv) = let
+	val cEnv = cvtEnv cEnv
+	val mEnv = cvtEnv mEnv
+	fun find (id, cX, matches) = (case AtomMap.find(mEnv, id)
+               of NONE => (id, cX, NONE) :: matches
+		| SOME mX => (id, cX, SOME mX) :: matches
+               (* end case *))
+	in
+	  List.rev (AtomMap.foldli find [] cEnv)
+	end
+
   (* data cons must be sorted *)
     fun matchDCons loc (Ty.DCon {id=modId, name=modName, owner=modOwner, argTy=modArgTy},
 			Ty.DCon {id=sigId, name=sigName, owner=sigOwner, argTy=sigArgTy}) =
@@ -213,65 +235,46 @@ structure MatchSig :> sig
 	    Env.VarMap.appi doMatch sigTyEnv
 	end
 
+    fun handleMissing loc k ((id, c, NONE), xs) = (
+	   error(loc, ["missing ", k, " ", Atom.toString id]);
+	   xs)
+      | handleMissing _ _ ((id, c, SOME m), xs) = 
+	   (id, c, m) :: xs
+
     fun matchVars loc realizationEnv (modVarEnv, sigVarEnv) = let
-	val findIt = declOf o Env.VarMap.find
-	fun match (id, Env.Var sigVar) = (case findIt(modVarEnv, id)
-            of Env.Var modVar => let
+	fun match (id : Atom.atom, Env.Var sigVar, Env.Var modVar) = let
 	       val sigTyS = Var.typeOf sigVar
 	       val modTyS = Var.typeOf modVar
 	       in
 	           if MatchTy.match(realizationEnv, sigTyS, modTyS)
 	              then ()
-	              else error(loc, ["failed to match value specification ", varToString id, "\n",
+	              else error(loc, ["failed to match value specification ", Atom.toString id, "\n",
 				       "signature: ", TypeUtil.schemeToString sigTyS, "\n",
 				       "structure: ", TypeUtil.schemeToString modTyS
 				])
                end
-	     | Env.Con dcon =>
+	  | match (id, Env.Var sigVar, Env.Con dcon) =
 	       if MatchTy.match(realizationEnv, Var.typeOf sigVar, DataCon.typeOf dcon)
 	          then ()
-	          else error(loc, ["cannot unify types for ", varToString id])
-	     | Env.Overload (ts, _) =>
+	          else error(loc, ["cannot unify types for ", Atom.toString id])
+	  | match (id, Env.Var sigVar, Env.Overload (ts, _)) =
 	       if MatchTy.match(realizationEnv, Var.typeOf sigVar, ts)
 	          then ()
-	          else error(loc, ["cannot unify types for ", varToString id])
-	     | Env.EqOp _ => error(loc, ["invalid eq op"])
-            (* end case *))
-	  | match (id, Env.Con sigDCon) = (case findIt(modVarEnv, id)
-            of Env.Con modDCon => matchDCons loc (sigDCon, modDCon)
-	     | _ => error (loc, ["incompatible data con", varToString id])
-	    (* end case *))
-	  | match (id, _) = error(loc, ["invalid value specification ", varToString id])
-	fun doMatch (id, vardef) = match(id, vardef)
-	    handle DeclNotFound => error (loc, ["missing var declaration ", varToString id])
+	          else error(loc, ["cannot unify types for ", Atom.toString id])
+	  | match (id, Env.Var sigVar, Env.EqOp _) = 
+	       error(loc, ["invalid eq op"])
+	  | match (id, Env.Con sigDCon, Env.Con modDCon) =
+	       matchDCons loc (sigDCon, modDCon)
+	  | match (id, Env.Con sigDCon, _) = error (loc, ["incompatible data con", Atom.toString id])
+	  | match (id, _, _) = error(loc, ["invalid value specification ", Atom.toString id])	
+	val ms = matchElts(modVarEnv, sigVarEnv)
+	val ms' = List.rev (List.foldl (handleMissing loc "var") [] ms)
 	in
-	   Env.VarMap.appi doMatch sigVarEnv
-	end
-
-    val cvtVar = Atom.atom o BVar.nameOf
-
-    fun cvtEnv env = let
-	   fun ins (v, x, env) = AtomMap.insert(env, cvtVar v, x)
-           in
-	      Env.VarMap.foldli ins AtomMap.empty env
-	   end
-
-  (* takes a constraining environment and a module environment, and returns the list of
-   * matching elements. if the module environment is missing an element
-   *)
-    fun matchElts (cEnv, mEnv) = let
-	val cEnv = cvtEnv cEnv
-	val mEnv = cvtEnv mEnv
-	fun find (id, cX, matches) = (case AtomMap.find(mEnv, id)
-               of NONE => (id, cX, NONE) :: matches
-		| SOME mX => (id, cX, SOME mX) :: matches
-               (* end case *))
-	in
-	  List.rev (AtomMap.foldli find [] cEnv)
+	   List.app match ms'
 	end
 
   (* FIXME *)
-    fun matchMods err loc realizationEnv (modEnv, sigEnv) = let
+    fun matchMods err loc realizationEnv (modEnv , sigEnv) = let
 	val findIt = declOf o Env.VarMap.find
 	fun doMatch (id, sigEnv) = (match{err=err, loc=loc, modEnv=findIt(modEnv, id), sigEnv=sigEnv};
 raise Fail "";

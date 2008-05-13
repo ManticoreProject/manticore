@@ -37,7 +37,7 @@ structure ChkModule :> sig
            of PT.MarkTyDecl {span, tree} => chkTyDcl loc (tree, env)
 	    | PT.TypeTyDecl(tvs, id, ty) => let
 		val (tve, tvs') = ChkTy.checkTyVars (!errStrm) (loc, tvs)
-		val ty' = ChkTy.checkTy (!errStrm) (loc, ty, tve, env)
+		val ty' = ChkTy.checkTy (!errStrm) (loc, ty, tve)
 		in
 		  Env.insertTy(env, id, Env.TyDef(AST.TyScheme(tvs', ty')))
 		end
@@ -70,7 +70,7 @@ structure ChkModule :> sig
 				chkCons (loc, ids, rest, env, cons))
 			      else let
 				val optTy' = Option.map
-				      (fn ty => ChkTy.checkTy (!errStrm) (loc, ty, tve, env)) optTy
+				      (fn ty => ChkTy.checkTy (!errStrm) (loc, ty, tve)) optTy
 				val con' = newCon(idToAtom conid, optTy')
 				in
 				  chkCons (loc,
@@ -92,7 +92,7 @@ structure ChkModule :> sig
 	 | PT.TypeSpec tyDecl => chkTyDcl loc (tyDecl, env)
 	 | PT.ValSpec (x, tvs, ty) => let
 	   val (tve, tvs') = ChkTy.checkTyVars (!errStrm) (loc, tvs)
-           val ty = ChkTy.checkTy (!errStrm) (loc, ty, tve, env)
+           val ty = ChkTy.checkTy (!errStrm) (loc, ty, tve)
 	   val x' = Var.newPoly(PPT.Var.nameOf x, Ty.TyScheme(tvs', ty))
            in
 	       Env.insertVar(env, x, Env.Var x')
@@ -193,7 +193,7 @@ structure ChkModule :> sig
            of PT.MarkDecl{span, tree} => chkTopDcl span (tree, (env, moduleEnv, astDecls))
 	    | PT.TyDecl tyDecl => (chkTyDcl loc (tyDecl, env), moduleEnv, astDecls)
 	    | PT.ExnDecl(id, optTy) => let
-		val optTy' = Option.map (fn ty => ChkTy.checkTy (!errStrm) (loc, ty, AtomMap.empty, env)) optTy
+		val optTy' = Option.map (fn ty => ChkTy.checkTy (!errStrm) (loc, ty, AtomMap.empty)) optTy
 		val exnCon = Exn.new (idToAtom id, optTy')
 		in
 		  (Env.insertVar (env, id, Env.Con exnCon), moduleEnv, astDecls)
