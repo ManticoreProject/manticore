@@ -41,10 +41,11 @@ functor MainFn (
     fun prHdr msg = print(concat["******************** ", msg,  " ********************\n"])
 
   (* load the AST corresponding to a single .pml file *)
-    fun srcToAST (errStrm, file) = raise Fail ""
-(*(case Parser.parseFile (errStrm, file)
-	   of SOME pt => let
-		val ast = Typechecker.check (errStrm, pt)
+    fun srcToAST (errStrm, file) = (case Parser.parseFile (errStrm, file)
+	   of SOME pt1 => let
+		val pt2 = BoundVariableCheck.check (errStrm, pt1)
+		val _ = checkForErrors errStrm
+		val ast = ChkProgram.check [(errStrm, pt2)]
 		in
 		  checkForErrors errStrm;
 		  ast
@@ -53,7 +54,6 @@ functor MainFn (
 		Error.report (TextIO.stdErr, errStrm);
 		raise Error)
 	  (* end case *))
-*)
 
   (* load the AST specified by an MLB file *)
     fun mlbToAST (errStrm, file) = let
@@ -148,7 +148,7 @@ functor MainFn (
 	  in
 	    case OS.Path.splitBaseExt file
 	     of {base, ext=SOME "bom"} => doit bomC base             (* FIXME: we can probably remove this *)
-(*	      | {base, ext=SOME "pml"} => doit standaloneC base*)
+	      | {base, ext=SOME "pml"} => doit standaloneC base
 	      | {base, ext=SOME "mlb"} => doit mlbC base
 	      | _ => raise Fail "unknown source file extension"
 	    (* end case *)
