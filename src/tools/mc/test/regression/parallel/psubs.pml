@@ -23,7 +23,7 @@ fun map (f, xs) =
 
 fun itosToString ns = "[" ^ (catw (",", (map (itos, ns)))) ^ "]";
 
-print ("Elements 0, 4 and 8 of par are " 
+val _ = print ("Elements 0, 4 and 8 of par are " 
        ^ itosToString list 
        ^ " (expected [10,14,18]).\n")
 

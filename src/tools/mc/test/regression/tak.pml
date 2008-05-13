@@ -6,4 +6,4 @@ fun tak(x,y,z) =
             tak(z - 1, x, y))
 ;
 
-fun main _ = print(itos(tak(18,12,6))^"\n")
+val _ = print(itos(tak(18,12,6))^"\n")

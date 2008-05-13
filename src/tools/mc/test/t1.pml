@@ -1,3 +1,4 @@
+(*
 signature S =
   sig
     val x : int
@@ -10,3 +11,8 @@ structure S : S =
 
 val x = 34
 val z = S.x
+*)
+
+type t = int
+
+val _ = print (ftos 2.4^"\n")

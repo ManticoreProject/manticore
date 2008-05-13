@@ -40,6 +40,10 @@ structure BoundVariableCheck :> sig
 	      (List.rev xs', env)
            end
 
+    fun chkConst (PT1.IntLit x) = PT2.IntLit x
+      | chkConst (PT1.FltLit x) = PT2.FltLit x
+      | chkConst (PT1.StrLit x) = PT2.StrLit x
+
     fun chkTy loc (ty, env) = (case ty
            of PT1.MarkTy {span, tree} => let
 		  val (tree, env) = chkTy span (tree, env)
@@ -75,14 +79,45 @@ structure BoundVariableCheck :> sig
 	          in
 		     (PT2.MarkPat{span=span, tree=tree}, env)
 		  end
+	    | PT1.BinaryPat (pat1, cid, pat2) => let
+		  val (pat1, env) = chkPat loc (pat1, env)
+		  val (pat2, env) = chkPat loc (pat2, env)
+	          in
+		     case QualifiedId.findVar(env, cid)
+		      of NONE => (PT2.BinaryPat(pat1, Var.new("dummy", ()), pat2), env)
+		       | SOME cid' => (PT2.BinaryPat(pat1, cid', pat2), env)
+		  end
+	    | PT1.ConPat (cid, pat) => let
+		  val (pat, env) = chkPat loc (pat, env)
+	          in
+		     case QualifiedId.findVar(env, cid)
+		      of NONE => (PT2.ConPat(Var.new("dummy", ()), pat), env)
+		       | SOME cid' => (PT2.ConPat(cid', pat), env)
+		  end
+
+	    | PT1.TuplePat pats => let
+		  val (pats, env) = chkPats loc (pats, env)
+	          in
+		     (PT2.TuplePat pats, env)
+		  end
+	    | PT1.ConstPat const => 
+	          (PT2.ConstPat (chkConst const), env)
+	    | PT1.WildPat => (PT2.WildPat, env)
 	    | PT1.IdPat vb => let
 		  val vb' = Var.new(Atom.toString vb, ())
 		  val env = BEnv.insertVal(env, vb, vb')
 	          in
 		     (PT2.IdPat vb', env)
 		  end
-	    | PT1.WildPat => (PT2.WildPat, env)
+	    | PT1.ConstraintPat (pat, ty) => let
+		  val (pat, env) = chkPat loc (pat, env)
+		  val (ty, env) = chkTy loc (ty, env)
+	          in
+		     (PT2.ConstraintPat(pat, ty), env)
+		  end
            (* end case *))
+
+    and chkPats loc (pats, env) = chkList loc (chkPat, pats, env)
 
     fun chkPPat loc (pat, env) = (case pat
            of PT1.MarkPPat {span, tree} => let
@@ -114,21 +149,27 @@ structure BoundVariableCheck :> sig
 		     (PT2.PValVDecl(pat, exp), env)
 		  end
 	    | PT1.FunVDecl functs => let
-(* FIXME: support mutually recursive functions *)
-		  fun chkFunct loc (PT1.MarkFunct {span, tree}, env) = let
-		          val (tree, env) = chkFunct span (tree, env)
+		  fun add (PT1.MarkFunct {span, tree}, env) = 
+		        add (tree, env)
+		    | add (PT1.Funct (f, pat, exp), env) = let
+		        val f' = Var.new(Atom.toString f, ())
+		        in
+			   BEnv.insertVal(env, f, f')
+		        end
+		  val env = List.foldl add env functs  
+		  fun chk loc (PT1.MarkFunct {span, tree}, env) = let
+		          val (tree, env) = chk span (tree, env)
 		          in
 		            (PT2.MarkFunct{span=span, tree=tree}, env)
 		          end
-		    | chkFunct loc (PT1.Funct (f, pat, exp), env) = let
-			  val f' = Var.new(Atom.toString f, ())
-			  val env = BEnv.insertVal(env, f, f')
+		    | chk loc (PT1.Funct (f, pat, exp), env) = let			  
 			  val (pat, env) = chkPat loc (pat, env)
 			  val (exp, env) = chkExp loc (exp, env)
+			  val f' = Option.valOf(BEnv.findVar(env, f))
 			  in
 			     (PT2.Funct (f', pat, exp), env)
 			  end
-		  val (functs, env) = chkList loc (chkFunct, functs, env)
+		  val (functs, env) = chkList loc (chk, functs, env)
 	          in
 		     (PT2.FunVDecl functs, env)
 		  end
@@ -172,10 +213,6 @@ structure BoundVariableCheck :> sig
            (* end case *))
 
     and chkPMatches loc (pmatches, env) = chkList loc (chkPMatch, pmatches, env)
-
-    and chkConst (PT1.IntLit x) = PT2.IntLit x
-      | chkConst (PT1.FltLit x) = PT2.FltLit x
-      | chkConst (PT1.StrLit x) = PT2.StrLit x
 
     and chkExp loc (exp, env) = (case exp
            of PT1.MarkExp {span, tree} => let

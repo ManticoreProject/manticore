@@ -11,4 +11,4 @@ fun loop1 x =
          loop1 (x - 1))
 ;
 
-fun main _ = loop1 13
+val _ = loop1 13

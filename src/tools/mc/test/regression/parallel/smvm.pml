@@ -35,5 +35,5 @@ fun vtos v =
 
 val _ = print ("Testing smvm: expecting [|2,2|] => " ^ (vtos smvm0) ^ "\n");
 
-print "Done.\n"
+val _ = print "Done.\n"
 

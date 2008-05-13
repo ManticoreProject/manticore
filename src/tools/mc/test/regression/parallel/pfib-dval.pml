@@ -12,4 +12,4 @@ fun pfib i = (case i
 val n = 25;
 val s = itos (pfib(n));
 
-print ("pfib("^itos n^") is " ^ s ^ "\n")
+val _ = print ("pfib("^itos n^") is " ^ s ^ "\n")

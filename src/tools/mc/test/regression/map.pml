@@ -20,6 +20,6 @@ fun printAll bs =
       | b::tl => (print (b2s b ^ " ");
 		  printAll tl));
 
-fun main _ = printAll (map (pos, fromto (~3, 3)))
+val _ = printAll (map (pos, fromto (~3, 3)))
 
 

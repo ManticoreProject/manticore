@@ -56,9 +56,9 @@ structure BindingEnv =
 	Env{tyEnv=tyEnv, varEnv=varEnv, modEnv=Map.insert(modEnv, id, x), sigEnv=sigEnv, outerEnv=outerEnv}
     val insertCon = insertVal
     fun insertTy (Env{tyEnv, varEnv, modEnv, sigEnv, outerEnv}, id, x) = 
-	Env{tyEnv=Map.insert(tyEnv, id, x), varEnv=tyEnv, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
+	Env{tyEnv=Map.insert(tyEnv, id, x), varEnv=varEnv, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
     fun insertSig (Env{tyEnv, varEnv, modEnv, sigEnv, outerEnv}, id, x) = 
-	Env{tyEnv=tyEnv, varEnv=tyEnv, modEnv=modEnv, sigEnv=Map.insert(sigEnv, id, x), outerEnv=outerEnv}
+	Env{tyEnv=tyEnv, varEnv=varEnv, modEnv=modEnv, sigEnv=Map.insert(sigEnv, id, x), outerEnv=outerEnv}
     val insertDataTy = insertTy
 
     (* lookup a variable in the scope of the current module *)

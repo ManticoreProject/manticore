@@ -21,5 +21,5 @@
   val r3 = [| 1 to 20 by 500 |];
   val r4 = [| 20 to 2 by ~1 |];
 
-  app (printPar, r1::r2::r3::r4::nil)
+val _ =  app (printPar, r1::r2::r3::r4::nil)
 

@@ -81,4 +81,4 @@ fun doit () = let
     end
 ;
 
-doit ()
+val _ = doit ()

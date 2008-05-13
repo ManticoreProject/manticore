@@ -65,4 +65,4 @@ fun qs xs = (case xs
 val xs = 4::3::2::1::nil;
 val ys = 4.0 :: 3.12 :: 5.0 :: 0.01 :: 3.3 :: 4.120001 :: 12312321.1 :: 1023.234 :: nil;
 
-fun main _ = print ( (floatListToString (qs ys)) ^ "\n")
+val _ = print ( (floatListToString (qs ys)) ^ "\n")

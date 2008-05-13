@@ -9,4 +9,4 @@ and c x = d x
 and d x = e x
 and e x = d x;
 
-fun main _ = a 13
+val _ = a 13
