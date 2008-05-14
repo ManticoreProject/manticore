@@ -23,24 +23,25 @@ structure MatchTy : sig
     structure TU = TypeUtil
     structure TC = TypeClass
     structure Env = ModuleEnv
-  (* type-variable equality assumptions *)
-    structure TVA = BinarySetFn (
-                        type ord_key = (Types.tyvar * Types.tyvar)
-                        fun compare ((tv11, tv12), (tv21, tv22)) = 
-			    (case (TyVar.compare(tv11, tv21), TyVar.compare(tv12, tv22))
-                              of (EQUAL, c2) => c2
-			       | (c1, _) => c1
-                            (* end case *))
-                        )
 
   (* context for unification *)
     datatype ctx
       = CTX of {
-	     tvAssum : TVA.set,                        (* type-variable equality assumptions *)
-	     realizations : Env.realization_env        (* type realizations *)
+	     tvMatches    : AST.tyvar TyVar.Map.map ref,                (* matching type variables *)
+	     realizations : Env.realization_env                         (* type realizations *)
            }
 
-    fun getRealizationTy (realizations, tyc) = (case Env.RealizationEnv.find(realizations, tyc)
+    fun matchTyVars (CTX{tvMatches, ...}, sigTv, modTv) = let
+          val tvMatches' = !tvMatches
+          in 
+             case TyVar.Map.find(tvMatches', sigTv)
+	      of NONE => (
+		 tvMatches := TyVar.Map.insert(tvMatches', sigTv, modTv); 
+		 true)
+	       | SOME tv => TyVar.same(tv, modTv)
+          end
+
+    fun getRealizationTy (CTX{realizations, ...}, tyc) = (case Env.RealizationEnv.find(realizations, tyc)
         of SOME (Env.TyDef (Ty.TyScheme ([], ty))) => SOME ty
 	 | _ => NONE
         (* end case *))
@@ -63,7 +64,7 @@ structure MatchTy : sig
 	  end
 
   (* match two types *)
-    fun matchRC (CTX{tvAssum, realizations}, ty1, ty2, reconstruct) = let
+    fun matchRC (ctx, ty1, ty2, reconstruct) = let
 	  val mv_changes = ref []
 	  fun assignMV (info, newInfo) = (
 		if reconstruct
@@ -91,19 +92,16 @@ structure MatchTy : sig
 		 of (Ty.ErrorTy, ty2) => true
 		  | (ty1, Ty.ErrorTy) => true
 		  | (Ty.VarTy tv1, Ty.VarTy tv2) => 
-		      TVA.member (tvAssum, (tv1, tv2))
+		      matchTyVars(ctx, tv1, tv2)
 		  | (ty, Ty.VarTy tv2) => true
-		  | (ty1 as Ty.MetaTy mv1, ty2 as Ty.MetaTy mv2) =>
-		      MetaVar.same(mv1, mv2) orelse matchMV(mv1, mv2)
-		  | (Ty.MetaTy mv1, ty2) => matchWithMV (ty2, mv1)
 		  | (ty1, Ty.MetaTy mv2) => matchWithMV (ty1, mv2)
 		  | (Ty.ConTy(tys1, tyc1), Ty.ConTy(tys2, tyc2)) =>
-		    (case getRealizationTy(realizations, tyc1)
+		    (case getRealizationTy(ctx, tyc1)
 		      of NONE => (TyCon.same(tyc1, tyc2)) andalso ListPair.allEq uni (tys1, tys2)
 		       | SOME ty1 => uni(ty1, ty2)
 		    (* end case *))
 		  | (Ty.ConTy([], tyc1), ty2) => 
-		    (case getRealizationTy(realizations, tyc1)
+		    (case getRealizationTy(ctx, tyc1)
 		      of NONE => false
 		       | SOME ty1 => uni(ty1, ty2)
 		    (* end case *))
@@ -177,7 +175,7 @@ structure MatchTy : sig
 			TypeUtil.fmt {long=true} ty2, ")\n"
 		      ])
 		    else ()
-	  val res = matchRC (CTX{tvAssum=TVA.empty, realizations=Env.RealizationEnv.empty}, ty1, ty2, false)
+	  val res = matchRC (CTX{tvMatches=ref TyVar.Map.empty, realizations=Env.RealizationEnv.empty}, ty1, ty2, false)
 	  in
 	    if !debugMatch
 	      then if res
@@ -188,12 +186,10 @@ structure MatchTy : sig
 	  end
 
     fun matchTys (realizations, ty1, ty2) = 
-	   matchRC (CTX{tvAssum=TVA.empty, realizations=realizations}, ty1, ty2, true)
+	   matchRC (CTX{tvMatches=ref TyVar.Map.empty, realizations=realizations}, ty1, ty2, true)
 
     fun match (realizations, Ty.TyScheme (tvs1, ty1), Ty.TyScheme (tvs2, ty2)) = let
-	(* construct ty-var equality assumptions *)
-	val tvAssum = List.foldl TVA.add' TVA.empty (ListPair.zip (tvs1, tvs2) @ ListPair.zip (tvs2, tvs1))
-	val ctx = CTX{tvAssum=tvAssum, realizations=realizations}
+	val ctx = CTX{tvMatches=ref TyVar.Map.empty, realizations=realizations}
         in
 	   (List.length tvs1 <= List.length tvs2) andalso matchRC(ctx, ty1, ty2, true)
 	end

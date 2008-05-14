@@ -423,7 +423,8 @@ structure ChkExp :> sig
 		in
 		  chk es
 		end
-	    | PT.IdExp x => (* let
+	    | PT.IdExp x => (* eggregious hack for handling negation! *)
+                  if PPT.Var.nameOf x = "~" then let
 		(* Unary minus is being handled specially as
 		 * an overloaded variable *)
 		  val (tysch, vars) = BasisEnv.neg
@@ -433,7 +434,7 @@ structure ChkExp :> sig
 		    Overload.addVar ovar;
 		    (AST.OverloadExp ovar, instTy)
 		  end 
-		else *)  (case Env.getValBind x
+		else  (case Env.getValBind x
 		   of SOME(Env.Con dc) => let
 			val (argTys, ty) = TU.instantiate (depth, DataCon.typeOf dc)
 			in

@@ -89,7 +89,7 @@ structure TranslateTypes : sig
 	      (* partition constructors into constants and constructor function lists *)
 		val (consts, conFuns) =
 		      List.partition
-			(fn (Ty.DCon{argTy=NONE, ...}) => true | _ => false)
+			(fn (dc as Ty.DCon{argTy=NONE, ...}) => true | _ => false)
 			  (! cons)
 	      (* create the datatype constructor *)
 		val nConsts = List.length consts

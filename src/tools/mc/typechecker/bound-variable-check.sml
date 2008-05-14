@@ -29,6 +29,21 @@ structure BoundVariableCheck :> sig
 
     fun error (span, msg) = Error.errorAt (!errStrm, span, msg)
 
+  (* attempt to find the binding site of a qualified identifier, reporting an error if none exists *)
+    fun findQid (find, kind, dummy) (loc, env, qId) = (case find(env, qId)
+           of NONE => (
+	      error(loc, ["unbound ", kind, qidToString qId]);
+	      dummy)
+	    | SOME x => x
+           (* end case *))
+
+    val dummyVar = Var.new("dummyVar", ())
+    val dummyTy = Var.new("dummyTy", ())
+    val dummyMod = Var.new("dummyMod", ())
+    val findTyQid = findQid (QualifiedId.findTy, "type", dummyTy)
+    val findVarQid = findQid (QualifiedId.findVar, "var", (BEnv.Var dummyVar))
+    val findModQid = findQid (QualifiedId.findMod, "mod", dummyMod)
+
     fun chkList loc (chkX, xs, env) = let
 	   fun f (x, (xs, env)) = let
 	          val (x, env) = chkX loc (x, env)
@@ -53,9 +68,7 @@ structure BoundVariableCheck :> sig
 	    | PT1.NamedTy (tys, id) => let
 		  val (tys, env) = chkTys loc (tys, env)
 	          in
-		     case QualifiedId.findTy(env, id)
-		      of NONE => (PT2.NamedTy (tys, Var.new("dummy", ())), env)
-		       | SOME id' => (PT2.NamedTy (tys, id'), env)
+		     (PT2.NamedTy(tys, findTyQid(loc, env, id)), env)
 		  end
 	    | PT1.VarTy tv => (PT2.VarTy tv, env)
 	    | PT1.TupleTy tys => let
@@ -83,16 +96,16 @@ structure BoundVariableCheck :> sig
 		  val (pat1, env) = chkPat loc (pat1, env)
 		  val (pat2, env) = chkPat loc (pat2, env)
 	          in
-		     case QualifiedId.findVar(env, cid)
-		      of SOME (BEnv.Con cid') => (PT2.BinaryPat(pat1, cid', pat2), env)
-		       | _ => (PT2.BinaryPat(pat1, Var.new("dummy", ()), pat2), env)
+		     case findVarQid(loc, env, cid)
+		      of BEnv.Con cid' => (PT2.BinaryPat(pat1, cid', pat2), env)
+		       | _ => (PT2.BinaryPat(pat1, dummyVar, pat2), env)
 		  end
 	    | PT1.ConPat (cid, pat) => let
 		  val (pat, env) = chkPat loc (pat, env)
 	          in
-		     case QualifiedId.findVar(env, cid)
-		      of SOME (BEnv.Con cid') => (PT2.ConPat(cid', pat), env)
-		       | _ => (PT2.ConPat(Var.new("dummy", ()), pat), env)
+		     case findVarQid(loc, env, cid)
+		      of BEnv.Con cid' => (PT2.ConPat(cid', pat), env)
+		       | _ => (PT2.ConPat(dummyVar, pat), env)
 		  end
 	    | PT1.TuplePat pats => let
 		  val (pats, env) = chkPats loc (pats, env)
@@ -103,8 +116,11 @@ structure BoundVariableCheck :> sig
 	          (PT2.ConstPat (chkConst const), env)
 	    | PT1.WildPat => (PT2.WildPat, env)
 	    | PT1.IdPat vb => (case BEnv.findVar(env, vb)
-                  of SOME (BEnv.Con c) => (PT2.IdPat c, env)
+                  of SOME (BEnv.Con c) => 
+		       (* this pattern matches a nullary constructor *)
+		         (PT2.IdPat c, env)
 		   | _ => let
+                       (* this pattern binds a variable *)
 			 val vb' = Var.new(Atom.toString vb, ())
 			 val env = BEnv.insertVal(env, vb, BEnv.Var vb')
 		         in
@@ -287,14 +303,11 @@ structure BoundVariableCheck :> sig
 	          in
 		     (PT2.ApplyExp(exp1, exp2), env)
 		  end
-	    | PT1.IdExp qId => (case QualifiedId.findVar(env, qId)
-                  of SOME (BEnv.Var var) => 
+	    | PT1.IdExp qId => (case findVarQid(loc, env, qId)
+                  of BEnv.Var var => 
 		       (PT2.IdExp var, env)
-		   | SOME (BEnv.Con c) =>
+		   | BEnv.Con c =>
 		       (PT2.IdExp c, env)
-		   | _ => 
-		       (error(loc, ["unbound identifier ", qidToString qId]);
-			(PT2.TupleExp [], env))
 	          (* end case *))
 	    | PT1.ConstExp const => (PT2.ConstExp (chkConst const), env)
 	    | PT1.TupleExp exps => let
@@ -462,11 +475,7 @@ structure BoundVariableCheck :> sig
 	          in
 		     (PT2.DeclsMod decls, env)
 		  end
-	    | PT1.NamedMod id => (case QualifiedId.findMod(env, id)
-                    of NONE => (error(loc, ["unbound module ", qidToString id]);
-			       (PT2.NamedMod (Var.new("dummy", ())), env))
-		     | SOME id' => (PT2.NamedMod id', env)
-                    (* end case *))
+	    | PT1.NamedMod qId => (PT2.NamedMod(findModQid(loc, env, qId)), env)
            (* end case *))
 
     and chkDecl loc (decl, env) = (case decl

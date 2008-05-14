@@ -20,6 +20,9 @@ structure TyVar : sig
   (* compare two type variables *)
     val compare : AST.tyvar * AST.tyvar -> order
 
+  (* sets of type variables *)
+    structure Set : ORD_SET where type Key.ord_key = AST.tyvar
+
   (* finite maps on type variables *)
     structure Map : ORD_MAP where type Key.ord_key = AST.tyvar
 
@@ -37,6 +40,12 @@ structure TyVar : sig
     fun same (TVar{stamp=a, ...}, TVar{stamp=b, ...}) = Stamp.same(a, b)
 
     fun compare (TVar{stamp = a, ...}, TVar{stamp = b, ...}) = Stamp.compare(a, b)
+
+    structure Set = RedBlackSetFn (
+      struct
+	type ord_key = tyvar
+	val compare = compare
+      end)
 
     structure Map = RedBlackMapFn (
       struct

@@ -1,4 +1,4 @@
-
+(*
 signature S =
   sig
     val x : int
@@ -11,11 +11,11 @@ structure S =
 
 val x = 34
 val z = S.x
-
-(*
-fun f x = case x of x :: xs => 2 | nil => 1
-val z = print (itos (f nil))
 *)
+
+fun f x = case x of x :: xs => 2 | nil => 1
+val z = print (itos (f (1::nil)))
+
 (*
 fun f y = (case y of nil => 1 | x :: xs => 2)
 
