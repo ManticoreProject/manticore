@@ -53,7 +53,7 @@ structure ChkModule :> sig
 		val tyc = TyCon.newDataTyc(idToAtom id, tvs')
 	      (* update the type environment before checking the constructors so that
 	       * recursive types work.
-	      *)
+	       *)
 		val env = Env.insertTy(env, id, Env.TyCon tyc)
 		val newCon = DataCon.new tyc
 		fun chkCons (_, ids, [], env, cons) = (env, List.rev cons)
@@ -199,7 +199,7 @@ structure ChkModule :> sig
 		  (Env.insertVar (env, id, Env.Con exnCon), moduleEnv, astDecls)
 		end
 	    | PT.ValueDecl valDcl => let
-		val (bind, env) = ChkExp.checkValDecl (!errStrm) (loc, valDcl, env)
+		val bind = ChkExp.checkValDecl (!errStrm) (loc, valDcl)
 		in
 		  (env, moduleEnv, AST.TD_Binding bind :: astDecls)
 		end

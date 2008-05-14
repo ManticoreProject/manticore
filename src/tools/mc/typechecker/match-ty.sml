@@ -13,6 +13,9 @@ structure MatchTy : sig
    *)
     val match : (ModuleEnv.realization_env * Types.ty_scheme * Types.ty_scheme) -> bool
 
+  (* same as above, except for types *)
+    val matchTys : (ModuleEnv.realization_env * Types.ty * Types.ty) -> bool
+
   end = struct
 
     structure Ty = Types
@@ -184,7 +187,8 @@ structure MatchTy : sig
 	    res
 	  end
 
-    fun unifiable (ty1, ty2) = matchRC (CTX{tvAssum=TVA.empty, realizations=Env.RealizationEnv.empty}, ty1, ty2, true)
+    fun matchTys (realizations, ty1, ty2) = 
+	   matchRC (CTX{tvAssum=TVA.empty, realizations=realizations}, ty1, ty2, true)
 
     fun match (realizations, Ty.TyScheme (tvs1, ty1), Ty.TyScheme (tvs2, ty2)) = let
 	(* construct ty-var equality assumptions *)

@@ -167,86 +167,80 @@ structure MatchSig :> sig
 	      Env.VarMap.foldli ins AtomMap.empty env
 	   end
 
-  (* takes a constraining environment and a module environment, and returns the list of
-   * matching elements. if the module environment is missing an element
+  (* report unmatched entries *)
+    fun reportMissingEntries loc k ((id, c, NONE), xs) = (
+	   error(loc, ["missing ", k, " ", Atom.toString id]);
+	   xs)
+      | reportMissingEntries _ _ ((id, c, SOME m), xs) = 
+	   (id, c, m) :: xs
+
+  (* takes an entry kind constraining environment and a module environment, and returns the list of
+   * matching elements. if elements are missing, we report errors.
    *)
-    fun matchElts (cEnv, mEnv) = let
+    fun buildMatchElts (loc, entryKind, cEnv, mEnv) = let
 	val cEnv = cvtEnv cEnv
 	val mEnv = cvtEnv mEnv
 	fun find (id, cX, matches) = (case AtomMap.find(mEnv, id)
                of NONE => (id, cX, NONE) :: matches
 		| SOME mX => (id, cX, SOME mX) :: matches
                (* end case *))
+	val matches = AtomMap.foldli find [] cEnv
+      (* the module must have at least all of the entries of the constraining environment *)
 	in
-	  List.rev (AtomMap.foldli find [] cEnv)
+	   List.foldl (reportMissingEntries loc entryKind) [] matches
 	end
 
   (* data cons must be sorted *)
-    fun matchDCons loc (Ty.DCon {id=modId, name=modName, owner=modOwner, argTy=modArgTy},
-			Ty.DCon {id=sigId, name=sigName, owner=sigOwner, argTy=sigArgTy}) =
+    fun matchDCons loc 
+		   actualTypes 
+		   (Ty.DCon {id=modId, name=modName, owner=modOwner, argTy=modArgTy},
+		    Ty.DCon {id=sigId, name=sigName, owner=sigOwner, argTy=sigArgTy}) =
 	if not (Atom.same(modName, sigName))
            then error(loc, ["datacon missing name ", Atom.toString sigName])
         else (case (modArgTy, sigArgTy)
 	       of (NONE, NONE) => ()
 		| (SOME sigArgTy, SOME modArgTy) => 
-		  if Unify.unifiable(sigArgTy, modArgTy)
+		  if MatchTy.matchTys(actualTypes, sigArgTy, modArgTy)
 		     then ()
 		     else error(loc, ["data constructor argument", Atom.toString sigName])
              (* end case *))
 
-    fun matchTypes loc realizationEnv (modTyEnv, sigTyEnv) = let
-	val findIt = declOf o Env.VarMap.find
-	(* match each type definition in the signature to a corresponding type definition in the module *)
-	fun match (id, Env.TyDef sigTs) = (case findIt(modTyEnv, id)
-            of Env.TyDef modTs => 
-	       (* match typedefs *)
-	       if MatchTy.match(realizationEnv, modTs, sigTs)
+    fun matchTypes loc actualTypes (modTyEnv, sigTyEnv) = let
+	fun match (id, Env.TyDef sigTs, Env.TyDef modTs) =
+	       if MatchTy.match(actualTypes, modTs, sigTs)
 	       then ()
 	       else error (loc, [
-			   "types for ", varToString id, " are not equal\n",
+			   "types for ", Atom.toString id, " are not equal\n",
 			   "\tsignature: ", TypeUtil.schemeToString sigTs, "\n",
 			   "\tmodule: ", TypeUtil.schemeToString modTs])
-	     | Env.TyCon _ => error (loc, ["cannot match typedef with tycon for ", varToString id])
-           (* end case *))
-	  | match (id, Env.TyCon sigTc) = (case (sigTc, findIt(modTyEnv, id))
-            of (Ty.Tyc{arity=a1, def=Ty.AbsTyc, ...}, Env.TyDef (Ty.TyScheme (tvs, _))) => 
-	     (* the type in the signature is abstract *)
+	  | match (id, Env.TyDef sigTs, Env.TyCon _) = 
+	       error (loc, ["cannot match typedef with tycon for ", Atom.toString id])
+	  | match (id, Env.TyCon (Ty.Tyc{arity=a1, def=Ty.AbsTyc, ...}), Env.TyDef (Ty.TyScheme (tvs, _))) = 
 	       if a1 <> List.length tvs
-	          then error (loc, ["mismatched type arities for ", varToString id])
+	          then error (loc, ["mismatched type arities for ", Atom.toString id])
                   else ()
-	     | (Ty.Tyc{arity=a1, def=Ty.AbsTyc, ...}, Env.TyCon (Ty.Tyc{arity=a2, ...})) => 
-	     (* the type in the signature is abstract *)
+	  | match (id, Env.TyCon (Ty.Tyc{arity=a1, def=Ty.AbsTyc, ...}), Env.TyCon (Ty.Tyc{arity=a2, ...})) = 
 	       if a1 <> a2
-	          then error (loc, ["mismatched type arities for ", varToString id])
+	          then error (loc, ["mismatched type arities for ", Atom.toString id])
                   else ()
-	     | (Ty.Tyc{arity=a1, def=Ty.DataTyc{nCons=ncs1, cons=cs1}, ...}, 
-		Env.TyCon (Ty.Tyc{arity=a2, def=Ty.DataTyc{nCons=ncs2, cons=cs2}, ...})) =>
-	       (* the type in the signature is a datatype *)
-	       if a1 <> a2
-                  then error (loc, ["mismatched type arities for ", varToString id])
-               else if !ncs1 <> !ncs2
-                  then error (loc, ["mismatched number of data constructors for ", varToString id])
-               else ListPair.app (matchDCons loc) (!cs1, !cs2)
-            (* end case *))
-
-	fun doMatch (id, tydef) = match (id, tydef) 
-	    handle DeclNotFound => error (loc, ["missing type declaration ", varToString id])
+	  | match (id, 
+		   Env.TyCon (Ty.Tyc{arity=a1, def=Ty.DataTyc{nCons=ncs1, cons=cs1}, ...}), 
+		   Env.TyCon (Ty.Tyc{arity=a2, def=Ty.DataTyc{nCons=ncs2, cons=cs2}, ...})) =
+	      if a1 <> a2
+                 then error (loc, ["mismatched type arities for ", Atom.toString id])
+              else if !ncs1 <> !ncs2
+                 then error (loc, ["mismatched number of data constructors for ", Atom.toString id])
+              else ListPair.app (matchDCons loc actualTypes) (!cs1, !cs2)
 	in
-	    Env.VarMap.appi doMatch sigTyEnv
+	   List.app match (buildMatchElts(loc, "type", modTyEnv, sigTyEnv))
 	end
 
-    fun handleMissing loc k ((id, c, NONE), xs) = (
-	   error(loc, ["missing ", k, " ", Atom.toString id]);
-	   xs)
-      | handleMissing _ _ ((id, c, SOME m), xs) = 
-	   (id, c, m) :: xs
-
-    fun matchVars loc realizationEnv (modVarEnv, sigVarEnv) = let
-	fun match (id : Atom.atom, Env.Var sigVar, Env.Var modVar) = let
+    fun matchVars loc actualTypes (modVarEnv, sigVarEnv) = let
+	fun match (id, Env.Var sigVar, Env.Var modVar) = let
 	       val sigTyS = Var.typeOf sigVar
 	       val modTyS = Var.typeOf modVar
 	       in
-	           if MatchTy.match(realizationEnv, sigTyS, modTyS)
+	           if MatchTy.match(actualTypes, sigTyS, modTyS)
 	              then ()
 	              else error(loc, ["failed to match value specification ", Atom.toString id, "\n",
 				       "signature: ", TypeUtil.schemeToString sigTyS, "\n",
@@ -254,35 +248,29 @@ structure MatchSig :> sig
 				])
                end
 	  | match (id, Env.Var sigVar, Env.Con dcon) =
-	       if MatchTy.match(realizationEnv, Var.typeOf sigVar, DataCon.typeOf dcon)
+	       if MatchTy.match(actualTypes, Var.typeOf sigVar, DataCon.typeOf dcon)
 	          then ()
 	          else error(loc, ["cannot unify types for ", Atom.toString id])
 	  | match (id, Env.Var sigVar, Env.Overload (ts, _)) =
-	       if MatchTy.match(realizationEnv, Var.typeOf sigVar, ts)
+	       if MatchTy.match(actualTypes, Var.typeOf sigVar, ts)
 	          then ()
 	          else error(loc, ["cannot unify types for ", Atom.toString id])
 	  | match (id, Env.Var sigVar, Env.EqOp _) = 
 	       error(loc, ["invalid eq op"])
 	  | match (id, Env.Con sigDCon, Env.Con modDCon) =
-	       matchDCons loc (sigDCon, modDCon)
+	       matchDCons loc actualTypes (sigDCon, modDCon)
 	  | match (id, Env.Con sigDCon, _) = error (loc, ["incompatible data con", Atom.toString id])
 	  | match (id, _, _) = error(loc, ["invalid value specification ", Atom.toString id])	
-	val ms = matchElts(modVarEnv, sigVarEnv)
-	val ms' = List.rev (List.foldl (handleMissing loc "var") [] ms)
 	in
-	   List.app match ms'
+	   List.app match (buildMatchElts(loc, "var", modVarEnv, sigVarEnv))
 	end
 
-  (* FIXME *)
-    fun matchMods err loc realizationEnv (modEnv , sigEnv) = let
-	val findIt = declOf o Env.VarMap.find
-	fun doMatch (id, sigEnv) = (match{err=err, loc=loc, modEnv=findIt(modEnv, id), sigEnv=sigEnv};
-raise Fail "";
-				    ())
-	    handle DeclNotFound => error (loc, ["missing module declaration", varToString id])
+    fun matchMods err loc actualTypes (modEnv , sigEnv) = let
+	fun f (id, modEnv, sigEnv) = (
+	    match{err=err, loc=loc, modEnv=modEnv, sigEnv=sigEnv}; 
+	    ())
         in 
-           Env.VarMap.appi doMatch sigEnv;
-	   ()
+	   List.app f (buildMatchElts(loc, "module", modEnv, sigEnv))
         end
 
     and match {err, 
@@ -295,18 +283,18 @@ raise Fail "";
 	(* takes a type identifier and the corresponding abstract type in the signature and 
 	 * adds to the realization environment the realization of the type in the module.
 	 *)
-	fun addRealization (id, Env.TyCon (tyc as Ty.Tyc {def=Ty.AbsTyc, ...}), realizationEnv) = 
+	fun addRealization (id, Env.TyCon (tyc as Ty.Tyc {def=Ty.AbsTyc, ...}), actualTypes) = 
 	    (case Env.VarMap.find(modTyEnv, id)
-	      of SOME tyd => TyCon.Map.insert(realizationEnv, tyc, tyd)
-	       | NONE => realizationEnv
+	      of SOME tyd => TyCon.Map.insert(actualTypes, tyc, tyd)
+	       | NONE => actualTypes
 	    (* end case *))
-	  | addRealization (_, _, realizationEnv) = realizationEnv
-	val realizationEnv = Env.VarMap.foldli addRealization TyCon.Map.empty sigTyEnv
+	  | addRealization (_, _, actualTypes) = actualTypes
+	val actualTypes = Env.VarMap.foldli addRealization TyCon.Map.empty sigTyEnv
 
         in
-	   matchTypes loc realizationEnv (modTyEnv, sigTyEnv);
-	   matchVars loc realizationEnv (modVarEnv, sigVarEnv);
-	   matchMods err loc realizationEnv (modModEnv, sigModEnv);
+	   matchTypes loc actualTypes (modTyEnv, sigTyEnv);
+	   matchVars loc actualTypes (modVarEnv, sigVarEnv);
+	   matchMods err loc actualTypes (modModEnv, sigModEnv);
 	   deepCopy(sigEnv, modEnv)
         end
 

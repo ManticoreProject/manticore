@@ -78,12 +78,13 @@ structure ModuleEnv =
     fun findMod (env, v) = findInEnv (env, #modEnv, v)
     fun findSig (env, v) = findInEnv (env, #sigEnv, v)
 
+  (* operations for mapping parse-tree value definitions to ast value definitions *)
     val {
            getFn=getValBind : ProgramParseTree.Var.var -> val_bind option, 
 	   setFn=setValBind : (ProgramParseTree.Var.var * val_bind option) -> unit, ...
         } = 
 	   ProgramParseTree.Var.newProp (fn _ => NONE)
-
+  (* operations for mapping parse-tree type definitions to ast type definitions *)
     val {
            getFn=getTyDef : ProgramParseTree.Var.var -> ty_def option, 
 	   setFn=setTyDef : (ProgramParseTree.Var.var * ty_def option) -> unit, ...

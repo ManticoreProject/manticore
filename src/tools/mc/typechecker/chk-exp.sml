@@ -9,12 +9,12 @@
 structure ChkExp :> sig 
 
   (* type check an expression *)
-    val checkExp : Error.err_stream -> (Error.span * ProgramParseTree.PML2.exp * ModuleEnv.env) 
+    val checkExp : Error.err_stream -> (Error.span * ProgramParseTree.PML2.exp) 
 		       -> (AST.exp * Types.ty)
 
   (* type check a value declaration *)
-    val checkValDecl : Error.err_stream -> (Error.span * ProgramParseTree.PML2.val_decl * ModuleEnv.env) 
-		           -> (AST.binding * ModuleEnv.env)
+    val checkValDecl : Error.err_stream -> (Error.span * ProgramParseTree.PML2.val_decl) 
+		           -> AST.binding
 
   end = struct
 
@@ -67,11 +67,11 @@ structure ChkExp :> sig
       | chkLit (_, PT.StrLit s) = (AST.LConst(Literal.String s, Basis.stringTy), Basis.stringTy)
 
   (* typecheck value declarations as described in Section 6.6 *)
-    fun chkValDcl (loc, depth, env, decl) = (case decl
-	   of PT.MarkVDecl{span, tree} => chkValDcl (span, depth, env, tree)
+    fun chkValDcl (loc, depth, decl) = (case decl
+	   of PT.MarkVDecl{span, tree} => chkValDcl (span, depth, tree)
 	    | PT.ValVDecl(pat, e) => let
-		val (pat', env', lhsTy) = chkPat(loc, depth, env, pat)
-		val (e', rhsTy) = chkExp (loc, depth, env, e)
+		val (pat', lhsTy) = chkPat(loc, depth, pat)
+		val (e', rhsTy) = chkExp (loc, depth, e)
 		in
 		  if not(U.unify(lhsTy, rhsTy))
 		    then error (loc, [
@@ -80,16 +80,16 @@ structure ChkExp :> sig
                         \  rhs: ", TypeUtil.toString rhsTy, ".\n"
 		      ])
 		    else ();
-		  (AST.ValBind(pat', e'), env')
+		  AST.ValBind(pat', e')
 		end
 	    | PT.PValVDecl(pat, e) => let
-		val (pat', env', lhsTy) = chkPat(loc, depth, env, pat)
-		val (e', rhsTy) = chkExp (loc, depth, env, e)
+		val (pat', lhsTy) = chkPat(loc, depth, pat)
+		val (e', rhsTy) = chkExp (loc, depth, e)
 		in
 		  if not(U.unify(lhsTy, rhsTy))
 		    then error (loc, ["type mismatch in pval binding"])
 		    else ();
-		  (AST.PValBind(pat', e'), env')
+		  AST.PValBind(pat', e')
 		end
 	    | PT.FunVDecl fbs => let
 		val depth' = depth+1
@@ -117,15 +117,14 @@ structure ChkExp :> sig
 	       * the function bodies.
 	       *)
 		val _ = List.app (fn (f, f') => Env.bindVal(f, Env.Var f')) fs
-		val env' = env
 	      (* typecheck the functions *)
 		fun chkFun loc (fb, fbs) = (case fb
 		       of PT.MarkFunct{span, tree} => chkFun span (tree, fbs)
 			| PT.Funct(f, param, body) => let
 			    val SOME(Env.Var f') = Env.getValBind f
 			    val AST.TyScheme(_, funTy) = Var.typeOf f'
-			    val (param', env'', paramTy) = chkPat (loc, depth', env', param)
-			    val (body', bodyTy) = chkExp (loc, depth', env'', body)
+			    val (param', paramTy) = chkPat (loc, depth', param)
+			    val (body', bodyTy) = chkExp (loc, depth', body)
 			    in
 			      if not(U.unify(funTy, AST.FunTy(paramTy, bodyTy)))
 				then error(loc, ["type mismatch in function ", PPT.Var.nameOf f])
@@ -142,28 +141,28 @@ structure ChkExp :> sig
 		      Env.bindVal(f, Env.Var f'))
 	        val _ = List.app close fs
 		in
-		  (AST.FunBind fbs', env')
+		  AST.FunBind fbs'
 		end
 	  (* end case *))
 
   (* typecheck expressions as described in Section 6.8 *)
-    and chkExp (loc, depth, env, exp) = (case exp
-	   of PT.MarkExp{span, tree} => chkExp (span, depth, env, tree)
+    and chkExp (loc, depth, exp) = (case exp
+	   of PT.MarkExp{span, tree} => chkExp (span, depth, tree)
 	    | PT.LetExp(valDcls, exp) => let
-		  fun chkDcls ([], env) = chkExp (loc, depth, env, exp)
-		    | chkDcls (vd::vds, env) = let
-			  val (bind, env) = chkValDcl (loc, depth, env, vd)
-			  val (e', ty) = chkDcls (vds, env)
+		  fun chkDcls [] = chkExp (loc, depth, exp)
+		    | chkDcls (vd::vds) = let
+			  val bind = chkValDcl (loc, depth, vd)
+			  val (e', ty) = chkDcls vds
 		      in
 		          (AST.LetExp(bind, e'), ty)
 		      end
 	      in
-		  chkDcls (valDcls, env)
+		  chkDcls valDcls
 	      end
 	    | PT.IfExp(e1, e2, e3) => let
-		val (e1', ty1) = chkExp (loc, depth, env, e1)
-		val (e2', ty2) = chkExp (loc, depth, env, e2)
-		val (e3', ty3) = chkExp (loc, depth, env, e3)
+		val (e1', ty1) = chkExp (loc, depth, e1)
+		val (e2', ty2) = chkExp (loc, depth, e2)
+		val (e3', ty3) = chkExp (loc, depth, e3)
 		in
 		  if not(U.unify(ty1, Basis.boolTy))
 		    then error(loc, ["type of conditional not bool"])
@@ -175,23 +174,23 @@ structure ChkExp :> sig
 		    else (AST.IfExp(e1', e2', e3', ty2), ty2)
 		end
 	    | PT.CaseExp(e, cases) => let
-		val (e', argTy) = chkExp (loc, depth, env, e)
+		val (e', argTy) = chkExp (loc, depth, e)
 		val resTy = AST.MetaTy(MetaVar.new depth)
 		val matches = List.map
-		      (fn m => chkMatch(loc, depth, env, argTy, resTy, m))
+		      (fn m => chkMatch(loc, depth, argTy, resTy, m))
 			cases
 		in
 		  (AST.CaseExp(e', matches, resTy), resTy)
 		end
 	    | PT.PCaseExp(es, pms) => let
                 val (es', tys) = let
-                  fun chk e = chkExp (loc, depth, env, e)
+                  fun chk e = chkExp (loc, depth, e)
                   in
                     ListPair.unzip (List.map chk es)
 		  end
 		val resTy = AST.MetaTy(MetaVar.new depth)
 		val pms' = let
-                  fun chk m = chkPMatch(loc, depth, env, tys, resTy, m)
+                  fun chk m = chkPMatch(loc, depth, tys, resTy, m)
                   in
                     List.map chk pms
                   end
@@ -199,15 +198,15 @@ structure ChkExp :> sig
                   (AST.PCaseExp(es', pms', resTy), resTy)
                 end
 	    | PT.HandleExp(e, cases) => let
-		val (e', resTy) = chkExp (loc, depth, env, e)
+		val (e', resTy) = chkExp (loc, depth, e)
 		val matches = List.map
-		      (fn m => chkMatch(loc, depth, env, Basis.exnTy, resTy, m))
+		      (fn m => chkMatch(loc, depth, Basis.exnTy, resTy, m))
 			cases
 		in
 		  (AST.HandleExp(e', matches, resTy), resTy)
 		end
 	    | PT.RaiseExp e => let
-		val (e', ty) = chkExp(loc, depth, env, e)
+		val (e', ty) = chkExp(loc, depth, e)
 		val resTy = AST.MetaTy(MetaVar.new depth)
 		in
 		  if not(U.unify(ty, Basis.exnTy))
@@ -217,7 +216,7 @@ structure ChkExp :> sig
 		end
 	    | PT.PChoiceExp es => let
 		fun chk (e, (es, ty)) = let
-		      val (e', ty') = chkExp(loc, depth, env, e)
+		      val (e', ty') = chkExp(loc, depth, e)
 		      in
 			if not(U.unify (ty, ty'))
 			  then error(loc, ["type mismatch in parallel choice"])
@@ -229,8 +228,8 @@ structure ChkExp :> sig
 		  (AST.PChoiceExp(es', ty), ty)
 		end
 	    | PT.OrElseExp(e1, e2) => let
-		  val (e1', ty1) = chkExp (loc, depth, env, e1)
-		  val (e2', ty2) = chkExp (loc, depth, env, e2)
+		  val (e1', ty1) = chkExp (loc, depth, e1)
+		  val (e2', ty2) = chkExp (loc, depth, e2)
 	      in
 		  if not(U.unify(ty1, Basis.boolTy) andalso U.unify(ty2, Basis.boolTy))
 		  then error(loc, ["arguments of orelse must have type bool"])
@@ -238,8 +237,8 @@ structure ChkExp :> sig
 		  (AST.IfExp(e1', AST.ConstExp(AST.DConst(Basis.boolTrue, [])), e2', Basis.boolTy), Basis.boolTy)
 	      end
 	    | PT.AndAlsoExp(e1, e2) => let
-		  val (e1', ty1) = chkExp (loc, depth, env, e1)
-		  val (e2', ty2) = chkExp (loc, depth, env, e2)
+		  val (e1', ty1) = chkExp (loc, depth, e1)
+		  val (e2', ty2) = chkExp (loc, depth, e2)
 	      in
 		  if not(U.unify(ty1, Basis.boolTy) andalso U.unify(ty2, Basis.boolTy))
 		  then error(loc, ["arguments of andalso must have type bool"])
@@ -247,8 +246,8 @@ structure ChkExp :> sig
 		  (AST.IfExp(e1', e2', AST.ConstExp(AST.DConst(Basis.boolFalse, [])), Basis.boolTy), Basis.boolTy)
 	      end
 	    | PT.BinaryExp(e1, bop, e2) => let
-		val (e1', ty1) = chkExp (loc, depth, env, e1)
-		val (e2', ty2) = chkExp (loc, depth, env, e2)
+		val (e1', ty1) = chkExp (loc, depth, e1)
+		val (e2', ty2) = chkExp (loc, depth, e2)
 		fun mkApp (arg, resTy) = (AST.ApplyExp(arg, AST.TupleExp[e1', e2'], resTy), resTy)
 		fun chkApp tyScheme = let
 		      val (argTys, instTy as AST.FunTy(argTy, resTy)) = TU.instantiate (depth, tyScheme)
@@ -290,8 +289,8 @@ structure ChkExp :> sig
 		  (* end case *)
 		end
 	    | PT.ApplyExp(e1, e2) => let
-		val (e1', ty1) = chkExp (loc, depth, env, e1)
-		val (e2', ty2) = chkExp (loc, depth, env, e2)
+		val (e1', ty1) = chkExp (loc, depth, e1)
+		val (e2', ty2) = chkExp (loc, depth, e2)
 		val resTy = AST.MetaTy(MetaVar.new depth)
 		in
 		  if not(U.unify(ty1, AST.FunTy(ty2, resTy)))
@@ -308,7 +307,7 @@ structure ChkExp :> sig
 		end
 	    | PT.TupleExp es => let
 		fun chk (e, (es, tys)) = let
-		      val (e', ty) = chkExp(loc, depth, env, e)
+		      val (e', ty) = chkExp(loc, depth, e)
 		      in
 			(e'::es, ty::tys)
 		      end
@@ -320,7 +319,7 @@ structure ChkExp :> sig
 		val elemTy = AST.MetaTy(MetaVar.new depth)
 		val listTy = Ty.ConTy([elemTy], Basis.listTyc)
 		fun chk (e, (es, tys)) = let
-		      val (e', ty) = chkExp(loc, depth, env, e)
+		      val (e', ty) = chkExp(loc, depth, e)
 		      in
 			if not(U.unify(elemTy, ty))
 			  then error(loc, [
@@ -342,14 +341,14 @@ structure ChkExp :> sig
 		  (exp, listTy)
 		end
 	    | PT.RangeExp (e1, e2, eo) => let
-		  val (e1', ty1) = chkExp (loc, depth, env, e1)
-		  val (e2', ty2) = chkExp (loc, depth, env, e2)
+		  val (e1', ty1) = chkExp (loc, depth, e1)
+		  val (e2', ty2) = chkExp (loc, depth, e2)
 		  val _ = if not(U.unify (ty1, ty2))
 			  then error (loc, ["type mismatch in range"])
 			  else ()
 		  val eo' = (case eo of
 				 (SOME exp) => let
-				     val (exp', ty) = chkExp (loc, depth, env, exp)
+				     val (exp', ty) = chkExp (loc, depth, exp)
 				 in
 				     if not(U.unify (ty, ty1))
 				     then error (loc, ["type mismatch in range"])
@@ -366,7 +365,7 @@ structure ChkExp :> sig
 	      end
 	    | PT.PTupleExp es => let
 		  fun chk (e, (es, tys)) = let
-		      val (e', ty) = chkExp(loc, depth, env, e)
+		      val (e', ty) = chkExp(loc, depth, e)
 		  in
 		      (e'::es, ty::tys)
 		  end
@@ -377,7 +376,7 @@ structure ChkExp :> sig
 	    | PT.PArrayExp es => let
 		fun chk (e, (es, ty)) =
 		    let
-			val (e', ty') = chkExp(loc, depth, env, e)
+			val (e', ty') = chkExp(loc, depth, e)
 		    in
 			if not(U.unify (ty, ty'))
 			then error(loc, ["type mismatch in parray"])
@@ -389,11 +388,11 @@ structure ChkExp :> sig
 		  (AST.PArrayExp(es', ty), Basis.parrayTy ty)
 	      end
 	    | PT.PCompExp (e, pbs, eo) => let
-		val (pes, env') = chkPBinds (loc, depth, env, pbs)
-		val (e', resTy) = chkExp (loc, depth, env', e)
+		val pes = chkPBinds (loc, depth, pbs)
+		val (e', resTy) = chkExp (loc, depth, e)
 		val eo' = (case eo
 			 of (SOME exp) => let
-			      val (exp', ty) = chkExp (loc, depth, env', exp)
+			      val (exp', ty) = chkExp (loc, depth, exp)
 			      in
 				if not(U.unify (ty, Basis.boolTy))
 				  then error (loc, ["type mismatch in parray comprehension 'where' clause"])
@@ -406,7 +405,7 @@ structure ChkExp :> sig
 		  (AST.PCompExp (e', pes, eo'), Basis.parrayTy resTy)
 		end
 	    | PT.SpawnExp e => let
-		val (e', ty) = chkExp (loc, depth, env, e)
+		val (e', ty) = chkExp (loc, depth, e)
 		in
 		  if not(U.unify (ty, Basis.unitTy))
 		    then error(loc, ["type mismatch in spawn"])
@@ -414,9 +413,9 @@ structure ChkExp :> sig
 		  (AST.SpawnExp e', Basis.threadIdTy)
 		end
 	    | PT.SeqExp es => let
-		fun chk [e] = chkExp(loc, depth, env, e)
+		fun chk [e] = chkExp(loc, depth, e)
 		  | chk (e::r) = let
-		      val (e', _) = chkExp (loc, depth, env, e)
+		      val (e', _) = chkExp (loc, depth, e)
 		      val (e'', ty) = chk r
 		      in
 			(AST.SeqExp(e', e''), ty)
@@ -451,7 +450,7 @@ structure ChkExp :> sig
 		  (* end case *))
 	    | PT.ConstraintExp(e, ty) => let
 		val constraintTy = ChkTy.checkTy (!errStrm) (loc, ty, Env.TyVarMap.empty)
-		val (e', ty') = chkExp (loc, depth, env, e)
+		val (e', ty') = chkExp (loc, depth, e)
 		in
 		   if not(U.unify(ty', constraintTy))
 		     then error(loc, ["type mismatch in constraint pattern"])
@@ -460,11 +459,11 @@ structure ChkExp :> sig
 		end
 	  (* end case *))
 
-    and chkMatch (loc, depth, env, argTy, resTy, match) = (case match
-	   of PT.MarkMatch{span, tree} => chkMatch(span, depth, env, argTy, resTy, tree)
+    and chkMatch (loc, depth, argTy, resTy, match) = (case match
+	   of PT.MarkMatch{span, tree} => chkMatch(span, depth, argTy, resTy, tree)
 	    | PT.Match(pat, exp) => let
-		val (pat', env', argTy') = chkPat(loc, depth, env, pat)
-		val (exp', resTy') = chkExp(loc, depth, env', exp)
+		val (pat', argTy') = chkPat(loc, depth, pat)
+		val (exp', resTy') = chkExp(loc, depth, exp)
 		in
 		  if not(U.unify(argTy, argTy'))
 		    then error(loc, ["type mismatch in case pattern"])
@@ -476,17 +475,17 @@ structure ChkExp :> sig
 		end
 	  (* end case *))
 
-    and chkPMatch (loc, depth, env, argTys, resTy, pmatch) = (case pmatch
-          of PT.MarkPMatch{span, tree} => chkPMatch(span, depth, env, argTys, resTy, tree)
+    and chkPMatch (loc, depth, argTys, resTy, pmatch) = (case pmatch
+          of PT.MarkPMatch{span, tree} => chkPMatch(span, depth, argTys, resTy, tree)
 	   | PT.PMatch (ps, e) => let
-	       fun chkPPats ([], ps', env, argTys) = (List.rev ps', env, List.rev argTys)
-		 | chkPPats (p::ps, ps', env, argTys) = let
-                     val (p', env', t') = chkPPat(loc, depth, env, p)
+	       fun chkPPats ([], ps', argTys) = (List.rev ps', List.rev argTys)
+		 | chkPPats (p::ps, ps', argTys) = let
+                     val (p', t') = chkPPat(loc, depth, p)
                      in
-                       chkPPats(ps, p'::ps', env', t'::argTys)
+                       chkPPats(ps, p'::ps', t'::argTys)
 		     end
-               val (ps', env', argTys') = chkPPats(ps, [], env, [])
-               val (e', resTy') = chkExp(loc, depth, env', e)
+               val (ps', argTys') = chkPPats(ps, [], [])
+               val (e', resTy') = chkExp(loc, depth, e)
                fun u (argTy, argTy') = if not(U.unify(argTy, argTy'))
                                          then error(loc, ["type mismatch in pcase pattern"])
                                          else ();
@@ -498,7 +497,7 @@ structure ChkExp :> sig
                  AST.PMatch (ps', e')
                end
 	   | PT.Otherwise e => let
-               val (e', resTy') = chkExp(loc, depth, env, e)
+               val (e', resTy') = chkExp(loc, depth, e)
                in
                  if not(U.unify(resTy, resTy'))
                    then error(loc, ["type mismatch in pcase"])
@@ -507,14 +506,14 @@ structure ChkExp :> sig
                end
          (* end case *))
 
-    and chkPBinds (loc, depth, env, pbs) = (case pbs
-	   of [] => ([], env)
+    and chkPBinds (loc, depth, pbs) = (case pbs
+	   of [] => []
 	    | pb::pbs => 		  raise Fail "FIXME: union looks wrong"
 (*let
-		val (pe, env1 as Env.ModEnv{varEnv=ve1, ...}) = chkPBind (loc, depth, env, pb)
-		val (pes, env2  as Env.ModEnv{varEnv=ve2, ...}) = chkPBinds (loc, depth, env, pbs)
+		val (pe, env1 as Env.ModEnv{varEnv=ve1, ...}) = chkPBind (loc, depth, pb)
+		val (pes, env2  as Env.ModEnv{varEnv=ve2, ...}) = chkPBinds (loc, depth, pbs)
 (* FIXME: the following code doesn't work when "pb" contains a shadowing definition *)
-		val newve1 = List.filter (fn x => not (Env.inDomainVar (env, x))) (AtomMap.listKeys ve1)
+		val newve1 = List.filter (fn x => not (Env.inDomainVar (x))) (AtomMap.listKeys ve1)
 		in
 		  if List.exists (fn x => Env.inDomainVar(env2, x)) newve1
 		    then error (loc, ["conflicting pattern bindings in parray comprehension"])
@@ -524,38 +523,38 @@ structure ChkExp :> sig
 *)
 	  (* end case *))
 
-    and chkPBind (loc, depth, env, pb) = (case pb
-	   of PT.MarkPBind{span, tree} => chkPBind(span, depth, env, tree)
+    and chkPBind (loc, depth, pb) = (case pb
+	   of PT.MarkPBind{span, tree} => chkPBind(span, depth, tree)
 	    | PT.PBind (pat, exp) => let
-		val (exp', resTy) = chkExp(loc, depth, env, exp)
-		val (pat', env', resTy') = chkPat (loc, depth, env, pat)
+		val (exp', resTy) = chkExp(loc, depth, exp)
+		val (pat', resTy') = chkPat (loc, depth, pat)
 		in
 		 if not(U.unify(resTy, Basis.parrayTy resTy'))
 		   then error(loc, ["type mismatch in pattern binding"])
 		   else ();
-		 ((pat', exp'), env')
+		 (pat', exp')
 		end
 	(* end case *))
 
-    and chkPPat (loc, depth, env, p) : (AST.ppat * Env.env * AST.ty) = (case p
-          of PT.MarkPPat{span, tree} => chkPPat(span, depth, env, tree)
+    and chkPPat (loc, depth, p) : (AST.ppat * AST.ty) = (case p
+          of PT.MarkPPat{span, tree} => chkPPat(span, depth, tree)
 	   | PT.NDWildPat => let
                val ty = AST.MetaTy(MetaVar.new depth)
                in
-                 (AST.NDWildPat ty, env, ty)
+                 (AST.NDWildPat ty, ty)
 	       end
 	   | PT.HandlePat p => raise Fail "todo: chkPPat HandlePat" (* FIXME *)
 	   | PT.Pat p => let
-               val (p', env', ty') = chkPat (loc, depth, env, p)
+               val (p', ty') = chkPat (loc, depth, p)
                in
-                 (AST.Pat p', env', ty')
+                 (AST.Pat p', ty')
                end            
         (* end case *))
  
-    and chkPat (loc, depth, env, pat) = (case pat
-	   of PT.MarkPat{span, tree} => chkPat(span, depth, env, tree)
+    and chkPat (loc, depth, pat) = (case pat
+	   of PT.MarkPat{span, tree} => chkPat(span, depth, tree)
 	    | PT.ConPat(conid, pat) => let
-		val (pat, env', ty) = chkPat (loc, depth, env, pat)
+		val (pat, ty) = chkPat (loc, depth, pat)
 		in
 		  case Env.getValBind conid
 		   of SOME(Env.Con dc) => (case TU.instantiate (depth, DataCon.typeOf dc)
@@ -563,87 +562,87 @@ structure ChkExp :> sig
 			      if not(U.unify(argTy, ty))
 				then error(loc, ["type mismatch in constructor pattern"])
 				else ();
-			      (AST.ConPat(dc, tyArgs, pat), env', resTy))
+			      (AST.ConPat(dc, tyArgs, pat), resTy))
 			  | _ => (
 			      error(loc, [
 				  "application of nullary constructor ",
 				  idToString conid
 				]);
-			      (bogusPat, env', bogusTy))
+			      (bogusPat, bogusTy))
 			(* end case *))
 		    | _ => (
 			error(loc, ["unbound data constructor ", idToString conid]);
-			(bogusPat, env', bogusTy))
+			(bogusPat, bogusTy))
 		  (* end case *)
 		end
-	    | PT.BinaryPat(p1, conid, p2) => chkPat (loc, depth, env, PT.ConPat (conid, PT.TuplePat [p1, p2]))
+	    | PT.BinaryPat(p1, conid, p2) => chkPat (loc, depth, PT.ConPat (conid, PT.TuplePat [p1, p2]))
 	    | PT.TuplePat pats => let
-		val (pats, env', ty) = chkPats (loc, depth, env, pats)
+		val (pats, ty) = chkPats (loc, depth, pats)
 		in
-		  (AST.TuplePat pats, env', ty)
+		  (AST.TuplePat pats, ty)
 		end
 	    | PT.ConstPat const => let
 		val (const', ty) = chkLit (loc, const)
 		in
-		  (AST.ConstPat const', env, ty)
+		  (AST.ConstPat const', ty)
 		end
 	    | PT.WildPat => let
 		val ty = AST.MetaTy(MetaVar.new depth)
 		in
-		  (AST.WildPat ty, env, ty)
+		  (AST.WildPat ty, ty)
 		end
 	    | PT.IdPat x => (case Env.getValBind x
 		 of SOME(Env.Con dc) => (case DataCon.argTypeOf dc
 		       of NONE => let
 			    val (tyArgs, ty) = TU.instantiate (depth, DataCon.typeOf dc)
 			    in
-			      (AST.ConstPat(AST.DConst(dc, tyArgs)), env, ty)
+			      (AST.ConstPat(AST.DConst(dc, tyArgs)), ty)
 			    end
 			| _ => (
 			    error(loc, [
 				"data constructor ", PPT.Var.nameOf x, " in variable pattern"
 			      ]);
-			    (bogusPat, env, bogusTy))
+			    (bogusPat, bogusTy))
 		      (* end case *))
 		  | _ => let
 		      val ty = AST.MetaTy(MetaVar.new depth)
 		      val x' = Var.new(PPT.Var.nameOf x, ty)
 		      in
 			Env.bindVal(x, Env.Var x');
-			(AST.VarPat x', env, ty)
+			(AST.VarPat x', ty)
 		      end
 		(* end case *))
 	    | PT.ConstraintPat(p, ty) => let
 		val constraintTy = ChkTy.checkTy (!errStrm) (loc, ty, Env.TyVarMap.empty)
-		val (p', env, ty') = chkPat (loc, depth, env, p)
+		val (p', ty') = chkPat (loc, depth, p)
 		in
 		   if not(U.unify(ty', constraintTy))
 		     then error(loc, ["type mismatch in constraint pattern"])
 		     else ();
-		  (p', env, ty')
+		  (p', ty')
 		end
 	  (* end case *))
 
-    and chkPats (loc, depth, env, pats : PT.pat list) = let
-	  fun chk (pat, (env, ps, tys)) = let
-		val (pat', env', ty) = chkPat (loc, depth, env, pat)
+    and chkPats (loc, depth, pats : PT.pat list) = let
+	  fun chk (pat, (ps, tys)) = let
+		val (pat', ty) = chkPat (loc, depth, pat)
 		in
-		  (env', pat'::ps, ty::tys)
+		  (pat'::ps, ty::tys)
 		end
-	  val (env', pats', tys) = List.foldr chk (env, [], []) pats
+	  val (pats', tys) = List.foldr chk ([], []) pats
 	  in
 	    case tys
-	     of [ty] => (pats', env', ty)
-	      | _ => (pats', env', TU.tupleTy tys)
+	     of [ty] => (pats', ty)
+	      | _ => (pats', TU.tupleTy tys)
 	    (* end case *)
 	  end
 
-    fun checkExp err (loc, exp, env) = chkExp(loc, 0, env, exp)
+    fun checkExp err (loc, exp) = chkExp(loc, 0, exp)
 
-    fun checkValDecl err (loc, valDecl, env) = let
+    fun checkValDecl err (loc, valDecl) = let
 	    val _ = errStrm := err
 	    in
-	       chkValDcl(loc, 0, env, valDecl)
+	       chkValDcl(loc, 0, valDecl)
             end
 
   end
