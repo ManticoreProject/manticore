@@ -8,9 +8,10 @@
 
 structure TypeOf : sig
 
-    val exp : AST.exp -> Types.ty
-    val pat : AST.pat -> Types.ty
+    val exp   : AST.exp   -> Types.ty
+    val pat   : AST.pat   -> Types.ty
     val const : AST.const -> Types.ty
+    val ppat  : AST.ppat  -> Types.ty
 
   end = struct
 
@@ -25,6 +26,7 @@ structure TypeOf : sig
       | exp (AST.IfExp(_, _, _, ty)) = ty
       | exp (AST.FunExp(param, _, ty)) = Ty.FunTy(Var.monoTypeOf param, ty)
       | exp (AST.CaseExp(_, _, ty)) = ty
+      | exp (AST.PCaseExp(_, _, ty)) = ty
       | exp (AST.HandleExp (_, _, ty)) = ty
       | exp (AST.RaiseExp (_, ty)) = ty
       | exp (AST.ApplyExp(_, _, ty)) = ty
@@ -38,7 +40,8 @@ structure TypeOf : sig
       | exp (AST.SpawnExp _) = Basis.threadIdTy
       | exp (AST.ConstExp c) = const c
       | exp (AST.VarExp(x, argTys)) = 
-(TU.apply(Var.typeOf x, argTys) handle ex => (print(concat["typeOf(", Var.toString x, ")\n"]); raise ex))
+          (TU.apply(Var.typeOf x, argTys) 
+	   handle ex => (print(concat["typeOf(", Var.toString x, ")\n"]); raise ex))
       | exp (AST.SeqExp(_, e)) = exp e
       | exp (AST.OverloadExp(ref(AST.Instance x))) =
 	(* NOTE: all overload instances are monomorphic *)
@@ -53,5 +56,9 @@ structure TypeOf : sig
       | pat (AST.VarPat x) = monoTy (Var.typeOf x)
       | pat (AST.WildPat ty) = ty
       | pat (AST.ConstPat c) = const c
+
+    and ppat (AST.NDWildPat ty) = ty
+      | ppat (AST.HandlePat (_, ty)) = ty
+      | ppat (AST.Pat p) = pat p
 
   end

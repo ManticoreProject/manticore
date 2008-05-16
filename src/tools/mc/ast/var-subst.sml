@@ -43,7 +43,7 @@ structure VarSubst =
 
     fun var s v = (case VarMap.find (s, v)
 		       of NONE => v
-			| SOME x' => x')
+			| SOME x => x)
 
   (* pat : subst -> A.pat -> A.pat *)
     fun pat s p =
@@ -59,36 +59,43 @@ structure VarSubst =
 	end
 
   (* expWalk : (A.var * A.ty list -> A.exp) -> subst -> A.exp -> A.exp *)
-    fun expWalk f s e =
-	let fun exp (A.LetExp (b, e)) = A.LetExp (binding s b, exp e)
-	      | exp (A.IfExp (e1, e2, e3, t)) =
-		  A.IfExp (exp e1, exp e2, exp e3, t)
-	      | exp (A.CaseExp (e, ms, t)) = A.CaseExp (exp e, map match ms, t)
-	      | exp (A.HandleExp (e, ms, t)) = A.HandleExp (exp e, map match ms, t)
-	      | exp (A.RaiseExp (e, t)) = A.RaiseExp (exp e, t)
-	      | exp (A.FunExp (x, e, t)) = A.FunExp (x, exp e, t)
-	      | exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, t)
-	      | exp (m as A.VarArityOpExp _) = m
-	      | exp (A.TupleExp es) = A.TupleExp (map exp es)
-	      | exp (A.RangeExp (e1, e2, oe3, t)) =
-		  A.RangeExp (exp e1, exp e2, Option.map exp oe3, t)
-	      | exp (A.PTupleExp es) = A.PTupleExp (map exp es)
-	      | exp (A.PArrayExp (es, t)) = A.PArrayExp (map exp es, t)
-	      | exp (A.PCompExp (e, pes, opred)) = 
-		  A.PCompExp (exp e, 
-			      map (fn (p,e) => (pat s p, exp e)) pes,
-			      Option.map exp opred)
-	      | exp (A.PChoiceExp (es, t)) = A.PChoiceExp (map exp es, t)
-	      | exp (A.SpawnExp e) = A.SpawnExp (exp e) 
-	      | exp (k as A.ConstExp _) = k
-	      | exp (v as A.VarExp (x, ts)) = f (x, ts)
-	      | exp (A.SeqExp (e1, e2)) = A.SeqExp (exp e1, exp e2)
-	      | exp (ov as A.OverloadExp _) = ov
-	    and match (A.PatMatch (p, e)) = A.PatMatch (pat s p, exp e)
-	      | match (A.CondMatch (p, cond, e)) = A.CondMatch (pat s p, exp cond, exp e)
-	in
-	    exp e
-	end
+    fun expWalk f s e = let
+      val pat' = pat s
+      fun exp (A.LetExp (b, e)) = A.LetExp (binding s b, exp e)
+	| exp (A.IfExp (e1, e2, e3, t)) = A.IfExp (exp e1, exp e2, exp e3, t)
+	| exp (A.CaseExp (e, ms, t)) = A.CaseExp (exp e, map match ms, t)
+	| exp (A.PCaseExp (es, pms, t)) = A.PCaseExp (map exp es, map pmatch pms, t)
+	| exp (A.HandleExp (e, ms, t)) = A.HandleExp (exp e, map match ms, t)
+	| exp (A.RaiseExp (e, t)) = A.RaiseExp (exp e, t)
+	| exp (A.FunExp (x, e, t)) = A.FunExp (x, exp e, t)
+	| exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, t)
+	| exp (m as A.VarArityOpExp _) = m
+	| exp (A.TupleExp es) = A.TupleExp (map exp es)
+	| exp (A.RangeExp (e1, e2, oe3, t)) = A.RangeExp (exp e1, exp e2, Option.map exp oe3, t)
+	| exp (A.PTupleExp es) = A.PTupleExp (map exp es)
+	| exp (A.PArrayExp (es, t)) = A.PArrayExp (map exp es, t)
+	| exp (A.PCompExp (e, pes, opred)) = let
+	    val pes' = map (fn (p,e) => (pat' p, exp e)) pes
+	    val opred' = Option.map exp opred
+            in
+              A.PCompExp (exp e, pes', opred')
+	    end
+	| exp (A.PChoiceExp (es, t)) = A.PChoiceExp (map exp es, t)
+	| exp (A.SpawnExp e) = A.SpawnExp (exp e) 
+	| exp (k as A.ConstExp _) = k
+	| exp (v as A.VarExp (x, ts)) = f (x, ts)
+	| exp (A.SeqExp (e1, e2)) = A.SeqExp (exp e1, exp e2)
+	| exp (ov as A.OverloadExp _) = ov
+      and match (A.PatMatch (p, e)) = A.PatMatch (pat' p, exp e)
+	| match (A.CondMatch (p, cond, e)) = A.CondMatch (pat' p, exp cond, exp e)
+      and pmatch (A.PMatch (pps, e)) = A.PMatch (map ppat pps, exp e)
+	| pmatch (A.Otherwise e) = A.Otherwise (exp e)
+      and ppat (A.NDWildPat t) = A.NDWildPat t
+	| ppat (A.HandlePat (p, t)) = A.HandlePat (pat' p, t)
+	| ppat (A.Pat p) = A.Pat (pat' p)
+      in
+        exp e
+      end
 
     and binding s (A.ValBind (p, e)) = A.ValBind (pat s p, exp s e)
       | binding s (A.PValBind (p, e)) = A.PValBind (pat s p, exp s e)
@@ -107,7 +114,6 @@ structure VarSubst =
 	    expWalk f s
 	end
 
-
     and module s m =
 	(case m
 	  of A.M_Body (info, tds) => A.M_Body (info, topDecs s tds)
@@ -122,8 +128,6 @@ structure VarSubst =
 	   | A.TD_DCon dc => A.TD_DCon dc
 	   | A.TD_Binding b => A.TD_Binding (binding s b)
 	(* end case *))
-
-	
 
     fun exp' s e = let
         fun f (x, ts) = (case VarMap.find (s, x)

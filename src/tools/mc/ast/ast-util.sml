@@ -65,7 +65,11 @@ structure ASTUtil : sig
 	  end
       | mkFunWithParams (f, [x], e) = AST.FB(f, x, e)
       | mkFunWithParams (f, params, e) = let
-	  val AST.TyScheme(_, AST.FunTy(argTy, resTy)) = Var.typeOf f
+	  val (argTy, resTy) =
+	    (case Var.typeOf f
+	      of AST.TyScheme(_, AST.FunTy(a,r)) => (a,r)
+	       | _ => raise Fail "not a function" (* shouldn't happen *)
+	     (* end case *))
 	  val param = Var.new ("param", argTy)
 	  val pat = AST.TuplePat(List.map AST.VarPat params)
 	  in
@@ -80,7 +84,11 @@ structure ASTUtil : sig
 	    AST.FB(f, param, e)
 	  end
       | mkFunWithPat (f, pat, e) = let
-	  val AST.TyScheme(_, AST.FunTy(argTy, resTy)) = Var.typeOf f
+	  val (argTy, resTy) =
+	    (case Var.typeOf f
+	      of AST.TyScheme(_, AST.FunTy(a,r)) => (a,r)
+	       | _ => raise Fail "not a function" (* shouldn't happen *)
+	     (* end case *))
 	  val param = Var.new ("param", argTy)
 	  in
 	    AST.FB(f, param, AST.CaseExp(AST.VarExp(param, []), [AST.PatMatch(pat, e)], resTy))
@@ -127,6 +135,7 @@ structure ASTUtil : sig
 	      | exp (A.IfExp (e1, e2, e3, t)) =
 		  A.IfExp (exp e1, exp e2, exp e3, t)
 	      | exp (A.CaseExp (e, ms, t)) = A.CaseExp (exp e, map match ms, t)
+	      | exp (A.PCaseExp (es, pms, t)) = A.PCaseExp (map exp es, map pmatch pms, t)
 	      | exp (A.HandleExp (e, ms, t)) = A.HandleExp (exp e, map match ms, t)
 	      | exp (A.RaiseExp (e, t)) = A.RaiseExp (exp e, t)
 	      | exp (A.FunExp (x, e, t)) = A.FunExp (x, exp e, t)
@@ -155,6 +164,11 @@ structure ASTUtil : sig
 	    and binding (A.ValBind (p, e)) = A.ValBind (copyPat s p, exp e)
 	      | binding (A.PValBind (p, e)) = A.PValBind (copyPat s p, exp e)
 	      | binding _ = raise Fail "todo"
+	    and pmatch (A.PMatch (ps, e)) = A.PMatch (map ppat ps, exp e)
+	      | pmatch (A.Otherwise e) = A.Otherwise (exp e)
+	    and ppat (w as A.NDWildPat _) = w
+	      | ppat (A.HandlePat (p, t)) = A.HandlePat (copyPat s p, t)
+	      | ppat (A.Pat p) = A.Pat (copyPat s p)
 	in
 	    exp e
 	end

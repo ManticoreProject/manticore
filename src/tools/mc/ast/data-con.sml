@@ -61,6 +61,7 @@ structure DataCon : sig
 	  in
 	    add
 	  end
+      | new _ = raise Fail "AbsTyc"
 
     fun same (DCon{owner=o1, id=a, ...}, DCon{owner=o2, id=b, ...}) =
 	  (a = b) andalso TyCon.same(o1, o2)

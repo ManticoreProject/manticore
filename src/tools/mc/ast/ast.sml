@@ -100,7 +100,7 @@ structure AST =
 
     and ppat
       = NDWildPat of ty
-      | HandlePat of pat
+      | HandlePat of pat * ty (* handle pats, like wild pats, need to be typed *)
       | Pat of pat 
 
     and const

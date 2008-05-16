@@ -29,10 +29,9 @@ structure Exn : sig
   (* is this dcon an exception constructor? *)
     fun isExn dc = TyCon.same (DataCon.ownerOf dc, exnTyc)
 
-    fun listExceptions () = let
-	  val Types.Tyc{def=Types.DataTyc{cons, ...}, ...} = exnTyc
-	  in
-	    !cons
-	  end
+    fun listExceptions () =
+      (case exnTyc
+	of Types.Tyc{def=Types.DataTyc{cons, ...}, ...} => !cons
+	 | _ => raise Fail "AbsTyc")
 
   end

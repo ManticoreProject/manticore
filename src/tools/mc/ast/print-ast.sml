@@ -129,6 +129,19 @@ structure PrintAST : sig
 	       pr "(* end case *))";
 	     closeBox ();
 	  closeBox ())
+      | exp (A.PCaseExp (es, pms, t)) = (
+	  openVBox (rel 2);
+	  pr "(pcase ";
+	  appwith (fn () => pr " & ") exp es;
+	  openVBox (abs 1);
+	    ln ();
+	    case pms
+	     of m::ms => (ppm " of" m; app (ppm "  |") ms)
+	      | nil => raise Fail "pcase without any branches"
+	    (* end case *);
+            pr "(* end pcase *))";
+            closeBox ();
+	  closeBox ())
       | exp (A.HandleExp(e, matches, ty)) = (
 	  openHOVBox (rel 2);
 	    openHBox ();
@@ -254,6 +267,30 @@ structure PrintAST : sig
 	    exp e;
 	    ln ();
 	  closeBox ())
+
+  (* ppm : string -> A.pmatch -> unit *)
+    and ppm s (A.PMatch (pps, e)) = (
+          openVBox (rel 0);
+            appwith (fn () => pr " & ") ppat pps;
+            pr " =>";
+            ln ();
+            exp e;
+            ln ();
+          closeBox ())
+      | ppm s (A.Otherwise e) = (
+          openVBox (rel 0);
+            pr "otherwise =>";
+            ln ();
+            exp e;
+            ln ();
+          closeBox ())
+
+    and ppat (A.NDWildPat _) = pr "?"
+      | ppat (A.HandlePat (p, _)) = (
+          pr "handle(";
+          pat p;
+          pr ")")
+      | ppat (A.Pat p) = pat p
 
   (* pbind : A.pat * A.exp -> unit *)
     and pbind (p, e) =
