@@ -22,6 +22,7 @@ structure Basis : sig
     val listTyc		: Types.tycon
     val optionTyc	: Types.tycon
     val parrayTyc	: Types.tycon
+    val trapTyc         : Types.tycon
     val chanTyc		: Types.tycon
     val ivarTyc		: Types.tycon
     val mvarTyc		: Types.tycon
@@ -54,6 +55,8 @@ structure Basis : sig
     val listCons	: AST.dcon
     val optionNONE	: AST.dcon
     val optionSOME	: AST.dcon
+    val trapVal         : AST.dcon
+    val trapExn         : AST.dcon
 
   (* exceptions *)
     val exnBind		: AST.dcon
@@ -303,6 +306,16 @@ structure Basis : sig
     val stringTy = AST.ConTy([], stringTyc)
     fun listTy ty = AST.ConTy([ty], listTyc)
     fun optionTy ty = AST.ConTy([ty], optionTyc)
+
+  (* traps *)
+    local 
+	val tv = TyVar.new(Atom.atom "'a")
+	val tv' = AST.VarTy tv
+    in
+    val trapTyc = TyCon.newDataTyc (N.trap, [tv])
+    val trapVal = DataCon.new trapTyc (N.trapVal, SOME(tv'))
+    val trapExn = DataCon.new trapTyc (N.trapExn, SOME(tv'))
+    end
 
   (* exceptions *)
     val exnBind = Exn.new (N.exnBind, NONE)

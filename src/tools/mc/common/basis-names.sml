@@ -28,6 +28,7 @@ structure BasisNames =
     val list =		Atom.atom "list"
     val option =	Atom.atom "option"
     val parray =        Atom.atom "parray"
+    val trap =          Atom.atom "trap"
     val chan =		Atom.atom "chan"
     val ivar =		Atom.atom "ivar"
     val mvar =		Atom.atom "mvar"
@@ -59,6 +60,8 @@ structure BasisNames =
     val listNil =	Atom.atom "nil"
     val optionNONE =	Atom.atom "NONE"
     val optionSOME =	Atom.atom "SOME"
+    val trapVal =       Atom.atom "Val"
+    val trapExn =       Atom.atom "Exn"
 
   (* pre-defined exception constructors *)
     val exnBind =	Atom.atom "Bind"

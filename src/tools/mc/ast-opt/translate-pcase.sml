@@ -20,6 +20,7 @@ structure TranslatePCase (* : sig
     structure U = UnseenBasis
 
     structure CompletionBitstring : sig
+
       type t
       val eq  : t * t -> bool
       val sub : t * t -> bool
@@ -27,14 +28,20 @@ structure TranslatePCase (* : sig
       val toString : t -> string
       val fromPPats : A.ppat list -> t
       val allOnes : int -> t
+
     end = struct
+
       datatype bit = Zero | One
+
       type t = bit list
+
       fun bitEq (b1:bit, b2:bit) = (b1=b2)
+
       fun eq (c1, c2) = 
             if (List.length c1) <> (List.length c2) then
               raise Fail "UnequalLengths"
 	    else ListPair.all bitEq (c1, c2)
+
       (* c1 < c2 if everywhere c1 is 1, c2 is 1. *)
       (* If one thinks of c1 and c2 as bit-vector sets, this is the subset relationship. *)
       fun sub (c1, c2) = let
@@ -47,13 +54,19 @@ structure TranslatePCase (* : sig
 	    raise Fail "UnequalLengths"
 	  else s (c1, c2)
         end
+
       fun toString cb = concat (map (fn Zero => "0" | One => "1") cb)
+
       fun compare (c1, c2) = 
         if (length c1) <> (length c2) then
           raise Fail "Unequal Lengths"
-	else String.compare (toString c1, toString c2)
+	else 
+          String.compare (toString c1, toString c2)
+
       fun fromPPats ps = map (fn A.NDWildPat _ => Zero | _ => One) ps
+
       fun allOnes n = List.tabulate (n, fn _ => One) 
+
     end
 
     structure CB = CompletionBitstring
@@ -67,17 +80,20 @@ structure TranslatePCase (* : sig
 
     type matchmap = (A.match list) CBM.map (* maps of cbits to matches (case arms) *)
 
+    (* A pcase looks like this: *)
     (* PCaseExp of (exp list * pmatch list * ty)       (* ty is result type *) *)   
+
     fun tr trExp (es, pms, t) = let
 
       val nExps = List.length es
 
-      val esTy = A.TupleTy (map TypeOf.exp es)
+      val esTupTy = A.TupleTy (map TypeOf.exp es)
 
-      (* FIXME *)
-      (* I need to make the plumbing for the trap datatype. *)
-      fun mkValPat p = raise Fail "todo: mkValPat"
-      fun mkExnPat p = raise Fail "todo: mkExnPat"
+      (* Given a pattern p : tau, produce the pattern Val(p) : tau trap. *)
+      fun mkValPat p = A.ConPat (Basis.trapVal, [TypeOf.pat p], p)
+
+      (* Given a pattern p and type tau, produce the pattern Val(p) : tau trap. *)
+      fun mkExnPat (p, ty) = A.ConPat (Basis.trapExn, [ty], p)
 
       (* xfromPPats : ppat list -> pat *)
       (* A function to transform ppat lists to tuple pats for use in case exps.*)
@@ -88,7 +104,7 @@ structure TranslatePCase (* : sig
       fun xformPPats ps = let
 	    fun x ([], acc) = rev acc
 	      | x (A.NDWildPat ty :: t, acc) = x (t, A.WildPat ty :: acc)
-	      | x (A.HandlePat p :: t, acc) = x (t, mkExnPat p :: acc)
+	      | x (A.HandlePat (p, ty) :: t, acc) = x (t, mkExnPat (p, ty) :: acc)
 	      | x (A.Pat p :: t, acc) = x (t, mkValPat p :: acc)
             in
 	      A.TuplePat (x (ps, []))
@@ -108,7 +124,7 @@ structure TranslatePCase (* : sig
 
       (* build a map of each completion bitstring to its possible matches *)
       fun buildMap ([A.Otherwise e], m) : matchmap = let
-	    val match = A.PatMatch (A.WildPat esTy, e)
+	    val match = A.PatMatch (A.WildPat esTupTy, e)
             in
 	      mergeIntoMap (m, CB.allOnes nExps, match, true)
             end
