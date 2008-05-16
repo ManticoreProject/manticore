@@ -345,6 +345,8 @@ structure MatchCompile : sig
 		  if MatchUtil.areSimpleMatches mc
 		    then AST.CaseExp(rewrite' e, List.map rewriteSimplePatMatch mc, ty)
 		    else AST.CaseExp(rewrite' e, rewriteMatch(loc, env, TypeOf.exp e, mc, ty), ty)
+	      | AST.PCaseExp(es, pms, ty) => (* should have been compiled away *)
+                  raise Fail "unexpected PCaseExp"
 	      | AST.HandleExp(e, mc, ty) =>
 		  if MatchUtil.areSimpleMatches mc
 		    then AST.HandleExp(rewrite' e, List.map rewriteSimplePatMatch mc, ty)

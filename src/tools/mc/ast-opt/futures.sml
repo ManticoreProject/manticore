@@ -30,9 +30,7 @@ structure Futures : sig
 
     val isFutureCand : AST.exp -> bool
 
-  end =
-
-  struct
+  end = struct
 
     structure A = AST
     structure B = Basis
@@ -187,6 +185,7 @@ structure Futures : sig
 	  let fun exp (A.LetExp (b, e)) = binding b orelse exp e
 		| exp (A.IfExp (e1, e2, e3, _)) = List.exists exp [e1, e2, e3]
 		| exp (A.CaseExp (e, ms, _)) = exp e orelse List.exists match ms
+		| exp (A.PCaseExp (es, pms, _)) = exp e orelse List.exists pmatch ms
 		| exp (A.HandleExp (e, ms, _)) = exp e orelse List.exists match ms
 		| exp (A.RaiseExp (e, _)) = exp e
 		| exp (A.FunExp (x, e, _)) = true
@@ -213,6 +212,8 @@ structure Futures : sig
 	      and lambda (A.FB (_, _, e)) = exp e
 	      and match (A.PatMatch (_, e)) = exp e
 		| match (A.CondMatch (_, e1, e2)) = exp e1 orelse exp e2
+	      and pmatch (A.PMatch (_, e)) = exp e
+		| pmatch (A.Otherwise e) = exp e
 	  in
 	      exp e
 	  end
