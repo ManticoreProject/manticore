@@ -21,7 +21,8 @@ structure TranslatePCase (* : sig
 
     structure CompletionBitstring : sig
 
-      type t
+      datatype bit = Zero | One
+      type t = bit list
       val eq  : t * t -> bool
       val sub : t * t -> bool
       val compare : t * t -> order
@@ -83,11 +84,13 @@ structure TranslatePCase (* : sig
     (* A pcase looks like this: *)
     (* PCaseExp of (exp list * pmatch list * ty)       (* ty is result type *) *)   
 
-    fun tr trExp (es, pms, t) = let
+    fun tr trExp (es, pms, pcaseResultTy) = let
 
       val nExps = List.length es
 
-      val esTupTy = A.TupleTy (map TypeOf.exp es)
+      val eTys = map TypeOf.exp es
+
+      val esTupTy = A.TupleTy eTys
 
       (* Given a pattern p : tau, produce the pattern Val(p) : tau trap. *)
       fun mkValPat p = A.ConPat (Basis.trapVal, [TypeOf.pat p], p)
@@ -128,7 +131,8 @@ structure TranslatePCase (* : sig
             in
 	      mergeIntoMap (m, CB.allOnes nExps, match, true)
             end
-	| buildMap ([A.PMatch _], _) = raise Fail "ill-formed pcase: pmatch is last"
+	| buildMap ([A.PMatch _], _) = 
+            raise Fail "ill-formed pcase: pmatch is last"
 	| buildMap (A.PMatch (ps, e) :: t, m) = let
 	    val key = CB.fromPPats ps
 	    val match = A.PatMatch (xformPPats ps, e)
@@ -136,20 +140,37 @@ structure TranslatePCase (* : sig
 	    in 
 	      buildMap (t, m')
 	    end
-	| buildMap (A.Otherwise _ :: _, _) = raise Fail "ill-formed pcase: otherwise is not last"
-	| buildMap ([], _) = raise Fail "bug: shouldn't empty out pcase (it might have been empty to start with)"
+	| buildMap (A.Otherwise _ :: _, _) = 
+            raise Fail "ill-formed pcase: otherwise is not last"
+	| buildMap ([], _) = raise Fail "bug" (* shouldn't reach this, ever *)
+
+      (* trapTy : AST.ty -> AST.ty *)
+      fun trapTy t = AST.ConTy ([t], Basis.trapTyc)
+
+      (* tup of traps for a types corres. to Ones -> pcaseResultTy *)
+      fun mkTy cb = let
+        fun b ([], [], tys) = rev tys
+	  | b (CB.Zero::t1, _::t2, tys) = b (t1, t2, tys)
+	  | b (CB.One::t1, t::t2, tys) = b (t1, t2, trapTy t :: tys)
+	  | b _ = raise Fail "length of completion bitstring doesn't match # of expressions in pcase"
+        in
+          AST.TupleTy (b (cb, eTys, []))
+        end 
 
       (* A function to build a batch of functions (a state machine in another form) *)
       (* given a map of completion bitstrings to match lists. *)
       fun buildFuns (m : matchmap) : A.lambda list = let
 	    val kmss = CBM.listItemsi m
 	    fun mkGo matches = raise Fail "todo" (* make go() out of the top-level matches *)
-	    fun b ([], matches, lams) = (mkGo matches) :: lams
-	      | b ((cb,ms)::t, matches, lams) = let
+	    fun b ([], matches, lams, fnames) = (mkGo matches :: lams, fnames)
+	      | b ((cb,ms)::t, matches, lams, fnames) = let
+                  val name = "state" ^ CB.toString cb
+		  val ty = AST.FunTy (mkTy cb, pcaseResultTy)
+		  val nameV = Var.new (name, ty)
 		  val m = raise Fail "todo" (* make a match out of the cb *)
 		  val f = raise Fail "todo" (* make a lam out of the ms *)
                   in
-		    b (t, m::matches, f::lams)
+		    b (t, m::matches, f::lams, name::fnames)
                   end
             in
 	      raise Fail "todo"

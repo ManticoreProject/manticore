@@ -185,7 +185,7 @@ structure Futures : sig
 	  let fun exp (A.LetExp (b, e)) = binding b orelse exp e
 		| exp (A.IfExp (e1, e2, e3, _)) = List.exists exp [e1, e2, e3]
 		| exp (A.CaseExp (e, ms, _)) = exp e orelse List.exists match ms
-		| exp (A.PCaseExp (es, pms, _)) = exp e orelse List.exists pmatch ms
+		| exp (A.PCaseExp (es, pms, _)) = exp e orelse List.exists pmatch pms
 		| exp (A.HandleExp (e, ms, _)) = exp e orelse List.exists match ms
 		| exp (A.RaiseExp (e, _)) = exp e
 		| exp (A.FunExp (x, e, _)) = true
