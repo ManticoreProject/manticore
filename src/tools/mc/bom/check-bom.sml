@@ -176,6 +176,7 @@ structure CheckBOM : sig
 		      chkE(cxt, body))
 		  | B.E_If(x, e1, e2) => (
 		      chkVar(x, "If"); chkE(cxt, e1); chkE(cxt, e2))
+(* FIXME: need to check that the type of x covers the types of the cases! *)
 		  | B.E_Case(x, cases, dflt) => let
 		      fun chk' (pat, e) = (chkPat pat; chkE(cxt, e))
 		      in
