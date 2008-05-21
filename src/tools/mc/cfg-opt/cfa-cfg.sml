@@ -372,15 +372,18 @@ structure CFACFG : sig
                   | doExp (CFG.E_VPStore(_, _, z)) = escape z
                 fun doXfer (CFG.StdApply{f, clos, args, ret, exh}) =
                       doApply (f, 
-                               ("StdFunc", fn CFG.StdFunc _ => true | _ => false),
+                               ("StdApply{f = " ^ (CFG.Var.toString f) ^ ", ...}", 
+                                fn CFG.StdFunc _ => true | _ => false),
                                clos :: args @ [ret, exh])
                   | doXfer (CFG.StdThrow{k, clos, args}) = 
                       doApply (k, 
-                               ("StdCont", fn CFG.StdCont _ => true | _ => false),
+                               ("StdCont{k = " ^ (CFG.Var.toString k) ^ ", ...}", 
+                                fn CFG.StdCont _ => true | _ => false),
                                clos :: args)
                   | doXfer (CFG.Apply{f, clos, args}) = 
                       doApply (f, 
-                               ("KnownFunc", fn CFG.KnownFunc _ => true | _ => false),
+                               ("Apply {f = " ^ (CFG.Var.toString f) ^ ", ...}",
+                                fn CFG.KnownFunc _ => true | _ => false),
                                clos :: args)
                   | doXfer (CFG.Goto jmp) = doJump jmp
                   | doXfer (CFG.If(_, jmp1, jmp2)) = (doJump jmp1; doJump jmp2)
@@ -403,25 +406,28 @@ structure CFACFG : sig
                       (* end case *))
                 and doJump (lab, args) =
                       doLabel (lab,
-                               ("Block", fn CFG.Block _ => true | _ => false),
+                               ("Jump(" ^ (CFG.Label.toString lab) ^ ")", 
+                                fn CFG.Block _ => true | _ => false),
                                args)
                 and doLabel (lab, chk, args) = (case CFGUtil.funcOfLabel lab
                        of SOME func => doFunc (func, chk, args)
                         | _ => raise Fail "xfer to unknown label"
                       (* end case *))
                 and doFunc (f as CFG.FUNC{lab, entry, body, exit}, chk, args) = let
-                      fun err () = raise Fail(concat[
+                      fun debugMsg () = print (concat[
                               "typeError: doFunc(", CFG.Label.toString lab, 
                               ", ", #1 chk, 
                               ", [",
                               String.concatWith "," (List.map CFG.Var.toString args),
                               "]); CFG.paramsOfConv(entry) = ",
-                              String.concatWith "," (List.map CFG.Var.toString (CFG.paramsOfConv entry)) 
+                              String.concatWith "," (List.map CFG.Var.toString (CFG.paramsOfConv entry)),
+                              "\n"
                             ])
-                      val () = if (#2 chk) entry then () else err ()
                       in
-                      (ListPair.appEq addInfo' (CFG.paramsOfConv entry, args))
-                      handle _ => err ()
+                      if (#2 chk) entry
+                         andalso List.length args = List.length (CFG.paramsOfConv entry)
+                         then ListPair.appEq addInfo' (CFG.paramsOfConv entry, args)
+                      else if !debugFlg then debugMsg () else ()
                       end
                 fun doTopFunc (f as CFG.FUNC{lab, entry, body, exit}) = (
                       List.app doExp body;
