@@ -144,10 +144,16 @@ structure TranslatePCase (* : sig
             raise Fail "ill-formed pcase: otherwise is not last"
 	| buildMap ([], _) = raise Fail "bug" (* shouldn't reach this, ever *)
 
+      (* optTy : AST.ty -> AST.ty *)
+      fun optTy t = AST.ConTy ([t], Basis.optionTyc)
+
       (* trapTy : AST.ty -> AST.ty *)
       fun trapTy t = AST.ConTy ([t], Basis.trapTyc)
 
       (* tup of traps for a types corres. to Ones -> pcaseResultTy *)
+      (* e.g., if eTys (defined locally above) is [int, bool, string] *)
+      (*       and cb is 101 then this function yields *)
+      (*       the type (int trap * string trap) *)
       fun mkTy cb = let
         fun b ([], [], tys) = rev tys
 	  | b (CB.Zero::t1, _::t2, tys) = b (t1, t2, tys)
@@ -157,18 +163,52 @@ structure TranslatePCase (* : sig
           AST.TupleTy (b (cb, eTys, []))
         end 
 
+      (* mkMatch : cbits * AST.var -> AST.match * (AST.exp list) *)
+      fun mkMatch (cb, fV) = let
+	fun m ([], [], _, optPats, args) = let
+              val tupPat = AST.TuplePat (List.rev optPats)
+	      val args' = List.rev args
+              val fcall = AST.ApplyExp (AST.VarExp (fV, []), 
+					AST.TupleExp args',
+					pcaseResultTy)
+              in
+	        (AST.PatMatch (tupPat, fcall), args')
+	      end
+	  | m (CB.Zero::bs, t::ts, n, optPats, args) = let
+              val p = AST.ConstPat (AST.DConst (Basis.optionNONE, [trapTy t]))
+              in
+                m (bs, ts, n, p::optPats, args)
+              end
+	  | m (CB.One::bs, t::ts, n, optPats, args) = let
+              val varName = "t" ^ Int.toString n
+	      val argV = Var.new ("t" ^ Int.toString n, trapTy t)
+	      val arg = AST.VarExp (argV, [])
+	      val p = AST.ConPat (Basis.optionSOME, [trapTy t], AST.VarPat argV) 
+              in
+		m (bs, ts, n+1, p::optPats, arg::args)
+              end
+	  | m _ = raise Fail "ran out of types"
+        in
+          m (cb, eTys, 1, [], [])
+        end
+
+      fun mkLam (fName, m, varsGiven, caseArms) = raise Fail "todo"
+
       (* A function to build a batch of functions (a state machine in another form) *)
       (* given a map of completion bitstrings to match lists. *)
       fun buildFuns (m : matchmap) : A.lambda list = let
 	    val kmss = CBM.listItemsi m
-	    fun mkGo matches = raise Fail "todo" (* make go() out of the top-level matches *)
-	    fun b ([], matches, lams, fnames) = (mkGo matches :: lams, fnames)
+	    val goV = Var.new ("go", AST.FunTy (Basis.unitTy, pcaseResultTy))
+	    val u = Var.new ("u", Basis.unitTy)
+	    fun mkGo (matches, fnames) = raise Fail "todo" 
+	      (* make go() out of the top-level matches *)
+	    fun b ([], matches, lams, fnames) = (mkGo (matches, fnames) :: lams, fnames)
 	      | b ((cb,ms)::t, matches, lams, fnames) = let
                   val name = "state" ^ CB.toString cb
 		  val ty = AST.FunTy (mkTy cb, pcaseResultTy)
 		  val nameV = Var.new (name, ty)
-		  val m = raise Fail "todo" (* make a match out of the cb *)
-		  val f = raise Fail "todo" (* make a lam out of the ms *)
+		  val (m, varsInMatch) = mkMatch (cb, nameV)
+		  val f = mkLam (nameV, m, varsInMatch, ms)
                   in
 		    b (t, m::matches, f::lams, name::fnames)
                   end
