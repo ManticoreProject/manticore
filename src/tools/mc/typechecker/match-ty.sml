@@ -41,10 +41,8 @@ structure MatchTy : sig
 	       | SOME tv => TyVar.same(tv, modTv)
           end
 
-    fun getRealizationTy (CTX{realizations, ...}, tyc) = (case Env.RealizationEnv.find(realizations, tyc)
-        of SOME (Env.TyDef (Ty.TyScheme ([], ty))) => SOME ty
-	 | _ => NONE
-        (* end case *))
+    fun getRealization (CTX{realizations, ...}, tyc) = 
+          Env.RealizationEnv.find(realizations, tyc)
 
 (* FIXME: add a control to enable this flag *)
     val debugMatch = ref false
@@ -54,7 +52,7 @@ structure MatchTy : sig
 	  fun occurs ty = (case TU.prune ty
 		 of Ty.ErrorTy => false
 		  | (Ty.MetaTy mv') => MV.same(mv, mv')
-		  | (Ty.VarTy _) => raise Fail "unexpected type variable"
+		  | (Ty.VarTy _) => false
 		  | (Ty.ConTy(args, _)) => List.exists occurs args
 		  | (Ty.FunTy(ty1, ty2)) => occurs ty1 orelse occurs ty2
 		  | (Ty.TupleTy tys) => List.exists occurs tys
@@ -81,7 +79,7 @@ structure MatchTy : sig
 			| Ty.CLASS _ => ()
 			| Ty.INSTANCE ty => adjust ty
 		      (* end case *))
-		  | adjust (Ty.VarTy _) = raise Fail "unexpected type variable"
+		  | adjust (Ty.VarTy _) = ()
 		  | adjust (Ty.ConTy(args, _)) = List.app adjust args
 		  | adjust (Ty.FunTy(ty1, ty2)) = (adjust ty1; adjust ty2)
 		  | adjust (Ty.TupleTy tys) = List.app adjust tys
@@ -95,15 +93,17 @@ structure MatchTy : sig
 		      matchTyVars(ctx, tv1, tv2)
 		  | (ty, Ty.VarTy tv2) => true
 		  | (ty1, Ty.MetaTy mv2) => matchWithMV (ty1, mv2)
-		  | (Ty.ConTy(tys1, tyc1), Ty.ConTy(tys2, tyc2)) =>
-		    (case getRealizationTy(ctx, tyc1)
-		      of NONE => (TyCon.same(tyc1, tyc2)) andalso ListPair.allEq uni (tys1, tys2)
-		       | SOME ty1 => uni(ty1, ty2)
+		  | (Ty.ConTy(tys1, tyc1), Ty.ConTy(tys2, tyc2)) => 
+		    (case getRealization(ctx, tyc1)
+		      of NONE => TyCon.same(tyc1, tyc2) andalso ListPair.allEq uni (tys1, tys2)
+		       | SOME (Env.TyDef (Ty.TyScheme(_, ty1))) => uni(ty1, ty2)
+		       | SOME (Env.TyCon tyc1') => TyCon.same(tyc1', tyc2) andalso ListPair.allEq uni (tys1, tys2)
 		    (* end case *))
+                 (* the type in the signature is abstract *)
 		  | (Ty.ConTy([], tyc1), ty2) => 
-		    (case getRealizationTy(ctx, tyc1)
+		    (case getRealization(ctx, tyc1)
 		      of NONE => false
-		       | SOME ty1 => uni(ty1, ty2)
+		       | SOME (Env.TyDef (Ty.TyScheme(_, ty1))) => uni(ty1, ty2)
 		    (* end case *))
 		  | (Ty.FunTy(ty11, ty12), Ty.FunTy(ty21, ty22)) => 
 		      uni(ty11, ty21) andalso uni(ty12, ty22)
@@ -191,7 +191,7 @@ structure MatchTy : sig
     fun match (realizations, Ty.TyScheme (tvs1, ty1), Ty.TyScheme (tvs2, ty2)) = let
 	val ctx = CTX{tvMatches=ref TyVar.Map.empty, realizations=realizations}
         in
-	   (List.length tvs1 <= List.length tvs2) andalso matchRC(ctx, ty1, ty2, true)
+	   matchRC(ctx, ty1, ty2, true)
 	end
 			   
   end

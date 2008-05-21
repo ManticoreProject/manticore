@@ -29,7 +29,7 @@ structure Unify : sig
 	  fun occurs ty = (case TU.prune ty
 		 of Ty.ErrorTy => false
 		  | (Ty.MetaTy mv') => MV.same(mv, mv')
-		  | (Ty.VarTy _) => raise Fail "unexpected type variable"
+		  | (Ty.VarTy _) => false
 		  | (Ty.ConTy(args, _)) => List.exists occurs args
 		  | (Ty.FunTy(ty1, ty2)) => occurs ty1 orelse occurs ty2
 		  | (Ty.TupleTy tys) => List.exists occurs tys
@@ -56,7 +56,7 @@ structure Unify : sig
 			| Ty.CLASS _ => ()
 			| Ty.INSTANCE ty => adjust ty
 		      (* end case *))
-		  | adjust (Ty.VarTy _) = raise Fail "unexpected type variable"
+		  | adjust (Ty.VarTy _) = ()
 		  | adjust (Ty.ConTy(args, _)) = List.app adjust args
 		  | adjust (Ty.FunTy(ty1, ty2)) = (adjust ty1; adjust ty2)
 		  | adjust (Ty.TupleTy tys) = List.app adjust tys

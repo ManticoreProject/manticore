@@ -871,6 +871,7 @@ structure Typechecker : sig
 		end
 	    | PT.ValueDecl valDcl => let
 		val (bind, env) = chkValDcl(loc, 0, env, valDcl)
+val _ = raise Fail ""
 		in
 		  (env, moduleEnv, AST.TD_Binding bind :: astDecls)
 		end

@@ -32,24 +32,47 @@ structure ChkModule :> sig
 
     val idToAtom = Atom.atom o PPT.Var.nameOf
 
+  (* returns the variables bound in a pattern *)
+    fun boundVarsOfPat (pat, bvs) = (case pat
+           of PT.MarkPat {tree, ...} => boundVarsOfPat(tree, bvs)
+	    | PT.BinaryPat (p1, id, p2) => id :: boundVarsOfPat(p1, boundVarsOfPat(p2, bvs))
+	    | PT.ConPat (id, p) => id :: boundVarsOfPat(p, bvs)
+	    | PT.TuplePat ps => List.foldl boundVarsOfPat bvs ps
+	    | PT.ConstPat _ => bvs
+	    | PT.WildPat => bvs
+	    | PT.IdPat id => id :: bvs
+	    | PT.ConstraintPat (p, _) => boundVarsOfPat(p, bvs)
+          (* end case *))
+
+  (* returns the variables bound to functions *)
+    fun boundVarsOfFunct (PT.MarkFunct {tree, ...}, bvs) = boundVarsOfFunct(tree, bvs)
+      | boundVarsOfFunct (PT.Funct(f, _, _), bvs) = f :: bvs
+
+  (* returns the variables bound in a value declaration *)
+    fun boundVarsOfValDcl (vd, bvs) = (case vd
+           of PT.MarkVDecl {tree, ...} => boundVarsOfValDcl(tree, bvs)
+	    | PT.ValVDecl (p, _) => boundVarsOfPat(p, bvs)
+	    | PT.PValVDecl (p, _) => boundVarsOfPat(p, bvs)
+	    | PT.FunVDecl fs => List.foldl boundVarsOfFunct bvs fs
+           (* end case *))
+
   (* check type declarations *)
     fun chkTyDcl loc (ptTyDecl, env) = (case ptTyDecl
            of PT.MarkTyDecl {span, tree} => chkTyDcl loc (tree, env)
 	    | PT.TypeTyDecl(tvs, id, ty) => let
-		val (tve, tvs') = ChkTy.checkTyVars (!errStrm) (loc, tvs)
-		val ty' = ChkTy.checkTy (!errStrm) (loc, ty, tve)
+		val (tvs', ty') = ChkTy.checkTy (!errStrm) (loc, tvs, ty)
 		in
 		  Env.insertTy(env, id, Env.TyDef(AST.TyScheme(tvs', ty')))
 		end
 	    | PT.AbsTyDecl (tvs, id) => let
-                val (tve, tvs') = ChkTy.checkTyVars (!errStrm) (loc, tvs)
+                val tvs' = ChkTy.checkTyVars (!errStrm) (loc, tvs)
 		val tyc = TyCon.newAbsTyc(idToAtom id, List.length tvs', false)
 		val env' = Env.insertTy(env, id, Env.TyCon tyc)
                 in
 		  env'
                 end
 	    | PT.DataTyDecl(tvs, id, cons) => let
-		val (tve, tvs') = ChkTy.checkTyVars (!errStrm) (loc, tvs)
+		val tvs' = ChkTy.checkTyVars (!errStrm) (loc, tvs)
 		val tyc = TyCon.newDataTyc(idToAtom id, tvs')
 	      (* update the type environment before checking the constructors so that
 	       * recursive types work.
@@ -70,7 +93,8 @@ structure ChkModule :> sig
 				chkCons (loc, ids, rest, env, cons))
 			      else let
 				val optTy' = Option.map
-				      (fn ty => ChkTy.checkTy (!errStrm) (loc, ty, tve)) optTy
+                    (* FIXME: handle type variables properly *)
+				      (fn ty => #2(ChkTy.checkTy (!errStrm) (loc, [], ty))) optTy
 				val con' = newCon(idToAtom conid, optTy')
 				in
 				  chkCons (loc,
@@ -91,8 +115,7 @@ structure ChkModule :> sig
         of PT.MarkSpec {tree, span} => chkSpec span (tree, env)
 	 | PT.TypeSpec tyDecl => chkTyDcl loc (tyDecl, env)
 	 | PT.ValSpec (x, tvs, ty) => let
-	   val (tve, tvs') = ChkTy.checkTyVars (!errStrm) (loc, tvs)
-           val ty = ChkTy.checkTy (!errStrm) (loc, ty, tve)
+           val (tvs', ty) = ChkTy.checkTy (!errStrm) (loc, tvs, ty)
 	   val x' = Var.newPoly(PPT.Var.nameOf x, Ty.TyScheme(tvs', ty))
            in
 	       Env.insertVar(env, x, Env.Var x')
@@ -193,13 +216,16 @@ structure ChkModule :> sig
            of PT.MarkDecl{span, tree} => chkTopDcl span (tree, (env, moduleEnv, astDecls))
 	    | PT.TyDecl tyDecl => (chkTyDcl loc (tyDecl, env), moduleEnv, astDecls)
 	    | PT.ExnDecl(id, optTy) => let
-		val optTy' = Option.map (fn ty => ChkTy.checkTy (!errStrm) (loc, ty, AtomMap.empty)) optTy
+		val optTy' = Option.map (fn ty => #2(ChkTy.checkTy (!errStrm) (loc, [], ty))) optTy
 		val exnCon = Exn.new (idToAtom id, optTy')
 		in
 		  (Env.insertVar (env, id, Env.Con exnCon), moduleEnv, astDecls)
 		end
 	    | PT.ValueDecl valDcl => let
 		val bind = ChkExp.checkValDecl (!errStrm) (loc, valDcl)
+		fun addToEnv (v, env) = 
+		      Env.insertVar(env, v, Option.valOf(Env.getValBind v))
+		val env = List.foldl addToEnv env (boundVarsOfValDcl (valDcl, []))
 		in
 		  (env, moduleEnv, AST.TD_Binding bind :: astDecls)
 		end

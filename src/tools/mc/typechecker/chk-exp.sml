@@ -450,7 +450,7 @@ structure ChkExp :> sig
 			bogusExp)
 		  (* end case *))
 	    | PT.ConstraintExp(e, ty) => let
-		val constraintTy = ChkTy.checkTy (!errStrm) (loc, ty, Env.TyVarMap.empty)
+		val (_, constraintTy) = ChkTy.checkTy (!errStrm) (loc, [], ty)
 		val (e', ty') = chkExp (loc, depth, e)
 		in
 		   if not(U.unify(ty', constraintTy))
@@ -614,7 +614,7 @@ structure ChkExp :> sig
 		      end
 		(* end case *))
 	    | PT.ConstraintPat(p, ty) => let
-		val constraintTy = ChkTy.checkTy (!errStrm) (loc, ty, Env.TyVarMap.empty)
+		val (_, constraintTy) = ChkTy.checkTy (!errStrm) (loc, [], ty)
 		val (p', ty') = chkPat (loc, depth, p)
 		in
 		   if not(U.unify(ty', constraintTy))

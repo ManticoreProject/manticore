@@ -36,9 +36,9 @@ structure MatchSig :> sig
 
     val varToString = ProgramParseTree.Var.nameOf
 
-    exception DeclNotFound
     exception NotFound 
 
+    exception DeclNotFound
     fun declOf NONE = raise DeclNotFound
       | declOf (SOME v) = v
 
@@ -128,6 +128,10 @@ structure MatchSig :> sig
   (* get the concrete definition of an abstract type *)
     val {getFn=realizationOfTyc : Types.tycon -> Env.ty_def option, setFn, ...} = TyCon.newProp(fn _ => NONE)
 
+(* TODO: clean this function up and split off a separate file. we can eliminate the need for the tycon
+ * table by using property lists
+ *)
+
   (* takes environments for a module and its constraining signature and returns the residual signature for the 
    * module. this signature contains fresh variables for type constructors and variable definitions and 
    * data constructors.
@@ -161,34 +165,38 @@ structure MatchSig :> sig
 
     val cvtVar = Atom.atom o BVar.nameOf
 
+  (* convert an environment from stamp equality to string equality *)
     fun cvtEnv env = let
 	   fun ins (v, x, env) = AtomMap.insert(env, cvtVar v, x)
            in
 	      Env.VarMap.foldli ins AtomMap.empty env
 	   end
 
-  (* report unmatched entries *)
-    fun reportMissingEntries loc k ((id, c, NONE), xs) = (
-	   error(loc, ["missing ", k, " ", Atom.toString id]);
-	   xs)
-      | reportMissingEntries _ _ ((id, c, SOME m), xs) = 
-	   (id, c, m) :: xs
+  (* match elements in the environments that have the same names *)
+    fun matchByName (cEnv, mEnv) = let
+	   val cEnv = cvtEnv cEnv
+	   val mEnv = cvtEnv mEnv
+	   fun find (id, cX, matches) = (case AtomMap.find(mEnv, id)
+                  of NONE => (id, cX, NONE) :: matches
+		   | SOME mX => (id, cX, SOME mX) :: matches
+                  (* end case *))
+	   in
+	      AtomMap.foldli find [] cEnv
+   	   end
 
-  (* takes an entry kind constraining environment and a module environment, and returns the list of
+  (* takes an entry kind, constraining environment, and a module environment, and returns the list of
    * matching elements. if elements are missing, we report errors.
    *)
-    fun buildMatchElts (loc, entryKind, cEnv, mEnv) = let
-	val cEnv = cvtEnv cEnv
-	val mEnv = cvtEnv mEnv
-	fun find (id, cX, matches) = (case AtomMap.find(mEnv, id)
-               of NONE => (id, cX, NONE) :: matches
-		| SOME mX => (id, cX, SOME mX) :: matches
-               (* end case *))
-	val matches = AtomMap.foldli find [] cEnv
-      (* the module must have at least all of the entries of the constraining environment *)
-	in
-	   List.foldl (reportMissingEntries loc entryKind) [] matches
-	end
+    fun matchAndReport (loc, entryKind, cEnv, mEnv) = let
+        (* report unmatched elements *)
+          fun reportMissing ((id, c, NONE), xs) = (
+	      error(loc, ["missing ", entryKind, " ", Atom.toString id]);
+	      xs)
+	    | reportMissing ((id, c, SOME m), xs) = 
+	      (id, c, m) :: xs
+          in
+	     List.foldl reportMissing [] (matchByName(cEnv, mEnv))
+          end
 
   (* data cons must be sorted *)
     fun matchDCons loc 
@@ -202,12 +210,12 @@ structure MatchSig :> sig
 		| (SOME sigArgTy, SOME modArgTy) => 
 		  if MatchTy.matchTys(actualTypes, sigArgTy, modArgTy)
 		     then ()
-		     else error(loc, ["data constructor argument", Atom.toString sigName])
+		     else error(loc, ["data constructor argument ", Atom.toString sigName])
              (* end case *))
 
     fun matchTypes loc actualTypes (modTyEnv, sigTyEnv) = let
 	fun match (id, Env.TyDef sigTs, Env.TyDef modTs) =
-	       if MatchTy.match(actualTypes, modTs, sigTs)
+	       if MatchTy.match(actualTypes, sigTs, modTs)
 	       then ()
 	       else error (loc, [
 			   "types for ", Atom.toString id, " are not equal\n",
@@ -232,7 +240,7 @@ structure MatchSig :> sig
                  then error (loc, ["mismatched number of data constructors for ", Atom.toString id])
               else ListPair.app (matchDCons loc actualTypes) (!cs1, !cs2)
 	in
-	   List.app match (buildMatchElts(loc, "type", modTyEnv, sigTyEnv))
+	   List.app match (matchAndReport(loc, "type", sigTyEnv, modTyEnv))
 	end
 
     fun matchVars loc actualTypes (modVarEnv, sigVarEnv) = let
@@ -262,7 +270,7 @@ structure MatchSig :> sig
 	  | match (id, Env.Con sigDCon, _) = error (loc, ["incompatible data con", Atom.toString id])
 	  | match (id, _, _) = error(loc, ["invalid value specification ", Atom.toString id])	
 	in
-	   List.app match (buildMatchElts(loc, "var", modVarEnv, sigVarEnv))
+	   List.app match (matchAndReport(loc, "var", sigVarEnv, modVarEnv))
 	end
 
     fun matchMods err loc actualTypes (modEnv , sigEnv) = let
@@ -270,9 +278,10 @@ structure MatchSig :> sig
 	    match{err=err, loc=loc, modEnv=modEnv, sigEnv=sigEnv}; 
 	    ())
         in 
-	   List.app f (buildMatchElts(loc, "module", modEnv, sigEnv))
+	   List.app f (matchAndReport(loc, "module", sigEnv, modEnv))
         end
 
+(* TODO: substitute actual types in the module body *)
     and match {err, 
 	       loc,
 	       modEnv=modEnv as Env.ModEnv{tyEnv=modTyEnv, varEnv=modVarEnv, modEnv=modModEnv, ...}, 
@@ -280,17 +289,11 @@ structure MatchSig :> sig
 	      } = let
 	val _ = errStrm := err
 
-	(* takes a type identifier and the corresponding abstract type in the signature and 
-	 * adds to the realization environment the realization of the type in the module.
-	 *)
-	fun addRealization (id, Env.TyCon (tyc as Ty.Tyc {def=Ty.AbsTyc, ...}), actualTypes) = 
-	    (case Env.VarMap.find(modTyEnv, id)
-	      of SOME tyd => TyCon.Map.insert(actualTypes, tyc, tyd)
-	       | NONE => actualTypes
-	    (* end case *))
-	  | addRealization (_, _, actualTypes) = actualTypes
-	val actualTypes = Env.VarMap.foldli addRealization TyCon.Map.empty sigTyEnv
-
+      (* add a type constructor and its realization to the realization map *)
+        fun addRealization ((id, Env.TyCon sTyc, SOME tyM), actualTypes) = 
+	       TyCon.Map.insert(actualTypes, sTyc, tyM)
+	  | addRealization (_, actualTypes) = actualTypes
+	val actualTypes = List.foldl addRealization TyCon.Map.empty (matchByName(sigTyEnv, modTyEnv))
         in
 	   matchTypes loc actualTypes (modTyEnv, sigTyEnv);
 	   matchVars loc actualTypes (modVarEnv, sigVarEnv);

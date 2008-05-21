@@ -9,12 +9,13 @@
 structure ChkTy :> sig
 
   (* check a type for well formedness *)
-    val checkTy : Error.err_stream -> (Error.span * ProgramParseTree.PML2.ty * ModuleEnv.tyvar_env) 
-		      -> AST.ty
+    val checkTy : Error.err_stream -> (Error.span * ProgramParseTree.PML2.tyvar list * ProgramParseTree.PML2.ty) 
+		      -> (AST.tyvar list * AST.ty)
 
-  (* check a list of type variables *)
-    val checkTyVars : Error.err_stream -> (Error.span * ProgramParseTree.PML2.tyvar list) ->
-		         (ModuleEnv.tyvar_env * AST.tyvar list)
+  (* check a type for well formedness *)
+    val checkTyVars : Error.err_stream -> (Error.span * ProgramParseTree.PML2.tyvar list)
+		      -> AST.tyvar list
+
   end = struct
 
     structure PT = ProgramParseTree.PML2
@@ -34,6 +35,15 @@ structure ChkTy :> sig
     val bogusTy = AST.ErrorTy
 
     val idToString = ProgramParseTree.Var.toString
+
+  (* returns the tyvars used in a type *)
+    fun tvsOfTy (ty, tvs) = (case ty
+           of PT.MarkTy {tree, ...} => tvsOfTy (tree, tvs)
+	    | PT.NamedTy (tys, _) => List.foldl tvsOfTy tvs tys
+	    | PT.VarTy tv => tv :: tvs
+	    | PT.TupleTy tys => List.foldl tvsOfTy tvs tys
+	    | PT.FunTy (ty1, ty2) => tvsOfTy(ty1, tvsOfTy(ty2, tvs))
+           (* end case *))
 
   (* typecheck type expressions as described in Section 6.4 *)
     fun chkTy (loc, tve, ty) = (case ty
@@ -85,8 +95,17 @@ structure ChkTy :> sig
 	    chk (tvs, AtomMap.empty, [])
 	  end
 
-    fun checkTyVars err (loc, tvs) = chkTyVars(loc, tvs)
+    fun checkTyVars err (loc, tvs) = #2 (chkTyVars(loc, tvs))
 
-    fun checkTy err (loc, ty, tve) = chkTy(loc, tve, ty)
+    fun checkTy err (loc, tvs, ty) = let
+          val tvUses = tvsOfTy(ty, [])
+	  val tvs = if List.length tvs > 0
+                       then tvs
+                       else tvUses
+          val (tve, tvs) = chkTyVars(loc, tvs)
+	  val ty' = chkTy(loc, tve, ty)
+          in
+             (tvs, ty')
+          end
 
   end (* ChkTy *)
