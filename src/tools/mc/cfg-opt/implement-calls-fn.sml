@@ -41,16 +41,7 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
    fun wrapRaw rt = CFGTy.T_Tuple(false, [CFGTy.T_Raw rt])
 
    fun transform (m as CFG.MODULE{name, externs, code}) = let
-         fun transTyUniformArg (arg : CFGTy.ty) : CFGTy.ty = (case arg
-		 of CFGTy.T_Raw rt => wrapRaw rt
-                  | _ => transTy arg
-		(* end case *))
-         and transTyStdArgs (args : CFGTy.ty list) : CFGTy.ty =
-            case args of
-               [] => CFGTy.unitTy
-             | [arg] => transTyUniformArg arg
-             | args => CFGTy.T_Tuple (false, List.map transTy args)
-         and regsTyNonUniformArg (arg : CFGTy.ty) : {gprs: int, fprs: int} =
+         fun regsTyNonUniformArg (arg : CFGTy.ty) : {gprs: int, fprs: int} =
             let
                fun return (gprs, fprs) = {gprs = gprs, fprs = fprs}
                fun returnGPR () = return (1, 0)
@@ -68,13 +59,22 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                        | RawTypes.T_Vec128 => returnGPR ())
                 | _ => returnGPR ()
             end
-         and regsTyNonUniformArgs (args : CFGTy.ty list) : {gprs: int, fprs: int} =
+         fun regsTyNonUniformArgs (args : CFGTy.ty list) : {gprs: int, fprs: int} =
             List.foldl
             (fn (arg,{gprs, fprs}) =>
              let val {gprs = gprs', fprs = fprs'} = regsTyNonUniformArg arg 
              in {gprs = gprs + gprs', fprs = fprs + fprs'} end)
             {gprs = 0, fprs = 0}
             args
+         fun transTyUniformArg (arg : CFGTy.ty) : CFGTy.ty = (case arg
+                 of CFGTy.T_Raw rt => wrapRaw rt
+                  | _ => transTy arg
+                (* end case *))
+         and transTyStdArgs (args : CFGTy.ty list) : CFGTy.ty =
+            case args of
+               [] => CFGTy.unitTy
+             | [arg] => transTyUniformArg arg
+             | args => CFGTy.T_Tuple (false, List.map transTy args)
          and transTyNonUniformArg (arg : CFGTy.ty) : CFGTy.ty =
             case arg of
                CFGTy.T_Raw rt => 
@@ -106,7 +106,10 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                           
                fun loop (args, gprs, fprs, spills) =
                   case args of
-                     [] => [transTyStdArgs (List.rev spills)]
+                     [] => 
+                        (case spills of 
+                            [] => []
+                          | _ => [transTyStdArgs (List.rev spills)])
                    | arg::args =>
                         let
                            val {gprs = gprs', fprs = fprs'} =
@@ -246,11 +249,14 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                fun loop (args, gprs, fprs, spills) =
                   case args of
                      [] => 
-                        let
-                           val (arg, binds) = transFormalStdArgs (List.rev spills)
-                        in
-                           ([arg], binds)
-                        end
+                        (case spills of
+                            [] => ([],[])
+                          | _ =>
+                               let
+                                  val (arg, binds) = transFormalStdArgs (List.rev spills)
+                               in
+                                  ([arg], binds)
+                               end)
                    | arg::args =>
                         let
                            val {gprs = gprs', fprs = fprs'} =
@@ -364,11 +370,14 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                fun loop (args, gprs, fprs, spills) =
                   case args of
                      [] => 
-                        let
-                           val (binds, arg) = transActualStdArgs (List.rev spills)
-                        in
-                           (binds, [arg])
-                        end
+                        (case spills of
+                            [] => ([],[])
+                          | _ => 
+                               let
+                                  val (binds, arg) = transActualStdArgs (List.rev spills)
+                               in
+                                  (binds, [arg])
+                               end)
                    | arg::args =>
                         let
                            val {gprs = gprs', fprs = fprs'} =
@@ -409,21 +418,21 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                      (binds, CFG.Apply {f = f, clos = clos, args = args})
                   end
              | _ => ([], t)
-	  fun transFunc (CFG.FUNC {lab, entry, body, exit} : CFG.func) : CFG.func = let
-		val () = updLabelType lab
-		val (entry, entryBinds) = transConvention entry
-		val body = List.map transExp body
-		val (exitBinds, exit) = transTransfer exit
-		val export = (case CFG.Label.kindOf lab
-		       of CFG.LK_Local{export, ...} => export
-			| _ => raise Fail "bogus label kind"
-		      (* end case *))
-		in
-		   CFG.mkFunc (lab, entry, entryBinds @ body @ exitBinds, exit, export)
-		end
-	  val module = CFG.mkModule (name, externs, List.map transFunc code)
-	  in
-	    module
-	  end
+          fun transFunc (CFG.FUNC {lab, entry, body, exit} : CFG.func) : CFG.func = let
+                val () = updLabelType lab
+                val (entry, entryBinds) = transConvention entry
+                val body = List.map transExp body
+                val (exitBinds, exit) = transTransfer exit
+                val export = (case CFG.Label.kindOf lab
+                       of CFG.LK_Local{export, ...} => export
+                        | _ => raise Fail "bogus label kind"
+                      (* end case *))
+                in
+                   CFG.mkFunc (lab, entry, entryBinds @ body @ exitBinds, exit, export)
+                end
+          val module = CFG.mkModule (name, externs, List.map transFunc code)
+          in
+            module
+          end
       
   end
