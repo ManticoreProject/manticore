@@ -52,8 +52,8 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
     fun optimize module = let
 	  val _ = census module
 	  val module = contract module
-	  val _ = cfa module
-	  val module = specialCalls module
+          val _ = cfa module
+          val module = specialCalls module
           val _ = cfaClear module
           val module = implCalls module
 	  val _ = census module
