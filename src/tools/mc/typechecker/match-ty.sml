@@ -11,10 +11,10 @@ structure MatchTy : sig
   (* nondestructively check if two type schemes are unifiable. the left-hand type scheme
    * comes from the specification and the right comes from the module.
    *)
-    val match : (ModuleEnv.realization_env * Types.ty_scheme * Types.ty_scheme) -> bool
+    val match : (Types.ty_scheme * Types.ty_scheme) -> bool
 
   (* same as above, except for types *)
-    val matchTys : (ModuleEnv.realization_env * Types.ty * Types.ty) -> bool
+    val matchTys : (Types.ty * Types.ty) -> bool
 
   end = struct
 
@@ -27,8 +27,7 @@ structure MatchTy : sig
   (* context for unification *)
     datatype ctx
       = CTX of {
-	     tvMatches    : AST.tyvar TyVar.Map.map ref,                (* matching type variables *)
-	     realizations : Env.realization_env                         (* type realizations *)
+	     tvMatches    : AST.tyvar TyVar.Map.map ref                (* matching type variables *)
            }
 
     fun matchTyVars (CTX{tvMatches, ...}, sigTv, modTv) = let
@@ -40,9 +39,6 @@ structure MatchTy : sig
 		 true)
 	       | SOME tv => TyVar.same(tv, modTv)
           end
-
-    fun getRealization (CTX{realizations, ...}, tyc) = 
-          Env.RealizationEnv.find(realizations, tyc)
 
 (* FIXME: add a control to enable this flag *)
     val debugMatch = ref false
@@ -94,14 +90,14 @@ structure MatchTy : sig
 		  | (ty, Ty.VarTy tv2) => true
 		  | (ty1, Ty.MetaTy mv2) => matchWithMV (ty1, mv2)
 		  | (Ty.ConTy(tys1, tyc1), Ty.ConTy(tys2, tyc2)) => 
-		    (case getRealization(ctx, tyc1)
+		    (case ModuleEnv.getRealizationOfTyc tyc1
 		      of NONE => TyCon.same(tyc1, tyc2) andalso ListPair.allEq uni (tys1, tys2)
 		       | SOME (Env.TyDef (Ty.TyScheme(_, ty1))) => uni(ty1, ty2)
 		       | SOME (Env.TyCon tyc1') => TyCon.same(tyc1', tyc2) andalso ListPair.allEq uni (tys1, tys2)
 		    (* end case *))
                  (* the type in the signature is abstract *)
 		  | (Ty.ConTy([], tyc1), ty2) => 
-		    (case getRealization(ctx, tyc1)
+		    (case ModuleEnv.getRealizationOfTyc tyc1
 		      of NONE => false
 		       | SOME (Env.TyDef (Ty.TyScheme(_, ty1))) => uni(ty1, ty2)
 		    (* end case *))
@@ -175,7 +171,7 @@ structure MatchTy : sig
 			TypeUtil.fmt {long=true} ty2, ")\n"
 		      ])
 		    else ()
-	  val res = matchRC (CTX{tvMatches=ref TyVar.Map.empty, realizations=Env.RealizationEnv.empty}, ty1, ty2, false)
+	  val res = matchRC (CTX{tvMatches=ref TyVar.Map.empty}, ty1, ty2, false)
 	  in
 	    if !debugMatch
 	      then if res
@@ -185,11 +181,11 @@ structure MatchTy : sig
 	    res
 	  end
 
-    fun matchTys (realizations, ty1, ty2) = 
-	   matchRC (CTX{tvMatches=ref TyVar.Map.empty, realizations=realizations}, ty1, ty2, true)
+    fun matchTys (ty1, ty2) = 
+	   matchRC (CTX{tvMatches=ref TyVar.Map.empty}, ty1, ty2, true)
 
-    fun match (realizations, Ty.TyScheme (tvs1, ty1), Ty.TyScheme (tvs2, ty2)) = let
-	val ctx = CTX{tvMatches=ref TyVar.Map.empty, realizations=realizations}
+    fun match (Ty.TyScheme (tvs1, ty1), Ty.TyScheme (tvs2, ty2)) = let
+	val ctx = CTX{tvMatches=ref TyVar.Map.empty}
         in
 	   matchRC(ctx, ty1, ty2, true)
 	end

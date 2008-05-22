@@ -107,15 +107,55 @@ structure ModuleEnv =
     val inDomainTy = Option.isSome o findTy
     val inDomainVar = Option.isSome o findVar
 
-  (* type realization environment *)
-    structure RealizationEnv = TyCon.Map
-    type realization_env = ty_def RealizationEnv.map
-
   (* maps for modules *)
     structure ModuleMap = BinaryMapFn (
                 type ord_key = AST.module_ref
 		fun compare (AST.MOD{id=id1, ...}, AST.MOD{id=id2, ...}) = Stamp.compare (id1, id2))
 
     type module_map = (env * env * AST.module) ModuleMap.map
+
+  (* takes an environment where the keys are parse-tree variables and returns an environment
+   * where the keys are atoms.
+   *)
+    fun cvtEnv env = let
+	   val cvtVar = Atom.atom o ProgramParseTree.Var.nameOf
+	   fun ins (v, x, env) = AtomMap.insert(env, cvtVar v, x)
+           in
+	      VarMap.foldli ins AtomMap.empty env
+	   end
+
+  (* match elements in the environments that have the same names *)
+    fun matchByName (cEnv, mEnv) = let
+	   fun find (id, cX, matches) = (case AtomMap.find(cvtEnv mEnv, id)
+                  of NONE => (id, cX, NONE) :: matches
+		   | SOME mX => (id, cX, SOME mX) :: matches
+                  (* end case *))
+	   in
+	      AtomMap.foldli find [] (cvtEnv cEnv)
+   	   end
+
+  (* take signature and module type environments and return the type constructors in the signature
+   * paired with their definitions in the module, e.g.,
+   * 
+   *   tyConDefs(sig type t end, struct type t = int end)
+   *          ==>
+   *   [(t, AbsTyc, Env.TyDef int)]
+   *)
+    fun tyConDefs (sigTyEnv : ty_env, modTyEnv : ty_env) = let
+  	   fun f ((_, TyCon tyc, SOME tyDef), ms) = (tyc, tyDef) :: ms
+	     | f (_, ms) = ms
+           in
+	      List.foldl f [] (matchByName(sigTyEnv, modTyEnv))
+	   end
+
+  (* get and set the concrete definition of type constructor *)
+    local
+        val {getFn : Types.tycon -> ty_def option, setFn, ...} = 
+                           TyCon.newProp(fn _ => NONE)
+    in
+      fun setRealizationOfTyc (tyc, tyd) = setFn(tyc, SOME tyd)
+      val getRealizationOfTyc = getFn
+    end
+
 
   end (* ModuleEnv *)

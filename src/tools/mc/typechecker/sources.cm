@@ -11,6 +11,7 @@ Library
   structure ChkProgram
   structure MatchSig
   structure BoundVariableCheck
+  structure CopySig
 
 is
 
@@ -37,3 +38,4 @@ is
   unify.sml
   match-ty.sml
   bound-variable-check.sml
+  copy-sig.sml

@@ -168,6 +168,13 @@ structure ChkModule :> sig
 	   List.foldl VarSubst.add VarSubst.id varBindSubstPairs
         end
 
+  (* update types for decls *)
+    fun freshenDecls decls = let
+	  val s = {tyFn=CopySig.substTy, tySFn=CopySig.substTyScheme, dcFn=CopySig.substDCon}
+          in
+	     List.map (SubstTy.topDec s) decls
+	  end
+
     fun chkModule loc (id, sign, module, (env, moduleEnv, astDecls)) = (case module
         of PT.MarkMod {span, tree} => chkModule span (id, sign, tree, (env, moduleEnv, astDecls))
 	 | PT.DeclsMod decls => let
@@ -179,6 +186,7 @@ structure ChkModule :> sig
 		       val env = MatchSig.match{err=(!errStrm), loc=loc, modEnv=modEnv, sigEnv=sigEnv}
 		       val s = buildVarSubst (Env.varEnv modEnv, Env.varEnv env)
 		       val modAstDecls' = VarSubst.topDecs s modAstDecls
+		       val modAstDecls' = freshenDecls modAstDecls'
                        in
 			   (env, modAstDecls')
                        end
