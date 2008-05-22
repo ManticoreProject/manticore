@@ -74,13 +74,13 @@ structure TypeUtil : sig
 	  fun toS(Ty.ErrorTy) = "<error>"
 	    | toS (Ty.MetaTy mv) = fmtMeta {long=long} mv
 	    | toS (Ty.VarTy tv) = tyvarToString tv
-	    | toS (Ty.ConTy([], tyc)) = Atom.toString(TyCon.nameOf tyc)
+	    | toS (Ty.ConTy([], tyc)) = TyCon.toString tyc
 	    | toS (Ty.ConTy([ty], tyc)) = concat[
-		  toS ty, " ", Atom.toString(TyCon.nameOf tyc)
+		  toS ty, " ", TyCon.toString tyc
 		]
 	    | toS (Ty.ConTy(tys, tyc)) = concat[
 		  "(", String.concatWith "," (List.map toS tys), ")",
-		  Atom.toString(TyCon.nameOf tyc)
+		  TyCon.toString tyc
 		]
 	    | toS (Ty.FunTy(ty1 as Ty.FunTy _, ty2)) =
 		concat["(", toS ty1, ") -> ", toS ty2]

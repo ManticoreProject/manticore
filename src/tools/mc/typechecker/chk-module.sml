@@ -164,15 +164,18 @@ structure ChkModule :> sig
     fun buildVarSubst (modVarEnv, residualVarEnv) = let
 	val valBindSubstPairs = pairEnvs (modVarEnv, residualVarEnv)
 	val varBindSubstPairs = List.foldl getVars [] valBindSubstPairs
+	val vMp = List.foldl SubstVar.add SubstVar.id varBindSubstPairs
         in 
-	   List.foldl VarSubst.add VarSubst.id varBindSubstPairs
+	  fn v => (case SubstVar.find(vMp, v)
+		    of NONE => v
+		     | SOME v' => v')
         end
 
   (* update types for decls *)
     fun freshenDecls decls = let
 	  val s = {tyFn=CopySig.substTy, tySFn=CopySig.substTyScheme, dcFn=CopySig.substDCon}
           in
-	     List.map (SubstTy.topDec s) decls
+	     SubstTy.topDecs s decls
 	  end
 
     fun chkModule loc (id, sign, module, (env, moduleEnv, astDecls)) = (case module
@@ -185,8 +188,7 @@ structure ChkModule :> sig
                        val sigEnv = chkSignature loc (NONE, sign, env)
 		       val env = MatchSig.match{err=(!errStrm), loc=loc, modEnv=modEnv, sigEnv=sigEnv}
 		       val s = buildVarSubst (Env.varEnv modEnv, Env.varEnv env)
-		       val modAstDecls' = VarSubst.topDecs s modAstDecls
-		       val modAstDecls' = freshenDecls modAstDecls'
+		       val modAstDecls' = SubstVar.topDecs s modAstDecls
                        in
 			   (env, modAstDecls')
                        end
@@ -248,6 +250,7 @@ structure ChkModule :> sig
 
     and chkTopDcls (loc, ptDecls, env, moduleEnv) = let
         val (env', moduleEnv, astDecls) = List.foldl (chkTopDcl loc) (env, moduleEnv, []) ptDecls
+	val astDecls = freshenDecls astDecls
         in
 	   (env', moduleEnv, List.rev astDecls)
         end

@@ -34,20 +34,15 @@ structure MatchSig :> sig
 
     val varToString = ProgramParseTree.Var.nameOf
 
-    exception DeclNotFound
-    fun declOf NONE = raise DeclNotFound
-      | declOf (SOME v) = v
-
   (* takes an entry kind, constraining environment, and a module environment, and returns the list of
    * matching elements. if elements are missing, we report errors.
    *)
     fun matchAndReport (loc, entryKind, cEnv, mEnv) = let
-        (* report unmatched elements *)
           fun reportMissing ((id, c, NONE), xs) = (
-	      error(loc, ["missing ", entryKind, " ", Atom.toString id]);
-	      xs)
+	         error(loc, ["missing ", entryKind, " ", Atom.toString id]);
+		 xs)
 	    | reportMissing ((id, c, SOME m), xs) = 
-	      (id, c, m) :: xs
+	         (id, c, m) :: xs
           in
 	     List.foldl reportMissing [] (Env.matchByName(cEnv, mEnv))
           end

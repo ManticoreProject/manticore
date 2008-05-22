@@ -80,4 +80,6 @@ structure SubstTy =
       | topDec s (A.TD_DCon dc) = A.TD_DCon dc
       | topDec s (A.TD_Binding b) = A.TD_Binding (binding s b)
 
+    and topDecs s tds = List.map (topDec s) tds
+
   end (* SubstTy *)

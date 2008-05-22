@@ -42,6 +42,8 @@ structure DataCon : sig
   (* return true if the data constructor is nullary *)
     val isNullary : AST.dcon -> bool
 
+    val toString : AST.dcon -> string
+
   (* hash tables keyed by data constructors *)
     structure Tbl : MONO_HASH_TABLE where type Key.hash_key = AST.dcon
 
@@ -108,6 +110,9 @@ structure DataCon : sig
 
     fun isNullary (DCon{argTy = NONE, ...}) = true
       | isNullary _ = false
+
+    fun toString (DCon {id, name, owner, argTy}) = 
+	   Atom.toString name^"("^Option.getOpt(Option.map TypeUtil.toString argTy, "")^")"^"["^Int.toString id^"]"^":"^TyCon.toString owner
 
     structure Tbl = HashTableFn (
       struct

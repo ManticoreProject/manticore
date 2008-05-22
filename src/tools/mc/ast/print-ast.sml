@@ -363,7 +363,7 @@ structure PrintAST : sig
       | const (A.LConst (lit, t)) = pr (Literal.toString lit)
 
   (* dcon : T.dcon -> unit *)
-    and dcon (dc as T.DCon{name, ...}) = pr (Atom.toString name)
+    and dcon (dc as T.DCon{name, owner, ...}) = pr (Atom.toString name^":"^TyCon.toString owner)
 
   (* overload_var : A.overload_var -> unit *)
     and overload_var (A.Unknown (t, vs)) = raise Fail "overload_var.Unknown"

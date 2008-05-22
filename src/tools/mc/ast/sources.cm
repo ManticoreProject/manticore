@@ -25,9 +25,9 @@ Library
   structure TyVar
   structure Var
   structure VarRep
-  structure VarSubst
   structure SubstVar
   structure SubstTy
+(*  structure VarSubst*)
 
 is
 
@@ -54,6 +54,6 @@ is
   type-of.sml
   type-util.sml
   var.sml
-  var-subst.sml
+(*  var-subst.sml*)
   subst-var.sml
   subst-ty.sml

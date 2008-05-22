@@ -4,7 +4,7 @@ fun intListToString ns = ("[" ^ concatWith(",",map(itos, ns)) ^ "]")
 
 fun positive n = (n>0)
 
-val nums = (0::1::0::2::0::3::0::4::0::5::0::1::6::2::nil)
+val nums = (0::1::0::2::0::3::0::4::0::5::0::~1::6::~2::nil)
 
 fun rev' xs = let
       fun loop (xs, ys) = (case xs

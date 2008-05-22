@@ -4,10 +4,8 @@ structure CopySig =
     structure Ty = Types
     structure Env = ModuleEnv
 
-    exception NotFound 
-
     fun substDCon (Ty.DCon {id, name, owner, argTy}) =
-	Ty.DCon {id=id, name=name, owner=owner, argTy=Option.map substTy argTy}
+	Ty.DCon {id=id, name=name, owner=copyTyCon owner, argTy=Option.map substTy argTy}
 
     and copyTyCon tyc = (case Env.getRealizationOfTyc tyc
           of SOME (Env.TyCon tyc') => tyc'
@@ -26,19 +24,13 @@ structure CopySig =
     fun substTyScheme (Ty.TyScheme (tvs, ty)) = Ty.TyScheme(tvs, substTy ty)
 
     fun copyTyDef (id, Env.TyDef tys, env) = 
-	Env.VarMap.insert(env, id, Env.TyDef (substTyScheme tys))
-      | copyTyDef (id, Env.TyCon tyc, env) = let
-	val tyc' = copyTyCon tyc
-	in
-          Env.VarMap.insert(env, id, Env.TyCon tyc')
-        end
+	   Env.VarMap.insert(env, id, Env.TyDef (substTyScheme tys))
+      | copyTyDef (id, Env.TyCon tyc, env) = 
+           Env.VarMap.insert(env, id, Env.TyCon (copyTyCon tyc))
 
     fun copyVarDef (id, vbind, env) = (case vbind
-        of Env.Con (Ty.DCon {id=dcid, name, owner, argTy}) => let
-	   val dcon = Ty.DCon{id=dcid, name=name, owner=copyTyCon owner, argTy=Option.map substTy argTy}
-           in
-              Env.VarMap.insert(env, id, Env.Con dcon)
-           end
+        of Env.Con dcon =>
+              Env.VarMap.insert(env, id, Env.Con (substDCon dcon))
 	 | Env.Var v => let
 	   val ty' = substTyScheme (Var.typeOf v)
 	   val v' = Var.newPoly(Var.nameOf v, ty')
@@ -69,13 +61,13 @@ structure CopySig =
 	       Env.setRealizationOfTyc(tyc', Option.valOf(Env.getRealizationOfTyc sigTyc));
 	       tyc'
 	   end
-      | freshTyc sigTyc = let
+      | freshTyc (sigTyc as Ty.Tyc{def=Ty.DataTyc{cons=sigCons, ...}, ...}) = let
 	    val SOME(Env.TyCon(modTyc as Ty.Tyc{params, def=Ty.DataTyc{cons, nCons}, ...})) = 
 		       Env.getRealizationOfTyc sigTyc
-	    val tyc' = TyCon.newDataTyc(TyCon.nameOf modTyc, params)
+	    val tyc' as Ty.Tyc{def=Ty.DataTyc{cons, ...}, ...} = TyCon.newDataTyc(TyCon.nameOf modTyc, params)
 	    fun copyDCon (Ty.DCon {id, name, owner, argTy}) = 
 		   Ty.DCon{id=id, name=name, owner=tyc', argTy=argTy}
-	    val cons' = List.map copyDCon (!cons)
+	    val cons' = List.map copyDCon (!sigCons)
             in
 	       Env.setRealizationOfTyc(modTyc, Env.TyCon tyc');
 	       cons := cons';

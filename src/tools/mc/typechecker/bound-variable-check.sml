@@ -32,7 +32,7 @@ structure BoundVariableCheck :> sig
   (* attempt to find the binding site of a qualified identifier, reporting an error if none exists *)
     fun findQid (find, kind, dummy) (loc, env, qId) = (case find(env, qId)
            of NONE => (
-	      error(loc, ["unbound ", kind, qidToString qId]);
+	      error(loc, ["unbound ", kind, " ", qidToString qId]);
 	      dummy)
 	    | SOME x => x
            (* end case *))
@@ -41,8 +41,8 @@ structure BoundVariableCheck :> sig
     val dummyTy = Var.new("dummyTy", ())
     val dummyMod = Var.new("dummyMod", ())
     val findTyQid = findQid (QualifiedId.findTy, "type", dummyTy)
-    val findVarQid = findQid (QualifiedId.findVar, "var", (BEnv.Var dummyVar))
-    val findModQid = findQid (QualifiedId.findMod, "mod", dummyMod)
+    val findVarQid = findQid (QualifiedId.findVar, "variable", (BEnv.Var dummyVar))
+    val findModQid = findQid (QualifiedId.findMod, "module", dummyMod)
 
     fun chkList loc (chkX, xs, env) = let
 	   fun f (x, (xs, env)) = let

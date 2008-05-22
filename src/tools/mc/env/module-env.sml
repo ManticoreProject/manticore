@@ -141,7 +141,7 @@ structure ModuleEnv =
    *          ==>
    *   [(t, AbsTyc, Env.TyDef int)]
    *)
-    fun tyConDefs (sigTyEnv : ty_env, modTyEnv : ty_env) = let
+    fun tyConDefs (sigTyEnv, modTyEnv) = let
   	   fun f ((_, TyCon tyc, SOME tyDef), ms) = (tyc, tyDef) :: ms
 	     | f (_, ms) = ms
            in

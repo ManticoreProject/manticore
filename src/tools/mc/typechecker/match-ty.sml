@@ -43,6 +43,13 @@ structure MatchTy : sig
 (* FIXME: add a control to enable this flag *)
     val debugMatch = ref false
 
+    fun getRealizationTy (ty as Ty.ConTy(tys, tyc)) = (case ModuleEnv.getRealizationOfTyc tyc
+          of NONE => ty
+	   | SOME (ModuleEnv.TyDef (Ty.TyScheme(_, ty))) => ty
+	   | SOME (ModuleEnv.TyCon tyc) => Ty.ConTy(tys, tyc)
+          (* end case *))
+      | getRealizationTy ty = ty
+
   (* does a meta-variable occur in a type? *)
     fun occursIn (mv, ty) = let
 	  fun occurs ty = (case TU.prune ty
@@ -82,7 +89,7 @@ structure MatchTy : sig
 		in
 		  adjust ty
 		end
-	  fun uni (ty1, ty2) = (case (TU.prune ty1, TU.prune ty2)
+	  fun mtch (ty1, ty2) = (case (getRealizationTy (TU.prune ty1), TU.prune ty2)
 		 of (Ty.ErrorTy, ty2) => true
 		  | (ty1, Ty.ErrorTy) => true
 		  | (Ty.VarTy tv1, Ty.VarTy tv2) => 
@@ -90,28 +97,18 @@ structure MatchTy : sig
 		  | (ty, Ty.VarTy tv2) => true
 		  | (ty1, Ty.MetaTy mv2) => matchWithMV (ty1, mv2)
 		  | (Ty.ConTy(tys1, tyc1), Ty.ConTy(tys2, tyc2)) => 
-		    (case ModuleEnv.getRealizationOfTyc tyc1
-		      of NONE => TyCon.same(tyc1, tyc2) andalso ListPair.allEq uni (tys1, tys2)
-		       | SOME (Env.TyDef (Ty.TyScheme(_, ty1))) => uni(ty1, ty2)
-		       | SOME (Env.TyCon tyc1') => TyCon.same(tyc1', tyc2) andalso ListPair.allEq uni (tys1, tys2)
-		    (* end case *))
-                 (* the type in the signature is abstract *)
-		  | (Ty.ConTy([], tyc1), ty2) => 
-		    (case ModuleEnv.getRealizationOfTyc tyc1
-		      of NONE => false
-		       | SOME (Env.TyDef (Ty.TyScheme(_, ty1))) => uni(ty1, ty2)
-		    (* end case *))
+		       TyCon.same(tyc1, tyc2) andalso ListPair.allEq mtch (tys1, tys2)
 		  | (Ty.FunTy(ty11, ty12), Ty.FunTy(ty21, ty22)) => 
-		      uni(ty11, ty21) andalso uni(ty12, ty22)
+		      mtch(ty11, ty21) andalso mtch(ty12, ty22)
 		  | (Ty.TupleTy tys1, Ty.TupleTy tys2) =>
-		      ListPair.allEq uni (tys1, tys2)
+		      ListPair.allEq mtch (tys1, tys2)
 		  | _ => false
 	       (* end case *))
 	(* match a type with an uninstantiated meta-variable *)
 	  and matchWithMV (ty, mv as Ty.MVar{info, ...}) = let
-		fun isClass cls = if TC.isClass(ty, cls)
-		      then (assignMV(info, Ty.INSTANCE ty); true)
-		      else false
+		fun isClass cls =  if TC.isClass(ty, cls)
+                       then (assignMV(info, Ty.INSTANCE ty); true)
+		       else false
 		in
 		  case !info
 		   of Ty.UNIV d => if (occursIn(mv, ty))
@@ -156,7 +153,7 @@ structure MatchTy : sig
 		    | _ => raise Fail "impossible"
 		  (* end case *)
 		end
-	  val ty = uni (ty1, ty2)
+	  val ty = mtch (ty1, ty2)
 	  in
 	    if reconstruct
 	      then List.app (op :=) (!mv_changes)
