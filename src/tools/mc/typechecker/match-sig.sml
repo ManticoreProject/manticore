@@ -136,7 +136,7 @@ structure MatchSig :> sig
 	      } = (
   	   errStrm := err;
          (* set the realizations of type constructors *)
-	   List.app (fn (tyc, tyd) => Env.setRealizationOfTyc(tyc, tyd)) (Env.tyConDefs (sigTyEnv, modTyEnv));
+	   List.app Env.setRealizationOfTyc (Env.tyConDefs (sigTyEnv, modTyEnv));
          (* match specs in the constraining signature with declarations the implementing structure *)
 	   matchTypes loc (modTyEnv, sigTyEnv);
 	   matchVars loc (modVarEnv, sigVarEnv);

@@ -171,13 +171,6 @@ structure ChkModule :> sig
 		     | SOME v' => v')
         end
 
-  (* update types for decls *)
-    fun freshenDecls decls = let
-	  val s = {tyFn=CopySig.substTy, tySFn=CopySig.substTyScheme, dcFn=CopySig.substDCon}
-          in
-	     SubstTy.topDecs s decls
-	  end
-
     fun chkModule loc (id, sign, module, (env, moduleEnv, astDecls)) = (case module
         of PT.MarkMod {span, tree} => chkModule span (id, sign, tree, (env, moduleEnv, astDecls))
 	 | PT.DeclsMod decls => let
@@ -186,9 +179,11 @@ structure ChkModule :> sig
 		val (modEnv', modAstDecls') = (case sign
                     of SOME sign => let
                        val sigEnv = chkSignature loc (NONE, sign, env)
+		       (* NOTE: env contains fresh tycons *)
 		       val env = MatchSig.match{err=(!errStrm), loc=loc, modEnv=modEnv, sigEnv=sigEnv}
-		       val s = buildVarSubst (Env.varEnv modEnv, Env.varEnv env)
-		       val modAstDecls' = SubstVar.topDecs s modAstDecls
+		       (* replace stale tycons with fresh ones *)
+		       val modAstDecls' = 
+			     SubstVar.topDecs (buildVarSubst (Env.varEnv modEnv, Env.varEnv env)) modAstDecls
                        in
 			   (env, modAstDecls')
                        end
@@ -247,6 +242,13 @@ structure ChkModule :> sig
                  (Env.insertSig(env, id, sigEnv), moduleEnv, astDecls)
               end
 	  (* end case *))
+
+  (* refresh types for decls *)
+    and freshenDecls decls = let
+	  val s = {tyFn=CopySig.substTy, tySFn=CopySig.substTyScheme, dcFn=CopySig.substDCon}
+          in
+	     SubstTy.topDecs s decls
+	  end
 
     and chkTopDcls (loc, ptDecls, env, moduleEnv) = let
         val (env', moduleEnv, astDecls) = List.foldl (chkTopDcl loc) (env, moduleEnv, []) ptDecls

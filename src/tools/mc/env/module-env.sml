@@ -157,5 +157,38 @@ structure ModuleEnv =
       val getRealizationOfTyc = getFn
     end
 
+    local
+	val {getFn : Var.var -> Var.var option, setFn, ...} =
+	              Var.newProp(fn _ => NONE)
+    in
+      fun setVar (v, v') = setFn(v, SOME v')
+      val getVar = getFn
+    end
+
+    fun tyDefToString (id, TyDef ts) = ProgramParseTree.Var.toString id^" = "^TypeUtil.schemeToString ts
+      | tyDefToString (id, TyCon tc) = ProgramParseTree.Var.toString id^" = "^TyCon.toString tc
+
+    fun valBindToString (id, Con dc) = ProgramParseTree.Var.toString id^" = "^DataCon.toString dc
+      | valBindToString (id, Var v)  = ProgramParseTree.Var.toString id^" = "^Var.toString v^" : "^TypeUtil.schemeToString (Var.typeOf v)
+      | valBindToString (id, Overload (ts, vs)) = ProgramParseTree.Var.toString id^" = "^"..."
+      | valBindToString (id, EqOp v) = ProgramParseTree.Var.toString id^" = "^Var.toString v
+
+    fun toString (ModEnv {modRef=AST.MOD{name, ...}, varEnv, tyEnv, modEnv, ...}) = let
+	   val tys = String.concatWith "\n" (List.map tyDefToString (VarMap.listItemsi tyEnv))
+	   val vars = String.concatWith "\n" (List.map valBindToString (VarMap.listItemsi varEnv))
+	   val mods = String.concatWith "\n" (List.map (toString o #2) (VarMap.listItemsi modEnv))
+	   in
+	      String.concat [
+	         "sig ", Atom.toString name, " = \n", 
+		 tys, "\n",
+		 vars, "\n",
+		 mods
+	      ]
+	   end
+
+    fun typeOfValBind (Con dc) = DataCon.typeOf dc
+      | typeOfValBind (Var v) = Var.typeOf v
+      | typeOfValBind (Overload (ts, _)) = ts
+      | typeOfValBind (EqOp v) = Var.typeOf v
 
   end (* ModuleEnv *)

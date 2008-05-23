@@ -49,6 +49,7 @@ structure PrintAST : sig
   (* sp : unit -> unit *)
     fun sp () = S.space (!str) 1
 
+
   (* prln : string -> unit *)
     fun prln s = (pr s; ln ())
 
@@ -353,7 +354,7 @@ structure PrintAST : sig
 	   closeBox ())
       | pat (A.VarPat v) = (
 	  openHBox ();
-	    var v; pr ":"; tyScheme(Var.typeOf v);
+	    var v;
 	  closeBox ())
       | pat (A.WildPat ty) = pr "_"
       | pat (A.ConstPat c) = const c
@@ -370,7 +371,7 @@ structure PrintAST : sig
       | overload_var (A.Instance v) = var v
 				    
   (* var : A.var -> unit *)
-    and var (v as VarRep.V{name, ...}) = pr (Var.toString v)
+    and var (v as VarRep.V{name, ...}) = pr (Var.toString v^" : "^TypeUtil.schemeToString (Var.typeOf v))
 
   (* prettyprint an exception declaration *)
     fun ppExn (T.DCon{name, argTy, ...}) = (
