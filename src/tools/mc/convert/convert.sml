@@ -228,10 +228,10 @@ structure Convert : sig
 	  end
 
     fun transform (B.MODULE{name, externs, body}) = let
-	  fun cvtExtern (CFunctions.CFun{var, name, retTy, argTys, attrs}, (cfs, env)) = let
+	  fun cvtExtern (CFunctions.CFun{var, name, retTy, argTys, attrs, varArg}, (cfs, env)) = let
 		val (var', env) = bindVar(env, var)
 		in
-		  (CPS.mkCFun{var=var', name=name, retTy=retTy, argTys=argTys, attrs=attrs}::cfs, env)
+		  (CPS.mkCFun{var=var', name=name, retTy=retTy, argTys=argTys, attrs=attrs, varArg=varArg}::cfs, env)
 		end
 	  val (externs', env) = List.foldr cvtExtern ([], E.empty) externs
 	  val env = bindLambda (body, env)

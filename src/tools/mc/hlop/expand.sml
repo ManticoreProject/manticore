@@ -426,7 +426,7 @@
 	 * defined types to the translation environment, and HLOp signatures to the HLOp
          * environment.
 	 *)
-	  fun insDef (PT.Extern(CFunctions.CFun{var, name, retTy, argTys, attrs}), env) = (
+	  fun insDef (PT.Extern(CFunctions.CFun{var, name, retTy, argTys, attrs, varArg}), env) = (
 		case ATbl.find importEnv var
 (* FIXME: we probably should check that the existing prototype matches this one! *)
 		 of SOME cfun => env (* already defined, so do nothing *)
@@ -434,7 +434,7 @@
 		      val ty = BTy.T_CFun(CFunctions.CProto(retTy, argTys, attrs))
 		      val cf = BOM.mkCFun{
 			      var = BOM.Var.new(Atom.toString var, ty),
-			      name = name, retTy = retTy, argTys = argTys, attrs = attrs
+			      name = name, retTy = retTy, argTys = argTys, attrs = attrs, varArg = varArg
 			    }
 		      in
 			ATbl.insert importEnv (var, cf); env

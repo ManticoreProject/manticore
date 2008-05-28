@@ -23,6 +23,7 @@ signature C_FUNCTIONS =
 	name : string,			(* external name *)
 	retTy : c_type,			(* return type *)
 	argTys : c_type list,		(* argument type *)
+	varArg : bool,                  (* is this function vararg, e.g., printf *)
 	attrs : attribute list
       }
 
@@ -31,6 +32,7 @@ signature C_FUNCTIONS =
     val varOf : 'var c_fun -> 'var
     val nameOf : 'var c_fun -> string
     val typeOf : 'var c_fun -> c_proto
+    val isVarArg : c_fun -> bool
 
     val protoHasAttr : attribute -> c_proto -> bool
     val cfunHasAttr : attribute -> 'var c_fun -> bool
@@ -61,6 +63,7 @@ structure CFunctions : C_FUNCTIONS =
 	name : string,			(* external name *)
 	retTy : c_type,			(* return type *)
 	argTys : c_type list,		(* argument type *)
+	varArg : bool,                  (* is this function vararg, e.g., printf *)
 	attrs : attribute list
       }
 
@@ -72,6 +75,7 @@ structure CFunctions : C_FUNCTIONS =
     fun varOf (CFun{var, ...}) = var
     fun nameOf (CFun{name, ...}) = name
     fun typeOf (CFun{retTy, argTys, attrs, ...}) = CProto(retTy, argTys, attrs)
+    fun isVarArg (CFun{varArg, ...}) = varArg
 
     fun tyToString PointerTy = "void *"
       | tyToString (BaseTy rTy) = RawTypes.toString rTy

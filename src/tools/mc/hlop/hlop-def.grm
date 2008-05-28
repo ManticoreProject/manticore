@@ -30,6 +30,7 @@
 	| KW_enum	("enum")
 	| KW_tag        ("tag")
 	| KW_extern	("extern")
+	| KW_vararg	("vararg")
 	| KW_float	("float")
 	| KW_fun	("fun")
 	| KW_galloc	("galloc")
@@ -111,6 +112,16 @@ Definition
 			name = Atom.toString ID,
 			retTy = CRetTy,
 			argTys = flatten SR,
+			varArg = false,
+			attrs = Attrs
+		      }))
+        | "vararg" CRetTy ID Attrs ";"
+		=> (PT.Extern(CF.CFun{
+			var = ID,
+			name = Atom.toString ID,
+			retTy = CRetTy,
+			argTys = [],
+			varArg = true,
 			attrs = Attrs
 		      }))
 	| "typedef" ID "=" Type ";"

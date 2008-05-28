@@ -73,6 +73,7 @@
 		  ("enum",	T.KW_enum),
 		  ("tag",       T.KW_tag),
 		  ("extern",	T.KW_extern),
+		  ("vararg",	T.KW_vararg),
 		  ("float",	T.KW_float),
 		  ("fun",	T.KW_fun),
 		  ("galloc",	T.KW_galloc),

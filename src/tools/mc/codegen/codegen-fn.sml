@@ -19,6 +19,9 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
   structure Var = M.Var
   structure MTy = BE.MTy
   structure Prim = PrimGenFn (structure BE = BE)
+  structure MChkTy = MLTreeCheckTy (
+		        structure T = T
+			val intTy = MTy.wordTy)
 
   structure FloatLit = LiteralTblFn (
         type lit = (T.ty * FloatLit.float)
@@ -87,6 +90,12 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
 			  entryLabel, exitBlock, pseudoOp, endCluster, ...} = 
 	  mlStrm
       val emit = fn stm => emit (annotate (stm, BE.MLTreeUtils.stmToString stm))
+(*
+if MChkTy.check stm
+		        then emit (annotate (stm, BE.MLTreeUtils.stmToString stm))
+		        else raise Fail ("incorrect type for MLRISC statement: "^
+					 BE.MLTreeUtils.stmToString stm)
+*)
       val emitStms = List.app emit
       val endCluster = BE.compileCFG o endCluster
 		     

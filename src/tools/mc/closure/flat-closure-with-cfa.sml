@@ -404,9 +404,9 @@ structure FlatClosureWithCFA : sig
           val blocks = ref []
         (* construct an initial environment that maps the CPS externs to CFG labels *)
           val (externs, externEnv) = let
-                fun cvt (CFunctions.CFun{var, name, retTy, argTys, attrs}, (cfs, env)) = let
+                fun cvt (CFunctions.CFun{var, name, retTy, argTys, attrs, varArg}, (cfs, env)) = let
                       val lab = CFG.Label.new(name, cvtTyOfVar var)
-                      val cf = CFG.mkCFun{var=lab, name=name, argTys=argTys, retTy=retTy, attrs=attrs}
+                      val cf = CFG.mkCFun{var=lab, name=name, argTys=argTys, retTy=retTy, attrs=attrs, varArg=varArg}
                       in
                         (cf::cfs, VMap.insert(env, var, Extern lab))
                       end
