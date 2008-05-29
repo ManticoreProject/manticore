@@ -32,7 +32,7 @@ signature C_FUNCTIONS =
     val varOf : 'var c_fun -> 'var
     val nameOf : 'var c_fun -> string
     val typeOf : 'var c_fun -> c_proto
-    val isVarArg : c_fun -> bool
+    val isVarArg : 'var c_fun -> bool
 
     val protoHasAttr : attribute -> c_proto -> bool
     val cfunHasAttr : attribute -> 'var c_fun -> bool
