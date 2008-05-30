@@ -48,4 +48,13 @@ structure StagedAllocation =
 
     fun freshCounter () = recv cntCh
 
+    fun regWidth (w, _) = w
+			  
+    fun useRegs rs = let
+	val c = freshCounter ()
+        in
+	    (c, SEQ [BITCOUNTER c, REGS_BY_BITS (c, rs)])
+        end
+
+
   end
