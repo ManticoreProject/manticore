@@ -22,6 +22,7 @@ structure QualifiedId : sig
     val findTy : (BindingEnv.env * Atom.atom ParseTree.path) -> BindingEnv.ty_binder option
     val findVar : (BindingEnv.env * Atom.atom ParseTree.path) -> BindingEnv.val_bind option
     val findMod : (BindingEnv.env * Atom.atom ParseTree.path) -> BindingEnv.mod_binder option
+    val findModEnv : (BindingEnv.env * Atom.atom ParseTree.path) -> BindingEnv.env option
 
     val toString : (('a -> string) * 'a ParseTree.path) -> string
 
@@ -72,6 +73,11 @@ structure QualifiedId : sig
     fun findMod (env, path) = (case checkModPath (env, path)
         of UNQUAL x => Option.map #1 (BindingEnv.findMod(env, x))
 	 | QUAL (env', x) => Option.map #1 (BindingEnv.findMod(env', x))
+	 | ERROR => NONE)
+
+    fun findModEnv (env, path) = (case checkModPath (env, path)
+        of UNQUAL x => Option.map #2 (BindingEnv.findMod(env, x))
+	 | QUAL (env', x) => Option.map #2 (BindingEnv.findMod(env', x))
 	 | ERROR => NONE)
 
   end

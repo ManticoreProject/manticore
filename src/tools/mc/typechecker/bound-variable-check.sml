@@ -43,6 +43,7 @@ structure BoundVariableCheck :> sig
     val findTyQid = findQid (QualifiedId.findTy, "type", dummyTy)
     val findVarQid = findQid (QualifiedId.findVar, "variable", (BEnv.Var dummyVar))
     val findModQid = findQid (QualifiedId.findMod, "module", dummyMod)
+    val findModEnv = findQid (QualifiedId.findModEnv, "module", BEnv.empty NONE)
 
     fun chkList loc (chkX, xs, env) = let
 	   fun f (x, (xs, env)) = let
@@ -345,6 +346,11 @@ structure BoundVariableCheck :> sig
 	          in
 		     (PT2.ConstraintExp (exp, ty), env)
 	          end
+	    | PT1.SpawnExp exp => let
+		  val (exp, _) = chkExp loc (exp, env)
+	          in
+		     (PT2.SpawnExp exp, env)
+	          end
             (* end case *))
 
     and chkExps loc (exps, env) = chkList loc (chkExp, exps, env)
@@ -455,7 +461,7 @@ structure BoundVariableCheck :> sig
 		     case BEnv.findSig(env, id)
                       of NONE => (error(loc, ["unbound signature ", Atom.toString id]);
 				  (PT2.NameSig(Var.new("dummy", ()), tyDecls), env))
-		       | SOME id' => (PT2.NameSig(id', tyDecls), env)
+		       | SOME (id', sigEnv) => (PT2.NameSig(id', tyDecls), sigEnv)
 	          end
 	    | PT1.ExpSig specs => let
 		  val (specs, env) = chkSpecs loc (specs, env)
@@ -464,45 +470,90 @@ structure BoundVariableCheck :> sig
 		  end
           (* end case *))
 
-    fun chkModule loc (sign, env) = (case sign
-           of PT1.MarkMod {span, tree} => let
-		  val (tree, env) = chkModule span (tree, env)
-	          in
-		     (PT2.MarkMod {span=span, tree=tree}, env)
-		  end
-	    | PT1.DeclsMod decls => let
-		  val (decls, env) = chkDecls loc (decls, env)
-	          in
-		     (PT2.DeclsMod decls, env)
-		  end
-	    | PT1.NamedMod qId => (PT2.NamedMod(findModQid(loc, env, qId)), env)
-           (* end case *))
+  (* generate a rebinding *)
+    fun rebindVar (name, BEnv.Con v) = (name, v, BEnv.Con (Var.new(Atom.toString name, ())))
+      | rebindVar (name, BEnv.Var v) = (name, v, BEnv.Var (Var.new(Atom.toString name, ())))
+
+  (* generates code to rebind the values *)
+    fun genRebindVars fvs = let
+	    fun bind ((_, v, (BEnv.Var v' | BEnv.Con v')), binds) = 
+		    PT2.ValVDecl(PT2.IdPat v', PT2.IdExp v) :: binds
+            in
+	        List.foldl bind [] fvs
+            end
+
+  (* rebind the values of the module w.r.t. the scope of the signature. *)
+    fun rebindVars (sigVarEnv, modVarEnv) = let
+	    val vals = BEnv.Map.listItemsi(BEnv.intersect(sigVarEnv, modVarEnv))
+	    val freshVars = List.map rebindVar vals
+	    val valEnv = List.foldl (fn ((name, _, v), env) => BEnv.Map.insert(env, name, v)) BEnv.Map.empty freshVars
+            in
+	       (genRebindVars freshVars, valEnv)
+            end
+
+  (* rebind types, variables and nested modules *)
+    fun rebindMod (sigEnv, modEnv) = let
+	    val BEnv.Env{tyEnv=sigTyEnv, varEnv=sigVarEnv, modEnv=sigModEnv, ...} = sigEnv
+	    val BEnv.Env{tyEnv, varEnv, modEnv, sigEnv, outerEnv} = modEnv
+	    val (rebindVars, varEnv') = rebindVars(sigVarEnv, varEnv)
+(* FIXME *)
+	    val tyEnv' = tyEnv
+	    val modEnv' = modEnv
+	    val modEnv' = BEnv.Env{tyEnv=tyEnv', varEnv=varEnv', modEnv=modEnv', sigEnv=sigEnv, outerEnv=outerEnv}
+	    in
+	        (rebindVars, modEnv')
+	    end
+
+  (* check the constraining signature. we rebind to get scoping right. *)
+    fun chkConstraint loc (signOpt, modEnv, env) = (case signOpt
+                of NONE => (NONE, [], modEnv)
+		 | SOME sign => let
+		       val (sign, signEnv) = chkSign loc (sign, env)
+		       val (rebinds, signEnv) = rebindMod(signEnv, modEnv)
+		       in
+		           (SOME sign, rebinds, signEnv)
+		       end
+                (* end case *))
+
+    fun chkModule loc (module, sign, env) = (case module
+            of PT1.MarkMod {span, tree} => let
+		   val (tree, sign, rebinds, env) = chkModule span (tree, sign, env)
+	           in
+		      (PT2.MarkMod {span=span, tree=tree}, sign, rebinds, env)
+	           end
+	     | PT1.DeclsMod decls => let
+		   val (decls, modEnv) = chkDecls loc (decls, env)
+		   val (sign, rebinds, signEnv) = chkConstraint loc (sign, modEnv, env)
+	           in
+		       (PT2.DeclsMod decls, sign, rebinds, signEnv)
+	           end
+	     | PT1.NamedMod qId => let
+		   val modId = findModQid(loc, env, qId)
+		   val modEnv = findModEnv(loc, env, qId)
+		   val (sign, rebinds, signEnv) = chkConstraint loc (sign, modEnv, env)
+	           in
+                      (PT2.NamedMod modId, sign, rebinds, signEnv)
+	           end
+            (* end case *))
 
     and chkDecl loc (decl, env) = (case decl
            of PT1.MarkDecl {span, tree} => let
-		  val (tree, env) = chkDecl span (tree, env)
+		  val (trees, env) = chkDecl span (tree, env)
 	          in
-	             (PT2.MarkDecl{span=span, tree=tree}, env)
+	             (List.map (fn tree => PT2.MarkDecl{span=span, tree=tree}) trees, env)
 	          end
-	    | PT1.ModuleDecl (mb, sign, module) => let
-	          val (sign, env) = (case sign
-		         of NONE => (NONE, env)
-			  | SOME sign => let
-				val (sign, env) = chkSign loc (sign, env)
-			        in
-				   (SOME sign, env)
-				end
-	                 (* end case *))
+	    | PT1.ModuleDecl (mb, sign, module) => let	          
 		  val mb' = Var.new(Atom.toString mb, ())
-		  val (module, modEnv) = chkModule loc (module, BEnv.empty (SOME env))
+		  val (module, sign, rebindVals, modEnv) = chkModule loc (module, sign, BEnv.empty (SOME env))
+		  val rebindDecls = List.map PT2.ValueDecl rebindVals
 		  val env = BEnv.insertMod(env, mb, (mb', modEnv))
 	          in
-	             (PT2.ModuleDecl(mb', sign, module), env)
+	             (PT2.ModuleDecl(mb', sign, module) :: rebindDecls, env)
 	          end
 	    | PT1.TyDecl tyDecl => let
 		  val (tyDecl, env) = chkTyDecl loc (tyDecl, env)
 	          in
-		     (PT2.TyDecl tyDecl, env)
+		     ([PT2.TyDecl tyDecl], env)
 		  end
 	    | PT1.ExnDecl (con, tyOpt) => let
 		  val con' = Var.new(Atom.toString con, ())
@@ -516,29 +567,33 @@ structure BoundVariableCheck :> sig
 			       end
                         (* end case *))
 	          in
-		     (PT2.ExnDecl (con', tyOpt), env)
+		     ([PT2.ExnDecl (con', tyOpt)], env)
 		  end
 	    | PT1.ValueDecl valDecl => let
 		  val (valDecl, env) = chkValDecl loc (valDecl, env)
 	          in
-		    (PT2.ValueDecl valDecl, env)
+		    ([PT2.ValueDecl valDecl], env)
 		  end
 	    | PT1.LocalDecl (locals, decls) => let
 		  val (locals, env) = chkDecls loc (locals, env)
 		  val (decls, env) = chkDecls loc (decls, env)
 	          in
-		     (PT2.LocalDecl (locals, decls), env)
+		     ([PT2.LocalDecl (locals, decls)], env)
 		  end
 	    | PT1.SignDecl (id, sign) => let
 		  val id' = Var.new(Atom.toString id, ())
 		  val (sign, sigEnv) = chkSign loc (sign, BEnv.empty (SOME env))
-		  val env = BEnv.insertSig(env, id, id')
+		  val env = BEnv.insertSig(env, id, (id', sigEnv))
 		  in
-		     (PT2.SignDecl (id', sign), env)
+		     ([PT2.SignDecl (id', sign)], env)
 		  end
            (* end case *))
 
-    and chkDecls loc (decls, env) = chkList loc (chkDecl, decls, env)
+    and chkDecls loc (decls, env) = let
+	    val (decls, env) = chkList loc (chkDecl, decls, env)
+            in
+	        (List.concat decls, env)
+	    end
 
     fun check (es, {span, tree}) = let
 	val _ = errStrm := es

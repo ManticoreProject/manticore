@@ -27,13 +27,12 @@ structure BindingEnv =
     type ty_env = ty_binder Map.map
     type var_env = val_bind Map.map
     type mod_env = mod_binder Map.map
-    type sig_env = sig_id Map.map
     datatype env
       = Env of {
 	     tyEnv    : ty_env,
 	     varEnv   : var_env,
 	     modEnv   : (mod_binder * env) Map.map,
-	     sigEnv  : sig_env,
+	     sigEnv   : (sig_id * env) Map.map,
 	     outerEnv : env option       (* enclosing module *)
            }
 
@@ -79,5 +78,8 @@ structure BindingEnv =
     fun findVar (env, v) = findInEnv (env, #varEnv, v)
     fun findMod (env, v) = findInEnv (env, #modEnv, v)
     fun findSig (env, v) = findInEnv (env, #sigEnv, v)
+
+  (* constrains env2 to contain only those keys that are also in env1 *)
+    fun intersect (env1, env2) = Map.intersectWith (fn (x1, x2) => x2) (env1, env2)
 
   end

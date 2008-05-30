@@ -32,7 +32,6 @@ is
 
   match-sig.sml
   overload.sml
-  path.sml
   qualified-id.sml
   tc-controls.sml
   unify.sml
