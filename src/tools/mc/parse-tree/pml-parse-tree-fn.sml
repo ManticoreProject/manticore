@@ -7,7 +7,6 @@
  *)
 
 functor PMLParseTreeFn (
-    type 'a mark
 
     type ty_binder       (* top-level type identifiers *)
     type ty_use          (* type-variable uses *)
@@ -24,9 +23,12 @@ functor PMLParseTreeFn (
     type mod_use         (* module uses *)
 
     type sig_id          (* signature identifiers *)
+
   ) = struct
 
-    type 'a mark = 'a mark
+  (* a term marked with a source-map span *)
+    type 'a mark = 'a Error.mark
+
     type tyvar = Atom.atom          (* type-variable identifiers *)
     type ty_binder = ty_binder
     type ty_use = ty_use

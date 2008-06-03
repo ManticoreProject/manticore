@@ -48,6 +48,9 @@ structure Error :> sig
 
     val locToString : location -> string
 
+  (* a term marked with a source-map span *)
+    type 'a mark = {span : span, tree : 'a}
+
   end = struct
 
     structure SP = AntlrStreamPos
@@ -213,5 +216,8 @@ structure Error :> sig
 
     fun report (outStrm, es as ES{errors, ...}) =
 	  List.app (printError (outStrm, es)) (sort (!errors))
+
+  (* a term marked with a source-map span *)
+    type 'a mark = {span : span, tree : 'a}
 
   end

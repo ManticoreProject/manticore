@@ -19,19 +19,23 @@ structure QualifiedId : sig
       | ERROR
 	(* error in checking the qid *)
 
-    val findTy : (BindingEnv.env * Atom.atom ParseTree.path) -> BindingEnv.ty_binder option
-    val findVar : (BindingEnv.env * Atom.atom ParseTree.path) -> BindingEnv.val_bind option
-    val findMod : (BindingEnv.env * Atom.atom ParseTree.path) -> BindingEnv.mod_binder option
-    val findModEnv : (BindingEnv.env * Atom.atom ParseTree.path) -> BindingEnv.env option
+    type 'a path = 'a ProgramParseTree.path
 
-    val toString : (('a -> string) * 'a ParseTree.path) -> string
+    val findTy : (BindingEnv.env * Atom.atom path) -> BindingEnv.ty_binder option
+    val findVar : (BindingEnv.env * Atom.atom path) -> BindingEnv.val_bind option
+    val findMod : (BindingEnv.env * Atom.atom path) -> BindingEnv.mod_binder option
+    val findModEnv : (BindingEnv.env * Atom.atom path) -> BindingEnv.env option
+
+    val toString : (('a -> string) * 'a path) -> string
 
     (* returns unqualified names *)
-    val unqualId : 'a ParseTree.path -> 'a option
+    val unqualId : 'a path -> 'a option
 
-    val pathId : 'a ParseTree.path -> 'a
+    val pathId : 'a path -> 'a
 
   end = struct
+
+    type 'a path = 'a ProgramParseTree.path
 
     datatype 'a result
       = UNQUAL of Atom.atom

@@ -8,9 +8,7 @@
 
 Library
 
-  structure ParseTree
-
-structure ProgramParseTree
+  structure ProgramParseTree
 
 is
   
@@ -24,4 +22,4 @@ is
 
   pml-parse-tree-fn.sml
   prog-parse-tree.sml
-  parse-tree.sml
+
