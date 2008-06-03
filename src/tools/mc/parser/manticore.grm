@@ -30,6 +30,8 @@ ValueDeclRHS
 		=> ()
 	| "_prim" "(" ID ")"
 		=> ()
+	| "_prim" "(" HLOP ")"
+		=> ()
 	;
 
 (* extend SML names with the BOM keywords *)
