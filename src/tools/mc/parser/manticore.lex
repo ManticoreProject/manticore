@@ -2,6 +2,8 @@
  *
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
+ *
+ * The unified lexer for SML and inline BOM code.
  *)
 
 %name ManticoreLex;
@@ -24,7 +26,10 @@
   (* add a string to the buffer *)
     fun addStr s = (buf := s :: !buf)
 
-  (* flag to mark ML string literals *)
+  (* flag to mark ML string literals.  In BOM code a normal string literal
+   * is a BOM string and a string with a preceding "@" is treated as an
+   * ML string literal.
+   *)
     val isMLString = ref false
 
   (* make a string from buf *)
@@ -119,7 +124,8 @@
 <INITIAL> "|?|" => (T.PCHOICE);
 <INITIAL> "&"   => (T.AMP);
 <INITIAL> "."   => (T.DOT);
-<INITIAL> {id}	=> (idToken yytext);
+
+<INITIAL> {id}		=> (idToken yytext);
 <INITIAL> {tyvarid}	=> (T.TYVAR(Atom.atom yytext));
 <INITIAL> "~"?{num}	=> (T.INT(valOf (IntInf.fromString yytext)));
 <INITIAL> "~"?{num}"."{num}([eE][+~]?{num})?
