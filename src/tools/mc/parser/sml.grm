@@ -77,7 +77,7 @@
     | AMP               ("&")
     | DOT               (".")
     | TYVAR of Atom.atom
-    | NAME of Atom.atom
+    | ID of Atom.atom
     | INT of IntInf.int
     | FLOAT of FloatLit.float
     | STRING of string
@@ -154,36 +154,40 @@ Module
 
 Signature
         : "sig" (Spec ";"?)* "end" => (mark PT.MarkSig (FULL_SPAN, PT.ExpSig SR))
-        | NAME => (mark PT.MarkSig (FULL_SPAN, PT.NameSig(NAME, [])))
+        | Name => (mark PT.MarkSig (FULL_SPAN, PT.NameSig(Name, [])))
         ;
 
 Spec
         : TyDecl => (mark PT.MarkSpec (FULL_SPAN, PT.TypeSpec TyDecl))
-        | "val" TyParams NAME ":" Type
-		=> (mark PT.MarkSpec (FULL_SPAN, PT.ValSpec(NAME, TyParams, Type)))
+        | "val" TyParams Name ":" Type
+		=> (mark PT.MarkSpec (FULL_SPAN, PT.ValSpec(Name, TyParams, Type)))
         ;
 
 TyDecl
-        : "type" TyParams NAME "=" Type
-		=> (markTyDecl (KW_type_SPAN, PT.TypeTyDecl(TyParams, NAME, Type)))
-	| "datatype" TyParams NAME "=" ConsDecl ("|" ConsDecl)*
-		=> (markTyDecl (KW_datatype_SPAN, PT.DataTyDecl(TyParams, NAME, ConsDecl :: SR)))
+        : "type" TyParams Name "=" TyDeclRHS
+		=> (markTyDecl (KW_type_SPAN, TyDeclRHS(TyParams, Name)))
+	| "datatype" TyParams Name "=" ConsDecl ("|" ConsDecl)*
+		=> (markTyDecl (KW_datatype_SPAN, PT.DataTyDecl(TyParams, Name, ConsDecl :: SR)))
         ;
+
+TyDeclRHS
+	:	Type	=> (fn (params, name) => PT.TypeTyDecl(params, name, Type))
+	;
 
 Decl
 	: TyDecl => (markDecl (FULL_SPAN, PT.TyDecl TyDecl))
-	| "exception" NAME ("of" Type)?
-		=> (markDecl (FULL_SPAN, PT.ExnDecl(NAME, SR)))
+	| "exception" Name ("of" Type)?
+		=> (markDecl (FULL_SPAN, PT.ExnDecl(Name, SR)))
 	| ValueDecl
 		=> (markDecl (ValueDecl_SPAN, PT.ValueDecl ValueDecl))
 	| "local" (Decl ";"?)* "in" (Decl ";"?)* "end"
 		=> (markDecl (FULL_SPAN, PT.LocalDecl(SR1, SR2)))
-        | "structure" NAME "=" Module
-		=> (markDecl (FULL_SPAN, PT.ModuleDecl(NAME, NONE, Module)))
-        | "structure" NAME ":" Signature "=" Module
-		=> (markDecl (FULL_SPAN, PT.ModuleDecl(NAME, SOME Signature, Module)))
-        | "signature" NAME "=" Signature
-		=> (markDecl (FULL_SPAN, PT.SignDecl(NAME, Signature)))
+        | "structure" Name "=" Module
+		=> (markDecl (FULL_SPAN, PT.ModuleDecl(Name, NONE, Module)))
+        | "structure" Name ":" Signature "=" Module
+		=> (markDecl (FULL_SPAN, PT.ModuleDecl(Name, SOME Signature, Module)))
+        | "signature" Name "=" Signature
+		=> (markDecl (FULL_SPAN, PT.SignDecl(Name, Signature)))
 	;
 
 TyParams
@@ -223,22 +227,26 @@ optTypes
 	;
 
 ConsDecl
-	: NAME ("of" Type)?
-		=> (mark PT.MarkConDecl (FULL_SPAN, PT.ConDecl(NAME, SR)))
+	: Name ("of" Type)?
+		=> (mark PT.MarkConDecl (FULL_SPAN, PT.ConDecl(Name, SR)))
 	;
 
 ValueDecl
-	: "val" Pat "=" Exp
-		=> (mark PT.MarkVDecl (KW_val_SPAN, PT.ValVDecl(Pat, Exp)))
+	: "val" Pat "=" ValueDeclRHS
+		=> (mark PT.MarkVDecl (FULL_SPAN, ValueDeclRHS pat))
 	| "pval" Pat "=" Exp
-		=> (mark PT.MarkVDecl (KW_pval_SPAN, PT.PValVDecl(Pat, Exp)))
+		=> (mark PT.MarkVDecl (FULL_SPAN, PT.PValVDecl(Pat, Exp)))
 	| "fun" FunDef ("and" FunDef)*
 		=> (mark PT.MarkVDecl (KW_fun_SPAN, PT.FunVDecl(FunDef :: SR)))
 	;
 
+ValueDeclRHS
+	: Exp		=> (fn pat => PT.ValVDecl(pat, Exp))
+	;
+
 FunDef
-	: NAME AtomicPat "=" Exp
-		=> (mark PT.MarkFunct (FULL_SPAN, PT.Funct(NAME, AtomicPat, Exp)))
+	: Name AtomicPat "=" Exp
+		=> (mark PT.MarkFunct (FULL_SPAN, PT.Funct(Name, AtomicPat, Exp)))
 	;
 
 Exp
@@ -350,7 +358,7 @@ ApplyExp
 	;
 
 QualifiedId
-        : (NAME ".")* NAME => ({span=FULL_SPAN, tree=(SR, NAME)})
+        : (Name ".")* Name => ({span=FULL_SPAN, tree=(SR, Name)})
         ;
 
 AtomicExp
@@ -424,9 +432,13 @@ AtomicPat
 		      | SOME(p, []) => p
 		      | SOME(p, ps) => markPat (FULL_SPAN, PT.TuplePat(p::ps))
 		    (* end case *))
-	| NAME			=> (markPat (FULL_SPAN, PT.IdPat NAME))
+	| Name			=> (markPat (FULL_SPAN, PT.IdPat Name))
 	| "_"			=> (markPat (FULL_SPAN, PT.WildPat))
 	| INT			=> (markPat (FULL_SPAN, PT.ConstPat(PT.IntLit INT)))
 	| FLOAT			=> (markPat (FULL_SPAN, PT.ConstPat(PT.FltLit FLOAT)))
 	| STRING		=> (markPat (FULL_SPAN, PT.ConstPat(PT.StrLit STRING)))
+	;
+
+Name
+	: ID			=> (ID)
 	;

@@ -14,11 +14,59 @@
 %import "sml.grm";
 %import "bom.grm";
 
+%start Program;
+
 Decl
-        : "type" TyParams NAME "=" "_prim" "(" BOMType ")"
-		=> (markTyDecl (KW_type_SPAN, PT.TypeTyDecl(TyParams, NAME, Type)))
-	| "val" Pat "=" "_prim" "(" BOMLambda ")"
+        : "_primcode" "(" BOMDecls ")"
 		=> ()
-	| "_primcode" "(" BOMDecls ")"
+	;
+
+TyDeclRHS
+	: "_prim" "(" BOMType ")"	=> (fn (params, name) => PT.TypePrimDecl(params, name, Type))
+	;
+
+ValueDeclRHS
+	: "_prim" "(" "fun" BOMLambda ")"
 		=> ()
+	| "_prim" "(" ID ")"
+		=> ()
+	;
+
+(* extend SML names with the BOM keywords *)
+Name
+	: KW_addr		=> (Atom.atom "addr")
+	| KW_alloc		=> (Atom.atom "alloc")
+	| KW_any		=> (Atom.atom "any")
+	| KW_apply		=> (Atom.atom "apply")
+	| KW_attribute		=> (Atom.atom "__attribute__")
+	| KW_byte		=> (Atom.atom "byte")
+	| KW_ccall		=> (Atom.atom "ccall")
+	| KW_cont		=> (Atom.atom "cont")
+	| KW_define		=> (Atom.atom "define")
+	| KW_do			=> (Atom.atom "do")   
+	| KW_double		=> (Atom.atom "double")
+	| KW_enum		=> (Atom.atom "enum")
+	| KW_extern		=> (Atom.atom "extern")
+	| KW_float		=> (Atom.atom "float")
+	| KW_host_vproc 	=> (Atom.atom "host_vproc")
+	| KW_inline		=> (Atom.atom "inline")
+	| KW_int		=> (Atom.atom "int")
+	| KW_long		=> (Atom.atom "long")
+	| KW_module		=> (Atom.atom "module")
+	| KW_noreturn		=> (Atom.atom "noreturn")
+	| KW_promote		=> (Atom.atom "promote")
+	| KW_pure		=> (Atom.atom "pure")
+        | KW_return		=> (Atom.atom "return")
+	| KW_short		=> (Atom.atom "short")
+	| KW_tag        	=> (Atom.atom "tag")
+	| KW_throw		=> (Atom.atom "throw")
+	| KW_typedef		=> (Atom.atom "typedef")
+	| KW_unwrap		=> (Atom.atom "unwrap")
+        | KW_use_rw     	=> (Atom.atom "use_rw")
+	| KW_vec128		=> (Atom.atom "vec128")
+	| KW_void		=> (Atom.atom "void")
+	| KW_vproc		=> (Atom.atom "vproc")
+	| KW_vpload		=> (Atom.atom "vpload")
+	| KW_vpstore		=> (Atom.atom "vpstore")
+	| KW_wrap		=> (Atom.atom "wrap")
 	;

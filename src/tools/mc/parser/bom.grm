@@ -75,7 +75,7 @@
 	| ASSIGN	(":=")
 (*	| DARROW	("=>")			*)
 (*	| ARROW		("->")			*)
-	| ID of Atom.atom
+(*	| ID of Atom.atom			*)
 	| HLOP of Atom.atom
 	| POSINT of IntInf.int		(* positive integer *)
 	| NEGINT of IntInf.int		(* negative integer *)
@@ -115,7 +115,7 @@ Definition
 		      }))
 	| "typedef" ID "=" BOMType ";"
 		=> (PT.TypeDef(ID, BOMType))
-	| "define" optInline HLOP FunParams ReturnTy ("=" Exp)? ";"
+	| "define" optInline HLOP FunParams ReturnTy ("=" BOMExp)? ";"
 		=> (let val (p1, p2) = FunParams in
 		      PT.Define(optInline, HLOP, p1, p2, ReturnTy, SR)
 		    end)
@@ -192,13 +192,13 @@ RawType
 	| "vec128"	=> (PT.T_Vec128)
 	;
 
-Exp
-	: "let" LHS "=" RHS Exp				=> (PT.Let(LHS, RHS, Exp))
-	| "do" RHS Exp					=> (PT.Let([], RHS, Exp))
-	| "fun" Lambda ("and" Lambda)* Exp		=> (PT.Fun(Lambda::SR, Exp))
-	| "cont" CLambda Exp				=> (PT.Cont(CLambda, Exp))
-	| "if" SimpleExp "then" Exp "else" Exp		=> (PT.If(SimpleExp, Exp1, Exp2))
-        | "case" SimpleExp "of" Rules ("|" Default)? "end"	=> (PT.Case(SimpleExp, Rules, SR))
+BOMExp
+	: "let" LHS "=" RHS BOMExp			=> (PT.Let(LHS, RHS, BOMExp))
+	| "do" RHS BOMExp				=> (PT.Let([], RHS, BOMExp))
+	| "fun" BOMLambda ("and" BOMLambda)* BOMExp	=> (PT.Fun(BOMLambda::SR, BOMExp))
+	| "cont" CLambda BOMExp				=> (PT.Cont(CLambda, BOMExp))
+	| "if" SimpleExp "then" BOMExp "else" BOMExp	=> (PT.If(SimpleExp, BOMExp1, BOMExp2))
+        | "case" SimpleExp "of" Rules ("|" Default)? "end" => (PT.Case(SimpleExp, Rules, SR))
 	| "apply" ID "(" Args ("/" Args)? ")"		=> (PT.Apply(ID, Args, Option.getOpt(SR, [])))
 	| "throw" ID "(" Args ")"			=> (PT.Throw(ID, Args))
 	| "return" "(" Args ")"				=> (PT.Return Args)
@@ -206,9 +206,9 @@ Exp
 		=> (PT.HLOpApply(HLOP, Args, Option.getOpt(SR, [])))
 	;
 
-Lambda
-	: ID FunParams ":" FunReturnTy "=" Exp
-		=> (let val (p1, p2) = FunParams in (ID, p1, p2, FunReturnTy, Exp) end)
+BOMLambda
+	: ID FunParams ":" FunReturnTy "=" BOMExp
+		=> (let val (p1, p2) = FunParams in (ID, p1, p2, FunReturnTy, BOMExp) end)
 	;
 
 FunReturnTy
@@ -217,7 +217,7 @@ FunReturnTy
 	;
 
 CLambda
-	: ID "(" Params ")" "=" Exp	=> (ID, Params, [], [], Exp)
+	: ID "(" Params ")" "=" BOMExp	=> (ID, Params, [], [], BOMExp)
 	;
 
 LHS
@@ -226,7 +226,7 @@ LHS
 	;
 
 RHS
-	: Exp				=> (PT.Exp Exp)
+	: BOMExp			=> (PT.Exp BOMExp)
 	| NonSelectExp			=> (PT.SimpleExp NonSelectExp)
 	| "#" POSINT "(" SimpleExp ")" (":=" SimpleExp)?
 		=> (case SR
@@ -268,13 +268,13 @@ Rules
 	;
 
 Rule
-	: ID "(" VarPat ("," VarPat)* ")" "=>" Exp
-					=> (PT.DConPat(ID, VarPat::SR), Exp)
-	| Literal "=>" Exp		=> (PT.ConstPat Literal, Exp)
+	: ID "(" VarPat ("," VarPat)* ")" "=>" BOMExp
+					=> (PT.DConPat(ID, VarPat::SR), BOMExp)
+	| Literal "=>" BOMExp		=> (PT.ConstPat Literal, BOMExp)
 	;
 
 Default
-	: VarPat "=>" Exp		=> (VarPat, Exp)
+	: VarPat "=>" BOMExp		=> (VarPat, BOMExp)
 	;
 
 VarPat
