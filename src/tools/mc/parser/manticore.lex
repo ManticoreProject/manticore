@@ -72,12 +72,18 @@
   (* ml-ulex requires this as well *)
     fun eof () = T.EOF
 
-  (* return either a keyword token or a NAME token *)
+  (* return either a keyword token or an ID token *)
     val idToken = Keywords.idToken
 
+  (* count the nesting depth of "(" inside primcode blocks *)
+    val primDepth = ref 0
+
+    fun inPrimCode () = (!primDepth > 0)
+    fun primPush () = (primDepth := !primDepth + 1)
+    fun primPop () = let val p = !primDepth-1 in primDepth := p; (p > 0) end
 );
 
-%states INITIAL STRING COMMENT;
+%states INITIAL STRING COMMENT PRIMCODE;
 
 %let letter = [a-zA-Z];
 %let dig = [0-9];
@@ -85,14 +91,28 @@
 %let idchar = {letter}|{dig}|"_"|"'";
 %let id = {letter}{idchar}*;
 %let tyvarid = "'"{idchar}*;
+%let hlid = "@"{letter}({idchar}|"-")*;
 %let esc = "\\"[abfnrtv\\\"]|"\\"{dig}{dig}{dig};
 %let sgood = [\032-\126]&[^\"\\]; (* sgood means "characters good inside strings" *)
 %let ws = " "|[\t\n\v\f\r];
 
+<INITIAL,PRIMCODE> "["	=> (T.LB);
+<INITIAL,PRIMCODE> "]"	=> (T.RB);
+<INITIAL,PRIMCODE> "->"	=> (T.ARROW);
+<INITIAL,PRIMCODE> "=>"	=> (T.DARROW);
+<INITIAL,PRIMCODE> "_"	=> (T.WILD);
+<INITIAL,PRIMCODE> "!"   => (T.PSUB);
+<INITIAL,PRIMCODE> "*"	=> (T.TIMES);
+<INITIAL,PRIMCODE> "/"	=> (T.SLASH);
+<INITIAL,PRIMCODE> "="	=> (T.EQ);
+<INITIAL,PRIMCODE> ","	=> (T.COMMA);
+<INITIAL,PRIMCODE> ";"	=> (T.SEMI);
+<INITIAL,PRIMCODE> "|"	=> (T.BAR);
+<INITIAL,PRIMCODE> ":"	=> (T.COLON);
+<INITIAL,PRIMCODE> "&"   => (T.AMP);
+
 <INITIAL> "("	=> (T.LP);
 <INITIAL> ")"	=> (T.RP);
-<INITIAL> "["	=> (T.LB);
-<INITIAL> "]"	=> (T.RB);
 <INITIAL> "(|"  => (T.LPB);
 <INITIAL> "|)"  => (T.RPB);
 <INITIAL> "[|"  => (T.LBB);
@@ -105,39 +125,30 @@
 <INITIAL> "::"	=> (T.DCOLON);
 <INITIAL> "@"	=> (T.AT);
 <INITIAL> "^"	=> (T.CONCAT);
-<INITIAL> "!"   => (T.PSUB);
 <INITIAL> "+"	=> (T.PLUS);
 <INITIAL> "-"	=> (T.MINUS);
-<INITIAL> "*"	=> (T.TIMES);
-<INITIAL> "/"	=> (T.SLASH);
-<INITIAL> "="	=> (T.EQ);
 <INITIAL> "~"	=> (T.TILDE);
-<INITIAL> ","	=> (T.COMMA);
-<INITIAL> ";"	=> (T.SEMI);
-<INITIAL> "|"	=> (T.BAR);
-<INITIAL> ":"	=> (T.COLON);
-<INITIAL> ":"	=> (T.SEAL);
-<INITIAL> "->"	=> (T.ARROW);
-<INITIAL> "=>"	=> (T.DARROW);
-<INITIAL> "_"	=> (T.WILD);
+<INITIAL> ":>"	=> (T.SEAL);
 <INITIAL> "?"   => (T.NDWILD);
 <INITIAL> "|?|" => (T.PCHOICE);
-<INITIAL> "&"   => (T.AMP);
 <INITIAL> "."   => (T.DOT);
 
-<INITIAL> {id}		=> (idToken yytext);
-<INITIAL> {tyvarid}	=> (T.TYVAR(Atom.atom yytext));
-<INITIAL> {num}		=> (T.POSINT(valOf (IntInf.fromString yytext)));
-<INITIAL> "~"{num}	=> (T.NEGINT(valOf (IntInf.fromString yytext)));
-<INITIAL> "~"?{num}"."{num}([eE][+~]?{num})?
-			=> (mkFloat yysubstr);
-<INITIAL> {ws}		=> (continue ());
-<INITIAL> "(*"		=> (YYBEGIN COMMENT; depth := 1; continue());
-<INITIAL> "\""		=> (YYBEGIN STRING; continue());
+<INITIAL> "_primcode"	=> (YYBEGIN PRIMCODE; T.KW__primcode);
+<INITIAL> "_prim"	=> (YYBEGIN PRIMCODE; T.KW__prim);
+
+<INITIAL,PRIMCODE> {id}		=> (idToken yytext);
+<INITIAL> {tyvarid}		=> (T.TYVAR(Atom.atom yytext));
+<INITIAL,PRIMCODE> {num}	=> (T.POSINT(valOf (IntInf.fromString yytext)));
+<INITIAL,PRIMCODE> "~"{num}	=> (T.NEGINT(valOf (IntInf.fromString yytext)));
+<INITIAL,PRIMCODE> "~"?{num}"."{num}([eE][+~]?{num})?
+				=> (mkFloat yysubstr);
+<INITIAL,PRIMCODE> {ws}		=> (skip ());
+<INITIAL,PRIMCODE> "(*"		=> (YYBEGIN COMMENT; depth := 1; skip());
+<INITIAL,PRIMCODE> "\""		=> (YYBEGIN STRING; skip());
 
 <STRING>{esc}		=> (addStr(valOf(String.fromString yytext)); continue());
 <STRING>{sgood}+	=> (addStr yytext; continue());
-<STRING>"\""		=> (YYBEGIN INITIAL; mkString());
+<STRING>"\""		=> (if inPrimCode() then YYBEGIN PRIMCODE else YYBEGIN INITIAL; mkString());
 <STRING>"\\".		=> (lexErr(yypos, [
 				"bad escape character `", String.toString yytext,
 				"' in string literal"
@@ -149,15 +160,23 @@
 			      ]);
 			    continue());
 
-<INITIAL> . => (
-	lexErr(yypos, ["bad character `", String.toString yytext, "'"]);
-	continue());
-
 <COMMENT> "(*" => (
 	depth := !depth + 1;
-	continue());
+	skip());
 <COMMENT> "*)" => (
 	depth := !depth - 1;
-        if (!depth = 0) then YYBEGIN INITIAL else ();
-	continue ());
-<COMMENT> .|"\n" => (continue ());
+        if (!depth = 0) then if inPrimCode() then YYBEGIN PRIMCODE else YYBEGIN INITIAL else ();
+	skip ());
+<COMMENT> .|"\n" => (skip ());
+
+<PRIMCODE> {hlid}		=> (T.HLOP(Atom.atom(String.extract(yytext, 1, NONE))));
+<PRIMCODE> "("			=> (primPush(); T.LP);
+<PRIMCODE> ")"			=> (if primPop() then () else YYBEGIN INITIAL; T.RP);
+<PRIMCODE> "__attribute__"	=> (T.KW___attribute__);
+<PRIMCODE>":="			=> (T.ASSIGN);
+<PRIMCODE>"$"			=> (T.DS);
+<PRIMCODE>"#"			=> (T.HASH);
+
+<INITIAL,PRIMCODE> . => (
+	lexErr(yypos, ["bad character `", String.toString yytext, "'"]);
+	continue());

@@ -1,9 +1,9 @@
 (* parser.sml
  *
- * COPYRIGHT (c) 2007 John Reppy (http://www.cs.uchicago.edu/~jhr)
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Based on CMSC 22610 Sample code (Winter 2007)
+ * Parser glue.
  *)
 
 structure Parser : sig
@@ -14,21 +14,21 @@ structure Parser : sig
   end = struct
 
   (* glue together the lexer and parser *)
-    structure MantParser = MantParseFn(MantLex)
+    structure ManticoreParser = ManticoreParseFn(ManticoreLex)
 
   (* error function for lexers *)
     fun lexErr errStrm (pos, msg) = Error.errorAt(errStrm, (pos, pos), msg)
 
   (* error function for parsers *)
-    val parseErr = Error.parseError MantTokens.toString
+    val parseErr = Error.parseError ManticoreTokens.toString
 
   (* parse a file, returning a parse tree *)
     fun parseFile (errStrm, filename) = let
 	  val file = TextIO.openIn filename
 	  fun get () = TextIO.input file
-	  val lexer = MantLex.lex (Error.sourceMap errStrm) (lexErr errStrm)
+	  val lexer = ManticoreLex.lex (Error.sourceMap errStrm) (lexErr errStrm)
 	  in
-	    case MantParser.parse lexer (MantLex.streamify get)
+	    case ManticoreParser.parse lexer (ManticoreLex.streamify get)
 	     of (SOME pt, _, []) => (TextIO.closeIn file; SOME pt)
 	      | (_, _, errs) => (
 		  TextIO.closeIn file;
@@ -37,9 +37,9 @@ structure Parser : sig
 	    (* end case *)
 	  end
        
-    val parseFile =
-       BasicControl.mkTracePassSimple
-       {passName = "parseFile",
-        pass = parseFile}
+    val parseFile = BasicControl.mkTracePassSimple {
+	    passName = "parseFile",
+	    pass = parseFile
+	  }
 
   end

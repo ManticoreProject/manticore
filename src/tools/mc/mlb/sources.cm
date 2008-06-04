@@ -20,7 +20,7 @@ is
 
   ../common/sources.cm
   ../parse-tree/sources.cm
-  ../parser/parser.cm
+  ../parser/sources.cm
   ../ast/sources.cm
 
   mlb.lex : ml-ulex

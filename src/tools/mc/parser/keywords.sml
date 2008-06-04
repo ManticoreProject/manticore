@@ -120,7 +120,6 @@ structure Keywords : sig
 	    in
 	      List.app ins smlKeywords;
 	      List.app ins manticoreKeywords;
-	      List.app ins inlineKeywords;
 	      List.app ins bomKeywords;
 	      AtomTable.find tbl
 	    end

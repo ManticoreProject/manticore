@@ -6,11 +6,7 @@
 
 Library
 
-(*
   structure Parser
-*)
-  structure ManticoreLex
-  functor ManticoreParseFn
 
 is
   $/basis.cm
@@ -23,6 +19,4 @@ is
   keywords.sml
   manticore.lex : ml-ulex
   manticore.grm : ml-antlr
-(*
   parser.sml
-*)

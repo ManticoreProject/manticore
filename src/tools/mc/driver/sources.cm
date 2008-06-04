@@ -19,7 +19,7 @@ is
   $/controls-lib.cm
 
   ../parse-tree/sources.cm
-  ../parser/parser.cm
+  ../parser/sources.cm
   ../ast-opt/sources.cm
   ../bom-opt/sources.cm
   ../bom/sources.cm
