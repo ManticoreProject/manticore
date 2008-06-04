@@ -20,6 +20,7 @@ is
   ../common/sources.cm
   ../parse-tree/sources.cm
 
+  keywords.sml
   manticore.lex : ml-ulex
   manticore.grm : ml-antlr
 (*

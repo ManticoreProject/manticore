@@ -127,7 +127,8 @@
 
 <INITIAL> {id}		=> (idToken yytext);
 <INITIAL> {tyvarid}	=> (T.TYVAR(Atom.atom yytext));
-<INITIAL> "~"?{num}	=> (T.INT(valOf (IntInf.fromString yytext)));
+<INITIAL> {num}		=> (T.POSINT(valOf (IntInf.fromString yytext)));
+<INITIAL> "~"{num}	=> (T.NEGINT(valOf (IntInf.fromString yytext)));
 <INITIAL> "~"?{num}"."{num}([eE][+~]?{num})?
 			=> (mkFloat yysubstr);
 <INITIAL> {ws}		=> (continue ());

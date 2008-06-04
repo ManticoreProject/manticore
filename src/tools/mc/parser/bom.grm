@@ -16,7 +16,7 @@
 (*	| KW_and	("and")			*)
 	| KW_any	("any")
 	| KW_apply	("apply")
-	| KW_attribute	("__attribute__")
+	| KW___attribute__ ("__attribute__")
 	| KW_byte	("byte")
 (*	| KW_case	("case")		*)
 	| KW_ccall	("ccall")

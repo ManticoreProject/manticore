@@ -118,7 +118,10 @@ structure Keywords : sig
 	    val tbl = AtomTable.mkTable (17, Fail "keywords")
 	    fun ins (id, tok) = AtomTable.insert tbl (Atom.atom id, tok)
 	    in
-	      app ins 
+	      List.app ins smlKeywords;
+	      List.app ins manticoreKeywords;
+	      List.app ins inlineKeywords;
+	      List.app ins bomKeywords;
 	      AtomTable.find tbl
 	    end
     in
@@ -127,7 +130,7 @@ structure Keywords : sig
 	  val ida = Atom.atom id
 	  in
 	    case find ida
-	     of NONE => T.NAME ida
+	     of NONE => T.ID ida
 	      | SOME kw => kw
 	    (* end case *)
 	  end
