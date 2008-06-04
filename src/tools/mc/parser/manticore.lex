@@ -72,9 +72,6 @@
   (* ml-ulex requires this as well *)
     fun eof () = T.EOF
 
-  (* return either a keyword token or an ID token *)
-    val idToken = Keywords.idToken
-
   (* count the nesting depth of "(" inside primcode blocks *)
     val primDepth = ref 0
 
@@ -136,7 +133,7 @@
 <INITIAL> "_primcode"	=> (YYBEGIN PRIMCODE; T.KW__primcode);
 <INITIAL> "_prim"	=> (YYBEGIN PRIMCODE; T.KW__prim);
 
-<INITIAL,PRIMCODE> {id}		=> (idToken yytext);
+<INITIAL> {id}		=> (Keywords.smlIdToken yytext);
 <INITIAL> {tyvarid}		=> (T.TYVAR(Atom.atom yytext));
 <INITIAL,PRIMCODE> {num}	=> (T.POSINT(valOf (IntInf.fromString yytext)));
 <INITIAL,PRIMCODE> "~"{num}	=> (T.NEGINT(valOf (IntInf.fromString yytext)));
@@ -169,6 +166,7 @@
 	skip ());
 <COMMENT> .|"\n" => (skip ());
 
+<PRIMCODE> {id}			=> (Keywords.bomIdToken yytext);
 <PRIMCODE> {hlid}		=> (T.HLOP(Atom.atom(String.extract(yytext, 1, NONE))));
 <PRIMCODE> "("			=> (primPush(); T.LP);
 <PRIMCODE> ")"			=> (if primPop() then () else YYBEGIN INITIAL; T.RP);

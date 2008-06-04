@@ -6,15 +6,12 @@
 
 structure Keywords : sig
 
-    val enableBOM : bool ref
-
-    val idToken : string -> ManticoreTokens.token
+    val smlIdToken : string -> ManticoreTokens.token
+    val bomIdToken : string -> ManticoreTokens.token
 
   end = struct
 
     structure T = ManticoreTokens
-
-    val enableBOM = ref false
 
   (* SML keywords *)
     val smlKeywords = [
@@ -57,49 +54,42 @@ structure Keywords : sig
 	    ("to",		T.KW_to)
 	  ]
 
-  (* Inline BOM kwywords *)
-    val inlineKeywords = [
-	    ("__attribute__",	T.KW___attribute__),
-	    ("_prim",		T.KW__prim),
-	    ("_primcode",	T.KW__primcode)
-	  ]
-
-  (* Additional BOM keywords *)
+  (* BOM keywords; some of these are also SML keywords *)
     val bomKeywords = [
 	    ("addr",		T.KW_addr),
 	    ("alloc",		T.KW_alloc),
-(*	    ("and",		T.KW_and),*)
+	    ("and",		T.KW_and),
 	    ("any",		T.KW_any),
 	    ("apply",		T.KW_apply),
 	    ("byte",		T.KW_byte),
-(*	    ("case",		T.KW_case),*)
+	    ("case",		T.KW_case),
 	    ("ccall",		T.KW_ccall),
 	    ("cont",		T.KW_cont),
-(*	    ("datatype",	T.KW_datatype),*)
+	    ("datatype",	T.KW_datatype),
 	    ("define",		T.KW_define),
 	    ("do",		T.KW_do),
 	    ("double",		T.KW_double),
-(*	    ("else",		T.KW_else),*)
+	    ("else",		T.KW_else),
 	    ("end",		T.KW_end),
 	    ("enum",		T.KW_enum),
 	    ("extern",		T.KW_extern),
 	    ("float",		T.KW_float),
 	    ("fun",		T.KW_fun),
 	    ("host_vproc",	T.KW_host_vproc),
-(*	    ("if",		T.KW_if),*)
+	    ("if",		T.KW_if),
 	    ("inline",		T.KW_inline),
 	    ("int",		T.KW_int),
-(*	    ("let",		T.KW_let),*)
+	    ("let",		T.KW_let),
 	    ("long",		T.KW_long),
 	    ("module",		T.KW_module),
 	    ("noreturn",	T.KW_noreturn),
-(*	    ("of",		T.KW_of),*)
+	    ("of",		T.KW_of),
 	    ("promote",		T.KW_promote),
 	    ("pure",		T.KW_pure),
 	    ("return",		T.KW_return),
 	    ("short",		T.KW_short),
 	    ("tag",		T.KW_tag),
-(*	    ("then",		T.KW_then),*)
+	    ("then",		T.KW_then),
 	    ("throw",		T.KW_throw),
 	    ("typedef",		T.KW_typedef),
 	    ("unwrap",		T.KW_unwrap),
@@ -114,25 +104,27 @@ structure Keywords : sig
 
   (* create a keyword lookup table *)
     local
-      val find = let
+      fun mkFind kws = let
 	    val tbl = AtomTable.mkTable (17, Fail "keywords")
 	    fun ins (id, tok) = AtomTable.insert tbl (Atom.atom id, tok)
+	    val find = AtomTable.find tbl
+	    fun idToken id = let
+		  val ida = Atom.atom id
+		  in
+		    case find ida
+		     of NONE => T.ID ida
+		      | SOME kw => kw
+		    (* end case *)
+		  end
 	    in
-	      List.app ins smlKeywords;
-	      List.app ins manticoreKeywords;
-	      List.app ins bomKeywords;
-	      AtomTable.find tbl
+	      List.app (List.app ins) kws;
+	      idToken
 	    end
     in
-  (* return either a keyword token or a NAME token *)
-    fun idToken id = let
-	  val ida = Atom.atom id
-	  in
-	    case find ida
-	     of NONE => T.ID ida
-	      | SOME kw => kw
-	    (* end case *)
-	  end
+  (* return either a Manticore keyword token or a ID token *)
+      val smlIdToken = mkFind [smlKeywords, manticoreKeywords]
+  (* return either a BOM keyword token or a ID token *)
+      val bomIdToken = mkFind [bomKeywords]
     end
 
   end
