@@ -191,6 +191,16 @@ structure BoundVariableCheck :> sig
 	          in
 		     (PT2.FunVDecl functs, env)
 		  end
+	    | PT1.PrimVDecl(pat, prim) => let
+		val prim = (case prim
+		       of PT1.VarPrimVal v => PT2.VarPrimVal v
+			| PT1.HLOpPrimVal h => PT2.HLOpPrimVal h
+			| PT1.LambdaPrimVal lambda => PT2.LambdaPrimVal lambda
+		      (* end case *))
+		val (pat, env) = chkPat loc (pat, env)
+		in
+		  (PT2.PrimVDecl(pat, prim), env)
+		end
            (* end case *))
 
     and chkValDecls loc (valDecls, env) = chkList loc (chkValDecl, valDecls, env)
@@ -381,6 +391,12 @@ structure BoundVariableCheck :> sig
 	          in
 		     (PT2.AbsTyDecl (tvs, id'), env)
 		  end
+	    | PT1.PrimTyDecl(tvs, id, bty) => let
+		val id' = Var.new(Atom.toString id, ())
+		val env = BEnv.insertDataTy(env, id, id')
+		in
+		  (PT2.PrimTyDecl(tvs, id', bty), env)
+		end
            (* end case *))
 
     and chkTyDecls loc (tyDecls, env) = chkList loc (chkTyDecl, tyDecls, env)
@@ -587,6 +603,7 @@ structure BoundVariableCheck :> sig
 		  in
 		     ([PT2.SignDecl (id', sign)], env)
 		  end
+	    | PT1.PrimCodeDecl code => ([PT2.PrimCodeDecl code], env)
            (* end case *))
 
     and chkDecls loc (decls, env) = let
