@@ -77,8 +77,8 @@
 (*	| ARROW		("->")			*)
 (*	| ID of Atom.atom			*)
 	| HLOP of Atom.atom
-	| POSINT of IntInf.int		(* positive integer *)
-	| NEGINT of IntInf.int		(* negative integer *)
+(*	| POSINT of IntInf.int		(* positive integer *) *)
+(*	| NEGINT of IntInf.int		(* negative integer *) *)
 (*	| FLOAT of FloatLit.float		*)
 (*	| STRING of string			*)
 	| ML_STRING of string
@@ -326,8 +326,4 @@ IntTy	: "byte"	=> (BPT.T_Raw BPT.T_Byte)
 
 FloatTy	: "float"	=> (BPT.T_Raw BPT.T_Float)
 	| "double"	=> (BPT.T_Raw BPT.T_Double)
-	;
-
-Int	: POSINT	=> (POSINT)
-	| NEGINT	=> (NEGINT)
 	;

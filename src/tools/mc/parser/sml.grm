@@ -78,7 +78,8 @@
     | DOT               (".")
     | TYVAR of Atom.atom
     | ID of Atom.atom
-    | INT of IntInf.int
+    | POSINT of IntInf.int		(* positive integer *)
+    | NEGINT of IntInf.int		(* negative integer *)
     | FLOAT of FloatLit.float
     | STRING of string
     ;
@@ -363,7 +364,7 @@ QualifiedId
 
 AtomicExp
 	: QualifiedId		=> (markExp (FULL_SPAN, PT.IdExp QualifiedId))
-	| INT			=> (markExp (FULL_SPAN, PT.ConstExp(PT.IntLit INT)))
+	| Int			=> (markExp (FULL_SPAN, PT.ConstExp(PT.IntLit Int)))
 	| FLOAT			=> (markExp (FULL_SPAN, PT.ConstExp(PT.FltLit FLOAT)))
 	| STRING		=> (markExp (FULL_SPAN, PT.ConstExp(PT.StrLit STRING)))
 	| "(" ")"		=> (markExp (FULL_SPAN, PT.TupleExp[]))
@@ -434,9 +435,13 @@ AtomicPat
 		    (* end case *))
 	| Name			=> (markPat (FULL_SPAN, PT.IdPat Name))
 	| "_"			=> (markPat (FULL_SPAN, PT.WildPat))
-	| INT			=> (markPat (FULL_SPAN, PT.ConstPat(PT.IntLit INT)))
+	| Int			=> (markPat (FULL_SPAN, PT.ConstPat(PT.IntLit Int)))
 	| FLOAT			=> (markPat (FULL_SPAN, PT.ConstPat(PT.FltLit FLOAT)))
 	| STRING		=> (markPat (FULL_SPAN, PT.ConstPat(PT.StrLit STRING)))
+	;
+
+Int	: POSINT	=> (POSINT)
+	| NEGINT	=> (NEGINT)
 	;
 
 Name
