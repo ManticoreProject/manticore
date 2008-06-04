@@ -72,6 +72,7 @@ functor PMLParseTreeFn (
       | ValueDecl of val_decl
       | LocalDecl of (decl list * decl list)
       | SignDecl of (sig_id * sign)
+      | PrimCodeDecl of BOMParseTree.code
 
   (* type declarations *)
     and ty_decl
@@ -79,6 +80,7 @@ functor PMLParseTreeFn (
       | TypeTyDecl of (tyvar list * ty_binder * ty)
       | DataTyDecl of (tyvar list * ty_binder * con_decl list)
       | AbsTyDecl of (tyvar list * ty_binder)
+      | PrimTyDecl of (tyvar list * ty_binder * BOMParseTree.ty)
 
   (* data-constructor definitions *)
     and con_decl
@@ -91,6 +93,13 @@ functor PMLParseTreeFn (
       | ValVDecl of pat * exp
       | PValVDecl of pat * exp
       | FunVDecl of funct list
+      | PrimVDecl of pat * prim_val_rhs
+
+  (* primitive value declarations *)
+    and prim_val_rhs
+      = VarPrimVal of BOMParseTree.var
+      | HLOpPrimVal of BOMParseTree.var
+      | LambdaPrimVal of BOMParseTree.lambda
 
   (* function definitions *)
     and funct
