@@ -82,4 +82,10 @@
 
     type code = defn list
 
+  (* RHS of primitive value declarations *)
+    datatype prim_val_rhs
+      = VarPrimVal of var
+      | HLOpPrimVal of var
+      | LambdaPrimVal of lambda
+
   end

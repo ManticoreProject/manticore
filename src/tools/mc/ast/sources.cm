@@ -37,6 +37,7 @@ is
   $/controls-lib.cm
 
   ../common/sources.cm
+  ../parse-tree/sources.cm
 
   ast.sml
   ast-util.sml

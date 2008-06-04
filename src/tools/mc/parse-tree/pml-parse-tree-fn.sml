@@ -93,13 +93,7 @@ functor PMLParseTreeFn (
       | ValVDecl of pat * exp
       | PValVDecl of pat * exp
       | FunVDecl of funct list
-      | PrimVDecl of pat * prim_val_rhs
-
-  (* primitive value declarations *)
-    and prim_val_rhs
-      = VarPrimVal of BOMParseTree.var
-      | HLOpPrimVal of BOMParseTree.var
-      | LambdaPrimVal of BOMParseTree.lambda
+      | PrimVDecl of pat * BOMParseTree.prim_val_rhs
 
   (* function definitions *)
     and funct

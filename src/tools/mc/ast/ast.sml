@@ -28,6 +28,7 @@ structure AST =
       = TD_Module of (info * module_ref * module_type option * module)
       | TD_DCon of dcon
       | TD_Binding of binding
+      | TD_PrimCode of BOMParseTree.code
 
     and module_ref = MOD of {                        (* reference to a module *)
           name : Atom.atom,
@@ -77,6 +78,7 @@ structure AST =
       = ValBind of pat * exp
       | PValBind of pat * exp
       | FunBind of lambda list
+      | PrimVBind of var * BOMParseTree.prim_val_rhs
 
     and lambda = FB of (var * var * exp)
 

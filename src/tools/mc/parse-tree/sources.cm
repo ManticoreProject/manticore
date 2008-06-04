@@ -19,7 +19,6 @@ is
   $/controls-lib.cm
 
   ../common/sources.cm
-  ../ast/sources.cm
 
   bom-parse-tree.sml
   pml-parse-tree-fn.sml
