@@ -78,12 +78,12 @@ sinclude .depend
 
 CLEAN_FILES =		$(HEAP_IMAGE) \
 			*/*.grm.sml \
-			*/*.lex.sml
+			*/*.lex.sml \
+			.depend
 DISTCLEAN_FILES =	codegen/group.cm \
 			codegen/wrapper.cm \
 			common/run-cpp.sml \
-			driver/version-fn.sml \
-			.depend
+			driver/version-fn.sml
 DEVCLEAN_FILES =
 
 include @MANTICORE_MKDIR@/clean-rules.gmk
