@@ -87,6 +87,9 @@ structure BoundVariableCheck :> sig
 
     and chkTys loc (tys, env) = List.map (fn ty => chkTy loc (ty, env)) tys
 
+(* FIXME: check for multiply-bound variables. e.g.,
+ *   (case (x, x) of ...)
+ *)
     fun chkPat loc (pat, env) = (case pat
            of PT1.MarkPat {span, tree} => let
 		  val (tree, env) = chkPat span (tree, env)
