@@ -4,6 +4,9 @@
  * All rights reserved.
  *
  * Parse-tree representation of inline BOM code.
+ *
+ * TODO: add SML variable references
+ *	 add Marks for error messages
  *)
  
  structure BOMParseTree =

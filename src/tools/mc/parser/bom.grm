@@ -85,16 +85,16 @@
 	;
 
 %defs(
-    structure PT = HLOpDefPT
+    structure BPT = BOMParseTree
     structure CF = CFunctions
 
     fun flatten NONE = []
       | flatten (SOME(x, xs)) = x::xs
 
   (* default types for literals *)
-    val dfltIntTy = PT.T_Raw(BOMTy.T_Int)
-    val dfltFloatTy = PT.T_Raw(BOMTy.T_Float)
-    val dfltStringTy = PT.T_Any (* FIXME *)
+    val dfltIntTy = BPT.T_Raw(BPT.T_Int)
+    val dfltFloatTy = BPT.T_Raw(BPT.T_Float)
+    val dfltStringTy = BPT.T_Any (* FIXME *)
 );
 
 
@@ -106,21 +106,20 @@ BOMDecls
 
 Definition
 	: "extern" CRetTy ID "(" (CArgTy ("," CArgTy)* )? ")" Attrs ";"
-		=> (PT.Extern(CF.CFun{
+		=> (BPT.D_Extern(CF.CFun{
 			var = ID,
 			name = Atom.toString ID,
 			retTy = CRetTy,
 			argTys = flatten SR,
+			varArg = false,
 			attrs = Attrs
 		      }))
 	| "typedef" ID "=" BOMType ";"
-		=> (PT.TypeDef(ID, BOMType))
+		=> (BPT.D_TypeDef(ID, BOMType))
 	| "define" optInline HLOP FunParams ReturnTy ("=" BOMExp)? ";"
 		=> (let val (p1, p2) = FunParams in
-		      PT.Define(optInline, HLOP, p1, p2, ReturnTy, SR)
+		      BPT.D_Define(optInline, HLOP, p1, p2, ReturnTy, SR)
 		    end)
-        | "use_rw" (ID ("," ID)*)? ";"
-                => (PT.RWImport (flatten SR))
 	;
 
 CRetTy
@@ -140,9 +139,9 @@ Attrs
 	;
 
 Attr
-	: "pure"	=> (CFunctions.A_pure)
-	| "alloc"	=> (CFunctions.A_alloc)
-	| "noreturn"	=> (CFunctions.A_noreturn)
+	: "pure"	=> (CF.A_pure)
+	| "alloc"	=> (CF.A_alloc)
+	| "noreturn"	=> (CF.A_noreturn)
 	;
 
 ReturnTy
@@ -165,17 +164,17 @@ Params
 	;
 
 BOMType
-	: "addr" "(" BOMType ")"		=> (PT.T_Addr(BOMType))
-	| "any"					=> (PT.T_Any)
-	| "enum" "(" POSINT ")"			=> (PT.T_Enum(Word.fromLargeInt POSINT))
-	| RawType				=> (PT.T_Raw RawType)
-	| "!" "[" BOMType ("," BOMType)* "]"	=> (PT.T_Tuple(true, BOMType :: SR))
-	| "[" BOMType ("," BOMType)* "]"	=> (PT.T_Tuple(false, BOMType :: SR))
+	: "addr" "(" BOMType ")"		=> (BPT.T_Addr(BOMType))
+	| "any"					=> (BPT.T_Any)
+	| "enum" "(" POSINT ")"			=> (BPT.T_Enum(Word.fromLargeInt POSINT))
+	| RawType				=> (BPT.T_Raw RawType)
+	| "!" "[" BOMType ("," BOMType)* "]"	=> (BPT.T_Tuple(true, BOMType :: SR))
+	| "[" BOMType ("," BOMType)* "]"	=> (BPT.T_Tuple(false, BOMType :: SR))
 	| "fun" "(" TypeList "/" TypeList "->" TypeList ")"
-						=> (PT.T_Fun(TypeList1, TypeList2, TypeList3))
-	| "cont" "(" TypeList ")"		=> (PT.T_Cont TypeList)
-	| "vproc"				=> (PT.T_VProc)
-	| ID					=> (PT.T_TyCon ID)
+						=> (BPT.T_Fun(TypeList1, TypeList2, TypeList3))
+	| "cont" "(" TypeList ")"		=> (BPT.T_Cont TypeList)
+	| "vproc"				=> (BPT.T_VProc)
+	| ID					=> (BPT.T_TyCon ID)
 	;
 
 TypeList
@@ -183,27 +182,36 @@ TypeList
 	;
 
 RawType
-	: "byte"	=> (PT.T_Byte)
-	| "short"	=> (PT.T_Short)
-	| "int"		=> (PT.T_Int)
-	| "long"	=> (PT.T_Long)
-	| "float"	=> (PT.T_Float)
-	| "double"	=> (PT.T_Double)
-	| "vec128"	=> (PT.T_Vec128)
+	: "byte"	=> (BPT.T_Byte)
+	| "short"	=> (BPT.T_Short)
+	| "int"		=> (BPT.T_Int)
+	| "long"	=> (BPT.T_Long)
+	| "float"	=> (BPT.T_Float)
+	| "double"	=> (BPT.T_Double)
+	| "vec128"	=> (BPT.T_Vec128)
 	;
 
 BOMExp
-	: "let" LHS "=" RHS BOMExp			=> (PT.Let(LHS, RHS, BOMExp))
-	| "do" RHS BOMExp				=> (PT.Let([], RHS, BOMExp))
-	| "fun" BOMLambda ("and" BOMLambda)* BOMExp	=> (PT.Fun(BOMLambda::SR, BOMExp))
-	| "cont" CLambda BOMExp				=> (PT.Cont(CLambda, BOMExp))
-	| "if" SimpleExp "then" BOMExp "else" BOMExp	=> (PT.If(SimpleExp, BOMExp1, BOMExp2))
-        | "case" SimpleExp "of" Rules ("|" Default)? "end" => (PT.Case(SimpleExp, Rules, SR))
-	| "apply" ID "(" Args ("/" Args)? ")"		=> (PT.Apply(ID, Args, Option.getOpt(SR, [])))
-	| "throw" ID "(" Args ")"			=> (PT.Throw(ID, Args))
-	| "return" "(" Args ")"				=> (PT.Return Args)
+	: "let" LHS "=" RHS BOMExp
+		=> (BPT.E_Let(LHS, RHS, BOMExp))
+	| "do" RHS BOMExp
+		=> (BPT.E_Let([], RHS, BOMExp))
+	| "fun" BOMLambda ("and" BOMLambda)* BOMExp
+		=> (BPT.E_Fun(BOMLambda::SR, BOMExp))
+	| "cont" CLambda BOMExp
+		=> (BPT.E_Cont(CLambda, BOMExp))
+	| "if" SimpleExp "then" BOMExp "else" BOMExp
+		=> (BPT.E_If(SimpleExp, BOMExp1, BOMExp2))
+        | "case" SimpleExp "of" Rules ("|" Default)? "end"
+		=> (BPT.E_Case(SimpleExp, Rules, SR))
+	| "apply" ID "(" Args ("/" Args)? ")"
+		=> (BPT.E_Apply(ID, Args, Option.getOpt(SR, [])))
+	| "throw" ID "(" Args ")"
+		=> (BPT.E_Throw(ID, Args))
+	| "return" "(" Args ")"
+		=> (BPT.E_Return Args)
 	| HLOP "(" Args ("/" Args)? ")"
-		=> (PT.HLOpApply(HLOP, Args, Option.getOpt(SR, [])))
+		=> (BPT.E_HLOpApply(HLOP, Args, Option.getOpt(SR, [])))
 	;
 
 BOMLambda
@@ -226,37 +234,37 @@ LHS
 	;
 
 RHS
-	: BOMExp			=> (PT.Exp BOMExp)
-	| NonSelectExp			=> (PT.SimpleExp NonSelectExp)
+	: BOMExp			=> (BPT.RHS_Exp BOMExp)
+	| NonSelectExp			=> (BPT.RHS_SimpleExp NonSelectExp)
 	| "#" POSINT "(" SimpleExp ")" (":=" SimpleExp)?
 		=> (case SR
-		     of SOME e => PT.Update(Int.fromLarge POSINT, SimpleExp, e)
-		      | NONE => PT.SimpleExp(PT.Select(Int.fromLarge POSINT, SimpleExp))
+		     of SOME e => BPT.RHS_Update(Int.fromLarge POSINT, SimpleExp, e)
+		      | NONE => BPT.RHS_SimpleExp(BPT.SE_Select(Int.fromLarge POSINT, SimpleExp))
 		    (* end case *))
-	| "alloc" "(" Args ")"		=> (PT.Alloc Args)
-	| "promote" "(" SimpleExp ")"	=> (PT.Promote SimpleExp)
-	| "wrap" "(" SimpleExp ")"	=> (PT.Wrap SimpleExp)
-	| "ccall" ID "(" Args ")"	=> (PT.CCall(ID, Args))
+	| "promote" "(" SimpleExp ")"	=> (BPT.RHS_Promote SimpleExp)
+	| "ccall" ID "(" Args ")"	=> (BPT.RHS_CCall(ID, Args))
+	| "vpstore" "(" POSINT "," SimpleExp "," SimpleExp ")"
+					=> (BPT.RHS_VPStore(POSINT, SimpleExp1, SimpleExp2))
 	;
 
 NonSelectExp
-	: ID				=> (PT.Var ID)
-	| "&" POSINT "(" SimpleExp ")"	=> (PT.AddrOf(Int.fromLarge POSINT, SimpleExp))
-	| "unwrap" "(" SimpleExp ")"	=> (PT.Unwrap SimpleExp)
-	| ID "(" Args ")"		=> (PT.Prim(ID, Args))
-	| "(" BOMType ")" SimpleExp	=> (PT.Cast(BOMType, SimpleExp))
-	| Literal			=> (PT.Const(Literal))
-	| ML_STRING			=> (PT.MLString(ML_STRING))
-	| "host_vproc"			=> (PT.HostVProc)
+	: ID				=> (BPT.SE_Var ID)
+	| "alloc" "(" Args ")"		=> (BPT.SE_Alloc Args)
+	| "wrap" "(" SimpleExp ")"	=> (BPT.SE_Wrap SimpleExp)
+	| "&" POSINT "(" SimpleExp ")"	=> (BPT.SE_AddrOf(Int.fromLarge POSINT, SimpleExp))
+	| "unwrap" "(" SimpleExp ")"	=> (BPT.SE_Unwrap SimpleExp)
+	| ID "(" Args ")"		=> (BPT.SE_Prim(ID, Args))
+	| "(" BOMType ")" SimpleExp	=> (BPT.SE_Cast(BOMType, SimpleExp))
+	| Literal			=> (BPT.SE_Const(Literal))
+	| ML_STRING			=> (BPT.SE_MLString(ML_STRING))
+	| "host_vproc"			=> (BPT.SE_HostVProc)
 	| "vpload" "(" POSINT "," SimpleExp ")"
-					=> (PT.VPLoad(POSINT, SimpleExp))
-	| "vpstore" "(" POSINT "," SimpleExp "," SimpleExp ")"
-					=> (PT.VPStore(POSINT, SimpleExp1, SimpleExp2))
+					=> (BPT.SE_VPLoad(POSINT, SimpleExp))
 	;
 
 SimpleExp
 	: NonSelectExp			=> (NonSelectExp)
-	| "#" POSINT "(" SimpleExp ")"	=> (PT.Select(Int.fromLarge POSINT, SimpleExp))
+	| "#" POSINT "(" SimpleExp ")"	=> (BPT.SE_Select(Int.fromLarge POSINT, SimpleExp))
 	;
 
 Args
@@ -269,8 +277,8 @@ Rules
 
 Rule
 	: ID "(" VarPat ("," VarPat)* ")" "=>" BOMExp
-					=> (PT.DConPat(ID, VarPat::SR), BOMExp)
-	| Literal "=>" BOMExp		=> (PT.ConstPat Literal, BOMExp)
+					=> (BPT.P_DCon(ID, VarPat::SR), BOMExp)
+	| Literal "=>" BOMExp		=> (BPT.P_Const Literal, BOMExp)
 	;
 
 Default
@@ -278,8 +286,8 @@ Default
 	;
 
 VarPat
-	: "_" (":" BOMType)?		=> (PT.WildPat SR)
-	| ID ":" BOMType		=> (PT.VarPat(ID, BOMType))
+	: "_" (":" BOMType)?		=> (BPT.P_Wild SR)
+	| ID ":" BOMType		=> (BPT.P_Var(ID, BOMType))
 	;
 
 Literal
@@ -288,14 +296,14 @@ Literal
 		    val w = Word.fromLargeInt POSINT
 		    in
 		      case SR
-		       of NONE => (Literal.Enum w, PT.T_Enum w)
+		       of NONE => (Literal.Enum w, BPT.T_Enum w)
 			| SOME ty => (Literal.Enum w, ty)
 		      (* end case *)
 		    end)
         | "tag" "(" ID ")"
-                 => (Literal.Tag (Atom.toString ID), PT.T_Any)
+                 => (Literal.Tag (Atom.toString ID), BPT.T_Any)
 	| "$" POSINT
-		=> (Literal.StateVal(Word.fromLargeInt POSINT), PT.T_Any)
+		=> (Literal.StateVal(Word.fromLargeInt POSINT), BPT.T_Any)
 	| Int (":" IntTy)?
 		=> (case SR
 		   of NONE => (Literal.Int Int, dfltIntTy)
@@ -310,14 +318,14 @@ Literal
 		=> (Literal.String STRING, dfltStringTy)
 	;
 
-IntTy	: "byte"	=> (PT.T_Raw PT.T_Byte)
-	| "short"	=> (PT.T_Raw PT.T_Short)
-	| "int"		=> (PT.T_Raw PT.T_Int)
-	| "long"	=> (PT.T_Raw PT.T_Long)
+IntTy	: "byte"	=> (BPT.T_Raw BPT.T_Byte)
+	| "short"	=> (BPT.T_Raw BPT.T_Short)
+	| "int"		=> (BPT.T_Raw BPT.T_Int)
+	| "long"	=> (BPT.T_Raw BPT.T_Long)
 	;
 
-FloatTy	: "float"	=> (PT.T_Raw PT.T_Float)
-	| "double"	=> (PT.T_Raw PT.T_Double)
+FloatTy	: "float"	=> (BPT.T_Raw BPT.T_Float)
+	| "double"	=> (BPT.T_Raw BPT.T_Double)
 	;
 
 Int	: POSINT	=> (POSINT)

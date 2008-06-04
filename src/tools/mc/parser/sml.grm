@@ -84,7 +84,7 @@
     ;
 
 %defs (
-  structure PT = ParseTree
+  structure PT = ProgramParseTree.PML1
   structure Op = BasisNames
 
 (* apply a mark constructor to a span and a tree *)
@@ -233,7 +233,7 @@ ConsDecl
 
 ValueDecl
 	: "val" Pat "=" ValueDeclRHS
-		=> (mark PT.MarkVDecl (FULL_SPAN, ValueDeclRHS pat))
+		=> (mark PT.MarkVDecl (FULL_SPAN, ValueDeclRHS Pat))
 	| "pval" Pat "=" Exp
 		=> (mark PT.MarkVDecl (FULL_SPAN, PT.PValVDecl(Pat, Exp)))
 	| "fun" FunDef ("and" FunDef)*

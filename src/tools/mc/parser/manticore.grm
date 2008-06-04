@@ -18,20 +18,21 @@
 
 Decl
         : "_primcode" "(" BOMDecls ")"
-		=> ()
+		=> (PT.PrimCodeDecl BOMDecls)
 	;
 
 TyDeclRHS
-	: "_prim" "(" BOMType ")"	=> (fn (params, name) => PT.TypePrimDecl(params, name, Type))
+	: "_prim" "(" BOMType ")"
+		=> (fn (params, name) => PT.PrimTyDecl(params, name, BOMType))
 	;
 
 ValueDeclRHS
 	: "_prim" "(" "fun" BOMLambda ")"
-		=> ()
+		=> (fn pat => PT.PrimVDecl(pat, PT.LambdaPrimVal BOMLambda))
 	| "_prim" "(" ID ")"
-		=> ()
+		=> (fn pat => PT.PrimVDecl(pat, PT.VarPrimVal ID))
 	| "_prim" "(" HLOP ")"
-		=> ()
+		=> (fn pat => PT.PrimVDecl(pat, PT.HLOpPrimVal HLOP))
 	;
 
 (* extend SML names with the BOM keywords *)
@@ -40,7 +41,6 @@ Name
 	| KW_alloc		=> (Atom.atom "alloc")
 	| KW_any		=> (Atom.atom "any")
 	| KW_apply		=> (Atom.atom "apply")
-	| KW_attribute		=> (Atom.atom "__attribute__")
 	| KW_byte		=> (Atom.atom "byte")
 	| KW_ccall		=> (Atom.atom "ccall")
 	| KW_cont		=> (Atom.atom "cont")
