@@ -49,7 +49,7 @@ structure BoundVariableCheck :> sig
 	   fun f (x, (xs, env)) = let
 	          val (x, env) = chkX loc (x, env)
                   in
-	              (x :: xs, env)
+	            (x :: xs, env)
 	          end
 	   val (xs', env) = List.foldl f ([], env) xs
            in
@@ -62,30 +62,30 @@ structure BoundVariableCheck :> sig
 
     fun chkTy loc (ty, env) = (case ty
            of PT1.MarkTy {span, tree} => let
-		  val (tree, env) = chkTy span (tree, env)
-	          in
-		     (PT2.MarkTy {span=span, tree=tree}, env)
-		  end
+		val tree = chkTy span (tree, env)
+		in
+		  PT2.MarkTy {span=span, tree=tree}
+		end
 	    | PT1.NamedTy (tys, id) => let
-		  val (tys, env) = chkTys loc (tys, env)
-	          in
-		     (PT2.NamedTy(tys, findTyQid(loc, env, id)), env)
-		  end
-	    | PT1.VarTy tv => (PT2.VarTy tv, env)
+		val tys = chkTys loc (tys, env)
+		in
+		  PT2.NamedTy(tys, findTyQid(loc, env, id))
+		end
+	    | PT1.VarTy tv => PT2.VarTy tv
 	    | PT1.TupleTy tys => let
-		  val (tys, env) = chkTys loc (tys, env)
-	          in
-		    (PT2.TupleTy tys, env)
-		  end
+		val tys = chkTys loc (tys, env)
+		in
+		  PT2.TupleTy tys
+		end
 	    | PT1.FunTy (ty1, ty2) => let
-		  val (ty1, env) = chkTy loc (ty1, env)
-		  val (ty2, env) = chkTy loc (ty2, env)
-	          in
-		     (PT2.FunTy (ty1, ty2), env)
-		  end
+		val ty1 = chkTy loc (ty1, env)
+		val ty2 = chkTy loc (ty2, env)
+		in
+		  PT2.FunTy (ty1, ty2)
+		end
            (* end case *))
 
-    and chkTys loc (tys, env) = chkList loc (chkTy, tys, env)
+    and chkTys loc (tys, env) = List.map (fn ty => chkTy loc (ty, env)) tys
 
     fun chkPat loc (pat, env) = (case pat
            of PT1.MarkPat {span, tree} => let
@@ -130,7 +130,7 @@ structure BoundVariableCheck :> sig
 	          (* end case *)) 
 	    | PT1.ConstraintPat (pat, ty) => let
 		  val (pat, env) = chkPat loc (pat, env)
-		  val (ty, env) = chkTy loc (ty, env)
+		  val ty = chkTy loc (ty, env)
 	          in
 		     (PT2.ConstraintPat(pat, ty), env)
 		  end
@@ -156,13 +156,13 @@ structure BoundVariableCheck :> sig
 		     (PT2.MarkVDecl{span=span, tree=tree}, env)
 		  end
 	    | PT1.ValVDecl (pat, exp) => let
-		  val (exp, env) = chkExp loc (exp, env)
+		  val exp = chkExp loc (exp, env)
 		  val (pat, env) = chkPat loc (pat, env)
 	          in
 		     (PT2.ValVDecl(pat, exp), env)
 		  end
 	    | PT1.PValVDecl (pat, exp) => let
-		  val (exp, env) = chkExp loc (exp, env)
+		  val exp = chkExp loc (exp, env)
 		  val (pat, env) = chkPat loc (pat, env)
 	          in
 		     (PT2.PValVDecl(pat, exp), env)
@@ -182,7 +182,7 @@ structure BoundVariableCheck :> sig
 		          PT2.MarkFunct{span=span, tree=chk span tree} 
 		    | chk loc (PT1.Funct (f, pat, exp)) = let			  
 			  val (pat, env') = chkPat loc (pat, env)
-			  val (exp, _) = chkExp loc (exp, env')
+			  val exp = chkExp loc (exp, env')
 			  val BEnv.Var f' = Option.valOf(BEnv.findVar(env, f))
 			  in
 			     PT2.Funct (f', pat, exp)
@@ -207,163 +207,161 @@ structure BoundVariableCheck :> sig
 
     and chkMatch loc (match, env) = (case match
            of PT1.MarkMatch {span, tree} => let
-		  val (tree, env) = chkMatch span (tree, env)
-	          in
-                    (PT2.MarkMatch{span=span, tree=tree}, env)
-	          end
+		val tree = chkMatch span (tree, env)
+		in
+		  PT2.MarkMatch{span=span, tree=tree}
+		end
 	    | PT1.Match (pat, exp) => let
-		  val (pat, env') = chkPat loc (pat, env)
-		  val (exp, _) = chkExp loc (exp, env')
-	          in
-		     (PT2.Match(pat, exp), env)
-		  end
+		val (pat, env') = chkPat loc (pat, env)
+		val exp = chkExp loc (exp, env')
+		in
+		  PT2.Match(pat, exp)
+		end
            (* end case *))
 
-    and chkMatches loc (matches, env) = chkList loc (chkMatch, matches, env)
+    and chkMatches loc (matches, env) = List.map (fn m => chkMatch loc (m, env)) matches
 
     and chkPMatch loc (pmatch, env) = (case pmatch
-           of PT1.MarkPMatch {span, tree} => let
-		  val (tree, env) = chkPMatch span (tree, env)
-	          in
-                    (PT2.MarkPMatch{span=span, tree=tree}, env)
-	          end
-	    | PT1.PMatch (ppats, exp) => let
-		  val (ppats, env') = chkPPats loc (ppats, env)
-		  val (exp, _) = chkExp loc (exp, env')
-	          in
-		     (PT2.PMatch(ppats, exp), env)
-		  end
+	 of PT1.MarkPMatch{span, tree} => let
+		val tree = chkPMatch span (tree, env)
+		in
+		  PT2.MarkPMatch{span=span, tree=tree}
+		end
+	    | PT1.PMatch(ppats, exp) => let
+		val (ppats, env') = chkPPats loc (ppats, env)
+		val exp = chkExp loc (exp, env')
+		in
+		  PT2.PMatch(ppats, exp)
+		end
 	    | PT1.Otherwise exp => let
-		  val (exp, env) = chkExp loc (exp, env)
-	          in
-		     (PT2.Otherwise exp, env)
-		  end
+		val exp = chkExp loc (exp, env)
+		in
+		  PT2.Otherwise exp
+		end
            (* end case *))
 
-    and chkPMatches loc (pmatches, env) = chkList loc (chkPMatch, pmatches, env)
+    and chkPMatches loc (pmatches, env) = List.map (fn m => chkPMatch loc (m, env)) pmatches
 
     and chkExp loc (exp, env) = (case exp
-           of PT1.MarkExp {span, tree} => let
-		  val (tree, env) = chkExp span (tree, env)
-	          in
-                    (PT2.MarkExp{span=span, tree=tree}, env)
-	          end
+           of PT1.MarkExp{span, tree} => let
+		val tree = chkExp span (tree, env)
+		in
+		  PT2.MarkExp{span=span, tree=tree}
+		end
 	    | PT1.LetExp(valDecls, exp) => let
-		  val (valDecls', env') = chkValDecls loc (valDecls, env)
-		  val (exp, _) = chkExp loc (exp, env')
-	          in
-		     (PT2.LetExp(valDecls', exp), env)
-		  end
-	    | PT1.IfExp (e1, e2, e3) => let
-		  val (e1, env) = chkExp loc (e1, env)
-		  val (e2, env) = chkExp loc (e2, env)
-		  val (e3, env) = chkExp loc (e3, env)
-	          in
-		     (PT2.IfExp (e1, e2, e3), env)
-		  end
-	    | PT1.CaseExp (exp, matches) => let
-		  val (exp, env') = chkExp loc (exp, env)
-		  val (matches, _) = chkMatches loc (matches, env')
-	          in
-		     (PT2.CaseExp(exp, matches), env)
-		  end
-	    | PT1.PCaseExp (exps, pmatches) => let
-		  val (exps, env') = chkExps loc (exps, env)
-		  val (pmatches, _) = chkPMatches loc (pmatches, env')
-	          in
-		     (PT2.PCaseExp(exps, pmatches), env)
-		  end
-	    | PT1.HandleExp (exp, matches) => let
-		  val (exp, env') = chkExp loc (exp, env)
-		  val (matches, _) = chkMatches loc (matches, env')
-	          in
-		     (PT2.HandleExp(exp, matches), env)
-		  end
+		val (valDecls', env') = chkValDecls loc (valDecls, env)
+		val exp = chkExp loc (exp, env')
+		in
+		   PT2.LetExp(valDecls', exp)
+		end
+	    | PT1.IfExp(e1, e2, e3) => let
+		val e1 = chkExp loc (e1, env)
+		val e2 = chkExp loc (e2, env)
+		val e3 = chkExp loc (e3, env)
+		in
+		  PT2.IfExp(e1, e2, e3)
+		end
+	    | PT1.CaseExp(exp, matches) => let
+		val exp = chkExp loc (exp, env)
+		val matches = chkMatches loc (matches, env)
+		in
+		  PT2.CaseExp(exp, matches)
+		end
+	    | PT1.PCaseExp(exps, pmatches) => let
+		val exps = chkExps loc (exps, env)
+		val pmatches = chkPMatches loc (pmatches, env)
+		in
+		  PT2.PCaseExp(exps, pmatches)
+		end
+	    | PT1.HandleExp(exp, matches) => let
+		val exp = chkExp loc (exp, env)
+		val matches = chkMatches loc (matches, env)
+		in
+		  PT2.HandleExp(exp, matches)
+		end
 	    | PT1.RaiseExp exp => let
-		  val (exp, _) = chkExp loc (exp, env)
-	          in
-		     (PT2.RaiseExp exp, env)
-		  end
+		val exp = chkExp loc (exp, env)
+		in
+		  PT2.RaiseExp exp
+		end
 	    | PT1.AndAlsoExp (exp1, exp2) => let
-		  val (exp1, _) = chkExp loc (exp1, env)
-		  val (exp2, _) = chkExp loc (exp2, env)
-	          in
-		     (PT2.AndAlsoExp (exp1, exp2), env)
-		  end
-	    | PT1.OrElseExp (exp1, exp2) => let
-		  val (exp1, _) = chkExp loc (exp1, env)
-		  val (exp2, _) = chkExp loc (exp2, env)
-	          in
-		     (PT2.OrElseExp (exp1, exp2), env)
-		  end
-	    | PT1.BinaryExp (exp1, id, exp2) => let
-		  val (exp1, _) = chkExp loc (exp1, env)
-		  val (exp2, _) = chkExp loc (exp2, env)
-		  val (BEnv.Var id' | BEnv.Con id') = BasisEnv.lookupOpPT id
-	          in
-		     (PT2.BinaryExp (exp1, id', exp2), env)
-		  end
+		val exp1 = chkExp loc (exp1, env)
+		val exp2 = chkExp loc (exp2, env)
+		in
+		  PT2.AndAlsoExp (exp1, exp2)
+		end
+	    | PT1.OrElseExp(exp1, exp2) => let
+		val exp1 = chkExp loc (exp1, env)
+		val exp2 = chkExp loc (exp2, env)
+		in
+		  PT2.OrElseExp(exp1, exp2)
+		end
+	    | PT1.BinaryExp(exp1, id, exp2) => let
+		val exp1 = chkExp loc (exp1, env)
+		val exp2 = chkExp loc (exp2, env)
+		val (BEnv.Var id' | BEnv.Con id') = BasisEnv.lookupOpPT id
+		in
+		  PT2.BinaryExp(exp1, id', exp2)
+		end
 	    | PT1.PChoiceExp exps => let
-		  val (exps, _) = chkExps loc (exps, env)
-	          in
-		     (PT2.PChoiceExp exps, env)
-		  end
-	    | PT1.ApplyExp (exp1, exp2) => let
-		  val (exp1, _) = chkExp loc (exp1, env)
-		  val (exp2, _) = chkExp loc (exp2, env)
-	          in
-		     (PT2.ApplyExp(exp1, exp2), env)
-		  end
+		val exps = chkExps loc (exps, env)
+		in
+		  PT2.PChoiceExp exps
+		end
+	    | PT1.ApplyExp(exp1, exp2) => let
+		val exp1 = chkExp loc (exp1, env)
+		val exp2 = chkExp loc (exp2, env)
+		in
+		  PT2.ApplyExp(exp1, exp2)
+		end
 	    | PT1.IdExp qId => (case findVarQid(loc, env, qId)
-                  of BEnv.Var var => 
-		       (PT2.IdExp var, env)
-		   | BEnv.Con c =>
-		       (PT2.IdExp c, env)
-	          (* end case *))
-	    | PT1.ConstExp const => (PT2.ConstExp (chkConst const), env)
+		of BEnv.Var var => PT2.IdExp var
+		 | BEnv.Con c => PT2.IdExp c
+	       (* end case *))
+	    | PT1.ConstExp const => PT2.ConstExp(chkConst const)
 	    | PT1.TupleExp exps => let
-		  val (exps, _) = chkExps loc (exps, env)
-	          in
-		     (PT2.TupleExp exps, env)
-	          end
+		val exps = chkExps loc (exps, env)
+		in
+		  PT2.TupleExp exps
+		end
 	    | PT1.ListExp exps => let
-		  val (exps, _) = chkExps loc (exps, env)
-	          in
-		     (PT2.ListExp exps, env)
-	          end
-	    | PT1.RangeExp (exp1, exp2, expOpt) => let
-		  val (exp1, _) = chkExp loc (exp1, env)
-		  val (exp2, _) = chkExp loc (exp2, env)
-		  val (expOpt, _) = (case expOpt
-					of NONE => (NONE, env)
-					 | SOME exp => let
-					       val (exp, env) = chkExp loc (exp, env)
-					       in
-					         (SOME exp, env)
-					       end
-				      (* end case *))
-	          in
-		     (PT2.RangeExp (exp1, exp2, expOpt), env)
-		  end
+		val exps = chkExps loc (exps, env)
+		in
+		  PT2.ListExp exps
+		end
+	    | PT1.RangeExp(exp1, exp2, expOpt) => let
+		val exp1 = chkExp loc (exp1, env)
+		val exp2 = chkExp loc (exp2, env)
+		val expOpt = (case expOpt
+		       of NONE => NONE
+			| SOME exp => let
+			    val exp = chkExp loc (exp, env)
+			    in
+			      SOME exp
+			    end
+		      (* end case *))
+		in
+		  PT2.RangeExp(exp1, exp2, expOpt)
+		end
 	    | PT1.SeqExp exps => let
-		  val (exps, _) = chkExps loc (exps, env)
-	          in
-		     (PT2.SeqExp exps, env)
-	          end
+		val exps = chkExps loc (exps, env)
+		in
+		  PT2.SeqExp exps
+		end
 	    | PT1.ConstraintExp (exp, ty) => let
-		  val (exp, _) = chkExp loc (exp, env)
-		  val (ty, _) = chkTy loc (ty, env)
-	          in
-		     (PT2.ConstraintExp (exp, ty), env)
-	          end
+		val exp = chkExp loc (exp, env)
+		val ty = chkTy loc (ty, env)
+		in
+		  PT2.ConstraintExp(exp, ty)
+		end
 	    | PT1.SpawnExp exp => let
-		  val (exp, _) = chkExp loc (exp, env)
-	          in
-		     (PT2.SpawnExp exp, env)
-	          end
+		val exp = chkExp loc (exp, env)
+	        in
+		  PT2.SpawnExp exp
+	        end
             (* end case *))
 
-    and chkExps loc (exps, env) = chkList loc (chkExp, exps, env)
+    and chkExps loc (exps, env) = List.map (fn e => chkExp loc (e, env)) exps
 
     fun chkTyDecl loc (tyDecl, env) = (case tyDecl
            of PT1.MarkTyDecl {span, tree} => let
@@ -372,7 +370,7 @@ structure BoundVariableCheck :> sig
                     (PT2.MarkTyDecl{span=span, tree=tree}, env)
 	          end
 	    | PT1.TypeTyDecl (tvs, id, ty) => let
-		  val (ty, env) = chkTy loc (ty, env)
+		  val ty = chkTy loc (ty, env)
 		  val id' = Var.new(Atom.toString id, ())
 		  val env = BEnv.insertTy(env, id, id')
 	          in
@@ -413,7 +411,7 @@ structure BoundVariableCheck :> sig
 		  val (tyOpt, env) = (case tyOpt
                         of NONE => (NONE, env)
 			 | SOME ty => let
-			       val (ty, env) = chkTy loc (ty, env)
+			       val ty = chkTy loc (ty, env)
 			       in
 			          (SOME ty, env)
 			       end
@@ -455,7 +453,7 @@ structure BoundVariableCheck :> sig
 		     (PT2.ConstSpec (cb', tvs), env)
 		  end
 	    | PT1.ValSpec (vb, tvs, ty) => let
-		  val (ty, env) = chkTy loc (ty, env)
+		  val ty = chkTy loc (ty, env)
 		  val vb' = Var.new(Atom.toString vb, ())
 		  val env = BEnv.insertVal(env, vb, BEnv.Var vb')
 		  in
@@ -577,7 +575,7 @@ structure BoundVariableCheck :> sig
 		  val (tyOpt, env) = (case tyOpt
                         of NONE => (NONE, env)
 			 | SOME ty => let
-			       val (ty, env) = chkTy loc (ty, env)
+			       val ty = chkTy loc (ty, env)
 			       in
 			         (SOME ty, env)
 			       end
