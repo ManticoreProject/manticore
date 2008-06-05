@@ -38,6 +38,15 @@ structure TranslateEnv : sig
     val lookupVarArity  : (env * AST.var) -> var_bind
     val handlerOf	: env -> BOM.var
 
+  (* support for inline BOM code *)
+    val insertBOMTyDef	: (env * Atom.atom * BOMTy.ty) -> env
+    val insertBOMVar	: (env * Atom.atom * BOM.var) -> env
+    val insertBOMCon    : (env * Atom.atom * BOMTy.data_con) -> env
+
+    val findBOMTy	: (env * Atom.atom) -> BOMTy.ty
+    val findBOMVar	: (env * Atom.atom) -> BOM.var
+    val findBOMCon	: (env * Atom.atom) -> BOMTy.data_con
+
   (* output an environment *)
     val dump : (TextIO.outstream * env) -> unit
 
@@ -124,6 +133,19 @@ structure TranslateEnv : sig
 
   (* handlerOf : env -> B.var *)
     fun handlerOf (E{exh, ...}) = exh
+
+  (* support for inline BOM code *)
+    fun insertBOMTyDef (E{...}, name, ty) = raise Fail "insertBOMTyDef"
+
+    fun insertBOMVar (E{...}, name, x) = raise Fail "insertBOMVar"
+
+    fun insertBOMCon (E{...}, name, dc) = raise Fail "insertBOMCon"
+
+    fun findBOMTy (E{...}, name) = raise Fail "findBOMTy"
+
+    fun findBOMVar (E{...}, name) = raise Fail "findBOMVar"
+
+    fun findBOMCon (E{...}, name) = raise Fail "findBOMCon"
 
   (* output an environment *)
     fun dump (outStrm, E{tycEnv, dconEnv, varEnv, ...}) = let
