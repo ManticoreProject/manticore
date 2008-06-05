@@ -33,21 +33,28 @@ ROOT_CM =		driver/$(TARGET).cm
 
 CM_FILES =		ast-opt/sources.cm \
 			ast/sources.cm \
+			binding/sources.cm \
 			bom-opt/sources.cm \
 			bom/sources.cm \
 			cfg-opt/sources.cm \
 			cfg/sources.cm \
 			closure/sources.cm \
+			codegen/group.cm \
 			codegen/sources.cm \
+			codegen/wrapper.cm \
 			common/sources.cm \
 			convert/sources.cm \
 			cps-opt/sources.cm \
 			cps/sources.cm \
 			driver/sources.cm \
+			driver/$(TARGET).cm \
 			env/sources.cm \
 			hlop/sources.cm \
 			match-comp/sources.cm \
 			mlb/sources.cm \
+			parse-tree/sources.cm \
+			parser/parser.cm \
+			parser/sources.cm \
 			prim/sources.cm \
 			translate/sources.cm \
 			typechecker/sources.cm \

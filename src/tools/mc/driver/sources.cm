@@ -21,6 +21,7 @@ is
   ../parse-tree/sources.cm
   ../parser/sources.cm
   ../ast-opt/sources.cm
+  ../binding/sources.cm
   ../bom-opt/sources.cm
   ../bom/sources.cm
   ../cfg-opt/sources.cm

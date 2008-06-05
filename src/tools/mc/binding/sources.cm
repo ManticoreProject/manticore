@@ -3,14 +3,12 @@
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Manticore typechecker.
+ * Determine variable bindings.
  *)
 
 Library
 
-  structure ChkProgram
-  structure MatchSig
-  structure CopySig
+  structure BoundVariableCheck
 
 is
 
@@ -24,14 +22,6 @@ is
   ../ast/sources.cm
   ../env/sources.cm
 
-  chk-ty.sml
-  chk-exp.sml
-  chk-module.sml
-  chk-program.sml
+  qualified-id.sml
+  bound-variable-check.sml
 
-  match-sig.sml
-  overload.sml
-  tc-controls.sml
-  unify.sml
-  match-ty.sml
-  copy-sig.sml
