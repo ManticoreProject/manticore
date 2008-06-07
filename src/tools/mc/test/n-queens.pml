@@ -1,14 +1,14 @@
-val seqSz = 1;
+val seqSz = 1
 
 fun timeToEval (f) = let
     val b = gettimeofday ()
     val v = f()
     val e = gettimeofday ()
     in
-       print (dtos (e-b)^"\n");
+       print ("(0, "^dtos (e-b)^"),\n");
        v
     end
-;
+
 
 (*
 ;;; NQUEENS -- Compute number of solutions to 8-queens problem.
@@ -48,7 +48,7 @@ fun isOK (row, dist, placed) = (case placed
     of nil => true
      | p :: ps => p <> row+dist andalso p <> row-dist andalso isOK(row, dist+1, ps)
     (* end case *))
-;
+
 
 fun try (x, y, z) = (case x
     of nil => (case y
@@ -64,7 +64,7 @@ fun try (x, y, z) = (case x
 	   por(f1, f2)
        end
     (* end case *))
-;
+
 
 fun queens (n) = let
     fun f (i) = i
@@ -77,6 +77,6 @@ fun queens (n) = let
     in
        timeToEval(doit)
     end
-;
 
-queens(readint())
+
+val _ = queens(readint())

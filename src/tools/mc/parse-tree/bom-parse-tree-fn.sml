@@ -1,0 +1,112 @@
+(* bom-parse-tree.sml
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Parse-tree representation of inline BOM code.
+ *
+ *)
+ 
+ functor BOMParseTreeFn (
+    type var
+    type pml_var
+    type ty_con
+    type ty_def
+    type prim
+    type dcon
+  ) = struct
+   
+    datatype raw_ty = datatype RawTypes.raw_ty
+
+    type var = var
+    type pml_var = pml_var
+    type ty_con = ty_con
+    type ty_def = ty_def
+    type prim = prim
+    type dcon = dcon
+
+  (* a term marked with a source-map span *)
+    type 'a mark = 'a Error.mark
+
+    type offset = IntInf.int
+
+    datatype defn
+      = D_Mark of defn mark
+      | D_Extern of Atom.atom CFunctions.c_fun
+      | D_TypeDef of ty_def * ty
+      | D_Define of (bool * var * var_pat list * var_pat list * ty list option * exp option)
+
+    and ty
+      = T_Mark of ty mark
+      | T_Any				(* unknown type; uniform representation *)
+      | T_Enum of Word.word		(* unsigned tagged integer; word is max value <= 2^31-1 *)
+      | T_Raw of raw_ty			(* raw machine type *)
+      | T_Tuple of bool * ty list	(* heap-allocated tuple *)
+      | T_Addr of ty
+      | T_Fun of (ty list * ty list * ty list)
+					(* function type; the second argument is the type of *)
+					(* the exception continuation(s) *)
+      | T_Cont of ty list		(* first-class continuation *)
+      | T_CFun of CFunctions.c_proto	(* C functions *)
+      | T_VProc				(* address of VProc runtime structure *)
+      | T_TyCon of ty_con		(* high-level type constructor *)
+
+    and exp
+      = E_Mark of exp mark
+      | E_Let of (var_pat list * rhs * exp)
+      | E_Fun of (lambda list * exp)
+      | E_Cont of (lambda * exp)
+      | E_If of (simple_exp * exp * exp)
+      | E_Case of (simple_exp * (pat * exp) list * (var_pat * exp) option)
+      | E_Apply of (var * simple_exp list * simple_exp list)
+      | E_Throw of (var * simple_exp list)
+      | E_Return of simple_exp list
+      | E_HLOpApply of (var * simple_exp list * simple_exp list)
+
+    and rhs
+      = RHS_Mark of rhs mark
+      | RHS_Exp of exp
+      | RHS_SimpleExp of simple_exp
+      | RHS_Update of (int * simple_exp * simple_exp)
+      | RHS_Promote of simple_exp			(* promote value to global heap *)
+      | RHS_CCall of (var * simple_exp list)
+      | RHS_VPStore of (offset * simple_exp * simple_exp)
+      | RHS_PMLVar of pml_var                           (* variable bound in PML *)
+
+    and simple_exp
+      = SE_Mark of simple_exp mark
+      | SE_Var of var
+      | SE_Alloc of simple_exp list
+      | SE_Wrap of simple_exp				(* wrap raw value *)
+      | SE_Select of (int * simple_exp)			(* select i'th field (zero-based) *)
+      | SE_Unwrap of simple_exp				(* unwrap value *)
+      | SE_AddrOf of (int * simple_exp)			(* address of i'th field (zero-based) *)
+      | SE_Const of (Literal.literal * ty)
+      | SE_MLString of string				(* ML string literal *)
+      | SE_Cast of (ty * simple_exp)
+      | SE_Prim of (prim * simple_exp list)	(* prim-op or data constructor *)
+    (* VProc operations *)
+      | SE_HostVProc					(* gets the hosting VProc *)
+      | SE_VPLoad of (offset * simple_exp)
+
+    and pat
+      = P_PMark of pat mark
+      | P_DCon of (dcon * var_pat list)
+      | P_Const of (Literal.literal * ty)
+
+    and var_pat
+      = P_VPMark of var_pat mark
+      | P_Wild of ty option
+      | P_Var of (var * ty)
+
+    withtype lambda = (var * var_pat list * var_pat list * ty list * exp)
+
+    type code = defn list
+
+  (* RHS of primitive value declarations *)
+    datatype prim_val_rhs
+      = VarPrimVal of var
+      | HLOpPrimVal of var
+      | LambdaPrimVal of lambda
+
+  end

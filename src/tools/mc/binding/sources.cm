@@ -24,4 +24,5 @@ is
 
   qualified-id.sml
   bound-variable-check.sml
+  bom-bound-variable-check.sml
 
