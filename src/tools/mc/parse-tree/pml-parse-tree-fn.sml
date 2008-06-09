@@ -8,18 +8,18 @@
 
 functor PMLParseTreeFn (
 
-    type ty_binder       (* top-level type identifiers *)
+    type ty_bind       (* top-level type identifiers *)
     type ty_use          (* type-variable uses *)
 
-    type con_binder      (* data constructor binders *)
+    type con_bind      (* data constructor binds *)
     type con_use         (* data constructor uses *)
 
-    type var_binder      (* variable binders *)
+    type var_bind      (* variable binds *)
     type var_use         (* variable uses *)
 
     type op_id           (* operator IDs; e.g., "=", "<=", "<", "::", ... *)
 
-    type mod_binder      (* module bindings *)
+    type mod_bind      (* module bindings *)
     type mod_use         (* module uses *)
 
     type sig_id          (* signature identifiers *)
@@ -30,16 +30,26 @@ functor PMLParseTreeFn (
     type 'a mark = 'a Error.mark
 
     type tyvar = Atom.atom          (* type-variable identifiers *)
-    type ty_binder = ty_binder
+    type ty_bind = ty_bind
     type ty_use = ty_use
-    type con_binder = con_binder
+    type con_bind = con_bind
     type con_use = con_use
-    type var_binder = var_binder
+    type var_bind = var_bind
     type var_use = var_use
     type op_id = op_id
-    type mod_binder = mod_binder
+    type mod_bind = mod_bind
     type mod_use = mod_use
     type sig_id = sig_id
+
+    structure BOMParseTree = BOMParseTreeFn (
+			       type var_use = var_use
+			       type var_bind = var_bind
+			       type pml_var = var_use
+			       type ty_con = ty_use
+			       type ty_def = ty_use
+			       type prim = op_id
+			       type dcon = con_use)
+
 
    (* signature expressions *)
     datatype sign
@@ -51,10 +61,10 @@ functor PMLParseTreeFn (
     and spec
       = MarkSpec of spec mark
       | IncludeSpec of sign
-      | ModuleSpec of (mod_binder * sign)
+      | ModuleSpec of (mod_bind * sign)
       | TypeSpec of ty_decl
-      | ConstSpec of (con_binder * tyvar list)
-      | ValSpec of (var_binder * tyvar list * ty)
+      | ConstSpec of (con_bind * tyvar list)
+      | ValSpec of (var_bind * tyvar list * ty)
 
   (* module expressions *)
     and module
@@ -66,9 +76,9 @@ functor PMLParseTreeFn (
   (* top-level declarations *)
     and decl
       = MarkDecl of decl mark
-      | ModuleDecl of (mod_binder * sign option * module)
+      | ModuleDecl of (mod_bind * sign option * module)
       | TyDecl of ty_decl
-      | ExnDecl of (con_binder * ty option)
+      | ExnDecl of (con_bind * ty option)
       | ValueDecl of val_decl
       | LocalDecl of (decl list * decl list)
       | SignDecl of (sig_id * sign)
@@ -77,15 +87,15 @@ functor PMLParseTreeFn (
   (* type declarations *)
     and ty_decl
       = MarkTyDecl of ty_decl mark
-      | TypeTyDecl of (tyvar list * ty_binder * ty)
-      | DataTyDecl of (tyvar list * ty_binder * con_decl list)
-      | AbsTyDecl of (tyvar list * ty_binder)
-      | PrimTyDecl of (tyvar list * ty_binder * BOMParseTree.ty)
+      | TypeTyDecl of (tyvar list * ty_bind * ty)
+      | DataTyDecl of (tyvar list * ty_bind * con_decl list)
+      | AbsTyDecl of (tyvar list * ty_bind)
+      | PrimTyDecl of (tyvar list * ty_bind * BOMParseTree.ty)
 
   (* data-constructor definitions *)
     and con_decl
       = MarkConDecl of con_decl mark
-      | ConDecl of con_binder * ty option
+      | ConDecl of con_bind * ty option
 
   (* value declarations *)
     and val_decl
@@ -98,7 +108,7 @@ functor PMLParseTreeFn (
   (* function definitions *)
     and funct
       = MarkFunct of funct mark
-      | Funct of (var_binder * pat * exp)
+      | Funct of (var_bind * pat * exp)
 
   (* types *)
     and ty
@@ -155,7 +165,7 @@ functor PMLParseTreeFn (
       | TuplePat of pat list
       | ConstPat of const
       | WildPat
-      | IdPat of var_binder    		(* either variable or nullary constant *)
+      | IdPat of var_bind    		(* either variable or nullary constant *)
       | ConstraintPat of pat * ty	(* type constraint *)
 
     and ppat (* parallel patterns, for use in pcase *)

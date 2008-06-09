@@ -15,6 +15,7 @@ structure BoundVariableCheck :> sig
 
     structure PT1 = ProgramParseTree.PML1
     structure PT2 = ProgramParseTree.PML2
+    structure BOMPT2 = ProgramParseTree.PML2.BOMParseTree
     structure Var = ProgramParseTree.Var
     structure BEnv = BindingEnv
 
@@ -197,7 +198,8 @@ structure BoundVariableCheck :> sig
 	    | PT1.PrimVDecl(pat, prim) => let
 		val (pat, env) = chkPat loc (pat, env)
 		in
-		  (PT2.PrimVDecl(pat, prim), env)
+		  raise Fail ""
+(*		  (PT2.PrimVDecl(pat, prim), env)*)
 		end
            (* end case *))
 
@@ -391,7 +393,8 @@ structure BoundVariableCheck :> sig
 		val id' = Var.new(Atom.toString id, ())
 		val env = BEnv.insertDataTy(env, id, id')
 		in
-		  (PT2.PrimTyDecl(tvs, id', bty), env)
+		  raise Fail "todo"
+(*		  (PT2.PrimTyDecl(tvs, id', bty), env)*)
 		end
            (* end case *))
 
@@ -506,12 +509,12 @@ structure BoundVariableCheck :> sig
   (* rebind types, variables and nested modules *)
     fun rebindMod (sigEnv, modEnv) = let
 	    val BEnv.Env{tyEnv=sigTyEnv, varEnv=sigVarEnv, modEnv=sigModEnv, ...} = sigEnv
-	    val BEnv.Env{tyEnv, varEnv, modEnv, sigEnv, outerEnv} = modEnv
+	    val BEnv.Env{tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv} = modEnv
 	    val (rebindVars, varEnv') = rebindVars(sigVarEnv, varEnv)
 (* FIXME *)
 	    val tyEnv' = tyEnv
 	    val modEnv' = modEnv
-	    val modEnv' = BEnv.Env{tyEnv=tyEnv', varEnv=varEnv', modEnv=modEnv', sigEnv=sigEnv, outerEnv=outerEnv}
+	    val modEnv' = BEnv.Env{tyEnv=tyEnv', varEnv=varEnv', bomEnv=bomEnv, modEnv=modEnv', sigEnv=sigEnv, outerEnv=outerEnv}
 	    in
 	        (rebindVars, modEnv')
 	    end
@@ -599,7 +602,11 @@ structure BoundVariableCheck :> sig
 		  in
 		     ([PT2.SignDecl (id', sign)], env)
 		  end
-	    | PT1.PrimCodeDecl code => ([PT2.PrimCodeDecl code], env)
+	    | PT1.PrimCodeDecl code => let
+		  val (code, env) = BOMBoundVariableCheck.checkCode loc (code, env)
+	          in
+		     ([PT2.PrimCodeDecl code], env)
+	          end
            (* end case *))
 
     and chkDecls loc (decls, env) = let

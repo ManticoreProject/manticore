@@ -430,10 +430,11 @@ structure BasisEnv : sig
 	     val (predefinedVarBinds, predefinedVars) = bindVals predefinedVars'
 
            (* create the top-level binding environment *)
-	     val BEnv.Env {modEnv, sigEnv, outerEnv, ...} = BEnv.empty NONE
+	     val BEnv.Env {modEnv, sigEnv, bomEnv, outerEnv, ...} = BEnv.empty NONE
 	     val bEnv0 = BEnv.Env{
                             modEnv=modEnv, 
 			    sigEnv=sigEnv, 
+			    bomEnv=bomEnv,
 			    outerEnv=outerEnv, 
 			    varEnv=BEnv.fromList predefinedVarBinds, 
 			    tyEnv=BEnv.fromList predefinedTyBinds

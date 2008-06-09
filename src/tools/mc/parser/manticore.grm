@@ -29,8 +29,8 @@ TyDeclRHS
 ValueDeclRHS
 	: "_prim" "(" "fun" BOMLambda ")"
 		=> (fn pat => PT.PrimVDecl(pat, BPT.LambdaPrimVal BOMLambda))
-	| "_prim" "(" ID ")"
-		=> (fn pat => PT.PrimVDecl(pat, BPT.VarPrimVal ID))
+	| "_prim" "(" QualifiedId ")"
+		=> (fn pat => PT.PrimVDecl(pat, BPT.VarPrimVal QualifiedId))
 	| "_prim" "(" HLOP ")"
 		=> (fn pat => PT.PrimVDecl(pat, BPT.HLOpPrimVal HLOP))
 	;

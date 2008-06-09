@@ -85,7 +85,7 @@
 	;
 
 %defs(
-    structure BPT = BOMParseTree
+    structure BPT = ProgramParseTree.PML1.BOMParseTree
     structure CF = CFunctions
 
     fun flatten NONE = []
@@ -95,6 +95,9 @@
     val dfltIntTy = BPT.T_Raw(BPT.T_Int)
     val dfltFloatTy = BPT.T_Raw(BPT.T_Float)
     val dfltStringTy = BPT.T_Any (* FIXME *)
+
+(* apply a mark constructor to a span and a tree *)
+  fun mark cons (span : AntlrStreamPos.span, tr) = cons{span = span, tree = tr}
 );
 
 
@@ -114,8 +117,8 @@ Definition
 			varArg = false,
 			attrs = Attrs
 		      }))
-	| "typedef" ID "=" BOMType ";"
-		=> (BPT.D_TypeDef(ID, BOMType))
+	| "typedef" QualifiedId "=" BOMType ";"
+		=> (BPT.D_TypeDef(QualifiedId, BOMType))
 	| "define" optInline HLOP FunParams ReturnTy ("=" BOMExp)? ";"
 		=> (let val (p1, p2) = FunParams in
 		      BPT.D_Define(optInline, HLOP, p1, p2, ReturnTy, SR)
@@ -174,7 +177,7 @@ BOMType
 						=> (BPT.T_Fun(TypeList1, TypeList2, TypeList3))
 	| "cont" "(" TypeList ")"		=> (BPT.T_Cont TypeList)
 	| "vproc"				=> (BPT.T_VProc)
-	| ID					=> (BPT.T_TyCon ID)
+	| QualifiedId				=> (BPT.T_TyCon QualifiedId)
 	;
 
 TypeList
@@ -204,10 +207,10 @@ BOMExp
 		=> (BPT.E_If(SimpleExp, BOMExp1, BOMExp2))
         | "case" SimpleExp "of" Rules ("|" Default)? "end"
 		=> (BPT.E_Case(SimpleExp, Rules, SR))
-	| "apply" ID "(" Args ("/" Args)? ")"
-		=> (BPT.E_Apply(ID, Args, Option.getOpt(SR, [])))
-	| "throw" ID "(" Args ")"
-		=> (BPT.E_Throw(ID, Args))
+	| "apply" QualifiedId "(" Args ("/" Args)? ")"
+		=> (BPT.E_Apply(QualifiedId, Args, Option.getOpt(SR, [])))
+	| "throw" QualifiedId "(" Args ")"
+		=> (BPT.E_Throw(QualifiedId, Args))
 	| "return" "(" Args ")"
 		=> (BPT.E_Return Args)
 	| HLOP "(" Args ("/" Args)? ")"
@@ -242,13 +245,13 @@ RHS
 		      | NONE => BPT.RHS_SimpleExp(BPT.SE_Select(Int.fromLarge POSINT, SimpleExp))
 		    (* end case *))
 	| "promote" "(" SimpleExp ")"	=> (BPT.RHS_Promote SimpleExp)
-	| "ccall" ID "(" Args ")"	=> (BPT.RHS_CCall(ID, Args))
+	| "ccall" QualifiedId "(" Args ")"	=> (BPT.RHS_CCall(QualifiedId, Args))
 	| "vpstore" "(" POSINT "," SimpleExp "," SimpleExp ")"
 					=> (BPT.RHS_VPStore(POSINT, SimpleExp1, SimpleExp2))
 	;
 
 NonSelectExp
-	: ID				=> (BPT.SE_Var ID)
+	: QualifiedId			=> (BPT.SE_Var QualifiedId)
 	| "alloc" "(" Args ")"		=> (BPT.SE_Alloc Args)
 	| "wrap" "(" SimpleExp ")"	=> (BPT.SE_Wrap SimpleExp)
 	| "&" POSINT "(" SimpleExp ")"	=> (BPT.SE_AddrOf(Int.fromLarge POSINT, SimpleExp))
@@ -276,8 +279,8 @@ Rules
 	;
 
 Rule
-	: ID "(" VarPat ("," VarPat)* ")" "=>" BOMExp
-					=> (BPT.P_DCon(ID, VarPat::SR), BOMExp)
+	: QualifiedId "(" VarPat ("," VarPat)* ")" "=>" BOMExp
+					=> (BPT.P_DCon(QualifiedId, VarPat::SR), BOMExp)
 	| Literal "=>" BOMExp		=> (BPT.P_Const Literal, BOMExp)
 	;
 

@@ -8,7 +8,6 @@
 
 Library
 
-  structure BOMParseTree
   structure ProgramParseTree
 
 is
@@ -21,7 +20,6 @@ is
   ../common/sources.cm
 
   bom-parse-tree-fn.sml
-  bom-parse-tree.sml
   pml-parse-tree-fn.sml
   prog-parse-tree.sml
 

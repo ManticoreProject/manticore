@@ -8,7 +8,8 @@
  *)
  
  functor BOMParseTreeFn (
-    type var
+    type var_use
+    type var_bind
     type pml_var
     type ty_con
     type ty_def
@@ -18,7 +19,8 @@
    
     datatype raw_ty = datatype RawTypes.raw_ty
 
-    type var = var
+    type var_use = var_use
+    type var_bind = var_bind
     type pml_var = pml_var
     type ty_con = ty_con
     type ty_def = ty_def
@@ -34,7 +36,7 @@
       = D_Mark of defn mark
       | D_Extern of Atom.atom CFunctions.c_fun
       | D_TypeDef of ty_def * ty
-      | D_Define of (bool * var * var_pat list * var_pat list * ty list option * exp option)
+      | D_Define of (bool * var_bind * var_pat list * var_pat list * ty list option * exp option)
 
     and ty
       = T_Mark of ty mark
@@ -58,10 +60,10 @@
       | E_Cont of (lambda * exp)
       | E_If of (simple_exp * exp * exp)
       | E_Case of (simple_exp * (pat * exp) list * (var_pat * exp) option)
-      | E_Apply of (var * simple_exp list * simple_exp list)
-      | E_Throw of (var * simple_exp list)
+      | E_Apply of (var_use * simple_exp list * simple_exp list)
+      | E_Throw of (var_use * simple_exp list)
       | E_Return of simple_exp list
-      | E_HLOpApply of (var * simple_exp list * simple_exp list)
+      | E_HLOpApply of (Atom.atom * simple_exp list * simple_exp list)
 
     and rhs
       = RHS_Mark of rhs mark
@@ -69,13 +71,13 @@
       | RHS_SimpleExp of simple_exp
       | RHS_Update of (int * simple_exp * simple_exp)
       | RHS_Promote of simple_exp			(* promote value to global heap *)
-      | RHS_CCall of (var * simple_exp list)
+      | RHS_CCall of (var_use * simple_exp list)
       | RHS_VPStore of (offset * simple_exp * simple_exp)
       | RHS_PMLVar of pml_var                           (* variable bound in PML *)
 
     and simple_exp
       = SE_Mark of simple_exp mark
-      | SE_Var of var
+      | SE_Var of var_use
       | SE_Alloc of simple_exp list
       | SE_Wrap of simple_exp				(* wrap raw value *)
       | SE_Select of (int * simple_exp)			(* select i'th field (zero-based) *)
@@ -97,16 +99,16 @@
     and var_pat
       = P_VPMark of var_pat mark
       | P_Wild of ty option
-      | P_Var of (var * ty)
+      | P_Var of (var_bind * ty)
 
-    withtype lambda = (var * var_pat list * var_pat list * ty list * exp)
+    withtype lambda = (var_bind * var_pat list * var_pat list * ty list * exp)
 
     type code = defn list
 
   (* RHS of primitive value declarations *)
     datatype prim_val_rhs
-      = VarPrimVal of var
-      | HLOpPrimVal of var
+      = VarPrimVal of var_use
+      | HLOpPrimVal of Atom.atom
       | LambdaPrimVal of lambda
 
   end
