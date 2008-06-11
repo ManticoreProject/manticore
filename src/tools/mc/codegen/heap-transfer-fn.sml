@@ -76,11 +76,11 @@ functor HeapTransferFn (
           (T.REG(MTy.wordTy, r), T.MV(MTy.wordTy, r, hostVP))
         end
 
-  datatype location_kinds = K_GPR | K_FPR | K_MEM
+  datatype location_kind = K_GPR | K_FPR | K_MEM
 
   structure SA = StagedAllocationFn (
 		   type reg = T.reg
-		   datatype location_kinds = datatype location_kinds
+		   datatype location_kind = datatype location_kind
 		   val memSize = 8)
 
   structure CallingConventions :> sig
