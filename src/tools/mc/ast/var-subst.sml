@@ -38,7 +38,6 @@ structure VarSubst =
   (* id : subst *)
     val id : subst = VarMap.empty
 
-  (* add : A.var * A.var * subst -> subst *)
     fun add ((k, v), s) = VarMap.insert (s, k, v)
 
     fun var s v = (case VarMap.find (s, v)
@@ -150,5 +149,11 @@ structure VarSubst =
 	end
 *)
 
+    (* substitute "this" for "that" in "e" *)
+    fun subst1 (this, that, e) = let
+      val s = add ((this, that), id)
+      in
+        exp s e        
+      end
 
   end

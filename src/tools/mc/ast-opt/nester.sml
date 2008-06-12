@@ -8,7 +8,7 @@
 
 structure Nester (* : sig
 
-    val fromExp: AST.exp  -> AST.var * AST.lambda
+    val fromExp: AST.exp  -> AST.exp
 
   end *) =
 
@@ -309,13 +309,11 @@ structure Nester (* : sig
 	structure U = TestUtils 
 
 	(* testTup : A.exp -> unit *)
-	fun testTup e = 
-	    let val m = A.Module {exns = [], body = e}
-	    in
-		PrintAST.print m;
-		U.describe NONE;
-		PrintAST.print (A.Module {exns = [], body = fromExp e})
-	    end
+	fun testTup e = (
+          PrintAST.printExp e;
+          U.describe NONE;
+          PrintAST.printExp (fromExp e)
+	)
 
 	val t0 = U.ptup [U.int 1, U.ptup [U.int 2, U.int 3]]
 	val t1 = U.ptup [U.int 1, U.ptup [U.some (U.int 2),
@@ -374,16 +372,15 @@ structure Nester (* : sig
 
 	(* testSame : int -> unit *)
 	fun testSame n =
-	    let fun mkModule lam = A.Module {exns = [], body = lam}
-		fun printLam lam = PrintAST.print (mkModule lam)
+	    let fun printFn anon = PrintAST.printExp anon
 		fun t (e1, e2) =
-		    let val lam1 = fromExp e1
-			val lam2 = fromExp e2
-			val s = same (lam1, lam2)
+		    let val anon1 = fromExp e1
+			val anon2 = fromExp e2
+			val s = same (anon1, anon2)
 		    in
-			printLam lam1;
+			printFn anon1;
 			PrintAST.printComment "****";
-			printLam lam2;
+			printFn anon2;
 			PrintAST.printComment ("same: " ^ Bool.toString s)
 		    end
 	    in

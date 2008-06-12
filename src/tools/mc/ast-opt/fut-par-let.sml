@@ -10,8 +10,9 @@
 
 structure FutParLet : sig
 
-    val futurize : AST.module -> AST.module
-    val test : int -> unit
+    (* val futurize : AST.module -> AST.module *)
+    val futurizeExp : AST.exp -> AST.exp
+    val test        : int -> unit
 
   end = 
 
@@ -37,7 +38,6 @@ structure FutParLet : sig
     val id = fn x => x
 
     structure VSet = Var.Set
-
 
   (* For those variables that are bound with a pval and embedded in a pattern,
    * we will maintain a list of selector functions to extract those variables
@@ -67,8 +67,7 @@ structure FutParLet : sig
 	    VSet.fromList o vs
 	end
 
-    (* futurize : A.module -> A.module *)
-    fun futurize (A.Module {exns, body}) = 
+    fun futurizeExp e =
 	let (* exp : A.exp * VSet.set -> A.exp * VSet.set *)
 	    (* Consumes an expression and the set of pval-bound variables *)
 	    (*   live in the expression. *)
@@ -304,7 +303,6 @@ structure FutParLet : sig
 		  in
 		      (A.LetExp (A.FunBind lams', e'), live1)
 		  end
-	      | letExp (A.DValBind _, _, _) = raise Fail "todo"
 		  
 	    (* lambda : VSet.set -> A.lambda -> A.lambda *)
 	    and lambda pLive (A.FB (f, x, e)) = A.FB (f, x, #1 (exp (e, pLive)))
@@ -371,8 +369,9 @@ structure FutParLet : sig
 		    (A.CondMatch (p, e1', e2'), VSet.union (pLive1, pLive2))
 		  end
 	in
-	    (Var.Tbl.clear(selectors);
-	     A.Module {exns = exns, body = #1 (exp (body, VSet.empty))})
+	    (Var.Tbl.clear selectors;
+	    (* A.Module {exns = exns, body = #1 (exp (body, VSet.empty))}) *)
+             #1 (exp (e, VSet.empty)))
 	end
 	    
     (**** tests ****)
@@ -515,13 +514,9 @@ structure FutParLet : sig
 	    end
 
 	(* testPVal : A.exp -> unit *)
-	fun testPVal e = 
-	    let val m = A.Module {exns = [], body = e}
-	    in
-		PrintAST.print m;
-		PrintAST.printComment "-->";
-		PrintAST.print (futurize m)
-	    end
+	fun testPVal e = (PrintAST.printExp e;
+			  PrintAST.printComment "-->";
+			  PrintAST.printExp (futurizeExp e))
 
     in
         (* test : int -> unit *)

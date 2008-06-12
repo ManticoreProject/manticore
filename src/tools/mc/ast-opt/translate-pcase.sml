@@ -95,11 +95,11 @@ structure TranslatePCase (* : sig
       (* Given a pattern p : tau, produce the pattern Val(p) : tau trap. *)
       fun mkValPat p = A.ConPat (Basis.trapVal, [TypeOf.pat p], p)
 
-      (* Given a pattern p and type tau, produce the pattern Val(p) : tau trap. *)
+      (* Given a pattern p and type tau, produce the pattern Exn(p) : tau trap. *)
       fun mkExnPat (p, ty) = A.ConPat (Basis.trapExn, [ty], p)
 
       (* xfromPPats : ppat list -> pat *)
-      (* A function to transform ppat lists to tuple pats for use in case exps.*)
+      (* A function to transform ppat lists to tuple pats for use in case exps. *)
       (* e.g. the pcase branch *)
       (*   ? & 1 & (x,y) *)
       (* becomes *)
@@ -107,7 +107,7 @@ structure TranslatePCase (* : sig
       fun xformPPats ps = let
 	    fun x ([], acc) = rev acc
 	      | x (A.NDWildPat ty :: t, acc) = x (t, A.WildPat ty :: acc)
-	      | x (A.HandlePat (p, ty) :: t, acc) = x (t, mkExnPat (p, ty) :: acc)
+	      | x (A.HandlePat (p, ty) :: t, acc) = x (t, mkExnPat(p,ty) :: acc)
 	      | x (A.Pat p :: t, acc) = x (t, mkValPat p :: acc)
             in
 	      A.TuplePat (x (ps, []))
@@ -144,13 +144,13 @@ structure TranslatePCase (* : sig
             raise Fail "ill-formed pcase: otherwise is not last"
 	| buildMap ([], _) = raise Fail "bug" (* shouldn't reach this, ever *)
 
-      (* optTy : AST.ty -> AST.ty *)
-      fun optTy t = AST.ConTy ([t], Basis.optionTyc)
+      (* optTy : A.ty -> A.ty *)
+      fun optTy t = A.ConTy ([t], Basis.optionTyc)
 
-      (* trapTy : AST.ty -> AST.ty *)
-      fun trapTy t = AST.ConTy ([t], Basis.trapTyc)
+      (* trapTy : A.ty -> A.ty *)
+      fun trapTy t = A.ConTy ([t], Basis.trapTyc)
 
-      (* tup of traps for a types corres. to Ones -> pcaseResultTy *)
+      (* tup of traps for types corres. to Ones -> pcaseResultTy *)
       (* e.g., if eTys (defined locally above) is [int, bool, string] *)
       (*       and cb is 101 then this function yields *)
       (*       the type (int trap * string trap) *)
@@ -160,30 +160,34 @@ structure TranslatePCase (* : sig
 	  | b (CB.One::t1, t::t2, tys) = b (t1, t2, trapTy t :: tys)
 	  | b _ = raise Fail "length of completion bitstring doesn't match # of expressions in pcase"
         in
-          AST.TupleTy (b (cb, eTys, []))
+          A.TupleTy (b (cb, eTys, []))
         end 
 
-      (* mkMatch : cbits * AST.var -> AST.match * (AST.exp list) *)
+      (* mkMatch: Given a completion bitstring and a function name,   *)
+      (*          construct a match with the right SOMEs, NONEs etc.  *)
+      (* ex: mkMatch(1001, state1001) yields                          *)
+      (*       | (SOME(t1), NONE, NONE, SOME(t2) => state1001(t1,t2)  *)
+      (* mkMatch : cbits * A.var -> A.match * (A.exp list)      *)
       fun mkMatch (cb, fV) = let
 	fun m ([], [], _, optPats, args) = let
-              val tupPat = AST.TuplePat (List.rev optPats)
+              val tupPat = A.TuplePat (List.rev optPats)
 	      val args' = List.rev args
-              val fcall = AST.ApplyExp (AST.VarExp (fV, []), 
-					AST.TupleExp args',
+              val fcall = A.ApplyExp (A.VarExp (fV, []), 
+					A.TupleExp args',
 					pcaseResultTy)
               in
-	        (AST.PatMatch (tupPat, fcall), args')
+	        (A.PatMatch (tupPat, fcall), args')
 	      end
 	  | m (CB.Zero::bs, t::ts, n, optPats, args) = let
-              val p = AST.ConstPat (AST.DConst (Basis.optionNONE, [trapTy t]))
+              val p = A.ConstPat (A.DConst (Basis.optionNONE, [trapTy t]))
               in
                 m (bs, ts, n, p::optPats, args)
               end
 	  | m (CB.One::bs, t::ts, n, optPats, args) = let
               val varName = "t" ^ Int.toString n
 	      val argV = Var.new ("t" ^ Int.toString n, trapTy t)
-	      val arg = AST.VarExp (argV, [])
-	      val p = AST.ConPat (Basis.optionSOME, [trapTy t], AST.VarPat argV) 
+	      val arg = A.VarExp (argV, [])
+	      val p = A.ConPat (Basis.optionSOME, [trapTy t], A.VarPat argV) 
               in
 		m (bs, ts, n+1, p::optPats, arg::args)
               end
@@ -192,20 +196,28 @@ structure TranslatePCase (* : sig
           m (cb, eTys, 1, [], [])
         end
 
+      (* mkPoll: Given a variable f bound to some 'a future, return poll(f). *)
+      fun mkPoll fV = raise Fail "todo"
+
       fun mkLam (fName, m, varsGiven, caseArms) = raise Fail "todo"
 
-      (* A function to build a batch of functions (a state machine in another form) *)
+      (* A function to build a batch of functions implementing a state machine *)
       (* given a map of completion bitstrings to match lists. *)
       fun buildFuns (m : matchmap) : A.lambda list = let
 	    val kmss = CBM.listItemsi m
-	    val goV = Var.new ("go", AST.FunTy (Basis.unitTy, pcaseResultTy))
+	    val goV = Var.new ("go", A.FunTy (Basis.unitTy, pcaseResultTy))
 	    val u = Var.new ("u", Basis.unitTy)
-	    fun mkGo (matches, fnames) = raise Fail "todo" 
-	      (* make go() out of the top-level matches *)
-	    fun b ([], matches, lams, fnames) = (mkGo (matches, fnames) :: lams, fnames)
+	    fun mkGo matches = let
+              val pollTuple = raise Fail "todo"
+	      val body = A.CaseExp (pollTuple, matches, pcaseResultTy)
+	      val arg = Var.new ("u", Basis.unitTy) 
+              in
+		A.FB (goV, arg, body)
+              end
+	    fun b ([], matches, lams, fnames) = mkGo matches :: lams
 	      | b ((cb,ms)::t, matches, lams, fnames) = let
                   val name = "state" ^ CB.toString cb
-		  val ty = AST.FunTy (mkTy cb, pcaseResultTy)
+		  val ty = A.FunTy (mkTy cb, pcaseResultTy)
 		  val nameV = Var.new (name, ty)
 		  val (m, varsInMatch) = mkMatch (cb, nameV)
 		  val f = mkLam (nameV, m, varsInMatch, ms)
@@ -213,7 +225,7 @@ structure TranslatePCase (* : sig
 		    b (t, m::matches, f::lams, name::fnames)
                   end
             in
-	      raise Fail "todo"
+	      b (kmss, [], [], []) 
             end
 
       in

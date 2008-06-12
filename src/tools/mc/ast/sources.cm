@@ -27,7 +27,7 @@ Library
   structure VarRep
   structure SubstVar
   structure SubstTy
-(*  structure VarSubst*)
+  structure VarSubst
 
 is
 
@@ -55,6 +55,6 @@ is
   type-of.sml
   type-util.sml
   var.sml
-(*  var-subst.sml*)
+  var-subst.sml
   subst-var.sml
   subst-ty.sml

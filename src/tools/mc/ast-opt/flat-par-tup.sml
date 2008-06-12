@@ -7,7 +7,7 @@
 
 structure FlatParTup : sig
 
-    val flattenModule : AST.module -> AST.module
+    val flattenExp : AST.exp -> AST.exp 
     val test : int -> unit
 
   end = struct
@@ -254,8 +254,8 @@ structure FlatParTup : sig
     (* lambda : A.lambda -> A.lambda *)
     and lambda (A.FB (v1, v2, e)) = A.FB (v1, v2, exp e)
 
-    (* flatten : A.module -> A.module *)
-    fun flattenModule (A.Module {exns, body}) = A.Module {exns = exns, body = exp body}
+    (* flattenExp : A.exp -> A.exp *)
+    fun flattenExp e = exp e
 
     (**** tests ****)
 
@@ -335,18 +335,17 @@ structure FlatParTup : sig
 			    (varPat k, ptup [int 0, tup [int 0, some (int 0)]])])
 	    end
 
-	fun testExp e = (P.print e;
+	fun testExp e = (P.printExp e;
 			 P.printComment "-->";
-			 P.print (flattenModule e))
+			 P.printExp (flattenExp e))
 
     in
 
         (* test : int -> unit *)
         val test = 
 	    let val testCases = [t0,t1,t2,t3,t4,t5,t6,t7,t8,t9]
-		fun mkModule e = A.Module {exns = [], body = e}
 	    in
-		U.mkTest testExp (map mkModule testCases)
+		U.mkTest testExp testCases
 	    end
 
     end (* local *)
