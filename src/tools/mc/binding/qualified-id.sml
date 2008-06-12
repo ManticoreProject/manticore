@@ -26,6 +26,8 @@ structure QualifiedId : sig
     val findMod : (BindingEnv.env * Atom.atom path) -> BindingEnv.mod_bind option
     val findModEnv : (BindingEnv.env * Atom.atom path) -> BindingEnv.env option
 
+    val findBOMVar : (BindingEnv.env * Atom.atom path) -> BindingEnv.bom_var option
+
     val toString : (('a -> string) * 'a path) -> string
 
     (* returns unqualified names *)
@@ -82,6 +84,11 @@ structure QualifiedId : sig
     fun findModEnv (env, path) = (case checkModPath (env, path)
         of UNQUAL x => Option.map #2 (BindingEnv.findMod(env, x))
 	 | QUAL (env', x) => Option.map #2 (BindingEnv.findMod(env', x))
+	 | ERROR => NONE)
+
+    fun findBOMVar (env, path) = (case checkModPath (env, path)
+        of UNQUAL x => BindingEnv.findBOMVar(env, x)
+	 | QUAL (env', x) => BindingEnv.findBOMVar(env', x)
 	 | ERROR => NONE)
 
   end

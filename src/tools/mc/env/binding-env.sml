@@ -103,6 +103,15 @@ structure BindingEnv =
     fun findMod (env, v) = findInEnv (env, #modEnv, v)
     fun findSig (env, v) = findInEnv (env, #sigEnv, v)
 
+    fun findBOMVar (Env{bomEnv=BOMEnv {varEnv, ...}, outerEnv, ...}, x) = (case Map.find(varEnv, x)
+        of NONE => 
+	   (* x is not bound in this module, so check the enclosing module *)
+	   (case outerEnv
+	     of NONE => NONE
+	      | SOME env => findBOMVar(env, x))
+	 (* found a value *)
+	 | SOME v => SOME v)
+
   (* constrains env2 to contain only those keys that are also in env1 *)
     fun intersect (env1, env2) = Map.intersectWith (fn (x1, x2) => x2) (env1, env2)
 
