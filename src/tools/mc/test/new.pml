@@ -1,0 +1,1 @@
+fun main _ = print "Anybody home?\n"
