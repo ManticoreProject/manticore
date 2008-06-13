@@ -8,6 +8,9 @@
 
 structure BOMBoundVariableCheck :> sig
 
+    val checkPrimValRHS : Error.span -> (ProgramParseTree.PML1.BOMParseTree.prim_val_rhs * BindingEnv.env) 
+		          -> (ProgramParseTree.PML1.BOMParseTree.prim_val_rhs * BindingEnv.env) 
+
   (* check for unbound variables *)
     val checkCode : Error.span -> (ProgramParseTree.PML1.BOMParseTree.code * BindingEnv.env) 
 		        -> (ProgramParseTree.PML2.BOMParseTree.code * BindingEnv.env)
