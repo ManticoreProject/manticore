@@ -33,13 +33,20 @@ structure BOMBoundVariableCheck :> sig
   (* attempt to find the binding site of a qualified identifier, reporting an error if none exists *)
     fun findQid (find, kind, dummy) (loc, env, qId) = (case find(env, qId)
            of NONE => (
-	      error(loc, ["unbound ", kind, " ", qidToString qId]);
-	      dummy)
+	          error(loc, ["unbound ", kind, " ", qidToString qId]);
+		  dummy)
 	    | SOME x => x
            (* end case *))
 
     val dummyVar = Var.new("dummyVar", ())
     val findBOMVarQid = findQid (QualifiedId.findBOMVar, "bom variable", dummyVar)
+    val findBOMTyQid = findQid (QualifiedId.findBOMTy, "bom type", dummyVar)
+    fun findPrim (loc, env, p) = (case BEnv.findBOMVar(env, p)
+           of NONE => ( 
+	          error(loc, ["unbound primop ", Atom.toString p]);
+		  dummyVar)
+	    | SOME v => v
+          (* end case *))
 
     fun freshVar v = Var.new(Atom.toString v, ())
 
@@ -60,9 +67,26 @@ structure BOMBoundVariableCheck :> sig
 	          in
 		      PT2.T_Mark {tree=tree, span=span}
 		  end
+	    | PT1.T_Any => PT2.T_Any
+	    | PT1.T_Enum x => PT2.T_Enum x
+	    | PT1.T_Raw rt => PT2.T_Raw rt
+	    | PT1.T_Tuple (b, tys) => 
+	          PT2.T_Tuple (b, chkTys loc (tys, env))
+	    | PT1.T_Addr ty => PT2.T_Addr (chkTy loc (ty, env))
+	    | PT1.T_Fun (params, exns, rets) => let
+		  val params = chkTys loc (params, env)
+		  val exns = chkTys loc (exns, env)
+		  val rets = chkTys loc (rets, env)
+	          in
+		      PT2.T_Fun (params, exns, rets)
+		  end
+	    | PT1.T_Cont params => PT2.T_Cont (chkTys loc (params, env))
+	    | PT1.T_CFun cp => PT2.T_CFun cp
+	    | PT1.T_VProc => PT2.T_VProc
+	    | PT1.T_TyCon tc => PT2.T_TyCon (findBOMTyQid(loc, env, tc))
            (* end case *))
 
-    fun chkTys loc (tys, env) = List.map (fn ty => chkTy loc (ty, env)) tys
+    and chkTys loc (tys, env) = List.map (fn ty => chkTy loc (ty, env)) tys
 
     fun chkRhs loc (rhs, env) = (case rhs
             of PT1.RHS_Mark {tree, span} => let
@@ -134,7 +158,12 @@ structure BOMBoundVariableCheck :> sig
 		   val cases = chkCases loc (cases, env)
 		   val def = (case def
 			       of NONE => NONE
-				| SOME def => SOME (chkCase loc (def,  env))
+				| SOME (vp, exp) => let
+				      val (vp, env) = chkVarPat loc (vp, env)
+				      val exp = chkExp loc (exp, env)
+				      in
+				          SOME (vp, exp)
+				      end
 			     (* end *))
 	           in
 		       PT2.E_Case (sexp, cases, def)
@@ -148,13 +177,52 @@ structure BOMBoundVariableCheck :> sig
 		   end
             (* end case *))
 
-    and chkSexp loc (sexp, env) = raise Fail ""
+    and chkSexp loc (sexp, env) = (case sexp
+            of PT1.SE_Mark {tree, span} => let
+		   val tree = chkSexp loc (sexp, env)
+	           in
+		       PT2.SE_Mark {tree=tree, span=span}
+		   end
+	     | PT1.SE_Var v => PT2.SE_Var (findBOMVarQid (loc, env, v))
+	     | PT1.SE_Alloc sexps => PT2.SE_Alloc (chkSexps loc (sexps, env))
+	     | PT1.SE_Wrap sexp => PT2.SE_Wrap (chkSexp loc (sexp, env))
+	     | PT1.SE_AddrOf (i, sexp) => PT2.SE_AddrOf (i, chkSexp loc (sexp, env))
+	     | PT1.SE_Const (lit, ty) => PT2.SE_Const (lit, chkTy loc (ty, env))
+	     | PT1.SE_MLString s => PT2.SE_MLString s
+	     | PT1.SE_Cast (ty, sexp) => PT2.SE_Cast (chkTy loc (ty, env), 
+						      chkSexp loc (sexp, env))
+	     | PT1.SE_Prim (prim, sexps) => 
+	           PT2.SE_Prim(findPrim (loc, env, prim), chkSexps loc (sexps, env))
+	     | PT1.SE_HostVProc => PT2.SE_HostVProc
+	     | PT1.SE_VPLoad (off, sexp) => PT2.SE_VPLoad (off, chkSexp loc (sexp, env))
+            (* end case *))
 
-    and chkSexps loc (sexp, env) = raise Fail ""
+    and chkSexps loc (sexps, env) = List.map (fn sexp => chkSexp loc (sexp, env)) sexps
 
-    and chkCase loc (c, env) = raise Fail ""
+    and chkCase loc ((pat, exp), env) = let
+	    val (pat, env) = chkPat loc (pat, env)
+	    val exp = chkExp loc (exp, env)
+            in
+	       (pat, exp)
+	    end
 
-    and chkCases loc (cases, env) = raise Fail ""
+    and chkCases loc (cases, env) = List.map (fn c => chkCase loc (c, env)) cases
+
+    and chkPat loc (pat, env) = (case pat
+            of PT1.P_PMark {tree, span} => let
+		   val (tree, env) = chkPat loc (tree, env)
+	           in
+		       (PT2.P_PMark {tree=tree, span=span}, env)
+		   end
+(* FIXME: check for duplicate pattern-bound variables *)
+	     | PT1.P_DCon (dcon, vps) => let
+		   val dcon = findBOMVarQid(loc, env, dcon)
+		   val (vps, env) = chkVarPats loc (vps, env)
+	           in
+		       (PT2.P_DCon (dcon, vps), env)
+		   end
+	     | PT1.P_Const (lit, ty) => (PT2.P_Const (lit, chkTy loc (ty, env)), env)
+            (* end case *))
 
     and chkVarPat loc (vp, env) = (case vp
             of PT1.P_VPMark {tree, span} => let

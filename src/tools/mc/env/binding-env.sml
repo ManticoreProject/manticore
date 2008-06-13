@@ -21,14 +21,18 @@ structure BindingEnv =
 
     type bom_var = PT2.BOMParseTree.var_bind
     type bom_var_env = bom_var Map.map
+    type bom_ty_def = PT2.BOMParseTree.ty_def
+    type bom_ty_env = bom_ty_def Map.map
 
     datatype bom_env
       = BOMEnv of {
-	  varEnv : bom_var_env
+	  varEnv : bom_var_env,
+	  tyEnv : bom_ty_env
         }
 
     val emptyBOMEnv = BOMEnv{
-		  varEnv = Map.empty
+		  varEnv = Map.empty,
+		  tyEnv = Map.empty
 		}
 
   (* value identifiers may be data constructors, variables, or overloaded variables. *)
@@ -81,8 +85,8 @@ structure BindingEnv =
 
   (* BOM environment operations *)
     local 
-	fun insertVar (BOMEnv {varEnv}, id, x) =
-	        BOMEnv {varEnv=Map.insert(varEnv, id, x)}
+	fun insertVar (BOMEnv {varEnv, tyEnv}, id, x) =
+	        BOMEnv {varEnv=Map.insert(varEnv, id, x), tyEnv=tyEnv}
     in
     fun insertBOMVar (Env{tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
 	    Env{tyEnv=tyEnv, varEnv=varEnv, bomEnv=insertVar(bomEnv, id, x), modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
@@ -109,6 +113,15 @@ structure BindingEnv =
 	   (case outerEnv
 	     of NONE => NONE
 	      | SOME env => findBOMVar(env, x))
+	 (* found a value *)
+	 | SOME v => SOME v)
+
+    fun findBOMTy (Env{bomEnv=BOMEnv {tyEnv, ...}, outerEnv, ...}, x) = (case Map.find(tyEnv, x)
+        of NONE => 
+	   (* x is not bound in this module, so check the enclosing module *)
+	   (case outerEnv
+	     of NONE => NONE
+	      | SOME env => findBOMTy(env, x))
 	 (* found a value *)
 	 | SOME v => SOME v)
 
