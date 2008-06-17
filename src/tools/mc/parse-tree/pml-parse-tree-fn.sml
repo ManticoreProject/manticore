@@ -47,7 +47,7 @@ functor PMLParseTreeFn (
 			       type pml_var = var_use
 			       type ty_con = ty_use
 			       type ty_def = ty_use
-			       type prim = op_id
+			       type prim = Atom.atom
 			       type dcon = con_use)
 
 

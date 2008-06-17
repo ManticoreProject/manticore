@@ -143,6 +143,11 @@ structure ChkExp :> sig
 		in
 		  AST.FunBind fbs'
 		end
+	    | PT.PrimVDecl (pat, primRhs) => let
+		val (AST.VarPat v, lhsTy) = chkPat(loc, depth, pat)
+		in
+		  AST.PrimVBind (v, primRhs)
+	        end
 	  (* end case *))
 
   (* typecheck expressions as described in Section 6.8 *)

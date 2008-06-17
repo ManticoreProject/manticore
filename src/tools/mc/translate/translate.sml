@@ -346,6 +346,12 @@ structure Translate : sig
 		in
 		  B.mkFun(List.map trFun fs, k env)
 		end
+	    | AST.PrimVBind (x, rhs) => let
+		  val e = TranslatePrim.cvtRhs rhs
+		  val (x', env') = trVar(env, x)
+	          in
+		      mkLet([x'], e, k env')
+		  end
 	  (* end case *))
 
     and trCase (env, arg, rules) = let

@@ -38,14 +38,18 @@ structure TranslateEnv : sig
     val lookupVarArity  : (env * AST.var) -> var_bind
     val handlerOf	: env -> BOM.var
 
-  (* support for inline BOM code *)
-    val insertBOMTyDef	: (env * Atom.atom * BOMTy.ty) -> env
-    val insertBOMVar	: (env * Atom.atom * BOM.var) -> env
-    val insertBOMCon    : (env * Atom.atom * BOMTy.data_con) -> env
+    type var = ProgramParseTree.PML2.BOMParseTree.var_use
+    type con = ProgramParseTree.PML2.BOMParseTree.dcon
+    type ty_def = ProgramParseTree.PML2.BOMParseTree.ty_def
 
-    val findBOMTy	: (env * Atom.atom) -> BOMTy.ty
-    val findBOMVar	: (env * Atom.atom) -> BOM.var
-    val findBOMCon	: (env * Atom.atom) -> BOMTy.data_con
+  (* support for inline BOM code *)
+    val insertBOMTyDef	: (ty_def * BOMTy.ty) -> unit
+    val insertBOMVar	: (var * BOM.var) -> unit
+    val insertBOMCon    : (con * BOMTy.data_con) -> unit
+
+    val findBOMTy	: ty_def -> BOMTy.ty option
+    val findBOMVar	: var -> BOM.var option
+    val findBOMCon	: con -> BOMTy.data_con option
 
   (* output an environment *)
     val dump : (TextIO.outstream * env) -> unit
@@ -134,18 +138,42 @@ structure TranslateEnv : sig
   (* handlerOf : env -> B.var *)
     fun handlerOf (E{exh, ...}) = exh
 
+    type var = ProgramParseTree.PML2.BOMParseTree.var_use
+    type con = ProgramParseTree.PML2.BOMParseTree.dcon
+    type ty_def = ProgramParseTree.PML2.BOMParseTree.ty_def
+
   (* support for inline BOM code *)
-    fun insertBOMTyDef (E{...}, name, ty) = raise Fail "insertBOMTyDef"
+    local
+	val {
+	   getFn=getVar : ProgramParseTree.Var.var -> BOM.var option, 
+	   setFn=setVar : (ProgramParseTree.Var.var * BOM.var option) -> unit, ...
+	} =
+	    ProgramParseTree.Var.newProp(fn _ => NONE)
 
-    fun insertBOMVar (E{...}, name, x) = raise Fail "insertBOMVar"
+	val {
+	   getFn=getCon : ProgramParseTree.Var.var -> BOMTy.data_con option, 
+	   setFn=setCon : (ProgramParseTree.Var.var * BOMTy.data_con option) -> unit, ...
+	} =
+	    ProgramParseTree.Var.newProp(fn _ => NONE)
 
-    fun insertBOMCon (E{...}, name, dc) = raise Fail "insertBOMCon"
+	val {
+	   getFn=getTy : ProgramParseTree.Var.var -> BOMTy.ty option, 
+	   setFn=setTy : (ProgramParseTree.Var.var * BOMTy.ty option) -> unit, ...
+	} =
+	    ProgramParseTree.Var.newProp(fn _ => NONE)
+    in
+    fun insertBOMTyDef (name, ty) = setTy(name, SOME ty)
 
-    fun findBOMTy (E{...}, name) = raise Fail "findBOMTy"
+    fun insertBOMVar (name, x) = setVar(name, SOME x)
 
-    fun findBOMVar (E{...}, name) = raise Fail "findBOMVar"
+    fun insertBOMCon (name, dc) = setCon(name, SOME dc)
 
-    fun findBOMCon (E{...}, name) = raise Fail "findBOMCon"
+    val findBOMTy = getTy
+
+    val findBOMVar = getVar
+
+    val findBOMCon = getCon
+    end
 
   (* output an environment *)
     fun dump (outStrm, E{tycEnv, dconEnv, varEnv, ...}) = let

@@ -8,12 +8,12 @@
 
 structure TranslatePrim : sig
 
-    val cvtTy : BOMParseTree.ty * TranslateEnv.env -> BOMTy.ty
-
+    val cvtRhs : ProgramParseTree.PML2.BOMParseTree.prim_val_rhs -> BOM.exp
 
   end = struct
 
-    structure BPT = BOMParseTree
+    structure BPT = ProgramParseTree.PML2.BOMParseTree
+    structure PTVar = ProgramParseTree.Var
     structure E = TranslateEnv
     structure P = Prim
     structure BTy = BOMTy
@@ -35,80 +35,92 @@ structure TranslatePrim : sig
     val unwrapType = BOMTyUtil.unwrap
     val selectType = BOMTyUtil.select
 
+    fun fail ss = raise Fail (String.concat ss)
+
     fun newTmp ty = BV.new("_t", ty)
 
   (* convert a parse-tree type express to a BOM type *)
-    fun cvtTy (env, ty) = (case ty
+    fun cvtTy (ty) = (case ty
 	   of BPT.T_Any => BTy.T_Any
 	    | (BPT.T_Enum w) => BTy.T_Enum w
 	    | (BPT.T_Raw rty) => BTy.T_Raw rty
-	    | (BPT.T_Tuple(mut, tys)) => BTy.T_Tuple(mut, cvtTys(env, tys))
-	    | (BPT.T_Addr ty) => BTy.T_Addr(cvtTy(env, ty))
+	    | (BPT.T_Tuple(mut, tys)) => BTy.T_Tuple(mut, cvtTys(tys))
+	    | (BPT.T_Addr ty) => BTy.T_Addr(cvtTy(ty))
 	    | (BPT.T_Fun(argTys, exhTys, resTys)) =>
-		BTy.T_Fun(cvtTys(env, argTys), cvtTys(env, exhTys), cvtTys(env, resTys))
-	    | (BPT.T_Cont tys) => BTy.T_Cont(cvtTys(env, tys))
+		BTy.T_Fun(cvtTys(argTys), cvtTys(exhTys), cvtTys(resTys))
+	    | (BPT.T_Cont tys) => BTy.T_Cont(cvtTys(tys))
 	    | (BPT.T_CFun cproto) => BTy.T_CFun cproto
 	    | (BPT.T_VProc) => BTy.T_VProc
-	    | (BPT.T_TyCon tyc) => (case E.findBOMTy(env, tyc)
-		 of SOME ty => ty
-		  | NONE => raise (fail(env, ["unknown BOM type ", Atom.toString tyc])
-		(* end case *))
+	    | (BPT.T_TyCon tyc) => (case E.findBOMTy tyc
+                    of NONE => raise Fail ""
+		     | SOME ty => ty
+		   (* end case *))
 	  (* end case *))
 
-    and cvtTys (env, tys) = List.map (fn ty => cvtTy(env, ty)) tys
+    and cvtTys (tys) = List.map (fn ty => cvtTy(ty)) tys
 
-    fun cvtVarPats (env, vpats) = let
-	  fun f (BPT.WildPat ty, (env, xs)) = let
+    fun cvtVarPats vpats = let
+	  fun f (BPT.P_VPMark {tree, span}) = f tree
+	    | f (BPT.P_Wild ty) = let
 		val ty = (case ty
 		       of NONE => BTy.T_Any
-			| SOME ty => cvtTy(env, ty)
+			| SOME ty => cvtTy(ty)
 		      (* end case *))
 		val x' = BOM.Var.new("_wild", BTy.T_Any)
 		in
-		  (env, x'::xs)
+		  x'
 		end
-	    | f (BPT.VarPat(x, ty), (env, xs)) = let
-		val ty = cvtTy(env, ty)
-		val x' = BOM.Var.new(Atom.toString x, ty)
+	    | f (BPT.P_Var(x, ty)) = let
+		val ty = cvtTy(ty)
+		val x' = BOM.Var.new(PTVar.nameOf x, ty)
 		in
-		  (insertVar(env, x, x'), x'::xs)
+		  E.insertBOMVar(x, x');
+		  x'
 		end
-	  val (env, xs) = List.foldl f (env, []) vpats
 	  in
-	    (env, List.rev xs)
+	    List.map f vpats
 	  end
 
-    fun cvtPat (env, BPT.DConPat(dc, xs)) = (case E.findBOMCon dc
+    fun cvtPat (BPT.P_DCon(dc, xs)) = (case E.findBOMCon dc
 	   of SOME dc => let
-		val (env, xs) = cvtVarPats (env, xs)
+		val (xs) = cvtVarPats (xs)
 		in
-		  (env, BOM.P_DCon(dc, xs))
+		  (BOM.P_DCon(dc, xs))
 		end
-	    | NONE => raise (fail(env, ["unknown BOM data constructor ", Atom.toString dc]))
+	    | NONE => raise Fail(String.concat ["unknown BOM data constructor ", PTVar.nameOf dc])
 	  (* end case *))
-      | cvtPat (env, BPT.ConstPat(const, ty)) = (env, BOM.P_Const(const, cvtTy(env, ty)))
+      | cvtPat (BPT.P_Const(const, ty)) = (BOM.P_Const(const, cvtTy(ty)))
 
-    fun cvtExp (findCFun, env, e) = (case e
-	   of BPT.Let(lhs, rhs, e) => let
-		val (env', lhs') = cvtVarPats (env, lhs)
-		val e' = cvtExp(findCFun, env', e)
+    fun lookup v = (case E.findBOMVar v
+           of NONE => raise Fail(String.concat ["unknown BOM variable ", PTVar.nameOf v])
+	    | SOME v => v
+           (* end case *))
+
+    fun cvtExp (findCFun, e) = (case e
+	   of BPT.E_Mark {tree, span} => cvtExp(findCFun, tree)
+	    | BPT.E_Let(lhs, rhs, e) => let
+		val (lhs') = cvtVarPats (lhs)
+		val e' = cvtExp(findCFun, e)
 		in
 		  case rhs
-		   of BPT.Exp e => BOM.mkLet(lhs', cvtExp(findCFun, env, e), e')
-		    | BPT.SimpleExp e => (case e
-			 of BPT.Var x => BOM.mkLet(lhs', BOM.mkRet[lookup(env, x)], e')
-			  | BPT.Select(i, arg) =>
-			      cvtSimpleExp(findCFun, env, arg, fn x =>
+		   of BPT.RHS_Mark {tree, span} => cvtExp(findCFun, BPT.E_Let(lhs, tree, e))
+		    | BPT.RHS_Exp e => BOM.mkLet(lhs', cvtExp(findCFun, e), e')
+		    | BPT.RHS_SimpleExp e'' => (case e''
+			 of BPT.SE_Mark {tree, span} =>
+			      cvtExp(findCFun, BPT.E_Let(lhs, BPT.RHS_SimpleExp tree, e))
+			  | BPT.SE_Var x => BOM.mkLet(lhs', BOM.mkRet[lookup(x)], e')
+			  | BPT.SE_Select(i, arg) =>
+			      cvtSimpleExp(findCFun, arg, fn x =>
 				BOM.mkStmt(lhs', BOM.E_Select(i, x), e'))
-			  | BPT.AddrOf(i, arg) =>
-			      cvtSimpleExp(findCFun, env, arg, fn x =>
+			  | BPT.SE_AddrOf(i, arg) =>
+			      cvtSimpleExp(findCFun, arg, fn x =>
 				BOM.mkStmt(lhs', BOM.E_AddrOf(i, x), e'))
-			  | BPT.Cast(ty, arg) =>
-			      cvtSimpleExp(findCFun, env, arg, fn x =>
-				BOM.mkStmt(lhs', BOM.E_Cast(cvtTy(env, ty), x), e'))
+			  | BPT.SE_Cast(ty, arg) =>
+			      cvtSimpleExp(findCFun, arg, fn x =>
+				BOM.mkStmt(lhs', BOM.E_Cast(cvtTy(ty), x), e'))
 (* FIXME: we should check that lit and ty match! *)
-	                  | BPT.Const(lit, ty) => BOM.mkStmt(lhs', BOM.E_Const(lit, cvtTy(env, ty)), e')
-			  | BPT.MLString s => let
+	                  | BPT.SE_Const(lit, ty) => BOM.mkStmt(lhs', BOM.E_Const(lit, cvtTy(ty)), e')
+			  | BPT.SE_MLString s => let
 			      val t1 = BV.new("_data", BTy.T_Any)
 (* FIXME: the type used for the length should be architecture dependent *)
 			      val t2 = BV.new("_len", BTy.T_Raw BTy.T_Int)
@@ -119,156 +131,156 @@ structure TranslatePrim : sig
 				  ],
 				BOM.mkLet(lhs', BOM.mkHLOp(HLOpEnv.stringLitOp, [t1, t2], []), e'))
 			      end
-			  | BPT.Unwrap arg =>
-			      cvtSimpleExp(findCFun, env, arg, fn x =>
+			  | BPT.SE_Unwrap arg =>
+			      cvtSimpleExp(findCFun, arg, fn x =>
 				BOM.mkStmt(lhs', BOM.unwrap x, e'))
-			  | BPT.Prim(p, args) =>
-			      cvtSimpleExps(findCFun, env, args, fn xs => let
+			  | BPT.SE_Prim(p, args) =>
+			      cvtSimpleExps(findCFun, args, fn xs => let
 				val rhs = (case (findPrim p, xs)
-				       of (NONE, _) => (case Basis.findDCon p
-					     of NONE => raise (fail(env, ["unknown primop ", Atom.toString p]))
+				       of (NONE, _) => (case BOMBasis.findDCon p
+					     of NONE => raise (fail(["unknown primop ", Atom.toString p]))
 					      | SOME dc => BOM.E_DCon(dc, xs)
 					    (* end case *))
 					| (SOME(Prim1{mk, ...}), [x]) => BOM.E_Prim(mk x)
 					| (SOME(Prim2{mk, ...}), [x, y]) => BOM.E_Prim(mk(x, y))
 					| (SOME(Prim3{mk, ...}), [x, y, z]) => BOM.E_Prim(mk(x, y, z))
-					| _ => raise (fail(env, ["arity mismatch for primop ", Atom.toString p]))
+					| _ => raise (fail(["arity mismatch for primop ", Atom.toString p]))
 				      (* end case *))
 				in
 				  BOM.mkStmt(lhs', rhs, e')
 				end)
-			  | BPT.HostVProc => BOM.mkStmt(lhs', BOM.E_HostVProc, e')
-			  | BPT.VPLoad(offset, vp) =>
-			      cvtSimpleExp(findCFun, env, vp, fn vp =>
+			  | BPT.SE_HostVProc => BOM.mkStmt(lhs', BOM.E_HostVProc, e')
+			  | BPT.SE_VPLoad(offset, vp) =>
+			      cvtSimpleExp(findCFun, vp, fn vp =>
 				BOM.mkStmt(lhs', BOM.E_VPLoad(offset, vp), e'))
-			  | BPT.VPStore(offset, vp, arg) =>
-			      cvtSimpleExp(findCFun, env, vp, fn vp =>
-				cvtSimpleExp(findCFun, env, arg, fn x =>
-				  BOM.mkStmt(lhs', BOM.E_VPStore(offset, vp, x), e')))
+			  | BPT.SE_Alloc args => let
+				val mut = (case BV.typeOf(hd lhs')
+					    of BTy.T_Tuple(true, _) => true
+					     | _ => false
+					  (* end case *))
+ 			        in
+			          cvtSimpleExps(findCFun, args,
+			             fn xs => BOM.mkStmt(lhs', BOM.E_Alloc(BTy.T_Tuple(mut, List.map BV.typeOf xs), xs),
+				      e'))
+			        end
 			(* end case *))
-		    | BPT.Update(i, arg, rhs) =>
-			cvtSimpleExp(findCFun, env, arg, fn x =>
-			  cvtSimpleExp(findCFun, env, rhs, fn y =>
+		    | BPT.RHS_Update(i, arg, rhs) => 
+			cvtSimpleExp(findCFun, arg, fn x =>
+			  cvtSimpleExp(findCFun, rhs, fn y =>
 			    BOM.mkStmt(lhs', BOM.E_Update(i, x, y), e')))
-		    | BPT.Alloc args => let
-			val mut = (case BV.typeOf(hd lhs')
-			       of BTy.T_Tuple(true, _) => true
-				| _ => false
-			      (* end case *))
-			in
-			  cvtSimpleExps(findCFun, env, args,
-			    fn xs => BOM.mkStmt(lhs', BOM.E_Alloc(BTy.T_Tuple(mut, List.map BV.typeOf xs), xs),
-				e'))
-			end
-		    | BPT.GAlloc args => let
-			val mut = (case BV.typeOf(hd lhs')
-			       of BTy.T_Tuple(true, _) => true
-				| _ => false
-			      (* end case *))
-			in
-			  cvtSimpleExps(findCFun, env, args,
-			    fn xs => BOM.mkStmt(lhs', BOM.E_GAlloc(BTy.T_Tuple(mut, List.map BV.typeOf xs), xs),
-				e'))
-			end
-		    | BPT.Promote arg =>
-			cvtSimpleExp(findCFun, env, arg, fn x => BOM.mkStmt(lhs', BOM.E_Promote x, e'))
-		    | BPT.Wrap arg =>
-			cvtSimpleExp(findCFun, env, arg, fn x => BOM.mkStmt(lhs', BOM.wrap x, e'))
-		    | BPT.CCall(f, args) =>
-			cvtSimpleExps(findCFun, env, args,
+		    | BPT.RHS_VPStore(offset, vp, arg) =>
+  		        cvtSimpleExp(findCFun, vp, fn vp =>
+				cvtSimpleExp(findCFun, arg, fn x =>
+				  BOM.mkStmt(lhs', BOM.E_VPStore(offset, vp, x), e')))
+		    | BPT.RHS_Promote arg =>
+			cvtSimpleExp(findCFun, arg, fn x => BOM.mkStmt(lhs', BOM.E_Promote x, e'))
+		    | BPT.RHS_CCall(f, args) =>
+			cvtSimpleExps(findCFun, args,
 			  fn xs => BOM.mkStmt(lhs', BOM.E_CCall(findCFun f, xs), e'))
 		  (* end case *)
 		end
-	    | BPT.Fun(fbs, e) => let
-		fun f (fb, (env', cvtBodies)) = let
-			val (env'', cvt) = cvtLambda (findCFun, env', fb, BTy.T_Fun)
+	    | BPT.E_Fun(fbs, e) => let
+		fun f (fb, cvtBodies) = let
+			val cvt = cvtLambda (findCFun, fb, BTy.T_Fun)
 			in
-			  (env'', cvt::cvtBodies)
+			  cvt::cvtBodies
 			end
-		val (envWFBs, cvtBodies) = List.foldl f (env, []) fbs
+		val cvtBodies = List.foldl f ([]) fbs
 		in		 
 		  BOM.mkFun(
-		    List.foldl (fn (cvt, fbs) => cvt envWFBs :: fbs) [] cvtBodies,
-		    cvtExp(findCFun, envWFBs, e))
+		    List.foldl (fn (cvt, fbs') => cvt () :: fbs') [] cvtBodies,
+		    cvtExp(findCFun, e))
 		end
-	    | BPT.Cont(fb, e) => let
+	    | BPT.E_Cont(fb, e) => let
 	      (* NOTE: continuations are permitted to be recursive *)
-		val (env', cvtBody) = cvtLambda(findCFun, env, fb, fn (argTys, _, _) => BTy.T_Cont argTys)
+		val cvtBody = cvtLambda(findCFun, fb, fn (argTys, _, _) => BTy.T_Cont argTys)
 		in
-		  BOM.mkCont(cvtBody env', cvtExp(findCFun, env', e))
+		  BOM.mkCont(cvtBody(), cvtExp(findCFun, e))
 		end
-	    | BPT.If(e1, e2, e3) =>
-		cvtSimpleExp(findCFun, env, e1, fn x => BOM.mkIf(x, cvtExp(findCFun, env, e2), cvtExp(findCFun, env, e3)))
-	    | BPT.Case(arg, cases, dflt) => let
+	    | BPT.E_If(e1, e2, e3) =>
+		cvtSimpleExp(findCFun, e1, fn x => BOM.mkIf(x, cvtExp(findCFun, e2), cvtExp(findCFun, e3)))
+	    | BPT.E_Case(arg, cases, dflt) => let
 		fun doCase (pat, exp) = let
-		      val (env', pat') = cvtPat(env, pat)
+		      val (pat') = cvtPat(pat)
 		      in
-			(pat', cvtExp(findCFun, env', exp))
+			(pat', cvtExp(findCFun, exp))
 		      end
                 in
-		  cvtSimpleExp(findCFun, env, arg, fn arg =>
+		  cvtSimpleExp(findCFun, arg, fn arg =>
                     BOM.mkCase(
 		      arg, 
                       List.map doCase cases,
                       case dflt
 		       of NONE => NONE
-			| SOME(BPT.WildPat _, e) => SOME(cvtExp(findCFun, env, e))
-			| SOME(BPT.VarPat(x, _), e) =>
-			    SOME(cvtExp(findCFun, insertVar(env, x, arg), e))
+			| SOME(BPT.P_Wild _, e) => SOME(cvtExp(findCFun, e))
+			| SOME(BPT.P_Var(x, _), e) => (
+			    E.insertBOMVar(x, arg);
+			    SOME(cvtExp(findCFun, e)))
 		      (* end case *)))
 		end
-	    | BPT.Apply(f, args, rets) =>
-		cvtSimpleExps(findCFun, env, args,
-		  fn xs => cvtSimpleExps(findCFun, env, rets,
-		    fn ys => BOM.mkApply(lookup(env, f), xs, ys)))
-	    | BPT.Throw(k, args) =>
-		cvtSimpleExps(findCFun, env, args, fn xs => BOM.mkThrow(lookup(env, k), xs))
-	    | BPT.Return args =>
-		cvtSimpleExps(findCFun, env, args, fn xs => BOM.mkRet xs)
-	    | BPT.HLOpApply(hlop, args, rets) => (case HLOpEnv.find hlop
+	    | BPT.E_Apply(f, args, rets) =>
+		cvtSimpleExps(findCFun, args,
+		  fn xs => cvtSimpleExps(findCFun, rets,
+		    fn ys => BOM.mkApply(lookup(f), xs, ys)))
+	    | BPT.E_Throw(k, args) =>
+		cvtSimpleExps(findCFun, args, fn xs => BOM.mkThrow(lookup(k), xs))
+	    | BPT.E_Return args =>
+		cvtSimpleExps(findCFun, args, fn xs => BOM.mkRet xs)
+	    | BPT.E_HLOpApply(hlop, args, rets) => (case HLOpEnv.find hlop
 		 of SOME hlop =>
-		      cvtSimpleExps(findCFun, env, args,
-			fn xs => cvtSimpleExps(findCFun, env, rets,
+		      cvtSimpleExps(findCFun, args,
+			fn xs => cvtSimpleExps(findCFun, rets,
 			  fn ys => BOM.mkHLOp(hlop, xs, ys)))
-		  | NONE => raise (fail(env, ["unknown high-level op ", Atom.toString hlop]))
+		  | NONE => raise (fail(["unknown high-level op ", Atom.toString hlop]))
 		(* end case *))
 	  (* end case *))
 
-    and cvtLambda (findCFun, env, (f, params, rets, tys, e), tyCon) = let
-	  val (envWParams, params) = cvtVarPats (env, params)
-	  val (envWParams, rets) = cvtVarPats (envWParams, rets)
-	  val fnTy = tyCon(List.map BV.typeOf params, List.map BV.typeOf rets, cvtTys(env, tys))
-	  val f' = BOM.Var.new(Atom.toString f, fnTy)
-	  val envWParams = insertVar(envWParams, f, f')
-	  fun doBody env = BOM.FB{
-		  f = f', params = params, exh = rets, body = cvtExp(findCFun, envWParams, e)
+    and cvtLambda (findCFun, (f, params, rets, tys, e), tyCon) = let
+	  val params = cvtVarPats params
+	  val rets = cvtVarPats rets
+	  val fnTy = tyCon(List.map BV.typeOf params, List.map BV.typeOf rets, cvtTys tys)
+	  val f' = BOM.Var.new(PTVar.nameOf f, fnTy)
+	  val _ = E.insertBOMVar(f, f')
+	  fun doBody () = BOM.FB{
+		  f = f', params = params, exh = rets, body = cvtExp(findCFun, e)
 		}
 	  in
-	    (insertVar(env, f, f'), doBody)
+	    E.insertBOMVar(f, f');
+	    doBody
 	  end
 
-    and cvtSimpleExp (findCFun, env, e, k : BOM.var -> BOM.exp) = (case e
-	   of BPT.Var x => k(lookup(env, x))
-	    | BPT.Select(i, e) =>
-		cvtSimpleExp(findCFun, env, e, fn x => let
+    and cvtSimpleExp (findCFun, e, k : BOM.var -> BOM.exp) = (case e
+	   of BPT.SE_Mark {tree, span} => cvtSimpleExp(findCFun, tree, k)
+	    | BPT.SE_Var x => k(lookup(x))
+	    | BPT.SE_Alloc args => 
+	      (* NOTE: nested tuples are always immutable *)
+		cvtSimpleExps(findCFun, args, fn xs => let
+                   val mut = false
+                   val tys = List.map BV.typeOf xs
+	           val tmp = newTmp(BTy.T_Tuple(mut, tys))
+		   in
+		      BOM.mkStmt([tmp], BOM.E_Alloc(BTy.T_Tuple(mut, tys), xs), k tmp)
+                   end)
+	    | BPT.SE_Select(i, e) =>
+		cvtSimpleExp(findCFun, e, fn x => let
 		  val tmp = newTmp(selectType(BOM.Var.typeOf x, i))
 		  in
 		    BOM.mkStmt([tmp], BOM.E_Select(i, x), k tmp)
 		  end)
-	    | BPT.AddrOf(i, e) =>
-		cvtSimpleExp(findCFun, env, e, fn x => let
+	    | BPT.SE_AddrOf(i, e) =>
+		cvtSimpleExp(findCFun, e, fn x => let
 		  val tmp = newTmp(BTy.T_Addr(selectType(BOM.Var.typeOf x, i)))
 		  in
 		    BOM.mkStmt([tmp], BOM.E_AddrOf(i, x), k tmp)
 		  end)
-	    | BPT.Const(lit, ty) => let
-		val ty = cvtTy(env, ty)
+	    | BPT.SE_Const(lit, ty) => let
+		val ty = cvtTy(ty)
 		val tmp = newTmp ty
 		in
 (* FIXME: we should check that lit and ty match! *)
 		  BOM.mkStmt([tmp], BOM.E_Const(lit, ty), k tmp)
 		end
-	    | BPT.MLString s => let
+	    | BPT.SE_MLString s => let
 		val t1 = BV.new("_data", BTy.T_Any)
 (* FIXME: the type used for the length should be architecture dependent *)
 		val t2 = BV.new("_len", BTy.T_Raw BTy.T_Int)
@@ -278,23 +290,23 @@ structure TranslatePrim : sig
 		      ([t2], BOM.E_Const(Literal.Int(IntInf.fromInt(size s)), BTy.T_Raw BTy.T_Int))
 		    ], BOM.mkHLOp(HLOpEnv.stringLitOp, [t1, t2], []))
 		end
-	    | BPT.Cast(ty, e) =>
-		cvtSimpleExp(findCFun, env, e, fn x => let
-		  val ty = cvtTy(env, ty)
+	    | BPT.SE_Cast(ty, e) =>
+		cvtSimpleExp(findCFun, e, fn x => let
+		  val ty = cvtTy(ty)
 		  val tmp = newTmp ty
 		  in
 		    BOM.mkStmt([tmp], BOM.E_Cast(ty, x), k tmp)
 		  end)
-	    | BPT.Unwrap e =>
-		cvtSimpleExp(findCFun, env, e, fn x => let
+	    | BPT.SE_Unwrap e =>
+		cvtSimpleExp(findCFun, e, fn x => let
 		  val tmp = newTmp(unwrapType(BOM.Var.typeOf x))
 		  in
 		    BOM.mkStmt([tmp], BOM.unwrap x, k tmp)
 		  end)
-	    | BPT.Prim(p, args) => let
+	    | BPT.SE_Prim(p, args) => let
 		fun mkBind xs = (case (findPrim p, xs)
-		       of (NONE, _) => (case Basis.findDCon p
-			     of NONE => raise (fail(env, ["unknown primop ", Atom.toString p]))
+		       of (NONE, _) => (case BOMBasis.findDCon p
+			     of NONE => raise (fail(["unknown primop ", Atom.toString p]))
 			      | SOME dc =>
 				  (newTmp(BOMTyCon.dconResTy dc), BOM.E_DCon(dc, xs))
 			    (* end case *))
@@ -304,37 +316,35 @@ structure TranslatePrim : sig
 			    (newTmp resTy, BOM.E_Prim(mk(x, y)))
 			| (SOME(Prim3{mk, resTy, ...}), [x, y, z]) =>
 			    (newTmp resTy, BOM.E_Prim(mk(x, y, z)))
-			| _ => raise (fail(env, ["arity mismatch for primop ", Atom.toString p]))
+			| _ => raise (fail(["arity mismatch for primop ", Atom.toString p]))
 		      (* end case *))
 		in
-		  cvtSimpleExps(findCFun, env, args, fn xs => let
+		  cvtSimpleExps(findCFun, args, fn xs => let
 		    val (lhs, rhs) = mkBind xs
 		    in
 		      BOM.mkStmt([lhs], rhs, k lhs)
 		    end)
 		end
-	    | BPT.HostVProc =>  let
+	    | BPT.SE_HostVProc =>  let
 		  val tmp = newTmp BTy.T_VProc
 		  in
 		    BOM.mkStmt([tmp], BOM.E_HostVProc, k tmp)
 		  end
-	    | BPT.VPLoad(offset, vp) =>
-		cvtSimpleExp(findCFun, env, vp, fn vp => let
+	    | BPT.SE_VPLoad(offset, vp) =>
+		cvtSimpleExp(findCFun, vp, fn vp => let
 		  val tmp = newTmp(BTy.T_Any)
 		  in
 		    BOM.mkStmt([tmp], BOM.E_VPLoad(offset, vp), k tmp)
 		  end)
-	    | BPT.VPStore(offset, vp, arg) =>
-		raise (fail(env, ["VPStore in argument position"]))
 	  (* end case *))
 
-    and cvtSimpleExps (findCFun, env, exps, k) = let
+    and cvtSimpleExps (findCFun, exps, k) = let
 	  fun cvt ([], tmps) = k(List.rev tmps)
-	    | cvt (e::es, tmps) = cvtSimpleExp (findCFun, env, e, fn t => cvt(es, t::tmps))
+	    | cvt (e::es, tmps) = cvtSimpleExp (findCFun, e, fn t => cvt(es, t::tmps))
 	  in
 	    cvt (exps, [])
 	  end
-
+(*
     fun tyOfPat' env = let
 	  fun doit (BPT.WildPat NONE) = BTy.T_Any
 	    | doit (BPT.WildPat(SOME ty)) = cvtTy(env, ty)
@@ -359,7 +369,7 @@ structure TranslatePrim : sig
 		in	       
 		  (env, hlop :: defs)
 		end
-	    | cvtDefines (BPT.TypeDef(id, ty), (env, defs)) = (insertTy(env, id, cvtTy(env, ty)), defs)
+	    | cvtDefines (BPT.TypeDef(id, ty), (env, defs)) = (insertTy(id, cvtTy(env, ty)), defs)
 	    | cvtDefines (_, (env, defs)) = (env, defs)
 	  val (_, defs) = List.foldl cvtDefines (emptyEnv fileName, []) defs
 	  in
@@ -385,7 +395,7 @@ structure TranslatePrim : sig
 			ATbl.insert importEnv (var, cf); env
 		      end
 		(* end case *))
-	    | insDef (BPT.TypeDef(id, ty), env) = insertTy(env, id, cvtTy(env, ty))
+	    | insDef (BPT.TypeDef(id, ty), env) = insertTy(id, cvtTy(env, ty))
 	    | insDef (BPT.Define(_, name, params, exh, retTy, _), env) = (case Env.find name
 (* FIXME: we probably should check that the existing prototype matches this one! *)
 		 of SOME hlop => env (* already defined, so do nothing *)
@@ -439,6 +449,19 @@ structure TranslatePrim : sig
 	  in
 	    cvtDefs defs
 	  end		
+*)
+
+    fun findCFun _ = raise Fail ""
+
+    fun cvtRhs rhs = (case rhs
+           of BPT.VarPrimVal v => BOM.mkRet [lookup v]
+	    | BPT.LambdaPrimVal fb => let
+		  val lambda = cvtLambda (findCFun, fb, BTy.T_Fun)
+		  val l as BOM.FB{f, ...} = lambda()
+		  in
+		      BOM.mkFun([l], BOM.mkRet [f])
+		  end
+           (* end case *))
 
   end
 

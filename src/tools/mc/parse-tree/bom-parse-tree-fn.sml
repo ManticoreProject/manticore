@@ -1,4 +1,4 @@
-(* bom-parse-tree.sml
+ (* bom-parse-tree.sml
  *
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.

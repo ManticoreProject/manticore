@@ -55,6 +55,7 @@ structure GrandPass : sig
     and binding (A.ValBind (p, e)) = A.ValBind (p, trExp e)
       | binding (A.PValBind (p, e)) = A.PValBind (p, trExp e)
       | binding (A.FunBind lams) = A.FunBind (map lambda lams)
+      | binding (A.PrimVBind (v, prim)) = A.PrimVBind (v, prim)
 
     and lambda (A.FB (f, x, e)) = A.FB (f, x, trExp e)
 

@@ -54,6 +54,7 @@ structure ChkModule :> sig
 	    | PT.ValVDecl (p, _) => boundVarsOfPat(p, bvs)
 	    | PT.PValVDecl (p, _) => boundVarsOfPat(p, bvs)
 	    | PT.FunVDecl fs => List.foldl boundVarsOfFunct bvs fs
+	    | PT.PrimVDecl (p, _) => boundVarsOfPat(p, bvs)
            (* end case *))
 
   (* check type declarations *)

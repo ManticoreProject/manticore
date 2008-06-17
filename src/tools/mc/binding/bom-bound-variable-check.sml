@@ -8,11 +8,11 @@
 
 structure BOMBoundVariableCheck :> sig
 
-    val checkPrimValRHS : Error.span -> (ProgramParseTree.PML1.BOMParseTree.prim_val_rhs * BindingEnv.env) 
-		          -> (ProgramParseTree.PML1.BOMParseTree.prim_val_rhs * BindingEnv.env) 
+    val chkPrimValRhs : Error.span -> (ProgramParseTree.PML1.BOMParseTree.prim_val_rhs * BindingEnv.env) 
+		          -> ProgramParseTree.PML2.BOMParseTree.prim_val_rhs
 
   (* check for unbound variables *)
-    val checkCode : Error.span -> (ProgramParseTree.PML1.BOMParseTree.code * BindingEnv.env) 
+    val chkCode : Error.span -> (ProgramParseTree.PML1.BOMParseTree.code * BindingEnv.env) 
 		        -> (ProgramParseTree.PML2.BOMParseTree.code * BindingEnv.env)
 
   end = struct
@@ -44,12 +44,7 @@ structure BOMBoundVariableCheck :> sig
     val dummyVar = Var.new("dummyVar", ())
     val findBOMVarQid = findQid (QualifiedId.findBOMVar, "bom variable", dummyVar)
     val findBOMTyQid = findQid (QualifiedId.findBOMTy, "bom type", dummyVar)
-    fun findPrim (loc, env, p) = (case BEnv.findBOMVar(env, p)
-           of NONE => ( 
-	          error(loc, ["unbound primop ", Atom.toString p]);
-		  dummyVar)
-	    | SOME v => v
-          (* end case *))
+    val findVarQid = findQid (QualifiedId.findVar, "variable", (BEnv.Var dummyVar))
 
     fun freshVar v = Var.new(Atom.toString v, ())
 
@@ -96,6 +91,47 @@ structure BOMBoundVariableCheck :> sig
 		   val tree = chkRhs loc (rhs, env)
 	           in
 		       PT2.RHS_Mark {tree=tree, span=span}
+		   end
+	     | PT1.RHS_Exp exp => let
+		   val exp = chkExp loc (exp, env)
+	           in
+		       PT2.RHS_Exp exp
+		   end
+	     | PT1.RHS_SimpleExp sexp => let
+		   val sexp = chkSexp loc (sexp, env)
+	           in
+		       PT2.RHS_SimpleExp sexp
+		   end
+	     | PT1.RHS_Update (i, sexp1, sexp2) => let
+		   val sexp1 = chkSexp loc (sexp1, env)
+		   val sexp2 = chkSexp loc (sexp2, env)
+	           in
+		       PT2.RHS_Update (i, sexp1, sexp2)
+		   end		   
+	     | PT1.RHS_Promote sexp => let
+		   val sexp = chkSexp loc (sexp, env)
+	           in
+		       PT2.RHS_Promote sexp
+		   end
+	     | PT1.RHS_CCall (f, sexps) => let
+		   val f = findBOMVarQid(loc, env, f)
+		   val sexps = chkSexps loc (sexps, env)
+		   in
+		       PT2.RHS_CCall (f, sexps)
+		   end
+	     | PT1.RHS_VPStore (off, sexp1, sexp2) => let
+		   val sexp1 = chkSexp loc (sexp1, env)
+		   val sexp2 = chkSexp loc (sexp2, env)
+	           in
+		      PT2.RHS_VPStore (off, sexp1, sexp2)
+		   end
+	     | PT1.RHS_PMLVar v => let
+		   val v' = (case findVarQid(loc, env, v)
+			      of BEnv.Con v => v
+			       | BEnv.Var v => v
+			    (* end case *))
+	           in
+		       PT2.RHS_PMLVar v'
 		   end
             (* end case *))
 
@@ -178,6 +214,18 @@ structure BOMBoundVariableCheck :> sig
 	           in
 		       PT2.E_Apply (f, args, exns)
 		   end
+	     | PT1.E_Throw (f, args) => let
+		   val f = findBOMVarQid(loc, env, f)
+		   val args = chkSexps loc (args, env)
+	           in
+		       PT2.E_Throw (f, args)
+		   end
+	     | PT1.E_Return args => let
+		   val args = chkSexps loc (args, env)
+	           in
+		       PT2.E_Return args
+		   end
+	     | PT1.E_HLOpApply _ => raise Fail "todo"
             (* end case *))
 
     and chkSexp loc (sexp, env) = (case sexp
@@ -189,13 +237,18 @@ structure BOMBoundVariableCheck :> sig
 	     | PT1.SE_Var v => PT2.SE_Var (findBOMVarQid (loc, env, v))
 	     | PT1.SE_Alloc sexps => PT2.SE_Alloc (chkSexps loc (sexps, env))
 	     | PT1.SE_Wrap sexp => PT2.SE_Wrap (chkSexp loc (sexp, env))
+	     | PT1.SE_Select (i, sexp) => let
+		   val sexp = chkSexp loc (sexp, env)
+	           in
+		       PT2.SE_Select (i, sexp)
+		   end
 	     | PT1.SE_AddrOf (i, sexp) => PT2.SE_AddrOf (i, chkSexp loc (sexp, env))
 	     | PT1.SE_Const (lit, ty) => PT2.SE_Const (lit, chkTy loc (ty, env))
 	     | PT1.SE_MLString s => PT2.SE_MLString s
 	     | PT1.SE_Cast (ty, sexp) => PT2.SE_Cast (chkTy loc (ty, env), 
 						      chkSexp loc (sexp, env))
 	     | PT1.SE_Prim (prim, sexps) => 
-	           PT2.SE_Prim(findPrim (loc, env, prim), chkSexps loc (sexps, env))
+	           PT2.SE_Prim(prim, chkSexps loc (sexps, env))
 	     | PT1.SE_HostVProc => PT2.SE_HostVProc
 	     | PT1.SE_VPLoad (off, sexp) => PT2.SE_VPLoad (off, chkSexp loc (sexp, env))
             (* end case *))
@@ -269,6 +322,16 @@ structure BOMBoundVariableCheck :> sig
 		   end
              (* end case *))
 
-    fun checkCode loc (defs, env) = chkList loc (chkDefn, defs, env)
+    fun chkCode loc (defs, env) = chkList loc (chkDefn, defs, env)
+
+    fun chkPrimValRhs loc (rhs, env) = (case rhs
+           of PT1.VarPrimVal v => PT2.VarPrimVal (findBOMVarQid (loc, env, v))
+	    | PT1.HLOpPrimVal h => raise Fail "todo"
+	    | PT1.LambdaPrimVal lambda => let
+		  val ([lambda], env) = chkLambdas loc ([lambda], env)
+	          in
+		      PT2.LambdaPrimVal lambda
+		  end
+           (* end case *))
 
   end (* BOMBoundVariableCheck *)

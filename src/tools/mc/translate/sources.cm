@@ -24,6 +24,7 @@ is
   ../bom/sources.cm
   ../hlop/sources.cm
   ../typechecker/sources.cm
+  ../parse-tree/sources.cm
 (* FIXME: we shouldn't depend on stuff from another transform phase! *)
   ../ast-opt/sources.cm
 
@@ -38,3 +39,4 @@ is
   translate-env.sml
   translate-parr.sml
   translate-types.sml
+  translate-prim.sml

@@ -196,10 +196,10 @@ structure BoundVariableCheck :> sig
 		     (PT2.FunVDecl functs, env)
 		  end
 	    | PT1.PrimVDecl(pat, prim) => let
+		val prim = BOMBoundVariableCheck.chkPrimValRhs loc (prim, env)
 		val (pat, env) = chkPat loc (pat, env)
 		in
-		  raise Fail ""
-(*		  (PT2.PrimVDecl(pat, prim), env)*)
+		  (PT2.PrimVDecl(pat, prim), env)
 		end
            (* end case *))
 
@@ -603,7 +603,7 @@ structure BoundVariableCheck :> sig
 		     ([PT2.SignDecl (id', sign)], env)
 		  end
 	    | PT1.PrimCodeDecl code => let
-		  val (code, env) = BOMBoundVariableCheck.checkCode loc (code, env)
+		  val (code, env) = BOMBoundVariableCheck.chkCode loc (code, env)
 	          in
 		     ([PT2.PrimCodeDecl code], env)
 	          end
