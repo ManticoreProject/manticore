@@ -8,7 +8,13 @@
 
 structure TranslatePrim : sig
 
+  (* convert a right-hand side inline BOM declaration to an expression *)
     val cvtRhs : ProgramParseTree.PML2.BOMParseTree.prim_val_rhs -> BOM.exp
+
+  (* convert BOM definitions. this process occurs silently, by adding
+   * definitions to environments and caches.
+   *)
+    val cvtCode : (TranslateEnv.env * ProgramParseTree.PML2.BOMParseTree.code) -> unit
 
   end = struct
 
@@ -40,8 +46,9 @@ structure TranslatePrim : sig
     fun newTmp ty = BV.new("_t", ty)
 
   (* convert a parse-tree type express to a BOM type *)
-    fun cvtTy (ty) = (case ty
-	   of BPT.T_Any => BTy.T_Any
+    fun cvtTy ty = (case ty
+	   of BPT.T_Mark {tree, span} => cvtTy tree
+	    | BPT.T_Any => BTy.T_Any
 	    | (BPT.T_Enum w) => BTy.T_Enum w
 	    | (BPT.T_Raw rty) => BTy.T_Raw rty
 	    | (BPT.T_Tuple(mut, tys)) => BTy.T_Tuple(mut, cvtTys(tys))
@@ -81,7 +88,8 @@ structure TranslatePrim : sig
 	    List.map f vpats
 	  end
 
-    fun cvtPat (BPT.P_DCon(dc, xs)) = (case E.findBOMCon dc
+    fun cvtPat (BPT.P_PMark {tree, span}) = cvtPat tree
+      | cvtPat (BPT.P_DCon(dc, xs)) = (case E.findBOMCon dc
 	   of SOME dc => let
 		val (xs) = cvtVarPats (xs)
 		in
@@ -98,12 +106,12 @@ structure TranslatePrim : sig
 
     fun cvtExp (findCFun, e) = (case e
 	   of BPT.E_Mark {tree, span} => cvtExp(findCFun, tree)
-	    | BPT.E_Let(lhs, rhs, e) => let
-		val (lhs') = cvtVarPats (lhs)
-		val e' = cvtExp(findCFun, e)
+	    | BPT.E_Let(lhs, rhs, e'') => let
+		val lhs' = cvtVarPats lhs
+		val e' = cvtExp(findCFun, e'')
 		in
 		  case rhs
-		   of BPT.RHS_Mark {tree, span} => cvtExp(findCFun, BPT.E_Let(lhs, tree, e))
+		   of BPT.RHS_Mark {tree, span} => cvtExp(findCFun, BPT.E_Let(lhs, tree, e''))
 		    | BPT.RHS_Exp e => BOM.mkLet(lhs', cvtExp(findCFun, e), e')
 		    | BPT.RHS_SimpleExp e'' => (case e''
 			 of BPT.SE_Mark {tree, span} =>
@@ -174,7 +182,7 @@ structure TranslatePrim : sig
 				  BOM.mkStmt(lhs', BOM.E_VPStore(offset, vp, x), e')))
 		    | BPT.RHS_Promote arg =>
 			cvtSimpleExp(findCFun, arg, fn x => BOM.mkStmt(lhs', BOM.E_Promote x, e'))
-		    | BPT.RHS_CCall(f, args) =>
+		    | BPT.RHS_CCall(f, args) => 
 			cvtSimpleExps(findCFun, args,
 			  fn xs => BOM.mkStmt(lhs', BOM.E_CCall(findCFun f, xs), e'))
 		  (* end case *)
@@ -345,6 +353,26 @@ structure TranslatePrim : sig
 	    cvt (exps, [])
 	  end
 
+    fun findCFun name = (case E.findBOMCFun name
+            of NONE => raise (fail(["Unknown C function ", PTVar.toString name]))
+	     | SOME(cf as CFunctions.CFun{var, ...}) => var
+            (* end case *))
+  
+    fun cvtRhs rhs = (case rhs
+           of BPT.VarPrimVal v => BOM.mkRet [lookup v]
+	    | BPT.LambdaPrimVal fb => let
+		  val lambda = cvtLambda (findCFun, fb, BTy.T_Fun)
+		  val l as BOM.FB{f, ...} = lambda()
+		  in
+		      BOM.mkFun([l], BOM.mkRet [f])
+		  end
+	    | BPT.HLOpPrimVal hlop => (case E.findBOMHLOpDef hlop
+		  of SOME {name, inline, def, externs} =>
+		      raise Fail "toodo"
+		   | NONE => raise Fail ""
+                  (* end case *))
+           (* end case *))
+
     fun tyOfPat (BPT.P_Wild NONE) = BTy.T_Any
       | tyOfPat (BPT.P_Wild(SOME ty)) = cvtTy ty
       | tyOfPat (BPT.P_Var(_, ty)) = cvtTy ty
@@ -367,7 +395,7 @@ structure TranslatePrim : sig
 			 }
 	        in
 		   ATbl.insert importEnv (Atom.atom (PTVar.nameOf var), cf);
-		   E.insertBOMCFun(var, cf)
+		   E.insertBOMCFun(importEnv, var, cf)
 	        end
          (* end case *))
       | insDef importEnv (BPT.D_TypeDef(id, ty)) = E.insertBOMTyDef(id, cvtTy ty)
@@ -389,21 +417,22 @@ structure TranslatePrim : sig
 
   (* this is the second pass, which converts actual HLOp definitions to BOM lambdas *)
     fun cvtDefs importEnv [] = []
+      | cvtDefs importEnv (BPT.D_Mark {span, tree}::defs) = cvtDefs importEnv (tree::defs)
       | cvtDefs importEnv (BPT.D_Define(inline, name, params, exh, retTy, SOME e)::defs) = let
 	    val hlop = Option.valOf(E.findBOMHLOp name)
 	    val retTy = (case retTy of NONE => [] | SOME tys => tys)
 	    val cfuns = VTbl.mkTable (16, Fail "cfun table")
-	    fun findCFun name = (case E.findBOMCFun name
-	           of NONE => raise (fail(["Unknown C function ", PTVar.toString name]))
-		    | SOME(cf as CFunctions.CFun{var, ...}) => (
+	    fun findCFun' name = let
+		    val var = findCFun name
+		    in
 		      (* increment the count of references to the C function *)
 		      case VTbl.find cfuns var
 		       of NONE => VTbl.insert cfuns (var, 1)
 			| SOME n => VTbl.insert cfuns (var, n+1)
 		      (* end case *);
-		      var)
-		   (* end case *))
-	    val doBody = cvtLambda (findCFun, (name, params, exh, retTy, e), BTy.T_Fun)
+		      var
+                    end
+	    val doBody = cvtLambda (findCFun', (name, params, exh, retTy, e), BTy.T_Fun)
 	    val lambda = doBody ()
 	    val def = {
 		   name = hlop,
@@ -412,54 +441,18 @@ structure TranslatePrim : sig
 		   externs = VTbl.listItemsi cfuns
 	        }
 	    in
+	       E.insertBOMHLOpDef(name, def);
 	       def :: cvtDefs importEnv defs
 	    end
       | cvtDefs importEnv (_::defs) = cvtDefs importEnv defs
 
-(*
-				     
-    fun cvtPrototypes {fileName, pt=BPT.FILE defs} = let 
-	  fun cvtDefines (BPT.Define(_, name, params, exh, retTy, _), (env, defs)) = let
-		val paramTys = List.map (fn p => HLOp.PARAM (tyOfPat p)) params
-		val exhTys = List.map tyOfPat exh
-		val (retTy, attrs) = (case retTy
-		       of NONE => ([], [HLOp.NORETURN])
-			| SOME tys => (cvtTys (env, tys), [])
-		      (* end case *))
-		val hlop = HLOp.new (
-		      name,
-		      {params=paramTys, exh=exhTys, results=retTy},
-		      attrs) 
-		in	       
-		  (env, hlop :: defs)
-		end
-	    | cvtDefines (BPT.TypeDef(id, ty), (env, defs)) = (insertTy(id, cvtTy(env, ty)), defs)
-	    | cvtDefines (_, (env, defs)) = (env, defs)
-	  val (_, defs) = List.foldl cvtDefines (emptyEnv fileName, []) defs
-	  in
-	    defs
-	  end (* cvtPrototypes *)
-
-    fun cvtFile (importEnv, fileName, BPT.FILE defs) = let
-
-	  val env = List.foldl insDef (emptyEnv fileName) defs
-
-	  in
-	    cvtDefs defs
-	  end		
-*)
-
-    fun findCFun _ = raise Fail ""
-
-    fun cvtRhs rhs = (case rhs
-           of BPT.VarPrimVal v => BOM.mkRet [lookup v]
-	    | BPT.LambdaPrimVal fb => let
-		  val lambda = cvtLambda (findCFun, fb, BTy.T_Fun)
-		  val l as BOM.FB{f, ...} = lambda()
-		  in
-		      BOM.mkFun([l], BOM.mkRet [f])
-		  end
-           (* end case *))
+    fun cvtCode (env, code) = let
+	    val importEnv = E.getImportEnv env
+	    val _ = List.app (insDef importEnv) code
+	    val defs = cvtDefs importEnv code
+	    in
+	       HLOpEnv.addDefs defs
+            end
 
   end
 

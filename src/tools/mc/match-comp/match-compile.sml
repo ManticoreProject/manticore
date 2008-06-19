@@ -334,6 +334,8 @@ structure MatchCompile : sig
 		      end
 	      | AST.LetExp(AST.PrimVBind (v, prim), e) => 
 		    AST.LetExp(AST.PrimVBind(v, prim), rewrite' e)
+	      | AST.LetExp(AST.PrimCodeBind code, e) => 
+		    AST.LetExp(AST.PrimCodeBind code, rewrite' e)
 	      | AST.LetExp(AST.PValBind _, e) => (* should have been compiled away *)
 		  raise Fail "unexpected PValBind"
 	      | AST.LetExp(AST.FunBind fbs, e) => let

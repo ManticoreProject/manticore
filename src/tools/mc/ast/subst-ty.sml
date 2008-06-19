@@ -64,6 +64,7 @@ structure SubstTy =
       | binding s (A.PValBind (p, e)) = A.PValBind (pat s p, exp s e)
       | binding s (A.FunBind ls) = A.FunBind(List.map (lambda s) ls)
       | binding s (A.PrimVBind (v, prim)) = A.PrimVBind (substForVar(s, v), prim)
+      | binding s (A.PrimCodeBind code) = A.PrimCodeBind code
 
     and lambda s (A.FB (f, x, e)) = A.FB(substForVar(s, f), substForVar(s, x), exp s e)
 		  

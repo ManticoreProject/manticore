@@ -352,7 +352,10 @@ structure Translate : sig
 	          in
 		      mkLet([x'], e, k env')
 		  end
-	    | AST.PrimCodeBind code => raise Fail ""
+	    | AST.PrimCodeBind code => (
+		    (* silently add definitions to environments, i.e., hlops are added to the hlop cache *)
+		     TranslatePrim.cvtCode (env, code);
+		     k env)
 	  (* end case *))
 
     and trCase (env, arg, rules) = let

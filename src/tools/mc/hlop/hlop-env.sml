@@ -99,6 +99,18 @@ structure HLOpEnv : sig
     val define : HLOp.hlop -> unit
     val find : Atom.atom -> HLOp.hlop option
 
+    type hlop_def = {
+	name : BOM.hlop,			(* the HLOp's identifier *)
+	inline : bool,				(* should the HLOp be inlined? *)
+	def : BOM.lambda,			(* the HLOps definition *)
+	externs : (BOM.var * int) list		(* list of external variables (i.e., C functions) *)
+						(* that def references paired with a count of the *)
+						(* number of references *)
+      }
+
+    val addDefs : hlop_def list -> unit
+    val findDef : HLOp.hlop -> hlop_def option
+
   end = struct
 
     structure H = HLOp
@@ -298,5 +310,24 @@ structure HLOpEnv : sig
                 ropeSubOp,
 		ropeLengthIntOp
 	      ]	    
+
+    type hlop_def = {
+	name : BOM.hlop,			(* the HLOp's identifier *)
+	inline : bool,				(* should the HLOp be inlined? *)
+	def : BOM.lambda,			(* the HLOps definition *)
+	externs : (BOM.var * int) list		(* list of external variables (i.e., C functions) *)
+						(* that def references paired with a count of the *)
+						(* number of references *)
+      }
+
+    local 
+    val hlops : hlop_def Stamp.Tbl.hash_table = Stamp.Tbl.mkTable(128, Fail "HLOp table")
+    fun addDef (d as {name=name as HLOp.HLOp{id, ...}, inline, def, externs}) = 
+	    Stamp.Tbl.insert hlops (id, d)
+    in
+    val addDefs = List.app addDef
+    fun findDef (HLOp.HLOp{id, ...}) = 
+	    Stamp.Tbl.find hlops id
+    end
 
   end

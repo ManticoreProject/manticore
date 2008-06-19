@@ -114,7 +114,7 @@
   (* RHS of primitive value declarations *)
     datatype prim_val_rhs
       = VarPrimVal of var_use
-      | HLOpPrimVal of Atom.atom
+      | HLOpPrimVal of hlop_use
       | LambdaPrimVal of lambda
 
   end

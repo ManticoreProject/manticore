@@ -107,6 +107,18 @@ structure HLOpDefLoader : sig
   (* a cache of previously loaded definitions *)
     val cache : hlop_def ATbl.hash_table = ATbl.mkTable (128, Fail "HLOpDef table")
 
+    fun recordDef {name, inline, def, externs} = (
+	(* compute census info for the definition; we have to decrement the
+	 * imported C function counts, because they get counted when a
+	 * definition is added to the program.
+	 *)
+	    Census.initLambda def;
+	    List.app (fn (cf, cnt) => BOM.Var.addToCount(cf, ~cnt)) externs;
+	    ATbl.insert cache
+			(HLOp.name name, {inline=inline, defn=def, cfuns=externs}))
+
+    val recordDefs = List.app recordDef
+
     fun load (importEnv, hlOp) = (case ATbl.find cache (HLOp.name hlOp)
 	   of NONE => let
 		val opName = HLOp.name hlOp
@@ -115,17 +127,8 @@ structure HLOpDefLoader : sig
 		  case Loader.load fileName
 		   of SOME pt => let
 			val defs = Expand.cvtFile(importEnv, fileName, pt)
-			fun record {name, inline, def, externs} = (
-			    (* compute census info for the definition; we have to decrement the
-			     * imported C function counts, because they get counted when a
-			     * definition is added to the program.
-			     *)
-			      Census.initLambda def;
-			      List.app (fn (cf, cnt) => BOM.Var.addToCount(cf, ~cnt)) externs;
-			      ATbl.insert cache
-				(HLOp.name name, {inline=inline, defn=def, cfuns=externs}))
 			in
-			  List.app record defs;
+			  recordDefs defs;
 			  case ATbl.find cache opName
 			   of NONE => raise Fail(concat[
 				  fileName,

@@ -329,20 +329,20 @@ structure BOMBoundVariableCheck :> sig
 		      (PT2.D_Mark {tree=tree, span=span}, env)
 	           end
 	     | PT1.D_Define (b, v, params, exns, returnTys, exp) => let
-		   val v' = freshVar v
-		   val env' = BEnv.insertBOMHLOp(env, v, v')
 		   val returnTys' = (case returnTys
 				      of NONE => NONE 
 				       | SOME returnTys => SOME (chkTys loc (returnTys, env))
 				    (* end case *))
-		   val (params', env'') = chkVarPats loc (params, env')
-		   val (exns', env'') = chkVarPats loc (exns, env')
+		   val (params', env') = chkVarPats loc (params, env)
+		   val (exns', env') = chkVarPats loc (exns, env')
 		   val exp' = (case exp
 				of NONE => NONE 
-				 | SOME exp => SOME (chkExp loc (exp, env))
+				 | SOME exp => SOME (chkExp loc (exp, env'))
 			      (* end case *))
+		   val v' = freshVar v
+		   val env = BEnv.insertBOMHLOp(env, v, v')
 	           in
-		       (PT2.D_Define (b, v', params', exns', returnTys', exp'), env')
+		       (PT2.D_Define (b, v', params', exns', returnTys', exp'), env)
 		   end
 	     | PT1.D_Extern (CFunctions.CFun{var, name, retTy, argTys, varArg, attrs}) => let
 		   val var' = freshVar var
@@ -358,7 +358,7 @@ structure BOMBoundVariableCheck :> sig
 
     fun chkPrimValRhs loc (rhs, env) = (case rhs
            of PT1.VarPrimVal v => PT2.VarPrimVal (findBOMVarQid (loc, env, v))
-	    | PT1.HLOpPrimVal h => raise Fail "todo"
+	    | PT1.HLOpPrimVal h => PT2.HLOpPrimVal (findBOMHLOpQid (loc, env, h))
 	    | PT1.LambdaPrimVal lambda => let
 		  val ([lambda], env) = chkLambdas loc ([lambda], env)
 	          in

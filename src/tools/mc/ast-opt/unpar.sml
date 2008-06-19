@@ -60,6 +60,8 @@ structure Unpar : sig
 		   then A.ValBind (p, exp e)
 		   else A.PValBind (p, exp e)
 	      | binding (A.FunBind lams) = A.FunBind (map lambda lams)
+	      | binding (A.PrimVBind (v, code)) = A.PrimVBind (v, code)
+	      | binding (A.PrimCodeBind code) = A.PrimCodeBind code
 					   
 	    and lambda (A.FB (f, x, e)) = A.FB (f, x, exp e)
 					  

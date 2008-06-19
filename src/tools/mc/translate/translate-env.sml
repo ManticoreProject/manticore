@@ -43,18 +43,30 @@ structure TranslateEnv : sig
     type ty_def = ProgramParseTree.PML2.BOMParseTree.ty_def
     type hlop = ProgramParseTree.PML2.BOMParseTree.hlop_bind
     type c_id = ProgramParseTree.PML2.BOMParseTree.c_id
+    type import_env = BOM.var CFunctions.c_fun AtomTable.hash_table
 
   (* support for inline BOM code *)
+    type hlop_def = {
+	name : BOM.hlop,			(* the HLOp's identifier *)
+	inline : bool,				(* should the HLOp be inlined? *)
+	def : BOM.lambda,			(* the HLOps definition *)
+	externs : (BOM.var * int) list		(* list of external variables (i.e., C functions) *)
+						(* that def references paired with a count of the *)
+						(* number of references *)
+      }
+    val getImportEnv    : env -> import_env
     val insertBOMTyDef	: (ty_def * BOMTy.ty) -> unit
     val insertBOMVar	: (var * BOM.var) -> unit
     val insertBOMCon    : (con * BOMTy.data_con) -> unit
     val insertBOMHLOp   : (hlop * HLOp.hlop) -> unit
-    val insertBOMCFun   : (c_id * BOM.var CFunctions.c_fun) -> unit
+    val insertBOMHLOpDef : (hlop * hlop_def) -> unit
+    val insertBOMCFun   : (import_env * c_id * BOM.var CFunctions.c_fun) -> unit
 
     val findBOMTy	: ty_def -> BOMTy.ty option
     val findBOMVar	: var -> BOM.var option
     val findBOMCon	: con -> BOMTy.data_con option
     val findBOMHLOp     : hlop -> HLOp.hlop option
+    val findBOMHLOpDef  : hlop -> hlop_def option
     val findBOMCFun     : c_id -> BOM.var CFunctions.c_fun option
 
   (* output an environment *)
@@ -65,6 +77,7 @@ structure TranslateEnv : sig
     structure TTbl = TyCon.Tbl
     structure DTbl = DataCon.Tbl
     structure VMap = Var.Map
+    structure ATbl = AtomTable
 
     datatype con_bind
       = Const of word * BOMTy.ty
@@ -76,10 +89,13 @@ structure TranslateEnv : sig
       | Var of BOM.var
       | EqOp			(* either "=" or "<>" *)
 
+    type import_env = BOM.var CFunctions.c_fun AtomTable.hash_table
+
     datatype env = E of {
 	tycEnv : BOM.ty TTbl.hash_table,
 	dconEnv : con_bind DTbl.hash_table,
 	varEnv : var_bind VMap.map,	(* map from AST variables to BOM variables *)
+	importEnv : import_env,         (* an environment to keep track of any imports required by the module *)
 	exh : BOM.var			(* current exception handler *)
       }
 
@@ -93,6 +109,7 @@ structure TranslateEnv : sig
 		tycEnv = TTbl.mkTable (32, Fail "tyc table"),
 		dconEnv = DTbl.mkTable (64, Fail "dcon table"),
 		varEnv = vEnv,
+		importEnv = ATbl.mkTable (32, Fail "importEnv"),
 		exh = BOM.Var.new ("*bogus*", BOMTy.exhTy)
 	      }
 	  end
@@ -101,26 +118,29 @@ structure TranslateEnv : sig
 
     fun insertCon (E{dconEnv, ...}, dc, bind) = DTbl.insert dconEnv (dc, bind)
 
-    fun insertFun (E{tycEnv, dconEnv, varEnv, exh}, x, lambda) = E{
+    fun insertFun (E{tycEnv, dconEnv, varEnv, importEnv, exh}, x, lambda) = E{
 	    tycEnv = tycEnv,
 	    dconEnv = dconEnv,
 	    varEnv = VMap.insert(varEnv, x, Lambda lambda),
+	    importEnv = importEnv,
 	    exh = exh
 	  }
 
-    fun insertVar (E{tycEnv, dconEnv, varEnv, exh}, x, x') = E{
+    fun insertVar (E{tycEnv, dconEnv, varEnv, importEnv, exh}, x, x') = E{
 	    tycEnv = tycEnv,
 	    dconEnv = dconEnv,
 	    varEnv = VMap.insert(varEnv, x, Var x'),
+	    importEnv = importEnv,
 	    exh = exh
 	  }
 
-    fun newHandler (E{tycEnv, dconEnv, varEnv, ...}) = let
+    fun newHandler (E{tycEnv, dconEnv, varEnv, importEnv, ...}) = let
 	  val exh = BOM.Var.new("_exh", BOMTy.exhTy)
 	  val env = E{
 		  tycEnv = tycEnv,
 		  dconEnv = dconEnv,
 		  varEnv = varEnv,
+		  importEnv = importEnv,
 		  exh = exh
 		}
 	  in
@@ -149,37 +169,54 @@ structure TranslateEnv : sig
     type ty_def = ProgramParseTree.PML2.BOMParseTree.ty_def
     type hlop = ProgramParseTree.PML2.BOMParseTree.hlop_bind
     type c_id = ProgramParseTree.PML2.BOMParseTree.c_id
+    type hlop_def = {
+	name : BOM.hlop,			(* the HLOp's identifier *)
+	inline : bool,				(* should the HLOp be inlined? *)
+	def : BOM.lambda,			(* the HLOps definition *)
+	externs : (BOM.var * int) list		(* list of external variables (i.e., C functions) *)
+						(* that def references paired with a count of the *)
+						(* number of references *)
+      }
+
+    fun getImportEnv (E{importEnv, ...}) = importEnv
 
   (* support for inline BOM code *)
     local
+	structure PTVar = ProgramParseTree.Var
       (* variables *)
 	val {
-	   getFn=getVar : ProgramParseTree.Var.var -> BOM.var option, 
-	   setFn=setVar : (ProgramParseTree.Var.var * BOM.var option) -> unit, ...
+	   getFn=getVar : PTVar.var -> BOM.var option, 
+	   setFn=setVar : (PTVar.var * BOM.var option) -> unit, ...
 	} =
 	    ProgramParseTree.Var.newProp(fn _ => NONE)
       (* data constructors *)
 	val {
-	   getFn=getCon : ProgramParseTree.Var.var -> BOMTy.data_con option, 
-	   setFn=setCon : (ProgramParseTree.Var.var * BOMTy.data_con option) -> unit, ...
+	   getFn=getCon : PTVar.var -> BOMTy.data_con option, 
+	   setFn=setCon : (PTVar.var * BOMTy.data_con option) -> unit, ...
 	} =
 	    ProgramParseTree.Var.newProp(fn _ => NONE)
       (* types *)
 	val {
-	   getFn=getTy : ProgramParseTree.Var.var -> BOMTy.ty option, 
-	   setFn=setTy : (ProgramParseTree.Var.var * BOMTy.ty option) -> unit, ...
+	   getFn=getTy : PTVar.var -> BOMTy.ty option, 
+	   setFn=setTy : (PTVar.var * BOMTy.ty option) -> unit, ...
 	} =
 	    ProgramParseTree.Var.newProp(fn _ => NONE)
       (* HLOps *)
 	val {
-	   getFn=getHLOp : ProgramParseTree.Var.var -> HLOp.hlop option,
-	   setFn=setHLOp : (ProgramParseTree.Var.var * HLOp.hlop option) -> unit, ...
+	   getFn=getHLOp : PTVar.var -> HLOp.hlop option,
+	   setFn=setHLOp : (PTVar.var * HLOp.hlop option) -> unit, ...
+	} =
+	    ProgramParseTree.Var.newProp(fn _ => NONE)
+      (* HLOp definitions *)
+	val {
+	   getFn=getHLOpDef : PTVar.var -> hlop_def option,
+	   setFn=setHLOpDef : (PTVar.var * hlop_def option) -> unit, ...
 	} =
 	    ProgramParseTree.Var.newProp(fn _ => NONE)
       (* C functions *)
 	val {
-	   getFn=getCFun : ProgramParseTree.Var.var -> BOM.var CFunctions.c_fun option,
-	   setFn=setCFun : (ProgramParseTree.Var.var * BOM.var CFunctions.c_fun option) -> unit, ...
+	   getFn=getCFun : PTVar.var -> BOM.var CFunctions.c_fun option,
+	   setFn=setCFun : (PTVar.var * BOM.var CFunctions.c_fun option) -> unit, ...
 	} =
 	    ProgramParseTree.Var.newProp(fn _ => NONE)
     in
@@ -187,11 +224,16 @@ structure TranslateEnv : sig
     fun insertBOMVar (name, x) = setVar(name, SOME x)
     fun insertBOMCon (name, dc) = setCon(name, SOME dc)
     fun insertBOMHLOp (name, hlop) = setHLOp(name, SOME hlop)
-    fun insertBOMCFun (name, cfun) = setCFun(name, SOME cfun)
+    fun insertBOMHLOpDef (name, hlop) = setHLOpDef(name, SOME hlop)
+    fun insertBOMCFun (importEnv, name, cfun) = (
+	    setCFun(name, SOME cfun);
+	    ATbl.insert importEnv (Atom.atom (PTVar.nameOf name), cfun)
+        )
     val findBOMTy = getTy
     val findBOMVar = getVar
     val findBOMCon = getCon
     val findBOMHLOp = getHLOp
+    val findBOMHLOpDef = getHLOpDef
     val findBOMCFun = getCFun
     end
 

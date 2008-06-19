@@ -10,6 +10,7 @@ Library
   structure HLOpEnv
   structure HLRWDefLoader
   structure Rewrites
+  structure HLOpEnv
 
 is
 
