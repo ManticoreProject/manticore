@@ -41,15 +41,21 @@ structure TranslateEnv : sig
     type var = ProgramParseTree.PML2.BOMParseTree.var_use
     type con = ProgramParseTree.PML2.BOMParseTree.dcon
     type ty_def = ProgramParseTree.PML2.BOMParseTree.ty_def
+    type hlop = ProgramParseTree.PML2.BOMParseTree.hlop_bind
+    type c_id = ProgramParseTree.PML2.BOMParseTree.c_id
 
   (* support for inline BOM code *)
     val insertBOMTyDef	: (ty_def * BOMTy.ty) -> unit
     val insertBOMVar	: (var * BOM.var) -> unit
     val insertBOMCon    : (con * BOMTy.data_con) -> unit
+    val insertBOMHLOp   : (hlop * HLOp.hlop) -> unit
+    val insertBOMCFun   : (c_id * BOM.var CFunctions.c_fun) -> unit
 
     val findBOMTy	: ty_def -> BOMTy.ty option
     val findBOMVar	: var -> BOM.var option
     val findBOMCon	: con -> BOMTy.data_con option
+    val findBOMHLOp     : hlop -> HLOp.hlop option
+    val findBOMCFun     : c_id -> BOM.var CFunctions.c_fun option
 
   (* output an environment *)
     val dump : (TextIO.outstream * env) -> unit
@@ -141,38 +147,52 @@ structure TranslateEnv : sig
     type var = ProgramParseTree.PML2.BOMParseTree.var_use
     type con = ProgramParseTree.PML2.BOMParseTree.dcon
     type ty_def = ProgramParseTree.PML2.BOMParseTree.ty_def
+    type hlop = ProgramParseTree.PML2.BOMParseTree.hlop_bind
+    type c_id = ProgramParseTree.PML2.BOMParseTree.c_id
 
   (* support for inline BOM code *)
     local
+      (* variables *)
 	val {
 	   getFn=getVar : ProgramParseTree.Var.var -> BOM.var option, 
 	   setFn=setVar : (ProgramParseTree.Var.var * BOM.var option) -> unit, ...
 	} =
 	    ProgramParseTree.Var.newProp(fn _ => NONE)
-
+      (* data constructors *)
 	val {
 	   getFn=getCon : ProgramParseTree.Var.var -> BOMTy.data_con option, 
 	   setFn=setCon : (ProgramParseTree.Var.var * BOMTy.data_con option) -> unit, ...
 	} =
 	    ProgramParseTree.Var.newProp(fn _ => NONE)
-
+      (* types *)
 	val {
 	   getFn=getTy : ProgramParseTree.Var.var -> BOMTy.ty option, 
 	   setFn=setTy : (ProgramParseTree.Var.var * BOMTy.ty option) -> unit, ...
 	} =
 	    ProgramParseTree.Var.newProp(fn _ => NONE)
+      (* HLOps *)
+	val {
+	   getFn=getHLOp : ProgramParseTree.Var.var -> HLOp.hlop option,
+	   setFn=setHLOp : (ProgramParseTree.Var.var * HLOp.hlop option) -> unit, ...
+	} =
+	    ProgramParseTree.Var.newProp(fn _ => NONE)
+      (* C functions *)
+	val {
+	   getFn=getCFun : ProgramParseTree.Var.var -> BOM.var CFunctions.c_fun option,
+	   setFn=setCFun : (ProgramParseTree.Var.var * BOM.var CFunctions.c_fun option) -> unit, ...
+	} =
+	    ProgramParseTree.Var.newProp(fn _ => NONE)
     in
     fun insertBOMTyDef (name, ty) = setTy(name, SOME ty)
-
     fun insertBOMVar (name, x) = setVar(name, SOME x)
-
     fun insertBOMCon (name, dc) = setCon(name, SOME dc)
-
+    fun insertBOMHLOp (name, hlop) = setHLOp(name, SOME hlop)
+    fun insertBOMCFun (name, cfun) = setCFun(name, SOME cfun)
     val findBOMTy = getTy
-
     val findBOMVar = getVar
-
     val findBOMCon = getCon
+    val findBOMHLOp = getHLOp
+    val findBOMCFun = getCFun
     end
 
   (* output an environment *)

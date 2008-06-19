@@ -28,7 +28,6 @@ structure AST =
       = TD_Module of (info * module_ref * module_type option * module)
       | TD_DCon of dcon
       | TD_Binding of binding
-      | TD_PrimCode of ProgramParseTree.PML2.BOMParseTree.code
 
     and module_ref = MOD of {                        (* reference to a module *)
           name : Atom.atom,
@@ -79,6 +78,7 @@ structure AST =
       | PValBind of pat * exp
       | FunBind of lambda list
       | PrimVBind of var * ProgramParseTree.PML2.BOMParseTree.prim_val_rhs
+      | PrimCodeBind of ProgramParseTree.PML2.BOMParseTree.code              (* BOM definitions *)
 
     and lambda = FB of (var * var * exp)
 

@@ -297,6 +297,6 @@ structure HLOpEnv : sig
 		future1CancelOp,
                 ropeSubOp,
 		ropeLengthIntOp
-	      ]
+	      ]	    
 
   end

@@ -117,8 +117,8 @@ Definition
 			varArg = false,
 			attrs = Attrs
 		      }))
-	| "typedef" QualifiedId "=" BOMType ";"
-		=> (BPT.D_TypeDef(QualifiedId, BOMType))
+	| "typedef" ID "=" BOMType ";"
+		=> (BPT.D_TypeDef(ID, BOMType))
 	| "define" optInline HLOP FunParams ReturnTy ("=" BOMExp)? ";"
 		=> (let val (p1, p2) = FunParams in
 		      BPT.D_Define(optInline, HLOP, p1, p2, ReturnTy, SR)
@@ -194,6 +194,10 @@ RawType
 	| "vec128"	=> (BPT.T_Vec128)
 	;
 
+HLOpId  : HLOP
+               => ({span=FULL_SPAN, tree=([], HLOP)})
+        ;
+
 BOMExp
 	: "let" LHS "=" RHS BOMExp
 		=> (BPT.E_Let(LHS, RHS, BOMExp))
@@ -213,8 +217,8 @@ BOMExp
 		=> (BPT.E_Throw(QualifiedId, Args))
 	| "return" "(" Args ")"
 		=> (BPT.E_Return Args)
-	| HLOP "(" Args ("/" Args)? ")"
-		=> (BPT.E_HLOpApply(HLOP, Args, Option.getOpt(SR, [])))
+	| HLOpId "(" Args ("/" Args)? ")"
+		=> (BPT.E_HLOpApply(HLOpId, Args, Option.getOpt(SR, [])))
 	;
 
 BOMLambda
@@ -245,7 +249,7 @@ RHS
 		      | NONE => BPT.RHS_SimpleExp(BPT.SE_Select(Int.fromLarge POSINT, SimpleExp))
 		    (* end case *))
 	| "promote" "(" SimpleExp ")"	=> (BPT.RHS_Promote SimpleExp)
-	| "ccall" QualifiedId "(" Args ")"	=> (BPT.RHS_CCall(QualifiedId, Args))
+	| "ccall" ID "(" Args ")"	=> (BPT.RHS_CCall(ID, Args))
 	| "vpstore" "(" POSINT "," SimpleExp "," SimpleExp ")"
 					=> (BPT.RHS_VPStore(POSINT, SimpleExp1, SimpleExp2))
 	;

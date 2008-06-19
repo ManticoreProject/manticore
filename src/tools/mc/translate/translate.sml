@@ -352,6 +352,7 @@ structure Translate : sig
 	          in
 		      mkLet([x'], e, k env')
 		  end
+	    | AST.PrimCodeBind code => raise Fail ""
 	  (* end case *))
 
     and trCase (env, arg, rules) = let

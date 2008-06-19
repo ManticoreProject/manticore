@@ -242,6 +242,11 @@ structure ChkModule :> sig
               in
                  (Env.insertSig(env, id, sigEnv), moduleEnv, astDecls)
               end
+	    | PT.PrimCodeDecl code => let
+	      val binding = AST.TD_Binding (AST.PrimCodeBind code)
+	      in
+		  (env, moduleEnv, binding :: astDecls)
+	      end
 	  (* end case *))
 
   (* refresh types for decls *)

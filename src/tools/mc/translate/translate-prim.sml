@@ -35,7 +35,7 @@ structure TranslatePrim : sig
     val unwrapType = BOMTyUtil.unwrap
     val selectType = BOMTyUtil.select
 
-    fun fail ss = raise Fail (String.concat ss)
+    fun fail ss = Fail (String.concat ss)
 
     fun newTmp ty = BV.new("_t", ty)
 
@@ -226,12 +226,12 @@ structure TranslatePrim : sig
 		cvtSimpleExps(findCFun, args, fn xs => BOM.mkThrow(lookup(k), xs))
 	    | BPT.E_Return args =>
 		cvtSimpleExps(findCFun, args, fn xs => BOM.mkRet xs)
-	    | BPT.E_HLOpApply(hlop, args, rets) => (case HLOpEnv.find hlop
+	    | BPT.E_HLOpApply(hlop, args, rets) => (case E.findBOMHLOp hlop
 		 of SOME hlop =>
 		      cvtSimpleExps(findCFun, args,
 			fn xs => cvtSimpleExps(findCFun, rets,
 			  fn ys => BOM.mkHLOp(hlop, xs, ys)))
-		  | NONE => raise (fail(["unknown high-level op ", Atom.toString hlop]))
+		  | NONE => raise (fail(["unknown high-level op ", PTVar.nameOf hlop]))
 		(* end case *))
 	  (* end case *))
 
@@ -344,18 +344,82 @@ structure TranslatePrim : sig
 	  in
 	    cvt (exps, [])
 	  end
+
+    fun tyOfPat (BPT.P_Wild NONE) = BTy.T_Any
+      | tyOfPat (BPT.P_Wild(SOME ty)) = cvtTy ty
+      | tyOfPat (BPT.P_Var(_, ty)) = cvtTy ty
+
+    structure ATbl = AtomTable
+    structure VTbl = BV.Tbl
+
+    (* this is the first pass, which binds C-function prototypes, adds defined types to the translation
+     * environment, and adds HLOp signatures to the HLOp environment.
+     *)
+    fun insDef importEnv (BPT.D_Extern(CFunctions.CFun{var, name, retTy, argTys, attrs, varArg})) = (
+	case E.findBOMCFun var
+	 (* FIXME: we probably should check that the existing prototype matches this one! *)
+	 of SOME cfun => () (* already defined, so do nothing *)
+	  | NONE => let
+		val ty = BTy.T_CFun(CFunctions.CProto(retTy, argTys, attrs))
+		val cf = BOM.mkCFun{
+			 var = BOM.Var.new(PTVar.nameOf var, ty),
+			 name = name, retTy = retTy, argTys = argTys, attrs = attrs, varArg = varArg
+			 }
+	        in
+		   ATbl.insert importEnv (Atom.atom (PTVar.nameOf var), cf);
+		   E.insertBOMCFun(var, cf)
+	        end
+         (* end case *))
+      | insDef importEnv (BPT.D_TypeDef(id, ty)) = E.insertBOMTyDef(id, cvtTy ty)
+      | insDef importEnv (BPT.D_Define(_, name, params, exh, retTy, _)) = let
+	(* create a high-level operator *)
+	    val (retTy, attrs) = (case retTy
+				   of NONE => ([], [HLOp.NORETURN])
+				    | SOME tys => (cvtTys tys, [])
+				 (* end case *))		      
+	    val paramTys = List.map (fn p => HLOp.PARAM(tyOfPat p)) params
+	    val exhTys = List.map tyOfPat exh
+	    val hlop = HLOp.new (
+		          Atom.atom (PTVar.nameOf name),
+			  {params=paramTys, exh=exhTys, results=retTy},
+			  attrs)
+	    in 
+	        E.insertBOMHLOp(name, hlop)
+	    end
+
+  (* this is the second pass, which converts actual HLOp definitions to BOM lambdas *)
+    fun cvtDefs importEnv [] = []
+      | cvtDefs importEnv (BPT.D_Define(inline, name, params, exh, retTy, SOME e)::defs) = let
+	    val hlop = Option.valOf(E.findBOMHLOp name)
+	    val retTy = (case retTy of NONE => [] | SOME tys => tys)
+	    val cfuns = VTbl.mkTable (16, Fail "cfun table")
+	    fun findCFun name = (case E.findBOMCFun name
+	           of NONE => raise (fail(["Unknown C function ", PTVar.toString name]))
+		    | SOME(cf as CFunctions.CFun{var, ...}) => (
+		      (* increment the count of references to the C function *)
+		      case VTbl.find cfuns var
+		       of NONE => VTbl.insert cfuns (var, 1)
+			| SOME n => VTbl.insert cfuns (var, n+1)
+		      (* end case *);
+		      var)
+		   (* end case *))
+	    val doBody = cvtLambda (findCFun, (name, params, exh, retTy, e), BTy.T_Fun)
+	    val lambda = doBody ()
+	    val def = {
+		   name = hlop,
+		   inline = inline,
+		   def = lambda,
+		   externs = VTbl.listItemsi cfuns
+	        }
+	    in
+	       def :: cvtDefs importEnv defs
+	    end
+      | cvtDefs importEnv (_::defs) = cvtDefs importEnv defs
+
 (*
-    fun tyOfPat' env = let
-	  fun doit (BPT.WildPat NONE) = BTy.T_Any
-	    | doit (BPT.WildPat(SOME ty)) = cvtTy(env, ty)
-	    | doit (BPT.VarPat(_, ty)) = cvtTy(env, ty)
-	   in
-	     doit
-	   end
 				     
     fun cvtPrototypes {fileName, pt=BPT.FILE defs} = let 
 	  fun cvtDefines (BPT.Define(_, name, params, exh, retTy, _), (env, defs)) = let
-		val tyOfPat = tyOfPat' env
 		val paramTys = List.map (fn p => HLOp.PARAM (tyOfPat p)) params
 		val exhTys = List.map tyOfPat exh
 		val (retTy, attrs) = (case retTy
@@ -377,75 +441,9 @@ structure TranslatePrim : sig
 	  end (* cvtPrototypes *)
 
     fun cvtFile (importEnv, fileName, BPT.FILE defs) = let
-	(* this is the first pass, which adds C-function prototypes to the import environment,
-	 * defined types to the translation environment, and HLOp signatures to the HLOp
-         * environment.
-	 *)
-	  fun insDef (BPT.Extern(CFunctions.CFun{var, name, retTy, argTys, attrs, varArg}), env) = (
-		case ATbl.find importEnv var
-(* FIXME: we probably should check that the existing prototype matches this one! *)
-		 of SOME cfun => env (* already defined, so do nothing *)
-		  | NONE => let
-		      val ty = BTy.T_CFun(CFunctions.CProto(retTy, argTys, attrs))
-		      val cf = BOM.mkCFun{
-			      var = BOM.Var.new(Atom.toString var, ty),
-			      name = name, retTy = retTy, argTys = argTys, attrs = attrs, varArg = varArg
-			    }
-		      in
-			ATbl.insert importEnv (var, cf); env
-		      end
-		(* end case *))
-	    | insDef (BPT.TypeDef(id, ty), env) = insertTy(id, cvtTy(env, ty))
-	    | insDef (BPT.Define(_, name, params, exh, retTy, _), env) = (case Env.find name
-(* FIXME: we probably should check that the existing prototype matches this one! *)
-		 of SOME hlop => env (* already defined, so do nothing *)
-		  | NONE => let
-		    (* create a high-level operator *)
-		      val (retTy, attrs) = (case retTy
-			     of NONE => ([], [HLOp.NORETURN])
-			      | SOME tys => (cvtTys(env, tys), [])
-			    (* end case *))		      
-		      val tyOfPat = tyOfPat' env
-		      val paramTys = List.map (fn p => HLOp.PARAM(tyOfPat p)) params
-		      val exhTys = List.map tyOfPat exh
-		      in
-			Env.define (HLOp.new (
-			  name,
-			  {params=paramTys, exh=exhTys, results=retTy},
-			  attrs));
-			env
-		      end
-		(* end case *);
-		env)
+
 	  val env = List.foldl insDef (emptyEnv fileName) defs
-	(* this is the second pass, which converts actual HLOp definitions to BOM lambdas *)
-	  fun cvtDefs [] = []
-	    | cvtDefs (BPT.Define(inline, name, params, exh, retTy, SOME e)::defs) = let
-		val hlop = valOf(Env.find name)
-		val retTy = (case retTy of NONE => [] | SOME tys => tys)
-		val cfuns = VTbl.mkTable (16, Fail "cfun table")
-		fun findCFun name = (case ATbl.find importEnv name
-		       of NONE => raise (fail(env, ["Unknown C function ", Atom.toString name]))
-			| SOME(cf as CFunctions.CFun{var, ...}) => (
-			  (* increment the count of references to the C function *)
-			    case VTbl.find cfuns var
-			     of NONE => VTbl.insert cfuns (var, 1)
-			      | SOME n => VTbl.insert cfuns (var, n+1)
-			    (* end case *);
-			    var)
-		      (* end case *))
-		val (env, doBody) = cvtLambda (findCFun, env, (name, params, exh, retTy, e), BTy.T_Fun)
-		val lambda = doBody env
-		val def = {
-			name = hlop,
-			inline = inline,
-			def = lambda,
-			externs = VTbl.listItemsi cfuns
-		      }
-		in
-		  def :: cvtDefs defs
-		end
-	    | cvtDefs (_::defs) = cvtDefs defs
+
 	  in
 	    cvtDefs defs
 	  end		

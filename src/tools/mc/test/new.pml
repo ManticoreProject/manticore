@@ -1,1 +1,1 @@
-fun main _ = print "Anybody home?\n"
+val _ = print "Anybody home?\n"

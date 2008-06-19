@@ -44,7 +44,25 @@ structure BOMBoundVariableCheck :> sig
     val dummyVar = Var.new("dummyVar", ())
     val findBOMVarQid = findQid (QualifiedId.findBOMVar, "bom variable", dummyVar)
     val findBOMTyQid = findQid (QualifiedId.findBOMTy, "bom type", dummyVar)
-    val findVarQid = findQid (QualifiedId.findVar, "variable", (BEnv.Var dummyVar))
+    val findVarQid = findQid (QualifiedId.findVar, "variable", BEnv.Var dummyVar)
+    val findBOMHLOpQid = findQid (QualifiedId.findBOMHLOp, "hlop", dummyVar)
+
+  (* Here is where we bind C functions. Since they have global scope, we record C functions
+   * in a global lookup table. 
+   *)
+    local 
+    structure ATbl = AtomTable
+    val tbl : Var.var ATbl.hash_table = AtomTable.mkTable (128, Fail "C function table")
+    in
+    fun findCFun (loc, f) = (case ATbl.find tbl f
+           of NONE => (error(loc, ["C function ", Atom.toString f, " is undefined"]);
+		       dummyVar)
+	    | SOME f => f
+           (* end case *))
+    fun defineCFun (loc, f, v) = if (Option.isSome (ATbl.find tbl f))
+           then (error(loc, ["C function ", Atom.toString f, " is re-defined"]); ())
+           else ATbl.insert tbl (f, v)
+    end
 
     fun freshVar v = Var.new(Atom.toString v, ())
 
@@ -114,7 +132,7 @@ structure BOMBoundVariableCheck :> sig
 		       PT2.RHS_Promote sexp
 		   end
 	     | PT1.RHS_CCall (f, sexps) => let
-		   val f = findBOMVarQid(loc, env, f)
+		   val f = findCFun (loc, f)
 		   val sexps = chkSexps loc (sexps, env)
 		   in
 		       PT2.RHS_CCall (f, sexps)
@@ -225,7 +243,13 @@ structure BOMBoundVariableCheck :> sig
 	           in
 		       PT2.E_Return args
 		   end
-	     | PT1.E_HLOpApply _ => raise Fail "todo"
+	     | PT1.E_HLOpApply (hlop, args, exns) => let
+		   val hlop = findBOMHLOpQid(loc, env, hlop)
+		   val args = chkSexps loc (args, env)
+		   val exns = chkSexps loc (exns, env)
+		   in
+		      PT2.E_HLOpApply(hlop, args, exns)
+		   end
             (* end case *))
 
     and chkSexp loc (sexp, env) = (case sexp
@@ -306,7 +330,7 @@ structure BOMBoundVariableCheck :> sig
 	           end
 	     | PT1.D_Define (b, v, params, exns, returnTys, exp) => let
 		   val v' = freshVar v
-		   val env' = BEnv.insertBOMVar(env, v, v')
+		   val env' = BEnv.insertBOMHLOp(env, v, v')
 		   val returnTys' = (case returnTys
 				      of NONE => NONE 
 				       | SOME returnTys => SOME (chkTys loc (returnTys, env))
@@ -320,6 +344,14 @@ structure BOMBoundVariableCheck :> sig
 	           in
 		       (PT2.D_Define (b, v', params', exns', returnTys', exp'), env')
 		   end
+	     | PT1.D_Extern (CFunctions.CFun{var, name, retTy, argTys, varArg, attrs}) => let
+		   val var' = freshVar var
+		   in
+		       defineCFun(loc, var, var');
+		       (PT2.D_Extern(CFunctions.CFun{var=var', name=name, retTy=retTy, 
+						     argTys=argTys, varArg=varArg, attrs=attrs}),
+			env)
+	           end
              (* end case *))
 
     fun chkCode loc (defs, env) = chkList loc (chkDefn, defs, env)

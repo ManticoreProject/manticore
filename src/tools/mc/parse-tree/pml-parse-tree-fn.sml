@@ -46,9 +46,13 @@ functor PMLParseTreeFn (
 			       type var_bind = var_bind
 			       type pml_var = var_use
 			       type ty_con = ty_use
-			       type ty_def = ty_use
+			       type ty_def = ty_bind
 			       type prim = Atom.atom
-			       type dcon = con_use)
+			       type dcon = con_use
+			       type hlop_bind = var_bind
+			       type hlop_use = var_use
+			       type c_id = var_bind      (* treat C functions as regular identifiers *)
+			     )
 
 
    (* signature expressions *)

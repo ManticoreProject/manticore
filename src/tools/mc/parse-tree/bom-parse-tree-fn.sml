@@ -15,6 +15,9 @@
     type ty_def
     type prim
     type dcon
+    type hlop_use
+    type hlop_bind
+    type c_id
   ) = struct
    
     datatype raw_ty = datatype RawTypes.raw_ty
@@ -26,6 +29,9 @@
     type ty_def = ty_def
     type prim = prim
     type dcon = dcon
+    type hlop_use = hlop_use
+    type hlop_bind = hlop_bind
+    type c_id = c_id
 
   (* a term marked with a source-map span *)
     type 'a mark = 'a Error.mark
@@ -34,9 +40,9 @@
 
     datatype defn
       = D_Mark of defn mark
-      | D_Extern of Atom.atom CFunctions.c_fun
+      | D_Extern of c_id CFunctions.c_fun
       | D_TypeDef of ty_def * ty
-      | D_Define of (bool * var_bind * var_pat list * var_pat list * ty list option * exp option)
+      | D_Define of (bool * hlop_bind * var_pat list * var_pat list * ty list option * exp option)
 
     and ty
       = T_Mark of ty mark
@@ -63,7 +69,7 @@
       | E_Apply of (var_use * simple_exp list * simple_exp list)
       | E_Throw of (var_use * simple_exp list)
       | E_Return of simple_exp list
-      | E_HLOpApply of (Atom.atom * simple_exp list * simple_exp list)
+      | E_HLOpApply of (hlop_use * simple_exp list * simple_exp list)
 
     and rhs
       = RHS_Mark of rhs mark
@@ -71,7 +77,7 @@
       | RHS_SimpleExp of simple_exp
       | RHS_Update of (int * simple_exp * simple_exp)
       | RHS_Promote of simple_exp			(* promote value to global heap *)
-      | RHS_CCall of (var_use * simple_exp list)
+      | RHS_CCall of (c_id * simple_exp list)
       | RHS_VPStore of (offset * simple_exp * simple_exp)
       | RHS_PMLVar of pml_var                           (* variable bound in PML *)
 

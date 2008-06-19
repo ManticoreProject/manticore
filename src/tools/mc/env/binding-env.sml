@@ -23,15 +23,19 @@ structure BindingEnv =
     type bom_var_env = bom_var Map.map
     type bom_ty_def = PT2.BOMParseTree.ty_def
     type bom_ty_env = bom_ty_def Map.map
+    type bom_hlop = PT2.BOMParseTree.hlop_bind
+    type bom_hlop_env = bom_hlop Map.map
 
     datatype bom_env
       = BOMEnv of {
 	  varEnv : bom_var_env,
+	  hlopEnv : bom_hlop_env,
 	  tyEnv : bom_ty_env
         }
 
     val emptyBOMEnv = BOMEnv{
 		  varEnv = Map.empty,
+		  hlopEnv = Map.empty,
 		  tyEnv = Map.empty
 		}
 
@@ -85,11 +89,15 @@ structure BindingEnv =
 
   (* BOM environment operations *)
     local 
-	fun insertVar (BOMEnv {varEnv, tyEnv}, id, x) =
-	        BOMEnv {varEnv=Map.insert(varEnv, id, x), tyEnv=tyEnv}
+	fun insertVar (BOMEnv {varEnv, hlopEnv, tyEnv}, id, x) =
+	        BOMEnv {varEnv=Map.insert(varEnv, id, x), hlopEnv=hlopEnv, tyEnv=tyEnv}
+	fun insertHLOp (BOMEnv {varEnv, hlopEnv, tyEnv}, id, x) =
+	        BOMEnv {hlopEnv=Map.insert(hlopEnv, id, x), varEnv=varEnv, tyEnv=tyEnv}
     in
     fun insertBOMVar (Env{tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
 	    Env{tyEnv=tyEnv, varEnv=varEnv, bomEnv=insertVar(bomEnv, id, x), modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
+    fun insertBOMHLOp (Env{tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
+	    Env{tyEnv=tyEnv, varEnv=varEnv, bomEnv=insertHLOp(bomEnv, id, x), modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
     end
 
     (* lookup a variable in the scope of the current module *)
@@ -113,6 +121,15 @@ structure BindingEnv =
 	   (case outerEnv
 	     of NONE => NONE
 	      | SOME env => findBOMVar(env, x))
+	 (* found a value *)
+	 | SOME v => SOME v)
+
+    fun findBOMHLOp (Env{bomEnv=BOMEnv {hlopEnv, ...}, outerEnv, ...}, x) = (case Map.find(hlopEnv, x)
+        of NONE => 
+	   (* x is not bound in this module, so check the enclosing module *)
+	   (case outerEnv
+	     of NONE => NONE
+	      | SOME env => findBOMHLOp(env, x))
 	 (* found a value *)
 	 | SOME v => SOME v)
 
