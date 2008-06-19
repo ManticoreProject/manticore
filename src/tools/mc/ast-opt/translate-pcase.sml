@@ -83,7 +83,6 @@ structure TranslatePCase (* : sig
 
     (* A pcase looks like this: *)
     (* PCaseExp of (exp list * pmatch list * ty)       (* ty is result type *) *)   
-
     fun tr trExp (es, pms, pcaseResultTy) = let
 
       val nExps = List.length es
@@ -195,15 +194,33 @@ structure TranslatePCase (* : sig
           m (cb, eTys, 1, [], [])
         end
 
+      (* typeOfVar : A.var -> A.ty *)
+      fun typeOfVar v = TypeOf.pat (A.VarPat v)
+
+      val pollV = let
+        fun pollTy tv = A.FunTy (F.futureTy tv, B.optionTy (trapTy tv))
+        in
+	  BasisUtils.polyVar ("poll", fn tv => pollTy tv)
+        end
+	
       (* mkPoll: Given a variable f bound to some 'a future, return poll(f). *)
-      fun mkPoll fV = raise Fail "todo"
+      fun mkPoll fV = let
+        (* FIXME: dummy implementation *)
+        val ty = typeOfVar fV
+	val inst = (case ty
+		     of A.ConTy ([i], futureTyc) => i
+		      | _ => raise Fail "bug")
+        in
+          A.ApplyExp (A.VarExp (pollV, [inst]),
+		      A.VarExp (fV, []),
+		      B.optionTy (trapTy inst))
+        end
 
       (* mkLam: Given a function name, a list of variable expressions, and case arms, *)
       (*        cobble together the corresponding function. *)
       (* mkLam : A.var * (A.var list) * (A.match list) -> A.lambda *)
       fun mkLam (fName, vars, caseArms) = let
-	fun varTy v = TypeOf.pat (A.VarPat v) 
-        val argV = Var.new ("x", A.TupleTy (map varTy vars))
+        val argV = Var.new ("x", A.TupleTy (map typeOfVar vars))
         val body = A.CaseExp (A.VarExp (argV, []), caseArms, pcaseResultTy)
         in
 	  A.FB (fName, argV, body)
@@ -214,7 +231,7 @@ structure TranslatePCase (* : sig
         fun loop ([], _, acc) = rev acc
 	  | loop (e::es, n, acc) = let
               val fV = Var.new ("f" ^ Int.toString n,
-				Futures.futureTy (TypeOf.exp e))
+				F.futureTy (TypeOf.exp e))
 
 	      in
 		loop (es, n+1, fV::acc)
@@ -223,10 +240,10 @@ structure TranslatePCase (* : sig
 	  loop (es, 1, [])
         end
 
-      (* buildFuns *)
+      (* mkStateMachine *)
       (* A function to build a batch of functions implementing a state machine *)
       (* given a map of completion bitstrings to match lists. *)
-      fun buildFuns (m : matchmap) : A.exp = let
+      fun mkStateMachine (m : matchmap) : A.exp = let
 	    val kmss = CBM.listItemsi m
 	    val goV = Var.new ("go", A.FunTy (Basis.unitTy, pcaseResultTy))
 	    val applyGo = A.ApplyExp (A.VarExp (goV, []), A.TupleExp [], pcaseResultTy)
@@ -234,7 +251,11 @@ structure TranslatePCase (* : sig
 	    val fVs = futureVars es
 	    fun mkGo matches = let
               val pollTuple = A.TupleExp (map mkPoll fVs)
-	      val body = A.CaseExp (pollTuple, matches, pcaseResultTy)
+              fun mkNone ty = A.ConstPat (A.DConst (Basis.optionNONE, 
+						    [Basis.optionTy (trapTy ty)]))
+	      val nones = A.TuplePat (map mkNone eTys)
+	      val loopMatch = A.PatMatch (nones, applyGo)
+	      val body = A.CaseExp (pollTuple, matches @ [loopMatch], pcaseResultTy)
 	      val arg = Var.new ("u", Basis.unitTy) 
               in
 		A.FB (goV, arg, body)
@@ -251,14 +272,32 @@ structure TranslatePCase (* : sig
                   end
 	    val lams = b (kmss, [], [], []) 
 	    val knot = A.FunBind lams           
-	    fun bind (v, e, e') = A.LetExp (A.ValBind (A.VarPat v, e), e')
+	    fun bind (v, e, e') = A.LetExp (A.ValBind (A.VarPat v, F.mkFuture e), e')
         in
 	  ListPair.foldrEq bind (A.LetExp (knot, applyGo)) (fVs, es)
         end
-
       in
-        raise Fail "todo"  
+	mkStateMachine (buildMap (pms, CBM.empty))
       end
+
+  (* --- some tests follow --- *)
+
+  structure T = TestUtils
+
+  val zero = T.int 0
+  val one = T.int 1
+
+  val c0 = A.PCaseExp ([zero],
+		       [A.Otherwise one],
+		       Basis.intTy)
+
+  fun t (A.PCaseExp (es, pms, ty)) = tr (fn e => e) (es, pms, ty)
+    | t _ = raise Fail "bug"
+
+  fun test 0 = (PrintAST.printExp c0;
+		PrintAST.printComment "-->";
+		PrintAST.printExp (t c0))
+    | test _ = print "No such test.\n"
 
 end
     

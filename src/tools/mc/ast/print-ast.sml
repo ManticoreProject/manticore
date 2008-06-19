@@ -322,6 +322,7 @@ structure PrintAST : sig
 	      | (d::ds) =>
 		  (openVBox (rel 0);
 		   lambda "fun" d;
+		   ln ();
 		   app (lambda "and") ds;
 		   closeBox ()))
 
