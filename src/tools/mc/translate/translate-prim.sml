@@ -59,10 +59,10 @@ structure TranslatePrim : sig
 	    | (BPT.T_CFun cproto) => BTy.T_CFun cproto
 	    | (BPT.T_VProc) => BTy.T_VProc
 	    | (BPT.T_TyCon tyc) => (case E.findBOMTy tyc
-                    of NONE => raise Fail ""
-		     | SOME ty => ty
-		   (* end case *))
-	  (* end case *))
+		 of NONE => raise Fail("unbound BOM type constructor " ^ PTVar.toString tyc)
+		  | SOME ty => ty
+	       (* end case *))
+	 (* end case *))
 
     and cvtTys (tys) = List.map (fn ty => cvtTy(ty)) tys
 

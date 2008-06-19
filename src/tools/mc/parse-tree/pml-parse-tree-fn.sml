@@ -8,21 +8,21 @@
 
 functor PMLParseTreeFn (
 
-    type ty_bind       (* top-level type identifiers *)
-    type ty_use          (* type-variable uses *)
+    type ty_bind	(* top-level type identifiers *)
+    type ty_use		(* type-variable uses *)
 
-    type con_bind      (* data constructor binds *)
-    type con_use         (* data constructor uses *)
+    type con_bind	(* data constructor binds *)
+    type con_use	(* data constructor uses *)
 
-    type var_bind      (* variable binds *)
-    type var_use         (* variable uses *)
+    type var_bind	(* variable binds *)
+    type var_use	(* variable uses *)
 
-    type op_id           (* operator IDs; e.g., "=", "<=", "<", "::", ... *)
+    type op_id		(* operator IDs; e.g., "=", "<=", "<", "::", ... *)
 
-    type mod_bind      (* module bindings *)
-    type mod_use         (* module uses *)
+    type mod_bind	(* module bindings *)
+    type mod_use	(* module uses *)
 
-    type sig_id          (* signature identifiers *)
+    type sig_id		(* signature identifiers *)
 
   ) = struct
 
@@ -42,18 +42,17 @@ functor PMLParseTreeFn (
     type sig_id = sig_id
 
     structure BOMParseTree = BOMParseTreeFn (
-			       type var_use = var_use
-			       type var_bind = var_bind
-			       type pml_var = var_use
-			       type ty_con = ty_use
-			       type ty_def = ty_bind
-			       type prim = Atom.atom
-			       type dcon = con_use
-			       type hlop_bind = var_bind
-			       type hlop_use = var_use
-			       type c_id = var_bind      (* treat C functions as regular identifiers *)
-			     )
-
+	type var_use = var_use
+	type var_bind = var_bind
+	type pml_var = var_use
+	type ty_con = ty_use
+	type ty_def = ty_bind
+	type prim = Atom.atom
+	type dcon = con_use
+	type hlop_bind = var_bind
+	type hlop_use = var_use
+	type c_id = var_bind      (* treat C functions as regular identifiers *)
+      )
 
    (* signature expressions *)
     datatype sign

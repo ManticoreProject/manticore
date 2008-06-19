@@ -58,7 +58,7 @@ structure BOMBoundVariableCheck :> sig
            of NONE => (error(loc, ["C function ", Atom.toString f, " is undefined"]);
 		       dummyVar)
 	    | SOME f => f
-           (* end case *))
+	  (* end case *))
     fun defineCFun (loc, f, v) = if (Option.isSome (ATbl.find tbl f))
            then (error(loc, ["C function ", Atom.toString f, " is re-defined"]); ())
            else ATbl.insert tbl (f, v)
@@ -100,7 +100,7 @@ structure BOMBoundVariableCheck :> sig
 	    | PT1.T_CFun cp => PT2.T_CFun cp
 	    | PT1.T_VProc => PT2.T_VProc
 	    | PT1.T_TyCon tc => PT2.T_TyCon (findBOMTyQid(loc, env, tc))
-           (* end case *))
+	  (* end case *))
 
     and chkTys loc (tys, env) = List.map (fn ty => chkTy loc (ty, env)) tys
 
