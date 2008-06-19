@@ -132,7 +132,7 @@ structure TranslatePCase (* : sig
 	      mergeIntoMap (m, CB.allOnes nExps, match, true)
             end
 	| buildMap ([A.PMatch _], _) = 
-            raise Fail "ill-formed pcase: pmatch is last"
+            raise Fail "ill-formed pcase: pmatch, rather than otherwise, is last"
 	| buildMap (A.PMatch (ps, e) :: t, m) = let
 	    val key = CB.fromPPats ps
 	    val match = A.PatMatch (xformPPats ps, e)
@@ -142,7 +142,7 @@ structure TranslatePCase (* : sig
 	    end
 	| buildMap (A.Otherwise _ :: _, _) = 
             raise Fail "ill-formed pcase: otherwise is not last"
-	| buildMap ([], _) = raise Fail "bug" (* shouldn't reach this, ever *)
+	| buildMap ([], _) = raise Fail "bug" (* shouldn't reach this *)
 
       (* optTy : A.ty -> A.ty *)
       fun optTy t = A.ConTy ([t], Basis.optionTyc)
@@ -166,30 +166,29 @@ structure TranslatePCase (* : sig
       (* mkMatch: Given a completion bitstring and a function name,   *)
       (*          construct a match with the right SOMEs, NONEs etc.  *)
       (* ex: mkMatch(1001, state1001) yields                          *)
-      (*       | (SOME(t1), NONE, NONE, SOME(t2) => state1001(t1,t2)  *)
-      (* mkMatch : cbits * A.var -> A.match * (A.exp list)      *)
+      (*       | (SOME(t1), NONE, NONE, SOME(t2)) => state1001(t1,t2) *)
+      (* mkMatch : cbits * A.var -> A.match * (A.var list)            *)
       fun mkMatch (cb, fV) = let
-	fun m ([], [], _, optPats, args) = let
+	fun m ([], [], _, optPats, argVs) = let
               val tupPat = A.TuplePat (List.rev optPats)
-	      val args' = List.rev args
+	      val argVs' = List.rev argVs
               val fcall = A.ApplyExp (A.VarExp (fV, []), 
-					A.TupleExp args',
-					pcaseResultTy)
+				      A.TupleExp (map (fn v => A.VarExp (v, [])) argVs'),
+				      pcaseResultTy)
               in
-	        (A.PatMatch (tupPat, fcall), args')
+	        (A.PatMatch (tupPat, fcall), argVs')
 	      end
-	  | m (CB.Zero::bs, t::ts, n, optPats, args) = let
+	  | m (CB.Zero::bs, t::ts, n, optPats, argVs) = let
               val p = A.ConstPat (A.DConst (Basis.optionNONE, [trapTy t]))
               in
-                m (bs, ts, n, p::optPats, args)
+                m (bs, ts, n, p::optPats, argVs)
               end
-	  | m (CB.One::bs, t::ts, n, optPats, args) = let
+	  | m (CB.One::bs, t::ts, n, optPats, argVs) = let
               val varName = "t" ^ Int.toString n
 	      val argV = Var.new ("t" ^ Int.toString n, trapTy t)
-	      val arg = A.VarExp (argV, [])
 	      val p = A.ConPat (Basis.optionSOME, [trapTy t], A.VarPat argV) 
               in
-		m (bs, ts, n+1, p::optPats, arg::args)
+		m (bs, ts, n+1, p::optPats, argV::argVs)
               end
 	  | m _ = raise Fail "ran out of types"
         in
@@ -199,16 +198,42 @@ structure TranslatePCase (* : sig
       (* mkPoll: Given a variable f bound to some 'a future, return poll(f). *)
       fun mkPoll fV = raise Fail "todo"
 
-      fun mkLam (fName, m, varsGiven, caseArms) = raise Fail "todo"
+      (* mkLam: Given a function name, a list of variable expressions, and case arms, *)
+      (*        cobble together the corresponding function. *)
+      (* mkLam : A.var * (A.var list) * (A.match list) -> A.lambda *)
+      fun mkLam (fName, vars, caseArms) = let
+	fun varTy v = TypeOf.pat (A.VarPat v) 
+        val argV = Var.new ("x", A.TupleTy (map varTy vars))
+        val body = A.CaseExp (A.VarExp (argV, []), caseArms, pcaseResultTy)
+        in
+	  A.FB (fName, argV, body)
+        end
 
+      (* futureVars : A.exp list -> A.var list *)
+      fun futureVars es = let
+        fun loop ([], _, acc) = rev acc
+	  | loop (e::es, n, acc) = let
+              val fV = Var.new ("f" ^ Int.toString n,
+				Futures.futureTy (TypeOf.exp e))
+
+	      in
+		loop (es, n+1, fV::acc)
+	      end
+        in
+	  loop (es, 1, [])
+        end
+
+      (* buildFuns *)
       (* A function to build a batch of functions implementing a state machine *)
       (* given a map of completion bitstrings to match lists. *)
-      fun buildFuns (m : matchmap) : A.lambda list = let
+      fun buildFuns (m : matchmap) : A.exp = let
 	    val kmss = CBM.listItemsi m
 	    val goV = Var.new ("go", A.FunTy (Basis.unitTy, pcaseResultTy))
+	    val applyGo = A.ApplyExp (A.VarExp (goV, []), A.TupleExp [], pcaseResultTy)
 	    val u = Var.new ("u", Basis.unitTy)
+	    val fVs = futureVars es
 	    fun mkGo matches = let
-              val pollTuple = raise Fail "todo"
+              val pollTuple = A.TupleExp (map mkPoll fVs)
 	      val body = A.CaseExp (pollTuple, matches, pcaseResultTy)
 	      val arg = Var.new ("u", Basis.unitTy) 
               in
@@ -219,17 +244,22 @@ structure TranslatePCase (* : sig
                   val name = "state" ^ CB.toString cb
 		  val ty = A.FunTy (mkTy cb, pcaseResultTy)
 		  val nameV = Var.new (name, ty)
-		  val (m, varsInMatch) = mkMatch (cb, nameV)
-		  val f = mkLam (nameV, m, varsInMatch, ms)
+		  val (m, vs) = mkMatch (cb, nameV)
+		  val f = mkLam (nameV, vs, ms)
                   in
 		    b (t, m::matches, f::lams, name::fnames)
                   end
-            in
-	      b (kmss, [], [], []) 
-            end
+	    val lams = b (kmss, [], [], []) 
+	    val knot = A.FunBind lams           
+	    fun bind (v, e, e') = A.LetExp (A.ValBind (A.VarPat v, e), e')
+        in
+	  ListPair.foldrEq bind (A.LetExp (knot, applyGo)) (fVs, es)
+        end
 
       in
-        raise Fail "todo"
+        raise Fail "todo"  
       end
 
-  end
+end
+    
+
