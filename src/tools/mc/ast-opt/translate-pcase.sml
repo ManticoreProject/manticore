@@ -19,57 +19,6 @@ structure TranslatePCase (* : sig
     structure R = Ropes
     structure U = UnseenBasis
 
-    structure CompletionBitstring : sig
-
-      datatype bit = Zero | One
-      type t = bit list
-      val eq  : t * t -> bool
-      val sub : t * t -> bool
-      val compare : t * t -> order
-      val toString : t -> string
-      val fromPPats : A.ppat list -> t
-      val allOnes : int -> t
-
-    end = struct
-
-      datatype bit = Zero | One
-
-      type t = bit list
-
-      fun bitEq (b1:bit, b2:bit) = (b1=b2)
-
-      fun eq (c1, c2) = 
-            if (List.length c1) <> (List.length c2) then
-              raise Fail "UnequalLengths"
-	    else ListPair.all bitEq (c1, c2)
-
-      (* c1 < c2 if everywhere c1 is 1, c2 is 1. *)
-      (* If one thinks of c1 and c2 as bit-vector sets, this is the subset relationship. *)
-      fun sub (c1, c2) = let
-        fun s ([], []) = true
-	  | s (One::t1, One::t2) = s (t1, t2)
-	  | s (Zero::t1,  _::t2) = s (t1, t2)
-	  | s _ =  raise Fail "bug" (* unequal length lists screened out below*)
-        in
-	  if (length c1) <> (length c2) then
-	    raise Fail "UnequalLengths"
-	  else s (c1, c2)
-        end
-
-      fun toString cb = concat (map (fn Zero => "0" | One => "1") cb)
-
-      fun compare (c1, c2) = 
-        if (length c1) <> (length c2) then
-          raise Fail "Unequal Lengths"
-	else 
-          String.compare (toString c1, toString c2)
-
-      fun fromPPats ps = map (fn A.NDWildPat _ => Zero | _ => One) ps
-
-      fun allOnes n = List.tabulate (n, fn _ => One) 
-
-    end
-
     structure CB = CompletionBitstring
     type cbits = CB.t
 
@@ -291,12 +240,20 @@ structure TranslatePCase (* : sig
 		       [A.Otherwise one],
 		       Basis.intTy)
 
+  val c1 = A.PCaseExp ([zero, zero],
+		       [A.PMatch ([A.NDWildPat Basis.intTy, A.NDWildPat Basis.intTy], one),
+ 		        A.Otherwise one],
+		       Basis.intTy)
+
   fun t (A.PCaseExp (es, pms, ty)) = tr (fn e => e) (es, pms, ty)
     | t _ = raise Fail "bug"
 
-  fun test 0 = (PrintAST.printExp c0;
-		PrintAST.printComment "-->";
-		PrintAST.printExp (t c0))
+  fun mkTest pcase = (PrintAST.printExp pcase;
+		      PrintAST.printComment "-->";
+		      PrintAST.printExp (t pcase))
+
+  fun test 0 = mkTest c0
+    | test 1 = mkTest c1
     | test _ = print "No such test.\n"
 
 end

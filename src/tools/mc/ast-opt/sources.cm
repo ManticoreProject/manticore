@@ -9,6 +9,7 @@
 Library
 
   structure ASTOpt
+  structure CompletionBitstring
   structure FlatParTup
   structure FreshVar
   structure FutParLet	
@@ -41,6 +42,7 @@ is
 
   ast-opt.sml
   ast-opt-controls.sml
+  completion-bitstring.sml
   flat-par-tup.sml
   fresh-var.sml
   fut-par-let.sml
