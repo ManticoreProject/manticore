@@ -23,6 +23,9 @@ structure TestUtils =
     (* intPat : int -> A.pat *)
     fun intPat n = A.ConstPat (A.LConst (Literal.Int n, B.intTy))
 
+    (* intPPat : int -> A.ppat *)
+    val intPPat = (A.Pat o intPat)
+
     (* varPat : var -> A.pat *)
     fun varPat x = A.VarPat x
 

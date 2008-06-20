@@ -52,20 +52,28 @@ end = struct
     else 
       ListPair.all bitEq (c1, c2)
       
+  fun toString cb = concat (map (fn Zero => "0" | One => "1") cb)
+
   (* c1 < c2 if everywhere c1 is 1, c2 is 1. *)
   (* If one thinks of c1 and c2 as bit-vector sets, this is the subset relationship. *)
   fun sub (c1, c2) = let
     fun s ([], []) = true
       | s (One::t1, One::t2) = s (t1, t2)
-      | s (Zero::t1,  _::t2) = s (t1, t2)
-      | s _ =  raise Fail "bug" (* unequal length lists screened out below*)
+      | s (Zero::t1, _::t2) = s (t1, t2)
+      | s (One::t1, Zero::t2) = false
+      | s _ = let
+          val c1s = toString c1
+	  val c2s = toString c2
+	  val msg = "bug: comparing unequal length bitstrings " ^ c1s ^ ", " ^ c2s 
+          in
+            raise Fail msg
+            (* unequal length lists should be screened out below *)
+	  end
     in
       if (length c1) <> (length c2) then
         raise Fail "UnequalLengths"
       else s (c1, c2)
-    end
-		     
-  fun toString cb = concat (map (fn Zero => "0" | One => "1") cb)
+    end		   
 
   fun compare (c1, c2) = 
     if (length c1) <> (length c2) then

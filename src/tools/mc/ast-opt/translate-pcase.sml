@@ -4,6 +4,12 @@
  * All rights reserved.
  *)
 
+(* TODO The compiler should check to make sure Otherwise is last. Currently, it does so in this module. *)
+
+(* TODO Somewhere the compiler should check for multiple Otherwises in pcases. *)
+
+(* TODO Somewhere the compiler should append an "Otherwise => raise ..." to any pcase without one. *)
+
 structure TranslatePCase (* : sig
 
   (* An AST to AST translation of parallel cases. *)
@@ -61,18 +67,7 @@ structure TranslatePCase (* : sig
 	      A.TuplePat (x (ps, []))
             end
 
-      (* mergeIntoMap : given a map, a key (a cbits), a match, and a bool, *)
-      (*                merge the given match into that map. *)
-      fun mergeIntoMap (m, k, match, belongsAtEnd) = let
-	    val matches = CBM.find (m, k)
-            in
-	      case matches
-	       of NONE => CBM.insert (m, k, [match])
-		| SOME ms => CBM.insert (m, k, if belongsAtEnd
-					       then ms @ [match]
-					       else match :: ms)
-            end
-
+(*
       (* build a map of each completion bitstring to its possible matches *)
       fun buildMap ([A.Otherwise e], m) : matchmap = let
 	    val match = A.PatMatch (A.WildPat esTupTy, e)
@@ -81,6 +76,7 @@ structure TranslatePCase (* : sig
             end
 	| buildMap ([A.PMatch _], _) = 
             raise Fail "ill-formed pcase: pmatch, rather than otherwise, is last"
+	    (* TODO...perhaps here I should insert an `Otherwise => raise ...` instead *)
 	| buildMap (A.PMatch (ps, e) :: t, m) = let
 	    val key = CB.fromPPats ps
 	    val match = A.PatMatch (xformPPats ps, e)
@@ -91,6 +87,56 @@ structure TranslatePCase (* : sig
 	| buildMap (A.Otherwise _ :: _, _) = 
             raise Fail "ill-formed pcase: otherwise is not last"
 	| buildMap ([], _) = raise Fail "bug" (* shouldn't reach this *)
+*)
+
+      local
+        (* cbOf : A.pmatch -> cbits *)
+        fun cbOf (A.PMatch (pps, _)) = CB.fromPPats pps
+	  | cbOf (A.Otherwise _) = CB.allOnes nExps
+        (* initMap : cbits list -> matchmap *)
+        fun initMap cbs : matchmap = let
+          fun i ([], m) = m
+	    | i (c::cs, m) = 
+	        if CBM.inDomain (m, c)
+		then i (cs, m)
+		else i (cs, CBM.insert (m, c, []))
+          in
+            i (cbs, CBM.empty)
+          end
+	(* mergeOne : given a map, a key (a cbits), and a pmatch, *)
+	(*            merge the corresponding match into that map. *)
+	fun mergeOne (m, cb, pm) = let
+	  val belongsLast = (case pm of A.Otherwise _ => true | _ => false)
+	  val match = 
+           (case pm
+	     of A.Otherwise e => A.PatMatch (A.WildPat esTupTy, e)
+	      | A.PMatch (ps, e) => A.PatMatch (xformPPats ps, e)
+	    (* end case *))
+	  val (m', ms) = CBM.remove (m, cb)
+          in
+	    CBM.insert (m', cb, if belongsLast
+				then ms @ [match]
+				else match :: ms)
+	  end
+        (* merge : A.pmatch * matchmap -> matchmap *)
+        fun merge (pm, m) = let
+          val cb = cbOf pm
+	  fun loop ([], m') = m'
+	    | loop (cb'::t, m') = loop (t, if CB.sub(cb,cb')
+					   then mergeOne (m', cb', pm)
+					   else m')
+	  in
+	    loop (CBM.listKeys m, m)
+	  end
+      in
+      (* buildMap : A.pmatch list -> A.matchmap *)
+      (* build map : collect bitstrings, then merge branches in *)
+      fun buildMap pms = let
+        val cbs = map cbOf pms
+        in
+	  List.foldl merge (initMap cbs) pms
+        end
+      end (* local *)
 
       (* optTy : A.ty -> A.ty *)
       fun optTy t = A.ConTy ([t], Basis.optionTyc)
@@ -158,7 +204,7 @@ structure TranslatePCase (* : sig
         val ty = typeOfVar fV
 	val inst = (case ty
 		     of A.ConTy ([i], futureTyc) => i
-		      | _ => raise Fail "bug")
+		      | _ => raise Fail "unexpected non-future type")
         in
           A.ApplyExp (A.VarExp (pollV, [inst]),
 		      A.VarExp (fV, []),
@@ -189,9 +235,9 @@ structure TranslatePCase (* : sig
 	  loop (es, 1, [])
         end
 
-      (* mkStateMachine *)
+      (* mkStateMachine : matchmap -> exp *)
       (* A function to build a batch of functions implementing a state machine *)
-      (* given a map of completion bitstrings to match lists. *)
+      (* given a map of completion bitstrings -> lists of matches. *)
       fun mkStateMachine (m : matchmap) : A.exp = let
 	    val kmss = CBM.listItemsi m
 	    val goV = Var.new ("go", A.FunTy (Basis.unitTy, pcaseResultTy))
@@ -200,11 +246,9 @@ structure TranslatePCase (* : sig
 	    val fVs = futureVars es
 	    fun mkGo matches = let
               val pollTuple = A.TupleExp (map mkPoll fVs)
-              fun mkNone ty = A.ConstPat (A.DConst (Basis.optionNONE, 
-						    [Basis.optionTy (trapTy ty)]))
-	      val nones = A.TuplePat (map mkNone eTys)
-	      val loopMatch = A.PatMatch (nones, applyGo)
-	      val body = A.CaseExp (pollTuple, matches @ [loopMatch], pcaseResultTy)
+	      val default = A.WildPat (A.TupleTy (map (Basis.optionTy o trapTy) eTys))
+	      val defaultMatch = A.PatMatch (default, applyGo)
+	      val body = A.CaseExp (pollTuple, matches @ [defaultMatch], pcaseResultTy)
 	      val arg = Var.new ("u", Basis.unitTy) 
               in
 		A.FB (goV, arg, body)
@@ -226,7 +270,7 @@ structure TranslatePCase (* : sig
 	  ListPair.foldrEq bind (A.LetExp (knot, applyGo)) (fVs, es)
         end
       in
-	mkStateMachine (buildMap (pms, CBM.empty))
+	mkStateMachine (buildMap pms)
       end
 
   (* --- some tests follow --- *)
@@ -241,16 +285,16 @@ structure TranslatePCase (* : sig
 		       Basis.intTy)
 
   val c1 = A.PCaseExp ([zero, zero],
-		       [A.PMatch ([A.NDWildPat Basis.intTy, A.NDWildPat Basis.intTy], one),
+		       [A.PMatch ([T.intPPat 1, A.NDWildPat Basis.intTy], zero),
  		        A.Otherwise one],
 		       Basis.intTy)
 
   fun t (A.PCaseExp (es, pms, ty)) = tr (fn e => e) (es, pms, ty)
-    | t _ = raise Fail "bug"
+    | t _ = raise Fail "expecting a pcase"
 
-  fun mkTest pcase = (PrintAST.printExp pcase;
+  fun mkTest pcase = (PrintAST.printExpNoTypes pcase;
 		      PrintAST.printComment "-->";
-		      PrintAST.printExp (t pcase))
+		      PrintAST.printExpNoTypes (t pcase))
 
   fun test 0 = mkTest c0
     | test 1 = mkTest c1

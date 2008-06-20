@@ -6,11 +6,12 @@
 
 structure PrintAST : sig
 
-    val output       : TextIO.outstream * AST.comp_unit -> unit
-    val outputExp    : TextIO.outstream * AST.exp -> unit
-    val print        : AST.comp_unit -> unit
-    val printExp     : AST.exp -> unit
-    val printComment : string -> unit
+    val output          : TextIO.outstream * AST.comp_unit -> unit
+    val outputExp       : TextIO.outstream * AST.exp -> unit
+    val print           : AST.comp_unit -> unit
+    val printExp        : AST.exp -> unit
+    val printExpNoTypes : AST.exp -> unit
+    val printComment    : string -> unit
 
   end = struct
 
@@ -19,6 +20,8 @@ structure PrintAST : sig
     structure S = TextIOPP
 
     val str = ref (S.openOut {dst = TextIO.stdErr, wid = 85})
+
+    val showTypes = ref true
 
   (* for debugging boxes *)
     fun debug _ = ()
@@ -47,8 +50,18 @@ structure PrintAST : sig
     fun ln () = S.newline (!str)
 
   (* sp : unit -> unit *)
-    fun sp () = S.space (!str) 1
+    fun sp () = S.nbSpace (!str) 1
 
+  (* dotimes : int * (unit -> unit) -> unit *)
+    fun dotimes (n, th) = let
+      fun loop 0  = ()
+	| loop n = (th (); loop (n-1))
+      in
+	if n > 0 then loop n else ()
+      end 
+
+  (* sps : int -> unit *)
+    fun sps n = dotimes (n, sp)
 
   (* prln : string -> unit *)
     fun prln s = (pr s; ln ())
@@ -117,18 +130,19 @@ structure PrintAST : sig
 	   closeBox ();
 	   closeBox ())
       | exp (A.CaseExp (e, pes, t)) = (
-	  openVBox (rel 2);
+	  openVBox (rel 0);
 	     pr "(case (";
 	     exp e;
 	     pr ")";
 	     openVBox (abs 1);
 	       ln ();
 	       case pes
-		of m::ms => (pe " of" m;  app (pe "  |") ms)
+		of m::ms => (sp (); pe "of" m;  
+			     app (pe " |") ms)
 		 | nil => raise Fail "case without any branches"
-	       (* end case *);
-	       pr "(* end case *))";
+	       (* end case *);	       
 	     closeBox ();
+	     pr "(* end case *))";
 	  closeBox ())
       | exp (A.PCaseExp (es, pms, t)) = (
 	  openVBox (rel 2);
@@ -140,8 +154,8 @@ structure PrintAST : sig
 	     of m::ms => (ppm " of" m; app (ppm "  |") ms)
 	      | nil => raise Fail "pcase without any branches"
 	    (* end case *);
-            pr "(* end pcase *))";
             closeBox ();
+          pr "(* end pcase *))";
 	  closeBox ())
       | exp (A.HandleExp(e, matches, ty)) = (
 	  openHOVBox (rel 2);
@@ -250,11 +264,14 @@ structure PrintAST : sig
     and pe s (A.PatMatch(p, e)) = (
 	  openVBox (rel 0);
 	    pr s;
-	    pr " ";
+	    sp ();
 	    pat p;
-	    pr " =>";
-	    ln ();
-	    exp e;
+	    sp ();
+	    pr "=>";
+	    sp ();
+            openVBox (rel 2);
+	      exp e;
+	    closeBox();
 	    ln ();
 	  closeBox ())
       | pe s (A.CondMatch(p, cond, e)) = (
@@ -272,16 +289,18 @@ structure PrintAST : sig
   (* ppm : string -> A.pmatch -> unit *)
     and ppm s (A.PMatch (pps, e)) = (
           openVBox (rel 0);
+            pr s;
+	    sp ();
             appwith (fn () => pr " & ") ppat pps;
             pr " =>";
-            ln ();
+            sp ();
             exp e;
             ln ();
           closeBox ())
       | ppm s (A.Otherwise e) = (
           openVBox (rel 0);
-            pr "otherwise =>";
-            ln ();
+            pr "| otherwise =>";
+            sp ();
             exp e;
             ln ();
           closeBox ())
@@ -322,7 +341,6 @@ structure PrintAST : sig
 	      | (d::ds) =>
 		  (openVBox (rel 0);
 		   lambda "fun" d;
-		   ln ();
 		   app (lambda "and") ds;
 		   closeBox ()))
 
@@ -337,6 +355,7 @@ structure PrintAST : sig
 	   pr " =";
 	   ln ();
 	   exp b;
+	   ln ();
 	   closeBox ())
 	   
   (* pat : A.pat -> unit *)
@@ -365,14 +384,27 @@ structure PrintAST : sig
       | const (A.LConst (lit, t)) = pr (Literal.toString lit)
 
   (* dcon : T.dcon -> unit *)
-    and dcon (dc as T.DCon{name, owner, ...}) = pr (Atom.toString name^":"^TyCon.toString owner)
+    and dcon (dc as T.DCon{name, owner, ...}) = let
+      val s = if !showTypes 
+	      then Atom.toString name ^ ":" ^ TyCon.toString owner
+	      else Atom.toString name
+      in
+        pr s
+      end
+
 
   (* overload_var : A.overload_var -> unit *)
     and overload_var (A.Unknown (t, vs)) = raise Fail "overload_var.Unknown"
       | overload_var (A.Instance v) = var v
 				    
   (* var : A.var -> unit *)
-    and var (v as VarRep.V{name, ...}) = pr (Var.toString v^" : "^TypeUtil.schemeToString (Var.typeOf v))
+    and var (v as VarRep.V{name, ...}) = let
+      val s = if !showTypes 
+	      then Var.toString v ^ " : " ^ TypeUtil.schemeToString (Var.typeOf v) 
+	      else Var.toString v
+      in
+	pr s
+      end
 
   (* prettyprint an exception declaration *)
     fun ppExn (T.DCon{name, argTy, ...}) = (
@@ -424,6 +456,11 @@ structure PrintAST : sig
 
   (* printExp : A.exp -> unit *)
     fun printExp e = (exp e; ln (); flush ())
+
+  (* printExpNoTypes : A.exp -> unit *)
+    fun printExpNoTypes e = (showTypes := false;
+			     printExp e;
+			     showTypes := true)
 		  
   (* printComment : string -> unit *)       
   (* for debugging purposes *)
