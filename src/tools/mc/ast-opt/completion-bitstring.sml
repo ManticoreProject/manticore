@@ -25,6 +25,7 @@ structure CompletionBitstring : sig
 
   (* some common useful operations *)
   val eq       : t * t -> bool
+  val length   : t -> int
   val compare  : t * t -> order
   val toString : t -> string
 
@@ -52,6 +53,8 @@ end = struct
     else 
       ListPair.all bitEq (c1, c2)
       
+  val length = List.length
+
   fun toString cb = concat (map (fn Zero => "0" | One => "1") cb)
 
   (* c1 < c2 if everywhere c1 is 1, c2 is 1. *)

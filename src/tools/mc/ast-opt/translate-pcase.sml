@@ -4,6 +4,10 @@
  * All rights reserved.
  *)
 
+(* TODO This translation is NOT YET RECURSIVE. *)
+
+(* TODO Test exceptions. *)
+
 (* TODO The compiler should check to make sure Otherwise is last. Currently, it does so in this module. *)
 
 (* TODO Somewhere the compiler should check for multiple Otherwises in pcases. *)
@@ -52,44 +56,21 @@ structure TranslatePCase (* : sig
       (* Given a pattern p and type tau, produce the pattern Exn(p) : tau trap. *)
       fun mkExnPat (p, ty) = A.ConPat (Basis.trapExn, [ty], p)
 
-      (* xfromPPats : ppat list -> pat *)
-      (* A function to transform ppat lists to tuple pats for use in case exps. *)
-      (* e.g. the pcase branch *)
-      (*   ? & 1 & (x,y) *)
-      (* becomes *)
-      (*   (_, Val(1), Val(x,y)) *)
-      fun xformPPats ps = let
-	    fun x ([], acc) = rev acc
-	      | x (A.NDWildPat ty :: t, acc) = x (t, A.WildPat ty :: acc)
-	      | x (A.HandlePat (p, ty) :: t, acc) = x (t, mkExnPat(p,ty) :: acc)
-	      | x (A.Pat p :: t, acc) = x (t, mkValPat p :: acc)
-            in
-	      A.TuplePat (x (ps, []))
-            end
-
-(*
-      (* build a map of each completion bitstring to its possible matches *)
-      fun buildMap ([A.Otherwise e], m) : matchmap = let
-	    val match = A.PatMatch (A.WildPat esTupTy, e)
-            in
-	      mergeIntoMap (m, CB.allOnes nExps, match, true)
-            end
-	| buildMap ([A.PMatch _], _) = 
-            raise Fail "ill-formed pcase: pmatch, rather than otherwise, is last"
-	    (* TODO...perhaps here I should insert an `Otherwise => raise ...` instead *)
-	| buildMap (A.PMatch (ps, e) :: t, m) = let
-	    val key = CB.fromPPats ps
-	    val match = A.PatMatch (xformPPats ps, e)
-	    val m' = mergeIntoMap (m, key, match, false)
-	    in 
-	      buildMap (t, m')
-	    end
-	| buildMap (A.Otherwise _ :: _, _) = 
-            raise Fail "ill-formed pcase: otherwise is not last"
-	| buildMap ([], _) = raise Fail "bug" (* shouldn't reach this *)
-*)
-
       local
+        (* xformPPats : ppat list -> pat *)
+        (* A function to transform ppat lists to tuple pats for use in case exps. *)
+	(* e.g. the pcase branch *)
+	(*   ? & 1 & (x,y) *)
+	(* becomes *)
+	(*   (_, Val(1), Val(x,y)) *)
+	fun xformPPats ps = let
+	  fun x ([], acc) = rev acc
+	    | x (A.NDWildPat ty :: t, acc) = x (t, A.WildPat ty :: acc)
+	    | x (A.HandlePat (p, ty) :: t, acc) = x (t, mkExnPat(p,ty) :: acc)
+	    | x (A.Pat p :: t, acc) = x (t, mkValPat p :: acc)
+          in
+	    A.TuplePat (x (ps, []))
+          end
         (* cbOf : A.pmatch -> cbits *)
         fun cbOf (A.PMatch (pps, _)) = CB.fromPPats pps
 	  | cbOf (A.Otherwise _) = CB.allOnes nExps
@@ -242,24 +223,27 @@ structure TranslatePCase (* : sig
 	    val kmss = CBM.listItemsi m
 	    val goV = Var.new ("go", A.FunTy (Basis.unitTy, pcaseResultTy))
 	    val applyGo = A.ApplyExp (A.VarExp (goV, []), A.TupleExp [], pcaseResultTy)
+            val default = A.WildPat (A.TupleTy (map (Basis.optionTy o trapTy) eTys))
+	    val defaultMatch = A.PatMatch (default, applyGo)
 	    val u = Var.new ("u", Basis.unitTy)
 	    val fVs = futureVars es
 	    fun mkGo matches = let
               val pollTuple = A.TupleExp (map mkPoll fVs)
-	      val default = A.WildPat (A.TupleTy (map (Basis.optionTy o trapTy) eTys))
-	      val defaultMatch = A.PatMatch (default, applyGo)
 	      val body = A.CaseExp (pollTuple, matches @ [defaultMatch], pcaseResultTy)
 	      val arg = Var.new ("u", Basis.unitTy) 
               in
 		A.FB (goV, arg, body)
               end
+  	    fun isAllOnes cb = CB.eq (cb, CB.allOnes (CB.length cb))
 	    fun b ([], matches, lams, fnames) = mkGo matches :: lams
 	      | b ((cb,ms)::t, matches, lams, fnames) = let
                   val name = "state" ^ CB.toString cb
 		  val ty = A.FunTy (mkTy cb, pcaseResultTy)
 		  val nameV = Var.new (name, ty)
 		  val (m, vs) = mkMatch (cb, nameV)
-		  val f = mkLam (nameV, vs, ms)
+		  val f = mkLam (nameV, vs, if isAllOnes cb
+					    then ms else 
+					    ms @ [defaultMatch])
                   in
 		    b (t, m::matches, f::lams, name::fnames)
                   end
@@ -289,6 +273,21 @@ structure TranslatePCase (* : sig
  		        A.Otherwise one],
 		       Basis.intTy)
 
+  val c2 = let
+    val n = Var.new ("n", Basis.intTy)
+    val m = Var.new ("m", Basis.intTy)
+    in
+      A.PCaseExp ([A.VarExp (n, []), A.VarExp (m, [])],
+		  [A.PMatch ([T.intPPat 1, A.NDWildPat Basis.intTy], zero),
+		   A.PMatch ([A.NDWildPat Basis.intTy, T.intPPat 2], zero),
+		   A.Otherwise one],
+		  Basis.intTy)
+    end
+
+  val c3 = A.PCaseExp ([zero],
+		       [A.Otherwise c0],
+		       Basis.intTy)
+
   fun t (A.PCaseExp (es, pms, ty)) = tr (fn e => e) (es, pms, ty)
     | t _ = raise Fail "expecting a pcase"
 
@@ -298,6 +297,8 @@ structure TranslatePCase (* : sig
 
   fun test 0 = mkTest c0
     | test 1 = mkTest c1
+    | test 2 = mkTest c2
+    | test 3 = mkTest c3
     | test _ = print "No such test.\n"
 
 end
