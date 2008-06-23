@@ -4,7 +4,8 @@
  * All rights reserved.
  *)
 
-(* TODO This translation is NOT YET RECURSIVE. *)
+(* NOTE This translation is NOT RECURSIVE. *)
+(*      It assumes the incoming expressions have been translated. *)
 
 (* TODO Test exceptions. *)
 
@@ -264,6 +265,9 @@ structure TranslatePCase (* : sig
   val zero = T.int 0
   val one = T.int 1
 
+  fun t (A.PCaseExp (es, pms, ty)) = tr (fn e => e) (es, pms, ty)
+    | t _ = raise Fail "expecting a pcase"
+
   val c0 = A.PCaseExp ([zero],
 		       [A.Otherwise one],
 		       Basis.intTy)
@@ -285,11 +289,8 @@ structure TranslatePCase (* : sig
     end
 
   val c3 = A.PCaseExp ([zero],
-		       [A.Otherwise c0],
+		       [A.Otherwise (t c0)],
 		       Basis.intTy)
-
-  fun t (A.PCaseExp (es, pms, ty)) = tr (fn e => e) (es, pms, ty)
-    | t _ = raise Fail "expecting a pcase"
 
   fun mkTest pcase = (PrintAST.printExpNoTypes pcase;
 		      PrintAST.printComment "-->";
