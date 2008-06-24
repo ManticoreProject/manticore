@@ -107,6 +107,7 @@
 <INITIAL,PRIMCODE> "|"	=> (T.BAR);
 <INITIAL,PRIMCODE> ":"	=> (T.COLON);
 <INITIAL,PRIMCODE> "&"   => (T.AMP);
+<INITIAL,PRIMCODE> "."   => (T.DOT);
 
 <INITIAL> "("	=> (T.LP);
 <INITIAL> ")"	=> (T.RP);
@@ -128,7 +129,6 @@
 <INITIAL> ":>"	=> (T.SEAL);
 <INITIAL> "?"   => (T.NDWILD);
 <INITIAL> "|?|" => (T.PCHOICE);
-<INITIAL> "."   => (T.DOT);
 
 <INITIAL> "_primcode"	=> (YYBEGIN PRIMCODE; T.KW__primcode);
 <INITIAL> "_prim"	=> (YYBEGIN PRIMCODE; T.KW__prim);
