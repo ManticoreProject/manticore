@@ -1,0 +1,7 @@
+This directory contains the various libraries included when compiling Manticore programs.
+They are organized into subdirectories as follows:
+
+	sequential/		- support for the sequential-language Basis
+	cml/			- explicit-threading support: e.g., events, channels, etc.
+	parallel/		- implicit-threading support: parrays, ropes, futures, etc.
+	runtime/		- schedulers and misc. fiber stuff.
