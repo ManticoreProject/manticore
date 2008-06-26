@@ -3,7 +3,7 @@
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Check BOM code for unbound variables.
+ * Check inline-BOM for unbound variables.
  *)
 
 structure BOMBoundVariableCheck :> sig
@@ -11,9 +11,12 @@ structure BOMBoundVariableCheck :> sig
     val chkPrimValRhs : Error.span -> (ProgramParseTree.PML1.BOMParseTree.prim_val_rhs * BindingEnv.env) 
 		          -> ProgramParseTree.PML2.BOMParseTree.prim_val_rhs
 
-  (* check for unbound variables *)
     val chkCode : Error.span -> (ProgramParseTree.PML1.BOMParseTree.code * BindingEnv.env) 
 		        -> (ProgramParseTree.PML2.BOMParseTree.code * BindingEnv.env)
+
+    val chkTy : Error.span -> (ProgramParseTree.PML1.BOMParseTree.ty * BindingEnv.env) 
+		        -> ProgramParseTree.PML2.BOMParseTree.ty
+
 
   end = struct
 
@@ -347,11 +350,19 @@ structure BOMBoundVariableCheck :> sig
 	     | PT1.D_Extern (CFunctions.CFun{var, name, retTy, argTys, varArg, attrs}) => let
 		   val var' = freshVar var
 		   in
+		     (* define C functions in a separate, global namespace *)
 		       defineCFun(loc, var, var');
 		       (PT2.D_Extern(CFunctions.CFun{var=var', name=name, retTy=retTy, 
 						     argTys=argTys, varArg=varArg, attrs=attrs}),
 			env)
 	           end
+	     | PT1.D_TypeDef (td, ty) => let
+		   val ty = chkTy loc (ty, env)
+		   val td' = freshVar td
+		   val env = BEnv.insertBOMTy(env, td, td')
+		   in
+		       (PT2.D_TypeDef(td', ty), env)
+		   end
              (* end case *))
 
     fun chkCode loc (defs, env) = chkList loc (chkDefn, defs, env)

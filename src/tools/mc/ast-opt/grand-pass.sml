@@ -56,7 +56,7 @@ structure GrandPass : sig
       | binding (A.PValBind (p, e)) = A.PValBind (p, trExp e)
       | binding (A.FunBind lams) = A.FunBind (map lambda lams)
       | binding (A.PrimVBind (v, prim)) = A.PrimVBind (v, prim)
-      | binding (A.PrimCodeBind _) = raise Fail "TODO: ast-opt on PrimCodeBind"
+      | binding (A.PrimCodeBind pc) = A.PrimCodeBind pc
 
     and lambda (A.FB (f, x, e)) = A.FB (f, x, trExp e)
 

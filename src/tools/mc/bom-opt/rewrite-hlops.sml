@@ -50,7 +50,7 @@ end = struct
 
     (* ____________________________________________________________ *)
     (* findHLOps() - Find the set of HLOps in a given BOM module. *)
-    fun findHLOps (module as B.MODULE{name, externs, body}) = let
+    fun findHLOps (module as B.MODULE{name, externs, hlops, body}) = let
 
         val hlopEnv = ATbl.mkTable (32, Fail "hlopEnv")
 
@@ -387,7 +387,7 @@ end = struct
     (* ____________________________________________________________ *)
     (* rewrite'() - Rewrite the given BOM module, using HLOp rewrites in the
        library path. *)
-    fun rewrite' (module as B.MODULE{name, externs, body}) = let
+    fun rewrite' (module as B.MODULE{name, externs, hlops, body}) = let
         (* __________________________________________________ *)
         (* XXX Not sure rewrites need to worry about this stuff
         inherrited from the HLOp expander (unless we add C function
@@ -617,7 +617,7 @@ end = struct
     in
         (* DEBUG: print (Rewrites.grammarToString hlrwGrammar); *)
 	if changed
-	then SOME(B.mkModule(name, getExterns(), body'))
+	then SOME(B.mkModule(name, getExterns(), hlops, body'))
 	else NONE
     end
 

@@ -586,7 +586,7 @@ structure Contract : sig
 	    B.mkStmts (casts, doExp (env', body, kid))
 	  end
 
-    fun contract (flags : flags) (module as B.MODULE{name, externs, body}) = let
+    fun contract (flags : flags) (module as B.MODULE{name, externs, hlops, body}) = let
 	  fun ticks () = ST.sum {from = firstCounter, to = lastCounter}
 	  fun loop (body, prevSum) = let
 		val _ = ST.tick cntIters
@@ -610,14 +610,14 @@ if (prevSum <> sum) then (
 	  fun removeUnusedExtern cf = if unused(CFunctions.varOf cf)
 		then (
 		  ST.tick cntUnusedCFun;
-		  false)
+		  false) 
 		else true
 	  val externs = if #removeExterns flags
 		then List.filter removeUnusedExtern externs
 		else externs
 	  in
 	    ST.tick cntPhases;
-	    B.MODULE{name=name, externs=externs, body=body}
+	    B.MODULE{name=name, externs=externs, hlops=hlops, body=body}
 	  end
 
   end

@@ -50,6 +50,7 @@ structure TranslateEnv : sig
 	name : BOM.hlop,			(* the HLOp's identifier *)
 	inline : bool,				(* should the HLOp be inlined? *)
 	def : BOM.lambda,			(* the HLOps definition *)
+	pmlImports : (BOM.var * BOM.var) list,  (* imports from PML *)
 	externs : (BOM.var * int) list		(* list of external variables (i.e., C functions) *)
 						(* that def references paired with a count of the *)
 						(* number of references *)
@@ -68,6 +69,7 @@ structure TranslateEnv : sig
     val findBOMHLOp     : hlop -> HLOp.hlop option
     val findBOMHLOpDef  : hlop -> hlop_def option
     val findBOMCFun     : c_id -> BOM.var CFunctions.c_fun option
+    val findBOMPMLVar   : var -> BOM.var option
 
   (* output an environment *)
     val dump : (TextIO.outstream * env) -> unit
@@ -126,22 +128,14 @@ structure TranslateEnv : sig
 	    exh = exh
 	  }
 
-    fun insertVar (E{tycEnv, dconEnv, varEnv, importEnv, exh}, x, x') = E{
-	    tycEnv = tycEnv,
-	    dconEnv = dconEnv,
-	    varEnv = VMap.insert(varEnv, x, Var x'),
-	    importEnv = importEnv,
-	    exh = exh
-	  }
-
     fun newHandler (E{tycEnv, dconEnv, varEnv, importEnv, ...}) = let
 	  val exh = BOM.Var.new("_exh", BOMTy.exhTy)
 	  val env = E{
 		  tycEnv = tycEnv,
 		  dconEnv = dconEnv,
 		  varEnv = varEnv,
-		  importEnv = importEnv,
-		  exh = exh
+		  importEnv = importEnv,	
+	  exh = exh
 		}
 	  in
 	    (exh, env)
@@ -173,6 +167,7 @@ structure TranslateEnv : sig
 	name : BOM.hlop,			(* the HLOp's identifier *)
 	inline : bool,				(* should the HLOp be inlined? *)
 	def : BOM.lambda,			(* the HLOps definition *)
+	pmlImports : (BOM.var * BOM.var) list,  (* imports from PML *)
 	externs : (BOM.var * int) list		(* list of external variables (i.e., C functions) *)
 						(* that def references paired with a count of the *)
 						(* number of references *)
@@ -219,6 +214,12 @@ structure TranslateEnv : sig
 	   setFn=setCFun : (PTVar.var * BOM.var CFunctions.c_fun option) -> unit, ...
 	} =
 	    ProgramParseTree.Var.newProp(fn _ => NONE)
+      (* imported PML variables *)
+	val {
+	   getFn=getPMLVar : AST.var -> BOM.var option,
+	   setFn=setPMLVar : (AST.var * BOM.var option) -> unit, ...
+	} =
+	    Var.newProp(fn _ => NONE)
     in
     fun insertBOMTyDef (name, ty) = setTy(name, SOME ty)
     fun insertBOMVar (name, x) = setVar(name, SOME x)
@@ -229,13 +230,33 @@ structure TranslateEnv : sig
 	    setCFun(name, SOME cfun);
 	    ATbl.insert importEnv (Atom.atom (PTVar.nameOf name), cfun)
         )
+    fun insertPMLVar (av, bv) = setPMLVar (av, SOME bv)  (* imported PML variables *)
     val findBOMTy = getTy
     val findBOMVar = getVar
     val findBOMCon = getCon
     val findBOMHLOp = getHLOp
     val findBOMHLOpDef = getHLOpDef
     val findBOMCFun = getCFun
+  (* Importing PML variables is a two-step process: PML parse-tree variable -> AST variable -> BOM variable.
+   *)
+    fun findBOMPMLVar v = (case ModuleEnv.getValBind v
+            of SOME (ModuleEnv.Var astVar) => (case getPMLVar astVar
+                  of SOME bv => SOME bv
+		   | NONE => NONE
+                  (* end case *))
+	     | _ => NONE
+            (* end case *))
     end
+
+    fun insertVar (E{tycEnv, dconEnv, varEnv, importEnv, exh}, x, x') = (
+	 insertPMLVar(x, x');  (* bind PML variables so that inline BOM code can reference them *)
+	 E{
+	    tycEnv = tycEnv,
+	    dconEnv = dconEnv,
+	    varEnv = VMap.insert(varEnv, x, Var x'),
+	    importEnv = importEnv,
+	    exh = exh
+	  })
 
   (* output an environment *)
     fun dump (outStrm, E{tycEnv, dconEnv, varEnv, ...}) = let

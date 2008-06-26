@@ -60,7 +60,8 @@ structure Census : sig
 	    | B.E_Apply(f, xs, ys) => (appUse f; List.app inc xs; List.app inc ys)
 	    | B.E_Throw(k, xs) => (appUse k; List.app inc xs)
 	    | B.E_Ret xs => List.app inc xs
-	    | B.E_HLOp(_, xs, ys) => (List.app inc xs; List.app inc ys)
+	    | B.E_HLOp(hlop, xs, ys) => 
+	      (List.app inc xs; List.app inc ys)
 	  (* end case *))
 
     and clrFB (B.FB{f, params, exh, ...}) = (
@@ -69,11 +70,13 @@ structure Census : sig
 
     and doFB (B.FB{body, ...}) = doE body
 
-    fun census (B.MODULE{externs, body, ...}) = let
+    fun census (B.MODULE{externs, hlops, body, ...}) = let
 	  fun clrCFun cf = clear(CFunctions.varOf cf)
 	  in
 	    List.app clrCFun externs;
 	    clrFB body;
+	    List.app clrFB hlops;
+	    List.app doFB hlops;
 	    doFB body
 	  end
 

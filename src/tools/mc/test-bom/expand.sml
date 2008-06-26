@@ -309,7 +309,7 @@
 		) end
 	  val (cfs, env) = List.foldl doCFun ([], AtomMap.empty) externs
 	  val (_, cvtBody) = cvtLambda (AtomMap.empty, body, Ty.T_Fun)
-	  val module = BOM.MODULE{name=name, externs=cfs, body=cvtBody env}
+	  val module = BOM.MODULE{name=name, externs=cfs, hlops=[], body=cvtBody env}
 	  in
 	    Census.census module;
 	    module

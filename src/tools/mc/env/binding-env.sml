@@ -93,11 +93,15 @@ structure BindingEnv =
 	        BOMEnv {varEnv=Map.insert(varEnv, id, x), hlopEnv=hlopEnv, tyEnv=tyEnv}
 	fun insertHLOp (BOMEnv {varEnv, hlopEnv, tyEnv}, id, x) =
 	        BOMEnv {hlopEnv=Map.insert(hlopEnv, id, x), varEnv=varEnv, tyEnv=tyEnv}
+	fun insertTy (BOMEnv {varEnv, hlopEnv, tyEnv}, id, x) =
+	        BOMEnv {hlopEnv=hlopEnv, varEnv=varEnv, tyEnv=Map.insert(tyEnv, id, x)}
     in
     fun insertBOMVar (Env{tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
 	    Env{tyEnv=tyEnv, varEnv=varEnv, bomEnv=insertVar(bomEnv, id, x), modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
     fun insertBOMHLOp (Env{tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
 	    Env{tyEnv=tyEnv, varEnv=varEnv, bomEnv=insertHLOp(bomEnv, id, x), modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
+    fun insertBOMTy (Env{tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
+	    Env{tyEnv=tyEnv, varEnv=varEnv, bomEnv=insertTy(bomEnv, id, x), modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
     end
 
     (* lookup a variable in the scope of the current module *)

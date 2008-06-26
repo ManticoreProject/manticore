@@ -16,6 +16,7 @@
 (*	| KW_and	("and")			*)
 	| KW_any	("any")
 	| KW_apply	("apply")
+	| KW_hlop	("hlop")
 	| KW___attribute__ ("__attribute__")
 	| KW_byte	("byte")
 (*	| KW_case	("case")		*)
@@ -56,6 +57,7 @@
 	| KW_vpload	("vpload")
 	| KW_vpstore	("vpstore")
 	| KW_wrap	("wrap")
+	| KW_pmlvar	("pmlvar")
 (*	| LP		("(")			*)
 (*	| RP		(")")			*)
 (*	| LB		("[")			*)
@@ -194,8 +196,9 @@ RawType
 	| "vec128"	=> (BPT.T_Vec128)
 	;
 
-HLOpId  : HLOP
-               => ({span=FULL_SPAN, tree=([], HLOP)})
+HLOpId  
+        : (Name ".")* HLOP
+	       => ({span=FULL_SPAN, tree=(SR, HLOP)})
         ;
 
 BOMExp
@@ -217,7 +220,7 @@ BOMExp
 		=> (BPT.E_Throw(QualifiedId, Args))
 	| "return" "(" Args ")"
 		=> (BPT.E_Return Args)
-	| HLOpId "(" Args ("/" Args)? ")"
+	| "hlop" HLOpId "(" Args ("/" Args)? ")"
 		=> (BPT.E_HLOpApply(HLOpId, Args, Option.getOpt(SR, [])))
 	;
 
@@ -252,6 +255,8 @@ RHS
 	| "ccall" ID "(" Args ")"	=> (BPT.RHS_CCall(ID, Args))
 	| "vpstore" "(" POSINT "," SimpleExp "," SimpleExp ")"
 					=> (BPT.RHS_VPStore(POSINT, SimpleExp1, SimpleExp2))
+        | "pmlvar" QualifiedId
+ 	                                => (BPT.RHS_PMLVar QualifiedId)
 	;
 
 NonSelectExp

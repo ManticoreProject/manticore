@@ -45,6 +45,8 @@ structure TranslatePrim : sig
 
     fun newTmp ty = BV.new("_t", ty)
 
+    fun useCFun var = BOM.Var.addToCount(var, 1)
+
   (* convert a parse-tree type express to a BOM type *)
     fun cvtTy ty = (case ty
 	   of BPT.T_Mark {tree, span} => cvtTy tree
@@ -103,6 +105,53 @@ structure TranslatePrim : sig
            of NONE => raise Fail(String.concat ["unknown BOM variable ", PTVar.nameOf v])
 	    | SOME v => v
            (* end case *))
+
+    (* PML imports
+     *
+     * One property prevents us from simply importing the variable directly: hlops
+     * expansion happens later, so getting the scope right would be difficult. Instead
+     * we do something like closure conversion. i.e.,
+     *   define @f (params, ... / exh) : ty =
+     *     ...
+     *     let x : ty' = pmlval p
+     *     ...
+     *   ;
+     * ==> (rewrites to)
+     *   define @f (params, ..., p' / exh) : ty =
+     *     ...
+     *     let x : ty' = p'
+     *     ...
+     *   ;
+     * where p' is a fresh BOM variable. We have to fill in the PML variables at the 
+     * call sites, but doing so does achieve correct scoping.
+     *
+     *)
+    local
+	(* for each import, we record two variables: the fresh binding (p' in the example)
+	 * and the actual binding (p in the example).
+	 *)
+	val pmlImports : (BOM.var * BOM.var) list ref = ref []
+	fun findVar ([], v) = NONE
+	  | findVar ((b, a) :: xs, v) = if BV.same(a, v)
+              then SOME b
+	      else findVar(xs, v)
+    in
+    fun addPMLImport actual = (case findVar (!pmlImports, actual)
+            of NONE => let
+		   val binding = BV.new(BV.nameOf actual, BV.typeOf actual)
+                   in
+		      pmlImports := (binding, actual) :: !pmlImports;
+		      binding
+	           end
+	     | SOME binding => binding
+           (* end case *))
+    fun getPMLImports () = let
+	    val imports = !pmlImports
+            in
+	       pmlImports := [];
+	       imports
+	    end
+    end
 
     fun cvtExp (findCFun, e) = (case e
 	   of BPT.E_Mark {tree, span} => cvtExp(findCFun, tree)
@@ -182,9 +231,24 @@ structure TranslatePrim : sig
 				  BOM.mkStmt(lhs', BOM.E_VPStore(offset, vp, x), e')))
 		    | BPT.RHS_Promote arg =>
 			cvtSimpleExp(findCFun, arg, fn x => BOM.mkStmt(lhs', BOM.E_Promote x, e'))
-		    | BPT.RHS_CCall(f, args) => 
-			cvtSimpleExps(findCFun, args,
-			  fn xs => BOM.mkStmt(lhs', BOM.E_CCall(findCFun f, xs), e'))
+		    | BPT.RHS_CCall(f, args) => let
+			val cfun = findCFun f
+		        in
+		          useCFun cfun;
+			  cvtSimpleExps(findCFun, args,
+			    fn xs => BOM.mkStmt(lhs', BOM.E_CCall(cfun, xs), e'))
+		        end
+		    | BPT.RHS_PMLVar pmlVar => let
+		       (* see comments above on pml imports for an explanation *)
+			val actualBinding = (case E.findBOMPMLVar pmlVar
+				  of NONE => raise Fail (String.concat ["unbound PML variable", PTVar.toString pmlVar])
+				   | SOME v => v
+				(* end case *))
+			val freshBinding = addPMLImport actualBinding
+		        in
+			   print (BOM.Var.toString freshBinding^"\n");
+			   BOM.mkLet(lhs', BOM.mkRet [freshBinding], e')
+			end
 		  (* end case *)
 		end
 	    | BPT.E_Fun(fbs, e) => let
@@ -357,6 +421,13 @@ structure TranslatePrim : sig
             of NONE => raise (fail(["Unknown C function ", PTVar.toString name]))
 	     | SOME(cf as CFunctions.CFun{var, ...}) => var
             (* end case *))
+
+    fun etaExpand (name, l) = let
+	    val BOM.FB { f=f', params=params', exh=exh', ...} = BOMUtil.copyLambda l
+	    val l' = BOM.FB{ f=f', params=params', exh=exh', body=BOM.mkHLOp(name, params', exh') }
+	    in
+	       BOM.mkFun([l'], BOM.mkRet [f'])
+	    end
   
     fun cvtRhs rhs = (case rhs
            of BPT.VarPrimVal v => BOM.mkRet [lookup v]
@@ -367,9 +438,10 @@ structure TranslatePrim : sig
 		      BOM.mkFun([l], BOM.mkRet [f])
 		  end
 	    | BPT.HLOpPrimVal hlop => (case E.findBOMHLOpDef hlop
-		  of SOME {name, inline, def, externs} =>
-		      raise Fail "toodo"
-		   | NONE => raise Fail ""
+		  of SOME {name, inline, def, externs, pmlImports} => 
+(* FIXME, handle the pml imports*)
+		       etaExpand(name, def)
+		   | NONE => raise Fail "unbound hlop"
                   (* end case *))
            (* end case *))
 
@@ -383,7 +455,8 @@ structure TranslatePrim : sig
     (* this is the first pass, which binds C-function prototypes, adds defined types to the translation
      * environment, and adds HLOp signatures to the HLOp environment.
      *)
-    fun insDef importEnv (BPT.D_Extern(CFunctions.CFun{var, name, retTy, argTys, attrs, varArg})) = (
+    fun insDef importEnv (BPT.D_Mark {span, tree}) = insDef importEnv tree
+      | insDef importEnv (BPT.D_Extern(CFunctions.CFun{var, name, retTy, argTys, attrs, varArg})) = (
 	case E.findBOMCFun var
 	 (* FIXME: we probably should check that the existing prototype matches this one! *)
 	 of SOME cfun => () (* already defined, so do nothing *)
@@ -438,6 +511,7 @@ structure TranslatePrim : sig
 		   name = hlop,
 		   inline = inline,
 		   def = lambda,
+		   pmlImports = getPMLImports(),
 		   externs = VTbl.listItemsi cfuns
 	        }
 	    in

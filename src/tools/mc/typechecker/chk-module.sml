@@ -110,6 +110,11 @@ structure ChkModule :> sig
 		  if isEqTy then TyCon.markEqTyc tyc else ();
 		  env'
 		end
+	    | PT.PrimTyDecl (tvs, id, bty) => let
+		  val _ = raise Fail "todo"
+		  in
+		     env
+		  end
           (* end case *))
 
     fun chkSpec loc (spec, env) = (case spec

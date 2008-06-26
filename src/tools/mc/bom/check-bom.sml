@@ -48,7 +48,7 @@ structure CheckBOM : sig
     fun typesOf xs = List.map BV.typeOf xs
 
     fun check (phase, module) = let
-	  val B.MODULE{name, externs, body} = module
+	  val B.MODULE{name, externs, hlops, body} = module
 	  val anyErrors = ref false
 	(* report an error *)
 	  fun pr s = TextIO.output(TextIO.stdErr, concat s)

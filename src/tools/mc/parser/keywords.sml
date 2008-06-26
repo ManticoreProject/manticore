@@ -61,6 +61,7 @@ structure Keywords : sig
 	    ("and",		T.KW_and),
 	    ("any",		T.KW_any),
 	    ("apply",		T.KW_apply),
+	    ("hlop",		T.KW_hlop),
 	    ("byte",		T.KW_byte),
 	    ("case",		T.KW_case),
 	    ("ccall",		T.KW_ccall),
@@ -99,7 +100,8 @@ structure Keywords : sig
 	    ("vproc",		T.KW_vproc),
 	    ("vpload",		T.KW_vpload),
 	    ("vpstore",		T.KW_vpstore),
-	    ("wrap",		T.KW_wrap)
+	    ("wrap",		T.KW_wrap),
+	    ("pmlvar",          T.KW_pmlvar)
 	  ]
 
   (* create a keyword lookup table *)

@@ -529,6 +529,9 @@ structure Translate : sig
 	      B.mkLet([], B.mkHLOp(startupOp, [], [E.handlerOf env]), exp)
 	    end
 
+  (* get the list of imported C functions from the environment *)
+    val listImports = AtomTable.listItems o E.getImportEnv
+
     fun translate body = let
 	  val env0 = StdEnv.env ()
           val argTy = BTy.T_Raw RawTypes.T_Int
@@ -548,7 +551,9 @@ structure Translate : sig
 		  exh = [exh],
 		  body = startup (env, body'')
 		}
-	  val module = B.mkModule(Atom.atom "Main", [], mainFun)
+	  val imports = listImports env
+	  val hlops = HLOpEnv.listHLOps()
+	  val module = B.mkModule(Atom.atom "Main", imports, hlops, mainFun)
 	  in
 	    if (Controls.get TranslateControls.keepEnv)
 	      then let

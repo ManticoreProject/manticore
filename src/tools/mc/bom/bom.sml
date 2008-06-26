@@ -75,6 +75,7 @@ structure BOM =
     datatype module = MODULE of {
 	name : Atom.atom,
 	externs : var CFunctions.c_fun list,
+	hlops : lambda list,
 	body : lambda
       }
 
@@ -144,14 +145,23 @@ structure BOM =
 	  mkExp(E_Stmt(lhs, rhs, exp)))
     fun mkStmts ([], exp) = exp
       | mkStmts ((lhs, rhs)::r, exp) = mkStmt(lhs, rhs, mkStmts(r, exp))
-    fun mkFun(fbs, e) = let
-    	  fun setKind (lambda as FB{f, params, exh, ...}) = (
-		Var.setKind(f, VK_Fun lambda);
-		List.app (fn x => Var.setKind(x, VK_Param)) (params @ exh))
-	  in
-	    List.app setKind fbs;
-	    mkExp(E_Fun(fbs, e))
-	  end
+
+    local
+    fun setLambdaKind (lambda as FB{f, params, exh, ...}) = (
+	    Var.setKind(f, VK_Fun lambda);
+	    List.app (fn x => Var.setKind(x, VK_Param)) (params @ exh))
+    in
+    fun mkLambda {f, params, exh, body} = let
+	    val l = FB{f=f, params=params, exh=exh, body=body}
+            in
+	        setLambdaKind l;
+		l
+            end
+    fun mkFun (fbs, e) = (
+	    List.app setLambdaKind fbs;
+	    mkExp(E_Fun(fbs, e)))
+    end
+
     fun mkCont (lambda as FB{f, params, ...},e) = (
           Var.setKind (f, VK_Cont lambda);
 	  List.app (fn x=> Var.setKind(x, VK_Param)) params;
@@ -171,12 +181,12 @@ structure BOM =
 	  CFunctions.CFun arg)
 
   (* mkModule : Atom.atom * var CFunctions.c_fun list * lambda -> module *)
-    fun mkModule (name, externs, body as FB{params, exh, ...}) = (
+    fun mkModule (name, externs, hlops, body as FB{params, exh, ...}) = (
 	  List.app (fn x => Var.setKind(x, VK_Param)) (params @ exh);
 	  List.app
 	    (fn (CFunctions.CFun{var, name, ...}) => Var.setKind(var, VK_Extern name))
 	      externs;
-	  MODULE{name = name, externs = externs, body = body})
+	  MODULE{name = name, externs = externs, hlops = hlops, body = body})
 
   (* for sequences of Stms *)
     fun mkStmts ([], e) = e

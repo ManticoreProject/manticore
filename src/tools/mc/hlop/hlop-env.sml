@@ -103,6 +103,7 @@ structure HLOpEnv : sig
 	name : BOM.hlop,			(* the HLOp's identifier *)
 	inline : bool,				(* should the HLOp be inlined? *)
 	def : BOM.lambda,			(* the HLOps definition *)
+	pmlImports : (BOM.var * BOM.var) list,  (* imports from PML *)
 	externs : (BOM.var * int) list		(* list of external variables (i.e., C functions) *)
 						(* that def references paired with a count of the *)
 						(* number of references *)
@@ -110,6 +111,7 @@ structure HLOpEnv : sig
 
     val addDefs : hlop_def list -> unit
     val findDef : HLOp.hlop -> hlop_def option
+    val listHLOps : unit -> BOM.lambda list
 
   end = struct
 
@@ -315,6 +317,7 @@ structure HLOpEnv : sig
 	name : BOM.hlop,			(* the HLOp's identifier *)
 	inline : bool,				(* should the HLOp be inlined? *)
 	def : BOM.lambda,			(* the HLOps definition *)
+	pmlImports : (BOM.var * BOM.var) list,  (* imports from PML *)
 	externs : (BOM.var * int) list		(* list of external variables (i.e., C functions) *)
 						(* that def references paired with a count of the *)
 						(* number of references *)
@@ -322,12 +325,12 @@ structure HLOpEnv : sig
 
     local 
     val hlops : hlop_def Stamp.Tbl.hash_table = Stamp.Tbl.mkTable(128, Fail "HLOp table")
-    fun addDef (d as {name=name as HLOp.HLOp{id, ...}, inline, def, externs}) = 
+    fun addDef (d as {name=name as HLOp.HLOp{id, ...}, inline, def, externs, pmlImports}) = 
 	    Stamp.Tbl.insert hlops (id, d)
     in
     val addDefs = List.app addDef
-    fun findDef (HLOp.HLOp{id, ...}) = 
-	    Stamp.Tbl.find hlops id
+    fun findDef (HLOp.HLOp{id, ...}) = Stamp.Tbl.find hlops id
+    fun listHLOps () = List.map #def (Stamp.Tbl.listItems hlops)
     end
 
   end

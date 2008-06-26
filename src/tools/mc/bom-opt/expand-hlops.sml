@@ -23,18 +23,29 @@ structure ExpandHLOps : sig
   (* record a use of a C function *)
     fun useCFun (var, cnt) = B.Var.addToCount(var, cnt)
 
-    fun expand (module as B.MODULE{name, externs, body}) = let
+  (* add the list of PML imports to the parameters of the HLOP *)
+    fun addPMLImports (B.FB{f, params, exh, body}, importBinds) = let
+	    val BTy.T_Fun (_, _, retTy) = BOM.Var.typeOf f
+	    val params = params@importBinds
+	    val ty = BTy.T_Fun (List.map BOM.Var.typeOf params, List.map BOM.Var.typeOf exh, retTy)
+	    in
+	       BOM.Var.setType(f, ty);
+	       B.mkLambda {f=f, params=params, exh=exh, body=body}
+            end
+
+    fun expand (module as B.MODULE{name, externs, hlops, body}) = let
 	  val changed = ref false
 	(* a table of the lambdas that we are adding to the module.  The domain is the
 	 * lambda names from the HLOp environment, while the range are fresh copies of
 	 * the lambdas.
 	 *)
 	  val lambdas = VTbl.mkTable (16, Fail "lambda table")
-	  fun applyHLOp (lambda as B.FB{f, ...}, args, rets, cfuns) = let
+	  fun applyHLOp (lambda as B.FB{f, ...}, args, rets, cfuns, importBinds) = let
 		val f' = (case VTbl.find lambdas f
 		       of SOME(B.FB{f, ...}) => f
 			| NONE => let
-			    val lambda as B.FB{f=f', ...} = BU.copyLambda lambda
+			    val lambda = BU.copyLambda lambda
+			    val lambda as B.FB{f=f', ...} = addPMLImports (lambda, importBinds)
 			    in
 			      List.app useCFun cfuns;
 			      VTbl.insert lambdas (f, lambda);
@@ -50,7 +61,7 @@ structure ExpandHLOps : sig
 	 *)
 	  val importEnv = let
 		val importEnv = ATbl.mkTable (32, Fail "importEnv")
-		fun ins (cf as CFunctions.CFun{name, ...}) =
+		fun ins (cf as CFunctions.CFun{name, ...}) = 
 		      ATbl.insert importEnv (Atom.atom name, cf)
 		in
 		  List.app ins externs;
@@ -75,14 +86,25 @@ structure ExpandHLOps : sig
 		  | B.E_Throw _ => e
 		  | B.E_Ret _ => e
 		  | B.E_HLOp(hlOp, args, rets) => let
-		      val {inline, defn, cfuns} = HLOpDefLoader.load(importEnv, hlOp)
+	              val (inline, defn, cfuns, pmlImports) = (case HLOpEnv.findDef hlOp
+			    of SOME {inline, def, externs, pmlImports, ...} => 
+			       (* see if the hlop is in a primcode block before looking at the hlop files. *)
+			       (inline, def, externs, pmlImports)
+			     | NONE => let
+				   val {inline, defn, cfuns} = HLOpDefLoader.load(importEnv, hlOp)
+			           in
+				      (inline, defn, cfuns, [])
+			           end
+			    (* end case *))
+	              val (importBinds, importActuals) = ListPair.unzip pmlImports
+		      val args' = args@importActuals
 		      in
 			changed := true;
 			if inline
 			  then (
 			    List.app useCFun cfuns;
-			    BU.applyLambda(defn, args, rets))
-			  else applyHLOp(defn, args, rets, cfuns)
+			    BU.applyLambda(defn, args', rets))
+			  else applyHLOp(defn, args', rets, cfuns, importBinds)
 		      end
 		(* end case *))
 	  and cvtLambda (B.FB{f, params, exh, body}) =
@@ -98,7 +120,7 @@ structure ExpandHLOps : sig
 		(* end case *))																			
 	  in
 	    if !changed
-	      then SOME(B.mkModule(name, getExterns(), body))
+	      then SOME(B.mkModule(name, getExterns(), hlops, body))
 	      else NONE
 	  end
 

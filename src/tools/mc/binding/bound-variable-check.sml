@@ -399,12 +399,12 @@ structure BoundVariableCheck :> sig
 	          in
 		     (PT2.AbsTyDecl (tvs, id'), env)
 		  end
-	    | PT1.PrimTyDecl(tvs, id, bty) => let
+	    | PT1.PrimTyDecl (tvs, id, bty) => let
 		val id' = Var.new(Atom.toString id, ())
 		val env = BEnv.insertDataTy(env, id, id')
+		val bty = BOMBoundVariableCheck.chkTy loc (bty, env)
 		in
-		  raise Fail "todo"
-(*		  (PT2.PrimTyDecl(tvs, id', bty), env)*)
+		  (PT2.PrimTyDecl(tvs, id', bty), env)
 		end
            (* end case *))
 

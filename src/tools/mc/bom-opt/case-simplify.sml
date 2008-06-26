@@ -562,8 +562,8 @@ DEBUG*)
 	  end
       | literalCase _ = raise Fail "ill-formed literal case"
 
-    fun transform (B.MODULE{name, externs, body}) = let
-	  val module = B.mkModule(name, externs, #2 (xformLambda (BV.Map.empty, body)))
+    fun transform (B.MODULE{name, externs, hlops, body}) = let
+	  val module = B.mkModule(name, externs, hlops, #2 (xformLambda (BV.Map.empty, body)))
 	  in
 (* FIXME: eventually, this pass should preserve census info! *)
 	    Census.census module;

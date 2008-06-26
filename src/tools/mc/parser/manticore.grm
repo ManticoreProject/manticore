@@ -31,6 +31,6 @@ ValueDeclRHS
 		=> (fn pat => PT.PrimVDecl(pat, BPT.LambdaPrimVal BOMLambda))
 	| "_prim" "(" QualifiedId ")"
 		=> (fn pat => PT.PrimVDecl(pat, BPT.VarPrimVal QualifiedId))
-	| "_prim" "(" HLOpId ")"
+	| "_prim" "(" "hlop" HLOpId ")"
 		=> (fn pat => PT.PrimVDecl(pat, BPT.HLOpPrimVal HLOpId))
 	;

@@ -113,7 +113,7 @@ structure Uncurry : sig
 	  end
 
   (* transform curried applications to tupled applications *)
-    fun xform (module as B.MODULE{name, externs, body}) = let
+    fun xform (module as B.MODULE{name, externs, hlops, body}) = let
 	  val (optPossible, findCurried) = analyse body
 	  val uncurried = VTbl.mkTable (16, Fail "UncurriedFns")
 	(* lookup the curry-arity of the function *)
@@ -247,7 +247,7 @@ structure Uncurry : sig
 	      then let
 		val B.FB{f, params, exh, body} = body
 		in
-		  B.mkModule(name, externs, B.FB{f=f, params=params, exh=exh, body=xformExp body})
+		  B.mkModule(name, externs, hlops, B.FB{f=f, params=params, exh=exh, body=xformExp body})
 		end
 	      else module
 	  end

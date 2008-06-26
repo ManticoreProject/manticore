@@ -343,6 +343,8 @@ structure PrintAST : sig
 		   lambda "fun" d;
 		   app (lambda "and") ds;
 		   closeBox ()))
+      | binding (A.PrimVBind _) = ()
+      | binding (A.PrimCodeBind _) = ()
 
   (* lambda : string -> A.lambda -> unit *)
     and lambda kw (A.FB (f, x, b)) =
