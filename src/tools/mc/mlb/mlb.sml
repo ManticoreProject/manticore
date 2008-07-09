@@ -18,8 +18,8 @@ structure MLB : sig
 
     exception Error
 
-    fun preprocess (ppCmd, file) = let
-	    val proc = Unix.execute(ppCmd, [file])
+    fun preprocess (ppCmd :: args, file) = let
+	    val proc = Unix.execute(ppCmd, args@[file])
             in 
 	       { inStrm = Unix.textInstreamOf proc,
 		 reap = fn () => ignore(Unix.reap proc) 

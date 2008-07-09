@@ -85,9 +85,7 @@
 <INITIAL> {ws}		=> (continue ());
 <INITIAL> "(*"		=> (YYBEGIN COMMENT; depth := 1; continue());
 
-<INITIAL> . => (
-	lexErr(yypos, ["bad character `", String.toString yytext, "'"]);
-	continue());
+<INITIAL> "\""          => (YYBEGIN STRING; skip())
 
 <STRING>{esc}		=> (addStr(valOf(String.fromString yytext)); continue());
 <STRING>{sgood}+	=> (addStr yytext; continue());
