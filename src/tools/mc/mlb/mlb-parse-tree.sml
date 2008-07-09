@@ -29,7 +29,8 @@ structure MLBParseTree =
       | SignatureBasDec of mod_bind                (* basis signature binding *)
       | FunctorBasDec of mod_bind                  (* basis functor binding *)
       | SeqBasDec of bas_dec list                  (* sequential *)
-      | ImportBasDec of id                         (* import ML basis or source *)
+      | ImportBasDec of (id * string option)       (* import ML basis or source (using
+						    * an optional preprocessor) *)
 
   (* binds bases *)
     and bas_bind

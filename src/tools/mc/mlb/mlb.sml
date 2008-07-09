@@ -18,6 +18,14 @@ structure MLB : sig
 
     exception Error
 
+    fun preprocess (ppCmd, file) = let
+	    val proc = Unix.execute(ppCmd, [file])
+            in 
+	       { inStrm = Unix.textInstreamOf proc,
+		 reap = fn () => ignore(Unix.reap proc) 
+	       }
+            end
+
   (* check for errors and report them if there are any *)
     fun checkForError errStrm = (
 	  Error.report (TextIO.stdErr, errStrm);
@@ -49,20 +57,20 @@ structure MLB : sig
     and processBasDec (loc, errStrms, basDec, ptss) = (case basDec
         of PT.MarkBasDec {span, tree} => processBasDec (span, errStrms, tree, ptss)
 	 (* imports can be pml or mlb files *)
-	 | PT.ImportBasDec file => let
+	 | PT.ImportBasDec (file, preprocessor) => let
            val file = Atom.toString file
 	   val errStrms = Error.mkErrStream file :: errStrms
            in
 	      case OS.Path.splitBaseExt file
-	       of {base, ext=SOME "mlb"} => loadMLB (errStrms, file, ptss)
-		| {base, ext=SOME "pml"} => loadPML (errStrms, file, ptss)
+	       of {base, ext=SOME "mlb"} => loadMLB (errStrms, file, preprocessor, ptss)
+		| {base, ext=SOME "pml"} => loadPML (errStrms, file, preprocessor, ptss)
 		| _ => raise Fail "unknown source file extension"
            end
 	 | _ => raise Fail "todo"
         (* end case *))
 
   (* load an MLB file *)
-    and loadMLB (errStrms, file, ptss) = (case MLBParser.parseFile (List.hd errStrms, file)
+    and loadMLB (errStrms, file, preprocessor, ptss) = (case MLBParser.parseFile (List.hd errStrms, file)
         of SOME {span, tree=basDecs} => let
  	   fun f (basDec, ptss) = processBasDec (span, errStrms, basDec, ptss)
 	   (* FIXME: check that the MLB file is valid *)
@@ -74,10 +82,17 @@ structure MLB : sig
        (* end case *))
 
   (* load a PML file *)
-    and loadPML (errStrms, file, pts) = let 
+    and loadPML (errStrms, filename, preprocessor, pts) = let 
 	val errStrm = List.hd errStrms
-        val ptOpt = Parser.parseFile (errStrm, file)
+	val { inStrm, reap } = (case preprocessor
+		     of NONE => { inStrm = TextIO.openIn filename, 
+				  reap = fn () => () 
+				}
+		      | SOME ppCmd => preprocess (ppCmd, filename)
+		   (* end case *))
+        val ptOpt = Parser.parseFile (errStrm, inStrm)
         in
+	   reap();
 	   checkForErrors errStrms;
 	   case ptOpt
             of NONE => pts
@@ -85,6 +100,6 @@ structure MLB : sig
         end
 
   (* load the MLB file *)
-    fun load (errStrm, file) = List.concat (List.rev (loadMLB([errStrm], file, [])))
+    fun load (errStrm, file) = List.concat (List.rev (loadMLB([errStrm], file, NONE, [])))
 
   end (* MLB *)

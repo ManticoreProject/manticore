@@ -9,7 +9,7 @@
 structure Parser : sig
 
   (* parse a file; return NONE if there are syntax errors *)
-    val parseFile : (Error.err_stream * string) -> ProgramParseTree.PML1.program option
+    val parseFile : (Error.err_stream * TextIO.instream) -> ProgramParseTree.PML1.program option
 
   end = struct
 
@@ -23,8 +23,7 @@ structure Parser : sig
     val parseErr = Error.parseError ManticoreTokens.toString
 
   (* parse a file, returning a parse tree *)
-    fun parseFile (errStrm, filename) = let
-	  val file = TextIO.openIn filename
+    fun parseFile (errStrm, file) = let
 	  fun get () = TextIO.input file
 	  val lexer = ManticoreLex.lex (Error.sourceMap errStrm) (lexErr errStrm)
 	  in

@@ -41,7 +41,7 @@ functor MainFn (
     fun prHdr msg = print(concat["******************** ", msg,  " ********************\n"])
 
   (* load the AST corresponding to a single .pml file *)
-    fun srcToAST (errStrm, file) = (case Parser.parseFile (errStrm, file)
+    fun srcToAST (errStrm, file) = (case Parser.parseFile (errStrm, TextIO.openIn file)
 	   of SOME pt1 => let
 		val pt2 = BoundVariableCheck.check (errStrm, pt1)
 		val _ = checkForErrors errStrm

@@ -23,6 +23,7 @@
     | EQ                ("=")
     | SEMI              (";")
     | NAME of Atom.atom
+    | STRING of string
     ;
 
 %defs (
@@ -48,7 +49,7 @@ BasDec
         | "functor" ModBind => (markBasDec(FULL_SPAN, PT.FunctorBasDec ModBind))
 (* FIXME: add this sequencing operator *)
 (*        | BasDec (";" BasDec)* => markBasDec(FULL_SPAN, PT.SeqBasDec (BasDec :: SR))*)
-        | NAME => (markBasDec(FULL_SPAN, PT.ImportBasDec NAME))
+        | NAME STRING? => (markBasDec(FULL_SPAN, PT.ImportBasDec (NAME, STRING)))
         ;
 
 BasExp

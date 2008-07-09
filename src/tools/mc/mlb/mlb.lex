@@ -18,6 +18,20 @@
   (* the depth int ref will be used for keeping track of comment depth *)
     val depth = ref 0
 
+  (* list of string fragments to concatenate *)
+    val buf : string list ref = ref []
+
+  (* add a string to the buffer *)
+    fun addStr s = (buf := s :: !buf)
+
+  (* make a string from buf *)
+    fun mkString () = let
+	  val s = String.concat(List.rev(!buf))
+	  in
+	    buf := [];
+            T.STRING s
+	  end
+
   (* eof : unit -> lex_result *)
   (* ml-ulex requires this as well *)
     fun eof () = T.EOF
@@ -55,7 +69,7 @@
     end
 );
 
-%states INITIAL COMMENT;
+%states INITIAL STRING COMMENT;
 
 %let letter = [a-zA-Z];
 %let dig = [0-9];
@@ -74,6 +88,20 @@
 <INITIAL> . => (
 	lexErr(yypos, ["bad character `", String.toString yytext, "'"]);
 	continue());
+
+<STRING>{esc}		=> (addStr(valOf(String.fromString yytext)); continue());
+<STRING>{sgood}+	=> (addStr yytext; continue());
+<STRING>"\""		=> (YYBEGIN INITIAL; mkString());
+<STRING>"\\".		=> (lexErr(yypos, [
+				"bad escape character `", String.toString yytext,
+				"' in string literal"
+			      ]);
+			    continue());
+<STRING>.		=> (lexErr(yypos, [
+				"bad character `", String.toString yytext,
+				"' in string literal"
+			      ]);
+			    continue());
 
 <COMMENT> "(*" => (
 	depth := !depth + 1;
