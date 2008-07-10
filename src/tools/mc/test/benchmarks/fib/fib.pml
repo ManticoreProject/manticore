@@ -17,9 +17,9 @@ divert(0)
         in
            loop(n, 0)
         end
-;
 
-val seqSz = lg(readint());
+
+val seqSz = lg(readint())
 define({_SEQ_SZ_}, {seqSz})dnl
 
 define({_PFIB_}, {
@@ -37,7 +37,7 @@ define({_PFIB_}, {
 	      in
 	        x + y
 	      end
-;
+
 })dnl
 _PFIB_({seqFib}, {val}, {false}, {seqFib})
 _PFIB_({pFib}, {pval}, {(n <= _SEQ_SZ_)}, {seqFib})
@@ -51,6 +51,6 @@ fun timeTest () = let
     in
         print (dtos (e-b)^"\n")
     end
-;
 
-timeTest()
+
+val _ = timeTest()

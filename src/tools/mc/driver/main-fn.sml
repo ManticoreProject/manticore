@@ -43,7 +43,7 @@ functor MainFn (
   (* load the AST corresponding to a single .pml file *)
     fun srcToAST (errStrm, file) = (case Parser.parseFile (errStrm, TextIO.openIn file)
 	   of SOME pt1 => let
-		val pt2 = BoundVariableCheck.check (errStrm, pt1)
+		val (pt2, _) = BoundVariableCheck.check (errStrm, pt1, BasisEnv.bEnv0)
 		val _ = checkForErrors errStrm
 		val ast = ChkProgram.check [(errStrm, pt2)]
 		in
@@ -55,16 +55,27 @@ functor MainFn (
 		raise Error)
 	  (* end case *))
 
+    fun boundVarChk errStream (p1, (p2s, env)) = let
+	  val (p2, env) = BoundVariableCheck.check (errStream, p1, env)
+          in
+	      (p2 :: p2s, env)
+	  end
+
+    fun boundVarChks errStrm =
+	  List.rev o #1 o List.foldl (boundVarChk errStrm) ([], BasisEnv.bEnv0)
+
   (* load the AST specified by an MLB file *)
     fun mlbToAST (errStrm, file) = let
-	  val ptsAndErrStrms = MLB.load(errStrm, file)	(* load the parse trees for the compilation units *)
-	  val _ = checkForErrors errStrm		(* check for errors loading the MLB file *)
-	  fun chk (strm, pt1) =  (strm, BoundVariableCheck.check (errStrm, pt1))
-	  val ptsAndErrStrms = List.map chk ptsAndErrStrms         (* check for unbound variables *)
-	  val _ = List.app (checkForErrors o #1) ptsAndErrStrms;
-	  val ast = ChkProgram.check ptsAndErrStrms
+        (* load the MLB file *)
+	  val (errStrms, p1s) = MLB.load(errStrm, file)
+	  val _ = checkForErrors errStrm
+        (* bound-variable check *)
+	  val p2s = boundVarChks errStrm p1s
+	  val _ = List.app checkForErrors errStrms;
+        (* module and type checking *)
+	  val ast = ChkProgram.check (ListPair.zip(errStrms, p2s))
 	  in
-	    List.app (checkForErrors o #1) ptsAndErrStrms;
+	    List.app checkForErrors errStrms;
 	    ast
 	  end
 

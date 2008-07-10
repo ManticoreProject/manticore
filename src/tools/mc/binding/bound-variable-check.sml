@@ -9,7 +9,8 @@
 structure BoundVariableCheck :> sig
 
   (* check for unbound variables *)
-    val check : (Error.err_stream * ProgramParseTree.PML1.program) -> ProgramParseTree.PML2.program
+    val check : (Error.err_stream * ProgramParseTree.PML1.program * BindingEnv.env) 
+		    -> (ProgramParseTree.PML2.program * BindingEnv.env)
 
   end = struct
 
@@ -33,6 +34,7 @@ structure BoundVariableCheck :> sig
   (* attempt to find the binding site of a qualified identifier, reporting an error if none exists *)
     fun findQid (find, kind, dummy) (loc, env, qId) = (case find(env, qId)
            of NONE => (
+		       raise Fail (String.concat ["unbound ", kind, " ", qidToString qId]);
 	      error(loc, ["unbound ", kind, " ", qidToString qId]);
 	      dummy)
 	    | SOME x => x
@@ -568,6 +570,7 @@ structure BoundVariableCheck :> sig
 	             (List.map (fn tree => PT2.MarkDecl{span=span, tree=tree}) trees, env)
 	          end
 	    | PT1.ModuleDecl (mb, sign, module) => let	          
+val _ = print (Atom.toString mb^"\n")
 		  val mb' = Var.new(Atom.toString mb, ())
 		  val (module, sign, rebindVals, modEnv) = chkModule loc (module, sign, BEnv.empty (SOME env))
 		  val rebindDecls = List.map PT2.ValueDecl rebindVals
@@ -625,11 +628,11 @@ structure BoundVariableCheck :> sig
 	        (List.concat decls, env)
 	    end
 
-    fun check (es, {span, tree}) = let
+    fun check (es, {span, tree}, env) = let
 	val _ = errStrm := es
-	val (tree', env) = chkDecls span (tree, BasisEnv.bEnv0)
+	val (tree', env') = chkDecls span (tree, env)
         in		  
-	   {span=span, tree=tree'}
+	   ({span=span, tree=tree'}, env')
         end
 
   end (* BoundVariableCheck *)

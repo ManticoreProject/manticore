@@ -1,1 +1,1 @@
-preprocess.pml "/usr/bin/cpp-4.0" "-I." "-P"
+preprocess.pml "/usr/bin/cpp-4.0" "-I." "-P" "-include" "preprocess.def"

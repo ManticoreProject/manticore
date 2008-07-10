@@ -34,6 +34,7 @@ is
   ../cps/sources.cm
   ../match-comp/sources.cm
   ../mlb/sources.cm
+  ../env/sources.cm
 (*
   ../ast/sources.cm
 *)
