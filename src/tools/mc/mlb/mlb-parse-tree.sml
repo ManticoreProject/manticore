@@ -22,15 +22,16 @@ structure MLBParseTree =
 
     and bas_dec
       = MarkBasDec of bas_dec mark
-      | BasisBasDec of bas_bind                    (* basis *)
-      | LocalBasDec of (bas_dec * bas_dec)         (* local *)
-      | OpenBasDec of bas_dec list                 (* open n >= 1 *)
-      | StructureBasDec of mod_bind                (* basis structure binding *)
-      | SignatureBasDec of mod_bind                (* basis signature binding *)
-      | FunctorBasDec of mod_bind                  (* basis functor binding *)
-      | SeqBasDec of bas_dec list                  (* sequential *)
-      | ImportBasDec of (id * string list option)  (* import ML basis or source (using
-						    * an optional preprocessor) *)
+      | BasisBasDec of bas_bind                              (* basis *)
+      | LocalBasDec of (bas_dec * bas_dec)                   (* local *)
+      | OpenBasDec of bas_dec list                           (* open n >= 1 *)
+      | StructureBasDec of mod_bind                          (* basis structure binding *)
+      | SignatureBasDec of mod_bind                          (* basis signature binding *)
+      | FunctorBasDec of mod_bind                            (* basis functor binding *)
+      | SeqBasDec of bas_dec list                            (* sequential *)
+      | ImportBasDec of id                                   (* import ML basis or source (using
+							      * an optional preprocessor) *)
+      | AnnBasDec of (string * string list * bas_dec)        (* annotation *)
 
   (* binds bases *)
     and bas_bind

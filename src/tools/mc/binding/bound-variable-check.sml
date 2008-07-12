@@ -570,7 +570,6 @@ structure BoundVariableCheck :> sig
 	             (List.map (fn tree => PT2.MarkDecl{span=span, tree=tree}) trees, env)
 	          end
 	    | PT1.ModuleDecl (mb, sign, module) => let	          
-val _ = print (Atom.toString mb^"\n")
 		  val mb' = Var.new(Atom.toString mb, ())
 		  val (module, sign, rebindVals, modEnv) = chkModule loc (module, sign, BEnv.empty (SOME env))
 		  val rebindDecls = List.map PT2.ValueDecl rebindVals

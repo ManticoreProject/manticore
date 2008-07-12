@@ -1,1 +1,1 @@
-val x = print (itos X^"\n")
+val x = print (itos X^" "^itos Y^"\n")

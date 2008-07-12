@@ -53,7 +53,8 @@
 		("local",       T.KW_local),
 		("signature",   T.KW_signature),
 		("functor",     T.KW_functor),
-		("structure",   T.KW_structure)
+		("structure",   T.KW_structure),
+		("ann",         T.KW_ann)
 	      ];
 	      AtomTable.find tbl
 	  end
