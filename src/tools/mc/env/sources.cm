@@ -23,6 +23,7 @@ is
   ../common/sources.cm
   ../parse-tree/sources.cm
   ../ast/sources.cm
+  ../bom/sources.cm
 
   module-env.sml
 
@@ -30,4 +31,3 @@ is
   basis-env.sml
   env.sml
   unseen-basis.sml
-

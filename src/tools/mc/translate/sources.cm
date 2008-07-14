@@ -9,6 +9,7 @@ Library
   structure ListMapMaker
   structure RopeMapMaker
   structure Translate
+  structure BOMBasisEnv
 
 is
 
@@ -40,3 +41,4 @@ is
   translate-parr.sml
   translate-types.sml
   translate-prim.sml
+  bom-basis-env.sml

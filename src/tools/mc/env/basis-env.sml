@@ -434,7 +434,7 @@ structure BasisEnv : sig
 	     val bEnv0 = BEnv.Env{
                             modEnv=modEnv, 
 			    sigEnv=sigEnv, 
-			    bomEnv=bomEnv,
+			    bomEnv=BOMBasisEnv.bindingEnv,
 			    outerEnv=outerEnv, 
 			    varEnv=BEnv.fromList predefinedVarBinds, 
 			    tyEnv=BEnv.fromList predefinedTyBinds
