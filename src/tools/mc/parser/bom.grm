@@ -99,7 +99,16 @@
     val dfltStringTy = BPT.T_Any (* FIXME *)
 
 (* apply a mark constructor to a span and a tree *)
-  fun mark cons (span : AntlrStreamPos.span, tr) = cons{span = span, tree = tr}
+  fun markBOM cons (span : AntlrStreamPos.span, tr) = cons{span = span, tree = tr}
+
+  val markBOMDefn = markBOM BPT.D_Mark
+  val markBOMTy = markBOM BPT.T_Mark
+  val markBOMExp = markBOM BPT.E_Mark
+  val markBOMRHS = markBOM BPT.RHS_Mark
+  val markBOMPat = markBOM BPT.P_PMark
+  val markBOMVarPat = markBOM BPT.P_VPMark
+  val markBOMSE = markBOM BPT.SE_Mark
+
 );
 
 
@@ -111,20 +120,21 @@ BOMDecls
 
 Definition
 	: "extern" CRetTy ID "(" (CArgTy ("," CArgTy)* )? ")" Attrs ";"
-		=> (BPT.D_Extern(CF.CFun{
+		=> (markBOMDefn(KW_extern_SPAN,
+		BPT.D_Extern(CF.CFun{
 			var = ID,
 			name = Atom.toString ID,
 			retTy = CRetTy,
 			argTys = flatten SR,
 			varArg = false,
 			attrs = Attrs
-		      }))
+		      })))
 	| "typedef" ID "=" BOMType ";"
-		=> (BPT.D_TypeDef(ID, BOMType))
+		=> (markBOMDefn(KW_typedef_SPAN, BPT.D_TypeDef(ID, BOMType)))
 	| "define" optInline HLOP FunParams ReturnTy ("=" BOMExp)? ";"
-		=> (let val (p1, p2) = FunParams in
+		=> (markBOMDefn(FULL_SPAN, let val (p1, p2) = FunParams in
 		      BPT.D_Define(optInline, HLOP, p1, p2, ReturnTy, SR)
-		    end)
+		    end))
 	;
 
 CRetTy
@@ -169,17 +179,17 @@ Params
 	;
 
 BOMType
-	: "addr" "(" BOMType ")"		=> (BPT.T_Addr(BOMType))
-	| "any"					=> (BPT.T_Any)
-	| "enum" "(" POSINT ")"			=> (BPT.T_Enum(Word.fromLargeInt POSINT))
-	| RawType				=> (BPT.T_Raw RawType)
-	| "!" "[" BOMType ("," BOMType)* "]"	=> (BPT.T_Tuple(true, BOMType :: SR))
-	| "[" BOMType ("," BOMType)* "]"	=> (BPT.T_Tuple(false, BOMType :: SR))
+	: "addr" "(" BOMType ")"		=> (markBOMTy(FULL_SPAN, BPT.T_Addr(BOMType)))
+	| "any"					=> (markBOMTy(FULL_SPAN, BPT.T_Any))
+	| "enum" "(" POSINT ")"			=> (markBOMTy(FULL_SPAN, BPT.T_Enum(Word.fromLargeInt POSINT)))
+	| RawType				=> (markBOMTy(FULL_SPAN, BPT.T_Raw RawType))
+	| "!" "[" BOMType ("," BOMType)* "]"	=> (markBOMTy(FULL_SPAN, BPT.T_Tuple(true, BOMType :: SR)))
+	| "[" BOMType ("," BOMType)* "]"	=> (markBOMTy(FULL_SPAN, BPT.T_Tuple(false, BOMType :: SR)))
 	| "fun" "(" TypeList "/" TypeList "->" TypeList ")"
-						=> (BPT.T_Fun(TypeList1, TypeList2, TypeList3))
-	| "cont" "(" TypeList ")"		=> (BPT.T_Cont TypeList)
-	| "vproc"				=> (BPT.T_VProc)
-	| QualifiedId				=> (BPT.T_TyCon QualifiedId)
+						=> (markBOMTy(FULL_SPAN, BPT.T_Fun(TypeList1, TypeList2, TypeList3)))
+	| "cont" "(" TypeList ")"		=> (markBOMTy(FULL_SPAN, BPT.T_Cont TypeList))
+	| "vproc"				=> (markBOMTy(FULL_SPAN, BPT.T_VProc))
+	| QualifiedId				=> (markBOMTy(FULL_SPAN, BPT.T_TyCon QualifiedId))
 	;
 
 TypeList
@@ -203,25 +213,25 @@ HLOpId
 
 BOMExp
 	: "let" LHS "=" RHS BOMExp
-		=> (BPT.E_Let(LHS, RHS, BOMExp))
+		=> (markBOMExp(FULL_SPAN, BPT.E_Let(LHS, RHS, BOMExp)))
 	| "do" RHS BOMExp
-		=> (BPT.E_Let([], RHS, BOMExp))
+		=> (markBOMExp(FULL_SPAN, BPT.E_Let([], RHS, BOMExp)))
 	| "fun" BOMLambda ("and" BOMLambda)* BOMExp
-		=> (BPT.E_Fun(BOMLambda::SR, BOMExp))
+		=> (markBOMExp(FULL_SPAN, BPT.E_Fun(BOMLambda::SR, BOMExp)))
 	| "cont" CLambda BOMExp
-		=> (BPT.E_Cont(CLambda, BOMExp))
+		=> (markBOMExp(FULL_SPAN, BPT.E_Cont(CLambda, BOMExp)))
 	| "if" SimpleExp "then" BOMExp "else" BOMExp
-		=> (BPT.E_If(SimpleExp, BOMExp1, BOMExp2))
+		=> (markBOMExp(FULL_SPAN, BPT.E_If(SimpleExp, BOMExp1, BOMExp2)))
         | "case" SimpleExp "of" Rules ("|" Default)? "end"
-		=> (BPT.E_Case(SimpleExp, Rules, SR))
+		=> (markBOMExp(FULL_SPAN, BPT.E_Case(SimpleExp, Rules, SR)))
 	| "apply" QualifiedId "(" Args ("/" Args)? ")"
-		=> (BPT.E_Apply(QualifiedId, Args, Option.getOpt(SR, [])))
+		=> (markBOMExp(FULL_SPAN, BPT.E_Apply(QualifiedId, Args, Option.getOpt(SR, []))))
 	| "throw" QualifiedId "(" Args ")"
-		=> (BPT.E_Throw(QualifiedId, Args))
+		=> (markBOMExp(FULL_SPAN, BPT.E_Throw(QualifiedId, Args)))
 	| "return" "(" Args ")"
-		=> (BPT.E_Return Args)
+		=> (markBOMExp(FULL_SPAN, BPT.E_Return Args))
 	| "hlop" HLOpId "(" Args ("/" Args)? ")"
-		=> (BPT.E_HLOpApply(HLOpId, Args, Option.getOpt(SR, [])))
+		=> (markBOMExp(FULL_SPAN, BPT.E_HLOpApply(HLOpId, Args, Option.getOpt(SR, []))))
 	;
 
 BOMLambda
@@ -244,34 +254,34 @@ LHS
 	;
 
 RHS
-	: BOMExp			=> (BPT.RHS_Exp BOMExp)
-	| NonSelectExp			=> (BPT.RHS_SimpleExp NonSelectExp)
+	: BOMExp			=> (markBOMRHS(FULL_SPAN, BPT.RHS_Exp BOMExp))
+	| NonSelectExp			=> (markBOMRHS(FULL_SPAN, BPT.RHS_SimpleExp NonSelectExp))
 	| "#" POSINT "(" SimpleExp ")" (":=" SimpleExp)?
-		=> (case SR
+		=> (markBOMRHS(FULL_SPAN, case SR
 		     of SOME e => BPT.RHS_Update(Int.fromLarge POSINT, SimpleExp, e)
 		      | NONE => BPT.RHS_SimpleExp(BPT.SE_Select(Int.fromLarge POSINT, SimpleExp))
-		    (* end case *))
-	| "promote" "(" SimpleExp ")"	=> (BPT.RHS_Promote SimpleExp)
-	| "ccall" ID "(" Args ")"	=> (BPT.RHS_CCall(ID, Args))
+		    (* end case *)))
+	| "promote" "(" SimpleExp ")"	=> (markBOMRHS(FULL_SPAN, BPT.RHS_Promote SimpleExp))
+	| "ccall" ID "(" Args ")"	=> (markBOMRHS(FULL_SPAN, BPT.RHS_CCall(ID, Args)))
 	| "vpstore" "(" POSINT "," SimpleExp "," SimpleExp ")"
-					=> (BPT.RHS_VPStore(POSINT, SimpleExp1, SimpleExp2))
+					=> (markBOMRHS(FULL_SPAN, BPT.RHS_VPStore(POSINT, SimpleExp1, SimpleExp2)))
         | "pmlvar" QualifiedId
- 	                                => (BPT.RHS_PMLVar QualifiedId)
+ 	                                => (markBOMRHS(FULL_SPAN, BPT.RHS_PMLVar QualifiedId))
 	;
 
 NonSelectExp
-	: QualifiedId			=> (BPT.SE_Var QualifiedId)
-	| "alloc" "(" Args ")"		=> (BPT.SE_Alloc Args)
-	| "wrap" "(" SimpleExp ")"	=> (BPT.SE_Wrap SimpleExp)
-	| "&" POSINT "(" SimpleExp ")"	=> (BPT.SE_AddrOf(Int.fromLarge POSINT, SimpleExp))
-	| "unwrap" "(" SimpleExp ")"	=> (BPT.SE_Unwrap SimpleExp)
-	| ID "(" Args ")"		=> (BPT.SE_Prim(ID, Args))
-	| "(" BOMType ")" SimpleExp	=> (BPT.SE_Cast(BOMType, SimpleExp))
-	| Literal			=> (BPT.SE_Const(Literal))
-	| ML_STRING			=> (BPT.SE_MLString(ML_STRING))
-	| "host_vproc"			=> (BPT.SE_HostVProc)
+	: QualifiedId			=> (markBOMSE(FULL_SPAN, BPT.SE_Var QualifiedId))
+	| "alloc" "(" Args ")"		=> (markBOMSE(FULL_SPAN, BPT.SE_Alloc Args))
+	| "wrap" "(" SimpleExp ")"	=> (markBOMSE(FULL_SPAN, BPT.SE_Wrap SimpleExp))
+	| "&" POSINT "(" SimpleExp ")"	=> (markBOMSE(FULL_SPAN, BPT.SE_AddrOf(Int.fromLarge POSINT, SimpleExp)))
+	| "unwrap" "(" SimpleExp ")"	=> (markBOMSE(FULL_SPAN, BPT.SE_Unwrap SimpleExp))
+	| ID "(" Args ")"		=> (markBOMSE(FULL_SPAN, BPT.SE_Prim(ID, Args)))
+	| "(" BOMType ")" SimpleExp	=> (markBOMSE(FULL_SPAN, BPT.SE_Cast(BOMType, SimpleExp)))
+	| Literal			=> (markBOMSE(FULL_SPAN, BPT.SE_Const(Literal)))
+	| ML_STRING			=> (markBOMSE(FULL_SPAN, BPT.SE_MLString(ML_STRING)))
+	| "host_vproc"			=> (markBOMSE(FULL_SPAN, BPT.SE_HostVProc))
 	| "vpload" "(" POSINT "," SimpleExp ")"
-					=> (BPT.SE_VPLoad(POSINT, SimpleExp))
+					=> (markBOMSE(FULL_SPAN, BPT.SE_VPLoad(POSINT, SimpleExp)))
 	;
 
 SimpleExp
@@ -289,8 +299,8 @@ Rules
 
 Rule
 	: QualifiedId "(" VarPat ("," VarPat)* ")" "=>" BOMExp
-					=> (BPT.P_DCon(QualifiedId, VarPat::SR), BOMExp)
-	| Literal "=>" BOMExp		=> (BPT.P_Const Literal, BOMExp)
+					=> (markBOMPat(FULL_SPAN, BPT.P_DCon(QualifiedId, VarPat::SR)), BOMExp)
+	| Literal "=>" BOMExp		=> (markBOMPat(FULL_SPAN, BPT.P_Const Literal), BOMExp)
 	;
 
 Default
@@ -298,8 +308,8 @@ Default
 	;
 
 VarPat
-	: "_" (":" BOMType)?		=> (BPT.P_Wild SR)
-	| ID ":" BOMType		=> (BPT.P_Var(ID, BOMType))
+	: "_" (":" BOMType)?		=> (markBOMVarPat(FULL_SPAN, BPT.P_Wild SR))
+	| ID ":" BOMType		=> (markBOMVarPat(FULL_SPAN, BPT.P_Var(ID, BOMType)))
 	;
 
 Literal
