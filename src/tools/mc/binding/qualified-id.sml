@@ -68,39 +68,19 @@ structure QualifiedId : sig
             find (env, path)
         end
 
-    fun findTy (env, path) = (case checkModPath (env, path)
-        of UNQUAL x => BindingEnv.findTy(env, x)
-	 | QUAL (env', x) => BindingEnv.findTy(env', x)
-	 | ERROR => NONE)
+    fun findQid findFn (env, path : Atom.atom path) : 'a option = (
+	    case checkModPath(env, path)
+	     of UNQUAL x => findFn(env, x)
+	      | QUAL (env', x) => findFn(env', x)
+	      | ERROR => NONE
+            (* end case *))
 
-    fun findVar (env, path) = (case checkModPath (env, path)
-        of UNQUAL x => BindingEnv.findVar(env, x)
-	 | QUAL (env', x) => BindingEnv.findVar(env', x)
-	 | ERROR => NONE)
-
-    fun findMod (env, path) = (case checkModPath (env, path)
-        of UNQUAL x => Option.map #1 (BindingEnv.findMod(env, x))
-	 | QUAL (env', x) => Option.map #1 (BindingEnv.findMod(env', x))
-	 | ERROR => NONE)
-
-    fun findModEnv (env, path) = (case checkModPath (env, path)
-        of UNQUAL x => Option.map #2 (BindingEnv.findMod(env, x))
-	 | QUAL (env', x) => Option.map #2 (BindingEnv.findMod(env', x))
-	 | ERROR => NONE)
-
-    fun findBOMVar (env, path) = (case checkModPath (env, path)
-        of UNQUAL x => BindingEnv.findBOMVar(env, x)
-	 | QUAL (env', x) => BindingEnv.findBOMVar(env', x)
-	 | ERROR => NONE)
-
-    fun findBOMTy (env, path) = (case checkModPath (env, path)
-        of UNQUAL x => BindingEnv.findBOMTy(env, x)
-	 | QUAL (env', x) => BindingEnv.findBOMTy(env', x)
-	 | ERROR => NONE)
-
-    fun findBOMHLOp (env, path) = (case checkModPath (env, path)
-        of UNQUAL x => BindingEnv.findBOMHLOp(env, x)
-	 | QUAL (env', x) => BindingEnv.findBOMHLOp(env', x)
-	 | ERROR => NONE)
+    val findTy = findQid BindingEnv.findTy
+    val findVar = findQid BindingEnv.findVar
+    val findMod = findQid (Option.map #1 o BindingEnv.findMod)
+    val findModEnv = findQid (Option.map #2 o BindingEnv.findMod)
+    val findBOMVar = findQid BindingEnv.findBOMVar
+    val findBOMTy = findQid BindingEnv.findBOMTy
+    val findBOMHLOp = findQid BindingEnv.findBOMHLOp
 
   end

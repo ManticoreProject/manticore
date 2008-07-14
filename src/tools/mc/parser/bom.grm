@@ -101,6 +101,8 @@
 (* apply a mark constructor to a span and a tree *)
   fun markBOM cons (span : AntlrStreamPos.span, tr) = cons{span = span, tree = tr}
 
+  fun unmarkBOM (cons : 'a Error.mark -> 'a) (span : AntlrStreamPos.span, tr : 'a) = tr
+
   val markBOMDefn = markBOM BPT.D_Mark
   val markBOMTy = markBOM BPT.T_Mark
   val markBOMExp = markBOM BPT.E_Mark

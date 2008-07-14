@@ -28,7 +28,6 @@ structure BoundVariableCheck :> sig
   (* attempt to find the binding site of a qualified identifier, reporting an error if none exists *)
     fun findQid (find, kind, dummy) (loc, env, qId) = (case find(env, qId)
            of NONE => (
-		       raise Fail (String.concat ["unbound ", kind, " ", qidToString qId]);
 	      error(loc, ["unbound ", kind, " ", qidToString qId]);
 	      dummy)
 	    | SOME x => x

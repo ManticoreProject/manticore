@@ -39,10 +39,10 @@ structure BOMBoundVariableCheck :> sig
            (* end case *))
 
     val dummyVar = Var.new("dummyVar", ())
-    val findBOMVarQid = findQid (QualifiedId.findBOMVar, "bom variable", dummyVar)
-    val findBOMTyQid = findQid (QualifiedId.findBOMTy, "bom type", dummyVar)
+    val findBOMVarQid = findQid (QualifiedId.findBOMVar, "BOM variable", dummyVar)
+    val findBOMTyQid = findQid (QualifiedId.findBOMTy, "BOM type", dummyVar)
     val findVarQid = findQid (QualifiedId.findVar, "variable", BEnv.Var dummyVar)
-    val findBOMHLOpQid = findQid (QualifiedId.findBOMHLOp, "hlop", dummyVar)
+    val findBOMHLOpQid = findQid (QualifiedId.findBOMHLOp, "HLOp", dummyVar)
 
   (* Here is where we bind C functions. Since they have global scope, we record C functions
    * in a global lookup table. 
@@ -76,7 +76,7 @@ structure BOMBoundVariableCheck :> sig
 
     fun chkTy loc (ty, env) = (case ty
            of PT1.T_Mark {tree, span} => let
-		  val tree = chkTy loc (tree, env)
+		  val tree = chkTy span (tree, env)
 	          in
 		      PT2.T_Mark {tree=tree, span=span}
 		  end
@@ -103,7 +103,7 @@ structure BOMBoundVariableCheck :> sig
 
     fun chkRhs loc (rhs, env) = (case rhs
             of PT1.RHS_Mark {tree, span} => let
-		   val tree = chkRhs loc (rhs, env)
+		   val tree = chkRhs span (tree, env)
 	           in
 		       PT2.RHS_Mark {tree=tree, span=span}
 		   end
@@ -177,7 +177,7 @@ structure BOMBoundVariableCheck :> sig
 
     and chkExp loc (exp, env) = (case exp
             of PT1.E_Mark {tree, span} => let
-		   val tree = chkExp loc (tree, env)
+		   val tree = chkExp span (tree, env)
 	           in
 		       PT2.E_Mark {tree=tree, span=span}
 		   end
@@ -251,7 +251,7 @@ structure BOMBoundVariableCheck :> sig
 
     and chkSexp loc (sexp, env) = (case sexp
             of PT1.SE_Mark {tree, span} => let
-		   val tree = chkSexp loc (sexp, env)
+		   val tree = chkSexp span (tree, env)
 	           in
 		       PT2.SE_Mark {tree=tree, span=span}
 		   end
@@ -287,7 +287,7 @@ structure BOMBoundVariableCheck :> sig
 
     and chkPat loc (pat, env) = (case pat
             of PT1.P_PMark {tree, span} => let
-		   val (tree, env) = chkPat loc (tree, env)
+		   val (tree, env) = chkPat span (tree, env)
 	           in
 		       (PT2.P_PMark {tree=tree, span=span}, env)
 		   end
@@ -303,7 +303,7 @@ structure BOMBoundVariableCheck :> sig
 
     and chkVarPat loc (vp, env) = (case vp
             of PT1.P_VPMark {tree, span} => let
-		   val (tree, env) = chkVarPat loc (tree, env)
+		   val (tree, env) = chkVarPat span (tree, env)
 	           in
 	              (PT2.P_VPMark {tree=tree, span=span}, env)
 		   end
