@@ -77,17 +77,7 @@ structure BindingEnv =
 
     fun fromList ls = List.foldl Map.insert' Map.empty ls
 
-    fun insertVal (Env{tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
-	Env{tyEnv=tyEnv, varEnv=Map.insert(varEnv, id, x), bomEnv=bomEnv, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
-    fun insertMod (Env{tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
-	Env{tyEnv=tyEnv, varEnv=varEnv, bomEnv=bomEnv, modEnv=Map.insert(modEnv, id, x), sigEnv=sigEnv, outerEnv=outerEnv}
-    fun insertTy (Env{tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
-	Env{tyEnv=Map.insert(tyEnv, id, x), varEnv=varEnv, bomEnv=bomEnv, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
-    fun insertSig (Env{tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
-	Env{tyEnv=tyEnv, varEnv=varEnv, bomEnv=bomEnv, modEnv=modEnv, sigEnv=Map.insert(sigEnv, id, x), outerEnv=outerEnv}
-    val insertDataTy = insertTy
-
-  (* BOM environment operations *)
+  (* BOM operations *)
     local 
 	fun insertVar (BOMEnv {varEnv, hlopEnv, tyEnv}, id, x) =
 	        BOMEnv {varEnv=Map.insert(varEnv, id, x), hlopEnv=hlopEnv, tyEnv=tyEnv}
@@ -148,5 +138,23 @@ structure BindingEnv =
 
   (* constrains env2 to contain only those keys that are also in env1 *)
     fun intersect (env1, env2) = Map.intersectWith (fn (x1, x2) => x2) (env1, env2)
+
+  (* PML operations *)
+    fun insertVal (Env{tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
+	Env{tyEnv=tyEnv, varEnv=Map.insert(varEnv, id, x), bomEnv=bomEnv, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
+    fun insertMod (Env{tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
+	Env{tyEnv=tyEnv, varEnv=varEnv, bomEnv=bomEnv, modEnv=Map.insert(modEnv, id, x), sigEnv=sigEnv, outerEnv=outerEnv}
+    fun insertTy (Env{tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
+	Env{tyEnv=Map.insert(tyEnv, id, x), varEnv=varEnv, bomEnv=bomEnv, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
+    fun insertSig (Env{tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
+	Env{tyEnv=tyEnv, varEnv=varEnv, bomEnv=bomEnv, modEnv=modEnv, sigEnv=Map.insert(sigEnv, id, x), outerEnv=outerEnv}
+    fun insertDataTy (env, id, x) = let
+	  (* datatypes are visible to inline BOM programs *)
+	    val env = insertBOMTy(env, id, x)
+          (* as well as PML programs ... *)
+            in
+	        insertTy(env, id, x)
+	    end
+	
 
   end

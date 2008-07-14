@@ -93,6 +93,9 @@ structure ModuleEnv =
 
     fun bindVal (v, x) = setValBind (v, SOME x)
 
+    fun tyd2s (TyCon tyc) = TyCon.toString tyc
+      | tyd2s _ = ""
+
     fun insertTy (ModEnv {modRef, tyEnv, varEnv, modEnv, sigEnv, outerEnv}, tv, x) = (
 	setTyDef(tv, SOME x);
 	ModEnv{modRef=modRef, tyEnv=VarMap.insert (tyEnv, tv, x), varEnv=varEnv, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv})

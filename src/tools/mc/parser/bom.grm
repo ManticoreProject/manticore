@@ -101,8 +101,6 @@
 (* apply a mark constructor to a span and a tree *)
   fun markBOM cons (span : AntlrStreamPos.span, tr) = cons{span = span, tree = tr}
 
-  fun unmarkBOM (cons : 'a Error.mark -> 'a) (span : AntlrStreamPos.span, tr : 'a) = tr
-
   val markBOMDefn = markBOM BPT.D_Mark
   val markBOMTy = markBOM BPT.T_Mark
   val markBOMExp = markBOM BPT.E_Mark
@@ -272,12 +270,13 @@ RHS
 	;
 
 NonSelectExp
-	: QualifiedId			=> (markBOMSE(FULL_SPAN, BPT.SE_Var QualifiedId))
-	| "alloc" "(" Args ")"		=> (markBOMSE(FULL_SPAN, BPT.SE_Alloc Args))
+	: "alloc" "(" Args ")"		=> (markBOMSE(FULL_SPAN, BPT.SE_Alloc Args))
 	| "wrap" "(" SimpleExp ")"	=> (markBOMSE(FULL_SPAN, BPT.SE_Wrap SimpleExp))
 	| "&" POSINT "(" SimpleExp ")"	=> (markBOMSE(FULL_SPAN, BPT.SE_AddrOf(Int.fromLarge POSINT, SimpleExp)))
 	| "unwrap" "(" SimpleExp ")"	=> (markBOMSE(FULL_SPAN, BPT.SE_Unwrap SimpleExp))
-	| ID "(" Args ")"		=> (markBOMSE(FULL_SPAN, BPT.SE_Prim(ID, Args)))
+	| QualifiedId ("(" Args ")")?	=> (case SR
+					     of NONE => markBOMSE(FULL_SPAN, BPT.SE_Var QualifiedId)
+					      | SOME args => markBOMSE(FULL_SPAN, BPT.SE_Prim(QualifiedId, args)))
 	| "(" BOMType ")" SimpleExp	=> (markBOMSE(FULL_SPAN, BPT.SE_Cast(BOMType, SimpleExp)))
 	| Literal			=> (markBOMSE(FULL_SPAN, BPT.SE_Const(Literal)))
 	| ML_STRING			=> (markBOMSE(FULL_SPAN, BPT.SE_MLString(ML_STRING)))

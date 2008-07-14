@@ -325,7 +325,7 @@ structure HLOpEnv : sig
 
     local 
     val hlops : hlop_def Stamp.Tbl.hash_table = Stamp.Tbl.mkTable(128, Fail "HLOp table")
-    fun addDef (d as {name=name as HLOp.HLOp{id, ...}, inline, def, externs, pmlImports}) = 
+    fun addDef (d as {name=name as HLOp.HLOp{id, name=n, ...}, inline, def, externs, pmlImports}) = 
 	    Stamp.Tbl.insert hlops (id, d)
     in
     val addDefs = List.app addDef

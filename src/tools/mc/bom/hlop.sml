@@ -28,7 +28,7 @@ structure HLOp =
 (* FIXME: need effects *)
       }
 
-    fun toString (HLOp{name, ...}) = "@" ^ Atom.toString name
+    fun toString (HLOp{name, id, ...}) = "@" ^ Atom.toString name ^ Stamp.toString id
     fun name (HLOp{name, ...}) = name
     fun hash (HLOp{id, ...}) = Stamp.hash id
     fun same (HLOp{id=a, ...}, HLOp{id=b, ...}) = Stamp.same(a, b)

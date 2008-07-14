@@ -90,7 +90,8 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 	  val module = contract module
 	  val module = inline module  
 	  val module = contract module
-          val module = rewriteAll module
+  (* to re-enable rewrites, fix them so that they use inline BOM instead of the old hlop files. *)
+(*          val module = rewriteAll module*)
 	  val module = expandAll module
 	  val module = inline module
 	  val module = contract module  

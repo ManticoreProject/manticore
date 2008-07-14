@@ -171,8 +171,8 @@ structure BOMTyUtil : sig
 	      | BTy.T_Cont tys => concat("cont(" :: tys2l(tys, [")"]))
 	      | BTy.T_CFun cp => CFunctions.protoToString cp
 	      | BTy.T_VProc=> "vproc"
-	      | BTy.T_TyCon(BTy.DataTyc{name, ...}) => name
-	      | BTy.T_TyCon(BTy.AbsTyc{name, ...}) => name
+	      | BTy.T_TyCon(BTy.DataTyc{name, stamp, ...}) => name^Stamp.toString stamp
+	      | BTy.T_TyCon(BTy.AbsTyc{name, stamp, ...}) => name^Stamp.toString stamp
 	    (* end case *)
 	  end
 

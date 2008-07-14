@@ -46,6 +46,11 @@ structure TranslateEnv : sig
     type import_env = BOM.var CFunctions.c_fun AtomTable.hash_table
 
   (* support for inline BOM code *)
+    datatype bty_def
+      = BTY_NONE
+      | BTY_TYS of AST.ty_scheme
+      | BTY_TYC of Types.tycon
+      | BTY_TY of BOMTy.ty
     type hlop_def = {
 	name : BOM.hlop,			(* the HLOp's identifier *)
 	inline : bool,				(* should the HLOp be inlined? *)
@@ -58,14 +63,14 @@ structure TranslateEnv : sig
     val getImportEnv    : env -> import_env
     val insertBOMTyDef	: (ty_def * BOMTy.ty) -> unit
     val insertBOMVar	: (var * BOM.var) -> unit
-    val insertBOMCon    : (con * BOMTy.data_con) -> unit
+(*    val insertBOMCon    : (con * con_bind) -> unit*)
     val insertBOMHLOp   : (hlop * HLOp.hlop) -> unit
     val insertBOMHLOpDef : (hlop * hlop_def) -> unit
     val insertBOMCFun   : (import_env * c_id * BOM.var CFunctions.c_fun) -> unit
 
-    val findBOMTy	: ty_def -> BOMTy.ty option
+    val findBOMTy	: ty_def -> bty_def
     val findBOMVar	: var -> BOM.var option
-    val findBOMCon	: con -> BOMTy.data_con option
+(*    val findBOMCon	: con -> con_bind option*)
     val findBOMHLOp     : hlop -> HLOp.hlop option
     val findBOMHLOpDef  : hlop -> hlop_def option
     val findBOMCFun     : c_id -> BOM.var CFunctions.c_fun option
@@ -163,6 +168,11 @@ structure TranslateEnv : sig
     type ty_def = ProgramParseTree.PML2.BOMParseTree.ty_def
     type hlop = ProgramParseTree.PML2.BOMParseTree.hlop_bind
     type c_id = ProgramParseTree.PML2.BOMParseTree.c_id
+    datatype bty_def
+      = BTY_NONE
+      | BTY_TYS of AST.ty_scheme
+      | BTY_TYC of Types.tycon
+      | BTY_TY of BOMTy.ty
     type hlop_def = {
 	name : BOM.hlop,			(* the HLOp's identifier *)
 	inline : bool,				(* should the HLOp be inlined? *)
@@ -186,8 +196,8 @@ structure TranslateEnv : sig
 	    ProgramParseTree.Var.newProp(fn _ => NONE)
       (* data constructors *)
 	val {
-	   getFn=getCon : PTVar.var -> BOMTy.data_con option, 
-	   setFn=setCon : (PTVar.var * BOMTy.data_con option) -> unit, ...
+	   getFn=getCon : PTVar.var -> con_bind option, 
+	   setFn=setCon : (PTVar.var * con_bind option) -> unit, ...
 	} =
 	    ProgramParseTree.Var.newProp(fn _ => NONE)
       (* types *)
@@ -223,7 +233,7 @@ structure TranslateEnv : sig
     in
     fun insertBOMTyDef (name, ty) = setTy(name, SOME ty)
     fun insertBOMVar (name, x) = setVar(name, SOME x)
-    fun insertBOMCon (name, dc) = setCon(name, SOME dc)
+(*    fun insertBOMCon (name, con) = setCon(name, SOME con)*)
     fun insertBOMHLOp (name, hlop) = setHLOp(name, SOME hlop)
     fun insertBOMHLOpDef (name, hlop) = setHLOpDef(name, SOME hlop)
     fun insertBOMCFun (importEnv, name, cfun) = (
@@ -231,9 +241,19 @@ structure TranslateEnv : sig
 	    ATbl.insert importEnv (Atom.atom (PTVar.nameOf name), cfun)
         )
     fun insertPMLVar (av, bv) = setPMLVar (av, SOME bv)  (* imported PML variables *)
-    val findBOMTy = getTy
+    fun findBOMTy v = (
+	   case getTy v
+	    of NONE => (
+	       (* find the type definition in PML code *)
+	         case ModuleEnv.getTyDef v
+		  of NONE => BTY_NONE
+		   | SOME (ModuleEnv.TyDef tys) => BTY_TYS tys
+		   | SOME (ModuleEnv.TyCon tyc) => BTY_TYC tyc
+		 (* end case *))
+              (* found the type definition in inline BOM code*)
+	     | SOME ty => BTY_TY ty
+           (* end case *))
     val findBOMVar = getVar
-    val findBOMCon = getCon
     val findBOMHLOp = getHLOp
     val findBOMHLOpDef = getHLOpDef
     val findBOMCFun = getCFun

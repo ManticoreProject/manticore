@@ -41,6 +41,8 @@ structure BoundVariableCheck :> sig
     val findModQid = findQid (QualifiedId.findMod, "module", dummyMod)
     val findModEnv = findQid (QualifiedId.findModEnv, "module", BEnv.empty NONE)
 
+    fun freshVar v = Var.new(Atom.toString v, ())
+
     fun chkList loc (chkX, xs, env) = let
 	   fun f (x, (xs, env)) = let
 	          val (x, env) = chkX loc (x, env)
@@ -121,7 +123,7 @@ structure BoundVariableCheck :> sig
 		         (PT2.IdPat c, env)
 		   | _ => let
                        (* this pattern binds a variable *)
-			 val vb' = Var.new(Atom.toString vb, ())
+			 val vb' = freshVar vb
 			 val env = BEnv.insertVal(env, vb, BEnv.Var vb')
 		         in
 			    (PT2.IdPat vb', env)
@@ -181,7 +183,7 @@ structure BoundVariableCheck :> sig
 		  fun add (PT1.MarkFunct {span, tree}, env) = 
 		        add (tree, env)
 		    | add (PT1.Funct (f, pat, exp), env) = let
-		        val f' = Var.new(Atom.toString f, ())
+		        val f' = freshVar f
 		        in
 			   BEnv.insertVal(env, f, BEnv.Var f')
 		        end
@@ -376,26 +378,26 @@ structure BoundVariableCheck :> sig
 	          end
 	    | PT1.TypeTyDecl (tvs, id, ty) => let
 		  val ty = chkTy loc (ty, env)
-		  val id' = Var.new(Atom.toString id, ())
+		  val id' = freshVar id
 		  val env = BEnv.insertTy(env, id, id')
 	          in
 		     (PT2.TypeTyDecl (tvs, id', ty), env)
 		  end
 	    | PT1.DataTyDecl (tvs, id, conDecls) => let
-		  val id' = Var.new(Atom.toString id, ())
+		  val id' = freshVar id
 		  val env = BEnv.insertDataTy(env, id, id')
 		  val (conDecls, env) = chkConDecls loc (conDecls, env)
 	          in
 		     (PT2.DataTyDecl (tvs, id', conDecls), env)
 		  end
 	    | PT1.AbsTyDecl (tvs, id) => let
-		  val id' = Var.new(Atom.toString id, ())
+		  val id' = freshVar id
 		  val env = BEnv.insertDataTy(env, id, id')
 	          in
 		     (PT2.AbsTyDecl (tvs, id'), env)
 		  end
 	    | PT1.PrimTyDecl (tvs, id, bty) => let
-		val id' = Var.new(Atom.toString id, ())
+		val id' = freshVar id
 		val env = BEnv.insertDataTy(env, id, id')
 		val bty = BOMBoundVariableCheck.chkTy loc (bty, env)
 		in
@@ -412,7 +414,7 @@ structure BoundVariableCheck :> sig
                     (PT2.MarkConDecl{span=span, tree=tree}, env)
 	          end
 	    | PT1.ConDecl (id, tyOpt) => let
-		  val id' = Var.new(Atom.toString id, ())
+		  val id' = freshVar id
 		  val env = BEnv.insertVal(env, id, BEnv.Con id')
 		  val (tyOpt, env) = (case tyOpt
                         of NONE => (NONE, env)
@@ -442,7 +444,7 @@ structure BoundVariableCheck :> sig
 		  end
 	    | PT1.ModuleSpec (mb, sign) => let
 		  val (sign, env) = chkSign loc (sign, env)
-		  val mb' = Var.new(Atom.toString mb, ())
+		  val mb' = freshVar mb
 		  val env = BEnv.insertMod(env, mb, (mb', env))
 	          in
 		      (PT2.ModuleSpec (mb', sign), env)
@@ -453,14 +455,14 @@ structure BoundVariableCheck :> sig
 		     (PT2.TypeSpec tyDecl, env)
 		  end
 	    | PT1.ConstSpec (cb, tvs) => let
-		  val cb' = Var.new(Atom.toString cb, ())
+		  val cb' = freshVar cb
 		  val env = BEnv.insertVal(env, cb, BEnv.Var cb')
 	          in
 		     (PT2.ConstSpec (cb', tvs), env)
 		  end
 	    | PT1.ValSpec (vb, tvs, ty) => let
 		  val ty = chkTy loc (ty, env)
-		  val vb' = Var.new(Atom.toString vb, ())
+		  val vb' = freshVar vb
 		  val env = BEnv.insertVal(env, vb, BEnv.Var vb')
 		  in
 		     (PT2.ValSpec (vb', tvs, ty), env)
@@ -491,8 +493,8 @@ structure BoundVariableCheck :> sig
           (* end case *))
 
   (* generate a rebinding *)
-    fun rebindVar (name, BEnv.Con v) = (name, v, BEnv.Con (Var.new(Atom.toString name, ())))
-      | rebindVar (name, BEnv.Var v) = (name, v, BEnv.Var (Var.new(Atom.toString name, ())))
+    fun rebindVar (name, BEnv.Con v) = (name, v, BEnv.Con (freshVar name))
+      | rebindVar (name, BEnv.Var v) = (name, v, BEnv.Var (freshVar name))
 
   (* generates code to rebind the values *)
     fun genRebindVars fvs = let
@@ -563,7 +565,7 @@ structure BoundVariableCheck :> sig
 	             (List.map (fn tree => PT2.MarkDecl{span=span, tree=tree}) trees, env)
 	          end
 	    | PT1.ModuleDecl (mb, sign, module) => let	          
-		  val mb' = Var.new(Atom.toString mb, ())
+		  val mb' = freshVar mb
 		  val (module, sign, rebindVals, modEnv) = chkModule loc (module, sign, BEnv.empty (SOME env))
 		  val rebindDecls = List.map PT2.ValueDecl rebindVals
 		  val env = BEnv.insertMod(env, mb, (mb', modEnv))
@@ -576,7 +578,7 @@ structure BoundVariableCheck :> sig
 		     ([PT2.TyDecl tyDecl], env)
 		  end
 	    | PT1.ExnDecl (con, tyOpt) => let
-		  val con' = Var.new(Atom.toString con, ())
+		  val con' = freshVar con
 		  val env = BEnv.insertVal(env, con, BEnv.Con con')
 		  val (tyOpt, env) = (case tyOpt
                         of NONE => (NONE, env)
@@ -601,7 +603,7 @@ structure BoundVariableCheck :> sig
 		     ([PT2.LocalDecl (locals, decls)], env)
 		  end
 	    | PT1.SignDecl (id, sign) => let
-		  val id' = Var.new(Atom.toString id, ())
+		  val id' = freshVar id
 		  val (sign, sigEnv) = chkSign loc (sign, BEnv.empty (SOME env))
 		  val env = BEnv.insertSig(env, id, (id', sigEnv))
 		  in

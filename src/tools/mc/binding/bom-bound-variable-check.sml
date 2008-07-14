@@ -44,6 +44,12 @@ structure BOMBoundVariableCheck :> sig
     val findVarQid = findQid (QualifiedId.findVar, "variable", BEnv.Var dummyVar)
     val findBOMHLOpQid = findQid (QualifiedId.findBOMHLOp, "HLOp", dummyVar)
 
+  fun findDCon (env, qid) = (
+        case QualifiedId.findVar(env, qid)
+	 of SOME(BEnv.Con con) => SOME con   (* data constructor (defined in PML) *)
+	  | _ => NONE
+        (* end case *))
+
   (* Here is where we bind C functions. Since they have global scope, we record C functions
    * in a global lookup table. 
    *)
@@ -268,8 +274,19 @@ structure BOMBoundVariableCheck :> sig
 	     | PT1.SE_MLString s => PT2.SE_MLString s
 	     | PT1.SE_Cast (ty, sexp) => PT2.SE_Cast (chkTy loc (ty, env), 
 						      chkSexp loc (sexp, env))
-	     | PT1.SE_Prim (prim, sexps) => 
-	           PT2.SE_Prim(prim, chkSexps loc (sexps, env))
+	     | PT1.SE_Prim (prim, sexps) => let
+	           val prim = (case findDCon (env, prim)
+				 of SOME dcon => dcon
+				  | NONE => (case QualifiedId.unqualId prim
+					  of NONE => (
+					       error(loc, ["invalid primop/data constructor use for ", qidToString prim]);
+					       dummyVar)
+					   | SOME prim => freshVar prim          (* ordinary primop *)
+					(* end case *))
+                              (* end case *))
+	           in
+		      PT2.SE_Prim(prim, chkSexps loc (sexps, env))
+                   end
 	     | PT1.SE_HostVProc => PT2.SE_HostVProc
 	     | PT1.SE_VPLoad (off, sexp) => PT2.SE_VPLoad (off, chkSexp loc (sexp, env))
             (* end case *))
@@ -293,7 +310,12 @@ structure BOMBoundVariableCheck :> sig
 		   end
 (* FIXME: check for duplicate pattern-bound variables *)
 	     | PT1.P_DCon (dcon, vps) => let
-		   val dcon = findBOMVarQid(loc, env, dcon)
+		   val dcon = (case findDCon(env, dcon)
+				of NONE => (
+				     error(loc, ["unbound data constructor ", qidToString dcon]);
+				     dummyVar)
+				 | SOME dcon => dcon
+			      (* end case *))
 		   val (vps, env) = chkVarPats loc (vps, env)
 	           in
 		       (PT2.P_DCon (dcon, vps), env)

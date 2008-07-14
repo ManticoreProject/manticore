@@ -9,7 +9,7 @@
 structure TranslatePrim : sig
 
   (* convert a right-hand side inline BOM declaration to an expression *)
-    val cvtRhs : ProgramParseTree.PML2.BOMParseTree.prim_val_rhs -> BOM.exp
+    val cvtRhs : (TranslateEnv.env * ProgramParseTree.PML2.BOMParseTree.prim_val_rhs) -> BOM.exp
 
   (* convert BOM definitions. this process occurs silently, by adding
    * definitions to environments and caches.
@@ -35,7 +35,8 @@ structure TranslatePrim : sig
 	val rawTy = BTy.T_Raw)
 
     datatype prim_info = datatype MkPrim.prim_info
-    val findPrim = MkPrim.findPrim
+
+    val findPrim = MkPrim.findPrim o Atom.atom o PTVar.nameOf
 
   (* some type utilities *)
     val unwrapType = BOMTyUtil.unwrap
@@ -46,6 +47,17 @@ structure TranslatePrim : sig
     fun newTmp ty = BV.new("_t", ty)
 
     fun useCFun var = BOM.Var.addToCount(var, 1)
+
+  (* globally accessible translation environment *)
+    val translateEnv = ref (TranslateEnv.mkEnv())
+
+  (* find a data constructor that is defined in PML code *)
+    fun findCon con = (
+	  case ModuleEnv.getValBind con
+	   of SOME (ModuleEnv.Con dcon) =>
+	        TranslateEnv.findDCon(!translateEnv, dcon)
+	    | _ => NONE
+          (* end case *))
 
   (* convert a parse-tree type express to a BOM type *)
     fun cvtTy ty = (case ty
@@ -61,8 +73,10 @@ structure TranslatePrim : sig
 	    | (BPT.T_CFun cproto) => BTy.T_CFun cproto
 	    | (BPT.T_VProc) => BTy.T_VProc
 	    | (BPT.T_TyCon tyc) => (case E.findBOMTy tyc
-		 of NONE => raise Fail("unbound BOM type constructor " ^ PTVar.toString tyc)
-		  | SOME ty => ty
+		 of E.BTY_NONE => raise Fail("unbound BOM type constructor " ^ PTVar.toString tyc)
+		  | E.BTY_TY ty => ty
+		  | E.BTY_TYS tys => TranslateTypes.trScheme(!translateEnv, tys)
+		  | E.BTY_TYC tyc => TranslateTypes.tr(!translateEnv, Types.ConTy([], tyc))
 	       (* end case *))
 	 (* end case *))
 
@@ -91,13 +105,13 @@ structure TranslatePrim : sig
 	  end
 
     fun cvtPat (BPT.P_PMark {tree, span}) = cvtPat tree
-      | cvtPat (BPT.P_DCon(dc, xs)) = (case E.findBOMCon dc
-	   of SOME dc => let
-		val (xs) = cvtVarPats (xs)
+      | cvtPat (BPT.P_DCon(dc, xs)) = (case findCon dc
+	   of SOME (E.DCon (dc, _)) => let
+		val xs = cvtVarPats xs
 		in
 		  (BOM.P_DCon(dc, xs))
 		end
-	    | NONE => raise Fail(String.concat ["unknown BOM data constructor ", PTVar.nameOf dc])
+	    | _ => raise Fail(String.concat ["unknown BOM data constructor "])
 	  (* end case *))
       | cvtPat (BPT.P_Const(const, ty)) = (BOM.P_Const(const, cvtTy(ty)))
 
@@ -155,17 +169,18 @@ structure TranslatePrim : sig
 
     fun cvtExp (findCFun, e) = (case e
 	   of BPT.E_Mark {tree, span} => cvtExp(findCFun, tree)
+	    | BPT.E_Let(lhs, BPT.RHS_Mark{tree, span}, e'') => 
+	        cvtExp(findCFun, BPT.E_Let(lhs, tree, e''))
+	    | BPT.E_Let(lhs, BPT.RHS_SimpleExp (BPT.SE_Mark{tree, span}), e') => 
+	        cvtExp(findCFun, BPT.E_Let(lhs, BPT.RHS_SimpleExp tree, e'))
 	    | BPT.E_Let(lhs, rhs, e'') => let
 		val lhs' = cvtVarPats lhs
 		val e' = cvtExp(findCFun, e'')
 		in
 		  case rhs
-		   of BPT.RHS_Mark {tree, span} => cvtExp(findCFun, BPT.E_Let(lhs, tree, e''))
-		    | BPT.RHS_Exp e => BOM.mkLet(lhs', cvtExp(findCFun, e), e')
+		   of BPT.RHS_Exp e => BOM.mkLet(lhs', cvtExp(findCFun, e), e')
 		    | BPT.RHS_SimpleExp e'' => (case e''
-			 of BPT.SE_Mark {tree, span} =>
-			      cvtExp(findCFun, BPT.E_Let(lhs, BPT.RHS_SimpleExp tree, e))
-			  | BPT.SE_Var x => BOM.mkLet(lhs', BOM.mkRet[lookup(x)], e')
+			 of BPT.SE_Var x => BOM.mkLet(lhs', BOM.mkRet[lookup x], e')
 			  | BPT.SE_Select(i, arg) =>
 			      cvtSimpleExp(findCFun, arg, fn x =>
 				BOM.mkStmt(lhs', BOM.E_Select(i, x), e'))
@@ -194,14 +209,14 @@ structure TranslatePrim : sig
 			  | BPT.SE_Prim(p, args) =>
 			      cvtSimpleExps(findCFun, args, fn xs => let
 				val rhs = (case (findPrim p, xs)
-				       of (NONE, _) => (case BOMBasis.findDCon p
-					     of NONE => raise (fail(["unknown primop ", Atom.toString p]))
-					      | SOME dc => BOM.E_DCon(dc, xs)
+				       of (NONE, _) => (case findCon p
+					     of NONE => raise (fail(["unknown primop ", PTVar.toString p]))
+					      | SOME (E.DCon (dc, _)) => BOM.E_DCon(dc, xs)
 					    (* end case *))
 					| (SOME(Prim1{mk, ...}), [x]) => BOM.E_Prim(mk x)
 					| (SOME(Prim2{mk, ...}), [x, y]) => BOM.E_Prim(mk(x, y))
 					| (SOME(Prim3{mk, ...}), [x, y, z]) => BOM.E_Prim(mk(x, y, z))
-					| _ => raise (fail(["arity mismatch for primop ", Atom.toString p]))
+					| _ => raise (fail(["arity mismatch for primop ", PTVar.toString p]))
 				      (* end case *))
 				in
 				  BOM.mkStmt(lhs', rhs, e')
@@ -377,10 +392,10 @@ structure TranslatePrim : sig
 		  end)
 	    | BPT.SE_Prim(p, args) => let
 		fun mkBind xs = (case (findPrim p, xs)
-		       of (NONE, _) => (case BOMBasis.findDCon p
-			     of NONE => raise (fail(["unknown primop ", Atom.toString p]))
-			      | SOME dc =>
+		       of (NONE, _) => (case findCon p
+			     of SOME (E.DCon (dc, rep)) =>
 				  (newTmp(BOMTyCon.dconResTy dc), BOM.E_DCon(dc, xs))
+			      | _ => raise (fail(["unknown primop ", PTVar.toString p]))
 			    (* end case *))
 			| (SOME(Prim1{mk, resTy, ...}), [x]) =>
 			    (newTmp resTy, BOM.E_Prim(mk x))
@@ -388,7 +403,7 @@ structure TranslatePrim : sig
 			    (newTmp resTy, BOM.E_Prim(mk(x, y)))
 			| (SOME(Prim3{mk, resTy, ...}), [x, y, z]) =>
 			    (newTmp resTy, BOM.E_Prim(mk(x, y, z)))
-			| _ => raise (fail(["arity mismatch for primop ", Atom.toString p]))
+			| _ => raise (fail(["arity mismatch for primop ", PTVar.toString p]))
 		      (* end case *))
 		in
 		  cvtSimpleExps(findCFun, args, fn xs => let
@@ -429,7 +444,9 @@ structure TranslatePrim : sig
 	       BOM.mkFun([l'], BOM.mkRet [f'])
 	    end
   
-    fun cvtRhs rhs = (case rhs
+    fun cvtRhs (env, rhs) = (
+	translateEnv := env;
+	case rhs
            of BPT.VarPrimVal v => BOM.mkRet [lookup v]
 	    | BPT.LambdaPrimVal fb => let
 		  val lambda = cvtLambda (findCFun, fb, BTy.T_Fun)
@@ -445,7 +462,8 @@ structure TranslatePrim : sig
                   (* end case *))
            (* end case *))
 
-    fun tyOfPat (BPT.P_Wild NONE) = BTy.T_Any
+    fun tyOfPat (BPT.P_VPMark {tree, span}) = tyOfPat tree
+      | tyOfPat (BPT.P_Wild NONE) = BTy.T_Any
       | tyOfPat (BPT.P_Wild(SOME ty)) = cvtTy ty
       | tyOfPat (BPT.P_Var(_, ty)) = cvtTy ty
 
@@ -521,6 +539,8 @@ structure TranslatePrim : sig
       | cvtDefs importEnv (_::defs) = cvtDefs importEnv defs
 
     fun cvtCode (env, code) = let
+          (* make the translation environment globally accessible *)
+	    val _ = translateEnv := env
 	    val importEnv = E.getImportEnv env
 	    val _ = List.app (insDef importEnv) code
 	    val defs = cvtDefs importEnv code

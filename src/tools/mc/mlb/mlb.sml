@@ -103,7 +103,7 @@ structure MLB : sig
 	    in	       
 	       (strm, reap)
 	    end
-    end
+    end (* preprocessor support *)
 
   (* check for errors and report them if there are any *)
     fun checkForError errStrm = (
