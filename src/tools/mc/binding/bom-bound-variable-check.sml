@@ -9,7 +9,7 @@
 structure BOMBoundVariableCheck :> sig
 
     val chkPrimValRhs : Error.span -> (ProgramParseTree.PML1.BOMParseTree.prim_val_rhs * BindingEnv.env) 
-		          -> ProgramParseTree.PML2.BOMParseTree.prim_val_rhs
+		            -> ProgramParseTree.PML2.BOMParseTree.prim_val_rhs
 
     val chkCode : Error.span -> (ProgramParseTree.PML1.BOMParseTree.code * BindingEnv.env) 
 		        -> (ProgramParseTree.PML2.BOMParseTree.code * BindingEnv.env)
@@ -25,16 +25,10 @@ structure BOMBoundVariableCheck :> sig
     structure Var = ProgramParseTree.Var
     structure BEnv = BindingEnv
 
+    val error = ErrorStream.error
+
     val atos = Atom.toString
     fun qidToString path = QualifiedId.toString (Atom.toString, path)
-
-  (* FIXME: the following is a hack to avoid threading the error stream through
-   * all of the typechecking code.  Eventually, we should fix this, since otherwise
-   * it is a space leak.
-   *)
-    val errStrm = ref(Error.mkErrStream "<bogus>")
-
-    fun error (span, msg) = Error.errorAt (!errStrm, span, msg)
 
   (* attempt to find the binding site of a qualified identifier, reporting an error if none exists *)
     fun findQid (find, kind, dummy) (loc, env, qId) = (case find(env, qId)

@@ -55,14 +55,14 @@ functor MainFn (
 		raise Error)
 	  (* end case *))
 
-    fun boundVarChk errStream (p1, (p2s, env)) = let
+    fun boundVarChk (errStream, p1, (p2s, env)) = let
 	  val (p2, env) = BoundVariableCheck.check (errStream, p1, env)
           in
 	      (p2 :: p2s, env)
 	  end
 
-    fun boundVarChks errStrm =
-	  List.rev o #1 o List.foldl (boundVarChk errStrm) ([], BasisEnv.bEnv0)
+    val boundVarChks = 
+	  List.rev o #1 o ListPair.foldl boundVarChk ([], BasisEnv.bEnv0)
 
   (* load the AST specified by an MLB file *)
     fun mlbToAST (errStrm, file) = let
@@ -70,7 +70,7 @@ functor MainFn (
 	  val (errStrms, p1s) = MLB.load(errStrm, file)
 	  val _ = checkForErrors errStrm
         (* bound-variable check *)
-	  val p2s = boundVarChks errStrm p1s
+	  val p2s = boundVarChks (errStrms, p1s)
 	  val _ = List.app checkForErrors errStrms;
         (* module and type checking *)
 	  val ast = ChkProgram.check (ListPair.zip(errStrms, p2s))

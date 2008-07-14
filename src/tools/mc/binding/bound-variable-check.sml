@@ -23,13 +23,7 @@ structure BoundVariableCheck :> sig
     val atos = Atom.toString
     fun qidToString path = QualifiedId.toString (Atom.toString, path)
 
-  (* FIXME: the following is a hack to avoid threading the error stream through
-   * all of the typechecking code.  Eventually, we should fix this, since otherwise
-   * it is a space leak.
-   *)
-    val errStrm = ref(Error.mkErrStream "<bogus>")
-
-    fun error (span, msg) = Error.errorAt (!errStrm, span, msg)
+    val error = ErrorStream.error
 
   (* attempt to find the binding site of a qualified identifier, reporting an error if none exists *)
     fun findQid (find, kind, dummy) (loc, env, qId) = (case find(env, qId)
@@ -628,7 +622,7 @@ structure BoundVariableCheck :> sig
 	    end
 
     fun check (es, {span, tree}, env) = let
-	val _ = errStrm := es
+	val _ = ErrorStream.setErrStrm es
 	val (tree', env') = chkDecls span (tree, env)
         in		  
 	   ({span=span, tree=tree'}, env')
