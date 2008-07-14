@@ -14,6 +14,7 @@ Library
   structure BindingEnv
   structure Env
   structure UnseenBasis
+  structure BOMBasisEnv
 
 is
 
@@ -31,3 +32,4 @@ is
   basis-env.sml
   env.sml
   unseen-basis.sml
+  bom-basis-env.sml
