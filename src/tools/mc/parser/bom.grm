@@ -78,7 +78,7 @@
 (*	| DARROW	("=>")			*)
 (*	| ARROW		("->")			*)
 (*	| ID of Atom.atom			*)
-	| HLOP of Atom.atom
+	| HLOP of Atom.atom list
 (*	| POSINT of IntInf.int		(* positive integer *) *)
 (*	| NEGINT of IntInf.int		(* negative integer *) *)
 (*	| FLOAT of FloatLit.float		*)
@@ -119,21 +119,21 @@ BOMDecls
 
 
 Definition
-	: "extern" CRetTy ID "(" (CArgTy ("," CArgTy)* )? ")" Attrs ";"
+	: "extern" CRetTy Name "(" (CArgTy ("," CArgTy)* )? ")" Attrs ";"
 		=> (markBOMDefn(KW_extern_SPAN,
 		BPT.D_Extern(CF.CFun{
-			var = ID,
-			name = Atom.toString ID,
+			var = Name,
+			name = Atom.toString Name,
 			retTy = CRetTy,
 			argTys = flatten SR,
 			varArg = false,
 			attrs = Attrs
 		      })))
-	| "typedef" ID "=" BOMType ";"
-		=> (markBOMDefn(KW_typedef_SPAN, BPT.D_TypeDef(ID, BOMType)))
-	| "define" optInline HLOP FunParams ReturnTy ("=" BOMExp)? ";"
+	| "typedef" Name "=" BOMType ";"
+		=> (markBOMDefn(KW_typedef_SPAN, BPT.D_TypeDef(Name, BOMType)))
+	| "define" optInline HLOpId FunParams ReturnTy ("=" BOMExp)? ";"
 		=> (markBOMDefn(FULL_SPAN, let val (p1, p2) = FunParams in
-		      BPT.D_Define(optInline, HLOP, p1, p2, ReturnTy, SR)
+		      BPT.D_Define(optInline, HLOpId, p1, p2, ReturnTy, SR)
 		    end))
 	;
 
@@ -206,11 +206,6 @@ RawType
 	| "vec128"	=> (BPT.T_Vec128)
 	;
 
-HLOpId  
-        : (Name ".")* HLOP
-	       => ({span=FULL_SPAN, tree=(SR, HLOP)})
-        ;
-
 BOMExp
 	: "let" LHS "=" RHS BOMExp
 		=> (markBOMExp(FULL_SPAN, BPT.E_Let(LHS, RHS, BOMExp)))
@@ -230,13 +225,13 @@ BOMExp
 		=> (markBOMExp(FULL_SPAN, BPT.E_Throw(QualifiedId, Args)))
 	| "return" "(" Args ")"
 		=> (markBOMExp(FULL_SPAN, BPT.E_Return Args))
-	| "hlop" HLOpId "(" Args ("/" Args)? ")"
-		=> (markBOMExp(FULL_SPAN, BPT.E_HLOpApply(HLOpId, Args, Option.getOpt(SR, []))))
+	| "hlop" HLOpQId "(" Args ("/" Args)? ")"
+		=> (markBOMExp(FULL_SPAN, BPT.E_HLOpApply(HLOpQId, Args, Option.getOpt(SR, []))))
 	;
 
 BOMLambda
-	: ID FunParams ":" FunReturnTy "=" BOMExp
-		=> (let val (p1, p2) = FunParams in (ID, p1, p2, FunReturnTy, BOMExp) end)
+	: Name FunParams ":" FunReturnTy "=" BOMExp
+		=> (let val (p1, p2) = FunParams in (Name, p1, p2, FunReturnTy, BOMExp) end)
 	;
 
 FunReturnTy
@@ -245,7 +240,7 @@ FunReturnTy
 	;
 
 CLambda
-	: ID "(" Params ")" "=" BOMExp	=> (ID, Params, [], [], BOMExp)
+	: Name "(" Params ")" "=" BOMExp	=> (Name, Params, [], [], BOMExp)
 	;
 
 LHS
@@ -262,7 +257,7 @@ RHS
 		      | NONE => BPT.RHS_SimpleExp(BPT.SE_Select(Int.fromLarge POSINT, SimpleExp))
 		    (* end case *)))
 	| "promote" "(" SimpleExp ")"	=> (markBOMRHS(FULL_SPAN, BPT.RHS_Promote SimpleExp))
-	| "ccall" ID "(" Args ")"	=> (markBOMRHS(FULL_SPAN, BPT.RHS_CCall(ID, Args)))
+	| "ccall" Name "(" Args ")"	=> (markBOMRHS(FULL_SPAN, BPT.RHS_CCall(Name, Args)))
 	| "vpstore" "(" POSINT "," SimpleExp "," SimpleExp ")"
 					=> (markBOMRHS(FULL_SPAN, BPT.RHS_VPStore(POSINT, SimpleExp1, SimpleExp2)))
         | "pmlvar" QualifiedId
@@ -310,7 +305,7 @@ Default
 
 VarPat
 	: "_" (":" BOMType)?		=> (markBOMVarPat(FULL_SPAN, BPT.P_Wild SR))
-	| ID ":" BOMType		=> (markBOMVarPat(FULL_SPAN, BPT.P_Var(ID, BOMType)))
+	| Name ":" BOMType		=> (markBOMVarPat(FULL_SPAN, BPT.P_Var(Name, BOMType)))
 	;
 
 Literal
@@ -323,8 +318,8 @@ Literal
 			| SOME ty => (Literal.Enum w, ty)
 		      (* end case *)
 		    end)
-        | "tag" "(" ID ")"
-                 => (Literal.Tag (Atom.toString ID), BPT.T_Any)
+        | "tag" "(" Name ")"
+                 => (Literal.Tag (Atom.toString Name), BPT.T_Any)
 	| "$" POSINT
 		=> (Literal.StateVal(Word.fromLargeInt POSINT), BPT.T_Any)
 	| Int (":" IntTy)?
@@ -351,3 +346,11 @@ FloatTy	: "float"	=> (BPT.T_Raw BPT.T_Float)
 	| "double"	=> (BPT.T_Raw BPT.T_Double)
 	;
 
+HLOpId	: HLOP	=> (case HLOP of [id] => id | _ => raise Fail "expected hlop id but got qualified id")
+	;
+
+HLOpQId : HLOP => (case HLOP
+		  of [] => raise Fail "impossible"
+		   | [id] => {span=FULL_SPAN, tree=([], id)}
+		   | ids => {span=FULL_SPAN, tree=(List.take(ids, List.length ids - 1), List.last ids)})
+        ;

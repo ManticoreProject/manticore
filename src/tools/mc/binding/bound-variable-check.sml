@@ -119,18 +119,25 @@ structure BoundVariableCheck :> sig
 	    | PT1.ConstPat const => 
 	          (PT2.ConstPat (chkConst const), env)
 	    | PT1.WildPat => (PT2.WildPat, env)
-	    | PT1.IdPat vb => (case BEnv.findVar(env, vb)
-                  of SOME (BEnv.Con c) => 
-		       (* this pattern matches a nullary constructor *)
-		         (PT2.IdPat c, env)
-		   | _ => let
-                       (* this pattern binds a variable *)
-			 val vb' = freshVar vb
-			 val env = BEnv.insertVal(env, vb, BEnv.Var vb')
-		         in
-			    (PT2.IdPat vb', env)
-			 end
-	          (* end case *)) 
+	    | PT1.IdPat vb => (
+	      case QualifiedId.findVar(env, vb)
+               of SOME (BEnv.Con c) => 
+		  (* this pattern matches a nullary constructor *)
+		  (PT2.IdPat c, env)
+		| _ => (
+		  case QualifiedId.unqualId vb
+		   of NONE => (
+		        error(loc, ["unbound pattern variable ", qidToString vb]);
+			(PT2.IdPat dummyVar, env))
+		    | SOME vb => let
+			  (* this pattern binds a local variable *)
+			  val vb' = freshVar vb
+			  val env = BEnv.insertVal(env, vb, BEnv.Var vb')
+		          in
+			      (PT2.IdPat vb', env)
+		          end
+		  (* end case *))
+              (* end case *))
 	    | PT1.ConstraintPat (pat, ty) => let
 		  val (pat, env) = chkPat loc (pat, env)
 		  val ty = chkTy loc (ty, env)

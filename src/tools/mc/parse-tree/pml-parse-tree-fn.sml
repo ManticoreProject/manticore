@@ -168,7 +168,7 @@ functor PMLParseTreeFn (
       | TuplePat of pat list
       | ConstPat of const
       | WildPat
-      | IdPat of var_bind    		(* either variable or nullary constant *)
+      | IdPat of var_use    		(* either variable or nullary constant *)
       | ConstraintPat of pat * ty	(* type constraint *)
 
     and ppat (* parallel patterns, for use in pcase *)

@@ -77,7 +77,7 @@
     | AMP               ("&")
     | DOT               (".")
     | TYVAR of Atom.atom
-    | ID of Atom.atom
+    | ID of Atom.atom list
     | POSINT of IntInf.int		(* positive integer *)
     | NEGINT of IntInf.int		(* negative integer *)
     | FLOAT of FloatLit.float
@@ -358,10 +358,6 @@ ApplyExp
 	| "~" AtomicExp		=> (markExp (FULL_SPAN, PT.ApplyExp(PT.IdExp {span=FULL_SPAN, tree=([], Op.uMinus)}, AtomicExp)))
 	;
 
-QualifiedId
-        : (Name ".")* Name => ({span=FULL_SPAN, tree=(SR, Name)})
-        ;
-
 AtomicExp
 	: QualifiedId		=> (markExp (FULL_SPAN, PT.IdExp QualifiedId))
 	| Int			=> (markExp (FULL_SPAN, PT.ConstExp(PT.IntLit Int)))
@@ -434,7 +430,7 @@ AtomicPat
 		      | SOME(p, ps) => markPat (FULL_SPAN, PT.TuplePat(p::ps))
 		    (* end case *))
 (* FIXME: want to support qualified ids here (e.g., Option.NONE), but doing so causes parser conflicts *)
-	| Name			=> (markPat (FULL_SPAN, PT.IdPat Name))
+	| QualifiedId		=> (markPat (FULL_SPAN, PT.IdPat QualifiedId))
 	| "_"			=> (markPat (FULL_SPAN, PT.WildPat))
 	| Int			=> (markPat (FULL_SPAN, PT.ConstPat(PT.IntLit Int)))
 	| FLOAT			=> (markPat (FULL_SPAN, PT.ConstPat(PT.FltLit FLOAT)))
@@ -445,6 +441,12 @@ Int	: POSINT	=> (POSINT)
 	| NEGINT	=> (NEGINT)
 	;
 
-Name
-	: ID			=> (ID)
+Name	: ID	=> (case ID of [id] => id | _ => raise Fail "expected id but got qualified id")
 	;
+
+QualifiedId
+        : ID => (case ID
+		  of [] => raise Fail "impossible"
+		   | [id] => {span=FULL_SPAN, tree=([], id)}
+		   | ids => {span=FULL_SPAN, tree=(List.take(ids, List.length ids - 1), List.last ids)})
+        ;

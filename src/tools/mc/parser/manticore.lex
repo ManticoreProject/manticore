@@ -87,8 +87,11 @@
 %let num = {dig}+;
 %let idchar = {letter}|{dig}|"_"|"'";
 %let id = {letter}{idchar}*;
+%let qidt = {id}"."
+%let qualifiedid = {qidt}*{id};
 %let tyvarid = "'"{idchar}*;
 %let hlid = "@"{letter}({idchar}|"-")*;
+%let hlqid = {qidt}*{hlid};
 %let esc = "\\"[abfnrtv\\\"]|"\\"{dig}{dig}{dig};
 %let sgood = [\032-\126]&[^\"\\]; (* sgood means "characters good inside strings" *)
 %let ws = " "|[\t\n\v\f\r];
@@ -107,7 +110,6 @@
 <INITIAL,PRIMCODE> "|"	=> (T.BAR);
 <INITIAL,PRIMCODE> ":"	=> (T.COLON);
 <INITIAL,PRIMCODE> "&"   => (T.AMP);
-<INITIAL,PRIMCODE> "."   => (T.DOT);
 
 <INITIAL> "("	=> (T.LP);
 <INITIAL> ")"	=> (T.RP);
@@ -133,7 +135,7 @@
 <INITIAL> "_primcode"	=> (YYBEGIN PRIMCODE; T.KW__primcode);
 <INITIAL> "_prim"	=> (YYBEGIN PRIMCODE; T.KW__prim);
 
-<INITIAL> {id}		=> (Keywords.smlIdToken yytext);
+<INITIAL> {qualifiedid}		=> (Keywords.smlIdToken yytext);
 <INITIAL> {tyvarid}		=> (T.TYVAR(Atom.atom yytext));
 <INITIAL,PRIMCODE> {num}	=> (T.POSINT(valOf (IntInf.fromString yytext)));
 <INITIAL,PRIMCODE> "~"{num}	=> (T.NEGINT(valOf (IntInf.fromString yytext)));
@@ -166,8 +168,13 @@
 	skip ());
 <COMMENT> .|"\n" => (skip ());
 
-<PRIMCODE> {id}			=> (Keywords.bomIdToken yytext);
-<PRIMCODE> {hlid}		=> (T.HLOP(Atom.atom(String.extract(yytext, 1, NONE))));
+<PRIMCODE> {qualifiedid}		=> (Keywords.bomIdToken yytext);
+<INITIAL, PRIMCODE> {hlqid}		=> (let val hlqid = String.tokens (fn c => c = #".") yytext
+					        val path = List.take(hlqid, List.length hlqid - 1)
+					        val hlid = String.extract(List.last hlqid, 1, NONE)
+				            in
+				               T.HLOP(List.map Atom.atom (path @ [hlid]))
+				            end)
 <PRIMCODE> "("			=> (primPush(); T.LP);
 <PRIMCODE> ")"			=> (if primPop() then () else YYBEGIN INITIAL; T.RP);
 <PRIMCODE> "__attribute__"	=> (T.KW___attribute__);
