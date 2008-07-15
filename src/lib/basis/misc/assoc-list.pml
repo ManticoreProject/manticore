@@ -1,36 +1,14 @@
 structure AssocList =
   struct
 
-(*    _primcode (
+(*    structure O = Option*)
+(*
 
-      define @lookup(t : assoc_tag / exh : any) : option =
-        fun f (al : assoc_list / exh : exh) : option =
-	    case al
-	     of ANIL => return(NONE)
-	      | ACONS (t' : assoc_tag, elt : any, al : assoc_list) =>
-		if Equal(t, t')
-		   then return(SOME(elt))
-		else 
-		    apply f(al / exh)
-            end
-         apply f(al / exh)
-      ;
-
-      define @test(/exh : any) : [int]= 
-        return(alloc(0))
-      ;
-
-    )
+    val _ = print (o2s (O.SOME 1023)^"\n")
 *)
 
-_primcode(
-      define @test(/exh : any) : [int]= 
-        return(alloc(0))
-      ;   
+    fun o2s opt = (case opt
+           of Option.SOME _ => ""
 )
-
-val x = _prim (hlop @test)
-
-val _ = print (itos x^"\n")
 
   end
