@@ -3,10 +3,9 @@ structure Option =
 
     exception Option
 
-    datatype 'a opt =
-	     ONONE
-	   | OSOME of 'a
-
+    datatype 'a option =
+	     NONE
+	   | SOME of 'a
 (*
     fun valOf opt = (
 	  case opt
