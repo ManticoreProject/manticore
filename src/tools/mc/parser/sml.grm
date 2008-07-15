@@ -433,6 +433,7 @@ AtomicPat
 		      | SOME(p, []) => p
 		      | SOME(p, ps) => markPat (FULL_SPAN, PT.TuplePat(p::ps))
 		    (* end case *))
+(* FIXME: want to support qualified ids here (e.g., Option.NONE), but doing so causes parser conflicts *)
 	| Name			=> (markPat (FULL_SPAN, PT.IdPat Name))
 	| "_"			=> (markPat (FULL_SPAN, PT.WildPat))
 	| Int			=> (markPat (FULL_SPAN, PT.ConstPat(PT.IntLit Int)))

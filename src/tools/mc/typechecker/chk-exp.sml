@@ -301,7 +301,7 @@ structure ChkExp :> sig
 		  if not(U.unify(ty1, AST.FunTy(ty2, resTy)))
 		    then error(loc, ["type mismatch in application\n",
 				     "* expected ", TypeUtil.toString ty1, "\n",
-				     "* found    ", TypeUtil.toString ty2])
+				     "* found    ", TypeUtil.toString (Ty.FunTy(ty2, resTy))])
 		    else ();
 		  (AST.ApplyExp(e1', e2', resTy), resTy)
 		end

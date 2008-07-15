@@ -66,9 +66,11 @@ structure Unify : sig
 	  fun uni (ty1, ty2) = (case (TU.prune ty1, TU.prune ty2)
 		 of (Ty.ErrorTy, ty2) => true
 		  | (ty1, Ty.ErrorTy) => true
+		  | (_, Ty.VarTy _) => true
+		  | (Ty.VarTy _, _) => true
 		  | (ty1 as Ty.MetaTy mv1, ty2 as Ty.MetaTy mv2) =>
-		      MetaVar.same(mv1, mv2) orelse unifyMV(mv1, mv2)
-		  | (Ty.MetaTy mv1, ty2) => unifyWithMV (ty2, mv1)
+		       MetaVar.same(mv1, mv2) orelse unifyMV(mv1, mv2) 
+		  | (Ty.MetaTy mv1, ty2) => unifyWithMV (ty2, mv1) 
 		  | (ty1, Ty.MetaTy mv2) => unifyWithMV (ty1, mv2)
 		  | (Ty.ConTy(tys1, tyc1), Ty.ConTy(tys2, tyc2)) =>
 		    (TyCon.same(tyc1, tyc2)) andalso ListPair.allEq uni (tys1, tys2)

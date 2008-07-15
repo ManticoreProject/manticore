@@ -107,7 +107,9 @@ structure BoundVariableCheck :> sig
 	          in
 		     case findVarQid(loc, env, cid)
 		      of BEnv.Con cid' => (PT2.ConPat(cid', pat), env)
-		       | _ => (PT2.ConPat(dummyVar, pat), env)
+		       | _ => (
+			 error(loc, ["invalid constructor ", qidToString cid, " in pattern"]);
+			 (PT2.ConPat(dummyVar, pat), env))
 		  end
 	    | PT1.TuplePat pats => let
 		  val (pats, env) = chkPats loc (pats, env)
