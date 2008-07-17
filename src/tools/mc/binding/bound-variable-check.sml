@@ -200,8 +200,8 @@ structure BoundVariableCheck :> sig
                 (* check the function definitions, taking care to keep the environments separate *)
 		  fun chk loc (PT1.MarkFunct {span, tree}) = 
 		          PT2.MarkFunct{span=span, tree=chk span tree} 
-		    | chk loc (PT1.Funct (f, pat, exp)) = let			  
-			  val (pat, env') = chkPat loc (pat, env)
+		    | chk loc (PT1.Funct (f, pats, exp)) = let			  
+			  val (pat, env') = chkPats loc (pats, env)
 			  val exp = chkExp loc (exp, env')
 			  val BEnv.Var f' = Option.valOf(BEnv.findVar(env, f))
 			  in

@@ -246,8 +246,8 @@ ValueDeclRHS
 	;
 
 FunDef
-	: Name AtomicPat "=" Exp
-		=> (mark PT.MarkFunct (FULL_SPAN, PT.Funct(Name, AtomicPat, Exp)))
+	: Name (AtomicPat)+ "=" Exp
+		=> (mark PT.MarkFunct (FULL_SPAN, PT.Funct(Name, SR, Exp)))
 	;
 
 Exp
