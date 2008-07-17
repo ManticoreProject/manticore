@@ -352,10 +352,11 @@ structure Translate : sig
 	          in
 		      mkLet([x'], e, k env')
 		  end
-	    | AST.PrimCodeBind code => (
-		    (* silently add definitions to environments, i.e., hlops are added to the hlop cache *)
-		     TranslatePrim.cvtCode (env, code);
-		     k env)
+	    | AST.PrimCodeBind code => let
+                  val lambdas = TranslatePrim.cvtCode (env, code)
+	          in
+		     B.mkFun(lambdas, k env)
+                  end
 	  (* end case *))
 
     and trCase (env, arg, rules) = let

@@ -70,14 +70,19 @@ structure Census : sig
 
     and doFB (B.FB{body, ...}) = doE body
 
+    and funBind (B.FB{f, ...}) = f
+
     fun census (B.MODULE{externs, hlops, body, ...}) = let
 	  fun clrCFun cf = clear(CFunctions.varOf cf)
 	  in
 	    List.app clrCFun externs;
 	    clrFB body;
 	    List.app clrFB hlops;
+	  (* HLOps can contain references to external PML variables *)
 	    List.app doFB hlops;
-	    doFB body
+	    doFB body;
+	  (* preserve non-inlined HLOps (they have FBs, but application sites do not refer to the FBs directly) *)
+	    List.app (inc o funBind) hlops
 	  end
 
     fun initLambda fb = (clrFB fb; doFB fb)

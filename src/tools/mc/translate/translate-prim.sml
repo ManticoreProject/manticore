@@ -9,12 +9,14 @@
 structure TranslatePrim : sig
 
   (* convert a right-hand side inline BOM declaration to an expression *)
-    val cvtRhs : (TranslateEnv.env * ProgramParseTree.PML2.BOMParseTree.prim_val_rhs) -> BOM.exp
+    val cvtRhs : (TranslateEnv.env * ProgramParseTree.PML2.BOMParseTree.prim_val_rhs) 
+		   -> BOM.exp
 
   (* convert BOM definitions. this process occurs silently, by adding
    * definitions to environments and caches.
    *)
-    val cvtCode : (TranslateEnv.env * ProgramParseTree.PML2.BOMParseTree.code) -> unit
+    val cvtCode : (TranslateEnv.env * ProgramParseTree.PML2.BOMParseTree.code) 
+		    -> BOM.lambda list
 
   end = struct
 
@@ -254,15 +256,16 @@ structure TranslatePrim : sig
 			    fn xs => BOM.mkStmt(lhs', BOM.E_CCall(cfun, xs), e'))
 		        end
 		    | BPT.RHS_PMLVar pmlVar => let
+(* FIXME: add to the list of PML imports *)
 		       (* see comments above on pml imports for an explanation *)
-			val actualBinding = (case E.findBOMPMLVar pmlVar
+			val v = (case E.findBOMPMLVar pmlVar
 				  of NONE => raise Fail (String.concat ["unbound PML variable", PTVar.toString pmlVar])
 				   | SOME v => v
 				(* end case *))
-			val freshBinding = addPMLImport actualBinding
+(*			val freshBinding = addPMLImport actualBinding*)
 		        in
-			   print (BOM.Var.toString freshBinding^"\n");
-			   BOM.mkLet(lhs', BOM.mkRet [freshBinding], e')
+(*			   print (BOM.Var.toString freshBinding^"\n");*)
+			   BOM.mkLet(lhs', BOM.mkRet [v], e')
 			end
 		  (* end case *)
 		end
@@ -545,7 +548,8 @@ structure TranslatePrim : sig
 	    val _ = List.app (insDef importEnv) code
 	    val defs = cvtDefs importEnv code
 	    in
-	       HLOpEnv.addDefs defs
+	       HLOpEnv.addDefs defs;
+	       List.map #def (List.filter (not o #inline) defs)
             end
 
   end

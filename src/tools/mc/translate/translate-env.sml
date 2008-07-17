@@ -63,14 +63,12 @@ structure TranslateEnv : sig
     val getImportEnv    : env -> import_env
     val insertBOMTyDef	: (ty_def * BOMTy.ty) -> unit
     val insertBOMVar	: (var * BOM.var) -> unit
-(*    val insertBOMCon    : (con * con_bind) -> unit*)
     val insertBOMHLOp   : (hlop * HLOp.hlop) -> unit
     val insertBOMHLOpDef : (hlop * hlop_def) -> unit
     val insertBOMCFun   : (import_env * c_id * BOM.var CFunctions.c_fun) -> unit
 
     val findBOMTy	: ty_def -> bty_def
     val findBOMVar	: var -> BOM.var option
-(*    val findBOMCon	: con -> con_bind option*)
     val findBOMHLOp     : hlop -> HLOp.hlop option
     val findBOMHLOpDef  : hlop -> hlop_def option
     val findBOMCFun     : c_id -> BOM.var CFunctions.c_fun option
@@ -260,10 +258,7 @@ structure TranslateEnv : sig
   (* Importing PML variables is a two-step process: PML parse-tree variable -> AST variable -> BOM variable.
    *)
     fun findBOMPMLVar v = (case ModuleEnv.getValBind v
-            of SOME (ModuleEnv.Var astVar) => (case getPMLVar astVar
-                  of SOME bv => SOME bv
-		   | NONE => NONE
-                  (* end case *))
+            of SOME (ModuleEnv.Var astVar) => getPMLVar astVar
 	     | _ => NONE
             (* end case *))
     end
