@@ -122,10 +122,9 @@ structure ChkExp :> sig
 		fun chkFun loc (fb, fbs) = (case fb
 		       of PT.MarkFunct{span, tree} => chkFun span (tree, fbs)
 			| PT.Funct(f, params, body) => let
-
 			    val SOME(Env.Var f') = Env.getValBind f
 
-			  (* check pattern variables of a fun binding *)
+			  (* check the parameter patterns of the function binding *)
 			    fun chkPats' ([], _, params', paramTys) = (List.rev params', List.rev paramTys)
 			      | chkPats' (param :: params, depth, params', paramTys) = let
 		                  val (param', paramTy) = chkPat(loc, depth, param)
@@ -134,12 +133,8 @@ structure ChkExp :> sig
 				  end
 			    val (params, paramTys) = chkPats'(params, depth, [], [])
 
-			    fun chkBody funTy paramTy bodyTy = 
-				  if not(U.unify(funTy, AST.FunTy(paramTy, bodyTy)))
-				    then error(loc, ["type mismatch in function ", PPT.Var.nameOf f])
-				  else ()
-
-			  (* check the function body and eliminate the vector of parameters i.e.,
+			  (* check the function binding. in the process, we need to convert each function binding
+			   * to have a single parameter. the following example shows our technique.
 			   *
 			   *   fun f x y = x + y
 			   *  ==>
@@ -148,31 +143,42 @@ structure ChkExp :> sig
 			   *        in
 			   *            fTmp
 			   *        end
+			   * 
+			   * we use a CPS trick to check the types of the intermediate functions. the chkTyK continuation
+			   * takes the type of the function body and unifies it with the type of the function binding.
 			   *)
 
 			    fun chk ([], _, _, _, _) = raise Fail "compiler bug"
-			      | chk ([param], [paramTy], paramTysK, f', depth) = let
+			      | chk ([param], [paramTy], chkTyK, f', depth) = let
 				  val AST.TyScheme(_, funTy) = Var.typeOf f'
 				  val (body', bodyTy) = chkExp (loc, depth, body)
+				  val funTy' = AST.FunTy(paramTy, bodyTy)
 				  in
-				      paramTysK (AST.FunTy(paramTy, bodyTy));
-				      chkBody funTy paramTy bodyTy;
+				    (* check any temporary bindings *)
+				      chkTyK funTy';
+				      if not(U.unify(funTy, funTy'))
+				         then error(loc, ["type mismatch in function ", PPT.Var.nameOf f])
+				      else ();
 				      ASTUtil.mkFunWithPat(f', param, body')
 				  end
-			      | chk (param :: params, paramTy :: paramTys, paramTysK, f', depth) = let
-				  val depth' = depth+1
+			      | chk (param :: params, paramTy :: paramTys, chkTyK, f', depth) = let
 				  val AST.TyScheme(_, funTy) = Var.typeOf f'
-				  fun paramTysK' bodyTy = (
-				        paramTysK bodyTy;
-					chkBody funTy paramTy bodyTy)
+				  fun chkTyK' bodyTy = let
+				        val funTy' = AST.FunTy(paramTy, bodyTy)
+				        in
+				            chkTyK(AST.FunTy(paramTy, bodyTy));
+					    if not(U.unify(funTy, funTy'))
+				               then error(loc, ["type mismatch in function ", PPT.Var.nameOf f])
+					    else ()
+				        end
 				(* temp function for the body *)
-				  val f''' = Var.new(PPT.Var.nameOf f^"tmp",
+				  val fTmp = Var.new(PPT.Var.nameOf f^"Tmp",
 						    AST.FunTy(
-						        AST.MetaTy(MetaVar.new depth'),
-							AST.MetaTy(MetaVar.new depth')))
-				  val bodyLambda as AST.FB(f'', _, _) = chk(params, paramTys, paramTysK', f''', depth')
-				(* FIXME: the type arguments to f' are incomplete *)
-				  val body = AST.LetExp(AST.FunBind [bodyLambda], ASTUtil.mkVarExp(f'', []))
+						        AST.MetaTy(MetaVar.new depth),
+							AST.MetaTy(MetaVar.new depth)))
+				  val bodyLambda as AST.FB(f'', _, _) = chk(params, paramTys, chkTyK', fTmp, depth+1)
+				  val (tys, _) = TypeUtil.instantiate(depth, Var.typeOf f'')
+				  val body = AST.LetExp(AST.FunBind [bodyLambda], ASTUtil.mkVarExp(f'', tys))
 				  in
 				      ASTUtil.mkFunWithPat(f', param, body)
 				  end
