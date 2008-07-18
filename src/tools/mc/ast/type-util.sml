@@ -223,7 +223,9 @@ String.concatWith "," (List.map toString tys), "])\n"]); raise ex)
 			| Ty.CLASS _ => (env, ty)
 			|_ => raise Fail "impossible"
 		      (* end case *))
-		  | Ty.VarTy _ => raise Fail "unexpected type variable"
+		  | Ty.VarTy _ =>
+		    (* FIXME: is this rule correct? *)
+		    (env, ty)
 		  | Ty.ConTy(args, tyc) => let
 		      val (env, tys) = genVarsForTys (args, env)
 		      in
