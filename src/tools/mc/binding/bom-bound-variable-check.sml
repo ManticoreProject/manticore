@@ -178,7 +178,7 @@ structure BOMBoundVariableCheck :> sig
     and chkLambdas loc (lambdas, env) = let
 	    val (lambdas, env') = List.foldl bindLambda ([], env) lambdas
             in
-	        (List.map (fn lambda => chkLambda' loc (lambda, env)) lambdas, env')
+	        (List.map (fn lambda => chkLambda' loc (lambda, env')) lambdas, env')
 	    end
 
     and chkExp loc (exp, env) = (case exp
