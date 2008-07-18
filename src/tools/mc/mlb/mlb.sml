@@ -141,7 +141,6 @@ structure MLB : sig
 	 (* imports can be pml or mlb files *)
 	 | PT.ImportBasDec file => let
            val file = Atom.toString file
-	   val errStrms = Error.mkErrStream file :: errStrms
            in
 	      case OS.Path.splitBaseExt file
 	       of {base, ext=SOME "mlb"} => let
