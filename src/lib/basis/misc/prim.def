@@ -1,0 +1,12 @@
+#ifndef _PRIM_DEF_
+#define _PRIM_DEF_
+
+#define FALSE	enum(0):PrimTypes.bool
+#define TRUE	enum(1):PrimTypes.bool
+#define UNIT	enum(0):PrimTypes.unit
+#define STOP	enum(0):PrimTypes.signal
+#define NIL	enum(0):List.list
+#define NONE	enum(0):Option.option
+#define QEMPTY	enum(0):PrimTypes.rdyq_item
+
+#endif /*! _PRIM_DEF_ */

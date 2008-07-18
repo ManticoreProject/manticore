@@ -1,2 +1,8 @@
+list.pml
 option.pml
-assoc-list.pml
+prim-types.pml
+unit-testing.pml
+ann "preprocess" "/usr/bin/cpp-4.0" "-I." "-P" "-include" "prim.def" "-"
+in
+  assoc-list.pml 
+end
