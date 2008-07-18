@@ -18,6 +18,8 @@ structure MLB : sig
 
     exception Error
 
+(* FIXME: load files only once *)
+
   (* path to the preprocessor executable and command-line arguments *)
     type preprocessor_cmd = (string * string list)
 

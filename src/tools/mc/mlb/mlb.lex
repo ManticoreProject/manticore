@@ -74,7 +74,8 @@
 
 %let letter = [a-zA-Z];
 %let dig = [0-9];
-%let idchar = {letter}|{dig}|"_"|"'"|"."|"-";
+(* FIXME *)
+%let idchar = {letter}|{dig}|"_"|"'"|"."|"-"|"/";
 %let id = {letter}{idchar}*;
 %let esc = "\\"[abfnrtv\\\"]|"\\"{dig}{dig}{dig};
 %let sgood = [\032-\126]&[^\"\\]; (* sgood means "characters good inside strings" *)
