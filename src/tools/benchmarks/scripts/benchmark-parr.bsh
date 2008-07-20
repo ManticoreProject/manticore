@@ -1,0 +1,88 @@
+#!/bin/bash
+
+# To generate timing results, run this script in the benchmark directory with the following command-line arguments.
+#   INPUT: 
+#           -e prog_name               name of the program you wish to benchmark.  The pml file be located at benchmarks/prog_name/prog_name.pml
+#           -q seq_prog_name           optional name of the sequential program for benchmarking.  The pml file should be located at prog_name/seq_prog_name.pml.
+#           -s size                    integer size for testing.
+#           -l max_leaf_size           integer size for leaf size.
+#           -p num_procs               number of processors.  Using -p 0 causes sequential compilation.
+#
+
+LEAF_SIZES=""
+
+usage="usage: benchmark-parr.bsh -e prog_name -q sequential_prog_name -s size ... -p num_procs ... -l max_leaf_sze ..."
+SEQ_PROG_NAME=""
+while getopts ":s:p:e:q:l:" options; do
+  case $options in
+    s ) SIZES="$SIZES $OPTARG";;
+    p ) PROCS="$PROCS $OPTARG";;
+    e ) PROG_NAME="$OPTARG";;
+    l ) LEAF_SIZES="$LEAF_SIZES $OPTARG";;
+    q ) SEQ_PROG_NAME="$OPTARG";;
+    h ) echo $usage;;
+    \? ) echo $usage
+         exit 1;;
+    * ) echo $usage
+          exit 1;;
+
+  esac
+done
+
+if [ -z "$PROCS" ]; then
+    echo "Enter at least one choice for the number of processors"
+    exit 1
+fi
+
+MC="sml @SMLcmdname=mc @SMLload=../../mc"
+MCFLAGS="-Cclos.convert-style=flatWithCFA"
+SEQFLAGS="$MCFLAGS -Csequential=true"
+
+DATE=$( date +"%F-%H-%M-%S" )
+LOG_FILE_NAME=$PROG_NAME-$DATE.times
+echo "Logging performance results to $LOG_FILE_NAME"
+
+# compile the sequential version
+if [ -z "$SEQ_PROG_NAME" ] ; then
+    SEQ_PROG_NAME=$PROG_NAME
+fi
+SEQ_PROG_EXE=$PROG_NAME-seq
+echo "Compiling sequential program: $MC $SEQFLAGS $PROG_NAME/$SEQ_PROG_NAME.pml"
+$MC $SEQFLAGS $PROG_NAME/$SEQ_PROG_NAME.pml 2> /dev/null
+mv a.out $SEQ_PROG_EXE
+
+PROG_EXE=$PROG_NAME-run
+
+ARCH=$( uname -m )
+OS=$( uname -s )
+MACHINE=$( uname -n )
+SVN_REVISION=$( svn info | grep Revision )
+
+echo -e "#ARCH:\t$ARCH OS:\t$OS MACHINE:\t$MACHINE" >> $LOG_FILE_NAME
+echo -e "#MCFLAGS\t$MCFLAGS" >> $LOG_FILE_NAME
+echo -e "#SVN $SVN_REVISION" >> $LOG_FILE_NAME
+echo -e "#nProcs\t\tsize\t\tmaxLeafSize\ttime(s)" >> $LOG_FILE_NAME 
+
+for LFS in $LEAF_SIZES
+do
+    PARFLAGS="$MCFLAGS -Cmax-leaf-size=$LFS"
+    #compile the parallel version
+    echo "Compiling parallel program: $MC $PARFLAGS $PROG_NAME/$PROG_NAME.pml"
+    $MC $PARFLAGS $PROG_NAME/$PROG_NAME.pml 2> /dev/null
+    mv a.out $PROG_EXE
+    for p in $PROCS
+    do   
+        for s in $SIZES
+	do
+	    echo "evaluating $PROG_NAME for $p processor[s] at image size $s and maxLeafSize $LFS"
+	    echo -n -e "$p\t\t$s\t\t$LFS\t\t" >> $LOG_FILE_NAME
+	    if [ "$p" -eq "0" ] ; then       
+		echo "$s." | ./$SEQ_PROG_EXE >> $LOG_FILE_NAME
+	    else
+		echo "$s." | ./$PROG_EXE -p $p >> $LOG_FILE_NAME
+	    fi
+	done
+    done
+done
+
+rm -f *.ppm *.s $PROG_EXE $SEQ_PROG_EXE

@@ -1,0 +1,7 @@
+This directory contains the Barnes Hut tools described in 
+
+
+NBody.hs:  		Haskell implementation of Barnes Hut
+NBodyGen.hs: 		Generates random particles distributions for testing Barnes Hut
+Makefile:   		Makefile for the Haskell programs
+barnes-hut-pval.pml:	Manticore implementation derived from the NBody.hs
