@@ -8,6 +8,7 @@ structure AssocList =
     _primcode (
       typedef assoc_tag = any;
       typedef elt = any;
+      typedef assoc_list = L.list;
 
       define @find (ls : L.list, tg : assoc_tag / exh : PT.exh) : O.option =
         fun lp (ls : L.list / exh : PT.exh) : O.option =

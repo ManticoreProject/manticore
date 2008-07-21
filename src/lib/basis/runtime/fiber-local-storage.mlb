@@ -1,5 +1,8 @@
 ../misc/assoc-list.mlb
 ann "preprocess" "/usr/bin/cpp-4.0" "-I." "-P" "-include" "runtime-offsets.def" "-"
 in
-  fiber-local-storage.pml
+  ann "preprocess" "/usr/bin/cpp-4.0" "-I." "-P" "-include" "../misc/prim.def" "-"
+  in
+    fiber-local-storage.pml
+  end
 end
