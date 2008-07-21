@@ -166,7 +166,7 @@ structure ChkExp :> sig
 				  fun chkTyK' bodyTy = let
 				        val funTy' = AST.FunTy(paramTy, bodyTy)
 				        in
-				            chkTyK(AST.FunTy(paramTy, bodyTy));
+				            chkTyK funTy';
 					    if not(U.unify(funTy, funTy'))
 				               then error(loc, ["type mismatch in function ", PPT.Var.nameOf f])
 					    else ()
