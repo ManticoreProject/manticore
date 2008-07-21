@@ -11,6 +11,10 @@ structure TranslateTypes : sig
 
     val trDataCon : TranslateEnv.env * AST.dcon -> TranslateEnv.con_bind
 
+  (* convert parse-tree types to BOM types *)
+    val cvtPrimTy : TranslateEnv.env -> ProgramParseTree.PML2.BOMParseTree.ty -> BOM.ty
+    val cvtPrimTys : TranslateEnv.env -> ProgramParseTree.PML2.BOMParseTree.ty list -> BOM.ty list
+
   (* record the BOM kind of the representation of an AST type constructor *)
     val setTycKind : Types.tycon * BOMTy.kind -> unit
 
@@ -20,6 +24,8 @@ structure TranslateTypes : sig
     structure BTy = BOMTy
     structure BTyc = BOMTyCon
     structure E = TranslateEnv
+    structure BPT = ProgramParseTree.PML2.BOMParseTree
+    structure PTVar = ProgramParseTree.Var
 
     fun appi f = let
 	  fun appf (_, []) = ()
@@ -66,6 +72,7 @@ structure TranslateTypes : sig
 			       (case ModuleEnv.getRealizationOfTyc tyc
 				 of SOME (ModuleEnv.TyCon tyc) => trTyc(env, tyc)
 				  | SOME (ModuleEnv.TyDef tys) => trScheme(env, tys)
+				  | SOME (ModuleEnv.BOMTyDef ty) => cvtPrimTy env ty
 				  | NONE => trTyc (env, tyc)				
 			       (* end case *))
 			     | _ => trTyc (env, tyc)
@@ -167,6 +174,35 @@ structure TranslateTypes : sig
 	  in
 	    (rep, FlattenRep.dstTys rep)
 	  end
+
+  (* convert parse-tree types to BOM types *)
+    and cvtPrimTy env = let
+	  val cvtTys = cvtPrimTys env
+	  fun cvtTy ty = (case ty
+	        of BPT.T_Mark {tree, span} => cvtTy tree
+		 | BPT.T_Any => BTy.T_Any
+		 | (BPT.T_Enum w) => BTy.T_Enum w
+		 | (BPT.T_Raw rty) => BTy.T_Raw rty
+		 | (BPT.T_Tuple(mut, tys)) => BTy.T_Tuple(mut, cvtTys tys)
+		 | (BPT.T_Addr ty) => BTy.T_Addr(cvtTy ty)
+		 | (BPT.T_Fun(argTys, exhTys, resTys)) =>
+		   BTy.T_Fun(cvtTys argTys, cvtTys exhTys, cvtTys resTys)
+		 | (BPT.T_Cont tys) => BTy.T_Cont(cvtTys tys)
+		 | (BPT.T_CFun cproto) => BTy.T_CFun cproto
+		 | (BPT.T_VProc) => BTy.T_VProc
+		 | (BPT.T_TyCon tyc) => (
+		     case E.findBOMTy tyc
+		      of E.BTY_NONE => raise Fail("unbound BOM type constructor " ^ PTVar.toString tyc)
+		       | E.BTY_TY ty => ty
+		       | E.BTY_TYS tys => trScheme(env, tys)
+		       | E.BTY_TYC tyc => tr(env, Types.ConTy([], tyc))
+	             (* end case *))
+	         (* end case *))
+          in
+	    cvtTy
+	  end
+
+    and cvtPrimTys env tys = List.map (cvtPrimTy env) tys
 
     fun trDataCon (env, dc) = (case E.findDCon(env, dc)
 	     of SOME dc' => dc'

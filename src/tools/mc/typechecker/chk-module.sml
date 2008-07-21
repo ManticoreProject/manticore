@@ -111,10 +111,15 @@ structure ChkModule :> sig
 		  env'
 		end
 	    | PT.PrimTyDecl (tvs, id, bty) => let
-		  val _ = raise Fail "todo"
-		  in
-		     env
-		  end
+                val tvs' = ChkTy.checkTyVars (!errStrm) (loc, tvs)
+		val tyc = TyCon.newAbsTyc(idToAtom id, List.length tvs', false)
+		val env' = Env.insertTy(env, id, Env.TyCon tyc)
+		val tyd = Env.BOMTyDef bty
+	        in
+		  (* bind the realization of the abstract type (used in PML) *)
+		   ModuleEnv.setRealizationOfTyc(tyc, tyd);
+		   env'
+	        end
           (* end case *))
 
     fun chkSpec loc (spec, env) = (case spec

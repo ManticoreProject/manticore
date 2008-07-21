@@ -12,7 +12,10 @@ structure ModuleEnv =
     structure VarMap = ProgramParseTree.Var.Map
     structure TyVarMap = AtomMap
 
-    datatype ty_def = TyDef of Types.ty_scheme | TyCon of Types.tycon
+    datatype ty_def 
+      = TyDef of Types.ty_scheme                                   (* PML type definition *)
+      | TyCon of Types.tycon                                       (* PML type constructor *)
+      | BOMTyDef of ProgramParseTree.PML2.BOMParseTree.ty          (* inline BOM type definition *)
 
   (* value identifiers may be data constructors, variables, or overloaded variables. *)
     datatype val_bind
@@ -92,9 +95,6 @@ structure ModuleEnv =
 	   ProgramParseTree.Var.newProp (fn _ => NONE)
 
     fun bindVal (v, x) = setValBind (v, SOME x)
-
-    fun tyd2s (TyCon tyc) = TyCon.toString tyc
-      | tyd2s _ = ""
 
     fun insertTy (ModEnv {modRef, tyEnv, varEnv, modEnv, sigEnv, outerEnv}, tv, x) = (
 	setTyDef(tv, SOME x);

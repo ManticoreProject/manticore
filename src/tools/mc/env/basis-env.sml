@@ -7,11 +7,11 @@
 
 structure BasisEnv : sig
 
-    val lookupOp : Atom.atom -> Env.val_bind
+    val lookupOp : Atom.atom -> ModuleEnv.val_bind
 
-    val te0 : Env.ty_env
-    val ve0 : Env.var_env
-
+(*    val te0 : ModuleEnv.ty_env
+    val ve0 : ModuleEnv.var_env
+*)
     val bEnv0 : BindingEnv.env
     val mEnv0 : ModuleEnv.env
     val lookupOpPT : Atom.atom -> BindingEnv.val_bind
@@ -30,6 +30,7 @@ structure BasisEnv : sig
     structure PPT = ProgramParseTree
     structure BEnv = BindingEnv
     structure MEnv = ModuleEnv
+    structure Env = MEnv
 
     nonfix div mod
 
@@ -388,10 +389,10 @@ structure BasisEnv : sig
 	      ];
 	    AtomTable.lookup tbl
 	  end
-
+(*
       val te0 = Env.fromList predefinedTypes
       val ve0 = Env.fromList predefinedVars
-
+*)
     (* new stuff *)
 
       fun bindTy (n, x) = let
