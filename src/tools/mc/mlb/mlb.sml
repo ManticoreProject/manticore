@@ -8,7 +8,7 @@
 
 structure MLB : sig
     
-  (* load the compilation unit of an MLB file *)
+  (* load the an MLB file *)
     val load : (Error.err_stream * string) -> (Error.err_stream list * ProgramParseTree.PML1.program list)
 
   end = struct
@@ -23,13 +23,14 @@ structure MLB : sig
   (* path to the preprocessor executable and command-line arguments *)
     type preprocessor_cmd = (string * string list)
 
+    type parse_tree = (Error.err_stream * PPT.program)
+
   (* environment for an MLB file *)
     datatype mlb_env
       = Env of 
              {
 		loc : Error.span,                           (* location in the MLB file *)
-		errStrms : Error.err_stream list,           (* error streams *)
-		pts : PPT.program list,                     (* parse trees (we must have |pts| = |errStrms) *)
+		pts : parse_tree AtomMap.map,               (* parse trees; keys in this map are full paths the files  *)
 		preprocs : preprocessor_cmd list            (* preprocessors *)
               }
 
@@ -127,82 +128,96 @@ structure MLB : sig
 	   f(List.rev errStrms, [])
         end 
 
+    fun filePath file = Atom.atom(OS.FileSys.getDir()^Atom.toString file)
+  
+    fun alreadyDefined (env, file) = AtomMap.inDomain(env, filePath file)
+
+    fun insert (pts, file, errStrm, pt) = 
+	  if alreadyDefined(pts, file)
+	     then pts
+	  else AtomMap.insert(pts, filePath file, (errStrm, pt))
+
+    val unpackagePts = ListPair.unzip o (AtomMap.listItems : parse_tree AtomMap.map -> parse_tree list)
+
   (* process a basis expression *)
-    fun processBasExp (mlb, env as Env{loc, errStrms, pts, preprocs}) = (case mlb
+    fun processBasExp (mlb, env as Env{loc, pts, preprocs}) = (case mlb
         of PT.MarkBasExp {span, tree} => 
-	     processBasExp (tree, Env{loc=span, errStrms=errStrms, pts=pts, preprocs=preprocs})
+	     processBasExp (tree, Env{loc=span, pts=pts, preprocs=preprocs})
 	 | PT.DecBasExp basDec => 
 	     processBasDec (basDec, env)
 	 | _ => raise Fail "todo"
         (* end case *))
 
   (* process a basis declaration *)
-    and processBasDec (basDec, env as Env{loc, errStrms, pts, preprocs}) = (case basDec
+    and processBasDec (basDec, env as Env{loc, pts, preprocs}) = (case basDec
         of PT.MarkBasDec {span, tree} => 
-	   processBasDec (tree, Env{loc=span, errStrms=errStrms, pts=pts, preprocs=preprocs})
+	   processBasDec (tree, Env{loc=span, pts=pts, preprocs=preprocs})
 	 (* imports can be pml or mlb files *)
-	 | PT.ImportBasDec file => let
-           val file = Atom.toString file
-           in
-	      case OS.Path.splitBaseExt file
+	 | PT.ImportBasDec file => (
+	      case OS.Path.splitBaseExt (Atom.toString file)
 	       of {base, ext=SOME "mlb"} => let
-		      val (errStrms', pts') = loadMLB (file, Env{loc=loc, errStrms=errStrms, pts=pts, preprocs=preprocs})		      
+		      val pts' = loadMLB (file, Env{loc=loc, pts=pts, preprocs=preprocs})		      
+		      val pts'' = AtomMap.unionWith (fn (x, _) => x) (pts', pts)
 		      in
-		          (errStrms'@errStrms, pts'@pts)
+		          pts''
 		      end
 		| {base, ext=SOME "pml"} => (
-                  case loadPML (file, Env{loc=loc, errStrms=errStrms, pts=pts, preprocs=preprocs})
-		   of NONE => (errStrms, pts)
-		    | SOME (errStrm, pt) => (errStrm :: errStrms, pt :: pts)
+                  case loadPML (file, Env{loc=loc, pts=pts, preprocs=preprocs})
+		   of NONE => pts
+		    | SOME (errStrm, pt) => insert(pts, file, errStrm, pt)
                   (* end case *))
 		| _ => raise Fail "unknown source file extension"
-           end
+           (* end case *))
 	 | PT.AnnBasDec("preprocess", ppCmd :: ppArgs, basDec) =>
-	   processBasDec(basDec, Env{loc=loc, errStrms=errStrms, pts=pts, preprocs=(ppCmd, ppArgs) :: preprocs})
+	   processBasDec(basDec, Env{loc=loc, pts=pts, preprocs=(ppCmd, ppArgs) :: preprocs})
 	 | _ => raise Fail "todo"
         (* end case *))
 
+(* FIXME: check that the MLB file is valid *)
+
   (* load an MLB file *)
-    and loadMLB (file, env as Env{loc, errStrms, pts, preprocs}) = let
-	  val errStrm = Error.mkErrStream file
+    and loadMLB (file, env as Env{loc, pts, preprocs}) = let
+	  val fileStr = Atom.toString file
+	  val errStrm = Error.mkErrStream fileStr
           in
-	      (case MLBParser.parseFile (errStrm, file)
+	      (case MLBParser.parseFile (errStrm, fileStr)
 		of SOME {span, tree=basDecs} => let
 		       val dir = OS.FileSys.getDir()
-		       val {dir=dir', ...} = OS.Path.splitDirFile file
+		       val {dir=dir', ...} = OS.Path.splitDirFile fileStr
 		       val dir' = OS.FileSys.fullPath dir'
 		       val _ = OS.FileSys.chDir dir'
-		       fun f basDec = 
-			   processBasDec(basDec, Env{loc=span, errStrms=errStrms, pts=[], preprocs=preprocs})
-		       (* FIXME: check that the MLB file is valid *)
-		       val _ = checkForErrors errStrms
-		       val (errStrmss, ptss) = ListPair.unzip(List.map f basDecs)
+		       val pts = List.foldl 
+				     (fn (basDec, pts) => processBasDec(basDec, Env{loc=span, pts=pts, preprocs=preprocs}))
+				     pts
+				     basDecs
 		       in 
+		           checkForErrors(#1(unpackagePts pts));
 		           OS.FileSys.chDir dir;
-			   (List.concat errStrmss, List.concat ptss)
+			   pts
 		       end
-		 | NONE => (checkForErrors errStrms; ([], []))
+		 | NONE => pts
                (* end case *))
             end
 
   (* load a PML file *)
-    and loadPML (filename, env as Env{loc, errStrms, pts, preprocs}) = let 
-	val errStrm = Error.mkErrStream filename
-	val (inStrm, reap) = preprocess(List.rev preprocs, filename)
-        val ptOpt = Parser.parseFile (errStrm, inStrm)
-        in
-	   reap();
-	   checkForErrors errStrms;
-	   case ptOpt
-            of NONE => NONE
-	     | SOME pt => SOME (errStrm, pt)
-        end
+    and loadPML (file, env as Env{loc, pts, preprocs}) = let 
+	   val fileStr = Atom.toString file
+	   val errStrm = Error.mkErrStream fileStr
+	   val (inStrm, reap) = preprocess(List.rev preprocs, fileStr)
+           val ptOpt = Parser.parseFile (errStrm, inStrm)
+           in
+		reap();
+		case ptOpt
+		 of NONE => NONE
+		  | SOME pt => SOME (errStrm, pt)
+           end
 
   (* load the MLB file *)
     fun load (errStrm, file) = let
-	    val env0 = Env{loc=(0,0), errStrms=[], pts=[], preprocs=[]}
+	    val env0 = Env{loc=(0,0), pts=AtomMap.empty, preprocs=[]}
+	    val pts = loadMLB(Atom.atom file, env0)
             in
-	        loadMLB(file, env0)
+	        unpackagePts pts
             end
 
   end (* MLB *)

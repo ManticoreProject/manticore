@@ -9,6 +9,7 @@
 Library
 
   structure BoundVariableCheck
+  structure UsedVars
 
 is
 
@@ -26,4 +27,5 @@ is
   qualified-id.sml
   bound-variable-check.sml
   bom-bound-variable-check.sml
-
+  used-vars.sml
+  bom-used-vars.sml
