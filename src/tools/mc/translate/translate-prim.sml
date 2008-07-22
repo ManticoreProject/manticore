@@ -52,8 +52,8 @@ structure TranslatePrim : sig
 
   (* globally accessible translation environment *)
     val translateEnv = ref (TranslateEnv.mkEnv())
-    val cvtTy = TranslateTypes.cvtPrimTy (!translateEnv)
-    val cvtTys = TranslateTypes.cvtPrimTys (!translateEnv)
+    fun cvtTy ty = TranslateTypes.cvtPrimTy (!translateEnv) ty
+    fun cvtTys ty = TranslateTypes.cvtPrimTys (!translateEnv) ty
 
   (* find a data constructor that is defined in PML code *)
     fun findCon con = (
@@ -93,7 +93,7 @@ structure TranslatePrim : sig
 		in
 		  (BOM.P_DCon(dc, xs))
 		end
-	    | _ => raise Fail(String.concat ["unknown BOM data constructor "])
+	    | _ => raise Fail(String.concat ["unknown BOM data constructor ", PTVar.toString dc])
 	  (* end case *))
       | cvtPat (BPT.P_Const(const, ty)) = (BOM.P_Const(const, cvtTy ty))
 
@@ -192,7 +192,7 @@ structure TranslatePrim : sig
 			      cvtSimpleExps(findCFun, args, fn xs => let
 				val rhs = (case (findPrim p, xs)
 				       of (NONE, _) => (case findCon p
-					     of NONE => raise (fail(["unknown primop ", PTVar.toString p]))
+					     of NONE => raise (fail(["unknown data constructor ", PTVar.toString p]))
 					      | SOME (E.DCon (dc, _)) => BOM.E_DCon(dc, xs)
 					    (* end case *))
 					| (SOME(Prim1{mk, ...}), [x]) => BOM.E_Prim(mk x)
@@ -379,7 +379,7 @@ structure TranslatePrim : sig
 		       of (NONE, _) => (case findCon p
 			     of SOME (E.DCon (dc, rep)) =>
 				  (newTmp(BOMTyCon.dconResTy dc), BOM.E_DCon(dc, xs))
-			      | _ => raise (fail(["unknown primop ", PTVar.toString p]))
+			      | _ => raise (fail(["unknown data constructor ", PTVar.toString p]))
 			    (* end case *))
 			| (SOME(Prim1{mk, resTy, ...}), [x]) =>
 			    (newTmp resTy, BOM.E_Prim(mk x))
@@ -429,6 +429,7 @@ structure TranslatePrim : sig
 	    end
   
     fun cvtRhs (env, pmlTy, rhs) = let
+	val _ = translateEnv := env
         (* check that the RHS matches the constraining type *)
 	val pmlTy = TranslateTypes.trScheme(env, pmlTy)
 	  fun chkConstraintTy bomTy = 
@@ -438,8 +439,7 @@ structure TranslatePrim : sig
 							 "BOM type = "^BOMTyUtil.toString bomTy,
 							 "PML type = "^BOMTyUtil.toString pmlTy])
 				 
-          in
-	     translateEnv := env;
+          in	     
 	     case rhs
               of BPT.VarPrimVal v => let
 		   val bomVar = lookupVar v
