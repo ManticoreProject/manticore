@@ -60,7 +60,7 @@ structure UsedVars =
 	          in
 		     usedOfList funct functs
 		  end
-	    | PT.PrimVDecl(pat, prim) => union[usedOfPat pat, BOMUsedVars.usefOfPrimValRHS prim]
+	    | PT.PrimVDecl(pat, prim) => union[usedOfPat pat, BOMUsedVars.usedOfPrimValRhs prim]
            (* end case *))
 
     and usedOfValDecls valDecls = usedOfList usedOfValDecl valDecls
