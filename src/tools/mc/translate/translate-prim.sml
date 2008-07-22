@@ -63,7 +63,6 @@ structure TranslatePrim : sig
 	    | _ => NONE
           (* end case *))
 
-
     fun cvtVarPats vpats = let
 	  fun f (BPT.P_VPMark {tree, span}) = f tree
 	    | f (BPT.P_Wild ty) = let

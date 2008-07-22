@@ -278,12 +278,13 @@ structure BOMBoundVariableCheck :> sig
 	     | PT1.SE_Prim (prim, sexps) => let
 	           val prim = (case findDCon (env, prim)
 				 of SOME dcon => dcon
-				  | NONE => (case QualifiedId.unqualId prim
-					  of NONE => (
-					       error(loc, ["invalid primop/data constructor use for ", qidToString prim]);
-					       dummyVar)
-					   | SOME prim => freshVar prim          (* ordinary primop *)
-					(* end case *))
+				  | NONE => (
+				      case QualifiedId.unqualId prim
+				       of NONE => (
+					  error(loc, ["invalid primop/data constructor use for ", qidToString prim]);
+					  dummyVar)
+					| SOME prim => freshVar prim          (* ordinary primop *)
+				      (* end case *))
                               (* end case *))
 	           in
 		      PT2.SE_Prim(prim, chkSexps loc (sexps, env))
