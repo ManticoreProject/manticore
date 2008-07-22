@@ -9,11 +9,11 @@
 structure ChkTy :> sig
 
   (* check a type for well formedness *)
-    val checkTy : Error.err_stream -> (Error.span * ProgramParseTree.PML2.tyvar list * ProgramParseTree.PML2.ty) 
+    val checkTy : (Error.span * ProgramParseTree.PML2.tyvar list * ProgramParseTree.PML2.ty) 
 		      -> (AST.tyvar list * AST.ty)
 
   (* check a type for well formedness *)
-    val checkTyVars : Error.err_stream -> (Error.span * ProgramParseTree.PML2.tyvar list)
+    val checkTyVars : (Error.span * ProgramParseTree.PML2.tyvar list)
 		      -> AST.tyvar list
 
   end = struct
@@ -23,13 +23,7 @@ structure ChkTy :> sig
     structure Ty = Types
     structure Env = ModuleEnv
 
-  (* FIXME: the following is a hack to avoid threading the error stream through
-   * all of the typechecking code.  Eventually, we should fix this, since otherwise
-   * it is a space leak.
-   *)
-    val errStrm = ref(Error.mkErrStream "<bogus>")
-
-    fun error (span, msg) = Error.errorAt (!errStrm, span, msg)
+    val error = ErrorStream.error
 
   (* a type expression for when there is an error *)
     val bogusTy = AST.ErrorTy
@@ -79,8 +73,8 @@ structure ChkTy :> sig
 		AST.FunTy(chkTy(loc, tve, ty1), chkTy(loc, tve, ty2))
 	  (* end case *))
 
-  (* check a list of type variables *)
-    fun chkTyVars (loc, tvs) = let
+  (* check a type variable bindings *)
+    fun chkTyVarBinds (loc, tvs) = let
 	  fun chk ([], tve, tvs) = (tve, List.rev tvs)
 	    | chk (tv::rest, tve, tvs) = let
 		val tv' = TyVar.new tv
@@ -95,14 +89,19 @@ structure ChkTy :> sig
 	    chk (tvs, AtomMap.empty, [])
 	  end
 
-    fun checkTyVars err (loc, tvs) = #2 (chkTyVars(loc, tvs))
+    fun checkTyVars (loc, tvs) = #2 (chkTyVarBinds(loc, tvs))
 
-    fun checkTy err (loc, tvs, ty) = let
+    val uniq = AtomSet.listItems o AtomSet.fromList
+
+  (* check type variable occurences in a type *)
+    fun chkTyVarUses (loc, tvs) = chkTyVarBinds(loc, uniq tvs)
+
+    fun checkTy (loc, tvs, ty) = let
           val tvUses = tvsOfTy(ty, [])
 	  val tvs = if List.length tvs > 0
                        then tvs
-                       else tvUses
-          val (tve, tvs) = chkTyVars(loc, tvs)
+                    else tvUses
+          val (tve, tvs) = chkTyVarUses (loc, tvs)
 	  val ty' = chkTy(loc, tve, ty)
           in
              (tvs, ty')

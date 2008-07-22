@@ -9,11 +9,11 @@
 structure ChkExp :> sig 
 
   (* type check an expression *)
-    val checkExp : Error.err_stream -> (Error.span * ProgramParseTree.PML2.exp) 
+    val checkExp : (Error.span * ProgramParseTree.PML2.exp) 
 		       -> (AST.exp * Types.ty)
 
   (* type check a value declaration *)
-    val checkValDecl : Error.err_stream -> (Error.span * ProgramParseTree.PML2.val_decl) 
+    val checkValDecl : (Error.span * ProgramParseTree.PML2.val_decl) 
 		           -> AST.binding
 
   end = struct
@@ -25,20 +25,14 @@ structure ChkExp :> sig
     structure Ty = Types
     structure Env = ModuleEnv
 
+    val error = ErrorStream.error
+
     fun unzip3 tups = let
       fun u ([], xs, ys, zs) = (xs, ys, zs)
 	| u ((x,y,z)::t, xs, ys, zs) = u (t, x::xs, y::ys, z::zs)
       in
         u (List.rev tups, [], [], [])
       end
-
-  (* FIXME: the following is a hack to avoid threading the error stream through
-   * all of the typechecking code.  Eventually, we should fix this, since otherwise
-   * it is a space leak.
-   *)
-    val errStrm = ref(Error.mkErrStream "<bogus>")
-
-    fun error (span, msg) = Error.errorAt (!errStrm, span, msg)
 
   (* a type expression for when there is an error *)
     val bogusTy = AST.ErrorTy
@@ -510,7 +504,7 @@ structure ChkExp :> sig
 			bogusExp)
 		  (* end case *))
 	    | PT.ConstraintExp(e, ty) => let
-		val (_, constraintTy) = ChkTy.checkTy (!errStrm) (loc, [], ty)
+		val (_, constraintTy) = ChkTy.checkTy (loc, [], ty)
 		val (e', ty') = chkExp (loc, depth, e)
 		in
 		   if not(U.unify(ty', constraintTy))
@@ -674,7 +668,7 @@ structure ChkExp :> sig
 		      end
 		(* end case *))
 	    | PT.ConstraintPat(p, ty) => let
-		val (_, constraintTy) = ChkTy.checkTy (!errStrm) (loc, [], ty)
+		val (_, constraintTy) = ChkTy.checkTy (loc, [], ty)
 		val (p', ty') = chkPat (loc, depth, p)
 		in
 		   if not(U.unify(ty', constraintTy))
@@ -698,12 +692,8 @@ structure ChkExp :> sig
 	    (* end case *)
 	  end
 
-    fun checkExp err (loc, exp) = chkExp(loc, 0, exp)
+    fun checkExp (loc, exp) = chkExp(loc, 0, exp)
 
-    fun checkValDecl err (loc, valDecl) = let
-	    val _ = errStrm := err
-	    in
-	       chkValDcl(loc, 0, valDecl)
-            end
+    fun checkValDecl (loc, valDecl) = chkValDcl(loc, 0, valDecl)
 
   end

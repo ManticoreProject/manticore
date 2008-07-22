@@ -24,6 +24,8 @@ is
   ../ast/sources.cm
   ../env/sources.cm
 
+  error-stream.sml
+
   chk-ty.sml
   chk-exp.sml
   chk-module.sml

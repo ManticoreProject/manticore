@@ -12,7 +12,7 @@ structure MatchSig :> sig
   (* check that the module's signature matches the given signature, and return the
    * final signature for sealing the module
    *)
-    val match : {err : Error.err_stream, loc : Error.span, modEnv : ModuleEnv.env, sigEnv : ModuleEnv.env} 
+    val match : {loc : Error.span, modEnv : ModuleEnv.env, sigEnv : ModuleEnv.env} 
 		    -> ModuleEnv.env
 
   (* takes a signature and some type revelations and returns the signature with those types revealed *)
@@ -24,13 +24,7 @@ structure MatchSig :> sig
     structure Env = ModuleEnv
     structure BVar = ProgramParseTree.Var
 
-  (* FIXME: the following is a hack to avoid threading the error stream through
-   * all of the typechecking code.  Eventually, we should fix this, since otherwise
-   * it is a space leak.
-   *)
-    val errStrm = ref(Error.mkErrStream "<bogus>")
-
-    fun error (span, msg) = Error.errorAt (!errStrm, span, "matching signatures: " :: msg)
+    val error = ErrorStream.error
 
     val varToString = ProgramParseTree.Var.nameOf
 
@@ -121,26 +115,24 @@ structure MatchSig :> sig
 	   List.app match (matchAndReport(loc, "var", sigVarEnv, modVarEnv))
 	end
 
-    fun matchMods err loc (modEnv , sigEnv) = let
+    fun matchMods loc (modEnv , sigEnv) = let
 	fun f (id, modEnv, sigEnv) = (
-	    match{err=err, loc=loc, modEnv=modEnv, sigEnv=sigEnv}; 
+	    match{loc=loc, modEnv=modEnv, sigEnv=sigEnv}; 
 	    ())
         in 
 	   List.app f (matchAndReport(loc, "module", sigEnv, modEnv))
         end
 
-    and match {err, 
-	       loc,
+    and match {loc,
 	       modEnv=modEnv as Env.ModEnv{tyEnv=modTyEnv, varEnv=modVarEnv, modEnv=modModEnv, ...}, 
 	       sigEnv=sigEnv as Env.ModEnv{tyEnv=sigTyEnv, varEnv=sigVarEnv, modEnv=sigModEnv, ...}
 	      } = (
-  	   errStrm := err;
          (* set the realizations of type constructors *)
 	   List.app Env.setRealizationOfTyc (Env.tyConDefs (sigTyEnv, modTyEnv));
          (* match specs in the constraining signature with declarations the implementing structure *)
 	   matchTypes loc (modTyEnv, sigTyEnv);
 	   matchVars loc (modVarEnv, sigVarEnv);
-	   matchMods err loc (modModEnv, sigModEnv);
+	   matchMods loc (modModEnv, sigModEnv);
          (* the fresh signature for the sealed module *)
 	   CopySig.copy(sigEnv, modEnv))
 

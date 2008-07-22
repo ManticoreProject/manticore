@@ -20,13 +20,7 @@ structure ChkModule :> sig
     structure Ty = Types
     structure Env = ModuleEnv
 
-  (* FIXME: the following is a hack to avoid threading the error stream through
-   * all of the typechecking code.  Eventually, we should fix this, since otherwise
-   * it is a space leak.
-   *)
-    val errStrm = ref(Error.mkErrStream "<bogus>")
-
-    fun error (span, msg) = Error.errorAt (!errStrm, span, msg)
+    val error = ErrorStream.error
 
     val idToString = ProgramParseTree.Var.toString
 
@@ -61,19 +55,19 @@ structure ChkModule :> sig
     fun chkTyDcl loc (ptTyDecl, env) = (case ptTyDecl
            of PT.MarkTyDecl {span, tree} => chkTyDcl loc (tree, env)
 	    | PT.TypeTyDecl(tvs, id, ty) => let
-		val (tvs', ty') = ChkTy.checkTy (!errStrm) (loc, tvs, ty)
+		val (tvs', ty') = ChkTy.checkTy (loc, tvs, ty)
 		in
 		  Env.insertTy(env, id, Env.TyDef(AST.TyScheme(tvs', ty')))
 		end
 	    | PT.AbsTyDecl (tvs, id) => let
-                val tvs' = ChkTy.checkTyVars (!errStrm) (loc, tvs)
+                val tvs' = ChkTy.checkTyVars (loc, tvs)
 		val tyc = TyCon.newAbsTyc(idToAtom id, List.length tvs', false)
 		val env' = Env.insertTy(env, id, Env.TyCon tyc)
                 in
 		  env'
                 end
 	    | PT.DataTyDecl(tvs, id, cons) => let
-		val tvs' = ChkTy.checkTyVars (!errStrm) (loc, tvs)
+		val tvs' = ChkTy.checkTyVars (loc, tvs)
 		val tyc = TyCon.newDataTyc(idToAtom id, tvs')
 	      (* update the type environment before checking the constructors so that
 	       * recursive types work.
@@ -95,7 +89,7 @@ structure ChkModule :> sig
 			      else let
 				val optTy' = Option.map
                     (* FIXME: handle type variables properly *)
-				      (fn ty => #2(ChkTy.checkTy (!errStrm) (loc, [], ty))) optTy
+				      (fn ty => #2(ChkTy.checkTy (loc, [], ty))) optTy
 				val con' = newCon(idToAtom conid, optTy')
 				in
 				  chkCons (loc,
@@ -111,7 +105,7 @@ structure ChkModule :> sig
 		  env'
 		end
 	    | PT.PrimTyDecl (tvs, id, bty) => let
-                val tvs' = ChkTy.checkTyVars (!errStrm) (loc, tvs)
+                val tvs' = ChkTy.checkTyVars (loc, tvs)
 		val tyc = TyCon.newAbsTyc(idToAtom id, List.length tvs', false)
 		val env' = Env.insertTy(env, id, Env.TyCon tyc)
 		val tyd = Env.BOMTyDef bty
@@ -126,7 +120,7 @@ structure ChkModule :> sig
         of PT.MarkSpec {tree, span} => chkSpec span (tree, env)
 	 | PT.TypeSpec tyDecl => chkTyDcl loc (tyDecl, env)
 	 | PT.ValSpec (x, tvs, ty) => let
-           val (tvs', ty) = ChkTy.checkTy (!errStrm) (loc, tvs, ty)
+           val (tvs', ty) = ChkTy.checkTy (loc, tvs, ty)
 	   val x' = Var.newPoly(PPT.Var.nameOf x, Ty.TyScheme(tvs', ty))
            in
 	       Env.insertVar(env, x, Env.Var x')
@@ -191,7 +185,7 @@ structure ChkModule :> sig
                     of SOME sign => let
                        val sigEnv = chkSignature loc (NONE, sign, env)
 		       (* NOTE: env contains fresh tycons *)
-		       val env = MatchSig.match{err=(!errStrm), loc=loc, modEnv=modEnv, sigEnv=sigEnv}
+		       val env = MatchSig.match{loc=loc, modEnv=modEnv, sigEnv=sigEnv}
 		       (* replace stale tycons with fresh ones *)
 		       val modAstDecls' = 
 			     SubstVar.topDecs (buildVarSubst (Env.varEnv modEnv, Env.varEnv env)) modAstDecls
@@ -215,7 +209,7 @@ structure ChkModule :> sig
                           of SOME sign => let
 				 val sigEnv = chkSignature loc (NONE, sign, env)
 			     in
-				MatchSig.match{err=(!errStrm), loc=loc, modEnv=modEnv, sigEnv=sigEnv}
+				MatchSig.match{loc=loc, modEnv=modEnv, sigEnv=sigEnv}
 			     end
 			   | NONE => modEnv
                          (* end case *))
@@ -232,13 +226,13 @@ structure ChkModule :> sig
            of PT.MarkDecl{span, tree} => chkTopDcl span (tree, (env, moduleEnv, astDecls))
 	    | PT.TyDecl tyDecl => (chkTyDcl loc (tyDecl, env), moduleEnv, astDecls)
 	    | PT.ExnDecl(id, optTy) => let
-		val optTy' = Option.map (fn ty => #2(ChkTy.checkTy (!errStrm) (loc, [], ty))) optTy
+		val optTy' = Option.map (fn ty => #2(ChkTy.checkTy (loc, [], ty))) optTy
 		val exnCon = Exn.new (idToAtom id, optTy')
 		in
 		  (Env.insertVar (env, id, Env.Con exnCon), moduleEnv, astDecls)
 		end
 	    | PT.ValueDecl valDcl => let
-		val bind = ChkExp.checkValDecl (!errStrm) (loc, valDcl)
+		val bind = ChkExp.checkValDecl (loc, valDcl)
 		fun addToEnv (v, env) = 
 		      Env.insertVar(env, v, Option.valOf(Env.getValBind v))
 		val env = List.foldl addToEnv env (boundVarsOfValDcl (valDcl, []))
@@ -274,7 +268,7 @@ structure ChkModule :> sig
         end
 
     fun checkTopDecls err (loc, ptDecls, env, moduleEnv) = let
-	    val _ = errStrm := err
+	    val _ = ErrorStream.setErrStrm err
 	    in
 	       chkTopDcls (loc, ptDecls, env, moduleEnv)
 	    end
