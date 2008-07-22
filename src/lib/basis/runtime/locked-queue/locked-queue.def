@@ -1,0 +1,37 @@
+(* locked-queue.def
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Offsets and constants for locked queues.
+ *)
+
+#ifdef _LOCKED_QUEUE_DEF_
+#define _LOCKED_QUEUE_DEF_
+
+#define IN_PLACE_QUEUE_EMPTY	enum(0)
+#define IN_PLACE_QUEUE_ELT_HD    0
+#define IN_PLACE_QUEUE_ELT_TL    1
+#define IN_PLACE_QUEUE_NEW(elt)  alloc (elt, IN_PLACE_QUEUE_EMPTY)
+
+#define LOCKED_QUEUE_EMPTY          IN_PLACE_QUEUE_EMPTY
+
+#define LOCKED_QUEUE_LOCK           0
+#define LOCKED_QUEUE_HD             1
+#define LOCKED_QUEUE_TL             2
+#define LOCKED_QUEUE_BLOCKED_HD     3
+#define LOCKED_QUEUE_BLOCKED_TL     4
+
+(* the vproc field contains the vproc on which the thread blocked *)
+typedef locked_queue_blocked_thread = [cont(any), fgs, vproc];
+#define LOCKED_QUEUE_BLOCKED_THREAD_CONT     0
+#define LOCKED_QUEUE_BLOCKED_THREAD_FGS      1
+#define LOCKED_QUEUE_BLOCKED_THREAD_VPROC    2
+
+#define LOCKED_QUEUE_BLOCKED_THREAD_NEW(blockedK, fgs)    alloc(blockedK, fgs, host_vproc)
+
+#define LOCKED_QUEUE_NEW_ELT(elt) IN_PLACE_QUEUE_NEW(elt)
+
+
+
+#endif /*! _LOCKED_QUEUE_DEF_ */

@@ -9,4 +9,8 @@
 #define NONE	enum(0):Option.option
 #define QEMPTY	enum(0):PrimTypes.rdyq_item
 
+#define HASH_SYM	#
+#define SELECT(i,x)	HASH_SYM i(x)
+#define UPDATE(i,x,y)	HASH_SYM i(x) := y
+
 #endif /*! _PRIM_DEF_ */
