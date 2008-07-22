@@ -1,0 +1,8 @@
+list.pml
+option.pml
+../misc/prim-types.pml
+../misc/unit-testing.pml
+ann "preprocess" "/usr/bin/cpp" "-I." "-P" "-include" "../misc/prim.def" "-"
+in
+  assoc-list.pml 
+end

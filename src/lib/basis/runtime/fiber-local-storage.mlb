@@ -1,4 +1,4 @@
-../misc/assoc-list.mlb
+../sequential/assoc-list.mlb
 ann "preprocess" "/usr/bin/cpp" "-I." "-P" "-include" "runtime-offsets.def" "-"
 in
   ann "preprocess" "/usr/bin/cpp" "-I." "-P" "-include" "../misc/prim.def" "-"
