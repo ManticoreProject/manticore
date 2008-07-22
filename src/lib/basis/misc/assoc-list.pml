@@ -10,7 +10,7 @@ structure AssocList =
       typedef elt = any;
       typedef assoc_list = L.list;
 
-      define @find (ls : L.list, tg : assoc_tag / exh : PT.exh) : O.option =
+      define @find (ls : assoc_list, tg : assoc_tag / exh : PT.exh) : O.option =
         fun lp (ls : L.list / exh : PT.exh) : O.option =
           case ls
 	   of NIL => return(NONE)
@@ -22,9 +22,10 @@ structure AssocList =
         apply lp(ls / exh)
       ;
 
-      define @insert (ls : L.list, tg : assoc_tag, elt : elt / exh : PT.exh) : L.list =
+      define @insert (ls : assoc_list, tg : assoc_tag, elt : elt / exh : PT.exh) : assoc_list =
         return(L.CONS(alloc(tg, elt), ls))
       ;
+
 
       define @test (x : PT.unit / exh : PT.exh) : PT.bool =
         cont fail () = return(FALSE)
@@ -55,10 +56,9 @@ structure AssocList =
 	   end
         return(TRUE)
       ;
-
     )
 
-    val test = _prim (hlop @test)
+   val test : unit -> bool = _prim (hlop @test)
     val _ = UnitTesting.validate "assoc-list-1" test
 
   end
