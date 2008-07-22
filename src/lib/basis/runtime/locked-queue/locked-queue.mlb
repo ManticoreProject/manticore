@@ -1,5 +1,5 @@
-basis.mlb
-control.pml
+../sequential/basis.mlb
+../basis.mlb
 ann "preprocess" "/usr/bin/cpp" "-I." "-P" "-include" "runtime-offsets.def" "-include" "locked-queue.def" "-"
 in
   in-place-queue.pml

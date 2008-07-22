@@ -13,6 +13,12 @@ structure FiberLocalStorage =
         return(fls)
       ;
 
+      define @set (fls : fls / exh : PT.exh) : PT.unit =
+        do assert(NotEqual(fls, NIL))
+        do vpstore (CURRENT_FG, host_vproc, fls)
+        return(UNIT)
+      ;
+
     (* add an element to the fiber-local storage dictionary. NOTE: this function is not thread safe. *)
       define @add (fls : fls, tg : AL.assoc_tag, elt : any / exh : PT.exh) : PT.unit =
         let als : AL.assoc_list = #1(fls)
