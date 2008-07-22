@@ -50,24 +50,33 @@ structure BOMBoundVariableCheck :> sig
 	  | _ => NONE
         (* end case *))
 
-  (* Here is where we bind C functions. Since they have global scope, we record C functions
-   * in a global lookup table. 
+  (* Here is where we bind C functions. Since they have global scope at link time, we keep
+   * C functions in a global lookup table. 
    *)
     local 
     structure ATbl = AtomTable
     val tbl : Var.var ATbl.hash_table = AtomTable.mkTable (128, Fail "C function table")
     in
+
+    fun freshVar v = Var.new(Atom.toString v, ())
+
     fun findCFun (loc, f) = (case ATbl.find tbl f
            of NONE => (error(loc, ["C function ", Atom.toString f, " is undefined"]);
 		       dummyVar)
 	    | SOME f => f
 	  (* end case *))
-    fun defineCFun (loc, f, v) = if (Option.isSome (ATbl.find tbl f))
-           then (error(loc, ["C function ", Atom.toString f, " is re-defined"]); ())
-           else ATbl.insert tbl (f, v)
-    end
 
-    fun freshVar v = Var.new(Atom.toString v, ())
+    fun defineCFun (loc, f) = (
+	  case ATbl.find tbl f
+	   of NONE => let 
+		  val v = freshVar f 
+	          in
+		      ATbl.insert tbl (f, v); v
+	          end
+	    | SOME v => v
+          (* end case *))
+
+    end (* local *)
 
     fun chkList loc (chkX, xs, env) = let
 	   fun f (x, (xs, env)) = let
@@ -366,10 +375,10 @@ structure BOMBoundVariableCheck :> sig
 		       (PT2.D_Define (b, v', params', exns', returnTys', exp'), env)
 		   end
 	     | PT1.D_Extern (CFunctions.CFun{var, name, retTy, argTys, varArg, attrs}) => let
-		   val var' = freshVar var
+		   val var' = defineCFun(loc, var);
 		   in
-		     (* define C functions in a separate, global namespace *)
-		       defineCFun(loc, var, var');
+		     (* keep C functions in a distinct, global namespace *)
+		       
 		       (PT2.D_Extern(CFunctions.CFun{var=var', name=name, retTy=retTy, 
 						     argTys=argTys, varArg=varArg, attrs=attrs}),
 			env)
