@@ -30,7 +30,7 @@ structure MLB : sig
       = Env of 
              {
 		loc : Error.span,                           (* location in the MLB file *)
-		pts : parse_tree AtomMap.map,               (* parse trees; keys in this map are full paths the files  *)
+		pts : parse_tree list,                      (* parse trees; must retain ordering *)
 		preprocs : preprocessor_cmd list            (* preprocessors *)
               }
 
@@ -132,13 +132,6 @@ structure MLB : sig
   
     fun alreadyDefined (env, file) = AtomMap.inDomain(env, filePath file)
 
-    fun insert (pts, file, errStrm, pt) = 
-	  if alreadyDefined(pts, file)
-	     then pts
-	  else AtomMap.insert(pts, filePath file, (errStrm, pt))
-
-    val unpackagePts = ListPair.unzip o (AtomMap.listItems : parse_tree AtomMap.map -> parse_tree list)
-
   (* process a basis expression *)
     fun processBasExp (mlb, env as Env{loc, pts, preprocs}) = (case mlb
         of PT.MarkBasExp {span, tree} => 
@@ -156,22 +149,29 @@ structure MLB : sig
 	 | PT.ImportBasDec file => (
 	      case OS.Path.splitBaseExt (Atom.toString file)
 	       of {base, ext=SOME "mlb"} => let
-		      val pts' = loadMLB (file, Env{loc=loc, pts=pts, preprocs=preprocs})		      
-		      val pts'' = AtomMap.unionWith (fn (x, _) => x) (pts', pts)
+		      val pts' = loadMLB (file, Env{loc=loc, pts=pts, preprocs=preprocs})
 		      in
-		          pts''
+		          pts'@pts
 		      end
 		| {base, ext=SOME "pml"} => (
                   case loadPML (file, Env{loc=loc, pts=pts, preprocs=preprocs})
 		   of NONE => pts
-		    | SOME (errStrm, pt) => insert(pts, file, errStrm, pt)
+		    | SOME (errStrm, pt) => (errStrm, pt) :: pts
                   (* end case *))
 		| _ => raise Fail "unknown source file extension"
            (* end case *))
 	 | PT.AnnBasDec("preprocess", ppCmd :: ppArgs, basDec) =>
 	   processBasDec(basDec, Env{loc=loc, pts=pts, preprocs=(ppCmd, ppArgs) :: preprocs})
+	 | PT.SeqBasDec basDecs =>
+	   processBasDecs(basDecs, env)
 	 | _ => raise Fail "todo"
         (* end case *))
+
+    and processBasDecs (basDecs, env as Env{loc, pts, preprocs}) = 
+	List.foldl 
+	    (fn (basDec, pts) => processBasDec(basDec, Env{loc=loc, pts=pts, preprocs=preprocs}))
+	    pts
+	    basDecs
 
 (* FIXME: check that the MLB file is valid *)
 
@@ -186,12 +186,9 @@ structure MLB : sig
 		       val {dir=dir', ...} = OS.Path.splitDirFile fileStr
 		       val dir' = OS.FileSys.fullPath dir'
 		       val _ = OS.FileSys.chDir dir'
-		       val pts = List.foldl 
-				     (fn (basDec, pts) => processBasDec(basDec, Env{loc=span, pts=pts, preprocs=preprocs}))
-				     pts
-				     basDecs
+		       val pts = processBasDecs(basDecs, Env{loc=span, pts=pts, preprocs=preprocs})
 		       in 
-		           checkForErrors(#1(unpackagePts pts));
+		           checkForErrors(#1(ListPair.unzip pts));
 		           OS.FileSys.chDir dir;
 			   pts
 		       end
@@ -214,10 +211,10 @@ structure MLB : sig
 
   (* load the MLB file *)
     fun load (errStrm, file) = let
-	    val env0 = Env{loc=(0,0), pts=AtomMap.empty, preprocs=[]}
+	    val env0 = Env{loc=(0,0), pts=[], preprocs=[]}
 	    val pts = loadMLB(Atom.atom file, env0)
             in
-	        unpackagePts pts
+	        ListPair.unzip (List.rev pts)
             end
 
   end (* MLB *)

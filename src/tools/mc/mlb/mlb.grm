@@ -37,28 +37,32 @@
 
 );
 
-BasDecs
-        : BasDec (";"? BasDec)* => ({span=FULL_SPAN, tree=BasDec :: SR})
+MLB
+        : BasDecs => ({span=FULL_SPAN, tree=BasDecs})
         ;
+
+BasDecs
+        : BasDec (";"? BasDec)* => (BasDec :: SR)
+        ;
+
 
 BasDec
         : "basis" BasBind 
                          => (markBasDec(FULL_SPAN, PT.BasisBasDec BasBind))
-        | "local" BasDec "in" BasDec "end" 
-	                 => (markBasDec(FULL_SPAN, PT.LocalBasDec (BasDec1, BasDec2)))
-(*        | "open" BasDec* => markBasDec(FULL_SPAN, PT.OpenBasDec SR)*)
+        | "local" BasDecs "in" BasDecs "end" 
+	                 => (markBasDec(FULL_SPAN, PT.LocalBasDec (PT.SeqBasDec BasDecs1, PT.SeqBasDec BasDecs2)))
+(* FIXME: refactor the grammar to support this syntax *)
+(*        | "open" BasDec+ => markBasDec(FULL_SPAN, PT.OpenBasDec SR)*)
         | "structure" ModBind 
 	                 => (markBasDec(FULL_SPAN, PT.StructureBasDec ModBind))
         | "signature" ModBind 
 	                 => (markBasDec(FULL_SPAN, PT.SignatureBasDec ModBind))
         | "functor" ModBind 
 	                 => (markBasDec(FULL_SPAN, PT.FunctorBasDec ModBind))
-(* FIXME: add this sequencing operator *)
-(*        | BasDec (";" BasDec)* => markBasDec(FULL_SPAN, PT.SeqBasDec (BasDec :: SR))*)
         | NAME 
 	                 => (markBasDec(FULL_SPAN, PT.ImportBasDec NAME))
-        | "ann" STRING STRING* "in" BasDec "end" 
-	                 => (markBasDec(FULL_SPAN, PT.AnnBasDec (STRING1, STRING2, BasDec)))
+        | "ann" STRING STRING* "in" BasDecs "end" 
+	                 => (markBasDec(FULL_SPAN, PT.AnnBasDec (STRING1, STRING2, PT.SeqBasDec BasDecs)))
         ;
 
 BasExp
