@@ -25,6 +25,7 @@ functor MainFn (
     structure CPSOpt = CPSOptFn (Spec)
     structure CFGOpt = CFGOptFn (Spec)
     structure U = UsedVars
+    structure TS = TreeShake
 
     fun err s = TextIO.output (TextIO.stdErr, s)
     fun err1 c =  TextIO.output1 (TextIO.stdErr, c)
@@ -65,6 +66,9 @@ functor MainFn (
     val boundVarChks = 
 	  List.rev o #1 o ListPair.foldl boundVarChk ([], BasisEnv.bEnv0)
 
+    fun tree {tree, span} = tree
+    fun allDecls pts = List.concat(List.map tree pts)
+
   (* load the AST specified by an MLB file *)
     fun mlbToAST (errStrm, file) = let
         (* load the MLB file *)
@@ -73,6 +77,7 @@ functor MainFn (
         (* bound-variable check *)
 	  val p2s = boundVarChks (errStrms, p1s)
 	  val _ = List.app checkForErrors errStrms;
+	  val _ = TreeShake.setDeadFuns (allDecls p2s)
         (* module and type checking *)
 	  val ast = ChkProgram.check (ListPair.zip(errStrms, p2s))
 	  in

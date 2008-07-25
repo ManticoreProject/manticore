@@ -1,3 +1,11 @@
+(* bom-used-vars.sml
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Get the used variables of a BOM parse tree.
+ *)
+
 structure BOMUsedVars =
   struct
 
@@ -14,7 +22,7 @@ structure BOMUsedVars =
       | usedOfOption f (SOME x) = f x
 
     fun usedOfTy ty = (case ty
-           of PT.T_Mark {tree, span} => usedOfTy ty
+           of PT.T_Mark {tree, span} => usedOfTy tree
 	    | PT.T_Any => empty
 	    | PT.T_Enum x => empty
 	    | PT.T_Raw rt => empty

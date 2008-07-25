@@ -105,8 +105,8 @@ functor PMLParseTreeFn (
       = MarkVDecl of val_decl mark
       | ValVDecl of pat * exp
       | PValVDecl of pat * exp
-      | FunVDecl of funct list
       | PrimVDecl of pat * BOMParseTree.prim_val_rhs
+      | FunVDecl of funct list
 
   (* function definitions *)
     and funct

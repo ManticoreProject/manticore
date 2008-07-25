@@ -102,7 +102,7 @@ structure UsedVars =
 	    | PT.SeqExp exps => usedOfExps exps
 	    | PT.ConstraintExp (exp, ty) => union[usedOfExp exp, usedOfTy ty]
 	    | PT.SpawnExp exp => usedOfExp exp
-            (* end case *))
+           (* end case *))
 
     and usedOfExps exps = usedOfList usedOfExp exps
 
