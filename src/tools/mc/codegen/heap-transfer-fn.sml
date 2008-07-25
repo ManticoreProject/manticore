@@ -370,7 +370,7 @@ functor HeapTransferFn (
 
   fun mlriscToCArg (T.GPR rexp) = CCall.ARG rexp
     | mlriscToCArg (T.FPR fexp) = CCall.FARG fexp
-    | mlriscToCArg _ = raise Fail "impossible"
+    | mlriscToCArg (T.CCR ccexp) = CCall.ARG (MTy.cexpToExp ccexp)
  (* convert a CFG variable to a C argument *)
   fun varToCArg varDefTbl = mlriscToCArg o MTy.treeToMLRisc o (VarDef.getDefOf varDefTbl)
 
