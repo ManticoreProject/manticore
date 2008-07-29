@@ -9,28 +9,27 @@ structure SchedulerUtils =
      *)
       define @bootstrap (vps : List.list / exh : PT.exh) : () =
         cont exit () = return()
-(*      (* set the scheduler point just once *)
+      (* set the scheduler point just once *)
 	let sk : cont(PT.signal) = vpload(VP_SCHED_CONT, host_vproc)
 	do if NotEqual(sk, NIL)
 	      then throw exit()
 	   else return()
       (* pass signals to the current scheduler *)
 	cont trampoline (k : PT.signal) =
-	     hlop Control.@forward(host_vproc, k / exh)
+	     hlop Control.@forward(k / exh)
 	let trampoline : cont(PT.signal) = promote(trampoline)
       (* store the trampoline in the vproc structure *)
 	fun install (vps : List.list) : () =
 	    case vps
 	     of NIL => return()
 	      | List.CONS (vp : vproc, vps : List.list) =>
-		let sk : cont(signal) = vpload(VP_SCHED_CONT, vp)
+		let sk : cont(PT.signal) = vpload(VP_SCHED_CONT, vp)
 		if Equal(sk, NIL)
 		   then do vpstore(VP_SCHED_CONT, vp, trampoline)
 			apply install(vps)
 		   else return()
 	    end
 	do apply install(vps)
-*)
         return()
       ;
     )

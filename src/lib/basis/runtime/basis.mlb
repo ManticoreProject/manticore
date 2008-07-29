@@ -5,5 +5,5 @@ fiber-local-storage.mlb
 ann "preprocess" "/usr/bin/cpp" "-I." "-P" "-include" "runtime-offsets.def" "-include" "../misc/prim.def" "-include" "../misc/assert.def" "-D__FILE_NAME__=control.pml"  "-"
 in
   control.pml
-
+  scheduler-utils.pml
 end

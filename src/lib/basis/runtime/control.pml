@@ -15,7 +15,7 @@ structure Control =
     _primcode (
 
     (* forward a signal to the vproc *)
-      define @forward (sg : PT.signal /) noreturn =
+      define @forward (sg : PT.signal / exh : PT.exh) noreturn =
         let vp : vproc = host_vproc
 	do vpstore(ATOMIC, vp, TRUE)
 	let tos : [PT.sigact, any] = vpload(VP_ACTION_STK, vp)
@@ -28,8 +28,8 @@ structure Control =
       ;
 
     (* stop the current fiber *)
-      define @stop () noreturn =
-        hlop @forward(STOP /)
+      define @stop (/ exh : PT.exh) noreturn =
+        hlop @forward(STOP / exh)
       ;
 
     (* run the fiber under the scheduler action *)
@@ -47,7 +47,7 @@ structure Control =
     (* run the thread under the scheduler action *)
       define @run-thread (act : PT.sigact, fiber : PT.fiber, fls : FLS.fls / exh : PT.exh) noreturn =
 	do vpstore (ATOMIC, host_vproc, TRUE)
-        let _ : PT.unit = hlop FLS.@set(fls / exh)        
+        let _ : PT.unit = hlop FLS.@set(fls / exh)
         hlop @run(act, fiber / exh)
       ;
 
@@ -58,13 +58,35 @@ structure Control =
 	  (* in case of an exception, just terminate the fiber *)
 	    cont exh (exn : PT.exn) = return (UNIT)
 	    apply f (UNIT / exh)
-	  do hlop @stop ()
+	  do hlop @stop (/ exh)
           throw exh(tag(impossible))
 	return (fiberK)
       ;
 
+    (* quick test of run and forward *)
+      define @test (x : PT.unit / exh : PT.exh) : PT.unit =
+        cont act (s : PT.signal) =
+	  case s
+	   of STOP => do hlop @forward(STOP / exh)
+		      return(UNIT)
+	    | PT.PREEMPT (k : PT.fiber) => 
+	      do ccall M_Print("Seems to have worked\n")
+	      do hlop @forward(STOP / exh)
+	      return(UNIT)
+          end
+        cont k (x : PT.unit) = do hlop @forward(PT.PREEMPT(k) / exh)
+			       return(UNIT)
+        do ccall M_Print("Testing run and forward\n")
+        do hlop @run(act, k / exh)
+        return(UNIT)
+      ;
+
     )
 
-    val _ = print "control\n"
+(*
+WARNING: enabling this test will silently terminate the program
+    val t : unit -> unit = _prim (hlop @test)
+    val x = t()
+*)
 
   end
