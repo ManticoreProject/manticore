@@ -294,7 +294,7 @@ functor AMD64GenFn (structure Spec : TARGET_SPEC) =
 	    structure Spec = Spec 
 	    structure LabelCode = LabelCode
 	    structure Frame = AMD64Frame
-	    structure CCall = AMD64SVIDFn (structure T=AMD64MLTree)
+	    structure CCall = X86_64SVIDFn (structure T=AMD64MLTree)
 	    structure Types = Types
 	    structure VProcOps = VProcOps )
 	val literals = literals		      

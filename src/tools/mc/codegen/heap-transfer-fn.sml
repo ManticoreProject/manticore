@@ -76,54 +76,53 @@ functor HeapTransferFn (
           (T.REG(MTy.wordTy, r), T.MV(MTy.wordTy, r, hostVP))
         end
 
-  datatype location_kind = K_GPR | K_FPR | K_MEM
+  datatype loc_kind 
+    = K_GPR                   (* integer register *)
+    | K_FPR                   (* floating-point register *)
+    | K_MEM                   (* memory *)
 
   structure SA = StagedAllocationFn (
-		   type reg = T.reg
-		   datatype location_kind = datatype location_kind
+		   type reg_id = T.reg
+		   datatype loc_kind = datatype loc_kind
 		   val memSize = 8)
 
   structure CallingConventions :> sig
 
-      val stdApply : SA.slot list -> SA.location_info list
-      val stdCont : SA.slot list -> SA.location_info list
-      val apply : SA.slot list -> (SA.str * SA.location_info list)
+      val stdApply : SA.req list -> SA.loc list
+      val stdCont : SA.req list -> SA.loc list
+      val apply : SA.req list -> SA.loc list
 
     end = struct
 
-    (* standard apply *)
+    (* allocate machine locations for passing a sequence of requests *)
+      fun allocSeq stages store0 reqs = let
+	      val (locs, store) = SA.allocateSeq stages (reqs, store0)
+              in
+	         locs
+	      end
+
+      fun gpr r = (MTy.wordTy, K_GPR, r)
+      fun fpr r = (64, K_FPR, r)
+
+    (* parameter-passing convention for standard function application *)
       val stdApplyGprs = SA.freshCounter()
       val stdApplyStages = [
 	        SA.WIDEN (fn w => Int.max(MTy.wordTy, w)),
 		SA.ARGCOUNTER stdApplyGprs,
-		SA.REGS_BY_ARGS (stdApplyGprs, List.map (fn r => (MTy.wordTy, r)) stdFuncRegs)
+		SA.REGS_BY_ARGS (stdApplyGprs, List.map gpr stdFuncRegs)
 	     ]
-    (* takes a list of slots and returns their finalized locations *)
-      fun stdApply paramSlots = let
-	  val str0 = SA.init [stdApplyGprs]
-	  val stepper = SA.mkStep stdApplyStages
-	  val (_, paramLocs) = SA.doStagedAllocation(str0, stepper, paramSlots)
-          in
-	    paramLocs
-          end
+      val stdApply = allocSeq stdApplyStages (SA.init[stdApplyGprs])
 
-    (* standard continuation *)
+    (* parameter-passing convention for standard continuations *)
       val stdContGprs = SA.freshCounter()
       val stdContStages = [
 		SA.WIDEN (fn w => Int.max(MTy.wordTy, w)),
 		SA.ARGCOUNTER stdContGprs,
-		SA.REGS_BY_ARGS (stdContGprs, List.map (fn r => (MTy.wordTy, r)) stdContRegs)
+		SA.REGS_BY_ARGS (stdContGprs, List.map gpr stdContRegs)
 	    ]
-    (* takes a list of slots and returns their finalized locations *)
-      fun stdCont paramSlots = let
-	  val str0 = SA.init [stdContGprs]
-	  val stepper = SA.mkStep stdContStages
-	  val (_, paramLocs) = SA.doStagedAllocation(str0, stepper, paramSlots)
-          in
-	    paramLocs
-          end
+      val stdCont = allocSeq stdContStages (SA.init[stdContGprs])
 
-    (* apply *)
+    (* parameter-passing convention for specialized function application *)
       val applyGprs = SA.freshCounter()
       val applyFprs = SA.freshCounter()
       val applyStates = [
@@ -133,23 +132,17 @@ functor HeapTransferFn (
 	       SA.SEQ [
 	          SA.WIDEN (fn w => Int.max(MTy.wordTy, w)),
 		  SA.ARGCOUNTER applyGprs,
-		  SA.REGS_BY_ARGS (applyGprs, List.map (fn r => (MTy.wordTy, r)) Regs.argRegs) 
+		  SA.REGS_BY_ARGS (applyGprs, List.map gpr Regs.argRegs) 
 		  ]),
 	      (* pass in floating-point register *)
 	      (fn (w, k, str) => k = K_FPR, 
 	       SA.SEQ [
 		  SA.WIDEN (fn w => List.foldl Int.max w Regs.fprWidths),
 		  SA.ARGCOUNTER applyFprs,
-		  SA.REGS_BY_ARGS (applyFprs, List.map (fn r => (64, r)) Regs.argFRegs) 
+		  SA.REGS_BY_ARGS (applyFprs, List.map fpr Regs.argFRegs) 
                   ])]
 	    ]
-    (* takes a list of slots and returns their finalized locations *)
-      fun apply paramSlots = let
-	  val str0 = SA.init [applyGprs, applyFprs]
-	  val stepper = SA.mkStep applyStates
-	  in
-	      SA.doStagedAllocation(str0, stepper, paramSlots)
-	  end
+      val apply = allocSeq applyStates (SA.init[applyGprs, applyFprs])
 
     end (* CallingConventions *)
 
@@ -177,15 +170,17 @@ functor HeapTransferFn (
   (* given an offset for a parameter, return its location in scratch space *)
   fun scratchLoc offset = T.ADD(MTy.wordTy, offset, T.REG(MTy.wordTy, Regs.argReg))
 
-  (* convert a finalized location to a MLRISC tree *) 
-  fun locToTree (ty, SA.REG (ty', r), K_GPR) = 
-      if (ty' < ty)
-         then MTy.EXP (ty, T.ZX (ty, ty', T.REG (ty', r)))           (* type conversion is necessary *)
-         else MTy.GPR (ty, r)
-    | locToTree (ty, SA.REG (ty', r), K_FPR) = MTy.FPR (ty, r)
-    (* effective address of the block offset *)
-    | locToTree (ty, SA.BLOCK_OFFSET off, _) = MTy.EXP (ty, scratchLoc (T.LI (T.I.fromInt(MTy.wordTy, off))))
-    | locToTree (ty, SA.NARROW (loc, ty', k), _) = locToTree(ty', loc, k)
+  (* given a machine location, return the corresponding MLTREE expression *)
+  fun locToExpr (SA.BLOCK_OFFSET (ty, _, off)) = 
+      (* offset into the overflow block *)
+        MTy.EXP (ty, scratchLoc (T.LI (T.I.fromInt(MTy.wordTy, off))))
+    | locToExpr (SA.NARROW (SA.REG(ty, K_GPR, r), ty', k)) =
+        MTy.GPR (ty, r)
+    | locToExpr (SA.NARROW (SA.REG(64, K_FPR, r), 32, K_FPR)) =
+      (* promote float to double *)
+        MTy.FEXP(64, MTy.T.CVTF2F(32, 64, T.FREG (32, r)))
+    | locToExpr (SA.NARROW (loc, _, _)) =
+        locToExpr loc
 
   (* copy an argument to a parameter location *)
   fun copyArgToParam (param, arg) = (case (param, arg)
@@ -193,7 +188,9 @@ functor HeapTransferFn (
        | (MTy.FPR (ty, r), _) => Copy.copy {dst=[MTy.FPReg(ty, r)], src=[arg]}
        (* put the argument in scratch space *)
        | (MTy.EXP (ty, offset), MTy.EXP (_, e)) => [T.STORE (ty, offset, e, ManticoreRegion.memory)]
-       | (MTy.EXP (ty, offset), MTy.FEXP (_, e)) => [T.FSTORE (ty, offset, e, ManticoreRegion.memory)])
+       | (MTy.EXP (ty, offset), MTy.FEXP (_, e)) => [T.FSTORE (ty, offset, e, ManticoreRegion.memory)]
+       | _ => raise Fail "error"
+     (* end case *))
 
   (* discard non-register trees *)
   fun treeToReg (MTy.GPR (ty, r), regs) = MTy.GPReg (ty, r) :: regs
@@ -201,7 +198,7 @@ functor HeapTransferFn (
     | treeToReg (_, regs) = regs
 
   (* filter out those MLRISC trees that are not registers *)
-  fun treesToRegs mlts = List.rev (List.foldl treeToReg [] mlts)
+  val treesToRegs = List.rev o List.foldl treeToReg []
 
   fun genStdTransfer varDefTbl (target, args, params) = let
       val getDefOf = VarDef.getDefOf varDefTbl
@@ -224,29 +221,18 @@ functor HeapTransferFn (
        | MTy.K_FLOAT => K_FPR)
 
   (* convert an argument to a location for staged allocation *)
-  fun tyToSlot ty = (Types.szOf ty, kindOfCFGTy ty, MTy.wordTy div 8)
+  fun tyToReq ty = (Types.szOf ty, kindOfCFGTy ty, MTy.wordTy div 8)
 
-  (* determine the staged-allocation locations for some parameter types *)
-  fun paramLocations (str0, step, paramSlots) = let
-      fun finalizeLoc (slot, (str, paramLocs)) = let
-	  val (str, slot) = step(str, slot)
-          in
-             (str, slot :: paramLocs)
-          end
-      val (str, paramLocs) = List.foldl finalizeLoc (str0, []) paramSlots
-      in
-         (str, List.rev paramLocs)
-      end
-
+  (* generate calling sequences for standard applications *)
   fun genStdApply varDefTbl {f, clos, args as [arg], ret, exh} = let
       val defOf = VarDef.defOf varDefTbl 
       val args = [clos, arg, ret, exh] 
-      (* make slots for the arguments *)
-      val paramSlots = List.map (fn _ => (MTy.wordTy, K_GPR, MTy.wordTy div 8)) args
+      (* make reqs for the arguments *)
+      val paramReqs = List.map (fn _ => (MTy.wordTy, K_GPR, MTy.wordTy div 8)) args
       (* finalize locations for passing the arguments *)
-      val paramLocs = CallingConventions.stdApply paramSlots
+      val paramLocs = CallingConventions.stdApply paramReqs
       (* determine the destinations of parameters (all should be in gprs) *)
-      val params = List.map locToTree paramLocs
+      val params = List.map locToExpr paramLocs
       val paramRegs = treesToRegs params
       val (lab, mvInstr) = genTransferTarget (defOf f)
       val {stms, liveOut} = genStdTransfer varDefTbl (lab, args, paramRegs) 
@@ -255,13 +241,14 @@ functor HeapTransferFn (
       end 
     | genStdApply _ _ = raise Fail "genStdApply: ill-formed StdApply"  
 
+  (* generate calling sequences for standard throws *)
   fun genStdThrow varDefTbl {k, clos, args as [arg]} = let
       val defOf = VarDef.defOf varDefTbl
       val args = [clos, arg]
-      val paramSlots = List.map (fn _ => (MTy.wordTy, K_GPR, MTy.wordTy div 8)) args
+      val paramReqs = List.map (fn _ => (MTy.wordTy, K_GPR, MTy.wordTy div 8)) args
       (* finalize locations for passing the arguments *)
-      val paramLocs = CallingConventions.stdCont paramSlots
-      val params = List.map locToTree paramLocs
+      val paramLocs = CallingConventions.stdCont paramReqs
+      val params = List.map locToExpr paramLocs
       (* determine the destinations of parameters (all should be in gprs) *)
       val paramRegs = treesToRegs params
       val (labK, mvInstr) = genTransferTarget (defOf k)
@@ -271,14 +258,15 @@ functor HeapTransferFn (
       end 
     | genStdThrow _ _ = raise Fail "genStdThrow: ill-formed StdThrow"
 
+  (* generate calling sequences for specialized function applications *)
   fun genApply varDefTbl {f, clos, args} = let
       val defOf = VarDef.defOf varDefTbl
       val getDefOf = VarDef.getDefOf varDefTbl
       val args = clos :: args
-      val paramSlots = List.map (tyToSlot o Var.typeOf) args
+      val paramReqs = List.map (tyToReq o Var.typeOf) args
       (* finalize locations for passing arguments *)
-      val (_, paramLocs) = CallingConventions.apply paramSlots
-      val params = List.map locToTree paramLocs
+      val paramLocs = CallingConventions.apply paramReqs
+      val params = List.map locToExpr paramLocs
       val (target, mvInstr) = genTransferTarget (defOf f)
       in
          {stms=List.concat [		 
@@ -498,7 +486,8 @@ functor HeapTransferFn (
    * because of preemption.
    *)
   fun genHeapCheck varDefTbl {hck=CFG.HCK_Local, szb, nogc=(noGCLab, roots)} = let
-      val {initRoots, restoredRoots, rootPtr, rootTemps, rootArgs } = processGCRoots varDefTbl (roots, regTree Regs.closReg)
+      val {initRoots, restoredRoots, rootPtr, rootTemps, rootArgs } = 
+	      processGCRoots varDefTbl (roots, regTree Regs.closReg)
 								      
       val noGCParamRegs = LabelCode.getParamRegs noGCLab
       val noGCLab = LabelCode.getName noGCLab
@@ -611,32 +600,32 @@ functor HeapTransferFn (
  (* generate the entry code for a function *)
   fun genFuncEntry varDefTbl (lab, conv as M.StdFunc {clos, args as [arg], ret, exh}) = let
       val args = [clos, arg, ret, exh]
-      (* make slots for the parameters *)
-      val paramSlots = List.map (fn _ => (MTy.wordTy, K_GPR, MTy.wordTy div 8)) args
+      (* make reqs for the parameters *)
+      val paramReqs = List.map (fn _ => (MTy.wordTy, K_GPR, MTy.wordTy div 8)) args
       (* determine the destinations of parameters (all should be in gprs) *)
-      val paramLocs = CallingConventions.stdApply paramSlots
-      val params = List.map locToTree paramLocs
+      val paramLocs = CallingConventions.stdApply paramReqs
+      val params = List.map locToExpr paramLocs
       val {stms, regs} = Copy.fresh (treesToRegs params)
       in
           setEntry varDefTbl (lab, regs, args, stms)
       end
     | genFuncEntry varDefTbl (lab, conv as M.StdCont {clos, args as [arg]}) = let
       val args = [clos, arg]
-      val paramSlots = List.map (fn _ => (MTy.wordTy, K_GPR, MTy.wordTy div 8)) args
+      val paramReqs = List.map (fn _ => (MTy.wordTy, K_GPR, MTy.wordTy div 8)) args
       (* determine the destinations of parameters (all should be in gprs) *)
-      val paramLocs = CallingConventions.stdCont paramSlots
-      val params = List.map locToTree paramLocs
+      val paramLocs = CallingConventions.stdCont paramReqs
+      val params = List.map locToExpr paramLocs
       val {stms, regs} = Copy.fresh (treesToRegs params)
       in
           setEntry varDefTbl (lab, regs, args, stms)
       end
     | genFuncEntry varDefTbl (lab, conv as M.KnownFunc {clos, args}) = let
       val args = clos :: args
-      val paramSlots = List.map (tyToSlot o Var.typeOf) args
+      val paramReqs = List.map (tyToReq o Var.typeOf) args
       (* finalize locations for the parameters *)
-      val (_, paramLocs) = CallingConventions.apply paramSlots
-      val params = List.map locToTree paramLocs
-      val {stms, regs} = bindParams {params=params, paramKinds=List.map #3 paramLocs}
+      val paramLocs = CallingConventions.apply paramReqs
+      val params = List.map locToExpr paramLocs
+      val {stms, regs} = bindParams {params=params, paramKinds=List.map SA.kindOfLoc paramLocs}
       in
 	  setEntry varDefTbl (lab, regs, args, stms)
       end

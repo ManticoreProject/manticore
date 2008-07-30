@@ -29,7 +29,8 @@ is
      bind:(anchor:SSA.cm value:@MLRISC_CM_DIR@)
      bind:(anchor:Sched.cm value:@MLRISC_CM_DIR@)
      bind:(anchor:ir.cm value:@MLRISC_CM_DIR@)
-     bind:(anchor:SA.cm value:@MLRISC_CM_DIR@)
+(*     bind:(anchor:SA.cm value:@MLRISC_CM_DIR@)*)
      bind:(anchor:AMD64.cm value:@MLRISC_CM_DIR@)
-     bind:(anchor:AMD64-Peephole.cm value:@MLRISC_CM_DIR@))
+     bind:(anchor:AMD64-Peephole.cm value:@MLRISC_CM_DIR@)
+     bind:(anchor:c-call.cm value:@MLRISC_DIR@/c-call/cm/))
 
