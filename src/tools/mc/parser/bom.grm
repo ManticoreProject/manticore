@@ -346,11 +346,13 @@ FloatTy	: "float"	=> (BPT.T_Raw BPT.T_Float)
 	| "double"	=> (BPT.T_Raw BPT.T_Double)
 	;
 
+(* FIXME: shouldn't be raising an exception here!! *)
 HLOpId	: HLOP	=> (case HLOP of [id] => id | _ => raise Fail "expected hlop id but got qualified id")
 	;
 
 HLOpQId : HLOP => (case HLOP
-		  of [] => raise Fail "impossible"
-		   | [id] => {span=FULL_SPAN, tree=([], id)}
-		   | ids => {span=FULL_SPAN, tree=(List.take(ids, List.length ids - 1), List.last ids)})
+		 of [] => raise Fail "impossible"
+		  | [id] => {span=FULL_SPAN, tree=([], id)}
+		  | ids => {span=FULL_SPAN, tree=(List.take(ids, List.length ids - 1), List.last ids)}
+		(* end case *))
         ;
