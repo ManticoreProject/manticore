@@ -1,4 +1,9 @@
+../misc/prim-types.pml
 option.pml
 list.pml
 int.pml
-print.pml
+string.pml
+ann "preprocess" "/usr/bin/cpp" "-I." "-P" "-include" "../misc/prim.def" "-"
+in
+  print.pml
+end

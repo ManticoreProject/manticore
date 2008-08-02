@@ -7,16 +7,26 @@ structure FiberLocalStorage =
     type fls = _prim ( ![PT.bool, AL.assoc_list] ) 
 
     _primcode (
+
+    (* create fls *)
       define @new (x : PT.unit / exh : PT.exh) : fls =
         let fls : fls = alloc(TRUE, NIL)
         let fls : fls = promote(fls)
         return(fls)
       ;
 
+    (* set the fls on the host vproc *)
       define @set (fls : fls / exh : PT.exh) : PT.unit =
         do assert(NotEqual(fls, NIL))
         do vpstore (CURRENT_FG, host_vproc, fls)
         return(UNIT)
+      ;
+
+    (* get the fls from the host vproc *)
+      define @get ( / exh : PT.exh) : fls =
+        let fls : fls = vpload (CURRENT_FG, host_vproc)
+        do assert(NotEqual(fls, NIL))
+        return(fls)
       ;
 
     (* add an element to the fiber-local storage dictionary. NOTE: this function is not thread safe. *)
@@ -28,6 +38,7 @@ structure FiberLocalStorage =
         return(UNIT)
       ;
 
+    (* find an entry in the fiber-local storage *)
       define @find (fls : fls, tg : AL.assoc_tag, elt : any / exh : PT.exh) : Option.option =
         let als : AL.assoc_list = #1(fls)
         hlop AL.@find(als, tg / exh)

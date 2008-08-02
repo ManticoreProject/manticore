@@ -4,7 +4,8 @@ structure SchedulerUtils =
     structure PT = PrimTypes
 
     _primcode (
-    (* bootstrap the top level scheduler on every vproc. during execution, the runtime system
+
+    (* bootstrap the top level scheduler on each vproc. during execution, the runtime system
      * passes signals to our trampoline, which forwards those signals to the current scheduler. 
      *)
       define @bootstrap (vps : List.list / exh : PT.exh) : () =
@@ -32,8 +33,9 @@ structure SchedulerUtils =
 	do apply install(vps)
         return()
       ;
+
     )
 
-    val _ = print "scheduler utils\n"
+    val _ = Print.print "scheduler utils\n"
 
   end
