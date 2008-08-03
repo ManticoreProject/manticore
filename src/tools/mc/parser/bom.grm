@@ -16,7 +16,6 @@
 (*	| KW_and	("and")			*)
 	| KW_any	("any")
 	| KW_apply	("apply")
-	| KW_hlop	("hlop")
 	| KW___attribute__ ("__attribute__")
 	| KW_byte	("byte")
 (*	| KW_case	("case")		*)
@@ -225,7 +224,7 @@ BOMExp
 		=> (markBOMExp(FULL_SPAN, BPT.E_Throw(QualifiedId, Args)))
 	| "return" "(" Args ")"
 		=> (markBOMExp(FULL_SPAN, BPT.E_Return Args))
-	| "hlop" HLOpQId "(" Args ("/" Args)? ")"
+	| HLOpQId "(" Args ("/" Args)? ")"
 		=> (markBOMExp(FULL_SPAN, BPT.E_HLOpApply(HLOpQId, Args, Option.getOpt(SR, []))))
 	;
 

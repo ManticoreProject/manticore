@@ -61,7 +61,6 @@ structure Keywords : sig
 	    ("and",		T.KW_and),
 	    ("any",		T.KW_any),
 	    ("apply",		T.KW_apply),
-	    ("hlop",		T.KW_hlop),
 	    ("byte",		T.KW_byte),
 	    ("case",		T.KW_case),
 	    ("ccall",		T.KW_ccall),
