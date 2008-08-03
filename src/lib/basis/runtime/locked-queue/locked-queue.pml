@@ -19,15 +19,15 @@ structure LockedQueue =
       
       define @dequeue (q : locked_queue / exh : PT.exh) : Option.option =
         let mask : bool = @spin-lock-lq (q / exh)
-        let elt : option = hlop InPlaceQueue.@dequeue (q / exh)
-        do hlop SpinLock.@spin-unlock(q, mask)
+        let elt : option = InPlaceQueue.@dequeue (q / exh)
+        do SpinLock.@spin-unlock(q, mask)
       ;
 
       define @enqueue (q : locked_queue, elt : any / exh : PT.exh) : () =
        (* promote elt *before* acquiring the lock *)
         let qElt : in_place_queue_elt = LOCKED_QUEUE_NEW_ELT(elt)
         let qElt : in_place_queue_elt = promote (qElt)  
-        let mask : bool = hlop SpinLock.@spin-lock (q / exh)
+        let mask : bool = SpinLock.@spin-lock (q / exh)
        (* check for blocked threads first *)
         let bqHd : in_place_queue_elt = SELECT(LOCKED_QUEUE_BLOCKED_HD, q)
         do if Equal (bqHd, NIL)
@@ -41,7 +41,7 @@ structure LockedQueue =
 (* fixme: raise an error *)
                     return()
 		  | SOME (k : Control.fiber) =>
-                    do hlop SpinLock.@unlock (q, mask / exh)
+                    do SpinLock.@unlock (q, mask / exh)
                     let blockedThread : locked_queue_blocked_thread = (locked_queue_blocked_thread)blockedThread
                     let blockedK : cont(any) = SELECT(LOCKED_QUEUE_BLOCKED_THREAD_CONT, blockedThread)
                     let blockedFgs : FLS.fls = SELECT(LOCKED_QUEUE_BLOCKED_THREAD_FGS, blockedThread)
@@ -50,7 +50,7 @@ structure LockedQueue =
                          throw blockedK (elt)
                    let unblockK : Control.fiber = (Control.fiber)unblockK
                    VProc.@enqueue-on (vp, blockedFgs, unblockK / exh)
-                   do hlop SpinLock.@unlock (q, mask / exh)
+                   do SpinLock.@unlock (q, mask / exh)
                    return ()
       ;
 

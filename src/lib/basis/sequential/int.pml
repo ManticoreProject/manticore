@@ -10,6 +10,6 @@ structure Int =
       ;
     )
 
-    val plus : (int * int) -> int = _prim (hlop @plus)
+    val plus : (int * int) -> int = _prim (@plus)
 
   end

@@ -17,7 +17,7 @@ structure SchedulerUtils =
 	   else return()
       (* pass signals to the current scheduler *)
 	cont trampoline (k : PT.signal) =
-	     hlop Control.@forward(k / exh)
+	     Control.@forward(k / exh)
 	let trampoline : cont(PT.signal) = promote(trampoline)
       (* store the trampoline in the vproc structure *)
 	fun install (vps : List.list) : () =
