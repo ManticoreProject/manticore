@@ -3,63 +3,68 @@
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Non-blocking locked queue.
+ * Locked queues using spin locks.
  *)
 
 structure LockedQueue =
   struct
 
     structure PT = PrimTypes
+    structure I = InPlaceQueue
+    structure FLS = FiberLocalStorage
 
     _primcode (
-      typedef queue_elt = any;
-      typedef in_place_queue_elt = InPlaceQueue.elt;
-    (* lock, head, tail, blocked fiber head, blocked fiber tail *)
-      typedef locked_queue = ![PT.bool, in_place_queue_elt, in_place_queue_elt, in_place_queue_elt, in_place_queue_elt];
-      
-      define @dequeue (q : locked_queue / exh : PT.exh) : Option.option =
-        let mask : bool = @spin-lock-lq (q / exh)
-        let elt : option = InPlaceQueue.@dequeue (q / exh)
-        do SpinLock.@spin-unlock(q, mask)
+
+    (* items stored in the queue *)
+      typedef item = any;
+    
+      define @dequeue (q : I.queue / exh : PT.exh) : Option.option =
+        let mask : PT.bool = SpinLock.@lock (q / exh)
+        let elt : Option.option = I.@dequeue (q / exh)
+        do SpinLock.@unlock(q, mask / exh)
+        return(elt)
       ;
 
-      define @enqueue (q : locked_queue, elt : any / exh : PT.exh) : () =
+      define @enqueue (q : I.queue, elt : any / exh : PT.exh) : () =
        (* promote elt *before* acquiring the lock *)
-        let qElt : in_place_queue_elt = LOCKED_QUEUE_NEW_ELT(elt)
-        let qElt : in_place_queue_elt = promote (qElt)  
-        let mask : bool = SpinLock.@spin-lock (q / exh)
+        let qElt : I.elt = NEW_ELT(elt)
+        let qElt : I.elt = promote (qElt)  
+        let mask : PT.bool = SpinLock.@lock (q / exh)
        (* check for blocked threads first *)
-        let bqHd : in_place_queue_elt = SELECT(LOCKED_QUEUE_BLOCKED_HD, q)
+        let bqHd : I.elt = SELECT(BLOCKED_HD_OFF, q)
         do if Equal (bqHd, NIL)
               then (* nothing is blocked; enqueue the element *)
-                 InPlaceQueue.@enqueue (q, qElt / exh)
+                 I.@enqueue (q, qElt / exh)
            else (* unblock the thread and pass it the element *)
-                let elt : Option.option = InPlaceQueue.@dequeue (q / exh)
+                let elt : Option.option = I.@dequeue (q / exh)
                 case elt
 		 of NONE => 
-		    let _ : unit = @spin-unlock-lq (q, mask / exh)
-(* fixme: raise an error *)
+		    do SpinLock.@unlock (q, mask / exh)
+                    do assert(FALSE)  (* error *)
                     return()
-		  | SOME (k : Control.fiber) =>
+		  | Option.SOME (blockedThread : I.blocked_thread) =>
                     do SpinLock.@unlock (q, mask / exh)
-                    let blockedThread : locked_queue_blocked_thread = (locked_queue_blocked_thread)blockedThread
-                    let blockedK : cont(any) = SELECT(LOCKED_QUEUE_BLOCKED_THREAD_CONT, blockedThread)
-                    let blockedFgs : FLS.fls = SELECT(LOCKED_QUEUE_BLOCKED_THREAD_FGS, blockedThread)
-                    let vp : vproc = SELECT(LOCKED_QUEUE_BLOCKED_THREAD_VPROC, blockedThread)
-                    cont unblockK (x : unit) =
+                    let blockedK : cont(any) = SELECT(BLOCKED_THREAD_CONT_OFF, blockedThread)
+                    let blockedFgs : FLS.fls = SELECT(BLOCKED_THREAD_FGS_OFF, blockedThread)
+                    let vp : vproc = SELECT(BLOCKED_THREAD_VPROC_OFF, blockedThread)
+                    cont unblockK (x : PT.unit) =
                          throw blockedK (elt)
-                   let unblockK : Control.fiber = (Control.fiber)unblockK
-                   VProc.@enqueue-on (vp, blockedFgs, unblockK / exh)
-                   do SpinLock.@unlock (q, mask / exh)
-                   return ()
+                    let unblockK : PT.fiber = (PT.fiber)unblockK
+                    do VProcQueue.@enqueue-on-vproc (vp, blockedFgs, unblockK / exh)
+                    do SpinLock.@unlock (q, mask / exh)
+                    return ()
+                end
+         return()
       ;
 
-      define @new ( / exh : PT.exh) : locked_queue =
-        let lockedQ : locked_queue = alloc (FALSE, IN_PLACE_QUEUE_EMPTY, IN_PLACE_QUEUE_EMPTY, IN_PLACE_QUEUE_EMPTY, IN_PLACE_QUEUE_EMPTY)
-        let lockedQ : locked_queue = promote (lockedQ)
+      define @new ( / exh : PT.exh) : I.queue =
+        let lockedQ : I.queue = alloc (FALSE, EMPTY, EMPTY, EMPTY, EMPTY)
+        let lockedQ : I.queue = promote (lockedQ)
         return (lockedQ)
-
+      ;
 
     )
 
   end
+
+(* TODO: testing *)

@@ -19,11 +19,11 @@ structure Control =
         let vp : vproc = host_vproc
 	do vpstore(ATOMIC, vp, TRUE)
 	let tos : [PT.sigact, any] = vpload(VP_ACTION_STK, vp)
-      (*  do assert(NotEqual(tos, NIL))*)
+        do assert(NotEqual(tos, NIL))
 	let rest : any = #1(tos)
 	do vpstore(VP_ACTION_STK, vp, rest)
 	let act : PT.sigact = #0(tos)
-      (* do assert (Equal(vp, host_vproc))*)
+        do assert (Equal(vp, host_vproc))
 	throw act(sg)
       ;
 

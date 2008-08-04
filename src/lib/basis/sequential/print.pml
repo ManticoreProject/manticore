@@ -14,4 +14,6 @@ structure Print =
 
     val print : string -> unit = _prim(@print)
 
+    fun printLn s = print(s^"\n")
+
   end

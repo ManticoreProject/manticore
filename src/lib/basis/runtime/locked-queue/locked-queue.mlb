@@ -1,7 +1,6 @@
-../sequential/basis.mlb
-../basis.mlb
-ann "preprocess" "/usr/bin/cpp" "-I." "-P" "-include" "runtime-offsets.def" "-include" "locked-queue.def" "-"
+ann "cpp" "locked-queue.def"
 in
   in-place-queue.pml
+  ../spin-lock.pml
   locked-queue.pml
 end

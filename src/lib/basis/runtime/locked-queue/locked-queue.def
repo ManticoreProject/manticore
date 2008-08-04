@@ -6,31 +6,32 @@
  * Offsets and constants for locked queues.
  *)
 
-#ifdef _LOCKED_QUEUE_DEF_
+#ifndef _LOCKED_QUEUE_DEF_
 #define _LOCKED_QUEUE_DEF_
 
-#define IN_PLACE_QUEUE_EMPTY	enum(0)
-#define IN_PLACE_QUEUE_ELT_HD    0
-#define IN_PLACE_QUEUE_ELT_TL    1
-#define IN_PLACE_QUEUE_NEW(elt)  alloc (elt, IN_PLACE_QUEUE_EMPTY)
+#define EMPTY	  enum(0)
 
-#define LOCKED_QUEUE_EMPTY          IN_PLACE_QUEUE_EMPTY
+#define LOCK_OFF           0
+#define HD_OFF             1
+#define TL_OFF             2
+#define BLOCKED_HD_OFF     3
+#define BLOCKED_TL_OFF     4
 
-#define LOCKED_QUEUE_LOCK           0
-#define LOCKED_QUEUE_HD             1
-#define LOCKED_QUEUE_TL             2
-#define LOCKED_QUEUE_BLOCKED_HD     3
-#define LOCKED_QUEUE_BLOCKED_TL     4
+(* parameters for the spin-lock module *)
+#define SPIN_LOCK_TY       InPlaceQueue.queue
+#define LOCK_OFFSET        LOCK_OFF
+
+(* create an in-place queue *)
+#define NEW_IPQ(elt)      alloc (elt, EMPTY)
 
 (* the vproc field contains the vproc on which the thread blocked *)
-typedef locked_queue_blocked_thread = [cont(any), fgs, vproc];
-#define LOCKED_QUEUE_BLOCKED_THREAD_CONT     0
-#define LOCKED_QUEUE_BLOCKED_THREAD_FGS      1
-#define LOCKED_QUEUE_BLOCKED_THREAD_VPROC    2
+#define BLOCKED_THREAD_CONT_OFF     0
+#define BLOCKED_THREAD_FGS_OFF      1
+#define BLOCKED_THREAD_VPROC_OFF    2
 
-#define LOCKED_QUEUE_BLOCKED_THREAD_NEW(blockedK, fgs)    alloc(blockedK, fgs, host_vproc)
+#define BLOCKED_THREAD_NEW(blockedK, fgs)    alloc(blockedK, fgs, host_vproc)
 
-#define LOCKED_QUEUE_NEW_ELT(elt) IN_PLACE_QUEUE_NEW(elt)
+#define NEW_ELT(elt) NEW_IPQ(elt)
 
 
 

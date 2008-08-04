@@ -7,17 +7,17 @@ structure SpinLock =
 
       typedef sl_ty = SPIN_LOCK_TY;
 
-      define @lock(lock : sl_ty / exh : PT.exh) : bool =
-        fun spin () : bool =        
+      define @lock(lock : sl_ty / exh : PT.exh) : PT.bool =
+        fun spin () : PT.bool =        
             if BCAS(&LOCK_OFFSET(lock), FALSE, TRUE)
-	       then let mask : bool = vpload (ATOMIC, host_vproc)
-	            do vpstore(ATOMIC, host_vproc, true)
+	       then let mask : PT.bool = vpload (ATOMIC, host_vproc)
+	            do vpstore(ATOMIC, host_vproc, TRUE)
                     return(mask)
 	    else apply spin()
         apply spin()
       ;
 
-      define @unlock(lock : sl_ty / exh : PT.exh) : () =
+      define @unlock(lock : sl_ty, mask : PT.bool / exh : PT.exh) : () =
         do UPDATE(LOCK_OFFSET, lock, FALSE)
         do vpstore(ATOMIC, host_vproc, mask)
         return()

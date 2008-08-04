@@ -1,0 +1,26 @@
+(* debug.def
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Debug stubs.
+ *)
+
+#ifndef _DEBUG_DEF_
+#define _DEBUG_DEF_
+
+#define _QUOTE(x) #x
+#define QUOTE(x) _QUOTE(x)
+
+(* prints when the compiler debugging flag is set and the runtime flag is set *)
+#  define print_debug(msg)                                               \
+             ccall M_PrintDebugMsg (FALSE, msg, QUOTE(PML_FILE), __LINE__)   \
+
+(* prints when the compiler debugging flag is set *)
+#  define print_msg(msg)                                                 \
+             ccall M_PrintDebugMsg (TRUE, msg, QUOTE(PML_FILE), __LINE__)    \
+
+#  define print_ppt() \
+             ccall M_PrintDebugMsg (TRUE, "", QUOTE(PML_FILE), __LINE__) \
+             
+#endif /*! _DEBUG_DEF_ */

@@ -1,6 +1,6 @@
 ../sequential/assoc-list.mlb
 ../misc/debug.mlb
-ann "preprocess" "/usr/bin/cpp" "-I." "-P" "-include" "../misc/prim.def" "-include" "runtime-offsets.def" "-include" "../misc/assert.def" "-"
+ann "cpp" "../misc/prim.def,runtime-offsets.def,../misc/assert.def"
 in
   fiber-local-storage.pml
 end

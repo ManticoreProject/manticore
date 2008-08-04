@@ -1,15 +1,21 @@
 structure Int =
   struct
 
-    type ml_int = _prim ( [int] )
-    type int = ml_int
+    structure PT = PrimTypes
+
+    type int = int
 
     _primcode (
-      define @plus (arg : [ml_int, ml_int] / exh : cont(exn)) : ml_int =
-        return(alloc(I32Add(unwrap(#0(arg)), unwrap(#1(arg)))))
+
+      extern void *M_IntToString (int) __attribute__((alloc,pure));
+
+      define @to-string (n : PT.ml_int / exh : PT.exh) : PT.ml_string =
+	  let res : PT.ml_string = ccall M_IntToString (unwrap(n))
+	    return (res)
       ;
+
     )
 
-    val plus : (int * int) -> int = _prim (@plus)
+    val toString : int -> string = _prim(@to-string)
 
   end

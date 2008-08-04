@@ -2,9 +2,11 @@
 ../misc/prim-types.pml
 ../misc/debug.mlb
 fiber-local-storage.mlb
-ann "preprocess" "/usr/bin/cpp" "-I." "-P" "-include" "runtime-offsets.def" "-include" "../misc/prim.def" "-include" "../misc/assert.def" "-"
+ann "cpp" "../misc/prim.def,runtime-offsets.def,../misc/assert.def,../misc/debug.def"
 in
-  vproc-queue.pml
   control.pml
+  vproc-queue.pml
   scheduler-utils.pml
+  locked-queue/locked-queue.mlb
+(*  futures/future1.pml*)
 end

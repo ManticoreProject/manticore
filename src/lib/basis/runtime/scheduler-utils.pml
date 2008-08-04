@@ -57,8 +57,7 @@ structure SchedulerUtils =
     (* switch to the next thread in the host vproc's ready queue *)
       define @dispatch (/ exh : PT.exh) noreturn =
 	  let qitem : VProcQueue.queue = VProcQueue.@dequeue ( / exh)
-	  let item : [FLS.fls, PT.fiber, VProcQueue.queue] = ([FLS.fls, PT.fiber, VProcQueue.queue]) qitem
-	  @switch-to (#0(item), #1(item) / exh)
+	  @switch-to (#0(qitem), #1(qitem) / exh)
       ;
 
     (* spawn a thread on a remote vproc *)
@@ -82,8 +81,8 @@ structure SchedulerUtils =
 
 	  let self : vproc = host_vproc
 
-	  let length : fun(List.list / PT.exh -> Int.ml_int) = pmlvar List.length
-	  let nVProcs : Int.ml_int = apply length (vps / exh)
+	  let length : fun(List.list / PT.exh -> PT.ml_int) = pmlvar List.length
+	  let nVProcs : PT.ml_int = apply length (vps / exh)
 	 (* only count other vprocs *)
 	  let nVProcs : int = I32Sub (#0(nVProcs), 1)
 
@@ -101,7 +100,6 @@ structure SchedulerUtils =
 	       (* dummy fiber synchronizes on the barrier and then exits immediately to activate the scheduler *)
 		cont dummyK (_ : PT.unit) = 
 		     do vpstore (ATOMIC, host_vproc, TRUE)
-      (*               print_debug("initializing scheduler")*)
 		     let x : int = I32FetchAndAdd (syncPoint, 1)
 		     do apply spinWait (UNIT / exh)
 		     do Control.@forward (STOP / exh)
@@ -139,7 +137,7 @@ structure SchedulerUtils =
       extern void *ListVProcs (void *) __attribute__((alloc));
 
     (* top-level thread scheduler that uses a round robin policy *)
-      define @round-robin ( / exh : PT.exh) : () = 
+      define @round-robin (x : PT.unit / exh : PT.exh) : PT.unit = 
 	cont switch (s : PT.signal) =
 	  let vp : vproc = host_vproc
 	  let atomic : PT.bool = vpload(ATOMIC, vp)
@@ -147,17 +145,14 @@ structure SchedulerUtils =
 
 	  cont dispatch () =
 	    let qitem : VProcQueue.queue = VProcQueue.@dequeue ( / exh)
-	    let item : [FLS.fls, PT.fiber, VProcQueue.queue] = ([FLS.fls, PT.fiber, VProcQueue.queue]) qitem
-	    let fls : FLS.fls = #0 (item)
-	    let fiber : PT.fiber = #1 (item)
-	    Control.@run-thread (switch, fiber, fls / exh)
+	    do Control.@run-thread (switch, #1(qitem), #0(qitem) / exh)
+            return(UNIT)
 
 	  case s
 	    of STOP => throw dispatch ()
 	     | PT.PREEMPT (k : PT.fiber) =>
 		 let fls : FLS.fls = FLS.@get ( / exh)
 		 do VProcQueue.@enqueue (fls, k / exh)
-      (*print_msg("preempt")*)
 		 throw dispatch () 
 	  end
 
@@ -169,11 +164,14 @@ structure SchedulerUtils =
 	let fls : FLS.fls = FLS.@new (UNIT / exh)
        (* run the scheduler on all vprocs *)
 	do @scheduler-startup (mkSwitch, fls, vps / exh)
-	return ()
+	return (UNIT)
       ;
 
     )
 
-    val _ = Print.print "scheduler utils\n"
+    val roundRobin : unit -> unit = _prim (@round-robin)
+    val _ = roundRobin()
+    val _ = Print.print "initialized scheduler\n"
+    val _ = print(itos(UnitTesting.fib(32))^"\n")
 
   end

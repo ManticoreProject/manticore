@@ -3,8 +3,20 @@
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * One toucher futures.
+ * Specialized implementation of futures for lightweight synchronization. Only a single
+ * fiber can touch a future.
  *)
+
+(* state values *)
+#define EMPTY_F  $0
+#define STOLEN_F $1
+#define EVAL_F   $2
+
+(* offsets *)
+#define STATE_OFF            0
+#define THUNK_OFF            1
+#define CANCELABLE_OFF       2
+#define FGS_OFF              3
 
 structure Future1 =
   struct
@@ -34,9 +46,9 @@ structure Future1 =
     _primcode (
 
       define @eval (fut : future / exh : PT.exh) : any =
-        let f : thunk = SELECT(FUTURE1_THUNK_OFF, fut)
+        let f : thunk = SELECT(THUNK_OFF, fut)
        (* clear the thunk pointer to avoid a space leak *)
-        do UPDATE(FUTURE1_THUNK_OFF, fut, (thunk) $0)
+        do UPDATE(THUNK_OFF, fut, (thunk) $0)
         let resultLocal : any = apply f (UNIT / exh)
         return(result)
       ;
