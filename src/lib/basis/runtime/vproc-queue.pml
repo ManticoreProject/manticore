@@ -25,7 +25,7 @@ structure VProcQueue =
       = Q_EMPTY
       | Q_ITEM of data
 
-    _primcode(
+    _primcode (
 
     (* takes a queue element (the first three arguments), a queue (lst), and another queue (rest), and 
      * produces the following queue:
@@ -52,7 +52,7 @@ structure VProcQueue =
 	   let tl : queue = vpload (VP_RDYQ_TL, vp)
 	   case tl of
 	      Q_EMPTY_B =>
-		 let sleepKOpt : option = ccall VProcDequeue(vp)
+		 let sleepKOpt : Option.option = ccall VProcDequeue(vp)
 		 case sleepKOpt
 		  of NIL => 
 		     (* the queue is nonempty, try again *)
@@ -63,7 +63,7 @@ structure VProcQueue =
 		 end
 	    | Q_ITEM (item:[FLS.fls, PT.fiber, queue]) =>
 		do vpstore (VP_RDYQ_TL, vp, Q_EMPTY_B)
-		let qitem : queue = hlop @reverse-queue (#0(item), #1(item), #2(item), Q_EMPTY_B / exh)
+		let qitem : queue = @reverse-queue (#0(item), #1(item), #2(item), Q_EMPTY_B / exh)
 		let item : [FLS.fls, PT.fiber, queue] = ([FLS.fls, PT.fiber, queue]) qitem
 		let link : queue = #2 (item)
 		do vpstore (VP_RDYQ_HD, vp, link)
@@ -76,9 +76,9 @@ structure VProcQueue =
       define @dequeue (vp : vproc / exh : PT.exh) : queue =
 	let hd : queue = vpload (VP_RDYQ_HD, vp)
 	case hd
-	  of QITEM (_, _, link:queue) => 
+	  of Q_ITEM (item:[FLS.fls, PT.fiber, queue]) =>
 	     (* got an element from the primary queue *)
-	     do vpstore (VP_RDYQ_HD, vp, link)
+	     do vpstore (VP_RDYQ_HD, vp, #2(item))
 	     return (hd)
 	   | Q_EMPTY_B => 
 	     (* primary queue is empty, so try the secondary queue *)
@@ -88,9 +88,9 @@ structure VProcQueue =
       ;
 
     (* enqueue an element on the vproc's thread queue *)
-      define @enqueue (vp : vproc, fls : PT.fls, fiber : PT.fiber / exh : PT.exh) : () =
+      define @enqueue (vp : vproc, fls : FLS.fls, fiber : PT.fiber / exh : PT.exh) : () =
 	 let tl : queue = vpload (VP_RDYQ_TL, vp)
-	 let qitem : queue = QITEM (fls, fiber, tl)
+	 let qitem : queue = Q_ITEM (alloc(fls, fiber, tl))
 	 do vpstore (VP_RDYQ_TL, vp, qitem)
 	 return () 
       ;
