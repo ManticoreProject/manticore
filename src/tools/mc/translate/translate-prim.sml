@@ -239,7 +239,7 @@ structure TranslatePrim : sig
 		       (* see comments above on pml imports for an explanation *)
 			val v = (
 			    case E.findBOMPMLVar pmlVar
-			     of NONE => raise Fail (String.concat ["unbound PML variable", PTVar.toString pmlVar])
+			     of NONE => raise Fail (String.concat ["compiler bug: unbound PML variable ", PTVar.toString pmlVar])
 			      | SOME v => v
 				(* end case *))
 (*			val freshBinding = addPMLImport actualBinding*)
