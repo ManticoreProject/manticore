@@ -192,7 +192,9 @@ structure MLB : sig
 		           OS.FileSys.chDir dir;
 			   pts
 		       end
-		 | NONE => pts
+		 | NONE => (
+		   checkForErrors[errStrm];
+		   raise Fail "impossible")
                (* end case *))
             end
 
@@ -205,8 +207,10 @@ structure MLB : sig
            in
 		reap();
 		case ptOpt
-		 of NONE => NONE
-		  | SOME pt => SOME (errStrm, pt)
+		 of SOME pt => SOME (errStrm, pt)
+		  | NONE => (
+		    checkForErrors[errStrm];
+		    raise Fail "impossible")
            end
 
   (* load the MLB file *)
