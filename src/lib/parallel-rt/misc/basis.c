@@ -176,7 +176,7 @@ Value_t M_Die (const char *message)
     Die ("%s\n", message);
 }
 
-#ifndef NDEBUG
+#ifdef NDEBUG
 Value_t M_AssertFail (const char *check, char *file, int line)
 {
     Die ("Assert failed at %s:%d (%s)\n", file, line, check);
