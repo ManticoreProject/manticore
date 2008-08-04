@@ -21,7 +21,7 @@ structure MLB : sig
 (* FIXME: load files only once *)
 
   (* path to the preprocessor executable and command-line arguments *)
-    type preprocessor_cmd = (string * string list)
+    type preprocessor_cmd = (string * string * string list)
 
     type parse_tree = (Error.err_stream * PPT.program)
 
@@ -66,14 +66,34 @@ structure MLB : sig
 
     fun copy (inStrm, outStrm) = output(input inStrm, outStrm)
 
-    fun tmpFile file = file ^ ".tmp-preproc"
-
+  (* remove a temporary file *)
     fun removeTmp tmp = if OS.FileSys.access (tmp, [OS.FileSys.A_READ, OS.FileSys.A_WRITE])
            then OS.FileSys.remove tmp
            else ()
 
-    fun chainPreprocs (file, []) = raise Fail ""
-      | chainPreprocs (file, [(ppCmd, args)]) = let
+  (* pass the file through a sequence of preprocessors *)
+    fun chainPreprocs (file, path, name, []) = raise Fail "compiler bug"
+      | chainPreprocs (file, path, name, ("cpp", _, [includes]) :: ppCmds) = let
+	(* special syntax for the C preprocessor *)
+	    val includes = String.tokens (fn c => c = #",") includes
+	    val args = 
+		(* include the current directory *)
+		"-I." 
+		(* strip away preprocessor directives and cruft *)
+		:: "-P" 
+		(* preset directive: the absolute file path *)
+		:: ("-DPML_PATH="^path^name)
+		(* preset directive: the file name *)
+		:: ("-DPML_FILE="^name) 
+		(* add the includes *)
+		:: List.map (fn inc => "-include"^inc) includes 
+		(* pass the file to cpp through stdin *)
+		@ ["-"]
+	    in
+	      (* FIXME: get the CPP command from autoheader *)
+	        chainPreprocs(file, path, name, ("preprocess", "/usr/bin/cpp", args) :: ppCmds)
+	    end
+      | chainPreprocs (file, path, name, [("preprocess", ppCmd, args)]) = let
 	    val ppProc = Unix.execute(ppCmd, args)
 	    val outStrm = Unix.textOutstreamOf ppProc
 	    val lines = inputFile file
@@ -82,7 +102,7 @@ structure MLB : sig
 	        output(lines, outStrm);
 		(Unix.textInstreamOf ppProc, mkReap ppProc)
 	    end
-      | chainPreprocs (file, (ppCmd, args) :: ppCmds) = let
+      | chainPreprocs (file, path, name, ("preprocess", ppCmd, args) :: ppCmds) = let
 	    val ppProc = Unix.execute(ppCmd, args)
          (* get the lines of the temporary file *)
 	    val lines = inputFile file
@@ -93,15 +113,15 @@ structure MLB : sig
 	        copy(Unix.textInstreamOf ppProc, file2);
 		ignore(Unix.reap ppProc);
 		removeTmp file;
-		chainPreprocs(file^"2", ppCmds)
+		chainPreprocs(file^"2", path, name, ppCmds)
 	    end
     in
-  (* pass the file through several preprocessors *)
+  (* run preprocessors over a file *)
     fun preprocess ([], file) = (TextIO.openIn file, fn () => ())
       | preprocess (preprocs, file) = let
-	    val tmp = OS.FileSys.getDir()^"/"^(tmpFile file)
+	    val tmp = OS.FileSys.tmpName()
 	    val _ = copy(TextIO.openIn file, TextIO.openOut tmp)
-	    val (strm, reap) = chainPreprocs(tmp, preprocs)
+	    val (strm, reap) = chainPreprocs(tmp, OS.Path.dir file, OS.Path.file file, preprocs)
 	    val _ = removeTmp tmp
 	    in	       
 	       (strm, reap)
@@ -161,7 +181,9 @@ structure MLB : sig
 		| _ => raise Fail "unknown source file extension"
            (* end case *))
 	 | PT.AnnBasDec("preprocess", ppCmd :: ppArgs, basDec) =>
-	   processBasDec(basDec, Env{loc=loc, pts=pts, preprocs=(ppCmd, ppArgs) :: preprocs})
+	   processBasDec(basDec, Env{loc=loc, pts=pts, preprocs=("preprocess", ppCmd, ppArgs) :: preprocs})
+	 | PT.AnnBasDec("cpp", includes, basDec) =>
+	   processBasDec(basDec, Env{loc=loc, pts=pts, preprocs=("cpp", "", includes) :: preprocs})
 	 | PT.SeqBasDec basDecs =>
 	   processBasDecs(basDecs, env)
 	 | _ => raise Fail "todo"
