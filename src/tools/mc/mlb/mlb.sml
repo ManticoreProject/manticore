@@ -20,8 +20,13 @@ structure MLB : sig
 
 (* FIXME: load files only once *)
 
-  (* path to the preprocessor executable and command-line arguments *)
-    type preprocessor_cmd = (string * string * string list)
+  (* information for applying a preprocessor to a PML file.
+   *)
+    type preprocessor_cmd = (
+	 string *            (* preprocessor directive, e.g., "preprocessor", for a generic preprocessor "cpp" for the C preprocessor *)
+	 string *            (* directory to run the preprocessor *)
+	 string option *     (* preprocessor command *)
+	 string list         (* arguments *))
 
     type parse_tree = (Error.err_stream * PPT.program)
 
@@ -39,6 +44,16 @@ structure MLB : sig
 
     local (* preprocessor support *)
     fun mkReap proc = fn () => ignore(Unix.reap proc)
+
+  (* apply the preprocessor in a given directory *)
+    fun runPreproc (dir', cmd, args) = let
+	    val dir = OS.FileSys.getDir()
+	    val _ = OS.FileSys.chDir dir'
+	    val x = Unix.execute(cmd, args)
+            in
+	        OS.FileSys.chDir dir;
+	        x
+	    end
 
     fun input inStrm = let	    
 	    fun lp (NONE, lines) = List.rev lines
@@ -73,7 +88,7 @@ structure MLB : sig
 
   (* pass the file through a sequence of preprocessors *)
     fun chainPreprocs (file, path, name, []) = raise Fail "compiler bug"
-      | chainPreprocs (file, path, name, ("cpp", _, [includes]) :: ppCmds) = let
+      | chainPreprocs (file, path, name, ("cpp", dir, NONE, [includes]) :: ppCmds) = let
 	(* special syntax for the C preprocessor *)
 	    val includes = String.tokens (fn c => c = #",") includes
 	    val args = 
@@ -91,10 +106,10 @@ structure MLB : sig
 		@ ["-"]
 	    in
 	      (* FIXME: get the CPP command from autoheader *)
-	        chainPreprocs(file, path, name, ("preprocess", "/usr/bin/cpp", args) :: ppCmds)
+	        chainPreprocs(file, path, name, ("preprocess", dir, SOME "/usr/bin/cpp", args) :: ppCmds)
 	    end
-      | chainPreprocs (file, path, name, [("preprocess", ppCmd, args)]) = let
-	    val ppProc = Unix.execute(ppCmd, args)
+      | chainPreprocs (file, path, name, [("preprocess", dir, SOME ppCmd, args)]) = let
+	    val ppProc = runPreproc(dir, ppCmd, args)
 	    val outStrm = Unix.textOutstreamOf ppProc
 	    val lines = inputFile file
 	    val _ = removeTmp file
@@ -102,18 +117,19 @@ structure MLB : sig
 	        output(lines, outStrm);
 		(Unix.textInstreamOf ppProc, mkReap ppProc)
 	    end
-      | chainPreprocs (file, path, name, ("preprocess", ppCmd, args) :: ppCmds) = let
-	    val ppProc = Unix.execute(ppCmd, args)
+      | chainPreprocs (file, path, name, ("preprocess", dir, SOME ppCmd, args) :: ppCmds) = let
+	    val ppProc = runPreproc(dir, ppCmd, args)
          (* get the lines of the temporary file *)
 	    val lines = inputFile file
          (* send those lines to the preprocessor's stdin *)
 	    val _ = output(lines, Unix.textOutstreamOf ppProc)
-	    val file2 = TextIO.openOut(file^"2")
+	    val tmp = OS.FileSys.tmpName()
+	    val file2 = TextIO.openOut tmp
 	    in
 	        copy(Unix.textInstreamOf ppProc, file2);
 		ignore(Unix.reap ppProc);
 		removeTmp file;
-		chainPreprocs(file^"2", path, name, ppCmds)
+		chainPreprocs(tmp, path, name, ppCmds)
 	    end
     in
   (* run preprocessors over a file *)
@@ -180,10 +196,16 @@ structure MLB : sig
                   (* end case *))
 		| _ => raise Fail "unknown source file extension"
            (* end case *))
-	 | PT.AnnBasDec("preprocess", ppCmd :: ppArgs, basDec) =>
-	   processBasDec(basDec, Env{loc=loc, pts=pts, preprocs=("preprocess", ppCmd, ppArgs) :: preprocs})
-	 | PT.AnnBasDec("cpp", includes, basDec) =>
-	   processBasDec(basDec, Env{loc=loc, pts=pts, preprocs=("cpp", "", includes) :: preprocs})
+	 | PT.AnnBasDec("preprocess", ppCmd :: ppArgs, basDec) => let
+	       val preproc = ("preprocess", OS.FileSys.getDir(), SOME ppCmd, ppArgs)
+	       in
+	         processBasDec(basDec, Env{loc=loc, pts=pts, preprocs=preproc :: preprocs})
+	       end
+	 | PT.AnnBasDec("cpp", includes, basDec) => let
+	       val preproc = ("cpp", OS.FileSys.getDir(), NONE, includes)
+	       in
+	         processBasDec(basDec, Env{loc=loc, pts=pts, preprocs=preproc :: preprocs})
+	       end
 	 | PT.SeqBasDec basDecs =>
 	   processBasDecs(basDecs, env)
 	 | _ => raise Fail "todo"
