@@ -174,13 +174,15 @@ functor HeapTransferFn (
   fun locToExpr (SA.BLOCK_OFFSET (ty, _, off)) = 
       (* offset into the overflow block *)
         MTy.EXP (ty, scratchLoc (T.LI (T.I.fromInt(MTy.wordTy, off))))
+    | locToExpr (SA.REG(ty, K_GPR, r)) =
+        MTy.GPR (ty, r)
+    | locToExpr (SA.REG(ty, K_FPR, r)) =
+        MTy.FPR (ty, r)
     | locToExpr (SA.NARROW (SA.REG(ty, K_GPR, r), ty', k)) =
         MTy.GPR (ty, r)
     | locToExpr (SA.NARROW (SA.REG(64, K_FPR, r), 32, K_FPR)) =
-      (* promote float to double *)
-        MTy.FEXP(64, MTy.T.CVTF2F(32, 64, T.FREG (32, r)))
-    | locToExpr (SA.NARROW (loc, _, _)) =
-        locToExpr loc
+      (* FIXME: promote float to double *)
+        MTy.FPR (32, r)
 
   (* copy an argument to a parameter location *)
   fun copyArgToParam (param, arg) = (case (param, arg)
