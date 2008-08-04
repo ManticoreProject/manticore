@@ -46,7 +46,7 @@ structure VProcQueue =
       (* TODO: move this function to BOM *)
       extern void *VProcDequeue (void *) __attribute__((alloc));
 
-   (* obtain elements from the secondary queue *)
+   (* dequeue from the secondary queue *)
       define @dequeue-slow-path (vp : vproc / exh : PT.exh) : queue =
 	cont loop () =
 	   let tl : queue = vpload (VP_RDYQ_TL, vp)
@@ -72,27 +72,38 @@ structure VProcQueue =
 	throw loop ()
       ;	  
 
-    (* dequeue an element from the vproc's thread queue *)
-      define @dequeue (vp : vproc / exh : PT.exh) : queue =
+    (* dequeue from the vproc's thread queue *)
+      define @dequeue ( / exh : PT.exh) : queue =
+        let vp : vproc = host_vproc
 	let hd : queue = vpload (VP_RDYQ_HD, vp)
 	case hd
 	  of Q_ITEM (item:[FLS.fls, PT.fiber, queue]) =>
-	     (* got an element from the primary queue *)
+	     (* got a thread from the primary queue *)
 	     do vpstore (VP_RDYQ_HD, vp, #2(item))
 	     return (hd)
 	   | Q_EMPTY_B => 
-	     (* primary queue is empty, so try the secondary queue *)
+	     (* the primary queue is empty, so try the secondary queue *)
 	     let item : queue = @dequeue-slow-path (vp / exh)
 	     return (item)
 	end
       ;
 
-    (* enqueue an element on the vproc's thread queue *)
-      define @enqueue (vp : vproc, fls : FLS.fls, fiber : PT.fiber / exh : PT.exh) : () =
+    (* enqueue on the vproc's thread queue *)
+      define @enqueue (fls : FLS.fls, fiber : PT.fiber / exh : PT.exh) : () =
+         let vp : vproc = host_vproc
 	 let tl : queue = vpload (VP_RDYQ_TL, vp)
 	 let qitem : queue = Q_ITEM (alloc(fls, fiber, tl))
 	 do vpstore (VP_RDYQ_TL, vp, qitem)
 	 return () 
+      ;
+
+      extern void EnqueueOnVProc (void *, void *, void *, void *) __attribute__((alloc));
+
+   (* enqueue on a remote vproc *)
+      define @enqueue-on-vproc (dst : vproc, fls : FLS.fls, k : PT.fiber / exh : PT.exh) : () =
+	let k : PT.fiber = promote (k)
+	do ccall EnqueueOnVProc(host_vproc, dst, fls, k)
+	return ()
       ;
 
     )

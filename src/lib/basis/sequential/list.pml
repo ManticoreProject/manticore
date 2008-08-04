@@ -5,7 +5,6 @@ structure List =
 	     NIL
 	   | CONS of ('a * 'a list)
 
-(*
     fun foldl f id xs = let
 	    fun lp (xs, acc) = (
 		case xs
@@ -25,7 +24,7 @@ structure List =
 	       lp(xs, id)
 	    end
 
-    fun rev xs = foldl CONS NIL xs
+(*    fun rev xs = foldl CONS NIL xs*)
 
     val xs = CONS(1,CONS(2,NIL))
 
@@ -35,6 +34,22 @@ structure List =
 	    | CONS(x, xs) => f x ^ l2s f xs
           (* end case *))
 
-    val _ = print (l2s itos (rev xs)^"\n")
-*)
+    fun app f ls = let
+	  fun lp xs = (
+	        case xs 
+		 of NIL => ()
+		  | CONS(x, xs) => (
+		      f x;
+		      lp xs)
+                (* end case *))
+          in
+	     lp ls
+	  end
+
+    val length = let
+	  fun f (x, len) = len + 1
+          in
+	    foldl f 0
+	  end
+
   end
