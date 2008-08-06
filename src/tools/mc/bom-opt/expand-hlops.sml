@@ -92,8 +92,10 @@ structure ExpandHLOps : sig
 		  | B.E_HLOp(hlOp, args, rets) => let
 	              val (inline, defn, cfuns, pmlImports, import) = (case HLOpEnv.findDef hlOp
 			    of SOME {inline, def, externs, pmlImports, ...} => 
+			       (* found the definition in inline BOM *)
 			       (inline, def, externs, pmlImports, false)
 			     | NONE => let
+				   (* found the definition in a .hlop file *) 
 				   val {inline, defn, cfuns} = HLOpDefLoader.load(importEnv, hlOp)
 			           in
 				      (inline, defn, cfuns, [], true)
