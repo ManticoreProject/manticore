@@ -193,6 +193,12 @@ structure ChkExp :> sig
 		  AST.FunBind fbs'
 		end
 	    | PT.PrimVDecl (pat, primRhs) => let
+		fun hasTypeAscription (PT.MarkPat{tree, ...}) = hasTypeAscription tree
+		  | hasTypeAscription (PT.ConstraintPat _) = true
+		  | hasTypeAscription _ = false
+		val _ = if hasTypeAscription pat
+			   then ()
+			else error(loc, ["need type ascription to import inline BOM"])
 		val (AST.VarPat v, lhsTy) = chkPat(loc, depth, pat)
 		in
 		  AST.PrimVBind (v, primRhs)
