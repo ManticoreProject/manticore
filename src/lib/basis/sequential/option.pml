@@ -1,3 +1,5 @@
+(* FIXME Option.option is different from option! *)
+
 structure Option =
   struct
 

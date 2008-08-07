@@ -96,6 +96,9 @@ structure Future1 =
 		   return ()
 	;
 
+	(* poll : 'a future -> 'a trap option *)
+	define @poll 
+
     )
 
   end

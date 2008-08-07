@@ -15,6 +15,8 @@
 
 (* TODO Somewhere the compiler should append an "Otherwise => raise ..." to any pcase without one. *)
 
+(* TODO For 'a computations, should we make an 'a trap future, rather than an 'a future? *)
+
 structure TranslatePCase (* : sig
 
   (* An AST to AST translation of parallel cases. *)
