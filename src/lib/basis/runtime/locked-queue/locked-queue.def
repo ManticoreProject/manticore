@@ -33,6 +33,4 @@
 
 #define NEW_ELT(elt) NEW_IPQ(elt)
 
-
-
 #endif /*! _LOCKED_QUEUE_DEF_ */

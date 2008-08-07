@@ -3,7 +3,8 @@
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * In place queue operations.
+ * In-place, unbounded size queues. These operations are not thread safe, but are
+ * meant to serve as a basis for wrapper libraries that are thread safe.
  *)
 
 #define ELT_HD_OFF    0
@@ -17,16 +18,22 @@ structure InPlaceQueue =
 
     _primcode (
 
-    (* queue elements; item, pointer to the next element *)
-      typedef elt = ![any, any];
+    (* queue elements *)
+      typedef elt = ![  (* all fields are mutable *)
+          any,          (* data *)
+	  any           (* next element *)
+      ];
 
-    (* lock, head, tail, blocked fiber head, blocked fiber tail *)
-      typedef queue = ![PT.bool, elt, elt, elt, elt];
-
-    (* thread blocked on a dequeue: continuation expecting the dequeue value, fiber-local storage and the
-     * vproc where the thread blocked.
-     *)
-      typedef blocked_thread = [cont(any), FLS.fls, vproc];
+    (* locked queue structure *)
+      typedef queue = ![  (* all fields are mutable *)
+          PT.bool,        (* spin lock *)
+        (* queue *)
+	  elt,            (* head *)
+	  elt,            (* tail *)
+        (* queue of blocked threads *)
+	  elt,            (* head *)
+	  elt             (* tail *)
+      ];
 
       define @enqueue (q : queue, qElt : elt / exh : PT.exh) : () =                   
         let qHd : elt = SELECT(HD_OFF, q)
@@ -43,7 +50,7 @@ structure InPlaceQueue =
             return () 		    									  
 	else return () 											  
       ;    	  	 											  
-													  
+
       define @dequeue (q : queue  / exh : PT.exh) : Option.option = 		  
         let qTl : elt = SELECT(TL_OFF, q)        	 	     	   	     		  
         let qHd : elt = SELECT(HD_OFF, q) 						  

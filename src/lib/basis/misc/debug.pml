@@ -5,4 +5,5 @@ _primcode (
   extern void M_PrintDebug (void*);
   extern void M_PrintLong (long);
   extern void M_PrintDebugMsg (void*, void*, void*, int);
+  extern void M_PrintTestingMsg (void*, void*, int);
 )

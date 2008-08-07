@@ -1,0 +1,46 @@
+(* testing.def
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Utilities for stress testing runtime code.
+ *)
+
+#ifndef _TESTING_DEF_
+#define _TESTING_DEF_
+
+#include "assert.def"
+#include "debug.def"
+
+#ifdef NDEBUG
+#define do_test(test)
+#define do_concurrent_test(hlop, time)
+#else
+
+#define _QUOTE(x) #x
+#define QUOTE(x) _QUOTE(x)
+
+(* test a sequential program *)
+#define do_test(test)			                                            \
+	let b : PrimTypes.bool = @test(/exh)	                                            \
+        do if Equal(b,FALSE)                                                        \
+              then do ccall M_PrintTestingMsg ("Answer", QUOTE(PML_FILE), __LINE__)        \
+                   return ()                                                        \
+              else return ()                                                        \
+	do assert(Equal(b,TRUE))                                                    \
+
+(* test a concurrent program, waiting wait_secs until declaring deadlock *)
+#define do_concurrent_test(hlop, wait_secs)                                      \
+        cont exhDeadlock (_ : any) =                                             \
+             do ccall M_PrintTestingMsg ("Deadlock", QUOTE(PML_FILE), __LINE__)         \
+             assert (FALSE)                                                      \
+        cont exhIncorrectAns (_ : any) =                                         \
+             do ccall M_PrintTestingMsg ("Answer", QUOTE(PML_FILE), __LINE__)           \
+             assert (FALSE)                                                      \
+        fun f (_ : PrimTypes.unit / exh : exh) : PrimTypes.bool =                                    \
+              @hlop (/exh)                                                       \
+        do @test-deadlock (f, wait_secs, exhDeadlock, exhIncorrectAns / exh)     \
+
+#endif
+
+#endif /*! _TESTING_DEF_ */

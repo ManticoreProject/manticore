@@ -12,10 +12,12 @@
 #ifdef NDEBUG
 #  define assert(check)	return()
 #else
+#define _QUOTE(x) #x
+#define QUOTE(x) _QUOTE(x)
 #  define assert(check)							\
 	if check							\
 	  then return ()						\
-	  else do ccall M_AssertFail (check, __FILE__, __LINE__)	\
+	  else do ccall M_AssertFail (check, QUOTE(PML_FILE), __LINE__)	\
 	    return ()                                                   
 #endif
 

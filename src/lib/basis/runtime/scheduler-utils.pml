@@ -4,7 +4,7 @@
  * All rights reserved.
  *
  * Basic utilities for building schedulers:
- *  - bootstrapping for the top-level scheduler
+ *  - connecting to the C runtime
  *  - thread spawning, switching, and dispatching operations
  *  - basic scheduler initialization
  *  - round-robin scheduler
@@ -18,32 +18,42 @@ structure SchedulerUtils =
 
     _primcode (
 
-    (* bootstrap the top level scheduler on each vproc. during execution, the runtime system
-     * passes signals to our trampoline, which forwards those signals to the current scheduler. 
+    (* this subroutine provides low-level glue between our compiled scheduling code and our C runtime. because 
+     * asynchronous signals arrive first in the C runtime, we need a protocol for passing signals along to
+     * compiled scheduling code. for this task we use a "trampoline," which in our case is a continuation 
+     * that receives the suspended fiber that was interrupted by the signal. the trampoline packages the 
+     * suspended continuation in a preemption signal and forwards it to the current scheduler.
+     *
+     * IMPORTANT: this operation must precede any scheduling operations, and signals must be masked before
+     * this operation completes.
      *)
-      define @bootstrap (vps : List.list / exh : PT.exh) : () =
+      define @set-trampoline (vps : List.list / exh : PT.exh) : () =
+        do assert(Equal(vpload(ATOMIC, host_vproc), TRUE))
+
+      (* to make this subroutine re-entrant, we ensure here that the trampoline is set just once *)
         cont exit () = return()
-      (* set the scheduler point just once *)
-	let sk : cont(PT.signal) = vpload(VP_SCHED_CONT, host_vproc)
-	do if NotEqual(sk, NIL)
+	let currentTrampoline : cont(PT.fiber) = vpload(VP_SCHED_CONT, host_vproc)
+	do if NotEqual(currentTrampoline, NIL)
 	      then throw exit()
 	   else return()
-      (* pass signals to the current scheduler *)
-	cont trampoline (k : PT.signal) =
-	     Control.@forward(k / exh)
-	let trampoline : cont(PT.signal) = promote(trampoline)
-      (* store the trampoline in the vproc structure *)
-	fun install (vps : List.list) : () =
+
+      (* the trampoline forwards preemption signals to the current scheduler *)
+	cont trampoline (k : PT.fiber) = Control.@forward(PT.PREEMPT(k) / exh)
+	let trampoline : cont(PT.fiber) = promote(trampoline)
+
+      (* set the trampoline on each vproc *)
+	fun initVProcs (vps : List.list / exh : PT.exh) : () =
 	    case vps
-	     of NIL => return()
+	     of NIL => 
+		return()
 	      | List.CONS (vp : vproc, vps : List.list) =>
-		let sk : cont(PT.signal) = vpload(VP_SCHED_CONT, vp)
-		if Equal(sk, NIL)
-		   then do vpstore(VP_SCHED_CONT, vp, trampoline)
-			apply install(vps)
-		   else return()
+		let currentTrampoline : cont(PT.fiber) = vpload(VP_SCHED_CONT, vp)
+		do assert(Equal(currentTrampoline, NIL))
+		do vpstore(VP_SCHED_CONT, vp, trampoline)
+                apply initVProcs(vps / exh)
 	    end
-	do apply install(vps)
+	do apply initVProcs(vps / exh)
+
         return()
       ;
 
@@ -73,7 +83,7 @@ structure SchedulerUtils =
     (* initialize a given scheduler on  a collection of vprocs *)
       define @scheduler-startup (mkAct : fun (vproc / PT.exh -> PT.sigact), fls : FLS.fls, vps : List.list / exh : PT.exh) : () =
 	(* bootstrap on the vprocs *)
-	  do @bootstrap (vps / exh)
+	  do @set-trampoline (vps / exh)
 
 	  let syncPoint : ![int] = alloc(0)
 	 (* since vprocs share it, promote syncPoint *)
@@ -90,6 +100,7 @@ structure SchedulerUtils =
 	 fun spinWait (_ : PT.unit / exh : PT.exh) : () = 
 	      let i : int = #0(syncPoint)     
 	      if I32Eq (i, nVProcs) then	  
+		do vpstore(ATOMIC, host_vproc, FALSE)
 		return ()
 	      else
 		apply spinWait (UNIT / exh)
@@ -158,7 +169,7 @@ structure SchedulerUtils =
 
 	fun mkSwitch (_ : vproc / exh : PT.exh) : PT.sigact = return (switch)
 
-       (* get handles for all vprocs *)
+       (* get handles on all available vprocs  *)
 	let vps : List.list = ccall ListVProcs(host_vproc)
        (* fiber-local storage for the top-level scheduler *)
 	let fls : FLS.fls = FLS.@new (UNIT / exh)
@@ -171,7 +182,6 @@ structure SchedulerUtils =
 
     val roundRobin : unit -> unit = _prim (@round-robin)
     val _ = roundRobin()
-    val _ = Print.print "initialized scheduler\n"
-    val _ = print(itos(UnitTesting.fib(32))^"\n")
+    val _ = Print.printLn "scheduler utils: initialized round-robin scheduler"
 
   end

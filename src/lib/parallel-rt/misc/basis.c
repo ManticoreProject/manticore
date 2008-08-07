@@ -176,10 +176,12 @@ Value_t M_Die (const char *message)
     Die ("%s\n", message);
 }
 
-#ifdef NDEBUG
+#ifndef NDEBUG
 Value_t M_AssertFail (const char *check, char *file, int line)
 {
-    Die ("Assert failed at %s:%d (%s)\n", file, line, check);
+  if (check != M_NIL && file != M_NIL)
+    Die ("Assert failed at %s:%d (%s).\n", file, line, check);
+  else Die ("Assert failed with corrupted diagnostic information.\n");
 }
 #endif
 
@@ -296,4 +298,19 @@ Value_t M_NewArray (VProc_t *vp, int nElems, Value_t elt)
 
   vp->globNextW += WORD_SZB * (nElems+1);
   return PtrToValue(obj);
+}
+
+#include <sys/time.h>
+
+/* Return the time of day.
+ */
+Word_t M_GetTime ()
+{
+  VProc_t *vp = VProcSelf();
+  struct timeval	t;
+  int			c_sec, c_usec;
+  
+  gettimeofday (&t, NULL);
+  
+  return 1000000l*(Word_t)t.tv_sec + (Word_t)t.tv_usec;
 }

@@ -6,6 +6,8 @@
  * Control operations for fibers.
  *)
 
+#include "../misc/assert.def"
+
 structure Control =
   struct
 
@@ -28,8 +30,26 @@ structure Control =
       ;
 
     (* stop the current fiber *)
-      define @stop (/ exh : PT.exh) noreturn =
-        @forward(STOP / exh)
+      define @stop (/ exh : PT.exh) : PT.unit =
+        do @forward(STOP / exh)
+        return(UNIT)
+      ;
+
+    (* yield control to the parent scheduler *)
+      define @yield (/ exh : PT.exh) : PT.unit =
+        cont k (x : PT.unit) = return(UNIT)
+        do @forward(PT.PREEMPT(k) / exh)
+        return(UNIT)
+      ;
+
+    (* yield control to the parent scheduler, masking signals upon return *)
+      define @atomic-yield (/ exh : PT.exh) : PT.unit =
+        cont k (x:PT.unit) = 
+          do vpstore(ATOMIC, host_vproc, TRUE)         (* mask signals before resuming *)
+          return(UNIT)
+        do @forward(PT.PREEMPT(k) / exh)
+        do assert(FALSE) (* control should never reach this point *)
+        return(UNIT)
       ;
 
     (* run the fiber under the scheduler action *)
@@ -58,35 +78,11 @@ structure Control =
 	  (* in case of an exception, just terminate the fiber *)
 	    cont exh (exn : PT.exn) = return (UNIT)
 	    apply f (UNIT / exh)
-	  do @stop (/ exh)
+	  let _ : PT.unit = @stop (/ exh)
           throw exh(tag(impossible))
 	return (fiberK)
       ;
 
-    (* quick test of run and forward *)
-      define @test (x : PT.unit / exh : PT.exh) : PT.unit =
-        cont act (s : PT.signal) =
-	  case s
-	   of STOP => do @forward(STOP / exh)
-		      return(UNIT)
-	    | PT.PREEMPT (k : PT.fiber) => 
-	      do ccall M_Print("Seems to have worked\n")
-	      do @forward(STOP / exh)
-	      return(UNIT)
-          end
-        cont k (x : PT.unit) = do @forward(PT.PREEMPT(k) / exh)
-			       return(UNIT)
-        do ccall M_Print("Testing run and forward\n")
-        do @run(act, k / exh)
-        return(UNIT)
-      ;
-
     )
-
-(*
-WARNING: enabling this test will silently terminate the program
-    val t : unit -> unit = _prim (@test)
-    val x = t()
-*)
 
   end

@@ -5,6 +5,8 @@ structure List =
 	     NIL
 	   | CONS of ('a * 'a list)
 
+    structure PT = PrimTypes
+
     fun foldl f id xs = let
 	    fun lp (xs, acc) = (
 		case xs

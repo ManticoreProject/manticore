@@ -7,3 +7,4 @@ ann "preprocess" "/usr/bin/cpp" "-I." "-P" "-include" "../misc/prim.def" "-"
 in
   print.pml
 end
+time.pml
