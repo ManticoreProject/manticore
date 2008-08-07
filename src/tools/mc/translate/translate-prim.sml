@@ -454,7 +454,7 @@ structure TranslatePrim : sig
 		   end
 	       | BPT.HLOpPrimVal hlop => (
 		   case E.findBOMHLOpDef hlop
-		    of SOME {name, inline, def as BOM.FB{f, ...}, externs, pmlImports} => (
+		    of SOME {name, path, inline, def as BOM.FB{f, ...}, externs, pmlImports} => (
 		         chkConstraintTy (BOM.Var.typeOf f);
 			 etaExpand(name, def))
 		     | NONE => raise Fail "unbound hlop"
@@ -526,6 +526,7 @@ structure TranslatePrim : sig
 	    val lambda = doBody ()
 	    val def = {
 		   name = hlop,
+		   path = BindingEnv.getHLOpPath name,
 		   inline = inline,
 		   def = lambda,
 		   pmlImports = getPMLImports(),

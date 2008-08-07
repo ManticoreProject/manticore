@@ -53,6 +53,7 @@ structure TranslateEnv : sig
       | BTY_TY of BOMTy.ty
     type hlop_def = {
 	name : BOM.hlop,			(* the HLOp's identifier *)
+	path : string list,                     (* full path to the HLOp *)
 	inline : bool,				(* should the HLOp be inlined? *)
 	def : BOM.lambda,			(* the HLOps definition *)
 	pmlImports : (BOM.var * BOM.var) list,  (* imports from PML *)
@@ -173,6 +174,7 @@ structure TranslateEnv : sig
       | BTY_TY of BOMTy.ty
     type hlop_def = {
 	name : BOM.hlop,			(* the HLOp's identifier *)
+	path : string list,                     (* full path to the HLOp *)
 	inline : bool,				(* should the HLOp be inlined? *)
 	def : BOM.lambda,			(* the HLOps definition *)
 	pmlImports : (BOM.var * BOM.var) list,  (* imports from PML *)

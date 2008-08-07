@@ -30,12 +30,13 @@ structure QualifiedId : sig
     val findBOMTy : (BindingEnv.env * Atom.atom path) -> BindingEnv.bom_ty_def option
     val findBOMHLOp : (BindingEnv.env * Atom.atom path) -> BindingEnv.bom_hlop option
 
-    val toString : (('a -> string) * 'a path) -> string
-
-    (* returns unqualified names *)
+  (* returns unqualified names *)
     val unqualId : 'a path -> 'a option
 
     val pathId : 'a path -> 'a
+
+    val toStringList : (('a -> string) * 'a path) -> string list
+    val toString : (('a -> string) * 'a path) -> string
 
   end = struct
 
@@ -51,8 +52,9 @@ structure QualifiedId : sig
 
     fun pathId ({tree=(_, id), span}) = id
 
-    fun toString (ts, {tree=(path, x), span}) = 
-	String.concatWith "." (List.map Atom.toString path @ [ts x])
+    fun toStringList (ts, {tree=(path, x), span}) = List.map Atom.toString path @ [ts x]
+
+    fun toString (ts, path) = String.concatWith "." (toStringList(ts, path))
 
     fun checkModPath (env, {tree=([], x), span}) = UNQUAL x
       | checkModPath (env, {tree=(path, x), span}) = let

@@ -47,17 +47,20 @@ structure BindingEnv =
     type ty_env = ty_bind Map.map
     type var_env = val_bind Map.map
     type mod_env = mod_bind Map.map
+  (* map from qualified identifiers to the flat variable namespace *)
     datatype env
       = Env of {
-	     tyEnv    : ty_env,
-	     varEnv   : var_env,
-	     bomEnv   : bom_env,
-	     modEnv   : (mod_bind * env) Map.map,
-	     sigEnv   : (sig_id * env) Map.map,
-	     outerEnv : env option       (* enclosing module *)
+	     name       : Atom.atom,                    (* name of the module *)
+	     tyEnv    : ty_env,                         (* type names *)
+	     varEnv   : var_env,                        (* PML variables *)
+	     bomEnv   : bom_env,                        (* inline BOM *)
+	     modEnv   : (mod_bind * env) Map.map,       (* modules *)
+	     sigEnv   : (sig_id * env) Map.map,         (* signatures *)
+	     outerEnv : env option                      (* enclosing module *)
            }
 
-    fun freshEnv outerEnv = Env {
+    fun freshEnv (name, outerEnv) = Env {
+	   name = name,
            tyEnv = Map.empty,
 	   varEnv = Map.empty,
 	   bomEnv = emptyBOMEnv, 
@@ -66,7 +69,8 @@ structure BindingEnv =
 	   outerEnv = outerEnv
          }
 
-    fun empty outerEnv = Env {
+    fun empty (name, outerEnv) = Env {
+	   name = name,
            tyEnv = Map.empty,
 	   varEnv = Map.empty,
 	   bomEnv = emptyBOMEnv, 
@@ -85,13 +89,25 @@ structure BindingEnv =
 	        BOMEnv {hlopEnv=Map.insert(hlopEnv, id, x), varEnv=varEnv, tyEnv=tyEnv}
 	fun insertTy (BOMEnv {varEnv, hlopEnv, tyEnv}, id, x) =
 	        BOMEnv {hlopEnv=hlopEnv, varEnv=varEnv, tyEnv=Map.insert(tyEnv, id, x)}
+      (* remember a HLOp's full path, e.g., Future1.@touch *)
+	val {
+          getFn=getHLOpPath : ProgramParseTree.Var.var -> string list, 
+	  setFn=setHLOpPath : (ProgramParseTree.Var.var * string list) -> unit, ...
+        } = 
+	    ProgramParseTree.Var.newProp (fn _ => [])
+      (* get the path owned by an environment *)
+	fun pathOfEnv (Env{outerEnv=NONE, ...}, path) = path
+	  | pathOfEnv (Env{name, outerEnv=SOME env, ...}, path) = pathOfEnv(env, name :: path)
     in
-    fun insertBOMVar (Env{tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
-	    Env{tyEnv=tyEnv, varEnv=varEnv, bomEnv=insertVar(bomEnv, id, x), modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
-    fun insertBOMHLOp (Env{tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
-	    Env{tyEnv=tyEnv, varEnv=varEnv, bomEnv=insertHLOp(bomEnv, id, x), modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
-    fun insertBOMTy (Env{tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
-	    Env{tyEnv=tyEnv, varEnv=varEnv, bomEnv=insertTy(bomEnv, id, x), modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
+    fun insertBOMVar (Env{name, tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
+	    Env{name=name, tyEnv=tyEnv, varEnv=varEnv, bomEnv=insertVar(bomEnv, id, x), modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
+    fun insertBOMHLOp (env as Env{name, tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = (
+	  (* record the HLOp's full path *)
+	    setHLOpPath(x, List.map Atom.toString (pathOfEnv(env, [id])));
+	    Env{name=name, tyEnv=tyEnv, varEnv=varEnv, bomEnv=insertHLOp(bomEnv, id, x), modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv})
+    fun insertBOMTy (Env{name, tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
+	    Env{name=name, tyEnv=tyEnv, varEnv=varEnv, bomEnv=insertTy(bomEnv, id, x), modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
+    val getHLOpPath = getHLOpPath
     end
 
     (* lookup a variable in the scope of the current module *)
@@ -140,14 +156,14 @@ structure BindingEnv =
     fun intersect (env1, env2) = Map.intersectWith (fn (x1, x2) => x2) (env1, env2)
 
   (* PML operations *)
-    fun insertVal (Env{tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
-	Env{tyEnv=tyEnv, varEnv=Map.insert(varEnv, id, x), bomEnv=bomEnv, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
-    fun insertMod (Env{tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
-	Env{tyEnv=tyEnv, varEnv=varEnv, bomEnv=bomEnv, modEnv=Map.insert(modEnv, id, x), sigEnv=sigEnv, outerEnv=outerEnv}
-    fun insertTy (Env{tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
-	Env{tyEnv=Map.insert(tyEnv, id, x), varEnv=varEnv, bomEnv=bomEnv, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
-    fun insertSig (Env{tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
-	Env{tyEnv=tyEnv, varEnv=varEnv, bomEnv=bomEnv, modEnv=modEnv, sigEnv=Map.insert(sigEnv, id, x), outerEnv=outerEnv}
+    fun insertVal (Env{name, tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
+	Env{name=name, tyEnv=tyEnv, varEnv=Map.insert(varEnv, id, x), bomEnv=bomEnv, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
+    fun insertMod (Env{name, tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
+	Env{name=name, tyEnv=tyEnv, varEnv=varEnv, bomEnv=bomEnv, modEnv=Map.insert(modEnv, id, x), sigEnv=sigEnv, outerEnv=outerEnv}
+    fun insertTy (Env{name, tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
+	Env{name=name, tyEnv=Map.insert(tyEnv, id, x), varEnv=varEnv, bomEnv=bomEnv, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
+    fun insertSig (Env{name, tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
+	Env{name=name, tyEnv=tyEnv, varEnv=varEnv, bomEnv=bomEnv, modEnv=modEnv, sigEnv=Map.insert(sigEnv, id, x), outerEnv=outerEnv}
     fun insertDataTy (env, id, x) = let
 	  (* datatypes are visible to inline BOM programs *)
 	    val env = insertBOMTy(env, id, x)
