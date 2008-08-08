@@ -273,6 +273,16 @@ double M_DRand (double lo, double hi)
   return (((double)rand() / ((double)(RAND_MAX)+(double)(1)) ) * (hi-lo)) + lo;
 }
 
+Word_t M_Random (Word_t lo, Word_t hi)
+{
+  return (random() % (hi - lo)) + lo;
+}
+
+void M_SeedRand ()
+{
+  srand(time(NULL));
+}
+
 #include "gc.h"
 
 /*! \brief allocate an array in the global heap
