@@ -3,8 +3,10 @@ option.pml
 list.pml
 string.pml
 int.pml
-ann "preprocess" "/usr/bin/cpp" "-I." "-P" "-include" "../misc/prim.def" "-"
+long.pml
+ann "cpp" "../misc/prim.def"
 in
   print.pml
+  rand.pml
 end
 time.pml

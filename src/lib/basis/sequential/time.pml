@@ -3,6 +3,7 @@ structure Time =
 
     structure PT = PrimTypes
 
+  (* time is in microseconds *)
     type time = long
 
     _primcode(

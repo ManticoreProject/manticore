@@ -9,6 +9,7 @@ structure PrimTypes =
       typedef string_data = any;
       typedef ml_string = [string_data, int];
       typedef ml_int = [int];
+      typedef ml_long = [long];
 
     )
 

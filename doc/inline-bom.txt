@@ -91,6 +91,16 @@ BOM code can refer to PML variables that are bound at the type level.
 ==== Example ====
   let app : fun( [fun(any / exh -> unit), List.list] / exh) = pmlvar(List.app)
 
+== Loading HLOps at compile time ==
+In many cases, we wish to create PML syntax that expands into several HLOps. For example, the pval binding form expands into a few HLOps from the single-toucher-future module. But because the compiler is responsible for doing this expansion, we do not not have a static handle on the HLOps. Instead we use a dynamic lookup at compile time. The following function in the HLOpEnv module does the job:
+  (* locate a HLOp by path name, e.g., Future1.@touch *)
+    val findDefByPath : string list -> hlop_def option
+==== Example ====
+To look up the Future1 touch operation, we say:
+  case HLOpEnv.findDefByPath ("Future1", "touch")
+    of SOME def => (* got it *)
+     | NONE => (* error: cannot find the touch operation *)
+
 == Todos ==
 * Make HLops safe for PML optimizations that rename variables.
 * Let inline BOM code refer to nullary constructors by name rather than by the enumeration index.

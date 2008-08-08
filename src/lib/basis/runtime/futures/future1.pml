@@ -3,8 +3,7 @@
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Specialized implementation of futures for lightweight synchronization. Only a single
- * fiber can touch a future.
+ * Runtime support for futures where at most one fiber can perform a touch operation.
  *)
 
 (* state values *)
@@ -49,7 +48,7 @@ structure Future1 =
         let f : thunk = SELECT(THUNK_OFF, fut)
        (* clear the thunk pointer to avoid a space leak *)
         do UPDATE(THUNK_OFF, fut, (thunk) $0)
-        let resultLocal : any = apply f (UNIT / exh)
+        let result : any = apply f (UNIT / exh)
         return(result)
       ;
 
@@ -58,12 +57,12 @@ structure Future1 =
         if Equal (tmp, EMPTY_F)
            then (* the future is ready for evaluation *)
              let result : any = @eval(fut / exh)
-             let result : any = promote (resultLocal)
+             let result : any = promote (result)
              do UPDATE(STATE_OFF, fut, result)
              return (result)
 	else if Equal (tmp, STOLEN_F)
            then (* another fiber is evaluating the future; we need to block *)
-                cont kLocal (_ : unit) = 
+                cont kLocal (_ : PT.unit) = 
                     (* resume the future *)
 		     return (SELECT(STATE_OFF, fut))
                 let kLocal : PT.fiber = (PT.fiber)kLocal
@@ -85,19 +84,16 @@ structure Future1 =
 	  if Equal (tmp, EMPTY_F) 
 	     then let result : any = @eval(fut / exh)
 		  let tmpX : any = CAS(&0(fut), STOLEN_F, result)
-		  if Equal (tmpX, STOLEN_F)            
+		  if Equal (tmpX, STOLEN_F)
 		     then return ()
 		     else (* unblock the future *)
 			  do UPDATE(STATE_OFF, fut, result)
-			  let k : Control.fiber = (Control.fiber) tmpX
+			  let k : PT.fiber = (PT.fiber) tmpX
 			  do LQ.@enqueue (futuresQ, k / exh)
 			  return ()
 	      else (* future cell is already full *)
 		   return ()
 	;
-
-	(* poll : 'a future -> 'a trap option *)
-	define @poll 
 
     )
 

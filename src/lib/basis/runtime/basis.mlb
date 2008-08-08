@@ -6,13 +6,14 @@ end
 ../sequential/basis.mlb
 ../misc/debug.mlb
 fiber-local-storage.mlb
-ann "cpp" "../misc/prim.def,runtime-offsets.def,../misc/assert.def,../misc/debug.def"
+ann "cpp" "../misc/prim.def,runtime-offsets.def,../misc/assert.def,../misc/debug.def,../misc/testing.def"
 in
   control.pml
   vproc-queue.pml
   scheduler-utils.pml
   locked-queue/locked-queue.mlb
-(*  futures/future1.pml*)
   thread-ops.pml
+  cancelation.pml
+  futures/future1.pml
   tests.pml
 end

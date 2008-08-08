@@ -1,7 +1,15 @@
-structure ThreadOps =
-  struct
+(* thread-ops.pml
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Operations for managing explicit threads.
+ *)
 
 #include "runtime-offsets.def"
+
+structure ThreadOps =
+  struct
 
     structure PT = PrimTypes
 
@@ -18,13 +26,21 @@ structure ThreadOps =
             let finished : PT.bool = Time.@gt(t, finishTime / exh)
 	    if finished
 	       then return()
-(*	    else if #0(termFlg)
-	       then return()*)
+	    else if #0(termFlg)
+	       then return()
 	    else
 		let _ : PT.unit = Control.@yield(/exh)
 		apply lp( / exh)
 	 apply lp( / exh)
       ;
 
+    (* sleep for a randomly determined amount of time *)
+      define @rand-sleep (maxSleepTime : Time.time, done : ![PT.bool] / exh : PT.exh) : () =
+        let len : long = Rand.@in-range(0:long, maxSleepTime / exh)
+        do @sleep(len, done / exh)
+        return()
+      ;
+
     )
+
   end
