@@ -55,6 +55,7 @@ structure MLB : sig
 	        x
 	    end
 
+  (* get the available string data from the input stream *)
     fun input inStrm = let	    
 	    fun lp (NONE, lines) = List.rev lines
 	      | lp (SOME line, lines) = lp (TextIO.inputLine inStrm, line :: lines)
@@ -64,12 +65,14 @@ structure MLB : sig
 		lines
 	    end
 
+  (* input the entire file *)
     fun inputFile file = let
 	    val inStrm = TextIO.openIn file
             in
 	        input inStrm
 	    end
 
+  (* send a list of strings to the output stream *)
     fun output (lines, outStrm) = let
 	    fun lp [] = TextIO.closeOut outStrm
 	      | lp (l :: ls) = (
@@ -79,6 +82,7 @@ structure MLB : sig
 	        lp lines
 	    end
 
+  (* copy from the input to the output stream *)
     fun copy (inStrm, outStrm) = output(input inStrm, outStrm)
 
   (* remove a temporary file *)
@@ -112,8 +116,8 @@ structure MLB : sig
 	    val ppProc = runPreproc(dir, ppCmd, args)
 	    val outStrm = Unix.textOutstreamOf ppProc
 	    val lines = inputFile file
-	    val _ = removeTmp file
 	    in
+	        removeTmp file;
 	        output(lines, outStrm);
 		(Unix.textInstreamOf ppProc, mkReap ppProc)
 	    end
@@ -127,8 +131,7 @@ structure MLB : sig
 	    val file2 = TextIO.openOut tmp
 	    in
 	        copy(Unix.textInstreamOf ppProc, file2);
-		ignore(Unix.reap ppProc);
-		removeTmp file;
+		Unix.reap ppProc;
 		chainPreprocs(tmp, path, name, ppCmds)
 	    end
     in
