@@ -188,7 +188,6 @@ Value_t M_Die (const char *message)
     Die ("%s\n", message);
 }
 
-#ifndef NDEBUG
 Value_t M_AssertFail (const char *check, char *file, int line)
 {
     if ((check != (const char *)M_NIL) && (file != (const char *)M_NIL))
@@ -196,7 +195,6 @@ Value_t M_AssertFail (const char *check, char *file, int line)
     else
 	Die ("Assert failed with corrupted diagnostic information.\n");
 }
-#endif
 
 void M_PrintDebug (const char *s)
 {
