@@ -31,15 +31,9 @@
 
 (* test a concurrent program, waiting wait_secs until declaring deadlock *)
 #define do_concurrent_test(hlop, wait_secs)                                      \
-        cont exhDeadlock (_ : any) =                                             \
-             do ccall M_PrintTestingMsg ("Deadlock", QUOTE(PML_FILE), __LINE__)         \
-             assert (FALSE)                                                      \
-        cont exhIncorrectAns (_ : any) =                                         \
-             do ccall M_PrintTestingMsg ("Answer", QUOTE(PML_FILE), __LINE__)           \
-             assert (FALSE)                                                      \
-        fun f (_ : PrimTypes.unit / exh : exh) : PrimTypes.bool =                                    \
+        fun f (_ : PrimTypes.unit / exh : PT.exh) : PrimTypes.bool =                                    \
               @hlop (/exh)                                                       \
-        do @test-deadlock (f, wait_secs, exhDeadlock, exhIncorrectAns / exh)     \
+        do @check-for-deadlock (f, wait_secs / exh)     \
 
 #endif
 

@@ -1,3 +1,7 @@
+prim-types.pml
 debug.pml
 assert.pml
-unit-testing.pml
+ann "cpp" "prim.def"
+in
+  unit-testing.pml
+end
