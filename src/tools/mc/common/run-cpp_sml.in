@@ -8,6 +8,8 @@
 
 structure RunCPP : sig
 
+    val cppCmd : string
+
     val run : {
 	    noLines : bool,	(* if true, then supress #line directives *)
 	    defs : (string * string option) list,

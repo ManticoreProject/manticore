@@ -109,8 +109,7 @@ structure MLB : sig
 		(* pass the file to cpp through stdin *)
 		@ ["-"]
 	    in
-	      (* FIXME: get the CPP command from autoheader *)
-	        chainPreprocs(file, path, name, ("preprocess", dir, SOME "/usr/bin/cpp", args) :: ppCmds)
+	        chainPreprocs(file, path, name, ("preprocess", dir, SOME RunCPP.cppCmd, args) :: ppCmds)
 	    end
       | chainPreprocs (file, path, name, [("preprocess", dir, SOME ppCmd, args)]) = let
 	    val ppProc = runPreproc(dir, ppCmd, args)

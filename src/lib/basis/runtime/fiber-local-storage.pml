@@ -46,6 +46,4 @@ structure FiberLocalStorage =
 
     )
 
-    val _ = print "primcode\n"
-
   end
