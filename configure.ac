@@ -153,7 +153,7 @@ dnl
 dnl For various reasons, "gcc -E" doesn't work as a cpp command, so we look for
 dnl the old cpp.
 dnl
-AC_PATH_PROGS(CPP, cpp-4.0 cpp, NONE, $PATH:/lib:/usr/lib)
+AC_PATH_PROGS(CPP, cpp-4.2 cpp-4.0 cpp, NONE, $PATH:/lib:/usr/lib)
 if test x$CPP = x ; then
   AC_MSG_ERROR([no cpp found])
 fi
