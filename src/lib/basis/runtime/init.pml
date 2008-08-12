@@ -1,4 +1,11 @@
-(* IMPORTANT: must load this file first to correctly initialize the vproc structure *)
+(* init.pml
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * IMPORTANT: must load this file first to correctly initialize the vproc structure
+ *)
+
 structure Init =
   struct
 

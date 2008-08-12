@@ -1,4 +1,10 @@
-(* FIXME Option.option is different from option! *)
+(* option.pml
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * FIXME Option.option is different from option!
+ *)
 
 structure Option =
   struct

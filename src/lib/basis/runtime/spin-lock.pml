@@ -1,3 +1,9 @@
+(* spin-lock.pml
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
 structure SpinLock =
   struct
 
