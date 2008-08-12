@@ -135,6 +135,18 @@ double M_GetTimeOfDay ()
 
 }
 
+/* Return the time of day as an integer number of microseconds.
+ */
+Word_t M_GetTime ()
+{
+    struct timeval t;
+    
+    gettimeofday (&t, NULL);
+    
+    return 1000000*(Word_t)t.tv_sec + (Word_t)t.tv_usec;
+
+}
+
 /* M_GetNumProcs:
  *
  * Return the number of hardware processors.
@@ -179,9 +191,10 @@ Value_t M_Die (const char *message)
 #ifndef NDEBUG
 Value_t M_AssertFail (const char *check, char *file, int line)
 {
-  if (check != M_NIL && file != M_NIL)
-    Die ("Assert failed at %s:%d (%s).\n", file, line, check);
-  else Die ("Assert failed with corrupted diagnostic information.\n");
+    if ((check != (const char *)M_NIL) && (file != (const char *)M_NIL))
+	Die ("Assert failed at %s:%d (%s).\n", file, line, check);
+    else
+	Die ("Assert failed with corrupted diagnostic information.\n");
 }
 #endif
 
@@ -196,14 +209,14 @@ void M_PrintDebug (const char *s)
 void M_PrintDebugMsg (Value_t alwaysPrint, const char *msg, char *file, int line)
 {
 #ifndef NDEBUG
-  if(DebugFlg || (alwaysPrint==M_TRUE))
-    SayDebug ("[%2d] \"%s\" at %s:%d\n", VProcSelf()->id, msg, file, line);
+    if (DebugFlg || (alwaysPrint==M_TRUE))
+	SayDebug ("[%2d] \"%s\" at %s:%d\n", VProcSelf()->id, msg, file, line);
 #endif
 }
 
 void M_PrintTestingMsg (const char *msg, char *file, int line)
 {
-      Say ("[%2d] Test failed: \"%s\" at %s:%d\n", VProcSelf()->id, msg, file, line);
+    Say ("[%2d] Test failed: \"%s\" at %s:%d\n", VProcSelf()->id, msg, file, line);
 }
 
 void M_PrintPtr (const char *name, void *ptr)
@@ -227,28 +240,28 @@ void M_PrintInt (int32_t n)
 
 void M_PrintFloat (float f)
 {
-  Say ("%f\n",(double)f);
+    Say ("%f\n",(double)f);
 }
 
 int M_ReadInt ()
 {
-  int i;
-  scanf ("%d\n", &i);
-  return i;
+    int i;
+    scanf ("%d\n", &i);
+    return i;
 }
 
 float M_ReadFloat ()
 {
-  float i;
-  scanf ("%f", &i);
-  return (float)i;
+    float i;
+    scanf ("%f", &i);
+    return (float)i;
 }
 
 double M_ReadDouble ()
 {
-  double i;
-  scanf ("%lf", &i);
-  return i;
+    double i;
+    scanf ("%lf", &i);
+    return i;
 }
 
 /* FIXME: eventually, this code should be in assembler to reduce overhead */
@@ -270,20 +283,18 @@ void M_LogEvent1 (void *vp, int evt, uint32_t v)
 
 double M_DRand (double lo, double hi)
 {
-  return (((double)rand() / ((double)(RAND_MAX)+(double)(1)) ) * (hi-lo)) + lo;
+    return (((double)rand() / ((double)(RAND_MAX)+(double)(1)) ) * (hi-lo)) + lo;
 }
 
 Word_t M_Random (Word_t lo, Word_t hi)
 {
-  return (random() % (hi - lo)) + lo;
+    return (random() % (hi - lo)) + lo;
 }
 
 void M_SeedRand ()
 {
-  srand(time(NULL));
+    srand(time(NULL));
 }
-
-#include "gc.h"
 
 /*! \brief allocate an array in the global heap
  *  \param vp the host vproc
@@ -294,33 +305,18 @@ Value_t M_NewArray (VProc_t *vp, int nElems, Value_t elt)
 {
 
   /* the array must fit into a global chunk */
-  assert((vp->globLimit-vp->globNextW) > WORD_SZB*(nElems+1));
+    assert((vp->globLimit-vp->globNextW) > WORD_SZB*(nElems+1));
 
-  if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit) {
-    GetChunkForVProc(vp);
-  }
+    if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit) {
+	GetChunkForVProc(vp);
+    }
 
-  Word_t *obj = (Word_t*)(vp->globNextW);
-  obj[-1] = VEC_HDR(nElems);
-  for (int i = 0;  i < nElems;  i++) {
-    obj[i] = (Word_t)elt;
-  }
+    Word_t *obj = (Word_t*)(vp->globNextW);
+    obj[-1] = VEC_HDR(nElems);
+    for (int i = 0;  i < nElems;  i++) {
+	obj[i] = (Word_t)elt;
+    }
 
-  vp->globNextW += WORD_SZB * (nElems+1);
-  return PtrToValue(obj);
-}
-
-#include <sys/time.h>
-
-/* Return the time of day.
- */
-Word_t M_GetTime ()
-{
-  VProc_t *vp = VProcSelf();
-  struct timeval	t;
-  int			c_sec, c_usec;
-  
-  gettimeofday (&t, NULL);
-  
-  return 1000000l*(Word_t)t.tv_sec + (Word_t)t.tv_usec;
+    vp->globNextW += WORD_SZB * (nElems+1);
+    return PtrToValue(obj);
 }
