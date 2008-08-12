@@ -48,13 +48,13 @@ structure MLB : sig
 
   (* apply the preprocessor in a given directory *)
     fun runPreproc (dir', cmd, args) = let
-	    val dir = OS.FileSys.getDir()
-	    val _ = OS.FileSys.chDir dir'
-	    val x = Unix.execute(cmd, args)
-            in
-	        OS.FileSys.chDir dir;
-	        x
-	    end
+	  val dir = OS.FileSys.getDir()
+	  val _ = OS.FileSys.chDir dir'
+	  val x = Unix.execute(cmd, args)
+	  in
+	    OS.FileSys.chDir dir;
+	    x
+	  end
 
   (* get the available string data from the input stream *)
     fun input inStrm = let	    
@@ -106,7 +106,7 @@ structure MLB : sig
 	      (* preset directive: the file name *)
 		:: ("-DPML_FILE="^name) 
 	      (* add the includes *)
-		:: List.map (fn inc => "-include"^inc) includes 
+		:: List.map (fn inc => "-I"^inc) includes 
 	      (* pass the file to cpp through stdin *)
 		@ ["-"]
 	  in
