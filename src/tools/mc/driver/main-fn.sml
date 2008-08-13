@@ -78,6 +78,7 @@ functor MainFn (
 	  val p2s = boundVarChks (errStrms, p1s)
 	  val _ = List.app checkForErrors errStrms;
 	  val _ = TreeShake.setDeadFuns (allDecls p2s)
+(*	  val p2s = TreeShake.shakeProgram p2s*)
         (* module and type checking *)
 	  val ast = ChkProgram.check (ListPair.zip(errStrms, p2s))
 	  in

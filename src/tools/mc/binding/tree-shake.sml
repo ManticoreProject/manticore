@@ -22,7 +22,7 @@ structure TreeShake =
         } = 
 	   Var.newProp (fn _ => false)
     in
-    fun setDead v = ((*print(Var.toString v^"=dead\n");*)setFn(v, true))
+    fun setDead v = (print(Var.toString v^"=dead\n");setFn(v, true))
     val isDead = getFn
     end
 
@@ -78,6 +78,7 @@ structure TreeShake =
 	    | _ => []
           (* end case *))
 
+  (* bound variables of a declaration *)
     and bindsOfDecls decls = List.concat(List.map bindsOfDecl decls)
 
   (* record the outgoing edges of a value declaration *)
@@ -160,6 +161,7 @@ structure TreeShake =
 	     Var.Set.fromList(flattenCCs ccs)
 	  end
 
+  (* mark function definitions for removal *)
     fun setDeadFuns ds = let
 	  val _ = setEdgesOfDecls ds
 	  val live = usedVars (rootsOfDecls ds)
@@ -168,5 +170,71 @@ structure TreeShake =
           in
 	     List.app setDead (List.filter isDead binds)
 	  end
+
+    fun shakeDefn defn = (
+	  case defn
+	   of BPT.D_Mark {tree, span} =>
+	        shakeDefn tree
+	    | BPT.D_Define (_, hlop, _, _, _, _) =>
+	        not(isDead hlop)
+	    | _ => true
+          (* end case *))
+
+    fun shakeCode code = List.filter shakeDefn code	  
+
+    fun isFunDead (PT.MarkFunct {tree, span}) = isFunDead tree
+      | isFunDead (PT.Funct (f, _, _)) = isDead f
+
+    fun shakeFunct (funct as PT.MarkFunct {tree, span}) = 
+	  shakeFunct tree
+      | shakeFunct (funct as PT.Funct _) =
+	  not(isFunDead funct)
+
+    and shakeFuncts functs = List.filter shakeFunct functs
+
+    fun shakeValDecl valDecl = (
+	  case valDecl
+	   of PT.MarkVDecl {tree, span} => 
+	        PT.MarkVDecl {tree=shakeValDecl tree, span=span}
+	    | PT.FunVDecl funs => 
+	        PT.FunVDecl(shakeFuncts funs)
+	    | _ => valDecl
+          (* end case *))
+
+    fun shakeModule module = (
+	  case module
+	   of PT.MarkMod {tree, span} =>
+	        PT.MarkMod {tree=shakeModule tree, span=span}
+	    | PT.DeclsMod decls =>
+	        PT.DeclsMod (shakeDecls' decls)
+	    | PT.ApplyMod(m, modules) =>
+	        PT.ApplyMod(m, shakeModules modules)
+	    | _ => module
+          (* end case *))
+
+    and shakeModules modules = List.map shakeModule modules
+
+  (* shake off a useless declaration *)
+    and shakeDecl decl = (
+	  case decl
+	   of PT.MarkDecl {tree, span} => 
+	        PT.MarkDecl{tree=shakeDecl tree, span=span}
+	    | PT.ValueDecl valDecl => 
+	        PT.ValueDecl(shakeValDecl valDecl)
+	    | PT.LocalDecl (decls1, decls2) => 
+	        PT.LocalDecl(shakeDecls' decls1, shakeDecls' decls2)
+	    | PT.ModuleDecl (mb, sign, module) =>
+	        PT.ModuleDecl(mb, sign, shakeModule module)
+	    | PT.PrimCodeDecl code =>
+	        PT.PrimCodeDecl (shakeCode code)
+	    | _ => decl
+          (* end case *))
+
+    and shakeDecls' decls = List.map shakeDecl decls
+
+    and shakeDecls {tree, span} = {tree=List.map shakeDecl tree, span=span}
+
+    and shakeProgram program = List.map shakeDecls program
+	        
 
   end
