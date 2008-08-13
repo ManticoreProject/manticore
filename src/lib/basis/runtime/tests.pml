@@ -14,11 +14,10 @@ structure Tests =
     structure PT = PrimTypes
     structure FLS = FiberLocalStorage
 
-    fun t () = true
+    fun t () = false
     fun failDeadlock () = UnitTesting.validate "deadlock" t
     fun failAns () = UnitTesting.validate "answer" t
 
-(*
   (* check for deadlock *)
     _primcode(
       define @check-for-deadlock(f : fun(PT.unit / PT.exh -> PT.bool), wait : Time.time / exh : PT.exh) : () =
@@ -45,17 +44,19 @@ structure Tests =
         do if Equal(noDeadlock, TRUE)
 	      then return()
 	   else let _ : PT.unit = apply failDeadlock(UNIT / exh)
-                return ()
+                return () 
        (* report incorrect answer *)
-        let failAns : fun(PT.unit / PT.exh -> PT.unit) = pmlvar failAns
+(* FIXME: enabling this code results in an error in the "uncurry" optimization. *)
+(*        let failAns : fun(PT.unit / PT.exh -> PT.unit) = pmlvar failAns
         do if Equal(ans, TRUE)
 	      then return()
 	   else let _ : PT.unit = apply failAns(UNIT / exh)
                 return()
+*)
         return()
       ;
     )
-*)
+
   (* control *)
     _primcode(
       define @test1 (x : PT.unit / exh : PT.exh) : PT.unit =
@@ -177,7 +178,7 @@ structure Tests =
 
       define @locked-queue-test (x : PT.unit / exh : PT.exh) : PT.unit =
 	do_test(test-q-1)
-(*        do_concurrent_test(test-q-2, ONE_SEC)*)
+        do_concurrent_test(test-q-2, ONE_SEC)
 (*	do_test(test-q-3)
 	do_concurrent_test(test-q-4, 20.0:double)
       *)
