@@ -10,7 +10,7 @@ structure TranslatePrim : sig
 
   (* convert a right-hand side inline BOM declaration to an expression *)
     val cvtRhs : (TranslateEnv.env * Types.ty_scheme * ProgramParseTree.PML2.BOMParseTree.prim_val_rhs) 
-		   -> BOM.exp
+		   -> BOM.exp option
 
   (* convert BOM definitions. this process occurs silently, by adding
    * definitions to environments and caches.
@@ -444,20 +444,23 @@ structure TranslatePrim : sig
 		   val bomVar = lookupVar v
                  in
 		   chkConstraintTy (BOM.Var.typeOf bomVar);
-	           BOM.mkRet [bomVar]
+	           SOME (BOM.mkRet [bomVar])
                 end
 	       | BPT.LambdaPrimVal fb => let
 		   val lambda = cvtLambda (findCFun, fb, BTy.T_Fun)
 		   val l as BOM.FB{f, ...} = lambda()
 		   in
-		      BOM.mkFun([l], BOM.mkRet [f])
+		      SOME (BOM.mkFun([l], BOM.mkRet [f]))
 		   end
 	       | BPT.HLOpPrimVal hlop => (
 		   case E.findBOMHLOpDef hlop
 		    of SOME {name, path, inline, def as BOM.FB{f, ...}, externs, pmlImports} => (
 		         chkConstraintTy (BOM.Var.typeOf f);
-			 etaExpand(name, def))
-		     | NONE => raise Fail "unbound hlop"
+			 SOME (etaExpand(name, def)))
+		     | NONE => NONE
+(*		       raise Fail ("unbound hlop "^
+				   String.concatWith "." (BindingEnv.getHLOpPath hlop))
+*)
                    (* end case *))
           end
 

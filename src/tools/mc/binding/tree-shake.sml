@@ -10,7 +10,7 @@ structure TreeShake =
   (* property that contains the outgoing edges of a varable *)
     val {
            getFn=getEdges : Var.var -> Var.var list, 
-	   setFn=setEdges : (Var.var * Var.var list) -> unit, ...
+	   setFn=setEdges' : (Var.var * Var.var list) -> unit, ...
         } = 
 	   Var.newProp (fn _ => [])
 
@@ -24,8 +24,10 @@ structure TreeShake =
     in
     fun setDead v = ((*print(Var.toString v^"=dead\n");*)setFn(v, true))
     val isDead = getFn
+    fun setEdges (var, edges) = setEdges'(var, getEdges var@edges)
     end
 
+  (* we use a single variable to represent top-level wild-card patterns *)
     val wildVar = Var.new("wild", ())
 	
     fun varsOfPat pat = (

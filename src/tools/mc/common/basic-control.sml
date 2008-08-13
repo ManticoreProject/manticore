@@ -38,6 +38,9 @@ structure BasicControl :  sig
   (* maximum leaf size in ropes *)  
     val maxLeafSize : int Controls.control 
 
+  (* perform dead function elimination on the parse tree *)
+    val treeShake : bool Controls.control
+
   (* wrap a 'pre -> 'post pass with a tracing diagnostic, controled by the 
    * "verbose" control.
    *)
@@ -122,6 +125,14 @@ structure BasicControl :  sig
             default = 256
           }
 
+    val treeShake : bool Controls.control = Controls.genControl {
+            name = "tree-shake",
+            pri = [0, 0], 
+            obscurity = 0,
+            help = "dead function elimination on the parse tree (dead functions do not get type checked)",
+            default = false
+          }
+
   (* custom scheduler *)
     val scheduler = Controls.genControl {
 	    name = "scheduler",
@@ -179,6 +190,10 @@ structure BasicControl :  sig
 	      ctl = Controls.stringControl ControlUtil.Cvt.bool logging,
 	      envName = NONE
 	    };
+          ControlRegistry.register topRegistry {
+              ctl = Controls.stringControl ControlUtil.Cvt.bool treeShake,
+              envName = NONE
+            };
           ControlRegistry.register topRegistry {
               ctl = Controls.stringControl ControlUtil.Cvt.int maxLeafSize,
               envName = NONE

@@ -346,12 +346,15 @@ structure Translate : sig
 		in
 		  B.mkFun(List.map trFun fs, k env)
 		end
-	    | AST.PrimVBind (x, rhs) => let
-		  val e = TranslatePrim.cvtRhs (env, Var.typeOf x, rhs)
-		  val (x', env') = trVar(env, x)
-	          in
-		      mkLet([x'], e, k env')
-		  end
+	    | AST.PrimVBind (x, rhs) => (
+	        case TranslatePrim.cvtRhs (env, Var.typeOf x, rhs)
+		 of SOME e => let
+			val (x', env') = trVar(env, x)
+	                in
+			  mkLet([x'], e, k env')
+		        end
+		  | NONE => k env
+	      (* end case *))
 	    | AST.PrimCodeBind code => let
                   val lambdas = TranslatePrim.cvtCode (env, code)
 	          in
