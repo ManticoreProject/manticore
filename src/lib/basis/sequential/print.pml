@@ -4,7 +4,6 @@
  * All rights reserved.
  *)
 
-
 structure Print =
   struct
 

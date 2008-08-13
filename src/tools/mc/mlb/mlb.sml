@@ -9,8 +9,8 @@
 structure MLB : sig
     
   (* load the an MLB file *)
-    val load : (Error.err_stream * string)
-	  -> (Error.err_stream list * ProgramParseTree.PML1.program list)
+    val load : (Error.err_stream * string) 
+	       -> (Error.err_stream list * ProgramParseTree.PML1.program list)
 
   end = struct
 
@@ -19,26 +19,24 @@ structure MLB : sig
 
     exception Error
 
-(* FIXME: load files only once *)
-
-  (* information for applying a preprocessor to a PML file.
-   *)
+  (* information for applying a preprocessor to a PML file. *)
     type preprocessor_cmd = (
-	 string *		(* preprocessor directive, e.g., "preprocessor", for a generic *)
-				(* preprocessor "cpp" for the C preprocessor *)
-	 string *		(* directory to run the preprocessor *)
-	 string option *	(* preprocessor command *)
-	 string list)		(* arguments *)
+	 string *            (* preprocessor directive, e.g., "preprocessor", for
+			      * a generic preprocessor "cpp" for the C 
+			      * preprocessor *)
+	 string *            (* directory to run the preprocessor *)
+	 string option *     (* preprocessor command *)
+	 string list         (* arguments *))
 
     type parse_tree = (Error.err_stream * PPT.program)
 
   (* environment for an MLB file *)
     datatype mlb_env
       = Env of {
-	    loc : Error.span,			(* location in the MLB file *)
-	    pts : parse_tree list,		(* parse trees; must retain ordering *)
-	    preprocs : preprocessor_cmd list	(* preprocessors *)
-	  }
+	     loc : Error.span,                           (* location in the MLB file *)
+	     pts : parse_tree list,                      (* parse trees; must retain ordering *)
+	     preprocs : preprocessor_cmd list            (* preprocessors *)
+        }
 
     fun revConcat ls = List.concat (List.rev ls)
     fun concatMap f ls = List.concat (List.map f ls)
@@ -48,13 +46,13 @@ structure MLB : sig
 
   (* apply the preprocessor in a given directory *)
     fun runPreproc (dir', cmd, args) = let
-	  val dir = OS.FileSys.getDir()
-	  val _ = OS.FileSys.chDir dir'
-	  val x = Unix.execute(cmd, args)
-	  in
-	    OS.FileSys.chDir dir;
-	    x
-	  end
+	    val dir = OS.FileSys.getDir()
+	    val _ = OS.FileSys.chDir dir'
+	    val x = Unix.execute(cmd, args)
+            in
+	        OS.FileSys.chDir dir;
+	        x
+	    end
 
   (* get the available string data from the input stream *)
     fun input inStrm = let	    
@@ -68,20 +66,20 @@ structure MLB : sig
 
   (* input the entire file *)
     fun inputFile file = let
-	  val inStrm = TextIO.openIn file
-	  in
-	    input inStrm
-	  end
+	    val inStrm = TextIO.openIn file
+            in
+	        input inStrm
+	    end
 
   (* send a list of strings to the output stream *)
     fun output (lines, outStrm) = let
-	  fun lp [] = TextIO.closeOut outStrm
-	    | lp (l :: ls) = (
-		TextIO.output(outStrm, l);
-		lp ls)
-	  in
-	    lp lines
-	  end
+	    fun lp [] = TextIO.closeOut outStrm
+	      | lp (l :: ls) = (
+		  TextIO.output(outStrm, l);
+		  lp ls)
+            in
+	        lp lines
+	    end
 
   (* copy from the input to the output stream *)
     fun copy (inStrm, outStrm) = output(input inStrm, outStrm)
@@ -94,46 +92,39 @@ structure MLB : sig
   (* pass the file through a sequence of preprocessors *)
     fun chainPreprocs (file, path, name, []) = raise Fail "compiler bug"
       | chainPreprocs (file, path, name, ("cpp", dir, NONE, [includes]) :: ppCmds) = let
-	(* special syntax for the C preprocessor *)
-	  val includes = String.tokens (fn c => c = #",") includes
-	  val args = 
-	      (* include the current directory *)
-		"-I." 
-	      (* strip away preprocessor directives and cruft *)
-		:: "-P" 
-	      (* preset directive: the absolute file path *)
-		:: concat["-DPML_PATH=", path, name]
-	      (* preset directive: the file name *)
-		:: ("-DPML_FILE="^name) 
-	      (* add the includes *)
-		:: List.map (fn inc => "-I"^inc) includes 
-	      (* pass the file to cpp through stdin *)
-		@ ["-"]
-	  in
-	    chainPreprocs(file, path, name, ("preprocess", dir, SOME RunCPP.cppCmd, args) :: ppCmds)
-	  end
+	  (* support for the C preprocessor *)
+	    val includes = String.tokens (fn c => c = #",") includes
+	    val predefs = List.map RunCPP.mkDef [
+		("PML_PATH", SOME (OS.FileSys.fullPath dir^name)),
+		("PML_FILE", SOME name)
+	    ]
+	    val args = RunCPP.mkArgs {relativeTo=dir, includes=includes, predefs=predefs, file=NONE}		
+	    val _ = print (String.concatWith " " args^"\n")
+	    in
+	        chainPreprocs(file, path, name, ("preprocess", dir, SOME RunCPP.cppCmd, args) :: ppCmds)
+	    end
       | chainPreprocs (file, path, name, [("preprocess", dir, SOME ppCmd, args)]) = let
-	  val ppProc = runPreproc(dir, ppCmd, args)
-	  val outStrm = Unix.textOutstreamOf ppProc
-	  val lines = inputFile file
-	  in
-	    removeTmp file;
-	    output(lines, outStrm);
-	    (Unix.textInstreamOf ppProc, mkReap ppProc)
-	  end
+	    val ppProc = runPreproc(dir, ppCmd, args)
+	    val outStrm = Unix.textOutstreamOf ppProc
+	    val lines = inputFile file
+	    in
+	        removeTmp file;
+	        output(lines, outStrm);
+		(Unix.textInstreamOf ppProc, mkReap ppProc)
+	    end
       | chainPreprocs (file, path, name, ("preprocess", dir, SOME ppCmd, args) :: ppCmds) = let
-	  val ppProc = runPreproc(dir, ppCmd, args)
-	(* get the lines of the temporary file *)
-	  val lines = inputFile file
-	(* send those lines to the preprocessor's stdin *)
-	  val _ = output(lines, Unix.textOutstreamOf ppProc)
-	  val tmp = OS.FileSys.tmpName()
-	  val file2 = TextIO.openOut tmp
-	  in
-	    copy(Unix.textInstreamOf ppProc, file2);
-	    Unix.reap ppProc;
-	    chainPreprocs(tmp, path, name, ppCmds)
-	  end
+	    val ppProc = runPreproc(dir, ppCmd, args)
+         (* get the lines of the temporary file *)
+	    val lines = inputFile file
+         (* send those lines to the preprocessor's stdin *)
+	    val _ = output(lines, Unix.textOutstreamOf ppProc)
+	    val tmp = OS.FileSys.tmpName()
+	    val file2 = TextIO.openOut tmp
+	    in
+	        copy(Unix.textInstreamOf ppProc, file2);
+		Unix.reap ppProc;
+		chainPreprocs(tmp, path, name, ppCmds)
+	    end
     in
   (* run preprocessors over a file *)
     fun preprocess ([], file) = (TextIO.openIn file, fn () => ())
@@ -227,46 +218,45 @@ structure MLB : sig
 	  val fileStr = Atom.toString file
 	  val errStrm = Error.mkErrStream fileStr
           in
-	    case MLBParser.parseFile (errStrm, fileStr)
-	     of SOME {span, tree=basDecs} => let
-		  val dir = OS.FileSys.getDir()
-		  val {dir=dir', ...} = OS.Path.splitDirFile fileStr
-		  val dir' = OS.FileSys.fullPath dir'
-		  val _ = OS.FileSys.chDir dir'
-		  val pts = processBasDecs(basDecs, Env{loc=span, pts=pts, preprocs=preprocs})
-		  in 
-		    checkForErrors(#1(ListPair.unzip pts));
-		    OS.FileSys.chDir dir;
-		    pts
-		  end
-	      | NONE => (
-		  checkForErrors[errStrm];
-		  raise Fail "impossible")
-	    (* end case *)
-	  end
+	      (case MLBParser.parseFile (errStrm, fileStr)
+		of SOME {span, tree=basDecs} => let
+		       val dir = OS.FileSys.getDir()
+		       val {dir=dir', ...} = OS.Path.splitDirFile fileStr
+		       val dir' = OS.FileSys.fullPath dir'
+		       val _ = OS.FileSys.chDir dir'
+		       val pts = processBasDecs(basDecs, Env{loc=span, pts=pts, preprocs=preprocs})
+		       in 
+		           checkForErrors(#1(ListPair.unzip pts));
+		           OS.FileSys.chDir dir;
+			   pts
+		       end
+		 | NONE => (
+		   checkForErrors[errStrm];
+		   raise Fail "impossible")
+               (* end case *))
+            end
 
   (* load a PML file *)
     and loadPML (file, env as Env{loc, pts, preprocs}) = let 
-	  val fileStr = Atom.toString file
-	  val errStrm = Error.mkErrStream fileStr
-	  val (inStrm, reap) = preprocess(List.rev preprocs, fileStr)
-	  val ptOpt = Parser.parseFile (errStrm, inStrm)
-	  in
-	    reap();
-	    case ptOpt
-	     of SOME pt => SOME (errStrm, pt)
-	      | NONE => (
-		  checkForErrors[errStrm];
-		  raise Fail "impossible")
-	    (* end case *)
-	  end
+	   val fileStr = Atom.toString file
+	   val errStrm = Error.mkErrStream fileStr
+	   val (inStrm, reap) = preprocess(List.rev preprocs, fileStr)
+           val ptOpt = Parser.parseFile (errStrm, inStrm)
+           in
+		reap();
+		case ptOpt
+		 of SOME pt => SOME (errStrm, pt)
+		  | NONE => (
+		    checkForErrors[errStrm];
+		    raise Fail "impossible")
+           end
 
   (* load the MLB file *)
     fun load (errStrm, file) = let
-	  val env0 = Env{loc=(0,0), pts=[], preprocs=[]}
-	  val pts = loadMLB(Atom.atom file, env0)
-	  in
-	    ListPair.unzip (List.rev pts)
-	  end
+	    val env0 = Env{loc=(0,0), pts=[], preprocs=[]}
+	    val pts = loadMLB(Atom.atom file, env0)
+            in
+	        ListPair.unzip (List.rev pts)
+            end
 
   end (* MLB *)

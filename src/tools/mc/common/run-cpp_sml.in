@@ -10,6 +10,17 @@ structure RunCPP : sig
 
     val cppCmd : string
 
+  (* make a predefined name *)
+    val mkDef : (string * string option) -> string
+
+  (* build the argument list *)
+    val mkArgs : {
+	     relativeTo : string,                     (* directory where the CPP will run *)
+	     includes : string list,                  (* includes can be files or directories *)
+	     predefs : string list,                   (* predef variables (set with -D) *)
+	     file : string option                     (* file to give the CPP (NONE for stdin) *)
+           } -> string list
+
     val run : {
 	    noLines : bool,	(* if true, then supress #line directives *)
 	    defs : (string * string option) list,
@@ -35,12 +46,15 @@ structure RunCPP : sig
 
     val cppCmd = "@CPP@"
 
+    fun mkDef (symb, NONE) = "-D" ^ symb
+      | mkDef (symb, SOME s) = String.concat["-D", symb, "=\"", s, "\""]
+
+    fun mkIncludeDir dir = "-I" ^ dir
+    fun mkIncludeFile file = "-include" ^ file
+
     fun run {noLines, defs, includes, input} = let
-	  fun mkDef (symb, NONE) = "-D" ^ symb
-	    | mkDef (symb, SOME s) = String.concat["-D", symb, "=\"", s, "\""]
-	  fun mkInclude dir = "-I" ^ dir
 	  val args = (List.map mkDef defs)
-		@ (List.map mkInclude includes)
+		@ (List.map mkIncludeDir includes)
 		@ [input]
 	  val args = if noLines then "-P" :: args else args
 	  val proc = Unix.execute(cppCmd, args)
@@ -48,6 +62,35 @@ structure RunCPP : sig
 	    { inStrm = Unix.textInstreamOf proc,
 	      reap = fn () => ignore(Unix.reap proc)
 	    }
+	  end
+
+    fun fileExists f = OS.FileSys.access (f, [OS.FileSys.A_READ])
+
+    fun mkArgs {relativeTo, includes, predefs, file} = let
+	val relativeTo = OS.FileSys.fullPath relativeTo
+	(* given a file and a relative path, return the full path of the file, i.e.,
+	 *   file=foo.def path=/home/bar/             =>      /home/bar/foo.def
+	 *)
+	  fun mkPath path = OS.Path.mkAbsolute{path=path, relativeTo=relativeTo}
+	  (* paths to included files and directories *)
+	  val includePaths = List.filter fileExists (List.map mkPath includes)
+	  (* split the includes by whether they are files or directories *) 
+	  val (includeDirs, includeFiles) = List.partition OS.FileSys.isDir includePaths
+	  in
+		(* strip away preprocessor directives and cruft *)
+		"-P" ::
+		predefs @
+		(* include directories *)
+		List.map mkIncludeDir includeDirs @
+		(* include files *)
+		List.map mkIncludeFile includeFiles @
+		(case file
+		  of NONE =>
+		     (* pass the file to cpp through stdin *)
+		     ["-"]
+		   | SOME file => 
+		     [file]
+		(* end case *))
 	  end
 
     structure SS = Substring

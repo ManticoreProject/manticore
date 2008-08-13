@@ -22,7 +22,7 @@ structure TreeShake =
         } = 
 	   Var.newProp (fn _ => false)
     in
-    fun setDead v = (print(Var.toString v^"=dead\n");setFn(v, true))
+    fun setDead v = ((*print(Var.toString v^"=dead\n");*)setFn(v, true))
     val isDead = getFn
     end
 
