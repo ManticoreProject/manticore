@@ -99,7 +99,6 @@ structure MLB : sig
 		("PML_FILE", SOME name)
 	    ]
 	    val args = RunCPP.mkArgs {relativeTo=dir, includes=includes, predefs=predefs, file=NONE}		
-	    val _ = print (String.concatWith " " args^"\n")
 	    in
 	        chainPreprocs(file, path, name, ("preprocess", dir, SOME RunCPP.cppCmd, args) :: ppCmds)
 	    end
