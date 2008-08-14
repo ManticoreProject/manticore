@@ -32,5 +32,5 @@ is
 (*     bind:(anchor:SA.cm value:@MLRISC_CM_DIR@)*)
      bind:(anchor:AMD64.cm value:@MLRISC_CM_DIR@)
      bind:(anchor:AMD64-Peephole.cm value:@MLRISC_CM_DIR@)
-     bind:(anchor:c-call.cm value:@MLRISC_CM_DIR@/c-call/cm/))
+     bind:(anchor:CCall.cm value:@MLRISC_CM_DIR@))
 

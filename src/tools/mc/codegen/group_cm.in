@@ -37,7 +37,7 @@ is
   @MLRISC_CM_DIR@/Peephole.cm
   @MLRISC_CM_DIR@/AMD64.cm
   @MLRISC_CM_DIR@/AMD64-Peephole.cm
-  @MLRISC_CM_DIR@/c-call/cm/c-call.cm
+  @MLRISC_CM_DIR@/CCall.cm
 
   ../common/sources.cm
   ../prim/sources.cm
