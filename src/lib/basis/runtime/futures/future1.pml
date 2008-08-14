@@ -17,8 +17,9 @@
 #define CANCELABLE_OFF       2
 #define FGS_OFF              3
 
-structure Future1 =
-  struct
+structure Future1 : sig
+    type future
+  end = struct
 
     structure PT = PrimTypes
     structure FLS = FiberLocalStorage
@@ -40,7 +41,7 @@ structure Future1 =
      *     4) fiber-local storage for the future (tracks parent->child relationships)
      *)
 
-    type future = _prim ( ![any, thunk, C.cancelable, FLS.fls] )
+    type 'a future = _prim ( ![any, thunk, C.cancelable, FLS.fls] )
 
     _primcode (
 
@@ -96,5 +97,7 @@ structure Future1 =
 	;
 
     )
+
+    val touch : 'a future -> 'a = _prim(@touch)
 
   end
