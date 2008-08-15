@@ -44,7 +44,7 @@ functor HeapTransferFn (
   structure Var = M.Var
   structure Frame = Frame
   structure Ty = CFGTy
-  structure CTy = CTypes
+  structure CTy = CType
 
   type stms = MTy.T.stm list
 

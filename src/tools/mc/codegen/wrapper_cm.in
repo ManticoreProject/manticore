@@ -29,8 +29,9 @@ is
      bind:(anchor:SSA.cm value:@MLRISC_CM_DIR@)
      bind:(anchor:Sched.cm value:@MLRISC_CM_DIR@)
      bind:(anchor:ir.cm value:@MLRISC_CM_DIR@)
-(*     bind:(anchor:SA.cm value:@MLRISC_CM_DIR@)*)
      bind:(anchor:AMD64.cm value:@MLRISC_CM_DIR@)
      bind:(anchor:AMD64-Peephole.cm value:@MLRISC_CM_DIR@)
-     bind:(anchor:CCall.cm value:@MLRISC_CM_DIR@))
+     bind:(anchor:StagedAlloc.cm value:@MLRISC_CM_DIR@)
+     bind:(anchor:CCall.cm value:@MLRISC_CM_DIR@)
+     bind:(anchor:CCall-x86-64.cm value:@MLRISC_CM_DIR@))
 
