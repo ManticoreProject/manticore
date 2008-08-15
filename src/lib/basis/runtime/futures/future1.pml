@@ -18,7 +18,11 @@
 #define FGS_OFF              3
 
 structure Future1 : sig
-    type future
+(*    type thunk = unit -> unit
+    type 'a future
+    val touch : 'a future -> 'a
+    val future : thunk -> 'a future
+*)
   end = struct
 
     structure PT = PrimTypes
