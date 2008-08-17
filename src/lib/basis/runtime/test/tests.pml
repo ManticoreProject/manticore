@@ -178,7 +178,7 @@ structure Tests =
 
       define @locked-queue-test (x : PT.unit / exh : PT.exh) : PT.unit =
 	do_test(test-q-1)
-        do_concurrent_test(test-q-2, ONE_SEC)
+(*        do_concurrent_test(test-q-2, ONE_SEC)*)
 (*	do_test(test-q-3)
 	do_concurrent_test(test-q-4, 20.0:double)
       *)

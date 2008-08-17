@@ -6,8 +6,6 @@
  * Control operations for fibers.
  *)
 
-#include "../misc/assert.def"
-
 structure Control =
   struct
 

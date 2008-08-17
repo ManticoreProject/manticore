@@ -1,0 +1,31 @@
+../misc/prim-types.pml
+(* initialize the vproc -- this step must occur before doing anything else! *)
+ann "cpp" "runtime-offsets.def,../include/prim.def"
+in
+  scheduling/init.pml
+end
+../sequential/sequential.mlb
+../misc/debug.mlb
+
+scheduling/fiber-local-storage.mlb
+
+ann "cpp" "runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
+in
+
+(* scheduling operations*)
+  scheduling/control.pml
+  scheduling/vproc-queue.pml
+  scheduling/scheduler-utils.pml
+
+(* process-management utilities *)
+  util/thread-ops.pml
+  util/cancelation.pml
+
+(* synchronous operations *)
+  synch/locked-queue.mlb
+  synch/set-once-mem.pml
+
+(* futures *)
+  futures/future1.pml
+
+end

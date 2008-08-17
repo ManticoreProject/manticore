@@ -93,12 +93,15 @@ structure MLB : sig
     fun chainPreprocs (file, path, name, []) = raise Fail "compiler bug"
       | chainPreprocs (file, path, name, ("cpp", dir, NONE, [includes]) :: ppCmds) = let
 	  (* support for the C preprocessor *)
-	    val includes = String.tokens (fn c => c = #",") includes
+	    val includes = 
+		  "." ::
+		  RunCPP.basisIncludeDir ::
+		  String.tokens (fn c => c = #",") includes
 	    val predefs = List.map RunCPP.mkDef [
-		("PML_PATH", SOME (OS.FileSys.fullPath dir^name)),
+		("PML_PATH", SOME (OS.FileSys.fullPath dir^"/"^name)),
 		("PML_FILE", SOME name)
 	    ]
-	    val args = RunCPP.mkArgs {relativeTo=dir, includes=includes, predefs=predefs, file=NONE}		
+	    val args = RunCPP.mkArgs {relativeTo=dir, includes=includes, predefs=predefs, file=NONE}
 	    in
 	        chainPreprocs(file, path, name, ("preprocess", dir, SOME RunCPP.cppCmd, args) :: ppCmds)
 	    end

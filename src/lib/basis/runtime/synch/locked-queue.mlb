@@ -1,6 +1,6 @@
 ann "cpp" "locked-queue.def"
 in
   in-place-queue.pml
-  ../spin-lock.pml
+  spin-lock.pml
   locked-queue.pml
 end

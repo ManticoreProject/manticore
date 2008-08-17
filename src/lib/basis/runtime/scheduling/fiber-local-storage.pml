@@ -46,7 +46,7 @@ structure FiberLocalStorage =
       ;
 
     (* find an entry in the fiber-local storage *)
-      define @find (fls : fls, tg : AL.assoc_tag, elt : any / exh : PT.exh) : Option.option =
+      define @find (fls : fls, tg : AL.assoc_tag / exh : PT.exh) : Option.option =
         let als : AL.assoc_list = #1(fls)
         AL.@find(als, tg / exh)
       ;

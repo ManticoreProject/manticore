@@ -4,7 +4,7 @@ list.pml
 string.pml
 int.pml
 long.pml
-ann "cpp" "../misc/prim.def"
+ann "cpp" "../include/prim.def"
 in
   print.pml
   rand.pml

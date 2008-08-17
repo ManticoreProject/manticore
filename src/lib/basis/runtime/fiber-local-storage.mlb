@@ -1,6 +1,0 @@
-../sequential/assoc-list.mlb
-../misc/debug.mlb
-ann "cpp" "../misc/prim.def,runtime-offsets.def,../misc/assert.def"
-in
-  fiber-local-storage.pml
-end

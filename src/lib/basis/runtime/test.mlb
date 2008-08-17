@@ -1,0 +1,5 @@
+runtime.mlb
+ann "cpp" "runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def,../include/testing.def"
+in
+  test/tests.pml
+end
