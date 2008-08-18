@@ -14,10 +14,10 @@
 #else
 #define _QUOTE(x) #x
 #define QUOTE(x) _QUOTE(x)
-#  define assert(check)							\
-	if check							\
-	  then return ()						\
-	  else do ccall M_AssertFail (check, QUOTE(PML_FILE), __LINE__)	\
+#  define assert(check)							        \
+	if check							        \
+	  then return ()				  		        \
+	  else do ccall M_AssertFail (QUOTE(check), QUOTE(PML_FILE), __LINE__)	\
 	    return ()                                                   
 #endif
 
