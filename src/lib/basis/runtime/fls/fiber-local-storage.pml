@@ -2,6 +2,10 @@
  *
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
+ *
+ * Local storage for fibers. 
+ *
+ * NOTE: these functions are not synchronized.
  *)
 
 
@@ -11,14 +15,15 @@ structure FiberLocalStorage =
     structure PT = PrimTypes
     structure AL = AssocList
 
-    type fls = _prim ( ![PT.bool, AL.assoc_list] ) 
+    type fls = _prim ( [PT.bool, AL.assoc_list] ) 
 
     _primcode (
+
+      typedef fls_tag = AL.assoc_tag;
 
     (* create fls *)
       define @new (x : PT.unit / exh : PT.exh) : fls =
         let fls : fls = alloc(TRUE, NIL)
-        let fls : fls = promote(fls)
         return(fls)
       ;
 
@@ -37,18 +42,15 @@ structure FiberLocalStorage =
       ;
 
     (* add an element to the fiber-local storage dictionary. NOTE: this function is not thread safe. *)
-      define @add (fls : fls, tg : AL.assoc_tag, elt : any / exh : PT.exh) : PT.unit =
-        let als : AL.assoc_list = #1(fls)
-        let als : AL.assoc_list = AL.@insert(als, tg, elt / exh)
-        let als : AL.assoc_list = promote(als)
-        do #1(fls) := als
-        return(UNIT)
+      define @add (fls : fls, tg : fls_tag, elt : any / exh : PT.exh) : fls =
+        let als : AL.assoc_list = AL.@insert(#1(fls), tg, elt / exh)
+        let fls : fls = alloc(#0(fls), als)
+        return(fls)
       ;
 
     (* find an entry in the fiber-local storage *)
-      define @find (fls : fls, tg : AL.assoc_tag / exh : PT.exh) : Option.option =
-        let als : AL.assoc_list = #1(fls)
-        AL.@find(als, tg / exh)
+      define @find (fls : fls, tg : fls_tag / exh : PT.exh) : Option.option =
+        AL.@find(#1(fls), tg / exh)
       ;
 
     )

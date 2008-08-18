@@ -17,7 +17,7 @@ structure Tests =
     fun t () = false
     fun failDeadlock () = UnitTesting.validate "deadlock" t
     fun failAns () = UnitTesting.validate "answer" t
-
+(*
   (* check for deadlock *)
     _primcode(
       define @check-for-deadlock(f : fun(PT.unit / PT.exh -> PT.bool), wait : Time.time / exh : PT.exh) : () =
@@ -56,6 +56,8 @@ structure Tests =
         return()
       ;
     )
+
+*)
 
   (* control *)
     _primcode(
@@ -105,13 +107,12 @@ structure Tests =
 
     )
 
+(*
     val _ = Print.printLn "sleep test: going to sleep"
     val ex : unit -> unit = _prim(@ex)
     val _ = ex()
     val _ = Print.printLn "sleep test: woke up"
-
-  (* scheduler utils *)
-(*    val _ = Print.printLn(Int.toString(UnitTesting.fib(30)))*)
+*)
 
   (* locked queues *)
     _primcode(
@@ -178,8 +179,9 @@ structure Tests =
 
       define @locked-queue-test (x : PT.unit / exh : PT.exh) : PT.unit =
 	do_test(test-q-1)
-(*        do_concurrent_test(test-q-2, ONE_SEC)*)
-(*	do_test(test-q-3)
+(*        do_concurrent_test(test-q-2, ONE_SEC) *)
+(*	
+        do_test(test-blocking)
 	do_concurrent_test(test-q-4, 20.0:double)
       *)
 	return (UNIT)
@@ -189,5 +191,20 @@ structure Tests =
 
     val lockedQueueTest : unit -> unit = _prim(@locked-queue-test)
     val _ = lockedQueueTest()
+
+  (* future1 *)
+    fun fib n = if n < 2 then n else fib(n-1) + fib(n-2)
+    fun futFib n =
+	if n < 2 then n else let
+	    fun f () = futFib (n-1)
+	    val f1 = Future1.future f
+	    in
+	      futFib(n-2) + Future1.touch f1
+	    end
+    fun fut1FibTest n = fib n = futFib n
+    fun fut11 () = fut1FibTest 27
+    val _ = if fut11()
+	    then Print.printLn "fut1 success"
+	    else Print.printLn "fut1 fail"
 
   end

@@ -145,6 +145,13 @@ structure Future1 : sig
         end                                            
       ;
 
+    (* initial value for the thread capability *)
+      define @capability-init (/ exh : PT.exh) : ThreadCapabilities.capability =
+	let c : SetOnceMem.set_once_mem = SetOnceMem.@new(UNIT / exh)
+        let cap : ThreadCapabilities.capability = ThreadCapabilities.@new(tag(future1GangSched), c / exh)
+	return(cap)
+      ;
+
       define @touch (fut : future / exh : PT.exh) : any =
         let tmp : any = CAS (&0(fut), EMPTY_F, EVAL_F)
         if Equal (tmp, EMPTY_F)
