@@ -235,32 +235,35 @@ structure MLB : sig
 (* FIXME: check that the MLB file is valid *)
 
   (* load an MLB file *)
-    and loadMLB (path, env as Env{loc, pts, preprocs}) = let
-	  val {dir=dirOfFile, file} = OS.Path.splitDirFile path
-	  val dirOfFile = OS.FileSys.fullPath dirOfFile
-	  val dir = OS.FileSys.getDir()
-	  val errStrm = Error.mkErrStream file
-          in
-	      case MLBParser.parseFile (errStrm, path)
-	       of SOME {span, tree=basDecs} => 
-		     if alreadyVisitedMLB(dirOfFile, file)
-		        then 
-			 (* already loaded the mlb file *)
-			 pts
-		     else let
-		        val _ = visitMLB(dirOfFile, file)
-		       (* change the working directory to that of the file *)
-		        val _ = OS.FileSys.chDir dirOfFile
-	               (* process the contents of the MLB file *)
-			val pts = processBasDecs(basDecs, Env{loc=span, pts=pts, preprocs=preprocs})
-			in 
-			   checkForErrors(#1(ListPair.unzip pts));
-                          (* return to the original working directory *)
-		           OS.FileSys.chDir dir;
-			   pts
-			end
-		| NONE => (checkForErrors[errStrm]; pts)
-            end
+    and loadMLB (path, env as Env{loc, pts, preprocs}) = 
+	  if OS.FileSys.access(path, [OS.FileSys.A_READ])
+	     then let
+	      val {dir=dirOfFile, file} = OS.Path.splitDirFile path
+	      val dirOfFile = OS.FileSys.fullPath dirOfFile
+	      val dir = OS.FileSys.getDir()
+	      val errStrm = Error.mkErrStream file
+	      in
+		  case MLBParser.parseFile (errStrm, path)
+		   of SOME {span, tree=basDecs} => 
+			 if alreadyVisitedMLB(dirOfFile, file)
+			    then 
+			     (* already loaded the mlb file *)
+			     pts
+			 else let
+			    val _ = visitMLB(dirOfFile, file)
+			   (* change the working directory to that of the file *)
+			    val _ = OS.FileSys.chDir dirOfFile
+			   (* process the contents of the MLB file *)
+			    val pts = processBasDecs(basDecs, Env{loc=span, pts=pts, preprocs=preprocs})
+			    in 
+			       checkForErrors(#1(ListPair.unzip pts));
+			      (* return to the original working directory *)
+			       OS.FileSys.chDir dir;
+			       pts
+			    end
+		    | NONE => (checkForErrors[errStrm]; pts)
+		end
+	  else raise Fail ("MLB file "^OS.FileSys.getDir()^"/"^path^" does not exist")
 
   (* load a PML file *)
     and loadPML (file, env as Env{loc, pts, preprocs}) = let 
