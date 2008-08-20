@@ -207,7 +207,6 @@ structure Tests =
 	    then Print.printLn "fut1 success"
 	    else Print.printLn "fut1 fail"
 
-(*
   (* cancelation *)
     _primcode (
 
@@ -221,9 +220,9 @@ structure Tests =
 	    let x : PT.ml_int = apply fib(arg / exh)
 	    do #0(b) := FALSE (* should never get here *)
 	    return(UNIT)
-	let c : Cancel.cancelable = Cancel.@new(UNIT / exh)
+	let c : Cancelation.cancelable = Cancelation.@new(UNIT / exh)
 	let k : PT.fiber = Control.@fiber(doit / exh)
-	let k : PT.fiber = Cancel.@wrap(c, k / exh)
+	let k : PT.fiber = Cancelation.@wrap(c, k / exh)
 	let fls : FLS.fls = FLS.@get(/ exh)
 	let vps : List.list = ccall ListVProcs(host_vproc)
 	do case vps
@@ -235,8 +234,9 @@ structure Tests =
 		do VProcQueue.@enqueue-on-vproc(vp, fls, k / exh)
 		return()
 	    end
-	end
-	do Cancel.@cancel(c / exh)
+	end        
+	do Cancelation.@cancel(c / exh)
+        let x : PT.ml_int = apply fib(arg / exh)
 	return(#0(b))
       ;
 
@@ -246,6 +246,8 @@ structure Tests =
       ;
 
     )
-*)
+
+    val cancelTest : unit -> unit = _prim(@cancel-test)
+    val _ = cancelTest()
 
   end
