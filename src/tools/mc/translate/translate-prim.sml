@@ -274,19 +274,19 @@ structure TranslatePrim : sig
 		      val (pat') = cvtPat(pat)
 		      in
 			(pat', cvtExp(findCFun, exp))
-		      end
+		      end		
                 in
 		  cvtSimpleExp(findCFun, arg, fn arg =>
                     BOM.mkCase(
 		      arg, 
                       List.map doCase cases,
-                      case dflt
-		       of NONE => NONE
-			| SOME(BPT.P_Wild _, e) => SOME(cvtExp(findCFun, e))
-			| SOME(BPT.P_Var(x, _), e) => (
-			    E.insertBOMVar(x, arg);
-			    SOME(cvtExp(findCFun, e)))
-		      (* end case *)))
+		      let fun lp NONE = NONE
+			    | lp (SOME(BPT.P_VPMark {tree, ...}, e)) = lp(SOME (tree, e))
+			    | lp (SOME(BPT.P_Wild _, e)) = SOME(cvtExp(findCFun, e))
+			    | lp (SOME(BPT.P_Var(x, _), e)) = (
+			      E.insertBOMVar(x, arg);
+			      SOME(cvtExp(findCFun, e)))
+		      in lp dflt end))
 		end
 	    | BPT.E_Apply(f, args, rets) =>
 		cvtSimpleExps(findCFun, args,
