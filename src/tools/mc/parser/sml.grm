@@ -443,7 +443,9 @@ Int	: POSINT	=> (POSINT)
 	| NEGINT	=> (NEGINT)
 	;
 
-Name	: ID	=> (case ID of [id] => id | _ => raise Fail "expected id but got qualified id")
+Name	: ID	=> (case ID 
+		     of [id] => id 
+		      | _ => raise Fail ("unexpected qualified ID "^String.concatWith "." (List.map Atom.toString ID)))
 	;
 
 QualifiedId
