@@ -216,7 +216,11 @@ structure Tests =
 	let arg : PT.ml_int = alloc(25)
 	let b : ![PT.bool] = alloc(TRUE)
 	let b : ![PT.bool] = promote(b)
+        let wait : ![PT.bool] = alloc(FALSE)
+        let wait : ![PT.bool] = promote(wait)
 	fun doit ( x : PT.unit / exh : PT.exh) : PT.unit =
+	    do UPDATE(0, wait, TRUE)
+            do print_ppt()
 	    let x : PT.ml_int = apply fib(arg / exh)
 	    do #0(b) := FALSE (* should never get here *)
 	    return(UNIT)
@@ -236,7 +240,8 @@ structure Tests =
 	    end
 	end        
 	do Cancelation.@cancel(c / exh)
-        let x : PT.ml_int = apply fib(arg / exh)
+        fun waitFn () : () = if SELECT(0, wait) then return() else apply waitFn()
+        do apply waitFn()
 	return(#0(b))
       ;
 
@@ -248,6 +253,6 @@ structure Tests =
     )
 
     val cancelTest : unit -> unit = _prim(@cancel-test)
-    val _ = cancelTest()
+(*    val _ = cancelTest()*)
 
   end
