@@ -112,7 +112,7 @@ structure MatchSig :> sig
 	  | match (id, Env.Con sigDCon, _) = error (loc, ["incompatible data con", Atom.toString id])
 	  | match (id, _, _) = error(loc, ["invalid value specification ", Atom.toString id])	
 	in
-	   List.app match (matchAndReport(loc, "var", sigVarEnv, modVarEnv))
+	   List.app match (matchAndReport(loc, "value declaration", sigVarEnv, modVarEnv))
 	end
 
     fun matchMods loc (modEnv , sigEnv) = let

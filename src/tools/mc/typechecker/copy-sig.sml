@@ -90,14 +90,14 @@ structure CopySig =
           end 
 
   (* constrain the type of a bound value to the type in the signature *)
-    fun constrainValBind (_, vbindSig, vbindMod) = (case Option.valOf vbindMod
-           of Env.Con dc => ()
-	    | Env.Var v => let
+    fun constrainValBind (_, vbindSig, vbindMod) = (case vbindMod
+           of SOME(Env.Con dc) => ()
+	    | SOME(Env.Var v) => let
 	        val ty' = substTyScheme (Env.typeOfValBind vbindSig)
 	         in
 	            Var.setType(v, ref ty')
 		 end
-	    | vbind => ()
+	    | _ => ()
            (* end case *))
 
   (* takes environments for a module and its constraining signature and returns the residual signature for the 
