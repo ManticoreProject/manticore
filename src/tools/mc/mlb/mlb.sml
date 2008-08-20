@@ -42,8 +42,7 @@ structure MLB : sig
 	val mlbs : AtomSet.set ref = ref AtomSet.empty
     in
     fun visitMLB (dir, file) = mlbs := AtomSet.add(!mlbs, Atom.atom (OS.Path.joinDirFile{dir=dir, file=file}))
-    fun alreadyVisitedMLB (dir, file) = (print (dir^" "^file^"\n");
-AtomSet.member(!mlbs, Atom.atom(OS.Path.joinDirFile{dir=dir, file=file})))
+    fun alreadyVisitedMLB (dir, file) = AtomSet.member(!mlbs, Atom.atom(OS.Path.joinDirFile{dir=dir, file=file}))
     end
 
     fun revConcat ls = List.concat (List.rev ls)
