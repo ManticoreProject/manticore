@@ -206,7 +206,7 @@ structure MLB : sig
 		      pts'@pts
 		    end
 		| {base, ext=SOME "pml"} => (
-                    case loadPML (Atom.toString file, Env{loc=loc, pts=pts, preprocs=preprocs})
+                    case loadPML (Atom.toString file, Env{loc=loc, pts=[], preprocs=preprocs})
 		     of NONE => pts
 		      | SOME (errStrm, pt) => (errStrm, pt) :: pts
                     (* end case *))

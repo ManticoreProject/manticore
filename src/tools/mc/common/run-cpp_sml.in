@@ -55,12 +55,9 @@ structure RunCPP : sig
     fun mkIncludeDir dir = "-I" ^ dir
     fun mkIncludeFile file = "-include" ^ file
     fun mkDef (symb, NONE) = "-D" ^ symb
-      | mkDef (symb, SOME s) = String.concat["-D", symb, "=", s]
-
+      | mkDef (symb, SOME s) = String.concat["-D", symb, "=\"", s, "\""]
 
     fun run {noLines, defs, includes, input} = let
-	fun mkDef (symb, NONE) = "-D" ^ symb
-	  | mkDef (symb, SOME s) = String.concat["-D", symb, "=\"", s, "\""]
 	  val args = (List.map mkDef defs)
 		@ (List.map mkIncludeDir includes)
 		@ [input]
