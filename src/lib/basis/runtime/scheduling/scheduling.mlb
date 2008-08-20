@@ -6,12 +6,14 @@
  * Scheduling operations and utilities.
  *)
 
-  ../sequential/sequential.mlb
-  ../misc/debug.mlb
+  ../../sequential/sequential.mlb
+  ../../misc/debug.mlb
+  ../fls/fiber-local-storage.mlb
 
-ann "cpp" "runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
-in
-  control.pml
-  vproc-queue.pml
-  scheduler-utils.pml
-end
+  ann "cpp" "../runtime-offsets.def,../../include/prim.def,../../include/debug.def,../../include/assert.def"
+  in
+    control.pml
+    vproc-queue.pml
+    scheduler-utils.pml
+    cancelation.pml
+  end

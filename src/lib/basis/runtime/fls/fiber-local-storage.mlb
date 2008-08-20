@@ -6,10 +6,11 @@
  * Fiber-local storage
  *)
 
-../../sequential/sequential.mlb
-../../misc/debug.mlb
-ann "cpp" "../runtime-offsets.def,../../include/prim.def,../../include/assert.def"
-in
-  assoc-list.pml
-  fiber-local-storage.pml
-end
+  ../../sequential/sequential.mlb
+  ../../misc/debug.mlb
+
+  ann "cpp" "../runtime-offsets.def,../../include/prim.def,../../include/assert.def"
+  in
+    assoc-list.pml
+    fiber-local-storage.pml
+  end

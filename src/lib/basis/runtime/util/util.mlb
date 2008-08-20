@@ -11,8 +11,8 @@
   ../fls/fiber-local-storage.mlb
   ../scheduling/scheduling.mlb
 
-ann "cpp" "runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
-in
-  thread-ops.pml
-  thread-capabilities.pml
-end
+  ann "cpp" "../,../../include/prim.def,../../include/debug.def,../../include/assert.def"
+  in
+    thread-ops.pml
+    thread-capabilities.pml
+  end

@@ -10,6 +10,7 @@
 #define INACTIVE_OFF    1
 #define CHILDREN_OFF    2
 #define PARENT_OFF      3
+#define TAG_CANCELABLE tag(cancelable)
 
 structure Cancelation =
   struct
@@ -29,29 +30,39 @@ structure Cancelation =
 
     (* create a cancelable *)
       define @new (x : PT.unit / exh : PT.exh) : cancelable =
-
       (* the current cancelable (might be nonexistant) *)
         let fls : FLS.fls = FLS.@get(/ exh)
-        let currentC : ![cancelable] = FLS.@find(fls, TAG_CANCELABLE / exh)
+        let currentCOpt : Option.option = FLS.@find(fls, TAG_CANCELABLE / exh)
+        let currentC : ![cancelable] = 
+		       case currentCOpt
+			of NONE => let c : ![cancelable] = (![cancelable])enum(0)
+                                   return(c)
+			 | SOME (c : ![cancelable]) => return(c)
+                       end
       (* if the current cancelable exists, set it as our parent *)
         let parent : Option.option = 
 		     if Equal(currentC, enum(0))
 		        then return(NONE)
-		     else return(SOME(currentC))
-
-        do if Equal(currentC, enum(0))
-	      then return()
-	   else (* update the parent's childrent list *)
-	       let children : List.list = SELECT(CHILDREN_OFF, parent)
-               let children : List.list = List.CONS(c, children)
-               let children : List.list = promote(children)
-               do UPDATE(CHILDREN_OFF, parent, children)
+		     else
+			 return(Option.SOME(#0(currentC)))
 
         let c : cancelable = alloc(FALSE, TRUE, NIL, parent)
         let c : cancelable = promote(c)
+
+        do if Equal(currentC, enum(0))
+	      then return()
+	   else
+ 	       (* update the parent's childrent list *)
+	       let children : List.list = SELECT(CHILDREN_OFF, #0(currentC))
+               let children : List.list = List.CONS(c, children)
+	       let children : List.list = promote(children)
+	       do UPDATE(CHILDREN_OFF, #0(currentC), children)
+               return ()
+
         return(c)
       ;
 
+(*
     (* set the cancelable as terminated *)
       define inline @set-inactive (c : cancelable / exh : PT.exh) : () =
       (* the parent is now the current cancelable *)
@@ -60,7 +71,7 @@ structure Cancelation =
         let parent : cancelable = SELECT(PARENT_OFF, c)
         do UPDATE(0, currentC, parent)
       (* mark the inactive flag; use CAS as a memory fence *)
-        let x : PT.bool = CAS(ADDR_OF(INACTIVE_OFF,c), FALSE, TRUE)
+(*        let x : PT.bool = CAS(ADDR_OF(INACTIVE_OFF,c), FALSE, TRUE)*)
         return()
       ;
 
@@ -71,10 +82,11 @@ structure Cancelation =
         let currentC : ![cancelable] = FLS.@find(fls, TAG_CANCELABLE / exh)
         do UPDATE(0, currentC, c)
       (* use CAS as a memory fence *)
-        let x : PT.bool = CAS(ADDR_OF(INACTIVE_OFF,c), TRUE, FALSE)
+(*        let x : PT.bool = CAS(ADDR_OF(INACTIVE_OFF,c), TRUE, FALSE) *)
         return()
       ;
-
+*)
+(*
     (* attach the fiber k to the cancelable *)
       define @wrap (c : cancelable, k : PT.fiber / exh : PT.exh) : PT.fiber =
 
@@ -111,9 +123,9 @@ structure Cancelation =
 
         return(wrappedK)
       ;
-
+*)
     (* wait for all the cancelables to terminate *)
-      define @wait-for-all (checks : List.list / exh : exh) : () =
+      define @wait-for-all (checks : List.list / exh : PT.exh) : () =
       (* spin until both checks and busy are finished *)
 	fun lp (checks : List.list, busy : List.list / exh : PT.exh) : () =
 	    case checks

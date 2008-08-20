@@ -179,13 +179,13 @@ structure Future1 : FUTURE = struct
         let fut : future = promote(fut)
         return(fut)
       ;
-
+(*
     (* cancel a future and all of its descendants *)
       define @cancel (x : PT.unit / exh : PT.exh) : PT.unit =
 	(* TODO *)
 	return(UNIT)
       ;
-
+*)
     )
 
     val touch : 'a future -> 'a = _prim(@touch)

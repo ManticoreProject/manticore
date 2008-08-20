@@ -12,7 +12,7 @@
   ../scheduling/scheduling.mlb
 
   future-sig.pml
-  ann "cpp" "runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def,-DTAG_CANCELABLE="tag(future1-cancelable)""
+  ann "cpp" "runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def,-DTAG_CANCELABLE=tag(future1-cancelable)"
   in
   (* cancelation is specialized for each scheduler implementation *)
     ../scheduling/cancelation.pml
