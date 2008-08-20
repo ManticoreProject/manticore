@@ -347,7 +347,7 @@ structure Translate : sig
 		  B.mkFun(List.map trFun fs, k env)
 		end
 	    | AST.PrimVBind (x, rhs) => (
-	        case TranslatePrim.cvtRhs (env, Var.typeOf x, rhs)
+	        case TranslatePrim.cvtRhs (env, x, Var.typeOf x, rhs)
 		 of SOME e => let
 			val (x', env') = trVar(env, x)
 	                in

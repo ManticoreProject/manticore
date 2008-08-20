@@ -9,8 +9,11 @@
 structure TranslatePrim : sig
 
   (* convert a right-hand side inline BOM declaration to an expression *)
-    val cvtRhs : (TranslateEnv.env * Types.ty_scheme * ProgramParseTree.PML2.BOMParseTree.prim_val_rhs) 
-		   -> BOM.exp option
+    val cvtRhs : (TranslateEnv.env * 
+		  Var.var * 
+		  Types.ty_scheme * 
+		  ProgramParseTree.PML2.BOMParseTree.prim_val_rhs) 
+		 -> BOM.exp option
 
   (* convert BOM definitions. this process occurs silently, by adding
    * definitions to environments and caches.
@@ -427,14 +430,14 @@ structure TranslatePrim : sig
 	       BOM.mkFun([l'], BOM.mkRet [f'])
 	    end
   
-    fun cvtRhs (env, pmlTy, rhs) = let
+    fun cvtRhs (env, x, pmlTy, rhs) = let
 	val _ = translateEnv := env
         (* check that the RHS matches the constraining type *)
 	val pmlTy = TranslateTypes.trScheme(env, pmlTy)
 	  fun chkConstraintTy bomTy = 
 	        if (BOMTyUtil.equal(pmlTy, bomTy))
 		   then ()
-		else raise Fail (String.concatWith "\n" ["incorrect BOM type: ",
+		else raise Fail (String.concatWith "\n" ["incorrect BOM type for "^Var.nameOf x^": ",
 							 "BOM type = "^BOMTyUtil.toString bomTy,
 							 "PML type = "^BOMTyUtil.toString pmlTy])
 				 
