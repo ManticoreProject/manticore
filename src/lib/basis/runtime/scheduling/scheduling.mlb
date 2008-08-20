@@ -1,0 +1,17 @@
+(* scheduling.mlb
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Scheduling operations and utilities.
+ *)
+
+  ../sequential/sequential.mlb
+  ../misc/debug.mlb
+
+ann "cpp" "runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
+in
+  control.pml
+  vproc-queue.pml
+  scheduler-utils.pml
+end

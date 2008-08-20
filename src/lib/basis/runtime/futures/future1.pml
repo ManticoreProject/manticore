@@ -17,15 +17,7 @@
 #define CANCELABLE_OFF       2
 #define FGS_OFF              3
 
-structure Future1 : sig
-
-    type 'a thunk = unit -> 'a
-    type 'a future
-
-    val touch : 'a future -> 'a
-    val future : 'a thunk -> 'a future
-
-  end = struct
+structure Future1 : FUTURE = struct
 
     structure PT = PrimTypes
     structure FLS = FiberLocalStorage
@@ -120,7 +112,7 @@ structure Future1 : sig
           (* initialize the scheduler on all vprocs *)
             let vps : List.list = ccall ListVProcs(host_vproc)
             fun initOnVProc (self : vproc / exh : PT.exh) : PT.sigact =
-                @gang-sched(readyQ, self / exh)
+                  @gang-sched(readyQ, self / exh)
             do SchedulerUtils.@scheduler-startup(initOnVProc, fls, vps / exh)
             let readyQ : any = (any)readyQ
             return(readyQ)
@@ -188,9 +180,16 @@ structure Future1 : sig
         return(fut)
       ;
 
+    (* cancel a future and all of its descendants *)
+      define @cancel (x : PT.unit / exh : PT.exh) : PT.unit =
+	(* TODO *)
+	return(UNIT)
+      ;
+
     )
 
     val touch : 'a future -> 'a = _prim(@touch)
     val future : 'a thunk -> 'a future = _prim(@future)
+    val cancel : 'a future -> unit = _prim(@cancel)
 
   end

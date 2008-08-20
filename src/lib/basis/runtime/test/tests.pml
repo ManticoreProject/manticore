@@ -207,4 +207,43 @@ structure Tests =
 	    then Print.printLn "fut1 success"
 	    else Print.printLn "fut1 fail"
 
+  (* cancelation *)
+    _primcode (
+
+      define @test1 (/ exh : PT.exh) : PT.bool =
+	cont exit () = return(FALSE)
+	let fib : fun(PT.ml_int / PT.exh -> PT.ml_int) = pmlvar fib
+	let arg : PT.ml_int = alloc(25)
+	let b : ![PT.bool] = alloc(TRUE)
+	let b : ![PT.bool] = promote(b)
+	fun doit ( x : PT.unit / exh : PT.exh) : PT.unit =
+	    let x : PT.ml_int = apply fib(arg / exh)
+	    do #0(b) := FALSE (* should never get here *)
+	    return(UNIT)
+	let c : Cancel.cancelable = Cancel.@new(UNIT / exh)
+	let k : PT.fiber = Control.@fiber(doit / exh)
+	let k : PT.fiber = Cancel.@wrap(c, k / exh)
+	let fls : FLS.fls = FLS.@get(/ exh)
+	let vps : List.list = ccall ListVProcs(host_vproc)
+	do case vps
+	 of NIL => throw exit()
+	  | List.CONS(vp : vproc, vps : List.list) =>
+	    case vps
+	     of NIL => throw exit()
+	      | List.CONS(vp : vproc, vps : List.list) =>
+		do VProcQueue.@enqueue-on-vproc(vp, fls, k / exh)
+		return()
+	    end
+	end
+	do Cancel.@cancel(c / exh)
+	return(#0(b))
+      ;
+
+      define @cancel-test (x : PT.unit / exh : PT.exh) : PT.unit =
+        do_test(test1)
+        return(UNIT)
+      ;
+
+    )
+
   end

@@ -1,6 +1,11 @@
-ann "cpp" "locked-queue.def"
-in
-  in-place-queue.pml
-  spin-lock.pml
-  locked-queue.pml
-end
+
+
+  ../fls/fiber-local-storage.mlb
+  ../scheduling/scheduling.mlb
+
+  ann "cpp" "locked-queue.def"
+  in
+    in-place-queue.pml
+    spin-lock.pml
+    locked-queue.pml
+  end

@@ -1,6 +1,6 @@
 (* thread-capabilities.pml
  *
- * 
+ * Thread capabilities specify properties of an individual thread.
  *)
 
 structure ThreadCapabilities =

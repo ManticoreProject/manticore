@@ -1,35 +1,31 @@
-../misc/prim-types.pml
-(* initialize the vproc -- this step must occur before doing anything else! *)
-ann "cpp" "runtime-offsets.def,../include/prim.def"
-in
-  scheduling/init.pml
-end
-../sequential/sequential.mlb
-../misc/debug.mlb
+(* runtime.mlb
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Runtime basis.
+ *)
 
-fls/fiber-local-storage.mlb
+(* initialize the vproc -- we must do this step before anything else *)
+  ann "cpp" "runtime-offsets.def,../include/prim.def"
+  in
+    scheduling/init.pml
+  end
 
-ann "cpp" "runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
-in
+  ../sequential/sequential.mlb
+  ../misc/debug.mlb
+
+(* fiber-local storage *)
+  fls/fiber-local-storage.mlb
 
 (* scheduling operations*)
-  scheduling/control.pml
-  scheduling/vproc-queue.pml
-  scheduling/scheduler-utils.pml
+  scheduling/scheduling.mlb
 
 (* process-management utilities *)
-  util/thread-ops.pml
-  util/cancelation.pml
-  util/thread-capabilities.pml
+  util/util.mlb
 
 (* synchronous operations *)
-  synch/locked-queue.mlb
-  synch/set-once-mem.pml
-
-(* futures *)
-  futures/future1.pml
+  synch/synch.mlb
 
 (* initialize thread capabilities *)
   util/default-thread-capabilities.pml
-
-end
