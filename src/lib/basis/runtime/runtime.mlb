@@ -6,7 +6,7 @@
  * Runtime basis.
  *)
 
-    ../misc/prim-types.pml
+  ../misc/prim-types.pml
 
 (* initialize the vproc -- we must do this step before anything else *)
   ann "cpp" "runtime-offsets.def,../include/prim.def"
@@ -28,6 +28,9 @@
 
 (* synchronous operations *)
   synch/synch.mlb
+
+(* futures *)
+  futures/futures.mlb
 
 (* initialize default thread capabilities *)
   ann "cpp" "runtime-offsets.def,../include/prim.def"

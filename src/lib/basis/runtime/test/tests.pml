@@ -207,6 +207,7 @@ structure Tests =
 	    then Print.printLn "fut1 success"
 	    else Print.printLn "fut1 fail"
 
+(*
   (* cancelation *)
     _primcode (
 
@@ -245,5 +246,6 @@ structure Tests =
       ;
 
     )
+*)
 
   end

@@ -10,7 +10,6 @@
 #define INACTIVE_OFF    1
 #define CHILDREN_OFF    2
 #define PARENT_OFF      3
-#define TAG_CANCELABLE tag(cancelable)
 
 structure Cancelation =
   struct
@@ -62,16 +61,25 @@ structure Cancelation =
         return(c)
       ;
 
-(*
+
     (* set the cancelable as terminated *)
       define inline @set-inactive (c : cancelable / exh : PT.exh) : () =
-      (* the parent is now the current cancelable *)
+      (* make the parent the current cancelable *)
         let fls : FLS.fls = FLS.@get(/ exh)
-        let currentC : ![cancelable] = FLS.@find(fls, TAG_CANCELABLE / exh)
-        let parent : cancelable = SELECT(PARENT_OFF, c)
-        do UPDATE(0, currentC, parent)
+        let currentCOpt : Option.option = FLS.@find(fls, TAG_CANCELABLE / exh)
+        do case currentCOpt
+	    of NONE => return()
+	     | Option.SOME(currentC : ![cancelable]) =>
+               let parentOpt : Option.option = SELECT(PARENT_OFF, c)
+               case parentOpt
+		of NONE => return()
+		 | SOME (parent : cancelable) => 
+		   do UPDATE(0, currentC, parent)
+                   return()
+               end
+           end
       (* mark the inactive flag; use CAS as a memory fence *)
-(*        let x : PT.bool = CAS(ADDR_OF(INACTIVE_OFF,c), FALSE, TRUE)*)
+        let x : PT.bool = CAS(ADDR_OF(INACTIVE_OFF,c), FALSE, TRUE)
         return()
       ;
 
@@ -79,14 +87,18 @@ structure Cancelation =
       define inline @set-active (c : cancelable / exh : PT.exh) : () =
       (* set the current cancelable *)
         let fls : FLS.fls = FLS.@get(/ exh)
-        let currentC : ![cancelable] = FLS.@find(fls, TAG_CANCELABLE / exh)
-        do UPDATE(0, currentC, c)
+        let currentCOpt : Option.option = FLS.@find(fls, TAG_CANCELABLE / exh)
+        do case currentCOpt
+	    of NONE => return()
+	     | Option.SOME(currentC : ![cancelable]) => 
+	       do UPDATE(0, currentC, c)
+               return()
+           end
       (* use CAS as a memory fence *)
-(*        let x : PT.bool = CAS(ADDR_OF(INACTIVE_OFF,c), TRUE, FALSE) *)
+        let x : PT.bool = CAS(ADDR_OF(INACTIVE_OFF,c), TRUE, FALSE) 
         return()
       ;
-*)
-(*
+
     (* attach the fiber k to the cancelable *)
       define @wrap (c : cancelable, k : PT.fiber / exh : PT.exh) : PT.fiber =
 
@@ -123,7 +135,7 @@ structure Cancelation =
 
         return(wrappedK)
       ;
-*)
+
     (* wait for all the cancelables to terminate *)
       define @wait-for-all (checks : List.list / exh : PT.exh) : () =
       (* spin until both checks and busy are finished *)

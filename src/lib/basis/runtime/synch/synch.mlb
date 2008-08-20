@@ -11,8 +11,8 @@
   ../fls/fiber-local-storage.mlb
   ../scheduling/scheduling.mlb
 
+  locked-queue.mlb
   ann "cpp" "../runtime-offsets.def,../../include/prim.def,../../include/debug.def,../../include/assert.def"
   in
-    locked-queue.mlb
     set-once-mem.pml
   end
