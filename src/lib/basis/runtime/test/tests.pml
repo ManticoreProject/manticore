@@ -204,12 +204,12 @@ structure Tests =
     fun fut1FibTest n = fib n = futFib n
     fun fut11 () = fut1FibTest 27
     val _ = if fut11()
-	    then Print.printLn "fut1 success"
+	    then ()
 	    else Print.printLn "fut1 fail"
+
 
   (* cancelation *)
     _primcode (
-
       define @test1 (/ exh : PT.exh) : PT.bool =
 	cont exit () = return(FALSE)
 	let fib : fun(PT.ml_int / PT.exh -> PT.ml_int) = pmlvar fib
@@ -220,7 +220,6 @@ structure Tests =
         let wait : ![PT.bool] = promote(wait)
 	fun doit ( x : PT.unit / exh : PT.exh) : PT.unit =
 	    do UPDATE(0, wait, TRUE)
-            do print_ppt()
 	    let x : PT.ml_int = apply fib(arg / exh)
 	    do #0(b) := FALSE (* should never get here *)
 	    return(UNIT)
@@ -235,13 +234,14 @@ structure Tests =
 	    case vps
 	     of NIL => throw exit()
 	      | List.CONS(vp : vproc, vps : List.list) =>
-		do VProcQueue.@enqueue-on-vproc(vp, fls, k / exh)
-		return()
+		VProcQueue.@enqueue-on-vproc(vp, fls, k / exh)
 	    end
-	end        
-	do Cancelation.@cancel(c / exh)
+	end
         fun waitFn () : () = if SELECT(0, wait) then return() else apply waitFn()
         do apply waitFn()
+	do Cancelation.@cancel(c / exh)
+	let arg : PT.ml_int = alloc(30)
+	let x : PT.ml_int = apply fib(arg / exh)
 	return(#0(b))
       ;
 
@@ -249,10 +249,8 @@ structure Tests =
         do_test(test1)
         return(UNIT)
       ;
-
     )
-
     val cancelTest : unit -> unit = _prim(@cancel-test)
-(*    val _ = cancelTest()*)
+    val _ = cancelTest()
 
   end

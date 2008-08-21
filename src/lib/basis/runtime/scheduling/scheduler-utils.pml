@@ -175,8 +175,6 @@ structure SchedulerUtils =
 	let fls : FLS.fls = FLS.@new (UNIT / exh)
        (* run the scheduler on all vprocs *)
 	do @scheduler-startup (mkSwitch, fls, vps / exh)
-do print_ppt()
-
 	return (UNIT)
       ;
 
