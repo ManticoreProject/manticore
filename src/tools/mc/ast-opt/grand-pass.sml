@@ -51,6 +51,7 @@ structure GrandPass : sig
 	      | NONE => v) *)
       | trExp (A.SeqExp (e1, e2)) = A.SeqExp (trExp e1, trExp e2)
       | trExp (x as A.OverloadExp _) = x
+      | trExp (A.ExpansionOptsExp (opts, exp)) = A.ExpansionOptsExp(opts, exp)
 
     and binding (A.ValBind (p, e)) = A.ValBind (p, trExp e)
       | binding (A.PValBind (p, e)) = A.PValBind (p, trExp e)

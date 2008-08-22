@@ -49,8 +49,8 @@ structure CopySig =
 	val tyEnv' = Env.VarMap.foldli copyTyDef Env.VarMap.empty mTyEnv
 	val varEnv' = Env.VarMap.foldli copyVarDef Env.VarMap.empty mVarEnv
 	val modEnv' = Env.VarMap.foldli (fn (id, m, env) => Env.VarMap.insert(env, id, copyMod m)) Env.VarMap.empty mModEnv
-	val AST.MOD{name, formals, ...} = modRef
-	val modRef = AST.MOD{name=name, id=Stamp.new(), formals=formals}
+	val AST.MOD{name, formals, expansionOpts, ...} = modRef
+	val modRef = AST.MOD{name=name, id=Stamp.new(), formals=formals, expansionOpts=expansionOpts}
         in
 	  Env.ModEnv{modRef=modRef, tyEnv=tyEnv', varEnv=varEnv', modEnv=modEnv', sigEnv=sigEnv, outerEnv=outerEnv}
         end

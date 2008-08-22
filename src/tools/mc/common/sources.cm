@@ -15,6 +15,7 @@ Library
   signature VAR
 
   structure BasicControl
+  structure ExpansionOpts
   structure CFunctions
   structure ConstArith
   structure Error
@@ -41,6 +42,7 @@ is
   $/ml-lpt-lib.cm
 
   basic-control.sml
+  expansion-opts.sml
   c-functions.sml
   const-arith.sml
   error.sml

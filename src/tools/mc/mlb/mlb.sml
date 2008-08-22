@@ -203,7 +203,7 @@ structure MLB : sig
 	       of {base, ext=SOME "mlb"} => let
 		    val pts' = loadMLB (Atom.toString file, Env{loc=loc, pts=[], preprocs=preprocs})
 		    in
-		      pts'@pts
+		      pts' @ pts
 		    end
 		| {base, ext=SOME "pml"} => (
                     case loadPML (Atom.toString file, Env{loc=loc, pts=[], preprocs=preprocs})
@@ -217,11 +217,23 @@ structure MLB : sig
 	        in
 	           processBasDec(basDec, Env{loc=loc, pts=pts, preprocs=preproc :: preprocs})
 	         end
-	    | PT.AnnBasDec("cpp", includes, basDec) => let
+	    | PT.AnnBasDec ("cpp", includes, basDec) => let
 	       val preproc = ("cpp", OS.FileSys.getDir(), NONE, includes)
 	       in
 	          processBasDec(basDec, Env{loc=loc, pts=pts, preprocs=preproc :: preprocs})
 	       end
+	    | PT.AnnBasDec ("expansion-opt", opts, basDec) => let
+              (* expansion options *) 
+		val expOpts = ExpansionOpts.fromStrings opts
+		val pts' = processBasDec(basDec, Env{loc=loc, pts=[], preprocs=preprocs})
+		fun addExpOpt (errStrm, {tree, span}) = let
+		      fun add decl = PPT.ExpansionOptsDecl(expOpts, [decl])
+		      in
+		         (errStrm, {tree=List.map add tree, span=span})
+		      end
+	        in
+		   List.map addExpOpt pts' @ pts
+		end
 	    | PT.SeqBasDec basDecs => processBasDecs(basDecs, env)
 	    | _ => raise Fail "todo"
         (* end case *))

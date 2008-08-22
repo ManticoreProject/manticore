@@ -86,6 +86,7 @@ functor PMLParseTreeFn (
       | LocalDecl of (decl list * decl list)
       | SignDecl of (sig_id * sign)
       | PrimCodeDecl of BOMParseTree.code
+      | ExpansionOptsDecl of (ExpansionOpts.opt list * decl list)         (* compiler operations for expanding expressions *)
 
   (* type declarations *)
     and ty_decl

@@ -47,6 +47,7 @@ structure TypeOf : sig
 	(* NOTE: all overload instances are monomorphic *)
 	  monoTy (Var.typeOf x)
       | exp (AST.OverloadExp _) = raise Fail "unresolved overloading"
+      | exp (AST.ExpansionOptsExp (opts, e)) = exp e
 
     and const (AST.DConst(dc, argTys)) = DataCon.typeOf'(dc, argTys)
       | const (AST.LConst(_, ty)) = ty

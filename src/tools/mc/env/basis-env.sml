@@ -23,6 +23,11 @@ structure BasisEnv : sig
   (* overloaded unary operators *)
     val neg	: (Types.ty_scheme * AST.var list)
 
+  (* look for a value via a path in the basis library, i.e., getValFromBasis(Atom.atom "Future1.future") *)
+    val getValFromBasis : string list -> ModuleEnv.val_bind
+  (* look for a type via a path in the basis library *)
+    val getTyFromBasis : string list -> ModuleEnv.ty_def
+
   end = struct
 
     structure U = BasisUtils
@@ -443,7 +448,7 @@ structure BasisEnv : sig
 			   }
 
            (* create the top-level module environment *)
-	     val modRef = AST.MOD{id=Stamp.new(), name=Atom.atom "Basis", formals=NONE}
+	     val modRef = AST.MOD{id=Stamp.new(), name=Atom.atom "Basis", formals=NONE, expansionOpts=ref []}
 	     val MEnv.ModEnv {modRef, modEnv, sigEnv, outerEnv, ...} = MEnv.fresh (modRef, NONE)
 	     val basisEnv = MEnv.ModEnv{
                                  modRef=modRef, 
@@ -453,7 +458,7 @@ structure BasisEnv : sig
 				 tyEnv=MEnv.fromList predefinedTys, 
 				 varEnv=MEnv.fromList predefinedVars
 			       }
-	     val modRef = AST.MOD{id=Stamp.new(), name=Atom.atom "TopLevel", formals=NONE}
+	     val modRef = AST.MOD{id=Stamp.new(), name=Atom.atom "TopLevel", formals=NONE, expansionOpts=ref []}
 	     val mEnv0 = MEnv.fresh(modRef, SOME basisEnv)
              in
 	        (bEnv0, mEnv0)
@@ -508,6 +513,31 @@ structure BasisEnv : sig
 	  in
 	    (lookupOpPT, lookupOpAST)
 	  end
+
+          val pathToString = String.concatWith "."
+          val pathToAtom = Atom.atom o pathToString
+
+        (* look for a value via a path in the basis library, i.e., getValFromBasis(Atom.atom "Future1.future") *)
+	  fun getValFromBasis path = (
+		case BindingEnv.findValByPath (pathToAtom path)
+		 of SOME(BindingEnv.Var v) => (
+		      case ModuleEnv.getValBind v
+		       of SOME vb => vb
+			| NONE => raise Fail ("Unable to locate "^pathToString path)
+		      (* end case *))
+		  | _ => raise Fail ("Unable to locate "^pathToString path)
+		(* end case *))
+
+        (* look for a type via a path in the basis library *)
+	  fun getTyFromBasis path = (
+		case BindingEnv.findTyByPath (pathToAtom path)
+		 of SOME v => (
+		      case ModuleEnv.getTyDef v
+		       of SOME tyd => tyd
+			| NONE => raise Fail ("Unable to locate "^pathToString path)
+		      (* end case *))
+		  | _ => raise Fail ("Unable to locate "^pathToString path)
+		(* end case *))
 
     end (* local *)
   end

@@ -277,6 +277,8 @@ structure Translate : sig
 		  EXP(tr exp)
 		end
 	    | AST.OverloadExp _ => raise Fail "unresolved overloading"
+	    | AST.ExpansionOptsExp (opts, e) => 
+		EXP(trExpToExp(env, e))
 	  (* end case *))
 
     and trExpToExp (env, exp) = toExp(trExp(env, exp))

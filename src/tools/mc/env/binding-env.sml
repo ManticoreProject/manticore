@@ -26,6 +26,7 @@ structure BindingEnv =
     type bom_hlop = PT2.BOMParseTree.hlop_bind
     type bom_hlop_env = bom_hlop Map.map
 
+  (* environment for inline BOM *)
     datatype bom_env
       = BOMEnv of {
 	  varEnv : bom_var_env,
@@ -47,10 +48,10 @@ structure BindingEnv =
     type ty_env = ty_bind Map.map
     type var_env = val_bind Map.map
     type mod_env = mod_bind Map.map
-  (* map from qualified identifiers to the flat variable namespace *)
+  (* map from qualified identifiers to flat variables (stamps) *)
     datatype env
       = Env of {
-	     name       : Atom.atom,                    (* name of the module *)
+	     name     : Atom.atom,                      (* name of the module *)
 	     tyEnv    : ty_env,                         (* type names *)
 	     varEnv   : var_env,                        (* PML variables *)
 	     bomEnv   : bom_env,                        (* inline BOM *)
@@ -81,6 +82,10 @@ structure BindingEnv =
 
     fun fromList ls = List.foldl Map.insert' Map.empty ls
 
+  (* get the path owned by an environment *)
+    fun pathOfEnv (Env{outerEnv=NONE, ...}, path) = path
+      | pathOfEnv (Env{name, outerEnv=SOME env, ...}, path) = pathOfEnv(env, name :: path)
+
   (* BOM operations *)
     local 
 	fun insertVar (BOMEnv {varEnv, hlopEnv, tyEnv}, id, x) =
@@ -95,9 +100,6 @@ structure BindingEnv =
 	  setFn=setHLOpPath : (ProgramParseTree.Var.var * string list) -> unit, ...
         } = 
 	    ProgramParseTree.Var.newProp (fn _ => [])
-      (* get the path owned by an environment *)
-	fun pathOfEnv (Env{outerEnv=NONE, ...}, path) = path
-	  | pathOfEnv (Env{name, outerEnv=SOME env, ...}, path) = pathOfEnv(env, name :: path)
     in
     fun insertBOMVar (Env{name, tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
 	    Env{name=name, tyEnv=tyEnv, varEnv=varEnv, bomEnv=insertVar(bomEnv, id, x), modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
@@ -155,22 +157,42 @@ structure BindingEnv =
   (* constrains env2 to contain only those keys that are also in env1 *)
     fun intersect (env1, env2) = Map.intersectWith (fn (x1, x2) => x2) (env1, env2)
 
+    local
+	val pathToAtom = Atom.atom o String.concatWith "." o List.map Atom.toString
+      (* maps paths to value bindings *)
+	val valPathMp : val_bind AtomTable.hash_table = AtomTable.mkTable(128, Fail "Path table")
+      (* add a value binding to the global path map *)
+	fun addValPath (env, id, x) = let
+	      val path = pathToAtom(pathOfEnv(env, [id]))
+	      in
+	         AtomTable.insert valPathMp (path, x)
+	      end
+      (* maps paths to type bindings *)
+	val tyPathMp : ty_bind AtomTable.hash_table = AtomTable.mkTable(128, Fail "Path table")
+      (* add a type binding to the global path map *)
+	fun addTyPath (env, id, x) = AtomTable.insert tyPathMp (pathToAtom(pathOfEnv(env, [id])), x)
+    in
   (* PML operations *)
-    fun insertVal (Env{name, tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
-	Env{name=name, tyEnv=tyEnv, varEnv=Map.insert(varEnv, id, x), bomEnv=bomEnv, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
+    fun insertVal (env as Env{name, tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = (
+	addValPath(env, id, x);
+	Env{name=name, tyEnv=tyEnv, varEnv=Map.insert(varEnv, id, x), bomEnv=bomEnv, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv})
+    fun insertTy (env as Env{name, tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = (
+	addTyPath(env, id, x);
+	Env{name=name, tyEnv=Map.insert(tyEnv, id, x), varEnv=varEnv, bomEnv=bomEnv, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv})
     fun insertMod (Env{name, tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
 	Env{name=name, tyEnv=tyEnv, varEnv=varEnv, bomEnv=bomEnv, modEnv=Map.insert(modEnv, id, x), sigEnv=sigEnv, outerEnv=outerEnv}
-    fun insertTy (Env{name, tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
-	Env{name=name, tyEnv=Map.insert(tyEnv, id, x), varEnv=varEnv, bomEnv=bomEnv, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
     fun insertSig (Env{name, tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
 	Env{name=name, tyEnv=tyEnv, varEnv=varEnv, bomEnv=bomEnv, modEnv=modEnv, sigEnv=Map.insert(sigEnv, id, x), outerEnv=outerEnv}
     fun insertDataTy (env, id, x) = let
-	  (* datatypes are visible to inline BOM programs *)
+	  (* make datatypes visible to inline BOM programs *)
 	    val env = insertBOMTy(env, id, x)
           (* as well as PML programs ... *)
             in
 	        insertTy(env, id, x)
 	    end
+    val findValByPath = AtomTable.find valPathMp
+    val findTyByPath = AtomTable.find tyPathMp
+    end
 	
 
   end

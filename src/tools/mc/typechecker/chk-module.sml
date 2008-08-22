@@ -133,7 +133,7 @@ structure ChkModule :> sig
     fun chkSignature loc (id, sign, env) = (case sign
             of PT.MarkSig {tree, span} => chkSignature span (id, tree, env)
 	     | PT.ExpSig specs => let
-	       val modRef = AST.MOD{name=Option.getOpt(id, Atom.atom "sign"), id=Stamp.new(), formals=NONE}
+	       val modRef = AST.MOD{name=Option.getOpt(id, Atom.atom "sign"), id=Stamp.new(), formals=NONE, expansionOpts=ref []}
                val sigEnv = Env.fresh(modRef, SOME env)
                in
 		  chkSpecs loc (specs, sigEnv)
@@ -142,7 +142,7 @@ structure ChkModule :> sig
                of NONE => (error (loc, ["cannot find signature ", PPT.Var.nameOf id]);
 			   env)
 		| SOME sigEnv => let
-	           val modRef = AST.MOD{name=idToAtom id, id=Stamp.new(), formals=NONE}
+	           val modRef = AST.MOD{name=idToAtom id, id=Stamp.new(), formals=NONE, expansionOpts=ref []}
 		   val env' = Env.fresh(modRef, SOME env)
                    val env' as Env.ModEnv{tyEnv, ...} = List.foldl (chkTyDcl loc) env' tyRevls
                    in
@@ -179,7 +179,7 @@ structure ChkModule :> sig
     fun chkModule loc (id, sign, module, (env, moduleEnv, astDecls)) = (case module
         of PT.MarkMod {span, tree} => chkModule span (id, sign, tree, (env, moduleEnv, astDecls))
 	 | PT.DeclsMod decls => let
-		val modRef = AST.MOD {name=idToAtom id, id=Stamp.new(), formals=NONE}
+		val modRef = AST.MOD {name=idToAtom id, id=Stamp.new(), formals=NONE, expansionOpts=ref []}
 		val (modEnv, moduleEnv, modAstDecls) = chkTopDcls(loc, decls, Env.fresh(modRef, SOME env), moduleEnv)
 		val (modEnv', modAstDecls') = (case sign
                     of SOME sign => let
@@ -204,7 +204,7 @@ structure ChkModule :> sig
                of NONE => (error(loc, ["cannot find module ", idToString modName]);
 			   (env, moduleEnv, astDecls))
 		| SOME modEnv => let
-		      val modRefN = AST.MOD {name=idToAtom id, id=Stamp.new(), formals=NONE}
+		      val modRefN = AST.MOD {name=idToAtom id, id=Stamp.new(), formals=NONE, expansionOpts=ref []}
 		      val signEnv = (case sign
                           of SOME sign => let
 				 val sigEnv = chkSignature loc (NONE, sign, env)
@@ -251,6 +251,13 @@ structure ChkModule :> sig
 	      in
 		  (env, moduleEnv, binding :: astDecls)
 	      end
+	    | PT.ExpansionOptsDecl (opts, dcls) => let
+		val (env as Env.ModEnv{modRef=AST.MOD{expansionOpts, ...}, ...}, moduleEnv, bindings) = 
+		        chkTopDcls (loc, dcls, env, moduleEnv)
+	        in
+		  expansionOpts := opts @ !expansionOpts;
+		  (env, moduleEnv, bindings)
+	        end
 	  (* end case *))
 
   (* refresh types for decls *)

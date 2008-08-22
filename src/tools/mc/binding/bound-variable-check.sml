@@ -623,6 +623,11 @@ structure BoundVariableCheck :> sig
 	          in
 		     ([PT2.PrimCodeDecl code], env)
 	          end
+	    | PT1.ExpansionOptsDecl (opts, decls) => let
+		  val (decls, env) = chkDecls loc (decls, env)
+	          in
+		      ([PT2.ExpansionOptsDecl (opts, decls)], env)
+		  end
            (* end case *))
 
     and chkDecls loc (decls, env) = let

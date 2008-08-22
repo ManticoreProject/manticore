@@ -21,7 +21,7 @@ structure FutParLet : sig
     structure A = AST
     structure B = Basis
     structure F = Futures
-    structure T = Types
+
     structure U = UnseenBasis
 
     (* fail : string -> 'a *)

@@ -32,7 +32,8 @@ structure AST =
     and module_ref = MOD of {                        (* reference to a module *)
           name : Atom.atom,
 	  id : Stamp.stamp,                          (* unique id *)
-	  formals : module_ref list option           (* formal parameters to a functor *)
+	  formals : module_ref list option,          (* formal parameters to a functor *)
+	  expansionOpts : ExpansionOpts.opt list ref (* compiler options for expanding expressions *)
         }
  
     and module_type
@@ -72,6 +73,7 @@ structure AST =
       | VarExp of (var * ty list)
       | SeqExp of (exp * exp)
       | OverloadExp of overload_var ref
+      | ExpansionOptsExp of (ExpansionOpts.opt list * exp)         (* compiler options for expanding expressions *)
 
     and binding
       = ValBind of pat * exp

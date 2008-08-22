@@ -12,7 +12,7 @@ Library
   structure CompletionBitstring
   structure FlatParTup
   structure FreshVar
-  structure FutParLet	
+  structure PValToFuture
   structure Futures
   structure GrandPass
   structure Hash
@@ -27,7 +27,6 @@ Library
   structure TranslatePtup
   structure TypeOf	
   structure Unpar
-  (* structure LTCDVal *)
   structure RuntimeBasis
 
 is
@@ -45,6 +44,7 @@ is
   completion-bitstring.sml
   flat-par-tup.sml
   fresh-var.sml
+  pval-to-future.sml
   fut-par-let.sml
   fut-par-tup.sml
   futures.sml
@@ -58,5 +58,4 @@ is
   translate-pcomp.sml
   translate-ptup.sml
   unpar.sml
-  (* ltc-dval.sml *)
   runtime-basis.sml

@@ -257,6 +257,7 @@ structure PrintAST : sig
 	   pr ")";
 	   closeBox ())
       | exp (A.OverloadExp ovr) = overload_var (!ovr)
+      | exp (A.ExpansionOptsExp (_, e)) = exp e
 
     and var_arity_op (A.MapP) = pr "mapP"
 
@@ -337,7 +338,7 @@ structure PrintAST : sig
 	   closeBox ())
       | binding (A.FunBind lams) = 
 	  (case lams
-	     of [] => raise Fail "empty FunBind"
+	     of [] => ()
 	      | (d::ds) =>
 		  (openVBox (rel 0);
 		   lambda "fun" d;
