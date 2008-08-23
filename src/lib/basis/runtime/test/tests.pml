@@ -251,6 +251,6 @@ structure Tests =
       ;
     )
     val cancelTest : unit -> unit = _prim(@cancel-test)
-    val _ = cancelTest()
+(*    val _ = cancelTest()*)
 
   end

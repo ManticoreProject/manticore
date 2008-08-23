@@ -264,6 +264,9 @@ structure CheckCFG : sig
                             if (i < List.length tys) andalso TyU.match (Ty.T_Addr(List.nth (tys, i)), V.typeOf x)
                               then ()
                               else err ()
+			| Ty.T_VProc => 
+			  (* allow programs to take offsets from the vproc structure for atomic ops *)
+			  ()
                         | _ => err ()
                       (* end case *);
                       addVar (env, x)

@@ -15,7 +15,7 @@
  * the secondary list, and enqueue remotely from the landing-pad list.
  *)
 
-#define Q_EMPTY (queue)enum(0)
+#include "vproc-queue.def"
 
 structure VProcQueue =
   struct
@@ -40,7 +40,7 @@ structure VProcQueue =
              if Equal(lst, Q_EMPTY)
                 then return(acc)
 	     else
-		 apply revQueue (#0(lst), #1(lst), #2(lst), acc / exh)
+		 apply revQueue (SELECT(FLS_OFF, lst), SELECT(FIBER_OFF, lst), SELECT(LINK_OFF, lst), acc / exh)
 	let qitem : queue = apply revQueue (fls, k, lst, rest / exh)
 	return (qitem)
       ;
@@ -48,44 +48,37 @@ structure VProcQueue =
       extern void *VProcDequeue (void *) __attribute__((alloc));
 
    (* dequeue from the secondary list *)
-      define @dequeue-slow-path (vp : vproc / exh : PT.exh) : queue =
-	cont loop () =
-	   let tl : queue = vpload (VP_RDYQ_TL, vp)
-           if Equal(tl, Q_EMPTY)
-              then
-		 let sleepKOpt : Option.option = ccall VProcDequeue(vp)
-		 case sleepKOpt
-		  of NIL => 
-		     (* the queue is nonempty, try again *)
-		     throw loop ()
-		   | SOME (sleepK : queue) =>
-		     (* return a fiber that will put the vproc to sleep *)
-		     return (sleepK)
-		 end
-           else
-		do vpstore (VP_RDYQ_TL, vp, Q_EMPTY)
-		let qitem : queue = @reverse-queue (#0(tl), #1(tl), (queue)#2(tl), Q_EMPTY / exh)
-		let item : [FLS.fls, PT.fiber, queue] = ([FLS.fls, PT.fiber, queue]) qitem
-		let link : queue = #2 (tl)
-		do vpstore (VP_RDYQ_HD, vp, link)
-		return (qitem)
-
-	throw loop ()
+      define @dequeue-slow-path (vp : vproc / exh : PT.exh) : Option.option =
+	let tl : queue = vpload (VP_RDYQ_TL, vp)
+	if Equal(tl, Q_EMPTY)
+	   then
+	      return(NONE)
+	else
+	     do vpstore (VP_RDYQ_TL, vp, Q_EMPTY)
+	     let qitem : queue = 
+		   @reverse-queue (SELECT(FLS_OFF, tl), 
+				   SELECT(FIBER_OFF, tl), 
+				   (queue)SELECT(LINK_OFF, tl), 
+				   Q_EMPTY 
+				   / exh)
+	     let link : queue = (queue)SELECT(LINK_OFF, tl)
+	     do vpstore (VP_RDYQ_HD, vp, link)
+	     return (Option.SOME(qitem))
       ;	  
 
-    (* dequeue from the vproc's thread queue *)
-      define @dequeue ( / exh : PT.exh) : queue =
-        let vp : vproc = host_vproc
+    (* take from the local queue *)
+      define @dequeue ( / exh : PT.exh) : Option.option =
+	let vp : vproc = host_vproc
 	let hd : queue = vpload (VP_RDYQ_HD, vp)
-        if Equal(hd, Q_EMPTY)
-           then
-	     (* the primary list is empty, so try the secondary list *)
-	    let item : queue = @dequeue-slow-path (vp / exh)
+	if Equal(hd, Q_EMPTY)
+	   then
+	   (* the primary list is empty, so try the secondary list *)
+	    let item : Option.option = @dequeue-slow-path (vp / exh)
 	    return (item)
-        else 
-	     (* got a thread from the primary list *)
-	     do vpstore (VP_RDYQ_HD, vp, #2(hd))
-	     return (hd)
+	else 
+	    (* got a thread from the primary list *)
+	    do vpstore (VP_RDYQ_HD, vp, #2(hd))
+	    return (Option.SOME(hd))  
       ;
 
     (* enqueue on the vproc's thread queue *)
@@ -100,30 +93,75 @@ structure VProcQueue =
     (* TODO: move this function to BOM *)
       extern void EnqueueOnVProc (void *, void *, void *, void *) __attribute__((alloc));
 
-   (* enqueue on a remote vproc *)
-      define @enqueue-on-vproc (dst : vproc, fls : FLS.fls, k : PT.fiber / exh : PT.exh) : () =
-	let k : PT.fiber = promote (k)
-	do ccall EnqueueOnVProc(host_vproc, dst, fls, k)
-	return ()
+    (* unload threads from the landing pad *)
+      define @unload-landing-pad (/ exh : PT.exh) : queue =
+	let vp : vproc = host_vproc
+	let mask : PT.bool = vpload(ATOMIC, vp)
+	do vpstore(ATOMIC, vp, TRUE)
+	fun lp () : queue =
+	    let item : queue = vpload(VP_ENTRYQ, vp)
+	    let queue : queue = CAS(&VP_ENTRYQ(vp), item, Q_EMPTY)
+	    if Equal(queue, item)
+	       then return(queue)
+	    else apply lp()
+	let item : queue = apply lp ()
+	do vpstore(ATOMIC, vp, mask)
+	return(item)
       ;
 
-      define @ex (x : PT.unit / exh : PT.exh) : PT.unit =
-        cont k2 (x : PT.unit) =
-          do ccall M_Print ("original thread\n")
-          return(UNIT)
-        cont k1 (x : PT.unit) =
-          do ccall M_Print ("queue example\n")
-          return(UNIT)
-        let fls : FLS.fls = FLS.@get(/exh)
-        do @enqueue(fls, k1 / exh)
-        do Control.@forward ((any)k2 / exh)
-        do assert(FALSE)
-	return(UNIT)
+      define @is-messenger-thread (queue : queue / exh : PT.exh) : PT.bool =
+	return(Equal(SELECT(FLS_OFF, queue), MESSENGER_FLS))
+      ;
+
+    (* process the threads from the landing pad. this function performs two jobs:
+     *  1. put ordinary threads on the local queue
+     *  2. returns messenger threads
+     *)
+      define @process-landing-pad (queue : queue / exh : PT.exh) : queue =
+	fun lp (queue : queue, messengerThds : queue / exh : PT.exh) : queue =
+	    if Equal(queue, Q_EMPTY)
+	       then return(messengerThds)
+	    else 
+		let isMessenger : PT.bool = @is-messenger-thread(queue / exh)
+		if isMessenger
+		   then 
+		  (* the head of the queue is a messenger thread *)
+		    let messenger : queue = alloc(SELECT(FLS_OFF, queue), SELECT(FIBER_OFF, queue), messengerThds)
+		    apply lp((queue)SELECT(LINK_OFF, queue), messenger / exh)
+		else
+		  (* the head of the queue is an ordinary thread; put it on the local queue *)
+		    do @enqueue (SELECT(FLS_OFF, queue), SELECT(FIBER_OFF, queue) / exh)
+		    apply lp((queue)SELECT(LINK_OFF, queue), messengerThds / exh)
+	apply lp(queue, Q_EMPTY / exh)
+      ;
+
+    (* check for incoming threads *)
+      define @check-incoming (/ exh : PT.exh) : () =
+	let queue : queue = @unload-landing-pad ( / exh)
+	let messengerThds : queue = @process-landing-pad(queue / exh)
+	return()
+      ;
+
+      extern void WakeVProc(void *);
+
+      define @enqueue-on-vproc (dst : vproc, fls : FLS.fls, k : PT.fiber / exh : PT.exh) : () =
+        fun lp () : queue =
+	    let entryOld : queue = vpload(VP_ENTRYQ, dst)
+            let entryNew : queue = alloc(fls, k, entryOld)
+            let entryNew : queue = promote(entryNew)
+            let x : queue = CAS(&VP_ENTRYQ(dst), entryOld, entryNew)
+            if NotEqual(x, entryOld)
+	       then apply lp()
+	    else return(entryOld)
+        let entryOld : queue = apply lp()
+
+      (* wake the vproc if its queue was empty *)
+        if Equal(entryOld, Q_EMPTY)
+	   then do ccall WakeVProc(dst)
+		return()
+        else return()
       ;
 
     )
-
-    val ex : unit -> unit = _prim(@ex)
-(*    val _ = ex()*)
 
   end

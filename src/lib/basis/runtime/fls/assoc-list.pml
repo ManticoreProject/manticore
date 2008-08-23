@@ -65,7 +65,8 @@ structure AssocList =
       ;
     )
 
-   val test : unit -> bool = _prim (@test)
+(*   val test : unit -> bool = _prim (@test)
    val _ = UnitTesting.validate "assoc-list-1" test
+*)
 
   end

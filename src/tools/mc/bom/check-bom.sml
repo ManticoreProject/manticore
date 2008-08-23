@@ -305,6 +305,9 @@ structure CheckBOM : sig
 			    if (i < List.length tys) andalso BTU.match(BTy.T_Addr(List.nth (tys, i)), ty)
 			      then ()
                               else error["type mismatch in AddrOf: ", vl2s lhs, " = &(", v2s x, ")\n"]
+			| BTy.T_VProc =>
+			  (* allow programs to take offsets from the vproc structure for atomic ops *)
+			  ()
 			| ty => error[v2s x, ":", BTU.toString ty, " is not a tuple",
                                     vl2s lhs, " = &(", v2s x, ")\n"]
 		      (* end case *))

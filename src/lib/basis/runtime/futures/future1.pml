@@ -43,63 +43,66 @@ structure Future1 : FUTURE = struct
 
     _primcode (
 
-	define @eval (fut : future / exh : PT.exh) : any =
-	  let f : thunk = SELECT(THUNK_OFF, fut)
-	 (* clear the thunk pointer to avoid a space leak *)
-	  do UPDATE(THUNK_OFF, fut, (thunk) $0)
-	  let result : any = apply f (UNIT / exh)
-	  return(result)
-	;
+    (* evaluate a future's thunk and store the result *)
+      define @eval (fut : future / exh : PT.exh) : any =
+	let f : thunk = SELECT(THUNK_OFF, fut)
+       (* clear the thunk pointer to avoid a space leak *)
+	do UPDATE(THUNK_OFF, fut, (thunk) $0)
+	let result : any = apply f (UNIT / exh)
+        let result : any = promote(result)
+	return(result)
+      ;
 
-	define @steal (futuresQ : LQ.queue, fut : future / exh : PT.exh) : () =
-	  let tmp : any = CAS (&0(fut), EMPTY_F, STOLEN_F)
-	  if Equal (tmp, EMPTY_F) 
-	     then let result : any = @eval(fut / exh)
-		  let tmpX : any = CAS(&0(fut), STOLEN_F, result)
-		  if Equal (tmpX, STOLEN_F)
-		     then return ()
-		     else (* unblock the future *)
-			  do UPDATE(STATE_OFF, fut, result)
-			  let k : PT.fiber = (PT.fiber) tmpX
-			  do LQ.@enqueue (futuresQ, k / exh)
-			  return ()
-	      else (* future cell is already full *)
-		   return ()
-	;
+    (* steal a future, evaluate it, and store the result *)
+      define @steal (readyQ : LQ.queue, fut : future / exh : PT.exh) : () =
+	let tmp : any = CAS (&STATE_OFF(fut), EMPTY_F, STOLEN_F)
+	if Equal (tmp, EMPTY_F) 
+	   then let result : any = @eval(fut / exh)
+		let tmpX : any = CAS(&STATE_OFF(fut), STOLEN_F, result)
+		if Equal (tmpX, STOLEN_F)
+		   then return ()
+		   else (* unblock the future *)
+			do UPDATE(STATE_OFF, fut, result)
+			let k : PT.fiber = (PT.fiber) tmpX
+			LQ.@enqueue (readyQ, k / exh)
+	    else (* future cell is already full *)
+		 return ()
+      ;
 
-      (* gang scheduler: takes a shared readyQ and the vproc id of the worker, and returns
-       * a scheduler action that represents an instance of the scheduler for a vproc.
-       *)
-        define @gang-sched (readyQ : LockedQueue.queue, self : vproc / exh : PT.exh) : PT.sigact =
-          cont switch (s : PT.signal) =
-          (* sanity check *)
-            do assert(Equal(self, host_vproc))
-          (* get the next available future *)
-            cont dispatch () =
-		let k : Option.option = LockedQueue.@dequeue(readyQ / exh)
-                case k
-		 of NONE =>
-                  (* nothing on the queue; so, we yield *)
-		    let _ : PT.unit = Control.@atomic-yield(/exh)
-                    throw switch(STOP)
-		  | SOME(k : PT.fiber) =>
-		  (* got a future; so, we run it now *)
-		    do Control.@run(switch, k / exh)
-                    throw dispatch()
-                end
-          (* handle signals *)
-            case s
-	     of STOP => 
-		throw dispatch()
-	      | PT.PREEMPT(k : PT.fiber) =>
-              (* mugging policy: other workers can steal k *)
-              (* QUESTION: does this policy work well for a shared FIFO queue? *)
-		do LockedQueue.@enqueue(readyQ, k / exh)
-		let _ : PT.unit = Control.@atomic-yield(/exh)
-		throw dispatch()
-            end
-          return(switch)                
-        ;
+    (* takes a ready queue and the host vproc and returns an instance of the scheduler. the ready queue
+     * contains _fibers_ that, when invoked, evaluate futures. we choose this representation to support
+     * our unified cancelation mechanism.
+     *)
+      define @gang-sched (readyQ : LockedQueue.queue, self : vproc / exh : PT.exh) : PT.sigact =
+	cont switch (s : PT.signal) =
+	(* sanity check *)
+	  do assert(Equal(self, host_vproc))
+	(* get the next available future *)
+	  cont dispatch () =
+	      let k : Option.option = LockedQueue.@dequeue(readyQ / exh)
+	      case k
+	       of NONE =>
+		(* nothing on the queue; so, we yield *)
+		  let _ : PT.unit = Control.@atomic-yield(/exh)
+		  throw switch(STOP)
+		| SOME(k : PT.fiber) =>
+		(* got a future; so, we run it now *)
+		  do Control.@run(switch, k / exh)
+		  throw dispatch()
+	      end
+	(* handle signals *)
+	  case s
+	   of STOP => 
+	      throw dispatch()
+	    | PT.PREEMPT(k : PT.fiber) =>
+	    (* mugging policy: other workers can steal k *)
+	    (* QUESTION: does this policy work well for a shared FIFO queue? *)
+	      do LockedQueue.@enqueue(readyQ, k / exh)
+	      let _ : PT.unit = Control.@atomic-yield(/exh)
+	      throw dispatch()
+	  end
+	return(switch)                
+      ;
 
     (* initialize the gang scheduler if necessary (we do this job just once); return the ready queue for
      * the scheduler
@@ -161,7 +164,7 @@ structure Future1 : FUTURE = struct
                 (* make the future cancelable *)
                 let kLocal : PT.fiber = C.@wrap(SELECT(CANCELABLE_OFF, fut), kLocal / exh)
                 let k : PT.fiber = promote (kLocal)
-   	        let tmpX : any = CAS (&0(fut), STOLEN_F, k)
+   	        let tmpX : any = CAS (&STATE_OFF(fut), STOLEN_F, k)
  	        if Equal (tmpX, STOLEN_F)
 	           then (* transfer control to the futures scheduler *)
                         Control.@stop (/ exh)
@@ -169,14 +172,26 @@ structure Future1 : FUTURE = struct
                        return (tmpX)
         else (* the future value is ready *)	       
             return (tmp)
-	;
+      ;
 
+    (* takes a future and the ready queue and returns a fiber that, when invoked, makes the future manifest *)
+      define @future-to-fiber (readyQ : LockedQueue.queue, fut : future / exh : PT.exh) : PT.fiber =
+	fun f (x : PT.unit / exh : PT.exh) : PT.unit =
+	    do @steal(readyQ, fut / exh)
+	    return(UNIT)
+	let k : PT.fiber = Control.@fiber(f / exh)
+	return(k)
+      ;
+
+    (* spawn a future *)
       define @future (thunk : thunk / exh : PT.exh) : future =
         let readyQ : LockedQueue.queue = @get-ready-queue(/ exh)
         let c : C.cancelable = C.@new(UNIT / exh)
         let fls : FLS.fls = FLS.@get(/ exh)
         let fut : future = alloc(EMPTY_F, thunk, c, fls)
         let fut : future = promote(fut)
+        let stealableK : PT.fiber = @future-to-fiber(readyQ, fut / exh)
+        do LockedQueue.@enqueue(readyQ, stealableK / exh)
         return(fut)
       ;
 

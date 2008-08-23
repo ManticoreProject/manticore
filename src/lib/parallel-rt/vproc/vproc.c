@@ -114,8 +114,8 @@ void VProcInit (Options_t *opts)
 	CondInit (&(vproc->wait));
     }
 
-  /* create nProcs-1 idle vprocs; the last vproc will be created to run
-   * the initial Manticore thread.
+  /* create nProcs-1 idle vprocs; the other vproc will run the initial Manticore 
+   * thread.
    */
     for (int i = 1;  i < NumVProcs;  i++) {
 	VProcCreate (IdleVProc, 0);
@@ -156,7 +156,7 @@ VProc_t *VProcCreate (VProcFn_t f, void *arg)
     vproc->secondaryQTl = M_NIL;
     vproc->stdArg = M_UNIT;
     vproc->stdEnvPtr = M_UNIT;
-    vproc->stdCont = M_UNIT;
+    vproc->stdCont = M_NIL;
     vproc->stdExnCont = M_UNIT;
     vproc->limitPtr = (Addr_t)vproc + VP_HEAP_SZB - ALLOC_BUF_SZB;
     SetAllocPtr (vproc);
@@ -219,18 +219,19 @@ void VProcSignal (VProc_t *vp, VPSignal_t sig)
 
 } /* end of VProcSignal */
 
-/*! \brief put an idle vproc to sleep.
+
+/*! \brief put the vproc to sleep until a signal arrives
  *  \param vp the vproc that is being put to sleep.
  */
-void VProcSleep (VProc_t *vp)
+void VProcWaitForSignal (VProc_t *vp)
 {
-    assert (vp == VProcSelf());
+   assert (vp == VProcSelf());
 
     LogEvent0 (vp, VProcSleepEvt);
 
 #ifndef NDEBUG
     if (DebugFlg)
-	SayDebug("[%2d] VProcSleep called\n", vp->id);
+	SayDebug("[%2d] VProcWaitForSignal called\n", vp->id);
 #endif
 
     if (FetchAndInc(&NumIdleVProcs) == NumVProcs-1) {
@@ -250,19 +251,12 @@ void VProcSleep (VProc_t *vp)
 		CondWait (&(vp->wait), &(vp->lock));
 	    }
 
-	  /* get the first fiber on the entry queue */
-	    item = VProcGetEntryQ (vp);
-	    assert (item != M_NIL);
-	  /* copy the rest of the entry queue to the local queue */
-	    VProcPushEntries (vp, ValueToRdyQItem(item)->link);
 #ifndef NDEBUG
         if (DebugFlg)
-            SayDebug("[%2d] VProcSleep: waking up; cont = %p\n", vp->id, ValueToRdyQItem(item)->fiber);
+            SayDebug("[%2d] VProcWaitForSignal: waking up; cont = %p\n", vp->id, ValueToRdyQItem(item)->fiber);
 #endif
 	MutexUnlock (&(vp->lock));
 	FetchAndDec(&NumIdleVProcs);
-	vp->stdCont = ValueToRdyQItem(item)->fiber;
-	vp->currentFG = ValueToRdyQItem(item)->tid;
     }
 
 }
@@ -330,77 +324,26 @@ Value_t ListVProcs (VProc_t *self)
 
 }
 
-/*! \brief enqueue a (fiber, thread ID) pair on another vproc's ready queue
- *  \param self the calling vproc
- *  \param vp the vproc to enqueue the thread on.
- *  \param tid the thread ID of the thread being enqueued
- *  \param fiber the fiber to be enqueued.
+/*! \brief Wake a vproc.
+ *  \param the vproc to wake
  */
-void EnqueueOnVProc (VProc_t *self, VProc_t *vp, Value_t tid, Value_t fiber)
+void WakeVProc (VProc_t *vp)
 {
 #ifndef NDEBUG
-    if (DebugFlg)
-	SayDebug("[%2d] EnqueueOnVProc(-, %d, %p, %p)\n", self->id, vp->id, tid, fiber);
+        if (DebugFlg)
+	  SayDebug("[%2d] WakeVProc: waking up vp %d\n", VProcSelf()->id, vp->id);
 #endif
-
-    Value_t entryQOld = vp->entryQ;
-    Value_t entryQNew = GlobalAllocUniform(self, 3, tid, fiber, entryQOld);
-    Value_t entryQ = (Value_t)&(vp->entryQ);
-    do {
-	entryQOld = vp->entryQ;
-	ValueToRdyQItem(entryQNew)->link = entryQOld;      
-    } while (CompareAndSwapValue (ValueToPtr(entryQ), entryQOld, entryQNew) != entryQOld);
-
-    /* The vproc was idle before enqueuing, so wake it up */
-    if (entryQOld == M_NIL) {       
-	vp->idle = false;
-	CondSignal (&(vp->wait));
-    }
-
-} /* end of EnqueueOnVProc */
-
-/*! \brief Push the elements from the VProc entry queue onto the tail of the
- *      VProc local queue.
- *  \param self the calling vproc
- *  \param entries the list of items from the vproc's entry queue.
- *
- *  rdyQTl  -> r3 -> r2 -> r1 -> NIL
- *  entries -> e3 -> e2 -> e1 -> NIL
- *                                =====>
- *  rdyQTl  -> e1 -> e2 -> e3 -> r3 -> r2 -> r1 -> NIL
- *
- */
-void VProcPushEntries (VProc_t *self, Value_t entries)
-{
-    Value_t q = self->rdyQTl;
-    RdyQItem_t *p = ValueToRdyQItem(entries);
-
-    while (p != ValueToRdyQItem(M_NIL)) {
-	q = RdyQItem (self, p->tid, p->fiber, q);
-	p = ValueToRdyQItem(p->link);
-    }
-
-    self->rdyQTl = q;
-
+  vp->idle = false;
+  CondSignal (&(vp->wait));
 }
 
-/*! \brief Get the list of entry-queue elements and set the queue empty.
- *  \param vp the calling vproc
- *  \return the list of entry-queue elements
+/*! \brief create a fiber that puts the vproc to sleep
+ *  \param self the calling vproc
+ *  \return fiber that when run puts the vproc to sleep
  */
-Value_t VProcGetEntryQ (VProc_t *vp)
+Value_t SleepCont (VProc_t *self)
 {
-    Value_t item;
-
-  /* attempt to atomically remove the list of entries while setting the
-   * queue to NIL.  Note that other VProcs may be attempting to add items
-   * at the same time!
-   */
-    do {
-	item = vp->entryQ;
-    } while (CompareAndSwapValue (&(vp->entryQ), item, M_NIL) != item);
-
-    return item;
+    return AllocUniform(self, 1, PtrToValue(&ASM_VProcSleep));
 }
 
 /*! \brief dequeue a fiber from the secondary scheduling queue or else go idle.
@@ -448,6 +391,10 @@ static void IdleVProc (VProc_t *vp, void *arg)
 
   /* Run code that will immediately put this VProc to sleep. */
     RunManticore (vp, (Addr_t)&ASM_VProcSleep, M_UNIT, M_UNIT);
+  /* Run code that will activate the VProc. */
+    Value_t envP = vp->schedCont;
+    Addr_t codeP = ValueToAddr(ValueToCont(envP)->cp);
+    RunManticore (vp, codeP, M_NIL, envP);
 
 #ifndef NDEBUG
     if (DebugFlg)
@@ -541,6 +488,16 @@ static int GetNumCPUs ()
 
 } /* end of GetNumCPUs */
 
+
+int GetNumVProcs ()
+{
+  return NumVProcs;
+}
+
+/* dead code */
+#define DEAD_CODE 0
+#ifdef DEAD_CODE
+
 /* Dequeue2:
  *
  * Dequeue an item from a VProc's secondary queue.  Return M_NIL if it is empty.
@@ -584,7 +541,122 @@ static Value_t Dequeue2 (VProc_t *self)
 
 } /* end of Dequeue2 */
 
-int GetNumVProcs ()
+/*! \brief enqueue a (fiber, thread ID) pair on another vproc's ready queue
+ *  \param self the calling vproc
+ *  \param vp the vproc to enqueue the thread on.
+ *  \param tid the thread ID of the thread being enqueued
+ *  \param fiber the fiber to be enqueued.
+ */
+void EnqueueOnVProc (VProc_t *self, VProc_t *vp, Value_t tid, Value_t fiber)
 {
-  return NumVProcs;
+#ifndef NDEBUG
+    if (DebugFlg)
+	SayDebug("[%2d] EnqueueOnVProc(-, %d, %p, %p)\n", self->id, vp->id, tid, fiber);
+#endif
+
+    Value_t entryQOld = vp->entryQ;
+    Value_t entryQNew = GlobalAllocUniform(self, 3, tid, fiber, entryQOld);
+    Value_t entryQ = (Value_t)&(vp->entryQ);
+    do {
+	entryQOld = vp->entryQ;
+	ValueToRdyQItem(entryQNew)->link = entryQOld;      
+    } while (CompareAndSwapValue (ValueToPtr(entryQ), entryQOld, entryQNew) != entryQOld);
+
+    /* The vproc was idle before enqueuing, so wake it up */
+    if (entryQOld == M_NIL)
+      WakeVProc(vp);
+
+} /* end of EnqueueOnVProc */
+
+/*! \brief Push the elements from the VProc entry queue onto the tail of the
+ *      VProc local queue.
+ *  \param self the calling vproc
+ *  \param entries the list of items from the vproc's entry queue.
+ *
+ *  rdyQTl  -> r3 -> r2 -> r1 -> NIL
+ *  entries -> e3 -> e2 -> e1 -> NIL
+ *                                =====>
+ *  rdyQTl  -> e1 -> e2 -> e3 -> r3 -> r2 -> r1 -> NIL
+ *
+ */
+void VProcPushEntries (VProc_t *self, Value_t entries)
+{
+    Value_t q = self->rdyQTl;
+    RdyQItem_t *p = ValueToRdyQItem(entries);
+
+    while (p != ValueToRdyQItem(M_NIL)) {
+	q = RdyQItem (self, p->tid, p->fiber, q);
+	p = ValueToRdyQItem(p->link);
+    }
+
+    self->rdyQTl = q;
+
 }
+
+/*! \brief Get the list of entry-queue elements and set the queue empty.
+ *  \param vp the calling vproc
+ *  \return the list of entry-queue elements
+ */
+Value_t VProcGetEntryQ (VProc_t *vp)
+{
+    Value_t item;
+
+  /* attempt to atomically remove the list of entries while setting the
+   * queue to NIL.  Note that other VProcs may be attempting to add items
+   * at the same time!
+   */
+    do {
+	item = vp->entryQ;
+    } while (CompareAndSwapValue (&(vp->entryQ), item, M_NIL) != item);
+
+    return item;
+}
+
+/*! \brief put an idle vproc to sleep.
+ *  \param vp the vproc that is being put to sleep.
+ */
+void VProcSleep (VProc_t *vp)
+{
+    assert (vp == VProcSelf());
+
+    LogEvent0 (vp, VProcSleepEvt);
+
+#ifndef NDEBUG
+    if (DebugFlg)
+	SayDebug("[%2d] VProcSleep called\n", vp->id);
+#endif
+
+    if (FetchAndInc(&NumIdleVProcs) == NumVProcs-1) {
+      /* all VProcs are idle, so shutdown */
+#ifndef NDEBUG
+	if (DebugFlg)
+	    SayDebug("[%2d] shuting down\n", vp->id);
+#endif
+	exit (0);
+    }
+    else {
+        Value_t item;
+
+        vp->idle = true;
+	MutexLock (&(vp->lock));
+	    while (vp->entryQ == M_NIL) {
+		CondWait (&(vp->wait), &(vp->lock));
+	    }
+
+	  /* get the first fiber on the entry queue */
+	    item = VProcGetEntryQ (vp);
+	    assert (item != M_NIL);
+	  /* copy the rest of the entry queue to the local queue */
+	    VProcPushEntries (vp, ValueToRdyQItem(item)->link);
+#ifndef NDEBUG
+        if (DebugFlg)
+            SayDebug("[%2d] VProcSleep: waking up; cont = %p\n", vp->id, ValueToRdyQItem(item)->fiber);
+#endif
+	MutexUnlock (&(vp->lock));
+	FetchAndDec(&NumIdleVProcs);
+	vp->stdCont = ValueToRdyQItem(item)->fiber;
+	vp->currentFG = ValueToRdyQItem(item)->tid;
+    }
+
+}
+#endif

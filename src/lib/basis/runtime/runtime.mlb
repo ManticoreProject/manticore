@@ -20,7 +20,7 @@
 (* fiber-local storage *)
   fls/fiber-local-storage.mlb
 
-(* scheduling operations*)
+(* scheduling operations *)
   scheduling/scheduling.mlb
 
 (* process-management utilities *)

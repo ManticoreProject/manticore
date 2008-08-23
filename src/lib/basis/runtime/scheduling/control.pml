@@ -14,17 +14,57 @@ structure Control =
 
     _primcode (
 
-    (* forward a signal to the vproc *)
-      define @forward (sg : PT.signal / exh : PT.exh) noreturn =
-        let vp : vproc = host_vproc
+    (* pop from the host vproc's scheduler action stack *)
+      define @pop-act (/ exh : PT.exh) : PT.sigact =
+	let vp : vproc = host_vproc
 	do vpstore(ATOMIC, vp, TRUE)
 	let tos : [PT.sigact, any] = vpload(VP_ACTION_STK, vp)
-        do assert(NotEqual(tos, NIL))
+	do assert(NotEqual(tos, NIL))
 	let rest : any = #1(tos)
 	do vpstore(VP_ACTION_STK, vp, rest)
 	let act : PT.sigact = #0(tos)
-        do assert (Equal(vp, host_vproc))
+	do assert (Equal(vp, host_vproc))
+	return(act)
+      ;
+
+    (* push a scheduler action on a remote vproc's stack *)
+      define @push-remote-act (vp : vproc, act : PT.sigact / exh : PT.exh) : () =
+	do assert(NotEqual(act, NIL))
+	let stk : [PT.sigact, any] = vpload (VP_ACTION_STK, vp)
+	let item : [PT.sigact, any] = alloc (act, (any)stk)
+	let item : [PT.sigact, any] = promote (item)
+	do vpstore (VP_ACTION_STK, vp, item)
+        return()
+      ;
+
+    (* push a scheduler action on the host vproc's stack *)
+      define @push-act (act : PT.sigact / exh : PT.exh) : () =
+        let vp : vproc = host_vproc
+	do vpstore (ATOMIC, vp, TRUE)
+	do assert(NotEqual(act, NIL))
+	let stk : [PT.sigact, any] = vpload (VP_ACTION_STK, vp)
+	let item : [PT.sigact, any] = alloc (act, (any)stk)
+	do vpstore (VP_ACTION_STK, vp, item)
+	do vpstore (ATOMIC, vp, FALSE)
+        return()
+      ;
+
+    (* run the fiber under the scheduler action *)
+      define @run (act : PT.sigact, fiber : PT.fiber / exh : PT.exh) noreturn =
+        do @push-act(act / exh)
+	throw fiber (UNIT)
+      ;
+
+    (* forward a signal to the vproc *)
+      define @forward-no-check (sg : PT.signal / exh : PT.exh) noreturn =
+        let act : PT.sigact = @pop-act(/ exh)
 	throw act(sg)
+      ;
+
+    (* forward a signal to the vproc *)
+      define @forward (sg : PT.signal / exh : PT.exh) noreturn =
+        do VProcQueue.@check-incoming(/ exh)
+        @forward-no-check(sg / exh)
       ;
 
     (* stop the current fiber *)
@@ -48,18 +88,6 @@ structure Control =
         do @forward(PT.PREEMPT(k) / exh)
         do assert(FALSE) (* control should never reach this point *)
         return(UNIT)
-      ;
-
-    (* run the fiber under the scheduler action *)
-      define @run (act : PT.sigact, fiber : PT.fiber / exh : PT.exh) noreturn =
-        let vp : vproc = host_vproc
-	do vpstore (ATOMIC, vp, TRUE)
-        do assert(NotEqual(act, NIL))
-	let stk : [PT.sigact, any] = vpload (VP_ACTION_STK, vp)
-	let item : [PT.sigact, any] = alloc (act, (any)stk)
-	do vpstore (VP_ACTION_STK, vp, item)
-	do vpstore (ATOMIC, vp, FALSE)
-	throw fiber (UNIT)
       ;
 
     (* run the thread under the scheduler action *)

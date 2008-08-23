@@ -29,7 +29,7 @@ functor Alloc64Fn (
 
     fun wordLit i = T.LI (T.I.fromInt (MTy.wordTy, i))
 
-  (* return the offset and type of the i'th element of a list of fields *)
+  (* return the byte offset and type of the i'th element of a list of fields *)
     fun tupleOffset {tys, i} = let
 	  fun offset (ty :: tys, j, sz) =
 		if (j >= i) then sz
@@ -46,6 +46,7 @@ functor Alloc64Fn (
 	  val offset = (case mty
             of ( CFG.T_Tuple (_, tys) |
 		 CFG.T_OpenTuple tys  ) => tupleOffset {tys=tys, i=i}
+	     | CFG.T_VProc => i
 	     | _ => raise Fail ("cannot offset from type "^CFGTyUtil.toString mty))
 	  in
 	    T.ADD (MTy.wordTy, base, wordLit offset)

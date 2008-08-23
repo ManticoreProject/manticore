@@ -7,6 +7,7 @@
 #define STOP	enum(0):PrimTypes.signal
 #define NIL	enum(0):List.list
 #define NONE	enum(0):Option.option
+#define M_NIL   enum(0):any
 
 #define HASH_SYM	#
 #define SELECT(i,x)	HASH_SYM i(x)

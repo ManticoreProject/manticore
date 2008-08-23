@@ -12,8 +12,9 @@
 
   ann "cpp" "../runtime-offsets.def,../../include/prim.def,../../include/debug.def,../../include/assert.def"
   in
-    control.pml
+    barrier.pml
     vproc-queue.pml
+    control.pml
     scheduler-utils.pml
 (*    cancelation.pml*)
   end

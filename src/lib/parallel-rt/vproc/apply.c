@@ -81,10 +81,6 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 		MinorGC (vp, roots);
 	    }
 
-           /* Unload the vproc's entry queue */
-	    if (vp->sigPending == M_TRUE)
-	        VProcPushEntries (vp, VProcGetEntryQ (vp));
-
 	  /* check for pending signals */
 	    if ((vp->sigPending == M_TRUE) && (vp->atomic == M_FALSE)) {
 		Value_t resumeK = AllocUniform(vp, 3,
@@ -118,13 +114,15 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 	  case REQ_UncaughtExn:	/* raising an exception */
 	    Die ("uncaught exception\n");
 	  case REQ_Sleep:	/* make the VProc idle */
-	    VProcSleep(vp);
+	    VProcWaitForSignal(vp);
 	    envP = vp->stdCont;
 	    codeP = ValueToAddr(ValueToCont(envP)->cp);
 	    arg = M_UNIT;
 	    retCont = M_UNIT;
 	    exnCont = M_UNIT;
 	    break;
+	default:
+	  Die("unknown signal %d\n", req);
 	}
     }
 

@@ -198,6 +198,7 @@ structure BOMTyUtil : sig
 
   (* select i'th type component from a tuple *)
     fun select (BTy.T_Tuple(_, tys), i) = List.nth(tys, i)
+      | select (BTy.T_VProc, _) = BTy.T_Any
       | select (ty, _) = raise Fail("expected tuple type, but found " ^ toString ty)
 
   (* return the type of a data constructor *)
