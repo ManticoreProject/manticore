@@ -104,26 +104,6 @@ structure Future1 : FUTURE = struct
 	return(switch)                
       ;
 
-    (* initialize the gang scheduler if necessary (we do this job just once); return the ready queue for
-     * the scheduler
-     *)
-      define @init-gang-sched (c : SetOnceMem.set_once_mem / exh : PT.exh) : LockedQueue.queue =
-        let fls : FLS.fls = FLS.@get( / exh)
-        fun init (x : PT.unit / exh : PT.exh) : any =
-          (* create the ready queue *)
-            let readyQ : LockedQueue.queue = LockedQueue.@new(/exh)
-          (* initialize the scheduler on all vprocs *)
-            let vps : List.list = ccall ListVProcs(host_vproc)
-            fun initOnVProc (self : vproc / exh : PT.exh) : PT.sigact =
-                  @gang-sched(readyQ, self / exh)
-            do SchedulerUtils.@scheduler-startup(initOnVProc, fls, vps / exh)
-            let readyQ : any = (any)readyQ
-            return(readyQ)
-        let readyQ : any = SetOnceMem.@set(c, init / exh)
-        let readyQ : LockedQueue.queue = (LockedQueue.queue)readyQ
-        return(readyQ)
-      ;
-
     (* get a handle on the ready queue *)
       define @get-ready-queue ( / exh : PT.exh) : LockedQueue.queue =
         let fls : FLS.fls = FLS.@get( / exh)
@@ -131,18 +111,33 @@ structure Future1 : FUTURE = struct
         case futureSched
 	 of NONE => 
           (* this thread does not support futures *)
+(* FIXME: throw an exception here *)
 	    do assert(FALSE)
             return($0)
 	  | Option.SOME (c : SetOnceMem.set_once_mem) =>
-          (* initialize the scheduler *)
-            let readyQ : LockedQueue.queue = @init-gang-sched(c / exh)
-            return(readyQ)
+	    let readyQ : any = SetOnceMem.@get(c / exh)
+	    return((LockedQueue.queue)readyQ)
         end                                            
+      ;
+
+    (* initialize the gang scheduler on each vproc *)
+      define @init-gang-sched ( / exh : PT.exh) : LockedQueue.queue =
+	  let fls : FLS.fls = FLS.@get( / exh)
+	(* create the ready queue *)
+	  let readyQ : LockedQueue.queue = LockedQueue.@new(/exh)
+	  let vps : List.list = ccall ListVProcs(host_vproc)
+	  fun mkAct (self : vproc / exh : PT.exh) : PT.sigact =
+		@gang-sched(readyQ, self / exh)
+	  do SchedulerUtils.@scheduler-startup(mkAct, fls, vps / exh)
+	  return(readyQ)
       ;
 
     (* initial value for the thread capability *)
       define @capability-init (/ exh : PT.exh) : ThreadCapabilities.capability =
-	let c : SetOnceMem.set_once_mem = SetOnceMem.@new(UNIT / exh)
+        fun init (x : PT.unit / exh : PT.exh) : any =
+            let readyQ : LockedQueue.queue = @init-gang-sched( / exh)
+	    return((any)readyQ)
+        let c : SetOnceMem.set_once_mem = SetOnceMem.@new(init / exh)
         let cap : ThreadCapabilities.capability = ThreadCapabilities.@new(tag(future1GangSched), c / exh)
 	return(cap)
       ;

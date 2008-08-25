@@ -113,12 +113,12 @@ structure VProcQueue =
 	return(Equal(SELECT(FLS_OFF, queue), MESSENGER_FLS))
       ;
 
-    (* process the threads from the landing pad. this function performs two jobs:
+    (* this function performs two jobs:
      *  1. put ordinary threads on the local queue
-     *  2. returns messenger threads
+     *  2. returns any messenger threads
      *)
-      define @process-landing-pad (queue : queue / exh : PT.exh) : queue =
-	fun lp (queue : queue, messengerThds : queue / exh : PT.exh) : queue =
+      define @process-landing-pad (queue : queue / exh : PT.exh) : List.list =
+	fun lp (queue : queue, messengerThds : List.list / exh : PT.exh) : List.list =
 	    if Equal(queue, Q_EMPTY)
 	       then return(messengerThds)
 	    else 
@@ -126,20 +126,19 @@ structure VProcQueue =
 		if isMessenger
 		   then 
 		  (* the head of the queue is a messenger thread *)
-		    let messenger : queue = alloc(SELECT(FLS_OFF, queue), SELECT(FIBER_OFF, queue), messengerThds)
+		    let messenger : List.list = List.CONS(SELECT(FIBER_OFF, queue), messengerThds)
 		    apply lp((queue)SELECT(LINK_OFF, queue), messenger / exh)
 		else
 		  (* the head of the queue is an ordinary thread; put it on the local queue *)
 		    do @enqueue (SELECT(FLS_OFF, queue), SELECT(FIBER_OFF, queue) / exh)
 		    apply lp((queue)SELECT(LINK_OFF, queue), messengerThds / exh)
-	apply lp(queue, Q_EMPTY / exh)
+	apply lp(queue, NIL / exh)
       ;
 
-    (* check for incoming threads *)
-      define @check-incoming (/ exh : PT.exh) : () =
+    (* unload the landing pad, and return any messages *)
+      define @unload-and-check-messages (/ exh : PT.exh) : List.list =
 	let queue : queue = @unload-landing-pad ( / exh)
-	let messengerThds : queue = @process-landing-pad(queue / exh)
-	return()
+	@process-landing-pad(queue / exh)
       ;
 
       extern void WakeVProc(void *);

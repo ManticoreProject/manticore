@@ -55,15 +55,38 @@ structure Control =
 	throw fiber (UNIT)
       ;
 
-    (* forward a signal to the vproc *)
+    (* run a collection of fibers to completion and then return *)
+      define @run-fibers (ks : List.list / exh : PT.exh) : () =
+	cont lp (ks : List.list) = 
+	  case ks
+	   of NIL => return()
+	    | List.CONS (k : PT.fiber, ks : List.list) =>
+	       cont handler (sign : PT.signal) =
+		 case sign
+		  of STOP =>
+		   (* handle the next messenger *)
+		     throw lp(ks)
+		   | PT.PREEMPT(k : PT.fiber) =>
+		   (* ignore preemptions *)
+		     @run(handler, k / exh)
+		 end
+	      @run(handler, k / exh)	
+	  end
+	throw lp(ks)
+      ;
+
+    (* forward a signal to the host vproc  *)
       define @forward-no-check (sg : PT.signal / exh : PT.exh) noreturn =
         let act : PT.sigact = @pop-act(/ exh)
 	throw act(sg)
       ;
 
-    (* forward a signal to the vproc *)
+    (* unload the landing pad, handle any incoming messages, and then forward a signal to the vproc *)
       define @forward (sg : PT.signal / exh : PT.exh) noreturn =
-        do VProcQueue.@check-incoming(/ exh)
+        do vpstore(ATOMIC, host_vproc, TRUE)
+        let messages : List.list = VProcQueue.@unload-and-check-messages(/ exh)
+        do @run-fibers(messages / exh)
+        do vpstore(ATOMIC, host_vproc, TRUE)
         @forward-no-check(sg / exh)
       ;
 

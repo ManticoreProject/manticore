@@ -8,6 +8,8 @@ structure PrimTypes =
   struct
 
     _primcode (
+
+    (* exception handler *)
       typedef exh = cont(exn);
       typedef unit = enum(0);
       typedef bool = enum(1);
@@ -16,6 +18,7 @@ structure PrimTypes =
       typedef ml_string = [string_data, int];
       typedef ml_int = [int];
       typedef ml_long = [long];
+      typedef array = any;
 
     )
 

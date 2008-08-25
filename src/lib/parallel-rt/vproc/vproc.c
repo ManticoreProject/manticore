@@ -250,6 +250,7 @@ void VProcWaitForSignal (VProc_t *vp)
 	    while (vp->entryQ == M_NIL) {
 		CondWait (&(vp->wait), &(vp->lock));
 	    }
+	vp->idle = false;
 
 #ifndef NDEBUG
         if (DebugFlg)
@@ -333,7 +334,6 @@ void WakeVProc (VProc_t *vp)
         if (DebugFlg)
 	  SayDebug("[%2d] WakeVProc: waking up vp %d\n", VProcSelf()->id, vp->id);
 #endif
-  vp->idle = false;
   CondSignal (&(vp->wait));
 }
 
@@ -345,38 +345,6 @@ Value_t SleepCont (VProc_t *self)
 {
     return AllocUniform(self, 1, PtrToValue(&ASM_VProcSleep));
 }
-
-/*! \brief dequeue a fiber from the secondary scheduling queue or else go idle.
- *  \param self the calling vproc
- *  \return an option that might contain a fiber that will put the vproc to sleep
- */
-Value_t VProcDequeue (VProc_t *self)
-{
-    Value_t	item;
-
-    assert (self->atomic);
-
-    LogEvent0 (self, VProcDequeueEvt);
-
-#ifndef NDEBUG
-    if (DebugFlg)
-	SayDebug("[%2d] VProcDequeue called\n", self->id);
-#endif
-
-    VProcPushEntries (self, VProcGetEntryQ (self));
-
-    if (self->rdyQTl == M_NIL) {
-      /* the local queue is empty, so return an item that will put us to sleep */
-	Value_t cont = AllocUniform(self, 1, PtrToValue(&ASM_VProcSleep));
-	Value_t fgs = AllocUniform(self, 5, M_FALSE, M_FALSE, M_TRUE, M_NIL, M_NIL);
-	item = Some(self, AllocUniform(self, 3, fgs, cont, M_NIL));
-    } else {
-        item = M_NONE;
-    }
-
-    return item;
-
-} /* end of VProcDequeue */
 
 /* IdleVProc:
  */
@@ -494,169 +462,3 @@ int GetNumVProcs ()
   return NumVProcs;
 }
 
-/* dead code */
-#define DEAD_CODE 0
-#ifdef DEAD_CODE
-
-/* Dequeue2:
- *
- * Dequeue an item from a VProc's secondary queue.  Return M_NIL if it is empty.
- * WARNING: this is dead code until we implement 2-level thread queues
- * WARNING: this code should only be called when the vproc's lock is held!
- */
-static Value_t Dequeue2 (VProc_t *self)
-{
- 
-    assert (false);  /* currently, this code path is not being used */
-
-  /* dequeue an item */
-    if (self->secondaryQHd != M_NIL) {
-	Value_t item = self->secondaryQHd;
-	Value_t link = ValueToRdyQItem(item)->link;
-	self->secondaryQHd = link;
-	return item;
-    }
-    else if (self->secondaryQTl != M_NIL) {
-      /* need to reverse the list; but since the list is in the global heap,
-       * it is safe to destructively update it.
-       */
-	RdyQItem_t *p = ValueToRdyQItem(self->secondaryQTl);
-	self->secondaryQTl = M_NIL;
-	RdyQItem_t *q = ValueToRdyQItem(M_NIL);
-	while (p != ValueToRdyQItem(M_NIL)) {
-	    RdyQItem_t *next = ValueToRdyQItem(p->link);
-	    p->link = PtrToValue(q);
-	    q = p;
-	    p = next;
-	}
-	self->secondaryQHd = q->link;
-#ifndef NDEBUG
-        if (DebugFlg)
-            SayDebug("[%2d] Dequeue2: result = %p, hd = %p\n", self->id, q, q->link);
-#endif
-	return PtrToValue(q);
-    }
-    else
-	return M_NIL;
-
-} /* end of Dequeue2 */
-
-/*! \brief enqueue a (fiber, thread ID) pair on another vproc's ready queue
- *  \param self the calling vproc
- *  \param vp the vproc to enqueue the thread on.
- *  \param tid the thread ID of the thread being enqueued
- *  \param fiber the fiber to be enqueued.
- */
-void EnqueueOnVProc (VProc_t *self, VProc_t *vp, Value_t tid, Value_t fiber)
-{
-#ifndef NDEBUG
-    if (DebugFlg)
-	SayDebug("[%2d] EnqueueOnVProc(-, %d, %p, %p)\n", self->id, vp->id, tid, fiber);
-#endif
-
-    Value_t entryQOld = vp->entryQ;
-    Value_t entryQNew = GlobalAllocUniform(self, 3, tid, fiber, entryQOld);
-    Value_t entryQ = (Value_t)&(vp->entryQ);
-    do {
-	entryQOld = vp->entryQ;
-	ValueToRdyQItem(entryQNew)->link = entryQOld;      
-    } while (CompareAndSwapValue (ValueToPtr(entryQ), entryQOld, entryQNew) != entryQOld);
-
-    /* The vproc was idle before enqueuing, so wake it up */
-    if (entryQOld == M_NIL)
-      WakeVProc(vp);
-
-} /* end of EnqueueOnVProc */
-
-/*! \brief Push the elements from the VProc entry queue onto the tail of the
- *      VProc local queue.
- *  \param self the calling vproc
- *  \param entries the list of items from the vproc's entry queue.
- *
- *  rdyQTl  -> r3 -> r2 -> r1 -> NIL
- *  entries -> e3 -> e2 -> e1 -> NIL
- *                                =====>
- *  rdyQTl  -> e1 -> e2 -> e3 -> r3 -> r2 -> r1 -> NIL
- *
- */
-void VProcPushEntries (VProc_t *self, Value_t entries)
-{
-    Value_t q = self->rdyQTl;
-    RdyQItem_t *p = ValueToRdyQItem(entries);
-
-    while (p != ValueToRdyQItem(M_NIL)) {
-	q = RdyQItem (self, p->tid, p->fiber, q);
-	p = ValueToRdyQItem(p->link);
-    }
-
-    self->rdyQTl = q;
-
-}
-
-/*! \brief Get the list of entry-queue elements and set the queue empty.
- *  \param vp the calling vproc
- *  \return the list of entry-queue elements
- */
-Value_t VProcGetEntryQ (VProc_t *vp)
-{
-    Value_t item;
-
-  /* attempt to atomically remove the list of entries while setting the
-   * queue to NIL.  Note that other VProcs may be attempting to add items
-   * at the same time!
-   */
-    do {
-	item = vp->entryQ;
-    } while (CompareAndSwapValue (&(vp->entryQ), item, M_NIL) != item);
-
-    return item;
-}
-
-/*! \brief put an idle vproc to sleep.
- *  \param vp the vproc that is being put to sleep.
- */
-void VProcSleep (VProc_t *vp)
-{
-    assert (vp == VProcSelf());
-
-    LogEvent0 (vp, VProcSleepEvt);
-
-#ifndef NDEBUG
-    if (DebugFlg)
-	SayDebug("[%2d] VProcSleep called\n", vp->id);
-#endif
-
-    if (FetchAndInc(&NumIdleVProcs) == NumVProcs-1) {
-      /* all VProcs are idle, so shutdown */
-#ifndef NDEBUG
-	if (DebugFlg)
-	    SayDebug("[%2d] shuting down\n", vp->id);
-#endif
-	exit (0);
-    }
-    else {
-        Value_t item;
-
-        vp->idle = true;
-	MutexLock (&(vp->lock));
-	    while (vp->entryQ == M_NIL) {
-		CondWait (&(vp->wait), &(vp->lock));
-	    }
-
-	  /* get the first fiber on the entry queue */
-	    item = VProcGetEntryQ (vp);
-	    assert (item != M_NIL);
-	  /* copy the rest of the entry queue to the local queue */
-	    VProcPushEntries (vp, ValueToRdyQItem(item)->link);
-#ifndef NDEBUG
-        if (DebugFlg)
-            SayDebug("[%2d] VProcSleep: waking up; cont = %p\n", vp->id, ValueToRdyQItem(item)->fiber);
-#endif
-	MutexUnlock (&(vp->lock));
-	FetchAndDec(&NumIdleVProcs);
-	vp->stdCont = ValueToRdyQItem(item)->fiber;
-	vp->currentFG = ValueToRdyQItem(item)->tid;
-    }
-
-}
-#endif

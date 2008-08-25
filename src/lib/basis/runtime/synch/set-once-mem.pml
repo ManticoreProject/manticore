@@ -3,11 +3,15 @@
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Set-once synchronous memory.
+ * Set-once synchronous memory. Because this implementation spin waits, client code must
+ * guarantee that the thunk quickly evaluates to completion.
  *)
 
 #define EMPTY_CELL    $0
 #define LOCKED_CELL   $1
+
+#define STATE_OFF  0
+#define THUNK_OFF  1
 
 structure SetOnceMem =
   struct
@@ -16,40 +20,41 @@ structure SetOnceMem =
 
     _primcode(
 
+      typedef thunk = fun (PT.unit / PT.exh -> any);
+
       (* set-once memory cell; a cell follows the protocol below
        * 
        * -new-> EMPTY_CELL -set-> LOCKED_CELL -> INITIALIZED --\
        *                                                ^      |
        *                                                \-set-|
        *)
-      typedef set_once_mem = ![any];
+      typedef set_once_mem = ![any, thunk];
 
-    (* create a set-once memory cell *)
-      define @new(x : PT.unit / exh : PT.exh) : set_once_mem =
-	let c : set_once_mem = alloc(EMPTY_CELL)
+    (* take an initializer thunk, and create a set-once memory cell *)
+      define @new(init : thunk / exh : PT.exh) : set_once_mem =
+	let c : set_once_mem = alloc(EMPTY_CELL, init)
 	let c : set_once_mem = promote(c)
 	return(c)
       ;
 
-    (* take a set-once variable and an initializer function, and return the contents of the memory
-     * cell. the initializer function gets evaluated the first time only. 
-     *)
-      define @set (c : set_once_mem, init : fun(PT.unit / PT.exh -> any) / exh : PT.exh) : any =
+    (* obtain the value of the set-once cell; NOTE: this code spin waits .*)
+      define @get (c : set_once_mem / exh : PT.exh) : any =
 	fun getIt (/ exh : PT.exh) : any = 
-	    if Equal(#0(c), EMPTY_CELL)
+	    if Equal(SELECT(STATE_OFF, c), EMPTY_CELL)
 	       then (* see if we need to set the cell *)
-		    let oldValue : any = CAS(&0(c), EMPTY_CELL, LOCKED_CELL)
+		    let oldValue : any = CAS(&STATE_OFF(c), EMPTY_CELL, LOCKED_CELL)
 		    if Equal(oldValue, EMPTY_CELL)
 		       then (* it's our job to set the cell *)
+                            let init : thunk = SELECT(THUNK_OFF, c)
 			    let v : any = apply init(UNIT / exh)
 			    let v : any = promote(v)
-			    do #0(c) := v
+			    do UPDATE(STATE_OFF, c, v)
 			    return(v)
 		    else (* another fiber has set the cell; spin until the value is set *)
 			 apply getIt(/exh)
-	    else if Equal(#0(c), LOCKED_CELL)
+	    else if Equal(SELECT(STATE_OFF, c), LOCKED_CELL)
 		    then apply getIt(/exh)
-	    else return(#0(c))
+	    else return(SELECT(STATE_OFF, c))
 	apply getIt(/exh)
       ;
     )

@@ -204,7 +204,7 @@ structure Tests =
     fun fut1FibTest n = fib n = futFib n
     fun fut11 () = fut1FibTest 27
     val _ = if fut11()
-	    then ()
+	    then Print.printLn "fut1 success"
 	    else Print.printLn "fut1 fail"
 
 
@@ -252,5 +252,33 @@ structure Tests =
     )
     val cancelTest : unit -> unit = _prim(@cancel-test)
 (*    val _ = cancelTest()*)
+
+    structure VPM = VProcMessenger
+    _primcode (
+      define @messenger-test (x : PT.unit / exh : PT.exh) : PT.unit =
+	let vps : List.list = ccall ListVProcs(host_vproc)
+	let nth : fun([PT.ml_int, List.list] / PT.exh -> Option.option) = pmlvar List.nth
+	let vp2 : Option.option = apply nth(alloc(alloc(3), vps) / exh)
+	case vp2
+	 of NONE => return(UNIT)
+	  | Option.SOME (vp : vproc) =>
+	    fun f (x : PT.unit / exh : PT.exh) : any =
+		do print_ppt()
+		return((any)Option.SOME(alloc(5)))
+	    let ch : VPM.chan = VPM.@new(f / exh)
+	    do VPM.@send(ch, vp / exh)
+	    let opt : Option.option = VPM.@recv(ch / exh)
+	    do case opt
+		of NONE => 
+		   do print_msg("vproc is asleep")
+		   return()
+		 | SOME (x : PT.ml_int) => return()
+	    end
+	    return(UNIT)
+	end
+    ;
+    )
+    val messengerTest : unit -> unit = _prim(@messenger-test)
+    val _ = messengerTest()
 
   end

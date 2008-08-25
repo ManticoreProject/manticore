@@ -16,5 +16,6 @@
     vproc-queue.pml
     control.pml
     scheduler-utils.pml
+    vproc-messenger.pml
 (*    cancelation.pml*)
   end

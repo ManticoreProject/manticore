@@ -88,8 +88,6 @@ extern void VProcInit (Options_t *opts);
 extern VProc_t *VProcCreate (VProcFn_t f, void *arg);
 extern VProc_t *VProcSelf ();
 extern void VProcSignal (VProc_t *vp, VPSignal_t sig);
-extern void VProcSleep (VProc_t *vp);
-extern void VProcPushEntries (VProc_t *self, Value_t entries);
-extern Value_t VProcGetEntryQ (VProc_t *vp);
+extern void VProcWaitForSignal (VProc_t *vp);
 
 #endif /* !_VPROC_H_ */

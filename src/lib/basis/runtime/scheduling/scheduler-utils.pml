@@ -21,6 +21,11 @@ structure SchedulerUtils =
 
     _primcode (
 
+      define @is-vp-idle (vp : vproc / exh : PT.exh) : PT.bool =
+	let isIdle : PT.bool = vpload(VP_IDLE, vp)
+	return(isIdle)
+      ;
+
       extern void *SleepCont (void *) __attribute__((alloc));
 
     (* put the vproc to sleep *)
