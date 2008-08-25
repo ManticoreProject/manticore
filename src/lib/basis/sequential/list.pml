@@ -61,4 +61,13 @@ structure List =
 	    foldl f 0
 	  end
 
+    fun nth (i, ls) = (
+	  case ls
+	   of NIL => Option.NONE
+	    | CONS(x, xs) =>
+	      if (i = 0)
+		 then Option.SOME x
+	      else nth(i-1, xs)
+          (* end case *))
+
   end

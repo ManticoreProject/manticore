@@ -1,12 +1,15 @@
 ../misc/prim-types.pml
+../misc/debug.pml
+../misc/assert.pml
 option.pml
 list.pml
 string.pml
 int.pml
 long.pml
-ann "cpp" "../include/prim.def"
+ann "cpp" "../include/prim.def,../include/assert.def"
 in
   print.pml
   rand.pml
+  array.pml
 end
 time.pml
