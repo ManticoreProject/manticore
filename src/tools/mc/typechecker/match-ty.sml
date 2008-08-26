@@ -43,10 +43,12 @@ structure MatchTy : sig
 (* FIXME: add a control to enable this flag *)
     val debugMatch = ref false
 
-    fun getRealizationTy (ty as Ty.ConTy(tys, tyc)) = (case ModuleEnv.getRealizationOfTyc tyc
-          of NONE => ty
-	   | SOME (ModuleEnv.TyDef (Ty.TyScheme(_, ty))) => ty
-	   | SOME (ModuleEnv.TyCon tyc) => Ty.ConTy(tys, tyc)
+    fun getRealizationTy (ty as Ty.ConTy(tys, tyc)) = (
+	  case ModuleEnv.getRealizationOfTyc tyc
+           of NONE => ty
+	    | SOME (ModuleEnv.TyDef (Ty.TyScheme(_, ty))) => ty
+	    | SOME (ModuleEnv.TyCon tyc) => Ty.ConTy(tys, tyc)
+	    | SOME (ModuleEnv.BOMTyDef bty) => ty
           (* end case *))
       | getRealizationTy ty = ty
 
