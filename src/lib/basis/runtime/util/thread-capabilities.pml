@@ -23,6 +23,14 @@ structure ThreadCapabilities =
 	return(fls)
       ;
 
+      define @init (tg : FLS.fls_tag, init : fun(PT.unit / exh : PT.exh -> any) / exh : PT.exh) : 
+                                     capability =
+	let c : SetOnceMem.set_once_mem = SetOnceMem.@new(init / exh)
+	let cap : capability = @new(tg, c / exh)
+	return(cap)
+      ;
+
+
     )
 
   end

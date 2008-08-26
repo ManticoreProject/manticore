@@ -54,7 +54,7 @@ structure Future1 : FUTURE = struct
       ;
 
     (* steal a future, evaluate it, and store the result *)
-      define @steal (readyQ : LQ.queue, fut : future / exh : PT.exh) : () =
+      define @steal (fut : future / exh : PT.exh) : () =
 	let tmp : any = CAS (&STATE_OFF(fut), EMPTY_F, STOLEN_F)
 	if Equal (tmp, EMPTY_F) 
 	   then let result : any = @eval(fut / exh)
@@ -64,13 +64,14 @@ structure Future1 : FUTURE = struct
 		   else (* unblock the future *)
 			do UPDATE(STATE_OFF, fut, result)
 			let k : PT.fiber = (PT.fiber) tmpX
-			LQ.@enqueue (readyQ, k / exh)
+                        let _ : PT.unit = Control.@unblock(k, NONE / exh)
+                        return()
 	    else (* future cell is already full *)
 		 return ()
       ;
 
     (* takes a ready queue and the host vproc and returns an instance of the scheduler. the ready queue
-     * contains _fibers_ that, when invoked, evaluate futures. we choose this representation to support
+     * contains _fibers_ that, when invoked, evaluate futures. we chose this representation to support
      * our unified cancelation mechanism.
      *)
       define @gang-sched (readyQ : LockedQueue.queue, self : vproc / exh : PT.exh) : PT.sigact =
@@ -84,7 +85,7 @@ structure Future1 : FUTURE = struct
 	       of NONE =>
 		(* nothing on the queue; so, we yield *)
 		  let _ : PT.unit = Control.@atomic-yield(/exh)
-		  throw switch(STOP)
+		  throw dispatch()
 		| SOME(k : PT.fiber) =>
 		(* got a future; so, we run it now *)
 		  do Control.@run(switch, k / exh)
@@ -100,6 +101,18 @@ structure Future1 : FUTURE = struct
 	      do LockedQueue.@enqueue(readyQ, k / exh)
 	      let _ : PT.unit = Control.@atomic-yield(/exh)
 	      throw dispatch()
+	    | PT.UNBLOCK (retK : PT.fiber, k : PT.fiber, x : Option.option) =>
+	      let k : PT.fiber = 
+		      case x
+		       of NONE => 
+			  return(k)
+			| Option.SOME(c : Cancelation.cancelable) =>
+			  let k : PT.fiber = Cancelation.@wrap(c, k / exh)
+                          return(k)
+	              end
+	      do LockedQueue.@enqueue(readyQ, k / exh)
+              do Control.@run(switch, retK / exh)
+              throw dispatch()
 	  end
 	return(switch)                
       ;
@@ -125,21 +138,11 @@ structure Future1 : FUTURE = struct
 	  let fls : FLS.fls = FLS.@get( / exh)
 	(* create the ready queue *)
 	  let readyQ : LockedQueue.queue = LockedQueue.@new(/exh)
-	  let vps : List.list = ccall ListVProcs(host_vproc)
+	  let vps : List.list = SchedulerUtils.@all-vprocs(/ exh)
 	  fun mkAct (self : vproc / exh : PT.exh) : PT.sigact =
 		@gang-sched(readyQ, self / exh)
 	  do SchedulerUtils.@scheduler-startup(mkAct, fls, vps / exh)
 	  return(readyQ)
-      ;
-
-    (* initial value for the thread capability *)
-      define @capability-init (/ exh : PT.exh) : ThreadCapabilities.capability =
-        fun init (x : PT.unit / exh : PT.exh) : any =
-            let readyQ : LockedQueue.queue = @init-gang-sched( / exh)
-	    return((any)readyQ)
-        let c : SetOnceMem.set_once_mem = SetOnceMem.@new(init / exh)
-        let cap : ThreadCapabilities.capability = ThreadCapabilities.@new(tag(future1GangSched), c / exh)
-	return(cap)
       ;
 
       define @touch (fut : future / exh : PT.exh) : any =
@@ -170,9 +173,9 @@ structure Future1 : FUTURE = struct
       ;
 
     (* takes a future and the ready queue and returns a fiber that, when invoked, makes the future manifest *)
-      define @future-to-fiber (readyQ : LockedQueue.queue, fut : future / exh : PT.exh) : PT.fiber =
+      define @future-to-fiber (fut : future / exh : PT.exh) : PT.fiber =
 	fun f (x : PT.unit / exh : PT.exh) : PT.unit =
-	    do @steal(readyQ, fut / exh)
+	    do @steal(fut / exh)
 	    return(UNIT)
 	let k : PT.fiber = Control.@fiber(f / exh)
 	return(k)
@@ -181,11 +184,11 @@ structure Future1 : FUTURE = struct
     (* spawn a future *)
       define @future (thunk : thunk / exh : PT.exh) : future =
         let readyQ : LockedQueue.queue = @get-ready-queue(/ exh)
-        let c : C.cancelable = C.@new(UNIT / exh)
+        let c : C.cancelable = C.@new(tag(future1Cancelable) / exh)
         let fls : FLS.fls = FLS.@get(/ exh)
         let fut : future = alloc(EMPTY_F, thunk, c, fls)
         let fut : future = promote(fut)
-        let stealableK : PT.fiber = @future-to-fiber(readyQ, fut / exh)
+        let stealableK : PT.fiber = @future-to-fiber(fut / exh)
         do LockedQueue.@enqueue(readyQ, stealableK / exh)
         return(fut)
       ;

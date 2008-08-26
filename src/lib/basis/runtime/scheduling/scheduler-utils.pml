@@ -26,6 +26,18 @@ structure SchedulerUtils =
 	return(isIdle)
       ;
 
+      define @vproc-id (vp : vproc / exh : PT.exh) : int =
+	let id : int = vpload(VPROC_ID, vp)
+	return(id)
+      ;
+
+      extern int GetNumVProcs ();
+
+      define @num-vprocs (/ exh : PT.exh) : int =
+	let n : int = ccall GetNumVProcs()
+	return(n)
+      ;
+
       extern void *SleepCont (void *) __attribute__((alloc));
 
     (* put the vproc to sleep *)
@@ -40,6 +52,11 @@ structure SchedulerUtils =
       ;
 
       extern void *ListVProcs (void *) __attribute__((alloc));
+
+      define @all-vprocs (/ exh : PT.exh) : List.list =
+	let vps : List.list = ccall ListVProcs(host_vproc)
+        return(vps)
+      ;
 
     (* apply f to each vproc *)
       define @for-each-vproc(f : fun(vproc / PT.exh ->) / exh : PT.exh) : () =
@@ -170,11 +187,16 @@ structure SchedulerUtils =
             end
 
 	  case s
-	    of STOP => throw dispatch ()
+	    of STOP => 
+	         throw dispatch ()
 	     | PT.PREEMPT (k : PT.fiber) =>
 		 let fls : FLS.fls = FLS.@get ( / exh)
 		 do VProcQueue.@enqueue (fls, k / exh)
 		 throw dispatch () 
+	     | PT.UNBLOCK (retK : PT.fiber, k : PT.fiber, fls : FLS.fls) =>
+	         do VProcQueue.@enqueue (fls, k / exh)
+		 do Control.@run(switch, retK / exh)
+		 return(UNIT)
 	  end
 
 	fun mkSwitch (_ : vproc / exh : PT.exh) : PT.sigact = return (switch)

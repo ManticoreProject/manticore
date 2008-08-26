@@ -17,6 +17,7 @@ structure Tests =
     fun t () = false
     fun failDeadlock () = UnitTesting.validate "deadlock" t
     fun failAns () = UnitTesting.validate "answer" t
+
 (*
   (* check for deadlock *)
     _primcode(
@@ -41,22 +42,21 @@ structure Tests =
         do ThreadOps.@rand-sleep(wait, noDeadlock / exh)
        (* report deadlock *)
         let failDeadlock : fun(PT.unit / PT.exh -> PT.unit) = pmlvar failDeadlock
-        do if Equal(noDeadlock, TRUE)
-	      then return()
-	   else let _ : PT.unit = apply failDeadlock(UNIT / exh)
-                return () 
-       (* report incorrect answer *)
-(* FIXME: enabling this code results in an error in the "uncurry" optimization. *)
-(*        let failAns : fun(PT.unit / PT.exh -> PT.unit) = pmlvar failAns
-        do if Equal(ans, TRUE)
-	      then return()
-	   else let _ : PT.unit = apply failAns(UNIT / exh)
-                return()
-*)
-        return()
+        let failAns : fun(PT.unit / PT.exh -> PT.unit) = pmlvar failAns
+        if #0(noDeadlock)
+	   then if #0(ans)
+		   then return()
+		else 
+		    (* report incorrect answer *)
+(*		    let _ : PT.unit = apply failAns(UNIT / exh)*)
+		    do print_msg("failed answer")
+                    return()
+	else
+	    (* report deadlock *)
+	    let _ : PT.unit = apply failDeadlock(UNIT / exh)
+            return () 
       ;
     )
-
 *)
 
   (* control *)
@@ -69,6 +69,11 @@ structure Tests =
 	    | PT.PREEMPT (k : PT.fiber) => 
 	      do ccall M_Print("Seems to have worked\n")
 	      do Control.@forward(STOP / exh)
+	      return(UNIT)
+	    | PT.UNBLOCK (retK : PT.fiber, k : PT.fiber, x : any) =>
+	      (* shouldn't happen *)
+	      do assert(FALSE)
+	      do Control.@run(act, retK / exh)
 	      return(UNIT)
 	  end
 	cont k (x : PT.unit) = do Control.@forward(PT.PREEMPT(k) / exh)

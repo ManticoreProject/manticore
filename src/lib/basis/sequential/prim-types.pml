@@ -24,8 +24,15 @@ structure PrimTypes =
 
     type fiber = _prim ( cont(unit) )
 
-    datatype signal = STOP | PREEMPT of fiber
+  (* signals for schedulers *)
+    datatype 'a signal 
+      = STOP                            (* terminate *)
+      | PREEMPT of fiber                (* preempt the given fiber *)
+      | UNBLOCK of (fiber *             (* return continuation for the fiber doing the unblocking *)
+	            fiber *             (* fiber to unblock *)
+		    'a)                 (* data associated with the unblocking fiber *)
 
+  (* scheduler actions are continuations that consume a signal and perform a context switch *)
     type sigact = _prim ( cont(signal) )
 
   end

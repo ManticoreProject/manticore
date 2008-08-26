@@ -1,4 +1,3 @@
-prim-types.pml
 debug.pml
 assert.pml
 ann "cpp" "prim.def"

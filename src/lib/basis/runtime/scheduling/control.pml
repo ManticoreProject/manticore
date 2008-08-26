@@ -69,6 +69,8 @@ structure Control =
 		   | PT.PREEMPT(k : PT.fiber) =>
 		   (* ignore preemptions *)
 		     @run(handler, k / exh)
+		   | PT.UNBLOCK (retK : PT.fiber, k : PT.fiber, x : any) =>
+		     throw lp(List.CONS(retK, List.CONS(k, ks)))
 		 end
 	      @run(handler, k / exh)	
 	  end
@@ -111,6 +113,13 @@ structure Control =
         do @forward(PT.PREEMPT(k) / exh)
         do assert(FALSE) (* control should never reach this point *)
         return(UNIT)
+      ;
+
+    (* unblock the given fiber with its associated data *)
+      define @unblock (k : PT.fiber, x : any / exh : PT.exh) : PT.unit =
+	cont retK (_ : PT.unit) = return(UNIT)
+	do @forward(PT.UNBLOCK(retK, k, x) / exh)
+	return(UNIT)
       ;
 
     (* run the thread under the scheduler action *)

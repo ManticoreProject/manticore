@@ -13,6 +13,7 @@ structure Rand =
     _primcode(
       
       extern long M_Random(long, long);
+      extern int M_RandomInt(int, int);
       extern void M_SeedRand();
 
       define inline @in-range(arg : [PT.ml_long, PT.ml_long] / exh : PT.exh) : PT.ml_long =
@@ -22,6 +23,11 @@ structure Rand =
 
       define inline @in-range(lo : long, hi : long / exh : PT.exh) : long =
         let r : long = ccall M_Random(lo, hi)
+        return(r)
+      ;
+
+      define inline @in-range-int(lo : int, hi : int / exh : PT.exh) : int =
+        let r : int = ccall M_RandomInt(lo, hi)
         return(r)
       ;
 

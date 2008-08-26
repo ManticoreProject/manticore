@@ -1,6 +1,4 @@
 sequential.mlb
-../misc/prim-types.pml
-../misc/debug.mlb
 ann "cpp" "../include/prim.def"
 in
   assoc-list.pml 

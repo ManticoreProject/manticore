@@ -1,9 +1,9 @@
-(* futures.mlb
+(* work-stealing.mlb
  *
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Futures
+ * Implementations of the Work Stealing algorithm.
  *)
 
   ../../sequential/sequential.mlb
@@ -13,8 +13,14 @@
   ../util/util.mlb
   ../synch/synch.mlb
 
-  future-sig.pml
   ann "cpp" "../runtime-offsets.def,../../include/prim.def,../../include/debug.def,../../include/assert.def"
   in
-    future1.pml
-  end
+    ivar.pml
+  end  
+  ann "cpp" "../runtime-offsets.def,../../include/prim.def,../../include/debug.def,../../include/assert.def,-DSPIN_LOCK_TY=deque,-DLOCK_OFFSET=TH_LOCK_OFF"
+  in
+    spin-lock.pml
+    deque-th.pml
+    cilk5-work-stealing.pml
+  end  
+

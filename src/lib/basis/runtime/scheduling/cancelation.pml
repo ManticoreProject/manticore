@@ -10,28 +10,30 @@
 #define INACTIVE_OFF    1
 #define CHILDREN_OFF    2
 #define PARENT_OFF      3
+#define TAG_OFF         4
 
 structure Cancelation =
   struct
 
     structure PT = PrimTypes
     structure FLS = FiberLocalStorage
+  (* communication channel for canceling fibers *)
+    type cancelable = _prim (
+		  ![
+		     PT.bool,         (* canceled flag (TRUE=canceled) *)
+		     PT.bool,         (* inactive flag (TRUE=inactive) *)
+		     List.list,       (* children pointers (has type cancelable List.list) *)
+		     Option.option,   (* parent pointer (has type cancelable Option.option) *)
+		     FLS.fls_tag      (* tag to find the current cancelable *)
+		  ] )
 
     _primcode (
 
-    (* communication channel for canceling fibers *)
-      typedef cancelable = ![
-                 PT.bool,       (* canceled flag (TRUE=canceled) *)
-		 PT.bool,       (* inactive flag (TRUE=inactive) *)
-		 List.list,     (* children pointers (has type cancelable List.list) *)
-		 Option.option  (* parent pointer (has type cancelable Option.option) *)
-              ];
-
     (* create a cancelable *)
-      define @new (x : PT.unit / exh : PT.exh) : cancelable =
+      define @new (cancelableTag : FLS.fls_tag / exh : PT.exh) : cancelable =
       (* the current cancelable (might be nonexistant) *)
         let fls : FLS.fls = FLS.@get(/ exh)
-        let currentCOpt : Option.option = FLS.@find(fls, TAG_CANCELABLE / exh)
+        let currentCOpt : Option.option = FLS.@find(fls, cancelableTag / exh)
         let currentC : ![cancelable] = 
 		       case currentCOpt
 			of NONE => let c : ![cancelable] = (![cancelable])enum(0)
@@ -45,7 +47,7 @@ structure Cancelation =
 		     else
 			 return(Option.SOME(#0(currentC)))
 
-        let c : cancelable = alloc(FALSE, TRUE, NIL, parent)
+        let c : cancelable = alloc(FALSE, TRUE, NIL, parent, cancelableTag)
         let c : cancelable = promote(c)
 
         do if Equal(currentC, enum(0))
@@ -66,7 +68,7 @@ structure Cancelation =
       define inline @set-inactive (c : cancelable / exh : PT.exh) : () =
       (* make the parent the current cancelable *)
         let fls : FLS.fls = FLS.@get(/ exh)
-        let currentCOpt : Option.option = FLS.@find(fls, TAG_CANCELABLE / exh)
+        let currentCOpt : Option.option = FLS.@find(fls, SELECT(TAG_OFF, c) / exh)
         do case currentCOpt
 	    of NONE => return()
 	     | Option.SOME(currentC : ![cancelable]) =>
@@ -87,7 +89,7 @@ structure Cancelation =
       define inline @set-active (c : cancelable / exh : PT.exh) : () =
       (* set the current cancelable *)
         let fls : FLS.fls = FLS.@get(/ exh)
-        let currentCOpt : Option.option = FLS.@find(fls, TAG_CANCELABLE / exh)
+        let currentCOpt : Option.option = FLS.@find(fls, SELECT(TAG_OFF, c) / exh)
         do case currentCOpt
 	    of NONE => return()
 	     | Option.SOME(currentC : ![cancelable]) => 
@@ -127,6 +129,11 @@ structure Cancelation =
 		 do @set-inactive(c / exh)
                  let _ : PT.unit = Control.@atomic-yield(/ exh)
                  throw dispatch(wrapper, k)
+	       | PT.UNBLOCK (retK : PT.fiber, k : PT.fiber, x : any) =>
+		 cont retK' (x : PT.unit) = 
+		   throw dispatch(wrapper, retK)
+		 do Control.@forward(PT.UNBLOCK(retK', k, x) / exh)
+                 return($0)
              end
 
         cont wrappedK (x : PT.unit) =

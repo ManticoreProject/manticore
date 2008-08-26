@@ -17,5 +17,5 @@
     control.pml
     scheduler-utils.pml
     vproc-messenger.pml
-(*    cancelation.pml*)
+    cancelation.pml
   end

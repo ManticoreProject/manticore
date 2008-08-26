@@ -6,7 +6,7 @@
  * Runtime basis.
  *)
 
-  ../misc/prim-types.pml
+  ../sequential/sequential.mlb
 
 (* initialize the vproc -- we must do this step before anything else *)
   ann "cpp" "runtime-offsets.def,../include/prim.def"
@@ -14,7 +14,6 @@
     scheduling/init.pml
   end
 
-  ../sequential/sequential.mlb
   ../misc/debug.mlb
 
 (* fiber-local storage *)
@@ -31,6 +30,9 @@
 
 (* futures *)
   futures/futures.mlb
+
+(* work stealing *)
+(*  work-stealing/work-stealing.mlb*)
 
 (* initialize default thread capabilities *)
   ann "cpp" "runtime-offsets.def,../include/prim.def"

@@ -13,7 +13,17 @@ structure DefaultThreadCapabilities =
     _primcode(
 
       define @defaults (fls : FLS.fls / exh : PT.exh) : FLS.fls =
-	let c0 : TC.capability = Future1.@capability-init(/ exh)
+      (* one touch futures *)
+        fun init (x : PT.unit / exh : PT.exh) : any =
+	    let readyQ : LockedQueue.queue = Future1.@init-gang-sched( / exh)
+            return((any)readyQ)
+	let c0 : TC.capability = TC.init(tag(future1GangSched) init / exh)
+        let fls : FLS.fls = TC.@add(fls, c0 / exh)
+      (* cilk5 work stealing *)
+        fun init (x : PT.unit / exh : PT.exh) : any =
+	    let deques : Array64.array = Cilk5WorkStealing.@init( / exh)
+            return((any)deques)
+	let c0 : TC.capability = TC.init(tag(cilk5WorkStealing) init / exh)
         let fls : FLS.fls = TC.@add(fls, c0 / exh)
 	return(fls)
       ;
