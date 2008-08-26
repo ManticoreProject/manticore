@@ -289,6 +289,11 @@ Word_t M_Random (Word_t lo, Word_t hi)
     return (random() % (hi - lo)) + lo;
 }
 
+int32_t M_Random (int32_t lo, int32_t hi)
+{
+  return (int)M_Random((int)lo, (int)hi);
+}
+
 void M_SeedRand ()
 {
     srand(time(NULL));
