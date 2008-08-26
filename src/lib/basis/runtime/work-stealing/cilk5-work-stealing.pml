@@ -1,3 +1,11 @@
+(* cilk5-work-stealing.pml
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Cilk-5 implementation of the Work Stealing algorithm.
+ *)
+
 structure Cilk5WorkStealing =
   struct
 

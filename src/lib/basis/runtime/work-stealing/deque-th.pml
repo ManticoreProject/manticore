@@ -6,27 +6,16 @@
  * Concurrent deques following the protocol used in Cilk-5.
  *)
 
-#define TH_DEQUE_LEN                  2048
-
-#define TH_T_OFF                      0
-#define TH_H_OFF                      1
-#define TH_ARR_OFF                    2
-#define TH_LOCK_OFF                   3
-
 structure DequeTH =
   struct
 
     structure PT = PrimTypes
     structure Arr = Array64
+    structure SpinLock = SPIN_LOCK_NAME
 
     _primcode (
 
-      typedef deque = ![
-		  int,                   (* T *)
-		  int,                   (* H *)
-		  Arr.array,             (* deque memory *)
-		  PT.bool                (* lock *)
-	      ];
+      typedef deque = DequeTHRep.deque;
 
       define @new ( / exh : PT.exh) : deque =
 	let arr : Arr.array = Arr.@array(TH_DEQUE_LEN, enum(0) / exh)
@@ -53,7 +42,7 @@ structure DequeTH =
 		    let t : int = I32Sub(t, SELECT(TH_T_OFF, deq))
 		    do UPDATE(TH_H_OFF, deq, 0)
 		    do UPDATE(TH_T_OFF, deq, t)
-		    let _ : unit = SpinLock.@unlock (deq, mask / exh)
+		    do SpinLock.@unlock (deq, mask / exh)
 		    return(t)
 	let t : int = SELECT(TH_T_OFF, deq)
        (* possibly need to free space if the tail has reached the end of the deque *)
@@ -86,7 +75,7 @@ structure DequeTH =
 		   (* IMPORTANT: a pointer to frame still exists in the array; erase it to avoid a space leak *)
 		    do Arr.@update (arr, I32Sub(h, 1), enum(0) / exh)
 		    return(Option.SOME(frame))
-	let _ : PT.unit = SpinLock.@unlock (deq, mask / exh)
+	do SpinLock.@unlock (deq, mask / exh)
 	return(eltOpt)
       ;
 
@@ -110,11 +99,11 @@ structure DequeTH =
 			 then (* the deque is empty *)
 			      let t : int = I32FetchAndAdd(&TH_T_OFF(deq), 1)
 			      let t : int = I32Add(t, 1)
-			      let _ : PT.unit = @unlock (deq, mask / exh) 
+			      do SpinLock.@unlock (deq, mask / exh) 
 			      throw none()
 			 else return()
 
-		   let _ : unit = SpinLock.@unlock (deq, mask / exh)
+		   do SpinLock.@unlock (deq, mask / exh)
 		   return()
 	       else return()
 	do assert(I32Lt(SELECT(TH_T_OFF, deq), TH_DEQUE_LEN))

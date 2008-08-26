@@ -20,6 +20,7 @@
 (* parameters for the spin-lock module *)
 #define SPIN_LOCK_TY       InPlaceQueue.queue
 #define LOCK_OFFSET        LOCK_OFF
+#define SPIN_LOCK_NAME     SpinLockLockedQueue
 
 (* create an in-place queue *)
 #define NEW_IPQ(elt)      alloc (elt, EMPTY)

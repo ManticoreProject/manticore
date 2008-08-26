@@ -65,7 +65,7 @@ structure Cancelation =
 
 
     (* set the cancelable as terminated *)
-      define inline @set-inactive (c : cancelable / exh : PT.exh) : () =
+      define @set-inactive (c : cancelable / exh : PT.exh) : () =
       (* make the parent the current cancelable *)
         let fls : FLS.fls = FLS.@get(/ exh)
         let currentCOpt : Option.option = FLS.@find(fls, SELECT(TAG_OFF, c) / exh)
@@ -86,7 +86,7 @@ structure Cancelation =
       ;
 
     (* set the cancelable as ready to run *)
-      define inline @set-active (c : cancelable / exh : PT.exh) : () =
+      define @set-active (c : cancelable / exh : PT.exh) : () =
       (* set the current cancelable *)
         let fls : FLS.fls = FLS.@get(/ exh)
         let currentCOpt : Option.option = FLS.@find(fls, SELECT(TAG_OFF, c) / exh)

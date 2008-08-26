@@ -12,6 +12,7 @@ structure LockedQueue =
     structure PT = PrimTypes
     structure I = InPlaceQueue
     structure FLS = FiberLocalStorage
+    structure SpinLock = SPIN_LOCK_NAME
 
     _primcode (
 

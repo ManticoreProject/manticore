@@ -59,8 +59,8 @@ structure IVar :
 		   then return () 
 		   else apply loop ()
 	      do apply loop()
-	      let _ : int = I32FetchAndAdd(&SPIN_LOCK_OFF(ivar), ~1)
-	      let _ : PT.unit = Control.@stop(/ exh)
+	      let x : int = I32FetchAndAdd(&SPIN_LOCK_OFF(ivar), ~1)
+	      let x : PT.unit = Control.@stop(/ exh)
 	      return(value)
 	else
 	    let x : int = I32FetchAndAdd(&SPIN_LOCK_OFF(ivar), ~1)
@@ -87,9 +87,11 @@ structure IVar :
       (* push any blocked fibers on the local deque *)
 	fun push (blockedK : any / exh : PT.exh) : () =
 	    let blockedK : cont(any) = (cont(any))blockedK
-	    cont k (_ : PT.unit) = throw blockedK(x)
-            let _ : PT.unit = Control.@unblock(k, SELECT(CANCELABLE_OFF, ivar) / exh) 
-  	PrimList.@app(push, blocked / exh)
+	    cont k (unt : PT.unit) = throw blockedK(x)
+            let x : PT.unit = Control.@unblock(k, SELECT(CANCELABLE_OFF, ivar) / exh)
+            return()
+  	do PrimList.@app(push, blocked / exh)
+	return()
       ;
 
       define @put-wrap (arg : [ivar, any] / exh : PT.exh) : PT.unit =

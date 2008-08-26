@@ -17,10 +17,12 @@
   in
     ivar.pml
   end  
-  ann "cpp" "../runtime-offsets.def,../../include/prim.def,../../include/debug.def,../../include/assert.def,-DSPIN_LOCK_TY=deque,-DLOCK_OFFSET=TH_LOCK_OFF"
+  ann "cpp" "../runtime-offsets.def,../../include/prim.def,../../include/debug.def,../../include/assert.def,work-stealing.def"
   in
-    spin-lock.pml
+    deque-th-rep.pml
+    ../synch/spin-lock.pml
     deque-th.pml
-    cilk5-work-stealing.pml
+(*    cilk5-work-stealing.pml*)
   end  
+
 

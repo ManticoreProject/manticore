@@ -32,7 +32,7 @@
   futures/futures.mlb
 
 (* work stealing *)
-(*  work-stealing/work-stealing.mlb*)
+  work-stealing/work-stealing.mlb
 
 (* initialize default thread capabilities *)
   ann "cpp" "runtime-offsets.def,../include/prim.def"

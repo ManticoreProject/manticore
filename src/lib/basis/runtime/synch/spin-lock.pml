@@ -4,7 +4,7 @@
  * All rights reserved.
  *)
 
-structure SpinLock =
+structure SPIN_LOCK_NAME =
   struct
 
     structure PT = PrimTypes

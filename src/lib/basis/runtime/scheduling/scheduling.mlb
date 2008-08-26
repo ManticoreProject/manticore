@@ -18,4 +18,5 @@
     scheduler-utils.pml
     vproc-messenger.pml
     cancelation.pml
+    set-once-mem.pml
   end
