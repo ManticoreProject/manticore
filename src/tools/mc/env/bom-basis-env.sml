@@ -65,7 +65,6 @@ structure BOMBasisEnv : sig
 
   (* seed the binding and module environments at once *)
     fun seed ((id, v, ty), varEnv) = (
-print (Var.toString v^"\n");
 	setTy(v, SOME ty);
 	AtomMap.insert(varEnv, Atom.atom id, v))
     val tyEnv = List.foldl seed AtomMap.empty bomTypes
