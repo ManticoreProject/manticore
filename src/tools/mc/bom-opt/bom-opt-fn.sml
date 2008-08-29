@@ -86,8 +86,6 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 
     fun optimize module = let
 	  val module = contract module
-	  val module = uncurry module
-	  val module = contract module
 	  val module = inline module  
 	  val module = contract module
   (* to re-enable rewrites, fix them so that they use inline BOM instead of the old hlop files. *)
@@ -95,6 +93,8 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 	  val module = expandAll module
 	  val module = inline module
 	  val module = contract module  
+	  val module = uncurry module
+	  val module = contract module
 	  val module = caseSimplify module
 	  val module = contract module
 	  in
