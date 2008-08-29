@@ -26,19 +26,19 @@ structure DequeTH =
 
       define @push-tl (deq : deque, elt : any / exh : PT.exh) : () =
       (* copy the contents of the deque to a fresh array *)
-	fun copyDeque (arr : Arr.array, i : int / ) : () =
+	fun copyDeque (arr : Arr.array, i : int / exh : PT.exh) : () =
 	    if I32Lt(i, TH_DEQUE_LEN)
 	       then let elt : any = Arr.@sub(arr, i / exh)
 		    do Arr.@update(arr, I32Sub(SELECT(TH_H_OFF, deq), i), NIL / exh)
 		    do Arr.@update(arr, I32Sub(SELECT(TH_H_OFF, deq), i), elt / exh)
-		    apply copyDeque(arr, I32Add(i, 1) /)
+		    apply copyDeque(arr, I32Add(i, 1) / exh)
 	       else return()
       (* free space on the deque by copying *)
 	fun freeSpace (t : int /) : int =
 	    if I32Lt(t, TH_DEQUE_LEN)
 	       then return(t)
 	       else let mask : PT.bool = SpinLock.@lock(deq / exh)
-		    do apply copyDeque(SELECT(TH_ARR_OFF, deq), SELECT(TH_H_OFF, deq) /)
+		    do apply copyDeque(SELECT(TH_ARR_OFF, deq), SELECT(TH_H_OFF, deq) / exh)
 		    let t : int = I32Sub(t, SELECT(TH_T_OFF, deq))
 		    do UPDATE(TH_H_OFF, deq, 0)
 		    do UPDATE(TH_T_OFF, deq, t)

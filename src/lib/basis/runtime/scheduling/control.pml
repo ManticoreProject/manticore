@@ -72,7 +72,7 @@ structure Control =
 		   | PT.UNBLOCK (retK : PT.fiber, k : PT.fiber, x : any) =>
 		     throw lp(List.CONS(retK, List.CONS(k, ks)))
 		 end
-	      @run(handler, k / exh)	
+	      @run(handler, k / exh)
 	  end
 	throw lp(ks)
       ;
@@ -83,12 +83,17 @@ structure Control =
 	throw act(sg)
       ;
 
-    (* unload the landing pad, handle any incoming messages, and then forward a signal to the vproc *)
-      define @forward (sg : PT.signal / exh : PT.exh) noreturn =
+      define @handle-incoming (/ exh : PT.exh) : () =
         do vpstore(ATOMIC, host_vproc, TRUE)
         let messages : List.list = VProcQueue.@unload-and-check-messages(/ exh)
         do @run-fibers(messages / exh)
         do vpstore(ATOMIC, host_vproc, TRUE)
+	return()
+      ;
+
+    (* unload the landing pad, handle any incoming messages, and then forward a signal to the vproc *)
+      define @forward (sg : PT.signal / exh : PT.exh) noreturn =
+        do @handle-incoming(/ exh)
         @forward-no-check(sg / exh)
       ;
 

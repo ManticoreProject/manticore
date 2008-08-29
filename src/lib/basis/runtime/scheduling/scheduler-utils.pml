@@ -51,6 +51,11 @@ structure SchedulerUtils =
 	throw sleepK(UNIT)
       ;
 
+      define @wait (/ exh : PT.exh) : () =
+        do @sleep(/ exh)
+        Control.@handle-incoming(/ exh)
+      ;
+
       extern void *ListVProcs (void *) __attribute__((alloc));
 
       define @all-vprocs (/ exh : PT.exh) : List.list =
@@ -179,7 +184,7 @@ structure SchedulerUtils =
             let item : Option.option = VPQ.@dequeue(/ exh)
             case item
 	     of NONE => 
-		do @sleep(/ exh)
+		do @wait(/ exh)
 		throw dispatch()
 	      | Option.SOME(qitem : VPQ.queue) =>
 		do Control.@run-thread (switch, #1(qitem), #0(qitem) / exh)

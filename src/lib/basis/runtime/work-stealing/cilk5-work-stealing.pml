@@ -11,29 +11,32 @@ structure Cilk5WorkStealing =
 
     structure PT = PrimTypes
     structure Arr = Array64
+    structure FLS = FiberLocalStorage
 
     _primcode (
 
-      define @scheduler (deques : Arr.array, self : vproc / exh : PT.exh) : PT.sigact =
+      define @scheduler1 (deques : Arr.array, self : vproc / exh : PT.exh) : PT.sigact =
 	let nWorkers : int = Arr.@length(deques / exh)
 	let id : int = SchedulerUtils.@vproc-id(self / exh)
 	let deque : DequeTH.deque = Arr.@sub(deques, id / exh)
 	cont switch (sign : PT.signal) =
 	  cont dispatch (k : PT.fiber) = 
-	    Control.@run(switch, k / exh)
+	    do Control.@run(switch, k / exh)
+	    return($0)
 	  cont steal () =
 	    let victim : int = Rand.@in-range-int(0, nWorkers / exh)
 	    do if I32Eq(victim, id)
-		  then steal()
+		  then throw steal()
 	       else return()
-	    let victimDeque : DequeTH.deque = Arr.sub(deques, victim / exh)
-	    let kOpt : Option.option = DequeTH.@pop-hd(deques / exh)
+	    let victimDeque : DequeTH.deque = Arr.@sub(deques, victim / exh)
+	    let kOpt : Option.option = DequeTH.@pop-hd(victimDeque / exh)
 	    case kOpt
 	     of NONE => 
 		let _ : PT.unit = Control.@atomic-yield( / exh)
 		throw steal()
 	      | Option.SOME(k : PT.fiber) =>
-		 do assert(NotEqual(k, enum(0)))                                        
+do print_ppt()
+		 do assert(NotEqual(k, enum(0)))
 		 throw dispatch (k)
 	    end
 	  case sign
@@ -61,20 +64,21 @@ structure Cilk5WorkStealing =
 	      do DequeTH.@push-tl(deque, k / exh)
 	      throw dispatch(retK)
 	  end
+
 	return(switch)
       ;
 
       define @init (/ exh : PT.exh) : Arr.array =
 	let fls : FLS.fls = FLS.@get( / exh)
-	let nVPs : SchedulerUtils.@num-vprocs(/ exh)
-	let deques : Arr.array = Arr.@array(nVPs, enum(0))
+	let nVPs : int = SchedulerUtils.@num-vprocs(/ exh)
+	let deques : Arr.array = Arr.@array(nVPs, enum(0) / exh)
 	fun f (vp : vproc / exh : PT.exh) : () =
-	    let id : int = SchedulerUtils.@vproc-id(/ exh)
+	    let id : int = SchedulerUtils.@vproc-id(vp / exh)
 	    let deque : DequeTH.deque = DequeTH.@new(/ exh)
-	    Arr.update(deques, id, deque / exh)
-	do @for-each-vproc(f / exh)
+	    Arr.@update(deques, id, deque / exh)
+	do SchedulerUtils.@for-each-vproc(f / exh)
 	fun mkAct (self : vproc / exh : PT.exh) : PT.sigact =
-	      @scheduler(deques, self / exh)
+	      @scheduler1(deques, self / exh)
 	let vps : List.list = SchedulerUtils.@all-vprocs(/ exh)
 	do SchedulerUtils.@scheduler-startup(mkAct, fls, vps / exh)
 	return(deques)
@@ -95,12 +99,12 @@ structure Cilk5WorkStealing =
 		  let deques : any = SetOnceMem.@get(c / exh)
 		  return((Arr.array)deques)
 	      end
-	let deque : DequeTH.deque = Arr.sub(deques, i / exh)
+	let deque : DequeTH.deque = Arr.@sub(deques, i / exh)
 	return(deque)
       ;
 
-      define @pop-tl (arg : PT.unit / exh : PT.exh) : PT.bool =
-	let id : int = SchedulerUtils.@vproc-id(/ exh)
+      define @pop-tl (unt : PT.unit / exh : PT.exh) : PT.bool =
+	let id : int = SchedulerUtils.@vproc-id(host_vproc / exh)
 	let deque : DequeTH.deque = @get-deque(id / exh)
 	let kOpt : Option.option = DequeTH.@pop-tl(deque / exh)
 	let isNonEmpty : PT.bool = 
@@ -113,7 +117,7 @@ structure Cilk5WorkStealing =
 
       define @push-tl(f : PT.fiber_fun / exh : PT.exh) : PT.unit =
 	let k : PT.fiber = Control.@fiber(f / exh)
-	let id : int = SchedulerUtils.@vproc-id(/ exh)
+	let id : int = SchedulerUtils.@vproc-id(host_vproc / exh)
 	let deque : DequeTH.deque = @get-deque(id / exh)
 	do DequeTH.@push-tl(deque, k / exh)
 	return(UNIT)

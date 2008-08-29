@@ -12,6 +12,8 @@
 #define PARENT_OFF      3
 #define TAG_OFF         4
 
+#define EMPTY_C         (![cancelable])enum(0)
+
 structure Cancelation =
   struct
 
@@ -29,46 +31,52 @@ structure Cancelation =
 
     _primcode (
 
+      define @is-empty (c : ![cancelable] / exh : PT.exh) : PT.bool =
+	return(Equal(c, EMPTY_C))
+      ;
+
+    (* add c to the parent's list of children *)
+      define @add-child (c : cancelable, parent : cancelable / exh : PT.exh) : () =
+	let children : List.list = SELECT(CHILDREN_OFF, parent)
+	let children : List.list = List.CONS(c, children)
+	let children : List.list = promote(children)
+	do UPDATE(CHILDREN_OFF, parent, children)
+	return ()
+      ;
+
+    (* find the current cancelable (if it exists) *)
+      define @get-current (cancelableTag : FLS.fls_tag / exh : PT.exh) : Option.option =
+	let fls : FLS.fls = FLS.@get(/ exh)
+	let currentCOpt : Option.option = FLS.@find(fls, cancelableTag / exh)
+	case currentCOpt
+	 of NONE => return(NONE)
+	  | SOME (c : ![cancelable]) => 
+	    let empty : PT.bool = @is-empty(c / exh)
+	    if empty
+	       then return(NONE)
+	    else
+	      (* we have a parent *)
+		return(Option.SOME(#0(c)))
+	    end		     
+      ;
+
     (* create a cancelable *)
-      define @new (cancelableTag : FLS.fls_tag / exh : PT.exh) : cancelable =
-      (* the current cancelable (might be nonexistant) *)
-        let fls : FLS.fls = FLS.@get(/ exh)
-        let currentCOpt : Option.option = FLS.@find(fls, cancelableTag / exh)
-        let currentC : ![cancelable] = 
-		       case currentCOpt
-			of NONE => let c : ![cancelable] = (![cancelable])enum(0)
-                                   return(c)
-			 | SOME (c : ![cancelable]) => return(c)
-                       end
-      (* if the current cancelable exists, set it as our parent *)
-        let parent : Option.option = 
-		     if Equal(currentC, enum(0))
-		        then return(NONE)
-		     else
-			 return(Option.SOME(#0(currentC)))
-
-        let c : cancelable = alloc(FALSE, TRUE, NIL, parent, cancelableTag)
+      define @new (cTag : FLS.fls_tag / exh : PT.exh) : cancelable =
+        let parent : Option.option = @get-current(cTag / exh)
+        let c : cancelable = alloc(FALSE, TRUE, NIL, parent, cTag)
         let c : cancelable = promote(c)
-
-        do if Equal(currentC, enum(0))
-	      then return()
-	   else
- 	       (* update the parent's childrent list *)
-	       let children : List.list = SELECT(CHILDREN_OFF, #0(currentC))
-               let children : List.list = List.CONS(c, children)
-	       let children : List.list = promote(children)
-	       do UPDATE(CHILDREN_OFF, #0(currentC), children)
-               return ()
+      (* add this new cancelable to the parent's list of children *)
+        do case parent
+	    of NONE => return()
+	     | SOME(parent : cancelable) => @add-child(parent, c / exh)
+           end
 
         return(c)
       ;
 
-
     (* set the cancelable as terminated *)
       define @set-inactive (c : cancelable / exh : PT.exh) : () =
-      (* make the parent the current cancelable *)
-        let fls : FLS.fls = FLS.@get(/ exh)
-        let currentCOpt : Option.option = FLS.@find(fls, SELECT(TAG_OFF, c) / exh)
+        let currentCOpt : Option.option = @get-current(SELECT(TAG_OFF, c) / exh)
         do case currentCOpt
 	    of NONE => return()
 	     | Option.SOME(currentC : ![cancelable]) =>
@@ -76,6 +84,7 @@ structure Cancelation =
                case parentOpt
 		of NONE => return()
 		 | SOME (parent : cancelable) => 
+		 (* make the parent the current cancelable *)
 		   do UPDATE(0, currentC, parent)
                    return()
                end
@@ -87,12 +96,11 @@ structure Cancelation =
 
     (* set the cancelable as ready to run *)
       define @set-active (c : cancelable / exh : PT.exh) : () =
-      (* set the current cancelable *)
-        let fls : FLS.fls = FLS.@get(/ exh)
-        let currentCOpt : Option.option = FLS.@find(fls, SELECT(TAG_OFF, c) / exh)
+        let currentCOpt : Option.option = @get-current(SELECT(TAG_OFF, c) / exh)
         do case currentCOpt
 	    of NONE => return()
 	     | Option.SOME(currentC : ![cancelable]) => 
+             (* set the current cancelable *)
 	       do UPDATE(0, currentC, c)
                return()
            end

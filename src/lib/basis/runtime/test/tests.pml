@@ -97,7 +97,7 @@ structure Tests =
     )
 (*
     val _ = Print.printLn "control test: going to sleep"
-    val t : unit -> unit = _prim(@test2)
+    val t : unit -> unit = _prim(@test1)
     val _ = t()
     val _ = Print.printLn "control test: waking"
 *)
@@ -194,8 +194,10 @@ structure Tests =
 
     )
 
+(*
     val lockedQueueTest : unit -> unit = _prim(@locked-queue-test)
     val _ = lockedQueueTest()
+*)
 
   (* future1 *)
     fun fib n = if n < 2 then n else fib(n-1) + fib(n-2)
@@ -206,12 +208,11 @@ structure Tests =
 	    in
 	      futFib(n-2) + Future1.touch f1
 	    end
-    fun fut1FibTest n = fib n = futFib n
+    fun fut1FibTest n = futFib n = fib n
     fun fut11 () = fut1FibTest 27
     val _ = if fut11()
 	    then Print.printLn "fut1 success"
 	    else Print.printLn "fut1 fail"
-
 
   (* cancelation *)
     _primcode (
@@ -268,7 +269,6 @@ structure Tests =
 	 of NONE => return(UNIT)
 	  | Option.SOME (vp : vproc) =>
 	    fun f (x : PT.unit / exh : PT.exh) : any =
-		do print_ppt()
 		return((any)Option.SOME(alloc(5)))
 	    let ch : VPM.chan = VPM.@new(f / exh)
 	    do VPM.@send(ch, vp / exh)
@@ -283,6 +283,7 @@ structure Tests =
 	end
     ;
     )
+
     val messengerTest : unit -> unit = _prim(@messenger-test)
     val _ = messengerTest()
 

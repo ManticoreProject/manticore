@@ -22,7 +22,5 @@
     deque-th-rep.pml
     ../synch/spin-lock.pml
     deque-th.pml
-(*    cilk5-work-stealing.pml*)
+    cilk5-work-stealing.pml
   end  
-
-

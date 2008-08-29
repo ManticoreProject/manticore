@@ -25,7 +25,7 @@ structure Array64 =
       define @array (n : int, elt : any / exh : PT.exh) : array =
 	let elt : any = (any)elt
 	let elt : any = promote(elt)
-	let arr : array = ccall M_NewArray(host_vproc, I32Add(n,1), elt)  
+	let arr : array = ccall M_NewArray(host_vproc, I32Add(n,1), elt)
         let x : PT.bool = ArrayStoreI64(arr, 0, n)
         let arr : array = (any)&1(([any,any])arr)
 	return(arr)

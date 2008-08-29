@@ -104,7 +104,12 @@ structure VProcQueue =
 	    if Equal(queue, item)
 	       then return(queue)
 	    else apply lp()
-	let item : queue = apply lp ()
+	let item : queue = 
+		 (* quick check to avoid the CAS operation *)
+   	           let item : queue = vpload(VP_ENTRYQ, vp)
+		   if Equal(item, Q_EMPTY)
+		      then return(Q_EMPTY)
+		   else apply lp ()
 	do vpstore(ATOMIC, vp, mask)
 	return(item)
       ;
