@@ -291,7 +291,7 @@ Word_t M_Random (Word_t lo, Word_t hi)
 
 int32_t M_RandomInt (int32_t lo, int32_t hi)
 {
-  return (int)M_RandomInt((int)lo, (int)hi);
+  return (int)M_Random((int)lo, (int)hi);
 }
 
 void M_SeedRand ()
