@@ -52,6 +52,9 @@ do print_ppt()
 	      do DequeTH.@push-tl(deque, k / exh)
 	      let _ : PT.unit = Control.@atomic-yield(/exh)
 	      throw switch(STOP)
+	    | PT.SUSPEND (k : PT.fiber, retK : cont(PT.fiber)) =>
+	      let k' : PT.fiber = Control.@nested-sched-suspend(k, retK / exh)
+              throw dispatch(k')
 	    | PT.UNBLOCK (retK : PT.fiber, k : PT.fiber, x : Option.option) =>
 	      let k : PT.fiber = 
 		      case x

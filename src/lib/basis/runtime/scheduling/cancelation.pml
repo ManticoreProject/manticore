@@ -137,6 +137,13 @@ structure Cancelation =
 		 do @set-inactive(c / exh)
                  let _ : PT.unit = Control.@atomic-yield(/ exh)
                  throw dispatch(wrapper, k)
+	       | PT.SUSPEND (k : PT.fiber, retK : cont(PT.fiber)) =>
+		 let k' : PT.fiber = Control.@suspend(k / exh)
+		 cont k' (x : PT.unit) = 
+		   throw dispatch(wrapper, k)
+	         cont k'' (x : PT.unit) =
+		   throw retK(k')
+                 throw dispatch(wrapper, k'')
 	       | PT.UNBLOCK (retK : PT.fiber, k : PT.fiber, x : any) =>
 		 cont retK' (x : PT.unit) = 
 		   throw dispatch(wrapper, retK)

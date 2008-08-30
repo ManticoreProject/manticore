@@ -78,6 +78,12 @@ structure Future1 : FUTURE = struct
 	cont switch (s : PT.signal) =
 	(* sanity check *)
 	  do assert(Equal(self, host_vproc))
+
+	cont run (k : PT.fiber) =
+	  do Control.@run(switch, k / exh)
+	  do assert(FALSE)
+	  throw switch(STOP)
+
 	(* get the next available future *)
 	  cont dispatch () =
 	      let k : Option.option = LockedQueue.@dequeue(readyQ / exh)
@@ -87,9 +93,7 @@ structure Future1 : FUTURE = struct
 		  let _ : PT.unit = Control.@atomic-yield(/exh)
 		  throw dispatch()
 		| SOME(k : PT.fiber) =>
-		(* got a future; so, we run it now *)
-		  do Control.@run(switch, k / exh)
-		  throw dispatch()
+		  throw run(k)
 	      end
 	(* handle signals *)
 	  case s
@@ -101,6 +105,9 @@ structure Future1 : FUTURE = struct
 	      do LockedQueue.@enqueue(readyQ, k / exh)
 	      let _ : PT.unit = Control.@atomic-yield(/exh)
 	      throw dispatch()
+	    | PT.SUSPEND (k : PT.fiber, retK : cont(PT.fiber)) =>
+	      let k' : PT.fiber = Control.@nested-sched-suspend(k, retK / exh)
+              throw run(k')
 	    | PT.UNBLOCK (retK : PT.fiber, k : PT.fiber, x : Option.option) =>
 	      let k : PT.fiber = 
 		      case x

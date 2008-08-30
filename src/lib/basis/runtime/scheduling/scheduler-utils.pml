@@ -198,6 +198,12 @@ structure SchedulerUtils =
 		 let fls : FLS.fls = FLS.@get ( / exh)
 		 do VProcQueue.@enqueue (fls, k / exh)
 		 throw dispatch () 
+	     | PT.SUSPEND (k : PT.fiber, retK : PT.cont) =>
+		 let fls : FLS.fls = FLS.@get ( / exh)
+		 cont retK' (x : PT.unit) =
+		   throw retK(k)
+		 do VProcQueue.@enqueue (fls, k / exh)
+		 throw dispatch () 
 	     | PT.UNBLOCK (retK : PT.fiber, k : PT.fiber, fls : FLS.fls) =>
 	         do VProcQueue.@enqueue (fls, k / exh)
 		 do Control.@run(switch, retK / exh)

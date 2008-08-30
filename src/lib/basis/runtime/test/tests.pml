@@ -70,6 +70,9 @@ structure Tests =
 	      do ccall M_Print("Seems to have worked\n")
 	      do Control.@forward(STOP / exh)
 	      return(UNIT)
+	    | PT.SUSPEND (k : PT.fiber, retK : cont(any)) =>
+	      do assert(FALSE)
+	      return(UNIT)
 	    | PT.UNBLOCK (retK : PT.fiber, k : PT.fiber, x : any) =>
 	      (* shouldn't happen *)
 	      do assert(FALSE)

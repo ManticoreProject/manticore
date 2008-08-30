@@ -27,7 +27,9 @@ structure Control =
 	return(act)
       ;
 
-    (* push a scheduler action on a remote vproc's stack *)
+    (* push a scheduler action on a remote vproc's stack. NOTE: this operation is not
+     * concurrent. the remote vproc must be idle during the operation.
+     *)
       define @push-remote-act (vp : vproc, act : PT.sigact / exh : PT.exh) : () =
 	do assert(NotEqual(act, NIL))
 	let stk : [PT.sigact, any] = vpload (VP_ACTION_STK, vp)
@@ -69,6 +71,10 @@ structure Control =
 		   | PT.PREEMPT(k : PT.fiber) =>
 		   (* ignore preemptions *)
 		     @run(handler, k / exh)
+		   | PT.SUSPEND (k : PT.fiber, retK : cont(PT.fiber)) =>
+		     cont k' (x : PT.unit) =
+		       throw retK(k)
+		     throw lp(List.CONS(k', ks))
 		   | PT.UNBLOCK (retK : PT.fiber, k : PT.fiber, x : any) =>
 		     throw lp(List.CONS(retK, List.CONS(k, ks)))
 		 end
@@ -125,6 +131,25 @@ structure Control =
 	cont retK (_ : PT.unit) = return(UNIT)
 	do @forward(PT.UNBLOCK(retK, k, x) / exh)
 	return(UNIT)
+      ;
+
+    (* prepares the given fiber for a blocking operation *)
+      define @suspend (k : PT.fiber / exh : PT.exh) : PT.fiber =
+        let mask : PT.bool = vpload(ATOMIC, host_vproc)
+	cont retK (k' : PT.fiber) =
+          do vpstore(ATOMIC, host_vproc, mask)
+	  return(k')
+	do @forward(PT.SUSPEND(k, retK) / exh)
+	do assert(FALSE)
+	return(k)
+      ;
+
+    (* handle a suspend signal in a nested scheduler *)
+      define @nested-sched-suspend (k : PT.fiber, retK : cont(PT.fiber) / exh : PT.exh) : PT.fiber =
+	let k' : PT.fiber = @suspend(k / exh)
+	cont retK' (x : PT.unit) =
+	  throw retK(k')
+	return(retK')
       ;
 
     (* run the thread under the scheduler action *)
