@@ -138,7 +138,7 @@ structure Cancelation =
                  let _ : PT.unit = Control.@atomic-yield(/ exh)
                  throw dispatch(wrapper, k)
 	       | PT.SUSPEND (k : PT.fiber, retK : cont(PT.fiber)) =>
-		 let k' : PT.fiber = Control.@suspend(k / exh)
+               (* pass the return continuation a wrapped version of k *)
 		 cont k' (x : PT.unit) = 
 		   throw dispatch(wrapper, k)
 	         cont k'' (x : PT.unit) =
