@@ -1,21 +1,22 @@
 (module scheduling-framework mzscheme
-  (require (planet "reduction-semantics.ss" ("robby" "redex.plt" 4 4))
-           (planet "gui.ss" ("robby" "redex.plt" 4 4))
-           (planet "subst.ss" ("robby" "redex.plt" 4 4))
+  (require (planet "reduction-semantics.ss" ("robby" "redex.plt" 4))
+           (planet "gui.ss" ("robby" "redex.plt" 4))
+           (planet "subst.ss" ("robby" "redex.plt" 4))
            (lib "list.ss")
            (lib "class.ss")
            (lib "mred.ss" "mred")
-           (lib "plt-match.ss"))
+           (lib "plt-match.ss")
+           )
   
   (provide lang multiprocessor-machine make-multiprocessor mp-stepper)
   
   (define-language lang
     (MP ((VP ...) global-store provision-map))               ; multiprocessor state
+    (VP (vp vproc-id actions fiber-queue mask fls e))        ; vproc state
     (provision-map (pmap (fls vproc-id ...) ...))            ; provision map
     (fls store-location)                                     ; fiber-local storage
     (global-store (store (store-location v) ...))            ; global store
     (store-location number)
-    (VP (vp vproc-id actions thread-queue mask fls e))       ; vproc state
     (vproc-id number)
     (mask number)                                            ; signal mask (0 for unmasked, > 0 for masked)
     (actions (astk v ...))                                   ; action stack
@@ -28,25 +29,27 @@
                         run forward
                         deq-vp enq-on-vp 
                         mask-preemption unmask-preemption host-vp
-                        new-fls set-fls get-fls get-from-fls
+                        new-fls set-fls get-fls get-from-fls set-in-fls
                         provision release
                         ref deref cas
                         handle stop-handler preempt-handler
+                        vp pmap store astk fq
                         ))                                  ; language variables must not include primops
     (e 
-     x v (e e ...) (if e e e) (begin e e ...) (let ((x e)) e) (letrec ((x e)) e) (fix e) (fun (x x ...) e e)
+     x v (e e ...) (begin e e ...) (if e e e) (let ((x e)) e) (letrec ((x e)) e) (fix e) (fun (x x ...) e e)
      (ffi-call x e ...) (ffi-peek e)
      (abort e) (letcont x x ... e e)
      (run e e) (forward e)
      (deq-vp) (enq-on-vp e e) 
      (mask-preemption) (unmask-preemption) (host-vp)
-     (new-fls) (set-fls e) (get-fls) (get-from-fls e e)
+     (new-fls) (set-fls e) (get-fls) (get-from-fls e e) (set-in-fls e e e)
      (provision e) (release e e)
      (ref e) (deref e) (cas e e e)
-     (handle e (stop-handler e) (preempt-handler e)))     
+     (handle e (stop-handler e) (preempt-handler e))
+     )     
     (E hole (v ... E e ...) (if E e e) (begin E e e ...) (let ((x E)) e)
        (ffi-call x v ... E e ...) (ffi-peek E)
-       (set-fls E) (get-from-fls E e) (get-from-fls v E)
+       (set-fls E) (get-from-fls E e) (get-from-fls v E) (set-in-fls E e e) (set-in-fls v E e) (set-in-fls v v E)
        (run E e) (run v E) (forward E)
        (enq-on-vp E e) (enq-on-vp v E) 
        (provision E) (release E e) (release v E) 
@@ -76,6 +79,11 @@
       (match fls-dict
         (#f (error "cannot find fls"))
         (`(,loc (ffi-val ,dict)) dict))))
+  
+  ;; remove-dict : e -> listof(e*d) -> listof(e*d)
+  ;; remove any elements from the dictionary d with the key y
+  (define (remove-dict y d)
+    (filter (lambda (x) (not (equal? (car x) y))) d))
   
   ;;; Multiprocessor machine
   ;;;   This multiprocessor machine (-->) consists of component machines
@@ -138,7 +146,7 @@
      ;;; vproc machine
      (vp=> (vp number_1 (astk v_act1 ...) fiber-queue_1 mask_1 fls_1 (in-hole E_1 (run v_act2 (λ () e_1))))
            (vp number_1 (astk v_act2 v_act1 ...) fiber-queue_1 0 fls_1 e_1)
-           (side-condition (not (= (term mask_1) 0)))
+      ;     (side-condition (not (= (term mask_1) 0)))
            "run")
      (vp=> (vp number_1 (astk v_act v_acts ...) fiber-queue_1 mask_1 fls_1 (in-hole E_1 (forward v_sig)))
            (vp number_1 (astk v_acts ...) fiber-queue_1 ,(add1 (term mask_1)) fls_1 (v_act v_sig))
@@ -187,6 +195,19 @@
                                      (store (number_l v_l) ... (fls_2 (ffi-val ,(cons (cons (term string_tag) (term loc)) (term any_fls)))) (number_r v_r) ... (loc (unit)))
                                      provision-map_1)))))
           "get-from-fls")
+     (--> ((VP_1 ...
+            (vp number_1 actions_1 fiber-queue_1 mask_1 fls_1 (in-hole E_1 (set-in-fls fls_2 string_tag v_1)))
+            VP_2 ...)
+           (store (number_l v_l) ... (fls_2 (ffi-val any_fls)) (number_r v_r) ...) 
+           provision-map_1)
+          ((VP_1 ...
+            (vp number_1 actions_1 fiber-queue_1 mask_1 fls_1 (in-hole E_1 (unit)))
+            VP_2 ...)
+           (store (number_l v_l) ... (fls_2 (ffi-val ,(cons (cons (term string_tag) (term v_1))
+                                                                  (remove-dict (term string_tag) (term any_fls)))))
+                  (number_r v_r) ...)
+           provision-map_1)
+          "set-in-fls")
      (--> ((VP_1 ...
             (vp number_1 actions_1 fiber-queue_1 mask_1 fls_1 (in-hole E_1 (let ((x_1 (ref v_1))) e_1)))
             VP_2 ...)
@@ -300,8 +321,9 @@
      
      where
      ; sequential evaluation (hosted by the vproc machine)
-     ((s==> e1 e2) (vp=> (vp number_1 actions_1 fiber-queue_1 mask_1 fls_1 e1)
-                         (vp number_1 actions_1 fiber-queue_1 mask_1 fls_1 e2)))
+     ((s==> e1 e2) (vp=> (vp vproc-id_1 actions_1 fiber-queue_1 mask_1 fls_1 e1)
+                         (vp vproc-id_1 actions_1 fiber-queue_1 mask_1 fls_1 e2)))
+
      ; vproc evaluation (hosted by the multiprocessor machine)
      ((vp=> vp1 vp2) (--> ((VP_1 ... vp1 VP_2 ...) global-store_1 provision-map_1)
                           ((VP_1 ... vp2 VP_2 ...) global-store_1 provision-map_1)))
@@ -382,6 +404,8 @@
      (set-fls (ssubst (x_1 e_1 e_2)))]
     [(x_1 e_1 (get-from-fls e_2 e_3))
      (get-from-fls (ssubst (x_1 e_1 e_2)) (ssubst (x_1 e_1 e_3)))]
+    [(x_1 e_1 (set-in-fls e_2 e_3 e_4))
+     (set-in-fls (ssubst (x_1 e_1 e_2)) (ssubst (x_1 e_1 e_3)) (ssubst (x_1 e_1 e_4)))]
     ;; ffi
     [(x_1 e_1 (ffi-call e_s ...))
      (ffi-call (ssubst (x_1 e_1 e_s)) ...)]
@@ -469,7 +493,24 @@
   (define gfls
     (term (let ((fls (new-fls)))
             (let ((x1 (get-from-fls fls "x")))
-              (let ((x2 (get-from-fls fls "x")))
-                (get-from-fls fls "y")))
-            )))     
+                (let ((p (set-in-fls fls "x" 2343)))
+                  (get-from-fls fls "x")))
+            )))
+  
+  
+  (define test11 (term
+    ((
+     (vp
+      1
+      (astk)
+      (fq)
+      0
+      1
+      ((λ ()  (cas 0 0 0)))
+      )
+
+  )
+ (store)
+ (pmap))))
+  
   )

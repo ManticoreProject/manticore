@@ -13,6 +13,31 @@
   (define t1
     (list (set-bang (term 0) ((lift '+) (term 1) (term 2)))))
   
+  (define t2 
+    (list
+     (term (begin ,(set-bang (term 0) (term 1)) (forward (stop))))))
+  
+  (define t3
+    (list
+     (term (begin ,(set-bang (term 0) (term 1)) (forward (stop))))
+     (term 0)))
+  
+  ; succeeds if the fiber successfully migrates to the remote vproc
+  (define enq-on-vp
+    (list 
+     (term 
+      (begin
+        (fun (f)
+             ,(set-bang (term 0) (term 1))s
+             (begin
+               (enq-on-vp 2 ,(fiber (term f)))
+               (fun (wait)
+                    (if (deref 0)
+                        (unit)
+                        (wait))
+                    (wait))))))
+      (term (forward (stop)))))
+  
   (define (get-answer m)
     (match m
         (`(,vps (store (0 ,ans) ,global-store ...) ,provision-map) ans)))
@@ -30,7 +55,8 @@
                   (unless (< i 0)
                     (begin 
                       ; perform the checks
-                      (check t1 '(4))
+                      (check t1 '(3))
+                      (check t2 '(1))
                       (check-loop (sub1 i)))))])
         (check-loop n))))
   

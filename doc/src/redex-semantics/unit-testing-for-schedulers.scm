@@ -4,6 +4,7 @@
            (planet "pict.ss" ("robby" "redex.plt" 4 4))
            (planet "test.ss" ("schematics" "schemeunit.plt" 2))
            (lib "plt-match.ss")
+           (lib "list.ss")
            (lib "pretty.ss")
            "scheduling-framework.scm"
            "scheduling-utils.scm"
@@ -62,6 +63,20 @@
                           [#t (ith-elt (cdr ls) (add1 j))]))])
               (ith-elt ls 0))))))
   
+  ; random-prune-rule: listof(transition) -> string -> int -> listof(state)
+  ; given a list of machine transitions, a rule, and an integer p, remove transitions
+  ; to the rule with probability 1/p.
+  (define (random-prune-rule transitions rule prob)
+    (let ([f
+           (lambda (r)
+             (or (not (equal? (car r) rule))
+                 (= (random-integer prob) 0)))])
+      (filter f transitions)))
+  
+  ; 1/5 chance of keeping preempt transitions
+  (define (prune-preemption branches)
+    (random-prune-rule branches "preempt" 5))
+  
   (define (rewind e es)
     (letrec ([r (lambda (rs)
                   (cond 
@@ -81,6 +96,8 @@
                   (lambda (exp)
                     (let* ([nexts (apply-reduction-relation reductions exp)]
                            [nexts-with-names (apply-reduction-relation/tag-with-names reductions exp)]
+                           [nexts-with-names (prune-preemption nexts-with-names)]
+                           [nexts (map cadr nexts-with-names)]
                            [uniqs (mk-uniq nexts)])
                       (unless (= (length uniqs) (length nexts))
                         (error 'random-reduction-path
@@ -102,6 +119,7 @@
                         [else (let ([next-parents (cons exp (if (hash-table-get visited exp #f)
                                                                   (rewind exp parents)
                                                                   parents))])
+                                ;(print (apply string-append (map (λ (x) (format "~s " (car x))) nexts-with-names)))
                                 (hash-table-put! visited exp #t)  ; record visiting exp
                                 (for-each (loop next-parents (add1 num-visited)) (pick-random-elt uniqs)))]))))])
         ((loop '() 0) exp)
