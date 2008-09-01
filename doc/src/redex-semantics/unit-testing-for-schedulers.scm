@@ -2,7 +2,7 @@
   (require (planet "reduction-semantics.ss" ("robby" "redex.plt" 4 4))
            (planet "gui.ss" ("robby" "redex.plt" 4 4))
            (planet "pict.ss" ("robby" "redex.plt" 4 4))
-           (planet "test.ss" ("schematics" "schemeunit.plt" 2))
+           (planet "test.ss" ("schematics" "schemeunit.plt" 3))
            (lib "plt-match.ss")
            (lib "list.ss")
            (lib "pretty.ss")
@@ -48,7 +48,9 @@
       [(? symbol? s) s]
       [(? number? n) n]
       (`(fix ,e) `(fix))
-      (es (map remove-fix es))))
+      (es (if (list? es)
+              (map remove-fix es)
+              es))))
   
   (define (pick-random-elt ls)
     (let ([n (length ls)])
@@ -135,27 +137,30 @@
       (hash-table-map ht (λ (k v) k))))
   
   ;; unit testing
-  (define-check (check-random-reduction get-result max-reducts rel from tos)
+  (define-check (check-random-reduction check-name get-result max-reducts rel from tos)
     (let* ([res (random-reduction-path max-reducts rel from)]
            [reds (car res)]
            [path (cadr res)]
-           [stepper (lambda () (stepper/seed lang 
-                                             multiprocessor-machine 
-                                             path 
-                                             (lambda (e port width text%) (pretty-display-term (remove-fix e) port width))
+           [stepper (lambda () 
+                      (stepper/seed lang 
+                                    multiprocessor-machine 
+                                    path 
+                                    (lambda (e port width text%) 
+                                      (let ([e (remove-fix e)])
+                                        (pretty-display-term e port width)))
                                              ))]
            [anss (map get-result reds)])
       (cond [(null? anss)
              (begin
                (stepper)
                (with-check-info 
-                (('empty-results reds))
+                (('empty-result check-name))
                 (fail-check)))]
             [else
              (unless (subset? tos anss)
                (begin
                  (stepper)
                  (with-check-info
-                  (('incorrect-results path))
+                  (('incorrect-results check-name))
                   (fail-check))))])))
   )

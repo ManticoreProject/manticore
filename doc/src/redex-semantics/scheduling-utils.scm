@@ -8,7 +8,7 @@
            (lib "mred.ss" "mred")
            (lib "match.ss"))
   
-  (provide lift set-bang init-top-level-schedulers round-robin fiber)
+  (provide lift set-bang init-top-level-schedulers round-robin fiber terms-equal? new-cancelable wait-for-inactive set-in-cancelable is-nil? get-val remove-dict set-val)
   
   ; emulate set-bang using compare-and-swap
   (define (set-bang l v)
@@ -91,10 +91,17 @@
       ((< x y) 1)
       (else 0)))
   
-  (define (is-nil x)
+  ; our "unit" constant counts as a nil value
+  (define (is-nil? x)
     (match x
       (`(unit) 1)
       (_ 0)))
+  
+  ; structural equality test for terms
+  (define (terms-equal? x y)
+    (if (equal? x y)
+        1
+        0))
   
   (define nil (term (unit)))
                
@@ -112,8 +119,15 @@
   
   (define cancelable-tag 0)
   
-  (define (get-val x y)
-    (cdr (assq x y)))
+  (define (get-val v xs)
+    (letrec ([get
+              (lambda (xs)
+                (if (null? xs)
+                    (error 'get-val)
+                    (if (equal? (caar xs) v)
+                        (cdar xs)
+                        (get (cdr xs)))))])
+      (get xs)))
   
   (define (set-val k v x)
     (cons (cons k v) x))
@@ -138,8 +152,8 @@
             (add-parent parent fields-term)
             fields-term))))
   
-  (define new-c
-    (new-c-with-parent #f))
+  (define new-c-no-parent
+    (new-c-with-parent 0))
   
   (define (add-to-children parent child)
     (term
@@ -149,8 +163,9 @@
   (define new-cancelable
     (term
      (let ((parent ,current-c))
-       (if ,((lift 'is-nil) (term (deref parent)))
-           ,new-c
+       (if ,((lift 'is-nil?) (term (deref parent)))
+           (let ((new (ref ,(new-c-with-parent 0))))
+             new)
            (let ((new (ref ,(new-c-with-parent (term parent)))))
              (begin 
                ,(add-to-children (term parent) (term new))
@@ -164,7 +179,7 @@
     (term
      (begin
        ,current-c
-       ,(set-current new-c)
+       ,(set-current new-c-no-parent)
        ,new-cancelable)))
   
   ;; remove-dict : e -> listof(e*d) -> listof(e*d)
@@ -191,8 +206,7 @@
   
   
   (define (get-from-cancelable c fld)
-    (term
-     ((lift 'get-val) fld (term (deref ,c)))))
+    ((lift 'get-val) fld (term (deref ,c))))
   
   (define test-sic
     (term
@@ -216,19 +230,23 @@
      (begin
        ,(set-current-cancelable c))))
   
-  (define (wait c)
+  (define (wait-for-inactive c)
     (term
      (fun (lp)
           (if ,(get-from-cancelable c "inactive")
               (unit)
-              (lp)))))
+              (lp))
+          (lp))))
+  
+  (define wff-ex
+     (wait-for-inactive new-cancelable))
 
   (define cancel
     (term
      (fun (cancel c)
           (begin
             ,(set-in-cancelable (term c) "canceled" 1)
-            ,(wait (term c)))
+            ,(wait-for-inactive (term c)))
           cancel)))
   
   (define (wrap c k)
