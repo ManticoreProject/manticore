@@ -8,7 +8,7 @@
            (lib "mred.ss" "mred")
            (lib "match.ss"))
   
-  (provide lift set-bang init-top-level-schedulers round-robin fiber terms-equal? new-cancelable wait-for-inactive set-in-cancelable is-nil? get-val remove-dict set-val)
+  (provide lift set-bang init-top-level-schedulers round-robin fiber terms-equal? new-cancelable wait-for-inactive set-in-cancelable get-from-cancelable is-nil? get-val remove-dict set-val set-inactive get-parent wrap cancel)
   
   ; emulate set-bang using compare-and-swap
   (define (set-bang l v)
@@ -160,6 +160,7 @@
      (let ((pstruct (ffi-call ,'add-child (deref ,parent) ,child)))
        ,(set-bang parent (term pstruct)))))
   
+  ; create a cancelable
   (define new-cancelable
     (term
      (let ((parent ,current-c))
@@ -171,6 +172,7 @@
                ,(add-to-children (term parent) (term new))
                new))))))
   
+  ; set the current cancelable
   (define (set-current c)
     (term
      ,(set-bang current-c c)))
@@ -228,7 +230,8 @@
   (define (set-active c)
     (term
      (begin
-       ,(set-current-cancelable c))))
+       ,(set-current-cancelable c)
+       ,(set-in-cancelable (term c) "inactive" 0))))
   
   (define (wait-for-inactive c)
     (term
@@ -243,34 +246,39 @@
 
   (define cancel
     (term
-     (fun (cancel c)
-          (begin
-            ,(set-in-cancelable (term c) "canceled" 1)
-            ,(wait-for-inactive (term c)))
-          cancel)))
+     (λ (c)
+       (begin
+         ,(set-in-cancelable (term c) "canceled" 1)
+         ,(wait-for-inactive (term c))))))
   
+  ; terminate the fiber associated with the cancelable
+  (define (terminate c)
+    (term
+     (begin
+;       ,(app-children c cancel)
+       ,(set-inactive c)
+       (forward (stop)))))
+
+  ; run the cancelable fiber
+  (define (dispatch c wrap k)
+    (term
+     (if ,(get-from-cancelable (term c) "canceled")
+         (term)
+         (begin ,(set-active c) (run ,wrap ,k)))))
+  
+  ; scheduler action to make the fiber cancelable
   (define (wrap c k)
     (term
-     (fun (term)
-         (begin
-           ,(app-children (term c) cancel)
-           ,(set-inactive c)
-           (forward (stop)))
-         (fun (dispatch wrap k)
-              (if ,(get-from-cancelable c "canceled")
-                  (term)
-                  (begin ,(set-active c) (run wrap k)))
-              (fun (wrap-act sig)
-                   (handle sig
-                           (stop-handler (λ () term))
-                           (preempt-handler 
-                            (λ (k) 
-                              (begin
-                                ,set-inactive
-                                ,atomic-yield
-                                (dispatch wrap-act k)))))
-                   (letcont kwrapped x (dispatch wrap-act ,k)
-                            kwrapped))))))
+     (fun (wrap-act sig)
+          (handle sig
+                  (stop-handler (λ () ,(terminate c)))
+                  (preempt-handler 
+                   (λ (k) 
+                     (begin
+                       ,(set-inactive c)
+;                       ,atomic-yield
+                       ,(dispatch c (term wrap-act) (term k))))))
+                   (λ () ,(dispatch c (term wrap-act) k)))))
   
   (define (is-null ls)
     (if (null? ls) 1 0))
