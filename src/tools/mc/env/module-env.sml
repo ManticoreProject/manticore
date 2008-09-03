@@ -81,6 +81,15 @@ structure ModuleEnv =
     fun findMod (env, v) = findInEnv (env, #modEnv, v)
     fun findSig (env, v) = findInEnv (env, #sigEnv, v)
 
+  (* get and set the concrete definition of type constructor *)
+    local
+        val {getFn : Types.tycon -> ty_def option, setFn, ...} = 
+                           TyCon.newProp(fn _ => NONE)
+    in
+      fun setRealizationOfTyc (tyc, tyd) = setFn(tyc, SOME tyd)
+      val getRealizationOfTyc = getFn
+    end
+
   (* operations for mapping parse-tree value definitions to ast value definitions *)
     val {
            getFn=getValBind : ProgramParseTree.Var.var -> val_bind option, 
@@ -94,11 +103,22 @@ structure ModuleEnv =
         } = 
 	   ProgramParseTree.Var.newProp (fn _ => NONE)
 
+  (* operations for mapping parse-tree type definitions to ast type definitions *)
+    val {
+           getFn=getPrimTyDef : ProgramParseTree.Var.var -> ProgramParseTree.PML2.BOMParseTree.ty option, 
+	   setFn=setPrimTyDef : (ProgramParseTree.Var.var * ProgramParseTree.PML2.BOMParseTree.ty option) -> unit, ...
+        } = 
+	   ProgramParseTree.Var.newProp (fn _ => NONE)
+
     fun bindVal (v, x) = setValBind (v, SOME x)
 
     fun insertTy (ModEnv {modRef, tyEnv, varEnv, modEnv, sigEnv, outerEnv}, tv, x) = (
 	setTyDef(tv, SOME x);
 	ModEnv{modRef=modRef, tyEnv=VarMap.insert (tyEnv, tv, x), varEnv=varEnv, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv})
+    fun insertPrimTy (env, tv, tyc, bty) = (
+	setRealizationOfTyc(tyc, BOMTyDef bty);
+	setPrimTyDef(tv, SOME bty);
+	insertTy(env, tv, TyCon tyc))
     fun insertVar (ModEnv {modRef, varEnv, tyEnv, modEnv, sigEnv, outerEnv}, v, x) = (
 	setValBind(v, SOME x);
 	ModEnv{modRef=modRef, tyEnv=tyEnv, varEnv=VarMap.insert (varEnv, v, x), modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv})
@@ -150,15 +170,6 @@ structure ModuleEnv =
            in
 	      List.foldl f [] (matchByName(sigTyEnv, modTyEnv))
 	   end
-
-  (* get and set the concrete definition of type constructor *)
-    local
-        val {getFn : Types.tycon -> ty_def option, setFn, ...} = 
-                           TyCon.newProp(fn _ => NONE)
-    in
-      fun setRealizationOfTyc (tyc, tyd) = setFn(tyc, SOME tyd)
-      val getRealizationOfTyc = getFn
-    end
 
     local
 	val {getFn : Var.var -> Var.var option, setFn, ...} =

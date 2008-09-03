@@ -149,7 +149,15 @@ structure Translate : sig
 	  (* end case *))
 
     fun trExp (env, exp) : bom_code = (case prune exp
-	   of AST.LetExp(b, e) =>
+	   of AST.LetExp (AST.PValBind (AST.VarPat x, e1), e2) =>
+	        EXP(TranslatePValCilk5.tr{env=env,
+					  trVar=trVar,
+					  trExp=trExpToV,
+					  x=x,
+					  e1=e1,
+					  e2=e2
+					 })
+	    | AST.LetExp(b, e) =>
 		EXP(trBind (env, b, fn env' => trExpToExp(env', e)))
 	    | AST.IfExp(e1, e2, e3, ty) =>
 		EXP(trExpToV (env, e1, fn x =>
@@ -330,7 +338,7 @@ structure Translate : sig
 			end
 		(* end case *))
 	    | AST.ValBind _ => raise Fail "unexpected complex pattern"
-	    | AST.PValBind _ => raise Fail "PValBind"
+	    | AST.PValBind _ => raise Fail "impossible"
 	    | AST.FunBind fbs => let
 		fun bindFun (AST.FB(f, x, e), (env, fs)) = let
 		      val (f', env) = trVar(env, f)

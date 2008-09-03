@@ -1,4 +1,4 @@
-(* ivar.pml
+(* work-stealing-ivar.pml
  *
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -9,20 +9,20 @@
 #define BLOCKED_LIST_OFF           0
 #define VALUE_OFF                  1
 #define SPIN_LOCK_OFF              2
-#define CANCELABLE_OFF             3
 
 #define EMPTY_VAL              enum(0)
 
-structure IVar :
+structure WorkStealingIVar 
+(*:
   sig
 
       type 'a ivar
 	 
-      val ivar : Cancelation.cancelable Option.option -> 'a ivar
+      val ivar : unit -> 'a ivar
       val get : 'a ivar -> 'a
       val put : ('a ivar * 'a) -> unit
 
-  end = struct
+  end *) = struct
 
     structure PT = PrimTypes
     structure FLS = FiberLocalStorage
@@ -31,15 +31,14 @@ structure IVar :
               ![
 		 List.list,      (* list of blocked fibers *)
 		 any,            (* value *)
-		 int,            (* spin lock *)
-		 Option.option   (* cancelable *)
+		 int            (* spin lock *)
 	      ] )
 
     _primcode (
 
     (* create an ivar *)
-      define @ivar (c : Option.option / exh : PT.exh) : ivar =
-	  let x : ivar = alloc (NIL, enum(0):any, 0, c)
+      define @ivar ( / exh : PT.exh) : ivar =
+	  let x : ivar = alloc (NIL, enum(0):any, 0)
 	  let x : ivar = promote(x)
 	  return (x)
       ;  
@@ -88,7 +87,7 @@ structure IVar :
 	fun push (blockedK : any / exh : PT.exh) : () =
 	    let blockedK : cont(any) = (cont(any))blockedK
 	    cont k (unt : PT.unit) = throw blockedK(x)
-            let x : PT.unit = Control.@unblock(k, SELECT(CANCELABLE_OFF, ivar) / exh)
+            let x : PT.unit = Control.@unblock(k, NONE / exh)
             return()
   	do PrimList.@app(push, blocked / exh)
 	return()
@@ -99,9 +98,13 @@ structure IVar :
 	return(UNIT)
       ;
 
+      define @ivar-wrap (unt : PT.unit / exh : PT.exh) : ivar =
+	@ivar(/ exh)
+      ;
+
     )
 
-    val ivar : Cancelation.cancelable Option.option -> 'a ivar = _prim(@ivar)
+    val ivar : unit -> 'a ivar = _prim(@ivar-wrap)
     val get : 'a ivar -> 'a = _prim(@get)
     val put : ('a ivar * 'a) -> unit = _prim(@put-wrap)
 

@@ -23,10 +23,9 @@ structure BasisEnv : sig
   (* overloaded unary operators *)
     val neg	: (Types.ty_scheme * AST.var list)
 
-  (* look for a value via a path in the basis library, i.e., getValFromBasis(Atom.atom "Future1.future") *)
     val getValFromBasis : string list -> ModuleEnv.val_bind
-  (* look for a type via a path in the basis library *)
     val getTyFromBasis : string list -> ModuleEnv.ty_def
+    val getBOMTyFromBasis : string list -> ProgramParseTree.PML2.BOMParseTree.ty
 
   end = struct
 
@@ -517,7 +516,9 @@ structure BasisEnv : sig
           val pathToString = String.concatWith "."
           val pathToAtom = Atom.atom o pathToString
 
-        (* look for a value via a path in the basis library, i.e., getValFromBasis(Atom.atom "Future1.future") *)
+	(* use a path (or qualified name) to look up a variable, i.e., 
+	 *      getValFromBasis(Atom.atom "Future1.future") 
+	 *)
 	  fun getValFromBasis path = (
 		case BindingEnv.findValByPath (pathToAtom path)
 		 of SOME(BindingEnv.Var v) => (
@@ -528,7 +529,7 @@ structure BasisEnv : sig
 		  | _ => raise Fail ("Unable to locate "^pathToString path)
 		(* end case *))
 
-        (* look for a type via a path in the basis library *)
+	(* use a path (or qualified name) to look up a type *)
 	  fun getTyFromBasis path = (
 		case BindingEnv.findTyByPath (pathToAtom path)
 		 of SOME v => (
@@ -538,6 +539,17 @@ structure BasisEnv : sig
 		      (* end case *))
 		  | _ => raise Fail ("Unable to locate "^pathToString path)
 		(* end case *))
+
+	(* use a path (or qualified name) to look up a BOM type *)
+	  fun getBOMTyFromBasis path = (
+	        case BindingEnv.findBOMTyByPath(pathToAtom path)
+		 of SOME v => (
+		      case ModuleEnv.getPrimTyDef v
+		       of SOME ty => ty
+			| NONE =>  raise Fail ("Unable to locate "^pathToString path^" at "^ProgramParseTree.Var.toString v)
+		      (* end case *))
+		  | NONE =>  raise Fail ("Unable to locate "^pathToString path)
+  	        (* end case *))
 
     end (* local *)
   end

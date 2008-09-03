@@ -38,5 +38,6 @@ is
   translate-controls.sml
   translate-env.sml
   translate-parr.sml
+  translate-pval-cilk5.sml
   translate-types.sml
   translate-prim.sml

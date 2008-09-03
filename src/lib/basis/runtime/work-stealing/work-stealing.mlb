@@ -15,7 +15,7 @@
 
   ann "cpp" "../runtime-offsets.def,../../include/prim.def,../../include/debug.def,../../include/assert.def"
   in
-    ivar.pml
+    work-stealing-ivar.pml
   end  
   ann "cpp" "../runtime-offsets.def,../../include/prim.def,../../include/debug.def,../../include/assert.def,work-stealing.def"
   in

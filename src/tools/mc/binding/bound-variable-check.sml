@@ -394,20 +394,20 @@ structure BoundVariableCheck :> sig
 		  end
 	    | PT1.DataTyDecl (tvs, id, conDecls) => let
 		  val id' = freshVar id
-		  val env = BEnv.insertDataTy(env, id, id')
+		  val env = BEnv.insertTycBind(env, id, id')
 		  val (conDecls, env) = chkConDecls loc (conDecls, env)
 	          in
 		     (PT2.DataTyDecl (tvs, id', conDecls), env)
 		  end
 	    | PT1.AbsTyDecl (tvs, id) => let
 		  val id' = freshVar id
-		  val env = BEnv.insertDataTy(env, id, id')
+		  val env = BEnv.insertTycBind(env, id, id')
 	          in
 		     (PT2.AbsTyDecl (tvs, id'), env)
 		  end
 	    | PT1.PrimTyDecl (tvs, id, bty) => let
 		val id' = freshVar id
-		val env = BEnv.insertDataTy(env, id, id')
+		val env = BEnv.insertTycBind(env, id, id')
 		val bty = BOMBoundVariableCheck.chkTy loc (bty, env)
 		in
 		  (PT2.PrimTyDecl(tvs, id', bty), env)
@@ -546,14 +546,14 @@ structure BoundVariableCheck :> sig
 		       end
                 (* end case *))
 
-    fun chkModule loc (module, sign, env) = (case module
+    fun chkModule loc (mb, module, sign, env) = (case module
             of PT1.MarkMod {span, tree} => let
-		   val (tree, sign, rebinds, env) = chkModule span (tree, sign, env)
+		   val (tree, sign, rebinds, env) = chkModule span (mb, tree, sign, env)
 	           in
 		      (PT2.MarkMod {span=span, tree=tree}, sign, rebinds, env)
 	           end
 	     | PT1.DeclsMod decls => let
-		   val (decls, modEnv) = chkDecls loc (decls, env)
+		   val (decls, modEnv) = chkDecls loc (decls, BEnv.empty (mb, SOME env))
 		   val (sign, rebinds, signEnv) = chkConstraint loc (sign, modEnv, env)
 	           in
 		       (PT2.DeclsMod decls, sign, rebinds, signEnv)
@@ -575,7 +575,7 @@ structure BoundVariableCheck :> sig
 	          end
 	    | PT1.ModuleDecl (mb, sign, module) => let	          
 		  val mb' = freshVar mb
-		  val (module, sign, rebindVals, modEnv) = chkModule loc (module, sign, BEnv.empty (mb, SOME env))
+		  val (module, sign, rebindVals, modEnv) = chkModule loc (mb, module, sign, env)
 		  val rebindDecls = List.map PT2.ValueDecl rebindVals
 		  val env = BEnv.insertMod(env, mb, (mb', modEnv))
 	          in

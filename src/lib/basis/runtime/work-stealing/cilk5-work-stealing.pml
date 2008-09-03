@@ -35,7 +35,6 @@ structure Cilk5WorkStealing =
 		let _ : PT.unit = Control.@atomic-yield( / exh)
 		throw steal()
 	      | Option.SOME(k : PT.fiber) =>
-do print_ppt()
 		 do assert(NotEqual(k, enum(0)))
 		 throw dispatch (k)
 	    end
@@ -106,7 +105,7 @@ do print_ppt()
 	return(deque)
       ;
 
-      define @pop-tl (unt : PT.unit / exh : PT.exh) : PT.bool =
+      define @pop-tl ( / exh : PT.exh) : PT.bool =
 	let id : int = SchedulerUtils.@vproc-id(host_vproc / exh)
 	let deque : DequeTH.deque = @get-deque(id / exh)
 	let kOpt : Option.option = DequeTH.@pop-tl(deque / exh)
@@ -118,12 +117,11 @@ do print_ppt()
 	return(isNonEmpty)
       ;
 
-      define @push-tl(f : PT.fiber_fun / exh : PT.exh) : PT.unit =
-	let k : PT.fiber = Control.@fiber(f / exh)
+      define @push-tl(k : PT.fiber / exh : PT.exh) : () =
 	let id : int = SchedulerUtils.@vproc-id(host_vproc / exh)
 	let deque : DequeTH.deque = @get-deque(id / exh)
 	do DequeTH.@push-tl(deque, k / exh)
-	return(UNIT)
+	return()
       ;
 
     )

@@ -107,12 +107,8 @@ structure ChkModule :> sig
 	    | PT.PrimTyDecl (tvs, id, bty) => let
                 val tvs' = ChkTy.checkTyVars (loc, tvs)
 		val tyc = TyCon.newAbsTyc(idToAtom id, List.length tvs', false)
-		val env' = Env.insertTy(env, id, Env.TyCon tyc)
-		val tyd = Env.BOMTyDef bty
 	        in
-		  (* bind the realization of the abstract type (used in PML) *)
-		   ModuleEnv.setRealizationOfTyc(tyc, tyd);
-		   env'
+		  Env.insertPrimTy(env, id, tyc, bty)
 	        end
           (* end case *))
 
