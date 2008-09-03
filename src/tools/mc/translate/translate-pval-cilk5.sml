@@ -3,7 +3,8 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Translate pval bindings of the form let pval x = e1 in e2 end.
+ * Translate pval bindings of the form 
+ *   let pval x = e1 in e2 end
  *)
 
 structure TranslatePValCilk5  : sig
