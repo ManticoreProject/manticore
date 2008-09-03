@@ -8,13 +8,25 @@
            (lib "mred.ss" "mred")
            (lib "match.ss"))
   
-  (provide lift set-bang init-top-level-schedulers round-robin fiber terms-equal? new-cancelable wait-for-inactive set-in-cancelable get-from-cancelable is-nil? get-val remove-dict set-val set-inactive get-parent wrap cancel)
+  (provide lift set-bang init-top-level-schedulers round-robin fiber terms-equal? new-cancelable wait-for-inactive set-in-cancelable get-from-cancelable is-nil? get-val remove-dict set-val set-inactive get-parent wrap cancel atomic-yield-op yield-op)
   
+  (define (lift op)
+    (λ args
+      (term
+       (ffi-peek (ffi-call ,op ,@args)))))
+
   ; emulate set-bang using compare-and-swap
   (define (set-bang l v)
-    (term (let ((v1 ,v))
-            (let ((l1 ,l))
-              (cas l1 (deref l1) v1)))))
+    (term 
+     (fun (lp)
+          (let ((v0 (deref ,l)))
+            (if ,((lift 'terms-equal?) (term (cas ,l (deref ,l) ,v)) (term v0))
+                (unit)
+                (lp)))
+          (lp))))
+  
+  (define test-set-bang
+     (set-bang 0 1))
   
   (define true 1)
   (define false 0)
@@ -76,16 +88,16 @@
   (define (init-top-level-schedulers sched es)
     (make-multiprocessor (map (init-top-level-scheduler sched) es)))
   
-  (define atomic-yield
+  (define yield-op
     (term
-     (letcont k x (mark-preemption)
+     (letcont k (unit)
               (forward (preempt k)))))
   
-  (define (lift op)
-    (λ args
-      (term
-       (ffi-peek (ffi-call ,op ,@args)))))
+  (define atomic-yield-op
+    (term
+     (begin ,yield (mask-preemption))))
   
+
   (define (lt x y)
     (cond
       ((< x y) 1)
@@ -116,8 +128,6 @@
   
   (define (fib1 n)
     (fib (term (fib ,n))))
-  
-  (define cancelable-tag 0)
   
   (define (get-val v xs)
     (letrec ([get
@@ -197,14 +207,19 @@
     (set-current-cancelable test-new))
   
   ;; set-in-cancelable : e -> string -> any -> e
-  ;; update a value in the cancelable structure
+  ;; update a value in the cancelable structure. multiple fibers can perform this operation in parallel. so,
+  ;; to make the operation concurrent, we use a transaction protocol.
   (define (set-in-cancelable c fld v)
     (term
-     (let ((cv (deref ,c)))
-       (let ((cv (ffi-call ,'remove-dict ,fld cv)))
-         (let ((x (ffi-call ,'cons ,fld ,v)))
-           (let ((cv (ffi-call ,'cons x cv)))
-             ,(set-bang c (term cv))))))))
+     (fun (si-lp)
+          (let ((cv-init (deref ,c)))
+            (let ((cv (ffi-call ,'remove-dict ,fld cv-init)))
+              (let ((x (ffi-call ,'cons ,fld ,v)))
+                (let ((cv (ffi-call ,'cons x cv)))
+                  (if ,((lift 'terms-equal?) (term (cas ,c cv-init cv)) (term cv-init))
+                      (unit)
+                      (si-lp))))))
+          (si-lp))))
   
   
   (define (get-from-cancelable c fld)
@@ -213,7 +228,11 @@
   (define test-sic
     (term
      (let ((c ,test-new))
-       ,(set-in-cancelable (term c) "inactive" 0))))
+       (begin
+         ,(set-in-cancelable (term c) "canceled" 1)
+         (if ,(get-from-cancelable (term c) "canceled")
+             (unit)
+             (ffi-call ,'error "canceled"))))))
        
   (define (set-inactive c)
     (term
@@ -249,7 +268,19 @@
      (λ (c)
        (begin
          ,(set-in-cancelable (term c) "canceled" 1)
+         (if ,(get-from-cancelable (term c) "canceled")
+             (unit)
+             (ffi-call ,'error "canceled"))
          ,(wait-for-inactive (term c))))))
+  
+  (define test-cancel
+    (term 
+     (let ((c ,test-new))
+       (begin
+         (,cancel c)
+         (if ,(get-from-cancelable (term c) "canceled")
+             (unit)
+             (ffi-call ,'error "canceled"))))))
   
   ; terminate the fiber associated with the cancelable
   (define (terminate c)
@@ -257,14 +288,15 @@
      (begin
 ;       ,(app-children c cancel)
        ,(set-inactive c)
+       (ffi-call ,'printf  "terminated~s~n~n" (deref c))
        (forward (stop)))))
 
   ; run the cancelable fiber
   (define (dispatch c wrap k)
     (term
      (if ,(get-from-cancelable (term c) "canceled")
-         (term)
-         (begin ,(set-active c) (run ,wrap ,k)))))
+         ,(terminate c)
+         (begin ,(set-active c) (ffi-call ,'printf  "dispatch~s~n~n" (deref c)) (run ,wrap ,k)))))
   
   ; scheduler action to make the fiber cancelable
   (define (wrap c k)
@@ -276,7 +308,7 @@
                    (λ (k) 
                      (begin
                        ,(set-inactive c)
-;                       ,atomic-yield
+;                       ,atomic-yield                       
                        ,(dispatch c (term wrap-act) (term k))))))
                    (λ () ,(dispatch c (term wrap-act) k)))))
   

@@ -8,7 +8,8 @@
            (lib "pretty.ss")
            "scheduling-framework.scm"
            "scheduling-utils.scm"
-           (planet "random.ss" ("schematics" "random.plt" 1 0)))
+           (planet "random.ss" ("schematics" "random.plt" 1 0))
+          (lib "random-bits.ss" "srfi/27"))
   
   (provide check-random-reduction)
   
@@ -52,18 +53,17 @@
               (map remove-fix es)
               es))))
   
+  (define (ith-elt ls i)
+    (cond
+      [(null? ls) (error "impossible")]
+      [(zero? i) (list (car ls))]
+      [#t (ith-elt (cdr ls) (sub1 i))]))
+  
   (define (pick-random-elt ls)
     (let ([n (length ls)])
       (if (zero? n)
           '()
-          (let* ([i (random-integer n)])
-            (letrec ([ith-elt 
-                      (lambda (ls j)
-                        (cond
-                          [(null? ls) (error "impossible")]
-                          [(= i j) (list (car ls))]
-                          [#t (ith-elt (cdr ls) (add1 j))]))])
-              (ith-elt ls 0))))))
+          (ith-elt ls (random-integer n)))))
   
   ; random-prune-rule: listof(transition) -> string -> int -> listof(state)
   ; given a list of machine transitions, a rule, and an integer p, remove transitions
@@ -96,11 +96,14 @@
       (letrec ([loop
                 (lambda (parents num-visited)
                   (lambda (exp)
-                    (let* ([nexts (apply-reduction-relation reductions exp)]
+                    (let* (
+                           ;[nexts (apply-reduction-relation reductions exp)]
                            [nexts-with-names (apply-reduction-relation/tag-with-names reductions exp)]
-                           [nexts-with-names (prune-preemption nexts-with-names)]
+;                           [nexts-with-names (prune-preemption nexts-with-names)]
                            [nexts (map cadr nexts-with-names)]
-                           [uniqs (mk-uniq nexts)])
+;                           [uniqs (mk-uniq nexts)]
+                           [uniqs nexts]
+                           )                           
                       (unless (= (length uniqs) (length nexts))
                         (error 'random-reduction-path
                                "term ~s produced non unique results:~a ~s ~s"
@@ -121,8 +124,8 @@
                         [else (let ([next-parents (cons exp (if (hash-table-get visited exp #f)
                                                                   (rewind exp parents)
                                                                   parents))])
-                                ;(print (apply string-append (map (λ (x) (format "~s " (car x))) nexts-with-names)))
-                                (hash-table-put! visited exp #t)  ; record visiting exp
+                                (print (apply string-append (map (λ (x) (format "~s " (car x))) nexts-with-names)))
+                                ;(hash-table-put! visited exp #t)  ; record visiting exp
                                 (for-each (loop next-parents (add1 num-visited)) (pick-random-elt uniqs)))]))))])
         ((loop '() 0) exp)
         (let ([answers (hash-table-map answer-tbl (lambda (x y) x))]
@@ -138,7 +141,8 @@
   
   ;; unit testing
   (define-check (check-random-reduction check-name get-result max-reducts rel from tos)
-    (let* ([res (random-reduction-path max-reducts rel from)]
+    (let* ([x (random-source-randomize! default-random-source)]
+           [res (random-reduction-path max-reducts rel from)]
            [reds (car res)]
            [path (cadr res)]
            [stepper (lambda () 
