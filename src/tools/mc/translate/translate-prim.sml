@@ -88,21 +88,61 @@ structure TranslatePrim : sig
 	    List.map f vpats
 	  end
 
-    fun cvtPat (BPT.P_PMark {tree, span}) = cvtPat tree
-      | cvtPat (BPT.P_DCon(dc, xs)) = (case findCon dc
-	   of SOME (E.DCon (dc, _)) => let
-		val xs = cvtVarPats xs
-		in
-		  (BOM.P_DCon(dc, xs))
-		end
-	    | _ => raise Fail(String.concat ["unknown BOM data constructor ", PTVar.toString dc])
-	  (* end case *))
-      | cvtPat (BPT.P_Const(const, ty)) = (BOM.P_Const(const, cvtTy ty))
+    fun lookupVar v = (
+	case E.findBOMVar v
+         of NONE => raise Fail(String.concat ["unknown BOM variable ", PTVar.nameOf v])
+	  | SOME v => v
+        (* end case *))
 
-    fun lookupVar v = (case E.findBOMVar v
-           of NONE => raise Fail(String.concat ["unknown BOM variable ", PTVar.nameOf v])
-	    | SOME v => v
-           (* end case *))
+    datatype var_or_dcon
+      = Var of BOM.Var.var
+      | Con of E.con_bind
+
+    fun lookupVarOrDCon v = (
+	case E.findBOMVar v
+	 of SOME v => 
+	    (* parameter-bound variable *)
+	    Var v
+	  | NONE => (
+	    case ModuleEnv.getValBind v
+	     of SOME (ModuleEnv.Con c) => Con(TranslateTypes.trDataCon(!translateEnv, c))
+	      | NONE => raise Fail(String.concat ["unknown BOM variable ", PTVar.nameOf v])
+	    (* end case *))
+        (* end case *))
+
+    fun lookupNullaryDCon v = (
+	case lookupVarOrDCon v
+	 of Con (E.Const(w, ty)) => (Literal.Enum w, ty)
+	  | _ => raise Fail(String.concat["unknown BOM nullary data constructor ", PTVar.nameOf v])
+        (* end case *))
+
+  (* convert a variable expression to either an ordinary variable or a nullary constructor *)
+    fun cvtVar (x, k) = (
+	case lookupVarOrDCon x
+	 of Var x => k x
+	  | Con (E.Const(w, ty)) => let
+	      val t = BOM.Var.new("con_"^PTVar.nameOf x, ty)
+	      in
+		BOM.mkStmt([t], BOM.E_Const(Literal.Enum w, ty), k t)
+	      end
+	  | Con (E.DCon _) => raise Fail "impossible"
+	  | Con (E.ExnConst _) => raise Fail "todo"
+      (* end case *))
+
+    fun cvtPat (BPT.P_PMark {tree, span}) = cvtPat tree
+      | cvtPat (BPT.P_DCon(dc, xs)) = (
+	case findCon dc
+	 of SOME (E.DCon (dc, _)) => let
+            val xs = cvtVarPats xs
+	    in
+		(* non-nullary data constructor *)
+		(BOM.P_DCon(dc, xs))
+	    end
+	  | _ => 
+	    (* nullary data constructor *)
+	    BOM.P_Const(lookupNullaryDCon dc)
+	(* end case *))
+      | cvtPat (BPT.P_Const(const, ty)) = (BOM.P_Const(const, cvtTy ty))
 
     (* PML imports
      *
@@ -164,7 +204,8 @@ structure TranslatePrim : sig
 		  case rhs
 		   of BPT.RHS_Exp e => BOM.mkLet(lhs', cvtExp(findCFun, e), e')
 		    | BPT.RHS_SimpleExp e'' => (case e''
-			 of BPT.SE_Var x => BOM.mkLet(lhs', BOM.mkRet[lookupVar x], e')
+			 of BPT.SE_Var x => BOM.mkLet(lhs', cvtVar(x, fn x => BOM.mkRet[x]), e') 
+(*BOM.mkLet(lhs', BOM.mkRet[lookupVar x], e') *)
 			  | BPT.SE_Select(i, arg) =>
 			      cvtSimpleExp(findCFun, arg, fn x =>
 				BOM.mkStmt(lhs', BOM.E_Select(i, x), e'))
@@ -322,7 +363,7 @@ structure TranslatePrim : sig
 
     and cvtSimpleExp (findCFun, e, k : BOM.var -> BOM.exp) = (case e
 	   of BPT.SE_Mark {tree, span} => cvtSimpleExp(findCFun, tree, k)
-	    | BPT.SE_Var x => k(lookupVar(x))
+	    | BPT.SE_Var x => cvtVar(x, k)
 	    | BPT.SE_Alloc args => 
 	      (* NOTE: nested tuples are always immutable *)
 		cvtSimpleExps(findCFun, args, fn xs => let

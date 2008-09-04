@@ -15,16 +15,16 @@ structure SPIN_LOCK_NAME =
 
       define @lock(lock : sl_ty / exh : PT.exh) : PT.bool =
         fun spin () : PT.bool =        
-            if BCAS(&LOCK_OFFSET(lock), FALSE, TRUE)
+            if BCAS(&LOCK_OFFSET(lock), PT.FALSE, PT.TRUE)
 	       then let mask : PT.bool = vpload (ATOMIC, host_vproc)
-	            do vpstore(ATOMIC, host_vproc, TRUE)
+	            do vpstore(ATOMIC, host_vproc, PT.TRUE)
                     return(mask)
 	    else apply spin()
         apply spin()
       ;
 
       define @unlock(lock : sl_ty, mask : PT.bool / exh : PT.exh) : () =
-        do UPDATE(LOCK_OFFSET, lock, FALSE)
+        do UPDATE(LOCK_OFFSET, lock, (PT.bool)PT.FALSE)
         do vpstore(ATOMIC, host_vproc, mask)
         return()
       ;

@@ -9,10 +9,12 @@
 structure Init =
   struct
 
+    structure PT = PrimTypes
+
      _primcode (
       define @init-vproc(x : PrimTypes.unit / exh : PrimTypes.exh) : PrimTypes.unit =
       (* mask signals *)
-	do vpstore(ATOMIC, host_vproc, TRUE)
+	do vpstore(ATOMIC, host_vproc, PT.TRUE)
 	return(UNIT)
       ;
     )

@@ -39,9 +39,16 @@ structure BOMBoundVariableCheck :> sig
            (* end case *))
 
     val dummyVar = Var.new("dummyVar", ())
-    val findBOMVarQid = findQid (QualifiedId.findBOMVar, "BOM variable", dummyVar)
-    val findBOMTyQid = findQid (QualifiedId.findBOMTy, "BOM type", dummyVar)
     val findVarQid = findQid (QualifiedId.findVar, "variable", BEnv.Var dummyVar)
+    fun findBOMVarQid (loc, env, qId) = 
+	if Option.isSome(QualifiedId.findBOMVar(env, qId))
+	   then	findQid (QualifiedId.findBOMVar, "BOM variable", dummyVar) (loc, env, qId)
+	else (
+	    case QualifiedId.findVar(env, qId)
+	     of SOME(BEnv.Con v) => v
+	      | _ => findQid (QualifiedId.findBOMVar, "BOM variable", dummyVar) (loc, env, qId)
+	    (* end case *))
+    val findBOMTyQid = findQid (QualifiedId.findBOMTy, "BOM type", dummyVar)
     val findBOMHLOpQid = findQid (QualifiedId.findBOMHLOp, "HLOp", dummyVar)
 
   fun findDCon (env, qid) = (

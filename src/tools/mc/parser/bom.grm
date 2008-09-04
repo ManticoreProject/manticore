@@ -295,6 +295,7 @@ Rules
 Rule
 	: QualifiedId "(" VarPat ("," VarPat)* ")" "=>" BOMExp
 					=> (markBOMPat(FULL_SPAN, BPT.P_DCon(QualifiedId, VarPat::SR)), BOMExp)
+        | QualifiedId "=>" BOMExp       => (markBOMPat(FULL_SPAN, BPT.P_DCon(QualifiedId, [])), BOMExp)
 	| Literal "=>" BOMExp		=> (markBOMPat(FULL_SPAN, BPT.P_Const Literal), BOMExp)
 	;
 

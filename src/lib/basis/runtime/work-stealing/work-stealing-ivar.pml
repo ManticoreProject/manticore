@@ -38,7 +38,7 @@ structure WorkStealingIVar
 
     (* create an ivar *)
       define @ivar ( / exh : PT.exh) : ivar =
-	  let x : ivar = alloc (NIL, enum(0):any, 0)
+	  let x : ivar = alloc (List.NIL, enum(0):any, 0)
 	  let x : ivar = promote(x)
 	  return (x)
       ;  
@@ -82,7 +82,7 @@ structure WorkStealingIVar
 		return(blockedFibers)
 	   else
 	       do assert(NotEqual(oldValue, EMPTY_VAL))
-	       return(NIL)
+	       return(List.NIL)
       (* push any blocked fibers on the local deque *)
 	fun push (blockedK : any / exh : PT.exh) : () =
 	    let blockedK : cont(any) = (cont(any))blockedK

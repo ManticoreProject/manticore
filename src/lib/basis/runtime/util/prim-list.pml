@@ -12,7 +12,7 @@ structure PrimList =
       define @app (f : fun(any / PT.exh -> ), ls : List.list / exh : PT.exh) : () =
 	fun lp (f : fun(any / PT.exh -> ), xs : List.list / exh : PT.exh) : () =
 	    case xs
-	     of NIL => return()
+	     of List.NIL => return()
 	      | L.CONS(x : any, xs : list) =>
 		do apply f(x / exh)
 		apply lp(f, xs / exh)

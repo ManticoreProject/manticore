@@ -67,7 +67,7 @@ structure SchedulerUtils =
       define @for-each-vproc(f : fun(vproc / PT.exh ->) / exh : PT.exh) : () =
 	fun lp (vps : List.list / exh : PT.exh) : () =
 	    case vps
-	     of NIL => return()
+	     of List.NIL => return()
 	      | List.CONS(vp : vproc, vps : List.list) =>
 		do apply f(vp / exh)
 		apply lp(vps / exh)
@@ -96,7 +96,7 @@ structure SchedulerUtils =
      * this operation completes.
      *)
       define @set-trampoline ( / exh : PT.exh) : () =
-        do vpstore(ATOMIC, host_vproc, TRUE)
+        do vpstore(ATOMIC, host_vproc, PT.TRUE)
 
       (* the trampoline passes signals from the C runtime to the current scheduler. there are two possibilities:
        *  1. the vproc was awoken from an idle state
@@ -106,7 +106,7 @@ structure SchedulerUtils =
 	  if Equal(k, M_NIL)
              then 
 	      (* case 1 *)
-	      Control.@forward(STOP / exh)
+	      Control.@forward(PT.STOP / exh)
 	  else 
 	      (* case 2 *)
 	      Control.@forward(PT.PREEMPT(k) / exh)
@@ -115,7 +115,7 @@ structure SchedulerUtils =
       (* set the trampoline on a given vproc *)
 	fun setTrampoline (vp : vproc / exh : PT.exh) : () =
 	    let currentTrampoline : cont(PT.fiber) = vpload(VP_SCHED_CONT, vp)
-	    do assert(Equal(currentTrampoline, NIL))
+	    do assert(Equal(currentTrampoline, List.NIL))
 	    do vpstore(VP_SCHED_CONT, vp, trampoline)
 	    return()
 	do @for-each-vproc(setTrampoline / exh)
@@ -126,7 +126,7 @@ structure SchedulerUtils =
     (* switch to a given thread *)
       define @switch-to (fls : FLS.fls, fiber : PT.fiber / exh : PT.exh) noreturn =
 	let _ : PT.unit =  FLS.@set (fls / exh)
-	do vpstore (ATOMIC, host_vproc, FALSE)
+	do vpstore (ATOMIC, host_vproc, PT.FALSE)
 	throw fiber (UNIT)
       ;
 
@@ -164,7 +164,7 @@ structure SchedulerUtils =
             Control.@push-remote-act(vp, act / exh)
 
 	  cont startup (_ : PT.unit) =
-		do vpstore(ATOMIC, self, TRUE)
+		do vpstore(ATOMIC, self, PT.TRUE)
 	      (* install the scheduler on remote vprocs *)
 		do @for-other-vprocs(pushAct / exh)
 		return()
@@ -192,7 +192,7 @@ structure SchedulerUtils =
             end
 
 	  case s
-	    of STOP => 
+	    of PT.STOP => 
 	         throw dispatch ()
 	     | PT.PREEMPT (k : PT.fiber) =>
 		 let fls : FLS.fls = FLS.@get ( / exh)
@@ -229,14 +229,14 @@ structure SchedulerUtils =
 	  let barrier : Barrier.barrier = Barrier.@new(nVProcs / exh)
 
 	  fun init (_ : PT.unit / exh : PT.exh) : PT.unit =	  
-		do vpstore (ATOMIC, host_vproc, TRUE)
+		do vpstore (ATOMIC, host_vproc, PT.TRUE)
 	       (* this fiber synchronizes on the barrier and then exits to activate the scheduler *)
 		cont dummyK (_ : PT.unit) = 
-		     do vpstore (ATOMIC, host_vproc, TRUE)
+		     do vpstore (ATOMIC, host_vproc, PT.TRUE)
                      do Barrier.@ready(barrier / exh)
 		     do Barrier.@barrier(nVProcs, barrier / exh)
-                     do vpstore(ATOMIC, host_vproc, FALSE)
-		     do Control.@forward (STOP / exh)
+                     do vpstore(ATOMIC, host_vproc, PT.FALSE)
+		     do Control.@forward (PT.STOP / exh)
 		     return(UNIT)
 	      (* make the scheduler instance for the host vproc *)
 	       let act : PT.sigact = apply mkAct (host_vproc / exh)
@@ -247,7 +247,7 @@ structure SchedulerUtils =
 	      @spawn-on (init, fls, vp / exh)
 
 	  cont startup (_ : PT.unit) =
-		do vpstore(ATOMIC, self, TRUE)
+		do vpstore(ATOMIC, self, PT.TRUE)
 	      (* install the scheduler on remote vprocs *)
 		do @for-other-vprocs(spawnOn / exh)
 		Barrier.@barrier(nVProcs, barrier / exh)

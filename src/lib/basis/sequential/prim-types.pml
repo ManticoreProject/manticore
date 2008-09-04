@@ -12,7 +12,7 @@ structure PrimTypes =
     (* exception handler *)
       typedef exh = cont(exn);
       typedef unit = enum(0);
-      typedef bool = enum(1);
+(*      typedef bool = enum(1);*)
       typedef fiber_fun = fun (unit / exh -> unit);
       typedef string_data = any;
       typedef ml_string = [string_data, int];
@@ -24,6 +24,8 @@ structure PrimTypes =
 
     type fiber = _prim ( cont(unit) )
     type 'a cont = _prim ( cont(any) )
+
+    datatype bool = FALSE | TRUE
 
   (* signals for schedulers *)
     datatype 'a signal 

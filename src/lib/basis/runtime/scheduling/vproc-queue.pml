@@ -97,7 +97,7 @@ structure VProcQueue =
       define @unload-landing-pad (/ exh : PT.exh) : queue =
 	let vp : vproc = host_vproc
 	let mask : PT.bool = vpload(ATOMIC, vp)
-	do vpstore(ATOMIC, vp, TRUE)
+	do vpstore(ATOMIC, vp, PT.TRUE)
 	fun lp () : queue =
 	    let item : queue = vpload(VP_ENTRYQ, vp)
 	    let queue : queue = CAS(&VP_ENTRYQ(vp), item, Q_EMPTY)
@@ -137,7 +137,7 @@ structure VProcQueue =
 		  (* the head of the queue is an ordinary thread; put it on the local queue *)
 		    do @enqueue (SELECT(FLS_OFF, queue), SELECT(FIBER_OFF, queue) / exh)
 		    apply lp((queue)SELECT(LINK_OFF, queue), messengerThds / exh)
-	apply lp(queue, NIL / exh)
+	apply lp(queue, List.NIL / exh)
       ;
 
     (* unload the landing pad, and return any messages *)

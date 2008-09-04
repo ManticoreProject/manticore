@@ -41,7 +41,7 @@ structure LockedQueue =
         let mask : PT.bool = SpinLock.@lock (q / exh)
        (* check for blocked threads first *)
         let bqHd : I.elt = SELECT(BLOCKED_HD_OFF, q)
-        do if Equal (bqHd, NIL)
+        do if Equal (bqHd, List.NIL)
               then (* nothing is blocked; enqueue the element *)
                  do I.@enqueue (q, qElt / exh)
 		 SpinLock.@unlock (q, mask / exh)
@@ -50,7 +50,7 @@ structure LockedQueue =
                 case elt
 		 of NONE => 
 		    do SpinLock.@unlock (q, mask / exh)
-                    do assert(FALSE)  (* error *)
+                    do assert(PT.FALSE)  (* error *)
                     return()
 		  | Option.SOME (blockedThread : blocked_thread) =>
                     do SpinLock.@unlock (q, mask / exh)
@@ -67,7 +67,7 @@ structure LockedQueue =
       ;
 
       define @new ( / exh : PT.exh) : queue =
-        let lockedQ : queue = alloc (FALSE, EMPTY, EMPTY, EMPTY, EMPTY)
+        let lockedQ : queue = alloc (PT.FALSE, EMPTY, EMPTY, EMPTY, EMPTY)
         let lockedQ : queue = promote (lockedQ)
         return (lockedQ)
       ;

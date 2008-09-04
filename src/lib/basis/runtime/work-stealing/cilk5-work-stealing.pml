@@ -15,7 +15,7 @@ structure Cilk5WorkStealing =
 
     _primcode (
 
-      define @scheduler1 (deques : Arr.array, self : vproc / exh : PT.exh) : PT.sigact =
+      define @scheduler (deques : Arr.array, self : vproc / exh : PT.exh) : PT.sigact =
 	let nWorkers : int = Arr.@length(deques / exh)
 	let id : int = SchedulerUtils.@vproc-id(self / exh)
 	let deque : DequeTH.deque = Arr.@sub(deques, id / exh)
@@ -39,7 +39,7 @@ structure Cilk5WorkStealing =
 		 throw dispatch (k)
 	    end
 	  case sign
-	   of STOP =>
+	   of PT.STOP =>
 	      let kOpt : Option.option = DequeTH.@pop-tl(deque / exh)
 	      case kOpt
 	       of NONE =>
@@ -50,7 +50,7 @@ structure Cilk5WorkStealing =
 	    | PT.PREEMPT (k : PT.fiber) =>
 	      do DequeTH.@push-tl(deque, k / exh)
 	      let _ : PT.unit = Control.@atomic-yield(/exh)
-	      throw switch(STOP)
+	      throw switch(PT.STOP)
 	    | PT.SUSPEND (k : PT.fiber, retK : cont(PT.fiber)) =>
 	      let k' : PT.fiber = Control.@nested-sched-suspend(k, retK / exh)
               throw dispatch(k')
@@ -80,7 +80,7 @@ structure Cilk5WorkStealing =
 	    Arr.@update(deques, id, deque / exh)
 	do SchedulerUtils.@for-each-vproc(f / exh)
 	fun mkAct (self : vproc / exh : PT.exh) : PT.sigact =
-	      @scheduler1(deques, self / exh)
+	      @scheduler(deques, self / exh)
 	let vps : List.list = SchedulerUtils.@all-vprocs(/ exh)
 	do SchedulerUtils.@scheduler-startup(mkAct, fls, vps / exh)
 	return(deques)
@@ -95,7 +95,7 @@ structure Cilk5WorkStealing =
 	       of NONE => 
 		(* this thread does not support work stealing *)
 	    (* FIXME: throw an exception here *)
-		  do assert(FALSE)
+		  do assert(PT.FALSE)
 		  return($0)
 		| Option.SOME (c : SetOnceMem.set_once_mem) =>
 		  let deques : any = SetOnceMem.@get(c / exh)
@@ -111,8 +111,8 @@ structure Cilk5WorkStealing =
 	let kOpt : Option.option = DequeTH.@pop-tl(deque / exh)
 	let isNonEmpty : PT.bool = 
 	      case kOpt
-	       of NONE => return (FALSE)
-		| Option.SOME(k : PT.fiber) => return(TRUE)
+	       of NONE => return (PT.FALSE)
+		| Option.SOME(k : PT.fiber) => return(PT.TRUE)
 	       end
 	return(isNonEmpty)
       ;

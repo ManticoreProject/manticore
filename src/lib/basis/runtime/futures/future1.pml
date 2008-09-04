@@ -81,8 +81,8 @@ structure Future1 : FUTURE = struct
 
 	cont run (k : PT.fiber) =
 	  do Control.@run(switch, k / exh)
-	  do assert(FALSE)
-	  throw switch(STOP)
+	  do assert(PT.FALSE)
+	  throw switch(PT.STOP)
 
 	(* get the next available future *)
 	  cont dispatch () =
@@ -97,7 +97,7 @@ structure Future1 : FUTURE = struct
 	      end
 	(* handle signals *)
 	  case s
-	   of STOP => 
+	   of PT.STOP => 
 	      throw dispatch()
 	    | PT.PREEMPT(k : PT.fiber) =>
 	    (* mugging policy: other workers can steal k *)
@@ -132,7 +132,7 @@ structure Future1 : FUTURE = struct
 	 of NONE => 
           (* this thread does not support futures *)
 (* FIXME: throw an exception here *)
-	    do assert(FALSE)
+	    do assert(PT.FALSE)
             return($0)
 	  | Option.SOME (c : SetOnceMem.set_once_mem) =>
 	    let readyQ : any = SetOnceMem.@get(c / exh)

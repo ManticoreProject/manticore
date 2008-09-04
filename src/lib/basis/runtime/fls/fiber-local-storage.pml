@@ -14,6 +14,7 @@ structure FiberLocalStorage =
 
     structure PT = PrimTypes
     structure AL = AssocList
+    structure L = List
 
     type fls = _prim ( [PT.bool, AL.assoc_list] ) 
 
@@ -23,13 +24,13 @@ structure FiberLocalStorage =
 
     (* create fls *)
       define @new (x : PT.unit / exh : PT.exh) : fls =
-        let fls : fls = alloc(TRUE, NIL)
+        let fls : fls = alloc(PT.TRUE, L.NIL)
         return(fls)
       ;
 
     (* set the fls on the host vproc *)
       define @set (fls : fls / exh : PT.exh) : PT.unit =
-        do assert(NotEqual(fls, NIL))
+        do assert(NotEqual(fls, L.NIL))
         do vpstore (CURRENT_FG, host_vproc, fls)
         return(UNIT)
       ;
@@ -37,7 +38,7 @@ structure FiberLocalStorage =
     (* get the fls from the host vproc *)
       define @get ( / exh : PT.exh) : fls =
         let fls : fls = vpload (CURRENT_FG, host_vproc)
-        do assert(NotEqual(fls, NIL))
+        do assert(NotEqual(fls, L.NIL))
         return(fls)
       ;
 

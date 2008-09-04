@@ -29,10 +29,19 @@ structure TranslatePValCilk5  : sig
     structure BV = BOM.Var
     structure E = TranslateEnv
 
-    val getTyc = BasisEnv.getBOMTyFromBasis
     val findHLOp = #name o Option.valOf o HLOpEnv.findDefByPath
+    fun getBOMTy (env, path) = TranslateTypes.cvtPrimTy env (BasisEnv.getBOMTyFromBasis path)
+    fun getTy (env, path) = (
+	case BasisEnv.getTyFromBasis path
+	 of ModuleEnv.TyCon tyc => (
+	    case E.findTyc(env, tyc)
+	     of SOME ty => ty
+	      | NONE => raise Fail "unbound tyc"
+	    (* end case *))
+	  | _ => raise Fail "todo"
+        (* end case *))
 
-    fun iVarTy () = getTyc ["WorkStealingIVar", "ivar"]
+    fun iVarTy env = getBOMTy (env, ["WorkStealingIVar", "ivar"])
     fun iGet () = findHLOp ["WorkStealingIVar", "get"]
     fun iPut () = findHLOp ["WorkStealingIVar", "put"]
     fun iVar () = findHLOp ["WorkStealingIVar", "ivar"]
@@ -59,7 +68,7 @@ structure TranslatePValCilk5  : sig
 	  val exh = E.handlerOf env
 	  val ty1 = TranslateTypes.tr(env, TypeOf.exp e1)
 	  val ty2 = TranslateTypes.tr(env, TypeOf.exp e2)
-	  val ivar = BV.new("ivar", TranslateTypes.cvtPrimTy env (iVarTy()))
+	  val ivar = BV.new("ivar", iVarTy env)
 	  val (x', env) = trVar(env, x)
 	  val selFnAST = Var.new("selFn", AST.FunTy(Basis.unitTy, TypeOf.exp e1))
 	  val (selFn, env) = trVar(env, selFnAST)
@@ -78,7 +87,7 @@ structure TranslatePValCilk5  : sig
 	  val slowPathL = 
 	      B.mkLambda{f=slowPath, params=[unitVar()], exh=[], body=
                  B.mkApply(bodyFn, [selFromIVar], [exh])}
-	  val goLocal = BV.new("goLocal", BTy.boolTy)
+	  val goLocal = BV.new("goLocal", getTy(env, ["PrimTypes", "bool"]))
 	  val selLocally = BV.new("selLocally", BTy.T_Fun([BTy.unitTy], [BTy.exhTy], [ty1]))
 	  val (selLocallyExh, _) = E.newHandler env
           in

@@ -20,7 +20,7 @@ structure AssocList =
       define @find (ls : assoc_list, tg : assoc_tag / exh : PT.exh) : O.option =
         fun lp (ls : L.list / exh : PT.exh) : O.option =
           case ls
-	   of NIL => return(NONE)
+	   of L.NIL => return(NONE)
 	    | L.CONS(x : [assoc_tag, elt], xs : L.list) =>
 	      if Equal(#0(x), tg)
                  then return(O.SOME(#1(x)))
@@ -35,8 +35,8 @@ structure AssocList =
 
 
       define @test (x : PT.unit / exh : PT.exh) : PT.bool =
-        cont fail () = return(FALSE)
-        let ls : L.list = NIL
+        cont fail () = return(PT.FALSE)
+        let ls : L.list = L.NIL
         let x : O.option = @find(ls, tag(test) / exh)
         do case x of NONE => return() | SOME (x:any) => throw fail() end
         let ls : L.list = @insert(ls, tag(test), alloc(1234) / exh)
@@ -61,7 +61,7 @@ structure AssocList =
 		   | SOME (x:[int]) => 
 		     throw fail()
 	   end
-        return(TRUE)
+        return(PT.TRUE)
       ;
     )
 

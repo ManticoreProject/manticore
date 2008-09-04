@@ -63,7 +63,7 @@ structure Cancelation =
     (* create a cancelable *)
       define @new (cTag : FLS.fls_tag / exh : PT.exh) : cancelable =
         let parent : Option.option = @get-current(cTag / exh)
-        let c : cancelable = alloc(FALSE, TRUE, NIL, parent, cTag)
+        let c : cancelable = alloc(PT.FALSE, PT.TRUE, List.NIL, parent, cTag)
         let c : cancelable = promote(c)
       (* add this new cancelable to the parent's list of children *)
         do case parent
@@ -90,7 +90,7 @@ structure Cancelation =
                end
            end
       (* mark the inactive flag; use CAS as a memory fence *)
-        let x : PT.bool = CAS(ADDR_OF(INACTIVE_OFF,c), FALSE, TRUE)
+        let x : PT.bool = CAS(ADDR_OF(INACTIVE_OFF,c), PT.FALSE, PT.TRUE)
         return()
       ;
 
@@ -105,7 +105,7 @@ structure Cancelation =
                return()
            end
       (* use CAS as a memory fence *)
-        let x : PT.bool = CAS(ADDR_OF(INACTIVE_OFF,c), TRUE, FALSE) 
+        let x : PT.bool = CAS(ADDR_OF(INACTIVE_OFF,c), PT.TRUE, PT.FALSE) 
         return()
       ;
 
@@ -131,7 +131,7 @@ structure Cancelation =
       (* scheduler action that polls for cancelation *)
         cont wrapper (s : PT.signal) =
              case s
-	      of STOP => 
+	      of PT.STOP => 
 		 throw terminate()
 	       | PT.PREEMPT(k : PT.fiber) =>
 		 do @set-inactive(c / exh)
@@ -152,7 +152,7 @@ structure Cancelation =
              end
 
         cont wrappedK (x : PT.unit) =
-             do vpstore(ATOMIC, host_vproc, TRUE)
+             do vpstore(ATOMIC, host_vproc, PT.TRUE)
              throw dispatch(wrapper, k)
 
         return(wrappedK)
@@ -163,17 +163,17 @@ structure Cancelation =
       (* spin until both checks and busy are finished *)
 	fun lp (checks : List.list, busy : List.list / exh : PT.exh) : () =
 	    case checks
-	     of NIL =>
+	     of List.NIL =>
 		case busy 
-		 of NIL => return()
-		  | _ => apply lp (busy, NIL / exh)
+		 of List.NIL => return()
+		  | _ => apply lp (busy, List.NIL / exh)
 		end
 	      | List.CONS (c : cancelable, checks : List.list) =>
 		if SELECT(INACTIVE_OFF, c)
 		   then apply lp (checks, busy / exh)
 		else apply lp (checks, List.CONS(c, busy) / exh)
 	    end
-	apply lp(checks, NIL / exh)
+	apply lp(checks, List.NIL / exh)
       ;
 
     (* wait for a cancelable to terminate *)
@@ -193,12 +193,12 @@ structure Cancelation =
 	fun cancel (c : cancelable / exh : PT.exh) : () =
 	    fun cancelChildren (children : List.list / exh : PT.exh) : () =
 		case children
-		 of NIL => return ()
+		 of List.NIL => return ()
 		  | List.CONS (c : cancelable, children : List.list) =>
-		    do UPDATE(CANCELED_OFF, c, TRUE)
+		    do UPDATE(CANCELED_OFF, c, (PT.bool)PT.TRUE)
 		    apply cancelChildren (children / exh)
 		end
-	    do UPDATE(CANCELED_OFF, c, TRUE)
+	    do UPDATE(CANCELED_OFF, c, (PT.bool)PT.TRUE)
 	    apply cancelChildren (SELECT(CHILDREN_OFF, c) / exh)
 	do apply cancel(c / exh)
 	@wait(c / exh)

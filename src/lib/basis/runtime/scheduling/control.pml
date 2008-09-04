@@ -17,9 +17,9 @@ structure Control =
     (* pop from the host vproc's scheduler action stack *)
       define @pop-act (/ exh : PT.exh) : PT.sigact =
 	let vp : vproc = host_vproc
-	do vpstore(ATOMIC, vp, TRUE)
+	do vpstore(ATOMIC, vp, PT.TRUE)
 	let tos : [PT.sigact, any] = vpload(VP_ACTION_STK, vp)
-	do assert(NotEqual(tos, NIL))
+	do assert(NotEqual(tos, List.NIL))
 	let rest : any = #1(tos)
 	do vpstore(VP_ACTION_STK, vp, rest)
 	let act : PT.sigact = #0(tos)
@@ -31,7 +31,7 @@ structure Control =
      * concurrent. the remote vproc must be idle during the operation.
      *)
       define @push-remote-act (vp : vproc, act : PT.sigact / exh : PT.exh) : () =
-	do assert(NotEqual(act, NIL))
+	do assert(NotEqual(act, List.NIL))
 	let stk : [PT.sigact, any] = vpload (VP_ACTION_STK, vp)
 	let item : [PT.sigact, any] = alloc (act, (any)stk)
 	let item : [PT.sigact, any] = promote (item)
@@ -42,12 +42,12 @@ structure Control =
     (* push a scheduler action on the host vproc's stack *)
       define @push-act (act : PT.sigact / exh : PT.exh) : () =
         let vp : vproc = host_vproc
-	do vpstore (ATOMIC, vp, TRUE)
-	do assert(NotEqual(act, NIL))
+	do vpstore (ATOMIC, vp, PT.TRUE)
+	do assert(NotEqual(act, List.NIL))
 	let stk : [PT.sigact, any] = vpload (VP_ACTION_STK, vp)
 	let item : [PT.sigact, any] = alloc (act, (any)stk)
 	do vpstore (VP_ACTION_STK, vp, item)
-	do vpstore (ATOMIC, vp, FALSE)
+	do vpstore (ATOMIC, vp, PT.FALSE)
         return()
       ;
 
@@ -61,11 +61,11 @@ structure Control =
       define @run-fibers (ks : List.list / exh : PT.exh) : () =
 	cont lp (ks : List.list) = 
 	  case ks
-	   of NIL => return()
+	   of List.NIL => return()
 	    | List.CONS (k : PT.fiber, ks : List.list) =>
 	       cont handler (sign : PT.signal) =
 		 case sign
-		  of STOP =>
+		  of PT.STOP =>
 		   (* handle the next messenger *)
 		     throw lp(ks)
 		   | PT.PREEMPT(k : PT.fiber) =>
@@ -90,10 +90,10 @@ structure Control =
       ;
 
       define @handle-incoming (/ exh : PT.exh) : () =
-        do vpstore(ATOMIC, host_vproc, TRUE)
+        do vpstore(ATOMIC, host_vproc, PT.TRUE)
         let messages : List.list = VProcQueue.@unload-and-check-messages(/ exh)
         do @run-fibers(messages / exh)
-        do vpstore(ATOMIC, host_vproc, TRUE)
+        do vpstore(ATOMIC, host_vproc, PT.TRUE)
 	return()
       ;
 
@@ -105,7 +105,7 @@ structure Control =
 
     (* stop the current fiber *)
       define @stop (/ exh : PT.exh) : PT.unit =
-        do @forward(STOP / exh)
+        do @forward(PT.STOP / exh)
         return(UNIT)
       ;
 
@@ -119,10 +119,10 @@ structure Control =
     (* yield control to the parent scheduler, masking signals upon return *)
       define @atomic-yield (/ exh : PT.exh) : PT.unit =
         cont k (x:PT.unit) = 
-          do vpstore(ATOMIC, host_vproc, TRUE)         (* mask signals before resuming *)
+          do vpstore(ATOMIC, host_vproc, PT.TRUE)         (* mask signals before resuming *)
           return(UNIT)
         do @forward(PT.PREEMPT(k) / exh)
-        do assert(FALSE) (* control should never reach this point *)
+        do assert(PT.FALSE) (* control should never reach this point *)
         return(UNIT)
       ;
 
@@ -140,7 +140,7 @@ structure Control =
           do vpstore(ATOMIC, host_vproc, mask)
 	  return(k')
 	do @forward(PT.SUSPEND(k, retK) / exh)
-	do assert(FALSE)
+	do assert(PT.FALSE)
 	return(k)
       ;
 
@@ -154,7 +154,7 @@ structure Control =
 
     (* run the thread under the scheduler action *)
       define @run-thread (act : PT.sigact, fiber : PT.fiber, fls : FLS.fls / exh : PT.exh) noreturn =
-	do vpstore (ATOMIC, host_vproc, TRUE)
+	do vpstore (ATOMIC, host_vproc, PT.TRUE)
         let _ : PT.unit = FLS.@set(fls / exh)
         @run(act, fiber / exh)
       ;
