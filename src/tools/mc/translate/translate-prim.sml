@@ -245,9 +245,7 @@ structure TranslatePrim : sig
 			     of NONE => raise Fail (String.concat ["compiler bug: unbound PML variable ", PTVar.toString pmlVar])
 			      | SOME v => v
 				(* end case *))
-(*			val freshBinding = addPMLImport actualBinding*)
 		        in
-(*			   print (BOM.Var.toString freshBinding^"\n");*)
 			   BOM.mkLet(lhs', BOM.mkRet [v], e')
 			end
 		  (* end case *)
@@ -461,9 +459,6 @@ structure TranslatePrim : sig
 		         chkConstraintTy (BOM.Var.typeOf f);
 			 SOME (etaExpand(name, def)))
 		     | NONE => NONE
-(*		       raise Fail ("unbound hlop "^
-				   String.concatWith "." (BindingEnv.getHLOpPath hlop))
-*)
                    (* end case *))
           end
 

@@ -30,26 +30,11 @@ structure ASTOpt : sig
     val pvals : AST.exp -> AST.exp =
 	transform {passName="pval-to-future", pass=PValToFuture.tr}
 
-    val pvalToFuture = Controls.genControl {
-	    name = "pval-to-future",
-	    pri = [5, 0],
-	    obscurity = 1,
-	    help = "Translate pvals to futures.",
-	    default = false
-	  }
-
-(* FIXME: use expansion option instead of this compiler flag *)
-    val _ = ControlRegistry.register ASTOptControls.registry {
-	    ctl = Controls.stringControl ControlUtil.Cvt.bool pvalToFuture,
-	    envName = NONE}
-
     fun optimize (exp : AST.exp) : AST.exp = let
 	  val exp = if (Controls.get BasicControl.sequential)
 		          then Unpar.unpar exp
 		          else let
-			    val exp = if Controls.get pvalToFuture
-				          then pvals exp
-				      else exp
+			    val exp = pvals exp
 			    val exp = GrandPass.transform exp
 			    in
 				exp

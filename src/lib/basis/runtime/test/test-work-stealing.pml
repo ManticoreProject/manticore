@@ -23,7 +23,6 @@ structure TestWorkStealing =
 	       else
 		 let raw : int = #0(n)
 
-		 cont retK (x : [int]) = return(x)
 		 let iv : IVar.ivar = IVar.@ivar( / exh)
 
 		 fun bodyP (selFn : fun (PT.unit / PT.exh -> [int]) / exh : PT.exh) : [int] =
@@ -40,7 +39,7 @@ structure TestWorkStealing =
 			  let v : [int] = ([int])v
 			  return(v)
 		      let x : [int] = apply bodyP(f / exh)
-		      throw retK(x)
+		      return(x)
 
 		 do Cilk5WorkStealing.@push-tl(k / exh)
 
@@ -68,6 +67,6 @@ structure TestWorkStealing =
     )
 
     val fib : int -> int = _prim(@fib)
-    val _ = Print.printLn(Int.toString(fib 27))
+    val _ = Print.printLn(Int.toString(fib 28))
 
 end

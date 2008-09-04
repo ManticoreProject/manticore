@@ -45,8 +45,8 @@ structure Array64 =
       ;
 
       define inline @update (arr : array, i : int, x : any / exh : PT.exh) : () =
-	let len : int = @length(arr / exh)
 	do assert(I32Gte(i,0))
+	let len : int = @length(arr / exh)
 	do assert(I32Lt(i,len))
        (* since the array is in the global heap, x must also be in the global heap *)
 	let x : any = (any)x

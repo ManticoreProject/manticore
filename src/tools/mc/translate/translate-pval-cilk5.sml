@@ -61,31 +61,33 @@ structure TranslatePValCilk5  : sig
 	  val ty2 = TranslateTypes.tr(env, TypeOf.exp e2)
 	  val ivar = BV.new("ivar", TranslateTypes.cvtPrimTy env (iVarTy()))
 	  val (x', env) = trVar(env, x)
-	  val selFnTy = BTy.T_Fun([], [BTy.exhTy], [ty1])
-	  val selFn = BV.new("selFn", selFnTy)
-	  val bodyFn = BV.new("bodyFn", BTy.T_Fun([selFnTy], [BTy.exhTy], [ty2]))
-	  val (bodyExh, env) = E.newHandler env
+	  val selFnAST = Var.new("selFn", AST.FunTy(Basis.unitTy, TypeOf.exp e1))
+	  val (selFn, env) = trVar(env, selFnAST)
+        (* e2[x -> selFn()] *)
+	  val e2' = VarSubst.substForExp (VarSubst.idSubst x) 
+					 (ASTUtil.mkApplyExp(AST.VarExp(selFnAST, []), [AST.TupleExp[]]))
+					 e2
+	  val bodyFn = BV.new("bodyFn", BTy.T_Fun([BV.typeOf selFn], [BTy.exhTy], [ty2]))
+	  val (bodyExh, _) = E.newHandler env
 	  val bodyFnL = 
-	      B.mkLambda{f=bodyFn, params=[selFn], exh=[bodyExh], body=
-                 B.mkLet([x'], B.mkApply(selFn, [], [exh]),
-		    trExp(env, e2, fn v2 => B.mkRet[v2]))}
-	  val selFromIVar = BV.new("selFromIVar", BTy.T_Fun([], [BTy.exhTy], [ty1]))
-	  val (selFromIVarExh, env) = E.newHandler env
-	  val selFromIVarL = B.mkLambda{f=selFromIVar, params=[], exh=[selFromIVarExh], body=mkIGet(exh, ivar)}
+	      B.mkLambda{f=bodyFn, params=[selFn], exh=[bodyExh], body=trExp(env, e2', fn v2 => B.mkRet[v2])}
+	  val selFromIVar = BV.new("selFromIVar", BTy.T_Fun([BTy.unitTy], [BTy.exhTy], [ty1]))
+	  val (selFromIVarExh, _) = E.newHandler env
+	  val selFromIVarL = B.mkLambda{f=selFromIVar, params=[unitVar()], exh=[selFromIVarExh], body=mkIGet(exh, ivar)}
 	  val slowPath = BV.new("slowPath", BTy.T_Cont[BTy.unitTy])
 	  val slowPathL = 
 	      B.mkLambda{f=slowPath, params=[unitVar()], exh=[], body=
                  B.mkApply(bodyFn, [selFromIVar], [exh])}
 	  val goLocal = BV.new("goLocal", BTy.boolTy)
-	  val selLocally = BV.new("selLocally", BTy.T_Fun([], [BTy.exhTy], [ty1]))
-	  val (selLocallyExh, env) = E.newHandler env
+	  val selLocally = BV.new("selLocally", BTy.T_Fun([BTy.unitTy], [BTy.exhTy], [ty1]))
+	  val (selLocallyExh, _) = E.newHandler env
           in
 	     B.mkLet([ivar], mkIVar exh,
              B.mkFun([bodyFnL, selFromIVarL],
              B.mkCont(slowPathL,
              B.mkLet([], mkWsPush(exh, slowPath),
 	     trExp(env, e1, fn x1 =>
-             B.mkFun([B.mkLambda{f=selLocally, params=[], exh=[selLocallyExh], body=B.mkRet[x1]}],
+             B.mkFun([B.mkLambda{f=selLocally, params=[unitVar()], exh=[selLocallyExh], body=B.mkRet[x1]}],
              B.mkLet([goLocal], mkWsPop exh,
 		      B.mkIf(goLocal,
 			     B.mkApply(bodyFn, [selLocally], [exh]),

@@ -81,7 +81,7 @@ structure ModuleEnv =
     fun findMod (env, v) = findInEnv (env, #modEnv, v)
     fun findSig (env, v) = findInEnv (env, #sigEnv, v)
 
-  (* get and set the concrete definition of type constructor *)
+  (* realization of abstract types *)
     local
         val {getFn : Types.tycon -> ty_def option, setFn, ...} = 
                            TyCon.newProp(fn _ => NONE)
@@ -90,20 +90,20 @@ structure ModuleEnv =
       val getRealizationOfTyc = getFn
     end
 
-  (* operations for mapping parse-tree value definitions to ast value definitions *)
+  (* map parse-tree value definitions to ast value definitions *)
     val {
            getFn=getValBind : ProgramParseTree.Var.var -> val_bind option, 
 	   setFn=setValBind : (ProgramParseTree.Var.var * val_bind option) -> unit, ...
         } = 
 	   ProgramParseTree.Var.newProp (fn _ => NONE)
-  (* operations for mapping parse-tree type definitions to ast type definitions *)
+  (* map parse-tree type definitions to ast type definitions *)
     val {
            getFn=getTyDef : ProgramParseTree.Var.var -> ty_def option, 
 	   setFn=setTyDef : (ProgramParseTree.Var.var * ty_def option) -> unit, ...
         } = 
 	   ProgramParseTree.Var.newProp (fn _ => NONE)
 
-  (* operations for mapping parse-tree type definitions to ast type definitions *)
+  (* map parse-tree type definitions to ast type definitions *)
     val {
            getFn=getPrimTyDef : ProgramParseTree.Var.var -> ProgramParseTree.PML2.BOMParseTree.ty option, 
 	   setFn=setPrimTyDef : (ProgramParseTree.Var.var * ProgramParseTree.PML2.BOMParseTree.ty option) -> unit, ...
@@ -115,6 +115,11 @@ structure ModuleEnv =
     fun insertTy (ModEnv {modRef, tyEnv, varEnv, modEnv, sigEnv, outerEnv}, tv, x) = (
 	setTyDef(tv, SOME x);
 	ModEnv{modRef=modRef, tyEnv=VarMap.insert (tyEnv, tv, x), varEnv=varEnv, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv})
+  (* primtive types
+   *   type tyvars tv = _prim(bty)
+   * where tv is a type binding and bty is a primitive BOM type. we bind tv in both BOM and Manticore. the
+   * Manticore type is an abstract type.
+   *)
     fun insertPrimTy (env, tv, tyc, bty) = (
 	setRealizationOfTyc(tyc, BOMTyDef bty);
 	setPrimTyDef(tv, SOME bty);
@@ -130,7 +135,6 @@ structure ModuleEnv =
     val inDomainTy = Option.isSome o findTy
     val inDomainVar = Option.isSome o findVar
 
-  (* maps for modules *)
     structure ModuleMap = BinaryMapFn (
                 type ord_key = AST.module_ref
 		fun compare (AST.MOD{id=id1, ...}, AST.MOD{id=id2, ...}) = Stamp.compare (id1, id2))

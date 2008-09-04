@@ -252,7 +252,7 @@ structure ChkModule :> sig
 		        chkTopDcls (loc, dcls, env, moduleEnv)
 	        in
 		  expansionOpts := opts @ !expansionOpts;
-		  (env, moduleEnv, bindings)
+		  (env, moduleEnv, bindings @ astDecls)
 	        end
 	  (* end case *))
 

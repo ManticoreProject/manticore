@@ -67,7 +67,7 @@ structure WorkStealingIVar
       ;
 
       define @put (ivar : ivar, x : any / exh : PT.exh) : () = 
-	let x : any = promote(x)
+	let x : any = promote((any)x)
 	let oldValue : any = CAS (&VALUE_OFF(ivar), EMPTY_VAL, x)
       (* wait for blocking fibers *)
 	let blocked : List.list = 

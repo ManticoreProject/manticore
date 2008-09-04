@@ -11,8 +11,8 @@ structure ExpansionOpts =
 
   (* options for pvals *)
     datatype pval_opt
-      = WORK_STEALING
-      | GANG_SCHEDULING
+      = CILK5_WORK_STEALING
+      | FUTURES_WITH_GANG_SCHEDULING
       | CANCELABLE
 
   (* options for parallel arrays *)
@@ -25,15 +25,15 @@ structure ExpansionOpts =
       | PARR of parr_opt list
 
   (* default options *)
-    val defaultPVal : opt = PVAL [GANG_SCHEDULING]
+    val defaultPVal : opt = PVAL [FUTURES_WITH_GANG_SCHEDULING]
     val defaultPArr : opt = PARR [LEAF_SIZE 1024]
     val defaults : opt list = [defaultPVal, defaultPArr]
 
   (* parse a pval option *)
     fun pvalOptsFromString strs = (
 	  case strs
-	   of ["work-stealing"] => WORK_STEALING
-	    | ["gang-scheduling"] => GANG_SCHEDULING
+	   of ["cilk5-work-stealing"] => CILK5_WORK_STEALING
+	    | ["futures-with-gang-scheduling"] => FUTURES_WITH_GANG_SCHEDULING
 	    | ["cancelable"] => CANCELABLE
 	    | _ => raise Fail "unknown opt"
           (* end case *))
@@ -64,5 +64,23 @@ structure ExpansionOpts =
 	  end
 
     val fromStrings = List.foldl fromString []
+
+  (* stack operations *)
+    local
+	val expansionOpts = ref ([] : opt list list)
+	fun push opts = expansionOpts := opts :: (!expansionOpts)
+	fun pop () = expansionOpts := List.tl(!expansionOpts)
+    in
+  (* evaluate a function with some options *)
+    fun withExpansionOpts (f, opts) = let
+	  val _ = push opts
+	  val x = f()
+          in
+	     pop();
+	     x
+	  end
+  (* check if an option is enabled *)
+    fun isEnabled opt = List.exists (fn opt' => opt = opt') (List.concat(!expansionOpts))
+    end (* local *)
 
   end

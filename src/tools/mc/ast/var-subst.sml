@@ -40,6 +40,8 @@ structure VarSubst =
 
     fun add ((k, v), s) = VarMap.insert (s, k, v)
 
+    fun idSubst v = add((v, v), id)
+
     fun var s v = (case VarMap.find (s, v)
 		       of NONE => v
 			| SOME x => x)
@@ -128,10 +130,11 @@ structure VarSubst =
 	   | A.TD_Binding b => A.TD_Binding (binding s b)
 	(* end case *))
 
-    fun exp' s e = let
+  (* perform the substitution e[x -> e2] *)
+    fun substForExp s e2 = let
         fun f (x, ts) = (case VarMap.find (s, x)
 			      of NONE => A.VarExp (x, ts)
-			       | SOME x' => e)
+			       | SOME x' => e2)
         in
 	   expWalk f s
         end

@@ -95,7 +95,7 @@ structure ChkProgram :> sig
 	  end
 
   (* check multiple compilation units *)
-    fun check programs = let
+    fun check compUnits = let
 	val dummyModRef = AST.MOD{name=Atom.atom "dummy", id=Stamp.new(), formals=NONE, expansionOpts=ref []}
 	(* typecheck the compilation units individually *)
 	  fun f ((err, program), (env, moduleEnv, declss)) = let
@@ -103,14 +103,12 @@ structure ChkProgram :> sig
 		in
 		  (env', moduleEnv', decls :: declss)
 		end
-	  val (env, moduleEnv, declss) = List.foldl f (BasisEnv.mEnv0, Env.ModuleMap.empty, []) programs
+	  val (env, moduleEnv, declss) = List.foldl f (BasisEnv.mEnv0, Env.ModuleMap.empty, []) compUnits
 	  val Env.ModEnv{modRef=AST.MOD{expansionOpts, ...}, ...} = env
-        (* flatten the top-level declarations of the compilation units *)
-	  val decls = List.concat (List.rev declss)
+	(* elaborate the compilation units into a single expression *)
+	  val program = declsToExp moduleEnv (List.concat (List.rev declss), AST.TupleExp [])
 	  in
-	  (* convert the compilation units into a single AST expression *)
-	    AST.ExpansionOptsExp(!expansionOpts,
-		declsToExp moduleEnv (decls, AST.TupleExp []))
+	    AST.ExpansionOptsExp(!expansionOpts, program)
 	  end
 
     val check = BasicControl.mkTracePassSimple {passName = "check", pass = check}

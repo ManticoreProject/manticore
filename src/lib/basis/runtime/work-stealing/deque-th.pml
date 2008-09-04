@@ -29,7 +29,7 @@ structure DequeTH =
 	fun copyDeque (arr : Arr.array, i : int / exh : PT.exh) : () =
 	    if I32Lt(i, TH_DEQUE_LEN)
 	       then let elt : any = Arr.@sub(arr, i / exh)
-		    do Arr.@update(arr, I32Sub(SELECT(TH_H_OFF, deq), i), NIL / exh)
+(*		    do Arr.@update(arr, I32Sub(SELECT(TH_H_OFF, deq), i), NIL / exh)*)
 		    do Arr.@update(arr, I32Sub(SELECT(TH_H_OFF, deq), i), elt / exh)
 		    apply copyDeque(arr, I32Add(i, 1) / exh)
 	       else return()
@@ -111,6 +111,7 @@ structure DequeTH =
 	let arr : Arr.array = SELECT(TH_ARR_OFF, deq)
 	let frame : any = Arr.@sub(arr, t / exh)
        (* IMPORTANT: a pointer to frame still exists in the array; erase it to avoid a space leak *)
+	do assert(I32Gte(t,0))
 	do Arr.@update (arr, t, enum(0) / exh)
 	return(Option.SOME(frame))
       ;

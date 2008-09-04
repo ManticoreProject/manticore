@@ -150,13 +150,17 @@ structure Translate : sig
 
     fun trExp (env, exp) : bom_code = (case prune exp
 	   of AST.LetExp (AST.PValBind (AST.VarPat x, e1), e2) =>
-	        EXP(TranslatePValCilk5.tr{env=env,
-					  trVar=trVar,
-					  trExp=trExpToV,
-					  x=x,
-					  e1=e1,
-					  e2=e2
-					 })
+	        if ExpansionOpts.isEnabled(ExpansionOpts.PVAL[ExpansionOpts.CILK5_WORK_STEALING])
+		then EXP(TranslatePValCilk5.tr{env=env,
+					       trVar=trVar,
+					       trExp=trExpToV,
+					       x=x,
+					       e1=e1,
+					       e2=e2
+					       }
+			)
+		else raise Fail "no suitable translation for pval"
+
 	    | AST.LetExp(b, e) =>
 		EXP(trBind (env, b, fn env' => trExpToExp(env', e)))
 	    | AST.IfExp(e1, e2, e3, ty) =>
@@ -286,7 +290,7 @@ structure Translate : sig
 		end
 	    | AST.OverloadExp _ => raise Fail "unresolved overloading"
 	    | AST.ExpansionOptsExp (opts, e) => 
-		EXP(trExpToExp(env, e))
+	        ExpansionOpts.withExpansionOpts(fn () => EXP(trExpToExp(env, e)), opts)
 	  (* end case *))
 
     and trExpToExp (env, exp) = toExp(trExp(env, exp))

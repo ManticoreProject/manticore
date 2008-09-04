@@ -245,7 +245,7 @@ structure PValToFuture =
 	      end
 	    | ov as A.OverloadExp _ =>  (ov, pLive)
 	    | A.ExpansionOptsExp (opts, e) =>
-	      let val (e', pLive') = trExp(e, pLive)
+	      let val (e', pLive') = ExpansionOpts.withExpansionOpts(fn () => trExp(e, pLive), opts)
 	      in 
 		  (A.ExpansionOptsExp (opts, e'), pLive')
 	      end
@@ -268,10 +268,21 @@ structure PValToFuture =
 		      val (e2', plive2) = trExp (e2, pLive)
 		      val pliveOut = VSet.union (plive1, VSet.difference (plive2, pvs))
 		      val b' = A.ValBind (p, e1')
+	      in
+		  (A.LetExp (b', e2'), pliveOut)
+	      end
+	    | A.PValBind (p, e1) => 
+	      if not(ExpansionOpts.isEnabled(ExpansionOpts.PVAL[ExpansionOpts.FUTURES_WITH_GANG_SCHEDULING]))
+	      then 
+		  let val pvs = varsInPat p
+		      val (e1', plive1) = trExp (e1, pLive)
+		      val (e2', plive2) = trExp (e2, pLive)
+		      val pliveOut = VSet.union (plive1, VSet.difference (plive2, pvs))
+		      val b' = A.PValBind (p, e1')
 		  in
 		      (A.LetExp (b', e2'), pliveOut)
 		  end
-	    | A.PValBind (p, e1) =>
+	      else						  
 	      (case p
 		of A.ConPat (c, ts, p) => raise Fail "letExp | PValBind | ConPat"
                        (*
