@@ -3,8 +3,26 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Translate pval bindings of the form 
- *   let pval x = e1 in e2 end
+ * This module performs the translation [| e |] given below.
+
+    [| let pval x = e1 in e2 end |]
+
+ * =
+
+   let 
+   val ivar = WorkStealingIVar.ivar()
+   fun bodyFn selFn = [| e2 |][x -> selFn()]
+   cont slowPathK () = bodyFn(fn () => WorkStealingIVar.get ivar)
+   val _ = Cilk5WorkStealing.push slowPathK
+   val x = [| e1 |]
+   in
+      if (Cilk5WorkStealing.pop())
+	 then bodyFn(fn () => x)
+      else ( WorkStealingIVar.put(ivar, x); Control.stop() )
+   
+ * 
+ * For the full technical discussion, see our Section 5 of our 2008 ICFP paper,
+ * A scheduling framework for general-purpose parallel languages.
  *)
 
 structure TranslatePValCilk5  : sig
