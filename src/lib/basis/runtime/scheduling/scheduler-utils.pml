@@ -51,6 +51,7 @@ structure SchedulerUtils =
 	throw sleepK(UNIT)
       ;
 
+    (* wait for a thread to reach the local vproc queue *)
       define @wait (/ exh : PT.exh) : () =
         do @sleep(/ exh)
         Control.@handle-incoming(/ exh)
@@ -61,6 +62,19 @@ structure SchedulerUtils =
       define @all-vprocs (/ exh : PT.exh) : List.list =
 	let vps : List.list = ccall ListVProcs(host_vproc)
         return(vps)
+      ;
+
+      define @other-vprocs (/ exh : PT.exh) : List.list =
+        fun lp (vps : List.list, others : List.list / exh : PT.exh) : List.list =
+	    case vps
+	     of List.NIL => return(others)
+	      | List.CONS(vp : vproc, vps : List.list) =>
+		if Equal(vp, host_vproc)
+                   then apply lp(vps, others / exh)
+		else apply lp(vps, List.CONS(vp, others) / exh)
+	    end
+	let vps : List.list = ccall ListVProcs(host_vproc)
+	apply lp(vps, List.NIL / exh)  
       ;
 
     (* apply f to each vproc *)

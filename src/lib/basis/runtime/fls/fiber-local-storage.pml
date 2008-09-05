@@ -8,7 +8,6 @@
  * NOTE: these functions are not synchronized.
  *)
 
-
 structure FiberLocalStorage =
   struct
 
@@ -16,7 +15,13 @@ structure FiberLocalStorage =
     structure AL = AssocList
     structure L = List
 
-    type fls = _prim ( [PT.bool, AL.assoc_list] ) 
+    type fls = _prim ( [
+		   PT.bool,         (* flag for pinning the fiber to a vproc *)
+		   AL.assoc_list    (* dictionary *)
+		  ] ) 
+
+    #define PINNED_OFF 0
+    #define ASSOC_OFF  1
 
     _primcode (
 
@@ -24,7 +29,7 @@ structure FiberLocalStorage =
 
     (* create fls *)
       define @new (x : PT.unit / exh : PT.exh) : fls =
-        let fls : fls = alloc(PT.TRUE, L.NIL)
+        let fls : fls = alloc(PT.FALSE, L.NIL)
         return(fls)
       ;
 
@@ -44,14 +49,18 @@ structure FiberLocalStorage =
 
     (* add an element to the fiber-local storage dictionary. NOTE: this function is not thread safe. *)
       define @add (fls : fls, tg : fls_tag, elt : any / exh : PT.exh) : fls =
-        let als : AL.assoc_list = AL.@insert(#1(fls), tg, elt / exh)
-        let fls : fls = alloc(#0(fls), als)
+        let als : AL.assoc_list = AL.@insert(SELECT(ASSOC_OFF, fls), tg, elt / exh)
+        let fls : fls = alloc(SELECT(PINNED_OFF, fls), als)
         return(fls)
       ;
 
     (* find an entry in the fiber-local storage *)
       define @find (fls : fls, tg : fls_tag / exh : PT.exh) : Option.option =
-        AL.@find(#1(fls), tg / exh)
+        AL.@find(SELECT(ASSOC_OFF, fls), tg / exh)
+      ;
+
+      define @is-pinned (fls : fls / exh : PT.exh) : PT.bool =
+	return(SELECT(PINNED_OFF, fls))
       ;
 
     )
