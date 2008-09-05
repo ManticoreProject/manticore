@@ -7,14 +7,13 @@
  *)
 
   ../sequential/sequential.mlb
+  ../misc/debug.mlb
 
 (* initialize the vproc -- we must do this step before anything else *)
   ann "cpp" "runtime-offsets.def,../include/prim.def"
   in
     scheduling/init.pml
   end
-
-  ../misc/debug.mlb
 
 (* fiber-local storage *)
   fls/fiber-local-storage.mlb

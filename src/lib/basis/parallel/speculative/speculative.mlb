@@ -1,0 +1,14 @@
+(* speculative.mlb
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Support for speculative parallelism.
+ *)
+
+  ../../runtime/runtime.mlb
+
+  ann "cpp" "../../include/prim.def,../../include/debug.def,../../include/assert.def"
+  in
+    p-or.pml
+  end
