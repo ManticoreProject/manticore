@@ -538,15 +538,6 @@ structure Translate : sig
 	    tr (exps, [])
 	  end
 
-  (* wrap the body of the program with code to initialize the scheduler. *)
-    fun startup (env, exp) = if Controls.get BasicControl.sequential
-	  then exp
-	  else let
-	    val startupOp = HLOpEnv.schedulerStartupOp (Controls.get BasicControl.scheduler)
-	    in
-	      B.mkLet([], B.mkHLOp(startupOp, [], [E.handlerOf env]), exp)
-	    end
-
   (* get the list of imported C functions from the environment *)
     val listImports = AtomTable.listItems o E.getImportEnv
 
@@ -567,7 +558,7 @@ structure Translate : sig
 		  f = BV.new("main", BTy.T_Fun([argTy], [BTy.exhTy], [trTy(env, TypeOf.exp body)])),
 		  params = [arg],
 		  exh = [exh],
-		  body = startup (env, body'')
+		  body = body''
 		}
 	  val imports = listImports env
 	  val hlops = HLOpEnv.listHLOps()
