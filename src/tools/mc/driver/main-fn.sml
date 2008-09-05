@@ -29,6 +29,8 @@ functor MainFn (
     fun err1 c =  TextIO.output1 (TextIO.stdErr, c)
     fun errnl s = (err s; err1 #"\n")
 
+    val exeFile = ref "a.out"
+
     exception Error
 
   (* check for errors and report them if there are any *)
@@ -107,12 +109,11 @@ functor MainFn (
 	    cfg
 	  end
 
-    fun buildExe (verbose, asmFile, exeFile) = let
-	  val exeFile = Option.getOpt (exeFile, "a.out")
+    fun buildExe (verbose, asmFile) = let
 	  val sts = BuildExecutable.build{
 		  verbose = verbose,
 		  asmFile = asmFile,
-		  outFile = exeFile
+		  outFile = !exeFile
 		}
 	  in
 	    if OS.Process.isSuccess sts
@@ -126,16 +127,8 @@ functor MainFn (
 	  in	  
 	    AsmStream.withStream outStrm doit ();
 	    TextIO.closeOut outStrm;
-	    buildExe (verbose, outFile, NONE)
+	    buildExe (verbose, outFile)
 	  end (* compile *)
-
-    fun bomC (verbose, errStrm, bomFile, asmFile) = let
-	  val bom = BOMParser.parse (errStrm, bomFile)
-          val _ = checkForErrors errStrm;
-          val cfg = bomToCFG (valOf bom)
-	  in
-	    codegen (verbose, asmFile, cfg)
-	  end
 
     fun mantC loadASTFn (verbose, errStrm, srcFile, asmFile) = let
           val ast = loadASTFn(errStrm, srcFile)
@@ -170,8 +163,7 @@ functor MainFn (
 		  OS.Path.joinBaseExt {base = base, ext = SOME "s"}))
 	  in
 	    case OS.Path.splitBaseExt file
-	     of {base, ext=SOME "bom"} => doit bomC base             (* FIXME: we can probably remove this *)
-	      | {base, ext=SOME "pml"} => doit standaloneC base
+	     of {base, ext=SOME "pml"} => doit standaloneC base
 	      | {base, ext=SOME "mlb"} => doit mlbC base
 	      | _ => raise Fail "unknown source file extension"
 	    (* end case *)
@@ -195,6 +187,7 @@ functor MainFn (
           \\n\
           \  options:\n\
           \    -C<control>=<v>  (set named control)\n\
+	  \    -o <file>        (specify executable)\n\
           \    -H               (produce complete help listing)\n\
           \    -h               (produce minimal help listing)\n\
           \    -h<level>        (help listing with obscurity limit)\n\
@@ -260,6 +253,8 @@ functor MainFn (
 	  in
             if String.isPrefix "-C" arg
                then (processControl arg; processArgs args)
+	    else if String.isPrefix "-o" arg
+	       then (exeFile := List.hd args; processArgs(List.tl args))
             else if String.isPrefix "-h" arg
                then let
                   val level = String.extract (arg, 2, NONE)
