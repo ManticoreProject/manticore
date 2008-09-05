@@ -87,7 +87,7 @@ structure Cilk5WorkStealing =
       ;
 
     (* get the ith deque *)
-      define @get-deque(i : int / exh : PT.exh) : DequeTH.deque =
+      define @get-local-deque( / exh : PT.exh) : DequeTH.deque =
 	let fls : FLS.fls = FLS.@get( / exh)
 	let deques : Option.option = FLS.@find(fls, tag(cilk5WorkStealing) / exh)
 	let deques : Arr.array =
@@ -101,13 +101,13 @@ structure Cilk5WorkStealing =
 		  let deques : any = SetOnceMem.@get(c / exh)
 		  return((Arr.array)deques)
 	      end
-	let deque : DequeTH.deque = Arr.@sub(deques, i / exh)
+	let id : int = SchedulerUtils.@vproc-id(host_vproc / exh)
+	let deque : DequeTH.deque = Arr.@sub(deques, id / exh)
 	return(deque)
       ;
 
       define @pop-tl ( / exh : PT.exh) : PT.bool =
-	let id : int = SchedulerUtils.@vproc-id(host_vproc / exh)
-	let deque : DequeTH.deque = @get-deque(id / exh)
+	let deque : DequeTH.deque = @get-local-deque( / exh)
 	let kOpt : Option.option = DequeTH.@pop-tl(deque / exh)
 	let isNonEmpty : PT.bool = 
 	      case kOpt
@@ -118,8 +118,7 @@ structure Cilk5WorkStealing =
       ;
 
       define @push-tl(k : PT.fiber / exh : PT.exh) : () =
-	let id : int = SchedulerUtils.@vproc-id(host_vproc / exh)
-	let deque : DequeTH.deque = @get-deque(id / exh)
+	let deque : DequeTH.deque = @get-local-deque( / exh)
 	do DequeTH.@push-tl(deque, k / exh)
 	return()
       ;

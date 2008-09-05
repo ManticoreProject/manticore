@@ -14,13 +14,13 @@
 
 (* prints when the compiler debugging flag is set and the runtime flag is set *)
 #  define print_debug(msg)                                               \
-             ccall M_PrintDebugMsg (FALSE, msg, QUOTE(PML_FILE), __LINE__)   \
+             ccall M_PrintDebugMsg (PrimTypes.FALSE, msg, QUOTE(PML_FILE), __LINE__)   \
 
 (* prints when the compiler debugging flag is set *)
 #  define print_msg(msg)                                                 \
-             ccall M_PrintDebugMsg (TRUE, msg, QUOTE(PML_FILE), __LINE__)    \
+             ccall M_PrintDebugMsg (PrimTypes.TRUE, msg, QUOTE(PML_FILE), __LINE__)    \
 
 #  define print_ppt() \
-             ccall M_PrintDebugMsg (TRUE, "", QUOTE(PML_FILE), __LINE__) \
+             ccall M_PrintDebugMsg (PrimTypes.TRUE, "", QUOTE(PML_FILE), __LINE__) \
              
 #endif /*! _DEBUG_DEF_ */

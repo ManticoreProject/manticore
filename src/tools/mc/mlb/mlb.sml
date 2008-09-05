@@ -282,7 +282,7 @@ structure MLB : sig
 	 val errStrm = Error.mkErrStream file
 	 val (inStrm, reap) = preprocess(List.rev preprocs, file)
 	 val ptOpt = Parser.parseFile (errStrm, inStrm)
-		     handle Fail s => raise Fail (file^": "^s)
+		     (*handle Fail s => raise Fail (file^": "^s)*)
 	 in
 	      reap();
 	      case ptOpt

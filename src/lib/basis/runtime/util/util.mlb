@@ -13,7 +13,6 @@
 
   ann "cpp" "../,../../include/prim.def,../../include/debug.def,../../include/assert.def"
   in
-    prim-list.pml
     thread-ops.pml
     thread-capabilities.pml
   end

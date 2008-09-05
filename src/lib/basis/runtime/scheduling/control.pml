@@ -133,7 +133,7 @@ structure Control =
 	return(UNIT)
       ;
 
-    (* prepares the given fiber for a blocking operation *)
+    (* prepare the given fiber for a blocking operation *)
       define @suspend (k : PT.fiber / exh : PT.exh) : PT.fiber =
         let mask : PT.bool = vpload(ATOMIC, host_vproc)
 	cont retK (k' : PT.fiber) =
@@ -142,6 +142,13 @@ structure Control =
 	do @forward(PT.SUSPEND(k, retK) / exh)
 	do assert(PT.FALSE)
 	return(k)
+      ;
+
+    (* create a resumption fiber *)
+      define @resume (k : PT.fiber, resK : cont(PT.fiber) / exh : PT.exh) : PT.fiber =
+	cont resK' (x : PT.unit) =
+	  throw resK(k)
+	return(resK')
       ;
 
     (* handle a suspend signal in a nested scheduler *)

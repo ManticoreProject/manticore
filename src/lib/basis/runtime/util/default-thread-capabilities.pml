@@ -19,6 +19,10 @@ structure DefaultThreadCapabilities =
             return((any)readyQ)
 	let c0 : TC.capability = TC.@init(tag(future1GangSched), init / exh)
         let fls : FLS.fls = TC.@add(fls, c0 / exh)
+      (* cancelation for one touch futures *)
+        let c0 : ![Option.option] = alloc(Option.NONE)
+        let c0 : ![Option.option] = promote(c0)
+        let fls : FLS.fls = FLS.@add(fls, tag(future1Cancelation), c0 / exh)
       (* cilk5 work stealing *)
         fun init (x : PT.unit / exh : PT.exh) : any =
 	    let deques : Array64.array = Cilk5WorkStealing.@init( / exh)

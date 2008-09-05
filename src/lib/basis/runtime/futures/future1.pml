@@ -106,17 +106,9 @@ structure Future1 : FUTURE = struct
 	      let _ : PT.unit = Control.@atomic-yield(/exh)
 	      throw dispatch()
 	    | PT.SUSPEND (k : PT.fiber, retK : cont(PT.fiber)) =>
-	      let k' : PT.fiber = Control.@nested-sched-suspend(k, retK / exh)
-              throw run(k')
+              let resK : PT.fiber = Control.@resume(k, retK / exh)
+              throw run(resK)
 	    | PT.UNBLOCK (retK : PT.fiber, k : PT.fiber, x : Option.option) =>
-	      let k : PT.fiber = 
-		      case x
-		       of NONE => 
-			  return(k)
-			| Option.SOME(c : Cancelation.cancelable) =>
-			  let k : PT.fiber = Cancelation.@wrap(c, k / exh)
-                          return(k)
-	              end
 	      do LockedQueue.@enqueue(readyQ, k / exh)
               do Control.@run(switch, retK / exh)
               throw dispatch()
@@ -166,7 +158,7 @@ structure Future1 : FUTURE = struct
                     (* resume the future *)
 		     return (SELECT(STATE_OFF, fut))
                 let kLocal : PT.fiber = (PT.fiber)kLocal
-                (* make the future cancelable *)
+              (* re-wrap the fiber for cancelation *)
                 let kLocal : PT.fiber = C.@wrap(SELECT(CANCELABLE_OFF, fut), kLocal / exh)
                 let k : PT.fiber = promote (kLocal)
    	        let tmpX : any = CAS (&STATE_OFF(fut), STOLEN_F, k)
@@ -185,13 +177,15 @@ structure Future1 : FUTURE = struct
 	    do @steal(fut / exh)
 	    return(UNIT)
 	let k : PT.fiber = Control.@fiber(f / exh)
+     (* make the future cancelable *)
+        let k : PT.fiber = C.@wrap(SELECT(CANCELABLE_OFF, fut), k / exh)
 	return(k)
       ;
 
     (* spawn a future *)
       define @future (thunk : thunk / exh : PT.exh) : future =
         let readyQ : LockedQueue.queue = @get-ready-queue(/ exh)
-        let c : C.cancelable = C.@new(tag(future1Cancelable) / exh)
+        let c : C.cancelable = C.@new(tag(future1Cancelation) / exh)
         let fls : FLS.fls = FLS.@get(/ exh)
         let fut : future = alloc(EMPTY_F, thunk, c, fls)
         let fut : future = promote(fut)
@@ -202,7 +196,7 @@ structure Future1 : FUTURE = struct
 
     (* cancel a future and all of its descendants *)
       define @cancel (fut : future / exh : PT.exh) : PT.unit =
-	(* TODO *)
+        do C.@cancel(SELECT(CANCELABLE_OFF, fut) / exh)
 	return(UNIT)
       ;
 
