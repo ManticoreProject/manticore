@@ -31,16 +31,19 @@ structure WorkStealingIVar
               ![
 		 List.list,      (* list of blocked fibers *)
 		 any,            (* value *)
-		 int            (* spin lock *)
+		 int             (* spin lock *)
 	      ] )
 
     _primcode (
 
-    (* create an ivar *)
+    (* create an ivar. 
+     * NOTE: we postpone promoting the ivar until the "put" operation. this strategy has strong 
+     * synergy with the software-polling version of work stealing. for this implementation, we can
+     * avoid promoting the ivar in the common case, and pay for the promotion only when a steal occurs.
+     *)
       define @ivar ( / exh : PT.exh) : ivar =
-	  let x : ivar = alloc (List.NIL, enum(0):any, 0)
-	  let x : ivar = promote(x)
-	  return (x)
+	let x : ivar = alloc (List.NIL, enum(0):any, 0)
+	return (x)
       ;  
  
       define @get (ivar : ivar / exh : PT.exh) : any =
@@ -67,6 +70,7 @@ structure WorkStealingIVar
       ;
 
       define @put (ivar : ivar, x : any / exh : PT.exh) : () = 
+        let ivar : ivar = promote(ivar)
 	let x : any = promote((any)x)
 	let oldValue : any = CAS (&VALUE_OFF(ivar), EMPTY_VAL, x)
       (* wait for blocking fibers *)
