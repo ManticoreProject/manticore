@@ -31,7 +31,7 @@
  *  |           length            |     100      |
  *  ----------------------------------------------
  * 
- * The GC also has a simple header for forward pointers:
+ * Forwarding pointers:
  *
  *  ---------------------------------------------- 
  *  |        -- 61 bits --        | -- 3 bits -- |
