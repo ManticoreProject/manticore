@@ -40,6 +40,45 @@ structure BasisEnv : sig
 
     open Basis
 
+    val pathToString = String.concatWith "."
+    val pathToAtom = Atom.atom o pathToString
+
+  (* use a path (or qualified name) to look up a variable, i.e., 
+   *      getValFromBasis(Atom.atom "Future1.future") 
+   *)
+    fun getValFromBasis path = (
+	  case BindingEnv.findValByPath (pathToAtom path)
+	   of SOME(BindingEnv.Var v) => (
+		case ModuleEnv.getValBind v
+		 of SOME vb => vb
+		  | NONE => raise Fail ("Unable to locate "^pathToString path)
+		(* end case *))
+	    | _ => raise Fail ("Unable to locate "^pathToString path)
+	  (* end case *))
+
+  (* use a path (or qualified name) to look up a type *)
+    fun getTyFromBasis path = (
+	  case BindingEnv.findTyByPath (pathToAtom path)
+	   of SOME v => (
+		case ModuleEnv.getTyDef v
+		 of SOME tyd => tyd
+		  | NONE => raise Fail ("Unable to locate "^pathToString path)
+		(* end case *))
+	    | _ => raise Fail ("Unable to locate "^pathToString path)
+	  (* end case *))
+
+  (* use a path (or qualified name) to look up a BOM type *)
+    fun getBOMTyFromBasis path = (
+	  case BindingEnv.findBOMTyByPath(pathToAtom path)
+	   of SOME v => (
+		case ModuleEnv.getPrimTyDef v
+		 of SOME ty => ty
+		  | NONE =>  raise Fail ("Unable to locate "^pathToString path^" at "^ProgramParseTree.Var.toString v)
+		(* end case *))
+	    | NONE =>  raise Fail ("Unable to locate "^pathToString path)
+	  (* end case *))
+
+
 (* TODO do @, ! *)
 
     local
@@ -393,11 +432,6 @@ structure BasisEnv : sig
 	      ];
 	    AtomTable.lookup tbl
 	  end
-(*
-      val te0 = Env.fromList predefinedTypes
-      val ve0 = Env.fromList predefinedVars
-*)
-    (* new stuff *)
 
       fun bindTy (n, x) = let
 	      val v = PPT.Var.new(Atom.toString n, ())
@@ -406,11 +440,7 @@ structure BasisEnv : sig
                 ((n, v), (v, x))
               end
 
-      fun bindTys predefines = let
-	    val pds = List.map bindTy predefines
-            in
-	      ListPair.unzip pds
-	    end
+      val bindTys = ListPair.unzip o List.map bindTy
 
       fun bindVal (n, x) = let
 	      val v = PPT.Var.new(Atom.toString n, ())
@@ -423,11 +453,7 @@ structure BasisEnv : sig
                 ((n, v'), (v, x))
               end
 
-      fun bindVals predefines = let
-	    val pds = List.map bindVal predefines
-            in
-	      ListPair.unzip pds
-	    end
+      val bindVals = ListPair.unzip o List.map bindVal
 
       val (bEnv0, mEnv0) = let	     
 
@@ -512,44 +538,6 @@ structure BasisEnv : sig
 	  in
 	    (lookupOpPT, lookupOpAST)
 	  end
-
-          val pathToString = String.concatWith "."
-          val pathToAtom = Atom.atom o pathToString
-
-	(* use a path (or qualified name) to look up a variable, i.e., 
-	 *      getValFromBasis(Atom.atom "Future1.future") 
-	 *)
-	  fun getValFromBasis path = (
-		case BindingEnv.findValByPath (pathToAtom path)
-		 of SOME(BindingEnv.Var v) => (
-		      case ModuleEnv.getValBind v
-		       of SOME vb => vb
-			| NONE => raise Fail ("Unable to locate "^pathToString path)
-		      (* end case *))
-		  | _ => raise Fail ("Unable to locate "^pathToString path)
-		(* end case *))
-
-	(* use a path (or qualified name) to look up a type *)
-	  fun getTyFromBasis path = (
-		case BindingEnv.findTyByPath (pathToAtom path)
-		 of SOME v => (
-		      case ModuleEnv.getTyDef v
-		       of SOME tyd => tyd
-			| NONE => raise Fail ("Unable to locate "^pathToString path)
-		      (* end case *))
-		  | _ => raise Fail ("Unable to locate "^pathToString path)
-		(* end case *))
-
-	(* use a path (or qualified name) to look up a BOM type *)
-	  fun getBOMTyFromBasis path = (
-	        case BindingEnv.findBOMTyByPath(pathToAtom path)
-		 of SOME v => (
-		      case ModuleEnv.getPrimTyDef v
-		       of SOME ty => ty
-			| NONE =>  raise Fail ("Unable to locate "^pathToString path^" at "^ProgramParseTree.Var.toString v)
-		      (* end case *))
-		  | NONE =>  raise Fail ("Unable to locate "^pathToString path)
-  	        (* end case *))
 
     end (* local *)
   end
