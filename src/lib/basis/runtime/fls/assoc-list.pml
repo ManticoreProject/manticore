@@ -20,7 +20,7 @@ structure AssocList =
       define @find (ls : assoc_list, tg : assoc_tag / exh : PT.exh) : O.option =
         fun lp (ls : L.list / exh : PT.exh) : O.option =
           case ls
-	   of L.NIL => return(NONE)
+	   of L.NIL => return(O.NONE)
 	    | L.CONS(x : [assoc_tag, elt], xs : L.list) =>
 	      if Equal(#0(x), tg)
                  then return(O.SOME(#1(x)))
@@ -38,27 +38,27 @@ structure AssocList =
         cont fail () = return(PT.FALSE)
         let ls : L.list = L.NIL
         let x : O.option = @find(ls, tag(test) / exh)
-        do case x of NONE => return() | SOME (x:any) => throw fail() end
+        do case x of O.NONE => return() | O.SOME (x:any) => throw fail() end
         let ls : L.list = @insert(ls, tag(test), alloc(1234) / exh)
         let x : O.option = @find(ls, tag(test) / exh)
-        do case x of NONE => throw fail() 
-		   | SOME (x:[int]) => 
+        do case x of O.NONE => throw fail() 
+		   | O.SOME (x:[int]) => 
 		     if I32Eq(#0(x), 1234) then return() else throw fail() 
 	   end
         let ls : L.list = @insert(ls, tag(test2), alloc(12345) / exh)
         let x : O.option = @find(ls, tag(test2) / exh)
-        do case x of NONE => throw fail() 
-		   | SOME (x:[int]) => 
+        do case x of O.NONE => throw fail() 
+		   | O.SOME (x:[int]) => 
 		     if I32Eq(#0(x), 12345) then return() else throw fail() 
 	   end
         let x : O.option = @find(ls, tag(test) / exh)
-        do case x of NONE => throw fail() 
-		   | SOME (x:[int]) => 
+        do case x of O.NONE => throw fail() 
+		   | O.SOME (x:[int]) => 
 		     if I32Eq(#0(x), 1234) then return() else throw fail() 
 	   end
         let x : O.option = @find(ls, tag(test3) / exh)
-        do case x of NONE => return()
-		   | SOME (x:[int]) => 
+        do case x of O.NONE => return()
+		   | O.SOME (x:[int]) => 
 		     throw fail()
 	   end
         return(PT.TRUE)

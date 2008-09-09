@@ -25,8 +25,8 @@ structure Cancelation =
 		  ![
 		     PT.bool,         (* canceled flag (TRUE=canceled) *)
 		     PT.bool,         (* inactive flag (TRUE=inactive) *)
-		     L.list,       (* children pointers (has type cancelable L.list) *)
-		     O.option,   (* parent pointer (has type cancelable O.option) *)
+		     L.list,          (* children pointers (has type cancelable L.list) *)
+		     O.option,        (* parent pointer (has type cancelable O.option) *)
 		     FLS.fls_tag      (* tag to find the current cancelable *)
 		  ] )
 
@@ -76,7 +76,9 @@ structure Cancelation =
 
     (* set the cancelable as ready to run *)
       define @set-active (c : cancelable / exh : PT.exh) : () =
- 	do @set-current(SELECT(TAG_OFF, c), O.SOME(c) / exh)
+        let cOpt : O.option = O.SOME(c)
+        let cOpt : O.option = promote(cOpt)
+ 	do @set-current(SELECT(TAG_OFF, c), cOpt / exh)
       (* use CAS as a memory fence *)
         let x : PT.bool = CAS(ADDR_OF(INACTIVE_OFF,c), PT.TRUE, PT.FALSE) 
         return()

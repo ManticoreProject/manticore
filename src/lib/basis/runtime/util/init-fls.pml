@@ -1,9 +1,12 @@
-(* default-thread-capabilities.pml
+(* init-fls.pml
  *
- * Seed the default capabilities for a thread.
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Initialize fiber-local storage for the program.
  *)
 
-structure DefaultThreadCapabilities =
+structure InitFLS =
   struct
 
     structure PT = PrimTypes
@@ -33,16 +36,15 @@ structure DefaultThreadCapabilities =
 	return(fls)
       ;
 
+    (* initial fiber-local storage for the program *)
       define @init (x : PT.unit / exh : PT.exh) : PT.unit = 
-	let fls : FLS.fls = FLS.@get(/ exh)
+	let fls : FLS.fls = FLS.@new (UNIT / exh)
 	let fls : FLS.fls = @defaults(fls / exh)
-	let x : PT.unit = FLS.@set(fls / exh)
-	return(UNIT)
+	FLS.@set(fls / exh)
       ;
 
     )
 
-  (* seed the initial thread with the default capabilities *)
     val init : unit -> unit = _prim(@init)
     val _ = init()
 

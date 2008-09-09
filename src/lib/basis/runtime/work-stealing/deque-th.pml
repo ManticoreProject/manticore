@@ -12,6 +12,7 @@ structure DequeTH =
     structure PT = PrimTypes
     structure Arr = Array64
     structure SpinLock = SPIN_LOCK_NAME
+    structure O = Option
 
     _primcode (
 
@@ -58,7 +59,7 @@ structure DequeTH =
       ;
 
       define @pop-hd (deq : deque / exh : PT.exh) : Option.option =
-	cont none () = return(NONE)
+	cont none () = return(O.NONE)
 	let mask : PT.bool = SpinLock.@lock (deq / exh)
 	let h : int = I32FetchAndAdd(&TH_H_OFF(deq), 1)
 	let h : int = I32Add(h, 1)
@@ -68,7 +69,7 @@ structure DequeTH =
 	       then (* contention with the victim; back off *)
 		    let h : int = I32FetchAndAdd(&TH_H_OFF(deq), ~1)
 		    let h : int = I32Add(h, ~1)
-		    return(NONE)
+		    return(O.NONE)
 	       else 
 		    let arr : Arr.array = SELECT(TH_ARR_OFF, deq)
 		    let frame : any = Arr.@sub(arr, I32Sub(h, 1) / exh)
@@ -80,7 +81,7 @@ structure DequeTH =
       ;
 
       define @pop-tl (deq : deque / exh : PT.exh) : Option.option =
-	cont none () = return(NONE)
+	cont none () = return(O.NONE)
 	let t : int = I32FetchAndAdd(&TH_T_OFF(deq), ~1)
 	let t : int = I32Add(t, ~1)
 	let h : int = SELECT(TH_H_OFF, deq)

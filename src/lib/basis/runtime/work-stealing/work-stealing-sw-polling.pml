@@ -48,7 +48,7 @@ structure WorkStealingSWPolling =
 	       then
 	      (* broke our invariant: promote(hd(localDeque)) = #0(globalHd) *)
 		do assert(PT.FALSE)
-		return(NONE)
+		return(O.NONE)
 	    else 
 		let globalHdV' : PT.fiber = CAS(&0(globalHd), globalHdV, GLOBAL_HD_EMPTY)
 		if Equal(globalHdV, globalHdV')

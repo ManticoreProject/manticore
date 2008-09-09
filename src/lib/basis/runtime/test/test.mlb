@@ -6,7 +6,7 @@
  * Testing suite for the runtime.
  *)
 
-  ../runtime.mlb
+  ../boot-round-robin.mlb
   ann "cpp" "../runtime-offsets.def,../../include/prim.def,../../include/debug.def,../../include/assert.def,../../include/testing.def"
   in
 (*    tests.pml *)

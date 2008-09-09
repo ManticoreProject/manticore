@@ -1,0 +1,11 @@
+(* boot-work-stealers.pml
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Boot the runtime with the work-stealers scheduler.
+ *)
+
+  runtime.mlb
+
+  top-level-scheds/work-stealers.mlb

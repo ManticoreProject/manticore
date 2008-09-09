@@ -22,6 +22,7 @@ structure VProcQueue =
 
     structure FLS = FiberLocalStorage
     structure PT = PrimTypes
+    structure O = Option
 
     _primcode (
 
@@ -29,6 +30,37 @@ structure VProcQueue =
      * on this representation, so be careful when making changes.
      *)
       typedef queue = [FLS.fls, PT.fiber, any];
+
+      define @is-queue-geq-one (q : queue / exh : PT.exh) : PT.bool =
+	return(Equal(q, Q_EMPTY))
+      ;
+
+      define @is-local-queue-geq-one ( / exh : PT.exh) : PT.bool =
+	let tl : queue = vpload (VP_RDYQ_TL, host_vproc)
+	let hd : queue = vpload (VP_RDYQ_HD, host_vproc)
+        let b : PT.bool = @is-queue-geq-one(tl / exh)
+        if b
+	   then return(b)
+	else 
+            @is-queue-geq-one(hd / exh)
+      ;
+
+      define @is-queue-gt-one (q : queue / exh : PT.exh) : int =
+	if Equal(q, Q_EMPTY)
+	   then return(0)
+	else 
+	    if Equal(SELECT(LINK_OFF, q), Q_EMPTY)
+	       then return(1)
+	    else return(2)
+      ;
+
+      define @is-local-queue-gt-one ( / exh : PT.exh) : PT.bool =
+	let tl : queue = vpload (VP_RDYQ_TL, host_vproc)
+	let hd : queue = vpload (VP_RDYQ_HD, host_vproc)
+        let ntl : int = @is-queue-gt-one(tl / exh)
+        let nhd : int = @is-queue-gt-one(hd / exh)
+        return(I32Gt(I32Add(ntl, nhd), 1))
+      ;
 
     (* takes a queue element (the first three arguments), a queue (lst), and another queue (rest), and 
      * produces the following queue:
@@ -45,14 +77,12 @@ structure VProcQueue =
 	return (qitem)
       ;
 
-      extern void *VProcDequeue (void *) __attribute__((alloc));
-
    (* dequeue from the secondary list *)
       define @dequeue-slow-path (vp : vproc / exh : PT.exh) : Option.option =
 	let tl : queue = vpload (VP_RDYQ_TL, vp)
 	if Equal(tl, Q_EMPTY)
 	   then
-	      return(NONE)
+	      return(O.NONE)
 	else
 	     do vpstore (VP_RDYQ_TL, vp, Q_EMPTY)
 	     let qitem : queue = 
@@ -61,8 +91,7 @@ structure VProcQueue =
 				   (queue)SELECT(LINK_OFF, tl), 
 				   Q_EMPTY 
 				   / exh)
-	     let link : queue = (queue)SELECT(LINK_OFF, tl)
-	     do vpstore (VP_RDYQ_HD, vp, link)
+	     do vpstore (VP_RDYQ_HD, vp, (queue)SELECT(LINK_OFF, tl))
 	     return (Option.SOME(qitem))
       ;	  
 
@@ -73,8 +102,7 @@ structure VProcQueue =
 	if Equal(hd, Q_EMPTY)
 	   then
 	   (* the primary list is empty, so try the secondary list *)
-	    let item : Option.option = @dequeue-slow-path (vp / exh)
-	    return (item)
+	    @dequeue-slow-path (vp / exh)
 	else 
 	    (* got a thread from the primary list *)
 	    do vpstore (VP_RDYQ_HD, vp, #2(hd))

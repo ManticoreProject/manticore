@@ -12,6 +12,7 @@ structure Cilk5WorkStealing =
     structure PT = PrimTypes
     structure Arr = Array64
     structure FLS = FiberLocalStorage
+    structure O = Option
 
     _primcode (
 
@@ -31,7 +32,7 @@ structure Cilk5WorkStealing =
 	    let victimDeque : DequeTH.deque = Arr.@sub(deques, victim / exh)
 	    let kOpt : Option.option = DequeTH.@pop-hd(victimDeque / exh)
 	    case kOpt
-	     of NONE => 
+	     of O.NONE => 
 		let _ : PT.unit = Control.@atomic-yield( / exh)
 		throw steal()
 	      | Option.SOME(k : PT.fiber) =>
@@ -42,7 +43,7 @@ structure Cilk5WorkStealing =
 	   of PT.STOP =>
 	      let kOpt : Option.option = DequeTH.@pop-tl(deque / exh)
 	      case kOpt
-	       of NONE =>
+	       of O.NONE =>
 		  throw steal()
 		| Option.SOME(k : PT.fiber) =>
 		  throw dispatch(k)
@@ -57,7 +58,7 @@ structure Cilk5WorkStealing =
 	    | PT.UNBLOCK (retK : PT.fiber, k : PT.fiber, x : Option.option) =>
 	      let k : PT.fiber = 
 		      case x
-		       of NONE => 
+		       of O.NONE => 
 			  return(k)
 			| Option.SOME(c : Cancelation.cancelable) =>
 			  let k : PT.fiber = Cancelation.@wrap(c, k / exh)
@@ -92,7 +93,7 @@ structure Cilk5WorkStealing =
 	let deques : Option.option = FLS.@find(fls, tag(cilk5WorkStealing) / exh)
 	let deques : Arr.array =
 	     case deques
-	       of NONE => 
+	       of O.NONE => 
 		(* this thread does not support work stealing *)
 	    (* FIXME: throw an exception here *)
 		  do assert(PT.FALSE)
@@ -111,7 +112,7 @@ structure Cilk5WorkStealing =
 	let kOpt : Option.option = DequeTH.@pop-tl(deque / exh)
 	let isNonEmpty : PT.bool = 
 	      case kOpt
-	       of NONE => return (PT.FALSE)
+	       of O.NONE => return (PT.FALSE)
 		| Option.SOME(k : PT.fiber) => return(PT.TRUE)
 	       end
 	return(isNonEmpty)

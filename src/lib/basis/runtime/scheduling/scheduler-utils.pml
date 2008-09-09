@@ -42,7 +42,7 @@ structure SchedulerUtils =
 
     (* put the vproc to sleep *)
       define @sleep (/ exh : PT.exh) : () =
-      (* resumption continuation for when the vproc awakens*)
+      (* resumption continuation for when the vproc awakens *)
 	cont resumeK (x : PT.unit) = return ()
       (* the C runtime expects the resumption continuation to be in vp->stdCont *)
 	do vpstore(STD_CONT, host_vproc, resumeK)
@@ -53,8 +53,12 @@ structure SchedulerUtils =
 
     (* wait for a thread to reach the local vproc queue *)
       define @wait (/ exh : PT.exh) : () =
+        let m : PT.bool = vpload (ATOMIC, host_vproc)
+        do vpstore(ATOMIC, host_vproc, PT.TRUE)
         do @sleep(/ exh)
-        Control.@handle-incoming(/ exh)
+        do Control.@handle-incoming(/ exh)
+        do vpstore(ATOMIC, host_vproc, m)
+        return()
       ;
 
       extern void *ListVProcs (void *) __attribute__((alloc));
@@ -169,68 +173,30 @@ structure SchedulerUtils =
       ;
 
     (* bootstrap the default scheduler *)
-      define @boot-default-scheduler (mkAct : fun (vproc / PT.exh -> PT.sigact), fls : FLS.fls / exh : PT.exh) : () =
+      define @boot-default-scheduler (mkAct : fun (vproc / PT.exh -> PT.sigact) / exh : PT.exh) : () =
+        let fls : FLS.fls = FLS.@get(/ exh)
 	do @set-trampoline ( / exh)
 	let self : vproc = host_vproc
       (* push the scheduler action on each remote vproc *)
 	fun pushAct (vp : vproc / exh : PT.exh) : () =
 	    let act : PT.sigact = apply mkAct (vp / exh)
             Control.@push-remote-act(vp, act / exh)
-
-	  cont startup (_ : PT.unit) =
-		do vpstore(ATOMIC, self, PT.TRUE)
-	      (* install the scheduler on remote vprocs *)
-		do @for-other-vprocs(pushAct / exh)
-		return()
-	(* make the scheduler instance for the host vproc *)
-	 let act : PT.sigact = apply mkAct (host_vproc / exh)
-	 Control.@run-thread (act, startup, fls / exh)
-      ;
-
-    (* top-level thread scheduler that uses a round robin policy *)
-      define @round-robin (x : PT.unit / exh : PT.exh) : PT.unit = 
-	cont switch (s : PT.signal) =
-	  let vp : vproc = host_vproc
-	  let atomic : PT.bool = vpload(ATOMIC, vp)
-	  do assert(atomic)
-
-          cont dispatch () =
-            let item : Option.option = VPQ.@dequeue(/ exh)
-            case item
-	     of NONE => 
-		do @wait(/ exh)
-		throw dispatch()
-	      | Option.SOME(qitem : VPQ.queue) =>
-		do Control.@run-thread (switch, #1(qitem), #0(qitem) / exh)
-                return(UNIT)
-            end
-
-	  case s
-	    of PT.STOP => 
-	         throw dispatch ()
-	     | PT.PREEMPT (k : PT.fiber) =>
-		 let fls : FLS.fls = FLS.@get ( / exh)
-		 do VProcQueue.@enqueue (fls, k / exh)
-		 throw dispatch () 
-	     | PT.SUSPEND (k : PT.fiber, retK : PT.cont) =>
-		 let fls : FLS.fls = FLS.@get ( / exh)
-		 cont retK' (x : PT.unit) =
-		   throw retK(k)
-		 do VProcQueue.@enqueue (fls, k / exh)
-		 throw dispatch () 
-	     | PT.UNBLOCK (retK : PT.fiber, k : PT.fiber, fls : FLS.fls) =>
-	         do VProcQueue.@enqueue (fls, k / exh)
-		 do Control.@run(switch, retK / exh)
-		 return(UNIT)
-	  end
-
-	fun mkSwitch (_ : vproc / exh : PT.exh) : PT.sigact = return (switch)
-
-       (* fiber-local storage for the top-level scheduler *)
-	let fls : FLS.fls = FLS.@new (UNIT / exh)
-       (* run the scheduler on all vprocs *)
-	do @boot-default-scheduler (mkSwitch, fls / exh)
-	return (UNIT)
+	cont startup (_ : PT.unit) =
+	  do vpstore(ATOMIC, self, PT.TRUE)
+	(* install the scheduler on remote vprocs *)
+	  do @for-other-vprocs(pushAct / exh)
+        (* spawn a dummy thread to wake up the scheduler *)
+	  cont dummyK (x : PT.unit) = 
+	       let _ : PT.unit = Control.@stop(/ exh)
+	       return()
+	  fun init (vp : vproc / exh : PT.exh) : () = 
+	      VPQ.@enqueue-on-vproc(vp, fls, dummyK / exh)
+	  do @for-other-vprocs(init / exh)
+          do vpstore(ATOMIC, self, PT.FALSE)
+	  return()
+      (* make the scheduler instance for the host vproc *)
+	let act : PT.sigact = apply mkAct (host_vproc / exh)
+	Control.@run-thread (act, startup, fls / exh)
       ;
 
     (* initialize a given scheduler on a collection of vprocs *)
@@ -249,7 +215,6 @@ structure SchedulerUtils =
 		     do vpstore (ATOMIC, host_vproc, PT.TRUE)
                      do Barrier.@ready(barrier / exh)
 		     do Barrier.@barrier(nVProcs, barrier / exh)
-                     do vpstore(ATOMIC, host_vproc, PT.FALSE)
 		     do Control.@forward (PT.STOP / exh)
 		     return(UNIT)
 	      (* make the scheduler instance for the host vproc *)
@@ -273,9 +238,5 @@ structure SchedulerUtils =
       ;
 
     )
-
-    val roundRobin : unit -> unit = _prim (@round-robin)
-    val _ = roundRobin()
-    val _ = Print.printLn "scheduler utils: initialized round-robin scheduler"
 
   end

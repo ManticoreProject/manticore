@@ -23,6 +23,7 @@ structure Future1 : FUTURE = struct
     structure FLS = FiberLocalStorage
     structure C = Cancelation
     structure LQ = LockedQueue
+    structure O = Option
 
     type thunk = unit -> 'a
     _primcode ( typedef thunk = fun (PT.unit / PT.exh -> any); )
@@ -64,7 +65,7 @@ structure Future1 : FUTURE = struct
 		   else (* unblock the future *)
 			do UPDATE(STATE_OFF, fut, result)
 			let k : PT.fiber = (PT.fiber) tmpX
-                        let _ : PT.unit = Control.@unblock(k, NONE / exh)
+                        let _ : PT.unit = Control.@unblock(k, O.NONE / exh)
                         return()
 	    else (* future cell is already full *)
 		 return ()
@@ -88,7 +89,7 @@ structure Future1 : FUTURE = struct
 	  cont dispatch () =
 	      let k : Option.option = LockedQueue.@dequeue(readyQ / exh)
 	      case k
-	       of NONE =>
+	       of O.NONE =>
 		(* nothing on the queue; so, we yield *)
 		  let _ : PT.unit = Control.@atomic-yield(/exh)
 		  throw dispatch()
@@ -121,7 +122,7 @@ structure Future1 : FUTURE = struct
         let fls : FLS.fls = FLS.@get( / exh)
         let futureSched : Option.option = FLS.@find(fls, tag(future1GangSched) / exh)
         case futureSched
-	 of NONE => 
+	 of Option.NONE => 
           (* this thread does not support futures *)
 (* FIXME: throw an exception here *)
 	    do assert(PT.FALSE)

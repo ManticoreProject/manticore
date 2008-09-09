@@ -33,8 +33,8 @@
 (* work stealing *)
   work-stealing/work-stealing.mlb
 
-(* initialize default thread capabilities *)
-  ann "cpp" "runtime-offsets.def,../include/prim.def"
+(* initialize the default fiber-local storage *)
+  ann "cpp" "runtime-offsets.def,../include/prim.def,../include/debug.def"
   in
-    util/default-thread-capabilities.pml
+    util/init-fls.pml
   end

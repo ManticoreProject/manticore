@@ -90,10 +90,11 @@ structure Control =
       ;
 
       define @handle-incoming (/ exh : PT.exh) : () =
+        let m : PT.bool = vpload(ATOMIC, host_vproc)
         do vpstore(ATOMIC, host_vproc, PT.TRUE)
         let messages : List.list = VProcQueue.@unload-and-check-messages(/ exh)
         do @run-fibers(messages / exh)
-        do vpstore(ATOMIC, host_vproc, PT.TRUE)
+        do vpstore(ATOMIC, host_vproc, m)
 	return()
       ;
 
