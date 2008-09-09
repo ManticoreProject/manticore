@@ -25,6 +25,7 @@ Library
   structure TypeOf	
   structure Unpar
   structure RuntimeBasis
+  structure Future1
 
 is
 
