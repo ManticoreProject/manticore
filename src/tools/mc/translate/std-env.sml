@@ -22,7 +22,6 @@ structure StdEnv : sig
     structure TTbl = TyCon.Tbl
     structure BTy = BOMTy
     structure BV = BOM.Var
-    structure F = Futures
     structure RB = RuntimeBasis
     structure E = TranslateEnv
     structure R = Ropes
@@ -59,7 +58,6 @@ structure StdEnv : sig
 	    (B.eventTyc,	BTy.K_BOXED,	BOMBasis.evtTy),
 	    (B.chanTyc,		BTy.K_BOXED,	BOMBasis.chanTy),
 	  (* internal types *)
-	    (F.futureTyc,       BTy.K_BOXED,	BTy.futureTy),
 	    (RB.contTyc,        BTy.K_BOXED,    BTy.T_Cont [BTy.T_Any]),
 	    (R.ropeTyc,         BTy.K_BOXED,	BOMBasis.ropeTy),
 	  (* extras *)
@@ -392,17 +390,6 @@ structure StdEnv : sig
 	    (B.mPut,		hlop H.mPut),
 *)
 
-	  (* futures and work queues *)
-(*	    (F.newWorkQueue,    hlop (H.newWorkQueueOp, false)),
-	    (F.getWork1All,     hlop (H.getWork1AllOp, false)), *)
-	    (F.future,          hlop (H.futureOp, false)),
-	    (F.touch,           hlop (H.touchOp, true)),
-	    (F.cancel,          hlop (H.cancelOp, false)),
-(*	    (F.future1,         hlop (H.future1Op, false)),
-	    (F.touch1,          hlop (H.touch1Op, true)),
-	    (F.future1Cancel,   hlop (H.cancel1Op, false)),
-*)
-
           (* parray operations *)
 	    (B.psub,            hlop (H.ropeSubOp, true)),
 
@@ -484,11 +471,6 @@ structure StdEnv : sig
 		  (B.dist,              "dist",                 false),
 		  (U.tabD,              "tabD",			false),
 		  (B.todo,              "todo",			false),
-
-                 (* one-toucher futures *)
-		  (F.future1Touch,      "future1-touch",        false),
-                  (F.future1Spawn,      "future1-spawn",        false),
-		  (F.future1Cancel,     "future1-cancel",       false),
 
      	         (* ivars *)
 		  (B.iVar,              "ivar-new",              true),

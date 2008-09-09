@@ -13,13 +13,10 @@ Library
   structure FlatParTup
   structure FreshVar
   structure PValToFuture
-  structure Futures
-  structure GrandPass
   structure Hash
   structure Nester
   structure PrintAST  
   structure PrintTypes
-  structure RewriteWithQueues
   structure Ropes
   structure TestUtils	
   structure TranslatePCase
@@ -45,13 +42,9 @@ is
   flat-par-tup.sml
   fresh-var.sml
   pval-to-future.sml
-  fut-par-let.sml
-  fut-par-tup.sml
-  futures.sml
-  grand-pass.sml
+  elaborate.sml
   hash.sml
   nester.sml
-  rewrite-with-queues.sml
   ropes.sml
   test-utils.sml
   translate-pcase.sml
@@ -59,3 +52,4 @@ is
   translate-ptup.sml
   unpar.sml
   runtime-basis.sml
+  future1.sml

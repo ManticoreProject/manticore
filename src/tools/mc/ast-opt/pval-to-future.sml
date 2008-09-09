@@ -6,106 +6,6 @@
  * This module rewrites parallel bindings in terms of futures, touches and cancels.
  *)
 
-structure Future1 =
-  struct
-
-    structure A = AST
-    structure T = Types
-
-    local
-	fun getVar (ModuleEnv.Var v) = v
-	  | getVar _ = raise Fail "getVar"
-	val getVar = getVar o BasisEnv.getValFromBasis
-	fun getTyc (ModuleEnv.TyCon tyc) = tyc
-	  | getTyc _ = raise Fail "getTyc"
-	val getTyc = getTyc o BasisEnv.getTyFromBasis
-	fun future1Tyc () = getTyc ["Future1", "future"]
-	fun future1Ty t = T.ConTy ([t], future1Tyc())
-	fun future1 () = getVar ["Future1", "future"]
-	fun touch1 () = getVar ["Future1", "touch"]
-	fun cancel1 () = getVar ["Future1", "cancel"]
-
-	(* mkThunk : A.exp -> A.exp *)
-	(* Consumes e; produces (fn u => e) (for fresh u : unit). *)
-	fun mkThunk e = A.FunExp (Var.new ("_", Basis.unitTy), e, TypeOf.exp e)		    
-
-	(* isFuture : A.exp -> bool *)
-	fun isFuture e = (case TypeOf.exp e
-			    of T.ConTy (_, c) => TyCon.same (c, future1Tyc())
-			     | _ => false)
-
-        (* typeOfFuture : A.exp -> T.ty *)
-        (* Precondition: The argument must be a future. *)
-        (* The function raises Fail if the precondition is not met. *)
-        (* ex: typeOfFuture (future (fn () => 8))     ==> int *)
-        (* ex: typeOfFuture (future (fn () => 8 > 8)) ==> bool *)
-	fun typeOfFuture e =
-	    let val t = TypeOf.exp e
-		fun mkMsg t = ("typeOfFuture: expected future type, got "
-			       ^ (PrintTypes.toString t))
-	    in
-		case t
-		  of T.ConTy ([t'], c) => if TyCon.same (c, future1Tyc()) 
-					  then t'
-					  else raise Fail (mkMsg t')
-		   | _ => raise Fail (mkMsg t)
-	    end
-
-        (* mkTch : var -> A.exp -> A.exp *)
-	fun mkTch touchvar e =
-	    if (isFuture e) then
-		let val t = typeOfFuture e
-		    val touch = A.VarExp (touchvar(), [t])
-		in
-		    A.ApplyExp (touch, e, t)
-		end
-	    else
-		let val ts = Var.toString (touchvar())
-		in 
-		    raise Fail (ts ^ ": argument is not a future")
-		end
-
-	(* mkCan : var -> A.exp -> A.exp *)
-	fun mkCan cancelvar e =
-	    if (isFuture e) then
-		let val cancel = A.VarExp (cancelvar(), [typeOfFuture e])
-		in
-		    A.ApplyExp (cancel, e, Basis.unitTy)
-		end
-	    else
-		let val cs = Var.toString (cancelvar())
-		in
-		    raise Fail (cs ^ ": argument is not a future")
-		end
-
-	(* mkFut : var -> A.exp -> A.exp *)
-	(* Consumes futvar -> q and e; produces futvar (q, fn u => e). *)
-	fun mkFut futvar e = 
-	    let val te = TypeOf.exp e
-	    in
-		A.ApplyExp (A.VarExp (futvar(), [te]),
-			    mkThunk e,
-			    future1Ty te)
-	    end
-    in
-
-    (* mkTouch1 : A.exp -> A.exp * A.exp *)
-    (* Precondition: The argument must be a future. *)
-    (* The function raises Fail if the precondition is not met. *)
-    val mkFuture1Touch = mkTch touch1
-
-    (* mkCancel1 : A.exp -> A.exp * A.exp *)
-    (* Precondition: The argument e1 must be a future. *)
-    (* The function raises Fail if the precondition is not met. *)
-    val mkFuture1Cancel = mkCan cancel1
-
-    (* mkFuture1 : A.exp * A.exp -> A.exp *)
-    val mkFuture1Spawn = mkFut future1
-
-    end (* local *)
-
-  end (* Futures *)
-
 structure PValToFuture =
   struct
 
@@ -226,7 +126,7 @@ structure PValToFuture =
 	    | v as A.VarExp (x, ts) =>  
 	      if VSet.member (pLive, x) 
 	      then 
-		  let val touchV = F.mkFuture1Touch v
+		  let val touchV = F.mkTouch v
 		      val optSel = Var.Tbl.find selectors x
 		  in
 		      (case optSel
@@ -346,7 +246,7 @@ structure PValToFuture =
 			    end *)
 		 | A.VarPat x =>
 		   let val (e1', live1) = trExp (e1, pLive)
-		       val e1f = F.mkFuture1Spawn e1'
+		       val e1f = F.mkFuture e1'
 		       val xf  = Var.new (Var.nameOf x ^ "f", TypeOf.exp e1f)
 		       val e2' = VarSubst.subst1 (x, xf, e2)
 		       val (e2t, live2) = trExp (e2', plus (pLive, xf))
@@ -395,7 +295,7 @@ structure PValToFuture =
     and lambda pLive (A.FB (f, x, e)) = A.FB (f, x, #1 (trExp (e, pLive)))
 						
     (* cancel : A.var * A.exp -> A.exp *)
-    and cancel (x, e) = A.SeqExp (F.mkFuture1Cancel (A.VarExp (x, [])), e)
+    and cancel (x, e) = A.SeqExp (F.mkCancel (A.VarExp (x, [])), e)
     (*                                 ^^               *)
     (* ??? Is it OK not to instantiate the 'a future? ??? *)
 

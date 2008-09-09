@@ -1,4 +1,4 @@
-(* grand-pass.sml
+(* elaborate.sml
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -10,15 +10,14 @@
  * - rewriting of sumP into sumPQ
  *)
 
-structure GrandPass : sig
+structure Elaborate : sig
 
-    val transform : AST.exp -> AST.exp
+    val elaborate : AST.exp -> AST.exp
 
   end = struct
 
     structure A = AST
     structure B = Basis
-    structure F = Futures
     structure V = Var
     structure U = UnseenBasis
 
@@ -70,7 +69,7 @@ structure GrandPass : sig
 
     and trPCase arg = TranslatePCase.tr trExp arg
 
-  (* transform : A.exp -> A.exp *)
-    fun transform body = trExp body
+  (* elaborate : A.exp -> A.exp *)
+    fun elaborate body = trExp body
 
   end

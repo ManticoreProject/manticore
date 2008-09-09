@@ -22,11 +22,6 @@ structure ASTOpt : sig
 	    registry = ASTOptControls.registry
 	  }
 
-  (* replace parallel tuples with futures and touches *)
-(*    val ptuples : AST.module -> AST.module = 
-	  transform {passName = "ptuples", pass = FutParTup.futurize}
-*)
-
     val pvals : AST.exp -> AST.exp =
 	transform {passName="pval-to-future", pass=PValToFuture.tr}
 
@@ -35,7 +30,7 @@ structure ASTOpt : sig
 		          then Unpar.unpar exp
 		          else let
 			    val exp = pvals exp
-			    val exp = GrandPass.transform exp
+			    val exp = Elaborate.elaborate exp
 			    in
 				exp
 			    end

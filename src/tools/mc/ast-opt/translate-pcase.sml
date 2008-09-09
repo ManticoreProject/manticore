@@ -28,7 +28,7 @@ structure TranslatePCase (* : sig
 
     structure A = AST
     structure B = Basis
-    structure F = Futures
+    structure F = Future1
     structure R = Ropes
     structure U = UnseenBasis
 
@@ -262,6 +262,10 @@ structure TranslatePCase (* : sig
 
   (* --- some tests follow --- *)
 
+(*
+FIXME: enabling these tests results in an exception being raised from the basis environment module. this
+happens because the test tries to load operations over futures before the basis libraries are available.
+
   structure T = TestUtils
 
   val zero = T.int 0
@@ -303,7 +307,7 @@ structure TranslatePCase (* : sig
     | test 2 = mkTest c2
     | test 3 = mkTest c3
     | test _ = print "No such test.\n"
-
+*)
 end
     
 

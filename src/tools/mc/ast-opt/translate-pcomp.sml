@@ -15,7 +15,6 @@ structure TranslatePComp : sig
 
     structure A = AST
     structure B = Basis
-    structure F = Futures
     structure R = Ropes
     structure U = UnseenBasis
 
