@@ -12,15 +12,27 @@
 #define _QUOTE(x) #x
 #define QUOTE(x) _QUOTE(x)
 
+(***
+     printing for inline BOM 
+ ****)
+
 (* prints when the compiler debugging flag is set and the runtime flag is set *)
-#  define print_debug(msg)                                               \
+#  define print_debug(msg)                                                             \
              ccall M_PrintDebugMsg (PrimTypes.FALSE, msg, QUOTE(PML_FILE), __LINE__)   \
 
 (* prints when the compiler debugging flag is set *)
-#  define print_msg(msg)                                                 \
+#  define print_msg(msg)                                                               \
              ccall M_PrintDebugMsg (PrimTypes.TRUE, msg, QUOTE(PML_FILE), __LINE__)    \
 
-#  define print_ppt() \
-             ccall M_PrintDebugMsg (PrimTypes.TRUE, "", QUOTE(PML_FILE), __LINE__) \
+#  define print_ppt()                                                                  \
+             ccall M_PrintDebugMsg (PrimTypes.TRUE, "", QUOTE(PML_FILE), __LINE__)     \
+
+(***
+     printing for Manticore
+ ****)
+
+(* prints when the compiler debugging flag is set *)
+#  define printMsg(msg)                                                                \
+             Debug.printMsg(msg, QUOTE(PML_FILE), __LINE__)                            \
              
 #endif /*! _DEBUG_DEF_ */
