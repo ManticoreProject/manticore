@@ -10,9 +10,6 @@ structure RunCPP : sig
 
     val cppCmd : string
 
-  (* path to include files for the basis *)
-    val basisIncludeDir : string
-
   (* make a predefined name *)
     val mkDef : (string * string option) -> string
 
@@ -48,9 +45,6 @@ structure RunCPP : sig
   end = struct
 
     val cppCmd = "@CPP@"
-
-    val basisIncludeDir = "@MANTICORE_BASISINCDIR@"
-
 
     fun mkIncludeDir dir = "-I" ^ dir
     fun mkIncludeFile file = "-include" ^ file

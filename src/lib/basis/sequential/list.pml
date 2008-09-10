@@ -70,4 +70,34 @@ structure List =
 	      else nth(i-1, xs)
           (* end case *))
 
+    fun rev ls = let
+	fun lp (ls, acc) = (
+	    case ls
+	     of NIL => acc
+	      | CONS(x, ls) => lp(ls, CONS(x, acc))
+            (* end case *))
+        in
+	  lp(ls, NIL)
+	end
+
+    fun map (f, ls) = let
+	  fun lp (ls, acc) = (
+	      case ls
+	       of NIL => rev acc
+		| CONS(x, ls) => lp(ls, CONS(f x, acc))
+              (* end case *))
+          in
+	    lp(ls, NIL)
+          end
+
+    fun concat (ls1, ls2) = let
+	  fun lp ls = (
+	      case ls
+	       of NIL => ls2
+		| CONS(x, ls) => CONS(x, lp ls)
+ 	      (* end case *))
+          in
+	     lp ls1
+	  end
+
   end

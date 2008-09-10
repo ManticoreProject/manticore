@@ -375,6 +375,16 @@ structure BoundVariableCheck :> sig
 	        in
 		  PT2.SpawnExp exp
 	        end
+	    | PT1.PArrayExp exps => let
+		  val exps = chkExps loc (exps, env)
+	          in
+		     PT2.PArrayExp exps
+		  end
+	    | PT1.PTupleExp exps => let
+		  val exps = chkExps loc (exps, env)
+	          in
+		     PT2.PTupleExp exps
+		  end
             (* end case *))
 
     and chkExps loc (exps, env) = List.map (fn e => chkExp loc (e, env)) exps

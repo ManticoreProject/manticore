@@ -284,7 +284,7 @@ MANTICORE_LIBDIR=$MANTICORE_ROOT/lib
 MANTICORE_BINDIR=$MANTICORE_ROOT/bin
 MANTICORE_MKDIR=$MANTICORE_ROOT/mk
 MANTICORE_BASISDIR=$MANTICORE_SRCDIR/lib/basis
-MANTICORE_BASISINCDIR=$MANTICORE_SRCDIR/lib/basis/include
+MANTICORE_BASISINCDIR=$MANTICORE_SRCDIR/lib/basis
 MANTICORE_RUNSRCDIR=$MANTICORE_SRCDIR/lib/parallel-rt
 HEAP_IMAGE_DIR=$MANTICORE_BINDIR/.heap
 INSTALL_SMLNJ_WRAPPER=$MANTICORE_BINDIR/install-sml-wrapper.sh
@@ -296,7 +296,7 @@ AC_SUBST(MANTICORE_LIBDIR)
 AC_SUBST(MANTICORE_BINDIR)
 AC_SUBST(MANTICORE_MKDIR)
 AC_SUBST(MANTICORE_RUNSRCDIR)
-AC_SUBST(MANTICORE_BASISINCDIR)
+AC_SUBST(MANTICORE_BASISDIR)
 AC_SUBST(HEAP_IMAGE_DIR)
 AC_SUBST(INSTALL_SMLNJ_WRAPPER)
 
@@ -417,6 +417,7 @@ dnl ***** Makefiles *****
   src/tools/mc/Makefile
 dnl ***** SML source files *****
   src/tools/mc/common/run-cpp.sml:src/tools/mc/common/run-cpp_sml.in
+  src/tools/mc/common/load-paths.sml:src/tools/mc/common/load-paths_sml.in
   src/tools/mc/driver/build-executable.sml:src/tools/mc/driver/build-executable_sml.in
   src/tools/mc/driver/version-fn.sml:src/tools/mc/driver/version-fn_sml.in
   src/tools/mc/hlop/paths.sml:src/tools/mc/hlop/paths_sml.in

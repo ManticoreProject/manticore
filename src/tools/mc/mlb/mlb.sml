@@ -41,8 +41,10 @@ structure MLB : sig
     local
 	val mlbs : AtomSet.set ref = ref AtomSet.empty
     in
-    fun visitMLB (dir, file) = mlbs := AtomSet.add(!mlbs, Atom.atom (OS.Path.joinDirFile{dir=dir, file=file}))
-    fun alreadyVisitedMLB (dir, file) = AtomSet.member(!mlbs, Atom.atom(OS.Path.joinDirFile{dir=dir, file=file}))
+    fun visitMLB (dir, file) = 
+	  mlbs := AtomSet.add(!mlbs, Atom.atom (OS.Path.joinDirFile{dir=dir, file=file}))
+    fun alreadyVisitedMLB (dir, file) = 
+	  AtomSet.member(!mlbs, Atom.atom(OS.Path.joinDirFile{dir=dir, file=file}))
     end
 
     fun revConcat ls = List.concat (List.rev ls)
@@ -117,7 +119,7 @@ structure MLB : sig
 	(* support for the C preprocessor *)
 	  val includes = 
 		"." ::
-		RunCPP.basisIncludeDir ::
+		LoadPaths.basisCPPDefDir ::
 		includes
 	  val predefs = List.map RunCPP.mkDef ([
 		("PML_PATH", SOME (OS.FileSys.fullPath dir^"/"^name)),
@@ -290,12 +292,30 @@ structure MLB : sig
 		| NONE => (checkForErrors[errStrm]; NONE)
 	 end
 
-  (* load the MLB file *)
+  (* load the basis library *)
+    fun loadBasisLib env = if Controls.get BasicControl.sequential
+          then loadMLB(LoadPaths.basisSequentialDir^"/sequential.mlb", env)
+          else let
+	    val basisPts = loadMLB(LoadPaths.basisRuntimeDir^"/runtime.mlb", env)
+	    val topLevelSched = Controls.get BasicControl.scheduler
+	    val topLevelSchedPts = loadMLB(LoadPaths.basisRuntimeDir^"/top-level-scheds/"^topLevelSched^".mlb", env)
+            in
+	       topLevelSchedPts @ basisPts
+	    end
+
+    fun gleanPts ls = ListPair.unzip(List.rev ls)
+
+  (* load the root MLB file *)
     fun load (errStrm, file) = let
 	  val env0 = Env{loc=(0,0), pts=[], preprocs=[]}
-	  val pts = loadMLB(file, env0)
-	  in
-	      ListPair.unzip (List.rev pts)
+	  val basis = loadBasisLib env0
+	  val pts = (
+	      case OS.Path.splitBaseExt file
+	       of {base, ext=SOME "mlb"} => loadMLB(file, env0)
+		| {base, ext=SOME "pml"} => [Option.valOf(loadPML(file, env0))]
+  	      (* end case *))
+          in
+	      gleanPts (pts @ basis)
 	  end
 
   end (* MLB *)

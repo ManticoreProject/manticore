@@ -52,6 +52,7 @@ structure Unpar : sig
 	      | exp (x as A.VarExp (v, ts)) = x
 	      | exp (A.SeqExp (e1, e2)) = A.SeqExp (exp e1, exp e2)
 	      | exp (A.OverloadExp ovr) = A.OverloadExp ovr
+	      | exp (A.ExpansionOptsExp(opts, e)) = A.ExpansionOptsExp(opts, exp e)
 
 	    and binding (A.ValBind (p, e)) = A.ValBind (p, exp e)
 	      | binding (A.PValBind (p, e)) = 

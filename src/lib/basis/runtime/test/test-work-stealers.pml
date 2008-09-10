@@ -29,7 +29,8 @@ structure TestWorkStealers =
 	    if I32Eq(SELECT(0, cnt), 1)
 	       then return()
 	    else
-(*		let _ : PT.unit = Control.@yield(/ exh)*)
+(*		FIXME: what goes wrong here?
+let _ : PT.unit = Control.@yield(/ exh)*)
 		apply wait()
 	do apply wait ()
 	return(UNIT)

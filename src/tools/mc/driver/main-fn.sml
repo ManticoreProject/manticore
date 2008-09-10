@@ -42,21 +42,6 @@ functor MainFn (
 
     fun prHdr msg = print(concat["******************** ", msg,  " ********************\n"])
 
-  (* load the AST corresponding to a single .pml file *)
-    fun srcToAST (errStrm, file) = (case Parser.parseFile (errStrm, TextIO.openIn file)
-	   of SOME pt1 => let
-		val (pt2, _) = BoundVariableCheck.check (errStrm, pt1, BasisEnv.bEnv0)
-		val _ = checkForErrors errStrm
-		val ast = ChkProgram.check [(errStrm, pt2)]
-		in
-		  checkForErrors errStrm;
-		  ast
-		end
-	    | NONE => (
-		Error.report (TextIO.stdErr, errStrm);
-		raise Error)
-	  (* end case *))
-
     fun boundVarChk (errStream, p1, (p2s, env)) = let
 	  val (p2, env) = BoundVariableCheck.check (errStream, p1, env)
           in
@@ -143,30 +128,21 @@ functor MainFn (
 	    codegen (verbose, asmFile, cfg)
 	  end
 
-  (* compile a single PML file *)
-    val standaloneC = mantC srcToAST
-
   (* compile an MLB file *)
     val mlbC = mantC mlbToAST
 
     fun doFile file = BackTrace.monitor (fn () => let
 	  val verbose = (Controls.get BasicControl.verbose > 0)
-          fun doit compFn base = (
-		case Controls.get BasicControl.keepPassBaseName
+	  val {base, ext} = OS.Path.splitBaseExt file
+	  in
+            case Controls.get BasicControl.keepPassBaseName
 		 of NONE => Controls.set (BasicControl.keepPassBaseName, SOME base)
 		  | SOME _ => ()
 		(* end case *);
-		compFn (
-		  verbose,
-		  Error.mkErrStream file,
-		  file,
-		  OS.Path.joinBaseExt {base = base, ext = SOME "s"}))
-	  in
-	    case OS.Path.splitBaseExt file
-	     of {base, ext=SOME "pml"} => doit standaloneC base
-	      | {base, ext=SOME "mlb"} => doit mlbC base
-	      | _ => raise Fail "unknown source file extension"
-	    (* end case *)
+	    mlbC(verbose, 
+		 Error.mkErrStream file, 
+		 file,
+		 OS.Path.joinBaseExt {base = base, ext = SOME "s"})
 	  end)
 
     fun quit b = OS.Process.exit (if b then OS.Process.success else OS.Process.failure)

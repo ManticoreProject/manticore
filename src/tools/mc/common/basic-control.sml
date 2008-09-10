@@ -23,6 +23,9 @@ structure BasicControl :  sig
   (* sequential mode *)
     val sequential : bool Controls.control
 
+  (* select the top-level thread scheduler *)
+    val scheduler : string Controls.control
+
   (* link with debug version of runtime mode *)
     val debug : bool Controls.control
 
@@ -145,6 +148,15 @@ structure BasicControl :  sig
 	    default = false
 	  }
 
+  (* select the top-level thread scheduler *)
+    val scheduler : string Controls.control = Controls.genControl {
+	    name = "scheduler",
+	    pri = [0, 1, 2],
+	    obscurity = 0,
+	    help = "select the top-level thread-scheduler (round-robin or work-stealers)",
+	    default = "round-robin"
+	  }
+
   (* enable logging mode *)
     val logging : bool Controls.control = Controls.genControl {
 	    name = "log",
@@ -165,6 +177,10 @@ structure BasicControl :  sig
 	    };
 	  ControlRegistry.register topRegistry {
 	      ctl = Controls.stringControl ControlUtil.Cvt.bool debug,
+	      envName = NONE
+	    };
+	  ControlRegistry.register topRegistry {
+	      ctl = Controls.stringControl ControlUtil.Cvt.string scheduler,
 	      envName = NONE
 	    };
 	  ControlRegistry.register topRegistry {

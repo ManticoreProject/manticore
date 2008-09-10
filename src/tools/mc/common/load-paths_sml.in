@@ -1,0 +1,21 @@
+(* load-paths.sml
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * @configure_input@
+ *)
+
+structure LoadPaths =
+  struct
+
+  (* Manticore basis library *)
+    val basisDir = "@MANTICORE_BASISDIR@"
+  (* Manticore basis CPP definition directory *)
+    val basisCPPDefDir = basisDir^"/include"
+  (* Manticore runtime library *)
+    val basisRuntimeDir = basisDir^"/runtime"
+  (* Manticore sequential library *)
+    val basisSequentialDir = basisDir^"/sequential"
+
+  end
