@@ -76,6 +76,8 @@ functor HeapTransferFn (
           (T.REG(MTy.wordTy, r), T.MV(MTy.wordTy, r, hostVP))
         end
 
+  val szOfVar = Types.szOf o Var.typeOf
+
   datatype loc_kind 
     = K_GPR                   (* integer register *)
     | K_FPR                   (* floating-point register *)
@@ -171,18 +173,27 @@ functor HeapTransferFn (
   fun scratchLoc offset = T.ADD(MTy.wordTy, offset, T.REG(MTy.wordTy, Regs.argReg))
 
   (* given a machine location, return the corresponding MLTREE expression *)
-  fun locToExpr (SA.BLOCK_OFFSET (ty, _, off)) = 
-      (* offset into the overflow block *)
-        MTy.EXP (ty, scratchLoc (T.LI (T.I.fromInt(MTy.wordTy, off))))
-    | locToExpr (SA.REG(ty, K_GPR, r)) =
-        MTy.GPR (ty, r)
-    | locToExpr (SA.REG(ty, K_FPR, r)) =
-        MTy.FPR (ty, r)
-    | locToExpr (SA.NARROW (SA.REG(ty, K_GPR, r), ty', k)) =
-        MTy.GPR (ty, r)
-    | locToExpr (SA.NARROW (SA.REG(64, K_FPR, r), 32, K_FPR)) =
-      (* FIXME: promote float to double *)
-        MTy.FPR (32, r)
+  fun locToExpr naturalTy loc = let
+        val ty = (case naturalTy
+		   of NONE => SA.width loc
+		    | SOME ty => ty
+		 (* end case *))
+        in
+          case loc
+	   of SA.BLOCK_OFFSET (_, _, off) =>
+	      (* offset into the overflow block *)
+              MTy.EXP (ty, scratchLoc (T.LI (T.I.fromInt(MTy.wordTy, off))))
+	    | SA.REG(_, K_GPR, r) => MTy.GPR (ty, r)	      
+	    | SA.REG(_, K_FPR, r) => MTy.FPR (ty, r)
+	    | SA.NARROW (SA.REG(_, K_GPR, r), _, k) => 
+	      (* ignore width coercions for now *)
+	      MTy.GPR (ty, r)
+	    | SA.NARROW (SA.REG(_, K_FPR, r), _, K_FPR) =>
+	      (* ignore width coercions for now *)
+              MTy.FPR (ty, r)
+        end
+
+  val natLocToExpr = locToExpr NONE
 
   (* copy an argument to a parameter location *)
   fun copyArgToParam (param, arg) = (case (param, arg)
@@ -234,7 +245,7 @@ functor HeapTransferFn (
       (* finalize locations for passing the arguments *)
       val paramLocs = CallingConventions.stdApply paramReqs
       (* determine the destinations of parameters (all should be in gprs) *)
-      val params = List.map locToExpr paramLocs
+      val params = List.map natLocToExpr paramLocs
       val paramRegs = treesToRegs params
       val (lab, mvInstr) = genTransferTarget (defOf f)
       val {stms, liveOut} = genStdTransfer varDefTbl (lab, args, paramRegs) 
@@ -250,7 +261,7 @@ functor HeapTransferFn (
       val paramReqs = List.map (fn _ => (MTy.wordTy, K_GPR, MTy.wordTy div 8)) args
       (* finalize locations for passing the arguments *)
       val paramLocs = CallingConventions.stdCont paramReqs
-      val params = List.map locToExpr paramLocs
+      val params = List.map natLocToExpr paramLocs
       (* determine the destinations of parameters (all should be in gprs) *)
       val paramRegs = treesToRegs params
       val (labK, mvInstr) = genTransferTarget (defOf k)
@@ -260,6 +271,14 @@ functor HeapTransferFn (
       end 
     | genStdThrow _ _ = raise Fail "genStdThrow: ill-formed StdThrow"
 
+  (* assign argument variables to hardware locations*)
+  fun assignArgsToLocs (args, locs) = let
+      val argTys = List.map szOfVar args
+      fun f (ty, loc) = locToExpr (SOME ty) loc
+      in
+        ListPair.map f (argTys, locs)
+      end
+
   (* generate calling sequences for specialized function applications *)
   fun genApply varDefTbl {f, clos, args} = let
       val defOf = VarDef.defOf varDefTbl
@@ -268,7 +287,7 @@ functor HeapTransferFn (
       val paramReqs = List.map (tyToReq o Var.typeOf) args
       (* finalize locations for passing arguments *)
       val paramLocs = CallingConventions.apply paramReqs
-      val params = List.map locToExpr paramLocs
+      val params = assignArgsToLocs (args, paramLocs)
       val (target, mvInstr) = genTransferTarget (defOf f)
       in
          {stms=List.concat [		 
@@ -302,8 +321,6 @@ functor HeapTransferFn (
 				   
   (* remove a register from a list of registers *)
   fun removeReg reg regs = List.filter (not o (fn r => CellsBasis.sameCell(reg, r))) regs
-
-  val szOfVar = Types.szOf o Var.typeOf
 
   fun ccall {lhs, name, retTy, paramTys, cArgs, backupRegs, saveAllocationPointer} = let
       val conv = if backupRegs then "ccall-bare" else "ccall"
@@ -606,7 +623,7 @@ functor HeapTransferFn (
       val paramReqs = List.map (fn _ => (MTy.wordTy, K_GPR, MTy.wordTy div 8)) args
       (* determine the destinations of parameters (all should be in gprs) *)
       val paramLocs = CallingConventions.stdApply paramReqs
-      val params = List.map locToExpr paramLocs
+      val params = List.map natLocToExpr paramLocs
       val {stms, regs} = Copy.fresh (treesToRegs params)
       in
           setEntry varDefTbl (lab, regs, args, stms)
@@ -616,7 +633,7 @@ functor HeapTransferFn (
       val paramReqs = List.map (fn _ => (MTy.wordTy, K_GPR, MTy.wordTy div 8)) args
       (* determine the destinations of parameters (all should be in gprs) *)
       val paramLocs = CallingConventions.stdCont paramReqs
-      val params = List.map locToExpr paramLocs
+      val params = List.map natLocToExpr paramLocs
       val {stms, regs} = Copy.fresh (treesToRegs params)
       in
           setEntry varDefTbl (lab, regs, args, stms)
@@ -626,7 +643,7 @@ functor HeapTransferFn (
       val paramReqs = List.map (tyToReq o Var.typeOf) args
       (* finalize locations for the parameters *)
       val paramLocs = CallingConventions.apply paramReqs
-      val params = List.map locToExpr paramLocs
+      val params = assignArgsToLocs(args, paramLocs)
       val {stms, regs} = bindParams {params=params, paramKinds=List.map SA.kindOfLoc paramLocs}
       in
 	  setEntry varDefTbl (lab, regs, args, stms)
