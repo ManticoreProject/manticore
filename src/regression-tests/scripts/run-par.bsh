@@ -1,0 +1,47 @@
+#!/bin/bash
+#
+
+DIR=`pwd`
+MC="sml @SMLcmdname=mc @SMLload=$DIR/../../src/tools/mc/mc"
+MCFLAGS="-Cclos.convert-style=flatWithCFA"
+DATE=$( date +"%F-%H-%M-%S" )
+REPORT_FILE=report-$DATE
+REPORT="$DIR/reports/$REPORT_FILE"
+
+# allow core dumps
+ulimit -c unlimited
+
+( cd par;
+
+for g in goal*
+do
+( cd $g;
+   for f in *.pml
+   do
+     fname=${f%.pml}
+     if [ -e "$fname.ok" ] ; then
+       echo -n "checking $fname ... "
+       $MC $MCFLAGS $f 
+       if [ "$?" -eq "0" ] ; then
+	 ./a.out > $fname.test
+	 diffs=$(diff $fname.test $fname.ok)
+	 status=$(diff $fname.test $fname.ok | wc -l)
+	 if [ $status -eq "0" ] ; then
+	   echo "***** Check succeeded for goal $g in file $f." >> $REPORT
+	   echo "ok"
+	 else
+	   echo "***** Check failed for goal $g in file $f." >> $REPORT
+	   diff $fname.test $fname.ok >> $REPORT
+	   echo "fail"
+	 fi
+       else
+	 echo "***** Compile failed for goal $g in file $f." >> $REPORT
+	 echo "fail"
+       fi
+       rm -f a.out $fname.s $fname.test
+     fi
+   done
+)
+done
+
+)
