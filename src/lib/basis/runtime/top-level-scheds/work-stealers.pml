@@ -74,6 +74,7 @@ structure WorkStealers =
 			  throw tryNext()
 			| O.SOME (item : VPQ.queue) =>
 			(* (2.2) *)
+(* FIXME: check if it's pinned *)
 			  do print_msg("work-stealers: sending thread to idle vproc")
 			  do VPQ.@enqueue-on-vproc(self, SELECT(FLS_OFF, item), SELECT(FIBER_OFF, item) / exh)
 			  let _ : PT.unit = Control.@stop(/ exh)
