@@ -3,7 +3,6 @@
 
 DIR=`pwd`
 MC="sml @SMLcmdname=mc @SMLload=$DIR/../../src/tools/mc/mc"
-#MCFLAGS="-Cclos.convert-style=flatWithCFA"
 MCFLAGS="-Csequential=true -Cclos.convert-style=flatWithCFA"
 DATE=$( date +"%F-%H-%M-%S" )
 REPORT_FILE=report-$DATE
