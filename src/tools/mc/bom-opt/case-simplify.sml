@@ -43,7 +43,7 @@ structure CaseSimplify : sig
 	  val (isExn, nCons, nEnums) = (case argTy
 		 of BTy.T_TyCon(BTy.DataTyc{nNullary, cons, ...}) => (false, List.length(!cons), nNullary)
 		  (* the argument is a nullary constructor *)
-(*		  | BTy.T_Enum n => (false, Word.toInt n + 1, 0)*)
+		  | BTy.T_Enum n => (false, Word.toInt n + 1, 0)
 		  | ty => (BOMTyUtil.equal(BTy.exnTy, ty), 0, 0)
 		(* end case *))
 	(* classify the rules into a list of those with enum patterns, a list
@@ -526,7 +526,7 @@ DEBUG*)
 			  | {rules, hasDflt=false} => B.mkCase(argument, List.map enumCase rules, NONE)
 			(* end case *))
 		  val consCase = (case cons
-			 of {rules=[], hasDflt=true} => valOf dflt
+			 of {rules=[], hasDflt=true} => valOf dflt 
 			  | {rules=[], hasDflt=false} => raise Fail "badly-formed sub-case"
 			  | {rules, hasDflt=true} => consCase (rules, dflt)
 			  | {rules, hasDflt=false} => consCase (rules, NONE)
