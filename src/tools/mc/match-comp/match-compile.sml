@@ -374,7 +374,7 @@ structure MatchCompile : sig
 	      | AST.SeqExp(e1, e2) => AST.SeqExp(rewrite' e1, rewrite' e2)
 	      | AST.OverloadExp(ref(AST.Instance x)) => AST.VarExp(x, [])
 	      | AST.OverloadExp _ => raise Fail "unresolved overloading"
-	      | AST.ExpansionOptsExp (opts, exp) => AST.ExpansionOptsExp(opts, exp)
+	      | AST.ExpansionOptsExp (opts, e) => AST.ExpansionOptsExp(opts, rewrite' e)
 	    (* end case *)
 	  end
 
