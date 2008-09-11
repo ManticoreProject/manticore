@@ -336,8 +336,10 @@ structure MatchCompile : sig
 		    AST.LetExp(AST.PrimVBind(v, prim), rewrite' e)
 	      | AST.LetExp(AST.PrimCodeBind code, e) => 
 		    AST.LetExp(AST.PrimCodeBind code, rewrite' e)
-	      | AST.LetExp(AST.PValBind _, e) => (* should have been compiled away *)
-		  raise Fail "unexpected PValBind"
+	      | AST.LetExp(AST.PValBind (pat, rhs), e) => 
+		  if MatchUtil.isSimplePat pat
+		    then AST.LetExp(AST.PValBind(pat, rewrite' rhs), rewrite' e)
+		    else raise Fail "todo"
 	      | AST.LetExp(AST.FunBind fbs, e) => let
 		  fun rewriteFB (AST.FB(f, x, e)) = AST.FB(f, x, rewrite' e)
 		  in
