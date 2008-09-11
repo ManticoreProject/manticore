@@ -42,6 +42,8 @@ structure CaseSimplify : sig
 	  val hasDflt = Option.isSome dflt
 	  val (isExn, nCons, nEnums) = (case argTy
 		 of BTy.T_TyCon(BTy.DataTyc{nNullary, cons, ...}) => (false, List.length(!cons), nNullary)
+		  (* the argument is a nullary constructor *)
+(*		  | BTy.T_Enum n => (false, Word.toInt n + 1, 0)*)
 		  | ty => (BOMTyUtil.equal(BTy.exnTy, ty), 0, 0)
 		(* end case *))
 	(* classify the rules into a list of those with enum patterns, a list
@@ -166,7 +168,16 @@ structure CaseSimplify : sig
       end)
    end (* local *)
 
-    fun numEnumsOfTyc (BTy.DataTyc{nNullary, ...}) = nNullary
+(*    fun numEnumsOfTyc (BTy.DataTyc{nNullary, ...}) = nNullary*)
+  (* extended to support nullary constructors *)
+    fun numEnumsOfTyc x = (
+	case BV.typeOf x
+	 of BTy.T_Enum n => Word.toInt n + 1
+	  | ty => (
+	    case BTU.asTyc ty
+	     of BTy.DataTyc{nNullary, ...} => nNullary
+	    (* end case *))
+        (* end case *))
 
     fun repOf (B.DCon{rep, ...}) = rep
     fun nameOfDCon (B.DCon{name, ...}) = name
@@ -478,14 +489,14 @@ DEBUG*)
 		val ty = if hasTyc ty then tyToRepTy ty else ty
 		in
 		  (B.P_Const(Lit.Enum w, ty), xformE(s, tys, e))
-		end
+		end	  
 	  in
 	    case classifyCaseRules (BV.typeOf x, rules, dflt)
 	     of EnumCase{rules, ...} => B.mkCase(argument, List.map enumCase rules, dflt)
 	      | ConsCase{rules, ...} => consCase (rules, dflt)
 	      | MixedCase{enums, cons} => let
 		  val isBoxed = BV.new("isBoxed", BTy.boolTy)
-		  val boxedTest = if (numEnumsOfTyc(BTU.asTyc(BV.typeOf x)) = 1)
+		  val boxedTest = if numEnumsOfTyc x = 1
 			then let
 			(* when there is only one possible enum value, we just do
 			 * an equality test.
