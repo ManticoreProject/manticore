@@ -62,18 +62,17 @@ structure VProcQueue =
         return(I32Gt(I32Add(ntl, nhd), 1))
       ;
 
-    (* takes a queue element (the first three arguments), a queue (lst), and another queue (rest), and 
-     * produces the following queue:
-     *    (first three arguments) -> rev(lst) -> rev(rest)
+    (* takes a queue element (queue0) and a queue (rest), and produces the queue
+     *    queue0 -> rev(rest)
      *)
-      define @reverse-queue (fls : FLS.fls, k : PT.fiber, lst : queue, rest : queue / exh : PT.exh) : queue =
-	fun revQueue (fls : FLS.fls, k : PT.fiber, lst : queue, acc : queue / exh : PT.exh) : queue =
+      define @reverse-queue (fls : FLS.fls, k : PT.fiber, rest : queue / exh : PT.exh) : queue =
+	fun revQueue (fls : FLS.fls, k : PT.fiber, rest : queue, acc : queue / exh : PT.exh) : queue =
 	     let acc : queue = alloc(fls, k, acc)
-             if Equal(lst, Q_EMPTY)
+             if Equal(rest, Q_EMPTY)
                 then return(acc)
 	     else
-		 apply revQueue (SELECT(FLS_OFF, lst), SELECT(FIBER_OFF, lst), SELECT(LINK_OFF, lst), acc / exh)
-	let qitem : queue = apply revQueue (fls, k, lst, rest / exh)
+		 apply revQueue (SELECT(FLS_OFF, rest), SELECT(FIBER_OFF, rest), SELECT(LINK_OFF, rest), acc / exh)
+	let qitem : queue = apply revQueue (fls, k, rest, Q_EMPTY / exh)
 	return (qitem)
       ;
 
@@ -88,10 +87,9 @@ structure VProcQueue =
 	     let qitem : queue = 
 		   @reverse-queue (SELECT(FLS_OFF, tl), 
 				   SELECT(FIBER_OFF, tl), 
-				   (queue)SELECT(LINK_OFF, tl), 
-				   Q_EMPTY 
+				   (queue)SELECT(LINK_OFF, tl)
 				   / exh)
-	     do vpstore (VP_RDYQ_HD, vp, (queue)SELECT(LINK_OFF, tl))
+	     do vpstore (VP_RDYQ_HD, vp, (queue)SELECT(LINK_OFF, qitem))
 	     return (Option.SOME(qitem))
       ;	  
 
@@ -105,7 +103,7 @@ structure VProcQueue =
 	    @dequeue-slow-path (vp / exh)
 	else 
 	    (* got a thread from the primary list *)
-	    do vpstore (VP_RDYQ_HD, vp, #2(hd))
+	    do vpstore (VP_RDYQ_HD, vp, SELECT(LINK_OFF, hd))
 	    return (Option.SOME(hd))  
       ;
 
