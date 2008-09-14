@@ -27,9 +27,13 @@ structure FiberLocalStorage =
 
       typedef fls_tag = AL.assoc_tag;
 
-    (* create fls *)
       define @new (x : PT.unit / exh : PT.exh) : fls =
         let fls : fls = alloc(PT.FALSE, L.NIL)
+        return(fls)
+      ;
+
+      define @new-pinned (x : PT.unit / exh : PT.exh) : fls =
+        let fls : fls = alloc(PT.TRUE, L.NIL)
         return(fls)
       ;
 
@@ -61,6 +65,13 @@ structure FiberLocalStorage =
 
       define @is-pinned (fls : fls / exh : PT.exh) : PT.bool =
 	return(SELECT(PINNED_OFF, fls))
+      ;
+
+      define @set-pinned ( / exh : PT.exh) : () =
+        let fls : fls = @get(/ exh)
+	let fls : fls = alloc(PT.TRUE, SELECT(ASSOC_OFF, fls))
+	let _ : PT.unit = @set(fls / exh)
+        return()
       ;
 
     )

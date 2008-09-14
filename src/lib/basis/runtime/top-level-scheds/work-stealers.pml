@@ -44,59 +44,55 @@ structure WorkStealers =
       ;
 
       define @mk-sched-act (self : vproc / exh : PT.exh) : PT.sigact =
-      (* (2) *)
+        cont waitK(x : PT.unit) = 
+          do SchedulerUtils.@wait(/ exh)
+          let _ : PT.unit = Control.@stop(/ exh)
+          return($0)
+
 	fun stealMode (vps : L.list / exh : PT.exh) : () =
 	    do print_msg("work-stealers: steal mode")
-	    case vps
-	     of L.NIL =>
-		do print_msg("work-stealers: failed to get work")
-	      (* (3) *)
-		return()
-	      | L.CONS(vp : vproc, vps : L.list) =>
-		cont tryNext () =
-		  do print_msg("work-stealers: try next")
-		  do apply stealMode(vps / exh)
-		  return()
-		let idle : int = vpload(VP_IDLE, vp)
-		do if I32Eq(idle, 1)
-		      then throw tryNext()
-		   else return()
-	      (* (2.1) *)		
-		cont thiefK (x : PT.unit) =
-		  do print_msg("work-stealers: in thiefK")		  
-		  let hasStealableElts : PT.bool = VPQ.@is-local-queue-geq-one(/ exh)
-		  if hasStealableElts
-		     then 
-		      do print_msg("work-stealers: dequeuing")
-		      let item : O.option = VPQ.@dequeue(/ exh)
-		      case item
-		       of O.NONE =>
-			  throw tryNext()
-			| O.SOME (item : VPQ.queue) =>
-			(* (2.2) *)
-(* FIXME: check if it's pinned *)
-			  do print_msg("work-stealers: sending thread to idle vproc")
-			  do VPQ.@enqueue-on-vproc(self, SELECT(FLS_OFF, item), SELECT(FIBER_OFF, item) / exh)
-			  let _ : PT.unit = Control.@stop(/ exh)
-                          return()
-		      end
-		  else throw tryNext()
-	      VPM.@send(vp, thiefK / exh)
-	    end
+	    do ccall M_PrintPtr("self", self)
+	    let hasStealableElts : PT.bool = VPQ.@is-local-queue-geq-one(/ exh)
+	    if hasStealableElts
+ 	       then 
+		do print_msg("work-stealers: dequeuing")
+                fun isNotPinned (fls : FLS.fls / exh : PT.exh) : PT.bool =
+		    let b : PT.bool = FLS.@is-pinned(fls / exh)
+                    return(NotEqual(b, PT.TRUE))
+                let item : O.option = VPQ.@dequeue-with-pred(isNotPinned / exh)
+		case item
+		 of O.NONE =>
+		    apply tryNext(vps / exh)
+		  | O.SOME (item : VPQ.queue) =>
+		    do print_msg("work-stealers: sending thread to idle vproc")
+		    do VPQ.@enqueue-on-vproc(self, SELECT(FLS_OFF, item), SELECT(FIBER_OFF, item) / exh)
+                    return()
+		end
+	    else apply tryNext(vps / exh)
+
+      and tryNext (vps : L.list / exh : PT.exh) : () =
+	  do print_msg("work-stealers: try next")
+	  case vps
+	   of L.NIL =>
+	      do print_msg("work-stealers: failed to get work")
+	      return()
+	    | L.CONS(vp : vproc, vps : L.list) =>
+	      let idle : int = vpload(VP_IDLE, vp)
+	      do if I32Eq(idle, 1)
+		    then apply tryNext(vps / exh)
+		 else return()
+	      cont thiefK (x : PT.unit) =
+		do apply stealMode(vps / exh)
+		let _ : PT.unit = Control.@stop(/ exh)
+                return()
+	    VPM.@send(vp, thiefK / exh)
+	  end
 
 	cont impossible() = 
 	  do assert(PT.FALSE)
 	  return($0)
 
-        cont sendThiefK (x : PT.unit) =
-          let potentialVictims : L.list = SchedulerUtils.@other-vprocs(/ exh)
-          do apply stealMode(potentialVictims / exh)
-          do SchedulerUtils.@wait(/ exh)
-          let x : PT.unit = Control.@stop(/ exh)
-          throw impossible()
-
 	cont switch (sign : PT.signal) =
-        (* (1) *)
 	  cont dispatch () =
 	    let hasElts : PT.bool = VPQ.@is-local-queue-gt-one(/ exh)
 	    do if hasElts
@@ -105,8 +101,11 @@ structure WorkStealers =
 	    let item : O.option = VPQ.@dequeue(/ exh)
 	    case item
 	     of O.NONE => 
-		do Control.@run(switch, sendThiefK / exh)
-                throw impossible()
+do print_ppt()
+		let potentialVictims : L.list = SchedulerUtils.@other-vprocs(/ exh)
+                do apply tryNext(potentialVictims / exh)
+                do SchedulerUtils.@wait(/ exh)
+                throw dispatch()
 	      | O.SOME(qitem : VPQ.queue) =>
 		do Control.@run-thread (switch, SELECT(FIBER_OFF, qitem), SELECT(FLS_OFF, qitem) / exh)
 		throw impossible()

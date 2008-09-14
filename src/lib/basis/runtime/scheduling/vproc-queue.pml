@@ -77,7 +77,7 @@ structure VProcQueue =
       ;
 
    (* dequeue from the secondary list *)
-      define @dequeue-slow-path (vp : vproc / exh : PT.exh) : Option.option =
+      define @dequeue-slow-path (vp : vproc / exh : PT.exh) : O.option =
 	let tl : queue = vpload (VP_RDYQ_TL, vp)
 	if Equal(tl, Q_EMPTY)
 	   then
@@ -90,11 +90,11 @@ structure VProcQueue =
 				   (queue)SELECT(LINK_OFF, tl)
 				   / exh)
 	     do vpstore (VP_RDYQ_HD, vp, (queue)SELECT(LINK_OFF, qitem))
-	     return (Option.SOME(qitem))
+	     return (O.SOME(qitem))
       ;	  
 
     (* take from the local queue *)
-      define @dequeue ( / exh : PT.exh) : Option.option =
+      define @dequeue ( / exh : PT.exh) : O.option =
 	let vp : vproc = host_vproc
 	let hd : queue = vpload (VP_RDYQ_HD, vp)
 	if Equal(hd, Q_EMPTY)
@@ -104,7 +104,7 @@ structure VProcQueue =
 	else 
 	    (* got a thread from the primary list *)
 	    do vpstore (VP_RDYQ_HD, vp, SELECT(LINK_OFF, hd))
-	    return (Option.SOME(hd))  
+	    return (O.SOME(hd))  
       ;
 
     (* enqueue on the vproc's thread queue *)
@@ -116,8 +116,44 @@ structure VProcQueue =
 	 return () 
       ;
 
-    (* TODO: move this function to BOM *)
-      extern void EnqueueOnVProc (void *, void *, void *, void *) __attribute__((alloc));
+    (* dequeue the first item to satisfy f(SELECT(FLS_OFF, item)) *)
+      define @dequeue-with-pred (f : fun(FLS.fls / PT.exh -> PT.bool) / exh : PT.exh) : O.option =
+	let m : PT.bool = vpload(ATOMIC, host_vproc)
+	do vpstore(ATOMIC, host_vproc, PT.TRUE)
+
+        cont exit (x : O.option) = 
+    	  do vpstore(ATOMIC, host_vproc, m)
+          return(x)
+
+	let qitem : O.option = @dequeue(/ exh)
+	case qitem
+	 of O.NONE => throw exit(O.NONE)
+	  | O.SOME (origItem : queue) =>
+	    fun lp () : O.option =
+		let qitem : O.option = @dequeue(/ exh)
+		case qitem
+		 of O.NONE => throw exit(O.NONE)
+		  | O.SOME(item : queue) =>
+		    let b : PT.bool = apply f (SELECT(FLS_OFF, item) / exh)
+		    if b
+		       then throw exit (O.SOME(item))
+		    else if Equal(SELECT(FLS_OFF, item), SELECT(FLS_OFF, origItem))
+		       then 
+			do @enqueue(SELECT(FLS_OFF, item), SELECT(FIBER_OFF, item) / exh)
+			throw exit (O.NONE)
+		    else 
+			do @enqueue(SELECT(FLS_OFF, item), SELECT(FIBER_OFF, item) / exh)
+			apply lp()
+		end
+	    let b : PT.bool = apply f (SELECT(FLS_OFF, origItem) / exh)
+	    if b
+	       then 
+		throw exit(O.SOME(origItem))
+	    else
+		do @enqueue(SELECT(FLS_OFF, origItem), SELECT(FIBER_OFF, origItem) / exh)
+		apply lp()
+	end
+      ;
 
     (* unload threads from the landing pad *)
       define @unload-landing-pad (/ exh : PT.exh) : queue =
