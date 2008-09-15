@@ -13,7 +13,7 @@ structure TranslatePrim : sig
 		  Var.var * 
 		  Types.ty_scheme * 
 		  ProgramParseTree.PML2.BOMParseTree.prim_val_rhs) 
-		 -> BOM.exp option
+		 -> (TranslateEnv.env * BOM.Var.var * BOM.exp) option
 
   (* convert BOM definitions. this process occurs silently, by adding
    * definitions to environments and caches.
@@ -468,9 +468,39 @@ structure TranslatePrim : sig
 	    in
 	       BOM.mkFun([l'], BOM.mkRet [f'])
 	    end
+
+  (* mkVars : BTy.ty list -> BV.var list *)
+    fun mkVars baseName ts = let
+	(* build : string -> BTy.ty list * int -> BV.var list *)
+	  fun build ([], _) = []
+	    | build (t::ts, n) = let
+		val x = baseName ^ Int.toString n
+		in
+		    BV.new (x, t) :: build (ts, n+1)
+		end
+	  in
+	    build (ts, 0)
+	  end
+
+  (* mkCast : BOM.exp * BOMTy.ty * BOMTy.ty -> BOM.exp *)
+    fun mkCast (e, origTy, newTy) = 
+	(* FIXME *)
+	if BOMTyUtil.equal (origTy, newTy)
+	       (* this really should be match, but that wasn't working *)
+	then e (* cast is unnecessary *)
+	else
+	    let val x = BV.new ("x", origTy)
+		val c = BV.new ("c", newTy)
+	    in
+		BOM.mkLet ([x], e,
+		  BOM.mkStmt ([c], BOM.E_Cast (newTy, x),
+		    BOM.mkRet [c]))
+	    end
+
   
     fun cvtRhs (env, x, pmlTy, rhs) = let
-	val _ = translateEnv := env
+	val _ = translateEnv := env	
+		   val x' = BOM.Var.new(Var.nameOf x, TranslateTypes.trScheme(env, Var.typeOf x))
         (* check that the RHS matches the constraining type *)
 	val pmlTy = TranslateTypes.trScheme(env, pmlTy)
 	  fun chkConstraintTy bomTy = 
@@ -483,30 +513,60 @@ structure TranslatePrim : sig
           in	     
 	     case rhs
               of BPT.VarPrimVal v => let
+		   val env = E.insertVar(env, x, x')
 		   val bomVar = lookupVar v
                  in
 		   chkConstraintTy (BOM.Var.typeOf bomVar);
-	           SOME (BOM.mkRet [bomVar])
+	           SOME (env, x', BOM.mkRet [bomVar])
                 end
-	       | BPT.LambdaPrimVal fb => let
+	       | BPT.LambdaPrimVal fb => raise Fail "todo"
+(*let
 		   val lambda = cvtLambda (findCFun, fb, BTy.T_Fun)
 		   val l as BOM.FB{f, ...} = lambda()
 		   in
 		      SOME (BOM.mkFun([l], BOM.mkRet [f]))
 		   end
+*)
 	       | BPT.HLOpPrimVal hlop => (
-		   case E.findBOMHLOpDef hlop
-		    of SOME {name, path, inline, def as BOM.FB{f, ...}, externs, pmlImports} => (
-		         chkConstraintTy (BOM.Var.typeOf f);
-			 SOME (etaExpand(name, def)))
-		     | NONE => NONE
-                   (* end case *))
+		 case E.findBOMHLOpDef hlop
+		  of SOME {name, path, inline, def as BOM.FB{f, ...}, externs, pmlImports} => let
+                       (* eta-expand the hlop. this is unfortunately necessary to synthesize polymorphism in the return type *)
+			 fun mkFB ty = let
+			     val BOMTy.T_Fun(paramTys, exhTys, [retTy]) = BOM.Var.typeOf f
+			     val params = mkVars "arg" paramTys
+			     val exh = mkVars "exh" exhTys
+			     val fty = BTy.T_Fun(paramTys, exhTys, [retTy])
+			     val h = BOM.mkHLOp(name, params, exh)
+			     val f = BOM.Var.new(BOM.Var.nameOf f, fty)
+			     in
+(* FIXME: the "inline" option screws up our cast *)
+			       BOM.FB{f=f, params=params, exh=exh, body=mkCast(h, retTy, ty)}
+			     end
+		       in
+			 chkConstraintTy (BOM.Var.typeOf f);
+			 SOME (E.insertFun(env, x, mkFB), x', etaExpand(name, def))
+                       end)
           end
 
     fun tyOfPat (BPT.P_VPMark {tree, span}) = tyOfPat tree
       | tyOfPat (BPT.P_Wild NONE) = BTy.T_Any
       | tyOfPat (BPT.P_Wild(SOME ty)) = cvtTy ty
       | tyOfPat (BPT.P_Var(_, ty)) = cvtTy ty
+
+  (* mkCast : BOM.exp * BOMTy.ty * BOMTy.ty -> BOM.exp *)
+    fun mkCast (e, origTy, newTy) =
+	(* FIXME *)
+	if BOMTyUtil.equal (origTy, newTy)
+	       (* this really should be match, but that wasn't working *)
+	then e (* cast is unnecessary *)
+	else 
+	    let val x = BV.new ("x", origTy)
+		val c = BV.new ("c", newTy)
+	    in
+		BOM.mkLet ([x], e,
+		  BOM.mkStmt ([c], BOM.E_Cast (newTy, x),
+		    BOM.mkRet [c]))
+	    end
 
     structure ATbl = AtomTable
     structure VTbl = BV.Tbl

@@ -362,11 +362,7 @@ structure Translate : sig
 		end
 	    | AST.PrimVBind (x, rhs) => (
 	        case TranslatePrim.cvtRhs (env, x, Var.typeOf x, rhs)
-		 of SOME e => let
-			val (x', env') = trVar(env, x)
-	                in
-			  mkLet([x'], e, k env')
-		        end
+		 of SOME (env', x', e) => mkLet([x'], e, k env')
 		  | NONE => k env
 	      (* end case *))
 	    | AST.PrimCodeBind code => let
@@ -510,9 +506,9 @@ structure Translate : sig
 	   of E.Var x' => cxt x' (* pass x' directly to the context *)
 	    | E.Lambda mkLambda => let
                 val sigma = Var.typeOf x (* actually a type scheme *)
-		val rangeTy = (case TypeUtil.apply(sigma, tys)
+		val rangeTy = (case TypeUtil.prune(TypeUtil.apply(sigma, tys))
 		       of A.FunTy (_, r) => r
-			| _ => raise Fail "expected function type"
+			| _ => raise Fail (Var.nameOf x^": expected function type is "^TypeUtil.toString(TypeUtil.apply(sigma, tys)))
 		      (* end case *))
 		val rangeTy' = trTy (env, rangeTy)
 		val fb as B.FB{f, ...} = mkLambda rangeTy'
