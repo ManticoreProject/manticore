@@ -36,7 +36,7 @@ structure Array64 =
 	return(len)
       ;
 
-      define inline @sub (arr : array, i : int / exh : PT.exh) : any =
+      define @sub (arr : array, i : int / exh : PT.exh) : any =
 	let len : int = @length(arr / exh)
 	do assert(I32Gte(i,0))
 	do assert(I32Lt(i,len))
@@ -64,7 +64,7 @@ structure Array64 =
 	return(alloc(len))
       ;
 
-      define inline @sub-w (arg : [array, PT.ml_int] / exh : PT.exh) : any =
+      define @sub-w (arg : [array, PT.ml_int] / exh : PT.exh) : any =
 	@sub(#0(arg), #0(#1(arg)) / exh)
       ;
 

@@ -53,28 +53,37 @@ structure ModuleEnv =
     fun varEnv (ModEnv{varEnv, ...}) = varEnv
     fun modRef (ModEnv{modRef, ...}) = modRef
 
+    fun find (ModEnv fields, select, x) = VarMap.find(select fields, x)
+    fun findInEnvs ([], select, x) = NONE
+      | findInEnvs (env :: envs, select, x) = (
+	case find(env, select, x)
+         of NONE => findInEnvs (envs, select, x)
+	  | SOME v => SOME v
+	(* end case *))
+
+  (* look in all environments that might be in lexical scope of env (NOTE: this list is larger than
+   * actual lexical scope.)
+   *)
+    fun envsInScope (env as ModEnv{outerEnv, ...}) = let
+	fun f (env as ModEnv{modEnv, ...}) = let
+	    val envs' = VarMap.listItems modEnv
+	    in
+	      env :: List.concat(List.map f envs') @ envs'
+	    end
+	in
+	   case outerEnv
+	    of NONE => f env
+	     | SOME outerEnv => f outerEnv @ f env
+	end
+
   (* lookup a variable in the scope of the current module *)
-    fun findInEnv (ModEnv (fields as {outerEnv, modEnv, ...}), select, x) = 
-	(case VarMap.find(select fields, x)
-          of NONE => let
-		 val envs = VarMap.listItems modEnv
-		 val envs = (case outerEnv
-			      of NONE => envs
-			       | SOME outerEnv => outerEnv :: envs
-			    (* end case *))
-                 in
-		   findInEnvs(envs, select, x)
-		 end
-	   (* found a value *)
+    fun findInEnv (env, select, x) = 
+	(case find(env, select, x)
+          of NONE => findInEnvs(envsInScope env, select, x)
 	   | SOME v => SOME v
 	(* end case *))
 
   (* lookup a variable in several modules *)
-    and findInEnvs ([], select, x) = NONE
-      | findInEnvs (env  :: envs, select, x) = (case findInEnv(env, select, x)
-           of NONE => findInEnvs (envs, select, x)
-	    | SOME v => SOME v
-	   (* end case *))
 
     fun findTy (env, tv) = findInEnv (env, #tyEnv, tv)
     fun findVar (env, v) = findInEnv (env, #varEnv, v)
@@ -196,10 +205,10 @@ structure ModuleEnv =
 	   val vars = String.concatWith "\n" (List.map valBindToString (VarMap.listItemsi varEnv))
 	   val mods = String.concatWith "\n" (List.map (toString o #2) (VarMap.listItemsi modEnv))
 	   in
-	      String.concat [
-	         "sig ", Atom.toString name, " = \n", 
-		 tys, "\n",
-		 vars, "\n",
+	      String.concatWith "\n" [
+	         "sig "^Atom.toString name^" = ", 
+		 tys,
+		 vars,
 		 mods
 	      ]
 	   end

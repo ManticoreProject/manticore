@@ -126,6 +126,7 @@ structure BasisEnv : sig
 	    (N.boolTrue,	Env.Con boolTrue),
 	    (N.boolFalse,	Env.Con boolFalse),
 	    (N.listNil,		Env.Con listNil),
+	    (N.listNil',	Env.Con listNil),
 	    (N.listCons,	Env.Con listCons),
 	    (N.optionNONE,	Env.Con optionNONE),
 	    (N.optionSOME,	Env.Con optionSOME),
@@ -259,7 +260,9 @@ structure BasisEnv : sig
 	    (N.boolTrue,	MEnv.Con boolTrue),
 	    (N.boolFalse,	MEnv.Con boolFalse),
 	    (N.listNil,		MEnv.Con listNil),
+	    (N.listNil',	MEnv.Con listNil),
 	    (N.listCons,	MEnv.Con listCons),
+	    (N.listCons',	MEnv.Con listCons),
 	    (N.optionNONE,	MEnv.Con optionNONE),
 	    (N.optionSOME,	MEnv.Con optionSOME),
 	    (N.exnBind,		MEnv.Con exnBind),
@@ -404,7 +407,8 @@ structure BasisEnv : sig
 	  in
 	  (* insert constructors *)
 	    List.app (AtomTable.insert tbl) [
-		(N.listCons,	Env.Con listCons)
+		(N.listCons,	Env.Con listCons),
+		(N.listCons',	Env.Con listCons)
 	      ];
 	  (* insert non-overloaded operators *)
 	    List.app (AtomTable.insert tbl) [
@@ -483,10 +487,11 @@ structure BasisEnv : sig
 				 tyEnv=MEnv.fromList predefinedTys, 
 				 varEnv=MEnv.fromList predefinedVars
 			       }
-	     val modRef = AST.MOD{id=Stamp.new(), name=Atom.atom "TopLevel", formals=NONE, expansionOpts=ref []}
+(*	     val modRef = AST.MOD{id=Stamp.new(), name=Atom.atom "TopLevel", formals=NONE, expansionOpts=ref []}
 	     val mEnv0 = MEnv.fresh(modRef, SOME basisEnv)
+*)
              in
-	        (bEnv0, mEnv0)
+	        (bEnv0, basisEnv)
 	     end
 
     val (lookupOpPT, lookupOpAST) = let

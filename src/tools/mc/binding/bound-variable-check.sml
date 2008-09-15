@@ -409,16 +409,27 @@ structure BoundVariableCheck :> sig
 		     (PT2.TypeTyDecl (tvs, id', ty), env)
 		  end
 	    | PT1.DataTyDecl decls => let
+		  (* insert data type ids first to make recursive types work *)
 		  fun ins ((tvs, id, conDecls), env) = BEnv.insertTycBind(env, id, freshVar id)
 		  val env = List.foldl ins env decls
+		  (* check the bodies of datatypes *)
 		  fun f ((tvs, id, conDecls), (decls, env)) = let
-		      val (conDecls, env) = chkConDecls loc (conDecls, env)
+		      val SOME dataTy = BEnv.findTy(env, id)
+		      val (conDecls, env) = chkConDecls dataTy loc (conDecls, env)
 		      in
-		         ((tvs, Option.valOf(BEnv.findTy(env, id)), conDecls) :: decls, env)
+		         ((tvs, dataTy, conDecls) :: decls, env)
 		      end
 		  val (decls, env) = List.foldl f ([], env) decls
 	          in
 		     (PT2.DataTyDecl (List.rev decls), env)
+		  end
+	    | PT1.DataTyReplDecl (dtBind, dtRef) => let
+		  val dtRef' = findTyQid(loc, env, dtRef)
+		  fun ins ((id, x), env) = BEnv.insertDataCon(env, id, x, dtRef')
+		  val env = List.foldl ins env (BEnv.getDataCons dtRef')
+		  val env = BEnv.insertTycBind(env, dtBind, dtRef')
+		  in
+		    (PT2.DataTyReplDecl (dtRef', dtRef'), env)
 		  end
 	    | PT1.AbsTyDecl (tvs, id) => let
 		  val id' = freshVar id
@@ -437,15 +448,15 @@ structure BoundVariableCheck :> sig
 
     and chkTyDecls loc (tyDecls, env) = chkList loc (chkTyDecl, tyDecls, env)
 
-    and chkConDecl loc (conDecl, env) = (case conDecl
+    and chkConDecl dataTy loc (conDecl, env) = (case conDecl
            of PT1.MarkConDecl {span, tree} => let
-		  val (tree, env) = chkConDecl span (tree, env)
+		  val (tree, env) = chkConDecl dataTy span (tree, env)
 	          in
                     (PT2.MarkConDecl{span=span, tree=tree}, env)
 	          end
 	    | PT1.ConDecl (id, tyOpt) => let
 		  val id' = freshVar id
-		  val env = BEnv.insertVal(env, id, BEnv.Con id')
+		  val env = BEnv.insertDataCon(env, id, id', dataTy)
 		  val (tyOpt, env) = (case tyOpt
                         of NONE => (NONE, env)
 			 | SOME ty => let
@@ -459,7 +470,7 @@ structure BoundVariableCheck :> sig
 		  end
            (* end case *))
 
-    and chkConDecls loc (conDecls, env) = chkList loc (chkConDecl, conDecls, env)
+    and chkConDecls dataTy loc (conDecls, env) = chkList loc (chkConDecl dataTy, conDecls, env)
 
     fun chkSpec loc (spec, env) = (case spec
            of PT1.MarkSpec {span, tree} => let

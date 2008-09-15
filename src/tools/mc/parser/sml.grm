@@ -171,6 +171,8 @@ TyDecl
 		      | NONE => markTyDecl (KW_type_SPAN, PT.AbsTyDecl(TyParams, Name)))
 	| "datatype" DataTyDecl ("and" DataTyDecl)*
 		=> (markTyDecl (KW_datatype_SPAN, PT.DataTyDecl (DataTyDecl :: SR)))
+        | "datatype" Name "=" "datatype" QualifiedId
+                => (markTyDecl (FULL_SPAN, PT.DataTyReplDecl (Name, QualifiedId)))
         ;
 
 DataTyDecl
@@ -275,7 +277,6 @@ Exp
                 => (markExp (FULL_SPAN, PT.PCaseExp(Exp :: SR, PMatchRules)))
         | "fn" (AtomicPat)+ "=>" Exp
                 => (markExp (FULL_SPAN, PT.FnExp (SR, Exp)))
-
 	;
 
 ClosedExp

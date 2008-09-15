@@ -62,9 +62,8 @@ structure ChkModule :> sig
 	    | PT.AbsTyDecl (tvs, id) => let
                 val tvs' = ChkTy.checkTyVars (loc, tvs)
 		val tyc = TyCon.newAbsTyc(idToAtom id, List.length tvs', false)
-		val env' = Env.insertTy(env, id, Env.TyCon tyc)
                 in
-		  env'
+		  Env.insertTy(env, id, Env.TyCon tyc)
                 end
 	    | PT.DataTyDecl decls => let
 		fun ins ((tvs, id, cons), env) = let
@@ -112,6 +111,20 @@ structure ChkModule :> sig
 	      in
 		  List.foldl chk env decls
 	      end
+	    | PT.DataTyReplDecl (_, dt) => let
+		(* replicate the datatype and constructors in the current environment *)
+		val SOME dt' = Env.findTy(env, dt)
+		val env = Env.insertTy(env, dt, dt')
+		fun insCon (c, env) = let
+		      val SOME (Env.Con c') = Env.findVar(env, c)
+		      in
+		          Env.insertVar(env, c, Env.Con c')
+		      end
+		val cons = List.map #2 (BindingEnv.getDataCons dt)
+		val env = List.foldl insCon env cons
+	        in
+		  env
+	        end
 	    | PT.PrimTyDecl (tvs, id, bty) => let
                 val tvs' = ChkTy.checkTyVars (loc, tvs)
 		val tyc = TyCon.newAbsTyc(idToAtom id, List.length tvs', false)

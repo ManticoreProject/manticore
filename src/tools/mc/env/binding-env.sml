@@ -97,10 +97,10 @@ structure BindingEnv =
 	        BOMEnv {hlopEnv=hlopEnv, varEnv=varEnv, tyEnv=Map.insert(tyEnv, id, x)}
       (* remember a HLOp's full path, e.g., Future1.@touch *)
 	val {
-          getFn=getHLOpPath : ProgramParseTree.Var.var -> string list, 
-	  setFn=setHLOpPath : (ProgramParseTree.Var.var * string list) -> unit, ...
+          getFn=getHLOpPath : Var.var -> string list, 
+	  setFn=setHLOpPath : (Var.var * string list) -> unit, ...
         } = 
-	    ProgramParseTree.Var.newProp (fn _ => [])
+	    Var.newProp (fn _ => [])
 
       (* maps paths to BOM types *)
 	val tyPathMp : bom_ty_def AtomTable.hash_table = AtomTable.mkTable(128, Fail "Path table")
@@ -175,6 +175,14 @@ structure BindingEnv =
       (* maps paths to AST types *)
 	val tyPathMp : ty_bind AtomTable.hash_table = AtomTable.mkTable(128, Fail "Path table")
 	fun addTyPath (env, id, x) = AtomTable.insert tyPathMp (pathToAtom(pathOfEnv(env, [id])), x)
+
+      (* map datatypes to their constructors *)
+	val {
+	  getFn=getDataCons : Var.var -> (Atom.atom * Var.var) list, 
+	  setFn=setDataCons : (Var.var * (Atom.atom * Var.var) list) -> unit, ...
+	} = 
+	    Var.newProp (fn _ => [])
+	
     in
   (* PML operations *)
     fun insertVal (env as Env{name, tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = (
@@ -194,6 +202,13 @@ structure BindingEnv =
             in
 	        insertTy(env, id, x)
 	    end
+    fun insertDataCon (env, id, x, dataTy) = let
+	    val cons = getDataCons dataTy
+            in
+	       setDataCons(dataTy, (id, x) :: cons);
+	       insertVal(env, id, Con x)
+	    end
+    val getDataCons = getDataCons
     val findValByPath = AtomTable.find valPathMp
     val findTyByPath = AtomTable.find tyPathMp
     end

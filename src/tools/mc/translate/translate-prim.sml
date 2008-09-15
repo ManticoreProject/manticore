@@ -539,7 +539,7 @@ structure TranslatePrim : sig
 			     val h = BOM.mkHLOp(name, params, exh)
 			     val f = BOM.Var.new(BOM.Var.nameOf f, fty)
 			     in
-(* FIXME: the "inline" option screws up our cast *)
+(* FIXME: the "inline" option screws up the cast *)
 			       BOM.FB{f=f, params=params, exh=exh, body=mkCast(h, retTy, ty)}
 			     end
 		       in

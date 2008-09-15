@@ -8,17 +8,15 @@
 structure List =
   struct
 
-    datatype 'a list =
-	     NIL
-	   | CONS of ('a * 'a list)
+    datatype list = datatype list
 
     structure PT = PrimTypes
 
     fun foldl f id xs = let
 	    fun lp (xs, acc) = (
 		case xs
-                 of NIL => acc
-		  | CONS(x, xs) => lp(xs, f(x, acc))
+                 of nil => acc
+		  | x :: xs => lp(xs, f(x, acc))
                  (* end case *))
             in
 	       lp(xs, id)
