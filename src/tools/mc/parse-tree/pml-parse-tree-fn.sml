@@ -92,7 +92,7 @@ functor PMLParseTreeFn (
     and ty_decl
       = MarkTyDecl of ty_decl mark
       | TypeTyDecl of (tyvar list * ty_bind * ty)
-      | DataTyDecl of (tyvar list * ty_bind * con_decl list)
+      | DataTyDecl of (tyvar list * ty_bind * con_decl list) list
       | AbsTyDecl of (tyvar list * ty_bind)
       | PrimTyDecl of (tyvar list * ty_bind * BOMParseTree.ty)
 

@@ -66,19 +66,25 @@ structure ChkModule :> sig
                 in
 		  env'
                 end
-	    | PT.DataTyDecl(tvs, id, cons) => let
-		val tvs' = ChkTy.checkTyVars (loc, tvs)
-		val tyc = TyCon.newDataTyc(idToAtom id, tvs')
-	      (* update the type environment before checking the constructors so that
-	       * recursive types work.
-	       *)
-		val env = Env.insertTy(env, id, Env.TyCon tyc)
-		val newCon = DataCon.new tyc
-		fun chkCons (_, ids, [], env, cons) = (env, List.rev cons)
-		  | chkCons (loc', ids, con::rest, env, cons) = (case con
-		       of PT.MarkConDecl{span, tree} =>
+	    | PT.DataTyDecl decls => let
+		fun ins ((tvs, id, cons), env) = let
+		    val tvs' = ChkTy.checkTyVars (loc, tvs)
+		    val tyc = TyCon.newDataTyc(idToAtom id, tvs')
+		    in
+		       Env.insertTy(env, id, Env.TyCon tyc)
+		    end
+		(* update the environment before checking constructors so that recursive and mutually
+		 * recursive datatypes work.
+		 *)
+		val env = List.foldl ins env decls
+		fun chk ((tvs, id, cons), env) = let
+		    val SOME(Env.TyCon tyc) = Env.findTy(env, id)
+		    val newCon = DataCon.new tyc
+		    fun chkCons (_, ids, [], env, cons) = (env, List.rev cons)
+		      | chkCons (loc', ids, con::rest, env, cons) = (case con
+		         of PT.MarkConDecl{span, tree} =>
 			    chkCons (span, ids, tree::rest, env, cons)
-			| PT.ConDecl(conid, optTy) =>
+			  | PT.ConDecl(conid, optTy) =>
 			    if PPT.Var.Set.member(ids, conid)
 			      then (
 				error (loc', [
@@ -88,7 +94,6 @@ structure ChkModule :> sig
 				chkCons (loc, ids, rest, env, cons))
 			      else let
 				val optTy' = Option.map
-                    (* FIXME: handle type variables properly *)
 				      (fn ty => #2(ChkTy.checkTy (loc, [], ty))) optTy
 				val con' = newCon(idToAtom conid, optTy')
 				in
@@ -96,14 +101,17 @@ structure ChkModule :> sig
 				    PPT.Var.Set.add(ids, conid), rest,
 				    Env.insertVar (env, conid, Env.Con con'), con'::cons)
 				end
-		      (* end case *))
-		val (env', cons') = chkCons (loc, PPT.Var.Set.empty, cons, env, [])
-	       (* datatypes that have only nullary constructors are equality types *)
-		val isEqTy = List.all (fn (Ty.DCon{argTy=NONE, ...}) => true | _ => false) cons'
-		in
-		  if isEqTy then TyCon.markEqTyc tyc else ();
-		  env'
-		end
+		          (* end case *))
+		    val (env', cons') = chkCons (loc, PPT.Var.Set.empty, cons, env, [])
+		    (* datatypes that have only nullary constructors are equality types *)
+		    val isEqTy = List.all (fn (Ty.DCon{argTy=NONE, ...}) => true | _ => false) cons'
+		    in
+		      if isEqTy then TyCon.markEqTyc tyc else ();
+		      env'
+		    end
+	      in
+		  List.foldl chk env decls
+	      end
 	    | PT.PrimTyDecl (tvs, id, bty) => let
                 val tvs' = ChkTy.checkTyVars (loc, tvs)
 		val tyc = TyCon.newAbsTyc(idToAtom id, List.length tvs', false)

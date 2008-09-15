@@ -402,12 +402,17 @@ structure BoundVariableCheck :> sig
 	          in
 		     (PT2.TypeTyDecl (tvs, id', ty), env)
 		  end
-	    | PT1.DataTyDecl (tvs, id, conDecls) => let
-		  val id' = freshVar id
-		  val env = BEnv.insertTycBind(env, id, id')
-		  val (conDecls, env) = chkConDecls loc (conDecls, env)
+	    | PT1.DataTyDecl decls => let
+		  fun ins ((tvs, id, conDecls), env) = BEnv.insertTycBind(env, id, freshVar id)
+		  val env = List.foldl ins env decls
+		  fun f ((tvs, id, conDecls), (decls, env)) = let
+		      val (conDecls, env) = chkConDecls loc (conDecls, env)
+		      in
+		         ((tvs, Option.valOf(BEnv.findTy(env, id)), conDecls) :: decls, env)
+		      end
+		  val (decls, env) = List.foldl f ([], env) decls
 	          in
-		     (PT2.DataTyDecl (tvs, id', conDecls), env)
+		     (PT2.DataTyDecl (List.rev decls), env)
 		  end
 	    | PT1.AbsTyDecl (tvs, id) => let
 		  val id' = freshVar id

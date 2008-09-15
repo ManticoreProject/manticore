@@ -109,7 +109,7 @@ structure UsedVars =
     fun usedOfTyDecl tyDecl = (case tyDecl
            of PT.MarkTyDecl {span, tree} => usedOfTyDecl tree
 	    | PT.TypeTyDecl (tvs, id, ty) => usedOfTy ty
-	    | PT.DataTyDecl (tvs, id, conDecls) => usedOfConDecls conDecls
+	    | PT.DataTyDecl decls => usedOfConDecls(List.concat(List.map #3 decls))
 	    | PT.AbsTyDecl (tvs, id) => empty
 	    | PT.PrimTyDecl (tvs, id, bty) => BOMUsedVars.usedOfTy bty
            (* end case *))
