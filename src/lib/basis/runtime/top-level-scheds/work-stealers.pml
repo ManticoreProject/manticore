@@ -6,15 +6,14 @@
  * A top-level work-stealing scheduler for threads.
  *
  * This scheduler implements both a round-robin policy for local threads and a load balancing scheme
- * for distributing threads to other vprocs.  The protocol for this scheduler is below. 
+ * for distributing threads to other vprocs.  Below is the protocol for this scheduler.
  *    (1) If the local vproc queue has a thread ready, run it.
- *    (2) Otherwise, go into steal mode:
- *        (2.1) Send out a thief thread to the first vproc.
- *        (2.2) If a thread is available, steal it and enqueue it on the idle vproc.
- *        (2.3) Otherwise, do the same for the other vprocs.
- *    (3) If the other vprocs have nothing available to steal, go to sleep.
- *    (4) When a preemption arrives, check the local ready queue.  If several unpinned threads are
- *        available, then wake some vprocs.  Then run the next thread in the ready queue.
+ *    (2) Otherwise, for each remote vproc, do the following.
+ *        (2.1) Send out a thief thread to a remote vproc.
+ *        (2.2) If a thread is available, send it back to the original vproc.
+ *    (3) If all steal attemps were unsuccessful, go to sleep.
+ *    (4) Frequently check the local queue for excess work, and if some exists wake up any idle
+ *        vprocs.
  *)
 
 #include "vproc-queue.def"
@@ -31,16 +30,17 @@ structure WorkStealers =
 
     _primcode(
 
+    (* wake up any sleeping vprocs by enqueuing dummy threads *)
       define @wake-sleeping-vprocs (/ exh : PT.exh) : () =
         cont wakeupK (_ : PT.unit) = 
 	      let _ : PT.unit = Control.@stop(/ exh)
 	      return()
-	    fun f (vp : vproc / exh : PT.exh) : () =
-		let idle : PT.bool = vpload(VP_IDLE, vp)
-		if idle
-		   then VPM.@send(vp, wakeupK / exh)
-		else return()
-	    SchedulerUtils.@for-other-vprocs(f / exh)
+	fun f (vp : vproc / exh : PT.exh) : () =
+	    let idle : PT.bool = vpload(VP_IDLE, vp)
+	    if idle
+	       then VPM.@send(vp, wakeupK / exh)
+	    else return()
+	SchedulerUtils.@for-other-vprocs(f / exh)
       ;
 
       define @mk-sched-act (self : vproc / exh : PT.exh) : PT.sigact =
@@ -49,9 +49,9 @@ structure WorkStealers =
           let _ : PT.unit = Control.@stop(/ exh)
           return($0)
 
-	fun stealMode (vps : L.list / exh : PT.exh) : () =
+      (* try to steal a thread from a remote vproc *)
+	fun thief (vps : L.list / exh : PT.exh) : () =
 	    do print_msg("work-stealers: steal mode")
-	    do ccall M_PrintPtr("self", self)
 	    let hasStealableElts : PT.bool = VPQ.@is-local-queue-geq-one(/ exh)
 	    if hasStealableElts
  	       then 
@@ -62,31 +62,31 @@ structure WorkStealers =
                 let item : O.option = VPQ.@dequeue-with-pred(isNotPinned / exh)
 		case item
 		 of O.NONE =>
-		    apply tryNext(vps / exh)
+		    apply sendThieves(vps / exh)
 		  | O.SOME (item : VPQ.queue) =>
 		    do print_msg("work-stealers: sending thread to idle vproc")
-		    do VPQ.@enqueue-on-vproc(self, SELECT(FLS_OFF, item), SELECT(FIBER_OFF, item) / exh)
-                    return()
+		    VPQ.@enqueue-on-vproc(self, SELECT(FLS_OFF, item), SELECT(FIBER_OFF, item) / exh)
 		end
-	    else apply tryNext(vps / exh)
+	    else apply sendThieves(vps / exh)
 
-      and tryNext (vps : L.list / exh : PT.exh) : () =
-	  do print_msg("work-stealers: try next")
-	  case vps
-	   of L.NIL =>
-	      do print_msg("work-stealers: failed to get work")
-	      return()
-	    | L.CONS(vp : vproc, vps : L.list) =>
-	      let idle : int = vpload(VP_IDLE, vp)
-	      do if I32Eq(idle, 1)
-		    then apply tryNext(vps / exh)
-		 else return()
-	      cont thiefK (x : PT.unit) =
-		do apply stealMode(vps / exh)
-		let _ : PT.unit = Control.@stop(/ exh)
-                return()
-	    VPM.@send(vp, thiefK / exh)
-	  end
+      (* send thieves to all other vprocs *)
+	and sendThieves (vps : L.list / exh : PT.exh) : () =
+	    do print_msg("work-stealers: try next")
+	    case vps
+	     of L.NIL =>
+		do print_msg("work-stealers: failed to get work")
+		return()
+	      | L.CONS(vp : vproc, vps : L.list) =>
+		let idle : int = vpload(VP_IDLE, vp)
+		do if I32Eq(idle, 1)
+		      then apply sendThieves(vps / exh)
+		   else return()
+		cont thiefK (x : PT.unit) =
+		  do apply thief(vps / exh)
+		  let _ : PT.unit = Control.@stop(/ exh)
+		  return()
+	      VPM.@send(vp, thiefK / exh)
+	    end
 
 	cont impossible() = 
 	  do assert(PT.FALSE)
@@ -94,6 +94,7 @@ structure WorkStealers =
 
 	cont switch (sign : PT.signal) =
 	  cont dispatch () =
+          (* notify any idle vprocs if there is extra local work *)
 	    let hasElts : PT.bool = VPQ.@is-local-queue-gt-one(/ exh)
 	    do if hasElts
 	       then @wake-sleeping-vprocs(/ exh)
@@ -101,17 +102,19 @@ structure WorkStealers =
 	    let item : O.option = VPQ.@dequeue(/ exh)
 	    case item
 	     of O.NONE => 
-do print_ppt()
+              (* try to steal a thread *)
 		let potentialVictims : L.list = SchedulerUtils.@other-vprocs(/ exh)
-                do apply tryNext(potentialVictims / exh)
+                do apply sendThieves(potentialVictims / exh)
                 do SchedulerUtils.@wait(/ exh)
                 throw dispatch()
 	      | O.SOME(qitem : VPQ.queue) =>
 		do Control.@run-thread (switch, SELECT(FIBER_OFF, qitem), SELECT(FLS_OFF, qitem) / exh)
 		throw impossible()
 	    end
+
 	  case sign
-	   of PT.STOP => throw dispatch()
+	   of PT.STOP => 
+	      throw dispatch()
 	    | PT.PREEMPT(k : PT.fiber) => 
 	      let fls : FLS.fls = FLS.@get ( / exh)
 	      do VPQ.@enqueue (fls, k / exh)
@@ -127,6 +130,7 @@ do print_ppt()
 	      do Control.@run(switch, retK / exh)
 	      throw impossible()
 	  end
+
         return(switch)
       ;
 
