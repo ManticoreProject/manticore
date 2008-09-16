@@ -499,8 +499,8 @@ structure TranslatePrim : sig
 
   
     fun cvtRhs (env, x, pmlTy, rhs) = let
-	val _ = translateEnv := env	
-		   val x' = BOM.Var.new(Var.nameOf x, TranslateTypes.trScheme(env, Var.typeOf x))
+	val _ = translateEnv := env
+	val x' = BOM.Var.new(Var.nameOf x, TranslateTypes.trScheme(env, pmlTy))
         (* check that the RHS matches the constraining type *)
 	val pmlTy = TranslateTypes.trScheme(env, pmlTy)
 	  fun chkConstraintTy bomTy = 

@@ -90,7 +90,7 @@ structure TranslatePValCilk5  : sig
 	  val (x', env) = trVar(env, x)
 	  val selFnAST = Var.new("selFn", AST.FunTy(Basis.unitTy, TypeOf.exp e1))
 	  val (selFn, env) = trVar(env, selFnAST)
-        (* e2[x -> selFn()] *)
+        (* e2' = e2[x -> selFn()] *)
 	  val e2' = VarSubst.substForExp (VarSubst.idSubst x) 
 					 (ASTUtil.mkApplyExp(AST.VarExp(selFnAST, []), [AST.TupleExp[]]))
 					 e2
