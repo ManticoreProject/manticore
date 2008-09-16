@@ -101,7 +101,7 @@ structure ChkExp :> sig
 			      in
 				chkPats'(params, depth+1, param' :: params', paramTy :: paramTys)
 			      end
-		      val (params, paramTys) = chkPats'(params, depth, [], [])
+		      val (params, paramTys) = chkPats'(params, depth', [], [])
 
 		      (* check the function binding. in the process, we need to convert each function binding
 		       * to have a single parameter. the following example shows our technique.

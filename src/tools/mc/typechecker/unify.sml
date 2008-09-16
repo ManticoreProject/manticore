@@ -78,7 +78,8 @@ structure Unify : sig
 		      uni(ty11, ty21) andalso uni(ty12, ty22)
 		  | (Ty.TupleTy tys1, Ty.TupleTy tys2) =>
 		      ListPair.allEq uni (tys1, tys2)
-		  | _ => (print (TypeUtil.fmt {long=true} ty1^" "^TypeUtil.fmt {long=true} ty2^"\n"); false)
+		  | _ => false
+(*(print (TypeUtil.fmt {long=true} ty1^" "^TypeUtil.fmt {long=true} ty2^"\n"); false) *)
 	       (* end case *))
 	(* unify a type with an uninstantiated meta-variable *)
 	  and unifyWithMV (ty, mv as Ty.MVar{info, ...}) = let
