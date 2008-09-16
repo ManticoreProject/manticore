@@ -42,10 +42,11 @@ structure VarSubst =
 
     fun idSubst v = add((v, v), id)
 
-    fun var s v = (case VarMap.find (s, v)
+    fun substVar s v = (case VarMap.find (s, v)
 		       of NONE => v
 			| SOME x => x)
 
+(*
   (* pat : subst -> A.pat -> A.pat *)
     fun pat s p =
 	let fun f (A.ConPat (c, ts, p)) = A.ConPat (c, ts, f p)
@@ -58,10 +59,9 @@ structure VarSubst =
 	in
 	    f p
 	end
-
+*)
   (* expWalk : (A.var * A.ty list -> A.exp) -> subst -> A.exp -> A.exp *)
-    fun expWalk f s e = let
-      val pat' = pat s
+    fun expWalk f s = let
       fun exp (A.LetExp (b, e)) = A.LetExp (binding s b, exp e)
 	| exp (A.IfExp (e1, e2, e3, t)) = A.IfExp (exp e1, exp e2, exp e3, t)
 	| exp (A.CaseExp (e, ms, t)) = A.CaseExp (exp e, map match ms, t)
@@ -76,7 +76,7 @@ structure VarSubst =
 	| exp (A.PTupleExp es) = A.PTupleExp (map exp es)
 	| exp (A.PArrayExp (es, t)) = A.PArrayExp (map exp es, t)
 	| exp (A.PCompExp (e, pes, opred)) = let
-	    val pes' = map (fn (p,e) => (pat' p, exp e)) pes
+	    val pes' = map (fn (p,e) => (pat p, exp e)) pes
 	    val opred' = Option.map exp opred
             in
               A.PCompExp (exp e, pes', opred')
@@ -87,23 +87,28 @@ structure VarSubst =
 	| exp (v as A.VarExp (x, ts)) = f (x, ts)
 	| exp (A.SeqExp (e1, e2)) = A.SeqExp (exp e1, exp e2)
 	| exp (ov as A.OverloadExp _) = ov
-      and match (A.PatMatch (p, e)) = A.PatMatch (pat' p, exp e)
-	| match (A.CondMatch (p, cond, e)) = A.CondMatch (pat' p, exp cond, exp e)
+      and match (A.PatMatch (p, e)) = A.PatMatch (pat p, exp e)
+	| match (A.CondMatch (p, cond, e)) = A.CondMatch (pat p, exp cond, exp e)
       and pmatch (A.PMatch (pps, e)) = A.PMatch (map ppat pps, exp e)
 	| pmatch (A.Otherwise e) = A.Otherwise (exp e)
       and ppat (A.NDWildPat t) = A.NDWildPat t
-	| ppat (A.HandlePat (p, t)) = A.HandlePat (pat' p, t)
-	| ppat (A.Pat p) = A.Pat (pat' p)
+	| ppat (A.HandlePat (p, t)) = A.HandlePat (pat p, t)
+	| ppat (A.Pat p) = A.Pat (pat p)
+      and pat (A.ConPat (c, ts, p)) = A.ConPat (c, ts, pat p)
+	| pat (A.TuplePat ps) = A.TuplePat (List.map pat ps)
+	| pat (v as A.VarPat x) = A.VarPat (substVar s x)		    
+	| pat (A.WildPat t) = A.WildPat t
+	| pat (k as A.ConstPat _) = k
+      and binding s (A.ValBind (p, e)) = A.ValBind (pat p, exp e)
+	| binding s (A.PValBind (p, e)) = A.PValBind (pat p, exp e)
+	| binding s (A.FunBind ls) = A.FunBind (List.map (lambda s) ls)
+      and lambda s (A.FB (f, x, e)) = A.FB(substVar s f, x, exp e)
+
       in
-        exp e
+        {exp=exp, binding=binding}
       end
 
-    and binding s (A.ValBind (p, e)) = A.ValBind (pat s p, exp s e)
-      | binding s (A.PValBind (p, e)) = A.PValBind (pat s p, exp s e)
-      | binding s (A.FunBind ls) = A.FunBind (List.map (lambda s) ls)
-
-    and lambda s (A.FB (f, x, e)) = A.FB(var s f, x, exp s e)
-
+(*
   (* exp : subst -> A.exp -> A.exp *)
   (* Given a subst like [x -> y] and an expression (x + 2), *)
   (*   produces (y + 2). *)
@@ -114,8 +119,9 @@ structure VarSubst =
 	in
 	    expWalk f s
 	end
+*)
 
-    and module s m =
+(*    and module s m =
 	(case m
 	  of A.M_Body (info, tds) => A.M_Body (info, topDecs s tds)
 	   | m => m
@@ -129,14 +135,16 @@ structure VarSubst =
 	   | A.TD_DCon dc => A.TD_DCon dc
 	   | A.TD_Binding b => A.TD_Binding (binding s b)
 	(* end case *))
+*)
 
   (* perform the substitution e[x -> e2] *)
     fun substForExp s e2 = let
         fun f (x, ts) = (case VarMap.find (s, x)
 			      of NONE => A.VarExp (x, ts)
 			       | SOME x' => e2)
+	val {exp, binding} = expWalk f s
         in
-	   expWalk f s
+	   exp
         end
 
   (* touchExp : subst -> A.exp * A.exp -> A.exp *)
@@ -155,8 +163,12 @@ structure VarSubst =
     (* substitute "this" for "that" in "e" *)
     fun subst1 (this, that, e) = let
       val s = add ((this, that), id)
+      fun var (x, ts) = (case VarMap.find (s, x)
+			  of NONE => A.VarExp (x, ts)
+			   | SOME x' => A.VarExp (x', ts))
+      val {exp, binding} = expWalk var s
       in
-        exp s e        
+        exp e        
       end
 
   end
