@@ -26,8 +26,11 @@ structure ChkProgram :> sig
 
     fun error (span, msg) = Error.errorAt (!errStrm, span, msg)
 
-    fun bindSigIdVar (vSig, vMod, binds) =
-	AST.ValBind(AST.VarPat vSig, ASTUtil.mkVarExp(vMod, [])) :: binds
+    fun bindSigIdVar (vSig, vMod, binds) = let
+	  val (argTys, ty) = TypeUtil.instantiate(0, Var.typeOf vMod)
+          in
+	    AST.ValBind(AST.VarPat vSig, ASTUtil.mkVarExp(vMod, argTys)) :: binds
+          end
 
     fun bindSigIdVars (sigVars, modVars, exp) = 
 	ASTUtil.mkLetExp(ListPair.foldl bindSigIdVar [] (sigVars, modVars), exp)

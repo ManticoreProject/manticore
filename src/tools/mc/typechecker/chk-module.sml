@@ -15,7 +15,6 @@ structure ChkModule :> sig
 
     structure PPT = ProgramParseTree
     structure PT = PPT.PML2
-    structure U = Unify
     structure TU = TypeUtil
     structure Ty = Types
     structure Env = ModuleEnv

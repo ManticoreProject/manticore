@@ -45,6 +45,17 @@ structure ChkExp :> sig
 
     val idToString = ProgramParseTree.Var.toString
 
+local
+val i  = ref 0
+in
+fun next () = let
+    val x = !i
+in
+i := x + 1;
+x
+end
+end
+
   (* typecheck a literal *)
     fun chkLit (_, PT.IntLit i) = let
 	  val ty = TypeClass.new Ty.Int
@@ -169,13 +180,23 @@ structure ChkExp :> sig
       fbs'
     end
 
+  (* close the types of all variables occuring in a pattern *)
+    and generalizePat (depth, pat) = (
+	case pat
+	 of AST.VarPat v => Var.closeTypeOf (depth, v)
+	  | AST.ConPat (_, _, pat) => generalizePat(depth, pat)
+	  | AST.TuplePat pats => List.app (fn pat => generalizePat(depth, pat)) pats
+	  | _ => ()
+        (* end case *))
+
   (* typecheck value declarations as described in Section 6.6 *)
     and chkValDcl (loc, depth, decl) = (case decl
 	   of PT.MarkVDecl{span, tree} => chkValDcl (span, depth, tree)
 	    | PT.ValVDecl(pat, e) => let
-		val (pat', lhsTy) = chkPat(loc, depth, pat)
-		val lhsTy = TU.openTy(depth, lhsTy)
-		val (e', rhsTy) = chkExp (loc, depth, e)
+		val depth' = depth+1
+		val (pat', lhsTy) = chkPat(loc, depth', pat)
+		val lhsTy = TU.openTy(depth', lhsTy)
+		val (e', rhsTy) = chkExp (loc, depth', e)
 		in
 		  if not(U.unify(lhsTy, rhsTy))
 		    then error (loc, [
@@ -184,15 +205,18 @@ structure ChkExp :> sig
                         \  rhs: ", TypeUtil.toString rhsTy, ".\n"
 		      ])
 		    else ();
+		  generalizePat (depth, pat');
 		  AST.ValBind(pat', e')
 		end
 	    | PT.PValVDecl(pat, e) => let
-		val (pat', lhsTy) = chkPat(loc, depth, pat)
-		val (e', rhsTy) = chkExp (loc, depth, e)
+		val depth' = depth+1
+		val (pat', lhsTy) = chkPat(loc, depth', pat)
+		val (e', rhsTy) = chkExp (loc, depth', e)
 		in
 		  if not(U.unify(lhsTy, rhsTy))
 		    then error (loc, ["type mismatch in pval binding"])
 		    else ();
+		  generalizePat (depth, pat');
 		  AST.PValBind(pat', e')
 		end
 	    | PT.FunVDecl fbs => AST.FunBind (chkFunBinds (loc, depth, fbs))
@@ -203,8 +227,10 @@ structure ChkExp :> sig
 		val _ = if hasTypeAscription pat
 			   then ()
 			else error(loc, ["need type ascription to import inline BOM"])
-		val (AST.VarPat v, lhsTy) = chkPat(loc, depth, pat)
+		val depth' = depth+1
+		val (AST.VarPat v, lhsTy) = chkPat(loc, depth', pat)
 		in
+		  Var.closeTypeOf(depth, v);
 		  AST.PrimVBind (v, primRhs)
 	        end
 	  (* end case *))
@@ -359,8 +385,8 @@ structure ChkExp :> sig
 		in
 		  if not(U.unify(ty1, AST.FunTy(ty2, resTy)))
 		    then error(loc, ["type mismatch in application\n",
-				     "* expected ", TypeUtil.toString ty1, "\n",
-				     "* found    ", TypeUtil.toString (Ty.FunTy(ty2, resTy))])
+				     "* expected ", TypeUtil.fmt {long=true} ty1, "\n",
+				     "* found    ", TypeUtil.fmt {long=true} (Ty.FunTy(ty2, resTy))])
 		    else ();
 		  (AST.ApplyExp(e1', e2', resTy), resTy)
 		end
@@ -515,7 +541,7 @@ structure ChkExp :> sig
 		  (* end case *))
 	    | PT.ConstraintExp(e, ty) => let
 		val (_, constraintTy) = ChkTy.checkTy (loc, [], ty)
-		val constraintTy = TU.openTy(depth, constraintTy)
+		val constraintTy = TU.openTy(depth, constraintTy) 
 		val (e', ty') = chkExp (loc, depth, e)
 		in
 		   if not(U.unify(ty', constraintTy))
@@ -583,8 +609,7 @@ structure ChkExp :> sig
 	   of [] => []
 	    | pb::pbs => 		  raise Fail "FIXME: union looks wrong"
 (*let
-		val (pe, env1 as Env.ModEnv{varEnv=ve1, ...}) = chkPBind (loc, depth, pb)
-		val (pes, env2  as Env.ModEnv{varEnv=ve2, ...}) = chkPBinds (loc, depth, pbs)
+		val (pe, env1 as Env.ModEnv{varEnv=ve1, ...}) = chkPBind (loc, depth, pb)		val (pes, env2  as Env.ModEnv{varEnv=ve2, ...}) = chkPBinds (loc, depth, pbs)
 (* FIXME: the following code doesn't work when "pb" contains a shadowing definition *)
 		val newve1 = List.filter (fn x => not (Env.inDomainVar (x))) (AtomMap.listKeys ve1)
 		in
