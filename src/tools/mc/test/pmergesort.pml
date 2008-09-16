@@ -117,7 +117,7 @@ structure PMergesort =
 	            val lLen' = len(l) div 2
 		    val j = binarySearch(rArr, r1, r2, A.sub(lArr, lLen' + l1))
 		    val rLen' = j - r1
-		    val c1 = pMerge' ( (dArr, d1, lLen' + rLen' + d1), 
+		    pval c1 = pMerge' ( (dArr, d1, lLen' + rLen' + d1), 
 					(lArr, l1, lLen' + l1), 
 					(rArr, r1, j) )
 		    val c2 = pMerge' ( (dArr, lLen' + rLen' + d1, d2), 
@@ -136,7 +136,7 @@ structure PMergesort =
     fun pMergesort' (dArr, dArr', arr, p, r) = if (r-p > 1)
            then let
              val q = (p+r) div 2
-             val x = pMergesort' (dArr', dArr, arr, p, q)
+             pval x = pMergesort' (dArr', dArr, arr, p, q)
              val y = pMergesort' (dArr', dArr, arr, q, r)
 	     val xy = x+y
 	     val z = pMerge(dArr, dArr', p, q, r)
@@ -187,12 +187,14 @@ structure PMergesort =
 (*	val e = gettimeofday ()*)
 
 	val _ = bubbleSort(arr')
-    (*    val _ = print (arr2s (dtos, arr')^"\n"); *)
+(*	val _ = print (arr2s (dtos, arr)^"\n"); 
+	val _ = print (arr2s (dtos, arr')^"\n")
+*)
 	in
 (*	    print (dtos (e-b)^"\n");*)
 	    print (b2s(arrayEq(arr, arr'))^"\n")
 	end
-    ;
 
+    val _ = debug()
 
   end
