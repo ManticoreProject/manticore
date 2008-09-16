@@ -174,6 +174,7 @@ structure ChkExp :> sig
 	   of PT.MarkVDecl{span, tree} => chkValDcl (span, depth, tree)
 	    | PT.ValVDecl(pat, e) => let
 		val (pat', lhsTy) = chkPat(loc, depth, pat)
+		val lhsTy = TU.openTy(depth, lhsTy)
 		val (e', rhsTy) = chkExp (loc, depth, e)
 		in
 		  if not(U.unify(lhsTy, rhsTy))
@@ -514,6 +515,7 @@ structure ChkExp :> sig
 		  (* end case *))
 	    | PT.ConstraintExp(e, ty) => let
 		val (_, constraintTy) = ChkTy.checkTy (loc, [], ty)
+		val constraintTy = TU.openTy(depth, constraintTy)
 		val (e', ty') = chkExp (loc, depth, e)
 		in
 		   if not(U.unify(ty', constraintTy))
@@ -685,6 +687,7 @@ structure ChkExp :> sig
 		(* end case *))
 	    | PT.ConstraintPat(p, ty) => let
 		val (_, constraintTy) = ChkTy.checkTy (loc, [], ty)
+		val constraintTy = TU.openTy(depth, constraintTy)
 		val (p', ty') = chkPat (loc, depth, p)
 		in
 		   if not(U.unify(ty', constraintTy))

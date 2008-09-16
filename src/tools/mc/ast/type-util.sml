@@ -36,6 +36,9 @@ structure TypeUtil : sig
    *)
     val closeTy : (int * Types.ty) -> Types.ty_scheme
 
+  (* replace type variables with fresh meta variables *)
+    val openTy : (int * Types.ty) -> Types.ty
+
   (* return true if two types are equal.  Note that this function does not
    * do unification or alpha renaming of meta variables, but it does chase
    * instantiated meta-variable types.
@@ -296,6 +299,47 @@ String.concatWith "," (List.map toString tys), "])\n"]); raise ex)
 
     fun rangeType (Types.FunTy (_, rng)) = rng
       | rangeType _ = raise Fail "rangeType"
+
+  (* replace type variables with fresh meta variables *)
+    fun openTy (depth, ty) = let
+	val env = ref (TVMap.empty : Ty.meta TVMap.map)
+	fun ins (v, mv) = env := TVMap.insert(!env, v, mv)
+	fun find v = TVMap.find(!env, v)
+	fun oTy ty = (
+	    case ty
+	     of Ty.MetaTy meta => Ty.MetaTy(oMeta meta)
+	      | Ty.VarTy tv => (
+		case find tv
+		 of NONE => let
+	              val meta = MetaVar.new depth
+		      in
+			ins(tv, meta);
+			Ty.MetaTy meta
+		      end
+		  | SOME meta => Ty.MetaTy meta
+		(* end case *))
+	      | Ty.ConTy(tys, tycon) =>
+		Ty.ConTy(List.map oTy tys, oTycon tycon)
+	      | Ty.FunTy(ty1, ty2) => Ty.FunTy(oTy ty1, oTy ty2)
+	      | Ty.TupleTy tys => Ty.TupleTy (List.map oTy tys)
+  	    (* end case *))
+	and oMeta (Ty.MVar{stamp, info}) = (
+	    case !info
+	     of Ty.INSTANCE ty => info := Ty.INSTANCE (oTy ty)
+	      | _ => ();
+	    Ty.MVar{stamp=stamp, info=info})
+	and oTycon (Ty.Tyc{stamp, name, arity, params, props, def}) = (
+	    Ty.Tyc{stamp=stamp, name=name, arity=arity, params=params, props=props, def=
+	    case def
+	     of Ty.AbsTyc => Ty.AbsTyc
+	      | Ty.DataTyc {nCons, cons} => 
+		Ty.DataTyc {nCons=nCons, cons=cons}
+ 	    (* end case *)})
+	and oDCon (Ty.DCon{id, name, owner, argTy}) =
+	    Ty.DCon{id=id, name=name, owner=owner, argTy=Option.map oTy argTy}
+	in
+	  oTy ty
+	end
 
   end
 
