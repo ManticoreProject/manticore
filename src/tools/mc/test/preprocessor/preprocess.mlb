@@ -1,7 +1,0 @@
-ann "preprocess" "/usr/bin/cpp-4.0" "-I." "-P" "-include" "preprocess.def" "-"
-in
-  ann "preprocess" "/usr/bin/cpp-4.0" "-I." "-P" "-include" "preprocess2.def" "-"
-  in
-      preprocess.pml
-  end 
-end

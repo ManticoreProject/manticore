@@ -1,7 +1,0 @@
-(* ivar.bom *)
-
-module iVar 
-  fun tryget ( / exh : cont(any)) : enum(0) =
-    let x : any = @iVar()
-    let y : any = @iPut(x, 1)
-    return (enum(0)) 

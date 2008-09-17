@@ -1,8 +1,0 @@
-#include "types.def"
-#include "debugging.def"
-#include "fgs.def"
-#include "assert.def"
-
-define @nop-startup ( / exh : exh) : () = 
-  return()
-;
