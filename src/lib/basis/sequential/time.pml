@@ -46,5 +46,6 @@ structure Time =
     val now : unit -> time = _prim(@now-wrapper)
 
     fun fromSecs t = t * 1000000
+    fun toSecs t = t div 1000000
 
   end
