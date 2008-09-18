@@ -20,7 +20,7 @@ structure TypeOf : sig
     structure TU = TypeUtil
 
     fun monoTy (Ty.TyScheme([], ty)) = TU.prune ty
-      | monoTy _ = raise Fail "unexpected type scheme"
+      | monoTy tys = TU.toMonoTy tys
 
     fun exp (AST.LetExp(_, e)) = exp e
       | exp (AST.IfExp(_, _, _, ty)) = ty

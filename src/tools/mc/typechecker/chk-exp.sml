@@ -45,17 +45,6 @@ structure ChkExp :> sig
 
     val idToString = ProgramParseTree.Var.toString
 
-local
-val i  = ref 0
-in
-fun next () = let
-    val x = !i
-in
-i := x + 1;
-x
-end
-end
-
   (* typecheck a literal *)
     fun chkLit (_, PT.IntLit i) = let
 	  val ty = TypeClass.new Ty.Int
@@ -180,10 +169,13 @@ end
       fbs'
     end
 
-  (* close the types of all variables occuring in a pattern *)
+  (* close the types of all variables occuring in a pattern.
+   * QUESTION: because match wants mono-types for pattern variables, we must close them to mono
+   * types here. is this necessary?
+   *)
     and generalizePat (depth, pat) = (
 	case pat
-	 of AST.VarPat v => Var.closeTypeOf (depth, v)
+	 of AST.VarPat v => Var.closeTypeOf(depth, v)
 	  | AST.ConPat (_, _, pat) => generalizePat(depth, pat)
 	  | AST.TuplePat pats => List.app (fn pat => generalizePat(depth, pat)) pats
 	  | _ => ()
@@ -383,7 +375,7 @@ end
 		val (e2', ty2) = chkExp (loc, depth, e2)
 		val resTy = AST.MetaTy(MetaVar.new depth)
 		in
-		  if not(U.unify(ty1, AST.FunTy(ty2, resTy)))
+		  if (not(U.unify(ty1, AST.FunTy(ty2, resTy))) handle Fail _ => true)
 		    then error(loc, ["type mismatch in application\n",
 				     "* expected ", TypeUtil.fmt {long=true} ty1, "\n",
 				     "* found    ", TypeUtil.fmt {long=true} (Ty.FunTy(ty2, resTy))])

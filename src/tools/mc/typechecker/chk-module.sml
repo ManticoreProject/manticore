@@ -59,14 +59,20 @@ structure ChkModule :> sig
 		  Env.insertTy(env, id, Env.TyDef(AST.TyScheme(tvs', ty')))
 		end
 	    | PT.AbsTyDecl (tvs, id) => let
-                val tvs' = ChkTy.checkTyVars (loc, tvs)
+                val (tve, tvs') = ChkTy.checkTyVars (loc, tvs)
 		val tyc = TyCon.newAbsTyc(idToAtom id, List.length tvs', false)
                 in
 		  Env.insertTy(env, id, Env.TyCon tyc)
                 end
 	    | PT.DataTyDecl decls => let
-		fun ins ((tvs, id, cons), env) = let
-		    val tvs' = ChkTy.checkTyVars (loc, tvs)
+		fun chkTyVars (tvs, id, cons) = let
+		      val (tve, tvs') = ChkTy.checkTyVars (loc, tvs)
+		      in
+		         (tvs, id, cons, tvs', tve)
+		      end
+              (* first check type variables bound by datatype declarations *)
+		val decls = List.map chkTyVars decls
+		fun ins ((tvs, id, cons, tvs', tve), env) = let
 		    val tyc = TyCon.newDataTyc(idToAtom id, tvs')
 		    in
 		       Env.insertTy(env, id, Env.TyCon tyc)
@@ -75,7 +81,7 @@ structure ChkModule :> sig
 		 * recursive datatypes work.
 		 *)
 		val env = List.foldl ins env decls
-		fun chk ((tvs, id, cons), env) = let
+		fun chk ((tvs, id, cons, tvs', tve), env) = let
 		    val SOME(Env.TyCon tyc) = Env.findTy(env, id)
 		    val newCon = DataCon.new tyc
 		    fun chkCons (_, ids, [], env, cons) = (env, List.rev cons)
@@ -92,7 +98,7 @@ structure ChkModule :> sig
 				chkCons (loc, ids, rest, env, cons))
 			      else let
 				val optTy' = Option.map
-				      (fn ty => #2(ChkTy.checkTy (loc, [], ty))) optTy
+				      (fn ty => ChkTy.checkTyScheme (loc, tve, ty)) optTy
 				val con' = newCon(idToAtom conid, optTy')
 				in
 				  chkCons (loc,
@@ -125,7 +131,7 @@ structure ChkModule :> sig
 		  env
 	        end
 	    | PT.PrimTyDecl (tvs, id, bty) => let
-                val tvs' = ChkTy.checkTyVars (loc, tvs)
+                val (tve, tvs') = ChkTy.checkTyVars (loc, tvs)
 		val tyc = TyCon.newAbsTyc(idToAtom id, List.length tvs', false)
 	        in
 		  Env.insertPrimTy(env, id, tyc, bty)

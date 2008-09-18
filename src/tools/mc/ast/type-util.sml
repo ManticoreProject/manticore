@@ -39,6 +39,10 @@ structure TypeUtil : sig
   (* replace type variables with fresh meta variables *)
     val openTy : (int * Types.ty) -> Types.ty
 
+    val toMonoTy : Types.ty_scheme -> Types.ty
+
+    val openTyScheme : (int * Types.ty_scheme) -> Types.ty
+
   (* return true if two types are equal.  Note that this function does not
    * do unification or alpha renaming of meta variables, but it does chase
    * instantiated meta-variable types.
@@ -70,7 +74,8 @@ structure TypeUtil : sig
     structure MVMap = MetaVar.Map
     structure Ty = Types
 
-    fun tyvarToString (Ty.TVar{name, ...}) = Atom.toString name
+    fun tyvarToString (Ty.TVar{name, stamp, ...}) = Atom.toString name
+						    (*^"<"^Stamp.toString stamp^">"*)
 
   (* return a string representation of a type (for debugging) *)
     fun fmt {long} = let
@@ -341,5 +346,14 @@ String.concatWith "," (List.map toString tys), "])\n"]); raise ex)
 	  oTy ty
 	end
 
+    fun openTyScheme (depth, Ty.TyScheme(_, ty)) = openTy(depth, ty)
+
+    fun toMonoTy (Ty.TyScheme(_, ty)) = let
+	  val Ty.TyScheme([], ty) = closeTy(0, ty)
+          in
+	    openTy(0, ty)
+          end
+	  
+    
   end
 

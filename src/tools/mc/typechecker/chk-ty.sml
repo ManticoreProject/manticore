@@ -13,8 +13,12 @@ structure ChkTy :> sig
 		      -> (AST.tyvar list * AST.ty)
 
   (* check a type for well formedness *)
+    val checkTyScheme : (Error.span * ModuleEnv.tyvar_env * ProgramParseTree.PML2.ty) 
+  		      -> AST.ty
+
+  (* check a type for well formedness *)
     val checkTyVars : (Error.span * ProgramParseTree.PML2.tyvar list)
-		      -> AST.tyvar list
+		      -> (ModuleEnv.tyvar_env * AST.tyvar list)
 
   end = struct
 
@@ -89,12 +93,14 @@ structure ChkTy :> sig
 	    chk (tvs, AtomMap.empty, [])
 	  end
 
-    fun checkTyVars (loc, tvs) = #2 (chkTyVarBinds(loc, tvs))
+    fun checkTyVars (loc, tvs) = chkTyVarBinds(loc, tvs)
 
     val uniq = AtomSet.listItems o AtomSet.fromList
 
   (* check type variable occurences in a type *)
     fun chkTyVarUses (loc, tvs) = chkTyVarBinds(loc, uniq tvs)
+
+    val checkTyScheme = chkTy
 
     fun checkTy (loc, tvs, ty) = let
           val tvUses = tvsOfTy(ty, [])

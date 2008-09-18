@@ -62,7 +62,7 @@ structure ModuleEnv =
 	(* end case *))
 
   (* look in all environments that might be in lexical scope of env (NOTE: this list is larger than
-   * actual lexical scope.)
+   * actual lexical scope.
    *)
     fun envsInScope (env as ModEnv{outerEnv, ...}) = let
 	fun f (env as ModEnv{modEnv, ...}) = let

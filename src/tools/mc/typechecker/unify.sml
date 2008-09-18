@@ -53,8 +53,8 @@ structure Unify : sig
 		fun adjust Ty.ErrorTy = ()
 		  | adjust (Ty.MetaTy(Ty.MVar{info, ...})) = (case !info
 		       of Ty.UNIV d => if (depth < d) then assignMV(info, Ty.UNIV depth) else ()
-			| Ty.CLASS _ => ()
 			| Ty.INSTANCE ty => adjust ty
+			| _ => ()
 		      (* end case *))
 		  | adjust (Ty.VarTy _) = ()
 		  | adjust (Ty.ConTy(args, _)) = List.app adjust args
@@ -66,8 +66,6 @@ structure Unify : sig
 	  fun uni (ty1, ty2) = (case (TU.prune ty1, TU.prune ty2)
 		 of (Ty.ErrorTy, ty2) => true
 		  | (ty1, Ty.ErrorTy) => true
-		  | (_, Ty.VarTy _) => raise Fail "unexpected tyvar"
-		  | (Ty.VarTy _, _) => raise Fail "unexpected tyvar"
 		  | (ty1 as Ty.MetaTy mv1, ty2 as Ty.MetaTy mv2) =>
 		       MetaVar.same(mv1, mv2) orelse unifyMV(mv1, mv2) 
 		  | (Ty.MetaTy mv1, ty2) => unifyWithMV (ty2, mv1) 
@@ -78,8 +76,11 @@ structure Unify : sig
 		      uni(ty11, ty21) andalso uni(ty12, ty22)
 		  | (Ty.TupleTy tys1, Ty.TupleTy tys2) =>
 		      ListPair.allEq uni (tys1, tys2)
-		  | _ => false
-(*(print (TypeUtil.fmt {long=true} ty1^" "^TypeUtil.fmt {long=true} ty2^"\n"); false) *)
+		  | (Ty.VarTy tv1, Ty.VarTy tv2) => TyVar.same(tv1, tv2)
+		  | (_, Ty.VarTy _) => raise Fail ""
+		  | (Ty.VarTy _, _) => raise Fail ""
+		  | _ => 
+(print (TypeUtil.fmt {long=true} ty1^" "^TypeUtil.fmt {long=true} ty2^"\n"); false) 
 	       (* end case *))
 	(* unify a type with an uninstantiated meta-variable *)
 	  and unifyWithMV (ty, mv as Ty.MVar{info, ...}) = let
@@ -127,7 +128,7 @@ structure Unify : sig
 			  | (_, Ty.Order) => assign (info1, mv2)
 			  | _ => true
 			(* end case *))
-		    | _ => raise Fail "impossible"
+		    | _ => raise Fail (TU.fmtMeta{long=true} mv1^" "^TU.fmtMeta{long=true} mv2)
 		  (* end case *)
 		end
 	  val ty = uni (ty1, ty2)

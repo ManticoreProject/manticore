@@ -36,7 +36,7 @@ structure Var =
   (* return the type of a monomorphic variable *)
     fun monoTypeOf x = (case typeOf x
 	   of AST.TyScheme([], ty) => ty
-	    | _ => raise Fail("monoTypeOf polymorphic variable " ^ toString x)
+	    | tys => TypeUtil.toMonoTy tys
 	  (* end case *))
 
   (* close the type of the variable w.r.t. to the given lambda-nesting depth. *)
@@ -46,7 +46,7 @@ structure Var =
 	  in
 	    ty := TypeUtil.closeTy(depth, ty')
 	  end
-    
+
     end (* local *)
 
   end
