@@ -53,15 +53,13 @@ structure PrimList =
 	    apply append (l1 / exh)
       ;
 
-
       define @nth (l : L.list, n : int / exh : PT.exh) : any =
-(* FIXME: raise an exception *)
-	cont error () =
-	  return(enum(0):any)
-
 	fun lp (l : L.list, n : int / exh : PT.exh) : any =
 	    case l
-	     of L.NIL => throw error()
+	     of L.NIL => 
+(* FIXME: raise an exception *)
+		do assert(PT.FALSE)
+		return($0)
 	      | L.CONS(x : any, l : L.list) => 
 		if I32Eq(n, 0)
 		   then return(x)

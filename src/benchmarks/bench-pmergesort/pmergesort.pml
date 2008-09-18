@@ -191,16 +191,14 @@ structure PMergesort =
 	val arr = genRandomDoubleArr(n)
 	val arr' = copyArr(arr)
 
-	val b = Time.now()
-	val arr = pMergesort(arr)
-	val e = Time.now()
+	val (arr, t) = Time.timeToEval(fn () => pMergesort(arr))
 
 	val _ = bubbleSort(arr')
 (*	val _ = print (arr2s (dtos, arr)^"\n"); 
 	val _ = print (arr2s (dtos, arr')^"\n")
 *)
 	in
-	    Print.printLn("Time elapsed (microseconds): "^Long.toString (e-b));
+	    Print.printLn("Time elapsed (microseconds): "^Long.toString t);
 	    if arrayEq(arr, arr')
 	       then ()
 	    else Print.printLn "arrays not equal!"

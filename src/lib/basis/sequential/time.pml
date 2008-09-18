@@ -48,4 +48,12 @@ structure Time =
     fun fromSecs t = t * 1000000
     fun toSecs t = t div 1000000
 
+    fun timeToEval f = let
+	  val b = now()
+	  val x = f()
+	  val e = now()
+	  in
+	     (x, e-b)
+	  end
+
   end

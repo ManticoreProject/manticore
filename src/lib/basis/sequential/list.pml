@@ -59,7 +59,7 @@ structure List =
 	    foldl f 0
 	  end
 
-    fun nth (i, ls) = (
+(*    fun nth (i, ls) = (
 	  case ls
 	   of NIL => Option.NONE
 	    | CONS(x, xs) =>
@@ -67,6 +67,7 @@ structure List =
 		 then Option.SOME x
 	      else nth(i-1, xs)
           (* end case *))
+*)
 
     fun rev ls = let
 	fun lp (ls, acc) = (
@@ -97,5 +98,46 @@ structure List =
           in
 	     lp ls1
 	  end
+
+    fun zip (xs, ys) = let
+	fun loop (xs, ys, zs) = (case (xs, ys)
+	    of (nil, _) => rev(zs)
+	     | (_, nil) => rev(zs)
+	     | (x :: xs, y :: ys) => loop(xs, ys, (x, y) :: zs)
+	    (* end case *))
+	 in
+	    loop(xs, ys, nil)
+	 end
+
+
+    fun unzip (xs) = let
+	fun loop (xs, (zs1, zs2)) = (case xs
+	    of nil => (rev(zs1), rev(zs2))
+	     | (x1, x2) :: xs => loop(xs, (x1 :: zs1, x2 :: zs2))
+	    (* end case *))
+	 in
+	    loop(xs, (nil, nil))
+	 end
+
+
+    fun unzip3 (xs) = let
+	fun loop (xs, (zs1, zs2, zs3)) = (case xs
+	    of nil => (rev(zs1), rev(zs2), rev(zs3))
+	     | (x1, x2, x3) :: xs => loop(xs, (x1 :: zs1, x2 :: zs2, x3 :: zs3))
+	    (* end case *))
+	 in
+	    loop(xs, (nil, nil, nil))
+	 end
+
+    fun filter (f, ls) = let
+	fun loop arg = (case arg
+	    of (nil, res) => rev(res)
+	     | (x :: xs, res) => loop(xs, if f(x) then x :: res else res)
+	    (* end case *))
+	in
+	   loop(ls, nil)
+	end
+
+    fun zipWith (oper, xs, ys) = map(oper, zip(xs, ys))
 
   end

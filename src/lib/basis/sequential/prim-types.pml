@@ -17,6 +17,8 @@ structure PrimTypes =
       typedef ml_string = [string_data, int];
       typedef ml_int = [int];
       typedef ml_long = [long];
+      typedef ml_float = [float];
+      typedef ml_double = [double];
       typedef array = any;
 
     )

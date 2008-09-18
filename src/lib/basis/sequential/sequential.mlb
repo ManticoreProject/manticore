@@ -13,7 +13,11 @@ end
 option.pml
 int.pml
 long.pml
+double.pml
 list.pml
-prim-list.pml
+ann "cpp" "../include/prim.def,../include/assert.def"
+in
+  prim-list.pml
+end
 time.pml
 prim-io.pml

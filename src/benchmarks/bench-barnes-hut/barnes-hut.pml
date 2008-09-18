@@ -5,16 +5,18 @@
 
 (* List size at which parallel map switches to sequential evaluation.
  *)
-val seqSz = readint();
+val seqSz = 1024
+
+structure L = List
 
 fun splitAt (n, ls) = let
     fun split (i, x :: xs, ys) = if (i < n)
         then split(i+1, xs, x :: ys)
-        else (rev(ys), x :: xs)
+        else (L.rev(ys), x :: xs)
     in
         split(0, ls, nil)
     end
-;
+
 
 (* Map the function f over the list ls in parallel.
  *
@@ -23,111 +25,70 @@ fun splitAt (n, ls) = let
 fun parMap (f, n, ls) = (case ls
     of nil => nil
      | _ => if (n <= seqSz)
-        then map(f, ls)
+        then L.map(f, ls)
         else let
           val n1 = n div 2
   	  val (xs, ys) = splitAt(n1, ls)
-          val fxs = parMap(f, n1, xs)
+          pval fxs = parMap(f, n1, xs)
 	  val fys = parMap(f, n-n1, ys)
           in
-	     fxs @ fys
+	     List.concat(fxs, fys)
           end
    (* end case *))
-;
 
-type real = double;
-type vector = (real * real);
-type point = vector;
-type veloc = vector;
-type accel = vector;
-type area = (point * point);
-datatype mass_pnt = MassPnt of (real * point);
-datatype particle = Particle of (mass_pnt * veloc);
 
-val sqrt = sqrtd;
-val abs = absd;
-val rtos = dtos;
-val readreal = readdouble;
+type real = double
+type vector = (real * real)
+type point = vector
+type veloc = vector
+type accel = vector
+type area = (point * point)
+datatype mass_pnt = MassPnt of (real * point)
+datatype particle = Particle of (mass_pnt * veloc)
+
+val sqrt = sqrtd
+val abs = absd
+val rtos = Double.toString
+val readreal = PrimIO.readdouble
 
 fun hd (xs) = (case xs
     of nil => fail "hd"
      | x :: _ => x
     (* end case *))
-;
+
 
 fun tl (xs) = (case xs
     of nil => fail "tl"
      | _ :: xs => xs
     (* end case *))
-;
 
-fun fst (x, _) = x;
-fun snd (_, x:bool) = x;
-fun sndv (_, x:particle) = x;
+
+fun fst (x, _) = x
+fun snd (_, x:bool) = x
+fun sndv (_, x:particle) = x
 
 fun compose (f, g) = let
     fun h (x) = f(g(x))
     in
         h
     end
-;
 
-fun rmax (x, y) = if x > y then x else y;
-fun rmin (x, y) = if x < y then x else y;
 
-fun vec2s (x, y) = "("^rtos x^", "^rtos y^") ";
-fun mp2s (MassPnt (f, pt)) = "MassPnt("^rtos f^", "^vec2s pt^")";
-fun part2s (Particle (mp, veloc)) = "Particle("^mp2s mp^", "^vec2s veloc^")";
+fun rmax (x, y) = if x > y then x else y
+fun rmin (x, y) = if x < y then x else y
 
-fun zip (xs, ys) = let
-    fun loop (xs, ys, zs) = (case (xs, ys)
-        of (nil, _) => rev(zs)
-	 | (_, nil) => rev(zs)
-	 | (x :: xs, y :: ys) => loop(xs, ys, (x, y) :: zs)
-        (* end case *))
-     in
-        loop(xs, ys, nil)
-     end
-;
-
-fun unzip (xs) = let
-    fun loop (xs, (zs1, zs2)) = (case xs
-        of nil => (rev(zs1), rev(zs2))
-	 | (x1, x2) :: xs => loop(xs, (x1 :: zs1, x2 :: zs2))
-        (* end case *))
-     in
-        loop(xs, (nil, nil))
-     end
-;
-
-fun unzip3 (xs) = let
-    fun loop (xs, (zs1, zs2, zs3)) = (case xs
-        of nil => (rev(zs1), rev(zs2), rev(zs3))
-	 | (x1, x2, x3) :: xs => loop(xs, (x1 :: zs1, x2 :: zs2, x3 :: zs3))
-        (* end case *))
-     in
-        loop(xs, (nil, nil, nil))
-     end
-;
-
-fun filter (f, ls) = let
-    fun loop arg = (case arg
-        of (nil, res) => rev(res)
-	 | (x :: xs, res) => loop(xs, if f(x) then x :: res else res)
-        (* end case *))
-    in
-       loop(ls, nil)
-    end
-;
+fun vec2s (x, y) = "("^rtos x^", "^rtos y^") "
+fun mp2s (MassPnt (f, pt)) = "MassPnt("^rtos f^", "^vec2s pt^")"
+fun part2s (Particle (mp, veloc)) = "Particle("^mp2s mp^", "^vec2s veloc^")"
 
 fun transpose (rows) = (case rows
     of nil => nil
      | _ => let
 	fun loop (rows, rows') = (case hd(rows)
- 	    of nil => rev(map(rev, rows'))
+ 	    of nil => L.rev(L.map(L.rev, rows'))
              |_ => let
-              val cols = map(hd, rows)
-	      val rows'' = map(tl, rows)
+              val cols = L.map(hd, rows)
+	      val rows'' = L.map(tl, rows)
               in
 		  loop(rows'', cols :: rows')
               end
@@ -136,33 +97,31 @@ fun transpose (rows) = (case rows
 	     loop(rows, nil)
          end
     (* end case *))
-;
 
-val gravConst = (*6.670 / 100000000000.0*) 1.0;  (* 6.670e-11 *)
-val epsilon = 1.0 / 100000000000000000000.0;     (* 1.0e-20 *)
+
+val gravConst = (*6.670 / 100000000000.0*) 1.0  (* 6.670e-11 *)
+val epsilon = 1.0 / 100000000000000000000.0     (* 1.0e-20 *)
 (* precision (a cell is *far away* if `l/d < theta') *)
-val theta  = 0.8;
+val theta  = 0.8
 
 fun samePt ((x1, y1), (x2, y2)) = 
     abs(x1-x2) < epsilon andalso abs(y1-y2) < epsilon
-;
+
 
 fun sameMpt (MassPnt(m1, pt1), MassPnt(m2, pt2)) =
     abs(m1-m2) < epsilon andalso samePt(pt1, pt2)
-;
+
 
 fun particle2mpnt (p) = (case p
     of Particle (mp, _) => mp
     (* end case *))
-;
 
-fun plus (x, y) = x+y;
-fun sum (ls) = foldl (plus, 0.0, ls);
 
-fun plusi (x, y) = x+y;
-fun sumi (ls) = foldl (plusi, 0, ls);
+fun plus (x, y) = x+y
+fun sum (ls) = L.foldl plus 0.0 ls
 
-fun zipWith (oper, xs, ys) = map(oper, zip(xs, ys));
+fun plusi (x, y) = x+y
+fun sumi (ls) = L.foldl plusi 0 ls
 
 (*
  * Acceleration modulo the gravity constant imposed *by* the first *on* the
@@ -189,7 +148,7 @@ fun accel (mp1, mp2) = (case (mp1, mp2)
 	       end
            end
     (* end case *))
-;
+
 
 fun applyAccel (dt) = let 
     fun f (p, (ax, ay)) = (case p
@@ -199,21 +158,21 @@ fun applyAccel (dt) = let
     in
       f
     end
-;
+
 
 (*
  * Calculate the new velocity of each particle after the time `dt' under the
  * corresponding accelaration in `acs'.
  *)
 fun applyAccels (dt, acs, ps) = 
-    map (applyAccel(dt), (zip(ps, acs)))
-;
+    L.map (applyAccel(dt), (L.zip(ps, acs)))
+
 
 fun moveParticle (dt, p) = (case p
         of Particle (MassPnt (m, (x, y)), (vx, vy)) =>
 	   Particle (MassPnt (m, (x + vx * dt, y + vy * dt)), (vx, vy))
         (* end case *))
-;
+
 
 (*
  * Given a set of particles, move them according to their velocities during a
@@ -222,9 +181,9 @@ fun moveParticle (dt, p) = (case p
 fun move (dt, ps : particle list) = let 
     fun f (p) = moveParticle(dt, p)
     in
-       map (f, ps)
+       L.map (f, ps)
     end
-;
+
 
 (* One step of the n-body simulation using the O(n^2) algorithm. 
  *    dt is the time interval.
@@ -233,8 +192,8 @@ fun naiveStep (dt, ps) = let
     fun allAccels (mp, ps) = let
 	fun f (p) = 
 	    accel(particle2mpnt(p), mp)
-	val (acs, noAcs) = unzip (map (f, ps))
-	val (axs, ays) = unzip(acs)
+	val (acs, noAcs) = L.unzip (L.map (f, ps))
+	val (axs, ays) = L.unzip(acs)
         in
 	   ((gravConst * sum(axs), gravConst * sum(ays)),
 	    sumi(noAcs))
@@ -242,14 +201,14 @@ fun naiveStep (dt, ps) = let
 
     fun f (p) = 
 	allAccels(particle2mpnt(p), ps)
-    val (acs, noAcs) = unzip (map (f, ps))
+    val (acs, noAcs) = L.unzip (L.map (f, ps))
     val ps' = applyAccels(dt, acs, ps)
     in
        (move (dt, ps'), sumi(noAcs))
     end
-;
 
-datatype 'a tree = Node of ('a * 'a tree list);
+
+datatype 'a tree = Node of ('a * 'a tree list)
 
 fun cut ((x1, y1), (x2, y2)) = let
     val xm = x1 + (x2 - x1) / 2.0
@@ -261,20 +220,20 @@ fun cut ((x1, y1), (x2, y2)) = let
     in
         (a1, a2, a3, a4)
     end
-;
 
-fun mp (Node (mp, _)) = mp;
-fun mp1 (MassPnt(mp, _)) = mp;
-fun particleMP (Particle (mp, _)) = mp;
+
+fun mp (Node (mp, _)) = mp
+fun mp1 (MassPnt(mp, _)) = mp
+fun particleMP (Particle (mp, _)) = mp
 
 fun centroid (mps : mass_pnt list) = let
-    val m = sum(map(mp1, mps))
+    val m = sum(L.map(mp1, mps))
     fun f (MassPnt (m, (x, y))) = (m*x, m*y)
-    val (wxs, wys) = unzip(map(f, mps))
+    val (wxs, wys) = L.unzip(L.map(f, mps))
     in
         MassPnt(m, (sum(wxs) / m, sum(wys) / m))
     end
-;
+
 
 fun lenIsOne (ls) = (case ls
     of nil => fail "lenIsOne"
@@ -300,43 +259,30 @@ fun bhTree (a, ps) =
               in
 	         (ps1, ps2, ps3, ps4)
               end	      
-          val (ps1, ps2, ps3, ps4) = foldl (putParticleInQd, (nil, nil, nil, nil), ps)
-(*
-	  val flags = map (f, ps)
-	  val pzs = zip(ps, lags)
-		    
-	  fun f1 (_, (fx, fy)) = fx andalso fy
-	  val ps1 = map(fst,  filter(f1, pzs))
-	  fun f2 (_, (fx, fy)) = not (fx) andalso fy
-	  val ps2 = map(fst, filter(f2, pzs))
-	  fun f3 (_, (fx, fy)) = fx andalso not(fy)
-	  val ps3 = map(fst, filter(f3, pzs))
-	  fun f4 (_, (fx, fy)) = not(fx) andalso not(fy)
-	  val ps4 = map(fst, filter(f4, pzs))
-*)
+          val (ps1, ps2, ps3, ps4) = L.foldl putParticleInQd (nil, nil, nil, nil) ps
 	  fun f (_, ps) = (case ps
 			    of nil => false
 			     | x :: xs => true)
-	  val childs = map (bhTree, filter(f, zip( a1:: a2:: a3:: a4:: nil,
+	  val children = L.map (bhTree, filter(f, L.zip( a1:: a2:: a3:: a4:: nil,
 						   ps1:: ps2:: ps3:: ps4:: nil)))
-	  val cd = centroid (map(mp, childs))
+	  val cd = centroid (L.map(mp, children))
 
 	  in
-	      Node (cd, childs)
+	      Node (cd, children)
 	  end
-;
+
 
 fun minimum (xs) = (case xs
     of nil => fail "minimum"
-     | x :: xs => foldl(rmin, x, xs)
+     | x :: xs => L.foldl rmin x xs
     (* end case *))
-;
+
 
 fun maximum (xs) = (case xs
     of nil => fail "maximum"
-     | x :: xs => foldl(rmax, x, xs)
+     | x :: xs => L.foldl rmax x xs
     (* end case *))
-;
+
 
 (* Calculate the minimal bounding box for the given particle set.
  *
@@ -347,13 +293,13 @@ fun maximum (xs) = (case xs
  *)
 fun boundingBox (mps) = let
     fun f (MassPnt (_, xy)) = xy
-    val xys = map(f, mps)
-    val (xs, ys) = unzip (xys)
+    val xys = L.map(f, mps)
+    val (xs, ys) = L.unzip (xys)
     in
        ((minimum(xs) - epsilon, minimum(ys) - epsilon),
 	(maximum(xs) + epsilon, maximum(ys) + epsilon))
     end
-;
+
 
 (* Returns the maximal side length of an area. *)
 fun maxSideLen ((x1,y1), (x2,y2)) = let
@@ -362,7 +308,7 @@ fun maxSideLen ((x1,y1), (x2,y2)) = let
     in
         if (dx > dy) then dx else dy
     end
-;
+
 
 fun isFar (l, MassPnt (_, (x1, y1)), MassPnt (_, (x2, y2))) = let
     val dx = x2-x1
@@ -373,26 +319,26 @@ fun isFar (l, MassPnt (_, (x1, y1)), MassPnt (_, (x2, y2))) = let
           then false
           else l / r < theta
      end
-;
+
 
 fun superimp (fs) = let
-    val (fxs, fys) = unzip(fs)
+    val (fxs, fys) = L.unzip(fs)
     in
         (sum(fxs), sum(fys))
     end
-;
+
 
 fun combine arg = (case arg
-    of (nil, _, _, zs) => rev(zs)
+    of (nil, _, _, zs) => L.rev(zs)
      | (f :: fs, xs, ys, zs) => if f
        then combine(fs, tl(xs), ys, hd(xs)::zs)
        else combine(fs, xs, tl(ys), hd(ys)::zs)
     (* end case *))
-;
+
 
 fun split (f, xs) = let
     fun loop arg = (case arg
-        of (nil, (xs1, xs2)) => (rev(xs1), rev(xs2))
+        of (nil, (xs1, xs2)) => (L.rev(xs1), L.rev(xs2))
 	 | (x :: xs, (xs1, xs2)) => if (f(x))
 	   then loop(xs, (x :: xs1, xs2))
            else loop(xs, (xs1, x :: xs2))
@@ -400,17 +346,6 @@ fun split (f, xs) = let
     in
        loop(xs, (nil, nil))
     end
-;
-
-fun timeToEval (f) = let
-    val b = gettimeofday ()
-    val v = f()
-    val e = gettimeofday ()
-    in
-       print (dtos (e-b)^"\n");
-       v
-    end
-;
 
 (* Calculates the acceleration on a set of particles according to the given
  * Barnes-Hut tree (whose bounding box has a maximum side length as given in
@@ -423,28 +358,28 @@ fun accels (acs) = (case acs
     of (_, _, nil) => (nil, 0, 0)
      | (Node (crd, nil), len, mps) => let
 	   fun f (mp) = accel(crd, mp)
-	   val (acs, noAcs) = unzip(map (f, mps))
+	   val (acs, noAcs) = L.unzip(L.map (f, mps))
            in
 	       (acs, sumi(noAcs), 0)
 	   end
      | (Node(crd, ts), len, mps) => let
 	   fun f (mp) = isFar(len, crd, mp)
-	   val direct = map(f, mps)
-	   val mds = zip (mps, direct)
+	   val direct = L.map(f, mps)
+	   val mds = L.zip (mps, direct)
 	   val (farMps, closeMps) = split(snd, mds)
-	   val (farMps, closeMps) = (map(fst, farMps), map(fst, closeMps))
+	   val (farMps, closeMps) = (L.map(fst, farMps), L.map(fst, closeMps))
 	   fun f (mp) = accel(crd, mp)
-	   val (farAcs, noFarAcs) = unzip (map(f, farMps))
+	   val (farAcs, noFarAcs) = L.unzip (L.map(f, farMps))
 	   fun f (t) = accels(t, len / 2.0, closeMps)
-	   val (closeAcss, directNos, farNos) = unzip3(map(f, ts))
-	   val closeAcs = map(superimp, transpose(closeAcss))
+	   val (closeAcss, directNos, farNos) = L.unzip3(L.map(f, ts))
+	   val closeAcs = L.map(superimp, transpose(closeAcss))
            in
 	      (combine(direct, farAcs, closeAcs, nil),
 	       sumi(directNos),
 	       sumi(farNos) + sumi(noFarAcs))
            end
      (* end case *))
-;
+
 
 (* Compute the acceleration of a mass particle in the Barnes-Hut tree.
  *)
@@ -455,9 +390,9 @@ fun accelOf (ac) = (case ac
           then (0.0, 0.0)
        else if (isFar(len, crd, mp))
           then fst(accel(crd, mp))
-       else superimp(map(let fun f (t) = accelOf(t, len / 2.0, mp) in f end, ts))
+       else superimp(L.map(let fun f (t) = accelOf(t, len / 2.0, mp) in f end, ts))
     (* end case *))
-;
+
 
 (* Execute a single iteration (tree construction, accelaration calculation, and
  * update of the velocities and positions).  The first argument determines the
@@ -469,7 +404,7 @@ fun accelOf (ac) = (case ac
  *   interactions is computed.
  *)
 fun oneStep' (dt, n, ps) = let
-    val mps = map(particleMP, ps)
+    val mps = L.map(particleMP, ps)
     val box = boundingBox(mps)
     val len = maxSideLen(box)
     val t = bhTree(box, mps)
@@ -486,7 +421,7 @@ fun oneStep' (dt, n, ps) = let
     in
        (ps', 0, 0)
     end
-;
+
 
 (* Execute a single iteration (tree construction, accelaration calculation, and
  * update of the velocities and positions).  The first argument determines the
@@ -498,18 +433,18 @@ fun oneStep' (dt, n, ps) = let
  *   interactions is computed.
  *)
 fun oneStep (dt, ps) = let
-    val mps = map(particleMP, ps)
+    val mps = L.map(particleMP, ps)
     val box = boundingBox(mps)
     val len = maxSideLen(box)
     val t = bhTree(box, mps)
     val (preAcs, directNos, farNos) = accels(t, len, mps)
     fun f (ax, ay) = (gravConst * ax, gravConst * ay)
-    val acs = map(f, preAcs)
+    val acs = L.map(f, preAcs)
     val ps' = applyAccels(dt, acs, ps)
     in
         (move(dt, ps'), directNos, farNos)
     end
-;
+
 
 (* Calculate the maximal relative error of the positions of two particle lists
  * (the first argument provides the reference values).
@@ -528,10 +463,10 @@ fun maxErr (rvs, vs) = let
         end
     in
        if (length(rvs) = length(vs))
-          then maximum(zipWith(compare, rvs, vs))
+          then maximum(L.zipWith(compare, rvs, vs))
           else fail "unequal lengths"
     end
-;
+
 
 fun readParticles () = let
     val nParticles = readint ()
@@ -540,11 +475,11 @@ fun readParticles () = let
     fun readParticle () = Particle (readMassPnt(), readVec())
     fun doit (i, ps) = if (i>0)
         then doit(i-1, readParticle()::ps)
-        else rev(ps)
+        else L.rev(ps)
     in
         doit (nParticles, nil)
     end
-;
+
 
 fun timeTest () = let
     val nSteps = readint()
@@ -561,12 +496,12 @@ fun timeTest () = let
         else ps
 
 
-    val _ = timeToEval(let fun f () = iter(particles, 0) in f end)
+    val _ = Time.timeToEval(let fun f () = iter(particles, 0) in f end)
 
     in
        ()
     end
-;
+
 
 
 fun debug () = let
@@ -580,13 +515,13 @@ fun debug () = let
         then let
           val (bhPs, dNos, fNos) = oneStep' (dt, n, ps)
 	  val (naivePs, nNos) = naiveStep(dt, ps)
-          val _ = print ("[barnes hut benchmark] number of interactions(naive): "^itos nNos^"\n");
-          val _ = print ("[barnes hut benchmark] number of interactions(bh): "^itos dNos^" "^itos fNos^"\n");
+          val _ = print ("[barnes hut benchmark] number of interactions(naive): "^itos nNos^"\n")
+          val _ = print ("[barnes hut benchmark] number of interactions(bh): "^itos dNos^" "^itos fNos^"\n")
 	  in
 (*
-print (concatWith(", ", map(part2s, ps))^"\n");
-print (concatWith(", ", map(part2s, bhPs))^"\n");
-print (concatWith(", ", map(part2s, naivePs))^"\n");
+print (concatWith(", ", L.map(part2s, ps))^"\n");
+print (concatWith(", ", L.map(part2s, bhPs))^"\n");
+print (concatWith(", ", L.map(part2s, naivePs))^"\n");
 *)
              iter(bhPs, i+1, rmax(err, maxErr(naivePs,bhPs)))
           end
@@ -595,6 +530,6 @@ print (concatWith(", ", map(part2s, naivePs))^"\n");
     in
        print("Error for BH:"^rtos err^"\n")
     end
-;
 
-timeTest ()
+
+val _ = debug()
