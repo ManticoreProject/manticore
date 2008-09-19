@@ -1,0 +1,91 @@
+\documentclass[11pt]{article}
+
+\input{../common/common-defs}
+\usepackage{graphicx}
+\usepackage{../common/code}
+
+\title{Manticore Implementation Note \\ Fiber Local Storage}
+\author{The Manticore Group}
+\date{Draft of \today}
+
+\begin{document}
+\maketitle
+
+Fiber-local storage (fls) is a mechanism for associating a fiber with some implicit, local state. There are three core operations. The first creates an empty local storage; the second sets the fls for the host vproc; the third gets the fls on the host vproc.
+\begin{centercode}
+  type fls
+
+  val new : unit -> fls
+  val set : fls -> unit
+  val get : unit -> fls
+\end{centercode}
+
+To make fls useful, we provide some basic dictionary operations. Keys into the dictionary are represented by the \texttt{tag} type. The tag type is a phantom type, i.e.,
+\begin{centercode}
+  type 'a tag = int
+  val key1 : key1_ty tag = 1
+  val key2 : key2_ty tag = 2
+  ...
+\end{centercode}
+We have operations for adding and finding elements.
+\begin{centercode}
+  val add : (fls * ('a tag * 'a)) -> fls
+  val find : (fls * 'a tag) -> 'a option
+\end{centercode}
+
+\section{Fiber-group storage}
+In certain cases, we wish to associate some implicit, shared state with a \emph{group} of fibers. For read-only access, our fls mechanism is already sufficient. But for read-write access, we need synchronized memory.
+
+\subsection{Example: scheduler initialization for futures}
+Our architecture allows each thread to use multiple schedulers. To avoid unecessary overhead, we delay initialization until the last possible moment, when the first spawn operation occurs. 
+
+Unfortunately, because of our architecture, we need to synchronize the initialization of schedulers. Suppose that we have two alternative implementations of futures, \texttt{F1} and \texttt{F2}. It is easy to imagine a program, such as the one below, that uses both schedulers. Unfortunately, we cannot know which call to \texttt{F2.future} happens first, so we need some synchronized memory.
+\begin{centercode}
+structure F1 : FUTURE = ...
+structure F2 : FUTURE = ...
+
+fun f () = let
+    val fut2 = F2.future(fn () => e3)
+    in
+       e2 + F2.touch fut2
+    end
+
+val fut1 = F1.future(fn () => e1 + f())
+val fut2 = F1.future(fn () => e1 + f())
+
+val x = if foo()
+	   then F1.touch fut1 + F1.touch fut2
+	else ( F1.cancel fut1; F1.touch fut1)
+\end{centercode}
+
+The code below handles the initialization of the scheduler for \texttt{F1}. The code operates as follows. We first look for shared scheduler state in fls. Using set-once memory, we get a handle on the ready queue. If the scheduler has already initialized, we simple read the pointer from the set-once memory. If not, we initialize the scheduler while holding a lock. This lock prevents other fibers from initializing the scheduler independently.
+\input{example-code/future1-get-ready-queue}
+
+Now it easy easy to encode the spawn operations for \texttt{F1} futures.
+\input{example-code/future1-future}
+
+\section{Thread capabilities}
+Because threads consist of one or more fibers, they necessarily have read-only access to fls. Thus, any local storage entry must be added during the \texttt{spawn} operation. To address this issue, we use the notion of \emph{thread capabilities}. For example, a given thread could have a capability for depth-first or breadth-first futures.
+\begin{centercode}
+  spawn(f1, FutureDFS.capability);
+  spawn(f2, FutureBFS.capability)
+\end{centercode}
+
+Capabilities are just entries in the fiber-local storage dictionary. Before spawning a CML thread, we add all the capabilities to its local storage.
+\begin{centercode}
+  type 'a capability = 'a tag * 'a
+  fun spawn (thunk, capabilities) = let
+        val fls = List.foldl FLS.add (FLS.new()) capabilities
+        in
+            VProcQueue.enqueue(fls, Control.fiber thunk);
+            fls
+        end
+\end{centercode}
+
+Our implementation defines a set of default capabilities for threads. See the file
+\begin{center}
+ \texttt{src/lib/basis/runtime/utils/default-thread-capabilities.pml} 
+\end{center}
+for the complete list.
+
+\end{document}

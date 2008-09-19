@@ -1,0 +1,36 @@
+\documentclass[11pt]{article}
+
+\input{../common/common-defs}
+\usepackage{graphicx}
+\usepackage{../common/code}
+
+\title{Manticore Implementation Note \\ Inline BOM}
+\author{The Manticore Group}
+\date{Draft of \today}
+
+\begin{document}
+\maketitle
+
+\section{Overview}
+The implementation of inline BOM is spread across the compiler. The relevant files are below.
+\begin{itemize}
+\item \texttt{src/tools/mc/binding/bound-variable/bound-variable-check.sml} Variable binding for Manticore programs, which includes hooks for inline BOM.
+\item \texttt{src/tools/mc/binding/bound-variable/bom-bound-variable-check.sml} Variable binding for inline BOM programs.
+\item \texttt{src/tools/mc/translate/translate-prim.sml} Translation from inline BOM to BOM.
+\end{itemize}
+
+\section{Loading HLOps at compile time}
+In many cases, we wish to create PML syntax that expands into several HLOps. For example, the pval binding form expands into a few HLOps from the single-toucher-future module. But because the compiler is responsible for doing this expansion, we do not not have a static handle on the HLOps. Instead we use a dynamic lookup at compile time. The following function in the HLOpEnv module does the job:
+\begin{centercode}
+  (* locate a HLOp by path name, e.g., Future1.@touch *)
+    val findDefByPath : string list -> hlop_def option
+\end{centercode}
+\subsubsection{Example}
+To look up the Future1 touch operation, we say:
+\begin{centercode}
+  case HLOpEnv.findDefByPath ["Future1", "touch"]
+    of SOME def => (* do something with the hlop *)
+     | NONE => raise Fail ``error: cannot find future1 touch''
+\end{centercode}
+
+\end{document}
