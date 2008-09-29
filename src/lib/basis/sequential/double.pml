@@ -13,36 +13,40 @@ structure Double =
 
   (* prototypes for external C functions *)
     _primcode(
-	extern double cos (double) __attribute__((pure));
-	extern double pow (double, double) __attribute__((pure));
-	extern double sin (double) __attribute__((pure));
-	extern double sqrt (double) __attribute__((pure));
-	extern double tan (double) __attribute__((pure));
+	extern double M_Cos (double) __attribute__((pure));
+	extern double M_Pow (double, double) __attribute__((pure));
+	extern double M_Sin (double) __attribute__((pure));
+	extern double M_Tan (double) __attribute__((pure));
 	extern void *M_DoubleToString (double) __attribute__((alloc,pure));
     )
 
   (* HLOps that wrap C functions *)
     _primcode (
 	define @double-cos (x : PT.ml_double / exh : PT.exh) : PT.ml_double =
-	    let y : double = ccall cos (#0(x))
+	    let y : double = ccall M_Cos (#0(x))
 	    let res : PT.ml_double = alloc(y)
 	      return (res);
 	define @double-pow (arg : [PT.ml_double, PT.ml_double] / exh : PT.exh) : PT.ml_double =
-	    let res : double = ccall pow (#0 (#0(arg)), #0 (#1(arg)))
+	    let res : double = ccall M_Pow (#0 (#0(arg)), #0 (#1(arg)))
 	      return (alloc(res));
 	define @double-sin (x : PT.ml_double / exh : PT.exh) : PT.ml_double =
-	    let res : double = ccall sin (#0(x))
+	    let res : double = ccall M_Sin (#0(x))
 	      return (alloc(res));
 	define @double-sqrt (x : PT.ml_double / exh : PT.exh) : PT.ml_double =
-	    let res : double = ccall sqrt (#0(x))
+	    let res : double = F64Sqrt (#0(x))
 	      return (alloc(res));
 	define @double-tan (x : PT.ml_double / exh : PT.exh) : PT.ml_double =
-	    let res : double = ccall tan (#0(x))
+	    let res : double = ccall M_Tan (#0(x))
 	      return (alloc(res));
 	define @to-string (f : PT.ml_double / exh : PT.exh) : PT.ml_string =
 	    let res : PT.ml_string = ccall M_DoubleToString (#0(f))
 	      return (res)
 	;
+	define @from-int (f : PT.ml_int / exh : PT.exh) : PT.ml_double =
+	    let res : PT.ml_double = alloc(I32ToF64 (#0(f)))
+	      return (res)
+	;
+
 
     )
 
@@ -53,5 +57,6 @@ structure Double =
     val sqrt : double -> double = _prim (@double-sqrt)
     val pow : (double * double) -> double = _prim (@double-pow)
     val toString : double -> string = _prim(@to-string)
+    val fromInt : int -> double = _prim(@from-int)
 
   end

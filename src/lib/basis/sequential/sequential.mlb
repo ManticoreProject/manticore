@@ -13,6 +13,7 @@ end
 option.pml
 int.pml
 long.pml
+float.pml
 double.pml
 list.pml
 ann "cpp" "../include/prim.def,../include/assert.def"

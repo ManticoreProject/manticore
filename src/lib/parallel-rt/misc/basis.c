@@ -323,3 +323,43 @@ Value_t M_NewArray (VProc_t *vp, int nElems, Value_t elt)
     vp->globNextW += WORD_SZB * (nElems+1);
     return PtrToValue(obj);
 }
+
+float M_Powf (float x, float y)
+{
+  return powf(x, y);
+}
+
+float M_Cosf (float x)
+{
+  return cosf(x);
+}
+
+float M_Sinf (float x)
+{
+  return sinf(x);
+}
+
+float M_Tanf (float x)
+{
+  return tanf(x);
+}
+
+double M_Pow (double x, double y)
+{
+  return pow(x, y);
+}
+
+double M_Cos (double x)
+{
+  return cos(x);
+}
+
+double M_Sin (double x)
+{
+  return sin(x);
+}
+
+double M_Tan (double x)
+{
+  return tan(x);
+}
