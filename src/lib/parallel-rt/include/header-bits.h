@@ -20,7 +20,7 @@
  *  |           length            |     010      |
  *  ----------------------------------------------
  *
- *  Vector object: pointer valaues
+ *  Vector object: pointer values
  *
  *  ---------------------------------------------- 
  *  |        -- 61 bits --        | -- 3 bits -- |
