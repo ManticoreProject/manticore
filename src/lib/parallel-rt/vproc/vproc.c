@@ -323,6 +323,15 @@ Value_t ListVProcs (VProc_t *self)
 
 }
 
+/*! \brief return a pointer to the nth vproc
+ *  \param n vproc id
+ */
+VProc_t* GetNthVProc (int n)
+{
+    assert(n >= 0 && n < NumVProcs);
+    return VProcs[n];
+}
+
 /*! \brief Wake a vproc.
  *  \param the vproc to wake
  */

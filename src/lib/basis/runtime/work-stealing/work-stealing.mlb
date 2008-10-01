@@ -23,4 +23,5 @@
     ../synch/spin-lock.pml
     deque-th.pml
     cilk5-work-stealing.pml
+    work-stealing-sw-polling.pml
   end  
