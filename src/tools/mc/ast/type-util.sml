@@ -310,11 +310,9 @@ String.concatWith "," (List.map toString tys), "])\n"]); raise ex)
 	val env = ref (TVMap.empty : Ty.meta TVMap.map)
 	fun ins (v, mv) = env := TVMap.insert(!env, v, mv)
 	fun find v = TVMap.find(!env, v)
-	fun oTy ty = (
-	    case ty
+	fun oTy ty = (case ty
 	     of Ty.MetaTy meta => Ty.MetaTy(oMeta meta)
-	      | Ty.VarTy tv => (
-		case find tv
+	      | Ty.VarTy tv => (case find tv
 		 of NONE => let
 	              val meta = MetaVar.new depth
 		      in
@@ -324,22 +322,24 @@ String.concatWith "," (List.map toString tys), "])\n"]); raise ex)
 		  | SOME meta => Ty.MetaTy meta
 		(* end case *))
 	      | Ty.ConTy(tys, tycon) =>
-		Ty.ConTy(List.map oTy tys, oTycon tycon)
+		  Ty.ConTy(List.map oTy tys, oTycon tycon)
 	      | Ty.FunTy(ty1, ty2) => Ty.FunTy(oTy ty1, oTy ty2)
 	      | Ty.TupleTy tys => Ty.TupleTy (List.map oTy tys)
+	      | Ty.ErrorTy => Ty.ErrorTy
   	    (* end case *))
-	and oMeta (Ty.MVar{stamp, info}) = (
-	    case !info
+	and oMeta (Ty.MVar{stamp, info}) = (case !info
 	     of Ty.INSTANCE ty => info := Ty.INSTANCE (oTy ty)
 	      | _ => ();
 	    Ty.MVar{stamp=stamp, info=info})
 	and oTycon (Ty.Tyc{stamp, name, arity, params, props, def}) = (
-	    Ty.Tyc{stamp=stamp, name=name, arity=arity, params=params, props=props, def=
-	    case def
-	     of Ty.AbsTyc => Ty.AbsTyc
-	      | Ty.DataTyc {nCons, cons} => 
-		Ty.DataTyc {nCons=nCons, cons=cons}
- 	    (* end case *)})
+	    Ty.Tyc{
+		stamp=stamp, name=name, arity=arity, params=params, props=props,
+		def = (case def
+		   of Ty.AbsTyc => Ty.AbsTyc
+		    | Ty.DataTyc {nCons, cons} => 
+		      Ty.DataTyc {nCons=nCons, cons=cons}
+		  (* end case *))
+	      })
 	and oDCon (Ty.DCon{id, name, owner, argTy}) =
 	    Ty.DCon{id=id, name=name, owner=owner, argTy=Option.map oTy argTy}
 	in
