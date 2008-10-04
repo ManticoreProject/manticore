@@ -93,25 +93,30 @@ structure UsedVars =
 	    | PT.BinaryExp(exp1, id, exp2) => union[var id, usedOfExps[exp1, exp2]]
 	    | PT.PChoiceExp exps => usedOfExps exps
 	    | PT.ApplyExp(exp1, exp2) => usedOfExps[exp1, exp2]
-	    | PT.IdExp v => var v
 	    | PT.ConstExp const => empty
 	    | PT.TupleExp exps => usedOfExps exps
 	    | PT.ListExp exps => usedOfExps exps
 	    | PT.RangeExp(exp1, exp2, NONE) => union[usedOfExp exp1, usedOfExp exp2]
 	    | PT.RangeExp(exp1, exp2, SOME exp3) => union[usedOfExp exp1, usedOfExp exp2, usedOfExp exp3]
+	    | PT.PTupleExp exps =>  usedOfExps exps
+	    | PT.PArrayExp exps =>  usedOfExps exps
+	    | PT.PCompExp(exp, pbinds, NONE) => raise Fail "usedOfExp: PCompExp"
+	    | PT.PCompExp(exp, pbinds, SOME exp') => raise Fail "usedOfExp: PCompExp"
+	    | PT.SpawnExp exp => usedOfExp exp
+	    | PT.IdExp v => var v
 	    | PT.SeqExp exps => usedOfExps exps
 	    | PT.ConstraintExp (exp, ty) => union[usedOfExp exp, usedOfTy ty]
-	    | PT.SpawnExp exp => usedOfExp exp
            (* end case *))
 
     and usedOfExps exps = usedOfList usedOfExp exps
 
     fun usedOfTyDecl tyDecl = (case tyDecl
-           of PT.MarkTyDecl {span, tree} => usedOfTyDecl tree
-	    | PT.TypeTyDecl (tvs, id, ty) => usedOfTy ty
+           of PT.MarkTyDecl{span, tree} => usedOfTyDecl tree
+	    | PT.TypeTyDecl(tvs, id, ty) => usedOfTy ty
 	    | PT.DataTyDecl decls => usedOfConDecls(List.concat(List.map #3 decls))
-	    | PT.AbsTyDecl (tvs, id) => empty
-	    | PT.PrimTyDecl (tvs, id, bty) => BOMUsedVars.usedOfTy bty
+	    | PT.DataTyReplDecl(lhs, rhs) => var rhs
+	    | PT.AbsTyDecl(tvs, id) => empty
+	    | PT.PrimTyDecl(tvs, id, bty) => BOMUsedVars.usedOfTy bty
            (* end case *))
 
     and usedOfTyDecls tyDecls = usedOfList usedOfTyDecl tyDecls
@@ -142,22 +147,24 @@ structure UsedVars =
           (* end case *))
 
     fun usedOfModule module = (case module
-            of PT.MarkMod {span, tree} => usedOfModule tree
-	     | PT.DeclsMod decls => usedOfDecls decls
-	     | PT.NamedMod m => var m
+	   of PT.MarkMod{span, tree} => usedOfModule tree
+	    | PT.DeclsMod decls => usedOfDecls decls
+	    | PT.NamedMod m => var m
+	    | PT.ApplyMod(m, args) => union(var m :: List.map usedOfModule args)
             (* end case *))
 
     and usedOfDecl decl = (case decl
-           of PT.MarkDecl {span, tree} => usedOfDecl tree
-	    | PT.ModuleDecl (mb, NONE, module) => usedOfModule module
-	    | PT.ModuleDecl (mb, SOME sign, module) => union[usedOfSign sign, usedOfModule module]
+	   of PT.MarkDecl{span, tree} => usedOfDecl tree
+	    | PT.ModuleDecl(mb, NONE, module) => usedOfModule module
+	    | PT.ModuleDecl(mb, SOME sign, module) => union[usedOfSign sign, usedOfModule module]
 	    | PT.TyDecl tyDecl => usedOfTyDecl tyDecl
-	    | PT.ExnDecl (con, NONE) => empty
-	    | PT.ExnDecl (con, SOME ty) => usedOfTy ty
+	    | PT.ExnDecl(con, NONE) => empty
+	    | PT.ExnDecl(con, SOME ty) => usedOfTy ty
 	    | PT.ValueDecl valDecl => usedOfValDecl valDecl
-	    | PT.LocalDecl (locals, decls) => union[usedOfDecls locals, usedOfDecls decls]
-	    | PT.SignDecl (id, sign) => usedOfSign sign
+	    | PT.LocalDecl(locals, decls) => union[usedOfDecls locals, usedOfDecls decls]
+	    | PT.SignDecl(id, sign) => usedOfSign sign
 	    | PT.PrimCodeDecl code => BOMUsedVars.usedOfCode code
+	    | PT.ExpansionOptsDecl(_, decls) => usedOfDecls decls
            (* end case *))
 
     and usedOfDecls decls = usedOfList usedOfDecl decls

@@ -86,7 +86,8 @@ functor PMLParseTreeFn (
       | LocalDecl of (decl list * decl list)
       | SignDecl of (sig_id * sign)
       | PrimCodeDecl of BOMParseTree.code
-      | ExpansionOptsDecl of (ExpansionOpts.opt list * decl list)         (* compiler operations for expanding expressions *)
+    (* MLB annotation that is injected into the parse tree to control compiler options *)
+      | ExpansionOptsDecl of (ExpansionOpts.opt list * decl list)
 
   (* type declarations *)
     and ty_decl
@@ -135,8 +136,8 @@ functor PMLParseTreeFn (
       | AndAlsoExp of (exp * exp)
       | OrElseExp of (exp * exp)
       | BinaryExp of (exp * op_id * exp)	(* infix binary expressions *)
-      | PChoiceExp of exp list		(* two or more expressions joined by |?| *)
-      | ApplyExp of (exp * exp)		(* application *)
+      | PChoiceExp of exp list			(* two or more expressions joined by |?| *)
+      | ApplyExp of (exp * exp)			(* application *)
       | ConstExp of const
       | TupleExp of exp list
       | ListExp of exp list

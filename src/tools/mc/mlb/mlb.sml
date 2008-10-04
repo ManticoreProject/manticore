@@ -105,12 +105,13 @@ structure MLB : sig
 
   (* parse a CPP predef, i.e., -DFOO=2 => ("FOO", SOME "2") *)
     fun parseCPPPredef predef = let
-	  val predef = String.extract(predef, 2, NONE)
+	  val predef = Substring.extract(predef, 2, NONE)
+	  val (predef, def) = Substring.splitl (fn c => c <> #"=") predef
           in
-	      case String.tokens (fn c => c = #"=") predef
-	       of [predef] => (predef, NONE)
-		| [predef, def] => (predef, SOME def)
-          end
+	    if (Substring.isEmpty def)
+	      then (Substring.string predef, NONE)
+	      else (Substring.string predef, SOME(Substring.string(Substring.triml 1 def)))
+	  end
 
   (* pass the file through a sequence of preprocessors *)
     fun chainPreprocs (file, path, name, []) = raise Fail "compiler bug"
@@ -151,6 +152,7 @@ structure MLB : sig
 	      Unix.reap ppProc;
 	      chainPreprocs(tmp, path, name, ppCmds)
 	  end
+      | chainPreprocs _ = raise Fail "invalid preprocessor"
     in
   (* run preprocessors over a file *)
     fun preprocess ([], file) = (TextIO.openIn file, fn () => ())
@@ -313,6 +315,7 @@ structure MLB : sig
 	      case OS.Path.splitBaseExt file
 	       of {base, ext=SOME "mlb"} => loadMLB(file, env0)
 		| {base, ext=SOME "pml"} => [Option.valOf(loadPML(file, env0))]
+		| _ => raise Fail "unknown source file extension"
   	      (* end case *))
           in
 	      gleanPts (pts @ basis)
