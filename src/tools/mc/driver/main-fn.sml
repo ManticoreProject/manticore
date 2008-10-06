@@ -31,13 +31,11 @@ functor MainFn (
 
     val exeFile = ref "a.out"
 
-    exception Error
-
   (* check for errors and report them if there are any *)
     fun checkForErrors errStrm = (
 	  Error.report (TextIO.stdErr, errStrm);
 	  if Error.anyErrors errStrm
-	    then raise Error
+	    then OS.Process.exit OS.Process.failure
 	    else ())
 
     fun prHdr msg = print(concat["******************** ", msg,  " ********************\n"])
@@ -248,6 +246,6 @@ functor MainFn (
             else badopt ()
 	  end
 
-    fun main (_, args) = (processArgs args) handle Error => OS.Process.failure
+    fun main (_, args) = processArgs args
  
   end
