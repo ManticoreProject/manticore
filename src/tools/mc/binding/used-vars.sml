@@ -98,14 +98,15 @@ structure UsedVars =
 	    | PT.ListExp exps => usedOfExps exps
 	    | PT.RangeExp(exp1, exp2, NONE) => union[usedOfExp exp1, usedOfExp exp2]
 	    | PT.RangeExp(exp1, exp2, SOME exp3) => union[usedOfExp exp1, usedOfExp exp2, usedOfExp exp3]
-	    | PT.PTupleExp exps =>  usedOfExps exps
-	    | PT.PArrayExp exps =>  usedOfExps exps
+	    | PT.PTupleExp exps => usedOfExps exps
+	    | PT.PArrayExp exps => usedOfExps exps
 	    | PT.PCompExp(exp, pbinds, NONE) => raise Fail "usedOfExp: PCompExp" (* FIXME *)
 	    | PT.PCompExp(exp, pbinds, SOME exp') => raise Fail "usedOfExp: PCompExp" (* FIXME *)
 	    | PT.SpawnExp exp => usedOfExp exp
 	    | PT.IdExp v => var v
 	    | PT.SeqExp exps => usedOfExps exps
 	    | PT.ConstraintExp (exp, ty) => union[usedOfExp exp, usedOfTy ty]
+	    | PT.FnExp(pat, e) =>  raise Fail "usedOfExp: FnExp" (* FIXME *)
            (* end case *))
 
     and usedOfExps exps = usedOfList usedOfExp exps
