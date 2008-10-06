@@ -275,8 +275,8 @@ Exp
 		=> (markExp (FULL_SPAN, PT.CaseExp(Exp, MatchRules)))
         | "pcase" Exp ("&" Exp)* "of" PMatchRules
                 => (markExp (FULL_SPAN, PT.PCaseExp(Exp :: SR, PMatchRules)))
-        | "fn" (AtomicPat)+ "=>" Exp
-                => (markExp (FULL_SPAN, PT.FnExp (SR, Exp)))
+        | "fn" AtomicPat "=>" Exp
+                => (markExp (FULL_SPAN, PT.FnExp(AtomicPat, Exp)))
 	;
 
 ClosedExp
