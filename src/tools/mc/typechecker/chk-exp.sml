@@ -541,9 +541,9 @@ structure ChkExp :> sig
 		     else ();
 		  (e', ty')
 		end
-	    | PT.FnExp (pats, e) => let
+	    | PT.FnExp (pat, e) => let
 		val v = PPT.Var.new("anon", ())
-		val [l as AST.FB (f, _, _)] = chkFunBinds(loc, depth, [PT.Funct (v, pats, e)])
+		val [l as AST.FB (f, _, _)] = chkFunBinds(loc, depth, [PT.Funct (v, [pat], e)])
 		val (argTys, ty) = TU.instantiate (depth, Var.typeOf f)
 		in
 		  (AST.LetExp(AST.FunBind [l], AST.VarExp(f, argTys)), ty)

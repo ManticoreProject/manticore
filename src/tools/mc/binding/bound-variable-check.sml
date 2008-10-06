@@ -371,7 +371,7 @@ structure BoundVariableCheck :> sig
 		  PT2.ConstraintExp(exp, ty)
 		end
 	    | PT1.FnExp (pats, exp) => let
-	        val (pats, env) = chkPats loc (pats, env)
+	        val (pats, env) = chkPat loc (pats, env)
 		val exp = chkExp loc (exp, env)
 	        in
 		  PT2.FnExp (pats, exp)
