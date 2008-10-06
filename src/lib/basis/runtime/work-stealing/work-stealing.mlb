@@ -13,11 +13,11 @@
   ../util/util.mlb
   ../synch/synch.mlb
 
-  ann "cpp" "../runtime-offsets.def,../../include/prim.def,../../include/debug.def,../../include/assert.def"
+  ann "cpp" "../../include/runtime-offsets.def,../../include/prim.def,../../include/debug.def,../../include/assert.def"
   in
     work-stealing-ivar.pml
   end  
-  ann "cpp" "../runtime-offsets.def,../../include/prim.def,../../include/debug.def,../../include/assert.def,work-stealing.def"
+  ann "cpp" "../../include/runtime-offsets.def,../../include/prim.def,../../include/debug.def,../../include/assert.def,work-stealing.def"
   in
     deque-th-rep.pml
     ../synch/spin-lock.pml

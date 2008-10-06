@@ -10,7 +10,7 @@
   ../fls/fiber-local-storage.mlb
   ../scheduling/scheduling.mlb
 
-  ann "cpp" "../../include/prim.def,../runtime-offsets.def,../../include/assert.def,locked-queue.def"
+  ann "cpp" "../../include/prim.def,../../include/runtime-offsets.def,../../include/assert.def,locked-queue.def"
   in
     in-place-queue.pml 
     spin-lock.pml

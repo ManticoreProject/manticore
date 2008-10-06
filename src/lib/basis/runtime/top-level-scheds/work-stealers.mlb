@@ -11,7 +11,7 @@
   ../fls/fiber-local-storage.mlb
   ../scheduling/scheduling.mlb
 
-  ann "cpp" "../runtime-offsets.def,../../include/prim.def,../../include/debug.def,../../include/assert.def"
+  ann "cpp" "../../include/runtime-offsets.def,../../include/prim.def,../../include/debug.def,../../include/assert.def"
   in
     work-stealers.pml
   end

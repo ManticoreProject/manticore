@@ -6,7 +6,7 @@
  * Testing suite for the runtime.
  *)
 
-  ann "cpp" "../runtime-offsets.def,../../include/prim.def,../../include/debug.def,../../include/assert.def,../../include/testing.def"
+  ann "cpp" "../../include/runtime-offsets.def,../../include/prim.def,../../include/debug.def,../../include/assert.def,../../include/testing.def"
   in
 (*    tests.pml *)
 (*    test-work-stealing.pml*)
