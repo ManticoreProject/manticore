@@ -24,7 +24,7 @@ gen gen-runtime-constants src/tools/mc/driver/runtime-constants.sml
 gen gen-runtime-offsets src/lib/hlops/include/runtime-offsets.def
 gen gen-log-events src/lib/hlops/include/log-events.def
 # moving away from hlop files
-gen gen-runtime-offsets src/lib/basis/runtime/runtime-offsets.def
-gen gen-log-events src/lib/basis/runtime/log-events.def
+gen gen-runtime-offsets src/lib/basis/include/runtime-offsets.def
+gen gen-log-events src/lib/basis/include/log-events.def
 
 exit 0
