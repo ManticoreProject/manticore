@@ -117,4 +117,32 @@
       | HLOpPrimVal of hlop_use
       | LambdaPrimVal of lambda
 
+  (* debugging support *)
+    fun rhsToString rhs = (case rhs
+	   of RHS_Mark _ => "RHS_Mark"
+	    | RHS_Exp _ => "RHS_Exp"
+	    | RHS_SimpleExp e => concat["RHS_SimpleExp(", simpleExpToString e, ")"]
+	    | RHS_Update _ => "RHS_Update"
+	    | RHS_Promote _ => "RHS_Promote"
+	    | RHS_CCall _ => "RHS_CCall"
+	    | RHS_VPStore _ => "RHS_VPStore"
+	    | RHS_PMLVar _ => "RHS_PMLVar"
+	  (* end case *))
+
+    and simpleExpToString e = (case e
+	   of SE_Mark _ => "SE_Mark"
+	    | SE_Var _ => "SE_Var"
+	    | SE_Alloc _ => "SE_Alloc"
+	    | SE_Wrap _ => "SE_Wrap"
+	    | SE_Select _ => "SE_Select"
+	    | SE_Unwrap _ => "SE_Unwrap"
+	    | SE_AddrOf _ => "SE_AddrOf"
+	    | SE_Const _ => "SE_Const"
+	    | SE_MLString _ => "SE_MLString"
+	    | SE_Cast _ => "SE_Cast"
+	    | SE_Prim _ => "SE_Prim"
+	    | SE_HostVProc => "SE_HostVProc"
+	    | SE_VPLoad _ => "SE_VPLoad"
+	  (* end case *))
+
   end
