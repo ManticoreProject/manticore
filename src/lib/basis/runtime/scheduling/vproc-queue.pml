@@ -107,13 +107,25 @@ structure VProcQueue =
 	    return (O.SOME(hd))  
       ;
 
-    (* enqueue on the vproc's thread queue *)
+    (* Enqueue a thread in the host-vprocs ready queue.  This function
+     * assumes that signals are masked.  Use @atomic-enqueue when signals
+     * are not masked.
+     *)
       define @enqueue (fls : FLS.fls, fiber : PT.fiber / exh : PT.exh) : () =
          let vp : vproc = host_vproc
 	 let tl : queue = vpload (VP_RDYQ_TL, vp)
 	 let qitem : queue = alloc(fls, fiber, tl)
 	 do vpstore (VP_RDYQ_TL, vp, qitem)
 	 return () 
+      ;
+
+    (* enqueue on the host's vproc's thread queue *)
+      define inline @atomic-enqueue (fls : FLS.fls, fiber : PT.fiber / exh : PT.exh) : () =
+	let vp : vproc = host_vproc
+	do vpstore(ATOMIC, vp, PT.TRUE)
+	do @enqueue (fls, fiber / exh)
+	do vpstore(ATOMIC, vp, PT.FALSE)
+	return ()
       ;
 
     (* dequeue the first item to satisfy f(SELECT(FLS_OFF, item)) *)
