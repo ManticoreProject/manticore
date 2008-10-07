@@ -185,6 +185,7 @@ VProc_t *VProcCreate (VProcFn_t f, void *arg)
     MutexUnlock (&(data.lock));
 
     return vproc;
+
 } /* VProcCreate */
 
 
