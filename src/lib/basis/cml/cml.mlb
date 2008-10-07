@@ -5,6 +5,7 @@
  *)
 
 ann "cpp" "../include/prim.def,../include/runtime-offsets.def" in
+  threads.pml
   chan.pml
 end
 

@@ -59,9 +59,12 @@ structure Chan : sig
 #	define CH_GET_RECVQ_TL(ch)	SELECT(4, ch)
 #	define CH_SET_RECVQ_TL(ch,x)	UPDATE(4, ch, x)
 
-	define inline @atomic-throw-to (fls : FLS.fls, recv : cont(any), v : any / exh : PT.exh) noreturn =
+#	define ATOMIC_BEGIN	do vpstore (ATOMIC, host_vproc, PT.TRUE)
+#	define ATOMIC_END	do vpstore (ATOMIC, host_vproc, PT.FALSE)
+
+	define inline @throw-to (fls : FLS.fls, recv : cont(any), v : any / exh : PT.exh) noreturn =
 	  let _ : FLS.fls =  FLS.@set (fls / exh)
-	  do vpstore (ATOMIC, host_vproc, PT.FALSE)
+	  ATOMIC_END
 	  throw recv (v)
 	;
 
@@ -193,15 +196,15 @@ structure Chan : sig
 	
 	define @chan-recv (ch : chan_rep / exh : PT.exh) : any =
 	    let fls : FLS.fls = FLS.@get( / exh)
+	    ATOMIC_BEGIN
 	    do @chan-acquire-lock (ch / exh)
 	    let maybeItem : Option.option = @chan-dequeue-send (ch / exh)
 	    (* in *)
 	      case maybeItem
 	       of Option.SOME(item : sendq_item) =>
 		    do @chan-release-lock (ch / exh)
-(* FIXME *)
 		    do VProcQueue.@enqueue-on-vproc(#2(item), #1(item), #3(item) / exh)
-		    do vpstore(ATOMIC, host_vproc, PT.FALSE)
+		    ATOMIC_END
 		    (* in *)
 		      return (#0(item))
 		| Option.NONE =>
@@ -211,6 +214,7 @@ structure Chan : sig
 		      let flag : dirty_flag = promote (flag)
 		      do @chan-enqueue-recv (ch, flag, fls, recvK / exh)
 		      do @chan-release-lock (ch / exh)
+		      ATOMIC_END
 		      (* in *)
 			Control.@stop(/exh)
 	      end
@@ -220,6 +224,7 @@ structure Chan : sig
 	    let ch : chan_rep = #0(arg)
 	    let msg : any = #1(arg)
 	    let fls : FLS.fls = FLS.@get( / exh)
+	    ATOMIC_BEGIN
 	    do @chan-acquire-lock (ch / exh)
 	    cont sendK (x : PT.unit) = return (x)
 	    (* in *)
@@ -237,12 +242,13 @@ structure Chan : sig
 				do @chan-release-lock(ch / exh)
 				do VProcQueue.@enqueue-on-vproc(#2(item), #1(item), #3(item) / exh)
 				(* in *)
-				  @atomic-throw-to (#1(item), #3(item), msg / exh)
+				  @throw-to (#1(item), #3(item), msg / exh)
 			      else (* someone else got the event, so try again *)
 				apply tryLp (UNIT / exh)
 			| Option.NONE =>
 			    do @chan-enqueue-send (ch, msg, fls, sendK / exh)
 			    do @chan-release-lock (ch / exh)
+			    ATOMIC_END
 			    (* in *)
 			      Control.@stop(/exh)
 		      end
