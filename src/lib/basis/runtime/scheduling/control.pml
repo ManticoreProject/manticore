@@ -99,19 +99,19 @@ structure Control =
       ;
 
     (* unload the landing pad, handle any incoming messages, and then forward a signal to the vproc *)
-      define @forward (sg : PT.signal / exh : PT.exh) noreturn =
+      define inline @forward (sg : PT.signal / exh : PT.exh) noreturn =
         do @handle-incoming(/ exh)
         @forward-no-check(sg / exh)
       ;
 
     (* stop the current fiber *)
-      define @stop (/ exh : PT.exh) : PT.unit =
+      define inline @stop (/ exh : PT.exh) : PT.unit =
         do @forward(PT.STOP / exh)
         return(UNIT)
       ;
 
     (* yield control to the parent scheduler *)
-      define @yield (/ exh : PT.exh) : PT.unit =
+      define inline @yield (/ exh : PT.exh) : PT.unit =
         cont k (x : PT.unit) = return(UNIT)
         do @forward(PT.PREEMPT(k) / exh)
         return(UNIT)
