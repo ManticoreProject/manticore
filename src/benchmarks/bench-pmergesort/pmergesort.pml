@@ -176,7 +176,7 @@ structure PMergesort =
     fun genRandomDoubleArr (n) = let
 	val arr : double A.array = A.array(n, 0.0:double)
 	fun loop (i) = if (i < n)
-	    then (A.update(arr, i, drand(0.0:double, 100.0:double)); 
+	    then (A.update(arr, i, Rand.randDouble(0.0:double, 100.0:double)); 
 		  loop(i+1))
 	    else ()
 	in

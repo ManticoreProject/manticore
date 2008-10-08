@@ -15,6 +15,7 @@ structure Rand =
       extern long M_Random(long, long);
       extern int M_RandomInt(int, int);
       extern void M_SeedRand();
+      extern double M_DRand (double, double);
 
       define inline @in-range(arg : [PT.ml_long, PT.ml_long] / exh : PT.exh) : PT.ml_long =
         let r : long = ccall M_Random(#0(#0(arg)), #0(#1(arg)))
@@ -42,10 +43,16 @@ structure Rand =
         return(UNIT)
       ;
 
+      define @rand-double (arg : [PT.ml_double, PT.ml_double] / exh : PT.exh) : PT.ml_double =
+	let r : double = ccall M_DRand (#0(#0(arg)), #0(#1(arg)))
+	return (alloc(r))
+      ;
+
     )
 
     val inRange : (long * long) -> long = _prim(@in-range-wrap)
     val seed : unit -> unit = _prim(@seed)
     val _ = seed()
+    val randDouble : (double * double) -> double = _prim(@rand-double)
 
   end
