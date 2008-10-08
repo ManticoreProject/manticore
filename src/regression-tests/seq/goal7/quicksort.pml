@@ -26,8 +26,8 @@ fun filter (g, ls) = let
 fun intListToString ls = let
     fun loop (ls, acc) =  (case ls
         of nil => acc
-	 | x :: y :: nil => acc ^ (itos x) ^ ", " ^ (itos y)
-	 | x :: xs => loop (xs, acc ^ (itos x) ^ ", ")
+	 | x :: y :: nil => acc ^ (Int.toString x) ^ ", " ^ (Int.toString y)
+	 | x :: xs => loop (xs, acc ^ (Int.toString x) ^ ", ")
         (* end case *))
     in
        "[" ^ loop (ls, "") ^ "]"
@@ -37,8 +37,8 @@ fun intListToString ls = let
 fun floatListToString ls =  let
     fun loop (ls, acc) =  (case ls
         of nil => acc
-	 | x :: nil => acc ^ (ftos x)
-	 | x :: xs => loop (xs, acc ^ (ftos x) ^ ", ")
+	 | x :: nil => acc ^ (Float.toString x)
+	 | x :: xs => loop (xs, acc ^ (Float.toString x) ^ ", ")
         (* end case *))
     in
        "[" ^ loop (ls, "") ^ "]"
@@ -65,4 +65,4 @@ fun qs xs = (case xs
 val xs = 4::3::2::1::nil;
 val ys = 4.0 :: 3.12 :: 5.0 :: 0.01 :: 3.3 :: 4.120001 :: 12312321.1 :: 1023.234 :: nil;
 
-val _ = print ( (floatListToString (qs ys)) ^ "\n")
+val _ = Print.print ( (floatListToString (qs ys)) ^ "\n")

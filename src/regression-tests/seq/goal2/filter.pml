@@ -1,6 +1,6 @@
 (* test of list filter *)
 
-fun intListToString ns = ("[" ^ concatWith(",",map(itos, ns)) ^ "]")
+fun intListToString ns = ("[" ^ String.concatWith(",",List.map(Int.toString, ns)) ^ "]")
 
 fun positive n = (n>0)
 
@@ -26,7 +26,7 @@ fun filter' (pred, xs) = let
 
 val filteredNums = filter' (positive, nums)
 
-val _ = (print (intListToString filteredNums);
-	      print "\n")
+val _ = (Print.print (intListToString filteredNums);
+	      Print.print "\n")
 
 

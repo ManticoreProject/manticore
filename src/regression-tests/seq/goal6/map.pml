@@ -5,7 +5,7 @@ fun pos n = (n > 0);
 fun fromto (lo, hi) =
   let fun build (curr, acc) = 
 	    if (curr > hi)
-	    then rev acc
+	    then List.rev acc
 	    else build (curr + 1, curr :: acc)
   in
       build (lo, nil)
@@ -15,9 +15,9 @@ fun b2s b = if b then "true" else "false"
 
 fun printAll bs =
   (case bs
-     of nil => print "\n"
-      | b::tl => (print (b2s b ^ " ");
+     of nil => Print.print "\n"
+      | b::tl => (Print.print (b2s b ^ " ");
 		  printAll tl))
 
-val _ = printAll (map (pos, fromto (~3, 3)))
+val _ = printAll (List.map (pos, fromto (~3, 3)))
 

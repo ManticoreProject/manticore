@@ -12,8 +12,8 @@ fun add (p1, p2) = let
       end
 
 fun p2s p = (case p
-    of PT (x,y) => ftos x^" "^ftos y^"\n"
+    of PT (x,y) => Float.toString x^" "^Float.toString y^"\n"
     (* end case *))
 
-val _ = print (p2s (add (PT (1.0, 1.0), PT (2.0, 3.234))))
+val _ = Print.print (p2s (add (PT (1.0, 1.0), PT (2.0, 3.234))))
 

@@ -8,4 +8,4 @@ val (f, hd::tail) = (id, d :: nil);
 
 val (s,_) = f (hd "hello world\n");
 
-val _ = print (s)
+val _ = Print.print (s)
