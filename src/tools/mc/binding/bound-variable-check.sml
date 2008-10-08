@@ -438,9 +438,9 @@ structure BoundVariableCheck :> sig
 		     (PT2.AbsTyDecl (tvs, id'), env)
 		  end
 	    | PT1.PrimTyDecl (tvs, id, bty) => let
+		val bty = BOMBoundVariableCheck.chkTy loc (bty, env)
 		val id' = freshVar id
 		val env = BEnv.insertTycBind(env, id, id')
-		val bty = BOMBoundVariableCheck.chkTy loc (bty, env)
 		in
 		  (PT2.PrimTyDecl(tvs, id', bty), env)
 		end
