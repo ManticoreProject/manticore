@@ -14,12 +14,14 @@ signature BOM_BASIS =
     val longTy : BOMTy.ty
     val floatTy : BOMTy.ty
     val doubleTy : BOMTy.ty
+    val stringLenTy : BOMTy.ty	(* the length field in the ML string rep *)
     val stringTy : BOMTy.ty
 
   (* predefined datatypes *)
     val boolTy : BOMTy.ty
     val listTy : BOMTy.ty
     val optionTy : BOMTy.ty
+(*
     val parrayTy : BOMTy.ty
     val ropeTy : BOMTy.ty
     val signalTy : BOMTy.ty
@@ -28,16 +30,15 @@ signature BOM_BASIS =
     val ivarTy : BOMTy.ty
     val evtTy : BOMTy.ty
     val chanTy : BOMTy.ty
+*)
 
   (* predefined data constructors *)
-    val signalPREEMPT : BOMTy.data_con
+    val boolFalse : BOMTy.data_con
+    val boolTrue : BOMTy.data_con
+    val listNil : BOMTy.data_con
     val listCons : BOMTy.data_con
+    val optionNONE : BOMTy.data_con
     val optionSOME : BOMTy.data_con
-    val ropeLeaf : BOMTy.data_con
-    val ropeCat : BOMTy.data_con
-    val rdyq_itemQITEM : BOMTy.data_con
-    val evtCHOOSE : BOMTy.data_con
-    val evtBEVT : BOMTy.data_con
 
   (* predefined exception constructors *)
     val exnFail : BOMTy.data_con
@@ -58,11 +59,8 @@ structure BOMBasis : BOM_BASIS =
 
   (* some standard parameter types *)
     val unitTy = BTy.unitTy
-    val boolTy = BTy.boolTy
     val exnTy = BTy.exnTy
     val exhTy = BTy.exhTy
-    val tidTy = BTy.tidTy
-    val fiberTy = BTy.fiberTy
 
   (* predefined types *)
     local
@@ -73,98 +71,34 @@ structure BOMBasis : BOM_BASIS =
     val longTy = wrap BTy.T_Long
     val floatTy = wrap BTy.T_Float
     val doubleTy = wrap BTy.T_Double
-    val stringTy = BTy.T_Tuple(false, [BTy.T_Any, rawIntTy])
+(* FIXME: the length type should be architecture dependent! *)
+    val stringLenTy = rawIntTy
+    val stringTy = BTy.T_Tuple(false, [BTy.T_Any, stringLenTy])
     end
 
-  (* ready queue items *)
-    val rdyqItemTyc = BOMTyCon.newDataTyc ("rdyq_item", 1)
-    val rdyqItemTy = BTy.T_TyCon rdyqItemTyc
-    val rdyq_itemQITEM = BOMTyCon.newDataCon rdyqItemTyc
-	  ("QITEM", BTy.Tuple, [tidTy, fiberTy, rdyqItemTy])
-
-  (* association lists
-   * In the surface language syntax, association lists look like the following:
-   *    type tag = any                (* maybe we should have a distinct type for tags? *)
-   *    datatype assoc_list
-   *      = ANIL
-   *      | ACONS of (tag * any * assoc_list)
-   *  where the first element is the tag, the second is associated data, and the third is
-   *  the rest of the list.
-   *)
-    val assocListTyc = BOMTyCon.newDataTyc ("assoc_list", 1)
-    val assocListTy = BTy.T_TyCon assocListTyc
-    val assocListCons = BOMTyCon.newDataCon assocListTyc
-           ("ACONS", BTy.Tuple, [BTy.T_Any, BTy.T_Any, assocListTy])
-
-    val schedSignTyc = BOMTyCon.newDataTyc("sched_sign", 1)
-    val schedSignTy = BTy.T_TyCon schedSignTyc
-    val schedSignPreempt = 
-	BOMTyCon.newDataCon schedSignTyc ("PREEMPT", BTy.TaggedTuple 0w0, [fiberTy])
-    val schedSignChangeDesire = 
-	BOMTyCon.newDataCon schedSignTyc ("CHANGE_DESIRE", BTy.TaggedTuple 0w1, [intTy, fiberTy, fiberTy])
-
-  (* other predefined datatypes *)
-    val signalTyc = BOMTyCon.newDataTyc ("signal", 1) 
-    val signalTy = BTy.T_TyCon signalTyc
-    val signalPREEMPT = BOMTyCon.newDataCon signalTyc ("PREEMPT", BTy.Transparent, [fiberTy])
+    val boolTyc = let
+	  val boolTyc as BTy.DataTyc{rep, ...} = BOMTyCon.newDataTyc ("bool", 2)
+	  in
+	    rep := BTy.T_Enum 0w1;
+	    boolTyc
+	  end
+    val boolTy = BTy.T_TyCon boolTyc
+    val boolFalse = BOMTyCon.newDataCon boolTyc ("FALSE", BTy.Enum 0w0, [])
+    val boolTrue = BOMTyCon.newDataCon boolTyc ("TRUE", BTy.Enum 0w1, [])
 
     val listTyc = BOMTyCon.newDataTyc ("list", 1)
     val listTy = BTy.T_TyCon listTyc
+    val listNil = BOMTyCon.newDataCon listTyc
+	  ("NIL", BTy.Enum 0w0, [])
     val listCons = BOMTyCon.newDataCon listTyc
 	  ("CONS", BTy.Tuple, [BTy.T_Any, listTy])
 
     val optionTyc = BOMTyCon.newDataTyc ("option", 1)
     val optionTy = BTy.T_TyCon optionTyc
+    val optionNONE= BOMTyCon.newDataCon optionTyc
+	  ("NONE", BTy.Enum 0w0, [])
     val optionSOME = BOMTyCon.newDataCon optionTyc
 	  ("SOME", BTy.Tuple, [BTy.T_Any])
-
-    val parrayTyc = BOMTyCon.newDataTyc ("parray", 1)
-    val parrayTy = BTy.T_TyCon parrayTyc
-
-    val ropeTyc = BOMTyCon.newDataTyc ("rope", 0)
-    val ropeTy = BTy.T_TyCon ropeTyc
-    val ropeLeaf = BOMTyCon.newDataCon ropeTyc
-          ("LEAF", BTy.TaggedTuple 0w0, [rawIntTy, listTy])
-    val ropeCat = BOMTyCon.newDataCon ropeTyc
-          ("CAT",  BTy.TaggedTuple 0w1, [rawIntTy, rawIntTy, ropeTy, ropeTy])
-
-  (* other predefined types *)
-    val sigactTy = BTy.T_Cont[signalTy]
-
-  (* dirty flags *)
-    val dirtyFlagTy = BTy.T_Tuple(true, [BTy.T_Enum(0w2)])
-
-  (* primitive event values *)
-    val evtTyc = BOMTyCon.newDataTyc ("evt", 0)
-    val evtTy = BTy.T_TyCon evtTyc
-    val evtCHOOSE = BOMTyCon.newDataCon evtTyc ("CHOOSE", BTy.TaggedTuple 0w0, [evtTy, evtTy])
-    val evtBEVT = BOMTyCon.newDataCon evtTyc ("BEVT", BTy.TaggedTuple 0w1, [
-	  (* pollFn : unit -> bool *)
-	    BTy.stdFunTy([], [boolTy]),
-          (* doFn : 'a cont -> unit *)
-	    BTy.stdFunTy([BTy.T_Cont[BTy.T_Any]], []),
-          (* blockFn : (bool ref * 'a cont) -> unit *)
-	    BTy.stdFunTy([dirtyFlagTy, tidTy, BTy.T_Cont[BTy.T_Any]], [])
-	  ])
-
-  (* ivars *)
-    val ivarTy = BTy.T_Tuple(true, [
-               listTy, BTy.T_Any, BTy.T_Raw BTy.T_Int
-	    ])
-
-  (* The BOM type for channels.  This definition must match that given in
-   *
-   *	src/lib/hlops/events.def
-   *)
-    val chanTy = BTy.T_Tuple(true, [
-	    boolTy,			(* spinlock *)
-	    listTy, listTy,		(* send queue (head and tail) *)
-	    listTy, listTy		(* recv queue (head and tail) *)
-	  ])
-
-
-  (* val workQueueTyc = BTy.AbsTyc {name="work_queue", stamp=Stamp.new(), arity=0} *)
-    val workQueueTy = BTy.T_Any (* BTy.T_TyCon workQueueTyc *)
 
   (* predefined exception constructors *)
     val exnFail = BOMTyCon.newExnCon ("Fail", [stringTy])
@@ -179,25 +113,19 @@ structure BOMBasis : BOM_BASIS =
 
   (* Type-constructor table *)
     val findTyc : Atom.atom -> BOMTy.tyc option = mkTbl (Atom.atom o BOMTyCon.tycName) [
+	    boolTyc,
 	    listTyc,
-            optionTyc,
-	    rdyqItemTyc,
-	    signalTyc,
-	    evtTyc,
-	    assocListTyc
+            optionTyc
 	  ]
 
   (* Data-constructor table *)
     val findDCon : Atom.atom -> BOMTy.data_con option = mkTbl (Atom.atom o BOMTyCon.dconName) [
+	    boolFalse,
+	    boolTrue,
+	    listNil,
 	    listCons,
+	    optionNONE,
             optionSOME,
-            ropeLeaf,
-            ropeCat,
-	    rdyq_itemQITEM,
-	    signalPREEMPT,
-	    evtCHOOSE,
-	    evtBEVT,
-	    assocListCons,
 	    exnFail
 	  ]
 

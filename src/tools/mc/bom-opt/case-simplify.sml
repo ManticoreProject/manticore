@@ -22,6 +22,27 @@ structure CaseSimplify : sig
     structure Lit = Literal
     structure BU = BOMUtil
 
+  (* convert datatypes to their representation types.  We assume that hasTyc is true
+   * for ty.
+   *)
+    fun tyToRepTy ty = let
+	  fun ty2ty (BTy.T_Tuple(mut, tys)) = BTy.T_Tuple(mut, List.map ty2ty tys)
+	    | ty2ty (BTy.T_Addr ty) = BTy.T_Addr(ty2ty ty)
+	    | ty2ty (BTy.T_Fun(argTys, exh, resTys)) =
+		BTy.T_Fun(tys2tys argTys, tys2tys exh, tys2tys resTys)
+	    | ty2ty (BTy.T_Cont tys) = BTy.T_Cont(tys2tys tys)
+	    | ty2ty (BTy.T_TyCon(BTy.DataTyc{rep, ...})) = ty2ty (!rep)
+	    | ty2ty (BTy.T_TyCon(BTy.AbsTyc _)) = BTy.T_Any
+	    | ty2ty ty = ty
+	  and tys2tys [] = []
+	    | tys2tys (ty::r) = ty2ty ty :: tys2tys r
+	  in
+	    ty2ty ty
+	  end
+
+  (* the post-case-simplify representation of booleans *)
+    val boolTy = tyToRepTy BOMBasis.boolTy
+
   (* A sub-case covers either the boxed, literal, or unboxed rules in a case.
    * If the rules are not exhaustive for the sub-case, then the default rule is
    * included too.
@@ -29,10 +50,10 @@ structure CaseSimplify : sig
     type 'a sub_case = {rules : 'a list, hasDflt : bool}
 
     datatype case_class
-      = EnumCase of (Word.word * BTy.ty * B.exp) sub_case
+      = EnumCase of (BTy.data_con * B.exp) sub_case
       | ConsCase of (BTy.data_con * B.var list * B.exp) sub_case
       | MixedCase of {
-	    enums : (Word.word * BTy.ty * B.exp) sub_case,
+	    enums : (BTy.data_con * B.exp) sub_case,
 	    cons : (BTy.data_con * B.var list * B.exp) sub_case
 	  }
       | LitCase of (B.const * B.exp) sub_case
@@ -42,7 +63,6 @@ structure CaseSimplify : sig
 	  val hasDflt = Option.isSome dflt
 	  val (isExn, nCons, nEnums) = (case argTy
 		 of BTy.T_TyCon(BTy.DataTyc{nNullary, cons, ...}) => (false, List.length(!cons), nNullary)
-		  (* the argument is a nullary constructor *)
 		  | BTy.T_Enum n => (false, Word.toInt n + 1, 0)
 		  | ty => (BOMTyUtil.equal(BTy.exnTy, ty), 0, 0)
 		(* end case *))
@@ -50,10 +70,10 @@ structure CaseSimplify : sig
 	 * of literal patterns, and a list of data constructor patterns.
 	 *)
 	  fun classify ([], enums, lits, cons) = (enums, lits, cons)
-	    | classify ((B.P_Const(Lit.Enum w, ty), e)::rules, enums, lits, cons) =
-		classify (rules, (w, ty, e)::enums, lits, cons)
 	    | classify ((B.P_Const c, e)::rules, enums, lits, cons) =
 		classify (rules, enums, (c, e)::lits, cons)
+	    | classify ((B.P_DCon(dc, []), e)::rules, enums, lits, cons) =
+		classify (rules, (dc, e)::enums, lits, cons)
 	    | classify ((B.P_DCon(dc, ys), e)::rules, enums, lits, cons) =
 		classify (rules, enums, lits, (dc, ys, e)::cons)
 	  in
@@ -89,8 +109,8 @@ structure CaseSimplify : sig
     (* generate numeric comparisons *)
       fun genNumTest (ty, ltPrim, eqPrim, const) {arg, key, ltAct, eqAct, gtAct} = let
 	    val v = BV.new("_caseLbl", ty)
-	    val isLess = BV.new("_isLess", BTy.boolTy)
-	    val isEq = BV.new("_isEq", BTy.boolTy)
+	    val isLess = BV.new("_isLess", boolTy)
+	    val isEq = BV.new("_isEq", boolTy)
 	    in
 	      B.mkStmt([v], const key,
 	      B.mkStmt([isLess], B.E_Prim(ltPrim(arg, v)),
@@ -103,7 +123,7 @@ structure CaseSimplify : sig
     (* generate numeric order test *)
       fun genNumOrdTest (ty, cmpPrim, const) {arg, key, eqAct, neqAct} = let
 	    val v = BV.new("_caseLbl", ty)
-	    val isOrd = BV.new("_isOrd", BTy.boolTy)
+	    val isOrd = BV.new("_isOrd", boolTy)
 	    in
 	      B.mkStmt([v], const key,
 	      B.mkStmt([isOrd], B.E_Prim(cmpPrim(arg, v)),
@@ -195,29 +215,16 @@ structure CaseSimplify : sig
       | hasTyc (BTy.T_TyCon _) = true
       | hasTyc _ = false
 
-  (* convert datatypes to their representation types.  We assume that hasTyc is true
-   * for ty.
-   *)
-    fun tyToRepTy ty = let
-	  fun ty2ty (BTy.T_Tuple(mut, tys)) = BTy.T_Tuple(mut, List.map ty2ty tys)
-	    | ty2ty (BTy.T_Addr ty) = BTy.T_Addr(ty2ty ty)
-	    | ty2ty (BTy.T_Fun(argTys, exh, resTys)) =
-		BTy.T_Fun(tys2tys argTys, tys2tys exh, tys2tys resTys)
-	    | ty2ty (BTy.T_Cont tys) = BTy.T_Cont(tys2tys tys)
-	    | ty2ty (BTy.T_TyCon(BTy.DataTyc{rep, ...})) = ty2ty (!rep)
-	    | ty2ty (BTy.T_TyCon(BTy.AbsTyc _)) = BTy.T_Any
-	    | ty2ty ty = ty
-	  and tys2tys [] = []
-	    | tys2tys (ty::r) = ty2ty ty :: tys2tys r
-	  in
-	    ty2ty ty
-	  end
-
 (* FIXME: we should probably record this information in translate-types.sml *)
   (* return the low-level BOM type that describes the representation of a data constructor *)
-    fun dconToRepTy (BTy.DCon{name, rep, argTy, ...}) = (case (rep, argTy)
-	   of (BTy.Transparent, [ty]) => tyToRepTy ty
-	    | (B.Transparent, _) => raise Fail("bogus application of transparent dcon "^name)
+    fun dconToRepTy (BTy.DCon{name, rep, argTy, myTyc, ...}) = (case (rep, argTy)
+	   of (BTy.Enum _, _) => let
+		val BTy.DataTyc{nNullary, ...} = myTyc
+		in
+		  BTy.T_Enum(Word.fromInt(nNullary-1))
+		end
+	    | (BTy.Transparent, [ty]) => tyToRepTy ty
+	    | (BTy.Transparent, _) => raise Fail("bogus application of transparent dcon "^name)
 	    | (BTy.Tuple, []) => BTy.unitTy
 	    | (BTy.Tuple, _) => BTy.T_Tuple(false, List.map tyToRepTy argTy)
 	    | (BTy.TaggedTuple tag, _) => BTy.T_Tuple(false, BTy.T_Enum tag :: List.map tyToRepTy argTy)
@@ -294,9 +301,16 @@ DEBUG*)
 		in
 		  B.mkStmt([y'], B.E_Promote x', xformE(s', tys, e))
 		end
-	    | B.E_Stmt([y], B.E_DCon(dc as B.DCon{name, rep, argTy, ...}, xs), e) => (
+	    | B.E_Stmt([y], B.E_DCon(dc as B.DCon{name, rep, argTy, myTyc, ...}, xs), e) => (
 		case (rep, xs)
-		 of (B.Transparent, [x]) => let
+		 of (B.Enum tag, _) => let
+		      val BTy.DataTyc{nNullary, ...} = myTyc
+		      val tagTy = BTy.T_Enum(Word.fromInt(nNullary-1))
+		      val (s', y') = retype (s, y, tagTy)
+		      in
+			B.mkStmt([y'], B.E_Const(Lit.Enum tag, tagTy), xformE(s', tys, e))
+		      end
+		  | (B.Transparent, [x]) => let
 		      val (s', y') = retype (s, y, tyToRepTy(typeOf x))
 		      in
 			B.mkLet([y'], B.mkRet[subst s x], xformE(s', tys, e))
@@ -440,7 +454,7 @@ DEBUG*)
 			      val ty = BTy.T_Enum(Word.fromInt(BTyc.nCons(BTyc.dconTyc dc)))
 			      val tag' = BV.new("tag", ty)
 			      val tmp = BV.new("tmp", ty)
-			      val eq = BV.new("eq", BTy.boolTy)
+			      val eq = BV.new("eq", boolTy)
 			      in
 				B.mkStmts([
 				    ([argument'], B.E_Cast(BV.typeOf argument', argument)),
@@ -485,17 +499,18 @@ DEBUG*)
 		    ],
 		    B.mkCase(tag, List.map mkAlt cons, dflt))
 		end
-	  fun enumCase (w, ty, e) = let
-		val ty = if hasTyc ty then tyToRepTy ty else ty
+	  fun enumCase (dc as BTy.DCon{rep=BTy.Enum w, ...}, e) = let
+		val ty = tyToRepTy(BOMTyCon.dconResTy dc)
 		in
 		  (B.P_Const(Lit.Enum w, ty), xformE(s, tys, e))
-		end	  
+		end
+	    | enumCase _ = raise Fail "expected nullary constructor"
 	  in
 	    case classifyCaseRules (BV.typeOf x, rules, dflt)
 	     of EnumCase{rules, ...} => B.mkCase(argument, List.map enumCase rules, dflt)
 	      | ConsCase{rules, ...} => consCase (rules, dflt)
 	      | MixedCase{enums, cons} => let
-		  val isBoxed = BV.new("isBoxed", BTy.boolTy)
+		  val isBoxed = BV.new("isBoxed", boolTy)
 		  val boxedTest = if numEnumsOfTyc x = 1
 			then let
 			(* when there is only one possible enum value, we just do
@@ -522,7 +537,7 @@ DEBUG*)
 			 of {rules=[], hasDflt=true} => valOf dflt
 			  | {rules=[], hasDflt=false} => raise Fail "badly-formed sub-case"
 			  | {rules, hasDflt=true} => B.mkCase(argument, List.map enumCase rules, dflt)
-			  | {rules=[(_, _, e)], hasDflt=false} => xformE(s, tys, e)
+			  | {rules=[(_, e)], hasDflt=false} => xformE(s, tys, e)
 			  | {rules, hasDflt=false} => B.mkCase(argument, List.map enumCase rules, NONE)
 			(* end case *))
 		  val consCase = (case cons

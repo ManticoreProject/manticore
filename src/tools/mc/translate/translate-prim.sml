@@ -35,7 +35,7 @@ structure TranslatePrim : sig
 	type var = BOM.var
 	type ty = BTy.ty
 	val anyTy = BTy.T_Any
-	val boolTy = BTy.boolTy
+	val boolTy = BOMBasis.boolTy
 	val addrTy = BTy.T_Addr(BTy.T_Any)
 	val rawTy = BTy.T_Raw)
 
@@ -46,6 +46,10 @@ structure TranslatePrim : sig
   (* some type utilities *)
     val unwrapType = BOMTyUtil.unwrap
     val selectType = BOMTyUtil.select
+
+  (* the type of ML strings *)
+    val stringLenTy = BOMBasis.stringLenTy
+    val stringTy = BOMBasis.stringTy
 
     fun fail ss = Fail (String.concat ss)
 
@@ -59,8 +63,7 @@ structure TranslatePrim : sig
     fun cvtTys ty = TranslateTypes.cvtPrimTys (!translateEnv) ty
 
   (* find a data constructor that is defined in PML code *)
-    fun findCon con = (
-	  case ModuleEnv.getValBind con
+    fun findCon con = (case ModuleEnv.getValBind con
 	   of SOME (ModuleEnv.Con dcon) =>
 	        TranslateEnv.findDCon(!translateEnv, dcon)
 	    | _ => NONE
@@ -98,51 +101,37 @@ structure TranslatePrim : sig
       = Var of BOM.Var.var
       | Con of E.con_bind
 
-    fun lookupVarOrDCon v = (
-	case E.findBOMVar v
-	 of SOME v => 
-	    (* parameter-bound variable *)
-	    Var v
-	  | NONE => (
-	    case ModuleEnv.getValBind v
-	     of SOME (ModuleEnv.Con c) => Con(TranslateTypes.trDataCon(!translateEnv, c))
-	      | NONE => raise Fail(String.concat ["unknown BOM variable ", PTVar.nameOf v])
-	    (* end case *))
-        (* end case *))
-
-    fun lookupNullaryDCon v = (
-	case lookupVarOrDCon v
-	 of Con (E.Const(w, ty)) => (Literal.Enum w, ty)
-	  | _ => raise Fail(String.concat["unknown BOM nullary data constructor ", PTVar.nameOf v])
-        (* end case *))
+    fun lookupVarOrDCon v = (case E.findBOMVar v
+	   of SOME v => Var v (* parameter-bound variable *)
+	    | NONE => (case ModuleEnv.getValBind v
+		 of SOME(ModuleEnv.Con c) => Con(TranslateTypes.trDataCon(!translateEnv, c))
+		  | NONE => raise Fail(String.concat ["unknown BOM variable ", PTVar.nameOf v])
+		(* end case *))
+	  (* end case *))
 
   (* convert a variable expression to either an ordinary variable or a nullary constructor *)
-    fun cvtVar (x, k) = (
-	case lookupVarOrDCon x
-	 of Var x => k x
-	  | Con (E.Const(w, ty)) => let
-	      val t = BOM.Var.new("con_"^PTVar.nameOf x, ty)
-	      in
-(* FIXME: need to cast enum to translation of datatype *)
-		BOM.mkStmt([t], BOM.E_Const(Literal.Enum w, ty), k t)
-	      end
-	  | Con (E.DCon _) => raise Fail "impossible"
-	  | Con (E.ExnConst _) => raise Fail "todo"
-      (* end case *))
+    fun cvtVar (x, k) = (case lookupVarOrDCon x
+	   of Var x => k x
+	    | Con(E.Const dc) => let
+		val t = BOM.Var.new("con_"^PTVar.nameOf x, BOMTyCon.dconResTy dc)
+		in
+		  BOM.mkStmt([t], BOM.E_DCon(dc, []), k t)
+		end
+	    | Con(E.DCon _) => raise Fail "impossible"
+	    | Con(E.ExnConst _) => raise Fail "FIXME"
+	  (* end case *))
 
     fun cvtPat (BPT.P_PMark {tree, span}) = cvtPat tree
-      | cvtPat (BPT.P_DCon(dc, xs)) = (
-	case findCon dc
-	 of SOME (E.DCon (dc, _)) => let
-            val xs = cvtVarPats xs
-	    in
-		(* non-nullary data constructor *)
-		(BOM.P_DCon(dc, xs))
-	    end
-	  | _ => 
-	    (* nullary data constructor *)
-	    BOM.P_Const(lookupNullaryDCon dc)
-	(* end case *))
+      | cvtPat (BPT.P_DCon(dc, xs)) = (case findCon dc
+	   of SOME(E.Const dc) => BOM.P_DCon(dc, []) (* nullary constructor *)
+	    | SOME(E.DCon(dc, _)) => let (* non-nullary constructor *)
+		val xs = cvtVarPats xs
+		in
+		  BOM.P_DCon(dc, xs)
+		end
+	    | SOME(E.ExnConst _) => raise Fail "FIXME"
+	    | NONE => raise Fail(String.concat["unknown BOM nullary data constructor ", PTVar.nameOf dc])
+	  (* end case *))
       | cvtPat (BPT.P_Const(const, ty)) = (BOM.P_Const(const, cvtTy ty))
 
     (* PML imports
@@ -203,10 +192,23 @@ structure TranslatePrim : sig
 		val body' = cvtExp(findCFun, body)
 		in
 		  case rhs
-		   of BPT.RHS_Exp e'' => BOM.mkLet(lhs', cvtExp(findCFun, e''), body')
+		   of BPT.RHS_Mark _ => raise Fail "Mark" (* FIXME *)
+		    | BPT.RHS_Exp e'' => BOM.mkLet(lhs', cvtExp(findCFun, e''), body')
 		    | BPT.RHS_SimpleExp e'' => (case e''
-			 of BPT.SE_Var x => BOM.mkLet(lhs', cvtVar(x, fn x => BOM.mkRet[x]), body') 
+			 of BPT.SE_Mark _ => raise Fail "Mark" (* FIXME *)
+			  | BPT.SE_Var x => BOM.mkLet(lhs', cvtVar(x, fn x => BOM.mkRet[x]), body') 
 (*BOM.mkLet(lhs', BOM.mkRet[lookupVar x], e') *)
+			  | BPT.SE_Alloc args => let
+			      val mut = (case BV.typeOf(hd lhs')
+				      of BTy.T_Tuple(true, _) => true
+				       | _ => false
+				    (* end case *))
+			      in
+				cvtSimpleExps(findCFun, args,
+				  fn xs => BOM.mkStmt(lhs', BOM.E_Alloc(BTy.T_Tuple(mut, List.map BV.typeOf xs), xs),
+				    body'))
+			      end
+			  | BPT.SE_Wrap e => raise Fail "Wrap"
 			  | BPT.SE_Select(i, arg) =>
 			      cvtSimpleExp(findCFun, arg, fn x =>
 				BOM.mkStmt(lhs', BOM.E_Select(i, x), body'))
@@ -220,14 +222,15 @@ structure TranslatePrim : sig
 	                  | BPT.SE_Const(lit, ty) => BOM.mkStmt(lhs', BOM.E_Const(lit, cvtTy ty), body')
 			  | BPT.SE_MLString s => let
 			      val t1 = BV.new("_data", BTy.T_Any)
-(* FIXME: the type used for the length should be architecture dependent *)
-			      val t2 = BV.new("_len", BTy.T_Raw BTy.T_Int)
+			      val t2 = BV.new("_len", stringLenTy)
+			      val t3 = BV.new("_slit", stringTy)
 			      in
 				BOM.mkStmts([
 				    ([t1], BOM.E_Const(Literal.String s, BTy.T_Any)),
-				    ([t2], BOM.E_Const(Literal.Int(IntInf.fromInt(size s)), BTy.T_Raw BTy.T_Int))
+				    ([t2], BOM.E_Const(Literal.Int(IntInf.fromInt(size s)), stringLenTy)),
+				    ([t3], BOM.E_Alloc(stringTy, [t1, t2]))
 				  ],
-				BOM.mkLet(lhs', BOM.mkHLOp(HLOpEnv.stringLitOp, [t1, t2], []), body'))
+				BOM.mkLet(lhs', BOM.mkRet[t3], body'))
 			      end
 			  | BPT.SE_Unwrap arg =>
 			      cvtSimpleExp(findCFun, arg, fn x =>
@@ -237,7 +240,7 @@ structure TranslatePrim : sig
 				val rhs = (case (findPrim p, xs)
 				       of (NONE, _) => (case findCon p
 					     of NONE => raise (fail(["unknown data constructor ", PTVar.toString p]))
-					      | SOME (E.DCon (dc, _)) => BOM.E_DCon(dc, xs)
+					      | SOME(E.DCon (dc, _)) => BOM.E_DCon(dc, xs)
 					    (* end case *))
 					| (SOME(Prim1{mk, ...}), [x]) => BOM.E_Prim(mk x)
 					| (SOME(Prim2{mk, ...}), [x, y]) => BOM.E_Prim(mk(x, y))
@@ -251,16 +254,6 @@ structure TranslatePrim : sig
 			  | BPT.SE_VPLoad(offset, vp) =>
 			      cvtSimpleExp(findCFun, vp, fn vp =>
 				BOM.mkStmt(lhs', BOM.E_VPLoad(offset, vp), body'))
-			  | BPT.SE_Alloc args => let
-				val mut = (case BV.typeOf(hd lhs')
-					    of BTy.T_Tuple(true, _) => true
-					     | _ => false
-					  (* end case *))
- 			        in
-			          cvtSimpleExps(findCFun, args,
-			             fn xs => BOM.mkStmt(lhs', BOM.E_Alloc(BTy.T_Tuple(mut, List.map BV.typeOf xs), xs),
-				      body'))
-			        end
 			(* end case *))
 		    | BPT.RHS_Update(i, arg, rhs) => 
 			cvtSimpleExp(findCFun, arg, fn x =>
@@ -374,6 +367,7 @@ structure TranslatePrim : sig
 		   in
 		      BOM.mkStmt([tmp], BOM.E_Alloc(BTy.T_Tuple(mut, tys), xs), k tmp)
                    end)
+	    | BPT.SE_Wrap _ => raise Fail "Wrap" (* FIXME *)
 	    | BPT.SE_Select(i, e) =>
 		cvtSimpleExp(findCFun, e, fn x => let
 		  val tmp = newTmp(selectType(BOM.Var.typeOf x, i))
@@ -395,13 +389,15 @@ structure TranslatePrim : sig
 		end
 	    | BPT.SE_MLString s => let
 		val t1 = BV.new("_data", BTy.T_Any)
-(* FIXME: the type used for the length should be architecture dependent *)
-		val t2 = BV.new("_len", BTy.T_Raw BTy.T_Int)
+		val t2 = BV.new("_len", stringLenTy)
+		val t3 = BV.new("_slit", stringTy)
 		in
 		  BOM.mkStmts([
 		      ([t1], BOM.E_Const(Literal.String s, BTy.T_Any)),
-		      ([t2], BOM.E_Const(Literal.Int(IntInf.fromInt(size s)), BTy.T_Raw BTy.T_Int))
-		    ], BOM.mkHLOp(HLOpEnv.stringLitOp, [t1, t2], []))
+		      ([t2], BOM.E_Const(Literal.Int(IntInf.fromInt(size s)), stringLenTy)),
+		      ([t3], BOM.E_Alloc(stringTy, [t1, t2]))
+		    ],
+		  k t3)
 		end
 	    | BPT.SE_Cast(ty, e) =>
 		cvtSimpleExp(findCFun, e, fn x => let
@@ -504,13 +500,13 @@ structure TranslatePrim : sig
 	  val x' = BOM.Var.new(Var.nameOf x, TranslateTypes.trScheme(env, pmlTy))
 	  (* check that the RHS matches the constraining type *)
 	  val pmlTy = TranslateTypes.trScheme(env, pmlTy)
-	  fun chkConstraintTy bomTy = 
-	        if (BOMTyUtil.equal(pmlTy, bomTy))
-		   then ()
-		else raise Fail (String.concatWith "\n" ["incorrect BOM type for "^Var.nameOf x^": ",
-							 "BOM type = "^BOMTyUtil.toString bomTy,
-							 "PML type = "^BOMTyUtil.toString pmlTy])
-				 
+	  fun chkConstraintTy bomTy = if (BOMTyUtil.equal(pmlTy, bomTy))
+		then ()
+		else raise Fail (String.concatWith "\n" [
+		    "incorrect BOM type for "^Var.nameOf x^": ",
+		    "BOM type = "^BOMTyUtil.toString bomTy,
+		    "PML type = "^BOMTyUtil.toString pmlTy
+		  ])		 
           in
 	    case rhs
 	     of BPT.VarPrimVal v => let
@@ -644,7 +640,6 @@ structure TranslatePrim : sig
       | cvtDefs importEnv (_::defs) = cvtDefs importEnv defs
 
     fun cvtCode (env, code) = let
-val _ = print "cvtCode start\n";
           (* make the translation environment globally accessible *)
 	    val _ = translateEnv := env
 	    val importEnv = E.getImportEnv env
@@ -653,7 +648,6 @@ val _ = print "cvtCode start\n";
 	    in
 	       HLOpEnv.addDefs defs;
 	       List.map #def (List.filter (not o #inline) defs)
-before print "cvtCode end\n"
             end
 
   end

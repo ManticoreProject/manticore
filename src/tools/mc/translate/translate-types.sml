@@ -42,7 +42,7 @@ structure TranslateTypes : sig
     val setTycKind = setFn
     end
 
-    fun insertConst (env, dc, w, ty) = E.insertCon (env, dc, E.Const(w, ty))
+    fun insertConst (env, dc, dc') = E.insertCon (env, dc, E.Const dc')
     fun insertDCon (env, dc, repTr, dc') = E.insertCon (env, dc, E.DCon(dc', repTr))
 
   (* return the BOM kind of the argument of an AST data constructor; this code
@@ -104,11 +104,15 @@ structure TranslateTypes : sig
 		      BOMTyCon.newDataTyc (Atom.toString name, nConsts)
 		fun setRep (ty, k) = (rep := ty; kind := k; setTycKind(tyc, k))
 	      (* assign representations for the constants *)
-		fun assignConstRep (i, dc) =
-		      insertConst (env, dc, Word.fromInt i, BTy.T_Enum(Word.fromInt nConsts - 0w1))
-		val _ = appi assignConstRep consts
-	      (* assign representations for the constructor functions *)
 		val newDataCon = BTyc.newDataCon dataTyc
+		fun mkNullaryDC (i, dc) = let
+		      val dc' = newDataCon (DataCon.nameOf dc, BTy.Enum(Word.fromInt i), [])
+		      val trRep = FlattenRep.ATOM(BTy.T_Enum(Word.fromInt(nConsts - 1)))
+		      in
+			insertConst (env, dc, dc')
+		      end
+		val _ = appi mkNullaryDC consts
+	      (* assign representations for the constructor functions *)
 		fun mkDC (dc, rep, repTr, tys) = let
 		      val dc' = newDataCon (DataCon.nameOf dc, rep, tys)
 		      in
@@ -117,9 +121,9 @@ structure TranslateTypes : sig
 		fun mkDC' (dc, rep, (repTr, tys)) = mkDC (dc, rep, repTr, tys)
 		fun mkTaggedDC (i, dc) = mkDC' (dc, BTy.TaggedTuple(Word.fromInt i), trArgTy(env, dc))
 		in
-		  case (consts, conFuns)
-		   of (_::_, []) => setRep (BTy.T_Enum(Word.fromInt nConsts - 0w1), BTy.K_UNBOXED)
-		    | ([], [dc]) => (case trArgTy(env, dc)
+		  case (nConsts, conFuns)
+		   of (_, []) => setRep (BTy.T_Enum(Word.fromInt nConsts - 0w1), BTy.K_UNBOXED)
+		    | (0, [dc]) => (case trArgTy(env, dc)
 			 of (repTr, [ty]) => (
 			      setRep (ty, BOMTyUtil.kindOf ty);
 			      mkDC (dc, BTy.Transparent, repTr, [ty]))
@@ -140,7 +144,7 @@ structure TranslateTypes : sig
 			      end
 			(* end case *);
 			setRep (BTy.T_Any, BTy.K_UNIFORM))
-		    | ([], [dc1, dc2]) => (case (bomKindOfArgTy dc1, bomKindOfArgTy dc2)
+		    | (0, [dc1, dc2]) => (case (bomKindOfArgTy dc1, bomKindOfArgTy dc2)
 			 of (BTy.K_BOXED, BTy.K_UNBOXED) => (
 			      mkDC' (dc1, BTy.Tuple, trArgTy(env, dc1));
 			      mkDC' (dc2, BTy.Transparent, trArgTy(env, dc2));
@@ -154,7 +158,7 @@ structure TranslateTypes : sig
 			      mkTaggedDC (1, dc2);
 			      setRep (BTy.T_Any, BTy.K_BOXED))
 			(* end case *))
-		    | ([], _) => (
+		    | (0, _) => (
 			appi mkTaggedDC conFuns;
 			setRep (BTy.T_Any, BTy.K_BOXED))
 		    | (_, _) =>  (

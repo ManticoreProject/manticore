@@ -33,7 +33,7 @@ structure StdEnv : sig
     fun wrapTy rty = BOMTyUtil.wrap(BTy.T_Raw rty)
 
     val types = [
-	    (B.boolTyc,		BTy.K_UNBOXED,	BTy.boolTy),
+	    (B.boolTyc,		BTy.K_UNBOXED,	BOMBasis.boolTy),
 	    (B.intTyc,		BTy.K_BOXED,	wrapTy BTy.T_Int),
 	    (B.longTyc,		BTy.K_BOXED,	wrapTy BTy.T_Long),
 (*
@@ -49,21 +49,7 @@ structure StdEnv : sig
 	    (B.listTyc,		BTy.K_UNIFORM,	BOMBasis.listTy),
 	    (B.optionTyc,	BTy.K_UNIFORM,	BOMBasis.optionTy),
 	    (B.exnTyc,		BTy.K_BOXED,	BTy.exnTy),
-	    (B.threadIdTyc,	BOMTyUtil.kindOf(BTy.tidTy), BTy.tidTy),
-	    (B.parrayTyc,       BTy.K_BOXED,	BOMBasis.ropeTy),
-            (B.ivarTyc,         BTy.K_BOXED,   BOMBasis.ivarTy),
-(*
-	    (B.mvarTyc, ),
-*)
-	    (B.eventTyc,	BTy.K_BOXED,	BOMBasis.evtTy),
-	    (B.chanTyc,		BTy.K_BOXED,	BOMBasis.chanTy),
-	  (* internal types *)
-	    (RB.contTyc,        BTy.K_BOXED,    BTy.T_Cont [BTy.T_Any]),
-	    (R.ropeTyc,         BTy.K_BOXED,	BOMBasis.ropeTy),
-	  (* extras *)
-	    (B.imageTyc,	BTy.K_BOXED,	BTy.T_Any),
-          (* arrays *)
-	    (B.arrayTyc,        BTy.K_BOXED,    BTy.T_Any)
+	    (B.threadIdTyc,	BOMTyUtil.kindOf(BTy.tidTy), BTy.tidTy)
 	  ]
 
 
@@ -80,15 +66,12 @@ structure StdEnv : sig
 	  end
 
     val dcons = [
-	    (B.boolFalse,	E.Const(0w0, BOMBasis.boolTy)),
-	    (B.boolTrue,	E.Const(0w1, BOMBasis.boolTy)),
-	    (B.listNil,		E.Const(0w0, BTy.T_Enum(0w0))),
+	    (B.boolFalse,	E.Const BOMBasis.boolFalse),
+	    (B.boolTrue,	E.Const BOMBasis.boolTrue),
+	    (B.listNil,		E.Const BOMBasis.listNil),
 	    (B.listCons,	mkDCon BOMBasis.listCons),
-	    (B.optionNONE,	E.Const(0w0, BTy.T_Enum(0w0))),
-	    (B.optionSOME,	mkDCon BOMBasis.optionSOME),
-(* FIXME: once rope constructors have flattened reps, this code will have to be fixed! *)
-            (R.ropeLeaf,        mkDCon BOMBasis.ropeLeaf),
-	    (R.ropeCat,         mkDCon BOMBasis.ropeCat)
+	    (B.optionNONE,	E.Const BOMBasis.optionNONE),
+	    (B.optionSOME,	mkDCon BOMBasis.optionSOME)
 	  ]
 
     (* mkCast : BOM.exp * BOMTy.ty * BOMTy.ty -> BOM.exp *)
@@ -240,10 +223,11 @@ structure StdEnv : sig
       val l = BTy.T_Raw BTy.T_Long
       val f = BTy.T_Raw BTy.T_Float
       val d = BTy.T_Raw BTy.T_Double
-      val b = BTy.boolTy
+      val b = BOMBasis.boolTy
     in 
     val operators = [
 	    (B.listAppend,	hlop (H.listAppendOp, false)),	    
+	    (B.stringConcat,	hlop (H.stringConcatOp, false)),
 	    (B.int_lte,		prim2 (P.I32Lte, "lte", i, i, b)),
 	    (B.long_lte,	prim2 (P.I64Lte, "lte", l, l, b)),
 	    (B.float_lte,	prim2 (P.F32Lte, "lte", f, f, b)),
@@ -343,64 +327,10 @@ structure StdEnv : sig
 	  ]
 
   (* predefined functions *)
-    val predefs = [
+    val predefs : (AST.var * (BOMTy.ty -> BOM.lambda)) list = [
 	    (B.not,		prim1 (P.BNot, "not", b, b)),
-(* FIXME --- note some of these are defined below from prototypes.hlop
-	    (B.lnf,		hlop H.lnf),
-	    (B.log2f,		hlop H.log2f),
-	    (B.log10f,		hlop H.log10f),
-	    (B.powf,		hlop (H.powf, false)),	(* in prototypes.hlop *)
-	    (B.expf,		hlop H.expf),
-	    (B.sinf,		hlop H.sinf),
-	    (B.cosf,		hlop H.cosf),
-	    (B.tanf,		hlop H.tanf),
-	    (B.lnd,		hlop H.lnd),
-	    (B.log2d,		hlop H.log2d),
-	    (B.log10d,		hlop H.log10d),
-	    (B.powd,		hlop (H.powd, false)),	(* in prototypes.hlop *)
-	    (B.expd,		hlop H.expd),
-	    (B.sind,		hlop H.sind),
-	    (B.cosd,		hlop H.cosd),
-	    (B.tand,		hlop H.tand),
-*)
 	    (B.itof,		prim1 (P.I32ToF32, "itof", i, f)),
-	    (B.itod,		prim1 (P.I32ToF64, "itod", i, d)),
-	    (B.itos,		hlop (H.itosOp, false)),
-	    (B.ltos,		hlop (H.ltosOp, false)),
-	    (B.ftos,		hlop (H.ftosOp, false)),
-	    (B.dtos,		hlop (H.dtosOp, false)),
-(* FIXME
-	    (B.args,		hlop H.args),
-*)
-	  (* events *)
-	    (B.wrap,		hlop (H.wrapOp, false)),
-	    (B.choose,		hlop (H.chooseOp, false)),
-	    (B.always,		hlop (H.alwaysOp, false)),
-	    (B.sync,		hlop (H.syncOp, true)),
-
-	  (* channels *)
-	    (B.channel,		hlop (H.channelOp, false)),
-	    (B.recv,		hlop (H.recvOp, true)),
-	    (B.recvEvt,		hlop (H.recvEvtOp, false)),
-	    (B.send,		hlop (H.sendOp, false)),
-
-(*	    (B.mVar,		hlop H.mVar),
-    (B.mGet,		hlop H.mGet),
-	    (B.mTake,		hlop H.mTake),
-	    (B.mPut,		hlop H.mPut),
-*)
-
-          (* parray operations *)
-	    (B.psub,            hlop (H.ropeSubOp, true)),
-
-	  (* extras *)
-	    (B.newImage,	hlop (H.newImageOp, false)),
-	    (B.updateImage3f,	hlop (H.updateImage3fOp, false)),
-	    (B.updateImage3d,	hlop (H.updateImage3dOp, false)),
-	    (B.outputImage,	hlop (H.outputImageOp, false)),
-	    (B.freeImage,	hlop (H.freeImageOp, false)),
-	    (B.getNumProcs,	hlop (H.getNumProcs, false)),
-	    (B.getNumVProcs,	hlop (H.getNumVProcs, false))
+	    (B.itod,		prim1 (P.I32ToF64, "itod", i, d))
 	  ]
 
     end (* local *) 
@@ -504,8 +434,11 @@ structure StdEnv : sig
 		 | SOME hop => E.insertFun (env, x, hlop (hop, polyResTy))
 		(* end case *))
 	  in
+(*
 	    HLOpDefLoader.loadPrototypes ();
 	    List.foldl ins env0 hlops
+*)
+	    env0
 	  end
 
   end

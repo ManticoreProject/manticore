@@ -18,6 +18,7 @@ structure RopeMapMaker : sig
 
   end = struct
 
+(** FIXME **
     structure A = AST
     structure B = BOM
     structure BB = BOMBasis
@@ -372,5 +373,10 @@ structure RopeMapMaker : sig
       | test 6 = showMe (mkMap 6)
       | test _ = println "No such test."
     end (* local *)
+**)
+
+    fun mkList _ = raise Fail "FIXME"
+    fun test _ = raise Fail "FIXME"
+    fun gen _ = raise Fail "FIXME"
 
   end (* struct *)

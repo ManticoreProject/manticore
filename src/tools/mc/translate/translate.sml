@@ -84,13 +84,13 @@ structure Translate : sig
 
   (* translate datatype constructors and constants in expressions *)
     fun trDConExp (env, dc) : bom_code = (case TranslateTypes.trDataCon(env, dc)
-	   of E.Const(w, ty) => let
-		val t = BV.new("con_" ^ DataCon.nameOf dc, ty)
+	   of E.Const dc' => let
+		val t = BV.new("con_" ^ DataCon.nameOf dc, BOMTyCon.dconResTy dc')
 		in
-		  BIND([t], B.E_Const(Lit.Enum w, ty))
+		  BIND([t], B.E_DCon(dc', []))
 		end
 	    | E.ExnConst dc' => let
-		val t = BV.new("exn" ^ DataCon.nameOf dc, BTy.exnTy)
+		val t = BV.new("exn_" ^ DataCon.nameOf dc, BTy.exnTy)
 		in
 		  BIND([t], B.E_DCon(dc', []))
 		end
@@ -168,6 +168,7 @@ structure Translate : sig
 		  B.mkIf(x, trExpToExp(env, e2), trExpToExp(env, e3))))
 	    | AST.CaseExp(e, rules, ty) =>
 		EXP(trExpToV (env, e, fn x => trCase(env, x, rules)))
+	    | AST.PCaseExp _ => raise Fail "PCaseExp" (* FIXME *)
 	    | AST.HandleExp(e, mc, ty) => let
 		val (exn, body) = (case mc
 		       of [AST.PatMatch(AST.VarPat exn, e')] => let
@@ -215,7 +216,8 @@ structure Translate : sig
 		  in
 		    B.mkStmt([t], B.E_Alloc(ty, xs), B.mkRet [t])
 		  end))
-	    | AST.RangeExp(lo, hi, optStep, ty) => let
+	    | AST.RangeExp(lo, hi, optStep, ty) => raise Fail "FIXME"
+(*let
                 (* FIXME This assumes int ranges for the time being. *)
                 val step = Option.getOpt (optStep, ASTUtil.mkInt(1))
 		fun rawIntV name = BV.new (name, rawIntTy)
@@ -235,6 +237,7 @@ structure Translate : sig
 			       [loV, hiV, stepV, maxLfSzV],
 			       [E.handlerOf env])))))))))
                 end
+*)
 	    | AST.PTupleExp exps => raise Fail "unexpected PTupleExp"
 	    | AST.PArrayExp(exps, ty) => EXP(trParr(env,exps,ty))
 	    | AST.PCompExp _ => raise Fail "unexpected PCompExp"
@@ -244,21 +247,26 @@ structure Translate : sig
 		val e' = trExpToExp(env', e)
 		val param = BV.new("unused", BTy.unitTy)
 		val thd = BV.new("_thd", BTy.T_Fun([BTy.unitTy], [BTy.exhTy], [BTy.unitTy]))
+	      (* get the HLOp for thread spawning *)
+		val spawnOp = (case HLOpEnv.findDefByPath ["Threads", "local-spawn"]
+		       of SOME{name, ...} => name
+			| NONE => raise Fail "unable to locate spawn HLOP"
+		      (* end case *))
 		in
 		  EXP(B.mkFun([B.FB{f=thd, params=[param], exh=[exh], body=e'}],
-(* FIXME: should ManticoreOps be HLOpEnv??? *)
-		    B.mkHLOp(ManticoreOps.spawnOp, [thd], [E.handlerOf env])))
+		    B.mkHLOp(spawnOp, [thd], [E.handlerOf env])))
 		end
 	    | AST.ConstExp(AST.DConst(dc, tys)) => trDConExp (env, dc)
 	    | AST.ConstExp(AST.LConst(lit as Literal.String s, _)) => let
 		val t1 = BV.new("_data", BTy.T_Any)
-(* FIXME: the type used for the length should be architecture dependent *)
-		val t2 = BV.new("_len", BTy.T_Raw BTy.T_Int)
+		val t2 = BV.new("_len", BOMBasis.stringLenTy)
+		val t3 = BV.new("_slit", BOMBasis.stringTy)
 		in
-		  EXP(B.mkStmts([
-		      ([t1], B.E_Const(lit, BTy.T_Any)),
-		      ([t2], B.E_Const(Literal.Int(IntInf.fromInt(size s)), BTy.T_Raw BTy.T_Int))
-		    ], B.mkHLOp(HLOpEnv.stringLitOp, [t1, t2], [])))
+		  EXP(BOM.mkStmts([
+		      ([t1], BOM.E_Const(Literal.String s, BTy.T_Any)),
+		      ([t2], BOM.E_Const(Literal.Int(IntInf.fromInt(size s)), BOMBasis.stringLenTy)),
+		      ([t3], BOM.E_Alloc(BOMBasis.stringTy, [t1, t2]))
+		    ], BOM.mkRet[t3]))
 		end
 	    | AST.ConstExp(AST.LConst(lit, ty)) => (case trTy(env, ty)
 		 of ty' as BTy.T_Tuple(false, [rty as BTy.T_Raw _]) => let
@@ -374,10 +382,12 @@ structure Translate : sig
 
     and trCase (env, arg, rules) = let
 	(* translation of nullary constructors *)
-	  fun trDConst (dc, exp) = (case TranslateTypes.trDataCon(env, dc)
-		 of E.Const(rep, bty) => (B.P_Const(Literal.Enum rep, bty), trExpToExp (env, exp))
-		  | _ => raise Fail "unexpected constructor"
-		(* end case *))
+	  fun trDConst (dc, exp) = let
+		val E.Const dc' = TranslateTypes.trDataCon(env, dc)
+		in
+		  (B.P_DCon(dc', []), trExpToExp(env, exp))
+		end
+	(* translation of a constructor applied to a pattern *)
 	  fun trConPat (dc, tyArgs, pat, exp) = let
 		val E.DCon(dc', repTr) = TranslateTypes.trDataCon(env, dc)
 		fun mkArgs tys = List.map (fn ty => BV.new("_t", ty)) tys

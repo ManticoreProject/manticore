@@ -10,17 +10,10 @@
 
 structure HLOpEnv : sig
 
+    val listAppendOp : HLOp.hlop
+    val stringConcatOp : HLOp.hlop
+
 (*
-    val qItemAlloc : HLOp.hlop  	(* allocate a queue item *)
-    val qEnqueue : HLOp.hlop		(* insert an item [nonatomic] *)
-    val qDequeue : HLOp.hlop 		(* remove an item [nonatomic] *)
-    val qEmpty : HLOp.hlop		(* return true if queue is empty [nonatomic] *)
-
-  (* concurrent queue operations *)
-    val atomicQEnqueue : HLOp.hlop	(* insert an item [atomic] *)
-    val atomicQDequeue : HLOp.hlop	(* remove an item [atomic] *)
-*)
-
   (* high-level operations used to implement Manticore language constructs *)
     val spawnOp : HLOp.hlop
     val threadExitOp : HLOp.hlop
@@ -95,6 +88,7 @@ structure HLOpEnv : sig
     val freeImageOp	: HLOp.hlop
     val getNumProcs	: HLOp.hlop
     val getNumVProcs    : HLOp.hlop
+*)
 
     val define : HLOp.hlop -> unit
     val find : Atom.atom -> HLOp.hlop option
@@ -128,6 +122,18 @@ structure HLOpEnv : sig
 
     type env = HLOp.hlop AtomTable.hash_table
 
+  (* list append is required because it is bound to a operator *)
+    fun newWithExh (name, params, res, attrs) =
+	  H.new (Atom.atom name,
+		 {params = List.map H.PARAM params, exh = [BTy.exhTy], results = res},
+		 attrs)
+    val listTy = Basis.listTy
+    val stringTy = Basis.stringTy
+    fun pairTy (ty1, ty2) = BTy.T_Tuple(false, [ty1, ty2])
+    val listAppendOp = newWithExh("list-append", [pairTy(listTy, listTy)], [listTy], [])
+    val stringConcatOp = newWithExh("string-concat2", [pairTy(stringTy, stringTy)], [stringTy], [])
+
+(*
   (* some standard parameter types *)
     val unitTy = BTy.unitTy
     val boolTy = BTy.boolTy
@@ -290,6 +296,7 @@ structure HLOpEnv : sig
     val freeImageOp = newWithExh ("image-free", [BTy.T_Any], [unitTy], [])
     val getNumProcs = newWithExh ("get-num-procs", [unitTy], [intTy], [])
     val getNumVProcs = newWithExh ("get-num-vprocs", [unitTy], [intTy], [])
+*)
 
   (* HLOp table *)
     val tbl : HLOp.hlop AtomTable.hash_table = AtomTable.mkTable (128, Fail "HLOp table")
@@ -297,6 +304,7 @@ structure HLOpEnv : sig
     val find : Atom.atom -> HLOp.hlop option = AtomTable.find tbl
     fun define hlop = AtomTable.insert tbl (HLOp.name hlop, hlop)
 
+(*
   (* insert predefined HLOps *)
     val _ = List.app define [
 		spawnOp,
@@ -318,7 +326,8 @@ structure HLOpEnv : sig
 		future1CancelOp,
                 ropeSubOp,
 		ropeLengthIntOp
-	      ]	    
+	      ]	 
+*)   
 
     type hlop_def = {
 	name : BOM.hlop,			(* the HLOp's identifier *)

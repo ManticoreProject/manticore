@@ -39,7 +39,8 @@ structure BOM =
       | E_GAlloc of (ty * var list)		(* allocation in global heap *)
       | E_Promote of var			(* promotion of object to global heap *)
       | E_Prim of prim
-      | E_DCon of (data_con * var list)		(* data constructor *)
+      | E_DCon of (data_con * var list)		(* data constructor; the argument list is empty for *)
+						(* nullary constructors *)
       | E_CCall of (var * var list)		(* foreign-function calls *)
     (* VProc operations *)
       | E_HostVProc				(* gets the hosting VProc *)
@@ -56,7 +57,8 @@ structure BOM =
 	}
 
     and pat			  	    (* simple, one-level, patterns *)
-      = P_DCon of data_con * var list
+      = P_DCon of data_con * var list		(* data constructor; the argument list is empty for *)
+						(* nullary constructors *)
       | P_Const of const
 
     and var_kind
@@ -124,8 +126,6 @@ structure BOM =
 	end (* local structure V = ... *)
       end 
        
-    val trueConst = (Literal.trueLit, BOMTy.boolTy)
-    val falseConst = (Literal.falseLit, BOMTy.boolTy)
     val unitConst = (Literal.unitLit, BOMTy.unitTy)
 
   (* wrapped raw values are stored in tuples *)

@@ -3,8 +3,7 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Mapping from AST types and variables to their BOL representations.
- *
+ * Mapping from predefined AST types and variables to their BOL representations.
  *)
 
 structure BOMBasisEnv : sig
@@ -25,7 +24,7 @@ structure BOMBasisEnv : sig
     fun wrapTy rty = BOMTyUtil.wrap(BTy.T_Raw rty)
 
     val types = [
-	    (B.boolTyc,		BTy.K_UNBOXED,	BTy.boolTy),
+	    (B.boolTyc,		BTy.K_UNBOXED,	BOMBasis.boolTy),
 	    (B.intTyc,		BTy.K_BOXED,	wrapTy BTy.T_Int),
 	    (B.longTyc,		BTy.K_BOXED,	wrapTy BTy.T_Long),
 	    (B.floatTyc,	BTy.K_BOXED,	wrapTy BTy.T_Float),
@@ -33,20 +32,7 @@ structure BOMBasisEnv : sig
 	    (B.stringTyc,	BTy.K_BOXED,	BOMBasis.stringTy),
 	    (B.listTyc,		BTy.K_UNIFORM,	BOMBasis.listTy),
 	    (B.optionTyc,	BTy.K_UNIFORM,	BOMBasis.optionTy),
-	    (B.exnTyc,		BTy.K_BOXED,	BTy.exnTy),
-	    (B.threadIdTyc,	BOMTyUtil.kindOf(BTy.tidTy), BTy.tidTy),
-	    (B.parrayTyc,       BTy.K_BOXED,	BOMBasis.ropeTy),
-            (B.ivarTyc,         BTy.K_BOXED,   BOMBasis.ivarTy),
-(*
-	    (B.mvarTyc, ),
-*)
-	    (B.eventTyc,	BTy.K_BOXED,	BOMBasis.evtTy),
-	    (B.chanTyc,		BTy.K_BOXED,	BOMBasis.chanTy),
-	  (* internal types *)
-(*	    (F.futureTyc,       BTy.K_BOXED,	BTy.futureTy),*)
-(*	    (R.ropeTyc,         BTy.K_BOXED,	BOMBasis.ropeTy),*)
-          (* arrays *)
-	    (B.arrayTyc,        BTy.K_BOXED,    BTy.T_Any)
+	    (B.exnTyc,		BTy.K_BOXED,	BTy.exnTy)
 	  ]
 
     local 

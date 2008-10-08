@@ -12,6 +12,7 @@ structure TranslateParr  : sig
 
   end  = struct
 
+(** FIXME **
     structure A   = AST
     structure AB  = Basis
     structure R   = Ropes
@@ -180,5 +181,8 @@ structure TranslateParr  : sig
     end (* local *)
 
     fun tr (env, trExpToV) (es, t) = ropeBOM (env, trExpToV) (ropeFromExps es, t)
+
+**)
+fun tr _ = raise Fail "FIXME"
 
   end

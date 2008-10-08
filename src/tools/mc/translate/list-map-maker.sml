@@ -18,6 +18,7 @@ structure ListMapMaker : sig
 
   end = struct
 
+(** FIXME **
     structure A = AST
     structure B = BOM
     structure BB = BOMBasis
@@ -201,10 +202,11 @@ structure ListMapMaker : sig
 	end
     end (* locals for mkMap *)
 
-    structure MapFnCache = CacheFn(struct 
-				       type t = B.lambda
-				       val mkItem = mkMap
-				     end)
+    structure MapFnCache = CacheFn(
+      struct 
+	type t = B.lambda
+	val mkItem = mkMap
+      end)
 
     val gen : int -> B.lambda = MapFnCache.getItem
 
@@ -229,5 +231,10 @@ structure ListMapMaker : sig
       | test 3 = printLam (gen 4)
       | test _ = println "No such test."
     end (* local *)
+  **)
+
+    fun mkMap _ = raise Fail "FIXME"
+    fun test _ = raise Fail "FIXME"
+    fun gen _ = raise Fail "FIXME"
 
   end (* struct *)

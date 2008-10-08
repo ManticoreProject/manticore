@@ -37,7 +37,7 @@ structure BOMTy =
 	  name : string,
 	  stamp : Stamp.stamp,		(* a unique stamp *)
 	  nNullary : int,		(* the number of nullary constructors *)
-	  cons : data_con list ref,	(* list of non-nullary constructors *)
+	  cons : data_con list ref,	(* list of constructors *)
 	  rep : ty ref,			(* type of the representation *)
 	  kind : kind ref		(* kind of the representation: either UNBOXED, BOXED, *)
 					(* or UNIFORM *)
@@ -59,7 +59,8 @@ structure BOMTy =
 
     and dcon_rep		      (* representation of data-constructor functions; note: *)
 				      (* this type does not include constants. *)
-      = Transparent			(* for "CON of ty"; the data-constructor is represented *)
+      = Enum of word			(* nullary constructor *)
+      | Transparent			(* for "CON of ty"; the data-constructor is represented *)
 					(* directly by its argument *)
       | Tuple				(* for "CON of (ty * ... * ty)", where CON is the only *)
 					(* constructor; represented as heap-allocated tuple of values *)
@@ -68,7 +69,6 @@ structure BOMTy =
       | ExnRep				(* exception constructors *)
 
     val unitTy = T_Enum(0w0)
-    val boolTy = T_Enum(0w1)	(* false = 0, true = 1 *)
 
     val exnTyc = AbsTyc{
 	    name = "exn",

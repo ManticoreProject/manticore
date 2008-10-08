@@ -18,7 +18,7 @@ structure Equality : sig
     structure P = Prim
 
     fun mk (isEq, a, b, ty) = let
-	  val res = BV.new("res", BTy.boolTy)
+	  val res = BV.new("res", BOMBasis.boolTy)
 	  fun mkPrim (eqP, neqP) = let
 		val p = if isEq then eqP else neqP
 		in
@@ -36,7 +36,7 @@ structure Equality : sig
 	    | mkTuple (i, ty::tys) = let
 		val a' = BV.new("a"^Int.toString i, ty)
 		val b' = BV.new("b"^Int.toString i, ty)
-		val res' = BV.new("res'", BTy.boolTy)
+		val res' = BV.new("res'", BOMBasis.boolTy)
 		in
 		  B.mkStmts([
 		      ([a'], B.E_Select(i, a)),
@@ -74,7 +74,7 @@ structure Equality : sig
 	  val f = if isEq then "eq" else "neq"
 	  in
 	    BOM.FB{
-		f = BV.new(f, BTy.T_Fun([argTy], [BTy.exhTy], [BTy.boolTy])),
+		f = BV.new(f, BTy.T_Fun([argTy], [BTy.exhTy], [BOMBasis.boolTy])),
 		params = [arg],
 		exh = [BV.new("_exh", BTy.exhTy)],
 		body = B.mkStmts([

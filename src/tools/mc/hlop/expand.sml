@@ -76,7 +76,7 @@
 	type var = BOM.var
 	type ty = BTy.ty
 	val anyTy = BTy.T_Any
-	val boolTy = BTy.boolTy
+	val boolTy = BOMBasis.boolTy
 	val addrTy = BTy.T_Addr(BTy.T_Any)
 	val rawTy = BTy.T_Raw)
 
@@ -86,6 +86,10 @@
   (* some type utilities *)
     val unwrapType = BOMTyUtil.unwrap
     val selectType = BOMTyUtil.select
+
+  (* the type of ML strings *)
+(* FIXME: the length type should be architecture dependent! *)
+    val stringTy = BTy.T_Tuple(false, [BTy.T_Any, BTy.T_Raw BTy.T_Int])
 
     fun newTmp ty = BV.new("_t", ty)
 
@@ -167,12 +171,14 @@
 			      val t1 = BV.new("_data", BTy.T_Any)
 (* FIXME: the type used for the length should be architecture dependent *)
 			      val t2 = BV.new("_len", BTy.T_Raw BTy.T_Int)
+			      val t3 = BV.new("_slit", stringTy)
 			      in
 				BOM.mkStmts([
 				    ([t1], BOM.E_Const(Literal.String s, BTy.T_Any)),
-				    ([t2], BOM.E_Const(Literal.Int(IntInf.fromInt(size s)), BTy.T_Raw BTy.T_Int))
+				    ([t2], BOM.E_Const(Literal.Int(IntInf.fromInt(size s)), BTy.T_Raw BTy.T_Int)),
+				    ([t3], BOM.E_Alloc(stringTy, [t1, t2]))
 				  ],
-				BOM.mkLet(lhs', BOM.mkHLOp(HLOpEnv.stringLitOp, [t1, t2], []), e'))
+				BOM.mkLet(lhs', BOM.mkRet[t3], e'))
 			      end
 			  | PT.Unwrap arg =>
 			      cvtSimpleExp(findCFun, env, arg, fn x =>
@@ -327,11 +333,14 @@
 		val t1 = BV.new("_data", BTy.T_Any)
 (* FIXME: the type used for the length should be architecture dependent *)
 		val t2 = BV.new("_len", BTy.T_Raw BTy.T_Int)
+		val t3 = BV.new("_slit", stringTy)
 		in
 		  BOM.mkStmts([
 		      ([t1], BOM.E_Const(Literal.String s, BTy.T_Any)),
-		      ([t2], BOM.E_Const(Literal.Int(IntInf.fromInt(size s)), BTy.T_Raw BTy.T_Int))
-		    ], BOM.mkHLOp(HLOpEnv.stringLitOp, [t1, t2], []))
+		      ([t2], BOM.E_Const(Literal.Int(IntInf.fromInt(size s)), BTy.T_Raw BTy.T_Int)),
+		      ([t3], BOM.E_Alloc(stringTy, [t1, t2]))
+		    ],
+		  k t3)
 		end
 	    | PT.Cast(ty, e) =>
 		cvtSimpleExp(findCFun, env, e, fn x => let

@@ -12,7 +12,7 @@ structure TranslateEnv : sig
 
   (* data-constructor bindings *)
     datatype con_bind
-      = Const of word * BOMTy.ty	(* nullary data constructors *)
+      = Const of BOMTy.data_con		(* nullary data constructors *)
       | ExnConst of BOMTy.data_con	(* nullary exception constructors *)
       | DCon of (BOMTy.data_con * FlattenRep.rep_tree)
 
@@ -86,8 +86,8 @@ structure TranslateEnv : sig
     structure ATbl = AtomTable
 
     datatype con_bind
-      = Const of word * BOMTy.ty
-      | ExnConst of BOMTy.data_con
+      = Const of BOMTy.data_con		(* nullary data constructors *)
+      | ExnConst of BOMTy.data_con	(* nullary exception constructors *)
       | DCon of (BOMTy.data_con * FlattenRep.rep_tree)
 
     datatype var_bind
@@ -281,9 +281,8 @@ structure TranslateEnv : sig
 		  "    ", TyCon.toString tyc, "  :->  ", BOMTyUtil.toString ty,
 		  " :: ", BOMTyUtil.kindToString(BOMTyUtil.kindOf ty), "\n"
 		]
-	  fun prDcon (dc, Const(n, ty)) = prl [
-		  "    ", DataCon.nameOf dc, "  :->  ", w2s n, " : ",
-		  BOMTyUtil.toString ty, "\n"
+	  fun prDcon (dc, Const(BOMTy.DCon{name, ...})) = prl [
+		  "    ", DataCon.nameOf dc, "  :->  ", name, "\n"
 		]
 	    | prDcon (dc, ExnConst(BOMTy.DCon{name, ...})) = prl [
 		  "    ", DataCon.nameOf dc, "  :->  ", name, "; <exn>\n"
