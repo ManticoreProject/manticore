@@ -26,7 +26,7 @@ structure PrimTypes =
     type fiber = _prim ( cont(unit) )
     type 'a cont = _prim ( cont(any) )
 
-    datatype bool = FALSE | TRUE
+    datatype bool = datatype bool
 
   (* signals for schedulers *)
     datatype 'a signal 

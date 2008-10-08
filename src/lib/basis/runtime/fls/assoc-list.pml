@@ -35,7 +35,7 @@ structure AssocList =
 
 
       define @test (x : PT.unit / exh : PT.exh) : PT.bool =
-        cont fail () = return(PT.FALSE)
+        cont fail () = return(PT.false)
         let ls : L.list = L.NIL
         let x : O.option = @find(ls, tag(test) / exh)
         do case x of O.NONE => return() | O.SOME (x:any) => throw fail() end
@@ -61,7 +61,7 @@ structure AssocList =
 		   | O.SOME (x:[int]) => 
 		     throw fail()
 	   end
-        return(PT.TRUE)
+        return(PT.true)
       ;
     )
 

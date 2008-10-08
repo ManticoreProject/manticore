@@ -84,7 +84,7 @@ structure Future1 : FUTURE = struct
 
 	cont run (k : PT.fiber) =
 	  do Control.@run(switch, k / exh)
-	  do assert(PT.FALSE)
+	  do assert(PT.false)
 	  throw switch(PT.STOP)
 
 	(* get the next available future *)
@@ -128,7 +128,7 @@ structure Future1 : FUTURE = struct
 	 of Option.NONE => 
           (* this thread does not support futures *)
 (* FIXME: throw an exception here *)
-	    do assert(PT.FALSE)
+	    do assert(PT.false)
             return($0)
 	  | Option.SOME (c : SetOnceMem.set_once_mem) =>
 	    let readyQ : any = SetOnceMem.@get(c / exh)

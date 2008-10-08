@@ -50,7 +50,7 @@ structure LockedQueue =
                 case elt
 		 of NONE => 
 		    do SpinLock.@unlock (q, mask / exh)
-                    do assert(PT.FALSE)  (* error *)
+                    do assert(PT.false)  (* error *)
                     return()
 		  | Option.SOME (blockedThread : blocked_thread) =>
                     do SpinLock.@unlock (q, mask / exh)
@@ -67,7 +67,7 @@ structure LockedQueue =
       ;
 
       define @new ( / exh : PT.exh) : queue =
-        let lockedQ : queue = alloc (PT.FALSE, EMPTY, EMPTY, EMPTY, EMPTY)
+        let lockedQ : queue = alloc (PT.false, EMPTY, EMPTY, EMPTY, EMPTY)
         let lockedQ : queue = promote (lockedQ)
         return (lockedQ)
       ;

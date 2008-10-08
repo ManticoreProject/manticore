@@ -122,16 +122,16 @@ structure VProcQueue =
     (* enqueue on the host's vproc's thread queue *)
       define inline @atomic-enqueue (fls : FLS.fls, fiber : PT.fiber / exh : PT.exh) : () =
 	let vp : vproc = host_vproc
-	do vpstore(ATOMIC, vp, PT.TRUE)
+	do vpstore(ATOMIC, vp, PT.true)
 	do @enqueue (fls, fiber / exh)
-	do vpstore(ATOMIC, vp, PT.FALSE)
+	do vpstore(ATOMIC, vp, PT.false)
 	return ()
       ;
 
     (* dequeue the first item to satisfy f(SELECT(FLS_OFF, item)) *)
       define @dequeue-with-pred (f : fun(FLS.fls / PT.exh -> PT.bool) / exh : PT.exh) : O.option =
 	let m : PT.bool = vpload(ATOMIC, host_vproc)
-	do vpstore(ATOMIC, host_vproc, PT.TRUE)
+	do vpstore(ATOMIC, host_vproc, PT.true)
 
         cont exit (x : O.option) = 
     	  do vpstore(ATOMIC, host_vproc, m)
@@ -171,7 +171,7 @@ structure VProcQueue =
       define @unload-landing-pad (/ exh : PT.exh) : queue =
 	let vp : vproc = host_vproc
 	let mask : PT.bool = vpload(ATOMIC, vp)
-	do vpstore(ATOMIC, vp, PT.TRUE)
+	do vpstore(ATOMIC, vp, PT.true)
 	fun lp () : queue =
 	    let item : queue = vpload(VP_ENTRYQ, vp)
 	    let queue : queue = CAS(&VP_ENTRYQ(vp), item, Q_EMPTY)

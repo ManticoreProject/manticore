@@ -58,7 +58,7 @@ structure WorkStealers =
 		do print_msg("work-stealers: dequeuing")
                 fun isNotPinned (fls : FLS.fls / exh : PT.exh) : PT.bool =
 		    let b : PT.bool = FLS.@is-pinned(fls / exh)
-                    return(NotEqual(b, PT.TRUE))
+                    return(NotEqual(b, PT.true))
                 let item : O.option = VPQ.@dequeue-with-pred(isNotPinned / exh)
 		case item
 		 of O.NONE =>
@@ -89,7 +89,7 @@ structure WorkStealers =
 	    end
 
 	cont impossible() = 
-	  do assert(PT.FALSE)
+	  do assert(PT.false)
 	  return($0)
 
 	cont switch (sign : PT.signal) =

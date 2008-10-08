@@ -72,7 +72,7 @@ structure WorkStealingSWPolling =
 	    else if Equal(globalHdV, GLOBAL_HD_EMPTY)
 	       then
 	      (* broke our invariant: promote(hd(localDeque)) = #0(globalHd) *)
-		do assert(PT.FALSE)
+		do assert(PT.false)
 		return(O.NONE)
 	    else 
 		let empty : PT.fiber = (PT.fiber)GLOBAL_HD_EMPTY
@@ -100,7 +100,7 @@ structure WorkStealingSWPolling =
 	    let k : PT.fiber = @local-deque-pop-tl-only(localDeque / exh)
 	    return(O.SOME(k))
         else
-	    do assert(PT.FALSE)
+	    do assert(PT.false)
             return(O.NONE)
       ;
 
@@ -165,7 +165,7 @@ structure WorkStealingSWPolling =
     (* create an instance of the scheduler for a vproc *)
       define @scheduler (globalHds : Arr.array, self : vproc / exh : PT.exh) : PT.sigact =
 	cont error () = 
-	  do assert(PT.FALSE)
+	  do assert(PT.false)
 	  return($0)
 	let nWorkers : int = Arr.@length(globalHds / exh)
 	let id : int = SchedulerUtils.@vproc-id(self / exh)
@@ -213,7 +213,7 @@ structure WorkStealingSWPolling =
 	let nVProcs : int = SchedulerUtils.@num-vprocs(/ exh)
 	let globalHds : Arr.array = Arr.@array(nVProcs, enum(0) / exh)
         cont dummy (x : PT.unit) = 
-          do assert(PT.FALSE)
+          do assert(PT.false)
           return(UNIT)
 	fun initGlobalHds (i : int / exh : PT.exh) : () =
 	    if I32Gte(i, nVProcs)
@@ -239,7 +239,7 @@ structure WorkStealingSWPolling =
 	 of O.NONE => 
 	(* this thread does not support work stealing *)
         (* FIXME: throw an exception here *)
-  	    do assert(PT.FALSE)
+  	    do assert(PT.false)
 	    return($0)
 	  | O.SOME(hd : global_hd) =>
 	    return(hd)
@@ -251,8 +251,8 @@ structure WorkStealingSWPolling =
 	let globalHd : global_hd = @get-global-hd(/ exh)
 	let elt : O.option = @local-deque-pop-tl(globalHd, localDeque / exh)
 	case elt
-	 of O.NONE => return(PT.FALSE)
-	  | O.SOME(k : PT.fiber) => return(PT.TRUE)
+	 of O.NONE => return(PT.false)
+	  | O.SOME(k : PT.fiber) => return(PT.true)
 	end
       ;
 

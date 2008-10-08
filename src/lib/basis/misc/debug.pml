@@ -28,7 +28,7 @@ structure Debug =
       define @print-msg (arg : [String.ml_string, String.ml_string, [int]]  / exh : PT.exh) : PT.unit =
 	  let msg : any = String.@data(#0(arg) / exh)
 	  let file : any = String.@data(#1(arg) / exh)
-	  do ccall M_PrintDebugMsg (PT.TRUE, msg, file, #0(#2(arg)))
+	  do ccall M_PrintDebugMsg (PT.true, msg, file, #0(#2(arg)))
 	  return (UNIT)
       ;
 

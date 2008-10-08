@@ -20,7 +20,7 @@ structure DequeTH =
 
       define @new ( / exh : PT.exh) : deque =
 	let arr : Arr.array = Arr.@array(TH_DEQUE_LEN, enum(0) / exh)
-	let deq : deque = alloc(0, 0, arr, PT.FALSE)
+	let deq : deque = alloc(0, 0, arr, PT.false)
 	let deq : deque = promote(deq)
 	return(deq)
       ;

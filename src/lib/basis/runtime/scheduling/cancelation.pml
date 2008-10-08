@@ -70,7 +70,7 @@ structure Cancelation =
       (* set the parent as the current cancelable *)
         do @set-current(SELECT(TAG_OFF, c), SELECT(PARENT_OFF, c) / exh)
       (* mark the inactive flag; use CAS as a memory fence *)
-        let x : PT.bool = CAS(ADDR_OF(INACTIVE_OFF,c), PT.FALSE, PT.TRUE)
+        let x : PT.bool = CAS(ADDR_OF(INACTIVE_OFF,c), PT.false, PT.true)
         return()
       ;
 
@@ -80,7 +80,7 @@ structure Cancelation =
         let cOpt : O.option = promote(cOpt)
  	do @set-current(SELECT(TAG_OFF, c), cOpt / exh)
       (* use CAS as a memory fence *)
-        let x : PT.bool = CAS(ADDR_OF(INACTIVE_OFF,c), PT.TRUE, PT.FALSE) 
+        let x : PT.bool = CAS(ADDR_OF(INACTIVE_OFF,c), PT.true, PT.false) 
         return()
       ;
 
@@ -127,7 +127,7 @@ structure Cancelation =
              end
 
         cont wrappedK (x : PT.unit) =
-             do vpstore(ATOMIC, host_vproc, PT.TRUE)
+             do vpstore(ATOMIC, host_vproc, PT.true)
              throw dispatch(wrapper, k)
 
         return(wrappedK)
@@ -136,13 +136,13 @@ structure Cancelation =
     (* create a cancelable *)
       define @new (cTag : FLS.fls_tag / exh : PT.exh) : cancelable =
         let parent : O.option = @get-current(cTag / exh)
-        let c : cancelable = alloc(PT.FALSE, PT.TRUE, L.NIL, parent, cTag)
+        let c : cancelable = alloc(PT.false, PT.true, L.NIL, parent, cTag)
         let c : cancelable = promote(c)
       (* add this new cancelable to the parent's list of children *)
         do case parent
 	    of NONE => 
 	       (* this cancelable is at the root of the spawn tree *)
-               let dummyC : cancelable = alloc(PT.FALSE, PT.TRUE, L.NIL, NONE, cTag)
+               let dummyC : cancelable = alloc(PT.false, PT.true, L.NIL, NONE, cTag)
                let dummyC : cancelable = promote(dummyC)
                cont k (x : PT.unit) = return()
                let k : PT.fiber = @wrap(dummyC, k / exh)
@@ -169,7 +169,7 @@ structure Cancelation =
                 end
 	      | L.CONS(c : cancelable, ins' : L.list) =>
               (* use the CAS as a memory fence *)
-                let isCanceled : PT.bool = CAS(ADDR_OF(CANCELED_OFF,c), PT.FALSE, PT.TRUE) 
+                let isCanceled : PT.bool = CAS(ADDR_OF(CANCELED_OFF,c), PT.false, PT.true) 
 		if SELECT(INACTIVE_OFF, c)
 		   then 
 		  (* cancel the children *)

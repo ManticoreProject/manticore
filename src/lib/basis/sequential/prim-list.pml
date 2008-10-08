@@ -58,7 +58,7 @@ structure PrimList =
 	    case l
 	     of L.NIL => 
 (* FIXME: raise an exception *)
-		do assert(PT.FALSE)
+		do assert(PT.false)
 		return($0)
 	      | L.CONS(x : any, l : L.list) => 
 		if I32Eq(n, 0)

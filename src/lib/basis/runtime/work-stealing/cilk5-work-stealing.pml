@@ -96,7 +96,7 @@ structure Cilk5WorkStealing =
 	       of O.NONE => 
 		(* this thread does not support work stealing *)
 	    (* FIXME: throw an exception here *)
-		  do assert(PT.FALSE)
+		  do assert(PT.false)
 		  return($0)
 		| Option.SOME (c : SetOnceMem.set_once_mem) =>
 		  let deques : any = SetOnceMem.@get(c / exh)
@@ -112,8 +112,8 @@ structure Cilk5WorkStealing =
 	let kOpt : Option.option = DequeTH.@pop-tl(deque / exh)
 	let isNonEmpty : PT.bool = 
 	      case kOpt
-	       of O.NONE => return (PT.FALSE)
-		| Option.SOME(k : PT.fiber) => return(PT.TRUE)
+	       of O.NONE => return (PT.false)
+		| Option.SOME(k : PT.fiber) => return(PT.true)
 	       end
 	return(isNonEmpty)
       ;
