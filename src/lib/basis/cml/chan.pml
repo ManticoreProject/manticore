@@ -108,13 +108,13 @@ structure Chan : sig
 	  (* reverse the tail of the queue *)
 	    fun rev (item : recvq_item, tl : List.list, hd : List.list / exh : PT.exh) : Option.option =
 		  case tl
-		   of NIL => (* update head of queue and return item *)
+		   of List.NIL => (* update head of queue and return item *)
 			let hd : List.list = promote(hd)
 			do CH_SET_RECVQ_HD(ch, hd)
 			let result : Option.option = Option.SOME(item)
 			(* in *)
 			  return (result)
-		    | CONS(item' : recvq_item, rest : List.list) =>
+		    | List.CONS(item' : recvq_item, rest : List.list) =>
 			let hd : List.list = List.CONS(item, hd)
 			(* in *)
 			  apply rev(item', rest, hd / exh)
@@ -122,18 +122,18 @@ structure Chan : sig
 	    let tl : List.list = CH_GET_RECVQ_TL(ch)
 	    (* in *)
 	      case tl
-	       of CONS(item : recvq_item, rest : List.list) =>
+	       of List.CONS(item : recvq_item, rest : List.list) =>
 		    do CH_SET_RECVQ_TL(ch, List.NIL)
 		      apply rev (item, rest, List.NIL / exh)
-		| NIL => return (Option.NONE)
+		| List.NIL => return (Option.NONE)
 	      end
 	;
 
 	define inline @chan-dequeue-recv (ch : chan_rep / exh : PT.exh) : Option.option =
 	  (* first, try the head of the queue *)
 	    case CH_GET_RECVQ_HD(ch)
-	     of NIL => @chan-dequeue-recv-slowpath(ch / exh)
-	      | CONS(item : recvq_item, rest : List.list) =>
+	     of List.NIL => @chan-dequeue-recv-slowpath(ch / exh)
+	      | List.CONS(item : recvq_item, rest : List.list) =>
 		  do CH_SET_RECVQ_HD(ch, rest)
 		  let result : Option.option = Option.SOME(item)
 		  (* in *)
@@ -189,7 +189,7 @@ structure Chan : sig
 	;
 
 	define inline @chan-new (arg : PT.unit / exh : PT.exh) : chan_rep =
-	    let ch : chan_rep = alloc(PT.FALSE, NIL, NIL, NIL, NIL)
+	    let ch : chan_rep = alloc(PT.FALSE, List.NIL, List.NIL, List.NIL, List.NIL)
 	    let ch : chan_rep = promote (ch)
 	    return (ch)
 	;

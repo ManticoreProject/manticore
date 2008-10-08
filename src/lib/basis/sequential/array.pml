@@ -79,15 +79,5 @@ structure Array64 =
     val length : 'a array -> int = _prim(@length-w)
     val sub : 'a array * int -> 'a = _prim(@sub-w)
     val update : 'a array * int * 'a -> unit = _prim(@update-w)
-
-(*    fun t() = 
-	let
-	    val arr = array(8, 1024)
-	    val _ = update(arr, 0, 1023)
-	in
-	    Print.printLn(Int.toString(sub(arr, 0)))
-	end
-    val _ = t()
-*)
 	
   end
