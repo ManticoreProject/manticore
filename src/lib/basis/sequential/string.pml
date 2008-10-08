@@ -12,6 +12,8 @@ structure String =
 
     _primcode(
       typedef ml_string = PT.ml_string;
+
+      extern void *M_StringConcatList (void *) __attribute__((pure,alloc));
   
       define  @data (s : ml_string / exh : PT.exh) : any =
 	  let res : any = #0(s)
@@ -29,7 +31,24 @@ structure String =
 	    return (res)
       ;
 
+      define inline @string-concat-list (arg : List.list / exh : PT.exh) : ml_string =
+	  let res : ml_string = ccall M_StringConcatList (arg)
+	    return (res)
+      ;
 
     )
+
+    val concat : string list -> string = _prim(@string-concat-list)
+
+    fun concatWith (s, ss) = let
+	fun lp xs = (
+	    case xs
+	     of nil => nil
+	      | x :: nil => x :: nil
+	      | x :: xs => x :: s :: lp xs
+	    (* end case *))
+	in
+	  concat(lp ss)
+	end
 
   end
