@@ -87,7 +87,7 @@ structure BindingEnv =
       | pathOfEnv (Env{name, outerEnv=SOME env, ...}, path) = pathOfEnv(env, name :: path)
     val pathToAtom = Atom.atom o String.concatWith "." o List.map Atom.toString
 
-  (* BOM operations *)
+  (* BOM environment operations *)
     local 
 	fun insertVar (BOMEnv {varEnv, hlopEnv, tyEnv}, id, x) =
 	        BOMEnv {varEnv=Map.insert(varEnv, id, x), hlopEnv=hlopEnv, tyEnv=tyEnv}
@@ -102,20 +102,26 @@ structure BindingEnv =
         } = 
 	    Var.newProp (fn _ => [])
 
-      (* maps paths to BOM types *)
+      (* maps qualified ids to BOM types *)
 	val tyPathMp : bom_ty_def AtomTable.hash_table = AtomTable.mkTable(128, Fail "Path table")
 	fun addTyPath (env, id, x) = AtomTable.insert tyPathMp (pathToAtom(pathOfEnv(env, [id])), x)
     in
+  (* insert an ordinary BOM variable *)
     fun insertBOMVar (Env{name, tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
-	    Env{name=name, tyEnv=tyEnv, varEnv=varEnv, bomEnv=insertVar(bomEnv, id, x), modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
+	Env{name=name, tyEnv=tyEnv, varEnv=varEnv, bomEnv=insertVar(bomEnv, id, x), modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv}
+  (* insert a hlop *)
     fun insertBOMHLOp (env as Env{name, tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = (
-	  (* record the HLOp's full path *)
-	    setHLOpPath(x, List.map Atom.toString (pathOfEnv(env, [id])));
-	    Env{name=name, tyEnv=tyEnv, varEnv=varEnv, bomEnv=insertHLOp(bomEnv, id, x), modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv})
+	(* retain the HLOp's full path *)
+	setHLOpPath(x, List.map Atom.toString (pathOfEnv(env, [id])));
+	Env{name=name, tyEnv=tyEnv, varEnv=varEnv, bomEnv=insertHLOp(bomEnv, id, x), modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv})
+  (* insert a BOM type *)
     fun insertBOMTy (env as Env{name, tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = (
-	    addTyPath(env, id, x);
-	    Env{name=name, tyEnv=tyEnv, varEnv=varEnv, bomEnv=insertTy(bomEnv, id, x), modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv})
+	(* retain the qualified id associated with the BOM type *)
+	addTyPath(env, id, x);
+	Env{name=name, tyEnv=tyEnv, varEnv=varEnv, bomEnv=insertTy(bomEnv, id, x), modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv})
+  (* get the qualified identifier associated with a hlop *)
     val getHLOpPath = getHLOpPath
+  (* find a BOM type *)
     val findBOMTyByPath = AtomTable.find tyPathMp
     end
 
@@ -186,9 +192,11 @@ structure BindingEnv =
     in
   (* PML operations *)
     fun insertVal (env as Env{name, tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = (
+	(* retain the path of a value binding *)
 	addValPath(env, id, x);
 	Env{name=name, tyEnv=tyEnv, varEnv=Map.insert(varEnv, id, x), bomEnv=bomEnv, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv})
     fun insertTy (env as Env{name, tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = (
+	(* retain the path of a type binding *)
 	addTyPath(env, id, x);
 	Env{name=name, tyEnv=Map.insert(tyEnv, id, x), varEnv=varEnv, bomEnv=bomEnv, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv})
     fun insertMod (Env{name, tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
@@ -208,8 +216,11 @@ structure BindingEnv =
 	       setDataCons(dataTy, (id, x) :: cons);
 	       insertVal(env, id, Con x)
 	    end
+  (* get the constructors for a given datatype *)
     val getDataCons = getDataCons
+  (* find a pml value by qualified id *)
     val findValByPath = AtomTable.find valPathMp
+  (* find a pml type by qualified id *)
     val findTyByPath = AtomTable.find tyPathMp
     end
 	
