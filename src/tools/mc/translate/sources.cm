@@ -9,6 +9,7 @@ Library
   structure ListMapMaker
   structure RopeMapMaker
   structure Translate
+  structure TranslateEnv
 
 is
 

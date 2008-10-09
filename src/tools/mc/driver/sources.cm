@@ -9,8 +9,11 @@ Library
   functor MainFn
   functor TargetSpecFn
 
+  structure InitialBasis
+
 is
   $/basis.cm
+  $/smlnj-lib.cm
 
   $smlnj-tdp/plugins.cm
   $smlnj-tdp/back-trace.cm
@@ -35,15 +38,14 @@ is
   ../match-comp/sources.cm
   ../mlb/sources.cm
   ../env/sources.cm
-(*
   ../ast/sources.cm
-*)
   ../prim/sources.cm
   ../test-bom/bom-parse.cm
   ../translate/sources.cm
   ../typechecker/sources.cm
 
   build-executable.sml		(* generated file *)
+  initial-basis.sml
   main-fn.sml
   target-spec-fn.sml
   version-fn.sml

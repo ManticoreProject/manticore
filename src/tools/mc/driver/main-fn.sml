@@ -24,6 +24,7 @@ functor MainFn (
     structure BOMOpt = BOMOptFn (Spec)
     structure CPSOpt = CPSOptFn (Spec)
     structure CFGOpt = CFGOptFn (Spec)
+    structure IB = InitialBasis
 
     fun err s = TextIO.output (TextIO.stdErr, s)
     fun err1 c =  TextIO.output1 (TextIO.stdErr, c)
