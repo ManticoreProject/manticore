@@ -6,8 +6,37 @@
  * Environment for the bound-variable check.
  *)
 
-structure BindingEnv =
-  struct
+structure BindingEnv (*: sig
+
+    type ty_bind = ProgramParseTree.PML2.ty_bind
+    type var_bind = ProgramParseTree.PML2.var_bind
+    type mod_bind = ProgramParseTree.PML2.mod_bind
+    type sig_id = ProgramParseTree.PML2.sig_id
+
+    type bom_var = ProgramParseTree.PML2.BOMParseTree.var_bind
+    type bom_ty_def = ProgramParseTree.PML2.BOMParseTree.ty_def
+    type bom_hlop = ProgramParseTree.PML2.BOMParseTree.hlop_bind
+
+    type env
+
+    datatype val_bind
+      = Con of var_bind
+      | Var of var_bind
+
+    val findTy  : env * Atom.atom -> ty_bind option
+    val findVar : env * Atom.atom -> val_bind option
+    val findMod : env * Atom.atom -> (mod_bind * env) option
+    val findSig : env * Atom.atom -> (sig_id * env) option
+
+    val insertBOMVar  : env * Atom.atom * bom_var -> env
+    val insertBOMTy   : env * Atom.atom * bom_ty_def -> env
+    val insertBOMHLOp : env * Atom.atom * bom_hlop -> env
+
+    val findBOMVar  : env * Atom.atom -> bom_var option
+    val findBOMTy   : env * Atom.atom -> bom_ty_def option
+    val findBOMHLOp : env * Atom.atom -> bom_hlop option
+
+  end*) = struct
 
     structure PT1 = ProgramParseTree.PML1
     structure PT2 = ProgramParseTree.PML2
@@ -27,8 +56,7 @@ structure BindingEnv =
     type bom_hlop_env = bom_hlop Map.map
 
   (* environment for inline BOM *)
-    datatype bom_env
-      = BOMEnv of {
+    datatype bom_env = BOMEnv of {
 	  varEnv : bom_var_env,
 	  hlopEnv : bom_hlop_env,
 	  tyEnv : bom_ty_env
@@ -49,16 +77,15 @@ structure BindingEnv =
     type var_env = val_bind Map.map
     type mod_env = mod_bind Map.map
   (* map from qualified identifiers to flat variables (stamps) *)
-    datatype env
-      = Env of {
-	     name     : Atom.atom,                      (* name of the module *)
-	     tyEnv    : ty_env,                         (* type names *)
-	     varEnv   : var_env,                        (* PML variables *)
-	     bomEnv   : bom_env,                        (* inline BOM *)
-	     modEnv   : (mod_bind * env) Map.map,       (* modules *)
-	     sigEnv   : (sig_id * env) Map.map,         (* signatures *)
-	     outerEnv : env option                      (* enclosing module *)
-           }
+    datatype env = Env of {
+	   name     : Atom.atom,                      (* name of the module *)
+	   tyEnv    : ty_env,                         (* type names *)
+	   varEnv   : var_env,                        (* PML variables *)
+	   bomEnv   : bom_env,                        (* inline BOM *)
+	   modEnv   : (mod_bind * env) Map.map,       (* modules *)
+	   sigEnv   : (sig_id * env) Map.map,         (* signatures *)
+	   outerEnv : env option                      (* enclosing module *)
+	 }
 
     fun freshEnv (name, outerEnv) = Env {
 	   name = name,
@@ -193,29 +220,29 @@ structure BindingEnv =
   (* PML operations *)
     fun insertVal (env as Env{name, tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = (
 	(* retain the path of a value binding *)
-	addValPath(env, id, x);
-	Env{name=name, tyEnv=tyEnv, varEnv=Map.insert(varEnv, id, x), bomEnv=bomEnv, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv})
+	  addValPath(env, id, x);
+	  Env{name=name, tyEnv=tyEnv, varEnv=Map.insert(varEnv, id, x), bomEnv=bomEnv, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv})
     fun insertTy (env as Env{name, tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = (
 	(* retain the path of a type binding *)
-	addTyPath(env, id, x);
-	Env{name=name, tyEnv=Map.insert(tyEnv, id, x), varEnv=varEnv, bomEnv=bomEnv, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv})
+	  addTyPath(env, id, x);
+	  Env{name=name, tyEnv=Map.insert(tyEnv, id, x), varEnv=varEnv, bomEnv=bomEnv, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv})
     fun insertMod (Env{name, tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
-	Env{name=name, tyEnv=tyEnv, varEnv=varEnv, bomEnv=bomEnv, modEnv=Map.insert(modEnv, id, x), sigEnv=sigEnv, outerEnv=outerEnv}
+	  Env{name=name, tyEnv=tyEnv, varEnv=varEnv, bomEnv=bomEnv, modEnv=Map.insert(modEnv, id, x), sigEnv=sigEnv, outerEnv=outerEnv}
     fun insertSig (Env{name, tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
-	Env{name=name, tyEnv=tyEnv, varEnv=varEnv, bomEnv=bomEnv, modEnv=modEnv, sigEnv=Map.insert(sigEnv, id, x), outerEnv=outerEnv}
+	  Env{name=name, tyEnv=tyEnv, varEnv=varEnv, bomEnv=bomEnv, modEnv=modEnv, sigEnv=Map.insert(sigEnv, id, x), outerEnv=outerEnv}
     fun insertTycBind (env, id, x) = let
-	  (* make datatypes visible to inline BOM programs *)
-	    val env = insertBOMTy(env, id, x)
-          (* as well as PML programs ... *)
-            in
-	        insertTy(env, id, x)
-	    end
+	(* make datatypes visible to inline BOM programs *)
+	  val env = insertBOMTy(env, id, x)
+	(* as well as PML programs ... *)
+	  in
+	    insertTy(env, id, x)
+	  end
     fun insertDataCon (env, id, x, dataTy) = let
-	    val cons = getDataCons dataTy
-            in
-	       setDataCons(dataTy, (id, x) :: cons);
-	       insertVal(env, id, Con x)
-	    end
+	  val cons = getDataCons dataTy
+	  in
+	    setDataCons(dataTy, (id, x) :: cons);
+	    insertVal(env, id, Con x)
+	  end
   (* get the constructors for a given datatype *)
     val getDataCons = getDataCons
   (* find a pml value by qualified id *)
