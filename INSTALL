@@ -24,6 +24,27 @@ your installation should include the MLRISC library.
 BUILDING AND INSTALLING THE DISTRIBUTION
 ----------------------------------------
 
+Our first step is to run the configure script.
+
+	./configure
+
+This command links the compiler against the MLRISC libraries provided
+with the SML/NJ installation. Alternatively, we can build against 
+external MLRISC libraries.
+
+	./configure --with-mlrisc=<path to mlrisc>
+
+To build the compiler, we use the following command.
+
+        make build
+
+We can install locally
+
+        make local-install
+
+or globally.
+
+        make install
 
 ------------------------------------------------------------------------
 BUILDING FROM SVN
