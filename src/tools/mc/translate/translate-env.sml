@@ -55,7 +55,7 @@ structure TranslateEnv : sig
 	name : BOM.hlop,			(* the HLOp's identifier *)
 	path : string list,                     (* full path to the HLOp *)
 	inline : bool,				(* should the HLOp be inlined? *)
-	def : BOM.lambda,			(* the HLOps definition *)
+	def : BOM.lambda,			(* the HLOp's definition *)
 	pmlImports : (BOM.var * BOM.var) list,  (* imports from PML *)
 	externs : (BOM.var * int) list		(* list of external variables (i.e., C functions) *)
 						(* that def references paired with a count of the *)
