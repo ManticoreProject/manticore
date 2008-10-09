@@ -185,6 +185,7 @@ structure PMergesort =
 	end
     ;
 
+  (* check parallel mergesort against bubble sort *)
     fun debug () = let
 	val n = PrimIO.readInt()
 
@@ -204,6 +205,20 @@ structure PMergesort =
 	    else Print.printLn "arrays not equal!"
 	end
 
-    val _ = debug()
+(*    val _ = debug()*)
+
+  (* benchmark parallel mergesort *)
+    fun bench () = let
+	val n = PrimIO.readInt()
+
+	val arr = genRandomDoubleArr(n)
+
+	val (arr, t) = Time.timeToEval(fn () => pMergesort(arr))
+	in
+	    Print.printLn("Time elapsed (microseconds): "^Long.toString t);
+	    ()
+	end
+
+    val _ = bench()
 
   end
