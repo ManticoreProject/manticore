@@ -91,7 +91,7 @@ structure ChkProgram :> sig
 
     fun chkUnit (es, env, moduleEnv, {span, tree=ptDecls}) = let
 	  val _ = errStrm := es
-	  val (env, moduleEnv, astDecls) = ChkModule.checkTopDecls (!errStrm) (span, ptDecls, env, moduleEnv)
+	  val (env, moduleEnv, astDecls) = ChkModule.checkTopDecls es (span, ptDecls, env, moduleEnv)
 	  in
 	    Overload.resolve ();
 	    (env, moduleEnv, astDecls)
