@@ -8,7 +8,7 @@
 
 structure MLB : sig
     
-  (* load the an MLB file *)
+  (* load the a PML or MLB file *)
     val load : (Error.err_stream * string) 
 	       -> (Error.err_stream list * ProgramParseTree.PML1.program list)
 
@@ -295,6 +295,7 @@ structure MLB : sig
 	 end
 
   (* load the basis library *)
+(* FIXME: use OS.Path module instead of string concat *)
     fun loadBasisLib env = if Controls.get BasicControl.sequential
           then loadMLB(LoadPaths.basisSequentialDir^"/sequential.mlb", env)
           else let
@@ -307,7 +308,7 @@ structure MLB : sig
 
     fun gleanPts ls = ListPair.unzip(List.rev ls)
 
-  (* load the root MLB file *)
+  (* load a PML or root MLB file *)
     fun load (errStrm, file) = let
 	  val env0 = Env{loc=(0,0), pts=[], preprocs=[]}
 	  val basis = loadBasisLib env0
