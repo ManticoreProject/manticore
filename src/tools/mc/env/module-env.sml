@@ -39,6 +39,20 @@ structure ModuleEnv =
 	   outerEnv : env option            (* environment of the enclosing module *)
          }
 
+    val empty = ModEnv{
+	    modRef = AST.MOD{
+		id=Stamp.new(),
+		name=Atom.atom "PrimBasis",
+		formals=NONE,
+		expansionOpts=ref []
+	      }, 
+	    modEnv = VarMap.empty, 
+	    sigEnv = VarMap.empty, 
+	    outerEnv = NONE,
+	    tyEnv = VarMap.empty, 
+	    varEnv = VarMap.empty
+	  }
+
     fun fromList ls = List.foldl VarMap.insert' VarMap.empty ls
 
     fun fresh (modRef, outerEnv) = ModEnv{
@@ -55,11 +69,10 @@ structure ModuleEnv =
 
     fun find (ModEnv fields, select, x) = VarMap.find(select fields, x)
     fun findInEnvs ([], select, x) = NONE
-      | findInEnvs (env :: envs, select, x) = (
-	case find(env, select, x)
-         of NONE => findInEnvs (envs, select, x)
-	  | SOME v => SOME v
-	(* end case *))
+      | findInEnvs (env :: envs, select, x) = (case find(env, select, x)
+	   of NONE => findInEnvs (envs, select, x)
+	    | SOME v => SOME v
+	  (* end case *))
 
   (* look in all environments that might be in lexical scope of env (NOTE: this list is larger than
    * actual lexical scope.
@@ -133,7 +146,7 @@ structure ModuleEnv =
 	setRealizationOfTyc(tyc, BOMTyDef bty);
 	setPrimTyDef(tv, SOME bty);
 	insertTy(env, tv, TyCon tyc))
-    fun insertVar (ModEnv {modRef, varEnv, tyEnv, modEnv, sigEnv, outerEnv}, v, x) = (
+    fun insertVar (ModEnv{modRef, varEnv, tyEnv, modEnv, sigEnv, outerEnv}, v, x) = (
 	setValBind(v, SOME x);
 	ModEnv{modRef=modRef, tyEnv=tyEnv, varEnv=VarMap.insert (varEnv, v, x), modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv})
     fun insertMod (ModEnv {modRef, modEnv, sigEnv, tyEnv, varEnv, outerEnv}, v, x) = 
@@ -205,12 +218,12 @@ structure ModuleEnv =
 	   val vars = String.concatWith "\n" (List.map valBindToString (VarMap.listItemsi varEnv))
 	   val mods = String.concatWith "\n" (List.map (toString o #2) (VarMap.listItemsi modEnv))
 	   in
-	      String.concatWith "\n" [
-	         "sig "^Atom.toString name^" = ", 
-		 tys,
-		 vars,
-		 mods
-	      ]
+	     String.concat [
+		 "sig ", Atom.toString name, " =\n", 
+		  tys, "\n",
+		  vars, "\n",
+		  mods
+	       ]
 	   end
 
     fun typeOfValBind (Con dc) = DataCon.typeOf dc
