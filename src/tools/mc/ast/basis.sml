@@ -434,7 +434,7 @@ structure Basis : sig
     end
 
     local
-      fun name a = "Int." ^ Atom.toString a
+      fun name a = "Char." ^ Atom.toString a
     in
     val char_gt =       monoVar(name N.gt, charTy ** charTy --> boolTy)
     val char_gte =      monoVar(name N.gte, charTy ** charTy --> boolTy)
@@ -443,7 +443,7 @@ structure Basis : sig
     end
 
     local
-      fun name a = "Int." ^ Atom.toString a
+      fun name a = "Rune." ^ Atom.toString a
     in
     val rune_gt =       monoVar(name N.gt, runeTy ** runeTy --> boolTy)
     val rune_gte =      monoVar(name N.gte, runeTy ** runeTy --> boolTy)
@@ -452,7 +452,7 @@ structure Basis : sig
     end
 
     local
-      fun name a = "Int." ^ Atom.toString a
+      fun name a = "String." ^ Atom.toString a
     in
     val string_gt =     monoVar(name N.gt, stringTy ** stringTy --> boolTy)
     val string_gte =    monoVar(name N.gte, stringTy ** stringTy --> boolTy)
