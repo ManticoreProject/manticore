@@ -6,28 +6,23 @@
  * Synthetic fib benchmark.
  *)
 
-            fun pFib (n : int) = (case n
-         of 0 => 0
-	  | 1 => 1
-	  | n => let
-              dval x = pFib (n-1)
-	      val y = pFib (n-2)
-	      in
-	        x + y
-	      end
-         (* end case *))
-;
+fun pFib (n : int) = (
+    case n
+     of 0 => 0
+      | 1 => 1
+      | n => let
+            pval x = pFib (n-1)
+            val y = pFib (n-2)
+	    in
+	      x + y
+	    end
+    (* end case *))
 
-
-fun timeTest () = let
-    val n = readint()
-
-    val b = gettimeofday ()
-    val _ = pFib(n)
-    val e = gettimeofday ()
+fun bench () = let
+    val n = PrimIO.readInt()
+    val (_, t) = Time.timeToEval(fn () => pFib n)
     in
-        print (dtos (e-b)^"\n")
+      Print.printLn("Time elapsed (microseconds): "^Long.toString t)
     end
-;
 
-timeTest()
+val _ = bench()
