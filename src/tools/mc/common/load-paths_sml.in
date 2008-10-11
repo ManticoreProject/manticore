@@ -11,11 +11,14 @@ structure LoadPaths =
 
   (* Manticore basis library *)
     val basisDir = "@MANTICORE_BASISDIR@"
+
   (* Manticore basis CPP definition directory *)
-    val basisCPPDefDir = basisDir^"/include"
+    val basisCPPDefDir = OS.Path.joinDirFile {dir=basisDir, file="include"}
+
   (* Manticore runtime library *)
-    val basisRuntimeDir = basisDir^"/runtime"
+    val basisRuntimeDir = OS.Path.joinDirFile {dir=basisDir, file="runtime"}
+
   (* Manticore sequential library *)
-    val basisSequentialDir = basisDir^"/sequential"
+    val basisSequentialDir = OS.Path.joinDirFile {dir=basisDir, file="sequential"}
 
   end
