@@ -76,7 +76,7 @@ structure TranslatePrim : sig
 		       of NONE => BTy.T_Any
 			| SOME ty => cvtTy ty
 		      (* end case *))
-		val x' = BOM.Var.new("_wild", BTy.T_Any)
+		val x' = BOM.Var.new("_wild", ty)
 		in
 		  x'
 		end
