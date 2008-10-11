@@ -7,11 +7,14 @@ MCFLAGS="-Csequential=true -Cclos.convert-style=flatWithCFA"
 DATE=$( date +"%F-%H-%M-%S" )
 REPORT_FILE=report-$DATE
 REPORT="$DIR/reports/$REPORT_FILE"
+LOG="$DIR/LOG"
 
 # allow core dumps
 ulimit -c unlimited
 
 ( cd seq;
+
+rm -rf $LOG
 
 for g in goal*
 do
@@ -21,7 +24,8 @@ do
      fname=${f%.pml}
      if [ -e "$fname.ok" ] ; then
        echo -n "checking $fname ... "
-       $MC $MCFLAGS $f 2> /dev/null
+       echo "checking $fname" >> $LOG
+       $MC $MCFLAGS $f 2>> $LOG
        if [ "$?" -eq "0" ] ; then
 	 ./a.out > $fname.test
 	 diffs=$(diff $fname.test $fname.ok)
