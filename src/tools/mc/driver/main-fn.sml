@@ -39,6 +39,17 @@ functor MainFn (
 	    then OS.Process.exit OS.Process.failure
 	    else ())
 
+  (* check a list of error streams for errors *)
+    fun checkListForErrors l = let
+	  fun chk (errStrm, anyErrors) = (
+		Error.report (TextIO.stdErr, errStrm);
+		anyErrors orelse Error.anyErrors errStrm)
+	  in
+	    if (List.foldl chk false l)
+	      then OS.Process.exit OS.Process.failure
+	      else ()
+	  end
+
     fun prHdr msg = print(concat["******************** ", msg,  " ********************\n"])
 
     fun boundVarChks (errStrms, bEnv, pts) = let
@@ -63,7 +74,7 @@ functor MainFn (
 		  file = "initial-basis.mlb"
 		}
 	  val errStrm = Error.mkErrStream initialBasisPath
-	  val (_, [initialPT]) = MLB.loadMLBWithoutBasis initialBasisPath
+	  val [(_, initialPT)] = MLB.loadMLBWithoutBasis initialBasisPath
 	(* bind variables and typecheck *)
 	  val (initialPT, bEnv) = BoundVariableCheck.check (errStrm, initialPT, IB.primBindingEnv)
 	  val _ = checkForErrors errStrm
@@ -87,16 +98,24 @@ functor MainFn (
   (* load the AST specified by an MLB file *)
     fun mlbToAST (errStrm, bEnv, mEnv, file) = let
         (* load the MLB file *)
-	  val (errStrms, p1s) = MLB.load file
+	  val {basis, program} = MLB.load file
 	  val _ = checkForErrors errStrm
         (* bound-variable check *)
-	  val p2s = boundVarChks (errStrms, bEnv, p1s)
-	  val _ = List.app checkForErrors errStrms;
-	  val p2s = treeShake p2s
+	  fun chk ((errStrm, pt), (bEnv, errStrms, pts)) = let
+		val (pt, bEnv) = BoundVariableCheck.check (errStrm, pt, bEnv)
+		in
+		  checkForErrors errStrm;
+		  (bEnv, errStrm::errStrms, pt::pts)
+		end
+	  val (bEnv, errStrms, basis) = List.foldl chk (bEnv, [], []) basis
+	(* record the basis binding environment *)
+	  val _ = BasisEnv.saveBasisEnv bEnv
+	  val (bEnv, errStrms, program) = List.foldl chk (bEnv, errStrms, basis) program
+	  val p2s = treeShake (List.rev program)
         (* module and type checking *)
-	  val ast = ChkProgram.check (mEnv, ListPair.zip(errStrms, p2s))
+	  val ast = ChkProgram.check (mEnv, ListPair.zip(List.rev errStrms, p2s))
 	  in
-	    List.app checkForErrors errStrms;
+	    checkListForErrors errStrms;
 	    ast
 	  end
 

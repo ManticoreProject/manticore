@@ -8,11 +8,14 @@
 
 structure MLB : sig
     
-  (* load the a PML or MLB file; if the third argument is true, then load  *)
-    val load : string -> (Error.err_stream list * ProgramParseTree.PML1.program list)
+  (* load a PML or MLB file (including the basis library). *)
+    val load : string -> {
+	    basis : (Error.err_stream * ProgramParseTree.PML1.program) list,
+	    program : (Error.err_stream * ProgramParseTree.PML1.program) list
+	  }
 
   (* load an MLB file with the empty environment (i.e., no basis) *)
-    val loadMLBWithoutBasis : string -> (Error.err_stream list * ProgramParseTree.PML1.program list)
+    val loadMLBWithoutBasis : string -> (Error.err_stream * ProgramParseTree.PML1.program) list
 
   end = struct
 
@@ -35,9 +38,9 @@ structure MLB : sig
   (* environment for an MLB file *)
     datatype mlb_env
       = Env of {
-	     loc : Error.span,                           (* location in the MLB file *)
-	     pts : parse_tree list,                      (* parse trees; must retain ordering *)
-	     preprocs : preprocessor_cmd list            (* preprocessors *)
+	   loc : Error.span,                           (* location in the MLB file *)
+	   pts : parse_tree list,                      (* parse trees; must retain ordering *)
+	   preprocs : preprocessor_cmd list            (* preprocessors *)
         }
 
     local
@@ -193,8 +196,7 @@ structure MLB : sig
 	  case mlb
            of PT.MarkBasExp {span, tree} => 
 	      processBasExp (tree, Env{loc=span, pts=pts, preprocs=preprocs})
-	    | PT.DecBasExp basDec => 
-	      processBasDec (basDec, env)
+	    | PT.DecBasExp basDec => processBasDec (basDec, env)
 	    | _ => raise Fail "todo"
           (* end case *))
 
@@ -256,45 +258,43 @@ structure MLB : sig
     and loadMLB (path, env as Env{loc, pts, preprocs}) = 
 	  if OS.FileSys.access(path, [OS.FileSys.A_READ])
 	     then let
-	      val {dir=dirOfFile, file} = OS.Path.splitDirFile path
-	      val dirOfFile = OS.FileSys.fullPath dirOfFile
-	      val dir = OS.FileSys.getDir()
-	      val errStrm = Error.mkErrStream file
-	      in
-		  case MLBParser.parseFile (errStrm, path)
-		   of SOME {span, tree=basDecs} => 
-			 if alreadyVisitedMLB(dirOfFile, file)
-			    then 
-			     (* already loaded the mlb file *)
-			     pts
+	       val {dir=dirOfFile, file} = OS.Path.splitDirFile path
+	       val dirOfFile = OS.FileSys.fullPath dirOfFile
+	       val dir = OS.FileSys.getDir()
+	       val errStrm = Error.mkErrStream file
+	       in
+		 case MLBParser.parseFile (errStrm, path)
+		  of SOME{span, tree=basDecs} => 
+		       if alreadyVisitedMLB(dirOfFile, file)
+			 then pts (* already loaded the mlb file *)
 			 else let
-			    val _ = visitMLB(dirOfFile, file)
-			   (* change the working directory to that of the file *)
-			    val _ = OS.FileSys.chDir dirOfFile
-			   (* process the contents of the MLB file *)
-			    val pts = processBasDecs(basDecs, Env{loc=span, pts=pts, preprocs=preprocs})
-			    in 
-			       checkForErrors(#1(ListPair.unzip pts));
-			      (* return to the original working directory *)
-			       OS.FileSys.chDir dir;
-			       pts
-			    end
-		    | NONE => (checkForErrors[errStrm]; pts)
-		end
-	  else raise Fail ("MLB file "^OS.FileSys.getDir()^"/"^path^" does not exist")
+			   val _ = visitMLB(dirOfFile, file)
+			  (* change the working directory to that of the file *)
+			   val _ = OS.FileSys.chDir dirOfFile
+			  (* process the contents of the MLB file *)
+			   val pts = processBasDecs(basDecs, Env{loc=span, pts=pts, preprocs=preprocs})
+			   in 
+			     checkForErrors(#1(ListPair.unzip pts));
+			   (* return to the original working directory *)
+			     OS.FileSys.chDir dir;
+			     pts
+			   end
+		   | NONE => (checkForErrors[errStrm]; pts)
+	       end
+	     else raise Fail ("MLB file "^OS.FileSys.getDir()^"/"^path^" does not exist")
 
   (* load a PML file *)
     and loadPML (file, env as Env{loc, pts, preprocs}) = let 
-	 val errStrm = Error.mkErrStream file
-	 val (inStrm, reap) = preprocess(List.rev preprocs, file)
-	 val ptOpt = Parser.parseFile (errStrm, inStrm)
+	  val errStrm = Error.mkErrStream file
+	  val (inStrm, reap) = preprocess(List.rev preprocs, file)
+	  val ptOpt = Parser.parseFile (errStrm, inStrm)
 		     (*handle Fail s => raise Fail (file^": "^s)*)
-	 in
-	      reap();
-	      case ptOpt
-	       of SOME pt => SOME (errStrm, pt)
-		| NONE => (checkForErrors[errStrm]; NONE)
-	 end
+	  in
+	    reap();
+	    case ptOpt
+	     of SOME pt => SOME (errStrm, pt)
+	      | NONE => (checkForErrors[errStrm]; NONE)
+	  end
 
   (* load the basis library *)
 (* FIXME: use OS.Path module instead of string concat *)
@@ -308,24 +308,22 @@ structure MLB : sig
 	       topLevelSchedPts @ basisPts
 	    end
 
-    fun gleanPts ls = ListPair.unzip(List.rev ls)
-
     val emptyEnv = Env{loc=(0,0), pts=[], preprocs=[]}
 
   (* load a PML or root MLB file *)
     fun load file = let
 	  val basis = loadBasisLib emptyEnv
-	  val pts = (
-	      case OS.Path.splitBaseExt file
-	       of {base, ext=SOME "mlb"} => loadMLB(file, emptyEnv)
-		| {base, ext=SOME "pml"} => [Option.valOf(loadPML(file, emptyEnv))]
-		| _ => raise Fail "unknown source file extension"
-  	      (* end case *))
-          in
-	      gleanPts (pts @ basis)
-	  end
+	  val pts = (case OS.Path.splitBaseExt file
+		 of {base, ext=SOME "mlb"} => loadMLB(file, emptyEnv)
+		  | {base, ext=SOME "pml"} => [Option.valOf(loadPML(file, emptyEnv))]
+		  | _ => raise Fail "unknown source file extension"
+		(* end case *))
+          in {
+	    basis = List.rev basis,
+	    program = List.rev pts
+	  } end
 
   (* load an MLB file with the empty environment (i.e., no basis) *)
-    fun loadMLBWithoutBasis file = gleanPts (loadMLB(file, emptyEnv))
+    fun loadMLBWithoutBasis file = List.rev (loadMLB(file, emptyEnv))
 
   end (* MLB *)
