@@ -31,7 +31,6 @@ structure TranslatePCase (* : sig
     structure B = Basis
     structure F = Future1
     structure R = Ropes
-    structure U = UnseenBasis
 
     structure CB = CompletionBitstring
     type cbits = CB.t
