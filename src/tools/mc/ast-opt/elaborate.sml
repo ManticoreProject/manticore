@@ -19,7 +19,6 @@ structure Elaborate : sig
     structure A = AST
     structure B = Basis
     structure V = Var
-    structure U = UnseenBasis
 
   (* trExp : exp -> exp *)
     fun trExp (A.LetExp (b, e)) = A.LetExp (binding b, trExp e)
