@@ -118,7 +118,11 @@ structure TranslatePrim : sig
 		  BOM.mkStmt([t], BOM.E_DCon(dc, []), k t)
 		end
 	    | Con(E.DCon _) => raise Fail "impossible"
-	    | Con(E.ExnConst _) => raise Fail "FIXME"
+	    | Con(E.ExnConst dc') => let
+		val t = BV.new("exn_" ^ PTVar.nameOf x, BTy.exnTy)
+		in
+		  BOM.mkStmt([t], BOM.E_DCon(dc', []), k t)
+		end
 	  (* end case *))
 
     fun cvtPat (BPT.P_PMark {tree, span}) = cvtPat tree
