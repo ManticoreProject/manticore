@@ -6,9 +6,9 @@ fun fib (i : long) = (case i
 
 fun try (n : long) = let
       val f = fib(n)
-      val s = ltos(f)
+      val s = Long.toString(f)
       in
-        print ("fib(" ^ ltos(n) ^ ") is " ^ s ^ ".\n")
+        Print.print ("fib(" ^ Long.toString(n) ^ ") is " ^ s ^ ".\n")
       end;
 
-app (try, 0::1::5::10::20::31::33::nil)
+val _ = List.app try (0::1::5::10::20::31::33::nil)
