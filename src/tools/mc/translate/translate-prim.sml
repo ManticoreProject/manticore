@@ -200,15 +200,17 @@ structure TranslatePrim : sig
 (*BOM.mkLet(lhs', BOM.mkRet[lookupVar x], e') *)
 			  | BPT.SE_Alloc args => let
 			      val mut = (case BV.typeOf(hd lhs')
-				      of BTy.T_Tuple(true, _) => true
-				       | _ => false
+				      of BTy.T_Tuple(mut, _) => mut
+				       | _ => false (* is this case an error? *)
 				    (* end case *))
 			      in
 				cvtSimpleExps(findCFun, args,
 				  fn xs => BOM.mkStmt(lhs', BOM.E_Alloc(BTy.T_Tuple(mut, List.map BV.typeOf xs), xs),
 				    body'))
 			      end
-			  | BPT.SE_Wrap e => raise Fail "Wrap"
+			  | BPT.SE_Wrap e =>
+			      cvtSimpleExp (findCFun, e,
+				fn x => BOM.mkStmt(lhs', BOM.E_Alloc(BTy.tupleTy[BV.typeOf x], [x]), body'))
 			  | BPT.SE_Select(i, arg) =>
 			      cvtSimpleExp(findCFun, arg, fn x =>
 				BOM.mkStmt(lhs', BOM.E_Select(i, x), body'))
@@ -367,7 +369,12 @@ structure TranslatePrim : sig
 		   in
 		      BOM.mkStmt([tmp], BOM.E_Alloc(BTy.T_Tuple(mut, tys), xs), k tmp)
                    end)
-	    | BPT.SE_Wrap _ => raise Fail "Wrap" (* FIXME *)
+	    | BPT.SE_Wrap e =>
+		cvtSimpleExp (findCFun, e, fn x => let
+		  val tmp = newTmp(BV.typeOf x)
+		  in
+		    BOM.mkStmt([tmp], BOM.E_Alloc(BTy.tupleTy[BV.typeOf x], [x]), k tmp)
+		  end)
 	    | BPT.SE_Select(i, e) =>
 		cvtSimpleExp(findCFun, e, fn x => let
 		  val tmp = newTmp(selectType(BOM.Var.typeOf x, i))
