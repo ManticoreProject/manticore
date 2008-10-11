@@ -214,7 +214,7 @@ structure TranslatePrim : sig
 			      end
 			  | BPT.SE_Wrap e =>
 			      cvtSimpleExp (findCFun, e,
-				fn x => BOM.mkStmt(lhs', BOM.E_Alloc(BTy.tupleTy[BV.typeOf x], [x]), body'))
+				fn x => BOM.mkStmt(lhs', BOM.E_Alloc(BOMTyUtil.wrap(BV.typeOf x), [x]), body'))
 			  | BPT.SE_Select(i, arg) =>
 			      cvtSimpleExp(findCFun, arg, fn x =>
 				BOM.mkStmt(lhs', BOM.E_Select(i, x), body'))
@@ -377,7 +377,7 @@ structure TranslatePrim : sig
 		cvtSimpleExp (findCFun, e, fn x => let
 		  val tmp = newTmp(BV.typeOf x)
 		  in
-		    BOM.mkStmt([tmp], BOM.E_Alloc(BTy.tupleTy[BV.typeOf x], [x]), k tmp)
+		    BOM.mkStmt([tmp], BOM.E_Alloc(BOMTyUtil.wrap(BV.typeOf x), [x]), k tmp)
 		  end)
 	    | BPT.SE_Select(i, e) =>
 		cvtSimpleExp(findCFun, e, fn x => let
