@@ -125,7 +125,11 @@ structure PrintBOM : sig
 		  "#", Int.toString i, "(", varUseToString y, ") := ", varUseToString z
 		]
 	    | prRHS (B.E_AddrOf(i, y)) = prl ["&", Int.toString i, "(", varUseToString y, ")"]
-	    | prRHS (B.E_Alloc(_, ys)) = (pr "alloc "; prList varUseToString ys)
+	    | prRHS (B.E_Alloc(ty, ys)) = let
+		val mut = (case ty of BOMTy.T_Tuple(true, _) => "!" | _ => "")
+		in
+		  pr(concat["alloc ", mut, "("]); prList' varUseToString ys; pr ")"
+		end
 	    | prRHS (B.E_GAlloc(_, ys)) = (pr "galloc "; prList varUseToString ys)
 	    | prRHS (B.E_Promote y) = (pr "promote "; pr (varUseToString y))
 	    | prRHS (B.E_Prim p) = pr (PrimUtil.fmt varUseToString p)
