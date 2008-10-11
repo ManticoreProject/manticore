@@ -8,9 +8,11 @@
 
 structure MLB : sig
     
-  (* load the a PML or MLB file *)
-    val load : (Error.err_stream * string) 
-	       -> (Error.err_stream list * ProgramParseTree.PML1.program list)
+  (* load the a PML or MLB file; if the third argument is true, then load  *)
+    val load : string -> (Error.err_stream list * ProgramParseTree.PML1.program list)
+
+  (* load an MLB file with the empty environment (i.e., no basis) *)
+    val loadMLBWithoutBasis : string -> (Error.err_stream list * ProgramParseTree.PML1.program list)
 
   end = struct
 
@@ -308,18 +310,22 @@ structure MLB : sig
 
     fun gleanPts ls = ListPair.unzip(List.rev ls)
 
+    val emptyEnv = Env{loc=(0,0), pts=[], preprocs=[]}
+
   (* load a PML or root MLB file *)
-    fun load (errStrm, file) = let
-	  val env0 = Env{loc=(0,0), pts=[], preprocs=[]}
-	  val basis = loadBasisLib env0
+    fun load file = let
+	  val basis = loadBasisLib emptyEnv
 	  val pts = (
 	      case OS.Path.splitBaseExt file
-	       of {base, ext=SOME "mlb"} => loadMLB(file, env0)
-		| {base, ext=SOME "pml"} => [Option.valOf(loadPML(file, env0))]
+	       of {base, ext=SOME "mlb"} => loadMLB(file, emptyEnv)
+		| {base, ext=SOME "pml"} => [Option.valOf(loadPML(file, emptyEnv))]
 		| _ => raise Fail "unknown source file extension"
   	      (* end case *))
           in
 	      gleanPts (pts @ basis)
 	  end
+
+  (* load an MLB file with the empty environment (i.e., no basis) *)
+    fun loadMLBWithoutBasis file = gleanPts (loadMLB(file, emptyEnv))
 
   end (* MLB *)

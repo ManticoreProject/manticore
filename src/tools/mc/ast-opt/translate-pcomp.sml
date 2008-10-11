@@ -16,10 +16,11 @@ structure TranslatePComp : sig
     structure A = AST
     structure B = Basis
     structure R = Ropes
-    structure U = UnseenBasis
 
-    fun tr trExp (e, pes, oe) =
-	  (case (pes, oe)
+    fun tr trExp (e, pes, oe) = let
+	  val ModuleEnv.Var mapP = BasisEnv.getValFromBasis ["PArray", "mapP"]
+	  in
+	    case (pes, oe)
 	     of ([], _) => raise Fail "a parallel comprehension with no pbinds at all"
 	      | ([(p1, e1)], NONE) =>  (* the one pbind, no predicate case *)
                    let val t  = TypeOf.exp e
@@ -31,7 +32,7 @@ structure TranslatePComp : sig
 					   t)
 		       val f = A.FunExp (x1, c1, t)
 		       val e1' = trExp e1
-		       val mapP = A.VarExp (U.mapP, [t1, t])
+		       val mapP = A.VarExp(mapP, [t1, t])
 		   in
 		       A.ApplyExp (mapP, A.TupleExp [f, e1'], B.parrayTy t)				   
 		   end
@@ -62,6 +63,7 @@ structure TranslatePComp : sig
 		      A.ApplyExp (mapPn, A.TupleExp tup, resTy))
 		  end
 	      | _ => raise Fail "todo"
-	  (* end case *))
+	    (* end case *)
+	  end
 
   end

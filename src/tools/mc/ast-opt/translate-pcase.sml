@@ -26,6 +26,7 @@ structure TranslatePCase (* : sig
 
   end *) = struct
 
+(**** FIXME --- this code needs to lookup stuff from the environment ****
     structure A = AST
     structure B = Basis
     structure F = Future1
@@ -308,6 +309,10 @@ happens because the test tries to load operations over futures before the basis 
     | test 3 = mkTest c3
     | test _ = print "No such test.\n"
 *)
+****)
+
+    fun tr _ = raise Fail "unimplemented"
+
 end
     
 

@@ -95,7 +95,7 @@ structure Future1 : FUTURE = struct
 		(* nothing on the queue; so, we yield *)
 		  let _ : PT.unit = Control.@atomic-yield(/exh)
 		  throw dispatch()
-		| SOME(k : PT.fiber) =>
+		| O.SOME(k : PT.fiber) =>
 		  throw run(k)
 	      end
 	(* handle signals *)

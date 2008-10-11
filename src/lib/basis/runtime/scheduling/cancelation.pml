@@ -136,18 +136,18 @@ structure Cancelation =
     (* create a cancelable *)
       define @new (cTag : FLS.fls_tag / exh : PT.exh) : cancelable =
         let parent : O.option = @get-current(cTag / exh)
-        let c : cancelable = alloc(PT.false, PT.true, L.NIL, parent, cTag)
+        let c : cancelable = alloc(PT.false, PT.true, nil, parent, cTag)
         let c : cancelable = promote(c)
       (* add this new cancelable to the parent's list of children *)
         do case parent
-	    of NONE => 
+	    of O.NONE => 
 	       (* this cancelable is at the root of the spawn tree *)
-               let dummyC : cancelable = alloc(PT.false, PT.true, L.NIL, NONE, cTag)
+               let dummyC : cancelable = alloc(PT.false, PT.true, nil, O.NONE, cTag)
                let dummyC : cancelable = promote(dummyC)
                cont k (x : PT.unit) = return()
                let k : PT.fiber = @wrap(dummyC, k / exh)
                throw k(UNIT)
-	     | SOME(parent : cancelable) => 
+	     | O.SOME(parent : cancelable) => 
 	       @add-child(parent, c / exh)
            end
         return(c)
@@ -160,12 +160,12 @@ structure Cancelation =
       (* walk down the spawn tree and wait for all canceled fibers to terminate *)
         fun lp (ins : L.list, outs : L.list / exh : PT.exh) : () =
 	    case ins
-	     of L.NIL => 
+	     of nil => 
 		case outs
-		 of L.NIL => return()          (* all cancelables have terminated *)
+		 of nil => return()          (* all cancelables have terminated *)
 		  | L.CONS (x : cancelable, xs : L.list) => 
 		    let ins : L.list = PrimList.@rev(outs / exh)
-                    apply lp(ins, L.NIL / exh)
+                    apply lp(ins, nil / exh)
                 end
 	      | L.CONS(c : cancelable, ins' : L.list) =>
               (* use the CAS as a memory fence *)
@@ -179,7 +179,7 @@ structure Cancelation =
                   (* spin until the cancelable is inactive *)
 		    apply lp(ins, outs / exh)		  
             end
-        apply lp(L.CONS(c, L.NIL), L.NIL / exh)
+        apply lp(L.CONS(c, nil), nil / exh)
       ;
 
     )

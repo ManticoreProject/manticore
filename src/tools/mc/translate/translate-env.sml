@@ -242,12 +242,11 @@ structure TranslateEnv : sig
     fun insertPMLVar (av, bv) = setPMLVar (av, SOME bv)  (* imported PML variables *)
     fun findBOMTy v = (
 	(* the BOM type might have been bound in several places *)
-	   case (BOMBasisEnv.getTy v, getTy v, ModuleEnv.getTyDef v)
-	    of (SOME ty, _, _) => BTY_TY ty                          (* BOM basis *)
-	     | (_, SOME ty, _) => BTY_TY ty                          (* inline BOM *)
-	     | (_, _, SOME (ModuleEnv.TyDef tys)) => BTY_TYS tys     (* PML type definition *)
-	     | (_, _, SOME (ModuleEnv.TyCon tyc)) => BTY_TYC tyc     (* PML type constructor *)
-	     | (NONE, NONE, NONE) => BTY_NONE                        (* unbound *)
+	   case (getTy v, ModuleEnv.getTyDef v)
+	    of (SOME ty, _) => BTY_TY ty			(* inline BOM *)
+	     | (_, SOME (ModuleEnv.TyDef tys)) => BTY_TYS tys	(* PML type definition *)
+	     | (_, SOME (ModuleEnv.TyCon tyc)) => BTY_TYC tyc	(* PML type constructor *)
+	     | (NONE, NONE) => BTY_NONE				(* unbound *)
 	     | _ => raise Fail "compiler bug"
            (* end case *))
     val findBOMVar = getVar

@@ -42,7 +42,7 @@ structure WorkStealingIVar
      * avoid promoting the ivar in the common case, and pay for the promotion only when a steal occurs.
      *)
       define @ivar ( / exh : PT.exh) : ivar =
-	let x : ivar = alloc (List.NIL, enum(0):any, 0)
+	let x : ivar = alloc (nil, enum(0):any, 0)
 	return (x)
       ;  
  
@@ -86,12 +86,12 @@ structure WorkStealingIVar
 		return(blockedFibers)
 	   else
 	       do assert(NotEqual(oldValue, EMPTY_VAL))
-	       return(List.NIL)
+	       return(nil)
       (* push any blocked fibers on the local deque *)
 	fun push (blockedK : any / exh : PT.exh) : () =
 	    let blockedK : cont(any) = (cont(any))blockedK
 	    cont k (unt : PT.unit) = throw blockedK(x)
-            let x : PT.unit = Control.@unblock(k, NONE / exh)
+            let x : PT.unit = Control.@unblock(k, Option.NONE / exh)
             return()
   	do PrimList.@app(push, blocked / exh)
 	return()

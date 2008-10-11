@@ -73,7 +73,7 @@ structure WorkStealers =
 	and sendThieves (vps : L.list / exh : PT.exh) : () =
 	    do print_msg("work-stealers: try next")
 	    case vps
-	     of L.NIL =>
+	     of nil =>
 		do print_msg("work-stealers: failed to get work")
 		return()
 	      | L.CONS(vp : vproc, vps : L.list) =>

@@ -344,30 +344,31 @@ structure ChkExp :> sig
 			(argTys, resTy, instTy)
 		      end
 		in
-		  case BasisEnv.lookupOpAST bop
-		   of Env.Con dc => let
+		  case Env.getValBind bop
+		   of SOME(Env.Con dc) => let
 			val (argTys, resTy, _) = chkApp (DataCon.typeOf dc)
 			in
 			  mkApp (AST.ConstExp(AST.DConst(dc, argTys)), resTy)
 			end
-		    | Env.Var x => let
+		    | SOME(Env.Var x) => let
 			val (argTys, resTy, _) = chkApp (Var.typeOf x)
 			in
 			  mkApp (AST.VarExp(x, argTys), resTy)
 			end
-		    | Env.Overload(tysch, vars) => let
+		    | SOME(Env.Overload(tysch, vars)) => let
 			val (argTys, resTy, instTy) = chkApp tysch
 			val ovar = ref (AST.Unknown(instTy, vars))
 			in
 			  Overload.addVar ovar;
 			  mkApp (AST.OverloadExp ovar, resTy)
 			end
-		    | Env.EqOp eqOp =>  let
+		    | SOME(Env.EqOp eqOp) => let
 			val ([ty], resTy, _) = chkApp (Var.typeOf eqOp)
 			in
 			  Overload.addEqTy ty;
 			  mkApp (AST.VarExp(eqOp, [ty]), resTy)
 			end
+		    | NONE => raise Fail "unknown operator"
 		  (* end case *)
 		end
 	    | PT.ApplyExp(e1, e2) => let
@@ -505,32 +506,28 @@ structure ChkExp :> sig
 		in
 		  chk es
 		end
-	    | PT.IdExp x => (* eggregious hack for handling negation! *)
-                  if PPT.Var.nameOf x = "~" then let
-		(* Unary minus is being handled specially as
-		 * an overloaded variable *)
-		  val (tysch, vars) = BasisEnv.neg
-		  val (_, instTy) = TU.instantiate (depth, tysch)
-		  val ovar = ref (AST.Unknown (instTy, vars))
-		  in
-		    Overload.addVar ovar;
-		    (AST.OverloadExp ovar, instTy)
-		  end 
-		else  (case Env.getValBind x
-		   of SOME(Env.Con dc) => let
-			val (argTys, ty) = TU.instantiate (depth, DataCon.typeOf dc)
-			in
-			  (AST.ConstExp(AST.DConst(dc, argTys)), ty)
-			end
-		    | SOME(Env.Var x') => let
-			val (argTys, ty) = TU.instantiate (depth, Var.typeOf x')
-			in
-			  (AST.VarExp(x', argTys), ty)
-			end
-		    | NONE => (
-			error(loc, ["undefined identifier \"", idToString x, "\""]);
-			bogusExp)
-		  (* end case *))
+	    | PT.IdExp x => (case Env.getValBind x
+		 of SOME(Env.Con dc) => let
+		      val (argTys, ty) = TU.instantiate (depth, DataCon.typeOf dc)
+		      in
+			(AST.ConstExp(AST.DConst(dc, argTys)), ty)
+		      end
+		  | SOME(Env.Var x') => let
+		      val (argTys, ty) = TU.instantiate (depth, Var.typeOf x')
+		      in
+			(AST.VarExp(x', argTys), ty)
+		      end
+		  | SOME(Env.Overload(tysch, vars)) => let
+		      val (_, instTy) = TU.instantiate (depth, tysch)
+		      val ovar = ref (AST.Unknown (instTy, vars))
+		      in
+			Overload.addVar ovar;
+			(AST.OverloadExp ovar, instTy)
+		      end
+		  | NONE => (
+		      error(loc, ["undefined identifier \"", idToString x, "\""]);
+		      bogusExp)
+		(* end case *))
 	    | PT.ConstraintExp(e, ty) => let
 		val (_, constraintTy) = ChkTy.checkTy (loc, [], ty)
 		val constraintTy = TU.openTy(depth, constraintTy) 

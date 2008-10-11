@@ -56,7 +56,7 @@ structure InPlaceQueue =
         let qHd : elt = SELECT(HD_OFF, q) 						  
         if Equal (qHd, EMPTY) 		     							  
            then (* the queue is empty *) 									  
-                return(NONE)
+                return(Option.NONE)
 	else (* the queue is nonempty, so take an element off the queue head *) 				  
           let qNext : any = SELECT(ELT_TL_OFF, qHd) 	     	  				  
           let qNext : elt = (elt)qNext 					  

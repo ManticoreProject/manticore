@@ -8,8 +8,9 @@
 
 structure ChkModule :> sig 
 
-    val checkTopDecls : Error.err_stream -> (Error.span * ProgramParseTree.PML2.decl list * ModuleEnv.env * ModuleEnv.module_map) 
-			   -> (ModuleEnv.env * ModuleEnv.module_map * AST.top_dec list)
+    val checkTopDecls : Error.err_stream
+	  -> (Error.span * ProgramParseTree.PML2.decl list * ModuleEnv.env * ModuleEnv.module_map) 
+	    -> (ModuleEnv.env * ModuleEnv.module_map * AST.top_dec list)
 
   end = struct
 

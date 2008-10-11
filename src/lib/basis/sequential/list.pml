@@ -24,27 +24,27 @@ structure List =
     fun foldr f id xs = let
 	    fun lp (xs, acc) = (
 		  case xs
-		   of NIL => acc
+		   of nil => acc
 		    | CONS(x, xs) => f(x, lp(xs, acc))
                   (* end case *))
             in
 	       lp(xs, id)
 	    end
 
-(*    fun rev xs = foldl CONS NIL xs*)
+(*    fun rev xs = foldl CONS nil xs*)
 
-    val xs = CONS(1,CONS(2,NIL))
+    val xs = CONS(1,CONS(2,nil))
 
     fun l2s f ls = (
 	  case ls
-	   of NIL => ""
+	   of nil => ""
 	    | CONS(x, xs) => f x ^ l2s f xs
           (* end case *))
 
     fun app f ls = let
 	  fun lp xs = (
 	        case xs 
-		 of NIL => ()
+		 of nil => ()
 		  | CONS(x, xs) => (
 		      f x;
 		      lp xs)
@@ -61,7 +61,7 @@ structure List =
 
 (*    fun nth (i, ls) = (
 	  case ls
-	   of NIL => Option.NONE
+	   of nil => Option.NONE
 	    | CONS(x, xs) =>
 	      if (i = 0)
 		 then Option.SOME x
@@ -72,27 +72,27 @@ structure List =
     fun rev ls = let
 	fun lp (ls, acc) = (
 	    case ls
-	     of NIL => acc
+	     of nil => acc
 	      | CONS(x, ls) => lp(ls, CONS(x, acc))
             (* end case *))
         in
-	  lp(ls, NIL)
+	  lp(ls, nil)
 	end
 
     fun map (f, ls) = let
 	  fun lp (ls, acc) = (
 	      case ls
-	       of NIL => rev acc
+	       of nil => rev acc
 		| CONS(x, ls) => lp(ls, CONS(f x, acc))
               (* end case *))
           in
-	    lp(ls, NIL)
+	    lp(ls, nil)
           end
 
     fun concat (ls1, ls2) = let
 	  fun lp ls = (
 	      case ls
-	       of NIL => ls2
+	       of nil => ls2
 		| CONS(x, ls) => CONS(x, lp ls)
  	      (* end case *))
           in

@@ -24,7 +24,6 @@ Library
   structure TranslatePtup
   structure TypeOf	
   structure Unpar
-  structure RuntimeBasis
   structure Future1
 
 is
@@ -52,5 +51,4 @@ is
   translate-pcomp.sml
   translate-ptup.sml
   unpar.sml
-  runtime-basis.sml
   future1.sml

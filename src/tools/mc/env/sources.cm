@@ -10,10 +10,7 @@ Library
 
   structure ModuleEnv
   structure BindingEnv
-
   structure BasisEnv
-  structure BOMBasisEnv
-  structure UnseenBasis
 
 is
 
@@ -27,7 +24,5 @@ is
 
   module-env.sml
   binding-env.sml
-
-  bom-basis-env.sml
   basis-env.sml
-  unseen-basis.sml
+

@@ -28,10 +28,10 @@ structure BoundVariableCheck :> sig
   (* attempt to find the binding site of a qualified identifier, reporting an error if none exists *)
     fun findQid (find, kind, dummy) (loc, env, qId) = (case find(env, qId)
            of NONE => (
-	      error(loc, ["unbound ", kind, " ", qidToString qId]);
-	      dummy)
+		error(loc, ["unbound ", kind, " ", qidToString qId]);
+		dummy)
 	    | SOME x => x
-           (* end case *))
+	  (* end case *))
 
     val dummyVar = Var.new("dummyVar", ())
     val dummyTy = Var.new("dummyTy", ())
@@ -44,15 +44,15 @@ structure BoundVariableCheck :> sig
     fun freshVar v = Var.new(Atom.toString v, ())
 
     fun chkList loc (chkX, xs, env) = let
-	   fun f (x, (xs, env)) = let
-	          val (x, env) = chkX loc (x, env)
-                  in
-	            (x :: xs, env)
-	          end
-	   val (xs', env) = List.foldl f ([], env) xs
-           in
-	      (List.rev xs', env)
-           end
+	  fun f (x, (xs, env)) = let
+		 val (x, env) = chkX loc (x, env)
+		 in
+		   (x :: xs, env)
+		 end
+	  val (xs', env) = List.foldl f ([], env) xs
+	  in
+	    (List.rev xs', env)
+	  end
 
     fun chkConst (PT1.IntLit x) = PT2.IntLit x
       | chkConst (PT1.FltLit x) = PT2.FltLit x
@@ -315,7 +315,11 @@ structure BoundVariableCheck :> sig
 	    | PT1.BinaryExp(exp1, id, exp2) => let
 		val exp1 = chkExp loc (exp1, env)
 		val exp2 = chkExp loc (exp2, env)
-		val (BEnv.Var id' | BEnv.Con id') = BasisEnv.lookupOpPT id
+		val id' = (case BEnv.findVar (env, id)
+		       of SOME(BEnv.Var id') => id'
+			| SOME(BEnv.Con id') => id'
+			| NONE => raise Fail(concat["unknown operator \"", Atom.toString id, "\""])
+		      (* end case *))
 		in
 		  PT2.BinaryExp(exp1, id', exp2)
 		end

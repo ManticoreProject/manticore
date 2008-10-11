@@ -6,7 +6,7 @@
 
 structure Translate : sig
 
-    val translate : AST.exp -> BOM.module
+    val translate : (TranslateEnv.env * AST.exp) -> BOM.module
 
   end = struct
 
@@ -547,8 +547,7 @@ structure Translate : sig
   (* get the list of imported C functions from the environment *)
     val listImports = AtomTable.listItems o E.getImportEnv
 
-    fun translate body = let
-	  val env0 = StdEnv.env ()
+    fun translate (env0, body) = let
           val argTy = BTy.T_Raw RawTypes.T_Int
           val arg = BV.new("_arg", argTy)
 	  val (exh, env) = E.newHandler env0
@@ -589,7 +588,7 @@ structure Translate : sig
 	  end
 
     val translate = BasicControl.mkKeepPass {
-	    preOutput = PrintAST.outputExp,
+	    preOutput = fn (outS, (_, ast)) => PrintAST.outputExp(outS, ast),
 	    preExt = "ast",
 	    postOutput = PrintBOM.output,
 	    postExt = "bom",

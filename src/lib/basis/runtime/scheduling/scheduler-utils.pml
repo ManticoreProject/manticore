@@ -71,21 +71,21 @@ structure SchedulerUtils =
       define @other-vprocs (/ exh : PT.exh) : List.list =
         fun lp (vps : List.list, others : List.list / exh : PT.exh) : List.list =
 	    case vps
-	     of List.NIL => return(others)
+	     of nil => return(others)
 	      | List.CONS(vp : vproc, vps : List.list) =>
 		if Equal(vp, host_vproc)
                    then apply lp(vps, others / exh)
 		else apply lp(vps, List.CONS(vp, others) / exh)
 	    end
 	let vps : List.list = ccall ListVProcs(host_vproc)
-	apply lp(vps, List.NIL / exh)  
+	apply lp(vps, nil / exh)  
       ;
 
     (* apply f to each vproc *)
       define @for-each-vproc(f : fun(vproc / PT.exh ->) / exh : PT.exh) : () =
 	fun lp (vps : List.list / exh : PT.exh) : () =
 	    case vps
-	     of List.NIL => return()
+	     of nil => return()
 	      | List.CONS(vp : vproc, vps : List.list) =>
 		do apply f(vp / exh)
 		apply lp(vps / exh)
@@ -133,7 +133,7 @@ structure SchedulerUtils =
       (* set the trampoline on a given vproc *)
 	fun setTrampoline (vp : vproc / exh : PT.exh) : () =
 	    let currentTrampoline : cont(PT.fiber) = vpload(VP_SCHED_CONT, vp)
-	    do assert(Equal(currentTrampoline, List.NIL))
+	    do assert(Equal(currentTrampoline, nil))
 	    do vpstore(VP_SCHED_CONT, vp, trampoline)
 	    return()
 	do @for-each-vproc(setTrampoline / exh)
@@ -153,7 +153,7 @@ structure SchedulerUtils =
 	let item : Option.option = VPQ.@dequeue(/ exh)
 	cont lp () =
 	  case item
-	   of NONE => 
+	   of Option.NONE => 
 	      do @sleep(/ exh)
 	      throw lp()
 	    | Option.SOME(qitem : VPQ.queue) =>

@@ -41,14 +41,14 @@ structure LockedQueue =
         let mask : PT.bool = SpinLock.@lock (q / exh)
        (* check for blocked threads first *)
         let bqHd : I.elt = SELECT(BLOCKED_HD_OFF, q)
-        do if Equal (bqHd, List.NIL)
+        do if Equal (bqHd, nil)
               then (* nothing is blocked; enqueue the element *)
                  do I.@enqueue (q, qElt / exh)
 		 SpinLock.@unlock (q, mask / exh)
            else (* unblock the thread and pass it the element *)
                 let elt : Option.option = I.@dequeue (q / exh)
                 case elt
-		 of NONE => 
+		 of Option.NONE => 
 		    do SpinLock.@unlock (q, mask / exh)
                     do assert(PT.false)  (* error *)
                     return()

@@ -16,7 +16,6 @@ structure Chan : sig
   end = struct
 
     structure FLS = FiberLocalStorage
-    structure PT = PrimTypes
 
     _primcode (
 	typedef event_state = enum(2);
@@ -38,18 +37,18 @@ structure Chan : sig
 	    dirty_flag,
 	    FLS.fls,
 	    vproc,
-	    cont(PT.unit)
+	    cont(unit)
 	  ];
 
 	typedef chan_rep = ![	    (* all fields are mutable *)
-	    PT.bool,			(* spin lock *)
+	    bool,			(* spin lock *)
 	    List.list,			(* sendq head *)
 	    List.list,			(* sendq tail *)
 	    List.list,			(* recvq head *)
 	    List.list			(* recvq tail *)
 	  ];
-#	define CH_TRY_LOCK(ch)		BCAS(&0(ch), PT.FALSE, PT.TRUE)
-#	define CH_CLR_LOCK(ch)		UPDATE(0, ch, PT.TRUE)
+#	define CH_TRY_LOCK(ch)		BCAS(&0(ch), false, true)
+#	define CH_CLR_LOCK(ch)		UPDATE(0, ch, true)
 #	define CH_GET_SENDQ_HD(ch)	SELECT(1, ch)
 #	define CH_SET_SENDQ_HD(ch,x)	UPDATE(1, ch, x)
 #	define CH_GET_SENDQ_TL(ch)	SELECT(2, ch)
@@ -59,17 +58,17 @@ structure Chan : sig
 #	define CH_GET_RECVQ_TL(ch)	SELECT(4, ch)
 #	define CH_SET_RECVQ_TL(ch,x)	UPDATE(4, ch, x)
 
-#	define ATOMIC_BEGIN	do vpstore (ATOMIC, host_vproc, PT.TRUE)
-#	define ATOMIC_END	do vpstore (ATOMIC, host_vproc, PT.FALSE)
+#	define ATOMIC_BEGIN	do vpstore (ATOMIC, host_vproc, true)
+#	define ATOMIC_END	do vpstore (ATOMIC, host_vproc, false)
 
-	define inline @throw-to (fls : FLS.fls, recv : cont(any), v : any / exh : PT.exh) noreturn =
+	define inline @throw-to (fls : FLS.fls, recv : cont(any), v : any / exh : exh) noreturn =
 	  let _ : FLS.fls =  FLS.@set (fls / exh)
 	  ATOMIC_END
 	  throw recv (v)
 	;
 
-	define inline @chan-acquire-lock (ch : chan_rep / exh : PT.exh) : () =
-	    fun spin (_ : PT.unit / exh : PT.exh) : () =
+	define inline @chan-acquire-lock (ch : chan_rep / exh : exh) : () =
+	    fun spin (_ : unit / exh : exh) : () =
 		  if CH_TRY_LOCK(ch)
 		    then apply spin (UNIT / exh)
 		    else return ()
@@ -77,25 +76,25 @@ structure Chan : sig
 	      apply spin (UNIT / exh)
 	;
 
-	define inline @chan-release-lock (ch : chan_rep / _ : PT.exh) : () =
+	define inline @chan-release-lock (ch : chan_rep / _ : exh) : () =
 	    do CH_CLR_LOCK(ch)
 	    return ()
 	;
 
-	define inline @event-claim (flg : dirty_flag / exh : PT.exh) : PT.bool =
-	    fun spin (_ : PT.unit / exh : PT.exh) : PT.bool =
+	define inline @event-claim (flg : dirty_flag / exh : exh) : bool =
+	    fun spin (_ : unit / exh : exh) : bool =
 		  let sts : event_state = CAS(&0(flg), WAITING_EVT, SYNCHED_EVT)
 		  (* in *)
 		    case sts
 		     of INIT_EVT => apply spin (UNIT / exh)
-		      | WAITING_EVT => return (PT.TRUE)
-		      | SYNCHED_EVT => return (PT.FALSE)
+		      | WAITING_EVT => return (true)
+		      | SYNCHED_EVT => return (false)
 		    end
 	    (* in *)
 	      apply spin (UNIT / exh)
 	;
 
-	define inline @chan-enqueue-recv (ch : chan_rep, flg : dirty_flag, tid : FLS.fls, k : cont(any) / _ : PT.exh) : () =
+	define inline @chan-enqueue-recv (ch : chan_rep, flg : dirty_flag, tid : FLS.fls, k : cont(any) / _ : exh) : () =
 	    let item : recvq_item = alloc (flg, tid, host_vproc, k)
 	    let cons : List.list = List.CONS(item, CH_GET_RECVQ_TL(ch))
 	    let l : List.list = promote (cons)
@@ -104,17 +103,17 @@ structure Chan : sig
 	;
 
       (* out-of-live version for when we must reverse the tail *)
-	define @chan-dequeue-recv-slowpath (ch : chan_rep / exh : PT.exh) : Option.option =
+	define @chan-dequeue-recv-slowpath (ch : chan_rep / exh : exh) : Option.option =
 	  (* reverse the tail of the queue *)
-	    fun rev (item : recvq_item, tl : List.list, hd : List.list / exh : PT.exh) : Option.option =
+	    fun rev (item : recvq_item, tl : List.list, hd : List.list / exh : exh) : Option.option =
 		  case tl
-		   of List.NIL => (* update head of queue and return item *)
+		   of nil => (* update head of queue and return item *)
 			let hd : List.list = promote(hd)
 			do CH_SET_RECVQ_HD(ch, hd)
 			let result : Option.option = Option.SOME(item)
 			(* in *)
 			  return (result)
-		    | List.CONS(item' : recvq_item, rest : List.list) =>
+		    | CONS(item' : recvq_item, rest : List.list) =>
 			let hd : List.list = List.CONS(item, hd)
 			(* in *)
 			  apply rev(item', rest, hd / exh)
@@ -123,16 +122,16 @@ structure Chan : sig
 	    (* in *)
 	      case tl
 	       of List.CONS(item : recvq_item, rest : List.list) =>
-		    do CH_SET_RECVQ_TL(ch, List.NIL)
-		      apply rev (item, rest, List.NIL / exh)
-		| List.NIL => return (Option.NONE)
+		    do CH_SET_RECVQ_TL(ch, nil)
+		      apply rev (item, rest, nil / exh)
+		| nil => return (Option.NONE)
 	      end
 	;
 
-	define inline @chan-dequeue-recv (ch : chan_rep / exh : PT.exh) : Option.option =
+	define inline @chan-dequeue-recv (ch : chan_rep / exh : exh) : Option.option =
 	  (* first, try the head of the queue *)
 	    case CH_GET_RECVQ_HD(ch)
-	     of List.NIL => @chan-dequeue-recv-slowpath(ch / exh)
+	     of nil => @chan-dequeue-recv-slowpath(ch / exh)
 	      | List.CONS(item : recvq_item, rest : List.list) =>
 		  do CH_SET_RECVQ_HD(ch, rest)
 		  let result : Option.option = Option.SOME(item)
@@ -142,7 +141,7 @@ structure Chan : sig
 	;
 
 
-	define inline @chan-enqueue-send (ch : chan_rep, msg : any, tid : FLS.fls, k : cont(PT.unit) / _ : PT.exh) : () =
+	define inline @chan-enqueue-send (ch : chan_rep, msg : any, tid : FLS.fls, k : cont(unit) / _ : exh) : () =
 	    let item : sendq_item = alloc (msg, tid, host_vproc, k)
 	    let cons : List.list = List.CONS(item, CH_GET_SENDQ_TL(ch))
 	    let l : List.list = promote (cons)
@@ -151,11 +150,11 @@ structure Chan : sig
 	;
 
       (* out-of-live version for when we must reverse the tail *)
-	define @chan-dequeue-send-slowpath (ch : chan_rep / exh : PT.exh) : Option.option =
+	define @chan-dequeue-send-slowpath (ch : chan_rep / exh : exh) : Option.option =
 	  (* reverse the tail of the queue *)
-	    fun rev (item : sendq_item, tl : List.list, hd : List.list / exh : PT.exh) : Option.option =
+	    fun rev (item : sendq_item, tl : List.list, hd : List.list / exh : exh) : Option.option =
 		  case tl
-		   of List.NIL => (* update head of queue and return item *)
+		   of nil => (* update head of queue and return item *)
 			let hd : List.list = promote(hd)
 			do CH_SET_SENDQ_HD(ch, hd)
 			let result : Option.option = Option.SOME(item)
@@ -170,16 +169,16 @@ structure Chan : sig
 	    (* in *)
 	      case tl
 	       of List.CONS(item : sendq_item, rest : List.list) =>
-		    do CH_SET_SENDQ_TL(ch, List.NIL)
-		      apply rev (item, rest, List.NIL / exh)
-		| List.NIL => return (Option.NONE)
+		    do CH_SET_SENDQ_TL(ch, nil)
+		      apply rev (item, rest, nil / exh)
+		| nil => return (Option.NONE)
 	      end
 	;
 	
-	define inline @chan-dequeue-send (ch : chan_rep / exh : PT.exh) : Option.option =
+	define inline @chan-dequeue-send (ch : chan_rep / exh : exh) : Option.option =
 	  (* first, try the head of the queue *)
 	    case CH_GET_SENDQ_HD(ch)
-	     of List.NIL => @chan-dequeue-send-slowpath(ch / exh)
+	     of nil => @chan-dequeue-send-slowpath(ch / exh)
 	      | List.CONS(item : sendq_item, rest : List.list) =>
 		  do CH_SET_SENDQ_HD(ch, rest)
 		  let result : Option.option = Option.SOME(item)
@@ -188,13 +187,13 @@ structure Chan : sig
 	    end
 	;
 
-	define inline @chan-new (arg : PT.unit / exh : PT.exh) : chan_rep =
-	    let ch : chan_rep = alloc(PT.FALSE, List.NIL, List.NIL, List.NIL, List.NIL)
+	define inline @chan-new (arg : unit / exh : exh) : chan_rep =
+	    let ch : chan_rep = alloc(false, nil, nil, nil, nil)
 	    let ch : chan_rep = promote (ch)
 	    return (ch)
 	;
 	
-	define @chan-recv (ch : chan_rep / exh : PT.exh) : any =
+	define @chan-recv (ch : chan_rep / exh : exh) : any =
 	    let fls : FLS.fls = FLS.@get( / exh)
 	    ATOMIC_BEGIN
 	    do @chan-acquire-lock (ch / exh)
@@ -220,15 +219,15 @@ structure Chan : sig
 	      end
 	;
     
-	define @chan-send (arg : [chan_rep, any] / exh : PT.exh) : PT.unit =
+	define @chan-send (arg : [chan_rep, any] / exh : exh) : unit =
 	    let ch : chan_rep = #0(arg)
 	    let msg : any = #1(arg)
 	    let fls : FLS.fls = FLS.@get( / exh)
 	    ATOMIC_BEGIN
 	    do @chan-acquire-lock (ch / exh)
-	    cont sendK (x : PT.unit) = return (x)
+	    cont sendK (x : unit) = return (x)
 	    (* in *)
-	      fun tryLp (_ : PT.unit / exh : PT.exh) : any =
+	      fun tryLp (_ : unit / exh : exh) : any =
 		    let maybeItem : Option.option = @chan-dequeue-recv(ch / exh)
 		    (* in *)
 		      case maybeItem
@@ -236,7 +235,7 @@ structure Chan : sig
 			  (* there is a matching recv, but we must check to make sure
 			   * that some other thread has not already claimed the event.
 			   *)
-			    let success : PT.bool = @event-claim (#0(item) / exh)
+			    let success : bool = @event-claim (#0(item) / exh)
 			    (* in *)
 			      if success then (* we got it *)
 				do @chan-release-lock(ch / exh)

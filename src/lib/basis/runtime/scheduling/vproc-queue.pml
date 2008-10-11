@@ -211,7 +211,7 @@ structure VProcQueue =
 		  (* the head of the queue is an ordinary thread; put it on the local queue *)
 		    do @enqueue (SELECT(FLS_OFF, queue), SELECT(FIBER_OFF, queue) / exh)
 		    apply lp((queue)SELECT(LINK_OFF, queue), messengerThds / exh)
-	apply lp(queue, List.NIL / exh)
+	apply lp(queue, nil / exh)
       ;
 
     (* unload the landing pad, and return any messages *)

@@ -11,7 +11,7 @@ structure Option =
 
     exception Option
 
-    datatype option = datatype option
+    datatype 'a option = NONE | SOME of 'a
 
 (*
     fun valOf opt = (

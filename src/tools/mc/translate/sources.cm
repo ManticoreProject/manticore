@@ -10,6 +10,7 @@ Library
   structure RopeMapMaker
   structure Translate
   structure TranslateEnv
+  structure TranslateTypes
 
 is
 
@@ -34,7 +35,6 @@ is
   flatten-rep.sml
   list-map-maker.sml
   rope-map-maker.sml
-  std-env.sml
   translate.sml
   translate-controls.sml
   translate-env.sml

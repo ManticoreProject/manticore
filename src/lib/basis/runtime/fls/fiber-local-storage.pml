@@ -28,18 +28,18 @@ structure FiberLocalStorage =
       typedef fls_tag = AL.assoc_tag;
 
       define inline @new (x : PT.unit / exh : PT.exh) : fls =
-        let fls : fls = alloc(PT.false, L.NIL)
+        let fls : fls = alloc(PT.false, nil)
         return(fls)
       ;
 
       define inline @new-pinned (x : PT.unit / exh : PT.exh) : fls =
-        let fls : fls = alloc(PT.true, L.NIL)
+        let fls : fls = alloc(PT.true, nil)
         return(fls)
       ;
 
     (* set the fls on the host vproc *)
       define inline @set (fls : fls / exh : PT.exh) : PT.unit =
-        do assert(NotEqual(fls, L.NIL))
+        do assert(NotEqual(fls, nil))
         do vpstore (CURRENT_FG, host_vproc, fls)
         return(UNIT)
       ;
@@ -47,7 +47,7 @@ structure FiberLocalStorage =
     (* get the fls from the host vproc *)
       define inline @get ( / exh : PT.exh) : fls =
         let fls : fls = vpload (CURRENT_FG, host_vproc)
-        do assert(NotEqual(fls, L.NIL))
+        do assert(NotEqual(fls, nil))
         return(fls)
       ;
 

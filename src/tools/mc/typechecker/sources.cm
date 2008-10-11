@@ -9,6 +9,7 @@
 Library
 
   structure ChkProgram
+  structure ChkModule
   structure MatchSig
   structure CopySig
 

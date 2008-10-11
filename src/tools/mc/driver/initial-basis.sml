@@ -12,14 +12,18 @@ structure InitialBasis : sig
    *)
     val primBindingEnv : BindingEnv.env
     val primEnv : ModuleEnv.env
+    val primTranslationEnv : TranslateEnv.env
 
   (* given the environments produced from the "initial-basis.pml" file,
    * extend them with the operators.  We also return the initial translation
    * environment that binds the operator AST variables to the HLOps defined
    * in "initial-basis.pml".
    *)
-    val extendInitialEnv : (BindingEnv.env * ModuleEnv.env)
-	  -> (BindingEnv.env * ModuleEnv.env * (unit -> TranslateEnv.env))
+    val extendInitialEnv : (BindingEnv.env * ModuleEnv.env) -> {
+	    bEnv : BindingEnv.env ,
+	    mEnv : ModuleEnv.env,
+	    glueAST : (AST.top_dec list * AST.exp) -> AST.exp
+	  }
 
   end = struct
 
@@ -31,61 +35,11 @@ structure InitialBasis : sig
     structure BTy = BOMTy
     structure BV = BOM.Var
 
+  (* get the definitions from Basis *)
+    open Basis
+
   (* create a new bound variable *)
     fun newVar name = ProgramParseTree.Var.new(Atom.toString name, ())
-
-  (* primitive PML types *)
-    val boolTyc = TyCon.newDataTyc (N.bool, [])
-    val boolTrue = DataCon.new boolTyc (N.boolTrue, NONE)
-    val boolFalse = DataCon.new boolTyc (N.boolFalse, NONE)
-
-    local
-	val tv = TyVar.new(Atom.atom "'a")
-	val tv' = AST.VarTy tv
-    in
-    val listTyc = TyCon.newDataTyc (N.list, [tv])
-    val listNil = DataCon.new listTyc (N.listNil, NONE)
-    val listCons = DataCon.new listTyc
-	  (N.listCons, SOME(AST.TupleTy[tv', AST.ConTy([tv'], listTyc)]))
-    end (* local *)
-
-    val exnTyc = Exn.exnTyc
-
-    val intTyc = TyCon.newAbsTyc (N.int, 0, true)
-    val longTyc = TyCon.newAbsTyc (N.long, 0, true)
-    val integerTyc = TyCon.newAbsTyc (N.integer, 0, true)
-    val floatTyc = TyCon.newAbsTyc (N.float, 0, true)
-    val doubleTyc = TyCon.newAbsTyc (N.double, 0, true)
-    val charTyc = TyCon.newAbsTyc (N.char, 0, true)
-    val runeTyc = TyCon.newAbsTyc (N.rune, 0, true)
-    val stringTyc = TyCon.newAbsTyc (N.string, 0, true)
-    val parrayTyc = TyCon.newAbsTyc (N.parray, 1, false)
-    val chanTyc = TyCon.newAbsTyc (N.chan, 1, true)
-    val ivarTyc = TyCon.newAbsTyc (N.ivar, 1, true)
-    val mvarTyc = TyCon.newAbsTyc (N.mvar, 1, true)
-    val eventTyc = TyCon.newAbsTyc (N.event, 1, false)
-    val threadIdTyc = TyCon.newAbsTyc (N.thread_id, 0, true)
-
-  (* predefined types *)
-    val unitTy = AST.TupleTy[]
-    val boolTy = AST.ConTy([], boolTyc)
-    val exnTy = AST.ConTy([], exnTyc)
-    val intTy = AST.ConTy([], intTyc)
-    val longTy = AST.ConTy([], longTyc)
-    val integerTy = AST.ConTy([], integerTyc)
-    val floatTy = AST.ConTy([], floatTyc)
-    val doubleTy = AST.ConTy([], doubleTyc)
-    val charTy = AST.ConTy([], charTyc)
-    val runeTy = AST.ConTy([], runeTyc)
-    val stringTy = AST.ConTy([], stringTyc)
-    fun listTy ty = AST.ConTy([ty], listTyc)
-    fun parrayTy ty = AST.ConTy([ty], parrayTyc)
-
-  (* exceptions *)
-    val exnBind = Exn.new (N.exnBind, NONE)
-    val exnDiv = Exn.new (N.exnDiv, NONE)
-    val exnFail = Exn.new (N.exnFail, SOME stringTy)
-    val exnMatch = Exn.new (N.exnMatch, NONE)
 
   (* construct the primitive environments *)
     val (primBindingEnv, primEnv) = let
@@ -134,156 +88,23 @@ structure InitialBasis : sig
 		  eventTyc,
 		  threadIdTyc
 		]
+	(* add primitive types *)
+	  fun insTy ((name, ty), (bEnv, mEnv)) = let
+		val id = newVar name
+		in (
+		  BEnv.insertTy(bEnv, name, id),
+		  MEnv.insertTy(mEnv, id, MEnv.TyDef ty)
+		) end
+	  val (bEnv, mEnv) = List.foldl insTy (bEnv, mEnv) [
+		  (N.unit, Types.TyScheme([], unitTy))
+		]
+	(* add data-constructor aliases *)
+	  val SOME consId = BEnv.findVar (bEnv, N.listCons)
+	  val bEnv = BEnv.insertVal (bEnv, Atom.atom "CONS", consId)
 	(* insert the primitive exceptions *)
 	  in
 	    (bEnv, mEnv)
 	  end
-
-    val --> = AST.FunTy
-    fun ** (t1, t2) = AST.TupleTy[t1, t2]
-    infix 9 **
-    infixr 8 -->
-
-  (* forall : (AST.ty -> AST.ty) -> AST.ty_scheme *)
-    fun forall mkTy = let
-        val tv = TyVar.new(Atom.atom "'a")
-        in
-          AST.TyScheme([tv], mkTy(AST.VarTy tv))
-        end
-
-  (* monoVar : string * A.ty -> A.var *)
-    fun monoVar (name, ty) = Var.new(name, ty)
-
-  (* polyVar : string * (A.ty -> A.ty) -> A.var *) 
-    fun polyVar (name, mkTy) = Var.newPoly(name, forall mkTy)
-
-  (**** operator symbols ****
-   *
-   * We use the following naming convention for operators that allows automatic
-   * mapping to the HLOp names in "initial-basis.pml".  For example, the addition
-   * operator for integers is named "Int.add", which is mapped to "@int-add".
-   *) 
-    val list_append = Var.newPoly("list-append",
-	  forall(fn tv => let
-	    val ty = listTy tv
-	    in
-	      ty ** ty --> ty
-	    end))
-    val string_concat = monoVar("string-concat", stringTy ** stringTy --> stringTy)
-    val parray_sub = polyVar("parray-sub", fn tv => (parrayTy tv) ** intTy --> tv)
-
-    local
-      fun name a = "int-" ^ a
-    in
-    val int_div =       monoVar(name "div", intTy ** intTy --> intTy)
-    val int_gt =        monoVar(name "gt", intTy ** intTy --> boolTy)
-    val int_gte =       monoVar(name "gte", intTy ** intTy --> boolTy)
-    val int_lt =        monoVar(name "lt", intTy ** intTy --> boolTy)
-    val int_lte =       monoVar(name "lte", intTy ** intTy --> boolTy)
-    val int_minus =     monoVar(name "sub", intTy ** intTy --> intTy)
-    val int_mod =       monoVar(name "mod", intTy ** intTy --> intTy)
-    val int_neg =       monoVar(name "neg", intTy --> intTy)
-    val int_plus =      monoVar(name "add", intTy ** intTy --> intTy)
-    val int_times =     monoVar(name "mul", intTy ** intTy --> intTy)
-    end
-
-    local
-      fun name a = "long-" ^ a
-    in
-    val long_div =      monoVar(name "div", longTy ** longTy --> longTy)
-    val long_gt =       monoVar(name "gt", longTy ** longTy --> boolTy)
-    val long_gte =      monoVar(name "gte", longTy ** longTy --> boolTy)
-    val long_lt =       monoVar(name "lt", longTy ** longTy --> boolTy)
-    val long_lte =      monoVar(name "lte", longTy ** longTy --> boolTy)
-    val long_minus =    monoVar(name "sub", longTy ** longTy --> longTy)
-    val long_mod =      monoVar(name "mod", longTy ** longTy --> longTy)
-    val long_neg =      monoVar(name "neg", longTy --> longTy)
-    val long_plus =     monoVar(name "add", longTy ** longTy --> longTy)
-    val long_times =    monoVar(name "mul", longTy ** longTy --> longTy)
-    end
-
-    local
-      fun name a = "integer-" ^ a
-    in
-    val integer_div =   monoVar(name "div", integerTy ** integerTy --> integerTy)
-    val integer_gt =    monoVar(name "gt", integerTy ** integerTy --> boolTy)
-    val integer_gte =   monoVar(name "gte", integerTy ** integerTy --> boolTy)
-    val integer_lt =    monoVar(name "lt", integerTy ** integerTy --> boolTy)
-    val integer_lte =   monoVar(name "lte", integerTy ** integerTy --> boolTy)
-    val integer_minus = monoVar(name "sub", integerTy ** integerTy --> integerTy)
-    val integer_mod =   monoVar(name "mod", integerTy ** integerTy --> integerTy)
-    val integer_neg =   monoVar(name "neg", integerTy --> integerTy)
-    val integer_plus =  monoVar(name "add", integerTy ** integerTy --> integerTy)
-    val integer_times = monoVar(name "mul", integerTy ** integerTy --> integerTy)
-    end
-
-    local
-      fun name a = "float-" ^ a
-    in
-    val float_fdiv =    monoVar(name "div", floatTy ** floatTy --> floatTy)
-    val float_gt =      monoVar(name "gt", floatTy ** floatTy --> boolTy)
-    val float_gte =     monoVar(name "gte", floatTy ** floatTy --> boolTy)
-    val float_lt =      monoVar(name "lt", floatTy ** floatTy --> boolTy)
-    val float_lte =     monoVar(name "lte", floatTy ** floatTy --> boolTy)
-    val float_minus =   monoVar(name "sub", floatTy ** floatTy --> floatTy)
-    val float_neg =	monoVar(name "neg", floatTy --> floatTy)
-    val float_plus =    monoVar(name "add", floatTy ** floatTy --> floatTy)
-    val float_times =   monoVar(name "mul", floatTy ** floatTy --> floatTy)
-    end
-
-    local
-      fun name a = "double-" ^ a
-    in
-    val double_fdiv =   monoVar(name "div", doubleTy ** doubleTy --> doubleTy)
-    val double_gt =     monoVar(name "gt", doubleTy ** doubleTy --> boolTy)
-    val double_gte =    monoVar(name "gte", doubleTy ** doubleTy --> boolTy)
-    val double_lt =     monoVar(name "lt", doubleTy ** doubleTy --> boolTy)
-    val double_lte =    monoVar(name "lte", doubleTy ** doubleTy --> boolTy)
-    val double_minus =  monoVar(name "sub", doubleTy ** doubleTy --> doubleTy)
-    val double_neg =    monoVar(name "neg", doubleTy --> doubleTy)
-    val double_plus =   monoVar(name "add", doubleTy ** doubleTy --> doubleTy)
-    val double_times =  monoVar(name "mul", doubleTy ** doubleTy --> doubleTy)
-    end
-
-    local
-      fun name a = "char-" ^ a
-    in
-    val char_gt =       monoVar(name "gt", charTy ** charTy --> boolTy)
-    val char_gte =      monoVar(name "gte", charTy ** charTy --> boolTy)
-    val char_lt =       monoVar(name "lt", charTy ** charTy --> boolTy)
-    val char_lte =      monoVar(name "lte", charTy ** charTy --> boolTy)
-    end
-
-    local
-      fun name a = "rune-" ^ a
-    in
-    val rune_gt =       monoVar(name "gt", runeTy ** runeTy --> boolTy)
-    val rune_gte =      monoVar(name "gte", runeTy ** runeTy --> boolTy)
-    val rune_lt =       monoVar(name "lt", runeTy ** runeTy --> boolTy)
-    val rune_lte =      monoVar(name "lte", runeTy ** runeTy --> boolTy)
-    end
-
-    local
-      fun name a = "string-" ^ a
-    in
-    val string_gt =     monoVar(name "gt", stringTy ** stringTy --> boolTy)
-    val string_gte =    monoVar(name "gte", stringTy ** stringTy --> boolTy)
-    val string_lt =     monoVar(name "lt", stringTy ** stringTy --> boolTy)
-    val string_lte =    monoVar(name "lte", stringTy ** stringTy --> boolTy)
-    end
-
-    local
-      fun eqTyScheme () = let
-	    val tv = TyVar.newClass (Atom.atom "'a", Types.Eq)
-	    val tv' = Types.VarTy tv
-	    in
-	      Types.TyScheme([tv], tv' ** tv' --> boolTy)
-	    end
-    in
-    val eq = Var.newPoly(Atom.toString N.eq, eqTyScheme())
-    val neq = Var.newPoly(Atom.toString N.neq, eqTyScheme())
-    end
-
 
   (* overloaded operators *)
     nonfix div mod
@@ -294,6 +115,10 @@ structure InitialBasis : sig
 	    in
 	      Types.TyScheme([tv], mk(Types.VarTy tv))
 	    end
+      val --> = AST.FunTy
+      fun ** (t1, t2) = AST.TupleTy[t1, t2]
+      infix 9 **
+      infixr 8 -->
     in
     val lte = (tyScheme(Types.Order, fn tv => (tv ** tv --> boolTy)),
 	       [int_lte, long_lte, integer_lte, float_lte, double_lte, char_lte, rune_lte, string_lte])
@@ -373,91 +198,121 @@ structure InitialBasis : sig
 	    mkFB
 	  end
 
+  (* seed the initial translation envirnment with a mapping from the primitive AST types to
+   * their BOM equivalents.
+   *)
+    val primTranslationEnv = let
+	    fun wrapTy rty = BOMTyUtil.wrap(BTy.T_Raw rty)
+	    val env = TEnv.mkEnv()
+	  (* insert a type constructor binding *)
+	    fun insertTyc (tyc, k, bty) = (
+		  TranslateTypes.setTycKind (tyc, k);
+		  case bty
+		   of BTy.T_TyCon(BTy.DataTyc{kind, ...}) => kind := k
+		    | _ => ()
+		  (* end case *);
+		  TEnv.insertTyc (env, tyc, bty))
+	    in
+	      List.app insertTyc [
+		  (intTyc,	BTy.K_BOXED,	wrapTy BTy.T_Int),
+		  (longTyc,	BTy.K_BOXED,	wrapTy BTy.T_Long),
+		  (floatTyc,	BTy.K_BOXED,	wrapTy BTy.T_Float),
+		  (doubleTyc,	BTy.K_BOXED,	wrapTy BTy.T_Double),
+		  (stringTyc,	BTy.K_BOXED,	BOMBasis.stringTy),
+		  (exnTyc,	BTy.K_BOXED,	BTy.exnTy)
+		];
+	      env
+	    end
+
   (* based on the given binding environment for "initial-basis.pml", create
    * the initial translation environment
    *)
-    fun mkTransEnv bEnv () = let
-	  fun bindOp (rator, tEnv) = let
-		val name = Var.nameOf rator
-		fun missing () = (
-		      TextIO.output(TextIO.stdErr, concat[
-			  "Warning: no HLOp for ", name, " found\n"
-			]);
-		      tEnv)
+    fun glueAST bEnv (initialAST, progAST) = let
+	  fun bindVarToHLOp (x, e) = let
+		val name = Var.nameOf x
 		in
 		  case BEnv.findBOMHLOp(bEnv, Atom.atom name)
-		   of SOME id => (case TEnv.findBOMHLOp id
-			 of SOME hlop => TEnv.insertFun (tEnv, rator, hlopFun hlop)
-			  | NONE => missing()
-			(* end *))
-		    | NONE => missing()
+		   of SOME id => AST.LetExp(
+			AST.PrimVBind(x, ProgramParseTree.PML2.BOMParseTree.HLOpPrimVal id),
+			e)
+		    | NONE => (
+			TextIO.output(TextIO.stdErr, concat[
+			    "Warning: no HLOp for ", name, " found in binding environment\n"
+			  ]);
+			e)
+		  (* end case *)
 		end
+	  val ast = List.foldr bindVarToHLOp progAST [
+		  int_div,
+		  int_gt,
+		  int_gte,
+		  int_lt,
+		  int_lte,
+		  int_minus,
+		  int_mod,
+		  int_neg,
+		  int_plus,
+		  int_times,
+		  long_div,
+		  long_gt,
+		  long_gte,
+		  long_lt,
+		  long_lte,
+		  long_minus,
+		  long_mod,
+		  long_neg,
+		  long_plus,
+		  long_times,
+		  integer_div,
+		  integer_gt,
+		  integer_gte,
+		  integer_lt,
+		  integer_lte,
+		  integer_minus,
+		  integer_mod,
+		  integer_neg,
+		  integer_plus,
+		  integer_times,
+		  float_fdiv,
+		  float_gt,
+		  float_gte,
+		  float_lt,
+		  float_lte,
+		  float_minus,
+		  float_neg,
+		  float_plus,
+		  float_times,
+		  double_fdiv,
+		  double_gt,
+		  double_gte,
+		  double_lt,
+		  double_lte,
+		  double_minus,
+		  double_neg,
+		  double_plus,
+		  double_times,
+		  char_gt,
+		  char_gte,
+		  char_lt,
+		  char_lte,
+		  rune_gt,
+		  rune_gte,
+		  rune_lt,
+		  rune_lte,
+		  string_gt,
+		  string_gte,
+		  string_lt,
+		  string_lte,
+		  list_append,
+		  string_concat,
+		  parray_sub
+		]
+	  fun cat (AST.TD_Module _ :: r) = raise Fail "unexpected module in initial basis"
+	    | cat (AST.TD_DCon _ :: r) = cat r
+	    | cat (AST.TD_Binding b :: r) = AST.LetExp(b, cat r)
+	    | cat [] = ast
 	  in
-	    List.foldl bindOp (TEnv.mkEnv()) [
-		int_div,
-		int_gt,
-		int_gte,
-		int_lt,
-		int_lte,
-		int_minus,
-		int_mod,
-		int_neg,
-		int_plus,
-		int_times,
-		long_div,
-		long_gt,
-		long_gte,
-		long_lt,
-		long_lte,
-		long_minus,
-		long_mod,
-		long_neg,
-		long_plus,
-		long_times,
-		integer_div,
-		integer_gt,
-		integer_gte,
-		integer_lt,
-		integer_lte,
-		integer_minus,
-		integer_mod,
-		integer_neg,
-		integer_plus,
-		integer_times,
-		float_fdiv,
-		float_gt,
-		float_gte,
-		float_lt,
-		float_lte,
-		float_minus,
-		float_neg,
-		float_plus,
-		float_times,
-		double_fdiv,
-		double_gt,
-		double_gte,
-		double_lt,
-		double_lte,
-		double_minus,
-		double_neg,
-		double_plus,
-		double_times,
-		char_gt,
-		char_gte,
-		char_lt,
-		char_lte,
-		rune_gt,
-		rune_gte,
-		rune_lt,
-		rune_lte,
-		string_gt,
-		string_gte,
-		string_lt,
-		string_lte,
-		list_append,
-		string_concat,
-		parray_sub
-	      ]
+	    cat initialAST
 	  end
 
   (* given the environments produced from the "initial-basis.pml" file,
@@ -472,45 +327,45 @@ structure InitialBasis : sig
 		  MEnv.insertVar(mEnv, id, MEnv.Overload(tyS, defs))
 		) end
 	  val (bEnv, mEnv) = List.foldl insOverloadedOp (bEnv, mEnv) [
-		  (N.lte, lte),
-		  (N.lt, lt),
-		  (N.gte, gte),
-		  (N.gt, gt),
-		  (N.plus, plus),
-		  (N.minus, minus),
-		  (N.times, times),
-		  (N.fdiv, fdiv),
-		  (N.div, div),
-		  (N.mod, mod),
-		  (N.uMinus, neg)
+		  (N.lte,	lte),
+		  (N.lt,	lt),
+		  (N.gte,	gte),
+		  (N.gt,	gt),
+		  (N.plus,	plus),
+		  (N.minus,	minus),
+		  (N.times,	times),
+		  (N.fdiv,	fdiv),
+		  (N.div,	div),
+		  (N.mod,	mod),
+		  (N.uMinus,	neg)
 		]
 	(* insert non-overloaded operators *)
-	  fun insOp (x, (bEnv, mEnv)) = let
-		val name = Atom.atom(Var.nameOf x)
-		val id = newVar name
+	  fun insOp ((name, var), (bEnv, mEnv)) = let
+		val id = newVar(Atom.atom(Var.nameOf var))
 		in (
 		  BEnv.insertVal(bEnv, name, BEnv.Var id),
-		  MEnv.insertVar(mEnv, id, MEnv.Var x)
+		  MEnv.insertVar(mEnv, id, MEnv.Var var)
 		) end
 	  val (bEnv, mEnv) = List.foldl insOp (bEnv, mEnv) [
-		  list_append,
-		  string_concat,
-		  parray_sub
+		  (N.append,	list_append),
+		  (N.concat,	string_concat),
+		  (N.psub,	parray_sub)
 		]
-	  in
-	    (bEnv, mEnv, mkTransEnv bEnv)
-	  end
-
-  (* primitive BOM types *)
-    fun wrapTy rty = BOMTyUtil.wrap(BTy.T_Raw rty)
-    val bomTypes = [
-	    ("bool",	BTy.K_UNBOXED,	BOMBasis.boolTy),
-	    ("int",	BTy.K_BOXED,	wrapTy BTy.T_Int),
-	    ("long",	BTy.K_BOXED,	wrapTy BTy.T_Long),
-	    ("float",	BTy.K_BOXED,	wrapTy BTy.T_Float),
-	    ("double",	BTy.K_BOXED,	wrapTy BTy.T_Double),
-	    ("string",	BTy.K_BOXED,	BOMBasis.stringTy),
-	    ("exn",	BTy.K_BOXED,	BTy.exnTy)
-	  ]
+	(* insert the equality operators *)
+	  fun insEqOp ((name, var), (bEnv, mEnv)) = let
+		val id = newVar(Atom.atom(Var.nameOf var))
+		in (
+		  BEnv.insertVal(bEnv, name, BEnv.Var id),
+		  MEnv.insertVar(mEnv, id, MEnv.EqOp var)
+		) end
+	  val (bEnv, mEnv) = List.foldl insEqOp (bEnv, mEnv) [
+		  (N.eq,	eq),
+		  (N.neq,	neq)
+		]
+	  in {
+	    bEnv = bEnv,
+	    mEnv = mEnv,
+	    glueAST = glueAST bEnv
+	  } end
 
   end

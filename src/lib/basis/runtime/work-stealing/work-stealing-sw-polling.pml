@@ -50,8 +50,8 @@ structure WorkStealingSWPolling =
         let tl : int = I32Sub(SELECT(LOCAL_DEQUE_TL, localDeque), 1)
         let x : any = ArrayLoadI64(elts, tl)
         do UPDATE(LOCAL_DEQUE_TL, localDeque, tl)
-        let b : PT.bool = ArrayStoreI64(elts, tl, NIL)
-        do assert(NotEqual(x, NIL))
+        let b : PT.bool = ArrayStoreI64(elts, tl, nil)
+        do assert(NotEqual(x, nil))
         return(x)
       ;
 

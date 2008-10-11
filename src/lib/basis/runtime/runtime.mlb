@@ -38,3 +38,7 @@
   in
     util/init-fls.pml
   end
+
+(* include CML support *)
+  ../cml/cml.mlb
+

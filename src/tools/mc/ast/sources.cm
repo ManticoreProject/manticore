@@ -11,7 +11,6 @@ Library
   structure AST
   structure ASTUtil
   structure Basis
-  structure BasisUtils
   structure DataCon
   structure Exn
   structure MetaVar
@@ -42,7 +41,6 @@ is
   ast.sml
   ast-util.sml
   basis.sml
-  basis-utils.sml
   data-con.sml
   exn.sml
   meta-var.sml

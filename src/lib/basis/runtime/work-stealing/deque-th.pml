@@ -30,7 +30,7 @@ structure DequeTH =
 	fun copyDeque (arr : Arr.array, i : int / exh : PT.exh) : () =
 	    if I32Lt(i, TH_DEQUE_LEN)
 	       then let elt : any = Arr.@sub(arr, i / exh)
-(*		    do Arr.@update(arr, I32Sub(SELECT(TH_H_OFF, deq), i), NIL / exh)*)
+(*		    do Arr.@update(arr, I32Sub(SELECT(TH_H_OFF, deq), i), nil / exh)*)
 		    do Arr.@update(arr, I32Sub(SELECT(TH_H_OFF, deq), i), elt / exh)
 		    apply copyDeque(arr, I32Add(i, 1) / exh)
 	       else return()

@@ -238,8 +238,8 @@ structure Tests =
 	let fls : FLS.fls = FLS.@get(/ exh)
 	let vps : List.list = ccall ListVProcs(host_vproc)
 	do case vps
-	 of NIL => throw exit()
-	  | List.CONS(vp : vproc, vps : List.list) =>
+	 of nil => throw exit()
+	  | CONS(vp : vproc, vps : List.list) =>
 	    case vps
 	     of NIL => throw exit()
 	      | List.CONS(vp : vproc, vps : List.list) =>

@@ -41,17 +41,40 @@ functor MainFn (
 
     fun prHdr msg = print(concat["******************** ", msg,  " ********************\n"])
 
-    fun boundVarChk (errStream, p1, (p2s, env)) = let
-	  val (p2, env) = BoundVariableCheck.check (errStream, p1, env)
-          in
-	      (p2 :: p2s, env)
+    fun boundVarChks (errStrms, bEnv, pts) = let
+	  fun chk (errStrm, p1, (p2s, env)) =let
+		val (p2, env) = BoundVariableCheck.check (errStrm, p1, env)
+		in
+		  (p2 :: p2s, env)
+		end
+	  val (pts, _) = ListPair.foldl chk ([], bEnv) (errStrms, pts)
+	  in
+	    List.rev pts
 	  end
-
-    val boundVarChks = 
-	  List.rev o #1 o ListPair.foldl boundVarChk ([], BasisEnv.bEnv0)
 
     fun tree {tree, span} = tree
     fun allDecls pts = List.concat(List.map tree pts)
+
+  (* environment bootstrapping *)
+    fun initialEnv () = let
+	(* load the initial-basis.pml file *)
+	  val initialBasisPath = OS.Path.joinDirFile{
+		  dir = LoadPaths.basisSequentialDir,
+		  file = "initial-basis.mlb"
+		}
+	  val errStrm = Error.mkErrStream initialBasisPath
+	  val (_, [initialPT]) = MLB.loadMLBWithoutBasis initialBasisPath
+	(* bind variables and typecheck *)
+	  val (initialPT, bEnv) = BoundVariableCheck.check (errStrm, initialPT, IB.primBindingEnv)
+	  val _ = checkForErrors errStrm
+	  val (mEnv, _, initialAST) = ChkModule.checkTopDecls errStrm
+		((0, 0), tree initialPT, IB.primEnv, ModuleEnv.ModuleMap.empty)
+	  val _ = checkForErrors errStrm
+	(* set up the initial basis environments *)
+	  val {bEnv, mEnv, glueAST} = IB.extendInitialEnv(bEnv, mEnv)
+	  in
+	    (bEnv, mEnv, initialAST, glueAST)
+	  end
 
   (* dead function elimination on the parse tree *)
     fun treeShake p2s =
@@ -62,16 +85,16 @@ functor MainFn (
 	  else p2s
 
   (* load the AST specified by an MLB file *)
-    fun mlbToAST (errStrm, file) = let
+    fun mlbToAST (errStrm, bEnv, mEnv, file) = let
         (* load the MLB file *)
-	  val (errStrms, p1s) = MLB.load(errStrm, file)
+	  val (errStrms, p1s) = MLB.load file
 	  val _ = checkForErrors errStrm
         (* bound-variable check *)
-	  val p2s = boundVarChks (errStrms, p1s)
+	  val p2s = boundVarChks (errStrms, bEnv, p1s)
 	  val _ = List.app checkForErrors errStrms;
 	  val p2s = treeShake p2s
         (* module and type checking *)
-	  val ast = ChkProgram.check (ListPair.zip(errStrms, p2s))
+	  val ast = ChkProgram.check (mEnv, ListPair.zip(errStrms, p2s))
 	  in
 	    List.app checkForErrors errStrms;
 	    ast
@@ -114,34 +137,33 @@ functor MainFn (
 	    buildExe (verbose, outFile)
 	  end (* compile *)
 
-    fun mantC loadASTFn (verbose, errStrm, srcFile, asmFile) = let
-          val ast = loadASTFn(errStrm, srcFile)
+  (* compile an MLB or PML file *)
+    fun mlbC (verbose, errStrm, srcFile, asmFile) = let
+	  val _ = if verbose then print "initializing environment\n" else ()
+	  val (bEnv0, mEnv0, ast0, glueAST) = initialEnv()
+	  val _ = if verbose then print(concat["parsing \"", srcFile, "\"\n"]) else ()
+          val ast = mlbToAST (errStrm, bEnv0, mEnv0, srcFile)
           val _ = checkForErrors errStrm
-          val ast = ASTOpt.optimize ast
+          val ast = ASTOpt.optimize(glueAST(ast0, ast))
 	  val ast = MatchCompile.compile (errStrm, ast)
           val _ = checkForErrors errStrm
-          val bom = Translate.translate ast
+	(* create the initial translation environment *)
+          val bom = Translate.translate (IB.primTranslationEnv, ast)
           val _ = CheckBOM.check ("translate", bom)
           val cfg = bomToCFG bom
 	  in
 	    codegen (verbose, asmFile, cfg)
 	  end
 
-  (* compile an MLB file *)
-    val mlbC = mantC mlbToAST
-
     fun doFile file = BackTrace.monitor (fn () => let
 	  val verbose = (Controls.get BasicControl.verbose > 0)
 	  val {base, ext} = OS.Path.splitBaseExt file
 	  in
             case Controls.get BasicControl.keepPassBaseName
-		 of NONE => Controls.set (BasicControl.keepPassBaseName, SOME base)
-		  | SOME _ => ()
-		(* end case *);
-	    mlbC(verbose, 
-		 Error.mkErrStream file, 
-		 file,
-		 OS.Path.joinBaseExt {base = base, ext = SOME "s"})
+	     of NONE => Controls.set (BasicControl.keepPassBaseName, SOME base)
+	      | SOME _ => ()
+	    (* end case *);
+	    mlbC (verbose, Error.mkErrStream file, file, OS.Path.joinBaseExt{base = base, ext = SOME "s"})
 	  end)
 
     fun quit b = OS.Process.exit (if b then OS.Process.success else OS.Process.failure)

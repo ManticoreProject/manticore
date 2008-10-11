@@ -19,7 +19,7 @@ structure Control =
 	let vp : vproc = host_vproc
 	do vpstore(ATOMIC, vp, PT.true)
 	let tos : [PT.sigact, any] = vpload(VP_ACTION_STK, vp)
-	do assert(NotEqual(tos, List.NIL))
+	do assert(NotEqual(tos, nil))
 	let rest : any = #1(tos)
 	do vpstore(VP_ACTION_STK, vp, rest)
 	let act : PT.sigact = #0(tos)
@@ -31,7 +31,7 @@ structure Control =
      * concurrent. the remote vproc must be idle during the operation.
      *)
       define @push-remote-act (vp : vproc, act : PT.sigact / exh : PT.exh) : () =
-	do assert(NotEqual(act, List.NIL))
+	do assert(NotEqual(act, nil))
 	let stk : [PT.sigact, any] = vpload (VP_ACTION_STK, vp)
 	let item : [PT.sigact, any] = alloc (act, (any)stk)
 	let item : [PT.sigact, any] = promote (item)
@@ -43,7 +43,7 @@ structure Control =
       define @push-act (act : PT.sigact / exh : PT.exh) : () =
         let vp : vproc = host_vproc
 	do vpstore (ATOMIC, vp, PT.true)
-	do assert(NotEqual(act, List.NIL))
+	do assert(NotEqual(act, nil))
 	let stk : [PT.sigact, any] = vpload (VP_ACTION_STK, vp)
 	let item : [PT.sigact, any] = alloc (act, (any)stk)
 	do vpstore (VP_ACTION_STK, vp, item)
@@ -61,7 +61,7 @@ structure Control =
       define @run-fibers (ks : List.list / exh : PT.exh) : () =
 	cont lp (ks : List.list) = 
 	  case ks
-	   of List.NIL => return()
+	   of nil => return()
 	    | List.CONS (k : PT.fiber, ks : List.list) =>
 	       cont handler (sign : PT.signal) =
 		 case sign
