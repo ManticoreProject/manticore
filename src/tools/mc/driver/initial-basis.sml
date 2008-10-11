@@ -102,6 +102,19 @@ structure InitialBasis : sig
 	  val SOME consId = BEnv.findVar (bEnv, N.listCons)
 	  val bEnv = BEnv.insertVal (bEnv, Atom.atom "CONS", consId)
 	(* insert the primitive exceptions *)
+	  val SOME exnTyId = BEnv.findTy(bEnv, N.exn)
+	  fun insExn (ex as Types.DCon{name, ...}, (bEnv, mEnv)) = let
+		val exId = newVar name
+		in (
+		  BEnv.insertDataCon(bEnv, name, exId, exnTyId),
+		  MEnv.insertVar (mEnv, exId, MEnv.Con ex)
+		) end
+	  val (bEnv, mEnv) = List.foldl insExn (bEnv, mEnv) [
+		  exnBind,
+		  exnDiv,
+		  exnFail,
+		  exnMatch
+		]
 	  in
 	    (bEnv, mEnv)
 	  end

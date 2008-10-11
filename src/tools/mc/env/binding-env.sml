@@ -78,34 +78,34 @@ structure BindingEnv (*: sig
     type mod_env = mod_bind Map.map
   (* map from qualified identifiers to flat variables (stamps) *)
     datatype env = Env of {
-	   name     : Atom.atom,                      (* name of the module *)
-	   tyEnv    : ty_env,                         (* type names *)
-	   varEnv   : var_env,                        (* PML variables *)
-	   bomEnv   : bom_env,                        (* inline BOM *)
-	   modEnv   : (mod_bind * env) Map.map,       (* modules *)
-	   sigEnv   : (sig_id * env) Map.map,         (* signatures *)
-	   outerEnv : env option                      (* enclosing module *)
-	 }
+	    name     : Atom.atom,                      (* name of the module *)
+	    tyEnv    : ty_env,                         (* type names *)
+	    varEnv   : var_env,                        (* PML variables *)
+	    bomEnv   : bom_env,                        (* inline BOM *)
+	    modEnv   : (mod_bind * env) Map.map,       (* modules *)
+	    sigEnv   : (sig_id * env) Map.map,         (* signatures *)
+	    outerEnv : env option                      (* enclosing module *)
+	  }
 
     fun freshEnv (name, outerEnv) = Env {
-	   name = name,
-           tyEnv = Map.empty,
-	   varEnv = Map.empty,
-	   bomEnv = emptyBOMEnv, 
-	   modEnv = Map.empty,
-	   sigEnv = Map.empty,
-	   outerEnv = outerEnv
-         }
+	    name = name,
+	    tyEnv = Map.empty,
+	    varEnv = Map.empty,
+	    bomEnv = emptyBOMEnv, 
+	    modEnv = Map.empty,
+	    sigEnv = Map.empty,
+	    outerEnv = outerEnv
+	  }
 
     fun empty (name, outerEnv) = Env {
-	   name = name,
-           tyEnv = Map.empty,
-	   varEnv = Map.empty,
-	   bomEnv = emptyBOMEnv, 
-	   modEnv = Map.empty,
-	   sigEnv = Map.empty,
-	   outerEnv = outerEnv
-         }
+	    name = name,
+	    tyEnv = Map.empty,
+	    varEnv = Map.empty,
+	    bomEnv = emptyBOMEnv, 
+	    modEnv = Map.empty,
+	    sigEnv = Map.empty,
+	    outerEnv = outerEnv
+	  }
 
     fun fromList ls = List.foldl Map.insert' Map.empty ls
 
@@ -117,11 +117,11 @@ structure BindingEnv (*: sig
   (* BOM environment operations *)
     local 
       fun insertVar (BOMEnv {varEnv, hlopEnv, tyEnv}, id, x) =
-	      BOMEnv {varEnv=Map.insert(varEnv, id, x), hlopEnv=hlopEnv, tyEnv=tyEnv}
+	    BOMEnv {varEnv=Map.insert(varEnv, id, x), hlopEnv=hlopEnv, tyEnv=tyEnv}
       fun insertHLOp (BOMEnv {varEnv, hlopEnv, tyEnv}, id, x) =
-	      BOMEnv {hlopEnv=Map.insert(hlopEnv, id, x), varEnv=varEnv, tyEnv=tyEnv}
+	    BOMEnv {hlopEnv=Map.insert(hlopEnv, id, x), varEnv=varEnv, tyEnv=tyEnv}
       fun insertTy (BOMEnv {varEnv, hlopEnv, tyEnv}, id, x) =
-	      BOMEnv {hlopEnv=hlopEnv, varEnv=varEnv, tyEnv=Map.insert(tyEnv, id, x)}
+	    BOMEnv {hlopEnv=hlopEnv, varEnv=varEnv, tyEnv=Map.insert(tyEnv, id, x)}
     (* remember a HLOp's full path, e.g., Future1.@touch *)
       val {
 	getFn=getHLOpPath : Var.var -> string list, 
