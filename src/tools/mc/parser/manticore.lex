@@ -143,7 +143,8 @@
 				=> (mkFloat yysubstr);
 <INITIAL,PRIMCODE> {ws}		=> (skip ());
 <INITIAL,PRIMCODE> "(*"		=> (YYBEGIN COMMENT; depth := 1; skip());
-<INITIAL,PRIMCODE> "\""		=> (YYBEGIN STRING; skip());
+<PRIMCODE> "@\""		=> (isMLString := true; YYBEGIN STRING; skip());
+<INITIAL,PRIMCODE> "\""		=> (isMLString := false; YYBEGIN STRING; skip());
 
 <STRING>{esc}		=> (addStr(valOf(String.fromString yytext)); continue());
 <STRING>{sgood}+	=> (addStr yytext; continue());
