@@ -315,7 +315,7 @@ structure CheckBOM : sig
                       chkVars(xs, "Alloc");
                       if BTU.match (allocTy, ty)
 			then ()
-			else (error  ["type mismatch in Alloc: ", vl2s lhs, " = ", vl2s xs, "\n"];
+			else (error  ["type mismatch in: ", vl2s lhs, " = Alloc ", vl2s xs, "\n"];
 			      cerror ["  lhs type ", t2s ty, "\n"];
 			      cerror ["  rhs type ", t2s allocTy, "\n"]);
 		      if (BTU.match(BTy.T_Tuple(true, typesOf xs), allocTy)
