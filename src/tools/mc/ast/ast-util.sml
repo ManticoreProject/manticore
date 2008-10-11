@@ -159,6 +159,7 @@ structure ASTUtil : sig
 		   | SOME v' => A.VarExp (v', ts))
 	      | exp (A.SeqExp (e1, e2)) = A.SeqExp (exp e1, exp e2)
 	      | exp (ov as A.OverloadExp _) = ov
+	      | exp (A.ExpansionOptsExp(opts, e)) = A.ExpansionOptsExp(opts, exp e)
 	    and match (A.PatMatch (p, e)) = A.PatMatch (copyPat s p, exp e)
 	      | match (A.CondMatch (p, cond, e)) = A.CondMatch (copyPat s p, exp cond, exp e)
 	    and binding (A.ValBind (p, e)) = A.ValBind (copyPat s p, exp e)
