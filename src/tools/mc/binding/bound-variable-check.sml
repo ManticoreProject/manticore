@@ -39,7 +39,7 @@ structure BoundVariableCheck :> sig
     val findTyQid = findQid (QualifiedId.findTy, "type", dummyTy)
     val findVarQid = findQid (QualifiedId.findVar, "variable", (BEnv.Var dummyVar))
     val findModQid = findQid (QualifiedId.findMod, "module", dummyMod)
-    val findModEnv = findQid (QualifiedId.findModEnv, "module", BEnv.empty (Atom.atom "", NONE))
+    val findModEnv = findQid (QualifiedId.findModEnv, "module", BEnv.empty (Atom.atom ""))
 
     fun freshVar v = Var.new(Atom.toString v, ())
 
@@ -551,12 +551,14 @@ structure BoundVariableCheck :> sig
 
   (* rebind the values of the module w.r.t. the scope of the signature. *)
     fun rebindVars (sigVarEnv, modVarEnv) = let
-	    val vals = BEnv.Map.listItemsi(BEnv.intersect(sigVarEnv, modVarEnv))
-	    val freshVars = List.map rebindVar vals
-	    val valEnv = List.foldl (fn ((name, _, v), env) => BEnv.Map.insert(env, name, v)) BEnv.Map.empty freshVars
-            in
-	       (genRebindVars freshVars, valEnv)
-            end
+	  val vals = BEnv.Map.listItemsi(BEnv.intersect(sigVarEnv, modVarEnv))
+	  val freshVars = List.map rebindVar vals
+	  val valEnv = List.foldl
+		(fn ((name, _, v), env) => BEnv.Map.insert(env, name, v))
+		  BEnv.Map.empty freshVars
+	  in
+	    (genRebindVars freshVars, valEnv)
+	  end
 
   (* rebind types, variables and nested modules *)
     fun rebindMod (sigEnv, modEnv) = let
@@ -589,7 +591,7 @@ structure BoundVariableCheck :> sig
 		      (PT2.MarkMod {span=span, tree=tree}, sign, rebinds, env)
 	           end
 	     | PT1.DeclsMod decls => let
-		   val (decls, modEnv) = chkDecls loc (decls, BEnv.empty (mb, SOME env))
+		   val (decls, modEnv) = chkDecls loc (decls, BEnv.freshEnv (mb, SOME env))
 		   val (sign, rebinds, signEnv) = chkConstraint loc (sign, modEnv, env)
 	           in
 		       (PT2.DeclsMod decls, sign, rebinds, signEnv)
@@ -649,7 +651,7 @@ structure BoundVariableCheck :> sig
 		  end
 	    | PT1.SignDecl (id, sign) => let
 		  val id' = freshVar id
-		  val (sign, sigEnv) = chkSign loc (sign, BEnv.empty (id, SOME env))
+		  val (sign, sigEnv) = chkSign loc (sign, BEnv.freshEnv (id, SOME env))
 		  val env = BEnv.insertSig(env, id, (id', sigEnv))
 		  in
 		     ([PT2.SignDecl (id', sign)], env)

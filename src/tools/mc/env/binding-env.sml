@@ -8,6 +8,7 @@
 
 structure BindingEnv (*: sig
 
+    type ty_def = ProgramParseTree.PML2.BOMParseTree.ty_def
     type ty_bind = ProgramParseTree.PML2.ty_bind
     type var_bind = ProgramParseTree.PML2.var_bind
     type mod_bind = ProgramParseTree.PML2.mod_bind
@@ -19,9 +20,17 @@ structure BindingEnv (*: sig
 
     type env
 
+    val empty : Atom.atom -> env
+    val freshEnv : Atom.atom * env option -> env
+
     datatype val_bind
       = Con of var_bind
       | Var of var_bind
+
+    val insertTycBind : env * Atom.atom * ty_def -> env
+    val insertTy      : env * Atom.atom * ty_bind -> env
+    val insertDataCon : env * Atom.atom * var_bind * ty_bind -> env
+    val insertVal     : env * Atom.atom * val_bind -> env
 
     val findTy  : env * Atom.atom -> ty_bind option
     val findVar : env * Atom.atom -> val_bind option
@@ -36,13 +45,16 @@ structure BindingEnv (*: sig
     val findBOMTy   : env * Atom.atom -> bom_ty_def option
     val findBOMHLOp : env * Atom.atom -> bom_hlop option
 
-  end*) = struct
+    val getDataCons : ProgramParseTree.Var.var -> (Atom.atom * ProgramParseTree.Var.var) list
+
+  end *)= struct
 
     structure PT1 = ProgramParseTree.PML1
     structure PT2 = ProgramParseTree.PML2
     structure Var = ProgramParseTree.Var
     structure Map = AtomMap
 
+    type ty_def = PT2.BOMParseTree.ty_def
     type ty_bind = PT2.ty_bind
     type var_bind = PT2.var_bind
     type mod_bind = PT2.mod_bind
@@ -63,10 +75,10 @@ structure BindingEnv (*: sig
         }
 
     val emptyBOMEnv = BOMEnv{
-		  varEnv = Map.empty,
-		  hlopEnv = Map.empty,
-		  tyEnv = Map.empty
-		}
+	    varEnv = Map.empty,
+	    hlopEnv = Map.empty,
+	    tyEnv = Map.empty
+	  }
 
   (* value identifiers may be data constructors, variables, or overloaded variables. *)
     datatype val_bind
@@ -97,15 +109,7 @@ structure BindingEnv (*: sig
 	    outerEnv = outerEnv
 	  }
 
-    fun empty (name, outerEnv) = Env {
-	    name = name,
-	    tyEnv = Map.empty,
-	    varEnv = Map.empty,
-	    bomEnv = emptyBOMEnv, 
-	    modEnv = Map.empty,
-	    sigEnv = Map.empty,
-	    outerEnv = outerEnv
-	  }
+    fun empty name = freshEnv (name, NONE)
 
     fun fromList ls = List.foldl Map.insert' Map.empty ls
 
