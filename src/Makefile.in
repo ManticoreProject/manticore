@@ -9,7 +9,7 @@
 #### Start of system configuration section. ####
 
 TOOL_DIRS =	tools/mc tools/log-dump
-LIB_DIRS =	lib/parallel-rt/build lib/hlops
+LIB_DIRS =	lib/parallel-rt/build
 SUBDIRS =	$(TOOL_DIRS) $(LIB_DIRS)
 
 SHELL =		@SHELL@

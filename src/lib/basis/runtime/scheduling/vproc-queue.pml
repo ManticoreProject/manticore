@@ -111,7 +111,7 @@ structure VProcQueue =
      * assumes that signals are masked.  Use @atomic-enqueue when signals
      * are not masked.
      *)
-      define @enqueue (fls : FLS.fls, PT.fiber : PT.fiber / exh : exh) : () =
+      define @enqueue (fls : FLS.fls, fiber : PT.fiber / exh : exh) : () =
          let vp : vproc = host_vproc
 	 let tl : queue = vpload (VP_RDYQ_TL, vp)
 	 let qitem : queue = alloc(fls, fiber, tl)
@@ -222,7 +222,7 @@ structure VProcQueue =
 
       extern void WakeVProc(void *);
 
-      define @enqueue-on-vproc (dst : vproc, fls : FLS.fls, k : fiber / exh : exh) : () =
+      define @enqueue-on-vproc (dst : vproc, fls : FLS.fls, k : PT.fiber / exh : exh) : () =
         fun lp () : queue =
 	    let entryOld : queue = vpload(VP_ENTRYQ, dst)
             let entryNew : queue = alloc(fls, k, entryOld)

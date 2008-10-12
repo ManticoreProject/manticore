@@ -300,34 +300,6 @@ AC_SUBST(MANTICORE_BASISDIR)
 AC_SUBST(HEAP_IMAGE_DIR)
 AC_SUBST(INSTALL_SMLNJ_WRAPPER)
 
-dnl source of the high-level-operation definitions
-dnl
-HLOPS_SRCDIR=$MANTICORE_SRCDIR/lib/hlops
-
-dnl where to put the high-level-operation definitions
-dnl
-HLOPS_DIR=$MANTICORE_LIBDIR/hlops
-
-if test x"$prefix" = xNONE ; then
-  INC_SEARCH_PATH=".:$HLOPS_DIR/include"
-dnl FIXME: the following should be
-dnl HLOP_SEARCH_PATH=".:$HLOPS_DIR"
-dnl but we need the install script first
-  HLOP_SEARCH_PATH=".:$HLOPS_SRCDIR"
-else
-  INC_SEARCH_PATH=".:$prefix/lib/hlops/include"
-  HLOP_SEARCH_PATH=".:$prefix/lib/hlops"
-fi
-dnl
-dnl include source tree paths too
-dnl
-INC_SEARCH_PATH="$INC_SEARCH_PATH:$HLOPS_SRCDIR/include"
-HLOP_SEARCH_PATH="$HLOP_SEARCH_PATH:$HLOPS_SRCDIR"
-
-AC_SUBST(HLOP_SEARCH_PATH)
-AC_SUBST(INC_SEARCH_PATH)
-
-
 dnl ******************** Runtime system parameters ********************
 
 AC_DEFINE([MAX_NUM_VPROCS], [16], [maximum number of virtual processors])
@@ -409,7 +381,6 @@ AC_CONFIG_FILES(\
 dnl ***** Makefiles *****
   Makefile
   src/Makefile
-  src/lib/hlops/Makefile
   src/lib/parallel-rt/build/Makefile
   src/lib/parallel-rt/build/config/Makefile
   src/lib/parallel-rt/build/mk/common.gmk:src/lib/parallel-rt/build/mk/common_gmk.in
@@ -420,11 +391,9 @@ dnl ***** SML source files *****
   src/tools/mc/common/load-paths.sml:src/tools/mc/common/load-paths_sml.in
   src/tools/mc/driver/build-executable.sml:src/tools/mc/driver/build-executable_sml.in
   src/tools/mc/driver/version-fn.sml:src/tools/mc/driver/version-fn_sml.in
-  src/tools/mc/hlop/paths.sml:src/tools/mc/hlop/paths_sml.in
 dnl ***** CM files *****
   src/tools/mc/codegen/group.cm:src/tools/mc/codegen/group_cm.in
   src/tools/mc/codegen/wrapper.cm:src/tools/mc/codegen/wrapper_cm.in
-  src/tools/mc/test-codegen/sources.cm:src/tools/mc/test-codegen/sources_cm.in
 )
 AC_CONFIG_HEADERS(src/include/manticore-config.h:config/config_h.in)
 
