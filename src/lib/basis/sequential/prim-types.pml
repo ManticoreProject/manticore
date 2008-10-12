@@ -2,6 +2,8 @@
  *
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
+ *
+ * NOTE: most primtive types are defined in the initial-basis.pml file.
  *)
 
 structure PrimTypes =
@@ -10,16 +12,9 @@ structure PrimTypes =
     _primcode (
 
     (* exception handler *)
-      typedef exh = cont(exn);
-      typedef unit = enum(0);
-      typedef fiber_fun = fun (unit / exh -> unit);
-      typedef string_data = any;
-      typedef ml_string = [string_data, int];
-      typedef ml_int = [int];
-      typedef ml_long = [long];
-      typedef ml_float = [float];
-      typedef ml_double = [double];
+
       typedef array = any;
+      typedef fiber_fun = fun (unit / exh -> unit);
 
     )
 

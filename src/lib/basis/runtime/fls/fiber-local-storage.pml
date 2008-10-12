@@ -15,10 +15,8 @@ structure FiberLocalStorage =
     structure AL = AssocList
     structure L = List
 
-    type fls = _prim ( [
-		   PT.bool,         (* flag for pinning the fiber to a vproc *)
-		   AL.assoc_list    (* dictionary *)
-		  ] ) 
+  (* see initial-basis.pml for the definition of fiber_local_storage *)
+    type fls = _prim (fiber_local_storage) 
 
     #define PINNED_OFF 0
     #define ASSOC_OFF  1

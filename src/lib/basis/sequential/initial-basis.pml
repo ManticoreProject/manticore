@@ -13,8 +13,9 @@ _primcode (
 
   typedef exh = cont(exn);
   typedef unit = enum(0);
+  typedef string_len = int;
   typedef string_data = any;
-  typedef ml_string = [string_data, int];
+  typedef ml_string = [string_data, string_len];
   typedef ml_int = [int];
   typedef ml_long = [long];
   typedef ml_float = [float];
@@ -204,7 +205,18 @@ _primcode (
 (* list operations *)
   (* ?? list-append ?? *)
 
-#ifdef LOGGING
+#ifndef SEQUENTIAL
+(* primitive types for parallelism *)
+  typedef fiber_local_storage = [
+      bool,		(* flag for pinning the fiber to a vproc *)
+      any		(* == AssocList.assoc_list;  dictionary *)
+    ];
+  typedef thread_id = fiber_local_storage;
+#else
+  typedef thread_id = unit;
+#endif
+
+#ifdef ENABLE_LOGGING
 
   #include "log-events.def"
 
