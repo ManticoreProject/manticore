@@ -49,9 +49,6 @@ structure TranslatePValCilk5  : sig
 
 (* FIXME: we should be looking in the Basis environment for HLOps *)
     val findHLOp = #name o Option.valOf o HLOpEnv.findDefByPath
-(*
-    fun getBOMTy (env, path) = TranslateTypes.cvtPrimTy (env, BasisEnv.getBOMTyFromBasis path)
-*)
     fun getBOMTy (env, path) = (case TranslateEnv.findBOMTyDef(BasisEnv.getBOMTyFromBasis path)
 	   of SOME ty => ty
 	    | NONE => raise Fail("unable to find " ^ String.concatWith "." path)
