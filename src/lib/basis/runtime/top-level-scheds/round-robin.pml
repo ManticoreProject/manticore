@@ -1,10 +1,16 @@
+(* round-robin.pml
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+
 structure RoundRobin =
   struct
 
     structure PT = PrimTypes
     structure FLS = FiberLocalStorage
     structure VPQ = VProcQueue
-
 
     _primcode(
     (* top-level thread scheduler that uses a round robin policy *)
@@ -17,7 +23,7 @@ structure RoundRobin =
           cont dispatch () =
             let item : Option.option = VPQ.@dequeue(/ exh)
             case item
-	     of NONE => 
+	     of Option.NONE => 
 		do SchedulerUtils.@wait(/ exh)
 		throw dispatch()
 	      | Option.SOME(qitem : VPQ.queue) =>
