@@ -27,7 +27,7 @@ structure PMergesort =
 
 
     val epsilon = 0.01
-    val abs = absd    
+    val abs = Double.abs
 
   (* returns true of the arrays are equal (within some threshold) *)
     fun arrayEq (arr1, arr2) = let
