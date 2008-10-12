@@ -95,10 +95,7 @@ structure MLB : sig
     fun copy (inStrm, outStrm) = outputAll(inputAll inStrm, outStrm)
 
   (* remove a temporary file *)
-    fun removeTmp tmp = 
-	if OS.FileSys.access (tmp, [OS.FileSys.A_READ, OS.FileSys.A_WRITE])
-           then OS.FileSys.remove tmp
-        else ()
+    fun removeTmp tmp = if OS.FileSys.access (tmp, []) then OS.FileSys.remove tmp else ()
 
   (* parse the cpp definition string
    *   def1, ..., defn
@@ -118,6 +115,17 @@ structure MLB : sig
 	      else (Substring.string predef, SOME(Substring.string(Substring.triml 1 def)))
 	  end
 
+  (* compute the list of #defines for the CPP based on controls *)
+    fun defines () = let
+	  fun add (true, d, l) = (d, NONE)::l
+	    | add (false, d, l) = l
+	  in
+	    add (Controls.get BasicControl.sequential, "SEQUENTIAL",
+	    add (Controls.get BasicControl.logging, "ENABLE_LOGGING",
+	    add (not(Controls.get BasicControl.debug), "NDEBUG",
+	      [])))
+	  end
+
   (* pass the file through a sequence of preprocessors *)
     fun chainPreprocs (file, path, name, []) = raise Fail "compiler bug"
       | chainPreprocs (file, path, name, ("cpp", dir, NONE, [defs]) :: ppCmds) = let
@@ -130,7 +138,7 @@ structure MLB : sig
 	  val predefs = List.map RunCPP.mkDef ([
 		("PML_PATH", SOME (OS.FileSys.fullPath dir^"/"^name)),
 		("PML_FILE", SOME name)
-	      ] @ List.map parseCPPPredef predefs)
+	      ] @ List.map parseCPPPredef predefs @ defines())
 	  val args = RunCPP.mkArgs {relativeTo=dir, includes=includes, predefs=predefs, file=NONE}
 	  in
 	      chainPreprocs(file, path, name, ("preprocess", dir, SOME RunCPP.cppCmd, args) :: ppCmds)
@@ -261,7 +269,7 @@ structure MLB : sig
 	       val {dir=dirOfFile, file} = OS.Path.splitDirFile path
 	       val dirOfFile = OS.FileSys.fullPath dirOfFile
 	       val dir = OS.FileSys.getDir()
-	       val errStrm = Error.mkErrStream file
+	       val errStrm = Error.mkErrStream path
 	       in
 		 case MLBParser.parseFile (errStrm, path)
 		  of SOME{span, tree=basDecs} => 
