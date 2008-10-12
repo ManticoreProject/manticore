@@ -18,8 +18,10 @@ end = struct
     structure BU = BOMUtil
     structure H = HLOp
     structure ATbl = AtomTable
+(*
     structure RW = Rewrites
     structure PT = RW.PT (* XXX - Hack *)
+*)
 
     val rw_ctl = Controls.genControl {
          name = "skip-rewrites",
@@ -34,6 +36,7 @@ end = struct
         envName = NONE
         }
 
+(***** FIXME --- needs to be rewritten to use different HLOp infrastructure *****
     (* ____________________________________________________________ *)
     (* XXX - Stolen from expand.sml; perhaps this stuff could get
        moved into a separate structure? *)
@@ -620,6 +623,8 @@ end = struct
 	then SOME(B.mkModule(name, getExterns(), hlops, body'))
 	else NONE
     end
+*****)
+    fun rewrite' _ = raise Fail "rewriting not implemented"
 
     fun rewrite m = if Controls.get rw_ctl then NONE else rewrite' m
 
