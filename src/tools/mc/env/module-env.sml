@@ -56,13 +56,13 @@ structure ModuleEnv =
     fun fromList ls = List.foldl VarMap.insert' VarMap.empty ls
 
     fun fresh (modRef, outerEnv) = ModEnv{
-		         modRef=modRef, 
-			 tyEnv=VarMap.empty, 
-			 varEnv=VarMap.empty, 
-			 modEnv=VarMap.empty, 
-			 sigEnv=VarMap.empty, 
-			 outerEnv=outerEnv
-		       }
+	    modRef=modRef, 
+	    tyEnv=VarMap.empty, 
+	    varEnv=VarMap.empty, 
+	    modEnv=VarMap.empty, 
+	    sigEnv=VarMap.empty, 
+	    outerEnv=outerEnv
+	  }
 		
     fun varEnv (ModEnv{varEnv, ...}) = varEnv
     fun modRef (ModEnv{modRef, ...}) = modRef
@@ -125,7 +125,7 @@ structure ModuleEnv =
         } = 
 	   ProgramParseTree.Var.newProp (fn _ => NONE)
 
-  (* map parse-tree type definitions to ast type definitions *)
+  (* map parse-tree BOM type definitions to ast type definitions *)
     val {
            getFn=getPrimTyDef : ProgramParseTree.Var.var -> ProgramParseTree.PML2.BOMParseTree.ty option, 
 	   setFn=setPrimTyDef : (ProgramParseTree.Var.var * ProgramParseTree.PML2.BOMParseTree.ty option) -> unit, ...
@@ -139,13 +139,13 @@ structure ModuleEnv =
 	ModEnv{modRef=modRef, tyEnv=VarMap.insert (tyEnv, tv, x), varEnv=varEnv, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv})
   (* primtive types
    *   type tyvars tv = _prim(bty)
-   * where tv is a type binding and bty is a primitive BOM type. we bind tv in both BOM and Manticore. the
-   * Manticore type is an abstract type.
+   * where tv is a type binding and bty is a primitive BOM type. we bind tv in both BOM and PML.
+   * The PML type is an abstract type.
    *)
     fun insertPrimTy (env, tv, tyc, bty) = (
-	setRealizationOfTyc(tyc, BOMTyDef bty);
-	setPrimTyDef(tv, SOME bty);
-	insertTy(env, tv, TyCon tyc))
+	  setRealizationOfTyc(tyc, BOMTyDef bty);
+	  setPrimTyDef(tv, SOME bty);
+	  insertTy(env, tv, TyCon tyc))
     fun insertVar (ModEnv{modRef, varEnv, tyEnv, modEnv, sigEnv, outerEnv}, v, x) = (
 	setValBind(v, SOME x);
 	ModEnv{modRef=modRef, tyEnv=tyEnv, varEnv=VarMap.insert (varEnv, v, x), modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv})

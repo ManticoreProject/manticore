@@ -68,6 +68,7 @@ structure TranslateEnv : sig
     val insertBOMHLOpDef : (hlop * hlop_def) -> unit
     val insertBOMCFun   : (import_env * c_id * BOM.var CFunctions.c_fun) -> unit
 
+    val findBOMTyDef	: ty_def -> BOMTy.ty option
     val findBOMTy	: ty_def -> bty_def
     val findBOMVar	: var -> BOM.var option
     val findBOMHLOp     : hlop -> HLOp.hlop option
@@ -240,6 +241,7 @@ structure TranslateEnv : sig
 	    ATbl.insert importEnv (Atom.atom (PTVar.nameOf name), cfun)
         )
     fun insertPMLVar (av, bv) = setPMLVar (av, SOME bv)  (* imported PML variables *)
+    val findBOMTyDef = getTy
     fun findBOMTy v = (
 	(* the BOM type might have been bound in several places *)
 	   case (getTy v, ModuleEnv.getTyDef v)
@@ -270,6 +272,7 @@ structure TranslateEnv : sig
 	    importEnv = importEnv,
 	    exh = exh
 	  })
+
 
   (* output an environment *)
     fun dump (outStrm, E{tycEnv, dconEnv, varEnv, ...}) = let

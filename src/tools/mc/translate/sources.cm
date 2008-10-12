@@ -24,7 +24,7 @@ is
   ../ast/sources.cm
   ../env/sources.cm
   ../bom/sources.cm
-  ../hlop/sources.cm
+(*  ../hlop/sources.cm *)
   ../typechecker/sources.cm
   ../parse-tree/sources.cm
 (* FIXME: we shouldn't depend on stuff from another transform phase! *)

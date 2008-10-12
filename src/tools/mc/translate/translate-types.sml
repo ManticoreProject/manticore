@@ -12,11 +12,15 @@ structure TranslateTypes : sig
     val trDataCon : TranslateEnv.env * AST.dcon -> TranslateEnv.con_bind
 
   (* convert parse-tree types to BOM types *)
-    val cvtPrimTy : TranslateEnv.env -> ProgramParseTree.PML2.BOMParseTree.ty -> BOM.ty
-    val cvtPrimTys : TranslateEnv.env -> ProgramParseTree.PML2.BOMParseTree.ty list -> BOM.ty list
+    val cvtPrimTy : TranslateEnv.env * ProgramParseTree.PML2.BOMParseTree.ty -> BOM.ty
+    val cvtPrimTys : TranslateEnv.env * ProgramParseTree.PML2.BOMParseTree.ty list -> BOM.ty list
 
   (* record the BOM kind of the representation of an AST type constructor *)
     val setTycKind : Types.tycon * BOMTy.kind -> unit
+
+  (* cached lookup of primitive BOM types from the basis *)
+    val stringLenBOMTy : unit -> BOM.ty
+    val stringBOMTy : unit -> BOM.ty
 
   end = struct
 
@@ -181,7 +185,7 @@ structure TranslateTypes : sig
 
   (* convert parse-tree types to BOM types *)
     and cvtPrimTy env = let
-	  val cvtTys = cvtPrimTys env
+	  fun cvtTys tys = cvtPrimTys(env, tys)
 	  fun cvtTy ty = (case ty
 	        of BPT.T_Mark {tree, span} => cvtTy tree
 		 | BPT.T_Any => BTy.T_Any
@@ -190,7 +194,7 @@ structure TranslateTypes : sig
 		 | (BPT.T_Tuple(mut, tys)) => BTy.T_Tuple(mut, cvtTys tys)
 		 | (BPT.T_Addr ty) => BTy.T_Addr(cvtTy ty)
 		 | (BPT.T_Fun(argTys, exhTys, resTys)) =>
-		   BTy.T_Fun(cvtTys argTys, cvtTys exhTys, cvtTys resTys)
+		     BTy.T_Fun(cvtTys argTys, cvtTys exhTys, cvtTys resTys)
 		 | (BPT.T_Cont tys) => BTy.T_Cont(cvtTys tys)
 		 | (BPT.T_CFun cproto) => BTy.T_CFun cproto
 		 | (BPT.T_VProc) => BTy.T_VProc
@@ -206,7 +210,9 @@ structure TranslateTypes : sig
 	    cvtTy
 	  end
 
-    and cvtPrimTys env tys = List.map (cvtPrimTy env) tys
+    and cvtPrimTys (env, tys) = List.map (cvtPrimTy env) tys
+
+    val cvtPrimTy = fn (env, ty) => cvtPrimTy env ty
 
     fun trDataCon (env, dc) = (case E.findDCon(env, dc)
 	     of SOME dc' => dc'
@@ -234,5 +240,28 @@ structure TranslateTypes : sig
 		    ignore (trTyc(env, DataCon.ownerOf dc));
 		    valOf (E.findDCon(env, dc)))
 	    (* end case *))
+
+  (* cached lookup of primitive BOM types from the basis *)
+    local
+      fun cachedLookup name = let
+	    val cache = ref NONE
+	    fun lookup () = (case !cache
+		   of NONE => let
+			val id = BasisEnv.getBOMTyFromBasis [name]
+			in
+			  case TranslateEnv.findBOMTyDef id
+			   of SOME ty => (cache := SOME ty; ty)
+			    | NONE => raise Fail("Unable to locate " ^ name)
+			  (* end case *)
+			end
+		    | SOME item => item
+		  (* end case *))
+	    in
+	      lookup
+	    end
+    in
+    val stringLenBOMTy = cachedLookup "string_len"
+    val stringBOMTy = cachedLookup "ml_string"
+    end (* local *)
 
   end

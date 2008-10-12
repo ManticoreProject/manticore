@@ -13,7 +13,7 @@ structure BasisEnv : sig
 
     val getValFromBasis : string list -> ModuleEnv.val_bind
     val getTyFromBasis : string list -> ModuleEnv.ty_def
-    val getBOMTyFromBasis : string list -> ProgramParseTree.PML2.BOMParseTree.ty
+    val getBOMTyFromBasis : string list -> ProgramParseTree.Var.var
 
   end = struct
 
@@ -22,7 +22,7 @@ structure BasisEnv : sig
     structure BEnv = BindingEnv
     structure MEnv = ModuleEnv
 
-    val basis : BindingEnv.env option ref = ref NONE
+    val basis : BEnv.env option ref = ref NONE
 
     fun saveBasisEnv bEnv = (basis := SOME bEnv)
 
@@ -49,7 +49,7 @@ structure BasisEnv : sig
    *)
     fun getValFromBasis path = (case getModule path
 	   of SOME(bEnv, x) => (case BEnv.findVar(bEnv, x)
-		 of SOME(BEnv.Var v) =>  (case ModuleEnv.getValBind v
+		 of SOME(BEnv.Var v) => (case ModuleEnv.getValBind v
 		       of SOME vb => vb
 			| NONE => notFound path
 		      (* end case *))
@@ -72,14 +72,8 @@ structure BasisEnv : sig
 
   (* use a path (or qualified name) to look up a BOM type *)
     fun getBOMTyFromBasis path = (case getModule path
-	   of SOME(bEnv, x) => (case BEnv.findBOMVar(bEnv, x)
-		 of SOME v =>  (case ModuleEnv.getPrimTyDef v
-		       of SOME ty => ty
-			| NONE => raise Fail(concat[
-			      "Unable to locate ", pathToString path, " at ",
-			      ProgramParseTree.Var.toString v
-			    ])
-		      (* end case *))
+	   of SOME(bEnv, x) => (case BEnv.findBOMTy(bEnv, x)
+		 of SOME v => v
 		  | NONE => notFound path
 		(* end case *))
 	    | _ => notFound path

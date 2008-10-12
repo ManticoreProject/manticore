@@ -47,8 +47,16 @@ structure TranslatePValCilk5  : sig
     structure BV = BOM.Var
     structure E = TranslateEnv
 
+(* FIXME: we should be looking in the Basis environment for HLOps *)
     val findHLOp = #name o Option.valOf o HLOpEnv.findDefByPath
-    fun getBOMTy (env, path) = TranslateTypes.cvtPrimTy env (BasisEnv.getBOMTyFromBasis path)
+(*
+    fun getBOMTy (env, path) = TranslateTypes.cvtPrimTy (env, BasisEnv.getBOMTyFromBasis path)
+*)
+    fun getBOMTy (env, path) = (case TranslateEnv.findBOMTyDef(BasisEnv.getBOMTyFromBasis path)
+	   of SOME ty => ty
+	    | NONE => raise Fail("unable to find " ^ String.concatWith "." path)
+	  (* end case *))
+
     fun getTy (env, path) = (
 	case BasisEnv.getTyFromBasis path
 	 of ModuleEnv.TyCon tyc => (

@@ -8,7 +8,6 @@
 
 structure BindingEnv (*: sig
 
-    type ty_def = ProgramParseTree.PML2.BOMParseTree.ty_def
     type ty_bind = ProgramParseTree.PML2.ty_bind
     type var_bind = ProgramParseTree.PML2.var_bind
     type mod_bind = ProgramParseTree.PML2.mod_bind
@@ -27,7 +26,7 @@ structure BindingEnv (*: sig
       = Con of var_bind
       | Var of var_bind
 
-    val insertTycBind : env * Atom.atom * ty_def -> env
+    val insertTycBind : env * Atom.atom * bom_ty_def -> env
     val insertTy      : env * Atom.atom * ty_bind -> env
     val insertDataCon : env * Atom.atom * var_bind * ty_bind -> env
     val insertVal     : env * Atom.atom * val_bind -> env
@@ -54,7 +53,6 @@ structure BindingEnv (*: sig
     structure Var = ProgramParseTree.Var
     structure Map = AtomMap
 
-    type ty_def = PT2.BOMParseTree.ty_def
     type ty_bind = PT2.ty_bind
     type var_bind = PT2.var_bind
     type mod_bind = PT2.mod_bind
@@ -187,7 +185,7 @@ structure BindingEnv (*: sig
 	 (* found a value *)
 	 | SOME v => SOME v)
 
-    fun findBOMTy (Env{bomEnv=BOMEnv {tyEnv, ...}, outerEnv, ...}, x) = (case Map.find(tyEnv, x)
+    fun findBOMTy (Env{bomEnv=BOMEnv{tyEnv, ...}, outerEnv, ...}, x) = (case Map.find(tyEnv, x)
         of NONE => 
 	   (* x is not bound in this module, so check the enclosing module *)
 	   (case outerEnv

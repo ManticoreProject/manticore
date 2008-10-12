@@ -47,10 +47,6 @@ structure TranslatePrim : sig
     val unwrapType = BOMTyUtil.unwrap
     val selectType = BOMTyUtil.select
 
-  (* the type of ML strings *)
-    val stringLenTy = BOMBasis.stringLenTy
-    val stringTy = BOMBasis.stringTy
-
     fun fail ss = Fail (String.concat ss)
 
     fun newTmp ty = BV.new("_t", ty)
@@ -59,8 +55,8 @@ structure TranslatePrim : sig
 
   (* globally accessible translation environment *)
     val translateEnv = ref (TranslateEnv.mkEnv())
-    fun cvtTy ty = TranslateTypes.cvtPrimTy (!translateEnv) ty
-    fun cvtTys ty = TranslateTypes.cvtPrimTys (!translateEnv) ty
+    fun cvtTy ty = TranslateTypes.cvtPrimTy (!translateEnv, ty)
+    fun cvtTys ty = TranslateTypes.cvtPrimTys (!translateEnv, ty)
 
   (* find a data constructor that is defined in PML code *)
     fun findCon con = (case ModuleEnv.getValBind con
@@ -228,13 +224,13 @@ structure TranslatePrim : sig
 	                  | BPT.SE_Const(lit, ty) => BOM.mkStmt(lhs', BOM.E_Const(lit, cvtTy ty), body')
 			  | BPT.SE_MLString s => let
 			      val t1 = BV.new("_data", BTy.T_Any)
-			      val t2 = BV.new("_len", stringLenTy)
-			      val t3 = BV.new("_slit", stringTy)
+			      val t2 = BV.new("_len", TranslateTypes.stringLenBOMTy())
+			      val t3 = BV.new("_slit", TranslateTypes.stringBOMTy())
 			      in
 				BOM.mkStmts([
 				    ([t1], BOM.E_Const(Literal.String s, BTy.T_Any)),
-				    ([t2], BOM.E_Const(Literal.Int(IntInf.fromInt(size s)), stringLenTy)),
-				    ([t3], BOM.E_Alloc(stringTy, [t1, t2]))
+				    ([t2], BOM.E_Const(Literal.Int(IntInf.fromInt(size s)), TranslateTypes.stringLenBOMTy())),
+				    ([t3], BOM.E_Alloc(TranslateTypes.stringBOMTy(), [t1, t2]))
 				  ],
 				BOM.mkLet(lhs', BOM.mkRet[t3], body'))
 			      end
@@ -400,13 +396,13 @@ structure TranslatePrim : sig
 		end
 	    | BPT.SE_MLString s => let
 		val t1 = BV.new("_data", BTy.T_Any)
-		val t2 = BV.new("_len", stringLenTy)
-		val t3 = BV.new("_slit", stringTy)
+		val t2 = BV.new("_len", TranslateTypes.stringLenBOMTy())
+		val t3 = BV.new("_slit", TranslateTypes.stringBOMTy())
 		in
 		  BOM.mkStmts([
 		      ([t1], BOM.E_Const(Literal.String s, BTy.T_Any)),
-		      ([t2], BOM.E_Const(Literal.Int(IntInf.fromInt(size s)), stringLenTy)),
-		      ([t3], BOM.E_Alloc(stringTy, [t1, t2]))
+		      ([t2], BOM.E_Const(Literal.Int(IntInf.fromInt(size s)), TranslateTypes.stringLenBOMTy())),
+		      ([t3], BOM.E_Alloc(TranslateTypes.stringBOMTy(), [t1, t2]))
 		    ],
 		  k t3)
 		end

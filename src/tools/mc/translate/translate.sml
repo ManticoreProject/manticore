@@ -259,13 +259,13 @@ structure Translate : sig
 	    | AST.ConstExp(AST.DConst(dc, tys)) => trDConExp (env, dc)
 	    | AST.ConstExp(AST.LConst(lit as Literal.String s, _)) => let
 		val t1 = BV.new("_data", BTy.T_Any)
-		val t2 = BV.new("_len", BOMBasis.stringLenTy)
-		val t3 = BV.new("_slit", BOMBasis.stringTy)
+		val t2 = BV.new("_len", TranslateTypes.stringLenBOMTy())
+		val t3 = BV.new("_slit", TranslateTypes.stringBOMTy())
 		in
 		  EXP(BOM.mkStmts([
 		      ([t1], BOM.E_Const(Literal.String s, BTy.T_Any)),
-		      ([t2], BOM.E_Const(Literal.Int(IntInf.fromInt(size s)), BOMBasis.stringLenTy)),
-		      ([t3], BOM.E_Alloc(BOMBasis.stringTy, [t1, t2]))
+		      ([t2], BOM.E_Const(Literal.Int(IntInf.fromInt(size s)), TranslateTypes.stringLenBOMTy())),
+		      ([t3], BOM.E_Alloc(TranslateTypes.stringBOMTy(), [t1, t2]))
 		    ], BOM.mkRet[t3]))
 		end
 	    | AST.ConstExp(AST.LConst(lit, ty)) => (case trTy(env, ty)

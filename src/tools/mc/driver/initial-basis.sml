@@ -43,7 +43,7 @@ structure InitialBasis : sig
 
   (* construct the primitive environments *)
     val (primBindingEnv, primEnv) = let
-	  val bEnv = BEnv.empty (Atom.atom "Prim", NONE)
+	  val bEnv = BEnv.empty (Atom.atom "Prim")
 	  val mEnv = MEnv.empty
 	(* insert the primitive type constructors (and associated data constructors) *)
 	  fun insTyc (tyc, (bEnv, mEnv)) = let
@@ -214,6 +214,9 @@ structure InitialBasis : sig
   (* seed the initial translation envirnment with a mapping from the primitive AST types to
    * their BOM equivalents.
    *)
+(* NOTE: we might be able to get rid of this environment by using the mechanism that we
+ * use to define the thread-ID type below.
+ *)
     val primTranslationEnv = let
 	    fun wrapTy rty = BOMTyUtil.wrap(BTy.T_Raw rty)
 	    val env = TEnv.mkEnv()
@@ -231,7 +234,7 @@ structure InitialBasis : sig
 		  (longTyc,	BTy.K_BOXED,	wrapTy BTy.T_Long),
 		  (floatTyc,	BTy.K_BOXED,	wrapTy BTy.T_Float),
 		  (doubleTyc,	BTy.K_BOXED,	wrapTy BTy.T_Double),
-		  (stringTyc,	BTy.K_BOXED,	BOMBasis.stringTy),
+(*		  (stringTyc,	BTy.K_BOXED,	BOMBasis.stringTy),*)
 		  (exnTyc,	BTy.K_BOXED,	BTy.exnTy)
 		];
 	      env
@@ -329,7 +332,7 @@ structure InitialBasis : sig
 	  end
 
   (* given the environments produced from the "initial-basis.pml" file,
-   * extend them with the operators
+   * extend them with the operators and other primitive bindings.
    *)
     fun extendInitialEnv (bEnv, mEnv) = let
 	(* insert overloaded operators *)
@@ -374,6 +377,28 @@ structure InitialBasis : sig
 	  val (bEnv, mEnv) = List.foldl insEqOp (bEnv, mEnv) [
 		  (N.eq,	eq),
 		  (N.neq,	neq)
+		]
+	(* add type bindings for abstract types *)
+	  fun insTycBind (tyc, bomName) = let
+		val pmlName = TyCon.nameOf tyc
+		val SOME pmlId = BEnv.findTy(bEnv, pmlName)
+		in
+		  case BEnv.findBOMTy(bEnv, Atom.atom bomName)
+		   of SOME id => let
+			val bty = PPT.PML2.BOMParseTree.T_TyCon id
+			in
+			  MEnv.setRealizationOfTyc (tyc, MEnv.BOMTyDef bty);
+			  MEnv.setPrimTyDef(pmlId, SOME bty)
+			end
+		    | NONE =>
+			TextIO.output(TextIO.stdErr, concat[
+			    "Warning: cannot find ", bomName,
+			    " found in binding environment\n"
+			  ])
+		end
+	  val () = List.app insTycBind [
+		  (stringTyc, "ml_string"),
+		  (threadIdTyc, "thread_id")
 		]
 	  in {
 	    bEnv = bEnv,
