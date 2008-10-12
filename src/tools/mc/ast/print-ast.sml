@@ -96,25 +96,27 @@ structure PrintAST : sig
   (* FIXME: should have proper pretty printing for types *)
     fun tyScheme ts = pr(TypeUtil.schemeToString ts)
 
-  (* exp : A.exp -> unit *)
-    fun exp (A.LetExp (b, e)) = (
-	  openVBox (rel 0);
-	    pr "let";
-	    openVBox (abs 4);
-	      ln ();
-	      binding b;
-	    closeBox ();
+    fun exp (e as A.LetExp _) = let
+	  fun prBinds (A.LetExp(b, e)) = (
+		ln ();
+		binding b;
+		prBinds e)
+	    | prBinds e = e
+	  val body = (
+		pr "let";
+		openVBox (abs 2);
+		prBinds e before closeBox())
+	  in
 	    ln ();
 	    pr "in";
-	    openVBox (abs 4);
+	    openVBox (abs 2);
 	      ln ();
-	      exp e;
+	      exp body;
 	    closeBox ();
 	    ln ();
-	    pr "end";
-	  closeBox ())
-      |	exp (A.IfExp (ec, et, ef, t)) = 
-	  (openVBox (rel 0);
+	    pr "end"
+	  end
+      |	exp (A.IfExp (ec, et, ef, t)) = (
 	   pr "if (";
 	   exp ec;
 	   pr ") then";
@@ -127,25 +129,22 @@ structure PrintAST : sig
 	   openVBox (abs 2);
 	   ln ();
 	   exp ef;
-	   closeBox ();
 	   closeBox ())
       | exp (A.CaseExp (e, pes, t)) = (
-	  openVBox (rel 0);
-	     pr "(case (";
-	     exp e;
-	     pr ")";
-	     openVBox (abs 1);
-	       ln ();
-	       case pes
-		of m::ms => (sp (); pe "of" m;  
-			     app (pe " |") ms)
-		 | nil => raise Fail "case without any branches"
-	       (* end case *);	       
-	     closeBox ();
-	     pr "(* end case *))";
-	  closeBox ())
+	  pr "(case (";
+	  exp e;
+	  pr ")";
+	  openVBox (abs 1);
+	    ln ();
+	    case pes
+	     of m::ms => (sp (); pe "of" m;  
+			  app (pe " |") ms)
+	      | nil => raise Fail "case without any branches"
+	    (* end case *);	       
+	  closeBox ();
+	  pr "(* end case *))")
       | exp (A.PCaseExp (es, pms, t)) = (
-	  openVBox (rel 2);
+	  openVBox (abs 2);
 	  pr "(pcase ";
 	  appwith (fn () => pr " & ") exp es;
 	  openVBox (abs 1);
@@ -241,21 +240,19 @@ structure PrintAST : sig
 	  (openVBox (rel 0);
 	   appwith (fn () => pr " |?| ") exp es;
 	   closeBox ())
-      | exp (A.SpawnExp e) = 
-	  (openVBox (rel 0);
-	   pr "spawn ";
-	   exp e;
-	   closeBox ())
+      | exp (A.SpawnExp e) = (
+	  openHBox();
+	  pr "spawn"; sp();
+	  exp e;
+	  closeBox ())
       | exp (A.ConstExp c) = const c
       | exp (A.VarExp (v, ts)) = var v
-      | exp (A.SeqExp (e1, e2)) = 
-	  (openVBox (rel 0);
-	   pr "(";
-	   exp e1;
-	   pr "; ";
-	   exp e2;
-	   pr ")";
-	   closeBox ())
+      | exp (A.SeqExp (e1, e2)) = (
+	  pr "(";
+	  exp e1;
+	  pr "; ";
+	  exp e2;
+	  pr ")")
       | exp (A.OverloadExp ovr) = overload_var (!ovr)
       | exp (A.ExpansionOptsExp (_, e)) = exp e
 
@@ -344,8 +341,11 @@ structure PrintAST : sig
 		   lambda "fun" d;
 		   app (lambda "and") ds;
 		   closeBox ()))
-      | binding (A.PrimVBind _) = ()
-      | binding (A.PrimCodeBind _) = ()
+      | binding (A.PrimVBind(x, _)) = (
+	  openHBox ();
+	    pr "val"; sp(); var x; sp(); pr "="; sp(); pr"_prim(...)";
+	  closeBox())
+      | binding (A.PrimCodeBind _) = pr "_primcode(...)"
 
   (* lambda : string -> A.lambda -> unit *)
     and lambda kw (A.FB (f, x, b)) =
@@ -375,10 +375,7 @@ structure PrintAST : sig
 	   appwith (fn () => pr ",") pat ps;
 	   pr ")";
 	   closeBox ())
-      | pat (A.VarPat v) = (
-	  openHBox ();
-	    var v;
-	  closeBox ())
+      | pat (A.VarPat v) = var v
       | pat (A.WildPat ty) = pr "_"
       | pat (A.ConstPat c) = const c
 
