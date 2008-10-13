@@ -40,9 +40,6 @@ structure CaseSimplify : sig
 	    ty2ty ty
 	  end
 
-  (* the post-case-simplify representation of booleans *)
-    val boolTy = tyToRepTy BOMBasis.boolTy
-
   (* A sub-case covers either the boxed, literal, or unboxed rules in a case.
    * If the rules are not exhaustive for the sub-case, then the default rule is
    * included too.
@@ -109,8 +106,8 @@ structure CaseSimplify : sig
     (* generate numeric comparisons *)
       fun genNumTest (ty, ltPrim, eqPrim, const) {arg, key, ltAct, eqAct, gtAct} = let
 	    val v = BV.new("_caseLbl", ty)
-	    val isLess = BV.new("_isLess", boolTy)
-	    val isEq = BV.new("_isEq", boolTy)
+	    val isLess = BV.new("_isLess", BTy.boolTy)
+	    val isEq = BV.new("_isEq", BTy.boolTy)
 	    in
 	      B.mkStmt([v], const key,
 	      B.mkStmt([isLess], B.E_Prim(ltPrim(arg, v)),
@@ -123,7 +120,7 @@ structure CaseSimplify : sig
     (* generate numeric order test *)
       fun genNumOrdTest (ty, cmpPrim, const) {arg, key, eqAct, neqAct} = let
 	    val v = BV.new("_caseLbl", ty)
-	    val isOrd = BV.new("_isOrd", boolTy)
+	    val isOrd = BV.new("_isOrd", BTy.boolTy)
 	    in
 	      B.mkStmt([v], const key,
 	      B.mkStmt([isOrd], B.E_Prim(cmpPrim(arg, v)),
@@ -454,7 +451,7 @@ DEBUG*)
 			      val ty = BTy.T_Enum(Word.fromInt(BTyc.nCons(BTyc.dconTyc dc)))
 			      val tag' = BV.new("tag", ty)
 			      val tmp = BV.new("tmp", ty)
-			      val eq = BV.new("eq", boolTy)
+			      val eq = BV.new("eq", BTy.boolTy)
 			      in
 				B.mkStmts([
 				    ([argument'], B.E_Cast(BV.typeOf argument', argument)),
@@ -510,7 +507,7 @@ DEBUG*)
 	     of EnumCase{rules, ...} => B.mkCase(argument, List.map enumCase rules, dflt)
 	      | ConsCase{rules, ...} => consCase (rules, dflt)
 	      | MixedCase{enums, cons} => let
-		  val isBoxed = BV.new("isBoxed", boolTy)
+		  val isBoxed = BV.new("isBoxed", BTy.boolTy)
 		  val boxedTest = if numEnumsOfTyc x = 1
 			then let
 			(* when there is only one possible enum value, we just do
@@ -586,7 +583,8 @@ DEBUG*)
 	      | _ => raise Fail("literal case on unsupported type "^ BTU.toString ty)
 	    (* end case *)
 	  end
-      | literalCase _ = raise Fail "ill-formed literal case"
+      | literalCase (_, _, argument, _, _) =
+	  raise Fail("ill-formed literal case of " ^ BV.toString argument)
 
     fun transform (B.MODULE{name, externs, hlops, body}) = let
 	  val module = B.mkModule(name, externs, hlops, #2 (xformLambda (BV.Map.empty, body)))

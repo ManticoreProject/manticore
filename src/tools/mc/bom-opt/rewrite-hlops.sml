@@ -44,7 +44,7 @@ end = struct
         type var = BOM.var
         type ty = BTy.ty
 	val anyTy = BTy.T_Any
-	val boolTy = BOMBasis.boolTy
+	val boolTy = BTy.boolTy
 	val addrTy = BTy.T_Addr(BTy.T_Any)
 	val rawTy = BTy.T_Raw)
 

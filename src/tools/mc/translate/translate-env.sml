@@ -15,6 +15,7 @@ structure TranslateEnv : sig
       = Const of BOMTy.data_con		(* nullary data constructors *)
       | ExnConst of BOMTy.data_con	(* nullary exception constructors *)
       | DCon of (BOMTy.data_con * FlattenRep.rep_tree)
+      | Lit of BOM.const		(* nullary constructor with literal rep (e.g., false) *)
 
   (* variable bindings *)
     datatype var_bind
@@ -90,6 +91,7 @@ structure TranslateEnv : sig
       = Const of BOMTy.data_con		(* nullary data constructors *)
       | ExnConst of BOMTy.data_con	(* nullary exception constructors *)
       | DCon of (BOMTy.data_con * FlattenRep.rep_tree)
+      | Lit of BOM.const		(* nullary constructor with literal rep (e.g., false) *)
 
     datatype var_bind
       = Lambda of (BOMTy.ty -> BOM.lambda) (* used for primops and high-level ops *)
@@ -195,13 +197,6 @@ structure TranslateEnv : sig
 	   setFn=setVar : (PTVar.var * BOM.var option) -> unit, ...
 	} =
 	    ProgramParseTree.Var.newProp(fn _ => NONE)
-      (* data constructors *)
-(*	val {
-	   getFn=getCon : PTVar.var -> con_bind option, 
-	   setFn=setCon : (PTVar.var * con_bind option) -> unit, ...
-	} =
-	    ProgramParseTree.Var.newProp(fn _ => NONE)
-*)
       (* types *)
 	val {
 	   getFn=getTy : PTVar.var -> BOMTy.ty option, 

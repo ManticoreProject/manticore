@@ -35,7 +35,7 @@ structure TranslatePrim : sig
 	type var = BOM.var
 	type ty = BTy.ty
 	val anyTy = BTy.T_Any
-	val boolTy = BOMBasis.boolTy
+	val boolTy = BTy.boolTy
 	val addrTy = BTy.T_Addr(BTy.T_Any)
 	val rawTy = BTy.T_Raw)
 
@@ -119,6 +119,11 @@ structure TranslatePrim : sig
 		in
 		  BOM.mkStmt([t], BOM.E_DCon(dc', []), k t)
 		end
+	    | Con(E.Lit lit) => let
+		val t = BOM.Var.new(PTVar.nameOf x, #2 lit)
+		in
+		  BOM.mkStmt([t], BOM.E_Const lit, k t)
+		end
 	  (* end case *))
 
     fun cvtPat (BPT.P_PMark {tree, span}) = cvtPat tree
@@ -130,6 +135,7 @@ structure TranslatePrim : sig
 		  BOM.P_DCon(dc, xs)
 		end
 	    | SOME(E.ExnConst _) => raise Fail "FIXME"
+	    | SOME(E.Lit lit) => BOM.P_Const lit
 	    | NONE => raise Fail(String.concat["unknown BOM nullary data constructor ", PTVar.nameOf dc])
 	  (* end case *))
       | cvtPat (BPT.P_Const(const, ty)) = (BOM.P_Const(const, cvtTy ty))

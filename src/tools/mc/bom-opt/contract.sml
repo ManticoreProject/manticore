@@ -444,7 +444,7 @@ structure Contract : sig
 			      B.mkStmt([a], B.E_Prim(Prim.BNot cond), B.mkRet[a]))
 			  | (SOME(a, av), SOME(b, _)) => (
 			      ST.tick cntIfReduce;
-			      B.mkStmt([a], B.E_Const(Lit.Enum av, BOMBasis.boolTy), B.mkRet[a]))
+			      B.mkStmt([a], B.E_Const(Lit.Enum av, BTy.boolTy), B.mkRet[a]))
 			  | _ => B.mkIf(cond, trueE, falseE)
 			(* end case *)
 		      end

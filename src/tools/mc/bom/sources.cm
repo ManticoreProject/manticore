@@ -7,7 +7,6 @@
 Library
 
   structure BOM
-  structure BOMBasis
   structure BOMTy
   structure BOMTyCon
   structure BOMTyUtil
@@ -28,7 +27,6 @@ is
   ../parse-tree/sources.cm
 
   bom.sml
-  bom-basis.sml
   bom-ty.sml
   bom-tycon.sml
   bom-ty-util.sml

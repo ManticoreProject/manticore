@@ -146,6 +146,11 @@ structure Translate : sig
 		in
 		  EXP(B.mkFun([fb], B.mkRet[f]))
 		end
+	    | E.Lit lit => let
+		val t = BV.new("lit_" ^ DataCon.nameOf dc, #2 lit)
+		in
+		  BIND([t], B.E_Const lit)
+		end
 	  (* end case *))
 
     fun trExp (env, exp) : bom_code = (case prune exp
@@ -380,13 +385,13 @@ structure Translate : sig
                   end
 	  (* end case *))
 
+  (* translation of the body of a case expression. *) 
     and trCase (env, arg, rules) = let
 	(* translation of nullary constructors *)
-	  fun trDConst (dc, exp) = let
-		val E.Const dc' = TranslateTypes.trDataCon(env, dc)
-		in
-		  (B.P_DCon(dc', []), trExpToExp(env, exp))
-		end
+	  fun trDConst (dc, exp) = (case TranslateTypes.trDataCon(env, dc)
+		 of E.Const dc' => (B.P_DCon(dc', []), trExpToExp(env, exp))
+		  | E.Lit lit => (B.P_Const lit, trExpToExp(env, exp))
+		(* end case *))
 	(* translation of a constructor applied to a pattern *)
 	  fun trConPat (dc, tyArgs, pat, exp) = let
 		val E.DCon(dc', repTr) = TranslateTypes.trDataCon(env, dc)

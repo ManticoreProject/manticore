@@ -70,6 +70,8 @@ structure BOMTy =
 
     val unitTy = T_Enum(0w0)
 
+    val boolTy = T_Enum(0w1)
+
     val exnTyc = AbsTyc{
 	    name = "exn",
 	    stamp = Stamp.new(),

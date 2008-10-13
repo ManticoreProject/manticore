@@ -40,7 +40,6 @@ structure TranslatePValCilk5  : sig
   end  = struct
 
     structure B   = BOM
-    structure BB  = BOMBasis
     structure BTy = BOMTy
     structure BU  = BOMUtil
     structure BTy = BOMTy

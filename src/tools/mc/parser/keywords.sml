@@ -61,6 +61,7 @@ structure Keywords : sig
 	    ("and",		T.KW_and),
 	    ("any",		T.KW_any),
 	    ("apply",		T.KW_apply),
+	    ("bool",		T.KW_bool),
 	    ("byte",		T.KW_byte),
 	    ("case",		T.KW_case),
 	    ("ccall",		T.KW_ccall),
@@ -73,6 +74,7 @@ structure Keywords : sig
 	    ("end",		T.KW_end),
 	    ("enum",		T.KW_enum),
 	    ("extern",		T.KW_extern),
+	    ("false",		T.KW_false),
 	    ("float",		T.KW_float),
 	    ("fun",		T.KW_fun),
 	    ("host_vproc",	T.KW_host_vproc),
@@ -84,6 +86,7 @@ structure Keywords : sig
 	    ("module",		T.KW_module),
 	    ("noreturn",	T.KW_noreturn),
 	    ("of",		T.KW_of),
+	    ("pmlvar",          T.KW_pmlvar),
 	    ("promote",		T.KW_promote),
 	    ("pure",		T.KW_pure),
 	    ("return",		T.KW_return),
@@ -91,6 +94,7 @@ structure Keywords : sig
 	    ("tag",		T.KW_tag),
 	    ("then",		T.KW_then),
 	    ("throw",		T.KW_throw),
+	    ("true",		T.KW_true),
 	    ("typedef",		T.KW_typedef),
 	    ("unwrap",		T.KW_unwrap),
 	    ("use_rw",		T.KW_use_rw),
@@ -99,8 +103,7 @@ structure Keywords : sig
 	    ("vproc",		T.KW_vproc),
 	    ("vpload",		T.KW_vpload),
 	    ("vpstore",		T.KW_vpstore),
-	    ("wrap",		T.KW_wrap),
-	    ("pmlvar",          T.KW_pmlvar)
+	    ("wrap",		T.KW_wrap)
 	  ]
 
   (* create a keyword lookup table *)
