@@ -95,9 +95,6 @@ structure CPS =
   (* representation of unit *)
     val unitRHS = Const(Literal.unitLit, CPSTy.unitTy)
 
-  (* representation of nil *)
-    val nilRHS = Const(Literal.nilLit, CPSTy.T_Enum 0w0)
-
   (* smart constructors; these enforce the variable kind invariant and should be
    * used to construct terms.
    *)

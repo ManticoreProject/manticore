@@ -32,9 +32,6 @@ structure Literal : sig
     val unitLit : literal
     val trueLit : literal
     val falseLit : literal
-    val nilLit : literal		(* nil list *)
-    val noneLit : literal		(* NONE constructor *)
-    val stopLit : literal		(* STOP signal *)
 
   end = struct
 
@@ -138,9 +135,6 @@ structure Literal : sig
     val unitLit = Enum 0w0
     val trueLit = Enum 0w1
     val falseLit = Enum 0w0
-    val nilLit = Enum 0w0
-    val noneLit = Enum 0w0
-    val stopLit = Enum 0w0
 
   end
 
