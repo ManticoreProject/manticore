@@ -16,7 +16,7 @@ structure FiberLocalStorage =
     structure L = List
 
   (* see initial-basis.pml for the definition of fiber_local_storage *)
-    type fls = _prim ([bool, list])
+    type fls = _prim (fiber_local_storage)
 
     #define PINNED_OFF 0
     #define ASSOC_OFF  1
