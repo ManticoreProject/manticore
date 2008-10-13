@@ -234,6 +234,7 @@ structure InitialBasis : sig
 		    (* end case *);
 		    TEnv.insertTyc (env, tyc, bty)
                   end
+          (* insert a data constructor binding *)
 	    fun insertDataCon (name, dcon) = let
 		  val SOME (BEnv.Con con) = BEnv.findVar(primBindingEnv, name)
 		  val SOME (MEnv.Con con) = MEnv.findVar(primEnv, con)
