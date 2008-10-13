@@ -221,15 +221,22 @@ structure InitialBasis : sig
 	    fun wrapTy rty = BOMTyUtil.wrap(BTy.T_Raw rty)
 	    val env = TEnv.mkEnv()
 	  (* insert a type constructor binding *)
-	    fun insertTyc (tyc, k, bty) = (
-		  TranslateTypes.setTycKind (tyc, k);
-		  case bty
-		   of BTy.T_TyCon(BTy.DataTyc{kind, ...}) => kind := k
-		    | _ => ()
-		  (* end case *);
-		  TEnv.insertTyc (env, tyc, bty))
+	    fun insertTyc (tyc, k, bty) = let
+		  val Types.Tyc{name, def, ...} = tyc
+		  val SOME ptVar = BEnv.findTy(primBindingEnv, name)
+	          in
+		   (* bind the type for inline BOM (PT.var ---> BOM.ty) *)
+		    TranslateEnv.insertBOMTyDef(ptVar, bty);
+		    TranslateTypes.setTycKind (tyc, k);
+		    case bty
+		     of BTy.T_TyCon(BTy.DataTyc{kind, ...}) => kind := k
+		      | _ => ()
+		    (* end case *);
+		    TEnv.insertTyc (env, tyc, bty)
+                  end
 	    in
 	      List.app insertTyc [
+	          (boolTyc,     BTy.K_UNBOXED,  BOMBasis.boolTy),
 		  (intTyc,	BTy.K_BOXED,	wrapTy BTy.T_Int),
 		  (longTyc,	BTy.K_BOXED,	wrapTy BTy.T_Long),
 		  (floatTyc,	BTy.K_BOXED,	wrapTy BTy.T_Float),
