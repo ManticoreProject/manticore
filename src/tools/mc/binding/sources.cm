@@ -25,7 +25,6 @@ is
   ../env/sources.cm
 
   error-stream.sml
-  qualified-id.sml
   bound-variable-check.sml
   bom-bound-variable-check.sml
   used-vars.sml

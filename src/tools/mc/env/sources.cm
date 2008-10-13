@@ -12,6 +12,7 @@ Library
   structure BindingEnv
   structure BasisEnv
   structure HLOpEnv
+  structure QualifiedId
 
 is
 
@@ -25,6 +26,7 @@ is
 
   basis-env.sml
   binding-env.sml
+  qualified-id.sml
   hlop-env.sml
   module-env.sml
 
