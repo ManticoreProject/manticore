@@ -402,7 +402,7 @@ dnl shell scripts
 dnl
 AC_CONFIG_FILES([
   bin/install-sml-wrapper.sh:config/install-sml-wrapper_sh.in
-], [chmod +x bin/install-sml-wrapper.sh bin/mc])
+], [chmod +x bin/install-sml-wrapper.sh])
 
 dnl
 dnl create machine-specific links
