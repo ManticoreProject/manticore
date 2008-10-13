@@ -27,12 +27,17 @@ structure WorkStealingIVar
     structure PT = PrimTypes
     structure FLS = FiberLocalStorage
 
-    type 'a ivar = _prim (
+    _primcode (
+         typedef ivar2 =
               ![
 		 List.list,      (* list of blocked fibers *)
 		 any,            (* value *)
 		 int             (* spin lock *)
-	      ] )
+	      ];
+    )
+
+(* FIXME: try renaming ivar2 to ivar *)
+    type 'a ivar = _prim (ivar2)
 
     _primcode (
 
