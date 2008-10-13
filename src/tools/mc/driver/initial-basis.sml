@@ -234,7 +234,17 @@ structure InitialBasis : sig
 		    (* end case *);
 		    TEnv.insertTyc (env, tyc, bty)
                   end
+	    fun insertDataCon (name, dcon) = let
+		  val SOME (BEnv.Con con) = BEnv.findVar(primBindingEnv, name)
+		  val SOME (MEnv.Con con) = MEnv.findVar(primEnv, con)
+	          in
+		     TranslateEnv.insertCon(env, con, dcon)
+		  end
 	    in
+	      List.app insertDataCon [
+	          (N.boolTrue,   TranslateEnv.Const BOMBasis.boolTrue),
+	          (N.boolFalse,  TranslateEnv.Const BOMBasis.boolFalse)
+	      ];
 	      List.app insertTyc [
 	          (boolTyc,     BTy.K_UNBOXED,  BOMBasis.boolTy),
 		  (intTyc,	BTy.K_BOXED,	wrapTy BTy.T_Int),

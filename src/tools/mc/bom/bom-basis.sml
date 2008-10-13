@@ -10,6 +10,8 @@ signature BOM_BASIS =
   sig
 
     val boolTy : BOMTy.ty
+    val boolFalse : BOMTy.data_con
+    val boolTrue : BOMTy.data_con
 
   end
 

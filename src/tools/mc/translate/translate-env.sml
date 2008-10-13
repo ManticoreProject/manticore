@@ -196,11 +196,12 @@ structure TranslateEnv : sig
 	} =
 	    ProgramParseTree.Var.newProp(fn _ => NONE)
       (* data constructors *)
-	val {
+(*	val {
 	   getFn=getCon : PTVar.var -> con_bind option, 
 	   setFn=setCon : (PTVar.var * con_bind option) -> unit, ...
 	} =
 	    ProgramParseTree.Var.newProp(fn _ => NONE)
+*)
       (* types *)
 	val {
 	   getFn=getTy : PTVar.var -> BOMTy.ty option, 
