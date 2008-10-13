@@ -14,10 +14,9 @@
   in
     barrier.pml
     vproc-queue.pml
-(*    control.pml
+    control.pml
     scheduler-utils.pml
     vproc-messenger.pml
     cancelation.pml
     set-once-mem.pml
-*)
   end
