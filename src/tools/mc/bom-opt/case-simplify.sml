@@ -567,16 +567,21 @@ DEBUG*)
   (* convert a case on literals to a if-then-else tree; note that the default case
    * is required and has already been transformed.
    *)
-    and literalCase (s, tys, argument, cases as (((_, ty), _)::_), SOME dflt) = let
-	  val arcs = List.map (fn ((lit, _), e) => (lit, xformE(s, tys, e))) cases
+    and literalCase (s, tys, argument, rules as (((_, ty), _)::_), optDflt) = let
+	  val arcs = List.map (fn ((lit, _), e) => (lit, xformE(s, tys, e))) rules
 	  fun convert (proj, cvt) = cvt{
 		  arg = argument,
-		  arcs = List.map (fn ((lit, _), e) => (proj lit, xformE(s, tys, e))) cases,
-		  default = dflt
+		  arcs = List.map (fn ((lit, _), e) => (proj lit, xformE(s, tys, e))) rules,
+		  default = valOf optDflt
 		}
 	  in
 	    case ty
-	     of BTy.T_Raw BTy.T_Int => convert(fn (Literal.Int i) => i, I32Tst.convert)
+	     of BTy.T_Enum _ => let
+		  fun enumCase (lit, e) = (B.P_Const lit, xformE(s, tys, e))
+		  in
+		    B.mkCase(argument, List.map enumCase rules, optDflt)
+		  end
+	      | BTy.T_Raw BTy.T_Int => convert(fn (Literal.Int i) => i, I32Tst.convert)
 	      | BTy.T_Raw BTy.T_Long => convert(fn (Literal.Int i) => i, I64Tst.convert)
 	      | BTy.T_Raw BTy.T_Float => convert(fn (Literal.Float f) => f, F32Tst.convert)
 	      | BTy.T_Raw BTy.T_Double => convert(fn (Literal.Float f) => f, F64Tst.convert)
