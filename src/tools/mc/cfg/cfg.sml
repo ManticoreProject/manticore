@@ -15,8 +15,9 @@ structure CFG =
     type tag = Word.word	(* data-constant tags *)
     type offset = IntInf.int	(* offsets into the runtime-system vproc structure *)
 
-    datatype heap_check_kind = HCK_Local    (* local heap-limit check *)
-                             | HCK_Global   (* global heap-limit check *)
+    datatype heap_check_kind
+      = HCK_Local		(* local heap-limit check *)
+      | HCK_Global		(* global heap-limit check *)
 
   (* extended basic block *)
     datatype func = FUNC of {
@@ -79,7 +80,12 @@ structure CFG =
       | If of (var * jump * jump)
       | Switch of (var * (tag * jump) list * jump option)
       | HeapCheck of {hck : heap_check_kind, szb : word, nogc : jump}
-      | AllocCCall of {lhs : var list, f : var, args : var list, ret : jump}            (* jump to ret after calling f(args) *)
+      | AllocCCall of { (* a CCall that does allocation *)
+	    lhs : var list,
+	    f : var,
+	    args : var list,
+	    ret : jump            (* jump to ret after calling f(args) *)
+	  }
 
     and var_kind
       = VK_None
