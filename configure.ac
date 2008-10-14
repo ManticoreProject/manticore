@@ -65,7 +65,10 @@ dnl FOr now, we only work on x86_64, so check that.
 dnl
 if test x"$TARGET_CPU" != xTARGET_X86_64 ; then
   AC_MSG_ERROR([sorry, but we only support the x86-64 processor])
+else
+  CC_MODE_FLAG="-m64"
 fi
+CFLAGS="$CFLAGS $CC_MODE_FLAG"
 
 TARGET=$ARCH-$OS
 AC_SUBST(TARGET_CPU)
