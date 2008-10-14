@@ -49,7 +49,6 @@ CM_FILES =		ast-opt/sources.cm \
 			driver/sources.cm \
 			driver/$(TARGET).cm \
 			env/sources.cm \
-			hlop/sources.cm \
 			match-comp/sources.cm \
 			mlb/sources.cm \
 			parse-tree/sources.cm \
