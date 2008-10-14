@@ -35,20 +35,23 @@ structure ChkProgram :> sig
     fun bindSigIdVars (sigVars, modVars, exp) = 
 	ASTUtil.mkLetExp(ListPair.foldl bindSigIdVar [] (sigVars, modVars), exp)
 
-  (* bind variable definitions in the external signature to actual definitions in the module.
+  (* rewrite top-level bound variables
    * i.e., 
    *      structure Foo = struct
+   *        type f = int
    *        val foo<101> = 3
    *      end
    *      
    *      structure F : sig
-   *           val foo<100> : int
-   *         end                     = Foo
+   *           type f
+   *           val foo<100> : f
+   *         end = Foo
    *
-   *                                          rebindSigVars(sigOf(F), envOf(Foo), exp)    ==>
+   *                rebindSigVars(sigOf(F), envOf(Foo), exp)    ==>
+   *
    *      let val foo<101> = 3
    *      in
-   *          let val foo<100> = foo<101>
+   *          let val foo<100> : f = foo<101>
    *          in
    *             exp
    *          end
@@ -84,7 +87,9 @@ structure ChkProgram :> sig
 	      (case Env.ModuleMap.find(moduleEnv, modRef)
 		of NONE => raise Fail ("cannot find module "^Atom.toString name)
 		 | SOME (modEnv as Env.ModEnv{modRef, ...}, sigEnv, module) => 
-		   rebindSigVars(sigEnv, modEnv, exp)
+		   exp
+(* FIXME: signature ascription is broken *)
+		   (*rebindSigVars(sigEnv, modEnv, exp)*)
               (* end case *))
 	    | AST.M_Body (info, decls) => declsToExp moduleEnv (decls, exp)
 	  (* end case *))
