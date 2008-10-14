@@ -61,22 +61,11 @@ if test $OS = darwin -a $ARCH = x86 -a $CROSS_COMPILING = 0; then
 fi
 
 dnl
-dnl check for --enable-32 flag
+dnl FOr now, we only work on x86_64, so check that.
 dnl
-if test $ARCH = x86_64 -a $CROSS_COMPILING = 0; then
-  AC_ARG_ENABLE(32,
-    AC_HELP_STRING([--enable-32], [enable 32-bit compatibility mode on x86-64]))
-  if test x"$enable_32" = xyes ; then
-    TARGET_CPU=TARGET_X86
-    ARCH=x86
-    CC_MODE_FLAG="-m32"
-  else
-    CC_MODE_FLAG="-m64"
-  fi
-else
-  CC_MODE_FLAG=""
+if test x"$TARGET_CPU" != xTARGET_X86_64 ; then
+  AC_MSG_ERROR([sorry, but we only support the x86-64 processor])
 fi
-CFLAGS="$CFLAGS $CC_MODE_FLAG"
 
 TARGET=$ARCH-$OS
 AC_SUBST(TARGET_CPU)
