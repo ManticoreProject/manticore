@@ -4,7 +4,7 @@
  * All rights reserved.
  *)
 
-ann "cpp" ""
+ann "cpp" "../include/runtime-offsets.def"
 in
   initial-basis.pml
 end

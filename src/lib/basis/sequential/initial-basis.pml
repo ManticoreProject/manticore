@@ -212,6 +212,25 @@ _primcode (
       any		(* == AssocList.assoc_list;  dictionary *)
     ];
   typedef thread_id = fiber_local_storage;
+(* support for local atomicity *)
+  define inline @atomic-begin () : () =
+      do vpstore (ATOMIC, host_vproc, true)
+	return ()
+  ;
+  define inline @atomic-end () : () =
+      let vp : vproc = host_vproc
+      do vpstore (ATOMIC, vp, false)
+(*
+      let pending = vpload (SIG_PENDING, vp)
+	if pending
+	  then
+	    do vpstore (SIG_PENDING, vp, false)
+	    ???
+	  else return (UNIT)
+*)
+	return ()
+  ;
+
 #else
   typedef thread_id = unit;
 #endif
