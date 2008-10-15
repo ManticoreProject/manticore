@@ -18,7 +18,7 @@
 
 extern uint32_t CRC32 (void *buf, int nBytes);
 
-#define PR_OFFSET(obj, xxx, lab, local)						\
+#define VP_OFFSET(obj, xxx, lab, local)						\
 	do {									\
 	    uint32_t _offset = (int)((Addr_t)&(obj.lab) - (Addr_t)&obj);	\
 	    strncpy((char *)(buf+len), #lab, sizeof(#lab));			\

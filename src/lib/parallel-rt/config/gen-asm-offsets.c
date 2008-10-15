@@ -22,7 +22,7 @@
 
 extern uint32_t CRC32 (void *buf, int nBytes);
 
-#define PR_OFFSET(obj, symb, lab, local)					\
+#define PR_OFFSET(obj, symb, lab)						\
 	do {									\
 	    uint32_t _offset = (int)((Addr_t)&(obj.lab) - (Addr_t)&obj);	\
 	    strncpy((char *)(buf+len), #lab, sizeof(#lab));			\
@@ -31,6 +31,7 @@ extern uint32_t CRC32 (void *buf, int nBytes);
 	    buf[len++] = _offset & 0xff;					\
 	    printf("#define " #symb " %d\n", _offset);				\
 	} while (0)
+#define VP_OFFSET(obj, symb, lab, local)	PR_OFFSET(obj, symb, lab)
 
 #define PR_DEFINE(symb)			\
 	printf("#define " #symb " %d\n", symb)
