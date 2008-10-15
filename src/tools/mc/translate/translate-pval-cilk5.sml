@@ -50,7 +50,7 @@ structure TranslatePValCilk5  : sig
     val findHLOp = #name o Option.valOf o HLOpEnv.findDefByPath
     fun getBOMTy (env, path) = (case TranslateEnv.findBOMTyDef(BasisEnv.getBOMTyFromBasis path)
 	   of SOME ty => ty
-	    | NONE => raise Fail("unable to find " ^ String.concatWith "." path)
+	    | NONE => raise Fail("unable to find type " ^ String.concatWith "." path)
 	  (* end case *))
 
     fun getTy (env, path) = (
@@ -63,7 +63,7 @@ structure TranslatePValCilk5  : sig
 	  | _ => raise Fail "todo"
         (* end case *))
 
-    fun iVarTy env = getBOMTy (env, ["WorkStealingIVar", "ivar"])
+    fun iVarTy env = getBOMTy (env, ["WorkStealingIVar", "ivar2"])
     fun iGet () = findHLOp ["WorkStealingIVar", "get"]
     fun iPut () = findHLOp ["WorkStealingIVar", "put"]
     fun iVar () = findHLOp ["WorkStealingIVar", "ivar"]
@@ -109,7 +109,7 @@ structure TranslatePValCilk5  : sig
 	  val slowPathL = 
 	      B.mkLambda{f=slowPath, params=[unitVar()], exh=[], body=
                  B.mkApply(bodyFn, [selFromIVar], [exh])}
-	  val goLocal = BV.new("goLocal", getTy(env, ["PrimTypes", "bool"]))
+	  val goLocal = BV.new("goLocal", BOMTy.boolTy)
 	  val selLocally = BV.new("selLocally", BTy.T_Fun([BTy.unitTy], [BTy.exhTy], [ty1]))
 	  val (selLocallyExh, _) = E.newHandler env
           in

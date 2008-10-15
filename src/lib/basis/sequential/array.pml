@@ -31,7 +31,7 @@ structure Array64 =
 	return(arr)
       ;
 
-      define inline @length (arr : array / exh : PT.exh) : int =
+      define @length (arr : array / exh : PT.exh) : int =
         let len : int = ArrayLoadI64(arr, ~1)
 	return(len)
       ;
@@ -44,7 +44,7 @@ structure Array64 =
 	return(x)
       ;
 
-      define inline @update (arr : array, i : int, x : any / exh : PT.exh) : () =
+      define @update (arr : array, i : int, x : any / exh : PT.exh) : () =
 	do assert(I32Gte(i,0))
 	let len : int = @length(arr / exh)
 	do assert(I32Lt(i,len))
@@ -55,11 +55,11 @@ structure Array64 =
 	return()
       ;
 
-      define inline @array-w (arg : [PT.ml_int, any] / exh : PT.exh) : array =
+      define @array-w (arg : [PT.ml_int, any] / exh : PT.exh) : array =
 	@array(#0(#0(arg)), #1(arg) / exh)
       ;
 
-      define inline @length-w (arr : array / exh : PT.exh) : PT.ml_int =
+      define @length-w (arr : array / exh : PT.exh) : PT.ml_int =
 	let len : int = @length(arr / exh)
 	return(alloc(len))
       ;
@@ -68,7 +68,7 @@ structure Array64 =
 	@sub(#0(arg), #0(#1(arg)) / exh)
       ;
 
-      define inline @update-w (arg : [array, PT.ml_int, any] / exh : PT.exh) : PT.unit =
+      define @update-w (arg : [array, PT.ml_int, any] / exh : PT.exh) : PT.unit =
 	do @update(#0(arg), #0(#1(arg)), #2(arg) / exh)
 	return(UNIT)
       ;
