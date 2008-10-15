@@ -8,6 +8,7 @@
  */
 
 #include <stdlib.h>
+#include <stdbool.h>
 #include "manticore-rt.h"
 #include <stdio.h>
 #include <string.h>
@@ -17,7 +18,7 @@
 
 extern uint32_t CRC32 (void *buf, int nBytes);
 
-#define PR_OFFSET(obj, xxx, lab)						\
+#define PR_OFFSET(obj, xxx, lab, local)						\
 	do {									\
 	    uint32_t _offset = (int)((Addr_t)&(obj.lab) - (Addr_t)&obj);	\
 	    strncpy((char *)(buf+len), #lab, sizeof(#lab));			\
