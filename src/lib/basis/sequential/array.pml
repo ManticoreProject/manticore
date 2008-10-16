@@ -81,6 +81,39 @@ structure Array64 =
             return(brr)
       ;
 
+      define @app (f : fun (any / PT.exh -> PT.unit), arr : array / exh : PT.exh) : () =
+        let len : int = @length (arr / exh)
+        fun loop (i : int / ) : () =
+          if I32Eq(i, len)
+            then
+              return ()
+	    else
+              let x : any = @sub (arr, i / exh)
+ 	      let j : int = I32Add(i,1)
+              let _ : PT.unit =  apply f (x / exh)
+              do apply loop (j)
+              return ()
+        do apply loop (0)
+        return ()
+      ; 
+
+      define @tabulate (n : int, f : fun (int / PT.exh -> any) / exh : PT.exh) : array =
+        let representative : any = apply f (0 / exh)
+        let arr : array = @array (n, representative / exh)
+        fun loop (i : int) : () =
+          if I32Eq(i, n)
+            then
+              return ()
+            else
+              let x : any = apply f (i / exh)
+              do @update (arr, i, x / exh)
+              let j : int = I32Add(i, 1)
+              do apply loop (j)
+              return ()
+        do apply loop (1)
+        return (arr)
+      ;
+
       define @array-w (arg : [PT.ml_int, any] / exh : PT.exh) : array =
 	@array(#0(#0(arg)), #1(arg) / exh)
       ;
@@ -104,6 +137,21 @@ structure Array64 =
         return(b)
       ;
 
+      define @app-w (arg : [fun (any / PT.exh -> unit), array] / exh : PT.exh) : PT.unit =
+        do @app (#0(arg), #1(arg) / exh)
+        return (UNIT)
+      ;
+
+      define @tabulate-w (arg : [PT.ml_int, fun (PT.ml_int / PT.exh -> any)] / exh : PT.exh) : array =
+        let f : fun (PT.ml_int / PT.exh -> any) = #1(arg)
+        fun g (n : int / exh : PT.exh) : any =
+          let w : PT.ml_int = wrap(n)
+          let answer : any = apply f (w / exh)
+          return (answer)        
+        let arr : array = @tabulate (#0(#0(arg)), g / exh)
+        return (arr)
+      ;
+
     )
 
     val array : int * 'a -> 'a array = _prim(@array-w)
@@ -111,5 +159,7 @@ structure Array64 =
     val sub : 'a array * int -> 'a = _prim(@sub-w)
     val update : 'a array * int * 'a -> unit = _prim(@update-w)
     val functionalMap : ('a -> 'b) * 'a array -> 'b array = _prim(@functional-map-w)
+    val app : ('a -> unit) * 'a array -> unit = _prim(@app-w)
+    val tabulate : int * (int -> 'a) -> 'a array = _prim(@tabulate-w)
 
   end
