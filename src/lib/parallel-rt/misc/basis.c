@@ -369,7 +369,7 @@ double M_Tan (double x)
 typedef struct {
   int hd;
   int tl;
-  Addr_t elts[DEQUE_LEN];
+  Value_t elts[DEQUE_LEN];
 } ws_deque_t;
 ws_deque_t* deques = NULL;
 
@@ -381,7 +381,7 @@ Value_t** M_AddDequeRoots (VProc_t *vp, Value_t **rp)
 
   ws_deque_t* deque = &(deques[vp->id]);
   for (int i = deque->hd; i < deque->tl; i++) {
-    *rp++ = deque->elts[i];
+    *rp++ = &(deque->elts[i]);
   }
 
   return rp;
