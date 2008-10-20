@@ -5,31 +5,57 @@
 #
 # The Makefile for building all versions of the runtime system.
 #
-# @configure_output@
+# @configure_input@
 #
 
-BUILD_DIRS =	mcrt mcrt-log mcrt-debug mcrt-log-debug
+#### Start of system configuration section. ####
 
+#
+# directories for the install target
+#
+PREFIX =		@prefix@
+INSTALL_BINDIR =	$(PREFIX)/bin
+INSTALL_HEAPDIR =	$(INSTALL_BINDIR)/.heap
+INSTALL_LIBDIR =	$(PREFIX)/lib
+INSTALL_INCDIR =	$(PREFIX)/include
 
-.PHONY:		build
+#
+# directories for the local-install target
+#
+SRCDIR =	@MANTICORE_ROOT@/src
+LIBDIR =	@MANTICORE_ROOT@/lib
+BINDIR =	@MANTICORE_ROOT@/bin
+HEAPDIR =	$(BINDIR)/.heap
+
+INSTALL =	@INSTALL@
+SHELL =		@SHELL@
+@SET_MAKE@
+
+#### End of system configuration section. ####
+
+SUBDIRS = mcrt mcrt-log mcrt-debug mcrt-log-debug
+
 build:
-	for dir in $(BUILD_DIRS) ; do \
-	  (cd $$dir; $(MAKE) build) || exit 1; \
+	for dir in $(SUBDIRS) ; do \
+	  (cd $$dir; $(MAKE) build) || exit $$?; \
 	done
 
-.PHONY:		clean
-clean:
-	for dir in $(BUILD_DIRS) ; do \
-	  (cd $$dir; $(MAKE) clean) || exit 1; \
-	done
-
-.PHONY:		distclean
-distclean:
-	rm -rf $(BUILD_DIRS)
-	rm -rf Makefile mk/common.gmk config/Makefile
-
-.PHONY:		devclean
-devclean:	distclean
-
-.PHONY:         local-install
 local-install:
+	$(INSTALL) -d $(LIBDIR)
+	for dir in $(SUBDIRS); do \
+	  (cd $$dir && $(MAKE) local-install) || exit $$?; \
+	done
+
+install:
+	$(INSTALL) -d $(INSTALL_LIBDIR)
+	for dir in $(SUBDIRS); do \
+	  (cd $$dir && $(MAKE) install) || exit $$?; \
+	done
+
+#################### Cleanup ####################
+
+CLEAN_SUBDIRS =		$(SUBDIRS) config
+DISTCLEAN_FILES =	$(SUBDIRS) ../machine mk/common.gmk ../include/machine
+DEVCLEAN_FILES =
+
+include @MANTICORE_MKDIR@/clean-rules.gmk

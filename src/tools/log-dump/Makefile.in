@@ -3,13 +3,38 @@
 # COPYRIGHT (c) 2007 Manticore project. (http://manticore.cs.uchicago.edu)
 # All rights reserved.
 #
-# @configure_output@
+# @configure_input@
 #
+
+#### Start of system configuration section. ####
+
+#
+# directories for the install target
+#
+PREFIX =		@prefix@
+INSTALL_BINDIR =	$(PREFIX)/bin
+INSTALL_HEAPDIR =	$(INSTALL_BINDIR)/.heap
+INSTALL_LIBDIR =	$(PREFIX)/lib
+INSTALL_INCDIR =	$(PREFIX)/include
+
+#
+# directories for the local-install target
+#
+SRCDIR =	@MANTICORE_ROOT@/src
+LIBDIR =	@MANTICORE_ROOT@/lib
+BINDIR =	@MANTICORE_ROOT@/bin
+HEAPDIR =	$(BINDIR)/.heap
+
+INSTALL =	@INSTALL@
+SHELL =		@SHELL@
+@SET_MAKE@
 
 CC =		@CC@
 CFLAGS =	@CFLAGS@ @PTHREAD_CFLAGS@
 LDFLAGS =	
 CPPFLAGS =	-I. -I../../include
+
+#### End of system configuration section. ####
 
 TARGET =	log-dump
 
@@ -21,6 +46,19 @@ build:		$(TARGET)
 $(TARGET):	$(OBJS) ../../include/log-file.h ../../include/log-events.h
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $(TARGET) $(OBJS)
 
+local-install: $(TARGET)
+
+install: $(TARGET)
+
+#################### Cleanup ####################
+
+CLEAN_SUBDIRS =		$(SUBDIRS)
+CLEAN_FILES =
+DISTCLEAN_FILES =	include/manticore-config.h
+DEVCLEAN_FILES =
+
+include @MANTICORE_MKDIR@/clean-rules.gmk
+
 .PHONY:		clean
 
 clean:
@@ -28,3 +66,6 @@ clean:
 	rm -rf *.dSYM
 
 local-install:
+
+install:
+

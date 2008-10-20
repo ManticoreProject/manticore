@@ -8,6 +8,31 @@
 # @configure_input@
 #
 
+#### Start of system configuration section. ####
+
+#
+# directories for the install target
+#
+PREFIX =		@prefix@
+INSTALL_BINDIR =	$(PREFIX)/bin
+INSTALL_HEAPDIR =	$(INSTALL_BINDIR)/.heap
+INSTALL_LIBDIR =	$(PREFIX)/lib
+INSTALL_INCDIR =	$(PREFIX)/include
+
+#
+# directories for the local-install target
+#
+SRCDIR =	@MANTICORE_ROOT@/src
+LIBDIR =	@MANTICORE_ROOT@/lib
+BINDIR =	@MANTICORE_ROOT@/bin
+HEAPDIR =	$(BINDIR)/.heap
+
+INSTALL =	@INSTALL@
+SHELL =		@SHELL@
+@SET_MAKE@
+
+#### End of system configuration section. ####
+
 # the target build options
 #
 BUILD_OPTIONS =	@BUILD_OPTIONS@
@@ -16,8 +41,13 @@ BUILD_OPTIONS =	@BUILD_OPTIONS@
 #
 TARGET =	lib@BUILD_TARGET@.a
 
-.PHONY:	build
 build:		$(TARGET)
+
+local-install:	$(TARGET)
+	$(INSTALL) $(TARGET) $(LIBDIR)/$(TARGET)
+
+install:	$(TARGET)
+	$(INSTALL) $(TARGET) $(INSTALL_LIBDIR)/$(TARGET)
 
 # Include common definitions for run-time builds
 #

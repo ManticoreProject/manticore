@@ -5,9 +5,8 @@
 #
 # The Makefile for building and installing the Manticore system.
 #
-# @configure_output@
+# @configure_input@
 #
-
 
 #### Start of system configuration section. ####
 
@@ -28,14 +27,13 @@ LIBDIR =	@MANTICORE_ROOT@/lib
 BINDIR =	@MANTICORE_ROOT@/bin
 HEAPDIR =	$(BINDIR)/.heap
 
-SUBDIRS =	src
-
 INSTALL =	@INSTALL@
 SHELL =		@SHELL@
 @SET_MAKE@
-SML =		@SMLNJ_CMD@
 
 #### End of system configuration section. ####
+
+SUBDIRS =	src
 
 .PHONY:		help build install local-install doc \
 		clean local-distclean local-devclean
@@ -70,15 +68,17 @@ doc:
 
 #################### Cleanup ####################
 
-CLEAN_SUBDIRS =		src doc
+CLEAN_SUBDIRS =		src
 DISTCLEAN_FILES =	$(BINDIR)/* \
+			$(BINDIR) \
 			$(HEAPDIR)/*.@SMLNJ_HEAP_SUFFIX@ \
 			$(LIBDIR)/*.a \
 			$(LIBDIR)/*.so \
+			$(LIBDIR) \
 			config.log config.cache config.status \
 			autom4te*.cache \
 			CONFIGURATION
-DEVCLEAN_FILES =	configure config/manticore-config_h.in
+DEVCLEAN_FILES =	configure config/config_h.in
 
 include @MANTICORE_MKDIR@/clean-rules.gmk
 

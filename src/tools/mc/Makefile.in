@@ -6,25 +6,36 @@
 # @configure_input@
 #
 
-# tools
+#### Start of system configuration section. ####
+
 #
-SHELL = 		@SHELL@
+# directories for the install target
+#
+PREFIX =		@prefix@
+INSTALL_BINDIR =	$(PREFIX)/bin
+INSTALL_HEAPDIR =	$(INSTALL_BINDIR)/.heap
+INSTALL_LIBDIR =	$(PREFIX)/lib
+INSTALL_INCDIR =	$(PREFIX)/include
+
+#
+# directories for the local-install target
+#
+SRCDIR =	@MANTICORE_ROOT@/src
+LIBDIR =	@MANTICORE_ROOT@/lib
+BINDIR =	@MANTICORE_ROOT@/bin
+HEAPDIR =	$(BINDIR)/.heap
+
+INSTALL =	@INSTALL@
+SHELL =		@SHELL@
 @SET_MAKE@
-INSTALL_WRAPPER =	@INSTALL_SMLNJ_WRAPPER@
+
+INSTALL_SMLNJ_WRAPPER =	@INSTALL_SMLNJ_WRAPPER@
 ML_BUILD =		@ML_BUILD@
 ML_BUILD_FLAGS =	-Ctdp.instrument=true \$$smlnj-tdp/back-trace.cm
 ML_MAKEDEPEND =		@ML_MAKEDEPEND@
 ML_MAKEDEPEND_FLAGS =
 
-# install paths
-#
-PREFIX =		@prefix@
-INSTALL_BINDIR =	$(PREFIX)/bin
-INSTALL_LIBDIR =	$(PREFIX)/lib
-INSTALL_INCDIR =	$(PREFIX)/include
-SRCDIR =		@MANTICORE_SRCDIR@
-LIBDIR =		@MANTICORE_LIBDIR@
-BINDIR =		@MANTICORE_BINDIR@
+#### End of system configuration section. ####
 
 PROGRAM =		mc
 TARGET =		@TARGET@
@@ -59,38 +70,38 @@ CM_FILES =		ast-opt/sources.cm \
 			typechecker/sources.cm \
 			$(ROOT_CM)
 
-build:		local-install
-
-default-target:
-	rm -f $(HEAP_IMAGE)
-	make $(HEAP_IMAGE)
+build:		$(HEAP_IMAGE)
 
 $(HEAP_IMAGE):
 	$(ML_BUILD) $(ML_BUILD_FLAGS) $(ROOT_CM) Main.main $(PROGRAM)
+	touch $(HEAP_IMAGE)
 
 .depend:	$(CM_FILES)
 	touch .depend
 	$(ML_MAKEDEPEND) $(ML_MAKEDEPEND_FLAGS) -n -f .depend $(ROOT_CM) $(HEAP_IMAGE)
 
-local-install:	default-target
-	$(INSTALL_WRAPPER) $(PROGRAM) $(BINDIR)
-
-install:	default-target
-	$(INSTALL_WRAPPER) $(PROGRAM) $(INSTALL_BINDIR)
-
 sinclude .depend
+
+local-install:	$(HEAP_IMAGE)
+	$(INSTALL_SMLNJ_WRAPPER) $(PROGRAM) $(BINDIR)
+
+install:	$(HEAP_IMAGE)
+	$(INSTALL_SMLNJ_WRAPPER) $(PROGRAM) $(INSTALL_BINDIR)
 
 #################### Cleanup ####################
 
+CLEAN_SUBDIRS =
 CLEAN_FILES =		$(HEAP_IMAGE) \
 			*/*.grm.sml \
 			*/*.lex.sml \
 			.depend
 DISTCLEAN_FILES =	codegen/group.cm \
 			codegen/wrapper.cm \
+			common/load-paths.sml \
 			common/run-cpp.sml \
-			driver/version-fn.sml
+			driver/version-fn.sml \
+			driver/runtime-constants.sml \
+			driver/build-executable.sml
 DEVCLEAN_FILES =
 
 include @MANTICORE_MKDIR@/clean-rules.gmk
-

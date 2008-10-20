@@ -3,7 +3,7 @@
 # COPYRIGHT (c) 2008 Manticore project. (http://manticore.cs.uchicago.edu)
 # All rights reserved.
 #
-# @configure_output@
+# @configure_input@
 #
 
 #### Start of system configuration section. ####

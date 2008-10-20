@@ -5,7 +5,7 @@
 #
 # Common definitions shared by all of the runtime-system makefiles.
 #
-# @configure_output@
+# @configure_input@
 #
 
 #
@@ -21,10 +21,6 @@ ifeq (,$(findstring debug,$(BUILD_OPTIONS)))
 else
   ENABLE_DEBUG=true
 endif
-
-#
-# directories
-#
 
 #
 # tools and flags
@@ -103,9 +99,11 @@ gen-runtime-offsets:	gen-runtime-offsets.c manticore-rt.h vproc.h vproc-offsets-
 gen-log-events:		  gen-log-events.c
 			  $(CC) $(CPPFLAGS) $(CFLAGS) -o gen-log-events $< 
 
-.PHONY:		clean
 
-clean:
-	rm -rf $(OBJS) $(TARGET)
-	rm -rf gen-asm-offsets gen-runtime-constants gen-log-events asm-offsets.h
-	rm -rf *.dSYM
+#################### Cleanup ####################
+
+CLEAN_FILES = 		$(OBJS) $(TARGET)
+CLEAN_FILES += 		gen-asm-offsets gen-runtime-constants gen-log-events asm-offsets.h
+CLEAN_FILES += 		*.dSYM
+
+include @MANTICORE_MKDIR@/clean-rules.gmk
