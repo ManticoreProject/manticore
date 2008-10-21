@@ -54,14 +54,35 @@ structure TranslatePrim : sig
     fun useCFun var = BOM.Var.addToCount(var, 1)
 
   (* globally accessible translation environment *)
-    val translateEnv = ref (TranslateEnv.mkEnv())
-    fun cvtTy ty = TranslateTypes.cvtPrimTy (!translateEnv, ty)
-    fun cvtTys ty = TranslateTypes.cvtPrimTys (!translateEnv, ty)
+    local
+    val translateEnv : TranslateEnv.env option ref = ref NONE
+    in
+
+      fun getTranslateEnv () = (
+	  case !translateEnv
+	   of NONE => raise Fail "uninitialized translation environment"
+	    | SOME env => env
+          (* end case *))
+
+    (* takes a translation environment and a function, and evaluates the function with the environment
+     * set in the global variable above.
+     *)
+      fun withTranslateEnv env f = (
+	  translateEnv := SOME env;
+	  let val x = f()
+	  in
+	      translateEnv := NONE;
+	      x
+	  end)
+
+    end
+    fun cvtTy ty = TranslateTypes.cvtPrimTy (getTranslateEnv(), ty)
+    fun cvtTys ty = TranslateTypes.cvtPrimTys (getTranslateEnv(), ty)
 
   (* find a data constructor that is defined in PML code *)
     fun findCon con = (case ModuleEnv.getValBind con
 	   of SOME (ModuleEnv.Con dcon) =>
-	        TranslateEnv.findDCon(!translateEnv, dcon)
+	        TranslateEnv.findDCon(getTranslateEnv(), dcon)
 	    | _ => NONE
           (* end case *))
 
@@ -100,7 +121,7 @@ structure TranslatePrim : sig
     fun lookupVarOrDCon v = (case E.findBOMVar v
 	   of SOME v => Var v (* parameter-bound variable *)
 	    | NONE => (case ModuleEnv.getValBind v
-		 of SOME(ModuleEnv.Con c) => Con(TranslateTypes.trDataCon(!translateEnv, c))
+		 of SOME(ModuleEnv.Con c) => Con(TranslateTypes.trDataCon(getTranslateEnv(), c))
 		  | NONE => raise Fail(String.concat ["unknown BOM variable ", PTVar.nameOf v])
 		(* end case *))
 	  (* end case *))
@@ -507,51 +528,49 @@ structure TranslatePrim : sig
 		    BOM.mkRet [c]))
 	    end
 
+  (* check that a BOM type is compatible with the given PML type *)
+    fun chkConstraintTy (x, bomTy, pmlTy) = 
+	if (BOMTyUtil.equal(pmlTy, bomTy))
+	   then ()
+	else raise Fail (String.concatWith "\n" [
+			 "incorrect BOM type for "^Var.nameOf x^": ",
+			 "BOM type = "^BOMTyUtil.toString bomTy,
+			 "PML type = "^BOMTyUtil.toString pmlTy
+			])
   
-    fun cvtRhs (env, x, pmlTy, rhs) = let
-	  val _ = translateEnv := env
+    fun cvtRhs (env, x, pmlTy, rhs) = withTranslateEnv env (fn () => let
 	  val x' = BOM.Var.new(Var.nameOf x, TranslateTypes.trScheme(env, pmlTy))
 	  (* check that the RHS matches the constraining type *)
 	  val pmlTy = TranslateTypes.trScheme(env, pmlTy)
-	  fun chkConstraintTy bomTy = if (BOMTyUtil.equal(pmlTy, bomTy))
-		then ()
-		else raise Fail (String.concatWith "\n" [
-		    "incorrect BOM type for "^Var.nameOf x^": ",
-		    "BOM type = "^BOMTyUtil.toString bomTy,
-		    "PML type = "^BOMTyUtil.toString pmlTy
-		  ])		 
           in
 	    case rhs
 	     of BPT.VarPrimVal v => let
-		  val env = E.insertVar(env, x, x')
 		  val bomVar = lookupVar v
 		  in
-		    chkConstraintTy (BOM.Var.typeOf bomVar);
-		    SOME (env, x', BOM.mkRet [bomVar])
+		    chkConstraintTy (x, BOM.Var.typeOf bomVar, pmlTy);
+		    SOME (E.insertVar(env, x, x'), x', BOM.mkRet [bomVar])
 		  end
 	      | BPT.LambdaPrimVal fb => raise Fail "todo"
 	      | BPT.HLOpPrimVal hlop => (
 		  case E.findBOMHLOpDef hlop
 		   of SOME{name, path, inline, def as BOM.FB{f, ...}, externs, pmlImports} => let
-		      (* eta-expand the hlop. this is unfortunately necessary to synthesize polymorphism in the return type *)
-			fun mkFB ty = let
+		      (* to synthesize polymorphism for the return type, we eta expand and cast to the instantiated type. *)
+			fun mkFB instTy = let
 			    val BOMTy.T_Fun(paramTys, exhTys, [retTy]) = BOM.Var.typeOf f
 			    val params = mkVars "arg" paramTys
 			    val exh = mkVars "exh" exhTys
-			    val fty = BTy.T_Fun(paramTys, exhTys, [ty])
 			    val h = BOM.mkHLOp(name, params, exh)
-			    val f = BOM.Var.new(BOM.Var.nameOf f, fty)
+			    val f = BOM.Var.new(BOM.Var.nameOf f, BTy.T_Fun(paramTys, exhTys, [instTy]))
 			    in
-(* FIXME: the "inline" option screws up the cast *)
-			      BOM.FB{f=f, params=params, exh=exh, body=mkCast(h, retTy, ty)}
+			      BOM.FB{f=f, params=params, exh=exh, body=mkCast(h, retTy, instTy)}
 			    end
 			in
-			  chkConstraintTy (BOM.Var.typeOf f);
+			  chkConstraintTy (x, BOM.Var.typeOf f, pmlTy);
 			  SOME (E.insertFun(env, x, mkFB), x', etaExpand(name, def))
 			end
 		  (* end case *))
 	    (* end case *)
-          end
+          end)
 
     fun tyOfPat (BPT.P_VPMark {tree, span}) = tyOfPat tree
       | tyOfPat (BPT.P_Wild NONE) = BTy.T_Any
@@ -645,16 +664,14 @@ structure TranslatePrim : sig
 	    end
       | cvtDefs importEnv (_::defs) = cvtDefs importEnv defs
 
-    fun cvtCode (env, code) = let
-          (* make the translation environment globally accessible *)
-	    val _ = translateEnv := env
+    fun cvtCode (env, code) = withTranslateEnv env (fn () => let
 	    val importEnv = E.getImportEnv env
 	    val _ = List.app (insDef importEnv) code
 	    val defs = cvtDefs importEnv code
 	    in
 	       HLOpEnv.addDefs defs;
 	       List.map #def (List.filter (not o #inline) defs)
-            end
+            end)
 
   end
 
