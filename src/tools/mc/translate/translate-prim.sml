@@ -29,6 +29,8 @@ structure TranslatePrim : sig
     structure P = Prim
     structure BTy = BOMTy
     structure BV = BOM.Var
+    structure ATbl = AtomTable
+    structure VTbl = BV.Tbl
 
   (* table mapping primop names to prim_info *)
     structure MkPrim = MakePrimFn (
@@ -166,19 +168,21 @@ structure TranslatePrim : sig
      * One property prevents us from simply importing the variable directly: hlops
      * expansion happens later, so getting the scope right would be difficult. Instead
      * we do something like closure conversion. i.e.,
+     *
      *   define @f (params, ... / exh) : ty =
-     *     ...
+     *     stm1
      *     let x : ty' = pmlval p
-     *     ...
+     *     stm2
      *   ;
+     *
      * ==> (rewrites to)
-     *   define @f (params, ..., p' / exh) : ty =
-     *     ...
-     *     let x : ty' = p'
-     *     ...
+     *
+     *   define @f (params, ..., p' : ty' / exh) : ty =
+     *     stm1
+     *     stm2
      *   ;
-     * where p' is a fresh BOM variable. We have to fill in the PML variables at the 
-     * call sites, but doing so does achieve correct scoping.
+     * where p' is a fresh BOM variable. We must also pass the PML value at the call 
+     * sites. This strategy unfortunately precludes rewrite rules for the HLOp.
      *
      *)
     local
@@ -224,7 +228,6 @@ structure TranslatePrim : sig
 		    | BPT.RHS_SimpleExp e'' => (case e''
 			 of BPT.SE_Mark _ => raise Fail "Mark" (* FIXME *)
 			  | BPT.SE_Var x => BOM.mkLet(lhs', cvtVar(x, fn x => BOM.mkRet[x]), body') 
-(*BOM.mkLet(lhs', BOM.mkRet[lookupVar x], e') *)
 			  | BPT.SE_Alloc args => let
 			      val mut = (case BV.typeOf(hd lhs')
 				      of BTy.T_Tuple(mut, _) => mut
@@ -500,9 +503,8 @@ structure TranslatePrim : sig
 	       BOM.mkFun([l'], BOM.mkRet [f'])
 	    end
 
-  (* mkVars : BTy.ty list -> BV.var list *)
+  (* create a list of temporary BOM variables *)
     fun mkVars baseName ts = let
-	(* build : string -> BTy.ty list * int -> BV.var list *)
 	  fun build ([], _) = []
 	    | build (t::ts, n) = let
 		val x = baseName ^ Int.toString n
@@ -513,11 +515,10 @@ structure TranslatePrim : sig
 	    build (ts, 0)
 	  end
 
-  (* mkCast : BOM.exp * BOMTy.ty * BOMTy.ty -> BOM.exp *)
+  (* explicitly cast a BOM expression *)
     fun mkCast (e, origTy, newTy) = 
-	(* FIXME *)
+	(* FIXME: relax this test to a "match" *)
 	if BOMTyUtil.equal (origTy, newTy)
-	       (* this really should be match, but that wasn't working *)
 	then e (* cast is unnecessary *)
 	else
 	    let val x = BV.new ("x", origTy)
@@ -576,24 +577,6 @@ structure TranslatePrim : sig
       | tyOfPat (BPT.P_Wild NONE) = BTy.T_Any
       | tyOfPat (BPT.P_Wild(SOME ty)) = cvtTy ty
       | tyOfPat (BPT.P_Var(_, ty)) = cvtTy ty
-
-  (* mkCast : BOM.exp * BOMTy.ty * BOMTy.ty -> BOM.exp *)
-    fun mkCast (e, origTy, newTy) =
-	(* FIXME *)
-	if BOMTyUtil.equal (origTy, newTy)
-	       (* this really should be match, but that wasn't working *)
-	then e (* cast is unnecessary *)
-	else 
-	    let val x = BV.new ("x", origTy)
-		val c = BV.new ("c", newTy)
-	    in
-		BOM.mkLet ([x], e,
-		  BOM.mkStmt ([c], BOM.E_Cast (newTy, x),
-		    BOM.mkRet [c]))
-	    end
-
-    structure ATbl = AtomTable
-    structure VTbl = BV.Tbl
 
     (* this is the first pass, which binds C-function prototypes, adds defined types to the translation
      * environment, and adds HLOp signatures to the HLOp environment.
