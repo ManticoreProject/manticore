@@ -29,6 +29,23 @@ structure ThreadCapabilities =
 	return(cap)
       ;
 
+    (* get the value of a thread capability *)
+      define @get-from-fls (tg : FLS.fls_tag / exh : exh) : any =
+	let fls : FLS.fls = FLS.@get( / exh)
+	let x : Option.option = FLS.@find(fls, tg / exh)
+	let x : any =
+		     case x
+		      of Option.NONE => 
+		  (* FIXME: throw an exception here *)
+			do assert(PT.false)
+			return($0)
+		      | Option.SOME (c : SetOnceMem.set_once_mem) =>
+			let x : any = SetOnceMem.@get(c / exh)
+			return(x)
+		    end  
+         return(x)
+      ;
+
 
     )
 

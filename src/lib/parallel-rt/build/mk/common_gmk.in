@@ -51,6 +51,7 @@ VPROC_SRCS =	vproc.c
 MISC_SRCS =	main.c \
 		apply.c \
 		basis.c \
+		work-stealing-local-deques.c \
 		options.c \
 		image.c
 

@@ -1,9 +1,10 @@
-(* work-stealing-sw-polling.pml
+(* work-stealing.pml
  *
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Implementation of the Work Stealing algorithm that uses software polling.
+ * Implementation of the Cilk-5 work stealing algorithm that has been adapted to 
+ * Manticore. 
  *)
 
 #define GLOBAL_HD_STOLEN    $0
@@ -16,7 +17,7 @@
 
 #define DUMMY_FIBER         $0
 
-structure WorkStealingSWPolling =
+structure WorkStealing =
   struct
 
     structure PT = PrimTypes
@@ -35,9 +36,13 @@ structure WorkStealingSWPolling =
 		       deque_elts          (* array of fibers *)
                     ];
 
-      extern void* M_GetLocalDeque (void*);
       extern void* GetNthVProc (int);
-      extern void M_InitDeques (void*);
+      extern void M_WSAllocLocalDeques (void*);       (* parallel-rt/misc/work-stealing-local-deques.c *)
+
+      define @get-local-deque (/ exh : exh) : local_deque =
+	let localDeque : any = ThreadCapabilities.@get-from-fls(tag(workStealingLocalDeque) / exh)
+	return((local_deque)localDeque)
+      ;
 
     (* number of threads in the local deque (assuming that the head was not stolen) *)
       define @local-deque-sz (localDeque : local_deque / exh : PT.exh) : int =
@@ -108,7 +113,7 @@ structure WorkStealingSWPolling =
       define @send-steal-req (vprocId : int, globalHd : global_hd / exh : PT.exh) : () =
       (* the thief copies the head of the local deque to the globally-visible head *)
         cont thiefK (x : PT.unit) =
-          let localDeque : local_deque = ccall M_GetLocalDeque(host_vproc)
+          let localDeque : local_deque = @get-local-deque(/ exh)
           let sz : int = @local-deque-sz(localDeque / exh)
         (* exit if there is nothing to steal *)
           do if I32Eq(sz, 0)
@@ -171,7 +176,7 @@ structure WorkStealingSWPolling =
 	let id : int = SchedulerUtils.@vproc-id(self / exh)
 	let globalHd : global_hd = Arr.@sub(globalHds, id / exh)
         let globalHd : global_hd = (global_hd)globalHd
-	let localDeque : local_deque = ccall M_GetLocalDeque(self)
+	let localDeque : local_deque = @get-local-deque(/ exh)
 
 	cont switch (sign : PT.signal) =
         (* run a thread *)
@@ -206,11 +211,13 @@ structure WorkStealingSWPolling =
 	return(switch)
       ;
 
+    (* initialize the scheduler *)
       define @init (/ exh : PT.exh) : PT.unit =
-      (* allocate local deques *)
-	do ccall M_InitDeques(host_vproc)
-      (* allocate globally visible deque heads *)
+      (* one worker per vproc *)
 	let nVProcs : int = SchedulerUtils.@num-vprocs(/ exh)
+      (* allocate local deques *)
+	do ccall M_WSAllocLocalDeques(host_vproc, nVProcs)
+      (* allocate globally visible deque heads *)
 	let globalHds : Arr.array = Arr.@array(nVProcs, enum(0) / exh)
         cont dummy (x : PT.unit) = 
           do assert(PT.false)
@@ -247,7 +254,7 @@ structure WorkStealingSWPolling =
       ;
 
       define @pop-tl(/ exh : PT.exh) : PT.bool =
-	let localDeque : local_deque = ccall M_GetLocalDeque(host_vproc)
+        let localDeque : local_deque = @get-local-deque(/ exh)
 	let globalHd : global_hd = @get-global-hd(/ exh)
 	let elt : O.option = @local-deque-pop-tl(globalHd, localDeque / exh)
 	case elt
@@ -257,7 +264,7 @@ structure WorkStealingSWPolling =
       ;
 
       define @push-tl(k : PT.fiber / exh : PT.exh) : () =
-        let localDeque : local_deque = ccall M_GetLocalDeque(host_vproc)
+        let localDeque : local_deque = @get-local-deque(/ exh)	
         @local-deque-push-tl(localDeque, k / exh)
       ;
 
