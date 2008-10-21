@@ -530,13 +530,6 @@ structure TranslatePrim : sig
 		    SOME (env, x', BOM.mkRet [bomVar])
 		  end
 	      | BPT.LambdaPrimVal fb => raise Fail "todo"
-(*let
-		  val lambda = cvtLambda (findCFun, fb, BTy.T_Fun)
-		  val l as BOM.FB{f, ...} = lambda()
-		  in
-		     SOME (BOM.mkFun([l], BOM.mkRet [f]))
-		  end
-*)
 	      | BPT.HLOpPrimVal hlop => (
 		  case E.findBOMHLOpDef hlop
 		   of SOME{name, path, inline, def as BOM.FB{f, ...}, externs, pmlImports} => let
@@ -545,7 +538,7 @@ structure TranslatePrim : sig
 			    val BOMTy.T_Fun(paramTys, exhTys, [retTy]) = BOM.Var.typeOf f
 			    val params = mkVars "arg" paramTys
 			    val exh = mkVars "exh" exhTys
-			    val fty = BTy.T_Fun(paramTys, exhTys, [retTy])
+			    val fty = BTy.T_Fun(paramTys, exhTys, [ty])
 			    val h = BOM.mkHLOp(name, params, exh)
 			    val f = BOM.Var.new(BOM.Var.nameOf f, fty)
 			    in
