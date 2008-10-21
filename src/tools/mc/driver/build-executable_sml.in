@@ -25,11 +25,13 @@ structure BuildExecutable : sig
     val ccCmd =  "@CC@"
     val cFlags = "@CFLAGS@"
     fun ldFlags libName = cat (
-            (List.filter (fn path => OS.FileSys.access (path, [])) [
-	       "-L@prefix@/lib",
-	       "-L@MANTICORE_LIBDIR",
-	       "-L@MANTICORE_SRCDIR@/lib/parallel-rt/build/" ^ libName
-             ]) @ [
+          (List.map (fn path => "-L" ^ path) (
+             List.filter (fn path => OS.FileSys.access (path, [])) [
+	       "@prefix@/lib",
+	       "@MANTICORE_LIBDIR@",
+	       "@MANTICORE_SRCDIR@/lib/parallel-rt/build/" ^ libName
+             ])
+          ) @ [
 	    "@LDFLAGS@",
 	    "-l" ^ libName,
 	    "-lpthread"
