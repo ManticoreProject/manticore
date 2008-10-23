@@ -6,5 +6,12 @@
  * Parallel basis.
  *)
 
+  ../sequential/sequential.mlb
+  ../misc/debug.mlb
+  ../runtime/runtime.mlb
+
 (* speculative parallelism *)
-  speculative/speculative.mlb
+(*  speculative/speculative.mlb*)
+
+(* ropes *)
+  ropes/ropes.mlb

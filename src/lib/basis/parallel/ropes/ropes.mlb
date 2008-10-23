@@ -1,14 +1,14 @@
-(* runtime.mlb
+(* ropes.mlb
  *
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Runtime basis.
+ * Ropes.
  *)
 
-  ../sequential/sequential.mlb
-  ../misc/debug.mlb
-  ../runtime/runtime.mlb
+  ../../sequential/sequential.mlb
+  ../../misc/debug.mlb
+  ../../runtime/runtime.mlb
 
   ann "cpp" "../include/prim.def"
   in

@@ -29,16 +29,16 @@ structure RopeOps =
     _primcode(
 
       (* For mapping a function over the elements of the leaves of a rope in parallel. *)
-      define @rope-map (f : fun (any / PT.exh -> any), r : rope / exh : PT.exh) : rope =
+      define @rope-map (f : fun (any / exh -> any), r : rope / exh : exh) : rope =
 	fun m (r : rope / ) : rope = 
 	  case r
-	    of LEAF(len:PT.ml_int, data:A.array) => 
-		 let newData : A.array = A.@functional-map (f, data / PT.exh)
+	    of LEAF(len:int, data:A.array) => 
+		 let newData : A.array = A.@functional-map (f, data / exh)
 		 let newLeaf : rope = LEAF(len, newData)
 		 return (newLeaf)
-	     | CAT(len:PT.ml_int, depth:PT.ml_int, r1:rope, r2:rope) =>
-		 fun th (u : unit / exh : PT.exh) : rope = apply m (r2)
-		 let fut : future = F.@future (th / exh)
+	     | CAT(len:int, depth:int, r1:rope, r2:rope) =>
+		 fun th (u : unit / exh : exh) : rope = apply m (r2)
+		 let fut : F.future = F.@future (th / exh)
 		 let newR1 : rope = apply m (r1)
 		 let newR2 : rope = F.@touch (fut / exh)
 		 let newR : rope = CAT (len, depth, newR1, newR2)
@@ -49,34 +49,34 @@ structure RopeOps =
 	return (newR)
       ;
 
-      define @rope-map-w (args : [(* f *) fun (any / PT.exh -> any),
-                                  (* r *) rope]  / exh : PT.exh) : rope =
-	let f : fun (any / PT.exh -> any) = #0(args)
+      define @rope-map-w (args : [(* f *) fun (any / exh -> any),
+                                  (* r *) rope]  / exh : exh) : rope =
+	let f : fun (any / exh -> any) = #0(args)
 	let r : rope = #1(args)
 	@rope-map(f, r / exh)
       ;
 
-      define @rope-length-int (r : rope / exh : PT.exh) : int =
+      define @rope-length-int (r : rope / exh : exh) : int =
 	case r
-	 of LEAF(n : PT.ml_int, _ : list) => return (#0(n))
-	  | CAT (n : PT.ml_int, _ : PT.ml_int, _ : rope, _ : rope) => return (#0(n))
+	 of LEAF(n : int, _ : list) => return (n)
+	  | CAT (n : int, _ : int, _ : rope, _ : rope) => return (n)
 	end
       ;
 
     (* A subscript operator for ropes (which were parrays in the surface program). *)
-      define @rope-sub (r : rope, n : int / exh : PT.exh) : any =
+      define @rope-sub (r : rope, n : int / exh : exh) : any =
 	fun sub (r : rope, n : int / ) : any =
 	  case r
-	    of LEAF (len:PT.ml_int, data:L.list) =>
-		 let foundIt : PT.bool = I32Lt (n, #0(len))
+	    of LEAF (len:int, data:L.list) =>
+		 let foundIt : PT.bool = I32Lt (n, len)
 		 if foundIt
 		   then 
 		     let res2 : any = A.@sub(data, n / exh)
 		     return (res2)
 		   else
-		     do assert(PT.FALSE)
-		     return(enum(0):any)
-	     | CAT (len:PT.ml_int, depth:PT.ml_int, r1:rope, r2:rope) =>
+		     let e : exn = Fail(@"bogus rope")
+		     throw exh(e)
+	     | CAT (len:int, depth:int, r1:rope, r2:rope) =>
 		 let leftLen : int = @rope-length-int (r1 / exh)
 		 let onTheLeft : PT.bool = I32Lt (n, leftLen)
 		   if onTheLeft
@@ -92,7 +92,7 @@ structure RopeOps =
 	return (res5)
       ;
 
-      define @rope-sub-w (arg : [rope, PT.ml_int] / exh : PT.exh) : any =
+      define @rope-sub-w (arg : [rope, PT.ml_int] / exh : exh) : any =
 	let r : rope     = #0(arg)
 	let mln : ml_int = #1(arg)
 	let n : int      = unwrap(mln)
