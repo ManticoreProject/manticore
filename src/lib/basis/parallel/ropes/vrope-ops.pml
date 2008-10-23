@@ -32,16 +32,16 @@ structure VRopeOps =
       define @vrope-map (f : fun (any / PT.exh -> any), r : vrope / exh : PT.exh) : vrope =
 	fun m (r : vrope / ) : vrope = 
 	  case r
-	    of LEAF(len:PT.ml_int, data:A.array) => 
+	    of VLEAF(len:PT.ml_int, data:A.array) => 
 		 let newData : A.array = A.@functional-map (f, data / PT.exh)
-		 let newLeaf : vrope = LEAF(len, newData)
+		 let newLeaf : vrope = VLEAF(len, newData)
 		 return (newLeaf)
-	     | CAT(len:PT.ml_int, depth:PT.ml_int, r1:vrope, r2:vrope) =>
+	     | VCAT(len:PT.ml_int, depth:PT.ml_int, r1:vrope, r2:vrope) =>
 		 fun th (u : unit / exh : PT.exh) : vrope = apply m (r2)
 		 let fut : future = F.@future (th / exh)
 		 let newR1 : vrope = apply m (r1)
 		 let newR2 : vrope = F.@touch (fut / exh)
-		 let newR : vrope = CAT (len, depth, newR1, newR2)
+		 let newR : vrope = VCAT (len, depth, newR1, newR2)
 		 return (newR)
 	  end (* case *)
 	  (* end definition of m *)
@@ -58,8 +58,8 @@ structure VRopeOps =
 
       define @vrope-length-int (r : vrope / exh : PT.exh) : int =
 	case r
-	 of LEAF(n : PT.ml_int, _ : list) => return (#0(n))
-	  | CAT (n : PT.ml_int, _ : PT.ml_int, _ : vrope, _ : vrope) => return (#0(n))
+	 of VLEAF(n : PT.ml_int, _ : list) => return (#0(n))
+	  | VCAT (n : PT.ml_int, _ : PT.ml_int, _ : vrope, _ : vrope) => return (#0(n))
 	end
       ;
 
@@ -67,7 +67,7 @@ structure VRopeOps =
       define @vrope-sub (r : vrope, n : int / exh : PT.exh) : any =
 	fun sub (r : vrope, n : int / ) : any =
 	  case r
-	    of LEAF (len:PT.ml_int, data:L.list) =>
+	    of VLEAF (len:PT.ml_int, data:L.list) =>
 		 let foundIt : PT.bool = I32Lt (n, #0(len))
 		 if foundIt
 		   then 
@@ -76,7 +76,7 @@ structure VRopeOps =
 		   else
 		     do assert(PT.FALSE)
 		     return(enum(0):any)
-	     | CAT (len:PT.ml_int, depth:PT.ml_int, r1:vrope, r2:vrope) =>
+	     | VCAT (len:PT.ml_int, depth:PT.ml_int, r1:vrope, r2:vrope) =>
 		 let leftLen : int = @vrope-length-int (r1 / exh)
 		 let onTheLeft : PT.bool = I32Lt (n, leftLen)
 		   if onTheLeft
