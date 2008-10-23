@@ -46,23 +46,8 @@ structure TranslatePValCilk5  : sig
     structure BV = BOM.Var
     structure E = TranslateEnv
 
-    fun getBOMTy (env, path) = (case TranslateEnv.findBOMTyDef(BasisEnv.getBOMTyFromBasis path)
-	   of SOME ty => ty
-	    | NONE => raise Fail("unable to find type " ^ String.concatWith "." path)
-	  (* end case *))
-
-    fun getTy (env, path) = (
-	case BasisEnv.getTyFromBasis path
-	 of ModuleEnv.TyCon tyc => (
-	    case E.findTyc(env, tyc)
-	     of SOME ty => ty
-	      | NONE => raise Fail "unbound tyc"
-	    (* end case *))
-	  | _ => raise Fail "todo"
-        (* end case *))
-
   (* ivar support *)
-    fun iVarTy env = getBOMTy (env, ["WorkStealingIVar", "ivar"])
+    fun iVarTy env = E.findBOMTyByPath ["WorkStealingIVar", "ivar"]
     fun iGet () = E.findBOMHLOpByPath ["WorkStealingIVar", "get"]
     fun iPut () = E.findBOMHLOpByPath ["WorkStealingIVar", "put"]
     fun iVar () = E.findBOMHLOpByPath ["WorkStealingIVar", "ivar"]
@@ -80,7 +65,7 @@ structure TranslatePValCilk5  : sig
     fun mkWsPop exh =
 	  B.mkHLOp(wsPop(), [], [exh])
   (* spawn function *)
-    fun fiberTy env = getBOMTy(env, ["PrimTypes", "fiber"])
+    fun fiberTy env = E.findBOMTyByPath["PrimTypes", "fiber"]
     fun mkSpawnFn env = let
 	  val (exh, _) = E.newHandler env
 	  val spawnFn = BV.new("spawnFn", BTy.T_Fun([fiberTy env], [BTy.exhTy], []))
