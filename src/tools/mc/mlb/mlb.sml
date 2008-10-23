@@ -304,23 +304,17 @@ structure MLB : sig
 	      | NONE => (checkForErrors[errStrm]; NONE)
 	  end
 
-    local
-	val sequentialLib = OS.Path.joinDirFile{file="sequential.mlb", dir=LoadPaths.basisSequentialDir}
-	val parallelLib = OS.Path.joinDirFile{file="parallel.mlb", dir=LoadPaths.basisParallelDir}
-	fun topLevelSchedLib topLevelSched = OS.Path.joinDirFile{file=topLevelSched^".mlb", dir=LoadPaths.topLevelSchedsDir}
-    in
   (* load the basis library *)
     fun loadBasisLib env = if Controls.get BasicControl.sequential
-          then loadMLB(LoadPaths.basisSequentialDir^"/sequential.mlb", env)
+          then loadMLB(LoadPaths.sequentialLib, env)
           else let
-	    val basisPts = loadMLB(parallelLib, env)
+	    val basisPts = loadMLB(LoadPaths.parallelLib, env)
           (* choose the top-level scheduler *)
 	    val topLevelSched = Controls.get BasicControl.scheduler
-	    val topLevelSchedPts = loadMLB(topLevelSchedLib topLevelSched, env)
+	    val topLevelSchedPts = loadMLB(LoadPaths.topLevelSchedLib topLevelSched, env)
             in
 	       topLevelSchedPts @ basisPts
 	    end
-    end
 
     val emptyEnv = Env{loc=(0,0), pts=[], preprocs=[]}
 
