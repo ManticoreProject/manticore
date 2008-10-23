@@ -7,13 +7,10 @@
 structure Ropes : sig
 
     val maxLeafSize  : unit -> int
-    val ropeTyc      : Types.tycon
+    val ropeTyc      : unit -> Types.tycon
     val ropeTy       : Types.ty -> Types.ty
-    val rope         : Atom.atom
-    val ropeLeaf     : AST.dcon
-    val ropeCat      : AST.dcon
-    val ropeLeafExp  : Types.ty -> AST.exp
-    val ropeCatExp   : Types.ty -> AST.exp
+    val ropeLeaf     : unit -> AST.dcon
+    val ropeCat      : unit -> AST.dcon
 
   end = struct
 
@@ -25,33 +22,25 @@ structure Ropes : sig
 
     fun maxLeafSize () = Controls.get BasicControl.maxLeafSize
 
-    val rope = Atom.atom "rope"
-	       
-    local
-	val tv = TyVar.new(Atom.atom "'a")
-	val tv' = AST.VarTy tv
-    in
-        val ropeTyc = TyCon.newDataTyc (rope, [tv])
-    end
+    fun ropeTyc () = (
+	  case BasisEnv.getTyFromBasis ["RopeOps", "rope"]
+	   of ModuleEnv.TyCon tyc => tyc
+	    | _ => raise Fail "wrong kind for rope tyc"
+  	   (* end case *))
 
     (* ropeTy : Types.ty -> Types.ty *)
-    fun ropeTy ty = AST.ConTy ([ty], ropeTyc)
+    fun ropeTy ty = AST.ConTy ([ty], ropeTyc())
 
-    local
-	fun newRopeDCon (name:string, argTys) = 
-	    DataCon.new ropeTyc (Atom.atom name, SOME (T.TupleTy argTys))
-	val tv = AST.VarTy (TyVar.new (Atom.atom "'a"))
-	val intTy = B.intTy
-    in
-        val ropeLeaf = newRopeDCon ("LEAF", [intTy, B.listTy tv])
-	val ropeCat  = newRopeDCon ("CAT", [intTy, intTy, ropeTy tv, ropeTy tv])
-    end (* local *)
+    fun ropeLeaf () = (
+	  case BasisEnv.getValFromBasis ["RopeOps", "LEAF"]
+	   of ModuleEnv.Con dcon => dcon
+	    | _ => raise Fail "wrong kind for LEAF"
+          (* end case *))
 
-    local
-	fun dconExp dcon = (fn t => A.ConstExp (A.DConst (dcon, [t])))
-    in
-        val ropeLeafExp = dconExp ropeLeaf
-	val ropeCatExp  = dconExp ropeCat
-    end (* local *)
+    fun ropeCat () = (
+	  case BasisEnv.getValFromBasis ["RopeOps", "CAT"]
+	   of ModuleEnv.Con dcon => dcon
+	    | _ => raise Fail "wrong kind for CAT"
+          (* end case *))
 
   end (* structure Ropes *)

@@ -12,12 +12,10 @@ structure TranslateParr  : sig
 
   end  = struct
 
-(** FIXME **
     structure A   = AST
     structure AB  = Basis
     structure R   = Ropes
     structure B   = BOM
-    structure BB  = BOMBasis
     structure BTy = BOMTy
     structure BU  = BOMUtil
 
@@ -146,21 +144,24 @@ structure TranslateParr  : sig
 	  end
 
     local
-	val ropeTy = BB.ropeTy
+	fun ropeTy (env, ty) = TranslateTypes.tr(env, Ropes.ropeTy ty)
 	val rawIntTy = BTy.T_Raw BTy.T_Int
 	val mkList = ASTUtil.mkList
     in
   (* ropeBOM : env * (env * A.exp * (BV.var -> B.exp)) -> _ rope * A.ty -> B.exp *)
     fun ropeBOM (env, trExpToV) (r, t) =
-	let val nV = B.Var.new ("n", rawIntTy)
+	let val ropeTy = ropeTy(env, t)
+	    val TranslateEnv.DCon(ropeLeaf, _) = TranslateTypes.trDataCon(env, Ropes.ropeLeaf())
+	    val TranslateEnv.DCon(ropeCat, _) = TranslateTypes.trDataCon(env, Ropes.ropeCat())
+	    val nV = B.Var.new ("n", rawIntTy)
 	    val rV = B.Var.new ("r", ropeTy)
 	in case r
 	     of Leaf (Lf (len, data)) =>
-	          let val dataAST = mkList (data, t)
+	          let val dataAST = raise Fail "make array instead of list"
 		  in
                       trExpToV (env, dataAST, fn dataV =>
                       B.mkStmt ([nV], BU.rawInt(len),
-                      B.mkStmt ([rV], B.E_DCon (BB.ropeLeaf, [nV, dataV]),
+                      B.mkStmt ([rV], B.E_DCon (ropeLeaf, [nV, dataV]),
                       B.mkRet [rV])))
 		  end
 	      | Cat (n, d, r1, r2) =>
@@ -174,15 +175,12 @@ structure TranslateParr  : sig
                       B.mkStmt ([dV], BU.rawInt(d),
                       B.mkLet  ([r1V], r1BOM,
                       B.mkLet  ([r2V], r2BOM,
-                      B.mkStmt ([rV], B.E_DCon (BB.ropeCat, [nV, dV, r1V, r2V]),
+                      B.mkStmt ([rV], B.E_DCon (ropeCat, [nV, dV, r1V, r2V]),
                       B.mkRet [rV])))))
 		  end
 	end
     end (* local *)
 
     fun tr (env, trExpToV) (es, t) = ropeBOM (env, trExpToV) (ropeFromExps es, t)
-
-**)
-fun tr _ = raise Fail "FIXME"
 
   end
