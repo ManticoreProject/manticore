@@ -20,17 +20,17 @@ structure Cancelation =
     structure O = Option
     structure L = List
 
-  (* communication channel for canceling fibers *)
-    type cancelable = _prim (
-		  ![
-		     PT.bool,         (* canceled flag (TRUE=canceled) *)
-		     PT.bool,         (* inactive flag (TRUE=inactive) *)
-		     L.list,          (* children pointers (has type cancelable L.list) *)
-		     O.option,        (* parent pointer (has type cancelable O.option) *)
-		     FLS.fls_tag      (* tag to find the current cancelable *)
-		  ] )
-
     _primcode (
+
+     (* communication channel for canceling fibers *)
+       typedef cancelable =
+		     ![
+			PT.bool,         (* canceled flag (TRUE=canceled) *)
+			PT.bool,         (* inactive flag (TRUE=inactive) *)
+			L.list,          (* children pointers (has type cancelable L.list) *)
+			O.option,        (* parent pointer (has type cancelable O.option) *)
+			FLS.fls_tag      (* tag to find the current cancelable *)
+		     ];
 
     (* add c to the parent's list of children *)
       define @add-child (c : cancelable, parent : cancelable / exh : PT.exh) : () =
@@ -93,7 +93,7 @@ structure Cancelation =
              let _ : PT.unit = Control.@stop(/ exh)
              return($0)
       (* run the wrapped fiber *)
-        cont dispatch (wrapper : PT.sigact, k : PT.fiber) =
+        cont dispatch (wrapper : PT.sched_act, k : PT.fiber) =
              if SELECT(CANCELED_OFF, c)
                 then 
 		(* the fiber has been canceled *)
@@ -112,18 +112,9 @@ structure Cancelation =
 		 do @set-inactive(c / exh)
                  let _ : PT.unit = Control.@atomic-yield(/ exh)
                  throw dispatch(wrapper, k)
-	       | PT.SUSPEND (k : PT.fiber, retK : cont(PT.fiber)) =>
-               (* pass the return continuation a wrapped version of k *)
-		 cont wrappedK (x : PT.unit) = 
-		   throw dispatch(wrapper, k)
-	         cont retK' (x : PT.unit) =
-		   throw retK(wrappedK)
-                 throw dispatch(wrapper, retK')
-	       | PT.UNBLOCK (retK : PT.fiber, k : PT.fiber, x : any) =>
-		 cont retK' (x : PT.unit) = 
-		   throw dispatch(wrapper, retK)
-		 do Control.@forward(PT.UNBLOCK(retK', k, x) / exh)
-                 return($0)
+	       | _ =>
+		 let e : exn = Match
+                 throw exh (e)
              end
 
         cont wrappedK (x : PT.unit) =

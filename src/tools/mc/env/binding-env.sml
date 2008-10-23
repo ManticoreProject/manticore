@@ -26,7 +26,8 @@ structure BindingEnv (*: sig
       = Con of var_bind
       | Var of var_bind
 
-    val insertTycBind : env * Atom.atom * bom_ty_def -> env
+    val insertDataTyc : env * Atom.atom * bom_ty_def -> env
+    val insertAbsTyc : env * Atom.atom * bom_ty_def -> env
     val insertTy      : env * Atom.atom * ty_bind -> env
     val insertDataCon : env * Atom.atom * var_bind * ty_bind -> env
     val insertVal     : env * Atom.atom * val_bind -> env
@@ -214,13 +215,14 @@ structure BindingEnv (*: sig
 	  Env{name=name, tyEnv=tyEnv, varEnv=varEnv, bomEnv=bomEnv, modEnv=Map.insert(modEnv, id, x), sigEnv=sigEnv, outerEnv=outerEnv}
     fun insertSig (Env{name, tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, id, x) = 
 	  Env{name=name, tyEnv=tyEnv, varEnv=varEnv, bomEnv=bomEnv, modEnv=modEnv, sigEnv=Map.insert(sigEnv, id, x), outerEnv=outerEnv}
-    fun insertTycBind (env, id, x) = let
+    fun insertDataTyc (env, id, x) = let
 	(* make datatypes visible to inline BOM programs *)
 	  val env = insertBOMTy(env, id, x)
 	(* as well as PML programs ... *)
 	  in
 	    insertTy(env, id, x)
 	  end
+    fun insertAbsTyc (env, id, x) = insertTy(env, id, x)
     fun insertDataCon (env, id, x, dataTy) = let
 	  val cons = getDataCons dataTy
 	  in

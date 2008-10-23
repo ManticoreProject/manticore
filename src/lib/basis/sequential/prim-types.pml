@@ -6,35 +6,39 @@
  * NOTE: most primtive types are defined in the initial-basis.pml file.
  *)
 
-structure PrimTypes =
+structure PrimTypes = 
   struct
 
     _primcode (
 
-    (* exception handler *)
-
+      typedef fiber = cont(unit);
       typedef array = any;
       typedef fiber_fun = fun (unit / exh -> unit);
+    (* function that spawns a fiber on a particular scheduler *)
+      typedef spawn_fn = fun (fiber / exh -> );
 
     )
 
-    type fiber = _prim ( cont(unit) )
-    type 'a cont = _prim ( cont(any) )
+    type fiber = _prim (fiber)
 
     datatype bool = datatype bool
 
-  (* signals for schedulers *)
-    datatype 'a signal 
-      = STOP                            (* terminate *)
-      | PREEMPT of fiber                (* preempt the given fiber *)
-      | UNBLOCK of (fiber *             (* return continuation for the fiber doing the unblocking *)
-	            fiber *             (* fiber to unblock *)
-		    'a)                 (* data associated with the unblocking fiber *)
-      | SUSPEND of (fiber *             (* fiber to suspend *)
-		    fiber cont)         (* return continuation *)
-		  
+  (* signals for fibers *)
+    datatype signal 
+      = STOP                            (* terminate the fiber *)
+      | PREEMPT of fiber                (* preempt the fiber; carries the preempted fiber *)
+      | UNBLOCK of                      (* unblock a fiber *)
+	   (fiber *                     (* fiber doing the unblocking *)
+	    fiber                       (* fiber to unblock *))
+      | BLOCK of fiber                  (* block a fiber; carries the resumption fiber *)
+
+    _primcode (
+      typedef sched_act = cont(signal);
+    )
 
   (* scheduler actions are continuations that consume a signal and perform a context switch *)
-    type sigact = _prim ( cont(signal) )
+    type sched_act = _prim (sched_act)
+
+    exception UnhandledSignal
 
   end

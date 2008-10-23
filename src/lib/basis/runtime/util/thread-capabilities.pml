@@ -9,9 +9,9 @@ structure ThreadCapabilities =
     structure PT = PrimTypes
     structure FLS = FiberLocalStorage
 
-    type capability = _prim( [FLS.fls_tag, any] )
-
     _primcode(
+
+      typedef capability = [FLS.fls_tag, any];
 
       define @new (tg : FLS.fls_tag, v : any / exh : PT.exh) : capability =
 	let cap : capability = alloc(tg, v)

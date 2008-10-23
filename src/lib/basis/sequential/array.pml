@@ -11,9 +11,9 @@ structure Array64 =
 
     structure PT = PrimTypes
 
-    type 'a array = _prim( PT.array )
-
     _primcode (
+
+      typedef array = PT.array;
 
       extern void* M_NewArray (void*, int, void*);
  
@@ -153,6 +153,8 @@ structure Array64 =
       ;
 
     )
+
+    type 'a array = _prim( PT.array )
 
     val array : int * 'a -> 'a array = _prim(@array-w)
     val length : 'a array -> int = _prim(@length-w)

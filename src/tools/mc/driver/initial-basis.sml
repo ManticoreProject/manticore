@@ -52,7 +52,7 @@ structure InitialBasis : sig
 		in
 		  case def
 		   of Types.AbsTyc => (
-			  BEnv.insertTycBind(bEnv, name, id),
+			  BEnv.insertDataTyc(bEnv, name, id),
 			  MEnv.insertTy(mEnv, id, MEnv.TyCon tyc)
 			)
 		    | Types.DataTyc{cons, ...} => let
@@ -64,7 +64,7 @@ structure InitialBasis : sig
 			      ) end
 			val (bEnv, mEnv) = List.foldl insDC (bEnv, mEnv) (!cons)
 			in (
-			  BEnv.insertTycBind (bEnv, name, id),
+			  BEnv.insertDataTyc(bEnv, name, id),
 			  MEnv.insertTy (mEnv, id, MEnv.TyCon tyc)
 			) end
 		  (* end case *)

@@ -4,7 +4,6 @@
  * All rights reserved.
  *)
 
-
 structure RoundRobin =
   struct
 
@@ -38,19 +37,12 @@ structure RoundRobin =
 		 let fls : FLS.fls = FLS.@get ( / exh)
 		 do VPQ.@enqueue (fls, k / exh)
 		 throw dispatch () 
-	     | PT.SUSPEND (k : PT.fiber, retK : PT.cont) =>
-		 let fls : FLS.fls = FLS.@get ( / exh)
-		 cont retK' (x : PT.unit) =
-		   throw retK(k)
-		 do VPQ.@enqueue (fls, k / exh)
-		 throw dispatch () 
-	     | PT.UNBLOCK (retK : PT.fiber, k : PT.fiber, fls : FLS.fls) =>
-	         do VPQ.@enqueue (fls, k / exh)
-		 do Control.@run(switch, retK / exh)
-		 return(UNIT)
+	     | _ =>
+	       let e : exn = Match
+     	       throw exh(e)
 	  end
 
-	fun mkSwitch (_ : vproc / exh : PT.exh) : PT.sigact = return (switch)
+	fun mkSwitch (_ : vproc / exh : PT.exh) : PT.sched_act = return (switch)
 
        (* run the scheduler on all vprocs *)
 	do SchedulerUtils.@boot-default-scheduler (mkSwitch / exh)

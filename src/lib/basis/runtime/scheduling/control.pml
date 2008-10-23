@@ -15,14 +15,14 @@ structure Control =
     _primcode (
 
     (* pop from the host vproc's scheduler action stack *)
-      define @pop-act (/ exh : PT.exh) : PT.sigact =
+      define @pop-act (/ exh : PT.exh) : PT.sched_act =
 	let vp : vproc = host_vproc
 	do vpstore(ATOMIC, vp, PT.true)
-	let tos : [PT.sigact, any] = vpload(VP_ACTION_STK, vp)
+	let tos : [PT.sched_act, any] = vpload(VP_ACTION_STK, vp)
 	do assert(NotEqual(tos, nil))
 	let rest : any = #1(tos)
 	do vpstore(VP_ACTION_STK, vp, rest)
-	let act : PT.sigact = #0(tos)
+	let act : PT.sched_act = #0(tos)
 	do assert (Equal(vp, host_vproc))
 	return(act)
       ;
@@ -30,31 +30,37 @@ structure Control =
     (* push a scheduler action on a remote vproc's stack. NOTE: this operation is not
      * concurrent. the remote vproc must be idle during the operation.
      *)
-      define @push-remote-act (vp : vproc, act : PT.sigact / exh : PT.exh) : () =
+      define @push-remote-act (vp : vproc, act : PT.sched_act / exh : PT.exh) : () =
 	do assert(NotEqual(act, nil))
-	let stk : [PT.sigact, any] = vpload (VP_ACTION_STK, vp)
-	let item : [PT.sigact, any] = alloc (act, (any)stk)
-	let item : [PT.sigact, any] = promote (item)
+	let stk : [PT.sched_act, any] = vpload (VP_ACTION_STK, vp)
+	let item : [PT.sched_act, any] = alloc (act, (any)stk)
+	let item : [PT.sched_act, any] = promote (item)
 	do vpstore (VP_ACTION_STK, vp, item)
         return()
       ;
 
     (* push a scheduler action on the host vproc's stack *)
-      define @push-act (act : PT.sigact / exh : PT.exh) : () =
+      define @push-act (act : PT.sched_act / exh : PT.exh) : () =
         let vp : vproc = host_vproc
 	do vpstore (ATOMIC, vp, PT.true)
 	do assert(NotEqual(act, nil))
-	let stk : [PT.sigact, any] = vpload (VP_ACTION_STK, vp)
-	let item : [PT.sigact, any] = alloc (act, (any)stk)
+	let stk : [PT.sched_act, any] = vpload (VP_ACTION_STK, vp)
+	let item : [PT.sched_act, any] = alloc (act, (any)stk)
 	do vpstore (VP_ACTION_STK, vp, item)
 	do vpstore (ATOMIC, vp, PT.false)
         return()
       ;
 
     (* run the fiber under the scheduler action *)
-      define @run (act : PT.sigact, fiber : PT.fiber / exh : PT.exh) noreturn =
+      define @run (act : PT.sched_act, fiber : PT.fiber / exh : PT.exh) noreturn =
         do @push-act(act / exh)
 	throw fiber (UNIT)
+      ;
+
+    (* forward a signal to the host vproc  *)
+      define @forward-no-check (sg : PT.signal / exh : PT.exh) noreturn =
+        let act : PT.sched_act = @pop-act(/ exh)
+	throw act(sg)
       ;
 
     (* run a collection of fibers to completion and then return *)
@@ -71,22 +77,13 @@ structure Control =
 		   | PT.PREEMPT(k : PT.fiber) =>
 		   (* ignore preemptions *)
 		     @run(handler, k / exh)
-		   | PT.SUSPEND (k : PT.fiber, retK : cont(PT.fiber)) =>
-		     cont k' (x : PT.unit) =
-		       throw retK(k)
-		     throw lp(List.CONS(k', ks))
-		   | PT.UNBLOCK (retK : PT.fiber, k : PT.fiber, x : any) =>
-		     throw lp(List.CONS(retK, List.CONS(k, ks)))
+                   | _ =>
+		     let e : exn = Match
+                     throw exh (e)
 		 end
 	      @run(handler, k / exh)
 	  end
 	throw lp(ks)
-      ;
-
-    (* forward a signal to the host vproc  *)
-      define @forward-no-check (sg : PT.signal / exh : PT.exh) noreturn =
-        let act : PT.sigact = @pop-act(/ exh)
-	throw act(sg)
       ;
 
       define @handle-incoming (/ exh : PT.exh) : () =
@@ -127,24 +124,6 @@ structure Control =
         return(UNIT)
       ;
 
-    (* unblock the given fiber with its associated data *)
-      define @unblock (k : PT.fiber, x : any / exh : PT.exh) : PT.unit =
-	cont retK (_ : PT.unit) = return(UNIT)
-	do @forward(PT.UNBLOCK(retK, k, x) / exh)
-	return(UNIT)
-      ;
-
-    (* prepare the given fiber for a blocking operation *)
-      define @suspend (k : PT.fiber / exh : PT.exh) : PT.fiber =
-        let mask : PT.bool = vpload(ATOMIC, host_vproc)
-	cont retK (k' : PT.fiber) =
-          do vpstore(ATOMIC, host_vproc, mask)
-	  return(k')
-	do @forward(PT.SUSPEND(k, retK) / exh)
-	do assert(PT.false)
-	return(k)
-      ;
-
     (* create a resumption fiber *)
       define @resume (k : PT.fiber, resK : cont(PT.fiber) / exh : PT.exh) : PT.fiber =
 	cont resK' (x : PT.unit) =
@@ -152,16 +131,8 @@ structure Control =
 	return(resK')
       ;
 
-    (* handle a suspend signal in a nested scheduler *)
-      define @nested-sched-suspend (k : PT.fiber, retK : cont(PT.fiber) / exh : PT.exh) : PT.fiber =
-	let k' : PT.fiber = @suspend(k / exh)
-	cont retK' (x : PT.unit) =
-	  throw retK(k')
-	return(retK')
-      ;
-
     (* run the thread under the scheduler action *)
-      define @run-thread (act : PT.sigact, fiber : PT.fiber, fls : FLS.fls / exh : PT.exh) noreturn =
+      define @run-thread (act : PT.sched_act, fiber : PT.fiber, fls : FLS.fls / exh : PT.exh) noreturn =
 	do vpstore (ATOMIC, host_vproc, PT.true)
         let _ : PT.unit = FLS.@set(fls / exh)
         @run(act, fiber / exh)

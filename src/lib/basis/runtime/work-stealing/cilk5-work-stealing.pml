@@ -16,89 +16,66 @@ structure Cilk5WorkStealing =
 
     _primcode (
 
-      define @scheduler (deques : Arr.array, self : vproc / exh : PT.exh) : PT.sigact =
+    (* construct a single worker for a work-stealing group *)
+      define @scheduler (deques : Arr.array, self : vproc / exh : exh) : PT.sched_act =
+
 	let nWorkers : int = Arr.@length(deques / exh)
 	let id : int = SchedulerUtils.@vproc-id(self / exh)
 	let deque : DequeTH.deque = Arr.@sub(deques, id / exh)
+      (* scheduler action for work stealing *)
 	cont switch (sign : PT.signal) =
 	  cont dispatch (k : PT.fiber) = 
 	    do Control.@run(switch, k / exh)
 	    return($0)
+       (* steal a thread *)
 	  cont steal () =
 	    let victim : int = Rand.@in-range-int(0, nWorkers / exh)
 	    do if I32Eq(victim, id)
 		  then throw steal()
 	       else return()
 	    let victimDeque : DequeTH.deque = Arr.@sub(deques, victim / exh)
-	    let kOpt : Option.option = DequeTH.@pop-hd(victimDeque / exh)
+	    let kOpt : O.option = DequeTH.@pop-hd(victimDeque / exh)
 	    case kOpt
 	     of O.NONE => 
 		let _ : PT.unit = Control.@atomic-yield( / exh)
 		throw steal()
-	      | Option.SOME(k : PT.fiber) =>
+	      | O.SOME(k : PT.fiber) =>
 		 do assert(NotEqual(k, enum(0)))
 		 throw dispatch (k)
 	    end
+        
 	  case sign
 	   of PT.STOP =>
-	      let kOpt : Option.option = DequeTH.@pop-tl(deque / exh)
+	      let kOpt : O.option = DequeTH.@pop-tl(deque / exh)
 	      case kOpt
-	       of O.NONE =>
-		  throw steal()
-		| Option.SOME(k : PT.fiber) =>
-		  throw dispatch(k)
+	       of O.NONE => throw steal()
+		| O.SOME(k : PT.fiber) => throw dispatch(k)
 	      end
 	    | PT.PREEMPT (k : PT.fiber) =>
+	    (* mugging policy *)
 	      do DequeTH.@push-tl(deque, k / exh)
 	      let _ : PT.unit = Control.@atomic-yield(/exh)
 	      throw switch(PT.STOP)
-	    | PT.SUSPEND (k : PT.fiber, retK : cont(PT.fiber)) =>
-	      let k' : PT.fiber = Control.@nested-sched-suspend(k, retK / exh)
-              throw dispatch(k')
-	    | PT.UNBLOCK (retK : PT.fiber, k : PT.fiber, x : Option.option) =>
-	      let k : PT.fiber = 
-		      case x
-		       of O.NONE => 
-			  return(k)
-			| Option.SOME(c : Cancelation.cancelable) =>
-			  let k : PT.fiber = Cancelation.@wrap(c, k / exh)
-			  return(k)
-		      end
-	      do DequeTH.@push-tl(deque, k / exh)
-	      throw dispatch(retK)
+	    | _ =>
+	      let e : exn = Match
+     	      throw exh(e)
 	  end
 
 	return(switch)
       ;
 
-      define @init (/ exh : PT.exh) : Arr.array =
-	let fls : FLS.fls = FLS.@get( / exh)
-	let nVPs : int = SchedulerUtils.@num-vprocs(/ exh)
-	let deques : Arr.array = Arr.@array(nVPs, enum(0) / exh)
-	fun f (vp : vproc / exh : PT.exh) : () =
-	    let id : int = SchedulerUtils.@vproc-id(vp / exh)
-	    let deque : DequeTH.deque = DequeTH.@new(/ exh)
-	    Arr.@update(deques, id, deque / exh)
-	do SchedulerUtils.@for-each-vproc(f / exh)
-	fun mkAct (self : vproc / exh : PT.exh) : PT.sigact =
-	      @scheduler(deques, self / exh)
-	let vps : List.list = SchedulerUtils.@all-vprocs(/ exh)
-	do SchedulerUtils.@scheduler-startup(mkAct, fls, vps / exh)
-	return(deques)
-      ;
-
     (* get the ith deque *)
-      define @get-local-deque( / exh : PT.exh) : DequeTH.deque =
+      define @get-local-deque( / exh : exh) : DequeTH.deque =
 	let fls : FLS.fls = FLS.@get( / exh)
-	let deques : Option.option = FLS.@find(fls, tag(cilk5WorkStealing) / exh)
+	let deques : O.option = FLS.@find(fls, tag(cilk5WorkStealing) / exh)
 	let deques : Arr.array =
 	     case deques
 	       of O.NONE => 
 		(* this thread does not support work stealing *)
 	    (* FIXME: throw an exception here *)
-		  do assert(PT.false)
+		  do assert(false)
 		  return($0)
-		| Option.SOME (c : SetOnceMem.set_once_mem) =>
+		| O.SOME (c : SetOnceMem.set_once_mem) =>
 		  let deques : any = SetOnceMem.@get(c / exh)
 		  return((Arr.array)deques)
 	      end
@@ -107,21 +84,38 @@ structure Cilk5WorkStealing =
 	return(deque)
       ;
 
-      define @pop-tl ( / exh : PT.exh) : PT.bool =
+      define @pop-tl ( / exh : exh) : bool =
 	let deque : DequeTH.deque = @get-local-deque( / exh)
-	let kOpt : Option.option = DequeTH.@pop-tl(deque / exh)
-	let isNonEmpty : PT.bool = 
+	let kOpt : O.option = DequeTH.@pop-tl(deque / exh)
+	let isNonEmpty : bool = 
 	      case kOpt
-	       of O.NONE => return (PT.false)
-		| Option.SOME(k : PT.fiber) => return(PT.true)
+	       of O.NONE => return (false)
+		| O.SOME(k : PT.fiber) => return(true)
 	       end
 	return(isNonEmpty)
       ;
 
-      define @push-tl(k : PT.fiber / exh : PT.exh) : () =
+      define @push-tl(k : PT.fiber / exh : exh) : () =
 	let deque : DequeTH.deque = @get-local-deque( / exh)
 	do DequeTH.@push-tl(deque, k / exh)
 	return()
+      ;
+
+    (* initialize the work-stealing scheduler *)
+      define @init (/ exh : exh) : Arr.array =
+	let fls : FLS.fls = FLS.@get( / exh)
+	let nVPs : int = SchedulerUtils.@num-vprocs(/ exh)
+	let deques : Arr.array = Arr.@array(nVPs, enum(0) / exh)
+	fun initDeque (vp : vproc / exh : exh) : () =
+	    let id : int = SchedulerUtils.@vproc-id(vp / exh)
+	    let deque : DequeTH.deque = DequeTH.@new(/ exh)
+	    Arr.@update(deques, id, deque / exh)
+	do SchedulerUtils.@for-each-vproc(initDeque / exh)
+	fun mkAct (self : vproc / exh : exh) : PT.sched_act =
+	      @scheduler(deques, self / exh)
+	let vps : List.list = SchedulerUtils.@all-vprocs(/ exh)
+	do SchedulerUtils.@scheduler-startup(mkAct, fls, vps / exh)
+	return(deques)
       ;
 
     )

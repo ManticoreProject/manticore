@@ -168,7 +168,7 @@ structure WorkStealing =
       ;
 
     (* create an instance of the scheduler for a vproc *)
-      define @scheduler (globalHds : Arr.array, self : vproc / exh : PT.exh) : PT.sigact =
+      define @scheduler (globalHds : Arr.array, self : vproc / exh : PT.exh) : PT.sched_act =
 	cont error () = 
 	  do assert(PT.false)
 	  return($0)
@@ -180,11 +180,11 @@ structure WorkStealing =
 
 	cont switch (sign : PT.signal) =
         (* run a thread *)
-	  cont run (switch : PT.sigact, k : PT.fiber) =
+	  cont run (switch : PT.sched_act, k : PT.fiber) =
 	    do Control.@run(switch, k / exh)
 	    throw error()
         (* steal a thread from a remote vproc *)
-	  cont steal (switch : PT.sigact) =
+	  cont steal (switch : PT.sched_act) =
 	    let kOpt : O.option = @steal(globalHds / exh)
 	    case kOpt
 	     of O.NONE => throw steal(switch)
@@ -201,11 +201,9 @@ structure WorkStealing =
 	    | PT.PREEMPT (k : PT.fiber) =>
 	      let _ : PT.unit = Control.@atomic-yield(/exh)
               throw run(switch, k)
-	    | PT.SUSPEND (k : PT.fiber, retK : cont(PT.fiber)) =>
-	      throw run(switch, k)
-	    | PT.UNBLOCK (retK : PT.fiber, k : PT.fiber, x : Option.option) =>
-	      do @local-deque-push-tl(localDeque, k / exh)
-	      throw run(switch, retK)
+	    | _ =>
+	      let e : exn = Match
+     	      throw exh(e)
           end
 
 	return(switch)
@@ -233,7 +231,7 @@ structure WorkStealing =
       (* initialize the scheduler*)
 	let vps : List.list = SchedulerUtils.@all-vprocs(/ exh)
 	let fls : FLS.fls = FLS.@get( / exh)
-	fun mkAct (self : vproc / exh : PT.exh) : PT.sigact =
+	fun mkAct (self : vproc / exh : PT.exh) : PT.sched_act =
 	      @scheduler(globalHds, self / exh)
 	do SchedulerUtils.@scheduler-startup(mkAct, fls, vps / exh)  
 	return(UNIT)

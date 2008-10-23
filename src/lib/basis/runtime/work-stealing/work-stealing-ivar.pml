@@ -9,45 +9,33 @@
 #define BLOCKED_LIST_OFF           0
 #define VALUE_OFF                  1
 #define SPIN_LOCK_OFF              2
+#define SPAWN_FN_OFF               3
 
 #define EMPTY_VAL              enum(0)
 
-structure WorkStealingIVar 
-(*:
-  sig
-
-      type 'a ivar
-	 
-      val ivar : unit -> 'a ivar
-      val get : 'a ivar -> 'a
-      val put : ('a ivar * 'a) -> unit
-
-  end *) = struct
+structure WorkStealingIVar = 
+  struct
 
     structure PT = PrimTypes
     structure FLS = FiberLocalStorage
 
     _primcode (
-         typedef ivar2 =
-              ![
-		 List.list,      (* list of blocked fibers *)
-		 any,            (* value *)
-		 int             (* spin lock *)
-	      ];
-    )
 
-(* FIXME: try renaming ivar2 to ivar *)
-    type 'a ivar = _prim (ivar2)
-
-    _primcode (
+       typedef ivar = ![
+	         List.list,      (* list of blocked fibers *)
+	         any,            (* value *)
+	         int,            (* spin lock *)
+(* FIXME: can eliminate this extra word if we use functors *)
+	         PT.spawn_fn     (* unblock a thread *)
+	        ];
 
     (* create an ivar. 
      * NOTE: we postpone promoting the ivar until the "put" operation. this strategy has strong 
      * synergy with the software-polling version of work stealing. for this implementation, we can
      * avoid promoting the ivar in the common case, and pay for the promotion only when a steal occurs.
      *)
-      define @ivar ( / exh : PT.exh) : ivar =
-	let x : ivar = alloc (nil, enum(0):any, 0)
+      define @ivar (spawnFn : PT.spawn_fn / exh : PT.exh) : ivar =
+	let x : ivar = alloc (nil, enum(0):any, 0, spawnFn)
 	return (x)
       ;  
  
@@ -92,29 +80,16 @@ structure WorkStealingIVar
 	   else
 	       do assert(NotEqual(oldValue, EMPTY_VAL))
 	       return(nil)
-      (* push any blocked fibers on the local deque *)
-	fun push (blockedK : any / exh : PT.exh) : () =
+      (* unblock the fiber *)
+	fun unblock (blockedK : any / exh : PT.exh) : () =
 	    let blockedK : cont(any) = (cont(any))blockedK
 	    cont k (unt : PT.unit) = throw blockedK(x)
-            let x : PT.unit = Control.@unblock(k, Option.NONE / exh)
-            return()
-  	do PrimList.@app(push, blocked / exh)
+            let spawnFn : PT.spawn_fn = SELECT(SPAWN_FN_OFF, ivar)
+            apply spawnFn(k / exh)
+  	do PrimList.@app(unblock, blocked / exh)
 	return()
       ;
 
-      define @put-wrap (arg : [ivar, any] / exh : PT.exh) : PT.unit =
-	do @put(#0(arg), #1(arg) / exh)
-	return(UNIT)
-      ;
-
-      define @ivar-wrap (unt : PT.unit / exh : PT.exh) : ivar =
-	@ivar(/ exh)
-      ;
-
     )
-
-    val ivar : unit -> 'a ivar = _prim(@ivar-wrap)
-    val get : 'a ivar -> 'a = _prim(@get)
-    val put : ('a ivar * 'a) -> unit = _prim(@put-wrap)
 
   end

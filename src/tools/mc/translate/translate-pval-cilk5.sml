@@ -9,8 +9,8 @@
 
  * =
 
-   let 
-   val ivar = WorkStealingIVar.ivar()
+   let
+   val ivar = WorkStealingIVar.ivar(Cilk5WorkStealing.push)
    fun bodyFn selFn = [| e2 |][x -> selFn()]
    cont slowPathK () = bodyFn(fn () => WorkStealingIVar.get ivar)
    val _ = Cilk5WorkStealing.push slowPathK
@@ -63,23 +63,33 @@ structure TranslatePValCilk5  : sig
 	  | _ => raise Fail "todo"
         (* end case *))
 
-    fun iVarTy env = getBOMTy (env, ["WorkStealingIVar", "ivar2"])
+  (* ivar support *)
+    fun iVarTy env = getBOMTy (env, ["WorkStealingIVar", "ivar"])
     fun iGet () = findHLOp ["WorkStealingIVar", "get"]
     fun iPut () = findHLOp ["WorkStealingIVar", "put"]
     fun iVar () = findHLOp ["WorkStealingIVar", "ivar"]
-    fun mkIVar exh = 
-	  B.mkHLOp(iVar(), [], [exh])
+    fun mkIVar (exh, spawnFn) = 
+	  B.mkHLOp(iVar(), [spawnFn], [exh])
     fun mkIPut (exh, iv, x) =
 	  B.mkHLOp(iPut(), [iv, x], [exh])
     fun mkIGet (exh, iv) =
 	  B.mkHLOp(iGet(), [iv], [exh])
-
+  (* deque support *)
     fun wsPush () = findHLOp ["Cilk5WorkStealing", "push-tl"]
     fun wsPop () = findHLOp ["Cilk5WorkStealing", "pop-tl"]
     fun mkWsPush (exh, kLocal) =
 	  B.mkHLOp(wsPush(), [kLocal], [exh])
     fun mkWsPop exh =
 	  B.mkHLOp(wsPop(), [], [exh])
+  (* spawn function *)
+    fun fiberTy env = getBOMTy(env, ["PrimTypes", "fiber"])
+    fun mkSpawnFn env = let
+	  val (exh, _) = E.newHandler env
+	  val spawnFn = BV.new("spawnFn", BTy.T_Fun([fiberTy env], [BTy.exhTy], []))
+	  val k = BV.new("k", fiberTy env)
+	  in
+	     B.mkLambda{f=spawnFn, params=[k], exh=[exh], body=mkWsPush(exh, k)}
+          end
 
     fun mkStop exh = 
 	  B.mkHLOp(findHLOp ["Control", "stop"], [], [exh])
@@ -90,6 +100,7 @@ structure TranslatePValCilk5  : sig
 	  val exh = E.handlerOf env
 	  val ty1 = TranslateTypes.tr(env, TypeOf.exp e1)
 	  val ty2 = TranslateTypes.tr(env, TypeOf.exp e2)
+	  val spawnFnL as B.FB{f=spawnFn, ...} = mkSpawnFn env
 	  val ivar = BV.new("ivar", iVarTy env)
 	  val (x', env) = trVar(env, x)
 	  val selFnAST = Var.new("selFn", AST.FunTy(Basis.unitTy, TypeOf.exp e1))
@@ -113,7 +124,8 @@ structure TranslatePValCilk5  : sig
 	  val selLocally = BV.new("selLocally", BTy.T_Fun([BTy.unitTy], [BTy.exhTy], [ty1]))
 	  val (selLocallyExh, _) = E.newHandler env
           in
-	     B.mkLet([ivar], mkIVar exh,
+	     B.mkFun([spawnFnL],
+	     B.mkLet([ivar], mkIVar(exh, spawnFn),
              B.mkFun([bodyFnL, selFromIVarL],
              B.mkCont(slowPathL,
              B.mkLet([], mkWsPush(exh, slowPath),
@@ -123,7 +135,7 @@ structure TranslatePValCilk5  : sig
 		      B.mkIf(goLocal,
 			     B.mkApply(bodyFn, [selLocally], [exh]),
 			     B.mkLet([], mkIPut(exh, ivar, x1),
-				     mkStop exh)))))))))
+				     mkStop exh))))))))))
 	  end
 
   end

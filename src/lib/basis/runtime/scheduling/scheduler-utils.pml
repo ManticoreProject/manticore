@@ -173,13 +173,13 @@ structure SchedulerUtils =
       ;
 
     (* bootstrap the default scheduler *)
-      define @boot-default-scheduler (mkAct : fun (vproc / PT.exh -> PT.sigact) / exh : PT.exh) : () =
+      define @boot-default-scheduler (mkAct : fun (vproc / PT.exh -> PT.sched_act) / exh : PT.exh) : () =
         let fls : FLS.fls = FLS.@get(/ exh)
 	do @set-trampoline ( / exh)
 	let self : vproc = host_vproc
       (* push the scheduler action on each remote vproc *)
 	fun pushAct (vp : vproc / exh : PT.exh) : () =
-	    let act : PT.sigact = apply mkAct (vp / exh)
+	    let act : PT.sched_act = apply mkAct (vp / exh)
             Control.@push-remote-act(vp, act / exh)
 	cont startup (_ : PT.unit) =
 	  do vpstore(ATOMIC, self, PT.true)
@@ -195,12 +195,12 @@ structure SchedulerUtils =
           do vpstore(ATOMIC, self, PT.false)
 	  return()
       (* make the scheduler instance for the host vproc *)
-	let act : PT.sigact = apply mkAct (host_vproc / exh)
+	let act : PT.sched_act = apply mkAct (host_vproc / exh)
 	Control.@run-thread (act, startup, fls / exh)
       ;
 
     (* initialize a given scheduler on a collection of vprocs *)
-      define @scheduler-startup (mkAct : fun (vproc / PT.exh -> PT.sigact), fls : FLS.fls, vps : List.list / exh : PT.exh) : () =
+      define @scheduler-startup (mkAct : fun (vproc / PT.exh -> PT.sched_act), fls : FLS.fls, vps : List.list / exh : PT.exh) : () =
 	  let self : vproc = host_vproc
 	  let length : fun(List.list / PT.exh -> PT.ml_int) = pmlvar List.length
 	  let nVProcs : PT.ml_int = apply length (vps / exh)
@@ -218,7 +218,7 @@ structure SchedulerUtils =
 		     do Control.@forward (PT.STOP / exh)
 		     return(UNIT)
 	      (* make the scheduler instance for the host vproc *)
-	       let act : PT.sigact = apply mkAct (host_vproc / exh)
+	       let act : PT.sched_act = apply mkAct (host_vproc / exh)
 	       do Control.@run-thread (act, dummyK, fls / exh)
 	       return(UNIT)
 
@@ -232,7 +232,7 @@ structure SchedulerUtils =
 		Barrier.@barrier(nVProcs, barrier / exh)
 
 	(* make the scheduler instance for the host vproc *)
-	 let act : PT.sigact = apply mkAct (host_vproc / exh)
+	 let act : PT.sched_act = apply mkAct (host_vproc / exh)
 	 do Control.@run-thread (act, startup, fls / exh)
 	 return()
       ;

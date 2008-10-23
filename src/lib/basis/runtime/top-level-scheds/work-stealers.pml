@@ -119,16 +119,9 @@ structure WorkStealers =
 	      let fls : FLS.fls = FLS.@get ( / exh)
 	      do VPQ.@enqueue (fls, k / exh)
 	      throw dispatch () 
-	    | PT.SUSPEND (k : PT.fiber, retK : PT.cont) =>
-	      let fls : FLS.fls = FLS.@get ( / exh)
-	      cont retK' (x : PT.unit) =
-	      throw retK(k)
-	      do VPQ.@enqueue (fls, k / exh)
-	      throw dispatch () 
-	    | PT.UNBLOCK (retK : PT.fiber, k : PT.fiber, fls : FLS.fls) =>
-	      do VPQ.@enqueue (fls, k / exh)
-	      do Control.@run(switch, retK / exh)
-	      throw impossible()
+	    | _ =>
+	      let e : exn = Match
+     	      throw exh(e)
 	  end
 
         return(switch)

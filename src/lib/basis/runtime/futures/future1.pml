@@ -42,9 +42,9 @@ structure Future1 : FUTURE = struct
      *     4) fiber-local storage for the future (tracks parent->child relationships)
      *)
 
-    type 'a future = _prim ( ![any, thunk, C.cancelable, FLS.fls] )
-
     _primcode (
+
+      typedef future = ![any, thunk, C.cancelable, FLS.fls];
 
     (* evaluate a future's thunk and store the result *)
       define @eval (fut : future / exh : PT.exh) : any =
@@ -67,8 +67,11 @@ structure Future1 : FUTURE = struct
 		   else (* unblock the future *)
 			do UPDATE(STATE_OFF, fut, result)
 			let k : PT.fiber = (PT.fiber) tmpX
-                        let _ : PT.unit = Control.@unblock(k, O.NONE / exh)
-                        return()
+(* FIXME! *)
+let e : exn = Match
+throw exh(e)
+(*                        let _ : PT.unit = Control.@unblock(k, O.NONE / exh)
+                        return()*)
 	    else (* future cell is already full *)
 		 return ()
       ;
@@ -77,7 +80,7 @@ structure Future1 : FUTURE = struct
      * contains _fibers_ that, when invoked, evaluate futures. we chose this representation to support
      * our unified cancelation mechanism.
      *)
-      define @gang-sched (readyQ : LockedQueue.queue, self : vproc / exh : PT.exh) : PT.sigact =
+      define @gang-sched (readyQ : LockedQueue.queue, self : vproc / exh : PT.exh) : PT.sched_act =
 	cont switch (s : PT.signal) =
 	(* sanity check *)
 	  do assert(Equal(self, host_vproc))
@@ -108,13 +111,9 @@ structure Future1 : FUTURE = struct
 	      do LockedQueue.@enqueue(readyQ, k / exh)
 	      let _ : PT.unit = Control.@atomic-yield(/exh)
 	      throw dispatch()
-	    | PT.SUSPEND (k : PT.fiber, retK : cont(PT.fiber)) =>
-              let resK : PT.fiber = Control.@resume(k, retK / exh)
-              throw run(resK)
-	    | PT.UNBLOCK (retK : PT.fiber, k : PT.fiber, x : Option.option) =>
-	      do LockedQueue.@enqueue(readyQ, k / exh)
-              do Control.@run(switch, retK / exh)
-              throw dispatch()
+	    | _ => 
+	      let e : exn = Match
+     	      throw exh(e)
 	  end
 	return(switch)                
       ;
@@ -143,7 +142,7 @@ structure Future1 : FUTURE = struct
 	(* create the ready queue *)
 	  let readyQ : LockedQueue.queue = LockedQueue.@new(/exh)
 	  let vps : List.list = SchedulerUtils.@all-vprocs(/ exh)
-	  fun mkAct (self : vproc / exh : PT.exh) : PT.sigact =
+	  fun mkAct (self : vproc / exh : PT.exh) : PT.sched_act =
 		@gang-sched(readyQ, self / exh)
 	  do SchedulerUtils.@scheduler-startup(mkAct, fls, vps / exh)
 	  return(readyQ)
@@ -208,6 +207,8 @@ structure Future1 : FUTURE = struct
       ;
 
     )
+
+    type 'a future = _prim (future)
 
     val touch : 'a future -> 'a = _prim(@touch)
     val future : 'a thunk -> 'a future = _prim(@future)

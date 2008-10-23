@@ -414,7 +414,7 @@ structure BoundVariableCheck :> sig
 		  end
 	    | PT1.DataTyDecl decls => let
 		  (* insert data type ids first to make recursive types work *)
-		  fun ins ((tvs, id, conDecls), env) = BEnv.insertTycBind(env, id, freshVar id)
+		  fun ins ((tvs, id, conDecls), env) = BEnv.insertDataTyc(env, id, freshVar id)
 		  val env = List.foldl ins env decls
 		  (* check the bodies of datatypes *)
 		  fun f ((tvs, id, conDecls), (decls, env)) = let
@@ -431,20 +431,20 @@ structure BoundVariableCheck :> sig
 		  val dtRef' = findTyQid(loc, env, dtRef)
 		  fun ins ((id, x), env) = BEnv.insertDataCon(env, id, x, dtRef')
 		  val env = List.foldl ins env (BEnv.getDataCons dtRef')
-		  val env = BEnv.insertTycBind(env, dtBind, dtRef')
+		  val env = BEnv.insertDataTyc(env, dtBind, dtRef')
 		  in
 		    (PT2.DataTyReplDecl (dtRef', dtRef'), env)
 		  end
 	    | PT1.AbsTyDecl (tvs, id) => let
 		  val id' = freshVar id
-		  val env = BEnv.insertTycBind(env, id, id')
+		  val env = BEnv.insertAbsTyc(env, id, id')
 	          in
 		     (PT2.AbsTyDecl (tvs, id'), env)
 		  end
 	    | PT1.PrimTyDecl (tvs, id, bty) => let
 		val bty = BOMBoundVariableCheck.chkTy loc (bty, env)
 		val id' = freshVar id
-		val env = BEnv.insertTycBind(env, id, id')
+		val env = BEnv.insertAbsTyc(env, id, id')
 		in
 		  (PT2.PrimTyDecl(tvs, id', bty), env)
 		end
