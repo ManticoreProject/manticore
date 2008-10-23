@@ -63,4 +63,10 @@ structure HLOpEnv : sig
     fun listHLOps () = List.map #def (Stamp.Tbl.listItems hlops)
     end
 
+    val {
+           getFn=getHLOp : ProgramParseTree.Var.var -> hlop_def option, 
+	   setFn=setHLOp : (ProgramParseTree.Var.var * hlop_def option) -> unit, ...
+        } = 
+	   ProgramParseTree.Var.newProp (fn _ => NONE)
+
   end

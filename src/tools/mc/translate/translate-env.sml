@@ -77,6 +77,8 @@ structure TranslateEnv : sig
     val findBOMCFun     : c_id -> BOM.var CFunctions.c_fun option
     val findBOMPMLVar   : var -> BOM.var option
 
+    val findBOMHLOpByPath : string list -> BOM.hlop
+
   (* output an environment *)
     val dump : (TextIO.outstream * env) -> unit
 
@@ -250,6 +252,7 @@ structure TranslateEnv : sig
     val findBOMVar = getVar
     val findBOMHLOp = getHLOp
     val findBOMHLOpDef = getHLOpDef
+    val findBOMHLOpByPath = #name o Option.valOf o findBOMHLOpDef o BasisEnv.getHLOpFromBasis
     val findBOMCFun = getCFun
   (* Importing PML variables is a two-step process: PML parse-tree variable -> AST variable -> BOM variable.
    *)

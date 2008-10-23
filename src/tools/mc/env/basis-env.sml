@@ -14,6 +14,7 @@ structure BasisEnv : sig
     val getValFromBasis : string list -> ModuleEnv.val_bind
     val getTyFromBasis : string list -> ModuleEnv.ty_def
     val getBOMTyFromBasis : string list -> ProgramParseTree.Var.var
+    val getHLOpFromBasis : string list -> ProgramParseTree.Var.var
 
   end = struct
 
@@ -78,5 +79,14 @@ structure BasisEnv : sig
 		(* end case *))
 	    | _ => notFound path
 	  (* end case *))
+
+  (* use a path (or qualified name) to look up a HLOp *)
+    fun getHLOpFromBasis path = (case getModule path
+           of SOME(bEnv, x) => (case BEnv.findBOMHLOp(bEnv, x)
+                 of SOME v => v
+		  | NONE => notFound path
+                 (* end case *))
+	    | _ => notFound path
+          (* end case *))
 
   end

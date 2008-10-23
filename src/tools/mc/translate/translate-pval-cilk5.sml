@@ -46,8 +46,6 @@ structure TranslatePValCilk5  : sig
     structure BV = BOM.Var
     structure E = TranslateEnv
 
-(* FIXME: we should be looking in the Basis environment for HLOps *)
-    val findHLOp = #name o Option.valOf o HLOpEnv.findDefByPath
     fun getBOMTy (env, path) = (case TranslateEnv.findBOMTyDef(BasisEnv.getBOMTyFromBasis path)
 	   of SOME ty => ty
 	    | NONE => raise Fail("unable to find type " ^ String.concatWith "." path)
@@ -65,9 +63,9 @@ structure TranslatePValCilk5  : sig
 
   (* ivar support *)
     fun iVarTy env = getBOMTy (env, ["WorkStealingIVar", "ivar"])
-    fun iGet () = findHLOp ["WorkStealingIVar", "get"]
-    fun iPut () = findHLOp ["WorkStealingIVar", "put"]
-    fun iVar () = findHLOp ["WorkStealingIVar", "ivar"]
+    fun iGet () = E.findBOMHLOpByPath ["WorkStealingIVar", "get"]
+    fun iPut () = E.findBOMHLOpByPath ["WorkStealingIVar", "put"]
+    fun iVar () = E.findBOMHLOpByPath ["WorkStealingIVar", "ivar"]
     fun mkIVar (exh, spawnFn) = 
 	  B.mkHLOp(iVar(), [spawnFn], [exh])
     fun mkIPut (exh, iv, x) =
@@ -75,8 +73,8 @@ structure TranslatePValCilk5  : sig
     fun mkIGet (exh, iv) =
 	  B.mkHLOp(iGet(), [iv], [exh])
   (* deque support *)
-    fun wsPush () = findHLOp ["Cilk5WorkStealing", "push-tl"]
-    fun wsPop () = findHLOp ["Cilk5WorkStealing", "pop-tl"]
+    fun wsPush () = E.findBOMHLOpByPath ["Cilk5WorkStealing", "push-tl"]
+    fun wsPop () = E.findBOMHLOpByPath ["Cilk5WorkStealing", "pop-tl"]
     fun mkWsPush (exh, kLocal) =
 	  B.mkHLOp(wsPush(), [kLocal], [exh])
     fun mkWsPop exh =
@@ -92,7 +90,7 @@ structure TranslatePValCilk5  : sig
           end
 
     fun mkStop exh = 
-	  B.mkHLOp(findHLOp ["Control", "stop"], [], [exh])
+	  B.mkHLOp(E.findBOMHLOpByPath ["Control", "stop"], [], [exh])
 
     fun unitVar () = BV.new("_unit", BTy.unitTy)
 
