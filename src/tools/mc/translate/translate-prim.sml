@@ -84,7 +84,7 @@ structure TranslatePrim : sig
   (* find a data constructor that is defined in PML code *)
     fun findCon con = (case ModuleEnv.getValBind con
 	   of SOME (ModuleEnv.Con dcon) =>
-	        TranslateEnv.findDCon(getTranslateEnv(), dcon)
+	        SOME(TranslateTypes.trDataCon(getTranslateEnv(), dcon))
 	    | _ => NONE
           (* end case *))
 
