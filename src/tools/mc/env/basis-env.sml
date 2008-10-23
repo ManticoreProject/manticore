@@ -50,7 +50,7 @@ structure BasisEnv : sig
    *)
     fun getValFromBasis path = (case getModule path
 	   of SOME(bEnv, x) => (case BEnv.findVar(bEnv, x)
-		 of SOME(BEnv.Var v) => (case ModuleEnv.getValBind v
+		 of SOME(BEnv.Var v | BEnv.Con v) => (case ModuleEnv.getValBind v
 		       of SOME vb => vb
 			| NONE => notFound path
 		      (* end case *))
@@ -61,8 +61,8 @@ structure BasisEnv : sig
 
   (* use a path (or qualified name) to look up a type *)
     fun getTyFromBasis path = (case getModule path
-	   of SOME(bEnv, x) => (case BEnv.findVar(bEnv, x)
-		 of SOME(BEnv.Var v) =>  (case ModuleEnv.getTyDef v
+	   of SOME(bEnv, x) => (case BEnv.findTy(bEnv, x)
+		 of SOME ty =>  (case ModuleEnv.getTyDef ty
 		       of SOME tyd => tyd
 			| NONE => notFound path
 		      (* end case *))
