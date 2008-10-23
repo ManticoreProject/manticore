@@ -15,10 +15,16 @@ structure LoadPaths =
   (* Manticore basis CPP definition directory *)
     val basisCPPDefDir = OS.Path.joinDirFile {dir=basisDir, file="include"}
 
+  (* Manticore parallel library *)
+    val basisParallelDir = OS.Path.joinDirFile {dir=basisDir, file="parallel"}
+
   (* Manticore runtime library *)
     val basisRuntimeDir = OS.Path.joinDirFile {dir=basisDir, file="runtime"}
 
   (* Manticore sequential library *)
     val basisSequentialDir = OS.Path.joinDirFile {dir=basisDir, file="sequential"}
+
+  (* top-level schedulers *)
+    val topLevelSchedsDir = OS.Path.joinDirFile{file="top-level-scheds", dir=basisRuntimeDir}
 
   end
