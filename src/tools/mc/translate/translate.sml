@@ -253,10 +253,7 @@ structure Translate : sig
 		val param = BV.new("unused", BTy.unitTy)
 		val thd = BV.new("_thd", BTy.T_Fun([BTy.unitTy], [BTy.exhTy], [BTy.unitTy]))
 	      (* get the HLOp for thread spawning *)
-		val spawnOp = (case HLOpEnv.findDefByPath ["Threads", "local-spawn"]
-		       of SOME{name, ...} => name
-			| NONE => raise Fail "unable to locate spawn HLOP"
-		      (* end case *))
+		val spawnOp = E.findBOMHLOpByPath ["Threads", "local-spawn"]
 		in
 		  EXP(B.mkFun([B.FB{f=thd, params=[param], exh=[exh], body=e'}],
 		    B.mkHLOp(spawnOp, [thd], [E.handlerOf env])))
