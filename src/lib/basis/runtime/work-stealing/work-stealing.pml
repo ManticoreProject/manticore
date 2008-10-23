@@ -242,10 +242,8 @@ structure WorkStealing =
 	let hds : Option.option = FLS.@find(fls, tag(workStealingSWGlobalHd) / exh)
         case hds
 	 of O.NONE => 
-	(* this thread does not support work stealing *)
-        (* FIXME: throw an exception here *)
-  	    do assert(PT.false)
-	    return($0)
+	    let e : exn = Fail(@"thread does not support work stealing")
+            throw exh(e)
 	  | O.SOME(hd : global_hd) =>
 	    return(hd)
         end

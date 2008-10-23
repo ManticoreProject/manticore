@@ -36,9 +36,8 @@ structure ThreadCapabilities =
 	let x : any =
 		     case x
 		      of Option.NONE => 
-		  (* FIXME: throw an exception here *)
-			do assert(PT.false)
-			return($0)
+		        let e : exn = Fail(@"missing thread capability")
+                        throw exh(e)
 		      | Option.SOME (c : SetOnceMem.set_once_mem) =>
 			let x : any = SetOnceMem.@get(c / exh)
 			return(x)

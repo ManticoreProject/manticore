@@ -30,21 +30,30 @@ structure Future1 : FUTURE = struct
     type thunk = unit -> 'a
     _primcode ( typedef thunk = fun (PT.unit / PT.exh -> any); )
 
-    (* the future1 structure contains:
-     *     1) a _state_ word, with one of the following values:
+    _primcode (
+
+      typedef future = ![
+		   any,                    (* a state word, with one of the following values *)
+		   thunk,                  (* a thunk word *)
+		   C.cancelable,           (* cancelable *)
+		   FLS.fls                 (* fiber-local storage for the future (tracks parent->child relationships) *)
+               ];
+
+    (* possible values for the state word
      *          EMPTY_F
      *          STOLEN_F
      *          EVAL_F
      *          FULL      value
      *          WAITING   cont
-     *     2) a _thunk_ word 
-     *     3) a cancelable for canceling the future's evaluation
-     *     4) fiber-local storage for the future (tracks parent->child relationships)
      *)
 
-    _primcode (
-
-      typedef future = ![any, thunk, C.cancelable, FLS.fls];
+    (*@BEGIN future1-get-ready-queue.tex *)
+    (* get a handle on the ready queue *)
+      define @get-ready-queue ( / exh : PT.exh) : LockedQueue.queue =
+        let readyQ : any = ThreadCapabilities.@get-from-fls(tag(future1GangSched) / exh)
+	return((LockedQueue.queue)readyQ)
+      ;
+      (*@END future1-get-ready-queue.tex *)
 
     (* evaluate a future's thunk and store the result *)
       define @eval (fut : future / exh : PT.exh) : any =
@@ -67,11 +76,9 @@ structure Future1 : FUTURE = struct
 		   else (* unblock the future *)
 			do UPDATE(STATE_OFF, fut, result)
 			let k : PT.fiber = (PT.fiber) tmpX
-(* FIXME! *)
-let e : exn = Match
-throw exh(e)
-(*                        let _ : PT.unit = Control.@unblock(k, O.NONE / exh)
-                        return()*)
+                        let readyQ : LockedQueue.queue = @get-ready-queue(/ exh)
+(* FIXME: re-wrap for cancelation *)
+                        LockedQueue.@enqueue(readyQ, k / exh)
 	    else (* future cell is already full *)
 		 return ()
       ;
@@ -117,24 +124,6 @@ throw exh(e)
 	  end
 	return(switch)                
       ;
-
-    (*@BEGIN future1-get-ready-queue.tex *)
-    (* get a handle on the ready queue *)
-      define @get-ready-queue ( / exh : PT.exh) : LockedQueue.queue =
-        let fls : FLS.fls = FLS.@get( / exh)
-        let futureSched : Option.option = FLS.@find(fls, tag(future1GangSched) / exh)
-        case futureSched
-	 of Option.NONE => 
-          (* this thread does not support futures *)
-(* FIXME: throw an exception here *)
-	    do assert(PT.false)
-            return($0)
-	  | Option.SOME (c : SetOnceMem.set_once_mem) =>
-	    let readyQ : any = SetOnceMem.@get(c / exh)
-	    return((LockedQueue.queue)readyQ)
-        end                                            
-      ;
-      (*@END future1-get-ready-queue.tex *)
 
     (* initialize the gang scheduler on each vproc *)
       define @init-gang-sched ( / exh : PT.exh) : LockedQueue.queue =

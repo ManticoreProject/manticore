@@ -66,19 +66,7 @@ structure Cilk5WorkStealing =
 
     (* get the ith deque *)
       define @get-local-deque( / exh : exh) : DequeTH.deque =
-	let fls : FLS.fls = FLS.@get( / exh)
-	let deques : O.option = FLS.@find(fls, tag(cilk5WorkStealing) / exh)
-	let deques : Arr.array =
-	     case deques
-	       of O.NONE => 
-		(* this thread does not support work stealing *)
-	    (* FIXME: throw an exception here *)
-		  do assert(false)
-		  return($0)
-		| O.SOME (c : SetOnceMem.set_once_mem) =>
-		  let deques : any = SetOnceMem.@get(c / exh)
-		  return((Arr.array)deques)
-	      end
+        let deques : any = ThreadCapabilities.@get-from-fls(tag(cilk5WorkStealing) / exh)
 	let id : int = SchedulerUtils.@vproc-id(host_vproc / exh)
 	let deque : DequeTH.deque = Arr.@sub(deques, id / exh)
 	return(deque)
