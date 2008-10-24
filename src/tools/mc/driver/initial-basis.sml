@@ -52,7 +52,7 @@ structure InitialBasis : sig
 		in
 		  case def
 		   of Types.AbsTyc => (
-			  BEnv.insertDataTyc(bEnv, name, id),
+			  BEnv.insertAbsTyc(bEnv, name, id),
 			  MEnv.insertTy(mEnv, id, MEnv.TyCon tyc)
 			)
 		    | Types.DataTyc{cons, ...} => let
