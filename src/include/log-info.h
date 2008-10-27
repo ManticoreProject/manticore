@@ -43,6 +43,6 @@ typedef enum {
     LOG_DATA_INT64 = 'I',
     LOG_DATA_FLOAT32 = 'f',
     LOG_DATA_FLOAT64 = 'F'
-};
+} LogData_t;
 
 #endif /* !_LOG_INFO_H_ */

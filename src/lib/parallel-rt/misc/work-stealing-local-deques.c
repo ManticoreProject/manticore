@@ -58,5 +58,5 @@ Value_t M_WSAllocLocalDeques (VProc_t *vp, int n)
     }
   }
 
-  return deques;
+  return (Value_t)deques;
 }
