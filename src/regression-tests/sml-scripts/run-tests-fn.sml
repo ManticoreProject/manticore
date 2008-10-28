@@ -39,7 +39,7 @@ functor RunTestsFn (L : COMPILER) = struct
     val resultsFile = U.freshTmp (FS.fullPath ".", "results")
  (* val compileSucceeded = sys ("$M/bin/mc " ^ filename) *)
     val compileCmd = L.mkCmd {infile=filename, outfile=exeFile}
-    val compileSucceeded = sys (concat ["ocamlc -o ", exeFile, " ", filename])
+    val compileSucceeded = sys compileCmd
     val tmps = exeFile :: resultsFile :: L.ballast {infile=filename, outfile=exeFile}
     fun cleanup () = app U.rm tmps
     in
@@ -78,15 +78,15 @@ functor RunTestsFn (L : COMPILER) = struct
     val d = Date.fromTimeLocal testDateTime
     val dateTimeString = Date.toString d
     val title = "Manticore: Regression Test Results"
-    val goalDirs = List.filter (not o (String.isPrefix ".") o OS.Path.file)
-			       (U.dirsWithin (U.dotdot "." ^ "/par") @
-				U.dirsWithin (U.dotdot "." ^ "/seq"))
-    fun goalHeader goalDir = HTML.h2CS ("goal", P.file goalDir)
+(*  val goalDirs = U.dirsWithin (U.dotdot "." ^ "/par") @
+		   U.dirsWithin (U.dotdot "." ^ "/seq") *)
+    val goalDirs = U.dirsWithin (U.dotdot "." ^ "/phony")
+    val goalDirs' = List.filter (not o (String.isPrefix ".") o OS.Path.file) goalDirs
+    fun goalHeader goalDir = HTML.h2CS ("goal", concat [P.file (P.dir goalDir), "/", P.file goalDir])
     fun fileHeader filename = HTML.h3CS ("testfile", P.file filename)
     fun processDir goalDir = let
       val h2 = goalHeader goalDir
-(*    val fs = U.filesWithin (String.isSuffix ".pml") goalDir *)
-      val fs = U.filesWithin (String.isSuffix ".ml") goalDir
+      val fs = U.filesWithin (String.isSuffix ("." ^ L.ext)) goalDir
       in
         HTML.divCAH ("goal", [{key="id", value=P.file goalDir}],
 		     HTML.sequence (h2 :: 
@@ -102,7 +102,9 @@ functor RunTestsFn (L : COMPILER) = struct
       HTML.toFile (htdoc, 
 		   concat ["../reports/archive/", datestamp d, ".results.html"]);
       HTML.toFile (htdoc, 
-		   "../reports/current/results.html")
+		   "../reports/current/results.html");
+      HTML.toFile (htdoc,
+		   "/home/adamshaw/MCResults/current/results.html")
     end
 
 end

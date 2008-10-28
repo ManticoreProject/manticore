@@ -1,7 +1,7 @@
 structure Main = struct
 
   structure U = Utils
-  structure M = RunTestsFn(OCaml)
+  structure M = RunTestsFn(MC)
 
 (* sys : string -> OS.Process.status *)
   val sys = OS.Process.system
@@ -11,12 +11,11 @@ structure Main = struct
     val tmpfile = U.freshTmp (OS.FileSys.fullPath ".", "revision")
     val cmd = "svn info > " ^ tmpfile
     val _ = sys cmd
-    val _ = U.println cmd
     val revisions = List.filter (String.isPrefix "Revision") (U.textOf tmpfile)
     in 
      (case revisions
         of [] => "no revision number available"
-	 | [r] => (U.println r; r)
+	 | [r] => r
 	 | rs => raise Fail (String.concatWith ";" ("too many revisions available\n" :: rs)))
      before U.rm tmpfile
     end    

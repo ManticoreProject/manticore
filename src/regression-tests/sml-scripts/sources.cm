@@ -1,8 +1,9 @@
 Group 
 
-  structure Utils
   structure MiniHTML
+  structure Utils
   signature COMPILER
+  structure MC
   structure OCaml
   functor   RunTestsFn
   structure Main
@@ -12,9 +13,10 @@ is
   $/basis.cm
   $/smlnj-lib.cm
 
-  utils.sml
-  ./html/sources.cm
+  html/sources.cm
+  utils.sml  
   compiler.sig
+  mc.sml
   ocaml.sml
   run-tests-fn.sml
   main.sml
