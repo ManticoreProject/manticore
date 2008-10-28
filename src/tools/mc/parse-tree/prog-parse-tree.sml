@@ -37,7 +37,7 @@ structure ProgramParseTree =
       end)
     type var = Var.var
 
- (* PML parse tree with variables represented as flat names *)
+  (* PML parse tree with variables represented as flat names *)
     structure PML2 = PMLParseTreeFn (
 	type ty_bind = var
 	type ty_use = var
