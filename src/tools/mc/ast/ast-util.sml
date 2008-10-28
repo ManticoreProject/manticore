@@ -44,6 +44,9 @@ structure ASTUtil : sig
   (* make a fresh copy of an expression *)
     val copyExp : AST.exp -> AST.exp
 
+  (* make an array out of given expressions *)
+    val mkArray : AST.exp list * AST.ty -> AST.exp
+
   end = struct
 
     structure A = AST
@@ -102,6 +105,8 @@ structure ASTUtil : sig
 	  in
 	    List.foldr cons' nil' exps
 	  end
+
+    fun mkArray (exps, ty) = raise Fail "todo: ASTUtil.mkArray"
 
     fun mkInt n = A.ConstExp (A.LConst (Literal.Int (IntInf.fromInt n), Basis.intTy))
 
