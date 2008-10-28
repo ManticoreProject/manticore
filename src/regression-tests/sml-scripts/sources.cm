@@ -1,0 +1,20 @@
+Group 
+
+  structure Utils
+  structure MiniHTML
+  signature COMPILER
+  structure OCaml
+  functor   RunTestsFn
+  structure Main
+
+is
+
+  $/basis.cm
+  $/smlnj-lib.cm
+
+  utils.sml
+  ./html/sources.cm
+  compiler.sig
+  ocaml.sml
+  run-tests-fn.sml
+  main.sml
