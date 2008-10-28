@@ -11,6 +11,8 @@
  *        rendering are tied together -- too tightly coupled.
  *)
 
+(* FIXME: Create and delete all the exes, tmps, etc. somewhere SAFE. *)
+
 functor RunTestsFn (L : COMPILER) = struct
 
   structure HTML = MiniHTML
@@ -31,21 +33,22 @@ functor RunTestsFn (L : COMPILER) = struct
       HTML.codeH (HTML.sequence (loop (loc, [])))
     end
 
+fun halt() = raise Fail "halt"
+
 (* runTest : date * string -> HTML.html *)
 (* Run a test with given filename. Produce a piece of HTML giving results. *)
   fun runTest (d, filename) = let
-    val exeFile = P.base filename
-    val okFile  = exeFile ^ ".ok"
+    val exeFile = L.mkExe filename
+    val okFile  = concat [P.dir filename, "/", P.file (P.base filename) ^ ".ok"]
     val resultsFile = U.freshTmp (FS.fullPath ".", "results")
- (* val compileSucceeded = sys ("$M/bin/mc " ^ filename) *)
-    val compileCmd = L.mkCmd {infile=filename, outfile=exeFile}
+    val compileCmd = L.mkCmd filename
     val compileSucceeded = sys compileCmd
-    val tmps = exeFile :: resultsFile :: L.ballast {infile=filename, outfile=exeFile}
+    val tmps = exeFile :: resultsFile :: L.detritus filename
     fun cleanup () = app U.rm tmps
     in
      (if compileSucceeded = 0 then let
 	val diffFile = U.freshTmp (FS.fullPath ".", "diffs")
-        val makeOutput = sys (concat [exeFile, " > ", resultsFile])
+        val makeOutput = sys (concat ["./", exeFile, " > ", resultsFile])
         val diffCmd = concat ["diff ", resultsFile, " ", okFile, " > ", diffFile]
 	val diffProc = sys diffCmd
         in
@@ -73,14 +76,17 @@ functor RunTestsFn (L : COMPILER) = struct
     end
 
 (* main : string -> unit *)
-  fun main currentRevision = let
+  fun main (currentRevision, localCopy) = let
     val testDateTime = Time.now ()
     val d = Date.fromTimeLocal testDateTime
     val dateTimeString = Date.toString d
     val title = "Manticore: Regression Test Results"
-(*  val goalDirs = U.dirsWithin (U.dotdot "." ^ "/par") @
-		   U.dirsWithin (U.dotdot "." ^ "/seq") *)
-    val goalDirs = U.dirsWithin (U.dotdot "." ^ "/phony")
+    val goalDirs = let
+      fun ds d = U.dirsWithin (concat [U.dotdot ".", "/", d])
+      in
+        ds "par" @ ds "seq"
+      end 
+(*  val goalDirs = U.dirsWithin (U.dotdot "." ^ "/phony") *)
     val goalDirs' = List.filter (not o (String.isPrefix ".") o OS.Path.file) goalDirs
     fun goalHeader goalDir = HTML.h2CS ("goal", concat [P.file (P.dir goalDir), "/", P.file goalDir])
     fun fileHeader filename = HTML.h3CS ("testfile", P.file filename)
@@ -96,15 +102,16 @@ functor RunTestsFn (L : COMPILER) = struct
     val body = HTML.sequence (HTML.h1 title :: 
 			      HTML.h2CS ("datetime", dateTimeString) ::
 			      HTML.h3CS ("revision", currentRevision) ::
-			      map processDir goalDirs)
+			      map processDir goalDirs')
     val htdoc = HTML.htdoc (title, ["../results.css"], body)
     in
       HTML.toFile (htdoc, 
 		   concat ["../reports/archive/", datestamp d, ".results.html"]);
       HTML.toFile (htdoc, 
 		   "../reports/current/results.html");
-      HTML.toFile (htdoc,
-		   "/home/adamshaw/MCResults/current/results.html")
+      case localCopy 
+        of NONE => ()
+	 | SOME file => HTML.toFile (htdoc, file)
     end
 
 end

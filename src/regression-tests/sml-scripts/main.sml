@@ -20,6 +20,8 @@ structure Main = struct
      before U.rm tmpfile
     end    
 
-  fun main () = M.main (currentRevision ())
+(* FIXME: The local file name here should be read in at the command line. *)
+  fun main () = M.main (currentRevision (), 
+			SOME (OS.FileSys.fullPath "/home/adamshaw/MCResults/current/results.html"))
 
 end

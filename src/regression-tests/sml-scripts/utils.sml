@@ -27,12 +27,16 @@ structure Utils = struct
 (* freshTmp : string * string -> string *)
 (* e.g. freshTmp ("/home/adamshaw", "sml") --> "/home/adamshaw/tmpfile0.sml" *)
   fun freshTmp (fullpath, suffix) = let
+    val upperBound = 30 (* if it fails this many times, something's probably wrong *)
+    val msg = concat ["Tried to make a fresh tmp file name; giving up after ", 
+		      Int.toString upperBound, " tries."]
     fun loop n = let
       val f = concat [fullpath, "/tmpfile", Int.toString n, ".", suffix]
       in 
         if not (exists f)
 	then f
-	else loop (n+1)
+	else (if (n+1 >= upperBound) then raise Fail msg else ();
+	      loop (n+1))
       end
     in
       loop 0

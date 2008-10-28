@@ -1,7 +1,9 @@
 structure OCaml : COMPILER = struct
   val languageName = "ocaml"
   val ext = "ml"
-  fun mkCmd   {infile, outfile} = concat ["ocamlc -o ", outfile, " ", infile]
-  fun ballast {infile, outfile} = map (fn s => concat [outfile, ".", s]) ["cmi", "cmo"]
+  val base = OS.Path.base
+  fun mkExe infile = base infile
+  fun mkCmd infile = concat ["ocamlc -o ", base infile, " ", infile]
+  fun detritus infile = map (fn s => concat [base infile, ".", s]) ["cmi", "cmo"]
 end
 
