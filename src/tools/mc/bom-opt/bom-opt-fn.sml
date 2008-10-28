@@ -45,7 +45,8 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
     val expand = mkModuleOptPass ("expand", ExpandHLOps.expand)
 
     val contract = transform {passName = "contract", pass = Contract.contract {removeExterns=true}}
-    val contract' = transform {passName = "contract", pass = Contract.contract {removeExterns=false}}
+    val expand_all_contract = transform {passName = "expand-all-contract", pass = Contract.contract {removeExterns=false}}
+    val rewrite_all_contract = transform {passName = "rewrite-all-contract", pass = Contract.contract {removeExterns=false}}
 
     val rewrite = mkModuleOptPass ("rewrite", RewriteHLOps.rewrite)
 
@@ -55,7 +56,7 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 	      (* NOTE: we don't remove externs here because references may be hiding inside
 	       * unexpanded HLOps.
 	       *)
-		val module = contract' module
+		val module = expand_all_contract module
 		val _ = CheckBOM.check ("expand-all:contract", module)
 		in
 		  expandAll module
@@ -70,7 +71,7 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 	      (* NOTE: we don't remove externs here because references may be hiding inside
 	       * unexpanded HLOps.
 	       *)
-		val module = contract' module
+		val module = rewrite_all_contract module
 		val _ = CheckBOM.check ("rewrite-all:contract", module)
 		in
 		  rewriteAll module
