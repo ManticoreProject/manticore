@@ -119,6 +119,14 @@ structure ChkProgram :> sig
 	    AST.ExpansionOptsExp(!expansionOpts, program)
 	  end
 
-    val check = BasicControl.mkTracePassSimple {passName = "check", pass = check}
+    val check = BasicControl.mkKeepPass {
+            preOutput = fn _ => (),
+            preExt = "ppt",
+            postOutput = PrintAST.outputExp,
+            postExt = "ast",
+            passName = "check",
+            pass = check,
+            registry = TCControls.registry
+          }
 
   end (* ChkProgram *)
