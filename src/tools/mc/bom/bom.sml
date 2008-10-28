@@ -188,8 +188,4 @@ structure BOM =
 	      externs;
 	  MODULE{name = name, externs = externs, hlops = hlops, body = body})
 
-  (* for sequences of Stms *)
-    fun mkStmts ([], e) = e
-      | mkStmts ((lhs, rhs)::r, e) = mkStmt(lhs, rhs, mkStmts(r, e))
-
   end
