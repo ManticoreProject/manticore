@@ -12,25 +12,21 @@
 \maketitle
 
 \section{Overview}
-The implementation of inline BOM is spread across the compiler. The relevant files are below.
+The implementation of inline BOM is spread across the compiler. We list the most relevant files below.
 \begin{itemize}
-\item \texttt{src/tools/mc/binding/bound-variable/bound-variable-check.sml} Variable binding for Manticore programs, which includes hooks for inline BOM.
-\item \texttt{src/tools/mc/binding/bound-variable/bom-bound-variable-check.sml} Variable binding for inline BOM programs.
-\item \texttt{src/tools/mc/translate/translate-prim.sml} Translation from inline BOM to BOM.
+\item \texttt{BOMBoundVariableCheck} This module checks that variables in inline BOM programs are 
+bound properly. In the process, we convert qualified identifiers to stamps.
+\item \texttt{TranslatePrim} This module converts inline BOM parse trees to actual BOM code.
 \end{itemize}
 
-\section{Loading HLOps at compile time}
-In many cases, we wish to create PML syntax that expands into several HLOps. For example, the pval binding form expands into a few HLOps from the single-toucher-future module. But because the compiler is responsible for doing this expansion, we do not not have a static handle on the HLOps. Instead we use a dynamic lookup at compile time. The following function in the HLOpEnv module does the job:
+\section{Accessing inline BOM in the compiler}
+Often, compiler passes elaborate some syntax into more basic operations. For instance, we elaborate the \texttt{pval} binding into operations over futures. To access these operations, the compiler pass needs a handle on the futures library code. This note describes how we obtain such a handle.
+
+The two relevant operations, given below, are part of the translation environment (\texttt{TranslateEnv}). The first operation takes a qualified identifier, \eg{} \texttt{[``Future'', ``future'']}, and looks for \texttt{typedef}-bound type in the \emph{basis environment}. Similarly, the second operation takes a qualified identifier and looks for the associated HLOp in the basis environment. For an example of how the compiler uses these operations, see the \texttt{TranslatePValCilk5} module.
+
 \begin{centercode}
-  (* locate a HLOp by path name, e.g., Future1.@touch *)
-    val findDefByPath : string list -> hlop_def option
-\end{centercode}
-\subsubsection{Example}
-To look up the Future1 touch operation, we say:
-\begin{centercode}
-  case HLOpEnv.findDefByPath ["Future1", "touch"]
-    of SOME def => (* do something with the hlop *)
-     | NONE => raise Fail ``error: cannot find future1 touch''
+val findBOMTyByPath : string list -> BOMTy.ty
+val findBOMHLOpByPath : string list -> BOM.hlop
 \end{centercode}
 
 \end{document}
