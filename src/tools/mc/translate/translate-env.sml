@@ -77,8 +77,8 @@ structure TranslateEnv : sig
     val findBOMCFun     : c_id -> BOM.var CFunctions.c_fun option
     val findBOMPMLVar   : var -> BOM.var option
 
-    val findBOMHLOpByPath : string list -> BOM.hlop
     val findBOMTyByPath : string list -> BOMTy.ty
+    val findBOMHLOpByPath : string list -> BOM.hlop
 
   (* output an environment *)
     val dump : (TextIO.outstream * env) -> unit
