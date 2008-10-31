@@ -40,7 +40,7 @@ structure WorkStealers =
 	    if idle
 	       then VPM.@send(vp, wakeupK / exh)
 	    else return()
-	SchedulerUtils.@for-other-vprocs(f / exh)
+	VProc.@for-others(f / exh)
       ;
 
       define @mk-sched-act (self : vproc / exh : PT.exh) : PT.sigact =

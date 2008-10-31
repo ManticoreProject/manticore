@@ -10,6 +10,8 @@
 #include "value.h"
 #include "request-codes.h"
 #include "scheduler.h"
+#include "heap.h"
+#include "atomic-ops.h"
 
 extern RequestCode_t ASM_Apply (VProc_t *vp, Addr_t cp, Value_t arg, Value_t ep, Value_t rk, Value_t ek);
 extern int ASM_Return;
@@ -81,33 +83,52 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 		MinorGC (vp, roots);
 	    }
 
+	  /* because some other process could have modified it, we must refresh the 
+	   * limit pointer.
+	   */
+	    SetLimitPtr(vp);
+	  /* check for pending signals. to guarantee responsiveness, we delay this check 
+	   * until _after_ modifying the limit pointer.
+	   */
+	    Value_t sigPending = CompareAndSwapValue(&(vp->sigPending), M_TRUE, M_FALSE);
+
 	  /* check for pending signals */
-	    if ((vp->sigPending == M_TRUE) && (vp->atomic == M_FALSE)) {
+	    if ((sigPending == M_TRUE) && (vp->atomic == M_FALSE)) {
 		Value_t resumeK = AllocUniform(vp, 3,
 					       PtrToValue(&ASM_Resume),
 					       vp->stdCont,
 					       vp->stdEnvPtr);
-
-		/* pass the signal to scheduling code in the BOM runtime; for more details, see
-		 * the comments in src/lib/basis/runtime/scheduler-utils.pml. */
+		/* pass the signal to scheduling code in the BOM runtime.
+		 * (more detailed comments in src/lib/basis/runtime/scheduler-utils.pml)
+		 */
 		envP = vp->schedCont;
 		codeP = ValueToAddr(ValueToCont(envP)->cp);
 		arg = resumeK;
+	      /* clear the dead registers */
 		retCont = M_UNIT;
 		exnCont = M_UNIT;
+	      /* mask signals, as the program will likely invoke scheduling code */
 		vp->atomic = M_TRUE;
-		vp->sigPending = M_FALSE;
-	    }
-	    else {
-	      /* setup the return from GC */
-	      /* we need to invoke the stdCont to resume after GC */
+	    } else if (sigPending == M_TRUE) {
+	      /* received a signal while in an atomic section */
+	        vp->sigPending = M_TRUE;
+	      /* invoke the stdCont to resume the program */
 		codeP = ValueToAddr (vp->stdCont);
 		envP = vp->stdEnvPtr;
 	      /* clear the dead registers */
 		arg = M_UNIT;
 		retCont = M_UNIT;
 		exnCont = M_UNIT;
-	    }
+	    } else {
+	      /* setup the return from GC */
+	      /* invoke the stdCont to resume the program */
+		codeP = ValueToAddr (vp->stdCont);
+		envP = vp->stdEnvPtr;
+	      /* clear the dead registers */
+		arg = M_UNIT;
+		retCont = M_UNIT;
+		exnCont = M_UNIT;
+	    }	    
 	    break;
 	  case REQ_Return:	/* returning from a function call */
 	    return;
@@ -116,6 +137,7 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 	  case REQ_Sleep:	/* make the VProc idle */
 	    VProcWaitForSignal(vp);
 	    envP = vp->stdCont;
+	    assert(envP != M_NIL);
 	    codeP = ValueToAddr(ValueToCont(envP)->cp);
 	    arg = M_UNIT;
 	    retCont = M_UNIT;

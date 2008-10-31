@@ -134,7 +134,7 @@ structure WorkStealing =
 	  do UPDATE(0, globalHd, hd)
 	  return()
         let vp : vproc = ccall GetNthVProc(vprocId) 
-        VProcMessenger.@send(vp, thiefK / exh)
+        VProc.@send-messenger(vp, thiefK / exh)
       ;
 
     (* attempt to steal a thread  *)
@@ -144,7 +144,7 @@ structure WorkStealing =
         let empty : PT.fiber = (PT.fiber)GLOBAL_HD_EMPTY
 
 	cont exit () = return(O.NONE)
-	let id : int = SchedulerUtils.@vproc-id(host_vproc / exh)
+	let id : int = VProc.@id(host_vproc / exh)
         let nWorkers : int = Arr.@length(globalHds / exh)
 	let victim : int = Rand.@in-range-int(0, nWorkers / exh)
 	do if I32Eq(victim, id)
@@ -173,7 +173,7 @@ structure WorkStealing =
 	  do assert(PT.false)
 	  return($0)
 	let nWorkers : int = Arr.@length(globalHds / exh)
-	let id : int = SchedulerUtils.@vproc-id(self / exh)
+	let id : int = VProc.@id(self / exh)
 	let globalHd : global_hd = Arr.@sub(globalHds, id / exh)
         let globalHd : global_hd = (global_hd)globalHd
 	let localDeque : local_deque = @get-local-deque(/ exh)
@@ -212,7 +212,7 @@ structure WorkStealing =
     (* initialize the scheduler *)
       define @init (/ exh : PT.exh) : PT.unit =
       (* one worker per vproc *)
-	let nVProcs : int = SchedulerUtils.@num-vprocs(/ exh)
+	let nVProcs : int = VProc.@num-vprocs(/ exh)
       (* allocate local deques *)
 	do ccall M_WSAllocLocalDeques(host_vproc, nVProcs)
       (* allocate globally visible deque heads *)
@@ -229,7 +229,7 @@ structure WorkStealing =
 		do Arr.@update(globalHds, i, hd / exh)
 		apply initGlobalHds(I32Add(i, 1) / exh)
       (* initialize the scheduler*)
-	let vps : List.list = SchedulerUtils.@all-vprocs(/ exh)
+	let vps : List.list = VProc.@all(/ exh)
 	let fls : FLS.fls = FLS.@get( / exh)
 	fun mkAct (self : vproc / exh : PT.exh) : PT.sched_act =
 	      @scheduler(globalHds, self / exh)

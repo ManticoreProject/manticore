@@ -52,7 +52,6 @@ _GSYM(ASM_Apply):
 	movq	%r9,STD_EXH_REG		/* exception continuation */
       /* load Manticore state */
 	movq	ALLOC_PTR(%r10),ALLOC_PTR_REG	/* load allocation pointer */
-	movq	LIMIT_PTR(%r10),LIMIT_PTR_REG	/* limit pointer */
 	movq	$M_TRUE,IN_MANTICORE(%r10) /* we are running manticore code now! */
 	jmp	*%r12
 

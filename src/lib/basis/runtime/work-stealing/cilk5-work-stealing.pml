@@ -20,7 +20,7 @@ structure Cilk5WorkStealing =
       define @scheduler (deques : Arr.array, self : vproc / exh : exh) : PT.sched_act =
 
 	let nWorkers : int = Arr.@length(deques / exh)
-	let id : int = SchedulerUtils.@vproc-id(self / exh)
+	let id : int = VProc.@id(self / exh)
 	let deque : DequeTH.deque = Arr.@sub(deques, id / exh)
       (* scheduler action for work stealing *)
 	cont switch (sign : PT.signal) =
@@ -67,7 +67,7 @@ structure Cilk5WorkStealing =
     (* get the ith deque *)
       define @get-local-deque( / exh : exh) : DequeTH.deque =
         let deques : any = ThreadCapabilities.@get-from-fls(tag(cilk5WorkStealing) / exh)
-	let id : int = SchedulerUtils.@vproc-id(host_vproc / exh)
+	let id : int = VProc.@id(host_vproc / exh)
 	let deque : DequeTH.deque = Arr.@sub(deques, id / exh)
 	return(deque)
       ;
@@ -92,16 +92,16 @@ structure Cilk5WorkStealing =
     (* initialize the work-stealing scheduler *)
       define @init (/ exh : exh) : Arr.array =
 	let fls : FLS.fls = FLS.@get( / exh)
-	let nVPs : int = SchedulerUtils.@num-vprocs(/ exh)
+	let nVPs : int = VProc.@num-vprocs(/ exh)
 	let deques : Arr.array = Arr.@array(nVPs, enum(0) / exh)
 	fun initDeque (vp : vproc / exh : exh) : () =
-	    let id : int = SchedulerUtils.@vproc-id(vp / exh)
+	    let id : int = VProc.@id(vp / exh)
 	    let deque : DequeTH.deque = DequeTH.@new(/ exh)
 	    Arr.@update(deques, id, deque / exh)
-	do SchedulerUtils.@for-each-vproc(initDeque / exh)
+	do VProc.@for-each(initDeque / exh)
 	fun mkAct (self : vproc / exh : exh) : PT.sched_act =
 	      @scheduler(deques, self / exh)
-	let vps : List.list = SchedulerUtils.@all-vprocs(/ exh)
+	let vps : List.list = VProc.@all(/ exh)
 	do SchedulerUtils.@scheduler-startup(mkAct, fls, vps / exh)
 	return(deques)
       ;

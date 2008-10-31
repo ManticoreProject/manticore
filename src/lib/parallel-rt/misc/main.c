@@ -59,11 +59,8 @@ int main (int argc, const char **argv)
   /* get the time quantum in milliseconds */
     TimeQ = GetIntOpt(opts, "-q", DFLT_TIME_Q_MS);
 
-  /* FIXME: for testing purposes, we pass an integer argument to the Manticore code */
-    int arg = GetIntOpt(opts, "-a", 1);
-
   /* create the main vproc */
-    VProcCreate (MainVProc, (void *)(Addr_t)arg);
+    VProcCreate (MainVProc, NULL);
 
     PingLoop();
 
@@ -75,7 +72,6 @@ int main (int argc, const char **argv)
  * The main vproc is responsible for running the Manticore code.  The
  * argument is the address of the initial entry-point in Manticore program.
  *
- * FIXME: right now, the argument is an integer argument to the program.
  */ 
 static void MainVProc (VProc_t *vp, void *arg)
 {
@@ -86,16 +82,8 @@ static void MainVProc (VProc_t *vp, void *arg)
 	SayDebug("[%2d] MainVProc starting\n", vp->id);
 #endif
 
-    Value_t argV = WrapInt(vp, (int)(Addr_t)arg); /* FIXME: for testing purposes */
-
-#ifndef NDEBUG
-    Say("arg = ");
-    SayValue (argV);
-    Say("\n");
-#endif
-
     FunClosure_t fn = {.cp = PtrToValue(&mantEntry), .ep = M_UNIT};
-    Value_t resV = ApplyFun (vp, PtrToValue(&fn), argV);
+    Value_t resV = ApplyFun (vp, PtrToValue(&fn), M_UNIT);
 
 #ifndef NDEBUG
     Say("res = ");

@@ -35,7 +35,6 @@ static void *VProcMain (void *_data);
 static void IdleVProc (VProc_t *vp, void *arg);
 static void SigHandler (int sig, siginfo_t *si, void *_sc);
 static int GetNumCPUs ();
-static Value_t Dequeue2 (VProc_t *self);
 
 static pthread_key_t	VProcInfoKey;
 
@@ -135,7 +134,7 @@ VProc_t *VProcCreate (VProcFn_t f, void *arg)
     if (NextVProc > MAX_NUM_VPROCS) {
 	Die ("Allocated too many VProcs");
     }
-  
+
     VProc_t* vproc = VProcs[NextVProc];
 
   /* initialize the vproc structure */
@@ -158,7 +157,7 @@ VProc_t *VProcCreate (VProcFn_t f, void *arg)
     vproc->stdEnvPtr = M_UNIT;
     vproc->stdCont = M_NIL;
     vproc->stdExnCont = M_UNIT;
-    vproc->limitPtr = (Addr_t)vproc + VP_HEAP_SZB - ALLOC_BUF_SZB;
+    SetLimitPtr (vproc);
     SetAllocPtr (vproc);
     vproc->idle = true;
 
@@ -174,6 +173,7 @@ VProc_t *VProcCreate (VProcFn_t f, void *arg)
     data.started = false;
     MutexInit(&(data.lock));
     CondInit(&(data.wait));
+
     ThreadCreate (&(vproc->hostID), VProcMain, &data);
 
   /* wait until the vproc has started, since data is in use until
@@ -214,9 +214,8 @@ void VProcSignal (VProc_t *vp, VPSignal_t sig)
 	SayDebug("[%2d] VProcSignal: sig = %d\n", vp->id, sig);
 #endif
 
-    if (sig == PreemptSignal) pthread_kill (vp->hostID, SIGUSR1);
-    else if (sig == GCSignal) pthread_kill (vp->hostID, SIGUSR2);
-    else Die("bogus signal");
+    vp->sigPending = M_TRUE;
+    vp->limitPtr = 0;
 
 } /* end of VProcSignal */
 
@@ -226,8 +225,6 @@ void VProcSignal (VProc_t *vp, VPSignal_t sig)
  */
 void VProcWaitForSignal (VProc_t *vp)
 {
-   assert (vp == VProcSelf());
-
     LogEvent0 (vp, VProcSleepEvt);
 
 #ifndef NDEBUG
@@ -258,7 +255,6 @@ void VProcWaitForSignal (VProc_t *vp)
 	MutexUnlock (&(vp->lock));
 	FetchAndDec(&NumIdleVProcs);
     }
-
 }
 
 /* VProcMain:
@@ -299,7 +295,7 @@ static void *VProcMain (void *_data)
     MutexLock (&(data->lock));
 	data->started = true;
 	CondSignal (&(data->wait));
-    MutexUnlock (&data->lock);
+    MutexUnlock (&(data->lock));
 
     self->idle = false;
 
@@ -342,6 +338,7 @@ void WakeVProc (VProc_t *vp)
         if (DebugFlg)
 	  SayDebug("[%2d] WakeVProc: waking up vp %d\n", VProcSelf()->id, vp->id);
 #endif
+
   CondSignal (&(vp->wait));
 }
 
@@ -365,9 +362,9 @@ static void IdleVProc (VProc_t *vp, void *arg)
 	SayDebug("[%2d] IdleVProc starting\n", vp->id);
 #endif
 
-  /* Run code that will immediately put this VProc to sleep. */
-    RunManticore (vp, (Addr_t)&ASM_VProcSleep, M_UNIT, M_UNIT);
-  /* Run code that will activate the VProc. */
+  /* Put the VProc to sleep until a signal arrives. */
+    VProcWaitForSignal(vp);
+  /* Activate scheduling code on the vproc. */
     Value_t envP = vp->schedCont;
     Addr_t codeP = ValueToAddr(ValueToCont(envP)->cp);
     RunManticore (vp, codeP, M_NIL, envP);
@@ -423,7 +420,7 @@ static void SigHandler (int sig, siginfo_t *si, void *_sc)
       /* set the limit pointer to zero to force a context switch on
        * the next GC test.
        */
-	UC_R11(uc) = 0;
+      self->limitPtr = 0;
     }
 
 } /* SigHandler */
