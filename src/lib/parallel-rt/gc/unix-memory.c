@@ -17,6 +17,13 @@
 #include <stdio.h>
 
 #define PROT_ALL        PROT_EXEC|PROT_READ|PROT_WRITE
+#ifndef MAP_ANON
+#  ifdef MAP_ANONYMOUS
+#    define MAP_ANON MAP_ANONYMOUS
+#  else
+#    error MAP_ANON not defined
+#  endif
+#endif
 
 static void *MapMemory (void *base, int *nPages, int blkSzB, int flags);
 STATIC_INLINE void UnmapMemory (void *base, size_t szb)
@@ -80,10 +87,10 @@ static void *MapMemory (void *base, int *nBlocks, int blkSzB, int flags)
 
     do {
 	size_t length = *nBlocks * blkSzB;
-      /* NOTE: we use -1 as the fd argument, because Mac OS X uses the fd for naming
-       * even when MAP_ANON has been specified.
+      /* NOTE: we use -1 as the fd argument, because Mac OS X uses the fd for
+       * Mach VM flags when MAP_ANON has been specified.
        */
-	memObj = mmap(base, length, PROT_ALL, MAP_PRIVATE|MAP_ANONYMOUS|flags, -1, 0);
+	memObj = mmap(base, length, PROT_ALL, MAP_PRIVATE|MAP_ANON|flags, -1, 0);
         if (memObj == MAP_FAILED) {
 	    if (errno == ENOMEM) {
 	      /* try a smaller request */
