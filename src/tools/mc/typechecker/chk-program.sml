@@ -27,10 +27,11 @@ structure ChkProgram :> sig
     fun error (span, msg) = Error.errorAt (!errStrm, span, msg)
 
     fun bindSigIdVar (vSig, vMod, binds) = let
-	  val (argTys, ty) = TypeUtil.instantiate(0, Var.typeOf vMod)
-          in
-	    AST.ValBind(AST.VarPat vSig, ASTUtil.mkVarExp(vMod, argTys)) :: binds
-          end
+	val Ty.TyScheme(tyVars, _) = Var.typeOf vSig
+	val argTys = List.map Ty.VarTy tyVars
+        in
+	  AST.ValBind(AST.VarPat vSig, ASTUtil.mkVarExp(vMod, argTys)) :: binds
+        end
 
     fun bindSigIdVars (sigVars, modVars, exp) = 
 	ASTUtil.mkLetExp(ListPair.foldl bindSigIdVar [] (sigVars, modVars), exp)
@@ -87,9 +88,9 @@ structure ChkProgram :> sig
 	      (case Env.ModuleMap.find(moduleEnv, modRef)
 		of NONE => raise Fail ("cannot find module "^Atom.toString name)
 		 | SOME (modEnv as Env.ModEnv{modRef, ...}, sigEnv, module) => 
-		   exp
+(*		   exp*)
 (* FIXME: signature ascription is broken *)
-		   (*rebindSigVars(sigEnv, modEnv, exp)*)
+		   rebindSigVars(sigEnv, modEnv, exp)
               (* end case *))
 	    | AST.M_Body (info, decls) => declsToExp moduleEnv (decls, exp)
 	  (* end case *))

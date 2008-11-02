@@ -246,7 +246,10 @@ structure PrintAST : sig
 	  exp e;
 	  closeBox ())
       | exp (A.ConstExp c) = const c
-      | exp (A.VarExp (v, ts)) = var v
+      | exp (A.VarExp (v, ts)) = (var v;
+				  pr " @ [";
+				  List.app (pr o TypeUtil.fmt{long=true} o TypeUtil.prune) ts;
+				 pr "]")
       | exp (A.SeqExp (e1, e2)) = (
 	  pr "(";
 	  exp e1;
