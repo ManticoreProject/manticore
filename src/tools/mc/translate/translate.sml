@@ -518,7 +518,6 @@ structure Translate : sig
 	   of E.Var x' => cxt x' (* pass x' directly to the context *)
 	    | E.Lambda mkLambda => let
                 val sigma = Var.typeOf x (* actually a type scheme *)
-val _ = print (Var.toString x^" "^String.concatWith ", " (List.map (TypeUtil.fmt{long=true}) tys)^"\n")
 		val rangeTy = (case TypeUtil.prune(TypeUtil.apply(sigma, tys))
 		       of A.FunTy (_, r) => r
 			| _ => raise Fail (Var.nameOf x^": expected function type is "^TypeUtil.toString(TypeUtil.apply(sigma, tys)))

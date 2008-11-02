@@ -77,7 +77,6 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 		*rp++ = &(vp->secondaryQHd);
 		*rp++ = &(vp->secondaryQTl);
 		*rp++ = &(vp->schedCont);
-		
 		*rp++ = 0;
 		MinorGC (vp, roots);
 	    }
