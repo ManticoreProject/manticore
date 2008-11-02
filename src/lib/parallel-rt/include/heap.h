@@ -32,11 +32,6 @@ STATIC_INLINE void SetAllocPtr (VProc_t *vp)
     vp->allocPtr = vp->nurseryBase + WORD_SZB;
 }
 
-/* set the limit pointer for a vproc */
-STATIC_INLINE void SetLimitPtr (VProc_t *vp)
-{
-    vp->limitPtr = (Addr_t)vp + VP_HEAP_SZB - ALLOC_BUF_SZB;
-}
 
 /********** Exported functions **********/
 

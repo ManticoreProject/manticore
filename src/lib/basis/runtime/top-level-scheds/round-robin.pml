@@ -23,7 +23,7 @@ structure RoundRobin =
             let item : Option.option = VPQ.@dequeue(/ exh)
             case item
 	     of Option.NONE => 
-		do VProc.@wait(/ exh)
+		do SchedulerUtils.@wait(/ exh)
 		throw dispatch()
 	      | Option.SOME(qitem : VPQ.queue) =>
 		do Control.@run-thread (switch, #1(qitem), #0(qitem) / exh)
@@ -52,6 +52,6 @@ structure RoundRobin =
 
     val roundRobin : unit -> unit = _prim (@round-robin)
     val _ = roundRobin()
-    val _ = printMsg("initialized round-robin scheduler")
+    val _ = printMsg("scheduler utils: initialized round-robin scheduler")
 
   end

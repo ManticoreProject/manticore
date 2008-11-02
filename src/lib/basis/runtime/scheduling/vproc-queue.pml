@@ -26,8 +26,6 @@ structure VProcQueue =
 
     _primcode (
 
-      extern void WakeVProc(void *);
-
     (* vproc queue structure (we use Q_EMPTY to mark an empty queue); the C runtime system relies
      * on this representation, so be careful when making changes.
      *)
@@ -216,11 +214,13 @@ structure VProcQueue =
 	apply lp(queue, nil / exh)
       ;
 
-    (* unload the landing pad, and return any messenger threads *)
-      define @unload-and-get-messengers (/ exh : exh) : List.list =
+    (* unload the landing pad, and return any messages *)
+      define @unload-and-check-messages (/ exh : exh) : List.list =
 	let queue : queue = @unload-landing-pad ( / exh)
 	@process-landing-pad(queue / exh)
       ;
+
+      extern void WakeVProc(void *);
 
       define @enqueue-on-vproc (dst : vproc, fls : FLS.fls, k : PT.fiber / exh : exh) : () =
         fun lp () : queue =

@@ -37,14 +37,11 @@ STATIC_INLINE void UnmapMemory (void *base, size_t szb)
  * Allocate nBlocks of blkSzB bytes (aligned on blkSzB boundary).  A
  * pointer to the memory is returned and nBlocks is set to the number
  * of allocated blocks.
- *
- * FIXME: this function causes random segfaults on Linux machines for
- * unknown reasons.
  */
 void *AllocMemory (int *nBlocks, int blkSzB)
 {
     void	*memObj, *base;
-
+ 
   /* first we allocate the object and then check it for alignment */
     if ((memObj = MapMemory(0, nBlocks, blkSzB, 0)) == MAP_FAILED) {
 	nBlocks = 0;
@@ -62,7 +59,7 @@ void *AllocMemory (int *nBlocks, int blkSzB)
     base = (void *)(((Addr_t)memObj & ~(blkSzB-1)) + blkSzB);
     UnmapMemory (base, *nBlocks * blkSzB);
     if ((memObj = MapMemory(base, nBlocks, blkSzB, MAP_FIXED)) == MAP_FAILED)
-        return 0;
+	return 0;
     else
 	return memObj;
 

@@ -458,14 +458,16 @@ functor HeapTransferFn (
            (* store dedicated registers and the rootset pointer before entering the C call *)
 	    [ (* by convention we put the rootset pointer into stdEnvPtr *)
               VProcOps.genVPStore' (MTy.wordTy, Spec.ABI.stdEnvPtr, vpReg, MTy.mlriscTreeToRexp rootPtr),
-	      VProcOps.genVPStore' (MTy.wordTy, Spec.ABI.allocPtr, vpReg, regTree Regs.apReg)
+	      VProcOps.genVPStore' (MTy.wordTy, Spec.ABI.allocPtr, vpReg, regTree Regs.apReg),
+	      VProcOps.genVPStore' (MTy.wordTy, Spec.ABI.limitPtr, vpReg, regTree Regs.limReg) 
 	    ],
            (* call the C function *)
             stmsC,	    
 	   (* restore dedicated registers *) 
 	    [
 	     setVP',
-	     move (Regs.apReg, (VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.allocPtr, vpReg')))
+	     move (Regs.apReg, (VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.allocPtr, vpReg'))),
+	     move (Regs.limReg, (VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.limitPtr, vpReg')))
 	    ],
 	   (* jump to the return post-C-call function *)
 	    genJump (T.LABEL retLabel, [retLabel], retParams, resultC @ restoredRoots)
@@ -528,14 +530,12 @@ functor HeapTransferFn (
      (* jump to the heap limit check *)
       val retStms = genJump (T.LABEL gcTestLab, [gcTestLab], rootTemps, restoredRoots)
 
-      val {stms=checkStms, allocCheck} = Alloc.genAllocCheck szb
       val stms = List.concat [
                  (* force the root set into registers *)
 		  Copy.copy {dst=rootTemps, src=rootArgs},
 		  [T.DEFINE gcTestLab],	      
-		  checkStms,
 		 (* branch on the heap limit test *)
-		  [T.BCC (allocCheck, doGCLab)],
+		  [T.BCC (Alloc.genAllocCheck szb, doGCLab)],
 		 (* GC is unnecessary *)
 		  genJump (T.LABEL noGCLab, [noGCLab], noGCParamRegs, List.map MTy.regToTree rootTemps),
 		 (* GC is necessary *)

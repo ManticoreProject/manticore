@@ -32,7 +32,7 @@ signature ALLOC =
   (* heap limit check.  evaluates to true when the heap contains sufficient
    * space for the given size.
    *)
-    val genAllocCheck : word -> {stms : MTy.T.stm list, allocCheck : MTy.T.ccexp}
+    val genAllocCheck : word -> MTy.T.ccexp
 
   (* global heap limit check.  evaluates to true when the global heap contains sufficient
    * space for the given size.

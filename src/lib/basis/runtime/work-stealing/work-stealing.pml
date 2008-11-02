@@ -127,7 +127,6 @@ structure WorkStealing =
           do @place-in-inbox(inbox, stolenK / exh)
 	  let _ : PT.unit = Control.@stop(/ exh)
 	  return()
-        do VProc.@send-messenger(vp, thiefK / exh)
       (* busy wait for a response from the thief *)
         fun wait () : O.option =
 	    if Equal(#0(inbox), INBOX_EMPTY)
@@ -144,7 +143,7 @@ structure WorkStealing =
     (* attempt to steal a thread  *)
       define @steal (workers : Arr.array / exh : exh) : O.option =
 	cont exit () = return(O.NONE)
-	let id : int = VProc.@id(host_vproc / exh)
+	let id : int = SchedulerUtils.@vproc-id(host_vproc / exh)
         let nWorkers : int = Arr.@length(workers / exh)
 	let victim : int = Rand.@in-range-int(0, nWorkers / exh)
 	do if I32Eq(victim, id)
@@ -158,7 +157,7 @@ structure WorkStealing =
     (* create an instance of the scheduler for a vproc *)
       define @scheduler (workers : Arr.array, self : vproc / exh : exh) : PT.sched_act =
 	let nWorkers : int = Arr.@length(workers / exh)
-	let id : int = VProc.@id(self / exh)
+	let id : int = SchedulerUtils.@vproc-id(self / exh)
 	let localDeque : local_deque = @get-local-deque(/ exh)
       (* scheduler loop *)
 	cont switch (sign : PT.signal) =
@@ -196,7 +195,7 @@ structure WorkStealing =
     (* initialize the workers *)
       define @init (/ exh : exh) : PT.unit =
       (* one worker per vproc *)
-	let nVProcs : int = VProc.@num-vprocs(/ exh)
+	let nVProcs : int = SchedulerUtils.@num-vprocs(/ exh)
       (* allocate local deques *)
 	let localDeques : any = ccall M_WSAllocLocalDeques(host_vproc, nVProcs)
         let workers : Arr.array = Arr.array(nVProcs, $0 / exh)
@@ -212,7 +211,7 @@ structure WorkStealing =
       (* allocate the worker structures *)
         do apply f(0 / exh)
       (* initialize the scheduler *)
-	let vps : List.list = VProc.@all(/ exh)
+	let vps : List.list = SchedulerUtils.@all-vprocs(/ exh)
 	let fls : FLS.fls = FLS.@get( / exh)
 	fun mkAct (self : vproc / exh : exh) : PT.sched_act = @scheduler(workers, self / exh)
 	do SchedulerUtils.@scheduler-startup(mkAct, fls, vps / exh)  

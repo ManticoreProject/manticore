@@ -2,7 +2,7 @@
 #define _PRIM_DEF_
 
 #define M_NIL   enum(0):any
-#define UNIT	enum(0):unit
+#define UNIT	enum(0):PrimTypes.unit
 
 #define HASH_SYM	#
 #define SELECT(i,x)	HASH_SYM i(x)

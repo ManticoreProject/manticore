@@ -31,7 +31,7 @@ structure Control =
      * concurrent. the remote vproc must be idle during the operation.
      *)
       define @push-remote-act (vp : vproc, act : PT.sched_act / exh : PT.exh) : () =
-	do assert(NotEqual(act, M_NIL))
+	do assert(NotEqual(act, nil))
 	let stk : [PT.sched_act, any] = vpload (VP_ACTION_STK, vp)
 	let item : [PT.sched_act, any] = alloc (act, (any)stk)
 	let item : [PT.sched_act, any] = promote (item)
@@ -58,7 +58,7 @@ structure Control =
       ;
 
     (* forward a signal to the host vproc  *)
-      define @forward (sg : PT.signal / exh : PT.exh) noreturn =
+      define @forward-no-check (sg : PT.signal / exh : PT.exh) noreturn =
         let act : PT.sched_act = @pop-act(/ exh)
 	throw act(sg)
       ;
@@ -84,6 +84,21 @@ structure Control =
 	      @run(handler, k / exh)
 	  end
 	throw lp(ks)
+      ;
+
+      define @handle-incoming (/ exh : PT.exh) : () =
+        let m : PT.bool = vpload(ATOMIC, host_vproc)
+        do vpstore(ATOMIC, host_vproc, PT.true)
+        let messages : List.list = VProcQueue.@unload-and-check-messages(/ exh)
+        do @run-fibers(messages / exh)
+        do vpstore(ATOMIC, host_vproc, m)
+	return()
+      ;
+
+    (* unload the landing pad, handle any incoming messages, and then forward a signal to the vproc *)
+      define inline @forward (sg : PT.signal / exh : PT.exh) noreturn =
+        do @handle-incoming(/ exh)
+        @forward-no-check(sg / exh)
       ;
 
     (* stop the current fiber *)
