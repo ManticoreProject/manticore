@@ -18,56 +18,62 @@ structure ChkProgram :> sig
     structure Ty = Types
     structure Env = ModuleEnv
 
-  (* FIXME: the following is a hack to avoid threading the error stream through
-   * all of the typechecking code.  Eventually, we should fix this, since otherwise
-   * it is a space leak.
-   *)
-    val errStrm = ref(Error.mkErrStream "<bogus>")
-
-    fun error (span, msg) = Error.errorAt (!errStrm, span, msg)
-
-    fun bindSigIdVar (vSig, vMod, binds) = let
-	  val (argTys, ty) = TypeUtil.instantiate(0, Var.typeOf vMod)
+  (* add the binding `val vSig = vMod' to the list of bindings *)
+    fun addBinding (vSig, Env.Var vMod, binds) = let
+	  val Ty.TyScheme(tvs, ty) = Var.typeOf vSig
           in
-	    AST.ValBind(AST.VarPat vSig, ASTUtil.mkVarExp(vMod, argTys)) :: binds
+	    AST.ValBind(AST.VarPat vSig, ASTUtil.mkVarExp(vMod, List.map Ty.VarTy tvs)) :: binds
+	  end
+      | addBinding (vSig, Env.Con vMod, binds) = let
+          val Ty.TyScheme(tvs, ty) = Var.typeOf vSig
+          in
+	    AST.ValBind(AST.VarPat vSig, AST.ConstExp(AST.DConst(vMod, List.map Ty.VarTy tvs))) :: binds
+	  end
+
+  (* construct the expression
+   *   let val vSig_1 = vMod_1
+   *       ...
+   *       val vSig_n = vMod_n
+   *   in
+   *     exp
+   *   end
+   *)
+    fun bindAll (vSigs, vMods, exp) = ASTUtil.mkLetExp(ListPair.foldl addBinding [] (vSigs, vMods), exp)
+
+  (* pair value bindings that have the same names in the signature and module *)
+    fun matchValBinds (vEnvSig, vEnvMod) = let
+	  fun f ((id, Env.Var vSig, SOME vMod), (vSigs, vMods)) = (vSig :: vSigs, vMod :: vMods)
+	    | f ((id, _, _), (vSigs, vMods)) = (vSigs, vMods)
+          in
+	    List.foldl f ([], []) (Env.matchByName(vEnvSig, vEnvMod))
           end
 
-    fun bindSigIdVars (sigVars, modVars, exp) = 
-	ASTUtil.mkLetExp(ListPair.foldl bindSigIdVar [] (sigVars, modVars), exp)
-
-  (* rewrite top-level bound variables
+  (* Construct value bindings for an externally-visible signature.
    * i.e., 
-   *      structure Foo = struct
-   *        type f = int
-   *        val foo<101> = 3
+   *      structure F1 = struct
+   *        type t<201> = int
+   *        val x<101> : t<201> = 3
    *      end
    *      
-   *      structure F : sig
-   *           type f
-   *           val foo<100> : f
+   *      structure F2 : sig
+   *           type t<200>
+   *           val x<100> : t<200>
    *         end = Foo
    *
-   *                rebindSigVars(sigOf(F), envOf(Foo), exp)    ==>
+   *                constructValBinds(sigOf(F2), envOf(F1), exp)    ==>
    *
-   *      let val foo<101> = 3
+   *      let val x<101> : t<201> = 3
    *      in
-   *          let val foo<100> : f = foo<101>
+   *          let val x<100> : t<200> = x<101>
    *          in
    *             exp
    *          end
    *      end
    *)
-    fun rebindSigVars (sigEnv, modEnv, exp) = let
-	val sigVarEnv = Env.varEnv sigEnv
-	val modVarEnv = Env.varEnv modEnv
-	fun f (id, Env.Var sigVar, (sigVars, modVars)) = (case Env.VarMap.find(modVarEnv, id)
-            of SOME (Env.Var modVar) => (sigVar :: sigVars, modVar :: modVars)
-	     | _ => (sigVars, modVars)
-            (* end case *))
-	  | f (_, _, (sigVars, modVars)) = (sigVars, modVars)
-        val (sigVars, modVars) = Env.VarMap.foldli f ([], []) sigVarEnv
+    fun constructValBinds (sigEnv, modEnv, exp) = let
+	val (vSigs, vMods) = matchValBinds(Env.varEnv sigEnv, Env.varEnv modEnv)
 	in
-	    bindSigIdVars (sigVars, modVars, exp)
+	    bindAll (vSigs, vMods, exp)
 	end
 
   (* convert top-level declarations into expressions *)
@@ -83,22 +89,18 @@ structure ChkProgram :> sig
 
   (* convert a module into an expression *)
     and moduleToExp moduleEnv (modRef, module, exp) = (case module
-	   of AST.M_Id (info, modRef' as AST.MOD{name, ...}) => 
-	      (case Env.ModuleMap.find(moduleEnv, modRef)
-		of NONE => raise Fail ("cannot find module "^Atom.toString name)
-		 | SOME (modEnv as Env.ModEnv{modRef, ...}, sigEnv, module) => 
-		   exp
-(* FIXME: signature ascription is broken *)
-		   (*rebindSigVars(sigEnv, modEnv, exp)*)
+	   of AST.M_Id (info, modRef' as AST.MOD{name, ...}) => (
+	      case Env.ModuleMap.find(moduleEnv, modRef)
+	       of NONE => raise Fail ("cannot find module "^Atom.toString name)
+		| SOME (modEnv as Env.ModEnv{modRef, ...}, sigEnv, module) => constructValBinds(sigEnv, modEnv, exp)
               (* end case *))
 	    | AST.M_Body (info, decls) => declsToExp moduleEnv (decls, exp)
 	  (* end case *))
 
-    fun chkUnit (es, env, moduleEnv, {span, tree=ptDecls}) = let
-	  val _ = errStrm := es
-	  val (env, moduleEnv, astDecls) = ChkModule.checkTopDecls es (span, ptDecls, env, moduleEnv)
+    fun chkUnit (err, env, moduleEnv, {span, tree=ptDecls}) = let
+	  val (env, moduleEnv, astDecls) = ChkModule.checkTopDecls err (span, ptDecls, env, moduleEnv)
 	  in
-	    Overload.resolve ();
+	    Overload.resolve();
 	    (env, moduleEnv, astDecls)
 	  end
 
