@@ -1,0 +1,5 @@
+This directory contains program generators used in building the
+Manticore runtime and compiler.  These tools are not meant to be
+used by end users, which is why they are not in the "tools"
+directory.
+

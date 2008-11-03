@@ -2,7 +2,7 @@
 
 MC_LIB=../../../../src/lib
 
-PML_SOURCES=$(MC_LIB)/basis/runtime/futures/future1.pml
+PML_SOURCES=$(wildcard *.pml)
 SML_SOURCES=$(wildcard *.sml)
 OUTPUT_TEX=$(SML_SOURCES:sml=tex) $(PML_SOURCES:pml=tex)
 

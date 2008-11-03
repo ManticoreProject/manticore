@@ -59,10 +59,10 @@ val x = if foo()
 \end{centercode}
 
 The code below handles the initialization of the scheduler for \texttt{F1}. The code operates as follows. We first look for shared scheduler state in fls. Using set-once memory, we get a handle on the ready queue. If the scheduler has already initialized, we simple read the pointer from the set-once memory. If not, we initialize the scheduler while holding a lock. This lock prevents other fibers from initializing the scheduler independently.
-\input{example-code/future1-get-ready-queue}
+%\input{example-code/future1-get-ready-queue}
 
 Now it easy easy to encode the spawn operations for \texttt{F1} futures.
-\input{example-code/future1-future}
+%\input{example-code/future1-future}
 
 \section{Thread capabilities}
 Because threads consist of one or more fibers, they necessarily have read-only access to fls. Thus, any local storage entry must be added during the \texttt{spawn} operation. To address this issue, we use the notion of \emph{thread capabilities}. For example, a given thread could have a capability for depth-first or breadth-first futures.

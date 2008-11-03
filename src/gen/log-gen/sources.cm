@@ -1,0 +1,19 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+Library
+  structure Main
+is
+
+  $/basis.cm
+  $/smlnj-lib.cm
+  $/json-lib.cm
+
+  event-sig.sml
+  generator-sig.sml
+  gen-log-events-def.sml
+  load-file.sml
+  main.sml

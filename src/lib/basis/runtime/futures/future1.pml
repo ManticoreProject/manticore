@@ -6,8 +6,6 @@
  * Runtime support for futures where at most one fiber can perform a touch operation.
  *)
 
-(*@FILE future1-get-ready-queue.tex future1-future.tex *)
-
 (* state values *)
 #define EMPTY_F  $0
 #define STOLEN_F $1
@@ -19,7 +17,8 @@
 #define CANCELABLE_OFF       2
 #define FGS_OFF              3
 
-structure Future1 : FUTURE = struct
+structure Future1 : FUTURE = 
+  struct
 
     structure PT = PrimTypes
     structure FLS = FiberLocalStorage
@@ -46,14 +45,11 @@ structure Future1 : FUTURE = struct
      *          FULL      value
      *          WAITING   cont
      *)
-
-    (*@BEGIN future1-get-ready-queue.tex *)
     (* get a handle on the ready queue *)
       define @get-ready-queue ( / exh : PT.exh) : LockedQueue.queue =
         let readyQ : any = ThreadCapabilities.@get-from-fls(tag(future1GangSched) / exh)
 	return((LockedQueue.queue)readyQ)
       ;
-      (*@END future1-get-ready-queue.tex *)
 
     (* evaluate a future's thunk and store the result *)
       define @eval (fut : future / exh : PT.exh) : any =
@@ -175,7 +171,6 @@ structure Future1 : FUTURE = struct
 	return(k)
       ;
 
-    (*@BEGIN future1-future.tex *)
     (* spawn a future *)
       define @future (thunk : thunk / exh : PT.exh) : future =
         let readyQ : LockedQueue.queue = @get-ready-queue(/ exh)
@@ -187,7 +182,6 @@ structure Future1 : FUTURE = struct
         do LockedQueue.@enqueue(readyQ, stealableK / exh)
         return(fut)
       ;
-    (*@END future1-future.tex *)
 
     (* cancel a future and all of its descendants *)
       define @cancel (fut : future / exh : PT.exh) : PT.unit =
@@ -203,4 +197,4 @@ structure Future1 : FUTURE = struct
     val future : 'a thunk -> 'a future = _prim(@future)
     val cancel : 'a future -> unit = _prim(@cancel)
 
-  end
+  end (* Future1 *)
