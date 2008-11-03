@@ -10,6 +10,7 @@ structure Main =
     fun main _ = let
 	  val info = LoadFile.loadFile "log-events.json"
 	  in
+GenLogEventsDef.gen (TextIO.stdOut, info);
 	    ()
 	  end
 

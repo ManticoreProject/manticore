@@ -35,92 +35,92 @@
 	  "desc" : "an undefined event"
 	},
     /* VProc events */
-	{ "name" : "VProcStartIdleEvt",
+	{ "name" : "VProcStartIdle",
 	  "args" : [],
 	  "kind" : "EVENT",
 	  "desc" : "start idle vproc"
 	},
-	{ "name" : "VProcStartMainEvt",
+	{ "name" : "VProcStartMain",
 	  "args" : [],
 	  "kind" : "EVENT",
 	  "desc" : "start main vproc"
 	},
-	{ "name" : "VProcExitMainEvt",
+	{ "name" : "VProcExitMain",
 	  "args" : [],
 	  "kind" : "EVENT",
 	  "desc" : "exit main vproc"
 	},
-	{ "name" : "VProcSleepEvt",
+	{ "name" : "VProcSleep",
 	  "args" : [],
 	  "kind" : "EVENT",
 	  "desc" : "vproc going to sleep"
 	},
-	{ "name" : "VProcDequeueEvt",
+	{ "name" : "VProcDequeue",
 	  "args" : [],
 	  "kind" : "EVENT",
 	  "desc" : "dequeue from secondary scheduling queue"
 	},
-	{ "name" : "PreemptSignalEvt",
+	{ "name" : "PreemptSignal",
 	  "args" : [],
 	  "kind" : "EVENT",
 	  "desc" : "preemption signal occurs"
 	},
-	{ "name" : "GCSignalEvt",
+	{ "name" : "GCSignal",
 	  "args" : [],
 	  "kind" : "EVENT",
 	  "desc" : "GC signal occurs"
 	},
     /* GC events */
-	{ "name" : "MinorGCStartEvt,
+	{ "name" : "MinorGCStart",
 	  "args" : [],
 	  "kind" : "START",
 	  "desc" : "minor GC starts"
 	},
-	{ "name" : "MinorGCEndEvt,
+	{ "name" : "MinorGCEnd",
 	  "args" : [],
 	  "kind" : "END",
 	  "desc" : "minor GC ends"
 	},
-	{ "name" : "MajorGCStartEvt,
+	{ "name" : "MajorGCStart",
 	  "args" : [],
 	  "kind" : "START",
 	  "desc" : "major GC starts"
 	},
-	{ "name" : "MajorGCEndEvt,
+	{ "name" : "MajorGCEnd",
 	  "args" : [],
 	  "kind" : "END",
 	  "desc" : "major GC ends"
 	},
-	{ "name" : "GlobalGCInitEvt,
+	{ "name" : "GlobalGCInit",
 	  "args" : [],
 	  "kind" : "START",
 	  "desc" : "global GC initiated"
 	},
-	{ "name" : "GlobalGCEndEvt,
+	{ "name" : "GlobalGCEnd",
 	  "args" : [],
 	  "kind" : "END",
 	  "desc" : "global GC finished"
 	},
-	{ "name" : "GlobalGCVPStartEvt,
+	{ "name" : "GlobalGCVPStart",
 	  "args" : [],
 	  "kind" : "START",
 	  "desc" : "global GC starts for vproc"
 	},
-	{ "name" : "GlobalGCVPDoneEvt,
+	{ "name" : "GlobalGCVPDone",
 	  "args" : [
 	      {"name" : "nbytes", "ty" : "word", "desc" : "number of bytes copied"}
 	    ],
 	  "kind" : "END",
 	  "desc" : "global GC ends for vproc"
 	},
-	{ "name" : "PromoteStartEvt,
+	{ "name" : "PromoteStart",
 	  "args" : [
-	      {"name" : "root", "ty" : "addr", loc : 16, "desc" : "value being promoted"}
+	      {"name" : "root", "ty" : "addr", "loc" : 16, "desc" : "value being promoted"}
 	    ],
 	  "kind" : "START",
 	  "desc" : "major GC starts"
 	},
-	{ "name" : "PromoteEndEvt,
+	{ "name" : "PromoteEnd",
 	  "args" : [
 	      {"name" : "nbytes", "ty" : "word", "desc" : "number of bytes copied"}
 	    ],
@@ -128,31 +128,31 @@
 	  "desc" : "major GC ends"
 	},
     /* Runtime events */
-	{ "name" : "RTPreemptionEvt,
+	{ "name" : "RTPreemption",
 	  "args" : [],
 	  "kind" : "EVENT",
 	  "desc" : "preemption handler invoked"
 	},
-	{ "name" : "RTFuture1SpawnEvt,
+	{ "name" : "RTFuture1Spawn",
 	  "args" : [
 	      {"name" : "fut", "ty" : "addr", "desc" : ""}
 	    ],
 	  "kind" : "EVENT",
 	  "desc" : "spawned future"
 	},
-	{ "name" : "RTFuture1TouchEvt,
+	{ "name" : "RTFuture1Touch",
 	  "args" : [
 	      {"name" : "fut", "ty" : "addr", "desc" : ""}
 	    ],
 	  "kind" : "EVENT",
 	  "desc" : "touched future"
 	},
-	{ "name" : "RTFuture1StealEvt,
+	{ "name" : "RTFuture1Steal",
 	  "args" : [
 	      {"name" : "fut", "ty" : "addr", "desc" : ""}
 	    ],
 	  "kind" : "EVENT",
 	  "desc" : "stole future"
-	},
+	}
     ]
 }

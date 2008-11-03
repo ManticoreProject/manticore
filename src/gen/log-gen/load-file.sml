@@ -16,11 +16,13 @@ structure LoadFile : sig
 	desc : string
       }
 
-    val loadFile : string -> {
-	    date : string,
-	    version : string,
-	    events : event_desc list
-	  }
+    type log_file_desc = {
+	date : string,
+	version : string,
+	events : event_desc list
+      }
+
+    val loadFile : string -> log_file_desc
 
   end = struct
 
@@ -34,6 +36,12 @@ structure LoadFile : sig
 	args : EventSig.arg_desc list,
 	kind : event_kind,
 	desc : string
+      }
+
+    type log_file_desc = {
+	date : string,
+	version : string,
+	events : event_desc list
       }
 
     fun findField (J.OBJECT fields) = let
