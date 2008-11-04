@@ -62,7 +62,7 @@ structure GenInlineLogH : GENERATOR =
 		end
 	  in
 	    prl [
-	      "STATIC_INLINE void LogEvent", sign, " (VProc_t *vp"
+	      "STATIC_INLINE void LogEvent", sign, " (VProc_t *vp, uint32_t evt"
 	      ];
 	    genParams (args, 0);
 	    pr "\

@@ -228,7 +228,7 @@ void VProcWaitForSignal (VProc_t *vp)
 {
    assert (vp == VProcSelf());
 
-    LogEvent0 (vp, VProcSleepEvt);
+    LogVProcSleep (vp);
 
 #ifndef NDEBUG
     if (DebugFlg)
@@ -358,7 +358,7 @@ Value_t SleepCont (VProc_t *self)
  */
 static void IdleVProc (VProc_t *vp, void *arg)
 {
-    LogEvent0 (vp, VProcStartIdleEvt);
+    LogVProcStartIdle (vp);
 
 #ifndef NDEBUG
     if (DebugFlg)
@@ -406,11 +406,11 @@ static void SigHandler (int sig, siginfo_t *si, void *_sc)
 
     switch (sig) {
       case SIGUSR1: /* Preemption signal */
-	LogEvent0 (self, PreemptSignalEvt);
+	LogPreemptSignal (self);
 	self->sigPending = M_TRUE;
 	break;
       case SIGUSR2: /* Global GC signal */
-	LogEvent0 (self, GCSignalEvt);
+	LogGCSignal (self);
 	self->sigPending = M_TRUE;
 	self->globalGCPending = true;
 	break;

@@ -79,7 +79,7 @@ int main (int argc, const char **argv)
  */ 
 static void MainVProc (VProc_t *vp, void *arg)
 {
-    LogEvent0 (vp, VProcStartMainEvt);
+    LogVProcStartMain (vp);
 
 #ifndef NDEBUG
     if (DebugFlg)
@@ -103,7 +103,7 @@ static void MainVProc (VProc_t *vp, void *arg)
     Say("\n");
 #endif
 
-    LogEvent0 (vp, VProcExitMainEvt);
+    LogVProcExitMain (vp);
 
 #ifdef ENABLE_LOGGING
     FinishLog ();

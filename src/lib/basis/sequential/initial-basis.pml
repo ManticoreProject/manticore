@@ -235,35 +235,4 @@ _primcode (
   typedef thread_id = unit;
 #endif
 
-#ifdef ENABLE_LOGGING
-
-  #include "log-events.def"
-
-  extern void M_LogEvent0 (void*, int);
-  extern void M_LogEvent1 (void*, int, int);
-  extern void M_LogEventPtr (void*, int, void*);
-
-  define inline @log-event0 (evt : log_event) : () =
-    do ccall M_LogEvent0 (host_vproc, evt)
-    return ()
-  ;
-
-  define inline @log-event1 (evt : log_event, aux : int) : () =
-    do ccall M_LogEvent1 (host_vproc, evt, aux)
-    return ()
-  ;
-
-  define inline @log-event-ptr (evt : log_event, ptr : any) : () =
-    do ccall M_LogEventPtr (host_vproc, evt, ptr)
-    return ()
-  ;
-
-#else
-
-  define inline @log-event0 (evt : log_event) : () = return ();
-  define inline @log-event1 (evt : log_event, aux : int) : () = return ();
-  define inline @log-event-ptr (evt : log_event, ptr : any) : () = return ();
-
-#endif  /* !ENABLE_LOGGING */
-
 )

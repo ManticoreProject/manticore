@@ -69,7 +69,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     assert (VProcHeap(vp) < vp->oldTop);
     assert (vp->oldTop < top);
 
-    LogEvent0 (vp, MajorGCStartEvt);
+    LogMajorGCStart (vp);
 
 #ifndef NDEBUG
     if (DebugFlg)
@@ -170,7 +170,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     memcpy ((void *)VProcHeap(vp), (void *)(vp->oldTop), youngSzB);
     vp->oldTop = VProcHeap(vp) + youngSzB;
 
-    LogEvent0 (vp, MajorGCEndEvt);
+    LogMajorGCEnd (vp);
 
 /* FIXME: there are additional roots in the vproc that we need to consider (e.g.,
  * the entryq.

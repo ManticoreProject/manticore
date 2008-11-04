@@ -64,11 +64,6 @@ struct struct_logbuf {
 };
 
 /* define the predefined log-event codes */
-#define DEF_EVENT(NAME, SZ, KIND, DESC)	NAME,
-enum {
 #include "log-events.h"
-    NumLogEvents
-};
-#undef DEF_EVENT
 
 #endif /* !_LOG_FILE_H_ */

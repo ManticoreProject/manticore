@@ -47,7 +47,7 @@ STATIC_INLINE Value_t ForwardObj (Value_t v, Word_t **nextW)
  */
 void MinorGC (VProc_t *vp, Value_t **roots)
 {
-    LogEvent0 (vp, MinorGCStartEvt);
+    LogMinorGCStart (vp);
 
     Addr_t	nurseryBase = vp->nurseryBase;
     Addr_t	allocSzB = vp->allocPtr - nurseryBase - WORD_SZB;
@@ -144,7 +144,7 @@ void MinorGC (VProc_t *vp, Value_t **roots)
     }
 #endif /* !NDEBUG */
 
-    LogEvent0 (vp, MinorGCEndEvt);
+    LogMinorGCEnd (vp);
 
     if ((avail < MajorGCThreshold) || vp->globalGCPending) {
       /* time to do a major collection. */

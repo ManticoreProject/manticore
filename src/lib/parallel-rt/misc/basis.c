@@ -262,23 +262,6 @@ double M_ReadDouble ()
     return i;
 }
 
-/* FIXME: eventually, this code should be in assembler to reduce overhead */
-#include "inline-log.h"
-void M_LogEvent0 (void *vp, int evt) 
-{
-    LogEvent0 (vp, evt);
-}
-
-void M_LogEventPtr (void *vp, int evt, uint64_t ptr)
-{
-    LogEvent2 (vp, evt, (uint32_t)(ptr << 32l), (uint32_t)ptr);
-}
-
-void M_LogEvent1 (void *vp, int evt, uint32_t v)
-{
-    LogEvent1 (vp, evt, v);
-}
-
 double M_DRand (double lo, double hi)
 {
     return (((double)rand() / ((double)(RAND_MAX)+(double)(1)) ) * (hi-lo)) + lo;
@@ -291,7 +274,7 @@ Word_t M_Random (Word_t lo, Word_t hi)
 
 int32_t M_RandomInt (int32_t lo, int32_t hi)
 {
-  return (int)M_Random((int)lo, (int)hi);
+    return (int)M_Random((int)lo, (int)hi);
 }
 
 void M_SeedRand ()
@@ -326,12 +309,12 @@ Value_t M_NewArray (VProc_t *vp, int nElems, Value_t elt)
 
 float M_Powf (float x, float y)
 {
-  return powf(x, y);
+    return powf(x, y);
 }
 
 float M_Cosf (float x)
 {
-  return cosf(x);
+    return cosf(x);
 }
 
 float M_Sinf (float x)

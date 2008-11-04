@@ -101,7 +101,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	    CondWait (&FollowerWait, &GCLock);
 	}
 	else {
-	    LogEvent0 (self, GlobalGCInitEvt);
+	    LogGlobalGCInit (self);
 #ifndef NDEBUG
 	    if (DebugFlg)
 		SayDebug("[%2d] Initiating global GC\n", self->id);
@@ -174,7 +174,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 #endif
     }
 
-    LogEvent0 (self, GlobalGCEndEvt);
+    LogGlobalGCEnd (self);
 
 } /* end of StartGlobalGC */
 
@@ -185,7 +185,7 @@ static void GlobalGC (VProc_t *vp, Value_t **roots)
     MemChunk_t	*scanChunk = vp->globToSpHd;
     Word_t	*scanPtr = (Word_t *)(scanChunk->baseAddr);
 
-    LogEvent0 (vp, GlobalGCVPStartEvt);
+    LogGlobalGCVPStart (vp);
 
 #ifndef NDEBUG
     if (DebugFlg)
@@ -207,7 +207,7 @@ static void GlobalGC (VProc_t *vp, Value_t **roots)
   /* scan to-space chunks */
     ScanGlobalToSpace (vp, scanChunk, scanPtr);
 
-    LogEvent0 (vp, GlobalGCVPDoneEvt);
+    LogGlobalGCVPDone (vp, 0/*FIXME*/);
 
 } /* end of GlobalGC */
 

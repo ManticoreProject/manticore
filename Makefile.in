@@ -69,7 +69,8 @@ doc:
 #################### Cleanup ####################
 
 CLEAN_SUBDIRS =		src
-DISTCLEAN_FILES =	$(BINDIR)/* \
+DISTCLEAN_FILES =	Makefile \
+			$(BINDIR)/* \
 			$(BINDIR) \
 			$(HEAPDIR)/*.@SMLNJ_HEAP_SUFFIX@ \
 			$(LIBDIR)/*.a \
