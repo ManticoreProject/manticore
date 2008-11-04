@@ -14,7 +14,7 @@ structure Main =
     fun main _ = let
 	  val info = LoadFile.loadFile "log-events.json"
 	  in
-	    ()
+	    OS.Process.success
 	  end
 
   end

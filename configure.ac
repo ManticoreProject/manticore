@@ -373,6 +373,7 @@ AC_CONFIG_FILES(\
 dnl ***** Makefiles *****
   Makefile
   src/Makefile
+  src/gen/log-gen/Makefile
   src/lib/parallel-rt/build/Makefile
   src/lib/parallel-rt/build/config/Makefile
   src/lib/parallel-rt/build/mk/common.gmk:src/lib/parallel-rt/build/mk/common_gmk.in
