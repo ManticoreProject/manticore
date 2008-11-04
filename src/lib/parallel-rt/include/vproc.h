@@ -60,9 +60,13 @@ struct struct_vproc {
     bool	idle;	      /*!< true when the VProc is idle */
 			      /* GC stats */
 #ifndef NO_GC_STATS
-    int32_t	nLocalPtrs;
-    int32_t	nGlobPtrs;
+    int32_t	nLocalPtrs;	/*!< counter of pointers into local heap that are scanned in minor GC */
+    int32_t	nGlobPtrs;	/*!< counter of pointers into global heap that are scanned in minor GC */
 #endif
+#ifndef ENABLE_LOGGING	      /* GC counters for logging info */
+
+#endif
+    
 };
 
 typedef enum {
