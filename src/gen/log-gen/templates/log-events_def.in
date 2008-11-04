@@ -1,0 +1,15 @@
+(* log-events.def
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * WARNING: this file is generated; do not edit!!!
+ *)
+
+#ifndef _LOG_EVENTS_
+
+#define _LOG_EVENTS_
+
+@LOG-EVENTS@
+
+#endif /* !_LOG_EVENTS_DEF_ */

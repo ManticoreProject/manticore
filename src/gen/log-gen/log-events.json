@@ -3,6 +3,24 @@
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
+ * This file describes the various events that can be logged by the Manticore system.  It defines
+ * a JSON object with three fields:
+ *
+ *	data	-- a string representing the YYYYMMDD date as a hexadecimal literal.
+ *
+ *	version	-- an array of three integers representing the major, minor, and patch-level
+ *		   version numbers of the file.  The version numbers should be increased as
+ *		   follows:
+ *			-- increase the patch number when changing the description of an event or
+ *			   argument.
+ *			-- increase the minor-version number when adding new events to the end of
+ *			   the file.  Such changes should not effect existing logs with the same
+ *			   major-version number.
+ *			-- increase the major version number when changing the order of events,
+ *			   or changing the order, number, or type of argument to existing events.
+ *
+ *	events	-- an array of the event descriptors.
+ *
  * The fields of an event descriptor are
  *	name	-- symbolic name
  *
@@ -27,7 +45,7 @@
  */
 {
   "date" : "0x20081103",
-  "version" : "1.0.0",
+  "version" : [1, 0, 0],
   "events" : [
 	{ "name" : "NoEvent",
 	  "args" : [],

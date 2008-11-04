@@ -7,9 +7,12 @@
 signature GENERATOR =
   sig
 
+  (* name of template file *)
+    val template : string
+
   (* destination path relative to root of Manticore source tree *)
     val path : string
 
-    val gen : TextIO.outstream * LoadFile.log_file_desc -> unit
+    val hooks : TextIO.outstream * LoadFile.log_file_desc -> (string * (unit -> unit)) list
 
   end

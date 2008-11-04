@@ -71,12 +71,15 @@ structure EventSig =
 
   (* align a location *)
     fun alignLoc (loc, align) = Word.andb(loc + (align-0w1), Word.notb(align-0w1))
-	
+
+  (* sort a list of arguments by increasing location *)
+    fun sortArgs (ads : arg_desc list) =
+	  ListMergeSort.sort (fn (a, b) => #loc a > #loc b) ads
+
   (* we use a string to represent the signature of an event; this function
    * takes a list of argument descriptors and returns the signature.
    *)
     fun signOf ads = let
-	(* sort the descriptors by location *)
 	(* compute the signature *)
 	  fun f (loc, []) = if (loc <= eventSzb)
 		then []
@@ -96,7 +99,22 @@ structure EventSig =
 		  tag :: f(loc' + sz, ads)
 		end
 	  in
-	    String.concat(f (argStart, ads))
+	    String.concat(f (argStart, sortArgs ads))
 	  end
+
+  (* sets and maps keyed by signature *)
+    local
+      structure Key =
+	struct
+	  type ord_key = string
+	  fun compare (s1, s2) = (case Int.compare(size s1, size s2)
+		 of EQUAL => String.compare(s1, s2)
+		  | order => order
+		(* end case *))
+	end
+    in
+    structure Set = RedBlackSetFn (Key)
+    structure Map = RedBlackMapFn (Key)
+    end
 
   end

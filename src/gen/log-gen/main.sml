@@ -7,10 +7,13 @@
 structure Main =
   struct
 
+    structure GenInlineLogH = GeneratorFn (GenInlineLogH)
+    structure GenLogEventsDef = GeneratorFn (GenLogEventsDef)
+    structure GenLogEventsH = GeneratorFn (GenLogEventsH)
+
     fun main _ = let
 	  val info = LoadFile.loadFile "log-events.json"
 	  in
-GenLogEventsDef.gen (TextIO.stdOut, info);
 	    ()
 	  end
 

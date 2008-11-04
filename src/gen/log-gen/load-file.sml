@@ -12,13 +12,14 @@ structure LoadFile : sig
 	name : string,
 	id : int,
 	args : EventSig.arg_desc list,
+	sign : string,
 	kind : event_kind,
 	desc : string
       }
 
     type log_file_desc = {
 	date : string,
-	version : string,
+	version : {major : int, minor : int, patch : int},
 	events : event_desc list
       }
 
@@ -34,13 +35,14 @@ structure LoadFile : sig
 	name : string,
 	id : int,
 	args : EventSig.arg_desc list,
+	sign : string,
 	kind : event_kind,
 	desc : string
       }
 
     type log_file_desc = {
 	date : string,
-	version : string,
+	version : {major : int, minor : int, patch : int},
 	events : event_desc list
       }
 
@@ -102,6 +104,7 @@ structure LoadFile : sig
 		       *)
 			(loc, loc + #sz(EventSig.alignAndSize ty))
 		      end
+		  | SOME _ => raise Fail "expected integer for \"loc\" field"
 		  | NONE => let
 		      val {align, sz, ...} = EventSig.alignAndSize ty
 		      val loc = EventSig.alignLoc (loc, align)
@@ -122,27 +125,38 @@ structure LoadFile : sig
 
     fun cvtEvent (i, obj) = let
 	  val find = lookupField(findField obj)
-	  in {
-	    name = findString find "name",
-	    id = i,
-	    args = let
+	  val args = let
 		val (_, args) = foldl cvtArg (0w0, []) (find "args")
 		in
 		  List.rev args
-		end,
+		end
+	  in {
+	    name = findString find "name",
+	    id = i,
+	    args = args,
+	    sign = EventSig.signOf args,
 	    kind = (case findString find "kind"
 		 of "EVENT" => EVENT
 		  | "START" => START
 		  | "END" => END
+		  | s => raise Fail(concat["unknown event kind \"", String.toString s, "\""])
 		(* end case *)),
 	    desc = findString find "desc"
 	  } end
 
     fun cvt obj = let
 	  val find = lookupField(findField obj)
+	  val version = (case find "version"
+		 of J.ARRAY[J.INT v1, J.INT v2, J.INT v3] => {
+			major = Int.fromLarge v1,
+			minor = Int.fromLarge v2,
+			patch = Int.fromLarge v3
+		      }
+		  | _ => raise Fail "bogus version"
+		(* end case *))
 	  in {
 	    date = findString find "date",
-	    version = findString find "version",
+	    version = version,
 	    events = tabulate cvtEvent (find "events")
 	  } end
 
