@@ -44,7 +44,17 @@ structure WorkStealing =
       typedef worker = [
                 local_deque,               (* local deque *)
 		thief_inbox                (* thief inbox *)
-              ]
+              ];
+
+define @inbox-empty (/ exh : exh) : PT.fiber =
+  let e : any = INBOX_EMPTY
+  return((PT.fiber)e)
+;
+
+define @inbox-steal-failed (/ exh : exh) : PT.fiber =
+  let e : any = INBOX_STEAL_FAILED
+  return((PT.fiber)e)
+;
 
     (* get the pointer to the current worker *)
       define @get-worker (/ exh : exh) : worker =
@@ -67,6 +77,11 @@ structure WorkStealing =
     (* number of threads in the local deque (assuming that the head was not stolen) *)
       define @local-deque-sz (localDeque : local_deque / exh : exh) : int =
         return(I32Sub(SELECT(LOCAL_DEQUE_HD, localDeque), SELECT(LOCAL_DEQUE_TL, localDeque)))
+      ;
+
+      define @is-local-deque-empty (localDeque : local_deque / exh : exh) : bool =
+	let sz : int = @local-deque-sz(localDeque / exh)
+	return(I32Lt(sz, 1))
       ;
 
     (* pop from the tail of the local deque *)
@@ -103,10 +118,13 @@ structure WorkStealing =
       define @place-in-inbox (inbox : thief_inbox, stolenK : O.option / exh : exh) : () =
 	do case stolenK
 	    of O.NONE => 
-	       do UPDATE(0, inbox, INBOX_STEAL_FAILED)
+	       let f : PT.fiber = @inbox-steal-failed(/ exh)
+	       do UPDATE(0, inbox, f)
+	       return()
 	     | O.SOME(k : PT.fiber) =>
 	       let k : PT.fiber = promote(k)
 	       do UPDATE(0, inbox, k)
+	       return()
 	    end
 	return()
       ;
@@ -118,15 +136,15 @@ structure WorkStealing =
         cont thiefK (x : PT.unit) =
           let localDeque : local_deque = @get-local-deque(/ exh)
           let sz : int = @local-deque-sz(localDeque / exh)
-          let stokenK : O.option = 
+          let stolenK : O.option = 
             if I32Eq(sz, 0)
 	       then return(O.NONE)
 	    else
-	      let stokenK : PT.fiber = @local-deque-pop-hd(localDeque / exh)
+	      let stolenK : PT.fiber = @local-deque-pop-hd(localDeque / exh)
 	      return(O.SOME(stolenK))
           do @place-in-inbox(inbox, stolenK / exh)
 	  let _ : PT.unit = Control.@stop(/ exh)
-	  return()
+	  return(O.NONE)
         do VProc.@send-messenger(vp, thiefK / exh)
       (* busy wait for a response from the thief *)
         fun wait () : O.option =
@@ -137,7 +155,8 @@ structure WorkStealing =
 	    else return(O.SOME(#0(inbox)))
         let k : O.option = apply wait ()
       (* prepare the inbox for the next steal attempt *)
-        do UPDATE(0, inbox, INBOX_EMPTY)
+        let e : PT.fiber = @inbox-empty(/ exh)
+        do UPDATE(0, inbox, e)
         return(k)
       ;
 
@@ -151,7 +170,7 @@ structure WorkStealing =
 	      then throw exit()
 	   else return()
         let victimVP : vproc = ccall GetNthVProc(victim) 
-        let worker : worker = Arr.sub(workers, victim / exh)
+        let worker : worker = Arr.@sub(workers, victim / exh)
         @request-steal(victimVP, SELECT(WORKER_THIEF_INBOX_OFF,worker) / exh)
       ;
 
@@ -166,7 +185,7 @@ structure WorkStealing =
 	  cont run (switch : PT.sched_act, k : PT.fiber) =
 	    do Control.@run(switch, k / exh)
             let e : exn = Fail(@"impossible")
-	    throw exh()
+	    throw exh(e)
         (* steal a thread from a remote vproc *)
 	  cont steal (switch : PT.sched_act) =
 	    let kOpt : O.option = @steal(workers / exh)
@@ -177,11 +196,12 @@ structure WorkStealing =
         (* handle a signal *)
 	  case sign
 	   of PT.STOP =>
-	      let elt : O.option = @local-deque-pop-tl(localDeque / exh)
-	      case elt
-	       of O.NONE => throw steal(switch)
-		| O.SOME(k : PT.fiber) => throw run(switch, k)
-	      end
+	      let isEmpty : bool = @is-local-deque-empty(localDeque / exh)
+              if isEmpty
+		 then throw steal(switch)
+	      else
+		  let k : PT.fiber = @local-deque-pop-tl(localDeque / exh)
+                  throw run(switch, k)
 	    | PT.PREEMPT (k : PT.fiber) =>
 	      let _ : PT.unit = Control.@atomic-yield(/exh)
               throw run(switch, k)
@@ -189,7 +209,6 @@ structure WorkStealing =
 	      let e : exn = Match
      	      throw exh(e)
           end
-
 	return(switch)
       ;
 
@@ -197,16 +216,16 @@ structure WorkStealing =
       define @init (/ exh : exh) : PT.unit =
       (* one worker per vproc *)
 	let nVProcs : int = VProc.@num-vprocs(/ exh)
-      (* allocate local deques *)
 	let localDeques : any = ccall M_WSAllocLocalDeques(host_vproc, nVProcs)
-        let workers : Arr.array = Arr.array(nVProcs, $0 / exh)
+        let workers : Arr.array = Arr.@array(nVProcs, $0 / exh)
 	fun f (i : int / exh : exh) : () =
             if I32Lte(i, nVProcs)
 	       then
-		let localDeque : local_deque = (local_deque)ArrayI64Sub(localDeques, i)
+		let localDeque : any = ArrayLoadI64(localDeques, i)
+		let localDeque : local_deque = (local_deque)localDeque
                 let thiefInbox : thief_inbox = alloc(INBOX_EMPTY)
                 let worker : worker = alloc(localDeque, thiefInbox)
-                do Arr.update(workers, i, worker)
+                do Arr.@update(workers, i, worker / exh)
                 apply f(I32Add(i, 1) / exh)
 	    else return()
       (* allocate the worker structures *)
@@ -222,11 +241,12 @@ structure WorkStealing =
     (* pop from the tail *)
       define @pop-tl(/ exh : exh) : bool =
         let localDeque : local_deque = @get-local-deque(/ exh)
-	let elt : O.option = @local-deque-pop-tl(localDeque / exh)
-	case elt
-	 of O.NONE => return(false)
-	  | O.SOME(k : PT.fiber) => return(true)
-	end
+        let isEmpty : bool = @is-local-deque-empty(localDeque / exh)
+        if isEmpty
+	   then return(false)
+	else
+	   let k : PT.fiber = @local-deque-pop-tl(localDeque / exh)
+           return(true)
       ;
 
     (* push on the tail *)
