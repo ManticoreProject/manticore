@@ -46,15 +46,17 @@ structure WorkStealing =
 		thief_inbox                (* thief inbox *)
               ];
 
-define @inbox-empty (/ exh : exh) : PT.fiber =
-  let e : any = INBOX_EMPTY
-  return((PT.fiber)e)
-;
+    (* empty state *)
+      define @inbox-empty (/ exh : exh) : PT.fiber =
+	let e : any = INBOX_EMPTY
+	return((PT.fiber)e)
+      ;
 
-define @inbox-steal-failed (/ exh : exh) : PT.fiber =
-  let e : any = INBOX_STEAL_FAILED
-  return((PT.fiber)e)
-;
+    (* failed state *)
+      define @inbox-steal-failed (/ exh : exh) : PT.fiber =
+	let e : any = INBOX_STEAL_FAILED
+	return((PT.fiber)e)
+      ;
 
     (* get the pointer to the current worker *)
       define @get-worker (/ exh : exh) : worker =
