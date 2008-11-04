@@ -78,19 +78,6 @@ structure Chan : sig
 	    return ()
 	;
 
-	define inline @event-claim (flg : dirty_flag / exh : exh) : bool =
-	    fun spin (_ : unit / exh : exh) : bool =
-		  let sts : event_state = CAS(&0(flg), WAITING_EVT, SYNCHED_EVT)
-		  (* in *)
-		    case sts
-		     of INIT_EVT => apply spin (UNIT / exh)
-		      | WAITING_EVT => return (true)
-		      | SYNCHED_EVT => return (false)
-		    end
-	    (* in *)
-	      apply spin (UNIT / exh)
-	;
-
 	define inline @chan-enqueue-recv (ch : chan_rep, flg : dirty_flag, tid : FLS.fls, k : cont(any) / _ : exh) : () =
 	    let item : recvq_item = alloc (flg, tid, host_vproc, k)
 	    let cons : List.list = List.CONS(item, CH_GET_RECVQ_TL(ch))
@@ -232,7 +219,7 @@ structure Chan : sig
 			  (* there is a matching recv, but we must check to make sure
 			   * that some other thread has not already claimed the event.
 			   *)
-			    let success : bool = @event-claim (#0(item) / exh)
+			    let success : bool = PrimEvent.@claim (#0(item) / exh)
 			    (* in *)
 			      if success then (* we got it *)
 				do @chan-release-lock(ch / exh)
