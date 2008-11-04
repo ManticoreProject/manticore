@@ -126,7 +126,7 @@ structure LoadFile : sig
     fun cvtEvent (i, obj) = let
 	  val find = lookupField(findField obj)
 	  val args = let
-		val (_, args) = foldl cvtArg (0w0, []) (find "args")
+		val (_, args) = foldl cvtArg (EventSig.argStart, []) (find "args")
 		in
 		  List.rev args
 		end

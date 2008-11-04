@@ -380,6 +380,7 @@ dnl ***** Makefiles *****
   src/tools/log-dump/Makefile
   src/tools/mc/Makefile
 dnl ***** SML source files *****
+  src/gen/log-gen/main.sml:src/gen/log-gen/main_sml.in
   src/tools/mc/common/run-cpp.sml:src/tools/mc/common/run-cpp_sml.in
   src/tools/mc/common/load-paths.sml:src/tools/mc/common/load-paths_sml.in
   src/tools/mc/driver/build-executable.sml:src/tools/mc/driver/build-executable_sml.in

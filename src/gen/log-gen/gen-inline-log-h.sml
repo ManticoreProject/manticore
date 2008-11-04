@@ -37,6 +37,7 @@ structure GenInlineLogH : GENERATOR =
 	  fun genCopy ([], _) = ()
 	    | genCopy ((loc, ty)::r, i) = let
 		val param = "a" ^ Int.toString i
+		val loc = loc - EventSig.argStart
 		val index = Word.fmt StringCvt.DEC (Word.>>(loc, 0w2))
 		in
 		  pr "    ";
@@ -57,7 +58,6 @@ structure GenInlineLogH : GENERATOR =
 			  param, ", ", Int.toString n, ");\n"
 			]
 		  (* end case *);
-		  pr "\n";
 		  genCopy (r, i+1)
 		end
 	  in
@@ -86,7 +86,7 @@ structure GenInlineLogH : GENERATOR =
 	  fun prArgs [] = ()
 	    | prArgs ((a : EventSig.arg_desc)::r) = (prl [", (", #name a, ")"]; prArgs r)
 	  in
-	    prl ["#define Log", #name ed, "Evt(vp"];
+	    prl ["#define Log", #name ed, "(vp"];
 	    prParams (#args ed);
 	    prl [") LogEvent", #sign ed, " ((vp), ", #name ed, "Evt"];
 	    prArgs (EventSig.sortArgs(#args ed)); (* NOTE: location order here! *)
@@ -103,7 +103,7 @@ structure GenInlineLogH : GENERATOR =
 	  fun prArgs [] = ()
 	    | prArgs ((a : EventSig.arg_desc)::r) = (prl [", (", #name a, ")"]; prArgs r)
 	  in
-	    prl ["#define Log", #name ed, "Evt(vp"];
+	    prl ["#define Log", #name ed, "(vp"];
 	    prParams (#args ed);
 	    pr ")\n"
 	  end

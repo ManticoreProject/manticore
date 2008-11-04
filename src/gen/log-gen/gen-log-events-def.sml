@@ -8,7 +8,7 @@ structure GenLogEventsDef : GENERATOR =
   struct
 
     val template = "log-events_def.in"
-    val path = "src/basis/include/log-events.def"
+    val path = "src/lib/basis/include/log-events.def"
 
     fun hooks (outS, {date, version, events}) = let
 	  fun prl l = TextIO.output(outS, concat l)

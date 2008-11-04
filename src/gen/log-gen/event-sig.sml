@@ -94,7 +94,10 @@ structure EventSig =
 		      else tag
 		in
 		  if (loc' <> #loc ad)
-		    then raise Fail "badly aligned argument"
+		    then raise Fail(concat[
+			"badly aligned argument \"", #name ad, "\" @ ",
+			Word.fmt StringCvt.DEC (#loc ad)
+		      ])
 		    else ();
 		  tag :: f(loc' + sz, ads)
 		end
