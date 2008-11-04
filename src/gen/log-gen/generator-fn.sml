@@ -6,7 +6,17 @@
 
 functor GeneratorFn (G : GENERATOR) : sig
 
-    val gen : LoadFile.log_file_desc -> unit
+  (* name of template file *)
+    val template : string
+
+  (* destination path relative to root of Manticore source tree *)
+    val path : string
+
+    val gen : {
+	    logSpec : LoadFile.log_file_desc,
+	    template : string,
+	    target : string
+	  } -> unit
 
   end = struct
 
@@ -17,7 +27,8 @@ functor GeneratorFn (G : GENERATOR) : sig
       structure E = BackTrackEngine);
     structure M = MatchTree
 
-    type hook = TextIO.outstream -> unit
+    val template = G.template
+    val path = G.path
 
     val placeholderRE = RE.compileString "[\\t ]*@([a-zA-Z][-a-zA-Z0-9_]*)@[\\t ]*"
     val prefixPlaceholder = RE.prefix placeholderRE SS.getc
@@ -49,29 +60,22 @@ functor GeneratorFn (G : GENERATOR) : sig
 
     exception OpenOut
 
-    fun expand {logSpec, src, dst} = (let
-	  val srcStrm = TIO.openIn src
-	  val dstStrm = TIO.openOut dst
+    fun gen {logSpec, template, target} = (let
+	  val templateStrm = TIO.openIn template
+	  val targetStrm = TIO.openOut target
 		handle ex => (
-		  TIO.closeIn srcStrm;
+		  TIO.closeIn templateStrm;
 		  TIO.output(TIO.stdOut, concat[
 		      "Warning: unable to open output file \"",
-		      dst, "\"\n"
+		      target, "\"\n"
 		    ]);
 		  raise OpenOut)
-	  val hooks = G.hooks (dstStrm, logSpec)
-	  fun done () = (TIO.closeIn srcStrm; TIO.closeOut dstStrm)
+	  val hooks = G.hooks (targetStrm, logSpec)
+	  fun done () = (TIO.closeIn templateStrm; TIO.closeOut targetStrm)
 	  in
-	    copy (srcStrm, dstStrm, hooks) handle ex => (done(); raise ex);
+	    copy (templateStrm, targetStrm, hooks) handle ex => (done(); raise ex);
 	    done()
 	  end
 	    handle OpenOut => ())
-
-    fun gen logSpec = expand {
-	    logSpec = logSpec,
-(* FIXME: need to adjust paths for our location *)
-	    src = G.template,
-	    dst = G.path
-	  }
 
   end
