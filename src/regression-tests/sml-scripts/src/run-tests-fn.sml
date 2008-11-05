@@ -88,7 +88,12 @@ fun halt() = raise Fail "halt"
       end 
 (*  val goalDirs = U.dirsWithin (U.dotdot "." ^ "/phony") *)
     val goalDirs' = List.filter (not o (String.isPrefix ".") o OS.Path.file) goalDirs
-    fun goalHeader goalDir = HTML.h2CS ("goal", P.file goalDir)
+    fun goalHeader goalDir = let
+      val readmeTxt = String.concatWith "\n" (U.textOf (goalDir ^ "/README"))
+      in
+        HTML.sequence [HTML.h2CS ("goal", P.file goalDir),
+		       HTML.pCS  ("README", readmeTxt)]
+      end
     fun fileHeader filename = HTML.h3CS ("testfile", P.file filename)
     fun processDir goalDir = let
       val h2 = goalHeader goalDir
