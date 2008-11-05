@@ -14,8 +14,9 @@
 #define LOCAL_DEQUE_TL      1
 #define LOCAL_DEQUE_ELTS    2
 
-#define WORKER_LOCAL_DEQUE_OFF  0
-#define WORKER_THIEF_INBOX_OFF  1
+#define WORKER_LOCAL_DEQUE_OFF              0
+#define WORKER_LOCAL_DEQUE_GLOBAL_LIST_OFF  1
+#define WORKER_THIEF_INBOX_OFF              2
 
 #define INBOX_EMPTY                $0
 #define INBOX_STEAL_FAILED         $1
@@ -31,7 +32,9 @@ structure WorkStealing =
     _primcode(
 
       extern void* GetNthVProc (int);
-      extern void M_WSAllocLocalDeques(void*, int);
+      extern void* M_WSAllocLocalDeque (int);
+      extern void* M_WSGetLocalDeque (void*);
+      extern void M_WSFreeLocalDeque (void*);
 
       typedef deque_elts = any;
       typedef thief_inbox = ![PT.fiber];   (* shared location for passing stolen fibers *)
@@ -41,8 +44,10 @@ structure WorkStealing =
 		       deque_elts          (* array of fibers *)
                     ];
     (* each worker has a local deque and an inbox for stolen fibers *)
-      typedef worker = [
+      typedef worker = ![
                 local_deque,               (* local deque *)
+		any,                       (* pointer into the global list of local deques (used for
+					    * explicitly freeing the local deque) *)
 		thief_inbox                (* thief inbox *)
               ];
 
@@ -60,7 +65,10 @@ structure WorkStealing =
 
     (* get the pointer to the current worker *)
       define @get-worker (/ exh : exh) : worker =
-        let worker : any = ThreadCapabilities.@get-from-fls(tag(workStealingWorker) / exh)
+        let workers : any = ThreadCapabilities.@get-from-fls(tag(workStealingWorker) / exh)
+        let workers : Arr.array = (Arr.array)workers
+        let id : int = VProc.@id(host_vproc / exh)
+        let worker : any = Arr.@sub(array, id / exh)
 	return((worker)worker)
       ;
 
@@ -68,6 +76,17 @@ structure WorkStealing =
       define @get-local-deque (/ exh : exh) : local_deque =
 	let worker : worker = @get-worker(/ exh)
 	return(SELECT(WORKER_LOCAL_DEQUE_OFF, worker))
+      ;
+
+    (* allocate the local deque on the host vproc *)
+      define @alloc-local-deque (vprocId : int / exh : exh) : () =
+	let id : int = VProc.@id(self / exh)
+	let localDequeGlobalList : any = ccall M_WSAllocLocalDeque(vprocId)
+	let localDeque : local_deque = ccall M_WSGetLocalDeque(localDequeGlobalList)
+	let worker : worker = @get-worker(/ exh)
+	do UPDATE(WORKER_LOCAL_DEQUE_OFF, worker, localDeque)
+	do UPDATE(WORKER_LOCAL_DEQUE_GLOBAL_LIST_OFF, worker, localDeque)
+	return()
       ;
 
     (* get the thief's inbox *)
@@ -178,9 +197,8 @@ structure WorkStealing =
 
     (* create an instance of the scheduler for a vproc *)
       define @scheduler (workers : Arr.array, self : vproc / exh : exh) : PT.sched_act =
-	let nWorkers : int = Arr.@length(workers / exh)
-	let id : int = VProc.@id(self / exh)
-	let localDeque : local_deque = @get-local-deque(/ exh)
+	do @alloc-local-deque( / exh)
+        let localDeque : local_deque = @get-local-deque(/ exh)
       (* scheduler loop *)
 	cont switch (sign : PT.signal) =
         (* run a thread *)
@@ -215,18 +233,15 @@ structure WorkStealing =
       ;
 
     (* initialize the workers *)
-      define @init (/ exh : exh) : PT.unit =
+      define @init (/ exh : exh) : Arr.array =
       (* one worker per vproc *)
 	let nVProcs : int = VProc.@num-vprocs(/ exh)
-	let localDeques : any = ccall M_WSAllocLocalDeques(host_vproc, nVProcs)
         let workers : Arr.array = Arr.@array(nVProcs, $0 / exh)
 	fun f (i : int / exh : exh) : () =
             if I32Lte(i, nVProcs)
 	       then
-		let localDeque : any = ArrayLoadI64(localDeques, i)
-		let localDeque : local_deque = (local_deque)localDeque
                 let thiefInbox : thief_inbox = alloc(INBOX_EMPTY)
-                let worker : worker = alloc(localDeque, thiefInbox)
+                let worker : worker = alloc(NIL, NIL, thiefInbox)
                 do Arr.@update(workers, i, worker / exh)
                 apply f(I32Add(i, 1) / exh)
 	    else return()
@@ -237,7 +252,7 @@ structure WorkStealing =
 	let fls : FLS.fls = FLS.@get( / exh)
 	fun mkAct (self : vproc / exh : exh) : PT.sched_act = @scheduler(workers, self / exh)
 	do SchedulerUtils.@scheduler-startup(mkAct, fls, vps / exh)  
-	return(UNIT)
+	return(workers)
       ;
 
     (* pop from the tail *)
