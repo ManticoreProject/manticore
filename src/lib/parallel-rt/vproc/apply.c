@@ -12,6 +12,7 @@
 #include "scheduler.h"
 #include "heap.h"
 #include "atomic-ops.h"
+#include "work-stealing-local-deques.h"
 
 extern RequestCode_t ASM_Apply (VProc_t *vp, Addr_t cp, Value_t arg, Value_t ep, Value_t rk, Value_t ek);
 extern int ASM_Return;
@@ -79,6 +80,7 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 		*rp++ = &(vp->secondaryQHd);
 		*rp++ = &(vp->secondaryQTl);
 		*rp++ = &(vp->schedCont);
+		rp = M_WSAddLocalDequesToRoots(vp, rp);
 		*rp++ = 0;
 		MinorGC (vp, roots);
 	    }

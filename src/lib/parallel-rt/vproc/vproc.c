@@ -21,6 +21,7 @@
 #include "value.h"
 #include "scheduler.h"
 #include "inline-log.h"
+#include "work-stealing-local-deques.h"
 
 typedef struct {		/* data passed to VProcMain */
     VProc_t	*vp;		/* the host vproc */
@@ -112,6 +113,9 @@ void VProcInit (Options_t *opts)
 	MutexInit (&(vproc->lock));
 	CondInit (&(vproc->wait));
     }
+
+  /* initialize the work-stealing scheduler */
+    M_WSInit(NumVProcs);
 
   /* create nProcs-1 idle vprocs; the other vproc will run the initial Manticore 
    * thread.

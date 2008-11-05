@@ -5,38 +5,19 @@
  *
  * Local deques for the work stealing scheduler. 
  * 
- * To support in-place updates, we allocate these deques outside of the heap. Thus
- * we make the elements of the deque GC roots for local collections.
+ * NOTES:
+ *   - The local deque structures actually exist outside of the heap, but they contain
+ *     pointers to fibers in the local or global heaps. For this reason, we must treat
+ *     these elements are GC roots.
+ *   - We support multiple instances of the work stealing scheduler at run time. In particular, 
+ *     multiple workers may multiplex on a single vproc.
  */
 
-#include "manticore-rt.h"
-#include <stdio.h>
-#include <string.h>
-#include "vproc.h"
-#include "value.h"
-#include "heap.h"
-#include "../gc/gc-inline.h"
-
-#define DEQUE_LEN 1024
-
-/* local, work-stealing deque */
-typedef struct {
-  int hd;                             /* pointer to the head of the deque */
-  int tl;                             /* pointer to the tail of the deque */
-  Value_t elts[DEQUE_LEN];            /* memory for the deque */
-} WSLocalDeque_t;
-
-/* list of worker deques */
-struct WSLocalDeques_s {
-  WSLocalDeque_t* hd;                 /* local deque */
-  struct WSLocalDeques_s* tl;         /* rest of the list */
-  Value_t live;                       /* if this field is false, then the local deque is garbage */
-};
-
-typedef struct WSLocalDeque_s WSLocalDeques_t;
+#include "work-stealing-local-deques.h"
 
 /* one list of local deques per vproc */
-WSLocalDeques_t* globalLists[];
+WSLocalDeques_t** globalLists;
+
 
 /* \brief prune the dead local deques
  * \param localDeques list of local deques
@@ -45,7 +26,6 @@ WSLocalDeques_t* globalLists[];
  */
 static WSLocalDeques_t* PruneLocalDequesLoop (WSLocalDeques_t* localDeques, WSLocalDeques_t* pruned)
 {
-  Value_t live = localDeques->live;
   if (PtrToValue(localDeques) == M_NIL) {
     return pruned;
   } else if (localDeques->live == M_TRUE) {
@@ -59,7 +39,7 @@ static WSLocalDeques_t* PruneLocalDequesLoop (WSLocalDeques_t* localDeques, WSLo
     
     FREE(localDeques);
 
-    return PruneLocalDeques(tl, pruned);
+    return PruneLocalDequesLoop(tl, pruned);
   }
 }
 
@@ -69,18 +49,18 @@ static WSLocalDeques_t* PruneLocalDequesLoop (WSLocalDeques_t* localDeques, WSLo
  */
 static WSLocalDeques_t* PruneLocalDeques (int vprocId)
 {
-  /* TODO */  
+  return (globalLists[vprocId] = PruneLocalDequesLoop(globalLists[vprocId], NULL));
 }
 
 /*! \brief add the deque elements to the root set; at this point we prune out deques that are no longer live.
  *  \param vp the host vproc
  *  \param rp the root-set pointer
  */
-Value_t** M_WSAddLocalDequeRoots (VProc_t* vp, Value_t** rp)
+Value_t** M_WSAddLocalDequesToRoots (VProc_t* vp, Value_t** rp)
 {
   WSLocalDeques_t* globalList = PruneLocalDeques(vp->id);
 
-  while (globalList != M_NIL) {
+  while (PtrToValue(globalList) != M_NIL) {
     WSLocalDeque_t* localDeque = globalList->hd;
 
     for(int i = localDeque->hd; i < localDeque->tl; i++) {
@@ -88,7 +68,6 @@ Value_t** M_WSAddLocalDequeRoots (VProc_t* vp, Value_t** rp)
     }
 
     globalList = globalList->tl;
-
   }
 
   return rp;
@@ -99,9 +78,9 @@ Value_t** M_WSAddLocalDequeRoots (VProc_t* vp, Value_t** rp)
  * \param localDeque the local deque
  * \return entry in the global list
  */
-static WSLocalDeques* AddToGlobalList (int vprocId, WSLocalDeque_t* localDeque)
+static WSLocalDeques_t* AddToGlobalList (int vprocId, WSLocalDeque_t* localDeque)
 {
-  WSLocalDeques_t* globalList = NEW(WS_LocalDeques_t);
+  WSLocalDeques_t* globalList = NEW(WSLocalDeques_t);
 
   globalList->hd = localDeque;
   globalList->tl = globalLists[vprocId];
@@ -138,4 +117,35 @@ Value_t M_WSAllocLocalDeque (int vprocId)
   WSLocalDeques_t* localDeques = AddToGlobalList(vprocId, localDeque);
 
   return PtrToValue(localDeques);
+}
+
+/* \brief obtain the local deque at the head of the list
+ * \param localDeques list of local deques
+ * \return the local deque at the head of the list
+ */
+Value_t M_WSGetLocalDeque (WSLocalDeques_t* localDeques)
+{
+  assert(localDeques->live == M_TRUE);
+  return PtrToValue(localDeques->hd);
+}
+
+/* \brief free the local deque at the head of the list
+ * \param localDeques list of local deques
+ */
+void M_WSFreeLocalDeque (WSLocalDeques_t* localDeques)
+{
+  localDeques->live = M_FALSE;
+}
+
+/* \brief initialize the work-stealing infrastructure
+ * \param nVProcs the number of vprocs
+ */
+void M_WSInit (int nVProcs)
+{
+  /* allocate and initialize the global list of local deques */
+  globalLists = NEWVEC(WSLocalDeques_t*, nVProcs);
+
+  for (int i = 0; i < nVProcs; i++) {
+    globalLists[i] = NULL;
+  }
 }
