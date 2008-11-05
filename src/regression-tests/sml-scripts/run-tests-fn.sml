@@ -84,7 +84,7 @@ fun halt() = raise Fail "halt"
     val goalDirs = let
       fun ds d = U.dirsWithin (concat [U.dotdot ".", "/", d])
       in
-        ds "par" @ ds "seq"
+        ds "goals"
       end 
 (*  val goalDirs = U.dirsWithin (U.dotdot "." ^ "/phony") *)
     val goalDirs' = List.filter (not o (String.isPrefix ".") o OS.Path.file) goalDirs

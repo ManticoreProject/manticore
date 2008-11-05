@@ -1,0 +1,3 @@
+#! /bin/sh
+
+sml @SMLload=run-tests.x86-linux $1
