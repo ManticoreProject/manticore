@@ -26,7 +26,4 @@ fun filter' (pred, xs) = let
 
 val filteredNums = filter' (positive, nums)
 
-val _ = (Print.print (intListToString filteredNums);
-	      Print.print "\n")
-
-
+val _ = Print.printLn (intListToString filteredNums)
