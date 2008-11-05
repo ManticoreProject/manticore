@@ -82,13 +82,13 @@ fun halt() = raise Fail "halt"
     val dateTimeString = Date.toString d
     val title = "Manticore: Regression Test Results"
     val goalDirs = let
-      fun ds d = U.dirsWithin (concat [U.dotdot ".", "/", d])
+      fun ds d = U.dirsWithin (concat [U.dotdot (U.dotdot "."), "/", d])
       in
         ds "goals"
       end 
 (*  val goalDirs = U.dirsWithin (U.dotdot "." ^ "/phony") *)
     val goalDirs' = List.filter (not o (String.isPrefix ".") o OS.Path.file) goalDirs
-    fun goalHeader goalDir = HTML.h2CS ("goal", concat [P.file (P.dir goalDir), "/", P.file goalDir])
+    fun goalHeader goalDir = HTML.h2CS ("goal", P.file goalDir)
     fun fileHeader filename = HTML.h3CS ("testfile", P.file filename)
     fun processDir goalDir = let
       val h2 = goalHeader goalDir
@@ -106,9 +106,9 @@ fun halt() = raise Fail "halt"
     val htdoc = HTML.htdoc (title, ["../results.css"], body)
     in
       HTML.toFile (htdoc, 
-		   concat ["../reports/archive/", datestamp d, ".results.html"]);
+		   concat ["../../reports/archive/", datestamp d, ".results.html"]);
       HTML.toFile (htdoc, 
-		   "../reports/current/results.html");
+		   "../../reports/current/results.html");
       case localCopy 
         of NONE => ()
 	 | SOME file => HTML.toFile (htdoc, file)
