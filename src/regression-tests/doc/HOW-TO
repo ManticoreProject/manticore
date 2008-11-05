@@ -1,0 +1,83 @@
+HOW-TO
+
+This document describes how to use this regression test system.
+
+The regression tests are organized around goals. Each goal has its own
+directory under regression-tests/goals, and each goal directory
+contains (or should contain) a README file explaining the goal in
+question.
+
+At present, two goal directories are seq-hof and par-ptup. Their
+README files (subject to improvement, of course) are currently 
+
+  Tests of handwritten versions of common functional programming
+  combinators like map and filter.
+
+and
+
+  Some tests of Manticore programs that use parallel tuples.
+
+respectively.
+
+ADDING NEW GOALS AND TESTS
+
+To add a new test to the batch, first peruse the existing goal
+directories and their READMEs to see if your test fits into an
+existing category. If not, create a new directory under goals and a
+corresponding README.
+
+To create a new individual test, you must create two files: one called
+program.pml, and one called program.ok. The latter contains the expected
+results of the former.
+
+For the sake of argument, assume we'd like to test multiplication on
+parallel tuples. First we note this belongs in the existing directory
+goals/par-ptup. We save the following two files into par-ptup:
+
+  mult.pml
+
+    fun mult (m:int, n:int) = m*n 
+    val prod = mult (| 2, 3 |)
+    val _ = Print.printLn (itos prod)
+
+  mult.ok
+
+    6
+
+Then you can simply use the run-tests script (instructions
+follow). The program will pick up all the programs inside directories
+inside regression-tests/goals, so no further action needs to be taken.
+
+RUNNING THE TESTS
+
+There is a script in regression-tests/sml-scripts/bin called
+run-tests. Executing it will populate regression-tests/reports with
+new test results. Run this command with the name of a local file where
+you'd _also_ like the test result file to go. For example, I (Adam)
+run this command with
+
+  ./run-tests /home/adamshaw/MCResults/current/results.html
+
+Working hand-in-hand with NFS, I am then able to view the results on
+my local machine, which can't directly run the Manticore compiler
+(and conversely, the machine running the Manticore compiler can't run
+a web browser for me).
+
+Note you'll want the stylesheet results.css to be one directory up
+from the generated file so that it looks nice. (It will be legible
+even without it.) You can grab a copy of results.css from
+regression-tests/reports/.
+
+KNOWN ISSUES
+
+- I would like the test results to present the delta of the current
+test run and the previous one, since the regression tests should
+indicate to the developer whether they have improved or denigrated the
+compiler's functionality with respect to its prior state.
+
+- I intend to refactor this code so that the running of the tests and
+the generation of the html are not tightly coupled as they are
+now.
+
+- It might be worth considering whether backends other than HTML would
+be desirable.
