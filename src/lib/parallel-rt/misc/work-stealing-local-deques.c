@@ -45,6 +45,7 @@ WSLocalDeques_t* globalLists[];
  */
 static WSLocalDeques_t* PruneLocalDequesLoop (WSLocalDeques_t* localDeques, WSLocalDeques_t* pruned)
 {
+  Value_t live = localDeques->live;
   if (PtrToValue(localDeques) == M_NIL) {
     return pruned;
   } else if (localDeques->live == M_TRUE) {
