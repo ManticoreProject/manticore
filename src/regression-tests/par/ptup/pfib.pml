@@ -8,6 +8,5 @@ fun pfib (i : long) = (case i
 
 val s = ltos (pfib 26);
 
-val _ = print ("\npfib(26) is " ^ s ^ "\n");
+val _ = print ("pfib(26) is " ^ s ^ "\n")
 
-()
