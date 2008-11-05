@@ -30,13 +30,13 @@ typedef struct {
 struct WSLocalDeques_s {
   WSLocalDeque_t* hd;                 /* local deque */
   struct WSLocalDeques_s* tl;         /* rest of the list */
-  Bool_t live;                        /* if this field is false, then the local deque is garbage */
+  Value_t live;                       /* if this field is false, then the local deque is garbage */
 };
 
 typedef struct WSLocalDeque_s WSLocalDeques_t;
 
 /* one list of local deques per vproc */
-WSLocalDeques_t* globalLists[] = NULL;
+WSLocalDeques_t* globalLists[];
 
 /* \brief prune the dead local deques
  * \param localDeques list of local deques
@@ -45,7 +45,7 @@ WSLocalDeques_t* globalLists[] = NULL;
  */
 static WSLocalDeques_t* PruneLocalDequesLoop (WSLocalDeques_t* localDeques, WSLocalDeques_t* pruned)
 {
-  if (localDeques == M_NIL) {
+  if (PtrToValue(localDeques) == M_NIL) {
     return pruned;
   } else if (localDeques->live == M_TRUE) {
     WSLocalDeques_t* tl = localDeques->tl;
