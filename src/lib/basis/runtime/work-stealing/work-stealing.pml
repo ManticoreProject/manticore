@@ -68,7 +68,7 @@ structure WorkStealing =
         let workers : any = ThreadCapabilities.@get-from-fls(tag(workStealingWorker) / exh)
         let workers : Arr.array = (Arr.array)workers
         let id : int = VProc.@id(host_vproc / exh)
-        let worker : any = Arr.@sub(array, id / exh)
+        let worker : any = Arr.@sub(workers, id / exh)
 	return((worker)worker)
       ;
 
@@ -79,13 +79,13 @@ structure WorkStealing =
       ;
 
     (* allocate the local deque on the host vproc *)
-      define @alloc-local-deque (vprocId : int / exh : exh) : () =
-	let id : int = VProc.@id(self / exh)
-	let localDequeGlobalList : any = ccall M_WSAllocLocalDeque(vprocId)
+      define @alloc-local-deque ( / exh : exh) : () =
+	let id : int = VProc.@id(host_vproc / exh)
+	let localDequeGlobalList : any = ccall M_WSAllocLocalDeque(id)
 	let localDeque : local_deque = ccall M_WSGetLocalDeque(localDequeGlobalList)
 	let worker : worker = @get-worker(/ exh)
 	do UPDATE(WORKER_LOCAL_DEQUE_OFF, worker, localDeque)
-	do UPDATE(WORKER_LOCAL_DEQUE_GLOBAL_LIST_OFF, worker, localDeque)
+	do UPDATE(WORKER_LOCAL_DEQUE_GLOBAL_LIST_OFF, worker, localDequeGlobalList)
 	return()
       ;
 
@@ -241,7 +241,7 @@ structure WorkStealing =
             if I32Lte(i, nVProcs)
 	       then
                 let thiefInbox : thief_inbox = alloc(INBOX_EMPTY)
-                let worker : worker = alloc(NIL, NIL, thiefInbox)
+                let worker : worker = alloc(M_NIL, M_NIL, thiefInbox)
                 do Arr.@update(workers, i, worker / exh)
                 apply f(I32Add(i, 1) / exh)
 	    else return()
