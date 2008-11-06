@@ -5,6 +5,7 @@ Group
   signature COMPILER
   structure MC
   structure OCaml
+  structure Tests
   functor   RunTestsFn
   structure Main
 
@@ -18,5 +19,6 @@ is
   compiler.sig
   mc.sml
   ocaml.sml
+  tests.sml
   run-tests-fn.sml
   main.sml
