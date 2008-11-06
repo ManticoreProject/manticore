@@ -18,7 +18,7 @@ structure Tests = struct
 		version   : string}
 
   datatype outcome 
-    = CompileFailed
+    = DidNotCompile
     | TestFailed
     | TestSucceeded
 
@@ -47,6 +47,18 @@ structure Tests = struct
         (* end case *))
     in
       read [] before TextIO.closeIn inStream
+    end
+
+(* scrape : string -> string list -> string * string list *)
+  fun scrape tagname ss = let
+    fun loop ([], _) = raise Fail ("unmatched tag " ^ tagname)
+      | loop (curr::more, acc) = if curr = concat ["</", tagname, ">"]
+	  			 then (String.concatWith "\n" (rev acc), more)
+				 else loop (more, curr::acc)
+    in
+      if hd ss = concat ["<", tagname, ">"]
+      then loop (tl ss, [])
+      else raise Fail "malformed"
     end
 
 (*
@@ -80,14 +92,45 @@ Date.toString:
        | _ => raise Fail ("couldn't parse the following as a stamp: " ^ s)
       (* end case *))
 
-  fun outcomeToString CompileFailed = "CompileFailed"
+  fun outcomeToString DidNotCompile = "DidNotCompile"
     | outcomeToString TestFailed    = "TestFailed"
     | outcomeToString TestSucceeded = "TestSucceeded"
 
-  fun outcomeFromString "CompileFailed" = CompileFailed
+  fun outcomeFromString "DidNotCompile" = DidNotCompile
     | outcomeFromString "TestFailed"    = TestFailed
     | outcomeFromString "TestSucceeded" = TestSucceeded
     | outcomeFromString other = raise Fail ("unrecognized outcome: " ^ other)
+
+  fun readmeToString (README {timestamp, goalName, text}) =
+    String.concatWith "\n" ["<readme>",
+			    "<timestamp>",
+			    format timestamp,
+			    "</timestamp>",
+			    "<goalName>",
+			    goalName,
+			    "</goalName>",
+			    "<text>",
+			    text,
+			    "</text>",
+			    "</readme>/n"]
+
+  fun readmeFromString s = 
+   (case String.tokens (fn c => c = #"\n") s
+      of ("<readme>"::
+	  "<timestamp>" :: d :: "</timestamp>" ::
+	  "<goalName>"  :: g :: "</goalName>" ::
+	  more) => let
+            val (text, r) = scrape "text" more
+	    in
+	      case r 
+	        of ["</readme>"] => README {timestamp = unformat d,
+					    goalName = d,
+					    text = text}
+		 | _ => raise Fail ("unexpected end to readme:\n" ^ 
+				    (String.concatWith "\n" r))
+             end
+       | _ => raise Fail ("couldn't parse this readme:\n" ^ s)
+      (* end case *))
 
   fun test_resultToString (TR info) = let
     val {stamp, goalName, testName, outcome, expected, actual} = info
@@ -112,55 +155,53 @@ Date.toString:
 			      "</test_result>\n"]
     end
 
-(* scrape : string -> string list -> string option *)
-  local
-    fun scrape tagname ss = let
-      fun loop ([], _) = raise Fail ("unmatched tag " ^ tagname)
-	| loop (curr::more, acc) = if curr = concat ["</", tagname, ">"]
-	  			   then (String.concatWith "\n" (rev acc), more)
-				   else loop (more, curr::acc)
-      in
-        if hd ss = concat ["<", tagname, ">"]
-	then loop (tl ss, [])
-	else raise Fail "malformed"
-      end
-  in
-  (* test_resultFromString : string -> test_result *)
-    fun test_resultFromString s =
-     (case String.tokens (fn c => c = #"\n") s
-        of ("<test_result>"::
-	    "<stamp>" :: d :: v :: "</stamp>" ::
-	    "<goalName>" :: g :: "</goalName>" ::
-	    "<testName>" :: t :: "</testName>" ::
-	    "<outcome>" :: oc :: "</outcome>" ::
-	    more) => let
-              val (exp, r)  = scrape "expected" more
-	      val (act, r') = scrape "actual" r
-              in
-	        case r'
-		  of ["</test_result>"] => 
-		       TR {stamp = {timestamp = unformat d, version = v},
-			   goalName = g,
-			   testName = t,
-			   outcome = outcomeFromString oc,
-			   expected = exp,
-			   actual = act}
-		   | _ => raise Fail ("unexpected end to test_result:\n" ^ 
+(* test_resultFromString : string -> test_result *)
+  fun test_resultFromString s =
+   (case String.tokens (fn c => c = #"\n") s
+      of ("<test_result>"::
+	  "<stamp>" :: d :: v :: "</stamp>" ::
+	  "<goalName>" :: g :: "</goalName>" ::
+	  "<testName>" :: t :: "</testName>" ::
+	  "<outcome>" :: oc :: "</outcome>" ::
+	  more) => let
+            val (exp, r)  = scrape "expected" more
+	    val (act, r') = scrape "actual" r
+            in
+	      case r'
+	        of ["</test_result>"] => 
+		     TR {stamp = {timestamp = unformat d, version = v},
+			 goalName = g,
+			 testName = t,
+			 outcome = outcomeFromString oc,
+			 expected = exp,
+			 actual = act}
+		 | _ => raise Fail ("unexpected end to test_result:\n" ^ 
 				      (String.concatWith "\n" r'))
-              end
-	 | _ => raise Fail ("couldn't parse this test_result:\n" ^ s)
-        (* end case *)) 
-  end (* local *)
+             end
+       | _ => raise Fail ("couldn't parse this test_result:\n" ^ s)
+      (* end case *)) 
 
-(* writeTestResult : test_result * string -> unit *)
-  fun writeTestResult (tr, outfile) = let
-    val s = test_resultToString tr
-    val outStream = TextIO.openOut outfile
+(* write : ('a -> string) -> ('a * string) -> 'a *)
+  fun write stringify (x, outfile) = let
+    val s = stringify x
+    val outstream = TextIO.openOut outfile
     in
-      TextIO.output (outStream, s) before TextIO.closeOut outStream
+      TextIO.output (outstream, s) before TextIO.closeOut outstream
     end
 
+(* read : (string -> 'a) -> string -> 'a *)
+  fun read parse = parse o readFile
+
+(* writeReadme : readme * string -> unit *)
+  val writeReadme = write readmeToString
+
+(* readReadme : string -> readme *)
+  val readReadme  = read readmeFromString
+
+(* writeTestResult : test_result * string -> unit *)
+  val writeTestResult = write test_resultToString
+
 (* readTestResult : string -> test_result *)
-  val readTestResult = test_resultFromString o readFile
+  val readTestResult = read test_resultFromString
 
 end
