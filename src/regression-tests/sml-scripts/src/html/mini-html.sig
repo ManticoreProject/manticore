@@ -48,7 +48,7 @@ signature MINI_HTML = sig
 
   val comment : string -> html
 
-  val sequence : html list -> html
+  val seq : html list -> html
 
   val toString : html -> string
 
@@ -59,6 +59,12 @@ signature MINI_HTML = sig
  *   h1H  : term -> term                (H for html)
  *   h1CS : class_name * string -> term (C for class, S for string)
  *   h1CH : class_name * term -> term   (C for class, H for html)
+ *
+ * Where lists are more natural, as in tr, for example, the convention is
+ *   tr   : string list -> term
+ *   trH  : term list -> term
+ *   trCS : class_name * (string list) -> term
+ *   trCH : class_name * (term list) -> term
  *)
 
   val h1   : string -> html
@@ -112,15 +118,15 @@ signature MINI_HTML = sig
   val blockquoteCS : class_name * string -> html
   val blockquoteCH : class_name * html -> html
 
-  val table   : string -> html
-  val tableH  : html -> html
-  val tableCS : class_name * string -> html
-  val tableCH : class_name * html -> html
+  val table   : string list -> html
+  val tableH  : html list   -> html
+  val tableCS : class_name * (string list) -> html
+  val tableCH : class_name * (html list )  -> html
 
-  val tr   : string -> html
-  val trH  : html -> html
-  val trCS : class_name * string -> html
-  val trCH : class_name * html -> html
+  val tr   : string list -> html
+  val trH  : html list -> html
+  val trCS : class_name * (string list) -> html
+  val trCH : class_name * (html list) -> html
 
   val th   : string -> html
   val thH  : html -> html

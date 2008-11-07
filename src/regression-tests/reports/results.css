@@ -43,7 +43,7 @@ h3.revision {
   font-weight : normal;
 }
 
-p.results, table.results {
+p.results {
   margin-left : 40px;
 }
 
@@ -56,6 +56,6 @@ p.results table {
 }
 
 p.results table td, p.results table th {
-  border : thin solid black;
+  border  : thin solid black;
   padding : 5px;
 }

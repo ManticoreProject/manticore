@@ -55,6 +55,9 @@ structure Utils = struct
 (* dotdot : string -> string *)
   fun dotdot d = OS.Path.dir (FS.fullPath d)
 
+(* dotdotdot : string -> string *)
+  fun dotdotdot d = OS.Path.dir (OS.Path.dir (FS.fullPath d))
+
 (* filesWithin : (string -> bool) -> string -> string list *)
   fun filesWithin pred fullname = let
     val tmp = FS.fullPath "."
@@ -113,14 +116,47 @@ structure Utils = struct
 
 (* textOf : string -> string list *)
   fun textOf filename = let
-    val inStream = TextIO.openIn filename
+    val instream = TextIO.openIn filename
     fun read acc =
-     (case TextIO.inputLine inStream
+     (case TextIO.inputLine instream
         of NONE => rev acc
 	 | SOME s => read (s :: acc)
         (* end case *))
     in
-      read []
+      read [] before TextIO.closeIn instream
+    end
+
+(* currentRevision : unit -> string *)
+(* Gets the current svn revision of the Manticore project. *)
+(* Returns a string like "Revision: 2420\n". *)
+(* This should be run from within the Manticore tree. *)
+  fun currentRevision () = let
+    val tmpfile = freshTmp (OS.FileSys.fullPath ".", "revision")
+    val cmd = "svn info | grep Revision > " ^ tmpfile
+    val _ = sys cmd
+    val revisions = List.filter (String.isPrefix "Revision") (textOf tmpfile)
+    in 
+     (case revisions
+        of [] => "no revision number available"
+	 | [r] => r
+	 | rs => raise Fail (String.concatWith ";" ("too many revisions available\n" :: rs))
+        (* end case *))
+     before rm tmpfile
+    end    
+
+(* alphasort : ('a -> string) -> 'a list -> 'a list *)
+(* Alphabetical sorting, A to Z. *)
+  fun alphasort getKey = let
+    fun greaterThan (x1, x2) = String.> (getKey x1, getKey x2)
+    in
+      ListMergeSort.sort greaterThan
+    end
+
+(* antialphasort : ('a -> string) -> 'a list -> 'a list *)
+  fun antialphasort getKey = let
+    fun lte (x1, x2) = String.<= (getKey x1, getKey x2)
+    in
+      ListMergeSort.sort lte
     end
 
 end

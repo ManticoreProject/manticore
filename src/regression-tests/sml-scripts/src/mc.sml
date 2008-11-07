@@ -3,6 +3,6 @@ structure MC : COMPILER = struct
   val ext = "pml"
   fun mkExe infile = "a.out"
   fun mkCmd infile = concat ["mc ", infile]
-  fun detritus infile = []
+  fun detritus infile = [OS.Path.base infile ^ ".s"]
 end
 

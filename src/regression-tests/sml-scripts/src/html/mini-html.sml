@@ -39,7 +39,7 @@ structure MiniHTML : MINI_HTML = struct
 
   type html = term
 
-  val sequence = Sequence
+  val seq = Sequence
 
   fun escapeChar (char, escText) s = let
     val cs = explode s
@@ -95,6 +95,16 @@ structure MiniHTML : MINI_HTML = struct
 			  fn h => mk tagName (NONE, h),
 			  fn (c, s) => mk tagName (SOME c, str s),
 			  fn (c, h) => mk tagName (SOME c, h))
+
+(* mkListMakers : string -> (string list -> term) *
+ *                          (term list -> term) *
+ *                          (class_name * (string list) -> term) *
+ *                          (class_name * (term list) -> term)
+ *)
+  fun mkListMakers tagName = (fn ss => mk tagName (NONE, Sequence (map str ss)),
+			      fn hs => mk tagName (NONE, Sequence hs),
+			      fn (c, ss) => mk tagName (SOME c, Sequence (map str ss)),
+			      fn (c, hs) => mk tagName (SOME c, Sequence hs))
 			   
 
 (* The convention followed below is
@@ -118,8 +128,8 @@ structure MiniHTML : MINI_HTML = struct
   val (p, pH, pCS, pCH) = mkMakers "p"
   val (blockquote, blockquoteH, blockquoteCS, blockquoteCH) = mkMakers "blockquote"
 
-  val (table, tableH, tableCS, tableCH) = mkMakers "table"
-  val (tr, trH, trCS, trCH) = mkMakers "tr"
+  val (table, tableH, tableCS, tableCH) = mkListMakers "table"
+  val (tr, trH, trCS, trCH) = mkListMakers "tr"
   val (td, tdH, tdCS, tdCH) = mkMakers "td"
   val (th, thH, thCS, thCH) = mkMakers "th"
   val (caption, captionH, captionCS, captionCH) = mkMakers "caption"

@@ -1,12 +1,15 @@
 Group 
 
   structure MiniHTML
+  structure Locations
   structure Utils
   signature COMPILER
   structure MC
   structure OCaml
   structure Tests
   functor   RunTestsFn
+  structure ArchiveReport
+  structure ReportHTML
   structure Main
 
 is
@@ -15,10 +18,13 @@ is
   $/smlnj-lib.cm
 
   html/sources.cm
+  locations.sml
   utils.sml  
   compiler.sig
   mc.sml
   ocaml.sml
   tests.sml
   run-tests-fn.sml
+  archive-report.sml
+  report-html.sml
   main.sml

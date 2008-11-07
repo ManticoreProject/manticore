@@ -81,3 +81,7 @@ now.
 
 - It might be worth considering whether backends other than HTML would
 be desirable.
+
+- Paths and filenames are not yet all abstracted away from particular
+syntactic conventions. i.e., I should be using OS.Path.joinBaseExt
+instead of (b ^ "." ^ e).
