@@ -34,10 +34,11 @@ struct WSLocalDeques_s {
 
 typedef struct WSLocalDeques_s WSLocalDeques_t;
 
-Value_t** M_WSAddLocalDequesToRoots (VProc_t* vp, Value_t** rp);
 Value_t M_WSAllocLocalDeque (int vprocId);
 Value_t M_WSGetLocalDeque (WSLocalDeques_t* localDeques);
 void M_WSFreeLocalDeque (WSLocalDeques_t* localDeques);
+
+Value_t** M_WSAddLocalDequesToRoots (VProc_t* vp, Value_t** rp);
 void M_WSInit (int nVProcs);
 
 #endif /* _WORK_STEALING_LOCAL_DEQUES_H_ */

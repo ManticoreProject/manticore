@@ -49,7 +49,7 @@ static WSLocalDeques_t* PruneLocalDequesLoop (WSLocalDeques_t* localDeques, WSLo
  */
 static WSLocalDeques_t* PruneLocalDeques (int vprocId)
 {
-  return (globalLists[vprocId] = PruneLocalDequesLoop(globalLists[vprocId], NULL));
+  return (globalLists[vprocId] = PruneLocalDequesLoop(globalLists[vprocId], M_NIL));
 }
 
 /*! \brief add the deque elements to the root set; at this point we prune out deques that are no longer live.
@@ -146,6 +146,6 @@ void M_WSInit (int nVProcs)
   globalLists = NEWVEC(WSLocalDeques_t*, nVProcs);
 
   for (int i = 0; i < nVProcs; i++) {
-    globalLists[i] = NULL;
+    globalLists[i] = M_NIL;
   }
 }
