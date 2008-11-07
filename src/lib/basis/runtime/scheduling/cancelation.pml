@@ -94,13 +94,11 @@ structure Cancelation =
              return($0)
       (* run the wrapped fiber *)
         cont dispatch (wrapper : PT.sched_act, k : PT.fiber) =
+             do @set-active(c / exh)
              if SELECT(CANCELED_OFF, c)
                 then 
-		(* the fiber has been canceled *)
 		 throw terminate()
 	     else
-		(* run the fiber *)
-		 do @set-active(c / exh)
                  do Control.@run(wrapper, k / exh)
                  return($0)
       (* scheduler action that polls for cancelation *)
