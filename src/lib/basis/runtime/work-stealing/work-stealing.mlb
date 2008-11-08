@@ -24,4 +24,5 @@
     deque-th.pml
     cilk5-work-stealing.pml
     work-stealing.pml
+    test-work-stealing-swp.pml
   end  

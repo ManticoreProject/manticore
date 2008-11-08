@@ -63,7 +63,9 @@ Value_t** M_WSAddLocalDequesToRoots (VProc_t* vp, Value_t** rp)
   while (PtrToValue(globalList) != M_NIL) {
     WSLocalDeque_t* localDeque = globalList->hd;
 
-    for(int i = localDeque->hd; i < localDeque->tl; i++) {
+    //    printf("hd=%d tl=%d\n", localDeque->hd, localDeque->tl);
+    for(Word_t i = localDeque->hd; i < localDeque->tl; i++) {
+      //      printf("localDeque=%p elt=%p i=%d\n", localDeque, localDeque->elts[i], i);
       *rp++ = &(localDeque->elts[i]);
     }
 
@@ -98,7 +100,10 @@ static WSLocalDeque_t* AllocLocalDeque ()
 {
   WSLocalDeque_t* deque = NEW(WSLocalDeque_t);
 
-  deque->tl = deque->hd = 0;
+  deque->tl = 0;
+  deque->hd = 0;
+
+  //  printf("tl==%p elts=%p\n", &(deque->tl), &(deque->elts));
 
   for (int i = 0; i < DEQUE_LEN; i++) {
     deque->elts[i] = M_NIL;

@@ -20,9 +20,9 @@
 
 /* local, work-stealing deque */
 typedef struct {
-  int hd;                             /* pointer to the head of the deque */
-  int tl;                             /* pointer to the tail of the deque */
-  Value_t elts[DEQUE_LEN];            /* memory for the deque */
+  Word_t hd;                              /* pointer to the head of the deque */
+  Word_t tl;                              /* pointer to the tail of the deque */
+  Value_t elts[DEQUE_LEN];                /* memory for the deque */
 } WSLocalDeque_t;
 
 /* list of worker deques */

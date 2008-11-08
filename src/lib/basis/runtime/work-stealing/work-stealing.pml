@@ -21,6 +21,8 @@
 #define INBOX_EMPTY                $0
 #define INBOX_STEAL_FAILED         $1
 
+#define NIL_FIBER                   (PT.fiber)enum(0):any
+
 structure WorkStealing =
   struct
 
@@ -39,8 +41,8 @@ structure WorkStealing =
       typedef deque_elts = any;
       typedef thief_inbox = ![PT.fiber];   (* shared location for passing stolen fibers *)
       typedef local_deque = ![
-                       int,                (* hd - points at the head fiber *)
-		       int,                (* tl - points one above the tail fiber *)
+                       long,               (* hd - points at the head fiber *)
+		       long,               (* tl - points one above the tail fiber *)
 		       deque_elts          (* array of fibers *)
                     ];
     (* each worker has a local deque and an inbox for stolen fibers *)
@@ -96,43 +98,63 @@ structure WorkStealing =
       ;
 
     (* number of threads in the local deque (assuming that the head was not stolen) *)
-      define @local-deque-sz (localDeque : local_deque / exh : exh) : int =
-        return(I32Sub(SELECT(LOCAL_DEQUE_HD, localDeque), SELECT(LOCAL_DEQUE_TL, localDeque)))
+      define @local-deque-sz (localDeque : local_deque / exh : exh) : long =
+        return(I64Sub(SELECT(LOCAL_DEQUE_HD, localDeque), SELECT(LOCAL_DEQUE_TL, localDeque)))
+      ;
+
+    (* update a location in the local deque *)
+      define @deque-update (localDeque : local_deque, i : long, elt : PT.fiber / exh : exh) : () =
+	let elts : addr(any) = &LOCAL_DEQUE_ELTS(localDeque)
+	let x : bool = ArrayStoreI64(elts, i, elt)
+	return()
+      ;
+
+    (* subscript from the local deque *)
+      define @deque-sub (localDeque : local_deque, i : long / exh : exh) : PT.fiber =
+	let elts : addr(any) = &LOCAL_DEQUE_ELTS(localDeque)
+        let elt : any = ArrayLoadI64(elts, i)
+	return((PT.fiber)elt)
       ;
 
       define @is-local-deque-empty (localDeque : local_deque / exh : exh) : bool =
-	let sz : int = @local-deque-sz(localDeque / exh)
-	return(I32Lt(sz, 1))
+	let sz : long = @local-deque-sz(localDeque / exh)
+	return(I64Lt(sz, 1))
       ;
 
     (* pop from the tail of the local deque *)
       define @local-deque-pop-tl (localDeque : local_deque / exh : exh) : PT.fiber =
-        let elts : deque_elts = SELECT(LOCAL_DEQUE_ELTS, localDeque)
-        let tl : int = I32Sub(SELECT(LOCAL_DEQUE_TL, localDeque), 1)
-        let x : any = ArrayLoadI64(elts, tl)
+        let tl : long = I64Sub(SELECT(LOCAL_DEQUE_TL, localDeque), 1)
+        let x : any = @deque-sub(localDeque, tl / exh)
         do UPDATE(LOCAL_DEQUE_TL, localDeque, tl)
-        let b : bool = ArrayStoreI64(elts, tl, nil)
-        do assert(NotEqual(x, nil))
-        return(x)
-      ;
-
-    (* pop from the head of the local deque *)
-      define @local-deque-pop-hd (localDeque : local_deque / exh : exh) : PT.fiber =
-	let elts : deque_elts = SELECT(LOCAL_DEQUE_ELTS, localDeque)
-        let hd : int = SELECT(LOCAL_DEQUE_HD, localDeque)
-        let x : any = ArrayLoadI64(elts, hd)
-        do UPDATE(LOCAL_DEQUE_HD, localDeque, I32Add(hd, 1))
-        let b : bool = ArrayStoreI64(elts, hd, nil)
+        do @deque-update(localDeque, tl, NIL_FIBER / exh)
         do assert(NotEqual(x, nil))
         return(x)
       ;
 
     (* push on the tail of the local deque *)
       define @local-deque-push-tl (localDeque : local_deque, elt : PT.fiber / exh : exh) : () =
-        let tl : int = SELECT(LOCAL_DEQUE_TL, localDeque)
-        do UPDATE(LOCAL_DEQUE_TL, localDeque, I32Add(tl, 1))
-        let x : bool = ArrayStoreI64(SELECT(LOCAL_DEQUE_ELTS, localDeque), tl, elt)
+        do assert(NotEqual(localDeque, nil))
+	do assert(NotEqual(elt, nil))
+        let tl : long = SELECT(LOCAL_DEQUE_TL, localDeque)
+(*
+do ccall M_PrintPtr("localDeque", localDeque)
+do ccall M_PrintPtr("tl", &LOCAL_DEQUE_TL(localDeque))
+do ccall M_PrintLong(SELECT(LOCAL_DEQUE_TL, localDeque))
+do print_ppt()
+*)
+        do @deque-update(localDeque, tl, elt / exh)
+        do UPDATE(LOCAL_DEQUE_TL, localDeque, I64Add(tl, 1))
         return()
+      ;
+
+    (* pop from the head of the local deque *)
+      define @local-deque-pop-hd (localDeque : local_deque / exh : exh) : PT.fiber =
+        let hd : long = SELECT(LOCAL_DEQUE_HD, localDeque)
+        let x : any = @deque-sub(localDeque, hd / exh)
+        do UPDATE(LOCAL_DEQUE_HD, localDeque, I64Add(hd, 1))
+        do @deque-update(localDeque, hd, NIL_FIBER / exh)
+        do assert(NotEqual(x, nil))
+        return(x)
       ;
 
     (* put the stolen fiber in the thief's inbox *)
@@ -156,9 +178,9 @@ structure WorkStealing =
       define @request-steal (vp : vproc, inbox : thief_inbox / exh : exh) : O.option =
         cont thiefK (x : PT.unit) =
           let localDeque : local_deque = @get-local-deque(/ exh)
-          let sz : int = @local-deque-sz(localDeque / exh)
+          let sz : long = @local-deque-sz(localDeque / exh)
           let stolenK : O.option = 
-            if I32Eq(sz, 0)
+            if I64Eq(sz, 0)
 	       then return(O.NONE)
 	    else
 	      let stolenK : PT.fiber = @local-deque-pop-hd(localDeque / exh)
@@ -187,7 +209,7 @@ structure WorkStealing =
 	let id : int = VProc.@id(host_vproc / exh)
         let nWorkers : int = Arr.@length(workers / exh)
 	let victim : int = Rand.@in-range-int(0, nWorkers / exh)
-	do if I32Eq(victim, id)
+	do if I64Eq(victim, id)
 	      then throw exit()
 	   else return()
         let victimVP : vproc = ccall GetNthVProc(victim) 
