@@ -80,6 +80,8 @@ static int DoToken (void* ctx, int type, const JSON_value* value)
 	for (i = n-1;  i >= 0;  i--)
 	    values[i] = PopValue (info);
 	assert (info->stack[info->tsp].tag == MARK_TAG);
+      /* restore the previous state */
+	info->st = info->stack[info->tsp].u.integer;
       /* put object onto stack */
 	info->stack[info->tsp].tag = JSON_array;
 	info->stack[info->tsp].u.array.length = n;
@@ -110,6 +112,8 @@ static int DoToken (void* ctx, int type, const JSON_value* value)
 	    fields[n-i-1].label = info->stack[info->tsp--].u.string;
 	}
 	assert (info->stack[info->tsp].tag == MARK_TAG);
+      /* restore the previous state */
+	info->st = info->stack[info->tsp].u.integer;
       /* put object onto stack */
 	info->stack[info->tsp].tag = JSON_object;
 	info->stack[info->tsp].u.obj.length = n;
@@ -156,8 +160,8 @@ JSON_Value_t *JSON_ParseFile (const char *file)
 {
     JSON_config config;
     struct JSON_parser_struct* jc = 0;
-    ParserInfo_t info;
-    
+    ParserInfo_t info = { .st = START, .tsp = -1 };
+
     init_JSON_config(&config);
     
     config.depth                  = 20;
@@ -168,7 +172,7 @@ JSON_Value_t *JSON_ParseFile (const char *file)
     
     jc = new_JSON_parser(&config);
     
-    FILE* input = stdin;
+    FILE* input = fopen(file, "r");
     for (int count = 0; input ; ++count) {
         int next_char = fgetc(input);
         if (next_char <= 0) {
@@ -228,7 +232,7 @@ JSON_Value_t *JSON_GetField (JSON_Value_t *v, const char *name)
 {
     if ((v == 0) || (v->tag != JSON_object)) return 0;
     for (int i = 0;  i < v->u.obj.length;  i++) {
-	if (strcmp(v->u.obj.elems[i].label, name) == 0)
+	if (strcasecmp(v->u.obj.elems[i].label, name) == 0)
 	    return v->u.obj.elems[i].data;
     }
     return 0;

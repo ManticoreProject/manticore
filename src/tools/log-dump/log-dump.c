@@ -13,7 +13,10 @@
 #include <sys/stat.h>
 #include <assert.h>
 #include "log-file.h"
-#include "log-info.h"
+#include "log-desc.h"
+
+/* temporary */
+#define logDescFile	"/Users/jhr/Work/Manticore/manticore/src/gen/log-gen/log-events.json"
 
 /* object allocation in the C heap */
 #define MALLOC(sz)		malloc(sz)
@@ -39,7 +42,7 @@ Event_t			*Events;	/* an array of all of the events */
 int			NumEvents;	/* number of events */
 
 static void LoadLogFile (const char *file);
-static void PrintEvent (FILE *out, Event_t *evt);
+static void PrintEvent (LogFileDesc_t *lfd, FILE *out, Event_t *evt);
 static void Usage (int sts);
 
 int main (int argc, const char **argv)
@@ -80,13 +83,19 @@ int main (int argc, const char **argv)
 	}
     }
 
+    LogFileDesc_t *logFileDesc = LoadLogDesc (logDescFile);
+    if (logFileDesc == 0) {
+	fprintf(stderr, "unable to load \"%s\"\n", logDescFile);
+	exit (1);
+    }
+
     LoadLogFile (logFile);
 
     fprintf(out, "%d/%d processors; %d events; clock = %s\n",
 	Hdr->nVProcs, Hdr->nCPUs, NumEvents, Hdr->clockName);
 
     for (int i = 0;  i < NumEvents;  i++)
-	PrintEvent (out, &(Events[i]));
+	PrintEvent (logFileDesc, out, &(Events[i]));
 
 }
 
@@ -143,11 +152,11 @@ static void LoadLogFile (const char *file)
 	fprintf(stderr, "bogus magic number\n");
 	exit (1);
     }
-    if (Hdr->version != LOG_VERSION) {
-	fprintf(stderr, "wrong version = %#x; expected %#x\n",
-	    Hdr->version, LOG_VERSION);
-	exit (1);
-    }
+//    if (Hdr->version != LOG_VERSION) {
+//	fprintf(stderr, "wrong version = %#x; expected %#x\n",
+//	    Hdr->version, LOG_VERSION);
+//	exit (1);
+//    }
     if (Hdr->bufSzB != LOGBLOCK_SZB) {
 	fprintf(stderr, "bogus block size\n");
 	exit (1);
@@ -189,21 +198,7 @@ static void LoadLogFile (const char *file)
 
 }
 
-/* the event table */
-typedef struct {
-    const char		*tag;	/* name of the event */
-    LogEventKind_t	kind;	/* kind: independent/start/stop */
-    const char		*desc;	/* description */
-} EventInfo_t;
-
-#define DEF_EVENT(ID, NARGS, KIND, DESC) \
-	[ID] = { .tag = #ID, .kind = KIND, .desc = DESC },	\
-
-EventInfo_t	Info[NumLogEvents] = {
-#include "log-events.h"
-};
-
-static void PrintEvent (FILE *out, Event_t *evt)
+static void PrintEvent (LogFileDesc_t *lfd, FILE *out, Event_t *evt)
 {
 
     fprintf(out, "[%4d.%06d] ",
@@ -211,8 +206,9 @@ static void PrintEvent (FILE *out, Event_t *evt)
 	(int)(evt->timestamp % 1000000));
     for (int i = 0;  i < evt->vpId;  i++)
 	fprintf(out, " %20s", " ");
-    const char *tag = Info[evt->event].tag;
+    const char *tag = lfd->events[evt->event]->name;
     char buf[21];
+    int n = strlen(tag);
     strncpy(buf, tag, (n > 20) ? 20 : n);
     buf[(n > 20) ? 20 : n] = '\0';
     fprintf (out, "%-20s\n", buf);

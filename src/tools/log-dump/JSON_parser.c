@@ -66,7 +66,6 @@ SOFTWARE.
 #include <string.h>
 
 #include "JSON_parser.h"
-#include "ConvertUTF.h"
 
 #define true  1
 #define false 0
