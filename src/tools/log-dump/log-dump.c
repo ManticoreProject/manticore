@@ -213,7 +213,6 @@ static void PrintEvent (FILE *out, Event_t *evt)
 	fprintf(out, " %20s", " ");
     const char *tag = Info[evt->event].tag;
     char buf[21];
-    int n = strlen(tag) - 3;	/* strip off the "Evt" suffix */
     strncpy(buf, tag, (n > 20) ? 20 : n);
     buf[(n > 20) ? 20 : n] = '\0';
     fprintf (out, "%-20s\n", buf);
