@@ -38,7 +38,7 @@ CPPFLAGS =	-I. -I../../include
 
 TARGET =	log-dump
 
-SRCS =		log-dump.c JSON_parser.c
+SRCS =		log-dump.c load-log-desc.c json.c JSON_parser.c
 OBJS =		$(patsubst %.c,%.o,$(SRCS))
 
 build:		$(TARGET)
