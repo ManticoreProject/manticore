@@ -4,6 +4,10 @@
  * All rights reserved.
  *
  * A simple program for dummping out a sorted history from a log file.
+ *
+ * TODO: check version
+ *	 make log-description-file a command-line argument
+ *	 config support for log-description-file path
  */
 
 #include "manticore-config.h"
