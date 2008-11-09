@@ -15,7 +15,7 @@ functor PMergesortFn (
      structure R : ROPES
 
   (* Sort a rope with ordered elements. For ropes of n elements, this operation has O(n*log^3 n) 
-   * work and O(log^3 n) depth.
+   * work and O(log^4 n) depth.
    *)
      val pMergeSort : K.ord_key R.rope -> K.ord_key R.rope
 
