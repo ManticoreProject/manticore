@@ -15,20 +15,14 @@ signature ROPES = sig
   val empty       : 'a rope
   val isEmpty     : 'a rope -> bool
   val isLeaf      : 'a rope -> bool
-  val singleton   : 'a -> 'a rope
-  val ropeLen     : 'a rope -> int
-  val ropeDepth   : 'a rope -> int
+  val length      : 'a rope -> int
+  val depth       : 'a rope -> int
   val concat      : 'a rope * 'a rope -> 'a rope
   val balance     : 'a rope -> 'a rope
-  val smartConcat : 'a rope * 'a rope -> 'a rope
-  val subrope     : 'a rope * int * int -> 'a rope
-  val leaves      : 'a rope -> 'a rope list (* actually a leaf list *)
   val sub         : 'a rope * int -> 'a
   val splitAt     : 'a rope * int -> ('a rope * 'a rope)
 
   val toList      : 'a rope -> 'a list
   val fromList    : 'a list -> 'a rope
-
-  val toString    : ('a -> string) -> 'a rope -> string
 
 end

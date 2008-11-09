@@ -1,5 +1,9 @@
 Group
 
+	functor PMergesortFn
+	functor PMergesortWithSeqBcFn
+	structure TestPMergesort
+
 is
 
 	$/basis.cm
@@ -7,3 +11,5 @@ is
 
 	ropes-sig.sml
 	pmergesort-fn.sml
+	pmergesort-with-seq-bc-fn.sml
+	test-pmergesort.sml

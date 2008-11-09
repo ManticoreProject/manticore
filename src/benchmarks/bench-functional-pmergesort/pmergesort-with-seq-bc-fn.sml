@@ -1,14 +1,22 @@
-(* pmergesort-fn.sml
+(* pmergesort-with-seq-bc-fn.sml
  *
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Purely functional parallel mergesort.
+ * Purely functional parallel mergesort. This algorithm takes advantage of the rope
+ * data structure to choose a suitable sequential cutoff.
  *)
 
-functor PMergesortFn (
+functor PMergesortWithSeqBcFn (
+
     structure K : ORD_KEY
     structure R : ROPES
+
+  (* sequential merge *)
+    val sMerge  : K.ord_key list * K.ord_key list -> K.ord_key list
+  (* sequential sort *)
+    val sSort   : K.ord_key list -> K.ord_key list
+
   ) : sig
 
      structure K : ORD_KEY
@@ -45,7 +53,10 @@ functor PMergesortFn (
 
   (* merge two sorted collections *)
     fun pMerge (xs, ys) =
-	  if R.length xs < R.length ys
+	  if R.isLeaf xs andalso R.isLeaf ys
+	     then (* no parallelism to find here *)
+	      R.fromList(sMerge(R.toList xs, R.toList ys))
+	  else if R.length xs < R.length ys
 	     then pMerge(ys, xs)
 	  else if R.length xs = 0 orelse R.length ys = 0
 	     then xs
@@ -64,7 +75,11 @@ functor PMergesortFn (
 	    end
 
     fun pMergeSort xs =
-	  if R.length xs <= 1
+	  if R.isLeaf xs
+	     then
+	      (* no parallelism to find here *)
+	      R.fromList(sSort(R.toList xs))
+	  else if R.length xs <= 1
 	     then xs
 	  else let
 	     val (xsL, xsR) = R.splitAt(xs, R.length xs div 2)
