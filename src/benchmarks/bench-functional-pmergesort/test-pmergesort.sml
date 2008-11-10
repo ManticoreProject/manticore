@@ -4,6 +4,7 @@ structure TestPMergesort =
     structure FauxRope : ROPES =
       struct
         type 'a rope = 'a list
+	type 'a leaf = 'a list
 	val maxLeafSize = 1
 	val empty = []
 	val isEmpty = List.null
@@ -14,8 +15,8 @@ structure TestPMergesort =
 	fun balance r = r
 	val sub = List.nth
 	fun splitAt (r, i) = (List.take(r, i), List.drop(r, i))
-	fun toList r = r
-	fun fromList r = r 
+	fun toLeaf r = r
+	fun fromLeaf r = r 
       end
 
     structure S = PMergesortFn(

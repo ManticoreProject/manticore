@@ -1,28 +1,36 @@
 (* ropes-sig.sml
  *
- * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
  * A prototype implementation of ropes in SML.
- * N.B. Not directly used in the compiler.
  *)
 
-signature ROPES = sig
+signature ROPES = 
+  sig
 
-  type 'a rope
+    type 'a rope
+    type 'a leaf
 
-  val maxLeafSize : int
-  val empty       : 'a rope
-  val isEmpty     : 'a rope -> bool
-  val isLeaf      : 'a rope -> bool
-  val length      : 'a rope -> int
-  val depth       : 'a rope -> int
-  val concat      : 'a rope * 'a rope -> 'a rope
-  val balance     : 'a rope -> 'a rope
-  val sub         : 'a rope * int -> 'a
-  val splitAt     : 'a rope * int -> ('a rope * 'a rope)
+  (* O(c)-time operations *)
 
-  val toList      : 'a rope -> 'a list
-  val fromList    : 'a list -> 'a rope
+    val maxLeafSize : int
+    val empty       : 'a rope
+    val isEmpty     : 'a rope -> bool
+    val isLeaf      : 'a rope -> bool
+    val length      : 'a rope -> int
+    val depth       : 'a rope -> int
 
-end
+  (* O(log n)-time operations *)
+  
+    val concat      : 'a rope * 'a rope -> 'a rope
+    val sub         : 'a rope * int -> 'a
+  (* given a rope r and an index i, split the rope into r[0, ..., i-1] and r[i, ..., length r] *)
+    val splitAt     : 'a rope * int -> ('a rope * 'a rope)
+
+  (* O(n)-time operations *)
+
+    val toLeaf      : 'a rope -> 'a leaf
+    val fromLeaf    : 'a leaf -> 'a rope
+
+  end
