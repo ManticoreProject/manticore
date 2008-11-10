@@ -63,3 +63,7 @@ p.results table td, p.results table th {
   border  : thin solid black;
   padding : 5px;
 }
+
+th {
+  text-align : left;
+}

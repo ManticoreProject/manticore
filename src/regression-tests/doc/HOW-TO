@@ -52,6 +52,11 @@ Programs without observable effects -- in other words, those whose ok
 files are empty -- are not recommended for tests, although they will
 flow through the testing process without trouble.
 
+If there is no "ok file" for a given test, the user will be given a
+warning at the console when the tests are run, and the test result and
+corresponding HTML report will indicate a missing ok file for the test
+in question.
+
 RUNNING THE TESTS
 
 There is a script in regression-tests/sml-scripts/bin called

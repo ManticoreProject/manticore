@@ -6,19 +6,6 @@ structure Main = struct
 (* sys : string -> OS.Process.status *)
   val sys = OS.Process.system
 
-(* main : string -> unit *)
-  fun main (progname, [localFile]) = 
-       (R.main (U.currentRevision (), 
-		SOME (OS.FileSys.fullPath localFile));
-	OS.Process.success)
-    | main (progname, []) = 
-       (R.main (U.currentRevision (),
-		NONE);
-        OS.Process.success)
-    | main _ = 
-       (print "usage: run-tests [LOCALFILE]\n";
-	OS.Process.failure)
-
 (* main : string * string list -> OS.Process.status *)
   fun main (progname, files) = let
     val rpt   = R.run ()
@@ -30,6 +17,9 @@ structure Main = struct
       OS.Process.success 
     end
 
+end
+
+(*
   fun foo () = let
     val rpt = R.run ()
     val htm = ReportHTML.mkReport rpt
@@ -37,5 +27,4 @@ structure Main = struct
       MiniHTML.toFile (htm, "/home/adamshaw/MCResults/current/foo.html");
       ArchiveReport.report rpt
     end
-
-end
+*)

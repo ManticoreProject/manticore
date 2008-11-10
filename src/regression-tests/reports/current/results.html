@@ -1,158 +1,82 @@
 <html>
  <head>
-  <title>Manticore: Regression Test Results</title>
+  <title>Manticore: Regression Test Results Mon Nov 10 13:31:32 2008</title>
   <link type="text/css" rel="stylesheet" href="../results.css">
  </head>
  <body>
   <h1>Manticore: Regression Test Results</h1>
-  <h2 class="datetime">Wed Nov  5 16:38:55 2008</h2>
-  <h3 class="revision">Revision: 2597
-</h3>
-  <div class="goal" id="seq-datatypes">
-   <h2 class="goal">seq-datatypes</h2>
-   <p class="README">Tests of homemade datatypes.
+  <h2 class="datetime">Mon Nov 10 13:31:32 2008</h2>
+  <h3 class="revision">Revision: 2623</h3>
+  <div class="goal" id="par-pval">
+   <h2 class="goal">par-pval</h2>
+   <p class="readme">Tests of pval.
 </p>
-   <h3 class="testfile">option.pml</h3>
-   <p class="results">Compilation failed.</p>
-   <h3 class="testfile">dt-bug1.pml</h3>
-   <p class="results">Test succeeded.</p>
-   <h3 class="testfile">dt00.pml</h3>
-   <p class="results">Test succeeded.</p>
-   <h3 class="testfile">dt01.pml</h3>
-   <p class="results">Test succeeded.</p>
-   <h3 class="testfile">dt-bug.pml</h3>
-   <p class="results">Test succeeded.</p>
-  </div>
-  <div class="goal" id="par-parray">
-   <h2 class="goal">par-parray</h2>
-   <p class="README"></p>
-   <h3 class="testfile">psubs.pml</h3>
-   <p class="results">Compilation failed.</p>
-   <h3 class="testfile">ranges.pml</h3>
-   <p class="results">Compilation failed.</p>
-   <h3 class="testfile">smvm.pml</h3>
-   <p class="results">Compilation failed.</p>
-  </div>
-  <div class="goal" id="seq-loops">
-   <h2 class="goal">seq-loops</h2>
-   <p class="README">Test of recursive functions that do the work of loops.
-
-
-</p>
-   <h3 class="testfile">pi.pml</h3>
-   <p class="results">Test succeeded.</p>
-   <h3 class="testfile">nested-loop.pml</h3>
-   <p class="results">Test succeeded.</p>
-  </div>
-  <div class="goal" id="seq-hof">
-   <h2 class="goal">seq-hof</h2>
-   <p class="README">Tests of handwritten versions of common functional programming combinators like map and filter.
-</p>
-   <h3 class="testfile">map.pml</h3>
-   <p class="results">Test failed.</p>
+   <h2 class="testfile">tree-add.pml</h2>
+   <p class="results">
+    <table class="recent">
+     <tr>
+      <th>Mon Nov 10 13:31:32 2008 (Revision: 2623)</th>
+      <th>DidNotCompile</th>
+     </tr>
+     <tr>
+      <td>Mon Nov 10 13:28:23 2008 (Revision: 2623)</td>
+      <td>DidNotCompile</td>
+     </tr>
+     <tr>
+      <td>Mon Nov 10 13:27:38 2008 (Revision: 2623)</td>
+      <td>DidNotCompile</td>
+     </tr>
+     <tr>
+      <td>Mon Nov 10 13:17:59 2008 (Revision: 2623)</td>
+      <td>DidNotCompile</td>
+     </tr>
+     <tr>
+      <td>Mon Nov 10 12:38:04 2008 (Revision: 2620)</td>
+      <td>DidNotCompile</td>
+     </tr>
+    </table>
+   </p>
+   <h2 class="testfile">what-gives.pml</h2>
+   <p class="results">
+    <table class="recent">
+     <tr>
+      <th>Mon Nov 10 13:31:32 2008 (Revision: 2623)</th>
+      <th>TestFailed</th>
+     </tr>
+     <tr>
+      <td>Mon Nov 10 13:28:23 2008 (Revision: 2623)</td>
+      <td>TestFailed</td>
+     </tr>
+     <tr>
+      <td>Mon Nov 10 13:27:38 2008 (Revision: 2623)</td>
+      <td>TestFailed</td>
+     </tr>
+     <tr>
+      <td>Mon Nov 10 13:17:59 2008 (Revision: 2623)</td>
+      <td>DidNotCompile</td>
+     </tr>
+    </table>
+   </p>
    <p class="results">
     <table class="results">
      <tr>
-      <th>expected results</th>
-      <th>actual results</th>
+      <th>expected</th>
+      <th>actual</th>
      </tr>
      <tr>
       <td>
        <code>
-        false false false false true true true 
-
+        *** No ok file! ***
        </code>
       </td>
       <td>
        <code>
-        
+        What gives?
        </code>
       </td>
      </tr>
     </table>
    </p>
-   <h3 class="testfile">filter.pml</h3>
-   <p class="results">Test succeeded.</p>
-  </div>
-  <div class="goal" id="seq-basics">
-   <h2 class="goal">seq-basics</h2>
-   <p class="README">Some basic programs testing the basic scoping and pattern-matching capabilities of the language.
-</p>
-   <h3 class="testfile">tak.pml</h3>
-   <p class="results">Test succeeded.</p>
-   <h3 class="testfile">pat.pml</h3>
-   <p class="results">Test succeeded.</p>
-  </div>
-  <div class="goal" id="seq-arrays">
-   <h2 class="goal">seq-arrays</h2>
-   <p class="README"></p>
-   <h3 class="testfile">subscripts.pml</h3>
-   <p class="results">Compilation failed.</p>
-   <h3 class="testfile">tabulate.pml</h3>
-   <p class="results">Test succeeded.</p>
-  </div>
-  <div class="goal" id="par-ptup">
-   <h2 class="goal">par-ptup</h2>
-   <p class="README">Some tests of Manticore programs that use parallel tuples.
-</p>
-   <h3 class="testfile">ptree-add-float.pml</h3>
-   <p class="results">Compilation failed.</p>
-   <h3 class="testfile">ptree-add.pml</h3>
-   <p class="results">Compilation failed.</p>
-   <h3 class="testfile">pfib.pml</h3>
-   <p class="results">Compilation failed.</p>
-  </div>
-  <div class="goal" id="par-pval">
-   <h2 class="goal">par-pval</h2>
-   <p class="README">Tests of pval.
-</p>
-  </div>
-  <div class="goal" id="seq-curried">
-   <h2 class="goal">seq-curried</h2>
-   <p class="README">Simple curried function test.
-</p>
-   <h3 class="testfile">fun.pml</h3>
-   <p class="results">Test succeeded.</p>
-  </div>
-  <div class="goal" id="seq-polymorphism">
-   <h2 class="goal">seq-polymorphism</h2>
-   <p class="README">Tests of polymorphism.
-</p>
-   <h3 class="testfile">poly1.pml</h3>
-   <p class="results">Test succeeded.</p>
-   <h3 class="testfile">poly2.pml</h3>
-   <p class="results">Test succeeded.</p>
-   <h3 class="testfile">poly3.pml</h3>
-   <p class="results">Test succeeded.</p>
-   <h3 class="testfile">poly4.pml</h3>
-   <p class="results">Test succeeded.</p>
-   <h3 class="testfile">poly5.pml</h3>
-   <p class="results">Compilation failed.</p>
-  </div>
-  <div class="goal" id="seq-divide-and-conquer">
-   <h2 class="goal">seq-divide-and-conquer</h2>
-   <p class="README">Tests of common divide-and-conquer algorithms.
-</p>
-   <h3 class="testfile">quicksort.pml</h3>
-   <p class="results">Test succeeded.</p>
-  </div>
-  <div class="goal" id="par-cml">
-   <h2 class="goal">par-cml</h2>
-   <p class="README">Tests of fundamental CML functionality in Manticore.
-</p>
-   <h3 class="testfile">cml-test1.pml</h3>
-   <p class="results">Compilation failed.</p>
-   <h3 class="testfile">choose.pml</h3>
-   <p class="results">Compilation failed.</p>
-   <h3 class="testfile">cml-mergesort.pml</h3>
-   <p class="results">Compilation failed.</p>
-  </div>
-  <div class="goal" id="par-por">
-   <h2 class="goal">par-por</h2>
-   <p class="README">Obsolete?
-</p>
-   <h3 class="testfile">p-or-test.pml</h3>
-   <p class="results">Compilation failed.</p>
   </div>
  </body>
 </html>
