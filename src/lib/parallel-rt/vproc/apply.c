@@ -68,8 +68,11 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 	      /* request a minor GC; the protocol is that
 	       * the stdCont register holds the return address (which is
 	       * not in the heap) and that the stdEnvPtr holds the GC root.
+	       *
+	       * NOTE: the root set needs to be at least as large as the local roots and
+	       * the roots coming from the local deque.
 	       */
-		Value_t *roots[16], **rp;
+	        Value_t *roots[9 + WORK_STEALING_LOCAL_DEQUE_MAX_ELTS], **rp;
 		rp = roots;
 		*rp++ = &(vp->stdEnvPtr);
 		*rp++ = &(vp->currentFG);

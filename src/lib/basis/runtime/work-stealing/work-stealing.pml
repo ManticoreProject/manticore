@@ -174,7 +174,9 @@ structure WorkStealing =
 	    let kOpt : O.option = @steal(worker, workers / exh)
 	    case kOpt
 	     of O.NONE => throw steal()
-	      | O.SOME (k : PT.fiber) => throw run(k)
+	      | O.SOME (k : PT.fiber) => 
+		do print_msg("successful steal")
+		throw run(k)
 	    end
         (* handle a signal *)
 	  case sign

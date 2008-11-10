@@ -49,7 +49,7 @@ static WSLocalDeques_t* PruneLocalDequesLoop (WSLocalDeques_t* localDeques, WSLo
  */
 static WSLocalDeques_t* PruneLocalDeques (int vprocId)
 {
-  return (globalLists[vprocId] = PruneLocalDequesLoop(globalLists[vprocId], M_NIL));
+  return (globalLists[vprocId] = PruneLocalDequesLoop(globalLists[vprocId], ValueToPtr(M_NIL)));
 }
 
 /*! \brief add the deque elements to the root set; at this point we prune out deques that are no longer live.
@@ -65,7 +65,7 @@ Value_t** M_WSAddLocalDequesToRoots (VProc_t* vp, Value_t** rp)
 
     //    printf("hd=%d tl=%d\n", localDeque->hd, localDeque->tl);
     for(Word_t i = localDeque->hd; i < localDeque->tl; i++) {
-      //      printf("localDeque=%p elt=%p i=%d\n", localDeque, localDeque->elts[i], i);
+      //printf("localDeque=%p elt=%p i=%d root=%p\n", localDeque, localDeque->elts[i], i, rp);
       *rp++ = &(localDeque->elts[i]);
     }
 
@@ -105,7 +105,7 @@ static WSLocalDeque_t* AllocLocalDeque ()
 
   //  printf("tl==%p elts=%p\n", &(deque->tl), &(deque->elts));
 
-  for (int i = 0; i < DEQUE_LEN; i++) {
+  for (int i = 0; i < WORK_STEALING_LOCAL_DEQUE_LEN; i++) {
     deque->elts[i] = M_NIL;
   }
 
@@ -151,6 +151,6 @@ void M_WSInit (int nVProcs)
   globalLists = NEWVEC(WSLocalDeques_t*, nVProcs);
 
   for (int i = 0; i < nVProcs; i++) {
-    globalLists[i] = M_NIL;
+    globalLists[i] = ValueToPtr(M_NIL);
   }
 }

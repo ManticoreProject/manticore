@@ -16,13 +16,18 @@
 #include "vproc.h"
 #include "value.h"
 
-#define DEQUE_LEN 1024
+/* max size for the local deque */
+#define WORK_STEALING_LOCAL_DEQUE_LEN               1024
+/* maximum number of elements that can exist in the deque at one time, i.e., at all times it must be the case that
+ *   hd - tl <= WORK_STEALING_LOCAL_DEQUE_MAX_ELTS
+ */
+#define WORK_STEALING_LOCAL_DEQUE_MAX_ELTS          128
 
 /* local, work-stealing deque */
 typedef struct {
-  Word_t hd;                              /* pointer to the head of the deque */
-  Word_t tl;                              /* pointer to the tail of the deque */
-  Value_t elts[DEQUE_LEN];                /* memory for the deque */
+  Word_t hd;                                           /* pointer to the head of the deque */
+  Word_t tl;                                           /* pointer to the tail of the deque */
+  Value_t elts[WORK_STEALING_LOCAL_DEQUE_LEN];         /* memory for the deque */
 } WSLocalDeque_t;
 
 /* list of worker deques */
