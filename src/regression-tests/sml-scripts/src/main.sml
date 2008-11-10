@@ -18,13 +18,3 @@ structure Main = struct
     end
 
 end
-
-(*
-  fun foo () = let
-    val rpt = R.run ()
-    val htm = ReportHTML.mkReport rpt
-    in
-      MiniHTML.toFile (htm, "/home/adamshaw/MCResults/current/foo.html");
-      ArchiveReport.report rpt
-    end
-*)
