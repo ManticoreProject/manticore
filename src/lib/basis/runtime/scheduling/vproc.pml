@@ -118,9 +118,10 @@ structure VProc =
       ;
 
     (* send a high-priority messenger fiber to the vproc *)
-      define @send-messenger (vp : vproc, k : PT.fiber / exh : exh) : () = 
+      define @send-messenger (vp : vproc, k : PT.fiber / exh : exh) : () =         
+	do VProcQueue.@enqueue-on-vproc(vp, MESSENGER_FLS, k / exh)
         do @preempt-remote(vp / exh)
-	VProcQueue.@enqueue-on-vproc(vp, MESSENGER_FLS, k / exh)
+	return()
       ;
 
     )

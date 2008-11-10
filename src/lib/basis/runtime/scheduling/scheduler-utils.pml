@@ -146,7 +146,9 @@ structure SchedulerUtils =
 		do vpstore(ATOMIC, self, true)
 	      (* install the scheduler on remote vprocs *)
 		do VProc.@for-others(spawnOn / exh)
-		Barrier.@barrier(nVProcs, barrier / exh)
+		do Barrier.@barrier(nVProcs, barrier / exh)
+                do vpstore (ATOMIC, host_vproc, false)
+	        return()
 
 	(* make the scheduler instance for the host vproc *)
 	 let act : PT.sched_act = apply mkAct (host_vproc / exh)

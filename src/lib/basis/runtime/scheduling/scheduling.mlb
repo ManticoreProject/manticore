@@ -16,6 +16,7 @@
     vproc-queue.pml
     control.pml
     vproc.pml
+    vproc-chan.pml
     scheduler-utils.pml
     cancelation.pml
     set-once-mem.pml

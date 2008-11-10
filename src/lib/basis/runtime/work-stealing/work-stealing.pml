@@ -16,10 +16,6 @@
 
 #define WORKER_LOCAL_DEQUE_OFF              0
 #define WORKER_LOCAL_DEQUE_GLOBAL_LIST_OFF  1
-#define WORKER_THIEF_INBOX_OFF              2
-
-#define INBOX_EMPTY                $0
-#define INBOX_STEAL_FAILED         $1
 
 #define NIL_FIBER                   (PT.fiber)enum(0):any
 
@@ -39,62 +35,45 @@ structure WorkStealing =
       extern void M_WSFreeLocalDeque (void*);
 
       typedef deque_elts = any;
-      typedef thief_inbox = ![PT.fiber];   (* shared location for passing stolen fibers *)
       typedef local_deque = ![
                        long,               (* hd - points at the head fiber *)
 		       long,               (* tl - points one above the tail fiber *)
 		       deque_elts          (* array of fibers *)
                     ];
-    (* each worker has a local deque and an inbox for stolen fibers *)
+    (* worker in the work-stealing pool *)
       typedef worker = ![
                 local_deque,               (* local deque *)
-		any,                       (* pointer into the global list of local deques (used for
-					    * explicitly freeing the local deque) *)
-		thief_inbox                (* thief inbox *)
+		any                        (* pointer into the global list of local deques (used for
+					    * explicitly de-allocating the local deque) *)
               ];
 
-    (* empty state *)
-      define @inbox-empty (/ exh : exh) : PT.fiber =
-	let e : any = INBOX_EMPTY
-	return((PT.fiber)e)
-      ;
-
-    (* failed state *)
-      define @inbox-steal-failed (/ exh : exh) : PT.fiber =
-	let e : any = INBOX_STEAL_FAILED
-	return((PT.fiber)e)
+    (* find the local worker in the array of workers *)
+      define @find-local-worker (workers : Arr.array / exh : exh) : worker =
+	let id : int = VProc.@id(host_vproc / exh)
+	let worker : any = Arr.@sub(workers, id / exh)
+	return((worker)worker)
       ;
 
     (* get the pointer to the current worker *)
-      define @get-worker (/ exh : exh) : worker =
+      define @get-local-worker (/ exh : exh) : worker =
         let workers : any = ThreadCapabilities.@get-from-fls(tag(workStealingWorker) / exh)
-        let workers : Arr.array = (Arr.array)workers
-        let id : int = VProc.@id(host_vproc / exh)
-        let worker : any = Arr.@sub(workers, id / exh)
-	return((worker)worker)
+        @find-local-worker((Arr.array)workers / exh)
       ;
 
     (* get the pointer to the local deque *)
       define @get-local-deque (/ exh : exh) : local_deque =
-	let worker : worker = @get-worker(/ exh)
+	let worker : worker = @get-local-worker(/ exh)
 	return(SELECT(WORKER_LOCAL_DEQUE_OFF, worker))
       ;
 
     (* allocate the local deque on the host vproc *)
-      define @alloc-local-deque ( / exh : exh) : () =
+      define @alloc-local-deque (worker : worker / exh : exh) : local_deque =
 	let id : int = VProc.@id(host_vproc / exh)
 	let localDequeGlobalList : any = ccall M_WSAllocLocalDeque(id)
 	let localDeque : local_deque = ccall M_WSGetLocalDeque(localDequeGlobalList)
-	let worker : worker = @get-worker(/ exh)
 	do UPDATE(WORKER_LOCAL_DEQUE_OFF, worker, localDeque)
 	do UPDATE(WORKER_LOCAL_DEQUE_GLOBAL_LIST_OFF, worker, localDequeGlobalList)
-	return()
-      ;
-
-    (* get the thief's inbox *)
-      define @get-inbox (/ exh : exh) : thief_inbox =
-	let worker : worker = @get-worker(/ exh)
-	return(SELECT(WORKER_THIEF_INBOX_OFF, worker))
+	return(localDeque)
       ;
 
     (* number of threads in the local deque (assuming that the head was not stolen) *)
@@ -157,70 +136,38 @@ do print_ppt()
         return(x)
       ;
 
-    (* put the stolen fiber in the thief's inbox *)
-      define @place-in-inbox (inbox : thief_inbox, stolenK : O.option / exh : exh) : () =
-	do case stolenK
-	    of O.NONE => 
-	       let f : PT.fiber = @inbox-steal-failed(/ exh)
-	       do UPDATE(0, inbox, f)
-	       return()
-	     | O.SOME(k : PT.fiber) =>
-	       let k : PT.fiber = promote(k)
-	       do UPDATE(0, inbox, k)
-	       return()
-	    end
-	return()
-      ;
-
-    (* send a messenger that will attempt to steal from a victim worker. we place the stolen fiber
-     * in the thief's inbox. 
-     *)
-      define @request-steal (vp : vproc, inbox : thief_inbox / exh : exh) : O.option =
-        cont thiefK (x : PT.unit) =
-          let localDeque : local_deque = @get-local-deque(/ exh)
-          let sz : long = @local-deque-sz(localDeque / exh)
-          let stolenK : O.option = 
-            if I64Eq(sz, 0)
+    (* send a messenger that will attempt to steal from a victim worker. *)
+      define @request-steal (victimVP : vproc / exh : exh) : O.option =
+	let ch : VProcChan.chan = VProcChan.@new(/ exh)
+      (* the thief attempts to deque from the victim's local deque. *)
+	fun thief (x : unit / exh : exh) : O.option =
+	    let localDeque : local_deque = @get-local-deque(/ exh)
+	    let sz : long = @local-deque-sz(localDeque / exh)
+	    if I64Eq(sz, 0)
 	       then return(O.NONE)
 	    else
-	      let stolenK : PT.fiber = @local-deque-pop-hd(localDeque / exh)
-	      return(O.SOME(stolenK))
-          do @place-in-inbox(inbox, stolenK / exh)
-	  let _ : PT.unit = Control.@stop(/ exh)
-	  return(O.NONE)
-        do VProc.@send-messenger(vp, thiefK / exh)
-      (* busy wait for a response from the thief *)
-        fun wait () : O.option =
-	    if Equal(#0(inbox), INBOX_EMPTY)
-	       then apply wait()
-	    else if Equal(#0(inbox), INBOX_STEAL_FAILED)
-	       then return(O.NONE)
-	    else return(O.SOME(#0(inbox)))
-        let k : O.option = apply wait ()
-      (* prepare the inbox for the next steal attempt *)
-        let e : PT.fiber = @inbox-empty(/ exh)
-        do UPDATE(0, inbox, e)
-        return(k)
+		let stolenK : PT.fiber = @local-deque-pop-hd(localDeque / exh)
+		return(O.SOME(stolenK))
+      (* we run the thief on the victim vproc *)
+	do VProcChan.@messenger(ch, victimVP, thief / exh)
+	let stolenK : any = VProcChan.@recv-spin(ch / exh)
+	return((O.option)stolenK)
       ;
 
     (* attempt to steal a thread  *)
-      define @steal (workers : Arr.array / exh : exh) : O.option =
-	cont exit () = return(O.NONE)
-	let id : int = VProc.@id(host_vproc / exh)
+      define @steal (worker : worker, workers : Arr.array / exh : exh) : O.option =
         let nWorkers : int = Arr.@length(workers / exh)
 	let victim : int = Rand.@in-range-int(0, nWorkers / exh)
-	do if I64Eq(victim, id)
-	      then throw exit()
-	   else return()
         let victimVP : vproc = ccall GetNthVProc(victim) 
-        let worker : worker = Arr.@sub(workers, victim / exh)
-        @request-steal(victimVP, SELECT(WORKER_THIEF_INBOX_OFF,worker) / exh)
+        if NotEqual(host_vproc, victimVP)
+	   then @request-steal(victimVP / exh)
+	else return(O.NONE)
       ;
 
     (* create an instance of the scheduler for a vproc *)
       define @scheduler (workers : Arr.array, self : vproc / exh : exh) : PT.sched_act =
-	do @alloc-local-deque( / exh)
-        let localDeque : local_deque = @get-local-deque(/ exh)
+        let worker : worker = @find-local-worker(workers / exh)
+	let localDeque : local_deque = @alloc-local-deque(worker / exh)        
       (* scheduler loop *)
 	cont switch (sign : PT.signal) =
         (* run a thread *)
@@ -230,7 +177,7 @@ do print_ppt()
 	    throw exh(e)
         (* steal a thread from a remote vproc *)
 	  cont steal (switch : PT.sched_act) =
-	    let kOpt : O.option = @steal(workers / exh)
+	    let kOpt : O.option = @steal(worker, workers / exh)
 	    case kOpt
 	     of O.NONE => throw steal(switch)
 	      | O.SOME (k : PT.fiber) => throw run(switch, k)
@@ -260,10 +207,9 @@ do print_ppt()
 	let nVProcs : int = VProc.@num-vprocs(/ exh)
         let workers : Arr.array = Arr.@array(nVProcs, $0 / exh)
 	fun f (i : int / exh : exh) : () =
-            if I32Lte(i, nVProcs)
+            if I32Lt(i, nVProcs)
 	       then
-                let thiefInbox : thief_inbox = alloc(INBOX_EMPTY)
-                let worker : worker = alloc(M_NIL, M_NIL, thiefInbox)
+                let worker : worker = alloc(M_NIL, M_NIL)
                 do Arr.@update(workers, i, worker / exh)
                 apply f(I32Add(i, 1) / exh)
 	    else return()

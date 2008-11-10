@@ -32,6 +32,12 @@ structure InitFLS =
             return((any)deques)
 	let c0 : TC.capability = TC.@init(tag(cilk5WorkStealing), init / exh)
         let fls : FLS.fls = TC.@add(fls, c0 / exh)
+      (* swp work stealing *)
+        fun init (x : PT.unit / exh : PT.exh) : any =
+	    let workers : Array64.array = WorkStealing.@init( / exh)
+            return((any)workers)
+	let c0 : TC.capability = TC.@init(tag(workStealingWorker), init / exh)
+        let fls : FLS.fls = TC.@add(fls, c0 / exh)
 
 	return(fls)
       ;
