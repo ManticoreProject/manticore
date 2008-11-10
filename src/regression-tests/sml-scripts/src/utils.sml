@@ -126,9 +126,21 @@ structure Utils = struct
       read [] before TextIO.closeIn instream
     end
 
+(* stripTrailingNewline : string -> string *)
+(* Strips the trailing newline character from a string, *)
+(* iff that's what the last character is. *)
+  fun stripTrailingNewline s = let
+    val cs = explode s
+    val sc = rev cs
+    in
+      case sc
+        of #"\n"::t => implode (rev t)
+         | _ => s
+    end
+
 (* currentRevision : unit -> string *)
 (* Gets the current svn revision of the Manticore project. *)
-(* Returns a string like "Revision: 2420\n". *)
+(* Returns a string like "Revision: 2420". *)
 (* This should be run from within the Manticore tree. *)
   fun currentRevision () = let
     val tmpfile = freshTmp (OS.FileSys.fullPath ".", "revision")
@@ -138,7 +150,7 @@ structure Utils = struct
     in 
      (case revisions
         of [] => "no revision number available"
-	 | [r] => r
+	 | [r] => stripTrailingNewline r
 	 | rs => raise Fail (String.concatWith ";" ("too many revisions available\n" :: rs))
         (* end case *))
      before rm tmpfile

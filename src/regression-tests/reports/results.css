@@ -3,12 +3,16 @@ body {
   background-color : dodgerblue;
 }
 
+h1, h2.datetime, h3.revision, div.goal {
+  margin-left      : 30px;
+  margin-right     : 30px;
+}
+
 div.goal {
   background-color : white;
-  margin-left : 10px;
-  margin-bottom : 20px;
-  padding : 10px;
-  border : thin solid black;
+  margin-bottom    : 20px;
+  padding          : 10px;
+  border           : thin solid black;
 }
 
 h1, h2, h3 {
@@ -19,8 +23,6 @@ h1 {
   text-align : center;
   background-color : black;
   color : whitesmoke;
-  margin-left : 30px;
-  margin-right : 30px;
 }
 
 h2.goal {
@@ -29,7 +31,9 @@ h2.goal {
 }
 
 h2.datetime {
-  text-align : center;
+  text-align       : center;
+  background-color : lightblue;
+  border           : thin solid black;
 }
 
 h3.testfile {
@@ -40,7 +44,7 @@ h3.testfile {
 
 h3.revision {
   text-align  : center;
-  font-weight : normal;
+  // font-weight : normal;
 }
 
 p.results {
