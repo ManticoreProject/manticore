@@ -20,14 +20,14 @@ h1, h2, h3 {
 }
 
 h1 {
-  text-align : center;
+  text-align       : center;
   background-color : black;
-  color : whitesmoke;
+  color            : whitesmoke;
 }
 
 h2.goal {
-  background-color : dodgerblue;
-  border : thin solid black;
+  background-color : lightblue;
+  border           : thin solid black;
 }
 
 h2.datetime {
@@ -38,12 +38,12 @@ h2.datetime {
 
 h3.testfile {
   // background-color : lightblue;
-  margin-left : 20px;
-  font-style : italic;
+  margin-left      : 20px;
+  font-style       : italic;
 }
 
 h3.revision {
-  text-align  : center;
+  text-align : center;
   // font-weight : normal;
 }
 
@@ -65,5 +65,7 @@ p.results table td, p.results table th {
 }
 
 th {
-  text-align : left;
+  background-color : yellow;
+  font-weight      : normal;
+  text-align       : left;
 }
