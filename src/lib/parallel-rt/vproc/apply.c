@@ -72,7 +72,7 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 	       * NOTE: the root set needs to be at least as large as the local roots and
 	       * the roots coming from the local deque.
 	       */
-	        Value_t *roots[9 + WORK_STEALING_LOCAL_DEQUE_MAX_ELTS], **rp;
+	        Value_t *roots[9 + WORK_STEALING_LOCAL_DEQUE_MAX_ROOTS], **rp;
 		rp = roots;
 		*rp++ = &(vp->stdEnvPtr);
 		*rp++ = &(vp->currentFG);

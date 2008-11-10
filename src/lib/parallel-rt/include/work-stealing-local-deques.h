@@ -23,6 +23,14 @@
  */
 #define WORK_STEALING_LOCAL_DEQUE_MAX_ELTS          128
 
+/* maximum number of workers that can be simultaneuously active on a vproc.
+ */
+#define WORK_STEALING_MAX_NUM_LOCAL_DEQUES          64
+
+/* upper bound on the number of roots needed for local deques on a given vproc.
+ */
+#define WORK_STEALING_LOCAL_DEQUE_MAX_ROOTS         (WORK_STEALING_LOCAL_DEQUE_MAX_ELTS * WORK_STEALING_MAX_NUM_LOCAL_DEQUES)
+
 /* local, work-stealing deque */
 typedef struct {
   Word_t hd;                                           /* pointer to the head of the deque */
