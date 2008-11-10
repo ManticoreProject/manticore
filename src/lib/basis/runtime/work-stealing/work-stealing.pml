@@ -115,12 +115,6 @@ structure WorkStealing =
         do assert(NotEqual(localDeque, nil))
 	do assert(NotEqual(elt, nil))
         let tl : long = SELECT(LOCAL_DEQUE_TL, localDeque)
-(*
-do ccall M_PrintPtr("localDeque", localDeque)
-do ccall M_PrintPtr("tl", &LOCAL_DEQUE_TL(localDeque))
-do ccall M_PrintLong(SELECT(LOCAL_DEQUE_TL, localDeque))
-do print_ppt()
-*)
         do @deque-update(localDeque, tl, elt / exh)
         do UPDATE(LOCAL_DEQUE_TL, localDeque, I64Add(tl, 1))
         return()
@@ -171,29 +165,29 @@ do print_ppt()
       (* scheduler loop *)
 	cont switch (sign : PT.signal) =
         (* run a thread *)
-	  cont run (switch : PT.sched_act, k : PT.fiber) =
+	  cont run (k : PT.fiber) =
 	    do Control.@run(switch, k / exh)
             let e : exn = Fail(@"impossible")
 	    throw exh(e)
         (* steal a thread from a remote vproc *)
-	  cont steal (switch : PT.sched_act) =
+	  cont steal () =
 	    let kOpt : O.option = @steal(worker, workers / exh)
 	    case kOpt
-	     of O.NONE => throw steal(switch)
-	      | O.SOME (k : PT.fiber) => throw run(switch, k)
+	     of O.NONE => throw steal()
+	      | O.SOME (k : PT.fiber) => throw run(k)
 	    end
         (* handle a signal *)
 	  case sign
 	   of PT.STOP =>
 	      let isEmpty : bool = @is-local-deque-empty(localDeque / exh)
               if isEmpty
-		 then throw steal(switch)
+		 then throw steal()
 	      else
 		  let k : PT.fiber = @local-deque-pop-tl(localDeque / exh)
-                  throw run(switch, k)
+                  throw run(k)
 	    | PT.PREEMPT (k : PT.fiber) =>
 	      let _ : PT.unit = Control.@atomic-yield(/exh)
-              throw run(switch, k)
+              throw run(k)
 	    | _ =>
 	      let e : exn = Match
      	      throw exh(e)
