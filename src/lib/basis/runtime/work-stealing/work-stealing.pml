@@ -78,7 +78,7 @@ structure WorkStealing =
 
     (* number of threads in the local deque (assuming that the head was not stolen) *)
       define @local-deque-sz (localDeque : local_deque / exh : exh) : long =
-        return(I64Sub(SELECT(LOCAL_DEQUE_HD, localDeque), SELECT(LOCAL_DEQUE_TL, localDeque)))
+        return(I64Sub(SELECT(LOCAL_DEQUE_TL, localDeque), SELECT(LOCAL_DEQUE_HD, localDeque)))
       ;
 
     (* update a location in the local deque *)
@@ -218,7 +218,7 @@ structure WorkStealing =
       ;
 
     (* pop from the tail *)
-      define @pop-tl(/ exh : exh) : bool =
+      define @pop-tl (/ exh : exh) : bool =
         let localDeque : local_deque = @get-local-deque(/ exh)
         let isEmpty : bool = @is-local-deque-empty(localDeque / exh)
         if isEmpty
@@ -229,7 +229,7 @@ structure WorkStealing =
       ;
 
     (* push on the tail *)
-      define @push-tl(k : PT.fiber / exh : exh) : () =
+      define @push-tl (k : PT.fiber / exh : exh) : () =
         let localDeque : local_deque = @get-local-deque(/ exh)	
         @local-deque-push-tl(localDeque, k / exh)
       ;

@@ -3,8 +3,9 @@ structure TestWorkStealingSWP =
 
     structure W = WorkStealing
     structure PT = PrimTypes
+    structure IVar = WorkStealingIVar
 
-    fun fib n = if n < 2 then n else fib(n-1) + fib(n-2)
+    fun sfib n = if n < 2 then n else sfib(n-1) + sfib(n-2)
 
 _primcode(
   
@@ -20,11 +21,11 @@ define @test-ld (x : unit / exh : exh) : bool =
   do W.@local-deque-push-tl(localDeque, k / exh)
 
 (* trigger GCs *)
-  let fib : fun(PT.ml_int / PT.exh -> PT.ml_int) = pmlvar fib
+  let sfib : fun(PT.ml_int / PT.exh -> PT.ml_int) = pmlvar sfib
   let arg : PT.ml_int = alloc(30)
-  let x : PT.ml_int = apply fib(arg / exh)
-  let x : PT.ml_int = apply fib(arg / exh)
-  let x : PT.ml_int = apply fib(arg / exh)
+  let x : PT.ml_int = apply sfib(arg / exh)
+  let x : PT.ml_int = apply sfib(arg / exh)
+  let x : PT.ml_int = apply sfib(arg / exh)
 
 (* k should have survived the GCs *)
   let k : PT.fiber = W.@local-deque-pop-tl(localDeque / exh)
@@ -51,9 +52,64 @@ define @test-steal (x : unit / exh : exh) : bool =
   apply infinitelp (0)  
 ;
 
+      (* fibonacci function as would result from the pval transformation *)
+      define @fib-t (n : PT.ml_int / exh : PT.exh) : PT.ml_int =
+	fun fib (n : [int] / exh : PT.exh) : [int] =
+	    let raw : int = #0(n)
+	    if I32Lte(raw, 1)
+	       then
+		let wlit : [int] = alloc(raw)
+		return(wlit)
+	       else
+		 let raw : int = #0(n)
+
+                 fun spawnFn (k : PT.fiber / exh : exh) : () = W.@push-tl(k / exh)
+		 let iv : IVar.ivar = IVar.@ivar(spawnFn / exh)
+
+		 fun bodyP (selFn : fun (PT.unit / PT.exh -> [int]) / exh : PT.exh) : [int] =
+		     let a : [int] = alloc(I32Sub(raw,2))
+		     let q : [int] = apply fib(a / exh)
+		     let p : [int] = apply selFn(UNIT / exh)
+		     let p : int = #0(p)
+		     let q : int = #0(q)
+		     let r : [int] = alloc(I32Add(p,q))
+		     return(r)           
+		 cont k (unt : PT.unit) =
+		      fun f (unt : PT.unit / exh : PT.exh) : [int] =
+			  let v : any = IVar.@get(iv / exh)
+			  let v : [int] = ([int])v
+			  return(v)
+		      let x : [int] = apply bodyP(f / exh)
+		      return(x)
+
+		 do W.@push-tl(k / exh)
+
+		 (*eval the body *)
+		 let a : [int] = alloc(I32Sub(raw,1))
+		 let p : [int] = apply fib(a / exh)
+
+		 let notStolen : PT.bool = W.@pop-tl( / exh)
+		 do if notStolen
+		    then return()
+		    else 
+			 do IVar.@put(iv, (any)p / exh)
+			 let unt : PT.unit = Control.@stop(/ exh)
+			 return()
+
+		fun f (x : PT.unit / exh : PT.exh) : [int] =
+		    return(p)
+
+		apply bodyP (f / exh)
+
+	let n : [int] = apply fib (n / exh)
+	return(n)
+      ;
+
+
 )
 
     val testLd : unit -> bool = _prim(@test-ld)
     val testSteal : unit -> bool = _prim(@test-steal)
+    val pfib : int -> int = _prim(@fib-t)
 
   end
