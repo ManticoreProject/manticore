@@ -1,6 +1,6 @@
-(* translate-pval-cilk5.sml
+(* translate-pval-work-stealing.sml
  *
- * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
  * This module performs the translation [| e |] given below.
@@ -10,23 +10,23 @@
  * =
 
    let
-   val ivar = WorkStealingIVar.ivar(Cilk5WorkStealing.push)
+   val ivar = WorkStealingIVar.ivar(WorkStealing.push)
    fun bodyFn selFn = [| e2 |][x -> selFn()]
    cont slowPathK () = bodyFn(fn () => WorkStealingIVar.get ivar)
-   val _ = Cilk5WorkStealing.push slowPathK
+   val _ = WorkStealing.push slowPathK
    val x = [| e1 |]
    in
-      if (Cilk5WorkStealing.pop())
+      if (WorkStealing.pop())
 	 then bodyFn(fn () => x)
       else ( WorkStealingIVar.put(ivar, x); Control.stop() )
    
  * 
  * - For the full technical discussion, see our Section 5 of our 2008 ICFP paper,
- *   A scheduling framework for general-purpose parallel languages.
- * - This implementation follows the Cilk5 approach to work stealing.
+ *   A scheduling framework for general-purpose parallel languages. 
+ * - This expansion uses a software-polling technique for load balancing.
  *)
 
-structure TranslatePValCilk5  : sig
+structure TranslatePValWorkStealing  : sig
 
   (* An AST to BOM translation of parrays to ropes. *)
     val tr : {
@@ -59,8 +59,8 @@ structure TranslatePValCilk5  : sig
     fun mkIGet (exh, iv) =
 	  B.mkHLOp(iGet(), [iv], [exh])
   (* deque support *)
-    fun wsPush () = E.findBOMHLOpByPath ["Cilk5WorkStealing", "push-tl"]
-    fun wsPop () = E.findBOMHLOpByPath ["Cilk5WorkStealing", "pop-tl"]
+    fun wsPush () = E.findBOMHLOpByPath ["WorkStealing", "push-tl"]
+    fun wsPop () = E.findBOMHLOpByPath ["WorkStealing", "pop-tl"]
     fun mkWsPush (exh, kLocal) =
 	  B.mkHLOp(wsPush(), [kLocal], [exh])
     fun mkWsPop exh =

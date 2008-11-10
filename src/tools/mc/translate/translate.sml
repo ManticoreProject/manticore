@@ -162,7 +162,16 @@ structure Translate : sig
 					       x=x,
 					       e1=e1,
 					       e2=e2
-					       }
+					      }
+			)
+		else if ExpansionOpts.isEnabled(ExpansionOpts.PVAL[ExpansionOpts.WORK_STEALING])
+		then EXP(TranslatePValWorkStealing.tr{env=env,
+						      trVar=trVar,
+						      trExp=trExpToV,
+						      x=x,
+						      e1=e1,
+						      e2=e2
+						     }
 			)
 		else raise Fail "no suitable translation for pval"
 

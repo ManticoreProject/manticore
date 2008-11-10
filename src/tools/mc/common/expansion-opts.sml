@@ -12,6 +12,7 @@ structure ExpansionOpts =
   (* options for pvals *)
     datatype pval_opt
       = CILK5_WORK_STEALING
+      | WORK_STEALING
       | FUTURES_WITH_GANG_SCHEDULING
       | CANCELABLE
 
@@ -33,6 +34,7 @@ structure ExpansionOpts =
     fun pvalOptsFromString strs = (
 	  case strs
 	   of ["cilk5-work-stealing"] => CILK5_WORK_STEALING
+	    | ["work-stealing"] => WORK_STEALING
 	    | ["futures-with-gang-scheduling"] => FUTURES_WITH_GANG_SCHEDULING
 	    | ["cancelable"] => CANCELABLE
 	    | _ => raise Fail "unknown opt"

@@ -40,5 +40,6 @@ is
   translate-env.sml
   translate-parr.sml
   translate-pval-cilk5.sml
+  translate-pval-work-stealing.sml
   translate-types.sml
   translate-prim.sml
