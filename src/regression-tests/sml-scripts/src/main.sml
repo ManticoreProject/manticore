@@ -10,9 +10,14 @@ structure Main = struct
   fun main (progname, files) = let
     val rpt     = R.run ()
     val hrpt    = ReportHTML.mkReport rpt   
-    fun write f = (print "#########\n";
-		   print ("Generating report in " ^ f ^ ".\n");
-		   MiniHTML.toFile (hrpt, f))
+    fun write f = let
+      val f' = if OS.FileSys.isDir f 
+	       then OS.Path.joinDirFile {dir=f, file="results.html"}
+	       else f
+      in
+	print ("Generating report in " ^ f ^ ".\n");
+	MiniHTML.toFile (hrpt, f)
+      end
     in
       ArchiveReport.report rpt;
       app write files;

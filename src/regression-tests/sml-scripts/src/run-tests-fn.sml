@@ -19,6 +19,9 @@ functor RunTestsFn (L : COMPILER) = struct
   fun joinDF (d, f) = P.joinDirFile {dir=d, file=f}
   fun joinBE (b, e) = P.joinBaseExt {base=b, ext=SOME(e)}
 
+  fun printErr s = (TextIO.output (TextIO.stdErr, s); 
+		    TextIO.flushOut TextIO.stdErr)
+
 (* datestamp : Date.date -> string *)
   val datestamp = Date.fmt "%Y-%m-%d.%H-%M-%S"
 
@@ -32,6 +35,7 @@ functor RunTestsFn (L : COMPILER) = struct
 			  joinBE (P.file (P.base filename), "ok"))
     val resFile = U.freshTmp (cwd, "results")
     val compileCmd = L.mkCmd filename
+    val _ = printErr (concat ["The compiler command is ", compileCmd, "\n"])
     val compileSucceeded = sys compileCmd
     val tmps = exeFile :: resFile :: L.detritus filename
     fun cleanup () = app U.rm tmps
