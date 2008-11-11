@@ -24,6 +24,8 @@ functor RunTestsFn (L : COMPILER) = struct
 
 (* runTest : date * string -> {outcome:T.outcome, expected:string, actual:string} *)
   fun runTest (d, filename) = let
+    val _ = (print "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n";
+	     print ("Testing " ^ filename ^ ".\n"))
     val cwd = F.getDir ()
     val exeFile = L.mkExe filename
     val okFile  = joinDF (P.dir filename,
@@ -61,7 +63,10 @@ functor RunTestsFn (L : COMPILER) = struct
         {outcome = T.DidNotCompile,
 	 expected = "",
 	 actual = ""})
-     before cleanup ()
+     before (print ("Done testing " ^ filename ^ ".\n");
+	     print "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n";
+	     cleanup ())
+	     
     end
 
 (* runGoal : date * string -> string -> T.goal *)

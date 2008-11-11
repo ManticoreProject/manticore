@@ -8,9 +8,11 @@ structure Main = struct
 
 (* main : string * string list -> OS.Process.status *)
   fun main (progname, files) = let
-    val rpt   = R.run ()
-    val hrpt  = ReportHTML.mkReport rpt   
-    val write = fn f => MiniHTML.toFile (hrpt, f)
+    val rpt     = R.run ()
+    val hrpt    = ReportHTML.mkReport rpt   
+    fun write f = (print "#########\n";
+		   print ("Generating report in " ^ f ^ ".\n");
+		   MiniHTML.toFile (hrpt, f))
     in
       ArchiveReport.report rpt;
       app write files;

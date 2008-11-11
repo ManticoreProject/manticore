@@ -115,8 +115,8 @@ that is, add new, freshly-named tests in favor of modifying old ones.
 
 KNOWN ISSUES
 
-- Where should the archive files go? In svn? In some common spot on
-NFS?
+-- BUG: The system checks the manticore revision, but *doesn't* make
+sure the build of the compiler corresponds.
 
 - It might be worth considering whether backends other than HTML would
 be desirable.
