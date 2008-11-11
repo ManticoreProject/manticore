@@ -16,6 +16,9 @@ functor RunTestsFn (L : COMPILER) = struct
 
   val sys = OS.Process.system
 
+  fun joinDF (d, f) = P.joinDirFile {dir=d, file=f}
+  fun joinBE (b, e) = P.joinBaseExt {base=b, ext=SOME(e)}
+
 (* datestamp : Date.date -> string *)
   val datestamp = Date.fmt "%Y-%m-%d.%H-%M-%S"
 
@@ -23,7 +26,8 @@ functor RunTestsFn (L : COMPILER) = struct
   fun runTest (d, filename) = let
     val cwd = F.getDir ()
     val exeFile = L.mkExe filename
-    val okFile  = concat [P.dir filename, "/", P.file (P.base filename), ".ok"]
+    val okFile  = joinDF (P.dir filename,
+			  joinBE (P.file (P.base filename), "ok"))
     val resFile = U.freshTmp (cwd, "results")
     val compileCmd = L.mkCmd filename
     val compileSucceeded = sys compileCmd
@@ -51,7 +55,7 @@ functor RunTestsFn (L : COMPILER) = struct
 			    "Please add an .ok file for ", filename, ".\n",
 			    "**********\n"]);
 	     U.rm diffFile;
-	     {outcome = T.TestFailed, expected = "*** No ok file! ***", actual = actual})
+	     {outcome = T.TestFailed, expected = "*** No .ok file! ***", actual = actual})
         end
       else
         {outcome = T.DidNotCompile,
