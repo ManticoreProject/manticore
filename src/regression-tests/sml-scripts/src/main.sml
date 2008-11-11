@@ -6,17 +6,20 @@ structure Main = struct
 (* sys : string -> OS.Process.status *)
   val sys = OS.Process.system
 
+(* existingDir : string -> bool *)
+  fun existingDir f = (OS.FileSys.isDir f) handle SysErr => false
+
 (* main : string * string list -> OS.Process.status *)
   fun main (progname, files) = let
     val rpt     = R.run ()
     val hrpt    = ReportHTML.mkReport rpt   
     fun write f = let
-      val f' = if OS.FileSys.isDir f 
+      val f' = if existingDir f 
 	       then OS.Path.joinDirFile {dir=f, file="results.html"}
 	       else f
       in
-	print ("Generating report in " ^ f ^ ".\n");
-	MiniHTML.toFile (hrpt, f)
+	print ("Generating report in " ^ f' ^ ".\n");
+	MiniHTML.toFile (hrpt, f')
       end
     in
       ArchiveReport.report rpt;

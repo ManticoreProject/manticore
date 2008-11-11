@@ -100,9 +100,9 @@ functor RunTestsFn (L : COMPILER) = struct
     val noHidden = List.filter (not o (String.isPrefix ".") o OS.Path.file)
     val pvalOnly = List.filter ((fn s => s = "par-pval") o OS.Path.file)
     in
-      map (runGoal (now, ver)) (noHidden goals)
+(*      map (runGoal (now, ver)) (noHidden goals)*)
 (*     map (runGoal (now, ver)) (List.take (noHidden goals, 1))  *)
-(*     map (runGoal (now, ver)) (pvalOnly goals)                 *)
+     map (runGoal (now, ver)) (pvalOnly goals)                
     end 
 
 end
