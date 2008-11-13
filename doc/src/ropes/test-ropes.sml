@@ -14,10 +14,13 @@ structure TestRopes = struct
     fun splitAt _ = raise Fail "todo"
     fun fromList x = x
     fun toList x = x 
+    val take = List.take
+    val drop = List.drop
   end
 
   structure R = RopesFn (structure S = ListSeq 
-                         val maxLeafSize = 2)
+                         val maxLeafSize = 2
+			 val maxDepth = 32)
 
   type 'a rope = 'a R.rope
 
@@ -32,21 +35,65 @@ structure TestRopes = struct
 		     spineRope (lo + R.maxLeafSize, hi))
     end
 
+  fun invert (r as R.LEAF(_, _)) = r
+    | invert (R.CAT(depth, len, r1, r2)) = R.CAT(depth, len, invert r2, invert r1)
+
+  fun doubleSpineRope (lo, hi) = R.concat(invert(spineRope(lo, hi div 2)), spineRope(hi div 2 + 1, hi))
+
   fun println s = (print s; print "\n")
 
   fun prope show r = print (R.toString show r)
 
-  fun test 0 = let
-        val r = spineRope (0, 7)
+  val itos = Int.toString
+
+  fun t n = let
+    val r = spineRope (0, n-1)
+    val b = R.balance r
+    in
+      print "---------- before balancing ----------\n";
+      prope itos r;
+      print "---------- after balancing  ----------\n";
+      prope itos b
+    end
+
+  fun t' n = let
+    val r = doubleSpineRope (0, n-1)
+    val b = R.balance r
+    in
+      print "---------- before balancing ----------\n";
+      prope itos r;
+      print "---------- after balancing  ----------\n";
+      prope itos b
+    end
+
+  fun test 0 = t 7
+    | test 1 = t 14
+    | test 2 = t' 16
+    | test 3 = let
+        val r = R.concat (R.singleton 0, R.singleton 1)
         in
-          (prope Int.toString) (R.balance r)
+          prope itos r
         end
-   | test 1 = let
-        val r = spineRope (0, 14)
+    | test 4 = let
+        val r = R.concat (R.singleton 0, spineRope (1, 6))
         in
-          (prope Int.toString) (R.balance r)
+          prope itos r
         end
-    | test n = (println ("No such test: " ^ Int.toString n);
+    | test 5 = let
+        val r = R.concat (spineRope (0, 1),
+			  R.singleton 2)
+        in
+          prope itos r
+        end
+    | test 6 = let
+        val rs = map R.singleton [1,2,3,4,5,6,7,8]
+	val r = List.foldr R.concat (R.singleton 0) rs        
+        in
+          prope itos r
+        end
+    | test 7 = t 9
+    | test 8 = prope itos (spineRope (0, 3))
+    | test n = (println ("No such test: " ^ itos n);
 		raise Fail "")
 
 end

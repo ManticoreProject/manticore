@@ -18,6 +18,8 @@ signature SEQ =
     val sub        : 'a seq * int -> 'a
     val concat     : 'a seq * 'a seq -> 'a seq
     val splitAt    : 'a seq * int -> ('a seq * 'a seq)
+    val take       : 'a seq * int -> 'a seq
+    val drop       : 'a seq * int -> 'a seq
 
     val fromList   : 'a list -> 'a seq
     val toList     : 'a seq -> 'a list

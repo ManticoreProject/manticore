@@ -8,11 +8,14 @@
 
 functor RopesFn (
 
-  structure S : SEQ
+    structure S : SEQ
 
-  val maxLeafSize : int
+  (* should be roughly the size of an L1-cache line *)
+    val maxLeafSize : int
+  (* should be the max word size of the machine *)
+    val maxDepth : int
 
-  ) (*: ROPES*) = struct
+  ) (* : ROPES *) = struct
 
     structure S = S
     type 'a seq = 'a S.seq
@@ -29,14 +32,42 @@ functor RopesFn (
 
     val empty = LEAF(0, S.empty)
 
+    fun singleton x = LEAF (1, S.singleton x)
+
+  (* toString : ('a -> string) -> 'a rope -> string *)
+    fun toString show r = let
+      fun copies thing n = List.tabulate (n, fn _ => thing)
+      val rootString = "C<"
+      val spaces = copies " "
+      val indenter = String.concat (spaces (String.size rootString))
+      (* indent : string list -> string list *)
+      val indent = map (fn s => indenter ^ s) 
+      (* build : 'a rope -> string list *)
+      fun build (LEAF (_, xs)) = let 
+            fun b ([], acc) = "]"::acc
+	      | b ([x], acc) = b ([], (show x)::acc)
+	      | b (x::xs, acc) = b (xs, ","::(show x)::acc)
+            in
+	      [(String.concat o rev) (b (S.toList xs, ["["]))]
+            end
+	| build (CAT (_, _, r1, r2)) = let 
+            val ss1 = build r1
+	    val ss2 = build r2
+	    in
+	      (indent ss1) @ (rootString :: (indent ss2))
+	    end
+    in
+      String.concatWith "\n" (build r @ ["\n"])
+    end
+
     fun isEmpty (LEAF (0, _)) = true
       | isEmpty (CAT (_, 0, _, _)) = true
       | isEmpty _ = false
 
     fun length r = (
 	  case r
-	   of LEAF (len, _) => len
-	    | CAT(_, len, _, _) => len
+	   of LEAF (len, s) => len
+	    | CAT(_, len, r1, r2) => len
           (* end case *))
 
     fun depth r = (
@@ -77,23 +108,129 @@ functor RopesFn (
     type 'a balancer = (int * int * 'a rope option) list
 
   (* takes a rope length, and returns a rope balancer *)
-    fun mkInitialBalance len = 
+    fun mkInitialBalancer len = 
 	  List.tabulate(balancerLen len, fn n => (fib(n + 2), fib(n + 3), NONE))
 
-    fun concat (r1, r2) = 
-     (if isEmpty r1 then r2
-      else if isEmpty r2 then r1
-      else CAT(1 + Int.max(depth r1, depth r2), length r1 + length r2, r1, r2))
+    fun rightmostLeaf r =
+     (case r 
+        of LEAF _ => r
+	 | CAT (_, _, _, rR) => rightmostLeaf rR)
 
-  (* concatenate all ropes in the balancer *)
-    fun catAll balancer = (
-	case balancer
-	 of nil => empty
-	  | (_, _, SOME r) :: nil => r
-	  | (_, _, NONE) :: nil => empty
-	  | (_, _, SOME r) :: rs => concat(catAll rs, r)
-	  | (_, _, NONE) :: rs => catAll rs
-        (* end case *))
+    fun leftmostLeaf r = 
+     (case r
+        of LEAF _ => r
+	 | CAT (_, _, rL, _) => leftmostLeaf rL) 
+
+  (* attachRight : 'a rope * 'a seq -> 'a rope *)
+  (* pre: the leftmost leaf of the rope can accommodate the sequence *)
+    fun attachRight (r, s) = let
+      val slen = S.length s
+      fun go r =
+       (case r
+	  of CAT (d, len, r1, r2) => CAT (d, len+slen, r1, go r2)
+	   | LEAF (len, s') => LEAF (len+slen, S.concat (s', s))
+          (* end case *))
+      in
+        go r
+      end
+
+  (* attachLeft : 'a seq * 'a rope -> 'a rope *)
+  (* pre: the rightmost leaf of the rope can accommodate the sequence *)
+    fun attachLeft (s, r) = let
+      val slen = S.length s
+      fun go r =
+       (case r
+          of CAT (d, len, r1, r2) => CAT (d, len+slen, go r1, r2)
+	   | LEAF (len, s') => LEAF (len+slen, S.concat (s, s'))
+          (* end case *))
+      in
+	go r
+      end
+
+  (* concat : 'a rope * 'a rope -> 'a rope *)
+  (* concatenates two ropes *)
+  (* handles some special cases: *)
+  (* - if either rope is empty, the other rope is returned as-is *)
+  (* - if the ropes are both leaves, and they can be fit in a single leaf, they are *)
+  (* - if the ropes are both leaves, and they can't be fit in a single leaf, they're *)
+  (*     packed to the left in a pair of leaves *)
+  (* - if the left rope is a cat and the right is a leaf, and the right leaf can be *)
+  (*     packed into the rightmost leaf of the left, it is *)
+  (* - symm. case to previous *)
+  (* TODO: if concatenation yields a too-unbalanced rope, rebalance *)
+    fun concat (r1, r2) =
+     (if isEmpty r1 then 
+        r2
+      else if isEmpty r2 then
+	r1
+      else (case (r1, r2)
+              of (LEAF (len1, s1), LEAF (len2, s2)) =>
+		    if (len1 + len2) <= maxLeafSize
+		    then LEAF (len1 + len2, S.concat (s1, s2))
+		    else let
+	              val d   = maxLeafSize - S.length s1
+		      val s1' = S.concat (s1, S.take (s2, d))
+		      val s2' = S.drop (s2, d)
+		      val lf1 = LEAF (maxLeafSize, s1')
+		      val lf2 = LEAF (S.length s2 - d, s2')
+	              in
+                        CAT (1, len1 + len2, lf1, lf2)
+                      end
+	       | (c as CAT (d, len1, r1, r2), leaf as LEAF (len2, s2)) => let
+		    val rmost = rightmostLeaf r2
+		    val n = length rmost + len2
+		    in
+		      if n <= maxLeafSize 
+		      then CAT (d, len1 + len2, r1, attachRight (r2, s2))
+		      else CAT (d+1, len1 + len2, c, leaf)
+		    end
+	       | (leaf as LEAF (len1, s1), c as CAT (d, len2, r1, r2)) => let
+		    val lmost = leftmostLeaf r1
+		    val n = len1 + length lmost
+		    in
+		      if n <= maxLeafSize
+		      then CAT (d, len1 + len2, attachLeft (s1, r1), r2)
+		      else CAT (d+1, len1 + len2, leaf, c)
+		    end 
+	       | _ => let
+                    val newDepth = 1 + Int.max (depth r1, depth r2)
+		    val newLen = length r1 + length r2
+		    in
+		      CAT (newDepth, newLen, r1, r2)
+		    end
+	     (* end case *))
+     (* end if *))
+
+(*
+    fun concat (r1, r2) = let
+      val r = concat' (r1, r2)
+      fun maxLeafSizeOf (r, acc) = 
+       (case r
+	  of LEAF (len, _) => if len>acc then len else acc
+	   | CAT (_, _, r1, r2) => let
+               val m1 = maxLeafSizeOf (r1, acc)
+	       val m2 = maxLeafSizeOf (r2, acc)
+	       in
+		 if m1>m2 then m1 else m2
+	       end)
+      val m = maxLeafSizeOf (r, 0)
+      in
+	if m > maxLeafSize 
+	then raise Fail (String.concat ["leaf got too big: ", Int.toString m])
+	else r
+      end
+*)
+               
+  (* concatenate all ropes contained in the balancer into a single balanced rope *)
+    fun catAll balancer = let
+	  fun f (b, acc) = (
+	        case b
+		 of (_, _, NONE) => acc
+		  | (_, _, SOME r) => concat (r, acc)
+  	        (* end case *))
+          in
+	    List.foldl f empty balancer
+	  end
 
   (* insert a rope into a balancer. we maintain the invariant that the length of the rope
    * at position i is < #1(balancer[i]) (the includsive lower bound). see Boehm '95 for more
@@ -101,14 +238,26 @@ functor RopesFn (
    *) 
     fun insert (r, balancer) = (
 	  case balancer
-	   of nil => raise Fail "empty balancer"
-	    | (lb, ub, NONE) :: balancer => 
-	      if length r >= lb andalso length r < ub
-	         then (lb, ub, SOME r) :: balancer
-	      else (lb, ub, NONE) :: insert(r, balancer)
-	    | (lb, ub, SOME r') :: balancer =>
-	      (lb, ub, NONE) :: insert(concat(r', r), balancer)
-        (* end case *))
+	   of nil => raise Fail "BUG: empty balancer"
+	    | [(lb, ub, NONE)] =>
+                if length r >= lb andalso length r < ub then
+                  [(lb, ub, SOME r)]
+		else
+                  raise Fail (String.concat ["BUG: trying to fit a rope of length ",
+					     Int.toString (length r),
+					     " into the interval [",
+					     Int.toString lb,
+					     ",",
+					     Int.toString ub,
+					     ")"])
+	    | (lb, ub, NONE) :: t => 
+	        if length r >= lb andalso length r < ub then 
+                  (lb, ub, SOME r) :: t
+		else 
+		  (lb, ub, NONE) :: insert (r, t)
+	    | b as ((lb, ub, SOME r') :: t) =>
+                insert (concat (r', r), (lb, ub, NONE) :: t)
+           (* end case *))
 
   (* takes a rope and returns the list of leaves in order *)
     fun leaves r = (
@@ -118,7 +267,11 @@ functor RopesFn (
           (* end case *))
 
   (* balance a rope. this operation is O(n*log n) in the number of leaves *)
-    fun balance r = catAll(List.foldl insert (mkInitialBalance(length r)) (leaves r))
+    fun balance r = let
+      val init = mkInitialBalancer (length r)
+      in
+        catAll (List.foldl insert init (leaves r))
+      end
 
     fun toSeq r = (
 	  case r
@@ -133,31 +286,5 @@ functor RopesFn (
 	then LEAF (len, S.fromList xs)
 	else raise Fail "todo"
       end
-
-  (* toString : ('a -> string) -> 'a rope -> string *)
-    fun toString show r = let
-      fun copies thing n = List.tabulate (n, fn _ => thing)
-      val rootString = "C<"
-      val spaces = copies " "
-      val indenter = String.concat (spaces (String.size rootString))
-      (* indent : string list -> string list *)
-      val indent = map (fn s => indenter ^ s) 
-      (* build : 'a rope -> string list *)
-      fun build (LEAF (_, xs)) = let 
-            fun b ([], acc) = "]"::acc
-	      | b ([x], acc) = b ([], (show x)::acc)
-	      | b (x::xs, acc) = b (xs, ","::(show x)::acc)
-            in
-	      [(String.concat o rev) (b (S.toList xs, ["["]))]
-            end
-	| build (CAT (_, _, r1, r2)) = let 
-            val ss1 = build r1
-	    val ss2 = build r2
-	    in
-	      (indent ss1) @ (rootString :: (indent ss2))
-	    end
-    in
-      String.concatWith "\n" (build r @ ["\n"])
-    end
 
   end
