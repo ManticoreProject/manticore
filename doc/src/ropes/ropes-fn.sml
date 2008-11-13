@@ -32,6 +32,16 @@ functor RopesFn (
 
     val empty = LEAF(0, S.empty)
 
+    fun ceilingLg x = 
+	  Real.toInt IEEEReal.TO_POSINF (Math.ln(Real.fromInt x) / Math.ln 2.0)
+
+  (* balancing condition for ropes *)
+    fun isBalanced r = (
+	  case r
+	   of LEAF _ => true
+	    | CAT(depth, len, _, _) => depth <= ceilingLg len + 2
+          (* end case *))
+
     fun singleton x = LEAF (1, S.singleton x)
 
   (* toString : ('a -> string) -> 'a rope -> string *)
@@ -147,8 +157,8 @@ functor RopesFn (
 	go r
       end
 
-  (* concat : 'a rope * 'a rope -> 'a rope *)
-  (* concatenates two ropes *)
+  (* concat' : 'a rope * 'a rope -> 'a rope *)
+  (* concatenates two ropes (without balancing) *)
   (* handles some special cases: *)
   (* - if either rope is empty, the other rope is returned as-is *)
   (* - if the ropes are both leaves, and they can be fit in a single leaf, they are *)
@@ -157,8 +167,7 @@ functor RopesFn (
   (* - if the left rope is a cat and the right is a leaf, and the right leaf can be *)
   (*     packed into the rightmost leaf of the left, it is *)
   (* - symm. case to previous *)
-  (* TODO: if concatenation yields a too-unbalanced rope, rebalance *)
-    fun concat (r1, r2) =
+    fun concat' (r1, r2) =
      (if isEmpty r1 then 
         r2
       else if isEmpty r2 then
@@ -201,7 +210,7 @@ functor RopesFn (
 	     (* end case *))
      (* end if *))
 
-(*
+(* ... you can uncomment this for debugging ...
     fun concat (r1, r2) = let
       val r = concat' (r1, r2)
       fun maxLeafSizeOf (r, acc) = 
@@ -219,14 +228,15 @@ functor RopesFn (
 	then raise Fail (String.concat ["leaf got too big: ", Int.toString m])
 	else r
       end
+    val concat' = concat
 *)
                
   (* concatenate all ropes contained in the balancer into a single balanced rope *)
-    fun catAll balancer = let
+    fun catBalancer balancer = let
 	  fun f (b, acc) = (
 	        case b
 		 of (_, _, NONE) => acc
-		  | (_, _, SOME r) => concat (r, acc)
+		  | (_, _, SOME r) => concat' (r, acc)
   	        (* end case *))
           in
 	    List.foldl f empty balancer
@@ -256,7 +266,7 @@ functor RopesFn (
 		else 
 		  (lb, ub, NONE) :: insert (r, t)
 	    | b as ((lb, ub, SOME r') :: t) =>
-                insert (concat (r', r), (lb, ub, NONE) :: t)
+                insert (concat' (r', r), (lb, ub, NONE) :: t)
            (* end case *))
 
   (* takes a rope and returns the list of leaves in order *)
@@ -267,11 +277,16 @@ functor RopesFn (
           (* end case *))
 
   (* balance a rope. this operation is O(n*log n) in the number of leaves *)
-    fun balance r = let
-      val init = mkInitialBalancer (length r)
-      in
-        catAll (List.foldl insert init (leaves r))
-      end
+    fun balance r = catBalancer (List.foldl insert (mkInitialBalancer (length r)) (leaves r))
+
+  (* concatenates two ropes (with balancing) *)
+    fun concat (r1, r2) = let
+	  val r = concat'(r1, r2)
+	  in
+	    if isBalanced r
+	       then r
+	    else balance r
+	  end
 
     fun toSeq r = (
 	  case r
@@ -279,12 +294,17 @@ functor RopesFn (
 	    | CAT(_, _, r1, r2) => S.concat(toSeq r1, toSeq r2)
           (* end case *))
 
-    fun fromList xs = let
-      val len = List.length xs
+    fun fromSeq xs = let
+      val len = S.length xs
       in
 	if len <= maxLeafSize
-	then LEAF (len, S.fromList xs)
-	else raise Fail "todo"
+	   then LEAF (len, xs)
+	else let
+          val m = len div 2
+          val (xs1, xs2) = (S.take(xs, m), S.drop(xs, m))
+	  in
+	    concat'(fromSeq xs1, fromSeq xs2)
+	  end
       end
 
   end

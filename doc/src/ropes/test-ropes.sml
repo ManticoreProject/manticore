@@ -30,8 +30,8 @@ structure TestRopes = struct
     fun f n = lo + n
     in
       if len <= R.maxLeafSize
-      then R.fromList (List.tabulate (len, f))
-      else R.concat (R.fromList (List.tabulate (R.maxLeafSize, f)),
+      then R.fromSeq (List.tabulate (len, f))
+      else R.concat (R.fromSeq (List.tabulate (R.maxLeafSize, f)),
 		     spineRope (lo + R.maxLeafSize, hi))
     end
 
@@ -46,10 +46,13 @@ structure TestRopes = struct
 
   val itos = Int.toString
 
+  fun check c = if not c then raise Fail "" else ()
+
   fun t n = let
     val r = spineRope (0, n-1)
     val b = R.balance r
     in
+      check(R.isBalanced b);
       print "---------- before balancing ----------\n";
       prope itos r;
       print "---------- after balancing  ----------\n";
@@ -60,6 +63,7 @@ structure TestRopes = struct
     val r = doubleSpineRope (0, n-1)
     val b = R.balance r
     in
+      check(R.isBalanced b);
       print "---------- before balancing ----------\n";
       prope itos r;
       print "---------- after balancing  ----------\n";
