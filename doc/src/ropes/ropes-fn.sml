@@ -157,7 +157,7 @@ functor RopesFn (
 	go r
       end
 
-  (* concat' : 'a rope * 'a rope -> 'a rope *)
+  (* concatWithoutBalancing : 'a rope * 'a rope -> 'a rope *)
   (* concatenates two ropes (without balancing) *)
   (* handles some special cases: *)
   (* - if either rope is empty, the other rope is returned as-is *)
@@ -167,7 +167,7 @@ functor RopesFn (
   (* - if the left rope is a cat and the right is a leaf, and the right leaf can be *)
   (*     packed into the rightmost leaf of the left, it is *)
   (* - symm. case to previous *)
-    fun concat' (r1, r2) =
+    fun concatWithoutBalancing (r1, r2) =
      (if isEmpty r1 then 
         r2
       else if isEmpty r2 then
@@ -181,7 +181,7 @@ functor RopesFn (
 		      val s1' = S.concat (s1, S.take (s2, d))
 		      val s2' = S.drop (s2, d)
 		      val lf1 = LEAF (maxLeafSize, s1')
-		      val lf2 = LEAF (S.length s2 - d, s2')
+		      val lf2 = LEAF (len2 - d, s2')
 	              in
                         CAT (1, len1 + len2, lf1, lf2)
                       end
@@ -212,7 +212,7 @@ functor RopesFn (
 
 (* ... you can uncomment this for debugging ...
     fun concat (r1, r2) = let
-      val r = concat' (r1, r2)
+      val r = concatWithoutBalancing (r1, r2)
       fun maxLeafSizeOf (r, acc) = 
        (case r
 	  of LEAF (len, _) => if len>acc then len else acc
@@ -228,7 +228,7 @@ functor RopesFn (
 	then raise Fail (String.concat ["leaf got too big: ", Int.toString m])
 	else r
       end
-    val concat' = concat
+    val concatWithoutBalancing = concat
 *)
                
   (* concatenate all ropes contained in the balancer into a single balanced rope *)
@@ -236,7 +236,7 @@ functor RopesFn (
 	  fun f (b, acc) = (
 	        case b
 		 of (_, _, NONE) => acc
-		  | (_, _, SOME r) => concat' (r, acc)
+		  | (_, _, SOME r) => concatWithoutBalancing (r, acc)
   	        (* end case *))
           in
 	    List.foldl f empty balancer
@@ -248,7 +248,8 @@ functor RopesFn (
    *) 
     fun insert (r, balancer) = (
 	  case balancer
-	   of nil => raise Fail "BUG: empty balancer"
+	   of nil => (* this case should never be reached *)
+	             raise Fail "BUG: empty balancer"
 	    | [(lb, ub, NONE)] =>
                 if length r >= lb andalso length r < ub then
                   [(lb, ub, SOME r)]
@@ -266,7 +267,7 @@ functor RopesFn (
 		else 
 		  (lb, ub, NONE) :: insert (r, t)
 	    | b as ((lb, ub, SOME r') :: t) =>
-                insert (concat' (r', r), (lb, ub, NONE) :: t)
+                insert (concatWithoutBalancing (r', r), (lb, ub, NONE) :: t)
            (* end case *))
 
   (* takes a rope and returns the list of leaves in order *)
@@ -279,21 +280,27 @@ functor RopesFn (
   (* balance a rope. this operation is O(n*log n) in the number of leaves *)
     fun balance r = catBalancer (List.foldl insert (mkInitialBalancer (length r)) (leaves r))
 
+  (* concatWithBalancing : 'a rope * 'a rope -> 'a rope *)
   (* concatenates two ropes (with balancing) *)
-    fun concat (r1, r2) = let
-	  val r = concat'(r1, r2)
-	  in
-	    if isBalanced r
-	       then r
-	    else balance r
-	  end
+    fun concatWithBalancing (r1, r2) = let
+      val r = concatWithoutBalancing(r1, r2)
+      in
+        if isBalanced r
+	then r
+	else balance r
+      end
 
-    fun toSeq r = (
-	  case r
-	   of LEAF(_, s) => s
-	    | CAT(_, _, r1, r2) => S.concat(toSeq r1, toSeq r2)
-          (* end case *))
+  (* toSeq : 'a rope -> 'a seq *)
+  (* return the fringe of the data at the leaves of a rope as a sequence *)
+    fun toSeq r = 
+     (case r
+        of LEAF(_, s) => s
+	 | CAT(_, _, r1, r2) => S.concat(toSeq r1, toSeq r2)
+        (* end case *))
 
+  (* fromSeq : 'a seq -> 'a rope *)
+  (* given a sequence, construct a balanced rope *)
+  (* FIXME This can be done with a different, nice algorithm... - ams *)
     fun fromSeq xs = let
       val len = S.length xs
       in
@@ -303,7 +310,7 @@ functor RopesFn (
           val m = len div 2
           val (xs1, xs2) = (S.take(xs, m), S.drop(xs, m))
 	  in
-	    concat'(fromSeq xs1, fromSeq xs2)
+	    concatWithoutBalancing (fromSeq xs1, fromSeq xs2)
 	  end
       end
 

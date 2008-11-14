@@ -31,14 +31,15 @@ structure TestRopes = struct
     in
       if len <= R.maxLeafSize
       then R.fromSeq (List.tabulate (len, f))
-      else R.concat (R.fromSeq (List.tabulate (R.maxLeafSize, f)),
-		     spineRope (lo + R.maxLeafSize, hi))
+      else R.concatWithoutBalancing (R.fromSeq (List.tabulate (R.maxLeafSize, f)),
+				     spineRope (lo + R.maxLeafSize, hi))
     end
 
   fun invert (r as R.LEAF(_, _)) = r
     | invert (R.CAT(depth, len, r1, r2)) = R.CAT(depth, len, invert r2, invert r1)
 
-  fun doubleSpineRope (lo, hi) = R.concat(invert(spineRope(lo, hi div 2)), spineRope(hi div 2 + 1, hi))
+  fun doubleSpineRope (lo, hi) = 
+    R.concatWithoutBalancing (invert(spineRope(lo, hi div 2)), spineRope(hi div 2 + 1, hi))
 
   fun println s = (print s; print "\n")
 
@@ -48,55 +49,56 @@ structure TestRopes = struct
 
   fun check c = if not c then raise Fail "" else ()
 
-  fun t n = let
-    val r = spineRope (0, n-1)
+  fun testBal mkRope n = let
+    val r = mkRope (0, n-1)
     val b = R.balance r
     in
       check(R.isBalanced b);
       print "---------- before balancing ----------\n";
       prope itos r;
       print "---------- after balancing  ----------\n";
-      prope itos b
+      prope itos b;
+      print (String.concat ["---------- the depth before balancing was ",
+			    itos (R.depth r),
+			    ", after was ",
+			    itos (R.depth b),
+			    "\n"]);
+      print (String.concat ["---------- the expected depth of the balanced rope is <= ",
+			    itos (2 + (ceil (Math.ln (real (R.length r)) / Math.ln 2.0))),
+			    "\n"])
     end
 
-  fun t' n = let
-    val r = doubleSpineRope (0, n-1)
-    val b = R.balance r
-    in
-      check(R.isBalanced b);
-      print "---------- before balancing ----------\n";
-      prope itos r;
-      print "---------- after balancing  ----------\n";
-      prope itos b
-    end
+  val t  = testBal spineRope
+  val t' = testBal doubleSpineRope
 
   fun test 0 = t 7
     | test 1 = t 14
     | test 2 = t' 16
     | test 3 = let
-        val r = R.concat (R.singleton 0, R.singleton 1)
+        val r = R.concatWithoutBalancing (R.singleton 0, R.singleton 1)
         in
           prope itos r
         end
     | test 4 = let
-        val r = R.concat (R.singleton 0, spineRope (1, 6))
+        val r = R.concatWithoutBalancing (R.singleton 0, spineRope (1, 6))
         in
           prope itos r
         end
     | test 5 = let
-        val r = R.concat (spineRope (0, 1),
+        val r = R.concatWithoutBalancing (spineRope (0, 1),
 			  R.singleton 2)
         in
           prope itos r
         end
     | test 6 = let
         val rs = map R.singleton [1,2,3,4,5,6,7,8]
-	val r = List.foldr R.concat (R.singleton 0) rs        
+	val r = List.foldr R.concatWithoutBalancing (R.singleton 0) rs        
         in
           prope itos r
         end
     | test 7 = t 9
     | test 8 = prope itos (spineRope (0, 3))
+    | test 9 = t 100
     | test n = (println ("No such test: " ^ itos n);
 		raise Fail "")
 
