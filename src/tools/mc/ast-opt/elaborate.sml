@@ -38,7 +38,7 @@ structure Elaborate : sig
 	     of SOME e => e
 	      | NONE => A.TupleExp (map trExp es)
 	    (* end case *))
-      | trExp (A.PArrayExp (es, t)) = A.PArrayExp (map trExp es, t)
+      | trExp (A.PArrayExp (es, t)) = ParrLitToRope.tr(map trExp es, t)
       | trExp (A.PCompExp (e, pes, oe)) = trPComp (e, pes, oe)
       | trExp (A.PChoiceExp (es, t)) = A.PChoiceExp (map trExp es, t)
       | trExp (A.SpawnExp e) = A.SpawnExp (trExp e)

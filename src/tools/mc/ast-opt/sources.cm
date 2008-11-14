@@ -25,6 +25,7 @@ Library
   structure TypeOf	
   structure Unpar
   structure Future1
+  structure ParrToRope
 
 is
 
@@ -52,3 +53,4 @@ is
   translate-ptup.sml
   unpar.sml
   future1.sml
+(*  parr-lit-to-rope.sml*)
