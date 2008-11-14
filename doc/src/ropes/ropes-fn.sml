@@ -376,4 +376,14 @@ functor RopesFn (
     fun merge (b1, b2) =
 	  insert(concatBalancer b2, insert(concatBalancer b1, mkInitialBalancer (List.length b1)))
 
+  (* merge a rope of ropes into a balancer *)
+    fun mergeRope r = (
+	  case r
+	   of LEAF(_, r') => mkInitialBalancer 32
+	    | CAT(_, _, r1, r2) => merge(mergeRope r1, mergeRope r2)
+	  (* end case *))
+
+  (* concat a rope of ropes into a single rope *)
+    fun concatN r = concatBalancer(mergeRope r)
+
   end
