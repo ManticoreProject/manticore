@@ -15,7 +15,6 @@ structure TranslatePComp : sig
 
     structure A = AST
     structure B = Basis
-    structure R = Ropes
 
     fun tr trExp (e, pes, oe) = let
 	  val ModuleEnv.Var mapP = BasisEnv.getValFromBasis ["PArray", "mapP"]
@@ -62,7 +61,7 @@ structure TranslatePComp : sig
 		      A.LetExp (A.FunBind [lam],
 		      A.ApplyExp (mapPn, A.TupleExp tup, resTy))
 		  end
-	      | _ => raise Fail "todo"
+	      | (pes, SOME pred) => raise Fail "todo"
 	    (* end case *)
 	  end
 
