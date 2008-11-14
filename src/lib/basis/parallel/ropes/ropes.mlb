@@ -10,7 +10,10 @@
   ../../misc/debug.mlb
   ../../runtime/runtime.mlb
 
+(*
   ann "cpp" "../include/prim.def"
   in
-    rope-ops.pml
+    sequence.pml
+      ropes.pml
   end
+*)

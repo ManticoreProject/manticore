@@ -28,14 +28,16 @@ functor RopesFn (
   (*   fib 0 is 0, fib 1 is 1, fib 2 is 1, etc. *)
   (* Returns 0 for negative args, so be careful. *)
     fun fib n = let
-	  fun ff (0, u, p) = u
-	    | ff (n, u, p) = ff (n-1, u+p, u)
-        in
-	  case Int.compare (n, 1)
-	   of LESS => 0
-	    | EQUAL => 1
-	    | GREATER => ff (n, 0, 1)
-        end  
+      fun ff args =
+       (case args
+	  of (0, u, p) => u
+	   | (n, u, p) => ff (n-1, u+p, u)
+          (* end case *))
+      in
+        if n < 1 then 0
+	else if n = 0 then 1
+	else ff (n, 0, 1)
+      end
   
   (* ***** ROPES ***** *)
 
@@ -61,25 +63,29 @@ functor RopesFn (
       val rootString = "C<"
       val spaces = copies " "
       val indenter = String.concat (spaces (String.size rootString))
-      (* indent : string list -> string list *)
       val indent = map (fn s => indenter ^ s) 
-      (* build : 'a rope -> string list *)
-      fun build (LEAF (_, xs)) = let 
-            fun b ([], acc) = "]" :: acc
-	      | b ([x], acc) = b ([], show x :: acc)
-	      | b (x::xs, acc) = b (xs, "," :: show x ::acc)
-            in
-	      [(String.concat o rev) (b (S.toList xs, ["["]))]
-            end
-	| build (CAT (_, _, r1, r2)) = let 
-            val ss1 = build r1
-	    val ss2 = build r2
-	    in
-	      (indent ss1) @ (rootString :: (indent ss2))
-	    end
-    in
-      String.concatWith "\n" (build r @ ["\n"])
-    end
+      fun build r =
+       (case r
+	 of LEAF (_, xs) => let 
+              fun b args = 
+               (case args
+	         of (nil, acc) => "]" :: acc
+		  | (x::nil, acc) => b (nil, show x :: acc)
+		  | (x::xs, acc) => b (xs, "," :: show x ::acc)
+	         (* end case *))
+              in
+		((String.concat o rev) (b (S.toList xs, ("["::nil)))) :: nil
+              end
+	  | CAT (_, _, r1, r2) => let 
+              val ss1 = build r1
+	      val ss2 = build r2
+	      in
+	        (indent ss1) @ (rootString :: (indent ss2))
+	      end	
+         (* end case *))
+      in
+        String.concatWith "\n" (build r @ ("\n"::nil))
+      end
 
   (* isLeaf : 'a rope -> bool *)
     fun isLeaf r = 
@@ -105,9 +111,12 @@ functor RopesFn (
     fun singleton x = LEAF (1, S.singleton x)
 
   (* isEmpty : 'a rope -> bool *)
-    fun isEmpty (LEAF (0, _)) = true
-      | isEmpty (CAT (_, 0, _, _)) = true
-      | isEmpty _ = false
+    fun isEmpty r = 
+     (case r
+        of LEAF (0, _) => true
+	 | CAT (_, 0, _, _) => true
+	 | _ => false
+        (* end case *))
 
   (* length : 'a rope -> int *)
     fun length r = 
@@ -250,7 +259,9 @@ functor RopesFn (
 	       in
                  CAT (1, len1 + len2, lf1, lf2)
                end
-	 | (c as CAT (d, len1, r1, r2), leaf as LEAF (len2, s2)) => let
+	 | (CAT (d, len1, r1, r2), LEAF (len2, s2)) => let
+	     val c = CAT (d, len1, r1, r2)
+	     val leaf = LEAF (len2, s2)
 	     val rmost = rightmostLeaf r2
 	     val n = length rmost + len2
 	     in
@@ -258,7 +269,9 @@ functor RopesFn (
 	       then CAT (d, len1 + len2, r1, attachRight (r2, s2))
 	       else CAT (d+1, len1 + len2, c, leaf)
 	     end
-	 | (leaf as LEAF (len1, s1), c as CAT (d, len2, r1, r2)) => let
+	 | (LEAF (len1, s1), CAT (d, len2, r1, r2)) => let
+	     val leaf = LEAF (len1, s1)
+	     val c = CAT (d, len2, r1, r2)
 	     val lmost = leftmostLeaf r1
 	     val n = len1 + length lmost
 	     in
@@ -298,7 +311,7 @@ functor RopesFn (
 	          raise Fail "BUG: empty balancer"
 	 | [(lb, ub, NONE)] =>
              if length r >= lb andalso length r < ub then
-               [(lb, ub, SOME r)]
+               (lb, ub, SOME r)::nil
 	     else let
                val msg = String.concat ["BUG: trying to fit a rope of length ",
 					itos (length r), " into the interval [",
@@ -311,7 +324,7 @@ functor RopesFn (
                (lb, ub, SOME r) :: t
 	     else 
                (lb, ub, NONE) :: insert (r, t)
-	 | b as ((lb, ub, SOME r') :: t) =>
+	 | (lb, ub, SOME r') :: t =>
              insert (concatWithoutBalancing (r', r), (lb, ub, NONE) :: t)
         (* end case *))
 

@@ -146,7 +146,7 @@ structure TranslateParr  : sig
     local
 	fun ropeTy (env, ty) = TranslateTypes.tr(env, Ropes.ropeTy ty)
 	val rawIntTy = BTy.T_Raw BTy.T_Int
-	val mkList = ASTUtil.mkList
+	val mkArray = ASTUtil.mkArray
     in
   (* ropeBOM : env * (env * A.exp * (BV.var -> B.exp)) -> _ rope * A.ty -> B.exp *)
     fun ropeBOM (env, trExpToV) (r, t) =
@@ -157,8 +157,9 @@ structure TranslateParr  : sig
 	    val rV = B.Var.new ("r", ropeTy)
 	in case r
 	     of Leaf (Lf (len, data)) =>
-	          let val dataAST = raise Fail "make array instead of list"
+	          let val dataAST = mkArray (data, t)
 		  in
+                  (* FIXME : should there still be raw ints here? *)
                       trExpToV (env, dataAST, fn dataV =>
                       B.mkStmt ([nV], BU.rawInt(len),
                       B.mkStmt ([rV], B.E_DCon (ropeLeaf, [nV, dataV]),

@@ -21,6 +21,7 @@ structure List =
             in
 	       lp(xs, id)
 	    end
+
     fun foldr f id xs = let
 	    fun lp (xs, acc) = (
 		  case xs
@@ -31,9 +32,9 @@ structure List =
 	       lp(xs, id)
 	    end
 
-(*    fun rev xs = foldl CONS nil xs*)
+    fun rev xs = foldl CONS nil xs
 
-    val xs = CONS(1,CONS(2,nil))
+(*    val xs = CONS(1,CONS(2,nil)) *)
 
     fun l2s f ls = (
 	  case ls
@@ -59,14 +60,19 @@ structure List =
 	    foldl f 0
 	  end
 
-(*    fun nth (i, ls) = (
-	  case ls
-	   of nil => Option.NONE
-	    | CONS(x, xs) =>
-	      if (i = 0)
-		 then Option.SOME x
-	      else nth(i-1, xs)
+    fun nth (i, xs) = raise Fail "todo (some problem with Option.NONE here)"
+(*let
+      fun lp args =
+       (case args
+          of (_, nil)   => Option.NONE
+	   | (0, x::_)  => Option.SOME x
+	   | (n, x::xs) => lp (n-1, xs)
           (* end case *))
+      in
+        if i < 0
+	then Option.NONE
+	else lp (i, xs)
+      end
 *)
 
     fun rev ls = let
@@ -89,7 +95,7 @@ structure List =
 	    lp(ls, nil)
           end
 
-    fun concat (ls1, ls2) = let
+    fun append (ls1, ls2) = let
 	  fun lp ls = (
 	      case ls
 	       of nil => ls2
@@ -98,6 +104,8 @@ structure List =
           in
 	     lp ls1
 	  end
+
+    fun concat xss = foldr append nil xss
 
     fun zip (xs, ys) = let
 	fun loop (xs, ys, zs) = (case (xs, ys)
@@ -139,5 +147,8 @@ structure List =
 	end
 
     fun zipWith (oper, xs, ys) = map(oper, zip(xs, ys))
+
+    fun take (xs, n) = raise Fail "todo"
+    fun drop (xs, n) = raise Fail "todo"
 
   end

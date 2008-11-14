@@ -46,14 +46,25 @@ structure ReportHTML = struct
       else H.codeH (H.seq (loop (loc, [])))
     end
 
+(* outcomeHTML : T.outcome -> H.html *)
+  fun outcomeHTML oc = let
+    val class = case oc
+		  of T.DidNotCompile => "outcome-dnc"
+		   | T.TestFailed    => "outcome-failed"
+		   | T.TestSucceeded => "outcome-succeeded"
+    in
+      H.spanCS (class, T.outcomeToString oc)
+    end
+
 (* test_result : T.test_result -> H.html *)
   fun test_result (tr as T.TR info) = let
     val {testName, goalName, outcome, expected, actual, ...} = info
     fun mkRow isHeader (T.TR {stamp=T.STAMP{timestamp, version}, outcome, ...}) = let
-      val mkCell = if isHeader then H.th else H.td
+      val mkCell  = if isHeader then H.th else H.td
+      val mkCellH = if isHeader then H.thH else H.tdH
       in
-        H.trH [mkCell (Date.toString timestamp ^ " (" ^ version ^ ")"),
-	       mkCell (T.outcomeToString outcome)]
+        H.trH [mkCell  (Date.toString timestamp ^ " (" ^ version ^ ")"),
+	       mkCellH (outcomeHTML outcome)]
       end
     val recent = recentTests tr
     val recentTable = H.tableCH ("recent", (mkRow true tr) ::
@@ -111,7 +122,7 @@ structure ReportHTML = struct
 		       H.h3CS ("revision", ver) ::
 		       map goal (U.alphasort getGoalName r))
     in
-      H.htdoc (title ^ " " ^ d, ["../results.css"], body)
+      H.htdoc (title ^ " " ^ d, ["./results.css"], body)
     end
     
 end
