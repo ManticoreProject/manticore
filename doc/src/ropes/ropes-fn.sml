@@ -232,7 +232,7 @@ functor RopesFn (
 *)
                
   (* concatenate all ropes contained in the balancer into a single balanced rope *)
-    fun catBalancer balancer = let
+    fun concatBalancer balancer = let
 	  fun f (b, acc) = (
 	        case b
 		 of (_, _, NONE) => acc
@@ -278,7 +278,7 @@ functor RopesFn (
           (* end case *))
 
   (* balance a rope. this operation is O(n*log n) in the number of leaves *)
-    fun balance r = catBalancer (List.foldl insert (mkInitialBalancer (length r)) (leaves r))
+    fun balance r = concatBalancer (List.foldl insert (mkInitialBalancer (length r)) (leaves r))
 
   (* concatWithBalancing : 'a rope * 'a rope -> 'a rope *)
   (* concatenates two ropes (with balancing) *)
@@ -313,5 +313,48 @@ functor RopesFn (
 	    concatWithoutBalancing (fromSeq xs1, fromSeq xs2)
 	  end
       end
+
+    fun inBounds (r, i) = i < length r andalso i >= 0
+
+  (* subscript *)
+    fun sub (r, i) = 
+	if inBounds(r, i)
+	   then (
+	    case r
+	     of LEAF (_, s) => S.sub(s, i)
+	      | CAT (depth, len, r1, r2) =>
+		if i < length r1
+	           then sub(r1, i)
+		else sub(r2, i - length r1)
+            (* end case *))
+	else raise Fail "subscript out of bounds"
+
+    fun splitAt (r, i) = 
+	if inBounds(r, i)
+	   then (
+	    case r
+	     of LEAF (len, s) => let
+		   val (s1, s2) = S.splitAt(s, i)
+		   in
+		     (LEAF (i + 1, s1), LEAF (len - i - 1, s2))
+		   end
+	      | CAT (depth, len, r1, r2) =>
+		if i < length r1
+		   then let
+			val (r11, r12) = splitAt(r, i)
+		        in
+			  (r11, concatWithoutBalancing(r12, r2))
+			end
+		else let
+		   val (r21, r22) = splitAt(r, i)
+		   in
+		     (concatWithoutBalancing(r1, r21), r22)
+		   end
+	    (* end case *))
+	else raise Fail "subscript out of bounds for splitAt"
+
+  (* merge two balancers *)
+    fun merge (b1, b2) =
+	  insert(concatBalancer b2, insert(concatBalancer b1, mkInitialBalancer (List.length b1)))
 
   end
