@@ -31,28 +31,28 @@ structure ParrLitToRope : sig
     fun mkRopesFromSeq (ty, seq) = let
 	  val ModuleEnv.Var fromSeq = BasisEnv.getValFromBasis["Ropes", "fromSeq"]
           in
-	    ASTUtil.mkApplyExp(AST.VarExp(fromSeq, [ty]), seq)
+	    ASTUtil.mkApplyExp(AST.VarExp(fromSeq, [ty]), [seq])
 	  end
 
   (* make an expression that creates a singleton sequence containing the expression e *)
     fun mkSingletonSeq (ty, e) = let
 	  val ModuleEnv.Var singleton = BasisEnv.getValFromBasis["Seq", "singleton"]
           in
-	    ASTUtil.mkApplyExp(AST.VarExp(singleton, [ty]), e)
+	    ASTUtil.mkApplyExp(AST.VarExp(singleton, [ty]), [e])
 	  end
 
   (* make an expression that concatenates two sequences *)
     fun mkSeqConcat (ty, s1, s2) = let
 	  val ModuleEnv.Var concat = BasisEnv.getValFromBasis["Seq", "concat"]
           in
-	    AST.mkApplyExp(AST.VarExp(concat, [ty]), ASTUtil.mkTupleExp[s1, s2])
+	    ASTUtil.mkApplyExp(AST.VarExp(concat, [ty]), [s1, s2])
 	  end
 
   (* make an expression that creates a sequence containing the expressions in es *)
     fun mkSeqFromExps (ty, es) = let
 	  val ModuleEnv.Var empty = BasisEnv.getValFromBasis["Seq", "empty"]
 	  val emptySeq = AST.VarExp(empty, [ty])
-	  fun f (e, seq) = mkSeqConcat(mkSingletonSeq e, seq)
+	  fun f (e, seq) = mkSeqConcat(ty, mkSingletonSeq(ty, e), seq)
           in
 	    List.foldl f emptySeq es
 	  end
@@ -61,7 +61,7 @@ structure ParrLitToRope : sig
 	  val xs = List.map newVar es
 	  val binds = ListPair.mapEq mkPValBind (xs, es)
 	  in
-	    AST.mkLetExp(binds, mkRopesFromSeq(ty, mkSeqFromExps(ty, List.map mkVarExp xs)))
+	    ASTUtil.mkLetExp(binds, mkRopesFromSeq(ty, mkSeqFromExps(ty, List.map mkVarExp xs)))
 	  end
 		     
   end

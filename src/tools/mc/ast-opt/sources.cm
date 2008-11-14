@@ -25,7 +25,7 @@ Library
   structure TypeOf	
   structure Unpar
   structure Future1
-  structure ParrToRope
+  structure ParrLitToRope
 
 is
 
