@@ -14,8 +14,13 @@ structure TestRopes = struct
     fun splitAt _ = raise Fail "todo"
     fun fromList x = x
     fun toList x = x 
+    val rev = List.rev
+    fun map (f, s) = List.map f s
+    fun reduce (oper, unit, s) = foldl oper unit s
     val take = List.take
     val drop = List.drop
+    fun cut (s, n) = (List.take (s, n), List.drop (s, n))
+    fun filter (f, s) = List.filter f s
   end
 
   structure R = RopesFn (structure S = ListSeq 

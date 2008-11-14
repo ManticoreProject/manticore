@@ -18,8 +18,15 @@ signature SEQ =
     val sub        : 'a seq * int -> 'a
     val concat     : 'a seq * 'a seq -> 'a seq
     val splitAt    : 'a seq * int -> ('a seq * 'a seq)
+
+    val rev        : 'a seq -> 'a seq
+    val map        : ('a -> 'b) * 'a seq -> 'b seq
+    val filter     : ('a -> bool) * 'a seq -> 'a seq
+    val reduce     : ('a * 'a -> 'a) * 'a * 'a seq -> 'a
+
     val take       : 'a seq * int -> 'a seq
     val drop       : 'a seq * int -> 'a seq
+    val cut        : 'a seq * int -> 'a seq * 'a seq
 
     val fromList   : 'a list -> 'a seq
     val toList     : 'a seq -> 'a list
