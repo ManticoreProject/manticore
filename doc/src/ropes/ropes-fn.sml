@@ -496,13 +496,16 @@ functor RopesFn (
   (*   balancing ropes in parallel: *)
 
   (* merge two balancers *)
-    fun merge (b1, b2) =
-      insert (balToRope b2, insert (balToRope b1, mkInitialBalancer (List.length b1)))
+    fun merge (b1, b2) = let
+	  val (r1, r2) = (balToRope b1, balToRope b2)
+          in
+            insert (r2, insert (r1, mkInitialBalancer (length r1 + length r2)))
+	  end
 
   (* merge a rope of ropes into a balancer *)
     fun mergeRope r = 
      (case r
-        of LEAF(_, r') => mkInitialBalancer 32
+        of LEAF(len, r') => mkInitialBalancer len
 	 | CAT(_, _, r1, r2) => merge (mergeRope r1, mergeRope r2)
         (* end case *))
 
