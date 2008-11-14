@@ -10,12 +10,10 @@ functor RopesFn (
 
     structure S : SEQ
 
-  (* should be roughly the size of an L1-cache line *)
-    val maxLeafSize : int
-  (* should be the max word size of the machine *)
-    val maxDepth : int
+    val sizeL1CacheLine : int
+    val wordSize        : int
 
-  ) (*: ROPES*) = struct
+  ) (* : ROPES *) = struct
 
     structure S = S
     type 'a seq = 'a S.seq
@@ -28,7 +26,7 @@ functor RopesFn (
       | LEAF of (int *                 (* length *)
 		 'a seq                (* sequence *))
 
-    val maxLeafSize = maxLeafSize
+    val maxLeafSize = sizeL1CacheLine
 
     val empty = LEAF(0, S.empty)
 
@@ -38,10 +36,12 @@ functor RopesFn (
 	     | CAT _ => false
           (* end case *)) 
 
-    fun ceilingLg x = 
-	  Real.toInt IEEEReal.TO_POSINF (Math.ln(Real.fromInt x) / Math.ln 2.0)
+  (* ceilingLg : int -> int *)
+  (* ceiling of the log_2 of the input *)
+    fun ceilingLg x = ceil (Math.ln (real x) / Math.ln 2.0)
 
   (* balancing condition for ropes *)
+  (* the particular upper bound is claimed in Boehm et al. 95 *)
     fun isBalanced r = (
 	  case r
 	   of LEAF _ => true
@@ -101,10 +101,11 @@ functor RopesFn (
 	    | EQUAL => 1
 	    | GREATER => ff (n, 0, 1)
         end  
-
-  (* the index of the smallest fibonacci number greater than len.
-   *   e.g., balancerLen 34 = 8
-   *)
+  
+  (* balancerLen : int -> int *)
+  (* the index of the smallest fibonacci number greater than len, *)
+  (* where F_0 = 0, F_1 = 1, etc. *)
+  (*   e.g., balancerLen 34 = 8 *)
     fun balancerLen len = let
 	  fun lp n =
 	        if fib n > len
@@ -371,6 +372,9 @@ functor RopesFn (
 	  if inBounds(r, i)
 	     then splitAtWithBalancing(r, i)
 	  else raise Fail "subscript out of bounds for splitAt"
+
+  (* the following functions are for exploring the possibility of *)
+  (*   balancing ropes in parallel: *)
 
   (* merge two balancers *)
     fun merge (b1, b2) =

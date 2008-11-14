@@ -19,8 +19,8 @@ structure TestRopes = struct
   end
 
   structure R = RopesFn (structure S = ListSeq 
-                         val maxLeafSize = 2
-			 val maxDepth = 32)
+                         val sizeL1CacheLine= 2
+			 val wordSize = 32)
 
   type 'a rope = 'a R.rope
 
