@@ -7,12 +7,9 @@
  *)
 
 functor RopesFn (
-
     structure S : SEQ
-
     val sizeL1CacheLine : int
     val wordSize        : int
-
   ) (* : ROPES *) = struct
 
     structure S = S
@@ -42,7 +39,7 @@ functor RopesFn (
   
   (* ***** ROPES ***** *)
 
-  (* The rope datatype and some bread-and-butter operations. *)
+  (* The rope datatype and some basic operations. *)
 
     datatype 'a rope
       = CAT of (int *     (* depth *)
@@ -92,12 +89,12 @@ functor RopesFn (
         (* end case *)) 
 
   (* ceilingLg : int -> int *)
-  (* ceiling of the log_2 of the input *)
+  (* The ceiling of the log_2 of the input. *)
     val ceilingLg = ceil o log 2.0 o real
 
   (* isBalanced : 'a rope -> bool *)
   (* balancing condition for ropes *)
-  (* this max depth is given in Boehm et al. 95 *)
+  (* The max depth here is given in Boehm et al. 95. *)
     fun isBalanced r = 
      (case r
         of LEAF _ => true
@@ -423,7 +420,7 @@ functor RopesFn (
 
   (* ***** BASIC PARALLEL OPERATIONS ***** *)
 
-  (* FIXME TODO No account is yet taken of the "leftmost exception" property. *)
+  (* FIXME TODO No account is yet taken of the "leftmost exception" semantic property. *)
 
   (* revP : 'a rope -> 'a rope *)
   (* pre  : the input is balanced *)
@@ -473,7 +470,7 @@ functor RopesFn (
 
   (* filterP : ('a -> bool) * 'a rope -> 'a rope *)
   (* post: the output is balanced *)
-  (* Strategy: First, filter all the leaves with no regard for balancing. *)
+  (* Strategy: First, filter all the leaves without balancing. *)
   (*           Then balance the whole thing if needed. *)
     fun filterP (pred, rope) = let
       fun f r =
@@ -500,14 +497,14 @@ functor RopesFn (
 
   (* merge two balancers *)
     fun merge (b1, b2) =
-	  insert(balToRope b2, insert(balToRope b1, mkInitialBalancer (List.length b1)))
+      insert (balToRope b2, insert (balToRope b1, mkInitialBalancer (List.length b1)))
 
   (* merge a rope of ropes into a balancer *)
-    fun mergeRope r = (
-	  case r
-	   of LEAF(_, r') => mkInitialBalancer 32
-	    | CAT(_, _, r1, r2) => merge (mergeRope r1, mergeRope r2)
-	  (* end case *))
+    fun mergeRope r = 
+     (case r
+        of LEAF(_, r') => mkInitialBalancer 32
+	 | CAT(_, _, r1, r2) => merge (mergeRope r1, mergeRope r2)
+        (* end case *))
 
   (* concat a rope of ropes into a single rope *)
     fun concatN r = balToRope (mergeRope r)
