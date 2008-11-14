@@ -387,16 +387,18 @@ functor RopesFn (
         of LEAF (len, s) => let
 	     val (s1, s2) = S.splitAt(s, i)
 	     in
-	       (LEAF (i + 1, s1), LEAF (len - i - 1, s2))
+	       (LEAF (S.length s1, s1), LEAF (S.length s2, s2))
 	     end
 	 | CAT (depth, len, r1, r2) =>
-	     if i < length r1 then let
-               val (r11, r12) = splitAtWithoutBalancing(r, i)
+	     if i = length r1 - 1 then
+               (r1, r2)
+	     else if i < length r1 then let
+               val (r11, r12) = splitAtWithoutBalancing(r1, i)
                in
                  (r11, concatWithoutBalancing(r12, r2))
                end
 	     else let
-               val (r21, r22) = splitAtWithoutBalancing(r, i)
+               val (r21, r22) = splitAtWithoutBalancing(r2, i - length r1)
                in
                  (concatWithoutBalancing(r1, r21), r22)
                end
@@ -411,7 +413,7 @@ functor RopesFn (
       end
 
   (* splitAt : 'a rope * int -> 'a rope * 'a rope *)
-  (* split a rope in two at index i. (r[0, ..., i], r[i+1, ..., n]) *)
+  (* split a rope in two at index i. (r[0, ..., i], r[i+1, ..., |r|-1]) *)
     fun splitAt (r, i) =
       if inBounds(r, i)
       then splitAtWithBalancing(r, i)

@@ -11,7 +11,7 @@ structure TestRopes = struct
     val length = length
     val sub = List.nth
     val concat = op @
-    fun splitAt _ = raise Fail "todo"
+    fun splitAt (ls, i) = (List.take(ls, i+1), List.drop(ls, i+1))
     fun fromList x = x
     fun toList x = x 
     val rev = List.rev
@@ -75,6 +75,29 @@ structure TestRopes = struct
 
   val t  = testBal spineRope
   val t' = testBal doubleSpineRope
+
+  fun testSub n = let
+        val ls = List.tabulate(n, fn n => n)
+        val r = R.fromSeq ls
+        in
+          check(List.all (fn i => i = R.sub(r, i)) ls)
+        end
+
+  fun testSplitAt n i = let
+        val ls = List.tabulate(n, fn n => n)
+	val (ls1, ls2) = ListSeq.splitAt(ls, i)
+	val r = R.fromSeq ls
+	val (r1, r2) = R.splitAt(r, i)
+        in
+          prope itos r;
+	  print "r1\n";
+          prope itos r1;
+	  print "r2\n";
+          prope itos r2;
+          check(List.all (fn i => i = R.sub(r1, i)) ls1);
+          check(List.all (fn i => i = R.sub(r2, i-R.length r1)) ls2);
+	  R.length r2
+        end
 
   fun test 0 = t 7
     | test 1 = t 14
