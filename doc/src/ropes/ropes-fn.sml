@@ -520,7 +520,7 @@ functor RopesFn (
   (* merge a rope of ropes into a balancer *)
     fun mergeRope r = 
      (case r
-        of LEAF(len, r') => mkInitialBalancer len
+        of LEAF(_, r') => mkInitialBalancer(length r')
 	 | CAT(_, _, r1, r2) => merge (mergeRope r1, mergeRope r2)
         (* end case *))
 
