@@ -517,14 +517,7 @@ functor RopesFn (
             insert (r2, insert (r1, mkInitialBalancer (length r1 + length r2)))
 	  end
 
-  (* merge a rope of ropes into a balancer *)
-    fun mergeRope r = 
-     (case r
-        of LEAF(_, r') => mkInitialBalancer(length r')
-	 | CAT(_, _, r1, r2) => merge (mergeRope r1, mergeRope r2)
-        (* end case *))
-
   (* concat a rope of ropes into a single rope *)
-    fun concatN r = balToRope (mergeRope r)
+    fun concatN r = balToRope (reduceP (merge, mkInitialBalancer 1, r))
 
   end
