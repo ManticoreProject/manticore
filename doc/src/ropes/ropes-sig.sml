@@ -27,7 +27,7 @@ signature ROPES =
   
     val concat      : 'a rope * 'a rope -> 'a rope
     val sub         : 'a rope * int -> 'a
-  (* given a rope r and an index i, split the rope into r[0, ..., i-1] and r[i, ..., length r] *)
+  (* given a rope r and an index i, split the rope into r[0, ..., i] and r[i+1, ..., length r] *)
     val splitAt     : 'a rope * int -> ('a rope * 'a rope)
 
   (* O(n)-time operations *)
