@@ -7,25 +7,6 @@ structure TreeShake =
 
     fun concatMap f ls = List.concat(List.map f ls)
 
-  (* property that contains the outgoing edges of a varable *)
-    val {
-           getFn=getEdges : Var.var -> Var.var list, 
-	   setFn=setEdges' : (Var.var * Var.var list) -> unit, ...
-        } = 
-	   Var.newProp (fn _ => [])
-
-  (* property that determines whether a function is dead code *)
-    local
-    val {
-           getFn : Var.var -> bool, 
-	   setFn : (Var.var * bool) -> unit, ...
-        } = 
-	   Var.newProp (fn _ => false)
-    in
-    fun setDead v = ((*print(Var.toString v^"=dead\n");*)setFn(v, true))
-    val isDead = getFn
-    fun setEdges (var, edges) = setEdges'(var, getEdges var@edges)
-    end
 
   (* we use a single variable to represent top-level wild-card patterns *)
     val wildVar = Var.new("wild", ())
@@ -60,7 +41,17 @@ structure TreeShake =
 	   of BPT.D_Mark {tree, ...} => bindsOfPrimCode tree
 	    | BPT.D_Define (_, f, _, _, _, _) => [f]
 	    | _ => []
-          (* end case *))          
+          (* end case *))
+
+    fun bindsOfTyDecl tyDecl = (
+          case tyDecl
+	   of PT.MarkTyDecl {tree, ...} => bindsOfTyDecl tree
+	    | PT.TypeTyDecl (_, ty, _) => [ty]
+	    | PT.DataTyDecl dts => List.map #2 dts
+	    | PT.DataTyReplDecl (ty, _) => [ty]
+	    | PT.AbsTyDecl (_, ty) => [ty]
+	    | PT.PrimTyDecl (_, ty, _) => [ty]
+          (* end case *))
 
     fun bindsOfModule module = (
 	  case module
@@ -75,13 +66,36 @@ structure TreeShake =
 	   of PT.MarkDecl {tree, ...} => bindsOfDecl tree
 	    | PT.ModuleDecl (_, _, module) => bindsOfModule module
 	    | PT.ValueDecl vd => bindsOfValDecl vd
-	    | PT.LocalDecl (ds1, ds2) => bindsOfDecls ds1 @ bindsOfDecls ds2
+	    | PT.LocalDecl (ds1, ds2) => bindsOfDecls ds2
 	    | PT.PrimCodeDecl defns => concatMap bindsOfPrimCode defns
+	    | PT.TyDecl tyDecl => bindsOfTyDecl tyDecl
+	    | PT.ExnDecl (exn, _) => [exn]
 	    | _ => []
           (* end case *))
 
   (* bound variables of a declaration *)
     and bindsOfDecls decls = List.concat(List.map bindsOfDecl decls)
+
+  (* property that contains the outgoing edges of a varable *)
+    val {
+           getFn=getEdges : Var.var -> Var.var list, 
+	   setFn=setEdges' : (Var.var * Var.var list) -> unit, ...
+        } = 
+	   Var.newProp (fn _ => [])
+
+  (* property that determines whether a function is dead code *)
+    local
+    val {
+           getFn : Var.var -> bool, 
+	   setFn : (Var.var * bool) -> unit, ...
+        } = 
+	   Var.newProp (fn _ => false)
+    in
+    fun setDead v = ((*print(Var.toString v^"=dead\n");*)setFn(v, true))
+    val isDead = getFn
+    fun setEdges (var, edges) = setEdges'(var, getEdges var@edges)
+    end
+
 
   (* record the outgoing edges of a value declaration *)
     fun setEdgesOfValDecl vd = let

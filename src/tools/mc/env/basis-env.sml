@@ -62,7 +62,7 @@ structure BasisEnv : sig
   (* use a path (or qualified name) to look up a type *)
     fun getTyFromBasis path = (case getModule path
 	   of SOME(bEnv, x) => (case BEnv.findTy(bEnv, x)
-		 of SOME ty =>  (case ModuleEnv.getTyDef ty
+		 of SOME ty =>  (case ModuleEnv.getTyDef(BEnv.tyId ty)
 		       of SOME tyd => tyd
 			| NONE => notFound path
 		      (* end case *))

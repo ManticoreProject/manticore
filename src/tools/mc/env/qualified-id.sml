@@ -21,7 +21,7 @@ structure QualifiedId : sig
 
     type 'a path = 'a ProgramParseTree.path
 
-    val findTy : (BindingEnv.env * Atom.atom path) -> BindingEnv.ty_bind option
+    val findTy : (BindingEnv.env * Atom.atom path) -> BindingEnv.type_bind option
     val findVar : (BindingEnv.env * Atom.atom path) -> BindingEnv.val_bind option
     val findMod : (BindingEnv.env * Atom.atom path) -> BindingEnv.mod_bind option
     val findModEnv : (BindingEnv.env * Atom.atom path) -> BindingEnv.env option

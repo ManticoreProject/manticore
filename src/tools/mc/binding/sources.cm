@@ -24,6 +24,7 @@ is
   ../ast/sources.cm
   ../env/sources.cm
 
+  binding.sml
   error-stream.sml
   bound-variable-check.sml
   bom-bound-variable-check.sml

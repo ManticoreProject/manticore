@@ -263,7 +263,12 @@ structure ChkModule :> sig
 		  (env, moduleEnv, AST.TD_Binding bind :: astDecls)
 		end
 	    | PT.ModuleDecl (id, sign, module) => chkModule loc (id, sign, module, (env, moduleEnv, astDecls))
-	    | PT.LocalDecl (localDcls, dcls) => raise Fail "LocalDecl"
+	    | PT.LocalDecl (localDcls, dcls) => let
+	      val (env, moduleEnv, localDcls) = chkTopDcls(loc, localDcls, env, moduleEnv)
+	      val (env, moduleEnv, dcls) = chkTopDcls(loc, dcls, env, moduleEnv)
+	      in
+		(env, moduleEnv, List.rev(localDcls @ dcls))
+	      end
 	    | PT.SignDecl (id, sign) => let
               val sigEnv = chkSignature loc (SOME (idToAtom id), sign, env)
               in

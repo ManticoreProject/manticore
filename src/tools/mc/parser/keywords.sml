@@ -29,7 +29,7 @@ structure Keywords : sig
 	    ("if",		T.KW_if),
 	    ("in",		T.KW_in),
 	    ("let",		T.KW_let),
-	    ("local",		T.KW_let),
+	    ("local",		T.KW_local),
 	    ("mod",		T.KW_mod),
 	    ("of",		T.KW_of),
 	    ("orelse",		T.KW_orelse),

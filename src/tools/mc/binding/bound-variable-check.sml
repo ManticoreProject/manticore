@@ -36,8 +36,15 @@ structure BoundVariableCheck :> sig
     val dummyVar = Var.new("dummyVar", ())
     val dummyTy = Var.new("dummyTy", ())
     val dummyMod = Var.new("dummyMod", ())
-    val findTyQid = findQid (QualifiedId.findTy, "type", dummyTy)
-    val findVarQid = findQid (QualifiedId.findVar, "variable", (BEnv.Var dummyVar))
+
+    val findTyQid = findQid (QualifiedId.findTy, "type", BEnv.TypeExp dummyTy)
+    fun findDataTyQid (loc, env, qId) = (case findTyQid (loc, env, qId)
+            of BEnv.DataTyc id => SOME id
+	     | _ => NONE
+            (* end case *))
+    val findTyQid = BEnv.tyId o findTyQid
+
+    val findVarQid = findQid (QualifiedId.findVar, "variable", BEnv.Var dummyVar)
     val findModQid = findQid (QualifiedId.findMod, "module", dummyMod)
     val findModEnv = findQid (QualifiedId.findModEnv, "module", BEnv.empty (Atom.atom ""))
 
@@ -85,25 +92,35 @@ structure BoundVariableCheck :> sig
 
     and chkTys loc (tys, env) = List.map (fn ty => chkTy loc (ty, env)) tys
 
-(* FIXME: check for multiply-bound variables. e.g.,
- *   (case (x, x) of ...)
- *)
-    fun chkPat loc (pat, env) = (case pat
+    fun chkPat loc (pat, env) = let
+	  fun ins (v, patternBoundVars) = 
+	        if AtomSet.member(patternBoundVars, v)
+		   then (
+		    error(loc, ["duplicate pattern-bound variable ", Atom.toString v]);
+		    patternBoundVars)
+		else AtomSet.add(patternBoundVars, v)
+	(* check for duplicate bindings in patterns *)
+	  val _ = List.foldl ins AtomSet.empty (Binding.varsOfPat pat)
+          in
+	    chkPatWithoutDuplicateCheck loc (pat, env)
+	  end
+
+    and chkPatWithoutDuplicateCheck loc (pat, env) = (case pat
            of PT1.MarkPat {span, tree} => let
-		  val (tree, env) = chkPat span (tree, env)
+		  val (tree, env) = chkPatWithoutDuplicateCheck span (tree, env)
 	          in
 		     (PT2.MarkPat{span=span, tree=tree}, env)
 		  end
 	    | PT1.BinaryPat (pat1, cid, pat2) => let
-		  val (pat1, env) = chkPat loc (pat1, env)
-		  val (pat2, env) = chkPat loc (pat2, env)
+		  val (pat1, env) = chkPatWithoutDuplicateCheck loc (pat1, env)
+		  val (pat2, env) = chkPatWithoutDuplicateCheck loc (pat2, env)
 	          in
 		     case findVarQid(loc, env, cid)
 		      of BEnv.Con cid' => (PT2.BinaryPat(pat1, cid', pat2), env)
 		       | _ => (PT2.BinaryPat(pat1, dummyVar, pat2), env)
 		  end
 	    | PT1.ConPat (cid, pat) => let
-		  val (pat, env) = chkPat loc (pat, env)
+		  val (pat, env) = chkPatWithoutDuplicateCheck loc (pat, env)
 	          in
 		     case findVarQid(loc, env, cid)
 		      of BEnv.Con cid' => (PT2.ConPat(cid', pat), env)
@@ -112,7 +129,7 @@ structure BoundVariableCheck :> sig
 			 (PT2.ConPat(dummyVar, pat), env))
 		  end
 	    | PT1.TuplePat pats => let
-		  val (pats, env) = chkPats loc (pats, env)
+		  val (pats, env) = chkPatsWithoutDuplicateCheck loc (pats, env)
 	          in
 		     (PT2.TuplePat pats, env)
 		  end
@@ -139,12 +156,14 @@ structure BoundVariableCheck :> sig
 		  (* end case *))
               (* end case *))
 	    | PT1.ConstraintPat (pat, ty) => let
-		  val (pat, env) = chkPat loc (pat, env)
+		  val (pat, env) = chkPatWithoutDuplicateCheck loc (pat, env)
 		  val ty = chkTy loc (ty, env)
 	          in
 		     (PT2.ConstraintPat(pat, ty), env)
 		  end
            (* end case *))
+
+    and chkPatsWithoutDuplicateCheck loc (pats, env) = chkList loc (chkPatWithoutDuplicateCheck, pats, env)
 
     and chkPats loc (pats, env) = chkList loc (chkPat, pats, env)
 
@@ -418,7 +437,7 @@ structure BoundVariableCheck :> sig
 		  val env = List.foldl ins env decls
 		  (* check the bodies of datatypes *)
 		  fun f ((tvs, id, conDecls), (decls, env)) = let
-		      val SOME dataTy = BEnv.findTy(env, id)
+		      val SOME (BEnv.DataTyc dataTy) = BEnv.findTy(env, id)
 		      val (conDecls, env) = chkConDecls dataTy loc (conDecls, env)
 		      in
 		         ((tvs, dataTy, conDecls) :: decls, env)
@@ -428,7 +447,13 @@ structure BoundVariableCheck :> sig
 		     (PT2.DataTyDecl (List.rev decls), env)
 		  end
 	    | PT1.DataTyReplDecl (dtBind, dtRef) => let
-		  val dtRef' = findTyQid(loc, env, dtRef)
+		  val dtRef' = (
+		        case findDataTyQid(loc, env, dtRef)
+			 of NONE => (
+			    error(loc, ["unbound datatype ", qidToString dtRef]);
+			    dummyTy)
+			  | SOME dtRef => dtRef
+  		        (* end case *))
 		  fun ins ((id, x), env) = BEnv.insertDataCon(env, id, x, dtRef')
 		  val env = List.foldl ins env (BEnv.getDataCons dtRef')
 		  val env = BEnv.insertDataTyc(env, dtBind, dtRef')
@@ -573,6 +598,68 @@ structure BoundVariableCheck :> sig
 	        (rebindVars, modEnv')
 	    end
 
+  (* constrain a module by a signature, e.g., if we have
+   *
+   *  signature S = sig
+   *    type t
+   *    val x : t
+   *  end
+   *
+   *  structure F : S = struct
+   *    type t = int
+   *    val x : t = 3
+   *  end
+   *
+   * then constrainMod(S, sigOf(F)) is
+   *
+   * structure F = struct
+   *   local
+   *     type t' = int
+   *     val x' : t' = 3
+   *   in
+   *     abstype t (* = t' *)
+   *     val x : t  = x'
+   *   end
+   * 
+   *)
+				     
+(*    fun freshVal (id, BEnv.Var _, BEnv.Var _) = BEnv.Var(freshVar id)
+      | freshVal (id, BEnv.Var _, BEnv.Con _) = BEnv.Var(freshVar id)
+      | freshVal (id, BEnv.Con _, BEnv.Con _) = BEnv.Con(freshVar id)
+      | freshVal _ = raise Fail "error"
+
+    fun constrainVals (cEnv, mEnv, freshEnv) = let
+	  fun ins ((id, cV, mV), freshEnv) = BEnv.insertVal(freshEnv, id, freshVal(id, cV, mV))
+          in
+	    List.foldl ins freshEnv (BEnv.matchValsByName(cEnv, mEnv))
+	  end
+
+
+    fun constrainTypes (cEnv, mEnv, freshEnv) = let
+	  fun ins ((id, cTy, mTy), freshEnv) = BEnv.insertTy(freshEnv, id, freshTy(id, cTy, mTy))
+          in
+	    List.foldl ins freshEnv (BEnv.matchTysByName(cEnv, mEnv))
+	  end
+
+  (* construct an environment for constraining a module to a signature *)
+    fun constrainMod (cEnv, mEnv) = let
+	  val freshEnv = BEnv.freshEnv(BEnv.nameOfEnv mEnv, BEnv.outerEnv mEnv)
+	  val freshEnv = constrainVals(cEnv, mEnv, freshEnv)
+	  val freshEnv = constrainTypes(cEnv, mEnv, freshEnv)
+	  in
+	    freshEnv
+	  end
+*)
+
+  (* given local and global decls, return a function for testing whether a giving binding is local *)
+    fun mkIsLocal (localDecls, globalDecls) = let
+	  val localBinds = AtomSet.fromList (Binding.bindsOfDecls localDecls)
+	  val globalBinds = AtomSet.fromList (Binding.bindsOfDecls globalDecls)
+	  fun isLocal v = not(AtomSet.member(globalBinds, v)) andalso AtomSet.member(localBinds, v)
+          in
+	    isLocal
+	  end
+
   (* check the constraining signature. we rebind to get scoping right. *)
     fun chkConstraint loc (signOpt, modEnv, env) = (case signOpt
                 of NONE => (NONE, [], modEnv)
@@ -604,7 +691,7 @@ structure BoundVariableCheck :> sig
                       (PT2.NamedMod modId, sign, rebinds, signEnv)
 	           end
             (* end case *))
-
+ 
     and chkDecl loc (decl, env) = (case decl
            of PT1.MarkDecl {span, tree} => let
 		  val (trees, env) = chkDecl span (tree, env)
@@ -644,8 +731,10 @@ structure BoundVariableCheck :> sig
 		    ([PT2.ValueDecl valDecl], env)
 		  end
 	    | PT1.LocalDecl (locals, decls) => let
+		  val isLocal = mkIsLocal(locals, decls)
 		  val (locals, env) = chkDecls loc (locals, env)
 		  val (decls, env) = chkDecls loc (decls, env)
+		  val env = BEnv.filterEnv(env, not o isLocal)
 	          in
 		     ([PT2.LocalDecl (locals, decls)], env)
 		  end

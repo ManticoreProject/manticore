@@ -102,7 +102,7 @@ structure InitialBasis : sig
 	  val SOME consId = BEnv.findVar (bEnv, N.listCons)
 	  val bEnv = BEnv.insertVal (bEnv, Atom.atom "CONS", consId)
 	(* insert the primitive exceptions *)
-	  val SOME exnTyId = BEnv.findTy(bEnv, N.exn)
+	  val SOME(BEnv.DataTyc exnTyId) = BEnv.findTy(bEnv, N.exn)
 	  fun insExn (ex as Types.DCon{name, ...}, (bEnv, mEnv)) = let
 		val exId = newVar name
 		in (
@@ -226,7 +226,7 @@ structure InitialBasis : sig
 		  val SOME ptVar = BEnv.findTy(primBindingEnv, name)
 	          in
 		   (* bind the type for inline BOM (PT.var ---> BOM.ty) *)
-		    TranslateEnv.insertBOMTyDef(ptVar, bty);
+		    TranslateEnv.insertBOMTyDef(BEnv.tyId ptVar, bty);
 		    TranslateTypes.setTycKind (tyc, k);
 		    case bty
 		     of BTy.T_TyCon(BTy.DataTyc{kind, ...}) => kind := k
@@ -406,7 +406,7 @@ structure InitialBasis : sig
 			val bty = PPT.PML2.BOMParseTree.T_TyCon id
 			in
 			  MEnv.setRealizationOfTyc (tyc, MEnv.BOMTyDef bty);
-			  MEnv.setPrimTyDef(pmlId, SOME bty)
+			  MEnv.setPrimTyDef(BEnv.tyId pmlId, SOME bty)
 			end
 		    | NONE =>
 			TextIO.output(TextIO.stdErr, concat[

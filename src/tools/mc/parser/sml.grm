@@ -190,7 +190,7 @@ Decl
 		=> (markDecl (FULL_SPAN, PT.ExnDecl(Name, SR)))
 	| ValueDecl
 		=> (markDecl (ValueDecl_SPAN, PT.ValueDecl ValueDecl))
-	| "local" (Decl ";"?)* "in" (Decl ";"?)* "end"
+	| "local" (Decl ";"? => (Decl))+ "in" (Decl ";"? => (Decl))+ "end"
 		=> (markDecl (FULL_SPAN, PT.LocalDecl(SR1, SR2)))
         | "structure" Name "=" Module
 		=> (markDecl (FULL_SPAN, PT.ModuleDecl(Name, NONE, Module)))
