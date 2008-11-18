@@ -505,19 +505,4 @@ functor RopesFn (
         balanceIfNecessary (f rope)
       end
 
-  (* ***** PARALLEL BALANCING ***** *)
-
-  (* the following functions are for exploring the possibility of *)
-  (*   balancing ropes in parallel: *)
-
-  (* merge two balancers *)
-    fun merge (b1, b2) = let
-	  val (r1, r2) = (balToRope b1, balToRope b2)
-          in
-            insert (r2, insert (r1, mkInitialBalancer (length r1 + length r2)))
-	  end
-
-  (* concat a rope of ropes into a single rope *)
-    fun concatN r = balToRope (reduceP (merge, mkInitialBalancer 1, r))
-
   end
