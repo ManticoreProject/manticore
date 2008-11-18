@@ -309,16 +309,12 @@ functor RopesFn (
      (case balancer
         of nil => (* this case should never be reached *)
 	          raise Fail "BUG: empty balancer"
-	 | [(lb, ub, NONE)] =>
+	 | (lb, ub, NONE) :: nil =>
              if length r >= lb andalso length r < ub then
                (lb, ub, SOME r)::nil
-	     else let
-               val msg = String.concat ["BUG: trying to fit a rope of length ",
-					itos (length r), " into the interval [",
-					itos lb, ",", itos ub, ")"]
-	       in
-                 raise Fail msg
-               end
+	     else 
+               raise Fail "BUG: typing to fit a rope of incompatible size"
+
 	 | (lb, ub, NONE) :: t => 
 	     if length r >= lb andalso length r < ub then 
                (lb, ub, SOME r) :: t
