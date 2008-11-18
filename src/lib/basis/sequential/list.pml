@@ -12,6 +12,12 @@ structure List =
 
     structure PT = PrimTypes
 
+    fun null xs = (
+	  case xs
+	   of nil => true
+	    | _ => false
+          (* end case *))
+
     fun foldl f id xs = let
 	    fun lp (xs, acc) = (
 		case xs
@@ -85,7 +91,7 @@ structure List =
 	  lp(ls, nil)
 	end
 
-    fun map (f, ls) = let
+    fun map f ls = let
 	  fun lp (ls, acc) = (
 	      case ls
 	       of nil => rev acc
@@ -118,7 +124,7 @@ structure List =
 	 end
 
 
-    fun unzip (xs) = let
+    fun unzip xs = let
 	fun loop (xs, (zs1, zs2)) = (case xs
 	    of nil => (rev(zs1), rev(zs2))
 	     | (x1, x2) :: xs => loop(xs, (x1 :: zs1, x2 :: zs2))
@@ -128,7 +134,7 @@ structure List =
 	 end
 
 
-    fun unzip3 (xs) = let
+    fun unzip3 xs = let
 	fun loop (xs, (zs1, zs2, zs3)) = (case xs
 	    of nil => (rev(zs1), rev(zs2), rev(zs3))
 	     | (x1, x2, x3) :: xs => loop(xs, (x1 :: zs1, x2 :: zs2, x3 :: zs3))
@@ -137,16 +143,16 @@ structure List =
 	    loop(xs, (nil, nil, nil))
 	 end
 
-    fun filter (f, ls) = let
+    fun filter f ls = let
 	fun loop arg = (case arg
-	    of (nil, res) => rev(res)
-	     | (x :: xs, res) => loop(xs, if f(x) then x :: res else res)
+	    of (nil, res) => rev res
+	     | (x :: xs, res) => loop(xs, if f x then x :: res else res)
 	    (* end case *))
 	in
 	   loop(ls, nil)
 	end
 
-    fun zipWith (oper, xs, ys) = map(oper, zip(xs, ys))
+    fun zipWith (oper, xs, ys) = map oper (zip(xs, ys))
 
     fun take (xs, n) = raise Fail "todo"
     fun drop (xs, n) = raise Fail "todo"

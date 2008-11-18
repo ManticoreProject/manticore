@@ -203,7 +203,19 @@ _primcode (
   ;
 
 (* list operations *)
-  (* ?? list-append ?? *)
+
+  define @list-append (arg : [list, list] / exh : exh) : list =
+      let l1 : list = #0(arg)
+      let l2 : list = #1(arg)
+      fun append (l1 : list / exh : exh) : list =
+	    case l1
+	     of CONS(hd:any, tl:list) =>
+		  let l : list = apply append (tl / exh)
+		    return (CONS(hd, l))
+	      | nil => return (l2)
+	    end
+	apply append (l1 / exh)
+  ;
 
 #ifndef SEQUENTIAL
 (* primitive types for parallelism *)
