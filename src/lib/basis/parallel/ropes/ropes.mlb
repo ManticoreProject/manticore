@@ -10,10 +10,5 @@
   ../../misc/debug.mlb
   ../../runtime/runtime.mlb
 
-(*
-  ann "cpp" "../include/prim.def"
-  in
-    sequence.pml
-      ropes.pml
-  end
-*)
+list-seq.pml
+(* ropes.pml *)
