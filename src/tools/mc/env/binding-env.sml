@@ -6,7 +6,7 @@
  * Environment for the bound-variable check.
  *)
 
-structure BindingEnv (* : sig
+structure BindingEnv : sig
 
     type ty_bind = ProgramParseTree.PML2.ty_bind
     type var_bind = ProgramParseTree.PML2.var_bind
@@ -17,13 +17,21 @@ structure BindingEnv (* : sig
     type bom_ty_def = ProgramParseTree.PML2.BOMParseTree.ty_def
     type bom_hlop = ProgramParseTree.PML2.BOMParseTree.hlop_bind
 
+    type sig_env
+    type mod_env
+
+    type bom_env
     type env
 
     val empty : Atom.atom -> env
     val freshEnv : Atom.atom * env option -> env
+    val freshEnv' : Atom.atom * env option * bom_env * mod_env * sig_env -> env
   (* get the outer environment *)
     val outerEnv    : env -> env option
-    val nameOfEnv   : env -> Atom.atom
+    val nameOf      : env -> Atom.atom
+    val sigEnv      : env -> sig_env
+    val bomEnv      : env -> bom_env
+    val modEnv      : env -> mod_env
 
   (* value bindings *)
     datatype val_bind
@@ -36,16 +44,20 @@ structure BindingEnv (* : sig
       | DataTyc of ty_bind      (* data type constructors *)
       | TypeExp of ty_bind      (* type expressions *)
 
+    val tyId : type_bind -> ty_bind
+
   (* PML environment *)
     val insertDataTyc : env * Atom.atom * bom_ty_def -> env
-    val insertAbsTyc : env * Atom.atom * bom_ty_def -> env
+    val insertAbsTyc  : env * Atom.atom * bom_ty_def -> env
     val insertTy      : env * Atom.atom * ty_bind -> env
+    val insertType    : env * Atom.atom * type_bind -> env
     val insertDataCon : env * Atom.atom * var_bind * ty_bind -> env
     val insertVal     : env * Atom.atom * val_bind -> env
     val insertMod     : env * Atom.atom * (mod_bind * env) -> env
+    val insertSig     : env * Atom.atom * (sig_id * env) -> env
 
-    val findTy  : env * Atom.atom -> ty_bind option
-    val findVar : env * Atom.atom -> val_bind option
+    val findTy  : env * Atom.atom -> type_bind option
+    val findVal : env * Atom.atom -> val_bind option
     val findMod : env * Atom.atom -> (mod_bind * env) option
     val findSig : env * Atom.atom -> (sig_id * env) option
 
@@ -58,9 +70,20 @@ structure BindingEnv (* : sig
     val findBOMTy   : env * Atom.atom -> bom_ty_def option
     val findBOMHLOp : env * Atom.atom -> bom_hlop option
 
+  (* get the data constructors associated with a datatype *)
     val getDataCons : ProgramParseTree.Var.var -> (Atom.atom * ProgramParseTree.Var.var) list
 
-  end *) = struct
+    val matchValsByName : env * env -> (Atom.atom * val_bind * val_bind) list
+    val matchModsByName : env * env -> (Atom.atom * (mod_bind * env) * (mod_bind * env)) list
+    val matchTysByName : env * env -> (Atom.atom * type_bind * type_bind) list
+
+  (* filter out unwanted elements from an environment *)
+    val filterEnv : env * (Atom.atom -> bool) -> env
+
+  (* lookup the qualified id where the hlop is bound *)
+    val getHLOpPath : bom_hlop -> string list
+
+  end = struct
 
     structure PT1 = ProgramParseTree.PML1
     structure PT2 = ProgramParseTree.PML2
@@ -102,7 +125,6 @@ structure BindingEnv (* : sig
 
     type ty_env = type_bind Map.map
     type var_env = val_bind Map.map
-    type mod_env = mod_bind Map.map
   (* map from qualified identifiers to flat variables (stamps) *)
     datatype env = Env of {
 	    name     : Atom.atom,                      (* name of the module *)
@@ -114,20 +136,30 @@ structure BindingEnv (* : sig
 	    outerEnv : env option                      (* enclosing module *)
 	  }
 
-    fun freshEnv (name, outerEnv) = Env {
+    type mod_env = (mod_bind * env) Map.map
+    type sig_env = (sig_id * env) Map.map
+
+    fun freshEnv' (name, outerEnv, bomEnv, modEnv, sigEnv) = Env {
 	    name = name,
 	    tyEnv = Map.empty,
 	    varEnv = Map.empty,
-	    bomEnv = emptyBOMEnv, 
-	    modEnv = Map.empty,
-	    sigEnv = Map.empty,
+	    bomEnv = bomEnv, 
+	    modEnv = modEnv,
+	    sigEnv = sigEnv,
 	    outerEnv = outerEnv
 	  }
 
-    fun empty name = freshEnv (name, NONE)
+    fun freshEnv (name, outerEnv) = freshEnv'(name, outerEnv, emptyBOMEnv, Map.empty, Map.empty)
 
+    fun bomEnv (Env{bomEnv, ...}) = bomEnv
+    fun sigEnv (Env{sigEnv, ...}) = sigEnv
+    fun modEnv (Env{modEnv, ...}) = modEnv
+    fun varEnv (Env{varEnv, ...}) = varEnv
+    fun tyEnv (Env{tyEnv, ...}) = tyEnv
     fun nameOf (Env{name, ...}) = name
     fun outerEnv (Env{outerEnv, ...}) = outerEnv
+
+    fun empty name = freshEnv (name, NONE)
 
     fun fromList ls = List.foldl Map.insert' Map.empty ls
 
@@ -187,7 +219,7 @@ structure BindingEnv (* : sig
 	 | SOME v => SOME v)	      
 
     fun findTy (env, tv) = findInEnv (env, #tyEnv, tv)
-    fun findVar (env, v) = findInEnv (env, #varEnv, v)
+    fun findVal (env, v) = findInEnv (env, #varEnv, v)
     fun findMod (env, v) = findInEnv (env, #modEnv, v)
     fun findSig (env, v) = findInEnv (env, #sigEnv, v)
 
@@ -268,6 +300,10 @@ structure BindingEnv (* : sig
 	    Map.foldli match [] cEnv
 	  end
 
+    fun matchValsByName (cEnv as Env{varEnv, ...}, mEnv) = matchByName findVal (varEnv, mEnv)
+    fun matchTysByName (cEnv as Env{tyEnv, ...}, mEnv) = matchByName findTy (tyEnv, mEnv)
+    fun matchModsByName (cEnv as Env{modEnv, ...}, mEnv) = matchByName findMod (modEnv, mEnv)
+
     fun filterByKey filter = Map.filteri (filter o #1)
 
     fun filterBOMEnv (BOMEnv{varEnv, hlopEnv, tyEnv}, filter) =
@@ -286,5 +322,15 @@ structure BindingEnv (* : sig
 	      sigEnv=sigEnv,
 	      outerEnv=outerEnv
 	     }
+
+    fun varToString (id, (Var v | Con v)) = "\tvar "^Atom.toString id^" "^Var.toString v
+
+    fun varEnvToString vEnv = String.concatWith "\n" (List.map  varToString (Map.listItemsi vEnv))
+
+    fun toString (Env{name, tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}) =
+	String.concat [
+	  Atom.toString name,
+	  varEnvToString varEnv
+	]
 
   end

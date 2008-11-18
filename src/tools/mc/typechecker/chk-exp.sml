@@ -524,6 +524,7 @@ structure ChkExp :> sig
 			Overload.addVar ovar;
 			(AST.OverloadExp ovar, instTy)
 		      end
+		  | SOME(Env.EqOp _) => raise Fail "compiler bug"
 		  | NONE => (
 		      error(loc, ["undefined identifier \"", idToString x, "\""]);
 		      bogusExp)

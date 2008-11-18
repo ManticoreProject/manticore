@@ -44,7 +44,7 @@ structure BoundVariableCheck :> sig
             (* end case *))
     val findTyQid = BEnv.tyId o findTyQid
 
-    val findVarQid = findQid (QualifiedId.findVar, "variable", BEnv.Var dummyVar)
+    val findValQid = findQid (QualifiedId.findVal, "variable", BEnv.Var dummyVar)
     val findModQid = findQid (QualifiedId.findMod, "module", dummyMod)
     val findModEnv = findQid (QualifiedId.findModEnv, "module", BEnv.empty (Atom.atom ""))
 
@@ -115,14 +115,14 @@ structure BoundVariableCheck :> sig
 		  val (pat1, env) = chkPatWithoutDuplicateCheck loc (pat1, env)
 		  val (pat2, env) = chkPatWithoutDuplicateCheck loc (pat2, env)
 	          in
-		     case findVarQid(loc, env, cid)
+		     case findValQid(loc, env, cid)
 		      of BEnv.Con cid' => (PT2.BinaryPat(pat1, cid', pat2), env)
 		       | _ => (PT2.BinaryPat(pat1, dummyVar, pat2), env)
 		  end
 	    | PT1.ConPat (cid, pat) => let
 		  val (pat, env) = chkPatWithoutDuplicateCheck loc (pat, env)
 	          in
-		     case findVarQid(loc, env, cid)
+		     case findValQid(loc, env, cid)
 		      of BEnv.Con cid' => (PT2.ConPat(cid', pat), env)
 		       | _ => (
 			 error(loc, ["invalid constructor ", qidToString cid, " in pattern"]);
@@ -137,7 +137,7 @@ structure BoundVariableCheck :> sig
 	          (PT2.ConstPat (chkConst const), env)
 	    | PT1.WildPat => (PT2.WildPat, env)
 	    | PT1.IdPat vb => (
-	      case QualifiedId.findVar(env, vb)
+	      case QualifiedId.findVal(env, vb)
                of SOME (BEnv.Con c) => 
 		  (* this pattern matches a nullary constructor *)
 		  (PT2.IdPat c, env)
@@ -222,7 +222,7 @@ structure BoundVariableCheck :> sig
 		    | chk loc (PT1.Funct (f, pats, exp)) = let			  
 			  val (pat, env') = chkPats loc (pats, env)
 			  val exp = chkExp loc (exp, env')
-			  val BEnv.Var f' = Option.valOf(BEnv.findVar(env, f))
+			  val BEnv.Var f' = Option.valOf(BEnv.findVal(env, f))
 			  in
 			     PT2.Funct (f', pat, exp)
 			  end
@@ -334,7 +334,7 @@ structure BoundVariableCheck :> sig
 	    | PT1.BinaryExp(exp1, id, exp2) => let
 		val exp1 = chkExp loc (exp1, env)
 		val exp2 = chkExp loc (exp2, env)
-		val id' = (case BEnv.findVar (env, id)
+		val id' = (case BEnv.findVal (env, id)
 		       of SOME(BEnv.Var id') => id'
 			| SOME(BEnv.Con id') => id'
 			| NONE => raise Fail(concat["unknown operator \"", Atom.toString id, "\""])
@@ -353,7 +353,7 @@ structure BoundVariableCheck :> sig
 		in
 		  PT2.ApplyExp(exp1, exp2)
 		end
-	    | PT1.IdExp qId => (case findVarQid(loc, env, qId)
+	    | PT1.IdExp qId => (case findValQid(loc, env, qId)
 		of BEnv.Var var => PT2.IdExp var
 		 | BEnv.Con c => PT2.IdExp c
 	       (* end case *))
@@ -556,47 +556,12 @@ structure BoundVariableCheck :> sig
 		       | SOME (id', sigEnv) => (PT2.NameSig(id', tyDecls), sigEnv)
 	          end
 	    | PT1.ExpSig specs => let
-		  val (specs, env) = chkSpecs loc (specs, env)
+		  val sigEnv = BEnv.freshEnv(BEnv.nameOf env, SOME env)
+		  val (specs, sigEnv) = chkSpecs loc (specs, sigEnv)
 	          in
-		     (PT2.ExpSig specs, env)
+		     (PT2.ExpSig specs, sigEnv)
 		  end
           (* end case *))
-
-  (* generate a rebinding *)
-    fun rebindVar (name, BEnv.Con v) = (name, v, BEnv.Con (freshVar name))
-      | rebindVar (name, BEnv.Var v) = (name, v, BEnv.Var (freshVar name))
-
-  (* generates code to rebind the values *)
-    fun genRebindVars fvs = let
-	    fun bind ((_, v, (BEnv.Var v' | BEnv.Con v')), binds) = 
-		    PT2.ValVDecl(PT2.IdPat v', PT2.IdExp v) :: binds
-            in
-	        List.foldl bind [] fvs
-            end
-
-  (* rebind the values of the module w.r.t. the scope of the signature. *)
-    fun rebindVars (sigVarEnv, modVarEnv) = let
-	  val vals = BEnv.Map.listItemsi(BEnv.intersect(sigVarEnv, modVarEnv))
-	  val freshVars = List.map rebindVar vals
-	  val valEnv = List.foldl
-		(fn ((name, _, v), env) => BEnv.Map.insert(env, name, v))
-		  BEnv.Map.empty freshVars
-	  in
-	    (genRebindVars freshVars, valEnv)
-	  end
-
-  (* rebind types, variables and nested modules *)
-    fun rebindMod (sigEnv, modEnv) = let
-	    val BEnv.Env{tyEnv=sigTyEnv, varEnv=sigVarEnv, modEnv=sigModEnv, ...} = sigEnv
-	    val BEnv.Env{name, tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv} = modEnv
-	    val (rebindVars, varEnv') = rebindVars(sigVarEnv, varEnv)
-(* FIXME *)
-	    val tyEnv' = tyEnv
-	    val modEnv' = modEnv
-	    val modEnv' = BEnv.Env{name=name, tyEnv=tyEnv', varEnv=varEnv', bomEnv=bomEnv, modEnv=modEnv', sigEnv=sigEnv, outerEnv=outerEnv}
-	    in
-	        (rebindVars, modEnv')
-	    end
 
   (* constrain a module by a signature, e.g., if we have
    *
@@ -622,34 +587,60 @@ structure BoundVariableCheck :> sig
    *   end
    * 
    *)
-				     
-(*    fun freshVal (id, BEnv.Var _, BEnv.Var _) = BEnv.Var(freshVar id)
+				
+    fun freshVal (id, BEnv.Var _, BEnv.Var _) = BEnv.Var(freshVar id)
       | freshVal (id, BEnv.Var _, BEnv.Con _) = BEnv.Var(freshVar id)
       | freshVal (id, BEnv.Con _, BEnv.Con _) = BEnv.Con(freshVar id)
-      | freshVal _ = raise Fail "error"
+      | freshVal (id, _, _) = raise Fail "unmatched value kind in constraining signature"
 
-    fun constrainVals (cEnv, mEnv, freshEnv) = let
-	  fun ins ((id, cV, mV), freshEnv) = BEnv.insertVal(freshEnv, id, freshVal(id, cV, mV))
+    fun constrainVals (sEnv, mEnv, cEnv) = let
+	  fun ins ((id, cV, mV), cEnv) = BEnv.insertVal(cEnv, id, freshVal(id, cV, mV))
           in
-	    List.foldl ins freshEnv (BEnv.matchValsByName(cEnv, mEnv))
+	    List.foldl ins cEnv (BEnv.matchValsByName(sEnv, mEnv))
 	  end
 
+    fun freshTy (id, BEnv.AbsTyc _, _) = BEnv.AbsTyc(freshVar id)
+      | freshTy (id, BEnv.DataTyc _, BEnv.DataTyc _) = BEnv.DataTyc(freshVar id)
+      | freshTy (id, BEnv.TypeExp _, _) = BEnv.TypeExp(freshVar id)
+      | freshTy _ = raise Fail "unmatched type in constraining signature"
 
-    fun constrainTypes (cEnv, mEnv, freshEnv) = let
-	  fun ins ((id, cTy, mTy), freshEnv) = BEnv.insertTy(freshEnv, id, freshTy(id, cTy, mTy))
+    fun constrainTypes (sEnv, mEnv, cEnv) = let
+	  fun ins ((id, cTy, mTy), cEnv) = BEnv.insertType(cEnv, id, freshTy(id, cTy, mTy))
           in
-	    List.foldl ins freshEnv (BEnv.matchTysByName(cEnv, mEnv))
+	    List.foldl ins cEnv (BEnv.matchTysByName(sEnv, mEnv))
 	  end
+
+    fun constrainMods (sEnv, mEnv, cEnv) = let
+	  fun ins ((id, cMod, mMod), cEnv) = raise Fail "todo"
+          in
+	    List.foldl ins cEnv (BEnv.matchModsByName(sEnv, mEnv))
+	  end	  
 
   (* construct an environment for constraining a module to a signature *)
-    fun constrainMod (cEnv, mEnv) = let
-	  val freshEnv = BEnv.freshEnv(BEnv.nameOfEnv mEnv, BEnv.outerEnv mEnv)
-	  val freshEnv = constrainVals(cEnv, mEnv, freshEnv)
-	  val freshEnv = constrainTypes(cEnv, mEnv, freshEnv)
+    fun constrainSig (sEnv, mEnv) = let
+	  val cEnv = BEnv.freshEnv'(BEnv.nameOf mEnv, BEnv.outerEnv mEnv, BEnv.bomEnv mEnv, BEnv.modEnv mEnv, BEnv.sigEnv mEnv)
+	  val cEnv = constrainVals(sEnv, mEnv, cEnv)
+	  val cEnv = constrainTypes(sEnv, mEnv, cEnv)
+	  val cEnv = constrainMods(sEnv, mEnv, cEnv)
 	  in
-	    freshEnv
+	    cEnv
 	  end
-*)
+
+    fun addValAlias ((id, BEnv.Var cV, BEnv.Var mV), aliases) = PT2.ValVDecl(PT2.IdPat cV, PT2.IdExp mV) :: aliases
+      | addValAlias ((id, BEnv.Var cV, BEnv.Con mV), aliases) = PT2.ValVDecl(PT2.IdPat cV, PT2.IdExp mV) :: aliases
+      | addValAlias ((id, _, _), aliases) = aliases
+
+    fun mkValConstraintAliases (cEnv, mEnv) = List.foldl addValAlias [] (BEnv.matchValsByName(cEnv, mEnv))
+
+  (* constrain a module by a signature environment. takes a signature and module environment, and returns a fresh
+   * constraining environment for the module, a list of value bindings and a list of type bindings. the bindings
+   * are aliases for the constrained module's external interface.
+   *)
+    fun constrainMod (sEnv, mEnv) = let
+	  val cEnv = constrainSig(sEnv, mEnv)
+          in
+	    {cEnv=cEnv, valConstraintAliases=mkValConstraintAliases(cEnv, mEnv), tyConstraintAliases=[]}
+	  end
 
   (* given local and global decls, return a function for testing whether a giving binding is local *)
     fun mkIsLocal (localDecls, globalDecls) = let
@@ -665,9 +656,9 @@ structure BoundVariableCheck :> sig
                 of NONE => (NONE, [], modEnv)
 		 | SOME sign => let
 		       val (sign, signEnv) = chkSign loc (sign, env)
-		       val (rebinds, signEnv) = rebindMod(signEnv, modEnv)
+		       val {cEnv, valConstraintAliases, tyConstraintAliases} = constrainMod(signEnv, modEnv)
 		       in
-		           (SOME sign, rebinds, signEnv)
+		           (SOME sign, valConstraintAliases, cEnv)
 		       end
                 (* end case *))
 

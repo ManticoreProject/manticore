@@ -49,7 +49,7 @@ structure BasisEnv : sig
    *      getValFromBasis(Atom.atom "Future1.future") 
    *)
     fun getValFromBasis path = (case getModule path
-	   of SOME(bEnv, x) => (case BEnv.findVar(bEnv, x)
+	   of SOME(bEnv, x) => (case BEnv.findVal(bEnv, x)
 		 of SOME(BEnv.Var v | BEnv.Con v) => (case ModuleEnv.getValBind v
 		       of SOME vb => vb
 			| NONE => notFound path

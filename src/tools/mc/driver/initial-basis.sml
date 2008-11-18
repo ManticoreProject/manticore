@@ -99,7 +99,7 @@ structure InitialBasis : sig
 		  (N.unit, Types.TyScheme([], unitTy))
 		]
 	(* add data-constructor aliases *)
-	  val SOME consId = BEnv.findVar (bEnv, N.listCons)
+	  val SOME consId = BEnv.findVal (bEnv, N.listCons)
 	  val bEnv = BEnv.insertVal (bEnv, Atom.atom "CONS", consId)
 	(* insert the primitive exceptions *)
 	  val SOME(BEnv.DataTyc exnTyId) = BEnv.findTy(bEnv, N.exn)
@@ -236,7 +236,7 @@ structure InitialBasis : sig
                   end
           (* insert a data constructor binding *)
 	    fun insertDataCon (name, dcon) = let
-		  val SOME (BEnv.Con con) = BEnv.findVar(primBindingEnv, name)
+		  val SOME (BEnv.Con con) = BEnv.findVal(primBindingEnv, name)
 		  val SOME (MEnv.Con con) = MEnv.findVar(primEnv, con)
 	          in
 		     TranslateEnv.insertCon(env, con, dcon)

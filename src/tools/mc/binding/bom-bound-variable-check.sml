@@ -39,12 +39,12 @@ structure BOMBoundVariableCheck :> sig
            (* end case *))
 
     val dummyVar = Var.new("dummyVar", ())
-    val findVarQid = findQid (QualifiedId.findVar, "variable", BEnv.Var dummyVar)
+    val findValQid = findQid (QualifiedId.findVal, "variable", BEnv.Var dummyVar)
     fun findBOMVarQid (loc, env, qId) = 
 	if Option.isSome(QualifiedId.findBOMVar(env, qId))
 	   then	findQid (QualifiedId.findBOMVar, "BOM variable", dummyVar) (loc, env, qId)
 	else (
-	    case QualifiedId.findVar(env, qId)
+	    case QualifiedId.findVal(env, qId)
 	     of SOME(BEnv.Con v) => v
 	      | _ => findQid (QualifiedId.findBOMVar, "BOM variable", dummyVar) (loc, env, qId)
 	    (* end case *))
@@ -52,7 +52,7 @@ structure BOMBoundVariableCheck :> sig
     val findBOMHLOpQid = findQid (QualifiedId.findBOMHLOp, "HLOp", dummyVar)
 
   fun findDCon (env, qid) = (
-        case QualifiedId.findVar(env, qid)
+        case QualifiedId.findVal(env, qid)
 	 of SOME(BEnv.Con con) => SOME con   (* data constructor (defined in PML) *)
 	  | _ => NONE
         (* end case *))
@@ -163,7 +163,7 @@ structure BOMBoundVariableCheck :> sig
 		      PT2.RHS_VPStore (off, sexp1, sexp2)
 		   end
 	     | PT1.RHS_PMLVar v => let
-		   val v' = (case findVarQid(loc, env, v)
+		   val v' = (case findValQid(loc, env, v)
 			      of BEnv.Con v => v
 			       | BEnv.Var v => v
 			    (* end case *))
