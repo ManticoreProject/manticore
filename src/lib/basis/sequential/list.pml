@@ -157,4 +157,11 @@ structure List =
     fun take (xs, n) = raise Fail "todo"
     fun drop (xs, n) = raise Fail "todo"
 
+    fun tabulate (len, genfn) = 
+          if len < 0 then raise Fail "size"
+          else let
+            fun loop n = if n = len then []
+                         else (genfn n)::(loop(n+1))
+            in loop 0 end
+
   end

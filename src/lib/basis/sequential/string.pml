@@ -39,8 +39,9 @@ structure String =
     )
 
     val concat : string list -> string = _prim(@string-concat-list)
+    val size : string -> int = _prim(@size)
 
-    fun concatWith (s, ss) = let
+    fun concatWith s ss = let
 	fun lp xs = (
 	    case xs
 	     of nil => nil

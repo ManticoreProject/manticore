@@ -1,53 +1,40 @@
-(* ropes.sml
+(* ropes.pml
  *
- * Ropes with sequences at the leaves.
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
  *
- * (c) 2008 The Manticore Group (http://manticore.cs.uchicago.edu)
+ * A implementation of ropes in Manticore.
  *)
 
-(*
- * One point about putting vectors at the leaves of ropes.  For non-pointer types
- * (e.g., float parray), you can allocate uninitialized vectors and fill them in
- * as you compute values, but for parrays of pointers, you'll need to build a list
- * of results and then use a "fromList" allocation.  This requirement is because
- * of the GC invariants.
- *   - John 
- *)
+structure Ropes (* : ROPES *) = struct
 
-structure Ropes = struct
+    structure S = ListSeq 
+    val sizeL1CacheLine= 2
+    val wordSize = 32
+    val ceilingLg = Int.ceilingLg
 
-    structure S = Sequence
-
-    val wordSize : int = 64
-
-    val sizeL1CacheLine : int = 64 div (wordSize div 8)
+    datatype option = datatype Option.option
 
     type 'a seq = 'a S.seq
 
   (* ***** UTILITIES ***** *)
 
-  (* itos : int -> string *)
-    val itos = Int.toString
-
-  (* log : real -> (real -> real) *)
-    fun log base x = Math.ln x / Math.ln base
-
   (* fib : int -> int *)
   (* Compute the nth Fibonacci number, where *)
   (*   fib 0 is 0, fib 1 is 1, fib 2 is 1, etc. *)
-  (* Returns 0 for negative args. *)
+  (* Returns 0 for negative args, so be careful. *)
     fun fib n = let
-	  fun ff args =
-           (case args 
-	     of (0, u, p) => u
-	      | ff (n, u, p) => ff (n-1, u+p, u)
-	     (* end case *))
-        in
-          if f < 0 then 0
-	  else if f = 1 then 1
-	  else ff (n, 0, 1)
-        end  
-  
+      fun ff args =
+       (case args
+	  of (0, u, p) => u
+	   | (n, u, p) => ff (n-1, u+p, u)
+          (* end case *))
+      in
+        if n < 1 then 0
+	else if n = 0 then 1
+	else ff (n, 0, 1)
+      end
+
   (* ***** ROPES ***** *)
 
   (* The rope datatype and some basic operations. *)
@@ -72,29 +59,29 @@ structure Ropes = struct
       val rootString = "C<"
       val spaces = copies " "
       val indenter = String.concat (spaces (String.size rootString))
-      val indent = map (fn s => indenter ^ s) 
+      val indent = List.map (fn s => indenter ^ s) 
       fun build r =
        (case r
-         of LEAF (_, xs) => let
-              fun b args =
+	 of LEAF (_, xs) => let 
+              fun b args = 
                (case args
-                 of (nil, acc) => "]" :: acc
-                  | (x::nil, acc) => b (nil, show x :: acc)
-                  | (x::xs, acc) => b (xs, "," :: show x ::acc)
-                 (* end case *))
+	         of (nil, acc) => "]" :: acc
+		  | (x::nil, acc) => b (nil, show x :: acc)
+		  | (x::xs, acc) => b (xs, "," :: show x ::acc)
+	         (* end case *))
               in
-                ((String.concat o rev) (b (S.toList xs, ("["::nil)))) :: nil
+		(String.concat(List.rev(b (S.toList xs, ("["::nil))))) :: nil
               end
-          | CAT (_, _, r1, r2) => let
+	  | CAT (_, _, r1, r2) => let 
               val ss1 = build r1
-              val ss2 = build r2
-              in
-                (indent ss1) @ (rootString :: (indent ss2))
-              end
+	      val ss2 = build r2
+	      in
+	        (indent ss1) @ (rootString :: (indent ss2))
+	      end	
          (* end case *))
-    in
-      String.concatWith "\n" (build r @ ("\n" :: nil))
-    end
+      in
+        String.concatWith "\n" (build r @ ("\n"::nil))
+      end
 
   (* isLeaf : 'a rope -> bool *)
     fun isLeaf r = 
@@ -102,10 +89,6 @@ structure Ropes = struct
         of LEAF _ => true
 	 | CAT _ => false
         (* end case *)) 
-
-  (* ceilingLg : int -> int *)
-  (* The ceiling of the log_2 of the input. *)
-    val ceilingLg = ceil o log 2.0 o real
 
   (* isBalanced : 'a rope -> bool *)
   (* balancing condition for ropes *)
@@ -196,7 +179,7 @@ structure Ropes = struct
   (* takes a rope length, and returns a rope balancer *)
     fun mkInitialBalancer len = let
       val blen = balancerLen len
-      fun initEntry n = (fib (n+2), fib (n+3), Option.NONE)
+      fun initEntry n = (fib (n+2), fib (n+3), NONE)
       in
         List.tabulate (blen, initEntry)
       end
@@ -269,8 +252,8 @@ structure Ropes = struct
                  CAT (1, len1 + len2, lf1, lf2)
                end
 	 | (CAT (d, len1, r1, r2), LEAF (len2, s2)) => let
-	     val c = CAT (d, len, r1, r2)
-	     val leaf = LEAF (len2, s2) 
+	     val c = CAT (d, len1, r1, r2)
+	     val leaf = LEAF (len2, s2)
 	     val rmost = rightmostLeaf r2
 	     val n = length rmost + len2
 	     in
@@ -302,8 +285,8 @@ structure Ropes = struct
     fun balToRope balancer = let
       fun f (b, acc) = 
        (case b
-	  of (_, _, Option.NONE) => acc
-	   | (_, _, Option.SOME r) => concatWithoutBalancing (r, acc)
+	  of (_, _, NONE) => acc
+	   | (_, _, SOME r) => concatWithoutBalancing (r, acc)
           (* end case *))
       in
         List.foldl f empty balancer
@@ -317,24 +300,20 @@ structure Ropes = struct
     fun insert (r, balancer) = 
      (case balancer
         of nil => (* this case should never be reached *)
-	          fail "BUG: empty balancer"
-	 | (lb, ub, Option.NONE)::nil =>
+	          (raise Fail "BUG: empty balancer")
+	 | (lb, ub, NONE) :: nil =>
              if length r >= lb andalso length r < ub then
-               (lb, ub, Option.SOME r) :: nil
-	     else let
-               val msg = String.concat ["BUG: trying to fit a rope of length ",
-					itos (length r), " into the interval [",
-					itos lb, ",", itos ub, ")"]
-	       in
-                 raise Fail msg
-               end
-	 | (lb, ub, Option.NONE) :: t => 
-	     if length r >= lb andalso length r < ub then 
-               (lb, ub, Option.SOME r) :: t
+               (lb, ub, SOME r)::nil
 	     else 
-               (lb, ub, Option.NONE) :: insert (r, t)
-	 | (lb, ub, Option.SOME r') :: t =>
-             insert (concatWithoutBalancing (r', r), (lb, ub, Option.NONE) :: t)
+               (raise Fail "BUG: typing to fit a rope of incompatible size")
+	 | (lb, ub, NONE) :: t => 
+	     if length r >= lb andalso length r < ub then 
+               (lb, ub, SOME r) :: t
+	     else 
+               (lb, ub, NONE) :: insert (r, t)
+	 | (lb, ub, SOME r') :: t =>
+             insert (concatWithoutBalancing (r', r), (lb, ub, NONE) :: t)
+
         (* end case *))
 
   (* leaves : 'a rope -> 'a rope list *)
@@ -396,16 +375,18 @@ structure Ropes = struct
         of LEAF (len, s) => let
 	     val (s1, s2) = S.splitAt(s, i)
 	     in
-	       (LEAF (i + 1, s1), LEAF (len - i - 1, s2))
+	       (LEAF (S.length s1, s1), LEAF (S.length s2, s2))
 	     end
 	 | CAT (depth, len, r1, r2) =>
-	     if i < length r1 then let
-               val (r11, r12) = splitAtWithoutBalancing(r, i)
+	     if i = length r1 - 1 then
+               (r1, r2)
+	     else if i < length r1 then let
+               val (r11, r12) = splitAtWithoutBalancing(r1, i)
                in
                  (r11, concatWithoutBalancing(r12, r2))
                end
 	     else let
-               val (r21, r22) = splitAtWithoutBalancing(r, i)
+               val (r21, r22) = splitAtWithoutBalancing(r2, i - length r1)
                in
                  (concatWithoutBalancing(r1, r21), r22)
                end
@@ -420,7 +401,7 @@ structure Ropes = struct
       end
 
   (* splitAt : 'a rope * int -> 'a rope * 'a rope *)
-  (* split a rope in two at index i. (r[0, ..., i], r[i+1, ..., n]) *)
+  (* split a rope in two at index i. (r[0, ..., i], r[i+1, ..., |r|-1]) *)
     fun splitAt (r, i) =
       if inBounds(r, i)
       then splitAtWithBalancing(r, i)
@@ -513,4 +494,3 @@ structure Ropes = struct
       end
 
   end
-

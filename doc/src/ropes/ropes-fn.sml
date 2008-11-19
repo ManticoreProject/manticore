@@ -10,18 +10,13 @@ functor RopesFn (
     structure S : SEQ
     val sizeL1CacheLine : int
     val wordSize        : int
+    val ceilingLg       : int -> int
   ) (* : ROPES *) = struct
 
     structure S = S
     type 'a seq = 'a S.seq
 
   (* ***** UTILITIES ***** *)
-
-  (* itos : int -> string *)
-    val itos = Int.toString
-
-  (* log : real -> (real -> real) *)
-    fun log base x = Math.ln x / Math.ln base
 
   (* fib : int -> int *)
   (* Compute the nth Fibonacci number, where *)
@@ -63,7 +58,7 @@ functor RopesFn (
       val rootString = "C<"
       val spaces = copies " "
       val indenter = String.concat (spaces (String.size rootString))
-      val indent = map (fn s => indenter ^ s) 
+      val indent = List.map (fn s => indenter ^ s) 
       fun build r =
        (case r
 	 of LEAF (_, xs) => let 
@@ -74,7 +69,7 @@ functor RopesFn (
 		  | (x::xs, acc) => b (xs, "," :: show x ::acc)
 	         (* end case *))
               in
-		((String.concat o rev) (b (S.toList xs, ("["::nil)))) :: nil
+		(String.concat(List.rev(b (S.toList xs, ("["::nil))))) :: nil
               end
 	  | CAT (_, _, r1, r2) => let 
               val ss1 = build r1
@@ -93,10 +88,6 @@ functor RopesFn (
         of LEAF _ => true
 	 | CAT _ => false
         (* end case *)) 
-
-  (* ceilingLg : int -> int *)
-  (* The ceiling of the log_2 of the input. *)
-    val ceilingLg = ceil o log 2.0 o real
 
   (* isBalanced : 'a rope -> bool *)
   (* balancing condition for ropes *)
@@ -308,13 +299,12 @@ functor RopesFn (
     fun insert (r, balancer) = 
      (case balancer
         of nil => (* this case should never be reached *)
-	          raise Fail "BUG: empty balancer"
+	          (raise Fail "BUG: empty balancer")
 	 | (lb, ub, NONE) :: nil =>
              if length r >= lb andalso length r < ub then
                (lb, ub, SOME r)::nil
 	     else 
-               raise Fail "BUG: typing to fit a rope of incompatible size"
-
+               (raise Fail "BUG: typing to fit a rope of incompatible size")
 	 | (lb, ub, NONE) :: t => 
 	     if length r >= lb andalso length r < ub then 
                (lb, ub, SOME r) :: t

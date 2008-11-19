@@ -346,3 +346,25 @@ double M_Tan (double x)
 {
   return tan(x);
 }
+
+/*! \brief compute floor(log_2(v)). NOTE: this function relies on little endianness
+ */
+int M_FloorLg (int v) 
+{
+  int r; // result of log_2(v) goes here
+  union { unsigned int u[2]; double d; } t; // temp
+
+  t.u[1] = 0x43300000;
+  t.u[0] = v;
+  t.d -= 4503599627370496.0;
+  r = (t.u[1] >> 20) - 0x3FF;
+  return r;
+}
+
+/*! \brief compute ceiling(log_2(v))
+ */
+int M_CeilingLg (int v) 
+{
+  int lg = M_FloorLg(v);
+  return lg + (v - (1<<lg) > 0);
+}

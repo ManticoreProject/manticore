@@ -3,6 +3,13 @@
 
 structure TestRopes = struct
 
+  (* log : real -> (real -> real) *)
+    fun log base x = Math.ln x / Math.ln base
+
+  (* ceilingLg : int -> int *)
+  (* The ceiling of the log_2 of the input. *)
+    val ceilingLg = ceil o log 2.0 o real
+
   structure ListSeq : SEQ = struct
     type 'a seq = 'a list
     val empty = List.nil
@@ -25,7 +32,8 @@ structure TestRopes = struct
 
   structure R = RopesFn (structure S = ListSeq 
                          val sizeL1CacheLine= 2
-			 val wordSize = 32)
+			 val wordSize = 32
+			 val ceilingLg = ceilingLg)
 
   type 'a rope = 'a R.rope
 
