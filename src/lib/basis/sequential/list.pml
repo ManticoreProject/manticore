@@ -154,13 +154,32 @@ structure List =
 
     fun zipWith (oper, xs, ys) = map oper (zip(xs, ys))
 
-    fun take (xs, n) = raise Fail "todo"
-    fun drop (xs, n) = raise Fail "todo"
+    fun take (l, n) = let
+          fun loop (l, n) = (
+	        case (l, n)
+		 of (l, 0) => nil
+		  | (nil, _) => (raise Fail "subscript")
+		  | ((x::t), n) => x :: loop (t, n-1)
+    	        (* end case *))
+          in
+            if n >= 0 then loop (l, n) else (raise Fail "subscript")
+          end
+
+    fun drop (l, n) = let
+          fun loop (l,n) = (
+	        case (l, n)
+		 of (l, 0) => l
+		  | (nil, _) => (raise Fail "subscript")
+		  | ((_ :: t), n) => loop(t,n-1)
+ 	        (* end case *))
+          in
+            if n >= 0 then loop (l,n) else (raise Fail "subscript")
+          end
 
     fun tabulate (len, genfn) = 
           if len < 0 then raise Fail "size"
           else let
-            fun loop n = if n = len then []
+            fun loop n = if n = len then nil
                          else (genfn n)::(loop(n+1))
             in loop 0 end
 

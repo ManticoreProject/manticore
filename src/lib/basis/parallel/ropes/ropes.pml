@@ -53,8 +53,10 @@ structure Ropes (* : ROPES *) = struct
   (* empty : 'a rope *)
     val empty = LEAF(0, S.empty)
 
+    val show = Int.toString
+
   (* toString : ('a -> string) -> 'a rope -> string *)
-    fun toString show r = let
+    fun toString (* show *) r = let
       fun copies thing n = List.tabulate (n, fn _ => thing)
       val rootString = "C<"
       val spaces = copies " "

@@ -10,6 +10,8 @@ structure TestRopes = struct
   (* The ceiling of the log_2 of the input. *)
     val ceilingLg = ceil o log 2.0 o real
 
+    val itos = Int.toString
+
   structure ListSeq : SEQ = struct
     type 'a seq = 'a list
     val empty = List.nil
@@ -37,6 +39,8 @@ structure TestRopes = struct
 
   type 'a rope = 'a R.rope
 
+    fun prope show r = print (R.toString show r)
+
 (* int * int -> int rope *)
   fun spineRope (lo, hi) = let
     val len = hi - lo + 1
@@ -48,17 +52,16 @@ structure TestRopes = struct
 				     spineRope (lo + R.maxLeafSize, hi))
     end
 
-  fun invert (r as R.LEAF(_, _)) = r
-    | invert (R.CAT(depth, len, r1, r2)) = R.CAT(depth, len, invert r2, invert r1)
+  fun invert r = (
+        case r
+	 of R.LEAF(_, _) => r
+	  | R.CAT(depth, len, r1, r2) => R.CAT(depth, len, invert r2, invert r1)
+        (* end case *))
 
   fun doubleSpineRope (lo, hi) = 
     R.concatWithoutBalancing (invert(spineRope(lo, hi div 2)), spineRope(hi div 2 + 1, hi))
 
   fun println s = (print s; print "\n")
-
-  fun prope show r = print (R.toString show r)
-
-  val itos = Int.toString
 
   fun check c = if not c then raise Fail "" else ()
 
@@ -70,8 +73,8 @@ structure TestRopes = struct
       print "---------- before balancing ----------\n";
       prope itos r;
       print "---------- after balancing  ----------\n";
-      prope itos b;
-      print (String.concat ["---------- the depth before balancing was ",
+      prope itos b
+(*      print (String.concat ["---------- the depth before balancing was ",
 			    itos (R.depth r),
 			    ", after was ",
 			    itos (R.depth b),
@@ -79,6 +82,7 @@ structure TestRopes = struct
       print (String.concat ["---------- the expected depth of the balanced rope is <= ",
 			    itos (2 + (ceil (Math.ln (real (R.length r)) / Math.ln 2.0))),
 			    "\n"])
+*)
     end
 
   val t  = testBal spineRope

@@ -4,6 +4,9 @@ string.pml
 ann "cpp" "../include/prim.def,../include/assert.def"
 in
   print.pml
+end
+ann "cpp" "../include/prim.def,../include/assert.def"
+in
   rand.pml
 end
 ../misc/debug.mlb
