@@ -349,23 +349,89 @@ structure Ropes (* : ROPES *) = struct
 	 | CAT(_, _, r1, r2) => S.concat (toSeq r1, toSeq r2)
         (* end case *))
 
-  (* fromSeq : 'a seq -> 'a rope *)
-  (* given a sequence, construct a balanced rope *)
-  (* FIXME This can be done with a different, nice algorithm... - ams *)
-    fun fromSeq xs = let
-      val len = S.length xs
+  (* split : 'a list * int -> 'a list * 'a list *)
+  (* Split the list into two pieces. *)
+  (* Don't complain if there aren't enough elements. *)
+  (* ex: split ([1,2,3], 0) => ([],[1,2,3]) *)
+  (* ex: split ([1,2,3], 1) => ([1],[2,3])  *)
+  (* ex: split ([1,2,3], 2) => ([1,2],[3])  *)
+  (* ex: split ([1,2,3], 4) => ([1,2,3],[]) *)
+    fun split (xs, n) = let
+      fun loop (n, taken, xs) =
+       (case xs
+          of nil => (rev taken, nil)
+         | h::t => if n = 0 then
+                        (rev taken, xs)
+            else
+                        loop (n-1, h::taken, t)
+          (* end case *))
       in
-	if len <= maxLeafSize
-	   then LEAF (len, xs)
-	else let
-          val m = len div 2
-          val (xs1, xs2) = (S.take(xs, m), S.drop(xs, m))
-	  in
-	    concatWithoutBalancing (fromSeq xs1, fromSeq xs2)
-	  end
+        if n <= 0 then
+          (nil, xs)
+        else
+          loop (n, nil, xs)
+      end
+         
+  (* chop : 'a list * int -> 'a list list *)
+  (* Chop the list into pieces of the appropriate size. *)
+  (* ex: chop ([1,2,3,4], 1) => [[1],[2],[3],[4]] *)
+  (* ex: chop ([1,2,3,4], 2) => [[1,2],[3,4]]     *)
+    fun chop (xs, n) = let
+      fun loop xs =
+       (case xs
+          of nil => nil
+         | _ => if List.length xs <= n then
+                    xs :: nil
+                  else let
+                    val (t, d) = split (xs, n)
+                    in
+                      t :: loop d
+                    end
+          (* end case *))
+      in
+	loop xs
       end
 
-  (* ***** ROPE DECONSTRUCTION ***** *)
+  (* catPairs : 'a rope list -> 'a rope list *)
+  (* Concatenate every pair of ropes in a list. *)
+  (* ex: catPairs [r0,r1,r2,r3] => [Cat(r0,r1),Cat(r2,r3)] *)
+    fun catPairs rs = 
+     (case rs
+        of nil => nil
+     | r::nil => rs
+     | r0::r1::rs => (concatWithoutBalancing (r0, r1)) :: catPairs rs
+        (* end case *))
+
+  (* leafFromList : 'a list -> 'a rope *)
+    fun leafFromList (xs: 'a list) = let
+      val n = List.length xs
+      in
+        if n <= maxLeafSize then
+          LEAF (n, S.fromList xs)
+    else
+          raise Fail "too big"
+      end
+
+  (* fromList : 'a list -> 'a rope *)
+  (* Given a list, construct a balanced rope. *)
+  (* The leaves will be packed to the left.  *)
+    fun fromList xs = let
+      val ldata = chop (xs, maxLeafSize)
+      val leaves = map leafFromList ldata
+      fun build ls = 
+       (case ls
+        of nil => empty
+         | l::nil => l
+         | _ => build (catPairs ls)
+          (* end case *))
+      in
+        build leaves      
+      end
+
+  (* fromSeq : 'a seq -> 'a rope *)
+    fun fromSeq s = fromList (S.toList s)
+
+(* ***** ROPE DECONSTRUCTION ***** *)
 
   (* splitAtWithoutBalancing : 'a rope * int -> 'a rope * 'a rope *)
   (* pre: inBounds(r, i) *)

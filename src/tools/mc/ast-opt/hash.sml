@@ -21,7 +21,7 @@ structure Hash (* : sig
 
     structure A = AST
     structure T = Types
-    structure F = Futures
+(*    structure F = Futures *)
 
     (* fail : string -> 'a *)
     fun fail msg = raise Fail msg
@@ -115,11 +115,11 @@ structure Hash (* : sig
 	val t1 = (2, [Basis.intTy, Basis.boolTy])
 
         (* t2 *)
-	val t2 = (3, [Basis.intTy, Basis.boolTy, F.futureTy Basis.floatTy])
+(*	val t2 = (3, [Basis.intTy, Basis.boolTy, F.futureTy Basis.floatTy]) *)
 
     in
         (* test : int -> unit *)
-        val test = U.mkTest tst [t0,t1,t2]
+        val test = U.mkTest tst [t0,t1]
 
     end
 

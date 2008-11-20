@@ -9,59 +9,47 @@
 structure ParrLitToRope : sig
 
   (* takes a list of rope elements and their types, and packages them into a rope 
-   *   [| e1, ..., en |]
+   *   tr [| e1, ..., en |]
    *      ==>
-   *   let pval x0 = e0
+   *   let pval x0 = tr e0
    *       ...
-   *       pval xn = en
+   *       pval xn = tr en
    *   in
-   *     Ropes.fromSeq(Seq.concat(Seq.singleton x0, ..., Seq.singleton xn))
+   *     Ropes.fromList [x0, x1, ..., xn]
    *   end
    *)
     val tr : AST.exp list * Types.ty -> AST.exp
 
   end = struct
 
-    fun newVar e = Var.new("x", TypeOf.exp e)
+    structure U = ASTUtil
+    structure MEnv = ModuleEnv
+    structure BEnv = BasisEnv
 
+    val ropeFromList = 
+     (case BEnv.getValFromBasis ["Ropes", "fromList"]
+        of MEnv.Var x => x
+	 | _ => raise Fail "expected a ModuleEnv.val_bing Var variant"
+        (* end case *))
+
+    fun newVar e = Var.new("x", TypeOf.exp e)
     fun mkPValBind (x, e) = AST.PValBind(AST.VarPat x, e)
     fun mkVarExp v = AST.VarExp(v, [])
+    val mkApply = U.mkApplyExp
 
-  (* make an expression that creates a rope from a sequence *)
-    fun mkRopesFromSeq (ty, seq) = let
-	  val ModuleEnv.Var fromSeq = BasisEnv.getValFromBasis["Ropes", "fromSeq"]
-          in
-	    ASTUtil.mkApplyExp(AST.VarExp(fromSeq, [ty]), [seq])
-	  end
+  (* mkRopeFromList : ty * exp -> exp *)
+  (* Make a rope expression from an expression which is a list in the surface language. *)
+    fun mkRopeFromList (ty, listExp) = mkApply (AST.VarExp (ropeFromList, [ty]), [listExp])
 
-  (* make an expression that creates a singleton sequence containing the expression e *)
-    fun mkSingletonSeq (ty, e) = let
-	  val ModuleEnv.Var singleton = BasisEnv.getValFromBasis["Seq", "singleton"]
-          in
-	    ASTUtil.mkApplyExp(AST.VarExp(singleton, [ty]), [e])
-	  end
-
-  (* make an expression that concatenates two sequences *)
-    fun mkSeqConcat (ty, s1, s2) = let
-	  val ModuleEnv.Var concat = BasisEnv.getValFromBasis["Seq", "concat"]
-          in
-	    ASTUtil.mkApplyExp(AST.VarExp(concat, [ty]), [s1, s2])
-	  end
-
-  (* make an expression that creates a sequence containing the expressions in es *)
-    fun mkSeqFromExps (ty, es) = let
-	  val ModuleEnv.Var empty = BasisEnv.getValFromBasis["Seq", "empty"]
-	  val emptySeq = AST.VarExp(empty, [ty])
-	  fun f (e, seq) = mkSeqConcat(ty, mkSingletonSeq(ty, e), seq)
-          in
-	    List.foldl f emptySeq es
-	  end
-
+  (* tr : exp list * ty -> exp *)
+  (* Given a list of expressions, which were in a parallel array, and their type, *)
+  (* build a rope out of them. *)
     fun tr (es, ty) = let
-	  val xs = List.map newVar es
+	  val xs  = map newVar es
 	  val binds = ListPair.mapEq mkPValBind (xs, es)
+	  val xsList = U.mkList (map mkVarExp xs, ty)
 	  in
-	    ASTUtil.mkLetExp(binds, mkRopesFromSeq(ty, mkSeqFromExps(ty, List.map mkVarExp xs)))
+	    U.mkLetExp (binds, mkRopeFromList (ty, xsList))
 	  end
 		     
   end
