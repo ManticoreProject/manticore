@@ -359,9 +359,9 @@ structure Ropes (* : ROPES *) = struct
     fun split (xs, n) = let
       fun loop (n, taken, xs) =
        (case xs
-          of nil => (rev taken, nil)
+          of nil => (List.rev taken, nil)
          | h::t => if n = 0 then
-                        (rev taken, xs)
+                        (List.rev taken, xs)
             else
                         loop (n-1, h::taken, t)
           (* end case *))
@@ -417,7 +417,7 @@ structure Ropes (* : ROPES *) = struct
   (* The leaves will be packed to the left.  *)
     fun fromList xs = let
       val ldata = chop (xs, maxLeafSize)
-      val leaves = map leafFromList ldata
+      val leaves = List.map leafFromList ldata
       fun build ls = 
        (case ls
         of nil => empty

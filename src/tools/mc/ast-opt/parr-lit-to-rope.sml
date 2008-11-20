@@ -37,7 +37,7 @@ structure ParrLitToRope : sig
       val ropeFromList = 
        (case BEnv.getValFromBasis ["Ropes", "fromList"]
           of MEnv.Var x => x
-	   | _ => raise Fail "expected a ModuleEnv.val_bing Var variant"
+	   | _ => raise Fail "expected a ModuleEnv.val_bind Var variant"
        (* end case *))
       in
 	mkApply (AST.VarExp (ropeFromList, [ty]), [listExp])
