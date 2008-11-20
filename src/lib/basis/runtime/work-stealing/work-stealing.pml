@@ -175,7 +175,7 @@ structure WorkStealing =
 	    case kOpt
 	     of O.NONE => throw steal()
 	      | O.SOME (k : PT.fiber) => 
-		do print_msg("successful steal")
+		do print_debug("successful steal")
 		throw run(k)
 	    end
         (* handle a signal *)
@@ -199,6 +199,7 @@ structure WorkStealing =
 
     (* initialize the workers *)
       define @init (/ exh : exh) : Arr.array =
+        do print_msg("initializaing work stealing")
       (* one worker per vproc *)
 	let nVProcs : int = VProc.@num-vprocs(/ exh)
         let workers : Arr.array = Arr.@array(nVProcs, $0 / exh)
