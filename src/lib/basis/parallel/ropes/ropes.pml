@@ -315,7 +315,6 @@ structure Ropes (* : ROPES *) = struct
                (lb, ub, NONE) :: insert (r, t)
 	 | (lb, ub, SOME r') :: t =>
              insert (concatWithoutBalancing (r', r), (lb, ub, NONE) :: t)
-
         (* end case *))
 
   (* leaves : 'a rope -> 'a rope list *)
@@ -329,7 +328,7 @@ structure Ropes (* : ROPES *) = struct
   (* balance : 'a rope -> 'a rope *)
   (* Balance a rope to within 2 of ideal depth. *)
   (* This operation is O(n*log n) in the number of leaves *)
-    fun balance r = balToRope (List.foldl insert (mkInitialBalancer (length r)) (leaves r))
+    fun balance r = balToRope(List.foldl insert (mkInitialBalancer (length r)) (leaves r))
 
   (* balanceIfNecessary : 'a rope -> 'a rope *)
   (* balance a rope only when it is unbalanced *)

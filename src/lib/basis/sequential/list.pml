@@ -12,6 +12,12 @@ structure List =
 
     structure PT = PrimTypes
 
+    fun hd xs = (
+	  case xs
+	   of nil => (raise Fail "List.hd")
+	    | x :: xs => x
+          (* end case *))
+
     fun null xs = (
 	  case xs
 	   of nil => true
@@ -60,10 +66,14 @@ structure List =
 	     lp ls
 	  end
 
-    val length = let
-	  fun f (x, len) = len + 1
+    fun length xs = let
+	  fun lp (xs, acc) = (
+	        case xs
+		 of nil => acc
+		  | x :: xs => lp(xs, acc+1)
+	        (* end case *))
           in
-	    foldl f 0
+	    lp(xs, 0)
 	  end
 
     fun nth (i, xs) = raise Fail "todo (some problem with Option.NONE here)"

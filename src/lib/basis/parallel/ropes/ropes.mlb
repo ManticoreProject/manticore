@@ -6,10 +6,6 @@
  * Ropes.
  *)
 
-  ../../sequential/sequential.mlb
-  ../../misc/debug.mlb
-  ../../runtime/runtime.mlb
-
 list-seq.pml
 ann "expansion-opt" "pval.cilk5-work-stealing"
 in
