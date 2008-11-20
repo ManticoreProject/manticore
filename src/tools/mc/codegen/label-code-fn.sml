@@ -17,7 +17,7 @@ functor LabelCodeFn (
 
   local
       fun convert s =
-         String.translate (fn #"-" => "_D_" | #"'" => "_P_" | c => str c) s
+         String.translate (fn #"-" => "_D_" | #"'" => "_P_" | #":" => "_C_" | c => str c) s
       val {getFn, ...} = 
 	  LV.newProp (fn v => (case CFG.Label.kindOf v
 	      of CFG.LK_Extern s => Label.global s
