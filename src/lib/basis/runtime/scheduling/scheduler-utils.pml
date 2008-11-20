@@ -202,9 +202,8 @@ structure SchedulerUtils =
     (* initialize a given scheduler on a collection of vprocs *)
       define @scheduler-startup (mkAct : fun (vproc / PT.exh -> PT.sched_act), fls : FLS.fls, vps : List.list / exh : PT.exh) : () =
 	  let self : vproc = host_vproc
-	  let length : fun(List.list / PT.exh -> PT.ml_int) = pmlvar List.length
-	  let nVProcs : PT.ml_int = apply length (vps / exh)
-          let nVProcs : int = I32Sub (#0(nVProcs), 1)
+	  let nVProcs : int = PrimList.@length(vps / exh)
+          let nVProcs : int = I32Sub (nVProcs, 1)
         (* this barrier ensures that scheduler instances start after all are initialized *)
 	  let barrier : Barrier.barrier = Barrier.@new(nVProcs / exh)
 

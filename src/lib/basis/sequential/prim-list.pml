@@ -9,6 +9,15 @@ structure PrimList =
 
       typedef list = L.list;
 
+      define @length (xs : list / exh : exh) : int =
+	fun lp (xs : list, acc : int / exh : exh) : int =
+	    case xs
+	     of nil => return(acc)
+	      | CONS(x : any, xs : list) => apply lp(xs, I32Add(acc, 1) / exh)
+	    end
+	apply lp(xs, 0 / exh)
+      ;
+
       define @app (f : fun(any / PT.exh -> ), ls : L.list / exh : PT.exh) : () =
 	fun lp (f : fun(any / PT.exh -> ), xs : L.list / exh : PT.exh) : () =
 	    case xs
