@@ -22,7 +22,11 @@ structure Uncurry : sig
     structure C = Census
     structure ST = Stats
 
-    val noUncurryFlg = ref false
+  (* This code either contains a bug or is making some other bug visible. Because the bug is raises 
+   * an error when compiling the basis library, I've temporarily disabled uncurrying.
+   * -- Mike
+   *)
+    val noUncurryFlg = ref true
 
     val cntReplace		= ST.newCounter "uncurry:replace-apply"
     val cntElim			= ST.newCounter "uncurry:elim-apply"
