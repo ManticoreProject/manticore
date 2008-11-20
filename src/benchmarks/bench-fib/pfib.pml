@@ -31,6 +31,8 @@ fun pFib (n : int) = (
     (* end case *))
 
 fun bench () = let
+  (* throw away the sequential cutoff here... we need to read it for compatibility with benchmarking script *)
+    val seqCutoff = PrimIO.readInt()
     val n = PrimIO.readInt()
     val (pf, t) = Time.timeToEval(fn () => pFib n)
     val (sf, _) = Time.timeToEval(fn () => sFib n)
