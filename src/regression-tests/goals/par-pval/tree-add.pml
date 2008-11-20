@@ -14,6 +14,7 @@ fun treeAdd t =
          pval sum2 = treeAdd t2
          in
            (treeAdd t1) + sum2
-         end
+         end)
 
-val _ = print (ltos(treeAdd (mkTree 14)) ^ "\n")
+val _ = Print.printLn (Long.toString (treeAdd (mkTree 14)))
+
