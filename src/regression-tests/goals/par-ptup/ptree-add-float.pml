@@ -9,4 +9,4 @@ fun treeAdd t = (case t
         | ND(t1, t2) => add (| treeAdd t1, treeAdd t2 |)
       (* end case *));
 
-val _ = print (ftos(treeAdd (mkTree 12)) ^ "\n")
+val _ = Print.printLn (Float.toString (treeAdd (mkTree 12)))

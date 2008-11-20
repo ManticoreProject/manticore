@@ -6,7 +6,5 @@ fun pfib (i : long) = (case i
 	| n => add (| pfib(i-1), pfib(i-2) |)
       (* end case *));
 
-val s = ltos (pfib 26);
-
-val _ = print ("pfib(26) is " ^ s ^ "\n")
+val _ = Print.printLn ("pfib(26) is " ^ (Long.toString (pfib 26)))
 
