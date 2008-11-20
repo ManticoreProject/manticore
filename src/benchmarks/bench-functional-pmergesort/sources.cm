@@ -1,0 +1,15 @@
+Group
+
+	functor PMergesortFn
+	functor PMergesortWithSeqBcFn
+	structure TestPMergesort
+
+is
+
+	$/basis.cm
+	$/smlnj-lib.cm
+
+	ropes-sig.sml
+	pmergesort-fn.sml
+	pmergesort-with-seq-bc-fn.sml
+	test-pmergesort.sml
