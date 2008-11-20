@@ -14,6 +14,7 @@ structure Inline : sig
 
     structure B = BOM
     structure BV = B.Var
+    structure BTy = BOMTy
     structure U = BOMUtil
     structure VSet = BV.Set
     structure P = PrimUtil
@@ -85,6 +86,47 @@ structure Inline : sig
 	    fbs
 	  end
 
+  (* extend the environment, inserting type casts as necessary
+   *)
+    fun extendWithCasts {env, fromVars, toVars} = let
+        (* FIXME -- Do this right! *)
+          fun needsCast (fromTy, toTy) = (case fromTy
+                 of BTy.T_Any => not (BOMTyUtil.equal (BTy.T_Any, toTy)) 
+                  | BTy.T_Tuple(b, ts) => (case toTy
+                       of BTy.T_Tuple (b', ts') => ListPair.exists needsCast (ts, ts')
+                        | _ => false
+                      (* end case *))
+                  | _ => false
+                (* end case *))
+          fun mkCasts ([], [], fromVars', casts) = (List.rev fromVars', List.rev casts)
+            | mkCasts (_::_, [], _, _) = raise Fail "more fromVars than toVars"
+            | mkCasts ([], _::_, _, _) = raise Fail "more toVars than fromVars"
+            | mkCasts (fromVar::fromVars, toVar::toVars, fromVars', casts) = let
+                val fromTy = BV.typeOf fromVar
+                val toTy = BV.typeOf toVar
+                in
+                  if not (needsCast (fromTy, toTy))
+                    then mkCasts (fromVars, toVars, fromVar::fromVars', casts)
+                    else let
+                      val name = let val x = BV.nameOf fromVar
+                            in 
+                              concat ["_cast", (if String.isPrefix "_" x then "" else "_"), x]
+                            end
+                      val c = BV.new (name, toTy)
+                      val _ = Census.incUseCnt c (* because bind will decrement the count *)
+                      val cast = ([c], B.E_Cast(toTy, fromVar))
+                      in
+                        mkCasts (fromVars, toVars, c::fromVars', cast::casts)
+                      end
+                end
+          val (fromVars',casts) = mkCasts (fromVars, toVars, [], [])
+          fun bind (fromVar', toVar, env) = (
+                C.decUseCnt fromVar'; (* use of argument is going away! *)
+                U.extend (env, toVar, fromVar'))
+          val env' = ListPair.foldl bind env (fromVars', toVars)
+          in
+          (env', casts)
+          end
 
   (********** Analysis for recursive functions **********)
 
@@ -259,13 +301,10 @@ structure Inline : sig
 	      (* Extend the substitution to map the parameter to the argument and decrement
 	       * the argument use count.
 	       *)
-		fun adjust (arg, param, subst) = (
-		      C.decUseCnt arg; (* use of argument is going away! *)
-		      U.extend(subst, param, arg))
-		val argsForParams = ListPair.foldl adjust U.empty (args, params)
+                val (argsForParams, casts) = extendWithCasts {env = U.empty, fromVars = args, toVars = params}
 		in
 		  C.decAppCnt f;
-		  doExp (addAndDec (env, f), copyExp (argsForParams, body))
+		  B.mkStmts (casts, doExp (addAndDec (env, f), copyExp (argsForParams, body)))
 		end
 	(* we inline recursive function groups by making a local copy of the functions *)
 	  and inlineAppRecFn (env, f, args, rets) = let
