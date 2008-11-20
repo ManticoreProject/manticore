@@ -22,11 +22,7 @@ structure Uncurry : sig
     structure C = Census
     structure ST = Stats
 
-  (* This code either contains a bug or is making some other bug visible. Because the bug is raises 
-   * an error when compiling the basis library, I've temporarily disabled uncurrying.
-   * -- Mike
-   *)
-    val noUncurryFlg = ref true
+    val noUncurryFlg = ref false
 
     val cntReplace		= ST.newCounter "uncurry:replace-apply"
     val cntElim			= ST.newCounter "uncurry:elim-apply"
@@ -225,7 +221,7 @@ structure Uncurry : sig
 		      B.mkFun(xformFBs fbs, xformExp e)
 		  | B.E_Cont(B.FB{f=k, params, exh, body}, e) =>
 		      B.mkCont(
-			B.FB{f=k, params=params, exh=exh, body=xformExp e},
+			B.FB{f=k, params=params, exh=exh, body=xformExp body},
 			xformExp e)
 		  | B.E_If(x, e1, e2) =>
 		      B.mkIf(x, xformExp e1, xformExp e2)
