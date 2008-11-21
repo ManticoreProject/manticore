@@ -47,6 +47,8 @@ structure Var =
 	    ty := TypeUtil.closeTy(depth, ty')
 	  end
 
+  (* TODO: add setTypeOf *)
+
     end (* local *)
 
   end
