@@ -5,6 +5,7 @@ is
 	$/basis.cm
 	$/smlnj-lib.cm
 
+	list-seq.sml
 	seq-sig.sml
         ropes-fn.sml
 	ropes-sig.sml
