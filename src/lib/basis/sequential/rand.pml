@@ -17,40 +17,42 @@ structure Rand =
       extern void M_SeedRand();
       extern double M_DRand (double, double);
 
-      define inline @in-range(arg : [PT.ml_long, PT.ml_long] / exh : PT.exh) : PT.ml_long =
-        let r : long = ccall M_Random(#0(#0(arg)), #0(#1(arg)))
-        return(alloc(r))
-      ;
-
-      define inline @in-range(lo : long, hi : long / exh : PT.exh) : long =
+      define inline @in-range-long(lo : long, hi : long / exh : exh) : long =
         let r : long = ccall M_Random(lo, hi)
         return(r)
       ;
 
-      define inline @in-range-int(lo : int, hi : int / exh : PT.exh) : int =
+      define inline @in-range-long-wrap(arg : [ml_long, ml_long] / exh : exh) : ml_long =
+        let r : long = @in-range-long(#0(#0(arg)), #0(#1(arg)) / exh)
+        return(alloc(r))
+      ;
+
+      define inline @in-range-int(lo : int, hi : int / exh : exh) : int =
         let r : int = ccall M_RandomInt(lo, hi)
         return(r)
       ;
 
-      define inline @in-range-wrap(arg : [PT.ml_long, PT.ml_long] / exh : PT.exh) : PT.ml_long =
-        let r : long = @in-range(#0(#0(arg)), #0(#1(arg)) / exh)
-        return(alloc(r))
+      define inline @in-range-int-wrap(arg : [ml_int, ml_int] / exh : exh) : ml_int =
+        let r : int = @in-range-int(#0(#0(arg)), #0(#1(arg)) / exh)
+        let r : ml_int = alloc(r)
+        return(r)
       ;
 
     (* seed the random number generator *)
-      define @seed(x : PT.unit / exh : PT.exh) : PT.unit =
+      define @seed(x : unit / exh : exh) : unit =
         do ccall M_SeedRand()
         return(UNIT)
       ;
 
-      define @rand-double (arg : [PT.ml_double, PT.ml_double] / exh : PT.exh) : PT.ml_double =
+      define @rand-double (arg : [ml_double, ml_double] / exh : exh) : ml_double =
 	let r : double = ccall M_DRand (#0(#0(arg)), #0(#1(arg)))
 	return (alloc(r))
       ;
 
     )
 
-    val inRange : (long * long) -> long = _prim(@in-range-wrap)
+    val inRangeLong : (long * long) -> long = _prim(@in-range-long-wrap)
+    val inRangeInt : (int * int) -> int = _prim(@in-range-int-wrap)
     val seed : unit -> unit = _prim(@seed)
     val _ = seed()
     val randDouble : (double * double) -> double = _prim(@rand-double)

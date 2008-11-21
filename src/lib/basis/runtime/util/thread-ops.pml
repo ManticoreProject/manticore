@@ -36,7 +36,7 @@ structure ThreadOps =
 
     (* sleep for a randomly determined amount of time *)
       define @rand-sleep (maxSleepTime : Time.time, done : ![PT.bool] / exh : PT.exh) : () =
-        let len : long = Rand.@in-range(0:long, maxSleepTime / exh)
+        let len : long = Rand.@in-range-long(0:long, maxSleepTime / exh)
         do @sleep(len, done / exh)
         return()
       ;
