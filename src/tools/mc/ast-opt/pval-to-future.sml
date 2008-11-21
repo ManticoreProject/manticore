@@ -52,7 +52,9 @@ structure PValToFuture =
 	   of A.LetExp (b, e) => trLet (b, e, pLive)
 	    | A.IfExp (e1, e2, e3, t) => ifExp (e1, e2, e3, t, pLive)
 	    | A.CaseExp (e, ms, t) => caseExp (e, ms, t, pLive)
-	    | A.HandleExp (e, ms, t) => raise Fail "HandleExp"
+	    | A.HandleExp (e, ms, t) => 
+	      (* FIXME *)
+	      (A.HandleExp(e, ms, t), pLive)
 	    | A.RaiseExp (e, t) =>  
 	      let val (e', pLive') = trExp (e, pLive)
 	      in
