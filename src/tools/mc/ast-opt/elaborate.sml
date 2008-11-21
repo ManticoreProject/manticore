@@ -18,44 +18,93 @@ structure Elaborate : sig
 
     structure A = AST
     structure B = Basis
+    structure T = Types
     structure V = Var
 
+  (* trTy : ty -> ty *)
+  (* For now, this function just translates the parray type to the rope type. *)
+  (* It could serve arbitrary other purposes easily enough. *)
+    fun trTy t = let
+      fun isPArrayTyc (c as T.Tyc _) = TyCon.same (c, Basis.parrayTyc)
+      val ropeTyc = (case BasisEnv.getTyFromBasis ["Ropes", "rope"]
+		       of ModuleEnv.TyCon c => c
+			| _ => raise Fail "expected ModuleEnv.ty_def TyCon variant"
+		       (* end case *))
+      fun parrayTycToRopeTyc (T.Tyc {params, ...}) = let
+        val (T.Tyc {stamp, name, arity, props, def, ...}) = ropeTyc
+        in
+          T.Tyc {stamp=stamp, name=name, arity=arity, 
+		 params=params, props=props, def=def}
+        end
+      fun ty (e as T.ErrorTy) = e
+	| ty (T.MetaTy m) = T.MetaTy (meta m)
+	| ty (a as T.VarTy _) = a
+	| ty (T.ConTy (ts, c)) = T.ConTy (map ty ts, tycon c)
+	| ty (T.FunTy (t0, t1)) = T.FunTy (ty t0, ty t1)
+	| ty (T.TupleTy ts) = T.TupleTy (map ty ts)
+      and meta (m as T.MVar {stamp, info}) = (info := meta_info (!info); m)
+      and meta_info (T.INSTANCE t) = T.INSTANCE (ty t)
+	| meta_info i = i
+      and tycon c = if isPArrayTyc c then parrayTycToRopeTyc c else c
+      in
+        ty t
+      end
+
+    and trTyScheme (T.TyScheme (tvs, t)) = T.TyScheme (tvs, trTy t)
+
   (* trExp : exp -> exp *)
-    fun trExp (A.LetExp (b, e)) = A.LetExp (binding b, trExp e)
-      | trExp (A.IfExp (e1, e2, e3, t)) = A.IfExp (trExp e1, trExp e2, trExp e3, t)
-      | trExp (A.CaseExp (e, ms, t)) = A.CaseExp (trExp e, map match ms, t)
-      | trExp (A.PCaseExp (es, pms, t)) = trPCase (map trExp es, pms, t)
-      | trExp (A.HandleExp (e, ms, t)) = A.HandleExp (trExp e, map match ms, t)
-      | trExp (A.RaiseExp (e, t)) = A.RaiseExp (trExp e, t)
-      | trExp (A.FunExp (x, e, t)) = A.FunExp (x, trExp e, t)
-      | trExp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (trExp e1, trExp e2, t)
-      | trExp (m as A.VarArityOpExp _) = m
+    and trExp (A.LetExp (b, e)) = A.LetExp (binding b, trExp e)
+      | trExp (A.IfExp (e1, e2, e3, t)) = A.IfExp (trExp e1, trExp e2, trExp e3, trTy t)
+      | trExp (A.CaseExp (e, ms, t)) = A.CaseExp (trExp e, map match ms, trTy t)
+      | trExp (A.PCaseExp (es, pms, t)) = trPCase (map trExp es, pms, trTy t)
+      | trExp (A.HandleExp (e, ms, t)) = A.HandleExp (trExp e, map match ms, trTy t)
+      | trExp (A.RaiseExp (e, t)) = A.RaiseExp (trExp e, trTy t)
+      | trExp (A.FunExp (x, e, t)) = A.FunExp (trVar x, trExp e, trTy t)
+      | trExp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (trExp e1, trExp e2, trTy t)
+      | trExp (A.VarArityOpExp (m, n, t)) = A.VarArityOpExp (m, n, trTy t)
       | trExp (A.TupleExp es) = A.TupleExp (map trExp es)
       | trExp (A.RangeExp (e1, e2, oe3, t)) = 
-	  A.RangeExp (trExp e1, trExp e2, Option.map trExp oe3, t)
+	  A.RangeExp (trExp e1, trExp e2, Option.map trExp oe3, trTy t)
       | trExp (ptup as A.PTupleExp es) = 
 	  (case trPTup es
 	     of SOME e => e
 	      | NONE => A.TupleExp (map trExp es)
 	    (* end case *))
-      | trExp (A.PArrayExp (es, t)) = ParrLitToRope.tr(map trExp es, t)
+      | trExp (A.PArrayExp (es, t)) = ParrLitToRope.tr(map trExp es, trTy t)
       | trExp (A.PCompExp (e, pes, oe)) = trPComp (e, pes, oe)
-      | trExp (A.PChoiceExp (es, t)) = A.PChoiceExp (map trExp es, t)
+      | trExp (A.PChoiceExp (es, t)) = A.PChoiceExp (map trExp es, trTy t)
       | trExp (A.SpawnExp e) = A.SpawnExp (trExp e)
       | trExp (k as A.ConstExp _) = k
-      | trExp (v as A.VarExp (x, ts)) = v
+      | trExp (A.VarExp (x, ts)) = A.VarExp (trVar x, map trTy ts)
 (*	  (case trVar (x, ts)
 	     of SOME e => e
 	      | NONE => v) *)
       | trExp (A.SeqExp (e1, e2)) = A.SeqExp (trExp e1, trExp e2)
-      | trExp (x as A.OverloadExp _) = x
-      | trExp (A.ExpansionOptsExp (opts, exp)) = A.ExpansionOptsExp(opts, exp)
+      | trExp (ov as A.OverloadExp xRef) = (xRef := overload_var (!xRef); ov)
+      | trExp (A.ExpansionOptsExp (opts, e)) = A.ExpansionOptsExp (opts, trExp e)
 
-    and binding (A.ValBind (p, e)) = A.ValBind (p, trExp e)
-      | binding (A.PValBind (p, e)) = A.PValBind (p, trExp e)
+(*    withtype var = (var_kind, ty_scheme ref) VarRep.var_rep *)
+
+    and trVar x = let
+      val (VarRep.V {ty, ...}) = x
+      in
+        (ty := ref (trTyScheme (!(!ty))); x)
+      end
+
+    and binding (A.ValBind (p, e)) = A.ValBind (trPat p, trExp e)
+      | binding (A.PValBind (p, e)) = A.PValBind (trPat p, trExp e)
       | binding (A.FunBind lams) = A.FunBind (map lambda lams)
-      | binding (A.PrimVBind (v, prim)) = A.PrimVBind (v, prim)
+      | binding (A.PrimVBind (v, prim)) = A.PrimVBind (trVar v, prim)
       | binding (A.PrimCodeBind pc) = A.PrimCodeBind pc
+
+    and trPat (A.ConPat (c, ts, p)) = A.ConPat (c, map trTy ts, trPat p)
+      | trPat (A.TuplePat ps) = A.TuplePat (map trPat ps)
+      | trPat (A.VarPat x) = A.VarPat (trVar x)
+      | trPat (A.WildPat t) = A.WildPat (trTy t)
+      | trPat (k as A.ConstPat _) = k
+
+    and overload_var (A.Unknown (t, xs)) = A.Unknown (trTy t, xs)
+      | overload_var (x as A.Instance _) = x 
 
     and lambda (A.FB (f, x, e)) = A.FB (f, x, trExp e)
 
