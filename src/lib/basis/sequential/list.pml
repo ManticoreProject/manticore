@@ -18,6 +18,12 @@ structure List =
 	    | x :: xs => x
           (* end case *))
 
+    fun tl xs = (
+	  case xs
+	   of nil => (raise Fail "List.tl")
+	    | x :: xs => xs
+          (* end case *))
+
     fun null xs = (
 	  case xs
 	   of nil => true
@@ -45,8 +51,6 @@ structure List =
 	    end
 
     fun rev xs = foldl CONS nil xs
-
-(*    val xs = CONS(1,CONS(2,nil)) *)
 
     fun l2s f ls = (
 	  case ls
@@ -76,20 +80,13 @@ structure List =
 	    lp(xs, 0)
 	  end
 
-    fun nth (i, xs) = raise Fail "todo (some problem with Option.NONE here)"
-(*let
-      fun lp args =
-       (case args
-          of (_, nil)   => Option.NONE
-	   | (0, x::_)  => Option.SOME x
-	   | (n, x::xs) => lp (n-1, xs)
-          (* end case *))
-      in
-        if i < 0
-	then Option.NONE
-	else lp (i, xs)
-      end
-*)
+    fun nth (l, n) = let
+	fun loop (es, n) = 
+	    if n = 0 then hd es
+	    else loop(tl es, n-1)          
+         in
+            if n >= 0 then loop (l,n) else raise Fail "subscript"
+         end
 
     fun rev ls = let
 	fun lp (ls, acc) = (

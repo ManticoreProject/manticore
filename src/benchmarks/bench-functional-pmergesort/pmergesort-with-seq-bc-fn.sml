@@ -13,9 +13,9 @@ functor PMergesortWithSeqBcFn (
     structure R : ROPES
 
   (* sequential merge *)
-    val sMerge  : K.ord_key R.leaf * K.ord_key R.leaf -> K.ord_key R.leaf
+    val sMerge  : K.ord_key R.seq * K.ord_key R.seq -> K.ord_key R.seq
   (* sequential sort *)
-    val sSort   : K.ord_key R.leaf -> K.ord_key R.leaf
+    val sSort   : K.ord_key R.seq -> K.ord_key R.seq
 
   ) : sig
 
@@ -55,7 +55,7 @@ functor PMergesortWithSeqBcFn (
     fun pMerge (xs, ys) =
 	  if R.isLeaf xs andalso R.isLeaf ys
 	     then (* no parallelism to find here *)
-	      R.fromLeaf(sMerge(R.toLeaf xs, R.toLeaf ys))
+	      R.fromSeq(sMerge(R.toSeq xs, R.toSeq ys))
 	  else if R.length xs < R.length ys
 	     then pMerge(ys, xs)
 	  else if R.length xs = 0 orelse R.length ys = 0
@@ -78,7 +78,7 @@ functor PMergesortWithSeqBcFn (
 	  if R.isLeaf xs
 	     then
 	      (* no parallelism to find here *)
-	      R.fromLeaf(sSort(R.toLeaf xs))
+	      R.fromSeq(sSort(R.toSeq xs))
 	  else if R.length xs <= 1
 	     then xs
 	  else let

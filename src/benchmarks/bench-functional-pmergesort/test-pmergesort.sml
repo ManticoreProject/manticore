@@ -1,46 +1,53 @@
 structure TestPMergesort =
   struct
-    
-    structure FauxRope : ROPES =
-      struct
-        type 'a rope = 'a list
-	type 'a leaf = 'a list
-	val maxLeafSize = 1
-	val empty = []
-	val isEmpty = List.null
-	fun isLeaf _ = true
-	val length = List.length
-	fun depth _ = 0
-	fun concat (r1, r2) = r1 @ r2
-	fun balance r = r
-	val sub = List.nth
-	fun splitAt (r, i) = (List.take(r, i), List.drop(r, i))
-	fun toLeaf r = r
-	fun fromLeaf r = r 
-      end
 
+  (* log : real -> (real -> real) *)
+    fun log base x = Math.ln x / Math.ln base
+
+  (* ceilingLg : int -> int *)
+  (* The ceiling of the log_2 of the input. *)
+    val ceilingLg = ceil o log 2.0 o real
+
+    structure R = RopesFn (structure S = ListSeq 
+                           val sizeL1CacheLine= 4
+			   val wordSize = 32
+			   val ceilingLg = ceilingLg)
+
+    structure LR =
+      struct
+        structure S = ListSeq
+        type 'a rope = 'a list
+	val maxLeafSize = 0
+	fun isLeaf _ = true
+	fun toSeq x = x
+	fun fromSeq x = x
+	val isEmpty = List.null
+	fun depth _ = 0
+        open ListSeq
+      end
+    
     structure S = PMergesortFn(
                     structure K = 
 		      struct
 		        type ord_key = int
 			val compare = Int.compare
 		      end
-		    structure R = FauxRope)
+		    structure R = R)
 
-    fun test ls = ListPair.allEq (op =) (S.pMergeSort ls, ListMergeSort.sort (op >) ls)
+    val r = Random.rand(0, 1034) 
+    fun randInt _ = Random.randRange (0, 10000) r
+    fun randList _ = List.tabulate(randInt(), randInt) 
 
-    val tests = [
-	         [1232,123222222,2,123,3,~2],
-		 [1,2,3],
-		 [3,2,1],
-		 [12,2,2434,2312,24333,4,32,3,3,343,33,3,234657],
-		 [],
-		 [4],
-		 [~123123,~232222,3,343]
-	       ]
+    fun pmsort ls = R.toSeq(S.pMergeSort (R.fromSeq ls))
 
-    val () = if List.all test tests
-	       then ()
-	    else raise Fail "test failed"
+    fun eq (x, y) = x = y
+
+    fun test ls = ListPair.allEq eq (pmsort ls, ListMergeSort.sort (op >) ls)
+
+    fun t n = 
+	if List.all test (List.tabulate(n, randList))  
+	   then ()
+	else (raise Fail "test failed")
+
 
   end

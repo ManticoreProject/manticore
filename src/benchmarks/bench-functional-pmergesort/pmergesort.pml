@@ -1,4 +1,4 @@
-(* pmergesort-fn.sml
+(* pmergesort.pml
  *
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -6,23 +6,11 @@
  * Purely functional parallel mergesort.
  *)
 
-functor PMergesortFn (
-    structure K : ORD_KEY
-    structure R : ROPES
-  ) : sig
+structure PMergesort =
+  struct
 
-     structure K : ORD_KEY
-     structure R : ROPES
-
-  (* Sort a rope with ordered elements. For ropes of n elements, this operation has O(n*log^3 n) 
-   * work and O(log^4 n) depth.
-   *)
-     val pMergeSort : K.ord_key R.rope -> K.ord_key R.rope
-
-  end = struct
-
-    structure K = K
-    structure R = R
+    structure K = Int
+    structure R = Ropes
 
     fun lessThan (x, y) = (
 	  case K.compare(x, y)
@@ -34,7 +22,7 @@ functor PMergesortFn (
     fun split (xs, n) =
 	  if n = 0
 	     then (R.empty, xs)
-	  else R.splitAt(xs, n - 1)
+	  else R.splitAt(xs, n - 1)	      
 
   (* assuming that xs is sorted, return p such that xs[p] <= y <= xs[p+1]. this
    * operation performs O(log^2 n) comparisons.
@@ -45,10 +33,11 @@ functor PMergesortFn (
 		   then a
 		else let
 	           val p = (b + a) div 2
-		   val (a, b) = 
-		       if lessThan(R.sub(xs, p), y) 
-			  then (p + 1, b)
-		       else (a, p)
+		   val (a, b) = (
+		         case K.compare(R.sub(xs, p), y) 
+			  of LESS => (p + 1, b)
+			   | _ => (a, p)
+ 		         (* end case *))
 		   in
 		     lp(a, b)
 		   end

@@ -34,4 +34,6 @@ structure Int =
 
     fun max (x, y) = if x < y then y else x
 
+    fun compare (x, y) = if x = y then EQUAL else if x < y then LESS else GREATER
+
   end
