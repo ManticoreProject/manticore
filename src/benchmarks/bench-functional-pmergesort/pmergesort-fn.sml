@@ -17,7 +17,7 @@ functor PMergesortFn (
   (* Sort a rope with ordered elements. For ropes of n elements, this operation has O(n*log^3 n) 
    * work and O(log^4 n) depth.
    *)
-     val pMergeSort : K.ord_key R.rope -> K.ord_key R.rope
+     val pMergesort : K.ord_key R.rope -> K.ord_key R.rope
 
   end = struct
 
@@ -76,13 +76,13 @@ functor PMergesortFn (
 		R.concat(l, r)
 	    end
 
-    fun pMergeSort xs =
+    fun pMergesort xs =
 	  if R.length xs <= 1
 	     then xs
 	  else let
 	     val (xsL, xsR) = split(xs, R.length xs div 2)
-	     val xsL = pMergeSort xsL
-	     val xsR = pMergeSort xsR
+	     val xsL = pMergesort xsL
+	     val xsR = pMergesort xsR
 	     in
 		pMerge(xsL, xsR)
 	     end

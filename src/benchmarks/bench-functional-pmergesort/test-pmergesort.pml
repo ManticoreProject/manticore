@@ -9,10 +9,10 @@ structure TestPMergesort =
 
     val xs = 3 :: 2 :: ~1343 :: 111 :: 1 :: nil
 
-    fun pmsort ls = R.toSeq(PMergesort.pMergeSort (R.fromSeq ls))
+    fun pmsort ls = R.toSeq(PMergesort.pMergesort (R.fromSeq ls))
 
     fun p x = Print.printLn(Int.toString x)
 
-    val () = List.app p (pmsort xs)
+(*    val () = List.app p (pmsort xs)*)
 
   end

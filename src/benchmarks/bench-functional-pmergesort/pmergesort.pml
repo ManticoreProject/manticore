@@ -65,13 +65,13 @@ structure PMergesort =
 		R.concat(l, r)
 	    end
 
-    fun pMergeSort xs =
+    fun pMergesort xs =
 	  if R.length xs <= 1
 	     then xs
 	  else let
 	     val (xsL, xsR) = split(xs, R.length xs div 2)
-	     pval xsL = pMergeSort xsL
-	     val xsR = pMergeSort xsR
+	     pval xsL = pMergesort xsL
+	     val xsR = pMergesort xsR
 	     in
 		pMerge(xsL, xsR)
 	     end

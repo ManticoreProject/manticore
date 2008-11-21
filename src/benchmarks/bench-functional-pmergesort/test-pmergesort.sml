@@ -38,7 +38,7 @@ structure TestPMergesort =
     fun randInt _ = Random.randRange (0, 10000) r
     fun randList _ = List.tabulate(randInt(), randInt) 
 
-    fun pmsort ls = R.toSeq(S.pMergeSort (R.fromSeq ls))
+    fun pmsort ls = R.toSeq(S.pMergesort (R.fromSeq ls))
 
     fun eq (x, y) = x = y
 
