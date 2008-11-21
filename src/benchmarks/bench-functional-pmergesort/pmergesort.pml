@@ -59,7 +59,7 @@ structure PMergesort =
              val (xsL, xsR) = split(xs, R.length xs div 2)
 	     val p = binarySearch(R.sub(xsR, 0), ys)
 	     val (ysL, ysR) = split(ys, p)
-	     val l = pMerge(xsL, ysL)
+	     pval l = pMerge(xsL, ysL)
 	     val r = pMerge(xsR, ysR)
 	     in
 		R.concat(l, r)
@@ -70,7 +70,7 @@ structure PMergesort =
 	     then xs
 	  else let
 	     val (xsL, xsR) = split(xs, R.length xs div 2)
-	     val xsL = pMergeSort xsL
+	     pval xsL = pMergeSort xsL
 	     val xsR = pMergeSort xsR
 	     in
 		pMerge(xsL, xsR)
