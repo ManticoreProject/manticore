@@ -244,7 +244,7 @@ structure Translate : sig
                 end
 *)
 	    | AST.PTupleExp exps => raise Fail "unexpected PTupleExp"
-	    | AST.PArrayExp(exps, ty) => EXP(trParr(env,exps,ty))
+	    | AST.PArrayExp(exps, ty) => raise Fail "unexpected PArrayExp"
 	    | AST.PCompExp _ => raise Fail "unexpected PCompExp"
 	    | AST.PChoiceExp _ => raise Fail "unexpected PChoiceExp"
 	    | AST.SpawnExp e => let
@@ -304,8 +304,6 @@ structure Translate : sig
 	  (* end case *))
 
     and trExpToExp (env, exp) = toExp(trExp(env, exp))
-
-    and trParr (env, exps, ty) = TranslateParr.tr (env, trExpToV) (exps, ty)
 
     and trVarArityOp (env, oper, n) = (case oper
            of AST.MapP => let
