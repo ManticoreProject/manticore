@@ -46,45 +46,56 @@ structure TranslatePValCilk5  : sig
     structure BV = BOM.Var
     structure E = TranslateEnv
 
+    fun unitVar () = BV.new("_unit", BTy.unitTy)
+
+    val findBOMTy = E.findBOMTyByPath
+    val findHLOp = E.findBOMHLOpByPath
+
   (* ivar support *)
-    fun iVarTy env = E.findBOMTyByPath ["WorkStealingIVar", "ivar"]
-    fun iGet () = E.findBOMHLOpByPath ["WorkStealingIVar", "get"]
-    fun iPut () = E.findBOMHLOpByPath ["WorkStealingIVar", "put"]
-    fun iVar () = E.findBOMHLOpByPath ["WorkStealingIVar", "ivar"]
     fun mkIVar (exh, spawnFn) = 
-	  B.mkHLOp(iVar(), [spawnFn], [exh])
+	  B.mkHLOp(findHLOp["WorkStealingIVar", "ivar"], [spawnFn], [exh])
     fun mkIPut (exh, iv, x) =
-	  B.mkHLOp(iPut(), [iv, x], [exh])
+	  B.mkHLOp(findHLOp["WorkStealingIVar", "put"], [iv, x], [exh])
     fun mkIGet (exh, iv) =
-	  B.mkHLOp(iGet(), [iv], [exh])
+	  B.mkHLOp(findHLOp["WorkStealingIVar", "get"], [iv], [exh])
   (* deque support *)
-    fun wsPush () = E.findBOMHLOpByPath ["Cilk5WorkStealing", "push-tl"]
-    fun wsPop () = E.findBOMHLOpByPath ["Cilk5WorkStealing", "pop-tl"]
     fun mkWsPush (exh, kLocal) =
-	  B.mkHLOp(wsPush(), [kLocal], [exh])
+	  B.mkHLOp(findHLOp["Cilk5WorkStealing", "push-tl"], [kLocal], [exh])
     fun mkWsPop exh =
-	  B.mkHLOp(wsPop(), [], [exh])
+	  B.mkHLOp(findHLOp["Cilk5WorkStealing", "pop-tl"], [], [exh])
   (* spawn function *)
-    fun fiberTy env = E.findBOMTyByPath["PrimTypes", "fiber"]
     fun mkSpawnFn env = let
 	  val (exh, _) = E.newHandler env
-	  val spawnFn = BV.new("spawnFn", BTy.T_Fun([fiberTy env], [BTy.exhTy], []))
-	  val k = BV.new("k", fiberTy env)
+	  val fiberTy = findBOMTy["PrimTypes", "fiber"]
+	  val spawnFn = BV.new("spawnFn", BTy.T_Fun([fiberTy], [BTy.exhTy], []))
+	  val k = BV.new("k", fiberTy)
 	  in
 	     B.mkLambda{f=spawnFn, params=[k], exh=[exh], body=mkWsPush(exh, k)}
           end
 
-    fun mkStop exh = 
-	  B.mkHLOp(E.findBOMHLOpByPath ["Control", "stop"], [], [exh])
+    fun mkRaiseExn (env, exh) = let
+	  val matchExnDCon = (
+	        case E.findDCon(env, Basis.exnMatch)
+		 of SOME(E.ExnConst matchExnDCon) => matchExnDCon
+		  | _ => raise Fail "compiler bug: missing match exception"
+ 	        (* end case *))
+	  val matchExn = BV.new("matchExn", BTy.T_TyCon(BOMTyCon.dconTyc matchExnDCon))
+	  in
+	    B.mkStmt([matchExn], B.E_DCon(matchExnDCon, []),
+		    B.mkThrow(exh, [matchExn]))
+	  end
 
-    fun unitVar () = BV.new("_unit", BTy.unitTy)
+    fun mkStop (env, exh) = 
+	  B.mkLet([unitVar()], 
+		    B.mkHLOp(findHLOp["Control", "stop"], [], [exh]),
+	    mkRaiseExn(env, exh))
 
     fun tr {env, trExp, trVar, x, e1, e2} = let
 	  val exh = E.handlerOf env
 	  val ty1 = TranslateTypes.tr(env, TypeOf.exp e1)
 	  val ty2 = TranslateTypes.tr(env, TypeOf.exp e2)
 	  val spawnFnL as B.FB{f=spawnFn, ...} = mkSpawnFn env
-	  val ivar = BV.new("ivar", iVarTy env)
+	  val ivar = BV.new("ivar", findBOMTy["WorkStealingIVar", "ivar"])
 	  val (x', env) = trVar(env, x)
 	  val selFnAST = Var.new("selFn", AST.FunTy(Basis.unitTy, TypeOf.exp e1))
 	  val (selFn, env) = trVar(env, selFnAST)
@@ -118,7 +129,7 @@ structure TranslatePValCilk5  : sig
 		      B.mkIf(goLocal,
 			     B.mkApply(bodyFn, [selLocally], [exh]),
 			     B.mkLet([], mkIPut(exh, ivar, x1),
-				     mkStop exh))))))))))
+				     mkStop(env, exh)))))))))))
 	  end
 
   end
