@@ -1,5 +1,7 @@
 structure TestPMergesort =
   struct
+  
+    structure K = Int
 
   (* log : real -> (real -> real) *)
     fun log base x = Math.ln x / Math.ln base
@@ -7,6 +9,12 @@ structure TestPMergesort =
   (* ceilingLg : int -> int *)
   (* The ceiling of the log_2 of the input. *)
     val ceilingLg = ceil o log 2.0 o real
+
+    fun lessThan (x, y) = (
+	  case K.compare(x, y)
+	   of LESS => true
+	    | _ => false
+          (* end case *))
 
     structure R = RopesFn (structure S = ListSeq 
                            val sizeL1CacheLine= 4
@@ -33,6 +41,26 @@ structure TestPMergesort =
 			val compare = Int.compare
 		      end
 		    structure R = R)
+
+  (* merge two sorted lists into one sorted list *)
+    fun merge (xs, ys) = (
+	  case (xs, ys)
+	   of (nil, ys) => ys
+	    | (xs, nil) => xs
+	    | (x :: xs, y :: ys) => 
+	      if lessThan(x, y) then x :: merge(xs, y :: ys) else y :: merge(x :: xs, ys)
+          (* end case *))
+
+    structure S = PMergesortWithSeqBcFn(
+                    structure K = 
+		      struct
+		        type ord_key = int
+			val compare = Int.compare
+		      end
+		    structure R = R
+		    val sMerge = merge
+		    val sSort = ListQuicksort.quicksort
+		  )
 
     val r = Random.rand(0, 1034) 
     fun randInt _ = Random.randRange (0, 10000) r

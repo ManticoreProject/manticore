@@ -9,7 +9,7 @@ structure TestPMergesort =
 
     val xs = 3 :: 2 :: ~1343 :: 111 :: 1 :: nil
 
-    fun pmsort ls = R.toSeq(PMergesort.pMergesort (R.fromSeq ls))
+    fun pmsort ls = R.toSeq(PMergesortWithSeqBc.pMergesort (R.fromSeq ls))
 
     fun p x = Print.printLn(Int.toString x)
 

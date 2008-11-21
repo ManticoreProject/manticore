@@ -74,7 +74,7 @@ functor PMergesortFn (
 	     val r = pMerge(xsR, ysR)
 	     in
 		R.concat(l, r)
-	    end
+	     end
 
     fun pMergesort xs =
 	  if R.length xs <= 1

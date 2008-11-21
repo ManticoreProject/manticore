@@ -1,37 +1,17 @@
-(* pmergesort-with-seq-bc-fn.sml
+(* pmergesort-with-seq-bc.pml
  *
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Purely functional parallel mergesort. This algorithm takes advantage of the rope
- * data structure to choose a suitable sequential cutoff.
+ * Purely functional parallel mergesort.
  *)
 
-functor PMergesortWithSeqBcFn (
+structure PMergesortWithSeqBc =
+  struct
 
-    structure K : ORD_KEY
-    structure R : ROPES
-
-  (* sequential merge *)
-    val sMerge  : K.ord_key R.seq * K.ord_key R.seq -> K.ord_key R.seq
-  (* sequential sort *)
-    val sSort   : K.ord_key R.seq -> K.ord_key R.seq
-
-  ) : sig
-
-     structure K : ORD_KEY
-     structure R : ROPES
-
-  (* Sort a rope with ordered elements. For ropes of n elements, this operation has O(n*log^3 n) 
-   * work and O(log^4 n) depth.
-   *)
-     val pMergesort : K.ord_key R.rope -> K.ord_key R.rope
-
-  end = struct
-
-    structure K = K
-    structure R = R
-
+    structure K = Int
+    structure R = Ropes
+		  
     fun lessThan (x, y) = (
 	  case K.compare(x, y)
 	   of LESS => true
@@ -44,6 +24,17 @@ functor PMergesortWithSeqBcFn (
 	     then (R.empty, xs)
 	  else R.splitAt(xs, n - 1)
 
+  (* merge two sorted lists into one sorted list *)
+    fun sMerge (xs, ys) = (
+	  case (xs, ys)
+	   of (nil, ys) => ys
+	    | (xs, nil) => xs
+	    | (x :: xs, y :: ys) => 
+	      if lessThan(x, y) then x :: sMerge(xs, y :: ys) else y :: sMerge(x :: xs, ys)
+          (* end case *))
+
+    val sSort = ListQuicksort.quicksort
+
   (* assuming that xs is sorted, return p such that xs[p] <= y <= xs[p+1]. this
    * operation performs O(log^2 n) comparisons.
    *)
@@ -53,9 +44,11 @@ functor PMergesortWithSeqBcFn (
 		   then a
 		else let
 	           val p = (b + a) div 2
-		   val (a, b) = if K.compare(R.sub(xs, p), y) = LESS
-				   then (p + 1, b)
-				else (a, p)
+		   val (a, b) = (
+		         case K.compare(R.sub(xs, p), y) 
+			  of LESS => (p + 1, b)
+			   | _ => (a, p)
+ 		         (* end case *))
 		   in
 		     lp(a, b)
 		   end
@@ -73,7 +66,7 @@ functor PMergesortWithSeqBcFn (
 	  else if R.length xs = 0 orelse R.length ys = 0
 	     then xs
 	  else if R.length xs = 1 (* andalso R.length ys = 1 *)
-	     then if K.compare(R.sub(xs, 0), R.sub(ys, 0)) = LESS
+	     then if lessThan(R.sub(xs, 0), R.sub(ys, 0))
 		     then R.concat(xs, ys)
 		  else R.concat(ys, xs)
 	  else let
@@ -100,5 +93,4 @@ functor PMergesortWithSeqBcFn (
 	     in
 		pMerge(xsL, xsR)
 	     end
-
   end
