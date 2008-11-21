@@ -73,7 +73,7 @@ structure TestRopes = struct
       print "---------- before balancing ----------\n";
       prope itos r;
       print "---------- after balancing  ----------\n";
-      prope itos b
+      prope itos b;
 (*      print (String.concat ["---------- the depth before balancing was ",
 			    itos (R.depth r),
 			    ", after was ",
@@ -83,6 +83,7 @@ structure TestRopes = struct
 			    itos (2 + (ceil (Math.ln (real (R.length r)) / Math.ln 2.0))),
 			    "\n"])
 *)
+      ()
     end
 
   val t  = testBal spineRope
