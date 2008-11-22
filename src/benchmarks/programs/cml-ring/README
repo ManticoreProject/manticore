@@ -1,0 +1,7 @@
+This benchmark constructs a ring of 256 threads which then pass a token around for
+some number of cycles (100000 is a good number).  Because message-passing is synchronous,
+it does not exhibit any parallelism, but it is a good test of overhead.
+
+The original benchmark was written for a number of concurrent languages by Carl Ritson;
+see http://projects.cs.kent.ac.uk/projects/kroc/svn/kroc/trunk/tests/ccsp-comparisons.
+
