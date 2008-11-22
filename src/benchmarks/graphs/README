@@ -1,6 +1,10 @@
 Some SML code to plot speedup, efficiency, and throughput for benchmarks.  All of
 the definitions live in the Graphing module.  This code uses ploticus to do the
-actual plotting; see http://ploticus.sourceforge.net for more information.
+actual plotting.  We assume that ploticus is installed in
+
+	/usr/local/bin/pl
+
+See http://ploticus.sourceforge.net for more information.
 
 The input data should be a list of SML records with the following types:
 
@@ -38,4 +42,4 @@ output file.  For example,
     speedup (toBenchmarkInfo bmarks) ["-eps"] "speedup.eps"
 
 will generate a speedup plot in EPS format to the file "speedup.eps" from
-the benchmark list bmarks.
+the benchmark list bmarks.  See the tst.sml file for more examples.
