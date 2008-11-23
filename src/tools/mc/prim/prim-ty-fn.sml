@@ -9,7 +9,8 @@
 functor PrimTyFn (Ty : sig
 
     structure V : VAR
-    val bool    : V.ty
+    val boolTy  : V.ty
+    val unitTy	: V.ty
     val raw     : RawTypes.raw_ty -> V.ty
 
   end) : sig
@@ -20,7 +21,7 @@ functor PrimTyFn (Ty : sig
 
     structure P = Prim
 
-    val bTy = Ty.bool
+    val bTy = Ty.boolTy
     val i32Ty = Ty.raw RawTypes.T_Int
     val i64Ty = Ty.raw RawTypes.T_Long
     val f32Ty = Ty.raw RawTypes.T_Float
@@ -39,7 +40,7 @@ functor PrimTyFn (Ty : sig
 	    | P.I32Mul _ => i32Ty
 	    | P.I32Div _ => i32Ty
 	    | P.I32Mod _ => i32Ty
-	    | P.I32ShiftLeft _ => i32Ty
+	    | P.I32LSh _ => i32Ty
 	    | P.I32Neg _ => i32Ty
 	    | P.I32Eq _ => i32Ty
 	    | P.I32NEq _ => i32Ty
@@ -105,6 +106,10 @@ functor PrimTyFn (Ty : sig
 	    | P.ArrayStoreF32 _ => i32Ty
 	    | P.BCAS _ => bTy
 	    | P.TAS _ => bTy
+	    | P.Pause => Ty.unitTy
+	    | P.FenceRead => Ty.unitTy
+	    | P.FenceWrite => Ty.unitTy
+	    | P.FenceRW => Ty.unitTy
 	  (* end case *))
 
   end

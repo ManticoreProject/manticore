@@ -33,7 +33,7 @@ structure PrimUtil : sig
       | nameOf (P.I32Mul _) = "I32Mul"
       | nameOf (P.I32Div _) = "I32Div"
       | nameOf (P.I32Mod _) = "I32Mod"
-      | nameOf (P.I32ShiftLeft _) = "I32ShiftLeft"
+      | nameOf (P.I32LSh _) = "I32LSh"
       | nameOf (P.I32Neg _) = "I32Neg"
       | nameOf (P.I32Eq _) = "I32Eq"
       | nameOf (P.I32NEq _) = "I32NEq"
@@ -99,6 +99,10 @@ structure PrimUtil : sig
       | nameOf (P.CAS _) = "CAS"
       | nameOf (P.BCAS _) = "BCAS"
       | nameOf (P.TAS _) = "TAS"
+      | nameOf P.Pause = "Pause"
+      | nameOf P.FenceRead = "FenceRead"
+      | nameOf P.FenceWrite = "FenceWrite"
+      | nameOf P.FenceRW = "FenceRW"
 
   (* return the list of variables referenced in a primitive operation *)
     fun varsOf (P.isBoxed a) = [a]
@@ -113,7 +117,7 @@ structure PrimUtil : sig
       | varsOf (P.I32Mul(a, b)) = [a, b]
       | varsOf (P.I32Div(a, b)) = [a, b]
       | varsOf (P.I32Mod(a, b)) = [a, b]
-      | varsOf (P.I32ShiftLeft(a, b)) = [a, b]
+      | varsOf (P.I32LSh(a, b)) = [a, b]
       | varsOf (P.I32Neg a) = [a]
       | varsOf (P.I32Eq(a, b)) = [a, b]
       | varsOf (P.I32NEq(a, b)) = [a, b]
@@ -179,6 +183,10 @@ structure PrimUtil : sig
       | varsOf (P.CAS(a, b, c)) = [a, b, c]
       | varsOf (P.BCAS(a, b, c)) = [a, b, c]
       | varsOf (P.TAS a) = [a]
+      | varsOf P.Pause = []
+      | varsOf P.FenceRead = []
+      | varsOf P.FenceWrite = []
+      | varsOf P.FenceRW = []
 
     fun fmt v2s p = (case varsOf p
 	   of [x] => concat[nameOf p, "(", v2s x, ")"]
@@ -187,6 +195,8 @@ structure PrimUtil : sig
 	  (* end case *))
 
     local
+      fun p0 p [] = p
+	| p0 p _ = raise Fail "primop takes no args"
       fun p1 p [a] = p(a)
 	| p1 p _ = raise Fail "unary primop needs one arg"
       fun p2 p [a, b] = p(a, b)
@@ -206,7 +216,7 @@ structure PrimUtil : sig
       | explode (P.I32Mul(a, b)) = (p2 P.I32Mul, [a, b])
       | explode (P.I32Div(a, b)) = (p2 P.I32Div, [a, b])
       | explode (P.I32Mod(a, b)) = (p2 P.I32Mod, [a, b])
-      | explode (P.I32ShiftLeft(a, b)) = (p2 P.I32ShiftLeft, [a, b])
+      | explode (P.I32LSh(a, b)) = (p2 P.I32LSh, [a, b])
       | explode (P.I32Neg a) = (p1 P.I32Neg, [a])
       | explode (P.I32Eq(a, b)) = (p2 P.I32Eq, [a, b])
       | explode (P.I32NEq(a, b)) = (p2 P.I32NEq, [a, b])
@@ -272,6 +282,10 @@ structure PrimUtil : sig
       | explode (P.CAS(a, b, c)) = (p3 P.CAS, [a, b, c])
       | explode (P.BCAS(a, b, c)) = (p3 P.BCAS, [a, b, c])
       | explode (P.TAS a) = (p1 P.TAS, [a])
+      | explode P.Pause = (p0 P.Pause, [])
+      | explode P.FenceRead = (p0 P.FenceRead, [])
+      | explode P.FenceWrite = (p0 P.FenceWrite, [])
+      | explode P.FenceRW = (p0 P.FenceRW, [])
     end (* local *)
 
     fun map f p = let val (mk, args) = explode p in mk(List.map f args) end
@@ -291,6 +305,10 @@ structure PrimUtil : sig
       | isPure (P.ArrayStoreI32 _) = false
       | isPure (P.ArrayStoreF64 _) = false
       | isPure (P.ArrayStoreF32 _) = false
+      | isPure P.Pause = false
+      | isPure P.FenceRead = false
+      | isPure P.FenceWrite = false
+      | isPure P.FenceRW = false
       | isPure _ = true
 
   end

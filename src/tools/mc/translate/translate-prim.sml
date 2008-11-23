@@ -37,6 +37,7 @@ structure TranslatePrim : sig
 	type var = BOM.var
 	type ty = BTy.ty
 	val anyTy = BTy.T_Any
+	val unitTy = BTy.unitTy
 	val boolTy = BTy.boolTy
 	val addrTy = BTy.T_Addr(BTy.T_Any)
 	val rawTy = BTy.T_Raw)
@@ -274,6 +275,7 @@ structure TranslatePrim : sig
 					     of NONE => raise (fail(["unknown data constructor ", PTVar.toString p]))
 					      | SOME(E.DCon (dc, _)) => BOM.E_DCon(dc, xs)
 					    (* end case *))
+					| (SOME(Prim0{con, ...}), [x]) => BOM.E_Prim con
 					| (SOME(Prim1{mk, ...}), [x]) => BOM.E_Prim(mk x)
 					| (SOME(Prim2{mk, ...}), [x, y]) => BOM.E_Prim(mk(x, y))
 					| (SOME(Prim3{mk, ...}), [x, y, z]) => BOM.E_Prim(mk(x, y, z))

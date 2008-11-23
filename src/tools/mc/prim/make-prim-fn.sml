@@ -13,6 +13,7 @@ signature PRIM_TYPES =
     type ty
 
     val anyTy : ty
+    val unitTy : ty
     val boolTy : ty
     val addrTy : ty
     val rawTy : RawTypes.raw_ty -> ty
@@ -22,7 +23,11 @@ signature PRIM_TYPES =
 functor MakePrimFn (Ty : PRIM_TYPES) : sig
 
     datatype prim_info
-      = Prim1 of {
+      = Prim0 of {
+	    con : Ty.var Prim.prim,
+	    resTy : Ty.ty
+	  }
+      | Prim1 of {
 	    mk : Ty.var -> Ty.var Prim.prim,
 	    argTy : Ty.ty,
 	    resTy : Ty.ty
@@ -45,7 +50,11 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
     structure P = Prim
 
     datatype prim_info
-      = Prim1 of {
+      = Prim0 of {
+	    con : Ty.var Prim.prim,
+	    resTy : Ty.ty
+	  }
+      | Prim1 of {
 	    mk : Ty.var -> Ty.var Prim.prim,
 	    argTy : Ty.ty,
 	    resTy : Ty.ty
@@ -62,6 +71,7 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 	  }
 
     val aTy = Ty.anyTy
+    val uTy = Ty.unitTy
     val bTy = Ty.boolTy
     val adrTy = Ty.addrTy
     val i32 = Ty.rawTy RawTypes.T_Int
@@ -73,7 +83,8 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
     val findPrim = let
 	  val tbl = AtomTable.mkTable(128, Fail "prim table")
 	  val ins = AtomTable.insert tbl
-	  fun mk cons (mk, argTy, resTy) = cons {mk=mk, argTy=argTy, resTy  = resTy}
+	  fun mk0 (con, resTy) = Prim0 {con=con, resTy=resTy}
+	  fun mk cons (mk, argTy, resTy) = cons {mk = mk, argTy = argTy, resTy = resTy}
 	  in
 	    List.app (fn (n, info) => ins(Atom.atom n, info)) [
 		("isBoxed",	mk Prim1 (P.isBoxed,	aTy,		bTy)),
@@ -88,7 +99,11 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 		("I32Mul",	mk Prim2 (P.I32Mul,	(i32, i32),	i32)),
 		("I32Div",	mk Prim2 (P.I32Div,	(i32, i32),	i32)),
 		("I32Mod",	mk Prim2 (P.I32Mod,	(i32, i32),	i32)),
-		("I32ShiftLeft",	mk Prim2 (P.I32ShiftLeft,	(i32, i32),	i32)),
+		("I32LSh",	mk Prim2 (P.I32LSh,	(i32, i32),	i32)),
+(*
+		("I32RShA",	mk Prim2 (P.I32RShA,	(i32, i32),	i32)),
+		("I32RShL",	mk Prim2 (P.I32RShL,	(i32, i32),	i32)),
+*)
 		("I32Neg",	mk Prim1 (P.I32Neg,	i32,		i32)),
 		("I32Eq",	mk Prim2 (P.I32Eq,	(i32, i32),	bTy)),
 		("I32NEq",	mk Prim2 (P.I32NEq,	(i32, i32),	bTy)),
@@ -101,6 +116,11 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 		("I64Mul",	mk Prim2 (P.I64Mul,	(i64, i64),	i64)),
 		("I64Div",	mk Prim2 (P.I64Div,	(i64, i64),	i64)),
 		("I64Mod",	mk Prim2 (P.I64Mod,	(i64, i64),	i64)),
+(*
+		("I64LSh",	mk Prim2 (P.I64LSh,	(i64, i64),	i64)),
+		("I64RShA",	mk Prim2 (P.I64RShA,	(i64, i64),	i64)),
+		("I64RShL",	mk Prim2 (P.I64RShL,	(i64, i64),	i64)),
+*)
 		("I64Neg",	mk Prim1 (P.I64Neg,	i64,		i64)),
 		("I64Eq",	mk Prim2 (P.I64Eq,	(i64, i64),	bTy)),
 		("I64NEq",	mk Prim2 (P.I64NEq,	(i64, i64),	bTy)),
@@ -153,7 +173,11 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 		("I64FetchAndAdd", mk Prim2 (P.I32FetchAndAdd, (i64, i64), i64)),
 		("CAS",		mk Prim3 (P.CAS,	(adrTy, aTy, aTy), aTy)),
 		("BCAS",	mk Prim3 (P.BCAS,	(adrTy, aTy, aTy), bTy)),
-		("TAS",		mk Prim1 (P.TAS,	bTy,		bTy))
+		("TAS",		mk Prim1 (P.TAS,	bTy,		bTy)),
+		("Pause",	mk0 (P.Pause,				uTy)),
+		("FenceRead",	mk0 (P.FenceRead,			uTy)),
+		("FenceWrite",	mk0 (P.FenceWrite,			uTy)),
+		("FenceRW",	mk0 (P.FenceRW,				uTy))
 	      ];
 	    AtomTable.find tbl
 	  end
