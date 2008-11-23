@@ -12,11 +12,11 @@ LOG="$DIR/LOG"
 # allow core dumps
 ulimit -c unlimited
 
-( cd seq;
+( cd goals;
 
 rm -rf $LOG
 
-for g in goal*
+for g in seq-*
 do
 ( cd $g;
    for f in *.pml
