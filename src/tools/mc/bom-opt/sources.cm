@@ -27,12 +27,13 @@ is
   bom-opt-fn.sml
   case-simplify.sml
   contract.sml
-  uncurry.sml
   expand-hlops.sml
-  rewrite-hlops.sml
   inline.sml
+  group-funs.sml
   let-float.sml
   literal-case-fn.sml
   prim-contract.sml
+  rewrite-hlops.sml
   sizes.sml
+  uncurry.sml
 

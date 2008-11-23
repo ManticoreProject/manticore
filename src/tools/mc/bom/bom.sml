@@ -148,18 +148,18 @@ structure BOM =
 
     local
     fun setLambdaKind (lambda as FB{f, params, exh, ...}) = (
-	    Var.setKind(f, VK_Fun lambda);
-	    List.app (fn x => Var.setKind(x, VK_Param)) (params @ exh))
+	  Var.setKind(f, VK_Fun lambda);
+	  List.app (fn x => Var.setKind(x, VK_Param)) (params @ exh))
     in
     fun mkLambda {f, params, exh, body} = let
-	    val l = FB{f=f, params=params, exh=exh, body=body}
-            in
-	        setLambdaKind l;
-		l
-            end
+	  val l = FB{f=f, params=params, exh=exh, body=body}
+	  in
+	      setLambdaKind l;
+	      l
+	  end
     fun mkFun (fbs, e) = (
-	    List.app setLambdaKind fbs;
-	    mkExp(E_Fun(fbs, e)))
+	  List.app setLambdaKind fbs;
+	  mkExp(E_Fun(fbs, e)))
     end
 
     fun mkCont (lambda as FB{f, params, ...},e) = (

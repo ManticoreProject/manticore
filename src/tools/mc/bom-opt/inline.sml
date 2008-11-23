@@ -11,7 +11,7 @@
 
 structure Inline : sig
 
-    val transform : BOM.module -> BOM.module
+    val transform : {specializeRecFuns : bool} -> BOM.module -> BOM.module
 
   end = struct
 
@@ -228,7 +228,7 @@ structure Inline : sig
 
 
   (* apply expansive inlining to the functions in the module *)
-    fun inline (B.MODULE{name, externs, hlops, body}) = let
+    fun inline (specializeRecFuns, B.MODULE{name, externs, hlops, body}) = let
 	  val {isRec, bindingOf, clearMarks, recAppCnt} = analyse body
 	  fun doExp (env, exp as B.E_Pt(pt, term)) = (case term
 		 of B.E_Let(xs, e1, e2) => let
@@ -281,7 +281,7 @@ structure Inline : sig
 		      end
 		  | B.E_Apply(f, args, rets) => (case shouldInline(env, f, args, rets)
 		       of SOME(B.FB{params, exh, body, ...}) => if isRec f
-			    then if (BV.appCntOf f - recAppCnt f > 1)
+			    then if specializeRecFuns andalso (BV.appCntOf f - recAppCnt f > 1)
 			      then (
 				ST.tick cntRec;
 				inlineAppRecFn (env, f, args, rets))
@@ -347,6 +347,6 @@ structure Inline : sig
 	      }
 	  end
 
-    fun transform m = if !inlineFlg then inline m else m
+    fun transform {specializeRecFuns} m = if !inlineFlg then inline (specializeRecFuns, m) else m
 
   end
