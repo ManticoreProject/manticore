@@ -169,10 +169,11 @@ structure Inline : sig
 		  | B.E_Ret _ => ()
 		  | B.E_HLOp _ => ()
 		(* end case *))
-	  and analFBs (enclFns, fbs) =
-		List.app
-		  (fn (B.FB{f, body, ...}) => analE(VSet.add(enclFns, f), fbs, body))
-		    fbs
+	  and analFBs (enclFns, fbs) = let
+		val enclFns = List.foldl (fn (B.FB{f, ...}, efns) => VSet.add(efns, f)) enclFns fbs
+		in
+		  List.app (fn (B.FB{f, body, ...}) => analE(enclFns, fbs, body)) fbs
+		end
 	  in
 	    analE (VSet.empty, [], body);
 	    { isRec = Option.isSome o peekFn, bindingOf = getFn, clearMarks = clear,
