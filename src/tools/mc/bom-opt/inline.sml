@@ -283,6 +283,9 @@ structure Inline : sig
 		       of SOME(B.FB{params, exh, body, ...}) => if isRec f
 			    then if specializeRecFuns andalso (BV.appCntOf f - recAppCnt f > 1)
 			      then (
+(* FIXME: we probably should only specialize a recursive function nest when the total size
+ * of the nest is smaller than some limit.
+ *)
 				ST.tick cntRec;
 				inlineAppRecFn (env, f, args, rets))
 			      else exp
