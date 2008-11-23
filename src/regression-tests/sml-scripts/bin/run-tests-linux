@@ -1,4 +1,0 @@
-#! /bin/sh
-
-sml @SMLload=run-tests.x86-linux ../../reports/current/results.html  $*
-
