@@ -1,5 +1,8 @@
 #!/bin/bash
 #
+# COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+# All rights reserved.
+#
 
 DIR=`pwd`
 MC="sml @SMLcmdname=mc @SMLload=$DIR/../../src/tools/mc/mc"
