@@ -208,15 +208,15 @@ structure Inline : sig
 
   (********** Inlining **********)
 
-  (* test to see if a function application ``f(args)'' should be
+  (* test to see if a function application ``f(args / rets)'' should be
    * inlined.  If so, return SOME(fb), where fb is the lambda
    * bound to f, otherwise return NONE.
    *)
-    fun shouldInline (E{k, s}, f, args) = if VSet.member(s, f)
+    fun shouldInline (E{k, s}, f, args, rets) = if VSet.member(s, f)
 	  then NONE
 	  else (case BV.kindOf f
 	     of B.VK_Fun(fb as B.FB{body, ...}) =>
-		  if (Sizes.sizeOfExp body < k * (1 + List.length args))
+		  if Sizes.smallerThan(body, k * Sizes.sizeOfApply(f, args, rets))
 		    then SOME fb
 		    else NONE
 	      | _ => NONE
@@ -274,7 +274,7 @@ structure Inline : sig
 			B.mkCase(x, List.map doCase cases,
 			  Option.map (fn e => doExp(env, e)) dflt)
 		      end
-		  | B.E_Apply(f, args, rets) => (case shouldInline(env, f, args)
+		  | B.E_Apply(f, args, rets) => (case shouldInline(env, f, args, rets)
 		       of SOME(B.FB{params, exh, body, ...}) => if isRec f
 			    then if (BV.appCntOf f - recAppCnt f > 1)
 			      then (

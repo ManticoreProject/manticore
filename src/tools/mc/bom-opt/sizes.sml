@@ -6,9 +6,10 @@
 
 structure Sizes : sig
 
-    val sizeOfExp : BOM.exp -> int
-
     val sizeOfApply : (BOM.var * BOM.var list * BOM.var list) -> int
+
+  (* is the expression smaller than the given size? *)
+    val smallerThan : BOM.exp * int -> bool
 
   end = struct
 
@@ -29,38 +30,7 @@ structure Sizes : sig
       | sizeOfRHS (B.E_VPLoad _) = 1
       | sizeOfRHS (B.E_VPStore _) = 1
 
-    fun sizeOfFB (B.FB{params, exh, body, ...}) =
-(* FIXME: the number of free variables would be a better metric here *)
-	  List.length params + List.length exh + sizeOfExp body + 1
-
-    and sizeOfExp (B.E_Pt(_, t)) = (case t
-	   of B.E_Let(_, e1, e2) => sizeOfExp e1 + sizeOfExp e2
-	    | B.E_Stmt(_, rhs, e) => sizeOfRHS rhs + sizeOfExp e
-	    | B.E_Fun(fbs, e) =>
-		List.foldl (fn (fb, sz) => sz + sizeOfFB fb) (sizeOfExp e) fbs
-	    | B.E_Cont(fb, e) => sizeOfFB fb + sizeOfExp e
-	    | B.E_If(_, e1, e2) => sizeOfExp e1 + sizeOfExp e2
-	    | B.E_Case(_, cases, dflt) => let
-		fun sizeOfPat (B.P_DCon(dc, xs)) = 1 + List.length xs
-		  | sizeOfPat (B.P_Const _) = 1
-		fun sizeOfCase ((pat, e), sz) = sizeOfPat pat + sizeOfExp e + sz
-		in
-		  List.foldl sizeOfCase (case dflt of SOME e => sizeOfExp e | _ => 0) cases
-		end
-	    | B.E_Apply(f, xs, ys) => sizeOfApply (f, xs, ys)
-	    | B.E_Throw(k, xs) => let
-		val n = List.length xs
-		in
-		  case B.Var.kindOf k
-		   of B.VK_Cont _ => n + 1
-		    | _ => n + 2
-		  (* end case *)
-		end
-	    | B.E_Ret xs => List.length xs
-	    | B.E_HLOp(hop, xs, ys) => (* FIXME *) 10
-	  (* end case *))
-
-    and sizeOfApply (f, xs, ys) = let
+    fun sizeOfApply (f, xs, ys) = let
 	  val n = List.length xs + List.length ys
 	  in
 	    case B.Var.kindOf f
@@ -68,5 +38,48 @@ structure Sizes : sig
 	      | _ => n + 3
 	    (* end case *)
 	  end
+
+    fun foldSmaller f k [] = k
+      | foldSmaller f k (x::r) = if k < 0 then k else foldSmaller f (f (x, k)) r
+
+  (* Is the expression smaller than the given size?  We return diff >= 0 if
+   * sizeOf(e) + diff = k; otherwise we return a negative number.  This function
+   * exits early if k gets below 0.
+   *)
+    fun smaller (B.E_Pt(_, t), k) = if (k < 0) then k
+	  else (case t
+	     of B.E_Let(_, e1, e2) => smaller(e2, smaller(e1, k))
+	      | B.E_Stmt(_, rhs, e) => smaller(e, k - sizeOfRHS rhs)
+	      | B.E_Fun(fbs, e) => 
+		    foldSmaller smallerFB (smaller(e, k)) fbs
+	      | B.E_Cont(fb, e) => smaller(e, smallerFB(fb, k))
+	      | B.E_If(_, e1, e2) => smaller(e2, smaller(e1, k-1))
+	      | B.E_Case(_, cases, dflt) => let
+		  fun sizeOfPat (B.P_DCon(dc, xs)) = 1 + List.length xs
+		    | sizeOfPat (B.P_Const _) = 1
+		  fun sizeOfCase ((pat, e), k) = smaller (e, k - sizeOfPat pat)
+		  val k = (case dflt of SOME e => smaller(e, k) | _ => k)
+		  in
+		    foldSmaller sizeOfCase k cases
+		  end
+	      | B.E_Apply(f, xs, ys) => k - sizeOfApply (f, xs, ys)
+	      | B.E_Throw(c, xs) => let
+		  val n = List.length xs
+		  in
+		    case B.Var.kindOf c
+		     of B.VK_Cont _ => k - (n + 1)
+		      | _ => k - (n + 2)
+		    (* end case *)
+		  end
+	      | B.E_Ret xs => k - List.length xs
+	      | B.E_HLOp(hop, xs, ys) => (* FIXME *) k - 10
+	    (* end case *))
+
+    and smallerFB (B.FB{params, exh, body, ...}, k) =
+(* FIXME: the number of free variables would be a better metric here *)
+	  smaller (body, k - (1 + List.length params + List.length exh))
+
+  (* is the expression smaller than the given size? *)
+    fun smallerThan (e, k) = (smaller(e, k) >= 0)
 
   end
