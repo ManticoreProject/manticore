@@ -11,9 +11,9 @@ REPORT="$DIR/reports/$REPORT_FILE"
 # allow core dumps
 ulimit -c unlimited
 
-( cd par;
+( cd goals;
 
-for g in goal*
+for g in par-*
 do
 ( cd $g;
    for f in *.pml
