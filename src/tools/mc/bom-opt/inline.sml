@@ -4,6 +4,9 @@
  * All rights reserved.
  *
  * Expansive inlining for BOM representation.
+ *
+ * For recursive functions, we make a local copy of the loop-nest, but we do not
+ * do any unrolling of the loop.
  *)
 
 structure Inline : sig
