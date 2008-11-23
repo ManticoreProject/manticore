@@ -83,7 +83,7 @@ structure Inline : sig
 	  end
 
     fun copyFBs fbs = let
-	  val fbs = List.map U.copyLambda fbs
+	  val fbs = U.copyLambdas fbs
 	  in
 	    C.initLambdas fbs;
 	    fbs
@@ -128,7 +128,7 @@ structure Inline : sig
                 U.extend (env, toVar, fromVar'))
           val env' = ListPair.foldl bind env (fromVars', toVars)
           in
-          (env', casts)
+	    (env', casts)
           end
 
   (********** Analysis for recursive functions **********)
@@ -225,6 +225,7 @@ structure Inline : sig
 		    else NONE
 	      | _ => NONE
 	    (* end case *))
+
 
   (* apply expansive inlining to the functions in the module *)
     fun inline (B.MODULE{name, externs, hlops, body}) = let

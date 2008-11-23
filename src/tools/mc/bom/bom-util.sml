@@ -36,6 +36,9 @@ structure BOMUtil : sig
   (* create a copy of a BOM term with fresh bound variables *)
     val copyLambda : BOM.lambda -> BOM.lambda
 
+  (* create a copy of a list of mutually recursive functions *)
+    val copyLambdas : BOM.lambda list -> BOM.lambda list
+
   (* copy an expression creating fresh local variables and renaming global variables
    * according to the given substitution.
    *)
@@ -180,6 +183,24 @@ structure BOMUtil : sig
 	    (s, doBody s)
 	  end
 
+    and copyFBs (s, fbs) = let
+	(* first pass creates fresh function names and gives a list of doBody
+	 * functions in reverse order.
+	 *)
+	  val (s, doBodies) = List.foldl
+		(fn (fb, (s, doBodies)) => let val (s, doBody) = copyLambda' (s, fb)
+		  in
+		    (s, doBody::doBodies)
+		  end)
+		  (s, []) fbs
+	(* second pass creates the copies and reverses the list back to its original
+	 * order.
+	 *)
+	  val fbs = List.foldl (fn (doBody, fbs) => doBody s :: fbs) [] doBodies
+	  in
+	    (s, fbs)
+	  end
+
     and copyExp (s, B.E_Pt(_, t)) = (case t
 	   of B.E_Let(lhs, e1, e2) => let
 		val (s', lhs) = freshVars(s, lhs)
@@ -192,19 +213,7 @@ structure BOMUtil : sig
 		  B.mkStmt(lhs, substRHS (s, rhs), copyExp (s', e))
 		end
 	    | B.E_Fun(fbs, e) => let
-	      (* first pass creates fresh function names and gives a list of doBody
-	       * functions in reverse order.
-	       *)
-		val (s, doBodies) = List.foldl
-		      (fn (fb, (s, doBodies)) => let val (s, doBody) = copyLambda' (s, fb)
-			in
-			  (s, doBody::doBodies)
-			end)
-			(s, []) fbs
-	      (* second pass creates the copies and reverses the list back to its original
-	       * order.
-	       *)
-		val fbs = List.foldl (fn (doBody, fbs) => doBody s :: fbs) [] doBodies
+		val (s, fbs) = copyFBs (s, fbs)
 		in
 		  B.mkFun(fbs, copyExp(s, e))
 		end
@@ -256,6 +265,9 @@ structure BOMUtil : sig
   (* create a copy of a BOM term with fresh bound variables *)
     fun copyLambda fb = #2 (copyOneLambda (empty, fb))
 
+  (* create a copy of a list of mutually recursive functions *)
+    fun copyLambdas fbs = #2 (copyFBs (empty, fbs))
+
     local
       structure PTy = PrimTyFn (
 	struct
@@ -288,8 +300,7 @@ structure BOMUtil : sig
       | typeOfRHS (B.E_VPStore _) = []
 
   (* rawInt : int -> B.rhs *)
-    fun rawInt(n) = B.E_Const (Literal.Int (IntInf.fromInt n), 
-			       BTy.T_Raw BTy.T_Int)
+    fun rawInt(n) = B.E_Const(Literal.Int (IntInf.fromInt n), BTy.T_Raw BTy.T_Int)
 
     fun typeOfExp (B.E_Pt(_, t)) = (case t
 	   of (B.E_Let(_, _, e)) => typeOfExp e
