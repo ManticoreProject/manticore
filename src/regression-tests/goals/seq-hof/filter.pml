@@ -1,6 +1,6 @@
 (* test of list filter *)
 
-fun intListToString ns = ("[" ^ String.concatWith(",",List.map(Int.toString, ns)) ^ "]")
+fun intListToString ns = ("[" ^ String.concatWith "," (List.map Int.toString ns) ^ "]")
 
 fun positive n = (n>0)
 

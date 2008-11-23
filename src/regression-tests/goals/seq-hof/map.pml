@@ -19,5 +19,5 @@ fun printAll bs =
       | b::tl => (Print.print (b2s b ^ " ");
 		  printAll tl))
 
-val _ = printAll (List.map (pos, fromto (~3, 3)))
+val _ = printAll (List.map pos (fromto (~3, 3)))
 
