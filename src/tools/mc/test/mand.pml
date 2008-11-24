@@ -13,7 +13,7 @@ val maxCount' = itof (maxCount-1);
 
 val delta : double = side / (itod(sz-1));
 
-val img = newImage (sz, sz);
+val img = Image.new (sz, sz);
 
 fun max (a : float, b) = if (a > b) then a else b;
 fun min (a : float, b) = if (a < b) then a else b;
@@ -58,7 +58,7 @@ fun pixel (i, j) = let
 	    else cnt
       val (r, g, b) = color (loop (0, c_re, c_im))
       in
-	updateImage3f (img, i, j, r, g, b)
+	Image.update3f (img, i, j, r, g, b)
       end;
 
 fun lp i = if (i < sz)
@@ -71,4 +71,4 @@ fun lp i = if (i < sz)
 	end
       else ();
 
-(lp 0; outputImage(img, "mand.ppm"); freeImage img)
+(lp 0; Image.output("mand.ppm", img); Image.free img)
