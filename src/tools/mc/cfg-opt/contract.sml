@@ -136,7 +136,7 @@ structure Contract : sig
 		  in
 		    if unused x
 		      then (ST.tick cntUnusedVar; Census.dec y; (rest, exit))
-		      else (C.E_Cast(x, ty, y) :: rest, exit)
+		      else (C.mkCast(x, ty, y) :: rest, exit)
 		  end
 	      | C.E_Label(x, lab) => let
 		  val (rest, exit) = doRest env
@@ -151,12 +151,12 @@ structure Contract : sig
 		  in
 		    if unused x
 		      then (ST.tick cntUnusedVar; Census.dec y; (rest, exit))
-		      else (C.E_Select(x, i, y) :: rest, exit)
+		      else (C.mkSelect(x, i, y) :: rest, exit)
 		  end
 	      | C.E_Update(i, x, y) => let
 		  val (rest, exit) = doRest env
 		  in
-		    (C.E_Update(i, applySubst(env, x), applySubst(env, y)) :: rest, exit)
+		    (C.mkUpdate(i, applySubst(env, x), applySubst(env, y)) :: rest, exit)
 		  end
 	      | C.E_AddrOf(x, i, y) => let
 		  val y = applySubst (env, y)
@@ -164,7 +164,7 @@ structure Contract : sig
 		  in
 		    if unused x
 		      then (ST.tick cntUnusedVar; Census.dec y; (rest, exit))
-		      else (C.E_AddrOf(x, i, y) :: rest, exit)
+		      else (C.mkAddrOf(x, i, y) :: rest, exit)
 		  end
 	      | C.E_Alloc(x, ys) => let
 		  val ys = applySubst' (env, ys)
@@ -172,7 +172,7 @@ structure Contract : sig
 		  in
 		    if unused x
 		      then (ST.tick cntUnusedVar; Census.dec' ys; (rest, exit))
-		      else (C.E_Alloc(x, ys) :: rest, exit)
+		      else (C.mkAlloc(x, ys) :: rest, exit)
 		  end
 	      | C.E_GAlloc(x, ys) => let
 		  val ys = applySubst' (env, ys)
@@ -180,7 +180,7 @@ structure Contract : sig
 		  in
 		    if unused x
 		      then (ST.tick cntUnusedVar; Census.dec' ys; (rest, exit))
-		      else (C.E_GAlloc(x, ys) :: rest, exit)
+		      else (C.mkGAlloc(x, ys) :: rest, exit)
 		  end
 	      | C.E_Promote(x, y) => let
 		  val y = applySubst (env, y)
@@ -188,7 +188,12 @@ structure Contract : sig
 		  in
 		    if unused x
 		      then (ST.tick cntUnusedVar; Census.dec y; (rest, exit))
-		      else (C.E_Promote(x, y) :: rest, exit)
+		      else (C.mkPromote(x, y) :: rest, exit)
+		  end
+	      | C.E_Prim0 prim => let
+		  val (rest, exit) = doRest env
+		  in
+		    (C.mkPrim0 prim :: rest, exit)
 		  end
 	      | C.E_Prim(x, prim) => let
 		  val (rest, exit) = doRest env
@@ -198,7 +203,7 @@ structure Contract : sig
 			ST.tick cntUnusedVar;
 			PrimUtil.app (fn x => (Census.dec(applySubst(env, x)))) prim;
 			(rest, exit))
-		      else (C.E_Prim(x, PrimUtil.map (fn y => applySubst(env, y)) prim)
+		      else (C.mkPrim(x, PrimUtil.map (fn y => applySubst(env, y)) prim)
 			:: rest, exit)
 		  end
 	      | C.E_CCall(lhs, cf, args) => let
@@ -207,7 +212,7 @@ structure Contract : sig
 		  (* NOTE: we could eliminate pure C calls whose results are unused,
 		   * but that situation is not very likely at this stage.
 		   *)
-		    (C.E_CCall(lhs, applySubst(env, cf), applySubst'(env, args))
+		    (C.mkCCall(lhs, applySubst(env, cf), applySubst'(env, args))
 		      :: rest, exit)
 		  end
 	      | C.E_HostVProc x => let
@@ -223,12 +228,12 @@ structure Contract : sig
 		  in
 		    if unused x
 		      then (ST.tick cntUnusedVar; Census.dec y; (rest, exit))
-		      else (C.E_VPLoad(x, i, y) :: rest, exit)
+		      else (C.mkVPLoad(x, i, y) :: rest, exit)
 		  end
 	      | C.E_VPStore(i, x, y) => let
 		  val (rest, exit) = doRest env
 		  in
-		    (C.E_VPStore(i, applySubst(env, x), applySubst(env, y)) :: rest, exit)
+		    (C.mkVPStore(i, applySubst(env, x), applySubst(env, y)) :: rest, exit)
 		  end
 	    (* end case *)
 	  end
