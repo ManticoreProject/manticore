@@ -101,4 +101,16 @@ functor AMD64AtomicOpsFn (
              (r', stms)
          end
 
+  (* pause instruction to support efficient spin locks *)
+    fun genPause () = [T.EXT IX.PAUSE]
+
+  (* sequentializing operation for all write-to-memory instructions prior to this instruction *)
+    fun genFenceWrite () = [T.EXT IX.SFENCE]
+
+  (* sequentializing operation for all load-from-memory instructions prior to this instruction *)
+    fun genFenceRead () = [T.EXT IX.LFENCE]
+
+  (* sequentializing operation for all load-from-memory and write-to-memory instructions prior to this instruction *)
+    fun genFenceRW () = [T.EXT IX.MFENCE]
+
   end

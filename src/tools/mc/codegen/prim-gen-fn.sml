@@ -40,11 +40,27 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
     fun wordLit i = T.LI (T.I.fromInt (i64ty, i))
 
     fun genPrim0 {varDefTbl} p = (case p
-	   of P.Pause => []
-	    | P.FenceRead => BE.VarDef.flushLoads varDefTbl
-	    | P.FenceWrite => BE.VarDef.flushLoads varDefTbl
-	    | P.FenceRW	 => BE.VarDef.flushLoads varDefTbl
-	    | _ => raise Fail(concat[
+	(* memory-system operations *)
+          of P.Pause => BE.AtomicOps.genPause()
+	   | P.FenceRead => let
+	       val stms = BE.AtomicOps.genFenceRead()
+	       in
+		 BE.VarDef.flushLoads varDefTbl
+		 @ stms
+	       end
+	   | P.FenceWrite => let
+	       val stms = BE.AtomicOps.genFenceWrite()
+	       in
+		 BE.VarDef.flushLoads varDefTbl
+		 @ stms
+	       end
+	   | P.FenceRW	 => let
+	       val stms = BE.AtomicOps.genFenceRW()
+	       in
+		 BE.VarDef.flushLoads varDefTbl
+		 @ stms
+	       end
+	   | _ => raise Fail(concat[
 		  "genPrim0(", PrimUtil.fmt CFG.Var.toString p, ")"
 		])
 	  (* end case *))

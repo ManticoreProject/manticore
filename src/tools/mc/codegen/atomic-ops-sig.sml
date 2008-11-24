@@ -62,4 +62,16 @@ signature ATOMIC_OPS =
 	    x : MTy.T.rexp	        (* the number to add *)
 	  } -> (MTy.T.rexp * MTy.T.stm list)
 
+  (* pause instruction to support efficient spin locks *)
+    val genPause : unit -> MTy.T.stm list
+
+  (* sequentializing operation for all write-to-memory instructions prior to this instruction *)
+    val genFenceWrite : unit -> MTy.T.stm list
+
+  (* sequentializing operation for all load-from-memory instructions prior to this instruction *)
+    val genFenceRead : unit -> MTy.T.stm list
+
+  (* sequentializing operation for all load-from-memory and write-to-memory instructions prior to this instruction *)
+    val genFenceRW : unit -> MTy.T.stm list
+
   end
