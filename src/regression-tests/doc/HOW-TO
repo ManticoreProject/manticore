@@ -59,28 +59,35 @@ in question.
 
 RUNNING THE TESTS
 
-There is a script in regression-tests/sml-scripts/bin called
-run-tests. Executing it will populate
-regression-tests/reports/current/results.html with new test
-results. It will also write quasi-XML result files into the
-regression-tests/reports/archive. 
+There is a script in regression-tests/bin called run-tests. Executing
+it will populate regression-tests/reports/current/results.html with
+new test results. It will also write quasi-XML result files into the
+regression-tests/reports/archive.
 
-Run this command with the name of any files where you'd _also_ like
-the test results file to go. For example, I (Adam) run this command
-with
+The run-tests command-line tool has two options.
 
-  ./run-tests ~/MCResults/current/results.html
+  -m (--mc) PATH           path to the Manticore compiler
+  -c (--local-copy) FILE   a location to write the HTML report to
 
-Working hand-in-hand with NFS, I am then able to view the results on
-my local machine, which can't directly run the Manticore compiler
-(and conversely, the machine running the Manticore compiler can't run
-a web browser for me).
+If no Manticore compiler is specified with the m option, the system
+assumes that "mc" is in your path and juts calls it straight.
 
-Note you'll want a stylesheet results.css to live one directory up
-from the generated file so that. (It will be legible even without it.)
-You can grab a copy of results.css from
-regression-tests/reports/. Make your own if that one is not to your
-liking.
+The latter option is the name of a file where you'd like the test
+results file to go in addition to the default location given
+above. For example, I (Adam) run this command as follows:
+
+  ./run-tests -c ~/MCResults/results.html
+
+Thanks to NFS, I am then able to view the results with a browser on my
+local machine, which can't directly run the Manticore compiler (and
+conversely, the machine running the Manticore compiler can't run a
+browser for me).
+
+Note you'll want a stylesheet results.css to live in the directory
+with the generated file. (It will be legible even without it.)  You
+can grab a copy of results.css from regression-tests/reports/. Edit
+that stylesheet to suit you and store it locally if the given one is
+not to your liking.
 
 TEST HISTORY 
 
@@ -103,9 +110,8 @@ previous test runs will be severed. More concretely, if there is a
 test called map.pml whose filename is changed to pair-map.pml, then
 the system will not be able to relate its current run to previous
 runs. One could imagine building a more robust infrastructure that
-addressed this weakness, but I chose not to invest the time.
-
-Along similar lines, if the content of a test is changed, the testing
+addressed this weakness, but I chose not to invest the time. Along
+similar lines, if the content of a test is changed, the testing
 facilities will not indicate or "know" that a test is not testing
 exactly what it used to.
 
@@ -115,8 +121,10 @@ that is, add new, freshly-named tests in favor of modifying old ones.
 
 KNOWN ISSUES
 
--- BUG: The system checks the manticore revision, but *doesn't* make
+- BUG: The system checks the manticore revision, but *doesn't* make
 sure the build of the compiler corresponds.
+
+- Bug or feature? There is no way to test a program that should crash.
 
 - It might be worth considering whether backends other than HTML would
 be desirable.
@@ -124,3 +132,8 @@ be desirable.
 - Paths and filenames are not yet all abstracted away from particular
 syntactic conventions. i.e., I should be using OS.Path.joinBaseExt
 instead of (b ^ "." ^ e).
+
+--
+
+Adam Shaw
+Fall 2008
