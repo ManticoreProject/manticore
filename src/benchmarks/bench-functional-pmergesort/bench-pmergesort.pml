@@ -12,15 +12,17 @@ structure BenchPMergesort =
 	    ()
 	  end
 
-    fun benchMergesort (seqSz, n) = let
+    fun benchMergesort (seqSz, n, sort) = let
 	  val r = randomRope n
-          val (r, t) = Time.timeToEval(fn () => PMergesort.pMergesort r)
+          val (r, t) = Time.timeToEval(fn () => sort r)
           in
 	    Print.printLn("Time elapsed (microseconds): "^Long.toString t);
 	    (*Print.printLn(Ropes.toString Int.toString r);*)
 	    ()
 	  end
 
-    val () = benchQuicksort(PrimIO.readInt(), PrimIO.readInt())
+    val () = benchMergesort(PrimIO.readInt(), PrimIO.readInt(), PMergesortWithSeqBc.pMergesort)
+(*    val () = benchMergesort(PrimIO.readInt(), PrimIO.readInt(), PMergesort.pMergesort)*)
+(*    val () = benchQuicksort(PrimIO.readInt(), PrimIO.readInt())*)
 
   end

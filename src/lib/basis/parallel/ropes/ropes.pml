@@ -9,8 +9,7 @@
 structure Ropes (* : ROPES *) = struct
 
     structure S = ListSeq 
-    val sizeL1CacheLine= 2
-    val wordSize = 32
+    val sizeL1CacheLine = 2
     val ceilingLg = Int.ceilingLg
 
     datatype option = datatype Option.option
@@ -48,7 +47,7 @@ structure Ropes (* : ROPES *) = struct
 		 'a seq   (* sequence *))
 
   (* maxLeafSize : int *)
-    val maxLeafSize = sizeL1CacheLine
+    val maxLeafSize = 1024
 
   (* empty : 'a rope *)
     val empty = LEAF(0, S.empty)

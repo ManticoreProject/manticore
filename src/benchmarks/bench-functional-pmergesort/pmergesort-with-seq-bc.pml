@@ -25,13 +25,18 @@ structure PMergesortWithSeqBc =
 	  else R.splitAt(xs, n - 1)
 
   (* merge two sorted lists into one sorted list *)
-    fun sMerge (xs, ys) = (
-	  case (xs, ys)
-	   of (nil, ys) => ys
-	    | (xs, nil) => xs
-	    | (x :: xs, y :: ys) => 
-	      if lessThan(x, y) then x :: sMerge(xs, y :: ys) else y :: sMerge(x :: xs, ys)
-          (* end case *))
+    fun sMerge (xs, ys) = let
+	  fun lp (xs, ys, acc) = 
+	        if List.null xs
+		   then List.rev ys @ acc
+		else if List.null ys 
+		   then List.rev xs @ acc
+		else if lessThan(List.hd xs, List.hd ys) 
+		   then lp(List.tl xs, List.hd ys :: List.tl ys, List.hd xs :: acc) 
+		else lp(List.hd xs :: List.tl xs, List.tl ys, List.hd ys :: acc)
+          in
+	    List.rev(lp(xs, ys, nil))
+	  end
 
     val sSort = ListQuicksort.quicksort
 

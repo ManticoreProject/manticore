@@ -62,7 +62,7 @@ structure TestPMergesort =
 		    val sSort = ListQuicksort.quicksort
 		  )
 
-    val r = Random.rand(0, 1034) 
+    val r = Random.rand(234, 33333) 
     fun randInt _ = Random.randRange (0, 10000) r
     fun randList _ = List.tabulate(randInt(), randInt) 
 
@@ -70,7 +70,7 @@ structure TestPMergesort =
 
     fun eq (x, y) = x = y
 
-    fun test ls = ListPair.allEq eq (pmsort ls, ListMergeSort.sort (op >) ls)
+    fun test ls = ListPair.allEq eq (pmsort ls, ListQuicksort.quicksort ls)
 
     fun t n = 
 	if List.all test (List.tabulate(n, randList))  

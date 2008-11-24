@@ -13,6 +13,6 @@ structure TestPMergesort =
 
     fun p x = Print.printLn(Int.toString x)
 
-(*    val () = List.app p (pmsort xs)*)
+    val () = List.app p (pmsort xs)
 
   end
