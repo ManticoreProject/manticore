@@ -54,7 +54,6 @@ structure Rand =
     val inRangeLong : (long * long) -> long = _prim(@in-range-long-wrap)
     val inRangeInt : (int * int) -> int = _prim(@in-range-int-wrap)
     val seed : unit -> unit = _prim(@seed)
-    val _ = seed()
     val randDouble : (double * double) -> double = _prim(@rand-double)
 
   end
