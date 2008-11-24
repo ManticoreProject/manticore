@@ -1,3 +1,11 @@
+(* archive-report.sml
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * The things the scripts need to know about a compiler.
+ *)
+
 signature COMPILER = sig
 
   val languageName : string
