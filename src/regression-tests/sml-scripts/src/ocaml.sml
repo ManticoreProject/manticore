@@ -1,3 +1,10 @@
+(* ocaml.sml
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ *)
+
 structure OCaml : COMPILER = struct
   val languageName = "ocaml"
   val ext = "ml"

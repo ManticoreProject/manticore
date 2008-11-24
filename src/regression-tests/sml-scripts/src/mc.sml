@@ -1,3 +1,10 @@
+(* mc.sml
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ *)
+
 structure MC : COMPILER = struct
   val languageName = "manticore"
   val ext = "pml"
