@@ -8,16 +8,14 @@ structure Main : sig
 
     val mkgen : (int * int) list -> generation
     val show : (string -> unit) -> generation -> unit
-    val testit : TextIO.outstream -> unit
     val doit : unit -> unit
+    val testit : unit -> unit
 
   end = struct
 
-    fun map f [] = []
-      | map f (a::x) = f a :: map f x
+    val map = List.map
 
-    exception ex_undefined of string
-    fun error str = raise ex_undefined str
+    fun error str = raise Fail str
 
     fun accumulate f = let
 	  fun foldf a [] = a
@@ -32,12 +30,12 @@ structure Main : sig
 	    rev o accumulate consifp []
 	  end
 
+    fun exists p = let
+	  fun existsp [] = false
+	    | existsp (a::x) = if p a then true else existsp x
+	  in existsp end
 
-    fun exists p = let fun existsp [] = false
-                     | existsp (a::x) = if p a then true else existsp x
-                in existsp end
-
-    fun equal a b = (a  = b)
+    fun equal a b = (a = b)
 
     fun member x a = exists (equal a) x
 
@@ -118,8 +116,7 @@ structure Main : sig
     end
 
 
-    infix 6 at
-    fun coordlist at (x:int,y:int) = let fun move(a,b) = (a+x,b+y) 
+    fun at(coordlist, (x:int,y:int)) = let fun move(a,b) = (a+x,b+y) 
                                       in map move coordlist end
     val rotate = map (fn (x:int,y:int) => (y,~x))
 
@@ -131,10 +128,13 @@ structure Main : sig
         in (0,0)::(1,0):: f 0
        end
 
-    val genB = mkgen(glider at (2,2) @ bail at (2,12)
-		     @ rotate (barberpole 4) at (5,20))
+    val genB = mkgen(at(glider, (2,2)) @ at(bail, (2,12))
+		     @ at(rotate (barberpole 4), (5,20)))
 
-    fun nthgen g 0 = g | nthgen g i = nthgen (mk_nextgen_fn neighbours g) (i-1)
+    fun nthgen (g, i) = (case i
+	   of 0 => g
+	    | i => nthgen (mk_nextgen_fn neighbours g, i-1)
+	  (* end case *))
 
     val gun = mkgen
      [(2,20),(3,19),(3,21),(4,18),(4,22),(4,23),(4,32),(5,7),(5,8),(5,18),
@@ -145,9 +145,9 @@ structure Main : sig
 
     fun show pr = (app (fn s => (pr s; pr "\n"))) o plot o alive
 
-    fun doit () = show (fn _ => ()) (nthgen gun 50)
+    fun doit () = show (fn _ => ()) (nthgen(gun, 50))
 
-    fun testit strm = show (fn c => TextIO.output (strm, c)) (nthgen gun 50)
+    fun testit () = show print (nthgen(gun, 50))
 
   end (* Life *)
 
