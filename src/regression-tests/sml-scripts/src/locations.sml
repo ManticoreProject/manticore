@@ -8,8 +8,8 @@
 
 structure Locations = struct
 
-  val mc = ref (OS.FileSys.fullPath "../../../../bin/mc")
-  val defaultReport = OS.FileSys.fullPath "../../reports/current/results.html"
-  val archiveDir = OS.FileSys.fullPath "../../reports/archive"
+  val mc = ref "mc"
+  val defaultReport = OS.FileSys.fullPath "../../reports/current/results.html" handle SysErr => raise Fail "1"
+  val archiveDir = OS.FileSys.fullPath "../../reports/archive" handle SysErr => raise Fail "2"
 
 end

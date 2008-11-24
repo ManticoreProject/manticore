@@ -142,6 +142,7 @@ structure Utils = struct
 (* Gets the current svn revision of the Manticore project. *)
 (* Returns a string like "Revision: 2420". *)
 (* This should be run from within the Manticore tree. *)
+(* FIXME: This should really be fetched from the *version* of mc. *)
   fun currentRevision () = let
     val tmpfile = freshTmp (OS.FileSys.fullPath ".", "revision")
     val cmd = "svn info | grep Revision > " ^ tmpfile
@@ -157,6 +158,7 @@ structure Utils = struct
     end    
 
 (* alphasort : ('a -> string) -> 'a list -> 'a list *)
+(* Provide a function to make strings (for sorting) of given alphas. *)
 (* Alphabetical sorting, A to Z. *)
   fun alphasort getKey = let
     fun greaterThan (x1, x2) = String.> (getKey x1, getKey x2)
@@ -165,6 +167,8 @@ structure Utils = struct
     end
 
 (* antialphasort : ('a -> string) -> 'a list -> 'a list *)
+(* Provide a function to make strings (for sorting) of given alphas. *)
+(* Alphabetical sorting, Z to A. *)
   fun antialphasort getKey = let
     fun lte (x1, x2) = String.<= (getKey x1, getKey x2)
     in

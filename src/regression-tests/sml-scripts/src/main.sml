@@ -6,8 +6,7 @@
  * Driver for scripts.
  * The command line script "run-tests" has the following options:
  *   -m FILE the path to mc (default is "mc" and assumes it's in the path)
- *   -c FILE a local copy to write the HTML to 
- *             in addition to ../../reports/current/results.html 
+ *   -c FILE a local copy to write the HTML to in addition to ../reports/current/results.html 
  *)
 
 structure Main = struct

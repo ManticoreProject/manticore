@@ -122,6 +122,7 @@ structure ReportHTML = struct
 		       H.h3CS ("revision", ver) ::
 		       map goal (U.alphasort getGoalName r))
     in
+      (* Assumption: there will be a file results.css in the same directory as the output. *)
       H.htdoc (title ^ " " ^ d, ["./results.css"], body)
     end
     

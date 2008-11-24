@@ -96,7 +96,7 @@ functor RunTestsFn (L : COMPILER) = struct
   fun run () = let
     val now      = Date.fromTimeLocal (Time.now ())
     val ver      = U.currentRevision ()
-    val goals    = U.dirsWithin (concat [U.dotdotdot ".", "/goals"])
+    val goals    = U.dirsWithin (concat [U.dotdot ".", "/goals"])
     val noHidden = List.filter (not o (String.isPrefix ".") o OS.Path.file)
     val pvalOnly = List.filter ((fn s => s = "par-pval") o OS.Path.file)
     in
