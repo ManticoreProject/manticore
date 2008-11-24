@@ -10,6 +10,10 @@ signature COMPILER = sig
 
   val languageName : string
 
+(* Functions to get and destructively set the compiler path. *)
+  val getCompilerPath : unit -> string
+  val setCompilerPath : string -> unit
+
 (* The suffix for programs in the source language in question. *)
   val ext          : string
 

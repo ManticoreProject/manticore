@@ -7,6 +7,8 @@
 
 structure OCaml : COMPILER = struct
   val languageName = "ocaml"
+  fun getCompilerPath () = "ocamlc"
+  fun setCompilerPath _ = raise Fail "not supported"
   val ext = "ml"
   val base = OS.Path.base
   fun mkExe infile = base infile

@@ -7,9 +7,12 @@
 
 structure MC : COMPILER = struct
   val languageName = "manticore"
+  val c = ref "mc"
+  fun getCompilerPath () = !c
+  fun setCompilerPath p = (c := p)
   val ext = "pml"
   fun mkExe infile = "a.out"
-  fun mkCmd infile = concat ["mc ", infile]
+  fun mkCmd infile = String.concat [!c, " ", infile]
   fun detritus infile = [OS.Path.base infile ^ ".s"]
 end
 

@@ -8,6 +8,8 @@
 
 structure Locations = struct
 
+  val mc = ref (OS.FileSys.fullPath "../../../../bin/mc")
+  val defaultReport = OS.FileSys.fullPath "../../reports/current/results.html"
   val archiveDir = OS.FileSys.fullPath "../../reports/archive"
 
 end
