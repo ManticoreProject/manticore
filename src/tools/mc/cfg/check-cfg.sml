@@ -306,16 +306,16 @@ structure CheckCFG : sig
                         else err ();
                       addVar (env, x)
                       end)
+                  | CFG.E_Prim0 p => (chkVars (env, PrimUtil.varsOf p, PrimUtil.nameOf p); env)
                   | CFG.E_Prim (x, p) => (
                       chkVars (env, PrimUtil.varsOf p, PrimUtil.nameOf p);
                       addVar (env, x))
-                  | CFG.E_CCall (xs as [x], cf, args) => (
+                  | CFG.E_CCall (xs, cf, args) => (
                       chkVar (env, cf, "CCall");
                       chkVars (env, args, "CCall args");
-                      addVars (env, xs))
-                  | CFG.E_CCall (xs as [], cf, args) => (
-                      chkVar (env, cf, "CCall");
-                      chkVars (env, args, "CCall args");
+		      if (length xs > 1)
+			then error["CCall with more than one result\n"]
+			else ();
                       addVars (env, xs))
                   | CFG.E_HostVProc x => (let
                       fun err () = error[

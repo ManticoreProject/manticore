@@ -71,6 +71,7 @@ structure CFGUtil : sig
       | rhsOfExp (E_Alloc(_, args)) = args
       | rhsOfExp (E_GAlloc(_, args)) = args
       | rhsOfExp (E_Promote(_, y)) = [y]
+      | rhsOfExp (E_Prim0 p) = PrimUtil.varsOf p
       | rhsOfExp (E_Prim(_, p)) = PrimUtil.varsOf p
       | rhsOfExp (E_CCall(_, f, args)) = f::args
       | rhsOfExp (E_HostVProc _) = []
@@ -150,6 +151,7 @@ structure CFGUtil : sig
 	      | E_Alloc(lhs, rhs) => CFG.mkAlloc (lhs, List.map substVar rhs)
 	      | E_GAlloc(lhs, rhs) => CFG.mkGAlloc (lhs, List.map substVar rhs)
 	      | E_Promote(lhs, rhs) => CFG.mkPromote (lhs, substVar rhs)
+	      | E_Prim0 prim => CFG.mkPrim0 (PrimUtil.map substVar prim)
 	      | E_Prim(lhs, prim) => CFG.mkPrim (lhs, PrimUtil.map substVar prim)
 	      | E_CCall(lhs, f, rhs) => CFG.mkCCall (lhs, substVar f, List.map substVar rhs)
 	      | E_VPLoad(lhs, offset, rhs) => CFG.mkVPLoad (lhs, offset, substVar rhs)

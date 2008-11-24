@@ -269,6 +269,8 @@ structure CheckCPS : sig
 		      if (CTU.equal(ty, CV.typeOf x))
 			then ()
 			else error ["type mismatch in Promote: ", vl2s lhs, " = ", v2s x, "\n"])
+		  | ([], C.Prim p) => (
+                      chkVars(env, PrimUtil.varsOf p, PrimUtil.nameOf p))
 		  | ([ty], C.Prim p) => (
                       chkVars(env, PrimUtil.varsOf p, PrimUtil.nameOf p))
 		  | ([ty], C.CCall(cf, args)) => (

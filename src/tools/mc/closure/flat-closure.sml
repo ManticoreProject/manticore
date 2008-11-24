@@ -556,6 +556,12 @@ structure FlatClosure : sig
                       in
                         ([CFG.mkPromote(x, y)] @ binds, env)
                       end
+                  | ((env, []), CPS.Prim p) => let
+                      val (mkP, args) = PrimUtil.explode p
+                      val (binds, args) = lookupVars (env, args)
+                      in
+                        ([CFG.mkPrim0(mkP args)] @ binds, env)
+                      end
                   | ((env, [x]), CPS.Prim p) => let
                       val (mkP, args) = PrimUtil.explode p
                       val (binds, args) = lookupVars (env, args)

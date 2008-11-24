@@ -10,9 +10,10 @@ signature PRIM_GEN =
     structure BE : BACK_END
 
     type ctx = {varDefTbl : BE.VarDef.var_def_tbl}
-	       
-    val genPrim : ctx -> {gen : (CFG.var * CFG.prim) -> BE.MTy.T.stm list}
-			
+
+    val genPrim0 : ctx -> CFG.prim -> BE.MTy.T.stm list
+    val genPrim : ctx -> (CFG.var * CFG.prim) -> BE.MTy.T.stm list
+
   end (* PRIM_GEN *)
 
 functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
@@ -37,6 +38,16 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
     val boolTy = 64
 
     fun wordLit i = T.LI (T.I.fromInt (i64ty, i))
+
+    fun genPrim0 {varDefTbl} p = (case p
+	   of P.Pause => []
+	    | P.FenceRead => BE.VarDef.flushLoads varDefTbl
+	    | P.FenceWrite => BE.VarDef.flushLoads varDefTbl
+	    | P.FenceRW	 => BE.VarDef.flushLoads varDefTbl
+	    | _ => raise Fail(concat[
+		  "genPrim0(", PrimUtil.fmt CFG.Var.toString p, ")"
+		])
+	  (* end case *))
 
     fun genPrim {varDefTbl} = let
 	  val getDefOf = BE.VarDef.getDefOf varDefTbl
@@ -254,21 +265,13 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 			  @ stms
 			  @ cbind (v, cc)
 			end
-		  (* memory-system operations *)
-(* FIXME: since MLRISC does not support these yet, no instructions are generated for now *)
-		    | P.Pause => []
-		    | P.FenceRead => BE.VarDef.flushLoads varDefTbl
-		    | P.FenceWrite => BE.VarDef.flushLoads varDefTbl
-		    | P.FenceRW	 => BE.VarDef.flushLoads varDefTbl
-(*
 		    | _ => raise Fail(concat[
 			  "genPrim(", CFG.Var.toString v, ", ",
 			  PrimUtil.fmt CFG.Var.toString p, ")"
 			])
-*)
 		end (* gen *)
 	  in
-	    {gen=gen}
+	    gen
 	  end (* genPrim *)
 
 

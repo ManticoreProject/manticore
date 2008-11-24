@@ -112,8 +112,9 @@ if MChkTy.check stm
 	   | stms => (comment "flushLoads"; emitStms (List.rev stms)))
 
       val genGoto = BE.Transfer.genGoto varDefTbl
-      val genPrim = #gen (Prim.genPrim {varDefTbl=varDefTbl})
-		    
+      val genPrim0 = Prim.genPrim0 {varDefTbl=varDefTbl}
+      val genPrim = Prim.genPrim {varDefTbl=varDefTbl}
+
       (* literals *)
       val floatTbl = FloatLit.new ()
       val strTbl = StringLit.new ()
@@ -291,6 +292,7 @@ if MChkTy.check stm
 		  emitStms stms;
 		  bindExp ([lhs], result, "promote")
 	      end
+	    | gen (M.E_Prim0 p) = emitStms(annotateStms(genPrim0 p, PrimUtil.nameOf p))
 	    | gen (M.E_Prim (lhs, p)) = emitStms(annotateStms(genPrim (lhs, p), PrimUtil.nameOf p))
 	    | gen (M.E_CCall (lhs, f, args)) = let 
               val {stms, result} = BE.Transfer.genCCall varDefTbl {lhs=lhs, f=f, args=args}

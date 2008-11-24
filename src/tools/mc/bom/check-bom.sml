@@ -341,6 +341,8 @@ structure CheckBOM : sig
 		      chkVar (y, "Promote");
 		      if BTU.equal(ty, BV.typeOf y) then ()
 			else error ["type mismatch in Promote: ", vl2s lhs, " = ", v2s y, "\n"])
+		  | ([], B.E_Prim p) => (
+                      chkVars(PrimUtil.varsOf p, PrimUtil.nameOf p))
 		  | ([ty], B.E_Prim p) => (
                       chkVars(PrimUtil.varsOf p, PrimUtil.nameOf p))
                   | ([ty], B.E_DCon(BTy.DCon{name, argTy, myTyc, ...}, args)) => (

@@ -275,7 +275,7 @@ structure TranslatePrim : sig
 					     of NONE => raise (fail(["unknown data constructor ", PTVar.toString p]))
 					      | SOME(E.DCon (dc, _)) => BOM.E_DCon(dc, xs)
 					    (* end case *))
-					| (SOME(Prim0{con, ...}), [x]) => BOM.E_Prim con
+					| (SOME(Prim0{con, ...}), []) => BOM.E_Prim con
 					| (SOME(Prim1{mk, ...}), [x]) => BOM.E_Prim(mk x)
 					| (SOME(Prim2{mk, ...}), [x, y]) => BOM.E_Prim(mk(x, y))
 					| (SOME(Prim3{mk, ...}), [x, y, z]) => BOM.E_Prim(mk(x, y, z))

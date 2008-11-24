@@ -353,20 +353,21 @@ structure CFACFG : sig
                   | doExp (CFG.E_Const (x, _, _)) = addInfo(x, TOP)
                   | doExp (CFG.E_Label(x, lab)) = addInfo(x, LABELS(LSet.singleton lab))
                   | doExp (CFG.E_Select(x, i, y)) = addInfo(x, select(i, y))
-                  | doExp (CFG.E_Update(i, y, z)) = 
-                      (escape z; addInfo(y, update(i, y, getValue z)))
-                  | doExp (CFG.E_AddrOf(x, i, y)) = 
-                      (addInfo(x, TOP); addInfo(y, update(i, y, TOP)))
+                  | doExp (CFG.E_Update(i, y, z)) = (escape z; addInfo(y, update(i, y, getValue z)))
+                  | doExp (CFG.E_AddrOf(x, i, y)) = (addInfo(x, TOP); addInfo(y, update(i, y, TOP)))
                   | doExp (CFG.E_Alloc(x, xs)) = addInfo(x, TUPLE(List.map getValue xs))
                   | doExp (CFG.E_GAlloc(x, xs)) = addInfo(x, TUPLE(List.map getValue xs))
                   | doExp (CFG.E_Promote(x, y)) = addInfo(x, getValue y)
-                  | doExp (CFG.E_Prim(x, prim)) = 
-                      (if PrimUtil.isPure prim 
-                          then ()
-                          else List.app escape (PrimUtil.varsOf prim);
-                       addInfo(x, TOP))
-                  | doExp (CFG.E_CCall(xs, _, args)) = 
-                      (List.app escape args; List.app (fn x => addInfo(x, TOP)) xs)
+                  | doExp (CFG.E_Prim0 prim) =
+		      if PrimUtil.isPure prim 
+                         then ()
+                         else List.app escape (PrimUtil.varsOf prim)
+                  | doExp (CFG.E_Prim(x, prim)) = (
+		      if PrimUtil.isPure prim 
+                         then ()
+                         else List.app escape (PrimUtil.varsOf prim);
+                      addInfo(x, TOP))
+                  | doExp (CFG.E_CCall(xs, _, args)) = (List.app escape args; List.app (fn x => addInfo(x, TOP)) xs)
                   | doExp (CFG.E_HostVProc x) = addInfo(x, TOP)
                   | doExp (CFG.E_VPLoad(x, _, _)) = addInfo(x, TOP)
                   | doExp (CFG.E_VPStore(_, _, z)) = escape z

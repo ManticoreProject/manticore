@@ -501,39 +501,34 @@ structure CFACPS : sig
                 and doRhs (xs, CPS.Var ys) = ListPair.appEq eqInfo' (xs, ys)
                   | doRhs ([x], CPS.Cast (ty, y)) = eqInfo' (x, y)
                   | doRhs ([x], CPS.Const _) = addInfo (x, TOP)
-                  | doRhs ([x], CPS.Select (i, y)) = 
-                      (addInfo (x, select (i, y)); 
-                       addInfo (y, update(i, y, getValue x)))
-                  | doRhs ([], CPS.Update(i, y, z)) = 
-                      (addInfo (z, select (i, y));
-                       addInfo (y, update (i, y, getValue z)))
-                  | doRhs ([x], CPS.AddrOf(i, y)) = 
-                      (addInfo (y, update (i, y, TOP));
-                       addInfo (x, TOP))
+                  | doRhs ([x], CPS.Select (i, y)) = (addInfo (x, select (i, y)); addInfo (y, update(i, y, getValue x)))
+                  | doRhs ([], CPS.Update(i, y, z)) = (addInfo (z, select (i, y)); addInfo (y, update (i, y, getValue z)))
+                  | doRhs ([x], CPS.AddrOf(i, y)) = (addInfo (y, update (i, y, TOP)); addInfo (x, TOP))
                   | doRhs ([x], CPS.Alloc xs) = addInfo (x, TUPLE(List.map getValue xs))
                   | doRhs ([x], CPS.GAlloc xs) = addInfo (x, TUPLE(List.map getValue xs))
                   | doRhs ([x], CPS.Promote y) = eqInfo' (x, y)
-                  | doRhs ([x], CPS.Prim prim) = 
-                      (if PrimUtil.isPure prim
-                          then ()
-                          else List.app escape (PrimUtil.varsOf prim);
-                       addInfo (x, TOP))
-                  | doRhs (xs, CPS.CCall (_, args)) =
-                      (List.app escape args; 
-                       List.app (fn x => addInfo (x, TOP)) xs)
+                  | doRhs ([], CPS.Prim prim) = if PrimUtil.isPure prim
+                      then ()
+                      else List.app escape (PrimUtil.varsOf prim)
+                  | doRhs ([x], CPS.Prim prim) = (
+                      if PrimUtil.isPure prim
+                        then ()
+                        else List.app escape (PrimUtil.varsOf prim);
+                      addInfo (x, TOP))
+                  | doRhs (xs, CPS.CCall (_, args)) = (List.app escape args; List.app (fn x => addInfo (x, TOP)) xs)
                   | doRhs ([x], CPS.HostVProc) = addInfo (x, TOP)
                   | doRhs ([x], CPS.VPLoad _) = addInfo (x, TOP)
                   | doRhs ([], CPS.VPStore (_, y, z)) = escape z
                   | doRhs (xs, rhs) = raise Fail(concat[
-                         "type error: doRhs([", 
-                         String.concatWith "," (List.map CPS.Var.toString xs), 
-                         "], ", CPSUtil.rhsToString rhs, ")"
-                      ])
+                       "type error: doRhs([", String.concatWith "," (List.map CPS.Var.toString xs), 
+                       "], ", CPSUtil.rhsToString rhs, ")"
+                     ])
                 and doApply (f, args, conts) = (case getValue f
                        of LAMBDAS fs => VSet.app (fn f => doApplyAux (f, args, conts)) fs
                         | BOT => ()
                         | TOP => (List.app escape args; List.app escape conts)
-                        | _ => raise Fail "type error: doApply")
+                        | _ => raise Fail "type error: doApply"
+		      (* end case *))
                 and doApplyAux (f, args, conts) = (case CPS.Var.kindOf f 
                        of CPS.VK_Fun (fb as CPS.FB {f, params, rets, body}) => (
                             ListPair.appEq eqInfo' (params, args);
@@ -544,7 +539,8 @@ structure CFACPS : sig
                        of LAMBDAS fs => VSet.app (fn f => doThrowAux (f, args)) fs
                         | BOT => ()
                         | TOP => List.app escape args
-                        | _ => raise Fail "type error: doThrow")
+                        | _ => raise Fail "type error: doThrow"
+		      (* end case *))
                 and doThrowAux (f, args) = (case CPS.Var.kindOf f 
                        of CPS.VK_Cont (fb as CPS.FB {f, params, rets, body}) => (
                             ListPair.appEq eqInfo' (params, args);

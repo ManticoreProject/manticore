@@ -189,7 +189,8 @@ structure PrimUtil : sig
       | varsOf P.FenceRW = []
 
     fun fmt v2s p = (case varsOf p
-	   of [x] => concat[nameOf p, "(", v2s x, ")"]
+	   of [] => nameOf p ^ "()"
+	    | [x] => concat[nameOf p, "(", v2s x, ")"]
 	    | [x, y] => concat[nameOf p, "(", v2s x, ",", v2s y, ")"]
 	    | [x, y, z] => concat[nameOf p, "(", v2s x, ",", v2s y, ",", v2s z, ")"]
 	  (* end case *))
