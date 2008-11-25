@@ -9,6 +9,7 @@ Group
   structure Tests
   functor   RunTestsFn
   structure ArchiveReport
+  structure Report
   structure ReportHTML
   structure Main
 
@@ -26,5 +27,6 @@ is
   tests.sml
   run-tests-fn.sml
   archive-report.sml
+  report.sml
   report-html.sml
   main.sml

@@ -14,14 +14,11 @@ structure ArchiveReport = struct
   val pathcat = OS.Path.concat
   fun joinBE (b,e) = OS.Path.joinBaseExt {base=b, ext=SOME e}
 
-(* datestamp : Date.date -> string *)
-  val datestamp = Date.fmt "%Y-%m-%d.%H-%M-%S"
-
 (* goal : T.goal -> unit *)
 (* Assumes the goal is well-formed in that all goalNames and stamps match. *)
   fun goal (T.G (rdme, rs)) = let
     val T.README {timestamp=d, goalName=g, ...} = rdme					  
-    val base = concat [datestamp d, ".", g]
+    val base = concat [L.datestamp d, ".", g]
     fun wtr (tr as T.TR {testName=t, ...}) = let
       val base' = concat [base, ".", t]
       val filename = joinBE (base', "result")

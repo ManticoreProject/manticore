@@ -3,15 +3,25 @@
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Relative paths to certain files.
+ * Paths to certain files.
  *)
 
 structure Locations = struct
 
+  val datestamp = Date.fmt "%Y-%m-%d-%H-%M-%S"
+
   val mc = ref "mc"
-  val defaultReport = OS.Path.joinDirFile {dir  = OS.FileSys.fullPath "../../reports/current",
-					   file = "results.html"}
-  val archiveDir = OS.FileSys.fullPath "../../reports/archive"
+
+  val reportsDir = OS.FileSys.fullPath "../../reports"
+  val archiveDir = OS.Path.joinDirFile {dir=reportsDir, file="archive"} 
+  val currentDir = OS.Path.joinDirFile {dir=reportsDir, file="current"}
+  val defaultRpt = OS.Path.joinDirFile {dir=currentDir, file="results.html"}  
+
+  fun simpleRpt d = let
+    val rpt = "report-" ^ (datestamp d)
+    in
+      OS.Path.joinDirFile {dir=reportsDir, file=rpt}
+    end
 
 end
 

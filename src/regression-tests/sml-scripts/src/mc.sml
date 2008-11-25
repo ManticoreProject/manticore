@@ -12,7 +12,7 @@ structure MC : COMPILER = struct
   fun setCompilerPath p = (c := p)
   val ext = "pml"
   fun mkExe infile = "a.out"
-  fun mkCmd infile = String.concat [!c, " ", infile]
+  fun mkCmd infile = String.concat [!c, " ", infile, " 2> /dev/null"]
   fun detritus infile = [OS.Path.base infile ^ ".s"]
 end
 

@@ -14,6 +14,8 @@ functor RunTestsFn (L : COMPILER) = struct
   structure T = Tests
   structure U = Utils
 
+  fun println s = (print s; print "\n")
+
   val sys = OS.Process.system
 
   fun joinDF (d, f) = P.joinDirFile {dir=d, file=f}
@@ -22,20 +24,18 @@ functor RunTestsFn (L : COMPILER) = struct
   fun printErr s = (TextIO.output (TextIO.stdErr, s); 
 		    TextIO.flushOut TextIO.stdErr)
 
-(* datestamp : Date.date -> string *)
-  val datestamp = Date.fmt "%Y-%m-%d.%H-%M-%S"
-
 (* runTest : date * string -> {outcome:T.outcome, expected:string, actual:string} *)
   fun runTest (d, filename) = let
-    val _ = (print "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n";
-	     print ("Testing " ^ filename ^ ".\n"))
+    val shortName = OS.Path.joinDirFile {dir=P.file (P.dir filename),
+					 file=P.file filename}
+    val _ = print ("testing " ^ shortName ^ "...")
     val cwd = F.getDir ()
     val exeFile = L.mkExe filename
-    val okFile  = joinDF (P.dir filename,
-			  joinBE (P.file (P.base filename), "ok"))
+    val okFile = joinDF (P.dir filename,
+			 joinBE (P.file (P.base filename), "ok"))
     val resFile = U.freshTmp (cwd, "results")
     val compileCmd = L.mkCmd filename
-    val _ = printErr (concat ["The compiler command is ", compileCmd, "\n"])
+    (* val _ = printErr (concat ["The compiler command is ", compileCmd, "\n"]) *)
     val compileSucceeded = sys compileCmd
     val tmps = exeFile :: resFile :: L.detritus filename
     fun cleanup () = app U.rm tmps
@@ -56,10 +56,7 @@ functor RunTestsFn (L : COMPILER) = struct
 	      before U.rm diffFile
 	    end
 	  else
-	    (print (concat ["**********\n",
-			    "WARNING: no .ok file for ", P.file filename, "\n",
-			    "Please add an .ok file for ", filename, ".\n",
-			    "**********\n"]);
+	    (println ("WARNING: no .ok file for " ^ shortName);
 	     U.rm diffFile;
 	     {outcome = T.TestFailed, expected = "*** No .ok file! ***", actual = actual})
         end
@@ -67,8 +64,7 @@ functor RunTestsFn (L : COMPILER) = struct
         {outcome = T.DidNotCompile,
 	 expected = "",
 	 actual = ""})
-     before (print ("Done testing " ^ filename ^ ".\n");
-	     print "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n";
+     before (println "done";
 	     cleanup ())
 	     
     end

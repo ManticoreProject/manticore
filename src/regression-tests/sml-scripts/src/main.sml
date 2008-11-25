@@ -33,7 +33,7 @@ structure Main = struct
   fun main (progname, args) = let
     (* build infrastructure for command-line options, including local state *)
     val mcPath = ref "mc"
-    val htdocs = ref [L.defaultReport]
+    val htdocs = ref [L.defaultRpt]
     fun noteMC path    = (mcPath := path; path)
     fun noteLocal path = (htdocs := (!htdocs)@[path]; path)
     fun mkOpt(s,l,act,h) = {short=s, long=[l], desc=G.ReqArg(act,"FILE"), help=h}
@@ -57,11 +57,12 @@ structure Main = struct
 	       then OS.Path.joinDirFile {dir=f, file="results.html"}
 	       else f
       in
-	print ("Generating report in " ^ f' ^ ".\n");
+	println ("generating html report in " ^ f');
 	MiniHTML.toFile (hrpt, f')
       end
     in
       ArchiveReport.report rpt;
+      Report.mkReport rpt;
       app write (!htdocs);
       OS.Process.success 
     end
