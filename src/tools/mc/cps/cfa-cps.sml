@@ -35,29 +35,14 @@ structure CFACPS : sig
   (* return true if the given lambda variable escapes *)
     val isEscaping : CPS.var -> bool
 
+  (* flags to control debugging *)
+    val debugFlg : bool ref
+    val resultsFlg : bool ref
+
   end = struct
 
     val debugFlg = ref false
     val resultsFlg = ref false
-    val () = List.app (fn ctl => ControlRegistry.register CPSOptControls.registry {
-              ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
-              envName = NONE
-            }) [
-              Controls.control {
-                  ctl = debugFlg,
-                  name = "cfa-debug",
-                  pri = [0, 1],
-                  obscurity = 0,
-                  help = "debug cfa"
-                },
-              Controls.control {
-                  ctl = resultsFlg,
-                  name = "cfa-results",
-                  pri = [0, 1],
-                  obscurity = 0,
-                  help = "print results of cfa"
-                }
-            ]
 
     structure VSet = CPS.Var.Set
 
@@ -573,4 +558,6 @@ structure CFACPS : sig
           (* print results of cfa *)
             if !resultsFlg then printResults body else ()
           end
+
   end
+
