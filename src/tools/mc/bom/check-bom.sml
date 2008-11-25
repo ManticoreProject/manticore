@@ -324,19 +324,6 @@ structure CheckBOM : sig
                         else (error  ["type mismatch in Alloc: ", vl2s lhs, " = ", vl2s xs, "\n"];
 			      cerror ["  expected ", t2s allocTy, "\n"];
 			      cerror ["  found    ", tl2s (typesOf xs), "\n"]))
-		  | ([ty], B.E_GAlloc (allocTy, xs)) => (
-                      chkVars(xs, "GAlloc");
-                      if BTU.match (allocTy, ty)
-			then ()
-			else (error  ["type mismatch in GAlloc: ", vl2s lhs, " = ", vl2s xs, "\n"];
-			      cerror ["  lhs type ", t2s ty, "\n"];
-			      cerror ["  rhs type ", t2s allocTy, "\n"]);
-		      if (BTU.match(BTy.T_Tuple(true, typesOf xs), allocTy)
-			orelse BTU.match(BTy.T_Tuple(false, typesOf xs), allocTy))
-                        then ()
-                        else (error  ["type mismatch in GAlloc: ", vl2s lhs, " = ", vl2s xs, "\n"];
-			      cerror ["  expected ", t2s allocTy, "\n"];
-			      cerror ["  found    ", tl2s (typesOf xs), "\n"]))
 		  | ([ty], B.E_Promote y) => (
 		      chkVar (y, "Promote");
 		      if BTU.equal(ty, BV.typeOf y) then ()

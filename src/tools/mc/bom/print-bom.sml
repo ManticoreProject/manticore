@@ -130,7 +130,6 @@ structure PrintBOM : sig
 		in
 		  pr(concat["alloc ", mut, "("]); prList' varUseToString ys; pr ")"
 		end
-	    | prRHS (B.E_GAlloc(_, ys)) = (pr "galloc "; prList varUseToString ys)
 	    | prRHS (B.E_Promote y) = (pr "promote "; pr (varUseToString y))
 	    | prRHS (B.E_Prim p) = pr (PrimUtil.fmt varUseToString p)
 	    | prRHS (B.E_DCon(dc, args)) = (
