@@ -3,13 +3,15 @@
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Where to find files.
+ * Relative paths to certain files.
  *)
 
 structure Locations = struct
 
   val mc = ref "mc"
-  val defaultReport = OS.FileSys.fullPath "../../reports/current/results.html" handle SysErr => raise Fail "1"
-  val archiveDir = OS.FileSys.fullPath "../../reports/archive" handle SysErr => raise Fail "2"
+  val defaultReport = OS.Path.joinDirFile {dir  = OS.FileSys.fullPath "../../reports/current",
+					   file = "results.html"}
+  val archiveDir = OS.FileSys.fullPath "../../reports/archive"
 
 end
+
