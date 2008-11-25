@@ -211,11 +211,11 @@ structure Contract : sig
            of B.E_Select(i, y) => (case bindingOf y
                  of B.VK_RHS(B.E_Alloc(BTy.T_Tuple(false, _), ys)) => let
                       val z = List.nth(ys, i)
+                      val (env,casts) = extendWithCasts {env = env, fromVars = [z], toVars = [x]}
                       in
                         ST.tick cntSelectConst;
-                        dec y;
-                        combineAppUseCnts(z, x);
-                        OK([], U.extend(env, x, z))
+                        dec y; inc z;
+                        OK(casts, env)
                       end
                   | _ => FAIL
                 (* end case *))
