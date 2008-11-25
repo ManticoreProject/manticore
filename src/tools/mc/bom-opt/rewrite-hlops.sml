@@ -213,7 +213,6 @@ end = struct
          | B.E_Update (_, v1, v2) => [v1, v2]
          | B.E_AddrOf (_, v) => [v]
          | B.E_Alloc (_, args) => args
-         | B.E_GAlloc (_, args) => args
          | B.E_DCon (_, args) => args
          | B.E_CCall (_, args) => args
          | B.E_VPLoad (_, v) => [v]
