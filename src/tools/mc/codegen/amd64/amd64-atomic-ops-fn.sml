@@ -101,6 +101,13 @@ functor AMD64AtomicOpsFn (
              (r', stms)
          end
 
+  (* FIXME: placeholders until SML/NJ 110.69 *)
+    fun genPause () = []
+    fun genFenceWrite () = []
+    fun genFenceRead () = []
+    fun genFenceRW () = []
+
+(* FIXME: wait until SML/NJ 110.69
   (* pause instruction to support efficient spin locks *)
     fun genPause () = [T.EXT IX.PAUSE]
 
@@ -112,5 +119,6 @@ functor AMD64AtomicOpsFn (
 
   (* sequentializing operation for all load-from-memory and write-to-memory instructions prior to this instruction *)
     fun genFenceRW () = [T.EXT IX.MFENCE]
+*)
 
   end
