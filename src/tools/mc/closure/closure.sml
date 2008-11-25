@@ -12,36 +12,36 @@ structure Closure : sig
 
     structure ConvertStyle =
        struct
-          datatype t = Flat | FlatWithCFA
-          val toString = 
-             fn Flat => "flat"
-              | FlatWithCFA => "flatWithCFA"
-          val fromString =
-             fn "flat" => SOME Flat
-              | "flatWithCFA" => SOME FlatWithCFA
-              | _ => NONE
-          val cvt = {tyName = "convertStyle",
-                     fromString = fromString,
-                     toString = toString}
+          datatype style = Flat | FlatWithCFA
+          fun toString Flat = "flat"
+	    | toString FlatWithCFA = "flatWithCFA"
+          fun fromString "flat" = SOME Flat
+	    | fromString "flatWithCFA" = SOME FlatWithCFA
+	    | fromString _ = NONE
+          val cvt = {
+		  tyName = "convertStyle",
+		  fromString = fromString,
+		  toString = toString
+		}
        end
-    datatype convertStyle = datatype ConvertStyle.t
 
     val convertStyle = Controls.genControl {
             name = "convert-style",
             pri = [5, 0],
             obscurity = 1,
             help = "closure convert style",
-            default = Flat
+            default = ConvertStyle.Flat
           }
+
     val () = ControlRegistry.register ClosureControls.registry {
             ctl = Controls.stringControl ConvertStyle.cvt convertStyle,
             envName = NONE
           }
 
-    val convert = fn cps =>
-       case Controls.get convertStyle of
-          Flat => FlatClosure.convert cps
-        | FlatWithCFA => FlatClosureWithCFA.convert cps
+    fun convert cps = (case Controls.get convertStyle
+	   of ConvertStyle.Flat => FlatClosure.convert cps
+	    | ConvertStyle.FlatWithCFA => FlatClosureWithCFA.convert cps
+	  (* end case *))
 
     val convert = BasicControl.mkKeepPass {
 	    preOutput = PrintCPS.output,
@@ -52,4 +52,5 @@ structure Closure : sig
             pass = convert,
             registry = ClosureControls.registry
 	  }
+
   end
