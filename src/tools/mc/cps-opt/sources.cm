@@ -23,6 +23,8 @@ is
   ../prim/sources.cm
   ../cps/sources.cm
 
+  census.sml
   cfa-cps.sml
   cps-opt-controls.sml
   cps-opt-fn.sml
+

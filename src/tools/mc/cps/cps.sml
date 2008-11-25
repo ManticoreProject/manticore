@@ -85,6 +85,28 @@ structure CPS =
 	open V
 	fun isExtern (VarRep.V{kind = ref(VK_Extern _), ...}) = true
 	  | isExtern _ = false
+      (* application counts for functions and continuations *)
+	local
+	  val {clrFn, getFn, peekFn, ...} = newProp (fn _ => ref 0)
+	in
+	val appCntRef = getFn
+	val appCntRmv = clrFn
+	fun appCntOf v = (case peekFn v of NONE => 0 | (SOME ri) => !ri)
+	fun combineAppUseCnts (x as VarRep.V{useCnt=ux, ...}, y as VarRep.V{useCnt=uy, ...}) = (
+	      ux := !ux + !uy;
+	      case peekFn y
+	       of (SOME ry) => let
+		    val rx = appCntRef x
+		    in
+		      rx := !rx + !ry
+		    end
+		| NONE => ()
+	      (* end case *))
+	val toString = fn x => (case peekFn x
+	       of NONE => concat[toString x, "#", Int.toString(useCount x)]
+		| SOME r => concat[toString x, "#", Int.toString(useCount x), ".", Int.toString(!r)]
+	      (* end case *))
+	end (* local open V ... *)
 	end (* local *)
       end
 

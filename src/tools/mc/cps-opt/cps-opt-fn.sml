@@ -24,10 +24,13 @@ functor CPSOptFn (Spec : TARGET_SPEC) : sig
           }
 
   (* wrap analysis passes *)
+    val census = analyze {passName = "census", pass = Census.census}
     val cfa = analyze {passName = "cfa", pass = CFACPS.analyze}
+
   (* wrap transformation passes with keep controls *)
 
     fun optimize module = let
+	  val _ = census module
           val _ = cfa module
           val _ = CFACPS.clearInfo module
 	  in
