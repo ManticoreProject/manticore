@@ -256,14 +256,6 @@ structure CheckCPS : sig
                         else (error  ["type mismatch in Alloc: ", vl2s lhs, " = ", vl2s xs, "\n"];
 			      cerror ["  lhs type ", t2s ty, "\n"];
 			      cerror ["  found    ", tl2s (typesOf xs), "\n"]))
-		  | ([ty], C.GAlloc xs) => (
-                      chkVars(env, xs, "GAlloc");
-                      if (CTU.match(CTy.T_Tuple(true, typesOf xs), ty))
-                        orelse (CTU.match(CTy.T_Tuple(false, typesOf xs), ty))
-                        then ()
-                        else (error  ["type mismatch in GAlloc: ", vl2s lhs, " = ", vl2s xs, "\n"];
-			      cerror ["  lhs type ", t2s ty, "\n"];
-			      cerror ["  found    ", tl2s (typesOf xs), "\n"]))
 		  | ([ty], C.Promote x) => (
                       chkVar(env, x, "Promote");
 		      if (CTU.equal(ty, CV.typeOf x))

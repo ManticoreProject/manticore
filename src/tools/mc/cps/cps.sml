@@ -29,7 +29,6 @@ structure CPS =
       | Update of (int * var * var)	(* update i'th field (zero-based) *)
       | AddrOf of (int * var)		(* return address of i'th field (zero-based) *)
       | Alloc of var list		(* local-heap allocation *)
-      | GAlloc of var list		(* global-heap allocation *)
       | Promote of var			(* promote a heap object to the global heap *)
       | Prim of prim
       | CCall of (var * var list)

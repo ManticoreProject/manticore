@@ -505,7 +505,6 @@ structure CFACPS : sig
                   | doRhs ([], CPS.Update(i, y, z)) = (addInfo (z, select (i, y)); addInfo (y, update (i, y, getValue z)))
                   | doRhs ([x], CPS.AddrOf(i, y)) = (addInfo (y, update (i, y, TOP)); addInfo (x, TOP))
                   | doRhs ([x], CPS.Alloc xs) = addInfo (x, TUPLE(List.map getValue xs))
-                  | doRhs ([x], CPS.GAlloc xs) = addInfo (x, TUPLE(List.map getValue xs))
                   | doRhs ([x], CPS.Promote y) = eqInfo' (x, y)
                   | doRhs ([], CPS.Prim prim) = if PrimUtil.isPure prim
                       then ()

@@ -56,7 +56,6 @@ structure FreeVars : sig
       | fvOfRHS (fv, CPS.Update(_, x, y)) = addVars(fv, [x, y])
       | fvOfRHS (fv, CPS.AddrOf(_, x)) = addVar(fv, x)
       | fvOfRHS (fv, CPS.Alloc xs) = addVars(fv, xs)
-      | fvOfRHS (fv, CPS.GAlloc xs) = addVars(fv, xs)
       | fvOfRHS (fv, CPS.Promote x) = addVar(fv, x)
       | fvOfRHS (fv, CPS.Prim p) = addVars(fv, PrimUtil.varsOf p)
       | fvOfRHS (fv, CPS.CCall(f, args)) = addVars(fv, f::args)

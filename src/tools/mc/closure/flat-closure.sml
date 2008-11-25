@@ -546,11 +546,6 @@ structure FlatClosure : sig
                       in
                         ([CFG.mkAlloc(x, ys)] @ binds, env)
                       end
-                  | ((env, [x]), CPS.GAlloc ys) => let
-                      val (binds, ys) = lookupVars (env, ys)
-                      in
-                        ([CFG.mkGAlloc(x, ys)] @ binds, env)
-                      end
                   | ((env, [x]), CPS.Promote y) => let
                       val (binds, y) = lookupVar (env, y)
                       in

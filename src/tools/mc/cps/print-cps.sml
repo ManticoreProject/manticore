@@ -91,7 +91,6 @@ structure PrintCPS : sig
 		]
 	    | prRHS (CPS.AddrOf(i, y)) = prl ["&", Int.toString i, "(", varUseToString y, ")"]
 	    | prRHS (CPS.Alloc ys) = (pr "alloc "; prList varUseToString ys)
-	    | prRHS (CPS.GAlloc ys) = (pr "galloc "; prList varUseToString ys)
 	    | prRHS (CPS.Promote y) = prl["promote(", varUseToString y, ")"]
 	    | prRHS (CPS.Prim p) = pr (PrimUtil.fmt varUseToString p)
 	    | prRHS (CPS.CCall(f, args)) = (
