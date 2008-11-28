@@ -90,7 +90,11 @@ structure PrintCPS : sig
 		  "#", Int.toString i, "(", varUseToString y, ") := ", varUseToString z
 		]
 	    | prRHS (CPS.AddrOf(i, y)) = prl ["&", Int.toString i, "(", varUseToString y, ")"]
-	    | prRHS (CPS.Alloc(ty, ys)) = (pr "alloc "; prList varUseToString ys)
+	    | prRHS (CPS.Alloc(ty, ys)) = let
+		val mut = (case ty of CPSTy.T_Tuple(true, _) => "!" | _ => "")
+		in
+		  pr(concat["alloc ", mut, "("]); prList' varUseToString ys; pr ")"
+		end
 	    | prRHS (CPS.Promote y) = prl["promote(", varUseToString y, ")"]
 	    | prRHS (CPS.Prim p) = pr (PrimUtil.fmt varUseToString p)
 	    | prRHS (CPS.CCall(f, args)) = (
