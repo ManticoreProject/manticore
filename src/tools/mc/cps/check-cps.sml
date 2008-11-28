@@ -248,8 +248,9 @@ structure CheckCPS : sig
 			| ty => error[v2s x, ":", CTU.toString ty, " is not a tuple: ",
                                     vl2s lhs, " = &(", v2s x, ")\n"]
 		      (* end case *))
-		  | ([ty], C.Alloc xs) => (
+		  | ([ty], C.Alloc(ty', xs)) => (
                       chkVars(env, xs, "Alloc");
+(* FIXME: check ty' too *)
                       if (CTU.match(CTy.T_Tuple(true, typesOf xs), ty))
                         orelse (CTU.match(CTy.T_Tuple(false, typesOf xs), ty))
                         then ()

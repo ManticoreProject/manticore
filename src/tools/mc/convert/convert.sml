@@ -185,7 +185,7 @@ structure Convert : sig
 		  | B.E_Select(i, x) => C.Select(i, cv x)
 		  | B.E_Update(i, x, z) => C.Update(i, cv x, cv z)
 		  | B.E_AddrOf(i, x) => C.AddrOf(i, cv x)
-		  | B.E_Alloc(ty, args) => C.Alloc(List.map cv args)
+		  | B.E_Alloc(ty, args) => C.Alloc(cvtTy ty, List.map cv args)
 		  | B.E_Promote y => C.Promote(cv y)
 		  | B.E_Prim p => C.Prim(PrimUtil.map cv p)
 		  | B.E_DCon _ => raise Fail "unexpected DCon"
