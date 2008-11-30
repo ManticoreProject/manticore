@@ -9,16 +9,21 @@ structure CFACPS : sig
     val analyze : CPS.module -> unit
     val clearInfo : CPS.module -> unit
 
-    datatype call_sites
-      = Unknown                         (* possible unknown call sites *)
+  (* the callers of a function or continuation is the set of functions and
+   * and continuations that call it.
+   *)
+    datatype callers
+      = Unknown                         (* possible unknown callers *)
       | Known of CPS.Var.Set.set        (* only called from known locations; the variables *)
                                         (* are the binding labels of the lambdas that call *)
                                         (* the target *)
 
-    val callSitesToString : call_sites -> string
+    val callersToString : callers -> string
 
-    val callSitesOf : CPS.var -> call_sites
+    val callersOf : CPS.var -> callers
 
+  
+  (* abstract values *)
     datatype value
       = TOP
       | TUPLE of value list
@@ -46,12 +51,12 @@ structure CFACPS : sig
 
     structure VSet = CPS.Var.Set
 
-    datatype call_sites
-      = Unknown                 (* possible unknown call sites *)
+    datatype callers
+      = Unknown                 (* possible unknown call callers *)
       | Known of VSet.set       (* only called from known locations; the labels are the *)
                                 (* entry labels of the functions that call the target *)
 
-    fun callSitesToString v = let
+    fun callersToString v = let
           fun v2s (Unknown, l) = "?" :: l
             | v2s (Known s, l) = let
                 fun f [] = "}" :: l
@@ -127,32 +132,31 @@ structure CFACPS : sig
            of CPSTy.T_Any => BOT (* or should this be TOP? *)
             | CPSTy.T_Enum _ => TOP
             | CPSTy.T_Raw _ => TOP
-            | CPSTy.T_Tuple (true, tys) => TUPLE(List.map (fn _ => TOP) tys)
-            | CPSTy.T_Tuple (false, tys) => TUPLE(List.map valueFromType tys)
+            | CPSTy.T_Tuple(true, tys) => TUPLE(List.map (fn _ => TOP) tys)
+            | CPSTy.T_Tuple(false, tys) => TUPLE(List.map valueFromType tys)
             | CPSTy.T_Addr _ => TOP
             | CPSTy.T_Fun _ => LAMBDAS(VSet.empty)
             | CPSTy.T_CFun _ => TOP
             | CPSTy.T_VProc => TOP
           (* end case *))
 
-  (* property to track call-sites *)
-    val {getFn=getSites, clrFn=clrSites, setFn=setSites, ...} =
+  (* property to track callers *)
+    val {getFn=callersOf, clrFn=clrCallers, setFn=setCallers, ...} =
           CPS.Var.newProp (fn _ => Known(VSet.empty))
-    val callSitesOf = getSites
   (* property to track the estimated value of variables *)
     val {getFn=getValue, clrFn=clrValue, peekFn=peekValue, setFn=setValue} =
           CPS.Var.newProp (fn x => valueFromType (CPS.Var.typeOf x))
     val valueOf = getValue
 
   (* return true if the given lambda variable escapes *)
-    fun isEscaping f = (case callSitesOf f of Unknown => true | _ => false)
+    fun isEscaping f = (case callersOf f of Unknown => true | _ => false)
 
   (* clear CFA annotations from the variables of a module.  Note that we can
    * restrict the traversal to binding instances.
    *)
     fun clearInfo (CPS.MODULE{body, ...}) = let
           fun doLambda (CPS.FB {f, params, rets, body}) = (
-                clrSites f;
+                clrCallers f;
                 clrValue f;
                 List.app clrValue params;
                 List.app clrValue rets;
@@ -219,17 +223,17 @@ structure CFACPS : sig
    * labels that it contains as escaping too.
   *)
     and escapingValue (LAMBDAS fs) = let
-        (* for each escaping function, we set its call site to Unknown and
+        (* for each escaping function, we set its callers to Unknown and
          * set its parameters to TOP.
          *)
           fun doVar f = if not(isEscaping f)
                 then (case CPS.Var.kindOf f
                    of CPS.VK_Fun (CPS.FB {params, rets, ...}) => (
-                        setSites (f, Unknown);
+                        setCallers (f, Unknown);
                         List.app (fn x => addInfo(x, TOP)) params;
                         List.app (fn x => addInfo(x, TOP)) rets)
                     | CPS.VK_Cont (CPS.FB {params, rets, ...}) => (
-                        setSites (f, Unknown);
+                        setCallers (f, Unknown);
                         List.app (fn x => addInfo(x, TOP)) params;
                         List.app (fn x => addInfo(x, TOP)) rets)
                     | vk => raise Fail(concat[
@@ -287,7 +291,7 @@ structure CFACPS : sig
                 val () = VSet.app (fn f => let
                                    val (params, rets) = getParamsRets f
                                    in
-                                     if isEscaping then setSites(f, Unknown) else ();
+                                     if isEscaping then setCallers(f, Unknown) else ();
                                      ListPair.app addInfo (params, params');
                                      ListPair.app addInfo (rets, rets')
                                    end)
@@ -345,12 +349,13 @@ structure CFACPS : sig
 
 (* +DEBUG *)
     fun printResults body = let
-          fun printCallSitesOf f =
-                print(concat["callSitesOf(", CPS.Var.toString f, ") = ",
-                             callSitesToString (callSitesOf f), "\n"])
-          fun printValueOf x =
-                print(concat["getValue(", CPS.Var.toString x, ") = ",
-                             valueToString (valueOf x), "\n"])
+          fun printCallersOf f = print(concat[
+		  "callersOf(", CPS.Var.toString f, ") = ",
+		  callersToString (callersOf f), "\n"
+		])
+          fun printValueOf x = print(concat[
+		  "getValue(", CPS.Var.toString x, ") = ", valueToString (valueOf x), "\n"
+		])
           fun printExp e = let
                 fun doExp e = printExp e
                 fun doLambda fb = printLambda fb
@@ -370,7 +375,7 @@ structure CFACPS : sig
                 end
           and printLambda (CPS.FB {f, params, rets, body, ...}) = (
                 printValueOf f;
-                printCallSitesOf f;
+                printCallersOf f;
                 List.app printValueOf params;
                 List.app printValueOf rets;
                 printExp body)
@@ -379,36 +384,37 @@ structure CFACPS : sig
           end
 (* -DEBUG *)
 
-  (* compute the call-sites of variables.  We visit every function and add its variable
-   * to the call sites of any known targets.  Note that this function is called
-   * after the main analysis and that the call site of any escaping function
+  (* compute the callers of variables.  We visit every function and add its variable
+   * to the callers of any known targets.  Note that this function is called
+   * after the main analysis so that the callers of any escaping function
    * should have been set to Unknown.
    *)
-    fun computeCallSites body = let
+    fun computeCallers body = let
           fun computeExp (e, srcVar) = let
-                fun add dstVar = (case getSites dstVar
-                       of Unknown => ()
-                        | Known s => setSites(dstVar, Known(VSet.add(s, srcVar)))
-                      (* end case *))
-                fun addSet f = (case getValue f
-                       of LAMBDAS fs => VSet.app add fs
-                        | _ => ())
-                fun doExp e = computeExp (e, srcVar)
-                fun doLambda fb = computeLambda fb
+                fun addSet f = let
+		      fun add dstVar = (case callersOf dstVar
+			     of Unknown => ()
+			      | Known s => setCallers(dstVar, Known(VSet.add(s, srcVar)))
+			    (* end case *))
+		      in
+			case getValue f
+			 of LAMBDAS fs => VSet.app add fs
+			  | _ => ()
+			(* end case *)
+		      end
+                fun doExp (CPS.Let(_, _, e)) = doExp e
+		  | doExp (CPS.Fun(fbs, e)) = (List.app computeLambda fbs; doExp e)
+		  | doExp (CPS.Cont(fb, e)) = (computeLambda fb; doExp e)
+		  | doExp (CPS.If(_, e1, e2)) = (doExp e1; doExp e2)
+		  | doExp (CPS.Switch(_, cases, dflt)) = (
+		      List.app (doExp o #2) cases;
+		      Option.app doExp dflt)
+		  | doExp (CPS.Apply(f, _, _)) = addSet f
+		  | doExp (CPS.Throw(f, _)) = addSet f
                 in
-                  case e
-                   of CPS.Let (_, _, e) => doExp e
-                    | CPS.Fun (fbs, e) => (List.app doLambda fbs; doExp e)
-                    | CPS.Cont (fb, e) => (doLambda fb; doExp e)
-                    | CPS.If (_, e1, e2) => (doExp e1; doExp e2)
-                    | CPS.Switch (_, cases, dflt) =>
-                        (List.app (doExp o #2) cases;
-                         Option.app doExp dflt)
-                    | CPS.Apply (f, _, _) => addSet f
-                    | CPS.Throw (f, _) => addSet f
-                  (* end case *)
+                  doExp e
                 end
-          and computeLambda (CPS.FB {f, body, ...}) = computeExp (body, f)
+          and computeLambda (CPS.FB{f, body, ...}) = computeExp (body, f)
           in
             computeLambda body
           end
@@ -489,7 +495,7 @@ structure CFACPS : sig
                   | doRhs ([x], CPS.Select (i, y)) = (addInfo (x, select (i, y)); addInfo (y, update(i, y, getValue x)))
                   | doRhs ([], CPS.Update(i, y, z)) = (addInfo (z, select (i, y)); addInfo (y, update (i, y, getValue z)))
                   | doRhs ([x], CPS.AddrOf(i, y)) = (addInfo (y, update (i, y, TOP)); addInfo (x, TOP))
-                  | doRhs ([x], CPS.Alloc(_, xs)) = addInfo (x, TUPLE(List.map getValue xs))
+                  | doRhs ([x], CPS.Alloc(ty, xs)) = addInfo (x, TUPLE(List.map getValue xs))
                   | doRhs ([x], CPS.Promote y) = eqInfo' (x, y)
                   | doRhs ([], CPS.Prim prim) = if PrimUtil.isPure prim
                       then ()
@@ -541,7 +547,7 @@ structure CFACPS : sig
           (* initialize the arguments to the module entry to top *)
             case body
              of CPS.FB{f, params, rets, ...} => (
-                  setSites (f, Unknown);
+                  setCallers (f, Unknown);
                   List.app (fn x => setValue (x, TOP)) params;
                   List.app (fn x => setValue (x, TOP)) rets)
             (* end case *);
@@ -550,11 +556,11 @@ structure CFACPS : sig
           (* "bump" the abstract value of variables of function type
            * from LAMBDAS {} to LAMBDAS {proxy} 
            *)
-            (changed := false; 
-             bumpInfo body; 
-             if !changed then iterate () else ());
-          (* compute call-site information for variables *)
-            computeCallSites body;
+            changed := false; 
+            bumpInfo body; 
+            if !changed then iterate () else ();
+          (* compute caller information for variables *)
+            computeCallers body;
           (* print results of cfa *)
             if !resultsFlg then printResults body else ()
           end
