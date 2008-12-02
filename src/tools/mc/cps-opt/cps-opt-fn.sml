@@ -32,6 +32,7 @@ functor CPSOptFn (Spec : TARGET_SPEC) : sig
     fun optimize module = let
 	  val _ = census module
           val _ = cfa module
+	  val module = ArityRaising.transform module
           val _ = CFACPS.clearInfo module
 	  in
 	    module

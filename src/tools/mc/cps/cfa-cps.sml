@@ -22,7 +22,12 @@ structure CFACPS : sig
 
     val callersOf : CPS.var -> callers
 
-  
+  (* For a known function f, the equivalent functions are ones that share calling
+   * sites (c.f., Soranno's T property).  If f is an escaping function, then
+   * equivalentFuns f = [].
+   *)
+    val equivalentFuns : CPS.var -> CPS.var list
+
   (* abstract values *)
     datatype value
       = TOP
@@ -49,25 +54,24 @@ structure CFACPS : sig
     val debugFlg = ref false
     val resultsFlg = ref false
 
-    structure VSet = CPS.Var.Set
+    structure CV = CPS.Var
+    structure VSet = CV.Set
 
     datatype callers
       = Unknown                 (* possible unknown call callers *)
       | Known of VSet.set       (* only called from known locations; the labels are the *)
                                 (* entry labels of the functions that call the target *)
 
-    fun callersToString v = let
-          fun v2s (Unknown, l) = "?" :: l
-            | v2s (Known s, l) = let
-                fun f [] = "}" :: l
-                  | f [x] = CPS.Var.toString x :: "}" :: l
-                  | f (x::r) = CPS.Var.toString x :: "," :: f r
-                in
-                  "{" :: f (VSet.listItems s)
-                end
-          in
-            concat (v2s(v, []))
-          end
+    fun setToString vs = let
+	  fun f [] = ["}"]
+	    | f [x] = [CV.toString x, "}"]
+	    | f (x::r) = CV.toString x :: "," :: f r
+	  in
+	    concat ("{" :: f (VSet.listItems vs))
+	  end
+
+    fun callersToString Unknown = "?"
+      | callersToString (Known s) = setToString s
 
     datatype value
       = TOP
@@ -83,8 +87,8 @@ structure CFACPS : sig
                 "(" :: v2s (v, List.foldr (fn (v, l) => "," :: v2s(v, l)) (")" :: l) r)
             | v2s (LAMBDAS s, l) = let
                 fun f [] = "}" :: l
-                  | f [x] = CPS.Var.toString x :: "}" :: l
-                  | f (x::r) = CPS.Var.toString x :: "," :: f r
+                  | f [x] = CV.toString x :: "}" :: l
+                  | f (x::r) = CV.toString x :: "," :: f r
                 in
                   "{" :: f (VSet.listItems s)
                 end
@@ -94,33 +98,32 @@ structure CFACPS : sig
           end
 
   (* property to track proxy variables *)
-    val {getFn=getIsProxy, setFn=setIsProxy, ...} =
-          CPS.Var.newProp (fn _ => false)
+    val {getFn=getIsProxy, setFn=setIsProxy, ...} = CV.newProp (fn _ => false)
     val isProxy = getIsProxy
 
 
   (* create an approximate value for a function type. *)
     fun valueFromFunType (paramTys, retTys) = let
           val ty = CPSTy.T_Fun(paramTys, retTys)
-          val params = map (fn ty => CPS.Var.new("cfaProxyParam", ty)) paramTys
+          val params = map (fn ty => CV.new("cfaProxyParam", ty)) paramTys
           val () = app (fn x => setIsProxy(x, true)) params
-          val rets = map (fn ty => CPS.Var.new("cfaProxyRet", ty)) retTys
+          val rets = map (fn ty => CV.new("cfaProxyRet", ty)) retTys
           val () = app (fn x => setIsProxy(x, true)) rets
-          val f = CPS.Var.new("cfaProxyF", ty)
+          val f = CV.new("cfaProxyF", ty)
           val () = setIsProxy(f, true)
-          val z = CPS.Var.new("cfaProxyZ", CPSTy.T_Fun([],[]))
+          val z = CV.new("cfaProxyZ", CPSTy.T_Fun([],[]))
           val () = setIsProxy(z, true)
           val lambda = CPS.FB {
-                   f = f,
-                   params = params,
-                   rets = rets,
-                   body = CPS.Throw (z, [])
+		  f = f,
+		  params = params,
+		  rets = rets,
+		  body = CPS.mkThrow(z, [])
 	        }
-           val () = app (fn x => CPS.Var.setKind(x, CPS.VK_Param lambda)) params
-           val () = app (fn x => CPS.Var.setKind(x, CPS.VK_Param lambda)) rets
+           val () = app (fn x => CV.setKind(x, CPS.VK_Param lambda)) params
+           val () = app (fn x => CV.setKind(x, CPS.VK_Param lambda)) rets
            val () = if null retTys 
-                        then CPS.Var.setKind(f, CPS.VK_Cont lambda)
-                        else CPS.Var.setKind(f, CPS.VK_Fun lambda)
+		 then CV.setKind(f, CPS.VK_Cont lambda)
+		 else CV.setKind(f, CPS.VK_Fun lambda)
            in 
              LAMBDAS(VSet.singleton f)
            end 
@@ -142,38 +145,15 @@ structure CFACPS : sig
 
   (* property to track callers *)
     val {getFn=callersOf, clrFn=clrCallers, setFn=setCallers, ...} =
-          CPS.Var.newProp (fn _ => Known(VSet.empty))
+          CV.newProp (fn _ => Known(VSet.empty))
+
   (* property to track the estimated value of variables *)
     val {getFn=getValue, clrFn=clrValue, peekFn=peekValue, setFn=setValue} =
-          CPS.Var.newProp (fn x => valueFromType (CPS.Var.typeOf x))
+          CV.newProp (fn x => valueFromType (CV.typeOf x))
     val valueOf = getValue
 
   (* return true if the given lambda variable escapes *)
     fun isEscaping f = (case callersOf f of Unknown => true | _ => false)
-
-  (* clear CFA annotations from the variables of a module.  Note that we can
-   * restrict the traversal to binding instances.
-   *)
-    fun clearInfo (CPS.MODULE{body, ...}) = let
-          fun doLambda (CPS.FB {f, params, rets, body}) = (
-                clrCallers f;
-                clrValue f;
-                List.app clrValue params;
-                List.app clrValue rets;
-                doExp body)
-          and doExp e = (case e 
-                 of CPS.Let (xs, _, e) => (List.app clrValue xs; doExp e)
-                  | CPS.Fun (fbs, e) => (List.app doLambda fbs; doExp e)
-                  | CPS.Cont (fb, e) => (doLambda fb; doExp e)
-                  | CPS.If (_, e1, e2) => (doExp e1; doExp e2)
-                  | CPS.Switch (_, cases, dflt) => 
-                      (List.app (doExp o #2) cases; Option.app doExp dflt)
-                  | CPS.Apply _ => ()
-                  | CPS.Throw _ => ()
-                (* end case *))
-          in
-            doLambda body
-          end
 
   (* test if a new approximate value is different from an old value; this
    * code assumes that values change according to the lattice order.
@@ -227,7 +207,7 @@ structure CFACPS : sig
          * set its parameters to TOP.
          *)
           fun doVar f = if not(isEscaping f)
-                then (case CPS.Var.kindOf f
+                then (case CV.kindOf f
                    of CPS.VK_Fun (CPS.FB {params, rets, ...}) => (
                         setCallers (f, Unknown);
                         List.app (fn x => addInfo(x, TOP)) params;
@@ -237,8 +217,8 @@ structure CFACPS : sig
                         List.app (fn x => addInfo(x, TOP)) params;
                         List.app (fn x => addInfo(x, TOP)) rets)
                     | vk => raise Fail(concat[
-                           "type error: escapingValues.doVar(", CPS.Var.toString f,
-                           "); Var.kindOf(", CPS.Var.toString f, ") = ", CPS.varKindToString vk
+                           "type error: escapingValues.doVar(", CV.toString f,
+                           "); Var.kindOf(", CV.toString f, ") = ", CPS.varKindToString vk
                          ])
                   (* end case *))
                 else ()
@@ -269,12 +249,12 @@ structure CFACPS : sig
                 else if VSet.isEmpty fs2 then v1
                 else let
               (* join params and rets of joined lambdas *)
-                fun getParamsRets f = (case CPS.Var.kindOf f
+                fun getParamsRets f = (case CV.kindOf f
                        of CPS.VK_Fun (CPS.FB {params, rets, ...}) => (params, rets)
                         | CPS.VK_Cont (CPS.FB {params, rets, ...}) => (params, rets)
                         | vk => raise Fail(concat[
-                              "type error: kJoin.getParamsRets(", CPS.Var.toString f,
-                              "); Var.kindOf(", CPS.Var.toString f, ") = ", CPS.varKindToString vk
+                              "type error: kJoin.getParamsRets(", CV.toString f,
+                              "); Var.kindOf(", CV.toString f, ") = ", CPS.varKindToString vk
                             ])
                      (* end case *))
                 val SOME f1 = VSet.find (fn _ => true) fs1
@@ -312,8 +292,8 @@ structure CFACPS : sig
                 fun sel (0, v::_) = v
                   | sel (j, v::r) = sel(j-1, r)
                   | sel (_, []) = raise Fail(concat[
-                        "type error: select(", Int.toString i, ", ", CPS.Var.toString y,
-                        "); getValue(", CPS.Var.toString y, ") = ", valueToString (TUPLE vs)
+                        "type error: select(", Int.toString i, ", ", CV.toString y,
+                        "); getValue(", CV.toString y, ") = ", valueToString (TUPLE vs)
                       ])
                 in
                   sel (i, vs)
@@ -321,8 +301,8 @@ structure CFACPS : sig
             | BOT => BOT
             | TOP => TOP
             | v => raise Fail(concat[
-                  "type error: select(", Int.toString i, ", ", CPS.Var.toString y,
-                  "); getValue(", CPS.Var.toString y, ") = ", valueToString v
+                  "type error: select(", Int.toString i, ", ", CV.toString y,
+                  "); getValue(", CV.toString y, ") = ", valueToString v
                 ])
           (* end case *))
   (* update the i'th component of a tuple. *)
@@ -331,9 +311,9 @@ structure CFACPS : sig
                 fun upd (0, v::r, ac) = TUPLE ((rev ac) @ (z::r))
                   | upd (i, v::r, ac) = upd(i-1, r, v::ac)
                   | upd (_, [], ac) = raise Fail(concat[
-                        "type error: update(", Int.toString i, ", ", CPS.Var.toString y,
+                        "type error: update(", Int.toString i, ", ", CV.toString y,
                         ", ", valueToString z,
-                        "); getValue(", CPS.Var.toString y, ") = ", valueToString (TUPLE vs)
+                        "); getValue(", CV.toString y, ") = ", valueToString (TUPLE vs)
                       ])
                 in
                   upd (i, vs, [])
@@ -341,22 +321,43 @@ structure CFACPS : sig
             | BOT => BOT
             | TOP => (escapingValue z; TOP)
             | v => raise Fail(concat[
-                  "type error: update(", Int.toString i, ", ", CPS.Var.toString y, 
+                  "type error: update(", Int.toString i, ", ", CV.toString y, 
                   ", ", valueToString z,
-                  "); getValue(", CPS.Var.toString y, ") = ", valueToString v
+                  "); getValue(", CV.toString y, ") = ", valueToString v
                 ])
           (* end case *))
+
+  (* property to track equivalent functions; we use the empty set to mark
+   * escaping functions or functions that share call sites with escaping
+   * functions.
+   *)
+    val {getFn=getEquivFns, setFn=setEquivFns, clrFn=clrEquivFns, ...} = let
+	  fun init f = if isEscaping f
+		then URef.uRef VSet.empty
+		else URef.uRef(VSet.singleton f)
+	  in
+	    CV.newProp init
+	  end
+
+    fun equivalentFuns f = VSet.listItems(URef.!!(getEquivFns f))
 
 (* +DEBUG *)
     fun printResults body = let
           fun printCallersOf f = print(concat[
-		  "callersOf(", CPS.Var.toString f, ") = ",
+		  "callersOf(", CV.toString f, ") = ",
 		  callersToString (callersOf f), "\n"
 		])
-          fun printValueOf x = print(concat[
-		  "getValue(", CPS.Var.toString x, ") = ", valueToString (valueOf x), "\n"
+	  fun printEquivFns f = print(concat[
+		  "equivalentFuns(", CV.toString f, ") = ",
+		  setToString (URef.!!(getEquivFns f)), "\n"
 		])
-          fun printExp e = let
+          fun printValueOf x = (case valueOf x
+		 of TOP => ()
+		  | v => print(concat[
+			"getValue(", CV.toString x, ") = ", valueToString v, "\n"
+		      ])
+		(* end case *))
+          fun printExp (CPS.Exp(_, e)) = let
                 fun doExp e = printExp e
                 fun doLambda fb = printLambda fb
                 in
@@ -376,6 +377,7 @@ structure CFACPS : sig
           and printLambda (CPS.FB {f, params, rets, body, ...}) = (
                 printValueOf f;
                 printCallersOf f;
+                printEquivFns f;
                 List.app printValueOf params;
                 List.app printValueOf rets;
                 printExp body)
@@ -384,33 +386,46 @@ structure CFACPS : sig
           end
 (* -DEBUG *)
 
-  (* compute the callers of variables.  We visit every function and add its variable
-   * to the callers of any known targets.  Note that this function is called
-   * after the main analysis so that the callers of any escaping function
-   * should have been set to Unknown.
+  (* compute additional information about functions.  This includes the callers of
+   * functions and the set of functions that are equivalent to a function.
+   * Note that this function is called after the main analysis so that the callers
+   * of any escaping function should have been set to Unknown.
    *)
-    fun computeCallers body = let
+    fun computeFunInfo body = let
           fun computeExp (e, srcVar) = let
-                fun addSet f = let
+		fun doCall f = let
+		    (* add srcVar to the callers of dstVar *)
 		      fun add dstVar = (case callersOf dstVar
 			     of Unknown => ()
 			      | Known s => setCallers(dstVar, Known(VSet.add(s, srcVar)))
 			    (* end case *))
+		      val fEq = getEquivFns f
+		    (* merge equivalance sets *)
+		      fun merge g = let
+			    fun unify (vs1, vs2) =
+				  if VSet.isEmpty vs1 orelse VSet.isEmpty vs2
+				    then VSet.empty
+				    else VSet.union(vs1, vs2)
+			    in
+			      ignore (URef.unify unify (fEq, getEquivFns g))
+			    end
 		      in
 			case getValue f
-			 of LAMBDAS fs => VSet.app add fs
+			 of LAMBDAS fs => (VSet.app add fs; VSet.app merge fs)
 			  | _ => ()
 			(* end case *)
 		      end
-                fun doExp (CPS.Let(_, _, e)) = doExp e
-		  | doExp (CPS.Fun(fbs, e)) = (List.app computeLambda fbs; doExp e)
-		  | doExp (CPS.Cont(fb, e)) = (computeLambda fb; doExp e)
-		  | doExp (CPS.If(_, e1, e2)) = (doExp e1; doExp e2)
-		  | doExp (CPS.Switch(_, cases, dflt)) = (
-		      List.app (doExp o #2) cases;
-		      Option.app doExp dflt)
-		  | doExp (CPS.Apply(f, _, _)) = addSet f
-		  | doExp (CPS.Throw(f, _)) = addSet f
+                fun doExp (CPS.Exp(_, t)) = (case t
+		       of (CPS.Let(_, _, e)) => doExp e
+			| (CPS.Fun(fbs, e)) => (List.app computeLambda fbs; doExp e)
+			| (CPS.Cont(fb, e)) => (computeLambda fb; doExp e)
+			| (CPS.If(_, e1, e2)) => (doExp e1; doExp e2)
+			| (CPS.Switch(_, cases, dflt)) => (
+			    List.app (doExp o #2) cases;
+			    Option.app doExp dflt)
+			| (CPS.Apply(f, _, _)) => doCall f
+			| (CPS.Throw(f, _)) => doCall f
+		      (* end case *))
                 in
                   doExp e
                 end
@@ -433,7 +448,7 @@ structure CFACPS : sig
    * of proxy functions).
    *)
     fun bumpInfo body = let
-          fun bumpValue x = (case (CPS.Var.typeOf x, getValue x) 
+          fun bumpValue x = (case (CV.typeOf x, getValue x) 
                  of (CPSTy.T_Fun (params,rets), LAMBDAS fs) =>
                       if VSet.isEmpty fs 
                          then addInfo (x, valueFromFunType (params, rets))
@@ -444,7 +459,7 @@ structure CFACPS : sig
                 List.app bumpValue params;
                 List.app bumpValue rets;
                 doExp body)
-          and doExp e = (case e 
+          and doExp (CPS.Exp(_, e)) = (case e 
                  of CPS.Let (xs, _, e) => (List.app bumpValue xs; doExp e)
                   | CPS.Fun (fbs, e) => (List.app doLambda fbs; doExp e)
                   | CPS.Cont (fb, e) => (doLambda fb; doExp e)
@@ -467,7 +482,7 @@ structure CFACPS : sig
                           addInfo (x, v);
                           if changedValue(getValue x, prevV) 
                             then print(concat[
-                                "addInfo(", CPS.Var.toString x,  ", ", valueToString v, 
+                                "addInfo(", CV.toString x,  ", ", valueToString v, 
                                 "): ", valueToString prevV, " ==> ", valueToString(getValue x),
                                 "\n"
                               ])
@@ -481,14 +496,16 @@ structure CFACPS : sig
                 fun doLambda (CPS.FB {f, body, ...}) = (
                       addInfo(f, LAMBDAS(VSet.singleton f));
                       doExp body)
-                and doExp (CPS.Let (xs, rhs, e)) = (doRhs (xs, rhs); doExp e)
-                  | doExp (CPS.Fun (fbs, e)) = (List.app doLambda fbs; doExp e)
-                  | doExp (CPS.Cont (fb, e)) = (doLambda fb; doExp e)
-                  | doExp (CPS.If (_, e1, e2)) = (doExp e1; doExp e2)
-                  | doExp (CPS.Switch (_, cases, dflt)) = 
-                      (List.app (doExp o #2) cases; Option.app doExp dflt)
-                  | doExp (CPS.Apply (f, args, conts)) = doApply (f, args, conts)
-                  | doExp (CPS.Throw (f, args)) = doThrow (f, args)
+                and doExp (CPS.Exp(_, t)) = (case t
+		       of (CPS.Let (xs, rhs, e)) => (doRhs (xs, rhs); doExp e)
+			| (CPS.Fun (fbs, e)) => (List.app doLambda fbs; doExp e)
+			| (CPS.Cont (fb, e)) => (doLambda fb; doExp e)
+			| (CPS.If (_, e1, e2)) => (doExp e1; doExp e2)
+			| (CPS.Switch (_, cases, dflt)) => 
+			    (List.app (doExp o #2) cases; Option.app doExp dflt)
+			| (CPS.Apply (f, args, conts)) => doApply (f, args, conts)
+			| (CPS.Throw (f, args)) => doThrow (f, args)
+		      (* end case *))
                 and doRhs (xs, CPS.Var ys) = ListPair.appEq eqInfo' (xs, ys)
                   | doRhs ([x], CPS.Cast (ty, y)) = eqInfo' (x, y)
                   | doRhs ([x], CPS.Const _) = addInfo (x, TOP)
@@ -510,7 +527,7 @@ structure CFACPS : sig
                   | doRhs ([x], CPS.VPLoad _) = addInfo (x, TOP)
                   | doRhs ([], CPS.VPStore (_, y, z)) = escape z
                   | doRhs (xs, rhs) = raise Fail(concat[
-                       "type error: doRhs([", String.concatWith "," (List.map CPS.Var.toString xs), 
+                       "type error: doRhs([", String.concatWith "," (List.map CV.toString xs), 
                        "], ", CPSUtil.rhsToString rhs, ")"
                      ])
                 and doApply (f, args, conts) = (case getValue f
@@ -519,7 +536,7 @@ structure CFACPS : sig
                         | TOP => (List.app escape args; List.app escape conts)
                         | _ => raise Fail "type error: doApply"
 		      (* end case *))
-                and doApplyAux (f, args, conts) = (case CPS.Var.kindOf f 
+                and doApplyAux (f, args, conts) = (case CV.kindOf f 
                        of CPS.VK_Fun (fb as CPS.FB {f, params, rets, body}) => (
                             ListPair.appEq eqInfo' (params, args);
                             ListPair.appEq eqInfo' (rets, conts))
@@ -531,7 +548,7 @@ structure CFACPS : sig
                         | TOP => List.app escape args
                         | _ => raise Fail "type error: doThrow"
 		      (* end case *))
-                and doThrowAux (f, args) = (case CPS.Var.kindOf f 
+                and doThrowAux (f, args) = (case CV.kindOf f 
                        of CPS.VK_Cont (fb as CPS.FB {f, params, rets, body}) => (
                             ListPair.appEq eqInfo' (params, args);
                             ListPair.appEq eqInfo' (rets, []))
@@ -559,10 +576,36 @@ structure CFACPS : sig
             changed := false; 
             bumpInfo body; 
             if !changed then iterate () else ();
-          (* compute caller information for variables *)
-            computeCallers body;
+          (* compute additional information for functions *)
+            computeFunInfo body;
           (* print results of cfa *)
             if !resultsFlg then printResults body else ()
+          end
+
+  (* clear CFA annotations from the variables of a module.  Note that we can
+   * restrict the traversal to binding instances.
+   *)
+    fun clearInfo (CPS.MODULE{body, ...}) = let
+          fun doLambda (CPS.FB{f, params, rets, body}) = (
+                clrCallers f;
+                clrValue f;
+		clrEquivFns f;
+                List.app clrValue params;
+                List.app clrValue rets;
+                doExp body)
+          and doExp (CPS.Exp(_, e)) = (case e 
+                 of CPS.Let(xs, _, e) => (List.app clrValue xs; doExp e)
+                  | CPS.Fun(fbs, e) => (List.app doLambda fbs; doExp e)
+                  | CPS.Cont(fb, e) => (doLambda fb; doExp e)
+                  | CPS.If(_, e1, e2) => (doExp e1; doExp e2)
+                  | CPS.Switch(_, cases, dflt) => (
+		      List.app (doExp o #2) cases;
+		      Option.app doExp dflt)
+                  | CPS.Apply _ => ()
+                  | CPS.Throw _ => ()
+                (* end case *))
+          in
+            doLambda body
           end
 
   end

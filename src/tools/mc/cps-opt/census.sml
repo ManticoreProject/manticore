@@ -39,30 +39,32 @@ structure Census : sig
 	  List.app clear rets)
 
     fun census (C.MODULE{body, externs, ...}) = let
-	  fun doExp (C.Let(lhs, rhs, e)) = (
-		List.app clear lhs;
-		CPSUtil.appRHS inc rhs;
-		doExp e)
-	    | doExp (C.Fun(fbs, e)) = (
-		List.app clearFB fbs;
-		List.app doFB fbs;
-		doExp e)
-	    | doExp (C.Cont(fb, e)) = (
-		clearFB fb;
-		doFB fb;
-		doExp e)
-	    | doExp (C.If(x, e1, e2)) = (inc x; doExp e1; doExp e2)
-	    | doExp (C.Switch(x, cases, dflt)) = (
-		inc x;
-		List.app (fn (_, e) => doExp e) cases;
-		Option.app doExp dflt)
-	    | doExp (C.Apply(f, args, rets)) = (
-		appUse f;
-		List.app inc args;
-		List.app inc rets)
-	    | doExp (C.Throw(k, args)) = (
-		appUse k;
-		List.app inc args)
+	  fun doExp (C.Exp(_, t)) = (case t
+		 of (C.Let(lhs, rhs, e)) => (
+		      List.app clear lhs;
+		      CPSUtil.appRHS inc rhs;
+		      doExp e)
+		  | (C.Fun(fbs, e)) => (
+		      List.app clearFB fbs;
+		      List.app doFB fbs;
+		      doExp e)
+		  | (C.Cont(fb, e)) => (
+		      clearFB fb;
+		      doFB fb;
+		      doExp e)
+		  | (C.If(x, e1, e2)) => (inc x; doExp e1; doExp e2)
+		  | (C.Switch(x, cases, dflt)) => (
+		      inc x;
+		      List.app (fn (_, e) => doExp e) cases;
+		      Option.app doExp dflt)
+		  | (C.Apply(f, args, rets)) => (
+		      appUse f;
+		      List.app inc args;
+		      List.app inc rets)
+		  | (C.Throw(k, args)) => (
+		      appUse k;
+		      List.app inc args)
+		(* end case *))
 	  and doFB (C.FB{body, ...}) = doExp body
 	  fun clrCFun cf = clear(CFunctions.varOf cf)
 	  in

@@ -11,6 +11,8 @@ structure CPSUtil : sig
 
     val rhsToString : CPS.rhs -> string
 
+    val applyToBoundVars : (CPS.var -> unit) -> CPS.module -> unit
+
   end = struct
 
     structure C = CPS
@@ -64,5 +66,35 @@ structure CPSUtil : sig
       | rhsToString (C.HostVProc) = "HostVProc"
       | rhsToString (C.VPLoad(n, x)) = concat["VPLoad(", IntInf.toString n, ", ", v2s x, ")"]
       | rhsToString (C.VPStore(n, x, y)) = concat["VPStore(", IntInf.toString n, v2s x,  ", ", v2s y, ")"]
+
+    fun applyToBoundVars func (C.MODULE{externs, body, ...}) = let
+	  fun applyToFBs fbs = (
+		List.app (fn (C.FB{f, ...}) => func f) fbs;
+		List.app (fn (C.FB{params, rets, body, ...}) => (
+		    List.app func params;
+		    List.app func rets;
+		    applyToExp body)
+		  ) fbs)
+	  and applyToExp (C.Exp(_, e)) = (case e
+		 of (C.Let(lhs, rhs, e)) => (
+		      List.app func lhs;
+		      applyToExp e)
+		  | (C.Fun(fbs, e)) => (
+		      applyToFBs fbs;
+		      applyToExp e)
+		  | (C.Cont(fb, e)) => (
+		      applyToFBs [fb];
+		      applyToExp e)
+		  | (C.If(x, e1, e2)) => (applyToExp e1; applyToExp e2)
+		  | (C.Switch(x, cases, dflt)) => (
+		      List.app (fn (_, e) => applyToExp e) cases;
+		      Option.app applyToExp dflt)
+		  | (C.Apply _) => ()
+		  | (C.Throw _) => ()
+		(* end case *))
+	  in
+	    List.app (fn (CFunctions.CFun{var, ...}) => func var) externs;
+	    applyToFBs [body]
+	  end
 
   end

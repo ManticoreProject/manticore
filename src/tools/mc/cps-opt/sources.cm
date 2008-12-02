@@ -22,6 +22,7 @@ is
   ../prim/sources.cm
   ../cps/sources.cm
 
+  arity-raising.sml
   census.sml
   cps-opt-controls.sml
   cps-opt-fn.sml

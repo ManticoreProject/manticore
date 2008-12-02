@@ -91,7 +91,7 @@ structure CheckCPS : sig
 (* FIXME: we should check the kind of the xs, but we don't have a kind for pattern-bound
  * variables yet!
  *)
-	  fun chkExp (env, e) = (case e
+	  fun chkExp (env, C.Exp(_, e)) = (case e
 		 of C.Let(lhs, rhs, e) => (
 		      chkBindings (lhs, C.VK_Let rhs);
 		      chkRHS(env, lhs, rhs);

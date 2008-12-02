@@ -12,7 +12,9 @@ structure CPS =
     type tag = Word.word	(* data-constant tags *)
     type offset = IntInf.int	(* offsets into the runtime-system vproc structure *)
 
-    datatype exp
+    datatype exp = Exp of (ProgPt.ppt * term)
+
+    and term
       = Let of (var list * rhs * exp)
       | Fun of (lambda list * exp)
       | Cont of (lambda * exp)
@@ -119,22 +121,25 @@ structure CPS =
   (* smart constructors; these enforce the variable kind invariant and should be
    * used to construct terms.
    *)
+    fun mkExp t = Exp(ProgPt.new(), t)
     fun mkLet (lhs, rhs, exp) = (
 	  List.app (fn x => Var.setKind(x, VK_Let rhs)) lhs;
-	  Let(lhs, rhs, exp))
-    fun mkFun (fbs, e) = let
-	  fun setKind (lambda as FB{f, params, rets, ...}) = (
-		Var.setKind(f, VK_Fun lambda);
-		List.app (fn x => Var.setKind(x, VK_Param lambda)) params;
-		List.app (fn x => Var.setKind(x, VK_Param lambda)) rets)
-	  in
-	    List.app setKind fbs;
-	    Fun(fbs, e)
-	  end
+	  mkExp(Let(lhs, rhs, exp)))
+    fun mkLambda (lambda as FB{f, params, rets, ...}) = (
+	  Var.setKind(f, VK_Fun lambda);
+	  List.app (fn x => Var.setKind(x, VK_Param lambda)) params;
+	  List.app (fn x => Var.setKind(x, VK_Param lambda)) rets;
+	  lambda)
+    fun mkFun (fbs, e) = mkExp(Fun(List.map mkLambda fbs, e))
     fun mkCont (lambda as FB{f, params, ...}, e) = (
 	  Var.setKind(f, VK_Cont lambda);
 	  List.app (fn x => Var.setKind(x, VK_Param lambda)) params;
-	  Cont(lambda, e))
+	  mkExp(Cont(lambda, e)))
+
+    fun mkIf arg = mkExp(If arg)
+    fun mkSwitch arg = mkExp(Switch arg)
+    fun mkApply arg = mkExp(Apply arg)
+    fun mkThrow arg = mkExp(Throw arg)
 
     fun mkCFun arg = (
 	  Var.setKind(#var arg, VK_Extern(#name arg));

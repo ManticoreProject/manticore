@@ -102,16 +102,16 @@ structure Convert : sig
 		  C.mkCont(fb, cvtTailE(env, e, retK'))
 		end
 	    | B.E_If(x, e1, e2) =>
-		C.If(lookup(env, x),
+		C.mkIf(lookup(env, x),
 		  cvtTailE (env, e1, retK'),
 		  cvtTailE (env, e2, retK'))
 	    | B.E_Case(x, cases, optDflt) => cvtCase (env, x, cases, optDflt, retK')
 	    | B.E_Apply(f, args, exhs) =>
-		C.Apply(lookup(env, f),
+		C.mkApply(lookup(env, f),
 		  lookupVars(env, args),
 		  retK' :: lookupVars(env, exhs))
-	    | B.E_Throw(k, xs) => C.Throw(lookup(env, k), lookupVars(env, xs))
-	    | B.E_Ret xs => C.Throw(retK', lookupVars(env, xs))
+	    | B.E_Throw(k, xs) => C.mkThrow(lookup(env, k), lookupVars(env, xs))
+	    | B.E_Ret xs => C.mkThrow(retK', lookupVars(env, xs))
 	    | B.E_HLOp(hlop, _, _) => raise Fail("unexpected high-level op " ^ HLOp.toString hlop)
 	  (* end case *))
 
@@ -148,7 +148,7 @@ structure Convert : sig
 		in
 		  C.mkCont(
 		    C.FB{f=joinK', params=ys', rets=[], body=k ys'},
-		    C.If(lookup(env, x),
+		    C.mkIf(lookup(env, x),
 		      cvtTailE(env, e1, joinK'),
 		      cvtTailE(env, e2, joinK')))
 		end
@@ -169,9 +169,9 @@ structure Convert : sig
 		in
 		  C.mkCont(
 		    C.FB{f=retK', params=ys', rets=[], body=k ys'},
-		    C.Apply(f', params', retK' :: exh'))
+		    C.mkApply(f', params', retK' :: exh'))
 		end
-	    | B.E_Throw(k, xs) => C.Throw(lookup(env, k), lookupVars(env, xs))
+	    | B.E_Throw(k, xs) => C.mkThrow(lookup(env, k), lookupVars(env, xs))
 	    | B.E_Ret xs => k(lookupVars(env, xs))
 	    | B.E_HLOp _ => raise Fail "unexpected high-level op"
 	  (* end case *))
@@ -207,7 +207,7 @@ structure Convert : sig
 	    | cvtCase c = raise Fail "complex case"
 	  val dflt' = Option.map(fn e => cvtTailE(env, e, retK')) dflt
 	  in
-	    C.Switch(lookup(env, x), List.map cvtCase cases, dflt')
+	    C.mkSwitch(lookup(env, x), List.map cvtCase cases, dflt')
 	  end
 
     and cvtFun (env, fbs, k) = let
@@ -234,8 +234,7 @@ structure Convert : sig
 		end
 	  val (externs', env) = List.foldr cvtExtern ([], E.empty) externs
 	  val env = bindLambda (body, env)
-	  val C.Fun([body'],_) = C.mkFun([cvtLambda(env,body)],
-					 C.Throw(C.Var.new("?",CTy.T_Any),[]))
+	  val body' = C.mkLambda(cvtLambda (env, body))
 	  in
 	    C.MODULE{
 		name = name, 
@@ -244,14 +243,14 @@ structure Convert : sig
 	      }
 	  end
 
-    val transform =
-       BasicControl.mkKeepPass
-       {preOutput = PrintBOM.output,
-        preExt = "bom",
-        postOutput = PrintCPS.output,
-        postExt = "cps",
-        passName = "convert",
-        pass = transform,
-        registry = ConvertControls.registry}
+    val transform = BasicControl.mkKeepPass {
+	    preOutput = PrintBOM.output,
+	    preExt = "bom",
+	    postOutput = PrintCPS.output,
+	    postExt = "cps",
+	    passName = "convert",
+	    pass = transform,
+	    registry = ConvertControls.registry
+	  }
 
   end

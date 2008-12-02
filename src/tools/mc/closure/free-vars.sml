@@ -66,7 +66,7 @@ structure FreeVars : sig
   (* return the variable of a lambda *)
     fun funVar (CPS.FB{f, ...}) = f
 
-    fun analExp (fv, e) = (case e
+    fun analExp (fv, CPS.Exp(_, e)) = (case e
 	   of CPS.Let(xs, rhs, e) => removes(analExp (fvOfRHS (fv, rhs), e), xs)
 	    | CPS.Fun(fbs, e) => let
 	      (* first, compute the union of the free variables of the lambdas *)
@@ -134,7 +134,7 @@ structure FreeVars : sig
 
     fun freeVarsOfExp exp = let
 	  fun analFB fb = getFV(funVar fb)
-	  fun analExp (fv, e) = (case e
+	  fun analExp (fv, CPS.Exp(_, e)) = (case e
 		 of CPS.Let(xs, rhs, e) => removes(analExp (fvOfRHS (fv, rhs), e), xs)
 		  | CPS.Fun(fbs, e) => let
 		    (* first add the free variables of the lambdas to fv *)

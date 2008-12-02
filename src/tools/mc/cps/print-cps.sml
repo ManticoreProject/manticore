@@ -39,7 +39,7 @@ structure PrintCPS : sig
 		  CPS.Var.toString x, ":", CPSTyUtil.toString(CPS.Var.typeOf x)
 		]
 	  fun varUseToString x = CPS.Var.toString x
-	  fun prExp (i, e) = (
+	  fun prExp (i, CPS.Exp(ppt, e)) = (
 		indent i;
 		case e
 		 of CPS.Let([], rhs, e) => (
@@ -122,7 +122,7 @@ structure PrintCPS : sig
 		  pr ") =\n";
 		  prExp (i+2, body)
 		end
-	  and prIf (i, x, e1, CPS.If(y, e2, e3)) = (
+	  and prIf (i, x, e1, CPS.Exp(_, CPS.If(y, e2, e3))) = (
 		prl ["if ", varUseToString x, " then\n"];
 		prExp(i+1, e1);
 		indent (i); pr "else "; prIf(i, y, e2, e3))

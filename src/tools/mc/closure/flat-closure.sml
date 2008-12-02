@@ -93,14 +93,16 @@ structure FlatClosure : sig
                   setFn (f, lab);
                   assignExp body
                 end
-          and assignExp (CPS.Let(_, _, e)) = assignExp e
-            | assignExp (CPS.Fun(fbs, e)) = (List.app assignFB fbs; assignExp e)
-            | assignExp (CPS.Cont(kb, e)) = (assignKB kb; assignExp e)
-            | assignExp (CPS.If(_, e1, e2)) = (assignExp e1; assignExp e2)
-            | assignExp (CPS.Switch(_, cases, dflt)) = (
-                List.app (assignExp o #2) cases;
-                Option.app assignExp dflt)
-            | assignExp _ = ()
+          and assignExp (CPS.Exp(_, t)) = (case t
+		 of (CPS.Let(_, _, e)) => assignExp e
+		  | (CPS.Fun(fbs, e)) => (List.app assignFB fbs; assignExp e)
+		  | (CPS.Cont(kb, e)) => (assignKB kb; assignExp e)
+		  | (CPS.If(_, e1, e2)) => (assignExp e1; assignExp e2)
+		  | (CPS.Switch(_, cases, dflt)) => (
+		      List.app (assignExp o #2) cases;
+		      Option.app assignExp dflt)
+		  | _ => ()
+		(* end case *))
           in
             assignFB lambda
           end
@@ -273,7 +275,10 @@ structure FlatClosure : sig
 	  val (externs, externEnv) = let
 		fun cvt (CFunctions.CFun{var, name, retTy, argTys, attrs, varArg}, (cfs, env)) = let
 		      val lab = CFG.Label.new(name, cvtTy(CPS.Var.typeOf var))
-		      val cf = CFG.mkCFun{var=lab, name=name, argTys=argTys, retTy=retTy, attrs=attrs, varArg=varArg}
+		      val cf = CFG.mkCFun{
+			      var=lab, name=name, argTys=argTys, retTy=retTy,
+			      attrs=attrs, varArg=varArg
+			    }
 		      in
 			(cf::cfs, VMap.insert(env, var, Extern lab))
 		      end
@@ -287,19 +292,23 @@ structure FlatClosure : sig
          * any nested functions first.
          *)
           fun cvtExp (env, lab, conv, e) = let
-                val () =
-                   if Controls.get ClosureControls.debug
-                      then (print(concat["********************\ncvtExp: lab = ", CFG.Label.toString lab, "\n"]); prEnv env)
-                   else ()
+                val () = if Controls.get ClosureControls.debug
+		      then (print(concat[
+			  "********************\ncvtExp: lab = ", CFG.Label.toString lab, "\n"
+			]);
+			prEnv env)
+		      else ()
                 fun finish (binds, xfer) = let
                       val func = CFG.mkLocalFunc (lab, conv, List.rev binds, xfer)
                       in
                         if Controls.get ClosureControls.debug
-                           then print(concat["******************** finish ", CFG.Label.toString lab, "\n"])
-                        else ();
+			  then print(concat[
+			      "******************** finish ", CFG.Label.toString lab, "\n"
+			    ])
+			  else ();
                         blocks := func :: !blocks
                       end
-                fun cvt (env, e, stms) = let
+                fun cvt (env, CPS.Exp(_, e), stms) = let
                       fun branch (lab, e) = let
                             val needsEP = ref false
                             val argEP = envPtrOf env
