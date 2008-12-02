@@ -24,6 +24,20 @@ functor RunTestsFn (L : COMPILER) = struct
   fun printErr s = (TextIO.output (TextIO.stdErr, s); 
 		    TextIO.flushOut TextIO.stdErr)
 
+(* executeNullErr : string * string list -> ('a, 'b) Unix.proc * TextIO.instream * TextIO.outstream *)
+(* Wraps Unix.execute with redirection of stderr to /dev/null. *)
+  fun executeNullErr (prog, args) = let
+    val origErr = Posix.IO.dup Posix.FileSys.stderr
+    val nullErr = Posix.FileSys.openf ("/dev/null", Posix.FileSys.O_WRONLY, Posix.FileSys.O.flags [])
+    val () = Posix.IO.dup2 {new=Posix.FileSys.stderr, old=nullErr}
+    val p = Unix.execute (prog, args)
+    val () = Posix.IO.dup2 {new=Posix.FileSys.stderr, old=origErr}
+    in
+      Posix.IO.close origErr;
+      Posix.IO.close nullErr;
+      (p, Unix.textInstreamOf p, Unix.textOutstreamOf p)
+    end
+  
 (* runTest : date * string -> {outcome:T.outcome, expected:string, actual:string} *)
   fun runTest (d, filename) = let
     val shortName = joinDF (P.file (P.dir filename), P.file filename)
@@ -36,8 +50,7 @@ functor RunTestsFn (L : COMPILER) = struct
     val compileCmd = L.mkCmd filename
     (* val _ = printErr (concat ["The compiler command is ", compileCmd, "\n"]) *)
     (* val compileSucceeded = sys compileCmd *)
-    val cmpProc = Unix.execute (L.getCompilerPath(), [filename]) (* , "2>", "/dev/null"]) *)
-    val cmpIns = Unix.textInstreamOf cmpProc
+    val (cmpProc, cmpIns, _) = executeNullErr (L.getCompilerPath(), [filename])
     val compilerOutput = let
       fun loop acc = 
        (case TextIO.inputLine cmpIns
