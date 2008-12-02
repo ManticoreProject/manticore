@@ -22,7 +22,7 @@ structure Tests = struct
 		version   : string}
 
   datatype outcome 
-    = DidNotCompile
+    = DidNotCompile of string
     | TestFailed
     | TestSucceeded
 
@@ -101,14 +101,23 @@ Date.toString:
        | _ => raise Fail ("couldn't parse the following as a stamp: " ^ s)
       (* end case *))
 
-  fun outcomeToString DidNotCompile = "DidNotCompile"
+  fun outcomeToString (DidNotCompile reason) = "DidNotCompile: " ^ reason
     | outcomeToString TestFailed    = "TestFailed"
     | outcomeToString TestSucceeded = "TestSucceeded"
 
-  fun outcomeFromString "DidNotCompile" = DidNotCompile
-    | outcomeFromString "TestFailed"    = TestFailed
+  fun outcomeFromString "TestFailed" = TestFailed
     | outcomeFromString "TestSucceeded" = TestSucceeded
-    | outcomeFromString other = raise Fail ("unrecognized outcome: " ^ other)
+    | outcomeFromString dnc =
+       (if String.isPrefix "DidNotCompile:" dnc then let
+          val reasonSt = String.size "DidNotCompile:"
+          val n = String.size dnc - reasonSt
+          in
+            DidNotCompile (String.substring (dnc, reasonSt, n))
+          end
+        else if dnc = "DidNotCompile" then
+          DidNotCompile ""
+        else
+          raise Fail ("unrecognized outcome: " ^ dnc))
 
   fun readmeToString (README {timestamp, goalName, text}) =
     String.concatWith "\n" ["<readme>",
@@ -171,12 +180,12 @@ Date.toString:
 	  "<stamp>" :: d :: v :: "</stamp>" ::
 	  "<goalName>" :: g :: "</goalName>" ::
 	  "<testName>" :: t :: "</testName>" ::
-	  "<outcome>" :: oc :: "</outcome>" ::
-	  more) => let
-            val (exp, r)  = scrape "expected" more
-	    val (act, r') = scrape "actual" r
+	  more ) => let
+	    val (oc, r) = scrape "outcome" more
+            val (exp, r')  = scrape "expected" r
+	    val (act, r'') = scrape "actual" r'
             in
-	      case r'
+	      case r''
 	        of ["</test_result>"] => 
 		     TR {stamp = STAMP {timestamp = unformat d, version = v},
 			 goalName = g,

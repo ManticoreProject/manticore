@@ -13,6 +13,7 @@ structure Locations = struct
   val mc = ref "mc"
 
   val reportsDir = OS.FileSys.fullPath "../../reports"
+  val goalsDir   = OS.FileSys.fullPath "../../goals"
   val archiveDir = OS.Path.joinDirFile {dir=reportsDir, file="archive"} 
   val currentDir = OS.Path.joinDirFile {dir=reportsDir, file="current"}
   val defaultRpt = OS.Path.joinDirFile {dir=currentDir, file="results.html"}  

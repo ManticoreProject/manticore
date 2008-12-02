@@ -175,4 +175,18 @@ structure Utils = struct
       ListMergeSort.sort lte
     end
 
+(* which : string -> string option *)
+(* Find the named program if possible. *)
+  fun which prog = let
+    val noNewlines = implode o (List.filter (fn c => c <> #"\n")) o explode
+    val p = Unix.execute ("/usr/bin/which", [prog])
+    val ins = Unix.textInstreamOf p
+    val optFullPath = case TextIO.inputLine ins 
+		        of SOME loc => SOME (noNewlines loc) 
+			 | NONE => NONE
+    in
+      Unix.reap p;
+      optFullPath 
+    end
+
 end

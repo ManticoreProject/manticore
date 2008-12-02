@@ -34,27 +34,32 @@ structure ReportHTML = struct
       map T.readTestResult last4
     end
 
-(* codify : string -> H.html *)
-  fun codify s = let
+(* codify : int option -> string -> H.html *)
+  fun codify optLim s = let
     val loc = String.tokens (fn c => c = #"\n") s
-    fun loop ([], acc)   = rev acc
-      | loop ([h], acc)  = rev (H.str h :: acc)
-      | loop (h::t, acc) = loop (t, H.br :: H.str h :: acc)
+    val lim = case optLim of SOME lim => lim | NONE => List.length loc
+    fun loop ([], _, acc) = rev acc
+      | loop ([h], _, acc)  = rev (H.str h :: acc)
+      | loop (_, 0, acc) = rev (H.str "..." :: acc)
+      | loop (h::t, n, acc) = loop (t, n-1, H.br :: H.str h :: acc)
     in
-      if s = ""
+      if s = "" orelse lim <= 0
       then H.nbsp
-      else H.codeH (H.seq (loop (loc, [])))
+      else H.codeH (H.seq (loop (loc, lim, [])))
     end
 
 (* outcomeHTML : T.outcome -> H.html *)
-  fun outcomeHTML oc = let
-    val class = case oc
-		  of T.DidNotCompile => "outcome-dnc"
-		   | T.TestFailed    => "outcome-failed"
-		   | T.TestSucceeded => "outcome-succeeded"
-    in
-      H.spanCS (class, T.outcomeToString oc)
-    end
+  fun outcomeHTML oc =
+   (case oc
+      of T.DidNotCompile whyNot => H.spanCH ("outcome-dnc", 
+					     if whyNot = "" then
+                                               H.str "DidNotCompile"
+					     else
+                                               H.seq [H.str "DidNotCompile",
+						      H.pH (codify (SOME 5) whyNot)])
+       | T.TestFailed => H.spanCS ("outcome-failed", "TestFailed")
+       | T.TestSucceeded => H.spanCS ("outcome-succeeded", "TestSucceeded")
+     (* end case *))
 
 (* test_result : T.test_result -> H.html *)
   fun test_result (tr as T.TR info) = let
@@ -71,21 +76,22 @@ structure ReportHTML = struct
 					   map (mkRow false) recent)
 					  
     in
-      if outcome = T.DidNotCompile then
-        H.seq [H.h2CS ("testfile", testName),
-	       H.pCH  ("results", recentTable)]
-      else let
-        val expCode = codify expected
-	val actCode = codify actual
-        val cmpTable = H.tableCH ("results", [H.trH [H.th "expected",
-						     H.th "actual"],
-					      H.trH [H.tdH expCode,
-						     H.tdH actCode]])
-	in
-	  H.seq [H.h2CS ("testfile", testName),
-		 H.pCH  ("results", recentTable),
-		 H.pCH  ("results", cmpTable)]
-	end
+      case outcome
+        of T.DidNotCompile reason =>
+             H.seq [H.h2CS ("testfile", testName),
+		    H.pCH  ("results", recentTable)]
+	 | _ => let
+             val expCode = codify NONE expected
+	     val actCode = codify NONE actual
+             val cmpTable = H.tableCH ("results", [H.trH [H.th "expected",
+							  H.th "actual"],
+						   H.trH [H.tdH expCode,
+							  H.tdH actCode]])
+	     in
+	       H.seq [H.h2CS ("testfile", testName),
+		      H.pCH  ("results", recentTable),
+		      H.pCH  ("results", cmpTable)]
+	     end
     end
 
 (* readme : T.readme -> H.html *)

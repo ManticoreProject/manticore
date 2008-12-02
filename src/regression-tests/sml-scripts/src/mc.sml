@@ -8,7 +8,7 @@
 structure MC : COMPILER = struct
   val languageName = "manticore"
   val c = ref "mc"
-  fun getCompilerPath () = !c
+  fun getCompilerPath () = valOf (Utils.which (!c))
   fun setCompilerPath p = (c := p)
   val ext = "pml"
   fun mkExe infile = "a.out"

@@ -26,8 +26,7 @@ functor RunTestsFn (L : COMPILER) = struct
 
 (* runTest : date * string -> {outcome:T.outcome, expected:string, actual:string} *)
   fun runTest (d, filename) = let
-    val shortName = OS.Path.joinDirFile {dir=P.file (P.dir filename),
-					 file=P.file filename}
+    val shortName = joinDF (P.file (P.dir filename), P.file filename)
     val _ = print ("testing " ^ shortName ^ "...")
     val cwd = F.getDir ()
     val exeFile = L.mkExe filename
@@ -36,11 +35,22 @@ functor RunTestsFn (L : COMPILER) = struct
     val resFile = U.freshTmp (cwd, "results")
     val compileCmd = L.mkCmd filename
     (* val _ = printErr (concat ["The compiler command is ", compileCmd, "\n"]) *)
-    val compileSucceeded = sys compileCmd
+    (* val compileSucceeded = sys compileCmd *)
+    val cmpProc = Unix.execute (L.getCompilerPath(), [filename]) (* , "2>", "/dev/null"]) *)
+    val cmpIns = Unix.textInstreamOf cmpProc
+    val compilerOutput = let
+      fun loop acc = 
+       (case TextIO.inputLine cmpIns
+          of SOME str => loop (str::acc)
+	   | NONE => concat (rev acc))
+      in
+        loop []
+      end
+    val compileSucceeded = Unix.reap cmpProc
     val tmps = exeFile :: resFile :: L.detritus filename
     fun cleanup () = app U.rm tmps
     in
-     (if compileSucceeded = 0 then let
+     (if compileSucceeded = OS.Process.success then let
         val diffFile = U.freshTmp (cwd, "diffs")
         val makeOutput = sys (concat ["./", exeFile, " > ", resFile])
 	val diffCmd = concat ["diff ", resFile, " ", okFile, " > ", diffFile]
@@ -61,18 +71,17 @@ functor RunTestsFn (L : COMPILER) = struct
 	     {outcome = T.TestFailed, expected = "*** No .ok file! ***", actual = actual})
         end
       else
-        {outcome = T.DidNotCompile,
+        {outcome = T.DidNotCompile compilerOutput,
 	 expected = "",
 	 actual = ""})
      before (println "done";
 	     cleanup ())
-	     
     end
 
 (* runGoal : date * string -> string -> T.goal *)
   fun runGoal (d, ver) goalDir = let
     val ts = U.filesWithin (String.isSuffix ("." ^ L.ext)) goalDir
-    val readme = T.readRawReadme d (goalDir ^ "/README")
+    val readme = T.readRawReadme d (joinDF (goalDir, "README"))
     val g = OS.Path.file goalDir
     fun mk t = let
       val {outcome, expected, actual} = runTest (d, t)
@@ -90,15 +99,15 @@ functor RunTestsFn (L : COMPILER) = struct
 
 (* run : unit -> T.report *)
   fun run () = let
-    val now      = Date.fromTimeLocal (Time.now ())
-    val ver      = U.currentRevision ()
-    val goals    = U.dirsWithin (concat [U.dotdot ".", "/goals"])
+    val quickie = false (* set this to true to do just a few tests *)
+    val now = Date.fromTimeLocal (Time.now ())
+    val ver = U.currentRevision ()
+    (* val _ = (print Locations.goalsDir; print "\n"; raise Fail "stop") *)
+    val goals = U.dirsWithin Locations.goalsDir
     val noHidden = List.filter (not o (String.isPrefix ".") o OS.Path.file)
-    val pvalOnly = List.filter ((fn s => s = "par-pval") o OS.Path.file)
+    val goals' = if quickie then [hd (noHidden goals)] else noHidden goals
     in
-      map (runGoal (now, ver)) (noHidden goals)
-(*     map (runGoal (now, ver)) (List.take (noHidden goals, 1))  *)
-(*     map (runGoal (now, ver)) (pvalOnly goals)                 *)
+      map (runGoal (now, ver)) goals'
     end 
 
 end
