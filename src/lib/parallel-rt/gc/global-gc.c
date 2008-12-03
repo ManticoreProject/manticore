@@ -104,7 +104,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	    LogGlobalGCInit (self);
 #ifndef NDEBUG
 	    if (DebugFlg)
-		SayDebug("[%2d] Initiating global GC\n", self->id);
+	      SayDebug("[%2d] Initiating global GC\n", self->id);
 #endif
 	    GlobalGCInProgress = true;
 	    leaderVProc = true;
@@ -137,13 +137,16 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 		VProcSignal (VProcs[i], GCSignal);
 	}
 	BarrierInit (&GCBarrier, NumVProcs);
-      /* wait for the followers to be ready */
-	MutexLock (&GCLock);
-	    CondWait (&LeaderWait, &GCLock);
-	MutexUnlock (&GCLock);
-      /* initialize global heap for GC */ 
-      /* release followers to start GC */
-	CondBroadcast (&FollowerWait);
+      /* wait for follower vprocs */
+	if (NumVProcs > 1) {
+	  /* wait for the followers to be ready */
+	  MutexLock (&GCLock);
+	      CondWait (&LeaderWait, &GCLock);
+	  MutexUnlock (&GCLock);
+	  /* initialize global heap for GC */ 
+	  /* release followers to start GC */
+	  CondBroadcast (&FollowerWait);
+	}
     }
 
   /* start GC for this vproc */
