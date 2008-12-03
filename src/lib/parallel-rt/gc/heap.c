@@ -40,7 +40,6 @@ static MemChunk_t	*FreeL2Tbl[L2_TBLSZ];
 MemChunk_t		*BIBOP[BIBOP_TBLSZ];
 #endif
 
-
 /* HeapInit:
  *
  */
@@ -127,6 +126,9 @@ void GetChunkForVProc (VProc_t *vp)
 	    chunk = FreeChunks;
 	    FreeChunks = chunk->next;
 	}
+	/* Uncomment the next line to enable global GC:
+	ToSpaceSz += HEAP_CHUNK_SZB;
+	*/
     MutexUnlock (&HeapLock);
 
   /* add to the tail of the vproc's list of to-space chunks */
