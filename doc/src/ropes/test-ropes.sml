@@ -3,20 +3,11 @@
 
 structure TestRopes = struct
 
-  (* log : real -> (real -> real) *)
-    fun log base x = Math.ln x / Math.ln base
-
-  (* ceilingLg : int -> int *)
-  (* The ceiling of the log_2 of the input. *)
-    val ceilingLg = ceil o log 2.0 o real
-
     val itos = Int.toString
 
 
   structure R = RopesFn (structure S = ListSeq 
-                         val sizeL1CacheLine= 2
-			 val wordSize = 32
-			 val ceilingLg = ceilingLg)
+                         val maxLeafSize= 2)
 
   type 'a rope = 'a R.rope
 
@@ -121,6 +112,8 @@ structure TestRopes = struct
     | test 7 = t 9
     | test 8 = prope itos (spineRope (0, 3))
     | test 9 = t 100
+    | test 10 = check(R.foldl (op ^) "" (R.fromSeq ["a","b","c","d","e"]) = "edcba")
+    | test 11 = check(R.foldr (op ^) "" (R.fromSeq ["a","b","c","d","e"]) = "abcde")
     | test n = (println ("No such test: " ^ itos n);
 		raise Fail "")
 

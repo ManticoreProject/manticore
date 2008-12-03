@@ -3,20 +3,45 @@
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * A prototype implementation of ropes in SML.
+ * Ropes for Standard ML.
+ * 
+ * Authors:
+ *   Mike Rainey (mrainey@cs.uchicago.edu)
+ *   Adam Shaw (shaw@cs.uchicago.edu)
+ *
+ * We have based our implementation on the original paper by Boehm et. al.
+
+@article{bap:ropes,
+    author = {Hans-J. Boehm and Russ Atkinson and Michael Plass},
+    title = {Ropes: an alternative to strings},
+    journal = {Software---Practice \& Experience},
+    volume = 25,
+    number = 12,
+    year = 1995,
+    issn = {0038-0644},
+    pages = {1315--1330},
+    publisher = {John Wiley \& Sons, Inc.},
+    address = {New York} 
+    }
+
  *)
 
 functor RopesFn (
     structure S : SEQ
-    val sizeL1CacheLine : int
-    val wordSize        : int
-    val ceilingLg       : int -> int
-  ) (* : ROPES *) = struct
+    val maxLeafSize     : int
+  ) : ROPES = struct
 
     structure S = S
     type 'a seq = 'a S.seq
 
   (* ***** UTILITIES ***** *)
+
+  (* log : real -> (real -> real) *)
+    fun log base x = Math.ln x / Math.ln base
+
+  (* ceilingLg : int -> int *)
+  (* The ceiling of the log_2 of the input. *)
+    val ceilingLg = ceil o log 2.0 o real
 
   (* fib : int -> int *)
   (* Compute the nth Fibonacci number, where *)
@@ -47,7 +72,7 @@ functor RopesFn (
 		 'a seq   (* sequence *))
 
   (* maxLeafSize : int *)
-    val maxLeafSize = sizeL1CacheLine
+    val maxLeafSize = maxLeafSize
 
   (* empty : 'a rope *)
     val empty = LEAF(0, S.empty)
@@ -419,31 +444,37 @@ functor RopesFn (
 	 | CAT (_, _, r1, r2) => (r1, r2)
         (* end case *))
 
-  (* ***** BASIC PARALLEL OPERATIONS ***** *)
+  (* cut the rope r into r[0, ..., n-1] and r[n, ..., length r] *)
+    fun cut (r, n) =
+	  if n = 0
+	     then (empty, r)
+	  else splitAt(r, n - 1)
 
-  (* FIXME TODO No account is yet taken of the "leftmost exception" semantic property. *)
+    fun take (r, n) = #1(cut(r, n))
 
-  (* revP : 'a rope -> 'a rope *)
+    fun drop (r, n) = #2(cut(r, n))
+
+  (* rev : 'a rope -> 'a rope *)
   (* pre  : the input is balanced *)
   (* post : the output is balanced *)
-    fun revP r = 
+    fun rev r = 
      (case r
         of LEAF (len, s) => LEAF (len, S.rev s)
 	 | CAT (dpt, len, r1, r2) => let
-             (* PVAL *) val r2' = revP r2
+             val r2' = rev r2
              in
-               CAT (dpt, len, r2', revP r1)
+               CAT (dpt, len, r2', rev r1)
              end 
         (* end case *))
 
-  (* mapP : ('a -> 'b) * 'a rope -> 'b rope *)
+  (* map : ('a -> 'b) -> 'a rope -> 'b rope *)
   (* post : the output has the same shape as the input *)
-    fun mapP (f, rope) = let
+    fun map f rope = let
       fun m r =
        (case r
-          of LEAF (len, s) => LEAF (len, S.map (f, s))
+          of LEAF (len, s) => LEAF (len, S.map f s)
 	   | CAT (dpt, len, r1, r2) => let
-               (* PVAL *) val r2' = m r2
+               val r2' = m r2
                in
                  CAT (dpt, len, m r1, r2')
 	       end
@@ -452,37 +483,20 @@ functor RopesFn (
         m rope
       end          
 
-  (* reduceP : ('a * 'a -> 'a) * 'a * 'a rope -> 'a *)
-  (* Reduce with an associative operator. *)
-  (* e.g., sumP r == reduceP (+, 0, r) *)
-    fun reduceP (assocOp, unit, rope) = let
-      fun red r =
-       (case r
-	  of LEAF (_, s) => S.reduce (assocOp, unit, s)
-	   | CAT (_, _, r1, r2) => let
-               (* PVAL *) val a2 = red r2
-               in
-                 assocOp (red r1, a2)
-               end
-          (* end case *))
-      in
-        red rope
-      end
-
-  (* filterP : ('a -> bool) * 'a rope -> 'a rope *)
+  (* filter : ('a -> bool) -> 'a rope -> 'a rope *)
   (* post: the output is balanced *)
   (* Strategy: First, filter all the leaves without balancing. *)
   (*           Then balance the whole thing if needed. *)
-    fun filterP (pred, rope) = let
+    fun filter pred rope = let
       fun f r =
        (case r
 	  of LEAF (len, s) => let
-               val s' = S.filter (pred, s)
+               val s' = S.filter pred s
                in
                  LEAF (S.length s', s')
 	       end
 	   | CAT (_, _, r1, r2) => let
-               (* PVAL *) val r2' = f r2
+               val r2' = f r2
                in
                  concatWithoutBalancing (f r1, r2')
                end
@@ -490,5 +504,19 @@ functor RopesFn (
       in
         balanceIfNecessary (f rope)
       end
+
+  (* foldl : ('a * 'b -> 'b) -> 'b -> 'a rope -> 'b *)
+    fun foldl f id r = (
+	  case r
+	   of LEAF (_, s) => S.foldl f id s
+	    | CAT (_, _, r1, r2) => foldl f (foldl f id r1) r2
+          (* end case *))
+
+  (* foldr : ('a * 'b -> 'b) -> 'b -> 'a rope -> 'b *)
+    fun foldr f id r = (
+	  case r
+	   of LEAF (_, s) => S.foldr f id s
+	    | CAT (_, _, r1, r2) => foldr f (foldr f id r2) r1
+          (* end case *))
 
   end
