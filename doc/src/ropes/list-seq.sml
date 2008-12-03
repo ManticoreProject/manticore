@@ -7,7 +7,7 @@
  * 
  * Authors:
  *   Mike Rainey (mrainey@cs.uchicago.edu)
- *   Adam Shaw (shaw@cs.uchicago.edu)
+ *   Adam Shaw (ams@cs.uchicago.edu)
  *
  *)
 
