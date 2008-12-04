@@ -35,7 +35,7 @@ functor RopeFn (
     structure S : SEQ
     val maxLeafSize : int
 
-  ) (* : ROPES *) = struct
+  ) : ROPE = struct
 
     structure S = S
     type 'a seq = 'a S.seq

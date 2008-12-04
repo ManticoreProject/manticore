@@ -31,7 +31,7 @@ signature ROPE =
     val depth      : 'a rope -> int
 
   (* amortized log-time operations; the time is O(n log n) when rebalancing is necessary *)  
-    val concat     : 'a rope * 'a rope -> 'a rope
+    val append     : 'a rope * 'a rope -> 'a rope
     val sub        : 'a rope * int -> 'a
     val subrope    : 'a rope * int * int -> 'a rope     (* for i, j, rope from i to i+j-1 *)
     val take       : 'a rope * int -> 'a rope
