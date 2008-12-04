@@ -20,7 +20,6 @@ structure ListSeq : SEQ =
     val length = List.length
     val sub = List.nth
     fun append (x, y) = x @ y
-    fun splitAt (ls, i) = (List.take(ls, i+1), List.drop(ls, i+1))
     fun fromList x = x
     fun toList x = x 
     val rev = List.rev

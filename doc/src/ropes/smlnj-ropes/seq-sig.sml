@@ -23,8 +23,6 @@ signature SEQ =
 
     val append     : 'a seq * 'a seq -> 'a seq
     val sub        : 'a seq * int -> 'a
-  (* given a sequence s and an index i, split the sequence into s[0, ..., i] and s[i+1, ..., length s] *)
-    val splitAt    : 'a seq * int -> ('a seq * 'a seq)
 
     val rev        : 'a seq -> 'a seq
     val map        : ('a -> 'b) -> 'a seq -> 'b seq

@@ -1,4 +1,4 @@
-(* ropes-fn.sml
+(* rope-fn.sml
  *
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -9,15 +9,28 @@
  *   Mike Rainey (mrainey@cs.uchicago.edu)
  *   Adam Shaw (ams@cs.uchicago.edu)
  *
- * We have based our implementation on the original paper by Boehm et. al.
- * (hereafter bap:ropes). A bib entry is copied at the bottom of this file.
+ * We have based our implementation on the paper "Ropes: An Alternative to Strings"
+ * by Boehm et al., 1995. See the bib entry at bottom of this file.
  *
- * Note that what they refer to in the paper as concatenation of ropes
- * we refer to, in function names, as appending ropes. This is for consistency
- * with the names of similar functions in the ML Basis Library.
+ * The main differences between the original paper and the present code are these:
+ *
+ * - the original work proposes ropes as an alternative specifically to strings,
+ *   with character data at the leaves; ours are generalized, polymorphic ropes
+ *
+ * - the original work mentions a lazy leaf variant which holds not actual data, but 
+ *   a function for computing data on demanded, for use in, among other things, creating 
+ *   ropes to represent files without actually reading whole files at a time; we provide 
+ *   no such variant 
+ *
+ * - what they refer to in the paper as "concatenation" of ropes we refer to, 
+ *   in function names, as "appending"; this is for consistency with the names of 
+ *   similar operations in the ML Basis Library
+ *
+ * - we provide a reasonably standard set of common Basis Library operations, like
+ *   map, mapPartial, find, and so on
  *)
 
-functor RopesFn (
+functor RopeFn (
 
     structure S : SEQ
     val maxLeafSize : int
@@ -409,6 +422,9 @@ functor RopesFn (
   (* fromSeq : 'a seq -> 'a rope *)
     fun fromSeq s = fromList (S.toList s)
 
+  (* fromString : string -> char rope *)
+    val fromString = fromList o String.explode
+
   (* tabulate : (int * (int -> 'a)) -> 'a rope *)
     fun tabulate (n, f) = fromList (List.tabulate (n, f))
 
@@ -419,7 +435,7 @@ functor RopesFn (
     fun splitAtWithoutBalancing (r, i) = 
      (case r
         of Leaf (len, s) => let
-	     val (s1, s2) = S.splitAt(s, i)
+	     val (s1, s2) = S.cut (s, i+1)
 	     in
 	       (Leaf (S.length s1, s1), Leaf (S.length s2, s2))
 	     end

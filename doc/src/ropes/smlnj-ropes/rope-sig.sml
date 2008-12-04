@@ -1,4 +1,4 @@
-(* ropes-sig.sml
+(* rope-sig.sml
  *
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -9,10 +9,11 @@
  *   Mike Rainey (mrainey@cs.uchicago.edu)
  *   Adam Shaw (ams@cs.uchicago.edu)
  *
- * We have based our implementation on the original paper by Boehm et. al (bib below).
+ * We have based our implementation on the paper "Ropes: An Alternative to Strings" 
+ * by Boehm et al. (1995). See rope-fn.sml for more detailed commentary.
  *)
 
-signature ROPES = 
+signature ROPE = 
   sig
 
     structure S : SEQ
@@ -55,6 +56,7 @@ signature ROPES =
     val toSeq      : 'a rope -> 'a seq
     val fromList   : 'a list -> 'a rope
     val toList     : 'a rope -> 'a list
+    val fromString : string  -> char rope
 
   (* constructors *)
     val singleton  : 'a -> 'a rope
@@ -64,19 +66,3 @@ signature ROPES =
     val toString   : ('a -> string) -> 'a rope -> string
     
   end
-
-(*
-@article{bap:ropes,
-    author = {Hans-J. Boehm and Russ Atkinson and Michael Plass},
-    title = {Ropes: an alternative to strings},
-    journal = {Software---Practice \& Experience},
-    volume = 25,
-    number = 12,
-    year = 1995,
-    issn = {0038-0644},
-    pages = {1315--1330},
-    publisher = {John Wiley \& Sons, Inc.},
-    address = {New York} 
-    }
- *)
-

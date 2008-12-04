@@ -13,13 +13,25 @@
 
 Group
 
+	signature SEQ
+	signature ROPE	
+	functor   RopeFn
+
+(* uncomment for testing =>
+ *      structure ListSeq
+ *      structure TestRopes
+ *)
+
 is
 
 	$/basis.cm
 	$/smlnj-lib.cm
 
-	list-seq.sml
 	seq-sig.sml
-        ropes-fn.sml
-	ropes-sig.sml
-        test-ropes.sml
+        rope-fn.sml
+	rope-sig.sml
+
+(* uncomment for testing =>
+ *      list-seq.sml
+ *      test-ropes.sml
+ *)
