@@ -39,6 +39,7 @@ static MemChunk_t	*FreeL2Tbl[L2_TBLSZ];
 #else
 MemChunk_t		*BIBOP[BIBOP_TBLSZ];
 #endif
+static MemChunk_t	UnmappedChunk;
 
 /* HeapInit:
  *
@@ -60,13 +61,14 @@ void HeapInit (Options_t *opts)
   /* initialize the BIBOP */
 #ifdef SIXTYFOUR_BIT_WORDS
     for (int i = 0;  i < L2_TBLSZ; i++)
-	FreeL2Tbl[i] = (MemChunk_t *)0;
+	FreeL2Tbl[i] = &UnmappedChunk;
     for (int i = 0;  i < L1_TBLSZ;  i++)
 	BIBOP[i] = FreeL2Tbl;
 #else
     for (int i = 0;  i < BIBOP_TBLSZ;  i++)
-	BIBOP[i] = 0;
+	BIBOP[i] = &UnmappedChunk;
 #endif
+    UnmappedChunk.sts = UNMAPPED_CHUNK;
 
   /* initialize the heap data structures */
     MutexInit (&HeapLock);
@@ -126,9 +128,8 @@ void GetChunkForVProc (VProc_t *vp)
 	    chunk = FreeChunks;
 	    FreeChunks = chunk->next;
 	}
-	/* Uncomment the next line to enable global GC:
-	ToSpaceSz += HEAP_CHUNK_SZB;
-	*/
+// Uncomment the next line to enable global GC
+//	ToSpaceSz += HEAP_CHUNK_SZB;
     MutexUnlock (&HeapLock);
 
   /* add to the tail of the vproc's list of to-space chunks */
@@ -165,18 +166,15 @@ void UpdateBIBOP (MemChunk_t *chunk)
     while (addr < top) {
 #ifdef SIXTYFOUR_BIT_WORDS
 	MemChunk_t	**l2 = BIBOP[addr >> L1_SHIFT];
-	assert (l2[(addr >> L2_SHIFT) & L2_MASK] == 0);
+	assert (l2[(addr >> L2_SHIFT) & L2_MASK] == &UnmappedChunk);
 	if (l2 == FreeL2Tbl) {
 	  /* we need to allocate a new L2 table for this range */
 	    l2 = NEWVEC(MemChunk_t *, L2_TBLSZ);
 	    for (int i = 0;  i < L2_TBLSZ;  i++)
-		l2[i] = 0;
-	    l2[(addr >> L2_SHIFT) & L2_MASK] = chunk;
+		l2[i] = &UnmappedChunk;
 	    BIBOP[addr >> L1_SHIFT] = l2;
 	}
-	else {
-	    l2[(addr >> L2_SHIFT) & L2_MASK] = chunk;
-	}
+	l2[(addr >> L2_SHIFT) & L2_MASK] = chunk;
 #else /* !SIXTYFOUR_BIT_WORDS */
 	assert (BIBOP[addr >> PAGE_BITS] == 0);
 	BIBOP[addr >> PAGE_BITS] = chunk;

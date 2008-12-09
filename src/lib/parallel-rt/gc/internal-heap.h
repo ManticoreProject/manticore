@@ -13,20 +13,23 @@
 #include "heap.h"
 
 typedef enum {
-    FREE_CHUNK,
-    TO_SP_CHUNK,
-    FROM_SP_CHUNK,
-    VPROC_CHUNK_TAG,
+    FREE_CHUNK,			/*!< chunk that is available for allocation */
+    TO_SP_CHUNK,		/*!< to-space chunk in the global heap */
+    FROM_SP_CHUNK,		/*!< from-space chunk in the global heap */
+    VPROC_CHUNK_TAG,		/*!< low four bits of VProc chunk (see #VPROC_CHUNK) */
+    UNMAPPED_CHUNK		/*!< special status used for the dummy chunk that represents
+				 *   unmapped regions of the memory space.
+				 */
 } Status_t;
 
 #define VPROC_CHUNK(id)		((Status_t)((id) << 4) | VPROC_CHUNK_TAG)
 
 struct struct_chunk {
-    Addr_t	baseAddr;	/* chunk base address */
-    Addr_t	szB;		/* chunk size in bytes */
-    Addr_t	usedTop;	/* [baseAddr..usedTop) is the part of the chunk in use */
-    MemChunk_t	*next;		/* link field */
-    Status_t	sts;		/* current status of chunk */
+    Addr_t	baseAddr;	/*!< chunk base address */
+    Addr_t	szB;		/*!< chunk size in bytes */
+    Addr_t	usedTop;	/*!< [baseAddr..usedTop) is the part of the chunk in use */
+    MemChunk_t	*next;		/*!< link field */
+    Status_t	sts;		/*!< current status of chunk */
 };
 
 /********** Global heap **********/

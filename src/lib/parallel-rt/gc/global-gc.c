@@ -22,14 +22,17 @@ static int		nReadyForGC;	// number of vprocs that are ready for GC
 static Barrier_t	GCBarrier;	// for synchronizing on GC completion
 
 static void GlobalGC (VProc_t *vp, Value_t **roots);
+static void ScanVProcHeap (VProc_t *vp);
 static void ScanGlobalToSpace (VProc_t *vp, MemChunk_t *scanChunk, Word_t *scanPtr);
 
 
-
-/* return true if a value is a from-space pointer */
+/* Return true if a value is a from-space pointer.  Note that this function relies on
+ * the fact that unmapped addresses are mapped to the "UnmappedChunk" by the BIBOP.
+ */
 STATIC_INLINE bool isFromSpacePtr (Value_t p)
 {
     return (isPtr(p) && AddrToChunk(ValueToAddr(p))->sts == FROM_SP_CHUNK);
+
 }
 
 /* Forward an object into the global-heap chunk reserved for the current VP */
@@ -125,29 +128,34 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
     self->globToSpTl->usedTop = self->globNextW - WORD_SZB;
     self->globToSpTl = (MemChunk_t *)0;
     self->globToSpHd = (MemChunk_t *)0;
-  /* allocate the initial chunk for the vproc */
-    GetChunkForVProc (self);
 
     if (leaderVProc) {
+	int numParticipants = 1;
+      /* reset the size of to-space */
+	ToSpaceSz = 0;
       /* signal the vprocs that global GC is starting and then wait for them
        * to be ready.
        */
 	for (int i = 0;  i < NumVProcs;  i++) {
-	    if (VProcs[i] != self)
+	    if ((VProcs[i] != self) && (! VProcs[i]->idle)) {
+		numParticipants++;
 		VProcSignal (VProcs[i], GCSignal);
+	    }
 	}
-	BarrierInit (&GCBarrier, NumVProcs);
+	BarrierInit (&GCBarrier, numParticipants);
       /* wait for follower vprocs */
-	if (NumVProcs > 1) {
+	if (numParticipants > 1) {
 	  /* wait for the followers to be ready */
 	  MutexLock (&GCLock);
 	      CondWait (&LeaderWait, &GCLock);
 	  MutexUnlock (&GCLock);
-	  /* initialize global heap for GC */ 
 	  /* release followers to start GC */
 	  CondBroadcast (&FollowerWait);
 	}
     }
+
+  /* allocate the initial chunk for the vproc */
+    GetChunkForVProc (self);
 
   /* start GC for this vproc */
     GlobalGC (self, roots);
@@ -168,7 +176,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 		FreeChunks = cp;
 		cp = cq;
 	    }
-/* NOTE: at come point we may want to release memory back to the OS */
+/* NOTE: at some point we may want to release memory back to the OS */
 	MutexUnlock (&HeapLock);
 
 #ifndef NDEBUG
@@ -203,18 +211,70 @@ static void GlobalGC (VProc_t *vp, Value_t **roots)
 	}
     }
 
-/* FIXME: the vproc's heap is also a source of roots.  Since it has just
- * been collected, it only contains live objects.
- */
+    ScanVProcHeap (vp);
 
   /* scan to-space chunks */
     ScanGlobalToSpace (vp, scanChunk, scanPtr);
 
     LogGlobalGCVPDone (vp, 0/*FIXME*/);
 
+#ifndef NDEBUG
+    if (DebugFlg)
+	SayDebug("[%2d] Global GC finished\n", vp->id);
+#endif
+
 } /* end of GlobalGC */
 
-/* Scan the to-space objects that have been copied by this vproc */
+/*! \brief Scan the vproc's local heap.  Since we have already done a major GC, all objects
+ *  are known to be live.
+ */
+static void ScanVProcHeap (VProc_t *vp)
+{
+    Word_t *top = (Word_t *)(vp->oldTop);
+    Word_t *scanPtr = (Word_t *)VProcHeap(vp);
+
+    while (scanPtr < top) {
+	Word_t hdr = *scanPtr++;  // get object header
+	if (isMixedHdr(hdr)) {
+	  // a record
+	    Word_t tagBits = GetMixedBits(hdr);
+	    Word_t *scanP = scanPtr;
+	    while (tagBits != 0) {
+		if (tagBits & 0x1) {
+		    Value_t p = *(Value_t *)scanP;
+		    if (isFromSpacePtr(p)) {
+			*scanP = (Word_t)ForwardObj(vp, p);
+		    }
+		}
+		tagBits >>= 1;
+		scanP++;
+	    }
+	    scanPtr += GetMixedSizeW(hdr);
+	}
+	else if (isVectorHdr(hdr)) {
+	  // an array of pointers
+	    int len = GetVectorLen(hdr);
+	    for (int i = 0;  i < len;  i++, scanPtr++) {
+		Value_t v = (Value_t)*scanPtr;
+		if (isFromSpacePtr(v)) {
+		    *scanPtr = (Word_t)ForwardObj(vp, v);
+		}
+	    }
+	}
+	else {
+	    assert (isRawHdr(hdr));
+	  // we can just skip raw objects
+	    scanPtr += GetRawSizeW(hdr);
+	}
+    }
+
+} /* end of ScanVProcHeap */
+
+/*! \brief Scan the to-space objects that have been copied by this vproc
+ *  \param vp the vproc doing the scanning
+ *  \param scanChunk 
+ *  \param scanPtr
+ */
 static void ScanGlobalToSpace (
     VProc_t *vp,
     MemChunk_t *scanChunk,
@@ -233,7 +293,7 @@ static void ScanGlobalToSpace (
 
     do {
 	while (scanPtr < scanTop) {
-	    Word_t hdr = *scanPtr++;	// get object header
+	    Word_t hdr = *scanPtr++;  // get object header
 	    if (isMixedHdr(hdr)) {
 	      // a record
 		Word_t tagBits = GetMixedBits(hdr);
