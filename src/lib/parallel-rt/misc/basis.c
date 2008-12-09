@@ -294,7 +294,7 @@ Value_t M_NewArray (VProc_t *vp, int nElems, Value_t elt)
     assert((vp->globLimit-vp->globNextW) > WORD_SZB*(nElems+1));
 
     if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit) {
-	GetChunkForVProc(vp);
+	AllocToSpaceChunk(vp);
     }
 
     Word_t *obj = (Word_t*)(vp->globNextW);

@@ -95,18 +95,19 @@ void InitVProcHeap (VProc_t *vp)
     vp->globalGCInProgress = false;
 
   /* allocate the initial chunk for the vproc */
-    GetChunkForVProc (vp);
+    AllocToSpaceChunk (vp);
 
 }
 
 
-/* GetChunkForVProc:
+/*! \brief Allocate a global-heap memory chunk for the vproc.
  *
  * Get a memory chunk from the free list or by allocating fresh memory; the
- * size of the chunk will be HEAP_CHUNK_SZB bytes.  The chunk is added to the
+ * size of the chunk will be #HEAP_CHUNK_SZB bytes.  The chunk is added to the
  * to-space list.
+ * NOTE: this function should only be called with the #HeapLock is held.
  */
-void GetChunkForVProc (VProc_t *vp)
+void AllocToSpaceChunk (VProc_t *vp)
 {
     void	*memObj;
     MemChunk_t	*chunk;
@@ -122,14 +123,14 @@ void GetChunkForVProc (VProc_t *vp)
 	    }
 	    chunk->baseAddr = (Addr_t)memObj;
 	    chunk->szB = nPages * BIBOP_PAGE_SZB;
+	    chunk->sts = TO_SP_CHUNK;
 	    UpdateBIBOP (chunk);
 	}
 	else {
 	    chunk = FreeChunks;
 	    FreeChunks = chunk->next;
 	}
-// Uncomment the next line to enable global GC
-//	ToSpaceSz += HEAP_CHUNK_SZB;
+	ToSpaceSz += HEAP_CHUNK_SZB;
     MutexUnlock (&HeapLock);
 
   /* add to the tail of the vproc's list of to-space chunks */
@@ -144,16 +145,40 @@ void GetChunkForVProc (VProc_t *vp)
 	vp->globToSpTl = chunk;
     }
 
-    chunk->sts = VPROC_CHUNK(vp->id);
     vp->globNextW = chunk->baseAddr + WORD_SZB;
     vp->globLimit = chunk->baseAddr + chunk->szB;
 
 #ifndef NDEBUG
     if (DebugFlg)
-	SayDebug("AllocChunk: %ld Kb at %p\n", chunk->szB/1024, chunk->baseAddr);
+	SayDebug("[%2d] AllocToSpaceChunk: %ld Kb at %p\n", vp->id, chunk->szB/1024, chunk->baseAddr);
 #endif
 
 }
+
+/*! \brief Allocate a VProc's local memory object.
+ */
+VProc_t *AllocVProcMemory (int id)
+{
+    assert (VP_HEAP_SZB >= BIBOP_PAGE_SZB);
+
+    int nPages = VP_HEAP_SZB >> PAGE_BITS;
+    VProc_t *vproc = (VProc_t *)AllocMemory (&nPages, VP_HEAP_SZB);
+    if ((vproc == 0) || (nPages != (VP_HEAP_SZB >> PAGE_BITS)))
+	return 0;
+
+  /* allocate a BIBOP chunk descriptor for this object */
+    MemChunk_t *chunk = NEW(MemChunk_t);
+    if (chunk == (MemChunk_t *)0)
+	return 0;
+    chunk->baseAddr = (Addr_t)vproc;
+    chunk->szB = nPages * BIBOP_PAGE_SZB;
+    chunk->sts = VPROC_CHUNK(id);
+    UpdateBIBOP (chunk);
+
+    return vproc;
+
+}
+
 
 /* UpdateBIBOP:
  *

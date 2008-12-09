@@ -37,6 +37,7 @@ STATIC_INLINE void SetAllocPtr (VProc_t *vp)
 
 extern void HeapInit (Options_t *opts);
 extern void InitVProcHeap (VProc_t *vp);
-extern void GetChunkForVProc (VProc_t *vp);
+extern void AllocToSpaceChunk (VProc_t *vp);
+extern VProc_t *AllocVProcMemory (int id);
 
 #endif /* !_HEAP_H_ */

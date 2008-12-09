@@ -101,14 +101,9 @@ void VProcInit (Options_t *opts)
     /* allocate memory and initialize locks and condition variables for all vprocs.
      */
     for (int i = 0;  i < NumVProcs;  i++) {
-      /* allocate the VProc heap; we store the VProc representation in the base
-       * of the heap area.
-       */
-	int nBlocks = 1;
-	VProc_t *vproc = (VProc_t *)AllocMemory (&nBlocks, VP_HEAP_SZB);
-	if ((vproc == 0) || (nBlocks != 1))
+	VProc_t *vproc = AllocVProcMemory (i);
+	if (vproc == 0)
 	    Die ("unable to allocate vproc heap");
-	
 	VProcs[i] = vproc;
 	MutexInit (&(vproc->lock));
 	CondInit (&(vproc->wait));

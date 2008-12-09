@@ -49,13 +49,6 @@ extern MemChunk_t	*FromSpaceChunks; /* list of chunks is from-space */
 extern MemChunk_t	*FreeChunks;	/* list of free chunks */
 extern bool		GlobalGCInProgress; /* true, when a global GC has been initiated */
 
-/* Get a memory chunk from the free list or by allocating fresh memory; the
- * size of the chunk will be HEAP_CHUNK_SZB bytes.  The chunk is added to the
- * to-space list.
- * NOTE: this function should only be called when the HeapLock is held.
- */
-extern void GetChunkForVProc ();
-
 extern void UpdateBIBOP (MemChunk_t *chunk);
 
 extern void FreeChunk (MemChunk_t *);

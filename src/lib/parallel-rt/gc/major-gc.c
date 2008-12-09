@@ -34,7 +34,7 @@ STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
 	Word_t *nextW = (Word_t *)vp->globNextW;
 	int len = GetLength(hdr);
 	if (nextW+len >= (Word_t *)(vp->globLimit)) {
-	    GetChunkForVProc (vp);
+	    AllocToSpaceChunk (vp);
 	    nextW = (Word_t *)vp->globNextW;
 	}
 	Word_t *newObj = nextW;
