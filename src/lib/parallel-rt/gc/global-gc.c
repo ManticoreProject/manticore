@@ -49,7 +49,7 @@ STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
 	Word_t *nextW = (Word_t *)vp->globNextW;
 	int len = GetLength(oldHdr);
 	if (nextW+len >= (Word_t *)(vp->globLimit)) {
-	    GetChunkForVProc (vp);
+	    AllocToSpaceChunk (vp);
 	    nextW = (Word_t *)vp->globNextW;
 	}
      // try to install the forward pointer
@@ -155,7 +155,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
     }
 
   /* allocate the initial chunk for the vproc */
-    GetChunkForVProc (self);
+    AllocToSpaceChunk (self);
 
   /* start GC for this vproc */
     GlobalGC (self, roots);
@@ -333,10 +333,8 @@ static void ScanGlobalToSpace (
 	else if (scanPtr == (Word_t *)scanChunk->usedTop) {
 	    scanChunk = scanChunk->next;
 	    assert (scanChunk != (MemChunk_t *)0);
-	    assert ((scanChunk->baseAddr < vp->globNextW)
-		&& (vp->globNextW < scanChunk->baseAddr+scanChunk->szB));
-	    scanTop = (Word_t *)(vp->globNextW - WORD_SZB);
 	    scanPtr = (Word_t *)(scanChunk->baseAddr);
+	    scanTop = (Word_t *)(scanChunk->usedTop);
 	}
 	else
 	    scanTop = (Word_t *)(scanChunk->usedTop);
