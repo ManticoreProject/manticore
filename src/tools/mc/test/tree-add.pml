@@ -7,5 +7,8 @@ fun treeAdd t = (case t
 		   | ND(t1, t2) => treeAdd t1 + treeAdd t2
 		(* end case *))
 
-val _ = Print.printLn "enter a depth:"
-val _ = treeAdd(mkTree 20)
+val _ = (
+    Print.printLn "starting treeAdd(20)";
+    treeAdd(mkTree 20);
+    Print.printLn "finished treeAdd(20)";
+    ())
