@@ -186,7 +186,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 
 #ifndef NDEBUG
 	if (DebugFlg)
-	    SayDebug("[%2d] Initiating global GC\n", self->id);
+	    SayDebug("[%2d] Completed global GC\n", self->id);
 #endif
     }
 
