@@ -1,12 +1,10 @@
-datatype tree = LF of int | ND of (int * tree * tree)
+datatype tree = LF of int | ND of (tree * tree)
 
-fun mkTree d = if (d <= 0) then LF 1 else ND(d, mkTree(d-1), mkTree(d-1))
+fun mkTree d = if (d <= 0) then LF 1 else ND(mkTree(d-1), mkTree(d-1))
 
 fun treeAdd t = (case t
 		  of LF n => 1
-		   | ND(d, t1, t2) => (
-		     if d < 10 then Print.printLn ("treeAdd at depth "^Int.toString d) else ();
-		     treeAdd t1 + treeAdd t2)
+		   | ND(t1, t2) => treeAdd t1 + treeAdd t2
 		(* end case *))
 
 val _ = (
