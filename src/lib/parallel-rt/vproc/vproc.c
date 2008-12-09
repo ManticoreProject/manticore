@@ -244,16 +244,16 @@ void VProcWaitForSignal (VProc_t *vp)
 	exit (0);
     }
     else {
-        vp->idle = true;
 	MutexLock (&(vp->lock));
+	    vp->idle = true;
 	    while (vp->entryQ == M_NIL) {
 		CondWait (&(vp->wait), &(vp->lock));
 	    }
-	vp->idle = false;
+	    vp->idle = false;
 
 #ifndef NDEBUG
-        if (DebugFlg)
-            SayDebug("[%2d] VProcWaitForSignal: waking up; entryQ = %p\n", vp->id, ValueToRdyQItem(vp->entryQ));
+	    if (DebugFlg)
+		SayDebug("[%2d] VProcWaitForSignal: waking up; entryQ = %p\n", vp->id, ValueToRdyQItem(vp->entryQ));
 #endif
 	MutexUnlock (&(vp->lock));
 	FetchAndDec(&NumIdleVProcs);
