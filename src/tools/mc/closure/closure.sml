@@ -30,7 +30,7 @@ structure Closure : sig
             pri = [5, 0],
             obscurity = 1,
             help = "closure convert style",
-            default = ConvertStyle.Flat
+            default = ConvertStyle.FlatWithCFA
           }
 
     val () = ControlRegistry.register ClosureControls.registry {
