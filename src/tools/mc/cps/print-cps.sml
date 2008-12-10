@@ -111,6 +111,7 @@ structure PrintCPS : sig
 	  and prLambda (i, prefix, CPS.FB{f, params, rets, body}) = let
 		fun prParams params = prList' varBindToString params
 		in
+		  indent i;
 		  prl [prefix, varUseToString f, " "];
 		  pr "(";
 		  case (params, rets)
