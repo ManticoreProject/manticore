@@ -11,5 +11,5 @@ fun dot ((x1, y1, z1), (x2, y2, z2)) = f x1 x2 (f y1 y2 (f z1 z2 0));
 
 val g = f 1 2;
 
-(dot, g)
+val x = if (dot((1,2,3), (2, 3, 4)) > g 3) then Print.print "true\n" else Print.print "false"
 
