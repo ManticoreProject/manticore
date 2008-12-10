@@ -187,3 +187,27 @@ Value_t GlobalAllocNonUniform (VProc_t *vp, int nElems, ...)
     vp->globNextW += WORD_SZB * (nElems+1);
     return PtrToValue(obj);
 }
+
+/*! \brief allocate an array in the global heap
+ *  \param vp the host vproc
+ *  \param nElems the size of the array
+ *  \param elt the initial value for the array elements
+ */
+Value_t GlobalAllocArray (VProc_t *vp, int nElems, Value_t elt)
+{
+  /* the array must fit into a global chunk */
+    assert(HEAP_CHUNK_SZB > WORD_SZB*(nElems+1));
+
+    if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit) {
+	AllocToSpaceChunk(vp);
+    }
+
+    Word_t *obj = (Word_t*)(vp->globNextW);
+    obj[-1] = VEC_HDR(nElems);
+    for (int i = 0;  i < nElems;  i++) {
+	obj[i] = (Word_t)elt;
+    }
+
+    vp->globNextW += WORD_SZB * (nElems+1);
+    return PtrToValue(obj);
+}
