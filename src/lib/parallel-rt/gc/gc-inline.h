@@ -83,12 +83,6 @@ STATIC_INLINE int GetLength (Word_t hdr)
     }
 }
 
-/* return true of the given address is within the given vproc heap */
-STATIC_INLINE bool inVPHeap (Addr_t heapBase, Addr_t p)
-{
-    return (heapBase == (p & ~VP_HEAP_MASK));
-}
-
 /* return true of the given address is within the given address range */
 STATIC_INLINE bool inAddrRange (Addr_t base, Addr_t szB, Addr_t p)
 {

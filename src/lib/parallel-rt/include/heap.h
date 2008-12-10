@@ -10,6 +10,9 @@
 #include "manticore-rt.h"
 #include "vproc.h"
 
+/* size of a heap chunk */
+#define HEAP_CHUNK_SZB		((Addr_t)(4*ONE_MEG))
+
 /********** VProc local heaps **********/
 
 /* VP_HEAP_SZB */		/* defined in manticore-rt.h */
@@ -30,6 +33,12 @@ STATIC_INLINE void SetAllocPtr (VProc_t *vp)
     if (szB > MaxNurserySzB) szB = MaxNurserySzB;
     vp->nurseryBase = (top - szB);
     vp->allocPtr = vp->nurseryBase + WORD_SZB;
+}
+
+/* return true of the given address is within the given vproc heap */
+STATIC_INLINE bool inVPHeap (Addr_t heapBase, Addr_t p)
+{
+    return (heapBase == (p & ~VP_HEAP_MASK));
 }
 
 

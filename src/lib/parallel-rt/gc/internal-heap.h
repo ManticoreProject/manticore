@@ -34,8 +34,6 @@ struct struct_chunk {
 
 /********** Global heap **********/
 
-#define HEAP_CHUNK_SZB		((Addr_t)(4*ONE_MEG))
-
 extern Mutex_t		HeapLock;	/* lock for protecting heap data structures */
 extern Addr_t		GlobalVM;	/* amount of memory allocated to Global heap */
 					/*  (includingfree chunks). */

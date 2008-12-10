@@ -10,7 +10,6 @@
 #include "vproc.h"
 #include "value.h"
 #include "heap.h"
-#include "../gc/gc-inline.h"
 #include <sys/time.h>
 #include <math.h>
 
@@ -289,22 +288,7 @@ void M_SeedRand ()
  */
 Value_t M_NewArray (VProc_t *vp, int nElems, Value_t elt)
 {
-
-  /* the array must fit into a global chunk */
-    assert((vp->globLimit-vp->globNextW) > WORD_SZB*(nElems+1));
-
-    if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit) {
-	AllocToSpaceChunk(vp);
-    }
-
-    Word_t *obj = (Word_t*)(vp->globNextW);
-    obj[-1] = VEC_HDR(nElems);
-    for (int i = 0;  i < nElems;  i++) {
-	obj[i] = (Word_t)elt;
-    }
-
-    vp->globNextW += WORD_SZB * (nElems+1);
-    return PtrToValue(obj);
+    return GlobalAllocArray (vp, nElems, elt);
 }
 
 float M_Powf (float x, float y)
