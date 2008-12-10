@@ -50,7 +50,7 @@ structure PrintCPS : sig
 		      prExp (i, e))
 		  | CPS.Fun(fb::fbs, e) => (
 		      prLambda(i, "fun ", fb);
-		      List.app (fn fb => prLambda(i, "and ", fb)) fbs;
+		      List.app (fn fb => (indent i; prLambda(i, "and ", fb))) fbs;
 		      prExp (i, e))
 		  | CPS.Fun _ => raise Fail "empty function binding"
 		  | CPS.Cont(fb, e) => (prLambda(i, "cont ", fb); prExp (i, e))
@@ -111,7 +111,6 @@ structure PrintCPS : sig
 	  and prLambda (i, prefix, CPS.FB{f, params, rets, body}) = let
 		fun prParams params = prList' varBindToString params
 		in
-		  indent i;
 		  prl [prefix, varUseToString f, " "];
 		  pr "(";
 		  case (params, rets)
@@ -140,7 +139,7 @@ structure PrintCPS : sig
 	  in
 	    prl ["(* CPS *)\nmodule ", Atom.toString name, "\n"];
 	    List.app prExtern externs;
-	    prLambda (2, "  fun ", body)
+	    prLambda (1, "fun ", body)
 	  end
 
     fun print m = output (TextIO.stdErr, m)
