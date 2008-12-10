@@ -8,6 +8,7 @@ structure CPSUtil : sig
 
     val appRHS : (CPS.var -> unit) -> CPS.rhs -> unit
     val mapRHS : (CPS.var -> CPS.var) -> CPS.rhs -> CPS.rhs
+    val varsOfRHS : CPS.rhs -> CPS.var list
 
     val rhsToString : CPS.rhs -> string
 
@@ -51,6 +52,22 @@ structure CPSUtil : sig
 	    | C.HostVProc => rhs
 	    | C.VPLoad(n, x) => C.VPLoad(n, f x)
 	    | C.VPStore(n, x, y) => C.VPStore(n, f x, f y)
+	  (* end case *))
+
+    fun varsOfRHS rhs = (case rhs
+	   of C.Var xs => xs
+	    | C.Cast(ty, x) => [x]
+	    | C.Const(lit, ty) => []
+	    | C.Select(i, x) => [x]
+	    | C.Update(i, x, y) => [x, y]
+	    | C.AddrOf(i, x) => [x]
+	    | C.Alloc(_, xs) => xs
+	    | C.Promote x => [x]
+	    | C.Prim p => PrimUtil.varsOf p
+	    | C.CCall(cf, xs) => cf::xs
+	    | C.HostVProc => []
+	    | C.VPLoad(n, x) => [x]
+	    | C.VPStore(n, x, y) => [x, y]
 	  (* end case *))
 
     fun rhsToString (C.Var xs) = concat["Var(", vl2s xs, ")"]
