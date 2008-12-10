@@ -28,9 +28,12 @@ functor CPSOptFn (Spec : TARGET_SPEC) : sig
     val cfa = analyze {passName = "cfa", pass = CFACPS.analyze}
 
   (* wrap transformation passes with keep controls *)
+    val eta = transform {passName = "eta", pass = EtaExpand.transform}
+    val arity = transform {passName = "flatten", pass = ArityRaising.transform}
 
     fun optimize module = let
 	  val _ = census module
+	  val module = eta module
           val _ = cfa module
 	  val module = ArityRaising.transform module
           val _ = CFACPS.clearInfo module

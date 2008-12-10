@@ -26,4 +26,5 @@ is
   census.sml
   cps-opt-controls.sml
   cps-opt-fn.sml
+  eta-expand.sml
 
