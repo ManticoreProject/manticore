@@ -68,6 +68,7 @@ STATIC_INLINE Value_t Some (VProc_t *vp, Value_t a)
 /* heap allocation in the global heap */
 extern Value_t GlobalAllocUniform (VProc_t *vp, int nItems, ...);
 extern Value_t GlobalAllocNonUniform (VProc_t *vp, int nItems, ...);
+extern Value_t GlobalAllocArray (VProc_t *vp, int nElems, Value_t elt);
 
 STATIC_INLINE Value_t GlobalCons (VProc_t *vp, Value_t a, Value_t b)
 {
