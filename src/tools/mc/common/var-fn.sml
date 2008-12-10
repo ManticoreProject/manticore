@@ -36,6 +36,7 @@ signature VAR =
   (* operations of use counts *)
     val useCount : var -> int
     val clrCount : var -> unit
+    val setCount : (var * int) -> unit
     val addToCount : (var * int) -> unit
 
     val same : (var * var) -> bool
@@ -103,6 +104,7 @@ functor VarFn (VP : VAR_PARAMS) : VAR =
 
     fun clrCount (V{useCnt, ...}) = (useCnt := 0)
     fun useCount (V{useCnt, ...}) = !useCnt
+    fun setCount (V{useCnt, ...}, n) = (useCnt := n)
     fun addToCount (V{useCnt, ...}, n) = (useCnt := !useCnt + n)
 
     fun same (V{id=a, ...}, V{id=b, ...}) = Stamp.same(a, b)
