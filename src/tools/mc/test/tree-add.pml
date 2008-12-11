@@ -11,7 +11,7 @@ fun treeAdd t = (case t
 		   | ND(d, t1, t2) => treeAdd t1 + treeAdd t2
 		(* end case *))
 
-val n = 15
+val n = 18
 
 (* test global GC by allocating a large binary tree. we estimate the number of bytes to represent the tree. 
  * - node: 36 bytes
@@ -19,8 +19,8 @@ val n = 15
  * thus, the size of the tree in bytes is roughly 2^d-1 * 36 + 2^d * 20 bytes
  *)
 val _ = (
-    Print.printLn "starting treeAdd("^Int.toString n^")";
-    let val t = mkTree sz
+    Print.printLn("starting treeAdd("^Int.toString n^")");
+    let val t = mkTree n
     in
       Print.printLn "constructed tree";
       Print.printLn("treeAdd()="^Int.toString (treeAdd t));
