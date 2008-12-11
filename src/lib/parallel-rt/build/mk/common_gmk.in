@@ -44,8 +44,7 @@ GC_SRCS = 	minor-gc.c \
 		global-gc.c \
 		heap.c \
 		unix-memory.c \
-		alloc.c \
-		gc-debug.c
+		alloc.c
 
 VPROC_SRCS =	vproc.c
 
@@ -64,6 +63,7 @@ endif
 ifeq ($(ENABLE_DEBUG),true)
   CPPFLAGS += -DNO_INLINE
   CFLAGS += -g3
+  GC_SRCS += gc-debug.c
 else
   CPPFLAGS += -DNDEBUG
   CFLAGS += -O2
