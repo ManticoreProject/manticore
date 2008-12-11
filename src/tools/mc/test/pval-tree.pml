@@ -45,10 +45,11 @@ val t3 = gettimeofday();
 val ptupTime = t1-t0;
 val pvalTime = t3-t2;
 
-(print "Time for ptup product: ";
- print (dtos ptupTime);
- print "\n";
- print "Time for pval product: ";
- print (dtos pvalTime);
- print "\n")
+val () = (
+      Print.print "Time for ptup product: ";
+      Print.print (dtos ptupTime);
+      Print.print "\n";
+      Print.print "Time for pval product: ";
+      Print.print (dtos pvalTime);
+      Print.print "\n")
 
