@@ -22,7 +22,7 @@ structure SPIN_LOCK_NAME =
 		    return(mask)
 		else apply spin()
 	      else (* spin *)
-		(* do Pause() (* allow other hardware threads to run *) *)
+		do Pause() (* allow other hardware threads to run *)
 		  apply spin()
 	do vpstore(ATOMIC, host_vproc, PT.true)
         apply spin()
