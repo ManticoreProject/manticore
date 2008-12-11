@@ -55,20 +55,20 @@ structure Array64 =
 	return(x)
       ;
 
-      define @array-w (arg : [PT.ml_int, any] / exh : exh) : array =
+      define @array-w (arg : [ml_int, any] / exh : exh) : array =
 	@array(#0(#0(arg)), #1(arg) / exh)
       ;
 
-      define @length-w (arr : array / exh : exh) : PT.ml_int =
+      define @length-w (arr : array / exh : exh) : ml_int =
 	let len : int = @length(arr / exh)
 	return(alloc(len))
       ;
 
-      define @sub-w (arg : [array, PT.ml_int] / exh : exh) : any =
+      define @sub-w (arg : [array, ml_int] / exh : exh) : any =
 	@sub(#0(arg), #0(#1(arg)) / exh)
       ;
 
-      define @update-w (arg : [array, PT.ml_int, any] / exh : exh) : PT.unit =
+      define @update-w (arg : [array, ml_int, any] / exh : exh) : PT.unit =
 	do @update(#0(arg), #0(#1(arg)), #2(arg) / exh)
 	return(UNIT)
       ;
