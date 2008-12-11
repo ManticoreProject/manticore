@@ -129,7 +129,9 @@ structure ReportHTML = struct
 		       map goal (U.alphasort getGoalName r))
     in
       (* Assumption: there will be a file results.css in the same directory as the output. *)
-      H.htdoc (title ^ " " ^ d, ["./results.css"], body)
+      if T.nullReport r
+      then (print "null report\n"; raise Fail "null report")
+      else H.htdoc (title ^ " " ^ d, ["./results.css"], body)
     end
     
 end

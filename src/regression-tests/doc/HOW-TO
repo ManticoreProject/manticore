@@ -68,13 +68,14 @@ The run-tests command-line tool has two options.
 
   -m (--mc) PATH           path to the Manticore compiler
   -c (--local-copy) FILE   a location to write the HTML report to
+  -d (--directory) PATH    run only the tests in the named directory
 
-If no Manticore compiler is specified with the m option, the system
-assumes that "mc" is in your path and juts calls it straight.
+If no Manticore compiler is specified with the -m option, the system
+assumes that "mc" is in your path and just calls it straight.
 
-The latter option is the name of a file where you'd like the test
-results file to go in addition to the default location given
-above. For example, I (Adam) run this command as follows:
+The -c option is the name of a file where you'd like the test results
+file to go in addition to the default location given above. For
+example, I (Adam) run this command as follows:
 
   ./run-tests -c ~/MCResults/results.html
 
@@ -124,14 +125,14 @@ KNOWN ISSUES
 - BUG: The system checks the manticore revision, but *doesn't* make
 sure the build of the compiler corresponds.
 
-- Bug or feature? There is no way to test a program that should crash.
+- There is no way to test a program that should crash.
 
 - It might be worth considering whether backends other than HTML would
 be desirable.
 
-- Paths and filenames are not yet all abstracted away from particular
-syntactic conventions. i.e., I should be using OS.Path.joinBaseExt
-instead of (b ^ "." ^ e).
+- In the source code, paths and filenames are not yet all abstracted
+away from particular syntactic conventions. i.e., I should be using
+OS.Path.joinBaseExt instead of (b ^ "." ^ e).
 
 --
 

@@ -234,4 +234,7 @@ Date.toString:
 (* readTestResult : string -> test_result *)
   val readTestResult = read test_resultFromString
 
+(* nullReport : report -> bool *)
+  fun nullReport r = List.null r
+
 end

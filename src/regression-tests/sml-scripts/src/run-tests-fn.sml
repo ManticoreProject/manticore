@@ -110,15 +110,20 @@ functor RunTestsFn (L : COMPILER) = struct
       T.G (readme, map mk ts)
     end
 
-(* run : unit -> T.report *)
-  fun run () = let
+(* run : string option -> T.report *)
+  fun run optDir = let
     val quickie = false (* set this to true to do just a few tests *)
     val now = Date.fromTimeLocal (Time.now ())
     val ver = U.currentRevision ()
     (* val _ = (print Locations.goalsDir; print "\n"; raise Fail "stop") *)
-    val goals = U.dirsWithin Locations.goalsDir
     val noHidden = List.filter (not o (String.isPrefix ".") o OS.Path.file)
-    val goals' = if quickie then [hd (noHidden goals)] else noHidden goals
+    val goals = noHidden (U.dirsWithin Locations.goalsDir)
+    val goals' = if quickie 
+		 then [hd goals] 
+		 else (case optDir
+                         of NONE => goals
+			  | SOME dir => List.filter (fn g => OS.Path.file g = dir) goals
+		         (* end case *))
     in
       map (runGoal (now, ver)) goals'
     end 

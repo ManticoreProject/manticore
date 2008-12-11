@@ -34,51 +34,54 @@ structure Main = struct
     println "usage: run-tests [options]";
     println "  options:";
     println "    -c <file> (specify local copy of html results)";
+    println "    -d <dir>  (only test this specified goal directory)";
     println "    -m <path> (specify location of mc)"; 
     raise Fail (case optMsg of SOME msg => msg | NONE => ""))
 
 (* main : string * string list -> OS.Process.status *)
 (* Run the tests and generate HTML reports for all named files. *)
   fun main (progname, args) = let
-    (* build infrastructure for command-line options, including local state *)
+    (* infrastructure for command-line options, including some local state *)
     val mcPath = ref "mc"
     val htdocs = ref [L.defaultRpt]
+    val oneDir = (ref NONE) : string option ref
     fun noteMC path = (mcPath := path; path)
     fun noteLocal path = (htdocs := (!htdocs)@[path]; path)
-    fun mkOpt(s,l,act,h) = {short=s, long=[l], desc=G.ReqArg(act,"FILE"), help=h}
+    fun noteDir d = (oneDir := SOME d; d)
+    fun mkOpt (s, l, act, h) = {short=s, long=[l], desc=G.ReqArg(act,"FILE"), help=h}
     val opts = [
       mkOpt ("m", "mc", noteMC, "mc path"),
-      mkOpt ("c", "local-copy", noteLocal, "local copy of html output") 
+      mkOpt ("c", "local-copy", noteLocal, "local copy of html output"),
+      mkOpt ("d", "directory", noteDir, "directory")
     ]
     fun failWith s = raise Fail s
-    val (opts, nonOpts) = 
-      G.getOpt {argOrder=G.RequireOrder, options=opts, errFn=failWith} args
-    val _ = (case nonOpts 
-	       of [] => () 
-		| _ => let 
-                    val msg = space ("run-tests: unexpected command-line argument(s) =>"::nonOpts)
-                    in
-		      usage (SOME msg)
-                    end
-	       (* end case *))
+    val (opts, nonOpts) = G.getOpt {argOrder=G.RequireOrder, options=opts, errFn=failWith} args
+	                  handle Fail s => (usage (SOME s))
     (* run the report and generate HTML *)
-    val _       = MC.setCompilerPath (!mcPath)
-    val _       = println "running tests..."
-    val rpt     = R.run ()
-    val hrpt    = ReportHTML.mkReport rpt   
-    fun write f = let
-      val f' = if existingDir f 
-	       then OS.Path.joinDirFile {dir=f, file="results.html"}
-	       else f
-      in
-	println ("generating html report in " ^ f');
-	MiniHTML.toFile (hrpt, f')
-      end
+    val _ = MC.setCompilerPath (!mcPath)
+    val _ = println "running tests..."
+    val rpt = R.run (!oneDir)
     in
-      ArchiveReport.report rpt;
-      Report.mkReport rpt;
-      app write (!htdocs);
-      OS.Process.success 
+      if Tests.nullReport rpt
+      then (println ("no tests to run in directory " ^ valOf (!oneDir));
+	    OS.Process.success)
+      else let
+        val hrpt = ReportHTML.mkReport rpt   
+        fun write f = let
+	  val f' = if existingDir f 
+		   then OS.Path.joinDirFile {dir=f, file="results.html"}
+		   else f
+	  in
+	    println ("generating html report in " ^ f');
+	    MiniHTML.toFile (hrpt, f')
+	  end
+        in
+	  ArchiveReport.report rpt;
+	  Report.mkReport rpt;
+	  app write (!htdocs);
+	  println "done";
+	  OS.Process.success 
+	end
     end
 
 end

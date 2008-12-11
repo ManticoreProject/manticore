@@ -15,7 +15,7 @@ fun catw (sep, ss) =
       | L.CONS(s, ss) => s ^ sep ^ (catw (sep, ss))
     (* end case *))
 
-val s = catw (",", List.map (Int.toString, list))
+val s = catw (",", List.map Int.toString list)
 
 val _ = Print.printLn ("[" ^ s ^ "]")
 
