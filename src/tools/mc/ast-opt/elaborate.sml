@@ -53,11 +53,11 @@ structure Elaborate : sig
     and trTyScheme (T.TyScheme (tvs, t)) = T.TyScheme (tvs, trTy t)
 
   (* trExp : exp -> exp *)
-    and trExp (A.LetExp (b, e)) = A.LetExp (binding b, trExp e)
+    and trExp (A.LetExp (b, e)) = A.LetExp (trBinding b, trExp e)
       | trExp (A.IfExp (e1, e2, e3, t)) = A.IfExp (trExp e1, trExp e2, trExp e3, trTy t)
-      | trExp (A.CaseExp (e, ms, t)) = A.CaseExp (trExp e, map match ms, trTy t)
+      | trExp (A.CaseExp (e, ms, t)) = A.CaseExp (trExp e, map trMatch ms, trTy t)
       | trExp (A.PCaseExp (es, pms, t)) = trPCase (map trExp es, pms, trTy t)
-      | trExp (A.HandleExp (e, ms, t)) = A.HandleExp (trExp e, map match ms, trTy t)
+      | trExp (A.HandleExp (e, ms, t)) = A.HandleExp (trExp e, map trMatch ms, trTy t)
       | trExp (A.RaiseExp (e, t)) = A.RaiseExp (trExp e, trTy t)
       | trExp (A.FunExp (x, e, t)) = A.FunExp (trVar x, trExp e, trTy t)
       | trExp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (trExp e1, trExp e2, trTy t)
@@ -80,22 +80,23 @@ structure Elaborate : sig
 	     of SOME e => e
 	      | NONE => v) *)
       | trExp (A.SeqExp (e1, e2)) = A.SeqExp (trExp e1, trExp e2)
-      | trExp (ov as A.OverloadExp xRef) = (xRef := overload_var (!xRef); ov)
+      | trExp (ov as A.OverloadExp xRef) = (xRef := trOverloadVar (!xRef); ov)
       | trExp (A.ExpansionOptsExp (opts, e)) = A.ExpansionOptsExp (opts, trExp e)
 
 (*    withtype var = (var_kind, ty_scheme ref) VarRep.var_rep *)
 
     and trVar x = let
-      val (VarRep.V {ty, ...}) = x
+      val y = RopeOps.tr x
+      val (VarRep.V {ty, ...}) = y
       in
-        (ty := ref (trTyScheme (!(!ty))); x)
+        (ty := ref (trTyScheme (!(!ty))); y)
       end
 
-    and binding (A.ValBind (p, e)) = A.ValBind (trPat p, trExp e)
-      | binding (A.PValBind (p, e)) = A.PValBind (trPat p, trExp e)
-      | binding (A.FunBind lams) = A.FunBind (map lambda lams)
-      | binding (A.PrimVBind (v, prim)) = A.PrimVBind (trVar v, prim)
-      | binding (A.PrimCodeBind pc) = A.PrimCodeBind pc
+    and trBinding (A.ValBind (p, e)) = A.ValBind (trPat p, trExp e)
+      | trBinding (A.PValBind (p, e)) = A.PValBind (trPat p, trExp e)
+      | trBinding (A.FunBind lams) = A.FunBind (map trLambda lams)
+      | trBinding (A.PrimVBind (v, prim)) = A.PrimVBind (trVar v, prim)
+      | trBinding (A.PrimCodeBind pc) = A.PrimCodeBind pc
 
     and trPat (A.ConPat (c, ts, p)) = A.ConPat (c, map trTy ts, trPat p)
       | trPat (A.TuplePat ps) = A.TuplePat (map trPat ps)
@@ -103,13 +104,13 @@ structure Elaborate : sig
       | trPat (A.WildPat t) = A.WildPat (trTy t)
       | trPat (k as A.ConstPat _) = k
 
-    and overload_var (A.Unknown (t, xs)) = A.Unknown (trTy t, xs)
-      | overload_var (x as A.Instance _) = x 
+    and trOverloadVar (A.Unknown (t, xs)) = A.Unknown (trTy t, xs)
+      | trOverloadVar (x as A.Instance _) = x 
 
-    and lambda (A.FB (f, x, e)) = A.FB (f, x, trExp e)
+    and trLambda (A.FB (f, x, e)) = A.FB (f, x, trExp e)
 
-    and match (A.PatMatch (p, e)) = A.PatMatch (p, trExp e)
-      | match (A.CondMatch (p, e1, e2)) = A.CondMatch (p, trExp e1, trExp e2)
+    and trMatch (A.PatMatch (p, e)) = A.PatMatch (p, trExp e)
+      | trMatch (A.CondMatch (p, e1, e2)) = A.CondMatch (p, trExp e1, trExp e2)
 
     and trPTup arg = TranslatePtup.tr trExp arg
 
