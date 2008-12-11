@@ -27,7 +27,7 @@ val () = (
     let val arr = alloc n
     in
 	Print.printLn "incrementing each element of the array";
-	incn(n*10, arr, 1024);
+	incn(n*20, arr, 1024);
 	Print.print "summing the array elements=";
 	Print.printLn(Int.toString(sum(n, arr)));
 	()
