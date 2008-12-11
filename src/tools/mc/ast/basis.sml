@@ -64,6 +64,7 @@ structure Basis : sig
     val list_append	: AST.var
     val string_concat	: AST.var
     val parray_sub      : AST.var
+    val parray_len      : AST.var
     val int_div		: AST.var
     val int_gt		: AST.var
     val int_gte		: AST.var
@@ -234,6 +235,7 @@ structure Basis : sig
 	    end))
     val string_concat = monoVar("string-concat2", stringTy ** stringTy --> stringTy)
     val parray_sub = polyVar("parray-sub", fn tv => (parrayTy tv) ** intTy --> tv)
+    val parray_len = polyVar("parray-len", fn tv => (parrayTy tv) --> intTy)
 
     local
       fun name a = "int-" ^ a

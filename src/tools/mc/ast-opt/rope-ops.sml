@@ -18,9 +18,12 @@ structure RopeOps : sig
 	 | _ => raise Fail ("rope operator " ^ opname ^ " not found in basis")
         (* end case *))
 
-    fun tr x = 
-      if Var.same (x, Basis.parray_sub) then
-        ropeOp "sub"
-      else x
+    fun tr x = let
+      fun xeq y = Var.same (x, y)
+      in
+        if      xeq Basis.parray_sub then ropeOp "sub"
+	else if xeq Basis.parray_len then ropeOp "length"
+	else x
+      end
 
   end
