@@ -221,6 +221,7 @@ structure Tests =
     _primcode (
       define @test1 (/ exh : PT.exh) : PT.bool =
 	cont exit () = return(FALSE)
+(* FIXME: pmlvar is broken *)
 	let fib : fun(PT.ml_int / PT.exh -> PT.ml_int) = pmlvar fib
 	let arg : PT.ml_int = alloc(25)
 	let b : ![PT.bool] = alloc(TRUE)
@@ -266,6 +267,7 @@ structure Tests =
     _primcode (
       define @messenger-test (x : PT.unit / exh : PT.exh) : PT.unit =
 	let vps : List.list = ccall ListVProcs(host_vproc)
+(* FIXME: pmlvar is broken *)
 	let nth : fun([PT.ml_int, List.list] / PT.exh -> Option.option) = pmlvar List.nth
 	let vp2 : Option.option = apply nth(alloc(alloc(3), vps) / exh)
 	case vp2
