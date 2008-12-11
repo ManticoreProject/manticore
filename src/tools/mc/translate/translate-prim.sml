@@ -541,6 +541,65 @@ structure TranslatePrim : sig
 			 "BOM type = "^BOMTyUtil.toString bomTy,
 			 "PML type = "^BOMTyUtil.toString pmlTy
 			])
+
+  (* lifting utility for inline BOM functions *)
+(* TODO: finish this implementation *)
+    local 
+
+  (* create an expressin that selects the ith element from the tuple x *)
+    fun select (i, x) = raise Fail "todo"
+
+  (* lift the parameters of a BOM function to PML *)
+    fun liftPrimParams (params, pmlParamTys, bomParamTys) = let
+        (* lift a parameter based on the type *)
+	  fun liftParam (param, pmlParamTy, bomParamTy) = (
+	        case (pmlParamTy, bomParamTy)
+		 of (BOMTy.T_Tuple(_, [BOMTy.T_Raw BOMTy.T_Int]), BOMTy.T_Int) => select(0, param)
+		  | _ => raise Fail "todo"
+            	(* end case *))
+          in
+	    case (params, pmlParamTys, bomParamTys)
+	     of ([param], [pmlParamTy], [bomParamTy]) => liftParam(param, pmlParamTy, bomParamTy)
+	      | (params, pmlParamTys, bomParamTys) => raise Fail "todo"
+             (* end case *)
+          end
+
+    in
+  (* utility for lifting an inline BOM function to a PML function, i.e.,
+
+      define @length (arr : array / exh : exh) : int =
+	...
+      ;
+
+      val length : array -> int = _lift_prim(@length)
+
+      ===>
+
+      define @length (arr : array / exh : exh) : int =
+	...
+      ;
+
+      define @length-w (arr : array / exh : exh) : ml_int =
+	let len : int = @length(arr / exh)
+	return(alloc(len))
+      ;
+
+      val length : array -> int = _lift_prim(@length-w)
+   *)
+    fun liftPrim (name, pmlTy, params, exh, bomParamTys, bomExnTys, bomRetTy) = let
+	  val pmlFunTy as BOMTy.T_Fun(pmlParamTys, pmlExnTys, [pmlRetTy]) = TranslateTypes.tr(getTranslateEnv(), pmlTy)
+	  val params' = List.map BV.copy params
+	  val exh' = List.map BV.copy exh
+	  val wrapper = BV.new(BV.nameOf name^"-wrapper", pmlFunTy)
+	  val wrapperBody = let
+	        val args = liftPrimParams(params, pmlParamTys, bomParamTys)
+	        in
+	          raise Fail "todo"
+	        end
+          in
+	    BOM.FB{f=wrapper, params=params', exh=exh', body=wrapperBody}
+	  end
+    end  (* local *)
   
     fun cvtRhs (env, x, pmlTy, rhs) = withTranslateEnv env (fn () => let
 	  val x' = BOM.Var.new(Var.nameOf x, TranslateTypes.trScheme(env, pmlTy))
