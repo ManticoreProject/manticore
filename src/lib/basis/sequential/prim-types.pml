@@ -11,8 +11,13 @@ structure PrimTypes =
 
     _primcode (
 
+    (* mutable 1-D arrays *)
+      typedef array = [
+                any,                  (* array data *)
+                int                   (* number of elements in the array *)
+              ];
+
       typedef fiber = cont(unit);
-      typedef array = any;
       typedef fiber_fun = fun (unit / exh -> unit);
     (* function that spawns a fiber on a particular scheduler *)
       typedef spawn_fn = fun (fiber / exh -> );

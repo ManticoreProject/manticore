@@ -8,4 +8,4 @@ fun pr n = let
     Print.print (s ^ "\n")
   end;
 
-val _ = Array64.app (pr, a)
+val _ = Array64.app pr a
