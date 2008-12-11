@@ -42,7 +42,7 @@ structure Array64 =
        (* since the array is in the global heap, x must also be in the global heap *)
 	let x : any = (any)x
 	let x : any = promote(x)
-	let x : PT.bool  = ArrayStoreI64(data, i, x)
+	let x : unit  = ArrayStoreI64(data, i, x)
 	return()
       ;
 
