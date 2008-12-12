@@ -19,11 +19,12 @@ static Mutex_t		GCLock;
 static Cond_t		LeaderWait;
 static Cond_t		FollowerWait;	// followers block on this until the leader starts the GC
 static int		nReadyForGC;	// number of vprocs that are ready for GC
+static int		nParticipants;	// number of vprocs participating in the GC
 static Barrier_t	GCBarrier;	// for synchronizing on GC completion
 
 static void GlobalGC (VProc_t *vp, Value_t **roots);
 static void ScanVProcHeap (VProc_t *vp);
-static void ScanGlobalToSpace (VProc_t *vp, MemChunk_t *scanChunk, Word_t *scanPtr);
+static void ScanGlobalToSpace (VProc_t *vp);
 
 
 /* Return true if a value is a from-space pointer.  Note that this function relies on
@@ -65,7 +66,7 @@ STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
 	    return PtrToValue(newObj);
 	}
 	else {
-	  // some other vprc forwarded the object, so return the forwarded
+	  // some other vproc forwarded the object, so return the forwarded
 	  // object.
 	    assert (isForwardPtr(hdr));
 	    return PtrToValue(GetForwardPtr(hdr));
@@ -73,6 +74,18 @@ STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
     }
 
 }
+
+STATIC_INLINE Word_t *ScanTop (VProc_t *vp, MemChunk_t *scanChunk)
+{
+    if (vp->globToSpTl == scanChunk)
+      /* NOTE: we must subtract WORD_SZB here because globNextW points to the first
+       * data word of the next object (not the header word)!
+       */
+	return (Word_t *)(vp->globNextW - WORD_SZB);
+    else
+	return (Word_t *)(scanChunk->usedTop);
+}
+
 
 /* \brief initialize the data structures that support global GC
  */
@@ -99,7 +112,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	if (GlobalGCInProgress) {
 	  /* some other vproc has already started the GC */
 	    leaderVProc = false;
-	    if (++nReadyForGC == NumVProcs)
+	    if (++nReadyForGC == nParticipants)
 		CondSignal (&LeaderWait);
 	    CondWait (&FollowerWait, &GCLock);
 	}
@@ -112,6 +125,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	    GlobalGCInProgress = true;
 	    leaderVProc = true;
 	    nReadyForGC = 0;
+/* FIXME: we probably should initialize nParticipants here, instead of down below! */
 	}
       /* add the vproc's pages to the from-space list */
 	MemChunk_t *p = self->globToSpTl;
@@ -130,32 +144,34 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
     self->globToSpHd = (MemChunk_t *)0;
 
     if (leaderVProc) {
-	int numParticipants = 1;
       /* reset the size of to-space */
 	ToSpaceSz = 0;
       /* signal the vprocs that global GC is starting and then wait for them
        * to be ready.
        */
-	for (int i = 0;  i < NumVProcs;  i++) {
-	  /* FIXME: this protocol would allow the following situation: just before reaching this
-	   * point VProcs[i] is woken up (see vproc.c:247). Before the idle flag becomes false we 
-	   * reach the test below and identify the vproc as idle. Thus, this ith vproc could 
-	   * execute in parallel with the parallel GC, which would certainly result in memory corruption.
-	   */
-	    if ((VProcs[i] != self) && (! VProcs[i]->idle)) {
-		numParticipants++;
-		VProcSignal (VProcs[i], GCSignal);
+	MutexLock (&GCLock);
+	    nParticipants = 1;
+	    for (int i = 0;  i < NumVProcs;  i++) {
+	      /* FIXME: this protocol would allow the following situation: just before reaching this
+	       * point VProcs[i] is woken up (see vproc.c:247). Before the idle flag becomes false we 
+	       * reach the test below and identify the vproc as idle. Thus, this ith vproc could 
+	       * execute in parallel with the parallel GC, which would certainly result in memory corruption.
+	       */
+		if ((VProcs[i] != self) && (! VProcs[i]->idle)) {
+		    nParticipants++;
+		    VProcSignal (VProcs[i], GCSignal);
+		}
 	    }
-	}
-	BarrierInit (&GCBarrier, numParticipants);
+	MutexUnlock (&GCLock);
+	BarrierInit (&GCBarrier, nParticipants);
       /* wait for follower vprocs */
-	if (numParticipants > 1) {
+	if (nParticipants > 1) {
 	  /* wait for the followers to be ready */
-	  MutexLock (&GCLock);
-	      CondWait (&LeaderWait, &GCLock);
-	  MutexUnlock (&GCLock);
+	    MutexLock (&GCLock);
+		CondWait (&LeaderWait, &GCLock);
+	    MutexUnlock (&GCLock);
 	  /* release followers to start GC */
-	  CondBroadcast (&FollowerWait);
+	    CondBroadcast (&FollowerWait);
 	}
     }
 
@@ -198,9 +214,6 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
  */
 static void GlobalGC (VProc_t *vp, Value_t **roots)
 {
-    MemChunk_t	*scanChunk = vp->globToSpHd;
-    Word_t	*scanPtr = (Word_t *)(scanChunk->baseAddr);
-
     LogGlobalGCVPStart (vp);
 
 #ifndef NDEBUG
@@ -219,7 +232,7 @@ static void GlobalGC (VProc_t *vp, Value_t **roots)
     ScanVProcHeap (vp);
 
   /* scan to-space chunks */
-    ScanGlobalToSpace (vp, scanChunk, scanPtr);
+    ScanGlobalToSpace (vp);
 
     LogGlobalGCVPDone (vp, 0/*FIXME*/);
 
@@ -277,24 +290,12 @@ static void ScanVProcHeap (VProc_t *vp)
 
 /*! \brief Scan the to-space objects that have been copied by this vproc
  *  \param vp the vproc doing the scanning
- *  \param scanChunk 
- *  \param scanPtr
  */
-static void ScanGlobalToSpace (
-    VProc_t *vp,
-    MemChunk_t *scanChunk,
-    Word_t *scanPtr)
+static void ScanGlobalToSpace (VProc_t *vp)
 {
-    Word_t	*scanTop;
-
-    if (vp->globToSpTl == scanChunk) {
-      /* NOTE: we must subtract WORD_SZB here because globNextW points to the first
-       * data word of the next object (not the header word)!
-       */
-	scanTop = (Word_t *)(vp->globNextW - WORD_SZB);
-    }
-    else
-	scanTop = (Word_t *)(scanChunk->usedTop);
+    MemChunk_t	*scanChunk = vp->globToSpHd;
+    Word_t	*scanPtr = (Word_t *)(scanChunk->baseAddr);
+    Word_t	*scanTop = ScanTop(vp, scanChunk);
 
     do {
 	while (scanPtr < scanTop) {
@@ -339,7 +340,7 @@ static void ScanGlobalToSpace (
 	    scanChunk = scanChunk->next;
 	    assert (scanChunk != (MemChunk_t *)0);
 	    scanPtr = (Word_t *)(scanChunk->baseAddr);
-	    scanTop = (Word_t *)(scanChunk->usedTop);
+	    scanTop = ScanTop(vp, scanChunk);
 	}
 	else
 	    scanTop = (Word_t *)(scanChunk->usedTop);
