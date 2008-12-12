@@ -393,28 +393,30 @@ structure CFACPS : sig
    *)
     fun computeFunInfo body = let
           fun computeExp (e, srcVar) = let
-		fun doCall f = let
-		    (* add srcVar to the callers of dstVar *)
-		      fun add dstVar = (case callersOf dstVar
-			     of Unknown => ()
-			      | Known s => setCallers(dstVar, Known(VSet.add(s, srcVar)))
-			    (* end case *))
-		      val fEq = getEquivFns f
-		    (* merge equivalance sets *)
-		      fun merge g = let
-			    fun unify (vs1, vs2) =
-				  if VSet.isEmpty vs1 orelse VSet.isEmpty vs2
-				    then VSet.empty
-				    else VSet.union(vs1, vs2)
+		fun doCall f = (case getValue f
+		       of LAMBDAS gs => let
+			    val (gs as g::r) = VSet.listItems gs
+			  (* add srcVar to the callers of dstVar *)
+			    fun add dstVar = (case callersOf dstVar
+				   of Unknown => ()
+				    | Known s => setCallers(dstVar, Known(VSet.add(s, srcVar)))
+				  (* end case *))
+			    val gEq = getEquivFns g
+			  (* merge equivalance sets *)
+			    fun merge h = let
+				  fun unify (vs1, vs2) =
+					if VSet.isEmpty vs1 orelse VSet.isEmpty vs2
+					  then VSet.empty
+					  else VSet.union(vs1, vs2)
+				  in
+				    ignore (URef.unify unify (gEq, getEquivFns h))
+				  end
 			    in
-			      ignore (URef.unify unify (fEq, getEquivFns g))
+			      List.app add gs;
+			      List.app merge r
 			    end
-		      in
-			case getValue f
-			 of LAMBDAS fs => (VSet.app add fs; VSet.app merge fs)
-			  | _ => ()
-			(* end case *)
-		      end
+			| _ => ()
+		      (* end case *))
                 fun doExp (CPS.Exp(_, t)) = (case t
 		       of (CPS.Let(_, _, e)) => doExp e
 			| (CPS.Fun(fbs, e)) => (List.app computeLambda fbs; doExp e)
