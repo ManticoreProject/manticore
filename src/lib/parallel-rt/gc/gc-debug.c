@@ -11,13 +11,22 @@
 #include "gc.h"
 #include "vproc.h"
 #include "gc-inline.h"
+#include "bibop.h"
+#include "internal-heap.h"
 
-/*! \brief check for obviously corrupt objects in a heap
+static bool isGlobalHeapPtr (Value_t v)
+{
+  assert(isPtr(v));
+  assert(AddrToChunk(ValueToAddr(v)) != 0);
+  assert(AddrToChunk(ValueToAddr(v))->sts == TO_SP_CHUNK);
+}
+
+/*! \brief check for obviously corrupt objects in the local heap
  *  \param vp host vproc
  *  \param beginHeap low address of the heap
  *  \param endHeap high address of the heap
  */
-void HeapConsistencyCheck (VProc_t *vp, Word_t *beginHeap, Word_t *endHeap)
+void LocalHeapConsistencyCheck (VProc_t *vp, Word_t *beginHeap, Word_t *endHeap)
 {
     Word_t	*nextScan = beginHeap;
     Addr_t	nurseryBase = vp->nurseryBase;
@@ -38,8 +47,8 @@ void HeapConsistencyCheck (VProc_t *vp, Word_t *beginHeap, Word_t *endHeap)
 			  // only young to old pointers allowed in the nursery
 			    assert(ValueToAddr(v) < (Addr_t)nextScan);
 			}
-			else {
-			  // raw value or object in an older generation
+			else { // in the global heap
+			  assert(isGlobalHeapPtr(v));
 			}
 		    }
 		}
@@ -60,6 +69,7 @@ void HeapConsistencyCheck (VProc_t *vp, Word_t *beginHeap, Word_t *endHeap)
 		    }
 		    else {
 		      // object in an older generation
+		      assert(isGlobalHeapPtr(v));
 		    }
 		}
 	    }
@@ -67,7 +77,6 @@ void HeapConsistencyCheck (VProc_t *vp, Word_t *beginHeap, Word_t *endHeap)
 	}
 	else if (isForwardPtr(hdr)) {
 	  // object in an older generation
-	  // TODO: check that the object in the older generation is consistent with this one
 	}
 	else {
 	  // we can just skip raw objects
