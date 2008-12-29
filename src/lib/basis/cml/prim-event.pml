@@ -135,10 +135,10 @@ structure PrimEvent : sig
       ;
     )
 
-    val always : 'a -> 'a event
+    val always : 'a -> 'a event = _prim(@always)
     val never : 'a event = BEVT(fn () => false, fn _ => (), fn _ => Threads.exit())
     val choose = CHOOSE
-    val wrap : ('a event * ('a -> 'b)) -> 'b event
+    val wrap : ('a event * ('a -> 'b)) -> 'b event = _prim(@wrap)
 
     val block : 'a pevent -> 'a = _prim (@block)
     val doEvent : ('a cont -> unit) list -> 'a = _prim (@doEvent)
