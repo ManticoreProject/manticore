@@ -40,7 +40,7 @@ structure BuildExecutable : sig
     fun cmd asmFile = let
 	  val logging = if Controls.get BasicControl.logging then "-log" else ""
 	  val (cFlags, debug) = if Controls.get BasicControl.debug
-		then ("-g" :: cFlags, "-debug")
+		then ("-g " ^ cFlags, "-debug")
 		else (cFlags, "")
 	  val libName = concat ["mcrt", logging, debug]
 	  in
