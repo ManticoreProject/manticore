@@ -57,7 +57,7 @@ void *AllocMemory (int *nBlocks, int blkSzB)
    * fixed address.
    */
     base = (void *)(((Addr_t)memObj & ~(blkSzB-1)) + blkSzB);
-    UnmapMemory (base, *nBlocks * blkSzB);
+    UnmapMemory (memObj, *nBlocks * blkSzB);
     if ((memObj = MapMemory(base, nBlocks, blkSzB, MAP_FIXED)) == MAP_FAILED)
 	return 0;
     else
