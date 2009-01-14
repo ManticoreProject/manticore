@@ -25,14 +25,14 @@ fun splitAt (n, ls) = let
 fun parMap (f, n, ls) = (case ls
     of nil => nil
      | _ => if (n <= seqSz)
-        then L.map(f, ls)
+        then L.map f ls
         else let
           val n1 = n div 2
   	  val (xs, ys) = splitAt(n1, ls)
           pval fxs = parMap(f, n1, xs)
 	  val fys = parMap(f, n-n1, ys)
           in
-	     List.concat(fxs, fys)
+	     List.concat[fxs, fys]
           end
    (* end case *))
 
@@ -46,19 +46,25 @@ type area = (point * point)
 datatype mass_pnt = MassPnt of (real * point)
 datatype particle = Particle of (mass_pnt * veloc)
 
-val sqrt = sqrtd
-val abs = absd
+val sqrt = Double.sqrt
+val abs = Double.abs
 val rtos = Double.toString
-val readreal = PrimIO.readdouble
+val readreal = PrimIO.readDouble
+val readint = PrimIO.readInt
+val length = List.length
+val print = Print.print
+val itos = Int.toString
+val filter = List.filter
+fun not b = if b then false else true
 
 fun hd (xs) = (case xs
-    of nil => fail "hd"
+    of nil => (raise Fail "hd")
      | x :: _ => x
     (* end case *))
 
 
 fun tl (xs) = (case xs
-    of nil => fail "tl"
+    of nil => (raise Fail "tl")
      | _ :: xs => xs
     (* end case *))
 
@@ -85,10 +91,10 @@ fun transpose (rows) = (case rows
     of nil => nil
      | _ => let
 	fun loop (rows, rows') = (case hd(rows)
- 	    of nil => L.rev(L.map(L.rev, rows'))
+ 	    of nil => L.rev(L.map L.rev rows')
              |_ => let
-              val cols = L.map(hd, rows)
-	      val rows'' = L.map(tl, rows)
+              val cols = L.map hd rows
+	      val rows'' = L.map tl rows
               in
 		  loop(rows'', cols :: rows')
               end
@@ -165,7 +171,7 @@ fun applyAccel (dt) = let
  * corresponding accelaration in `acs'.
  *)
 fun applyAccels (dt, acs, ps) = 
-    L.map (applyAccel(dt), (L.zip(ps, acs)))
+    L.map (applyAccel(dt)) (L.zip(ps, acs))
 
 
 fun moveParticle (dt, p) = (case p
@@ -181,7 +187,7 @@ fun moveParticle (dt, p) = (case p
 fun move (dt, ps : particle list) = let 
     fun f (p) = moveParticle(dt, p)
     in
-       L.map (f, ps)
+       L.map f ps
     end
 
 
@@ -192,7 +198,7 @@ fun naiveStep (dt, ps) = let
     fun allAccels (mp, ps) = let
 	fun f (p) = 
 	    accel(particle2mpnt(p), mp)
-	val (acs, noAcs) = L.unzip (L.map (f, ps))
+	val (acs, noAcs) = L.unzip (L.map f ps)
 	val (axs, ays) = L.unzip(acs)
         in
 	   ((gravConst * sum(axs), gravConst * sum(ays)),
@@ -201,7 +207,7 @@ fun naiveStep (dt, ps) = let
 
     fun f (p) = 
 	allAccels(particle2mpnt(p), ps)
-    val (acs, noAcs) = L.unzip (L.map (f, ps))
+    val (acs, noAcs) = L.unzip (L.map f ps)
     val ps' = applyAccels(dt, acs, ps)
     in
        (move (dt, ps'), sumi(noAcs))
@@ -227,16 +233,16 @@ fun mp1 (MassPnt(mp, _)) = mp
 fun particleMP (Particle (mp, _)) = mp
 
 fun centroid (mps : mass_pnt list) = let
-    val m = sum(L.map(mp1, mps))
+    val m = sum(L.map mp1 mps)
     fun f (MassPnt (m, (x, y))) = (m*x, m*y)
-    val (wxs, wys) = L.unzip(L.map(f, mps))
+    val (wxs, wys) = L.unzip(L.map f mps)
     in
         MassPnt(m, (sum(wxs) / m, sum(wys) / m))
     end
 
 
 fun lenIsOne (ls) = (case ls
-    of nil => fail "lenIsOne"
+    of nil => (raise Fail "lenIsOne")
      | x :: nil => true
      | _ => false
     (* end case *))
@@ -263,9 +269,9 @@ fun bhTree (a, ps) =
 	  fun f (_, ps) = (case ps
 			    of nil => false
 			     | x :: xs => true)
-	  val children = L.map (bhTree, filter(f, L.zip( a1:: a2:: a3:: a4:: nil,
-						   ps1:: ps2:: ps3:: ps4:: nil)))
-	  val cd = centroid (L.map(mp, children))
+	  val children = L.map bhTree (L.filter f (L.zip( a1:: a2:: a3:: a4:: nil,
+							  ps1:: ps2:: ps3:: ps4:: nil)))
+	  val cd = centroid (L.map mp children)
 
 	  in
 	      Node (cd, children)
@@ -273,13 +279,13 @@ fun bhTree (a, ps) =
 
 
 fun minimum (xs) = (case xs
-    of nil => fail "minimum"
+    of nil => (raise Fail "minimum")
      | x :: xs => L.foldl rmin x xs
     (* end case *))
 
 
 fun maximum (xs) = (case xs
-    of nil => fail "maximum"
+    of nil => (raise Fail "maximum")
      | x :: xs => L.foldl rmax x xs
     (* end case *))
 
@@ -293,7 +299,7 @@ fun maximum (xs) = (case xs
  *)
 fun boundingBox (mps) = let
     fun f (MassPnt (_, xy)) = xy
-    val xys = L.map(f, mps)
+    val xys = L.map f mps
     val (xs, ys) = L.unzip (xys)
     in
        ((minimum(xs) - epsilon, minimum(ys) - epsilon),
@@ -358,21 +364,21 @@ fun accels (acs) = (case acs
     of (_, _, nil) => (nil, 0, 0)
      | (Node (crd, nil), len, mps) => let
 	   fun f (mp) = accel(crd, mp)
-	   val (acs, noAcs) = L.unzip(L.map (f, mps))
+	   val (acs, noAcs) = L.unzip(L.map  f mps)
            in
 	       (acs, sumi(noAcs), 0)
 	   end
      | (Node(crd, ts), len, mps) => let
 	   fun f (mp) = isFar(len, crd, mp)
-	   val direct = L.map(f, mps)
+	   val direct = L.map f mps
 	   val mds = L.zip (mps, direct)
 	   val (farMps, closeMps) = split(snd, mds)
-	   val (farMps, closeMps) = (L.map(fst, farMps), L.map(fst, closeMps))
+	   val (farMps, closeMps) = (L.map fst farMps, L.map fst closeMps)
 	   fun f (mp) = accel(crd, mp)
-	   val (farAcs, noFarAcs) = L.unzip (L.map(f, farMps))
+	   val (farAcs, noFarAcs) = L.unzip (L.map f farMps)
 	   fun f (t) = accels(t, len / 2.0, closeMps)
-	   val (closeAcss, directNos, farNos) = L.unzip3(L.map(f, ts))
-	   val closeAcs = L.map(superimp, transpose(closeAcss))
+	   val (closeAcss, directNos, farNos) = L.unzip3(L.map f ts)
+	   val closeAcs = L.map superimp (transpose(closeAcss))
            in
 	      (combine(direct, farAcs, closeAcs, nil),
 	       sumi(directNos),
@@ -390,7 +396,7 @@ fun accelOf (ac) = (case ac
           then (0.0, 0.0)
        else if (isFar(len, crd, mp))
           then fst(accel(crd, mp))
-       else superimp(L.map(let fun f (t) = accelOf(t, len / 2.0, mp) in f end, ts))
+       else superimp(L.map (let fun f (t) = accelOf(t, len / 2.0, mp) in f end) ts)
     (* end case *))
 
 
@@ -404,7 +410,7 @@ fun accelOf (ac) = (case ac
  *   interactions is computed.
  *)
 fun oneStep' (dt, n, ps) = let
-    val mps = L.map(particleMP, ps)
+    val mps = L.map particleMP ps
     val box = boundingBox(mps)
     val len = maxSideLen(box)
     val t = bhTree(box, mps)
@@ -433,13 +439,13 @@ fun oneStep' (dt, n, ps) = let
  *   interactions is computed.
  *)
 fun oneStep (dt, ps) = let
-    val mps = L.map(particleMP, ps)
+    val mps = L.map particleMP ps
     val box = boundingBox(mps)
     val len = maxSideLen(box)
     val t = bhTree(box, mps)
     val (preAcs, directNos, farNos) = accels(t, len, mps)
     fun f (ax, ay) = (gravConst * ax, gravConst * ay)
-    val acs = L.map(f, preAcs)
+    val acs = L.map f preAcs
     val ps' = applyAccels(dt, acs, ps)
     in
         (move(dt, ps'), directNos, farNos)
@@ -464,7 +470,7 @@ fun maxErr (rvs, vs) = let
     in
        if (length(rvs) = length(vs))
           then maximum(L.zipWith(compare, rvs, vs))
-          else fail "unequal lengths"
+          else (raise Fail "unequal lengths")
     end
 
 
