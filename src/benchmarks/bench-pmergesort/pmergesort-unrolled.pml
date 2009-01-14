@@ -11,11 +11,18 @@ changequote({,})   #change quotes to curly braces
 divert(0)
 undefine({len})dnl
 
-val seqSq = readint();
+val seqSq = PrimIO.readInt()
 define({_SEQ_SZ_}, {seqSq})dnl
 
+structure A = Array64
+val array = A.array
+val asub = A.sub
+val aupdate = A.update
+val alength = A.length
+val absd = Double.abs
+
 fun pow2 (n) = if (n=0) then 1 else 2 * pow2(n-1)
-;
+
 
     fun copyArr (arr2) = let
 	val arr1 = array(alength(arr2), asub(arr2, 0))
@@ -28,10 +35,10 @@ fun pow2 (n) = if (n=0) then 1 else 2 * pow2(n-1)
 	   loop(alength(arr1)-1);
 	   arr1
         end
-;
 
-    val epsilon = 0.01;
-    val abs = absd;
+
+    val epsilon = 0.01
+    val abs = absd
 
     fun arrayEq (arr1, arr2) = let
 	fun loop (i) = if (i > 0)
@@ -47,7 +54,7 @@ loop(i-1)))
         in
 	   loop(alength(arr1)-1)	   
         end
-;
+
 
     fun bubbleSort (arr) = let
 	val n = alength(arr)
@@ -75,15 +82,15 @@ loop(i-1)))
          in
 	    loop1(1)
          end
-;
 
-fun b2s (b) = if b then "true" else "false";
+
+fun b2s (b) = if b then "true" else "false"
 
     fun len (_, s1, s2) = s2-s1
-;
+
 
     fun maxval (x, y) = if x > y then x else y
-;
+
 
     (* assume that b>a. *)
     fun binarySearch' (arr, a, b, x) = if (b = a)
@@ -96,7 +103,7 @@ fun b2s (b) = if b then "true" else "false";
           in
 	      binarySearch'(arr, a, b, x)
           end
-;
+
 
    (* find j such that arr[j] <= x <= arr[j+1] *)
     fun binarySearch (arr, a, b, x) = let
@@ -104,7 +111,7 @@ fun b2s (b) = if b then "true" else "false";
         in
 	    binarySearch' (arr, a, b, x)
         end
-;
+
 
    (* copy l into d *)
     fun copy ( (dArr, d1, d2), (lArr, l1, l2) ) = let
@@ -116,7 +123,7 @@ fun b2s (b) = if b then "true" else "false";
             in
 	       loop(len(l)-1)
 	    end
-;
+
 
 define({_PMERGE_}, {
   define({_PMERGE_FN_}, {$1})dnl
@@ -153,15 +160,15 @@ define({_PMERGE_}, {
 		    in
 			  c1+c2
 		    end)
-;
+
 })dnl
 _PMERGE_({seqMerge}, {val}, {false}, {seqMerge})
-_PMERGE_({pMerge'}, {dval}, {(maxval(len(r), len(l)) < _SEQ_SZ_)}, {seqMerge})
+_PMERGE_({pMerge'}, {pval}, {(maxval(len(r), len(l)) < _SEQ_SZ_)}, {seqMerge})
 
    (* merge sorted arrays arr[p..q] and arr[q..r] into the sorted array dArr[p..r] *)
     fun pMerge (dArr, arr, p, q, r) = 
 	pMerge'( (dArr, p, r), (arr, p, q), (arr, q, r) )
-;
+
 
 define({_PMERGESORT_}, {
   define({_PMERGESORT_FN_}, {$1})dnl
@@ -181,10 +188,10 @@ define({_PMERGESORT_}, {
                 xy+z
              end
         else (aupdate(dArr, p, asub(arr, p)); 0)
-;
+
 })dnl
 _PMERGESORT_({seqMergesort}, {val}, {false}, {seqMergesort})
-_PMERGESORT_({pMergesort'}, {dval}, {((r-p) < _SEQ_SZ_)}, {seqMergesort})
+_PMERGESORT_({pMergesort'}, {pval}, {((r-p) < _SEQ_SZ_)}, {seqMergesort})
 
    (* parallel merge sort *)
     fun pMergesort (arr) = let
@@ -194,7 +201,7 @@ _PMERGESORT_({pMergesort'}, {dval}, {((r-p) < _SEQ_SZ_)}, {seqMergesort})
 	   pMergesort'(dArr, dArr', arr, 0, alength(arr));
 	   dArr
         end
-;
+
 
 fun arr2s (elt2s, arr) = let
     val n = alength(arr)
@@ -204,20 +211,20 @@ fun arr2s (elt2s, arr) = let
     in
         "["^loop(n-1, "")^"]"
     end
-;
 
-fun genRandomDoubleArr (n) = let
-    val arr : double array = array(n, 0.0:double)
-    fun loop (i) = if (i < n)
-        then (aupdate(arr, i, drand(0.0:double, 100.0:double)); 
-	      loop(i+1))
-        else ()
-    in
-       loop(0);
-       arr
-    end
-;
 
+    fun genRandomDoubleArr (n) = let
+	val arr : double A.array = A.array(n, 0.0:double)
+	fun loop (i) = if (i < n)
+	    then (A.update(arr, i, Rand.randDouble(0.0:double, 100.0:double)); 
+		  loop(i+1))
+	    else ()
+	in
+	   loop(0);
+	   arr
+	end
+
+(*
 fun debug () = let
     val n = readint()
 
@@ -235,32 +242,26 @@ fun debug () = let
         print (dtos (e-b)^"\n");
         print (b2s(arrayEq(arr, arr'))^"\n")
     end
-;
 
-(* grab the input size x from stdin, generate a random array of length x, 
- * and sort it.
- *)
-fun timeTest () = let
-    val n = readint()
-
-    val arr = genRandomDoubleArr(n)
 
 ifdef({DEBUG}, {
-    val _ = print (arr2s (dtos, arr)^"\n"); 
+val _ = debug()
 })dnl
+*)
 
-    val b = gettimeofday ()
-    val arr = pMergesort(arr)
-    val e = gettimeofday ()
-    in
-ifdef({DEBUG}, {
-        print (arr2s (dtos, arr)^"\n");
-})dnl
-        print (dtos (e-b)^"\n")
-    end
-;
+  (* benchmark parallel mergesort *)
+    fun bench () = let
+	val n = PrimIO.readInt()
 
-ifdef({DEBUG}, {
-val _ = debug();
-})dnl
-timeTest()
+	val arr = genRandomDoubleArr(n)
+
+	val (arr, t) = Time.timeToEval(fn () => pMergesort(arr))
+	in
+	    Print.printLn("Time elapsed (microseconds): "^Long.toString t);
+	    ()
+	end
+
+    val _ = bench()
+
+
+
