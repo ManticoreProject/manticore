@@ -18,16 +18,16 @@ structure DequeTH =
 
       typedef deque = DequeTHRep.deque;
 
-      define @new ( / exh : PT.exh) : deque =
+      define @new ( / exh : exh) : deque =
 	let arr : Arr.array = Arr.@array(TH_DEQUE_LEN, enum(0) / exh)
 	let deq : deque = alloc(0, 0, arr, PT.false)
 	let deq : deque = promote(deq)
 	return(deq)
       ;
 
-      define @push-tl (deq : deque, elt : any / exh : PT.exh) : () =
+      define @push-tl (deq : deque, elt : any / exh : exh) : () =
       (* copy the contents of the deque to a fresh array *)
-	fun copyDeque (arr : Arr.array, i : int / exh : PT.exh) : () =
+	fun copyDeque (arr : Arr.array, i : int / exh : exh) : () =
 	    if I32Lt(i, TH_DEQUE_LEN)
 	       then let elt : any = Arr.@sub(arr, i / exh)
 (*		    do Arr.@update(arr, I32Sub(SELECT(TH_H_OFF, deq), i), nil / exh)*)
@@ -38,7 +38,7 @@ structure DequeTH =
 	fun freeSpace (t : int /) : int =
 	    if I32Lt(t, TH_DEQUE_LEN)
 	       then return(t)
-	       else let mask : PT.bool = SpinLock.@lock(deq / exh)
+	       else let mask : bool = SpinLock.@lock(deq / exh)
 		    do apply copyDeque(SELECT(TH_ARR_OFF, deq), SELECT(TH_H_OFF, deq) / exh)
 		    let t : int = I32Sub(t, SELECT(TH_T_OFF, deq))
 		    do UPDATE(TH_H_OFF, deq, 0)
@@ -58,13 +58,13 @@ structure DequeTH =
 	return()
       ;
 
-      define @pop-hd (deq : deque / exh : PT.exh) : Option.option =
+      define @pop-hd (deq : deque / exh : exh) : O.option =
 	cont none () = return(O.NONE)
-	let mask : PT.bool = SpinLock.@lock (deq / exh)
+	let mask : bool = SpinLock.@lock (deq / exh)
 	let h : int = I32FetchAndAdd(&TH_H_OFF(deq), 1)
 	let h : int = I32Add(h, 1)
 	let t : int = SELECT(TH_T_OFF, deq)
-	let eltOpt : Option.option = 
+	let eltOpt : O.option = 
 	    if I32Gt(h, t)
 	       then (* contention with the victim; back off *)
 		    let h : int = I32FetchAndAdd(&TH_H_OFF(deq), ~1)
@@ -75,12 +75,12 @@ structure DequeTH =
 		    let frame : any = Arr.@sub(arr, I32Sub(h, 1) / exh)
 		   (* IMPORTANT: a pointer to frame still exists in the array; erase it to avoid a space leak *)
 		    do Arr.@update (arr, I32Sub(h, 1), enum(0) / exh)
-		    return(Option.SOME(frame))
+		    return(O.SOME(frame))
 	do SpinLock.@unlock (deq, mask / exh)
 	return(eltOpt)
       ;
 
-      define @pop-tl (deq : deque / exh : PT.exh) : Option.option =
+      define @pop-tl (deq : deque / exh : exh) : O.option =
 	cont none () = return(O.NONE)
 	let t : int = I32FetchAndAdd(&TH_T_OFF(deq), ~1)
 	let t : int = I32Add(t, ~1)
@@ -89,7 +89,7 @@ structure DequeTH =
 	      then (* contention with a thief *)
 		   let t : int = I32FetchAndAdd(&TH_T_OFF(deq), 1)
 		   let t : int = I32Add(t, 1)
-		   let mask : PT.bool = SpinLock.@lock (deq / exh)
+		   let mask : bool = SpinLock.@lock (deq / exh)
 
 		  (* restart the protocol *)
 		   let t : int = I32FetchAndAdd(&TH_T_OFF(deq), ~1)
@@ -114,7 +114,7 @@ structure DequeTH =
        (* IMPORTANT: a pointer to frame still exists in the array; erase it to avoid a space leak *)
 	do assert(I32Gte(t,0))
 	do Arr.@update (arr, t, enum(0) / exh)
-	return(Option.SOME(frame))
+	return(O.SOME(frame))
       ;
 
     )
