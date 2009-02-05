@@ -12,6 +12,7 @@
 
   ann "cpp" "../../include/runtime-offsets.def,../../include/prim.def,../../include/debug.def,../../include/assert.def"
   in
+    prim-synch.pml
     n-way-barrier.pml
     vproc-queue.pml
     control.pml

@@ -13,6 +13,7 @@ structure NWayBarrier =
 
 #define NUM_IN_BARRIER_OFF    0
 #define BARRIER_COUNT_OFF     1
+
       typedef barrier = ![
                 int,         (* NUM_IN_BARRIER_OFF: number of fibers that are part of the barrier *)
 		int          (* BARRIER_COUNT_OFF: count of ready fibers *)
@@ -34,13 +35,9 @@ structure NWayBarrier =
 
     (* wait to pass through the barrier *)
       define @barrier(b : barrier / exh : exh) : () =
-        let n : int = SELECT(NUM_IN_BARRIER_OFF, b)
-	fun spin () : () =
-	    do Pause()
-	    if I32Eq(n, SELECT(BARRIER_COUNT_OFF, b))
-	       then return()
-	    else apply spin()
-	apply spin()
+        fun isDone (/ exh : exh) : bool =
+	    return(I32Eq(SELECT(NUM_IN_BARRIER_OFF, b), SELECT(BARRIER_COUNT_OFF, b)))
+        PrimSynch.@spin-wait(isDone / exh)
       ;
     )
 
