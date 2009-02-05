@@ -205,15 +205,15 @@ structure SchedulerUtils =
 	  let nVProcs : int = PrimList.@length(vps / exh)
           let nVProcs : int = I32Sub (nVProcs, 1)
         (* this barrier ensures that scheduler instances start after all are initialized *)
-	  let barrier : Barrier.barrier = Barrier.@new(nVProcs / exh)
+	  let barrier : NWayBarrier.barrier = NWayBarrier.@new(nVProcs / exh)
 
 	  fun init (_ : PT.unit / exh : PT.exh) : PT.unit =	  
 		do vpstore (ATOMIC, host_vproc, PT.true)
 	       (* this fiber synchronizes on the barrier and then exits to activate the scheduler *)
 		cont dummyK (_ : PT.unit) = 
 		     do vpstore (ATOMIC, host_vproc, PT.true)
-                     do Barrier.@ready(barrier / exh)
-		     do Barrier.@barrier(nVProcs, barrier / exh)
+                     do NWayBarrier.@ready(barrier / exh)
+		     do NWayBarrier.@barrier(barrier / exh)
 		     do Control.@forward (PT.STOP / exh)
 		     return(UNIT)
 	      (* make the scheduler instance for the host vproc *)
@@ -228,7 +228,7 @@ structure SchedulerUtils =
 		do vpstore(ATOMIC, self, PT.true)
 	      (* install the scheduler on remote vprocs *)
 		do @for-other-vprocs(spawnOn / exh)
-		Barrier.@barrier(nVProcs, barrier / exh)
+		NWayBarrier.@barrier(barrier / exh)
 
 	(* make the scheduler instance for the host vproc *)
 	 let act : PT.sched_act = apply mkAct (host_vproc / exh)
