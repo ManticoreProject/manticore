@@ -132,7 +132,7 @@ void *NewVProc (void *arg)
 
 #ifndef NDEBUG
     if (DebugFlg)
-	SayDebug("[%2d] VProcMain: initializing ...\n", initData->id);
+	SayDebug("[%2d] NewVProc: initializing ...\n", initData->id);
 #endif
 
 #ifdef HAVE_PTHREAD_SETAFFINITY_NP 
@@ -148,6 +148,7 @@ void *NewVProc (void *arg)
     if (vproc == 0) {
 	Die ("unable to allocate memory for vproc %d\n", initData->id);
     }
+    VProcs[initData->id] = vproc;
 
   /* initialize the vproc structure */
     vproc->id = initData->id;
