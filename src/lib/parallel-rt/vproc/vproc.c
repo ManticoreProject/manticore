@@ -96,7 +96,7 @@ void VProcInit (Options_t *opts)
   // Initialize vprocs */
     BarrierInit (&InitBarrier, NumVProcs+1);
 
-    InitData_t *initData = NEWVEC(InitData_t, NumVProcs-1);
+    InitData_t *initData = NEWVEC(InitData_t, NumVProcs);
     initData[0].id = 0;
     initData[0].initFn = MainVProc;
     initData[0].initArg = M_UNIT;
