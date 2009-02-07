@@ -107,6 +107,7 @@ Value_t AllocRaw (VProc_t *vp, uint32_t len)
 
 }
 
+/* FIXME: this function does not belong here! */
 void SayValue (Value_t v)
 {
     if (ValueIsBoxed(v) && (v != 0)) {

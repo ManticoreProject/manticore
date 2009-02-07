@@ -173,7 +173,9 @@ VProc_t *AllocVProcMemory (int id)
     chunk->baseAddr = (Addr_t)vproc;
     chunk->szB = nPages * BIBOP_PAGE_SZB;
     chunk->sts = VPROC_CHUNK(id);
-    UpdateBIBOP (chunk);
+    MutexLock (&HeapLock);
+	UpdateBIBOP (chunk);
+    MutexUnlock (&HeapLock);
 
     return vproc;
 
@@ -183,6 +185,8 @@ VProc_t *AllocVProcMemory (int id)
 /* UpdateBIBOP:
  *
  * Update the BIBOP to point to the freshly allocated chunk.
+ *
+ * NOTE: this function must be called with the HeapLock held.
  */
 void UpdateBIBOP (MemChunk_t *chunk)
 {

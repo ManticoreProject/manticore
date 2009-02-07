@@ -22,16 +22,14 @@
 #include "scheduler.h"
 #include "inline-log.h"
 
-typedef struct {		/* data passed to VProcMain */
-    VProc_t	*vp;		/* the host vproc */
+typedef struct {	    /* data passed to NewVProc */
+    int		id;		/* VProc ID */
     VProcFn_t	initFn;		/* the initial function to run */
-    void	*arg;		/* an additional argument to initFn */
-    bool	started;	/* used to signal that the vproc has started */
-    Mutex_t	lock;		/* lock to protect wait and started */
-    Cond_t	wait;		/* use to wait for the vproc to start */
+    Value_t	initArg;	/* initial argument data for initFn */
 } InitData_t;
 
-static void *VProcMain (void *_data);
+static void *NewVProc (void *_data);
+static void MainVProc (VProc_t *vp, void *arg);
 static void IdleVProc (VProc_t *vp, void *arg);
 static void SigHandler (int sig, siginfo_t *si, void *_sc);
 static int GetNumCPUs ();
@@ -39,13 +37,13 @@ static Value_t Dequeue2 (VProc_t *self);
 
 static pthread_key_t	VProcInfoKey;
 
+static Barrier_t	InitBarrier;	/* barrier for initialization */
+
 /********** Globals **********/
 int			NumHardwareProcs;
 int			NumVProcs;
 int			NumIdleVProcs;
 VProc_t			*VProcs[MAX_NUM_VPROCS];
-int			NextVProc;			/* index of next slot in VProcs */
-int                     FiberIdCounter = 0;                   /* fiber id counter */
 
 extern int ASM_VProcSleep;
 
@@ -95,46 +93,64 @@ void VProcInit (Options_t *opts)
 	Die ("unable to create VProcInfoKey");
     }
 
-/* FIXME: we should allocate and initialize the vproc objects in the pthreads so
- * that we get the right memory affinity on NUMA machines.
- */
-    /* allocate memory and initialize locks and condition variables for all vprocs.
-     */
-    for (int i = 0;  i < NumVProcs;  i++) {
-	VProc_t *vproc = AllocVProcMemory (i);
-	if (vproc == 0)
-	    Die ("unable to allocate vproc heap");
-	VProcs[i] = vproc;
-	MutexInit (&(vproc->lock));
-	CondInit (&(vproc->wait));
+  // Initialize vprocs */
+    BarrierInit (&InitBarrier, NumVProcs+1);
+
+    InitData_t *initData = NEWVEC(InitData_t, NumVProcs-1);
+    initData[0].id = 0;
+    initData[0].initFn = MainVProc;
+    initData[0].initArg = M_UNIT;
+    for (int i = 1;  i < NumVProcs;  i++) {
+	initData[i].id = i;
+	initData[i].initFn = IdleVProc;
+	initData[i].initArg = M_UNIT;
     }
 
-  /* create nProcs-1 idle vprocs; the other vproc will run the initial Manticore 
-   * thread.
-   */
-    for (int i = 1;  i < NumVProcs;  i++) {
-	VProcCreate (IdleVProc, 0);
+    for (int i = 0;  i < NumVProcs;  i++) {
+	OSThread_t pid;
+	if (! ThreadCreate (&pid, NewVProc, &(initData[i])))
+	    Die ("Unable to start vproc %d\n", i);
     }
+
+    BarrierWait (&InitBarrier);
+
+    FREE (initData);
 
 } /* end of VProcInit */
 
 
-/* VProcCreate:
+/* NewVProc:
  *
  * Create the data structures and underlying system thread to
- * implement a vproc.
+ * implement a vproc.  This code is run in the OS thread that hosts
+ * the vproc.
  */
-VProc_t *VProcCreate (VProcFn_t f, void *arg)
+void *NewVProc (void *arg)
 {
+    InitData_t	*initData = (InitData_t *)arg;
+    struct sigaction	sa;
 
-    if (NextVProc > MAX_NUM_VPROCS) {
-	Die ("Allocated too many VProcs");
+#ifndef NDEBUG
+    if (DebugFlg)
+	SayDebug("[%2d] VProcMain: initializing ...\n", initData->id);
+#endif
+
+#ifdef HAVE_PTHREAD_SETAFFINITY_NP 
+    cpu_set_t	cpus;
+    CPU_ZERO(&cpus);
+    CPU_SET(initData->id, &cpus);
+    if (pthread_setaffinity_np (pthread_self(), sizeof(cpu_set_t), &cpus) == -1) {
+	Warning("[%2d] unable to set affinity\n", initData->id);
     }
-  
-    VProc_t* vproc = VProcs[NextVProc];
+#endif
+
+    VProc_t* vproc = AllocVProcMemory (initData->id);
+    if (vproc == 0) {
+	Die ("unable to allocate memory for vproc %d\n", initData->id);
+    }
 
   /* initialize the vproc structure */
-    vproc->id = NextVProc++;
+    vproc->id = initData->id;
 
     vproc->oldTop = VProcHeap(vproc);
     InitVProcHeap (vproc);
@@ -161,28 +177,91 @@ VProc_t *VProcCreate (VProcFn_t f, void *arg)
     InitLog (vproc);
 #endif
 
-  /* start the vproc's pthread */
-    InitData_t data;
-    data.vp = vproc;
-    data.initFn = f;
-    data.arg = arg;
-    data.started = false;
-    MutexInit(&(data.lock));
-    CondInit(&(data.wait));
-    ThreadCreate (&(vproc->hostID), VProcMain, &data);
+  /* store a pointer to the VProc info as thread-specific data */
+    pthread_setspecific (VProcInfoKey, vproc);
 
-  /* wait until the vproc has started, since data is in use until
-   * then.
-   */
-    MutexLock (&(data.lock));
-	while (! data.started)
-	    CondWait (&(data.wait), &(data.lock));
-    MutexUnlock (&(data.lock));
+  /* initialize this pthread's handler. */
+    sa.sa_sigaction = SigHandler;
+    sa.sa_flags = SA_SIGINFO | SA_RESTART;
+    sigfillset (&(sa.sa_mask));
+    sigaction (SIGUSR1, &sa, 0);
+    sigaction (SIGUSR2, &sa, 0);
 
-    return vproc;
+  /* Wait until all vprocs have been initialized */
+    BarrierWait (&InitBarrier);
+
+  /* run the initial vproc function */
+    initData->initFn (vproc, initData->initArg);
+
+    Die ("should never get here!");
+
+    return 0;
 
 } /* VProcCreate */
 
+
+/* MainVProc:
+ *
+ * The main vproc is responsible for running the Manticore code.  The
+ * argument is the address of the initial entry-point in Manticore program.
+ */ 
+static void MainVProc (VProc_t *vp, void *arg)
+{
+    extern int mantEntry;		/* the entry-point of the Manticore code */
+
+    LogVProcStartMain (vp);
+
+#ifndef NDEBUG
+    if (DebugFlg)
+	SayDebug("[%2d] MainVProc starting\n", vp->id);
+#endif
+
+    vp->idle = false;
+
+    FunClosure_t fn = {.cp = PtrToValue(&mantEntry), .ep = M_UNIT};
+    Value_t resV = ApplyFun (vp, PtrToValue(&fn), PtrToValue(arg));
+
+#ifndef NDEBUG
+    Say("res = ");
+    SayValue (resV);
+    Say("\n");
+#endif
+
+    LogVProcExitMain (vp);
+
+#ifdef ENABLE_LOGGING
+    FinishLog ();
+#endif
+
+    exit (0);
+
+}
+
+/* IdleVProc:
+ */
+static void IdleVProc (VProc_t *vp, void *arg)
+{
+    LogVProcStartIdle (vp);
+
+#ifndef NDEBUG
+    if (DebugFlg)
+	SayDebug("[%2d] IdleVProc starting\n", vp->id);
+#endif
+
+  /* Run code that will immediately put this VProc to sleep. */
+    RunManticore (vp, (Addr_t)&ASM_VProcSleep, M_UNIT, M_UNIT);
+  /* Run code that will activate the VProc. */
+    Value_t envP = vp->schedCont;
+    Addr_t codeP = ValueToAddr(ValueToCont(envP)->cp);
+    RunManticore (vp, codeP, M_NIL, envP);
+
+#ifndef NDEBUG
+    if (DebugFlg)
+	SayDebug("[%2d] return from RunManticore in idle vproc\n", vp->id);
+#endif
+    exit (0);
+
+} /* end of IdleVProc */
 
 /*! \brief return a pointer to the VProc that the caller is running on.
  *  \return the VProc that the caller is running on.
@@ -255,55 +334,6 @@ void VProcWaitForSignal (VProc_t *vp)
     }
 
 }
-
-/* VProcMain:
- */
-static void *VProcMain (void *_data)
-{
-    InitData_t		*data = (InitData_t *)_data;
-    VProc_t		*self = data->vp;
-    VProcFn_t		init = data->initFn;
-    void		*arg = data->arg;
-    struct sigaction	sa;
-
-#ifndef NDEBUG
-    if (DebugFlg)
-	SayDebug("[%2d] VProcMain: initializing ...\n", self->id);
-#endif
-
-#ifdef HAVE_PTHREAD_SETAFFINITY_NP 
-    cpu_set_t	cpus;
-    CPU_ZERO(&cpus);
-    CPU_SET(self->id, &cpus);
-    if (pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpus) == -1) {
-	Warning("[%2d] unable to set affinity\n", NumVProcs);
-    }
-#endif
-
-  /* store a pointer to the VProc info as thread-specific data */
-    pthread_setspecific (VProcInfoKey, self);
-
-  /* initialize this pthread's handler. */
-    sa.sa_sigaction = SigHandler;
-    sa.sa_flags = SA_SIGINFO | SA_RESTART;
-    sigfillset (&(sa.sa_mask));
-    sigaction (SIGUSR1, &sa, 0);
-    sigaction (SIGUSR2, &sa, 0);
-
-  /* signal that we have started */
-    MutexLock (&(data->lock));
-	data->started = true;
-	CondSignal (&(data->wait));
-    MutexUnlock (&data->lock);
-
-    self->idle = false;
-
-    init (self, arg);
-
-    Die("VProcMain returning.\n");
-
-} /* VProcMain */
-
 /*! \brief return a list of the vprocs in the system.
  *  \param self the host vproc
  */
@@ -348,32 +378,6 @@ Value_t SleepCont (VProc_t *self)
 {
     return AllocUniform(self, 1, PtrToValue(&ASM_VProcSleep));
 }
-
-/* IdleVProc:
- */
-static void IdleVProc (VProc_t *vp, void *arg)
-{
-    LogVProcStartIdle (vp);
-
-#ifndef NDEBUG
-    if (DebugFlg)
-	SayDebug("[%2d] IdleVProc starting\n", vp->id);
-#endif
-
-  /* Run code that will immediately put this VProc to sleep. */
-    RunManticore (vp, (Addr_t)&ASM_VProcSleep, M_UNIT, M_UNIT);
-  /* Run code that will activate the VProc. */
-    Value_t envP = vp->schedCont;
-    Addr_t codeP = ValueToAddr(ValueToCont(envP)->cp);
-    RunManticore (vp, codeP, M_NIL, envP);
-
-#ifndef NDEBUG
-    if (DebugFlg)
-	SayDebug("[%2d] return from RunManticore in idle vproc\n", vp->id);
-#endif
-    exit (0);
-
-} /* end of IdleVProc */
 
 /* SigHandler:
  *
@@ -462,6 +466,6 @@ static int GetNumCPUs ()
 
 int GetNumVProcs ()
 {
-  return NumVProcs;
+    return NumVProcs;
 }
 

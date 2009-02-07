@@ -17,7 +17,6 @@
 #include "asm-offsets.h"
 #include "inline-log.h"
 
-static void MainVProc (VProc_t *vp, void *arg);
 static void PingLoop ();
 static void Ping (int n);
 #ifndef HAVE_SIGTIMEDWAIT
@@ -33,7 +32,6 @@ bool		DebugFlg = false;
 #endif
 static Mutex_t	PrintLock;		/* lock for output routines */
 
-extern int mantEntry;			/* the entry-point of the Manticore code */
 extern int32_t mantMagic;
 
 
@@ -59,59 +57,9 @@ int main (int argc, const char **argv)
   /* get the time quantum in milliseconds */
     TimeQ = GetIntOpt(opts, "-q", DFLT_TIME_Q_MS);
 
-  /* FIXME: for testing purposes, we pass an integer argument to the Manticore code */
-    int arg = GetIntOpt(opts, "-a", 1);
-
-  /* create the main vproc */
-    VProcCreate (MainVProc, (void *)(Addr_t)arg);
-
     PingLoop();
 
 } /* end of main */
-
-
-/* MainVProc:
- *
- * The main vproc is responsible for running the Manticore code.  The
- * argument is the address of the initial entry-point in Manticore program.
- *
- * FIXME: right now, the argument is an integer argument to the program.
- */ 
-static void MainVProc (VProc_t *vp, void *arg)
-{
-    LogVProcStartMain (vp);
-
-#ifndef NDEBUG
-    if (DebugFlg)
-	SayDebug("[%2d] MainVProc starting\n", vp->id);
-#endif
-
-    Value_t argV = WrapInt(vp, (int)(Addr_t)arg); /* FIXME: for testing purposes */
-
-#ifndef NDEBUG
-    Say("arg = ");
-    SayValue (argV);
-    Say("\n");
-#endif
-
-    FunClosure_t fn = {.cp = PtrToValue(&mantEntry), .ep = M_UNIT};
-    Value_t resV = ApplyFun (vp, PtrToValue(&fn), argV);
-
-#ifndef NDEBUG
-    Say("res = ");
-    SayValue (resV);
-    Say("\n");
-#endif
-
-    LogVProcExitMain (vp);
-
-#ifdef ENABLE_LOGGING
-    FinishLog ();
-#endif
-
-    exit (0);
-
-}
 
 
 /* PingLoop:
