@@ -22,15 +22,8 @@ functor FCMSFn (
 
     type 'a future = 'a F.future
 
-  (* spawn a future *)
-    fun future f = let
-	  val fut = F.delay f
-	  in
-	    F.run fut;
-	    fut
-          end
-
-    fun touch fut = F.force fut
+    val future = F.delay
+    val touch = F.force
 
     type schedule = unit
 
@@ -62,7 +55,9 @@ functor FCMSFn (
   (* get the load on the current scheduler (typically the number of active workers) *)
     val getLoad = MK_OS primCurrentLoad
 
-  (* schedule in sequential order when load is high, and in parallel otherwise *)
+  (* schedule in sequential order when load is high, and in parallel otherwise. the first
+   * argument is the threshold value that is compared to the load.
+   *)
     fun parWhenUnloaded thresh s1 s2 = 
 	  bind getLoad (fn load => if load < thresh then par s1 s2 else seq s1 s2)
 

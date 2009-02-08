@@ -46,12 +46,12 @@ functor FCMSExFn (
 
   (* schedules for three-node trees *)
   (* evaluate the middle subtree after either the left or right subtree has completed *)
-    fun middleLast f1 f2 f3 = F.par (F.seq (F.e f1) (F.e f2)) (F.seq (F.e f3) (F.e f2))
+    fun middleNodeSecondOrLast f1 f2 f3 = F.par (F.seq (F.e f1) (F.e f2)) (F.seq (F.e f3) (F.e f2))
   (* evaluate all three subtrees in parallel *)
     fun par3 f1 f2 f3 = F.par (F.par (F.d f1) (F.d f2)) (F.d f3)
 
   (* different schedules should not affect the result *)
-    fun check1 t = treeAdd seq2 par3 t = treeAdd par2 middleLast t
+    fun check1 t = treeAdd seq2 par3 t = treeAdd par2 middleNodeSecondOrLast t
     fun check2 t = treeAdd par2 par3 t = treeAdd seq2 par3 t
 
     val t = ND2(LEAF 1, LEAF 2)
