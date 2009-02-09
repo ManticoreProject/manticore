@@ -19,9 +19,7 @@ signature FCMS =
   (** Primitives for futures **)
 
     type 'a future
-  (* spawn a future *)
     val future : (unit -> 'a) -> 'a future
-  (* synchronize on a future *)
     val touch : 'a future -> 'a
 
   (** Scheduler combinators **)
@@ -38,10 +36,10 @@ signature FCMS =
     val par : schedule os_monad -> schedule os_monad -> schedule os_monad
   (* schedule sequentially (left to right) *)
     val seq : schedule os_monad -> schedule os_monad -> schedule os_monad
-  (* get the load on the current scheduler (typically the number of active workers) *)
+  (* get the load on the current scheduler (typically the number of threads on the ready queue) *)
     val getLoad : int os_monad
-  (* schedule in sequential order when load is high, and in parallel otherwise. the first
-   * argument is the threshold value that is compared to the load.
+  (* schedule in sequential order when the current load is high, and in parallel otherwise. the first
+   * argument is a threshold value to compare to the current load.
    *)
     val parWhenUnloaded : int -> schedule os_monad -> schedule os_monad -> schedule os_monad
 

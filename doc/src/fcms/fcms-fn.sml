@@ -38,6 +38,8 @@ functor FCMSFn (
 	  val x = future s1
 	  val y = future s2
           in
+            F.run x;
+	    F.run y;
 	    F.force x;
 	    F.force y;
 	    ()
