@@ -116,7 +116,7 @@ void AllocToSpaceChunk (VProc_t *vp)
 	if (FreeChunks == (MemChunk_t *)0) {
 	  /* no free chunks, so allocate storage from OS */
 	    int nPages = HEAP_CHUNK_SZB >> PAGE_BITS;
-	    memObj = AllocMemory(&nPages, BIBOP_PAGE_SZB);
+	    memObj = AllocMemory(&nPages, BIBOP_PAGE_SZB, nPages);
 	    chunk = NEW(MemChunk_t);
 	    if ((memObj == (void *)0) || (chunk == (MemChunk_t *)0)) {
 		Die ("unable to allocate memory for global heap\n");
@@ -161,19 +161,22 @@ VProc_t *AllocVProcMemory (int id)
 {
     assert (VP_HEAP_SZB >= BIBOP_PAGE_SZB);
 
-    int nPages = VP_HEAP_SZB >> PAGE_BITS;
-    VProc_t *vproc = (VProc_t *)AllocMemory (&nPages, VP_HEAP_SZB);
-    if ((vproc == 0) || (nPages != (VP_HEAP_SZB >> PAGE_BITS)))
-	return 0;
-
-  /* allocate a BIBOP chunk descriptor for this object */
-    MemChunk_t *chunk = NEW(MemChunk_t);
-    if (chunk == (MemChunk_t *)0)
-	return 0;
-    chunk->baseAddr = (Addr_t)vproc;
-    chunk->szB = nPages * BIBOP_PAGE_SZB;
-    chunk->sts = VPROC_CHUNK(id);
+    int nPages = 1;
     MutexLock (&HeapLock);
+	VProc_t *vproc = (VProc_t *)AllocMemory (&nPages, VP_HEAP_SZB, nPages);
+	if (vproc == 0) {
+	    MutexUnlock (&HeapLock);
+	    return 0;
+	}
+      /* allocate a BIBOP chunk descriptor for this object */
+	MemChunk_t *chunk = NEW(MemChunk_t);
+	if (chunk == (MemChunk_t *)0) {
+	    MutexUnlock (&HeapLock);
+	    return 0;
+	}
+	chunk->baseAddr = (Addr_t)vproc;
+	chunk->szB = VP_HEAP_SZB;
+	chunk->sts = VPROC_CHUNK(id);
 	UpdateBIBOP (chunk);
     MutexUnlock (&HeapLock);
 

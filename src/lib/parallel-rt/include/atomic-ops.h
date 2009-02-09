@@ -48,6 +48,13 @@
  *	    *ptr -= 1;
  *	    return tmp;
  *	}
+ *
+ *	int FetchAndAdd (int *ptr, int n)
+ *	{
+ *	    int tmp = *ptr;
+ *	    *ptr += n;
+ *	    return tmp;
+ *	}
  */
 
 #ifndef _ATOMIC_OPS_H_
@@ -88,6 +95,11 @@ STATIC_INLINE int FetchAndInc (volatile int *ptr)
 STATIC_INLINE int FetchAndDec (volatile int *ptr)
 {
     return __sync_fetch_and_sub(ptr, 1);
+}
+
+STATIC_INLINE int64_t FetchAndAdd (volatile int64_t *ptr, int64_t n)
+{
+    return __sync_fetch_and_add(ptr, n);
 }
 
 #else /* !HAVE_BUILTIN_ATOMIC_OPS */
@@ -152,6 +164,16 @@ STATIC_INLINE int FetchAndDec (volatile int *ptr)
     int		incr = -1;
     __asm__ __volatile__ (
 	"lock; xaddl %0,%1\n"
+	    : "=r" (incr), "=m" (*ptr)
+	    : "0" (incr) : "memory");
+    return incr;
+}
+
+STATIC_INLINE int64_t FetchAndAdd64 (volatile int64_t *ptr, int64_t n)
+{
+    int64_t	incr = n;
+    __asm__ __volatile__ (
+	"lock; xaddq %0,%1\n"
 	    : "=r" (incr), "=m" (*ptr)
 	    : "0" (incr) : "memory");
     return incr;
