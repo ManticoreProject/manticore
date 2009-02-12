@@ -20,13 +20,16 @@ structure PrimEvent : sig
 
     val signalVar : unit -> signal_var
     val signal : signal_var -> unit
-    val waitEvt : signal_var -> unit pvevent
+    val waitEvt : signal_var -> unit pevent
     val wait : signal_var -> unit
 
   end = struct
 
     type 'a cont = _prim (cont(any))
-    type flag = _prim(![bool])
+
+    datatype event_status = WAITING | CLAIMED | SYNCHED
+
+    type dirty_flag = _prim(![event_status])
 
     datatype 'a pevent
       = CHOOSE of ('a pevent * 'a pevent)
@@ -41,6 +44,14 @@ structure PrimEvent : sig
 	  (* end case *))
 
     _primcode (
+	define inline @base-event (
+	    pollFn  : fun(unit / exh -> bool),
+	    doFn    : fun(cont(any) / exh -> unit),
+	    blockFn : fun(dirty_flag, cont(any) / exn -> unit)
+	  ) : pevent =
+	      return BEVT(pollFn, doFn, blockFn)
+	;
+
 	define inline @always (x : any / _ : exh) : evt =
 	    fun pollFn (_ : unit / _ : exh) : bool = return (true)
 	    fun doFn (k : cont(any) / _ : exh) : unit = throw k(x)
@@ -53,12 +64,12 @@ structure PrimEvent : sig
 	define @wrap (ev : evt, f : fun(any / exh -> any) / exh : exh) : evt =
 	    fun wrapf (ev : evt / exh : exh) : evt =
 		  case ev
-		   of CHOOSE_PAT(ev1, ev2) =>
+		   of CHOOSE(ev1, ev2) =>
 			let ev1' : evt = apply wrapf (ev / exh)
 			let ev2' : evt = apply wrapf (ev / exh)
 			(* in *)
 			  return (CHOOSE(ev1', ev2'))
-		    | BEVT_PAT(pollFn, doFn, blockFn) =>
+		    | BEVT(pollFn, doFn, blockFn) =>
 			fun doFn' (k : cont(any) / exh : exh) : unit =
 			      cont k' (x : any) =
 				  let y : any = apply f (x / exh)
@@ -93,47 +104,47 @@ structure PrimEvent : sig
 	      apply spin (UNIT / exh)
 	;
 
-    (* record the calling thread's continuation in the event waiting queues *)
-      define @block (evt : pevent / exh : exh) : any =
-	  let fls : fls = @get-fls(host_vproc / exh)
-	  cont resumeK (x : any) = return (x)
-	  (* in *)
-	    let flg : dirty_flag = alloc(INIT_EVT)
-	    let blockArg : [dirty_flag, fls, cont(any)] = alloc(flg, fls, resumeK)
-	    let blockArg : [dirty_flag, fls, cont(any)] = promote (blockArg)
-	    fun block (ev : evt / exh : exh) : unit =
-		  case ev
-		   of BEVT_PAT(pollFn, doFn, blockFn) =>
-			apply blockFn(blockArg / exh)
-		    | CHOOSE_PAT(ev1, ev2) =>
-			let (_ : unit) = apply block (ev1 / exh)
-			apply block (ev2 / exh)
-		  end
-	    let (_ : unit) = apply block (evt / exh)
-	  (* if we get here, then we are ready to let other threads synchronize
-	   * on this event.
-	   *)
-	    do #0(flg) := WAITING_EVT
+      (* record the calling thread's continuation in the event waiting queues *)
+	define @block (evt : pevent / exh : exh) : any =
+	    let fls : fls = @get-fls(host_vproc / exh)
+	    cont resumeK (x : any) = return (x)
 	    (* in *)
-	      @thread-exit(/exh)
-      ;
+	      let flg : dirty_flag = alloc(INIT_EVT)
+	      let blockArg : [dirty_flag, fls, cont(any)] = alloc(flg, fls, resumeK)
+	      let blockArg : [dirty_flag, fls, cont(any)] = promote (blockArg)
+	      fun block (ev : evt / exh : exh) : unit =
+		    case ev
+		     of BEVT(pollFn, doFn, blockFn) =>
+			  apply blockFn(blockArg / exh)
+		      | CHOOSE(ev1, ev2) =>
+			  let (_ : unit) = apply block (ev1 / exh)
+			  apply block (ev2 / exh)
+		    end
+	      let (_ : unit) = apply block (evt / exh)
+	    (* if we get here, then we are ready to let other threads synchronize
+	     * on this event.
+	     *)
+	      do #0(flg) := WAITING_EVT
+	      (* in *)
+		@thread-exit(/exh)
+	;
   
-    (* attempt to complete an enabled communication *)
-      define @doEvent (enabled : list / exh : exh) : any =
-	  cont syncK (x : any) = return (x)
-	  (* in *)
-	    fun doit (l : list / exh : exh) : any =
-		  case l
-		   of CONS(doFn : evt_do_fn, r : list) =>
-			let (_ : unit) = apply doFn (syncK / exh)
-		      (* if we get here, that means that the attempt failed, so try the next one *)
-			apply doit (r / exh)
-		    | NIL => apply blockThd (UNIT / exh)
-		  end
+      (* attempt to complete an enabled communication *)
+	define @doEvent (enabled : list / exh : exh) : any =
+	    cont syncK (x : any) = return (x)
 	    (* in *)
-	      apply doit (enabled / exh)
-      ;
-    )
+	      fun doit (l : list / exh : exh) : any =
+		    case l
+		     of CONS(doFn : evt_do_fn, r : list) =>
+			  let (_ : unit) = apply doFn (syncK / exh)
+			(* if we get here, that means that the attempt failed, so try the next one *)
+			  apply doit (r / exh)
+		      | NIL => apply blockThd (UNIT / exh)
+		    end
+	      (* in *)
+		apply doit (enabled / exh)
+	;
+      )
 
     val always : 'a -> 'a event = _prim(@always)
     val never : 'a event = BEVT(fn () => false, fn _ => (), fn _ => Threads.exit())
@@ -147,6 +158,46 @@ structure PrimEvent : sig
 	   of [] => block evt
 	    | enabled => doEvent enabled
 	  (* end case *))
+
+  (*************** signal variables **************)
+
+    type signal_var = _prim (![bool, bool, list])
+
+    _primcode (
+	define inline @cvar-new (_ : unit / _ : exh) : signal_var =
+	    let cv : signal_var = alloc(false, false, nil)
+	    let cv : signal_var = promote (cv)
+	    return cv
+	  ;
+
+      (* lock a condition variable *)
+	define inline @cvar-lock (cv : signal_var / ) : unit =
+	    fun spinLp () : () = if #0(cv) then
+		    do Pause()
+		    apply spinLp ()
+		  else if TAS(&0(cv))
+		    then apply spinLp ()
+		    else return ()
+	    apply spinLp ()
+	  ;
+
+	define inline @cvar-lock (cv : signal_var / ) : unit =
+
+	define inline @cvar-signal (cv : signal_var / _ : exh) : unit =
+	    let 
+	  ;
+
+	define inline @cvar-wait (cv : signal_var / _ : exh) : unit =
+	  ;
+
+	define inline @cvar-wait-evt (cv : signal_var / _ : exh) : unit =
+	  ;
+      )
+
+    val signalVar : unit -> signal_var = _prim(@new-cv)
+    val signal    : signal_var -> unit = _prim(@cvar-signal)
+    val waitEvt   : signal_var -> unit pevent = _prim(@cvar-wait-evt)
+    val wait      : signal_var -> unit = _prim(@cvar-wait)
 
   end
 
