@@ -12,7 +12,7 @@ structure PrimSynch =
     _primcode (
 
     (* spin wait until the condition isDone returns true *)
-      define @spin-wait (isDone : fun (/ exh -> bool) / exh : exh) : () =
+      define inline @spin-wait (isDone : fun (/ exh -> bool) / exh : exh) : () =
       (* catch any exception raised by isDone, and terminate the program *)
 	cont exh' (e : exn) =
 	  do assert(false)
@@ -22,7 +22,7 @@ structure PrimSynch =
 	      if done
 		 then return()
 	      else 
-		  (* do Pause() *)         (* notify the hardware that the program is spinning *)
+		  do Pause()      (* notify the hardware that the program is spinning *)
 		  apply spin()
 	apply spin ()
       ;
