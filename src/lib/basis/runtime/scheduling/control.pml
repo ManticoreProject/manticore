@@ -52,13 +52,13 @@ structure Control =
       ;
 
     (* run the fiber under the scheduler action *)
-      define @run (act : PT.sched_act, fiber : PT.fiber / exh : PT.exh) noreturn =
+      define inline @run (act : PT.sched_act, fiber : PT.fiber / exh : PT.exh) noreturn =
         do @push-act(act / exh)
 	throw fiber (UNIT)
       ;
 
     (* forward a signal to the host vproc  *)
-      define @forward-no-check (sg : PT.signal / exh : PT.exh) noreturn =
+      define inline @forward-no-check (sg : PT.signal / exh : PT.exh) noreturn =
         let act : PT.sched_act = @pop-act(/ exh)
 	throw act(sg)
       ;
@@ -115,7 +115,7 @@ structure Control =
       ;
 
     (* yield control to the parent scheduler, masking signals upon return *)
-      define @atomic-yield (/ exh : PT.exh) : PT.unit =
+      define inline @atomic-yield (/ exh : PT.exh) : PT.unit =
         cont k (x:PT.unit) = 
           do vpstore(ATOMIC, host_vproc, PT.true)         (* mask signals before resuming *)
           return(UNIT)
@@ -125,21 +125,21 @@ structure Control =
       ;
 
     (* create a resumption fiber *)
-      define @resume (k : PT.fiber, resK : cont(PT.fiber) / exh : PT.exh) : PT.fiber =
+      define inline @resume (k : PT.fiber, resK : cont(PT.fiber) / exh : PT.exh) : PT.fiber =
 	cont resK' (x : PT.unit) =
 	  throw resK(k)
 	return(resK')
       ;
 
     (* run the thread under the scheduler action *)
-      define @run-thread (act : PT.sched_act, fiber : PT.fiber, fls : FLS.fls / exh : PT.exh) noreturn =
+      define inline @run-thread (act : PT.sched_act, fiber : PT.fiber, fls : FLS.fls / exh : PT.exh) noreturn =
 	do vpstore (ATOMIC, host_vproc, PT.true)
         let _ : PT.unit = FLS.@set(fls / exh)
         @run(act, fiber / exh)
       ;
 
     (* create a fiber *)
-      define @fiber (f : PT.fiber_fun / exh : PT.exh) : PT.fiber =
+      define inline @fiber (f : PT.fiber_fun / exh : PT.exh) : PT.fiber =
 	cont fiberK (x : PT.unit) = 
 	  let x : PT.unit =
 	  (* in case of an exception, just terminate the fiber *)
