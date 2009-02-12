@@ -26,6 +26,8 @@ signature FCMS =
 
     type schedule
 
+  (* empty schedule *)
+    val empty : schedule os_monad
   (* schedule the future *)
     val d : 'a future -> schedule os_monad
   (* synchronize on the future *)

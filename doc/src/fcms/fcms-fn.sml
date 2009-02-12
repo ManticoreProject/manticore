@@ -27,6 +27,8 @@ functor FCMSFn (
 
     type schedule = unit
 
+    val empty = MK_OS(fn () => ())
+
   (* schedule the future *)
     fun d fut = MK_OS(fn () => F.run fut)
 
