@@ -336,6 +336,7 @@ structure CheckBOM : sig
                       chkVars(args, name);
 		      checkArgTypes (BTU.match, name ^ vl2s args, argTy, typesOf args))
 		  | ([ty], B.E_CCall(cf, args)) => (
+(* FIXME: check that the return type matches *)
 		      chkVar(cf, "CCall"); 
                       chkVars(args, "CCall args"))
 		  | ([], B.E_CCall(cf, args)) => (
