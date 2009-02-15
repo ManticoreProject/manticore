@@ -244,7 +244,7 @@ if MChkTy.check stm
       and bindExp (lhs, rhs, msg) = let
 	  fun f (l, r) = emitStms (annotateStms(bind (l, r), msg))
           in
-             ListPair.app f (lhs, rhs)
+             ListPair.appEq f (lhs, rhs)
           end                 
 
       (* Construct an MLRISC tree from a CFG expression. *)
