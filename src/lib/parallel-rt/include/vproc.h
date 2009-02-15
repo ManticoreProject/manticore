@@ -54,11 +54,11 @@ struct struct_vproc {
 				/* global GC has started, but this vproc has not */
 				/* started yet. */
     bool	globalGCInProgress; /*!< true when this vproc has started global collection */
-    int		id;	      /*!< index of this vproc in VProcs[] array */
-    OSThread_t	hostID;	      /*!< PThread ID of host */
-    Mutex_t	lock;	      /*!< lock for VProc state */
-    Cond_t	wait;	      /*!< for waiting when idle */
-    bool	idle;	      /*!< true when the VProc is idle */
+    int		id;		/*!< index of this vproc in VProcs[] array */
+    OSThread_t	hostID;		/*!< PThread ID of host */
+    Mutex_t	lock;		/*!< lock for VProc state */
+    Cond_t	wait;		/*!< for waiting when idle */
+    bool	idle;		/*!< true when the VProc is idle */
 			      /* GC stats */
 #ifndef NO_GC_STATS
     int32_t	nLocalPtrs;	/*!< counter of pointers into local heap that are scanned in minor GC */
