@@ -115,15 +115,16 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 	    Die ("uncaught exception\n");
 	  case REQ_Sleep:	/* make the VProc idle */
 	    VProcWaitForSignal(vp);
-	    assert(vp->wakeupCont != M_NIL);
+	    assert (vp->wakeupCont != M_NIL);
 	    envP = vp->wakeupCont;
-	    codeP = ValueToAddr(ValueToCont(envP)->cp);
+	    codeP = ValueToAddr (ValueToCont(envP)->cp);
 	    arg = M_UNIT;
 	    retCont = M_UNIT;
 	    exnCont = M_UNIT;
+	    vp->wakeupCont = M_NIL;
 	    break;
-	default:
-	  Die("unknown signal %d\n", req);
+	  default:
+	    Die("unknown signal %d\n", req);
 	}
     }
 
