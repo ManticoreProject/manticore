@@ -49,7 +49,8 @@ structure SubstVar =
           end
 
     and pat s p = (case p
-          of A.TuplePat ps => A.TuplePat (List.map (pat s) ps)
+          of A.ConPat(dcon, tys, p) => A.ConPat(dcon, tys, pat s p)
+	   | A.TuplePat ps => A.TuplePat (List.map (pat s) ps)
 	   | A.VarPat v => A.VarPat (s v)
 	   | A.WildPat t => A.WildPat t
 	   | A.ConstPat c => A.ConstPat c
