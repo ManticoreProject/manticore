@@ -27,8 +27,6 @@ typedef struct {	    /* data passed to NewVProc */
     VProcFn_t	initFn;		/* the initial function to run */
     Value_t	initArg;	/* initial argument data for initFn */
     bool        started;        /* has the vproc started running Manticore code? */
-    Mutex_t     lock;           /* initialization lock */
-    Cond_t      wait;           /* initialization condition variable*/
 } InitData_t;
 
 static void *NewVProc (void *_data);
@@ -103,14 +101,10 @@ void VProcInit (Options_t *opts)
     initData[0].id = 0;
     initData[0].initFn = MainVProc;
     initData[0].initArg = M_UNIT;
-    MutexInit(&(initData[0].lock));
-    CondInit(&(initData[0].wait));
     for (int i = 1;  i < NumVProcs;  i++) {
 	initData[i].id = i;
 	initData[i].initFn = IdleVProc;
 	initData[i].initArg = M_UNIT;
-	MutexInit(&(initData[i].lock));
-	CondInit(&(initData[i].wait));
     }
 
     for (int i = 0;  i < NumVProcs;  i++) {
