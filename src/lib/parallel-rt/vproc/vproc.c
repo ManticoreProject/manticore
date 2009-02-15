@@ -319,54 +319,6 @@ void VProcWaitForSignal (VProc_t *vp)
 
 }
 
-/* VProcMain:
- */
-static void *VProcMain (void *_data)
-{
-    InitData_t		*data = (InitData_t *)_data;
-    VProc_t		*self = VProcs[data->id];
-    VProcFn_t		init = data->initFn;
-    void		*arg = data->initArg;
-    struct sigaction	sa;
-
-#ifndef NDEBUG
-    if (DebugFlg)
-	SayDebug("[%2d] VProcMain: initializing ...\n", self->id);
-#endif
-
-#ifdef HAVE_PTHREAD_SETAFFINITY_NP 
-    cpu_set_t	cpus;
-    CPU_ZERO(&cpus);
-    CPU_SET(self->id, &cpus);
-    if (pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpus) == -1) {
-	Warning("[%2d] unable to set affinity\n", NumVProcs);
-    }
-#endif
-
-  /* store a pointer to the VProc info as thread-specific data */
-    pthread_setspecific (VProcInfoKey, self);
-
-  /* initialize this pthread's handler. */
-    sa.sa_sigaction = SigHandler;
-    sa.sa_flags = SA_SIGINFO | SA_RESTART;
-    sigfillset (&(sa.sa_mask));
-    sigaction (SIGUSR1, &sa, 0);
-    sigaction (SIGUSR2, &sa, 0);
-
-  /* signal that we have started */
-    MutexLock (&(data->lock));
-	data->started = true;
-	CondSignal (&(data->wait));
-    MutexUnlock (&(data->lock));
-
-    self->idle = false;
-
-    init (self, arg);
-
-    Die("VProcMain returning.\n");
-
-} /* VProcMain */
-
 /*! \brief return a list of the vprocs in the system.
  *  \param self the host vproc
  */
