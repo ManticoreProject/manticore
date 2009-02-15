@@ -33,8 +33,11 @@ structure SchedulerAction (* :
 
     _primcode (
 
+(* FIXME: these operations should not take an exh continuation! *)
+
+(* FIXME: remove ATOMIC set/clear from this operation *)
     (* pop from the host vproc's scheduler action stack *)
-      define @pop-act (/ exh : exh) : PT.sched_act =
+      define inline @pop-act (/ exh : exh) : PT.sched_act =
 	let vp : vproc = host_vproc
 	do vpstore(ATOMIC, vp, true)
 	let tos : [PT.sched_act, any] = vpload(VP_ACTION_STK, vp)
@@ -46,8 +49,9 @@ structure SchedulerAction (* :
 	return(act)
       ;
 
+(* FIXME: remove ATOMIC set/clear from this operation *)
     (* push a scheduler action on the host vproc's stack *)
-      define @push-act (act : PT.sched_act / exh : exh) : () =
+      define inline @push-act (act : PT.sched_act / exh : exh) : () =
         let vp : vproc = host_vproc
 	do vpstore (ATOMIC, vp, true)
 	do assert(NotEqual(act, nil))
@@ -58,24 +62,28 @@ structure SchedulerAction (* :
         return()
       ;
 
+(* FIXME: this operation must be called with ATOMIC set and it must clear ATOMIC *)
     (* run the fiber under the scheduler action *)
       define inline @run (act : PT.sched_act, fiber : PT.fiber / exh : exh) noreturn =
         do @push-act(act / exh)
 	throw fiber (UNIT)
       ;
 
+(* FIXME: this operation may be called with ATOMIC set and it must clear ATOMIC *)
     (* forward a signal to the host vproc  *)
       define inline @forward (sg : PT.signal / exh : exh) noreturn =
         let act : PT.sched_act = @pop-act(/ exh)
 	throw act(sg)
       ;
 
+(* FIXME: this operation may be called with ATOMIC set and it must clear ATOMIC *)
     (* stop the current fiber *)
       define inline @stop (/ exh : exh) : unit =
         do @forward(PT.STOP / exh)
         return(UNIT)
       ;
 
+(* FIXME: this operation is not called with ATOMIC set and it must clear ATOMIC *)
     (* yield control to the parent scheduler *)
       define inline @yield (/ exh : exh) : unit =
         cont k (x : unit) = return(UNIT)
@@ -84,7 +92,7 @@ structure SchedulerAction (* :
       ;
 
     (* yield control to the parent scheduler, masking signals upon return *)
-      define @atomic-yield (/ exh : exh) : unit =
+      define inline @atomic-yield (/ exh : exh) : unit =
         cont k (x:unit) = 
           do vpstore(ATOMIC, host_vproc, true)         (* mask signals before resuming *)
           return(UNIT)
@@ -94,7 +102,7 @@ structure SchedulerAction (* :
       ;
 
     (* create a fiber *)
-      define @fiber (f : PT.fiber_fun / exh : exh) : PT.fiber =
+      define inline @fiber (f : PT.fiber_fun / exh : exh) : PT.fiber =
 	cont fiberK (x : unit) = 
 	  let x : unit =
 	  (* in case of an exception, just terminate the fiber *)
@@ -105,8 +113,11 @@ structure SchedulerAction (* :
 	return (fiberK)
       ;
 
+(* FIXME: this operation must be called with ATOMIC set and it must clear ATOMIC.
+ * Also, the historic name for this operation is dispatch.
+ *)
     (* run the fiber under the scheduler action and with the given fls *)
-      define @run-with-fls (act : PT.sched_act, fiber : PT.fiber, fls : FLS.fls / exh : exh) noreturn =
+      define inline @run-with-fls (act : PT.sched_act, fiber : PT.fiber, fls : FLS.fls / exh : exh) noreturn =
 	do vpstore (ATOMIC, host_vproc, true)
         let _ : unit = FLS.@set(fls / exh)
         @run(act, fiber / exh)
