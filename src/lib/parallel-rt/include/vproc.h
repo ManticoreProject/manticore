@@ -21,6 +21,7 @@ struct struct_vproc {
     Value_t	currentFG;	/*!< fiber group of the current thread */
     Value_t	actionStk;	/*!< the top of the signal-action stack */
     Value_t     schedCont;      /*!< continuation that invokes the current scheduler */
+    Value_t     wakeupCont;     /*!< continuation that wakes the vproc */
     Value_t	rdyQHd;		/*!< the head of the primary ready queue */
     Value_t	rdyQTl;		/*!< the tail of the primary ready queue */
     Value_t     entryQ;         /*!< the head of the entry queue (stack) for the vproc */

@@ -115,7 +115,8 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 	    Die ("uncaught exception\n");
 	  case REQ_Sleep:	/* make the VProc idle */
 	    VProcWaitForSignal(vp);
-	    envP = vp->stdCont;
+	    assert(vp->wakeupCont != M_NIL);
+	    envP = vp->wakeupCont;
 	    codeP = ValueToAddr(ValueToCont(envP)->cp);
 	    arg = M_UNIT;
 	    retCont = M_UNIT;

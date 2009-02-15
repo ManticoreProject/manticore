@@ -13,25 +13,19 @@ structure LoadPaths =
     val basisDir = "@MANTICORE_BASISDIR@"
 
   (* Manticore basis CPP definition directory *)
-    val basisCPPDefDir = OS.Path.joinDirFile {dir=basisDir, file="include"}
+    val basisCPPDefDir = OS.Path.joinDirFile {file="include", dir=basisDir}
 
-  (* Manticore parallel directory *)
-    val basisParallelDir = OS.Path.joinDirFile {dir=basisDir, file="parallel"}
-
-  (* Manticore runtime directory *)
-    val basisRuntimeDir = OS.Path.joinDirFile {dir=basisDir, file="runtime"}
-
-  (* Manticore sequential directory *)
-    val basisSequentialDir = OS.Path.joinDirFile {dir=basisDir, file="sequential"}
-
-  (* top-level schedulers *)
-    val topLevelSchedsDir = OS.Path.joinDirFile{file="top-level-scheds", dir=basisRuntimeDir}
+  (* Manticore basis CPP definition directory *)
+    val basisSequentialDir = OS.Path.joinDirFile {file="sequential", dir=basisDir}
 
   (* sequential basis library *)
     val sequentialLib = OS.Path.joinDirFile{file="sequential.mlb", dir=basisSequentialDir}
 
+  (* top-level schedulers *)
+    val topLevelSchedsDir = OS.Path.joinDirFile{file="schedulers", dir=basisDir}
+
   (* parallel basis library *)
-    val parallelLib = OS.Path.joinDirFile{file="parallel.mlb", dir=basisParallelDir}	
+    val parallelLib = OS.Path.joinDirFile{file="parallel.mlb", dir=basisDir}
 
   (* top-level scheduler library *)
     fun topLevelSchedLib topLevelSched = OS.Path.joinDirFile{file=topLevelSched^".mlb", dir=topLevelSchedsDir}

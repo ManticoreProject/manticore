@@ -60,7 +60,7 @@ structure Chan : sig
 
 	define inline @throw-to (fls : FLS.fls, recv : cont(any), v : any / exh : exh) noreturn =
 	  let _ : FLS.fls =  FLS.@set (fls / exh)
-	  do @atomic-end ()
+	  do VProc.@atomic-end ()
 	  throw recv (v)
 	;
 
@@ -179,7 +179,7 @@ structure Chan : sig
 	
 	define @chan-recv (ch : chan_rep / exh : exh) : any =
 	    let fls : FLS.fls = FLS.@get( / exh)
-	    do @atomic-begin ()
+	    do VProc.@atomic-begin ()
 	    do @chan-acquire-lock (ch / exh)
 	    let maybeItem : Option.option = @chan-dequeue-send (ch / exh)
 	    (* in *)
@@ -187,7 +187,7 @@ structure Chan : sig
 	       of Option.SOME(item : sendq_item) =>
 		    do @chan-release-lock (ch / exh)
 		    do VProcQueue.@enqueue-on-vproc(#2(item), #1(item), #3(item) / exh)
-		    do @atomic-end ()
+		    do VProc.@atomic-end ()
 		    (* in *)
 		      return (#0(item))
 		| Option.NONE =>
@@ -197,7 +197,7 @@ structure Chan : sig
 		      let flag : dirty_flag = promote (flag)
 		      do @chan-enqueue-recv (ch, flag, fls, recvK / exh)
 		      do @chan-release-lock (ch / exh)
-		      do @atomic-end ()
+		      do VProc.@atomic-end ()
 		      (* in *)
 			Control.@stop(/exh)
 	      end
@@ -207,7 +207,7 @@ structure Chan : sig
 	    let ch : chan_rep = #0(arg)
 	    let msg : any = #1(arg)
 	    let fls : FLS.fls = FLS.@get( / exh)
-	    do @atomic-begin ()
+	    do VProc.@atomic-begin ()
 	    do @chan-acquire-lock (ch / exh)
 	    cont sendK (x : unit) = return (x)
 	    (* in *)
@@ -231,7 +231,7 @@ structure Chan : sig
 			| Option.NONE =>
 			    do @chan-enqueue-send (ch, msg, fls, sendK / exh)
 			    do @chan-release-lock (ch / exh)
-			    do @atomic-end ()
+			    do VProc.@atomic-end ()
 			    (* in *)
 			      Control.@stop(/exh)
 		      end

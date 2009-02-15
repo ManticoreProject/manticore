@@ -1,0 +1,5 @@
+implicit-threading.mlb
+  ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
+  in
+    implicit-thread-test.pml
+  end

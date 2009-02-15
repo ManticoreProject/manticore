@@ -8,7 +8,6 @@ structure Threads : sig
 
   end = struct
 
-    structure FLS = FiberLocalStorage
     structure PT = PrimTypes
 
     _primcode (
@@ -21,7 +20,7 @@ structure Threads : sig
 	      (* in *)
 		apply f (UNIT / exh)
 	    (* in *)
-	      Control.@stop ( / exh)
+	      SchedulerAction.@stop ( / exh)
 	  (* in *)
 	  let vp : vproc = host_vproc
 	  let fls : FLS.fls = FLS.@new (UNIT / exh)
@@ -30,7 +29,7 @@ structure Threads : sig
 	;
 
 	define inline @thread-exit (x : PT.unit / exh : PT.exh) : any =
-	  Control.@stop ( /exh)
+	  SchedulerAction.@stop ( /exh)
 	;
 
       )

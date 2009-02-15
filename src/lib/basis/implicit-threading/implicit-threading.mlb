@@ -1,0 +1,31 @@
+(* implicit-threading.mlb
+ *
+ * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Support for implicitly-generated threads.
+ *)
+
+  ../sequential/sequential.mlb
+  ../misc/debug.mlb
+  ../runtime/runtime.mlb
+  ../synch/synch.mlb
+
+(* Implicit threading support *)
+  ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
+  in
+    implicit-thread.pml
+    cancelation.pml
+  end
+
+(* Futures *)
+
+  lazy-future-sig.pml
+  future-sig.pml
+  ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
+  in
+    ivar.pml
+    lazy-future.pml
+  end
+
+  ropes.mlb

@@ -26,6 +26,9 @@ typedef struct {	    /* data passed to NewVProc */
     int		id;		/* VProc ID */
     VProcFn_t	initFn;		/* the initial function to run */
     Value_t	initArg;	/* initial argument data for initFn */
+    bool        started;        /* has the vproc started running Manticore code? */
+    Mutex_t     lock;           /* initialization lock */
+    Cond_t      wait;           /* initialization condition variable*/
 } InitData_t;
 
 static void *NewVProc (void *_data);
@@ -100,10 +103,14 @@ void VProcInit (Options_t *opts)
     initData[0].id = 0;
     initData[0].initFn = MainVProc;
     initData[0].initArg = M_UNIT;
+    MutexInit(&(initData[0].lock));
+    CondInit(&(initData[0].wait));
     for (int i = 1;  i < NumVProcs;  i++) {
 	initData[i].id = i;
 	initData[i].initFn = IdleVProc;
 	initData[i].initArg = M_UNIT;
+	MutexInit(&(initData[i].lock));
+	CondInit(&(initData[i].wait));
     }
 
     for (int i = 0;  i < NumVProcs;  i++) {
@@ -161,6 +168,7 @@ void *NewVProc (void *arg)
     vproc->sigPending = M_FALSE;
     vproc->actionStk = M_NIL;
     vproc->schedCont = M_NIL;
+    vproc->wakeupCont = M_NIL;
     vproc->rdyQHd = M_NIL;
     vproc->rdyQTl = M_NIL;
     vproc->entryQ = M_NIL;
@@ -173,6 +181,7 @@ void *NewVProc (void *arg)
     vproc->limitPtr = (Addr_t)vproc + VP_HEAP_SZB - ALLOC_BUF_SZB;
     SetAllocPtr (vproc);
     vproc->idle = true;
+    vproc->currentFG = M_NIL;
 
 #ifdef ENABLE_LOGGING
     InitLog (vproc);
@@ -237,32 +246,6 @@ static void MainVProc (VProc_t *vp, void *arg)
     exit (0);
 
 }
-
-/* IdleVProc:
- */
-static void IdleVProc (VProc_t *vp, void *arg)
-{
-    LogVProcStartIdle (vp);
-
-#ifndef NDEBUG
-    if (DebugFlg)
-	SayDebug("[%2d] IdleVProc starting\n", vp->id);
-#endif
-
-  /* Run code that will immediately put this VProc to sleep. */
-    RunManticore (vp, (Addr_t)&ASM_VProcSleep, M_UNIT, M_UNIT);
-  /* Run code that will activate the VProc. */
-    Value_t envP = vp->schedCont;
-    Addr_t codeP = ValueToAddr(ValueToCont(envP)->cp);
-    RunManticore (vp, codeP, M_NIL, envP);
-
-#ifndef NDEBUG
-    if (DebugFlg)
-	SayDebug("[%2d] return from RunManticore in idle vproc\n", vp->id);
-#endif
-    exit (0);
-
-} /* end of IdleVProc */
 
 /*! \brief return a pointer to the VProc that the caller is running on.
  *  \return the VProc that the caller is running on.
@@ -335,6 +318,55 @@ void VProcWaitForSignal (VProc_t *vp)
     }
 
 }
+
+/* VProcMain:
+ */
+static void *VProcMain (void *_data)
+{
+    InitData_t		*data = (InitData_t *)_data;
+    VProc_t		*self = VProcs[data->id];
+    VProcFn_t		init = data->initFn;
+    void		*arg = data->initArg;
+    struct sigaction	sa;
+
+#ifndef NDEBUG
+    if (DebugFlg)
+	SayDebug("[%2d] VProcMain: initializing ...\n", self->id);
+#endif
+
+#ifdef HAVE_PTHREAD_SETAFFINITY_NP 
+    cpu_set_t	cpus;
+    CPU_ZERO(&cpus);
+    CPU_SET(self->id, &cpus);
+    if (pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpus) == -1) {
+	Warning("[%2d] unable to set affinity\n", NumVProcs);
+    }
+#endif
+
+  /* store a pointer to the VProc info as thread-specific data */
+    pthread_setspecific (VProcInfoKey, self);
+
+  /* initialize this pthread's handler. */
+    sa.sa_sigaction = SigHandler;
+    sa.sa_flags = SA_SIGINFO | SA_RESTART;
+    sigfillset (&(sa.sa_mask));
+    sigaction (SIGUSR1, &sa, 0);
+    sigaction (SIGUSR2, &sa, 0);
+
+  /* signal that we have started */
+    MutexLock (&(data->lock));
+	data->started = true;
+	CondSignal (&(data->wait));
+    MutexUnlock (&(data->lock));
+
+    self->idle = false;
+
+    init (self, arg);
+
+    Die("VProcMain returning.\n");
+
+} /* VProcMain */
+
 /*! \brief return a list of the vprocs in the system.
  *  \param self the host vproc
  */
@@ -379,6 +411,33 @@ Value_t SleepCont (VProc_t *self)
 {
     return AllocUniform(self, 1, PtrToValue(&ASM_VProcSleep));
 }
+
+
+/* IdleVProc:
+ */
+static void IdleVProc (VProc_t *vp, void *arg)
+{
+    LogVProcStartIdle (vp);
+
+#ifndef NDEBUG
+    if (DebugFlg)
+	SayDebug("[%2d] IdleVProc starting\n", vp->id);
+#endif
+
+  /* Put the VProc to sleep until a signal arrives. */
+    VProcWaitForSignal(vp);
+  /* Activate scheduling code on the vproc. */
+    Value_t envP = vp->schedCont;
+    Addr_t codeP = ValueToAddr(ValueToCont(envP)->cp);
+    RunManticore (vp, codeP, M_NIL, envP);
+
+#ifndef NDEBUG
+    if (DebugFlg)
+	SayDebug("[%2d] return from RunManticore in idle vproc\n", vp->id);
+#endif
+    exit (0);
+
+} /* end of IdleVProc */
 
 /* SigHandler:
  *

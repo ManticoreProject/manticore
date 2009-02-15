@@ -1,19 +1,18 @@
-(* runtime.mlb
+(* synch.mlb
  *
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Runtime basis.
+ * Synchronous operations.
  *)
 
   ../sequential/sequential.mlb
   ../misc/debug.mlb
+  ../runtime/runtime.mlb
+
+  locked-queue.mlb
 
   ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
   in
-    fls.pml
-    scheduler-action.pml
-    vproc-queue.pml
-    vproc.pml
-    thread-ops.pml
+    n-way-barrier.pml
   end

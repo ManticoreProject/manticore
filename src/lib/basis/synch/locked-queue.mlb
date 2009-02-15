@@ -1,0 +1,17 @@
+(* locked-queue.mlb
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Locked queues using spin locks.
+ *)
+
+
+  ../runtime/runtime.mlb
+
+  ann "cpp" "../include/prim.def,../include/debug.def,../include/runtime-offsets.def,../include/assert.def,locked-queue.def"
+  in
+    in-place-queue.pml 
+    spin-lock.pml
+    locked-queue.pml
+  end

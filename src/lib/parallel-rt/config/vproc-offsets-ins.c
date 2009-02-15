@@ -25,6 +25,7 @@
     VP_OFFSET(vp, CURRENT_FG, currentFG, true);
     VP_OFFSET(vp, VP_ACTION_STK, actionStk, false);
     VP_OFFSET(vp, VP_SCHED_CONT, schedCont, false);
+    VP_OFFSET(vp, VP_WAKEUP_CONT, wakeupCont, true);
     VP_OFFSET(vp, VP_RDYQ_HD, rdyQHd, true);
     VP_OFFSET(vp, VP_RDYQ_TL, rdyQTl, true);
     VP_OFFSET(vp, VP_ENTRYQ, entryQ, false);

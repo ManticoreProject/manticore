@@ -1,0 +1,17 @@
+(* work-stealers.mlb
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Load the work-stealers thread scheduler.
+ *)
+
+  ../../sequential/sequential.mlb
+  ../../misc/debug.mlb
+  ../fls/fls.mlb
+  ../scheduling/scheduling.mlb
+
+  ann "cpp" "../../include/runtime-offsets.def,../../include/prim.def,../../include/debug.def,../../include/assert.def"
+  in
+    work-stealers.pml
+  end
