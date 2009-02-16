@@ -62,16 +62,16 @@ structure FLS (* :
 	    Option.option                     (* implicit-thread environment (ITE) *)
 	];
 
-      define @alloc (vprocId : int, ite : Option.option / exh : exh) : fls =
-	let fls : fls = alloc(vprocId, ite)
-	return(fls)
-      ;
+	define @alloc (vprocId : int, ite : Option.option / exh : exh) : fls =
+	  let fls : fls = alloc(vprocId, ite)
+	  return(fls)
+	;
 
-    (* create fls *)
-      define @new (x : unit / exh : exh) : fls =
-	let fls : fls = @alloc(~1, Option.NONE / exh)
-	return(fls)
-      ;
+      (* create fls *)
+	define @new (x : unit / exh : exh) : fls =
+	  let fls : fls = @alloc(~1, Option.NONE / exh)
+	  return(fls)
+	;
 
       (* set the fls on the host vproc *)
 	define inline @set (fls : fls / exh : exh) : unit =
@@ -87,52 +87,50 @@ structure FLS (* :
 	  return(fls)
 	;
 
-      define @vproc-id (fls : fls / exh : exh) : int =
-	return(SELECT(VPROC_OFF, fls))
-      ;
+	define @vproc-id (fls : fls / exh : exh) : int =
+	  return(SELECT(VPROC_OFF, fls))
+	;
 
-      define @ite (fls : fls / exh : exh) : ite =
-	case SELECT(ITE_OFF, fls)
-	 of Option.NONE =>
-	    let e : exn = Fail(@"FLS.ite: nonexistant implicit threading environment")
-	    throw exh(e)
-	  | Option.SOME(ite : ite) =>
-	    return(ite)
-	end
-      ;
+      (* find the implicit-thread environment *)
 
-      define @find-ite (/ exh : exh) : Option.option =
-	let fls : fls = @get(/ exh)
-	return(SELECT(ITE_OFF, fls))
-      ;
+	define @find-ite (/ exh : exh) : Option.option =
+	  let fls : fls = @get(/ exh)
+	  return(SELECT(ITE_OFF, fls))
+	;
 
-      define @get-ite (/ exh : exh) : ite =
-	let fls : fls = @get(/ exh)
-	@ite(fls / exh)
-      ;
+	define @get-ite (/ exh : exh) : ite =
+	  let fls : fls = @get(/ exh)
+	  case SELECT(ITE_OFF, fls)
+	   of Option.NONE =>
+	      let e : exn = Fail(@"FLS.ite: nonexistant implicit threading environment")
+	      throw exh(e)
+	    | Option.SOME(ite : ite) =>
+	      return(ite)
+	  end
+	;
 
-    (* set the implicit-thread environment *)
-      define @set-ite (ite : ite / exh : exh) : () =
-	let fls : fls = @get(/ exh)
-	let vProcId : int = @vproc-id(fls / exh)
-	let fls : fls = @alloc(vProcId, Option.SOME(ite) / exh)
-	let _ : unit = @set(fls / exh)  
-        return()
-      ;
+      (* set the implicit-thread environment *)
+	define @set-ite (ite : ite / exh : exh) : () =
+	  let fls : fls = @get(/ exh)
+	  let vProcId : int = @vproc-id(fls / exh)
+	  let fls : fls = @alloc(vProcId, Option.SOME(ite) / exh)
+	  let _ : unit = @set(fls / exh)  
+	  return()
+	;
 
-    (* set the fls as pinned to the given vproc *)
-      define @pin-to (fls : fls, vprocId : int / exh : exh) : fls =
-	let fls : fls = @alloc(vprocId, SELECT(ITE_OFF, fls) / exh)
-	return(fls)
-      ;
+      (* set the fls as pinned to the given vproc *)
+	define @pin-to (fls : fls, vprocId : int / exh : exh) : fls =
+	  let fls : fls = @alloc(vprocId, SELECT(ITE_OFF, fls) / exh)
+	  return(fls)
+	;
 
-    (* pin the current fls to the given vproc *)
-      define @pin (vprocId : int / exh : exh) : () =
-	let fls : fls = @get(/ exh)
-	let fls : fls = @pin-to(fls, vprocId / exh)
-	let _ : unit = @set(fls / exh)
-        return()
-      ;
+      (* pin the current fls to the given vproc *)
+	define @pin (vprocId : int / exh : exh) : () =
+	  let fls : fls = @get(/ exh)
+	  let fls : fls = @pin-to(fls, vprocId / exh)
+	  let _ : unit = @set(fls / exh)
+	  return()
+	;
 
     )
 
