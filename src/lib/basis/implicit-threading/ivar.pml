@@ -52,7 +52,7 @@ structure IVar =
 		   else apply loop ()
 	      do apply loop()
 	      let x : int = I32FetchAndAdd(&SPIN_LOCK_OFF(ivar), ~1)
-	      let x : PT.unit = SchedulerAction.@stop(/ exh)
+	      let x : PT.unit = SchedulerAction.@stop()
 	      return(value)
 	else
 	    let x : int = I32FetchAndAdd(&SPIN_LOCK_OFF(ivar), ~1)

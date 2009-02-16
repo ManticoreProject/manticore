@@ -14,10 +14,10 @@ structure RoundRobin =
       define @round-robin (x : unit / exh : exh) : unit = 
 	cont switch (s : PT.signal) =
           cont dispatch () =
-            let item : Option.option = VProcQueue.@dequeue(/ exh)
+            let item : Option.option = VProcQueue.@dequeue-in-atomic(host_vproc)
             case item
 	     of Option.NONE => 
-		do VProc.@wait(/ exh)
+		do VProc.@wait-in-atomic()
 		throw dispatch()
 	      | Option.SOME(qitem : VProcQueue.queue) =>
 		do SchedulerAction.@dispatch-from-atomic (switch, #1(qitem), #0(qitem) / exh)
@@ -29,7 +29,7 @@ structure RoundRobin =
 	         throw dispatch ()
 	     | PT.PREEMPT (k : PT.fiber) =>
 		 let fls : FLS.fls = FLS.@get ( / exh)
-		 do VProcQueue.@enqueue (fls, k / exh)
+		 do VProcQueue.@enqueue (fls, k)
 		 throw dispatch () 
 	     | _ =>
 	       let e : exn = Match

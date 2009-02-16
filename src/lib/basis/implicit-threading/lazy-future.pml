@@ -66,7 +66,7 @@ structure LazyFuture : LAZY_FUTURE =
       define @run (fut : future / exh : exh) : unit =
         cont k (x : unit) =
           do @steal(fut / exh)
-          SchedulerAction.@stop(/ exh)
+          SchedulerAction.@stop()
         let thd : ImplicitThread.thread = ImplicitThread.@thread(k, SELECT(CANCELABLE_OFF, fut) / exh)
 	do ImplicitThread.@spawn(thd / exh)
 	return(UNIT)

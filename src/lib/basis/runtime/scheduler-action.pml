@@ -29,7 +29,7 @@ structure SchedulerAction (* :
     (* yield control to the parent scheduler *)
       define inline @yield-from-atomic () : unit;
       define inline @yield () : unit;
-      define inline @yield-in-atomic () : unit;
+      define inline @yield-in-atomic (vp : vproc) : unit;
 
     (* create a fiber *)
       define inline @fiber (f : PT.fiber_fun / exh : exh) : PT.fiber;
@@ -155,7 +155,7 @@ structure SchedulerAction (* :
     (* run the fiber under the scheduler action and with the given fls *)
       define inline @dispatch-from-atomic (act : PT.sched_act, fiber : PT.fiber, fls : FLS.fls / exh : exh) noreturn =
 	  let _ : unit = FLS.@set(fls / exh)
-	  @run (act, fiber / exh)
+	  @run (act, fiber)
 	;
 
     )

@@ -133,14 +133,14 @@ structure Cancelation (* : sig
 		 throw terminate()
 	       | PT.PREEMPT(k : PT.fiber) =>
 		 do @set-inactive(c / exh)
-                 let _ : unit = SchedulerAction.@yield-in-atomic()
+                 let _ : unit = SchedulerAction.@yield-in-atomic(host_vproc)
                  throw dispatch(wrapper, k)
 	       | _ =>
 		 let e : exn = Match
                  throw exh (e)
              end
         cont wrappedK (x : unit) =
-             do SchedulerAction.@atomic-begin()
+             let vp : vproc = SchedulerAction.@atomic-begin()
              throw dispatch(wrapper, k)
         return(wrappedK)
       ;

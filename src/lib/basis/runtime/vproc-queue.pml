@@ -26,17 +26,17 @@ structure VProcQueue (* :
       typedef queue = [FLS.fls, PT.fiber, any];
 
     (* enqueue on the local queue. NOTE: signals must be masked *)
-      define @enqueue-in-atomic (fls : FLS.fls, fiber : PT.fiber / exh : exh) : ();
+      define @enqueue-in-atomic (vp : vproc, fls : FLS.fls, fiber : PT.fiber) : ();
     (* dequeue from the local queue  *)
-      define @dequeue-in-atomic ( / exh : exh) : O.option;
+      define @dequeue-in-atomic () : O.option;
 
     (* enqueue a fiber (paired with fls) on a remote vproc *)
-      define @enqueue-on-vproc (dst : vproc, fls : FLS.fls, k : PT.fiber / exh : exh) : ();
+      define @enqueue-on-vproc (dst : vproc, fls : FLS.fls, k : PT.fiber) : ();
 
     (* dequeue the first item to satisfy the given predicate  *)
       define @dequeue-with-pred (f : fun(FLS.fls / exh -> bool) / exh : exh) : O.option;
     (* enqueue on the host's vproc's thread queue *)
-      define inline @enqueue (fls : FLS.fls, fiber : PT.fiber / exh : exh) : ();
+      define inline @enqueue (fls : FLS.fls, fiber : PT.fiber) : ();
 
     )
 
@@ -188,7 +188,7 @@ structure VProcQueue (* :
 	;
 
     (* enqueue on the host's vproc's thread queue *)
-      define inline @enqueue (fls : FLS.fls, fiber : PT.fiber / exh : exh) : () =
+      define inline @enqueue (fls : FLS.fls, fiber : PT.fiber) : () =
 	  let vp : vproc = SchedulerAction.@atomic-begin()
 	  do @enqueue-in-atomic (host_vproc, fls, fiber)
 	  do SchedulerAction.@atomic-end(vp)
@@ -214,21 +214,21 @@ structure VProcQueue (* :
 		      if b then throw exit (O.SOME(item))
 		      else if Equal(SELECT(FLS_OFF, item), SELECT(FLS_OFF, origItem))
 			then 
-			  do @enqueue(SELECT(FLS_OFF, item), SELECT(FIBER_OFF, item) / exh)
+			  do @enqueue(SELECT(FLS_OFF, item), SELECT(FIBER_OFF, item))
 			  throw exit (O.NONE)
 			else 
-			  do @enqueue(SELECT(FLS_OFF, item), SELECT(FIBER_OFF, item) / exh)
+			  do @enqueue(SELECT(FLS_OFF, item), SELECT(FIBER_OFF, item))
 			  apply lp()
 		  end
 	      let b : bool = apply f (SELECT(FLS_OFF, origItem) / exh)
 	      if b then throw exit(O.SOME(origItem))
 	      else
-		do @enqueue(SELECT(FLS_OFF, origItem), SELECT(FIBER_OFF, origItem) / exh)
+		do @enqueue(SELECT(FLS_OFF, origItem), SELECT(FIBER_OFF, origItem))
 		apply lp()
 	  end
 	;
 
-      define @enqueue-on-vproc (dst : vproc, fls : FLS.fls, k : PT.fiber / exh : exh) : () =
+      define @enqueue-on-vproc (dst : vproc, fls : FLS.fls, k : PT.fiber) : () =
 	  fun lp () : queue =
 	      let entryOld : queue = vpload(VP_ENTRYQ, dst)
 	      let entryNew : queue = alloc(fls, k, entryOld)

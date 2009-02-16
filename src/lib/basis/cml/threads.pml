@@ -20,16 +20,16 @@ structure Threads : sig
 	      (* in *)
 		apply f (UNIT / exh)
 	    (* in *)
-	      SchedulerAction.@stop ( / exh)
+	      SchedulerAction.@stop ()
 	  (* in *)
 	  let vp : vproc = host_vproc
 	  let fls : FLS.fls = FLS.@new (UNIT / exh)
-	  do VProcQueue.@atomic-enqueue (fls, fiber / exh)
+	  do VProcQueue.@enqueue (fls, fiber / exh)
 	  return (fls)
 	;
 
 	define inline @thread-exit (x : PT.unit / exh : PT.exh) : any =
-	  SchedulerAction.@stop ( /exh)
+	  SchedulerAction.@stop ()
 	;
 
       )

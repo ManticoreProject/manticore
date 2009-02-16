@@ -118,11 +118,11 @@ structure ImplicitThread (* :
       define inline @init-on-all-vprocs (group : group / exh : exh) : () =
 	let fls : FLS.fls = FLS.@get(/ exh)
 	fun spawnFn (i : int, k : PT.fiber / exh : exh) : () =
-	    let vp : vproc = VProc.@id-of-vproc(i / exh)
+	    let vp : vproc = VProc.@id-of-vproc(i)
             (* pin the worker to the ith vproc *)
 	    let fls : FLS.fls = FLS.@pin-to(fls, i / exh)
-	    VProcQueue.@enqueue-on-vproc(vp, fls, k / exh)
-	let nWorkers : int = VProc.@num-vprocs(/ exh)
+	    VProcQueue.@enqueue-on-vproc(vp, fls, k)
+	let nWorkers : int = VProc.@num-vprocs()
 	@spawn-n-workers(nWorkers, SELECT(GROUP_WORKER_INIT_OFF, group), spawnFn / exh)
       ;
 
@@ -176,7 +176,7 @@ structure ImplicitThread (* :
       define @run (sched : PT.sched_act, thd : thread / exh : exh) noreturn =
       (* environment initialization *)
 	do FLS.@set-ite(SELECT(ITE_OFF, thd) / exh)
-	SchedulerAction.@run(sched, SELECT(FIBER_OFF, thd) / exh)
+	SchedulerAction.@run(sched, SELECT(FIBER_OFF, thd))
       ;
 
     )

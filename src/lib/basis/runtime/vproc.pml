@@ -41,7 +41,7 @@ structure VProc (* :
     (* make the vproc go idle
      * NOTE: the C runtime is responsible for waking the vproc up when there is work to do.
      *)
-      define @wait (/ exh : exh) : ();
+      define @wait-in-atomic () : ();
 
     )
     
@@ -135,7 +135,7 @@ structure VProc (* :
 	    let (_ : unit) = apply f (UNIT / exh)
 	    let _ : unit = SchedulerAction.@stop()
 	    return()
-	  do VProcQueue.@enqueue-on-vproc (dst, fls, fiber / exh)
+	  do VProcQueue.@enqueue-on-vproc (dst, fls, fiber)
 	  return ()
 	;
 
@@ -196,7 +196,7 @@ structure VProc (* :
 	  cont wakeupK (x : PT.unit) = 
 	       let _ : PT.unit = SchedulerAction.@stop()
 	       return()
-	  fun f (vp : vproc / exh : exh) : () = VProcQueue.@enqueue-on-vproc(vp, fls, wakeupK / exh)
+	  fun f (vp : vproc / exh : exh) : () = VProcQueue.@enqueue-on-vproc(vp, fls, wakeupK)
 	  do @for-other-vprocs(f / exh)
 	  return()
 	;

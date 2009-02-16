@@ -59,7 +59,7 @@ structure LockedQueue =
                     cont unblockK (x : PT.unit) =
                          throw blockedK (elt)
                     let unblockK : PT.fiber = (PT.fiber)unblockK
-                    do VProcQueue.@enqueue-on-vproc (vp, blockedFgs, unblockK / exh)
+                    do VProcQueue.@enqueue-on-vproc (vp, blockedFgs, unblockK)
                     SpinLock.@unlock (q, mask / exh)
                 end
          return()
