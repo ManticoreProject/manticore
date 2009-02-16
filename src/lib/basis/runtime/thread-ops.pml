@@ -31,7 +31,7 @@ structure ThreadOps : sig end =
 	    else if #0(termFlg)
 		then return ()
 	    else
-		let _ : PT.unit = SchedulerAction.@yield (/exh)
+		let _ : PT.unit = SchedulerAction.@yield ()
 		apply lp ( / exh)
 	 apply lp ( / exh)
       ;

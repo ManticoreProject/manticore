@@ -83,7 +83,7 @@ structure VProcQueue (* :
 	;
 
     (* enqueue on the local queue. NOTE: signals must be masked *)
-      define @enqueue-in-atomic (vp : vproc, fls : FLS.fls, fiber : PT.fiber / exh : exh) : () =
+      define @enqueue-in-atomic (vp : vproc, fls : FLS.fls, fiber : PT.fiber) : () =
 	 let tl : queue = vpload (VP_RDYQ_TL, vp)
 	 let qitem : queue = alloc(fls, fiber, tl)
 	 do vpstore (VP_RDYQ_TL, vp, qitem)
@@ -91,7 +91,7 @@ structure VProcQueue (* :
       ;
 
     (* unload threads from the landing pad *)
-      define @unload-landing-pad (/ exh : exh) : queue =
+      define @unload-landing-pad () : queue =
 (* ASSERT: signals are masked *)
 	  let vp : vproc = host_vproc
 	  fun lp () : queue =
@@ -110,7 +110,7 @@ structure VProcQueue (* :
 	  return(item)
 	;
 
-      define @is-messenger-thread (queue : queue / exh : exh) : bool =
+      define @is-messenger-thread (queue : queue) : bool =
 	return(Equal(SELECT(FLS_OFF, queue), MESSENGER_FLS))
       ;
 
@@ -118,28 +118,28 @@ structure VProcQueue (* :
      *  1. put ordinary threads on the local queue
      *  2. returns any messenger threads
      *)
-      define @process-landing-pad (queue : queue / exh : exh) : List.list =
-	  fun lp (queue : queue, messengerThds : List.list / exh : exh) : List.list =
+      define @process-landing-pad (queue : queue) : List.list =
+	  fun lp (queue : queue, messengerThds : List.list) : List.list =
 	      if Equal(queue, Q_EMPTY)
 		 then return(messengerThds)
 	      else 
-		  let isMessenger : bool = @is-messenger-thread(queue / exh)
+		  let isMessenger : bool = @is-messenger-thread(queue)
 		  if isMessenger
 		     then 
 		    (* the head of the queue is a messenger thread *)
 		      let messengerThds : List.list = List.CONS(SELECT(FIBER_OFF, queue), messengerThds)
-		      apply lp((queue)SELECT(LINK_OFF, queue), messengerThds / exh)
+		      apply lp((queue)SELECT(LINK_OFF, queue), messengerThds)
 		  else
 		    (* the head of the queue is an ordinary thread; put it on the local queue *)
-		      do @enqueue (SELECT(FLS_OFF, queue), SELECT(FIBER_OFF, queue) / exh)
-		      apply lp((queue)SELECT(LINK_OFF, queue), messengerThds / exh)
-	  apply lp(queue, nil / exh)
+		      do @enqueue-in-atomic (host_vproc, SELECT(FLS_OFF, queue), SELECT(FIBER_OFF, queue))
+		      apply lp((queue)SELECT(LINK_OFF, queue), messengerThds)
+	  apply lp(queue, nil)
 	;
 
     (* unload the landing pad, and return any messages *)
-      define @unload-and-check-messages (/ exh : exh) : List.list =
-	  let queue : queue = @unload-landing-pad ( / exh)
-	  @process-landing-pad(queue / exh)
+      define @unload-and-check-messages () : List.list =
+	  let queue : queue = @unload-landing-pad ()
+	  @process-landing-pad(queue)
 	;
 
     (* takes a queue element (queue0) and a queue (rest), and produces the queue
@@ -157,7 +157,7 @@ structure VProcQueue (* :
 	;
 
    (* dequeue from the secondary list *)
-      define @dequeue-slow-path (vp : vproc / exh : exh) : O.option =
+      define @dequeue-slow-path (vp : vproc) : O.option =
 	  let tl : queue = vpload (VP_RDYQ_TL, vp)
 	  if Equal(tl, Q_EMPTY)
 	    then return(O.NONE)
@@ -174,13 +174,13 @@ structure VProcQueue (* :
     (* dequeue from the local queue  *)
       define @dequeue-in-atomic (vp : vproc) : O.option =
 (* NOTE: with software polling, we do not need to do this check! *)
-	  let messages : List.list = @unload-and-check-messages(/ exh)
+	  let messages : List.list = @unload-and-check-messages()
 	  let vp : vproc = host_vproc
 	  let hd : queue = vpload (VP_RDYQ_HD, vp)
 	  if Equal(hd, Q_EMPTY)
 	     then
 	     (* the primary list is empty, so try the secondary list *)
-	      @dequeue-slow-path (vp / exh)
+	      @dequeue-slow-path (vp)
 	  else 
 	      (* got a thread from the primary list *)
 	      do vpstore (VP_RDYQ_HD, vp, SELECT(LINK_OFF, hd))
@@ -201,12 +201,12 @@ structure VProcQueue (* :
 	  cont exit (x : O.option) = 
 	      do SchedulerAction.@atomic-end (self)
 	      return(x)
-	  let qitem : O.option = @dequeue(/ exh)
+	  let qitem : O.option = @dequeue-in-atomic(self)
 	  case qitem
 	   of O.NONE => throw exit(O.NONE)
 	    | O.SOME (origItem : queue) =>
 	      fun lp () : O.option =
-		  let qitem : O.option = @dequeue(/ exh)
+		  let qitem : O.option = @dequeue-in-atomic(self)
 		  case qitem
 		   of O.NONE => throw exit(O.NONE)
 		    | O.SOME(item : queue) =>

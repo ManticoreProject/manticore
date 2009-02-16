@@ -21,14 +21,14 @@ structure SchedulerAction (* :
 
     (* forward a signal to the host vproc  *)
       define inline @forward-from-atomic (sg : PT.signal) noreturn;
-      define inline @forward (sg : PT.signal / exh : exh) noreturn;
+      define inline @forward (sg : PT.signal) noreturn;
 
     (* stop the current fiber *)
-      define inline @stop (/ exh : exh) : unit;
+      define inline @stop () : unit;
 
     (* yield control to the parent scheduler *)
       define inline @yield-from-atomic () : unit;
-      define inline @yield (/ exh : exh) : unit;
+      define inline @yield () : unit;
       define inline @yield-in-atomic () : unit;
 
     (* create a fiber *)
@@ -49,7 +49,7 @@ structure SchedulerAction (* :
       define inline @atomic-begin () : vproc =
 	  let vp : vproc = host_vproc
 	  do vpstore (ATOMIC, host_vproc, true)
-	  return vp
+	  return(vp)
 	;
 
       define inline @atomic-end-no-check (vp : vproc) : () =
@@ -79,7 +79,7 @@ structure SchedulerAction (* :
 
     (* run the fiber under the scheduler action *)
       define inline @run (act : PT.sched_act, fiber : PT.fiber) noreturn =
-	  let vp = @atomic-begin ()
+	  let vp : vproc = @atomic-begin ()
 	  do @push-act(vp, act)
 	  throw fiber (UNIT)
 	;
@@ -91,14 +91,14 @@ structure SchedulerAction (* :
 	;
 
     (* forward a signal to the host vproc *)
-      define inline @forward (sg : PT.signal / exh : exh) noreturn =
-	  let vp = @atomic-begin ()
+      define inline @forward (sg : PT.signal) noreturn =
+	  let vp : vproc = @atomic-begin ()
 	  let act : PT.sched_act = @pop-act(vp)
 	  throw act (sg)
 	;
 
     (* stop the current fiber *)
-      define inline @stop (/ exh : exh) : unit =
+      define inline @stop () : unit =
 	  do @forward (PT.STOP)
 	  return (UNIT)
 	;
@@ -111,9 +111,9 @@ structure SchedulerAction (* :
 	;
 
     (* yield control to the parent scheduler *)
-	define inline @yield (/ exh : exh) : unit =
+	define inline @yield () : unit =
 	  cont k (x : unit) = return(UNIT)
-	  do @forward (PT.PREEMPT(k) / exh)
+	  do @forward (PT.PREEMPT(k))
 	  return (UNIT)
 	;
 
@@ -133,7 +133,7 @@ structure SchedulerAction (* :
 	    if pending
 	      then
 		do vpstore (SIG_PENDING, vp, false)
-		do @yield-from-atomic (vp)
+		let _ : unit = @yield-from-atomic (vp)
 		return ()
 	      else
 		do @atomic-end-no-check (vp)

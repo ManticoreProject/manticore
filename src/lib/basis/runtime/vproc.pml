@@ -130,10 +130,10 @@ structure VProc (* :
       define @spawn-on (f : fun (unit / exh -> unit), fls : FLS.fls, dst : vproc / exh : exh) : () =
 	  cont fiber (x : unit) =
 	    cont exh (exn : exn) = 
-	      let _ : unit = SchedulerAction.@stop(/ exh)
+	      let _ : unit = SchedulerAction.@stop()
 	      return()
 	    let (_ : unit) = apply f (UNIT / exh)
-	    let _ : unit = SchedulerAction.@stop(/ exh)
+	    let _ : unit = SchedulerAction.@stop()
 	    return()
 	  do VProcQueue.@enqueue-on-vproc (dst, fls, fiber / exh)
 	  return ()
@@ -156,9 +156,9 @@ structure VProc (* :
 	  cont trampoline (k : PT.fiber) = 
 	    if Equal(k, M_NIL)
 	      then  (* case 1 *)
-		SchedulerAction.@forward(PT.STOP / exh)
+		SchedulerAction.@forward(PT.STOP)
 	      else (* case 2 *)
-		SchedulerAction.@forward(PT.PREEMPT(k) / exh)
+		SchedulerAction.@forward(PT.PREEMPT(k))
 	  let trampoline : cont(PT.fiber) = promote(trampoline)
 	(* set the trampoline on a given vproc *)
 	  fun setTrampoline (vp : vproc / exh : exh) : () =
@@ -194,7 +194,7 @@ structure VProc (* :
     (* initialize scheduling code on each vproc (except the host). *)
       define @initialize-remote-schedulers (fls : FLS.fls / exh : exh) : () =
 	  cont wakeupK (x : PT.unit) = 
-	       let _ : PT.unit = SchedulerAction.@stop(/ exh)
+	       let _ : PT.unit = SchedulerAction.@stop()
 	       return()
 	  fun f (vp : vproc / exh : exh) : () = VProcQueue.@enqueue-on-vproc(vp, fls, wakeupK / exh)
 	  do @for-other-vprocs(f / exh)
@@ -209,7 +209,7 @@ structure VProc (* :
 	  do @seed-remote-action-stacks(mkAct / exh)
 	  cont startLeadK (_ : PT.unit) = @initialize-remote-schedulers(fls / exh)
 	  let act : PT.sched_act = apply mkAct (host_vproc / exh)
-	  SchedulerAction.@run(act, startLeadK / exh)
+	  SchedulerAction.@run(act, startLeadK)
 	;
 
     (* put the host vproc to sleep.
@@ -230,7 +230,7 @@ structure VProc (* :
 
     (* mask signals before running any scheduling code *)
       define @mask-signals (x : unit / exh : exh) : unit =
-	  let vp : vproc = @atomic-begin()
+	  let vp : vproc = SchedulerAction.@atomic-begin()
 	  return (UNIT)
 	;
 
