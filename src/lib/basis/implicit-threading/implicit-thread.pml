@@ -36,7 +36,7 @@ structure ImplicitThread (* :
     (* run an implicit thread on the host vproc *)
       define @run (sched : PT.sched_act, thd : thread / exh : exh) noreturn;
 
-    (* spawn the implicit thread on the work group at the top of the work-group stack *)
+    (* spawn an implicit thread on the work group at the top of the work-group stack *)
       define @spawn (thd : thread / exh : exh) : ();
 
     )
