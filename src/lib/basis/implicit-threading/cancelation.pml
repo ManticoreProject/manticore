@@ -51,7 +51,11 @@ structure Cancelation (* : sig
     (* add c to the parent's list of children *)
       define @add-child (c : cancelable, parent : cancelable / exh : exh) : cancelable =
 	let children : L.list = L.CONS(c, SELECT(CHILDREN_OFF, parent))
-        let c : cancelable = alloc(SELECT(CANCELED_OFF, c), SELECT(INACTIVE_OFF, c), children, SELECT(GCHILDREN_OFF, c), SELECT(PARENT_OFF,c))
+        let c : cancelable = alloc(SELECT(CANCELED_OFF, c), 
+				   SELECT(INACTIVE_OFF, c), 
+				   children, 
+				   SELECT(GCHILDREN_OFF, c), 
+				   SELECT(PARENT_OFF,c))
         return(c)
       ;
 
@@ -110,7 +114,7 @@ structure Cancelation (* : sig
       (* terminate the wrapped fiber *)
         cont terminate () = 
              do @set-inactive(c / exh)
-             let _ : unit = SchedulerAction.@stop(/ exh)
+             let _ : unit = SchedulerAction.@stop()
              return($0)
       (* run the wrapped fiber *)
         cont dispatch (wrapper : PT.sched_act, k : PT.fiber) =
@@ -120,7 +124,7 @@ structure Cancelation (* : sig
                 then 
 		 throw terminate()
 	     else
-                 do SchedulerAction.@run(wrapper, k / exh)
+                 do SchedulerAction.@run(wrapper, k)
                  return($0)
       (* scheduler action that polls for cancelation *)
         cont wrapper (s : PT.signal) =
@@ -129,14 +133,14 @@ structure Cancelation (* : sig
 		 throw terminate()
 	       | PT.PREEMPT(k : PT.fiber) =>
 		 do @set-inactive(c / exh)
-                 let _ : unit = SchedulerAction.@atomic-yield(/ exh)
+                 let _ : unit = SchedulerAction.@yield-in-atomic()
                  throw dispatch(wrapper, k)
 	       | _ =>
 		 let e : exn = Match
                  throw exh (e)
              end
         cont wrappedK (x : unit) =
-             do VProc.@atomic-begin()
+             do SchedulerAction.@atomic-begin()
              throw dispatch(wrapper, k)
         return(wrappedK)
       ;
@@ -175,7 +179,7 @@ structure Cancelation (* : sig
      * children must terminate before continuing.
      *)
       define @cancel (c : cancelable / exh : exh) : () =        
-      (* walk down the spawn tree and wait for all canceled fibers to terminate *)
+      (* walk down the spawn tree, cancel all nodes and wait those nodes to become inactive *)
         fun spin (ins : L.list, outs : L.list / exh : exh) : () =
 	    case ins
 	     of nil => 
