@@ -1,3 +1,11 @@
+(* lazy-future.pml
+ *
+ * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Components for futures with lazy semantics.
+ *)
+
 structure LazyFuture : LAZY_FUTURE =
   struct
 
@@ -9,18 +17,29 @@ structure LazyFuture : LAZY_FUTURE =
     _primcode(
 
       typedef future = ![
-		 bool,                                (* true iff the future has been stolen*)
+		 bool,                                (* true iff the future has been stolen *)
 		 IVar.ivar,                           (* state *)
 		 fun(unit / exh -> any),              (* thunk *)
 		 Option.option                        (* cancelable *)
       ];
 
-    (* create a future *)
-      define @delay (f : fun(unit / exh -> any) / exh : exh) : future =
+    (* create a future. the second argument is a flag to determine whether the future is cancelable. *)
+      define @delay (f : fun(unit / exh -> any), isCancelable : bool / exh : exh) : future =
 	let ivar : IVar.ivar = IVar.@ivar(/ exh)
-	let fut : future = alloc(false, ivar, f, Option.NONE)
+        let cOpt : Option.option =
+		   if isCancelable
+		      then 
+		       let c : Cancelation.cancelable = Cancelation.@new(/ exh)
+		       return(Option.SOME(c))
+		   else 
+		       return(Option.NONE)
+        let fut : future = alloc(false, ivar, f, cOpt)
 	let fut : future = promote(fut)
 	return(fut)
+      ;
+
+      define @delay-w (arg : [fun(unit / exh -> any), bool] / exh : exh) : future =
+	@delay(#0(arg), #1(arg) / exh)
       ;
 
     (* evaluate the future without synchronization *)
@@ -82,8 +101,7 @@ structure LazyFuture : LAZY_FUTURE =
 
     type 'a future = _prim(future)
 
-    val delay : (unit -> 'a) -> 'a future = _prim(@delay)
-    val cancelable : 'a future -> 'a future = _prim(@cancelable)
+    val delay : ((unit -> 'a) * bool) -> 'a future = _prim(@delay-w)
     val run : 'a future -> unit = _prim(@run)
     val force : 'a future -> 'a = _prim(@force)
     val cancel : 'a future -> unit = _prim(@cancel)

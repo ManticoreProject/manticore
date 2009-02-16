@@ -7,7 +7,7 @@ fun fib (i : int) = (case i
 val globalBFS = GlobalBFSScheduler.workGroup()
 val x = ImplicitThread.runWithGroup(globalBFS, fn () =>
 	   let 
-	       val fut = LazyFuture.delay(fn () => fib 20)
+	       val fut = LazyFuture.delay(fn () => fib 20, false)
 	       val () = LazyFuture.run fut
 	       val x = fib 20
 	   in
@@ -19,7 +19,7 @@ fun pfib (i : int) = (case i
        of 0 => (0 : int)
 	| 1 => (1 : int)
 	| n => let
-	      val fut = LazyFuture.delay(fn () => pfib(i-1))
+	      val fut = LazyFuture.delay(fn () => pfib(i-1), false)
 	      val () = LazyFuture.run fut
 	      in
 	        pfib(i-2) + LazyFuture.force fut

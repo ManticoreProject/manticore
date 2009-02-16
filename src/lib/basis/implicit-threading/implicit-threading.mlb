@@ -28,4 +28,7 @@
     lazy-future.pml
   end
 
+  fcms-sig.pml
+  fcms.pml
+
   ropes.mlb
