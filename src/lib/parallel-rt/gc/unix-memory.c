@@ -80,7 +80,13 @@ void *AllocMemory (int *nBlocks, int blkSzB, int minNumBlocks)
   /* Try again with the aligned fixed address. */
     n--;
     szb = n * blkSzB;
-    if ((memObj = MapMemory(base, szb)) == MAP_FAILED) {
+    memObj = MapMemory(base, szb)
+    if (memObj == MAP_FAILED) {
+	*nBlocks = 0;
+	return 0;
+    }
+    else if ((Addr_t)memObj & (blkSzB-1) != 0) {
+	UnmapMemory (memObj);
 	*nBlocks = 0;
 	return 0;
     }
