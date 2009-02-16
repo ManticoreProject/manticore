@@ -44,88 +44,83 @@ structure WorkStealers =
       ;
 
       define @mk-sched-act (self : vproc / exh : PT.exh) : PT.sigact =
-        cont waitK(x : PT.unit) = 
-          do SchedulerUtils.@wait(/ exh)
-          let _ : PT.unit = Control.@stop(/ exh)
-          return($0)
-
-      (* try to steal a thread from a remote vproc *)
-	fun thief (vps : L.list / exh : PT.exh) : () =
-	    do print_msg("work-stealers: steal mode")
-	    let hasStealableElts : PT.bool = VPQ.@is-local-queue-geq-one(/ exh)
-	    if hasStealableElts
- 	       then 
-		do print_msg("work-stealers: dequeuing")
-                fun isNotPinned (fls : FLS.fls / exh : PT.exh) : PT.bool =
-		    let b : PT.bool = FLS.@is-pinned(fls / exh)
-                    return(NotEqual(b, PT.true))
-                let item : O.option = VPQ.@dequeue-with-pred(isNotPinned / exh)
-		case item
-		 of O.NONE =>
-		    apply sendThieves(vps / exh)
-		  | O.SOME (item : VPQ.queue) =>
-		    do print_msg("work-stealers: sending thread to idle vproc")
-		    VPQ.@enqueue-on-vproc(self, SELECT(FLS_OFF, item), SELECT(FIBER_OFF, item) / exh)
-		end
-	    else apply sendThieves(vps / exh)
-
-      (* send thieves to all other vprocs *)
-	and sendThieves (vps : L.list / exh : PT.exh) : () =
-	    do print_msg("work-stealers: try next")
-	    case vps
-	     of nil =>
-		do print_msg("work-stealers: failed to get work")
-		return()
-	      | L.CONS(vp : vproc, vps : L.list) =>
-		let idle : int = vpload(VP_IDLE, vp)
-		do if I32Eq(idle, 1)
-		      then apply sendThieves(vps / exh)
-		   else return()
-		cont thiefK (x : PT.unit) =
-		  do apply thief(vps / exh)
-		  let _ : PT.unit = Control.@stop(/ exh)
+	  cont waitK(x : PT.unit) = 
+	      do SchedulerUtils.@wait(/ exh)
+	      let _ : PT.unit = Control.@stop(/ exh)
+	      return($0)
+	(* try to steal a thread from a remote vproc *)
+	  fun thief (vps : L.list / exh : PT.exh) : () =
+		do print_msg ("work-stealers: steal mode")
+		let noStealableFibers : PT.bool = VPQ.@is-local-queue-empty(/ exh)
+		if noStealableFibers
+		  then apply sendThieves (vps / exh)
+		  else
+		    do print_msg ("work-stealers: dequeuing")
+		    fun isNotPinned (fls : FLS.fls / exh : PT.exh) : PT.bool =
+			let b : PT.bool = FLS.@is-pinned(fls / exh)
+			return (NotEqual(b, PT.true))
+		    let item : O.option = VPQ.@dequeue-with-pred-in-atomic (isNotPinned / exh)
+		    case item
+		     of O.NONE =>
+			  apply sendThieves (vps / exh)
+		      | O.SOME (item : VPQ.queue) =>
+			  do print_msg("work-stealers: sending thread to idle vproc")
+			  VPQ.@enqueue-on-vproc(self, SELECT(FLS_OFF, item), SELECT(FIBER_OFF, item) / exh)
+		    end
+	(* send thieves to all other vprocs *)
+	  and sendThieves (vps : L.list / exh : PT.exh) : () =
+	      do print_msg("work-stealers: try next")
+	      case vps
+	       of nil =>
+		  do print_msg("work-stealers: failed to get work")
 		  return()
-	      VPM.@send(vp, thiefK / exh)
+		| L.CONS(vp : vproc, vps : L.list) =>
+		  let idle : int = vpload(VP_IDLE, vp)
+		  do if I32Eq(idle, 1)
+			then apply sendThieves(vps / exh)
+		     else return()
+		  cont thiefK (x : PT.unit) =
+		    do apply thief(vps / exh)
+		    let _ : PT.unit = Control.@stop(/ exh)
+		    return()
+		VPM.@send(vp, thiefK / exh)
+	      end
+	  cont impossible() = 
+	      do assert(PT.false)
+	      return($0)
+	  cont switch (sign : PT.signal) =
+	      cont dispatch () =
+	      (* notify any idle vprocs if there is extra local work *)
+		let hasElts : PT.bool = VPQ.@is-local-queue-gt-one(/ exh)
+		do if hasElts
+		   then @wake-sleeping-vprocs(/ exh)
+		   else return()
+		let item : O.option = VPQ.@dequeue(/ exh)
+		case item
+		 of O.NONE => 
+		  (* try to steal a thread *)
+		    let potentialVictims : L.list = SchedulerUtils.@other-vprocs(/ exh)
+		    do apply sendThieves(potentialVictims / exh)
+		    do SchedulerUtils.@wait(/ exh)
+		    throw dispatch()
+		  | O.SOME(qitem : VPQ.queue) =>
+		    do Control.@run-thread (switch, SELECT(FIBER_OFF, qitem), SELECT(FLS_OFF, qitem) / exh)
+		    throw impossible()
+		end
+	  (* in *)
+	    case sign
+	     of PT.STOP => 
+		throw dispatch()
+	      | PT.PREEMPT(k : PT.fiber) => 
+		let fls : FLS.fls = FLS.@get ( / exh)
+		do VPQ.@enqueue (fls, k / exh)
+		throw dispatch () 
+	      | _ =>
+		let e : exn = Match
+		throw exh(e)
 	    end
-
-	cont impossible() = 
-	  do assert(PT.false)
-	  return($0)
-
-	cont switch (sign : PT.signal) =
-	  cont dispatch () =
-          (* notify any idle vprocs if there is extra local work *)
-	    let hasElts : PT.bool = VPQ.@is-local-queue-gt-one(/ exh)
-	    do if hasElts
-	       then @wake-sleeping-vprocs(/ exh)
-	       else return()
-	    let item : O.option = VPQ.@dequeue(/ exh)
-	    case item
-	     of O.NONE => 
-              (* try to steal a thread *)
-		let potentialVictims : L.list = SchedulerUtils.@other-vprocs(/ exh)
-                do apply sendThieves(potentialVictims / exh)
-                do SchedulerUtils.@wait(/ exh)
-                throw dispatch()
-	      | O.SOME(qitem : VPQ.queue) =>
-		do Control.@run-thread (switch, SELECT(FIBER_OFF, qitem), SELECT(FLS_OFF, qitem) / exh)
-		throw impossible()
-	    end
-
-	  case sign
-	   of PT.STOP => 
-	      throw dispatch()
-	    | PT.PREEMPT(k : PT.fiber) => 
-	      let fls : FLS.fls = FLS.@get ( / exh)
-	      do VPQ.@enqueue (fls, k / exh)
-	      throw dispatch () 
-	    | _ =>
-	      let e : exn = Match
-     	      throw exh(e)
-	  end
-
-        return(switch)
-      ;
+	  return (switch)
+	;
 
       define @work-stealers(x : PT.unit / exh : PT.exh) : PT.unit = 
 	fun mkSwitch (self : vproc / exh : PT.exh) : PT.sigact = @mk-sched-act(self / exh)

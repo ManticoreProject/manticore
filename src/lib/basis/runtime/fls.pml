@@ -59,6 +59,7 @@ structure FLS (* :
       (* fiber-local storage *)
 	typedef fls = [
 	    int,                              (* if this value is a valid vproc id, the thread is pinned to that vproc *)
+(* FIXME: using an option type here adds an unnecessary level of indirection *)
 	    Option.option                     (* implicit-thread environment (ITE) *)
 	];
 

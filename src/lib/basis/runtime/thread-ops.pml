@@ -15,6 +15,7 @@ structure ThreadOps : sig end =
 
     _primcode(
 
+(* FIXME: this mechanism belong in the CML library *)
     (* put the running thread to sleep for some amount of time.
      * duration is the minimum time to sleep and termFlg can
      * be used to cancel the wakeup.
@@ -35,6 +36,7 @@ structure ThreadOps : sig end =
 	 apply lp ( / exh)
       ;
 
+(* Testing code: belongs somewhere else *)
     (* sleep for a randomly determined amount of time *)
       define @rand-sleep (maxSleepTime : Time.time, done : ![PT.bool] / exh : PT.exh) : () =
         let len : long = Rand.@in-range-long(0:long, maxSleepTime / exh)

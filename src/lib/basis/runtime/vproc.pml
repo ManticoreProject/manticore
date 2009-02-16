@@ -11,11 +11,6 @@ structure VProc (* :
 
     _prim(
 
-    (** support for local atomicity **)
-
-      define inline @atomic-begin () : ();
-      define inline @atomic-end () : ();
-
     (** unique ids **)
 
     (* unique id of a vproc *)
@@ -62,44 +57,25 @@ structure VProc (* :
       extern void *SleepCont (void *) __attribute__((alloc));
       extern void *ListVProcs (void *) __attribute__((alloc));
 
-    (* support for local atomicity *)
-      define inline @atomic-begin () : () =
-	  do vpstore (ATOMIC, host_vproc, true)
-	    return ()
-	;
-
-      define inline @atomic-end () : () =
-	  let vp : vproc = host_vproc
-	  do vpstore (ATOMIC, vp, false)
-	  let pending : bool = vpload (SIG_PENDING, vp)
-	    if pending
-	      then
-(* FIXME: clearing this flag here is a race condition; it should be cleared in the C
- * runtime.
- *)
-		do vpstore (SIG_PENDING, vp, false)
-                cont exh (x : exn) = return(UNIT)
-		SchedulerAction.@yield(/ exh)
-	      else return (UNIT)
-	;
-
-    (* total number of vprocs *)
-      define @num-vprocs (/ exh : exh) : int =
+    (* returns the total number of vprocs *)
+      define inline @num-vprocs () : int =
 	  let n : int = ccall GetNumVProcs()
 	  return (n)
 	;
 
     (* returns the unique id of the given vproc *)
-      define @vproc-id (vp : vproc / exh : exh) : int =
+      define inline @vproc-id (vp : vproc) : int =
 	  let id : int = vpload(VPROC_ID, vp)
 	  return(id)
 	;
 
     (* find the vproc with a given unique id *)
-      define @id-of-vproc (id : int / exh : exh) : vproc =
-	  let max : int = @num-vprocs(/ exh)
+      define @id-of-vproc (id : int) : vproc =
+#ifndef NDEBUG
+	  let max : int = @num-vprocs()
 	  do assert(I32Lt(id, max))
 	  do assert(I32Gte(id, 0))
+#endif
 	  let vp : vproc = ccall GetNthVProc(id)
 	  return(vp)
 	;
@@ -173,8 +149,6 @@ structure VProc (* :
      * this operation completes.
      *)
       define @set-trampoline ( / exh : exh) : () =
-(* FIXME: should be @atomic-begin(), but do we need it? *)
-	  do vpstore(ATOMIC, host_vproc, true)
 	(* the trampoline passes signals from the C runtime to the current scheduler. there are two possibilities:
 	 *  1. the vproc was awoken from an idle state
 	 *  2. a timer interrupt arrived
@@ -219,20 +193,17 @@ structure VProc (* :
 
     (* initialize scheduling code on each vproc (except the host). *)
       define @initialize-remote-schedulers (fls : FLS.fls / exh : exh) : () =
-	  let self : vproc = host_vproc
-	  do vpstore(ATOMIC, self, true)
 	  cont wakeupK (x : PT.unit) = 
 	       let _ : PT.unit = SchedulerAction.@stop(/ exh)
 	       return()
 	  fun f (vp : vproc / exh : exh) : () = VProcQueue.@enqueue-on-vproc(vp, fls, wakeupK / exh)
 	  do @for-other-vprocs(f / exh)
-	  do vpstore(ATOMIC, self, false)
 	  return()
 	;
 
     (* bootstrap the default scheduler *)
       define @boot-default-scheduler (mkAct : fun (vproc / exh -> PT.sched_act) / exh : exh) : () =
-	  do vpstore(ATOMIC, host_vproc, true)
+(* ASSERT: signals are masked *)
 	  let fls : FLS.fls = FLS.@get(/ exh)
 	  do @set-trampoline (/ exh)
 	  do @seed-remote-action-stacks(mkAct / exh)
@@ -245,7 +216,7 @@ structure VProc (* :
      * NOTE: the C runtime is responsible for waking the vproc up when there is work to do
      * (see SleepCont in parallel-rt/vproc.c).
      *)
-      define @wait (/ exh : exh) : () =
+      define @wait-in-atomic () : () =
 	  fun sleep () : () =
 	      cont wakeupK (x : unit) = return ()
 	    (* the C runtime expects the resumption continuation to be in vp->wakeupCont *)
@@ -253,18 +224,14 @@ structure VProc (* :
 	    (* sleepK puts the vproc to sleep *)
 	      let sleepK : PT.fiber = ccall SleepCont (host_vproc)
 	      throw sleepK(UNIT)
-	  let m : PT.bool = vpload (ATOMIC, host_vproc)
-	  do vpstore(ATOMIC, host_vproc, true)
 	  do apply sleep()
-	  do vpstore(ATOMIC, host_vproc, m)
 	  return()
 	;
 
     (* mask signals before running any scheduling code *)
-(* FIXME: this is @atomic-begin *)
-      define @mask-signals(x : unit / exh : exh) : unit =
-	  do vpstore(ATOMIC, host_vproc, true)
-	  return(UNIT)
+      define @mask-signals (x : unit / exh : exh) : unit =
+	  do @atomic-begin()
+	  return (UNIT)
 	;
 
     (* initialize fls *)
