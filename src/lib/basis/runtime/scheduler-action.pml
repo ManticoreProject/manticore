@@ -79,22 +79,20 @@ structure SchedulerAction (* :
 
     (* run the fiber under the scheduler action *)
       define inline @run (act : PT.sched_act, fiber : PT.fiber) noreturn =
-	  let vp = host_vproc
-	  do @atomic-begin ()
+	  let vp = @atomic-begin ()
 	  do @push-act(vp, act)
 	  throw fiber (UNIT)
 	;
 
     (* forward a signal to the host vproc; we assume that signals are masked *)
-      define inline @forward-from-atomic (sg : PT.signal) noreturn =
-	  let act : PT.sched_act = @pop-act(host_vproc)
+      define inline @forward-from-atomic (vp : vproc, sg : PT.signal) noreturn =
+	  let act : PT.sched_act = @pop-act(vp)
 	  throw act (sg)
 	;
 
     (* forward a signal to the host vproc *)
       define inline @forward (sg : PT.signal / exh : exh) noreturn =
-	  let vp = host_vproc
-	  do @atomic-begin ()
+	  let vp = @atomic-begin ()
 	  let act : PT.sched_act = @pop-act(vp)
 	  throw act (sg)
 	;
@@ -106,9 +104,9 @@ structure SchedulerAction (* :
 	;
 
     (* yield control to the parent scheduler *)
-      define inline @yield-from-atomic () : unit =
+      define inline @yield-from-atomic (vp : vproc) : unit =
 	  cont k (x : unit) = return(UNIT)
-	  do @forward-from-atomic (PT.PREEMPT(k))
+	  do @forward-from-atomic (vp, PT.PREEMPT(k))
 	  return (UNIT)
 	;
 
@@ -120,11 +118,11 @@ structure SchedulerAction (* :
 	;
 
     (* yield control to the parent scheduler, masking signals upon return *)
-      define inline @yield-in-atomic () : unit =
+      define inline @yield-in-atomic (vp : vproc) : unit =
 	  cont k (x:unit) = 
-	    do @atomic-begin()         (* mask signals before resuming *)
+	    let vp : vproc = @atomic-begin()         (* mask signals before resuming *)
 	    return(UNIT)
-	  do @forward(PT.PREEMPT(k))
+	  do @forward-from-atomic (vp, PT.PREEMPT(k))
 	  do assert(false) (* control should never reach this point *)
 	  return(UNIT)
 	;
@@ -135,10 +133,10 @@ structure SchedulerAction (* :
 	    if pending
 	      then
 		do vpstore (SIG_PENDING, vp, false)
-		do @yield-from-atomic()
+		do @yield-from-atomic (vp)
 		return ()
 	      else
-		do @atomic-end-no-check ()
+		do @atomic-end-no-check (vp)
 		return ()
 	;
 

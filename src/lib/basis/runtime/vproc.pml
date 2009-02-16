@@ -230,7 +230,7 @@ structure VProc (* :
 
     (* mask signals before running any scheduling code *)
       define @mask-signals (x : unit / exh : exh) : unit =
-	  do @atomic-begin()
+	  let vp : vproc = @atomic-begin()
 	  return (UNIT)
 	;
 

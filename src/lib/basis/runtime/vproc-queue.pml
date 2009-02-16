@@ -26,9 +26,9 @@ structure VProcQueue (* :
       typedef queue = [FLS.fls, PT.fiber, any];
 
     (* enqueue on the local queue. NOTE: signals must be masked *)
-      define @enqueue (fls : FLS.fls, fiber : PT.fiber / exh : exh) : ();
+      define @enqueue-in-atomic (fls : FLS.fls, fiber : PT.fiber / exh : exh) : ();
     (* dequeue from the local queue  *)
-      define @dequeue ( / exh : exh) : O.option;
+      define @dequeue-in-atomic ( / exh : exh) : O.option;
 
     (* enqueue a fiber (paired with fls) on a remote vproc *)
       define @enqueue-on-vproc (dst : vproc, fls : FLS.fls, k : PT.fiber / exh : exh) : ();
@@ -36,7 +36,7 @@ structure VProcQueue (* :
     (* dequeue the first item to satisfy the given predicate  *)
       define @dequeue-with-pred (f : fun(FLS.fls / exh -> bool) / exh : exh) : O.option;
     (* enqueue on the host's vproc's thread queue *)
-      define inline @atomic-enqueue (fls : FLS.fls, fiber : PT.fiber / exh : exh) : ();
+      define inline @enqueue (fls : FLS.fls, fiber : PT.fiber / exh : exh) : ();
 
     )
 
@@ -189,10 +189,9 @@ structure VProcQueue (* :
 
     (* enqueue on the host's vproc's thread queue *)
       define inline @enqueue (fls : FLS.fls, fiber : PT.fiber / exh : exh) : () =
-	  let vp : vproc = host_vproc
-	  do SchedulerAction.@atomic-begin()
+	  let vp : vproc = SchedulerAction.@atomic-begin()
 	  do @enqueue-in-atomic (host_vproc, fls, fiber)
-	  do SchedulerAction.@atomic-end()
+	  do SchedulerAction.@atomic-end(vp)
 	  return ()
 	;
 

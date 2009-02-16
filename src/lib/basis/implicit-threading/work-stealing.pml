@@ -182,7 +182,7 @@ structure WorkStealing =
 		| O.SOME(k : PT.fiber) => throw run(switch, k)
 	      end
 	    | PT.PREEMPT (k : PT.fiber) =>
-	      let _ : PT.unit = Control.@atomic-yield(/exh)
+	      let _ : PT.unit = Control.@yield-in-atomic ()
               throw run(switch, k)
 	    | _ =>
 	      let e : exn = Match
