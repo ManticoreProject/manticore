@@ -13,7 +13,7 @@ structure Threads : sig
     _primcode (
 
       (* create a thread *)
-	define inline @create (f : fun(PT.unit / PT.exh -> PT.unit)) : (FLS.fls, PT.fiber) =
+	define inline @create (f : fun(PT.unit / PT.exh -> PT.unit) / exh : PT.exh) : (FLS.fls, PT.fiber) =
 	    cont fiber (x : PT.unit) = 
 	      let x : PT.unit =
 	      (* in case of an exception, just terminate the fiber *)
@@ -29,15 +29,15 @@ structure Threads : sig
 
       (* spawn a new thread on the local vproc *)
 	define inline @local-spawn (f : fun(PT.unit / PT.exh -> PT.unit) / exh : PT.exh) : FLS.fls =
-	    let (fls : FLS.fls, fiber: PT.fiber) = @create (f)
+	    let (fls : FLS.fls, fiber: PT.fiber) = @create (f / exh)
 	    (* in *)
-	    do VProcQueue.@atomic-enqueue (fls, fiber / exh)
+	    do VProcQueue.@enqueue (fls, fiber / exh)
 	    return (fls)
 	  ;
 
       (* spawn a thread on a remote vproc *)
 	define @remote-spawn (dst : vproc, f : fun (unit / exh -> unit) / exh : exh) : FLS.fls =
-	    let (fls : FLS.fls, fiber: PT.fiber) = @create (f)
+	    let (fls : FLS.fls, fiber: PT.fiber) = @create (f / exh)
 	    (* in *)
 	    do VProcQueue.@enqueue-on-vproc (dst, fls, fiber / exh)
 	    return ()
