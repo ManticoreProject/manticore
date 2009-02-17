@@ -153,6 +153,7 @@ void *NewVProc (void *arg)
 
   /* initialize the vproc structure */
     vproc->id = initData->id;
+    vproc->hostID = pthread_self();
 
     vproc->oldTop = VProcHeap(vproc);
     InitVProcHeap (vproc);
