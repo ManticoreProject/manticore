@@ -192,6 +192,9 @@ void *NewVProc (void *arg)
     sigaction (SIGUSR1, &sa, 0);
     sigaction (SIGUSR2, &sa, 0);
 
+  /* Note that initData gets freed in VProcInit after the barrier, so we need
+   * to cache the contents locally.
+   */
     VProcFn_t initFn = initData->initFn;
     Value_t initArg = initData->initArg;
 
@@ -199,7 +202,7 @@ void *NewVProc (void *arg)
     BarrierWait (&InitBarrier);
 
   /* run the initial vproc function */
-    initFn(vproc, initArg);
+    initFn (vproc, initArg);
 
     Die ("should never get here!");
 
