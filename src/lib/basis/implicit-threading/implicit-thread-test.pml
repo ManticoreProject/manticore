@@ -7,7 +7,7 @@ define @test (x : unit / exh : exh) : unit =
       return(UNIT)
   cont workerInit (x : unit) =
       do print_ppt()
-      SchedulerAction.@stop(/ exh)
+      SchedulerAction.@stop()
   let group : I.group = I.@group(workerInit, spawnFn / exh)
   return(UNIT)
 ;
@@ -20,7 +20,7 @@ define @test3 (x : unit / exh : exh) : unit =
       do print_ppt()
       if I32Eq(#0(x), 3)
          then 
-	    let _ : unit = SchedulerAction.@stop(/ exh)
+	    let _ : unit = SchedulerAction.@stop()
 	    do print_ppt()
 	    let e : exn = Match
 	    throw exh(e)
@@ -47,7 +47,7 @@ define @test4 (x : unit / exh : exh) : unit =
   cont k2 (y : unit) =
       do print_ppt()
       let x : int = I32FetchAndAdd (&0(x), 1)
-      let _ : unit = SchedulerAction.@stop(/ exh)
+      let _ : unit = SchedulerAction.@stop()
 	    do print_ppt()
 	    let e : exn = Match
 	    throw exh(e)
@@ -65,7 +65,7 @@ define @test6 (x : unit / exh : exh) : unit =
   let fls : FLS.fls = FLS.@get(/ exh)
   cont k (x : unit) =
     do print_ppt()
-    SchedulerAction.@stop(/ exh)
+    SchedulerAction.@stop()
   fun spawnFn (i : int, k : PT.fiber / exh : exh) : () =
       let vp : vproc = VProc.@id-of-vproc(i / exh)
       let fls : FLS.fls = FLS.@pin-to(fls, i / exh)
@@ -80,7 +80,7 @@ define @test5 (x : unit / exh : exh) : unit =
       do print_ppt()
       do NWayBarrier.@ready(barrier / exh)
       do NWayBarrier.@barrier(barrier / exh)
-      let _ : unit = SchedulerAction.@stop(/ exh)
+      let _ : unit = SchedulerAction.@stop()
 	    do print_ppt()
 	    let e : exn = Match
 	    throw exh(e)

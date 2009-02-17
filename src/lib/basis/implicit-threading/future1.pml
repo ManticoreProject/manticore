@@ -153,7 +153,7 @@ structure Future1 : FUTURE =
    	        let tmpX : any = CAS (&STATE_OFF(fut), STOLEN_F, k)
  	        if Equal (tmpX, STOLEN_F)
 	           then (* transfer control to the futures scheduler *)
-                        Control.@stop (/ exh)
+                        SchedulerAction.@stop ()
 	          else (* the future value is ready *)
                        return (tmpX)
         else (* the future value is ready *)	       

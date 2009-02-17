@@ -196,7 +196,7 @@ structure Chan : sig
 		      do @chan-release-lock (ch / exh)
 		      do VProc.@atomic-end ()
 		      (* in *)
-			Control.@stop(/exh)
+			SchedulerAction.@stop()
 	      end
 	;
     
@@ -230,7 +230,7 @@ structure Chan : sig
 			    do @chan-release-lock (ch / exh)
 			    do VProc.@atomic-end ()
 			    (* in *)
-			      Control.@stop(/exh)
+			      SchedulerAction.@stop()
 		      end
 	      (* in *)
 		apply tryLp (UNIT / exh)

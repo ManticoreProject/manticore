@@ -51,17 +51,17 @@ structure POr : sig
 	fun markEmpty () : () =
 	    let v1 : por_state = CAS(&0(por), EMPTY_ST, DONE_ST)
 	    do if Equal(v1, EMPTY_ST)
-		  then Control.@stop(/ exh)
+		  then SchedulerAction.@stop()
 		  else return()
 	    if Equal(SELECT(0, por), FULL_ST)
-	       then Control.@stop(/ exh)
+	       then SchedulerAction.@stop()
 	       else return()
 
        (* return by stopping -- necessary cleaning up cancelation wrapper *)
 	cont returnK (x : O.option) =
 	     cont k (_ : PT.unit) = throw retK(x)
 	     do WorkStealing.@push-tl(k / exh)
-	     do Control.@stop(/ exh)
+	     do SchedulerAction.@stop()
 	     return(NONE)
 
 	fun handlerK (sibling : C.cancelable, f : por_thunk / exh : PT.exh) : PT.fiber =

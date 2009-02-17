@@ -98,9 +98,8 @@ structure SchedulerAction (* :
 	;
 
     (* stop the current fiber *)
-      define inline @stop () : unit =
-	  do @forward (PT.STOP)
-	  return (UNIT)
+      define inline @stop () noreturn =
+	  @forward (PT.STOP)
 	;
 
     (* yield control to the parent scheduler *)
