@@ -40,7 +40,7 @@ structure Threads : sig
 	    let (fls : FLS.fls, fiber: PT.fiber) = @create (f / exh)
 	    (* in *)
 	    do VProcQueue.@enqueue-on-vproc (dst, fls, fiber)
-	    return ()
+	    return (fls)
 	  ;
 
 	define inline @thread-exit (x : PT.unit / exh : PT.exh) : any =
