@@ -25,18 +25,18 @@ structure VProcQueue (* :
      *)
       typedef queue = [FLS.fls, PT.fiber, any];
 
-    (* enqueue on the local queue. NOTE: signals must be masked *)
-      define @enqueue-in-atomic (vp : vproc, fls : FLS.fls, fiber : PT.fiber) : ();
+    (* enqueue on the host's vproc's thread queue *)
+      define inline @enqueue-in-atomic (fls : FLS.fls, fiber : PT.fiber / exh : exh) : ();
+      define inline @enqueue (fls : FLS.fls, fiber : PT.fiber / exh : exh) : ();
+
     (* dequeue from the local queue  *)
-      define @dequeue-in-atomic () : O.option;
+      define inline @dequeue-in-atomic () : O.option;
 
     (* enqueue a fiber (paired with fls) on a remote vproc *)
       define @enqueue-on-vproc (dst : vproc, fls : FLS.fls, k : PT.fiber) : ();
 
     (* dequeue the first item to satisfy the given predicate  *)
       define @dequeue-with-pred (f : fun(FLS.fls / exh -> bool) / exh : exh) : O.option;
-    (* enqueue on the host's vproc's thread queue *)
-      define inline @enqueue (fls : FLS.fls, fiber : PT.fiber) : ();
 
     )
 
@@ -83,12 +83,12 @@ structure VProcQueue (* :
 	;
 
     (* enqueue on the local queue. NOTE: signals must be masked *)
-      define @enqueue-in-atomic (vp : vproc, fls : FLS.fls, fiber : PT.fiber) : () =
-	 let tl : queue = vpload (VP_RDYQ_TL, vp)
-	 let qitem : queue = alloc(fls, fiber, tl)
-	 do vpstore (VP_RDYQ_TL, vp, qitem)
-	 return () 
-      ;
+      define inline @enqueue-in-atomic (vp : vproc, fls : FLS.fls, fiber : PT.fiber) : () =
+	  let tl : queue = vpload (VP_RDYQ_TL, vp)
+	  let qitem : queue = alloc(fls, fiber, tl)
+	  do vpstore (VP_RDYQ_TL, vp, qitem)
+	  return () 
+	;
 
     (* unload threads from the landing pad *)
       define @unload-landing-pad () : queue =
@@ -172,7 +172,7 @@ structure VProcQueue (* :
 	;	  
 
     (* dequeue from the local queue  *)
-      define @dequeue-in-atomic (vp : vproc) : O.option =
+      define inline @dequeue-in-atomic (vp : vproc) : O.option =
 (* NOTE: with software polling, we do not need to do this check! *)
 	  let messages : List.list = @unload-and-check-messages()
 	  let vp : vproc = host_vproc
@@ -228,7 +228,7 @@ structure VProcQueue (* :
 	  end
 	;
 
-      define @enqueue-on-vproc (dst : vproc, fls : FLS.fls, k : PT.fiber) : () =
+      define inline @enqueue-on-vproc (dst : vproc, fls : FLS.fls, k : PT.fiber) : () =
 	  fun lp () : queue =
 	      let entryOld : queue = vpload(VP_ENTRYQ, dst)
 	      let entryNew : queue = alloc(fls, k, entryOld)
@@ -237,14 +237,15 @@ structure VProcQueue (* :
 	      if NotEqual(x, entryOld)
 		then
 		  do Pause ()
-		  apply lp()
-		else return(entryOld)
+		  apply lp ()
+		else return (entryOld)
 	  let entryOld : queue = apply lp()
 	(* wake the vproc if its queue was empty *)
 	  if Equal(entryOld, Q_EMPTY)
-	     then do ccall WakeVProc(dst)
-		  return()
-	  else return()
+	    then
+	      do ccall WakeVProc(dst)
+	      return ()
+	    else return ()
 	;
 
     )
