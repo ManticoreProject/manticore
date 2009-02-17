@@ -61,18 +61,6 @@ define @test4 (x : unit / exh : exh) : unit =
 ;
 
 *)
-define @test6 (x : unit / exh : exh) : unit =
-  let fls : FLS.fls = FLS.@get(/ exh)
-  cont k (x : unit) =
-    do print_ppt()
-    SchedulerAction.@stop()
-  fun spawnFn (i : int, k : PT.fiber / exh : exh) : () =
-      let vp : vproc = VProc.@id-of-vproc(i / exh)
-      let fls : FLS.fls = FLS.@pin-to(fls, i / exh)
-      VProcQueue.@enqueue-on-vproc(vp, fls, k / exh)
-  do ImplicitThread.@spawn-n-workers(2, k, spawnFn / exh)
-  return(UNIT)
-;
 
 define @test5 (x : unit / exh : exh) : unit =
   let barrier : NWayBarrier.barrier = NWayBarrier.@new(1 / exh)  
@@ -86,11 +74,26 @@ define @test5 (x : unit / exh : exh) : unit =
 	    throw exh(e)
       
   let fls : FLS.fls = FLS.@get(/ exh)
-  let vp : vproc = VProc.@id-of-vproc(0 / exh)
-  do VProcQueue.@enqueue-on-vproc(vp, fls, k2 / exh)
+  let vp : vproc = VProc.@id-of-vproc(0)
+  do VProcQueue.@enqueue-on-vproc(vp, fls, k2)
   do NWayBarrier.@barrier(barrier / exh)
   return(UNIT)
 ;
+
+define @test6 (x : unit / exh : exh) : unit =
+  let fls : FLS.fls = FLS.@get(/ exh)
+  cont k (x : unit) =
+    do print_ppt()
+    SchedulerAction.@stop()
+  fun spawnFn (i : int, k : PT.fiber / exh : exh) : () =
+      let vp : vproc = VProc.@id-of-vproc(i)
+      let fls : FLS.fls = FLS.@pin-to(fls, i / exh)
+      VProcQueue.@enqueue-on-vproc(vp, fls, k)
+  let n : int = VProc.@num-vprocs()
+  do ImplicitThread.@spawn-n-workers(n, k, spawnFn / exh)
+  return(UNIT)
+;
+
 
 )
 
