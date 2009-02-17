@@ -18,26 +18,19 @@ structure Chan : sig
     structure FLS = FiberLocalStorage
 
     _primcode (
-	typedef event_state = enum(2);
-	typedef dirty_flag = ![event_state];
-
-(* constants for event states *)
-#	define INIT_EVT	enum(0):event_state
-#	define WAITING_EVT	enum(1):event_state
-#	define SYNCHED_EVT	enum(2):event_state
 
       (* the representation of a CML thread suspended on a channel *)
 	typedef recvq_item = [
-	    dirty_flag,
-	    FLS.fls,
-	    vproc,
-	    cont(any)
+	    PrimEvent.dirty_flag,	(* event-instance status flag *)
+	    FLS.fls,			(* FLS of thread *)
+	    vproc,			(* vproc affinity *)
+	    cont(any)			(* thread's continuation *)
 	  ];
 	typedef sendq_item = [
-	    dirty_flag,
-	    FLS.fls,
-	    vproc,
-	    cont(unit)
+	    PrimEvent.dirty_flag,	(* event-instance status flag *)
+	    FLS.fls,			(* FLS of thread *)
+	    vproc,			(* vproc affinity *)
+	    cont(unit)			(* thread's continuation *)
 	  ];
 
 	typedef chan_rep = ![	    (* all fields are mutable *)
@@ -65,18 +58,23 @@ structure Chan : sig
 	;
 
 	define inline @chan-acquire-lock (ch : chan_rep / exh : exh) : () =
-	    fun spin (_ : unit / exh : exh) : () =
-		  if CH_TRY_LOCK(ch)
-		    then apply spin (UNIT / exh)
-		    else return ()
+	    fun spin () : () =
+		  if (#0(ch)) then
+		    do Pause ()
+		    apply spin ()
+		  else if (TAS(&(ch))) then
+		    do Pause ()
+		    apply spin ()
+		  else
+		    return ()
 	    (* in *)
-	      apply spin (UNIT / exh)
-	;
+	      apply spin ()
+	  ;
 
 	define inline @chan-release-lock (ch : chan_rep / _ : exh) : () =
-	    do CH_CLR_LOCK(ch)
+	    do #0(ch) := false
 	    return ()
-	;
+	  ;
 
 	define inline @chan-enqueue-recv (ch : chan_rep, flg : dirty_flag, tid : FLS.fls, k : cont(any) / _ : exh) : () =
 	    let item : recvq_item = alloc (flg, tid, host_vproc, k)
@@ -86,7 +84,7 @@ structure Chan : sig
 	      return ()
 	;
 
-      (* out-of-live version for when we must reverse the tail *)
+      (* out-of-line version for when we must reverse the tail *)
 	define @chan-dequeue-recv-slowpath (ch : chan_rep / exh : exh) : Option.option =
 	  (* reverse the tail of the queue *)
 	    fun rev (item : recvq_item, tl : List.list, hd : List.list / exh : exh) : Option.option =
@@ -123,7 +121,6 @@ structure Chan : sig
 		    return (result)
 	    end
 	;
-
 
 	define inline @chan-enqueue-send (ch : chan_rep, msg : any, tid : FLS.fls, k : cont(unit) / _ : exh) : () =
 	    let item : sendq_item = alloc (msg, tid, host_vproc, k)
@@ -246,5 +243,11 @@ structure Chan : sig
     val new : unit -> 'a chan		= _prim (@chan-new)
     val send : ('a chan * 'a) -> unit	= _prim (@chan-send)
     val recv : 'a chan -> 'a		= _prim (@chan-recv)
+
+    val sendPrimEvt : ('a chan * 'a) -> unit PrimEvent.pevent	= _prim (@chan-send-evt)
+    val recvPrimEvt : 'a chan -> 'a PrimEvent.pevent		= _prim (@chan-recv-evt)
+
+    fun recvEvt ch = Event.baseEvt (recvPrimEvt ch)
+    fun sendEvt (ch, msg) = Event.baseEvt (sendPrimEvt(ch, msg))
 
   end

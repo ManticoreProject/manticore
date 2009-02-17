@@ -19,6 +19,8 @@ structure Event : sig
     val wrap : ('a event * ('a -> 'b)) -> 'b event
     val sync : 'a event -> 'a
 
+    val baseEvt : 'a PrimEvent.pevent -> 'a event
+
   end = struct
 
     type svar = PrimEvent.signal_var

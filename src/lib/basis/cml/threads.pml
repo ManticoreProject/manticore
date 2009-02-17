@@ -11,26 +11,41 @@ structure Threads : sig
     structure PT = PrimTypes
 
     _primcode (
-      (* spawn a new CML thread on the local vproc *)
-	define inline @local-spawn (f : fun(PT.unit / PT.exh -> PT.unit) / exh : PT.exh) : FLS.fls =
-	  cont fiber (x : PT.unit) = 
-	    let x : PT.unit =
-	    (* in case of an exception, just terminate the fiber *)
-	      cont exh (exn : PT.exn) = return (UNIT)
+
+      (* create a thread *)
+	define inline @create (f : fun(PT.unit / PT.exh -> PT.unit)) : (FLS.fls, PT.fiber) =
+	    cont fiber (x : PT.unit) = 
+	      let x : PT.unit =
+	      (* in case of an exception, just terminate the fiber *)
+		cont exh (exn : PT.exn) = return (UNIT)
+		(* in *)
+		  apply f (UNIT / exh)
 	      (* in *)
-		apply f (UNIT / exh)
+		SchedulerAction.@stop ()
 	    (* in *)
-	      SchedulerAction.@stop ()
-	  (* in *)
-	  let vp : vproc = host_vproc
-	  let fls : FLS.fls = FLS.@new (UNIT / exh)
-	  do VProcQueue.@enqueue (fls, fiber / exh)
-	  return (fls)
-	;
+	    let fls : FLS.fls = FLS.@new (UNIT / exh)
+	    return (fls, fiber)
+	  ;
+
+      (* spawn a new thread on the local vproc *)
+	define inline @local-spawn (f : fun(PT.unit / PT.exh -> PT.unit) / exh : PT.exh) : FLS.fls =
+	    let (fls : FLS.fls, fiber: PT.fiber) = @create (f)
+	    (* in *)
+	    do VProcQueue.@atomic-enqueue (fls, fiber / exh)
+	    return (fls)
+	  ;
+
+      (* spawn a thread on a remote vproc *)
+	define @remote-spawn (dst : vproc, f : fun (unit / exh -> unit) / exh : exh) : FLS.fls =
+	    let (fls : FLS.fls, fiber: PT.fiber) = @create (f)
+	    (* in *)
+	    do VProcQueue.@enqueue-on-vproc (dst, fls, fiber / exh)
+	    return ()
+	  ;
 
 	define inline @thread-exit (x : PT.unit / exh : PT.exh) : any =
-	  SchedulerAction.@stop ()
-	;
+	    SchedulerAction.@stop ()
+	  ;
 
       )
 
