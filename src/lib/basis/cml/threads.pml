@@ -39,7 +39,7 @@ structure Threads : sig
 	define @remote-spawn (dst : vproc, f : fun (unit / exh -> unit) / exh : exh) : FLS.fls =
 	    let (fls : FLS.fls, fiber: PT.fiber) = @create (f / exh)
 	    (* in *)
-	    do VProcQueue.@enqueue-on-vproc (dst, fls, fiber / exh)
+	    do VProcQueue.@enqueue-on-vproc (dst, fls, fiber)
 	    return ()
 	  ;
 

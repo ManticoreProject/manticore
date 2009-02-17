@@ -244,7 +244,7 @@ structure Tests =
 	    case vps
 	     of NIL => throw exit()
 	      | List.CONS(vp : vproc, vps : List.list) =>
-		VProcQueue.@enqueue-on-vproc(vp, fls, k / exh)
+		VProcQueue.@enqueue-on-vproc(vp, fls, k)
 	    end
 	end
         fun waitFn () : () = if SELECT(0, wait) then return() else apply waitFn()

@@ -65,7 +65,7 @@ structure WorkStealers =
 			  apply sendThieves (vps / exh)
 		      | O.SOME (item : VPQ.queue) =>
 			  do print_msg("work-stealers: sending thread to idle vproc")
-			  VPQ.@enqueue-on-vproc(self, SELECT(FLS_OFF, item), SELECT(FIBER_OFF, item) / exh)
+			  VPQ.@enqueue-on-vproc(self, SELECT(FLS_OFF, item), SELECT(FIBER_OFF, item))
 		    end
 	(* send thieves to all other vprocs *)
 	  and sendThieves (vps : L.list / exh : PT.exh) : () =

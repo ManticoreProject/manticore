@@ -54,7 +54,7 @@ define @test4 (x : unit / exh : exh) : unit =
       
   let fls : FLS.fls = FLS.@get(/ exh)
   let vp : vproc = VProc.@id-of-vproc(0 / exh)
-  do VProcQueue.@enqueue-on-vproc(vp, fls, k2 / exh)
+  do VProcQueue.@enqueue-on-vproc(vp, fls, k2)
   fun isDone (/ exh : exh) : bool = return(I32Eq(#0(x), 1))
   do PrimSynch.@spin-wait(isDone / exh)
   return(UNIT)

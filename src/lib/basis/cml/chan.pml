@@ -183,7 +183,7 @@ structure Chan : sig
 	      case maybeItem
 	       of Option.SOME(item : sendq_item) =>
 		    do @chan-release-lock (ch / exh)
-		    do VProcQueue.@enqueue-on-vproc(#2(item), #1(item), #3(item) / exh)
+		    do VProcQueue.@enqueue-on-vproc(#2(item), #1(item), #3(item))
 		    do VProc.@atomic-end ()
 		    (* in *)
 		      return (#0(item))
@@ -220,7 +220,7 @@ structure Chan : sig
 			    (* in *)
 			      if success then (* we got it *)
 				do @chan-release-lock(ch / exh)
-				do VProcQueue.@enqueue-on-vproc(#2(item), #1(item), #3(item) / exh)
+				do VProcQueue.@enqueue-on-vproc(#2(item), #1(item), #3(item))
 				(* in *)
 				  @throw-to (#1(item), #3(item), msg / exh)
 			      else (* someone else got the event, so try again *)
