@@ -192,11 +192,14 @@ void *NewVProc (void *arg)
     sigaction (SIGUSR1, &sa, 0);
     sigaction (SIGUSR2, &sa, 0);
 
+    VProcFn_t initFn = initData->initFn;
+    Value_t initArg = initData->initArg;
+
   /* Wait until all vprocs have been initialized */
     BarrierWait (&InitBarrier);
 
   /* run the initial vproc function */
-    initData->initFn (vproc, initData->initArg);
+    initFn(vproc, initArg);
 
     Die ("should never get here!");
 
