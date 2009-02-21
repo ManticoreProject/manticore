@@ -25,7 +25,7 @@ define @test3 (x : unit / exh : exh) : unit =
 	    let e : exn = Match
 	    throw exh(e)
          else 
-	     let _ : unit = SchedulerAction.@yield(/ exh)
+	     do SchedulerAction.@yield()
              throw k1(UNIT)
   cont k2 (y : unit) =
       do print_ppt()
@@ -34,7 +34,7 @@ define @test3 (x : unit / exh : exh) : unit =
          then 
 	    return(UNIT)
          else 
-	     let _ : unit = SchedulerAction.@yield(/ exh)
+	     do SchedulerAction.@yield()
              throw k2(UNIT)
   let fls : FLS.fls = FLS.@get(/ exh)    
   do VProcQueue.@enqueue(fls, k1 / exh)
