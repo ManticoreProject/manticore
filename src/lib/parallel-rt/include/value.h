@@ -53,7 +53,6 @@ extern Value_t AllocNonUniform (VProc_t *vp, int nItems, ...);
 extern Value_t WrapInt (VProc_t *vp, long i);
 extern Value_t AllocString (VProc_t *vp, const char *s);
 extern Value_t AllocRaw (VProc_t *vp, uint32_t sz);
-extern void SayValue (Value_t v);
 
 STATIC_INLINE Value_t Cons (VProc_t *vp, Value_t a, Value_t b)
 {
@@ -85,5 +84,8 @@ STATIC_INLINE Value_t GlobalSome (VProc_t *vp, Value_t a)
 #define RAW_FIELD	0
 #define PTR(p)		PTR_FIELD, (Value_t)(p)
 #define INT(i)		RAW_FIELD, (Value_t)((Word_t)(i))
+
+/* print a value to stdout */
+extern void SayValue (Value_t v);
 
 #endif /* !_VALUE_H_ */
