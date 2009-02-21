@@ -320,51 +320,6 @@ void VProcWaitForSignal (VProc_t *vp)
 
 }
 
-/*! \brief return a list of the vprocs in the system.
- *  \param self the host vproc
- */
-Value_t ListVProcs (VProc_t *self)
-{
-    Value_t	l = M_NIL;
-
-    for (int i = 0;  i < NumVProcs;  i++) {
-	l = Cons(self, PtrToValue(VProcs[i]), l);
-    }
-
-    return l;
-
-}
-
-/*! \brief return a pointer to the nth vproc
- *  \param n vproc id
- */
-VProc_t* GetNthVProc (int n)
-{
-    assert(n >= 0 && n < NumVProcs);
-    return VProcs[n];
-}
-
-/*! \brief Wake a vproc.
- *  \param the vproc to wake
- */
-void WakeVProc (VProc_t *vp)
-{
-#ifndef NDEBUG
-        if (DebugFlg)
-	  SayDebug("[%2d] WakeVProc: waking up vp %d\n", VProcSelf()->id, vp->id);
-#endif
-  CondSignal (&(vp->wait));
-}
-
-/*! \brief create a fiber that puts the vproc to sleep
- *  \param self the calling vproc
- *  \return fiber that when run puts the vproc to sleep
- */
-Value_t SleepCont (VProc_t *self)
-{
-    return AllocUniform(self, 1, PtrToValue(&ASM_VProcSleep));
-}
-
 
 /* IdleVProc:
  */
@@ -477,8 +432,64 @@ static int GetNumCPUs ()
 } /* end of GetNumCPUs */
 
 
+/***** Exported VProc operations *****
+ *
+ * The following functions are exported to the BOM runtime code.
+ */
+
+/*! \brief return the number of virtual processos in the system.
+ */
 int GetNumVProcs ()
 {
     return NumVProcs;
+}
+
+/*! \brief return a list of the vprocs in the system.
+ *  \param self the host vproc
+ *
+ * This function returns a list of the virtual processors in the system.  The vproc
+ * values are wrapped to avoid confusing the GC.
+ */
+Value_t ListVProcs (VProc_t *self)
+{
+    Value_t	l = M_NIL;
+
+    for (int i = NumVProcs-1;  i >= 0;  i--) {
+	Value_t vp = WrapWord (self, (Word_t)(VProcs[i]));
+	l = Cons(self, vp, l);
+    }
+
+    return l;
+
+}
+
+/*! \brief return a pointer to the nth vproc
+ *  \param n vproc id
+ */
+VProc_t* GetNthVProc (int n)
+{
+    assert(n >= 0 && n < NumVProcs);
+    return VProcs[n];
+}
+
+/*! \brief Wake a vproc.
+ *  \param the vproc to wake
+ */
+void WakeVProc (VProc_t *vp)
+{
+#ifndef NDEBUG
+        if (DebugFlg)
+	  SayDebug("[%2d] WakeVProc: waking up vp %d\n", VProcSelf()->id, vp->id);
+#endif
+  CondSignal (&(vp->wait));
+}
+
+/*! \brief create a fiber that puts the vproc to sleep
+ *  \param self the calling vproc
+ *  \return fiber that when run puts the vproc to sleep
+ */
+Value_t SleepCont (VProc_t *self)
+{
+    return AllocUniform(self, 1, PtrToValue(&ASM_VProcSleep));
 }
 
