@@ -27,9 +27,9 @@ structure SchedulerAction (* :
       define inline @stop () : unit;
 
     (* yield control to the parent scheduler *)
-      define inline @yield-from-atomic () : unit;
-      define inline @yield () : unit;
-      define inline @yield-in-atomic (vp : vproc) : unit;
+      define inline @yield-from-atomic () : ();
+      define inline @yield () : ();
+      define inline @yield-in-atomic (vp : vproc) : ();
 
     (* create a fiber *)
       define inline @fiber (f : PT.fiber_fun / exh : exh) : PT.fiber;
@@ -103,27 +103,27 @@ structure SchedulerAction (* :
 	;
 
     (* yield control to the parent scheduler *)
-      define inline @yield-from-atomic (vp : vproc) : unit =
-	  cont k (x : unit) = return(UNIT)
+      define inline @yield-from-atomic (vp : vproc) : () =
+	  cont k (x : unit) = return ()
 	  do @forward-from-atomic (vp, PT.PREEMPT(k))
-	  return (UNIT)
+	  return ()
 	;
 
     (* yield control to the parent scheduler *)
-	define inline @yield () : unit =
-	  cont k (x : unit) = return(UNIT)
+	define inline @yield () : () =
+	  cont k (x : unit) = return ()
 	  do @forward (PT.PREEMPT(k))
-	  return (UNIT)
+	  return ()
 	;
 
     (* yield control to the parent scheduler, masking signals upon return *)
-      define inline @yield-in-atomic (vp : vproc) : unit =
-	  cont k (x:unit) = 
+      define inline @yield-in-atomic (vp : vproc) : () =
+	  cont k (x : unit) = 
 	    let vp : vproc = @atomic-begin()         (* mask signals before resuming *)
-	    return(UNIT)
+	    return()
 	  do @forward-from-atomic (vp, PT.PREEMPT(k))
 	  do assert(false) (* control should never reach this point *)
-	  return(UNIT)
+	  return()
 	;
 
     (* unmask signals; if there is a signal pending, then yield to the scheduler. *)
@@ -132,7 +132,7 @@ structure SchedulerAction (* :
 	    if pending
 	      then
 		do vpstore (SIG_PENDING, vp, false)
-		let _ : unit = @yield-from-atomic (vp)
+		do @yield-from-atomic (vp)
 		return ()
 	      else
 		do @atomic-end-no-check (vp)
