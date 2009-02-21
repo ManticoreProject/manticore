@@ -52,10 +52,10 @@ structure VProcExtras : sig
 	    return (Equal(a, b))
 	  ;
 
-	define inline @remoteSpawn (arg : [ml_vproc, fun(unit / exh -> unit)] / _ : exh) : FLS.fls =
+	define inline @remoteSpawn (arg : [ml_vproc, fun(unit / exh -> unit)] / exh : exh) : FLS.fls =
 	    let vp : vproc = #0(#0(arg))
 	    let f : fun(unit / exh -> unit) = #1(arg)
-	    let tid : FLS.fls = Threads.@remote-spawn (vp, f)
+	    let tid : FLS.fls = Threads.@remote-spawn (vp, f / exh)
 	    return (tid)
 	  ;
       )
