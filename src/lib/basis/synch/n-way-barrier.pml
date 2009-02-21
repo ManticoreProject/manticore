@@ -40,7 +40,7 @@ structure NWayBarrier =
 	      if I32Eq(SELECT(NUM_IN_BARRIER_OFF, b), SELECT(BARRIER_COUNT_OFF, b))
 		 then SchedulerAction.@atomic-end(vp)
 	      else 
-		  let _ : unit = SchedulerAction.@yield-in-atomic(vp)
+		  do SchedulerAction.@yield-in-atomic(vp)
 		  (* do Pause() *)         (* notify the hardware that the program is spinning *)
 		  apply spin()
 	apply spin ()
