@@ -39,7 +39,7 @@ structure Threads (*: sig
 	    let fiber: PT.fiber = @create (f / exh)
 	    let fls : FLS.fls = FLS.@new (UNIT / exh)
 	    (* in *)
-	    do VProcQueue.@enqueue (fls, fiber / exh)
+	    do VProcQueue.@enqueue (fls, fiber)
 	    return (fls)
 	  ;
 
@@ -48,7 +48,11 @@ structure Threads (*: sig
 	    let fiber: PT.fiber = @create (f / exh)
 	    let vprocId : int = VProc.@vproc-id (dst)
 	    let fls : FLS.fls = FLS.@new-pinned (vprocId)
-	    (* in *)
+(*
+	    do if Equal(host_vproc, dst)
+		then VProcQueue.@enqueue (fls, fiber)
+		else VProcQueue.@enqueue-on-vproc (dst, fls, fiber)
+*)
 	    do VProcQueue.@enqueue-on-vproc (dst, fls, fiber)
 	    return (fls)
 	  ;
