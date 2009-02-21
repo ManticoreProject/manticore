@@ -32,7 +32,7 @@ structure TestWorkStealers =
 	       then return()
 	    else
 do print_ppt()
-                let _ : PT.unit = Control.@yield(/ exh)
+                do SchedulerAction.@yield(/ exh)
 		apply wait()
 	do apply wait ()
 	return(UNIT)

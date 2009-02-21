@@ -91,7 +91,7 @@ structure Tests =
 	    if I32Gte(i, 2)
 	       then return()
 	    else
-		let _ : PT.unit = Control.@yield(/exh)
+		do SchedulerAction.@yield(/exh)
 		apply lp(I32Add(i,1) / exh)
 	do apply lp (0 / exh)
 	return(UNIT)
@@ -149,7 +149,7 @@ structure Tests =
 	       if done 
 		  then return (TRUE)
 	       else if wait
-		  then let _ : PT.unit = Control.@yield ( / exh)
+		  then do SchedulerAction.@yield ( / exh)
 		       apply deq (i / exh)
 	       else apply deq (i / exh)
 	      | SOME (wj:[int]) => 
