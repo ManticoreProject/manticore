@@ -45,13 +45,14 @@ structure CheckBOM : sig
       = TAIL of (B.var * B.ty list)
       | BIND of B.var list
 
+    fun pr s = TextIO.output(TextIO.stdErr, concat s)
+
     fun typesOf xs = List.map BV.typeOf xs
 
     fun check (phase, module) = let
 	  val B.MODULE{name, externs, hlops, body} = module
 	  val anyErrors = ref false
 	(* report an error *)
-	  fun pr s = TextIO.output(TextIO.stdErr, concat s)
 	  fun error msg = (
 		if !anyErrors then ()
 		else (
@@ -391,11 +392,16 @@ structure CheckBOM : sig
 	  (* check new and old census information *)
 	    VTbl.appi checkCnt counts;
 if !anyErrors
-  then (
-    print "******************** broken BOM ********************\n";
-    PrintBOM.print module;
-    print "********************\n";
-    raise Fail "broken BOM")
+  then let
+(* FIXME: we should generate this name from the input file name! *)
+    val outFile = "broken-BOM"
+    val outS = TextIO.openOut outFile
+    in
+      pr ["broken BOM dumped to ", outFile, "\n"];
+      PrintBOM.output (outS, module);
+      TextIO.closeOut outS;
+      raise Fail "broken BOM"
+    end
   else ();
 	  (* return the error status *)
 	    !anyErrors
