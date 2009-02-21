@@ -118,7 +118,7 @@ structure ImplicitThread (* :
       define inline @init-on-all-vprocs (group : group / exh : exh) : () =
 	let fls : FLS.fls = FLS.@get(/ exh)
 	fun spawnFn (i : int, k : PT.fiber / exh : exh) : () =
-	    let vp : vproc = VProc.@id-of-vproc(i)
+	    let vp : vproc = VProc.@vproc-by-id(i)
             (* pin the worker to the ith vproc *)
 	    let fls : FLS.fls = FLS.@pin-to(fls, i / exh)
 	    VProcQueue.@enqueue-on-vproc(vp, fls, k)
