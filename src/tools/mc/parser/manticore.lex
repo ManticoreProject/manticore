@@ -68,6 +68,23 @@
 	      })
 	  end
 
+  (* convert a HLOp ID to an atom *)
+    fun cvtHLOpId id = Atom.atom(String.extract(id, 1, NONE))
+
+  (* split a qualified ID up into its prefix and id parts *)
+    fun makeQualifiedId cvtId id = let
+	  fun revMap ([], l) = l
+	    | revMap (x::xs, l) = revMap(xs, Atom.atom x :: l)
+	  in
+	    case List.rev (String.tokens (fn c => c = #".") id)
+	      of (id::path) => (revMap (path, []), cvtId id)
+	       | _ => raise Fail "bogus qualified ID"
+	    (* end case *)
+	  end
+
+    val mkQId = makeQualifiedId Atom.atom
+    val mkQHLOpId = makeQualifiedId cvtHLOpId
+
   (* eof : unit -> lex_result *)
   (* ml-ulex requires this as well *)
     fun eof () = T.EOF
@@ -88,10 +105,10 @@
 %let idchar = {letter}|{dig}|"_"|"'";
 %let id = {letter}{idchar}*;
 %let qidt = {id}"."
-%let qualifiedid = {qidt}*{id};
+%let qualifiedid = {qidt}+{id};
 %let tyvarid = "'"{idchar}*;
 %let hlid = "@"{letter}({idchar}|"-")*;
-%let hlqid = {qidt}*{hlid};
+%let qualifiedhlid = {qidt}+{hlid};
 %let esc = "\\"[abfnrtv\\\"]|"\\"{dig}{dig}{dig};
 %let sgood = [\032-\126]&[^\"\\]; (* sgood means "characters good inside strings" *)
 %let ws = " "|[\t\n\v\f\r];
@@ -132,10 +149,11 @@
 <INITIAL> "?"   => (T.NDWILD);
 <INITIAL> "|?|" => (T.PCHOICE);
 
-<INITIAL> "_primcode"	=> (YYBEGIN PRIMCODE; T.KW__primcode);
-<INITIAL> "_prim"	=> (YYBEGIN PRIMCODE; T.KW__prim);
+<INITIAL> "_primcode"		=> (YYBEGIN PRIMCODE; T.KW__primcode);
+<INITIAL> "_prim"		=> (YYBEGIN PRIMCODE; T.KW__prim);
 
-<INITIAL> {qualifiedid}		=> (Keywords.smlIdToken yytext);
+<INITIAL> {qualifiedid}		=> (T.QID(mkQId yytext));
+<INITIAL> {id}			=> (Keywords.smlIdToken yytext);
 <INITIAL> {tyvarid}		=> (T.TYVAR(Atom.atom yytext));
 <INITIAL,PRIMCODE> {num}	=> (T.POSINT(valOf (IntInf.fromString yytext)));
 <INITIAL,PRIMCODE> "~"{num}	=> (T.NEGINT(valOf (IntInf.fromString yytext)));
@@ -160,22 +178,19 @@
 			      ]);
 			    continue());
 
-<COMMENT> "(*" => (
+<COMMENT> "(*"			=> (
 	depth := !depth + 1;
 	skip());
-<COMMENT> "*)" => (
+<COMMENT> "*)"			=> (
 	depth := !depth - 1;
         if (!depth = 0) then if inPrimCode() then YYBEGIN PRIMCODE else YYBEGIN INITIAL else ();
 	skip ());
-<COMMENT> .|"\n" => (skip ());
+<COMMENT> .|"\n"		=> (skip ());
 
-<PRIMCODE> {qualifiedid}		=> (Keywords.bomIdToken yytext);
-<INITIAL, PRIMCODE> {hlqid}		=> (let val hlqid = String.tokens (fn c => c = #".") yytext
-					        val path = List.take(hlqid, List.length hlqid - 1)
-					        val hlid = String.extract(List.last hlqid, 1, NONE)
-				            in
-				               T.HLOP(List.map Atom.atom (path @ [hlid]))
-				            end)
+<PRIMCODE> {id}			=> (Keywords.bomIdToken yytext);
+<PRIMCODE> {qualifiedhlid}	=> (T.QHLOP(mkQHLOpId yytext))
+<PRIMCODE> {qualifiedid}	=> (T.QID(mkQId yytext));
+<PRIMCODE> {hlid}		=> (T.HLOP(cvtHLOpId yytext));
 <PRIMCODE> "("			=> (primPush(); T.LP);
 <PRIMCODE> ")"			=> (if primPop() then () else YYBEGIN INITIAL; T.RP);
 <PRIMCODE> "__attribute__"	=> (T.KW___attribute__);

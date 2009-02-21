@@ -80,7 +80,8 @@
 (*	| DARROW	("=>")			*)
 (*	| ARROW		("->")			*)
 (*	| ID of Atom.atom			*)
-	| HLOP of Atom.atom list
+	| HLOP of Atom.atom
+	| QHLOP of (Atom.atom list) * Atom.atom
 (*	| POSINT of IntInf.int		(* positive integer *) *)
 (*	| NEGINT of IntInf.int		(* negative integer *) *)
 (*	| FLOAT of FloatLit.float		*)
@@ -356,13 +357,10 @@ FloatTy	: "float"	=> (BPT.T_Raw BPT.T_Float)
 	;
 
 (* FIXME: shouldn't be raising an exception here!! *)
-HLOpId	: HLOP	=> (case HLOP of [id] => id | _ => raise Fail "expected hlop id but got qualified id")
+HLOpId	: HLOP		=> (HLOP)
 	;
 
-HLOpQId : HLOP => (case HLOP
-		 of [] => raise Fail "impossible"
-		  | [id] => {span=FULL_SPAN, tree=([], id)}
-		  | ids => {span=FULL_SPAN, tree=(List.take(ids, List.length ids - 1), List.last ids)}
-		(* end case *))
+HLOpQId : QHLOP		=> ({span=FULL_SPAN, tree=QHLOP})
+	| HLOP		=> ({span=FULL_SPAN, tree=([], HLOP)})
         ;
 

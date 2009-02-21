@@ -77,7 +77,8 @@
     | AMP               ("&")
     | DOT               (".")
     | TYVAR of Atom.atom
-    | ID of Atom.atom list
+    | ID of Atom.atom
+    | QID of (Atom.atom list) * Atom.atom
     | POSINT of IntInf.int		(* positive integer *)
     | NEGINT of IntInf.int		(* negative integer *)
     | FLOAT of FloatLit.float
@@ -451,14 +452,10 @@ Int	: POSINT	=> (POSINT)
 	| NEGINT	=> (NEGINT)
 	;
 
-Name	: ID	=> (case ID 
-		     of [id] => id 
-		      | _ => raise Fail ("unexpected qualified ID "^String.concatWith "." (List.map Atom.toString ID)))
+Name	: ID		=> (ID)
 	;
 
 QualifiedId
-        : ID => (case ID
-		  of [] => raise Fail "impossible"
-		   | [id] => {span=FULL_SPAN, tree=([], id)}
-		   | ids => {span=FULL_SPAN, tree=(List.take(ids, List.length ids - 1), List.last ids)})
+	: QID		=> ({span=FULL_SPAN, tree=QID})
+	| ID		=> ({span=FULL_SPAN, tree=([], ID)})
         ;

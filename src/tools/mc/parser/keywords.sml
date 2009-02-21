@@ -112,18 +112,14 @@ structure Keywords : sig
 	    val tbl = AtomTable.mkTable (17, Fail "keywords")
 	    fun ins (id, tok) = AtomTable.insert tbl (Atom.atom id, tok)
 	    val find = AtomTable.find tbl
-	    fun idToken id = (
-		  case String.tokens (fn c => c = #".") id
-		   of [id] => let
-		      val ida = Atom.atom id
-		      in
-			  case find ida
-			   of NONE => T.ID [ida]
-			    | SOME kw => kw
-		          (* end case *)
-		      end
-		    | ids => T.ID (List.map Atom.atom ids)
-                  (* end case *))
+	    fun idToken id = let
+		  val id = Atom.atom id
+		  in
+		    case find id
+		     of NONE => T.ID id
+		      | SOME kw => kw
+		    (* end case *)
+		  end
 	    in
 	      List.app (List.app ins) kws;
 	      idToken
