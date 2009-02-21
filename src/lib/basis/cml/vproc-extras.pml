@@ -31,6 +31,10 @@ structure VProcExtras : sig
     _primcode (
 	typedef ml_vproc = [vproc];
 
+	define inline @vprocs (_ : unit / _ : exh) : List.list =
+	    VProc.@all-vprocs()
+	  ;
+
 	define inline @host (_ : unit / _ : exh) : [vproc] =
 	    let vp : ml_vproc = alloc(host_vproc)
 	    return (vp)
@@ -38,7 +42,8 @@ structure VProcExtras : sig
 
 	define inline @id (vp : ml_vproc / _ : exh) : ml_int =
 	    let n : int = VProc.@vproc-id (#0(vp))
-	    return (n)
+	    let m : ml_int = wrap(n)
+	    return (m)
 	  ;
 
 	define inline @same (arg : [ml_vproc, ml_vproc] / _ : exh) : bool =
@@ -57,12 +62,12 @@ structure VProcExtras : sig
 
     type vproc = _prim(ml_vproc)
 
-    val vprocs : unit -> vproc list = _prim (VProc.@all-vprocs)
+    val vprocs : unit -> vproc list = _prim (@vprocs)
     val host : unit -> vproc = _prim(@host)
     val id : vproc -> int = _prim(@id)
     val same : (vproc * vproc) -> bool = _prim(@same)
 
-    val remoteSpawn : (vproc * (unit -> unit)) -> Threads.thread_id = _prim(Threads.@remote-spawn)
+    val remoteSpawn : (vproc * (unit -> unit)) -> Threads.thread_id = _prim(@remoteSpawn)
 
     fun spawnOn f vp = remoteSpawn (vp, f)
 
