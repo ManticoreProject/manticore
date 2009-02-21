@@ -44,17 +44,18 @@ functor Alloc64Fn (
   (* compute the address of the ith element off of a 'base' address *)
     fun tupleAddrOf {mty : CFG.ty, i : int, base : T.rexp} = let
 	  val offset = (case mty
-            of ( CFG.T_Tuple (_, tys) |
-		 CFG.T_OpenTuple tys  ) => tupleOffset {tys=tys, i=i}
-	     | CFG.T_VProc => i
-	     | _ => raise Fail ("cannot offset from type "^CFGTyUtil.toString mty))
+		 of CFG.T_Tuple(_, tys) => tupleOffset {tys=tys, i=i}
+		  | CFG.T_OpenTuple tys => tupleOffset {tys=tys, i=i}
+		  | CFG.T_VProc => i
+		  | _ => raise Fail ("cannot offset from type "^CFGTyUtil.toString mty)
+		(* end case *))
 	  in
 	    T.ADD (MTy.wordTy, base, wordLit offset)
 	  end
 
   (* compute the address of the ith element off the base address *)
     fun arrayAddrOf {lhsTy : CFG.ty, i : T.rexp, base : T.rexp} = 
-	T.ADD (MTy.wordTy, base, T.MULS(MTy.wordTy, wordLit (Types.alignedTySzB lhsTy), i))
+	  T.ADD (MTy.wordTy, base, T.MULS(MTy.wordTy, wordLit (Types.alignedTySzB lhsTy), i))
 
   (* select the ith element off of a 'base' address *)
     fun select {lhsTy : CFG.ty, mty : CFG.ty, i : int, base : T.rexp} = let
@@ -75,9 +76,9 @@ functor Alloc64Fn (
    *   WARNING: we treat array lengths as 32-bit values even though the header stores up to 61 bits
    *)
     fun arrayLength (array) =
-	T.SRL (32, 
-	       T.LOAD (32, T.SUB(MTy.wordTy, array, wordLit wordSzB), ManticoreRegion.memory), 
-	       wordLit(3))
+	  T.SRL(32, 
+	     T.LOAD (32, T.SUB(MTy.wordTy, array, wordLit wordSzB), ManticoreRegion.memory), 
+	     wordLit(3))
 
   (* return true if the type may be represented by a pointer into the heap *)
     fun isHeapPointer CFG.T_Any = true
@@ -88,12 +89,12 @@ functor Alloc64Fn (
     fun setBit (w, i, ty) = if (isHeapPointer ty) then W.orb (w, W.<< (0w1, i)) else w
 
     fun initObj offAp ((ty, mltree), {i, stms, totalSize, ptrMask}) = let
-	val store = MTy.store (offAp totalSize, mltree, ManticoreRegion.memory)
-	val ptrMask' = setBit (ptrMask, Word.fromInt i, ty)
-	val totalSize' = Types.alignedTySzB ty + totalSize
-        in
-	   {i=i+1, stms=store :: stms, totalSize=totalSize', ptrMask=ptrMask'}
-        end (* initObj *)
+	  val store = MTy.store (offAp totalSize, mltree, ManticoreRegion.memory)
+	  val ptrMask' = setBit (ptrMask, Word.fromInt i, ty)
+	  val totalSize' = Types.alignedTySzB ty + totalSize
+	  in
+	    {i=i+1, stms=store :: stms, totalSize=totalSize', ptrMask=ptrMask'}
+	  end (* initObj *)
 
     fun allocMixedObj offAp args = let
 	  val {i=nWords, stms, totalSize, ptrMask} = 
@@ -102,11 +103,11 @@ functor Alloc64Fn (
 	  val hdrWord = W.toLargeInt (
 		  W.orb (W.orb (W.<< (ptrMask, 0w7), 
 				W.<< (W.fromInt nWords, 0w1)), 0w1) )
-	in	  
-	  if ((IntInf.fromInt totalSize) > Spec.ABI.maxObjectSzB)
-	    then raise Fail "object size too large"
-	    else (totalSize, hdrWord, stms)
-	end (* allocMixedObj *)
+	  in	  
+	    if ((IntInf.fromInt totalSize) > Spec.ABI.maxObjectSzB)
+	      then raise Fail "object size too large"
+	      else (totalSize, hdrWord, stms)
+	  end (* allocMixedObj *)
 
     fun allocVectorObj offAp args = let
 	  val {i=nWords, stms, totalSize, ...} =
