@@ -14,16 +14,16 @@ structure VProc (* :
     (** unique ids **)
 
     (* unique id of a vproc *)
-      define @vproc-id (vp : vproc / exh : exh) : int;
+      define @vproc-id (vp : vproc) : int;
     (* find the vproc with a given unique id *)
-      define @id-of-vproc (id : int / exh : exh) : vproc =
+      define @vproc-by-id (id : int) : vproc =
     (* total number of vprocs *)
       define @num-vprocs (/ exh : exh) : int;
 
     (** vproc allocation and iterators **)
 
     (* returns the list of all vprocs *)
-      define @all-vprocs (/ exh : exh) : List.list;
+      define @all-vprocs () : List.list;
     (* returns the list of all vprocs, but not the host vproc *)
       define @other-vprocs (/ exh : exh) : List.list;
     (* apply f to each vproc *)
@@ -52,7 +52,7 @@ structure VProc (* :
     _primcode (
 
     (* hooks into the C runtime system (parallel-rt/vproc/vproc.c) *)
-      extern void* GetNthVProc(int);
+      extern void* GetNthVProc (int);
       extern int GetNumVProcs ();
       extern void *SleepCont (void *) __attribute__((alloc));
       extern void *ListVProcs (void *) __attribute__((alloc));
@@ -66,62 +66,62 @@ structure VProc (* :
     (* returns the unique id of the given vproc *)
       define inline @vproc-id (vp : vproc) : int =
 	  let id : int = vpload(VPROC_ID, vp)
-	  return(id)
+	  return (id)
 	;
 
     (* find the vproc with a given unique id *)
-      define @id-of-vproc (id : int) : vproc =
+      define @vproc-by-id (id : int) : vproc =
 #ifndef NDEBUG
 	  let max : int = @num-vprocs()
 	  do assert(I32Lt(id, max))
 	  do assert(I32Gte(id, 0))
 #endif
 	  let vp : vproc = ccall GetNthVProc(id)
-	  return(vp)
+	  return (vp)
 	;
 
     (** vproc allocation and iterators  **)
 
     (* returns the list of all vprocs *)
-      define @all-vprocs (/ exh : exh) : List.list =
+      define @all-vprocs () : List.list =
 	  let vps : List.list = ccall ListVProcs(host_vproc)
 	  return(vps)
 	;
 
     (* returns the list of all vprocs, but not the host vproc *)
       define @other-vprocs (/ exh : exh) : List.list =
-	  fun lp (vps : List.list, others : List.list / exh : exh) : List.list =
+	  let self : vproc = host_vproc
+	  fun lp (vps : List.list, others : List.list) : List.list =
 	      case vps
 	       of nil => return(others)
-		| List.CONS(vp : vproc, vps : List.list) =>
-		  if Equal(vp, host_vproc)
-		     then apply lp(vps, others / exh)
-		  else apply lp(vps, List.CONS(vp, others) / exh)
+		| List.CONS(vp : [vproc], vps : List.list) =>
+		    if Equal(#0(vp), self)
+		      then apply lp(vps, others)
+		      else apply lp(vps, List.CONS(vp, others))
 	      end
-	  let vps : List.list = ccall ListVProcs(host_vproc)
-	  apply lp(vps, nil / exh)  
+	  let vps : List.list = ccall ListVProcs(self)
+	  apply lp(vps, nil)
 	;
 
     (* apply f to each vproc *)
       define @for-each-vproc(f : fun(vproc / exh ->) / exh : exh) : () =
-	  fun lp (vps : List.list / exh : exh) : () =
+	  fun lp (vps : List.list) : () =
 	      case vps
 	       of nil => return()
-		| List.CONS(vp : vproc, vps : List.list) =>
-		  do apply f(vp / exh)
-		  apply lp(vps / exh)
+		| List.CONS(vp : [vproc], vps : List.list) =>
+		  do apply f(#0(vp) / exh)
+		  apply lp(vps)
 	      end
 	  let vps : List.list = ccall ListVProcs(host_vproc)
-	  apply lp(vps / exh)
+	  apply lp(vps)
 	;
 
     (* apply f to each vproc except the host vproc *)
-      define @for-other-vprocs(f : fun(vproc / exh ->) / exh : exh) : () =
+      define @for-other-vprocs (f : fun(vproc / exh ->) / exh : exh) : () =
 	  let self : vproc = host_vproc
 	  fun g (vp : vproc / exh : exh) : () =
-	      if NotEqual(vp, self)
-		 then apply f(vp / exh)
-	      else return()
+		if NotEqual(vp, self) then apply f(vp / exh)
+		else return()
 	  @for-each-vproc(g / exh)
 	;
 
