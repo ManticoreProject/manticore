@@ -101,7 +101,7 @@ structure Cilk5WorkStealing =
 	do SchedulerUtils.@for-each-vproc(initDeque / exh)
 	fun mkAct (self : vproc / exh : exh) : PT.sched_act =
 	      @scheduler(deques, self / exh)
-	let vps : List.list = SchedulerUtils.@all-vprocs(/ exh)
+	let vps : List.list = SchedulerUtils.@all-vprocs()
 	do SchedulerUtils.@scheduler-startup(mkAct, fls, vps / exh)
 	return(deques)
       ;

@@ -126,7 +126,7 @@ structure Future1 : FUTURE =
 	  let fls : FLS.fls = FLS.@get( / exh)
 	(* create the ready queue *)
 	  let readyQ : LockedQueue.queue = LockedQueue.@new(/exh)
-	  let vps : List.list = SchedulerUtils.@all-vprocs(/ exh)
+	  let vps : List.list = SchedulerUtils.@all-vprocs()
 	  fun mkAct (self : vproc / exh : PT.exh) : PT.sched_act =
 		@gang-sched(readyQ, self / exh)
 	  do SchedulerUtils.@scheduler-startup(mkAct, fls, vps / exh)
