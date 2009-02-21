@@ -53,11 +53,18 @@ structure Threads (*: sig
 	    return (fls)
 	  ;
 
+	define inline @yield (_ : unit / _ : exh) : unit =
+	    do SchedulerAction.@yield ()
+	    return (UNIT)
+	  ;
+
 	define inline @thread-exit (x : PT.unit / exh : PT.exh) : any =
 	    SchedulerAction.@stop ()
 	  ;
 
       )
+
+    val yield : unit -> unit = _prim(@yield)
 
     val exit : unit -> 'a = _prim(@thread-exit)
 
