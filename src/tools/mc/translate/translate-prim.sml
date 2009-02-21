@@ -534,13 +534,13 @@ structure TranslatePrim : sig
 
   (* check that a BOM type is compatible with the given PML type *)
     fun chkConstraintTy (x, bomTy, pmlTy) = 
-	if (BOMTyUtil.equal(pmlTy, bomTy))
-	   then ()
-	else raise Fail (String.concatWith "\n" [
-			 "incorrect BOM type for "^Var.nameOf x^": ",
-			 "BOM type = "^BOMTyUtil.toString bomTy,
-			 "PML type = "^BOMTyUtil.toString pmlTy
-			])
+	  if (BOMTyUtil.equal(pmlTy, bomTy))
+	    then ()
+	    else raise Fail (String.concatWith "\n" [
+		 "incorrect BOM type for "^Var.nameOf x^": ",
+		 "BOM type = "^BOMTyUtil.toString bomTy,
+		 "PML type = "^BOMTyUtil.toString pmlTy
+		])
 
   (* lifting utility for inline BOM functions *)
 (* TODO: finish this implementation *)
