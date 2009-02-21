@@ -58,13 +58,13 @@ Value_t AllocNonUniform (VProc_t *vp, int nElems, ...)
     return PtrToValue(obj);
 }
 
-/*! \brief allocate a wrapped integer value.
+/*! \brief allocate a wrapped word value.
  */
-Value_t WrapInt (VProc_t *vp, long i)
+Value_t WrapWord (VProc_t *vp, Word_t i)
 {
     Word_t	*obj = (Word_t *)(vp->allocPtr);
     obj[-1] = RAW_HDR(1);
-    obj[0] = (Word_t)i;
+    obj[0] = i;
 
     vp->allocPtr += WORD_SZB * 2;
     return PtrToValue(obj);
