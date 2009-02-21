@@ -54,6 +54,8 @@ structure FLS (* :
 
     (* create fls *)
       define @new (x : unit / exh : exh) : fls;
+    (* create a new FLS pinned to the given vproc *)
+      define inline @new-pinned (vprocId : int /) : fls;
     (* set the fls on the host vproc *)
       define inline @set (fls : fls / exh : exh) : unit;
     (* get the fls from the host vproc *)
@@ -81,61 +83,68 @@ structure FLS (* :
 
     (* environment of an implicit thread *)
       typedef ite = [
-	  PrimStk.stk,                  (* work-group stack *)
-	  Option.option                 (* current cancelable *)
+	  PrimStk.stk,		(* work-group stack *)
+	  Option.option		(* current cancelable *)
 	];
 
       (* fiber-local storage *)
-	typedef fls = [
-	  int,                              (* if this value is a valid vproc id, the thread is pinned to that vproc *)
+      typedef fls = [
+(* FIXME: why not just use the vproc value here (with nil for no pinning? *)
+	  int,			(* if this value is a valid vproc id, the thread is pinned to that vproc *)
 (* FIXME: using an option type here adds an unnecessary level of indirection *)
-	  Option.option                     (* implicit-thread environment (ITE) *)
+	  Option.option		(* optional implicit-thread environment (ITE) *)
 	];
 
-	define @alloc (vprocId : int, ite : Option.option / exh : exh) : fls =
-	  let fls : fls = alloc(vprocId, ite)
-	  return(fls)
+      define @alloc (vprocId : int, ite : Option.option / exh : exh) : fls =
+	   let fls : fls = alloc(vprocId, ite)
+	   return(fls)
+	 ;
+
+    (* create fls *)
+      define inline @new (x : unit / exh : exh) : fls =
+	  let fls : fls = alloc(~1, Option.NONE)
+	  return (fls)
 	;
 
-      (* create fls *)
-	define @new (x : unit / exh : exh) : fls =
-	  let fls : fls = @alloc(~1, Option.NONE / exh)
-	  return(fls)
+    (* create a new FLS pinned to the given vproc *)
+      define inline @new-pinned (vprocId : int /) : fls =
+	  let fls : fls = alloc(vprocId, Option.NONE)
+	  return (fls)
 	;
 
-      (* set the fls on the host vproc *)
-	define inline @set (fls : fls / exh : exh) : unit =
-	  do assert(NotEqual(fls, nil))
+    (* set the fls on the host vproc *)
+      define inline @set (fls : fls / exh : exh) : unit =
+	  do assert (NotEqual(fls, nil))
 	  do vpstore (CURRENT_FG, host_vproc, fls)
-	  return(UNIT)
+	  return (UNIT)
 	;
 
-      (* get the fls from the host vproc *)
-	define inline @get ( / exh : exh) : fls =
+    (* get the fls from the host vproc *)
+      define inline @get ( / exh : exh) : fls =
 	  let fls : fls = vpload (CURRENT_FG, host_vproc)
 	  do assert(NotEqual(fls, nil))
 	  return(fls)
 	;
 
-      (* return the pinning information associated with the given FLS *)
-	define @pin-info (fls : fls / exh : exh) : int =
+    (* return the pinning information associated with the given FLS *)
+      define inline @pin-info (fls : fls / exh : exh) : int =
 	  return(SELECT(VPROC_OFF, fls))
 	;
 
-      (* set the fls as pinned to the given vproc *)
-	define @pin-to (fls : fls, vprocId : int / exh : exh) : fls =
-	  let fls : fls = @alloc(vprocId, SELECT(ITE_OFF, fls) / exh)
+    (* set the fls as pinned to the given vproc *)
+      define inline @pin-to (fls : fls, vprocId : int / exh : exh) : fls =
+	  let fls : fls = alloc(vprocId, SELECT(ITE_OFF, fls))
 	  return(fls)
 	;
 
-      (* find the ITE environment *)
+    (* find the ITE environment *)
 
-	define @find-ite (/ exh : exh) : Option.option =
+      define @find-ite (/ exh : exh) : Option.option =
 	  let fls : fls = @get(/ exh)
-	  return(SELECT(ITE_OFF, fls))
+	  return (SELECT(ITE_OFF, fls))
 	;
 
-	define @get-ite (/ exh : exh) : ite =
+      define @get-ite (/ exh : exh) : ite =
 	  let fls : fls = @get(/ exh)
 	  case SELECT(ITE_OFF, fls)
 	   of Option.NONE =>
@@ -146,8 +155,8 @@ structure FLS (* :
 	  end
 	;
 
-      (* set the ITE *)
-	define @set-ite (ite : ite / exh : exh) : () =
+    (* set the ITE *)
+      define @set-ite (ite : ite / exh : exh) : () =
 	  let fls : fls = @get(/ exh)
 	  let vProcId : int = @pin-info(fls / exh)
 	  let fls : fls = @alloc(vProcId, Option.SOME(ite) / exh)
