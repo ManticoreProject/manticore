@@ -124,7 +124,7 @@ structure Cancelation (* : sig
                 then 
 		 throw terminate()
 	     else
-                 do SchedulerAction.@run(wrapper, k)
+                 do SchedulerAction.@run(host_vproc, wrapper, k)
                  return($0)
       (* scheduler action that polls for cancelation *)
         cont wrapper (s : PT.signal) =

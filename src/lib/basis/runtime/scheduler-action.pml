@@ -17,7 +17,7 @@ structure SchedulerAction (* :
       define inline @atomic-end (vp : vproc) : ();
 
     (* run the fiber under the scheduler action *)
-      define inline @run (act : PT.sched_act, fiber : PT.fiber) noreturn;
+      define inline @run (self : vproc, act : PT.sched_act, fiber : PT.fiber) noreturn;
 
     (* forward a signal to the host vproc  *)
       define inline @forward-from-atomic (sg : PT.signal) noreturn;
@@ -35,7 +35,7 @@ structure SchedulerAction (* :
       define inline @fiber (f : PT.fiber_fun / exh : exh) : PT.fiber;
 
     (* run the fiber under the scheduler action and with the given fls *)
-      define inline @dispatch-from-atomic (act : PT.sched_act, fiber : PT.fiber, fls : FLS.fls / exh : exh) noreturn;
+      define inline @dispatch-from-atomic (self : vproc, act : PT.sched_act, fiber : PT.fiber, fls : FLS.fls / exh : exh) noreturn;
 
     )
 
@@ -78,9 +78,9 @@ structure SchedulerAction (* :
 	;
 
     (* run the fiber under the scheduler action *)
-      define inline @run (act : PT.sched_act, fiber : PT.fiber) noreturn =
-	  let vp : vproc = @atomic-begin ()
-	  do @push-act(vp, act)
+      define inline @run (self : vproc, act : PT.sched_act, fiber : PT.fiber) noreturn =
+	  do @push-act(self, act)
+	  do @atomic-end-no-check (self)
 	  throw fiber (UNIT)
 	;
 
@@ -152,9 +152,9 @@ structure SchedulerAction (* :
 	;
 
     (* run the fiber under the scheduler action and with the given fls *)
-      define inline @dispatch-from-atomic (act : PT.sched_act, fiber : PT.fiber, fls : FLS.fls / exh : exh) noreturn =
+      define inline @dispatch-from-atomic (self : vproc, act : PT.sched_act, fiber : PT.fiber, fls : FLS.fls / exh : exh) noreturn =
 	  let _ : unit = FLS.@set(fls / exh)
-	  @run (act, fiber)
+	  @run (self, act, fiber)
 	;
 
     )

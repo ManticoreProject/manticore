@@ -25,7 +25,7 @@ structure Cilk5WorkStealing =
       (* scheduler action for work stealing *)
 	cont switch (sign : PT.signal) =
 	  cont dispatch (k : PT.fiber) = 
-	    do Control.@run(switch, k / exh)
+	    do SchedulerAction.@run(self, switch, k / exh)
 	    return($0)
        (* steal a thread *)
 	  cont steal () =

@@ -176,7 +176,7 @@ structure ImplicitThread (* :
       define @run (sched : PT.sched_act, thd : thread / exh : exh) noreturn =
       (* environment initialization *)
 	do FLS.@set-ite(SELECT(ITE_OFF, thd) / exh)
-	SchedulerAction.@run(sched, SELECT(FIBER_OFF, thd))
+	SchedulerAction.@run(host_vproc, sched, SELECT(FIBER_OFF, thd))
       ;
 
     )

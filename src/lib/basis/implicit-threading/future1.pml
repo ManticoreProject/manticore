@@ -89,7 +89,7 @@ structure Future1 : FUTURE =
 	  do assert(Equal(self, host_vproc))
 
 	cont run (k : PT.fiber) =
-	  do Control.@run(switch, k / exh)
+	  do SchedulerAction.@run(self, switch, k / exh)
 	  do assert(PT.false)
 	  throw switch(PT.STOP)
 

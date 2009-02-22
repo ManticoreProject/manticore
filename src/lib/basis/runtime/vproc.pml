@@ -208,8 +208,9 @@ structure VProc (* :
 	  do @set-trampoline (/ exh)
 	  do @seed-remote-action-stacks(mkAct / exh)
 	  cont startLeadK (_ : PT.unit) = @initialize-remote-schedulers(fls / exh)
-	  let act : PT.sched_act = apply mkAct (host_vproc / exh)
-	  SchedulerAction.@run(act, startLeadK)
+	  let self : vproc = host_vproc
+	  let act : PT.sched_act = apply mkAct (self / exh)
+	  SchedulerAction.@run(self, act, startLeadK)
 	;
 
     (* put the host vproc to sleep.
@@ -249,6 +250,5 @@ structure VProc (* :
   (* create fls for the root thread *)
     val initFLS : unit -> unit = _prim(@init-fls)
     val () = initFLS() 
-
 
   end

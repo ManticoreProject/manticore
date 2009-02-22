@@ -20,7 +20,7 @@ structure RoundRobin =
 		do VProc.@wait-in-atomic()
 		throw dispatch()
 	      | Option.SOME(qitem : VProcQueue.queue) =>
-		do SchedulerAction.@dispatch-from-atomic (switch, #1(qitem), #0(qitem) / exh)
+		do SchedulerAction.@dispatch-from-atomic (host_vproc, switch, #1(qitem), #0(qitem) / exh)
                 return(UNIT)
             end
 
