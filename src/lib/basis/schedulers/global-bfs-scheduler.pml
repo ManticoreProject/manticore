@@ -58,7 +58,7 @@ structure GlobalBFSScheduler :
 	fun spawnFn (thd : ImplicitThread.thread / exh : exh) : unit =
 	    do LockedQueue.@enqueue(readyQ, thd / exh)
 	    return(UNIT)
-	let group : ImplicitThread.group = ImplicitThread.@group(init, spawnFn / exh)
+	let group : ImplicitThread.group = ImplicitThread.@group(init, spawnFn, enum(0) / exh)
 	return(group)
       ;
 

@@ -39,6 +39,9 @@ structure ImplicitThread (* :
     (* spawn an implicit thread on the work group at the top of the work-group stack *)
       define @spawn (thd : thread / exh : exh) : ();
 
+    (* get the scheduler data for current group *)
+      define @get-scheduler-data (/ exh : exh) : any;
+
     )
 
   end *) = struct
@@ -64,11 +67,13 @@ structure ImplicitThread (* :
 
 #define GROUP_WORKER_INIT_OFF         0
 #define GROUP_SPAWN_OFF               1
+#define GROUP_SCHEDULER_DATA_OFF      2
 
     (* representation for a work group *)
       typedef group = [
 		PT.fiber,                      (* worker initialization *)
-		fun(thread / exh -> unit)      (* spawn function *)
+		fun(thread / exh -> unit),     (* spawn function *)
+		any                            (* scheduler data *)
       ];
 
     (* create ite *)
@@ -127,8 +132,11 @@ structure ImplicitThread (* :
       ;
 
     (* create a work group and make it ready to receive work *)
-      define @group (workerInit : PT.fiber, spawnFn : fun(thread / exh -> unit) / exh : exh) : group =
-	let group : group = alloc(workerInit, spawnFn)
+      define @group (workerInit : PT.fiber, 
+		     spawnFn : fun(thread / exh -> unit),
+                     schedulerData : any
+                    / exh : exh) : group =
+	let group : group = alloc(workerInit, spawnFn, schedulerData)
         let group : group = promote(group)
         do @init-on-all-vprocs(group / exh)
 	return(group)
@@ -157,26 +165,40 @@ structure ImplicitThread (* :
 	return(thd)
       ;
 
-    (* spawn the implicit thread on the work group at the top of the work-group stack *)
-      define @spawn (thd : thread / exh : exh) : () =
-        let stk : PrimStk.stk = @get-group-stk(UNIT / exh)
-        let group : Option.option = PrimStk.@peek(stk / exh)
-        case group
-	 of Option.NONE =>
-	    let e : exn = Fail(@"ImplicitThread.@spawn: empty work-group stack")
-            throw exh(e)
-	  | Option.SOME(group : group) =>
-	    let spawnFn : fun(thread / exh -> unit) = SELECT(GROUP_SPAWN_OFF, group)
-            let _ : unit = apply spawnFn(thd / exh)
-	    return()
-        end
-      ;
-
     (* run an implicit thread on the host vproc *)
       define @run (sched : PT.sched_act, thd : thread / exh : exh) noreturn =
       (* environment initialization *)
 	do FLS.@set-ite(SELECT(ITE_OFF, thd) / exh)
 	SchedulerAction.@run(host_vproc, sched, SELECT(FIBER_OFF, thd))
+      ;
+
+    (* return the top of the group stack.
+     * NOTE: an exception is raised if the stack is empty
+     *)
+      define @get-group-stack-top (/ exh : exh) : group =
+        let stk : PrimStk.stk = @get-group-stk(UNIT / exh)
+        let group : Option.option = PrimStk.@peek(stk / exh)
+        case group
+	 of Option.NONE =>
+	    let e : exn = Fail(@"ImplicitThread.@get-stack-top: empty work-group stack")
+            throw exh(e)
+	  | Option.SOME(group : group) =>
+	    return(group)
+        end
+      ;
+
+    (* spawn the implicit thread on the work group at the top of the work-group stack *)
+      define @spawn (thd : thread / exh : exh) : () =
+        let group : group = @get-group-stack-top(/ exh)
+	let spawnFn : fun(thread / exh -> unit) = SELECT(GROUP_SPAWN_OFF, group)
+        let _ : unit = apply spawnFn(thd / exh)
+	return()
+      ;
+
+    (* get the scheduler data for current group *)
+      define @get-scheduler-data (/ exh : exh) : any =
+        let group : group = @get-group-stack-top(/ exh)
+	return(SELECT(GROUP_SCHEDULER_DATA_OFF, group))
       ;
 
     )
