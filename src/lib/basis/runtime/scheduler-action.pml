@@ -97,6 +97,11 @@ structure SchedulerAction (* :
 	  throw act (sg)
 	;
 
+    (* stop the current fiber; we assume that signals are masked *)
+      define inline @stop-from-atomic (vp : vproc) noreturn =
+	  @forward-from-atomic (vp, PT.STOP)
+	;
+
     (* stop the current fiber *)
       define inline @stop () noreturn =
 	  @forward (PT.STOP)
