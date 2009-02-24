@@ -204,7 +204,7 @@ structure VProc (* :
     (* bootstrap the default scheduler *)
       define @boot-default-scheduler (mkAct : fun (vproc / exh -> PT.sched_act) / exh : exh) : () =
 (* ASSERT: signals are masked *)
-	  let fls : FLS.fls = FLS.@get(/ exh)
+	  let fls : FLS.fls = FLS.@get()
 	  do @set-trampoline (/ exh)
 	  do @seed-remote-action-stacks(mkAct / exh)
 	  cont startLeadK (_ : PT.unit) = @initialize-remote-schedulers(fls / exh)
@@ -238,7 +238,8 @@ structure VProc (* :
     (* initialize fls *)
       define @init-fls (x : unit / exh : exh) : unit = 
 	  let fls : FLS.fls = FLS.@new (UNIT / exh)
-	  FLS.@set(fls / exh)
+	  do FLS.@set(fls)
+	  return (UNIT)
 	;
 
     )

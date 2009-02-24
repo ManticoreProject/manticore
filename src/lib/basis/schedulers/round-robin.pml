@@ -28,7 +28,7 @@ structure RoundRobin =
 	    of PT.STOP => 
 	         throw dispatch ()
 	     | PT.PREEMPT (k : PT.fiber) =>
-		 let fls : FLS.fls = FLS.@get ( / exh)
+		 let fls : FLS.fls = FLS.@get ()
 		 do VProcQueue.@enqueue (fls, k)
 		 throw dispatch () 
 	     | _ =>

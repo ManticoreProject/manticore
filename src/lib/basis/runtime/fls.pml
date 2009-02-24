@@ -57,9 +57,9 @@ structure FLS (* :
     (* create a new FLS pinned to the given vproc *)
       define inline @new-pinned (vprocId : int /) : fls;
     (* set the fls on the host vproc *)
-      define inline @set (fls : fls / exh : exh) : unit;
+      define inline @set (fls : fls / exh : exh) : ();
     (* get the fls from the host vproc *)
-      define inline @get ( / exh : exh) : fls;
+      define inline @get () : fls;
 
     (* return the pinning information associated with the given FLS *)
       define @pin-info (fls : fls / exh : exh) : int =
@@ -113,14 +113,14 @@ structure FLS (* :
 	;
 
     (* set the fls on the host vproc *)
-      define inline @set (fls : fls / exh : exh) : unit =
+      define inline @set (fls : fls) : () =
 	  do assert (NotEqual(fls, nil))
 	  do vpstore (CURRENT_FG, host_vproc, fls)
 	  return (UNIT)
 	;
 
     (* get the fls from the host vproc *)
-      define inline @get ( / exh : exh) : fls =
+      define inline @get () : fls =
 	  let fls : fls = vpload (CURRENT_FG, host_vproc)
 	  do assert(NotEqual(fls, nil))
 	  return(fls)

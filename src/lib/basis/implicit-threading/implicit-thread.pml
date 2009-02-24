@@ -116,7 +116,7 @@ structure ImplicitThread (* :
 
     (* initiate a work group on all vprocs *)
       define inline @init-on-all-vprocs (group : group / exh : exh) : () =
-	let fls : FLS.fls = FLS.@get(/ exh)
+	let fls : FLS.fls = FLS.@get()
 	fun spawnFn (i : int, k : PT.fiber / exh : exh) : () =
 	    let vp : vproc = VProc.@vproc-by-id(i)
             (* pin the worker to the ith vproc *)

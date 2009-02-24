@@ -236,7 +236,7 @@ structure Tests =
 	let c : Cancelation.cancelable = Cancelation.@new(UNIT / exh)
 	let k : PT.fiber = Control.@fiber(doit / exh)
 	let k : PT.fiber = Cancelation.@wrap(c, k / exh)
-	let fls : FLS.fls = FLS.@get(/ exh)
+	let fls : FLS.fls = FLS.@get()
 	let vps : List.list = ccall ListVProcs(host_vproc)
 	do case vps
 	 of nil => throw exit()

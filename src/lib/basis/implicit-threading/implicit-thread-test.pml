@@ -36,7 +36,7 @@ define @test3 (x : unit / exh : exh) : unit =
          else 
 	     do SchedulerAction.@yield()
              throw k2(UNIT)
-  let fls : FLS.fls = FLS.@get(/ exh)    
+  let fls : FLS.fls = FLS.@get()    
   do VProcQueue.@enqueue(fls, k1 / exh)
   throw k2(UNIT)
 ;
@@ -52,7 +52,7 @@ define @test4 (x : unit / exh : exh) : unit =
 	    let e : exn = Match
 	    throw exh(e)
       
-  let fls : FLS.fls = FLS.@get(/ exh)
+  let fls : FLS.fls = FLS.@get()
   let vp : vproc = VProc.@vproc-by-id (0)
   do VProcQueue.@enqueue-on-vproc(vp, fls, k2)
   fun isDone (/ exh : exh) : bool = return(I32Eq(#0(x), 1))
@@ -73,7 +73,7 @@ define @test5 (x : unit / exh : exh) : unit =
 	    let e : exn = Match
 	    throw exh(e)
       
-  let fls : FLS.fls = FLS.@get(/ exh)
+  let fls : FLS.fls = FLS.@get()
   let vp : vproc = VProc.@vproc-by-id (0)
   do VProcQueue.@enqueue-on-vproc(vp, fls, k2)
   do NWayBarrier.@barrier(barrier / exh)
@@ -81,7 +81,7 @@ define @test5 (x : unit / exh : exh) : unit =
 ;
 
 define @test6 (x : unit / exh : exh) : unit =
-  let fls : FLS.fls = FLS.@get(/ exh)
+  let fls : FLS.fls = FLS.@get()
   cont k (x : unit) =
     do print_ppt()
     SchedulerAction.@stop()

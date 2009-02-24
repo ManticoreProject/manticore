@@ -123,7 +123,7 @@ structure Future1 : FUTURE =
 
     (* initialize the gang scheduler on each vproc *)
       define @init-gang-sched ( / exh : PT.exh) : LockedQueue.queue =
-	  let fls : FLS.fls = FLS.@get( / exh)
+	  let fls : FLS.fls = FLS.@get()
 	(* create the ready queue *)
 	  let readyQ : LockedQueue.queue = LockedQueue.@new(/exh)
 	  let vps : List.list = SchedulerUtils.@all-vprocs()
@@ -175,7 +175,7 @@ structure Future1 : FUTURE =
       define @future (thunk : thunk / exh : PT.exh) : future =
         let readyQ : LockedQueue.queue = @get-ready-queue(/ exh)
         let c : C.cancelable = C.@new(tag(future1Cancelation) / exh)
-        let fls : FLS.fls = FLS.@get(/ exh)
+        let fls : FLS.fls = FLS.@get()
         let fut : future = alloc(EMPTY_F, thunk, c, fls)
         let fut : future = promote(fut)
         let stealableK : PT.fiber = @future-to-fiber(fut / exh)
