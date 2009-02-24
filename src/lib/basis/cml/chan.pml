@@ -52,7 +52,7 @@ structure Chan : sig
 #	define CH_SET_RECVQ_TL(ch,x)	UPDATE(4, ch, x)
 
 	define inline @throw-to (fls : FLS.fls, recv : cont(any), v : any / exh : exh) noreturn =
-	  let _ : FLS.fls =  FLS.@set (fls / exh)
+	  do FLS.@set (fls)
 	  do VProc.@atomic-end ()
 	  throw recv (v)
 	;
@@ -175,7 +175,7 @@ structure Chan : sig
 	;
 	
 	define @chan-recv (ch : chan_rep / exh : exh) : any =
-	    let fls : FLS.fls = FLS.@get( / exh)
+	    let fls : FLS.fls = FLS.@get()
 	    do VProc.@atomic-begin ()
 	    do @chan-acquire-lock (ch / exh)
 	    let maybeItem : Option.option = @chan-dequeue-send (ch / exh)
@@ -203,7 +203,7 @@ structure Chan : sig
 	define @chan-send (arg : [chan_rep, any] / exh : exh) : unit =
 	    let ch : chan_rep = #0(arg)
 	    let msg : any = #1(arg)
-	    let fls : FLS.fls = FLS.@get( / exh)
+	    let fls : FLS.fls = FLS.@get()
 	    do VProc.@atomic-begin ()
 	    do @chan-acquire-lock (ch / exh)
 	    cont sendK (x : unit) = return (x)
