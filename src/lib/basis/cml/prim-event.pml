@@ -15,14 +15,6 @@ structure PrimEvent (*: sig
     val wrap : ('a pevent * ('a -> 'b)) -> 'b pevent
     val sync : 'a pevent -> 'a
 
-  (* signal variables *)
-    type signal_var
-
-    val signalVar : unit -> signal_var
-    val signal : signal_var -> unit
-    val waitEvt : signal_var -> unit pevent
-    val wait : signal_var -> unit
-
   end*) = struct
 
     type 'a cont = _prim (cont(any))
@@ -61,7 +53,17 @@ structure PrimEvent (*: sig
 	    fun pollFn (_ : unit / _ : exh) : bool = return (true)
 	    fun doFn (k : cont(any) / _ : exh) : unit = throw k(x)
 	    fun blockFn (_ : dirty_flag, _ : FLS.fls, _ : cont(any) / exh : exh) : unit =
-		  throw exh (UNIT)
+		  throw exh (UNIT) (* should never happen *)
+	    (* in *)
+	      return (BEVT(pollFn, doFn, blockFn))
+	;
+
+	define inline @never (_ : unit / _ : exh) : pevent =
+	    fun pollFn (_ : unit / _ : exh) : bool = return (false)
+	    fun doFn (k : cont(any) / _ : exh) : unit =
+		  throw exh (UNIT) (* should never happen *)
+	    fun blockFn (_ : dirty_flag, _ : FLS.fls, _ : cont(any) / exh : exh) : unit =
+		  return (UNIT)
 	    (* in *)
 	      return (BEVT(pollFn, doFn, blockFn))
 	;
@@ -95,6 +97,7 @@ structure PrimEvent (*: sig
 	    (* in *)
 	      apply wrapf (ev / exh)
 	;
+
 	define inline @claim (flg : dirty_flag / exh : exh) : bool =
 	    fun spin (_ : unit / exh : exh) : bool =
 		  let sts : event_state = CAS(&0(flg), WAITING_EVT, SYNCHED_EVT)
@@ -152,7 +155,7 @@ structure PrimEvent (*: sig
       )
 
     val always : 'a -> 'a event = _prim(@always)
-    val never : 'a event = BEVT(fn () => false, fn _ => (), fn _ => ())
+    val never : 'a event = _prim(@never)
     val choose = CHOOSE
     val wrap : ('a event * ('a -> 'b)) -> 'b event = _prim(@wrap)
 
@@ -163,48 +166,6 @@ structure PrimEvent (*: sig
 	   of nil => block evt
 	    | enabled => doEvent enabled
 	  (* end case *))
-
-  (*************** signal variables **************)
-
-    type signal_var = _prim (![bool, bool, List.list])
-
-    _primcode (
-	define inline @cvar-new (_ : unit / _ : exh) : signal_var =
-	    let cv : signal_var = alloc(false, false, nil)
-	    let cv : signal_var = promote (cv)
-	    return (cv)
-	  ;
-
-      (* lock a condition variable *)
-	define inline @cvar-lock (cv : signal_var / ) : unit =
-	    fun spinLp () : () = if #0(cv) then
-		    do Pause()
-		    apply spinLp ()
-		  else if TAS(&0(cv))
-		    then apply spinLp ()
-		    else return ()
-	    apply spinLp ()
-	  ;
-
-(*
-	define inline @cvar-lock (cv : signal_var / ) : unit =
-
-	define inline @cvar-signal (cv : signal_var / _ : exh) : unit =
-	    let 
-	  ;
-
-	define inline @cvar-wait (cv : signal_var / _ : exh) : unit =
-	  ;
-
-	define inline @cvar-wait-evt (cv : signal_var / _ : exh) : pevent =
-	  ;
-*)
-      )
-
-    val signalVar : unit -> signal_var = _prim(@new-cv)
-    val signal    : signal_var -> unit = _prim(@cvar-signal)
-    val waitEvt   : signal_var -> unit pevent = _prim(@cvar-wait-evt)
-    val wait      : signal_var -> unit = _prim(@cvar-wait)
 
   end
 
