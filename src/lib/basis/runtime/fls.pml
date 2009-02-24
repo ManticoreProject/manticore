@@ -116,7 +116,7 @@ structure FLS (* :
       define inline @set (fls : fls) : () =
 	  do assert (NotEqual(fls, nil))
 	  do vpstore (CURRENT_FG, host_vproc, fls)
-	  return (UNIT)
+	  return ()
 	;
 
     (* get the fls from the host vproc *)
@@ -140,12 +140,12 @@ structure FLS (* :
     (* find the ITE environment *)
 
       define @find-ite (/ exh : exh) : Option.option =
-	  let fls : fls = @get(/ exh)
+	  let fls : fls = @get()
 	  return (SELECT(ITE_OFF, fls))
 	;
 
       define @get-ite (/ exh : exh) : ite =
-	  let fls : fls = @get(/ exh)
+	  let fls : fls = @get()
 	  case SELECT(ITE_OFF, fls)
 	   of Option.NONE =>
 	      let e : exn = Fail(@"FLS.ite: nonexistant implicit threading environment")
@@ -157,10 +157,10 @@ structure FLS (* :
 
     (* set the ITE *)
       define @set-ite (ite : ite / exh : exh) : () =
-	  let fls : fls = @get(/ exh)
+	  let fls : fls = @get()
 	  let vProcId : int = @pin-info(fls / exh)
 	  let fls : fls = @alloc(vProcId, Option.SOME(ite) / exh)
-	  let _ : unit = @set(fls / exh)  
+	  do @set(fls)  
 	  return()
 	;
 
