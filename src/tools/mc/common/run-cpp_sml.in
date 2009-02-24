@@ -59,38 +59,43 @@ structure RunCPP : sig
 	  val proc = Unix.execute(cppCmd, args)
 	  in
 	    { inStrm = Unix.textInstreamOf proc,
-	      reap = fn () => ignore(Unix.reap proc)
+	      reap = fn () => let
+		val sts = Unix.reap proc
+		in
+		  if OS.Process.isSuccess sts
+		    then ()
+		    else raise Fail(concat["'", String.concatWith " " (cppCmd::args), "' failed])
+		end
 	    }
 	  end
 
     fun fileExists f = OS.FileSys.access (f, [OS.FileSys.A_READ])
 
     fun mkArgs {relativeTo, includes, predefs, file} = let
-	val relativeTo = OS.FileSys.fullPath relativeTo
+	  val relativeTo = OS.FileSys.fullPath relativeTo
 	(* given a file and a relative path, return the full path of the file, i.e.,
 	 *   file=foo.def path=/home/bar/             =>      /home/bar/foo.def
 	 *)
-	fun mkPath path = OS.Path.mkAbsolute{path=path, relativeTo=relativeTo}
+	  fun mkPath path = OS.Path.mkAbsolute{path=path, relativeTo=relativeTo}
 	(* paths to included files and directories *)
-	val includePaths = List.filter fileExists (List.map mkPath includes)
+	  val includePaths = List.filter fileExists (List.map mkPath includes)
 	(* split the includes by whether they are files or directories *) 
-	val (includeDirs, includeFiles) = List.partition OS.FileSys.isDir includePaths
-        in
-	   (* strip away preprocessor directives and cruft *)
-	   "-P" ::
-	   predefs @
-	   (* include directories *)
-	   List.map mkIncludeDir includeDirs @
+	  val (includeDirs, includeFiles) = List.partition OS.FileSys.isDir includePaths
+	  in
+	  (* strip away preprocessor directives and cruft *)
+	    "-P" ::
+	    predefs @
+	  (* include directories *)
+	    List.map mkIncludeDir includeDirs @
 	   (* include files *)
-	   List.map mkIncludeFile includeFiles @
-	   (case file
-	     of NONE =>
-		(* let the cpp read the file through stdin *)
-		["-"]
-	      | SOME file => 
-		[file]
-	   (* end case *))
-        end
+	    List.map mkIncludeFile includeFiles @
+	    (case file
+	      of NONE =>
+		 (* let the cpp read the file through stdin *)
+		   ["-"]
+	       | SOME file => [file]
+	    (* end case *))
+	  end
 
     structure SS = Substring
 
