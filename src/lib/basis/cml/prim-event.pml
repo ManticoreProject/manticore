@@ -30,10 +30,11 @@ structure PrimEvent (*: sig
     datatype event_status = WAITING | CLAIMED | SYNCHED
 
     type dirty_flag = _prim(![event_status])
+    type fls = _prim(FLS.fls)
 
     datatype 'a pevent
       = CHOOSE of ('a pevent * 'a pevent)
-      | BEVT of (unit -> bool) * ('a cont -> unit) * ((flag * FLS.fls * 'a cont) -> unit)
+      | BEVT of (unit -> bool) * ('a cont -> unit) * ((dirty_flag * fls * 'a cont) -> unit)
 
   (* optimistically poll the base events *)
     fun poll (evt, enabled) = (case evt
@@ -44,32 +45,36 @@ structure PrimEvent (*: sig
 	  (* end case *))
 
     _primcode (
-	define inline @base-event (
-	    pollFn  : fun(unit / exh -> bool),
-	    doFn    : fun(cont(any) / exh -> unit),
-	    blockFn : fun(dirty_flag, cont(any) / exn -> unit)
-	  ) : pevent =
-	      return BEVT(pollFn, doFn, blockFn)
-	;
+      (* import ML types into BOM *)
+	typedef event_status = event_status;
+	typedef dirty_flag = dirty_flag;
+	typedef pevent = pevent;
+	typedef poll_fn = fun(unit / exh -> bool);
+	typedef do_fn = fun(cont(any) / exh -> unit);
+	typedef blk_fn = fun(dirty_flag, FLS.fls, cont(any) / exh -> unit);
 
-	define inline @always (x : any / _ : exh) : evt =
+	define inline @base-event (pollFn : poll_fn, doFn : do_fn, blockFn : blk_fn / _ : exh) : pevent =
+	    return (BEVT(pollFn, doFn, blockFn))
+	  ;
+
+	define inline @always (x : any / _ : exh) : pevent =
 	    fun pollFn (_ : unit / _ : exh) : bool = return (true)
 	    fun doFn (k : cont(any) / _ : exh) : unit = throw k(x)
-	    fun blockFn (_ : dirty_flag, _ : cont(any) / exh : exh) : unit =
+	    fun blockFn (_ : dirty_flag, _ : FLS.fls, _ : cont(any) / exh : exh) : unit =
 		  throw exh (UNIT)
 	    (* in *)
-	      return BEVT(pollFn, doFn, blockFn)
+	      return (BEVT(pollFn, doFn, blockFn))
 	;
 
-	define @wrap (ev : evt, f : fun(any / exh -> any) / exh : exh) : evt =
-	    fun wrapf (ev : evt / exh : exh) : evt =
+	define @wrap (ev : pevent, f : fun(any / exh -> any) / exh : exh) : pevent =
+	    fun wrapf (ev : pevent / exh : exh) : pevent =
 		  case ev
-		   of CHOOSE(ev1, ev2) =>
-			let ev1' : evt = apply wrapf (ev / exh)
-			let ev2' : evt = apply wrapf (ev / exh)
+		   of CHOOSE(ev1 : pevent, ev2 : pevent) =>
+			let ev1' : pevent = apply wrapf (ev / exh)
+			let ev2' : pevent = apply wrapf (ev / exh)
 			(* in *)
 			  return (CHOOSE(ev1', ev2'))
-		    | BEVT(pollFn, doFn, blockFn) =>
+		    | BEVT(pollFn : poll_fn, doFn : do_fn, blockFn : blk_fn) =>
 			fun doFn' (k : cont(any) / exh : exh) : unit =
 			      cont k' (x : any) =
 				  let y : any = apply f (x / exh)
@@ -77,20 +82,19 @@ structure PrimEvent (*: sig
 				    throw k' (y)
 			      (* in *)
 				apply doFn (k' / exh)
-			fun blockFn' (flg : dirty_flag, tid : tid, k : cont(any) / exh : exh) : unit =
+			fun blockFn' (flg : dirty_flag, fls : FLS.fls, k : cont(any) / exh : exh) : unit =
 			      cont k' (x : any) =
 				  let y : any = apply f (x / exh)
 				  (* in *)
 				    throw k' (y)
 			      (* in *)
-				apply blockFn (flg, tid, k' / exh)
+				apply blockFn (flg, fls, k' / exh)
 			(* in *)
 			  return (BEVT(pollFn, doFn', blockFn'))
 		  end
 	    (* in *)
 	      apply wrapf (ev / exh)
 	;
-(*
 	define inline @claim (flg : dirty_flag / exh : exh) : bool =
 	    fun spin (_ : unit / exh : exh) : bool =
 		  let sts : event_state = CAS(&0(flg), WAITING_EVT, SYNCHED_EVT)
@@ -112,11 +116,11 @@ structure PrimEvent (*: sig
 	      let flg : dirty_flag = alloc(INIT_EVT)
 	      let blockArg : [dirty_flag, fls, cont(any)] = alloc(flg, fls, resumeK)
 	      let blockArg : [dirty_flag, fls, cont(any)] = promote (blockArg)
-	      fun block (ev : evt / exh : exh) : unit =
+	      fun block (ev : pevent / exh : exh) : unit =
 		    case ev
-		     of BEVT(pollFn, doFn, blockFn) =>
+		     of BEVT(pollFn : poll_fn, doFn : do_fn, blockFn : blk_fn) =>
 			  apply blockFn(blockArg / exh)
-		      | CHOOSE(ev1, ev2) =>
+		      | CHOOSE(ev1 : pevent, ev2 : pevent) =>
 			  let (_ : unit) = apply block (ev1 / exh)
 			  apply block (ev2 / exh)
 		    end
@@ -135,7 +139,7 @@ structure PrimEvent (*: sig
 	    (* in *)
 	      fun doit (l : list / exh : exh) : any =
 		    case l
-		     of CONS(doFn : evt_do_fn, r : list) =>
+		     of CONS(doFn : do_fn, r : list) =>
 			  let (_ : unit) = apply doFn (syncK / exh)
 			(* if we get here, that means that the attempt failed, so try the next one *)
 			  apply doit (r / exh)
@@ -144,7 +148,7 @@ structure PrimEvent (*: sig
 	      (* in *)
 		apply doit (enabled / exh)
 	;
-*)
+
       )
 
     val always : 'a -> 'a event = _prim(@always)
@@ -155,20 +159,20 @@ structure PrimEvent (*: sig
     val block : 'a pevent -> 'a = _prim (@block)
     val doEvent : ('a cont -> unit) list -> 'a = _prim (@doEvent)
 
-    fun sync evt = (case poll (evt, [])
-	   of [] => block evt
+    fun sync evt = (case poll (evt, nil)
+	   of nil => block evt
 	    | enabled => doEvent enabled
 	  (* end case *))
 
   (*************** signal variables **************)
 
-    type signal_var = _prim (![bool, bool, list])
+    type signal_var = _prim (![bool, bool, List.list])
 
     _primcode (
 	define inline @cvar-new (_ : unit / _ : exh) : signal_var =
 	    let cv : signal_var = alloc(false, false, nil)
 	    let cv : signal_var = promote (cv)
-	    return cv
+	    return (cv)
 	  ;
 
       (* lock a condition variable *)
@@ -182,6 +186,7 @@ structure PrimEvent (*: sig
 	    apply spinLp ()
 	  ;
 
+(*
 	define inline @cvar-lock (cv : signal_var / ) : unit =
 
 	define inline @cvar-signal (cv : signal_var / _ : exh) : unit =
@@ -191,8 +196,9 @@ structure PrimEvent (*: sig
 	define inline @cvar-wait (cv : signal_var / _ : exh) : unit =
 	  ;
 
-	define inline @cvar-wait-evt (cv : signal_var / _ : exh) : unit =
+	define inline @cvar-wait-evt (cv : signal_var / _ : exh) : pevent =
 	  ;
+*)
       )
 
     val signalVar : unit -> signal_var = _prim(@new-cv)
