@@ -64,7 +64,9 @@ structure RunCPP : sig
 		in
 		  if OS.Process.isSuccess sts
 		    then ()
-		    else raise Fail(concat["'", String.concatWith " " (cppCmd::args), "' failed])
+		    else raise Fail(concat[
+		    	"'", String.concatWith " " (cppCmd::args), "' failed"
+		      ])
 		end
 	    }
 	  end
