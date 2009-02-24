@@ -4,7 +4,7 @@
  * All rights reserved.
  *)
 
-structure PrimEvent : sig
+structure PrimEvent (*: sig
 
   (* primitive events *)
     type 'a pevent
@@ -23,7 +23,7 @@ structure PrimEvent : sig
     val waitEvt : signal_var -> unit pevent
     val wait : signal_var -> unit
 
-  end = struct
+  end*) = struct
 
     type 'a cont = _prim (cont(any))
 
@@ -90,13 +90,13 @@ structure PrimEvent : sig
 	    (* in *)
 	      apply wrapf (ev / exh)
 	;
-
+(*
 	define inline @claim (flg : dirty_flag / exh : exh) : bool =
 	    fun spin (_ : unit / exh : exh) : bool =
 		  let sts : event_state = CAS(&0(flg), WAITING_EVT, SYNCHED_EVT)
 		  (* in *)
 		    case sts
-		     of INIT_EVT => apply spin (UNIT / exh)
+		     of WAITING => apply spin (UNIT / exh)
 		      | WAITING_EVT => return (true)
 		      | SYNCHED_EVT => return (false)
 		    end
@@ -126,7 +126,7 @@ structure PrimEvent : sig
 	     *)
 	      do #0(flg) := WAITING_EVT
 	      (* in *)
-		@thread-exit(/exh)
+		Threads.@thread-exit (/exh)
 	;
   
       (* attempt to complete an enabled communication *)
@@ -144,10 +144,11 @@ structure PrimEvent : sig
 	      (* in *)
 		apply doit (enabled / exh)
 	;
+*)
       )
 
     val always : 'a -> 'a event = _prim(@always)
-    val never : 'a event = BEVT(fn () => false, fn _ => (), fn _ => Threads.exit())
+    val never : 'a event = BEVT(fn () => false, fn _ => (), fn _ => ())
     val choose = CHOOSE
     val wrap : ('a event * ('a -> 'b)) -> 'b event = _prim(@wrap)
 
