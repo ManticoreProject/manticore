@@ -46,19 +46,19 @@ structure CVar (*: sig
 
       (* create a new signal variable *)
 	define inline @cvar-new (_ : unit / _ : exh) : cvar =
-	    let sv : cvar = alloc (false, false, List.NIL)
+	    let sv : cvar = alloc (false, false, List.nil)
 	    return (sv)
 	  ;
 
       (* signal the variable, which wakes up any threads that are waiting on it. *)
 	define @cvar-signal (cv : cvar / _ : exh) : unit =
-	    let self : vproc = SchedulerAction.atomic-begin ()
+	    let self : vproc = SchedulerAction.@atomic-begin ()
 	    do @cvar-lock (cv)
 	    do UPDATE(CV_STATE, cv, true)
 	    let waiting : list = SELECT(CV_WAITING, cv)
-	    do UPDATE(CV_WAITING, cv, NIL)
+	    do UPDATE(CV_WAITING, cv, nil)
 	    do @cvar-unlock (cv)
-	    do @atomic-end (self)
+	    do SchedulerAction.@atomic-end (self)
 	  (* loop over the list of waiting threads waking them *)
 	    fun signalWaiting (l : list) : unit =
 		  case l
@@ -74,53 +74,54 @@ structure CVar (*: sig
 				if Equal(self, vp)
 				  then VProcQueue.@enqueue-in-atomic(fls, k)
 				  else VProcQueue.@enqueue-on-vproc(vp, fls, k)
-			    else ()
+			    else return()
 			apply signalWaiting (tl)
 		  end
 	    (* in *)
 	    apply signalWaiting ()
+	;
 
       (* wait for a variable to be signaled *)
 	define @cvar-wait (cv : cvar / _ : exh) : unit =
 	    if SELECT(CV_STATE, cv)
 	      then return (UNIT)
 	      else (* slow-path requires waiting *)
-		let self : vproc = SchedulerAction.atomic-begin ()
+		let self : vproc = SchedulerAction.@atomic-begin ()
 		do @cvar-lock (cv)
 		if SELECT(CV_STATE, cv)
 		  then
-		    do @atomic-end (self)
+		    do SchedulerAction.@atomic-end (self)
 		    return (UNIT)
 		  else
-		    letcont k (_ : unit) = return (UNIT)
+		    cont k (_ : unit) = return (UNIT)
 		    (* in *)
 		      let flg : dirty_flag = alloc (WAITING)
 		      let fls : FLS.fls = FLS.@get()
-		      let item : waiter = [flg, fls, self, k]
+		      let item : waiter = alloc (flg, fls, self, k)
 		      let l : list = CONS(item, SELECT(CV_WAITING, cv))
-		      let l : waiter = promote cons
+		      let l : waiter = promote (cons)
 		      do UPDATE(CV_WAITING, cv, l)
-		      @stop-from-atomic (self)
+		      SchedulerAction.@stop-from-atomic (self)
 	  ;
 
 	define inline @cvar-wait-evt (cv : cvar / _ : exh) : pevent =
-	    fun pollFn () = return (SELECT(CV_STATE, cv))
-	    fun doFn (k : PT.fiber) = throw k (UNIT)
-	    fun blockFn (flg : PrimEvent.dirty_flag, FLS.fls, k : cont(UNIT) / _ : exh) : PrimEvent.pevent =
-		let self : vproc = SchedulerAction.atomic-begin ()
+	    fun pollFn (_ : unit / _ : exh) : bool = return (SELECT(CV_STATE, cv))
+	    fun doFn (k : PT.fiber / _ : exh) : unit = throw k (UNIT)
+	    fun blockFn (flg : PrimEvent.dirty_flag, fls : FLS.fls, k : cont(unit) / _ : exh) : PrimEvent.pevent =
+		let self : vproc = SchedulerAction.@atomic-begin ()
 		do @cvar-lock (cv)
 		if SELECT(CV_STATE, cv)
 		  then
-		    do @atomic-end (self)
+		    do SchedulerAction.@atomic-end (self)
 		    return (UNIT)
 		  else
 		    let flg : dirty_flag = alloc (WAITING)
 		    let fls : FLS.fls = FLS.@get()
-		    let item : waiter = [flg, fls, self, k]
+		    let item : waiter = alloc (flg, fls, self, k)
 		    let l : list = CONS(item, SELECT(CV_WAITING, cv))
-		    let l : waiter = promote cons
+		    let l : waiter = promote (cons)
 		    do UPDATE(CV_WAITING, cv, l)
-		    @stop-from-atomic (self)
+		    SchedulerAction.@stop-from-atomic (self)
 	  ;
       )
 
