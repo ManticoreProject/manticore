@@ -7,10 +7,11 @@
 ann "cpp" "../include/prim.def,../include/runtime-offsets.def" in
   threads.pml
   vproc-extras.pml
-(*
   prim-event.pml
+  cvar.pml
+(*
+  prim-chan.pml
   event.pml
-  chan.pml
 *)
 end
 
