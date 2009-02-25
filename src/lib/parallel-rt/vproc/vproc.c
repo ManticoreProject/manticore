@@ -478,10 +478,13 @@ VProc_t* GetNthVProc (int n)
 void WakeVProc (VProc_t *vp)
 {
 #ifndef NDEBUG
-        if (DebugFlg)
-	  SayDebug("[%2d] WakeVProc: waking up vp %d\n", VProcSelf()->id, vp->id);
+    if (DebugFlg)
+	SayDebug("[%2d] WakeVProc: waking up vp %d\n", VProcSelf()->id, vp->id);
 #endif
-  CondSignal (&(vp->wait));
+    MutexLock (&(vp->lock));
+	if (vp->idle && (vp->entryQ != M_NIL))
+	    CondSignal (&(vp->wait));
+    MutexUnlock (&(vp->lock));
 }
 
 /*! \brief create a fiber that puts the vproc to sleep
