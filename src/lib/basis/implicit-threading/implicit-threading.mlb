@@ -16,6 +16,7 @@
   in
     implicit-thread.pml
     cancelation.pml
+    implicit-thread-ivar.pml
   end
 
 (* Futures *)
@@ -24,7 +25,6 @@
   future-sig.pml
   ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
   in
-    ivar.pml
     lazy-future.pml
   end
 

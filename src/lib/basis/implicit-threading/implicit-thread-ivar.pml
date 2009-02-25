@@ -1,9 +1,9 @@
-(* ivar.pml
+(* implicit-thread-ivar.pml
  *
  * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Synchronous memory.
+ * Synchronous, write-once memory for implicit threads.
  *)
 
 #define BLOCKED_LIST_OFF           0
@@ -12,7 +12,7 @@
 
 #define EMPTY_VAL              enum(0)
 
-structure IVar = 
+structure ImplicitThreadIVar = 
   struct
 
     structure PT = PrimTypes

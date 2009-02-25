@@ -18,14 +18,14 @@ structure LazyFuture : LAZY_FUTURE =
 
       typedef future = ![
 		 bool,                                (* true iff the future has been stolen *)
-		 IVar.ivar,                           (* state *)
+		 ImplicitThreadIVar.ivar,                           (* state *)
 		 fun(unit / exh -> any),              (* thunk *)
 		 Option.option                        (* cancelable *)
       ];
 
     (* create a future. the second argument is a flag to determine whether the future is cancelable. *)
       define @delay (f : fun(unit / exh -> any), isCancelable : bool / exh : exh) : future =
-	let ivar : IVar.ivar = IVar.@ivar(/ exh)
+	let ivar : ImplicitThreadIVar.ivar = ImplicitThreadIVar.@ivar(/ exh)
         let cOpt : Option.option =
 		   if isCancelable
 		      then 
@@ -59,7 +59,7 @@ structure LazyFuture : LAZY_FUTURE =
 	    let x : any = @eval(fut / exh)
             let nilThk : fun(unit / exh -> any) = (fun(unit / exh -> any))$0
 	    do UPDATE(THUNK_OFF, fut, nilThk)                  (* prevent a space leak *)
-	    IVar.@put(SELECT(IVAR_OFF, fut), x / exh)
+	    ImplicitThreadIVar.@put(SELECT(IVAR_OFF, fut), x / exh)
       ;
 
     (* place the future on the ready queue *)
@@ -75,7 +75,7 @@ structure LazyFuture : LAZY_FUTURE =
   (* synchronize on completion of the future *)
       define @force (fut : future / exh : exh) : any =
 	do @steal(fut / exh)
-	IVar.@get(SELECT(IVAR_OFF, fut) / exh)
+	ImplicitThreadIVar.@get(SELECT(IVAR_OFF, fut) / exh)
       ;
 
     (* make the future cancelable *)
