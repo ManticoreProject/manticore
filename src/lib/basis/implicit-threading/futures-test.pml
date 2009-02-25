@@ -13,7 +13,7 @@ val x = ImplicitThread.runWithGroup(globalBFS, fn () =>
 	   in
 	       x + LazyFuture.force fut
 	   end)
-val () = Print.printLn("t1:"^Int.toString x)
+val () = pml_assert(x = fib 20 * 2)
 
 fun pfib (i : int) = (case i
        of 0 => (0 : int)
@@ -27,5 +27,7 @@ fun pfib (i : int) = (case i
       (* end case *))
 
 val x = ImplicitThread.runWithGroup(globalBFS, fn () => pfib 20)
-val () = Print.printLn("t2:"^Int.toString x)
+val () = pml_assert(x = fib 20)
+
+val () = Print.printLn "Finished futures tests"
 

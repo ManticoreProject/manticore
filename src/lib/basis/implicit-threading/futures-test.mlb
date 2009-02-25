@@ -1,0 +1,7 @@
+implicit-threading.mlb
+../schedulers/schedulers.mlb
+
+  ann "cpp" "../include/debug.def,../include/assert.def"
+  in
+    futures-test.pml
+  end

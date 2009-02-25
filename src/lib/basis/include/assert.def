@@ -11,6 +11,7 @@
 
 #ifdef NDEBUG
 #  define assert(check)	return()
+#  define pml_assert(check) ()
 #else
 #define _QUOTE(x) #x
 #define QUOTE(x) _QUOTE(x)
@@ -19,6 +20,11 @@
 	  then return ()				  		        \
 	  else do ccall M_AssertFail (QUOTE(check), QUOTE(PML_FILE), __LINE__)	\
 	    return ()                                                   
+
+#  define pml_assert(check)						        \
+	if check							        \
+	  then ()  				  		                \
+	  else Debug.assertFail (QUOTE(check), QUOTE(PML_FILE), __LINE__)
 #endif
 
 #endif /*! _ASSERT_DEF_ */
