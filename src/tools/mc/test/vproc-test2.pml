@@ -10,7 +10,7 @@ fun thd vp = let
 	    end
       in
 	Print.print("spawn thread on " ^ Int.toString(VProcExtras.id vp) ^ "\n");
-	VProcExtras.spawnOn thd';
+	VProcExtras.spawnOn thd' vp;
 	cv
       end
 
