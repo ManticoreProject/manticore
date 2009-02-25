@@ -95,12 +95,12 @@ structure Cilk5Deque (* :
 	fun freeSpace (t : int /) : int =
 	    if I32Lt(t, DEQUE_SZ)
 	       then return(t)
-	       else SPIN_LOCK(deq, deque, TH_LOCK_OFF)
+	       else SPIN_LOCK(deq, TH_LOCK_OFF)
 		    do apply copyDeque(SELECT(TH_ARR_OFF, deq), SELECT(TH_H_OFF, deq) / exh)
 		    let t : int = I32Sub(t, SELECT(TH_T_OFF, deq))
 		    do UPDATE(TH_H_OFF, deq, 0)
 		    do UPDATE(TH_T_OFF, deq, t)
-		    SPIN_UNLOCK(deq, deque, TH_LOCK_OFF)
+		    SPIN_UNLOCK(deq, TH_LOCK_OFF)
 		    return(t)
 	let t : int = SELECT(TH_T_OFF, deq)
        (* possibly need to free space if the tail has reached the end of the deque *)
@@ -128,7 +128,7 @@ structure Cilk5Deque (* :
 	      then (* contention with a thief *)
 		   let t : int = I32FetchAndAdd(&TH_T_OFF(deq), 1)
 		   let t : int = I32Add(t, 1)
-                   SPIN_LOCK(deq, deque, TH_LOCK_OFF)
+                   SPIN_LOCK(deq, TH_LOCK_OFF)
 
 		  (* restart the protocol *)
 		   let t : int = I32FetchAndAdd(&TH_T_OFF(deq), ~1)
@@ -139,11 +139,11 @@ structure Cilk5Deque (* :
 			 then (* the deque is empty *)
 			      let t : int = I32FetchAndAdd(&TH_T_OFF(deq), 1)
 			      let t : int = I32Add(t, 1)
-			      SPIN_UNLOCK(deq, deque, TH_LOCK_OFF)
+			      SPIN_UNLOCK(deq, TH_LOCK_OFF)
 			      throw none()
 			 else return()
 
-		   SPIN_UNLOCK(deq, deque, TH_LOCK_OFF)
+		   SPIN_UNLOCK(deq, TH_LOCK_OFF)
 		   return()
 	       else return()
 	do assert(I32Lt(SELECT(TH_T_OFF, deq), DEQUE_SZ))
@@ -161,7 +161,7 @@ structure Cilk5Deque (* :
      *) 
       define @pop-hd-from-atomic (deq : deque / exh : exh) : O.option =
 	cont none () = return(O.NONE)
-        SPIN_LOCK(deq, deque, TH_LOCK_OFF)
+        SPIN_LOCK(deq, TH_LOCK_OFF)
 	let h : int = I32FetchAndAdd(&TH_H_OFF(deq), 1)
 	let h : int = I32Add(h, 1)
 	let t : int = SELECT(TH_T_OFF, deq)
@@ -177,7 +177,7 @@ structure Cilk5Deque (* :
 		   (* IMPORTANT: a pointer to frame still exists in the array; erase it to avoid a space leak *)
 		    do Arr.@update (arr, I32Sub(h, 1), enum(0) / exh)
 		    return(O.SOME(frame))
-	SPIN_UNLOCK(deq, deque, TH_LOCK_OFF)
+	SPIN_UNLOCK(deq, TH_LOCK_OFF)
 	return(eltOpt)
       ;
 

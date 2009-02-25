@@ -3,34 +3,34 @@
  * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Spin lock operations. The lock variable can be part of an arbitrary type, e.g., suppose we have a type
- * t that contains a spin lock.
+ * Spin lock operations. The lock variable can be part of an arbitrary type, e.g., suppose
+ * we have a type t that contains a spin lock.
+ *
  *   type spin_lock = bool;
  *   type t = ![ty1, spin_lock, ...]';
  * 
- * We can then obtain a lock as follows.
- * let x : t = ...
- * SPIN_LOCK(x, t, 1)
- * ...
- * SPIN_UNLOCK(x, t, 1)
+ * We can then obtain a lock as follows:
+ *
+ *   let x : ty = ...
+ *   SPIN_LOCK(x, 1)
+ *   ...
+ *   SPIN_UNLOCK(x, 1)
  *)
 
 #ifndef _SPIN_LOCK_DEF_
 #define _SPIN_LOCK_DEF_
 
-#define SPIN_LOCK(name, ty, OFFSET)    \
-  fun spin () : () =                   \
-      (* try to acquire the lock *)    \
-      if TAS(ADDR_OF(OFFSET, name))    \
-	 then                          \
-	  (*do Pause()*)               \
-	  apply spin()		       \
-      else                             \
-	  return()                     \
-  do apply spin()                      \
+#define SPIN_LOCK(name, OFFSET)					\
+	fun spinLp () : () = if ADDR_OF(OFFSET, name) then	\
+		do Pause()					\
+		apply spinLp ()					\
+	      else if TAS(ADDR_OF(OFFSET, name))		\
+		then apply spinLp ()				\
+		else return ()					\
+	do apply spin ()
 
-#define SPIN_UNLOCK(name, ty, OFFSET)  \
-  do UPDATE(OFFSET, name, false)       \
+#define SPIN_UNLOCK(name, OFFSET)				\
+	do UPDATE(OFFSET, name, false)
 
 #endif /*! _SPIN_LOCK_DEF_ */
 
