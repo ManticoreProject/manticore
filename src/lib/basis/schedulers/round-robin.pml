@@ -9,6 +9,11 @@ structure RoundRobin =
 
     structure PT = PrimTypes
 
+(* choose whether the vproc goes to sleep when there is no work to do. if BUSY_WAIT == 1 then, sleeping
+ * is enabled, and is disabled when BUSY_WAIT == 0.
+ *)
+#define BUSY_WAIT               1
+
     _primcode(
     (* top-level thread scheduler that uses a round robin policy *)
       define @round-robin (x : unit / exh : exh) : unit = 
@@ -17,7 +22,9 @@ structure RoundRobin =
             let item : Option.option = VProcQueue.@dequeue-in-atomic(host_vproc)
             case item
 	     of Option.NONE => 
+#if BUSY_WAIT == 0
 		do VProc.@wait-in-atomic()
+#endif
 		throw dispatch()
 	      | Option.SOME(qitem : VProcQueue.queue) =>
 		do SchedulerAction.@dispatch-from-atomic (host_vproc, switch, #1(qitem), #0(qitem) / exh)
