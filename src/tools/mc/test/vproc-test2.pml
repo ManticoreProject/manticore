@@ -21,6 +21,8 @@ val cvs = List.map thd vps
 val _ = (
       Threads.yield();
       Print.print "threads created\n";
+(* NOTE: without the delay, the scheduler shuts down the system *)
+      delay 20;
       List.app CVar.wait cvs;
       Print.print "done\n")
 
