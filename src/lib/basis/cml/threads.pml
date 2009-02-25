@@ -43,14 +43,26 @@ structure Threads (*: sig
 	    return (fls)
 	  ;
 
+      (* enqueue a thread on the given vproc, checking to see if it is the same
+       * host vproc.
+       *)
+	define inline @enqueue-ready (self : vproc, dst : vproc, fls : FLS.fls, f : PT.fiber) : () =
+	    if Equal(self, dst)
+		then VProcQueue.@enqueue (fls, f)
+		else VProcQueue.@enqueue-on-vproc (dst, fls, f)
+	  ;
+	define inline @enqueue-ready-in-atomic (self : vproc, dst : vproc, fls : FLS.fls, f : PT.fiber) : () =
+	    if Equal(self, dst)
+		then VProcQueue.@enqueue-in-atomic (fls, f)
+		else VProcQueue.@enqueue-on-vproc (dst, fls, f)
+	  ;
+
       (* spawn a thread on a remote vproc *)
 	define @remote-spawn (dst : vproc, f : fun (unit / exh -> unit) / exh : exh) : FLS.fls =
 	    let fiber: PT.fiber = @create (f / exh)
 	    let vprocId : int = VProc.@vproc-id (dst)
 	    let fls : FLS.fls = FLS.@new-pinned (vprocId)
-	    do if Equal(host_vproc, dst)
-		then VProcQueue.@enqueue (fls, fiber)
-		else VProcQueue.@enqueue-on-vproc (dst, fls, fiber)
+	    do @enqueue-ready (host_vproc, dst, fls, fiber)
 	    return (fls)
 	  ;
 
