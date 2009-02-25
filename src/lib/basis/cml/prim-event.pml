@@ -69,7 +69,7 @@ structure PrimEvent (*: sig
 		  return (UNIT)
 	    (* in *)
 	      return (BEVT(pollFn, doFn, blockFn))
-	;
+	  ;
 
 (*
 	define @wrap (ev : pevent, f : fun(any / exh -> any) / exh : exh) : pevent =
@@ -146,11 +146,14 @@ structure PrimEvent (*: sig
 
       )
 
-    val always : 'a -> 'a event = _prim(@always)
-    val never : 'a event = _prim(@never)
+    val always : 'a -> 'a pevent = _prim(@always)
+(* FIXME: the CML type of never should be 'a pevent, but we do not have a way to create a
+ * polymorphic value in BOM!
+ *)
+    val never : unit -> 'a pevent = _prim(@never)
     val choose = CHOOSE
 (*
-    val wrap : ('a event * ('a -> 'b)) -> 'b event = _prim(@wrap)
+    val wrap : ('a pevent * ('a -> 'b)) -> 'b pevent = _prim(@wrap)
 
     val block : 'a pevent -> 'a = _prim (@block)
     val doEvent : ('a cont -> unit) list -> 'a = _prim (@doEvent)
