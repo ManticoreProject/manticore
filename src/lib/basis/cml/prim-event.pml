@@ -21,12 +21,21 @@ structure PrimEvent (*: sig
 
     datatype event_status = WAITING | CLAIMED | SYNCHED
 
-    type dirty_flag = _prim(![event_status])
+  (* BOM types *)
+    _primcode (
+	typedef event_status = event_status;
+	typedef event_state = ![event_status];
+	typedef poll_fn = fun(unit / exh -> bool);
+	typedef do_fn = fun(cont(any) / exh -> unit);
+	typedef blk_fn = fun(event_state, FLS.fls, cont(any) / exh -> unit);
+      )
+
+    type event_state = _prim(event_state)
     type fls = _prim(FLS.fls)
 
     datatype 'a pevent
       = CHOOSE of ('a pevent * 'a pevent)
-      | BEVT of (unit -> bool) * ('a cont -> unit) * ((dirty_flag * fls * 'a cont) -> unit)
+      | BEVT of (unit -> bool) * ('a cont -> unit) * ((event_state * fls * 'a cont) -> unit)
 
   (* optimistically poll the base events *)
     fun poll (evt, enabled) = (case evt
@@ -37,13 +46,7 @@ structure PrimEvent (*: sig
 	  (* end case *))
 
     _primcode (
-      (* import ML types into BOM *)
-	typedef event_status = event_status;
-	typedef dirty_flag = dirty_flag;
 	typedef pevent = pevent;
-	typedef poll_fn = fun(unit / exh -> bool);
-	typedef do_fn = fun(cont(any) / exh -> unit);
-	typedef blk_fn = fun(dirty_flag, FLS.fls, cont(any) / exh -> unit);
 
 	define inline @base-event (pollFn : poll_fn, doFn : do_fn, blockFn : blk_fn / _ : exh) : pevent =
 	    return (BEVT(pollFn, doFn, blockFn))
@@ -52,7 +55,7 @@ structure PrimEvent (*: sig
 	define inline @always (x : any / _ : exh) : pevent =
 	    fun pollFn (_ : unit / _ : exh) : bool = return (true)
 	    fun doFn (k : cont(any) / _ : exh) : unit = throw k(x)
-	    fun blockFn (_ : dirty_flag, _ : FLS.fls, _ : cont(any) / exh : exh) : unit =
+	    fun blockFn (_ : event_state, _ : FLS.fls, _ : cont(any) / exh : exh) : unit =
 		  throw exh (UNIT) (* should never happen *)
 	    (* in *)
 	      return (BEVT(pollFn, doFn, blockFn))
@@ -60,9 +63,9 @@ structure PrimEvent (*: sig
 
 	define inline @never (_ : unit / _ : exh) : pevent =
 	    fun pollFn (_ : unit / _ : exh) : bool = return (false)
-	    fun doFn (k : cont(any) / _ : exh) : unit =
+	    fun doFn (k : cont(any) / exh : exh) : unit =
 		  throw exh (UNIT) (* should never happen *)
-	    fun blockFn (_ : dirty_flag, _ : FLS.fls, _ : cont(any) / exh : exh) : unit =
+	    fun blockFn (_ : event_state, _ : FLS.fls, _ : cont(any) / exh : exh) : unit =
 		  return (UNIT)
 	    (* in *)
 	      return (BEVT(pollFn, doFn, blockFn))
@@ -84,7 +87,7 @@ structure PrimEvent (*: sig
 				    throw k' (y)
 			      (* in *)
 				apply doFn (k' / exh)
-			fun blockFn' (flg : dirty_flag, fls : FLS.fls, k : cont(any) / exh : exh) : unit =
+			fun blockFn' (flg : event_state, fls : FLS.fls, k : cont(any) / exh : exh) : unit =
 			      cont k' (x : any) =
 				  let y : any = apply f (x / exh)
 				  (* in *)
@@ -98,27 +101,14 @@ structure PrimEvent (*: sig
 	      apply wrapf (ev / exh)
 	;
 
-	define inline @claim (flg : dirty_flag / exh : exh) : bool =
-	    fun spin (_ : unit / exh : exh) : bool =
-		  let sts : event_state = CAS(&0(flg), WAITING_EVT, SYNCHED_EVT)
-		  (* in *)
-		    case sts
-		     of WAITING => apply spin (UNIT / exh)
-		      | WAITING_EVT => return (true)
-		      | SYNCHED_EVT => return (false)
-		    end
-	    (* in *)
-	      apply spin (UNIT / exh)
-	;
-
       (* record the calling thread's continuation in the event waiting queues *)
 	define @block (evt : pevent / exh : exh) : any =
-	    let fls : fls = @get-fls(host_vproc / exh)
+	    let fls : FLS.fls = FLS.@get(host_vproc / exh)
 	    cont resumeK (x : any) = return (x)
 	    (* in *)
-	      let flg : dirty_flag = alloc(INIT_EVT)
-	      let blockArg : [dirty_flag, fls, cont(any)] = alloc(flg, fls, resumeK)
-	      let blockArg : [dirty_flag, fls, cont(any)] = promote (blockArg)
+	      let flg : event_state = alloc(WAITING)
+	      let blockArg : [event_state, FLS.fls, cont(any)] = alloc(flg, fls, resumeK)
+	      let blockArg : [event_state, FLS.fls, cont(any)] = promote (blockArg)
 	      fun block (ev : pevent / exh : exh) : unit =
 		    case ev
 		     of BEVT(pollFn : poll_fn, doFn : do_fn, blockFn : blk_fn) =>
@@ -131,7 +121,7 @@ structure PrimEvent (*: sig
 	    (* if we get here, then we are ready to let other threads synchronize
 	     * on this event.
 	     *)
-	      do #0(flg) := WAITING_EVT
+	      do #0(flg) := WAITING
 	      (* in *)
 		Threads.@thread-exit (/exh)
 	;
@@ -146,7 +136,7 @@ structure PrimEvent (*: sig
 			  let (_ : unit) = apply doFn (syncK / exh)
 			(* if we get here, that means that the attempt failed, so try the next one *)
 			  apply doit (r / exh)
-		      | NIL => apply blockThd (UNIT / exh)
+		      | nil => apply blockThd (UNIT / exh)
 		    end
 	      (* in *)
 		apply doit (enabled / exh)
