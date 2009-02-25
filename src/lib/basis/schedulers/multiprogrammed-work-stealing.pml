@@ -98,9 +98,8 @@ structure MultiprogrammedWorkStealing :
       define @get-local-deque (/ exh : exh) : Cilk5Deque.deque =
 	let schedulerData : any = ImplicitThread.@get-scheduler-data(/ exh)
 	let schedulerData : scheduler_data = (scheduler_data)schedulerData
-	let deques : Arr.array = SELECT(0, schedulerData)
 	let workerId : int = VProc.@vproc-id(host_vproc)
-	let deque : Cilk5Deque.deque = Arr.@sub(deques, workerId / exh)
+	let deque : Cilk5Deque.deque = Arr.@sub(SELECT(0, schedulerData), workerId / exh)
 	return(deque)
       ;
 
