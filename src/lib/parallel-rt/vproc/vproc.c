@@ -201,6 +201,11 @@ void *NewVProc (void *arg)
   /* Wait until all vprocs have been initialized */
     BarrierWait (&InitBarrier);
 
+#ifndef NDEBUG
+    if (DebugFlg)
+	SayDebug("[%2d] NewVProc: run initFn\n", vproc->id);
+#endif
+
   /* run the initial vproc function */
     initFn (vproc, initArg);
 
