@@ -63,7 +63,6 @@ CM_FILES =		ast-opt/sources.cm \
 			match-comp/sources.cm \
 			mlb/sources.cm \
 			parse-tree/sources.cm \
-			parser/parser.cm \
 			parser/sources.cm \
 			prim/sources.cm \
 			translate/sources.cm \
