@@ -71,6 +71,7 @@ structure PrimEvent (*: sig
 	      return (BEVT(pollFn, doFn, blockFn))
 	;
 
+(*
 	define @wrap (ev : pevent, f : fun(any / exh -> any) / exh : exh) : pevent =
 	    fun wrapf (ev : pevent / exh : exh) : pevent =
 		  case ev
@@ -141,12 +142,14 @@ structure PrimEvent (*: sig
 	      (* in *)
 		apply doit (enabled / exh)
 	;
+*)
 
       )
 
     val always : 'a -> 'a event = _prim(@always)
     val never : 'a event = _prim(@never)
     val choose = CHOOSE
+(*
     val wrap : ('a event * ('a -> 'b)) -> 'b event = _prim(@wrap)
 
     val block : 'a pevent -> 'a = _prim (@block)
@@ -156,6 +159,7 @@ structure PrimEvent (*: sig
 	   of nil => block evt
 	    | enabled => doEvent enabled
 	  (* end case *))
+*)
 
   end
 
