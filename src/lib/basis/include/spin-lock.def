@@ -27,7 +27,7 @@
 	      else if TAS(ADDR_OF(OFFSET, name))		\
 		then apply spinLp ()				\
 		else return ()					\
-	do apply spin ()
+	do apply spinLp ()
 
 #define SPIN_UNLOCK(name, OFFSET)				\
 	do UPDATE(OFFSET, name, false)
