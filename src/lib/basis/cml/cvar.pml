@@ -24,7 +24,7 @@ structure CVar (*: sig
     structure PEvt = PrimEvent
 
     _primcode (
-	typedef waiter = [PEvt.event_status, FLS.fls, vproc, PT.fiber];
+	typedef waiter = [PEvt.event_state, FLS.fls, vproc, PT.fiber];
 	typedef cvar = ![bool, bool, List.list];
 
       (* the fields of a cvar *)
@@ -37,7 +37,6 @@ structure CVar (*: sig
 	    let cv : cvar = promote (cv)
 	    return (cv)
 	  ;
-
 
       (* create a new signal variable *)
 	define inline @cvar-new (_ : unit / _ : exh) : cvar =
@@ -59,7 +58,7 @@ structure CVar (*: sig
 		  case l
 		   of nil => return (UNIT)
 		    | List.CONS(hd : waiter, tl : List.list) =>
-			let flg : PEvt.event_status = #0(hd)
+			let flg : PEvt.event_state = #0(hd)
 			do if BCAS(&0(flg), PEvt.WAITING, PEvt.SYNCHED)
 			    then (* enqueue waiting thread *)
 			      let fls : FLS.fls = #1(hd)
@@ -67,13 +66,13 @@ structure CVar (*: sig
 			      let k : PT.fiber = #3(hd)
 			      (* in *)
 				if Equal(self, vp)
-				  then VProcQueue.@enqueue-in-atomic(fls, k)
+				  then VProcQueue.@enqueue-in-atomic(vp, fls, k)
 				  else VProcQueue.@enqueue-on-vproc(vp, fls, k)
 			    else return()
 			apply signalWaiting (tl)
 		  end
 	    (* in *)
-	    apply signalWaiting ()
+	    apply signalWaiting (waiting)
 	;
 
       (* wait for a variable to be signaled *)
@@ -91,11 +90,11 @@ structure CVar (*: sig
 		  else
 		    cont k (_ : unit) = return (UNIT)
 		    (* in *)
-		      let flg : PEvt.event_status = alloc (PEvt.WAITING)
+		      let flg : PEvt.event_state = alloc (PEvt.WAITING)
 		      let fls : FLS.fls = FLS.@get()
 		      let item : waiter = alloc (flg, fls, self, k)
 		      let l : list = CONS(item, SELECT(CV_WAITING, cv))
-		      let l : waiter = promote (l)
+		      let l : list = promote (l)
 		      do UPDATE(CV_WAITING, cv, l)
 		      SPIN_UNLOCK(cv, CV_LOCK)
 		      SchedulerAction.@stop-from-atomic (self)
@@ -104,7 +103,7 @@ structure CVar (*: sig
 	define inline @cvar-wait-evt (cv : cvar / _ : exh) : PEvt.pevent =
 	    fun pollFn (_ : unit / _ : exh) : bool = return (SELECT(CV_STATE, cv))
 	    fun doFn (k : PT.fiber / _ : exh) : unit = throw k (UNIT)
-	    fun blockFn (flg : PEvt.event_status, fls : FLS.fls, k : cont(unit) / _ : exh) : PEvt.pevent =
+	    fun blockFn (flg : PEvt.event_state, fls : FLS.fls, k : cont(unit) / _ : exh) : PEvt.pevent =
 		let self : vproc = SchedulerAction.@atomic-begin ()
 		SPIN_LOCK(cv, CV_LOCK)
 		if SELECT(CV_STATE, cv)
@@ -113,16 +112,16 @@ structure CVar (*: sig
 		    do SchedulerAction.@atomic-end (self)
 		    return (UNIT)
 		  else
-		    let flg : PEvt.event_status = alloc (PEvt.WAITING)
+		    let flg : PEvt.event_state = alloc (PEvt.WAITING)
 		    let fls : FLS.fls = FLS.@get()
 		    let item : waiter = alloc (flg, fls, self, k)
 		    let l : list = CONS(item, SELECT(CV_WAITING, cv))
-		    let l : waiter = promote (l)
+		    let l : list = promote (l)
 		    do UPDATE(CV_WAITING, cv, l)
 		    SPIN_UNLOCK(cv, CV_LOCK)
 		    SchedulerAction.@stop-from-atomic (self)
 	    (* in *)
-	      return (BEVT(pollFn, doFn, blockFn))
+	      return (PEvt.BEVT(pollFn, doFn, blockFn))
 	  ;
       )
 
