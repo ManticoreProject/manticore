@@ -24,7 +24,12 @@ structure CVar (*: sig
     structure PEvt = PrimEvent
 
     _primcode (
-	typedef waiter = [PEvt.event_state, FLS.fls, vproc, PT.fiber];
+	typedef waiter = [
+	    PrimEvent.event_state,	(* event-instance status flag *)
+	    FLS.fls,			(* FLS of thread *)
+	    vproc,			(* vproc affinity *)
+	    PT.fiber			(* thread's continuation *)
+	  ];
 	typedef cvar = ![bool, bool, List.list];
 
       (* the fields of a cvar *)
