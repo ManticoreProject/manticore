@@ -180,7 +180,8 @@ structure PrimChan : sig
 				    case sts
 				     of PEvt.WAITING => (* we matched the send! *)
 					  SPIN_UNLOCK(ch, CH_LOCK)
-					  do VProcQueue.@enqueue-on-vproc (#2(item), #3(item), #4(item))
+					  do Threads.@enqueue-ready-in-atomic (
+					      self, #2(item), #3(item), #4(item))
 					  do SchedulerAction.@atomic-end (self)
 					  (* in *)
 					    return (#1(item))
