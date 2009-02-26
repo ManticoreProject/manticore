@@ -316,11 +316,16 @@ structure CheckCPS : sig
 	  in
 	    chkFB (env, body, C.VK_Fun);
 if !anyErrors
-  then (
-    print "******************** broken CPS ********************\n";
-    PrintCPS.print module;
-    print "********************\n";
-    raise Fail "broken CPS")
+  then let
+(* FIXME: we should generate this name from the input file name! *)
+    val outFile = "broken-CPS"
+    val outS = TextIO.openOut outFile
+    in
+      pr ["broken CPS dumped to ", outFile, "\n"];
+      PrintCPS.output (outS, module);
+      TextIO.closeOut outS;
+      raise Fail "broken CPS"
+    end
   else ();
 	  (* return the error status *)
 	    !anyErrors
