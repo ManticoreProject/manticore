@@ -19,7 +19,7 @@ structure Cancelation (* : sig
       typedef cancelable;
 
     (* create a cancelable. 
-     * NOTE: this operation affects the fiber-local storage
+     * NOTE: this operation modifies the ITE.
      *)
       define @new ( / exh : exh) : cancelable;
     (* cancel a cancelable. *)
