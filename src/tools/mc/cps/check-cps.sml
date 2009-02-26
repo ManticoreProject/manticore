@@ -148,7 +148,7 @@ structure CheckCPS : sig
                                 | RawTypes.T_Vec128 => bad ()
                             end
                         | _ => (
-                            error ["type mismatch in argument of Siwtch(", v2s x, ", -, -)\n"];
+                            error ["type mismatch in argument of Switch(", v2s x, ", -, -)\n"];
                             cerror ["  expected  ", "enum or raw", "\n"];
                             cerror ["  but found ", CTU.toString (CV.typeOf x), "\n"])
 		      (* end case *))
