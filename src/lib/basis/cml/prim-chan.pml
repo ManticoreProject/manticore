@@ -8,7 +8,7 @@
 
 #include "spin-lock.def"
 
-structure Chan : sig
+structure PrimChan : sig
 
     type 'a chan
 
@@ -176,7 +176,8 @@ structure Chan : sig
 			     * thread has not already claimed the event.
 			     *)
 			      fun matchLp () : any =
-				    case CAS(&0(state), PEvt.WAITING, PEvt.SYNCHED)
+				    let sts : PEvt.event_status = CAS(&0(state), PEvt.WAITING, PEvt.SYNCHED)
+				    case sts
 				     of PEvt.WAITING => (* we matched the send! *)
 					  SPIN_UNLOCK(ch, CH_LOCK)
 					  do VProcQueue.@enqueue-on-vproc (#2(item), #3(item), #4(item))
@@ -224,7 +225,8 @@ structure Chan : sig
 			     * thread has not already claimed the event.
 			     *)
 			      fun matchLp () : unit =
-				    case CAS(&0(state), PEvt.WAITING, PEvt.SYNCHED)
+				    let sts : PEvt.event_status = CAS(&0(state), PEvt.WAITING, PEvt.SYNCHED)
+				    case sts
 				     of PEvt.WAITING => (* we matched the recv! *)
 					  SPIN_UNLOCK(ch, CH_LOCK)
 					  if Equal(self, #1(item))
