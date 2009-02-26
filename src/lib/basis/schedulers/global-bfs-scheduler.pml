@@ -27,7 +27,7 @@ structure GlobalBFSScheduler :
 		do SchedulerAction.@yield-in-atomic(host_vproc)
 		throw dispatch()
 	      | Option.SOME(thd : ImplicitThread.thread) =>
-		do ImplicitThread.@run(schedulerLoop, thd / exh)
+		do ImplicitThread.@run-in-scheduler(schedulerLoop, thd / exh)
 		throw dispatch()
 	    end
 	 case s
@@ -58,7 +58,9 @@ structure GlobalBFSScheduler :
 	fun spawnFn (thd : ImplicitThread.thread / exh : exh) : unit =
 	    do LockedQueue.@enqueue(readyQ, thd / exh)
 	    return(UNIT)
-	let group : ImplicitThread.group = ImplicitThread.@group(init, spawnFn, enum(0) / exh)
+      (* provide no facility for removing a thread from the ready queue *)
+        fun removeFn (thd : ImplicitThread.thread / exh : exh) : bool = return(true)
+	let group : ImplicitThread.group = ImplicitThread.@group(init, spawnFn, removeFn, enum(0) / exh)
 	return(group)
       ;
 

@@ -53,7 +53,7 @@ structure MultiprogrammedWorkStealing :
             throw exh(exn)
 
 	  cont dispatch (thd : ImplicitThread.thread) = 
-	    do ImplicitThread.@run(schedulerLoop, thd / exh)
+	    do ImplicitThread.@run-in-scheduler(schedulerLoop, thd / exh)
 	    throw impossible()
 
         (* attempt to steal from another worker *)
@@ -139,12 +139,21 @@ structure MultiprogrammedWorkStealing :
 	    do Cilk5Deque.@push-tl-from-atomic(deque, thd / exh)
 	    return(UNIT)
 
+        fun removeFn (thd : ImplicitThread.thread / exh : exh) : bool = 
+	    let workerId : int = VProc.@vproc-id(host_vproc)
+            let deque : Cilk5Deque.deque = Arr.@sub(deques, workerId / exh)
+            let x : Option.option = Cilk5Deque.@pop-tl-from-atomic(deque / exh)
+            case x
+	     of Option.NONE => return(true)
+	      | Option.SOME(x : ImplicitThread.thread) => return(false)
+            end
+
         cont init (x : unit) =
           let workerId : int = VProc.@vproc-id(host_vproc)
           let init : PT.fiber = @worker(workerId, nVPs, deques / exh)
           throw init(UNIT)
 
-	let group : ImplicitThread.group = ImplicitThread.@group(init, spawnFn, schedulerData / exh)
+	let group : ImplicitThread.group = ImplicitThread.@group(init, spawnFn, removeFn, schedulerData / exh)
 
 	return(group)
       ;

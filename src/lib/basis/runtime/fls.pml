@@ -149,6 +149,14 @@ structure FLS (* :
 	  return(fls)
 	;
 
+    (* create ite *)
+      define @ite (stk : PrimStk.stk,
+		   c : Option.option           (* cancelable *)
+		  / exh : exh) : ite =
+	let ite : ite = alloc(stk, c)
+	return(ite)
+      ;
+
     (* find the ITE environment *)
 
       define @find-ite (/ exh : exh) : Option.option =
