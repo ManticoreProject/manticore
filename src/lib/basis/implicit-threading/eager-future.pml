@@ -28,6 +28,7 @@ structure EagerFuture : FUTURE =
 	let ivar : ImplicitThreadIVar.ivar = ImplicitThreadIVar.@empty-ivar(/ exh)       
 	let fut : future = @alloc(ivar, Option.NONE / exh)
 
+      (* fiber that runs the context of the future *)
 	cont k (x : unit) = return(fut)
 	let thd : ImplicitThread.thread = ImplicitThread.@thread(k, Option.NONE / exh)
 	do ImplicitThread.@spawn(thd / exh)
@@ -51,10 +52,12 @@ structure EagerFuture : FUTURE =
 	let c : Cancelation.cancelable = Cancelation.@new(/ exh)
 	let fut : future = @alloc(ivar, Option.SOME(c) / exh)
 
+      (* fiber that runs the context of the future *)
 	cont k (x : unit) = return(fut)
 	let thd : ImplicitThread.thread = ImplicitThread.@thread(k, Option.NONE / exh)
 	do ImplicitThread.@spawn(thd / exh)
 
+      (* fiber that runs the body of the future *)
 	cont k' (x : unit) = 
 	  let v : any = apply f (UNIT / exh)
 
