@@ -26,7 +26,7 @@ structure VProcQueue (* :
       typedef queue = [FLS.fls, PT.fiber, any];
 
     (* enqueue on the host's vproc's thread queue *)
-      define inline @enqueue-in-atomic (fls : FLS.fls, fiber : PT.fiber) : ();
+      define inline @enqueue-in-atomic (vp : vproc, fls : FLS.fls, fiber : PT.fiber) : ();
       define inline @enqueue (fls : FLS.fls, fiber : PT.fiber) : ();
 
     (* dequeue from the local queue  *)
