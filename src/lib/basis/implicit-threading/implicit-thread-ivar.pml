@@ -30,12 +30,24 @@ structure ImplicitThreadIVar =
      * synergy with the software-polling version of work stealing. for this implementation, we can
      * avoid promoting the ivar in the common case, and pay for the promotion only when a steal occurs.
      *)
-      define @ivar ( / exh : exh) : ivar =
-	let x : ivar = alloc (nil, enum(0):any, 0)
+      define @ivar (v : any / exh : exh) : ivar =
+	let x : ivar = alloc (nil, v, 0)
 	return (x)
-      ;  
- 
+      ;
+
+      define @empty-ivar (/ exh : exh) : ivar =
+	@ivar(enum(0):any / exh)
+      ;
+
       define @get (ivar : ivar / exh : exh) : any =
+(*
+FIXME: add "inLocalHeap" primop to the compiler.
+NOTE: supposing we have inLocalHeap, 
+        if inLocalHeap(ivar)
+	   then return(SELECT(VALUE_OFF, ivar))
+	else 
+*)
+
 	let readFlag : int = I32FetchAndAdd(&SPIN_LOCK_OFF(ivar), 1)
 	let value : any = SELECT(VALUE_OFF, ivar)
 	if Equal(value, EMPTY_VAL)

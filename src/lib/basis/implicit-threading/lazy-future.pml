@@ -3,7 +3,7 @@
  * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Components for futures with lazy semantics.
+ * Components for building futures with lazy semantics.
  *)
 
 structure LazyFuture : LAZY_FUTURE =
@@ -25,7 +25,7 @@ structure LazyFuture : LAZY_FUTURE =
 
     (* create a future. the second argument is a flag to determine whether the future is cancelable. *)
       define @delay (f : fun(unit / exh -> any), isCancelable : bool / exh : exh) : future =
-	let ivar : ImplicitThreadIVar.ivar = ImplicitThreadIVar.@ivar(/ exh)
+	let ivar : ImplicitThreadIVar.ivar = ImplicitThreadIVar.@empty-ivar(/ exh)
         let cOpt : Option.option =
 		   if isCancelable
 		      then 
@@ -76,13 +76,6 @@ structure LazyFuture : LAZY_FUTURE =
       define @force (fut : future / exh : exh) : any =
 	do @steal(fut / exh)
 	ImplicitThreadIVar.@get(SELECT(IVAR_OFF, fut) / exh)
-      ;
-
-    (* make the future cancelable *)
-      define @cancelable (fut : future / exh : exh) : future =
-	let c : Cancelation.cancelable = Cancelation.@new(/ exh)
-        let fut : future = alloc(false, SELECT(IVAR_OFF, fut), SELECT(THUNK_OFF, fut), Option.SOME(c))
-	return(fut)
       ;
 
   (* cancel the future *)

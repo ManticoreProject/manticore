@@ -72,7 +72,7 @@ structure Cancelation (* : sig
         FLS.@set-ite(ite / exh)
       ;
 
-      define @get-canceled-flag (c : cancelable / exh : exh) : ![bool] =
+      define inline @get-canceled-flag (c : cancelable / exh : exh) : ![bool] =
 	let canceled : ![bool] = SELECT(CANCELED_OFF, c)
 	let canceled : ![bool] = promote(canceled)
 	return(canceled)
@@ -120,7 +120,7 @@ structure Cancelation (* : sig
         cont dispatch (wrapper : PT.sched_act, k : PT.fiber) =
              do @set-active(c / exh)
              let canceledFlg : ![bool] = @get-canceled-flag(c / exh)
-             if canceledFlg
+             if SELECT(0, canceledFlg)
                 then 
 		 throw terminate()
 	     else

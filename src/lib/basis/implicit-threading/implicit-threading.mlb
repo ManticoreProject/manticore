@@ -14,8 +14,8 @@
 (* Implicit threading support *)
   ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
   in
-    implicit-thread.pml
     cancelation.pml
+    implicit-thread.pml
     implicit-thread-ivar.pml
   end
 
@@ -26,6 +26,7 @@
   ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
   in
     lazy-future.pml
+    eager-future.pml
   end
 
   fcms-sig.pml
