@@ -53,7 +53,7 @@ structure Threads (*: sig
 	  ;
 	define inline @enqueue-ready-in-atomic (self : vproc, dst : vproc, fls : FLS.fls, f : PT.fiber) : () =
 	    if Equal(self, dst)
-		then VProcQueue.@enqueue-in-atomic (fls, f)
+		then VProcQueue.@enqueue-in-atomic (self, fls, f)
 		else VProcQueue.@enqueue-on-vproc (dst, fls, f)
 	  ;
 
