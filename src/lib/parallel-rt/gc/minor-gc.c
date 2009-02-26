@@ -10,6 +10,7 @@
 #include "heap.h"
 #include "gc.h"
 #include "vproc.h"
+#include "value.h"
 #include "gc-inline.h"
 #include "inline-log.h"
 
@@ -45,7 +46,7 @@ STATIC_INLINE Value_t ForwardObj (Value_t v, Word_t **nextW)
 
 /* MinorGC:
  */
-void MinorGC (VProc_t *vp, Value_t **roots)
+void MinorGC (VProc_t *vp)
 {
     LogMinorGCStart (vp);
 
@@ -67,7 +68,32 @@ void MinorGC (VProc_t *vp, Value_t **roots)
     vp->nLocalPtrs = 0;
     vp->nGlobPtrs = 0;
 #endif
-    
+
+  /* gather the roots.  The protocol is that the stdCont register holds
+   * the return address (which is not in the heap) and that the stdEnvPtr
+   * holds the GC root.
+   */
+    Value_t *roots[16], **rp;
+    rp = roots;
+    *rp++ = &(vp->currentFG);
+    *rp++ = &(vp->actionStk);
+    *rp++ = &(vp->schedCont);
+    *rp++ = &(vp->wakeupCont);
+    *rp++ = &(vp->rdyQHd);
+    *rp++ = &(vp->rdyQTl);
+    *rp++ = &(vp->entryQ);
+    *rp++ = &(vp->stdEnvPtr);
+    *rp++ = &(vp->secondaryQHd); /* do we need this field? */
+    *rp++ = &(vp->secondaryQTl); /* do we need this field? */
+    *rp++ = 0;
+    assert (rp <= roots+(sizeof(roots)/sizeof(Value_t *)));
+
+#ifndef NDEBUG
+  /* nullify non-live registers */
+    vp->stdArg = M_UNIT;
+    vp->stdExnCont = M_UNIT;
+#endif
+
   /* process the roots */
     for (int i = 0;  roots[i] != 0;  i++) {
 	Value_t p = *roots[i];

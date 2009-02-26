@@ -62,29 +62,13 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 	   * might be from a pending signal.
 	   */
 	    if ((vp->limitPtr < vp->allocPtr) || vp->globalGCPending) {
-	      /* request a minor GC; the protocol is that
-	       * the stdCont register holds the return address (which is
-	       * not in the heap) and that the stdEnvPtr holds the GC root.
-	       */
-		Value_t *roots[16], **rp;
-		rp = roots;
-		*rp++ = &(vp->stdEnvPtr);
-		*rp++ = &(vp->currentFG);
-		*rp++ = &(vp->actionStk);
-		*rp++ = &(vp->rdyQHd);
-		*rp++ = &(vp->rdyQTl);
-		*rp++ = &(vp->entryQ);
-		*rp++ = &(vp->secondaryQHd);
-		*rp++ = &(vp->secondaryQTl);
-		*rp++ = &(vp->schedCont);
-		*rp++ = &(vp->wakeupCont);
-		*rp++ = 0;
-		MinorGC (vp, roots);
+	      /* request a minor GC */
+		MinorGC (vp);
 	    }
 
 	  /* check for pending signals */
 	    if ((vp->sigPending == M_TRUE) && (vp->atomic == M_FALSE)) {
-		Value_t resumeK = AllocUniform(vp, 3,
+		Value_t resumeK = AllocUniform (vp, 3,
 					       PtrToValue(&ASM_Resume),
 					       vp->stdCont,
 					       vp->stdEnvPtr);
