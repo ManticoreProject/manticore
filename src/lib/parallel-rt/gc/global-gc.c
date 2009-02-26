@@ -152,10 +152,11 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	MutexLock (&GCLock);
 	    nParticipants = 1;
 	    for (int i = 0;  i < NumVProcs;  i++) {
-	      /* FIXME: this protocol would allow the following situation: just before reaching this
-	       * point VProcs[i] is woken up (see vproc.c:247). Before the idle flag becomes false we 
-	       * reach the test below and identify the vproc as idle. Thus, this ith vproc could 
-	       * execute in parallel with the parallel GC, which would certainly result in memory corruption.
+	      /* FIXME: this protocol would allow the following situation: just before
+	       * reaching this point VProcs[i] is woken up (see vproc.c:247). Before the
+	       * idle flag becomes false we reach the test below and identify the vproc
+	       * as idle. Thus, this ith vproc could execute in parallel with the parallel
+	       * GC, which would certainly result in memory corruption.
 	       */
 		if ((VProcs[i] != self) && (! VProcs[i]->idle)) {
 		    nParticipants++;
@@ -243,8 +244,8 @@ static void GlobalGC (VProc_t *vp, Value_t **roots)
 
 } /* end of GlobalGC */
 
-/*! \brief Scan the vproc's local heap.  Since we have already done a major GC, all objects
- *  are known to be live.
+/*! \brief Scan the vproc's local heap.  Since we have already done a major GC,
+ *  all objects are known to be live.
  */
 static void ScanVProcHeap (VProc_t *vp)
 {
