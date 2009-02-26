@@ -15,8 +15,8 @@
 #include "bibop.h"
 #include "inline-log.h"
 
-static Mutex_t		GCLock;
-static Cond_t		LeaderWait;
+static Mutex_t		GCLock;		// Lock that protects the following variables:
+static Cond_t		LeaderWait;	// The leader waits on this for the followers
 static Cond_t		FollowerWait;	// followers block on this until the leader starts the GC
 static int		nReadyForGC;	// number of vprocs that are ready for GC
 static int		nParticipants;	// number of vprocs participating in the GC
@@ -130,18 +130,19 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 /* FIXME: we probably should initialize nParticipants here, instead of down below! */
 	}
       /* add the vproc's pages to the from-space list */
-	MemChunk_t *p = self->globToSpTl;
+	MemChunk_t *p;
+	for (p = self->globToSpHd;  p != (MemChunk_t *)0;  p = p->next) {
+	    p->sts = FROM_SP_CHUNK;
+	}
+	p = self->globToSpTl;
 	if (p != (MemChunk_t *)0) {
 	    p->next = FromSpaceChunks;
 	    FromSpaceChunks = p;
+	    p->usedTop = self->globNextW - WORD_SZB;
 	}
     MutexUnlock (&GCLock);
 
   /* finish the GC setup for this vproc */
-    for (MemChunk_t *p = self->globToSpHd;  p != (MemChunk_t *)0;  p = p->next) {
-	p->sts = FROM_SP_CHUNK;
-    }
-    self->globToSpTl->usedTop = self->globNextW - WORD_SZB;
     self->globToSpTl = (MemChunk_t *)0;
     self->globToSpHd = (MemChunk_t *)0;
 
@@ -165,17 +166,16 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 		    VProcSignal (VProcs[i], GCSignal);
 		}
 	    }
+	  /* initialize the barrier that we'll use at the end of global GC */
+	    BarrierInit (&GCBarrier, nParticipants);
+	  /* wait for follower vprocs */
+	    if (nParticipants > 1) {
+	      /* wait for the followers to be ready */
+		    CondWait (&LeaderWait, &GCLock);
+	      /* release followers to start GC */
+		CondBroadcast (&FollowerWait);
+	    }
 	MutexUnlock (&GCLock);
-	BarrierInit (&GCBarrier, nParticipants);
-      /* wait for follower vprocs */
-	if (nParticipants > 1) {
-	  /* wait for the followers to be ready */
-	    MutexLock (&GCLock);
-		CondWait (&LeaderWait, &GCLock);
-	    MutexUnlock (&GCLock);
-	  /* release followers to start GC */
-	    CondBroadcast (&FollowerWait);
-	}
     }
 
   /* allocate the initial chunk for the vproc */
