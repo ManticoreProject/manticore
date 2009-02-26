@@ -110,12 +110,16 @@
 	  "desc" : "major GC ends"
 	},
 	{ "name" : "GlobalGCInit",
-	  "args" : [],
+	  "args" : [
+	      {"name" : "id", "ty" : "word", "desc" : "index of collection"}
+	    ],
 	  "kind" : "START",
 	  "desc" : "global GC initiated"
 	},
 	{ "name" : "GlobalGCEnd",
-	  "args" : [],
+	  "args" : [
+	      {"name" : "id", "ty" : "word", "desc" : "index of collection"}
+	    ],
 	  "kind" : "END",
 	  "desc" : "global GC finished"
 	},

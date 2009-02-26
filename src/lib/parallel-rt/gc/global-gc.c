@@ -22,6 +22,7 @@ static int		nReadyForGC;	// number of vprocs that are ready for GC
 static int		nParticipants;	// number of vprocs participating in the GC
 static Barrier_t	GCBarrier;	// for synchronizing on GC completion
 static bool		GlobalGCInProgress; // true, when a global GC has been initiated
+uint32_t		NumGlobalGCs;	// the total number of global GCs.
 
 static void GlobalGC (VProc_t *vp, Value_t **roots);
 static void ScanVProcHeap (VProc_t *vp);
@@ -96,6 +97,7 @@ void InitGlobalGC ()
     CondInit (&LeaderWait);
     CondInit (&FollowerWait);
     GlobalGCInProgress = false;
+    NumGlobalGCs = 0;
 }
 
 /* \brief attempt to start a global GC.
@@ -119,10 +121,11 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	    CondWait (&FollowerWait, &GCLock);
 	}
 	else {
-	    LogGlobalGCInit (self);
+	    NumGlobalGCs++;
+	    LogGlobalGCInit (self, NumGlobalGCs);
 #ifndef NDEBUG
 	    if (DebugFlg)
-	      SayDebug("[%2d] Initiating global GC\n", self->id);
+	      SayDebug("[%2d] Initiating global GC %d\n", self->id, NumGlobalGCs);
 #endif
 	    GlobalGCInProgress = true;
 	    leaderVProc = true;
@@ -171,7 +174,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	  /* wait for follower vprocs */
 	    if (nParticipants > 1) {
 	      /* wait for the followers to be ready */
-		    CondWait (&LeaderWait, &GCLock);
+		CondWait (&LeaderWait, &GCLock);
 	      /* release followers to start GC */
 		CondBroadcast (&FollowerWait);
 	    }
@@ -210,7 +213,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 #endif
     }
 
-    LogGlobalGCEnd (self);
+    LogGlobalGCEnd (self, NumGlobalGCs);
 
 } /* end of StartGlobalGC */
 
