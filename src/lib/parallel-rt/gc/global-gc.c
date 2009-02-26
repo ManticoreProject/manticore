@@ -21,6 +21,7 @@ static Cond_t		FollowerWait;	// followers block on this until the leader starts 
 static int		nReadyForGC;	// number of vprocs that are ready for GC
 static int		nParticipants;	// number of vprocs participating in the GC
 static Barrier_t	GCBarrier;	// for synchronizing on GC completion
+static bool		GlobalGCInProgress; // true, when a global GC has been initiated
 
 static void GlobalGC (VProc_t *vp, Value_t **roots);
 static void ScanVProcHeap (VProc_t *vp);
@@ -94,6 +95,7 @@ void InitGlobalGC ()
     MutexInit (&GCLock);
     CondInit (&LeaderWait);
     CondInit (&FollowerWait);
+    GlobalGCInProgress = false;
 }
 
 /* \brief attempt to start a global GC.
@@ -199,6 +201,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 		cp = cq;
 	    }
 /* NOTE: at some point we may want to release memory back to the OS */
+	    GlobalGCInProgress = false;
 	MutexUnlock (&HeapLock);
 
 #ifndef NDEBUG

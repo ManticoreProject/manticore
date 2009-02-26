@@ -45,7 +45,6 @@ extern Addr_t		TotalVM;	/* total memory used by heap (including vproc */
 					/* local heaps) */
 extern MemChunk_t	*FromSpaceChunks; /* list of chunks is from-space */
 extern MemChunk_t	*FreeChunks;	/* list of free chunks */
-extern bool		GlobalGCInProgress; /* true, when a global GC has been initiated */
 
 extern void UpdateBIBOP (MemChunk_t *chunk);
 
