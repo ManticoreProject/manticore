@@ -120,7 +120,7 @@ structure CheckCPS : sig
 			           if (tag <= wt)
                                       then ()
                                       else (
-                                        error ["case out of range for Switch\n"];
+                                        error ["case out of range for Switch(", v2s x, ", -, -)\n"];
                                         cerror ["  expected  ", CTU.toString (CV.typeOf x), "\n"];
                                         cerror ["  but found ", Word.toString tag, "\n"]);
                                    chkExp (env, exp))
@@ -148,7 +148,7 @@ structure CheckCPS : sig
                                 | RawTypes.T_Vec128 => bad ()
                             end
                         | _ => (
-                            error ["type mismatch in Switch argument\n"];
+                            error ["type mismatch in argument of Siwtch(", v2s x, ", -, -)\n"];
                             cerror ["  expected  ", "enum or raw", "\n"];
                             cerror ["  but found ", CTU.toString (CV.typeOf x), "\n"])
 		      (* end case *))
