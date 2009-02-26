@@ -76,7 +76,7 @@ structure CaseSimplify : sig
 	  in
 	    case (classify (rules, [], [], []))
 	     of (enums, [], []) =>
-		  if (nCons = 0)
+		  if (nCons = nEnums)
 		    then EnumCase{rules=enums, hasDflt=hasDflt}
 		  else if (nEnums = List.length enums)
 		    then MixedCase{enums={rules=enums, hasDflt=false}, cons={rules=[], hasDflt=hasDflt}}
@@ -529,14 +529,16 @@ DEBUG*)
 			else (NONE, dflt)
 		  val enumsCase = (case enums
 			 of {rules=[], hasDflt=true} => valOf dflt
-			  | {rules=[], hasDflt=false} => raise Fail "badly-formed sub-case"
+			  | {rules=[], hasDflt=false} =>
+			      raise Fail("badly-formed sub-case of " ^ BV.toString x)
 			  | {rules, hasDflt=true} => B.mkCase(argument, List.map enumCase rules, dflt)
 			  | {rules=[(_, e)], hasDflt=false} => xformE(s, tys, e)
 			  | {rules, hasDflt=false} => B.mkCase(argument, List.map enumCase rules, NONE)
 			(* end case *))
 		  val consCase = (case cons
 			 of {rules=[], hasDflt=true} => valOf dflt 
-			  | {rules=[], hasDflt=false} => raise Fail "badly-formed sub-case"
+			  | {rules=[], hasDflt=false} =>
+			      raise Fail("badly-formed sub-case of " ^ BV.toString x)
 			  | {rules, hasDflt=true} => consCase (rules, dflt)
 			  | {rules, hasDflt=false} => consCase (rules, NONE)
 			(* end case *))
