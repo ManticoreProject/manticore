@@ -484,7 +484,7 @@ void WakeVProc (VProc_t *vp)
 {
 #ifndef NDEBUG
     if (DebugFlg)
-	SayDebug("[%2d] WakeVProc: waking up vp %d\n", VProcSelf()->id, vp->id);
+	SayDebug("[%2d] WakeVProc: pinging vp %d to make sure it is awake.\n", VProcSelf()->id, vp->id);
 #endif
     MutexLock (&(vp->lock));
 	if (vp->idle && (vp->entryQ != M_NIL))
