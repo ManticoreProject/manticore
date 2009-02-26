@@ -11,15 +11,18 @@
 #
 # determine the buid options
 #
+ENABLE_GC_STATS=false
 ifeq (,$(findstring logging,$(BUILD_OPTIONS)))
   ENABLE_LOGGING=false
 else
   ENABLE_LOGGING=true
+  ENABLE_GC_STATS=true
 endif
 ifeq (,$(findstring debug,$(BUILD_OPTIONS)))
   ENABLE_DEBUG=false
 else
   ENABLE_DEBUG=true
+  ENABLE_GC_STATS=true
 endif
 
 #
@@ -67,6 +70,10 @@ ifeq ($(ENABLE_DEBUG),true)
 else
   CPPFLAGS += -DNDEBUG
   CFLAGS += -O2
+endif
+
+ifeq ($(ENABLE_GC_STATS),false)
+  CPPFLAGS += -DNO_GC_STATS
 endif
 
 C_SRCS		= $(GC_SRCS) $(VPROC_SRCS) $(MISC_SRCS)
