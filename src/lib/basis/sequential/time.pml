@@ -48,6 +48,16 @@ structure Time =
     fun fromSecs t = t * 1000000
     fun toSecs t = t div 1000000
 
+    fun toString (t : time) = let
+	  val (sign, t) = if (t < 0) then ("-", ~t) else ("", t)
+	  val ms = (t div 1000) mod 1000	(* milliseconds *)
+	  val frac = if (ms < 10) then ".00" ^ Long.toString ms
+		else if (ms < 100) then ".0" ^ Long.toString ms
+		else "." ^ Long.toString ms
+	  in
+	    sign ^ Long.toString(toSecs t) ^ frac
+	  end
+
     fun timeToEval f = let
 	  val b = now()
 	  val x = f()
