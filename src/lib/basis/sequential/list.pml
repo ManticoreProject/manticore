@@ -120,6 +120,13 @@ structure List =
 
     fun concat xss = foldr append nil xss
 
+    fun all xs = (
+	  case xs
+	   of nil => true
+	    | true :: xs => all xs
+	    | _ => false
+          (* end case *))
+
     fun zip (xs, ys) = let
 	fun loop (xs, ys, zs) = (case (xs, ys)
 	    of (nil, _) => rev(zs)
