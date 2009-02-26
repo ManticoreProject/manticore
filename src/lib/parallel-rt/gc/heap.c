@@ -41,7 +41,7 @@ MemChunk_t		*BIBOP[BIBOP_TBLSZ];
 static MemChunk_t	UnmappedChunk;
 
 #ifndef NDEBUG
-int		GCDebug;	//!\brief Flag that controls GC debugging output
+GCDebugLevel_t		GCDebug;	// Flag that controls GC debugging output
 #endif
 
 /* HeapInit:
@@ -65,10 +65,12 @@ void HeapInit (Options_t *opts)
     else if (strcmp(debug, "major") == 0) GCDebug = GC_DEBUG_MAJOR;
     else if (strcmp(debug, "global") == 0) GCDebug = GC_DEBUG_GLOBAL;
     else if (strcmp(debug, "all") == 0) GCDebug = GC_DEBUG_ALL;
+    else GCDebug = GC_DEBUG_NONE;
 
     if (GCDebug > GC_DEBUG_NONE)
 	SayDebug("HeapInit: max nursery = %d, threshold = %d\n", (int)MaxNurserySzB, (int)MajorGCThreshold);
 #endif
+
   /* initialize the BIBOP */
 #ifdef SIXTYFOUR_BIT_WORDS
     for (int i = 0;  i < L2_TBLSZ; i++)
