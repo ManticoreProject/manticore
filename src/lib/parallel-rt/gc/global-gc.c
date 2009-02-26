@@ -124,7 +124,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	    NumGlobalGCs++;
 	    LogGlobalGCInit (self, NumGlobalGCs);
 #ifndef NDEBUG
-	    if (DebugFlg)
+	    if (GCDebug > GC_DEBUG_GLOBAL)
 	      SayDebug("[%2d] Initiating global GC %d\n", self->id, NumGlobalGCs);
 #endif
 	    GlobalGCInProgress = true;
@@ -208,7 +208,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	MutexUnlock (&HeapLock);
 
 #ifndef NDEBUG
-	if (DebugFlg)
+	if (GCDebug > GC_DEBUG_GLOBAL)
 	    SayDebug("[%2d] Completed global GC\n", self->id);
 #endif
     }
@@ -224,7 +224,7 @@ static void GlobalGC (VProc_t *vp, Value_t **roots)
     LogGlobalGCVPStart (vp);
 
 #ifndef NDEBUG
-    if (DebugFlg)
+    if (GCDebug > GC_DEBUG_GLOBAL)
 	SayDebug("[%2d] Global GC starting\n", vp->id);
 #endif
 
@@ -244,7 +244,7 @@ static void GlobalGC (VProc_t *vp, Value_t **roots)
     LogGlobalGCVPDone (vp, 0/*FIXME*/);
 
 #ifndef NDEBUG
-    if (DebugFlg)
+    if (GCDebug > GC_DEBUG_GLOBAL)
 	SayDebug("[%2d] Global GC finished\n", vp->id);
 #endif
 

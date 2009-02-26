@@ -54,4 +54,19 @@ extern void FreeChunk (MemChunk_t *);
 extern void InitGlobalGC ();
 extern void StartGlobalGC (VProc_t *self, Value_t **roots);
 
+/* GC debugging support */
+#ifndef NDEBUG
+extern int GCDebug;		//!\brief Flag that controls GC debugging output
+
+enum gc_debug_levels {
+    GC_DEBUG_ALL	= 4,	/* all debug messages (including promotions) */
+    GC_DEBUG_GLOBAL	= 3,
+    GC_DEBUG_MAJOR	= 2,
+    GC_DEBUG_MINOR	= 1,
+    GC_DEBUG_NONE	= 0
+};
+
+#define GC_DEBUG_DEFAULT "major"		/* default level */
+#endif
+
 #endif /* !_INTERNAL_HEAP_H_ */

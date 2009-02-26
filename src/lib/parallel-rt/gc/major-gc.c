@@ -72,7 +72,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     LogMajorGCStart (vp);
 
 #ifndef NDEBUG
-    if (DebugFlg)
+    if (GCDebug >= GC_DEBUG_MAJOR)
 	SayDebug("[%2d] Major GC starting\n", vp->id);
 #endif
 
@@ -151,7 +151,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     ScanGlobalToSpace (vp, heapBase, scanChunk, globScan);
 
 #ifndef NDEBUG
-    if (DebugFlg) {
+    if (GCDebug >= GC_DEBUG_MAJOR) {
 	unsigned long nBytesCopied = 0;
 	while (scanChunk != (MemChunk_t *)0) {
 	    if (scanChunk->next == (MemChunk_t *)0)
@@ -193,9 +193,8 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
 
     assert ((vp->globNextW % WORD_SZB) == 0);
 #ifndef NDEBUG
-    /*    if (DebugFlg)
+    if (GCDebug >= GC_DEBUG_ALL)
 	SayDebug("[%2d] PromoteObj(%p, %p)\n", vp->id, vp, root);
-    */
 #endif
 
   /* NOTE: the following test probably ought to happen before the runtime
@@ -206,10 +205,8 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
       /* promote the root to the global heap */
 	root = ForwardObj (vp, root);
 #ifndef NDEBUG
-	/*
-	if (DebugFlg)
+	if (GCDebug >= GC_DEBUG_ALL)
 	    SayDebug("[%2d]  ==> %p\n", vp->id, root);
-	*/
 #endif
 
       /* promote any reachable values */

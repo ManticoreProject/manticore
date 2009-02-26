@@ -11,6 +11,7 @@
 #include "gc.h"
 #include "vproc.h"
 #include "value.h"
+#include "internal-heap.h"
 #include "gc-inline.h"
 #include "inline-log.h"
 
@@ -60,7 +61,7 @@ void MinorGC (VProc_t *vp)
     assert (vp->nurseryBase < vp->allocPtr);
 
 #ifndef NDEBUG
-    if (DebugFlg)
+    if (GCDebug >= GC_DEBUG_MINOR)
 	SayDebug("[%2d] Minor GC starting\n", vp->id);
 #endif
 
@@ -158,7 +159,7 @@ void MinorGC (VProc_t *vp)
     assert ((Addr_t)nextScan >= VProcHeap(vp));
     Addr_t avail = VP_HEAP_SZB - ((Addr_t)nextScan - VProcHeap(vp));
 #ifndef NDEBUG
-    if (DebugFlg) {
+    if (GCDebug >= GC_DEBUG_MINOR) {
 	SayDebug("[%2d] Minor GC finished: %ld/%ld bytes live; %d available\n",
 	    vp->id, (Addr_t)nextScan - vp->oldTop,
 	    vp->allocPtr - vp->nurseryBase - WORD_SZB,

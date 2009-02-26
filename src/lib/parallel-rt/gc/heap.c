@@ -40,6 +40,10 @@ MemChunk_t		*BIBOP[BIBOP_TBLSZ];
 #endif
 static MemChunk_t	UnmappedChunk;
 
+#ifndef NDEBUG
+int		GCDebug;	//!\brief Flag that controls GC debugging output
+#endif
+
 /* HeapInit:
  *
  */
@@ -55,7 +59,15 @@ void HeapInit (Options_t *opts)
 	MajorGCThreshold = MIN_NURSERY_SZB;
 
 #ifndef NDEBUG
-    SayDebug("HeapInit: max nursery = %d, threshold = %d\n", (int)MaxNurserySzB, (int)MajorGCThreshold);
+    const char *debug = GetStringOpt (opts, "-gcdebug", DebugFlg ? GC_DEBUG_DEFAULT : "none");
+    if (strcmp(debug, "none") == 0) GCDebug = GC_DEBUG_NONE;
+    else if (strcmp(debug, "minor") == 0) GCDebug = GC_DEBUG_MINOR;
+    else if (strcmp(debug, "major") == 0) GCDebug = GC_DEBUG_MAJOR;
+    else if (strcmp(debug, "global") == 0) GCDebug = GC_DEBUG_GLOBAL;
+    else if (strcmp(debug, "all") == 0) GCDebug = GC_DEBUG_ALL;
+
+    if (GCDebug > GC_DEBUG_NONE)
+	SayDebug("HeapInit: max nursery = %d, threshold = %d\n", (int)MaxNurserySzB, (int)MajorGCThreshold);
 #endif
   /* initialize the BIBOP */
 #ifdef SIXTYFOUR_BIT_WORDS
@@ -147,7 +159,7 @@ void AllocToSpaceChunk (VProc_t *vp)
     vp->globLimit = chunk->baseAddr + chunk->szB;
 
 #ifndef NDEBUG
-    if (DebugFlg)
+    if (GCDebug > GC_DEBUG_NONE)
 	SayDebug("[%2d] AllocToSpaceChunk: %ld Kb at %p\n", vp->id, chunk->szB/1024, chunk->baseAddr);
 #endif
 
