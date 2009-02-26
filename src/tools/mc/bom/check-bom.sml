@@ -43,7 +43,7 @@ structure CheckBOM : sig
   (* the context of a BOM expression *)
     datatype context
       = TAIL of (B.var * B.ty list)
-      | BIND of B.var list
+      | BIND of (B.var list * B.exp)
 
     fun pr s = TextIO.output(TextIO.stdErr, concat s)
 
@@ -94,7 +94,9 @@ structure CheckBOM : sig
 	(* match a list of variables to a context *)
 	  fun chkContext (cxt, xs) = (case cxt
 		 of TAIL(f, tys) => checkArgTypes (BTU.match, "return from " ^ v2s f, tys, typesOf xs)
-		  | BIND ys => checkArgTypes (BTU.match, "binding " ^ vl2s ys, typesOf ys, typesOf xs)
+		  | BIND(ys, rhs) => checkArgTypes (
+		      BTU.match, concat["binding ", vl2s ys, " = ", BOMUtil.expToString rhs],
+		      typesOf ys, typesOf xs)
 		(* end case *))
 	(* create a tail context *)
 	  fun tailContext f = let
@@ -102,8 +104,6 @@ structure CheckBOM : sig
 		in
 		  TAIL(f, rng)
 		end
-	(* create a bind context *)
-	  fun bindContext vl = BIND vl
 	(* Check that a variable is bound *)
 	  fun chkVar (x, ctx) = if VTbl.inDomain counts x
 		then ()
@@ -151,7 +151,7 @@ structure CheckBOM : sig
 	  and chkE (cxt, B.E_Pt(_, t)) = (case t
 		 of B.E_Let(lhs, rhs, e) => (
 		      chkBindings (lhs, B.VK_Let rhs);
-		      chkE(bindContext lhs, rhs);
+		      chkE(BIND(lhs, rhs), rhs);
 		      List.app insert lhs;
 		      chkE(cxt, e))
 		  | B.E_Stmt(lhs, rhs, e) => (
@@ -196,7 +196,7 @@ structure CheckBOM : sig
 			    case cxt
 			     of TAIL(g, tys) =>
 				  checkArgTypes (BTU.match, concat["Apply ", v2s f, " in ", v2s g], tys, retTys)
-			      | BIND ys =>
+			      | BIND(ys, _) =>
 				  checkArgTypes (
                                     BTU.match, 
 				    concat["binding ", vl2s ys, " to Apply ", v2s f],
@@ -226,7 +226,7 @@ structure CheckBOM : sig
 			case (returns, cxt)
 			 of (true, TAIL(g, tys)) =>
 			      checkArgTypes (BTU.match, concat["return type of HLOP ", (HLOp.toString hlop), " in ", v2s g], tys, resTys)
-			  | (true, BIND ys) =>
+			  | (true, BIND(ys, _)) =>
 			      checkArgTypes (
                                 BTU.match, 
 				concat["binding ", vl2s ys, " to HLOP ", (HLOp.toString hlop)],
