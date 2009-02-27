@@ -52,10 +52,12 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
     while (1) {
 #ifndef NDEBUG
 	if (DebugFlg)
-	    SayDebug("[%2d] ASM_Apply(-, %p, %p, %p, %p, %p)\n",
-		vp->id, codeP, arg, envP, retCont, exnCont);
+	    SayDebug("[%2d] ASM_Apply(%p, %p, %p, %p, %p, %p)\n",
+		vp->id, vp, codeP, arg, envP, retCont, exnCont);
 #endif
 	RequestCode_t req = ASM_Apply (vp, codeP, arg, envP, retCont, exnCont);
+#ifndef NDEBUG
+#endif
 	switch (req) {
 	  case REQ_GC:
 	  /* check to see if we actually need to do a GC, since this request
@@ -72,9 +74,9 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 					       PtrToValue(&ASM_Resume),
 					       vp->stdCont,
 					       vp->stdEnvPtr);
-
-		/* pass the signal to scheduling code in the BOM runtime; for more details, see
-		 * the comments in src/lib/basis/runtime/scheduler-utils.pml. */
+	      /* pass the signal to scheduling code in the BOM runtime; for more
+	       * details, see the comments in src/lib/basis/runtime/scheduler-utils.pml.
+	       */
 		envP = vp->schedCont;
 		codeP = ValueToAddr(ValueToCont(envP)->cp);
 		arg = resumeK;
