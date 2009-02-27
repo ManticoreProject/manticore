@@ -17,7 +17,9 @@ structure Spawn : sig
 	    CVar.wait cv
 	  end
 
-    fun repeat n = if (n <= 0) then () else (forkJoin (fn () => ()); repeat(n-1))
+    fun repeat n = if (n <= 0)
+	  then ()
+	  else (forkJoin (fn () => ()); repeat(n-1))
 
   end
 
@@ -36,4 +38,4 @@ structure Main = struct
 
   end
 
-val _ = Main.timeit 10
+val _ = Main.timeit 10000000

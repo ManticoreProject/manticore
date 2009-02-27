@@ -1,0 +1,18 @@
+# Makefile for spawn benchmarks
+#
+# @configure_input@
+#
+
+SHELL =		/bin/sh
+
+SMLNJ =		@SMLNJ_CMD@
+MLTON =		@MLTON@
+PMLC =		@PMLC@
+
+all:		spawn-smlnj spawn-mc1
+
+spawn-smlnj:	sources.cm spawn.sml
+	echo "SMLofNJ.exportFn(\"spawn-smlnj\", fn _ => (Main.timeit 10000000; OS.Process.success));" | $(SMLNJ) sources.cm
+
+spawn-mc1:	spawn.pml
+	$(PMLC) -o spawn-mc1 spawn.pml
