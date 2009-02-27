@@ -142,9 +142,7 @@ structure VProcQueue (* :
 	  @process-landing-pad(queue)
 	;
 
-    (* takes a queue element (queue0) and a queue (rest), and produces the queue
-     *    queue0 -> rev(rest)
-     *)
+    (* reverse a non-empty queue ((fls, k) is the first element of the input queue) *)
       define @reverse-queue (fls : FLS.fls, k : PT.fiber, rest : queue) : queue =
 	  fun revQueue (fls : FLS.fls, k : PT.fiber, rest : queue, acc : queue) : queue =
 	       let acc : queue = alloc(fls, k, acc)
@@ -228,6 +226,7 @@ structure VProcQueue (* :
 	  end
 	;
 
+    (* enqueue a fiber (paired with fls) on a remote vproc *)
       define inline @enqueue-on-vproc (dst : vproc, fls : FLS.fls, k : PT.fiber) : () =
 	  fun lp () : queue =
 	      let entryOld : queue = vpload(VP_ENTRYQ, dst)

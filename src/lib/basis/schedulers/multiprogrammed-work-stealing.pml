@@ -44,7 +44,6 @@ structure MultiprogrammedWorkStealing :
 	let deque : Cilk5Deque.deque = Arr.@sub(deques, workerID / exh)
 
 	cont schedulerLoop (sign : PT.signal) =
-
           let self : vproc = host_vproc
 
           cont impossible () = 

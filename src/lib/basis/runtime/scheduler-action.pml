@@ -149,7 +149,7 @@ structure SchedulerAction (* :
 	  cont fiberK (x : unit) = 
 	    let x : unit =
 	    (* in case of an exception, just terminate the fiber *)
-	      cont exh (exn : PT.exn) = return (UNIT)
+	      cont exh (exn : exn) = return (UNIT)
 	      apply f (UNIT / exh)
 	    let _ : unit = @stop (/ exh)
 	    throw exh(tag(impossible))

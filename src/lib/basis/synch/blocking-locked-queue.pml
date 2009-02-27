@@ -1,9 +1,9 @@
-(* locked-queue.pml
+(* blocking-locked-queue.pml
  *
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Unbounded-length locked queues using spin locks.
+ * NOTE: this code is broken, it is only here for reference.
  *)
 
 structure LockedQueue =

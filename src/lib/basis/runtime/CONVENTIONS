@@ -1,0 +1,9 @@
+Below are some conventions for programming the runtime basis library.
+
+Signal mask
+If a HLop has pre or post conditions regarding the signal mask, the function name should reflect
+the condition.
+
+ - *from-atomic Signals must be masked before the call.
+ - *to-atomic Signals are masked upon returning.
+ - *in-atomic Signals are masked before and after the call.

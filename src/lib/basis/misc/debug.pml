@@ -34,7 +34,7 @@ structure Debug :
       extern void M_PrintDebugMsg (void*, void*, void*, int);
       extern void M_PrintTestingMsg (void*, void*, int);
       extern void M_Print(void*);
-      extern void Die(void*);
+      extern void M_Die(void*);
 
       define @print (s : String.ml_string / exh : PT.exh) : PT.unit =
 	  let data : any = String.@data(s / exh)
@@ -50,7 +50,7 @@ structure Debug :
       ;
 
       define @terminate-program (x : unit / exh : exh) : unit =
-	do ccall Die("Failed assert")
+	do ccall M_Die("Failed assert")
 	return(UNIT)
       ;
 

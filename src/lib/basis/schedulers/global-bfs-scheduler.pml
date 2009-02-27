@@ -21,7 +21,7 @@ structure GlobalBFSScheduler :
       define @worker (readyQ : LockedQueue.queue / exh : exh) : PT.fiber =
 	cont schedulerLoop (s : PT.signal) =
 	  cont dispatch () =
-	    let thd : Option.option = LockedQueue.@dequeue(readyQ / exh)
+	    let thd : Option.option = LockedQueue.@dequeue-from-atomic(readyQ)
 	    case thd
 	     of Option.NONE =>
 		do SchedulerAction.@yield-in-atomic(host_vproc)
@@ -37,7 +37,7 @@ structure GlobalBFSScheduler :
 	     (* mugging policy: allow other workers to steal k *)
 	     (* QUESTION: does this policy work well for a shared FIFO queue? *)
 	     let thd : ImplicitThread.thread = ImplicitThread.@capture(k / exh)
-	     do LockedQueue.@enqueue(readyQ, thd / exh)
+	     do LockedQueue.@enqueue-from-atomic(readyQ, thd)
 	     do SchedulerAction.@yield-in-atomic(host_vproc)
 	     throw dispatch()
 	   | _ => 
@@ -53,10 +53,12 @@ structure GlobalBFSScheduler :
 
     (* create the work group *)
       define @work-group (x : unit / exh : exh) : ImplicitThread.group =
-	let readyQ : LockedQueue.queue = LockedQueue.@new(/exh)
+	let readyQ : LockedQueue.queue = LockedQueue.@new()
 	let init : PT.fiber = @worker(readyQ / exh)
 	fun spawnFn (thd : ImplicitThread.thread / exh : exh) : unit =
-	    do LockedQueue.@enqueue(readyQ, thd / exh)
+            let vp : vproc = SchedulerAction.@atomic-begin()
+	    do LockedQueue.@enqueue-from-atomic(readyQ, thd)
+            do SchedulerAction.@atomic-end(vp)
 	    return(UNIT)
       (* provide no facility for removing a thread from the ready queue *)
         fun removeFn (thd : ImplicitThread.thread / exh : exh) : bool = return(true)
