@@ -51,7 +51,7 @@ structure WorkStealers =
 	(* try to steal a thread from a remote vproc *)
 	  fun thief (vps : L.list / exh : PT.exh) : () =
 		do print_msg ("work-stealers: steal mode")
-		let noStealableFibers : PT.bool = VPQ.@is-local-queue-empty(/ exh)
+		let noStealableFibers : PT.bool = VPQ.@is-local-queue-empty(host_vproc)
 		if noStealableFibers
 		  then apply sendThieves (vps / exh)
 		  else
