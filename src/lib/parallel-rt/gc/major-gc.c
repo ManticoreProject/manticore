@@ -167,7 +167,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 
   /* copy the live data between vp->oldTop and top to the base of the heap */
     Addr_t youngSzB = top - vp->oldTop;
-    memcpy ((void *)VProcHeap(vp), (void *)(vp->oldTop), youngSzB);
+    memcpy ((void *)oldBase, (void *)(vp->oldTop), youngSzB);
     vp->oldTop = VProcHeap(vp) + youngSzB;
 
     LogMajorGCEnd (vp);
@@ -189,7 +189,6 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 Value_t PromoteObj (VProc_t *vp, Value_t root)
 {
     Addr_t	heapBase = (Addr_t)vp;
-    MemChunk_t	*scanChunk = vp->globToSpTl;
 
     assert ((vp->globNextW % WORD_SZB) == 0);
 #ifndef NDEBUG
@@ -201,12 +200,25 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
    * system gets called.
    */
     if (isPtr(root) && inVPHeap(heapBase, ValueToAddr(root))) {
-	Word_t	*scanPtr = (Word_t *)(vp->globNextW - WORD_SZB);
+	MemChunk_t	*scanChunk = vp->globToSpTl;
+	Word_t		*scanPtr = (Word_t *)(vp->globNextW - WORD_SZB);
+	assert ((Word_t *)(scanChunk->baseAddr) <= scanPtr);
+	assert (scanPtr < (Word_t *)(scanChunk->baseAddr + scanChunk->szB));
       /* promote the root to the global heap */
 	root = ForwardObj (vp, root);
+#ifndef NO_GC_STATS
+	int64_t nbytes;
+	if (scanChunk == vp->globToSpTl) {
+	    nbytes = (vp->globNextW - (Addr_t)scanPtr - WORD_SZB);
+	}
+	else {
+	  /* copied data spans multiple chunks */
+	    nbytes = 0; /* FIXME */
+	}
+#endif
 #ifndef NDEBUG
 	if (GCDebug >= GC_DEBUG_ALL)
-	    SayDebug("[%2d]  ==> %p\n", vp->id, root);
+	    SayDebug("[%2d]  ==> %p; %ld bytes\n", vp->id, root, nbytes);
 #endif
 
       /* promote any reachable values */
