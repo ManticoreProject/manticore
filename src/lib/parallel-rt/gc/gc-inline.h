@@ -83,7 +83,7 @@ STATIC_INLINE int GetLength (Word_t hdr)
     }
 }
 
-/* return true of the given address is within the given address range */
+/* return true if the given address is within the given address range */
 STATIC_INLINE bool inAddrRange (Addr_t base, Addr_t szB, Addr_t p)
 {
     return ((p - base) < szB);
