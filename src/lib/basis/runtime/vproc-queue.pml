@@ -49,23 +49,26 @@ structure VProcQueue (* :
 
       extern void WakeVProc(void *);
 
-    (* vproc queue structure (we use Q_EMPTY to mark an empty queue); the C runtime system relies
-     * on this representation, so be careful when making changes.
+    (* the VProc local-ready queue is represented as a pair of stacks, one for elements
+     * at the head of the queue and one for the tail of the queue.  The stack elements
+     * have the following representation, which must be kept synched with the C runtime
+     * system code.  The Q_EMPTY value is used to mark an empty stack.
      *)
-      typedef queue = [FLS.fls, PT.fiber, any];
+      typedef queue = [
+	  FLS.fls,		(* suspended fiber's local storage *)
+	  PT.fiber,		(* suspended fiber *)
+	  any			(* link to next stack element *)
+	];
 
-      define @is-queue-empty (q : queue) : bool =
-	    return (NotEqual(q, Q_EMPTY))
-	  ;
-
-      define @is-local-queue-empty () : bool =
-	  let tl : queue = vpload (VP_RDYQ_TL, host_vproc)
-	  let hd : queue = vpload (VP_RDYQ_HD, host_vproc)
-	  let b : bool = @is-queue-empty(tl)
-	  if b
-	     then return (b)
-	  else 
-	      @is-queue-empty(hd)
+      define @is-local-queue-empty (self : vproc) : bool =
+	  let tl : queue = vpload (VP_RDYQ_TL, self)
+	  if Equal(tl, Q_EMPTY) then
+	      let hd : queue = vpload (VP_RDYQ_HD, self)
+	      (* in *)
+		if Equal(hd, Q_EMPTY)
+		  then return (true)
+		  else return (false)
+	    else return (false)
 	;
 
       define @is-queue-gt-one (q : queue / exh : exh) : int =
@@ -173,7 +176,6 @@ structure VProcQueue (* :
       define inline @dequeue-in-atomic (vp : vproc) : O.option =
 (* NOTE: with software polling, we do not need to do this check! *)
 	  let messages : List.list = @unload-and-check-messages()
-	  let vp : vproc = host_vproc
 	  let hd : queue = vpload (VP_RDYQ_HD, vp)
 	  if Equal(hd, Q_EMPTY)
 	     then
