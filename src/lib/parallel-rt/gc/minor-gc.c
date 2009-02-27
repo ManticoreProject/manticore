@@ -53,8 +53,8 @@ void MinorGC (VProc_t *vp)
 
     Addr_t	nurseryBase = vp->nurseryBase;
     Addr_t	allocSzB = vp->allocPtr - nurseryBase - WORD_SZB;
-    Word_t	*nextScan = (Word_t *)(vp->oldTop); /* current top of to space */
-    Word_t	*nextW = nextScan + 1; /* next word in to space to copy to */
+    Word_t	*nextScan = (Word_t *)(vp->oldTop); /* current top of to-space */
+    Word_t	*nextW = nextScan + 1;		/* next object address in to-space */
 
     assert (VProcHeap(vp) <= (Addr_t)nextScan);
     assert ((Addr_t)nextScan < vp->nurseryBase);
