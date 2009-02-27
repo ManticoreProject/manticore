@@ -41,7 +41,12 @@ structure UsedVars =
 
     and usedOfPats pats = usedOfList usedOfPat pats
 
-    fun usedOfPPat pat = (case pat
+    and usedOfPBind (PT.MarkPBind {tree, span}) = usedOfPBind tree
+      | usedOfPBind (PT.PBind (pat, exp)) = union[usedOfPat pat, usedOfExp exp]
+
+    and usedOfPBinds pbinds = usedOfList usedOfPBind pbinds
+
+    and usedOfPPat pat = (case pat
            of PT.MarkPPat {span, tree} => usedOfPPat tree
 	    | PT.NDWildPat => empty
 	    | PT.Pat p => usedOfPat p 
@@ -100,13 +105,13 @@ structure UsedVars =
 	    | PT.RangeExp(exp1, exp2, SOME exp3) => union[usedOfExp exp1, usedOfExp exp2, usedOfExp exp3]
 	    | PT.PTupleExp exps => usedOfExps exps
 	    | PT.PArrayExp exps => usedOfExps exps
-	    | PT.PCompExp(exp, pbinds, NONE) => raise Fail "usedOfExp: PCompExp" (* FIXME *)
-	    | PT.PCompExp(exp, pbinds, SOME exp') => raise Fail "usedOfExp: PCompExp" (* FIXME *)
+	    | PT.PCompExp(exp, pbinds, NONE) => union[usedOfExp exp, usedOfPBinds pbinds]
+	    | PT.PCompExp(exp, pbinds, SOME exp') => union[usedOfExp exp, usedOfPBinds pbinds, usedOfExp exp']
 	    | PT.SpawnExp exp => usedOfExp exp
 	    | PT.IdExp v => var v
 	    | PT.SeqExp exps => usedOfExps exps
 	    | PT.ConstraintExp (exp, ty) => union[usedOfExp exp, usedOfTy ty]
-	    | PT.FnExp(pat, e) =>  raise Fail "usedOfExp: FnExp" (* FIXME *)
+	    | PT.FnExp(pat, exp) => union[usedOfPat pat, usedOfExp exp]
            (* end case *))
 
     and usedOfExps exps = usedOfList usedOfExp exps
