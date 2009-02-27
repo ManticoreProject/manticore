@@ -34,7 +34,10 @@ structure Threads (*: sig
 	    return (fiber)
 	  ;
 
-      (* spawn a new thread on the local vproc *)
+      (* spawn a new thread on the local vproc.
+       * NOTE: the name "@local-spawn" is baked into the compiler (see the file
+       * mc/translate/translate.sml), so do not change it!
+       *)
 	define inline @local-spawn (f : fun(PT.unit / PT.exh -> PT.unit) / exh : PT.exh) : FLS.fls =
 	    let fiber: PT.fiber = @create (f / exh)
 	    let fls : FLS.fls = FLS.@new (UNIT / exh)
