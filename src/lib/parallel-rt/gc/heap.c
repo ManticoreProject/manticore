@@ -88,7 +88,12 @@ void HeapInit (Options_t *opts)
     GlobalVM = 0;
     FreeVM = 0;
     ToSpaceSz = 0;
-    ToSpaceLimit = 16 * ONE_MEG;  /* FIXME: what should this be? */
+#ifndef NDEBUG
+//    ToSpaceLimit = 16 * ONE_MEG;  /* FIXME: what should this be? */
+    ToSpaceLimit = 8 * ONE_MEG;
+#else
+    ToSpaceLimit = 512 * ONE_MEG;
+#endif
     TotalVM = 0;
     FromSpaceChunks = (MemChunk_t *)0;
     FreeChunks = (MemChunk_t *)0;
