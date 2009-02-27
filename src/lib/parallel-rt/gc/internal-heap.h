@@ -23,6 +23,7 @@ typedef enum {
 } Status_t;
 
 #define VPROC_CHUNK(id)		((Status_t)((id) << 4) | VPROC_CHUNK_TAG)
+#define IS_VPROC_CHUNK(sts)	(((sts)&0xF) == VPROC_CHUNK_TAG)
 
 struct struct_chunk {
     Addr_t	baseAddr;	/*!< chunk base address */
