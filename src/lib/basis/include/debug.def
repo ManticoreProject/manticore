@@ -3,36 +3,40 @@
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Debug stubs.
+ * Debug printing.  These macros are no-ops unless the compiler's debug flag is set.
+ *
+ * Printing for inline BOM
+ *
+ *	PRINT_DEBUG(msg)	-- prints message if "-d" runtime flag was given
+ *	PRINT_MSG(msg)		-- always prints message
+ *	PRINT_PPT()		-- prints file/line info
+ *
+ * Printing for ML code
+ *
+ *	DEBUG(msg)		-- unit-valued expression that prints the message
  *)
 
 #ifndef _DEBUG_DEF_
 #define _DEBUG_DEF_
 
-#define _QUOTE(x) #x
-#define QUOTE(x) _QUOTE(x)
+#ifndef NDEBUG
 
-(***
-     printing for inline BOM 
- ****)
+#  define _QUOTE(x) #x
+#  define QUOTE(x) _QUOTE(x)
 
-(* prints when the compiler debugging flag is set and the runtime flag is set *)
-#  define print_debug(msg)                                                             \
-             ccall M_PrintDebugMsg (false, msg, QUOTE(PML_FILE), __LINE__)   \
+#  define PRINT_DEBUG(msg)	do ccall M_PrintDebugMsg(false, msg, QUOTE(PML_FILE), __LINE__)
+#  define PRINT_MSG(msg)	do ccall M_PrintDebugMsg(true, msg, QUOTE(PML_FILE), __LINE__)
+#  define PRINT_PPT()		do ccall M_PrintDebugMsg(true, "", QUOTE(PML_FILE), __LINE__)
 
-(* prints when the compiler debugging flag is set *)
-#  define print_msg(msg)                                                               \
-             ccall M_PrintDebugMsg (true, msg, QUOTE(PML_FILE), __LINE__)    \
+#  define DEBUG(msg)	(Debug.printMsg(msg, QUOTE(PML_FILE), __LINE__))
 
-#  define print_ppt()                                                                  \
-             ccall M_PrintDebugMsg (true, "", QUOTE(PML_FILE), __LINE__)     \
+#else
 
-(***
-     printing for Manticore
- ****)
+#  define PRINT_DEBUG(msg)
+#  define PRINT_MSG(msg)
+#  define PRINT_PPT(msg)
 
-(* prints when the compiler debugging flag is set *)
-#  define printMsg(msg)                                                                \
-             Debug.printMsg(msg, QUOTE(PML_FILE), __LINE__)                            \
-             
-#endif /*! _DEBUG_DEF_ */
+#  define DEBUG(msg)	()
+
+#endif /* !NDEBUG */
+#endif /* !_DEBUG_DEF_ */

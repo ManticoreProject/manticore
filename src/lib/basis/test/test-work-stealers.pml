@@ -42,6 +42,6 @@ do print_ppt()
 
     val test : unit -> unit = _prim(@test)
     val _ = test()
-    val _ = printMsg("test succeeded")
+    val _ = DEBUG("test succeeded")
 
   end

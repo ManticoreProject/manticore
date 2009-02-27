@@ -133,6 +133,6 @@ structure WorkStealers =
 
     val workStealers : unit -> unit = _prim(@work-stealers)
     val _ = workStealers()
-    val _ = printMsg("work-stealers: initialized on vprocs")
+    val _ = DEBUG("work-stealers: initialized on vprocs")
 
   end

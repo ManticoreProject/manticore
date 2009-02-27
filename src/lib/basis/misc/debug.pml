@@ -5,8 +5,12 @@
  *
  * These debugging routines are for debugging the runtime libraries. They only have an effect when two
  * conditions are met.
+ *
  *  - the compiler is compiled with the flag --enable-debug
+ *
  *  - the Manticore program is compiled with the flag -Cdebug=true
+ *
+ * Common usage for printMsg is the DEBUG(msg) macro defined in include/debug.def.
  *)
 
 structure Debug :
@@ -45,7 +49,7 @@ structure Debug :
       define @print-msg (arg : [String.ml_string, String.ml_string, [int]]  / exh : PT.exh) : PT.unit =
 	  let msg : any = String.@data(#0(arg) / exh)
 	  let file : any = String.@data(#1(arg) / exh)
-	  do ccall M_PrintDebugMsg (PT.true, msg, file, #0(#2(arg)))
+	  do ccall M_PrintDebugMsg (PT.false, msg, file, #0(#2(arg)))
 	  return (UNIT)
       ;
 
