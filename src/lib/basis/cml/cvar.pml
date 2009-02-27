@@ -37,16 +37,11 @@ structure CVar (*: sig
 #	define CV_STATE		1
 #	define CV_WAITING	2
 
+      (* create a new signal variable *)
 	define inline @cvar-new (_ : unit / _ : exh) : cvar =
 	    let cv : cvar = alloc(false, false, nil)
 	    let cv : cvar = promote (cv)
 	    return (cv)
-	  ;
-
-      (* create a new signal variable *)
-	define inline @cvar-new (_ : unit / _ : exh) : cvar =
-	    let sv : cvar = alloc (false, false, List.nil)
-	    return (sv)
 	  ;
 
       (* signal the variable, which wakes up any threads that are waiting on it. *)
