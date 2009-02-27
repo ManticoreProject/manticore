@@ -7,6 +7,7 @@
  * cells.
  *)
 
+#include "debug.def"
 #include "spin-lock.def"
 
 structure CVar (*: sig
@@ -59,8 +60,22 @@ structure CVar (*: sig
 		   of nil => return (UNIT)
 		    | List.CONS(hd : waiter, tl : List.list) =>
 			let flg : PEvt.event_state = #0(hd)
+(* NOTE: this code doesn't work; probably because of a bug in the handling of BCAS in the
+ * code generator.
 			do if BCAS(&0(flg), PEvt.WAITING, PEvt.SYNCHED)
 			    then (* enqueue waiting thread *)
+			      let fls : FLS.fls = #1(hd)
+			      let vp : vproc = #2(hd)
+			      let k : PT.fiber = #3(hd)
+			      (* in *)
+				if Equal(self, vp)
+				  then VProcQueue.@enqueue-in-atomic(vp, fls, k)
+				  else VProcQueue.@enqueue-on-vproc(vp, fls, k)
+			    else return()
+*)
+			let sts : PEvt.event_status = CAS(&0(flg), PEvt.WAITING, PEvt.SYNCHED)
+			do if Equal(sts, PEvt.WAITING)
+			    then  (* enqueue waiting thread *)
 			      let fls : FLS.fls = #1(hd)
 			      let vp : vproc = #2(hd)
 			      let k : PT.fiber = #3(hd)
@@ -73,7 +88,7 @@ structure CVar (*: sig
 		  end
 	    (* in *)
 	    apply signalWaiting (waiting)
-	;
+	  ;
 
       (* wait for a variable to be signaled *)
 	define @cvar-wait (cv : cvar / _ : exh) : unit =
