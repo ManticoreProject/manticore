@@ -97,7 +97,7 @@ STATIC_INLINE int FetchAndDec (volatile int *ptr)
     return __sync_fetch_and_sub(ptr, 1);
 }
 
-STATIC_INLINE int64_t FetchAndAdd (volatile int64_t *ptr, int64_t n)
+STATIC_INLINE int64_t FetchAndAdd64 (volatile int64_t *ptr, int64_t n)
 {
     return __sync_fetch_and_add(ptr, n);
 }
