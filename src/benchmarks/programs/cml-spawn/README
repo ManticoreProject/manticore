@@ -1,0 +1,2 @@
+This is a micro benchmark for measuring the latency of spawning a thread.
+
