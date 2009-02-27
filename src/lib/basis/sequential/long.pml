@@ -16,7 +16,7 @@ structure Long =
 
       extern void *M_LongToString (long) __attribute__((alloc,pure));
 
-      define @to-string (n : PT.ml_long / exh : PT.exh) : PT.ml_string =
+      define inline @to-string (n : PT.ml_long / exh : PT.exh) : PT.ml_string =
 	  let res : PT.ml_string = ccall M_LongToString (unwrap(n))
 	    return (res)
       ;

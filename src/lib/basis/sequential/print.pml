@@ -11,11 +11,11 @@ structure Print =
 
     _primcode(
       extern void M_Print(void*);
-      define @print (s : ml_string / exh : exh) : unit =
+      define inline @print (s : ml_string / exh : exh) : unit =
 	  let data : any = String.@data(s / exh)
 	  do ccall M_Print (data)
 	    return (UNIT)
-      ;
+        ;
     )
 
     val print : string -> unit = _prim(@print)

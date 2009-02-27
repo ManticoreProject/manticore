@@ -22,31 +22,31 @@ structure Double =
 
   (* HLOps that wrap C functions *)
     _primcode (
-	define @double-cos (x : ml_double / exh : exh) : ml_double =
+	define inline @double-cos (x : ml_double / exh : exh) : ml_double =
 	    let y : double = ccall M_Cos (#0(x))
 	    let res : ml_double = alloc(y)
 	      return (res);
-	define @double-pow (arg : [ml_double, ml_double] / exh : exh) : ml_double =
+	define inline @double-pow (arg : [ml_double, ml_double] / exh : exh) : ml_double =
 	    let res : double = ccall M_Pow (#0 (#0(arg)), #0 (#1(arg)))
 	      return (alloc(res));
-	define @double-sin (x : ml_double / exh : exh) : ml_double =
+	define inline @double-sin (x : ml_double / exh : exh) : ml_double =
 	    let res : double = ccall M_Sin (#0(x))
 	      return (alloc(res));
-	define @double-sqrt (x : ml_double / exh : exh) : ml_double =
+	define inline @double-sqrt (x : ml_double / exh : exh) : ml_double =
 	    let res : double = F64Sqrt (#0(x))
 	      return (alloc(res));
-	define @double-tan (x : ml_double / exh : exh) : ml_double =
+	define inline @double-tan (x : ml_double / exh : exh) : ml_double =
 	    let res : double = ccall M_Tan (#0(x))
 	      return (alloc(res));
-	define @to-string (f : ml_double / exh : exh) : ml_string =
+	define inline @to-string (f : ml_double / exh : exh) : ml_string =
 	    let res : ml_string = ccall M_DoubleToString (#0(f))
 	      return (res)
 	;
-	define @from-int (f : ml_int / exh : exh) : ml_double =
+	define inline @from-int (f : ml_int / exh : exh) : ml_double =
 	    let res : ml_double = alloc(I32ToF64 (#0(f)))
 	      return (res)
 	;
-      define @abs (f : ml_double / exh : exh) : ml_double =
+      define inline @abs (f : ml_double / exh : exh) : ml_double =
 	let res : ml_double = alloc(F64Abs(#0(f)))
           return (res)
       ;

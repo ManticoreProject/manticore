@@ -39,12 +39,12 @@ structure Rand =
       ;
 
     (* seed the random number generator *)
-      define @seed(x : unit / exh : exh) : unit =
+      define inline @seed(x : unit / exh : exh) : unit =
         do ccall M_SeedRand()
         return(UNIT)
       ;
 
-      define @rand-double (arg : [ml_double, ml_double] / exh : exh) : ml_double =
+      define inline @rand-double (arg : [ml_double, ml_double] / exh : exh) : ml_double =
 	let r : double = ccall M_DRand (#0(#0(arg)), #0(#1(arg)))
 	return (alloc(r))
       ;

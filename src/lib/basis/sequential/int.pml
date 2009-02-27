@@ -17,12 +17,12 @@ structure Int =
       extern void *M_IntToString (int) __attribute__((alloc,pure));
       extern int M_CeilingLg (int) __attribute__((pure));
 
-      define @to-string (n : ml_int / exh : exh) : ml_string =
+      define inline @to-string (n : ml_int / exh : exh) : ml_string =
 	  let res : ml_string = ccall M_IntToString (unwrap(n))
 	    return (res)
       ;
 
-      define @ceiling-lg(n : ml_int / exh : exh) : ml_int =
+      define inline @ceiling-lg(n : ml_int / exh : exh) : ml_int =
 	let res : int = ccall M_CeilingLg(unwrap(n))
 	return (alloc(res))
       ;

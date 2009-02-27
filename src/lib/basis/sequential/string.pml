@@ -15,17 +15,17 @@ structure String =
 
       extern void *M_StringConcatList (void *) __attribute__((pure,alloc));
   
-      define  @data (s : ml_string / exh : PT.exh) : any =
+      define inline @data (s : ml_string / exh : PT.exh) : any =
 	  let res : any = #0(s)
 	    return (res)
       ;
 
-      define  @lit (s : PT.string_data, len : int / exh : PT.exh) : ml_string =
+      define inline @lit (s : PT.string_data, len : int / exh : PT.exh) : ml_string =
 	  let res : ml_string = alloc (s, len)
 	    return (res)
       ;
 
-      define  @size (s : ml_string / exh : PT.exh) : PT.ml_int =
+      define inline @size (s : ml_string / exh : PT.exh) : PT.ml_int =
 	  let len : int = #1(s)
 	  let res : PT.ml_int = alloc(len)
 	    return (res)
@@ -42,14 +42,13 @@ structure String =
     val size : string -> int = _prim(@size)
 
     fun concatWith s ss = let
-	fun lp xs = (
-	    case xs
-	     of nil => nil
-	      | x :: nil => x :: nil
-	      | x :: xs => x :: s :: lp xs
-	    (* end case *))
-	in
-	  concat(lp ss)
-	end
+	  fun lp xs = (case xs
+		 of nil => nil
+		  | x :: nil => x :: nil
+		  | x :: xs => x :: s :: lp xs
+		(* end case *))
+	  in
+	    concat(lp ss)
+	  end
 
   end

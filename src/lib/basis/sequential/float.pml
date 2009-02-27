@@ -22,27 +22,27 @@ structure Float =
 
   (* HLOps that wrap C functions *)
     _primcode (
-	define @float-cos (x : PT.ml_float / exh : PT.exh) : PT.ml_float =
+	define inline @float-cos (x : PT.ml_float / exh : PT.exh) : PT.ml_float =
 	    let y : float = ccall M_Cosf (#0(x))
 	    let res : PT.ml_float = alloc(y)
 	      return (res);
-	define @float-pow (arg : [PT.ml_float, PT.ml_float] / exh : PT.exh) : PT.ml_float =
+	define inline @float-pow (arg : [PT.ml_float, PT.ml_float] / exh : PT.exh) : PT.ml_float =
 	    let res : float = ccall M_Powf (#0 (#0(arg)), #0 (#1(arg)))
 	      return (alloc(res));
-	define @float-sin (x : PT.ml_float / exh : PT.exh) : PT.ml_float =
+	define inline @float-sin (x : PT.ml_float / exh : PT.exh) : PT.ml_float =
 	    let res : float = ccall M_Sinf (#0(x))
 	      return (alloc(res));
-	define @float-sqrt (x : PT.ml_float / exh : PT.exh) : PT.ml_float =
+	define inline @float-sqrt (x : PT.ml_float / exh : PT.exh) : PT.ml_float =
 	    let res : float = F32Sqrt (#0(x))
 	      return (alloc(res));
-	define @float-tan (x : PT.ml_float / exh : PT.exh) : PT.ml_float =
+	define inline @float-tan (x : PT.ml_float / exh : PT.exh) : PT.ml_float =
 	    let res : float = ccall M_Tanf (#0(x))
 	      return (alloc(res));
-	define @to-string (f : PT.ml_float / exh : PT.exh) : PT.ml_string =
+	define inline @to-string (f : PT.ml_float / exh : PT.exh) : PT.ml_string =
 	    let res : PT.ml_string = ccall M_FloatToString (#0(f))
 	      return (res)
 	;
-	define @from-int (f : PT.ml_int / exh : PT.exh) : PT.ml_float =
+	define inline @from-int (f : PT.ml_int / exh : PT.exh) : PT.ml_float =
 	    let res : PT.ml_float = alloc(I32ToF32 (#0(f)))
 	      return (res)
 	;

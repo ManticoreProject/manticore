@@ -3,7 +3,10 @@
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Mutable arrays.
+ * Mutable arrays for benchmarking purposes.  Use at own risk!
+ *
+ * FIXME: this file should be removed at some point, since it is outside the
+ * language design!
  *)
 
 #define DATA_OFF        0
@@ -21,7 +24,7 @@ structure Array64 =
       extern void* M_NewArray (void*, int, void*);
  
     (* allocate and initialize an array *)
-      define @array (n : int, elt : any / exh : exh) : array =
+      define inline @array (n : int, elt : any / exh : exh) : array =
         let elt : any = (any)elt
         let elt : any = promote(elt)
       (* obtain the data chunk from the C runtime *)
@@ -30,11 +33,11 @@ structure Array64 =
         return(arr)
       ;
 
-      define @length (arr : array / exh : exh) : int =
+      define inline @length (arr : array / exh : exh) : int =
 	return(SELECT(LENGTH_OFF, arr))
       ;
 
-      define @update (arr : array, i : int, x : any / exh : exh) : () =
+      define inline @update (arr : array, i : int, x : any / exh : exh) : () =
 	do assert(I32Gte(i,0))
 	let len : int = @length(arr / exh)
 	do assert(I32Lt(i,len))
@@ -46,7 +49,7 @@ structure Array64 =
 	return()
       ;
 
-      define @sub (arr : array, i : int / exh : exh) : any =
+      define inline @sub (arr : array, i : int / exh : exh) : any =
 	let len : int = @length(arr / exh)
 	do assert(I32Gte(i,0))
 	do assert(I32Lt(i,len))
@@ -55,20 +58,20 @@ structure Array64 =
 	return(x)
       ;
 
-      define @array-w (arg : [ml_int, any] / exh : exh) : array =
+      define inline @array-w (arg : [ml_int, any] / exh : exh) : array =
 	@array(#0(#0(arg)), #1(arg) / exh)
       ;
 
-      define @length-w (arr : array / exh : exh) : ml_int =
+      define inline @length-w (arr : array / exh : exh) : ml_int =
 	let len : int = @length(arr / exh)
 	return(alloc(len))
       ;
 
-      define @sub-w (arg : [array, ml_int] / exh : exh) : any =
+      define inline @sub-w (arg : [array, ml_int] / exh : exh) : any =
 	@sub(#0(arg), #0(#1(arg)) / exh)
       ;
 
-      define @update-w (arg : [array, ml_int, any] / exh : exh) : PT.unit =
+      define inline @update-w (arg : [array, ml_int, any] / exh : exh) : PT.unit =
 	do @update(#0(arg), #0(#1(arg)), #2(arg) / exh)
 	return(UNIT)
       ;
@@ -84,23 +87,18 @@ structure Array64 =
 
     fun tabulate (n, f : int -> 'a) = let
 	  val a = array(n, f 0)
-	  fun tab i =
-	        if i < n 
-		  then (update(a, i, f i);
-			tab(i + 1))
+	  fun tab i = if i < n 
+		then (update(a, i, f i); tab(i + 1))
 		else a
           in
 	    tab 1
 	  end
 
     fun app f arr = let
-	    val len = length arr
-	    fun app i =
-		if i < len then (f (sub (arr, i)); app (i + 1))
-		else ()
-	in
+	  val len = length arr
+	  fun app i = if i < len then (f (sub (arr, i)); app (i + 1)) else ()
+	  in
 	    app 0
-	end
-
+	  end
 
   end
