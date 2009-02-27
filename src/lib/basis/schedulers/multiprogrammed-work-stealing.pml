@@ -57,6 +57,7 @@ structure MultiprogrammedWorkStealing :
 
         (* attempt to steal from another worker *)
 	  cont steal () =
+            do SchedulerAction.@yield-in-atomic(self)
 	    let victim : int = Rand.@in-range-int(0, nWorkers / exh)
 	    do if I32Eq(victim, workerID)
 		  then throw steal()
@@ -64,9 +65,8 @@ structure MultiprogrammedWorkStealing :
 	    let victimDeque : Cilk5Deque.deque = Arr.@sub(deques, victim / exh)
 	    let thd : O.option = Cilk5Deque.@pop-hd-from-atomic(victimDeque / exh)
 	    case thd
-	     of O.NONE => 
+	     of O.NONE =>
              (* hand off the processor to other schedulers *)
-		do SchedulerAction.@yield-in-atomic(self)
 		throw steal()
 	      | O.SOME(thd : ImplicitThread.thread) =>
 		 do assert(NotEqual(thd, enum(0)))
