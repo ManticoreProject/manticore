@@ -273,10 +273,11 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 			end
 		    | P.BCAS(addr, key, new) => let
 			val (cc, _, stms) = BE.AtomicOps.genCompareAndSwapWord{
-				    addr = T.LOAD(boolTy, defOf addr, ()),
+				    addr = T.LOAD(anyTy, defOf addr, ()),
 				    cmpVal = defOf key, newVal = defOf new
 				  }
 			in
+(* FIXME *)raise Fail "codegen for BCAS is broken";
 			  BE.VarDef.flushLoads varDefTbl
 			  @ stms
 			  @ cbind (v, cc)
