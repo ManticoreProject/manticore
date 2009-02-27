@@ -41,7 +41,7 @@ structure NWayBarrier =
 		 then SchedulerAction.@atomic-end(vp)
 	      else 
 		  do SchedulerAction.@yield-in-atomic(vp)
-		  (* do Pause() *)         (* notify the hardware that the program is spinning *)
+		  do Pause()
 		  apply spin()
 	apply spin ()
       ;
