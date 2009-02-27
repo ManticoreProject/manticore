@@ -631,6 +631,7 @@ structure TranslatePrim : sig
 			  chkConstraintTy (x, BOM.Var.typeOf f, pmlTy);
 			  SOME (E.insertFun(env, x, mkFB), x', etaExpand(name, def))
 			end
+		    | NONE => raise Fail ("TranslatePrim.cvtRhs: compiler bug, missing hlop "^Var.toString x)
 		  (* end case *))
 	    (* end case *)
           end)
