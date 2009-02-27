@@ -4,6 +4,8 @@
  * All rights reserved.
  */
 
+#include <strings.h>
+
 #include "manticore-rt.h"
 #include "gc.h"
 #include "vproc.h"
@@ -24,17 +26,25 @@ static Barrier_t	GCBarrier;	// for synchronizing on GC completion
 static bool		GlobalGCInProgress; // true, when a global GC has been initiated
 uint32_t		NumGlobalGCs;	// the total number of global GCs.
 
+#ifndef NO_GC_STATS
+static uint64_t		FromSpaceSzb;
+static uint64_t		NWordsScanned;
+static uint64_t		NBytesCopied;
+#endif
+
 static void GlobalGC (VProc_t *vp, Value_t **roots);
 static void ScanVProcHeap (VProc_t *vp);
 static void ScanGlobalToSpace (VProc_t *vp);
-
+#ifndef NDEBUG
+static void CheckGC (VProc_t *self, Value_t **roots);
+#endif
 
 /* Return true if a value is a from-space pointer.  Note that this function relies on
  * the fact that unmapped addresses are mapped to the "UnmappedChunk" by the BIBOP.
  */
 STATIC_INLINE bool isFromSpacePtr (Value_t p)
 {
-    return (isPtr(p) && AddrToChunk(ValueToAddr(p))->sts == FROM_SP_CHUNK);
+    return (isPtr(p) && (AddrToChunk(ValueToAddr(p))->sts == FROM_SP_CHUNK));
 
 }
 
@@ -43,8 +53,11 @@ STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
 {
     Word_t	*p = ((Word_t *)ValueToPtr(v));
     Word_t	oldHdr = p[-1];
-    if (isForwardPtr(oldHdr))
-	return PtrToValue(GetForwardPtr(oldHdr));
+    if (isForwardPtr(oldHdr)) {
+	Value_t v = PtrToValue(GetForwardPtr(oldHdr));
+	assert (isPtr(v) && (AddrToChunk(ValueToAddr(v))->sts == TO_SP_CHUNK));
+	return v;
+    }
     else {
       // we need to atomically update the header to a forward pointer, so frst
       // we allocate space for the object and then we try to install the forward
@@ -65,6 +78,10 @@ STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
 		newObj[i] = p[i];
 	    }
 	    vp->globNextW = (Addr_t)(newObj+len+1);
+#ifndef NO_GC_STATS
+/* FIXME: we should really compute this information on a per-chunk basis */
+	    FetchAndAdd64 ((int64_t *)&NBytesCopied, WORD_SZB*(len+1));
+#endif
 	    return PtrToValue(newObj);
 	}
 	else {
@@ -98,6 +115,7 @@ void InitGlobalGC ()
     CondInit (&FollowerWait);
     GlobalGCInProgress = false;
     NumGlobalGCs = 0;
+
 }
 
 /* \brief attempt to start a global GC.
@@ -125,17 +143,35 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	    LogGlobalGCInit (self, NumGlobalGCs);
 #ifndef NDEBUG
 	    if (GCDebug >= GC_DEBUG_GLOBAL)
-	      SayDebug("[%2d] Initiating global GC %d\n", self->id, NumGlobalGCs);
+		SayDebug("[%2d] Initiating global GC %d\n", self->id, NumGlobalGCs);
 #endif
 	    GlobalGCInProgress = true;
 	    leaderVProc = true;
 	    nReadyForGC = 0;
+#ifndef NO_GC_STATS
+	    FromSpaceSzb = 0;
+	    NWordsScanned = 0;
+	    NBytesCopied = 0;
+#endif
 /* FIXME: we probably should initialize nParticipants here, instead of down below! */
 	}
+
       /* add the vproc's pages to the from-space list */
 	MemChunk_t *p;
 	for (p = self->globToSpHd;  p != (MemChunk_t *)0;  p = p->next) {
+	    assert (p->sts == TO_SP_CHUNK);
+#ifndef NDEBUG
+	    if (GCDebug >= GC_DEBUG_GLOBAL)
+		SayDebug("[%2d]   From-Space chunk %#tx..%#tx\n",
+		    self->id, p->baseAddr, p->baseAddr+p->szB);
+#endif
 	    p->sts = FROM_SP_CHUNK;
+#ifndef NO_GC_STATS
+	    if (p == self->globToSpTl)
+		FromSpaceSzb += (self->globNextW - WORD_SZB) - p->baseAddr;
+	    else
+		FromSpaceSzb += p->usedTop - p->baseAddr;
+#endif
 	}
 	p = self->globToSpTl;
 	if (p != (MemChunk_t *)0) {
@@ -187,6 +223,10 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
   /* start GC for this vproc */
     GlobalGC (self, roots);
 
+#ifndef NDEBUG
+    CheckGC (self, roots);
+#endif
+
   /* synchronize on every vproc finishing GC */
     BarrierWait (&GCBarrier);
 
@@ -198,6 +238,9 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	    while (cp != (MemChunk_t *)0) {
 		cp->sts = FREE_CHUNK;
 		cp->usedTop = cp->baseAddr;
+#ifndef NDEBUG
+/*DEBUG*/bzero(cp->baseAddr, cp->szB);
+#endif
 		MemChunk_t *cq = cp->next;
 		cp->next = FreeChunks;
 		FreeChunks = cp;
@@ -209,7 +252,8 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 
 #ifndef NDEBUG
 	if (GCDebug >= GC_DEBUG_GLOBAL)
-	    SayDebug("[%2d] Completed global GC\n", self->id);
+	    SayDebug("[%2d] Completed global GC; %ld words scanned; %ld/%ld bytes copied\n",
+		self->id, NWordsScanned, NBytesCopied, FromSpaceSzb);
 #endif
     }
 
@@ -258,6 +302,10 @@ static void ScanVProcHeap (VProc_t *vp)
     Word_t *top = (Word_t *)(vp->oldTop);
     Word_t *scanPtr = (Word_t *)VProcHeap(vp);
 
+#ifndef NO_GC_STATS
+    FetchAndAdd64 ((int64_t *)&NWordsScanned, (int64_t)(top - scanPtr));
+#endif
+
     while (scanPtr < top) {
 	Word_t hdr = *scanPtr++;  // get object header
 	if (isMixedHdr(hdr)) {
@@ -292,6 +340,7 @@ static void ScanVProcHeap (VProc_t *vp)
 	    scanPtr += GetRawSizeW(hdr);
 	}
     }
+    assert (scanPtr == top);
 
 } /* end of ScanVProcHeap */
 
@@ -305,6 +354,9 @@ static void ScanGlobalToSpace (VProc_t *vp)
     Word_t	*scanTop = ScanTop(vp, scanChunk);
 
     do {
+#ifndef NO_GC_STATS
+	FetchAndAdd64 ((int64_t *)&NWordsScanned, (int64_t)((Word_t)scanTop - (Word_t)scanPtr));
+#endif
 	while (scanPtr < scanTop) {
 	    Word_t hdr = *scanPtr++;  // get object header
 	    if (isMixedHdr(hdr)) {
@@ -355,3 +407,145 @@ static void ScanGlobalToSpace (VProc_t *vp)
     } while (scanPtr < scanTop);
 
 }
+
+#ifndef NDEBUG
+static void CheckLocalPtr (VProc_t *self, Value_t *addr, const char *where)
+{
+    Value_t v = *addr;
+    if (isPtr(v)) {
+	MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
+	if (cq->sts == TO_SP_CHUNK)
+	    return;
+	else if (cq->sts == FROM_SP_CHUNK)
+	    SayDebug("** unexpected from-space pointer %p at %p in %s\n",
+		ValueToPtr(v), addr, where);
+	else if (IS_VPROC_CHUNK(cq->sts)) {
+	    if (cq->sts != VPROC_CHUNK(self->id)) {
+		SayDebug("** unexpected remote pointer %p at %p in %s\n",
+		    ValueToPtr(v), addr, where);
+	    }
+	    else if (! inAddrRange(VProcHeap(self), self->oldTop - VProcHeap(self), ValueToAddr(v))) {
+		SayDebug("** local pointer %p at %p in %s is out of bounds\n",
+		    ValueToPtr(v), addr, where);
+	    }
+	}
+	else if (cq->sts == FREE_CHUNK) {
+	    SayDebug("** unexpected free-space pointer %p at %p in %s\n",
+		ValueToPtr(v), addr, where);
+	}
+    }
+}
+static void CheckGC (VProc_t *self, Value_t **roots)
+{
+    SayDebug ("  Checking heap consistency\n");
+
+  // check the roots
+    for (int i = 0;  roots[i] != 0;  i++) {
+	Value_t v = *roots[i];
+	CheckLocalPtr (self, roots[i], "roots");
+    }
+
+  // check the local heap
+    {
+	Word_t *top = (Word_t *)(self->oldTop);
+	Word_t *p = (Word_t *)VProcHeap(self);
+	while (p < top) {
+	    Word_t hdr = *p++;
+	    if (isMixedHdr(hdr)) {
+	      // a record
+		Word_t tagBits = GetMixedBits(hdr);
+		Word_t *scanP = p;
+		while (tagBits != 0) {
+		    if (tagBits & 0x1) {
+			CheckLocalPtr (self, p, "local mixed object");
+		    }
+		    tagBits >>= 1;
+		    scanP++;
+		}
+		p += GetMixedSizeW(hdr);
+	    }
+	    else if (isVectorHdr(hdr)) {
+	      // an array of pointers
+		int len = GetVectorLen(hdr);
+		for (int i = 0;  i < len;  i++, p++) {
+		    CheckLocalPtr (self, p, "local vector");
+		}
+	    }
+	    else {
+		assert (isRawHdr(hdr));
+	      // we can just skip raw objects
+		p += GetRawSizeW(hdr);
+	    }
+	}
+    }
+
+  // check to space
+    MemChunk_t	*cp = self->globToSpHd;
+    while (cp != (MemChunk_t *)0) {
+	assert (cp->sts = TO_SP_CHUNK);
+	Word_t *p = (Word_t *)(cp->baseAddr);
+	Word_t *top = ScanTop(self, cp);
+	while (p < top) {
+	    Word_t hdr = *p++;
+	    if (isMixedHdr(hdr)) {
+	      // a record
+		Word_t tagBits = GetMixedBits(hdr);
+		Word_t *scanP = p;
+		while (tagBits != 0) {
+		    if (tagBits & 0x1) {
+			Value_t v = *(Value_t *)p;
+			if (isPtr(v)) {
+			    MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
+			    if (cq->sts != TO_SP_CHUNK) {
+				if (cq->sts == FROM_SP_CHUNK)
+				    SayDebug("** unexpected from-space pointer %p at %p in mixed object\n",
+					ValueToPtr(v), p);
+				else if (IS_VPROC_CHUNK(cq->sts))
+				    SayDebug("** unexpected local pointer %p at %p in mixed object\n",
+					ValueToPtr(v), p);
+				else if (cq->sts == FREE_CHUNK)
+				    SayDebug("** unexpected free pointer %p at %p in mixed object\n",
+					ValueToPtr(v), p);
+			    }
+			}
+		    }
+		    tagBits >>= 1;
+		    scanP++;
+		}
+		p += GetMixedSizeW(hdr);
+	    }
+	    else if (isVectorHdr(hdr)) {
+	      // an array of pointers
+		int len = GetVectorLen(hdr);
+		for (int i = 0;  i < len;  i++, p++) {
+		    Value_t v = (Value_t)*p;
+		    if (isFromSpacePtr(v)) {
+			if (isPtr(v)) {
+			    MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
+			    if (cq->sts != TO_SP_CHUNK) {
+				if (cq->sts == FROM_SP_CHUNK)
+				    SayDebug("** unexpected from-space pointer %p at %p in vector\n",
+					ValueToPtr(v), p);
+				else if (IS_VPROC_CHUNK(cq->sts))
+				    SayDebug("** unexpected local pointer %p at %p in vector\n",
+					ValueToPtr(v), p);
+				else if (cq->sts == FREE_CHUNK)
+				    SayDebug("** unexpected free pointer %p at %p in vector\n",
+					ValueToPtr(v), p);
+			    }
+			}
+		    }
+		}
+	    }
+	    else {
+		assert (isRawHdr(hdr));
+	      // we can just skip raw objects
+		p += GetRawSizeW(hdr);
+	    }
+	}
+	cp = cp->next;
+    }
+
+}
+#endif
+
