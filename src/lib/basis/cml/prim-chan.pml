@@ -8,7 +8,7 @@
 
 #include "spin-lock.def"
 
-structure PrimChan : sig
+structure PrimChan (*: sig
 
     type 'a chan
 
@@ -22,7 +22,7 @@ structure PrimChan : sig
     val recvEvt : 'a chan -> 'a PrimEvent.pevent
 *)
 
-  end = struct
+  end*) = struct
 
     structure PT = PrimTypes
     structure PEvt = PrimEvent
