@@ -73,8 +73,9 @@ structure Main = struct
 (* running with "-p 1" *)
 (*val _ = Main.timeit 350*)	(* works *)
 (*val _ = Main.timeit 351*)	(* works *)
-val _ = Main.timeit 352		(* works *)
+(*val _ = Main.timeit 352*)		(* works *)
 (*val _ = Main.timeit 353*)	(* fails *)
 (*val _ = Main.timeit 356*)
 (*val _ = Main.timeit 362*)
 (*val _ = Main.timeit 375*)	(* fails *)
+val _ = Main.timeit 2000
