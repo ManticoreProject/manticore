@@ -441,8 +441,10 @@ static void CheckGC (VProc_t *self, Value_t **roots)
 
   // check the roots
     for (int i = 0;  roots[i] != 0;  i++) {
+	char buf[16];
+	sprintf(buf, "root[%d]", i);
 	Value_t v = *roots[i];
-	CheckLocalPtr (self, roots[i], "roots");
+	CheckLocalPtr (self, roots[i], buf);
     }
 
   // check the local heap
