@@ -38,20 +38,20 @@ structure Speculation :
         fun markFull () : () =
             let por : por = promote(por)
 	    cont exit () = return()
-	    let v1 : p_or_state = CAS(&0(por), EMPTY_ST, FULL_ST)
+	    let v1 : any = CAS(&0(por), EMPTY_ST, FULL_ST)
 	    do if Equal(v1, EMPTY_ST)
 		  then throw exit ()
 		  else return()
-	    let v1 : por_state = CAS(&0(por), DONE_ST, FULL_ST)
+	    let v1 : any = CAS(&0(por), DONE_ST, FULL_ST)
 	    do if Equal(v1, DONE_ST)
 		  then throw exit ()
 		  else return()
-	    let _ : unit = SchedulerAction.stop()
+	    let _ : unit = SchedulerAction.@stop()
             return()
 
 	fun markEmpty () : () =
             let por : por = promote(por)
-	    let v1 : por_state = CAS(&0(por), EMPTY_ST, DONE_ST)
+	    let v1 : any = CAS(&0(por), EMPTY_ST, DONE_ST)
 	    do if Equal(v1, EMPTY_ST)
 		  then let _ : unit = SchedulerAction.@stop()
                        return()
@@ -61,11 +61,18 @@ structure Speculation :
                     return()
 	       else return()
 
-        cont retK (x : O.option) = 
-          cont k (unit : unit) = return(x)
-          (* FIXME *)
+      (* capture the ite of the original thread *)
+        let ite : ImplicitThread.ite = FLS.@get-ite(/ exh)
 
-	fun handlerK (sibling : C.cancelable, f : fun(unit / exh -> O.option)) : PT.fiber =
+      (* resume the original thread *)
+        cont retK (x : O.option) = 
+          cont k (z : unit) = return(x)
+          let thd : ImplicitThread.thread = ImplicitThread.@alloc(ite, k / exh)
+          do ImplicitThread.@run-out-of-scheduler(thd / exh)
+          let e : exn = Fail(@"Speculation.@por: impossible")
+          throw exh(e)
+
+	fun handler (sibling : C.cancelable, f : fun(unit / exh -> O.option)) : PT.fiber =
 	    cont k (unit : unit) = 
 		 let x : O.option = apply f(UNIT / exh)
 		 case x
@@ -74,13 +81,31 @@ structure Speculation :
 		     throw retK(O.NONE)
 		   | O.SOME(v : any) =>
 		     do apply markFull()
-		     let _ : PT.unit = C.@cancel(sibling / exh)
+		     do C.@cancel(sibling / exh)
 		     throw retK(x)
 		 end
 	    return(k)
 
+        let c1 : C.cancelable = C.@new(/ exh)
+	let c2 : C.cancelable = C.@new(/ exh)
+
+        let k2 : PT.fiber = apply handler(c1, f2)
+        let t1 : ImplicitThread.thread = ImplicitThread.@thread(k2, O.SOME(c2) / exh)
+	do ImplicitThread.@spawn(t1 / exh)
+
+	let k1 : PT.fiber = apply handler(c2, f1)
+        let t1 : ImplicitThread.thread = ImplicitThread.@thread(k1, O.SOME(c1) / exh)
+	do ImplicitThread.@run-out-of-scheduler(t1 / exh)
+        let e : exn = Fail(@"Speculation.@por: impossible")
+        throw exh(e)
+      ;
+
+      define @por-w (arg : [fun(unit / exh -> O.option), fun(unit / exh -> O.option)] / exh : exh) : O.option =
+	@por(#0(arg), #1(arg) / exh)
       ;
   
     )
+
+    val por : ((unit -> 'a Option.option) * (unit -> 'a Option.option)) -> 'a Option.option = _prim(@por-w)
 
   end
