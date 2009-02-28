@@ -166,8 +166,7 @@ structure VProc (* :
 	      do assert(Equal(currentTrampoline, nil))
 	      do vpstore(VP_SCHED_CONT, vp, trampoline)
 	      return()
-	  do @for-each-vproc(setTrampoline / exh)
-	  return()
+	  @for-each-vproc(setTrampoline / exh)
 	;
 
     (* push a scheduler action on a remote vproc's stack.
@@ -180,6 +179,7 @@ structure VProc (* :
 	  let item : [PT.sched_act, any] = alloc (act, (any)stk)
 	  let item : [PT.sched_act, any] = promote (item)
 	  do vpstore (VP_ACTION_STK, vp, item)
+(* FIXME: insert a write barrier here *)
 	  return()
 	;
 
@@ -191,24 +191,13 @@ structure VProc (* :
 	  @for-other-vprocs(f / exh)
 	;
 
-    (* initialize scheduling code on each vproc (except the host). *)
-      define @initialize-remote-schedulers (fls : FLS.fls / exh : exh) : () =
-	  cont wakeupK (x : PT.unit) = 
-	       let _ : PT.unit = SchedulerAction.@stop()
-	       return()
-	  fun f (vp : vproc / exh : exh) : () = VProcQueue.@enqueue-on-vproc(vp, fls, wakeupK)
-	  do @for-other-vprocs(f / exh)
-	  return()
-	;
-
     (* bootstrap the default scheduler *)
       define @boot-default-scheduler (mkAct : fun (vproc / exh -> PT.sched_act) / exh : exh) : () =
-(* ASSERT: signals are masked *)
+	  let self : vproc = SchedulerAction.@atomic-begin()
 	  let fls : FLS.fls = FLS.@get()
 	  do @set-trampoline (/ exh)
 	  do @seed-remote-action-stacks(mkAct / exh)
-	  cont startLeadK (_ : PT.unit) = @initialize-remote-schedulers(fls / exh)
-	  let self : vproc = host_vproc
+	  cont startLeadK (_ : PT.unit) = return()
 	  let act : PT.sched_act = apply mkAct (self / exh)
 	  SchedulerAction.@run(self, act, startLeadK)
 	;
