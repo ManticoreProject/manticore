@@ -193,11 +193,9 @@ dnl check for /proc/cpuinfo
 dnl
 AC_CHECK_FILES(/proc/cpuinfo)
 
-
 dnl ******************** SML/NJ configuration ********************
+dnl
 
-dnl
-dnl
 dnl check that we have a compatible version of SML/NJ
 dnl
 CHECK_SMLNJ([AC_MSG_ERROR([unable to find SML/NJ installation; check your PATH or set SMLNJ_CMD])])
@@ -208,13 +206,11 @@ then
 fi
 AC_SUBST(SMLNJ_VERSION)
 
-dnl
 dnl determine the heap-image suffix
 dnl
 CHECK_SMLNJ_HEAP_SUFFIX([
   AC_MSG_ERROR([unsupported configuration ${host_cpu}-${host_os}])])
 
-dnl
 dnl look for ml-makedepend
 dnl
 AC_MSG_CHECKING([for ml-makedepend])
@@ -364,6 +360,39 @@ typedef struct manticore_value *Value_t;
 #endif /* !_MANTICORE_CONFIG_H_ */
 ])
 
+dnl for the benchmark programs, we need the path to the PML compiler
+dnl
+PMLC=$MANTICORE_BINDIR/mc
+AC_SUBST(PMLC)
+
+dnl for the benchmark programs, we need the path to the MLton compiler
+dnl
+AC_ARG_WITH(mlton,
+  AC_HELP_STRING([--with-mlton=<path>], [specify path to mlton executable]),
+  [ac_cv_use_mlton=$withval], [ac_cv_use_mlton=no])
+if test x"$ac_cv_use_mlton" = xno ; then
+  # look for mlton in the path
+  AC_PATH_PROG([MLTON], [mlton], [none],
+    [$PATH$PATH_SEPARATOR/usr/bin$PATH_SEPARATOR/usr/local/bin])
+else
+  AC_MSG_CHECKING([path to mlton ($ac_cv_use_mlton)])
+  case $ac_cv_use_mlton in
+    /*) ;;
+    *) AC_MSG_ERROR([path to mlton must be absolute]) ;;
+  esac
+  if test -x $ac_cv_use_mlton ; then
+    MLTON=$ac_cv_use_mlton
+  AC_MSG_RESULT([ okay])
+  else
+    MLTON=none
+  AC_MSG_RESULT([ invalid])
+  fi
+fi
+if test x"$MLTON" = xnone ; then
+  AC_MSG_WARN([unable to find mlton])
+fi
+AC_SUBST(MLTON)
+
 dnl ******************** Output ********************
 
 dnl
@@ -373,6 +402,9 @@ AC_CONFIG_FILES(\
 dnl ***** Makefiles *****
   Makefile
   src/Makefile
+  src/benchmarks/programs/cml-pingpong/Makefile
+  src/benchmarks/programs/cml-primes/Makefile
+  src/benchmarks/programs/cml-spawn/Makefile
   src/gen/log-gen/Makefile
   src/lib/parallel-rt/build/Makefile
   src/lib/parallel-rt/build/config/Makefile
