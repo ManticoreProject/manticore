@@ -22,6 +22,9 @@ structure ImplicitThread (* :
     (* create a work group and make it ready to receive work *)
       define @group (workerInit : PT.fiber, spawnFn : fun(thread / exh -> unit) / exh : exh) : group;
 
+    (* allociate an implicit thread *)
+      define @alloc (ite : FLS.ite, k : PT.fiber / exh : exh) : thread;
+
     (* create an implicit thread *)
       define @thread (k : PT.fiber, 
 		      c : Option.option           (* cancelable *)
@@ -170,7 +173,13 @@ structure ImplicitThread (* :
 	return(thread)
       ;
 
-    (* create an implicit thread 
+    (* allocate an implicit thread *)
+      define @alloc (ite : ite, k : PT.fiber / exh : exh) : thread =
+	let thread : thread = alloc(k, ite)
+	return(thread)
+      ;
+
+    (* create an implicit thread
      * QUESTION: should the cancelation wrapping happen later in the @run operation?
      *)
       define @thread (k : PT.fiber, 
