@@ -15,9 +15,13 @@ structure Option =
       = NONE 
       | SOME of 'a
 
+    fun isSome opt = (case opt
+	   of NONE => false
+	    | SOME _ => true
+	  (* end case *))
+
 (*
-    fun valOf opt = (
-	  case opt
+    fun valOf opt = (case opt
 	   of NONE => raise Option
 	    | SOME x => x
           (* end case *))
