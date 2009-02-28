@@ -22,8 +22,10 @@ structure Cancelation (* : sig
      * NOTE: this operation modifies the ITE.
      *)
       define @new ( / exh : exh) : cancelable;
+
     (* cancel a cancelable. *)
       define @cancel (c : cancelable / exh : exh) : ();
+
     (* wrap a fiber with a cancelable. the fiber is now cancelable by applying @cancel(c / exh) *)
       define @wrap (c : cancelable, k : PT.fiber / exh : exh) : PT.fiber;
 
