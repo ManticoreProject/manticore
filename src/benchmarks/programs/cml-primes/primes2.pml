@@ -74,7 +74,7 @@ structure Main = struct
 	    Print.print(String.concat[
 		"Prime(", Int.toString n, ") = ",
 		Int.toString p, "; ", Time.toString t,
-		" seconds\n"
+		" seconds on ", Int.toString Primes.nVps, " processors\n"
 	      ])
 	  end
 
