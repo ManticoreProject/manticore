@@ -37,4 +37,6 @@ structure Main : sig
 	    RunCML.doit (thd, NONE)
 	  end
 
+    fun main _ = (timeit 10000000; OS.Process.success)
+
   end

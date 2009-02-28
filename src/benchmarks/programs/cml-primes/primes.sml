@@ -54,13 +54,7 @@ structure Primes : sig
 
   end
 
-structure Main : sig
-
-    val testit : int -> OS.Process.status
-
-    val timeit : int -> OS.Process.status
-
-  end = struct
+structure Main = struct
 
     fun testit n = let
 	  fun thd () = let
@@ -90,5 +84,7 @@ structure Main : sig
 	  in
 	    RunCML.doit (thd, NONE)
 	  end
+
+    fun main _ = (timeit 2000; OS.Process.success)
 
   end

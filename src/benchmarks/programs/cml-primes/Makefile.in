@@ -14,7 +14,7 @@ TARGET =	primes
 all:		$(TARGET)-smlnj $(TARGET)-mc1 $(TARGET)-mc2
 
 $(TARGET)-smlnj:	sources.cm primes.sml
-	echo "SMLofNJ.exportFn(\"primes-smlnj\", fn _ => (Main.timeit 10000000; OS.Process.success));" | $(SMLNJ) sources.cm
+	echo "SMLofNJ.exportFn(\"primes-smlnj\", Main.main);" | $(SMLNJ) sources.cm
 
 $(TARGET)-mc1:	primes1.pml
 	$(PMLC) -o $(TARGET)-mc1 primes1.pml

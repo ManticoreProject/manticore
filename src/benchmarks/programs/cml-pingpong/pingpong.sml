@@ -35,11 +35,7 @@ structure PingPong : sig
 
   end
 
-structure Main : sig
-
-    val timeit : int -> OS.Process.status
-
-  end = struct
+structure Main = struct
 
     fun timeit n = let
 	  fun thd () = let
@@ -55,5 +51,7 @@ structure Main : sig
 	  in
 	    RunCML.doit (thd, NONE)
 	  end
+
+    fun main _ = (timeit 10000000; OS.Process.success)
 
   end
