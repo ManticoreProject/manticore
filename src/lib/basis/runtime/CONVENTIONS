@@ -1,9 +1,9 @@
 Below are some conventions for programming the runtime basis library.
 
 Signal mask
-If a HLop has pre or post conditions regarding the signal mask, the function name should reflect
-the condition.
+Some HLOps rely on the signal mask being in a certain state (a for atomic or 
+n for non-atomic). We use the following naming convention for these hlops.
 
- - *from-atomic Signals must be masked before the call.
- - *to-atomic Signals are masked upon returning.
- - *in-atomic Signals are masked before and after the call.
+  @*from-atomic : a -> n             (atomic flag is set before the call)
+  @*to-atomic   : n -> a             (atomic flag is set after the call)
+  @*in-atomic   : a -> a             (atomic flag is set before and after the call)
