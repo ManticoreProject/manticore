@@ -52,6 +52,7 @@ structure MultiprogrammedWorkStealing :
             throw exh(exn)
 
 	  cont dispatch (thd : ImplicitThread.thread) = 
+            do assert(NotEqual(thd, enum(0)))
 	    do ImplicitThread.@run-in-scheduler(schedulerLoop, thd / exh)
 	    throw impossible()
 
@@ -66,10 +67,8 @@ structure MultiprogrammedWorkStealing :
 	    let thd : O.option = Cilk5Deque.@pop-hd-from-atomic(victimDeque / exh)
 	    case thd
 	     of O.NONE =>
-             (* hand off the processor to other schedulers *)
 		throw steal()
 	      | O.SOME(thd : ImplicitThread.thread) =>
-		 do assert(NotEqual(thd, enum(0)))
 		 throw dispatch (thd)
 	    end
         
