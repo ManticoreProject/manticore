@@ -11,7 +11,7 @@ structure ImplicitThread (* :
 
     type group
 
-  (* evaluate a thunk with respect to a work group. *)
+  (* evaluate a thunk on a work group. *)
     val runWithGroup : group * (unit -> 'a) -> 'a
   (* get a reference to the group at the top of the work-group stack *)
     val currentGroup : unit -> group
@@ -19,6 +19,7 @@ structure ImplicitThread (* :
 
     _prim(
 
+(* FIXME: explain the removeFn function *)
     (* create a work group and make it ready to receive work *)
       define @group (workerInit : PT.fiber, spawnFn : fun(thread / exh -> unit) / exh : exh) : group;
 
@@ -89,20 +90,66 @@ structure ImplicitThread (* :
 		any                            (* scheduler data *)
       ];
 
+    (* migrate the current thread to the top-level thread scheduler. the effect of this operation is to
+     * escape from any nested scheduler instance.
+     *)
+      define @migrate-to-top-level-sched (x : unit / exh : exh) : unit = 
+	cont k (x : unit) = return(UNIT)
+	let fls : FLS.fls = FLS.@get()
+	do VProcQueue.@enqueue(fls, k)
+	SchedulerAction.@stop()
+      ;
+
     (* access the work-group stack *)
-      define @get-group-stk (x : unit / exh : exh) : PrimStk.stk =
+      define @init-ite (x : unit / exh : exh) : unit =
         let iteOpt : Option.option = FLS.@find-ite(/ exh)
         case iteOpt
 	 of Option.NONE =>
 	    (* if there is no current ite, create a new one and set it as current *)
-            let stk : PrimStk.stk = PrimStk.@new(UNIT / exh)
-	    let ite : ite = FLS.@ite(stk, Option.NONE / exh)
+	    let ite : ite = FLS.@ite(List.nil, Option.NONE / exh)
 	    do FLS.@set-ite(ite / exh)
-            return(stk)
+            return(UNIT)
 	  | Option.SOME (ite : ite) =>
 	    let ite : ite = FLS.@get-ite(/ exh)
- 	    return(SELECT(ITE_STACK_OFF, ite))
+ 	    return(UNIT)
         end
+      ;
+
+    (* return the top of the group stack.
+     * NOTE: an exception is raised if the stack is empty
+     *)
+      define @peek (x : unit / exh : exh) : group =
+        let ite : ite = FLS.@get-ite(/ exh)
+        let stk : List.list = SELECT(ITE_STACK_OFF, ite)
+        case stk
+	 of List.nil => 
+	    let e : exn = Fail(@"ImplicitThread.@peek: empty work-group stack")
+            throw exh(e)
+	  | List.CONS(group : group, stk : List.list) =>
+	    return(group)
+        end
+      ;
+
+      define @pop (_ : unit / exh : exh) : Option.option =
+	let ite : ite = FLS.@get-ite( / exh)
+        let stk : List.list = SELECT(ITE_STACK_OFF, ite)
+	case stk
+	 of List.nil => 
+	    return(Option.NONE)
+	  | List.CONS(x : any, stk : List.list) => 
+	    let ite : ite = alloc(stk, SELECT(ITE_CANCELABLE_OFF, ite))
+	    do FLS.@set-ite(ite / exh)
+	    return(Option.SOME(x))
+	end
+      ;
+
+      define @push (group : group / exh : exh) : unit =
+	let ite : ite = FLS.@get-ite( / exh)
+        let stk : List.list = SELECT(ITE_STACK_OFF, ite)
+	let stk : List.list = List.CONS(group, stk)
+	let ite : ite = alloc(stk, SELECT(ITE_CANCELABLE_OFF, ite))
+	do FLS.@set-ite(ite / exh)
+	return(UNIT)
       ;
 
     (* initiate n worker fibers on allocated processors.
@@ -142,6 +189,7 @@ structure ImplicitThread (* :
                      removeFn : fun(thread / exh -> bool),
                      schedulerData : any
                     / exh : exh) : group =
+        let _ : unit = @migrate-to-top-level-sched(UNIT / exh)
 	let group : group = alloc(workerInit, spawnFn, removeFn, schedulerData)
         let group : group = promote(group)
         do @init-on-all-vprocs(group / exh)
@@ -187,8 +235,7 @@ structure ImplicitThread (* :
                      / exh : exh) : thread =
       (* capture the work-group stack *)
 	let ite : ite = FLS.@get-ite( / exh)
-        let stk : PrimStk.stk = SELECT(ITE_STACK_OFF, ite)
-        let stk : PrimStk.stk = PrimStk.@copy(stk / exh)
+        let stk : List.list = SELECT(ITE_STACK_OFF, ite)
 	let ite' : ite = FLS.@ite(stk, c / exh)
         let c : Option.option = SELECT(ITE_CANCELABLE_OFF, ite)
         let k' : PT.fiber = @wrap-cancelable(k, c / exh)
@@ -209,39 +256,24 @@ structure ImplicitThread (* :
 	SchedulerAction.@run(host_vproc, sched, SELECT(FIBER_OFF, thd))
       ;
 
-    (* return the top of the group stack.
-     * NOTE: an exception is raised if the stack is empty
-     *)
-      define @get-group-stack-top (/ exh : exh) : group =
-        let stk : PrimStk.stk = @get-group-stk(UNIT / exh)
-        let group : Option.option = PrimStk.@peek(stk / exh)
-        case group
-	 of Option.NONE =>
-	    let e : exn = Fail(@"ImplicitThread.@get-stack-top: empty work-group stack")
-            throw exh(e)
-	  | Option.SOME(group : group) =>
-	    return(group)
-        end
-      ;
-
     (* spawn the implicit thread on the work group at the top of the work-group stack *)
       define @spawn (thd : thread / exh : exh) : () =
-        let group : group = @get-group-stack-top(/ exh)
+        let group : group = @peek(UNIT / exh)
 	let spawnFn : fun(thread / exh -> unit) = SELECT(GROUP_SPAWN_OFF, group)
         let _ : unit = apply spawnFn(thd / exh)
 	return()
       ;
 
-    (* remove a thread from the ready queue. returns true iff the thread had been migrated off the queue. *)
+    (* remove a thread from the ready queue. returns true if the thread has migrated off the queue. *)
       define @remove-thread (thd : thread / exh : exh) : bool =
-	let group : group = @get-group-stack-top(/ exh)
+	let group : group = @peek(UNIT / exh)
 	let removeFn : fun(thread / exh -> bool) = SELECT(GROUP_REMOVE_OFF, group)
 	apply removeFn(thd / exh)
       ;
 
     (* get the scheduler data for current group *)
       define @get-scheduler-data (/ exh : exh) : any =
-        let group : group = @get-group-stack-top(/ exh)
+        let group : group = @peek(UNIT / exh)
 	return(SELECT(GROUP_SCHEDULER_DATA_OFF, group))
       ;
 
@@ -249,26 +281,25 @@ structure ImplicitThread (* :
 
     type group = _prim(group)
 
-    val getGroupStk : unit -> group PrimStk.stk = _prim(@get-group-stk)
+    val initITE : unit -> unit = _prim(@init-ite)
+    val peek : unit -> group = _prim(@peek)
+    val pop : unit -> group Option.option = _prim(@pop)
+    val push : group -> unit = _prim(@push)
+    val migrateToTopLevelSched : unit -> unit = _prim(@migrate-to-top-level-sched)
 
-    fun outOfScope group = () (* TODO *)
-
-  (* evaluate a thunk with respect to a work group. *)
+  (* evaluate a thunk on a work group. *)
     fun runWithGroup (group, f) = let
-	  val groupStk = getGroupStk()
-	  val () = PrimStk.push(groupStk, group)
+	  val () = migrateToTopLevelSched()
+	  val () = initITE()
+	  val () = push group
 	  val x = f()
           in
-	    outOfScope group;
-	    PrimStk.pop groupStk;
+	    pop();
+	    migrateToTopLevelSched();
 	    x
 	  end
 
   (* get a reference to the group at the top of the work-group stack *)
-    fun currentGroup () = (
-	  case PrimStk.peek(getGroupStk())
-	   of Option.NONE => (raise Fail "currentGroup: empty group stack")
-	    | Option.SOME group => group
-          (* end case *))
+    val currentGroup = peek
 
   end

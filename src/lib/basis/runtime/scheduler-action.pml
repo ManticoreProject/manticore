@@ -57,6 +57,11 @@ structure SchedulerAction (* :
 	  return ()
 	;
 
+      define inline @assert-nonempty-action-stk (vp : vproc) : () =
+	 let tos : [PT.sched_act, any] = vpload(VP_ACTION_STK, vp)
+	 assert (NotEqual(tos, nil))
+	;
+
     (* pop from the host vproc's scheduler action stack *)
       define inline @pop-act (vp : vproc) : PT.sched_act =
 	  let tos : [PT.sched_act, any] = vpload(VP_ACTION_STK, vp)
@@ -74,6 +79,7 @@ structure SchedulerAction (* :
 	  let stk : [PT.sched_act, any] = vpload (VP_ACTION_STK, vp)
 	  let item : [PT.sched_act, any] = alloc (act, (any)stk)
 	  do vpstore (VP_ACTION_STK, vp, item)
+	  do assert (Equal(vp, host_vproc))
 	  return()
 	;
 

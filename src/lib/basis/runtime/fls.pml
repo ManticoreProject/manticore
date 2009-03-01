@@ -42,7 +42,7 @@ structure FLS (* :
 
     (* environment of an implicit thread; see ../implicit-threading/implicit-thread.pml *)
       typedef ite = [
-	  PrimStk.stk,                  (* work-group stack *)
+	  List.list,                    (* work-group stack *)
 	  Option.option                 (* current cancelable *)
 	];
 
@@ -83,7 +83,7 @@ structure FLS (* :
 
     (* environment of an implicit thread *)
       typedef ite = [
-	  PrimStk.stk,		(* work-group stack *)
+	  List.list,		(* work-group stack *)
 	  Option.option		(* current cancelable *)
 	];
 
@@ -150,7 +150,7 @@ structure FLS (* :
 	;
 
     (* create ite *)
-      define @ite (stk : PrimStk.stk,
+      define @ite (stk : List.list,
 		   c : Option.option           (* cancelable *)
 		  / exh : exh) : ite =
 	let ite : ite = alloc(stk, c)

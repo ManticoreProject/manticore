@@ -23,7 +23,6 @@ double.pml
 ann "cpp" "../include/prim.def,../include/assert.def"
 in
   prim-list.pml
-  prim-stk.pml
 end
 time.pml
 prim-io.pml
