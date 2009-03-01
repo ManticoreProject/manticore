@@ -21,10 +21,10 @@ structure GlobalBFSScheduler :
       define @worker (readyQ : LockedQueue.queue / exh : exh) : PT.fiber =
 	cont schedulerLoop (s : PT.signal) =
 	  cont dispatch () =
+            do SchedulerAction.@yield-in-atomic(host_vproc)
 	    let thd : Option.option = LockedQueue.@dequeue-from-atomic(readyQ)
 	    case thd
 	     of Option.NONE =>
-		do SchedulerAction.@yield-in-atomic(host_vproc)
 		throw dispatch()
 	      | Option.SOME(thd : ImplicitThread.thread) =>
 		do ImplicitThread.@run-in-scheduler(schedulerLoop, thd / exh)
