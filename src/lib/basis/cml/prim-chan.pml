@@ -150,13 +150,13 @@ structure PrimChan (*: sig
 		  (* in *)
 		    return (result)
 	    end
-	;
+	  ;
 
 	define inline @chan-new (arg : unit / exh : exh) : chan_rep =
 	    let ch : chan_rep = alloc(false, nil, nil, nil, nil)
 	    let ch : chan_rep = promote (ch)
 	    return (ch)
-	;
+	  ;
 	
 	define @chan-recv (ch : chan_rep / exh : exh) : any =
 	    let self : vproc = SchedulerAction.@atomic-begin ()
