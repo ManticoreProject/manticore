@@ -16,7 +16,7 @@ structure RoundRobin =
           let self : vproc = host_vproc
 
           cont dispatch () =
-            let item : Option.option = VProcQueue.@dequeue-in-atomic(self)
+            let item : Option.option = VProcQueue.@dequeue-from-atomic(self)
             case item
 	     of Option.NONE => 
 (* choose whether the vproc goes to sleep when there is no work to do *)
@@ -25,7 +25,7 @@ structure RoundRobin =
 #endif
 		throw dispatch()
 	      | Option.SOME(qitem : VProcQueue.queue) =>
-		do SchedulerAction.@dispatch-from-atomic (self, switch, #1(qitem), #0(qitem) / exh)
+		do SchedulerAction.@dispatch-from-atomic (self, switch, #1(qitem), #0(qitem))
                 return(UNIT)
             end
 
@@ -34,7 +34,7 @@ structure RoundRobin =
 	         throw dispatch ()
 	     | PT.PREEMPT (k : PT.fiber) =>
 		 let fls : FLS.fls = FLS.@get ()
-		 do VProcQueue.@enqueue-in-atomic (self, fls, k)
+		 do VProcQueue.@enqueue-from-atomic (self, fls, k)
 		 throw dispatch () 
 	     | _ =>
 	       let e : exn = Match

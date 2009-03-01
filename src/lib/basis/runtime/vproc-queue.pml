@@ -26,17 +26,23 @@ structure VProcQueue (* :
       typedef queue = [FLS.fls, PT.fiber, any];
 
     (* enqueue on the host's vproc's thread queue *)
-      define inline @enqueue-in-atomic (vp : vproc, fls : FLS.fls, fiber : PT.fiber) : ();
+      define inline @enqueue-from-atomic (vp : vproc, fls : FLS.fls, fiber : PT.fiber) : ();
       define inline @enqueue (fls : FLS.fls, fiber : PT.fiber) : ();
 
     (* dequeue from the local queue  *)
-      define inline @dequeue-in-atomic () : O.option;
+      define inline @dequeue-from-atomic () : O.option;
 
     (* enqueue a fiber (paired with fls) on a remote vproc *)
       define @enqueue-on-vproc (dst : vproc, fls : FLS.fls, k : PT.fiber) : ();
 
     (* dequeue the first item to satisfy the given predicate  *)
-      define @dequeue-with-pred (f : fun(FLS.fls / exh -> bool) / exh : exh) : O.option;
+      define @dequeue-with-pred-from-atomic (f : fun(FLS.fls / exh -> bool) / exh : exh) : O.option;
+
+    (* returns true if the local queue is empty *)
+      define @is-local-queue-empty-from-atomic (self : vproc) : bool;
+
+    (* returns true if the local queue contains more than one thread *)
+      define @more-than-one-from-atomic (vp : vproc) : bool;
 
     )
 
@@ -60,7 +66,8 @@ structure VProcQueue (* :
 	  any			(* link to next stack element *)
 	];
 
-      define @is-local-queue-empty (self : vproc) : bool =
+    (* returns true if the local queue is empty *)
+      define @is-local-queue-empty-from-atomic (self : vproc) : bool =
 	  let tl : queue = vpload (VP_RDYQ_TL, self)
 	  if Equal(tl, Q_EMPTY) then
 	      let hd : queue = vpload (VP_RDYQ_HD, self)
@@ -71,22 +78,26 @@ structure VProcQueue (* :
 	    else return (false)
 	;
 
-      define @is-queue-gt-one (q : queue / exh : exh) : int =
-	  if Equal(q, Q_EMPTY) then return  (0)
-	  else if Equal(SELECT(LINK_OFF, q), Q_EMPTY) then return (1)
-	  else return( 2)
-	;
+    (* returns true if the local queue contains more than one thread *)
+      define @more-than-one-from-atomic (vp : vproc) : bool =
+	  let tl : queue = vpload (VP_RDYQ_TL, vp)
+	  let hd : queue = vpload (VP_RDYQ_HD, vp)
 
-      define @is-local-queue-gt-one ( / exh : exh) : bool =
-	  let tl : queue = vpload (VP_RDYQ_TL, host_vproc)
-	  let hd : queue = vpload (VP_RDYQ_HD, host_vproc)
-	  let ntl : int = @is-queue-gt-one(tl / exh)
-	  let nhd : int = @is-queue-gt-one(hd / exh)
-	  return(I32Gt(I32Add(ntl, nhd), 1))
+	  let nTl : int =
+		    if Equal(tl, Q_EMPTY) then return(0)
+		    else if Equal(SELECT(LINK_OFF, tl), Q_EMPTY) then return (1)
+		    else return(2)
+
+	  let nHd : int =
+		    if Equal(hd, Q_EMPTY) then return(0)
+		    else if Equal(SELECT(LINK_OFF, hd), Q_EMPTY) then return (1)
+		    else return(2)
+
+	  return(I32Gt(I32Add(nTl, nHd), 1))
 	;
 
     (* enqueue on the local queue. NOTE: signals must be masked *)
-      define inline @enqueue-in-atomic (vp : vproc, fls : FLS.fls, fiber : PT.fiber) : () =
+      define inline @enqueue-from-atomic (vp : vproc, fls : FLS.fls, fiber : PT.fiber) : () =
 	  let tl : queue = vpload (VP_RDYQ_TL, vp)
 	  let qitem : queue = alloc(fls, fiber, tl)
 	  do vpstore (VP_RDYQ_TL, vp, qitem)
@@ -134,7 +145,7 @@ structure VProcQueue (* :
 		      apply lp((queue)SELECT(LINK_OFF, queue), messengerThds)
 		  else
 		    (* the head of the queue is an ordinary thread; put it on the local queue *)
-		      do @enqueue-in-atomic (host_vproc, SELECT(FLS_OFF, queue), SELECT(FIBER_OFF, queue))
+		      do @enqueue-from-atomic (host_vproc, SELECT(FLS_OFF, queue), SELECT(FIBER_OFF, queue))
 		      apply lp((queue)SELECT(LINK_OFF, queue), messengerThds)
 	  apply lp(queue, nil)
 	;
@@ -173,7 +184,7 @@ structure VProcQueue (* :
 	;	  
 
     (* dequeue from the local queue  *)
-      define inline @dequeue-in-atomic (vp : vproc) : O.option =
+      define inline @dequeue-from-atomic (vp : vproc) : O.option =
 (* NOTE: with software polling, we do not need to do this check! *)
 	  let messages : List.list = @unload-and-check-messages()
 	  let hd : queue = vpload (VP_RDYQ_HD, vp)
@@ -190,23 +201,20 @@ structure VProcQueue (* :
     (* enqueue on the host's vproc's thread queue *)
       define inline @enqueue (fls : FLS.fls, fiber : PT.fiber) : () =
 	  let vp : vproc = SchedulerAction.@atomic-begin()
-	  do @enqueue-in-atomic (host_vproc, fls, fiber)
+	  do @enqueue-from-atomic (host_vproc, fls, fiber)
 	  do SchedulerAction.@atomic-end(vp)
 	  return ()
 	;
 
     (* dequeue the first item to satisfy the given predicate  *)
-      define @dequeue-with-pred (f : fun(FLS.fls / exh -> bool) / exh : exh) : O.option =
-	  let self : vproc = SchedulerAction.@atomic-begin ()
-	  cont exit (x : O.option) = 
-	      do SchedulerAction.@atomic-end (self)
-	      return(x)
-	  let qitem : O.option = @dequeue-in-atomic(self)
+      define @dequeue-with-pred-from-atomic (self : vproc, f : fun(FLS.fls / exh -> bool) / exh : exh) : O.option =
+	  cont exit (x : O.option) = return(x)
+	  let qitem : O.option = @dequeue-from-atomic(self)
 	  case qitem
 	   of O.NONE => throw exit(O.NONE)
 	    | O.SOME (origItem : queue) =>
 	      fun lp () : O.option =
-		  let qitem : O.option = @dequeue-in-atomic(self)
+		  let qitem : O.option = @dequeue-from-atomic(self)
 		  case qitem
 		   of O.NONE => throw exit(O.NONE)
 		    | O.SOME(item : queue) =>
@@ -214,16 +222,16 @@ structure VProcQueue (* :
 		      if b then throw exit (O.SOME(item))
 		      else if Equal(SELECT(FLS_OFF, item), SELECT(FLS_OFF, origItem))
 			then 
-			  do @enqueue(SELECT(FLS_OFF, item), SELECT(FIBER_OFF, item))
+			  do @enqueue-from-atomic(self, SELECT(FLS_OFF, item), SELECT(FIBER_OFF, item))
 			  throw exit (O.NONE)
 			else 
-			  do @enqueue(SELECT(FLS_OFF, item), SELECT(FIBER_OFF, item))
+			  do @enqueue-from-atomic(self, SELECT(FLS_OFF, item), SELECT(FIBER_OFF, item))
 			  apply lp()
 		  end
 	      let b : bool = apply f (SELECT(FLS_OFF, origItem) / exh)
 	      if b then throw exit(O.SOME(origItem))
 	      else
-		do @enqueue(SELECT(FLS_OFF, origItem), SELECT(FIBER_OFF, origItem))
+		do @enqueue-from-atomic(self, SELECT(FLS_OFF, origItem), SELECT(FIBER_OFF, origItem))
 		apply lp()
 	  end
 	;

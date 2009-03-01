@@ -37,7 +37,7 @@ structure SchedulerAction (* :
       define inline @fiber (f : PT.fiber_fun / exh : exh) : PT.fiber;
 
     (* run the fiber under the scheduler action and with the given fls *)
-      define inline @dispatch-from-atomic (self : vproc, act : PT.sched_act, fiber : PT.fiber, fls : FLS.fls / exh : exh) noreturn;
+      define inline @dispatch-from-atomic (self : vproc, act : PT.sched_act, fiber : PT.fiber, fls : FLS.fls) noreturn;
 
     )
 
@@ -57,11 +57,6 @@ structure SchedulerAction (* :
       define inline @atomic-end-no-check (vp : vproc) : () =
 	  do vpstore (ATOMIC, vp, false)
 	  return ()
-	;
-
-      define inline @assert-nonempty-action-stk (vp : vproc) : () =
-	 let tos : [PT.sched_act, any] = vpload(VP_ACTION_STK, vp)
-	 assert (NotEqual(tos, nil))
 	;
 
     (* pop from the host vproc's scheduler action stack *)
@@ -165,7 +160,7 @@ structure SchedulerAction (* :
 	;
 
     (* run the fiber under the scheduler action and with the given fls *)
-      define inline @dispatch-from-atomic (self : vproc, act : PT.sched_act, fiber : PT.fiber, fls : FLS.fls / exh : exh) noreturn =
+      define inline @dispatch-from-atomic (self : vproc, act : PT.sched_act, fiber : PT.fiber, fls : FLS.fls) noreturn =
 	  do FLS.@set(fls)
 	  @run (self, act, fiber)
 	;

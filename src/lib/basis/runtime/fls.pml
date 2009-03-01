@@ -58,6 +58,7 @@ structure FLS (* :
       define inline @new-pinned (vprocId : int /) : fls;
     (* set the fls on the host vproc *)
       define inline @set (fls : fls / exh : exh) : ();
+      define inline @set-in-atomic (self : vproc, fls : fls) : ();
     (* get the fls from the host vproc *)
       define inline @get () : fls;
 
@@ -107,7 +108,7 @@ structure FLS (* :
 	;
 
     (* create a new FLS pinned to the given vproc *)
-      define inline @new-pinned (vprocId : int /) : fls =
+      define inline @new-pinned (vprocId : int) : fls =
 	  let fls : fls = alloc(vprocId, Option.NONE)
 	  return (fls)
 	;
