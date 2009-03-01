@@ -168,7 +168,8 @@ structure ImplicitThread (* :
 		do apply spawnFn(i, init / exh)
 		apply spawn(I32Add(i, 1) / exh)
 	do apply spawn(0 / exh)
-	NWayBarrier.@barrier(barrier / exh)
+	do NWayBarrier.@barrier(barrier / exh)
+        return()
       ;
 
     (* initiate a work group on all vprocs *)
