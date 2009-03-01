@@ -1,0 +1,37 @@
+20090301-1158
+
+CML:
+10000000 messages in 6.315 seconds
+10000000 messages in 6.128 seconds
+10000000 messages in 6.264 seconds
+10000000 messages in 6.226 seconds
+10000000 messages in 6.222 seconds
+10000000 messages in 6.243 seconds
+10000000 messages in 6.205 seconds
+10000000 messages in 6.128 seconds
+10000000 messages in 6.266 seconds
+10000000 messages in 6.190 seconds
+
+Manticore 1P:
+2000000 messages in 2.828 seconds
+2000000 messages in 2.863 seconds
+2000000 messages in 2.865 seconds
+2000000 messages in 2.909 seconds
+2000000 messages in 2.789 seconds
+2000000 messages in 2.893 seconds
+2000000 messages in 2.877 seconds
+2000000 messages in 2.887 seconds
+2000000 messages in 2.879 seconds
+2000000 messages in 2.871 seconds
+
+Manticore 2P:
+2000000 messages in 7.451 seconds
+2000000 messages in 7.349 seconds
+2000000 messages in 7.473 seconds
+2000000 messages in 7.317 seconds
+2000000 messages in 7.332 seconds
+2000000 messages in 7.342 seconds
+2000000 messages in 7.349 seconds
+2000000 messages in 7.409 seconds
+2000000 messages in 7.337 seconds
+2000000 messages in 7.335 seconds

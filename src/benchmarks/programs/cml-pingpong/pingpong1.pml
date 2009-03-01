@@ -50,4 +50,4 @@ structure Main = struct
 
   end
 
-val _ = Main.timeit 5000000
+val _ = Main.timeit 2000000
