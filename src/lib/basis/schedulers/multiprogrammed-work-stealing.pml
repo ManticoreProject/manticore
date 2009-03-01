@@ -53,7 +53,7 @@ structure MultiprogrammedWorkStealing :
 
 	  cont dispatch (thd : ImplicitThread.thread) = 
             do assert(NotEqual(thd, enum(0)))
-	    do ImplicitThread.@run-in-scheduler(schedulerLoop, thd / exh)
+	    do ImplicitThread.@run-in-scheduler(self, schedulerLoop, thd / exh)
 	    throw impossible()
 
         (* attempt to steal from another worker *)
@@ -69,7 +69,7 @@ structure MultiprogrammedWorkStealing :
 	     of O.NONE =>
 		throw steal()
 	      | O.SOME(thd : ImplicitThread.thread) =>
-		 throw dispatch (thd)
+		throw dispatch(thd)
 	    end
         
 	  case sign
@@ -93,18 +93,18 @@ structure MultiprogrammedWorkStealing :
       ;
 
     (* get a pointer to the deque that is local to the host vproc *)
-      define @get-local-deque (/ exh : exh) : Cilk5Deque.deque =
+      define @get-local-deque-from-atomic (vp : vproc / exh : exh) : Cilk5Deque.deque =
 	let schedulerData : any = ImplicitThread.@get-scheduler-data(/ exh)
 	let schedulerData : scheduler_data = (scheduler_data)schedulerData
-	let workerId : int = VProc.@vproc-id(host_vproc)
+	let workerId : int = VProc.@vproc-id(vp)
 	let deque : Cilk5Deque.deque = Arr.@sub(SELECT(0, schedulerData), workerId / exh)
 	return(deque)
       ;
 
     (* pop from the tail of the local deque *)
       define @pop-tl ( / exh : exh) : bool =
-	let deque : Cilk5Deque.deque = @get-local-deque( / exh)
         let vp : vproc = SchedulerAction.@atomic-begin()
+	let deque : Cilk5Deque.deque = @get-local-deque-from-atomic(vp / exh)
 	let kOpt : O.option = Cilk5Deque.@pop-tl-from-atomic(deque / exh)
         do SchedulerAction.@atomic-end(vp)
 	let isNonEmpty : bool = 
@@ -116,9 +116,9 @@ structure MultiprogrammedWorkStealing :
       ;
 
     (* push on the tail of the local deque *)
-      define @push-tl(thd : ImplicitThread.thread / exh : exh) : () =
-	let deque : Cilk5Deque.deque = @get-local-deque( / exh)
+      define @push-tl (thd : ImplicitThread.thread / exh : exh) : () =
         let vp : vproc = SchedulerAction.@atomic-begin()
+	let deque : Cilk5Deque.deque = @get-local-deque-from-atomic(vp / exh)
 	do Cilk5Deque.@push-tl-from-atomic(deque, thd / exh)
         do SchedulerAction.@atomic-end(vp)
         return()
@@ -137,17 +137,17 @@ structure MultiprogrammedWorkStealing :
         let schedulerData : scheduler_data = alloc(deques)
 	    
 	fun spawnFn (thd : ImplicitThread.thread / exh : exh) : unit =
-            let workerId : int = VProc.@vproc-id(host_vproc)
-            let deque : Cilk5Deque.deque = Arr.@sub(deques, workerId / exh)
             let vp : vproc = SchedulerAction.@atomic-begin()
+            let workerId : int = VProc.@vproc-id(vp)
+            let deque : Cilk5Deque.deque = Arr.@sub(deques, workerId / exh)
 	    do Cilk5Deque.@push-tl-from-atomic(deque, thd / exh)
             do SchedulerAction.@atomic-end(vp)
 	    return(UNIT)
 
         fun removeFn (thd : ImplicitThread.thread / exh : exh) : bool = 
-	    let workerId : int = VProc.@vproc-id(host_vproc)
-            let deque : Cilk5Deque.deque = Arr.@sub(deques, workerId / exh)
             let vp : vproc = SchedulerAction.@atomic-begin()
+	    let workerId : int = VProc.@vproc-id(vp)
+            let deque : Cilk5Deque.deque = Arr.@sub(deques, workerId / exh)
             let x : Option.option = Cilk5Deque.@pop-tl-from-atomic(deque / exh)
             do SchedulerAction.@atomic-end(vp)
             case x

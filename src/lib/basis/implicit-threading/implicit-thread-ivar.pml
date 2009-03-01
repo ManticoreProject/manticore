@@ -47,7 +47,7 @@ NOTE: supposing we have inLocalHeap,
 	   then return(SELECT(VALUE_OFF, ivar))
 	else 
 *)
-
+        let vp : vproc = SchedulerAction.@atomic-begin()
 	let readFlag : int = I32FetchAndAdd(&SPIN_LOCK_OFF(ivar), 1)
 	let value : any = SELECT(VALUE_OFF, ivar)
 	if Equal(value, EMPTY_VAL)
@@ -64,16 +64,19 @@ NOTE: supposing we have inLocalHeap,
 		   else apply loop ()
 	      do apply loop()
 	      let x : int = I32FetchAndAdd(&SPIN_LOCK_OFF(ivar), ~1)
-	      let x : PT.unit = SchedulerAction.@stop()
-	      return(value)
+	      let x : PT.unit = SchedulerAction.@stop-from-atomic(vp)
+	      let e : exn = Fail(@"ImplicitThreadIVar.@get: impossible")
+              throw exh(e)
 	else
 	    let x : int = I32FetchAndAdd(&SPIN_LOCK_OFF(ivar), ~1)
+            do SchedulerAction.@atomic-end(vp)
 	    return (value)
       ;
 
       define @put (ivar : ivar, x : any / exh : exh) : () = 
         let ivar : ivar = promote(ivar)
 	let x : any = promote((any)x)
+        let vp : vproc = SchedulerAction.@atomic-begin()
 	let oldValue : any = CAS (&VALUE_OFF(ivar), EMPTY_VAL, x)
       (* wait for blocking fibers *)
 	let blocked : List.list = 
@@ -91,7 +94,9 @@ NOTE: supposing we have inLocalHeap,
 	       return(nil)
         fun unblock (thd : ImplicitThread.thread / exh : exh) : () =
 	    ImplicitThread.@spawn(thd / exh)
-        PrimList.@app(unblock, blocked / exh)
+        do PrimList.@app(unblock, blocked / exh)
+        do SchedulerAction.@atomic-end(vp)
+        return()
       ;
 
     )

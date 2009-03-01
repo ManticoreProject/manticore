@@ -76,7 +76,8 @@ structure EagerFuture : FUTURE =
         let thd : ImplicitThread.thread = ImplicitThread.@thread(k', Option.SOME(c) / exh)
         do ImplicitThread.@run-out-of-scheduler(thd / exh)
 
-        return(fut)
+	let e : exn = Fail(@"EagerFuture.@future-with-cancelation: impossible")
+	throw exh(e)
       ;
 
       define @future (arg : [fun(unit / exh -> any), bool] / exh : exh) : future =

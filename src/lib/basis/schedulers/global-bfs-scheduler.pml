@@ -20,14 +20,16 @@ structure GlobalBFSScheduler :
     (* create a single worker *)
       define @worker (readyQ : LockedQueue.queue / exh : exh) : PT.fiber =
 	cont schedulerLoop (s : PT.signal) =
+          let self : vproc = host_vproc
+
 	  cont dispatch () =
-            do SchedulerAction.@yield-in-atomic(host_vproc)
+            do SchedulerAction.@yield-in-atomic(self)
 	    let thd : Option.option = LockedQueue.@dequeue-from-atomic(readyQ)
 	    case thd
 	     of Option.NONE =>
 		throw dispatch()
 	      | Option.SOME(thd : ImplicitThread.thread) =>
-		do ImplicitThread.@run-in-scheduler(schedulerLoop, thd / exh)
+		do ImplicitThread.@run-in-scheduler(self, schedulerLoop, thd / exh)
 		throw dispatch()
 	    end
 	 case s
@@ -38,7 +40,7 @@ structure GlobalBFSScheduler :
 	     (* QUESTION: does this policy work well for a shared FIFO queue? *)
 	     let thd : ImplicitThread.thread = ImplicitThread.@capture(k / exh)
 	     do LockedQueue.@enqueue-from-atomic(readyQ, thd)
-	     do SchedulerAction.@yield-in-atomic(host_vproc)
+	     do SchedulerAction.@yield-in-atomic(self)
 	     throw dispatch()
 	   | _ => 
 	     let e : exn = Match

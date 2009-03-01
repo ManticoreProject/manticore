@@ -41,7 +41,7 @@ structure ImplicitThread (* :
       define @run-out-of-scheduler (thd : thread / exh : exh) noreturn;
 
     (* run an implicit thread from within a scheduler action *)
-      define @run-in-scheduler (sched : PT.sched_act, thd : thread / exh : exh) noreturn;
+      define @run-in-scheduler (vp : vproc, sched : PT.sched_act, thd : thread / exh : exh) noreturn;
 
     (* spawn an implicit thread on the work group at the top of the work-group stack *)
       define @spawn (thd : thread / exh : exh) : ();
@@ -251,9 +251,9 @@ structure ImplicitThread (* :
       ;
 
     (* run an implicit thread from within a scheduler action *)
-      define @run-in-scheduler (sched : PT.sched_act, thd : thread / exh : exh) noreturn =
+      define @run-in-scheduler (vp : vproc, sched : PT.sched_act, thd : thread / exh : exh) noreturn =
 	do FLS.@set-ite(SELECT(ITE_OFF, thd) / exh)
-	SchedulerAction.@run(host_vproc, sched, SELECT(FIBER_OFF, thd))
+	SchedulerAction.@run(vp, sched, SELECT(FIBER_OFF, thd))
       ;
 
     (* spawn the implicit thread on the work group at the top of the work-group stack *)

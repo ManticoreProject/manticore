@@ -6,11 +6,12 @@ fun fib (i : int) = (case i
 	| n => fib(i-1) + fib(i-2)
       (* end case *))
 
-fun doit pfib x i = 
+fun doit pfib x i = (
+Print.printLn "doit";
     if i < 0 then true
     else if pfib x = fib x
     then doit pfib x (i-1)
-    else false
+    else false)
 
 
 (* eager futures & work stealing & no cancelation *)
@@ -30,7 +31,7 @@ val () = ImplicitThread.runWithGroup(cilk5, fn () => pml_assert(doit pfib 21 4))
 val () = Print.printLn "eager futures"
 
 (* lazy futures & global BFS & no cancelation *)
-
+(*
 val globalBFS = GlobalBFSScheduler.workGroup()
 (*
 val x = ImplicitThread.runWithGroup(globalBFS, fn () =>
@@ -56,6 +57,6 @@ fun pfib (i : int) = (case i
       (* end case *))
 
 val x = ImplicitThread.runWithGroup(globalBFS, fn () => pml_assert(doit pfib 21 4))
-
+*)
 val () = Print.printLn "Finished futures tests"
 
