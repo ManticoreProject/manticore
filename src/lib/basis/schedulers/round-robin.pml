@@ -12,7 +12,7 @@ structure RoundRobin =
 (* choose whether the vproc goes to sleep when there is no work to do. if BUSY_WAIT == 1 then, sleeping
  * is enabled, and is disabled when BUSY_WAIT == 0.
  *)
-#define BUSY_WAIT               1
+#define BUSY_WAIT               0
 
     _primcode(
     (* top-level thread scheduler that uses a round robin policy *)
