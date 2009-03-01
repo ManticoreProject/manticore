@@ -15,8 +15,8 @@ structure NWayBarrier =
 #define BARRIER_COUNT_OFF     1
 
       typedef barrier = ![
-                int,         (* NUM_IN_BARRIER_OFF: number of fibers that are part of the barrier *)
-		int          (* BARRIER_COUNT_OFF: count of ready fibers *)
+                int,         (* number of fibers that are part of the barrier *)
+		int          (* count of ready fibers *)
               ];
 
     (* create a barrier *)
@@ -36,14 +36,14 @@ structure NWayBarrier =
     (* wait to pass through the barrier *)
       define @barrier (b : barrier / exh : exh) : () =
         let vp : vproc = SchedulerAction.@atomic-begin()
-        fun spin () : () =	
+        fun barrierSpin () : () =	
 	      if I32Eq(SELECT(NUM_IN_BARRIER_OFF, b), SELECT(BARRIER_COUNT_OFF, b))
 		 then SchedulerAction.@atomic-end(vp)
 	      else 
 		  do SchedulerAction.@yield-in-atomic(vp)
 		  do Pause()
-		  apply spin()
-	apply spin ()
+		  apply barrierSpin()
+	apply barrierSpin ()
       ;
     )
 
