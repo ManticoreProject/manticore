@@ -65,8 +65,17 @@ structure PrimChan (*: sig
 #	define CH_RECVQ_HD	3
 #	define CH_RECVQ_TL	4
 
-	(* link field offsets in queue items *)
+	(* offsets in sendq items *)
+#	define SENDQ_MSG	1
+#	define SENDQ_VPROC	2
+#	define SENDQ_FLS	3
+#	define SENDQ_CONT	4
 #	define SENDQ_LINK	5
+
+	(* offsets in recvq items *)
+#	define RECVQ_VPROC	1
+#	define RECVQ_FLS	2
+#	define RECVQ_CONT	3
 #	define RECVQ_LINK	4
 
 #	define Q_NIL	enum(0)
@@ -266,10 +275,12 @@ structure PrimChan (*: sig
 				   of PEvt.WAITING => (* we matched the send! *)
 					SPIN_UNLOCK(ch, CH_LOCK)
 					do Threads.@enqueue-ready-in-atomic (
-					    self, #2(item), #3(item), #4(item))
+					    self, SELECT(SENDQ_VPROC, item),
+					    SELECT(SENDQ_FLS, item),
+					    SELECT(SENDQ_CONT, item))
 					do SchedulerAction.@atomic-end (self)
 					(* in *)
-					  return (#1(item))
+					  return (SELECT(SENDQ_MSG, item))
 				    | PEvt.CLAIMED => (* may be claimed, so spin *)
 					do Pause()
 					apply matchLp()
@@ -314,23 +325,25 @@ structure PrimChan (*: sig
 				  case sts
 				   of PEvt.WAITING => (* we matched the recv! *)
 					SPIN_UNLOCK(ch, CH_LOCK)
-					if Equal(self, #1(item))
+					if Equal(self, SELECT(RECVQ_VPROC, item))
 					  then (* sending to a local thread *)
 					    cont sendK (_ : unit) = return (UNIT)
 					    (* in *)
 					      let fls : FLS.fls = FLS.@get-in-atomic(self)
 					      do VProcQueue.@enqueue-in-atomic (self, fls, sendK)
-					      do FLS.@set-in-atomic(self, #2(item))
+					      do FLS.@set-in-atomic(self, SELECT(RECVQ_FLS, item))
 					      do SchedulerAction.@atomic-end (self)
-					      let k : cont(any) = #3(item)
+					      let k : cont(any) = SELECT(RECVQ_CONT, item)
 					      (* in *)
 						throw k (msg)
 					  else (* sending to a remote thread *)
 					    do SchedulerAction.@atomic-end (self)
-					    let k : cont(any) = #3(item)
+					    let k : cont(any) = SELECT(RECVQ_CONT, item)
 					    cont recvk (_ : unit) = throw k (msg)
 					    (* in *)
-					      do VProcQueue.@enqueue-on-vproc (#1(item), #2(item), recvk)
+					      do VProcQueue.@enqueue-on-vproc (
+						    SELECT(RECVQ_VPROC, item), SELECT(RECVQ_FLS, item),
+						    recvk)
 					      return (UNIT)
 				    | PEvt.CLAIMED => (* may be claimed, so spin *)
 					do Pause()
@@ -381,10 +394,12 @@ structure PrimChan (*: sig
 					 of PEvt.WAITING => (* we matched the send! *)
 					      SPIN_UNLOCK(ch, CH_LOCK)
 					      do Threads.@enqueue-ready-in-atomic (
-						  self, #2(item), #3(item), #4(item))
+						  self, SELECT(SENDQ_VPROC, item),
+						  SELECT(SENDQ_FLS, item),
+						  SELECT(SENDQ_CONT, item))
 					      do SchedulerAction.@atomic-end (self)
 					      (* in *)
-						throw recvK (#1(item))
+						throw recvK (SELECT(SENDQ_MSG, item))
 					  | PEvt.CLAIMED =>
 					      do Pause ()
 					      apply matchLp ()
@@ -399,7 +414,7 @@ structure PrimChan (*: sig
 		  SPIN_LOCK(ch, CH_LOCK)
 		(* a loop to try to get an item from the sendq *)
 		  fun tryLp () : () =
-			let item : sendq_item = @chan-dequeue-send (ch)
+			let item : sendq_item = @chan-dequeue-send-match (flg, ch)
 			(* in *)
 			  if NotEqual(item, Q_NIL)
 			    then
@@ -412,30 +427,169 @@ structure PrimChan (*: sig
 				 * thread has not already claimed the event.
 				 *)
 				  fun matchLp () : () =
-					let sts : PEvt.event_status = CAS(&0(state), PEvt.WAITING, PEvt.SYNCHED)
-					case sts
-					 of PEvt.WAITING => (* we matched the send! *)
-					      SPIN_UNLOCK(ch, CH_LOCK)
-					      do Threads.@enqueue-ready-in-atomic (
-						  self, #2(item), #3(item), #4(item))
-					      do SchedulerAction.@atomic-end (self)
-					      (* in *)
-						throw recvK (#1(item))
-					  | PEvt.CLAIMED =>
-					    (* the owner is attempting to sync, so roll back
-					     * and check the matching event again.
+					let mySts : PEvt.event_status = CAS(flg, PEvt.WAITING, PEvt.CLAIMED)
+					case mySts
+					 of PEvt.WAITING => (* try to claim the matching event *)
+					      let sts : PEvt.event_status = CAS(&0(state), PEvt.WAITING, PEvt.SYNCHED)
+					      case sts
+					       of PEvt.WAITING => (* we matched the send! *)
+						    SPIN_UNLOCK(ch, CH_LOCK)
+						    do Threads.@enqueue-ready-in-atomic (
+							self, SELECT(SENDQ_VPROC, item),
+							SELECT(SENDQ_FLS, item),
+							SELECT(SENDQ_CONT, item))
+						    do SchedulerAction.@atomic-end (self)
+						    (* in *)
+						      throw recvK (#2(item))
+						| PEvt.CLAIMED =>
+						  (* the owner is attempting to sync, so roll back
+						   * and check the matching event again.
+						   *)
+						    do #0(state) := PEvt.WAITING
+						    do Pause()
+						    apply matchLp()
+						| PEvt.SYNCHED => (* someone else got it, so roll back *)
+						    do #0(state) := PEvt.WAITING
+						    apply tryLp()
+					      end
+					  | _ =>
+					    (* this event has already been matched, so we restore
+					     * the item to the queue and continue.
 					     *)
-					      do #0(state) := PEvt.WAITING
-					      do Pause()
-					      apply matchLp()
-					  | PEvt.SYNCHED => (* someone else got it, so roll back *)
-					      do #0(state) := PEvt.WAITING
-					      apply tryLp()
+					      do @chan-push-send (ch, item)
+					      SPIN_UNLOCK(ch, CH_LOCK)
+					      SchedulerAction.@stop-from-atomic (self)
 					end
 				  (* in *)
 				    apply matchLp ()
 			    else
 			      do @chan-enqueue-recv (ch, flg, self, fls, recvK)
+			      SPIN_UNLOCK(ch, CH_LOCK)
+			      (* in *)
+				return ()
+		  (* in *)
+		    apply tryLp ()
+	  (* in *)
+	    return (PEvt.BEVT(pollFn, doFn, blkFn))
+	  ;
+
+	define @chan-send-evt (arg : [chan_rep, any] / exh : exh) : PEvt.pevent =
+	    let ch : chan_rep = #0(arg)
+	    let msg : any = #1(arg)
+	    fun pollFn () : bool = @chan-waiting-recv(ch)
+	    fun doFn (self : vproc, sendK : cont(unit) / _ : exh) : () =
+		  SPIN_LOCK(ch, CH_LOCK)
+		  fun tryLp () : () =
+			let item : recvq_item = @chan-dequeue-recv (ch)
+			(* in *)
+			  if Equal(item, Q_NIL)
+			    then
+			      SPIN_UNLOCK(ch, CH_LOCK)
+			      return ()
+			    else
+			      let state : PEvt.event_state = #0(item)
+			      if Equal(DEREF(state), PEvt.SYNCHED)
+				then apply tryLp()
+				else
+				(* there is a matching recv, but we must check to make sure
+				 * that some other thread has not already claimed the event.
+				 *)
+				  fun matchLp () : () =
+					let sts : PEvt.event_status = CAS(&0(state), PEvt.WAITING, PEvt.SYNCHED)
+					case sts
+					 of PEvt.WAITING => (* we matched the recv! *)
+					      SPIN_UNLOCK(ch, CH_LOCK)
+					      if Equal(self, SELECT(RECVQ_VPROC, item))
+						then (* sending to a local thread *)
+						  let fls : FLS.fls = FLS.@get-in-atomic(self)
+						  do VProcQueue.@enqueue-in-atomic (self, fls, sendK)
+						  do FLS.@set-in-atomic(self, SELECT(RECVQ_FLS, item))
+						  do SchedulerAction.@atomic-end (self)
+						  let k : cont(any) = SELECT(RECVQ_CONT, item)
+						  (* in *)
+						    throw k (msg)
+						else (* sending to a remote thread *)
+						  do SchedulerAction.@atomic-end (self)
+						  let k : cont(any) = SELECT(RECVQ_CONT, item)
+						  cont recvk (_ : unit) = throw k (msg)
+						  (* in *)
+						    do VProcQueue.@enqueue-on-vproc (
+							SELECT(RECVQ_VPROC, item),
+							SELECT(RECVQ_FLS, item), recvk)
+						    throw sendK (UNIT)
+					  | PEvt.CLAIMED =>
+					      do Pause ()
+					      apply matchLp ()
+					  | PEvt.SYNCHED => (* someone else got the event *)
+					      apply tryLp ()
+					end
+				  (* in *)
+				    apply matchLp ()
+		  (* in *)
+		    apply tryLp ()
+	    fun blkFn (self : vproc, flg : PEvt.event_state, fls : FLS.fls, sendK : cont(unit) / _ : exh) : () =
+		  SPIN_LOCK(ch, CH_LOCK)
+		(* a loop to try to get an item from the sendq *)
+		  fun tryLp () : () =
+			let item : recvq_item = @chan-dequeue-recv-match (flg, ch)
+			(* in *)
+			  if NotEqual(item, Q_NIL)
+			    then
+			      let state : PEvt.event_state = #0(item)
+			      if Equal(DEREF(state), PEvt.SYNCHED)
+				then apply tryLp()
+				else
+				(* there is a matching recv, but we must check to make sure that
+				 * some other thread has not already claimed the event.
+				 *)
+				  fun matchLp () : () =
+					let mySts : PEvt.event_status = CAS(flg, PEvt.WAITING, PEvt.CLAIMED)
+					case mySts
+					 of PEvt.WAITING => (* try to claim the matching event *)
+					      let sts : PEvt.event_status = CAS(&0(state), PEvt.WAITING, PEvt.SYNCHED)
+					      case sts
+					       of PEvt.WAITING => (* we matched the recv! *)
+						    if Equal(self, SELECT(RECVQ_VPROC, item))
+						      then (* sending to a local thread *)
+							let fls : FLS.fls = FLS.@get-in-atomic(self)
+							do VProcQueue.@enqueue-in-atomic (self, fls, sendK)
+							do FLS.@set-in-atomic(self, SELECT(RECVQ_FLS, item))
+							do SchedulerAction.@atomic-end (self)
+							let k : cont(any) = SELECT(RECVQ_CONT, item)
+							(* in *)
+							  throw k (msg)
+						      else (* sending to a remote thread *)
+							do SchedulerAction.@atomic-end (self)
+							let k : cont(any) = SELECT(RECVQ_CONT, item)
+							cont recvk (_ : unit) = throw k (msg)
+							(* in *)
+							  do VProcQueue.@enqueue-on-vproc (
+							      SELECT(RECVQ_VPROC, item),
+							      SELECT(RECVQ_FLS, item), recvk)
+							  throw sendK (UNIT)
+						| PEvt.CLAIMED =>
+						  (* the owner is attempting to sync, so roll back
+						   * and check the matching event again.
+						   *)
+						    do #0(state) := PEvt.WAITING
+						    do Pause()
+						    apply matchLp()
+						| PEvt.SYNCHED => (* someone else got it, so roll back *)
+						    do #0(state) := PEvt.WAITING
+						    apply tryLp()
+					      end
+					  | _ =>
+					    (* this event has already been matched, so we restore
+					     * the item to the queue and continue.
+					     *)
+					      do @chan-push-recv (ch, item)
+					      SPIN_UNLOCK(ch, CH_LOCK)
+					      SchedulerAction.@stop-from-atomic (self)
+					end
+				  (* in *)
+				    apply matchLp ()
+			    else
+			      do @chan-enqueue-send (ch, flg, msg, self, fls, sendK)
 			      SPIN_UNLOCK(ch, CH_LOCK)
 			      (* in *)
 				return ()
@@ -453,9 +607,7 @@ structure PrimChan (*: sig
     val send : ('a chan * 'a) -> unit	= _prim (@chan-send)
     val recv : 'a chan -> 'a		= _prim (@chan-recv)
 
-(*
     val sendEvt : ('a chan * 'a) -> unit PrimEvent.pevent	= _prim (@chan-send-evt)
-*)
     val recvEvt : 'a chan -> 'a PrimEvent.pevent		= _prim (@chan-recv-evt)
 
   end
