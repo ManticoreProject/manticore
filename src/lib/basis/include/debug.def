@@ -34,7 +34,7 @@
 
 #  define PRINT_DEBUG(msg)
 #  define PRINT_MSG(msg)
-#  define PRINT_PPT(msg)
+#  define PRINT_PPT()
 
 #  define DEBUG(msg)	()
 
