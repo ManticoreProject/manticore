@@ -14,5 +14,8 @@ all:		spawn-smlnj spawn-mc1
 spawn-smlnj:	sources.cm spawn.sml
 	echo "SMLofNJ.exportFn(\"spawn-smlnj\", Main.main);" | $(SMLNJ) sources.cm
 
-spawn-mc1:	spawn.pml
+spawn-mc1:	spawn1.pml
+	$(PMLC) -o spawn-mc1 spawn.pml
+
+spawn-mc2:	spawn2.pml
 	$(PMLC) -o spawn-mc1 spawn.pml
