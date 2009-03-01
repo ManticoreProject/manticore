@@ -27,8 +27,8 @@ structure CVar (*: sig
     _primcode (
 	typedef waiter = [
 	    PrimEvent.event_state,	(* event-instance status flag *)
-	    FLS.fls,			(* FLS of thread *)
 	    vproc,			(* vproc affinity *)
+	    FLS.fls,			(* FLS of thread *)
 	    PT.fiber			(* thread's continuation *)
 	  ];
 	typedef cvar = ![bool, bool, List.list];
@@ -64,25 +64,13 @@ structure CVar (*: sig
  * code generator.
 			do if BCAS(&0(flg), PEvt.WAITING, PEvt.SYNCHED)
 			    then (* enqueue waiting thread *)
-			      let fls : FLS.fls = #1(hd)
-			      let vp : vproc = #2(hd)
-			      let k : PT.fiber = #3(hd)
-			      (* in *)
-				if Equal(self, vp)
-				  then VProcQueue.@enqueue-in-atomic(vp, fls, k)
-				  else VProcQueue.@enqueue-on-vproc(vp, fls, k)
+			      VProcQueue.@enqueue-ready-in-atomic (self, #1(item), #2(item), #3(item))
 			    else return()
 *)
 			let sts : PEvt.event_status = CAS(&0(flg), PEvt.WAITING, PEvt.SYNCHED)
 			do if Equal(sts, PEvt.WAITING)
-			    then  (* enqueue waiting thread *)
-			      let fls : FLS.fls = #1(hd)
-			      let vp : vproc = #2(hd)
-			      let k : PT.fiber = #3(hd)
-			      (* in *)
-				if Equal(self, vp)
-				  then VProcQueue.@enqueue-in-atomic(vp, fls, k)
-				  else VProcQueue.@enqueue-on-vproc(vp, fls, k)
+			    then  (* enqueue the waiting thread *)
+			      Threads.@enqueue-ready-in-atomic (self, #1(hd), #2(hd), #3(hd))
 			    else return()
 			apply signalWaiting (tl)
 		  end
@@ -107,7 +95,7 @@ structure CVar (*: sig
 		    (* in *)
 		      let flg : PEvt.event_state = alloc (PEvt.WAITING)
 		      let fls : FLS.fls = FLS.@get()
-		      let item : waiter = alloc (flg, fls, self, k)
+		      let item : waiter = alloc (flg, self, fls, k)
 		      let l : list = CONS(item, SELECT(CV_WAITING, cv))
 		      let l : list = promote (l)
 		      do UPDATE(CV_WAITING, cv, l)
@@ -128,7 +116,7 @@ structure CVar (*: sig
 		  else
 		    let flg : PEvt.event_state = alloc (PEvt.WAITING)
 		    let fls : FLS.fls = FLS.@get()
-		    let item : waiter = alloc (flg, fls, self, k)
+		    let item : waiter = alloc (flg, self, fls, k)
 		    let l : list = CONS(item, SELECT(CV_WAITING, cv))
 		    let l : list = promote (l)
 		    do UPDATE(CV_WAITING, cv, l)
