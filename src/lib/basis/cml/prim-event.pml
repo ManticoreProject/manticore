@@ -25,25 +25,19 @@ structure PrimEvent (*: sig
     _primcode (
 	typedef event_status = event_status;
 	typedef event_state = ![event_status];
-	typedef poll_fn = fun(unit / exh -> bool);
-	typedef do_fn = fun(cont(any) / exh -> unit);
-	typedef blk_fn = fun(event_state, FLS.fls, cont(any) / exh -> unit);
+	typedef poll_fn = fun( / -> bool);
+	typedef do_fn = fun(vproc, cont(any) / exh -> );
+	typedef blk_fn = fun(vproc, event_state, FLS.fls, cont(any) / exh -> );
       )
 
     type event_state = _prim(event_state)
-    type fls = _prim(FLS.fls)
+    type poll_fn = _prim(poll_fn)
+    type do_fn = _prim(do_fn)
+    type blk_fn = _prim(blk_fn)
 
     datatype 'a pevent
       = CHOOSE of ('a pevent * 'a pevent)
-      | BEVT of (unit -> bool) * ('a cont -> unit) * ((event_state * fls * 'a cont) -> unit)
-
-  (* optimistically poll the base events *)
-    fun poll (evt, enabled) = (case evt
-	   of CHOOSE(evt1, evt2) => poll (evt2, poll (evt1, enabled))
-	    | BEVT(pollFn, doFn, blockFn) => if pollFn()
-		then doFn::enabled
-		else enabled
-	  (* end case *))
+      | BEVT of (poll_fn * do_fn * blk_fn)
 
     _primcode (
 	typedef pevent = pevent;
@@ -53,20 +47,20 @@ structure PrimEvent (*: sig
 	  ;
 
 	define inline @always (x : any / _ : exh) : pevent =
-	    fun pollFn (_ : unit / _ : exh) : bool = return (true)
-	    fun doFn (k : cont(any) / _ : exh) : unit = throw k(x)
-	    fun blockFn (_ : event_state, _ : FLS.fls, _ : cont(any) / exh : exh) : unit =
-		  throw exh (UNIT) (* should never happen *)
+	    fun pollFn () : bool = return (true)
+	    fun doFn (_ : vproc, k : cont(any) / _ : exh) : unit = throw k(x)
+	    fun blockFn (_ : vproc, _ : event_state, _ : FLS.fls, _ : cont(any) / exh : exh) : unit =
+		  return () (* should never happen *)
 	    (* in *)
 	      return (BEVT(pollFn, doFn, blockFn))
-	;
+	  ;
 
 	define inline @never (_ : unit / _ : exh) : pevent =
-	    fun pollFn (_ : unit / _ : exh) : bool = return (false)
-	    fun doFn (k : cont(any) / exh : exh) : unit =
+	    fun pollFn () : bool = return (false)
+	    fun doFn (_ : vproc, k : cont(any) / exh : exh) : unit =
 		  throw exh (UNIT) (* should never happen *)
-	    fun blockFn (_ : event_state, _ : FLS.fls, _ : cont(any) / exh : exh) : unit =
-		  return (UNIT)
+	    fun blockFn (_ : vproc, _ : event_state, _ : FLS.fls, _ : cont(any) / exh : exh) : unit =
+		  return ()
 	    (* in *)
 	      return (BEVT(pollFn, doFn, blockFn))
 	  ;
@@ -101,48 +95,54 @@ structure PrimEvent (*: sig
 	    (* in *)
 	      apply wrapf (ev / exh)
 	;
-
-      (* record the calling thread's continuation in the event waiting queues *)
-	define @block (evt : pevent / exh : exh) : any =
-	    let fls : FLS.fls = FLS.@get(host_vproc / exh)
-	    cont resumeK (x : any) = return (x)
-	    (* in *)
-	      let flg : event_state = alloc(WAITING)
-	      let blockArg : [event_state, FLS.fls, cont(any)] = alloc(flg, fls, resumeK)
-	      let blockArg : [event_state, FLS.fls, cont(any)] = promote (blockArg)
-	      fun block (ev : pevent / exh : exh) : unit =
-		    case ev
-		     of BEVT(pollFn : poll_fn, doFn : do_fn, blockFn : blk_fn) =>
-			  apply blockFn(blockArg / exh)
-		      | CHOOSE(ev1 : pevent, ev2 : pevent) =>
-			  let (_ : unit) = apply block (ev1 / exh)
-			  apply block (ev2 / exh)
-		    end
-	      let (_ : unit) = apply block (evt / exh)
-	    (* if we get here, then we are ready to let other threads synchronize
-	     * on this event.
-	     *)
-	      do #0(flg) := WAITING
-	      (* in *)
-		Threads.@thread-exit (/exh)
-	;
-  
-      (* attempt to complete an enabled communication *)
-	define @doEvent (enabled : list / exh : exh) : any =
-	    cont syncK (x : any) = return (x)
-	    (* in *)
-	      fun doit (l : list / exh : exh) : any =
-		    case l
-		     of CONS(doFn : do_fn, r : list) =>
-			  let (_ : unit) = apply doFn (syncK / exh)
-			(* if we get here, that means that the attempt failed, so try the next one *)
-			  apply doit (r / exh)
-		      | nil => apply blockThd (UNIT / exh)
-		    end
-	      (* in *)
-		apply doit (enabled / exh)
-	;
 *)
+
+	define @sync (evt : pevent / exh : exh) : any =
+	    cont resumeK (x : any) = return(x)
+(* NOTE: we might want to restrict the scope of the atomic-begin/end to individual base events *)
+	    let self : vproc = SchedulerAction.@atomic-begin()
+	    (* in *)
+	    (* *)
+	      fun blockThd () : any =
+		    let flg : event_state = alloc (WAITING)
+		    let fls : FLS.fls = FLS.@get-in-atomic(self)		    
+		    fun block (evt : pevent) : () =
+			  case evt
+			   of CHOOSE(evt1 : pevent, evt2 : pevent) =>
+				do apply block (evt1)
+				apply block (evt2)
+			    | BEVT(_ : poll_fn, _ : do_fn, blkFn : blk_fn) =>
+				apply blkFn (self, flg, fls, resumeK / exh)
+			  end
+		    do apply block (evt)
+		    (* in *)
+		      SchedulerAction.@stop-from-atomic (self)
+	    (* attempt to synchronize on an enabled event *)
+	      fun doEvt (enabled : List.list) : any =
+		    case enabled
+		     of nil => apply blockThd ()
+		      | CONS(doFn : do_fn, r : List.list) =>
+			  do apply doFn (self, resumeK / exh)
+			  (* in *)
+			    apply doEvt (r)
+		    end
+	    (* optimistically poll for enabled base events *)
+	      fun poll (evt : pevent, enabled : List.list) : List.list =
+		    case evt
+		     of CHOOSE(evt1 : pevent, evt2 : pevent) =>
+			  let l : List.list = apply poll(evt1, enabled)
+			    apply poll(evt2, l)
+		      | BEVT(pollFn : poll_fn, doFn : do_fn, _ : blk_fn) =>
+			  let b : bool = apply pollFn ()
+			  (* in *)
+			    if b
+			      then return (CONS(doFn, enabled))
+			      else return (enabled)
+		    end
+	      let enabled : List.list = apply poll (evt, nil)
+	      (* in *)
+		apply doEvt (enabled)
+	    ;
 
       )
 
@@ -154,15 +154,8 @@ structure PrimEvent (*: sig
     val choose = CHOOSE
 (*
     val wrap : ('a pevent * ('a -> 'b)) -> 'b pevent = _prim(@wrap)
-
-    val block : 'a pevent -> 'a = _prim (@block)
-    val doEvent : ('a cont -> unit) list -> 'a = _prim (@doEvent)
-
-    fun sync evt = (case poll (evt, nil)
-	   of nil => block evt
-	    | enabled => doEvent enabled
-	  (* end case *))
 *)
+    val sync : 'a pevent -> 'a = _prim(@sync)
 
   end
 

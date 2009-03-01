@@ -116,16 +116,15 @@ structure CVar (*: sig
 	  ;
 
 	define inline @cvar-wait-evt (cv : cvar / _ : exh) : PEvt.pevent =
-	    fun pollFn (_ : unit / _ : exh) : bool = return (SELECT(CV_STATE, cv))
-	    fun doFn (k : PT.fiber / _ : exh) : unit = throw k (UNIT)
-	    fun blockFn (flg : PEvt.event_state, fls : FLS.fls, k : cont(unit) / _ : exh) : PEvt.pevent =
-		let self : vproc = SchedulerAction.@atomic-begin ()
+	    fun pollFn () : bool = return (SELECT(CV_STATE, cv))
+	    fun doFn (_ : vproc, k : PT.fiber / _ : exh) : () = throw k (UNIT)
+	    fun blockFn (self : vproc, flg : PEvt.event_state, fls : FLS.fls, k : cont(unit) / _ : exh) : () =
 		SPIN_LOCK(cv, CV_LOCK)
 		if SELECT(CV_STATE, cv)
 		  then
 		    SPIN_UNLOCK(cv, CV_LOCK)
 		    do SchedulerAction.@atomic-end (self)
-		    return (UNIT)
+		    throw k (UNIT)
 		  else
 		    let flg : PEvt.event_state = alloc (PEvt.WAITING)
 		    let fls : FLS.fls = FLS.@get()
@@ -135,8 +134,8 @@ structure CVar (*: sig
 		    do UPDATE(CV_WAITING, cv, l)
 		    SPIN_UNLOCK(cv, CV_LOCK)
 		    SchedulerAction.@stop-from-atomic (self)
-	    (* in *)
-	      return (PEvt.BEVT(pollFn, doFn, blockFn))
+	  (* in *)
+	    return (PEvt.BEVT(pollFn, doFn, blockFn))
 	  ;
       )
 
