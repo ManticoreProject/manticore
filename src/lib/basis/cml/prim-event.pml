@@ -48,8 +48,8 @@ structure PrimEvent (*: sig
 
 	define inline @always (x : any / _ : exh) : pevent =
 	    fun pollFn () : bool = return (true)
-	    fun doFn (_ : vproc, k : cont(any) / _ : exh) : unit = throw k(x)
-	    fun blockFn (_ : vproc, _ : event_state, _ : FLS.fls, _ : cont(any) / exh : exh) : unit =
+	    fun doFn (_ : vproc, k : cont(any) / _ : exh) : () = throw k(x)
+	    fun blockFn (_ : vproc, _ : event_state, _ : FLS.fls, _ : cont(any) / exh : exh) : () =
 		  return () (* should never happen *)
 	    (* in *)
 	      return (BEVT(pollFn, doFn, blockFn))
@@ -57,45 +57,44 @@ structure PrimEvent (*: sig
 
 	define inline @never (_ : unit / _ : exh) : pevent =
 	    fun pollFn () : bool = return (false)
-	    fun doFn (_ : vproc, k : cont(any) / exh : exh) : unit =
+	    fun doFn (_ : vproc, k : cont(any) / exh : exh) : () =
 		  throw exh (UNIT) (* should never happen *)
-	    fun blockFn (_ : vproc, _ : event_state, _ : FLS.fls, _ : cont(any) / exh : exh) : unit =
+	    fun blockFn (_ : vproc, _ : event_state, _ : FLS.fls, _ : cont(any) / exh : exh) : () =
 		  return ()
 	    (* in *)
 	      return (BEVT(pollFn, doFn, blockFn))
 	  ;
 
-(*
-	define @wrap (ev : pevent, f : fun(any / exh -> any) / exh : exh) : pevent =
+	define inline @wrap (arg : [pevent, fun(any / exh -> any)] / exh : exh) : pevent =
+	    let f : fun(any / exh -> any) = #1(arg)
 	    fun wrapf (ev : pevent / exh : exh) : pevent =
 		  case ev
 		   of CHOOSE(ev1 : pevent, ev2 : pevent) =>
-			let ev1' : pevent = apply wrapf (ev / exh)
-			let ev2' : pevent = apply wrapf (ev / exh)
+			let ev1' : pevent = apply wrapf (ev1 / exh)
+			let ev2' : pevent = apply wrapf (ev2 / exh)
 			(* in *)
 			  return (CHOOSE(ev1', ev2'))
 		    | BEVT(pollFn : poll_fn, doFn : do_fn, blockFn : blk_fn) =>
-			fun doFn' (k : cont(any) / exh : exh) : unit =
+			fun doFn' (vp : vproc, k : cont(any) / exh : exh) : () =
 			      cont k' (x : any) =
 				  let y : any = apply f (x / exh)
 				  (* in *)
-				    throw k' (y)
+				    throw k (y)
 			      (* in *)
-				apply doFn (k' / exh)
-			fun blockFn' (flg : event_state, fls : FLS.fls, k : cont(any) / exh : exh) : unit =
+				apply doFn (vp, k' / exh)
+			fun blockFn' (vp : vproc, flg : event_state, fls : FLS.fls, k : cont(any) / exh : exh) : () =
 			      cont k' (x : any) =
 				  let y : any = apply f (x / exh)
 				  (* in *)
-				    throw k' (y)
+				    throw k (y)
 			      (* in *)
-				apply blockFn (flg, fls, k' / exh)
+				apply blockFn (vp, flg, fls, k' / exh)
 			(* in *)
 			  return (BEVT(pollFn, doFn', blockFn'))
 		  end
 	    (* in *)
-	      apply wrapf (ev / exh)
-	;
-*)
+	      apply wrapf (#0(arg) / exh)
+	  ;
 
 	define @sync (evt : pevent / exh : exh) : any =
 	    cont resumeK (x : any) = return(x)
@@ -152,9 +151,7 @@ structure PrimEvent (*: sig
  *)
     val never : unit -> 'a pevent = _prim(@never)
     val choose = CHOOSE
-(*
     val wrap : ('a pevent * ('a -> 'b)) -> 'b pevent = _prim(@wrap)
-*)
     val sync : 'a pevent -> 'a = _prim(@sync)
 
   end
