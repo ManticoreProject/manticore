@@ -23,88 +23,92 @@ structure WorkStealers =
 
     structure PT = PrimTypes
     structure VPQ = VProcQueue
-    structure VPM = VProcMessenger
     structure O = Option
     structure L = List
-    structure FLS = FiberLocalStorage
 
     _primcode(
 
-    (* wake up any sleeping vprocs by enqueuing dummy threads *)
-      define @wake-sleeping-vprocs (/ exh : PT.exh) : () =
-        cont wakeupK (_ : PT.unit) = 
-	      let _ : PT.unit = Control.@stop(/ exh)
+    (* wake up any idle vprocs by enqueuing dummy threads on them *)
+      define @wake-idle-vprocs (/ exh : exh) : () =
+        cont wakeupK (_ : unit) = 
+	      let _ : unit = SchedulerAction.@stop()
 	      return()
-	fun f (vp : vproc / exh : PT.exh) : () =
-	    let idle : PT.bool = vpload(VP_IDLE, vp)
+	fun f (vp : vproc / exh : exh) : () =
+	    let idle : bool = vpload(VP_IDLE, vp)
 	    if idle
-	       then VPM.@send(vp, wakeupK / exh)
+	       then 
+		let fls : FLS.fls = FLS.@get()
+		VPQ.@enqueue-on-vproc(vp, fls, wakeupK)
 	    else return()
-	SchedulerUtils.@for-other-vprocs(f / exh)
+	VProc.@for-other-vprocs(f / exh)
       ;
 
-      define @mk-sched-act (self : vproc / exh : PT.exh) : PT.sigact =
-	  cont waitK(x : PT.unit) = 
-	      do SchedulerUtils.@wait(/ exh)
-	      let _ : PT.unit = Control.@stop(/ exh)
-	      return($0)
+      define @mk-sched-act (self : vproc / exh : exh) : PT.sched_act =
+
+	  cont impossible () = 
+	    let e : exn = Fail(@"WorkStealers.@mk-sched-act: impossible")
+            throw exh(e)
+
 	(* try to steal a thread from a remote vproc *)
-	  fun thief (vps : L.list / exh : PT.exh) : () =
-		do print_msg ("work-stealers: steal mode")
-		let noStealableFibers : PT.bool = VPQ.@is-local-queue-empty(host_vproc)
+	  fun thief (victimVP : vproc, vps : L.list / exh : exh) : () =
+		let noStealableFibers : bool = VPQ.@is-local-queue-empty-from-atomic(victimVP)
 		if noStealableFibers
 		  then apply sendThieves (vps / exh)
 		  else
-		    do print_msg ("work-stealers: dequeuing")
-		    fun isNotPinned (fls : FLS.fls / exh : PT.exh) : PT.bool =
-			let b : PT.bool = FLS.@is-pinned(fls / exh)
-			return (NotEqual(b, PT.true))
-		    let item : O.option = VPQ.@dequeue-with-pred-in-atomic (isNotPinned / exh)
+		    fun isNotPinned (fls : FLS.fls / exh : exh) : bool =
+			let pinned : int = FLS.@pin-info(fls / exh)
+                        let victim : int = VProc.@vproc-id(victimVP)
+			return (NotEqual(pinned, victim))
+		    let item : O.option = VPQ.@dequeue-with-pred-from-atomic (victimVP, isNotPinned / exh)
 		    case item
 		     of O.NONE =>
+			  PRINT_DEBUG("WorkStealers.thief: failed to steal work")
 			  apply sendThieves (vps / exh)
 		      | O.SOME (item : VPQ.queue) =>
-			  do print_msg("work-stealers: sending thread to idle vproc")
+			  PRINT_DEBUG("WorkStealers.thief: sending stolen work back to original vproc")
 			  VPQ.@enqueue-on-vproc(self, SELECT(FLS_OFF, item), SELECT(FIBER_OFF, item))
 		    end
+
 	(* send thieves to all other vprocs *)
-	  and sendThieves (vps : L.list / exh : PT.exh) : () =
-	      do print_msg("work-stealers: try next")
+	  and sendThieves (vps : L.list / exh : exh) : () =
 	      case vps
 	       of nil =>
-		  do print_msg("work-stealers: failed to get work")
+		  PRINT_DEBUG("WorkStealers.sendThieves: no stealable work on other vprocs")
 		  return()
 		| L.CONS(vp : vproc, vps : L.list) =>
 		  let idle : int = vpload(VP_IDLE, vp)
 		  do if I32Eq(idle, 1)
 			then apply sendThieves(vps / exh)
 		     else return()
-		  cont thiefK (x : PT.unit) =
-		    do apply thief(vps / exh)
-		    let _ : PT.unit = Control.@stop(/ exh)
+		  cont thiefK (x : unit) =
+                    let victimVP : vproc = SchedulerAction.@atomic-begin()
+                    do assert(Equal(victimVP, vp))
+		    do apply thief(victimVP, vps / exh)
+		    let _ : unit = SchedulerAction.@stop-from-atomic(victimVP)
 		    return()
-		VPM.@send(vp, thiefK / exh)
+                let vpId : int = VProc.@vproc-id(vp)
+              (* prevent the victim from migrating the thief to another vproc *)
+                let thiefFLS : FLS.fls = FLS.@new-pinned(vpId)
+		VPQ.@enqueue-on-vproc(vp, thiefFLS, thiefK)
 	      end
-	  cont impossible() = 
-	      do assert(PT.false)
-	      return($0)
+
 	  cont switch (sign : PT.signal) =
 	      cont dispatch () =
 	      (* notify any idle vprocs if there is extra local work *)
-		let hasElts : PT.bool = VPQ.@is-local-queue-gt-one(/ exh)
+		let hasElts : bool = VPQ.@more-than-one-from-atomic(self)
 		do if hasElts
-		   then @wake-sleeping-vprocs(/ exh)
+		   then @wake-idle-vprocs(/ exh)
 		   else return()
-		let item : O.option = VPQ.@dequeue(/ exh)
+		let item : O.option = VPQ.@dequeue-from-atomic(self)
 		case item
 		 of O.NONE => 
 		  (* try to steal a thread *)
-		    let potentialVictims : L.list = SchedulerUtils.@other-vprocs(/ exh)
+		    let potentialVictims : L.list = VProc.@other-vprocs(/ exh)
 		    do apply sendThieves(potentialVictims / exh)
-		    do SchedulerUtils.@wait(/ exh)
+		    do VProc.@wait-in-atomic()
 		    throw dispatch()
 		  | O.SOME(qitem : VPQ.queue) =>
-		    do Control.@run-thread (switch, SELECT(FIBER_OFF, qitem), SELECT(FLS_OFF, qitem) / exh)
+		    do SchedulerAction.@dispatch-from-atomic (self, switch, SELECT(FIBER_OFF, qitem), SELECT(FLS_OFF, qitem))
 		    throw impossible()
 		end
 	  (* in *)
@@ -113,7 +117,7 @@ structure WorkStealers =
 		throw dispatch()
 	      | PT.PREEMPT(k : PT.fiber) => 
 		let fls : FLS.fls = FLS.@get ()
-		do VPQ.@enqueue (fls, k / exh)
+		do VPQ.@enqueue-from-atomic (self, fls, k)
 		throw dispatch () 
 	      | _ =>
 		let e : exn = Match
@@ -122,10 +126,10 @@ structure WorkStealers =
 	  return (switch)
 	;
 
-      define @work-stealers(x : PT.unit / exh : PT.exh) : PT.unit = 
-	fun mkSwitch (self : vproc / exh : PT.exh) : PT.sigact = @mk-sched-act(self / exh)
+      define @work-stealers(x : unit / exh : exh) : unit = 
+	fun mkSwitch (self : vproc / exh : exh) : PT.sched_act = @mk-sched-act(self / exh)
       (* run the scheduler on all vprocs *)
-	do SchedulerUtils.@boot-default-scheduler (mkSwitch / exh)
+	do VProc.@boot-default-scheduler (mkSwitch / exh)
 	return(UNIT)
       ;
 

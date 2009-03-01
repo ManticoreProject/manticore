@@ -6,12 +6,11 @@
  * Load the work-stealers thread scheduler.
  *)
 
-  ../../sequential/sequential.mlb
-  ../../misc/debug.mlb
-  ../fls/fls.mlb
-  ../scheduling/scheduling.mlb
+  ../sequential/sequential.mlb
+  ../misc/debug.mlb
+  ../runtime/runtime.mlb
 
-  ann "cpp" "../../include/runtime-offsets.def,../../include/prim.def,../../include/debug.def,../../include/assert.def"
+  ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
   in
     work-stealers.pml
   end
