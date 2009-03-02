@@ -182,7 +182,7 @@ structure VProc (* :
 	  SchedulerAction.@run(self, act, startLeadK)
 	;
 
-#define BUSY_WAIT
+#define NANOSLEEP
 
 #ifdef BUSY_WAIT
     (* wait for work to arrive at the vproc *)
@@ -210,7 +210,9 @@ structure VProc (* :
       extern void Nanosleep(long, long);
     (* wait for work to arrive at the vproc *)
       define @wait-from-atomic (vp : vproc) : () =
-          do ccall Nanosleep(0, 1000)
+          do vpstore(VP_IDLE, vp, 1)
+          do ccall Nanosleep(0, 100)
+          do vpstore(VP_IDLE, vp, 0)
           return()
         ;
 #endif /*! NANOSLEEP */

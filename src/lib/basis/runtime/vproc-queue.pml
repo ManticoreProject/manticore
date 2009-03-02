@@ -208,6 +208,7 @@ structure VProcQueue (* :
 
     (* dequeue the first item to satisfy the given predicate  *)
       define @dequeue-with-pred-from-atomic (self : vproc, f : fun(FLS.fls / exh -> bool) / exh : exh) : O.option =
+	  let messages : List.list = @unload-and-check-messages()
 	  cont exit (x : O.option) = return(x)
 	  let qitem : O.option = @dequeue-from-atomic(self)
 	  case qitem

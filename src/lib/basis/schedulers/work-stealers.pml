@@ -34,8 +34,8 @@ structure WorkStealers =
 	      let _ : unit = SchedulerAction.@stop()
 	      return()
 	fun f (vp : vproc / exh : exh) : () =
-	    let idle : bool = vpload(VP_IDLE, vp)
-	    if idle
+	    let idle : int = vpload(VP_IDLE, vp)
+	    if I32Eq(idle, 1)
 	       then 
 		let fls : FLS.fls = FLS.@get()
 		VPQ.@enqueue-on-vproc(vp, fls, wakeupK)
@@ -62,10 +62,10 @@ structure WorkStealers =
 		    let item : O.option = VPQ.@dequeue-with-pred-from-atomic (victimVP, isNotPinned / exh)
 		    case item
 		     of O.NONE =>
-			  PRINT_DEBUG("WorkStealers.thief: failed to steal work")
+			  PRINT_MSG("WorkStealers.thief: failed to steal work")
 			  apply sendThieves (vps / exh)
 		      | O.SOME (item : VPQ.queue) =>
-			  PRINT_DEBUG("WorkStealers.thief: sending stolen work back to original vproc")
+			  PRINT_MSG("WorkStealers.thief: sending stolen work back to original vproc")
 			  VPQ.@enqueue-on-vproc(self, SELECT(FLS_OFF, item), SELECT(FIBER_OFF, item))
 		    end
 
@@ -73,7 +73,7 @@ structure WorkStealers =
 	  and sendThieves (vps : L.list / exh : exh) : () =
 	      case vps
 	       of nil =>
-		  PRINT_DEBUG("WorkStealers.sendThieves: no stealable work on other vprocs")
+		  PRINT_MSG("WorkStealers.sendThieves: no stealable work on other vprocs")
 		  return()
 		| L.CONS(vp : vproc, vps : L.list) =>
 		  let idle : int = vpload(VP_IDLE, vp)
