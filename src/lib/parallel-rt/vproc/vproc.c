@@ -21,6 +21,7 @@
 #include "value.h"
 #include "scheduler.h"
 #include "inline-log.h"
+#include "time.h"
 
 typedef struct {	    /* data passed to NewVProc */
     int		id;		/* VProc ID */
@@ -501,3 +502,20 @@ Value_t SleepCont (VProc_t *self)
     return AllocUniform(self, 1, PtrToValue(&ASM_VProcSleep));
 }
 
+/*! \brief call nanosleep
+ *  \param seconds number of seconds to sleep
+ *  \param nanoseconds number of nanoseconds to sleep (must be less than one second)
+ */
+void Nanosleep (long int seconds, long int nanoseconds)
+{
+    struct timespec ts;
+    ts.tv_sec = seconds;
+    ts.tv_nsec = nanoseconds;
+
+#ifndef NDEBUG
+    if (DebugFlg)
+        SayDebug("[%2d] Nanosleep(seconds=%d, nanoseconds=%d).\n", VProcSelf()->id, seconds, nanoseconds);
+#endif
+
+    nanosleep(&ts, NULL);
+}

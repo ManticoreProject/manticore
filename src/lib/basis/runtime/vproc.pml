@@ -197,14 +197,23 @@ structure VProc (* :
 	  fun sleep () : () =
 	      cont wakeupK (x : unit) = return ()
 	    (* the C runtime expects the resumption continuation to be in vp->wakeupCont *)
-	      do vpstore(VP_WAKEUP_CONT, host_vproc, wakeupK)
+	      do vpstore(VP_WAKEUP_CONT, vp, wakeupK)
 	    (* SleepCont resides in parallel-rt/vproc.c *)
-	      let sleepK : PT.fiber = ccall SleepCont (host_vproc)
+	      let sleepK : PT.fiber = ccall SleepCont (vp)
 	      throw sleepK(UNIT)
 	  do apply sleep()
 	  return()
 	;
 #endif /*! SLEEP_IN_C_RUNTIME */
+
+#ifdef NANOSLEEP
+      extern void Nanosleep(long, long);
+    (* wait for work to arrive at the vproc *)
+      define @wait-from-atomic (vp : vproc) : () =
+          do ccall Nanosleep(0, 1000)
+          return()
+        ;
+#endif /*! NANOSLEEP */
 
     (* mask signals before running any scheduling code *)
       define @mask-signals (x : unit / exh : exh) : unit =
