@@ -39,10 +39,6 @@ structure ParallelPingPong (*: sig
 			PrimChan.send (ch, msg);
 			if (msg < n) then pong() else ()
 		      end
-		      in
-			CML.spawn pong;
-			CML.joinEvt (CML.spawn (fn () => ping 0))
-		      end
 		in
 		  spawnOn (pong, pongId)
 		  spawnOn (fn () => ping 0, pingId);

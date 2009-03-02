@@ -8,6 +8,8 @@
 
 structure ParallelPingPong : sig
 
+    val nprocs : int
+
     val run : int -> unit
 
   end = struct
