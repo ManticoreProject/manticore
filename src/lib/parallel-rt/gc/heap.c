@@ -12,6 +12,9 @@
 #include "os-threads.h"
 #include "options.h"
 #include "internal-heap.h"
+#ifndef NDEBUG
+#include <string.h>
+#endif
 
 Mutex_t		HeapLock;	/* lock for protecting heap data structures */
 
@@ -92,7 +95,7 @@ void HeapInit (Options_t *opts)
 //    ToSpaceLimit = 16 * ONE_MEG;  /* FIXME: what should this be? */
     ToSpaceLimit = 8 * ONE_MEG;
 #else
-    ToSpaceLimit = 512 * ONE_MEG;
+    ToSpaceLimit = 1024 * ONE_MEG;
 #endif
     TotalVM = 0;
     FromSpaceChunks = (MemChunk_t *)0;
