@@ -37,10 +37,10 @@ structure ParallelPingPong (*: sig
 		      val msg = PrimChan.recv ch + 1
 		      in
 			PrimChan.send (ch, msg);
-			if (msg < n) then pong() else ()
+			if (msg < n) then pong() else CVar.signal cv
 		      end
 		in
-		  spawnOn (pong, pongVP)
+		  spawnOn (pong, pongVP);
 		  spawnOn (fn () => ping 0, pingVP);
 		  cv
 		end
@@ -59,11 +59,11 @@ structure Main = struct
 	  val t = (Time.now() - t0)
 	  in
 	    Print.print (String.concat[
-		Int.toString n, " messages in ", Time.toString t,
+		Int.toString(n*ParallelPingPong.nprocs), " messages in ", Time.toString t,
 		" seconds on ", Int.toString ParallelPingPong.nVps, " processors\n"
 	      ])
 	  end
 
   end
 
-val _ = Main.timeit 200000
+val _ = Main.timeit 100000

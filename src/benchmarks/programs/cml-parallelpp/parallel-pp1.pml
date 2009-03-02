@@ -30,7 +30,7 @@ structure ParallelPingPong (*: sig
 		      val msg = PrimChan.recv ch + 1
 		      in
 			PrimChan.send (ch, msg);
-			if (msg < n) then pong() else ()
+			if (msg < n) then pong() else CVar.signal cv
 		      end
 		in
 		  spawn pong();
@@ -59,4 +59,5 @@ structure Main = struct
 
   end
 
-val _ = Main.timeit 200000
+val _ = Main.timeit 100000
+
