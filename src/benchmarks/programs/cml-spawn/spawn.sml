@@ -16,11 +16,7 @@ structure Spawn : sig
 
   end
 
-structure Main : sig
-
-    val timeit : int -> OS.Process.status
-
-  end = struct
+structure Main = struct
 
     fun timeit n = let
 	  fun thd () = let
