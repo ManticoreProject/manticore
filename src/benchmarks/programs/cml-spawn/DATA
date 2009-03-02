@@ -1,0 +1,28 @@
+2009-02-27; octo
+
+CML:
+10000000 threads spawned in 4.569 seconds
+10000000 threads spawned in 4.546 seconds
+10000000 threads spawned in 4.568 seconds
+10000000 threads spawned in 4.562 seconds
+10000000 threads spawned in 4.597 seconds
+10000000 threads spawned in 4.607 seconds
+10000000 threads spawned in 4.619 seconds
+10000000 threads spawned in 4.585 seconds
+10000000 threads spawned in 4.543 seconds
+10000000 threads spawned in 4.530 seconds
+
+MLton:
+
+Manticore:
+10000000 threads spawned in 8.214 seconds
+10000000 threads spawned in 8.198 seconds
+10000000 threads spawned in 8.213 seconds
+10000000 threads spawned in 8.130 seconds
+10000000 threads spawned in 8.060 seconds
+10000000 threads spawned in 8.105 seconds
+10000000 threads spawned in 8.062 seconds
+10000000 threads spawned in 8.084 seconds
+10000000 threads spawned in 8.205 seconds
+10000000 threads spawned in 8.062 seconds
+
