@@ -403,6 +403,7 @@ dnl ***** Makefiles *****
   Makefile
   src/Makefile
   src/benchmarks/programs/cml-merge/Makefile
+  src/benchmarks/programs/cml-parallelpp/Makefile
   src/benchmarks/programs/cml-pingpong/Makefile
   src/benchmarks/programs/cml-primes/Makefile
   src/benchmarks/programs/cml-spawn/Makefile
