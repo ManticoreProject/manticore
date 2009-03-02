@@ -40,8 +40,8 @@ structure ParallelPingPong (*: sig
 			if (msg < n) then pong() else ()
 		      end
 		in
-		  spawnOn (pong, pongId)
-		  spawnOn (fn () => ping 0, pingId);
+		  spawnOn (pong, pongVP)
+		  spawnOn (fn () => ping 0, pingVP);
 		  cv
 		end
 	  val cvs = List.tabulate (nprocs, pingpong)
@@ -60,7 +60,7 @@ structure Main = struct
 	  in
 	    Print.print (String.concat[
 		Int.toString n, " messages in ", Time.toString t,
-		" seconds on ", Int.toString Primes.nVps, " processors\n"
+		" seconds on ", Int.toString ParallelPingPong.nVps, " processors\n"
 	      ])
 	  end
 
