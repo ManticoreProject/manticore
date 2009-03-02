@@ -1,0 +1,109 @@
+20090302-0758
+
+CML:
+8000000 messages in 5.063 seconds
+8000000 messages in 5.125 seconds
+8000000 messages in 5.050 seconds
+8000000 messages in 5.068 seconds
+8000000 messages in 5.110 seconds
+8000000 messages in 5.117 seconds
+8000000 messages in 5.039 seconds
+8000000 messages in 5.049 seconds
+8000000 messages in 5.080 seconds
+8000000 messages in 5.066 seconds
+
+Manticore 1P:
+800000 messages in 1.106 seconds
+800000 messages in 1.101 seconds
+800000 messages in 1.101 seconds
+800000 messages in 1.114 seconds
+800000 messages in 1.097 seconds
+800000 messages in 1.107 seconds
+800000 messages in 1.114 seconds
+800000 messages in 1.110 seconds
+800000 messages in 1.097 seconds
+800000 messages in 1.100 seconds
+
+Manticore 2P:
+800000 messages in 1.937 seconds on 2 processors
+800000 messages in 1.942 seconds on 2 processors
+800000 messages in 1.933 seconds on 2 processors
+800000 messages in 1.946 seconds on 2 processors
+800000 messages in 1.934 seconds on 2 processors
+800000 messages in 1.931 seconds on 2 processors
+800000 messages in 1.951 seconds on 2 processors
+800000 messages in 1.936 seconds on 2 processors
+800000 messages in 1.934 seconds on 2 processors
+800000 messages in 1.967 seconds on 2 processors
+
+Manticore 3P:
+800000 messages in 1.528 seconds on 3 processors
+800000 messages in 1.521 seconds on 3 processors
+800000 messages in 1.524 seconds on 3 processors
+800000 messages in 1.522 seconds on 3 processors
+800000 messages in 1.512 seconds on 3 processors
+800000 messages in 1.537 seconds on 3 processors
+800000 messages in 1.525 seconds on 3 processors
+800000 messages in 1.521 seconds on 3 processors
+800000 messages in 1.535 seconds on 3 processors
+800000 messages in 1.518 seconds on 3 processors
+
+Manticore 4P:
+800000 messages in 1.089 seconds on 4 processors
+800000 messages in 1.084 seconds on 4 processors
+800000 messages in 1.088 seconds on 4 processors
+800000 messages in 1.099 seconds on 4 processors
+800000 messages in 1.091 seconds on 4 processors
+800000 messages in 1.092 seconds on 4 processors
+800000 messages in 1.094 seconds on 4 processors
+800000 messages in 1.079 seconds on 4 processors
+800000 messages in 1.089 seconds on 4 processors
+800000 messages in 1.094 seconds on 4 processors
+
+Manticore 5P:
+800000 messages in 1.088 seconds on 5 processors
+800000 messages in 1.091 seconds on 5 processors
+800000 messages in 1.090 seconds on 5 processors
+800000 messages in 1.092 seconds on 5 processors
+800000 messages in 1.093 seconds on 5 processors
+800000 messages in 1.091 seconds on 5 processors
+800000 messages in 1.091 seconds on 5 processors
+800000 messages in 1.098 seconds on 5 processors
+800000 messages in 1.100 seconds on 5 processors
+800000 messages in 1.097 seconds on 5 processors
+
+Manticore 6P:
+800000 messages in 1.095 seconds on 6 processors
+800000 messages in 1.097 seconds on 6 processors
+800000 messages in 1.092 seconds on 6 processors
+800000 messages in 1.111 seconds on 6 processors
+800000 messages in 1.095 seconds on 6 processors
+800000 messages in 1.095 seconds on 6 processors
+800000 messages in 1.094 seconds on 6 processors
+800000 messages in 1.091 seconds on 6 processors
+800000 messages in 1.099 seconds on 6 processors
+800000 messages in 1.098 seconds on 6 processors
+
+Manticore 7P:
+800000 messages in 0.912 seconds on 7 processors
+800000 messages in 0.916 seconds on 7 processors
+800000 messages in 0.918 seconds on 7 processors
+800000 messages in 0.915 seconds on 7 processors
+800000 messages in 0.906 seconds on 7 processors
+800000 messages in 0.922 seconds on 7 processors
+800000 messages in 0.915 seconds on 7 processors
+800000 messages in 0.937 seconds on 7 processors
+800000 messages in 0.920 seconds on 7 processors
+800000 messages in 0.913 seconds on 7 processors
+
+Manticore 8P:
+800000 messages in 0.800 seconds on 8 processors
+800000 messages in 0.800 seconds on 8 processors
+800000 messages in 0.795 seconds on 8 processors
+800000 messages in 0.799 seconds on 8 processors
+800000 messages in 0.800 seconds on 8 processors
+800000 messages in 0.798 seconds on 8 processors
+800000 messages in 0.797 seconds on 8 processors
+800000 messages in 0.798 seconds on 8 processors
+800000 messages in 0.815 seconds on 8 processors
+800000 messages in 0.800 seconds on 8 processors
