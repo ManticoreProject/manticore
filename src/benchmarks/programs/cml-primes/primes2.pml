@@ -16,12 +16,7 @@ structure Primes (*: sig
     val vps = VProcExtras.vprocs()
     val nVps = List.length vps
 
-    fun spawnOnNext f = let
-	  val id = VProcExtras.id(VProcExtras.host()) + 1
-	  val id = if (id >= nVps) then 0 else id
-	  in
-	    VProcExtras.spawnOn f (List.nth(vps, id))
-	  end
+    fun spawnOn (f, id) = VProcExtras.spawnOn f (List.nth(vps, id))
 
     fun sieve () = let
 	  val primes = PrimChan.new ()
@@ -29,29 +24,29 @@ structure Primes (*: sig
 		val ch = PrimChan.new()
 		fun count i = (PrimChan.send(ch, i); count(i+1))
 		in
-		  spawnOnNext (fn () => (count start));
+		  spawn (count start);
 		  ch
 		end
-	  fun filter (p, inCh) = let
-	    val outCh = PrimChan.new()
-	    fun loop () = let val i = PrimChan.recv inCh
-		  in
-		    if ((i mod p) <> 0)
-		      then PrimChan.send (outCh, i)
-		      else ();
-		    loop ()
-		  end
-	    in
-	      spawn (loop());
-	      outCh
-	    end
-	  fun head ch = let val p = PrimChan.recv ch
+	  fun filter (p, inCh, cnt) = let
+	        val outCh = PrimChan.new()
+	        fun loop () = let val i = PrimChan.recv inCh
+		      in
+		        if ((i mod p) <> 0)
+		          then PrimChan.send (outCh, i)
+		          else ();
+		        loop ()
+		      end
+	        in
+	          spawnOn (loop, cnt mod nVps);
+	          outCh
+	        end
+	  fun head (cnt, ch) = let val p = PrimChan.recv ch
 		in
 		  PrimChan.send (primes, p);
-		  head (filter (p, ch))
+		  head (cnt+1, filter (p, ch, cnt))
 		end
 	  in
-	    spawnOnNext (fn () => (head (counter 2)));
+	    spawn (head (1, counter 2));
 	    primes
 	  end;
     

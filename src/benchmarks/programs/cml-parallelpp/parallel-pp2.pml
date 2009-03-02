@@ -67,3 +67,4 @@ structure Main = struct
   end
 
 val _ = Main.timeit 100000
+
