@@ -5,6 +5,7 @@
  */
 
 #include <strings.h>
+#include <stdio.h>
 
 #include "manticore-rt.h"
 #include "gc.h"
@@ -409,9 +410,9 @@ static void ScanGlobalToSpace (VProc_t *vp)
 }
 
 #ifndef NDEBUG
-static void CheckLocalPtr (VProc_t *self, Value_t *addr, const char *where)
+static void CheckLocalPtr (VProc_t *self, void *addr, const char *where)
 {
-    Value_t v = *addr;
+    Value_t v = *(Value_t *)addr;
     if (isPtr(v)) {
 	MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
 	if (cq->sts == TO_SP_CHUNK)
