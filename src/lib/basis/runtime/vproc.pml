@@ -182,7 +182,7 @@ structure VProc (* :
 	  SchedulerAction.@run(self, act, startLeadK)
 	;
 
-#define NANOSLEEP
+#define BUSY_WAIT
 
 #ifdef BUSY_WAIT
     (* wait for work to arrive at the vproc *)
