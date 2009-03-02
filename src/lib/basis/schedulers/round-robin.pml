@@ -19,10 +19,7 @@ structure RoundRobin =
             let item : Option.option = VProcQueue.@dequeue-from-atomic(self)
             case item
 	     of Option.NONE => 
-(* choose whether the vproc goes to sleep when there is no work to do *)
-#if 0
-		do VProc.@wait-in-atomic()
-#endif
+		do VProc.@wait-from-atomic(self)
 		throw dispatch()
 	      | Option.SOME(qitem : VProcQueue.queue) =>
 		do SchedulerAction.@dispatch-from-atomic (self, switch, #1(qitem), #0(qitem))

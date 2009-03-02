@@ -36,7 +36,7 @@ structure VProc (* :
     (* bootstrap the default scheduler *)
       define @boot-default-scheduler (act : PT.sched_act / exh : exh) : ();
     (* wait for work to arrive at the vproc *)
-      define @wait-in-atomic () : ();
+      define @wait-from-atomic (vp : vproc) : ();
 
     )
     
@@ -182,8 +182,18 @@ structure VProc (* :
 	  SchedulerAction.@run(self, act, startLeadK)
 	;
 
+#define BUSY_WAIT
+
+#ifdef BUSY_WAIT
     (* wait for work to arrive at the vproc *)
-      define @wait-in-atomic () : () =
+      define @wait-from-atomic (vp : vproc) : () =
+          return()
+        ;
+#endif /*! BUSY_WAIT */
+
+#ifdef SLEEP_IN_C_RUNTIME
+    (* wait for work to arrive at the vproc *)
+      define @wait-from-atomic (vp : vproc) : () =
 	  fun sleep () : () =
 	      cont wakeupK (x : unit) = return ()
 	    (* the C runtime expects the resumption continuation to be in vp->wakeupCont *)
@@ -194,6 +204,7 @@ structure VProc (* :
 	  do apply sleep()
 	  return()
 	;
+#endif /*! SLEEP_IN_C_RUNTIME */
 
     (* mask signals before running any scheduling code *)
       define @mask-signals (x : unit / exh : exh) : unit =

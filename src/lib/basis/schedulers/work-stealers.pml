@@ -102,10 +102,9 @@ structure WorkStealers =
 		let item : O.option = VPQ.@dequeue-from-atomic(self)
 		case item
 		 of O.NONE => 
-		  (* try to steal a thread *)
 		    let potentialVictims : L.list = VProc.@other-vprocs(/ exh)
 		    do apply sendThieves(potentialVictims / exh)
-		    do VProc.@wait-in-atomic()
+		    do VProc.@wait-from-atomic(self)
 		    throw dispatch()
 		  | O.SOME(qitem : VPQ.queue) =>
 		    do SchedulerAction.@dispatch-from-atomic (self, switch, SELECT(FIBER_OFF, qitem), SELECT(FLS_OFF, qitem))
