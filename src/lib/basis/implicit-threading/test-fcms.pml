@@ -42,6 +42,7 @@ fun par2 f1 f2 = F.par (F.d f1) (F.d f2)
 (* schedules for three-node trees *)
 (* evaluate the middle subtree after either the left or right subtree has completed *)
 fun middleNodeSecondOrLast f1 f2 f3 = F.par (F.seq (F.e f1) (F.e f2)) (F.seq (F.e f3) (F.e f2))
+fun seq3 f1 f2 f3 = F.seq (F.e f1) (F.seq (F.e f2) (F.e f3))
 (* evaluate all three subtrees in parallel *)
 fun par3 f1 f2 f3 = F.par (F.par (F.d f1) (F.d f2)) (F.d f3)
 
@@ -60,13 +61,20 @@ fun seqTreeAdd tree = (
 	| ND3 (t1, t2, t3) => seqTreeAdd t1 + seqTreeAdd t2 + seqTreeAdd t3
       (* end case *))
 
-val t = genTree 10
+val globalBFS = GlobalBFSScheduler.workGroup()
+
+val () = ImplicitThread.runWithGroup(globalBFS, fn () => let
+
+val t = genTree 6
 (* different schedules should not affect the result *)
 fun check1 t = report(treeAdd seq2 par3 t = seqTreeAdd t)
 fun check2 t = report(treeAdd par2 par3 t = seqTreeAdd t)
 fun check3 t = report(treeAdd par2 middleNodeSecondOrLast t  = seqTreeAdd t)
 fun check4 t = report(treeAdd seq2 par3 t = seqTreeAdd t)
+fun check5 t = report(treeAdd seq2 seq3 t = seqTreeAdd t)
 val () = check1 t
 val () = check2 t
 val () = check3 t
 val () = check4 t
+
+in () end)
