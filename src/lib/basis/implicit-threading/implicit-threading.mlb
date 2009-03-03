@@ -21,18 +21,23 @@
 
 (* Futures *)
 
-  lazy-future-sig.pml
+  par-susp-sig.pml
   future-sig.pml
   ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
   in
-    lazy-future.pml
+    par-susp.pml
+    par-susp1.pml
     eager-future.pml
   end
 
   fcms-sig.pml
   fcms.pml
 
+(* Ropes *)
+
   ropes.mlb
+
+(* Implicit-thread speculation *)
 
   ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
   in

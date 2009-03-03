@@ -35,11 +35,11 @@ val globalBFS = GlobalBFSScheduler.workGroup()
 (*
 val x = ImplicitThread.runWithGroup(globalBFS, fn () =>
 	   let 
-	       val fut = LazyFuture.delay(fn () => fib 20, false)
-	       val () = LazyFuture.run fut
+	       val fut = ParSusp.delay(fn () => fib 20, false)
+	       val () = ParSusp.run fut
 	       val x = fib 20
 	   in
-	       x + LazyFuture.force fut
+	       x + ParSusp.force fut
 	   end)
 val () = pml_assert(x = fib 20 * 2)
 *)
@@ -48,10 +48,10 @@ fun pfib (i : int) = (case i
        of 0 => (0 : int)
 	| 1 => (1 : int)
 	| n => let
-	      val fut = LazyFuture.delay(fn () => pfib(i-1), false)
-	      val () = LazyFuture.run fut
+	      val fut = ParSusp.delay(fn () => pfib(i-1), false)
+	      val () = ParSusp.run fut
 	      in
-	        pfib(i-2) + LazyFuture.force fut
+	        pfib(i-2) + ParSusp.force fut
 	      end
       (* end case *))
 

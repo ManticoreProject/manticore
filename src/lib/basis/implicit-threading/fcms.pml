@@ -10,7 +10,7 @@
 structure FCMS (*  : FCMS *) =
   struct
 
-    structure F = LazyFuture
+    structure Susp = ParSusp
 
     datatype 'a os_monad = MK_OS of unit -> 'a
 
@@ -19,31 +19,31 @@ structure FCMS (*  : FCMS *) =
     fun bind (MK_OS x) f = f(x())
  
 (* FIXME: see test/ty.pml *)
-(*    type 'a future = 'a F.future*)
+(*    type 'a future = 'a Susp.suspension *)
 
-    fun future f = F.delay(f, true)
-    val touch = F.force
-    val cancel = F.cancel
+    fun future f = Susp.delay(f, true)
+    val touch = Susp.force
+    val cancel = Susp.cancel
 
     type schedule = unit
 
     val empty = MK_OS(fn () => ())
 
   (* schedule the future *)
-    fun d fut = MK_OS(fn () => F.run fut)
+    fun d susp = MK_OS(fn () => Susp.run susp)
 
   (* synchronize on the future *)
-    fun r fut = MK_OS(fn () => (F.force fut; ()))
+    fun r susp = MK_OS(fn () => (Susp.force susp; ()))
 
   (* schedule in parallel *)
     fun par (MK_OS s1) (MK_OS s2) = MK_OS(fn () => let
 	  val x = future s1
 	  val y = future s2
           in
-            F.run x;
-	    F.run y;
-	    F.force x;
-	    F.force y;
+            Susp.run x;
+	    Susp.run y;
+	    Susp.force x;
+	    Susp.force y;
 	    ()
 	  end)
 
@@ -54,7 +54,7 @@ structure FCMS (*  : FCMS *) =
           ()))
 
   (* completely evaluate the future *)
-    fun e fut = seq (d fut) (r fut)
+    fun e susp = seq (d susp) (r susp)
 
     fun primCurrentLoad _ = (raise Fail "todo")
 
@@ -68,9 +68,9 @@ structure FCMS (*  : FCMS *) =
 	  bind getLoad (fn load => if load < thresh then par s1 s2 else seq s1 s2)
 
   (* schedule a future *)
-    fun sched fut (MK_OS s) = (
+    fun sched susp (MK_OS s) = (
 	  s();
-	  F.run fut;
-	  F.force fut)
+	  Susp.run susp;
+	  Susp.force susp)
 
   end

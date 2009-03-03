@@ -10,9 +10,9 @@
  *)
 
 (* state values *)
-#define EMPTY_F  $0
-#define STOLEN_F $1
-#define EVAL_F   $2
+#define EMPTY_ST  $0
+#define STOLEN_ST $1
+#define EVAL_ST   $2
 
 (* offsets *)
 #define STATE_OFF            0
@@ -39,9 +39,9 @@ structure ParSusp1 : PAR_SUSP =
                ];
 
     (* the state work contains one of the following values:
-     *          EMPTY_F
-     *          STOLEN_F
-     *          EVAL_F
+     *          EMPTY_ST
+     *          STOLEN_ST
+     *          EVAL_ST
      *          FULL      value
      *          WAITING   cont
      *)
@@ -55,57 +55,61 @@ structure ParSusp1 : PAR_SUSP =
 		       return(Option.SOME(c))
 		   else 
 		       return(Option.NONE)
-        let fut : suspension = alloc(EMPTY_F, thunk, cOpt)
-	let fut : suspension = promote(fut)
-	return(fut)
+        let susp : suspension = alloc(EMPTY_ST, f, cOpt)
+	let susp : suspension = promote(susp)
+	return(susp)
+      ;
+
+      define @delay-w (arg : [fun(unit / exh -> any), bool] / exh : exh) : suspension =
+	@delay(#0(arg), #1(arg) / exh)
       ;
 
     (* evaluate a suspension 
      * PRECONDITION: this function has unique access to write to the suspension
      *)
-      define @eval (fut : suspension / exh : exh) : any =
-	let f : thunk = SELECT(THUNK_OFF, fut)
+      define @eval (susp : suspension / exh : exh) : any =
+	let f : thunk = SELECT(THUNK_OFF, susp)
        (* clear the thunk pointer to avoid a space leak *)
-	do UPDATE(THUNK_OFF, fut, (thunk) $0)
+	do UPDATE(THUNK_OFF, susp, (thunk) $0)
 	let result : any = apply f (UNIT / exh)
 	return(result)
       ;
 
     (* steal a suspension, evaluate it, and store the result *)
-      define @steal (fut : suspension / exh : exh) : () =
-	let tmp : any = CAS (&STATE_OFF(fut), EMPTY_F, STOLEN_F)
-	if Equal (tmp, EMPTY_F) 
-	   then let result : any = @eval(fut / exh)
+      define @steal (susp : suspension / exh : exh) : () =
+	let tmp : any = CAS (&STATE_OFF(susp), EMPTY_ST, STOLEN_ST)
+	if Equal (tmp, EMPTY_ST) 
+	   then let result : any = @eval(susp / exh)
                 let result : any = promote(result)
-		let tmpX : any = CAS(&STATE_OFF(fut), STOLEN_F, result)
-		if Equal (tmpX, STOLEN_F)
+		let tmpX : any = CAS(&STATE_OFF(susp), STOLEN_ST, result)
+		if Equal (tmpX, STOLEN_ST)
 		   then return ()
 		   else (* unblock the suspension *)
-			do UPDATE(STATE_OFF, fut, result)
-                        let blockedFut : ImplicitThread.thread = (ImplicitThread.thread)tmpX
-                        do ImplicitThread.@spawn(blockedFut / exh)
+			do UPDATE(STATE_OFF, susp, result)
+                        let blockedSusp : ImplicitThread.thread = (ImplicitThread.thread)tmpX
+                        do ImplicitThread.@spawn(blockedSusp / exh)
                         return()
 	    else (* suspension cell is already full *)
 		 return ()
       ;
 
     (* PRECONDITION: at most one thread may apply this operation to a given suspension *)
-      define @force (fut : suspension / exh : exh) : any =
-        let tmp : any = CAS (&0(fut), EMPTY_F, EVAL_F)
-        if Equal (tmp, EMPTY_F)
+      define @force (susp : suspension / exh : exh) : any =
+        let tmp : any = CAS (&0(susp), EMPTY_ST, EVAL_ST)
+        if Equal (tmp, EMPTY_ST)
            then (* the suspension is ready for evaluation *)
-             let result : any = @eval(fut / exh)
+             let result : any = @eval(susp / exh)
              let result : any = promote (result)
-             do UPDATE(STATE_OFF, fut, result)
+             do UPDATE(STATE_OFF, susp, result)
              return (result)
-	else if Equal (tmp, STOLEN_F)
+	else if Equal (tmp, STOLEN_ST)
            then (* another implicit thread is evaluating the suspension; we need to block *)
                 cont kBlk (_ : unit) = 
-		     return (SELECT(STATE_OFF, fut))
+		     return (SELECT(STATE_OFF, susp))
                 let thdBlk : ImplicitThread.thread = ImplicitThread.@capture(kBlk / exh)
                 let thdBlk : ImplicitThread.thread = promote (thdBlk)
-   	        let tmpX : any = CAS (&STATE_OFF(fut), STOLEN_F, thdBlk)
- 	        if Equal (tmpX, STOLEN_F)
+   	        let tmpX : any = CAS (&STATE_OFF(susp), STOLEN_ST, thdBlk)
+ 	        if Equal (tmpX, STOLEN_ST)
 	           then SchedulerAction.@stop ()
 	          else (* the suspension value is ready *)
                        return (tmpX)
@@ -114,18 +118,18 @@ structure ParSusp1 : PAR_SUSP =
       ;
 
     (* place the suspension on the ready queue *)
-      define @run (fut : suspension / exh : exh) : unit =
+      define @run (susp : suspension / exh : exh) : unit =
         cont k (x : unit) =
-          do @steal(fut / exh)
+          do @steal(susp / exh)
           SchedulerAction.@stop()
-        let thd : ImplicitThread.thread = ImplicitThread.@thread(k, SELECT(CANCELABLE_OFF, fut) / exh)
+        let thd : ImplicitThread.thread = ImplicitThread.@thread(k, SELECT(CANCELABLE_OFF, susp) / exh)
 	do ImplicitThread.@spawn(thd / exh)
 	return(UNIT)
       ;
 
     (* cancel the suspension *)
-      define @cancel (fut : suspension / exh : exh) : unit =
-        case SELECT(CANCELABLE_OFF, fut)
+      define @cancel (susp : suspension / exh : exh) : unit =
+        case SELECT(CANCELABLE_OFF, susp)
 	 of Option.NONE =>
 	    (* QUESTION: is this an error? *)
 	    return(UNIT)
