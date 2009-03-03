@@ -55,7 +55,7 @@ fun pfib (i : int) = (case i
 	      end
       (* end case *))
 
-val x = ImplicitThread.runWithGroup(globalBFS, fn () => pml_assert(doit pfib 21 4))
+val x = ImplicitThread.runWithGroup(globalBFS, fn () => pml_assert(doit pfib 24 6))
 
 val () = Print.printLn "Finished futures tests"
 

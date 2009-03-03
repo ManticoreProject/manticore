@@ -8,6 +8,7 @@
 
   ../sequential/sequential.mlb
   ../misc/debug.mlb
+  ../topologies/topologies.mlb
 
   ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
   in
@@ -15,5 +16,6 @@
     scheduler-action.pml
     vproc-queue.pml
     vproc.pml
+(*  virtual-maps.pml *)
     thread-ops.pml
   end
