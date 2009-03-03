@@ -143,13 +143,13 @@ void AllocToSpaceChunk (VProc_t *vp)
 	    }
 	    chunk->baseAddr = (Addr_t)memObj;
 	    chunk->szB = nPages * BIBOP_PAGE_SZB;
-	    chunk->sts = TO_SP_CHUNK;
 	    UpdateBIBOP (chunk);
 	}
 	else {
 	    chunk = FreeChunks;
 	    FreeChunks = chunk->next;
 	}
+	chunk->sts = TO_SP_CHUNK;
 	ToSpaceSz += HEAP_CHUNK_SZB;
     MutexUnlock (&HeapLock);
 
