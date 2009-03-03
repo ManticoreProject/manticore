@@ -21,7 +21,7 @@ structure FCMS (*  : FCMS *) =
 (* FIXME: see test/ty.pml *)
 (*    type 'a future = 'a Susp.suspension *)
 
-    fun future f = Susp.delay(f, true)
+    fun future f = Susp.delay(f, false)
     val touch = Susp.force
     val cancel = Susp.cancel
 
