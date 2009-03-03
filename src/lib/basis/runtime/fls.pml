@@ -116,25 +116,25 @@ structure FLS (* :
     (* set the fls on the host vproc *)
       define inline @set (fls : fls) : () =
 	  do assert (NotEqual(fls, nil))
-	  do vpstore (CURRENT_FG, host_vproc, fls)
+	  do vpstore (CURRENT_FLS, host_vproc, fls)
 	  return ()
 	;
 
       define inline @set-in-atomic (self : vproc, fls : fls) : () =
 	  do assert (NotEqual(fls, nil))
-	  do vpstore (CURRENT_FG, self, fls)
+	  do vpstore (CURRENT_FLS, self, fls)
 	  return ()
 	;
 
     (* get the fls from the host vproc *)
       define inline @get () : fls =
-	  let fls : fls = vpload (CURRENT_FG, host_vproc)
+	  let fls : fls = vpload (CURRENT_FLS, host_vproc)
 	  do assert(NotEqual(fls, nil))
 	  return(fls)
 	;
 
       define inline @get-in-atomic (self : vproc) : fls =
-	  let fls : fls = vpload (CURRENT_FG, self)
+	  let fls : fls = vpload (CURRENT_FLS, self)
 	  do assert(NotEqual(fls, nil))
 	  return(fls)
 	;

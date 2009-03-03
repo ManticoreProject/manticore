@@ -1,5 +1,5 @@
 #!/bin/sh
 #
 
-sml @SMLcmdname=mc @SMLload=../mc $@
+/stage/sml/current/bin/sml @SMLcmdname=mc @SMLload=../mc $@
 

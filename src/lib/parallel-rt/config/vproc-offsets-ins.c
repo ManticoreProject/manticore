@@ -22,7 +22,7 @@
     VP_OFFSET(vp, IN_MANTICORE, inManticore, true);
     VP_OFFSET(vp, ATOMIC, atomic, true);
     VP_OFFSET(vp, SIG_PENDING, sigPending, false);
-    VP_OFFSET(vp, CURRENT_FG, currentFG, true);
+    VP_OFFSET(vp, CURRENT_FLS, currentFLS, true);
     VP_OFFSET(vp, VP_ACTION_STK, actionStk, false);
     VP_OFFSET(vp, VP_SCHED_CONT, schedCont, false);
     VP_OFFSET(vp, VP_WAKEUP_CONT, wakeupCont, true);

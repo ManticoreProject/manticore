@@ -177,7 +177,7 @@ void *NewVProc (void *arg)
     vproc->limitPtr = (Addr_t)vproc + VP_HEAP_SZB - ALLOC_BUF_SZB;
     SetAllocPtr (vproc);
     vproc->idle = true;
-    vproc->currentFG = M_NIL;
+    vproc->currentFLS = M_NIL;
 
 #ifdef ENABLE_LOGGING
     InitLog (vproc);

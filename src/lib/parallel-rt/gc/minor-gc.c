@@ -76,7 +76,7 @@ void MinorGC (VProc_t *vp)
    */
     Value_t *roots[16], **rp;
     rp = roots;
-    *rp++ = &(vp->currentFG);
+    *rp++ = &(vp->currentFLS);
     *rp++ = &(vp->actionStk);
     *rp++ = &(vp->schedCont);
     *rp++ = &(vp->wakeupCont);

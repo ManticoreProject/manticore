@@ -18,7 +18,7 @@ struct struct_vproc {
     Value_t	inManticore;	/*!< true, when executing Manticore code */
     Value_t	atomic;		/*!< true, when in a vproc-atomic region */
     Value_t	sigPending;	/*!< true, when there is a pending signal */
-    Value_t	currentFG;	/*!< fiber group of the current thread */
+    Value_t	currentFLS;	/*!< the current fiber's local storage */
     Value_t	actionStk;	/*!< the top of the signal-action stack */
     Value_t     schedCont;      /*!< continuation that invokes the current scheduler */
     Value_t     wakeupCont;     /*!< continuation that wakes the vproc */
