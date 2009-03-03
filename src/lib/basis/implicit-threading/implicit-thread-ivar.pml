@@ -43,7 +43,7 @@ structure ImplicitThreadIVar =
 (*
 FIXME: add "isPromoted" primop to the compiler.
 NOTE: supposing we have inLocalHeap, 
-        if isPromoted(ivar)
+        if Not(isPromoted(ivar))
 	   then return(SELECT(VALUE_OFF, ivar))
 	else 
 *)
