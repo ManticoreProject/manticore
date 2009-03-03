@@ -438,7 +438,8 @@ static void CheckLocalPtr (VProc_t *self, void *addr, const char *where)
 }
 static void CheckGC (VProc_t *self, Value_t **roots)
 {
-    SayDebug ("  Checking heap consistency\n");
+    if (GCDebug >= GC_DEBUG_GLOBAL)
+	SayDebug ("  Checking heap consistency\n");
 
   // check the roots
     for (int i = 0;  roots[i] != 0;  i++) {
