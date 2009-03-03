@@ -41,9 +41,9 @@ structure ImplicitThreadIVar =
 
       define @get (ivar : ivar / exh : exh) : any =
 (*
-FIXME: add "inLocalHeap" primop to the compiler.
+FIXME: add "isPromoted" primop to the compiler.
 NOTE: supposing we have inLocalHeap, 
-        if inLocalHeap(ivar)
+        if isPromoted(ivar)
 	   then return(SELECT(VALUE_OFF, ivar))
 	else 
 *)
