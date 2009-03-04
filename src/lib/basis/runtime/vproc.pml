@@ -11,7 +11,7 @@ structure VProc (* :
 
     _prim(
 
-    (** unique ids **)
+    (** Unique ids **)
 
     (* unique id of a vproc *)
       define @vproc-id (vp : vproc) : int;
@@ -20,7 +20,7 @@ structure VProc (* :
     (* total number of vprocs *)
       define @num-vprocs (/ exh : exh) : int;
 
-    (** vproc allocation and iterators **)
+    (** Vproc allocation and iterators **)
 
     (* returns the list of all vprocs *)
       define @all-vprocs () : List.list;
@@ -31,12 +31,19 @@ structure VProc (* :
     (* apply f to each vproc except the host vproc *)
       define @for-other-vprocs(f : fun(vproc / exh ->) / exh : exh) : ();
 
-    (** initialization and idling **)
+    (** Initialization and idling **)
 
     (* bootstrap the default scheduler *)
       define @boot-default-scheduler (act : PT.sched_act / exh : exh) : ();
     (* wait for work to arrive at the vproc *)
       define @wait-from-atomic (vp : vproc) : ();
+
+    (** Preemption **)
+
+    (* trigger a preemption on a remote vproc. if the destination is the same as the host vproc, then
+     * this operation is a no-op.
+     *) 
+      define @preempt-from-atomic (self : vproc, dst : vproc) : ();
 
     )
     
@@ -51,6 +58,7 @@ structure VProc (* :
       extern int GetNumVProcs ();
       extern void *SleepCont (void *) __attribute__((alloc));
       extern void *ListVProcs (void *) __attribute__((alloc));
+      extern void VProcPreempt(void *);
 
     (* returns the total number of vprocs *)
       define inline @num-vprocs () : int =
@@ -229,6 +237,19 @@ structure VProc (* :
 	  do FLS.@set(fls)
 	  return (UNIT)
 	;
+
+    (* trigger a preemption on a remote vproc. if the destination is the same as the host vproc, then
+     * this operation is a no-op.
+     *) 
+(* QUESTION: is this the right behavior? *)
+      define @preempt-from-atomic (self : vproc, dst : vproc) : () =
+        if Equal(self, dst)
+	   then 
+	    do ccall VProcPreempt(dst)
+	    return()
+	else
+	    return()
+      ;
 
     )
 
