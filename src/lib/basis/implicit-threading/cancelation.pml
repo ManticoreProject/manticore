@@ -6,12 +6,6 @@
  * A mechanism for canceling implicit threads.
  *)
 
-#define CANCELED_OFF    0
-#define INACTIVE_OFF    1
-#define CHILDREN_OFF    2
-#define GCHILDREN_OFF   3
-#define PARENT_OFF      4
-
 structure Cancelation (* : sig
 
     _prim(
@@ -23,11 +17,13 @@ structure Cancelation (* : sig
      *)
       define @new ( / exh : exh) : cancelable;
 
-    (* cancel a cancelable. *)
-      define @cancel (c : cancelable / exh : exh) : ();
-
     (* wrap a fiber with a cancelable. the fiber is now cancelable by applying @cancel(c / exh) *)
       define @wrap (c : cancelable, k : PT.fiber / exh : exh) : PT.fiber;
+
+    (* cancel a cancelable. 
+     * NOTE: this operation modifies the signal mask.
+     *)
+      define @cancel (c : cancelable / exh : exh) : ();
 
     )
 
@@ -39,13 +35,26 @@ structure Cancelation (* : sig
 
     _primcode (
 
+(* QUESTION: is it safe to store a state value in the inactive flag? *)
+#define INACTIVE        $0
+
+(* offsets *)
+#define CANCELED_OFF    0
+#define INACTIVE_OFF    1
+#define CHILDREN_OFF    2
+#define GCHILDREN_OFF   3
+#define PARENT_OFF      4
+
      (* communication channel for canceling fibers *)
        typedef cancelable =
-                 [ ![bool],            (* canceled flag (TRUE=canceled) *)
-                   ![bool],            (* inactive flag (TRUE=inactive) *)
+                 [ ![bool],            (* canceled flag *)
+                   ![vproc],           (* inactive flag (NIL when inactive but is otherwise set to
+					* the host vproc) 
+					*)
                    L.list,             (* child pointers *)
 		   ![L.list],          (* globally-visible child pointers 
-					* INVARIANT: must be equal to locally-visible child pointers whenever inactive=true.
+					* INVARIANT: must be equal to locally-visible child pointers 
+					* whenever inactive=true.
 					*)
 	           O.option            (* parent pointer *)
                  ];
@@ -71,18 +80,19 @@ structure Cancelation (* : sig
       define @set-current (cOpt : O.option / exh : exh) : () =
         let ite : FLS.ite = FLS.@get-ite(/ exh)
         let ite : FLS.ite = alloc(#0(ite), cOpt)
-        FLS.@set-ite(ite / exh)
+        do FLS.@set-ite(ite / exh)
+        return()
       ;
 
-      define inline @get-canceled-flag (c : cancelable / exh : exh) : ![bool] =
+      define inline @get-canceled-flag (c : cancelable) : ![bool] =
 	let canceled : ![bool] = SELECT(CANCELED_OFF, c)
 	let canceled : ![bool] = promote(canceled)
 	return(canceled)
       ;
 
-      define @get-inactive-flag (c : cancelable / exh : exh) : ![bool] =
-	let inactive : ![bool] = SELECT(INACTIVE_OFF, c)
-	let inactive : ![bool] = promote(inactive)
+      define @get-inactive-flag (c : cancelable) : ![vproc] =
+	let inactive : ![vproc] = SELECT(INACTIVE_OFF, c)
+	let inactive : ![vproc] = promote(inactive)
 	return(inactive)
       ;
 
@@ -94,64 +104,71 @@ structure Cancelation (* : sig
       (* make the children globally visible *)
 	let gChildren : ![List.list] = SELECT(GCHILDREN_OFF, c)
         let children : List.list = promote(SELECT(CHILDREN_OFF, c))
-        do UPDATE(0, gChildren, children)
-      (* mark the inactive flag. the CAS acts as a memory barrier. *)
-        let inactive : ![bool] = @get-inactive-flag(c / exh)
-        let x : bool = CAS(&0(inactive), false, true)
+        do #0(gChildren) := children
+        let inactive : ![vproc] = @get-inactive-flag(c)
+      (* FIXME: the CAS is unnecessary, since all we need here is to flush the write buffer *)
+        let x : vproc = CAS(&0(inactive), SELECT(INACTIVE_OFF, c), INACTIVE)
         return()
       ;
 
-
     (* set the cancelable as ready to run *)
-      define @set-active (c : cancelable / exh : exh) : () =
+      define @set-active (self : vproc, c : cancelable / exh : exh) : () =
  	do @set-current(O.SOME(c) / exh)
-      (* use CAS as a memory fence *)
-        let inactive : ![bool] = @get-inactive-flag(c / exh)
-        let x : bool = CAS(&0(inactive), true, false) 
+        let inactive : ![vproc] = @get-inactive-flag(c)
+      (* FIXME: the CAS is unnecessary, since all we need here is to flush the write buffer *)
+        let x : vproc = CAS(&0(inactive), SELECT(INACTIVE_OFF, c), self) 
+        do assert(Equal(x, INACTIVE))
         return()
       ;
 
     (* attach the fiber k to the cancelable *)
       define @wrap (c : cancelable, k : PT.fiber / exh : exh) : PT.fiber =
-      (* terminate the wrapped fiber *)
-        cont terminate () = 
+
+        cont impossible () = 
+             let e : exn = Fail(@"Cancelation.@wrap: impossible")
+             throw exh(e)
+
+        cont terminate (self : vproc) = 
              do @set-inactive(c / exh)
-             let _ : unit = SchedulerAction.@stop()
-             return($0)
-      (* run the wrapped fiber *)
-        cont dispatch (wrapper : PT.sched_act, k : PT.fiber) =
-             do @set-active(c / exh)
-             let canceledFlg : ![bool] = @get-canceled-flag(c / exh)
+             do SchedulerAction.@stop-from-atomic(self)
+             throw impossible()
+
+        cont dispatch (self : vproc, wrapper : PT.sched_act, k : PT.fiber) =
+             do @set-active(self, c / exh)
+             let canceledFlg : ![bool] = @get-canceled-flag(c)
              if SELECT(0, canceledFlg)
                 then 
-		 throw terminate()
+		 throw terminate(self)
 	     else
-                 do SchedulerAction.@run(host_vproc, wrapper, k)
-                 return($0)
-      (* scheduler action that polls for cancelation *)
+                 do SchedulerAction.@run(self, wrapper, k)
+                 throw impossible()
+
+      (* poll for cancelation *)
         cont wrapper (s : PT.signal) =
+             let self : vproc = host_vproc
              case s
 	      of PT.STOP => 
-		 throw terminate()
+		 throw terminate(self)
 	       | PT.PREEMPT(k : PT.fiber) =>
 		 do @set-inactive(c / exh)
-                 do SchedulerAction.@yield-in-atomic(host_vproc)
-                 throw dispatch(wrapper, k)
+                 do SchedulerAction.@yield-in-atomic(self)
+                 throw dispatch(self, wrapper, k)
 	       | _ =>
 		 let e : exn = Match
                  throw exh (e)
              end
+
         cont wrappedK (x : unit) =
-             let vp : vproc = SchedulerAction.@atomic-begin()
-             throw dispatch(wrapper, k)
+             let self : vproc = SchedulerAction.@atomic-begin()
+             throw dispatch(self, wrapper, k)
         return(wrappedK)
       ;
 
       define @alloc (parent : O.option / exh : exh) : cancelable =
 	let canceled : ![bool] = alloc(false)
-	let active : ![bool] = alloc(true)
+	let inactive : ![vproc] = alloc(INACTIVE)
 	let gChildren : ![List.list] = alloc(nil)
-	let c : cancelable = alloc(canceled, active, nil, gChildren, parent)
+	let c : cancelable = alloc(canceled, inactive, nil, gChildren, parent)
 	return(c)
       ;
 
@@ -181,31 +198,59 @@ structure Cancelation (* : sig
      * children must terminate before continuing.
      *)
       define @cancel (c : cancelable / exh : exh) : () =        
-      (* walk down the spawn tree, cancel all nodes and wait those nodes to become inactive *)
-        fun spin (ins : L.list, outs : L.list / exh : exh) : () =
+
+        let self : vproc = SchedulerAction.@atomic-begin()
+
+      (* cancel the thread and wait for it and all of its children to terminate *)
+        fun cancelAndWaitToTerm (ins : L.list, outs : L.list) : () =
 	    case ins
 	     of nil => 
 		case outs
-		 of nil => return()          (* all cancelables have terminated *)
-		  | L.CONS (x : cancelable, xs : L.list) => 
+		 of nil => 
+		  (* all cancelables have terminated *)
+		    return()
+		  | L.CONS (x : cancelable, xs : L.list) =>
+		  (* some cancelables have not terminated after the first check, so start over *)
+		    do Pause()
 		    let ins : L.list = PrimList.@rev(outs / exh)
-                    apply spin(ins, nil / exh)
+                    apply cancelAndWaitToTerm(ins, nil)
                 end
 	      | L.CONS(c : cancelable, ins' : L.list) =>
-		let canceled : ![bool] = @get-canceled-flag(c / exh)
-                let inactive : ![bool] = @get-inactive-flag(c / exh)
-              (* the CAS operation acts as a memory barrier *)
-                let _ : bool = CAS(&0(canceled), false, true) 
-		if SELECT(0, inactive)
+		let canceled : ![bool] = @get-canceled-flag(c)
+                let inactive : ![vproc] = @get-inactive-flag(c)
+                do if #0(canceled)
+		      then return()
+		   else
+		     (* Because our memory model is not sequentially consistent, we rely on the CAS operation
+		      * below to prevent a race condition. The race condition occurs when we reach the
+		      * conditional below, but the other thread has not yet seen the updated canceled
+		      * flag. Thus, the thread may wake up and continue evaluating before it sees that
+		      * it has been canceled.
+		      *
+		      * NOTE: the CAS operation is unnecessarily heavyweight. It would suffice to use any
+		      * instruction that is guaranteed to flush the processor's write buffer, but no
+		      * such instruction is provided by the compiler.
+		      *)
+		       let _ : bool = CAS(&0(canceled), false, true) 
+                       return()
+              (* at this point, every processor must see that the thread is canceled *)
+                let vp : vproc = #0(inactive)
+		if Equal(vp, INACTIVE)
 		   then 
-		  (* cancel the children *)
+		  (* the thread cannot run again, so it is safe to access the thread's children. *)
                     let outs : L.list = PrimList.@append(#0(SELECT(GCHILDREN_OFF, c)), outs / exh)
-		    apply spin(ins', outs / exh)
+		    apply cancelAndWaitToTerm(ins', outs)
 		else 
-                  (* spin until the cancelable is inactive *)
-		    apply spin(ins, outs / exh)		  
+                    do assert(NotEqual(vp, self))
+		    do VProc.@preempt-from-atomic(self, vp)
+                  (* tack the cancelable to the end of the waiting list, and try the next thread *)
+		    apply cancelAndWaitToTerm(ins', L.CONS(c, outs))
             end
-        apply spin(L.CONS(c, nil), nil / exh)
+
+        do apply cancelAndWaitToTerm(L.CONS(c, nil), nil)
+
+        do SchedulerAction.@atomic-end(self)
+        return()
       ;
 
     )

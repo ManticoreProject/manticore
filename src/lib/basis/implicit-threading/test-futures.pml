@@ -27,7 +27,7 @@ fun pfib (i : int) = (case i
 val () = Print.printLn "cilk5"
 val cilk5 = MultiprogrammedWorkStealing.workGroup()
 val () = Print.printLn "eager futures"
-val () = ImplicitThread.runWithGroup(cilk5, fn () => pml_assert(doit pfib 21 4))
+(*val () = ImplicitThread.runWithGroup(cilk5, fn () => pml_assert(doit pfib 21 4))*)
 
 (* Parallel suspensions (no cancelation) *)
 
@@ -44,11 +44,9 @@ fun pfib (i : int) = (case i
 	      end
       (* end case *))
 
-val x = ImplicitThread.runWithGroup(globalBFS, fn () => pml_assert(doit pfib 21 2))
+(*val x = ImplicitThread.runWithGroup(globalBFS, fn () => pml_assert(doit pfib 21 2))*)
 
 (* Single-toucher parallel suspensions (no cancelation) *)
-
-val globalBFS = GlobalBFSScheduler.workGroup()
 
 fun pfib (i : int) = (case i
        of 0 => (0 : int)
@@ -61,7 +59,30 @@ fun pfib (i : int) = (case i
 	      end
       (* end case *))
 
-val x = ImplicitThread.runWithGroup(globalBFS, fn () => pml_assert(doit pfib 21 2))
+(*val x = ImplicitThread.runWithGroup(globalBFS, fn () => pml_assert(doit pfib 21 2))*)
+
+fun cancel1 () = let
+      val susp1 = ParSusp.delay(fn () => (
+				  Print.printLn "starting susp1";
+				  fib 23;
+				  Print.printLn "finished susp1"
+				), true)
+      val susp2 = ParSusp.delay(fn () => (
+				  Print.printLn "starting susp2";
+				  fib 23;
+				  Print.printLn "finished susp2"
+				), true)
+      in
+        ParSusp.run susp1;
+        fib 20;
+	ParSusp.cancel susp1;
+        ParSusp.run susp2;
+	ParSusp.force susp2;
+	Print.printLn "canceled susp1";
+	()
+      end
+
+val () = ImplicitThread.runWithGroup(globalBFS, cancel1)
 
 val () = Print.printLn "Finished futures tests"
 
