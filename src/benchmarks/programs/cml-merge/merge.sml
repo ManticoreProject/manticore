@@ -86,6 +86,23 @@ structure Merge : sig
 structure Main =
   struct
 
+    fun testit () = let
+	  val l = List.tabulate (32, fn i => 32-i)
+	  fun sort () = let
+		val l' = Merge.sort l
+		fun pr x = TextIO.print(" " ^ Int.toString x)
+		in
+		  TextIO.print "Input list  = [";
+		  List.app pr l;
+		  TextIO.print " ]\n";
+		  TextIO.print "Sorted list = [";
+		  List.app pr l';
+		  TextIO.print " ]\n"
+		end
+	  in
+	    RunCML.doit (sort, NONE)
+	  end
+
     fun timeit n = let
 	  val l = List.tabulate (n, fn i => n-i)
 	  fun sort () = let
@@ -102,6 +119,6 @@ structure Main =
 	    RunCML.doit (sort, NONE)
 	  end
 
-    fun main _ = (timeit 65536; OS.Process.success)
+    fun main _ = (timeit 32768; OS.Process.success)
 
   end
