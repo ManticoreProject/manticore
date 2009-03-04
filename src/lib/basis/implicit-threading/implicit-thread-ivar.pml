@@ -10,7 +10,7 @@
 #define VALUE_OFF                  1
 #define SPIN_LOCK_OFF              2
 
-#define EMPTY_VAL              enum(0)
+#define EMPTY_VAL                  $0
 
 structure ImplicitThreadIVar = 
   struct
@@ -36,7 +36,7 @@ structure ImplicitThreadIVar =
       ;
 
       define @empty-ivar (/ exh : exh) : ivar =
-	@ivar(enum(0):any / exh)
+	@ivar(EMPTY_VAL / exh)
       ;
 
       define @get (ivar : ivar / exh : exh) : any =
@@ -47,6 +47,7 @@ NOTE: supposing we have inLocalHeap,
 	   then return(SELECT(VALUE_OFF, ivar))
 	else 
 *)
+        let ivar : ivar = promote(ivar)
         let vp : vproc = SchedulerAction.@atomic-begin()
 	let readFlag : int = I32FetchAndAdd(&SPIN_LOCK_OFF(ivar), 1)
 	let value : any = SELECT(VALUE_OFF, ivar)
