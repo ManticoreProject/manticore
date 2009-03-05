@@ -37,7 +37,7 @@ functor RunTestsFn (L : COMPILER) = struct
       Posix.IO.close nullErr;
       (p, Unix.textInstreamOf p, Unix.textOutstreamOf p)
     end
-  
+
 (* runTest : date * string -> {outcome:T.outcome, expected:string, actual:string} *)
   fun runTest (d, filename) = let
     val shortName = joinDF (P.file (P.dir filename), P.file filename)

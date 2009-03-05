@@ -47,16 +47,18 @@ structure Tests = struct
 (* n.b. "expected" and "actual" will be bound to "" when compile failed *)
 
 (* readFile : string -> string *)
-  fun readFile infile = let
-    val inStream = TextIO.openIn infile
-    fun read acc =
-     (case TextIO.inputLine inStream
-        of NONE => String.concatWith "\n" (rev acc)
-	 | SOME s => read (s::acc)
-        (* end case *))
-    in
-      read [] before TextIO.closeIn inStream
-    end
+  fun readFile infile =
+   (case TextIO.openIn infile
+      of inStream => let
+        fun read acc =
+         (case TextIO.inputLine inStream
+            of NONE => String.concatWith "\n" (rev acc)
+	     | SOME s => read (s::acc)
+            (* end case *))
+	in
+	  read [] before TextIO.closeIn inStream
+	end
+    (* end case *)) handle IO.Io info => raise IO.Io info
 
 (* scrape : string -> string list -> string * string list *)
   fun scrape tagname ss = let
@@ -217,7 +219,7 @@ Date.toString:
 (* This function reads raw readmes. *)
   fun readRawReadme d infile = let
     val g   = OS.Path.file (OS.Path.dir infile)
-    val txt = readFile infile
+    val txt = readFile infile handle IO.Io _ => "(-- no README! --)"
     in
       README {timestamp = d,
 	      goalName = g,
