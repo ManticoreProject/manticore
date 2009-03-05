@@ -16,6 +16,7 @@ in
   array.pml
 end
 option.pml
+trap.pml
 int.pml
 long.pml
 float.pml
