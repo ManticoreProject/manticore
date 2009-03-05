@@ -39,7 +39,7 @@
  *			"SRC"	-- source of dependent event
  *			"DST"	-- destination of dependent event
  *
- *	args	-- an array of argument descriptors.  Each log entry can have upto 20 bytes of
+ *	args	-- an array of argument descriptors.  Each log entry can have up to 20 bytes of
  *		   argument data, which starts at byte 12 of the event object.
  *			name	-- the argument's name
  *			ty	-- the type of the argument.  The types are:
@@ -48,6 +48,7 @@
  *					word	-- 32-bit unsigned integer
  *					float	-- 32-bit floating-point number
  *					double	-- 64-bit floating-point number
+ *					event	-- 64-bit event identifier (used for DST events)
  *					strN	-- N-character string (0 < N <= 20)
  *			loc	-- the offset of the field (in bytes).  This field is
  *				   optional for when the order of arguments does not determine

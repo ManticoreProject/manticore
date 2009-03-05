@@ -23,6 +23,7 @@ structure EventSig =
       | WORD
       | FLOAT
       | DOUBLE
+      | EVENT_ID
       | STR of int
 
     fun tyFromString s = (case String.map Char.toLower s
@@ -31,6 +32,7 @@ structure EventSig =
 	    | "word" => SOME WORD
 	    | "float" => SOME FLOAT
 	    | "double" => SOME DOUBLE
+	    | "event" => SOME EVENT_ID
 	    | s => let
 		val ss = SS.full s
 		in
@@ -50,6 +52,7 @@ structure EventSig =
       | tyToString WORD = "word"
       | tyToString FLOAT = "float"
       | tyToString DOUBLE = "double"
+      | tyToString EVENT_ID = "event"
       | tyToString (STR n) = "str" ^ Int.toString n
 
   (* field tag, alignment, and size in bytes *)
@@ -58,6 +61,7 @@ structure EventSig =
       | alignAndSize WORD = {tag = "u", align = 0w4, sz = 0w4}
       | alignAndSize FLOAT = {tag = "f", align = 0w4, sz = 0w4}
       | alignAndSize DOUBLE = {tag = "D", align = 0w8, sz = 0w8}
+      | alignAndSize EVENT_ID = {tag = "I", align = 0w8, sz = 0w8}
       | alignAndSize (STR n) =
 	  {tag = "s"^Int.toString n, align = 0w1, sz = Word.fromInt n}
 

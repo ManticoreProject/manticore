@@ -27,6 +27,7 @@ structure GenInlineLogH : GENERATOR =
 			| EventSig.WORD => "uint32_t "
 			| EventSig.FLOAT => "float "
 			| EventSig.DOUBLE => "double "
+			| EventSig.EVENT_ID => "uint64_t "
 			| EventSig.STR _ => "const char *"
 		      (* end case *))
 		in
@@ -52,6 +53,9 @@ structure GenInlineLogH : GENERATOR =
 			]
 		    | EventSig.DOUBLE => prl[
 			  "*((double *)&ep->data[", index, "]) = ", param, ";\n"
+			]
+		    | EventSig.EVENT_ID => prl[
+			  "*((uint64_t *)&ep->data[", index, "]) = ", param, ";\n"
 			]
 		    | EventSig.STR n => prl[
 			  "memcpy (((char *)(ep->data)) + ", Word.fmt StringCvt.DEC loc, ", ",
