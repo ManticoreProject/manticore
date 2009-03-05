@@ -19,7 +19,13 @@
  *			-- increase the major version number when changing the order of events,
  *			   or changing the order, number, or type of argument to existing events.
  *
- *	events	-- an array of the event descriptors.
+ *	events	-- an array of event descriptors.  An event descriptor is either a single
+ *		   event, or it is a group of event descriptors.
+ *
+ * The fields of an event-descriptor group are
+ *	name	-- the group name
+ *
+ *	events	-- an array of event descriptors.
  *
  * The fields of an event descriptor are
  *	name	-- symbolic name
@@ -39,7 +45,12 @@
  *				   the layout.
  *			desc	-- English-language description of argument
  *
- *	kind	-- one of EVENT", START", or "END"
+ *	kind	-- one of
+ *			"EVENT"	-- singleton event
+ *			"START"	-- start of interval event
+ *			"END"	-- end of interval event
+ *			"SRC"	-- source of dependent event
+ *			"DST"	-- destination of dependent event
  *
  *	desc	-- English-language description of event
  */
