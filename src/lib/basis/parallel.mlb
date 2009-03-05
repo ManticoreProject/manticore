@@ -1,5 +1,12 @@
+(* parallel.mlb
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
 runtime/runtime.mlb
 synch/synch.mlb
 implicit-threading/implicit-threading.mlb
 schedulers/schedulers.mlb
 cml/cml.mlb
+
