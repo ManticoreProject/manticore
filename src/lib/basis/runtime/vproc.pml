@@ -245,9 +245,9 @@ structure VProc (* :
       define @preempt-from-atomic (self : vproc, dst : vproc) : () =
         if Equal(self, dst)
 	   then 
-	    do ccall VProcPreempt(dst)
 	    return()
 	else
+	    do ccall VProcPreempt(dst)
 	    return()
       ;
 
