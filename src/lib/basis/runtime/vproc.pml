@@ -20,26 +20,27 @@ structure VProc (* :
     (* total number of vprocs *)
       define @num-vprocs (/ exh : exh) : int;
 
-    (** Vproc allocation and iterators **)
+    (** Vproc lists and iterators **)
 
     (* returns the list of all vprocs *)
       define @all-vprocs () : List.list;
-    (* returns the list of all vprocs, but not the host vproc *)
-      define @other-vprocs (/ exh : exh) : List.list;
+    (* returns the list of all vprocs, excluding host vproc. 
+     * NOTE: signals must be masked before the call.
+     *)
+      define @other-vprocs-from-atomic (self : vproc / exh : exh) : List.list;
     (* apply f to each vproc *)
       define @for-each-vproc(f : fun(vproc / exh ->) / exh : exh) : ();
-    (* apply f to each vproc except the host vproc *)
-      define @for-other-vprocs(f : fun(vproc / exh ->) / exh : exh) : ();
+    (* apply f to each vproc except the host vproc. 
+     * NOTE: the functions are applied in
+     *)
+      define @for-other-vprocs-from-atomic (self : vproc, f : fun(vproc / exh ->) / exh : exh) : ();
 
-    (** Initialization and idling **)
+    (** Initialization, preemption and idling **)
 
     (* bootstrap the default scheduler *)
       define @boot-default-scheduler (act : PT.sched_act / exh : exh) : ();
     (* wait for work to arrive at the vproc *)
       define @wait-from-atomic (vp : vproc) : ();
-
-    (** Preemption **)
-
     (* trigger a preemption on a remote vproc. if the destination is the same as the host vproc, then
      * this operation is a no-op.
      *) 
@@ -91,9 +92,10 @@ structure VProc (* :
 	  return(vps)
 	;
 
-    (* returns the list of all vprocs, but not the host vproc *)
-      define @other-vprocs (/ exh : exh) : List.list =
-	  let self : vproc = host_vproc
+    (* returns the list of all vprocs, excluding the host vproc. 
+     * NOTE: signals must be masked before the call.
+     *)
+      define @other-vprocs-from-atomic (self : vproc / exh : exh) : List.list =
 	  fun lp (vps : List.list, others : List.list) : List.list =
 	      case vps
 	       of nil => return(others)
@@ -119,9 +121,10 @@ structure VProc (* :
 	  apply lp(vps)
 	;
 
-    (* apply f to each vproc except the host vproc *)
-      define @for-other-vprocs (f : fun(vproc / exh ->) / exh : exh) : () =
-	  let self : vproc = host_vproc
+    (* apply f to each vproc except the host vproc. 
+     * NOTE: the functions are applied in
+     *)
+      define @for-other-vprocs-from-atomic (self : vproc, f : fun(vproc / exh ->) / exh : exh) : () =
 	  fun g (vp : vproc / exh : exh) : () =
 		if NotEqual(vp, self) then apply f(vp / exh)
 		else return()
@@ -172,11 +175,11 @@ structure VProc (* :
 	;
 
     (* push a copy of the top-level scheduler on each vproc (except the host)  *)
-      define @seed-remote-action-stacks (mkAct : fun (vproc / exh -> PT.sched_act) / exh : exh) : () =
+      define @seed-remote-action-stacks-from-atomic (self : vproc, mkAct : fun (vproc / exh -> PT.sched_act) / exh : exh) : () =
 	  fun f (vp : vproc / exh : exh) : () =
 	      let act : PT.sched_act = apply mkAct (vp / exh)
 	      @push-remote-act(vp, act / exh)
-	  @for-other-vprocs(f / exh)
+	  @for-other-vprocs-from-atomic(self, f / exh)
 	;
 
     (* bootstrap the default scheduler *)
@@ -184,7 +187,7 @@ structure VProc (* :
 	  let self : vproc = SchedulerAction.@atomic-begin()
 	  let fls : FLS.fls = FLS.@get()
 	  do @set-trampoline (/ exh)
-	  do @seed-remote-action-stacks(mkAct / exh)
+	  do @seed-remote-action-stacks-from-atomic(self, mkAct / exh)
 	  cont startLeadK (_ : PT.unit) = return()
 	  let act : PT.sched_act = apply mkAct (self / exh)
 	  SchedulerAction.@run(self, act, startLeadK)
@@ -219,7 +222,7 @@ structure VProc (* :
     (* wait for work to arrive at the vproc *)
       define @wait-from-atomic (vp : vproc) : () =
           do vpstore(VP_IDLE, vp, 1)
-          do ccall Nanosleep(0, 100)
+          do ccall Nanosleep(0, 1000)
           do vpstore(VP_IDLE, vp, 0)
           return()
         ;
