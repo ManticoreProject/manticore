@@ -5,9 +5,10 @@
  *
  *)
 
-functor AMD64FrameFn (structure Spec : TARGET_SPEC) = struct 
+functor AMD64FrameFn (structure Spec : TARGET_SPEC) =
+  struct 
 
-  structure Frame = ManticoreFrameFn ( structure Spec = Spec )
-  open Frame
-
-end (* AMD64Frame *)
+    structure Frame = ManticoreFrameFn ( structure Spec = Spec )
+    open Frame
+  
+  end (* AMD64Frame *)

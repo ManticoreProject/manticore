@@ -617,7 +617,7 @@ functor HeapTransferFn (
 	assignStms)
 
  (* generate the entry code for a function *)
-  fun genFuncEntry varDefTbl (lab, conv as M.StdFunc {clos, args as [arg], ret, exh}) = let
+  fun genFuncEntry varDefTbl (lab, conv as M.StdFunc{clos, args as [arg], ret, exh}) = let
       val args = [clos, arg, ret, exh]
       (* make reqs for the parameters *)
       val paramReqs = List.map (fn _ => (MTy.wordTy, K_GPR, MTy.wordTy div 8)) args
