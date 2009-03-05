@@ -26,189 +26,231 @@ structure TranslatePCase (* : sig
 
   end *) = struct
 
-    structure A = AST
-    structure B = Basis
-    structure F = Future1
-    structure R = Ropes
+  structure A = AST
+  structure B = Basis
+  structure F = Future1
+  structure R = Ropes
 
-    structure CB = CompletionBitstring
-    type cbits = CB.t
+  structure CB = CompletionBitstring
+  type cbits = CB.t
 
-    (* maps from cbits to 'a *)
-    structure CBM = RedBlackMapFn (struct
-	              type ord_key = cbits
-		      val compare = CB.compare
-	            end)
+(* maps from cbits to 'a *)
+  structure CBM = RedBlackMapFn (struct
+				   type ord_key = cbits
+				   val compare = CB.compare
+				 end)
 
-    type matchmap = (A.match list) CBM.map (* maps of cbits to matches (case arms) *)
+  type matchmap = (A.match list) CBM.map (* maps of cbits to matches (case arms) *)
 
-    local
-      fun loadDCon (path : string list) : AST.dcon =
-       (case BasisEnv.getValFromBasis path
-          of ModuleEnv.Con c => c
-	   | x => let
-               val msg = String.concat ["expecting dcon ",
-					String.concatWith "." path,
-					", got something else"]
-               in
-		 raise Fail msg
-	       end)
-      fun mk (conName : string) (pat : AST.pat) : AST.pat = let
-        val dcon = loadDCon ["Trap", conName]
-	val tau = TypeOf.pat pat
-        in
-          AST.ConPat (dcon, [tau], pat)
-        end
+  local
+
+    fun mkP (conName : string list) (pat : AST.pat) : AST.pat = let
+      val dcon = BasisEnv.getDConFromBasis conName
+      val t = TypeOf.pat pat
+      in
+        AST.ConPat (dcon, [t], pat)
+      end
+
+    fun mkPWithTy (conName : string list) (pat : AST.pat, t : AST.ty) 
+        : AST.pat = let
+      val dcon = BasisEnv.getDConFromBasis conName
+      in
+        AST.ConPat (dcon, [t], pat)
+      end
+
+    fun mkT (tycName : string list) (t : AST.ty) : AST.ty = let
+      val tycon = BasisEnv.getTyConFromBasis tycName
+      in
+        AST.ConTy ([t], tycon)
+      end      
+
+    type dconCell = AST.dcon option ref
+
+    val cellSOME : dconCell = ref NONE
+    val cellNONE : dconCell = ref NONE 
+
+  in
+
+  (* NOTE: making the Val and Exn dcons at link time causes link time error. *)
+  (* FIXME: memoize them? *)
+
+  (* mkValPat : AST.pat -> AST.pat *)
+  (* Given a pattern (p : t), produce the pattern (Val p : t trap). *)
+    val mkValPat = mkP ["Trap", "Val"]
+
+  (* mkExnPat : AST.pat -> AST.pat *)
+  (* Given a pattern p and type t, produce the pattern (Exn p : t trap). *)  
+    val mkExnPat = mkPWithTy ["Trap", "Exn"]
+
+  (* optTy : A.ty -> A.ty *)
+  (* Given type t, make type (t option). *)
+    val optTy = mkT ["Option", "option"]
+
+  (* trapTy : A.ty -> A.ty *)
+    val trapTy = mkT ["Trap", "trap"]
+
+  (* optSOME : unit -> A.dcon *)
+  (* memoized SOME dcon from the basis *)
+    fun optSOME () = 
+     (case !cellSOME
+        of NONE => let
+             val s = BasisEnv.getDConFromBasis ["Option", "SOME"]
+             val _ = (cellSOME := SOME s)
+	     in
+               s
+	     end
+	 | SOME s => s)
+	    
+  (* optNONE : unit -> A.dcon *)
+  (* memoized NONE dcon from the basis *)
+    fun optNONE () =
+     (case !cellNONE
+        of NONE => let
+             val n = BasisEnv.getDConFromBasis ["Option", "NONE"]
+	     val _ = (cellNONE := SOME n)
+             in
+               n
+             end
+	 | SOME n => n)
+
+  end (* local *)
+
+(* xformPPats : AST.ppat list -> AST.pat *)
+(* A function to transform ppat lists to tuple pats for use in case exps. *)
+(* ex: ? & 1 & (x, y) --> (_, Val 1, Val (x, y)) *)
+  fun xformPPats ps = let
+    fun xform (AST.NDWildPat ty) = AST.WildPat ty
+      | xform (AST.HandlePat (p, ty)) = mkExnPat (p, ty)
+      | xform (AST.Pat p) = mkValPat p
     in
-    (* mkValPat : AST.pat -> AST.pat *)
-    (* Given a pattern (p : tau), produce the pattern (Val p : tau trap). *)
-      val mkValPat = mk "Val"
-    (* mkExnPat : AST.pat -> AST.pat *)
-    (* Given a pattern (p : tau), produce the pattern (Exn p : tau trap). *)  
-      val mkExnPat = mk "Exn"
-    end (* local *)
+      AST.TuplePat (map xform ps)
+    end
+
+(* initMap : cbits list -> matchmap *)
+  fun initMap (cbs : cbits list) : matchmap = let
+    fun go ([], m) = m
+      | go (c::cs, m) = 
+	if CBM.inDomain (m, c) then 
+	  go (cs, m)
+	else 
+	  go (cs, CBM.insert (m, c, []))
+    in
+      go (cbs, CBM.empty)
+    end
+
+(* cbOf : int -> A.pmatch -> cbits *)
+  fun cbOf _ (A.PMatch (pps, _)) = CB.fromPPats pps
+    | cbOf n (A.Otherwise _) = CB.allOnes n
+
+(* mergeOne : given a map, a key (a cbits), and a pmatch,
+ * merge the corresponding match into that map. *)
+  fun mergeOne (t : AST.ty) (m : matchmap, cb : cbits, pm : AST.pmatch) 
+      : matchmap = let
+    val match = 
+     (case pm
+        of A.Otherwise e => A.PatMatch (A.WildPat t, e)
+	 | A.PMatch (ps, e) => A.PatMatch (xformPPats ps, e))
+    val (m', ms) = CBM.remove (m, cb)
+    val belongsLast = (case pm of A.Otherwise _ => true | _ => false)
+    val ms' = if belongsLast then ms @ [match] else match :: ms
+    in
+      CBM.insert (m', cb, ms')
+    end
+
+(* merge : int -> AST.ty -> A.pmatch * matchmap -> matchmap *)
+  fun merge (n : int) (t : A.ty) (pm : A.pmatch, m : matchmap) 
+      : matchmap = let
+    val cb = cbOf n pm
+    fun go ([], m') = m'
+      | go (cb' :: r, m') = let
+          val m'' = if CB.sub (cb, cb') then mergeOne t (m', cb', pm) else m'
+          in
+	    go (r, m'')
+          end
+    in
+      go (CBM.listKeys m, m)
+    end
+
+(* mkTy : AST.ty list -> cbits -> AST.ty *)
+(* tup of traps for types corres. to Ones -> pcaseResultTy *)
+(* e.g., if ts is [int, bool, string] *)
+(* and cb is 101 then this function yields *)
+(* the type (int trap * string trap) *)
+  fun mkTy ts cb = let
+    fun go ([], [], tys) = AST.TupleTy (rev tys)
+      | go (CB.Zero :: r1, _ :: r2, tys) = go (r1, r2, tys)
+      | go (CB.One  :: r1, t :: r2, tys) = go (r1, r2, trapTy t :: tys)
+      | go _ = raise Fail
+          "length of completion bitstring doesn't match # of exps in pcase"
+    in
+      go (cb, ts, [])
+    end 
+
+(* mkMatch: Given a completion bitstring and a function name,   *)
+(* construct a match with the right SOMEs, NONEs etc.  *)
+(* ex: mkMatch(1001, state1001) yields                          *)
+(*       | (SOME(t1), NONE, NONE, SOME(t2)) => state1001(t1,t2) *)
+(* mkMatch : cbits * A.var -> A.match * (A.var list)            *)
+  fun mkMatch (pcaseResultTy, eTys, cb, fV) = let
+    fun m ([], [], _, optPats, argVs) = let
+          val tupPat = A.TuplePat (List.rev optPats)
+	  val argVs' = List.rev argVs
+          val fcall = A.ApplyExp (A.VarExp (fV, []), 
+				  A.TupleExp (map (fn v => A.VarExp (v, [])) argVs'),
+				  pcaseResultTy)
+          in
+	    (A.PatMatch (tupPat, fcall), argVs')
+          end
+      | m (CB.Zero::bs, t::ts, n, optPats, argVs) = let
+          val p = A.ConstPat (A.DConst (optNONE (), [trapTy t]))
+          in
+            m (bs, ts, n, p::optPats, argVs)
+          end
+      | m (CB.One::bs, t::ts, n, optPats, argVs) = let
+          val varName = "t" ^ Int.toString n
+	  val argV = Var.new ("t" ^ Int.toString n, trapTy t)
+	  val p = A.ConPat (optSOME (), [trapTy t], A.VarPat argV) 
+          in
+	    m (bs, ts, n+1, p::optPats, argV::argVs)
+          end
+      | m _ = raise Fail "ran out of types"
+    in
+      m (cb, eTys, 1, [], [])
+    end
 
 (* FIXME
  * This module is in the middle of being ported from old-style Basis to new-style.
  * Don't pay too much attention to code below this comment ATM. - ams
  *)
 
-(*
-  (* A pcase looks like this:
-   * PCaseExp of (exp list * pmatch list * ty) (* ty is result type *) 
-   *)   
-    fun tr trExp (es, pms, pcaseResultTy) = let
-
+(* A pcase looks like this:
+ * PCaseExp of (exp list * pmatch list * ty) (ty is result type ) 
+ *)   
+  fun tr trExp (es, pms, pcaseResultTy) = let
       val nExps = List.length es
-
       val eTys = map TypeOf.exp es
-
       val esTupTy = A.TupleTy eTys
-
-      (* Given a pattern p and type tau, produce the pattern Exn(p) : tau trap. *)
-      fun mkExnPat (p, ty) = A.ConPat (Basis.trapExn, [ty], p)
-
-      local
-        (* xformPPats : ppat list -> pat *)
-        (* A function to transform ppat lists to tuple pats for use in case exps. *)
-	(* e.g. the pcase branch *)
-	(*   ? & 1 & (x,y) *)
-	(* becomes *)
-	(*   (_, Val(1), Val(x,y)) *)
-	fun xformPPats ps = let
-	  fun x ([], acc) = rev acc
-	    | x (A.NDWildPat ty :: t, acc) = x (t, A.WildPat ty :: acc)
-	    | x (A.HandlePat (p, ty) :: t, acc) = x (t, mkExnPat(p,ty) :: acc)
-	    | x (A.Pat p :: t, acc) = x (t, mkValPat p :: acc)
-          in
-	    A.TuplePat (x (ps, []))
-          end
-        (* cbOf : A.pmatch -> cbits *)
-        fun cbOf (A.PMatch (pps, _)) = CB.fromPPats pps
-	  | cbOf (A.Otherwise _) = CB.allOnes nExps
-        (* initMap : cbits list -> matchmap *)
-        fun initMap cbs : matchmap = let
-          fun i ([], m) = m
-	    | i (c::cs, m) = 
-	        if CBM.inDomain (m, c)
-		then i (cs, m)
-		else i (cs, CBM.insert (m, c, []))
-          in
-            i (cbs, CBM.empty)
-          end
-	(* mergeOne : given a map, a key (a cbits), and a pmatch, *)
-	(*            merge the corresponding match into that map. *)
-	fun mergeOne (m, cb, pm) = let
-	  val belongsLast = (case pm of A.Otherwise _ => true | _ => false)
-	  val match = 
-           (case pm
-	     of A.Otherwise e => A.PatMatch (A.WildPat esTupTy, e)
-	      | A.PMatch (ps, e) => A.PatMatch (xformPPats ps, e)
-	    (* end case *))
-	  val (m', ms) = CBM.remove (m, cb)
-          in
-	    CBM.insert (m', cb, if belongsLast
-				then ms @ [match]
-				else match :: ms)
-	  end
-        (* merge : A.pmatch * matchmap -> matchmap *)
-        fun merge (pm, m) = let
-          val cb = cbOf pm
-	  fun loop ([], m') = m'
-	    | loop (cb'::t, m') = loop (t, if CB.sub(cb,cb')
-					   then mergeOne (m', cb', pm)
-					   else m')
-	  in
-	    loop (CBM.listKeys m, m)
-	  end
-      in
-      (* buildMap : A.pmatch list -> A.matchmap *)
-      (* build map : collect bitstrings, then merge branches in *)
+    
+    (* buildMap : A.pmatch list -> A.matchmap *)
+    (* build map : collect bitstrings, then merge branches in *)
       fun buildMap pms = let
-        val cbs = map cbOf pms
+        val cbs = map (cbOf nExps) pms
         in
-	  List.foldl merge (initMap cbs) pms
-        end
-      end (* local *)
-
-      (* optTy : A.ty -> A.ty *)
-      fun optTy t = A.ConTy ([t], Basis.optionTyc)
-
-      (* trapTy : A.ty -> A.ty *)
-      fun trapTy t = A.ConTy ([t], Basis.trapTyc)
-
-      (* tup of traps for types corres. to Ones -> pcaseResultTy *)
-      (* e.g., if eTys (defined locally above) is [int, bool, string] *)
-      (*       and cb is 101 then this function yields *)
-      (*       the type (int trap * string trap) *)
-      fun mkTy cb = let
-        fun b ([], [], tys) = rev tys
-	  | b (CB.Zero::t1, _::t2, tys) = b (t1, t2, tys)
-	  | b (CB.One::t1, t::t2, tys) = b (t1, t2, trapTy t :: tys)
-	  | b _ = raise Fail "length of completion bitstring doesn't match # of expressions in pcase"
-        in
-          A.TupleTy (b (cb, eTys, []))
-        end 
-
-      (* mkMatch: Given a completion bitstring and a function name,   *)
-      (*          construct a match with the right SOMEs, NONEs etc.  *)
-      (* ex: mkMatch(1001, state1001) yields                          *)
-      (*       | (SOME(t1), NONE, NONE, SOME(t2)) => state1001(t1,t2) *)
-      (* mkMatch : cbits * A.var -> A.match * (A.var list)            *)
-      fun mkMatch (cb, fV) = let
-	fun m ([], [], _, optPats, argVs) = let
-              val tupPat = A.TuplePat (List.rev optPats)
-	      val argVs' = List.rev argVs
-              val fcall = A.ApplyExp (A.VarExp (fV, []), 
-				      A.TupleExp (map (fn v => A.VarExp (v, [])) argVs'),
-				      pcaseResultTy)
-              in
-	        (A.PatMatch (tupPat, fcall), argVs')
-	      end
-	  | m (CB.Zero::bs, t::ts, n, optPats, argVs) = let
-              val p = A.ConstPat (A.DConst (Basis.optionNONE, [trapTy t]))
-              in
-                m (bs, ts, n, p::optPats, argVs)
-              end
-	  | m (CB.One::bs, t::ts, n, optPats, argVs) = let
-              val varName = "t" ^ Int.toString n
-	      val argV = Var.new ("t" ^ Int.toString n, trapTy t)
-	      val p = A.ConPat (Basis.optionSOME, [trapTy t], A.VarPat argV) 
-              in
-		m (bs, ts, n+1, p::optPats, argV::argVs)
-              end
-	  | m _ = raise Fail "ran out of types"
-        in
-          m (cb, eTys, 1, [], [])
+	  List.foldl (merge nExps esTupTy) (initMap cbs) pms
         end
 
       (* typeOfVar : A.var -> A.ty *)
       fun typeOfVar v = TypeOf.pat (A.VarPat v)
 
       val pollV = let
-        fun pollTy tv = A.FunTy (F.futureTy tv, B.optionTy (trapTy tv))
+        fun forall mkTy = let
+          val tv = TyVar.new (Atom.atom "'a")
+          in
+	    AST.TyScheme ([tv], mkTy (AST.VarTy tv))
+	  end
+        fun pollTy tv = A.FunTy (F.futureTy tv, optTy (trapTy tv))
         in
-	  BasisUtils.polyVar ("poll", fn tv => pollTy tv)
+	  Var.newPoly ("poll", forall (fn tv => pollTy tv))
         end
 	
       (* mkPoll: Given a variable f bound to some 'a future, return poll(f). *)
@@ -221,7 +263,7 @@ structure TranslatePCase (* : sig
         in
           A.ApplyExp (A.VarExp (pollV, [inst]),
 		      A.VarExp (fV, []),
-		      B.optionTy (trapTy inst))
+		      optTy (trapTy inst))
         end
 
       (* mkLam: Given a function name, a list of variable expressions, and case arms, *)
@@ -255,7 +297,7 @@ structure TranslatePCase (* : sig
 	    val kmss = CBM.listItemsi m
 	    val goV = Var.new ("go", A.FunTy (Basis.unitTy, pcaseResultTy))
 	    val applyGo = A.ApplyExp (A.VarExp (goV, []), A.TupleExp [], pcaseResultTy)
-            val default = A.WildPat (A.TupleTy (map (Basis.optionTy o trapTy) eTys))
+            val default = A.WildPat (A.TupleTy (map (optTy o trapTy) eTys))
 	    val defaultMatch = A.PatMatch (default, applyGo)
 	    val u = Var.new ("u", Basis.unitTy)
 	    val fVs = futureVars es
@@ -270,9 +312,9 @@ structure TranslatePCase (* : sig
 	    fun b ([], matches, lams, fnames) = mkGo matches :: lams
 	      | b ((cb,ms)::t, matches, lams, fnames) = let
                   val name = "state" ^ CB.toString cb
-		  val ty = A.FunTy (mkTy cb, pcaseResultTy)
+		  val ty = A.FunTy (mkTy eTys cb, pcaseResultTy)
 		  val nameV = Var.new (name, ty)
-		  val (m, vs) = mkMatch (cb, nameV)
+		  val (m, vs) = mkMatch (pcaseResultTy, eTys, cb, nameV)
 		  val f = mkLam (nameV, vs, if isAllOnes cb
 					    then ms else 
 					    ms @ [defaultMatch])
@@ -336,7 +378,6 @@ happens because the test tries to load operations over futures before the basis 
     | test 2 = mkTest c2
     | test 3 = mkTest c3
     | test _ = print "No such test.\n"
-*)
 *)
 
     fun tr _ = raise Fail "unimplemented"
