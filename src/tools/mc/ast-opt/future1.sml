@@ -8,7 +8,7 @@
 
 structure Future1 : sig
 
-    val futureTy : Types.ty -> Types.ty
+    val futureTy : AST.ty -> AST.ty
 
     val mkTouch : AST.exp -> AST.exp
     val mkFuture : AST.exp -> AST.exp
@@ -24,19 +24,23 @@ structure Future1 : sig
 
     fun getVar (ModuleEnv.Var v) = v
       | getVar _ = raise Fail "getVar"
+
     val getVar = getVar o BasisEnv.getValFromBasis
+
     fun getTyc (ModuleEnv.TyCon tyc) = tyc
       | getTyc _ = raise Fail "getTyc"
+
     val getTyc = getTyc o BasisEnv.getTyFromBasis
-    fun futureTyc () = getTyc ["Future1", "future"]
+
+    fun futureTyc () = getTyc ["FCMS" (* "EagerFuture" *), "future"]
     fun futureTy t = T.ConTy ([t], futureTyc())
-    fun future1 () = getVar ["Future1", "future"]
-    fun touch1 () = getVar ["Future1", "touch"]
-    fun cancel1 () = getVar ["Future1", "cancel"]
+    fun future1 () = getVar ["FCMS" (* "EagerFuture" *), "future"]
+    fun touch1 () = getVar ["FCMS" (* "EagerFuture" *), "touch"]
+    fun cancel1 () = getVar ["FCMS" (* "EagerFuture" *), "cancel"]
 
     (* mkThunk : A.exp -> A.exp *)
     (* Consumes e; produces (fn u => e) (for fresh u : unit). *)
-    fun mkThunk e = A.FunExp (Var.new ("_", Basis.unitTy), e, TypeOf.exp e)		    
+    fun mkThunk e = A.FunExp (Var.new ("u", Basis.unitTy), e, TypeOf.exp e)		    
 
     (* isFuture : A.exp -> bool *)
     fun isFuture e = (case TypeOf.exp e
@@ -89,13 +93,13 @@ structure Future1 : sig
 
     (* mkFut : var -> A.exp -> A.exp *)
     (* Consumes futvar -> q and e; produces futvar (q, fn u => e). *)
-    fun mkFut futvar e = 
-	let val te = TypeOf.exp e
-	in
-	    A.ApplyExp (A.VarExp (futvar(), [te]),
-			mkThunk e,
-			futureTy te)
-	end
+    fun mkFut futvar e = let 
+      val te = TypeOf.exp e
+      (* val trueExp = AST.ConstExp (AST.DConst (Basis.boolTrue, [])) *)
+      val arg = mkThunk e (* AST.TupleExp [mkThunk e, trueExp]) *)
+      in
+	A.ApplyExp (A.VarExp (futvar(), [te]), arg, futureTy te)
+      end
 
     (* Precondition: The argument must be a future. *)
     (* The function raises Fail if the precondition is not met. *)

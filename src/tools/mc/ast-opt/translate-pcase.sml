@@ -103,8 +103,10 @@ structure TranslatePCase (* : sig
       end
 
   (* futureTyc : unit -> AST.tycon *)
+  (* FIXME I am duplicating some stuff in Future1. *)
+  (* I'd like is to decide how to deal with this memoization issue before I go further. *)
     fun futureTyc () = let
-      fun get _ = BasisEnv.getTyConFromBasis ["Future1", "future"]
+      fun get _ = BasisEnv.getTyConFromBasis ["FCMS", "future"]
       in
         getMemo get memoFuture
       end
@@ -284,7 +286,7 @@ structure TranslatePCase (* : sig
 	  AST.TyScheme ([tv], mkTy (AST.VarTy tv))
 	end
       fun get _ = let
-        fun pollTy tv = A.FunTy (F.futureTy tv, mkOptTy (mkTrapTy tv))
+        fun pollTy tv = A.FunTy (mkFutureTy tv, mkOptTy (mkTrapTy tv))
         in
 	  (* FIXME get the real poll from the basis *)
           Var.newPoly ("poll", forall (fn tv => pollTy tv))

@@ -42,12 +42,14 @@ structure BasisEnv : sig
 	    | get _ = NONE
 	  in
 	    case !basis
-	     of NONE => raise Fail(concat["getModule(", pathToString path, "): basis not initialized"])
-	      | SOME bEnv => get(bEnv, path)
+	      of NONE => raise Fail (String.concat ["getModule(", 
+						    pathToString path, 
+						    "): basis not initialized"])
+	       | SOME bEnv => get (bEnv, path)
 	    (* end case *)
 	  end
 
-    fun notFound path = raise Fail ("Unable to locate "^pathToString path)
+    fun notFound path = raise Fail ("Unable to locate " ^ pathToString path)
 
     fun notA thing path = raise Fail (String.concat ["found ", pathToString path,
 						     " but it wasn't a ", thing])
