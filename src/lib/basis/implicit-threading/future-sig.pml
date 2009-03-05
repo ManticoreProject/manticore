@@ -12,7 +12,7 @@ signature FUTURE =
     type 'a thunk = unit -> 'a
     type 'a future
 
-  (* future creation. the second argument specifies whether the future is cancelable. *)
+  (* future creation. the second argument specifies whether the future is cancellable. *)
     val future : ('a thunk * bool) -> 'a future
 
   (* synchronize on the completion of a future *)
@@ -20,7 +20,7 @@ signature FUTURE =
 
   (* cancel the evaluation of a future. 
    * POSTCONDITION: The future is cleared from the ready queue. Any subsequent touches on this future
-   * or its children retuls in undefined behavior.
+   * or its children results in undefined behavior.
    *)
     val cancel : 'a future -> unit
 
