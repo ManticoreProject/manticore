@@ -12,14 +12,14 @@ structure Topologies =
     datatype topologies
       = EMPTY
       | TREE_TOPOLOGY of TreeTopology.topology
-      | DEPTH2_TREE_TOPOLOGY of Depth1ForestTopology.topology
+      | SIMPLE_TOPOLOGY1 of SimpleTopology1.topology
 
   (* local processor of topology *)
     fun self t = (
 	  case t
 	   of EMPTY => (raise Fail "Topologies: no current topology")
 	    | TREE_TOPOLOGY tree => TreeTopology.self tree
-	    | DEPTH2_TREE_TOPOLOGY tree => Depth1ForestTopology.self tree
+	    | SIMPLE_TOPOLOGY1 top => SimpleTopology1.self top
           (* end case *))
 
   end

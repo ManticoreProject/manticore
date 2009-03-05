@@ -12,10 +12,10 @@ structure VirtualMaps :
     val vproc : Topologies.topologies -> VProc.vproc
 
   (* create a processor topology specialized to our 8-core benchmarking machine. *)
-    val octo : unit -> Depth2TreeTopology.topology
+    val octo : unit -> SimpleTopology1.topology
 
   (* creates a tree topology of the given depth, and maps it onto the given depth-two tree topology *)
-    val treeToDepth2Tree : (int * Depth2TreeTopology.topology) -> TreeTopology.topology
+    val treeToDepth2Tree : (int * SimpleTopology1.topology) -> TreeTopology.topology
 
   end = struct
 
@@ -46,13 +46,13 @@ structure VirtualMaps :
 	           val depth' = depth - 1
 		   val l = mapToDepth2Tree(depth', self, depth2Tree)
 		   val r = mapToDepth2Tree(depth', 
-					   Depth2TreeTopology.self(Depth2TreeTopology.sibling depth2Tree), 
-					   Depth2TreeTopology.next depth2Tree)
+					   SimpleTopology1.self(SimpleTopology1.sibling depth2Tree), 
+					   SimpleTopology1.next depth2Tree)
 		   in
 	              ND(self, l, r)
                    end
           in 
-	    (mk(depth, Depth2TreeTopology.self depth2Tree, depth2Tree), TOP)
+	    (mk(depth, SimpleTopology1.self depth2Tree, depth2Tree), TOP)
 	  end
 
   end

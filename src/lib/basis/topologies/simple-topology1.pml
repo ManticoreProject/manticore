@@ -1,14 +1,12 @@
-(* depth1-forest.pml
+(* simple-topology1.pml
  *
  * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * A depth-one forest topology is an abstract processor topology. The topology structure contains a forest
- * of depth-1 trees and a finger into one of those trees. The computation moves through this forest using
- * a few given operations.
+ * A simple topology that can be used to model multicore processors with shared caches.
  *)
 
-structure Depth1ForestTopology (* :
+structure SimpleTopology1 (* :
   sig
 
     type topology = (
