@@ -80,6 +80,7 @@ void InitLog (VProc_t *vp)
     vp->prevLog = NEW(LogBuffer_t);
     vp->prevLog->vpId = vp->id;
     vp->prevLog->next = 0;
+    vp->eventId = ((uint64_t)vp->id & 0xff) << 56;  // high 8 bits have vproc ID
 }
 
 

@@ -36,11 +36,12 @@
     VP_OFFSET(vp, STD_CONT, stdCont, true);
     VP_OFFSET(vp, STD_EXH, stdExnCont, true);
     VP_OFFSET(vp, ALLOC_PTR, allocPtr, true);
-    VP_OFFSET(vp, LIMIT_PTR, limitPtr, false);
+    VP_OFFSET(vp, LIMIT_PTR, limitPtr, true);
+    VP_OFFSET(vp, EVENT_ID, eventId, true);
+    VP_OFFSET(vp, LOG, log, true);
     VP_OFFSET(vp, NURSERY_BASE, nurseryBase, true);
     VP_OFFSET(vp, OLD_TOP, oldTop, true);
     VP_OFFSET(vp, GLOB_NEXT_W, globNextW, true);
     VP_OFFSET(vp, GLOB_LIMIT, globLimit, true);
-    VP_OFFSET(vp, LOG, log, true);
     VP_OFFSET(vp, VPROC_ID, id, true);
     VP_OFFSET(vp, VP_IDLE, idle, false);
