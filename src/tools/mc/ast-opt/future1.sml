@@ -139,6 +139,8 @@ structure Future1 : sig
 	      and binding (A.ValBind (_, e)) = exp e
 		| binding (A.PValBind (_, e)) = exp e
 		| binding (A.FunBind lams) = List.exists lambda lams
+		| binding (A.PrimVBind _) = raise Fail "todo: PrimVBind"
+		| binding (A.PrimCodeBind _) = raise Fail "todo: PrimCodeBind"
 	      and lambda (A.FB (_, _, e)) = exp e
 	      and match (A.PatMatch (_, e)) = exp e
 		| match (A.CondMatch (_, e1, e2)) = exp e1 orelse exp e2

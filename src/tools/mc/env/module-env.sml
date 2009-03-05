@@ -207,6 +207,7 @@ structure ModuleEnv =
 
     fun tyDefToString (id, TyDef ts) = ProgramParseTree.Var.toString id^" = "^TypeUtil.schemeToString ts
       | tyDefToString (id, TyCon tc) = ProgramParseTree.Var.toString id^" = "^TyCon.toString tc
+      | tyDefToString (id, BOMTyDef _) = raise Fail "todo"
 
     fun valBindToString (id, Con dc) = ProgramParseTree.Var.toString id^" = "^DataCon.toString dc
       | valBindToString (id, Var v)  = ProgramParseTree.Var.toString id^" = "^Var.toString v^" : "^TypeUtil.schemeToString (Var.typeOf v)
