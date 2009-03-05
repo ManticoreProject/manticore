@@ -10,7 +10,7 @@ structure GenLogEventsH : GENERATOR =
     val template = "log-events_h.in"
     val path = "src/include/log-events.h"
 
-    fun hooks (outS, {date, version, events} : LoadFile.log_file_desc) = let
+    fun hooks (outS, logDesc as {date, version, events} : LoadFile.log_file_desc) = let
 	  fun prl l = TextIO.output(outS, concat l)
 	  fun genVersion () = (
 		prl ["#define LOG_VERSION_MAJOR ", Int.toString (#major version), "\n"];
@@ -26,12 +26,12 @@ structure GenLogEventsH : GENERATOR =
 	  fun prDef (name, id, desc) = prl [
 		  "    ", name, " = ", Int.toString id, ", /* ", desc, " */\n"
 		]
-	  fun genDef ({id = 0, name, desc, ...} : LoadFile.event_desc) = prDef (name, 0, desc)
+	  fun genDef ({id = 0, name, desc, ...} : LoadFile.event) = prDef (name, 0, desc)
 	    | genDef ({id, name, desc, ...}) = prDef (name^"Evt", id, desc)
 	  in [
 	    ("DATE", fn () => prl ["#define LOG_VERSION_DATE ", date, "\n"]),
 	    ("VERSION", genVersion),
-	    ("LOG-EVENTS", fn () => List.app genDef events)
+	    ("LOG-EVENTS", fn () => LoadFile.applyToEvents genDef logDesc)
 	  ] end
 
   end

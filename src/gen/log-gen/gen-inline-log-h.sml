@@ -78,7 +78,7 @@ structure GenInlineLogH : GENERATOR =
 
   (* generate an event-specific logging macro *)
     fun genLogMacro outS ({id=0, ...}) = ()
-      | genLogMacro outS (ed : LoadFile.event_desc) = let
+      | genLogMacro outS (ed : LoadFile.event) = let
 	  fun pr s = TextIO.output(outS, s)
 	  fun prl l = TextIO.output(outS, concat l)
 	  fun prParams [] = ()
@@ -95,7 +95,7 @@ structure GenInlineLogH : GENERATOR =
 
   (* generate a dummy logging macro for when logging is disabled *)
     fun genDummyLogMacro outS ({id=0, ...}) = ()
-      | genDummyLogMacro outS (ed : LoadFile.event_desc) = let
+      | genDummyLogMacro outS (ed : LoadFile.event) = let
 	  fun pr s = TextIO.output(outS, s)
 	  fun prl l = TextIO.output(outS, concat l)
 	  fun prParams [] = ()
@@ -111,8 +111,8 @@ structure GenInlineLogH : GENERATOR =
   (* compute a mapping from signatures to their argument info from the list of event
    * descriptors.
    *)
-    fun computeSigMap events = let
-	  fun doEvent (evt : LoadFile.event_desc, map) = (case Map.find(map, #sign evt)
+    fun computeSigMap logDesc = let
+	  fun doEvent (evt : LoadFile.event, map) = (case Map.find(map, #sign evt)
 		 of SOME _ => map
 		  | NONE => let
 		      val argInfo = List.map (fn {loc, ty, ...} => (loc, ty)) (#args evt)
@@ -121,14 +121,14 @@ structure GenInlineLogH : GENERATOR =
 		      end
 		(* end case *))
 	  in
-	    List.foldl doEvent Map.empty events
+	    LoadFile.foldEvents doEvent Map.empty logDesc
 	  end
 
     fun hooks (outS, logDesc : LoadFile.log_file_desc) = let
-	  val sigMap = computeSigMap (#events logDesc)
+	  val sigMap = computeSigMap logDesc
 	  fun genericLogFuns () = Map.appi (genForSig outS) sigMap
-	  fun logFunctions () = List.app (genLogMacro outS) (#events logDesc)
-	  fun dummyLogFunctions () = List.app (genDummyLogMacro outS) (#events logDesc)
+	  fun logFunctions () = LoadFile.applyToEvents (genLogMacro outS) logDesc
+	  fun dummyLogFunctions () = LoadFile.applyToEvents (genDummyLogMacro outS) logDesc
 	  in [
 	    ("GENERIC-LOG-FUNCTIONS", genericLogFuns),
 	    ("LOG-FUNCTIONS", logFunctions),

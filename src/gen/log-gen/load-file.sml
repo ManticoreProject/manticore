@@ -6,9 +6,9 @@
 
 structure LoadFile : sig
 
-    datatype event_kind = EVENT | START | END
+    datatype event_kind = EVENT | START | END | SRC | DST
 
-    type event_desc = {
+    type event = {
 	name : string,
 	id : int,
 	args : EventSig.arg_desc list,
@@ -16,6 +16,13 @@ structure LoadFile : sig
 	kind : event_kind,
 	desc : string
       }
+
+    datatype event_desc
+      = GRP of {
+	  name : string,
+	  events : event_desc list
+	}
+      | EVT of event
 
     type log_file_desc = {
 	date : string,
@@ -25,13 +32,18 @@ structure LoadFile : sig
 
     val loadFile : string -> log_file_desc
 
+  (* helper functions *)
+    val applyToEvents : (event -> unit) -> log_file_desc -> unit
+    val apply : (event_desc -> unit) -> log_file_desc -> unit
+    val foldEvents : ((event * 'a) -> 'a) -> 'a -> log_file_desc -> 'a
+
   end = struct
 
     structure J = JSON
 
-    datatype event_kind = EVENT | START | END
+    datatype event_kind = EVENT | START | END | SRC | DST
 
-    type event_desc = {
+    type event = {
 	name : string,
 	id : int,
 	args : EventSig.arg_desc list,
@@ -39,6 +51,14 @@ structure LoadFile : sig
 	kind : event_kind,
 	desc : string
       }
+
+    datatype event_desc
+      = GRP of {
+	  name : string,
+	  events : event_desc list
+	}
+      | EVT of event
+
 
     type log_file_desc = {
 	date : string,
@@ -63,10 +83,6 @@ structure LoadFile : sig
 
     fun cvtArray cvtFn (J.ARRAY vl) = List.map cvtFn vl
       | cvtArray cvtFn _ = raise Fail "expected array"
-
-    fun tabulate cvtFn (J.ARRAY vl) =
-	  List.rev (#2(List.foldl (fn (v, (i, vl)) => (i+1, cvtFn(i, v)::vl)) (0, []) vl))
-      | tabulate cvtFn _ = raise Fail "expected array"
 
   (* fold a function over a JSON array value *)
     fun foldl cvtFn init (J.ARRAY vl) = List.foldl cvtFn init vl
@@ -123,27 +139,6 @@ structure LoadFile : sig
 	    (nextLoc, ad::ads)
 	  end
 
-    fun cvtEvent (i, obj) = let
-	  val find = lookupField(findField obj)
-	  val args = let
-		val (_, args) = foldl cvtArg (EventSig.argStart, []) (find "args")
-		in
-		  List.rev args
-		end
-	  in {
-	    name = findString find "name",
-	    id = i,
-	    args = args,
-	    sign = EventSig.signOf args,
-	    kind = (case findString find "kind"
-		 of "EVENT" => EVENT
-		  | "START" => START
-		  | "END" => END
-		  | s => raise Fail(concat["unknown event kind \"", String.toString s, "\""])
-		(* end case *)),
-	    desc = findString find "desc"
-	  } end
-
     fun cvt obj = let
 	  val find = lookupField(findField obj)
 	  val version = (case find "version"
@@ -154,12 +149,71 @@ structure LoadFile : sig
 		      }
 		  | _ => raise Fail "bogus version"
 		(* end case *))
+	  val nextId = ref 0
+	  fun cvtEventOrGroup obj = let
+		val find = lookupField (findField obj)
+		val name = findString find "name"
+		val kind = findString find "kind"
+		fun cvtEvent kind = let
+		      val args = let
+			    val (_, args) = foldl cvtArg (EventSig.argStart, []) (find "args")
+			    in
+			      List.rev args
+			    end
+		      val id = !nextId
+		      in
+			nextId := id + 1;
+			EVT{
+			    name = name, kind = kind, id = id, args = args,
+			    sign = EventSig.signOf args, desc = findString find "desc"
+			  }
+		      end
+		in
+		  case findString find "kind"
+		   of "GROUP" => GRP{
+			  name = name,
+			  events = cvtArray cvtEventOrGroup (find "events")
+			}
+		    | "EVENT" => cvtEvent EVENT
+		    | "START" => cvtEvent START
+		    | "END" => cvtEvent END
+		    | "SRC" => cvtEvent SRC
+		    | "DST" => cvtEvent DST
+		    | s => raise Fail(concat["unknown event kind \"", String.toString s, "\""])
+		  (* end case *)
+		end
 	  in {
 	    date = findString find "date",
 	    version = version,
-	    events = tabulate cvtEvent (find "events")
+	    events = cvtArray cvtEventOrGroup (find "events")
 	  } end
 
     fun loadFile file = cvt (JSONParser.parseFile file)
+
+  (* helper functions *)
+    fun applyToEvents f {date, version, events} = let
+	  fun appf (GRP{events, ...}) = List.app appf events
+	    | appf (EVT ev) = f ev
+	  in
+	    List.app appf events
+	  end
+
+    fun apply f {date, version, events} = let
+	  fun appf ed = (
+		f ed;
+		case ed
+		 of GRP{events, ...} => List.app appf events
+		  | _ => ()
+		(* end case *))
+	  in
+	    List.app appf events
+	  end
+
+    fun foldEvents f init {date, version, events} = let
+	  fun foldf (GRP{events, ...}, acc) = List.foldl foldf acc events
+	    | foldf (EVT evt, acc) = f(evt, acc)
+	  in
+	    List.foldl foldf init events
+	  end
 
   end

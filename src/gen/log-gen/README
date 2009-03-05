@@ -6,3 +6,5 @@ includes
 	lib/basis/include/log-events.def
 	lib/runtime/include/inline-log.h
 
+The log-events.json file includes a description of the specification-
+file format.

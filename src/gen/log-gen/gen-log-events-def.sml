@@ -10,15 +10,15 @@ structure GenLogEventsDef : GENERATOR =
     val template = "log-events_def.in"
     val path = "src/lib/basis/include/log-events.def"
 
-    fun hooks (outS, {date, version, events}) = let
+    fun hooks (outS, logDesc as {date, version, events}) = let
 	  fun prl l = TextIO.output(outS, concat l)
 	  fun prDef (name, id, desc) = prl [
 		  "#define ", name, " ", Int.toString id, " /* ", desc, " */\n"
 		]
-	  fun genDef ({id = 0, name, desc, ...} : LoadFile.event_desc) = prDef (name, 0, desc)
+	  fun genDef ({id = 0, name, desc, ...} : LoadFile.event) = prDef (name, 0, desc)
 	    | genDef ({id, name, desc, ...}) = prDef (name^"Evt", id, desc)
 	  in [
-	    ("LOG-EVENTS", fn () => List.app genDef events)
+	    ("LOG-EVENTS", fn () => LoadFile.applyToEvents genDef logDesc)
 	  ] end
 
   end

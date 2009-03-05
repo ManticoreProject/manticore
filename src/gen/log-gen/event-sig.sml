@@ -5,7 +5,7 @@
  *
  * An event signature is the layout of its arguments.  Since there are many
  * more possible layouts than actual layouts, we use the signatures to determine
- * what layouts we need to generate code for.
+ * which layouts we need to generate code for.
  *)
 
 structure EventSig =
