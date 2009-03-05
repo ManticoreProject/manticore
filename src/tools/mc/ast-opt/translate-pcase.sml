@@ -26,7 +26,6 @@ structure TranslatePCase (* : sig
 
   end *) = struct
 
-(**** FIXME --- this code needs to lookup stuff from the environment ****
     structure A = AST
     structure B = Basis
     structure F = Future1
@@ -43,8 +42,41 @@ structure TranslatePCase (* : sig
 
     type matchmap = (A.match list) CBM.map (* maps of cbits to matches (case arms) *)
 
-    (* A pcase looks like this: *)
-    (* PCaseExp of (exp list * pmatch list * ty)       (* ty is result type *) *)   
+    local
+      fun loadDCon (path : string list) : AST.dcon =
+       (case BasisEnv.getValFromBasis path
+          of ModuleEnv.Con c => c
+	   | x => let
+               val msg = String.concat ["expecting dcon ",
+					String.concatWith "." path,
+					", got something else"]
+               in
+		 raise Fail msg
+	       end)
+      fun mk (conName : string) (pat : AST.pat) : AST.pat = let
+        val dcon = loadDCon ["Trap", conName]
+	val tau = TypeOf.pat pat
+        in
+          AST.ConPat (dcon, [tau], pat)
+        end
+    in
+    (* mkValPat : AST.pat -> AST.pat *)
+    (* Given a pattern (p : tau), produce the pattern (Val p : tau trap). *)
+      val mkValPat = mk "Val"
+    (* mkExnPat : AST.pat -> AST.pat *)
+    (* Given a pattern (p : tau), produce the pattern (Exn p : tau trap). *)  
+      val mkExnPat = mk "Exn"
+    end (* local *)
+
+(* FIXME
+ * This module is in the middle of being ported from old-style Basis to new-style.
+ * Don't pay too much attention to code below this comment ATM. - ams
+ *)
+
+(*
+  (* A pcase looks like this:
+   * PCaseExp of (exp list * pmatch list * ty) (* ty is result type *) 
+   *)   
     fun tr trExp (es, pms, pcaseResultTy) = let
 
       val nExps = List.length es
@@ -52,9 +84,6 @@ structure TranslatePCase (* : sig
       val eTys = map TypeOf.exp es
 
       val esTupTy = A.TupleTy eTys
-
-      (* Given a pattern p : tau, produce the pattern Val(p) : tau trap. *)
-      fun mkValPat p = A.ConPat (Basis.trapVal, [TypeOf.pat p], p)
 
       (* Given a pattern p and type tau, produce the pattern Exn(p) : tau trap. *)
       fun mkExnPat (p, ty) = A.ConPat (Basis.trapExn, [ty], p)
@@ -308,7 +337,7 @@ happens because the test tries to load operations over futures before the basis 
     | test 3 = mkTest c3
     | test _ = print "No such test.\n"
 *)
-****)
+*)
 
     fun tr _ = raise Fail "unimplemented"
 

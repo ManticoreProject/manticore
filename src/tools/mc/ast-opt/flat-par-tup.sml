@@ -117,9 +117,10 @@ structure FlatParTup : sig
 
     (* exp : A.exp -> A.exp *)
     (* n.b. Type-preserving. *) 
-   fun exp (A.LetExp (b, e)) = A.LetExp (binding b, exp e)
+    fun exp (A.LetExp (b, e)) = A.LetExp (binding b, exp e)
       | exp (A.IfExp (e1, e2, e3, t)) = ifExp (e1, e2, e3, t)
       | exp (A.CaseExp (e, ms, t)) = caseExp (e, ms, t)
+      | exp (A.PCaseExp (es, ms, t)) = todo "PCaseExp"
       | exp (A.HandleExp (e, ms, t)) = todo "HandleExp"
       | exp (A.RaiseExp (e, t)) = A.RaiseExp (exp e, t)
       | exp (A.FunExp (x, e, t)) = A.FunExp (x, exp e, t)
@@ -149,6 +150,7 @@ structure FlatParTup : sig
       | exp (v as (A.VarExp _)) = v
       | exp (A.SeqExp (e1, e2)) = A.SeqExp (exp e1, exp e2)
       | exp (v as (A.OverloadExp ovr)) = v
+      | exp (A.ExpansionOptsExp _) = todo "ExpansionOptsExp"
 
     (* ifExp : A.exp * A.exp * A.exp * T.ty -> A.exp *)
     and ifExp (e1, e2, e3, t) = 
@@ -250,6 +252,8 @@ structure FlatParTup : sig
     and binding (A.ValBind (p, e)) = A.ValBind (p, exp e)
       | binding (A.PValBind (p, e)) = A.PValBind (p, exp e)
       | binding (A.FunBind ls) = A.FunBind (List.map lambda ls)
+      | binding (A.PrimVBind _) = raise Fail "todo: PrimVBind"
+      | binding (A.PrimCodeBind _) = raise Fail "todo: PrimCodeBind"
 
     (* lambda : A.lambda -> A.lambda *)
     and lambda (A.FB (v1, v2, e)) = A.FB (v1, v2, exp e)

@@ -52,9 +52,10 @@ structure PValToFuture =
 	   of A.LetExp (b, e) => trLet (b, e, pLive)
 	    | A.IfExp (e1, e2, e3, t) => ifExp (e1, e2, e3, t, pLive)
 	    | A.CaseExp (e, ms, t) => caseExp (e, ms, t, pLive)
+	    | A.PCaseExp (es, ms, t) => pcaseExp (es, ms, t, pLive) 
 	    | A.HandleExp (e, ms, t) => 
 	      (* FIXME *)
-	      (A.HandleExp(e, ms, t), pLive)
+	      (A.HandleExp (e, ms, t), pLive)
 	    | A.RaiseExp (e, t) =>  
 	      let val (e', pLive') = trExp (e, pLive)
 	      in
@@ -151,7 +152,6 @@ structure PValToFuture =
 	      in 
 		  (A.ExpansionOptsExp (opts, e'), pLive')
 	      end
-	    | _ => raise Fail ""
         (* end case *))
 
     (* trExps: A.exp list * VSet.set -> A.exp list * VSet.set *)
@@ -317,45 +317,89 @@ structure PValToFuture =
         end
 
     (* caseExp : A.exp * A.match list * T.ty * VSet.set -> A.exp * VSet.set *)
-    and caseExp (e, ms, t, pLive) = 
-	let val (e', pLive') = trExp (e, pLive)
-	    val mvs = map (fn m => match (m, pLive)) ms
-	    val (ms', pLiveHd::pLiveTl) = ListPair.unzip mvs
-            fun loop ([], _, _, matchAcc, setAcc) = (rev matchAcc, setAcc)
-	      | loop (m::ms, currLive, others, matchAcc, setAcc) = let
-		    val othersLive = grandUnion others
-		    val cancelUs = VSet.difference (VSet.intersection (pLive, othersLive), currLive)
+    and caseExp (e, ms, t, pLive) = let 
+          val (e', pLive') = trExp (e, pLive)
+	  val mvs = map (fn m => match (m, pLive)) ms
+	  val (ms', pLiveHd::pLiveTl) = ListPair.unzip mvs
+          fun loop ([], _, _, matchAcc, setAcc) = (rev matchAcc, setAcc)
+	    | loop (m::ms, currLive, others, matchAcc, setAcc) = let
+                val othersLive = grandUnion others
+		val cancelUs = VSet.difference (VSet.intersection (pLive, othersLive), currLive)
 		in
-		    case m
-		     of A.PatMatch (p, e) => let
-                            val e' = VSet.foldl cancel e cancelUs
-			    val m' = A.PatMatch (p, e')
-			    val mAcc = m'::matchAcc
-			    val sAcc = VSet.union (setAcc, currLive)
-                        in
-			    case others
+		  case m
+		    of A.PatMatch (p, e) => let
+                         val e' = VSet.foldl cancel e cancelUs
+			 val m' = A.PatMatch (p, e')
+			 val mAcc = m'::matchAcc
+			 val sAcc = VSet.union (setAcc, currLive)
+                         in
+			   case others
 			     of [] => (rev mAcc, sAcc)
 			      | h::t => loop (ms, h, t @ [currLive], mAcc, sAcc)
-			end
-		      | A.CondMatch (p, e1, e2) => raise Fail "todo"
+		         end
+		     | A.CondMatch (p, e1, e2) => raise Fail "todo"
                 end
-	    val (ms'', pLive'') = loop (ms', pLiveHd, pLiveTl, [], VSet.empty)
-	in
+	  val (ms'', pLive'') = loop (ms', pLiveHd, pLiveTl, [], VSet.empty)
+	  in
 	    (A.CaseExp (e', ms'', t), VSet.union (pLive', pLive''))
-        end
+          end
  
+    (* pcaseExp : A.exp list * A.pmatch list * T.ty * VSet.set -> A.exp * VSet.set *)
+    and pcaseExp (es, ms, t, pLive) = let
+          val (es', pLive') = trExps (es, pLive)
+          val mvs = map (fn m => pmatch (m, pLive)) ms
+          val (ms', pLiveHd :: pLiveTl) = ListPair.unzip mvs
+          fun loop ([], _, _, matchAcc, setAcc) = (rev matchAcc, setAcc)
+	    | loop (m::ms, currLive, others, matchAcc, setAcc) = let
+                val othersLive = grandUnion others
+		val cancelUs = VSet.difference (VSet.intersection (pLive, othersLive), currLive)
+		val m' = (case m
+			    of A.PMatch (ps, e) => let
+                                 val e' = VSet.foldl cancel e cancelUs
+                                 in
+				   A.PMatch (ps, e')
+			         end
+			     | A.Otherwise e => let
+                                 val e' = VSet.foldl cancel e cancelUs
+                                 in
+				   A.Otherwise e'
+			         end)
+		val mAcc = m' :: matchAcc
+		val sAcc = VSet.union (setAcc, currLive)
+                in
+                  case others
+                    of [] => (rev mAcc, sAcc)
+		     | h::t => loop (ms, h, t @ [currLive], mAcc, sAcc)
+	        end
+	  val (ms'', pLive'') = loop (ms', pLiveHd, pLiveTl, [], VSet.empty)
+          in
+            (A.PCaseExp (es', ms', t), VSet.union (pLive', pLive''))
+          end
+
     (* match : A.match * VSet.set -> A.match * VSet.set *)
-    and match (A.PatMatch (p, e), pLive) = 
-	let val (e', pLive') = trExp (e, pLive)
-	in
+    and match (A.PatMatch (p, e), pLive) = let 
+          val (e', pLive') = trExp (e, pLive)
+	  in
 	    (A.PatMatch (p, e'), pLive')
-        end
-      | match (A.CondMatch (p, e1, e2), pLive) = 
-	let val (e1', pLive1) = trExp (e1, pLive)
-	    val (e2', pLive2) = trExp (e2, pLive)
-        in
+          end
+      | match (A.CondMatch (p, e1, e2), pLive) = let 
+          val (e1', pLive1) = trExp (e1, pLive)
+	  val (e2', pLive2) = trExp (e2, pLive)
+          in
 	    (A.CondMatch (p, e1', e2'), VSet.union (pLive1, pLive2))
-	end
+	  end
+
+    (* pmatch : A.pmatch * VSet.set -> A.pmatch * VSet.set *)
+    and pmatch (A.PMatch (ps, e), pLive) = let
+          val (e', pLive') = trExp (e, pLive)
+          in
+            (A.PMatch (ps, e'), pLive')
+          end
+      | pmatch (A.Otherwise e, pLive) = let
+	  val (e', pLive') = trExp (e, pLive)
+          in
+            (A.Otherwise e', pLive')
+          end
 
     fun tr exp = (
 	Var.Tbl.clear selectors;

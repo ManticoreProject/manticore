@@ -45,8 +45,10 @@ structure BasisEnv : sig
 
     fun notFound path = raise Fail ("Unable to locate "^pathToString path)
 
-  (* use a path (or qualified name) to look up a variable, i.e., 
-   *      getValFromBasis(Atom.atom "Future1.future") 
+  (* getValFromBasis : string list -> ModuleEnv.val_bind
+   * use a path (encoded as a string list) to look up a variable 
+   * ex: getValFromBasis ["Future1", "future"]
+   *     (looks up Future1.future) 
    *)
     fun getValFromBasis path = (case getModule path
 	   of SOME(bEnv, x) => (case BEnv.findVal(bEnv, x)

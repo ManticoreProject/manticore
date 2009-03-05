@@ -112,7 +112,10 @@ structure DataCon : sig
       | isNullary _ = false
 
     fun toString (DCon {id, name, owner, argTy}) = 
-	   Atom.toString name^"("^Option.getOpt(Option.map TypeUtil.toString argTy, "")^")"^"["^Int.toString id^"]"^":"^TyCon.toString owner
+      String.concat [Atom.toString name, 
+		     "(", Option.getOpt (Option.map TypeUtil.toString argTy, ""), ")",
+		     "[", Int.toString id, "]",
+		     ":", TyCon.toString owner]
 
     structure Tbl = HashTableFn (
       struct
