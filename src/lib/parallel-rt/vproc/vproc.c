@@ -276,7 +276,7 @@ void VProcSignal (VProc_t *vp, VPSignal_t sig)
 {
 #ifndef NDEBUG
     if (DebugFlg)
-	SayDebug("[%2d] VProcSignal: sig = %d\n", vp->id, sig);
+      SayDebug("VProcSignal: sig = %d, vp = %d\n", sig, vp->id);
 #endif
 
     if (sig == PreemptSignal) pthread_kill (vp->hostID, SIGUSR1);
