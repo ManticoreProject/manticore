@@ -210,8 +210,11 @@ structure ModuleEnv =
       | tyDefToString (id, BOMTyDef _) = raise Fail "todo"
 
     fun valBindToString (id, Con dc) = ProgramParseTree.Var.toString id^" = "^DataCon.toString dc
-      | valBindToString (id, Var v)  = ProgramParseTree.Var.toString id^" = "^Var.toString v^" : "^TypeUtil.schemeToString (Var.typeOf v)
-      | valBindToString (id, Overload (ts, vs)) = ProgramParseTree.Var.toString id^" = "^"..."
+      | valBindToString (id, Var v)  = 
+          String.concat [ProgramParseTree.Var.toString id," = ", 
+			 Var.toString v, " : ", 
+			 TypeUtil.schemeToString (Var.typeOf v)]
+      | valBindToString (id, Overload (ts, vs)) = ProgramParseTree.Var.toString id^" = "^"[[Overload]]"
       | valBindToString (id, EqOp v) = ProgramParseTree.Var.toString id^" = "^Var.toString v
 
     fun toString (ModEnv {modRef=AST.MOD{name, ...}, varEnv, tyEnv, modEnv, ...}) = let

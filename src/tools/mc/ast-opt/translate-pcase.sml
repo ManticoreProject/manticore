@@ -61,9 +61,6 @@ structure TranslatePCase (* : sig
     val memoExn : AST.dcon Memo.memo = Memo.new (fn _ =>
       BasisEnv.getDConFromBasis ["Trap", "Exn"])
 				 
-    val memoFuture : Types.tycon Memo.memo = Memo.new (fn _ =>
-      BasisEnv.getTyConFromBasis ["FCMS", "future"])
-
     val memoOption : Types.tycon Memo.memo = Memo.new (fn _ =>
       BasisEnv.getTyConFromBasis ["Option", "option"])
 
@@ -85,11 +82,6 @@ structure TranslatePCase (* : sig
 
   (* trapExn : unit -> A.dcon *)
     fun trapExn () = Memo.get memoExn
-
-  (* futureTyc : unit -> AST.tycon *)
-  (* FIXME I am duplicating some stuff in Future1. *)
-  (* I'd like is to decide how to deal with this memoization issue before I go further. *)
-    fun futureTyc () = Memo.get memoFuture
 
   (* optionTyc : unit -> AST.tycon *)
     fun optionTyc () = Memo.get memoOption
@@ -119,7 +111,7 @@ structure TranslatePCase (* : sig
     fun mkOptTy ty = AST.ConTy ([ty], optionTyc ())
 
   (* mkFutureTy : AST.ty -> AST.ty *)
-    fun mkFutureTy ty = AST.ConTy ([ty], futureTyc ())
+    fun mkFutureTy ty = AST.ConTy ([ty], F.futureTyc ())
 
   (* mkTrapTy : AST.ty -> AST.ty *)
     fun mkTrapTy ty = AST.ConTy ([ty], trapTyc ())
@@ -271,7 +263,10 @@ structure TranslatePCase (* : sig
   fun mkPoll (futV : AST.var) : AST.exp = let
     val ty = typeOfVar futV
     val inst = (case ty
-		  of A.ConTy ([i], futureTyc) => i
+		  of A.ConTy ([i], tyc) => 
+		      (if TyCon.same (tyc, F.futureTyc ()) 
+		       then i
+		       else raise Fail "not a future")
 		   | _ => raise Fail "unexpected non-future type")
     in
       A.ApplyExp (A.VarExp (pollV (), [inst]),

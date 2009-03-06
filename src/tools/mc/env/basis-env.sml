@@ -17,6 +17,7 @@ structure BasisEnv : sig
     val getHLOpFromBasis  : string list -> ProgramParseTree.Var.var
 
   (* a few convenience methods *)
+    val getVarFromBasis   : string list -> AST.var
     val getDConFromBasis  : string list -> AST.dcon
     val getTyConFromBasis : string list -> Types.tycon
 
@@ -53,6 +54,14 @@ structure BasisEnv : sig
 
     fun notA thing path = raise Fail (String.concat ["found ", pathToString path,
 						     " but it wasn't a ", thing])
+
+    fun wrongThing expected got path = let
+      val msg = String.concat ["looking up ", pathToString path, 
+			       ": expected ", expected, 
+			       " but got ", got] 
+      in
+	raise Fail msg
+      end
 
   (* getValFromBasis : string list -> ModuleEnv.val_bind
    * use a path (encoded as a string list) to look up a variable 
@@ -100,16 +109,51 @@ structure BasisEnv : sig
 	    | _ => notFound path
           (* end case *))
 
+  (* look up a variable *)
+    fun getVarFromBasis path = 
+     (case getValFromBasis path
+        of MEnv.Var x => x
+	 | other => let
+             val dummyID = ProgramParseTree.Var.new ("dummyID", ())
+	     val tos = (fn x => MEnv.valBindToString (dummyID, x))
+             val w = (fn g => wrongThing "Var" (g ^ " " ^ tos other) path)
+             in
+               case other
+                 of MEnv.Con _ => w "Con"
+		  | MEnv.Overload _ => w "Overload"
+		  | MEnv.EqOp _ => w "EqOp"
+		  | _ => raise Fail "impossible"
+             end)
+
   (* look up a data constructor *)
     fun getDConFromBasis path = 
      (case getValFromBasis path
         of MEnv.Con c => c
-	 | _ => notA "dcon" path)
+	 | other => let
+             val dummyID = ProgramParseTree.Var.new ("dummyID", ())
+	     val tos = (fn x => MEnv.valBindToString (dummyID, x))
+             val w = (fn g => wrongThing "Con" (g ^ " " ^ tos other) path)
+             in
+               case other
+                 of MEnv.Var _ => w "Var"
+		  | MEnv.Overload _ => w "Overload"
+		  | MEnv.EqOp _ => w "EqOp"
+		  | _ => raise Fail "impossible"
+             end)
 
   (* look up a type constructor *)
     fun getTyConFromBasis path =
      (case getTyFromBasis path
         of MEnv.TyCon c => c
-	 | _ => notA "tycon" path)
+	 | other => let
+	     val dummyID = ProgramParseTree.Var.new ("dummyID", ())
+	     val tos = (fn x => MEnv.tyDefToString (dummyID, x))
+	     val w = (fn g => wrongThing "TyCon" (g ^ " " ^  tos other) path)
+             in
+	       case other
+	 	 of MEnv.TyDef _ => w "TyDef"
+		  | MEnv.BOMTyDef _ => w "BOMTyDef"
+		  | _ => raise Fail "impossible"
+             end)
 
   end

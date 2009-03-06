@@ -8,9 +8,11 @@
 
 structure Future1 : sig
 
+    val futureTyc : unit -> Types.tycon
+
     val futureTy : AST.ty -> AST.ty
 
-    val mkTouch : AST.exp -> AST.exp
+    val mkTouch  : AST.exp -> AST.exp
     val mkFuture : AST.exp -> AST.exp
     val mkCancel : AST.exp -> AST.exp
 
@@ -22,22 +24,35 @@ structure Future1 : sig
     structure A = AST
     structure T = Types
 
-    fun getVar (ModuleEnv.Var v) = v
-      | getVar _ = raise Fail "getVar"
+    local 
 
-    val getVar = getVar o BasisEnv.getValFromBasis
+      val futureModuleName = "FCMS" (* "EagerFuture" *)
 
-    fun getTyc (ModuleEnv.TyCon tyc) = tyc
-      | getTyc (ModuleEnv.TyDef(T.TyScheme(_, T.ConTy(_, tyc)))) = tyc
-      | getTyc _ = raise Fail "compiler bug"
+      fun getTyc id = BasisEnv.getTyConFromBasis [futureModuleName, id]
+      fun getVar id = BasisEnv.getVarFromBasis [futureModuleName, id]
 
-    val getTyc = getTyc o BasisEnv.getTyFromBasis
+      val memoFutureTyc : Types.tycon Memo.memo = Memo.new (fn _ =>
+        getTyc "future")
 
-    fun futureTyc () = getTyc ["FCMS" (* "EagerFuture" *), "future"]
+      val memoFuture : AST.var Memo.memo = Memo.new (fn _ =>
+        getVar "future")
+  
+      val memoTouch1 : AST.var Memo.memo = Memo.new (fn _ =>
+        getVar "touch1")
+
+      val memoCancel1 : AST.var Memo.memo = Memo.new (fn _ =>
+        getVar "cancel1")
+
+    in
+
+      fun futureTyc () = Memo.get memoFutureTyc
+      fun future1   () = Memo.get memoFuture
+      fun touch1    () = Memo.get memoTouch1
+      fun cancel1   () = Memo.get memoCancel1
+
+    end (* local *)
+  
     fun futureTy t = T.ConTy ([t], futureTyc())
-    fun future1 () = getVar ["FCMS" (* "EagerFuture" *), "future"]
-    fun touch1 () = getVar ["FCMS" (* "EagerFuture" *), "touch"]
-    fun cancel1 () = getVar ["FCMS" (* "EagerFuture" *), "cancel"]
 
     (* mkThunk : A.exp -> A.exp *)
     (* Consumes e; produces (fn u => e) (for fresh u : unit). *)
