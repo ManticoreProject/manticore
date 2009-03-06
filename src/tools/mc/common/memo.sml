@@ -3,8 +3,8 @@
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Memoization cells. I (ams) needed these working with the basis,
- * and thought others might find them useful.
+ * Memoization cells. I (ams) needed these working with the (dynamically-
+ * loaded) basis in AST rewrites, and thought others might find them useful.
  *)
 
 structure Memo :> sig
@@ -27,7 +27,7 @@ end = struct
 (* new : (unit -> 'a) -> 'a memo *)
   fun new susp = ref (ToDo susp)
 
-(* get : (unit -> 'a) -> 'a memo -> 'a *)
+(* get : 'a memo -> 'a *)
 (* side-effect: the item is computed if it hasn't yet been *)
   fun get (m : 'a memo) : 'a =
    (case !m
