@@ -33,6 +33,8 @@ Library
 
   functor VarFn
 
+  structure Memo
+
 is
 
   $/basis.cm
@@ -62,3 +64,5 @@ is
   var-rep.sml
 
   basis-names.sml
+
+  memo.sml

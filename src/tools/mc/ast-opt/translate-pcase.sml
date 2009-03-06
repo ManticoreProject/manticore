@@ -47,29 +47,17 @@ structure TranslatePCase (* : sig
   (* NOTE: making the Val, Exn dcons etc. at link time causes a link time error. *)
   (* I'm doing all this memo stuff to work around that. - ams *)
 
-  type 'a memo = 'a option ref
-		 
-  fun getMemo (get : unit -> 'a) (m : 'a memo) : 'a =
-      (case !m
-        of NONE => let
-               val x = get ()
-               val _ = (m := SOME x)
-           in
-	       x
-	   end
-	 | SOME x => x)
-      
   local
 
-    val memoSOME : AST.dcon memo = ref NONE
-    val memoNONE : AST.dcon memo = ref NONE 
-    val memoVal  : AST.dcon memo = ref NONE
-    val memoExn  : AST.dcon memo = ref NONE
+    val memoSOME : AST.dcon Memo.memo = Memo.new ()
+    val memoNONE : AST.dcon Memo.memo = Memo.new ()
+    val memoVal  : AST.dcon Memo.memo = Memo.new ()
+    val memoExn  : AST.dcon Memo.memo = Memo.new ()
 				 
-    val memoFuture : Types.tycon memo = ref NONE
-    val memoOption : Types.tycon memo = ref NONE
-    val memoTrap   : Types.tycon memo = ref NONE
-				
+    val memoFuture : Types.tycon Memo.memo = Memo.new ()
+    val memoOption : Types.tycon Memo.memo = Memo.new ()
+    val memoTrap   : Types.tycon Memo.memo = Memo.new ()
+
   in
       
   (* optSOME : unit -> A.dcon *)
@@ -77,7 +65,7 @@ structure TranslatePCase (* : sig
     fun optSOME () = let
       fun get _ = BasisEnv.getDConFromBasis ["Option", "SOME"]
       in
-	getMemo get memoSOME
+	Memo.get get memoSOME
       end
 	    
   (* optNONE : unit -> A.dcon *)
@@ -85,21 +73,21 @@ structure TranslatePCase (* : sig
     fun optNONE () = let
       fun get _ = BasisEnv.getDConFromBasis ["Option", "NONE"]
       in
-        getMemo get memoNONE
+        Memo.get get memoNONE
       end
 
   (* trapVal : unit -> A.dcon *)
     fun trapVal () = let
       fun get _ = BasisEnv.getDConFromBasis ["Trap", "Val"]
       in 
-        getMemo get memoVal
+        Memo.get get memoVal
       end
 
   (* trapExn : unit -> A.dcon *)
     fun trapExn () = let
       fun get _ = BasisEnv.getDConFromBasis ["Trap", "Exn"]
       in
-        getMemo get memoExn
+        Memo.get get memoExn
       end
 
   (* futureTyc : unit -> AST.tycon *)
@@ -108,21 +96,21 @@ structure TranslatePCase (* : sig
     fun futureTyc () = let
       fun get _ = BasisEnv.getTyConFromBasis ["FCMS", "future"]
       in
-        getMemo get memoFuture
+        Memo.get get memoFuture
       end
 
   (* optionTyc : unit -> AST.tycon *)
     fun optionTyc () = let
       fun get _ = BasisEnv.getTyConFromBasis ["Option", "option"]
       in
-        getMemo get memoOption
+        Memo.get get memoOption
       end
 
   (* trapTyc : unit -> AST.tycon *)
     fun trapTyc () = let
       fun get _ = BasisEnv.getTyConFromBasis ["Trap", "trap"]
       in
-        getMemo get memoTrap
+        Memo.get get memoTrap
       end
 
   (* mkValPat : AST.pat -> AST.pat *)
@@ -275,7 +263,7 @@ structure TranslatePCase (* : sig
   fun typeOfVar v = TypeOf.pat (A.VarPat v)
 
   local
-    val memoPoll : AST.var memo = ref NONE
+    val memoPoll : AST.var Memo.memo = Memo.new ()
   in
   (* pollV : unit -> A.var *)
   (* FIXME: dummy implementation of poll *)
@@ -292,7 +280,7 @@ structure TranslatePCase (* : sig
           Var.newPoly ("poll", forall (fn tv => pollTy tv))
         end
       in
-	getMemo get memoPoll
+	Memo.get get memoPoll
       end
   end (* local *)
 	
