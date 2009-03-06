@@ -40,10 +40,11 @@ static ArgDesc_t *GetArgs (JSON_Value_t *v)
 	ArgType_t ty;
 	int n;
 	if (strcasecmp(tyStr, "addr") == 0) ty = ADDR;
-	else if (strcasecmp(tyStr, "addr") == 0) ty = INT;
+	else if (strcasecmp(tyStr, "int") == 0) ty = INT;
 	else if (strcasecmp(tyStr, "word") == 0) ty = WORD;
 	else if (strcasecmp(tyStr, "float") == 0) ty = FLOAT;
 	else if (strcasecmp(tyStr, "double") == 0) ty = DOUBLE;
+	else if (strcasecmp(tyStr, "event") == 0) ty = EVENT_ID;
 	else if (sscanf(tyStr, "str%d", &n) == 1) ty = STR0 + n;
 	else {
 	    free (ads);

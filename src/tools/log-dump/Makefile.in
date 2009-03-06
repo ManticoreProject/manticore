@@ -30,7 +30,9 @@ SHELL =		@SHELL@
 @SET_MAKE@
 
 CC =		@CC@
-CFLAGS =	@CFLAGS@ @PTHREAD_CFLAGS@
+CFLAGS =	@CFLAGS@
+CXX =		@CXX@
+CXXFLAGS =	@CXXFLAGS@
 LDFLAGS =	
 CPPFLAGS =	-I. -I../../include
 
@@ -38,13 +40,14 @@ CPPFLAGS =	-I. -I../../include
 
 TARGET =	log-dump
 
-SRCS =		log-dump.c load-log-desc.c json.c JSON_parser.c
-OBJS =		$(patsubst %.c,%.o,$(SRCS))
+C_SRCS =	json.c JSON_parser.c
+CXX_SRCS =	log-dump.cxx load-log-desc.cxx
+OBJS =		$(patsubst %.c,%.o,$(C_SRCS)) $(patsubst %.cxx,%.o,$(CXX_SRCS))
 
 build:		$(TARGET)
 
 $(TARGET):	$(OBJS) ../../include/log-file.h ../../include/log-events.h
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $(TARGET) $(OBJS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $(TARGET) $(OBJS)
 
 local-install: $(TARGET)
 
