@@ -49,69 +49,53 @@ structure TranslatePCase (* : sig
 
   local
 
-    val memoSOME : AST.dcon Memo.memo = Memo.new ()
-    val memoNONE : AST.dcon Memo.memo = Memo.new ()
-    val memoVal  : AST.dcon Memo.memo = Memo.new ()
-    val memoExn  : AST.dcon Memo.memo = Memo.new ()
+    val memoSOME : AST.dcon Memo.memo = Memo.new (fn _ =>
+      BasisEnv.getDConFromBasis ["Option", "SOME"])
+
+    val memoNONE : AST.dcon Memo.memo = Memo.new (fn _ =>
+      BasisEnv.getDConFromBasis ["Option", "NONE"])
+
+    val memoVal : AST.dcon Memo.memo = Memo.new (fn _ =>
+      BasisEnv.getDConFromBasis ["Trap", "Val"])
+
+    val memoExn : AST.dcon Memo.memo = Memo.new (fn _ =>
+      BasisEnv.getDConFromBasis ["Trap", "Exn"])
 				 
-    val memoFuture : Types.tycon Memo.memo = Memo.new ()
-    val memoOption : Types.tycon Memo.memo = Memo.new ()
-    val memoTrap   : Types.tycon Memo.memo = Memo.new ()
+    val memoFuture : Types.tycon Memo.memo = Memo.new (fn _ =>
+      BasisEnv.getTyConFromBasis ["FCMS", "future"])
+
+    val memoOption : Types.tycon Memo.memo = Memo.new (fn _ =>
+      BasisEnv.getTyConFromBasis ["Option", "option"])
+
+    val memoTrap : Types.tycon Memo.memo = Memo.new (fn _ =>
+      BasisEnv.getTyConFromBasis ["Trap", "trap"])
 
   in
       
   (* optSOME : unit -> A.dcon *)
   (* memoized SOME dcon from the basis *)
-    fun optSOME () = let
-      fun get _ = BasisEnv.getDConFromBasis ["Option", "SOME"]
-      in
-	Memo.get get memoSOME
-      end
+    fun optSOME () = Memo.get memoSOME
 	    
   (* optNONE : unit -> A.dcon *)
   (* memoized NONE dcon from the basis *)
-    fun optNONE () = let
-      fun get _ = BasisEnv.getDConFromBasis ["Option", "NONE"]
-      in
-        Memo.get get memoNONE
-      end
+    fun optNONE () = Memo.get memoNONE
 
   (* trapVal : unit -> A.dcon *)
-    fun trapVal () = let
-      fun get _ = BasisEnv.getDConFromBasis ["Trap", "Val"]
-      in 
-        Memo.get get memoVal
-      end
+    fun trapVal () = Memo.get memoVal
 
   (* trapExn : unit -> A.dcon *)
-    fun trapExn () = let
-      fun get _ = BasisEnv.getDConFromBasis ["Trap", "Exn"]
-      in
-        Memo.get get memoExn
-      end
+    fun trapExn () = Memo.get memoExn
 
   (* futureTyc : unit -> AST.tycon *)
   (* FIXME I am duplicating some stuff in Future1. *)
   (* I'd like is to decide how to deal with this memoization issue before I go further. *)
-    fun futureTyc () = let
-      fun get _ = BasisEnv.getTyConFromBasis ["FCMS", "future"]
-      in
-        Memo.get get memoFuture
-      end
+    fun futureTyc () = Memo.get memoFuture
 
   (* optionTyc : unit -> AST.tycon *)
-    fun optionTyc () = let
-      fun get _ = BasisEnv.getTyConFromBasis ["Option", "option"]
-      in
-        Memo.get get memoOption
-      end
+    fun optionTyc () = Memo.get memoOption
 
   (* trapTyc : unit -> AST.tycon *)
-    fun trapTyc () = let
-      fun get _ = BasisEnv.getTyConFromBasis ["Trap", "trap"]
-      in
-        Memo.get get memoTrap
-      end
+    fun trapTyc () = Memo.get memoTrap
 
   (* mkValPat : AST.pat -> AST.pat *)
   (* Given a pattern (p : t), produce the pattern (Val p : t trap). *)
@@ -263,25 +247,21 @@ structure TranslatePCase (* : sig
   fun typeOfVar v = TypeOf.pat (A.VarPat v)
 
   local
-    val memoPoll : AST.var Memo.memo = Memo.new ()
+    fun forall mkTy = let
+      val tv = TyVar.new (Atom.atom "'a")
+      in
+	AST.TyScheme ([tv], mkTy (AST.VarTy tv))
+      end    
+  (* FIXME: dummy implementation of poll *)
+    val memoPoll : AST.var Memo.memo = Memo.new (fn _ => let
+      fun pollTy tv = A.FunTy (mkFutureTy tv, mkOptTy (mkTrapTy tv))
+      in
+        (* FIXME get the real poll from the basis *)
+	Var.newPoly ("poll", forall (fn tv => pollTy tv))
+      end)
   in
   (* pollV : unit -> A.var *)
-  (* FIXME: dummy implementation of poll *)
-    fun pollV () = let
-      fun forall mkTy = let
-        val tv = TyVar.new (Atom.atom "'a")
-        in
-	  AST.TyScheme ([tv], mkTy (AST.VarTy tv))
-	end
-      fun get _ = let
-        fun pollTy tv = A.FunTy (mkFutureTy tv, mkOptTy (mkTrapTy tv))
-        in
-	  (* FIXME get the real poll from the basis *)
-          Var.newPoly ("poll", forall (fn tv => pollTy tv))
-        end
-      in
-	Memo.get get memoPoll
-      end
+    fun pollV () = Memo.get memoPoll
   end (* local *)
 	
 (* mkPoll: Given a variable f bound to some 'a future, return (poll f).

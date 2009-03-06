@@ -11,34 +11,38 @@ structure Memo :> sig
 
   type 'a memo
 
-  val new : unit -> 'a memo
-  val get : (unit -> 'a) -> 'a memo -> 'a
+  val new : (unit -> 'a) -> 'a memo
+  val get : 'a memo -> 'a
 
   val computedYet : 'a memo -> bool
 
 end = struct
 
-  type 'a memo = 'a option ref
+  datatype 'a memo_info
+    = ToDo of unit -> 'a
+    | Did  of 'a
 
-(* new : unit -> 'a memo 
- * This is intended to be typed at the call site, as in
- *   val n : int memo = Memo.new ()
- *)
-  fun new () = ref NONE
+  type 'a memo = 'a memo_info ref
+
+(* new : (unit -> 'a) -> 'a memo *)
+  fun new susp = ref (ToDo susp)
 
 (* get : (unit -> 'a) -> 'a memo -> 'a *)
 (* side-effect: the item is computed if it hasn't yet been *)
-  fun get (compute : unit -> 'a) (m : 'a memo) : 'a =
+  fun get (m : 'a memo) : 'a =
    (case !m
-      of NONE => let
-           val x = compute ()
-           val _ = (m := SOME x)
+      of ToDo susp => let
+           val x = susp ()
+           val _ = (m := Did x)
            in
              x
            end
-       | SOME x => x)
+       | Did x => x)
 
 (* isComputed : 'a memo -> bool *)
-  fun computedYet (m : 'a memo) : bool = not (isSome (!m))
+  fun computedYet (m : 'a memo) : bool =
+   (case !m
+      of ToDo _ => false
+       | Did _  => true)
 
 end
