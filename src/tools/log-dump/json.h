@@ -2,13 +2,21 @@
  *
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
+ *
+ * The representation of JSON files produced by the JSON parser.
  */
 
 #ifndef _JSON_H_
 #define _JSON_H_
 
 #include <stdint.h>
+#ifndef __cplusplus
 #include <stdbool.h>
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef enum {
     JSON_null,
@@ -51,15 +59,22 @@ struct struct_json_value {
     } u;
 };
 
+/*! \brief Parse a JSON file */
 JSON_Value_t *JSON_ParseFile (const char *file);
+
+/*! \brief Free the storage allocated for a JSON value */
 void JSON_Free (JSON_Value_t *v);
 
-/*! \brief get the named field from a JSON object */
+/*! \brief Return the named field from a JSON object */
 JSON_Value_t *JSON_GetField (JSON_Value_t *v, const char *name);
 
-/*! \brief get the given item from  */
+/*! \brief Return the given item from a JSON array */
 JSON_Value_t *JSON_GetElem (JSON_Value_t *v, int i);
 
 const char *JSON_GetString (JSON_Value_t *v);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* !_JSON_H_ */
