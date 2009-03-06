@@ -6,7 +6,7 @@
  * Components for building futures with eager semantics.
  *)
 
-structure EagerFuture : FUTURE =
+structure EagerFuture (* : FUTURE *) =
   struct
 
     _primcode(

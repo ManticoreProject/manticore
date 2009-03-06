@@ -6,7 +6,7 @@
  * Parallel suspensions.
  *)
 
-structure ParSusp : PAR_SUSP =
+structure ParSusp (* : PAR_SUSP*) =
   struct
 
 #define STOLEN_OFF     0
