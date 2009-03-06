@@ -28,7 +28,8 @@ structure Future1 : sig
     val getVar = getVar o BasisEnv.getValFromBasis
 
     fun getTyc (ModuleEnv.TyCon tyc) = tyc
-      | getTyc _ = raise Fail "getTyc"
+      | getTyc (ModuleEnv.TyDef(T.TyScheme(_, T.ConTy(_, tyc)))) = tyc
+      | getTyc _ = raise Fail "compiler bug"
 
     val getTyc = getTyc o BasisEnv.getTyFromBasis
 
