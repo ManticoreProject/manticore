@@ -29,7 +29,7 @@ endif
 # tools and flags
 #
 CC =		@CC@
-CFLAGS =	@CFLAGS@ @PTHREAD_CFLAGS@
+CFLAGS =	@CFLAGS@ @CFLAG_M64@ @PTHREAD_CFLAGS@
 LDFLAGS =
 INCLUDES =	-I. -I../../include -I../../../../include
 CPPFLAGS =	@CPPFLAGS@ $(INCLUDES) -D@TARGET_OS@ -D@TARGET_CPU@
