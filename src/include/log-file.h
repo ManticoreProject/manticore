@@ -15,6 +15,10 @@
 #include <sys/time.h>
 #include <time.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* a 64-bit time value represented as seconds and fraction pair */
 typedef struct {
     uint32_t		sec;	/* whole seconds */
@@ -23,7 +27,7 @@ typedef struct {
 
 #define LOGBLOCK_SZB	(8*1024)
 #define LOGBUF_SZ	((LOGBLOCK_SZB/sizeof(LogEvent_t))-1)
-#define LOG_MAGIC	0x6D616E7469636F72	// "manticor"
+#define LOG_MAGIC	0x6D616E7469636F72ll	// "manticor"
 #define DFLT_LOG_FILE	"LOG"
 
 enum {				    // different formats of timestamps.
@@ -65,5 +69,9 @@ struct struct_logbuf {
 
 /* define the predefined log-event codes */
 #include "log-events.h"
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* !_LOG_FILE_H_ */
