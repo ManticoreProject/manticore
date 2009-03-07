@@ -23,7 +23,7 @@ structure BuildExecutable : sig
 
     val isCrossCompiler = (@CROSS_COMPILING@ = 1)
     val ccCmd =  "@CC@"
-    val cFlags = "@CFLAGS@"
+    val cFlags = String.concatWith " " ["@CFLAGS@", "@CFLAG_M64@"]
     fun ldFlags libName = cat (
           (List.map (fn path => "-L" ^ path) (
              List.filter (fn path => OS.FileSys.access (path, [])) [
