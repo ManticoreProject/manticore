@@ -153,6 +153,9 @@ AC_CHECK_TYPES([struct timespec])
 
 AC_CHECK_FUNCS(sigtimedwait nanosleep)
 
+dnl
+dnl check for pthread_setaffinity_np
+dnl
 save_LIBS=$LIBS
 save_CFLAGS=$CFLAGS
 LIBS="$PTHREAD_LIBS $LIBS"
@@ -277,6 +280,12 @@ dnl MEM_BLOCK_SZB
 
 dnl ******************** C compiler properties ********************
 
+dnl
+dnl run the compiler tests in 64-bit mode
+dnl
+save_CFLAGS=$CFLAGS
+CFLAGS="$CFLAGS $CFLAG_M64"
+
 dnl check for leading "_" on global names
 dnl
 CHECK_LEADING_UNDERSCORE
@@ -317,6 +326,11 @@ if test x"$ac_cv_c_long_double" = xyes ; then
 else
   AC_DEFINE(SIZEOF_LONG_DOUBLE, 8, [The number of bytes in a long double])
 fi
+
+dnl
+dnl restore CFLAGS
+dnl
+CFLAGS=$save_CFLAGS
 
 dnl
 dnl config.h stuff
