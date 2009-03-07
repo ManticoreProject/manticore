@@ -55,6 +55,7 @@ class EventOrGroup {
     bool isGroup () const	{ return this->_kind == LOG_GROUP; }
     EventGroup *Group () const	{ return this->_grp; }
     EventKind Kind() const	{ return this->_kind; }
+    bool isRoot () const	{ return (this->_grp == 0); }
 
   protected:
     const char	*_name;		/* the event's name */
@@ -64,7 +65,9 @@ class EventOrGroup {
     EventOrGroup (const char *name, EventKind kind);
     virtual ~EventOrGroup ();
 
-    void SetGroup (EventGroup *grp);
+    void SetGroup (EventGroup *grp) { this->_grp = grp; }
+
+    friend class EventGroup;
 
 };
 

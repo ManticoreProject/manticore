@@ -43,6 +43,7 @@ EventGroup::~EventGroup ()
 void EventGroup::Add (int i, EventOrGroup *item)
 {
     this->_kids.at(i) = item;
+    item->SetGroup (this);
 }
 
 

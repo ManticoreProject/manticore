@@ -103,9 +103,11 @@ LogFileDesc *LogFileDescLoader::GetFile (JSON_Value_t *v)
 
     if (grp == 0) return 0;
 
-    LogFileDesc *lfd = new LogFileDesc (grp);
+    std::vector<EventDesc *> *events = new std::vector<EventDesc *> (this->_nextId, (EventDesc *)0);
+/* FIXME:  Get the events by id! */
 
-/* Get the events by id! */
+    LogFileDesc *lfd = new LogFileDesc (grp);
+    lfd->_events = events;
 
     return lfd;
 
