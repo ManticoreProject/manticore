@@ -66,9 +66,9 @@ dnl
 if test x"$TARGET_CPU" != xTARGET_X86_64 ; then
   AC_MSG_ERROR([sorry, but we only support the x86-64 processor])
 else
-  CC_MODE_FLAG="-m64"
+  CFLAG_M64="-m64"
 fi
-CFLAGS="$CFLAGS $CC_MODE_FLAG"
+AC_SUBST(CFLAG_M64)
 
 TARGET=$ARCH-$OS
 AC_SUBST(TARGET_CPU)
@@ -109,7 +109,8 @@ dnl
 dnl check for standard programs
 dnl
 AC_GNU_SOURCE
-AC_PROG_CC
+AC_PROG_CC_C99
+AC_PROG_CXX
 AC_CHECK_PROG(AR, ar, ar)
 AC_PROG_RANLIB
 AC_PROG_INSTALL
@@ -118,28 +119,7 @@ AC_PROG_MAKE_SET
 dnl
 dnl extra CFLAGS
 dnl
-CFLAGS="$CFLAGS -D_GNU_SOURCE -std=gnu99 -pedantic"
-
-dnl
-dnl check for --enable-debug 
-dnl
-AC_ARG_ENABLE(debug,
-  AC_HELP_STRING([--enable-debug], [enable debugging of executables]))
-if test x"$enable_debug" = xyes ; then
-  CFLAGS="$CFLAGS -g3"
-fi
-
-dnl
-dnl check for --enable-logging 
-dnl
-AC_ARG_ENABLE(logging,
-  AC_HELP_STRING([--enable-logging], [enable logging of events]))
-if test x"$enable_logging" = xyes ; then
-  ENABLE_LOGGING=true
-else
-  ENABLE_LOGGING=false
-fi
-AC_SUBST(ENABLE_LOGGING)
+CFLAGS="$CFLAGS -D_GNU_SOURCE -pedantic"
 
 dnl
 dnl For various reasons, "gcc -E" doesn't work as a cpp command, so we look for
@@ -459,7 +439,6 @@ AC_DEFUN([MK_BUILD_DIR], [
         > src/lib/parallel-rt/build/$1/Makefile.in]
     AC_CONFIG_FILES(src/lib/parallel-rt/build/$1/Makefile)
   ])
-
 
 if test $CROSS_COMPILING = 0 ; then
     MK_BUILD_DIR(mcrt, [])
