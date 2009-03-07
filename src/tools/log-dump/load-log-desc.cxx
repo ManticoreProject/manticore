@@ -11,7 +11,7 @@
 #include "log-desc.hxx"
 #include "json.h"
 
-class LogFileDescLoader {
+class LogFileDescLoader : public LogDescVisitor {
   public:
     LogFileDescLoader () { this->_nextId = 0; }
 
@@ -22,7 +22,12 @@ class LogFileDescLoader {
 
     LogFileDesc *Load (const char *logDescFile);
 
+  /* used to initialize event IDs */
+    void VisitGroup (EventGroup *grp);
+    void VisitEvent (EventDesc *evt);
+
   protected:
+    LogFileDesc			*_desc;
     int				_nextId;
 
 };
@@ -104,10 +109,12 @@ LogFileDesc *LogFileDescLoader::GetFile (JSON_Value_t *v)
     if (grp == 0) return 0;
 
     std::vector<EventDesc *> *events = new std::vector<EventDesc *> (this->_nextId, (EventDesc *)0);
-/* FIXME:  Get the events by id! */
-
     LogFileDesc *lfd = new LogFileDesc (grp);
     lfd->_events = events;
+
+  /* initialize the events array */
+    this->_desc = lfd;
+    lfd->PreOrderWalk (this);
 
     return lfd;
 
@@ -186,3 +193,14 @@ EventGroup *LogFileDescLoader::NewGroup (const char *name, JSON_Value_t *events)
 
 }
 
+/* visitors used to initialize event IDs */
+
+void LogFileDescLoader::VisitGroup (EventGroup *grp)
+{
+}
+
+void LogFileDescLoader::VisitEvent (EventDesc *evt)
+{
+printf("Visit: id = %2d, name = %s\n", evt->_id, evt->Name());
+    this->_desc->_events->at(evt->_id) = evt;
+}

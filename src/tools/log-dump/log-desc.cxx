@@ -6,6 +6,7 @@
 
 #include "log-desc.hxx"
 #include <string.h>
+#include <stack>
 
 inline char *CopyString (const char *s)
 {
@@ -73,4 +74,76 @@ LogFileDesc::~LogFileDesc ()
 {
     delete this->_root;
     delete this->_events;
+}
+
+/* visitor walks of the event hierarchy */
+
+struct StkNode {
+    EventGroup	*grp;
+    int		i;		// child index in the group
+
+    StkNode (EventGroup *g) { this->grp = g; this->i = 0; }
+
+    EventOrGroup *Next ()
+    {
+	if (this->i < grp->NumKids())
+	    return grp->Kid(this->i++);
+	else
+	    return 0;
+    }
+
+};
+
+typedef std::stack<StkNode> Stack_t;
+
+//! \brief do a pre-order traversal of the event hierarchy, calling the visitor methods at each
+//! node.
+void LogFileDesc::PreOrderWalk (LogDescVisitor *visitor)
+{
+    Stack_t stk;
+
+    visitor->VisitGroup (this->_root);
+    stk.push (StkNode(this->_root));
+    while (! stk.empty()) {
+	EventOrGroup *p = stk.top().Next();
+	if (p == 0) {
+	    stk.pop();
+	}
+	else {
+	    EventGroup *grp = dynamic_cast<EventGroup *>(p);
+	    if (grp != 0) {
+		visitor->VisitGroup (grp);
+		stk.push (StkNode(grp));
+   	    }
+	    else
+		visitor->VisitEvent (static_cast<EventDesc *>(p));
+	}
+    }
+
+}
+
+//! \brief do a post-order traversal of the event hierarchy, calling the visitor methods at each
+//! node.
+void LogFileDesc::PostOrderWalk (LogDescVisitor *visitor)
+{
+    Stack_t stk;
+
+    stk.push (StkNode(this->_root));
+    while (! stk.empty()) {
+	EventOrGroup *p = stk.top().Next();
+	if (p == 0) {
+	    visitor->VisitGroup (stk.top().grp);
+	    stk.pop();
+	}
+	else {
+	    EventGroup *grp = dynamic_cast<EventGroup *>(p);
+	    if (grp != 0) {
+		visitor->VisitGroup (grp);
+		stk.push (StkNode(grp));
+   	    }
+	    else
+		visitor->VisitEvent (static_cast<EventDesc *>(p));
+	}
+    }
+
 }

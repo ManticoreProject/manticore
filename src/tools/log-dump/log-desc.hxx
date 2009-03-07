@@ -75,6 +75,9 @@ class EventGroup : public EventOrGroup {
   public:
     ~EventGroup ();
 
+    int NumKids () const { return this->_kids.size(); }
+    EventOrGroup *Kid (int i) const { return this->_kids.at(i); }
+
   protected:
     std::vector<EventOrGroup *>	_kids;
 
@@ -105,9 +108,20 @@ class EventDesc : public EventOrGroup {
 
 };
 
+//! \brief abstract virtual class for traversing the event hierarchy
+class LogDescVisitor {
+  public:
+    virtual void VisitGroup (EventGroup *grp) = 0;
+    virtual void VisitEvent (EventDesc *evt) = 0;
+};
+
 class LogFileDesc {
   public:
     EventDesc *FindEventById (int id) { return this->_events->at(id); }
+
+  /* visitor walks of the event hierarchy */
+    void PreOrderWalk (LogDescVisitor *visitor);
+    void PostOrderWalk (LogDescVisitor *visitor);
 
   protected:
     EventGroup			*_root;

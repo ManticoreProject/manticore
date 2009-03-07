@@ -132,7 +132,7 @@ static void LoadLogFile (LogFileDesc *logFileDesc, const char *file)
     }
 
   /* open the file */
-    FILE	*f = fopen(file, "rb");
+    FILE *f = fopen(file, "rb");
     if (f == NULL) {
 	perror("fopen");
 	exit(1);
