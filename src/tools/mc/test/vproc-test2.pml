@@ -1,5 +1,7 @@
 val vps = VProcExtras.vprocs()
 
+fun delay n = if (n <= 0) then () else (delay(n-1); delay(n-1));
+
 fun thd vp = let
       val cv = CVar.new()
       fun thd' () = let
@@ -13,8 +15,6 @@ fun thd vp = let
 	VProcExtras.spawnOn thd' vp;
 	cv
       end
-
-fun delay n = if (n <= 0) then () else (delay(n-1); delay(n-1));
 
 val cvs = List.map thd vps
 
