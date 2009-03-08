@@ -201,6 +201,5 @@ void LogFileDescLoader::VisitGroup (EventGroup *grp)
 
 void LogFileDescLoader::VisitEvent (EventDesc *evt)
 {
-printf("Visit: id = %2d, name = %s\n", evt->_id, evt->Name());
     this->_desc->_events->at(evt->_id) = evt;
 }
