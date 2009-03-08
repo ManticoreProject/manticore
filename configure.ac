@@ -406,6 +406,7 @@ dnl ***** Makefiles *****
   src/lib/parallel-rt/build/config/Makefile
   src/lib/parallel-rt/build/mk/common.gmk:src/lib/parallel-rt/build/mk/common_gmk.in
   src/tools/log-dump/Makefile
+  src/tools/log-view/build/Makefile
   src/tools/mc/Makefile
 dnl ***** SML source files *****
   src/gen/log-gen/main.sml:src/gen/log-gen/main_sml.in
