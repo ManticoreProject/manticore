@@ -24,6 +24,10 @@
 
 typedef struct struct_logbuf LogBuffer_t;
 
+/* the actual size of a block in the log buffer */
+static size_t	LogBufSzB = LOGBLOCK_SZB;
+static int	NEventsPerBuf = LOGBUF_SZ;
+
 /* internal representation of event occurrences */
 struct Event {
     uint64_t		timestamp;	// time stamp
@@ -87,7 +91,8 @@ int main (int argc, const char **argv)
 
     LoadLogFile (logFileDesc, logFile);
 
-    fprintf(out, "%d/%d processors; %d events; clock = %s\n",
+    fprintf (out, "Log taken on %s\n", Hdr->date);
+    fprintf (out, "%d/%d processors; %d events; clock = %s\n",
 	Hdr->nVProcs, Hdr->nCPUs, NumEvents, Hdr->clockName);
 
     for (int i = 0;  i < NumEvents;  i++)
@@ -105,20 +110,20 @@ int CompareEvent (const void *ev1, const void *ev2)
 
 }
 
-/* convert a timestamp to microseconds */
+/* convert a timestamp to nanoseconds */
 static inline uint64_t GetTimestamp (LogTS_t *ts)
 {
     if (Hdr->tsKind == LOGTS_MACH_ABSOLUTE)
-	return ts->ts_mach / 1000;
+	return ts->ts_mach;
     else if (Hdr->tsKind == LOGTS_TIMESPEC)
-	return ts->ts_val.sec * 1000000 + ts->ts_val.frac / 1000;
+	return ts->ts_val.sec * 1000000000 + ts->ts_val.frac;
     else /* Hdr->tsKind == LOGTS_TIMEVAL */
-	return ts->ts_val.sec * 1000000 + ts->ts_val.frac;
+	return ts->ts_val.sec * 1000000000 + ts->ts_val.frac * 1000;
 }
 
 static void LoadLogFile (LogFileDesc *logFileDesc, const char *file)
 {
-    char	buf[LOGBLOCK_SZB];
+    char	*buf = new char[LOGBLOCK_SZB];
 
   /* get the file size */
     off_t fileSize;
@@ -134,47 +139,61 @@ static void LoadLogFile (LogFileDesc *logFileDesc, const char *file)
   /* open the file */
     FILE *f = fopen(file, "rb");
     if (f == NULL) {
-	perror("fopen");
-	exit(1);
+	perror ("fopen");
+	exit (1);
     }
 
   /* read the header */
     fread (buf, LOGBLOCK_SZB, 1, f);
     Hdr = new LogFileHeader_t;
-    memcpy(Hdr, buf, sizeof(LogFileHeader_t));
+    memcpy (Hdr, buf, sizeof(LogFileHeader_t));
 
   /* check the header */
     if (Hdr->magic != LOG_MAGIC) {
 	fprintf(stderr, "bogus magic number\n");
 	exit (1);
     }
-//    if (Hdr->version != LOG_VERSION) {
-//	fprintf(stderr, "wrong version = %#x; expected %#x\n",
-//	    Hdr->version, LOG_VERSION);
-//	exit (1);
-//    }
-    if (Hdr->bufSzB != LOGBLOCK_SZB) {
-	fprintf(stderr, "bogus block size\n");
+    if (Hdr->hdrSzB != sizeof(LogFileHeader_t)) {
+	fprintf(stderr, "bogus header size %d (expected %d)\n", Hdr->hdrSzB, sizeof(LogFileHeader_t));
 	exit (1);
     }
+    if (Hdr->majorVersion != LOG_VERSION_MAJOR) {
+	fprintf(stderr, "wrong version = %d.%d.%d; expected %d.x.y\n",
+	    Hdr->majorVersion, Hdr->minorVersion, Hdr->patchVersion, LOG_VERSION_MAJOR);
+	exit (1);
+    }
+    if (Hdr->bufSzB != LogBufSzB) {
+	fprintf (stderr, "using different block size %d\n", Hdr->bufSzB);
+      // recompute the sizes
+	LogBufSzB = Hdr->bufSzB;
+	NEventsPerBuf = (LogBufSzB / sizeof(LogEvent_t)) - 1;
+      // reallocate the input buffer
+	delete buf;
+	buf = new char[LogBufSzB];
+      // reset the input file pointer
+	if (fseek(f, LogBufSzB, SEEK_SET) == -1) {
+	    perror ("fseek");
+	    exit (1);
+	}
+    }
 
-    int numBufs = (fileSize / LOGBLOCK_SZB) - 1;
+    int numBufs = (fileSize / LogBufSzB) - 1;
     if (numBufs <= 0) {
 	fprintf(stderr, "no buffers in file\n");
 	exit (1);
     }
 
-    int MaxNumEvents = LOGBUF_SZ*numBufs;
+    int MaxNumEvents = NEventsPerBuf*numBufs;
     Events = new Event[MaxNumEvents];
     NumEvents = 0;
     uint64_t startTime = GetTimestamp (&(Hdr->startTime));
 
   /* read in the events */
     for (int i = 0;  i < numBufs;  i++) {
-	fread (buf, LOGBLOCK_SZB, 1, f);
+	fread (buf, LogBufSzB, 1, f);
 	LogBuffer_t *log = (LogBuffer_t *)buf;
-	if (log->next > LOGBUF_SZ)
-	    log->next = LOGBUF_SZ;
+	if (log->next > NEventsPerBuf)
+	    log->next = NEventsPerBuf;
 	for (int j = 0;  j < log->next;  j++) {
 	    assert (NumEvents < MaxNumEvents);
 	    LogEvent_t *lp = &(log->log[j]);
@@ -191,15 +210,16 @@ static void LoadLogFile (LogFileDesc *logFileDesc, const char *file)
     qsort (Events, NumEvents, sizeof(Event), CompareEvent);
 
     fclose (f);
+    delete buf;
 
 }
 
 static void PrintEvent (FILE *out, Event *evt)
 {
 
-    fprintf(out, "[%4d.%06d] ",
-	(int)(evt->timestamp / 1000000),
-	(int)(evt->timestamp % 1000000));
+    fprintf (out, "[%3d.%09d] ",
+	(int)(evt->timestamp / 1000000000),
+	(int)(evt->timestamp % 1000000000));
     for (int i = 0;  i < evt->vpId;  i++)
 	fprintf(out, " %20s", " ");
     const char *tag = evt->desc->Name();

@@ -5,6 +5,10 @@
  *
  * This file describes the layout of log files and is used by both the runtime
  * to generate logs and by tools used to analyse log files.
+ *
+ * NOTE: programs that read log files should be able to handle files that use
+ * different values of the bufSzB.  In the future, this feature will allow us
+ * to tailor this parameter for the least overhead on different systems.
  */
 
 #ifndef _LOG_FILE_H_
@@ -41,16 +45,25 @@ typedef union {			    // union of timestamp reps.
     uint64_t		ts_mach;	// LOGTS_MACH_ABSOLUTE
 } LogTS_t;
 
+/* WARNING: the following struct needs to have the same layout in 64-bit
+ * and 32-bit builds, so be careful about alignment and make sure that
+ * the total size is a multiple of 8.
+ */
 typedef struct {
     uint64_t		magic;		// to identify log files
-    uint32_t		version;	// version stamp
-    uint32_t		bufSzB;		// buffer size
-    LogTS_t		startTime;	// start time for run
+    uint32_t		majorVersion;
+    uint32_t		minorVersion;
+    uint32_t		patchVersion;
+    uint32_t		hdrSzB;		// size of this struct
+    uint32_t		bufSzB;		// buffer size (usually == sizeof(struct_logbuf))
+    char		date[32];	// the date of the run (as reported by ctime(3))
     uint32_t		tsKind;		// timestamp format
+    LogTS_t		startTime;	// start time for run
     char		clockName[32];	// a string describing the clock
     uint32_t		resolution;	// clock resolution in nanoseconds
     uint32_t		nVProcs;	// number of vprocs in system
     uint32_t		nCPUs;		// number of CPUs in system
+    uint32_t		_pad;		// padding
 /* other stuff */
 } LogFileHeader_t;
 

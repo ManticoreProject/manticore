@@ -1,6 +1,6 @@
 /* log.c
  *
- * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
  */
@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <time.h>
 #ifdef HAVE_MACH_ABSOLUTE_TIME
 #  include <mach/mach_time.h>
 #endif
@@ -41,8 +42,14 @@ void InitLogFile (const char *name, int nvps, int ncpus)
   /* initialize the header */
     bzero(&hdrBuf, LOGBLOCK_SZB);
     hdr->magic		= LOG_MAGIC;
-    hdr->version	= LOG_VERSION;
+    hdr->majorVersion	= LOG_VERSION_MAJOR;
+    hdr->minorVersion	= LOG_VERSION_MINOR;
+    hdr->patchVersion	= LOG_VERSION_PATCH;
+    hdr->hdrSzB		= sizeof(LogFileHeader_t);
     hdr->bufSzB		= LOGBLOCK_SZB;
+    time_t tim = time(0);
+    ctime_r (&tim, hdr->date);
+    hdr->date[24]	= '\0';  /* zero out '\n' */
     LogTimestamp (&(hdr->startTime));
 #if HAVE_MACH_ABSOLUTE_TIME
     hdr->tsKind		= LOGTS_MACH_ABSOLUTE;
