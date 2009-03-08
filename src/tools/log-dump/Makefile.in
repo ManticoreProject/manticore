@@ -34,11 +34,13 @@ CFLAGS =	@CFLAGS@
 CXX =		@CXX@
 CXXFLAGS =	@CXXFLAGS@
 LDFLAGS =	
-CPPFLAGS =	-I. -I../../include
+CPPFLAGS =	-I. -I../../include -I../log-common
 
 #### End of system configuration section. ####
 
 TARGET =	log-dump
+
+VPATH =		../log-common
 
 C_SRCS =	json.c JSON_parser.c
 CXX_SRCS =	log-dump.cxx load-log-desc.cxx log-desc.cxx
