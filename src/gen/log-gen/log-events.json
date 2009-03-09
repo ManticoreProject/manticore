@@ -50,9 +50,9 @@
  *					double	-- 64-bit floating-point number
  *					event	-- 64-bit event identifier (used for DST events)
  *					strN	-- N-character string (0 < N <= 20)
- *			loc	-- the offset of the field (in bytes).  This field is
- *				   optional for when the order of arguments does not determine
- *				   the layout.
+ *			loc	-- the offset of the field (in bytes) from the start of the event.
+ *				   This field is required when the order of arguments does not
+ *				   determine the layout.
  *			desc	-- English-language description of argument
  *
  *	desc	-- English-language description of event
