@@ -68,9 +68,9 @@ ArgValue EventDesc::GetArg (LogEvent_t *evtData, int i)
 
     ArgValue value;
 
-    value.ty = this->_args[i].ty;
+    value.desc = &(this->_args[i]);
     void *p = (void *)((uint64_t)evtData + this->_args[i].loc);
-    switch (this->_args[i].ty) {
+    switch (value.desc->ty) {
       case ADDR:
 	value.val.a = *(uint64_t *)p;
 	break;
@@ -90,7 +90,7 @@ ArgValue EventDesc::GetArg (LogEvent_t *evtData, int i)
 	value.val.id = *(uint64_t *)p;
 	break;
       default: {
-	int len = STRLEN(value.ty);
+	int len = STRLEN(value.desc->ty);
 	assert ((0 < len) && (len <= MAX_STRLEN));
 	strncpy (value.val.str, (char *)p, len);
 	value.val.str[len] = '\0';

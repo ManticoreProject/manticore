@@ -33,7 +33,7 @@ struct ArgDesc {
 
 //! \brief An event-argument value
 struct ArgValue {
-    ArgType	ty;
+    const ArgDesc *desc;
     union {
 	uint64_t	a;
 	int32_t		i;
