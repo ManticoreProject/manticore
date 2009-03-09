@@ -67,7 +67,7 @@ typedef struct {
 /* other stuff */
 } LogFileHeader_t;
 
-typedef struct {
+typedef struct struct_log_event {
     LogTS_t		timestamp;	// time stamp (8 bytes)
     uint32_t		event;		// event code
     uint32_t		data[5];	// upto 20 bytes of extra data
