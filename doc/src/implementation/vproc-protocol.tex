@@ -14,7 +14,7 @@
 
 \begin{figure}[tp]
   \begin{center}
-    \includegraphics[scale=0.8]{pictures/vproc-protocol}
+    \includegraphics[scale=0.7]{pictures/vproc-protocol}
   \end{center}%
   \caption{Layout of the VProc protocol.}
   \label{fig:vproc-protocol}
@@ -24,38 +24,60 @@
 
 \paragraph{\texttt{Message(vp, msg)}}
 \begin{enumerate}
-  \item Walk to mailbox and look inside \texttt{vp}'s box.
+  \item Walk to mailbox and open \texttt{vp}'s box.
     \begin{enumerate}
       \item If there is a \texttt{SLEEPING} message, place \texttt{msg} in the box and go to step 2.
-      \item Otherwise, place \texttt{msg} in the box and exit subroutine.
+      \item Otherwise, place \texttt{msg} in the box and exit the subroutine.
     \end{enumerate}
-  \item Walk into \textbf{waiting room}.
+  \item Walk into \texttt{vp}'s \textbf{waiting room}.
     \begin{enumerate}
-      \item If the switch is on, then walk into \textbf{run manticore room} and go to step 1.
-      \item If the switch is off, then go to step 3.
+      \item If the waiting-room switch is off, then do the following.
+        \begin{enumerate}
+          \item Flip the waiting-room switch on.
+          \item Walk into \textbf{running manticore room}.
+          \item Exit the subroutine.
+        \end{enumerate}
+      \item If the waiting-room switch is on, then go to step 3.
     \end{enumerate}
-  \item Flip on switch.
+  \item Flip the bedroom switch on.
   \item Walk into \textbf{running manticore room}.
 \end{enumerate}
 
-\paragraph{\texttt{HandleMessages()}}
+\paragraph{\texttt{CheckForMessages()}}
+
+\begin{enumerate}
+  \item Walk to mailbox and open the local box.
+  \item Grab all messages from the box.
+  \item Handle each message \texttt{msg}.
+\end{enumerate}
 
 \section{Sleeping}
 
 \paragraph{\texttt{Sleep()}}
 \begin{enumerate}
-  \item Walk to mailbox and look inside the local box.
+  \item Walk to mailbox and open the local box.
     \begin{itemize}
       \item If empty, place a \texttt{SLEEPING} message in the mailbox.
-      \item If nonempty, exit this subroutine.
+      \item If nonempty, exit the subroutine.
     \end{itemize}
-  \item Walk into \textbf{waiting room}.
-  \item Flip switch off.
+  \item Walk into the local \textbf{waiting room}.
+    \begin{itemize}
+      \item If the waiting-room switch is on, then go to step 7.
+      \item If the waiting-room switch is off, then go to step 3.
+    \end{itemize}
+  \item Flip the bedroom switch off.
   \item Walk into \textbf{bedroom}.
   \item Wait for the light to turn on.
   \item Walk into \textbf{waiting room}.
-  \item Flip switch on.
+  \item Flip the waiting-room switch off.
   \item Walk into \textbf{running manticore room}.
+\end{enumerate}
+
+\paragraph{\texttt{Wake(vp)}}
+
+\begin{enumerate}
+  \item Construct a blank message \texttt{msg}.
+  \item Apply \texttt{Message(vp, msg)} and, once complete, exit the subroutine.
 \end{enumerate}
 
 \section{Global GC}
@@ -83,12 +105,12 @@
 \paragraph{\texttt{LeaderVProc()}}
 
 \begin{enumerate}
-  \item For each vproc \texttt{vp}, apply \texttt{Wait(vp)}.
+  \item For each vproc \texttt{vp}, apply \texttt{Wake(vp)}.
   \item Walk into \textbf{global gc waiting room}.
   \item Wait for light to turn on.
   \item Walk into \textbf{global gc room}.
   \item When finished with global collection, walk to \textbf{global gc departing room}.
-  \item Turn off switch.
+  \item Flip the switch off.
   \item Wait for light to turn on.
   \item Walk into \textbf{running manticore room}.
 \end{enumerate}
