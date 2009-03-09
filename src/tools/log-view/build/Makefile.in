@@ -34,7 +34,7 @@ CFLAGS =	@CFLAGS@ @CFLAG_M64@
 CXX =		@CXX@
 CXXFLAGS =	@CXXFLAGS@
 LDFLAGS =	
-CPPFLAGS =	-I. -I../../include -I../log-common
+CPPFLAGS =	-I. -I../../../include -I../../log-common
 
 #### End of system configuration section. ####
 
