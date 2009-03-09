@@ -31,7 +31,7 @@ SHELL =		@SHELL@
 
 CC =		@CC@
 CFLAGS =	@CFLAGS@ @CFLAG_M64@
-CXX =		@CXX@
+CXX =		@CXX@ @CFLAG_M64@
 CXXFLAGS =	@CXXFLAGS@
 LDFLAGS =	
 CPPFLAGS =	-I. -I../../../include -I../../log-common
