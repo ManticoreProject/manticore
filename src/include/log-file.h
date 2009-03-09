@@ -73,12 +73,12 @@ typedef struct {
     uint32_t		data[5];	// upto 20 bytes of extra data
 } LogEvent_t;
 
-struct struct_logbuf {
+typedef struct {
     int32_t		vpId;		// ID of vproc that owns this buffer
     int32_t		next;		// next entry to use in the log[] array
     char		pad[sizeof(LogEvent_t) - 8];
     LogEvent_t		log[LOGBUF_SZ];
-};
+} LogBuffer_t;
 
 /* define the predefined log-event codes */
 #include "log-events.h"

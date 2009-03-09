@@ -22,8 +22,6 @@
 /* temporary */
 #define logDescFile	"/Users/jhr/Work/Manticore/manticore/src/gen/log-gen/log-events.json"
 
-typedef struct struct_logbuf LogBuffer_t;
-
 /* the actual size of a block in the log buffer */
 static size_t	LogBufSzB = LOGBLOCK_SZB;
 static int	NEventsPerBuf = LOGBUF_SZ;
