@@ -5,8 +5,10 @@
  */
 
 #include "log-desc.hxx"
+#include "log-file.h"
 #include <string.h>
 #include <stack>
+#include <assert.h>
 
 inline char *CopyString (const char *s)
 {
@@ -26,7 +28,6 @@ EventOrGroup::~EventOrGroup ()
 {
     delete this->_name;
 }
-
 
 
 /***** class EventGroup member functions *****/
@@ -59,6 +60,43 @@ EventDesc::~EventDesc ()
 {
     delete this->_name;
     if (this->_args != 0) delete this->_args;
+}
+
+ArgValue EventDesc::GetArg (LogEvent_t *evtData, int i)
+{
+    assert ((0 <= i) && (i < this->_nArgs));
+
+    ArgValue value;
+
+    value.ty = this->_args[i].ty;
+    void *p = (void *)((uint64_t)evtData + this->_args[i].loc);
+    switch (this->_args[i].ty) {
+      case ADDR:
+	value.val.a = *(uint64_t *)p;
+	break;
+      case INT:
+	value.val.i = *(int32_t *)p;
+	break;
+      case WORD:
+	value.val.w = *(uint32_t *)p;
+	break;
+      case FLOAT:
+	value.val.f = *(float *)p;
+	break;
+      case DOUBLE:
+	value.val.d = *(double *)p;
+	break;
+      case EVENT_ID:
+	value.val.id = *(uint64_t *)p;
+	break;
+      default: {
+	int len = STRLEN(value.ty);
+	assert ((0 < len) && (len <= MAX_STRLEN));
+	strncpy (value.val.str, (char *)p, len);
+	value.val.str[len] = '\0';
+	} break;
+    }
+
 }
 
 

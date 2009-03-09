@@ -21,14 +21,29 @@ typedef enum ArgType {
 
 #define STR(n)		(STR0+(n))
 #define isSTR(ty)	((ty) > STR0)
-#define STRLEN(ty)	((ty) - STR0)
+#define STRLEN(ty)	((int)(ty) - (int)STR0)
+#define MAX_STRLEN	20
 
 struct ArgDesc {
-    char	*name;
-    ArgType	ty;
-    int		loc;
+    char	*name;		// the argument's name
+    ArgType	ty;		// the argument's type
+    int		loc;		// the offset of the field from the start of the event (in bytes)
     char	*desc;
 } ;
+
+//! \brief An event-argument value
+struct ArgValue {
+    ArgType	ty;
+    union {
+	uint64_t	a;
+	int32_t		i;
+	uint32_t	w;
+	float		f;
+	double		d;
+	uint64_t	id;
+	char		str[MAX_STRLEN+1];
+    }		val;
+};
 
 enum EventKind {
     LOG_GROUP,		/* a group of events */
@@ -92,7 +107,11 @@ class EventGroup : public EventOrGroup {
 class EventDesc : public EventOrGroup {
   public:
     int Id () const { return this->_id; }
+    int NArgs () const { return this->_nArgs; }
+    const ArgDesc *Args () const { return this->_args; }
     const char *Description () const { return this->_desc; }
+
+    ArgValue GetArg (struct struct_log_event *evtData, int i);
 
     ~EventDesc ();
 
@@ -123,12 +142,13 @@ class LogFileDesc {
     void PreOrderWalk (LogDescVisitor *visitor);
     void PostOrderWalk (LogDescVisitor *visitor);
 
+    ~LogFileDesc ();
+
   protected:
     EventGroup			*_root;
     std::vector<EventDesc *>	*_events;
 
     LogFileDesc (EventGroup *root);
-    ~LogFileDesc ();
 
     friend class LogFileDescLoader;
 
