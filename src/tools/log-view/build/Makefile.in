@@ -30,7 +30,7 @@ SHELL =		@SHELL@
 @SET_MAKE@
 
 CC =		@CC@
-CFLAGS =	@CFLAGS@
+CFLAGS =	@CFLAGS@ @CFLAG_M64@
 CXX =		@CXX@
 CXXFLAGS =	@CXXFLAGS@
 LDFLAGS =	
@@ -43,7 +43,7 @@ TARGET =	log-viewer
 VPATH =		../src:../../log-common
 
 C_SRCS =	json.c JSON_parser.c
-CXX_SRCS =	log-dump.cxx load-log-desc.cxx log-desc.cxx \
+CXX_SRCS =	load-log-desc.cxx log-desc.cxx \
 		log-file.cxx view-filter.cxx
 
 OBJS =		$(patsubst %.c,%.o,$(C_SRCS)) $(patsubst %.cxx,%.o,$(CXX_SRCS))
