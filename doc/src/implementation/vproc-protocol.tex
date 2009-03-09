@@ -1,0 +1,96 @@
+\documentclass[11pt]{article}
+
+\input{../common/common-defs}
+\usepackage{graphicx}
+
+\title{VProc protocol}
+\author{The Manticore Group}
+\date{Draft of \today}
+
+\begin{document}
+\maketitle
+
+\section{Overview}
+
+\begin{figure}[tp]
+  \begin{center}
+    \includegraphics[scale=0.8]{pictures/vproc-protocol}
+  \end{center}%
+  \caption{Layout of the VProc protocol.}
+  \label{fig:vproc-protocol}
+\end{figure}%
+
+\section{Messaging}
+
+\paragraph{\texttt{Message(vp, msg)}}
+\begin{enumerate}
+  \item Walk to mailbox and look inside \texttt{vp}'s box.
+    \begin{enumerate}
+      \item If there is a \texttt{SLEEPING} message, place \texttt{msg} in the box and go to step 2.
+      \item Otherwise, place \texttt{msg} in the box and exit subroutine.
+    \end{enumerate}
+  \item Walk into \textbf{waiting room}.
+    \begin{enumerate}
+      \item If the switch is on, then walk into \textbf{run manticore room} and go to step 1.
+      \item If the switch is off, then go to step 3.
+    \end{enumerate}
+  \item Flip on switch.
+  \item Walk into \textbf{running manticore room}.
+\end{enumerate}
+
+\paragraph{\texttt{HandleMessages()}}
+
+\section{Sleeping}
+
+\paragraph{\texttt{Sleep()}}
+\begin{enumerate}
+  \item Walk to mailbox and look inside the local box.
+    \begin{itemize}
+      \item If empty, place a \texttt{SLEEPING} message in the mailbox.
+      \item If nonempty, exit this subroutine.
+    \end{itemize}
+  \item Walk into \textbf{waiting room}.
+  \item Flip switch off.
+  \item Walk into \textbf{bedroom}.
+  \item Wait for the light to turn on.
+  \item Walk into \textbf{waiting room}.
+  \item Flip switch on.
+  \item Walk into \textbf{running manticore room}.
+\end{enumerate}
+
+\section{Global GC}
+
+\paragraph{\texttt{GlobalLimit()}}
+
+\begin{enumerate}
+  \item Walk into \textbf{leader vproc room}.
+    \begin{itemize}
+      \item If switch is off, then we assign this vproc as the lead.
+        \begin{enumerate}
+          \item Reset turnstyles.
+          \item Go to \texttt{LeaderVProc()}.
+        \end{enumerate}
+      \item If switch is on, then go to step 2.
+    \end{itemize}
+  \item Walk into \textbf{global gc waiting room}.
+  \item Wait for light to turn on.
+  \item Enter \textbf{global gc room}.
+  \item When finished with global collection, walk to \textbf{global gc departing room}.
+  \item Wait for light to turn on.
+  \item Walk into \textbf{running manticore room}.
+\end{enumerate}
+
+\paragraph{\texttt{LeaderVProc()}}
+
+\begin{enumerate}
+  \item For each vproc \texttt{vp}, apply \texttt{Wait(vp)}.
+  \item Walk into \textbf{global gc waiting room}.
+  \item Wait for light to turn on.
+  \item Walk into \textbf{global gc room}.
+  \item When finished with global collection, walk to \textbf{global gc departing room}.
+  \item Turn off switch.
+  \item Wait for light to turn on.
+  \item Walk into \textbf{running manticore room}.
+\end{enumerate}
+
+\end{document}  

@@ -1,6 +1,6 @@
 .PHONY: clean example-code pictures
 
-TEXFILES=runtime-initialization.tex code-generation.tex hlops.tex runtime.tex gc.tex fiber-local-storage.tex inline-bom.tex set-once-memory.tex
+TEXFILES=runtime-initialization.tex code-generation.tex hlops.tex runtime.tex gc.tex fiber-local-storage.tex inline-bom.tex set-once-memory.tex vproc-protocol.tex
 PDFS=$(TEXFILES:.tex=.pdf)
 
 all: $(PDFS)
