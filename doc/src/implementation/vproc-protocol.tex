@@ -22,12 +22,12 @@
 
 \section{Messaging}
 
-\paragraph{\texttt{Message(vp, msg)}}
+\paragraph{\texttt{Send(vp, msg)}}
 \begin{enumerate}
-  \item Walk to mailbox and open \texttt{vp}'s box.
+  \item Walk to \texttt{vp}'s desk and open the mailbox.
     \begin{enumerate}
-      \item If there is a \texttt{SLEEPING} message, place \texttt{msg} in the box and go to step 2.
-      \item Otherwise, place \texttt{msg} in the box and exit the subroutine.
+      \item If there is a \texttt{SLEEPING} message, place \texttt{msg} in the mailbox and go to step 2.
+      \item Otherwise, place \texttt{msg} in the mailbox and exit the subroutine.
     \end{enumerate}
   \item Walk into \texttt{vp}'s \textbf{waiting room}.
     \begin{enumerate}
@@ -43,11 +43,11 @@
   \item Walk into \textbf{running manticore room}.
 \end{enumerate}
 
-\paragraph{\texttt{CheckForMessages()}}
+\paragraph{\texttt{CheckMailbox()}}
 
 \begin{enumerate}
-  \item Walk to mailbox and open the local box.
-  \item Grab all messages from the box.
+  \item Walk to the desk and open the mailbox.
+  \item Retrieve all messages, leaving the mailbox empty.
   \item Handle each message \texttt{msg}.
 \end{enumerate}
 
@@ -55,12 +55,12 @@
 
 \paragraph{\texttt{Sleep()}}
 \begin{enumerate}
-  \item Walk to mailbox and open the local box.
+  \item Walk to the desk and open the mailbox.
     \begin{itemize}
       \item If empty, place a \texttt{SLEEPING} message in the mailbox.
       \item If nonempty, exit the subroutine.
     \end{itemize}
-  \item Walk into the local \textbf{waiting room}.
+  \item Walk into the \textbf{waiting room}.
     \begin{itemize}
       \item If the waiting-room switch is on, then go to step 7.
       \item If the waiting-room switch is off, then go to step 3.
@@ -77,7 +77,7 @@
 
 \begin{enumerate}
   \item Construct a blank message \texttt{msg}.
-  \item Apply \texttt{Message(vp, msg)} and, once complete, exit the subroutine.
+  \item Apply \texttt{Send(vp, msg)} and, once complete, exit the subroutine.
 \end{enumerate}
 
 \section{Global GC}
@@ -90,6 +90,7 @@
       \item If switch is off, then we assign this vproc as the lead.
         \begin{enumerate}
           \item Reset turnstyles.
+          \item Walk into \textbf{running manticore room}.
           \item Go to \texttt{LeaderVProc()}.
         \end{enumerate}
       \item If switch is on, then go to step 2.
