@@ -4,7 +4,7 @@
  * All rights reserved.
  */
 
-#ifdef _VIEW_FILTER_HXX_
+#ifndef _VIEW_FILTER_HXX_
 #define _VIEW_FILTER_HXX_
 
 #include "log-desc.hxx"
