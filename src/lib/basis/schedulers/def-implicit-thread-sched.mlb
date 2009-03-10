@@ -1,0 +1,9 @@
+(* def-implicit-thread-sched.mlb
+ *
+ * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Initialize the default implicit-thread scheduler.
+ *)
+
+def-implicit-thread-sched.pml
