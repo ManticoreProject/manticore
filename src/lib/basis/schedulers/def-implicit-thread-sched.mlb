@@ -6,4 +6,9 @@
  * Initialize the default implicit-thread scheduler.
  *)
 
-def-implicit-thread-sched.pml
+  schedulers.mlb
+
+  ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
+  in
+    def-implicit-thread-sched.pml
+  end

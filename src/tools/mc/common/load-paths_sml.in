@@ -24,10 +24,22 @@ structure LoadPaths =
   (* top-level schedulers *)
     val topLevelSchedsDir = OS.Path.joinDirFile{file="schedulers", dir=basisDir}
 
-  (* parallel basis library *)
-    val parallelLib = OS.Path.joinDirFile{file="parallel.mlb", dir=basisDir}
-
   (* top-level scheduler library *)
     fun topLevelSchedLib topLevelSched = OS.Path.joinDirFile{file=topLevelSched^".mlb", dir=topLevelSchedsDir}
+
+  (* default thread scheduler library *)
+    val defImplicitThreadSchedLib = OS.Path.joinDirFile{file="def-implicit-thread-sched.mlb", dir=topLevelSchedsDir}
+
+  (* implicit threading *)
+    val implicitThreadingDir = OS.Path.joinDirFile{file="implicit-threading", dir=basisDir}
+
+  (* implicit-threading library *)
+    val implicitThreadingLib = OS.Path.joinDirFile{file="implicit-threading.mlb", dir=implicitThreadingDir}
+
+  (* CML *)
+    val cmlDir = OS.Path.joinDirFile{file="cml", dir=basisDir}
+
+  (* CML library *)
+    val cmlLib = OS.Path.joinDirFile{file="cml.mlb", dir=cmlDir}
 
   end

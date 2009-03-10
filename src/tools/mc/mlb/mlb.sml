@@ -308,12 +308,16 @@ structure MLB : sig
     fun loadBasisLib env = if Controls.get BasicControl.sequential
           then loadMLB(LoadPaths.sequentialLib, env)
           else let
-	    val basisPts = loadMLB(LoadPaths.parallelLib, env)
-          (* choose the top-level scheduler *)
-	    val topLevelSched = Controls.get BasicControl.scheduler
-	    val topLevelSchedPts = loadMLB(LoadPaths.topLevelSchedLib topLevelSched, env)
+	  (* implicit-threading library *)
+	    val implicitThreadingPts = loadMLB(LoadPaths.implicitThreadingLib, env)
+          (* load the top-level scheduler *)
+	    val topLevelSchedPts = loadMLB(LoadPaths.topLevelSchedLib (Controls.get BasicControl.scheduler), env)
+          (* load the default implicit-thread scheduler *)
+	    val defImplicitThreadSchedPts = loadMLB(LoadPaths.defImplicitThreadSchedLib, env)
+	  (* CML *)
+	    val cmlPts = loadMLB(LoadPaths.cmlLib, env)
             in
-	       topLevelSchedPts @ basisPts
+	       cmlPts @ defImplicitThreadSchedPts @ topLevelSchedPts @ implicitThreadingPts
 	    end
 
     val emptyEnv = Env{loc=(0,0), pts=[], preprocs=[]}

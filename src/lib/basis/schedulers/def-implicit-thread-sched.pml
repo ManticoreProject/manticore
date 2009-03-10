@@ -7,4 +7,4 @@
  *)
 
 val defaultImplicitThreadSched = MultiprogrammedWorkStealing.workGroup()
-val _ = DEBUG("schedulers: initialized default implicit-thread scheduler")
+val () = DEBUG("schedulers: initialized default implicit-thread scheduler")
