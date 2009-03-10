@@ -93,25 +93,26 @@ structure ImplicitThread (* :
     (* migrate the current thread to the top-level thread scheduler. the effect of this operation is to
      * escape from any nested scheduler instance.
      *)
-      define @migrate-to-top-level-sched (x : unit / exh : exh) : unit = 
-	cont k (x : unit) = return(UNIT)
+      define @migrate-to-top-level-sched () : () = 
+	cont k (x : unit) = return()
 	let fls : FLS.fls = FLS.@get()
 	do VProcQueue.@enqueue(fls, k)
-	SchedulerAction.@stop()
+	let _ : unit = SchedulerAction.@stop()
+        return()
       ;
 
     (* access the work-group stack *)
-      define @init-ite (x : unit / exh : exh) : unit =
+      define @init-ite ( / exh : exh) : () =
         let iteOpt : Option.option = FLS.@find-ite(/ exh)
         case iteOpt
 	 of Option.NONE =>
 	    (* if there is no current ite, create a new one and set it as current *)
 	    let ite : ite = FLS.@ite(List.nil, Option.NONE / exh)
 	    do FLS.@set-ite(ite / exh)
-            return(UNIT)
+            return()
 	  | Option.SOME (ite : ite) =>
 	    let ite : ite = FLS.@get-ite(/ exh)
- 	    return(UNIT)
+ 	    return()
         end
       ;
 
@@ -130,7 +131,7 @@ structure ImplicitThread (* :
         end
       ;
 
-      define @pop (_ : unit / exh : exh) : Option.option =
+      define @pop ( / exh : exh) : Option.option =
 	let ite : ite = FLS.@get-ite( / exh)
         let stk : List.list = SELECT(ITE_STACK_OFF, ite)
 	case stk
@@ -143,13 +144,13 @@ structure ImplicitThread (* :
 	end
       ;
 
-      define @push (group : group / exh : exh) : unit =
+      define @push (group : group / exh : exh) : () =
 	let ite : ite = FLS.@get-ite( / exh)
         let stk : List.list = SELECT(ITE_STACK_OFF, ite)
 	let stk : List.list = List.CONS(group, stk)
 	let ite : ite = alloc(stk, SELECT(ITE_CANCELABLE_OFF, ite))
 	do FLS.@set-ite(ite / exh)
-	return(UNIT)
+	return()
       ;
 
     (* initiate n worker fibers on allocated processors.
@@ -190,7 +191,7 @@ structure ImplicitThread (* :
                      removeFn : fun(thread / exh -> bool),
                      schedulerData : any
                     / exh : exh) : group =
-        let _ : unit = @migrate-to-top-level-sched(UNIT / exh)
+        do @migrate-to-top-level-sched()
 	let group : group = alloc(workerInit, spawnFn, removeFn, schedulerData)
         let group : group = promote(group)
         do @init-on-all-vprocs(group / exh)
@@ -278,28 +279,27 @@ structure ImplicitThread (* :
 	return(SELECT(GROUP_SCHEDULER_DATA_OFF, group))
       ;
 
+  (* evaluate a thunk on a work group. *)
+      define @run-with-group (group : group, f : fun(unit / exh -> any) / exh : exh) : any =
+	do @migrate-to-top-level-sched()
+	do @init-ite(/ exh)
+	do @push(group / exh)
+	let x : any = apply f (UNIT / exh)
+	let _ : Option.option = @pop(/ exh)
+	do @migrate-to-top-level-sched()
+	return(x)
+      ;
+
+      define @run-with-group-w (arg : [group, fun(unit / exh -> any)] / exh : exh) : any =
+        @run-with-group(#0(arg), #1(arg) / exh)
+      ;
+
     )
 
     type group = _prim(group)
 
-    val initITE : unit -> unit = _prim(@init-ite)
     val peek : unit -> group = _prim(@peek)
-    val pop : unit -> group Option.option = _prim(@pop)
-    val push : group -> unit = _prim(@push)
-    val migrateToTopLevelSched : unit -> unit = _prim(@migrate-to-top-level-sched)
-
-  (* evaluate a thunk on a work group. *)
-    fun runWithGroup (group, f) = let
-	  val () = migrateToTopLevelSched()
-	  val () = initITE()
-	  val () = push group
-	  val x = f()
-          in
-	    pop();
-	    migrateToTopLevelSched();
-	    x
-	  end
-
+    val runWithGroup : (group * (unit -> 'a)) -> 'a = _prim(@run-with-group-w)
   (* get a reference to the group at the top of the work-group stack *)
     val currentGroup = peek
 
