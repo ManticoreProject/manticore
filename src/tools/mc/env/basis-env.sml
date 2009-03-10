@@ -145,6 +145,7 @@ structure BasisEnv : sig
     fun getTyConFromBasis path =
      (case getTyFromBasis path
         of MEnv.TyCon c => c
+	 | MEnv.TyDef(Types.TyScheme(_, Types.ConTy(_, c))) => c
 	 | other => let
 	     val dummyID = ProgramParseTree.Var.new ("dummyID", ())
 	     val tos = (fn x => MEnv.tyDefToString (dummyID, x))
