@@ -19,7 +19,8 @@ class ViewFilter {
 
     bool Init (const char *logDescFileName);
 
-    EventDesc *FindEventById (int id) { return this->_logFileDesc->FindEventById(id); }
+    LogFileDesc *LogFileInfo () const	{ return this->_logFileDesc; }
+    EventDesc *FindEventById (int id)	{ return this->_logFileDesc->FindEventById(id); }
 
   private:
     LogFileDesc		*_logFileDesc;

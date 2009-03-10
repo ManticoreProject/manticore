@@ -68,35 +68,36 @@ ArgValue EventDesc::GetArg (LogEvent_t *evtData, int i)
 
     ArgValue value;
 
-    value.desc = &(this->_args[i]);
+    ArgType ty = this->_args[i].ty;
     void *p = (void *)((uint64_t)evtData + this->_args[i].loc);
-    switch (value.desc->ty) {
+    switch (ty) {
       case ADDR:
-	value.val.a = *(uint64_t *)p;
+	value.a = *(uint64_t *)p;
 	break;
       case INT:
-	value.val.i = *(int32_t *)p;
+	value.i = *(int32_t *)p;
 	break;
       case WORD:
-	value.val.w = *(uint32_t *)p;
+	value.w = *(uint32_t *)p;
 	break;
       case FLOAT:
-	value.val.f = *(float *)p;
+	value.f = *(float *)p;
 	break;
       case DOUBLE:
-	value.val.d = *(double *)p;
+	value.d = *(double *)p;
 	break;
       case EVENT_ID:
-	value.val.id = *(uint64_t *)p;
+	value.id = *(uint64_t *)p;
 	break;
       default: {
-	int len = STRLEN(value.desc->ty);
+	int len = STRLEN(ty);
 	assert ((0 < len) && (len <= MAX_STRLEN));
-	strncpy (value.val.str, (char *)p, len);
-	value.val.str[len] = '\0';
+	strncpy (value.str, (char *)p, len);
+	value.str[len] = '\0';
 	} break;
     }
 
+    return value;
 }
 
 

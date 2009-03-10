@@ -32,22 +32,28 @@ struct ArgDesc {
 } ;
 
 //! \brief An event-argument value
-struct ArgValue {
-    const ArgDesc *desc;
-    union {
-	uint64_t	a;
-	int32_t		i;
-	uint32_t	w;
-	float		f;
-	double		d;
-	uint64_t	id;
-	char		str[MAX_STRLEN+1];
-    }		val;
+union ArgValue {
+    uint64_t		a;
+    int32_t		i;
+    uint32_t		w;
+    float		f;
+    double		d;
+    uint64_t		id;
+    char		str[MAX_STRLEN+1];
+};
+
+//! \brief An event-argument value tagged with its type
+struct TaggedArgValue {
+    const ArgDesc	*desc;
+    ArgValue		val;
 };
 
 enum EventKind {
     LOG_GROUP,		/* a group of events */
     LOG_EVENT,		/* an independent event */
+/* FIXME: replace START/STOP classification with START/STOP/MIDDLE to allow tracking of status
+ * changes over an interval (e.g., running/idle/sleeping).
+ */
     LOG_START,		/* the start of an interval; the next event code will be the */
 			/* end of the interval */
     LOG_END,		/* the end of an interval; the previous event code will be the */
@@ -111,6 +117,9 @@ class EventDesc : public EventOrGroup {
     const ArgDesc *Args () const { return this->_args; }
     const char *Description () const { return this->_desc; }
 
+    ArgDesc *GetArgDesc (int i)	{ return &(this->_args[i]); }
+    ArgType GetArgType (int i)	{ return this->_args[i].ty; }
+
     ArgValue GetArg (struct struct_log_event *evtData, int i);
 
     ~EventDesc ();
@@ -136,6 +145,7 @@ class LogDescVisitor {
 
 class LogFileDesc {
   public:
+    int NumEventKinds () const { return this->_events->size(); }
     EventDesc *FindEventById (int id) { return this->_events->at(id); }
 
   /* visitor walks of the event hierarchy */
