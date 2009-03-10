@@ -38,10 +38,10 @@ structure Future1 : sig
         getVar "future")
   
       val memoTouch1 : AST.var Memo.memo = Memo.new (fn _ =>
-        getVar "touch1")
+        getVar "touch")
 
       val memoCancel1 : AST.var Memo.memo = Memo.new (fn _ =>
-        getVar "cancel1")
+        getVar "cancel")
 
     in
 
