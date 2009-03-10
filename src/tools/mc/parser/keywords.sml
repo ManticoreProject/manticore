@@ -86,7 +86,7 @@ structure Keywords : sig
 	    ("module",		T.KW_module),
 	    ("noreturn",	T.KW_noreturn),
 	    ("of",		T.KW_of),
-	    ("pmlvar",          T.KW_pmlvar),
+	    ("pml",             T.KW_pml),
 	    ("promote",		T.KW_promote),
 	    ("pure",		T.KW_pure),
 	    ("return",		T.KW_return),

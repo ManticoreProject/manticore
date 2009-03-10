@@ -59,7 +59,7 @@
 	| KW_vpload	("vpload")
 	| KW_vpstore	("vpstore")
 	| KW_wrap	("wrap")
-	| KW_pmlvar	("pmlvar")
+	| KW_pml	("pml")
 (*	| LP		("(")			*)
 (*	| RP		(")")			*)
 (*	| LB		("[")			*)
@@ -141,6 +141,10 @@ Definition
 		=> (markBOMDefn(FULL_SPAN, let val (p1, p2) = FunParams in
 		      BPT.D_Define(optInline, HLOpId, p1, p2, ReturnTy, SR)
 		    end))
+        | "pml" HLOpId "=" QualifiedId ";"
+		=> (markBOMDefn(FULL_SPAN, 
+		      BPT.D_ImportPML(HLOpId, QualifiedId)
+		    ))
 	;
 
 CRetTy
@@ -267,8 +271,6 @@ RHS
 	| "ccall" Name "(" Args ")"	=> (markBOMRHS(FULL_SPAN, BPT.RHS_CCall(Name, Args)))
 	| "vpstore" "(" POSINT "," SimpleExp "," SimpleExp ")"
 					=> (markBOMRHS(FULL_SPAN, BPT.RHS_VPStore(POSINT, SimpleExp1, SimpleExp2)))
-        | "pmlvar" QualifiedId
- 	                                => (markBOMRHS(FULL_SPAN, BPT.RHS_PMLVar QualifiedId))
 	;
 
 NonSelectExp

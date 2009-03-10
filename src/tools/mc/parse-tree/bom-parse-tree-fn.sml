@@ -40,9 +40,11 @@
 
     datatype defn
       = D_Mark of defn mark
-      | D_Extern of c_id CFunctions.c_fun
-      | D_TypeDef of ty_def * ty
+      | D_Extern of c_id CFunctions.c_fun          (* foreign function prototype *)
+      | D_TypeDef of ty_def * ty                   (* type definition *)
       | D_Define of (bool * hlop_bind * var_pat list * var_pat list * ty list option * exp option)
+		                                   (* HLOp *)
+      | D_ImportPML of (hlop_bind * pml_var)       (* form to import a PML function *)
 
     and ty
       = T_Mark of ty mark
