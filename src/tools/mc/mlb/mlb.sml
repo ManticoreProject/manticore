@@ -25,13 +25,15 @@ structure MLB : sig
     exception Error
 
   (* information for applying a preprocessor to a PML file. *)
-    type preprocessor_cmd = (
-	 string *            (* preprocessor directive, e.g., "preprocessor", for
-			      * a generic preprocessor "cpp" for the C 
-			      * preprocessor *)
-	 string *            (* directory to run the preprocessor *)
-	 string option *     (* preprocessor command *)
-	 string list         (* arguments *))
+    type preprocessor_cmd = {
+	directive : string,	(* preprocessor directive, e.g., "preprocessor", for
+				 * a generic preprocessor "cpp" for the C 
+				 * preprocessor
+				 *)
+	dir : string,		(* directory to run the preprocessor *)
+	cmd : string option,	(* preprocessor command *)
+	args : string list	(* command-line arguments *)
+      }
 
     type parse_tree = (Error.err_stream * PPT.program)
 
@@ -128,7 +130,8 @@ structure MLB : sig
 
   (* pass the file through a sequence of preprocessors *)
     fun chainPreprocs (file, path, name, []) = raise Fail "compiler bug"
-      | chainPreprocs (file, path, name, ("cpp", dir, NONE, [defs]) :: ppCmds) = let
+      | chainPreprocs (file, path, name, {directive="cpp", dir, cmd=NONE, args=[defs]} :: ppCmds) =
+	  let
 	  val (predefs, includes) = parseCPPDefs defs
 	(* support for the C preprocessor *)
 	  val includes = 
@@ -141,9 +144,11 @@ structure MLB : sig
 	      ] @ List.map parseCPPPredef predefs @ defines())
 	  val args = RunCPP.mkArgs {relativeTo=dir, includes=includes, predefs=predefs, file=NONE}
 	  in
-	      chainPreprocs(file, path, name, ("preprocess", dir, SOME RunCPP.cppCmd, args) :: ppCmds)
+	    chainPreprocs (
+	      file, path, name,
+	      {directive="preprocess", dir=dir, cmd=SOME RunCPP.cppCmd, args=args} :: ppCmds)
 	  end
-      | chainPreprocs (file, path, name, [("preprocess", dir, SOME ppCmd, args)]) = let
+      | chainPreprocs (file, path, name, [{directive="preprocess", dir, cmd=SOME ppCmd, args}]) = let
           val ppProc = runPreproc(dir, ppCmd, args)
 	  val outStrm = Unix.textOutstreamOf ppProc
 	  val lines = inputFile file
@@ -152,7 +157,8 @@ structure MLB : sig
 	      outputAll(lines, outStrm);
 	      (Unix.textInstreamOf ppProc, mkReap ppProc)
 	  end
-      | chainPreprocs (file, path, name, ("preprocess", dir, SOME ppCmd, args) :: ppCmds) = let
+      | chainPreprocs (file, path, name, {directive="preprocess", dir, cmd=SOME ppCmd, args} :: ppCmds) =
+	  let
 	  val ppProc = runPreproc(dir, ppCmd, args)
        (* get the lines of the temporary file *)
 	  val lines = inputFile file
@@ -229,15 +235,25 @@ structure MLB : sig
 		| _ => raise Fail "unknown source file extension"
               (* end case *))
 	    | PT.AnnBasDec("preprocess", ppCmd :: ppArgs, basDec) => let
-		val preproc = ("preprocess", OS.FileSys.getDir(), SOME ppCmd, ppArgs)
+		val preproc = {
+			directive = "preprocess",
+			dir = OS.FileSys.getDir(),
+			cmd = SOME ppCmd,
+			args = ppArgs
+		      }
 	        in
 	           processBasDec(basDec, Env{loc=loc, pts=pts, preprocs=preproc :: preprocs})
 	         end
 	    | PT.AnnBasDec ("cpp", includes, basDec) => let
-	       val preproc = ("cpp", OS.FileSys.getDir(), NONE, includes)
-	       in
-	          processBasDec(basDec, Env{loc=loc, pts=pts, preprocs=preproc :: preprocs})
-	       end
+		val preproc = {
+			directive = "cpp",
+			dir = OS.FileSys.getDir(),
+			cmd = NONE,
+			args = includes
+		      }
+		in
+		   processBasDec(basDec, Env{loc=loc, pts=pts, preprocs=preproc :: preprocs})
+		end
 	    | PT.AnnBasDec ("expansion-opt", opts, basDec) => let
               (* expansion options *) 
 		val expOpts = ExpansionOpts.fromStrings opts
