@@ -44,7 +44,7 @@
       | D_TypeDef of ty_def * ty                   (* type definition *)
       | D_Define of (bool * hlop_bind * var_pat list * var_pat list * ty list option * exp option)
 		                                   (* HLOp *)
-      | D_ImportPML of (hlop_bind * pml_var)       (* form to import a PML function *)
+      | D_ImportML of (bool * hlop_bind * pml_var) (* form to import an ML function *)
 
     and ty
       = T_Mark of ty mark

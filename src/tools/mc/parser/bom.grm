@@ -59,7 +59,6 @@
 	| KW_vpload	("vpload")
 	| KW_vpstore	("vpstore")
 	| KW_wrap	("wrap")
-	| KW_pml	("pml")
 (*	| LP		("(")			*)
 (*	| RP		(")")			*)
 (*	| LB		("[")			*)
@@ -137,14 +136,29 @@ Definition
 		      })))
 	| "typedef" Name "=" BOMType ";"
 		=> (markBOMDefn(KW_typedef_SPAN, BPT.D_TypeDef(Name, BOMType)))
+(*
 	| "define" optInline HLOpId FunParams ReturnTy ("=" BOMExp)? ";"
 		=> (markBOMDefn(FULL_SPAN, let val (p1, p2) = FunParams in
 		      BPT.D_Define(optInline, HLOpId, p1, p2, ReturnTy, SR)
 		    end))
-        | "pml" HLOpId "=" QualifiedId ";"
+        | "define" HLOpId "=" QualifiedId ";"
 		=> (markBOMDefn(FULL_SPAN, 
 		      BPT.D_ImportPML(HLOpId, QualifiedId)
 		    ))
+*)
+	| "define" optInline HLOpId HLOpDef ";"
+		=> (markBOMDefn(FULL_SPAN, HLOpDef(optInline, HLOpId)))
+	;
+
+HLOpDef
+	: FunParams ReturnTy ("=" BOMExp)?
+		=> (fn (optInline, id) => let
+			val (p1, p2) = FunParams
+			in
+			  BPT.D_Define(optInline, id, p1, p2, ReturnTy, SR)
+			end)
+	| "=" QualifiedId
+		=> (fn (optInline, id) => BPT.D_ImportML(optInline, id, QualifiedId))
 	;
 
 CRetTy

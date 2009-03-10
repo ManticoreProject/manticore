@@ -365,7 +365,7 @@ structure BOMBoundVariableCheck :> sig
 	           in
 		      (PT2.D_Mark {tree=tree, span=span}, env)
 	           end
-	     | PT1.D_Define (b, v, params, exns, returnTys, exp) => let
+	     | PT1.D_Define (inline, v, params, exns, returnTys, exp) => let
 		   val returnTys' = (case returnTys
 				      of NONE => NONE 
 				       | SOME returnTys => SOME (chkTys loc (returnTys, env))
@@ -379,9 +379,9 @@ structure BOMBoundVariableCheck :> sig
 		   val v' = freshVar v
 		   val env = BEnv.insertBOMHLOp(env, v, v')
 	           in
-		       (PT2.D_Define (b, v', params', exns', returnTys', exp'), env)
+		       (PT2.D_Define(inline, v', params', exns', returnTys', exp'), env)
 		   end
-	     | PT1.D_ImportPML(hlopId, pmlId) => let
+	     | PT1.D_ImportML(inline, hlopId, pmlId) => let
 		   val pmlId' = (
 		       case findValQid(loc, env, pmlId)
 			of BEnv.Con v => v
@@ -390,7 +390,7 @@ structure BOMBoundVariableCheck :> sig
 		   val hlopId' = freshVar hlopId
 		   val env = BEnv.insertBOMHLOp(env, hlopId, hlopId')			     
 		   in
-		      (PT2.D_ImportPML(hlopId', pmlId'), env)
+		      (PT2.D_ImportML(inline, hlopId', pmlId'), env)
 		   end
 	     | PT1.D_Extern (CFunctions.CFun{var, name, retTy, argTys, varArg, attrs}) => let
 		   val var' = defineCFun(loc, var);

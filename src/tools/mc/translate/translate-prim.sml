@@ -687,15 +687,15 @@ structure TranslatePrim : sig
 	    in 
 	        E.insertBOMHLOp(name, hlop)
 	    end
-      | insDef importEnv (BPT.D_ImportPML(hlopId, pmlId)) = let
-	    val fTy as BTy.T_Fun([paramTy], [exhTy], [retTy]) = BV.typeOf(lookupPMLId pmlId)
-	    val hlop = HLOp.new (
-		          Atom.atom (PTVar.nameOf hlopId),
-			  {params=[HLOp.PARAM paramTy], exh=[exhTy], results=[retTy]},
-			  [])
-	    in
-	        E.insertBOMHLOp(hlopId, hlop)
-	    end
+      | insDef importEnv (BPT.D_ImportML(inline, hlopId, pmlId)) = let
+	  val fTy as BTy.T_Fun([paramTy], [exhTy], [retTy]) = BV.typeOf(lookupPMLId pmlId)
+	  val hlop = HLOp.new (
+		Atom.atom (PTVar.nameOf hlopId),
+		{params=[HLOp.PARAM paramTy], exh=[exhTy], results=[retTy]},
+		[])
+	  in
+	    E.insertBOMHLOp(hlopId, hlop)
+	  end
 
   (* this is the second pass, which converts actual HLOp definitions to BOM lambdas *)
     fun cvtDefs importEnv [] = []
@@ -728,26 +728,26 @@ structure TranslatePrim : sig
 	       E.insertBOMHLOpDef(hlopId, def);
 	       def :: cvtDefs importEnv defs
 	    end
-      | cvtDefs importEnv (BPT.D_ImportPML(hlopId, pmlId)::defs) = let
-	    val hlop = Option.valOf(E.findBOMHLOp hlopId)
-	    val bomVar = lookupPMLId pmlId
-	    val fTy as BTy.T_Fun([paramTy], [exhTy], [retTy]) = BV.typeOf bomVar
-	    val f = BV.new(PTVar.nameOf hlopId, fTy)
-	    val param = BV.new("_arg", paramTy)
-	    val exh = BV.new("_exh", exhTy)
-	    val body = BOM.mkApply(bomVar, [param], [exh])
-	    val def = {
+      | cvtDefs importEnv (BPT.D_ImportML(inline, hlopId, pmlId)::defs) = let
+	  val hlop = Option.valOf(E.findBOMHLOp hlopId)
+	  val bomVar = lookupPMLId pmlId
+	  val fTy as BTy.T_Fun([paramTy], [exhTy], [retTy]) = BV.typeOf bomVar
+	  val f = BV.new(PTVar.nameOf hlopId, fTy)
+	  val param = BV.new("_arg", paramTy)
+	  val exh = BV.new("_exh", exhTy)
+	  val body = BOM.mkApply(bomVar, [param], [exh])
+	  val def = {
 		name = hlop,
 		path = BindingEnv.getHLOpPath hlopId,
-		inline = false,
+		inline = inline,
 		def = BOM.mkLambda{f=f, params=[param], exh=[exh], body=body},
 		pmlImports = [],
 		externs = []
 	      }
-	    in
-	       E.insertBOMHLOpDef(hlopId, def);
-	       def :: cvtDefs importEnv defs
-	    end
+	  in
+	    E.insertBOMHLOpDef(hlopId, def);
+	    def :: cvtDefs importEnv defs
+	  end
       | cvtDefs importEnv (_::defs) = cvtDefs importEnv defs
 
     fun cvtCode (env, code) = withTranslateEnv env (fn () => let
