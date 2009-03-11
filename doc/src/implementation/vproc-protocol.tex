@@ -71,9 +71,7 @@ void Send (VProc_t *vp, Fiber_t msg)
       continue;
     } else {
       if (vp->sleeping) {
-	MutexLock(&(vp->lock));
-          CondSignal(&(vp->signal));
-	MutexUnlock(&(vp->lock));
+        CondSignal(&(vp->signal));
       }
       return;
     }
