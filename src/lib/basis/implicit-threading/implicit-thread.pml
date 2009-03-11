@@ -300,7 +300,7 @@ structure ImplicitThread (* :
       ;
 
     (* evaluate a thunk on a work group. *)
-      define @run-with-group (group : group, f : fun(unit / exh -> any) / exh : exh) : any =
+      define inline @run-with-group (group : group, f : fun(unit / exh -> any) / exh : exh) : any =
 	do @group-begin(group / exh)
 	let x : any = apply f (UNIT / exh)
 	do @group-end(/ exh)
