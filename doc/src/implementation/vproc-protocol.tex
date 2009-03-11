@@ -17,19 +17,24 @@
 \maketitle
 
 \section{Overview}
-This document presents two alternative messaging protocols for vprocs.
-Both protocols have their advantages, and this document is an attempt to understand
+This document describes the protocol for managing vprocs.
+
+\section{Signaling \& sleeping}\label{sec:signaling-and-sleeping}
+This section presents two alternative signaling protocols for vprocs.
+Both protocols have their advantages, and this section makes an attempt to understand
 which is most appropriate for the Manticore implementation.
-The document is structured as follows.
-Section \ref{sec:preliminaries} outlines the interface and semantics of the protocol.
+The rest of this section is structured as follows.
+In this secion we outline the interface and semantics of the protocol.
 Section \ref{sec:protocol1} describes the first protocol, and section
 \ref{sec:protocol2} describes the second protocol.
 Then \secref{sec:conclusion} compares the protocols.
 
-\section{Preliminaries}\label{sec:preliminaries}
+\paragraph{Signals}
+A signal is a fiber paired with fiber-local storage.
+To handle a signal, a vproc initializes the fiber-local storage and runs the fiber to completion.
 
 \paragraph{Landing pad}
-The \emph{landing pad} is a lock-free linked list of incoming messages.
+The \emph{landing pad} is a lock-free linked list of incoming signals.
 Each vproc owns a landing pad, and has access to all the other remote landing pads.
 The landing pad supports two operations.
 \begin{enumerate}
@@ -38,21 +43,30 @@ The landing pad supports two operations.
 \end{enumerate}
 
 \paragraph{Sleeping}
-When a vproc has nothing to do, it becomes idle by waiting on a condition variable
-provided by the OS.
-Once messages arrive on the landing pad the vproc must wake and service those messages.
+When there is nothing to do, a vproc enters a temporary sleeping state, which lasts until a
+signal arrives on the landing pad or a global garbage collection is initiated by some other
+vproc.
+We avoid busy waiting by waiting on a condition variable provided by the Pthreads
+library.
+Unfortunately, the fact that the landing pad is a lock-free data structure complicates this
+protocol.
+Signals may arrive after the vproc has checked the landing pad, but before the vproc has
+begun waiting on the condition variable.
+Thus, there is a potential race condition that would allow the vproc to wait indefinitely,
+even when work becomes available.
+Our protocols address this race condition by using some additional machinery.
 
+\paragraph{Vproc operations}
 Below are the two relevant operations for the protocol.
 \lstset{language=C}
 \lstset{commentstyle=\textit}
 \begin{lstlisting}
 void Sleep (VProc_t *self);
-void Send (VProc_t *vp, Fiber_t msg);
+void Send (VProc_t *vp, Fiber_t *k, Value_t *fls);
 \end{lstlisting}
-The Sleep operation puts the vproc to sleep on a condition variable.
-The Send operation places a message on a vproc's landing pad.
-These operations are related because of the following requirement: a vproc must wake
-soon after a message appears on its landing pad.
+The Sleep operation puts the host vproc to sleep, and the Send operation places a signal on a
+vproc's landing pad.
+A signal is a fiber paired with fiber-local storage.
 
 \section{Protocol 1}\label{sec:protocol1}
 
@@ -61,11 +75,11 @@ soon after a message appears on its landing pad.
 \lstset{commentstyle=\textit}
 \lstset{numbers=left}
 \begin{lstlisting}
-void Send (VProc_t *vp, Fiber_t msg)
+void Send (VProc_t *vp, Fiber_t *k, Value_t *fls)
 {
   while (true) {
     Stk_t *stk = vp->lp;
-    Stk_t *newStk = Promote(Cons(msg, stk));
+    Stk_t *newStk = Promote(QueueItem(k, fls, stk));
     Stk_t *x = CAS(&(vp->stk), stk, newStk);
     if (x != stk) {
       continue;
@@ -107,27 +121,25 @@ void Sleep (VProc_t *self)
 \lstset{commentstyle=\textit}
 \lstset{numbers=left}
 \begin{lstlisting}
-void Send (VProc_t *vp, Fiber_t msg)
+void Send (VProc_t *vp, Fiber_t *k, Value_t *fls)
 {
   while (true) {
     Stk_t *stk = vp->lp;
     if (stk != SLEEPING) {
-      Stk_t *newStk = Promote(Cons(msg, stk));
+      Stk_t *newStk = Promote(QueueItem(k, fls, stk));
       Stk_t *x = CAS(&(vp->lp), stk, newStk);
       if (x == stk)
 	return;
       else
 	continue;
     } else {            /* (stk == SLEEPING) */
-      Stk_t *newStk = Promote(Cons(msg, EMPTY));
-      Stk_t *x = CAS(&(vp->lp), SLEEPING, newStk);
-      if (x != SLEEPING)
-	continue;
       MutexLock(&(vp->lock));
-      if (!vp->flg)
-	vp->flg = true;
-      else
-	CondSignal(&(vp->signal));
+        if (vp->lp != SLEEPING) {
+          MutexUnlock(&(vp->lock));
+          continue;
+        }
+        vp->lp = Promote(QueueItem(k, fls, EMPTY));
+        CondSignal(&(vp->signal));
       MutexUnlock(&(vp->lock));
       return;
     }
@@ -144,17 +156,11 @@ void Send (VProc_t *vp, Fiber_t msg)
 \begin{lstlisting}
 void Sleep (VProc_t *self)
 {
-  Stk_t *stk = vp->lp;
-  Stk_t *x = CAS(&(vp->stk), EMPTY, SLEEPING);
-  if (x == EMPTY) {
-    MutexLock(&(vp->lock));
-    if (!vp->flg) {
-      vp->flg = true;
+  MutexLock(&(vp->lock));
+    Stk_t *x = CAS(&(vp->stk), EMPTY, SLEEPING);
+    while (vp->stk == SLEEPING)
       CondWait(&(vp->cond), &(vp->lock));
-      vp->flg = false;
-    }
-    MutexUnlock(&(vp->lock));
-  }
+  MutexUnlock(&(vp->lock));
 }
 \end{lstlisting}
 \caption{Protocol 2: \texttt{Sleep} operation.}
