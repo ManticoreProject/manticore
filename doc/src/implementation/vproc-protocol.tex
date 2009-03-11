@@ -1,7 +1,13 @@
 \documentclass[11pt]{article}
 
+\setlength{\textwidth}{6in}
+\setlength{\oddsidemargin}{0.25in}
+\setlength{\textheight}{9.0in}
+\setlength{\topmargin}{-0.75in}
+
 \input{../common/common-defs}
 \usepackage{graphicx}
+\usepackage{listings}
 
 \title{VProc protocol}
 \author{The Manticore Group}
@@ -11,7 +17,154 @@
 \maketitle
 
 \section{Overview}
+This document presents two alternative messaging protocols for vprocs.
+Both protocols have their advantages, and this document is an attempt to understand
+which is most appropriate for the Manticore implementation.
+The document is structured as follows.
+Section \ref{sec:preliminaries} outlines the interface and semantics of the protocol.
+Section \ref{sec:protocol1} describes the first protocol, and section
+\ref{sec:protocol2} describes the second protocol.
+Then \secref{sec:conclusion} compares the protocols.
 
+\section{Preliminaries}\label{sec:preliminaries}
+
+\paragraph{Landing pad}
+The \emph{landing pad} is a lock-free linked list of incoming messages.
+Each vproc owns a landing pad, and has access to all the other remote landing pads.
+The landing pad supports two operations.
+\begin{enumerate}
+  \item Push a message on a remote landing pad.
+  \item Pop all messages from the local landing pad.
+\end{enumerate}
+
+\paragraph{Sleeping}
+When a vproc has nothing to do, it becomes idle by waiting on a condition variable
+provided by the OS.
+Once messages arrive on the landing pad the vproc must wake and service those messages.
+
+Below are the two relevant operations for the protocol.
+\lstset{language=C}
+\lstset{commentstyle=\textit}
+\begin{lstlisting}
+void Sleep (VProc_t *self);
+void Send (VProc_t *vp, Fiber_t msg);
+\end{lstlisting}
+The Sleep operation puts the vproc to sleep on a condition variable.
+The Send operation places a message on a vproc's landing pad.
+These operations are related because of the following requirement: a vproc must wake
+soon after a message appears on its landing pad.
+
+\section{Protocol 1}\label{sec:protocol1}
+
+\begin{figure}
+\lstset{language=C}
+\lstset{commentstyle=\textit}
+\lstset{numbers=left}
+\begin{lstlisting}
+void Send (VProc_t *vp, Fiber_t msg)
+{
+  while (true) {
+    Stk_t *stk = vp->lp;
+    Stk_t *newStk = Promote(Cons(msg, stk));
+    Stk_t *x = CAS(&(vp->stk), stk, newStk);
+    if (x != stk) {
+      continue;
+    } else {
+      if (vp->sleeping) {
+	MutexLock(&(vp->lock));
+          CondSignal(&(vp->signal));
+	MutexUnlock(&(vp->lock));
+      }
+      return;
+    }
+  }
+}
+\end{lstlisting}
+\caption{Protocol 1 \texttt{Send} operation.}
+\end{figure}
+
+\begin{figure}
+\lstset{language=C}
+\lstset{commentstyle=\textit}
+\lstset{numbers=left}
+\begin{lstlisting}
+void Sleep (VProc_t *self)
+{
+  MutexLock(&(self->lock));
+    self->sleeping = true;
+    /* Flush all pending writes */
+    while (self->lp == EMPTY)
+      CondWait(&(self->cond), &(self->lock));
+    self->sleeping = false;
+  MutexUnlock(&(self->lock));
+}
+\end{lstlisting}
+\caption{Protocol 1: \texttt{Sleep} operation.}
+\end{figure}
+
+\section{Protocol 2}\label{sec:protocol2}
+
+\begin{figure}
+\lstset{language=C}
+\lstset{commentstyle=\textit}
+\lstset{numbers=left}
+\begin{lstlisting}
+void Send (VProc_t *vp, Fiber_t msg)
+{
+  while (true) {
+    Stk_t *stk = vp->lp;
+    if (stk != SLEEPING) {
+      Stk_t *newStk = Promote(Cons(msg, stk));
+      Stk_t *x = CAS(&(vp->lp), stk, newStk);
+      if (x == stk)
+	return;
+      else
+	continue;
+    } else {            /* (stk == SLEEPING) */
+      Stk_t *newStk = Promote(Cons(msg, EMPTY));
+      Stk_t *x = CAS(&(vp->lp), SLEEPING, newStk);
+      if (x != SLEEPING)
+	continue;
+      MutexLock(&(vp->lock));
+      if (!vp->flg)
+	vp->flg = true;
+      else
+	CondSignal(&(vp->signal));
+      MutexUnlock(&(vp->lock));
+      return;
+    }
+  }
+}
+\end{lstlisting}
+\caption{Protocol 2 \texttt{Send} operation.}
+\end{figure}
+
+\begin{figure}
+\lstset{language=C}
+\lstset{commentstyle=\textit}
+\lstset{numbers=left}
+\begin{lstlisting}
+void Sleep (VProc_t *self)
+{
+  Stk_t *stk = vp->lp;
+  Stk_t *x = CAS(&(vp->stk), EMPTY, SLEEPING);
+  if (x == EMPTY) {
+    MutexLock(&(vp->lock));
+    if (!vp->flg) {
+      vp->flg = true;
+      CondWait(&(vp->cond), &(vp->lock));
+      vp->flg = false;
+    }
+    MutexUnlock(&(vp->lock));
+  }
+}
+\end{lstlisting}
+\caption{Protocol 2: \texttt{Sleep} operation.}
+\end{figure}
+
+\section{Conclusion}\label{sec:conclusion}
+
+\CUT{
 \begin{figure}[tp]
   \begin{center}
     \includegraphics[scale=0.7]{pictures/vproc-protocol}
@@ -126,5 +279,6 @@
   \item Wait for light to turn on.
   \item Return to the desk.
 \end{enumerate}
+}
 
 \end{document}  
