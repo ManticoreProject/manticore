@@ -279,14 +279,31 @@ structure ImplicitThread (* :
 	return(SELECT(GROUP_SCHEDULER_DATA_OFF, group))
       ;
 
-  (* evaluate a thunk on a work group. *)
-      define @run-with-group (group : group, f : fun(unit / exh -> any) / exh : exh) : any =
+    (* begin the dynamic scope of a group *)
+      define inline @group-begin (group : group / exh : exh) : () =
 	do @migrate-to-top-level-sched()
 	do @init-ite(/ exh)
 	do @push(group / exh)
-	let x : any = apply f (UNIT / exh)
+	return()
+      ;
+
+      define @group-begin-w (group : group / exh : exh) : unit =
+	do @group-begin(group / exh)
+	return(UNIT)
+      ;
+
+    (* end the dynamic scope of a group *)
+      define @group-end (/ exh : exh) : () =
 	let _ : Option.option = @pop(/ exh)
 	do @migrate-to-top-level-sched()
+	return()
+      ;
+
+    (* evaluate a thunk on a work group. *)
+      define @run-with-group (group : group, f : fun(unit / exh -> any) / exh : exh) : any =
+	do @group-begin(group / exh)
+	let x : any = apply f (UNIT / exh)
+	do @group-end(/ exh)
 	return(x)
       ;
 
@@ -299,8 +316,8 @@ structure ImplicitThread (* :
     type group = _prim(group)
 
     val peek : unit -> group = _prim(@peek)
+    val groupBegin : group -> unit = _prim(@group-begin-w)
     val runWithGroup : (group * (unit -> 'a)) -> 'a = _prim(@run-with-group-w)
-  (* get a reference to the group at the top of the work-group stack *)
     val currentGroup = peek
 
   end

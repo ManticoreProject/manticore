@@ -20,6 +20,8 @@ structure Threads (*: sig
 
     _primcode (
 
+        define @get-default-implicit-thread-sched = getDefaultImplicitThreadSched;
+
       (* create a thread *)
 	define inline @create (f : fun(PT.unit / PT.exh -> PT.unit) / exh : PT.exh) : PT.fiber =
 	    cont fiber (x : PT.unit) = 
@@ -27,7 +29,8 @@ structure Threads (*: sig
 	      (* in case of an exception, just terminate the fiber *)
 		cont exh (exn : PT.exn) = return (UNIT)
 		(* in *)
-		  apply f (UNIT / exh)
+		  let defaultImplicitThreadSched : ImplicitThread.group = @get-default-implicit-thread-sched(UNIT / exh)
+                  ImplicitThread.@run-with-group(defaultImplicitThreadSched, f / exh)
 	      (* in *)
 		SchedulerAction.@stop ()
 	    (* in *)
