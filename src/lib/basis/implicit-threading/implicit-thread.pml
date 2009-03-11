@@ -15,7 +15,8 @@ structure ImplicitThread (* :
     val runWithGroup : group * (unit -> 'a) -> 'a
   (* get a reference to the group at the top of the work-group stack *)
     val currentGroup : unit -> group
-
+  (* begin the dynamic scope of a group *)
+    val groupBegin : group -> unit
 
     _prim(
 
@@ -24,33 +25,33 @@ structure ImplicitThread (* :
       define @group (workerInit : PT.fiber, spawnFn : fun(thread / exh -> unit) / exh : exh) : group;
 
     (* allociate an implicit thread *)
-      define @alloc (ite : FLS.ite, k : PT.fiber / exh : exh) : thread;
+      define inline @alloc (ite : FLS.ite, k : PT.fiber / exh : exh) : thread;
 
     (* create an implicit thread *)
-      define @thread (k : PT.fiber, 
+      define inline @thread (k : PT.fiber, 
 		      c : Option.option           (* cancelable *)
                      / exh : exh) : thread;
 
     (* construct an implicit thread. we obtain the environment by capturing the
      * implicit environment.
      *) 
-      define @capture (k : PT.fiber           (* fiber for implicit thread *)
-		      / exh : exh) : thread;
-
+      define inline @capture (k : PT.fiber           (* fiber for implicit thread *)
+	          	      / exh : exh) : thread;
+    
     (* run an implicit thread outside of a scheduler action *)
-      define @run-out-of-scheduler (thd : thread / exh : exh) noreturn;
+      define inline @run-out-of-scheduler (thd : thread / exh : exh) noreturn;
 
     (* run an implicit thread from within a scheduler action *)
-      define @run-in-scheduler (vp : vproc, sched : PT.sched_act, thd : thread / exh : exh) noreturn;
+      define inline @run-in-scheduler (vp : vproc, sched : PT.sched_act, thd : thread / exh : exh) noreturn;
 
     (* spawn an implicit thread on the work group at the top of the work-group stack *)
-      define @spawn (thd : thread / exh : exh) : ();
+      define inline @spawn (thd : thread / exh : exh) : ();
 
     (* remove a thread from the ready queue *)
-      define @remove-thread (thd : ImplicitThread.thread / exh : exh) : bool =
+      define inline @remove-thread (thd : ImplicitThread.thread / exh : exh) : bool =
 
     (* get the scheduler data for current group *)
-      define @get-scheduler-data (/ exh : exh) : any;
+      define inline @get-scheduler-data (/ exh : exh) : any;
 
     )
 
@@ -93,7 +94,7 @@ structure ImplicitThread (* :
     (* migrate the current thread to the top-level thread scheduler. the effect of this operation is to
      * escape from any nested scheduler instance.
      *)
-      define @migrate-to-top-level-sched () : () = 
+      define inline @migrate-to-top-level-sched () : () = 
 	cont k (x : unit) = return()
 	let fls : FLS.fls = FLS.@get()
 	do VProcQueue.@enqueue(fls, k)
@@ -102,7 +103,7 @@ structure ImplicitThread (* :
       ;
 
     (* access the work-group stack *)
-      define @init-ite ( / exh : exh) : () =
+      define inline @init-ite ( / exh : exh) : () =
         let iteOpt : Option.option = FLS.@find-ite(/ exh)
         case iteOpt
 	 of Option.NONE =>
@@ -119,7 +120,7 @@ structure ImplicitThread (* :
     (* return the top of the group stack.
      * NOTE: an exception is raised if the stack is empty
      *)
-      define @peek (x : unit / exh : exh) : group =
+      define inline @peek (x : unit / exh : exh) : group =
         let ite : ite = FLS.@get-ite(/ exh)
         let stk : List.list = SELECT(ITE_STACK_OFF, ite)
         case stk
@@ -131,7 +132,7 @@ structure ImplicitThread (* :
         end
       ;
 
-      define @pop ( / exh : exh) : Option.option =
+      define inline @pop ( / exh : exh) : Option.option =
 	let ite : ite = FLS.@get-ite( / exh)
         let stk : List.list = SELECT(ITE_STACK_OFF, ite)
 	case stk
@@ -144,7 +145,7 @@ structure ImplicitThread (* :
 	end
       ;
 
-      define @push (group : group / exh : exh) : () =
+      define inline @push (group : group / exh : exh) : () =
 	let ite : ite = FLS.@get-ite( / exh)
         let stk : List.list = SELECT(ITE_STACK_OFF, ite)
 	let stk : List.list = List.CONS(group, stk)
@@ -201,7 +202,7 @@ structure ImplicitThread (* :
     (* takes a fiber and a cancelable option, and returns a copy of the given fiber that can handle 
      * cancelation.
      *)
-      define @wrap-cancelable (k : PT.fiber, c : Option.option / exh : exh) : PT.fiber =
+      define inline @wrap-cancelable (k : PT.fiber, c : Option.option / exh : exh) : PT.fiber =
          case c
 	   of Option.NONE => return(k)
 	    | Option.SOME(c : Cancelation.cancelable) =>
@@ -214,8 +215,8 @@ structure ImplicitThread (* :
      * implicit environment.
      * QUESTION: should the cancelation wrapping happen later in the @run operation?
      *) 
-      define @capture (k : PT.fiber           (* to run the implicit thread *)
-		      / exh : exh) : thread =
+      define inline @capture (k : PT.fiber           (* to run the implicit thread *)
+		             / exh : exh) : thread =
 	let ite : ite = FLS.@get-ite( / exh)
         let c : Option.option = SELECT(ITE_CANCELABLE_OFF, ite)
         let k : PT.fiber = @wrap-cancelable(k, c / exh)
@@ -224,7 +225,7 @@ structure ImplicitThread (* :
       ;
 
     (* allocate an implicit thread *)
-      define @alloc (ite : ite, k : PT.fiber / exh : exh) : thread =
+      define inline @alloc (ite : ite, k : PT.fiber / exh : exh) : thread =
 	let thread : thread = alloc(k, ite)
 	return(thread)
       ;
@@ -232,7 +233,7 @@ structure ImplicitThread (* :
     (* create an implicit thread
      * QUESTION: should the cancelation wrapping happen later in the @run operation?
      *)
-      define @thread (k : PT.fiber, 
+      define inline @thread (k : PT.fiber, 
 		      c : Option.option           (* cancelable *)
                      / exh : exh) : thread =
       (* capture the work-group stack *)
@@ -246,20 +247,20 @@ structure ImplicitThread (* :
       ;
 
     (* run an implicit thread outside of a scheduler action *)
-      define @run-out-of-scheduler (thd : thread / exh : exh) noreturn =
+      define inline @run-out-of-scheduler (thd : thread / exh : exh) noreturn =
 	do FLS.@set-ite(SELECT(ITE_OFF, thd) / exh)
 	let k : PT.fiber = SELECT(FIBER_OFF, thd)
 	throw k(UNIT)
       ;
 
     (* run an implicit thread from within a scheduler action *)
-      define @run-in-scheduler (vp : vproc, sched : PT.sched_act, thd : thread / exh : exh) noreturn =
+      define inline @run-in-scheduler (vp : vproc, sched : PT.sched_act, thd : thread / exh : exh) noreturn =
 	do FLS.@set-ite(SELECT(ITE_OFF, thd) / exh)
 	SchedulerAction.@run(vp, sched, SELECT(FIBER_OFF, thd))
       ;
 
     (* spawn the implicit thread on the work group at the top of the work-group stack *)
-      define @spawn (thd : thread / exh : exh) : () =
+      define inline @spawn (thd : thread / exh : exh) : () =
         let group : group = @peek(UNIT / exh)
 	let spawnFn : fun(thread / exh -> unit) = SELECT(GROUP_SPAWN_OFF, group)
         let _ : unit = apply spawnFn(thd / exh)
@@ -267,14 +268,14 @@ structure ImplicitThread (* :
       ;
 
     (* remove a thread from the ready queue. returns true if the thread has migrated off the queue. *)
-      define @remove-thread (thd : thread / exh : exh) : bool =
+      define inline @remove-thread (thd : thread / exh : exh) : bool =
 	let group : group = @peek(UNIT / exh)
 	let removeFn : fun(thread / exh -> bool) = SELECT(GROUP_REMOVE_OFF, group)
 	apply removeFn(thd / exh)
       ;
 
     (* get the scheduler data for current group *)
-      define @get-scheduler-data (/ exh : exh) : any =
+      define inline @get-scheduler-data (/ exh : exh) : any =
         let group : group = @peek(UNIT / exh)
 	return(SELECT(GROUP_SCHEDULER_DATA_OFF, group))
       ;
