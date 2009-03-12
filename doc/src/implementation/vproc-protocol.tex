@@ -183,14 +183,16 @@ QueueItem(k, fls, stk)
 \end{lstlisting}
 
 \paragraph{Send}
-The Send (\figref{fig:protocol2-sleep}) operation consists of two paths: the path where the remote vproc
-is awake (lines 6-11), and the path where the remote vproc is potentially
-sleeping (lines 13-21).
-In the former path, we repeatedly attempt to place a signal on the remote
-vproc's landing pad.
-In the latter path, we lock the remote vproc's state.
-If the vproc is still sleeping, then we place the signal on its landing
-pad and wake the vproc.
+The Send (\figref{fig:protocol2-sleep}) operation takes one of two based on the assumed
+vproc state:
+\begin{itemize}
+\item \emph{The vproc is assumed awake (lines 6-11).} We attempt to push a signal on the remote vproc's landing pad (lines 6-7), and
+if the push fails, we retry the operation (line 11).
+\item \emph{The vproc is assumed sleeping (lines 13-21).} We obtain a mutex lock from the vproc, and test
+whether it is still sleeping.
+If so we place the signal on its landing pad and wake the vproc (lines 18-19), 
+but otherwise release the lock and retry (lines 15-16).
+\end{itemize}
 
 \begin{figure}
 \lstset{language=C}
@@ -227,9 +229,10 @@ void Send (VProc_t *vp, Fiber_t *k, Value_t *fls)
 
 \paragraph{Sleep}
 The Sleep operation (\figref{fig:protocol2-sleep}) acquires the lock
-and then attempts to mark the state as sleeping.
+and then attempts to mark the state as sleeping (lines 3-4).
 If this step succeeds, the vproc sleeps until a the landing pad becomes
-nonempty.
+nonempty (lines 5-6).
+Once the vproc has woken up, it releases the lock (line 7).
 
 \begin{figure}
 \lstset{language=C}
@@ -249,10 +252,11 @@ void Sleep (VProc_t *host)
 \end{figure}
 
 \paragraph{Correctness}
-The key observation of correctness is that if the vproc succeeds in entering a sleep
-state (line 4 \figref{fig:protocol2-sleep}), then one and only one other vproc sees 
+The key observation for correctness is the following: if the vproc succeeds in 
+entering a sleep state (line 4 \figref{fig:protocol2-sleep}), then exactly one other vproc executing a Send operation sees 
 that this is the case (line 14 of \figref{fig:protocol2-send}).
-Thus, this other vproc subsequently wakes the sleeping vproc when it sends a signal.
+Thus, if another vproc performs a Send operation, the destination vproc must always
+leave its sleep state.
 
 \section{Conclusion}\label{sec:conclusion}
 Protocol 1 is conceptually simpler and requires fewer lines of code.
