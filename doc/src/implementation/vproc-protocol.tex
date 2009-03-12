@@ -74,25 +74,28 @@ the Send function affects working vprocs.
 
 \paragraph{Vproc components}
 The per vproc structure VProc\_t contains four components that are relevant to this discussion.
-However, the sleeping flag is only necessary for the first protocol.
+The sleeping flag is only necessary for the first protocol.
+The dummy fiber is a trivial fiber that we use to wake a vproc to participate
+in a global collection.
 \lstset{language=C}
 \lstset{commentstyle=\textit}
 \begin{lstlisting}
 struct struct_vproc {
     ...
-    Value_t     landingPad;       // landing pad
-    Mutex_t	lock;  		  // lock for VProc state
-    Cond_t	wait;		  // for waiting when idle
-    Bool_t      sleeping;         // sleeping flag
+    Value_t     landingPad;
+    Mutex_t	lock;
+    Cond_t	wait;
+    bool        sleeping;
+    Fiber_t     *dummyFiber;
     ...
 };
 typedef struct struct_vproc VProc_t;
 \end{lstlisting}
 
-\section{Protocol 1}\label{sec:protocol1}
+\subsection{Protocol 1}\label{sec:protocol1}
 
 \paragraph{Landing pad representation}
-The landing pad is represented by one of the following values, where EMPTY
+The landing pad is represented by one of the values below, where EMPTY
 denotes an empty stack, k is a fiber, fls is fiber-local storage, and stk
 is a queue item.
 \lstset{language=C}
@@ -129,7 +132,7 @@ void Send (VProc_t *vp, Fiber_t *k, Value_t *fls)
   }
 }
 \end{lstlisting}
-\caption{Protocol 1 \texttt{Send} operation.}\label{fig:protocol1-send}
+\caption{Protocol 1 Send operation.}\label{fig:protocol1-send}
 \end{figure}
 
 \paragraph{Sleep}
@@ -166,10 +169,10 @@ void Sleep (VProc_t *host)
   MutexUnlock(&(host->lock));
 }
 \end{lstlisting}
-\caption{Protocol 1: \texttt{Sleep} operation.}\label{fig:protocol1-sleep}
+\caption{Protocol 1: Sleep operation.}\label{fig:protocol1-sleep}
 \end{figure}
 
-\section{Protocol 2}\label{sec:protocol2}
+\subsection{Protocol 2}\label{sec:protocol2}
 
 \paragraph{Landing pad representation}
 The landing pad is represented the same way as in protocol 1, except that it 
@@ -224,7 +227,7 @@ void Send (VProc_t *vp, Fiber_t *k, Value_t *fls)
   }
 }
 \end{lstlisting}
-\caption{Protocol 2 \texttt{Send} operation.}\label{fig:protocol2-send}
+\caption{Protocol 2 Send operation.}\label{fig:protocol2-send}
 \end{figure}
 
 \paragraph{Sleep}
@@ -248,7 +251,7 @@ void Sleep (VProc_t *host)
   MutexUnlock(&(vp->lock));
 }
 \end{lstlisting}
-\caption{Protocol 2: \texttt{Sleep} operation.}\label{fig:protocol2-sleep}
+\caption{Protocol 2: Sleep operation.}\label{fig:protocol2-sleep}
 \end{figure}
 
 \paragraph{Correctness}
@@ -258,127 +261,66 @@ that this is the case (line 14 of \figref{fig:protocol2-send}).
 Thus, if another vproc performs a Send operation, the destination vproc must always
 leave its sleep state.
 
-\section{Conclusion}\label{sec:conclusion}
+\subsection{Conclusion}\label{sec:conclusion}
 Protocol 1 is conceptually simpler and requires fewer lines of code.
 Protocol 2, however, is likely to be faster on the common case, where the vproc is
 already awake.
 In this case, protocol 2 makes one less remote memory reference than protocol 1.
 
-\CUT{
-\begin{figure}[tp]
-  \begin{center}
-    \includegraphics[scale=0.7]{pictures/vproc-protocol}
-  \end{center}%
-  \caption{Layout of the VProc protocol.}
-  \label{fig:vproc-protocol}
-\end{figure}%
+\section{Global garbage collection}\label{sec:global-gc}
 
-\section{Messaging}
+\paragraph{Global collector state}
+\lstset{language=C}
+\lstset{commentstyle=\textit}
+\begin{lstlisting}
+static Mutex_t		GCLock;
+static Cond_t		LeaderWait;
+static Cond_t		FollowerWait;
+static int		nReadyForGC;
+static Barrier_t	GCBarrier;
+static bool		GlobalGCInProgress;
+\end{lstlisting}
 
-\paragraph{\texttt{Send(vp, msg)}}
-
-\begin{description}
-\item [\textit{Precondition:}] \textit{It is the case that} \texttt{vp} $\neq$ \texttt{host\_vproc} \textit{(a vproc cannot send a message to itself)}
-\end{description}
-
-\begin{enumerate}
-  \item Walk to \texttt{vp}'s desk and open the mailbox.
-    \begin{enumerate}
-      \item If there is a \texttt{SLEEPING} message, place \texttt{msg} in the mailbox and go to step 2.
-      \item Otherwise, place \texttt{msg} in the mailbox and exit the subroutine.
-    \end{enumerate}
-  \item Walk into \texttt{vp}'s \textbf{waiting room}.
-    \begin{enumerate}
-      \item If the waiting-room switch is off, then do the following. \textit{(\textbf{Invariant:}} \texttt{vp} \textit{is on its way to the waiting room.)}
-        \begin{enumerate}
-          \item Flip the waiting-room switch on.
-          \item Return to the local desk.
-          \item Exit the subroutine.
-        \end{enumerate}
-      \item If the waiting-room switch is on, then go to step 3. \textit{(\textbf{Invariant:}} \texttt{vp} \textit{is in its bedroom.)}
-    \end{enumerate}
-  \item Flip the bedroom switch on.
-  \item Return to the local desk.
-\end{enumerate}
-
-\begin{description}
-\item [\textit{Postcondition:}] \textit{At some point in the future,} \texttt{vp} \textit{will sit at its desk and open} \texttt{msg}.
-\end{description}
-
-\paragraph{\texttt{CheckMailbox()}}
-
-\begin{enumerate}
-  \item Open the local mailbox.
-  \item Retrieve all messages, leaving the mailbox empty.
-  \item Handle each message \texttt{msg}.
-\end{enumerate}
-
-\section{Sleeping}
-
-\paragraph{\texttt{Sleep()}}
-
-\begin{enumerate}
-  \item Walk to the desk and open the mailbox.
-    \begin{itemize}
-      \item If empty, place a \texttt{SLEEPING} message in the mailbox.
-      \item If nonempty, exit the subroutine.
-    \end{itemize}
-  \item Walk into the \textbf{waiting room}.
-    \begin{itemize}
-      \item If the waiting-room switch is on, then go to step 7. \textit{(\textbf{Invariant:}} \textit{Another vproc has delivered mail and has just walked out of the \textbf{waiting room}.)}
-      \item If the waiting-room switch is off, then go to step 3. \textit{(\textbf{Invariant:}} \textit{It is the case that, in the time between the current step and step 1, no other vproc has entered the \textbf{waiting room}.)}
-    \end{itemize}
-  \item Flip the bedroom switch off.
-  \item Walk into \textbf{bedroom}.
-  \item Wait for the light to turn on.
-  \item Walk into \textbf{waiting room}.
-  \item Flip the waiting-room switch off.
-  \item Return to the desk.
-\end{enumerate}
-
-\paragraph{\texttt{Wake(vp)}}
-
-\begin{enumerate}
-  \item Construct a blank message \texttt{msg}.
-  \item Apply \texttt{Send(vp, msg)} and, once complete, exit the subroutine.
-\end{enumerate}
-
-\section{Global GC}
-
-\paragraph{\texttt{GlobalLimit()}}
-
-\begin{enumerate}
-  \item Walk into \textbf{leader vproc room}.
-    \begin{itemize}
-      \item If switch is off, then we assign this vproc as the lead.
-        \begin{enumerate}
-          \item Flip the global-gc switch on.
-          \item Reset turnstyles.
-          \item Leave the \textbf{leader vproc room}.
-          \item Go to \texttt{LeaderVProc()}.
-        \end{enumerate}
-      \item If switch is on, then go to step 2.
-    \end{itemize}
-  \item Walk into \textbf{global gc waiting room}.
-  \item Wait for light to turn on.
-  \item Enter \textbf{global gc room}.
-  \item When finished with global collection, walk to \textbf{global gc departing room}.
-  \item Wait for light to turn on.
-  \item Return to the desk.
-\end{enumerate}
-
-\paragraph{\texttt{LeaderVProc()}}
-
-\begin{enumerate}
-  \item For each vproc \texttt{vp}, apply \texttt{Wake(vp)}.
-  \item Walk into \textbf{global gc waiting room}.
-  \item Wait for light to turn on.
-  \item Walk into \textbf{global gc room}.
-  \item When finished with global collection, walk to \textbf{global gc departing room}.
-  \item Flip the switch off.
-  \item Wait for light to turn on.
-  \item Return to the desk.
-\end{enumerate}
+\begin{figure}
+\lstset{language=C}
+\lstset{commentstyle=\textit}
+\lstset{numbers=left}
+\begin{lstlisting}
+void StartGlobalGC (VProc_t *self, Value_t **roots)
+{
+  bool leaderVProc;
+  MutexLock(&GCLock);
+    if (GlobalGCInProgress) {
+      leaderVProc = false;
+      if (++nReadyForGC == GetNumVProcs())
+	CondSignal(&LeaderWait);
+      CondWait(&FollowerWait, &GCLock);
+    } else {
+      leaderVProc = true;
+      GlobalGCInProgress = true;
+      BarrierInit(&GCBarrier, GetNumVProcs());
+    }
+  /* add the vproc's pages to the from-space list */
+  MutexUnlock(&GCLock);
+  if (leaderVProc) {
+    for (int i = 0; i < GetNumVProcs(); i++)
+      if (VProcs[i] != self)
+        Send(VProcs[i], VProcs[i]->dummyCont, M_NIL);
+    MutexLock(&GCLock);
+      CondWait(&LeaderWait, &GCLock);
+      CondBroadcast(&FollowerWait, &GCLock);
+    MutexUnlock(&GCLock);    
+  }
+  /* Run the global garbage collector */
+  if (leaderVProc)
+    GlobalGCInProgress = false;
+  BarrierWait(&GCBarrier);
+  if (leaderVProc) {
+    /* reclaim from-space pages */
+  }
 }
+\end{lstlisting}
+\caption{The global garbage collection protocol.}\label{fig:global-gc-protocol}
+\end{figure}
 
 \end{document}  
