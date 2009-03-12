@@ -44,7 +44,7 @@ The landing pad supports two operations.
 
 \paragraph{Sleeping}
 When there is nothing to do, a vproc enters a temporary sleeping state, which lasts until a
-signal arrives on the landing pad or a global garbage collection is initiated by some other
+signal arrives on the vproc's landing pad or a global garbage collection is initiated by some other
 vproc.
 We avoid busy waiting by waiting on a condition variable provided by the Pthreads
 library.
@@ -54,19 +54,23 @@ Signals may arrive after the vproc has checked the landing pad but before the vp
 begun waiting on the condition variable.
 Thus, there is a potential race condition that would allow the vproc to wait indefinitely,
 even when work becomes available.
-Our protocols address this race condition by using some additional machinery.
+Our protocols must address this race condition by using some additional
+synchronization.
 
 \paragraph{Vproc operations}
 Below are the two operations that the vproc protocol must provide.
+The Sleep operation puts the host vproc to sleep;
+the Send operation places the provided signal on vp's landing pad.
 \lstset{language=C}
 \lstset{commentstyle=\textit}
 \begin{lstlisting}
-void Sleep (VProc_t *self);
+void Sleep (VProc_t *host);
 void Send (VProc_t *vp, Fiber_t *k, Value_t *fls);
 \end{lstlisting}
-The Sleep operation puts the host vproc to sleep, and the Send operation places a signal on a
-vproc's landing pad.
-A signal is a fiber paired with fiber-local storage.
+We choose to minimize the synchronization overhead of Send even at the expense of
+increasing the overhead of Sleep.
+The rationale is that, in the common case, the Sleep operation affects idle vprocs, whereas
+the Send function affects working vprocs.
 
 \paragraph{Vproc components}
 The per vproc structure VProc\_t contains four components that are relevant to this discussion.
@@ -75,7 +79,7 @@ However, the sleeping flag is only necessary for the first protocol.
 \lstset{commentstyle=\textit}
 \begin{lstlisting}
 struct struct_vproc {
-    ..
+    ...
     Value_t     landingPad;       // landing pad
     Mutex_t	lock;  		  // lock for VProc state
     Cond_t	wait;		  // for waiting when idle
@@ -151,15 +155,15 @@ wake the vproc from its sleeping state (line 11 of \figref{fig:protocol1-send}).
 \lstset{commentstyle=\textit}
 \lstset{numbers=left}
 \begin{lstlisting}
-void Sleep (VProc_t *self)
+void Sleep (VProc_t *host)
 {
-  MutexLock(&(self->lock));
-    self->sleeping = true;
+  MutexLock(&(host->lock));
+    host->sleeping = true;
     /* Flush all pending writes */
-    while (self->landingPad == EMPTY)
-      CondWait(&(self->wait), &(self->lock));
-    self->sleeping = false;
-  MutexUnlock(&(self->lock));
+    while (host->landingPad == EMPTY)
+      CondWait(&(host->wait), &(host->lock));
+    host->sleeping = false;
+  MutexUnlock(&(host->lock));
 }
 \end{lstlisting}
 \caption{Protocol 1: \texttt{Sleep} operation.}\label{fig:protocol1-sleep}
@@ -232,7 +236,7 @@ nonempty.
 \lstset{commentstyle=\textit}
 \lstset{numbers=left}
 \begin{lstlisting}
-void Sleep (VProc_t *self)
+void Sleep (VProc_t *host)
 {
   MutexLock(&(vp->lock));
     Value_t *x = CAS(&(vp->landingPad), EMPTY, SLEEPING);
@@ -251,9 +255,7 @@ that this is the case (line 14 of \figref{fig:protocol2-send}).
 Thus, this other vproc subsequently wakes the sleeping vproc when it sends a signal.
 
 \section{Conclusion}\label{sec:conclusion}
-Protocol 1 is simpler than protocol 2, both conceptually and in terms of line count.
-The Send operation of protocol 2 is 8 lines longer.
-
+Protocol 1 is conceptually simpler and requires fewer lines of code.
 Protocol 2, however, is likely to be faster on the common case, where the vproc is
 already awake.
 In this case, protocol 2 makes one less remote memory reference than protocol 1.
