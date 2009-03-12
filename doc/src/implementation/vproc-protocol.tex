@@ -87,6 +87,7 @@ struct struct_vproc {
     Cond_t	wait;
     bool        sleeping;
     Fiber_t     *dummyFiber;
+    bool        globalGCPending;
     ...
 };
 typedef struct struct_vproc VProc_t;
@@ -305,7 +306,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
   if (leaderVProc) {
     for (int i = 0; i < GetNumVProcs(); i++)
       if (VProcs[i] != self)
-        Send(VProcs[i], VProcs[i]->dummyCont, M_NIL);
+        GlobalGCNotify(VProcs[i]);
     MutexLock(&GCLock);
       CondWait(&LeaderWait, &GCLock);
       CondBroadcast(&FollowerWait, &GCLock);
@@ -321,6 +322,20 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 }
 \end{lstlisting}
 \caption{The global garbage collection protocol.}\label{fig:global-gc-protocol}
+\end{figure}
+
+\begin{figure}
+\lstset{language=C}
+\lstset{commentstyle=\textit}
+\lstset{numbers=left}
+\begin{lstlisting}
+void GlobalGCNotify (VProc_t *vp)
+{
+  vp->globalGCInProgress = true;
+  Send(vp, vp->dummyCont, M_NIL);
+}
+\end{lstlisting}
+\caption{Notify a vproc of a global collection in progress.}\label{fig:global-gc-notify}
 \end{figure}
 
 \end{document}  
