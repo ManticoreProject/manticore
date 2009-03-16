@@ -19,15 +19,15 @@
 \section{Overview}
 This document describes the protocol for managing vprocs.
 
-\section{Signaling \& sleeping}\label{sec:signaling-and-sleeping}
+\section{Signaling and sleeping}\label{sec:signaling-and-sleeping}
 This section presents two alternative signaling protocols for vprocs.
-Both protocols have their advantages, and this section makes an attempt to understand
+Both protocols have their advantages, and here we describe both to evaluate
 which is most appropriate for the Manticore implementation.
 The rest of this section is structured as follows.
 In this secion we outline the interface and semantics of the protocol.
 Section \ref{sec:protocol1} describes the first protocol, and section
 \ref{sec:protocol2} describes the second protocol.
-Then \secref{sec:conclusion} compares the protocols.
+Then \secref{sec:evaluation} compares the protocols.
 
 \paragraph{Signals}
 A signal is a fiber paired with fiber-local storage.
@@ -43,14 +43,14 @@ The landing pad supports two operations.
 \end{enumerate}
 
 \paragraph{Sleeping}
-When there is nothing to do, a vproc enters a temporary sleeping state, which lasts until a
+When there is nothing to do, a vproc enters a temporary sleeping state, which lasts until either a
 signal arrives on the vproc's landing pad or a global garbage collection is initiated by some other
 vproc.
 We avoid busy waiting by waiting on a condition variable provided by the Pthreads
 library.
 Unfortunately, the fact that the landing pad is a lock-free data structure causes
-a problem.
-Signals may arrive after the vproc has checked the landing pad but before the vproc has
+a problem:
+signals might arrive after the vproc has checked the landing pad but before the vproc has
 begun waiting on the condition variable.
 Thus, there is a potential race condition that would allow the vproc to wait indefinitely,
 even when work becomes available.
@@ -58,15 +58,31 @@ Our protocols must address this race condition by using some additional
 synchronization.
 
 \paragraph{Vproc operations}
-Below are the two operations that the vproc protocol must provide.
-The Sleep operation puts the host vproc to sleep;
-the Send operation places the provided signal on vp's landing pad.
-\lstset{language=C}
-\lstset{commentstyle=\textit}
-\begin{lstlisting}
-void Sleep (VProc_t *host);
-void Send (VProc_t *vp, Fiber_t *k, Value_t *fls);
-\end{lstlisting}
+Below are the operations that the vproc protocol must provide.
+\begin{itemize}
+  \item Place a signal on the landing pad of a remote vproc.
+    \footnote{Note that this operation has undefined behavior when applied to the host vproc.}
+    \lstset{language=C}
+    \lstset{commentstyle=\textit}
+    \begin{lstlisting}
+      void Send (VProc_t *vp, Fiber_t *k, Value_t *fls);
+    \end{lstlisting}
+  \item Receive signals from the host vproc's landing pad. 
+    \footnote{Note that this operation has undefined behavior when applied to a remote vproc.}
+    \lstset{language=C}
+    \lstset{commentstyle=\textit}
+    \begin{lstlisting}
+      Value_t Recv (VProc_t *host);
+    \end{lstlisting}
+  \item Put the host vproc to sleep until its landing pad becomes nonempty.
+    \footnote{Note that this operation has undefined behavior when applied to a remote vproc.}
+    \lstset{language=C}
+    \lstset{commentstyle=\textit}
+    \begin{lstlisting}
+      void Sleep (VProc_t *host);
+    \end{lstlisting}
+\end{itemize}
+
 We choose to minimize the synchronization overhead of Send even at the expense of
 increasing the overhead of Sleep.
 The rationale is that, in the common case, the Sleep operation affects idle vprocs, whereas
@@ -75,19 +91,15 @@ the Send function affects working vprocs.
 \paragraph{Vproc components}
 The per vproc structure VProc\_t contains four components that are relevant to this discussion.
 The sleeping flag is only necessary for the first protocol.
-The dummy fiber is a trivial fiber that we use to wake a vproc to participate
-in a global collection.
 \lstset{language=C}
 \lstset{commentstyle=\textit}
 \begin{lstlisting}
 struct struct_vproc {
     ...
-    Value_t     landingPad;
+    Value_t     ldgPad;
     Mutex_t	lock;
     Cond_t	wait;
     bool        sleeping;
-    Fiber_t     *dummyFiber;
-    bool        globalGCPending;
     ...
 };
 typedef struct struct_vproc VProc_t;
@@ -119,10 +131,10 @@ whether the vproc needs to be woken up (lines 10-12).
 void Send (VProc_t *vp, Fiber_t *k, Value_t *fls)
 {
   while (true) {
-    Value_t *stk = vp->landingPad;
-    Value_t *newStk = Promote(QueueItem(k, fls, stk));
-    Value_t *x = CAS(&(vp->landingPad), stk, newStk);
-    if (x != stk) {
+    Value_t *ldgPadOrig = vp->ldgPad;
+    Value_t *ldgPadNew = Promote(QueueItem(k, fls, ldgPadOrig));
+    Value_t *x = CAS(&(vp->ldgPad), ldgPadOrig, ldgPadNew);
+    if (x != ldgPadOrig) {
       continue;
     } else {
       if (vp->sleeping) {
@@ -134,6 +146,32 @@ void Send (VProc_t *vp, Fiber_t *k, Value_t *fls)
 }
 \end{lstlisting}
 \caption{Protocol 1 Send operation.}\label{fig:protocol1-send}
+\end{figure}
+
+\paragraph{Receive}
+The Recv operation (\figref{fig:protocol1-recv}) attempts to retrieve all pending signals from the
+landing pad at once.
+If the attempt fails or the landing pad is empty, Recv simply returns an empty list (lines 5 and 10).
+But if successful, Recv set the landing pad to empty and returns the list of pending signals.
+
+\begin{figure}
+\lstset{language=C}
+\lstset{commentstyle=\textit}
+\lstset{numbers=left}
+\begin{lstlisting}
+Value_t Recv (VProc_t *host)
+{
+  Value_t *ldgPadOrig = host->ldgPad;
+  if (ldgPadOrig == EMPTY)
+    return PtrToValue(M_NIL)_;
+  Value_t *x = CAS(&(host->ldgPad), ldgPadOrig, EMPTY);
+  if (x == ldgPadOrig)
+    return PtrToValue(ldgPadOrig);
+  else
+    return PtrToValue(M_NIL);
+}
+\end{lstlisting}
+\caption{Protocol 1 Recv operation.}\label{fig:protocol1-recv}
 \end{figure}
 
 \paragraph{Sleep}
@@ -148,7 +186,7 @@ An atomic compare-and-swap at line 4 would suffice, but any lighter-weight instr
 that flushes the write buffer is preferable.
 
 \paragraph{Correctness}
-The correctness of this protocol becomes apparent with the following observation.
+The correctness of this protocol is apparent from the following observation.
 If the vproc sees that its landing pad is empty (line 6 of \figref{fig:protocol1-send}), 
 then the vproc appears to be sleeping to the other vprocs.
 Thus, it must be the case that all subsequent sends to that vproc are garanteed to
@@ -163,8 +201,8 @@ void Sleep (VProc_t *host)
 {
   MutexLock(&(host->lock));
     host->sleeping = true;
-    /* Flush all pending writes */
-    while (host->landingPad == EMPTY)
+    /* Flush all pending writes. */
+    while (host->ldgPad == EMPTY)
       CondWait(&(host->wait), &(host->lock));
     host->sleeping = false;
   MutexUnlock(&(host->lock));
@@ -187,7 +225,7 @@ QueueItem(k, fls, stk)
 \end{lstlisting}
 
 \paragraph{Send}
-The Send (\figref{fig:protocol2-sleep}) operation takes one of two based on the assumed
+The Send operation (\figref{fig:protocol2-sleep}) takes one of two based on the assumed
 vproc state:
 \begin{itemize}
 \item \emph{The vproc is assumed awake (lines 6-11).} We attempt to push a signal on the remote vproc's landing pad (lines 6-7), and
@@ -206,21 +244,21 @@ but otherwise release the lock and retry (lines 15-16).
 void Send (VProc_t *vp, Fiber_t *k, Value_t *fls)
 {
   while (true) {
-    Value_t *stk = vp->landingPad;
+    Value_t *stk = vp->ldgPad;
     if (stk != SLEEPING) {
       Value_t *newStk = Promote(QueueItem(k, fls, stk));
-      Value_t *x = CAS(&(vp->landingPad), stk, newStk);
+      Value_t *x = CAS(&(vp->ldgPad), stk, newStk);
       if (x == stk)
 	return;
       else
 	continue;
     } else {            /* (stk == SLEEPING) */
       MutexLock(&(vp->lock));
-        if (vp->landingPad != SLEEPING) {
+        if (vp->ldgPad != SLEEPING) {
           MutexUnlock(&(vp->lock));
           continue;
         }
-        vp->landingPad = Promote(QueueItem(k, fls, EMPTY));
+        vp->ldgPad = Promote(QueueItem(k, fls, EMPTY));
         CondSignal(&(vp->wait));
       MutexUnlock(&(vp->lock));
       return;
@@ -230,6 +268,10 @@ void Send (VProc_t *vp, Fiber_t *k, Value_t *fls)
 \end{lstlisting}
 \caption{Protocol 2 Send operation.}\label{fig:protocol2-send}
 \end{figure}
+
+\paragraph{Receive}
+The Recv operation is identical to protocol 1, under the assumption that Recv is never called while
+the vproc is in a sleeping state.
 
 \paragraph{Sleep}
 The Sleep operation (\figref{fig:protocol2-sleep}) acquires the lock
@@ -246,8 +288,8 @@ Once the vproc has woken up, it releases the lock (line 7).
 void Sleep (VProc_t *host)
 {
   MutexLock(&(vp->lock));
-    Value_t *x = CAS(&(vp->landingPad), EMPTY, SLEEPING);
-    while (vp->landingPad == SLEEPING)
+    Value_t *x = CAS(&(vp->ldgPad), EMPTY, SLEEPING);
+    while (vp->ldgPad == SLEEPING)
       CondWait(&(vp->wait), &(vp->lock));
   MutexUnlock(&(vp->lock));
 }
@@ -262,25 +304,72 @@ that this is the case (line 14 of \figref{fig:protocol2-send}).
 Thus, if another vproc performs a Send operation, the destination vproc must always
 leave its sleep state.
 
-\subsection{Conclusion}\label{sec:conclusion}
+\subsection{Evaluation}\label{sec:evaluation}
 Protocol 1 is conceptually simpler and requires fewer lines of code.
 Protocol 2, however, is likely to be faster on the common case, where the vproc is
 already awake.
 In this case, protocol 2 makes one less remote memory reference than protocol 1.
 
 \section{Global garbage collection}\label{sec:global-gc}
+Figure \ref{fig:global-gc-protocol} shows the protocol for starting a global garbage
+collection.
+The protocol assigns one vproc to be the leader.
+The leader is responsible to initialize global state values and to notify other vprocs
+that a collection is imminent.
+Non-leader vprocs must participate in every collection, whether they are awake or asleep.
 
 \paragraph{Global collector state}
-\lstset{language=C}
-\lstset{commentstyle=\textit}
-\begin{lstlisting}
-static Mutex_t		GCLock;
-static Cond_t		LeaderWait;
-static Cond_t		FollowerWait;
-static int		nReadyForGC;
-static Barrier_t	GCBarrier;
-static bool		GlobalGCInProgress;
-\end{lstlisting}
+Below is global state (shared by all vprocs) that we use in the protocol.
+\begin{itemize}
+  \item Mutex lock for the state.
+    \lstset{language=C}
+    \lstset{commentstyle=\textit}
+    \begin{lstlisting}
+      static Mutex_t		GCLock;
+    \end{lstlisting}
+  \item Condition variable for the lead vproc.
+    \lstset{language=C}
+    \lstset{commentstyle=\textit}
+    \begin{lstlisting}
+      static Cond_t		LeaderWait;
+    \end{lstlisting}
+  \item Condition variable for the non-lead vprocs.
+    \lstset{language=C}
+    \lstset{commentstyle=\textit}
+    \begin{lstlisting}
+      static Cond_t		FollowerWait;
+    \end{lstlisting}
+  \item Number of vprocs ready to begin a global collection.
+    \lstset{language=C}
+    \lstset{commentstyle=\textit}
+    \begin{lstlisting}
+      static int		nReadyForGC;
+    \end{lstlisting}
+  \item N-way barrier vprocs must pass before the collection can complete.
+    \lstset{language=C}
+    \lstset{commentstyle=\textit}
+    \begin{lstlisting}
+      static Barrier_t	GCBarrier;
+    \end{lstlisting}
+  \item True when a global collection is in progress.
+    \lstset{language=C}
+    \lstset{commentstyle=\textit}
+    \begin{lstlisting}
+      static bool		GlobalGCInProgress;
+    \end{lstlisting}
+\end{itemize}
+
+\figref{fig:global-gc-protocol} shows the protocol for performing a global collection.
+The protocol begins by assigning the vproc as lead or non-lead.
+The lead vproc first initializes the state (lines 8-11) and then notifies the
+other vprocs that a global collection is in progress (lines 21-23).
+\footnote{The dummy fiber is a trivial fiber that we use to wake a vproc to participate
+in a global collection.}
+The leader then waits (lines 25-26) for the other vprocs to add their memory pages to the
+from-space list (line 18).
+Once all vprocs have passed this initialization phase (lines 3-19), the global collection
+can begin (line 30).
+The barrier (line 33) marks the point that the collection ends.
 
 \begin{figure}
 \lstset{language=C}
@@ -290,52 +379,39 @@ static bool		GlobalGCInProgress;
 void StartGlobalGC (VProc_t *self, Value_t **roots)
 {
   bool leaderVProc;
+  int nVProcs = GetNumVProcs();
+  int nOtherVProcs = nVProcs - 1;
   MutexLock(&GCLock);
-    if (GlobalGCInProgress) {
-      leaderVProc = false;
-      if (++nReadyForGC == GetNumVProcs())
-	CondSignal(&LeaderWait);
-      CondWait(&FollowerWait, &GCLock);
-    } else {
+    if (!GlobalGCInProgress) {
       leaderVProc = true;
       GlobalGCInProgress = true;
-      BarrierInit(&GCBarrier, GetNumVProcs());
+      nReadyForGC = 0;
+      BarrierInit(&GCBarrier, nVProcs);
+    } else {
+      leaderVProc = false;
+      if (++nReadyForGC == nOtherVProcs)
+         CondSignal(&LeaderWait);
+      CondWait(&FollowerWait, &GCLock);
     }
-  /* add the vproc's pages to the from-space list */
+  /* ... adding the vproc's pages to the from-space list ... */
   MutexUnlock(&GCLock);
   if (leaderVProc) {
-    for (int i = 0; i < GetNumVProcs(); i++)
+    for (int i = 0; i < nVProcs; i++)
       if (VProcs[i] != self)
-        GlobalGCNotify(VProcs[i]);
+        Send(vp, vp->dummyCont, M_NIL);
     MutexLock(&GCLock);
-      CondWait(&LeaderWait, &GCLock);
+      while (nReadyForGC < nOtherVProcs)
+        CondWait(&LeaderWait, &GCLock);
       CondBroadcast(&FollowerWait, &GCLock);
     MutexUnlock(&GCLock);    
   }
-  /* Run the global garbage collector */
+  /* ... running the global garbage collector ... */
   if (leaderVProc)
     GlobalGCInProgress = false;
   BarrierWait(&GCBarrier);
-  if (leaderVProc) {
-    /* reclaim from-space pages */
-  }
 }
 \end{lstlisting}
 \caption{The global garbage collection protocol.}\label{fig:global-gc-protocol}
-\end{figure}
-
-\begin{figure}
-\lstset{language=C}
-\lstset{commentstyle=\textit}
-\lstset{numbers=left}
-\begin{lstlisting}
-void GlobalGCNotify (VProc_t *vp)
-{
-  vp->globalGCInProgress = true;
-  Send(vp, vp->dummyCont, M_NIL);
-}
-\end{lstlisting}
-\caption{Notify a vproc of a global collection in progress.}\label{fig:global-gc-notify}
 \end{figure}
 
 \end{document}  
