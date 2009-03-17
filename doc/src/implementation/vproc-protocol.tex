@@ -72,9 +72,9 @@ Below are the operations that the vproc protocol must provide.
       void Send (VProc_t *vp, Fiber_t *k, Value_t *fls);
     \end{lstlisting}
     \end{CCODE}
-  \item Place a high-priority signal on the landing pad of a remote vproc. The difference an
-    Interrupt and a Send is that an Interrupt forces the vproc to handle the signal
-    within a constant number of compuational steps.
+  \item Place a high-priority signal on the landing pad of a remote vproc. Unlike Send, Interrupt
+    forces the vproc to stop and handle the incoming signal. The vproc must handle the signal
+    within a constant number of computational steps.
     \footnote{Note that this operation has undefined behavior when applied to the host vproc.}
     \begin{CCODE}
       \begin{lstlisting}
@@ -493,7 +493,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
   if (leaderVProc) {
     for (int i = 0; i < nVProcs; i++)
       if (VProcs[i] != self)
-        Interrupt(vp, vp->dummyCont, M_NIL);
+        Interrupt(vp, dummyCont, M_NIL);
     MutexLock(&GCLock);
       while (nReadyForGC < nOtherVProcs)
         CondWait(&LeaderWait, &GCLock);
