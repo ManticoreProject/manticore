@@ -87,7 +87,6 @@ Below are the operations that the vproc protocol must provide.
       void Sleep (VProc_t *host);
         \end{lstlisting}
     \end{CCODE}
-
 \end{itemize}
 
 We choose to minimize the synchronization overhead of Send even at the expense of
@@ -102,7 +101,7 @@ The sleeping flag is only necessary for the first protocol.
 \begin{lstlisting}
 struct struct_vproc {
     ...
-    Value_t     ldgPad;
+    QueueItem_t *ldgPad;
     Mutex_t	lock;
     Cond_t	wait;
     bool        sleeping;
@@ -111,7 +110,6 @@ struct struct_vproc {
 typedef struct struct_vproc VProc_t;
     \end{lstlisting}
     \end{CCODE}
-
 
 \subsection{Protocol 1}\label{sec:protocol1}
 
@@ -124,14 +122,12 @@ The landing pad is represented by either one of the values below.
 EMPTY
 \end{lstlisting}
 \end{CCODE}
-
 \item A queue item consists of a fiber k and its fiber-local storage fls and the next queue item.
 \begin{CCODE}
 \begin{lstlisting}
 QueueItem(k, fls, item)
     \end{lstlisting}
     \end{CCODE}
-
 \end{itemize}
 
 \paragraph{Send}
@@ -146,9 +142,9 @@ whether the vproc needs to be woken up (lines 10-12).
 void Send (VProc_t *vp, Fiber_t *k, Value_t *fls)
 {
   while (true) {
-    Value_t *ldgPadOrig = vp->ldgPad;
-    Value_t *ldgPadNew = Promote(QueueItem(k, fls, ldgPadOrig));
-    Value_t *x = CAS(&(vp->ldgPad), ldgPadOrig, ldgPadNew);
+    QueueItem_t *ldgPadOrig = vp->ldgPad;
+    QueueItem_t *ldgPadNew = Promote(QueueItem(k, fls, ldgPadOrig));
+    QueueItem_t *x = CAS(&(vp->ldgPad), ldgPadOrig, ldgPadNew);
     if (x != ldgPadOrig) {
       continue;
     } else {
@@ -161,7 +157,6 @@ void Send (VProc_t *vp, Fiber_t *k, Value_t *fls)
 }
     \end{lstlisting}
     \end{CCODE}
-
 \caption{Protocol 1 Send operation.}\label{fig:protocol1-send}
 \end{figure}
 
@@ -175,12 +170,12 @@ But if successful, Recv set the landing pad to empty and returns the list of pen
 \begin{CCODE}
 \lstset{numbers=left}
 \begin{lstlisting}
-Value_t Recv (VProc_t *host)
+QueueItem_t Recv (VProc_t *host)
 {
-  Value_t *ldgPadOrig = host->ldgPad;
+  QueueItem_t *ldgPadOrig = host->ldgPad;
   if (ldgPadOrig == EMPTY)
     return PtrToValue(M_NIL);
-  Value_t *x = CAS(&(host->ldgPad), ldgPadOrig, EMPTY);
+  QueueItem_t *x = CAS(&(host->ldgPad), ldgPadOrig, EMPTY);
   if (x == ldgPadOrig)
     return PtrToValue(ldgPadOrig);
   else
@@ -255,15 +250,15 @@ but otherwise release the lock and retry (lines 15-16).
 void Send (VProc_t *vp, Fiber_t *k, Value_t *fls)
 {
   while (true) {
-    Value_t *stk = vp->ldgPad;
-    if (stk != SLEEPING) {
-      Value_t *newStk = Promote(QueueItem(k, fls, stk));
-      Value_t *x = CAS(&(vp->ldgPad), stk, newStk);
-      if (x == stk)
+    QueueItem_t *ldgPadOrig = vp->ldgPad;
+    if (ldgPadOrig != SLEEPING) {
+      QueueItem_t *ldgPadNew = Promote(QueueItem(k, fls, ldgPadOrig));
+      QueueItem_t *x = CAS(&(vp->ldgPad), ldgPadOrig, ldgPadNew);
+      if (x == ldgPadOrig)
 	return;
       else
 	continue;
-    } else {            /* (stk == SLEEPING) */
+    } else {            /* (ldgPadOrig == SLEEPING) */
       MutexLock(&(vp->lock));
         if (vp->ldgPad != SLEEPING) {
           MutexUnlock(&(vp->lock));
@@ -278,7 +273,6 @@ void Send (VProc_t *vp, Fiber_t *k, Value_t *fls)
 }
     \end{lstlisting}
     \end{CCODE}
-
 \caption{Protocol 2 Send operation.}\label{fig:protocol2-send}
 \end{figure}
 
@@ -300,14 +294,13 @@ Once the vproc has woken up, it releases the lock (line 7).
 void Sleep (VProc_t *host)
 {
   MutexLock(&(vp->lock));
-    Value_t *x = CAS(&(vp->ldgPad), EMPTY, SLEEPING);
+    QueueItem_t *x = CAS(&(vp->ldgPad), EMPTY, SLEEPING);
     while (vp->ldgPad == SLEEPING)
       CondWait(&(vp->wait), &(vp->lock));
   MutexUnlock(&(vp->lock));
 }
     \end{lstlisting}
     \end{CCODE}
-
 \caption{Protocol 2: Sleep operation.}\label{fig:protocol2-sleep}
 \end{figure}
 
@@ -320,9 +313,8 @@ leave its sleep state.
 
 \subsection{Evaluation}\label{sec:evaluation}
 Protocol 1 is conceptually simpler and requires fewer lines of code.
-Protocol 2, however, is likely to be faster on the common case, where the vproc is
-already awake.
-In this case, protocol 2 makes one less remote memory reference than protocol 1.
+On the other hand, protocol 2 benefits from a potentially faster Send operation.
+In the common case where the vproc is awake, a protocol-2 Send requires one less memory reference.
 
 \section{Global garbage collection}\label{sec:global-gc}
 Figure \ref{fig:global-gc-protocol} shows the protocol for starting a global garbage
@@ -341,42 +333,36 @@ Below is global state (shared by all vprocs) that we use in the protocol.
       static Mutex_t GCLock;
         \end{lstlisting}
     \end{CCODE}
-
   \item Condition variable for the lead vproc.
     \begin{CCODE}
     \begin{lstlisting}
       static Cond_t LeaderWait;
         \end{lstlisting}
     \end{CCODE}
-
   \item Condition variable for the non-lead vprocs.
     \begin{CCODE}
     \begin{lstlisting}
       static Cond_t FollowerWait;
         \end{lstlisting}
     \end{CCODE}
-
   \item Number of vprocs ready to begin a global collection.
     \begin{CCODE}
     \begin{lstlisting}
       static int nReadyForGC;
         \end{lstlisting}
     \end{CCODE}
-
   \item N-way barrier vprocs must pass before the collection can complete.
     \begin{CCODE}
     \begin{lstlisting}
       static Barrier_t GCBarrier;
         \end{lstlisting}
     \end{CCODE}
-
   \item True when a global collection is in progress.
     \begin{CCODE}
     \begin{lstlisting}
       static bool GlobalGCInProgress;
         \end{lstlisting}
     \end{CCODE}
-
 \end{itemize}
 
 \figref{fig:global-gc-protocol} shows the protocol for performing a global collection.
@@ -431,7 +417,6 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 }
     \end{lstlisting}
     \end{CCODE}
-
 \caption{The global garbage collection protocol.}\label{fig:global-gc-protocol}
 \end{figure}
 
