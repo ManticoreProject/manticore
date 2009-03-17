@@ -72,6 +72,15 @@ Below are the operations that the vproc protocol must provide.
       void Send (VProc_t *vp, Fiber_t *k, Value_t *fls);
     \end{lstlisting}
     \end{CCODE}
+  \item Place a high-priority signal on the landing pad of a remote vproc. The difference an
+    Interrupt and a Send is that an Interrupt forces the vproc to handle the signal
+    within a constant number of compuational steps.
+    \footnote{Note that this operation has undefined behavior when applied to the host vproc.}
+    \begin{CCODE}
+      \begin{lstlisting}
+      void Interrupt (VProc_t *vp, Fiber_t *k, Value_t *fls);
+    \end{lstlisting}
+    \end{CCODE}
   \item Receive signals from the host vproc's landing pad. 
     \footnote{Note that this operation has undefined behavior when applied to a remote vproc.}
     \begin{CCODE}
@@ -79,7 +88,6 @@ Below are the operations that the vproc protocol must provide.
       Value_t Recv (VProc_t *host);
         \end{lstlisting}
     \end{CCODE}
-
   \item Put the host vproc to sleep until its landing pad becomes nonempty.
     \footnote{Note that this operation has undefined behavior when applied to a remote vproc.}
     \begin{CCODE}
@@ -95,21 +103,34 @@ The rationale is that, in the common case, the Sleep operation affects idle vpro
 the Send function affects working vprocs.
 
 \paragraph{Vproc components}
-The per vproc structure VProc\_t contains four components that are relevant to this discussion.
-The sleeping flag is only necessary for the first protocol.
+The vproc structure (\figref{fig:vproc-structure}) contains a few components that are relevant to this discussion.
+\begin{itemize}
+\item ldgPad This is the landing pad.
+\item lock This value is a mutex lock that protects vproc state.
+\item cond This value is a condition variable that we use to put the vproc to sleep.
+\item sleeping This flag is true when the vproc is sleeping.\footnote{It is only necessary for protocol 1.}
+\item limPtr This value represents the heap-limit pointer. By setting this value to zero, we can force
+  interrupt the vproc while it is running, and thus can force the vproc to receive any pending high-priority
+  signals. We use the limit pointer to implement the Interrupt operation.
+\end{itemize}
+
+\begin{figure}
 \begin{CCODE}
 \begin{lstlisting}
 struct struct_vproc {
     ...
-    QueueItem_t *ldgPad;
-    Mutex_t	lock;
-    Cond_t	wait;
-    bool        sleeping;
+    QueueItem_t   *ldgPad;
+    Mutex_t	  lock;
+    Cond_t	  wait;
+    bool          sleeping;
+    Value_t       limPtr;
     ...
 };
 typedef struct struct_vproc VProc_t;
-    \end{lstlisting}
-    \end{CCODE}
+\end{lstlisting}
+\end{CCODE}
+\caption{The vproc structure.}\label{fig:vproc-structure}
+\end{figure}
 
 \subsection{Protocol 1}\label{sec:protocol1}
 
@@ -155,9 +176,39 @@ void Send (VProc_t *vp, Fiber_t *k, Value_t *fls)
     }
   }
 }
-    \end{lstlisting}
-    \end{CCODE}
+\end{lstlisting}
+\end{CCODE}
 \caption{Protocol 1 Send operation.}\label{fig:protocol1-send}
+\end{figure}
+
+\paragraph{Interrupt}
+The Interrupt operation (\figref{fig:protocol1-interrupt}) is essentially identical to Send, except for the
+instruction at line 13 that zeros out the limit pointer.
+
+\begin{figure}
+\begin{CCODE}
+\lstset{numbers=left}
+\begin{lstlisting}
+void Interrupt (VProc_t *vp, Fiber_t *k, Value_t *fls)
+{
+  while (true) {
+    QueueItem_t *ldgPadOrig = vp->ldgPad;
+    QueueItem_t *ldgPadNew = Promote(QueueItem(k, fls, ldgPadOrig));
+    QueueItem_t *x = CAS(&(vp->ldgPad), ldgPadOrig, ldgPadNew);
+    if (x != ldgPadOrig) {
+      continue;
+    } else {
+      if (vp->sleeping) 
+        CondSignal(&(vp->wait));
+      else
+        vp->limPtr = PtrToValue(0);
+      return;
+    }
+  }
+}
+\end{lstlisting}
+\end{CCODE}
+\caption{Protocol 1 Interrupt operation.}\label{fig:protocol1-interrupt}
 \end{figure}
 
 \paragraph{Receive}
@@ -181,8 +232,8 @@ QueueItem_t Recv (VProc_t *host)
   else
     return PtrToValue(M_NIL);
 }
-    \end{lstlisting}
-    \end{CCODE}
+\end{lstlisting}
+\end{CCODE}
 
 \caption{Protocol 1 Recv operation.}\label{fig:protocol1-recv}
 \end{figure}
@@ -271,9 +322,48 @@ void Send (VProc_t *vp, Fiber_t *k, Value_t *fls)
     }
   }
 }
-    \end{lstlisting}
-    \end{CCODE}
+\end{lstlisting}
+\end{CCODE}
 \caption{Protocol 2 Send operation.}\label{fig:protocol2-send}
+\end{figure}
+
+\paragraph{Interrupt}
+The Interrupt operation (\figref{fig:protocol2-interrupt}) is identical to the Send operation,
+except that we zero out the limit pointer at line 9.
+
+\begin{figure}
+\begin{CCODE}
+\lstset{numbers=left}
+\begin{lstlisting}
+void Interrupt (VProc_t *vp, Fiber_t *k, Value_t *fls)
+{
+  while (true) {
+    QueueItem_t *ldgPadOrig = vp->ldgPad;
+    if (ldgPadOrig != SLEEPING) {
+      QueueItem_t *ldgPadNew = Promote(QueueItem(k, fls, ldgPadOrig));
+      QueueItem_t *x = CAS(&(vp->ldgPad), ldgPadOrig, ldgPadNew);
+      if (x == ldgPadOrig) {
+        vp->ldgPad = PtrToValue(0);
+	return;
+      } else {
+	continue;
+      }
+    } else {            /* (ldgPadOrig == SLEEPING) */
+      MutexLock(&(vp->lock));
+        if (vp->ldgPad != SLEEPING) {
+          MutexUnlock(&(vp->lock));
+          continue;
+        }
+        vp->ldgPad = Promote(QueueItem(k, fls, EMPTY));
+        CondSignal(&(vp->wait));
+      MutexUnlock(&(vp->lock));
+      return;
+    }
+  }
+}
+\end{lstlisting}
+\end{CCODE}
+\caption{Protocol 2 Interrupt operation.}\label{fig:protocol2-interrupt}
 \end{figure}
 
 \paragraph{Receive}
@@ -403,7 +493,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
   if (leaderVProc) {
     for (int i = 0; i < nVProcs; i++)
       if (VProcs[i] != self)
-        Send(vp, vp->dummyCont, M_NIL);
+        Interrupt(vp, vp->dummyCont, M_NIL);
     MutexLock(&GCLock);
       while (nReadyForGC < nOtherVProcs)
         CondWait(&LeaderWait, &GCLock);
