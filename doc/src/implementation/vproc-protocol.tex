@@ -9,6 +9,11 @@
 \usepackage{graphicx}
 \usepackage{listings}
 
+\newenvironment{CCODE}
+{\lstset{language=C}
+\lstset{columns=flexible}
+  \lstset{commentstyle=\textit}}
+
 \title{VProc protocol}
 \author{The Manticore Group}
 \date{Draft of \today}
@@ -62,25 +67,27 @@ Below are the operations that the vproc protocol must provide.
 \begin{itemize}
   \item Place a signal on the landing pad of a remote vproc.
     \footnote{Note that this operation has undefined behavior when applied to the host vproc.}
-    \lstset{language=C}
-    \lstset{commentstyle=\textit}
-    \begin{lstlisting}
+    \begin{CCODE}
+      \begin{lstlisting}
       void Send (VProc_t *vp, Fiber_t *k, Value_t *fls);
     \end{lstlisting}
+    \end{CCODE}
   \item Receive signals from the host vproc's landing pad. 
     \footnote{Note that this operation has undefined behavior when applied to a remote vproc.}
-    \lstset{language=C}
-    \lstset{commentstyle=\textit}
+    \begin{CCODE}
     \begin{lstlisting}
       Value_t Recv (VProc_t *host);
-    \end{lstlisting}
+        \end{lstlisting}
+    \end{CCODE}
+
   \item Put the host vproc to sleep until its landing pad becomes nonempty.
     \footnote{Note that this operation has undefined behavior when applied to a remote vproc.}
-    \lstset{language=C}
-    \lstset{commentstyle=\textit}
+    \begin{CCODE}
     \begin{lstlisting}
       void Sleep (VProc_t *host);
-    \end{lstlisting}
+        \end{lstlisting}
+    \end{CCODE}
+
 \end{itemize}
 
 We choose to minimize the synchronization overhead of Send even at the expense of
@@ -91,8 +98,7 @@ the Send function affects working vprocs.
 \paragraph{Vproc components}
 The per vproc structure VProc\_t contains four components that are relevant to this discussion.
 The sleeping flag is only necessary for the first protocol.
-\lstset{language=C}
-\lstset{commentstyle=\textit}
+\begin{CCODE}
 \begin{lstlisting}
 struct struct_vproc {
     ...
@@ -103,20 +109,30 @@ struct struct_vproc {
     ...
 };
 typedef struct struct_vproc VProc_t;
-\end{lstlisting}
+    \end{lstlisting}
+    \end{CCODE}
+
 
 \subsection{Protocol 1}\label{sec:protocol1}
 
 \paragraph{Landing pad representation}
-The landing pad is represented by one of the values below, where EMPTY
-denotes an empty stack, k is a fiber, fls is fiber-local storage, and stk
-is a queue item.
-\lstset{language=C}
-\lstset{commentstyle=\textit}
+The landing pad is represented by either one of the values below.
+\begin{itemize}
+\item Empty stack.
+\begin{CCODE}
 \begin{lstlisting}
 EMPTY
-QueueItem(k, fls, stk)
 \end{lstlisting}
+\end{CCODE}
+
+\item A queue item consists of a fiber k and its fiber-local storage fls and the next queue item.
+\begin{CCODE}
+\begin{lstlisting}
+QueueItem(k, fls, item)
+    \end{lstlisting}
+    \end{CCODE}
+
+\end{itemize}
 
 \paragraph{Send}
 The Send operation (\figref{fig:protocol1-send}) has two phases: first it repeatedly attempts to place a
@@ -124,8 +140,7 @@ signal on the landing pad (lines 3-8), and once successful, it checks
 whether the vproc needs to be woken up (lines 10-12).
 
 \begin{figure}
-\lstset{language=C}
-\lstset{commentstyle=\textit}
+\begin{CCODE}
 \lstset{numbers=left}
 \begin{lstlisting}
 void Send (VProc_t *vp, Fiber_t *k, Value_t *fls)
@@ -144,7 +159,9 @@ void Send (VProc_t *vp, Fiber_t *k, Value_t *fls)
     }
   }
 }
-\end{lstlisting}
+    \end{lstlisting}
+    \end{CCODE}
+
 \caption{Protocol 1 Send operation.}\label{fig:protocol1-send}
 \end{figure}
 
@@ -155,22 +172,23 @@ If the attempt fails or the landing pad is empty, Recv simply returns an empty l
 But if successful, Recv set the landing pad to empty and returns the list of pending signals.
 
 \begin{figure}
-\lstset{language=C}
-\lstset{commentstyle=\textit}
+\begin{CCODE}
 \lstset{numbers=left}
 \begin{lstlisting}
 Value_t Recv (VProc_t *host)
 {
   Value_t *ldgPadOrig = host->ldgPad;
   if (ldgPadOrig == EMPTY)
-    return PtrToValue(M_NIL)_;
+    return PtrToValue(M_NIL);
   Value_t *x = CAS(&(host->ldgPad), ldgPadOrig, EMPTY);
   if (x == ldgPadOrig)
     return PtrToValue(ldgPadOrig);
   else
     return PtrToValue(M_NIL);
 }
-\end{lstlisting}
+    \end{lstlisting}
+    \end{CCODE}
+
 \caption{Protocol 1 Recv operation.}\label{fig:protocol1-recv}
 \end{figure}
 
@@ -193,8 +211,7 @@ Thus, it must be the case that all subsequent sends to that vproc are garanteed 
 wake the vproc from its sleeping state (line 11 of \figref{fig:protocol1-send}).
 
 \begin{figure}
-\lstset{language=C}
-\lstset{commentstyle=\textit}
+\begin{CCODE}
 \lstset{numbers=left}
 \begin{lstlisting}
 void Sleep (VProc_t *host)
@@ -207,7 +224,9 @@ void Sleep (VProc_t *host)
     host->sleeping = false;
   MutexUnlock(&(host->lock));
 }
-\end{lstlisting}
+    \end{lstlisting}
+    \end{CCODE}
+
 \caption{Protocol 1: Sleep operation.}\label{fig:protocol1-sleep}
 \end{figure}
 
@@ -215,14 +234,7 @@ void Sleep (VProc_t *host)
 
 \paragraph{Landing pad representation}
 The landing pad is represented the same way as in protocol 1, except that it 
-contains an additional SLEEPING state.
-\lstset{language=C}
-\lstset{commentstyle=\textit}
-\begin{lstlisting}
-EMPTY
-SLEEPING
-QueueItem(k, fls, stk)
-\end{lstlisting}
+contains an additional state called SLEEPING.
 
 \paragraph{Send}
 The Send operation (\figref{fig:protocol2-sleep}) takes one of two based on the assumed
@@ -237,8 +249,7 @@ but otherwise release the lock and retry (lines 15-16).
 \end{itemize}
 
 \begin{figure}
-\lstset{language=C}
-\lstset{commentstyle=\textit}
+\begin{CCODE}
 \lstset{numbers=left}
 \begin{lstlisting}
 void Send (VProc_t *vp, Fiber_t *k, Value_t *fls)
@@ -265,7 +276,9 @@ void Send (VProc_t *vp, Fiber_t *k, Value_t *fls)
     }
   }
 }
-\end{lstlisting}
+    \end{lstlisting}
+    \end{CCODE}
+
 \caption{Protocol 2 Send operation.}\label{fig:protocol2-send}
 \end{figure}
 
@@ -281,8 +294,7 @@ nonempty (lines 5-6).
 Once the vproc has woken up, it releases the lock (line 7).
 
 \begin{figure}
-\lstset{language=C}
-\lstset{commentstyle=\textit}
+\begin{CCODE}
 \lstset{numbers=left}
 \begin{lstlisting}
 void Sleep (VProc_t *host)
@@ -293,7 +305,9 @@ void Sleep (VProc_t *host)
       CondWait(&(vp->wait), &(vp->lock));
   MutexUnlock(&(vp->lock));
 }
-\end{lstlisting}
+    \end{lstlisting}
+    \end{CCODE}
+
 \caption{Protocol 2: Sleep operation.}\label{fig:protocol2-sleep}
 \end{figure}
 
@@ -322,41 +336,47 @@ Non-leader vprocs must participate in every collection, whether they are awake o
 Below is global state (shared by all vprocs) that we use in the protocol.
 \begin{itemize}
   \item Mutex lock for the state.
-    \lstset{language=C}
-    \lstset{commentstyle=\textit}
+    \begin{CCODE}
     \begin{lstlisting}
-      static Mutex_t		GCLock;
-    \end{lstlisting}
+      static Mutex_t GCLock;
+        \end{lstlisting}
+    \end{CCODE}
+
   \item Condition variable for the lead vproc.
-    \lstset{language=C}
-    \lstset{commentstyle=\textit}
+    \begin{CCODE}
     \begin{lstlisting}
-      static Cond_t		LeaderWait;
-    \end{lstlisting}
+      static Cond_t LeaderWait;
+        \end{lstlisting}
+    \end{CCODE}
+
   \item Condition variable for the non-lead vprocs.
-    \lstset{language=C}
-    \lstset{commentstyle=\textit}
+    \begin{CCODE}
     \begin{lstlisting}
-      static Cond_t		FollowerWait;
-    \end{lstlisting}
+      static Cond_t FollowerWait;
+        \end{lstlisting}
+    \end{CCODE}
+
   \item Number of vprocs ready to begin a global collection.
-    \lstset{language=C}
-    \lstset{commentstyle=\textit}
+    \begin{CCODE}
     \begin{lstlisting}
-      static int		nReadyForGC;
-    \end{lstlisting}
+      static int nReadyForGC;
+        \end{lstlisting}
+    \end{CCODE}
+
   \item N-way barrier vprocs must pass before the collection can complete.
-    \lstset{language=C}
-    \lstset{commentstyle=\textit}
+    \begin{CCODE}
     \begin{lstlisting}
-      static Barrier_t	GCBarrier;
-    \end{lstlisting}
+      static Barrier_t GCBarrier;
+        \end{lstlisting}
+    \end{CCODE}
+
   \item True when a global collection is in progress.
-    \lstset{language=C}
-    \lstset{commentstyle=\textit}
+    \begin{CCODE}
     \begin{lstlisting}
-      static bool		GlobalGCInProgress;
-    \end{lstlisting}
+      static bool GlobalGCInProgress;
+        \end{lstlisting}
+    \end{CCODE}
+
 \end{itemize}
 
 \figref{fig:global-gc-protocol} shows the protocol for performing a global collection.
@@ -372,8 +392,7 @@ can begin (line 30).
 The barrier (line 33) marks the point that the collection ends.
 
 \begin{figure}
-\lstset{language=C}
-\lstset{commentstyle=\textit}
+\begin{CCODE}
 \lstset{numbers=left}
 \begin{lstlisting}
 void StartGlobalGC (VProc_t *self, Value_t **roots)
@@ -410,7 +429,9 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
     GlobalGCInProgress = false;
   BarrierWait(&GCBarrier);
 }
-\end{lstlisting}
+    \end{lstlisting}
+    \end{CCODE}
+
 \caption{The global garbage collection protocol.}\label{fig:global-gc-protocol}
 \end{figure}
 
