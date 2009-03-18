@@ -25,14 +25,7 @@
 This document describes the protocol for managing vprocs.
 
 \section{Signaling and sleeping}\label{sec:signaling-and-sleeping}
-This section presents two alternative signaling protocols for vprocs.
-Both protocols have their advantages, and here we describe both to evaluate
-which is most appropriate for the Manticore implementation.
-The rest of this section is structured as follows.
-In this secion we outline the interface and semantics of the protocol.
-Section \ref{sec:protocol1} describes the first protocol, and section
-\ref{sec:protocol2} describes the second protocol.
-Then \secref{sec:evaluation} compares the protocols.
+This section presents the signaling and sleeping protocol used by vprocs.
 
 \paragraph{Signals}
 A signal is a fiber paired with fiber-local storage.
@@ -62,77 +55,70 @@ even when work becomes available.
 Our protocols must address this race condition by using some additional
 synchronization.
 
-\paragraph{Vproc operations}
+\paragraph{VProc operations}
 Below are the operations that the vproc protocol must provide.
 \begin{itemize}
-  \item Place a signal on the landing pad of a remote vproc.
-    \footnote{Note that this operation has undefined behavior when applied to the host vproc.}
-    \begin{CCODE}
-      \begin{lstlisting}
-      void Send (VProc_t *vp, Fiber_t *k, Value_t *fls);
-    \end{lstlisting}
-    \end{CCODE}
-  \item Place a high-priority signal on the landing pad of a remote vproc. Unlike Send, Interrupt
-    forces the vproc to stop and handle the incoming signal. The vproc must handle the signal
+  \item Place a signal on the landing pad of a remote vproc. This operation also forces the
+    vproc to stop and handle the incoming signal. The vproc is guaranteed to handle the signal
     within a constant number of computational steps.
     \footnote{Note that this operation has undefined behavior when applied to the host vproc.}
     \begin{CCODE}
       \begin{lstlisting}
-      void Interrupt (VProc_t *vp, Fiber_t *k, Value_t *fls);
+      void VProcSendSignal (VProc_t *vp, Fiber_t *k, Value_t *fls);
     \end{lstlisting}
     \end{CCODE}
   \item Receive signals from the host vproc's landing pad. 
     \footnote{Note that this operation has undefined behavior when applied to a remote vproc.}
     \begin{CCODE}
     \begin{lstlisting}
-      Value_t Recv (VProc_t *host);
+      Value_t VProcRecvSignal (VProc_t *host);
         \end{lstlisting}
     \end{CCODE}
   \item Put the host vproc to sleep until its landing pad becomes nonempty.
     \footnote{Note that this operation has undefined behavior when applied to a remote vproc.}
     \begin{CCODE}
     \begin{lstlisting}
-      void Sleep (VProc_t *host);
+      void VProcSleep (VProc_t *host);
         \end{lstlisting}
     \end{CCODE}
 \end{itemize}
 
-We choose to minimize the synchronization overhead of Send even at the expense of
-increasing the overhead of Sleep.
-The rationale is that, in the common case, the Sleep operation affects idle vprocs, whereas
-the Send function affects working vprocs.
+We choose to minimize the synchronization overhead of VProcSendSignal even at the expense of
+increasing the overhead of VProcSleep.
+The rationale is that, in the common case, the VProcSleep operation affects idle vprocs, whereas
+the VProcSendSignal function affects working vprocs.
 
-\paragraph{Vproc components}
+\paragraph{VProc components}
 The vproc structure (\figref{fig:vproc-structure}) contains a few components that are relevant to this discussion.
 \begin{itemize}
-\item ldgPad This is the landing pad.
-\item lock This value is a mutex lock that protects vproc state.
-\item cond This value is a condition variable that we use to put the vproc to sleep.
-\item sleeping This flag is true when the vproc is sleeping.\footnote{It is only necessary for protocol 1.}
-\item limPtr This value represents the heap-limit pointer. By setting this value to zero, we can force
+\item ldgPad - The landing pad.
+\item lock - Mutex lock provided by the OS that protects vproc state.
+\item cond - Condition variable provided by the OS that we use to put the vproc to sleep.
+\item sleeping - True, when the vproc is sleeping.\footnote{It is only necessary for protocol 1.}
+\item limPtr - Heap-limit pointer. By setting this value to zero, we can force
   interrupt the vproc while it is running, and thus can force the vproc to receive any pending high-priority
-  signals. We use the limit pointer to implement the Interrupt operation.
+  signals. We use the limit pointer to implement the VProcSendSignal operation.
 \end{itemize}
 
 \begin{figure}
+\begin{center}
 \begin{CCODE}
 \begin{lstlisting}
+typedef struct struct_vproc VProc_t;
 struct struct_vproc {
     ...
-    QueueItem_t   *ldgPad;
+    Value_t       ldgPad;
     Mutex_t	  lock;
     Cond_t	  wait;
     bool          sleeping;
     Value_t       limPtr;
     ...
 };
-typedef struct struct_vproc VProc_t;
 \end{lstlisting}
 \end{CCODE}
-\caption{The vproc structure.}\label{fig:vproc-structure}
+\end{center}
+\caption{The VProc structure.}\label{fig:vproc-structure}
 \end{figure}
-
-\subsection{Protocol 1}\label{sec:protocol1}
 
 \paragraph{Landing pad representation}
 The landing pad is represented by either one of the values below.
@@ -151,73 +137,57 @@ QueueItem(k, fls, item)
     \end{CCODE}
 \end{itemize}
 
-\paragraph{Send}
-The Send operation (\figref{fig:protocol1-send}) has two phases: first it repeatedly attempts to place a
-signal on the landing pad (lines 3-8), and once successful, it checks
-whether the vproc needs to be woken up (lines 10-12).
+\paragraph{VProcSendSignal}
+The VProcSendSignal operation (\figref{fig:protocol1-send}) consists of two phases: 
+\begin{enumerate}
+  \item The operation repeatedly attempts to place a signal on the landing pad (lines 4-8).
+  \item Once the signal has successfully entered the landing pad (line 10), the operation proceeds
+    to notify the vproc of the signal, first by zeroing out the limit pointer (line 10), and then
+    by signaling the vproc to wake it from sleeping (lines 11-12).
+\end{enumerate}
 
 \begin{figure}
 \begin{CCODE}
 \lstset{numbers=left}
 \begin{lstlisting}
-void Send (VProc_t *vp, Fiber_t *k, Value_t *fls)
+void VProcSendSignal (VProc_t *self, VProc_t *vp, Value_t fls, Value_t k)
 {
-  while (true) {
-    QueueItem_t *ldgPadOrig = vp->ldgPad;
-    QueueItem_t *ldgPadNew = Promote(QueueItem(k, fls, ldgPadOrig));
-    QueueItem_t *x = CAS(&(vp->ldgPad), ldgPadOrig, ldgPadNew);
-    if (x != ldgPadOrig) {
-      continue;
-    } else {
-      if (vp->sleeping) {
-        CondSignal(&(vp->wait));
+    while (true) {
+      Value_t landingPadOrig = vp->landingPad;
+      Value_t landingPadNew = MkQueueItem(self, fls, k, landingPadOrig);
+      Value_t x = CompareAndSwapValue(&(vp->landingPad), landingPadOrig, landingPadNew);
+      if (ValueToPtr(x) != ValueToPtr(landingPadOrig)) {
+	  continue;
+      } else {
+        vp->limPtr = PtrToValue(0);
+	if (vp->sleeping == M_TRUE)
+	    CondSignal(&(vp->wait));
+	return;
       }
-      return;
     }
-  }
 }
 \end{lstlisting}
 \end{CCODE}
-\caption{Protocol 1 Send operation.}\label{fig:protocol1-send}
+\caption{Protocol 1 VProcSendSignal operation.}\label{fig:protocol1-send}
 \end{figure}
 
-\paragraph{Interrupt}
-The Interrupt operation (\figref{fig:protocol1-interrupt}) zeros the vproc's limit pointer after performing
-a Send.
-Subsequently, at the next heap-limit test, the vproc is guaranteed to stop and handle its pending signals,
-including the one we just sent.
-
-\begin{figure}
-\begin{CCODE}
-\lstset{numbers=left}
-\begin{lstlisting}
-void Interrupt (VProc_t *vp, Fiber_t *k, Value_t *fls)
-{
-  Send(vp, k, fls);
-  vp->limPtr = PtrToValue(0);
-}
-\end{lstlisting}
-\end{CCODE}
-\caption{Protocol 1 Interrupt operation.}\label{fig:protocol1-interrupt}
-\end{figure}
-
-\paragraph{Receive}
-The Recv operation (\figref{fig:protocol1-recv}) attempts to retrieve all pending signals from the
+\paragraph{VProcRecvSignal}
+The VProcRecvSignal operation (\figref{fig:protocol1-recv}) attempts to retrieve all pending signals from the
 landing pad at once.
-If the attempt fails or the landing pad is empty, Recv simply returns an empty list (lines 5 and 10).
-But if successful, Recv set the landing pad to empty and returns the list of pending signals.
+If the attempt fails or the landing pad is empty, VProcRecvSignal simply returns an empty list (lines 5 and 10).
+If successful, VProcRecvSignal sets the landing pad to empty and returns the list of pending signals (line 8).
 
 \begin{figure}
 \begin{CCODE}
 \lstset{numbers=left}
 \begin{lstlisting}
-QueueItem_t Recv (VProc_t *host)
+Value_t VProcRecvSignal (VProc_t *host)
 {
-  QueueItem_t *ldgPadOrig = host->ldgPad;
-  if (ldgPadOrig == EMPTY)
+  Value_t ldgPadOrig = host->ldgPad;
+  if (ValueToPtr(ldgPadOrig) == EMPTY)
     return PtrToValue(M_NIL);
-  QueueItem_t *x = CAS(&(host->ldgPad), ldgPadOrig, EMPTY);
-  if (x == ldgPadOrig)
+  Value_t x = CAS(&(host->ldgPad), ldgPadOrig, EMPTY);
+  if (ValueToPtr(x) == ValueToPtr(ldgPadOrig))
     return PtrToValue(ldgPadOrig);
   else
     return PtrToValue(M_NIL);
@@ -225,24 +195,22 @@ QueueItem_t Recv (VProc_t *host)
 \end{lstlisting}
 \end{CCODE}
 
-\caption{Protocol 1 Recv operation.}\label{fig:protocol1-recv}
+\caption{Protocol 1 VProcRecvSignal operation.}\label{fig:protocol1-recv}
 \end{figure}
 
-\paragraph{Sleep}
-The Sleep operation (\figref{fig:protocol1-sleep}) puts the vproc to sleep by 
+\paragraph{VProcSleep}
+The VProcSleep operation (\figref{fig:protocol1-sleep}) puts the vproc to sleep by 
 setting the sleeping flag to true and subsequently waiting until the landing
 pad becomes nonempty.
 One subtelty is that the assignment to sleeping (line 4) must be visible
-to other vprocs before checking the landing pad (line 5).
-So on a processor without sequential consistency, we need an instruction that flushes 
-the write buffer.
-An atomic compare-and-swap at line 4 would suffice, but any lighter-weight instruction
-that flushes the write buffer is preferable.
+to other vprocs before checking the landing pad (line 5), which may not
+be the case on a processor with relaxed memory consistency.
+So, our solution is to use an atomic write instruction for both writes to the sleeping flag.
 
 \paragraph{Correctness}
 The correctness of this protocol is apparent from the following observation.
-If the vproc sees that its landing pad is empty (line 6 of \figref{fig:protocol1-send}), 
-then the vproc appears to be sleeping to the other vprocs.
+If, when the vproc tries to go to sleep, it sees that its landing pad is empty
+(line 5 of \figref{fig:protocol1-sleep}), the other vprocs see that this vproc is sleeping.
 Thus, it must be the case that all subsequent sends to that vproc are garanteed to
 wake the vproc from its sleeping state (line 11 of \figref{fig:protocol1-send}).
 
@@ -250,116 +218,20 @@ wake the vproc from its sleeping state (line 11 of \figref{fig:protocol1-send}).
 \begin{CCODE}
 \lstset{numbers=left}
 \begin{lstlisting}
-void Sleep (VProc_t *host)
+void VProcSleep (VProc_t *host)
 {
   MutexLock(&(host->lock));
-    host->sleeping = true;
-    /* Flush all pending writes. */
-    while (host->ldgPad == EMPTY)
+    AtomicWriteValue (&(vp->sleeping), M_TRUE);
+    while (ValueToPtr(host->ldgPad) == EMPTY)
       CondWait(&(host->wait), &(host->lock));
-    host->sleeping = false;
+    AtomicWriteValue (&(vp->sleeping), M_FALSE);
   MutexUnlock(&(host->lock));
 }
     \end{lstlisting}
     \end{CCODE}
 
-\caption{Protocol 1: Sleep operation.}\label{fig:protocol1-sleep}
+\caption{Protocol 1: VProcSleep operation.}\label{fig:protocol1-sleep}
 \end{figure}
-
-\subsection{Protocol 2}\label{sec:protocol2}
-
-\paragraph{Landing pad representation}
-The landing pad is represented the same way as in protocol 1, except that it 
-contains an additional state called SLEEPING.
-
-\paragraph{Send}
-The Send operation (\figref{fig:protocol2-sleep}) takes one of two based on the assumed
-vproc state:
-\begin{itemize}
-\item \emph{The vproc is assumed awake (lines 6-11).} We attempt to push a signal on the remote vproc's landing pad (lines 6-7), and
-if the push fails, we retry the operation (line 11).
-\item \emph{The vproc is assumed sleeping (lines 13-21).} We obtain a mutex lock from the vproc, and test
-whether it is still sleeping.
-If so we place the signal on its landing pad and wake the vproc (lines 18-19), 
-but otherwise release the lock and retry (lines 15-16).
-\end{itemize}
-
-\begin{figure}
-\begin{CCODE}
-\lstset{numbers=left}
-\begin{lstlisting}
-void Send (VProc_t *vp, Fiber_t *k, Value_t *fls)
-{
-  while (true) {
-    QueueItem_t *ldgPadOrig = vp->ldgPad;
-    if (ldgPadOrig != SLEEPING) {
-      QueueItem_t *ldgPadNew = Promote(QueueItem(k, fls, ldgPadOrig));
-      QueueItem_t *x = CAS(&(vp->ldgPad), ldgPadOrig, ldgPadNew);
-      if (x == ldgPadOrig)
-	return;
-      else
-	continue;
-    } else {            /* (ldgPadOrig == SLEEPING) */
-      MutexLock(&(vp->lock));
-        if (vp->ldgPad != SLEEPING) {
-          MutexUnlock(&(vp->lock));
-          continue;
-        }
-        vp->ldgPad = Promote(QueueItem(k, fls, EMPTY));
-        CondSignal(&(vp->wait));
-      MutexUnlock(&(vp->lock));
-      return;
-    }
-  }
-}
-\end{lstlisting}
-\end{CCODE}
-\caption{Protocol 2 Send operation.}\label{fig:protocol2-send}
-\end{figure}
-
-\paragraph{Interrupt}
-The Interrupt operation (\figref{fig:protocol2-interrupt}) is identical to the one given
-for protocol 1.
-
-\paragraph{Receive}
-The Recv operation is identical to protocol 1, under the assumption that Recv is never called while
-the vproc is in a sleeping state.
-
-\paragraph{Sleep}
-The Sleep operation (\figref{fig:protocol2-sleep}) acquires the lock
-and then attempts to mark the state as sleeping (lines 3-4).
-If this step succeeds, the vproc sleeps until a the landing pad becomes
-nonempty (lines 5-6).
-Once the vproc has woken up, it releases the lock (line 7).
-
-\begin{figure}
-\begin{CCODE}
-\lstset{numbers=left}
-\begin{lstlisting}
-void Sleep (VProc_t *host)
-{
-  MutexLock(&(vp->lock));
-    QueueItem_t *x = CAS(&(vp->ldgPad), EMPTY, SLEEPING);
-    while (vp->ldgPad == SLEEPING)
-      CondWait(&(vp->wait), &(vp->lock));
-  MutexUnlock(&(vp->lock));
-}
-    \end{lstlisting}
-    \end{CCODE}
-\caption{Protocol 2: Sleep operation.}\label{fig:protocol2-sleep}
-\end{figure}
-
-\paragraph{Correctness}
-The key observation for correctness is the following: if the vproc succeeds in 
-entering a sleep state (line 4 \figref{fig:protocol2-sleep}), then exactly one other vproc executing a Send operation sees 
-that this is the case (line 14 of \figref{fig:protocol2-send}).
-Thus, if another vproc performs a Send operation, the destination vproc must always
-leave its sleep state.
-
-\subsection{Evaluation}\label{sec:evaluation}
-Protocol 1 is conceptually simpler and requires fewer lines of code.
-On the other hand, protocol 2 benefits from a potentially faster Send operation.
-In the common case where the vproc is awake, a protocol-2 Send requires one less memory reference.
 
 \section{Global garbage collection}\label{sec:global-gc}
 Figure \ref{fig:global-gc-protocol} shows the protocol for starting a global garbage
@@ -437,6 +309,9 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
       GlobalGCInProgress = true;
       nReadyForGC = 0;
       BarrierInit(&GCBarrier, nVProcs);
+    for (int i = 0; i < nVProcs; i++)
+      if (VProcs[i] != self)
+        VProcSendSignal(VProcs[i], dummyCont, M_NIL);
     } else {
       leaderVProc = false;
       if (++nReadyForGC == nOtherVProcs)
@@ -446,9 +321,6 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
   /* ... adding the vproc's pages to the from-space list ... */
   MutexUnlock(&GCLock);
   if (leaderVProc) {
-    for (int i = 0; i < nVProcs; i++)
-      if (VProcs[i] != self)
-        Interrupt(VProcs[i], dummyCont, M_NIL);
     MutexLock(&GCLock);
       while (nReadyForGC < nOtherVProcs)
         CondWait(&LeaderWait, &GCLock);
@@ -464,5 +336,98 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
     \end{CCODE}
 \caption{The global garbage collection protocol.}\label{fig:global-gc-protocol}
 \end{figure}
+
+\CUT{
+\subsection{Protocol 2}\label{sec:protocol2}
+
+\paragraph{Landing pad representation}
+The landing pad is represented the same way as in protocol 1, except that it 
+contains an additional state called SLEEPING.
+
+\paragraph{VProcSendSignal}
+The VProcSendSignal operation (\figref{fig:protocol2-send}) takes one of two based on the assumed
+vproc state:
+\begin{itemize}
+\item \emph{The vproc is assumed awake (lines 6-11).} We attempt to push a signal on the remote vproc's landing pad (lines 6-7), and
+if the push fails, we retry the operation (line 11).
+\item \emph{The vproc is assumed sleeping (lines 13-21).} We obtain a mutex lock from the vproc, and test
+whether it is still sleeping.
+If so we place the signal on its landing pad and wake the vproc (lines 18-19), 
+but otherwise release the lock and retry (lines 15-16).
+\end{itemize}
+
+\begin{figure}
+\begin{CCODE}
+\lstset{numbers=left}
+\begin{lstlisting}
+void VProcSendSignal (VProc_t *vp, Fiber_t *k, Value_t *fls)
+{
+  while (true) {
+    QueueItem_t *ldgPadOrig = vp->ldgPad;
+    if (ldgPadOrig != SLEEPING) {
+      QueueItem_t *ldgPadNew = Promote(QueueItem(k, fls, ldgPadOrig));
+      QueueItem_t *x = CAS(&(vp->ldgPad), ldgPadOrig, ldgPadNew);
+      if (x == ldgPadOrig)
+	return;
+      else
+	continue;
+    } else {            /* (ldgPadOrig == SLEEPING) */
+      MutexLock(&(vp->lock));
+        if (vp->ldgPad != SLEEPING) {
+          MutexUnlock(&(vp->lock));
+          continue;
+        }
+        vp->ldgPad = Promote(QueueItem(k, fls, EMPTY));
+        CondSignal(&(vp->wait));
+      MutexUnlock(&(vp->lock));
+      return;
+    }
+  }
+}
+\end{lstlisting}
+\end{CCODE}
+\caption{Protocol 2 VProcSendSignal operation.}\label{fig:protocol2-send}
+\end{figure}
+
+\paragraph{VPRocRecvSignal}
+The VProcRecvSignal operation is identical to protocol 1, under the assumption that VProcRecvSignal is never called while
+the vproc is in a sleeping state.
+
+\paragraph{VProcSleep}
+The VProcSleep operation (\figref{fig:protocol2-sleep}) acquires the lock
+and then attempts to mark the state as sleeping (lines 3-4).
+If this step succeeds, the vproc sleeps until a the landing pad becomes
+nonempty (lines 5-6).
+Once the vproc has woken up, it releases the lock (line 7).
+
+\begin{figure}
+\begin{CCODE}
+\lstset{numbers=left}
+\begin{lstlisting}
+void VProcSleep (VProc_t *host)
+{
+  MutexLock(&(vp->lock));
+    QueueItem_t *x = CAS(&(vp->ldgPad), EMPTY, SLEEPING);
+    while (vp->ldgPad == SLEEPING)
+      CondWait(&(vp->wait), &(vp->lock));
+  MutexUnlock(&(vp->lock));
+}
+    \end{lstlisting}
+    \end{CCODE}
+\caption{Protocol 2: VProcSleep operation.}\label{fig:protocol2-sleep}
+\end{figure}
+
+\paragraph{Correctness}
+The key observation for correctness is the following: if the vproc succeeds in 
+entering a sleep state (line 4 \figref{fig:protocol2-sleep}), then exactly one other vproc executing a VProcSendSignal operation sees 
+that this is the case (line 14 of \figref{fig:protocol2-send}).
+Thus, if another vproc performs a VProcSendSignal operation, the destination vproc must always
+leave its sleep state.
+
+\subsection{Evaluation}\label{sec:evaluation}
+Protocol 1 is conceptually simpler and requires fewer lines of code.
+On the other hand, protocol 2 benefits from a potentially faster VProcSendSignal operation.
+In the common case where the vproc is awake, a protocol-2 VProcSendSignal requires one less memory reference.
+}
 
 \end{document}  
