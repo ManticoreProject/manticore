@@ -38,7 +38,6 @@
  *      void AtomicWriteValue (Value_t *ptr, Value_t new)
  *      {
  *          *ptr = new;
- *          MemoryBarrier()    // flush all pending writes
  *      }
  *
  *	int FetchAndInc (int *ptr)
@@ -96,7 +95,7 @@ STATIC_INLINE int TestAndSwap (volatile int *ptr, int new)
 STATIC_INLINE void AtomicWriteValue (volatile Value_t *ptr, Value_t new)
 {
     *ptr = new;
-    __sync_synchronize();
+    __sync_synchronize();  // FIXME: does this work?
 }
 
 STATIC_INLINE int FetchAndInc (volatile int *ptr)
@@ -163,6 +162,7 @@ STATIC_INLINE int TestAndSwap (volatile int *ptr, int new)
 
 STATIC_INLINE void AtomicWriteValue (volatile Value_t *ptr, Value_t new)
 {
+// FIXME: should use xchg
     CompareAndSwapValue(ptr, *ptr, new);
 }
 

@@ -15,10 +15,11 @@
  * Changing the vproc struct might require modifying ../config/vproc-offsets-ins.c.
  */
 struct struct_vproc {
+  /* the following fields are only accessed by the local vproc */
     Value_t	inManticore;	//!< true, when executing Manticore code
     Value_t	atomic;		//!< true, when in a vproc-atomic region
-    Value_t     sleeping;       //!< true, when the vproc is sleeping
     Value_t	sigPending;	//!< true, when there is a pending signal
+    Value_t	sleeping;       //!< true, when the vproc is sleeping
     Value_t	currentFLS;	//!< the current fiber's local storage
     Value_t	actionStk;	//!< the top of the signal-action stack
     Value_t     schedCont;      //!< continuation that invokes the current scheduler
@@ -26,17 +27,12 @@ struct struct_vproc {
     Value_t     wakeupCont;     //!< continuation that wakes the vproc
     Value_t	rdyQHd;		//!< the head of the primary ready queue
     Value_t	rdyQTl;		//!< the tail of the primary ready queue
-    Value_t     landingPad;     //!< the head of the landing pad (stack)
-    Value_t     hpRdyQ;         //!< the head of the high-priority ready queue
-    Value_t	secondaryQHd;	//!< the head of the secondary ready queue
-    Value_t	secondaryQTl;	//!< the tail of the secondary ready queue
 			      /* VProc registers */
     Value_t	stdArg;		//!< holds value of standard argument reg.
     Value_t	stdEnvPtr;	//!< holds value of standard environment-pointer reg.
     Value_t	stdCont;	//!< holds value of standard return-cont. reg.
     Value_t	stdExnCont;	//!< holds value of standard exception-cont. reg.
     Addr_t	allocPtr;	//!< allocation pointer
-    Addr_t	limitPtr;	//!< heap-limit pointer
 			      /* logging support */
     uint64_t	eventId;	//!< counter for generating event IDs; the top 8 bits of the
 				//! counter hold the VProc ID.
@@ -55,14 +51,19 @@ struct struct_vproc {
     Addr_t	globNextW;	//!< pointer to next word to allocate in
 				//! global heap
     Addr_t	globLimit;	//!< limit pointer for to-space chunk
+    int		id;		//!< index of this vproc in VProcs[] array
+    OSThread_t	hostID;		//!< PThread ID of host
+
+  /* the following fields may be changed by remote vprocs */
+    Mutex_t	lock;		//!< lock for VProc state
+    Cond_t	wait;		//!< for waiting when idle
+    Value_t     landingPad;     //!< the head of the landing pad (stack)
+    Addr_t	limitPtr;	//!< heap-limit pointer
     bool	globalGCPending; //!< true when the vproc has been signaled that
 				//! global GC has started, but this vproc has not
 				//! started yet.
-    bool	globalGCInProgress; //!< true when this vproc has started global collection
-    int		id;		//!< index of this vproc in VProcs[] array
-    OSThread_t	hostID;		//!< PThread ID of host
-    Mutex_t	lock;		//!< lock for VProc state
-    Cond_t	wait;		//!< for waiting when idle
+
+  /* additional optional fields used for stats etc. */
 			      /* GC stats */
 #ifndef NO_GC_STATS
     int32_t	nLocalPtrs;	//!< counter of pointers into local heap that are scanned in minor GC

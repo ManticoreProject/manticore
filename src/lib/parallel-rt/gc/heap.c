@@ -112,7 +112,6 @@ void InitVProcHeap (VProc_t *vp)
     vp->globToSpHd = (MemChunk_t *)0;
     vp->globToSpTl = (MemChunk_t *)0;
     vp->globalGCPending = false;
-    vp->globalGCInProgress = false;
 
   /* allocate the initial chunk for the vproc */
     AllocToSpaceChunk (vp);

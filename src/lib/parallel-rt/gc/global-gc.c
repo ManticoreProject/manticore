@@ -21,8 +21,7 @@
 static Mutex_t		GCLock;		// Lock that protects the following variables:
 static Cond_t		LeaderWait;	// The leader waits on this for the followers
 static Cond_t		FollowerWait;	// followers block on this until the leader starts the GC
-static int		nReadyForGC;	// number of vprocs that are ready for GC
-static int		nParticipants;	// number of vprocs participating in the GC
+static int		NReadyForGC;	// number of vprocs that are ready for GC
 static Barrier_t	GCBarrier;	// for synchronizing on GC completion
 static bool		GlobalGCInProgress; // true, when a global GC has been initiated
 uint32_t		NumGlobalGCs;	// the total number of global GCs.
@@ -126,8 +125,7 @@ void InitGlobalGC ()
 void StartGlobalGC (VProc_t *self, Value_t **roots)
 {
     bool	leaderVProc;
-    int         nVProcs = NumVProcs;
-    int         nOtherVProcs = nVProcs - 1;
+    int         nOtherVProcs = NumVProcs - 1;
 
     self->globalGCPending = false;
     self->sigPending = false;
@@ -136,7 +134,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	if (!GlobalGCInProgress) {
 	    leaderVProc = true;
 	    GlobalGCInProgress = true;
-	    BarrierInit (&GCBarrier, nVProcs);
+	    BarrierInit (&GCBarrier, NumVProcs);
 	    NumGlobalGCs++;
 	    LogGlobalGCInit (self, NumGlobalGCs);
 #ifndef NDEBUG
@@ -144,18 +142,18 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 		SayDebug("[%2d] Initiating global GC %d\n", self->id, NumGlobalGCs);
 #endif
 
-	    nReadyForGC = 0;
+	    NReadyForGC = 0;
 #ifndef NO_GC_STATS
 	    FromSpaceSzb = 0;
 	    NWordsScanned = 0;
 	    NBytesCopied = 0;
 #endif
-	for (int i = 0;  i < nVProcs;  i++)
+	for (int i = 0;  i < NumVProcs;  i++)
 	    if (VProcs[i] != self)
-	      VProcGlobalGCInterrupt (self, VProcs[i]);
+		VProcGlobalGCInterrupt (self, VProcs[i]);
 	} else {
 	    leaderVProc = false;
-	    if (++nReadyForGC == nOtherVProcs)
+	    if (++NReadyForGC == nOtherVProcs)
 		CondSignal (&LeaderWait);
 	    CondWait (&FollowerWait, &GCLock);
 	}
@@ -194,8 +192,8 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
       /* reset the size of to-space */
 	ToSpaceSz = 0;
 	MutexLock(&GCLock);
-	    while (nReadyForGC < nOtherVProcs)
-	      CondWait(&LeaderWait, &GCLock);
+	    while (NReadyForGC < nOtherVProcs)
+		CondWait(&LeaderWait, &GCLock);
 	    CondBroadcast(&FollowerWait);
 	MutexUnlock (&GCLock);
     }

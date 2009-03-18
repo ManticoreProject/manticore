@@ -64,14 +64,13 @@ extern int ASM_VProcSleep;
 #  error unsupported OS
 #endif
 
-/* VProc queue representation.
- */
-struct struct_queue_item {
-  Value_t                      fls;
-  Value_t                      k;
-  struct struct_queue_item     *next;
-};
+/*! \brief Items in the ready-queue lists and on the landing pad */
 typedef struct struct_queue_item QueueItem_t;
+struct struct_queue_item {
+    Value_t	fls;	//!< fiber-local storage of thread
+    Value_t	k;	//!< fiber (continuation) of thread
+    QueueItem_t	*next;	//!< link field
+};
 
 /* VProcInit:
  *
@@ -170,6 +169,7 @@ void *NewVProc (void *arg)
     vproc->inManticore = M_FALSE;
     vproc->atomic = M_TRUE;
     vproc->sigPending = M_FALSE;
+    vproc->sleeping = M_FALSE;
     vproc->actionStk = M_NIL;
     vproc->schedCont = M_NIL;
     vproc->dummyK = M_NIL;
@@ -177,9 +177,6 @@ void *NewVProc (void *arg)
     vproc->rdyQHd = M_NIL;
     vproc->rdyQTl = M_NIL;
     vproc->landingPad = M_NIL;
-    vproc->hpRdyQ = M_NIL;
-    vproc->secondaryQHd = M_NIL;
-    vproc->secondaryQTl = M_NIL;
     vproc->stdArg = M_UNIT;
     vproc->stdEnvPtr = M_UNIT;
     vproc->stdCont = M_NIL;
@@ -294,10 +291,10 @@ void VProcSend (VProc_t *self, VProc_t *vp, Value_t fls, Value_t k)
       Value_t landingPadNew = PromoteObj(self, AllocUniform(self, 3, fls, k, landingPadOrig));
       Value_t x = CompareAndSwapValue(&(vp->landingPad), landingPadOrig, landingPadNew);
       if (ValueToPtr(x) != ValueToPtr(landingPadOrig)) {
-	continue;
+	  continue;
       } else {
-	if (vp->sleeping)
-	  VProcWake(vp);
+	if (vp->sleeping == M_TRUE)
+	    VProcWake(vp);
 	return;
       }
     }
@@ -309,9 +306,9 @@ void VProcSend (VProc_t *self, VProc_t *vp, Value_t fls, Value_t k)
  */
 void VProcGlobalGCInterrupt (VProc_t *self, VProc_t *vp)
 {
-  vp->globalGCPending = true;
-  VProcSend(self, vp, M_NIL, vp->dummyK);
-  VProcSendUnixSignal(vp, GCSignal);
+    vp->globalGCPending = true;
+    VProcSend(self, vp, M_NIL, vp->dummyK);
+    VProcSendUnixSignal(vp, GCSignal);
 }
 
 /*! \brief send a preemption to a remote vproc.
@@ -354,10 +351,10 @@ void VProcSleep (VProc_t *vp)
 #endif
 
     MutexLock(&(vp->lock));
-	AtomicWriteValue(&(vp->sleeping), M_TRUE);
+	AtomicWriteValue (&(vp->sleeping), M_TRUE);
 	while (vp->landingPad == M_NIL)
-	  CondWait(&(vp->wait), &(vp->lock));
-	AtomicWriteValue(&(vp->sleeping), M_FALSE);
+	    CondWait(&(vp->wait), &(vp->lock));
+	AtomicWriteValue (&(vp->sleeping), M_FALSE);
     MutexUnlock(&(vp->lock));
 }
 
