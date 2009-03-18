@@ -80,6 +80,35 @@ structure VProcQueue (* :
 	  return(I32Gt(I32Add(nTl, nHd), 1))
 	;
 
+    (* reverse a non-empty queue.
+     *   - fls fiber-local storage component of the first item of the input queue
+     *   - k fiber component of the first item of the input queue
+     *   - rest the rest of the queue
+     * i.e., @reverse-queue(fls, k, (fls', k', Q_EMPTY)) ==> (fls', k', (fls, k, Q_EMPTY))
+     *)
+      define @reverse-queue (fls : FLS.fls, k : PT.fiber, rest : queue_item) : queue_item =
+	  fun revQueue (fls : FLS.fls, k : PT.fiber, rest : queue_item, acc : queue_item) : queue_item =
+	       let acc : queue_item = alloc(fls, k, acc)
+	       if Equal(rest, Q_EMPTY)
+		 then return(acc)
+	       else
+		 apply revQueue (SELECT(FLS_OFF, rest), SELECT(FIBER_OFF, rest), SELECT(LINK_OFF, rest), acc)
+	  let qitem : queue_item = apply revQueue (fls, k, rest, Q_EMPTY)
+	  return (qitem)
+	;
+
+      define @append (queue1 : queue_item, queue2 : queue_item) : queue_item =
+	  fun append (queue1 : queue_item) : queue_item =
+	      if Equal(queue1, Q_EMPTY)
+		 then
+		  return(queue2)
+	      else 
+		  let rest : queue_item = apply append(SELECT(LINK_OFF, queue1))
+		  let queue11 : queue_item = alloc(SELECT(FLS_OFF, queue1), SELECT(FIBER_OFF, queue1), rest)
+		  return(queue11)
+	  apply append (queue1)
+      ;
+
     (* enqueue on the local queue. NOTE: signals must be masked *)
       define inline @enqueue-from-atomic (vp : vproc, fls : FLS.fls, fiber : PT.fiber) : () =
 	  let tl : queue_item = vpload (VP_RDYQ_TL, vp)
@@ -96,20 +125,13 @@ structure VProcQueue (* :
 	  return () 
 	;
 
-    (* reverse a non-empty queue ((fls, k) is the first element of the input queue) *)
-      define @reverse-queue (fls : FLS.fls, k : PT.fiber, rest : queue_item) : queue_item =
-	  fun revQueue (fls : FLS.fls, k : PT.fiber, rest : queue_item, acc : queue_item) : queue_item =
-	       let acc : queue_item = alloc(fls, k, acc)
-	       if Equal(rest, Q_EMPTY)
-		 then return(acc)
-	       else
-		 apply revQueue (SELECT(FLS_OFF, rest), SELECT(FIBER_OFF, rest), SELECT(LINK_OFF, rest), acc)
-	  let qitem : queue_item = apply revQueue (fls, k, rest, Q_EMPTY)
-	  return (qitem)
-	;
+    (* retrieve items from the landing pad and place them in the local queues. high-priority elements get placed 
+     * at the head of the queue and low-priority threads get placed at the tail.
+     *)
+      define @unload-landing-pad-from-atomic (self : vproc) : () =
+	  let queue : queue_item = VProc.@recv-from-atomic(self)
 
-    (* splits the queue by priority. high goes first and low second. *)
-      define @split-by-priority (queue : queue_item) : [queue_item, queue_item] =
+	(* splits the queue by priority. high goes first and low second. *)
 	  fun split (queue : queue_item, highPrio : queue_item, lowPrio : queue_item) : [queue_item, queue_item] =
 	      if Equal(queue, Q_EMPTY)
 		 then 
@@ -122,26 +144,9 @@ structure VProcQueue (* :
 	      else (* low-priority queue item *)
 		  let lowPrio : queue_item = alloc(SELECT(FLS_OFF, queue), SELECT(FIBER_OFF, queue), lowPrio)
 		  apply split (SELECT(LINK_OFF, queue), highPrio, lowPrio)
-	  apply split (queue, Q_EMPTY, Q_EMPTY)
-      ;
+	  let split : [queue_item, queue_item] = apply split (queue, Q_EMPTY, Q_EMPTY)
 
-    (* retrieve items from the landing pad and place them in the local queues. high-priority elements go in the
-     * high-priority queue, and low-priority threads go in the default queue.
-     *)
-      define @unload-landing-pad-from-atomic (self : vproc) : () =
-	  let queue : queue_item = VProc.@recv-from-atomic(self)
-	  let split : [queue_item, queue_item] = @split-by-priority(queue)
-
-	  fun unloadHighPrio (queue : queue_item) : () =
-	      if Equal(queue, Q_EMPTY)
-		 then
-		  return()
-	      else
-		  do @enqueue-high-prio-from-atomic(self, SELECT(FLS_OFF, queue), SELECT(FIBER_OFF, queue))
-		  apply unloadHighPrio(SELECT(LINK_OFF, queue))
-	  do apply unloadHighPrio(#0(split))
-
-	  fun unloadLowPrio (queue : queue_item) : () =
+          fun unloadLowPrio (queue : queue_item) : () =
 	      if Equal(queue, Q_EMPTY)
 		 then
 		  return()
@@ -150,6 +155,10 @@ structure VProcQueue (* :
 		  apply unloadLowPrio(SELECT(LINK_OFF, queue))
 	  do apply unloadLowPrio(#1(split))
 
+          let hd : queue_item = vpload (VP_RDYQ_HD, vp)
+	  let newHd : queue_item = @append(#0(split), hd)
+	  do vpstore (VP_RDYQ_HD, vp, newHd)
+          
 	  return()
       ;
 

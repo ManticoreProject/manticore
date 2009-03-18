@@ -35,20 +35,16 @@ structure VProc (* :
 
     (** Signaling and sleeping **)
 
-    (* place a signal on the landing pad of the remote vproc.
+    (* place a signal on the landing pad of the remote vproc. 
      * PRECONDITION: NotEqual(self, dst) and Equal(self, host_vproc)
      *) 
-      define @send-from-atomic (self : vproc, dst : vproc, fls : FLS.fls, k : PT.fiber) : ();
-    (* place a high-priority signal on the landing pad of the remote vproc. the vproc is guaranteed
+      define @send-signal-from-atomic (self : vproc, dst : vproc, fls : FLS.fls, k : PT.fiber) : ();
+    (* place a signal on the landing pad of the remote vproc. the vproc is guaranteed
      * to handle the signal within a constant number of computational steps.
      * PRECONDITION: NotEqual(self, dst) and Equal(self, host_vproc)
      *) 
-      define @interrupt-from-atomic (self : vproc, dst : vproc, fls : FLS.fls, k : PT.fiber) : ();
-    (* trigger a preemption on a remote vproc.
-     * PRECONDITION: NotEqual(self, dst) and Equal(self, host_vproc)
-     *) 
-      define @preempt-from-atomic (self : vproc, dst : vproc) : ();
-    (* receive pending signals from the host vproc's landing pad.
+      define @send-high-priority-signal-from-atomic (self : vproc, dst : vproc, k : PT.fiber) : ();
+    (* receive pending signals from the host vproc's landing pad. 
      * PRECONDITION: Equal(vp, host_vproc)
      *)
       define @recv-from-atomic (self : vproc) : queue_item;
@@ -187,21 +183,8 @@ structure VProc (* :
      * to handle the signal within a constant number of computational steps.
      * PRECONDITION: NotEqual(self, dst) and Equal(self, host_vproc)
      *) 
-      define @interrupt-from-atomic (self : vproc, dst : vproc, fls : FLS.fls, k : PT.fiber) : () =
-          do @send-from-atomic(self, dst, fls, k)          
-          do ccall VProcPreempt(self, dst)
-	  return()
-      ;
-
-    (* trigger a preemption on a remote vproc.
-     * PRECONDITION: NotEqual(self, dst) and Equal(self, host_vproc)
-     *) 
-      define @preempt-from-atomic (self : vproc, dst : vproc) : () =
-          cont k (x : unit) =
-	    let _ : unit = SchedulerAction.@stop()
-            return()
-          let fls : FLS.fls = FLS.@get()
-          do @send-from-atomic(self, dst, fls, k)
+      define @send-high-priority-from-atomic (self : vproc, dst : vproc, k : PT.fiber) : () =
+          do @send-from-atomic(self, dst, enum(0):FLS.fls, k)
           do ccall VProcPreempt(self, dst)
 	  return()
       ;
