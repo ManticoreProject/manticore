@@ -132,8 +132,8 @@ static void Ping (int n)
     static int	nextPing = 0;
 
     for (int i = 0;  i < n;  i++) {
-	if (! VProcs[nextPing]->idle)
-	    VProcSignal (VProcs[nextPing], PreemptSignal);
+	if (! VProcs[nextPing]->sleeping)
+	    VProcPreempt (VProcs[nextPing]);
 	if (++nextPing == NumVProcs)
 	    nextPing = 0;
     }

@@ -14,8 +14,8 @@
   in
     fls.pml
     scheduler-action.pml
-    vproc-queue.pml
     vproc.pml
+    vproc-queue.pml
 (*  virtual-maps.pml *)
     thread-ops.pml
   end

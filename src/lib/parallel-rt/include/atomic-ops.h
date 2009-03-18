@@ -35,6 +35,12 @@
  *	    return old;
  *	}
  *
+ *      void AtomicWriteValue (Value_t *ptr, Value_t new)
+ *      {
+ *          *ptr = new;
+ *          MemoryBarrier()    // flush all pending writes
+ *      }
+ *
  *	int FetchAndInc (int *ptr)
  *	{
  *	    int tmp = *ptr;
@@ -85,6 +91,12 @@ STATIC_INLINE Word_t CompareAndSwapWord (volatile Word_t *ptr, Word_t key, Word_
 STATIC_INLINE int TestAndSwap (volatile int *ptr, int new)
 {
     return __sync_val_compare_and_swap (ptr, 0, new);
+}
+
+STATIC_INLINE void AtomicWriteValue (volatile Value_t *ptr, Value_t new)
+{
+    *ptr = new;
+    __sync_synchronize();
 }
 
 STATIC_INLINE int FetchAndInc (volatile int *ptr)
@@ -147,6 +159,11 @@ STATIC_INLINE int TestAndSwap (volatile int *ptr, int new)
 	    : "g" (new), "m" (*ptr)
 	    : "memory", "%eax");
     return result;
+}
+
+STATIC_INLINE void AtomicWriteValue (volatile Value_t *ptr, Value_t new)
+{
+    CompareAndSwapValue(ptr, *ptr, new);
 }
 
 STATIC_INLINE int FetchAndInc (volatile int *ptr)

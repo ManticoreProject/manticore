@@ -27,7 +27,7 @@ fun pfib (i : int) = (case i
 val () = Print.printLn "cilk5"
 val cilk5 = MultiprogrammedWorkStealing.workGroup()
 val () = Print.printLn "eager futures"
-(*val () = ImplicitThread.runWithGroup(cilk5, fn () => pml_assert(doit pfib 21 4))*)
+val () = ImplicitThread.runWithGroup(cilk5, fn () => pml_assert(doit pfib 21 4))
 
 (* Parallel suspensions (no cancelation) *)
 

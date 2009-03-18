@@ -9,6 +9,8 @@ structure RoundRobin =
 
     structure PT = PrimTypes
 
+#include "vproc-queue.def"
+
     _primcode(
     (* top-level thread scheduler that uses a round robin policy *)
       define @round-robin (x : unit / exh : exh) : unit = 
@@ -19,10 +21,10 @@ structure RoundRobin =
             let item : Option.option = VProcQueue.@dequeue-from-atomic(self)
             case item
 	     of Option.NONE => 
-		do VProc.@wait-from-atomic(self)
+		do VProc.@sleep-from-atomic(self)
 		throw dispatch()
-	      | Option.SOME(qitem : VProcQueue.queue) =>
-		do SchedulerAction.@dispatch-from-atomic (self, switch, #1(qitem), #0(qitem))
+	      | Option.SOME(qitem : VProcQueue.queue_item) =>
+		do SchedulerAction.@dispatch-from-atomic (self, switch, SELECT(FIBER_OFF, qitem), SELECT(FLS_OFF, qitem))
                 return(UNIT)
             end
 
@@ -41,7 +43,7 @@ structure RoundRobin =
 	fun mkSwitch (_ : vproc / exh : PT.exh) : PT.sched_act = return (switch)
 
        (* run the scheduler on all vprocs *)
-	do VProc.@boot-default-scheduler (mkSwitch / exh)
+	do VProc.@bootstrap (mkSwitch / exh)
 	return (UNIT)
       ;
     )

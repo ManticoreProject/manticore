@@ -35,7 +35,6 @@ static void MainVProc (VProc_t *vp, void *arg);
 static void IdleVProc (VProc_t *vp, void *arg);
 static void SigHandler (int sig, siginfo_t *si, void *_sc);
 static int GetNumCPUs ();
-static Value_t Dequeue2 (VProc_t *self);
 
 static pthread_key_t	VProcInfoKey;
 
@@ -64,6 +63,15 @@ extern int ASM_VProcSleep;
 #else
 #  error unsupported OS
 #endif
+
+/* VProc queue representation.
+ */
+struct struct_queue_item {
+  Value_t                      fls;
+  Value_t                      k;
+  struct struct_queue_item     *next;
+};
+typedef struct struct_queue_item QueueItem_t;
 
 /* VProcInit:
  *
@@ -164,10 +172,12 @@ void *NewVProc (void *arg)
     vproc->sigPending = M_FALSE;
     vproc->actionStk = M_NIL;
     vproc->schedCont = M_NIL;
+    vproc->dummyK = M_NIL;
     vproc->wakeupCont = M_NIL;
     vproc->rdyQHd = M_NIL;
     vproc->rdyQTl = M_NIL;
-    vproc->entryQ = M_NIL;
+    vproc->landingPad = M_NIL;
+    vproc->hpRdyQ = M_NIL;
     vproc->secondaryQHd = M_NIL;
     vproc->secondaryQTl = M_NIL;
     vproc->stdArg = M_UNIT;
@@ -176,7 +186,6 @@ void *NewVProc (void *arg)
     vproc->stdExnCont = M_UNIT;
     vproc->limitPtr = (Addr_t)vproc + VP_HEAP_SZB - ALLOC_BUF_SZB;
     SetAllocPtr (vproc);
-    vproc->idle = true;
     vproc->currentFLS = M_NIL;
 
 #ifdef ENABLE_LOGGING
@@ -233,7 +242,7 @@ static void MainVProc (VProc_t *vp, void *arg)
 	SayDebug("[%2d] MainVProc starting\n", vp->id);
 #endif
 
-    vp->idle = false;
+    vp->sleeping = false;
 
     FunClosure_t fn = {.cp = PtrToValue(&mantEntry), .ep = M_UNIT};
     Value_t resV = ApplyFun (vp, PtrToValue(&fn), PtrToValue(arg));
@@ -263,69 +272,94 @@ VProc_t *VProcSelf ()
 
 } /* VProcSelf */
 
+/*! \brief wake the vproc.
+ *  \param vp the vproc to wake
+ */
+void VProcWake (VProc_t *vp)
+{
+    assert (vp != VProcSelf());
+    CondSignal(&(vp->wait));
+}
+
+/*! \brief place a signal (fiber + fiber-local storage) on the landing pad of the remote vproc.
+ *  \param self the host vproc.
+ *  \param vp the destination vproc.
+ *  \param k the fiber
+ *  \param fls the fiber-local storage
+ */
+void VProcSend (VProc_t *self, VProc_t *vp, Value_t fls, Value_t k)
+{
+    while (true) {
+      Value_t landingPadOrig = vp->landingPad;
+      Value_t landingPadNew = PromoteObj(self, AllocUniform(self, 3, fls, k, landingPadOrig));
+      Value_t x = CompareAndSwapValue(&(vp->landingPad), landingPadOrig, landingPadNew);
+      if (ValueToPtr(x) != ValueToPtr(landingPadOrig)) {
+	continue;
+      } else {
+	if (vp->sleeping)
+	  VProcWake(vp);
+	return;
+      }
+    }
+}
+
+/*! \brief interrupt a remote vproc to take part in a global collection.
+ *  \param self the host vproc.
+ *  \param vp the remote vproc.
+ */
+void VProcGlobalGCInterrupt (VProc_t *self, VProc_t *vp)
+{
+  vp->globalGCPending = true;
+  VProcSend(self, vp, M_NIL, vp->dummyK);
+  VProcSendUnixSignal(vp, GCSignal);
+}
+
+/*! \brief send a preemption to a remote vproc.
+ *  \param vp the remote vproc to preempt.
+ */
 void VProcPreempt (VProc_t *vp)
 {
-    VProcSignal (vp, PreemptSignal);
+    VProcSendUnixSignal(vp, PreemptSignal);
 }
 
 /*! \brief send an asynchronous signal to another VProc.
  *  \param vp the target VProc.
  *  \param sig the signal.
  */
-void VProcSignal (VProc_t *vp, VPSignal_t sig)
+void VProcSendUnixSignal (VProc_t *vp, VPSignal_t sig)
 {
 #ifndef NDEBUG
     if (DebugFlg)
-	SayDebug("[%2d] VProcSignal: vp = %d, sig = %d\n", VProcSelf()->id, vp->id, sig);
+	SayDebug("[%2d] VProcSendUnixSignal: vp = %d, sig = %d\n", VProcSelf()->id, vp->id, sig);
 #endif
 
-    if (sig == PreemptSignal) pthread_kill (vp->hostID, SIGUSR1);
+    if (sig == PreemptSignal) pthread_kill (vp->hostID, SIGUSR1); 
     else if (sig == GCSignal) pthread_kill (vp->hostID, SIGUSR2);
     else Die("bogus signal");
 
-} /* end of VProcSignal */
-
+} /* end of VProcSendUnixSignal */
 
 /*! \brief put the vproc to sleep until a signal arrives
  *  \param vp the vproc that is being put to sleep.
  */
-void VProcWaitForSignal (VProc_t *vp)
+void VProcSleep (VProc_t *vp)
 {
-   assert (vp == VProcSelf());
+    assert (vp == VProcSelf());
 
     LogVProcSleep (vp);
 
 #ifndef NDEBUG
     if (DebugFlg)
-	SayDebug("[%2d] VProcWaitForSignal called\n", vp->id);
+	SayDebug("[%2d] VProcSleep called\n", vp->id);
 #endif
 
-    if (FetchAndInc(&NumIdleVProcs) == NumVProcs-1) {
-      /* all VProcs are idle, so shutdown */
-#ifndef NDEBUG
-	if (DebugFlg)
-	    SayDebug("[%2d] shuting down\n", vp->id);
-#endif
-	exit (0);
-    }
-    else {
-	MutexLock (&(vp->lock));
-	    vp->idle = true;
-	    while (vp->entryQ == M_NIL) {
-		CondWait (&(vp->wait), &(vp->lock));
-	    }
-	    vp->idle = false;
-
-#ifndef NDEBUG
-	    if (DebugFlg)
-		SayDebug("[%2d] VProcWaitForSignal: waking up; entryQ = %p\n", vp->id, ValueToRdyQItem(vp->entryQ));
-#endif
-	MutexUnlock (&(vp->lock));
-	FetchAndDec(&NumIdleVProcs);
-    }
-
+    MutexLock(&(vp->lock));
+	AtomicWriteValue(&(vp->sleeping), M_TRUE);
+	while (vp->landingPad == M_NIL)
+	  CondWait(&(vp->wait), &(vp->lock));
+	AtomicWriteValue(&(vp->sleeping), M_FALSE);
+    MutexUnlock(&(vp->lock));
 }
-
 
 /* IdleVProc:
  */
@@ -338,8 +372,7 @@ static void IdleVProc (VProc_t *vp, void *arg)
 	SayDebug("[%2d] IdleVProc starting\n", vp->id);
 #endif
 
-  /* Put the VProc to sleep until a signal arrives. */
-    VProcWaitForSignal(vp);
+    VProcSleep(vp);
   /* Activate scheduling code on the vproc. */
     Value_t envP = vp->schedCont;
     Addr_t codeP = ValueToAddr(ValueToCont(envP)->cp);
@@ -385,7 +418,6 @@ static void SigHandler (int sig, siginfo_t *si, void *_sc)
       case SIGUSR2: /* Global GC signal */
 	LogGCSignal (self);
 	self->sigPending = M_TRUE;
-	self->globalGCPending = true;
 	break;
       default:
 	Die ("bogus signal %d\n", sig);
@@ -478,21 +510,6 @@ VProc_t* GetNthVProc (int n)
     return VProcs[n];
 }
 
-/*! \brief Wake a vproc.
- *  \param the vproc to wake
- */
-void WakeVProc (VProc_t *vp)
-{
-#ifndef NDEBUG
-    if (DebugFlg)
-	SayDebug("[%2d] WakeVProc: pinging vp %d to make sure it is awake.\n", VProcSelf()->id, vp->id);
-#endif
-    MutexLock (&(vp->lock));
-	if (vp->idle && (vp->entryQ != M_NIL))
-	    CondSignal (&(vp->wait));
-    MutexUnlock (&(vp->lock));
-}
-
 /*! \brief create a fiber that puts the vproc to sleep
  *  \param self the calling vproc
  *  \return fiber that when run puts the vproc to sleep
@@ -502,20 +519,3 @@ Value_t SleepCont (VProc_t *self)
     return AllocUniform(self, 1, PtrToValue(&ASM_VProcSleep));
 }
 
-/*! \brief call nanosleep
- *  \param seconds number of seconds to sleep
- *  \param nanoseconds number of nanoseconds to sleep (must be less than one second)
- */
-void Nanosleep (long int seconds, long int nanoseconds)
-{
-    struct timespec ts;
-    ts.tv_sec = seconds;
-    ts.tv_nsec = nanoseconds;
-
-#ifndef NDEBUG
-    if (DebugFlg)
-        SayDebug("[%2d] Nanosleep(seconds=%d, nanoseconds=%d).\n", VProcSelf()->id, seconds, nanoseconds);
-#endif
-
-    nanosleep(&ts, NULL);
-}

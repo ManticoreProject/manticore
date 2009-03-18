@@ -126,35 +126,38 @@ void InitGlobalGC ()
 void StartGlobalGC (VProc_t *self, Value_t **roots)
 {
     bool	leaderVProc;
+    int         nVProcs = NumVProcs;
+    int         nOtherVProcs = nVProcs - 1;
 
-    self->globalGCInProgress = true;
     self->globalGCPending = false;
     self->sigPending = false;
 
     MutexLock (&GCLock);
-	if (GlobalGCInProgress) {
-	  /* some other vproc has already started the GC */
-	    leaderVProc = false;
-	    if (++nReadyForGC == nParticipants)
-		CondSignal (&LeaderWait);
-	    CondWait (&FollowerWait, &GCLock);
-	}
-	else {
+	if (!GlobalGCInProgress) {
+	    leaderVProc = true;
+	    GlobalGCInProgress = true;
+	    BarrierInit (&GCBarrier, nVProcs);
 	    NumGlobalGCs++;
 	    LogGlobalGCInit (self, NumGlobalGCs);
 #ifndef NDEBUG
 	    if (GCDebug >= GC_DEBUG_GLOBAL)
 		SayDebug("[%2d] Initiating global GC %d\n", self->id, NumGlobalGCs);
 #endif
-	    GlobalGCInProgress = true;
-	    leaderVProc = true;
+
 	    nReadyForGC = 0;
 #ifndef NO_GC_STATS
 	    FromSpaceSzb = 0;
 	    NWordsScanned = 0;
 	    NBytesCopied = 0;
 #endif
-/* FIXME: we probably should initialize nParticipants here, instead of down below! */
+	for (int i = 0;  i < nVProcs;  i++)
+	    if (VProcs[i] != self)
+	      VProcGlobalGCInterrupt (self, VProcs[i]);
+	} else {
+	    leaderVProc = false;
+	    if (++nReadyForGC == nOtherVProcs)
+		CondSignal (&LeaderWait);
+	    CondWait (&FollowerWait, &GCLock);
 	}
 
       /* add the vproc's pages to the from-space list */
@@ -180,41 +183,20 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	    FromSpaceChunks = p;
 	    p->usedTop = self->globNextW - WORD_SZB;
 	}
-    MutexUnlock (&GCLock);
 
   /* finish the GC setup for this vproc */
     self->globToSpTl = (MemChunk_t *)0;
     self->globToSpHd = (MemChunk_t *)0;
 
+    MutexUnlock (&GCLock);
+
     if (leaderVProc) {
       /* reset the size of to-space */
 	ToSpaceSz = 0;
-      /* signal the vprocs that global GC is starting and then wait for them
-       * to be ready.
-       */
-	MutexLock (&GCLock);
-	    nParticipants = 1;
-	    for (int i = 0;  i < NumVProcs;  i++) {
-	      /* FIXME: this protocol would allow the following situation: just before
-	       * reaching this point VProcs[i] is woken up (see vproc.c:247). Before the
-	       * idle flag becomes false we reach the test below and identify the vproc
-	       * as idle. Thus, this ith vproc could execute in parallel with the parallel
-	       * GC, which would certainly result in memory corruption.
-	       */
-		if ((VProcs[i] != self) && (! VProcs[i]->idle)) {
-		    nParticipants++;
-		    VProcSignal (VProcs[i], GCSignal);
-		}
-	    }
-	  /* initialize the barrier that we'll use at the end of global GC */
-	    BarrierInit (&GCBarrier, nParticipants);
-	  /* wait for follower vprocs */
-	    if (nParticipants > 1) {
-	      /* wait for the followers to be ready */
-		CondWait (&LeaderWait, &GCLock);
-	      /* release followers to start GC */
-		CondBroadcast (&FollowerWait);
-	    }
+	MutexLock(&GCLock);
+	    while (nReadyForGC < nOtherVProcs)
+	      CondWait(&LeaderWait, &GCLock);
+	    CondBroadcast(&FollowerWait);
 	MutexUnlock (&GCLock);
     }
 
@@ -227,9 +209,6 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 #ifndef NDEBUG
     CheckGC (self, roots);
 #endif
-
-  /* synchronize on every vproc finishing GC */
-    BarrierWait (&GCBarrier);
 
   /* the leader reclaims the from-space pages */
     if (leaderVProc) {
@@ -259,6 +238,9 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
     }
 
     LogGlobalGCEnd (self, NumGlobalGCs);
+
+  /* synchronize on every vproc finishing GC */
+    BarrierWait (&GCBarrier);
 
 } /* end of StartGlobalGC */
 

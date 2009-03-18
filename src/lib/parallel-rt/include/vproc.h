@@ -17,14 +17,17 @@
 struct struct_vproc {
     Value_t	inManticore;	//!< true, when executing Manticore code
     Value_t	atomic;		//!< true, when in a vproc-atomic region
+    Value_t     sleeping;       //!< true, when the vproc is sleeping
     Value_t	sigPending;	//!< true, when there is a pending signal
     Value_t	currentFLS;	//!< the current fiber's local storage
     Value_t	actionStk;	//!< the top of the signal-action stack
     Value_t     schedCont;      //!< continuation that invokes the current scheduler
+    Value_t     dummyK;         //!< trivial fiber that immediate terminates
     Value_t     wakeupCont;     //!< continuation that wakes the vproc
     Value_t	rdyQHd;		//!< the head of the primary ready queue
     Value_t	rdyQTl;		//!< the tail of the primary ready queue
-    Value_t     entryQ;         //!< the head of the entry queue (stack) for the vproc
+    Value_t     landingPad;     //!< the head of the landing pad (stack)
+    Value_t     hpRdyQ;         //!< the head of the high-priority ready queue
     Value_t	secondaryQHd;	//!< the head of the secondary ready queue
     Value_t	secondaryQTl;	//!< the tail of the secondary ready queue
 			      /* VProc registers */
@@ -60,7 +63,6 @@ struct struct_vproc {
     OSThread_t	hostID;		//!< PThread ID of host
     Mutex_t	lock;		//!< lock for VProc state
     Cond_t	wait;		//!< for waiting when idle
-    bool	idle;		//!< true when the VProc is idle
 			      /* GC stats */
 #ifndef NO_GC_STATS
     int32_t	nLocalPtrs;	//!< counter of pointers into local heap that are scanned in minor GC
@@ -94,7 +96,9 @@ extern VProc_t		*VProcs[MAX_NUM_VPROCS];
 extern void VProcInit (Options_t *opts);
 extern VProc_t *VProcCreate (VProcFn_t f, void *arg);
 extern VProc_t *VProcSelf ();
-extern void VProcSignal (VProc_t *vp, VPSignal_t sig);
-extern void VProcWaitForSignal (VProc_t *vp);
+void VProcSendUnixSignal (VProc_t *vp, VPSignal_t sig);
+void VProcPreempt (VProc_t *vp);
+void VProcSend (VProc_t *self, VProc_t *vp, Value_t k, Value_t fls);
+void VProcGlobalGCInterrupt (VProc_t *self, VProc_t *vp);
 
 #endif /* !_VPROC_H_ */

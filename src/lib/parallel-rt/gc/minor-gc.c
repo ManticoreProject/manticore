@@ -79,10 +79,12 @@ void MinorGC (VProc_t *vp)
     *rp++ = &(vp->currentFLS);
     *rp++ = &(vp->actionStk);
     *rp++ = &(vp->schedCont);
+    *rp++ = &(vp->dummyK);
     *rp++ = &(vp->wakeupCont);
     *rp++ = &(vp->rdyQHd);
     *rp++ = &(vp->rdyQTl);
-    *rp++ = &(vp->entryQ);
+    *rp++ = &(vp->landingPad);
+    *rp++ = &(vp->hpRdyQ);
     *rp++ = &(vp->stdEnvPtr);
     *rp++ = &(vp->secondaryQHd); /* do we need this field? */
     *rp++ = &(vp->secondaryQTl); /* do we need this field? */

@@ -63,7 +63,7 @@ structure WorkStealers =
 		     of O.NONE =>
 			  PRINT_DEBUG("WorkStealers.thief: failed to steal work")
 			  apply sendThieves (vps)
-		      | O.SOME (item : VPQ.queue) =>
+		      | O.SOME (item : VPQ.queue_item) =>
 			  PRINT_DEBUG("WorkStealers.thief: sending stolen work back to original vproc")
 			  do VPQ.@enqueue-on-vproc(self, SELECT(FLS_OFF, item), SELECT(FIBER_OFF, item))
 			  return()
@@ -103,9 +103,9 @@ structure WorkStealers =
 		 of O.NONE => 
 		    let potentialVictims : L.list = VProc.@other-vprocs-from-atomic(self / exh)
 		    do apply sendThieves(potentialVictims)
-		    do VProc.@wait-from-atomic(self)
+		    do VProc.@sleep-from-atomic(self)
 		    throw dispatch()
-		  | O.SOME(qitem : VPQ.queue) =>
+		  | O.SOME(qitem : VPQ.queue_item) =>
 		    do SchedulerAction.@dispatch-from-atomic (self, switch, SELECT(FIBER_OFF, qitem), SELECT(FLS_OFF, qitem))
 		    throw impossible()
 		end
@@ -127,7 +127,7 @@ structure WorkStealers =
       define @work-stealers(x : unit / exh : exh) : unit = 
 	fun mkSwitch (self : vproc / exh : exh) : PT.sched_act = @mk-sched-act(self / exh)
       (* run the scheduler on all vprocs *)
-	do VProc.@boot-default-scheduler (mkSwitch / exh)
+	do VProc.@bootstrap (mkSwitch / exh)
 	return(UNIT)
       ;
 

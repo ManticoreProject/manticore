@@ -13,17 +13,10 @@
  * the secondary list, and enqueue remotely on the landing-pad.
  *)
 
-#include "vproc-queue.def"
-
 structure VProcQueue (* :
   sig
 
     _prim(
-
-    (* vproc queue structure (we use Q_EMPTY to mark an empty queue); the C runtime system relies
-     * on this representation, so be careful when making changes.
-     *)
-      typedef queue = [FLS.fls, PT.fiber, any];
 
     (* enqueue on the host's vproc's thread queue *)
       define inline @enqueue-from-atomic (vp : vproc, fls : FLS.fls, fiber : PT.fiber) : ();
@@ -31,9 +24,6 @@ structure VProcQueue (* :
 
     (* dequeue from the local queue  *)
       define inline @dequeue-from-atomic () : O.option;
-
-    (* enqueue a fiber (paired with fls) on a remote vproc *)
-      define @enqueue-on-vproc (dst : vproc, fls : FLS.fls, k : PT.fiber) : ();
 
     (* dequeue the first item to satisfy the given predicate  *)
       define @dequeue-with-pred-from-atomic (f : fun(FLS.fls / exh -> bool) / exh : exh) : O.option;
@@ -44,6 +34,11 @@ structure VProcQueue (* :
     (* returns true if the local queue contains more than one thread *)
       define @more-than-one-from-atomic (vp : vproc) : bool;
 
+    (* enqueue on a given vproc *)
+      define @enqueue-on-vproc-from-atomic (self : vproc, dst : vproc, fls : FLS.fls, k : PT.fiber) : ();
+    (* enqueue on a remote vproc *)
+      define @enqueue-on-vproc (dst : vproc, fls : FLS.fls, k : PT.fiber) : ();
+
     )
 
   end *) = struct
@@ -51,26 +46,15 @@ structure VProcQueue (* :
     structure PT = PrimTypes
     structure O = Option
 
+#include "vproc-queue.def"
+
     _primcode (
-
-      extern void WakeVProc(void *);
-
-    (* the VProc local-ready queue is represented as a pair of stacks, one for elements
-     * at the head of the queue and one for the tail of the queue.  The stack elements
-     * have the following representation, which must be kept synched with the C runtime
-     * system code.  The Q_EMPTY value is used to mark an empty stack.
-     *)
-      typedef queue = [
-	  FLS.fls,		(* suspended fiber's local storage *)
-	  PT.fiber,		(* suspended fiber *)
-	  any			(* link to next stack element *)
-	];
 
     (* returns true if the local queue is empty *)
       define @is-local-queue-empty-from-atomic (self : vproc) : bool =
-	  let tl : queue = vpload (VP_RDYQ_TL, self)
+	  let tl : queue_item = vpload (VP_RDYQ_TL, self)
 	  if Equal(tl, Q_EMPTY) then
-	      let hd : queue = vpload (VP_RDYQ_HD, self)
+	      let hd : queue_item = vpload (VP_RDYQ_HD, self)
 	      (* in *)
 		if Equal(hd, Q_EMPTY)
 		  then return (true)
@@ -80,8 +64,8 @@ structure VProcQueue (* :
 
     (* returns true if the local queue contains more than one thread *)
       define @more-than-one-from-atomic (vp : vproc) : bool =
-	  let tl : queue = vpload (VP_RDYQ_TL, vp)
-	  let hd : queue = vpload (VP_RDYQ_HD, vp)
+	  let tl : queue_item = vpload (VP_RDYQ_TL, vp)
+	  let hd : queue_item = vpload (VP_RDYQ_HD, vp)
 
 	  let nTl : int =
 		    if Equal(tl, Q_EMPTY) then return(0)
@@ -98,96 +82,99 @@ structure VProcQueue (* :
 
     (* enqueue on the local queue. NOTE: signals must be masked *)
       define inline @enqueue-from-atomic (vp : vproc, fls : FLS.fls, fiber : PT.fiber) : () =
-	  let tl : queue = vpload (VP_RDYQ_TL, vp)
-	  let qitem : queue = alloc(fls, fiber, tl)
+	  let tl : queue_item = vpload (VP_RDYQ_TL, vp)
+	  let qitem : queue_item = alloc(fls, fiber, tl)
 	  do vpstore (VP_RDYQ_TL, vp, qitem)
 	  return () 
 	;
 
-    (* unload threads from the landing pad *)
-      define @unload-landing-pad () : queue =
-(* ASSERT: signals are masked *)
-	  let vp : vproc = host_vproc
-	  fun lp () : queue =
-	      let item : queue = vpload(VP_ENTRYQ, vp)
-	      let queue : queue = CAS(&VP_ENTRYQ(vp), item, Q_EMPTY)
-	      if Equal(queue, item)
-		then return(queue)
-	        else
-		  do Pause()
-		  apply lp()
-	  let item : queue = 
-	    (* quick check to avoid the CAS operation *)
-	      let item : queue = vpload(VP_ENTRYQ, vp)
-	      if Equal(item, Q_EMPTY) then return(Q_EMPTY)
-	      else apply lp ()
-	  return(item)
-	;
-
-      define @is-messenger-thread (queue : queue) : bool =
-	return(Equal(SELECT(FLS_OFF, queue), MESSENGER_FLS))
-      ;
-
-    (* this function performs two jobs:
-     *  1. put ordinary threads on the local queue
-     *  2. returns any messenger threads
-     *)
-      define @process-landing-pad (queue : queue) : List.list =
-	  fun lp (queue : queue, messengerThds : List.list) : List.list =
-	      if Equal(queue, Q_EMPTY)
-		 then return(messengerThds)
-	      else 
-		  let isMessenger : bool = @is-messenger-thread(queue)
-		  if isMessenger
-		     then 
-		    (* the head of the queue is a messenger thread *)
-		      let messengerThds : List.list = List.CONS(SELECT(FIBER_OFF, queue), messengerThds)
-		      apply lp((queue)SELECT(LINK_OFF, queue), messengerThds)
-		  else
-		    (* the head of the queue is an ordinary thread; put it on the local queue *)
-		      do @enqueue-from-atomic (host_vproc, SELECT(FLS_OFF, queue), SELECT(FIBER_OFF, queue))
-		      apply lp((queue)SELECT(LINK_OFF, queue), messengerThds)
-	  apply lp(queue, nil)
-	;
-
-    (* unload the landing pad, and return any messages *)
-      define @unload-and-check-messages () : List.list =
-	  let queue : queue = @unload-landing-pad ()
-	  @process-landing-pad(queue)
+    (* enqueue on the high-priority local queue. NOTE: signals must be masked *)
+      define inline @enqueue-high-prio-from-atomic (vp : vproc, fls : FLS.fls, fiber : PT.fiber) : () =
+	  let tl : queue_item = vpload (VP_HIGH_PRIO_RDYQ, vp)
+	  let qitem : queue_item = alloc(fls, fiber, tl)
+	  do vpstore (VP_HIGH_PRIO_RDYQ, vp, qitem)
+	  return () 
 	;
 
     (* reverse a non-empty queue ((fls, k) is the first element of the input queue) *)
-      define @reverse-queue (fls : FLS.fls, k : PT.fiber, rest : queue) : queue =
-	  fun revQueue (fls : FLS.fls, k : PT.fiber, rest : queue, acc : queue) : queue =
-	       let acc : queue = alloc(fls, k, acc)
+      define @reverse-queue (fls : FLS.fls, k : PT.fiber, rest : queue_item) : queue_item =
+	  fun revQueue (fls : FLS.fls, k : PT.fiber, rest : queue_item, acc : queue_item) : queue_item =
+	       let acc : queue_item = alloc(fls, k, acc)
 	       if Equal(rest, Q_EMPTY)
 		 then return(acc)
 	       else
 		 apply revQueue (SELECT(FLS_OFF, rest), SELECT(FIBER_OFF, rest), SELECT(LINK_OFF, rest), acc)
-	  let qitem : queue = apply revQueue (fls, k, rest, Q_EMPTY)
+	  let qitem : queue_item = apply revQueue (fls, k, rest, Q_EMPTY)
 	  return (qitem)
 	;
 
+    (* splits the queue by priority. high goes first and low second. *)
+      define @split-by-priority (queue : queue_item) : [queue_item, queue_item] =
+	  fun split (queue : queue_item, highPrio : queue_item, lowPrio : queue_item) : [queue_item, queue_item] =
+	      if Equal(queue, Q_EMPTY)
+		 then 
+		  let ret : [queue_item, queue_item] = alloc(highPrio, lowPrio)
+		  return(ret)
+	      else if Equal(SELECT(FLS_OFF, queue), Q_EMPTY)
+		 then (* high-priority queue item *)
+		  let highPrio : queue_item = alloc(SELECT(FLS_OFF, queue), SELECT(FIBER_OFF, queue), highPrio)
+		  apply split (SELECT(LINK_OFF, queue), highPrio, lowPrio)
+	      else (* low-priority queue item *)
+		  let lowPrio : queue_item = alloc(SELECT(FLS_OFF, queue), SELECT(FIBER_OFF, queue), lowPrio)
+		  apply split (SELECT(LINK_OFF, queue), highPrio, lowPrio)
+	  apply split (queue, Q_EMPTY, Q_EMPTY)
+      ;
+
+    (* retrieve items from the landing pad and place them in the local queues. high-priority elements go in the
+     * high-priority queue, and low-priority threads go in the default queue.
+     *)
+      define @unload-landing-pad-from-atomic (self : vproc) : () =
+	  let queue : queue_item = VProc.@recv-from-atomic(self)
+	  let split : [queue_item, queue_item] = @split-by-priority(queue)
+
+	  fun unloadHighPrio (queue : queue_item) : () =
+	      if Equal(queue, Q_EMPTY)
+		 then
+		  return()
+	      else
+		  do @enqueue-high-prio-from-atomic(self, SELECT(FLS_OFF, queue), SELECT(FIBER_OFF, queue))
+		  apply unloadHighPrio(SELECT(LINK_OFF, queue))
+	  do apply unloadHighPrio(#0(split))
+
+	  fun unloadLowPrio (queue : queue_item) : () =
+	      if Equal(queue, Q_EMPTY)
+		 then
+		  return()
+	      else
+		  do @enqueue-from-atomic(self, SELECT(FLS_OFF, queue), SELECT(FIBER_OFF, queue))
+		  apply unloadLowPrio(SELECT(LINK_OFF, queue))
+	  do apply unloadLowPrio(#1(split))
+
+	  return()
+      ;
+
    (* dequeue from the secondary list *)
       define @dequeue-slow-path (vp : vproc) : O.option =
-	  let tl : queue = vpload (VP_RDYQ_TL, vp)
+          do @unload-landing-pad-from-atomic(vp)
+
+	  let tl : queue_item = vpload (VP_RDYQ_TL, vp)
 	  if Equal(tl, Q_EMPTY)
 	    then return(O.NONE)
 	    else
 	      do vpstore (VP_RDYQ_TL, vp, Q_EMPTY)
-	      let qitem : queue = @reverse-queue (
+	      let qitem : queue_item = @reverse-queue (
 		      SELECT(FLS_OFF, tl), 
 		      SELECT(FIBER_OFF, tl), 
-		      (queue)SELECT(LINK_OFF, tl))
-	      do vpstore (VP_RDYQ_HD, vp, (queue)SELECT(LINK_OFF, qitem))
+		      (queue_item)SELECT(LINK_OFF, tl))
+	      do vpstore (VP_RDYQ_HD, vp, (queue_item)SELECT(LINK_OFF, qitem))
 	      return (O.SOME(qitem))
 	;	  
 
     (* dequeue from the local queue  *)
       define inline @dequeue-from-atomic (vp : vproc) : O.option =
-(* NOTE: with software polling, we do not need to do this check! *)
-	  let messages : List.list = @unload-and-check-messages()
-	  let hd : queue = vpload (VP_RDYQ_HD, vp)
+          do @unload-landing-pad-from-atomic(vp)
+
+	  let hd : queue_item = vpload (VP_RDYQ_HD, vp)
 	  if Equal(hd, Q_EMPTY)
 	     then
 	     (* the primary list is empty, so try the secondary list *)
@@ -208,17 +195,16 @@ structure VProcQueue (* :
 
     (* dequeue the first item to satisfy the given predicate  *)
       define @dequeue-with-pred-from-atomic (self : vproc, f : fun(FLS.fls / exh -> bool) / exh : exh) : O.option =
-	  let messages : List.list = @unload-and-check-messages()
 	  cont exit (x : O.option) = return(x)
 	  let qitem : O.option = @dequeue-from-atomic(self)
 	  case qitem
 	   of O.NONE => throw exit(O.NONE)
-	    | O.SOME (origItem : queue) =>
+	    | O.SOME (origItem : queue_item) =>
 	      fun lp () : O.option =
 		  let qitem : O.option = @dequeue-from-atomic(self)
 		  case qitem
 		   of O.NONE => throw exit(O.NONE)
-		    | O.SOME(item : queue) =>
+		    | O.SOME(item : queue_item) =>
 		      let b : bool = apply f (SELECT(FLS_OFF, item) / exh)
 		      if b then throw exit (O.SOME(item))
 		      else if Equal(SELECT(FLS_OFF, item), SELECT(FLS_OFF, origItem))
@@ -237,26 +223,22 @@ structure VProcQueue (* :
 	  end
 	;
 
-    (* enqueue a fiber (paired with fls) on a remote vproc *)
+    (* enqueue on a given vproc *)
+      define inline @enqueue-on-vproc-from-atomic (self : vproc, dst : vproc, fls : FLS.fls, k : PT.fiber) : () =
+          if Equal(self, dst)
+	     then
+	      @enqueue-from-atomic(self, fls, k)
+	  else
+	      VProc.@send-from-atomic(self, dst, fls, k)
+      ;
+
+    (* enqueue on a remote vproc *)
       define inline @enqueue-on-vproc (dst : vproc, fls : FLS.fls, k : PT.fiber) : () =
-	  fun lp () : queue =
-	      let entryOld : queue = vpload(VP_ENTRYQ, dst)
-	      let entryNew : queue = alloc(fls, k, entryOld)
-	      let entryNew : queue = promote(entryNew)
-	      let x : queue = CAS(&VP_ENTRYQ(dst), entryOld, entryNew)
-	      if NotEqual(x, entryOld)
-		then
-		  do Pause ()
-		  apply lp ()
-		else return (entryOld)
-	  let entryOld : queue = apply lp()
-	(* wake the vproc if its queue was empty *)
-	  if Equal(entryOld, Q_EMPTY)
-	    then
-	      do ccall WakeVProc(dst)
-	      return ()
-	    else return ()
-	;
+	let self : vproc = SchedulerAction.@atomic-begin()
+	do @enqueue-on-vproc-from-atomic(self, dst, fls, k)
+	do SchedulerAction.@atomic-end(self)
+	return()
+      ;
 
     )
 
