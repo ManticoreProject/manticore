@@ -84,10 +84,7 @@ void MinorGC (VProc_t *vp)
     *rp++ = &(vp->rdyQHd);
     *rp++ = &(vp->rdyQTl);
     *rp++ = &(vp->landingPad);
-    *rp++ = &(vp->hpRdyQ);
     *rp++ = &(vp->stdEnvPtr);
-    *rp++ = &(vp->secondaryQHd); /* do we need this field? */
-    *rp++ = &(vp->secondaryQTl); /* do we need this field? */
     *rp++ = 0;
     assert (rp <= roots+(sizeof(roots)/sizeof(Value_t *)));
 

@@ -284,7 +284,7 @@ void VProcWake (VProc_t *vp)
  *  \param k the fiber
  *  \param fls the fiber-local storage
  */
-void VProcSend (VProc_t *self, VProc_t *vp, Value_t fls, Value_t k)
+void VProcSendSignal (VProc_t *self, VProc_t *vp, Value_t fls, Value_t k)
 {
     while (true) {
       Value_t landingPadOrig = vp->landingPad;
@@ -307,7 +307,7 @@ void VProcSend (VProc_t *self, VProc_t *vp, Value_t fls, Value_t k)
 void VProcGlobalGCInterrupt (VProc_t *self, VProc_t *vp)
 {
     vp->globalGCPending = true;
-    VProcSend(self, vp, M_NIL, vp->dummyK);
+    VProcSendSignal(self, vp, M_NIL, vp->dummyK);
     VProcSendUnixSignal(vp, GCSignal);
 }
 
@@ -352,7 +352,7 @@ void VProcSleep (VProc_t *vp)
 
     MutexLock(&(vp->lock));
 	AtomicWriteValue (&(vp->sleeping), M_TRUE);
-	while (vp->landingPad == M_NIL)
+	while (ValueToPtr(vp->landingPad) == M_NIL)
 	    CondWait(&(vp->wait), &(vp->lock));
 	AtomicWriteValue (&(vp->sleeping), M_FALSE);
     MutexUnlock(&(vp->lock));

@@ -99,7 +99,8 @@ extern VProc_t *VProcCreate (VProcFn_t f, void *arg);
 extern VProc_t *VProcSelf ();
 void VProcSendUnixSignal (VProc_t *vp, VPSignal_t sig);
 void VProcPreempt (VProc_t *vp);
-void VProcSend (VProc_t *self, VProc_t *vp, Value_t k, Value_t fls);
+void VProcSendSignal (VProc_t *self, VProc_t *vp, Value_t k, Value_t fls);
+void VProcSleep (VProc_t *vp);
 void VProcGlobalGCInterrupt (VProc_t *self, VProc_t *vp);
 
 #endif /* !_VPROC_H_ */
