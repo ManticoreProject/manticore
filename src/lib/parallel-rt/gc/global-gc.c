@@ -203,7 +203,9 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
     GlobalGC (self, roots);
 
 #ifndef NDEBUG
-    CheckGC (self, roots);
+    MutexLock(&GCLock);
+        CheckGC (self, roots);
+    MutexUnlock(&GCLock);
 #endif
 
   /* the leader reclaims the from-space pages */
