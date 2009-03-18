@@ -301,20 +301,18 @@ The barrier (line 33) marks the point that the collection ends.
 void StartGlobalGC (VProc_t *self, Value_t **roots)
 {
   bool leaderVProc;
-  int nVProcs = GetNumVProcs();
-  int nOtherVProcs = nVProcs - 1;
   MutexLock(&GCLock);
     if (!GlobalGCInProgress) {
       leaderVProc = true;
       GlobalGCInProgress = true;
-      nReadyForGC = 0;
-      BarrierInit(&GCBarrier, nVProcs);
-    for (int i = 0; i < nVProcs; i++)
+      nReadyForGC = 1;
+      BarrierInit(&GCBarrier, NumVProcs);
+    for (int i = 0; i < NumVProcs; i++)
       if (VProcs[i] != self)
         VProcSendSignal(VProcs[i], dummyCont, M_NIL);
     } else {
       leaderVProc = false;
-      if (++nReadyForGC == nOtherVProcs)
+      if (++nReadyForGC == NumVProcs)
          CondSignal(&LeaderWait);
       CondWait(&FollowerWait, &GCLock);
     }
@@ -322,7 +320,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
   MutexUnlock(&GCLock);
   if (leaderVProc) {
     MutexLock(&GCLock);
-      while (nReadyForGC < nOtherVProcs)
+      while (nReadyForGC < NumVProcs)
         CondWait(&LeaderWait, &GCLock);
       CondBroadcast(&FollowerWait);
     MutexUnlock(&GCLock);    
