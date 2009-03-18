@@ -183,8 +183,9 @@ structure VProc (* :
      * to handle the signal within a constant number of computational steps.
      * PRECONDITION: NotEqual(self, dst) and Equal(self, host_vproc)
      *) 
-      define @send-high-priority-from-atomic (self : vproc, dst : vproc, k : PT.fiber) : () =
-          do @send-from-atomic(self, dst, enum(0):FLS.fls, k)
+      define @send-high-priority-signal-from-atomic (self : vproc, dst : vproc, k : PT.fiber) : () =
+          let fls : FLS.fls = FLS.@get()
+          do @send-from-atomic(self, dst, fls, k)
           do ccall VProcPreempt(self, dst)
 	  return()
       ;

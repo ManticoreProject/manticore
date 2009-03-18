@@ -242,7 +242,8 @@ structure Cancelation (* : sig
 		    apply cancelAndWaitToTerm(ins', outs)
 		else 
                     do assert(NotEqual(vp, self))
-		    do VProc.@preempt-from-atomic(self, vp)
+		    let dummyK : PT.fiber = vpload(VP_DUMMYK, self)
+		    do VProc.@send-high-priority-signal-from-atomic(self, vp, dummyK)
                   (* tack the cancelable to the end of the waiting list, and try the next thread *)
 		    apply cancelAndWaitToTerm(ins', L.CONS(c, outs))
             end

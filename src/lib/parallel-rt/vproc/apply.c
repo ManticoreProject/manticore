@@ -51,9 +51,11 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 
     while (1) {
 #ifndef NDEBUG
+      /*
 	if (DebugFlg)
 	    SayDebug("[%2d] ASM_Apply(%p, %p, %p, %p, %p, %p)\n",
 		vp->id, vp, codeP, arg, envP, retCont, exnCont);
+      */
 #endif
 	RequestCode_t req = ASM_Apply (vp, codeP, arg, envP, retCont, exnCont);
 #ifndef NDEBUG

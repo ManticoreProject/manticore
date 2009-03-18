@@ -125,7 +125,6 @@ void InitGlobalGC ()
 void StartGlobalGC (VProc_t *self, Value_t **roots)
 {
     bool	leaderVProc;
-    int         nOtherVProcs = NumVProcs - 1;
 
     self->globalGCPending = false;
     self->sigPending = false;
@@ -134,6 +133,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	if (!GlobalGCInProgress) {
 	    leaderVProc = true;
 	    GlobalGCInProgress = true;
+	    NReadyForGC = 1;
 	    BarrierInit (&GCBarrier, NumVProcs);
 	    NumGlobalGCs++;
 	    LogGlobalGCInit (self, NumGlobalGCs);
@@ -141,8 +141,6 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	    if (GCDebug >= GC_DEBUG_GLOBAL)
 		SayDebug("[%2d] Initiating global GC %d\n", self->id, NumGlobalGCs);
 #endif
-
-	    NReadyForGC = 0;
 #ifndef NO_GC_STATS
 	    FromSpaceSzb = 0;
 	    NWordsScanned = 0;
@@ -153,7 +151,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 		VProcGlobalGCInterrupt (self, VProcs[i]);
 	} else {
 	    leaderVProc = false;
-	    if (++NReadyForGC == nOtherVProcs)
+	    if (++NReadyForGC == NumVProcs)
 		CondSignal (&LeaderWait);
 	    CondWait (&FollowerWait, &GCLock);
 	}
@@ -192,7 +190,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
       /* reset the size of to-space */
 	ToSpaceSz = 0;
 	MutexLock(&GCLock);
-	    while (NReadyForGC < nOtherVProcs)
+	    while (NReadyForGC < NumVProcs)
 		CondWait(&LeaderWait, &GCLock);
 	    CondBroadcast(&FollowerWait);
 	MutexUnlock (&GCLock);
@@ -217,7 +215,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 		cp->sts = FREE_CHUNK;
 		cp->usedTop = cp->baseAddr;
 #ifndef NDEBUG
-/*DEBUG*/bzero(cp->baseAddr, cp->szB);
+		/*DEBUG*/bzero((void*)cp->baseAddr, cp->szB);
 #endif
 		MemChunk_t *cq = cp->next;
 		cp->next = FreeChunks;
@@ -239,6 +237,11 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 
   /* synchronize on every vproc finishing GC */
     BarrierWait (&GCBarrier);
+
+#ifndef NDEBUG
+	if (GCDebug >= GC_DEBUG_GLOBAL)
+ 	    SayDebug("[%2d] Leaving global GC\n", self->id);
+#endif
 
 } /* end of StartGlobalGC */
 
@@ -270,7 +273,7 @@ static void GlobalGC (VProc_t *vp, Value_t **roots)
 
 #ifndef NDEBUG
     if (GCDebug >= GC_DEBUG_GLOBAL)
-	SayDebug("[%2d] Global GC finished\n", vp->id);
+	SayDebug("[%2d] Global GC finished on vproc\n", vp->id);
 #endif
 
 } /* end of GlobalGC */
