@@ -35,6 +35,13 @@
  *	    return old;
  *	}
  *
+ *      Value_t AtomicExchangeValue (Value_t *ptr, Value_t new)
+ *      {
+ *          Value_t result = *ptr;
+ *          *ptr = new;
+ *          return result;
+ *      }
+ *
  *      void AtomicWriteValue (Value_t *ptr, Value_t new)
  *      {
  *          *ptr = new;
@@ -92,10 +99,24 @@ STATIC_INLINE int TestAndSwap (volatile int *ptr, int new)
     return __sync_val_compare_and_swap (ptr, 0, new);
 }
 
-STATIC_INLINE void AtomicWriteValue (volatile Value_t *ptr, Value_t new)
+STATIC_INLINE Value_t AtomicExchangeValue (volatile Value_t *ptr, Value_t new)
 {
+    __asm__ __volatile__ (
+	"xchgq %0,%1\n"  	        /* xchgq new,ptr */
+	    : "=r" (new)
+ 	    : "m" (*ptr)
+  	    : "memory");
+
+    return new;
+}
+
+STATIC_INLINE Value_t AtomicWriteValue (volatile Value_t *ptr, Value_t new)
+{
+  /*
     *ptr = new;
-    __sync_synchronize();  // FIXME: does this work?
+    __sync_synchronize();  // FIXME: does this work? 
+  */
+  AtomicExchangeValue(ptr, new);
 }
 
 STATIC_INLINE int FetchAndInc (volatile int *ptr)
@@ -160,10 +181,20 @@ STATIC_INLINE int TestAndSwap (volatile int *ptr, int new)
     return result;
 }
 
+STATIC_INLINE Value_t AtomicExchangeValue (volatile Value_t *ptr, Value_t new)
+{
+    __asm__ __volatile__ (
+	"xchgq %0,%1\n"  	        /* xchgq new,ptr */
+	    : "=r" (new)
+ 	    : "m" (*ptr)
+  	    : "memory");
+
+    return new;
+}
+
 STATIC_INLINE void AtomicWriteValue (volatile Value_t *ptr, Value_t new)
 {
-// FIXME: should use xchg
-    CompareAndSwapValue(ptr, *ptr, new);
+    AtomicExchangeValue(ptr, new);
 }
 
 STATIC_INLINE int FetchAndInc (volatile int *ptr)
