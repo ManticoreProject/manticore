@@ -376,7 +376,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
       BarrierInit(&GCBarrier, NumVProcs);
       for (int i = 0; i < NumVProcs; i++)
         if (VProcs[i] != self)
-          VProcSendSignal(VProcs[i], vp->dummyCont, vp->currentFLS);
+          VProcSendSignal(VProcs[i], self->dummyCont, self->currentFLS);
     } else {
       leaderVProc = false;
       if (++NReadyForGC == NumVProcs)
