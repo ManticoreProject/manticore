@@ -136,7 +136,6 @@ structure FLS :
 
       define @initial-dict () : [int, List.list] =
 
-      (* virtual map *)
         let k : [int] = alloc(DICT_BUILTIN_TOPOLOGY)
         let elt : [[int], any] = alloc(k, List.nil)
         let dict : List.list = List.CONS(elt, Topologies.EMPTY)

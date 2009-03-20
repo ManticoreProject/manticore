@@ -308,27 +308,6 @@ structure VProc (* :
 	  SchedulerAction.@run(self, act, startLeadK)
 	;
 
-    (* mask signals before running any scheduling code *)
-      define @mask-signals (x : unit / exh : exh) : unit =
-	  let vp : vproc = SchedulerAction.@atomic-begin()
-	  return (UNIT)
-	;
-
-    (* initialize fls *)
-      define @init-fls (x : unit / exh : exh) : unit = 
-	  let fls : FLS.fls = FLS.@new (UNIT / exh)
-	  do FLS.@set(fls)
-	  return (UNIT)
-	;
-
     )
-
-  (* signals must be masked before initializing the rest of the runtime *)
-    val maskSignals : unit -> unit = _prim(@mask-signals)
-    val () = maskSignals()
-
-  (* create fls for the root thread *)
-    val initFLS : unit -> unit = _prim(@init-fls)
-    val () = initFLS() 
 
   end
