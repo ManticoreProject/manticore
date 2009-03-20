@@ -333,8 +333,13 @@ void VProcPreempt (VProc_t *vp)
 void VProcSendUnixSignal (VProc_t *vp, VPSignal_t sig)
 {
 #ifndef NDEBUG
-    if (DebugFlg)
-	SayDebug("[%2d] VProcSendUnixSignal: vp = %d, sig = %d\n", VProcSelf()->id, vp->id, sig);
+  if (DebugFlg) {
+      VProc_t *self = VProcSelf();
+      if (self) 
+  	  SayDebug("[%2d] VProcSendUnixSignal: vp = %d, sig = %d\n", self->id, vp->id, sig);
+      else 
+	  SayDebug("VProcSendUnixSignal: vp = %d, sig = %d\n", vp->id, sig);
+  }
 #endif
 
     if (sig == PreemptSignal) pthread_kill (vp->hostID, SIGUSR1); 

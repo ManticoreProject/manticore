@@ -70,7 +70,7 @@ functor MainFn (
     fun initialEnv () = let
 	(* load the initial-basis.pml file *)
 	  val initialBasisPath = OS.Path.joinDirFile{
-		  dir = LoadPaths.basisSequentialDir,
+		  dir = LoadPaths.sequentialBasisDir,
 		  file = "initial-basis.mlb"
 		}
 	  val errStrm = Error.mkErrStream initialBasisPath

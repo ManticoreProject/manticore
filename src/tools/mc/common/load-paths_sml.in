@@ -15,11 +15,14 @@ structure LoadPaths =
   (* Manticore basis CPP definition directory *)
     val basisCPPDefDir = OS.Path.joinDirFile {file="include", dir=basisDir}
 
-  (* Manticore basis CPP definition directory *)
-    val basisSequentialDir = OS.Path.joinDirFile {file="sequential", dir=basisDir}
+  (* sequential basis *)
+    val sequentialBasisDir = OS.Path.joinDirFile {file="sequential", dir=basisDir}
 
-  (* sequential basis library *)
-    val sequentialLib = OS.Path.joinDirFile{file="sequential.mlb", dir=basisSequentialDir}
+  (* runtime basis *)
+    val runtimeBasisDir = OS.Path.joinDirFile {file="runtime", dir=basisDir}
+
+  (* runtime basis library *)
+    val runtimeBasisLib = OS.Path.joinDirFile{file="runtime.mlb", dir=runtimeBasisDir}
 
   (* top-level schedulers *)
     val topLevelSchedsDir = OS.Path.joinDirFile{file="schedulers", dir=basisDir}
