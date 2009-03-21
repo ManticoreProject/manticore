@@ -41,7 +41,7 @@ STATIC_INLINE Addr_t LimitPtr (VProc_t *vp)
     return (Addr_t)vp + VP_HEAP_SZB - ALLOC_BUF_SZB;;
 }
 
-static Addr_t SetLimitPtr (VProc_t *vp, Addr_t newLimitPtr)
+STATIC_INLINE Addr_t SetLimitPtr (VProc_t *vp, Addr_t newLimitPtr)
 {
   Value_t oldLimitPtr = AtomicExchangeValue((Value_t*)&(vp->limitPtr), AddrToValue(newLimitPtr));
   return ValueToAddr(oldLimitPtr);

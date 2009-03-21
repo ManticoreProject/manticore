@@ -302,7 +302,7 @@ void VProcSendSignal (VProc_t *self, VProc_t *vp, Value_t fls, Value_t k)
  */
 void VProcZeroLimitPtr (VProc_t *vp)
 {
-  SetLimitPtr(vp, AddrToValue(0));
+  SetLimitPtr(vp, 0);
 }
 
 /*! \brief interrupt a remote vproc to take part in a global collection.

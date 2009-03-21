@@ -99,7 +99,7 @@ STATIC_INLINE int TestAndSwap (volatile int *ptr, int new)
     return __sync_val_compare_and_swap (ptr, 0, new);
 }
 
-static Value_t AtomicExchangeValue (volatile Value_t *ptr, Value_t new)
+STATIC_INLINE Value_t AtomicExchangeValue (volatile Value_t *ptr, Value_t new)
 {
     Value_t result = new;
 
