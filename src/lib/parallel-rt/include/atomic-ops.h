@@ -101,13 +101,15 @@ STATIC_INLINE int TestAndSwap (volatile int *ptr, int new)
 
 STATIC_INLINE Value_t AtomicExchangeValue (volatile Value_t *ptr, Value_t new)
 {
-    __asm__ __volatile__ (
-	"xchgq %0,%1\n"  	        /* xchgq new,ptr */
-	    : "=r" (new)
- 	    : "m" (*ptr)
-  	    : "memory");
+    Value_t result = new;
 
-    return new;
+    __asm__ __volatile__ (
+	"xchg %1,%0\n"  	        /* xchgq result,ptr */
+	: "+r" (result), "+m" (*ptr)
+	:
+    );
+
+    return result;
 }
 
 STATIC_INLINE Value_t AtomicWriteValue (volatile Value_t *ptr, Value_t new)
@@ -183,13 +185,15 @@ STATIC_INLINE int TestAndSwap (volatile int *ptr, int new)
 
 STATIC_INLINE Value_t AtomicExchangeValue (volatile Value_t *ptr, Value_t new)
 {
-    __asm__ __volatile__ (
-	"xchgq %0,%1\n"  	        /* xchgq new,ptr */
-	    : "=r" (new)
- 	    : "m" (*ptr)
-  	    : "memory");
+    Value_t result = new;
 
-    return new;
+    __asm__ __volatile__ (
+	"xchg %1,%0\n"  	        /* xchgq result,ptr */
+	: "+r" (result), "+m" (*ptr)
+	:
+    );
+
+    return result;
 }
 
 STATIC_INLINE void AtomicWriteValue (volatile Value_t *ptr, Value_t new)
