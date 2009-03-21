@@ -348,11 +348,7 @@ functor HeapTransferFn (
       val {saves, restores} = if saveAllocationPointer
           then saveRegs (removeReg Regs.apReg Regs.saveRegs)
           else saveRegs Regs.saveRegs
-      (* we need a pointer to the vproc to set the inManticore flag, etc. *)
       val (vpReg, setVP) = hostVProc ()
-      (* generate a statement to store a value in the vproc inManticore flag *)
-      fun setInManticore value = 
-	  VProcOps.genVPStore' (MTy.wordTy, Spec.ABI.inManticore, vpReg, T.LI value)
       (* statements to save/restore the allocation pointer from the vproc *)
       val (saveAP, restoreAP) = if saveAllocationPointer
     	  then let
@@ -364,9 +360,12 @@ functor HeapTransferFn (
              end
            else ([], []) 
 
-      val stms = setVP :: saveAP @ [setInManticore(Spec.falseRep), saves]
+      val stms = setVP
+		 :: saveAP 
+		 @ [saves]
 		 @ callseq
-		 @ restores :: restoreAP @ [setInManticore(Spec.trueRep)]
+		 @ restores 
+		 :: restoreAP
       fun convResult (T.GPR e, v) = MTy.EXP (szOfVar v, e)
 	| convResult (T.FPR e, v) = MTy.FEXP (szOfVar v, e)
 	| convResult _ = raise Fail "convResult"
@@ -458,16 +457,14 @@ functor HeapTransferFn (
            (* store dedicated registers and the rootset pointer before entering the C call *)
 	    [ (* by convention we put the rootset pointer into stdEnvPtr *)
               VProcOps.genVPStore' (MTy.wordTy, Spec.ABI.stdEnvPtr, vpReg, MTy.mlriscTreeToRexp rootPtr),
-	      VProcOps.genVPStore' (MTy.wordTy, Spec.ABI.allocPtr, vpReg, regTree Regs.apReg),
-	      VProcOps.genVPStore' (MTy.wordTy, Spec.ABI.limitPtr, vpReg, regTree Regs.limReg) 
+	      VProcOps.genVPStore' (MTy.wordTy, Spec.ABI.allocPtr, vpReg, regTree Regs.apReg)
 	    ],
            (* call the C function *)
             stmsC,	    
 	   (* restore dedicated registers *) 
 	    [
 	     setVP',
-	     move (Regs.apReg, (VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.allocPtr, vpReg'))),
-	     move (Regs.limReg, (VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.limitPtr, vpReg')))
+	     move (Regs.apReg, (VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.allocPtr, vpReg')))
 	    ],
 	   (* jump to the return post-C-call function *)
 	    genJump (T.LABEL retLabel, [retLabel], retParams, resultC @ restoredRoots)
@@ -530,12 +527,15 @@ functor HeapTransferFn (
      (* jump to the heap limit check *)
       val retStms = genJump (T.LABEL gcTestLab, [gcTestLab], rootTemps, restoredRoots)
 
+      val {stms=checkStms, allocCheck} = Alloc.genAllocCheck szb
+
       val stms = List.concat [
                  (* force the root set into registers *)
 		  Copy.copy {dst=rootTemps, src=rootArgs},
 		  [T.DEFINE gcTestLab],	      
+		  checkStms,
 		 (* branch on the heap limit test *)
-		  [T.BCC (Alloc.genAllocCheck szb, doGCLab)],
+		  [T.BCC (allocCheck, doGCLab)],
 		 (* GC is unnecessary *)
 		  genJump (T.LABEL noGCLab, [noGCLab], noGCParamRegs, List.map MTy.regToTree rootTemps),
 		 (* GC is necessary *)

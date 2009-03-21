@@ -29,7 +29,6 @@ structure DummySpec : TARGET_SPEC =
 	val magic : IntInf.int = 0xdeadbeef
 
       (* offsets into the VProc_t structure *)
-	val inManticore : IntInf.int = 0
 	val atomic : IntInf.int = 4
 	val sigPending : IntInf.int = 8
 	val actionStk : IntInf.int = 16

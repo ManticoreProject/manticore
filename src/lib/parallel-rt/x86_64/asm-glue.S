@@ -52,8 +52,6 @@ _GSYM(ASM_Apply):
 	movq	%r9,STD_EXH_REG		/* exception continuation */
       /* load Manticore state */
 	movq	ALLOC_PTR(%r10),ALLOC_PTR_REG	/* load allocation pointer */
-	movq	LIMIT_PTR(%r10),LIMIT_PTR_REG	/* limit pointer */
-	movq	$M_TRUE,IN_MANTICORE(%r10) /* we are running manticore code now! */
 	jmp	*%r12
 
 /* code address for uncaught exception continuation */
@@ -92,8 +90,6 @@ switch_to_c:
 	movq	ALLOC_PTR_REG,TMP_REG2
 	andq	$VP_MASK,TMP_REG2
 #endif
-      /* mark that we are not running Manticore code anymore */
-	movq	$M_FALSE,IN_MANTICORE(TMP_REG2)
       /* save Manticore state */
 	movq	STD_ARG_REG,STD_ARG(TMP_REG2)
 	movq	STD_EP_REG,STD_EP(TMP_REG2)

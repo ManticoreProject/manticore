@@ -9,6 +9,7 @@
 
 #include "manticore-rt.h"
 #include "vproc.h"
+#include "atomic-ops.h"
 
 /* size of a heap chunk */
 #define HEAP_CHUNK_SZB		((Addr_t)(4*ONE_MEG))
@@ -33,6 +34,17 @@ STATIC_INLINE void SetAllocPtr (VProc_t *vp)
     if (szB > MaxNurserySzB) szB = MaxNurserySzB;
     vp->nurseryBase = (top - szB);
     vp->allocPtr = vp->nurseryBase + WORD_SZB;
+}
+
+STATIC_INLINE Addr_t LimitPtr (VProc_t *vp)
+{
+    return (Addr_t)vp + VP_HEAP_SZB - ALLOC_BUF_SZB;;
+}
+
+static Addr_t SetLimitPtr (VProc_t *vp, Addr_t newLimitPtr)
+{
+  Value_t oldLimitPtr = AtomicExchangeValue((Value_t*)&(vp->limitPtr), AddrToValue(newLimitPtr));
+  return ValueToAddr(oldLimitPtr);
 }
 
 /* return true of the given address is within the given vproc heap */

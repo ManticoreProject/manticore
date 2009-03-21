@@ -18,7 +18,6 @@ structure RuntimeConstants : RUNTIME_CONSTANTS =
     val maxObjectSzB : IntInf.int = 504
 
   (* offsets into the VProc_t structure *)
-    val inManticore : IntInf.int = 0
     val atomic : IntInf.int = 8
     val sigPending : IntInf.int = 16
     val currentTId : IntInf.int = 24

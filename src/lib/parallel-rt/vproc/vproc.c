@@ -166,7 +166,6 @@ void *NewVProc (void *arg)
     vproc->oldTop = VProcHeap(vproc);
     InitVProcHeap (vproc);
 
-    vproc->inManticore = M_FALSE;
     vproc->atomic = M_TRUE;
     vproc->sigPending = M_FALSE;
     vproc->sleeping = M_FALSE;
@@ -181,7 +180,7 @@ void *NewVProc (void *arg)
     vproc->stdEnvPtr = M_UNIT;
     vproc->stdCont = M_NIL;
     vproc->stdExnCont = M_UNIT;
-    vproc->limitPtr = (Addr_t)vproc + VP_HEAP_SZB - ALLOC_BUF_SZB;
+    SetLimitPtr(vproc, LimitPtr(vproc));
     SetAllocPtr (vproc);
     vproc->currentFLS = M_NIL;
 
@@ -191,13 +190,6 @@ void *NewVProc (void *arg)
 
   /* store a pointer to the VProc info as thread-specific data */
     pthread_setspecific (VProcInfoKey, vproc);
-
-  /* initialize this pthread's handler. */
-    sa.sa_sigaction = SigHandler;
-    sa.sa_flags = SA_SIGINFO | SA_RESTART;
-    sigfillset (&(sa.sa_mask));
-    sigaction (SIGUSR1, &sa, 0);
-    sigaction (SIGUSR2, &sa, 0);
 
   /* Note that initData gets freed in VProcInit after the barrier, so we need
    * to cache the contents locally.
@@ -281,7 +273,7 @@ void VProcWake (VProc_t *vp)
 /*! \brief create a vproc queue item */
 Value_t VProcQueueItem (VProc_t *self, Value_t fls, Value_t k, Value_t link)
 {
-  return PromoteObj(self, AllocUniform(self, 3, fls, k, link));
+    return PromoteObj(self, AllocUniform(self, 3, fls, k, link));
 }
 
 /*! \brief place a signal (fiber + fiber-local storage) on the landing pad of the remote vproc.
@@ -306,6 +298,13 @@ void VProcSendSignal (VProc_t *self, VProc_t *vp, Value_t fls, Value_t k)
     }
 }
 
+/*! \brief set a vproc's limit pointer to zero
+ */
+void VProcZeroLimitPtr (VProc_t *vp)
+{
+  SetLimitPtr(vp, AddrToValue(0));
+}
+
 /*! \brief interrupt a remote vproc to take part in a global collection.
  *  \param self the host vproc.
  *  \param vp the remote vproc.
@@ -315,7 +314,7 @@ void VProcGlobalGCInterrupt (VProc_t *self, VProc_t *vp)
     vp->globalGCPending = true;
     assert(vp->currentFLS != M_NIL);
     VProcSendSignal(self, vp, vp->currentFLS, vp->dummyK);
-    VProcSendUnixSignal(vp, GCSignal);
+    VProcZeroLimitPtr(vp);
 }
 
 /*! \brief send a preemption to a remote vproc.
@@ -323,30 +322,8 @@ void VProcGlobalGCInterrupt (VProc_t *self, VProc_t *vp)
  */
 void VProcPreempt (VProc_t *vp)
 {
-    VProcSendUnixSignal(vp, PreemptSignal);
+    VProcZeroLimitPtr(vp);
 }
-
-/*! \brief send an asynchronous signal to another VProc.
- *  \param vp the target VProc.
- *  \param sig the signal.
- */
-void VProcSendUnixSignal (VProc_t *vp, VPSignal_t sig)
-{
-#ifndef NDEBUG
-  if (DebugFlg) {
-      VProc_t *self = VProcSelf();
-      if (self) 
-  	  SayDebug("[%2d] VProcSendUnixSignal: vp = %d, sig = %d\n", self->id, vp->id, sig);
-      else 
-	  SayDebug("VProcSendUnixSignal: vp = %d, sig = %d\n", vp->id, sig);
-  }
-#endif
-
-    if (sig == PreemptSignal) pthread_kill (vp->hostID, SIGUSR1); 
-    else if (sig == GCSignal) pthread_kill (vp->hostID, SIGUSR2);
-    else Die("bogus signal");
-
-} /* end of VProcSendUnixSignal */
 
 /*! \brief put the vproc to sleep until a signal arrives
  *  \param vp the vproc that is being put to sleep.
@@ -400,54 +377,6 @@ static void IdleVProc (VProc_t *vp, void *arg)
     exit (0);
 
 } /* end of IdleVProc */
-
-/* SigHandler:
- *
- * A per-vproc handler for SIGUSR1 and SIGUSR2 signals.
- */
-static void SigHandler (int sig, siginfo_t *si, void *_sc)
-{
-    ucontext_t	*uc = (ucontext_t *)_sc;
-    VProc_t	*self = VProcSelf();
-
-  /* WARNING:
-   * Enabling the following SayDebug can cause deadlock;
-   * if the signal arrives while the VProc/pthread is in the runtime,
-   * the PrintLock may already be acquired by this thread for debugging. 
-   * Attempting to re-acquire the PrintLock in the signal handler leads to deadlock
-   * (technically, undefined behavior, but deadlock in practice).
-   */
-/*
-#ifndef NDEBUG
-    if (DebugFlg)
-        SayDebug("[%2d] SigHandler; inManticore = %p, atomic = %p, pc = %p\n",
-                 self->id, self->inManticore, self->atomic, UC_RIP(uc));
-#endif
-*/
-
-    switch (sig) {
-      case SIGUSR1: /* Preemption signal */
-	LogPreemptSignal (self);
-	self->sigPending = M_TRUE;
-	break;
-      case SIGUSR2: /* Global GC signal */
-	LogGCSignal (self);
-	self->sigPending = M_TRUE;
-	break;
-      default:
-	Die ("bogus signal %d\n", sig);
-	break;
-    }
-
-    if ((self->inManticore == M_TRUE) && (self->atomic == M_FALSE)) {
-      /* set the limit pointer to zero to force a context switch on
-       * the next GC test.
-       */
-	UC_R11(uc) = 0;
-    }
-
-} /* SigHandler */
-
 
 static int GetNumCPUs ()
 {

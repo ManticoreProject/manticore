@@ -19,7 +19,6 @@
  *	
  */
 
-    VP_OFFSET(vp, IN_MANTICORE, inManticore, true);
     VP_OFFSET(vp, ATOMIC, atomic, true);
     VP_OFFSET(vp, SIG_PENDING, sigPending, false);
     VP_OFFSET(vp, VP_SLEEPING, sleeping, false);

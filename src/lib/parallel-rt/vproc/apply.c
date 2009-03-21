@@ -10,6 +10,7 @@
 #include "value.h"
 #include "request-codes.h"
 #include "scheduler.h"
+#include "heap.h"
 
 extern RequestCode_t ASM_Apply (VProc_t *vp, Addr_t cp, Value_t arg, Value_t ep, Value_t rk, Value_t ek);
 extern int ASM_Return;
@@ -60,14 +61,22 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 	RequestCode_t req = ASM_Apply (vp, codeP, arg, envP, retCont, exnCont);
 #ifndef NDEBUG
 #endif
+
+	Addr_t limitPtr = SetLimitPtr(vp, LimitPtr(vp));
+
 	switch (req) {
 	  case REQ_GC:
 	  /* check to see if we actually need to do a GC, since this request
 	   * might be from a pending signal.
 	   */
-	    if ((vp->limitPtr < vp->allocPtr) || vp->globalGCPending) {
+	    if ((LimitPtr(vp) < vp->allocPtr) || vp->globalGCPending) {
 	      /* request a minor GC */
 		MinorGC (vp);
+	    }
+
+	    if (limitPtr == 0) {
+	      /* an asynchronous signal has arrived */
+	        vp->sigPending = M_TRUE;
 	    }
 
 	  /* check for pending signals */

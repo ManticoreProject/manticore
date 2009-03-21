@@ -16,7 +16,6 @@
  */
 struct struct_vproc {
   /* the following fields are only accessed by the local vproc */
-    Value_t	inManticore;	//!< true, when executing Manticore code
     Value_t	atomic;		//!< true, when in a vproc-atomic region
     Value_t	sigPending;	//!< true, when there is a pending signal
     Value_t	sleeping;       //!< true, when the vproc is sleeping
@@ -75,11 +74,6 @@ struct struct_vproc {
     
 };
 
-typedef enum {
-    GCSignal,
-    PreemptSignal
-} VPSignal_t;
-
 /* the type of the initial function to run in a vproc */
 typedef void (*VProcFn_t) (VProc_t *vp, void *arg);
 
@@ -97,7 +91,6 @@ extern VProc_t		*VProcs[MAX_NUM_VPROCS];
 extern void VProcInit (Options_t *opts);
 extern VProc_t *VProcCreate (VProcFn_t f, void *arg);
 extern VProc_t *VProcSelf ();
-void VProcSendUnixSignal (VProc_t *vp, VPSignal_t sig);
 void VProcPreempt (VProc_t *vp);
 void VProcSendSignal (VProc_t *self, VProc_t *vp, Value_t k, Value_t fls);
 void VProcSleep (VProc_t *vp);

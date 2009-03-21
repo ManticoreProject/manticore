@@ -25,7 +25,6 @@ signature RUNTIME_CONSTANTS =
     val magic : IntInf.int
 
   (* offsets into the VProc_t structure *)
-    val inManticore : IntInf.int
     val atomic : IntInf.int
     val sigPending : IntInf.int
     val actionStk : IntInf.int

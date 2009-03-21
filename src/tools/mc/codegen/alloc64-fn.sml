@@ -196,18 +196,27 @@ functor Alloc64Fn (
    * bytes.  There are 4kbytes of heap slop presubtracted from the limit pointer
    * So, most allocations need only perform the following check.
    * 
-   * if (limReg - apReg <= 0)
+   * if (limitPtr - apReg <= 0)
    *    then continue;
    *    else doGC ();
    *)
-  fun genAllocCheck szB =
-      if Word.<= (szB, heapSlopSzB)
-      then T.CMP (MTy.wordTy, T.Basis.LE, 
-		  T.SUB (MTy.wordTy, T.REG (MTy.wordTy, Regs.limReg), T.REG (MTy.wordTy, Regs.apReg)),
-		  T.LI 0)
-      else T.CMP (MTy.wordTy, T.Basis.LE, 
-		  T.SUB (MTy.wordTy, T.REG (MTy.wordTy, Regs.limReg), T.REG (MTy.wordTy, Regs.apReg)),
-		  T.LI (Word.toLargeInt szB))
+  fun genAllocCheck szB = let
+      val vpReg = Cells.newReg()
+      val MTy.EXP(_, hostVP) = VProcOps.genHostVP
+      val limitPtr = VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.limitPtr, T.REG(MTy.wordTy, vpReg))
+      in
+        {
+	 stms=[T.MV(MTy.wordTy, vpReg, hostVP)],
+	 allocCheck=
+	   if szB <= heapSlopSzB
+		          then T.CMP (MTy.wordTy, T.Basis.LE, 
+				      T.SUB (MTy.wordTy, limitPtr, T.REG (MTy.wordTy, Regs.apReg)),
+				      T.LI 0)
+		       else T.CMP (MTy.wordTy, T.Basis.LE, 
+				   T.SUB (MTy.wordTy, limitPtr, T.REG (MTy.wordTy, Regs.apReg)),
+				   T.LI (Word.toLargeInt szB))
+	}
+      end
 
   (* This expression checks that there are at least szB bytes available in the
    * global heap.
