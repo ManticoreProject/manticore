@@ -364,9 +364,14 @@ functor HeapTransferFn (
              end
            else ([], []) 
 
-      val stms = setVP :: saveAP @ [setInManticore(Spec.falseRep), saves]
+      val stms = setVP
+		 :: saveAP 
+		 @ [setInManticore(Spec.falseRep)] 
+		 @ [saves]
 		 @ callseq
-		 @ restores :: restoreAP @ [setInManticore(Spec.trueRep)]
+		 @ restores 
+		 :: restoreAP 
+		 @ [setInManticore(Spec.trueRep)]
       fun convResult (T.GPR e, v) = MTy.EXP (szOfVar v, e)
 	| convResult (T.FPR e, v) = MTy.FEXP (szOfVar v, e)
 	| convResult _ = raise Fail "convResult"
