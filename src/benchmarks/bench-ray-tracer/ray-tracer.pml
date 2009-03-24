@@ -478,7 +478,7 @@ fun ray winsize = let
       output 0;
       outputImage(img, "out.ppm"); 
       freeImage img;
-      print (dtos (e-b) ^ "\n")
-    end;
+      Print.print (dtos (e-b) ^ "\n")
+    end
 
-ray (readint ())
+val _ = ray (PrimIO.readInt ())
