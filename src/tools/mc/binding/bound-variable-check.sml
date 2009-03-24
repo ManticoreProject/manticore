@@ -254,6 +254,20 @@ structure BoundVariableCheck :> sig
 		end
            (* end case *))
 
+    and chkPBind loc (PT1.MarkPBind {span, tree}, env) = let
+	    val (tree, env) = chkPBind loc (tree, env)
+            in
+	       (PT2.MarkPBind {span=span, tree=tree}, env)
+	    end
+      | chkPBind loc (PT1.PBind (pat, exp), env) = let
+	    val exp = chkExp loc (exp, env)
+	    val (pat, env) = chkPat loc (pat, env)
+	    in
+	      (PT2.PBind (pat, exp), env)
+	    end
+
+    and chkPBinds loc (pbinds, env) = chkList loc (chkPBind, pbinds, env)
+
     and chkMatches loc (matches, env) = List.map (fn m => chkMatch loc (m, env)) matches
 
     and chkPMatch loc (pmatch, env) = (case pmatch
@@ -413,6 +427,17 @@ structure BoundVariableCheck :> sig
 		  val exps = chkExps loc (exps, env)
 	          in
 		     PT2.PTupleExp exps
+		  end
+	    | PT1.PCompExp (exp, pbinds, expOpt) => let
+		  val (pbinds, env) = chkPBinds loc (pbinds, env)
+		  val exp = chkExp loc (exp, env)
+		  val expOpt = (
+		      case expOpt
+		       of NONE => NONE
+			| SOME exp => SOME(chkExp loc (exp, env))
+		      (* end case *))
+	          in
+		    PT2.PCompExp (exp, pbinds, expOpt)
 		  end
             (* end case *))
 
