@@ -26,7 +26,7 @@ structure Future1 : sig
 
     local 
 
-      val futureModuleName = "FCMS" (* "EagerFuture" *)
+      val futureModuleName = "EagerFuture"
 
       fun getTyc id = BasisEnv.getTyConFromBasis [futureModuleName, id]
       fun getVar id = BasisEnv.getVarFromBasis [futureModuleName, id]
@@ -111,8 +111,8 @@ structure Future1 : sig
     (* Consumes futvar -> q and e; produces futvar (q, fn u => e). *)
     fun mkFut futvar e = let 
       val te = TypeOf.exp e
-      (* val trueExp = AST.ConstExp (AST.DConst (Basis.boolTrue, [])) *)
-      val arg = mkThunk e (* AST.TupleExp [mkThunk e, trueExp]) *)
+      val falseExp = AST.ConstExp (AST.DConst (Basis.boolFalse, []))
+      val arg = AST.TupleExp [mkThunk e, falseExp]
       in
 	A.ApplyExp (A.VarExp (futvar(), [te]), arg, futureTy te)
       end

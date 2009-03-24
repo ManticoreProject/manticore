@@ -6,9 +6,9 @@
 # To generate timing results, run this script in the benchmark directory with the following
 # command-line arguments:
 #
-#           -e prog_name        name of the program you wish to benchmark.  The pml file
-#				should be located at benchmarks/prog_name/prog_name.pml
-#           -q seq_prog_name    optional name of the sequential program for benchmarking.
+#           -b bench_name       name of the benchmark.
+#           -f path             path to the benchmark file.
+#           -q seq_path         optional path to the sequential program.
 #				The pml file should be located at prog_name/seq_prog_name.pml.
 #           -s size		integer size for testing.
 #           -l seq_sz		integer size for switching to the sequential base case.
@@ -17,15 +17,16 @@
 
 GOTO_SEQ_SIZES=""
 
-usage="usage: benchmark.bsh -e prog_name -q sequential_prog_name -s size ... -p num_procs ... -l seq_sz ..."
-SEQ_PROG_NAME=""
-while getopts ":s:p:e:q:l:" options; do
+usage="usage: benchmark.bsh -b bench_name -f path -q sequential_path -s size ... -p num_procs ... -l seq_sz ..."
+SEQ_PML_PATH=""
+while getopts ":b:f:s:p:q:l:" options; do
   case $options in
     s ) SIZES="$SIZES $OPTARG";;
     p ) PROCS="$PROCS $OPTARG";;
-    e ) PROG_NAME="$OPTARG";;
+    f ) PML_PATH="$OPTARG";;
+    b ) BENCH_NAME="$OPTARG";;
     l ) GOTO_SEQ_SIZES="$GOTO_SEQ_SIZES $OPTARG";;
-    q ) SEQ_PROG_NAME="$OPTARG";;
+    q ) SEQ_PML_PATH="$OPTARG";;
     h ) echo $usage;;
     \? ) echo $usage
          exit 1;;
@@ -44,7 +45,7 @@ if [ -z "$PROCS" ]; then
     exit 1
 fi
 
-PROG_EXE=$PROG_NAME-run
+PROG_EXE=$BENCH_NAME-run
 
 MC="mc"
 # compiler flags
@@ -52,30 +53,32 @@ MCFLAGS=""
 SEQFLAGS="$MCFLAGS -Csequential=true"
 
 DATE=$( date +"%F-%H-%M-%S" )
-LOG_FILE_NAME=$PROG_NAME-$DATE.times
+LOG_FILE_NAME=$BENCH_NAME-$DATE.times
 echo "Logging performance results to $LOG_FILE_NAME"
 
 # compile the sequential version
-if [ -z "$SEQ_PROG_NAME" ] ; then
-    SEQ_PROG_NAME=$PROG_NAME
+if [ -z "$SEQ_PML_PATH" ] ; then
+    SEQ_PML_PATH=$PML_PATH
 fi
-SEQ_PROG_EXE=$PROG_NAME-seq
-echo "Compiling sequential program: $MC -o $SEQ_PROG_EXE $SEQFLAGS $SEQ_PROG_NAME"
-$MC -o $SEQ_PROG_EXE $SEQFLAGS $SEQ_PROG_NAME 2> /dev/null
+SEQ_PROG_EXE=$BENCH_NAME-seq
+echo "Compiling sequential program: $MC -o $SEQ_PROG_EXE $SEQFLAGS $SEQ_PML_PATH"
+$MC -o $SEQ_PROG_EXE $SEQFLAGS $SEQ_PML_PATH 2> /dev/null
 
 # metadata
 ARCH=$( uname -m )
 OS=$( uname -s )
 MACHINE=$( uname -n )
-SVN_REVISION=$( svn info | grep Revision )
 echo -e "#ARCH:\t$ARCH OS:\t$OS MACHINE:\t$MACHINE" >> $LOG_FILE_NAME
 echo -e "#MCFLAGS\t$MCFLAGS" >> $LOG_FILE_NAME
+SVN_REVISION=$( svn info | grep Revision )
 echo -e "#SVN $SVN_REVISION" >> $LOG_FILE_NAME
-echo -e "#nProcs\t\tsize\t\tmaxLeafSize\ttime(s)" >> $LOG_FILE_NAME 
+SVN_URL=$( svn info | grep URL )
+echo -e "#SVN $SVN_URL" >> $LOG_FILE_NAME
+echo -e "#nProcs\t\tsize\t\tmaxLeafSize\ttime(s)" >> $LOG_FILE_NAME
 
 PARFLAGS="$MCFLAGS"
-echo "Compiling parallel program: $MC -o $PROG_EXE $PARFLAGS $PROG_NAME 2> /dev/null"
-$MC -o $PROG_EXE $PARFLAGS $PROG_NAME 2> /dev/null
+echo "Compiling parallel program: $MC -o $PROG_EXE $PARFLAGS $PML_PATH 2> /dev/null"
+$MC -o $PROG_EXE $PARFLAGS $PML_PATH 2> /dev/null
 
 for seq_sz in $GOTO_SEQ_SIZES
 do
@@ -83,16 +86,16 @@ do
     do   
         for s in $SIZES
 	do
-	    echo "evaluating $PROG_NAME for $p processor[s] at image size $s and sequential size $seq_sz"
+	    echo "evaluating $PML_PATH for $p processor[s] at image size $s and sequential size $seq_sz"
 	    echo -n -e "$p\t\t$s\t\t$seq_sz\t\t" >> $LOG_FILE_NAME
 	    if [ "$p" -eq "0" ] ; then       
-		echo "$seq_sz $s." | ./$SEQ_PROG_EXE >> $LOG_FILE_NAME
+		echo "$seq_sz $s." | ./$SEQ_PROG_EXE -p 1 -q 10000000000 >> $LOG_FILE_NAME
 	    else
-		echo "$seq_sz $s." | ./$PROG_EXE -p $p >> $LOG_FILE_NAME
+		echo "$seq_sz $s." | ./$PROG_EXE -p $p -q 10000000000 >> $LOG_FILE_NAME
 	    fi
 	done
     done
 done
 
 # clean up
-rm -f *.ppm *.s $PROG_EXE $SEQ_PROG_EXE $SEQ_PROG_NAME.pml $PROG_NAME.pml
+rm -f *.ppm *.s $PROG_EXE $SEQ_PROG_EXE $SEQ_PML_PATH.pml $PML_PATH.pml

@@ -23,8 +23,7 @@ fun pFib (n : int) = (
      of 0 => 0
       | 1 => 1
       | n => let
-            pval x = pFib (n-1)
-            val y = pFib (n-2)
+            val (x, y) = (| pFib (n-1), pFib (n-2) |)
 	    in
 	      x + y
 	    end
