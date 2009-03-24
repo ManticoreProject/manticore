@@ -7,9 +7,10 @@
 #ifndef _LOG_DESC_HXX_
 #define _LOG_DESC_HXX_
 
+#include <stdint.h>
 #include <vector>
 
-typedef enum ArgType {
+enum ArgType {
     ADDR,
     INT,
     WORD,
