@@ -28,7 +28,7 @@ structure Image =
 	;
 	
 	define inline @output (arg : [ml_string, any] / exh : exh) : unit =
-	  let file : any = @string-data(#0(arg))
+	  let file : any = String.@data(#0(arg) / exh)
 	  let () = ccall M_OutputImage (#1(arg), file)
 	    return (UNIT)
 	;
