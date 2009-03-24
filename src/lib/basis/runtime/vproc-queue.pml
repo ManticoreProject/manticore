@@ -117,6 +117,7 @@ structure VProcQueue (* :
 	  return () 
 	;
 
+(* FIXME: we no longer need this check. instead, perform this check in apply.c when checking for asynchronous signals. *)
     (* retrieve items from the landing pad and put them on the local ready queue. *)
       define @unload-landing-pad-from-atomic (self : vproc) : () =
 	  let landingPadItems : queue_item = VProc.@recv-from-atomic(self)
