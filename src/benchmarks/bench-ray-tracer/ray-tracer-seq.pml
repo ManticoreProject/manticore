@@ -509,4 +509,5 @@ fun ray' winsize = let
       Print.printLn("Time elapsed (microseconds): "^Long.toString t)
     end;
 
+val _ = PrimIO.readInt ()  (* for consistency with the other benchmarks *)
 val () = ray (PrimIO.readInt ())
