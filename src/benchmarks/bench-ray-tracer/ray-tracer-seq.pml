@@ -1,5 +1,6 @@
-val sqrt = sqrtd;
-fun expt a = let fun expt' b = powd(a, b) in expt' end;
+fun not b = if b then false else true
+val sqrt = Double.sqrt;
+fun expt a = let fun expt' b = Double.pow(a, b) in expt' end;
 val pi : double = 3.14159265359;
 (*
  *
@@ -22,11 +23,11 @@ fun fold f = let
 	foldf
       end;
 fun hd l = (case l
-       of nil => fail("expecting a head")
-	| x::xs => x);
+       of nil => (raise Fail("expecting a head"))
+	| x::xs => x)
 fun tl l = (case l
-       of nil => fail("expecting a tail")
-	| x::xs => xs);
+       of nil => (raise Fail("expecting a tail"))
+	| x::xs => xs)
 (*
  * convenient vector operations
  *)
@@ -233,10 +234,10 @@ fun camparams (lookfrom, lookat, vup, fov, winsize) = let
     val (scrnj, _) = vecnorm (veccross scrni lookdir);
     val xfov = fov;
     val yfov = fov;
-    val xwinsize = (itod winsize);  (* for now, square window *)
-    val ywinsize = (itod winsize);
-    val magx = 2.0 * dist * (tand (dtor (xfov / 2.0))) / xwinsize;
-    val magy = 2.0 * dist * (tand (dtor (yfov / 2.0))) / ywinsize;
+    val xwinsize = (Double.fromInt winsize);  (* for now, square window *)
+    val ywinsize = (Double.fromInt winsize);
+    val magx = 2.0 * dist * (Double.tan (dtor (xfov / 2.0))) / xwinsize;
+    val magy = 2.0 * dist * (Double.tan (dtor (yfov / 2.0))) / ywinsize;
     val scrnx = vecscale scrni magx;
     val scrny = vecscale scrnj magy;
     val firstray = (vecsub initfirstray
@@ -252,8 +253,8 @@ fun camparams (lookfrom, lookat, vup, fov, winsize) = let
 *)
 fun tracepixel (spheres, lights, x, y, firstray, scrnx, scrny) = let
   val pos = lookfrom;
-  val (dir, _) = vecnorm (vecadd (vecadd firstray (vecscale scrnx (itod x)))
-		    (vecscale scrny (itod y)));
+  val (dir, _) = vecnorm (vecadd (vecadd firstray (vecscale scrnx (Double.fromInt x)))
+		    (vecscale scrny (Double.fromInt y)));
   val (hit, dist, sp) = trace (spheres, pos, dir);  (* pick first intersection *)
 						(* return color of the pixel x,y *)
   in
@@ -463,11 +464,11 @@ fun ray winsize = let
 fun ray winsize = let
     val lights = testlights;
     val (firstray, scrnx, scrny) = camparams (lookfrom, lookat, vup, fov, winsize);
-    val img = newImage (winsize, winsize)
+    val img = Image.new (winsize, winsize)
     fun f (i, j) = let
 	  val (r, g, b) = tracepixel (world, lights, i, j, firstray, scrnx, scrny)
 	  in
-	    updateImage3d (img, i, j, r, g, b)
+	    Image.update3d (img, i, j, r, g, b)
 	  end
     fun lp i = if (i < winsize)
 	  then let
@@ -478,15 +479,16 @@ fun ray winsize = let
 	      lp' 0; lp(i+1)
 	    end
 	  else ();
+    val (_, t) = Time.timeToEval(fn () => (lp 0; Image.output("out.ppm", img); Image.free img))
     in
-      lp 0; outputImage(img, "out.ppm"); freeImage img
+      Print.printLn("Time elapsed (microseconds): "^Long.toString t)
     end;
 
 (* sequential version of the code that builds the image first as a list *)
 fun ray' winsize = let
     val lights = testlights;
     val (firstray, scrnx, scrny) = camparams (lookfrom, lookat, vup, fov, winsize);
-    val img = newImage (winsize, winsize)
+    val img = Image.new (winsize, winsize)
     fun f (i, j) = tracepixel (world, lights, i, j, firstray, scrnx, scrny)
     fun lp (i, is) = if (i < winsize)
 	  then let
@@ -497,39 +499,14 @@ fun ray' winsize = let
 	      lp(i+1, lp' (0, is))
 	    end
 	  else is
-    val b = gettimeofday ();
-    val vs = lp (0, nil)
-    val e = gettimeofday ();
+    val (vs, t) = Time.timeToEval(fn () => lp (0, nil))
     fun output vs = (case vs
         of nil => ()
-	 | (i,j,(r,g,b)) :: vs => (updateImage3d (img, i, j, r, g, b); output vs)
+	 | (i,j,(r,g,b)) :: vs => (Image.update3d (img, i, j, r, g, b); output vs)
         (* end case *))
     in
-      output vs; outputImage(img, "out.ppm"); freeImage img;
-      print (dtos (e-b)^"\n")
+      output vs; Image.output("out.ppm", img); Image.free img;
+      Print.printLn("Time elapsed (microseconds): "^Long.toString t)
     end;
 
-(*
-fun run (outFile, sz) = let
-      val outS = BinIO.openOut outFile
-      fun out x = BinIO.output1(outS, Word8.fromInt(Real.round(x * 255.0)))
-      fun outRGB (r, g, b) = (out r; out g; out b)
-      fun pr s = BinIO.output(outS, Byte.stringToBytes s)
-      val t0 = Time.now()
-      val img = ray sz
-      val t = Time.-(Time.now(), t0)
-      in
-	print(concat[
-	    Time.fmt 3 t, " seconds\n"
-	  ]);
-        pr "P6\n";
-	pr(concat[Int.toString sz, " ", Int.toString sz, "\n"]);
-	pr "255\n";
-	Array2.app Array2.RowMajor outRGB img;
-	BinIO.closeOut outS
-      end;
-
-run ("out.ppm", 1024)
-*)
-
-ray' (readint ())
+val () = ray (PrimIO.readInt ())
