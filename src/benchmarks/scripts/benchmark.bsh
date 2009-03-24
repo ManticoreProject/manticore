@@ -19,7 +19,7 @@ GOTO_SEQ_SIZES=""
 
 usage="usage: benchmark.bsh -b bench_name -f path -q sequential_path -s size ... -p num_procs ... -l seq_sz ..."
 SEQ_PML_PATH=""
-while getopts ":b:f:s:p:q:l:" options; do
+while getopts ":b:f:s:p:q:l:n:" options; do
   case $options in
     s ) SIZES="$SIZES $OPTARG";;
     p ) PROCS="$PROCS $OPTARG";;
@@ -27,6 +27,7 @@ while getopts ":b:f:s:p:q:l:" options; do
     b ) BENCH_NAME="$OPTARG";;
     l ) GOTO_SEQ_SIZES="$GOTO_SEQ_SIZES $OPTARG";;
     q ) SEQ_PML_PATH="$OPTARG";;
+    n ) NUM_TRIALS="$OPTARTG";;
     h ) echo $usage;;
     \? ) echo $usage
          exit 1;;
@@ -43,6 +44,10 @@ fi
 if [ -z "$PROCS" ]; then
     echo "Enter at least one choice for the number of processors"
     exit 1
+fi
+
+if [ -z "$NUM_TRIALS" ]; then
+   NUM_TRIALS="5"
 fi
 
 PROG_EXE=$BENCH_NAME-run
@@ -86,13 +91,15 @@ do
     do   
         for s in $SIZES
 	do
-	    echo "evaluating $PML_PATH for $p processor[s] at image size $s and sequential size $seq_sz"
-	    echo -n -e "$p\t\t$s\t\t$seq_sz\t\t" >> $LOG_FILE_NAME
-	    if [ "$p" -eq "0" ] ; then       
-		echo "$seq_sz $s." | ./$SEQ_PROG_EXE -p 1 -q 10000000000 >> $LOG_FILE_NAME
-	    else
-		echo "$seq_sz $s." | ./$PROG_EXE -p $p -q 10000000000 >> $LOG_FILE_NAME
-	    fi
+	    for ((i=1;i<=NUM_TRIALS;i+=1)); do
+		echo "evaluating $PML_PATH for $p processor[s] at image size $s and sequential size $seq_sz"
+		echo -n -e "$p\t\t$s\t\t$seq_sz\t\t" >> $LOG_FILE_NAME
+		if [ "$p" -eq "0" ] ; then       
+		    echo "$seq_sz $s." | ./$SEQ_PROG_EXE -p 1 -q 10000000000 >> $LOG_FILE_NAME
+		else
+		    echo "$seq_sz $s." | ./$PROG_EXE -p $p -q 10000000000 >> $LOG_FILE_NAME
+		fi
+	    done
 	done
     done
 done
