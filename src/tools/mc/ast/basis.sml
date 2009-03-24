@@ -61,6 +61,7 @@ structure Basis : sig
     val neq		: AST.var
 
   (* primitive operators *)
+    val compose         : AST.var
     val list_append	: AST.var
     val string_concat	: AST.var
     val parray_sub      : AST.var
@@ -226,6 +227,17 @@ structure Basis : sig
     val eq = Var.newPoly(Atom.toString N.eq, eqTyScheme())
     val neq = Var.newPoly(Atom.toString N.neq, eqTyScheme())
     end
+
+    val compose = let
+	  val tv1 = TyVar.new(Atom.atom "'a")
+	  val tv2 = TyVar.new(Atom.atom "'b")
+	  val tv3 = TyVar.new(Atom.atom "'c")
+	  val ty = AST.TyScheme([tv1, tv2, tv3], 
+				(AST.VarTy tv1 --> AST.VarTy tv2) ** 
+				(AST.VarTy tv3 --> AST.VarTy tv1) --> AST.VarTy tv3 --> AST.VarTy tv2)
+          in
+	    Var.newPoly("compose", ty)
+          end
 
     val list_append = Var.newPoly("list-append",
 	  forall(fn tv => let
