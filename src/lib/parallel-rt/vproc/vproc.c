@@ -48,22 +48,6 @@ VProc_t			*VProcs[MAX_NUM_VPROCS];
 
 extern int ASM_VProcSleep;
 
-/* Macros for accessing the register fields in the ucontext */
-#if defined(TARGET_LINUX)
-#  define UC_R11(uc)	((uc)->uc_mcontext.gregs[REG_R11])
-#  define UC_RIP(uc)	((uc)->uc_mcontext.gregs[REG_RIP])
-#elif defined(TARGET_DARWIN)
-#  if defined(__DARWIN_UNIX03) && defined(_DARWIN_FEATURE_UNIX_CONFORMANCE)
-#    define UC_R11(uc)	((uc)->uc_mcontext->__ss.__r11)
-#    define UC_RIP(uc)	((uc)->uc_mcontext->__ss.__rip)
-#  else /* Tiger */
-#    define UC_R11(uc)	((uc)->uc_mcontext->ss.r11)
-#    define UC_RIP(uc)	((uc)->uc_mcontext->ss.rip)
-#  endif
-#else
-#  error unsupported OS
-#endif
-
 /*! \brief Items in the ready-queue lists and on the landing pad */
 typedef struct struct_queue_item QueueItem_t;
 struct struct_queue_item {
