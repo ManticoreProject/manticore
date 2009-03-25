@@ -79,6 +79,7 @@ SVN_REVISION=$( svn info | grep Revision )
 echo -e "#SVN $SVN_REVISION" >> $LOG_FILE_NAME
 SVN_URL=$( svn info | grep URL )
 echo -e "#SVN $SVN_URL" >> $LOG_FILE_NAME
+echo -e "#PML SOURCE FILE: $PML_PATH" >> $LOG_FILE_NAME
 echo -e "#nProcs\t\tsize\t\tmaxLeafSize\ttime(s)" >> $LOG_FILE_NAME
 
 PARFLAGS="$MCFLAGS"
