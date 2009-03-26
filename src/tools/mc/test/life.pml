@@ -17,6 +17,7 @@ structure Main (* : sig
 
     val rev = List.rev
     fun not b = if b then false else true
+    fun compose f g x = f (g x)
 
     fun accumulate f = let
 	  fun foldf a xs = (
@@ -31,7 +32,7 @@ structure Main (* : sig
     fun filter p = let
 	  fun consifp x a = if p a then a::x else x
           in
-	    rev o accumulate consifp nil
+	    compose rev (accumulate consifp nil)
 	  end
 
     fun exists p = let
@@ -56,7 +57,7 @@ structure Main (* : sig
 
     fun repeat f = let fun rptf n x = if n=0 then x else rptf(n-1)(f x)
                        fun check n = if n<0 then raise Fail "repeat<0" else n
-                    in rptf o check end
+                    in compose rptf check end
 
     fun copy n x = repeat (cons x) n nil
 
@@ -65,7 +66,7 @@ structure Main (* : sig
 
     fun spaces n = concat (copy n " ")
 
-    local 
+(*    local *)
       fun lexordset xs = (
 	    case xs
 	     of nil => nil
@@ -95,30 +96,30 @@ structure Main (* : sig
 		       if member x1 a then f xover x3 (a::x2) x1 x else
 					   f xover x3 x2 (a::x1) x
 	            (* end case *))
-              and diff x y = filter (not o member y) x
+              and diff x y = filter (compose not (member y)) x
            in f nil nil nil nil x end
-     in 
+     (*in *)
       datatype generation = GEN of (int*int) list
 
           fun alive (GEN livecoords) = livecoords
-          and mkgen coordlist = GEN (lexordset coordlist)
-          and mk_nextgen_fn neighbours gen =
+          fun mkgen coordlist = GEN (lexordset coordlist)
+          fun mk_nextgen_fn neighbours gen =
               let val living = alive gen
                   val isalive = member living
-                  val liveneighbours = length o filter isalive o neighbours
+                  val liveneighbours = compose length (compose (filter isalive) neighbours)
                   fun twoorthree n = n=2 orelse n=3
-	          val survivors = filter (twoorthree o liveneighbours) living
-	          val newnbrlist = collect (filter (not o isalive) o neighbours) living
+	          val survivors = filter (compose twoorthree liveneighbours) living
+	          val newnbrlist = collect (compose (filter (compose not isalive)) neighbours) living
 	          val newborn = occurs3 newnbrlist
 	       in mkgen (survivors @ newborn) end
 
-    end
+    (*end*)
 
     fun neighbours (i,j) = (i-1,j-1)::(i-1,j)::(i-1,j+1)::
 			    (i,j-1)::(i,j+1)::
 			    (i+1,j-1)::(i+1,j)::(i+1,j+1)::nil
 
-    local val xstart = 0 val ystart = 0
+    (*local*) val xstart = 0 val ystart = 0
           fun markafter n string = string ^ spaces n ^ "0"
           fun plotfrom (x,y) (* current position *)
                        str   (* current line being prepared -- a string *)
@@ -133,9 +134,9 @@ structure Main (* : sig
 		| nil => str::nil
 	      (* end case *))
            fun good (x,y) = x>=xstart andalso y>=ystart
-     in  fun plot coordlist = plotfrom(xstart,ystart) "" 
+     (*in*)  fun plot coordlist = plotfrom(xstart,ystart) "" 
                                  (filter good coordlist)
-    end
+    (*end*)
 
 
     fun at(coordlist, (x:int,y:int)) = let fun move(a,b) = (a+x,b+y) 
@@ -159,17 +160,17 @@ structure Main (* : sig
 	  (* end case *))
 
     val gun = mkgen
-     (2,20)::(3,19)::(3,21)::(4,18)::(4,22)::(4,23)::(4,32)::(5,7)::(5,8)::(5,18)::
+     ((2,20)::(3,19)::(3,21)::(4,18)::(4,22)::(4,23)::(4,32)::(5,7)::(5,8)::(5,18)::
       (5,22)::(5,23)::(5,29)::(5,30)::(5,31)::(5,32)::(5,36)::(6,7)::(6,8)::(6,18)::
       (6,22)::(6,23)::(6,28)::(6,29)::(6,30)::(6,31)::(6,36)::(7,19)::(7,21)::(7,28)::
       (7,31)::(7,40)::(7,41)::(8,20)::(8,28)::(8,29)::(8,30)::(8,31)::(8,40)::(8,41)::
-      (9,29)::(9,30)::(9,31)::(9,32)::nil
+      (9,29)::(9,30)::(9,31)::(9,32)::nil)
 
-    fun show pr = (app (fn s => (pr s; pr "\n"))) o plot o alive
+    fun show pr = compose (compose (app (fn s => (pr s; pr "\n"))) plot) alive
 
     fun doit () = show (fn _ => ()) (nthgen(gun, 50))
 
-    fun testit () = show Print.print (nthgen(gun, 50))
+    val () = show Print.print (nthgen(gun, 50))
 
   end (* Life *)
 
