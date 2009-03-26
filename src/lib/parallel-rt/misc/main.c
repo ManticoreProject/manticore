@@ -132,7 +132,7 @@ static void Ping (int n)
     static int	nextPing = 0;
 
     for (int i = 0;  i < n;  i++) {
-	if (! VProcs[nextPing]->sleeping)
+      if (VProcs[nextPing]->sleeping != M_TRUE)
 	    VProcPreempt (VProcs[nextPing]);
 	if (++nextPing == NumVProcs)
 	    nextPing = 0;

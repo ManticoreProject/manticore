@@ -391,7 +391,7 @@ static void IdleVProc (VProc_t *vp, void *arg)
   /* Activate scheduling code on the vproc. */
     Value_t envP = vp->schedCont;
     Addr_t codeP = ValueToAddr(ValueToCont(envP)->cp);
-    RunManticore (vp, codeP, M_NIL, envP);
+    RunManticore (vp, codeP, vp->dummyK, envP);
 
 #ifndef NDEBUG
     if (DebugFlg)
