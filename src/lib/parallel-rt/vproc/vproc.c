@@ -306,6 +306,11 @@ void VProcGlobalGCInterrupt (VProc_t *self, VProc_t *vp)
  */
 void VProcPreempt (VProc_t *vp)
 {
+#ifndef NDEBUG
+    if (DebugFlg)
+	SayDebug("Triggering preemption on vproc %d\n", vp->id);
+#endif
+
     VProcZeroLimitPtr(vp);
 }
 
@@ -352,7 +357,7 @@ static void IdleVProc (VProc_t *vp, void *arg)
   /* Activate scheduling code on the vproc. */
     Value_t envP = vp->schedCont;
     Addr_t codeP = ValueToAddr(ValueToCont(envP)->cp);
-    RunManticore (vp, codeP, M_NIL, envP);
+    RunManticore (vp, codeP, vp->dummyK, envP);
 
 #ifndef NDEBUG
     if (DebugFlg)

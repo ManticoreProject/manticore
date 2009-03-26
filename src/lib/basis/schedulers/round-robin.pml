@@ -43,7 +43,7 @@ structure RoundRobin =
 	fun mkSwitch (_ : vproc / exh : PT.exh) : PT.sched_act = return (switch)
 
        (* run the scheduler on all vprocs *)
-	do VProc.@bootstrap (mkSwitch / exh)
+	do VProcInit.@bootstrap (mkSwitch / exh)
 	return (UNIT)
       ;
     )

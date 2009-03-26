@@ -16,5 +16,5 @@
     scheduler-action.pml
     vproc.pml
     vproc-queue.pml
-    runtime-init.pml
+    vproc-init.pml
   end

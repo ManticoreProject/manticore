@@ -127,7 +127,7 @@ structure WorkStealers =
       define @work-stealers(x : unit / exh : exh) : unit = 
 	fun mkSwitch (self : vproc / exh : exh) : PT.sched_act = @mk-sched-act(self / exh)
       (* run the scheduler on all vprocs *)
-	do VProc.@bootstrap (mkSwitch / exh)
+	do VProcInit.@bootstrap (mkSwitch / exh)
 	return(UNIT)
       ;
 
