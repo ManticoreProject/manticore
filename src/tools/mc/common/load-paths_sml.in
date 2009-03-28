@@ -4,6 +4,9 @@
  * All rights reserved.
  *
  * @configure_input@
+ *
+ * FIXME: This code should support different locations for the basis; e.g., the
+ * source tree or an installation location.
  *)
 
 structure LoadPaths =
@@ -12,37 +15,42 @@ structure LoadPaths =
   (* Manticore basis library *)
     val basisDir = "@MANTICORE_BASISDIR@"
 
+    local
+      fun join (dir, file) = OS.Path.joinDirFile {dir=dir, file=file}
+    in
+
   (* Manticore basis CPP definition directory *)
-    val basisCPPDefDir = OS.Path.joinDirFile {file="include", dir=basisDir}
+    val basisCPPDefDir = join (basisDir, "include")
 
   (* sequential basis *)
-    val sequentialBasisDir = OS.Path.joinDirFile {file="sequential", dir=basisDir}
+    val sequentialBasisDir = join (basisDir, "sequential")
 
   (* runtime basis *)
-    val runtimeBasisDir = OS.Path.joinDirFile {file="runtime", dir=basisDir}
+    val runtimeBasisDir = join (basisDir, "runtime")
 
   (* runtime basis library *)
-    val runtimeBasisLib = OS.Path.joinDirFile{file="runtime.mlb", dir=runtimeBasisDir}
+    val runtimeBasisLib = join (runtimeBasisDir, "runtime.mlb")
 
   (* top-level schedulers *)
-    val topLevelSchedsDir = OS.Path.joinDirFile{file="schedulers", dir=basisDir}
+    val topLevelSchedsDir = join (basisDir, "schedulers")
 
   (* top-level scheduler library *)
-    fun topLevelSchedLib topLevelSched = OS.Path.joinDirFile{file=topLevelSched^".mlb", dir=topLevelSchedsDir}
+    fun topLevelSchedLib sched = join (topLevelSchedsDir, OS.Path.joinBaseExt{base=sched, ext=SOME "mlb"})
 
   (* default thread scheduler library *)
-    val defImplicitThreadSchedLib = OS.Path.joinDirFile{file="def-implicit-thread-sched.mlb", dir=topLevelSchedsDir}
+    val defImplicitThreadSchedLib = join (topLevelSchedsDir, "def-implicit-thread-sched.mlb")
 
   (* implicit threading *)
-    val implicitThreadingDir = OS.Path.joinDirFile{file="implicit-threading", dir=basisDir}
+    val implicitThreadingDir = join (basisDir, "implicit-threading")
 
   (* implicit-threading library *)
-    val implicitThreadingLib = OS.Path.joinDirFile{file="implicit-threading.mlb", dir=implicitThreadingDir}
+    val implicitThreadingLib = join (implicitThreadingDir, "implicit-threading.mlb")
 
   (* CML *)
-    val cmlDir = OS.Path.joinDirFile{file="cml", dir=basisDir}
+    val cmlDir = join (basisDir, "cml")
 
   (* CML library *)
-    val cmlLib = OS.Path.joinDirFile{file="cml.mlb", dir=cmlDir}
+    val cmlLib = join (cmlDir, "cml.mlb")
 
+    end (* local *)
   end
