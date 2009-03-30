@@ -13,11 +13,17 @@ structure Main (* : sig
 
   end *) = struct
 
-    val map = List.map
 
+    val concat = String.concat
+    val app = List.app
+    fun cons a x = a::x
+    val map = List.map
     val rev = List.rev
     fun not b = if b then false else true
     fun compose f g x = f (g x)
+    val exists = List.exists
+    val filter = List.filter
+    val length = List.length
 
     fun accumulate f = let
 	  fun foldf a xs = (
@@ -29,31 +35,13 @@ structure Main (* : sig
 	    foldf
 	  end
 
-    fun filter p = let
-	  fun consifp x a = if p a then a::x else x
-          in
-	    compose rev (accumulate consifp nil)
-	  end
-
-    fun exists p = let
-	  fun existsp xs = (
-	        case xs
-		 of nil => false
-		  | (a::x) => if p a then true else existsp x
-	        (* end case *))
-	  in existsp end
-
     fun equal a b = (a = b)
 
     fun member x a = exists (equal a) x
 
     fun C f x y = f y x
 
-    fun cons a x = a::x
-
     fun revonto x = accumulate (C cons) x
-
-    fun length x = let fun count n a = n+1 in accumulate count 0 x end
 
     fun repeat f = let fun rptf n x = if n=0 then x else rptf(n-1)(f x)
                        fun check n = if n<0 then raise Fail "repeat<0" else n
@@ -61,12 +49,9 @@ structure Main (* : sig
 
     fun copy n x = repeat (cons x) n nil
 
-    val concat = String.concat
-    val app = List.app
-
     fun spaces n = concat (copy n " ")
 
-(*    local *)
+    local 
       fun lexordset xs = (
 	    case xs
 	     of nil => nil
@@ -98,7 +83,7 @@ structure Main (* : sig
 	            (* end case *))
               and diff x y = filter (compose not (member y)) x
            in f nil nil nil nil x end
-     (*in *)
+     in 
       datatype generation = GEN of (int*int) list
 
           fun alive (GEN livecoords) = livecoords
@@ -113,13 +98,13 @@ structure Main (* : sig
 	          val newborn = occurs3 newnbrlist
 	       in mkgen (survivors @ newborn) end
 
-    (*end*)
+    end
 
     fun neighbours (i,j) = (i-1,j-1)::(i-1,j)::(i-1,j+1)::
 			    (i,j-1)::(i,j+1)::
 			    (i+1,j-1)::(i+1,j)::(i+1,j+1)::nil
 
-    (*local*) val xstart = 0 val ystart = 0
+    local val xstart = 0 val ystart = 0
           fun markafter n string = string ^ spaces n ^ "0"
           fun plotfrom (x,y) (* current position *)
                        str   (* current line being prepared -- a string *)
@@ -134,9 +119,9 @@ structure Main (* : sig
 		| nil => str::nil
 	      (* end case *))
            fun good (x,y) = x>=xstart andalso y>=ystart
-     (*in*)  fun plot coordlist = plotfrom(xstart,ystart) "" 
+     in  fun plot coordlist = plotfrom(xstart,ystart) "" 
                                  (filter good coordlist)
-    (*end*)
+    end
 
 
     fun at(coordlist, (x:int,y:int)) = let fun move(a,b) = (a+x,b+y) 
