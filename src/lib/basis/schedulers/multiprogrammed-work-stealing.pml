@@ -71,7 +71,7 @@ structure MultiprogrammedWorkStealing :
 	      | O.SOME(thd : ImplicitThread.thread) =>
 		throw dispatch(thd)
 	    end
-        
+
 	  case sign
 	   of PT.STOP =>
 	      let thd : O.option = Cilk5Deque.@pop-tl-from-atomic(deque / exh)
@@ -88,7 +88,9 @@ structure MultiprogrammedWorkStealing :
 	      throw impossible()
 	  end
 
-        cont initK (x : unit) = throw schedulerLoop(PT.STOP)
+        cont initK (x : unit) = 
+	  let self : vproc = SchedulerAction.@atomic-begin()
+	  throw schedulerLoop(PT.STOP)
 	return(initK)
       ;
 

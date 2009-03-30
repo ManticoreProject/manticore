@@ -127,6 +127,14 @@ structure List =
 	    | _ => false
           (* end case *))
 
+    fun exists p = let
+	  fun existsp xs = (
+	        case xs
+		 of nil => false
+		  | (a::x) => if p a then true else existsp x
+	        (* end case *))
+	  in existsp end
+
     fun zip (xs, ys) = let
 	fun loop (xs, ys, zs) = (case (xs, ys)
 	    of (nil, _) => rev(zs)

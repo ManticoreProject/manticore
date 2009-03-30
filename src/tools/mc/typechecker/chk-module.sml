@@ -267,7 +267,7 @@ structure ChkModule :> sig
 	      val (env, moduleEnv, localDcls) = chkTopDcls(loc, localDcls, env, moduleEnv)
 	      val (env, moduleEnv, dcls) = chkTopDcls(loc, dcls, env, moduleEnv)
 	      in
-		(env, moduleEnv, List.rev(localDcls @ dcls))
+		(env, moduleEnv, List.rev(localDcls @ dcls) @ astDecls)
 	      end
 	    | PT.SignDecl (id, sign) => let
               val sigEnv = chkSignature loc (SOME (idToAtom id), sign, env)
