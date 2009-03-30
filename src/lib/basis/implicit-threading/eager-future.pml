@@ -15,7 +15,7 @@ structure EagerFuture (* : FUTURE *) =
 #define CANCELABLE_OFF   1
 
       typedef future = [
-                ImplicitThreadIVar.ivar,                (* value *)
+                ImplicitThreadIVar.ivar,                (* result *)
 		Option.option                           (* cancelable *)
              ];
 
@@ -33,17 +33,21 @@ structure EagerFuture (* : FUTURE *) =
 	let thd : ImplicitThread.thread = ImplicitThread.@thread(k, Option.NONE / exh)
 	do ImplicitThread.@spawn(thd / exh)
 
-	let v : any = apply f (UNIT / exh)
+	cont exh' (exn : exn) =
+	  do ImplicitThreadIVar.@put(ivar, Result.EXN(exn) / exh)
+	  SchedulerAction.@stop()
+
+	let v : any = apply f (UNIT / exh')
 
 	let isMigrated : bool = ImplicitThread.@remove-thread(thd / exh)
 	if isMigrated
 	   then
 	    (* slow clone *)
-	    do ImplicitThreadIVar.@put(SELECT(IVAR_OFF, fut), v / exh)
+	    do ImplicitThreadIVar.@put(ivar, Result.RES(v) / exh)
 	    SchedulerAction.@stop()
 	else
 	    (* fast clone *)
-	    let ivar : ImplicitThreadIVar.ivar = ImplicitThreadIVar.@ivar(v / exh)
+	    let ivar : ImplicitThreadIVar.ivar = ImplicitThreadIVar.@ivar(Result.RES(v) / exh)
 	    @alloc(ivar, Option.NONE / exh)
       ;
 
@@ -59,13 +63,16 @@ structure EagerFuture (* : FUTURE *) =
 
       (* fiber that runs the body of the future *)
 	cont k' (x : unit) = 
-	  let v : any = apply f (UNIT / exh)
+	  cont exh' (exn : exn) =
+	    do ImplicitThreadIVar.@put(ivar, Result.EXN(exn) / exh)
+	    SchedulerAction.@stop()
+	  let v : any = apply f (UNIT / exh')
 
 	  let isMigrated : bool = ImplicitThread.@remove-thread(thd / exh)
 	  if isMigrated
 	     then
 	      (* slow clone *)
-	      do ImplicitThreadIVar.@put(SELECT(IVAR_OFF, fut), v / exh)
+	      do ImplicitThreadIVar.@put(ivar, Result.RES(v) / exh)
 	      let _ : unit = SchedulerAction.@stop()
               return(fut)
 	  else
@@ -87,7 +94,15 @@ structure EagerFuture (* : FUTURE *) =
       ;
 
       define @touch (fut : future / exh : exh) : any =
-	ImplicitThreadIVar.@get(SELECT(IVAR_OFF, fut) / exh)
+	let res : Result.result = ImplicitThreadIVar.@get(SELECT(IVAR_OFF, fut) / exh)
+        case res
+	 of Result.RES(x : any) => return(x)
+	  | Result.EXN(exn : exn) => throw exh(exn)
+	end
+      ;
+
+      define @poll (fut : future / exh : exh) : Option.option =
+	ImplicitThreadIVar.@poll(SELECT(IVAR_OFF, fut) / exh)
       ;
 
       define @cancel (fut : future / exh : exh) : unit =
@@ -107,6 +122,7 @@ structure EagerFuture (* : FUTURE *) =
     type 'a future = _prim(future)
     val future : ('a thunk * bool) -> 'a future = _prim(@future)
     val touch : 'a future -> 'a = _prim(@touch)
+    val poll : 'a future -> 'a Result.result Option.option = _prim(@poll)
     val cancel : 'a future -> unit = _prim(@cancel)
 
   end
