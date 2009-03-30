@@ -183,7 +183,6 @@ structure VProc (* :
       ;
 
     (* receive pending signals from the host vproc's landing pad.
-     * PRECONDITION: Equal(vp, host_vproc)
      *)
       define @recv-from-atomic (self : vproc) : queue_item =
           cont exit () = return(Q_EMPTY)

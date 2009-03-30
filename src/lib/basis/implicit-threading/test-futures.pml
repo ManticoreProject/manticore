@@ -24,14 +24,13 @@ fun pfib (i : int) = (case i
 	        pfib(i-2) + EagerFuture.touch fut
 	      end
        (* end case *))
-val () = Print.printLn "cilk5"
+
+val () = Print.printLn "Initializing cilk5 scheduler"
 val cilk5 = MultiprogrammedWorkStealing.workGroup()
-val () = Print.printLn "eager futures"
+val () = Print.printLn "Testing eager futures"
 val () = ImplicitThread.runWithGroup(cilk5, fn () => pml_assert(doit pfib 21 4))
 
 (* Parallel suspensions (no cancelation) *)
-
-val globalBFS = GlobalBFSScheduler.workGroup()
 
 fun pfib (i : int) = (case i
        of 0 => (0 : int)
@@ -44,7 +43,10 @@ fun pfib (i : int) = (case i
 	      end
       (* end case *))
 
-(*val x = ImplicitThread.runWithGroup(globalBFS, fn () => pml_assert(doit pfib 21 2))*)
+val () = Print.printLn "Initializing global BFS scheduler"
+val globalBFS = GlobalBFSScheduler.workGroup()
+val () = Print.printLn "Testing lazy futures"
+val x = ImplicitThread.runWithGroup(globalBFS, fn () => pml_assert(doit pfib 21 4))
 
 (* Single-toucher parallel suspensions (no cancelation) *)
 
