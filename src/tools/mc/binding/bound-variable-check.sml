@@ -100,7 +100,7 @@ structure BoundVariableCheck :> sig
 		    patternBoundVars)
 		else AtomSet.add(patternBoundVars, v)
 	(* check for duplicate bindings in patterns *)
-	  val _ = List.foldl ins AtomSet.empty (Binding.varsOfPat pat)
+	  val _ = List.foldl ins AtomSet.empty (Binding.varsOfPat(pat, env))
           in
 	    chkPatWithoutDuplicateCheck loc (pat, env)
 	  end
@@ -642,15 +642,6 @@ structure BoundVariableCheck :> sig
 	    {cEnv=cEnv, valConstraintAliases=mkValConstraintAliases(cEnv, mEnv), tyConstraintAliases=[]}
 	  end
 
-  (* given local and global decls, return a function for testing whether a giving binding is local *)
-    fun mkIsLocal (localDecls, globalDecls) = let
-	  val localBinds = AtomSet.fromList (Binding.bindsOfDecls localDecls)
-	  val globalBinds = AtomSet.fromList (Binding.bindsOfDecls globalDecls)
-	  fun isLocal v = not(AtomSet.member(globalBinds, v)) andalso AtomSet.member(localBinds, v)
-          in
-	    isLocal
-	  end
-
   (* check the constraining signature. we rebind to get scoping right. *)
     fun chkConstraint loc (signOpt, modEnv, env) = (case signOpt
                 of NONE => (NONE, [], modEnv)
@@ -681,6 +672,7 @@ structure BoundVariableCheck :> sig
 	           in
                       (PT2.NamedMod modId, sign, rebinds, signEnv)
 	           end
+	     | PT1.ApplyMod (m, args) => raise Fail "todo"
             (* end case *))
  
     and chkDecl loc (decl, env) = (case decl
@@ -722,7 +714,9 @@ structure BoundVariableCheck :> sig
 		    ([PT2.ValueDecl valDecl], env)
 		  end
 	    | PT1.LocalDecl (locals, decls) => let
-		  val isLocal = mkIsLocal(locals, decls)
+		  val localBinds = AtomSet.fromList (Binding.bindsOfDecls(locals, env))
+		  val globalBinds = AtomSet.fromList (Binding.bindsOfDecls(decls, env))
+		  fun isLocal v = not(AtomSet.member(globalBinds, v)) andalso AtomSet.member(localBinds, v)
 		  val (locals, env) = chkDecls loc (locals, env)
 		  val (decls, env) = chkDecls loc (decls, env)
 		  val env = BEnv.filterEnv(env, not o isLocal)
