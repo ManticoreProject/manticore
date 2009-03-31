@@ -1,4 +1,18 @@
 fun delay n = if (n <= 0) then () else (delay(n-1); delay(n-1));
+
+val () = Print.printLn "Initializing cilk5 scheduler"
+val cilk5 = MultiprogrammedWorkStealing.workGroup()
+
+(* polling *) 
+fun poll () = let
+      val fut = EagerFuture.future(fn () => delay 26, false)
+      in
+        pml_assert(case EagerFuture.poll fut of Option.NONE => true | _ => false)
+      end
+
+val () = Print.printLn "Testing polling"
+val () = ImplicitThread.runWithGroup(cilk5, poll)
+
 (* sequential fib (for a correctness check) *)
 fun fib (i : int) = (case i
        of 0 => (0 : int)
@@ -7,12 +21,10 @@ fun fib (i : int) = (case i
       (* end case *))
 
 fun doit pfib x i = (
-Print.printLn "doit";
     if i < 0 then true
     else if pfib x = fib x
     then doit pfib x (i-1)
     else false)
-
 
 (* eager futures & work stealing & no cancelation *)
 fun pfib (i : int) = (case i
@@ -25,8 +37,6 @@ fun pfib (i : int) = (case i
 	      end
        (* end case *))
 
-val () = Print.printLn "Initializing cilk5 scheduler"
-val cilk5 = MultiprogrammedWorkStealing.workGroup()
 val () = Print.printLn "Testing eager futures"
 val () = ImplicitThread.runWithGroup(cilk5, fn () => pml_assert(doit pfib 21 4))
 
@@ -61,7 +71,7 @@ fun pfib (i : int) = (case i
 	      end
       (* end case *))
 
-(*val x = ImplicitThread.runWithGroup(globalBFS, fn () => pml_assert(doit pfib 21 2))*)
+val x = ImplicitThread.runWithGroup(globalBFS, fn () => pml_assert(doit pfib 21 2))
 
 fun cancel1 () = let
       val susp1 = ParSusp.delay(fn () => (
@@ -84,6 +94,7 @@ fun cancel1 () = let
 	()
       end
 
+val () = Print.printLn "Testing cancelation"
 val () = ImplicitThread.runWithGroup(globalBFS, cancel1)
 
 val () = Print.printLn "Finished futures tests"
