@@ -38,7 +38,7 @@ fun bench () = let
     in
     (* sanity test *)
       if pf = sf then () else (raise Fail "incorrect answer"; ());
-      Print.printLn("Time elapsed (microseconds): "^Long.toString t)
+      Print.print(Long.toString t)
     end
 
 val _ = bench()
