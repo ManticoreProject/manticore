@@ -4,8 +4,6 @@
  * All rights reserved.
  *)
 
-(* FIXME : poll is not implemented! *)
-
 (* NOTE This translation is NOT RECURSIVE. *)
 (*      It assumes the incoming expressions have been translated. *)
 
@@ -17,7 +15,7 @@
 
 (* TODO Somewhere the compiler should append an "Otherwise => raise ..." to any pcase without one. *)
 
-(* TODO For 'a computations, should we make an 'a trap future, rather than an 'a future? *)
+(* TODO For 'a computations, should we make an 'a result future, rather than an 'a future? *)
 
 structure TranslatePCase (* : sig
 
@@ -55,17 +53,20 @@ structure TranslatePCase (* : sig
     val memoNONE : AST.dcon Memo.memo = Memo.new (fn _ =>
       BasisEnv.getDConFromBasis ["Option", "NONE"])
 
-    val memoVal : AST.dcon Memo.memo = Memo.new (fn _ =>
-      BasisEnv.getDConFromBasis ["Trap", "Val"])
+    val memoRES : AST.dcon Memo.memo = Memo.new (fn _ =>
+      BasisEnv.getDConFromBasis ["Result", "RES"])
 
-    val memoExn : AST.dcon Memo.memo = Memo.new (fn _ =>
-      BasisEnv.getDConFromBasis ["Trap", "Exn"])
+    val memoEXN : AST.dcon Memo.memo = Memo.new (fn _ =>
+      BasisEnv.getDConFromBasis ["Result", "EXN"])
 				 
     val memoOption : Types.tycon Memo.memo = Memo.new (fn _ =>
       BasisEnv.getTyConFromBasis ["Option", "option"])
 
-    val memoTrap : Types.tycon Memo.memo = Memo.new (fn _ =>
-      BasisEnv.getTyConFromBasis ["Trap", "trap"])
+    val memoResult : Types.tycon Memo.memo = Memo.new (fn _ =>
+      BasisEnv.getTyConFromBasis ["Result", "result"])
+
+    val memoPoll : AST.var Memo.memo = Memo.new (fn _ =>
+      BasisEnv.getVarFromBasis ["EagerFuture", "poll"])
 
   in
       
@@ -77,33 +78,36 @@ structure TranslatePCase (* : sig
   (* memoized NONE dcon from the basis *)
     fun optNONE () = Memo.get memoNONE
 
-  (* trapVal : unit -> A.dcon *)
-    fun trapVal () = Memo.get memoVal
+  (* resultRES : unit -> A.dcon *)
+    fun resultRES () = Memo.get memoRES
 
-  (* trapExn : unit -> A.dcon *)
-    fun trapExn () = Memo.get memoExn
+  (* resultEXN : unit -> A.dcon *)
+    fun resultEXN () = Memo.get memoEXN
 
   (* optionTyc : unit -> AST.tycon *)
     fun optionTyc () = Memo.get memoOption
 
-  (* trapTyc : unit -> AST.tycon *)
-    fun trapTyc () = Memo.get memoTrap
+  (* resultTyc : unit -> AST.tycon *)
+    fun resultTyc () = Memo.get memoResult
 
-  (* mkValPat : AST.pat -> AST.pat *)
-  (* Given a pattern (p : t), produce the pattern (Val p : t trap). *)
-    fun mkValPat pat = let
-      val conVal = trapVal ()
+  (* pollV : unit -> A.var *)
+    fun pollV () = Memo.get memoPoll
+
+  (* mkResPat : AST.pat -> AST.pat *)
+  (* Given a pattern (p : t), produce the pattern (RES(p) : t result). *)
+    fun mkResPat pat = let
+      val conRES = resultRES ()
       val ty = TypeOf.pat pat
       in
-        AST.ConPat (conVal, [ty], pat)
+        AST.ConPat (conRES, [ty], pat)
       end
 
   (* mkExnPat : (AST.pat * AST.ty) -> AST.pat *)
-  (* Given a pattern p and type t, produce the pattern (Exn p : t trap). *)  
+  (* Given a pattern p and type t, produce the pattern (Exn p : t result). *)  
     fun mkExnPat (pat, ty) = let
-      val conExn = trapExn ()
+      val conEXN = resultEXN ()
       in
-        AST.ConPat (conExn, [ty], pat)
+        AST.ConPat (conEXN, [ty], pat)
       end
 
   (* mkOptTy : AST.ty -> AST.ty *)
@@ -113,8 +117,8 @@ structure TranslatePCase (* : sig
   (* mkFutureTy : AST.ty -> AST.ty *)
     fun mkFutureTy ty = AST.ConTy ([ty], F.futureTyc ())
 
-  (* mkTrapTy : AST.ty -> AST.ty *)
-    fun mkTrapTy ty = AST.ConTy ([ty], trapTyc ())
+  (* mkResultTy : AST.ty -> AST.ty *)
+    fun mkResultTy ty = AST.ConTy ([ty], resultTyc ())
 
   end (* local *)
 
@@ -136,9 +140,9 @@ structure TranslatePCase (* : sig
 (* A function to transform ppat lists to tuple pats for use in case exps. *)
 (* ex: ? & 1 & (x, y) --> (_, Val 1, Val (x, y)) *)
   fun xformPPats ps = let
-    fun xform (AST.NDWildPat ty) = AST.WildPat ty
+    fun xform (AST.NDWildPat ty) = AST.WildPat (mkResultTy ty)
       | xform (AST.HandlePat (p, ty)) = mkExnPat (p, ty)
-      | xform (AST.Pat p) = mkValPat p
+      | xform (AST.Pat p) = mkResPat p
     in
       AST.TuplePat (map xform ps)
     end
@@ -165,7 +169,7 @@ structure TranslatePCase (* : sig
       : matchmap = let
     val match = 
      (case pm
-        of A.Otherwise e => A.PatMatch (A.WildPat t, e)
+        of A.Otherwise e => A.PatMatch (A.WildPat (mkResultTy t), e)
 	 | A.PMatch (ps, e) => A.PatMatch (xformPPats ps, e))
     val (m', ms) = CBM.remove (m, cb)
     val belongsLast = (case pm of A.Otherwise _ => true | _ => false)
@@ -189,14 +193,14 @@ structure TranslatePCase (* : sig
     end
 
 (* mkTy : AST.ty list -> cbits -> AST.ty *)
-(* tup of traps for types corres. to Ones -> pcaseResultTy *)
+(* tup of results for types corres. to Ones -> pcaseResultTy *)
 (* e.g., if ts is [int, bool, string] *)
 (* and cb is 101 then this function yields *)
-(* the type (int trap * string trap) *)
+(* the type (int result * string result) *)
   fun mkTy ts cb = let
     fun go ([], [], tys) = AST.TupleTy (rev tys)
       | go (CB.Zero :: r1, _ :: r2, tys) = go (r1, r2, tys)
-      | go (CB.One  :: r1, t :: r2, tys) = go (r1, r2, mkTrapTy t :: tys)
+      | go (CB.One  :: r1, t :: r2, tys) = go (r1, r2, mkResultTy t :: tys)
       | go _ = raise Fail
           "length of completion bitstring doesn't match # of exps in pcase"
     in
@@ -219,14 +223,14 @@ structure TranslatePCase (* : sig
 	    (A.PatMatch (tupPat, fcall), argVs')
           end
       | m (CB.Zero::bs, t::ts, n, optPats, argVs) = let
-          val p = A.ConstPat (A.DConst (optNONE (), [mkTrapTy t]))
+          val p = A.ConstPat (A.DConst (optNONE (), [mkResultTy t]))
           in
             m (bs, ts, n, p::optPats, argVs)
           end
       | m (CB.One::bs, t::ts, n, optPats, argVs) = let
           val varName = "t" ^ Int.toString n
-	  val argV = Var.new ("t" ^ Int.toString n, mkTrapTy t)
-	  val p = A.ConPat (optSOME (), [mkTrapTy t], A.VarPat argV) 
+	  val argV = Var.new ("t" ^ Int.toString n, mkResultTy t)
+	  val p = A.ConPat (optSOME (), [mkResultTy t], A.VarPat argV) 
           in
 	    m (bs, ts, n+1, p::optPats, argV::argVs)
           end
@@ -238,48 +242,103 @@ structure TranslatePCase (* : sig
 (* typeOfVar : A.var -> A.ty *)
   fun typeOfVar v = TypeOf.pat (A.VarPat v)
 
-  local
-    fun forall mkTy = let
-      val tv = TyVar.new (Atom.atom "'a")
-      in
-	AST.TyScheme ([tv], mkTy (AST.VarTy tv))
-      end    
-  (* FIXME: dummy implementation of poll *)
-    val memoPoll : AST.var Memo.memo = Memo.new (fn _ => let
-      fun pollTy tv = A.FunTy (mkFutureTy tv, mkOptTy (mkTrapTy tv))
-      in
-        (* FIXME get the real poll from the basis *)
-	Var.newPoly ("poll", forall (fn tv => pollTy tv))
-      end)
-  in
-  (* pollV : unit -> A.var *)
-    fun pollV () = Memo.get memoPoll
-  end (* local *)
-	
 (* mkPoll: Given a variable f bound to some 'a future, return (poll f).
  * ex: mkPoll (nf : int future) --> 
- *  ((poll : int future -> int trap option) (nf : int future)) : int trap option 
+ *  ((poll : int future -> int result option) (nf : int future)) : int result option 
  *)
   fun mkPoll (futV : AST.var) : AST.exp = let
     val ty = typeOfVar futV
-    val inst = (case ty
-		  of A.ConTy ([i], tyc) => 
-		      (if TyCon.same (tyc, F.futureTyc ()) 
-		       then i
-		       else raise Fail "not a future")
-		   | _ => raise Fail "unexpected non-future type")
+    val inst = 
+     (case ty
+        of A.ConTy ([i], tyc) => 
+	    (if TyCon.same (tyc, F.futureTyc ()) 
+	     then i
+	     else raise Fail "not a future")
+	 | _ => raise Fail "unexpected non-future type")
     in
       A.ApplyExp (A.VarExp (pollV (), [inst]),
 		  A.VarExp (futV, []), (* FIXME Should this be the empty list? *)
-		  mkOptTy (mkTrapTy inst))
+		  mkOptTy (mkResultTy inst))
     end
 
+(* patOf : A.match -> A.pat *) 
+  fun patOf (A.PatMatch (p, _)) = p
+    | patOf (A.CondMatch (p, _, _)) = p
 
-(* mkLam : AST.ty * AST.var * AST.var list * match list -> A.lambda *)
+(* isWild : A.pat -> bool *)
+  fun isWild (A.WildPat _) = true
+    | isWild _ = false
+
+(* allWild : A.pat list -> bool *)
+  val allWild = List.all isWild
+
+(* patToString : A.pat -> string *)
+(* This is only here to produce debugging messages. *)
+  fun patToString p =
+   (case p
+      of A.ConPat (A.DCon {name, ...}, ts, innerP) => let
+           val con = Atom.toString name
+           in
+	     concat [con, "[-]:", TypeUtil.toString (TypeOf.pat p)]
+           end
+       | A.TuplePat ps => 
+	   concat ["(", String.concatWith "," (List.map patToString ps), ")"]
+       | A.VarPat x => let
+           val t = TypeOf.pat p
+	   in
+	     concat [Var.nameOf x, ":", TypeUtil.toString t]
+	   end
+       | A.WildPat t => concat ["_:", TypeUtil.toString t]
+       | A.ConstPat k => "unexpected ConstPat")
+
+(* matchWithPat : A.pat -> A.match -> A.match *)
+(* A functional update of a match, such that its pattern is replaced. *)
+  fun matchWithPat p m = 
+   (case m
+      of A.PatMatch (_, e) => A.PatMatch (p, e)
+       | A.CondMatch (_, e1, e2) => A.CondMatch (p, e1, e2)
+      (* end case *))
+
+(* applyCB : cbits -> A.pat list -> A.pat list *)
+(* Use the cbits to filter the pat list. *)
+(* ex: applyCB 01011 [p1,p2,p3,p4,p5] --> [p2,p4,p5] *)
+  fun applyCB cb ps = let
+    fun loop ([], [], acc) = List.rev acc
+      | loop (b::bs, p::ps, acc) =
+         (case b
+            of CB.Zero => loop (bs, ps, acc)
+	     | CB.One => loop (bs, ps, p::acc)
+	    (* end case *))
+      | loop _ = raise Fail "unequal lengths"
+    in
+      loop (cb, ps, [])
+    end
+
+(* narrowMatch : cbits * A.ty -> A.match -> A.match *)
+  fun narrowMatch (cb, t) m = 
+   (case patOf m
+      of A.WildPat _ => matchWithPat (A.WildPat t) m
+       | A.ConPat _ => raise Fail "BUG: unexpected ConPat"
+       | A.VarPat _ => raise Fail "BUG: unexpected VarPat"
+       | A.ConstPat _ => raise Fail "BUG: unexpected ConstPat"
+       | A.TuplePat ps => let
+	   val ps' = applyCB cb ps
+	   in
+	     matchWithPat (A.TuplePat ps') m
+	   end	
+      (* end case *))
+
+(* narrowMatches : cbits * A.ty -> A.match list -> A.match list *)
+  fun narrowMatches (cb, t) = List.map (narrowMatch (cb, t))
+
+(* mkLam : AST.ty * AST.var * AST.var list * cbits * match list -> A.lambda *)
 (* This function is called to finish off the translation in tr below. *)
-  fun mkLam (pcaseResultTy, fNameV, vars, caseArms) = let
-    val argV = Var.new ("x", A.TupleTy (map typeOfVar vars))
-    val body = A.CaseExp (A.VarExp (argV, []), caseArms, pcaseResultTy)
+  fun mkLam (pcaseResultTy, fNameV, vars, cb, caseArms) = let
+    val vTys = List.map typeOfVar vars
+    val t = A.TupleTy vTys
+    val argV = Var.new ("x", t)
+    val caseArms' = narrowMatches (cb, t) caseArms
+    val body = A.CaseExp (A.VarExp (argV, []), caseArms', pcaseResultTy)
     in
       A.FB (fNameV, argV, body)
     end
@@ -294,7 +353,7 @@ structure TranslatePCase (* : sig
     val kmss = CBM.listItemsi m
     val goV = Var.new ("go", A.FunTy (Basis.unitTy, pcaseResultTy))
     val applyGo = A.ApplyExp (A.VarExp (goV, []), A.TupleExp [], pcaseResultTy)
-    val default = A.WildPat (A.TupleTy (map (mkOptTy o mkTrapTy) expTys))
+    val default = A.WildPat (A.TupleTy (map (mkOptTy o mkResultTy) expTys))
     val defaultMatch = A.PatMatch (default, applyGo)
     val u = Var.new ("u", Basis.unitTy)
     val fVs = futureVars es
@@ -312,9 +371,9 @@ structure TranslatePCase (* : sig
 	  val ty = A.FunTy (mkTy expTys cb, pcaseResultTy)
 	  val nameV = Var.new (name, ty)
 	  val (m, vs) = mkMatch (pcaseResultTy, expTys, cb, nameV)
-	  val f = mkLam (pcaseResultTy, nameV, vs, if isAllOnes cb
-						   then ms else 
-						   ms @ [defaultMatch])
+(* FIXME What about the order of the matches? Gotta get that right. *)
+	  val ms' = if isAllOnes cb then ms else (ms @ [defaultMatch])
+	  val f = mkLam (pcaseResultTy, nameV, vs, cb, ms')
           in
 	    b (t, m::matches, f::lams, name::fnames)
           end
