@@ -481,7 +481,7 @@ fun ray winsize = let
 	  else ();
     val (_, t) = Time.timeToEval(fn () => (lp 0; Image.output("out.ppm", img); Image.free img))
     in
-      Print.printLn("Time elapsed (microseconds): "^Long.toString t)
+      Print.print(Long.toString t)
     end;
 
 (* sequential version of the code that builds the image first as a list *)
