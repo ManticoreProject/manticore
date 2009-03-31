@@ -7,6 +7,8 @@
 (* NOTE This translation is NOT RECURSIVE. *)
 (*      It assumes the incoming expressions have been translated. *)
 
+(* FIXME Put in cancellations where needed. *)
+
 (* TODO Test exceptions. *)
 
 (* TODO The compiler should check to make sure Otherwise is last. Currently, it does so in this module. *)
@@ -65,6 +67,9 @@ structure TranslatePCase (* : sig
     val memoResult : Types.tycon Memo.memo = Memo.new (fn _ =>
       BasisEnv.getTyConFromBasis ["Result", "result"])
 
+    val memoCancel : AST.var Memo.memo = Memo.new (fn _ =>
+      BasisEnv.getVarFromBasis ["EagerFuture", "cancel"])
+
     val memoPoll : AST.var Memo.memo = Memo.new (fn _ =>
       BasisEnv.getVarFromBasis ["EagerFuture", "poll"])
 
@@ -89,6 +94,9 @@ structure TranslatePCase (* : sig
 
   (* resultTyc : unit -> AST.tycon *)
     fun resultTyc () = Memo.get memoResult
+
+  (* cancelV : unit -> A.var *)
+    fun cancelV () = Memo.get memoCancel
 
   (* pollV : unit -> A.var *)
     fun pollV () = Memo.get memoPoll
@@ -242,6 +250,21 @@ structure TranslatePCase (* : sig
 (* typeOfVar : A.var -> A.ty *)
   fun typeOfVar v = TypeOf.pat (A.VarPat v)
 
+(* mkCancel : A.var -> A.exp *)
+(* Given a variable (f) bound to some 'a future, return (cancel f). *)
+  fun mkCancel (futV : A.var) : A.exp = let
+    val inst = 
+      (case typeOfVar futV
+         of A.ConTy ([i], tyc) =>
+             (if TyCon.same (tyc, F.futureTyc ()) then i
+	      else raise Fail "not a future")
+	  | _ => raise Fail "not a future")
+    in
+      A.ApplyExp (A.VarExp (cancelV (), [inst]),
+		  A.VarExp (futV, []),
+		  A.TupleTy [])
+    end
+
 (* mkPoll: Given a variable f bound to some 'a future, return (poll f).
  * ex: mkPoll (nf : int future) --> 
  *  ((poll : int future -> int result option) (nf : int future)) : int result option 
@@ -289,7 +312,8 @@ structure TranslatePCase (* : sig
 	     concat [Var.nameOf x, ":", TypeUtil.toString t]
 	   end
        | A.WildPat t => concat ["_:", TypeUtil.toString t]
-       | A.ConstPat k => "unexpected ConstPat")
+       | A.ConstPat k => "unexpected ConstPat"
+      (* end case *))
 
 (* matchWithPat : A.pat -> A.match -> A.match *)
 (* A functional update of a match, such that its pattern is replaced. *)
@@ -299,45 +323,68 @@ structure TranslatePCase (* : sig
        | A.CondMatch (_, e1, e2) => A.CondMatch (p, e1, e2)
       (* end case *))
 
-(* applyCB : cbits -> A.pat list -> A.pat list *)
-(* Use the cbits to filter the pat list. *)
+(* applyCB : cbits -> 'a list -> 'a list *)
+(* Use the cbits to filter the 'a list. *)
 (* ex: applyCB 01011 [p1,p2,p3,p4,p5] --> [p2,p4,p5] *)
-  fun applyCB cb ps = let
+  fun applyCB cb xs = let
     fun loop ([], [], acc) = List.rev acc
-      | loop (b::bs, p::ps, acc) =
+      | loop (b::bs, x::xs, acc) =
          (case b
-            of CB.Zero => loop (bs, ps, acc)
-	     | CB.One => loop (bs, ps, p::acc)
+            of CB.Zero => loop (bs, xs, acc)
+	     | CB.One => loop (bs, xs, x::acc)
 	    (* end case *))
       | loop _ = raise Fail "unequal lengths"
     in
-      loop (cb, ps, [])
+      loop (cb, xs, [])
     end
 
-(* narrowMatch : cbits * A.ty -> A.match -> A.match *)
-  fun narrowMatch (cb, t) m = 
+(* seqPrepend : A.exp list -> A.exp -> A.exp    *)
+(* Prepend all given expressions es onto e.     *)
+(* ex: seqPrepend [e1,e2] e0 --> (e1; (e2; e0)) *)
+  fun seqPrepend es e = List.foldr A.SeqExp e es
+
+(* narrowMatch : cbits * A.var list * A.ty -> A.match -> A.match *)
+  fun narrowMatch (cb, futVs, t) m = 
    (case patOf m
-      of A.WildPat _ => matchWithPat (A.WildPat t) m
-       | A.ConPat _ => raise Fail "BUG: unexpected ConPat"
+      of A.ConPat _ => raise Fail "BUG: unexpected ConPat"
        | A.VarPat _ => raise Fail "BUG: unexpected VarPat"
        | A.ConstPat _ => raise Fail "BUG: unexpected ConstPat"
+       | A.WildPat _ => matchWithPat (A.WildPat t) m
        | A.TuplePat ps => let
 	   val ps' = applyCB cb ps
+	   val cancels = let
+             (* cancel all futures that correspond to wildcards *)
+	     fun loop ((A.WildPat _)::ps, f::fs, acc) = loop (ps, fs, f::acc)
+	       | loop (p::ps, f::fs, acc) = loop (ps, fs, acc)
+	       | loop ([], [], acc) = List.rev acc (* actually reversing isn't needed *)
+	       | loop _ = raise Fail "unequal lengths"
+	     val cancelThese = loop (ps, futVs, [])
+	     in
+               List.map mkCancel cancelThese
+	     end
 	   in
-	     matchWithPat (A.TuplePat ps') m
+	     case m
+	      of A.CondMatch _ => raise Fail "conditional matches unsupported for now"
+	       | A.PatMatch (p, e) => let
+		   val p' = A.TuplePat ps'
+		   val e' = seqPrepend cancels e
+		   in
+		     A.PatMatch (p', e')
+		   end
 	   end	
       (* end case *))
 
-(* narrowMatches : cbits * A.ty -> A.match list -> A.match list *)
-  fun narrowMatches (cb, t) = List.map (narrowMatch (cb, t))
+(* narrowMatches : cbits * A.var list * A.ty -> A.match list -> A.match list *)
+  fun narrowMatches (cb, futVs, t) = List.map (narrowMatch (cb, futVs, t))
 
-(* mkLam : AST.ty * AST.var * AST.var list * cbits * match list -> A.lambda *)
+(* mkLam : A.ty * A.var * A.var list * cbits * match list * A.var list -> A.lambda *)
 (* This function is called to finish off the translation in tr below. *)
-  fun mkLam (pcaseResultTy, fNameV, vars, cb, caseArms) = let
+(* FIXME This should also cancel the ongoing, no-longer-needed futures. *)
+  fun mkLam (pcaseResultTy, fNameV, vars, cb, caseArms, futVs) = let
     val vTys = List.map typeOfVar vars
     val t = A.TupleTy vTys
     val argV = Var.new ("x", t)
-    val caseArms' = narrowMatches (cb, t) caseArms
+    val caseArms' = narrowMatches (cb, futVs, t) caseArms
     val body = A.CaseExp (A.VarExp (argV, []), caseArms', pcaseResultTy)
     in
       A.FB (fNameV, argV, body)
@@ -373,7 +420,7 @@ structure TranslatePCase (* : sig
 	  val (m, vs) = mkMatch (pcaseResultTy, expTys, cb, nameV)
 (* FIXME What about the order of the matches? Gotta get that right. *)
 	  val ms' = if isAllOnes cb then ms else (ms @ [defaultMatch])
-	  val f = mkLam (pcaseResultTy, nameV, vs, cb, ms')
+	  val f = mkLam (pcaseResultTy, nameV, vs, cb, ms', fVs)
           in
 	    b (t, m::matches, f::lams, name::fnames)
           end

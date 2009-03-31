@@ -27,16 +27,17 @@ structure CompletionBitstring : sig
   val eq       : t * t -> bool
   val length   : t -> int
   val compare  : t * t -> order
+  val invert   : t -> t
   val toString : t -> string
 
-  (* c1 < c2 if everywhere c1 is 1, c2 is 1. *)
-  (* If one thinks of c1 and c2 as bit-vector sets, this is the subset relationship. *)
+(* c1 < c2 if everywhere c1 is 1, c2 is 1. *)
+(* If one thinks of c1 and c2 as bit-vector sets, this is the subset relationship. *)
   val sub : t * t -> bool
  
-  (* Given a list of ppats, return a bitstring with 0s for the ?s and 1s elsewhere. *)
+(* Given a list of ppats, return a bitstring with 0s for the ?s and 1s elsewhere. *)
   val fromPPats : AST.ppat list -> t
 
-  (* allOnes produces a bitstring consisting of all ones of given length. *)
+(* allOnes produces a bitstring consisting of all ones of given length. *)
   val allOnes : int -> t
 
 end = struct
@@ -57,8 +58,8 @@ end = struct
 
   fun toString cb = concat (map (fn Zero => "0" | One => "1") cb)
 
-  (* c1 < c2 if everywhere c1 is 1, c2 is 1. *)
-  (* If one thinks of c1 and c2 as bit-vector sets, this is the subset relationship. *)
+(* c1 < c2 if everywhere c1 is 1, c2 is 1. *)
+(* If one thinks of c1 and c2 as bit-vector sets, this is the subset relationship. *)
   fun sub (c1, c2) = let
     fun s ([], []) = true
       | s (One::t1, One::t2) = s (t1, t2)
@@ -84,10 +85,13 @@ end = struct
     else 
       String.compare (toString c1, toString c2)
 
-  (* Given a list of ppats, return a bitstring with 0s for the ?s and 1s elsewhere. *)
+(* Given a list of ppats, return a bitstring with 0s for the ?s and 1s elsewhere. *)
   fun fromPPats ps = map (fn AST.NDWildPat _ => Zero | _ => One) ps
 
-  (* allOnes produces a bitstring consisting of all ones of given length. *)
+(* allOnes produces a bitstring consisting of all ones of given length. *)
   fun allOnes n = List.tabulate (n, fn _ => One) 
+
+(* toggle all the 0s and 1s *)
+  val invert = List.map (fn One => Zero | Zero => One)
 
 end
