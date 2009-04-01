@@ -120,7 +120,14 @@ structure VProcQueue (* :
       define inline @dequeue-from-atomic (vp : vproc) : O.option =
 	  let hd : queue_item = vpload (VP_RDYQ_HD, vp)
 	  let tl : queue_item = vpload (VP_RDYQ_TL, vp)
-	  if NotEqual(hd, Q_EMPTY)
+        (* FIXME: remove the landing-pad check when we can safely perform the check during pre-emptions. *)
+	  let landingPadItems : queue_item = VProc.@recv-from-atomic(vp)
+          if NotEqual(landingPadItems, Q_EMPTY)
+             then
+	      let newHd : queue_item = @queue-append (SELECT(LINK_OFF, landingPadItems), hd)
+	      do vpstore (VP_RDYQ_HD, vp, newHd)
+	      return(O.SOME(landingPadItems))
+	  else if NotEqual(hd, Q_EMPTY)
 	     then
 	      (* got a thread from the primary list *)
 	        do vpstore (VP_RDYQ_HD, vp, SELECT(LINK_OFF, hd))
