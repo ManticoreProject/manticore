@@ -183,7 +183,8 @@ structure ImplicitThread (* :
 	    let fls : FLS.fls = FLS.@pin-to(fls, i / exh)
 	    VProcQueue.@enqueue-on-vproc(vp, fls, k)
 	let nWorkers : int = VProc.@num-vprocs()
-	@spawn-n-workers(nWorkers, SELECT(GROUP_WORKER_INIT_OFF, group), spawnFn / exh)
+	do @spawn-n-workers(nWorkers, SELECT(GROUP_WORKER_INIT_OFF, group), spawnFn / exh)
+        return()
       ;
 
     (* create a work group and make it ready to receive work *)
@@ -234,8 +235,8 @@ structure ImplicitThread (* :
      * QUESTION: should the cancelation wrapping happen later in the @run operation?
      *)
       define inline @thread (k : PT.fiber, 
-		      c : Option.option           (* cancelable *)
-                     / exh : exh) : thread =
+			     c : Option.option           (* cancelable *)
+                            / exh : exh) : thread =
       (* capture the work-group stack *)
 	let ite : ite = FLS.@get-ite( / exh)
         let stk : List.list = SELECT(ITE_STACK_OFF, ite)
@@ -280,11 +281,21 @@ structure ImplicitThread (* :
 	return(SELECT(GROUP_SCHEDULER_DATA_OFF, group))
       ;
 
+    (* migrate the current fiber to the workgroup *)
+      define inline @migrate-to-group (group : group / exh : exh) : () =
+	cont k (x : unit) = return()
+	let thd : thread = @thread (k, Option.NONE / exh)
+	do @spawn(thd / exh)
+	let _ : unit = SchedulerAction.@stop()
+	return ()
+      ;
+
     (* begin the dynamic scope of a group *)
       define inline @group-begin (group : group / exh : exh) : () =
 	do @migrate-to-top-level-sched()
 	do @init-ite(/ exh)
 	do @push(group / exh)
+        do @migrate-to-group(group / exh)
 	return()
       ;
 
