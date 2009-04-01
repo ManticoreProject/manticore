@@ -88,7 +88,9 @@ structure MultiprogrammedWorkStealing :
 	      throw impossible()
 	  end
 
-        cont initK (x : unit) = throw schedulerLoop(PT.STOP)
+        cont initK (x : unit) = 
+          let self : vproc = SchedulerAction.@atomic-begin()
+          throw schedulerLoop(PT.STOP)
 	return(initK)
       ;
 
