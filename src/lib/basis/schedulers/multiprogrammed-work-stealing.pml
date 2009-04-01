@@ -56,41 +56,46 @@ structure MultiprogrammedWorkStealing :
 	    do ImplicitThread.@run-in-scheduler(self, schedulerLoop, thd / exh)
 	    throw impossible()
 
-        (* attempt to steal from another worker *)
-	  cont steal () =
+	  cont findWork () =
+          (* look for work on the local deque. *)
+            let thd : O.option = Cilk5Deque.@pop-tl-from-atomic(deque / exh)
+	    do case thd
+		of O.NONE => 
+		   return()
+		 | O.SOME(thd : ImplicitThread.thread) => 
+		   throw dispatch(thd)
+	       end
+          (* nothing available on the local deque. *)
             do SchedulerAction.@yield-in-atomic(self)
+          (* try to steal from another worker. *)
 	    let victim : int = Rand.@in-range-int(0, nWorkers / exh)
 	    do if I32Eq(victim, workerID)
-		  then throw steal()
+		  then throw findWork()
 	       else return()
 	    let victimDeque : Cilk5Deque.deque = Arr.@sub(deques, victim / exh)
 	    let thd : O.option = Cilk5Deque.@pop-hd-from-atomic(victimDeque / exh)
 	    case thd
 	     of O.NONE =>
-		throw steal()
+		throw findWork()
 	      | O.SOME(thd : ImplicitThread.thread) =>
 		throw dispatch(thd)
 	    end
 
 	  case sign
 	   of PT.STOP =>
-	      let thd : O.option = Cilk5Deque.@pop-tl-from-atomic(deque / exh)
-	      case thd
-	       of O.NONE => throw steal()
-		| O.SOME(thd : ImplicitThread.thread) => throw dispatch(thd)
-	      end
+	      throw findWork ()
 	    | PT.PREEMPT (k : PT.fiber) =>
 	      let thd : ImplicitThread.thread = ImplicitThread.@capture(k / exh)
 	      do Cilk5Deque.@push-tl-from-atomic(deque, thd / exh)
               do SchedulerAction.@yield-in-atomic(self)
-	      throw schedulerLoop(PT.STOP)
+	      throw findWork()
 	    | _ =>
 	      throw impossible()
 	  end
 
         cont initK (x : unit) = 
-	  let self : vproc = SchedulerAction.@atomic-begin()
-	  throw schedulerLoop(PT.STOP)
+          let self : vproc = SchedulerAction.@atomic-begin()
+          throw schedulerLoop(PT.STOP)
 	return(initK)
       ;
 

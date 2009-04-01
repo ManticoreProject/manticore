@@ -19,14 +19,9 @@ structure EagerFuture (* : FUTURE *) =
 		Option.option                           (* cancelable *)
              ];
 
-      define @alloc(ivar : ImplicitThreadIVar.ivar, c : Option.option / exh : exh) : future =
-	let fut : future = alloc(ivar, c)
-	return(fut)
-      ;
-
       define @future-no-cancelation (f : fun(unit / exh -> any) / exh : exh) : future =
 	let ivar : ImplicitThreadIVar.ivar = ImplicitThreadIVar.@empty-ivar(/ exh)       
-	let fut : future = @alloc(ivar, Option.NONE / exh)
+	let fut : future = alloc (ivar, Option.NONE)
 
       (* fiber that represents the context of the future *)
 	cont k (x : unit) = return(fut)
@@ -48,13 +43,14 @@ structure EagerFuture (* : FUTURE *) =
 	else
 	    (* fast clone *)
 	    let ivar : ImplicitThreadIVar.ivar = ImplicitThreadIVar.@ivar(Result.RES(v) / exh)
-	    @alloc(ivar, Option.NONE / exh)
+	    let fut : future = alloc(ivar, Option.NONE)
+            return(fut)
       ;
 
       define @future-with-cancelation (f : fun(unit / exh -> any) / exh : exh) : future =
 	let ivar : ImplicitThreadIVar.ivar = ImplicitThreadIVar.@empty-ivar(/ exh)
 	let c : Cancelation.cancelable = Cancelation.@new(/ exh)
-	let fut : future = @alloc(ivar, Option.SOME(c) / exh)
+	let fut : future = alloc(ivar, Option.SOME(c))
 
       (* fiber that represents the context of the future *)
 	cont k (x : unit) = return(fut)
@@ -78,7 +74,8 @@ structure EagerFuture (* : FUTURE *) =
 	  else
 	      (* fast clone *)
 	      let ivar : ImplicitThreadIVar.ivar = ImplicitThreadIVar.@ivar(v / exh)
-	     @alloc(ivar, Option.NONE / exh)
+	      let fut : future = alloc(ivar, Option.NONE)
+              return(fut)
 
         let thd : ImplicitThread.thread = ImplicitThread.@thread(k', Option.SOME(c) / exh)
         do ImplicitThread.@run-out-of-scheduler(thd / exh)

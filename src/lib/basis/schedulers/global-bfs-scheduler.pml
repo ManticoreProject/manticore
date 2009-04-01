@@ -40,7 +40,6 @@ structure GlobalBFSScheduler :
 	     (* QUESTION: does this policy work well for a shared FIFO queue? *)
 	     let thd : ImplicitThread.thread = ImplicitThread.@capture(k / exh)
 	     do LockedQueue.@enqueue-from-atomic(readyQ, thd)
-	     do SchedulerAction.@yield-in-atomic(self)
 	     throw dispatch()
 	   | _ => 
 	     let e : exn = Match
