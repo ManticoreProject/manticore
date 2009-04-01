@@ -35,13 +35,6 @@ structure VProcInit (* :
               (**** vp->schedCont ****)
 		cont schedCont (k : PT.fiber) = 
 		    do assert(NotEqual(k, nil))
-		  (* unload any new items off the landing pad *)
-		    let self : vproc = host_vproc
-		    let landingPadItems : queue_item = VProc.@recv-from-atomic(self)
-		    let hd : queue_item = vpload (VP_RDYQ_HD, self)
-		    let newHd : queue_item = VProcQueue.@queue-append(landingPadItems, hd)
-		  (* put new landing-pad items on head of the local queue *)
-		    do vpstore (VP_RDYQ_HD, self, newHd)
 		    SchedulerAction.@forward(PT.PREEMPT(k))
  	        let schedCont : cont(PT.fiber) = promote(schedCont)
 		let currentSchedCont : cont(PT.fiber) = vpload(VP_SCHED_CONT, vp)
