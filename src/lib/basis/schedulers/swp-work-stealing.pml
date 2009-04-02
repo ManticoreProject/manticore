@@ -6,11 +6,6 @@
  * Multiprogrammed work stealing algorithm adapted to use software polling.
  *)
 
-#define DEQUE_SZ      1024
-#define DEQUE_HD      0
-#define DEQUE_TL      1
-#define DEQUE_ELTS    2
-
 structure SwpWorkStealing :
   sig
 
@@ -46,6 +41,13 @@ structure SwpWorkStealing :
 		 any                 (* array of deque elements. *)
 	      ];
 
+#define DEQUE_SZ      1024
+#define DEQUE_HD      0
+#define DEQUE_TL      1
+#define DEQUE_ELTS    2
+
+#define NIL           enum(0):any
+
     (* array of local deques. *)
       typedef scheduler_data = Arr.array;
 
@@ -55,17 +57,17 @@ structure SwpWorkStealing :
 	;
 
     (* update a location in the local deque *)
-      define inline @deque-update (deque : deque, i : long, elt : PT.fiber / exh : exh) : () =
+      define inline @deque-update (deque : deque, i : long, elt : any / exh : exh) : () =
 	  let elts : addr(any) = &DEQUE_ELTS(deque)
 	  let x : bool = ArrayStoreI64(elts, i, elt)
 	  return()
 	;
 
     (* subscript from the local deque *)
-      define inline @deque-sub (deque : deque, i : long / exh : exh) : PT.fiber =
+      define inline @deque-sub (deque : deque, i : long / exh : exh) : any =
 	  let elts : addr(any) = &DEQUE_ELTS(deque)
 	  let elt : any = ArrayLoadI64(elts, i)
-	  return((PT.fiber)elt)
+	  return(elt)
 	;
 
       define inline @is-deque-empty (deque : deque / exh : exh) : bool =
@@ -74,19 +76,24 @@ structure SwpWorkStealing :
 	;
 
     (* pop from the tail of the deque *)
-      define inline @pop-tl-from-atomic (self : vproc, deque : deque / exh : exh) : PT.fiber =
-	  let tl : long = I64Sub(SELECT(DEQUE_TL, deque), 1)
-	  let x : any = @deque-sub(deque, tl / exh)
-	  do UPDATE(DEQUE_TL, deque, tl)
-	  do @deque-update(deque, tl, NIL_FIBER / exh)
-	  do assert(NotEqual(x, nil))
-	  return(x)
+      define inline @pop-tl-from-atomic (self : vproc, deque : deque / exh : exh) : O.option =
+          let isEmpty : bool = @is-deque-empty(deque / exh)
+          if isEmpty
+	     then
+	      return(O.NONE)
+	  else
+	      let tl : long = I64Sub(SELECT(DEQUE_TL, deque), 1)
+	      let x : any = @deque-sub(deque, tl / exh)
+	      do UPDATE(DEQUE_TL, deque, tl)
+	      do @deque-update(deque, tl, NIL / exh)
+	      do assert(NotEqual(x, NIL))
+	      return(O.SOME(x))
 	;
 
     (* push on the tail of the deque *)
-      define inline @push-tl-from-atomic (self : vproc, deque : deque, elt : PT.fiber / exh : exh) : () =
-	  do assert(NotEqual(deque, nil))
-	  do assert(NotEqual(elt, nil))
+      define inline @push-tl-from-atomic (self : vproc, deque : deque, elt : any / exh : exh) : () =
+	  do assert(NotEqual(deque, NIL))
+	  do assert(NotEqual(elt, NIL))
 	  let tl : long = SELECT(DEQUE_TL, deque)
 	  do @deque-update(deque, tl, elt / exh)
 	  do UPDATE(DEQUE_TL, deque, I64Add(tl, 1))
@@ -94,27 +101,32 @@ structure SwpWorkStealing :
 	;
 
     (* pop from the head of the deque *)
-      define inline @pop-hd-from-atomic (self : vproc, deque : deque / exh : exh) : PT.fiber =
-	  let hd : long = SELECT(DEQUE_HD, deque)
-	  let x : any = @deque-sub(deque, hd / exh)
-	  do UPDATE(DEQUE_HD, deque, I64Add(hd, 1))
-	  do @deque-update(deque, hd, NIL_FIBER / exh)
-	  do assert(NotEqual(x, nil))
-	  return(x)
+      define inline @pop-hd-from-atomic (self : vproc, deque : deque / exh : exh) : O.option =
+          let isEmpty : bool = @is-deque-empty(deque / exh)
+          if isEmpty
+	     then
+	      return(O.NONE)
+	  else
+	      let hd : long = SELECT(DEQUE_HD, deque)
+	      let x : any = @deque-sub(deque, hd / exh)
+	      do UPDATE(DEQUE_HD, deque, I64Add(hd, 1))
+	      do @deque-update(deque, hd, NIL / exh)
+	      do assert(NotEqual(x, NIL))
+	      return(O.SOME(x))
 	;
 
     (* allocate the local deque *)
-      define @alloc-deque (self : vproc, deques : Arr.array) : deque =
+      define @alloc-deque (self : vproc, deques : Arr.array / exh : exh) : deque =
 	  let id : int = VProc.@vproc-id(self)
 	  let deque : deque = ccall M_WSAllocLocalDeque(id)
-	  do ArrayStoreI64(deques, id, deque)
+          do Arr.@update(deques, id, deque / exh)
 	  return(deque)
         ;
 
     (* try to steal from a victim vproc.
      * PRECONDITION: NotEqual(self, victim)
      *)
-      define @try-to-steal-from-atomic (self : vproc, victim : vproc, victimDeque : deque / exh) : O.option =
+      define @try-to-steal-from-atomic (self : vproc, victim : vproc, victimDeque : deque / exh : exh) : O.option =
 	  let resp : ![O.option] = alloc(O.NONE)
 	  let resp : ![O.option] = promote(resp)
         (* access the victim's local deque from the victim's vproc. *)
@@ -180,7 +192,8 @@ structure SwpWorkStealing :
 		  do if Equal(victimVP, self)
 			then throw findWork()
 		     else return()
-		  let thd : O.option = @try-to-steal-from-atomic(self, victimVP, ArrayLoadI64(deques, victim) / exh)
+		  let victimDeque : deque = Arr.@sub(deques, victim / exh)
+		  let thd : O.option = @try-to-steal-from-atomic(self, victimVP, victimDeque / exh)
 		  case thd
 		   of O.NONE =>
 		      throw findWork()
@@ -217,7 +230,7 @@ structure SwpWorkStealing :
       define @pop-tl ( / exh : exh) : bool =
 	  let vp : vproc = SchedulerAction.@atomic-begin()
 	  let deque : deque = @get-deque-from-atomic(vp / exh)
-	  let kOpt : O.option = @pop-tl-from-atomic(deque / exh)
+	  let kOpt : O.option = @pop-tl-from-atomic(vp, deque / exh)
 	  do SchedulerAction.@atomic-end(vp)
 	  let isNonEmpty : bool = 
 		case kOpt
@@ -231,7 +244,7 @@ structure SwpWorkStealing :
       define @push-tl (thd : ImplicitThread.thread / exh : exh) : () =
 	  let vp : vproc = SchedulerAction.@atomic-begin()
 	  let deque : deque = @get-deque-from-atomic(vp / exh)
-	  do @push-tl-from-atomic(deque, thd / exh)
+	  do @push-tl-from-atomic(vp, deque, thd / exh)
 	  do SchedulerAction.@atomic-end(vp)
 	  return()
 	;
@@ -240,16 +253,19 @@ structure SwpWorkStealing :
       define @work-group (x : unit / exh : exh) : ImplicitThread.group =
 	  let nVPs : int = VProc.@num-vprocs()
 	  let deques : Arr.array = Arr.@array(nVPs, enum(0) / exh)
+          let barrier : NWayBarrier.barrier = NWayBarrier.@new(nVPs / exh)
 	  fun spawnFn (thd : ImplicitThread.thread / exh : exh) : unit =
 	      let vp : vproc = SchedulerAction.@atomic-begin()
 	      let id : int = VProc.@vproc-id(vp)
-	      do @push-tl-from-atomic(ArrayLoadI64(deques, id), thd / exh)
+              let deque : deque = Arr.@sub(deques, id / exh)
+	      do @push-tl-from-atomic(vp, deque, thd / exh)
 	      do SchedulerAction.@atomic-end(vp)
 	      return(UNIT)
 	  fun removeFn (thd : ImplicitThread.thread / exh : exh) : bool = 
 	      let vp : vproc = SchedulerAction.@atomic-begin()
 	      let id : int = VProc.@vproc-id(vp)
-	      let x : Option.option = @pop-tl-from-atomic(ArrayLoadI64(deques, id) / exh)
+              let deque : deque = Arr.@sub(deques, id / exh)
+	      let x : Option.option = @pop-tl-from-atomic(vp, deque / exh)
 	      do SchedulerAction.@atomic-end(vp)
 	      case x
 	       of Option.NONE => 
@@ -259,7 +275,7 @@ structure SwpWorkStealing :
 	      end
 	  cont init (x : unit) =
 	    let workerId : int = VProc.@vproc-id(host_vproc)
-	    let init : PT.fiber = @worker(workerId, nVPs, deques / exh)
+	    let init : PT.fiber = @worker(workerId, nVPs, deques, barrier / exh)
 	    throw init(UNIT)
 	  let group : ImplicitThread.group = ImplicitThread.@group(init, spawnFn, removeFn, deques / exh)
 	  return(group)

@@ -16,4 +16,5 @@
   in
     global-bfs-scheduler.pml
     multiprogrammed-work-stealing.pml
+    swp-work-stealing.pml
   end
