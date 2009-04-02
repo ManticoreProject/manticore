@@ -51,12 +51,17 @@ structure SwpWorkStealing :
     (* array of local deques. *)
       typedef scheduler_data = Arr.array;
 
-    (* number of threads in the local deque (assuming that the head was not stolen) *)
+    (* number of threads in the local deque. *)
       define @deque-sz (deque : deque / exh : exh) : long =
 	  return(I64Sub(SELECT(DEQUE_TL, deque), SELECT(DEQUE_HD, deque)))
 	;
 
-    (* update a location in the local deque *)
+      define inline @is-deque-empty (deque : deque / exh : exh) : bool =
+	  let sz : long = @deque-sz(deque / exh)
+	  return(I64Lt(sz, 1))
+	;
+
+    (* update a location in the local deque. *)
       define inline @deque-update (deque : deque, i : long, elt : any / exh : exh) : () =
 	  let elts : addr(any) = &DEQUE_ELTS(deque)
 	  let x : bool = ArrayStoreI64(elts, i, elt)
@@ -68,11 +73,6 @@ structure SwpWorkStealing :
 	  let elts : addr(any) = &DEQUE_ELTS(deque)
 	  let elt : any = ArrayLoadI64(elts, i)
 	  return(elt)
-	;
-
-      define inline @is-deque-empty (deque : deque / exh : exh) : bool =
-	  let sz : long = @deque-sz(deque / exh)
-	  return(I64Lt(sz, 1))
 	;
 
     (* pop from the tail of the deque *)

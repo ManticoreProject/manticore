@@ -66,8 +66,8 @@ Value_t** M_WSAddLocalDequesToRoots (VProc_t* vp, Value_t** rp)
     //    printf("hd=%d tl=%d\n", localDeque->hd, localDeque->tl);
     for(Word_t i = localDeque->hd; i < localDeque->tl; i++) {
       //printf("localDeque=%p elt=%p i=%d root=%p\n", localDeque, localDeque->elts[i], i, rp);
-      if (localDeque->elts[i] != M_NIL)
-	*rp++ = &(localDeque->elts[i]);
+      assert(localDeque->elts[i] != M_NIL);
+      *rp++ = &(localDeque->elts[i]);
     }
 
     globalList = globalList->tl;
