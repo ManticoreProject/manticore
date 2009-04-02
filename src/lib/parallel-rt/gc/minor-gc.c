@@ -14,6 +14,7 @@
 #include "internal-heap.h"
 #include "gc-inline.h"
 #include "inline-log.h"
+#include "work-stealing-local-deques.h"
 
 extern Addr_t	MajorGCThreshold; /* when the size of the nursery goes below this limit */
 				/* it is time to do a GC. */
@@ -74,7 +75,7 @@ void MinorGC (VProc_t *vp)
    * the return address (which is not in the heap) and that the stdEnvPtr
    * holds the GC root.
    */
-    Value_t *roots[16], **rp;
+    Value_t *roots[16 + WORK_STEALING_LOCAL_DEQUE_MAX_ROOTS], **rp;
     rp = roots;
     *rp++ = &(vp->currentFLS);
     *rp++ = &(vp->actionStk);
@@ -85,8 +86,9 @@ void MinorGC (VProc_t *vp)
     *rp++ = &(vp->rdyQTl);
     *rp++ = &(vp->landingPad);
     *rp++ = &(vp->stdEnvPtr);
+    rp = M_WSAddLocalDequesToRoots(vp, rp);
     *rp++ = 0;
-    assert (rp <= roots+(sizeof(roots)/sizeof(Value_t *)));
+    assert (rp <= roots+((sizeof(roots) + WORK_STEALING_LOCAL_DEQUE_MAX_ROOTS)/sizeof(Value_t *)));
 
 #ifndef NDEBUG
   /* nullify non-live registers */

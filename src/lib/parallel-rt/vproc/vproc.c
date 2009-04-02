@@ -22,6 +22,7 @@
 #include "scheduler.h"
 #include "inline-log.h"
 #include "time.h"
+#include "work-stealing-local-deques.h"
 
 typedef struct {	    /* data passed to NewVProc */
     int		id;		/* VProc ID */
@@ -86,7 +87,10 @@ void VProcInit (Options_t *opts)
 	Die ("unable to create VProcInfoKey");
     }
 
-  // Initialize vprocs */
+  /* Initialize work stealing */
+    M_WSInit (NumVProcs);
+
+  /* Initialize vprocs */
     BarrierInit (&InitBarrier, NumVProcs+1);
 
     InitData_t *initData = NEWVEC(InitData_t, NumVProcs);
