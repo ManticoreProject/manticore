@@ -25,10 +25,10 @@ fun pfib (i : int) = (case i
 	      end
        (* end case *))
 
-val () = Print.printLn "Initializing cilk5 scheduler"
-val cilk5 = MultiprogrammedWorkStealing.workGroup()
+val () = Print.printLn "Initializing swp scheduler"
+val swp = SwpWorkStealing.workGroup()
 val () = Print.printLn "Testing eager futures"
-val () = ImplicitThread.runWithGroup(cilk5, fn () => pml_assert(doit pfib 21 4))
+val () = ImplicitThread.runWithGroup(swp, fn () => pml_assert(doit pfib 21 4))
 
 (* Parallel suspensions (no cancelation) *)
 

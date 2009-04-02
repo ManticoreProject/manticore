@@ -48,10 +48,7 @@ structure SwpWorkStealing :
 
 #define NIL           enum(0):any
 
-    (* array of local deques. *)
-      typedef scheduler_data = Arr.array;
-
-    (* number of threads in the local deque. *)
+    (* number of threads in the deque. *)
       define @deque-sz (deque : deque / exh : exh) : long =
 	  return(I64Sub(SELECT(DEQUE_TL, deque), SELECT(DEQUE_HD, deque)))
 	;
@@ -68,15 +65,16 @@ structure SwpWorkStealing :
 	  return()
 	;
 
-    (* subscript from the local deque *)
+    (* subscript from the deque. *)
       define inline @deque-sub (deque : deque, i : long / exh : exh) : any =
 	  let elts : addr(any) = &DEQUE_ELTS(deque)
 	  let elt : any = ArrayLoadI64(elts, i)
 	  return(elt)
 	;
 
-    (* pop from the tail of the deque *)
+    (* pop from the tail of the deque. *)
       define inline @pop-tl-from-atomic (self : vproc, deque : deque / exh : exh) : O.option =
+	  do assert(NotEqual(deque, NIL))
           let isEmpty : bool = @is-deque-empty(deque / exh)
           if isEmpty
 	     then
@@ -90,7 +88,7 @@ structure SwpWorkStealing :
 	      return(O.SOME(x))
 	;
 
-    (* push on the tail of the deque *)
+    (* push on the tail of the deque. *)
       define inline @push-tl-from-atomic (self : vproc, deque : deque, elt : any / exh : exh) : () =
 	  do assert(NotEqual(deque, NIL))
 	  do assert(NotEqual(elt, NIL))
@@ -100,8 +98,9 @@ structure SwpWorkStealing :
 	  return()
 	;
 
-    (* pop from the head of the deque *)
+    (* pop from the head of the deque. *)
       define inline @pop-hd-from-atomic (self : vproc, deque : deque / exh : exh) : O.option =
+	  do assert(NotEqual(deque, NIL))
           let isEmpty : bool = @is-deque-empty(deque / exh)
           if isEmpty
 	     then
@@ -115,7 +114,7 @@ structure SwpWorkStealing :
 	      return(O.SOME(x))
 	;
 
-    (* allocate the local deque *)
+    (* allocate the local deque. *)
       define @alloc-deque (self : vproc, deques : Arr.array / exh : exh) : deque =
 	  let id : int = VProc.@vproc-id(self)
 	  let deque : deque = ccall M_WSAllocLocalDeque(id)
@@ -131,40 +130,39 @@ structure SwpWorkStealing :
 	  let resp : ![O.option] = promote(resp)
         (* access the victim's local deque from the victim's vproc. *)
 	  cont thief (_ : unit) =
+            let self : vproc = SchedulerAction.@atomic-begin()
 	    let thd : O.option = @pop-hd-from-atomic(self, victimDeque / exh)
-	    let thd : O.option = promote(thd)
+	    let thd : O.option = promote(O.SOME(thd))
 	    do #0(resp) := thd
+            do SchedulerAction.@atomic-end(self)
 	    SchedulerAction.@stop()
-        (* busy wait for the theif to respond. *)
+        (* busy wait for the thief to respond. *)
 	  fun waitForResp () : O.option =
 	      case #0(resp)
 	       of O.NONE =>
 		  do Pause()
 		  do SchedulerAction.@yield-in-atomic(self)
 		  apply waitForResp()
-		| O.SOME (thd : ImplicitThread.thread) =>
-		  return(#0(resp))
+		| O.SOME (thd : Option.option) =>
+		  return(thd)
 	      end
 	  do VProc.@send-high-priority-signal-from-atomic(self, victim, thief)
 	  apply waitForResp()
 	;
 
-      define @worker (workerID : int,                (* worker id *)
-		      nWorkers : int,                (* total number of workers in the group *)
-                      deques : Arr.array,            (* contains pointers to every deque in the work group *)
-                      barrier : NWayBarrier.barrier
-		     / exh : exh) : PT.fiber =
-
+      define @worker-from-atomic (nWorkers : int,                (* total number of workers in the group *)
+                                  deques : Arr.array,            (* contains pointers to every deque in the work group *)
+                                  barrier : NWayBarrier.barrier
+		                 / exh : exh) : PT.fiber =
 	  cont initK (_ : unit) =
 	      let self : vproc = SchedulerAction.@atomic-begin()
+	      let workerId : int = VProc.@vproc-id(self)
 	      let deque : deque = @alloc-deque(self, deques / exh)
 	      do NWayBarrier.@ready(barrier / exh)
 	    (* wait for the other schedulers to allocate their local deques *)
 	      do NWayBarrier.@barrier(barrier / exh)
 
 	      cont schedulerLoop (sign : PT.signal) =
-		let self : vproc = host_vproc
-
 		cont impossible () = 
 		  do assert(false)
 		  let exn : exn = Fail(@"SwpWorkStealing: impossible")
@@ -190,8 +188,10 @@ structure SwpWorkStealing :
 		  let victim : int = Rand.@in-range-int(0, nWorkers / exh)
                   let victimVP : vproc = VProc.@vproc-by-id(victim)
 		  do if Equal(victimVP, self)
-			then throw findWork()
-		     else return()
+			then 
+			 throw findWork()
+		     else 
+			 return()
 		  let victimDeque : deque = Arr.@sub(deques, victim / exh)
 		  let thd : O.option = @try-to-steal-from-atomic(self, victimVP, victimDeque / exh)
 		  case thd
@@ -212,17 +212,15 @@ structure SwpWorkStealing :
 		  | _ =>
 		    throw impossible()
 		end
-	    throw schedulerLoop(PT.STOP)
-
-	  return(initK)
+	    throw schedulerLoop(PT.STOP)  (* end schedulerLoop *)
+	  return(initK)      (* end initK *)
 	;
 
     (* get a pointer to the deque that is local to the host vproc *)
       define @get-deque-from-atomic (self : vproc / exh : exh) : deque =
-	  let schedulerData : any = ImplicitThread.@get-scheduler-data(/ exh)
-	  let schedulerData : scheduler_data = (scheduler_data)schedulerData
+	  let deques : any = ImplicitThread.@get-scheduler-data(/ exh)
 	  let id : int = VProc.@vproc-id(self)
-	  let deque : deque = ArrayLoadI64(#0(schedulerData), id)
+	  let deque : deque = Arr.@sub((Arr.array)deques, id / exh)
 	  return(deque)
 	;
 
@@ -273,11 +271,10 @@ structure SwpWorkStealing :
 		| Option.SOME(x : ImplicitThread.thread) => 
 		  return(false)
 	      end
-	  cont init (x : unit) =
-	    let workerId : int = VProc.@vproc-id(host_vproc)
-	    let init : PT.fiber = @worker(workerId, nVPs, deques, barrier / exh)
-	    throw init(UNIT)
-	  let group : ImplicitThread.group = ImplicitThread.@group(init, spawnFn, removeFn, deques / exh)
+	  let initWorker : PT.fiber = @worker-from-atomic(nVPs, deques, barrier / exh)
+	  let group : ImplicitThread.group = ImplicitThread.@group(initWorker, spawnFn, removeFn, deques / exh)
+        (* wait for the deques to all be initialized. *)
+          do NWayBarrier.@barrier(barrier / exh)
 	  return(group)
 	;
 

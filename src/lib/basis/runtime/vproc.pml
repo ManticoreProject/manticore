@@ -84,11 +84,11 @@ structure VProc (* :
 	;
 
     (* find the vproc with a given unique id *)
-      define @vproc-by-id (id : int) : vproc =
+      define inline @vproc-by-id (id : int) : vproc =
 #ifndef NDEBUG
 	  let max : int = @num-vprocs()
-	  do assert(I32Lt(id, max))
-	  do assert(I32Gte(id, 0))
+(*	  do assert(I32Lt(id, max))
+	  do assert(I32Gte(id, 0:int)) *)
 #endif
 	  let vp : vproc = ccall GetNthVProc(id)
 	  return (vp)
