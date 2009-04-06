@@ -81,7 +81,7 @@ structure Cilk5Deque (* :
 
    (* push an element on the tail of the deque.
     * NOTE: this operation is single threaded.
-    * PRECONDITION: assume that signals are masked
+    * PRECONDITION: signals are masked
     *)
       define @push-tl-from-atomic (deq : deque, elt : any / exh : exh) : () =
       (* copy the contents of the deque to a fresh array *)
@@ -117,7 +117,7 @@ structure Cilk5Deque (* :
 
    (* pop an element from the tail of the deque.
     * NOTE: this operation is single threaded.
-    * PRECONDITION: assume that signals are masked
+    * PRECONDITION: signals are masked
     *)
       define @pop-tl-from-atomic (deq : deque / exh : exh) : O.option =
 	cont none () = return(O.NONE)
@@ -157,7 +157,7 @@ structure Cilk5Deque (* :
       ;
 
     (* pop an element from the head of the deque. 
-     * PRECONDITION: assume that signals are masked
+     * PRECONDITION: signals are masked
      *) 
       define @pop-hd-from-atomic (deq : deque / exh : exh) : O.option =
 	cont none () = return(O.NONE)

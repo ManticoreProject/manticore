@@ -1,7 +1,0 @@
-../../lib/basis/parallel/ropes/ropes.mlb
-
-list-quicksort.pml
-pmergesort.pml
-pmergesort-with-seq-bc.pml
-test-pmergesort.pml
-bench-pmergesort.pml
