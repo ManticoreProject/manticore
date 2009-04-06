@@ -22,8 +22,8 @@ structure BenchPMergesort =
 	  end
 
     val () = ImplicitThread.runWithGroup(MultiprogrammedWorkStealing.workGroup(), fn () => (
-(*     benchMergesort(PrimIO.readInt(), PrimIO.readInt(), PMergesortWithSeqBc.pMergesort)*)
-       benchMergesort(PrimIO.readInt(), PrimIO.readInt(), PMergesort.pMergesort)
+     benchMergesort(PrimIO.readInt(), PrimIO.readInt(), PMergesortWithSeqBc.pMergesort)
+(*   benchMergesort(PrimIO.readInt(), PrimIO.readInt(), PMergesort.pMergesort)*)
 (*    benchQuicksort(PrimIO.readInt(), PrimIO.readInt())*)))
 
   end
