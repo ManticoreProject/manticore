@@ -7,7 +7,7 @@
  *)
 
 val defaultImplicitThreadSched = GlobalBFSScheduler.workGroup()
-val () = ImplicitThread.groupBegin defaultImplicitThreadSched
+val () = ImplicitThread.defaultBegin defaultImplicitThreadSched
 fun getDefaultImplicitThreadSched () = defaultImplicitThreadSched
 
 val () = DEBUG("schedulers: initialized default implicit-thread scheduler")

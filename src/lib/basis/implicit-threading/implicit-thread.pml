@@ -29,8 +29,8 @@ structure ImplicitThread (* :
 
     (* create an implicit thread *)
       define inline @thread (k : PT.fiber, 
-		      c : Option.option           (* cancelable *)
-                     / exh : exh) : thread;
+			     c : Option.option           (* cancelable *)
+		           / exh : exh) : thread;
 
     (* construct an implicit thread. we obtain the environment by capturing the
      * implicit environment.
@@ -247,6 +247,10 @@ structure ImplicitThread (* :
 	return(thd)
       ;
 
+      define inline @thread-no-cancelable (k : PT.fiber / exh : exh) : thread =
+	@thread(k, Option.NONE / exh)
+      ;
+
     (* run an implicit thread outside of a scheduler action *)
       define inline @run-out-of-scheduler (thd : thread / exh : exh) noreturn =
 	do FLS.@set-ite(SELECT(ITE_OFF, thd) / exh)
@@ -304,6 +308,13 @@ structure ImplicitThread (* :
 	return(UNIT)
       ;
 
+    (* initialize the default group *)
+      define @default-begin (defaultGroup : group / exh : exh) : unit =
+	do @init-ite(/ exh)
+	do @push(defaultGroup / exh)
+	return(UNIT)
+      ; 
+
     (* end the dynamic scope of a group *)
       define @group-end (/ exh : exh) : () =
 	let _ : Option.option = @pop(/ exh)
@@ -329,6 +340,7 @@ structure ImplicitThread (* :
 
     val peek : unit -> group = _prim(@peek)
     val groupBegin : group -> unit = _prim(@group-begin-w)
+    val defaultBegin : group -> unit = _prim(@default-begin)
     val runWithGroup : (group * (unit -> 'a)) -> 'a = _prim(@run-with-group-w)
     val currentGroup = peek
 

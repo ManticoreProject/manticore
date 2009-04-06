@@ -10,15 +10,15 @@
  * =
 
    let
-   val ivar = WorkStealingIVar.ivar(Cilk5WorkStealing.push)
+   val ivar = ImplicitThreadIVar.empty-ivar()
    fun bodyFn selFn = [| e2 |][x -> selFn()]
-   cont slowPathK () = bodyFn(fn () => WorkStealingIVar.get ivar)
-   val _ = Cilk5WorkStealing.push slowPathK
+   cont slowPathK () = bodyFn(fn () => ImplicitThreadIVar.get ivar)
+   val _ = MultiprogrammedWorkStealing.push-tl(ImplicitThread.thread slowPathK)
    val x = [| e1 |]
    in
-      if (Cilk5WorkStealing.pop())
+      if (MultiprogrammedWorkStealing.pop-tl())
 	 then bodyFn(fn () => x)
-      else ( WorkStealingIVar.put(ivar, x); Control.stop() )
+      else ( ImplicitThreadIVar.put(ivar, x); SchedulerAction.stop() )
    
  * 
  * For the full technical discussion, see our Section 5 of our 2008 ICFP paper,
@@ -52,26 +52,20 @@ structure TranslatePValCilk5  : sig
     val findHLOp = E.findBOMHLOpByPath
 
   (* ivar support *)
-    fun mkIVar (exh, spawnFn) = 
-	  B.mkHLOp(findHLOp["WorkStealingIVar", "ivar"], [spawnFn], [exh])
+    fun mkIVar exh = 
+	  B.mkHLOp(findHLOp["ImplicitThreadIVar", "empty-ivar"], [], [exh])
     fun mkIPut (exh, iv, x) =
-	  B.mkHLOp(findHLOp["WorkStealingIVar", "put"], [iv, x], [exh])
+	  B.mkHLOp(findHLOp["ImplicitThreadIVar", "put"], [iv, x], [exh])
     fun mkIGet (exh, iv) =
-	  B.mkHLOp(findHLOp["WorkStealingIVar", "get"], [iv], [exh])
+	  B.mkHLOp(findHLOp["ImplicitThreadIVar", "get"], [iv], [exh])
+  (* implicit-thread creation *)
+    fun mkThread (exh, k) =
+	  B.mkHLOp(findHLOp["ImplicitThread", "thread-no-cancelable"], [k], [exh])
   (* deque support *)
     fun mkWsPush (exh, kLocal) =
-	  B.mkHLOp(findHLOp["Cilk5WorkStealing", "push-tl"], [kLocal], [exh])
+	  B.mkHLOp(findHLOp["MultiprogrammedWorkStealing", "push-tl"], [kLocal], [exh])
     fun mkWsPop exh =
-	  B.mkHLOp(findHLOp["Cilk5WorkStealing", "pop-tl"], [], [exh])
-  (* spawn function *)
-    fun mkSpawnFn env = let
-	  val (exh, _) = E.newHandler env
-	  val fiberTy = findBOMTy["PrimTypes", "fiber"]
-	  val spawnFn = BV.new("spawnFn", BTy.T_Fun([fiberTy], [BTy.exhTy], []))
-	  val k = BV.new("k", fiberTy)
-	  in
-	     B.mkLambda{f=spawnFn, params=[k], exh=[exh], body=mkWsPush(exh, k)}
-          end
+	  B.mkHLOp(findHLOp["MultiprogrammedWorkStealing", "pop-tl"], [], [exh])
 
     fun mkRaiseExn (env, exh) = let
 	  val matchExnDCon = (
@@ -87,15 +81,14 @@ structure TranslatePValCilk5  : sig
 
     fun mkStop (env, exh) = 
 	  B.mkLet([unitVar()], 
-		    B.mkHLOp(findHLOp["Control", "stop"], [], [exh]),
+		    B.mkHLOp(findHLOp["SchedulerAction", "stop"], [], []),
 	    mkRaiseExn(env, exh))
 
     fun tr {env, trExp, trVar, x, e1, e2} = let
 	  val exh = E.handlerOf env
 	  val ty1 = TranslateTypes.tr(env, TypeOf.exp e1)
 	  val ty2 = TranslateTypes.tr(env, TypeOf.exp e2)
-	  val spawnFnL as B.FB{f=spawnFn, ...} = mkSpawnFn env
-	  val ivar = BV.new("ivar", findBOMTy["WorkStealingIVar", "ivar"])
+	  val ivar = BV.new("ivar", findBOMTy["ImplicitThreadIVar", "ivar"])
 	  val (x', env) = trVar(env, x)
 	  val selFnAST = Var.new("selFn", AST.FunTy(Basis.unitTy, TypeOf.exp e1))
 	  val (selFn, env) = trVar(env, selFnAST)
@@ -110,18 +103,19 @@ structure TranslatePValCilk5  : sig
 	  val selFromIVar = BV.new("selFromIVar", BTy.T_Fun([BTy.unitTy], [BTy.exhTy], [ty1]))
 	  val (selFromIVarExh, _) = E.newHandler env
 	  val selFromIVarL = B.mkLambda{f=selFromIVar, params=[unitVar()], exh=[selFromIVarExh], body=mkIGet(exh, ivar)}
-	  val slowPath = BV.new("slowPath", BTy.T_Cont[BTy.unitTy])
+	  val slowPathK = BV.new("slowPathK", BTy.T_Cont[BTy.unitTy])
 	  val slowPathL = 
-	      B.mkLambda{f=slowPath, params=[unitVar()], exh=[], body=
+	      B.mkLambda{f=slowPathK, params=[unitVar()], exh=[], body=
                  B.mkApply(bodyFn, [selFromIVar], [exh])}
+	  val slowPath = BV.new("slowPath", findBOMTy["ImplicitThread", "thread"])
 	  val goLocal = BV.new("goLocal", BOMTy.boolTy)
 	  val selLocally = BV.new("selLocally", BTy.T_Fun([BTy.unitTy], [BTy.exhTy], [ty1]))
 	  val (selLocallyExh, _) = E.newHandler env
           in
-	     B.mkFun([spawnFnL],
-	     B.mkLet([ivar], mkIVar(exh, spawnFn),
+	     B.mkLet([ivar], mkIVar exh,
              B.mkFun([bodyFnL, selFromIVarL],
              B.mkCont(slowPathL,
+             B.mkLet([slowPath], mkThread(exh, slowPathK),
              B.mkLet([], mkWsPush(exh, slowPath),
 	     trExp(env, e1, fn x1 =>
              B.mkFun([B.mkLambda{f=selLocally, params=[unitVar()], exh=[selLocallyExh], body=B.mkRet[x1]}],
