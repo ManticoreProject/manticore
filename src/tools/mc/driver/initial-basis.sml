@@ -81,7 +81,6 @@ structure InitialBasis : sig
 		  charTyc,
 		  runeTyc,
 		  stringTyc,
-		  parrayTyc,
 		  chanTyc,
 		  ivarTyc,
 		  mvarTyc,
@@ -338,9 +337,7 @@ structure InitialBasis : sig
 		  string_lt,
 		  string_lte,
 		  list_append,
-		  string_concat,
-		  parray_sub,
-		  parray_len
+		  string_concat
 		]
 	  fun cat (AST.TD_Module _ :: r) = raise Fail "unexpected module in initial basis"
 	    | cat (AST.TD_DCon _ :: r) = cat r
@@ -383,9 +380,7 @@ structure InitialBasis : sig
 		) end
 	  val (bEnv, mEnv) = List.foldl insOp (bEnv, mEnv) [
 		  (N.append,	list_append),
-		  (N.concat,	string_concat),
-		  (N.psub,	parray_sub),
-		  (N.plen,      parray_len)
+		  (N.concat,	string_concat)
 		]
 	(* insert the equality operators *)
 	  fun insEqOp ((name, var), (bEnv, mEnv)) = let

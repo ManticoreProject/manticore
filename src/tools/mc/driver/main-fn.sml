@@ -95,6 +95,8 @@ functor MainFn (
 	      TreeShake.shakeProgram p2s)
 	  else p2s
 
+    fun getPArrImpl () = BasisEnv.getTyConFromBasis ["Ropes", "rope"]
+
   (* load the AST specified by an MLB file *)
     fun mlbToAST (errStrm, bEnv, mEnv, file) = let
         (* load the MLB file *)
@@ -110,6 +112,7 @@ functor MainFn (
 	  val (bEnv, errStrms, basis) = List.foldl chk (bEnv, [], []) basis
 	(* record the basis binding environment *)
 	  val _ = BasisEnv.saveBasisEnv bEnv
+	  val _ = PArray.setTyc getPArrImpl
 	  val (bEnv, errStrms, program) = List.foldl chk (bEnv, errStrms, basis) program
 	  val p2s = treeShake (List.rev program)
         (* module and type checking *)
