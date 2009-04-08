@@ -74,11 +74,12 @@ structure TranslateTypes : sig
 			    of Ty.Tyc{def=Ty.AbsTyc, ...} => 
 			       (* look for the concrete type of the constructor *)
 			       (case ModuleEnv.getRealizationOfTyc tyc
-				 of SOME (ModuleEnv.TyCon tyc) => trTyc(env, tyc)
-				  | SOME (ModuleEnv.TyDef tys) => trScheme(env, tys)
-				  | SOME (ModuleEnv.BOMTyDef ty) => cvtPrimTy env ty
-				  | NONE => trTyc (env, tyc)				
-			       (* end case *))
+				  of SOME (ModuleEnv.TyCon tyc) => trTyc(env, tyc)
+				   | SOME (ModuleEnv.TyDef tys) => trScheme(env, tys)
+				   | SOME (ModuleEnv.BOMTyDef ty) => cvtPrimTy env ty
+(* FIXME When parray is looked up, we get NONE. *)
+				   | NONE => trTyc (env, tyc)
+			         (* end case *))
 			     | _ => trTyc (env, tyc)
 			  (* end case *))
 		      (* end case *))
@@ -92,8 +93,8 @@ structure TranslateTypes : sig
 
     and trScheme (env, Ty.TyScheme(_, ty)) = tr (env, ty)
 
-    and trTyc (env, tyc as Ty.Tyc{name, def, ...}) = (case def
-	   of Ty.AbsTyc => raise Fail("Unknown abstract type " ^ Atom.toString name)
+    and trTyc (env, tyc as Ty.Tyc {name, def, ...}) = (case def
+	   of Ty.AbsTyc => raise Fail ("unknown abstract type " ^ Atom.toString name)
 	    | Ty.DataTyc{cons, ...} => let
 	      (* insert a placeholder representation for tyc to avoid infinite loops *)
 		val _ = E.insertTyc (env, tyc, BTy.T_Any)

@@ -152,7 +152,6 @@ structure ChkExp :> sig
 			  in
 			      ASTUtil.mkFunWithPat(f', param, body)
 			  end
-
 		  in
 		      chk(params, paramTys, fn x => (), f', depth') :: fbs
 		  end
@@ -228,7 +227,7 @@ structure ChkExp :> sig
 	  (* end case *))
 
   (* typecheck expressions as described in Section 6.8 *)
-    and chkExp (loc, depth, exp) = (case exp
+    and chkExp (loc, depth, exp) : AST.exp * AST.ty = (case exp
 	   of PT.MarkExp{span, tree} => chkExp (span, depth, tree)
 	    | PT.LetExp(valDcls, exp) => let
 		  fun chkDcls [] = chkExp (loc, depth, exp)
@@ -444,7 +443,7 @@ structure ChkExp :> sig
 		  if not(U.unify (ty1, TypeClass.new Types.Num))
 		  then error (loc, ["range elements must have numeric type"])
 		  else ();
-		  (AST.RangeExp(e1', e2', eo', ty1), Basis.parrayTy ty1)
+		  (AST.RangeExp(e1', e2', eo', ty1), PArray.parrayTy ty1)
 	      end
 	    | PT.PTupleExp es => let
 		  fun chk (e, (es, tys)) = let
@@ -468,7 +467,7 @@ structure ChkExp :> sig
 		    end
 		val (es', ty) = List.foldr chk ([], Ty.MetaTy (MetaVar.new depth)) es
 	      in
-		  (AST.PArrayExp(es', ty), Basis.parrayTy ty)
+		  (AST.PArrayExp(es', ty), PArray.parrayTy ty)
 	      end
 	    | PT.PCompExp (e, pbs, eo) => let
 		val pes = chkPBinds (loc, depth, pbs)
@@ -485,7 +484,7 @@ structure ChkExp :> sig
 			  | NONE => NONE
 			(* end case *))
 		in
-		  (AST.PCompExp (e', pes, eo'), Basis.parrayTy resTy)
+		  (AST.PCompExp (e', pes, eo'), PArray.parrayTy resTy)
 		end
 	    | PT.SpawnExp e => let
 		val (e', ty) = chkExp (loc, depth, e)
@@ -503,6 +502,7 @@ structure ChkExp :> sig
 		      in
 			(AST.SeqExp(e', e''), ty)
 		      end
+		  | chk _ = raise Fail "empty sequence"
 		in
 		  chk es
 		end
@@ -595,33 +595,37 @@ structure ChkExp :> sig
                end
          (* end case *))
 
-    and chkPBinds (loc, depth, pbs) = (case pbs
-	   of [] => []
-	    | pb::pbs => 		  raise Fail "FIXME: union looks wrong"
-(*let
-		val (pe, env1 as Env.ModEnv{varEnv=ve1, ...}) = chkPBind (loc, depth, pb)		val (pes, env2  as Env.ModEnv{varEnv=ve2, ...}) = chkPBinds (loc, depth, pbs)
+    and chkPBinds (loc, depth, pbs) : (AST.pat * AST.exp) list = 
+      List.map (fn pb => chkPBind (loc, depth, pb)) pbs
+
+(* AMS: not sure what the following commented-out code is about. *)
+(* chkPBind/s don't return environments, so I've replaced this with a simple map. *)
+
+(* raise Fail "FIXME: union looks wrong" *)
+(* let
+		val (pe, env1 as Env.ModEnv{varEnv=ve1, ...}) = chkPBind (loc, depth, pb)		
+                val (pes, env2  as Env.ModEnv{varEnv=ve2, ...}) = chkPBinds (loc, depth, pbs)
 (* FIXME: the following code doesn't work when "pb" contains a shadowing definition *)
 		val newve1 = List.filter (fn x => not (Env.inDomainVar (x))) (AtomMap.listKeys ve1)
 		in
 		  if List.exists (fn x => Env.inDomainVar(env2, x)) newve1
 		    then error (loc, ["conflicting pattern bindings in parray comprehension"])
 		    else ();
-(*		  (pe::pes, Env.union(env1, env2))*)
-		end
-*)
-	  (* end case *))
+		  (pe::pes, Env.union(env1, env2))
+*)		
 
-    and chkPBind (loc, depth, pb) = (case pb
-	   of PT.MarkPBind{span, tree} => chkPBind(span, depth, tree)
-	    | PT.PBind (pat, exp) => let
-		val (exp', resTy) = chkExp(loc, depth, exp)
-		val (pat', resTy') = chkPat (loc, depth, pat)
-		in
-		 if not(U.unify(resTy, Basis.parrayTy resTy'))
-		   then error(loc, ["type mismatch in pattern binding"])
-		   else ();
-		 (pat', exp')
-		end
+    and chkPBind (loc, depth, pb) : AST.pat * AST.exp = 
+         (case pb
+	    of PT.MarkPBind {span, tree} => chkPBind (span, depth, tree)
+	     | PT.PBind (pat, exp) => let
+                 val (exp', resTy) = chkExp(loc, depth, exp)
+		 val (pat', resTy') = chkPat (loc, depth, pat)
+		 in
+ 		   if not (U.unify (resTy, PArray.parrayTy resTy'))
+		     then error (loc, ["type mismatch in pattern binding"])
+		     else ();
+		   (pat', exp')
+		 end
 	(* end case *))
 
     and chkPPat (loc, depth, p) : (AST.ppat * AST.ty) = (case p

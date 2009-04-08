@@ -20,7 +20,6 @@ structure Basis : sig
     val runeTyc		: Types.tycon
     val stringTyc	: Types.tycon
     val listTyc		: Types.tycon
-    val parrayTyc	: Types.tycon
     val chanTyc		: Types.tycon
     val ivarTyc		: Types.tycon
     val mvarTyc		: Types.tycon
@@ -35,7 +34,6 @@ structure Basis : sig
     val floatTy		: Types.ty
     val stringTy	: Types.ty
     val listTy		: Types.ty -> Types.ty
-    val parrayTy	: Types.ty -> Types.ty
     val threadIdTy	: Types.ty
 
   (* type classes as lists of types *)
@@ -64,8 +62,6 @@ structure Basis : sig
     val compose         : AST.var
     val list_append	: AST.var
     val string_concat	: AST.var
-    val parray_sub      : AST.var
-    val parray_len      : AST.var
     val int_div		: AST.var
     val int_gt		: AST.var
     val int_gte		: AST.var
@@ -156,7 +152,6 @@ structure Basis : sig
     val charTyc = TyCon.newAbsTyc (N.char, 0, true)
     val runeTyc = TyCon.newAbsTyc (N.rune, 0, true)
     val stringTyc = TyCon.newAbsTyc (N.string, 0, true)
-    val parrayTyc = TyCon.newAbsTyc (N.parray, 1, false)
     val chanTyc = TyCon.newAbsTyc (N.chan, 1, true)
     val ivarTyc = TyCon.newAbsTyc (N.ivar, 1, true)
     val mvarTyc = TyCon.newAbsTyc (N.mvar, 1, true)
@@ -176,7 +171,6 @@ structure Basis : sig
     val runeTy = AST.ConTy([], runeTyc)
     val stringTy = AST.ConTy([], stringTyc)
     fun listTy ty = AST.ConTy([ty], listTyc)
-    fun parrayTy ty = AST.ConTy([ty], parrayTyc)
     val threadIdTy = AST.ConTy([], threadIdTyc)
 
   (* exceptions *)
@@ -246,8 +240,6 @@ structure Basis : sig
 	      ty ** ty --> ty
 	    end))
     val string_concat = monoVar("string-concat2", stringTy ** stringTy --> stringTy)
-    val parray_sub = polyVar("parray-sub", fn tv => (parrayTy tv) ** intTy --> tv)
-    val parray_len = polyVar("parray-len", fn tv => (parrayTy tv) --> intTy)
 
     local
       fun name a = "int-" ^ a

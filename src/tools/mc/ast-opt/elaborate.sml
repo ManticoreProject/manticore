@@ -25,17 +25,6 @@ structure Elaborate : sig
   (* For now, this function just translates the parray type to the rope type. *)
   (* It could serve arbitrary other purposes easily enough. *)
     fun trTy t = let
-      fun isPArrayTyc (c as T.Tyc _) = TyCon.same (c, Basis.parrayTyc)
-      val ropeTyc = (case BasisEnv.getTyFromBasis ["Ropes", "rope"]
-		       of ModuleEnv.TyCon c => c
-			| _ => raise Fail "expected ModuleEnv.ty_def TyCon variant"
-		       (* end case *))
-      fun parrayTycToRopeTyc (T.Tyc {params, ...}) = let
-        val (T.Tyc {stamp, name, arity, props, def, ...}) = ropeTyc
-        in
-          T.Tyc {stamp=stamp, name=name, arity=arity, 
-		 params=params, props=props, def=def}
-        end
       fun ty (e as T.ErrorTy) = e
 	| ty (T.MetaTy m) = T.MetaTy (meta m)
 	| ty (a as T.VarTy _) = a
@@ -45,7 +34,7 @@ structure Elaborate : sig
       and meta (m as T.MVar {stamp, info}) = (info := meta_info (!info); m)
       and meta_info (T.INSTANCE t) = T.INSTANCE (ty t)
 	| meta_info i = i
-      and tycon c = if isPArrayTyc c then parrayTycToRopeTyc c else c
+      and tycon c = c (* if isPArrayTyc c then parrayTycToRopeTyc c else c *)
       in
         ty t
       end
@@ -70,7 +59,12 @@ structure Elaborate : sig
 	     of SOME e => e
 	      | NONE => A.TupleExp (map trExp es)
 	    (* end case *))
-      | trExp (A.PArrayExp (es, t)) = ParrLitToRope.tr(map trExp es, trTy t)
+      | trExp (A.PArrayExp (es, t)) = let
+          val a = ParrLitToRope.tr (map trExp es, trTy t)
+                  (* rewrites with parallel tuples *)
+          in
+	    trExp a
+          end
       | trExp (A.PCompExp (e, pes, oe)) = trPComp (e, pes, oe)
       | trExp (A.PChoiceExp (es, t)) = A.PChoiceExp (map trExp es, trTy t)
       | trExp (A.SpawnExp e) = A.SpawnExp (trExp e)
@@ -86,7 +80,7 @@ structure Elaborate : sig
 (*    withtype var = (var_kind, ty_scheme ref) VarRep.var_rep *)
 
     and trVar x = let
-      val y = RopeOps.tr x
+      val y = x (* RopeOps.tr x *)
       val (VarRep.V {ty, ...}) = y
       in
         (ty := ref (trTyScheme (!(!ty))); y)

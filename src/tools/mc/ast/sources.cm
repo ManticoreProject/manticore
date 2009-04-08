@@ -14,6 +14,7 @@ Library
   structure DataCon
   structure Exn
   structure MetaVar
+  structure PArray
   structure PrintAST
   structure PrintTypes
   structure TyCon
@@ -44,6 +45,7 @@ is
   data-con.sml
   exn.sml
   meta-var.sml
+  parray.sml
   print-ast.sml
   print-types.sml
   ty-con.sml
