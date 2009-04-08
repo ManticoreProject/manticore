@@ -321,7 +321,7 @@ void VProcGlobalGCInterrupt (VProc_t *self, VProc_t *vp)
 /*! \brief send a preemption to a remote vproc.
  *  \param vp the remote vproc to preempt.
  */
-void VProcPreempt (VProc_t *vp)
+void VProcPreempt (VProc_t *self, VProc_t *vp)
 {
     VProcSendUnixSignal(vp, PreemptSignal);
 }
