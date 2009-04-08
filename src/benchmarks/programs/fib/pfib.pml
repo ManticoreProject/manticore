@@ -18,17 +18,7 @@ fun sFib (n : int) = (
 	    end
     (* end case *))
 
-fun pFib (n : int) = (
-    case n
-     of 0 => 0
-      | 1 => 1
-      | n => let
-            val fut = EagerFuture.future(fn () => pFib(n-2), false)
-	    in
-	      pFib(n-1) + EagerFuture.touch fut
-	    end
-    (* end case *))
-(*
+
 fun pFib (n : int) = (
     case n
      of 0 => 0
@@ -39,7 +29,7 @@ fun pFib (n : int) = (
 	      x + y
 	    end
     (* end case *))
-*)
+
 fun bench () = let
   (* throw away the sequential cutoff here... we need to read it for compatibility with benchmarking script *)
     val seqCutoff = PrimIO.readInt()
