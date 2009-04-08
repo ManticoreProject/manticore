@@ -174,7 +174,7 @@ structure PValToFuture =
 		  (A.LetExp (b', e2'), pliveOut)
 	      end
 	    | A.PValBind (p, e1) => 
-	      if not(ExpansionOpts.isEnabled(ExpansionOpts.PVAL[ExpansionOpts.FUTURES_WITH_GANG_SCHEDULING]))
+	      if ExpansionOpts.isEnabled(ExpansionOpts.PVAL[ExpansionOpts.CILK5_WORK_STEALING])
 	      then 
 		  let val pvs = varsInPat p
 		      val (e1', plive1) = trExp (e1, pLive)
