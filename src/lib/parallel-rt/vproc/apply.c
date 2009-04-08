@@ -59,8 +59,6 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
       */
 #endif
 	RequestCode_t req = ASM_Apply (vp, codeP, arg, envP, retCont, exnCont);
-#ifndef NDEBUG
-#endif
 
 	Addr_t limitPtr = SetLimitPtr(vp, LimitPtr(vp));
 
@@ -75,6 +73,10 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 	    }
 
 	    if (limitPtr == 0) {
+#ifndef NDEBUG
+	      if (DebugFlg)
+		SayDebug("Asynchronous signal arrived at vproc %d\n", vp->id);
+#endif
 	      /* an asynchronous signal has arrived */
 	        vp->sigPending = M_TRUE;
 	    }

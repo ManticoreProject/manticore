@@ -308,11 +308,14 @@ void VProcGlobalGCInterrupt (VProc_t *self, VProc_t *vp)
 /*! \brief send a preemption to a remote vproc.
  *  \param vp the remote vproc to preempt.
  */
-void VProcPreempt (VProc_t *vp)
+void VProcPreempt (VProc_t *self, VProc_t *vp)
 {
 #ifndef NDEBUG
     if (DebugFlg)
-	SayDebug("Triggering preemption on vproc %d\n", vp->id);
+	if (self == 0)
+	  SayDebug("Timer interrupt on vproc %d from %d.\n", vp->id);
+	else
+	  SayDebug("[%2d] Signaling vproc %d.\n", self->id, vp->id);
 #endif
 
     VProcZeroLimitPtr(vp);
