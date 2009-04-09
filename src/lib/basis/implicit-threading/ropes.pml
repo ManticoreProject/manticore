@@ -434,7 +434,7 @@ structure Ropes (* : ROPES *) = struct
   (* lo inclusive, hi exclusive *)
     fun tabFromToP (lo, hi, f) = 
      (if lo > hi then
-        (raise Fail "nonsense")
+       (raise Fail "nonsense")
       else if (hi - lo) <= maxLeafSize then let
         fun f' n = f (n + lo)
         in
