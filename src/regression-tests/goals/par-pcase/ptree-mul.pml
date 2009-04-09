@@ -4,7 +4,7 @@ datatype tree
 
 fun mkTree d = 
  (if (d <= 0) then 
-    LF 1 
+    LF 0
   else let
     val t = mkTree (d-1)
     in
