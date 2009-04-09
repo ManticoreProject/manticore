@@ -206,10 +206,11 @@ structure SwpWorkStealing :
 		    throw findWork ()
 		  | PT.PREEMPT (k : PT.fiber) =>
 		    let thd : ImplicitThread.thread = ImplicitThread.@capture(k / exh)
-		    do @push-tl-from-atomic(self, deque, thd / exh)
+(* FIXME: it should be possible to put the thread back on the queue before yielding. *)
+		    (*do @push-tl-from-atomic(self, deque, thd / exh)*)
 		    do SchedulerAction.@yield-in-atomic(self)
-		    throw findWork()
-                    (*throw dispatch(thd)*)
+		    (*throw findWork()*)
+                    throw dispatch(thd)
 		  | _ =>
 		    throw impossible()
 		end

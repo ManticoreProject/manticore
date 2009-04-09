@@ -16,7 +16,7 @@ structure BenchPMergesort =
 	  val r = randomRope n
           val (r, t) = Time.timeToEval(fn () => sort r)
           in
-	    Print.printLn("Time elapsed (microseconds): "^Long.toString t);
+	    Print.printLn(Long.toString t);
 	    (*Print.printLn(Ropes.toString Int.toString r);*)
 	    ()
 	  end
