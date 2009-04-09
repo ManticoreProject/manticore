@@ -13,15 +13,23 @@ structure PArray : sig
 
 end = struct
 
-(* FIXME make this a Memo.memo *)
-  val cell : (unit -> Types.tycon) option ref = ref NONE
+  val thunkCell : (unit -> Types.tycon) option ref = ref NONE
+  val tycCell   : Types.tycon option ref = ref NONE
 
-  fun setTyc getC = (cell := SOME getC)
+  fun setTyc getC = (thunkCell := SOME getC)
 
   fun parrayTyc () = 
-   (case !cell
-      of NONE => raise Fail "compiler bug"
-       | SOME getC => getC ())
+   (case !tycCell
+      of NONE => 
+          (case !thunkCell
+	     of NONE => raise Fail "compiler bug"
+	      | SOME getC => let
+                  val c = getC ()
+                  val _ = (tycCell := SOME c)
+                  in
+		    c
+		  end)
+       | SOME c => c)
 
   fun parrayTy ty = AST.ConTy ([ty], parrayTyc ())
 
