@@ -430,6 +430,23 @@ structure Ropes (* : ROPES *) = struct
   (* fromSeq : 'a seq -> 'a rope *)
     fun fromSeq s = fromList (S.toList s)
 
+  (* tabFromToP : int * int * (int -> 'a) -> 'a rope *)
+  (* lo inclusive, hi exclusive *)
+    fun tabFromToP (lo, hi, f) = 
+     (if lo > hi then
+        (raise Fail "nonsense")
+      else if (hi - lo) <= maxLeafSize then let
+        fun f' n = f (n + lo)
+        in
+          LEAF (hi-lo, S.tabulate (hi-lo, f'))
+        end
+      else let
+        val m = (hi + lo) div 2
+        in
+	  concatWithoutBalancing (| tabFromToP (lo, m, f),
+				    tabFromToP (m, hi, f) |)
+        end)
+        
 (* ***** ROPE DECONSTRUCTION ***** *)
 
   (* splitAtWithoutBalancing : 'a rope * int -> 'a rope * 'a rope *)
@@ -485,6 +502,35 @@ structure Ropes (* : ROPES *) = struct
 	 | CAT (_, _, r1, r2) => (r1, r2)
         (* end case *))
 
+  (* partialSeq : 'a rope * int * int -> 'a seq *)
+  (* return the sequence of elements from low incl to high excl *)
+  (* zero-based *)
+  (* failure when lower bound is less than 0  *)
+  (* failure when upper bound is off the rope (i.e., more than len rope + 1) *)
+    fun partialSeq (r, lo, hi) =
+     (case r
+        of LEAF (len, s) => 
+            (if lo >= len orelse hi > len then
+               raise Fail "err"
+	     else
+	       S.take (S.drop (s, lo), hi-lo))
+	 | CAT (_, len, rL, rR) => let
+             val lenL = length rL
+	     val lenR = length rR
+	     in
+	       if hi <= lenL then (* everything's on the left *)
+		   partialSeq (rL, lo, hi)
+	       else if lo >= lenL then (* everything's on the right *)
+		   partialSeq (rR, lo-lenL, hi-lenL)
+	       else let
+                 val sL = partialSeq (rL, lo, lenL)
+		 val sR = partialSeq (rR, 0, hi-lenL)
+                 in
+		   S.concat (sL, sR)
+		 end
+	     end
+        (* end case *))
+
   (* ***** BASIC PARALLEL OPERATIONS ***** *)
 
   (* FIXME TODO No account is yet taken of the "leftmost exception" semantic property. *)
@@ -508,16 +554,48 @@ structure Ropes (* : ROPES *) = struct
       fun m r =
        (case r
           of LEAF (len, s) => LEAF (len, S.map (f, s))
-	   | CAT (dpt, len, r1, r2) => let
-               (* PVAL *) val r2' = m r2
-               in
-                 CAT (dpt, len, m r1, r2')
-	       end
+	   | CAT (dpt, len, r1, r2) => CAT (| dpt, len, m r1, m r2 |)
           (* end case *))
       in
         m rope
       end          
 
+  (* mapP2' : ('a * 'b -> 'g) * 'a rope * 'b rope -> 'g rope *)
+  (* pre : the first rope's length is <= that of the second *)
+  (* traversal follows the structure of the shorter rope *)
+  (* post : the output rope has the same shape as the first rope *)
+    fun mapP2' (f, ropeS, ropeL) = let
+      fun go (n, r) = 
+       (case r
+          of LEAF (len, sS) => let
+               val (lo, hi) = (n, n+len)
+	       val sL = partialSeq (ropeL, lo, hi)
+	       val s = S.map2 (f, sS, sL)
+               in
+		 LEAF (len, s)
+               end
+	   | CAT (d, len, rL, rR) => let
+	       val (rL', rR') = (| go (n, rL), go (n + length rL, rR) |)
+               in
+                 CAT (d, len, rL', rR')
+	       end
+          (* end case *))
+      in
+        go (0, ropeS)
+      end
+
+  (* mapP2 : ('a * 'b -> 'c) -> 'a rope * 'b rope -> 'c rope *)
+  (* stop mapping when the elements of one rope run out *)
+  (* post : the output has the same shape as the shorter input *)
+    fun mapP2 (f, rope1, rope2) =
+     (if length rope1 > length rope2 then let
+              fun f' x = (case x of (b, a) => f (a, b))
+        in
+          mapP2' (f', rope2, rope1)
+        end
+      else
+        mapP2' (f, rope1, rope2))
+    
   (* reduceP : ('a * 'a -> 'a) * 'a * 'a rope -> 'a *)
   (* Reduce with an associative operator. *)
   (* e.g., sumP r == reduceP (+, 0, r) *)
@@ -527,12 +605,6 @@ structure Ropes (* : ROPES *) = struct
 	  of LEAF (_, s) => S.reduce (assocOp, unit, s)
 	   | CAT (_, _, r1, r2) => assocOp (| red r1, red r2 |)
          (* end case *))
-(* let
-               (* PVAL *) val a2 = red r2
-               in
-                 assocOp (red r1, a2)
-               end
-          (* end case *)) *)
       in
         red rope
       end
