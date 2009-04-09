@@ -525,12 +525,14 @@ structure Ropes (* : ROPES *) = struct
       fun red r =
        (case r
 	  of LEAF (_, s) => S.reduce (assocOp, unit, s)
-	   | CAT (_, _, r1, r2) => let
+	   | CAT (_, _, r1, r2) => assocOp (| red r1, red r2 |)
+         (* end case *))
+(* let
                (* PVAL *) val a2 = red r2
                in
                  assocOp (red r1, a2)
                end
-          (* end case *))
+          (* end case *)) *)
       in
         red rope
       end
