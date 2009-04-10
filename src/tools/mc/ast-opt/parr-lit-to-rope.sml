@@ -58,22 +58,23 @@ structure ParrLitToRope : sig
   (* tr : exp list * ty -> exp *)
   (* Given a list of expressions, which were in a parallel array, and their type, *)
   (* build a rope out of them. *)
-    fun tr (es, ty) = let
-      val xs = newVars ty es
-      val tupPat = AST.TuplePat (List.map AST.VarPat xs)
-      val bind = AST.ValBind (tupPat, AST.PTupleExp es)
-      val xsList = U.mkList (List.map mkVarExp xs, ty)
-      in
-        U.mkLetExp ([bind], mkRopeFromList (ty, xsList))
-      end
-
-(*
-	  val xs  = map newVar es
-	  val binds = ListPair.mapEq mkPValBind (xs, es)
-	  val xsList = U.mkList (map mkVarExp xs, ty)
+    fun tr ([], ty) = let
+          val e = BEnv.getVarFromBasis ["Ropes", "empty"]
+          in
+            AST.VarExp (e, [ty])
+          end
+      | tr ([e], ty) = let
+          val sing = BEnv.getVarFromBasis ["Ropes", "singleton"]
+          in
+	    AST.ApplyExp (AST.VarExp (sing, [ty]), e, PArray.parrayTy ty)
+          end
+      | tr (es, ty) = let
+          val xs = newVars ty es
+	  val tupPat = AST.TuplePat (List.map AST.VarPat xs)
+	  val bind = AST.ValBind (tupPat, AST.PTupleExp es)
+	  val xsList = U.mkList (List.map mkVarExp xs, ty)
 	  in
-	    U.mkLetExp (binds, mkRopeFromList (ty, xsList))
+            U.mkLetExp ([bind], mkRopeFromList (ty, xsList))
 	  end
-*)
 		     
   end
