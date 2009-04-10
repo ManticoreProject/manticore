@@ -6,6 +6,9 @@
  * This module rewrites ranges in terms of calls to Ropes.tabFromToP.
  *)
 
+(* FIXME: Downward ranges. *)
+(* FIXME: Gappy ranges. *)
+
 structure TranslateRange : sig
 
     val tr : AST.exp * AST.exp * AST.exp option * AST.ty -> AST.exp
@@ -24,6 +27,8 @@ end = struct
 					  ty)
 
     fun incr e = mkPlus (e, ONE, Basis.intTy)
+
+  (* FIXME : Downward ranges don't work yet. *)
 
   (* tr : A.exp * A.exp * A.exp option * A.ty -> A.exp *)
     fun tr (loExp, hiExp, NONE, ty) = let
