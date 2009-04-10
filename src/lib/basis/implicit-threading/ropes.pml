@@ -9,7 +9,6 @@
 structure Ropes (* : ROPES *) = struct
 
     structure S = ListSeq 
-    val sizeL1CacheLine = 2
     val ceilingLg = Int.ceilingLg
 
     datatype option = datatype Option.option
@@ -376,6 +375,7 @@ structure Ropes (* : ROPES *) = struct
       end
          
   (* chop : 'a list * int -> 'a list list *)
+  (* FIXME: this function takes quadratic time! *)
   (* Chop the list into pieces of the appropriate size. *)
   (* ex: chop ([1,2,3,4], 1) => [[1],[2],[3],[4]] *)
   (* ex: chop ([1,2,3,4], 2) => [[1,2],[3,4]]     *)

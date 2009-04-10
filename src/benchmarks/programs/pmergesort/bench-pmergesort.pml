@@ -2,7 +2,7 @@ structure BenchPMergesort =
   struct
 
     fun randomList n = List.tabulate(n, fn _ => Rand.inRangeInt(0, 10000))
-    fun randomRope n = Ropes.fromList(randomList n)
+    fun randomRope n = Ropes.tabFromToP(0, n, fn _ => Rand.inRangeInt (0, 10000))
 
     fun benchQuicksort (seqSz, n) = let
 	  val r = randomList n
@@ -21,9 +21,9 @@ structure BenchPMergesort =
 	    ()
 	  end
 
-    val () = ImplicitThread.runWithGroup(MultiprogrammedWorkStealing.workGroup(), fn () => (
-     benchMergesort(PrimIO.readInt(), PrimIO.readInt(), PMergesortWithSeqBc.pMergesort)
-(*   benchMergesort(PrimIO.readInt(), PrimIO.readInt(), PMergesort.pMergesort)*)
+    val () = ImplicitThread.runWithGroup(SwpWorkStealing.workGroup(), fn () => (
+(*     benchMergesort(PrimIO.readInt(), PrimIO.readInt(), PMergesortWithSeqBc.pMergesort)*)
+   benchMergesort(PrimIO.readInt(), PrimIO.readInt(), PMergesort.pMergesort)
 (*    benchQuicksort(PrimIO.readInt(), PrimIO.readInt())*)))
 
   end
