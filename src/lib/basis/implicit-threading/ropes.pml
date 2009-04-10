@@ -621,11 +621,8 @@ structure Ropes (* : ROPES *) = struct
                in
                  LEAF (S.length s', s')
 	       end
-	   | CAT (_, _, r1, r2) => let
-               (* PVAL *) val r2' = f r2
-               in
-                 concatWithoutBalancing (f r1, r2')
-               end
+	   | CAT (_, _, r1, r2) => 
+	       concatWithoutBalancing (| f r1, f r2 |)
           (* end case *))
       in
         balanceIfNecessary (f rope)
