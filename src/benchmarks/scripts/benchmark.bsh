@@ -27,7 +27,7 @@ while getopts ":b:f:s:p:q:l:n:" options; do
     b ) BENCH_NAME="$OPTARG";;
     l ) GOTO_SEQ_SIZES="$GOTO_SEQ_SIZES $OPTARG";;
     q ) SEQ_PML_PATH="$OPTARG";;
-    n ) NUM_TRIALS="$OPTARTG";;
+    n ) NUM_TRIALS="$OPTARG";;
     h ) echo $usage;;
     \? ) echo $usage
          exit 1;;
@@ -89,6 +89,10 @@ PARFLAGS="$MCFLAGS"
 echo "Compiling parallel program: $MC -o $PROG_EXE $PARFLAGS $PML_PATH 2> /dev/null"
 $MC -o $PROG_EXE $PARFLAGS $PML_PATH 2> /dev/null
 
+# output SML
+
+echo -e "structure $BENCH_NAME = struct" >> $LOG_FILE_NAME
+
 echo -e "val numTrials = $NUM_TRIALS" >> $LOG_FILE_NAME
 
 function print_list {
@@ -127,6 +131,7 @@ for ((i=1;i<=NUM_TRIALS;i+=1)); do
 done
 
 echo -e "\t\tnil" >> $LOG_FILE_NAME
+echo -e "end" >> $LOG_FILE_NAME
 
 # clean up
 rm -f *.ppm *.s $PROG_EXE $SEQ_PROG_EXE $SEQ_PML_PATH.pml $PML_PATH.pml
