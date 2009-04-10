@@ -18,6 +18,10 @@ structure Ropes (* : ROPES *) = struct
 
   (* ***** UTILITIES ***** *)
 
+  (* failwith : string -> 'a *)
+  (* using this for the moment so we can observe the exception message at runtime *)
+    fun failwith msg = (Print.printLn msg; (raise Fail msg))
+
   (* fib : int -> int *)
   (* Compute the nth Fibonacci number, where *)
   (*   fib 0 is 0, fib 1 is 1, fib 2 is 1, etc. *)
@@ -50,7 +54,7 @@ structure Ropes (* : ROPES *) = struct
     val maxLeafSize = 1024
 
   (* empty : 'a rope *)
-    val empty = LEAF(0, S.empty)
+    val empty = LEAF (0, S.empty)
 
   (* toString : ('a -> string) -> 'a rope -> string *)
     fun toString show r = let
@@ -144,7 +148,7 @@ structure Ropes (* : ROPES *) = struct
     fun sub (r, i) = 
       if inBounds (r, i) 
       then subInBounds(r, i)
-      else raise Fail "subscript out of bounds"
+      else failwith "subscript out of bounds"
 
   (* ***** BALANCING ***** *)
 
@@ -299,12 +303,12 @@ structure Ropes (* : ROPES *) = struct
     fun insert (r, balancer) = 
      (case balancer
         of nil => (* this case should never be reached *)
-	          (raise Fail "BUG: empty balancer")
+	          (failwith "BUG: empty balancer")
 	 | (lb, ub, NONE) :: nil =>
              if length r >= lb andalso length r < ub then
                (lb, ub, SOME r)::nil
 	     else 
-               (raise Fail "BUG: typing to fit a rope of incompatible size")
+               (failwith "BUG: typing to fit a rope of incompatible size")
 	 | (lb, ub, NONE) :: t => 
 	     if length r >= lb andalso length r < ub then 
                (lb, ub, SOME r) :: t
@@ -408,7 +412,7 @@ structure Ropes (* : ROPES *) = struct
         if n <= maxLeafSize then
           LEAF (n, S.fromList xs)
     else
-          raise Fail "too big"
+          failwith "too big"
       end
 
   (* fromList : 'a list -> 'a rope *)
@@ -434,7 +438,7 @@ structure Ropes (* : ROPES *) = struct
   (* lo inclusive, hi exclusive *)
     fun tabFromToP (lo, hi, f) = 
      (if lo > hi then
-       (raise Fail "nonsense")
+       (failwith "todo: downward tabs")
       else if (hi - lo) <= maxLeafSize then let
         fun f' n = f (n + lo)
         in
@@ -486,7 +490,7 @@ structure Ropes (* : ROPES *) = struct
     fun splitAt (r, i) =
       if inBounds(r, i)
       then splitAtWithBalancing(r, i)
-      else raise Fail "subscript out of bounds for splitAt"
+      else failwith "subscript out of bounds for splitAt"
 
   (* naturalSplit : 'a rope -> 'a rope * 'a rope *)
   (* If a rope is a CAT, splits it at the root. *)
@@ -511,7 +515,7 @@ structure Ropes (* : ROPES *) = struct
      (case r
         of LEAF (len, s) => 
             (if lo >= len orelse hi > len then
-               raise Fail "err"
+               failwith "err"
 	     else
 	       S.take (S.drop (s, lo), hi-lo))
 	 | CAT (_, len, rL, rR) => let
@@ -560,6 +564,40 @@ structure Ropes (* : ROPES *) = struct
         m rope
       end          
 
+  (* sameStructure : 'a rope * 'b rope -> bool *)
+    fun sameStructure (r1, r2) = 
+     (if length r1 <> length r2 then
+        false
+      else let (* same length *)
+        fun strictAnd (b1, b2) = b1 andalso b2
+        fun lp (r1, r2) =
+         (case (r1, r2)
+            of (LEAF (len1, _), LEAF (len2, _)) => (len1 = len2)
+	     | (CAT (_, _, r1L, r1R), CAT (_, _, r2L, r2R)) =>
+                 strictAnd (| sameStructure (r1L, r2L),
+                              sameStructure (r1R, r2R) |)
+                (* perhaps use a pcase here? *)
+	     | _ => false
+	   (* end case *))
+	in
+	  lp (r1, r2)
+	end
+     (* end if *))
+     
+  (* fastMapP2 : ('a * 'b -> 'g) * 'a rope * 'b rope -> 'g rope *)
+  (* pre : both ropes have exactly the same structure *)
+    fun fastMapP2 (f, r1, r2) = let
+      fun lp ropes = 
+       (case ropes
+	  of (LEAF (len1, s1), LEAF (len2, s2)) => LEAF (len1, S.map2 (f, s1, s2))
+	   | (CAT (d1, len1, r1L, r1R), CAT (d2, len2, r2L, r2R)) =>
+               CAT (| d1, len1, lp (r1L, r2L), lp (r1R, r2R) |)
+	   | _ => failwith "BUG" (* this shouldn't have been called *)
+         (* end case *))
+      in
+	lp (r1, r2)
+      end
+
   (* mapP2' : ('a * 'b -> 'g) * 'a rope * 'b rope -> 'g rope *)
   (* pre : the first rope's length is <= that of the second *)
   (* traversal follows the structure of the shorter rope *)
@@ -588,8 +626,10 @@ structure Ropes (* : ROPES *) = struct
   (* stop mapping when the elements of one rope run out *)
   (* post : the output has the same shape as the shorter input *)
     fun mapP2 (f, rope1, rope2) =
-     (if length rope1 > length rope2 then let
-              fun f' x = (case x of (b, a) => f (a, b))
+     (if sameStructure (rope1, rope2) then
+        fastMapP2 (f, rope1, rope2)
+      else if length rope1 > length rope2 then let
+        fun f' x = (case x of (b, a) => f (a, b))
         in
           mapP2' (f', rope2, rope1)
         end
