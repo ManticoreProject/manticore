@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # COPYRIGHT (c) 2008 Manticore project. (http://manticore.cs.uchicago.edu)
 # All rights reserved.

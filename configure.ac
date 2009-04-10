@@ -254,9 +254,14 @@ MANTICORE_SRCDIR=$MANTICORE_ROOT/src
 MANTICORE_LIBDIR=$MANTICORE_ROOT/lib
 MANTICORE_BINDIR=$MANTICORE_ROOT/bin
 MANTICORE_MKDIR=$MANTICORE_ROOT/mk
+
+dnl
+dnl FIXME: the following should be relative to the MANTICORE_LIBDIR.
+dnl
 MANTICORE_BASISDIR=$MANTICORE_SRCDIR/lib/basis
 MANTICORE_BASISINCDIR=$MANTICORE_SRCDIR/lib/basis
 MANTICORE_RUNSRCDIR=$MANTICORE_SRCDIR/lib/parallel-rt
+
 HEAP_IMAGE_DIR=$MANTICORE_BINDIR/.heap
 INSTALL_SMLNJ_WRAPPER=$MANTICORE_BINDIR/install-sml-wrapper.sh
 
@@ -438,7 +443,7 @@ AC_CONFIG_LINKS([
 dnl
 dnl generate the runtime-constants files
 dnl
-AC_CONFIG_COMMANDS([runtime-consts], [config/gen-runtime-consts.sh])
+AC_CONFIG_COMMANDS([runtime-consts], [./config/gen-runtime-consts.sh])
 
 dnl
 dnl generate makefiles for runtime library builds
