@@ -27,4 +27,10 @@ structure Option =
           (* end case *))
 *)
 
+    fun map f opt =
+     (case opt
+        of NONE => NONE
+         | SOME x => SOME (f x)
+        (* end case *))
+
   end

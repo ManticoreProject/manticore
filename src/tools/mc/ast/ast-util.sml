@@ -59,7 +59,7 @@ structure ASTUtil : sig
       | mkTuplePat ps = AST.TuplePat ps
 
     fun mkLetExp ([], e) = e
-      | mkLetExp (bind::r, e) = AST.LetExp(bind, mkLetExp(r, e))
+      | mkLetExp (bind::r, e) = AST.LetExp (bind, mkLetExp (r, e))
 
     fun mkFunWithParams (f, [], e) = let
 	  val param = Var.new ("param", Basis.unitTy)

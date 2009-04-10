@@ -52,8 +52,14 @@ structure Elaborate : sig
       | trExp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (trExp e1, trExp e2, trTy t)
       | trExp (A.VarArityOpExp (m, n, t)) = A.VarArityOpExp (m, n, trTy t)
       | trExp (A.TupleExp es) = A.TupleExp (map trExp es)
-      | trExp (A.RangeExp (e1, e2, oe3, t)) = 
-	  A.RangeExp (trExp e1, trExp e2, Option.map trExp oe3, trTy t)
+      | trExp (A.RangeExp (e1, e2, oe3, t)) = let
+          val e1' = trExp e1
+	  val e2' = trExp e2
+	  val oe3' = Option.map trExp oe3
+	  val t' = trTy t
+	  in
+	    trRange (e1', e2', oe3', t')
+	  end
       | trExp (ptup as A.PTupleExp es) = 
 	  (case trPTup es
 	     of SOME e => e
@@ -111,6 +117,8 @@ structure Elaborate : sig
     and trPComp arg = TranslatePComp.tr trExp arg
 
     and trPCase arg = TranslatePCase.tr trExp arg
+
+    and trRange arg = TranslateRange.tr arg
 
   (* elaborate : A.exp -> A.exp *)
     fun elaborate body = trExp body

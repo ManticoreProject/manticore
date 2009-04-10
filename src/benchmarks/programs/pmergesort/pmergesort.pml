@@ -45,7 +45,7 @@ structure PMergesort =
 	    lp(0, R.length xs)
 	  end
 
-  (* merge two sorted collections *)
+  (* merge two sorted sequences in parallel *)
     fun pMerge (xs, ys) =
 	  if R.length xs < R.length ys
 	     then pMerge(ys, xs)

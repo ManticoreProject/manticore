@@ -23,6 +23,7 @@ Library
   structure TranslatePCase
   structure TranslatePComp
   structure TranslatePtup
+  structure TranslateRange
   structure TypeOf	
   structure Unpar
   structure Future1
@@ -53,6 +54,7 @@ is
   translate-pcase.sml
   translate-pcomp.sml
   translate-ptup.sml
+  translate-range.sml
   unpar.sml
   future1.sml
   parr-lit-to-rope.sml

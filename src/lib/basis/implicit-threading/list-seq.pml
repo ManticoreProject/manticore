@@ -11,9 +11,11 @@ structure ListSeq = struct
     fun toList x = x 
     val rev = List.rev
     fun map (f, s) = List.map f s
-    fun reduce (oper, unit, s) = List.foldl  oper unit s
+    fun map2 (f, s1, s2) = ListPair.map f (s1, s2)
+    fun reduce (oper, unit, s) = List.foldl oper unit s
     val take = List.take
     val drop = List.drop
     fun cut (s, n) = (List.take (s, n), List.drop (s, n))
     fun filter (f, s) = List.filter f s
+    fun tabulate (n, f) = List.tabulate (n, f)
   end
