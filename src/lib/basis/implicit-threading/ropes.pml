@@ -21,6 +21,9 @@ structure Ropes (* : ROPES *) = struct
   (* using this for the moment so we can observe the exception message at runtime *)
     fun failwith msg = (Print.printLn msg; (raise Fail msg))
 
+  (* abs : int -> int *)
+    fun abs n = if n < 0 then ~n else n
+
   (* fib : int -> int *)
   (* Compute the nth Fibonacci number, where *)
   (*   fib 0 is 0, fib 1 is 1, fib 2 is 1, etc. *)
@@ -435,10 +438,11 @@ structure Ropes (* : ROPES *) = struct
     fun fromSeq s = fromList (S.toList s)
 
   (* tabFromToP : int * int * (int -> 'a) -> 'a rope *)
+  (* pre: hi >= lo *)
   (* lo inclusive, hi exclusive *)
     fun tabFromToP (lo, hi, f) = 
      (if lo > hi then
-       (failwith "todo: downward tabs")
+       (failwith "todo: downward tabulate")
       else if (hi - lo) <= maxLeafSize then let
         fun f' n = f (n + lo)
         in
@@ -450,7 +454,37 @@ structure Ropes (* : ROPES *) = struct
 	  concatWithoutBalancing (| tabFromToP (lo, m, f),
 				    tabFromToP (m, hi, f) |)
         end)
-        
+
+  (* tabP : int * (int -> 'a) -> 'a rope *)
+    fun tabP (n, f) = 
+     (if n <= 0 then
+        empty
+      else
+        tabFromToP (0, n, f) (* n.b.: tabFromToP is exclusive of its upper bound *))
+
+  (* nEltsInRange : int * int * int -> int *)
+    fun nEltsInRange (from, to_, step) = (* "to" is syntax in pml *)
+     (if step = 0 then failwith "cannot have step 0 in a range"
+      else if from = to_ then 1
+      else if (from > to_ andalso step > 0) then 0
+      else if (from < to_ andalso step < 0) then 0
+      else (abs (from - to_) div abs step) + 1)
+
+  (* rangeP : int * int * int -> int rope *)
+    fun rangeP (from, to_, step) = (* "to" is syntax in pml *)
+     (if from = to_ then singleton from
+      else let
+        val sz = nEltsInRange (from, to_, step)
+        fun gen n = step * n + from
+        in
+          tabP (sz, gen)
+        end)
+
+  (* rangePNoStep : int * int -> int rope *)
+    fun rangePNoStep (from, to_) = (* "to" is syntax in pml *)
+     (if from <= to_ then rangeP (from, to_, 1)
+      else rangeP (from, to_, ~1))
+  
 (* ***** ROPE DECONSTRUCTION ***** *)
 
   (* splitAtWithoutBalancing : 'a rope * int -> 'a rope * 'a rope *)
