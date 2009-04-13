@@ -12,6 +12,11 @@ structure PArray = struct
     val sub = Ropes.sub
     val length = Ropes.length
 
+  (* repP : int * 'a -> 'a parray *)
+  (* called "dist" in NESL and Keller *)
+  (* called "replicateP" in DPH impl *)
+    fun repP (n, x) = Ropes.tabP (n, fn _ => x)
+
   (* toString : ('a -> string ) -> string -> 'a parray -> string *)
   (* FIXME: should we exploit the fact that we're dealing with a rope? *)
     fun toString eltToString sep parr = let
