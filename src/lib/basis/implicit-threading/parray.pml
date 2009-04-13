@@ -13,6 +13,7 @@ structure PArray = struct
     val length = Ropes.length
 
   (* toString : ('a -> string ) -> string -> 'a parray -> string *)
+  (* FIXME: This seems to be segfaulting on inputs of 1000 or larger... *)
     fun toString eltToString sep parr = let
       val n = length parr
       fun build (m, acc) =

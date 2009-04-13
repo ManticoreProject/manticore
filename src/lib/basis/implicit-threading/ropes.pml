@@ -378,24 +378,23 @@ structure Ropes (* : ROPES *) = struct
       end
          
   (* chop : 'a list * int -> 'a list list *)
-  (* FIXME: this function takes quadratic time! *)
   (* Chop the list into pieces of the appropriate size. *)
+  (* Doesn't complain if the chopping is uneven (see 3rd ex.). *)
   (* ex: chop ([1,2,3,4], 1) => [[1],[2],[3],[4]] *)
-  (* ex: chop ([1,2,3,4], 2) => [[1,2],[3,4]]     *)
-    fun chop (xs, n) = let
-      fun loop xs =
-       (case xs
-          of nil => nil
-         | _ => if List.length xs <= n then
-                    xs :: nil
-                  else let
-                    val (t, d) = split (xs, n)
-                    in
-                      t :: loop d
-                    end
-          (* end case *))
+  (* ex: chop ([1,2,3,4], 2) => [[1,2],[3,4]] *)
+  (* ex: chop ([1,2,3,4], 3) => [[1,2,3],[4]] *)
+    fun chop (xs, sz) = let
+      fun lp arg = 
+       (case arg
+	  of (nil, acc) => List.rev acc
+	   | (ns, acc) => let
+               val (t, d) = split (ns, sz)
+               in
+                 lp (d, t::acc)
+               end	 
+         (* end case *))
       in
-	loop xs
+        lp (xs, nil)
       end
 
   (* catPairs : 'a rope list -> 'a rope list *)
@@ -414,7 +413,7 @@ structure Ropes (* : ROPES *) = struct
       in
         if n <= maxLeafSize then
           LEAF (n, S.fromList xs)
-    else
+        else
           failwith "too big"
       end
 
@@ -426,10 +425,10 @@ structure Ropes (* : ROPES *) = struct
       val leaves = List.map leafFromList ldata
       fun build ls = 
        (case ls
-        of nil => empty
-         | l::nil => l
-         | _ => build (catPairs ls)
-          (* end case *))
+          of nil => empty
+           | l::nil => l
+           | _ => build (catPairs ls)
+         (* end case *))
       in
         build leaves      
       end
