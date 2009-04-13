@@ -23,7 +23,7 @@ structure PArray = struct
           val s = eltToString (sub (parr, m))
           in
             if (m = (n-1)) then
-              List.rev ("]|" :: s :: acc)
+              List.rev ("|]" :: s :: acc)
             else
               lp (m+1, sep :: s :: acc)
           end)

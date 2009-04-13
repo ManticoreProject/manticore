@@ -481,8 +481,7 @@ structure Ropes (* : ROPES *) = struct
 
   (* rangePNoStep : int * int -> int rope *)
     fun rangePNoStep (from, to_) = (* "to" is syntax in pml *)
-     (if from <= to_ then rangeP (from, to_, 1)
-      else rangeP (from, to_, ~1))
+      rangeP (from, to_, 1)
   
 (* ***** ROPE DECONSTRUCTION ***** *)
 
