@@ -13,18 +13,23 @@ structure PArray = struct
     val length = Ropes.length
 
   (* toString : ('a -> string ) -> string -> 'a parray -> string *)
-  (* FIXME: This seems to be segfaulting on inputs of 1000 or larger... *)
+  (* FIXME: should we exploit the fact that we're dealing with a rope? *)
     fun toString eltToString sep parr = let
       val n = length parr
-      fun build (m, acc) =
-        if (m >= n) then
-          acc
-        else if (m = (n - 1)) then 
-          build (m+1, acc ^ (eltToString (sub (parr, m))))
-	else
-	  build (m+1, acc ^ (eltToString (sub (parr, m))) ^ sep)
-   in
-     "[|" ^ (build (0, "")) ^ "|]"
-   end
+      fun lp (m, acc) =
+       (if (m >= n) then
+          List.rev ("|]" :: acc)
+        else let
+          val s = eltToString (sub (parr, m))
+          in
+            if (m = (n-1)) then
+              List.rev ("]|" :: s :: acc)
+            else
+              lp (m+1, sep :: s :: acc)
+          end)
+      val init = "[|" :: nil
+      in
+        String.concat (lp (0, init))
+      end
 
 end
