@@ -20,6 +20,7 @@ val dt = 2.0
 
 fun sumP xs = Ropes.reduceP (fn (x,y) => x+y, xs)
 val unzipP = Ropes.unzipP
+val zipP = Ropes.zipP
 val filterP = Ropes.filterP
 val fromListP = Ropes.fromList
 
