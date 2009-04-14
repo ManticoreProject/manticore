@@ -700,4 +700,39 @@ structure Ropes (* : ROPES *) = struct
         balanceIfNecessary (f rope)
       end
 
+  (* zipP : 'a rope * 'a rope -> ('a * 'a) rope *)
+  (* NOTE: the output rope is balanced, assuming that the input ropes are *)
+  (* balanced. *)
+    fun zipP (rope1, rope2) =  
+	if length rope1 <> length rope2 then
+	    (raise Fail "Ropes.zip: input lengths not equal")
+	else
+	 (case (rope1, rope2)
+	   of (LEAF (len, l1), LEAF (_, l2)) => 
+		LEAF (len, S.zip (l1, l2))
+	    | (LEAF (len, l1), CAT _) =>
+		LEAF (len, S.zip (l1, toSeq rope2))
+	    | (CAT _, LEAF (len, l2)) =>
+		LEAF (len, S.zip (toSeq rope1, l2))
+	    | (CAT (_, _, r11, r12), CAT (_, _, r21, r22)) => 
+		concatWithoutBalancing (| zipP (r11, r21), zipP (r12, r22) |)
+	 (* end case *))
+
+  (* unzipP : ('a * 'a) rope -> 'a rope * 'a rope *)
+  (* NOTE: the output ropes are balanced, assuming that the input rope is also *)
+  (* balanced. *)	    
+    fun unzipP rope = 
+	(case rope
+	  of LEAF (len, l) => let
+	       val (l1, l2) = S.unzip l
+	       in
+		 (LEAF (len, l1), LEAF (len, l2))
+	       end
+	   | CAT (d, len, r1, r2) => let
+	       val ((r11, r12), (r21, r22)) = (| unzipP r1, unzipP r2 |)
+	       in
+		 (concatWithoutBalancing (r11, r21), concatWithoutBalancing (r12, r22))
+	       end
+	(* end case *))
+
   end
