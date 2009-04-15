@@ -700,9 +700,10 @@ structure Ropes (* : ROPES *) = struct
         balanceIfNecessary (f rope)
       end
 
-  (* zipP : 'a rope * 'a rope -> ('a * 'a) rope *)
-  (* NOTE: the output rope is balanced, assuming that the input ropes are *)
-  (* balanced. *)
+  (* zipP : 'a rope * 'b rope -> ('a * 'b) rope *)
+  (* pre: the input ropes have the same length *)
+  (* pre: the input ropes are balanced *)
+  (* post: the output rope has the (balanced) structure of the first arg *)
     fun zipP (rope1, rope2) =  
 	if length rope1 <> length rope2 then
 	    (raise Fail "Ropes.zip: input lengths not equal")
