@@ -51,9 +51,16 @@ structure Rand =
 
     )
 
+  (* The random long generated is inclusive of the lower bound, exclusive of the upper. *)
+  (* ex: inRangeLong (0, 10) is in {0,1,2,3,4,5,6,7,8,9} *)
     val inRangeLong : (long * long) -> long = _prim(@in-range-long-wrap)
+
+  (* The random int generated is inclusive of the lower bound, exclusive of the upper. *)
+  (* ex: inRangeInt (0, 10) is in {0,1,2,3,4,5,6,7,8,9} *)
     val inRangeInt : (int * int) -> int = _prim(@in-range-int-wrap)
+
     val seed : unit -> unit = _prim(@seed)
+
     val randDouble : (double * double) -> double = _prim(@rand-double)
 
   end
