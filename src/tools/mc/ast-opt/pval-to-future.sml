@@ -113,7 +113,13 @@ structure PValToFuture =
 		  case oe
 	           of NONE => (A.PCompExp (e', pes', NONE),
 			       VSet.union (pLive', pLive''))
-		    | SOME pred => raise Fail "PComp"
+		    | SOME pred => let
+                        val (pred', pLive''') = 
+			  trExp (pred, VSet.union (pLive, pLive''))
+		        in
+			  (A.PCompExp (e', pes', SOME pred'),
+			   VSet.union (pLive', VSet.union (pLive'', pLive''')))
+		        end
 	      end
 	    | A.PChoiceExp (es, t) =>  
 	      let val (es', pLive') = trExps (es, pLive)
