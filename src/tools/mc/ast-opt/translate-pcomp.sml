@@ -32,24 +32,24 @@ structure TranslatePComp : sig
 	       val mapPV = BasisEnv.getVarFromBasis ["Ropes", "mapP"]
 	       val mapP = A.VarExp (mapPV, [t1, t])
 	       val resTy = PArray.parrayTy t
-	       val mapped = A.ApplyExp (mapP, 
-					A.TupleExp [f, e1'], 
-					resTy)				   
+	       fun map arr = A.ApplyExp (mapP, A.TupleExp [f, arr], resTy)
                in
                  case optPred
-		   of NONE => mapped
+		   of NONE => map e1'
 		    | SOME pred => let
+                        val pred' = trExp pred
                         val filterPV = BasisEnv.getVarFromBasis ["Ropes", "filterP"]
 			val filterP = A.VarExp (filterPV, [t])
-			val t1 = Var.new ("t1", t1)
-			val cs = A.CaseExp (A.VarExp (t1, []),
-					    [A.PatMatch (p1, pred)],
+			val tmpV = Var.new ("tmp", t1)
+			val cs = A.CaseExp (A.VarExp (tmpV, []),
+					    [A.PatMatch (p1, pred')],
 					    Basis.boolTy)
-			val predFn = A.FunExp (t1, cs, Basis.boolTy)
+			val predFn = A.FunExp (tmpV, cs, Basis.boolTy)
+			val filtered = A.ApplyExp (filterP,
+						   A.TupleExp [predFn, e1'],
+						   PArray.parrayTy t1)
                         in
-			  A.ApplyExp (filterP,
-				      A.TupleExp [predFn, mapped],
-				      resTy)
+			  map filtered
 		        end
                end
 	   | ([(p1, e1), (p2, e2)], NONE) => let (* two pbinds, no predicates *)
