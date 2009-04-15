@@ -30,14 +30,12 @@ structure RopePair (* : ROPE_PAIR *) = struct
          (case (r1, r2)
             of (R.LEAF (len1, _), R.LEAF (len2, _)) => (len1 = len2)
 	     | (R.CAT (_, _, r1L, r1R), R.CAT (_, _, r2L, r2R)) =>
-                 lp (r1L, r2L) andalso lp (r1R, r2R)
-
-	         (* some trouble with pcase... *)
-                 (* (pcase lp (rlL, r2L) & lp (r1R, r2R)
+	         (pcase lp (r1L, r2L) & lp (r1R, r2R)
                      of false & ? => false
 		      | ? & false => false
 		      | true & true => true
-		    (* end pcase *))*)
+		      | otherwise => failwith "bug: otherwise in sameStructureP"
+		    (* end pcase *))
 
 	     | _ => false
 	   (* end case *))
