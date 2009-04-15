@@ -36,6 +36,7 @@
 (* Ropes *)
 
   ropes.mlb
+  rope-pair.pml
 
 (* Parallel Arrays *)
 

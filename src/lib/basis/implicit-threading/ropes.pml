@@ -596,6 +596,7 @@ structure Ropes (* : ROPES *) = struct
         m rope
       end          
 
+(*
   (* sameStructure : 'a rope * 'b rope -> bool *)
     fun sameStructure (r1, r2) = 
      (if length r1 <> length r2 then
@@ -667,6 +668,7 @@ structure Ropes (* : ROPES *) = struct
         end
       else
         mapP2' (f, rope1, rope2))
+*)
     
   (* reduceP : ('a * 'a -> 'a) * 'a * 'a rope -> 'a *)
   (* Reduce with an associative operator. *)
@@ -700,6 +702,7 @@ structure Ropes (* : ROPES *) = struct
         balanceIfNecessary (f rope)
       end
 
+(*
   (* zipP : 'a rope * 'b rope -> ('a * 'b) rope *)
   (* pre: the input ropes have the same length *)
   (* pre: the input ropes are balanced *)
@@ -735,5 +738,5 @@ structure Ropes (* : ROPES *) = struct
 		 (concatWithoutBalancing (r11, r21), concatWithoutBalancing (r12, r22))
 	       end
 	(* end case *))
-
+*)
   end

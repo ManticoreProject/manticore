@@ -145,16 +145,14 @@ structure List =
 	    loop(xs, ys, nil)
 	 end
 
-
     fun unzip xs = let
-	fun loop (xs, (zs1, zs2)) = (case xs
-	    of nil => (rev(zs1), rev(zs2))
-	     | (x1, x2) :: xs => loop(xs, (x1 :: zs1, x2 :: zs2))
+	fun loop (xs, zs1, zs2) = (case xs
+	    of nil => (zs1, zs2)
+	     | (x1, x2) :: xs => loop(xs, x1 :: zs1, x2 :: zs2)
 	    (* end case *))
 	 in
-	    loop(xs, (nil, nil))
+	    loop(rev xs, nil, nil)
 	 end
-
 
     fun unzip3 xs = let
 	fun loop (xs, (zs1, zs2, zs3)) = (case xs

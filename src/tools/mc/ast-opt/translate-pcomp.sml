@@ -48,7 +48,7 @@ structure TranslatePComp : sig
 				   [A.PatMatch (pairPat, e')],
 				   t)
 	       val f = A.FunExp (pairV, ca, t)
-	       val mapP2V = BasisEnv.getVarFromBasis ["Ropes", "mapP2"]
+	       val mapP2V = BasisEnv.getVarFromBasis ["RopePair", "mapP"]
 	       val mapP2 = A.VarExp (mapP2V, [t1, t2, t])
 	       in
                  A.ApplyExp (mapP2, A.TupleExp [f, e1', e2'], PArray.parrayTy t)
