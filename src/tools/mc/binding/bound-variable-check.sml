@@ -429,6 +429,9 @@ structure BoundVariableCheck :> sig
 		     PT2.PTupleExp exps
 		  end
 	    | PT1.PCompExp (exp, pbinds, expOpt) => let
+(* FIXME Not sure this checks for duplicate vars across pbinds. Should we? *)
+(* n.b. duplicate variables are legal in Haskell comprehensions, where those *)
+(* on the left are visible to those on the right *)
 		  val (pbinds, env) = chkPBinds loc (pbinds, env)
 		  val exp = chkExp loc (exp, env)
 		  val expOpt = (
