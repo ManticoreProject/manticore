@@ -718,7 +718,7 @@ structure Ropes (* : ROPES *) = struct
 		concatWithoutBalancing (| zipP (r11, r21), zipP (r12, r22) |)
 	 (* end case *))
 
-  (* unzipP : ('a * 'a) rope -> 'a rope * 'a rope *)
+  (* unzipP : ('a * 'b) rope -> 'a rope * 'b rope *)
   (* NOTE: the output ropes are balanced, assuming that the input rope is also *)
   (* balanced. *)	    
     fun unzipP rope = 
