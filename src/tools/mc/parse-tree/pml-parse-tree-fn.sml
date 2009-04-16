@@ -114,7 +114,7 @@ functor PMLParseTreeFn (
   (* function definitions *)
     and funct
       = MarkFunct of funct mark
-      | Funct of (var_bind * pat list * exp)
+      | Funct of (var_bind * pat list * ty option * exp)
 
   (* types *)
     and ty

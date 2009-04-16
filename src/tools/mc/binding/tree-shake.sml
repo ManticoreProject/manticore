@@ -24,7 +24,7 @@ structure TreeShake =
           (* end case *))
 
     fun bindsOfFunct (PT.MarkFunct {tree, ...}) = bindsOfFunct tree
-      | bindsOfFunct (PT.Funct (v, _, _)) = v
+      | bindsOfFunct (PT.Funct (v, _, _, _)) = v
 
   (* get the bound variables of a value declaration *)
     fun bindsOfValDecl vd = (
@@ -199,7 +199,7 @@ structure TreeShake =
     fun shakeCode code = List.filter shakeDefn code	  
 
     fun isFunDead (PT.MarkFunct {tree, span}) = isFunDead tree
-      | isFunDead (PT.Funct (f, _, _)) = isDead f
+      | isFunDead (PT.Funct (f, _, _, _)) = isDead f
 
     fun shakeFunct (funct as PT.MarkFunct {tree, span}) = 
 	  shakeFunct tree

@@ -60,8 +60,10 @@ structure UsedVars =
 	    | PT.ValVDecl (pat, exp) => union[usedOfPat pat, usedOfExp exp]
 	    | PT.PValVDecl (pat, exp) => union[usedOfPat pat, usedOfExp exp]
 	    | PT.FunVDecl functs => let
-		  fun funct (PT.MarkFunct {span, tree}) = funct tree
-		    | funct (PT.Funct (f, pats, exp)) = union[var f, usedOfPats pats, usedOfExp exp]
+		  fun funct (PT.MarkFunct {span, tree}) = 
+		      funct tree
+		    | funct (PT.Funct (f, pats, ty, exp)) = 
+		      union[var f, usedOfPats pats, usedOfExp exp, (case ty of NONE => empty | SOME ty => usedOfTy ty)]
 	          in
 		     usedOfList funct functs
 		  end

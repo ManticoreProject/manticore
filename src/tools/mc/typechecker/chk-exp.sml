@@ -66,7 +66,7 @@ structure ChkExp :> sig
 	  fun bindFun (fb, (fs, names)) = (
 	      case fb
 	       of PT.MarkFunct{span, tree} => bindFun (tree, (fs, names))
-		| PT.Funct(f, _, _) => let
+		| PT.Funct(f, _, _, _) => let
 		      val f' = Var.new(PPT.Var.nameOf f,
 				       AST.FunTy(
 					 AST.MetaTy(MetaVar.new depth'),
@@ -92,7 +92,7 @@ structure ChkExp :> sig
 	  fun chkFun loc (fb, fbs) = (
 	      case fb
 	       of PT.MarkFunct{span, tree} => chkFun span (tree, fbs)
-		| PT.Funct(f, params, body) => let
+		| PT.Funct(f, params, bodyTyAscrip, body) => let
 		      val SOME(Env.Var f') = Env.getValBind f
 		      (* check the parameter patterns of the function binding *)
 		      fun chkPats' ([], _, params', paramTys) = (List.rev params', List.rev paramTys)
@@ -124,11 +124,17 @@ structure ChkExp :> sig
 			  val (body', bodyTy) = chkExp (loc, depth, body)
 			  val funTy' = AST.FunTy(paramTy, bodyTy)
 			  in
-			    (* check any temporary bindings *)
 			      chkTyK funTy';
 			      if not(U.unify(funTy, funTy'))
 				 then error(loc, ["type mismatch in function ", PPT.Var.nameOf f])
 			      else ();
+			      (case bodyTyAscrip
+				of NONE => ()
+				 | SOME bodyTyAscrip =>
+				   if not(U.unify(bodyTy, #2(ChkTy.checkTy (loc, [], bodyTyAscrip))))
+  			              then error(loc, ["body type does not match the ascribed type of function ", PPT.Var.nameOf f])
+				   else ()
+			      (* end case *));
 			      ASTUtil.mkFunWithPat(f', param, body')
 			  end
 		      | chk (param :: params, paramTy :: paramTys, chkTyK, f', depth) = let
@@ -141,7 +147,6 @@ structure ChkExp :> sig
 				       then error(loc, ["type mismatch in function ", PPT.Var.nameOf f])
 				    else ()
 				end
-			(* temp function for the body *)
 			  val fTmp = Var.new(PPT.Var.nameOf f^"Tmp",
 					    AST.FunTy(
 						AST.MetaTy(MetaVar.new depth),
@@ -541,7 +546,7 @@ structure ChkExp :> sig
 		end
 	    | PT.FnExp (pat, e) => let
 		val v = PPT.Var.new("anon", ())
-		val [l as AST.FB (f, _, _)] = chkFunBinds(loc, depth, [PT.Funct (v, [pat], e)])
+		val [l as AST.FB (f, _, _)] = chkFunBinds(loc, depth, [PT.Funct (v, [pat], NONE, e)])
 		val (argTys, ty) = TU.instantiate (depth, Var.typeOf f)
 		in
 		  (AST.LetExp(AST.FunBind [l], AST.VarExp(f, argTys)), ty)

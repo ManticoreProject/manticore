@@ -210,7 +210,7 @@ structure BoundVariableCheck :> sig
 		(* add function bindings to the environment *)
 		  fun add (PT1.MarkFunct {span, tree}, env) = 
 		        add (tree, env)
-		    | add (PT1.Funct (f, pat, exp), env) = let
+		    | add (PT1.Funct (f, pat, ty, exp), env) = let
 		        val f' = freshVar f
 		        in
 			   BEnv.insertVal(env, f, BEnv.Var f')
@@ -219,12 +219,17 @@ structure BoundVariableCheck :> sig
                 (* check the function definitions, taking care to keep the environments separate *)
 		  fun chk loc (PT1.MarkFunct {span, tree}) = 
 		          PT2.MarkFunct{span=span, tree=chk span tree} 
-		    | chk loc (PT1.Funct (f, pats, exp)) = let			  
+		    | chk loc (PT1.Funct (f, pats, ty, exp)) = let			  
 			  val (pat, env') = chkPats loc (pats, env)
 			  val exp = chkExp loc (exp, env')
 			  val BEnv.Var f' = Option.valOf(BEnv.findVal(env, f))
+			  val ty = (
+			        case ty
+				 of NONE => NONE
+				  | SOME ty => SOME (chkTy loc (ty, env))
+			        (* end case *))
 			  in
-			     PT2.Funct (f', pat, exp)
+			     PT2.Funct (f', pat, ty, exp)
 			  end
 		  val functs = List.map (chk loc) functs
 	          in
