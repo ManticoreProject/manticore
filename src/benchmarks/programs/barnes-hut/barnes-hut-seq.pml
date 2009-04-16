@@ -19,13 +19,6 @@ val epsilon : double = 0.05
 val eClose : double = 0.01
 val dt = 2.0
 
-val reduceP = Ropes.reduceP
-val filterP = Ropes.filterP
-val fromListP = Ropes.fromList
-val lengthP = Ropes.length
-val mapP = Ropes.mapP
-type 'a parray = 'a Ropes.rope
-
 fun applyAccel (PARTICLE (mp, vx, vy), (ax, ay)) = PARTICLE (mp, vx+ax * dt, vy+ay * dt)
 
 fun isClose (MP (x1, y1, m), x2, y2) = (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2) < eClose
@@ -60,10 +53,10 @@ fun calcAccel (mpt, bht) =
 	 if isClose (mpt, x, y) then
 	     let
 		 val ((x1, y1), (x2, y2), (x3, y3), (x4, y4)) =
-		     (| calcAccel (mpt, st1), 
-		        calcAccel (mpt, st2), 
-		        calcAccel (mpt, st3), 
-		        calcAccel (mpt, st4) |)
+		     ( calcAccel (mpt, st1), 
+		       calcAccel (mpt, st2), 
+		       calcAccel (mpt, st3), 
+		       calcAccel (mpt, st4) )
 	     in
 		 (x1 + x2 + x3 + x4, y1 + y2 + y3 + y4)
 	     end
@@ -71,11 +64,11 @@ fun calcAccel (mpt, bht) =
 	     accel (mpt, x, y, m)
     (* end case *))
 
-fun calcCentroid (mpts : mass_point parray) (*: mass_point*) = 
+fun calcCentroid (mpts : mass_point list) (*: mass_point*) = 
     let
         fun circlePlus ((mx0,my0,m0), (mx1,my1,m1)) = (mx0+mx1, my0+my1, m0+m1)
 	val (sum_mx, sum_my, sum_m) = 
-	    reduceP (circlePlus, (0.0, 0.0, 0.0), [| (m*x, m*y, m) | MP (x, y, m) in mpts |])
+	    List.foldl circlePlus (0.0, 0.0, 0.0) (List.map (fn (MP (x, y, m)) => (m*x, m*y, m)) mpts)
     in
 	MP (sum_mx / sum_m, sum_my / sum_m, sum_m)
     end
@@ -83,11 +76,19 @@ fun calcCentroid (mpts : mass_point parray) (*: mass_point*) =
 fun inBox (BOX (llx, lly, rux, ruy)) (MP (px, py, _)) =
     (px > llx) andalso (px <= rux) andalso (py > lly) andalso (py <= ruy)
 
+(* returns the list of particles that are centered within the box and the number of those particles *)
+fun particlesInBox (box, particles) =
+    let
+	fun filt box (p, (n, ps)) = if inBox box p then (n + 1, p :: ps) else (n, ps)
+    in
+	List.foldl (filt box) (0, nil) particles
+    end
+
 (* split mass points according to their locations in the quadrants *)
-fun buildTree (BOX (llx, lly, rux, ruy), particles : mass_point parray) (*: bh_tree*) =
-    if lengthP particles = 0 then
+fun buildTree (BOX (llx, lly, rux, ruy), nParticles, particles : mass_point list) (*: bh_tree*) =
+    if nParticles = 0 then
 	BHT_EMPTY
-    else if lengthP particles = 1 then
+    else if nParticles = 1 then
 	let
 	    val MP (x, y, m) = calcCentroid particles
 	in
@@ -101,20 +102,24 @@ fun buildTree (BOX (llx, lly, rux, ruy), particles : mass_point parray) (*: bh_t
 	    val b2 = BOX (llx,  midy, midx,  ruy)
 	    val b3 = BOX (midx, midy, rux,   ruy)
 	    val b4 = BOX (midx, lly,  rux,  midy)
+	    val (n1, p1) = particlesInBox (b1, particles)
+	    val (n2, p2) = particlesInBox (b2, particles)
+	    val (n3, p3) = particlesInBox (b3, particles)
+	    val (n4, p4) = particlesInBox (b4, particles)
 	    val (q1, q2, q3, q4) =
-		(| buildTree (b1, filterP (inBox b1, particles)),
-		   buildTree (b2, filterP (inBox b2, particles)),
-		   buildTree (b3, filterP (inBox b3, particles)),
-		   buildTree (b4, filterP (inBox b4, particles)) |)
+		( buildTree (b1, n1, p1),
+		  buildTree (b2, n2, p2),
+		  buildTree (b3, n3, p3),
+		  buildTree (b4, n4, p4) )
 	in
 	    BHT_QUAD (x, y, m, q1, q2, q3, q4)
 	end
 
-fun oneStep (llx, lly, rux, ruy, pts : particle parray) (*: particle parray *) =
+fun oneStep (llx, lly, rux, ruy, pts : particle list) (*: particle list *) =
     let
-	val mspnts = [| mpnt | PARTICLE (mpnt, _, _) in pts |]
-	val tree = buildTree (BOX (llx, lly, rux, ruy), mspnts)
-	val accels =  [| calcAccel (mspnt, tree) | mspnt in mspnts |]
+	val mspnts = List.map (fn (PARTICLE (mpnt, _, _)) => mpnt) pts
+	val tree = buildTree (BOX (llx, lly, rux, ruy), List.length pts, mspnts)
+	val accels =  List.map (fn mspnt => calcAccel (mspnt, tree)) mspnts
     in
-	[| applyAccel (pt, acc) | pt in pts, acc in accels |]
+	List.map applyAccel (List.zip (pts, accels))
     end
