@@ -9,18 +9,19 @@ datatype bounding_box = BOX of (double * double * double * double)
 datatype mass_point = MP of (double * double * double) (* xpos ypos mass *)
 datatype particle = PARTICLE of (mass_point * double * double) (* mass point and velocity *)
 datatype bh_tree 
-  = BHT_QUAD of (double * double * double *   (* root mass point *)
+  = BHT_QUAD of (double * double * double *     (* root mass point *)
 		 bh_tree * bh_tree * bh_tree * bh_tree)
-                                              (* subtrees *)
+                                                (* subtrees *)
+  | BHT_SINGLETON of (double * double * double) (* root mass point *)
   | BHT_EMPTY
 
 val epsilon : double = 0.05
-val eClose : double = 0.5
+val eClose : double = 0.01
 val dt = 2.0
 
-fun sumP xs = Ropes.reduceP (fn (x,y) => x+y, 0.0, xs)
-val unzipP = Ropes.unzipP
-val zipP = Ropes.zipP
+val reduceP = Ropes.reduceP
+fun sumP xs = reduceP (fn (x,y) => x+y, 0.0, xs)
+fun sumP_pointwiseFloat ps = reduceP (fn ((x0, y0),(x1,y1)) => (x0+x1,y0+y1), (0.0,0.0), ps)
 val filterP = Ropes.filterP
 val fromListP = Ropes.fromList
 val lengthP = Ropes.length
@@ -53,12 +54,18 @@ fun accel (MP (x1,  y1, _), x2, y2, m)  =
  *)
 fun calcAccel (mpt, bht) = 
     (case bht
-      of BHT_EMPTY => (0.0, 0.0)
+      of BHT_EMPTY => 
+	 (0.0, 0.0)
+       | BHT_SINGLETON (x, y, m) =>
+	 accel (mpt, x, y, m)
        | BHT_QUAD (x, y, m, st1, st2, st3, st4) =>
 	 if isClose (mpt, x, y) then
 	     let
 		 val ((x1, y1), (x2, y2), (x3, y3), (x4, y4)) =
-		     (| calcAccel (mpt, st1), calcAccel (mpt, st2), calcAccel (mpt, st3), calcAccel (mpt, st4) |)
+		     (| calcAccel (mpt, st1), 
+		        calcAccel (mpt, st2), 
+		        calcAccel (mpt, st3), 
+		        calcAccel (mpt, st4) |)
 	     in
 		 (x1 + x2 + x3 + x4, y1 + y2 + y3 + y4)
 	     end
@@ -68,10 +75,11 @@ fun calcAccel (mpt, bht) =
 
 fun calcCentroid (mpts : mass_point parray) (*: mass_point*) = 
     let
-	val mass = sumP [| m | MP (_, _, m) in mpts |]
-	val (xs, ys) = unzipP [| (m * x, m * y) | MP (x, y, m) in mpts |]
+        fun circlePlus ((mx0,my0,m0), (mx1,my1,m1)) = (mx0+mx1, my0+my1, m0+m1)
+	val (sum_mx, sum_my, sum_m) = 
+	    reduceP (circlePlus, (0.0, 0.0, 0.0), [| (m*x, m*y, m) | MP (x, y, m) in mpts |])
     in
-	MP ((sumP xs) / mass, sumP ys / mass, mass)
+	MP (sum_mx / sum_m, sum_my / sum_m, sum_m)
     end
 
 fun inBox (BOX (llx, lly, rux, ruy)) (MP (px, py, _)) =
@@ -81,6 +89,12 @@ fun inBox (BOX (llx, lly, rux, ruy)) (MP (px, py, _)) =
 fun buildTree (BOX (llx, lly, rux, ruy), particles : mass_point parray) (*: bh_tree*) =
     if lengthP particles = 0 then
 	BHT_EMPTY
+    else if lengthP particles = 1 then
+	let
+	    val MP (x, y, m) = calcCentroid particles
+	in
+	    BHT_SINGLETON (x, y, m)
+	end
     else
 	let
 	    val MP (x, y, m) = calcCentroid particles
@@ -98,47 +112,11 @@ fun buildTree (BOX (llx, lly, rux, ruy), particles : mass_point parray) (*: bh_t
 	    BHT_QUAD (x, y, m, q1, q2, q3, q4)
 	end
 
-fun oneStep (llx, lly, rux, ruy, pts : particle parray) (*: particle array*) =
+fun oneStep (llx, lly, rux, ruy, pts : particle parray) (*: particle parray *) =
     let
 	val mspnts = [| mpnt | PARTICLE (mpnt, _, _) in pts |]
 	val tree = buildTree (BOX (llx, lly, rux, ruy), mspnts)
 	val accels =  [| calcAccel (mspnt, tree) | mspnt in mspnts |]
     in
-	[| applyAccel (pt, acc) | (pt, acc) in zipP (pts, accels) |]
+	[| applyAccel (pt, acc) | pt in pts, acc in accels |]
     end
-
-(* utility code for loading the input particles *)
-val readreal = PrimIO.readDouble
-val readint = PrimIO.readInt
-fun readParticles () = let
-    val nParticles = readint ()
-    fun readVec () = (readreal(), readreal())
-    fun readMassPnt () = 
-	let
-	    val m = readreal()
-	    val x = readreal()
-	    val y = readreal()
-	in 
-	    MP (m, x, y)
-	end
-    fun readParticle () = PARTICLE (readMassPnt(), readreal(), readreal())
-    fun doit (i, ps) = if (i>0)
-        then doit(i-1, readParticle()::ps)
-        else List.rev(ps)
-    in
-        doit (nParticles, nil)
-    end
-
-fun benchmark () =
-    let
-	val nSteps = readint()
-	fun iter (ps, i) =
-	    if i < nSteps then
-(* FIXME: read the top-level box from the input *)
-		iter (oneStep (0.0, 1000.0, 0.0, 1000.0, ps), i + 1)
-	    else
-		ps
-    in
-	iter (fromListP (readParticles ()), 0)
-    end
-
