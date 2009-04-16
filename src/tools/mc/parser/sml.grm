@@ -256,8 +256,9 @@ ValueDeclRHS
 	;
 
 FunDef
-	: Name (AtomicPat)+ "=" Exp
-		=> (mark PT.MarkFunct (FULL_SPAN, PT.Funct(Name, SR, Exp)))
+	: Name (AtomicPat)+ (":" Type)? "=" Exp
+(* FIXME: the parser fails when there is a type ascription for the type of the function body *)
+		=> (mark PT.MarkFunct (FULL_SPAN, PT.Funct(Name, SR1, SR2, Exp)))
 	;
 
 Exp

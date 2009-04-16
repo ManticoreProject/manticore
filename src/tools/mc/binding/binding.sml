@@ -43,7 +43,7 @@ structure Binding =
 	  end
 
     fun bindsOfFunct (PT.MarkFunct {tree, ...}) = bindsOfFunct tree
-      | bindsOfFunct (PT.Funct (v, _, _)) = v
+      | bindsOfFunct (PT.Funct (v, _, _, _)) = v
 
   (* get the bound variables of a value declaration *)
     fun bindsOfValDecl (vd, env) = (

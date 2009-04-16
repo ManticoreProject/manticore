@@ -18,4 +18,6 @@ structure ListSeq = struct
     fun cut (s, n) = (List.take (s, n), List.drop (s, n))
     fun filter (f, s) = List.filter f s
     fun tabulate (n, f) = List.tabulate (n, f)
+    val zip = List.zip
+    val unzip = List.unzip
   end

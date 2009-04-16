@@ -38,26 +38,21 @@ val dotp0 = dotp (sv0, v0)
 
 val _ = Print.printLn ("Testing dotp: expecting 2.3 => " ^ (ftos dotp0))
 
+val dotp1 = let
+  val rng = [| 0 to 999 |]
+  in
+    dotp ([| (n, 1.0) | n in rng |], [| 1.0 | n in rng |])
+  end
+
+val _ = Print.printLn ("Testing dotp: expecting 1000.0 => " ^ (ftos dotp1))
+
 fun smvm (sm, v) = [| dotp (row, v) | row in sm |]
 
 val sm0 = [| sv0, sv1 |]
 
 val smvm0 = smvm (sm0, v0)
 
-fun vtos v =
-   let val n = lenP v
-       fun build (m, acc) =
-         if (m >= n) then
-           acc
-         else if (m = (n - 1)) then 
-           build (m+1, acc ^ (ftos (sub (v, m))))
-	 else
-	   build (m+1, acc ^ (ftos (sub (v, m))) ^ ",")
-   in
-     "[|" ^ (build (0, "")) ^ "|]"
-   end
-
-val _ = Print.printLn ("smvm0 => " ^ (vtos smvm0))
+val _ = Print.printLn ("smvm0 => " ^ (PArray.toString ftos "," smvm0))
 
 val _ = Print.printLn "Done."
 

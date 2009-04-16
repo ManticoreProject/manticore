@@ -1,4 +1,4 @@
-(* ropes.pml
+(* ropes.pml  
  *
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -378,24 +378,23 @@ structure Ropes (* : ROPES *) = struct
       end
          
   (* chop : 'a list * int -> 'a list list *)
-  (* FIXME: this function takes quadratic time! *)
   (* Chop the list into pieces of the appropriate size. *)
+  (* Doesn't complain if the chopping is uneven (see 3rd ex.). *)
   (* ex: chop ([1,2,3,4], 1) => [[1],[2],[3],[4]] *)
-  (* ex: chop ([1,2,3,4], 2) => [[1,2],[3,4]]     *)
-    fun chop (xs, n) = let
-      fun loop xs =
-       (case xs
-          of nil => nil
-         | _ => if List.length xs <= n then
-                    xs :: nil
-                  else let
-                    val (t, d) = split (xs, n)
-                    in
-                      t :: loop d
-                    end
-          (* end case *))
+  (* ex: chop ([1,2,3,4], 2) => [[1,2],[3,4]] *)
+  (* ex: chop ([1,2,3,4], 3) => [[1,2,3],[4]] *)
+    fun chop (xs, sz) = let
+      fun lp arg = 
+       (case arg
+	  of (nil, acc) => List.rev acc
+	   | (ns, acc) => let
+               val (t, d) = split (ns, sz)
+               in
+                 lp (d, t::acc)
+               end	 
+         (* end case *))
       in
-	loop xs
+        lp (xs, nil)
       end
 
   (* catPairs : 'a rope list -> 'a rope list *)
@@ -414,7 +413,7 @@ structure Ropes (* : ROPES *) = struct
       in
         if n <= maxLeafSize then
           LEAF (n, S.fromList xs)
-    else
+        else
           failwith "too big"
       end
 
@@ -426,10 +425,10 @@ structure Ropes (* : ROPES *) = struct
       val leaves = List.map leafFromList ldata
       fun build ls = 
        (case ls
-        of nil => empty
-         | l::nil => l
-         | _ => build (catPairs ls)
-          (* end case *))
+          of nil => empty
+           | l::nil => l
+           | _ => build (catPairs ls)
+         (* end case *))
       in
         build leaves      
       end
@@ -482,8 +481,7 @@ structure Ropes (* : ROPES *) = struct
 
   (* rangePNoStep : int * int -> int rope *)
     fun rangePNoStep (from, to_) = (* "to" is syntax in pml *)
-     (if from <= to_ then rangeP (from, to_, 1)
-      else rangeP (from, to_, ~1))
+      rangeP (from, to_, 1)
   
 (* ***** ROPE DECONSTRUCTION ***** *)
 
@@ -598,6 +596,7 @@ structure Ropes (* : ROPES *) = struct
         m rope
       end          
 
+(*
   (* sameStructure : 'a rope * 'b rope -> bool *)
     fun sameStructure (r1, r2) = 
      (if length r1 <> length r2 then
@@ -669,6 +668,7 @@ structure Ropes (* : ROPES *) = struct
         end
       else
         mapP2' (f, rope1, rope2))
+*)
     
   (* reduceP : ('a * 'a -> 'a) * 'a * 'a rope -> 'a *)
   (* Reduce with an associative operator. *)
@@ -702,4 +702,41 @@ structure Ropes (* : ROPES *) = struct
         balanceIfNecessary (f rope)
       end
 
+(*
+  (* zipP : 'a rope * 'b rope -> ('a * 'b) rope *)
+  (* pre: the input ropes have the same length *)
+  (* pre: the input ropes are balanced *)
+  (* post: the output rope has the (balanced) structure of the first arg *)
+    fun zipP (rope1, rope2) =  
+	if length rope1 <> length rope2 then
+	    (raise Fail "Ropes.zip: input lengths not equal")
+	else
+	 (case (rope1, rope2)
+	   of (LEAF (len, l1), LEAF (_, l2)) => 
+		LEAF (len, S.zip (l1, l2))
+	    | (LEAF (len, l1), CAT _) =>
+		LEAF (len, S.zip (l1, toSeq rope2))
+	    | (CAT _, LEAF (len, l2)) =>
+		LEAF (len, S.zip (toSeq rope1, l2))
+	    | (CAT (_, _, r11, r12), CAT (_, _, r21, r22)) => 
+		concatWithoutBalancing (| zipP (r11, r21), zipP (r12, r22) |)
+	 (* end case *))
+
+  (* unzipP : ('a * 'b) rope -> 'a rope * 'b rope *)
+  (* NOTE: the output ropes are balanced, assuming that the input rope is also *)
+  (* balanced. *)	    
+    fun unzipP rope = 
+	(case rope
+	  of LEAF (len, l) => let
+	       val (l1, l2) = S.unzip l
+	       in
+		 (LEAF (len, l1), LEAF (len, l2))
+	       end
+	   | CAT (d, len, r1, r2) => let
+	       val ((r11, r12), (r21, r22)) = (| unzipP r1, unzipP r2 |)
+	       in
+		 (concatWithoutBalancing (r11, r21), concatWithoutBalancing (r12, r22))
+	       end
+	(* end case *))
+*)
   end

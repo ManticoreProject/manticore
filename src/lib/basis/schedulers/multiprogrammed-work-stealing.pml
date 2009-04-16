@@ -123,6 +123,7 @@ structure MultiprogrammedWorkStealing :
       ;
 
     (* push on the tail of the local deque *)
+(* TODO: raise an error when the deque overflows *)
       define @push-tl (thd : ImplicitThread.thread / exh : exh) : () =
         let vp : vproc = SchedulerAction.@atomic-begin()
 	let deque : Cilk5Deque.deque = @get-local-deque-from-atomic(vp / exh)

@@ -19,7 +19,7 @@ structure TranslatePComp : sig
     fun tr trExp (e, pes, oe) = 
      (case (pes, oe)
         of ([], _) => raise Fail "a parallel comprehension with no pbinds at all"
-	 | ([(p1, e1)], NONE) => let (* the one pbind, no predicate case *)
+	 | ([(p1, e1)], optPred) => let (* the one pbind, no predicate case *)
                val t  = TypeOf.exp e
 	       val t1 = TypeOf.pat p1
 	       val x1 = Var.new ("x1", t1)
@@ -31,8 +31,26 @@ structure TranslatePComp : sig
 	       val e1' = trExp e1
 	       val mapPV = BasisEnv.getVarFromBasis ["Ropes", "mapP"]
 	       val mapP = A.VarExp (mapPV, [t1, t])
+	       val resTy = PArray.parrayTy t
+	       fun map arr = A.ApplyExp (mapP, A.TupleExp [f, arr], resTy)
                in
-                 A.ApplyExp (mapP, A.TupleExp [f, e1'], PArray.parrayTy t)				   
+                 case optPred
+		   of NONE => map e1'
+		    | SOME pred => let
+                        val pred' = trExp pred
+                        val filterPV = BasisEnv.getVarFromBasis ["Ropes", "filterP"]
+			val filterP = A.VarExp (filterPV, [t])
+			val tmpV = Var.new ("tmp", t1)
+			val cs = A.CaseExp (A.VarExp (tmpV, []),
+					    [A.PatMatch (p1, pred')],
+					    Basis.boolTy)
+			val predFn = A.FunExp (tmpV, cs, Basis.boolTy)
+			val filtered = A.ApplyExp (filterP,
+						   A.TupleExp [predFn, e1'],
+						   PArray.parrayTy t1)
+                        in
+			  map filtered
+		        end
                end
 	   | ([(p1, e1), (p2, e2)], NONE) => let (* two pbinds, no predicates *)
                val t = TypeOf.exp e
@@ -48,7 +66,7 @@ structure TranslatePComp : sig
 				   [A.PatMatch (pairPat, e')],
 				   t)
 	       val f = A.FunExp (pairV, ca, t)
-	       val mapP2V = BasisEnv.getVarFromBasis ["Ropes", "mapP2"]
+	       val mapP2V = BasisEnv.getVarFromBasis ["RopePair", "mapP"]
 	       val mapP2 = A.VarExp (mapP2V, [t1, t2, t])
 	       in
                  A.ApplyExp (mapP2, A.TupleExp [f, e1', e2'], PArray.parrayTy t)
@@ -79,7 +97,7 @@ structure TranslatePComp : sig
 		 A.LetExp (A.FunBind [lam],
 			   A.ApplyExp (mapPn, A.TupleExp tup, resTy))
 	       end
-	   | (pes, SOME pred) => raise Fail "pcomp with predicate: todo"
+	   | (pes, SOME pred) => raise Fail "todo: pcomp with predicate on multiple pbinds"
           (* end case *))
       
 
