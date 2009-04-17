@@ -76,5 +76,19 @@ structure ParrLitToRope : sig
 	  in
             U.mkLetExp ([bind], mkRopeFromList (ty, xsList))
 	  end
-		     
+
+(*
+(* HORRIBLE HACK for testing the rope-of-tuples translation *)
+    fun trans (es, ty) = let
+      val rope = tr (es, ty)
+      val rope' = RopeOfTuples.transform rope
+      in
+       (PrintAST.printExpNoTypesNoStamps rope;
+	PrintAST.printExpNoTypesNoStamps rope';
+	raise Fail "You've been ROPED.")
+      end
+
+    fun tr (es, ty) = trans (es, ty)
+*)
+	     
   end

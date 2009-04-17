@@ -13,6 +13,8 @@ structure PrintAST : sig
     val printExpNoTypes : AST.exp -> unit
     val printComment    : string -> unit
 
+    val printExpNoTypesNoStamps : AST.exp -> unit
+
   end = struct
 
     structure A = AST
@@ -22,6 +24,7 @@ structure PrintAST : sig
     val str = ref (S.openOut {dst = TextIO.stdErr, wid = 85})
 
     val showTypes = ref true
+    val showStamps = ref true
 
   (* for debugging boxes *)
     fun debug _ = ()
@@ -392,16 +395,15 @@ structure PrintAST : sig
         pr s
       end
 
-
   (* overload_var : A.overload_var -> unit *)
     and overload_var (A.Unknown (t, vs)) = raise Fail "overload_var.Unknown"
       | overload_var (A.Instance v) = var v
 				    
   (* var : A.var -> unit *)
     and var (v as VarRep.V{name, ...}) = let
-      val s = if !showTypes 
-	      then Var.toString v ^ " : " ^ TypeUtil.schemeToString (Var.typeOf v) 
-	      else Var.toString v
+      val x = if !showStamps then Var.toString v else Var.nameOf v
+      val t = TypeUtil.schemeToString (Var.typeOf v) 
+      val s = if !showTypes then x ^ " : " ^ t else x
       in
 	pr s
       end
@@ -461,10 +463,16 @@ structure PrintAST : sig
     fun printExpNoTypes e = (showTypes := false;
 			     printExp e;
 			     showTypes := true)
-		  
+
   (* printComment : string -> unit *)       
   (* for debugging purposes *)
     fun printComment s = (prln ("(* " ^ s ^ " *)"); flush ())
 
+  (* printExpNoTypesNoStamps : A.exp -> unit *)
+    fun printExpNoTypesNoStamps e = (showTypes := false;
+				     showStamps := false;
+				     printExp e;
+				     showTypes := true;
+				     showStamps := true)
   end
 
