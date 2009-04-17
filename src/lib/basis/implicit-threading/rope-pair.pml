@@ -97,7 +97,7 @@ structure RopePair (* : ROPE_PAIR *) = struct
         end
       else
         mapP' (f, rope1, rope2))
-    
+
   (* zipP : 'a rope * 'b rope -> ('a * 'b) rope *)
   (* Zipping silently completes when one rope runs out. *)
     fun zipP (r1, r2) = mapP (fn (a,b) => (a,b), r1, r2)
