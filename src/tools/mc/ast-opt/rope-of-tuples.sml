@@ -6,6 +6,8 @@
  * Translate a rope of tuples to a tuple of ropes.
  *)
 
+(* IDEA: Why not generate parallel code? *)
+
 structure RopeOfTuples : sig
 
     val transform : AST.exp -> AST.exp
