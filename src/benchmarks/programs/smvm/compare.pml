@@ -33,14 +33,10 @@ structure Compare = struct
     val smPar = cvt smSeq
     val vSeq = List.tabulate (sz, fn _ => 1.0)
     val vPar = Ropes.fromList vSeq 
-    val (seqRes, seqTime) = Time.timeToEval (fn () => SMVMSeq.smvm (smSeq, vSeq))
+(*    val (seqRes, seqTime) = Time.timeToEval (fn () => SMVMSeq.smvm (smSeq, vSeq)) *)
     val (parRes, parTime) = Time.timeToEval (fn () => SMVM.smvm (smPar, vPar))
-(*
-    val _ = println ("seq time: " ^ Long.toString seqTime)
-    val _ = println ("par time: " ^ Long.toString parTime)
-*)
     val _ = println (Int.toString sz ^ "," ^
-		     Long.toString seqTime ^ "," ^ 
+		     "n/a" (* Long.toString seqTime *) ^ "," ^ 
 		     Long.toString parTime)
     in
       println ""
@@ -48,10 +44,10 @@ structure Compare = struct
 
   fun supergo () = let
     fun lp n = 
-      if n > 9999 then ()
-      else (go n; lp (n*2))
+      if n > 6000 then ()
+      else (go n; lp (n+1000))
     in
-      lp 1
+      lp 3000
     end
 
   val _ = supergo ()
