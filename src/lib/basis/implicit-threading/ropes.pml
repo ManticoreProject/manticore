@@ -53,7 +53,7 @@ structure Ropes (* : ROPES *) = struct
 		 'a seq   (* sequence *))
 
   (* maxLeafSize : int *)
-    val maxLeafSize = 1024
+    val maxLeafSize = (* 256 *) 1024
 
   (* empty : 'a rope *)
     val empty = LEAF (0, S.empty)

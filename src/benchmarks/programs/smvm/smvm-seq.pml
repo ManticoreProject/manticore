@@ -47,6 +47,12 @@ structure SMVMSeq = struct
       lp (0, nil)
     end
 
+  fun mkRow len = let
+    val len' = if len<10 then len else 10
+    in
+      List.tabulate (len', fn n => (n, 1.0))
+    end
+
 (*
   val _ = let
     val ns = [| Rand.inRangeInt(0,10) | n in [| 0 to 9 |] |]
@@ -61,6 +67,16 @@ structure SMVMSeq = struct
         List.rev acc
       else
         lp (i+1, randomRow(nCols) :: acc)
+    in
+      lp (0, nil)
+    end
+
+  fun mkMatrix (nRows, nCols) = let
+    fun lp (i, acc) =
+      if i=nRows then
+        List.rev acc
+      else
+       lp (i+1, mkRow(nCols) :: acc)
     in
       lp (0, nil)
     end

@@ -20,4 +20,6 @@ structure ListSeq = struct
     fun tabulate (n, f) = List.tabulate (n, f)
     val zip = List.zip
     val unzip = List.unzip
+    val foldr = List.foldr
+    val foldl = List.foldl
   end

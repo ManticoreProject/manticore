@@ -26,6 +26,9 @@ structure SMVM = struct
 
   fun randomRow len = [| (i, 1.0) | i in [| 0 to (len-1) |] 
 			            where Rand.inRangeInt (0, 4) = 0 |]
+
+(* a non-random row *)
+  fun mkRow len = [| (i, 1.0) | i in [| 0 to (len-1) |] where i < 10 |]
 (*
   val _ = let
     val ns = [| Rand.inRangeInt(0,10) | n in [| 0 to 9 |] |]
@@ -34,7 +37,9 @@ structure SMVM = struct
     end
 *)
 
-  fun mkSparseMatrix (nRows, nCols) = [| randomRow nCols | r in [| 1 to nRows |] |]
+  fun mkRandMatrix (nRows, nCols) = [| randomRow nCols | r in [| 1 to nRows |] |]
+
+  fun mkMatrix (nRows, nCols) = [| mkRow nCols | r in [| 1 to nRows |] |]
 
 (*
   val _ = let

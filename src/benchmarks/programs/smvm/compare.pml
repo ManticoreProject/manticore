@@ -10,16 +10,9 @@ structure Compare = struct
 
   val println = Print.printLn
 
-(* mkSparseMatrix makes a list-based sparse matrix *)
-  fun mkSparseMatrix (nRows, nCols) = let
-    fun lp (i, acc) = 
-      if i=nRows then
-        List.rev acc
-      else
-        lp (i+1, SMVMSeq.randomRow(nCols) :: acc)
-    in
-      lp (0, nil)
-    end
+  val runseq = false
+
+  val mkMatrix = SMVMSeq.mkMatrix
 
   fun cvt sm = let
     val rs = List.map Ropes.fromList sm
@@ -29,28 +22,36 @@ structure Compare = struct
 
   fun go sz = let
     val _ = println ("Testing \"square\" sparse matrices of size " ^ Int.toString sz)
-    val smSeq = mkSparseMatrix (sz, sz)
+    val smSeq = mkMatrix (sz, sz)
     val smPar = cvt smSeq
     val vSeq = List.tabulate (sz, fn _ => 1.0)
     val vPar = Ropes.fromList vSeq 
-(*    val (seqRes, seqTime) = Time.timeToEval (fn () => SMVMSeq.smvm (smSeq, vSeq)) *)
     val (parRes, parTime) = Time.timeToEval (fn () => SMVM.smvm (smPar, vPar))
+    val (seqRes, seqTime) = 
+      if runseq then
+        Time.timeToEval (fn () => SMVMSeq.smvm (smSeq, vSeq))
+      else
+	(nil, 0)
     val _ = println (Int.toString sz ^ "," ^
-		     "n/a" (* Long.toString seqTime *) ^ "," ^ 
+		     Long.toString seqTime ^ "," ^ 
 		     Long.toString parTime)
     in
       println ""
     end
 
-  fun supergo () = let
+  fun supergo (lower, upper, step) = let
     fun lp n = 
-      if n > 6000 then ()
-      else (go n; lp (n+1000))
+      if n > upper then ()
+      else (go n; lp (n+step))
     in
-      lp 3000
+      lp lower
     end
 
-  val _ = supergo ()
+  val _ = let
+    val it = 500000
+    in
+      supergo (it, it, 1)
+    end
 
   val _ = println "Done."
 
