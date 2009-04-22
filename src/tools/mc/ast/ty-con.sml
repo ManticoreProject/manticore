@@ -103,7 +103,7 @@ structure TyCon : sig
     fun nameOf (Tyc{name, ...}) = name
 
 (* FIXME: should include type parameters! *)
-    fun toString (Tyc{name, stamp, ...}) = Atom.toString name^Stamp.toString stamp
+    fun toString (Tyc{name, stamp, ...}) = Atom.toString name
 
     fun stampOf (Tyc{stamp, ...}) = stamp
 
