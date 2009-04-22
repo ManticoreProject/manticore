@@ -578,10 +578,10 @@ structure Ropes (* : ROPES *) = struct
      (case r
         of LEAF (len, s) => LEAF (len, S.rev s)
 	 | CAT (dpt, len, r1, r2) => let
-             (* PVAL *) val r2' = revP r2
-             in
-               CAT (dpt, len, r2', revP r1)
-             end 
+	     val (r1, r2) = (| revP r1, revP r2 |)
+	     in
+	       CAT (dpt, len, r2, r1)
+	     end
         (* end case *))
 
   (* mapP : ('a -> 'b) * 'a rope -> 'b rope *)
