@@ -1,3 +1,10 @@
+(* array-seq.pml  
+ *
+ * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ *)
+
 structure ArraySeq = struct
 
   structure A = Array64
@@ -176,16 +183,17 @@ structure ArraySeq = struct
           if i >= len then b
 	  else let
             val pair = (sub(s1,i), sub(s2,i))
+	    val _ = A.update (b, i, pair)
             in
-              A.update (b, i, pair)
+              lp (i+1)
             end
         in
           lp 1 (* did 0 already *)
         end
     end
 
-  val unzip s = 
-    if null s then empty
+  fun unzip s = 
+    if null s then (empty, empty)
     else let
       val len = length s
       val (x, y) = sub (s, 0)

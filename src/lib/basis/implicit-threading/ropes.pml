@@ -8,7 +8,7 @@
 
 structure Ropes (* : ROPES *) = struct
 
-    structure S = ListSeq 
+    structure S = ArraySeq (* ListSeq *)
     val ceilingLg = Int.ceilingLg
 
     datatype option = datatype Option.option

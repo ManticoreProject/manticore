@@ -13,7 +13,7 @@
 
 structure Scan = struct
 
-    structure S = ListSeq
+    structure S = ArraySeq (* ListSeq *)
     structure R = Ropes
 
     datatype option = datatype Option.option
@@ -67,7 +67,7 @@ structure Scan = struct
     fun seqsum s = let
       fun plus (a, b) = a + b
       in
-        S.foldl plus 0 s
+        S.foldl (plus, 0, s)
       end
 
   (* upsweep : R.rope -> scan_rope *)
