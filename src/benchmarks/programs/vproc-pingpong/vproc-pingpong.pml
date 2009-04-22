@@ -97,4 +97,5 @@ structure Main =
 
   end
 
+val _ = PrimIO.readInt()
 val _ = Main.timeit (PrimIO.readInt())
