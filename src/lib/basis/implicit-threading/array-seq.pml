@@ -212,4 +212,6 @@ structure ArraySeq = struct
         lp 1 (* did 0 already *)
       end
 
+  val update = A.update
+
 end

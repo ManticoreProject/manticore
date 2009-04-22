@@ -49,19 +49,21 @@ structure Scan = struct
   (* seqscan : int -> int seq -> int seq * int *)
   (* Does a prefix scan starting from the given seed value. *)
   (* Returns the scanned sequence and the total. *)
-    fun seqscan seed seq = let
-      fun lp (nums, acc) =
-           (case (nums, acc)
-	      of (n::nil, k::_) => (S.fromList (List.rev acc), k+n)
-	       | (n::ns, k::acc) => lp (ns, k+n::k::acc)
-	       | (nil, _) => failwith "BUG: sequence emptied out"
-	       | (_, nil) => failwith "BUG")
-      val l = S.toList seq
-      in
-        case l
-          of nil => (S.empty, 0)
-	   | _ => lp (l, seed::nil)
-      end
+    fun seqscan seed seq =
+      if S.null seq then (S.empty, 0)
+      else let
+        val len = S.length seq
+        val seq' = S.tabulate (len, fn _ => seed)
+        fun lp (i, last) = 
+          if i >= len then (seq', last)
+	  else let
+            val _ = S.update (seq', i, last)
+	    in
+              lp (i+1, last + S.sub (seq, i))
+	    end
+        in
+          lp (0, 0)
+        end
 
   (* seqsum : Num 'a => 'a seq -> 'a *)
     fun seqsum s = let
