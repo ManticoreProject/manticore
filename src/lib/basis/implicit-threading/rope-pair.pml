@@ -8,7 +8,7 @@
 
 structure RopePair (* : ROPE_PAIR *) = struct
 
-    structure S = ArraySeq (* ListSeq *)
+    structure S = Ropes.S
     structure R = Ropes
 
     datatype option = datatype Option.option
