@@ -20,20 +20,6 @@
 #include "internal-heap.h"
 #include "inline-log.h"
 
-static int64_t TotalBytesInGlobalHeap = 0;
-
-int64_t GetTotalBytesInGlobalHeap ()
-{
-  return TotalBytesInGlobalHeap;
-}
-
-int64_t NumBytesPromoted[8];
-
-int64_t GetNumBytesPromoted (VProc_t *vp)
-{
-  return NumBytesPromoted[vp->id];
-}
-
 static void ScanGlobalToSpace (
 	VProc_t *vp, Addr_t heapBase, MemChunk_t *scanChunk, Word_t *scanPtr);
 
@@ -57,7 +43,6 @@ STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
 	    newObj[i] = p[i];
 	}
 	vp->globNextW = (Addr_t)(newObj+len+1);
-	FetchAndAdd64 ((int64_t *)&TotalBytesInGlobalHeap, WORD_SZB*(len+1));
 	p[-1] = MakeForwardPtr(hdr, newObj);
 	return PtrToValue(newObj);
     }
@@ -229,11 +214,9 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
 	    nbytes = (vp->globNextW - (Addr_t)scanPtr - WORD_SZB);
 	}
 	else {
-	  assert(false);
 	  /* copied data spans multiple chunks */
 	    nbytes = 0; /* FIXME */
 	}
-	NumBytesPromoted[vp->id] = nbytes;
 #ifndef NDEBUG
 	if (GCDebug >= GC_DEBUG_ALL)
 	    SayDebug("[%2d]  ==> %p; %ld bytes\n", vp->id, root, nbytes);

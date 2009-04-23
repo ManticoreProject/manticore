@@ -8,7 +8,7 @@
 
 structure Ropes (* : ROPES *) = struct
 
-    structure S = ListSeq 
+    structure S = ArraySeq (* ListSeq *)
     val ceilingLg = Int.ceilingLg
 
     datatype option = datatype Option.option
@@ -524,6 +524,12 @@ structure Ropes (* : ROPES *) = struct
       then splitAtWithBalancing(r, i)
       else failwith "subscript out of bounds for splitAt"
 
+  (* cut the rope r into r[0, ..., n-1] and r[n, ..., length r - 1] *)
+    fun cut (r, n) =
+      if n = 0
+      then (empty, r)
+      else splitAt(r, n - 1)
+
   (* naturalSplit : 'a rope -> 'a rope * 'a rope *)
   (* If a rope is a CAT, splits it at the root. *)
   (* If a rope is a LEAF, splits it into two leaves of roughly equal size. *)
@@ -578,10 +584,10 @@ structure Ropes (* : ROPES *) = struct
      (case r
         of LEAF (len, s) => LEAF (len, S.rev s)
 	 | CAT (dpt, len, r1, r2) => let
-             (* PVAL *) val r2' = revP r2
-             in
-               CAT (dpt, len, r2', revP r1)
-             end 
+	     val (r1, r2) = (| revP r1, revP r2 |)
+	     in
+	       CAT (dpt, len, r2, r1)
+	     end
         (* end case *))
 
   (* mapP : ('a -> 'b) * 'a rope -> 'b rope *)

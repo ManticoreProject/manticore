@@ -3,10 +3,7 @@
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Mutable arrays for benchmarking purposes.  Use at own risk!
- *
- * FIXME: this file should be removed at some point, since it is outside the
- * language design!
+ * TODO: get rid of this module.
  *)
 
 #define DATA_OFF        0
@@ -22,12 +19,18 @@ structure Array64 =
       typedef array = PT.array;
 
       extern void* M_NewArray (void*, int, void*);
+
+    (* allocate and initialize an array *)
+      define inline @empty-array (x : unit / exh : exh) : array =
+        let data : any = ccall M_NewArray(host_vproc, 0, nil)
+        let arr : array = alloc(data, 0)
+        return(arr)
+      ;
  
     (* allocate and initialize an array *)
       define inline @array (n : int, elt : any / exh : exh) : array =
         let elt : any = (any)elt
         let elt : any = promote(elt)
-      (* obtain the data chunk from the C runtime *)
         let data : any = ccall M_NewArray(host_vproc, n, elt)
         let arr : array = alloc(data, n)
         return(arr)
@@ -80,12 +83,16 @@ structure Array64 =
 
     type 'a array = _prim( PT.array )
 
+    val emptyArray : unit -> 'a array = _prim(@empty-array)
     val array : int * 'a -> 'a array = _prim(@array-w)
     val length : 'a array -> int = _prim(@length-w)
     val sub : 'a array * int -> 'a = _prim(@sub-w)
     val update : 'a array * int * 'a -> unit = _prim(@update-w)
 
-    fun tabulate (n, f : int -> 'a) = let
+    fun tabulate (n, f : int -> 'a) = 
+	if n = 0
+	   then emptyArray ()
+	else let
 	  val a = array(n, f 0)
 	  fun tab i = if i < n 
 		then (update(a, i, f i); tab(i + 1))

@@ -255,7 +255,9 @@ structure ChkExp :> sig
 		    else ();
 		  if not(U.unify(ty2, ty3))
 		    then (
-		      error(loc, ["types of then and else clauses must match"]);
+		      error(loc, ["types of then and else clauses do not match.\n\
+                                  \  then branch: " ^ TypeUtil.toString ty2 ^ "\n\
+                                  \  else branch: " ^ TypeUtil.toString ty3]);
 		      bogusExp)
 		    else (AST.IfExp(e1', e2', e3', ty2), ty2)
 		end
@@ -382,8 +384,8 @@ structure ChkExp :> sig
 		in
 		  if (not(U.unify(ty1, AST.FunTy(ty2, resTy))) handle Fail _ => true)
 		    then error(loc, ["type mismatch in application\n",
-				     "* expected ", TypeUtil.fmt {long=true} ty1, "\n",
-				     "* found    ", TypeUtil.fmt {long=true} (Ty.FunTy(ty2, resTy))])
+				     "* expected ", TypeUtil.toString ty1, "\n",
+				     "* found    ", TypeUtil.toString (Ty.FunTy(ty2, resTy))])
 		    else ();
 		  (AST.ApplyExp(e1', e2', resTy), resTy)
 		end

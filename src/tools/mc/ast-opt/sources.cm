@@ -17,7 +17,6 @@ Library
   structure Nester
   structure PrintAST  
   structure PrintTypes
-(*  structure RopeOps *)
   structure Ropes
   structure TestUtils	
   structure TranslatePCase
@@ -48,7 +47,6 @@ is
   elaborate.sml
   hash.sml
   nester.sml
-(*  rope-ops.sml *)
   ropes.sml
   test-utils.sml
   translate-pcase.sml

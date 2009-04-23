@@ -8,7 +8,7 @@
 
 structure RopePair (* : ROPE_PAIR *) = struct
 
-    structure S = ListSeq
+    structure S = Ropes.S
     structure R = Ropes
 
     datatype option = datatype Option.option
@@ -86,8 +86,8 @@ structure RopePair (* : ROPE_PAIR *) = struct
   (* mapP : ('a * 'b -> 'g) -> 'a rope * 'b rope -> 'g rope *)
   (* stop mapping when the elements of one rope run out *)
   (* post : the output has the same shape as the shorter input *)
-  (* note: the sameStructureP test might not be worth it when leaf size is small *)
-    fun mapP (f, rope1, rope2) =
+  (* note : the sameStructureP test might not be worth it when leaf size is small *)
+    fun mapP (f, rope1, rope2)  =
      (if sameStructureP (rope1, rope2) then
         fastMapP (f, rope1, rope2)
       else if R.length rope1 > R.length rope2 then let
@@ -97,10 +97,10 @@ structure RopePair (* : ROPE_PAIR *) = struct
         end
       else
         mapP' (f, rope1, rope2))
-    
+
   (* zipP : 'a rope * 'b rope -> ('a * 'b) rope *)
   (* Zipping silently completes when one rope runs out. *)
-    fun zipP (r1, r2) = mapP (fn (a,b) => (a,b), r1, r2)
+    fun zipP (r1, r2) = failwith "todo" (* mapP (fn (a,b) => (a,b), r1, r2) *)
 
   (* unzipP : ('a * 'b) rope -> 'a rope * 'b rope *)
   (* pre: input rope is balanced. *)

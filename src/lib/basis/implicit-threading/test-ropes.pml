@@ -1,5 +1,6 @@
 structure TestRopes = struct
 
+(*
     structure S = ListSeq
     structure R = Ropes
     val print = Print.print
@@ -84,5 +85,6 @@ structure TestRopes = struct
           check(List.all (fn i => i = R.sub(r2, i-R.length r1)) ls2);
 	  R.length r2
         end
+*)
 *)
 end

@@ -58,6 +58,8 @@ structure Time =
 	    sign ^ Long.toString(toSecs t) ^ frac
 	  end
 
+  (* timeToEval : (unit -> 'a) -> 'a * time *)
+  (* Pass in a suspended computation; get back the result and the time it took. *)
     fun timeToEval f = let
 	  val b = now()
 	  val x = f()
