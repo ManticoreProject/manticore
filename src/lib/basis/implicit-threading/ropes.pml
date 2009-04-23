@@ -9,7 +9,6 @@
 structure Ropes (* : ROPES *) = struct
 
     structure S = ArraySeq (* ListSeq *)
-    val ceilingLg = Int.ceilingLg
 
     datatype option = datatype Option.option
 
@@ -20,25 +19,6 @@ structure Ropes (* : ROPES *) = struct
   (* failwith : string -> 'a *)
   (* using this for the moment so we can observe the exception message at runtime *)
     fun failwith msg = (Print.printLn msg; (raise Fail msg))
-
-  (* abs : int -> int *)
-    fun abs n = if n < 0 then ~n else n
-
-  (* fib : int -> int *)
-  (* Compute the nth Fibonacci number, where *)
-  (*   fib 0 is 0, fib 1 is 1, fib 2 is 1, etc. *)
-  (* Returns 0 for negative args, so be careful. *)
-    fun fib n = let
-      fun ff args =
-       (case args
-	  of (0, u, p) => u
-	   | (n, u, p) => ff (n-1, u+p, u)
-          (* end case *))
-      in
-        if n < 1 then 0
-	else if n = 0 then 1
-	else ff (n, 0, 1)
-      end
 
   (* ***** ROPES ***** *)
 
@@ -53,7 +33,7 @@ structure Ropes (* : ROPES *) = struct
 		 'a seq   (* sequence *))
 
   (* maxLeafSize : int *)
-    val maxLeafSize = 256 (* 1024 *)
+    val maxLeafSize = MaxLeafSize.sz
 
   (* empty : 'a rope *)
     val empty = LEAF (0, S.empty)
@@ -101,7 +81,7 @@ structure Ropes (* : ROPES *) = struct
     fun isBalanced r = 
      (case r
         of LEAF _ => true
-	 | CAT (depth, len, _, _) => (depth <= ceilingLg len + 2)
+	 | CAT (depth, len, _, _) => (depth <= Int.ceilingLg len + 2)
         (* end case *))
 
   (* singleton : 'a -> 'a rope *)
@@ -123,6 +103,7 @@ structure Ropes (* : ROPES *) = struct
         (* end case *))
 
   (* depth : 'a rope -> int *)
+  (* The depth of a leaf is 0. *)
     fun depth r = 
      (case r
         of LEAF (_, _) => 0
@@ -173,7 +154,7 @@ structure Ropes (* : ROPES *) = struct
   (*   e.g., balancerLen 34 = 8 *)
     fun balancerLen len = let
 	  fun lp n =
-	        if fib n > len
+	        if Int.fib n > len
 		   then n
 		else lp (n + 1)
           in
@@ -184,7 +165,7 @@ structure Ropes (* : ROPES *) = struct
   (* takes a rope length, and returns a rope balancer *)
     fun mkInitialBalancer len = let
       val blen = balancerLen len
-      fun initEntry n = (fib (n+2), fib (n+3), NONE)
+      fun initEntry n = (Int.fib (n+2), Int.fib (n+3), NONE)
       in
         List.tabulate (blen, initEntry)
       end
@@ -467,7 +448,7 @@ structure Ropes (* : ROPES *) = struct
       else if from = to_ then 1
       else if (from > to_ andalso step > 0) then 0
       else if (from < to_ andalso step < 0) then 0
-      else (abs (from - to_) div abs step) + 1)
+      else (Int.abs (from - to_) div Int.abs step) + 1)
 
   (* rangeP : int * int * int -> int rope *)
     fun rangeP (from, to_, step) = (* "to" is syntax in pml *)
@@ -601,80 +582,6 @@ structure Ropes (* : ROPES *) = struct
       in
         m rope
       end          
-
-(*
-  (* sameStructure : 'a rope * 'b rope -> bool *)
-    fun sameStructure (r1, r2) = 
-     (if length r1 <> length r2 then
-        false
-      else let (* same length *)
-        fun strictAnd (b1, b2) = b1 andalso b2
-        fun lp (r1, r2) =
-         (case (r1, r2)
-            of (LEAF (len1, _), LEAF (len2, _)) => (len1 = len2)
-	     | (CAT (_, _, r1L, r1R), CAT (_, _, r2L, r2R)) =>
-                 strictAnd (| sameStructure (r1L, r2L),
-                              sameStructure (r1R, r2R) |)
-                (* perhaps use a pcase here? *)
-	     | _ => false
-	   (* end case *))
-	in
-	  lp (r1, r2)
-	end
-     (* end if *))
-     
-  (* fastMapP2 : ('a * 'b -> 'g) * 'a rope * 'b rope -> 'g rope *)
-  (* pre : both ropes have exactly the same structure *)
-    fun fastMapP2 (f, r1, r2) = let
-      fun lp ropes = 
-       (case ropes
-	  of (LEAF (len1, s1), LEAF (len2, s2)) => LEAF (len1, S.map2 (f, s1, s2))
-	   | (CAT (d1, len1, r1L, r1R), CAT (d2, len2, r2L, r2R)) =>
-               CAT (| d1, len1, lp (r1L, r2L), lp (r1R, r2R) |)
-	   | _ => failwith "BUG" (* this shouldn't have been called *)
-         (* end case *))
-      in
-	lp (r1, r2)
-      end
-
-  (* mapP2' : ('a * 'b -> 'g) * 'a rope * 'b rope -> 'g rope *)
-  (* pre : the first rope's length is <= that of the second *)
-  (* traversal follows the structure of the shorter rope *)
-  (* post : the output rope has the same shape as the first rope *)
-    fun mapP2' (f, ropeS, ropeL) = let
-      fun go (n, r) = 
-       (case r
-          of LEAF (len, sS) => let
-               val (lo, hi) = (n, n+len)
-	       val sL = partialSeq (ropeL, lo, hi)
-	       val s = S.map2 (f, sS, sL)
-               in
-		 LEAF (len, s)
-               end
-	   | CAT (d, len, rL, rR) => let
-	       val (rL', rR') = (| go (n, rL), go (n + length rL, rR) |)
-               in
-                 CAT (d, len, rL', rR')
-	       end
-          (* end case *))
-      in
-        go (0, ropeS)
-      end
-
-  (* mapP2 : ('a * 'b -> 'c) -> 'a rope * 'b rope -> 'c rope *)
-  (* stop mapping when the elements of one rope run out *)
-  (* post : the output has the same shape as the shorter input *)
-    fun mapP2 (f, rope1, rope2) =
-     (if sameStructure (rope1, rope2) then
-        fastMapP2 (f, rope1, rope2)
-      else if length rope1 > length rope2 then let
-        fun f' x = (case x of (b, a) => f (a, b))
-        in
-          mapP2' (f', rope2, rope1)
-        end
-      else
-        mapP2' (f, rope1, rope2))
-*)
     
   (* reduceP : ('a * 'a -> 'a) * 'a * 'a rope -> 'a *)
   (* Reduce with an associative operator. *)
@@ -708,41 +615,4 @@ structure Ropes (* : ROPES *) = struct
         balanceIfNecessary (f rope)
       end
 
-(*
-  (* zipP : 'a rope * 'b rope -> ('a * 'b) rope *)
-  (* pre: the input ropes have the same length *)
-  (* pre: the input ropes are balanced *)
-  (* post: the output rope has the (balanced) structure of the first arg *)
-    fun zipP (rope1, rope2) =  
-	if length rope1 <> length rope2 then
-	    (raise Fail "Ropes.zip: input lengths not equal")
-	else
-	 (case (rope1, rope2)
-	   of (LEAF (len, l1), LEAF (_, l2)) => 
-		LEAF (len, S.zip (l1, l2))
-	    | (LEAF (len, l1), CAT _) =>
-		LEAF (len, S.zip (l1, toSeq rope2))
-	    | (CAT _, LEAF (len, l2)) =>
-		LEAF (len, S.zip (toSeq rope1, l2))
-	    | (CAT (_, _, r11, r12), CAT (_, _, r21, r22)) => 
-		concatWithoutBalancing (| zipP (r11, r21), zipP (r12, r22) |)
-	 (* end case *))
-
-  (* unzipP : ('a * 'b) rope -> 'a rope * 'b rope *)
-  (* NOTE: the output ropes are balanced, assuming that the input rope is also *)
-  (* balanced. *)	    
-    fun unzipP rope = 
-	(case rope
-	  of LEAF (len, l) => let
-	       val (l1, l2) = S.unzip l
-	       in
-		 (LEAF (len, l1), LEAF (len, l2))
-	       end
-	   | CAT (d, len, r1, r2) => let
-	       val ((r11, r12), (r21, r22)) = (| unzipP r1, unzipP r2 |)
-	       in
-		 (concatWithoutBalancing (r11, r21), concatWithoutBalancing (r12, r22))
-	       end
-	(* end case *))
-*)
   end

@@ -3,12 +3,19 @@
  * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Implementation of parallel prefix + scan, for now.
- * More scans coming.
- *
  * Follows the algorithms in Blelloch's "Prefix Sums and their Applications."
  * Adapted for ropes here.
  * (Nov 1990, CMS-CS-90-190)
+ *
+ * Follows the names of the operations given in Keller's thesis (pp. 53 ff).
+ * currently it provides:
+ * 
+ * plusScan : num rope -> num rope ([1,1,1,1] => [1,2,3,4])
+ * plusScan2 : num -> num rope -> num rope (2 [1,1,1,1] => [3,4,5,6])
+ * prePlusScan : num rope -> num rope ([1,1,1,1] => [0,1,2,3])
+ * prePlusScan2 : num -> num rope -> num rope ([2 [1,1,1,1] => [2,3,4,5])
+ *
+ * I write "num" here even though currently only int works.
  *)
 
 structure Scan = struct
@@ -39,18 +46,21 @@ structure Scan = struct
   (* using this for the moment so we can observe the exception message at runtime *)
     fun failwith msg = (Print.printLn msg; (raise Fail msg))
 
-  (* ***** prefix+ ***** *)
+  (* datumOf : 'a scan_rope -> 'a *)
+  (* Select the accumulator out of a scan_rope node. *)
     fun datumOf x =
      (case x
         of (Cat (d, _, _, _, _)) => d
 	 | (Leaf (d, _, _)) => d
        (* end case *))
+
+  (* ***** FULL SCANS (as opp. to short-circuiting ***** *)
   
-  (* seqscan : int -> int seq -> int seq * int *)
+  (* seqscan : num -> num seq -> num seq * num *)
   (* Does a prefix scan starting from the given seed value. *)
   (* Returns the scanned sequence and the total. *)
     fun seqscan seed seq =
-      if S.null seq then (S.empty, 0)
+      if S.null seq then (S.empty, seed)
       else let
         val len = S.length seq
         val seq' = S.tabulate (len, fn _ => seed)
@@ -62,21 +72,21 @@ structure Scan = struct
               lp (i+1, last + S.sub (seq, i))
 	    end
         in
-          lp (0, 0)
+          lp (0, seed)
         end
 
-  (* seqsum : Num 'a => 'a seq -> 'a *)
-    fun seqsum s = let
+  (* seqsum : num -> num seq -> num *)
+    fun seqsum seed s = let
       fun plus (a, b) = a + b
       in
-        S.foldl (plus, 0, s)
+        S.foldl (plus, seed, s)
       end
 
-  (* upsweep : R.rope -> scan_rope *)
-    fun upsweep t = let
+  (* upsweep : num -> num R.rope -> num scan_rope *)
+    fun upsweep seed t = let
       fun lp r = 
        (case r 
-	  of (R.LEAF (len, s)) => Leaf (seqsum s, len, s)
+	  of (R.LEAF (len, s)) => Leaf (seqsum seed s, len, s)
 	   | (R.CAT (d, len, rL, rR)) => let
                val (uL, uR) = (| lp rL, lp rR |)
                in 
@@ -86,7 +96,8 @@ structure Scan = struct
         lp t
       end   
 
-    fun downsweep t = let
+  (* downsweep : num -> num scan_rope -> num rope *)
+    fun downsweep seed t = let
       (* FIXME It seems odd that I'm underscoring the datums here... *)
       (* ...think about this more. *)
       fun lp (c, r) =
@@ -102,40 +113,32 @@ structure Scan = struct
                  R.LEAF (len, scanned)
                end)
       in
-        lp (0, t)
+        lp (seed, t)
       end
-(*
-  (* toString : ('a -> string) -> 'a rope -> string *)
-    fun toString show r = let
-      fun copies thing n = List.tabulate (n, fn _ => thing)
-      val rootString = "C<"
-      val spaces = copies " "
-      val indenter = String.concat (spaces (String.size rootString))
-      val indent = List.map (fn s => indenter ^ s) 
-      fun build r =
-       (case r
-	 of LEAF (_, xs) => let 
-              fun b args = 
-               (case args
-	         of (nil, acc) => "]" :: acc
-		  | (x::nil, acc) => b (nil, show x :: acc)
-		  | (x::xs, acc) => b (xs, "," :: show x ::acc)
-	         (* end case *))
-              in
-		(String.concat(List.rev(b (S.toList xs, ("["::nil))))) :: nil
-              end
-	  | CAT (_, _, r1, r2) => let 
-              val ss1 = build r1
-	      val ss2 = build r2
-	      in
-	        (indent ss1) @ (rootString :: (indent ss2))
-	      end	
-         (* end case *))
-      in
-        String.concatWith "\n" (build r @ ("\n"::nil))
-      end
-*)
 
-  fun prefixPlus r = downsweep (upsweep r)
+  (* plusScan2 : num -> num rope -> num rope *)
+  (* ex: plusScan2 2 [1,1,1,1] => [3,4,5,6] *)
+    fun plusScan2 seed r =
+      if R.isEmpty r then r
+      else let
+        val elt0 = R.sub (r, 0)
+	val seed' = elt0 + seed
+        in
+          downsweep seed' (upsweep seed' r)
+	end
 
-  end
+  (* plusScan : num rope -> num rope *)
+  (* ex: plusScan [1,1,1,1] => [1,2,3,4] *)
+  (* nb: plusScan is equiv. to (plusScan2 0) *)
+    fun plusScan r = plusScan2 0 r
+
+  (* prePlusScan2 : num -> num rope -> num rope *)
+  (* ex: prePlusScan2 2 [1,1,1,1] => [2,3,4,5] *)
+    fun prePlusScan2 seed r = downsweep seed (upsweep seed r)
+
+  (* prePlusScan : num rope -> num rope *)
+  (* ex: prePlusScan [1,1,1,1] => plusScan [0,1,2,3] *)
+  (* nb: prePlusScan is equiv to (prePlusScan2 0) *)
+    fun prePlusScan r = downsweep 0 (upsweep 0 r)
+		     
+end

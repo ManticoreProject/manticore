@@ -9,8 +9,12 @@
 list-seq.pml
 array-seq.pml
 
+max-leaf-size.pml
+
 (* ann "expansion-opt" "pval.cilk5-work-stealing" in *)
   ropes.pml 
+  rope2.pml
+  rope-pair.pml
 (* end *)
 
 test-ropes.pml

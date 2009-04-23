@@ -214,4 +214,24 @@ structure ArraySeq = struct
 
   val update = A.update
 
+(* short-circuits on finding false *)
+  fun any pred s = let
+    val len = length s
+    fun lp i =
+      if i >= len then true
+      else pred (sub (s, i)) andalso lp (i+1)
+    in
+      lp 0
+    end
+
+(* short-circuits on finding true *)
+  fun exists pred s = let
+    val len = length s
+    fun lp i =
+      if i >= len then false
+      else pred (sub (s, i)) orelse lp (i+1)
+    in
+      lp 0
+    end
+
 end

@@ -32,8 +32,29 @@ structure Int =
     val toString : int -> string = _prim(@to-string)
     val ceilingLg : int -> int = _prim(@ceiling-lg)
 
+  (* abs : int -> int *)
+    fun abs n = if n < 0 then ~n else n
+
     fun max (x, y) = if x < y then y else x
+    fun min (x, y) = if x < y then x else y
 
     fun compare (x, y) = if x = y then EQUAL else if x < y then LESS else GREATER
+
+  (* fib : int -> int *)
+  (* Compute the nth Fibonacci number, where *)
+  (*   fib 0 is 0, fib 1 is 1, fib 2 is 1, etc. *)
+  (* Raises an exception on negative arguments. *)
+    fun fib n = let
+      fun ff args =
+       (case args
+	  of (0, u, p) => u
+	   | (n, u, p) => ff (n-1, u+p, u)
+          (* end case *))
+      in
+	if n < 0 then (raise Fail "fib: given negative arg")
+	else if n = 0 then 1
+        else if n = 1 then 0
+	else ff (n, 0, 1)
+      end
 
   end
