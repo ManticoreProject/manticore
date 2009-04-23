@@ -21,8 +21,10 @@ structure PMergesort =
   (* split xs into xs[0, ..., n-1] and xs[n, ..., |xs|] *)
     fun split (xs, n) =
 	  if n = 0
-	     then (R.empty, xs)
+	     then (xs, R.empty)
 	  else R.splitAt(xs, n - 1)	      
+
+    fun lastElt arr = R.sub(arr, R.length arr - 1)
 
   (* assuming that xs is sorted, return p such that xs[p] <= y <= xs[p+1]. this
    * operation performs O(log^2 n) comparisons.
@@ -42,7 +44,7 @@ structure PMergesort =
 		     lp(a, b)
 		   end
           in
-	    lp(0, R.length xs)
+	    lp(0, R.length xs - 1)
 	  end
 
   (* merge two sorted sequences in parallel *)
@@ -56,9 +58,9 @@ structure PMergesort =
 		     then R.concat(xs, ys)
 		  else R.concat(ys, xs)
 	  else let
-             val (xsL, xsR) = split(xs, R.length xs div 2)
-	     val p = binarySearch(R.sub(xsR, 0), ys)
-	     val (ysL, ysR) = split(ys, p)
+             val (xsL, xsR) = R.splitAt(xs, R.length xs div 2 - 1)
+	     val p = binarySearch(lastElt xsL, ys)
+	     val (ysL, ysR) = R.splitAt(ys, p)
 	     pval l = pMerge(xsL, ysL)
 	     val r = pMerge(xsR, ysR)
 	     in
@@ -68,8 +70,12 @@ structure PMergesort =
     fun pMergesort xs =
 	  if R.length xs <= 1
 	     then xs
+	  else if R.length xs = 2
+	     then if lessThan(R.sub(xs, 0), R.sub(xs, 1))
+		     then xs
+		  else R.revP xs
 	  else let
-	     val (xsL, xsR) = split(xs, R.length xs div 2)
+	     val (xsL, xsR) = R.splitAt(xs, R.length xs div 2 - 1)
 	     pval xsL = pMergesort xsL
 	     val xsR = pMergesort xsR
 	     in
