@@ -19,13 +19,6 @@ val epsilon : double = 0.05
 val eClose : double = 0.01
 val dt = 2.0
 
-val reduceP = Ropes.reduceP
-val filterP = Ropes.filterP
-val fromListP = Ropes.fromList
-val lengthP = Ropes.length
-val mapP = Ropes.mapP
-type 'a parray = 'a Ropes.rope
-
 fun applyAccel (PARTICLE (mp, vx, vy), (ax, ay)) = PARTICLE (mp, vx+ax * dt, vy+ay * dt)
 
 fun isClose (MP (x1, y1, m), x2, y2) = (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2) < eClose
@@ -71,7 +64,7 @@ fun calcAccel (mpt, bht) =
 	     accel (mpt, x, y, m)
     (* end case *))
 
-fun calcCentroid (mpts : mass_point parray) (*: mass_point*) = 
+fun calcCentroid (mpts : mass_point parray) : mass_point = 
     let
         fun circlePlus ((mx0,my0,m0), (mx1,my1,m1)) = (mx0+mx1, my0+my1, m0+m1)
 	val (sum_mx, sum_my, sum_m) = 
@@ -84,7 +77,7 @@ fun inBox (BOX (llx, lly, rux, ruy)) (MP (px, py, _)) =
     (px > llx) andalso (px <= rux) andalso (py > lly) andalso (py <= ruy)
 
 (* split mass points according to their locations in the quadrants *)
-fun buildTree (BOX (llx, lly, rux, ruy), particles : mass_point parray) (*: bh_tree*) =
+fun buildTree (BOX (llx, lly, rux, ruy), particles : mass_point parray) : bh_tree =
     if lengthP particles = 0 then
 	BHT_EMPTY
     else if lengthP particles = 1 then
@@ -97,20 +90,19 @@ fun buildTree (BOX (llx, lly, rux, ruy), particles : mass_point parray) (*: bh_t
 	let
 	    val MP (x, y, m) = calcCentroid particles
 	    val (midx,  midy) = ((llx + rux) / 2.0 , (lly + ruy) / 2.0) 
-	    val b1 = BOX (llx, lly, midx, midy)
+	    val b1 = BOX (llx,  lly,  midx,  midy)
 	    val b2 = BOX (llx,  midy, midx,  ruy)
 	    val b3 = BOX (midx, midy, rux,   ruy)
-	    val b4 = BOX (midx, lly,  rux,  midy)
-	    val (q1, q2, q3, q4) =
-		(| buildTree (b1, filterP (inBox b1, particles)),
-		   buildTree (b2, filterP (inBox b2, particles)),
-		   buildTree (b3, filterP (inBox b3, particles)),
-		   buildTree (b4, filterP (inBox b4, particles)) |)
+	    val b4 = BOX (midx, lly,  rux,   midy)
 	in
-	    BHT_QUAD (x, y, m, q1, q2, q3, q4)
+	    BHT_QUAD (| x, y, m, 
+		        buildTree (b1, filterP (inBox b1, particles)),
+		        buildTree (b2, filterP (inBox b2, particles)),
+		        buildTree (b3, filterP (inBox b3, particles)),
+		        buildTree (b4, filterP (inBox b4, particles)) |)
 	end
 
-fun oneStep (llx, lly, rux, ruy, pts : particle parray) (*: particle parray *) =
+fun oneStep (llx, lly, rux, ruy, pts : particle parray) : particle parray  =
     let
 	val mspnts = [| mpnt | PARTICLE (mpnt, _, _) in pts |]
 	val tree = buildTree (BOX (llx, lly, rux, ruy), mspnts)
