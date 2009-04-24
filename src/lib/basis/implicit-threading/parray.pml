@@ -11,7 +11,7 @@ structure PArray = struct
     type 'a parray = 'a Ropes.rope
 
   (* FIXME too tightly coupled *)
-    val sub = Ropes.sub
+    val subP = Ropes.sub
     val lengthP = Ropes.length
     val reduceP = Ropes.reduceP
     val filterP = Ropes.filterP
@@ -32,7 +32,7 @@ structure PArray = struct
        (if (m >= n) then
           List.rev ("|]" :: acc)
         else let
-          val s = eltToString (sub (parr, m))
+          val s = eltToString (subP (parr, m))
           in
             if (m = (n-1)) then
               List.rev ("|]" :: s :: acc)
@@ -50,6 +50,7 @@ end
 type 'a parray = 'a PArray.parray
 val reduceP = PArray.reduceP
 val filterP = PArray.filterP
+val subP = PArray.subP
 val revP = PArray.revP
 val lengthP = PArray.lengthP
 val mapP = PArray.mapP
