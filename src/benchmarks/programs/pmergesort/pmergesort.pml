@@ -4,12 +4,18 @@
  * All rights reserved.
  *
  * Purely functional parallel mergesort.
+ *
  *)
 
 structure PMergesort =
   struct
 
     structure R = Ropes
+
+    fun less ord = 
+	(case ord
+	  of LESS => true
+	   | _ => false)
 
     fun lastElt arr = R.sub(arr, R.length arr - 1)
 
@@ -24,7 +30,7 @@ structure PMergesort =
 		    let
 			val p = (b + a) div 2
 			val (a, b) = 
-			    if cmp (R.sub (xs, p), y) then
+			    if less (cmp (R.sub (xs, p), y)) then
 				(p + 1, b)
 			    else 
 				(a, p)
@@ -42,7 +48,7 @@ structure PMergesort =
 	else if R.length xs = 0 orelse R.length ys = 0 then
 	    xs
 	else if R.length xs = 1 (* andalso R.length ys = 1 *) then
-	    if cmp (R.sub (xs, 0), R.sub (ys, 0)) then
+	    if less (cmp (R.sub (xs, 0), R.sub (ys, 0))) then
 		R.concat (xs, ys)
 	    else 
 		R.concat (ys, xs)
@@ -51,14 +57,14 @@ structure PMergesort =
 		val (xsL, xsR) = R.splitAt (xs, R.length xs div 2 - 1)
 		val (ysL, ysR) = R.cut (ys, binarySearch cmp (lastElt xsL, ys))
 	    in
-		R.concat (pMerge cmp (xsL, ysL), pMerge cmp (xsR, ysR))
+		R.concat (| pMerge cmp (xsL, ysL), pMerge cmp (xsR, ysR) |)
 	    end
 
     fun pMergesort cmp xs = 
 	if R.length xs <= 1 then
 	    xs
 	else if R.length xs = 2 then
-	    if cmp (R.sub (xs, 0), R.sub (xs, 1)) then
+	    if less (cmp (R.sub (xs, 0), R.sub (xs, 1))) then
 		xs
 	    else
 		R.revP xs
@@ -66,7 +72,7 @@ structure PMergesort =
 	    let
 		val (xsL, xsR) = R.splitAt (xs, R.length xs div 2 - 1)
 	    in
-		pMerge cmp (pMergesort cmp xsL, pMergesort cmp xsR)
+		pMerge cmp (| pMergesort cmp xsL, pMergesort cmp xsR |)
 	    end
 
   end

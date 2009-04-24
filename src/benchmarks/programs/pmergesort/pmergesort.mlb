@@ -4,7 +4,8 @@ list-quicksort.pml
 ann "expansion-opt" "pval.cilk5-work-stealing"
 in
   pmergesort.pml
-  (*pmergesort-with-seq-bc.pml*)
+  array-qsort.pml
+  pmergesort-with-seq-bc.pml
   (*test-pmergesort.pml*)
   bench-pmergesort.pml
 end

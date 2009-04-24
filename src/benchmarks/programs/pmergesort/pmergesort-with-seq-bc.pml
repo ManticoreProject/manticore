@@ -3,99 +3,121 @@
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Purely functional parallel mergesort.
+ * Hybrid parallel mergesort. When the input drops below a threshold, the algorithm
+ * uses a sequential, in-place counterpart.
+ *
  *)
 
 structure PMergesortWithSeqBc =
   struct
 
-    structure K = Int
     structure R = Ropes
-		  
-    fun lessThan (x, y) = (
-	  case K.compare(x, y)
-	   of LESS => true
-	    | _ => false
-          (* end case *))
 
-  (* split xs into xs[0, ..., n-1] and xs[n, ..., |xs|] *)
-    fun split (xs, n) =
-	  if n = 0
-	     then (R.empty, xs)
-	  else R.splitAt(xs, n - 1)
+    fun less ord = 
+	(case ord
+	  of LESS => true
+	   | _ => false)
 
-  (* merge two sorted lists into one sorted list *)
-    fun sMerge (xs, ys) = let
-	  fun lp (xs, ys, acc) = 
-	        if List.null xs
-		   then List.rev ys @ acc
-		else if List.null ys 
-		   then List.rev xs @ acc
-		else if lessThan(List.hd xs, List.hd ys) 
-		   then lp(List.tl xs, List.hd ys :: List.tl ys, List.hd xs :: acc) 
-		else lp(List.hd xs :: List.tl xs, List.tl ys, List.hd ys :: acc)
-          in
-	    List.rev(lp(xs, ys, nil))
-	  end
+    fun copy s = R.tabP (R.length s, fn i => R.sub (s, i))
 
-    val sSort = ListQuicksort.quicksort
+    fun lastElt arr = R.sub(arr, R.length arr - 1)
 
-  (* assuming that xs is sorted, return p such that xs[p] <= y <= xs[p+1]. this
-   * operation performs O(log^2 n) comparisons.
-   *)
-    fun binarySearch (y, xs) = let
-	  fun lp (a, b) =
-	        if b = a
-		   then a
-		else let
-	           val p = (b + a) div 2
-		   val (a, b) = (
-		         case K.compare(R.sub(xs, p), y) 
-			  of LESS => (p + 1, b)
-			   | _ => (a, p)
- 		         (* end case *))
-		   in
-		     lp(a, b)
-		   end
-          in
-	    lp(0, R.length xs)
-	  end
+  (* in-place, sequential merge of two sorted sequences *)
+  (* precondition: xs is non empty *)
+  (* precondition: xs has at least as many elements as ys *)  
+    fun sMerge cmp (xs, ys) =
+	let
+	    val n = R.S.length xs + R.S.length ys
+	    val zs = R.S.tabulate (n, fn i => R.S.sub (xs, 0))
+	    fun merge (i, xsI, ysI) =
+		if i < n then
+		    if ysI > R.S.length ys - 1 then
+			(R.S.update (zs, i, R.S.sub (xs, xsI));
+			 merge (i + 1, xsI + 1, ysI))
+		    else if xsI > R.S.length xs - 1 then
+			(R.S.update (zs, i, R.S.sub (ys, ysI));
+			 merge (i + 1, xsI, ysI + 1))
+		    else if less (cmp (R.S.sub (xs, xsI), R.S.sub (ys, ysI))) then
+			(R.S.update (zs, i, R.S.sub (xs, xsI));
+			 merge (i + 1, xsI + 1, ysI))
+		    else
+			(R.S.update (zs, i, R.S.sub (ys, ysI));
+			 merge (i + 1, xsI, ysI + 1))
+		else
+		    ()
+	in
+	    merge (0, 0, 0);
+	    zs
+	end
 
-  (* merge two sorted collections *)
-    fun pMerge (xs, ys) =
-	  if R.isLeaf xs andalso R.isLeaf ys
-	     then (* no parallelism to find here *)
-	      R.fromSeq(sMerge(R.toSeq xs, R.toSeq ys))
-	  else if R.length xs < R.length ys
-	     then pMerge(ys, xs)
-	  else if R.length xs = 0 orelse R.length ys = 0
-	     then xs
-	  else if R.length xs = 1 (* andalso R.length ys = 1 *)
-	     then if lessThan(R.sub(xs, 0), R.sub(ys, 0))
-		     then R.concat(xs, ys)
-		  else R.concat(ys, xs)
-	  else let
-	     val (xsL, xsR) = split(xs, R.length xs div 2)
-	     val p = binarySearch(R.sub(xsR, 0), ys)
-	     val (ysL, ysR) = split(ys, p)
-	     pval l = pMerge(xsL, ysL)
-	     val r = pMerge(xsR, ysR)
-	     in
-		R.concat(l, r)
-	     end
+  (* return p such that xs[p] <= y <= xs[p+1] *)
+  (* precondition: xs is sorted *)
+    fun binarySearch cmp (y, xs) = 
+	let
+	    fun lp (a, b) =
+	        if b = a then
+		    a
+		else
+		    let
+			val p = (b + a) div 2
+			val (a, b) = 
+			    if less (cmp (R.sub (xs, p), y)) then
+				(p + 1, b)
+			    else 
+				(a, p)
+		    in
+			lp (a, b)
+		    end
+        in
+	    lp (0, R.length xs)
+	end
 
-    fun pMergesort xs =
-	  if R.isLeaf xs
-	     then
-	      (* no parallelism to find here *)
-	      R.fromSeq(sSort(R.toSeq xs))
-	  else if R.length xs <= 1
-	     then xs
-	  else let
-	     val (xsL, xsR) = split(xs, R.length xs div 2)
-	     pval xsL = pMergesort xsL
-	     val xsR = pMergesort xsR
-	     in
-		pMerge(xsL, xsR)
-	     end
+  (* merge two sorted sequences *)
+    fun pMerge cmp (xs, ys) =
+	if R.length xs < R.length ys then
+	    pMerge cmp (ys, xs)
+	else if R.isLeaf xs then
+	    let
+		val (R.LEAF (l1, xsS), R.LEAF (l2, ysS)) = (xs, ys)
+	    in
+		R.LEAF (l1 + l2, sMerge cmp (xsS, ysS))
+	    end
+	else if R.length xs = 0 orelse R.length ys = 0 then
+	    xs
+	else if R.length xs = 1 (* andalso R.length ys = 1 *) then
+	    if less (cmp (R.sub (xs, 0), R.sub (ys, 0))) then
+		R.concat (xs, ys)
+	    else 
+		R.concat (ys, xs)
+	else 
+	    let
+		val (xsL, xsR) = R.splitAt (xs, R.length xs div 2 - 1)
+		val (ysL, ysR) = R.cut (ys, binarySearch cmp (lastElt xsL, ys))
+	    in
+		R.concat (| pMerge cmp (xsL, ysL), pMerge cmp (xsR, ysR) |)
+	    end
+
+    fun pMergesort cmp xs = 
+	if R.isLeaf xs then
+	    let
+		val xs' = copy xs
+		val R.LEAF (_, xsS') = xs'
+	    in
+		ArrayQSort.sort cmp xsS';
+		xs'
+	    end
+	else if R.length xs <= 1 then
+	    xs
+	else if R.length xs = 2 then
+	    if less (cmp (R.sub (xs, 0), R.sub (xs, 1))) then
+		xs
+	    else
+		R.revP xs
+	else
+	    let
+		val (xsL, xsR) = R.splitAt (xs, R.length xs div 2 - 1)
+	    in
+		pMerge cmp (| pMergesort cmp xsL, pMergesort cmp xsR |)
+	    end
+
   end

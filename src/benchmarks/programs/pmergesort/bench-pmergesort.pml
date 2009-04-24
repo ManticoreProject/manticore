@@ -12,11 +12,9 @@ structure BenchPMergesort =
 	    ()
 	  end
 
-    fun lessThan (x, y) = x < y
-
     fun benchMergesort (seqSz, n, sort) = let
 	  val r = randomRope n
-          val (r, t) = Time.timeToEval(fn () => sort lessThan r)
+          val (r, t) = Time.timeToEval(fn () => sort Int.compare r)
           in
 	    Print.printLn(Long.toString t);
 	    (*Print.printLn(Ropes.toString Int.toString r);*)
@@ -24,8 +22,8 @@ structure BenchPMergesort =
 	  end
 
     val () = ImplicitThread.runWithGroup(MultiprogrammedWorkStealing.workGroup(), fn () => (
-(*     benchMergesort(PrimIO.readInt(), PrimIO.readInt(), PMergesortWithSeqBc.pMergesort)*)
-   benchMergesort(PrimIO.readInt(), PrimIO.readInt(), PMergesort.pMergesort)
+     benchMergesort(PrimIO.readInt(), PrimIO.readInt(), PMergesortWithSeqBc.pMergesort)
+(*   benchMergesort(PrimIO.readInt(), PrimIO.readInt(), PMergesort.pMergesort)*)
 (*    benchQuicksort(PrimIO.readInt(), PrimIO.readInt())*)))
 
   end
