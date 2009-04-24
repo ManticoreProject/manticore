@@ -8,9 +8,16 @@
 
 structure PArray = struct
 
+    type 'a parray = 'a Ropes.rope
+
   (* FIXME too tightly coupled *)
     val sub = Ropes.sub
-    val length = Ropes.length
+    val lengthP = Ropes.length
+    val reduceP = Ropes.reduceP
+    val filterP = Ropes.filterP
+    val mapP = Ropes.mapP
+    val revP = Ropes.revP
+    val fromListP = Ropes.fromList
 
   (* repP : int * 'a -> 'a parray *)
   (* called "dist" in NESL and Keller *)
@@ -20,7 +27,7 @@ structure PArray = struct
   (* toString : ('a -> string ) -> string -> 'a parray -> string *)
   (* FIXME: should we exploit the fact that we're dealing with a rope? *)
     fun toString eltToString sep parr = let
-      val n = length parr
+      val n = lengthP parr
       fun lp (m, acc) =
        (if (m >= n) then
           List.rev ("|]" :: acc)
@@ -38,3 +45,12 @@ structure PArray = struct
       end
 
 end
+
+(* below is the subset of the parallel array module that should bound at the top level. *)
+type 'a parray = 'a PArray.parray
+val reduceP = PArray.reduceP
+val filterP = PArray.filterP
+val revP = PArray.revP
+val lengthP = PArray.lengthP
+val mapP = PArray.mapP
+val fromListP = PArray.fromListP
