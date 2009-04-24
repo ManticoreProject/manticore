@@ -43,7 +43,7 @@ structure FloatArray =
 	let len : int = @length(arr / exh)
 	do assert(I32Lt(i,len))
         let data : any = SELECT(DATA_OFF, arr)
-	let x : unit  = ArrayStoreI64(data, i, #0(x))
+	let x : unit  = ArrayStoreF64(data, i, #0(x))
 	return()
       ;
 
