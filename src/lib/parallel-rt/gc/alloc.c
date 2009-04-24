@@ -219,7 +219,7 @@ STATIC_INLINE int CeilingDivide (int x, int y)
   return x / y + (x % y > 0 ? 1 : 0);
 }
 
-/*! \brief allocate an array of raw values in the global heap
+/*! \brief allocate an array of floats in the global heap
  *  \param vp the host vproc
  *  \param nElems the number of elements in the array
  *  \param elt the initial value for the array elements
