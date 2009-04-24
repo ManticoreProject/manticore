@@ -15,6 +15,5 @@
   ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
   in
     global-bfs-scheduler.pml
-    multiprogrammed-work-stealing.pml
     swp-work-stealing.pml
   end
