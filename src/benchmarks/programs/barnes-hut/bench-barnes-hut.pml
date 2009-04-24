@@ -106,6 +106,7 @@ val lly = ~1000000000000.0
 val rux = 10000000000000.0
 val ruy = 10000000000000.0
 
+(*
 fun debug () = let
     val nSteps = readint()
 
@@ -124,6 +125,7 @@ fun debug () = let
     in
        Print.printLn("Error for BH:"^Double.toString err)
     end
+*)
 
 fun benchmark () =
     let
