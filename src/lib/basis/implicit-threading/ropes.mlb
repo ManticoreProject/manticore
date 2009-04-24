@@ -8,6 +8,7 @@
 
 list-seq.pml
 array-seq.pml
+float-array-seq.pml
 
 max-leaf-size.pml
 
@@ -15,6 +16,7 @@ max-leaf-size.pml
   ropes.pml 
   rope2.pml
   rope-pair.pml
+  float-rope.pml
 (* end *)
 
 test-ropes.pml
