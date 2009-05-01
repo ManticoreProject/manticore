@@ -23,7 +23,7 @@
 
 GOTO_SEQ_SIZES=""
 
-usage="usage: benchmark.bsh -b bench_name -f path -q sequential_path -s size ... -p num_procs ... -l seq_sz ..."
+usage="See comments at the top of the script."
 SEQ_PML_PATH=""
 while getopts ":b:f:s:p:q:l:n:" options; do
   case $options in
