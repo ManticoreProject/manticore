@@ -106,15 +106,15 @@ structure FloatArray =
             let newArray : array = @array (len, mlSeed / exh)
 	    let seed : float = #0(mlSeed)
          (* note: bounds are not checked in this loop, since they'd only be checked against len *)
-            fun loop (i : int, last : float) : () =
+            fun loop (i : int, last : float / ) : () =
               if I32Gte(i,len)
                 then 
                   return()
 	        else
-                  let next : float = F64Add(last, x)
                   do @update-u (newArray, i, last / exh)
                   let x : float = @sub-u (arr, i / exh)
                   let j : int = I32Add(i,1)
+                  let next : float = F64Add(last, x)
                   do apply loop (j, next)
                   return()
              do apply loop (0, seed)
@@ -133,7 +133,7 @@ structure FloatArray =
           let curr : float = @sub-u (arr, i / exh)
           let newAcc : float = F64Add(curr, acc)
 	  let j : int = I32Add (i, 1)
-          let s : float = loop (j, newAcc)
+          let s : float = apply loop (j, newAcc)
           return (s)
       let s : float = apply loop (0, 0.0)
       let ml_s : ml_float = wrap(s)

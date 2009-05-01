@@ -108,7 +108,7 @@ structure FloatScan = struct
   (* plusScan : num rope -> num rope *)
   (* ex: plusScan [1,1,1,1] => [1,2,3,4] *)
   (* nb: plusScan is equiv. to (plusScan2 0) *)
-    fun plusScan r = plusScan2 0 r
+    fun plusScan r = plusScan2 0.0 r
 
   (* prePlusScan2 : num -> num rope -> num rope *)
   (* ex: prePlusScan2 2 [1,1,1,1] => [2,3,4,5] *)
@@ -117,6 +117,6 @@ structure FloatScan = struct
   (* prePlusScan : num rope -> num rope *)
   (* ex: prePlusScan [1,1,1,1] => plusScan [0,1,2,3] *)
   (* nb: prePlusScan is equiv to (prePlusScan2 0) *)
-    fun prePlusScan r = downsweep 0 (upsweep 0 r)
+    fun prePlusScan r = downsweep 0.0 (upsweep 0.0 r)
 		     
 end
