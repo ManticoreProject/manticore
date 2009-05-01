@@ -7,13 +7,18 @@
 # command-line arguments:
 #
 #           -b bench_name       name of the benchmark.
-#           -f path             path to the benchmark file.
-#           -q seq_path         optional path to the sequential program.
+#           -f path             path to the pml or mlb file containing the benchmark code.
+#           -q seq_path         optional path to the pml or mlb file containing the sequential baseline.
 #				The pml file should be located at prog_name/seq_prog_name.pml.
 #           -s size		integer size for testing.
 #           -l seq_sz		integer size for switching to the sequential base case.
-#           -p num_procs	number of processors.  Using -p 0 causes sequential compilation.
+#           -p num_procs	number of processors.  Using -p 0 uses the sequential baseline if it exists.
 #
+#  Note that the benchmark code should receive two integer arguments from stdin: the cut-to-sequential size
+#  and the input size. The benchmark should print the time elapsed in seconds to stdout. For instance, we 
+#  run our benchmark below on an cut-to-sequential size of 1 and an input size of 1024. 
+#  $ echo "1 1024" | ./benchmark
+#  1.220
 
 GOTO_SEQ_SIZES=""
 
