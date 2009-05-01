@@ -44,6 +44,7 @@
 (* Scans *)
 
   scan.pml
+  float-scan.pml
 
 (* Implicit-thread speculation *)
 

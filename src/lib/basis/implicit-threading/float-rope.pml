@@ -328,7 +328,7 @@ structure FloatRope = struct
       fun lp r =
        (case r
           of LEAF(_, s) => s::nil
-	   | CAT(_, _, r1, r2) => List.append (toSeq r1, toSeq r2)
+	   | CAT(_, _, r1, r2) => List.append (lp r1, lp r2)
          (* esac *))
       in
         S.concatList (lp r)
@@ -572,7 +572,19 @@ structure FloatRope = struct
       in
         m rope
       end          
-    
+
+  (* sumP : float_rope -> float *)
+    fun sumP rope = let
+      fun add (x:float, y:float) = x+y
+      fun s r =
+       (case r
+          of LEAF (_, s) => S.sum s
+           | CAT (_, _, rL, rR) => add (| s rL, s rR |)
+         (* esac *))
+      in
+        s rope
+      end
+
   (* reduceP : (float * float -> float) * float * float_rope -> float *)
   (* Reduce with an associative operator. *)
   (* e.g., sumP r == reduceP (+, 0, r) *)

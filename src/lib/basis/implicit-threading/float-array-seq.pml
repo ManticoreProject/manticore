@@ -11,7 +11,7 @@ structure FloatArraySeq = struct
   type seq = A.array
 
   val empty = let
-    fun doNotDo () = raise Fail "instantiating a zero-length array" 
+    fun doNotDo _ = raise Fail "instantiating a zero-length array" 
     in
       A.tabulate (0, doNotDo)
     end
@@ -114,9 +114,9 @@ structure FloatArraySeq = struct
         lp 1 (* we already did 0 *)
       end
 
-(* map : (float -> 'a) * seq -> 'a Array64.seq *)
+(* mapPoly : (float -> 'a) * seq -> 'a Array64.seq *)
   fun mapPoly (f, s) =
-    if null s then empty
+    if null s then (raise Fail "can't!")
     else let
       val len = length s
       val init = f (sub (s, 0))
@@ -192,6 +192,7 @@ structure FloatArraySeq = struct
 
   val tabulate = A.tabulate
 
+(*
   fun zip (s1, s2) = let
     fun min (m, n) = if m < n then m else n
     val len = min (length s1, length s2)
@@ -212,7 +213,8 @@ structure FloatArraySeq = struct
           lp 1 (* did 0 already *)
         end
     end
-
+*)
+(*
   fun unzip s = 
     if null s then (empty, empty)
     else let
@@ -232,6 +234,7 @@ structure FloatArraySeq = struct
       in
         lp 1 (* did 0 already *)
       end
+*)
 
   val update = A.update
 
@@ -285,5 +288,11 @@ structure FloatArraySeq = struct
     in
       copyAll (ss, lens, 0)
     end
+
+(* prefixPlusScan : float * seq -> seq *)
+  val prefixPlusScan = A.prefixPlusScan
+
+(* sum : seq -> float *)
+  val sum = A.sum
 
 end
