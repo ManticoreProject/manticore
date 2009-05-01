@@ -1,8 +1,3 @@
-val lengthP = Ropes.length
-val subP = Ropes.sub
-val concatP = Ropes.concat
-val filterP = Ropes.filterP
-
 structure Quicksort = struct
 
     fun quicksort xs =
