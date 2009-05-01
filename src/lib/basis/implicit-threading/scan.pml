@@ -140,5 +140,84 @@ structure Scan = struct
   (* ex: prePlusScan [1,1,1,1] => plusScan [0,1,2,3] *)
   (* nb: prePlusScan is equiv to (prePlusScan2 0) *)
     fun prePlusScan r = downsweep 0 (upsweep 0 r)
+
+
+(* for floats... *)
 		     
+  (* seqscan_float : num -> num seq -> num seq * num *)
+  (* Does a prefix scan starting from the given seed value. *)
+  (* Returns the scanned sequence and the total. *)
+    fun seqscan_float (seed:float) seq =
+      if S.null seq then (S.empty, seed)
+      else let
+        val len = S.length seq
+        val seq' = S.tabulate (len, fn _ => seed)
+        fun lp (i, last) = 
+          if i >= len then (seq', last)
+	  else let
+            val _ = S.update (seq', i, last)
+	    in
+              lp (i+1, last + S.sub (seq, i))
+	    end
+        in
+          lp (0, seed)
+        end
+
+  (* seqsum_float : num -> num seq -> num *)
+    fun seqsum_float (seed:float) s = let
+      fun plus (a, b) = a + b
+      in
+        S.foldl (plus, seed, s)
+      end
+
+  (* upsweep_float : num -> num R.rope -> num scan_rope *)
+    fun upsweep_float (seed:float) t = let
+      fun lp r = 
+       (case r 
+	  of (R.LEAF (len, s)) => Leaf (seqsum_float seed s, len, s)
+	   | (R.CAT (d, len, rL, rR)) => let
+               val (uL, uR) = (| lp rL, lp rR |)
+               in 
+                 Cat (datumOf uL + datumOf uR, d, len, uL, uR)
+	       end)
+      in
+        lp t
+      end   
+
+  (* downsweep_float : num -> num scan_rope -> num rope *)
+    fun downsweep_float (seed:float) t = let
+      (* FIXME It seems odd that I'm underscoring the datums here... *)
+      (* ...think about this more. *)
+      fun lp (c, r) =
+       (case r
+          of (Cat (_, d, len, cL, cR)) => let
+               val nL = datumOf cL
+	       in
+                 R.CAT (| d, len, lp (c, cL), lp (c+nL, cR) |)
+               end
+	   | (Leaf (_, len, s)) => let
+               val (scanned, _) = seqscan_float c s
+               in
+                 R.LEAF (len, scanned)
+               end)
+      in
+        lp (seed, t)
+      end
+
+  (* plusScan2_float : num -> num rope -> num rope *)
+  (* ex: plusScan2_float 2 [1,1,1,1] => [3,4,5,6] *)
+    fun plusScan2_float seed r =
+      if R.isEmpty r then r
+      else let
+        val elt0 = R.sub (r, 0)
+	val seed' = elt0 + seed
+        in
+          downsweep_float seed' (upsweep_float seed' r)
+	end
+
+  (* plusScan_float : num rope -> num rope *)
+  (* ex: plusScan_float [1,1,1,1] => [1,2,3,4] *)
+  (* nb: plusScan_float is equiv. to (plusScan2_float 0) *)
+    fun plusScan_float r = plusScan2_float 0.0 r
+
 end
