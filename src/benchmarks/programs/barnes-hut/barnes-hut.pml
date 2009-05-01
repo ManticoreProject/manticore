@@ -1,6 +1,6 @@
 (* barnes-hut.pml
  * 
- * Barnes Hut computation. This code translated almost exactly from the Data-parallel
+ * Barnes Hut computation. This code is adapted from the Data-parallel
  * Haskell benchmark.
  * http://darcs.haskell.org/packages/ndp/examples/barnesHut/
  *) 
@@ -12,8 +12,8 @@ datatype bh_tree
   = BHT_QUAD of (double * double * double *     (* root mass point *)
 		 bh_tree * bh_tree * bh_tree * bh_tree)
                                                 (* subtrees *)
-  | BHT_SINGLETON of (double * double * double) (* root mass point *)
-  | BHT_EMPTY
+  | BHT_LEAF of (double * double * double *     (* root mass point *)
+		 mass_point parray) 
 
 val epsilon : double = 0.05
 val eClose : double = 0.01
@@ -45,9 +45,7 @@ fun accel (MP (x1,  y1, _), x2, y2, m)  =
  *)
 fun calcAccel (mpt, bht) = 
     (case bht
-      of BHT_EMPTY => 
-	 (0.0, 0.0)
-       | BHT_SINGLETON (x, y, m) =>
+      of BHT_LEAF (x, y, m, _) =>
 	 accel (mpt, x, y, m)
        | BHT_QUAD (x, y, m, st1, st2, st3, st4) =>
 	 if isClose (mpt, x, y) then
@@ -77,36 +75,54 @@ fun inBox (BOX (llx, lly, rux, ruy)) (MP (px, py, _)) =
     (px > llx) andalso (px <= rux) andalso (py > lly) andalso (py <= ruy)
 
 (* split mass points according to their locations in the quadrants *)
-fun buildTree (BOX (llx, lly, rux, ruy), particles : mass_point parray) : bh_tree =
-    if lengthP particles = 0 then
-	BHT_EMPTY
-    else if lengthP particles = 1 then
-	let
-	    val MP (x, y, m) = calcCentroid particles
-	in
-	    BHT_SINGLETON (x, y, m)
-	end
+fun buildTree (box, particles : mass_point parray) : bh_tree =
+    let
+	val maxDepth = Int.ceilingLg (lengthP particles)
+	fun build (depth, BOX (llx, lly, rux, ruy), particles) =
+	    (* note that the stopping condition is based on the depth of our recursion tree. if we did not
+	     * limit the depth, nontermination could occur when two or more particles lie on top of 
+	     * each other. *)
+	    (* also note: our stopping condition means that, in the worst case, the depth of our tree is twice the
+	     * depth of a perfectly balanced tree. *)
+	    if lengthP particles <= 1 orelse depth > maxDepth then
+		let
+		    val MP (x, y, m) = calcCentroid particles
+		in
+		    BHT_LEAF (x, y, m, particles)
+		end
+	    else
+		let
+		    val MP (x, y, m) = calcCentroid particles
+		    val (midx,  midy) = ((llx + rux) / 2.0 , (lly + ruy) / 2.0) 
+		    val b1 = BOX (llx,  lly,  midx,  midy)
+		    val b2 = BOX (llx,  midy, midx,  ruy)
+		    val b3 = BOX (midx, midy, rux,   ruy)
+		    val b4 = BOX (midx, lly,  rux,   midy)
+		    val depth' = depth + 1
+		in
+		    BHT_QUAD (| x, y, m, 
+		                build (depth', b1, filterP (inBox b1, particles)),
+		                build (depth', b2, filterP (inBox b2, particles)),
+		                build (depth', b3, filterP (inBox b3, particles)),
+		                build (depth', b4, filterP (inBox b4, particles)) |)
+		end
+    in
+	build (0, box, particles)
+    end
+
+fun oneStep (pts : particle parray) : particle parray  =
+    if lengthP pts = 0 then
+	[| |]
     else
 	let
-	    val MP (x, y, m) = calcCentroid particles
-	    val (midx,  midy) = ((llx + rux) / 2.0 , (lly + ruy) / 2.0) 
-	    val b1 = BOX (llx,  lly,  midx,  midy)
-	    val b2 = BOX (llx,  midy, midx,  ruy)
-	    val b3 = BOX (midx, midy, rux,   ruy)
-	    val b4 = BOX (midx, lly,  rux,   midy)
+	    val mspnts = [| mpnt | PARTICLE (mpnt, _, _) in pts |]
+	    val MP (x0, y0, _) = subP (mspnts, 0)
+	    val box0 = BOX (| reduceP (Double.min, x0, [| x | MP (x, _, _) in mspnts |]),
+			      reduceP (Double.min, y0, [| y | MP (_, y, _) in mspnts |]),
+			      reduceP (Double.max, x0, [| x | MP (x, _, _) in mspnts |]),
+			      reduceP (Double.max, y0, [| y | MP (_, y, _) in mspnts |]) |)
+	    val tree = buildTree (box0, mspnts)
+	    val accels =  [| calcAccel (mspnt, tree) | mspnt in mspnts |]
 	in
-	    BHT_QUAD (| x, y, m, 
-		        buildTree (b1, filterP (inBox b1, particles)),
-		        buildTree (b2, filterP (inBox b2, particles)),
-		        buildTree (b3, filterP (inBox b3, particles)),
-		        buildTree (b4, filterP (inBox b4, particles)) |)
+	    [| applyAccel (pt, acc) | pt in pts, acc in accels |]
 	end
-
-fun oneStep (llx, lly, rux, ruy, pts : particle parray) : particle parray  =
-    let
-	val mspnts = [| mpnt | PARTICLE (mpnt, _, _) in pts |]
-	val tree = buildTree (BOX (llx, lly, rux, ruy), mspnts)
-	val accels =  [| calcAccel (mspnt, tree) | mspnt in mspnts |]
-    in
-	[| applyAccel (pt, acc) | pt in pts, acc in accels |]
-    end

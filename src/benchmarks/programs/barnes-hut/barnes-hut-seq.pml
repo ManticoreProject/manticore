@@ -1,6 +1,6 @@
 (* barnes-hut.pml
  * 
- * Barnes Hut computation. This code translated almost exactly from the Data-parallel
+ * Barnes Hut computation. This code is adapted from the Data-parallel
  * Haskell benchmark.
  * http://darcs.haskell.org/packages/ndp/examples/barnesHut/
  *) 
@@ -12,12 +12,15 @@ datatype bh_tree
   = BHT_QUAD of (double * double * double *     (* root mass point *)
 		 bh_tree * bh_tree * bh_tree * bh_tree)
                                                 (* subtrees *)
-  | BHT_SINGLETON of (double * double * double) (* root mass point *)
-  | BHT_EMPTY
+  | BHT_LEAF of (double * double * double *     (* root mass point *)
+		 mass_point list) 
 
 val epsilon : double = 0.05
 val eClose : double = 0.01
 val dt = 2.0
+
+fun xCoord (MP (x, _, _)) = x
+fun yCoord (MP (_, y, _)) = y
 
 fun applyAccel (PARTICLE (mp, vx, vy), (ax, ay)) = PARTICLE (mp, vx+ax * dt, vy+ay * dt)
 
@@ -45,9 +48,7 @@ fun accel (MP (x1,  y1, _), x2, y2, m)  =
  *)
 fun calcAccel (mpt, bht) = 
     (case bht
-      of BHT_EMPTY => 
-	 (0.0, 0.0)
-       | BHT_SINGLETON (x, y, m) =>
+      of BHT_LEAF (x, y, m, _) =>
 	 accel (mpt, x, y, m)
        | BHT_QUAD (x, y, m, st1, st2, st3, st4) =>
 	 if isClose (mpt, x, y) then
@@ -64,7 +65,7 @@ fun calcAccel (mpt, bht) =
 	     accel (mpt, x, y, m)
     (* end case *))
 
-fun calcCentroid (mpts : mass_point list) (*: mass_point*) = 
+fun calcCentroid (mpts : mass_point list) : mass_point = 
     let
         fun circlePlus ((mx0,my0,m0), (mx1,my1,m1)) = (mx0+mx1, my0+my1, m0+m1)
 	val (sum_mx, sum_my, sum_m) = 
@@ -85,41 +86,60 @@ fun particlesInBox (box, particles) =
     end
 
 (* split mass points according to their locations in the quadrants *)
-fun buildTree (BOX (llx, lly, rux, ruy), nParticles, particles : mass_point list) (*: bh_tree*) =
-    if nParticles = 0 then
-	BHT_EMPTY
-    else if nParticles = 1 then
-	let
-	    val MP (x, y, m) = calcCentroid particles
-	in
-	    BHT_SINGLETON (x, y, m)
-	end
-    else
-	let
-	    val MP (x, y, m) = calcCentroid particles
-	    val (midx,  midy) = ((llx + rux) / 2.0 , (lly + ruy) / 2.0) 
-	    val b1 = BOX (llx, lly, midx, midy)
-	    val b2 = BOX (llx,  midy, midx,  ruy)
-	    val b3 = BOX (midx, midy, rux,   ruy)
-	    val b4 = BOX (midx, lly,  rux,  midy)
-	    val (n1, p1) = particlesInBox (b1, particles)
-	    val (n2, p2) = particlesInBox (b2, particles)
-	    val (n3, p3) = particlesInBox (b3, particles)
-	    val (n4, p4) = particlesInBox (b4, particles)
-	    val (q1, q2, q3, q4) =
-		( buildTree (b1, n1, p1),
-		  buildTree (b2, n2, p2),
-		  buildTree (b3, n3, p3),
-		  buildTree (b4, n4, p4) )
-	in
-	    BHT_QUAD (x, y, m, q1, q2, q3, q4)
-	end
-
-fun oneStep (llx, lly, rux, ruy, pts : particle list) (*: particle list *) =
+fun buildTree (box, particles : mass_point list) : bh_tree =
     let
-	val mspnts = List.map (fn (PARTICLE (mpnt, _, _)) => mpnt) pts
-	val tree = buildTree (BOX (llx, lly, rux, ruy), List.length pts, mspnts)
-	val accels =  List.map (fn mspnt => calcAccel (mspnt, tree)) mspnts
+	val nParticles = List.length particles
+	val maxDepth = Int.ceilingLg nParticles
+	fun build (depth, BOX (llx, lly, rux, ruy), nParticles, particles) =
+	    (* note that the stopping condition is based on the depth of our recursion tree. if we did not
+	     * limit the depth, nontermination could occur when two or more particles lie on top of 
+	     * each other. *)
+	    (* also note: our stopping condition means that, in the worst case, the depth of our tree is twice the
+	     * depth of a perfectly balanced tree. *)
+	    if nParticles = 1 orelse depth > maxDepth then
+		let
+		    val MP (x, y, m) = calcCentroid particles
+		in
+		    BHT_LEAF (x, y, m, particles)
+		end
+	    else
+		let
+		    val MP (x, y, m) = calcCentroid particles
+		    val (midx,  midy) = ((llx + rux) / 2.0 , (lly + ruy) / 2.0) 
+		    val b1 = BOX (llx, lly, midx, midy)
+		    val b2 = BOX (llx,  midy, midx,  ruy)
+		    val b3 = BOX (midx, midy, rux,   ruy)
+		    val b4 = BOX (midx, lly,  rux,  midy)
+		    val (n1, p1) = particlesInBox (b1, particles)
+		    val (n2, p2) = particlesInBox (b2, particles)
+		    val (n3, p3) = particlesInBox (b3, particles)
+		    val (n4, p4) = particlesInBox (b4, particles)
+		    val depth' = depth + 1
+		    val (q1, q2, q3, q4) =
+			( build (depth', b1, n1, p1),
+			  build (depth', b2, n2, p2),
+			  build (depth', b3, n3, p3),
+			  build (depth', b4, n4, p4) )
+		in
+		    BHT_QUAD (x, y, m, q1, q2, q3, q4)
+		end
     in
-	List.map applyAccel (List.zip (pts, accels))
+	build (0, box, nParticles, particles)
     end
+
+fun oneStep (pts : particle list) : particle list =
+    (case pts
+      of nil => nil
+       | PARTICLE (MP (x0, y0, _), _, _) :: _ =>
+	 let
+	     val mspnts = List.map (fn (PARTICLE (mpnt, _, _)) => mpnt) pts
+	     val llx = List.foldl Double.min x0 (List.map xCoord mspnts)
+	     val lly = List.foldl Double.min y0 (List.map yCoord mspnts)
+	     val rux = List.foldl Double.max x0 (List.map xCoord mspnts)
+	     val ruy = List.foldl Double.max y0 (List.map yCoord mspnts)
+	     val tree = buildTree (BOX (llx, lly, rux, ruy), mspnts)
+	     val accels =  List.map (fn mspnt => calcAccel (mspnt, tree)) mspnts
+	 in
+	     List.map applyAccel (List.zip (pts, accels))
+	 end
+    (* end case *))

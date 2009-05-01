@@ -1,13 +1,14 @@
 (* barnes-hut.pml
  * 
- * Barnes Hut computation. This code translated almost exactly from the Data-parallel
+ * Barnes Hut computation. This code is adapted from the Data-parallel
  * Haskell benchmark.
  * http://darcs.haskell.org/packages/ndp/examples/barnesHut/
  *) 
 
 fun ceilingLg (x :int) : int = Real.ceil (Math.log10 (Real.fromInt x) / Math.log10 2.0)
 
-type double = real
+structure Double = Real
+type double = Real.real
 datatype bounding_box = BOX of (double * double * double * double)
 datatype mass_point = MP of (double * double * double) (* xpos ypos mass *)
 datatype particle = PARTICLE of (mass_point * double * double) (* mass point and velocity *)
@@ -98,8 +99,7 @@ fun buildTree (box, particles : mass_point list) : bh_tree =
 	     * limit the depth, nontermination could occur when two or more particles lie on top of 
 	     * each other. *)
 	    (* also note: our stopping condition means that, in the worst case, the depth of our tree is twice the
-	     * depth of a perfectly balanced tree. 
-	     *)
+	     * depth of a perfectly balanced tree. *)
 	    if nParticles = 1 orelse depth > maxDepth then
 		let
 		    val MP (x, y, m) = calcCentroid particles
@@ -132,14 +132,18 @@ fun buildTree (box, particles : mass_point list) : bh_tree =
     end
 
 fun oneStep (pts : particle list) : particle list =
-    let
-	val mspnts = List.map (fn (PARTICLE (mpnt, _, _)) => mpnt) pts
-	val llx = List.foldl Real.min ~1.0 (List.map xCoord mspnts)
-	val lly = List.foldl Real.min ~1.0 (List.map yCoord mspnts)
-	val rux = List.foldl Real.max ~1.0 (List.map xCoord mspnts)
-	val ruy = List.foldl Real.max ~1.0 (List.map yCoord mspnts)
-	val tree = buildTree (BOX (llx, lly, rux, ruy), mspnts)
-	val accels =  List.map (fn mspnt => calcAccel (mspnt, tree)) mspnts
-    in
-	List.map applyAccel (ListPair.zip (pts, accels))
-    end
+    (case pts
+      of nil => nil
+       | PARTICLE (MP (x0, y0, _), _, _) :: _ =>
+	 let
+	     val mspnts = List.map (fn (PARTICLE (mpnt, _, _)) => mpnt) pts
+	     val llx = List.foldl Double.min x0 (List.map xCoord mspnts)
+	     val lly = List.foldl Double.min y0 (List.map yCoord mspnts)
+	     val rux = List.foldl Double.max x0 (List.map xCoord mspnts)
+	     val ruy = List.foldl Double.max y0 (List.map yCoord mspnts)
+	     val tree = buildTree (BOX (llx, lly, rux, ruy), mspnts)
+	     val accels =  List.map (fn mspnt => calcAccel (mspnt, tree)) mspnts
+	 in
+	     List.map applyAccel (ListPair.zip (pts, accels))
+	 end
+    (* end case *))
