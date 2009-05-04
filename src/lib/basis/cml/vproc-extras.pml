@@ -7,7 +7,7 @@
  * applications that need control of the layout of threads on vprocs.
  *)
 
-structure VProcExtras : sig
+structure VProcExtras (* : sig
 
     type vproc
 
@@ -26,7 +26,7 @@ structure VProcExtras : sig
   (* spawn a thread on a specific vproc *)
     val spawnOn : (unit -> unit) -> vproc -> Threads.thread_id
 
-  end = struct
+  end *) = struct
 
     _primcode (
 	typedef ml_vproc = [vproc];
