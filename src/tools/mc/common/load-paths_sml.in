@@ -31,14 +31,17 @@ structure LoadPaths =
   (* runtime basis library *)
     val runtimeBasisLib = join (runtimeBasisDir, "runtime.mlb")
 
-  (* top-level schedulers *)
-    val topLevelSchedsDir = join (basisDir, "schedulers")
+  (* scheduling *)
+    val schedsDir = join (basisDir, "schedulers")
+
+  (* scheduling library *)
+    val schedsLib = join (schedsDir, "schedulers.mlb")
 
   (* top-level scheduler library *)
-    fun topLevelSchedLib sched = join (topLevelSchedsDir, OS.Path.joinBaseExt{base=sched, ext=SOME "mlb"})
+    fun topLevelSchedLib sched = join (schedsDir, OS.Path.joinBaseExt{base=sched, ext=SOME "mlb"})
 
   (* default thread scheduler library *)
-    val defImplicitThreadSchedLib = join (topLevelSchedsDir, "def-implicit-thread-sched.mlb")
+    val defImplicitThreadSchedLib = join (schedsDir, "def-implicit-thread-sched.mlb")
 
   (* implicit threading *)
     val implicitThreadingDir = join (basisDir, "implicit-threading")
@@ -51,6 +54,12 @@ structure LoadPaths =
 
   (* CML library *)
     val cmlLib = join (cmlDir, "cml.mlb")
+
+  (* parallel array *)
+    val parrayDir = join (basisDir, "parray")
+
+  (* parallel array library *)
+    val parrayLib = join (parrayDir, "parray.mlb")
 
     end (* local *)
   end
