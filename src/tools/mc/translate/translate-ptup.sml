@@ -5,6 +5,9 @@
  *
  * Here we translate parallel tuples to scheduling primitives. Our translation uses the
  * fast / slow clone technique designed for the Cilk-5 language.
+ * 
+ * Our translation extends the Cilk-5 technique by adding lazy promotion. That is, we
+ * defer any promotions to the slow clone.
  *)
 
 structure TranslatePTup  : sig
@@ -35,11 +38,29 @@ structure TranslatePTup  : sig
 
     fun unitVar () = BV.new("_unit", BTy.unitTy)
 
-    fun mkLets (binds, e') = List.foldl (fn ((x, e), e') => B.mkLet ([x], e, e')) e' binds
+    (* create a tuple whose elements are initialized as nil values *)
+    fun mkNilTuple (tuple : B.var, tys : BTy.ty list, e : B.exp) : B.exp =
+	let 
+	    fun mkLets (binds, e') = List.foldl (fn ((x, e), e') => B.mkLet ([x], e, e')) e' binds
+	    val nils = List.map (fn ty_i => 
+				    let
+					val x = BV.new ("x", BTy.T_Any)
+					val y = BV.new ("y", BTy.T_Any)
+					val v = BV.new ("nil", ty_i)
+				    in
+					(v,
+					 B.mkStmts ([
+					     ([x], B.E_Const(Lit.unitLit, BTy.T_Any)), 
+					     ([y], B.E_Cast (ty_i, x))], 
+						    B.mkRet [y]))
+				    end)
+				tys
+	in
+	    mkLets (nils, B.mkStmt ([tuple], B.E_Alloc (BTy.T_Tuple (true, tys), List.map #1 nils), e))
+	end
 
   (* implicit-thread creation *)
-    fun mkThread (k, exh) =
-	  B.mkHLOp (findHLOp ["ImplicitThread", "thread-no-cancelable"], [k], [exh])
+    fun mkThread (k, exh) = B.mkHLOp (findHLOp ["ImplicitThread", "thread-no-cancelable"], [k], [exh])
   (* scheduling operations *)
     fun spawnThread (k, exh) = B.mkHLOp (findHLOp ["ImplicitThread", "spawn"], [k], [exh])
     fun removeThread (thread, exh) = B.mkHLOp (findHLOp ["ImplicitThread", "remove-thread"], [thread], [exh])
@@ -72,7 +93,7 @@ structure TranslatePTup  : sig
       | tr {env, es = es as e_0 :: es_1toN} =
 	let
 
-	    val n' = List.length es
+	    val n = List.length es
 
 	    val tys as ty_0 :: _ = List.map (List.hd o BOMUtil.typeOfExp) es
 	    val tupleTy = BTy.T_Tuple (false, tys)
@@ -118,8 +139,8 @@ structure TranslatePTup  : sig
 		    val c = BV.new ("c", BTy.T_Tuple (true, [intTy]))
 		in
 		    B.mkStmts ([
-		        ([c], B.E_Promote c0),
-			([nV], intRhs (n' - w + 1)),    (* number of other slow clones *)
+		        ([c], B.E_Promote c0),         (* lazy promotion *)
+			([nV], intRhs (n - w + 1)),    (* nV is the number of other slow clones *)
 			([wV], intRhs w),
 		        ([nPrev], B.E_Prim (Prim.I32FetchAndAdd (c, wV)))],
 			     B.mkStmt ([eq], B.E_Prim (Prim.I32Eq (nV, nPrev)),
@@ -129,12 +150,13 @@ structure TranslatePTup  : sig
 					      (* other workers are still working *)
 					      mkStop (env, exh))))
 		end
-
-	    val slowCloneThreads = 
-		List.tabulate (n' - 1, fn i => BV.new ("slowCloneThread_" ^ Int.toString (i + 1), 
-						       findBOMTy ["ImplicitThread", "thread"]))
 		    
-	    fun slowClones eNext = 
+(* FIXME: handle exceptions as defined by our sequential semantics *)
+	    (* we create n - 1 slow clones *)
+	    val slowClones_1toN = 
+		List.tabulate (n - 1, fn i => BV.new ("slowCloneThread_" ^ Int.toString (i + 1), 
+						      findBOMTy ["ImplicitThread", "thread"]))
+	    fun mkSlowClones eNext = 
 		let
 		    (* evaluate the ith thunk and store the result in the result tuple *)
 		    fun force (i, thunk_i, r, exh) = 
@@ -146,25 +168,23 @@ structure TranslatePTup  : sig
 			end
 
 		    fun mkSlowClone (0, [], []) = eNext
-		      | mkSlowClone (i, thunk_i :: thunks, slowCloneThread :: slowCloneThreads) =
+		      | mkSlowClone (i, thunk_i :: thunks, slowCloneThread :: slowClones_1toN) =
 			let
 			    val slowClone_i = BV.new ("slowClone_" ^ Int.toString i, BTy.T_Cont [BTy.unitTy])
 			    val r = BV.new ("r", slowCloneTupleTy)
 			in
 			    B.mkCont (B.mkLambda {f = slowClone_i, params = [unitVar ()], exh = [], 
-						  body = B.mkStmt ([r], B.E_Promote r0, 
-								   B.mkLet ([], force (i, thunk_i, r, exh), finish (1, r)))},
+						  body = 
+						  B.mkStmt ([r], B.E_Promote r0,            (* lazy promotion *)
+							    B.mkLet ([], force (i, thunk_i, r, exh), finish (1, r)))},
 				      B.mkLet ([slowCloneThread], mkThread (slowClone_i, exh), 
 					       B.mkLet ([], spawnThread (slowCloneThread, exh),
-							mkSlowClone (i - 1, thunks, slowCloneThreads))))
+							mkSlowClone (i - 1, thunks, slowClones_1toN))))
 			end
 		      | mkSlowClone _ = raise Fail "impossible"
-
-		    val thunkVs = List.map varOfLambda thunks_1toN
-		    val i1tonminus1 = List.tabulate (n' - 1, fn i => i + 1)
 		in
 		    (* put slow clones on the queue in reverse order (right to left) *)
-		    mkSlowClone (n' - 1, List.rev thunkVs, List.rev slowCloneThreads)
+		    mkSlowClone (n - 1, List.rev (List.map varOfLambda thunks_1toN), List.rev slowClones_1toN)
 		end
 
 	    (* the fast clone evaluates the elements of the tuple in sequential order until either all
@@ -175,7 +195,7 @@ structure TranslatePTup  : sig
 		in
 		    B.mkStmt ([tuple], B.E_Alloc (tupleTy, List.rev vs), B.mkRet [tuple])
 		end
-	      | fastClone (i, thunk_i :: thunks, slowCloneThread_i :: slowCloneThreads, vs) =
+	      | fastClone (i, thunk_i :: thunks, slowCloneThread_i :: slowClones_1toN, vs) =
 		let
 		    val BTy.T_Fun (_, _, [ty_i]) = BV.typeOf thunk_i
 		    val v_i = BV.new ("v_" ^ Int.toString i, ty_i)
@@ -185,9 +205,9 @@ structure TranslatePTup  : sig
 		    B.mkLet([notStolen_i], removeThread (slowCloneThread_i, exh),			    
 			    B.mkIf (notStolen_i,
 				    B.mkLet ([v_i], B.mkApply (thunk_i, [], [exh]),
-					     fastClone (i + 1, thunks, slowCloneThreads, v_i :: vs)),
+					     fastClone (i + 1, thunks, slowClones_1toN, v_i :: vs)),
 				    (* switch to the slow clone *)
-				    B.mkStmt ([r], B.E_Promote r0, 
+				    B.mkStmt ([r], B.E_Promote r0,         (* lazy promotion *)
 					      ListPair.foldlEq (fn (i, v_i, e) => B.mkLet ([], store (i, v_i, r, exh), e)) 
 							       (finish (i, r))
 							       (List.tabulate (List.length vs, fn i => i), List.rev vs))))
@@ -198,35 +218,18 @@ structure TranslatePTup  : sig
 	    val oneV = BV.new ("one", intTy)
 
 	in
-	    B.mkStmts ([
-	        ([oneV], one),
-		([c0], B.E_Alloc (BTy.T_Tuple (true, [intTy]), [oneV]))
-	    ],
-	        let
-		    val nilVars = List.map (fn ty_i => BV.new ("nil", ty_i)) tys
-		    val nils = List.map (fn ty_i => 
-					    let
-						val x = BV.new ("x", BTy.T_Any)
-						val y = BV.new ("y", BTy.T_Any)
-					    in
-						B.mkStmts ([
-						    ([x], B.E_Const(Lit.unitLit, BTy.T_Any)), 
-						    ([y], B.E_Cast (BTy.T_Tuple (false, [intTy]), x))],
-						    B.mkRet [y])
-					    end)
-					tys
-		in
-		    mkLets (ListPair.zip (nilVars, nils),
-			    B.mkStmt ([r0], B.E_Alloc (slowCloneTupleTy, nilVars),
-				      B.mkFun (thunks_1toN, 
-					       slowClones (
-					           let
-						       val v_0 = BV.new ("v_0", ty_0)
-						   in
-						       B.mkLet ([v_0], e_0,
-								fastClone (1, thunkVs_1toN, slowCloneThreads, [v_0]))
-						   end))))
-		end)
+	    mkNilTuple (r0, tys,
+			  B.mkStmts ([
+			  ([oneV], one),
+			  ([c0], B.E_Alloc (BTy.T_Tuple (true, [intTy]), [oneV]))],
+				     B.mkFun (thunks_1toN, 
+					      mkSlowClones (
+					      let
+						  val v_0 = BV.new ("v_0", ty_0)
+					      in
+						  B.mkLet ([v_0], e_0,
+							   fastClone (1, thunkVs_1toN, slowClones_1toN, [v_0]))
+					      end))))
 	end
 
   end
