@@ -33,19 +33,6 @@
   fcms-sig.pml
   fcms.pml
 
-(* Ropes *)
-
-  ropes.mlb
-  rope-pair.pml
-
-(* Parallel Arrays *)
-
-  parray.pml
-
-(* Scans *)
-
-  scan.pml
-
 (* Implicit-thread speculation *)
 
   ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"

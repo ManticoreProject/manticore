@@ -101,11 +101,7 @@ fun readParticles () = let
         doit (nParticles, nil)
     end
 
-val llx = ~1000000000000.0
-val lly = ~1000000000000.0
-val rux = 10000000000000.0
-val ruy = 10000000000000.0
-
+(*
 fun debug () = let
     val nSteps = readint()
 
@@ -124,6 +120,7 @@ fun debug () = let
     in
        Print.printLn("Error for BH:"^Double.toString err)
     end
+*)
 
 fun benchmark () =
     let
@@ -131,7 +128,7 @@ fun benchmark () =
 	fun iter (ps, i) =
 	    if i < nSteps then
 (* FIXME: read the top-level box from the input *)
-		iter (oneStep (llx, lly, rux, ruy, ps), i + 1)
+		iter (oneStep ps, i + 1)
 	    else
 		ps
 	val t0 = Time.now()

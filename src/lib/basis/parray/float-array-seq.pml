@@ -1,18 +1,20 @@
-(* array-seq.pml  
+(* float-array-seq.pml  
  *
  * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
- *
  *)
 
-structure ArraySeq = struct
+structure FloatArraySeq = struct
 
-  structure A = Array64
+  structure A = FloatArray
 
-  type 'a seq = 'a A.array
+  type seq = A.array
 
-  val empty = 
-    A.tabulate (0, fn _ => raise Fail "instantiating a 0-length array")
+  val empty = let
+    fun doNotDo _ = raise Fail "instantiating a zero-length array" 
+    in
+      A.tabulate (0, doNotDo)
+    end
 
   fun singleton s = A.array (1, s)
 
@@ -94,6 +96,7 @@ structure ArraySeq = struct
         lp (0, len-1)
       end
 
+(* map : (float -> float) * seq -> seq *)
   fun map (f, s) = 
     if null s then empty
     else let
@@ -104,6 +107,24 @@ structure ArraySeq = struct
         if i >= len then b
         else let
           val _ = A.update (b, i, f (A.sub (s, i)))
+          in
+            lp (i+1)
+          end
+      in
+        lp 1 (* we already did 0 *)
+      end
+
+(* mapPoly : (float -> 'a) * seq -> 'a Array64.seq *)
+  fun mapPoly (f, s) =
+    if null s then (raise Fail "can't!")
+    else let
+      val len = length s
+      val init = f (sub (s, 0))
+      val b = Array64.array (len, init)
+      fun lp i =
+        if i >= len then b
+        else let
+          val _ = Array64.update (b, i, f (A.sub (s, i)))
           in
             lp (i+1)
           end
@@ -171,6 +192,7 @@ structure ArraySeq = struct
 
   val tabulate = A.tabulate
 
+(*
   fun zip (s1, s2) = let
     fun min (m, n) = if m < n then m else n
     val len = min (length s1, length s2)
@@ -191,7 +213,8 @@ structure ArraySeq = struct
           lp 1 (* did 0 already *)
         end
     end
-
+*)
+(*
   fun unzip s = 
     if null s then (empty, empty)
     else let
@@ -211,7 +234,65 @@ structure ArraySeq = struct
       in
         lp 1 (* did 0 already *)
       end
+*)
 
   val update = A.update
+
+(* short-circuits on finding false *)
+  fun any pred s = let
+    val len = length s
+    fun lp i =
+      if i >= len then true
+      else pred (sub (s, i)) andalso lp (i+1)
+    in
+      lp 0
+    end
+
+(* short-circuits on finding true *)
+  fun exists pred s = let
+    val len = length s
+    fun lp i =
+      if i >= len then false
+      else pred (sub (s, i)) orelse lp (i+1)
+    in
+      lp 0
+    end
+
+(* concatList : seq list -> seq *)
+  fun concatList ss = let
+    fun plus (a, b) = a + b
+    val lens = List.map length ss
+    val totalLen = List.foldr plus 0 lens
+    val a = A.array (totalLen, 0.0)
+    fun copy (from, into, start) = let
+      val len = length from
+      fun lp i = 
+        if i >= len then ()
+	else let
+          val _ = A.update (into, i+start, A.sub(from,i))
+          in
+            lp (i+1)
+	  end
+      in
+	lp 0
+      end
+    fun copyAll (arrs, lens, start) = 
+     (case (arrs, lens)
+        of (nil, nil) => ()
+	 | (s::ss, n::ns) => let
+             val _ = copy (s, a, start)
+             in
+	       copyAll (ss, ns, start+n)
+             end
+	 | _ => (raise Fail "something went wrong"))
+    in
+      copyAll (ss, lens, 0)
+    end
+
+(* prefixPlusScan : float * seq -> seq *)
+  val prefixPlusScan = A.prefixPlusScan
+
+(* sum : seq -> float *)
+  val sum = A.sum
 
 end

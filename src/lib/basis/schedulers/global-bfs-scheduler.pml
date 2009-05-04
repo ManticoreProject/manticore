@@ -8,10 +8,10 @@
  *   - uses a global FIFO scheduling queue
  *)
 
-structure GlobalBFSScheduler : 
+structure GlobalBFSScheduler (*  : 
   sig 
     val workGroup : unit -> ImplicitThread.group
-  end = struct
+  end *) = struct
 
     structure PT = PrimTypes
 

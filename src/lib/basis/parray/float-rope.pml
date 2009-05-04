@@ -1,19 +1,18 @@
-(* ropes.pml  
+(* float-rope.pml  
  *
- * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * A implementation of ropes in Manticore.
+ * Monomorphic float ropes.
  *)
 
-structure Ropes (* : ROPES *) = struct
+structure FloatRope = struct
 
-    structure S = ArraySeq (* ListSeq *)
-    val ceilingLg = Int.ceilingLg
+    structure S = FloatArraySeq
 
     datatype option = datatype Option.option
 
-    type 'a seq = 'a S.seq
+    type seq = S.seq
 
   (* ***** UTILITIES ***** *)
 
@@ -21,45 +20,26 @@ structure Ropes (* : ROPES *) = struct
   (* using this for the moment so we can observe the exception message at runtime *)
     fun failwith msg = (Print.printLn msg; (raise Fail msg))
 
-  (* abs : int -> int *)
-    fun abs n = if n < 0 then ~n else n
-
-  (* fib : int -> int *)
-  (* Compute the nth Fibonacci number, where *)
-  (*   fib 0 is 0, fib 1 is 1, fib 2 is 1, etc. *)
-  (* Returns 0 for negative args, so be careful. *)
-    fun fib n = let
-      fun ff args =
-       (case args
-	  of (0, u, p) => u
-	   | (n, u, p) => ff (n-1, u+p, u)
-          (* end case *))
-      in
-        if n < 1 then 0
-	else if n = 0 then 1
-	else ff (n, 0, 1)
-      end
-
   (* ***** ROPES ***** *)
 
   (* The rope datatype and some basic operations. *)
 
-    datatype 'a rope
+    datatype float_rope
       = CAT of (int *     (* depth *)
 		int *     (* length *)
-		'a rope * (* left subtree *)
-		'a rope   (* right subtree *))
+		float_rope * (* left subtree *)
+		float_rope   (* right subtree *))
       | LEAF of (int *    (* length *)
-		 'a seq   (* sequence *))
+		 seq      (* sequence *))
 
   (* maxLeafSize : int *)
-    val maxLeafSize = 1024
+    val maxLeafSize = MaxLeafSize.sz
 
-  (* empty : 'a rope *)
+  (* empty : float_rope *)
     val empty = LEAF (0, S.empty)
 
-  (* toString : ('a -> string) -> 'a rope -> string *)
-    fun toString show r = let
+  (* toString : float_rope -> string *)
+    fun toString r = let
       fun copies thing n = List.tabulate (n, fn _ => thing)
       val rootString = "C<"
       val spaces = copies " "
@@ -71,11 +51,11 @@ structure Ropes (* : ROPES *) = struct
               fun b args = 
                (case args
 	         of (nil, acc) => "]" :: acc
-		  | (x::nil, acc) => b (nil, show x :: acc)
-		  | (x::xs, acc) => b (xs, "," :: show x ::acc)
+		  | (x::nil, acc) => b (nil, Float.toString x :: acc)
+		  | (x::xs, acc) => b (xs, "," :: Float.toString x ::acc)
 	         (* end case *))
               in
-		(String.concat(List.rev(b (S.toList xs, ("["::nil))))) :: nil
+		(String.concat (List.rev (b (S.toList xs, ("["::nil))))) :: nil
               end
 	  | CAT (_, _, r1, r2) => let 
               val ss1 = build r1
@@ -88,56 +68,52 @@ structure Ropes (* : ROPES *) = struct
         String.concatWith "\n" (build r @ ("\n"::nil))
       end
 
-  (* isLeaf : 'a rope -> bool *)
+  (* isLeaf : float_rope -> bool *)
     fun isLeaf r = 
      (case r
         of LEAF _ => true
 	 | CAT _ => false
         (* end case *)) 
 
-  (* isBalanced : 'a rope -> bool *)
+  (* isBalanced : 'float_rope -> bool *)
   (* balancing condition for ropes *)
   (* The max depth here is given in Boehm et al. 95. *)
     fun isBalanced r = 
      (case r
         of LEAF _ => true
-	 | CAT (depth, len, _, _) => (depth <= ceilingLg len + 2)
+	 | CAT (depth, len, _, _) => (depth <= Int.ceilingLg len + 2)
         (* end case *))
 
-  (* singleton : 'a -> 'a rope *)
+  (* singleton : float -> float_rope *)
     fun singleton x = LEAF (1, S.singleton x)
 
-  (* isEmpty : 'a rope -> bool *)
-    fun isEmpty r = 
-     (case r
-        of LEAF (0, _) => true
-	 | CAT (_, 0, _, _) => true
-	 | _ => false
-        (* end case *))
-
-  (* length : 'a rope -> int *)
+  (* length : float_rope -> int *)
     fun length r = 
      (case r
         of LEAF (len, s) => len
 	 | CAT(_, len, r1, r2) => len
         (* end case *))
 
-  (* depth : 'a rope -> int *)
+  (* isEmpty : float_rope -> bool *)
+    fun isEmpty r = (length r = 0)
+
+  (* depth : float_rope -> int *)
+  (* The depth of a leaf is 0. *)
     fun depth r = 
      (case r
-        of LEAF (_, _) => 0
+        of LEAF _ => 0
 	 | CAT(depth, _, _, _) => depth
         (* end case *))
 
-  (* inBounds : 'a rope * int -> bool *)
+  (* inBounds : float_rope * int -> bool *)
   (* Is the given int a valid index of the rope at hand? *)
-    fun inBounds (r, i) = i < length r andalso i >= 0
+    fun inBounds (r, i) = i >= 0 andalso i < length r
 
-  (* subInBounds : 'a rope * int -> 'a *)
+  (* subInBounds : float_rope * int -> float *)
   (* pre: inBounds (r, i) *)
     fun subInBounds (r, i) = 
      (case r
-        of LEAF (_, s) => S.sub(s, i)
+        of LEAF (_, s) => S.sub (s, i)
 	 | CAT (depth, len, r1, r2) =>
 	     if i < length r1 then 
                subInBounds(r1, i)
@@ -145,7 +121,7 @@ structure Ropes (* : ROPES *) = struct
                subInBounds(r2, i - length r1)
         (* end case *))
 
-  (* sub : 'a rope * int -> 'a *)
+  (* sub : float_rope * int -> float *)
   (* subscript; returns r[i] *)
     fun sub (r, i) = 
       if inBounds (r, i) 
@@ -157,7 +133,7 @@ structure Ropes (* : ROPES *) = struct
   (* We follow the rope balancing algorithm given in Boehm et al. 1995 *)
 
   (* That algorithm requires a data structure we call a "balancer". *)
-    type 'a balancer = (int * int * 'a rope option) list
+    type balancer = (int * int * float_rope option) list
 
   (* at each position a balancer contains
    *   - an inclusive lower bound on the rope length that may inhabit the 
@@ -173,35 +149,35 @@ structure Ropes (* : ROPES *) = struct
   (*   e.g., balancerLen 34 = 8 *)
     fun balancerLen len = let
 	  fun lp n =
-	        if fib n > len
+	        if Int.fib n > len
 		   then n
 		else lp (n + 1)
           in
 	    lp 0 - 2
 	  end
 
-  (* mkInitialBalancer : int -> 'a balancer *)
+  (* mkInitialBalancer : int -> balancer *)
   (* takes a rope length, and returns a rope balancer *)
     fun mkInitialBalancer len = let
       val blen = balancerLen len
-      fun initEntry n = (fib (n+2), fib (n+3), NONE)
+      fun initEntry n = (Int.fib (n+2), Int.fib (n+3), NONE)
       in
         List.tabulate (blen, initEntry)
       end
 
-  (* leftmostLeaf : 'a rope -> 'a rope *)
+  (* leftmostLeaf : float_rope -> float_rope *)
     fun leftmostLeaf r = 
      (case r
         of LEAF _ => r
 	 | CAT (_, _, rL, _) => leftmostLeaf rL) 
 
-  (* rightmostLeaf : 'a rope -> 'a rope *)
+  (* rightmostLeaf : float_rope -> float_rope *)
     fun rightmostLeaf r =
      (case r 
         of LEAF _ => r
 	 | CAT (_, _, _, rR) => rightmostLeaf rR)
 
-  (* attachLeft : 'a seq * 'a rope -> 'a rope *)
+  (* attachLeft : seq * float_rope -> float+rope *)
   (* pre: the rightmost leaf of the rope can accommodate the sequence *)
     fun attachLeft (s, r) = let
       val slen = S.length s
@@ -214,7 +190,7 @@ structure Ropes (* : ROPES *) = struct
 	go r
       end
 
-  (* attachRight : 'a rope * 'a seq -> 'a rope *)
+  (* attachRight : float_rope * seq -> float_rope *) 
   (* pre: the leftmost leaf of the rope can accommodate the sequence *)
     fun attachRight (r, s) = let
       val slen = S.length s
@@ -227,7 +203,7 @@ structure Ropes (* : ROPES *) = struct
         go r
       end
 
-  (* concatWithoutBalancing : 'a rope * 'a rope -> 'a rope *)
+  (* concatWithoutBalancing : float_rope * float_rope -> float_rope *)
   (* Concatenates two ropes without balancing. *)
   (* That is, if the resulting rope is unbalanced, so be it. *)
   (* Concatenates naturally, but handles the following special cases: *)
@@ -285,7 +261,7 @@ structure Ropes (* : ROPES *) = struct
 	   (* end case *))
      (* end if *))
  
-  (* balToRope : 'a balancer -> 'a rope *)              
+  (* balToRope : balancer -> float_rope *)              
   (* Concatenate all ropes in the balancer into one balanced rope. *)
     fun balToRope balancer = let
       fun f (b, acc) = 
@@ -297,7 +273,7 @@ structure Ropes (* : ROPES *) = struct
         List.foldl f empty balancer
       end
 
-  (* insert : 'a rope * 'a balancer -> 'a balancer *)
+  (* insert : float_rope * balancer -> balancer *)
   (* Insert a rope into a balancer. *)
   (* invariant: the length of the rope at position i is in its interval, that is, *)
   (*   greater than or equal to the lower bound, and less that the upper bound. *)
@@ -320,7 +296,7 @@ structure Ropes (* : ROPES *) = struct
              insert (concatWithoutBalancing (r', r), (lb, ub, NONE) :: t)
         (* end case *))
 
-  (* leaves : 'a rope -> 'a rope list *)
+  (* leaves : float_rope -> float_rope list *)
   (* takes a rope and returns the list of leaves in left-to-right order *)
     fun leaves r = 
      (case r
@@ -328,33 +304,37 @@ structure Ropes (* : ROPES *) = struct
 	 | CAT (_, _, r1, r2) => leaves r1 @ leaves r2
         (* end case *))
 
-  (* balance : 'a rope -> 'a rope *)
+  (* balance : float_rope -> float_rope *)
   (* Balance a rope to within 2 of ideal depth. *)
   (* This operation is O(n*log n) in the number of leaves *)
-    fun balance r = balToRope(List.foldl insert (mkInitialBalancer (length r)) (leaves r))
+    fun balance r = balToRope (List.foldl insert (mkInitialBalancer (length r)) (leaves r))
 
-  (* balanceIfNecessary : 'a rope -> 'a rope *)
+  (* balanceIfNecessary : float_rope -> float_rope *)
   (* balance a rope only when it is unbalanced *)
     fun balanceIfNecessary r = if isBalanced r then r else balance r
 
   (* ***** ROPE CONSTRUCTION ***** *)
 
-  (* concatWithBalancing : 'a rope * 'a rope -> 'a rope *)
+  (* concatWithBalancing : float_rope * float_rope -> float_rope *)
   (* concatenates two ropes (with balancing) *)
-    fun concatWithBalancing (r1, r2) = balanceIfNecessary(concatWithoutBalancing(r1, r2))
+    fun concatWithBalancing (r1, r2) = balanceIfNecessary (concatWithoutBalancing(r1, r2))
 
-  (* concat : 'a rope -> 'a rope *)
+  (* concat : float_rope -> float_rope *)
     val concat = concatWithBalancing
 
-  (* toSeq : 'a rope -> 'a seq *)
+  (* toSeq : float_rope -> seq *)
   (* return the fringe of the data at the leaves of a rope as a sequence *)
-    fun toSeq r = 
-     (case r
-        of LEAF(_, s) => s
-	 | CAT(_, _, r1, r2) => S.concat (toSeq r1, toSeq r2)
-        (* end case *))
+    fun toSeq r = let
+      fun lp r =
+       (case r
+          of LEAF(_, s) => s::nil
+	   | CAT(_, _, r1, r2) => List.append (lp r1, lp r2)
+         (* esac *))
+      in
+        S.concatList (lp r)
+      end
 
-  (* split : 'a list * int -> 'a list * 'a list *)
+  (* split :  'a list * int -> 'a list * 'a list *)
   (* Split the list into two pieces. *)
   (* Don't complain if there aren't enough elements. *)
   (* ex: split ([1,2,3], 0) => ([],[1,2,3]) *)
@@ -397,18 +377,18 @@ structure Ropes (* : ROPES *) = struct
         lp (xs, nil)
       end
 
-  (* catPairs : 'a rope list -> 'a rope list *)
+  (* catPairs :  float_rope list -> float_rope list *)
   (* Concatenate every pair of ropes in a list. *)
   (* ex: catPairs [r0,r1,r2,r3] => [Cat(r0,r1),Cat(r2,r3)] *)
     fun catPairs rs = 
      (case rs
         of nil => nil
-     | r::nil => rs
-     | r0::r1::rs => (concatWithoutBalancing (r0, r1)) :: catPairs rs
-        (* end case *))
+	 | r::nil => rs
+	 | r0::r1::rs => (concatWithoutBalancing (r0, r1)) :: catPairs rs
+       (* end case *))
 
-  (* leafFromList : 'a list -> 'a rope *)
-    fun leafFromList (xs: 'a list) = let
+  (* leafFromList : float list -> float_rope *)
+    fun leafFromList (xs : 'a list) = let
       val n = List.length xs
       in
         if n <= maxLeafSize then
@@ -417,7 +397,7 @@ structure Ropes (* : ROPES *) = struct
           failwith "too big"
       end
 
-  (* fromList : 'a list -> 'a rope *)
+  (* fromList : float list -> float_rope *)
   (* Given a list, construct a balanced rope. *)
   (* The leaves will be packed to the left.  *)
     fun fromList xs = let
@@ -433,10 +413,11 @@ structure Ropes (* : ROPES *) = struct
         build leaves      
       end
 
-  (* fromSeq : 'a seq -> 'a rope *)
+  (* fromSeq : seq -> float_rope *)
+  (* FIXME bad implementation *)
     fun fromSeq s = fromList (S.toList s)
 
-  (* tabFromToP : int * int * (int -> 'a) -> 'a rope *)
+  (* tabFromToP : int * int * (int -> float) -> float_rope *)
   (* pre: hi >= lo *)
   (* lo inclusive, hi exclusive *)
     fun tabFromToP (lo, hi, f) = 
@@ -454,38 +435,16 @@ structure Ropes (* : ROPES *) = struct
 				    tabFromToP (m, hi, f) |)
         end)
 
-  (* tabP : int * (int -> 'a) -> 'a rope *)
+  (* tabP : int * (int -> float) -> float_rope *)
     fun tabP (n, f) = 
      (if n <= 0 then
         empty
       else
         tabFromToP (0, n, f) (* n.b.: tabFromToP is exclusive of its upper bound *))
 
-  (* nEltsInRange : int * int * int -> int *)
-    fun nEltsInRange (from, to_, step) = (* "to" is syntax in pml *)
-     (if step = 0 then failwith "cannot have step 0 in a range"
-      else if from = to_ then 1
-      else if (from > to_ andalso step > 0) then 0
-      else if (from < to_ andalso step < 0) then 0
-      else (abs (from - to_) div abs step) + 1)
-
-  (* rangeP : int * int * int -> int rope *)
-    fun rangeP (from, to_, step) = (* "to" is syntax in pml *)
-     (if from = to_ then singleton from
-      else let
-        val sz = nEltsInRange (from, to_, step)
-        fun gen n = step * n + from
-        in
-          tabP (sz, gen)
-        end)
-
-  (* rangePNoStep : int * int -> int rope *)
-    fun rangePNoStep (from, to_) = (* "to" is syntax in pml *)
-      rangeP (from, to_, 1)
-  
 (* ***** ROPE DECONSTRUCTION ***** *)
 
-  (* splitAtWithoutBalancing : 'a rope * int -> 'a rope * 'a rope *)
+  (* splitAtWithoutBalancing : float_rope * int -> float_rope * float_rope *)
   (* pre: inBounds(r, i) *)
     fun splitAtWithoutBalancing (r, i) = 
      (case r
@@ -509,7 +468,7 @@ structure Ropes (* : ROPES *) = struct
                end
         (* end case *))
 
-  (* splitAtWithBalancing : 'a rope * int -> 'a rope * 'a rope *)
+  (* splitAtWithBalancing : float_rope * int -> float_rope * float_rope *)
   (* pre: inBounds (r, i) *)
     fun splitAtWithBalancing (r, i) = let
       val (r1, r2) = splitAtWithoutBalancing (r, i)
@@ -517,7 +476,7 @@ structure Ropes (* : ROPES *) = struct
         (balanceIfNecessary r1, balanceIfNecessary r2)
       end
 
-  (* splitAt : 'a rope * int -> 'a rope * 'a rope *)
+  (* splitAt : float_rope * int -> float_rope * float_rope *)
   (* split a rope in two at index i. (r[0, ..., i], r[i+1, ..., |r|-1]) *)
     fun splitAt (r, i) =
       if inBounds(r, i)
@@ -530,7 +489,7 @@ structure Ropes (* : ROPES *) = struct
       then (empty, r)
       else splitAt(r, n - 1)
 
-  (* naturalSplit : 'a rope -> 'a rope * 'a rope *)
+  (* naturalSplit : float_rope -> float_rope * float_rope *)
   (* If a rope is a CAT, splits it at the root. *)
   (* If a rope is a LEAF, splits it into two leaves of roughly equal size. *)
     fun naturalSplit r =
@@ -544,7 +503,7 @@ structure Ropes (* : ROPES *) = struct
 	 | CAT (_, _, r1, r2) => (r1, r2)
         (* end case *))
 
-  (* partialSeq : 'a rope * int * int -> 'a seq *)
+  (* partialSeq : float_rope * int * int -> seq *)
   (* return the sequence of elements from low incl to high excl *)
   (* zero-based *)
   (* failure when lower bound is less than 0  *)
@@ -577,7 +536,7 @@ structure Ropes (* : ROPES *) = struct
 
   (* FIXME TODO No account is yet taken of the "leftmost exception" semantic property. *)
 
-  (* revP : 'a rope -> 'a rope *)
+  (* revP : float_rope -> float_rope *)
   (* pre  : the input is balanced *)
   (* post : the output is balanced *)
     fun revP r = 
@@ -590,7 +549,7 @@ structure Ropes (* : ROPES *) = struct
 	     end
         (* end case *))
 
-  (* mapP : ('a -> 'b) * 'a rope -> 'b rope *)
+  (* mapP : (float -> float) * float_rope -> float_rope *)
   (* post : the output has the same shape as the input *)
     fun mapP (f, rope) = let
       fun m r =
@@ -602,81 +561,31 @@ structure Ropes (* : ROPES *) = struct
         m rope
       end          
 
-(*
-  (* sameStructure : 'a rope * 'b rope -> bool *)
-    fun sameStructure (r1, r2) = 
-     (if length r1 <> length r2 then
-        false
-      else let (* same length *)
-        fun strictAnd (b1, b2) = b1 andalso b2
-        fun lp (r1, r2) =
-         (case (r1, r2)
-            of (LEAF (len1, _), LEAF (len2, _)) => (len1 = len2)
-	     | (CAT (_, _, r1L, r1R), CAT (_, _, r2L, r2R)) =>
-                 strictAnd (| sameStructure (r1L, r2L),
-                              sameStructure (r1R, r2R) |)
-                (* perhaps use a pcase here? *)
-	     | _ => false
-	   (* end case *))
-	in
-	  lp (r1, r2)
-	end
-     (* end if *))
-     
-  (* fastMapP2 : ('a * 'b -> 'g) * 'a rope * 'b rope -> 'g rope *)
-  (* pre : both ropes have exactly the same structure *)
-    fun fastMapP2 (f, r1, r2) = let
-      fun lp ropes = 
-       (case ropes
-	  of (LEAF (len1, s1), LEAF (len2, s2)) => LEAF (len1, S.map2 (f, s1, s2))
-	   | (CAT (d1, len1, r1L, r1R), CAT (d2, len2, r2L, r2R)) =>
-               CAT (| d1, len1, lp (r1L, r2L), lp (r1R, r2R) |)
-	   | _ => failwith "BUG" (* this shouldn't have been called *)
+  (* mapPolyP : (float -> float) * float_rope -> float_rope *)
+  (* post : the output has the same shape as the input *)
+    fun mapPolyP (f, rope) = let
+      fun m r =
+       (case r
+          of LEAF (len, s) => Ropes.LEAF (len, S.mapPoly (f, s))
+	   | CAT (dpt, len, r1, r2) => Ropes.CAT (| dpt, len, m r1, m r2 |)
          (* end case *))
       in
-	lp (r1, r2)
-      end
+        m rope
+      end          
 
-  (* mapP2' : ('a * 'b -> 'g) * 'a rope * 'b rope -> 'g rope *)
-  (* pre : the first rope's length is <= that of the second *)
-  (* traversal follows the structure of the shorter rope *)
-  (* post : the output rope has the same shape as the first rope *)
-    fun mapP2' (f, ropeS, ropeL) = let
-      fun go (n, r) = 
+  (* sumP : float_rope -> float *)
+    fun sumP rope = let
+      fun add (x:float, y:float) = x+y
+      fun s r =
        (case r
-          of LEAF (len, sS) => let
-               val (lo, hi) = (n, n+len)
-	       val sL = partialSeq (ropeL, lo, hi)
-	       val s = S.map2 (f, sS, sL)
-               in
-		 LEAF (len, s)
-               end
-	   | CAT (d, len, rL, rR) => let
-	       val (rL', rR') = (| go (n, rL), go (n + length rL, rR) |)
-               in
-                 CAT (d, len, rL', rR')
-	       end
-          (* end case *))
+          of LEAF (_, s) => S.sum s
+           | CAT (_, _, rL, rR) => add (| s rL, s rR |)
+         (* esac *))
       in
-        go (0, ropeS)
+        s rope
       end
 
-  (* mapP2 : ('a * 'b -> 'c) -> 'a rope * 'b rope -> 'c rope *)
-  (* stop mapping when the elements of one rope run out *)
-  (* post : the output has the same shape as the shorter input *)
-    fun mapP2 (f, rope1, rope2) =
-     (if sameStructure (rope1, rope2) then
-        fastMapP2 (f, rope1, rope2)
-      else if length rope1 > length rope2 then let
-        fun f' x = (case x of (b, a) => f (a, b))
-        in
-          mapP2' (f', rope2, rope1)
-        end
-      else
-        mapP2' (f, rope1, rope2))
-*)
-    
-  (* reduceP : ('a * 'a -> 'a) * 'a * 'a rope -> 'a *)
+  (* reduceP : (float * float -> float) * float * float_rope -> float *)
   (* Reduce with an associative operator. *)
   (* e.g., sumP r == reduceP (+, 0, r) *)
     fun reduceP (assocOp, unit, rope) = let
@@ -689,7 +598,7 @@ structure Ropes (* : ROPES *) = struct
         red rope
       end
 
-  (* filterP : ('a -> bool) * 'a rope -> 'a rope *)
+  (* filterP : (float -> bool) * float_rope -> float_rope *)
   (* post: the output is balanced *)
   (* Strategy: First, filter all the leaves without balancing. *)
   (*           Then balance the whole thing if needed. *)
@@ -708,41 +617,4 @@ structure Ropes (* : ROPES *) = struct
         balanceIfNecessary (f rope)
       end
 
-(*
-  (* zipP : 'a rope * 'b rope -> ('a * 'b) rope *)
-  (* pre: the input ropes have the same length *)
-  (* pre: the input ropes are balanced *)
-  (* post: the output rope has the (balanced) structure of the first arg *)
-    fun zipP (rope1, rope2) =  
-	if length rope1 <> length rope2 then
-	    (raise Fail "Ropes.zip: input lengths not equal")
-	else
-	 (case (rope1, rope2)
-	   of (LEAF (len, l1), LEAF (_, l2)) => 
-		LEAF (len, S.zip (l1, l2))
-	    | (LEAF (len, l1), CAT _) =>
-		LEAF (len, S.zip (l1, toSeq rope2))
-	    | (CAT _, LEAF (len, l2)) =>
-		LEAF (len, S.zip (toSeq rope1, l2))
-	    | (CAT (_, _, r11, r12), CAT (_, _, r21, r22)) => 
-		concatWithoutBalancing (| zipP (r11, r21), zipP (r12, r22) |)
-	 (* end case *))
-
-  (* unzipP : ('a * 'b) rope -> 'a rope * 'b rope *)
-  (* NOTE: the output ropes are balanced, assuming that the input rope is also *)
-  (* balanced. *)	    
-    fun unzipP rope = 
-	(case rope
-	  of LEAF (len, l) => let
-	       val (l1, l2) = S.unzip l
-	       in
-		 (LEAF (len, l1), LEAF (len, l2))
-	       end
-	   | CAT (d, len, r1, r2) => let
-	       val ((r11, r12), (r21, r22)) = (| unzipP r1, unzipP r2 |)
-	       in
-		 (concatWithoutBalancing (r11, r21), concatWithoutBalancing (r12, r22))
-	       end
-	(* end case *))
-*)
   end

@@ -339,8 +339,10 @@ structure MLB : sig
 	    val defImplicitThreadSchedPts = loadMLB(LoadPaths.defImplicitThreadSchedLib, env)
 	  (* CML *)
 	    val cmlPts = loadMLB(LoadPaths.cmlLib, env)
+	  (* parallel array *)
+	    val parrayPts = loadMLB(LoadPaths.parrayLib, env)
             in
-	       cmlPts @ defImplicitThreadSchedPts @ topLevelSchedPts @ implicitThreadingPts
+	       parrayPts @ cmlPts @ defImplicitThreadSchedPts @ topLevelSchedPts @ implicitThreadingPts
 	    end
 
     val emptyEnv = Env{loc=(0,0), pts=[], preprocs=[]}

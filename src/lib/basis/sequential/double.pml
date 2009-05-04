@@ -63,4 +63,7 @@ structure Double =
     val fromInt : int -> double = _prim(@from-int)
     val abs : double -> double = _prim (@abs)
 
+    fun max (x : double, y) = if x < y then y else x
+    fun min (x : double, y) = if x < y then x else y
+
   end

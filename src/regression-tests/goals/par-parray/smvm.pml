@@ -5,6 +5,7 @@ fun sumP_float a = let
   in
     Ropes.reduceP (add, 0.0, a)
   end
+
 val sumP = sumP_float
 
 fun sub (v, i) = Ropes.sub (v, i) (* supposed to be infix ! *)
@@ -55,4 +56,3 @@ val smvm0 = smvm (sm0, v0)
 val _ = Print.printLn ("smvm0 => " ^ (PArray.toString ftos "," smvm0))
 
 val _ = Print.printLn "Done."
-
