@@ -243,7 +243,11 @@ structure Translate : sig
 			       [E.handlerOf env])))))))))
                 end
 *)
-	    | AST.PTupleExp exps => raise Fail "unexpected PTupleExp"
+	    | AST.PTupleExp exps => let
+		val exps' = List.map (fn e => trExpToExp (env, e)) exps
+	        in 
+		  EXP(TranslatePTup.tr{env=env, es=exps'})
+	        end
 	    | AST.PArrayExp(exps, ty) => raise Fail "unexpected PArrayExp"
 	    | AST.PCompExp _ => raise Fail "unexpected PCompExp"
 	    | AST.PChoiceExp _ => raise Fail "unexpected PChoiceExp"
