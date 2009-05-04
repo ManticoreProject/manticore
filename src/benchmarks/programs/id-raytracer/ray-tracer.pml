@@ -1,5 +1,6 @@
-val sqrt = sqrtd;
-fun expt a = let fun expt' b = powd(a, b) in expt' end;
+fun not b = if b then false else true
+val sqrt = Double.sqrt;
+fun expt a = let fun expt' b = Double.pow(a, b) in expt' end;
 val pi : double = 3.14159265359;
 (*
  *
@@ -7,26 +8,6 @@ val pi : double = 3.14159265359;
  *)
 val EPSILON : double = 1.0e~6;
 val INFINITY : double = 1.0e20;
-fun map f = let
-      fun mapf l = (case l of nil => nil | x::xs => f x :: mapf xs)
-      in
-	mapf
-      end;
-fun fold f = let
-      fun foldf s0 = let
-	    fun fold' l = (case l of nil => s0 | x::xs => f (x, foldf s0 xs))
-	    in
-	      fold'
-	    end
-      in
-	foldf
-      end;
-fun hd l = (case l
-       of nil => fail("expecting a head")
-	| x::xs => x);
-fun tl l = (case l
-       of nil => fail("expecting a tail")
-	| x::xs => xs);
 (*
  * convenient vector operations
  *)
@@ -35,7 +16,7 @@ fun vecadd ((x1,y1,z1) : vec) = let fun add (x2,y2,z2) = (x1+x2, y1+y2, z1+z2) i
 fun vecsum (x : vec list) = let
       fun f (a, b) = vecadd a b
       in
-	fold f (0.0,0.0,0.0) x
+	List.foldr f (0.0,0.0,0.0) x
       end;
 fun vecsub ((x1,y1,z1) : vec) = let fun sub (x2,y2,z2) = (x1-x2, y1-y2, z1-z2) in sub end;
 fun vecmult ((x1,y1,z1) : vec) = let fun mul (x2,y2,z2) = (x1*x2, y1*y2, z1*z2) in mul end;
@@ -234,8 +215,8 @@ fun camparams (lookfrom, lookat, vup, fov, winsize) = let
     val (scrnj, _) = vecnorm (veccross scrni lookdir);
     val xfov = fov;
     val yfov = fov;
-    val xwinsize = (itod winsize);  (* for now, square window *)
-    val ywinsize = (itod winsize);
+    val xwinsize = (Double.fromInt winsize);  (* for now, square window *)
+    val ywinsize = (Double.fromInt winsize);
     val magx = 2.0 * dist * (tand (dtor (xfov / 2.0))) / xwinsize;
     val magy = 2.0 * dist * (tand (dtor (yfov / 2.0))) / ywinsize;
     val scrnx = vecscale scrni magx;
@@ -253,8 +234,8 @@ fun camparams (lookfrom, lookat, vup, fov, winsize) = let
 *)
 fun tracepixel (spheres, lights, x, y, firstray, scrnx, scrny) = let
   val pos = lookfrom;
-  val (dir, _) = vecnorm (vecadd (vecadd firstray (vecscale scrnx (itod x)))
-		    (vecscale scrny (itod y)));
+  val (dir, _) = vecnorm (vecadd (vecadd firstray (vecscale scrnx (Double.fromInt x)))
+		    (vecscale scrny (Double.fromInt y)));
   val (hit, dist, sp) = trace (spheres, pos, dir);  (* pick first intersection *)
 						(* return color of the pixel x,y *)
   in
@@ -283,10 +264,10 @@ and trace (spheres, pos, dir) = let
     (* return a sphere and its distance *)
     in
       case dists
-       of nil => (false, INFINITY, (hd spheres))  (* missed all *)
+       of nil => (false, INFINITY, (List.hd spheres))  (* missed all *)
         | first::rest => let
 	    fun min ((d1, s1), (d2, s2)) = if (d1 < d2) then (d1,s1) else (d2,s2)
-	    val (mindist, sp) = fold min first rest
+	    val (mindist, sp) = List.foldr min first rest
 	    in
 	      (true, mindist, sp)
 	    end
@@ -322,7 +303,7 @@ and shade (lights, sp, lookpos, dir, dist, contrib) = let
     val refl = vecadd dir (vecscale norm ((~2.0)*(vecdot dir norm)));
     (*  diff is diffuse and specular contribution *)
     fun lightray' l = lightray (l, hitpos, norm, refl, surf)
-    val diff = vecsum (map lightray' lights);
+    val diff = vecsum (List.map lightray' lights);
     val transmitted = transmitsurf surf;
     val simple = vecadd amb diff;
     (* calculate transmitted ray; it adds onto "simple" *)
@@ -452,20 +433,20 @@ and shadowed (pos, dir, lcolor) = let (* need to offset just a bit *)
 *)
 (* parallel version *)
 fun ray winsize = let
-    val img = newImage (winsize, winsize)
+    val img = Image.new (winsize, winsize)
     val lights = testlights;
     val (firstray, scrnx, scrny) = camparams (lookfrom, lookat, vup, fov, winsize);
     fun f (i, j) = tracepixel (world, lights, i, j, firstray, scrnx, scrny);
-    val b = gettimeofday ();
+    val b = Time.now ();
     val scene = [| [| f(i, j) | j in [| 0 to winsize-1 |] |] | i in [| 0 to winsize-1 |] |]
-    val e = gettimeofday ();
+    val e = Time.now ();
     fun output i = if i < winsize
         then let
           fun loop j = if j < winsize
               then let
-                val (r, g, b) = (scene!i)!j
+                val (r, g, b) = subP (subP (scene, i), j)
                 in
-                   updateImage3d (img, i, j, r, g, b); 
+                   Image.update3d (img, i, j, r, g, b); 
                    loop (j+1)
                 end
               else output (i+1)
@@ -476,9 +457,9 @@ fun ray winsize = let
 
     in      
       output 0;
-      outputImage(img, "out.ppm"); 
-      freeImage img;
-      Print.print (dtos (e-b) ^ "\n")
+      Image.output("out.ppm", img); 
+      Image.free img;
+      Print.print (Long.toString (e-b) ^ "\n")
     end
 
 val _ = ray (PrimIO.readInt ())
