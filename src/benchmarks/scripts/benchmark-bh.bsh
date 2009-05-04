@@ -6,31 +6,28 @@
 # To generate timing results, run this script in the benchmark directory with the following
 # command-line arguments:
 #
-#           -e prog_name        name of the program you wish to benchmark.  The pml file
-#				should be located at benchmarks/prog_name/prog_name.pml
-#           -q seq_prog_name    optional name of the sequential program for benchmarking.
+#           -b bench_name       name of the benchmark.
+#           -f path             path to the benchmark file.
+#           -q seq_path         optional path to the sequential program.
 #				The pml file should be located at prog_name/seq_prog_name.pml.
 #           -s size		integer size for testing.
 #           -l seq_sz		integer size for switching to the sequential base case.
 #           -p num_procs	number of processors.  Using -p 0 causes sequential compilation.
 #
-# To make a new benchmark for program prog, 
-#    1. Create the directory benchmark/prog.
-#    2. Places prog.pml in benchmark/prog.
-#    3. Modify prog.pml so that it takes two integer arguments from stdin, the sequential base case size
-#       and the input size and have it report the time to evaluate.
 
 GOTO_SEQ_SIZES=""
 
-usage="usage: benchmark.bsh -e prog_name -q sequential_prog_name -s size ... -p num_procs ... -l seq_sz ..."
-SEQ_PROG_NAME=""
-while getopts ":s:p:e:q:l:" options; do
+usage="usage: benchmark.bsh -b bench_name -f path -q sequential_path -s size ... -p num_procs ... -l seq_sz ..."
+SEQ_PML_PATH=""
+while getopts ":b:f:s:p:q:l:n:" options; do
   case $options in
     s ) SIZES="$SIZES $OPTARG";;
     p ) PROCS="$PROCS $OPTARG";;
-    e ) PROG_NAME="$OPTARG";;
+    f ) PML_PATH="$OPTARG";;
+    b ) BENCH_NAME="$OPTARG";;
     l ) GOTO_SEQ_SIZES="$GOTO_SEQ_SIZES $OPTARG";;
-    q ) SEQ_PROG_NAME="$OPTARG";;
+    q ) SEQ_PML_PATH="$OPTARG";;
+    n ) NUM_TRIALS="$OPTARG";;
     h ) echo $usage;;
     \? ) echo $usage
          exit 1;;
@@ -40,66 +37,102 @@ while getopts ":s:p:e:q:l:" options; do
   esac
 done
 
+if [ -z $GOTO_SEQ_SIZES ]; then
+   GOTO_SEQ_SIZES="1"
+fi
+
 if [ -z "$PROCS" ]; then
     echo "Enter at least one choice for the number of processors"
     exit 1
 fi
 
-PROG_EXE=$PROG_NAME-run
+if [ -z "$NUM_TRIALS" ]; then
+   NUM_TRIALS="5"
+fi
 
+PROG_EXE=$BENCH_NAME-run
+
+MC="mc"
 # compiler flags
-MC="sml @SMLcmdname=mc @SMLload=../../mc"
-MCFLAGS="-Cclos.convert-style=flatWithCFA"
+MCFLAGS=""
 SEQFLAGS="$MCFLAGS -Csequential=true"
 
 DATE=$( date +"%F-%H-%M-%S" )
-LOG_FILE_NAME=$PROG_NAME-$DATE.times
+LOG_FILE_NAME=$BENCH_NAME-$DATE.sml
 echo "Logging performance results to $LOG_FILE_NAME"
 
 # compile the sequential version
-if [ -z "$SEQ_PROG_NAME" ] ; then
-    SEQ_PROG_NAME=$PROG_NAME
+if [ -z "$SEQ_PML_PATH" ] ; then
+    SEQ_PML_PATH=$PML_PATH
 fi
-SEQ_PROG_EXE=$PROG_NAME-seq
-cp $PROG_NAME/$SEQ_PROG_NAME.pml $SEQ_PROG_NAME.pml
-echo "Compiling sequential program: $MC $SEQFLAGS $SEQ_PROG_NAME.pml"
-$MC $SEQFLAGS $SEQ_PROG_NAME.pml 2> /dev/null
-mv a.out $SEQ_PROG_EXE
+SEQ_PROG_EXE=$BENCH_NAME-seq
+echo "Compiling sequential program: $MC -o $SEQ_PROG_EXE $SEQFLAGS $SEQ_PML_PATH"
+$MC -o $SEQ_PROG_EXE $SEQFLAGS $SEQ_PML_PATH 2> /dev/null
 
 # metadata
 ARCH=$( uname -m )
 OS=$( uname -s )
 MACHINE=$( uname -n )
+echo -e "(* $LOG_FILE_NAME *)" >> $LOG_FILE_NAME
+echo -e "(* ARCH:\t$ARCH OS:\t$OS MACHINE:\t$MACHINE *)" >> $LOG_FILE_NAME
+echo -e "(* MCFLAGS\t$MCFLAGS *)" >> $LOG_FILE_NAME
 SVN_REVISION=$( svn info | grep Revision )
-echo -e "#ARCH:\t$ARCH OS:\t$OS MACHINE:\t$MACHINE" >> $LOG_FILE_NAME
-echo -e "#MCFLAGS\t$MCFLAGS" >> $LOG_FILE_NAME
-echo -e "#SVN $SVN_REVISION" >> $LOG_FILE_NAME
-echo -e "#nProcs\t\tsize\t\tmaxLeafSize\ttime(s)" >> $LOG_FILE_NAME 
+echo -e "(* SVN $SVN_REVISION *)" >> $LOG_FILE_NAME
+SVN_URL=$( svn info | grep URL )
+echo -e "(* SVN $SVN_URL *)" >> $LOG_FILE_NAME
+echo -e "(* PML SOURCE FILE: $PML_PATH *)" >> $LOG_FILE_NAME
+echo -e "(* The time field is in microseconds. *)" >> $LOG_FILE_NAME
+echo -e "(* The size field is the problem size. *)" >> $LOG_FILE_NAME
+echo -e "(* The seqCutoff field is the number of elements for which we switch to sequential evaluation. *)" >> $LOG_FILE_NAME
 
 PARFLAGS="$MCFLAGS"
-#run the macro expander on the source program
-cp $PROG_NAME/$PROG_NAME.pml $PROG_NAME.pml
-#compile the parallel version
-echo "Compiling parallel program: $MC $PARFLAGS $PROG_NAME.pml"
-$MC $PARFLAGS $PROG_NAME.pml 2> /dev/null
-mv a.out $PROG_EXE
+echo "Compiling parallel program: $MC -o $PROG_EXE $PARFLAGS $PML_PATH 2> /dev/null"
+$MC -o $PROG_EXE $PARFLAGS $PML_PATH 2> /dev/null
 
-for seq_sz in $GOTO_SEQ_SIZES
-do
-    for p in $PROCS
-    do   
-        for s in $SIZES
-	do
-	    echo "evaluating $PROG_NAME for $p processor[s] at image size $s and sequential size $seq_sz"
-	    echo -n -e "$p\t\t$s\t\t$seq_sz\t\t" >> $LOG_FILE_NAME
-	    if [ "$p" -eq "0" ] ; then       
-		cat plummer.particles | ./$SEQ_PROG_EXE >> $LOG_FILE_NAME
-	    else
-		cat plummer.particles | ./$PROG_EXE -p $p >> $LOG_FILE_NAME
-	    fi
+# output SML
+
+echo -e "structure $BENCH_NAME = struct" >> $LOG_FILE_NAME
+
+echo -e "val numTrials = $NUM_TRIALS" >> $LOG_FILE_NAME
+
+function print_list {
+    echo -e "val $2 = " >> $LOG_FILE_NAME
+    for x in $1
+    do
+	echo -n -e " $x :: " >> $LOG_FILE_NAME
+    done
+    echo -e "nil" >> $LOG_FILE_NAME
+}
+
+print_list "$GOTO_SEQ_SIZES" "seqCutoffs"
+print_list "$PROCS" "nProcs"
+print_list "$SIZES" "sizes"
+
+echo -e "val results = " >> $LOG_FILE_NAME
+
+for ((i=1;i<=NUM_TRIALS;i+=1)); do
+    for seq_sz in $GOTO_SEQ_SIZES
+    do
+	for p in $PROCS
+	do   
+	    for s in $SIZES
+	    do
+		echo "evaluating $PML_PATH for $p processor[s] at image size $s and sequential size $seq_sz"
+		echo -n -e "\t\t{ trial=$i,\t\tnProcs=$p,\t\tsize=$s,\t\tseqCutoff=$seq_sz,\t\ttime=" >> $LOG_FILE_NAME
+		if [ "$p" -eq "0" ] ; then       
+echo "cat /var/tmp/mrainey/pl1.particles | ./$SEQ_PROG_EXE -p 1"
+		    cat /var/tmp/mrainey/pl1.particles | ./$SEQ_PROG_EXE -p 1 >> $LOG_FILE_NAME
+		else
+		    cat /var/tmp/mrainey/pl1.particles | ./$PROG_EXE -p $p >> $LOG_FILE_NAME
+		fi
+		echo -e " } ::" >> $LOG_FILE_NAME
+	    done
 	done
     done
 done
 
+echo -e "\t\tnil" >> $LOG_FILE_NAME
+echo -e "end" >> $LOG_FILE_NAME
+
 # clean up
-rm -f *.ppm *.s $PROG_EXE $SEQ_PROG_EXE $SEQ_PROG_NAME.pml $PROG_NAME.pml
+rm -f *.ppm *.s $PROG_EXE $SEQ_PROG_EXE $SEQ_PML_PATH.pml $PML_PATH.pml
