@@ -60,11 +60,7 @@ structure Elaborate : sig
 	  in
 	    trRange (e1', e2', oe3', t')
 	  end
-      | trExp (ptup as A.PTupleExp es) = 
-	  (case trPTup es
-	     of SOME e => e
-	      | NONE => A.TupleExp (map trExp es)
-	    (* end case *))
+      | trExp (ptup as A.PTupleExp es) = A.PTupleExp (map trExp es)
       | trExp (A.PArrayExp (es, t)) = let
           val a = ParrLitToRope.tr (map trExp es, trTy t)
                   (* rewrites with parallel tuples *)
