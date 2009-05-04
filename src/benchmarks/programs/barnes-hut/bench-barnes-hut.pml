@@ -112,14 +112,14 @@ fun debug () = let
     val ps = readParticles()
     val n = L.length(ps)
 
-    fun iter (ps : particle list, i, err) = if (i<nSteps)
+    fun iter (ps : particle list, i, err) = (raise Fail "todo") (*if (i<nSteps)
         then let
           val bhPs : particle list = Ropes.toSeq(oneStep (llx, lly, rux, ruy, Ropes.fromSeq ps))
 	  val naivePs : particle list = naiveStep ps
 	  in
              iter(bhPs, i+1, rmax(err, maxErr(naivePs, bhPs)))
           end
-        else err
+        else err*)
     val err = iter(ps, 0, 0.0)
     in
        Print.printLn("Error for BH:"^Double.toString err)
@@ -141,4 +141,4 @@ fun benchmark () =
 	Print.printLn (Time.toString t)
     end
 
-val () = ImplicitThread.runWithGroup(MultiprogrammedWorkStealing.workGroup(), benchmark)
+val () = ImplicitThread.runWithGroup(SwpWorkStealing.workGroup(), benchmark)
