@@ -47,7 +47,7 @@ NOTE: supposing we have inLocalHeap,
 	   then return(SELECT(VALUE_OFF, ivar))
 	else 
 *)
-        let ivar : ivar = promote(ivar)
+(*        let ivar : ivar = promote(ivar)*)
         let vp : vproc = SchedulerAction.@atomic-begin()
 	let readFlag : int = I32FetchAndAdd(&SPIN_LOCK_OFF(ivar), 1)
 	let value : any = SELECT(VALUE_OFF, ivar)
