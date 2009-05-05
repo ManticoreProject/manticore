@@ -1,0 +1,15 @@
+#!/bin/bash
+
+cat <<EOF
+(* max-leaf-size.pml
+ *
+ * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+structure MaxLeafSize = struct
+
+  val sz = $1
+
+end
+EOF > ../lib/basis/parray/max-leaf-size.pml

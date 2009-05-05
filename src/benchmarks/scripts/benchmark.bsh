@@ -115,6 +115,7 @@ echo -e "val results = " >> $LOG_FILE_NAME
 for ((i=1;i<=NUM_TRIALS;i+=1)); do
     for seq_sz in $GOTO_SEQ_SIZES
     do
+	./set-max-leaf-size.bsh $seq_sz
 	for p in $PROCS
 	do   
 	    for s in $SIZES
