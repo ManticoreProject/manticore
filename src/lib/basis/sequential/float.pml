@@ -58,7 +58,7 @@ structure Float =
     val toString : float -> string = _prim(@to-string)
     val fromInt : int -> float = _prim(@from-int)
 
-    fun max (x, y) = if x < y then y else x
+    fun max (x, y) = if x > y then x else y
     fun min (x, y) = if x < y then x else y
 
   end
