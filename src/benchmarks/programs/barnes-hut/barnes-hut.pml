@@ -15,6 +15,8 @@ datatype bh_tree
   | BHT_LEAF of (double * double * double *     (* root mass point *)
 		 mass_point parray) 
 
+fun log4 x = Int.ceilingLg x div 2
+
 val epsilon : double = 0.05
 val eClose : double = 0.01
 val dt = 2.0
@@ -77,14 +79,13 @@ fun inBox (BOX (llx, lly, rux, ruy)) (MP (px, py, _)) =
 (* split mass points according to their locations in the quadrants *)
 fun buildTree (box, particles : mass_point parray) : bh_tree =
     let
-	val maxDepth = Int.ceilingLg (lengthP particles)
+	val maxDepth = log4 (lengthP particles) + 1
 	fun build (depth, BOX (llx, lly, rux, ruy), particles) =
 	    (* note that the stopping condition is based on the depth of our recursion tree. if we did not
 	     * limit the depth, nontermination could occur when two or more particles lie on top of 
 	     * each other. *)
-	    (* also note: our stopping condition means that, in the worst case, the depth of our tree is twice the
-	     * depth of a perfectly balanced tree. *)
-	    if lengthP particles <= 1 orelse depth > maxDepth then
+	    (* in the worst case the depth of our tree is twice the depth of a perfectly balanced tree. *)
+	    if lengthP particles <= 1 orelse depth >= maxDepth then
 		let
 		    val MP (x, y, m) = calcCentroid particles
 		in
@@ -123,6 +124,6 @@ fun oneStep (pts : particle parray) : particle parray  =
 			      reduceP (Double.max, y0, [| y | MP (_, y, _) in mspnts |]) |)
 	    val tree = buildTree (box0, mspnts)
 	    val accels =  [| calcAccel (mspnt, tree) | mspnt in mspnts |]
-	in
+ 	in
 	    [| applyAccel (pt, acc) | pt in pts, acc in accels |]
 	end

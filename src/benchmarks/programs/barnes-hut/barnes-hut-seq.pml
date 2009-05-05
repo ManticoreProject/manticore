@@ -15,6 +15,8 @@ datatype bh_tree
   | BHT_LEAF of (double * double * double *     (* root mass point *)
 		 mass_point list) 
 
+fun log4 x = Int.ceilingLg x div 2
+
 val epsilon : double = 0.05
 val eClose : double = 0.01
 val dt = 2.0
@@ -89,7 +91,7 @@ fun particlesInBox (box, particles) =
 fun buildTree (box, particles : mass_point list) : bh_tree =
     let
 	val nParticles = List.length particles
-	val maxDepth = Int.ceilingLg nParticles
+	val maxDepth = log4 nParticles + 1
 	fun build (depth, BOX (llx, lly, rux, ruy), nParticles, particles) =
 	    (* note that the stopping condition is based on the depth of our recursion tree. if we did not
 	     * limit the depth, nontermination could occur when two or more particles lie on top of 
