@@ -96,7 +96,7 @@ fun buildTree (box, particles : mass_point list) : bh_tree =
 	     * each other. *)
 	    (* also note: our stopping condition means that, in the worst case, the depth of our tree is twice the
 	     * depth of a perfectly balanced tree. *)
-	    if nParticles = 1 orelse depth > maxDepth then
+	    if nParticles <= 1 orelse depth > maxDepth then
 		let
 		    val MP (x, y, m) = calcCentroid particles
 		in
