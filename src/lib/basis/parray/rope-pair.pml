@@ -87,16 +87,18 @@ structure RopePair (* : ROPE_PAIR *) = struct
   (* stop mapping when the elements of one rope run out *)
   (* post : the output has the same shape as the shorter input *)
   (* note : the sameStructureP test might not be worth it when leaf size is small *)
+    (* note : since pcase is currently broken, i've temporarily disabled the sameStructureP
+     * check below *)
     fun mapP (f, rope1, rope2)  =
-     (if sameStructureP (rope1, rope2) then
+(*     (if sameStructureP (rope1, rope2) then
         fastMapP (f, rope1, rope2)
-      else if R.length rope1 > R.length rope2 then let
+      else *) if R.length rope1 > R.length rope2 then let
         fun f' x = (case x of (b, a) => f (a, b))
         in
           mapP' (f', rope2, rope1)
         end
       else
-        mapP' (f, rope1, rope2))
+        mapP' (f, rope1, rope2)
 
   (* zipP : 'a rope * 'b rope -> ('a * 'b) rope *)
   (* Zipping silently completes when one rope runs out. *)
