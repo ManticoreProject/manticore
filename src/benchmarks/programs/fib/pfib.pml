@@ -44,3 +44,4 @@ fun bench () = let
 
 val swp = SwpWorkStealing.workGroup()
 val _ = ImplicitThread.runWithGroup(swp, bench)
+
