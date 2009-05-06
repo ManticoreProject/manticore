@@ -76,15 +76,24 @@ fun calcCentroid (mpts : mass_point list) : mass_point =
 	MP (sum_mx / sum_m, sum_my / sum_m, sum_m)
     end
 
-fun inBox (BOX (llx, lly, rux, ruy)) (MP (px, py, _)) =
+fun inBox (BOX (llx, lly, rux, ruy), MP (px, py, _)) =
     (px > llx) andalso (px <= rux) andalso (py > lly) andalso (py <= ruy)
 
-(* returns the list of particles that are centered within the box and the number of those particles *)
-fun particlesInBox (box, particles) =
+(* partition the particles into the four boxes *)
+fun partition (particles, b1, b2, b3, b4) =
     let
-	fun filt box (p, (n, ps)) = if inBox box p then (n + 1, p :: ps) else (n, ps)
+	fun f (p, ((n1,q1), (n2,q2), (n3,q3), (n4,q4))) =
+	    if inBox (b1, p) then
+		((n1+1,p::q1), (n2,q2), (n3,q3), (n4,q4))
+	    else if inBox (b2, p) then
+		((n1,q1), (n2+1,p::q2), (n3,q3), (n4,q4))
+	    else if inBox (b3, p) then
+		((n1,q1), (n2,q2), (n3+1,p::q3), (n4,q4))
+	    else if inBox (b4, p) then
+		((n1,q1), (n2,q2), (n3,q3), (n4+1,p::q4))
+	    else (raise Fail "particle does not fit into a box")
     in
-	List.foldl (filt box) (0, nil) particles
+	List.foldl f ((0,nil),(0,nil),(0,nil),(0,nil)) particles
     end
 
 (* split mass points according to their locations in the quadrants *)
@@ -112,10 +121,7 @@ fun buildTree (box, particles : mass_point list) : bh_tree =
 		    val b2 = BOX (llx,  midy, midx,  ruy)
 		    val b3 = BOX (midx, midy, rux,   ruy)
 		    val b4 = BOX (midx, lly,  rux,  midy)
-		    val (n1, p1) = particlesInBox (b1, particles)
-		    val (n2, p2) = particlesInBox (b2, particles)
-		    val (n3, p3) = particlesInBox (b3, particles)
-		    val (n4, p4) = particlesInBox (b4, particles)
+		    val ((n1,p1), (n2,p2), (n3,p3), (n4,p4)) = partition (particles, b1, b2, b3, b4)
 		    val depth' = depth + 1
 		    val (q1, q2, q3, q4) =
 			( build (depth', b1, n1, p1),
@@ -135,10 +141,10 @@ fun oneStep (pts : particle list) : particle list =
        | PARTICLE (MP (x0, y0, _), _, _) :: _ =>
 	 let
 	     val mspnts = List.map (fn (PARTICLE (mpnt, _, _)) => mpnt) pts
-	     val llx = List.foldl Double.min x0 (List.map xCoord mspnts)
-	     val lly = List.foldl Double.min y0 (List.map yCoord mspnts)
-	     val rux = List.foldl Double.max x0 (List.map xCoord mspnts)
-	     val ruy = List.foldl Double.max y0 (List.map yCoord mspnts)
+	     val llx = List.foldl Double.min x0 (List.map xCoord mspnts) - epsilon
+	     val lly = List.foldl Double.min y0 (List.map yCoord mspnts) - epsilon
+	     val rux = List.foldl Double.max x0 (List.map xCoord mspnts) + epsilon
+	     val ruy = List.foldl Double.max y0 (List.map yCoord mspnts) + epsilon
 	     val tree = buildTree (BOX (llx, lly, rux, ruy), mspnts)
 	     val accels =  List.map (fn mspnt => calcAccel (mspnt, tree)) mspnts
 	 in
