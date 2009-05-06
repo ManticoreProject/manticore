@@ -80,7 +80,7 @@ STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
 	    vp->globNextW = (Addr_t)(newObj+len+1);
 #ifndef NO_GC_STATS
 /* FIXME: we should really compute this information on a per-chunk basis */
-	    FetchAndAdd64 ((int64_t *)&NBytesCopied, WORD_SZB*(len+1));
+	    vp->nBytesCopied += WORD_SZB*(len+1);
 #endif
 	    return PtrToValue(newObj);
 	}
@@ -131,6 +131,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 
     MutexLock (&GCLock);
 	if (!GlobalGCInProgress) {
+	  /* this vproc is leading the global GC */
 	    leaderVProc = true;
 	    GlobalGCInProgress = true;
 	    NReadyForGC = 1;
@@ -180,11 +181,15 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	    p->usedTop = self->globNextW - WORD_SZB;
 	}
 
+    MutexUnlock (&GCLock);
+
   /* finish the GC setup for this vproc */
     self->globToSpTl = (MemChunk_t *)0;
     self->globToSpHd = (MemChunk_t *)0;
-
-    MutexUnlock (&GCLock);
+#ifndef NO_GC_STATS
+    self->nWordsScanned = 0;
+    self->nBytesCopied = 0;
+#endif
 
     if (leaderVProc) {
       /* reset the size of to-space */
@@ -202,6 +207,11 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
   /* start GC for this vproc */
     GlobalGC (self, roots);
 
+#ifndef NO_GC_STATS
+  /* add this vproc's counts to the global counters */
+    FetchAndAdd64 ((int64_t *)&NWordsScanned, self->nWordsScanned);
+    FetchAndAdd64 ((int64_t *)&NBytesCopied, self->nBytesCopied);
+#endif
 #ifndef NDEBUG
     MutexLock(&GCLock);
         CheckGC (self, roots);
@@ -227,12 +237,6 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 /* NOTE: at some point we may want to release memory back to the OS */
 	    GlobalGCInProgress = false;
 	MutexUnlock (&HeapLock);
-
-#ifndef NDEBUG
-	if (GCDebug >= GC_DEBUG_GLOBAL)
-	    SayDebug("[%2d] Completed global GC; %ld words scanned; %ld/%ld bytes copied\n",
-		self->id, NWordsScanned, NBytesCopied, FromSpaceSzb);
-#endif
     }
 
     LogGlobalGCEnd (self, NumGlobalGCs);
@@ -241,8 +245,13 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
     BarrierWait (&GCBarrier);
 
 #ifndef NDEBUG
-	if (GCDebug >= GC_DEBUG_GLOBAL)
- 	    SayDebug("[%2d] Leaving global GC\n", self->id);
+    if (GCDebug >= GC_DEBUG_GLOBAL) {
+	if (leaderVProc)
+	    SayDebug("[%2d] Completed global GC; %ld words scanned; %ld/%ld bytes copied\n",
+		self->id, NWordsScanned, NBytesCopied, FromSpaceSzb);
+	else
+	    SayDebug("[%2d] Leaving global GC\n", self->id);
+    }
 #endif
 
 } /* end of StartGlobalGC */
@@ -289,7 +298,7 @@ static void ScanVProcHeap (VProc_t *vp)
     Word_t *scanPtr = (Word_t *)VProcHeap(vp);
 
 #ifndef NO_GC_STATS
-    FetchAndAdd64 ((int64_t *)&NWordsScanned, (int64_t)(top - scanPtr));
+    vp->nWordsScanned += (top - scanPtr);
 #endif
 
     while (scanPtr < top) {
@@ -341,7 +350,7 @@ static void ScanGlobalToSpace (VProc_t *vp)
 
     do {
 #ifndef NO_GC_STATS
-	FetchAndAdd64 ((int64_t *)&NWordsScanned, (int64_t)((Word_t)scanTop - (Word_t)scanPtr));
+	vp->nWordsScanned += ((Word_t)scanTop - (Word_t)scanPtr);
 #endif
 	while (scanPtr < scanTop) {
 	    Word_t hdr = *scanPtr++;  // get object header
