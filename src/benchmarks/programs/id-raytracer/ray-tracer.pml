@@ -459,7 +459,9 @@ fun ray winsize = let
       output 0;
       Image.output("out.ppm", img); 
       Image.free img;
-      Print.print (Long.toString (e-b) ^ "\n")
+      Print.print (Long.toString (e-b))
     end
 
-val _ = ray (PrimIO.readInt ())
+val _ = PrimIO.readInt ()
+val _ = ImplicitThread.runWithGroup(SwpWorkStealing.workGroup(), fn () => ( 
+               ray (PrimIO.readInt ())))

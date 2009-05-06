@@ -84,19 +84,43 @@ echo "Compiling parallel program: $MC $PARFLAGS $PROG_NAME.pml"
 $MC $PARFLAGS $PROG_NAME.pml 2> /dev/null
 mv a.out $PROG_EXE
 
-for seq_sz in $GOTO_SEQ_SIZES
-do
-    for p in $PROCS
-    do   
-        for s in $SIZES
-	do
-	    echo "evaluating $PROG_NAME for $p processor[s] at image size $s and sequential size $seq_sz"
-	    echo -n -e "$p\t\t$s\t\t$seq_sz\t\t" >> $LOG_FILE_NAME
-	    if [ "$p" -eq "0" ] ; then       
-		cat plummer.particles | ./$SEQ_PROG_EXE >> $LOG_FILE_NAME
-	    else
-		cat plummer.particles | ./$PROG_EXE -p $p >> $LOG_FILE_NAME
-	    fi
+# output SML
+
+echo -e "structure $BENCH_NAME = struct" >> $LOG_FILE_NAME
+
+echo -e "val numTrials = $NUM_TRIALS" >> $LOG_FILE_NAME
+
+function print_list {
+    echo -e "val $2 = " >> $LOG_FILE_NAME
+    for x in $1
+    do
+	echo -n -e " $x :: " >> $LOG_FILE_NAME
+    done
+    echo -e "nil" >> $LOG_FILE_NAME
+}
+
+print_list "$GOTO_SEQ_SIZES" "seqCutoffs"
+print_list "$PROCS" "nProcs"
+print_list "$SIZES" "sizes"
+
+echo -e "val results = " >> $LOG_FILE_NAME
+
+for ((i=1;i<=NUM_TRIALS;i+=1)); do
+    for seq_sz in $GOTO_SEQ_SIZES
+    do
+	for p in $PROCS
+	do   
+	    for s in $SIZES
+	    do
+		echo "evaluating $PML_PATH for $p processor[s] at image size $s and sequential size $seq_sz"
+		echo -n -e "\t\t{ trial=$i,\t\tnProcs=$p,\t\tsize=$s,\t\tseqCutoff=$seq_sz,\t\ttime=" >> $LOG_FILE_NAME
+		if [ "$p" -eq "0" ] ; then       
+		    cat /var/tmp/plummer.particles | ./$SEQ_PROG_EXE -p 1 >> $LOG_FILE_NAME
+		else
+		    cat /var/tmp/plummer.particles | ./$PROG_EXE -p $p >> $LOG_FILE_NAME
+		fi
+		echo -e " } ::" >> $LOG_FILE_NAME
+	    done
 	done
     done
 done

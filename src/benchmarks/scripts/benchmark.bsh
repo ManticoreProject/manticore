@@ -43,7 +43,7 @@ while getopts ":b:f:s:p:q:l:n:" options; do
   esac
 done
 
-if [ -z $GOTO_SEQ_SIZES ]; then
+if [ -n $GOTO_SEQ_SIZES ]; then
    GOTO_SEQ_SIZES="1"
 fi
 

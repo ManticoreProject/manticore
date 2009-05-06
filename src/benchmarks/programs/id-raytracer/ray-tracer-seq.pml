@@ -499,14 +499,16 @@ fun ray' winsize = let
 	      lp(i+1, lp' (0, is))
 	    end
 	  else is
-    val (vs, t) = Time.timeToEval(fn () => lp (0, nil))
+    val b = Time.now ()
+    val vs = lp (0, nil)
+    val e = Time.now ()
     fun output vs = (case vs
         of nil => ()
 	 | (i,j,(r,g,b)) :: vs => (Image.update3d (img, i, j, r, g, b); output vs)
         (* end case *))
     in
       output vs; Image.output("out.ppm", img); Image.free img;
-      Print.printLn("Time elapsed (microseconds): "^Long.toString t)
+      Print.print (Long.toString (e-b))
     end;
 
 val _ = PrimIO.readInt ()  (* for consistency with the other benchmarks *)
