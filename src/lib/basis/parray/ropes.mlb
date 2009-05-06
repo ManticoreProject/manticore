@@ -8,10 +8,6 @@
 
   ../sequential/sequential.mlb
   ../misc/debug.mlb
-  ../runtime/runtime.mlb
-  ../synch/synch.mlb
-  ../implicit-threading/implicit-threading.mlb
-  ../schedulers/schedulers.mlb
 
   list-seq.pml
   array-seq.pml

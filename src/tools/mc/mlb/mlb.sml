@@ -327,8 +327,10 @@ structure MLB : sig
             val runtimeBasisLibPts = loadMLB(LoadPaths.runtimeBasisLib, env)
           (* load the top-level scheduler *)
 	    val topLevelSchedPts = loadMLB(LoadPaths.topLevelSchedLib (Controls.get BasicControl.scheduler), env)
+	  (* parallel array *)
+	    val parrayPts = loadMLB(LoadPaths.parrayLib, env)
             in
-              topLevelSchedPts @ runtimeBasisLibPts
+              parrayPts @ topLevelSchedPts @ runtimeBasisLibPts
             end
           else let
 	  (* implicit-threading library *)

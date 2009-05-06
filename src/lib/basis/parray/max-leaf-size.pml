@@ -6,6 +6,6 @@
 
 structure MaxLeafSize = struct
 
-  val sz = 1024
+  val sz = 128
 
 end
