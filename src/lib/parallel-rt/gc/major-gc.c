@@ -35,6 +35,7 @@ STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
     if (isForwardPtr(hdr))
 	return PtrToValue(GetForwardPtr(hdr));
     else {
+      /* forward object to global heap. */
 	Word_t *nextW = (Word_t *)vp->globNextW;
 	int len = GetLength(hdr);
 	if (nextW+len >= (Word_t *)(vp->globLimit)) {
@@ -57,12 +58,13 @@ STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
  *  \param vp the vproc that is performing the collection.
  *  \param roots a null-terminated array of root addresses.
  *  \param top the address of the top of the old region in
- *         the local heap.
+ *         the local heap after the minor GC.
  */
 void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 {
-    Addr_t	heapBase = (Addr_t)vp;
-    Addr_t	oldBase = VProcHeap(vp);
+    Addr_t	heapBase = (Addr_t)vp;		/* used to text for pointers into the */
+						/* local heap */
+    Addr_t	oldBase = VProcHeap(vp);	
     Addr_t	oldSzB = vp->oldTop - oldBase;
   /* NOTE: we must subtract WORD_SZB here because globNextW points to the first
    * data word of the next object (not the header word)!
@@ -70,7 +72,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     Word_t	*globScan = (Word_t *)(vp->globNextW - WORD_SZB);
     MemChunk_t	*scanChunk = vp->globToSpTl;
 
-    assert (VProcHeap(vp) < vp->oldTop);
+    assert (oldBase < vp->oldTop);
     assert (vp->oldTop < top);
 
     LogMajorGCStart (vp);
@@ -157,14 +159,12 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 #ifndef NDEBUG
     if (GCDebug >= GC_DEBUG_MAJOR) {
 	unsigned long nBytesCopied = 0;
-	while (scanChunk != (MemChunk_t *)0) {
-	    if (scanChunk->next == (MemChunk_t *)0)
-		nBytesCopied += (unsigned long)(vp->globNextW - (Addr_t)globScan - WORD_SZB);
-	    else
-		nBytesCopied += (unsigned long)(scanChunk->usedTop - scanChunk->baseAddr);
-	    scanChunk = scanChunk->next;
+	for (MemChunk_t *p = scanChunk; p != (MemChunk_t *)0;  p = p->next) {
+	    Addr_t base = (p == scanChunk) ? (Addr_t)globScan - WORD_SZB : p->baseAddr;
+	    Addr_t tp = (p->next == 0) ? vp->globNextW : p->usedTop;
+	    nBytesCopied += (tp - base);
 	}
-	SayDebug("[%2d] Major GC finished: %ld/%ld bytes live\n",
+	SayDebug("[%2d] Major GC finished: %ld/%ld bytes copied\n",
 	    vp->id, nBytesCopied, oldSzB);
     }
 #endif
