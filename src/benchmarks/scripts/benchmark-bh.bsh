@@ -120,10 +120,9 @@ for ((i=1;i<=NUM_TRIALS;i+=1)); do
 		echo "evaluating $PML_PATH for $p processor[s] at image size $s and sequential size $seq_sz"
 		echo -n -e "\t\t{ trial=$i,\t\tnProcs=$p,\t\tsize=$s,\t\tseqCutoff=$seq_sz,\t\ttime=" >> $LOG_FILE_NAME
 		if [ "$p" -eq "0" ] ; then       
-echo "cat /var/tmp/mrainey/pl1.particles | ./$SEQ_PROG_EXE -p 1"
-		    cat /var/tmp/mrainey/pl1.particles | ./$SEQ_PROG_EXE -p 1 >> $LOG_FILE_NAME
+		    cat /var/tmp/plummer.particles | ./$SEQ_PROG_EXE -p 1 >> $LOG_FILE_NAME
 		else
-		    cat /var/tmp/mrainey/pl1.particles | ./$PROG_EXE -p $p >> $LOG_FILE_NAME
+		    cat /var/tmp/plummer.particles | ./$PROG_EXE -p $p >> $LOG_FILE_NAME
 		fi
 		echo -e " } ::" >> $LOG_FILE_NAME
 	    done
