@@ -23,7 +23,11 @@
 static void ScanGlobalToSpace (
 	VProc_t *vp, Addr_t heapBase, MemChunk_t *scanChunk, Word_t *scanPtr);
 
-/* Forward an object into the global-heap chunk reserved for the current VP */
+/*! \brief Forward an object into the global-heap chunk reserved for the given vp.
+ *  \param vp the vproc
+ *  \param v  the heap object that is to be forwarded
+ *  \return the forwarded value
+ */
 STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
 {
     Word_t	*p = ((Word_t *)ValueToPtr(v));
