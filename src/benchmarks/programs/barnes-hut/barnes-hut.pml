@@ -93,6 +93,7 @@ fun buildTree (box, particles : mass_point parray) : bh_tree =
 		end
 	    else
 		let
+val _ = Print.printLn (Int.toString (lengthP particles))
 		    val MP (x, y, m) = calcCentroid particles
 		    val (midx,  midy) = ((llx + rux) / 2.0 , (lly + ruy) / 2.0) 
 		    val b1 = BOX (llx,  lly,  midx,  midy)
@@ -118,10 +119,11 @@ fun oneStep (pts : particle parray) : particle parray  =
 	let
 	    val mspnts = [| mpnt | PARTICLE (mpnt, _, _) in pts |]
 	    val MP (x0, y0, _) = subP (mspnts, 0)
-	    val box0 = BOX (| reduceP (Double.min, x0, [| x | MP (x, _, _) in mspnts |]),
-			      reduceP (Double.min, y0, [| y | MP (_, y, _) in mspnts |]),
-			      reduceP (Double.max, x0, [| x | MP (x, _, _) in mspnts |]),
-			      reduceP (Double.max, y0, [| y | MP (_, y, _) in mspnts |]) |)
+	    (* the perimeter of this box fits snugly around the particles, but touches none of them *)
+	    val box0 = BOX (| reduceP (Double.min, x0, [| x | MP (x, _, _) in mspnts |]) - epsilon,
+			      reduceP (Double.min, y0, [| y | MP (_, y, _) in mspnts |]) - epsilon,
+			      reduceP (Double.max, x0, [| x | MP (x, _, _) in mspnts |]) + epsilon,
+			      reduceP (Double.max, y0, [| y | MP (_, y, _) in mspnts |]) + epsilon|)
 	    val tree = buildTree (box0, mspnts)
 	    val accels =  [| calcAccel (mspnt, tree) | mspnt in mspnts |]
  	in

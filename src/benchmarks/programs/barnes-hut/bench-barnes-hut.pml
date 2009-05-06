@@ -91,7 +91,7 @@ fun readParticles () = let
 	    val x = readreal()
 	    val y = readreal()
 	in 
-	    MP (m, x, y)
+	    MP (x, y, m)
 	end
     fun readParticle () = PARTICLE (readMassPnt(), readreal(), readreal())
     fun doit (i, ps) = if (i>0)
@@ -132,7 +132,8 @@ fun benchmark () =
 	    else
 		ps
 	val t0 = Time.now()
-	val tree = iter (fromListP (readParticles ()), 0)
+	val particles = fromListP (readParticles ())
+	val tree = iter (particles, 0)
 	val t = (Time.now() - t0)
     in
 	Print.printLn (Time.toString t)
