@@ -116,10 +116,6 @@ fun debug () = let
              iter(bhPs, i+1, rmax(err, maxErr(naivePs, bhPs)))
           end
         else err*)
-    val err = iter(ps, 0, 0.0)
-    in
-       Print.printLn("Error for BH:"^Double.toString err)
-    end
 *)
 
 fun benchmark () =
