@@ -17,9 +17,6 @@ signature ALLOC =
   (* compute the address of the ith element off the base address *)
     val tupleAddrOf : {mty : CFG.ty, i : int, base : MTy.T.rexp} -> MTy.T.rexp
 
-  (* compute the address of the ith element off the base address *)
-    val arrayAddrOf : {lhsTy : CFG.ty, i : MTy.T.rexp, base : MTy.T.rexp} -> MTy.T.rexp
-
   (* returns an expression that computes the length of an array *)
     val arrayLength : MTy.T.rexp -> MTy.T.rexp
 

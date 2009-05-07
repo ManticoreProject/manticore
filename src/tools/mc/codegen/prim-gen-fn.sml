@@ -39,6 +39,8 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 
     fun wordLit i = T.LI (T.I.fromInt (i64ty, i))
 
+    fun arrayOffset {base, i, wordSzB} = T.ADD (MTy.wordTy, base, T.MULS(MTy.wordTy, wordLit wordSzB, i))
+
     fun genPrim0 {varDefTbl} p = (case p
 	(* memory-system operations *)
           of P.Pause => BE.AtomicOps.genPause()
@@ -173,32 +175,32 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		  (* array load operations *)
 		    | P.ArrayLoadI64(base, i) => let
 			val ty = Var.typeOf v
-			val addr = BE.Alloc.arrayAddrOf{lhsTy=ty, i=defOf i, base=defOf base}
+			val addr = arrayOffset {base=defOf base, i=defOf i, wordSzB=8}
 			in
 			  gprBind(BE.Types.szOf ty, v, T.LOAD(BE.Types.szOf ty, addr, ManticoreRegion.memory))
 			end
 		    | P.ArrayLoadI32(base, i) => let
 			val ty = Var.typeOf v
-			val addr = BE.Alloc.arrayAddrOf{lhsTy=ty, i=defOf i, base=defOf base}
+			val addr = arrayOffset {base=defOf base, i=defOf i, wordSzB=4}
 			in
 			  gprBind(BE.Types.szOf ty, v, T.LOAD(BE.Types.szOf ty, addr, ManticoreRegion.memory))
 			end
 		    | P.ArrayLoadF64(base, i) => let
 			val ty = Var.typeOf v
-			val addr = BE.Alloc.arrayAddrOf{lhsTy=ty, i=defOf i, base=defOf base}
+			val addr = arrayOffset {base=defOf base, i=defOf i, wordSzB=8}
 			in
 			  fbind(BE.Types.szOf ty, v, T.FLOAD(BE.Types.szOf ty, addr, ManticoreRegion.memory))
 			end
 		    | P.ArrayLoadF32(base, i) => let
 			val ty = Var.typeOf v
-			val addr = BE.Alloc.arrayAddrOf{lhsTy=ty, i=defOf i, base=defOf base}
+			val addr = arrayOffset {base=defOf base, i=defOf i, wordSzB=4}
 			in
 			  fbind(BE.Types.szOf ty, v, T.FLOAD(BE.Types.szOf ty, addr, ManticoreRegion.memory))
 			end
 		  (* array store operations *)
 		    | P.ArrayStoreI64(base, i, x) => let
 			val ty = Var.typeOf x
-			val addr = BE.Alloc.arrayAddrOf{lhsTy=ty, i=defOf i, base=defOf base}
+			val addr = arrayOffset {base=defOf base, i=defOf i, wordSzB=8}
 			in
 			  BE.VarDef.flushLoads varDefTbl @
 			  [T.STORE(BE.Types.szOf ty, addr, defOf x, ManticoreRegion.memory)] @
@@ -206,7 +208,7 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		       end
 		    | P.ArrayStoreI32 (base, i, x) => let
 			val ty = Var.typeOf x
-			val addr = BE.Alloc.arrayAddrOf{lhsTy=ty, i=defOf i, base=defOf base}
+			val addr = arrayOffset {base=defOf base, i=defOf i, wordSzB=4}
 			in
 			  BE.VarDef.flushLoads varDefTbl @
 			  [T.STORE(BE.Types.szOf ty, addr, defOf x, ManticoreRegion.memory)] @
@@ -214,7 +216,7 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		       end
 		    | P.ArrayStoreF64 (base, i, x) => let
 			val ty = Var.typeOf x
-			val addr = BE.Alloc.arrayAddrOf{lhsTy=ty, i=defOf i, base=defOf base}
+			val addr = arrayOffset {base=defOf base, i=defOf i, wordSzB=8}
 			in
 			  BE.VarDef.flushLoads varDefTbl @
 			  [T.FSTORE(BE.Types.szOf ty, addr, fdefOf x, ManticoreRegion.memory)] @
@@ -222,7 +224,7 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		       end
 		    | P.ArrayStoreF32 (base, i, x) => let
 			val ty = Var.typeOf x
-			val addr = BE.Alloc.arrayAddrOf{lhsTy=ty, i=defOf i, base=defOf base}
+			val addr = arrayOffset {base=defOf base, i=defOf i, wordSzB=4}
 			in
 			  BE.VarDef.flushLoads varDefTbl @
 			  [T.FSTORE(BE.Types.szOf ty, addr, fdefOf x, ManticoreRegion.memory)] @

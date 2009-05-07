@@ -53,10 +53,6 @@ functor Alloc64Fn (
 	    T.ADD (MTy.wordTy, base, wordLit offset)
 	  end
 
-  (* compute the address of the ith element off the base address *)
-    fun arrayAddrOf {lhsTy : CFG.ty, i : T.rexp, base : T.rexp} = 
-	  T.ADD (MTy.wordTy, base, T.MULS(MTy.wordTy, wordLit (Types.alignedTySzB lhsTy), i))
-
   (* select the ith element off of a 'base' address *)
     fun select {lhsTy : CFG.ty, mty : CFG.ty, i : int, base : T.rexp} = let
           val (offset, lhsTyI) = (case mty
