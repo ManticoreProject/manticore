@@ -47,7 +47,9 @@ structure ImplicitThread (* :
     (* spawn an implicit thread on the work group at the top of the work-group stack *)
       define inline @spawn (thd : thread / exh : exh) : ();
 
-    (* remove a thread from the ready queue *)
+    (* try to remove a thread from the ready queue. if the removal was successful, the return
+     * value is true, although the contrapositive is not necessary. 
+     *)
       define inline @remove-thread (thd : ImplicitThread.thread / exh : exh) : bool =
 
     (* get the scheduler data for current group *)
@@ -272,7 +274,9 @@ structure ImplicitThread (* :
 	return()
       ;
 
-    (* remove a thread from the ready queue. returns true if the thread has migrated off the queue. *)
+    (* try to remove a thread from the ready queue. if the removal was successful, the return
+     * value is true, although the contrapositive is not necessary. 
+     *)
       define inline @remove-thread (thd : thread / exh : exh) : bool =
 	let group : group = @peek(UNIT / exh)
 	let removeFn : fun(thread / exh -> bool) = SELECT(GROUP_REMOVE_OFF, group)

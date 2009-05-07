@@ -62,7 +62,7 @@ structure GlobalBFSScheduler (*  :
             do SchedulerAction.@atomic-end(vp)
 	    return(UNIT)
       (* provide no facility for removing a thread from the ready queue *)
-        fun removeFn (thd : ImplicitThread.thread / exh : exh) : bool = return(true)
+        fun removeFn (thd : ImplicitThread.thread / exh : exh) : bool = return(false)
 	let group : ImplicitThread.group = ImplicitThread.@group(init, spawnFn, removeFn, enum(0) / exh)
 	return(group)
       ;
