@@ -38,7 +38,17 @@ structure Int =
     fun max (x, y) = if x < y then y else x
     fun min (x, y) = if x < y then x else y
 
-    fun compare (x, y) = if x = y then EQUAL else if x < y then LESS else GREATER
+    fun compare (x, y) = 
+      if x = y then EQUAL 
+      else if x < y then LESS 
+      else GREATER
+
+    fun sign n =
+      if n < 0 then ~1
+      else if n = 0 then 0
+      else 1
+
+    fun sameSign (m, n) = (sign(m) = sign(n))
 
   (* fib : int -> int *)
   (* Compute the nth Fibonacci number, where *)

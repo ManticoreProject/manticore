@@ -63,7 +63,7 @@ structure FloatScan = struct
   (* seqsum : float -> seq -> float *)
     fun seqsum seed s = seed + (S.sum s)
 
-  (* upsweep : num -> num R.rope -> num scan_rope *)
+  (* upsweep : float -> float_rope -> scan_rope *)
     fun upsweep seed t = let
       fun lp r = 
        (case r 
@@ -77,7 +77,7 @@ structure FloatScan = struct
         lp t
       end   
 
-  (* downsweep : num -> num scan_rope -> num rope *)
+  (* downsweep : float -> scan_rope -> float_rope *)
     fun downsweep seed t = let
       (* FIXME It seems odd that I'm underscoring the datums here... *)
       (* ...think about this more. *)

@@ -322,17 +322,36 @@ structure FloatRope = struct
   (* concat : float_rope -> float_rope *)
     val concat = concatWithBalancing
 
+  (* ignore : 'a -> unit *)
+    fun ignore x = ()
+
   (* toSeq : float_rope -> seq *)
   (* return the fringe of the data at the leaves of a rope as a sequence *)
     fun toSeq r = let
-      fun lp r =
+      val len = length r
+      val s = S.tabulate (len, fn _ => 0.0)
+      fun loop (i, r) =
        (case r
-          of LEAF(_, s) => s::nil
-	   | CAT(_, _, r1, r2) => List.append (lp r1, lp r2)
+          of LEAF (n, data) =>
+               if i >= len then ()
+	       else let
+                 fun lp (d_i, s_i) = 
+                   if s_i >= (i+n) then ()
+		   else let
+                     val _ = S.update (s, s_i, S.sub (data, d_i))
+		     in
+                       lp (d_i+1, s_i+1)
+		     end
+                in
+                  lp (0, i)
+	        end
+	   | CAT (_, n, rL, rR) => (loop (i, rL); 
+				    loop (i + length rL, rR))
          (* esac *))
-      in
-        S.concatList (lp r)
-      end
+    val _ = loop (0, r)
+    in
+      s
+    end
 
   (* split :  'a list * int -> 'a list * 'a list *)
   (* Split the list into two pieces. *)
@@ -422,7 +441,7 @@ structure FloatRope = struct
   (* lo inclusive, hi exclusive *)
     fun tabFromToP (lo, hi, f) = 
      (if lo > hi then
-       (failwith "todo: downward tabulate")
+       (failwith "downward tabulate")
       else if (hi - lo) <= maxLeafSize then let
         fun f' n = f (n + lo)
         in

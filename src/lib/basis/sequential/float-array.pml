@@ -124,13 +124,14 @@ structure FloatArray =
   (* Bounds are not checked. *)
     define inline @sum (arr : array / exh : exh) : ml_float =
       let len : int = @length (arr / exh)
+      let data : any = SELECT(DATA_OFF, arr)
       fun loop (i : int, acc : float / ) : float =
         if I32Gte (i, len)
         then
           return (acc)
         else
-          let curr : float = @sub-u (arr, i / exh)
-          let newAcc : float = F32Add(curr, acc)
+          let curr : float = ArrayLoadF32 (data, i)
+          let newAcc : float = F32Add (curr, acc)
 	  let j : int = I32Add (i, 1)
           apply loop (j, newAcc)
       let s : float = apply loop (0, 0.0)
@@ -150,23 +151,28 @@ structure FloatArray =
     val prefixPlusScan : float * array -> array = _prim(@prefix-plus-scan)
     val sum : array -> float = _prim(@sum)
 
-    fun tabulate (n, f : int -> 'a) = 
-	if n = 0
-	   then emptyArray ()
-	else let
-	  val a = array(n, f 0)
-	  fun tab i = if i < n 
-		then (update(a, i, f i); tab(i + 1))
-		else a
+    fun tabulate (n, f : int -> float) = 
+      if n = 0 then emptyArray ()
+      else let
+        val a = array (n, f 0)
+	fun tab i = 
+	  if i < n then 
+	   (update(a, i, f i); 
+	    tab(i + 1))
+	  else a
           in
-	    tab 1
+	    tab 1 (* did 0 already *)
 	  end
 
     fun app f arr = let
-	  val len = length arr
-	  fun app i = if i < len then (f (sub (arr, i)); app (i + 1)) else ()
-	  in
-	    app 0
-	  end
+      val len = length arr
+      fun app i = 
+        if i < len then 
+         (f (sub (arr, i)); 
+	  app (i + 1)) 
+	else ()
+      in
+        app 0
+      end
 
   end

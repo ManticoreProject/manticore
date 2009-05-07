@@ -1,3 +1,5 @@
+structure FR = FloatRope
+
 val time = Time.timeToEval
 val println = Print.printLn
 
@@ -7,7 +9,12 @@ fun gen n = Float.fromInt n * 0.000001
 
 val xsP = Ropes.tabP (sz, gen)
 
-val xsF = FloatRope.tabP (sz, gen)
+val _ = println "built xsP"
+
+val xsF = FR.tabP (sz, gen)
+
+val _ = println "xsF"
+val _ = println ("xsF " ^ (if FR.isBalanced xsF then "is" else "is not") ^ " balanced")
 
 val (resP, tP) = time (fn _ => Scan.plusScan_float xsP)
 
