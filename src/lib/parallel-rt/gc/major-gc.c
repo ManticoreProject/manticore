@@ -180,9 +180,8 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
  * the entryq.
  */
 
-/*    if (vp->globalGCPending || (ToSpaceSz >= ToSpaceLimit))
-      StartGlobalGC (vp, roots); */
-
+    if (vp->globalGCPending || (ToSpaceSz >= ToSpaceLimit))
+	StartGlobalGC (vp, roots);
 
 } /* end of MajorGC */
 
@@ -208,27 +207,28 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
     if (isPtr(root) && inVPHeap(heapBase, ValueToAddr(root))) {
 	MemChunk_t	*scanChunk = vp->globToSpTl;
 	Word_t		*scanPtr = (Word_t *)(vp->globNextW - WORD_SZB);
+
 	assert ((Word_t *)(scanChunk->baseAddr) <= scanPtr);
 	assert (scanPtr < (Word_t *)(scanChunk->baseAddr + scanChunk->szB));
+
       /* promote the root to the global heap */
 	root = ForwardObj (vp, root);
+
+      /* promote any reachable values */
+	ScanGlobalToSpace (vp, heapBase, scanChunk, scanPtr);
+
 #ifndef NO_GC_STATS
-	int64_t nbytes;
-	if (scanChunk == vp->globToSpTl) {
-	    nbytes = (vp->globNextW - (Addr_t)scanPtr - WORD_SZB);
-	}
-	else {
-	  /* copied data spans multiple chunks */
-	    nbytes = 0; /* FIXME */
+	uint64_t nBytesCopied = 0;
+	for (MemChunk_t *p = scanChunk; p != (MemChunk_t *)0;  p = p->next) {
+	    Addr_t base = (p == scanChunk) ? (Addr_t)scanPtr - WORD_SZB : p->baseAddr;
+	    Addr_t tp = (p->next == 0) ? vp->globNextW : p->usedTop;
+	    nBytesCopied += (tp - base);
 	}
 #endif
 #ifndef NDEBUG
 	if (GCDebug >= GC_DEBUG_ALL)
-	    SayDebug("[%2d]  ==> %p; %ld bytes\n", vp->id, root, nbytes);
+	    SayDebug("[%2d]  ==> %p; %ld bytes\n", vp->id, root, nBytesCopied);
 #endif
-
-      /* promote any reachable values */
-	ScanGlobalToSpace (vp, heapBase, scanChunk, scanPtr);
     }
 
     return root;
