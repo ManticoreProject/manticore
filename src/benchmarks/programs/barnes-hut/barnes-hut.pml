@@ -93,7 +93,6 @@ fun buildTree (box, particles : mass_point parray) : bh_tree =
 		end
 	    else
 		let
-val _ = Print.printLn (Int.toString (lengthP particles))
 		    val MP (x, y, m) = calcCentroid particles
 		    val (midx,  midy) = ((llx + rux) / 2.0 , (lly + ruy) / 2.0) 
 		    val b1 = BOX (llx,  lly,  midx,  midy)
