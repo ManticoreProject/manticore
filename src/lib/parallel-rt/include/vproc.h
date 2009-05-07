@@ -68,6 +68,8 @@ struct struct_vproc {
 #ifndef NO_GC_STATS
     int32_t	nLocalPtrs;	//!< counter of pointers into local heap that are scanned in minor GC
     int32_t	nGlobPtrs;	//!< counter of pointers into global heap that are scanned in minor GC
+    uint64_t	nWordsScanned;	//!< counter of words scanned by this vproc during global GC
+    uint64_t	nBytesCopied;	//!< counter of bytes copied by this vproc during global GC
 #endif
 #ifndef ENABLE_LOGGING	      /* GC counters for logging info */
 
