@@ -19,6 +19,7 @@ structure PArray = struct
     val revP = Ropes.revP
     val fromListP = Ropes.fromList
     val concatP = Ropes.concat
+    val tabP = Ropes.tabP
 
   (* repP : int * 'a -> 'a parray *)
   (* called "dist" in NESL and Keller *)
@@ -57,3 +58,4 @@ val lengthP = PArray.lengthP
 val mapP = PArray.mapP
 val fromListP = PArray.fromListP
 val concatP = PArray.concatP
+val tabP = PArray.tabP
