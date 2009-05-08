@@ -98,7 +98,7 @@ structure Array64 =
 		then (update(a, i, f i); tab(i + 1))
 		else a
           in
-	    tab 1
+	    tab 1 (* did a[0] already *)
 	  end
 
     fun app f arr = let

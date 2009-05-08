@@ -247,3 +247,30 @@ Value_t GlobalAllocFloatArray (VProc_t *vp, int nElems, float elt)
     vp->globNextW += WORD_SZB * (nWords+1);
     return PtrToValue(obj);
 }
+
+/*! \brief allocate an array of ints in the global heap
+ *  \param vp the host vproc
+ *  \param nElems the number of elements in the array
+ *  \param elt the initial value for the array elements
+ *  \return pointer to the beginning of the array
+ */
+Value_t GlobalAllocIntArray (VProc_t *vp, int nElems, int elt)
+{
+    int nWords = CeilingDivide (nElems * sizeof (int), WORD_SZB);
+  /* the array must fit into a global chunk */
+    assert(HEAP_CHUNK_SZB > WORD_SZB*(nWords+1));
+
+    if (vp->globNextW + WORD_SZB * (nWords+1) >= vp->globLimit) {
+	AllocToSpaceChunk(vp);
+    }
+
+    Word_t *obj = (Word_t*)(vp->globNextW);
+    obj[-1] = RAW_HDR(nWords);
+    int *arr = (int*)obj;
+    for (int i = 0;  i < nElems;  i++) {
+	arr[i] = elt;
+    }
+
+    vp->globNextW += WORD_SZB * (nWords+1);
+    return PtrToValue(obj);
+}

@@ -19,6 +19,7 @@ ann "cpp" "../include/prim.def,../include/assert.def"
 in
   array.pml
   float-array.pml
+  int-array.pml
 end
 option.pml
 result.pml
