@@ -85,7 +85,7 @@ structure FloatArray =
     (* @update-u : unchecked, unwrapped update operation *)
       define inline @update-u (arr : array, i : int, x : float / exh : exh) : () = 
         let data : any = SELECT(DATA_OFF, arr)
-	let x : unit  = ArrayStoreF32(data, i, x)
+	let u : unit  = ArrayStoreF32(data, i, x)
 	return()
       ;
 
@@ -104,6 +104,8 @@ structure FloatArray =
           else
             let mlSeed : ml_float = #0(arg)
             let newArray : array = @array (len, mlSeed / exh)
+            let srcData : any = SELECT(DATA_OFF, arr)
+            let newData : any = SELECT(DATA_OFF, newArray)
 	    let seed : float = #0(mlSeed)
          (* note: bounds are not checked in this loop, since they'd only be checked against len *)
             fun loop (i : int, last : float / ) : () =
@@ -111,8 +113,8 @@ structure FloatArray =
                 then 
                   return()
 	        else
-                  do @update-u (newArray, i, last / exh)
-                  let x : float = @sub-u (arr, i / exh)
+                  let u : unit = ArrayStoreF32 (newData, i, last)
+                  let x : float = ArrayLoadF32 (srcData, i)
                   let j : int = I32Add(i,1)
                   let next : float = F32Add(last, x)
                   apply loop (j, next)
@@ -160,9 +162,10 @@ structure FloatArray =
 	   (update(a, i, f i); 
 	    tab(i + 1))
 	  else a
-          in
-	    tab 1 (* did 0 already *)
-	  end
+	val retval = tab 1
+        in
+	  retval
+	end
 
     fun app f arr = let
       val len = length arr
