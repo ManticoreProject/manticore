@@ -198,7 +198,8 @@ Value_t GlobalAllocNonUniform (VProc_t *vp, int nElems, ...)
 Value_t GlobalAllocArray (VProc_t *vp, int nElems, Value_t elt)
 {
   /* the array must fit into a global chunk */
-    assert(HEAP_CHUNK_SZB > WORD_SZB*(nElems+1));
+    if (HEAP_CHUNK_SZB <= WORD_SZB*(nElems+1))
+      Die ("GlobalAllocArray: Cannot allocate an array that is larger than the global chunk size.");
 
     if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit) {
 	AllocToSpaceChunk(vp);
@@ -229,7 +230,8 @@ Value_t GlobalAllocFloatArray (VProc_t *vp, int nElems, float elt)
 {
     int nWords = CeilingDivide (nElems * sizeof (float), WORD_SZB);
   /* the array must fit into a global chunk */
-    assert(HEAP_CHUNK_SZB > WORD_SZB*(nWords+1));
+    if (HEAP_CHUNK_SZB <= WORD_SZB*(nElems+1))
+      Die ("GlobalAllocFloatArray: Cannot allocate an array that is larger than the global chunk size.");
 
     if (vp->globNextW + WORD_SZB * (nWords+1) >= vp->globLimit) {
 	AllocToSpaceChunk(vp);
