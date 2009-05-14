@@ -16,7 +16,7 @@ fun treeAdd tree =
       of LEAF x => x
        | NODE (t1, t2, t3) =>
 	 let
-	     val (x1, x2, x3) = (| treeAdd t1, treeAdd t2, treeAdd t3 |)
+	     val (x1, x2, x3) = ( treeAdd t1, treeAdd t2, treeAdd t3 )
 	 in
 	     x1 + x2 + x3
 	 end)
