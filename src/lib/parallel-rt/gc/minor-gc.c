@@ -6,6 +6,9 @@
  * Minor GCs are local collections of a vproc's allocation space.
  */
 
+#include <strings.h>
+#include <stdio.h>
+
 #include "manticore-rt.h"
 #include "heap.h"
 #include "gc.h"
@@ -14,6 +17,7 @@
 #include "internal-heap.h"
 #include "gc-inline.h"
 #include "inline-log.h"
+#include "bibop.h"
 
 extern Addr_t	MajorGCThreshold; /* when the size of the nursery goes below this limit */
 				/* it is time to do a GC. */
@@ -22,6 +26,10 @@ extern Addr_t	MajorGCThreshold; /* when the size of the nursery goes below this 
 #  define INCR_STAT(cntr) 	do { } while (0)
 #else
 #  define INCR_STAT(cntr)	do { (cntr)++; } while (0)
+#endif
+
+#ifndef NDEBUG
+static void CheckMinorGC (VProc_t *self, Value_t **roots);
 #endif
 
 /* Copy an object to the old region */
@@ -181,7 +189,103 @@ void MinorGC (VProc_t *vp)
 	vp->oldTop = (Addr_t)nextScan;
     }
 
+#ifndef NDEBUG
+    CheckMinorGC (vp, roots);
+#endif
+
   /* reset the allocation pointer */
     SetAllocPtr (vp);
 
 }
+
+#ifndef NDEBUG
+static void CheckLocalPtr (VProc_t *self, void *addr, const char *where)
+{
+    Value_t v = *(Value_t *)addr;
+    if (isPtr(v)) {
+	MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
+	if (cq->sts == TO_SP_CHUNK)
+	    return;
+	else if (cq->sts == FROM_SP_CHUNK)
+	    SayDebug("CheckLocalPtr: unexpected from-space pointer %p at %p in %s\n",
+		ValueToPtr(v), addr, where);
+	else if (IS_VPROC_CHUNK(cq->sts)) {
+	    if (cq->sts != VPROC_CHUNK(self->id)) {
+		SayDebug("CheckLocalPtr: unexpected remote pointer %p at %p in %s\n",
+		    ValueToPtr(v), addr, where);
+	    }
+	    else if (! inAddrRange(VProcHeap(self), self->oldTop - VProcHeap(self), ValueToAddr(v))) {
+		SayDebug("CheckLocalPtr: local pointer %p at %p in %s is out of bounds\n",
+		    ValueToPtr(v), addr, where);
+	    }
+	}
+	else if (cq->sts == FREE_CHUNK) {
+	    SayDebug("CheckLocalPtr: unexpected free-space pointer %p at %p in %s\n",
+		ValueToPtr(v), addr, where);
+	}
+    }
+}
+
+static void CheckMinorGC (VProc_t *self, Value_t **roots)
+{
+
+  // check the roots
+    for (int i = 0;  roots[i] != 0;  i++) {
+	char buf[16];
+	sprintf(buf, "root[%d]", i);
+	Value_t v = *roots[i];
+	CheckLocalPtr (self, roots[i], buf);
+    }
+
+  // check the local heap
+    {
+	Word_t *top = (Word_t *)(self->oldTop);
+	Word_t *p = (Word_t *)VProcHeap(self);
+	while (p < top) {
+	    Word_t hdr = *p++;
+	    if (isMixedHdr(hdr)) {
+	      // a record
+		Word_t tagBits = GetMixedBits(hdr);
+		Word_t *scanP = p;
+		while (tagBits != 0) {
+		    if (tagBits & 0x1) {
+			CheckLocalPtr (self, p, "local mixed object");
+		    }
+		    tagBits >>= 1;
+		    scanP++;
+		}
+		p += GetMixedSizeW(hdr);
+	    }
+	    else if (isVectorHdr(hdr)) {
+	      // an array of pointers
+		int len = GetVectorLen(hdr);
+		for (int i = 0;  i < len;  i++, p++) {
+		    CheckLocalPtr (self, p, "local vector");
+		}
+	    }
+	    else if (isForwardPtr(hdr)) {
+	      // forward pointer
+		Word_t *forwardPtr = GetForwardPtr(hdr);
+		CheckLocalPtr(self, forwardPtr, "forward pointer");
+		Word_t hdr = forwardPtr[-1];
+		if (isMixedHdr(hdr)) {
+		    p += GetMixedSizeW(hdr);
+		}
+		else if (isVectorHdr(hdr)) {
+		    p += GetVectorLen(hdr);
+		}
+		else {
+		    assert (isRawHdr(hdr));
+		    p += GetRawSizeW(hdr);
+		}
+	    }
+	    else {
+		assert (isRawHdr(hdr));
+	      // we can just skip raw objects
+		p += GetRawSizeW(hdr);
+	    }
+	}
+    }
+
+}
+#endif /* NDEBUG */

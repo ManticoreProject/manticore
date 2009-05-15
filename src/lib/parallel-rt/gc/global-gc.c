@@ -201,6 +201,8 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	MutexUnlock (&GCLock);
     }
 
+    MutexLock(&GCLock);
+
   /* allocate the initial chunk for the vproc */
     AllocToSpaceChunk (self);
 
@@ -213,10 +215,10 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
     FetchAndAdd64 ((int64_t *)&NBytesCopied, self->nBytesCopied);
 #endif
 #ifndef NDEBUG
-    MutexLock(&GCLock);
-        CheckGC (self, roots);
-    MutexUnlock(&GCLock);
+    CheckGC (self, roots);
 #endif
+
+    MutexUnlock(&GCLock);
 
   /* the leader reclaims the from-space pages */
     if (leaderVProc) {
@@ -404,7 +406,10 @@ static void ScanGlobalToSpace (VProc_t *vp)
 }
 
 #ifndef NDEBUG
-static void CheckLocalPtr (VProc_t *self, void *addr, const char *where)
+/* Check the invariant that addr is a pointer living in either the root set or the local heap. 
+ * Precondition: this check should only occur just after a global collection.
+ */
+static void CheckLocalPtrPostGGC (VProc_t *self, void *addr, const char *where)
 {
     Value_t v = *(Value_t *)addr;
     if (isPtr(v)) {
@@ -433,14 +438,14 @@ static void CheckLocalPtr (VProc_t *self, void *addr, const char *where)
 static void CheckGC (VProc_t *self, Value_t **roots)
 {
     if (GCDebug >= GC_DEBUG_GLOBAL)
-	SayDebug ("  Checking heap consistency\n");
+      SayDebug ("  Checking heap consistency\n");
 
   // check the roots
     for (int i = 0;  roots[i] != 0;  i++) {
 	char buf[16];
 	sprintf(buf, "root[%d]", i);
 	Value_t v = *roots[i];
-	CheckLocalPtr (self, roots[i], buf);
+	CheckLocalPtrPostGGC (self, roots[i], buf);
     }
 
   // check the local heap
@@ -455,7 +460,7 @@ static void CheckGC (VProc_t *self, Value_t **roots)
 		Word_t *scanP = p;
 		while (tagBits != 0) {
 		    if (tagBits & 0x1) {
-			CheckLocalPtr (self, p, "local mixed object");
+			CheckLocalPtrPostGGC (self, p, "local mixed object");
 		    }
 		    tagBits >>= 1;
 		    scanP++;
@@ -466,7 +471,7 @@ static void CheckGC (VProc_t *self, Value_t **roots)
 	      // an array of pointers
 		int len = GetVectorLen(hdr);
 		for (int i = 0;  i < len;  i++, p++) {
-		    CheckLocalPtr (self, p, "local vector");
+		    CheckLocalPtrPostGGC (self, p, "local vector");
 		}
 	    }
 	    else {
