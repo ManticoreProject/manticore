@@ -23,12 +23,11 @@ fun sFib (n : int) = (
 fun bench () = let
     val i = PrimIO.readInt()
     val n = PrimIO.readInt()
-    val a = tabP (n, fn _ => i)
-    val (a', t) = Time.timeToEval(fn () => [| sFib i | i in a |])
+    val (a', t) = Time.timeToEval(fn () => tabP (n, fn _ => sFib i))
     in
       Print.print(Long.toString t);
       ()
     end
 
-val workStealing = MultiprogrammedWorkStealing.workGroup()
-val _ = ImplicitThread.runWithGroup(workStealing, bench)
+val _ = bench ()
+
