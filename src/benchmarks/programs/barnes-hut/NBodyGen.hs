@@ -359,8 +359,8 @@ dumpParticles          :: FilePath -> [Particle] -> IO ()
 dumpParticles fname ps  = 
   do
     f <- openFile fname WriteMode
-    hPutShow f (length ps)
-    hPutChar f '\n'
+--    hPutShow f (length ps)
+--    hPutChar f '\n'
     mapM_ (dumpParticle f) ps
     hClose f
   where
