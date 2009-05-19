@@ -66,10 +66,8 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
       ctl = Controls.stringControl ControlUtil.Cvt.bool annotateInstrs,
       envName = NONE}
 
-  fun fmtMsg msg = msg^"\t (Manticore codegen)"
-
   fun annotate (stm, msg) = if (msg <> "" andalso Controls.get annotateInstrs)
-      then T.ANNOTATION(stm, #create MLRiscAnnotations.COMMENT (fmtMsg msg))
+      then T.ANNOTATION(stm, #create MLRiscAnnotations.COMMENT msg)
       else stm
 
   fun annotateStms ([], msg) = []
@@ -350,8 +348,8 @@ if MChkTy.check stm
 	      val regs = BE.LabelCode.getParamRegs lab
 	      in	
 	        if (Controls.get annotateInstrs)
-		   then (List.app ((fn s => comment (fmtMsg("param: "^s))) o MTy.treeToString o MTy.regToTree) regs;
-			 comment (fmtMsg ("CFG function: "^CFG.Label.toString lab)))
+		   then (List.app ((fn s => comment ("param: "^s)) o MTy.treeToString o MTy.regToTree) regs;
+			 comment ("CFG function: "^CFG.Label.toString lab))
                    else ();
 	        (* flush out any stale loads from other functions*)
 	         BE.VarDef.flushLoads varDefTbl;
