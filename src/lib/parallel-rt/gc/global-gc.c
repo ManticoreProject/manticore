@@ -515,6 +515,41 @@ static void CheckGC (VProc_t *self, Value_t **roots)
 			    }
 			}
 		    }
+		    else {
+		      /* check for possible pointers in non-pointer fields */
+			Value_t v = *(Value_t *)scanP;
+			if (isPtr(v)) {
+			    MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
+			    switch (cq->sts) {
+			      case FREE_CHUNK:
+				SayDebug(" ** possible free-space pointer %p in mixed object %p+%d\n",
+				    v, p, scanP-p);
+				break;
+			      case TO_SP_CHUNK:
+				SayDebug(" ** possible to-space pointer %p in mixed object %p+%d\n",
+				    v, p, scanP-p);
+				break;
+			      case FROM_SP_CHUNK:
+				SayDebug(" ** possible from-space pointer %p in mixed object %p+%d\n",
+				    v, p, scanP-p);
+				break;
+			      case UNMAPPED_CHUNK:
+				break;
+			      default:
+				if (IS_VPROC_CHUNK(cq->sts)) {
+				  /* the vproc pointer is pretty common, so filter it out */
+				    if ((Addr_t)v & ~VP_HEAP_MASK != (Addr_t)v)
+					SayDebug(" ** possible local pointer %p in mixed object %p+%d\n",
+					    v, p, scanP-p);
+				}
+				else {
+				    SayDebug(" ** strange pointer %p in mixed object %p+%d\n",
+					v, p, scanP-p);
+				}
+				break;
+			    }
+			}
+		    }
 		    tagBits >>= 1;
 		    scanP++;
 		}
