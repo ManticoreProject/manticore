@@ -199,6 +199,11 @@ VProc_t *AllocVProcMemory (int id)
 	UpdateBIBOP (chunk);
     MutexUnlock (&HeapLock);
 
+#ifndef NDEBUG
+    if (GCDebug > GC_DEBUG_NONE)
+	SayDebug("     AllocVProcMemory(%d): %ld Kb at %p\n", id, chunk->szB/1024, chunk->baseAddr);
+#endif
+
     return vproc;
 
 }
