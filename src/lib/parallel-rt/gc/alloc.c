@@ -199,7 +199,7 @@ Value_t GlobalAllocArray (VProc_t *vp, int nElems, Value_t elt)
 {
   /* the array must fit into a global chunk */
     if (HEAP_CHUNK_SZB <= WORD_SZB*(nElems+1))
-      Die ("GlobalAllocArray: Cannot allocate an array that is larger than the global chunk size.");
+	Die ("GlobalAllocArray: Cannot allocate an array that is larger than the global chunk size.");
 
     if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit) {
 	AllocToSpaceChunk(vp);
@@ -215,11 +215,6 @@ Value_t GlobalAllocArray (VProc_t *vp, int nElems, Value_t elt)
     return PtrToValue(obj);
 }
 
-STATIC_INLINE int CeilingDivide (int x, int y)
-{
-  return x / y + (x % y > 0 ? 1 : 0);
-}
-
 /*! \brief allocate an array of floats in the global heap
  *  \param vp the host vproc
  *  \param nElems the number of elements in the array
@@ -228,10 +223,10 @@ STATIC_INLINE int CeilingDivide (int x, int y)
  */
 Value_t GlobalAllocFloatArray (VProc_t *vp, int nElems, float elt)
 {
-    int nWords = CeilingDivide (nElems * sizeof (float), WORD_SZB);
+    int nWords = BYTES_TO_WORDS(nElems * sizeof(float));
   /* the array must fit into a global chunk */
     if (HEAP_CHUNK_SZB <= WORD_SZB*(nElems+1))
-      Die ("GlobalAllocFloatArray: Cannot allocate an array that is larger than the global chunk size.");
+	Die ("GlobalAllocFloatArray: Cannot allocate an array that is larger than the global chunk size.");
 
     if (vp->globNextW + WORD_SZB * (nWords+1) >= vp->globLimit) {
 	AllocToSpaceChunk(vp);
@@ -254,9 +249,9 @@ Value_t GlobalAllocFloatArray (VProc_t *vp, int nElems, float elt)
  *  \param elt the initial value for the array elements
  *  \return pointer to the beginning of the array
  */
-Value_t GlobalAllocIntArray (VProc_t *vp, int nElems, int elt)
+Value_t GlobalAllocIntArray (VProc_t *vp, int nElems, int32_t elt)
 {
-    int nWords = CeilingDivide (nElems * sizeof (int), WORD_SZB);
+    int nWords = BYTES_TO_WORDS(nElems * sizeof(int32_t));
   /* the array must fit into a global chunk */
     assert(HEAP_CHUNK_SZB > WORD_SZB*(nWords+1));
 
