@@ -176,9 +176,9 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	}
 	p = self->globToSpTl;
 	if (p != (MemChunk_t *)0) {
-	    p->next = FromSpaceChunks;
-	    FromSpaceChunks = p;
 	    p->usedTop = self->globNextW - WORD_SZB;
+	    p->next = FromSpaceChunks;
+	    FromSpaceChunks = self->globToSpHd;
 	}
 
     MutexUnlock (&GCLock);
@@ -229,6 +229,9 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 		cp->sts = FREE_CHUNK;
 		cp->usedTop = cp->baseAddr;
 #ifndef NDEBUG
+		if (GCDebug >= GC_DEBUG_GLOBAL)
+		    SayDebug("[%2d]   Free-Space chunk %#tx..%#tx\n",
+			self->id, cp->baseAddr, cp->baseAddr+cp->szB);
 		/*DEBUG*/bzero((void*)cp->baseAddr, cp->szB);
 #endif
 		MemChunk_t *cq = cp->next;
