@@ -551,20 +551,18 @@ static void CheckGC (VProc_t *self, Value_t **roots)
 		int len = GetVectorLen(hdr);
 		for (int i = 0;  i < len;  i++, p++) {
 		    Value_t v = (Value_t)*p;
-		    if (isFromSpacePtr(v)) {
-			if (isPtr(v)) {
-			    MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
-			    if (cq->sts != TO_SP_CHUNK) {
-				if (cq->sts == FROM_SP_CHUNK)
-				    SayDebug("** unexpected from-space pointer %p at %p in vector\n",
-					ValueToPtr(v), p);
-				else if (IS_VPROC_CHUNK(cq->sts))
-				    SayDebug("** unexpected local pointer %p at %p in vector\n",
-					ValueToPtr(v), p);
-				else if (cq->sts == FREE_CHUNK)
-				    SayDebug("** unexpected free pointer %p at %p in vector\n",
-					ValueToPtr(v), p);
-			    }
+		    if (isPtr(v)) {
+			MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
+			if (cq->sts != TO_SP_CHUNK) {
+			    if (cq->sts == FROM_SP_CHUNK)
+				SayDebug("** unexpected from-space pointer %p at %p in vector\n",
+				    ValueToPtr(v), p);
+			    else if (IS_VPROC_CHUNK(cq->sts))
+				SayDebug("** unexpected local pointer %p at %p in vector\n",
+				    ValueToPtr(v), p);
+			    else if (cq->sts == FREE_CHUNK)
+				SayDebug("** unexpected free pointer %p at %p in vector\n",
+				    ValueToPtr(v), p);
 			}
 		    }
 		}
