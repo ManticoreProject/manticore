@@ -174,6 +174,10 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     memcpy ((void *)oldBase, (void *)(vp->oldTop), youngSzB);
     vp->oldTop = VProcHeap(vp) + youngSzB;
 
+#ifndef NDEBUG
+bzero ((void *)(vp->oldTop), VP_HEAP_DATA_SZB - youngSzB);
+#endif
+
     LogMajorGCEnd (vp);
 
 /* FIXME: there are additional roots in the vproc that we need to consider (e.g.,
