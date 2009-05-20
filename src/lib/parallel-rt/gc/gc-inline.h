@@ -91,24 +91,30 @@ STATIC_INLINE bool inAddrRange (Addr_t base, Addr_t szB, Addr_t p)
     return ((p - base) < szB);
 }
 
-/* Return true if a value is a from-space pointer.  Note that this function relies on
- * the fact that unmapped addresses are mapped to the "UnmappedChunk" by the BIBOP.
+/*! \brief Return true if a value is a from-space pointer.
+ *
+ * Note that this function relies on the fact that unmapped addresses are
+ * mapped to the "UnmappedChunk" by the BIBOP.
  */
-STATIC_INLINE bool isGlobalFromSpacePtr (Value_t p)
+STATIC_INLINE bool isFromSpacePtr (Value_t p)
 {
     return (isPtr(p) && (AddrToChunk(ValueToAddr(p))->sts == FROM_SP_CHUNK));
 
 }
 
-STATIC_INLINE Word_t *GlobalScanTop (VProc_t *vp, MemChunk_t *scanChunk)
+/*! \brief return the top of the used space in a memory chunk.
+ *  \param vp the vproc that owns the chunk.
+ *  \param cp the memory chunk.
+ */
+STATIC_INLINE Word_t *UsedTopOfChunk (VProc_t *vp, MemChunk_t *cp)
 {
-    if (vp->globToSpTl == scanChunk)
+    if (vp->globToSpTl == cp)
       /* NOTE: we must subtract WORD_SZB here because globNextW points to the first
        * data word of the next object (not the header word)!
        */
 	return (Word_t *)(vp->globNextW - WORD_SZB);
     else
-	return (Word_t *)(scanChunk->usedTop);
+	return (Word_t *)(cp->usedTop);
 }
 
 #endif /* !_GC_INLINE_H_ */

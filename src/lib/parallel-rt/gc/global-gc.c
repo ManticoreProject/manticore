@@ -254,7 +254,7 @@ static void GlobalGC (VProc_t *vp, Value_t **roots)
   /* scan the vproc's roots */
     for (int i = 0;  roots[i] != 0;  i++) {
 	Value_t p = *roots[i];
-	if (isGlobalFromSpacePtr(p)) {
+	if (isFromSpacePtr(p)) {
 	    *roots[i] = ForwardObj(vp, p);
 	}
     }
@@ -294,7 +294,7 @@ static void ScanVProcHeap (VProc_t *vp)
 	    while (tagBits != 0) {
 		if (tagBits & 0x1) {
 		    Value_t p = *(Value_t *)scanP;
-		    if (isGlobalFromSpacePtr(p)) {
+		    if (isFromSpacePtr(p)) {
 			*scanP = (Word_t)ForwardObj(vp, p);
 		    }
 		}
@@ -308,7 +308,7 @@ static void ScanVProcHeap (VProc_t *vp)
 	    int len = GetVectorLen(hdr);
 	    for (int i = 0;  i < len;  i++, scanPtr++) {
 		Value_t v = (Value_t)*scanPtr;
-		if (isGlobalFromSpacePtr(v)) {
+		if (isFromSpacePtr(v)) {
 		    *scanPtr = (Word_t)ForwardObj(vp, v);
 		}
 	    }
@@ -330,7 +330,7 @@ static void ScanGlobalToSpace (VProc_t *vp)
 {
     MemChunk_t	*scanChunk = vp->globToSpHd;
     Word_t	*scanPtr = (Word_t *)(scanChunk->baseAddr);
-    Word_t	*scanTop = GlobalScanTop(vp, scanChunk);
+    Word_t	*scanTop = UsedTopOfChunk(vp, scanChunk);
 
     do {
 #ifndef NO_GC_STATS
@@ -345,7 +345,7 @@ static void ScanGlobalToSpace (VProc_t *vp)
 		while (tagBits != 0) {
 		    if (tagBits & 0x1) {
 			Value_t p = *(Value_t *)scanP;
-			if (isGlobalFromSpacePtr(p)) {
+			if (isFromSpacePtr(p)) {
 			    *scanP = (Word_t)ForwardObj(vp, p);
 			}
 		    }
@@ -359,7 +359,7 @@ static void ScanGlobalToSpace (VProc_t *vp)
 		int len = GetVectorLen(hdr);
 		for (int i = 0;  i < len;  i++, scanPtr++) {
 		    Value_t v = (Value_t)*scanPtr;
-		    if (isGlobalFromSpacePtr(v)) {
+		    if (isFromSpacePtr(v)) {
 			*scanPtr = (Word_t)ForwardObj(vp, v);
 		    }
 		}
@@ -378,7 +378,7 @@ static void ScanGlobalToSpace (VProc_t *vp)
 	    scanChunk = scanChunk->next;
 	    assert (scanChunk != (MemChunk_t *)0);
 	    scanPtr = (Word_t *)(scanChunk->baseAddr);
-	    scanTop = GlobalScanTop(vp, scanChunk);
+	    scanTop = UsedTopOfChunk(vp, scanChunk);
 	}
 	else
 	    scanTop = (Word_t *)(scanChunk->usedTop);
@@ -391,7 +391,7 @@ static void ScanGlobalToSpace (VProc_t *vp)
 /* Check the invariant that addr is a pointer living in either the root set or the local heap. 
  * Precondition: this check should only occur just after a global collection.
  */
-static void CheckLocalPtrPostGGC (VProc_t *self, void *addr, const char *where)
+static void CheckLocalPtr (VProc_t *self, void *addr, const char *where)
 {
     Value_t v = *(Value_t *)addr;
     if (isPtr(v)) {
@@ -417,6 +417,7 @@ static void CheckLocalPtrPostGGC (VProc_t *self, void *addr, const char *where)
 	}
     }
 }
+
 static void CheckGC (VProc_t *self, Value_t **roots)
 {
     if (GCDebug >= GC_DEBUG_GLOBAL)
@@ -427,7 +428,7 @@ static void CheckGC (VProc_t *self, Value_t **roots)
 	char buf[16];
 	sprintf(buf, "root[%d]", i);
 	Value_t v = *roots[i];
-	CheckLocalPtrPostGGC (self, roots[i], buf);
+	CheckLocalPtr (self, roots[i], buf);
     }
 
   // check the local heap
@@ -442,7 +443,7 @@ static void CheckGC (VProc_t *self, Value_t **roots)
 		Word_t *scanP = p;
 		while (tagBits != 0) {
 		    if (tagBits & 0x1) {
-			CheckLocalPtrPostGGC (self, scanP, "local mixed object");
+			CheckLocalPtr (self, scanP, "local mixed object");
 		    }
 		    tagBits >>= 1;
 		    scanP++;
@@ -453,7 +454,7 @@ static void CheckGC (VProc_t *self, Value_t **roots)
 	      // an array of pointers
 		int len = GetVectorLen(hdr);
 		for (int i = 0;  i < len;  i++, p++) {
-		    CheckLocalPtrPostGGC (self, p, "local vector");
+		    CheckLocalPtr (self, p, "local vector");
 		}
 	    }
 	    else {
@@ -469,7 +470,7 @@ static void CheckGC (VProc_t *self, Value_t **roots)
     while (cp != (MemChunk_t *)0) {
 	assert (cp->sts = TO_SP_CHUNK);
 	Word_t *p = (Word_t *)(cp->baseAddr);
-	Word_t *top = GlobalScanTop(self, cp);
+	Word_t *top = UsedTopOfChunk(self, cp);
 	while (p < top) {
 	    Word_t hdr = *p++;
 	    if (isMixedHdr(hdr)) {
@@ -539,7 +540,7 @@ static void CheckGC (VProc_t *self, Value_t **roots)
 		int len = GetVectorLen(hdr);
 		for (int i = 0;  i < len;  i++, p++) {
 		    Value_t v = (Value_t)*p;
-		    if (isGlobalFromSpacePtr(v)) {
+		    if (isFromSpacePtr(v)) {
 			if (isPtr(v)) {
 			    MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
 			    if (cq->sts != TO_SP_CHUNK) {
@@ -565,6 +566,25 @@ static void CheckGC (VProc_t *self, Value_t **roots)
 	}
 	cp = cp->next;
     }
+
+  // check the VProc structure
+#define CHECK_VP(fld)	CheckLocalPtr(self, &(self->fld), "self->" #fld)
+    CHECK_VP(inManticore);
+    CHECK_VP(atomic);
+    CHECK_VP(sigPending);
+    CHECK_VP(sleeping);
+    CHECK_VP(currentFLS);
+    CHECK_VP(actionStk);
+    CHECK_VP(schedCont);
+    CHECK_VP(dummyK);
+    CHECK_VP(wakeupCont);
+    CHECK_VP(rdyQHd);
+    CHECK_VP(rdyQTl);
+    CHECK_VP(stdArg);
+    CHECK_VP(stdEnvPtr);
+    CHECK_VP(stdCont);
+    CHECK_VP(stdExnCont);
+    CHECK_VP(landingPad);
 
 }
 #endif

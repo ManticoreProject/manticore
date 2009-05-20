@@ -183,12 +183,8 @@ bzero ((void *)(vp->oldTop), VP_HEAP_DATA_SZB - youngSzB);
 
     LogMajorGCEnd (vp);
 
-/* FIXME: there are additional roots in the vproc that we need to consider (e.g.,
- * the entryq.
- */
-
     if (vp->globalGCPending || (ToSpaceSz >= ToSpaceLimit))
-    StartGlobalGC (vp, roots);
+	StartGlobalGC (vp, roots);
 
 } /* end of MajorGC */
 

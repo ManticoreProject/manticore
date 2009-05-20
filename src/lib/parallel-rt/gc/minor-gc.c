@@ -331,7 +331,7 @@ static void CheckMinorGC (VProc_t *self, Value_t **roots)
     while (cp != (MemChunk_t *)0) {
 	assert (cp->sts = TO_SP_CHUNK);
 	Word_t *p = (Word_t *)(cp->baseAddr);
-	Word_t *top = GlobalScanTop(self, cp);
+	Word_t *top = UsedTopOfChunk(self, cp);
 	while (p < top) {
 	    Word_t hdr = *p++;
 	    if (isMixedHdr(hdr)) {
@@ -401,7 +401,7 @@ static void CheckMinorGC (VProc_t *self, Value_t **roots)
 		int len = GetVectorLen(hdr);
 		for (int i = 0;  i < len;  i++, p++) {
 		    Value_t v = (Value_t)*p;
-		    if (isGlobalFromSpacePtr(v)) {
+		    if (isFromSpacePtr(v)) {
 			if (isPtr(v)) {
 			    MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
 			    if (cq->sts != TO_SP_CHUNK) {
