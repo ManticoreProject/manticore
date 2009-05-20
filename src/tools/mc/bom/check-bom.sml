@@ -60,6 +60,21 @@ structure CheckBOM : sig
 	    lp x
 	  end
 
+  (* check for assignments of unpromoted values; return true if okay and false
+   * otherwise.
+   *)
+    fun checkAssign (ty, x) = let
+	  val k = BTU.kindOf ty
+	  in
+	    if (k = BTy.K_BOXED) orelse (k = BTy.K_UNIFORM)
+	      then (case resolveBinding x
+		 of B.VK_RHS(B.E_Promote _) => true
+		  | B.VK_RHS(B.E_Const _) => true
+		  | _ => false
+		(* end case *))
+	      else true
+	  end
+
     fun check (phase, module) = let
 	  val B.MODULE{name, externs, hlops, body} = module
 	  val anyErrors = ref false
@@ -321,16 +336,12 @@ structure CheckBOM : sig
 					"type mismatch in #", Int.toString i,
 					"(", v2s x, ") := ", v2s y, "\n"
 				      ];
-				  if (k = BTy.K_BOXED) orelse (k = BTy.K_UNIFORM)
-				    then (case resolveBinding y
-				       of B.VK_RHS(B.E_Promote _) => ()
-					| B.VK_RHS(B.E_Const _) => ()
-					| _ => warning[
-					      "possible unpromoted update in #", Int.toString i,
-					      "(", v2s x, ") := ", v2s y, "\n"
-					    ]
-				      (* end case *))
-				    else ()
+				  if checkAssign (ty, y)
+				    then ()
+				    else warning[
+					"possible unpromoted update in #", Int.toString i,
+					"(", v2s x, ") := ", v2s y, "\n"
+				      ]
 				end
 			      else error [
 				  "index out of bounds in #", Int.toString i,
@@ -352,7 +363,7 @@ structure CheckBOM : sig
 			| ty => error[v2s x, ":", BTU.toString ty, " is not a tuple",
                                     vl2s lhs, " = &(", v2s x, ")\n"]
 		      (* end case *))
-		  | ([ty], B.E_Alloc (allocTy, xs)) => (
+		  | ([ty], B.E_Alloc(allocTy, xs)) => (
                       chkVars(xs, "Alloc");
                       if BTU.match (allocTy, ty)
 			then ()
@@ -424,7 +435,23 @@ structure CheckBOM : sig
 			  "arity mismatch in ", vl2s lhs, " = ", PrimUtil.nameOf p, vl2s args, "\n"
 			]
 		  (* end case *);
-		  ListPair.appEq chkParamArg (paramTys, args)
+		  ListPair.appEq chkParamArg (paramTys, args);
+		(* check polymorphic array updates for missing promotions *)
+		  case p
+		   of Prim.ArrayStore(a, i, x) => if checkAssign(BTy.T_Any, x)
+			then ()
+			else warning[
+			    "possible unpromoted update in ArrayStore(", v2s a, ",",
+			    v2s i, ",", v2s x, ")\n"
+			  ]
+		    | Prim.CAS(loc, old, new) => if checkAssign(BV.typeOf new, new)
+			then ()
+			else warning[
+			    "possible unpromoted update in CAS(", v2s loc, ",",
+			    v2s old, ",", v2s new, ")\n"
+			  ]
+		    | _ => ()
+		  (* end case *)
 		end
 	(* check an external function *)
 	  fun chkExtern (CFunctions.CFun{var, name, ...}) = (
