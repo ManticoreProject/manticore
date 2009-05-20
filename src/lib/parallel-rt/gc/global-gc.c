@@ -39,6 +39,17 @@ static void ScanGlobalToSpace (VProc_t *vp);
 static void CheckGC (VProc_t *self, Value_t **roots);
 #endif
 
+/*! \brief Return true if a value is a from-space pointer.
+ *
+ * Note that this function relies on the fact that unmapped addresses are
+ * mapped to the "UnmappedChunk" by the BIBOP.
+ */
+STATIC_INLINE bool isFromSpacePtr (Value_t p)
+{
+    return (isPtr(p) && (AddrToChunk(ValueToAddr(p))->sts == FROM_SP_CHUNK));
+
+}
+
 /* Forward an object into the global-heap chunk reserved for the current VP */
 STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
 {

@@ -91,17 +91,6 @@ STATIC_INLINE bool inAddrRange (Addr_t base, Addr_t szB, Addr_t p)
     return ((p - base) < szB);
 }
 
-/*! \brief Return true if a value is a from-space pointer.
- *
- * Note that this function relies on the fact that unmapped addresses are
- * mapped to the "UnmappedChunk" by the BIBOP.
- */
-STATIC_INLINE bool isFromSpacePtr (Value_t p)
-{
-    return (isPtr(p) && (AddrToChunk(ValueToAddr(p))->sts == FROM_SP_CHUNK));
-
-}
-
 /*! \brief return the top of the used space in a memory chunk.
  *  \param vp the vproc that owns the chunk.
  *  \param cp the memory chunk.
