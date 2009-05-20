@@ -9,8 +9,9 @@
 functor PrimTyFn (Ty : sig
 
     structure V : VAR
-    val boolTy  : V.ty
     val unitTy	: V.ty
+    val boolTy  : V.ty
+    val anyTy   : V.ty
     val raw     : RawTypes.raw_ty -> V.ty
 
   end) : sig
@@ -93,17 +94,19 @@ functor PrimTyFn (Ty : sig
 	    | P.I64ToF32 _ => f32Ty
 	    | P.I64ToF64 _ => f64Ty
 	    | P.F64ToI32 _ => i32Ty
+	    | P.ArrayLoadI32 _ => i32Ty
+	    | P.ArrayLoadI64 _ => i64Ty
+	    | P.ArrayLoadF32 _ => f32Ty
+	    | P.ArrayLoadF64 _ => f64Ty
+	    | P.ArrayLoad _ => Ty.anyTy
+	    | P.ArrayStoreI32 _ => Ty.unitTy
+	    | P.ArrayStoreI64 _ => Ty.unitTy
+	    | P.ArrayStoreF32 _ => Ty.unitTy
+	    | P.ArrayStoreF64 _ => Ty.unitTy
+	    | P.ArrayStore _ => Ty.unitTy
 	    | P.I32FetchAndAdd _ => i32Ty
 	    | P.I64FetchAndAdd _ => i64Ty
 	    | P.CAS(_, x, _) => Ty.V.typeOf x
-	    | P.ArrayLoadI32 _ => i32Ty
-	    | P.ArrayStoreI32 _ => Ty.unitTy
-	    | P.ArrayLoadI64 _ => i64Ty
-	    | P.ArrayStoreI64 _ => Ty.unitTy
-	    | P.ArrayLoadF32 _ => f32Ty
-	    | P.ArrayStoreF32 _ => Ty.unitTy
-	    | P.ArrayLoadF64 _ => f64Ty
-	    | P.ArrayStoreF64 _ => Ty.unitTy
 	    | P.BCAS _ => bTy
 	    | P.TAS _ => bTy
 	    | P.Pause => Ty.unitTy

@@ -270,6 +270,7 @@ structure BOMUtil : sig
       structure PTy = PrimTyFn (
 	struct
 	  structure V = BV
+	  val anyTy = BTy.T_Any
 	  val unitTy = BTy.unitTy
 	  val boolTy = BTy.boolTy
 	  val raw = BTy.T_Raw
