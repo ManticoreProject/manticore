@@ -8,23 +8,34 @@
 
 functor PrimTyFn (Ty : sig
 
-    structure V : VAR
-    val unitTy	: V.ty
-    val boolTy  : V.ty
-    val anyTy   : V.ty
-    val raw     : RawTypes.raw_ty -> V.ty
+    type var
+    type ty
+
+    val typeOf : var -> ty
+
+    val noTy	: ty	(* used for return type of primops that have no results *)
+    val boolTy  : ty
+    val anyTy   : ty
+    val raw     : RawTypes.raw_ty -> ty
+    val addr    : ty -> ty
 
   end) : sig
 
+    type var
+    type ty
+
   (* the result type of a primop *)
-    val typeOf : Ty.V.var Prim.prim -> Ty.V.ty
+    val typeOf : var Prim.prim -> ty
 
   (* the signature of a primop's arguments *)
-    val signOf : Ty.V.var Prim.prim -> (Ty.V.ty list * Ty.V.ty)
+    val signOf : var Prim.prim -> (ty list * ty)
 
   end = struct
 
     structure P = Prim
+
+    type var = Ty.var
+    type ty = Ty.ty
 
     val anyTy = Ty.anyTy
     val bTy = Ty.boolTy
@@ -104,20 +115,20 @@ functor PrimTyFn (Ty : sig
 	    | P.ArrayLoadF32 _ => f32Ty
 	    | P.ArrayLoadF64 _ => f64Ty
 	    | P.ArrayLoad _ => Ty.anyTy
-	    | P.ArrayStoreI32 _ => Ty.unitTy
-	    | P.ArrayStoreI64 _ => Ty.unitTy
-	    | P.ArrayStoreF32 _ => Ty.unitTy
-	    | P.ArrayStoreF64 _ => Ty.unitTy
-	    | P.ArrayStore _ => Ty.unitTy
+	    | P.ArrayStoreI32 _ => Ty.noTy
+	    | P.ArrayStoreI64 _ => Ty.noTy
+	    | P.ArrayStoreF32 _ => Ty.noTy
+	    | P.ArrayStoreF64 _ => Ty.noTy
+	    | P.ArrayStore _ => Ty.noTy
 	    | P.I32FetchAndAdd _ => i32Ty
 	    | P.I64FetchAndAdd _ => i64Ty
-	    | P.CAS(_, x, _) => Ty.V.typeOf x
+	    | P.CAS(_, x, _) => Ty.typeOf x
 	    | P.BCAS _ => bTy
 	    | P.TAS _ => bTy
-	    | P.Pause => Ty.unitTy
-	    | P.FenceRead => Ty.unitTy
-	    | P.FenceWrite => Ty.unitTy
-	    | P.FenceRW => Ty.unitTy
+	    | P.Pause => Ty.noTy
+	    | P.FenceRead => Ty.noTy
+	    | P.FenceWrite => Ty.noTy
+	    | P.FenceRW => Ty.noTy
 	  (* end case *))
 
     fun signOf p = (case p
@@ -191,20 +202,29 @@ functor PrimTyFn (Ty : sig
 	    | P.ArrayLoadF32 _ => ([anyTy, i32Ty], f32Ty)
 	    | P.ArrayLoadF64 _ => ([anyTy, i32Ty], f64Ty)
 	    | P.ArrayLoad _ => ([anyTy, i32Ty], Ty.anyTy)
-	    | P.ArrayStoreI32 _ => ([anyTy, i32Ty, i32Ty], Ty.unitTy)
-	    | P.ArrayStoreI64 _ => ([anyTy, i32Ty, i64Ty], Ty.unitTy)
-	    | P.ArrayStoreF32 _ => ([anyTy, i32Ty, f32Ty], Ty.unitTy)
-	    | P.ArrayStoreF64 _ => ([anyTy, i32Ty, f64Ty], Ty.unitTy)
-	    | P.ArrayStore _ => ([anyTy, i32Ty, anyTy], Ty.unitTy)
-	    | P.I32FetchAndAdd _ => ([anyTy, i32Ty], i32Ty)
-	    | P.I64FetchAndAdd _ => ([anyTy, i64Ty], i64Ty)
-	    | P.CAS(_, x, _) => ([anyTy, anyTy, anyTy], Ty.V.typeOf x)
-	    | P.BCAS _ => ([anyTy, anyTy, anyTy], bTy)
+	    | P.ArrayStoreI32 _ => ([anyTy, i32Ty, i32Ty], Ty.noTy)
+	    | P.ArrayStoreI64 _ => ([anyTy, i32Ty, i64Ty], Ty.noTy)
+	    | P.ArrayStoreF32 _ => ([anyTy, i32Ty, f32Ty], Ty.noTy)
+	    | P.ArrayStoreF64 _ => ([anyTy, i32Ty, f64Ty], Ty.noTy)
+	    | P.ArrayStore _ => ([anyTy, i32Ty, anyTy], Ty.noTy)
+	    | P.I32FetchAndAdd _ => ([Ty.addr i32Ty, i32Ty], i32Ty)
+	    | P.I64FetchAndAdd _ => ([Ty.addr i64Ty, i64Ty], i64Ty)
+	    | P.CAS(_, x, _) => let
+		val ty = Ty.typeOf x
+		in
+		  ([Ty.addr ty, ty, ty], ty)
+		end
+	    | P.BCAS(_, x, _) =>  let
+		val ty = Ty.typeOf x
+		in
+		  ([Ty.addr ty, ty, ty], bTy)
+		end
+(* FIXME: what is the correct paramater type for TAS? *)
 	    | P.TAS _ => ([anyTy], bTy)
-	    | P.Pause => ([], Ty.unitTy)
-	    | P.FenceRead => ([], Ty.unitTy)
-	    | P.FenceWrite => ([], Ty.unitTy)
-	    | P.FenceRW => ([], Ty.unitTy)
+	    | P.Pause => ([], Ty.noTy)
+	    | P.FenceRead => ([], Ty.noTy)
+	    | P.FenceWrite => ([], Ty.noTy)
+	    | P.FenceRW => ([], Ty.noTy)
 	  (* end case *))
 
   end
