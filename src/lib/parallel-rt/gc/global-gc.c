@@ -463,7 +463,7 @@ static void CheckGC (VProc_t *self, Value_t **roots)
 		Word_t *scanP = p;
 		while (tagBits != 0) {
 		    if (tagBits & 0x1) {
-			CheckLocalPtrPostGGC (self, p, "local mixed object");
+			CheckLocalPtrPostGGC (self, scanP, "local mixed object");
 		    }
 		    tagBits >>= 1;
 		    scanP++;
@@ -499,7 +499,7 @@ static void CheckGC (VProc_t *self, Value_t **roots)
 		Word_t *scanP = p;
 		while (tagBits != 0) {
 		    if (tagBits & 0x1) {
-			Value_t v = *(Value_t *)p;
+			Value_t v = *(Value_t *)scanP;
 			if (isPtr(v)) {
 			    MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
 			    if (cq->sts != TO_SP_CHUNK) {

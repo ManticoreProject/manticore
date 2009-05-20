@@ -230,10 +230,10 @@ static void CheckLocalPtr (VProc_t *self, void *addr, const char *where)
 
 static void CheckMinorGC (VProc_t *self, Value_t **roots)
 {
+    char buf[32];
 
   // check the roots
     for (int i = 0;  roots[i] != 0;  i++) {
-	char buf[16];
 	sprintf(buf, "root[%d]", i);
 	Value_t v = *roots[i];
 	CheckLocalPtr (self, roots[i], buf);
@@ -251,7 +251,7 @@ static void CheckMinorGC (VProc_t *self, Value_t **roots)
 		Word_t *scanP = p;
 		while (tagBits != 0) {
 		    if (tagBits & 0x1) {
-			CheckLocalPtr (self, p, "local mixed object");
+			CheckLocalPtr (self, scanP, "local mixed object");
 		    }
 		    else {
 		      /* check for possible pointers in non-pointer fields */
@@ -297,7 +297,8 @@ static void CheckMinorGC (VProc_t *self, Value_t **roots)
 	      // an array of pointers
 		int len = GetVectorLen(hdr);
 		for (int i = 0;  i < len;  i++, p++) {
-		    CheckLocalPtr (self, p, "local vector");
+		    sprintf(buf, "local vector[%d/%d]", i, len);
+		    CheckLocalPtr (self, p, buf);
 		}
 	    }
 	    else if (isForwardPtr(hdr)) {
