@@ -25,6 +25,10 @@
 
 static void ScanGlobalToSpace (
 	VProc_t *vp, Addr_t heapBase, MemChunk_t *scanChunk, Word_t *scanPtr);
+#ifndef NDEBUG
+void CheckAfterGlobalGC (VProc_t *self, Value_t **roots);
+#endif
+
 
 /*! \brief Forward an object into the global-heap chunk reserved for the given vp.
  *  \param vp the vproc
@@ -179,6 +183,9 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 
 #ifndef NDEBUG
 bzero ((void *)(vp->oldTop), VP_HEAP_DATA_SZB - youngSzB);
+    if (GCDebug >= GC_DEBUG_MAJOR)
+	SayDebug ("[%2d]  Checking heap consistency\n", vp->id);
+    CheckAfterGlobalGC (vp, roots);
 #endif
 
     LogMajorGCEnd (vp);

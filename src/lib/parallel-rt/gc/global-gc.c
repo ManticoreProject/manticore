@@ -36,7 +36,7 @@ static void GlobalGC (VProc_t *vp, Value_t **roots);
 static void ScanVProcHeap (VProc_t *vp);
 static void ScanGlobalToSpace (VProc_t *vp);
 #ifndef NDEBUG
-static void CheckGC (VProc_t *self, Value_t **roots);
+void CheckAfterGlobalGC (VProc_t *self, Value_t **roots);
 #endif
 
 /*! \brief Return true if a value is a from-space pointer.
@@ -191,8 +191,6 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	MutexUnlock (&GCLock);
     }
 
-    MutexLock(&GCLock);
-
   /* allocate the initial chunk for the vproc */
     AllocToSpaceChunk (self);
 
@@ -204,11 +202,12 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
     FetchAndAdd64 ((int64_t *)&NWordsScanned, self->nWordsScanned);
     FetchAndAdd64 ((int64_t *)&NBytesCopied, self->nBytesCopied);
 #endif
-#ifndef NDEBUG
-    CheckGC (self, roots);
-#endif
 
-    MutexUnlock(&GCLock);
+#ifndef NDEBUG
+    if (GCDebug >= GC_DEBUG_GLOBAL)
+	SayDebug ("[%2d]  Checking heap consistency\n", self->id);
+    CheckAfterGlobalGC (self, roots);
+#endif
 
   /* the leader reclaims the from-space pages */
     if (leaderVProc) {
@@ -258,8 +257,6 @@ static void GlobalGC (VProc_t *vp, Value_t **roots)
     LogGlobalGCVPStart (vp);
 
 #ifndef NDEBUG
-    if (GCDebug >= GC_DEBUG_GLOBAL)
-	SayDebug("[%2d] Global GC starting\n", vp->id);
 #endif
 
   /* scan the vproc's roots */
@@ -429,11 +426,8 @@ static void CheckLocalPtr (VProc_t *self, void *addr, const char *where)
     }
 }
 
-static void CheckGC (VProc_t *self, Value_t **roots)
+void CheckAfterGlobalGC (VProc_t *self, Value_t **roots)
 {
-    if (GCDebug >= GC_DEBUG_GLOBAL)
-      SayDebug ("  Checking heap consistency\n");
-
   // check the roots
     for (int i = 0;  roots[i] != 0;  i++) {
 	char buf[16];
