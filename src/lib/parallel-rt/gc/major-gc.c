@@ -188,7 +188,7 @@ bzero ((void *)(vp->oldTop), VP_HEAP_DATA_SZB - youngSzB);
  */
 
     if (vp->globalGCPending || (ToSpaceSz >= ToSpaceLimit))
-	StartGlobalGC (vp, roots);
+    StartGlobalGC (vp, roots);
 
 } /* end of MajorGC */
 

@@ -230,6 +230,7 @@ static void CheckLocalPtr (VProc_t *self, void *addr, const char *where)
 
 static void CheckMinorGC (VProc_t *self, Value_t **roots)
 {
+
     char buf[32];
 
   // check the roots
@@ -323,6 +324,108 @@ static void CheckMinorGC (VProc_t *self, Value_t **roots)
 		p += GetRawSizeW(hdr);
 	    }
 	}
+    }
+
+  // check the global heap "to space"
+    MemChunk_t	*cp = self->globToSpHd;
+    while (cp != (MemChunk_t *)0) {
+	assert (cp->sts = TO_SP_CHUNK);
+	Word_t *p = (Word_t *)(cp->baseAddr);
+	Word_t *top = GlobalScanTop(self, cp);
+	while (p < top) {
+	    Word_t hdr = *p++;
+	    if (isMixedHdr(hdr)) {
+	      // a record
+		Word_t tagBits = GetMixedBits(hdr);
+		Word_t *scanP = p;
+		while (tagBits != 0) {
+		    if (tagBits & 0x1) {
+			Value_t v = *(Value_t *)scanP;
+			if (isPtr(v)) {
+			    MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
+			    if (cq->sts != TO_SP_CHUNK) {
+				if (cq->sts == FROM_SP_CHUNK)
+				    SayDebug("** unexpected from-space pointer %p at %p in mixed object\n",
+					ValueToPtr(v), p);
+				else if (IS_VPROC_CHUNK(cq->sts))
+				    SayDebug("** unexpected local pointer %p at %p in mixed object\n",
+					ValueToPtr(v), p);
+				else if (cq->sts == FREE_CHUNK)
+				    SayDebug("** unexpected free pointer %p at %p in mixed object\n",
+					ValueToPtr(v), p);
+			    }
+			}
+		    }
+		    else {
+		      /* check for possible pointers in non-pointer fields */
+			Value_t v = *(Value_t *)scanP;
+			if (isPtr(v)) {
+			    MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
+			    switch (cq->sts) {
+			      case FREE_CHUNK:
+				SayDebug(" ** possible free-space pointer %p in mixed object %p+%d\n",
+				    v, p, scanP-p);
+				break;
+			      case TO_SP_CHUNK:
+				SayDebug(" ** possible to-space pointer %p in mixed object %p+%d\n",
+				    v, p, scanP-p);
+				break;
+			      case FROM_SP_CHUNK:
+				SayDebug(" ** possible from-space pointer %p in mixed object %p+%d\n",
+				    v, p, scanP-p);
+				break;
+			      case UNMAPPED_CHUNK:
+				break;
+			      default:
+				if (IS_VPROC_CHUNK(cq->sts)) {
+				  /* the vproc pointer is pretty common, so filter it out */
+				    if ((Addr_t)v & ~VP_HEAP_MASK != (Addr_t)v)
+					SayDebug(" ** possible local pointer %p in mixed object %p+%d\n",
+					    v, p, scanP-p);
+				}
+				else {
+				    SayDebug(" ** strange pointer %p in mixed object %p+%d\n",
+					v, p, scanP-p);
+				}
+				break;
+			    }
+			}
+		    }
+		    tagBits >>= 1;
+		    scanP++;
+		}
+		p += GetMixedSizeW(hdr);
+	    }
+	    else if (isVectorHdr(hdr)) {
+	      // an array of pointers
+		int len = GetVectorLen(hdr);
+		for (int i = 0;  i < len;  i++, p++) {
+		    Value_t v = (Value_t)*p;
+		    if (isGlobalFromSpacePtr(v)) {
+			if (isPtr(v)) {
+			    MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
+			    if (cq->sts != TO_SP_CHUNK) {
+				if (cq->sts == FROM_SP_CHUNK)
+				    SayDebug("** unexpected from-space pointer %p at %p in vector\n",
+					ValueToPtr(v), p);
+				else if (IS_VPROC_CHUNK(cq->sts))
+				    SayDebug("** unexpected local pointer %p at %p in vector\n",
+					ValueToPtr(v), p);
+				else if (cq->sts == FREE_CHUNK)
+				    SayDebug("** unexpected free pointer %p at %p in vector\n",
+					ValueToPtr(v), p);
+			    }
+			}
+		    }
+		}
+	    }
+	    else {
+		assert (isRawHdr(hdr));
+	      // we can just skip raw objects
+		p += GetRawSizeW(hdr);
+	    }
+	}
+	cp = cp->next;
     }
 
 }

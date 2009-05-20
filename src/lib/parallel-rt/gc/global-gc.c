@@ -39,15 +39,6 @@ static void ScanGlobalToSpace (VProc_t *vp);
 static void CheckGC (VProc_t *self, Value_t **roots);
 #endif
 
-/* Return true if a value is a from-space pointer.  Note that this function relies on
- * the fact that unmapped addresses are mapped to the "UnmappedChunk" by the BIBOP.
- */
-STATIC_INLINE bool isFromSpacePtr (Value_t p)
-{
-    return (isPtr(p) && (AddrToChunk(ValueToAddr(p))->sts == FROM_SP_CHUNK));
-
-}
-
 /* Forward an object into the global-heap chunk reserved for the current VP */
 STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
 {
@@ -93,18 +84,6 @@ STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
     }
 
 }
-
-STATIC_INLINE Word_t *ScanTop (VProc_t *vp, MemChunk_t *scanChunk)
-{
-    if (vp->globToSpTl == scanChunk)
-      /* NOTE: we must subtract WORD_SZB here because globNextW points to the first
-       * data word of the next object (not the header word)!
-       */
-	return (Word_t *)(vp->globNextW - WORD_SZB);
-    else
-	return (Word_t *)(scanChunk->usedTop);
-}
-
 
 /* \brief initialize the data structures that support global GC
  */
@@ -275,7 +254,7 @@ static void GlobalGC (VProc_t *vp, Value_t **roots)
   /* scan the vproc's roots */
     for (int i = 0;  roots[i] != 0;  i++) {
 	Value_t p = *roots[i];
-	if (isFromSpacePtr(p)) {
+	if (isGlobalFromSpacePtr(p)) {
 	    *roots[i] = ForwardObj(vp, p);
 	}
     }
@@ -315,7 +294,7 @@ static void ScanVProcHeap (VProc_t *vp)
 	    while (tagBits != 0) {
 		if (tagBits & 0x1) {
 		    Value_t p = *(Value_t *)scanP;
-		    if (isFromSpacePtr(p)) {
+		    if (isGlobalFromSpacePtr(p)) {
 			*scanP = (Word_t)ForwardObj(vp, p);
 		    }
 		}
@@ -329,7 +308,7 @@ static void ScanVProcHeap (VProc_t *vp)
 	    int len = GetVectorLen(hdr);
 	    for (int i = 0;  i < len;  i++, scanPtr++) {
 		Value_t v = (Value_t)*scanPtr;
-		if (isFromSpacePtr(v)) {
+		if (isGlobalFromSpacePtr(v)) {
 		    *scanPtr = (Word_t)ForwardObj(vp, v);
 		}
 	    }
@@ -351,7 +330,7 @@ static void ScanGlobalToSpace (VProc_t *vp)
 {
     MemChunk_t	*scanChunk = vp->globToSpHd;
     Word_t	*scanPtr = (Word_t *)(scanChunk->baseAddr);
-    Word_t	*scanTop = ScanTop(vp, scanChunk);
+    Word_t	*scanTop = GlobalScanTop(vp, scanChunk);
 
     do {
 #ifndef NO_GC_STATS
@@ -366,7 +345,7 @@ static void ScanGlobalToSpace (VProc_t *vp)
 		while (tagBits != 0) {
 		    if (tagBits & 0x1) {
 			Value_t p = *(Value_t *)scanP;
-			if (isFromSpacePtr(p)) {
+			if (isGlobalFromSpacePtr(p)) {
 			    *scanP = (Word_t)ForwardObj(vp, p);
 			}
 		    }
@@ -380,7 +359,7 @@ static void ScanGlobalToSpace (VProc_t *vp)
 		int len = GetVectorLen(hdr);
 		for (int i = 0;  i < len;  i++, scanPtr++) {
 		    Value_t v = (Value_t)*scanPtr;
-		    if (isFromSpacePtr(v)) {
+		    if (isGlobalFromSpacePtr(v)) {
 			*scanPtr = (Word_t)ForwardObj(vp, v);
 		    }
 		}
@@ -399,7 +378,7 @@ static void ScanGlobalToSpace (VProc_t *vp)
 	    scanChunk = scanChunk->next;
 	    assert (scanChunk != (MemChunk_t *)0);
 	    scanPtr = (Word_t *)(scanChunk->baseAddr);
-	    scanTop = ScanTop(vp, scanChunk);
+	    scanTop = GlobalScanTop(vp, scanChunk);
 	}
 	else
 	    scanTop = (Word_t *)(scanChunk->usedTop);
@@ -490,7 +469,7 @@ static void CheckGC (VProc_t *self, Value_t **roots)
     while (cp != (MemChunk_t *)0) {
 	assert (cp->sts = TO_SP_CHUNK);
 	Word_t *p = (Word_t *)(cp->baseAddr);
-	Word_t *top = ScanTop(self, cp);
+	Word_t *top = GlobalScanTop(self, cp);
 	while (p < top) {
 	    Word_t hdr = *p++;
 	    if (isMixedHdr(hdr)) {
@@ -560,7 +539,7 @@ static void CheckGC (VProc_t *self, Value_t **roots)
 		int len = GetVectorLen(hdr);
 		for (int i = 0;  i < len;  i++, p++) {
 		    Value_t v = (Value_t)*p;
-		    if (isFromSpacePtr(v)) {
+		    if (isGlobalFromSpacePtr(v)) {
 			if (isPtr(v)) {
 			    MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
 			    if (cq->sts != TO_SP_CHUNK) {
