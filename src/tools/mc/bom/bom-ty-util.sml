@@ -97,7 +97,8 @@ structure BOMTyUtil : sig
    * type be used wherever the second type is expected)?
    *)
     fun match (ty1, ty2) = (case (ty1, ty2)
-	   of (BTy.T_Addr ty1, BTy.T_Addr ty2) => equal(ty1, ty2)
+	   of (BTy.T_Addr(BTy.T_Enum _), BTy.T_Addr(BTy.T_Raw RawTypes.T_Int)) => true
+	    | (BTy.T_Addr ty1, BTy.T_Addr ty2) => equal(ty1, ty2)
 	    | (BTy.T_Raw rty1, BTy.T_Raw rty2) => (rty1 = rty2)
 	    | (fromTy, BTy.T_Any) => isKind BTy.K_UNIFORM (kindOf fromTy)
 	  (* the following shouldn't be here, since it isn't really sound, but we need it
