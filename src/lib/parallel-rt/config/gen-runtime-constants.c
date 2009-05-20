@@ -49,7 +49,7 @@ int main ()
     printf ("    val extendedAlignB : IntInf.int = %d\n", sizeof (double));
 
     printf ("\n  (* stack size and heap size info *)\n");
-    printf ("    val spillAreaSzB : IntInf.int = %d\n", FRAME_SZB);
+    printf ("    val spillAreaSzB : IntInf.int = %d\n", SPILL_SZB);
     printf ("    val spillAreaOffB : IntInf.int = %d\n", SAVE_AREA+PAD_SZB);
     printf ("    val maxObjectSzB : IntInf.int = %d\n", ((sizeof (Word_t)*8)-MIXED_TAG_BITS)*sizeof(Word_t));
 
