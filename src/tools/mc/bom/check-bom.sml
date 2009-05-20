@@ -49,16 +49,34 @@ structure CheckBOM : sig
 
     fun typesOf xs = List.map BV.typeOf xs
 
+  (* get the binding of a variable, chasing through casts and renamings *)
+    fun resolveBinding x = let
+	  fun lp x = (case BV.kindOf x
+		 of B.VK_Let(B.E_Pt(_, B.E_Ret[y])) => lp y
+		  | B.VK_RHS(B.E_Cast(_, y)) => lp y
+		  | k => k
+		(* end case *))
+	  in
+	    lp x
+	  end
+
     fun check (phase, module) = let
 	  val B.MODULE{name, externs, hlops, body} = module
 	  val anyErrors = ref false
+	  val anyWarnings = ref false
 	(* report an error *)
 	  fun error msg = (
-		if !anyErrors then ()
+		if !anyErrors orelse !anyWarnings then ()
 		else (
 		  pr ["***** Bogus BOM in ", Atom.toString name, " after ", phase, " *****\n"];
 		  anyErrors := true);
 		pr ("** " :: msg))
+	  fun warning msg = (
+		if !anyErrors orelse !anyWarnings then ()
+		else (
+		  pr ["***** Possibly Bogus BOM in ", Atom.toString name, " after ", phase, " *****\n"];
+		  anyWarnings := true);
+		pr ("?? " :: msg))
 	  fun cerror msg = pr ("== "::msg)
 	(* match the parameter types against argument variables *)
 	  fun checkArgTypes (cmp, ctx, paramTys, argTys) = let
@@ -291,11 +309,33 @@ structure CheckBOM : sig
                       chkVar(x, "Update");
                       chkVar(y, "Update");
                       case BV.typeOf x
-                       of BTy.T_Tuple(true, tys) => 
-			    if (i < List.length tys) andalso BTU.equal(BV.typeOf y, List.nth (tys, i))
-			      then ()
-			      else error["type mismatch in Update: ",
-				     "#", Int.toString i, "(", v2s x, ") := ", v2s y, "\n"]
+                       of BTy.T_Tuple(true, tys) =>
+			    if (i < List.length tys)
+			      then let
+				val ty = List.nth(tys, i)
+				val k = BTU.kindOf ty
+				in
+				  if BTU.equal(BV.typeOf y, ty)
+				    then ()
+				    else error[
+					"type mismatch in #", Int.toString i,
+					"(", v2s x, ") := ", v2s y, "\n"
+				      ];
+				  if (k = BTy.K_BOXED) orelse (k = BTy.K_UNIFORM)
+				    then (case resolveBinding y
+				       of B.VK_RHS(B.E_Promote _) => ()
+					| B.VK_RHS(B.E_Const _) => ()
+					| _ => warning[
+					      "possible unpromoted update in #", Int.toString i,
+					      "(", v2s x, ") := ", v2s y, "\n"
+					    ]
+				      (* end case *))
+				    else ()
+				end
+			      else error [
+				  "index out of bounds in #", Int.toString i,
+				  "(", v2s x, ") := ", v2s y, "\n"
+				]
 			| ty => error[v2s x, ":", BTU.toString ty, " is not a mutable tuple",
                                     "#", Int.toString i, "(", v2s x, ") := ", v2s y, "\n"]
 		      (* end case *))
