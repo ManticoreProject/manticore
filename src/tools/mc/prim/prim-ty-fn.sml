@@ -219,8 +219,7 @@ functor PrimTyFn (Ty : sig
 		in
 		  ([Ty.addr ty, ty, ty], bTy)
 		end
-(* FIXME: what is the correct paramater type for TAS? *)
-	    | P.TAS _ => ([anyTy], bTy)
+	    | P.TAS _ => ([Ty.addr i32Ty], bTy)
 	    | P.Pause => ([], Ty.noTy)
 	    | P.FenceRead => ([], Ty.noTy)
 	    | P.FenceWrite => ([], Ty.noTy)
