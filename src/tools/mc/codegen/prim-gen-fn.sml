@@ -41,31 +41,69 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 
     fun arrayOffset {base, i, wordSzB} = T.ADD(MTy.wordTy, base, T.MULS(MTy.wordTy, wordLit wordSzB, i))
 
-    fun genPrim0 {varDefTbl} p = (case p
-	(* memory-system operations *)
-          of P.Pause => BE.AtomicOps.genPause()
-	   | P.FenceRead => let
-	       val stms = BE.AtomicOps.genFenceRead()
-	       in
-		 BE.VarDef.flushLoads varDefTbl
-		 @ stms
-	       end
-	   | P.FenceWrite => let
-	       val stms = BE.AtomicOps.genFenceWrite()
-	       in
-		 BE.VarDef.flushLoads varDefTbl
-		 @ stms
-	       end
-	   | P.FenceRW	 => let
-	       val stms = BE.AtomicOps.genFenceRW()
-	       in
-		 BE.VarDef.flushLoads varDefTbl
-		 @ stms
-	       end
-	   | _ => raise Fail(concat[
-		  "genPrim0(", PrimUtil.fmt CFG.Var.toString p, ")"
-		])
-	  (* end case *))
+    fun genPrim0 {varDefTbl} = let
+	  val defOf = BE.VarDef.defOf varDefTbl
+	  val fdefOf = BE.VarDef.fdefOf varDefTbl
+	  val gprBind = BE.VarDef.gprBind varDefTbl
+	  fun gen p = (case p
+	      (* array store operations *)
+	       of P.ArrayStoreI32 (base, i, x) => let
+		    val addr = arrayOffset {base=defOf base, i=defOf i, wordSzB=4}
+		    in
+		      BE.VarDef.flushLoads varDefTbl @
+		      [T.STORE(i32Ty, addr, defOf x, ManticoreRegion.memory)]
+		   end
+		| P.ArrayStoreI64(base, i, x) => let
+		    val addr = arrayOffset {base=defOf base, i=defOf i, wordSzB=8}
+		    in
+		      BE.VarDef.flushLoads varDefTbl @
+		      [T.STORE(i64Ty, addr, defOf x, ManticoreRegion.memory)]
+		    end
+		| P.ArrayStoreF32 (base, i, x) => let
+		    val addr = arrayOffset {base=defOf base, i=defOf i, wordSzB=4}
+		    in
+		      BE.VarDef.flushLoads varDefTbl @
+		      [T.FSTORE(f32Ty, addr, fdefOf x, ManticoreRegion.memory)]
+		    end
+		| P.ArrayStoreF64 (base, i, x) => let
+		    val addr = arrayOffset {base=defOf base, i=defOf i, wordSzB=8}
+		    in
+		      BE.VarDef.flushLoads varDefTbl @
+		      [T.FSTORE(f64Ty, addr, fdefOf x, ManticoreRegion.memory)]
+		   end
+		| P.ArrayStore(base, i, x) => let
+		    val addr = arrayOffset {base=defOf base, i=defOf i, wordSzB=8}
+		    in
+		      BE.VarDef.flushLoads varDefTbl @
+		      [T.STORE(anyTy, addr, defOf x, ManticoreRegion.memory)]
+		    end
+	     (* memory-system operations *)
+		| P.Pause => BE.AtomicOps.genPause()
+		| P.FenceRead => let
+		    val stms = BE.AtomicOps.genFenceRead()
+		    in
+		      BE.VarDef.flushLoads varDefTbl
+		      @ stms
+		    end
+		| P.FenceWrite => let
+		    val stms = BE.AtomicOps.genFenceWrite()
+		    in
+		      BE.VarDef.flushLoads varDefTbl
+		      @ stms
+		    end
+		| P.FenceRW	 => let
+		    val stms = BE.AtomicOps.genFenceRW()
+		    in
+		      BE.VarDef.flushLoads varDefTbl
+		      @ stms
+		    end
+		| _ => raise Fail(concat[
+		       "genPrim0(", PrimUtil.fmt CFG.Var.toString p, ")"
+		     ])
+	      (* end case *))
+	  in
+	    gen
+	  end
 
     fun genPrim {varDefTbl} = let
 	  val getDefOf = BE.VarDef.getDefOf varDefTbl
@@ -184,42 +222,6 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		    | P.ArrayLoadF32(base, i) => genLoad (f32Ty, fbind, T.FLOAD) (base, i)
 		    | P.ArrayLoadF64(base, i) => genLoad (f64Ty, fbind, T.FLOAD) (base, i)
 		    | P.ArrayLoad(base, i) => genLoad (anyTy, gprBind, T.LOAD) (base, i)
-		  (* array store operations *)
-		    | P.ArrayStoreI32 (base, i, x) => let
-			val addr = arrayOffset {base=defOf base, i=defOf i, wordSzB=4}
-			in
-			  BE.VarDef.flushLoads varDefTbl @
-			  [T.STORE(i32Ty, addr, defOf x, ManticoreRegion.memory)] @
-			  gprBind(i32Ty, v, T.LI BE.Spec.trueRep)
-		       end
-		    | P.ArrayStoreI64(base, i, x) => let
-			val addr = arrayOffset {base=defOf base, i=defOf i, wordSzB=8}
-			in
-			  BE.VarDef.flushLoads varDefTbl @
-			  [T.STORE(i64Ty, addr, defOf x, ManticoreRegion.memory)] @
-			  gprBind(i32Ty, v, T.LI BE.Spec.trueRep)
-			end
-		    | P.ArrayStoreF32 (base, i, x) => let
-			val addr = arrayOffset {base=defOf base, i=defOf i, wordSzB=4}
-			in
-			  BE.VarDef.flushLoads varDefTbl @
-			  [T.FSTORE(f32Ty, addr, fdefOf x, ManticoreRegion.memory)] @
-			  gprBind(i32Ty, v, T.LI BE.Spec.trueRep)
-			end
-		    | P.ArrayStoreF64 (base, i, x) => let
-			val addr = arrayOffset {base=defOf base, i=defOf i, wordSzB=8}
-			in
-			  BE.VarDef.flushLoads varDefTbl @
-			  [T.FSTORE(f64Ty, addr, fdefOf x, ManticoreRegion.memory)] @
-			  gprBind(i32Ty, v, T.LI BE.Spec.trueRep)
-		       end
-		    | P.ArrayStore(base, i, x) => let
-			val addr = arrayOffset {base=defOf base, i=defOf i, wordSzB=8}
-			in
-			  BE.VarDef.flushLoads varDefTbl @
-			  [T.STORE(anyTy, addr, defOf x, ManticoreRegion.memory)] @
-			  gprBind(i32Ty, v, T.LI BE.Spec.trueRep)
-			end
 		  (* atomic operations *)
 		    | P.I32FetchAndAdd(addr, x) => let
 			val (r, stms) = BE.AtomicOps.genFetchAndAdd32 {
