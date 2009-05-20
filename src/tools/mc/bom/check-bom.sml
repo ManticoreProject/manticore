@@ -329,10 +329,7 @@ structure CheckBOM : sig
 		      chkVar (y, "Promote");
 		      if BTU.equal(ty, BV.typeOf y) then ()
 			else error ["type mismatch in Promote: ", vl2s lhs, " = ", v2s y, "\n"])
-		  | ([], B.E_Prim p) => (
-                      chkVars(PrimUtil.varsOf p, PrimUtil.nameOf p))
-		  | ([ty], B.E_Prim p) => (
-                      chkVars(PrimUtil.varsOf p, PrimUtil.nameOf p))
+		  | (lhsTys, B.E_Prim p) => chkPrim (lhs, lhsTys, p)
                   | ([ty], B.E_DCon(BTy.DCon{name, argTy, myTyc, ...}, args)) => (
                       chkVars(args, name);
 		      checkArgTypes (BTU.match, name ^ vl2s args, argTy, typesOf args))
@@ -364,6 +361,31 @@ structure CheckBOM : sig
                                   IntInf.toString n, ", ", v2s vp, ", ", v2s x, ")\n"])
 		  | _ => error["bogus rhs for ", vl2s lhs, "\n"]
 		(* end case *))
+	  and chkPrim (lhs, lhsTys, p) = let
+		val args = PrimUtil.varsOf p
+		val (paramTys, resTy) = BOMUtil.signOfPrim p
+		fun chkParamArg (paramTy, arg) = if BTU.match(BV.typeOf arg, paramTy)
+		      then ()
+		      else (
+			error  ["type mismatch in ", PrimUtil.nameOf p, "(... ", v2s arg, " ...)\n"];
+			cerror ["  expected  ", BTU.toString paramTy, "\n"];
+			cerror ["  but found ", BTU.toString(BV.typeOf arg), "\n"])
+		in
+		  chkVars (args, PrimUtil.nameOf p);
+		  case (lhsTys, resTy)
+		   of ([], NONE) => ()
+		    | ([lhsTy], SOME rhsTy) => if BTU.match (rhsTy, lhsTy)
+			then ()
+			else (
+			  error  ["type mismatch in: ", vl2s lhs, " = ", PrimUtil.nameOf p, vl2s args, "\n"];
+			  cerror ["  lhs type ", t2s lhsTy, "\n"];
+			  cerror ["  rhs type ", t2s rhsTy, "\n"])
+		    | _ => error[
+			  "arity mismatch in ", vl2s lhs, " = ", PrimUtil.nameOf p, vl2s args, "\n"
+			]
+		  (* end case *);
+		  ListPair.appEq chkParamArg (paramTys, args)
+		end
 	(* check an external function *)
 	  fun chkExtern (CFunctions.CFun{var, name, ...}) = (
 		insert var;
