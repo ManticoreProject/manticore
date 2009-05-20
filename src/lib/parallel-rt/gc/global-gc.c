@@ -232,7 +232,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 		if (GCDebug >= GC_DEBUG_GLOBAL)
 		    SayDebug("[%2d]   Free-Space chunk %#tx..%#tx\n",
 			self->id, cp->baseAddr, cp->baseAddr+cp->szB);
-		/*DEBUG*/bzero((void*)cp->baseAddr, cp->szB);
+		/*DEBUG bzero((void*)cp->baseAddr, cp->szB);*/
 #endif
 		MemChunk_t *cq = cp->next;
 		cp->next = FreeChunks;
