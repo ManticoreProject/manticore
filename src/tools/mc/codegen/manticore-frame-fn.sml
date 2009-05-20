@@ -11,10 +11,13 @@ functor ManticoreFrameFn (
 
   open ManticoreFrame
 
-  val wordSz = IntInf.toInt Spec.ABI.wordSzB
+  val wordSzB = IntInf.toInt Spec.ABI.wordSzB
   val spillAreaOffB = IntInf.toInt Spec.ABI.spillAreaOffB
 
-  fun frameOffset (Word i | Float i) = ~(wordSz * i) + ~spillAreaOffB
+  fun frameOffset (Word i | Float i) = 
+      if i > IntInf.toInt Spec.ABI.spillAreaSzB div wordSzB
+      then raise Fail "the number of spilled variables has exceeded the space in the spill area"
+      else ~(wordSzB * i) + ~spillAreaOffB
     | frameOffset _ = raise Fail "frameOffset"
 
 end (* ManticoreFrameFn *)
