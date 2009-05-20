@@ -164,7 +164,7 @@ void MinorGC (VProc_t *vp)
     }
 
     assert ((Addr_t)nextScan >= VProcHeap(vp));
-    Addr_t avail = VP_HEAP_SZB - ((Addr_t)nextScan - VProcHeap(vp));
+    Addr_t avail = VP_HEAP_DATA_SZB - ((Addr_t)nextScan - VProcHeap(vp));
 #ifndef NDEBUG
     if (GCDebug >= GC_DEBUG_MINOR) {
 	SayDebug("[%2d] Minor GC finished: %ld/%ld bytes live; %d available\n",
@@ -174,6 +174,8 @@ void MinorGC (VProc_t *vp)
 #ifndef NO_GC_STATS
 	SayDebug("[%2d] pointers scanned: %d local / %d global\n",
 	    vp->id, vp->nLocalPtrs, vp->nGlobPtrs);
+SayDebug("[%2d] oldTop = %p; nextScan = %p\n", vp->id, vp->oldTop, nextScan);
+bzero(nextScan, avail); /* clear unused part of local heap */
 #endif /* !NO_GC_STATS */
     }
 #endif /* !NDEBUG */
