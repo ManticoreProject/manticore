@@ -257,7 +257,7 @@ static void CheckMinorGC (VProc_t *self, Value_t **roots)
 		    else {
 		      /* check for possible pointers in non-pointer fields */
 			Value_t v = *(Value_t *)scanP;
-			if (isPtr(v)) {
+			if (isHeapPtr(v)) {
 			    MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
 			    switch (cq->sts) {
 			      case FREE_CHUNK:
@@ -359,7 +359,7 @@ static void CheckMinorGC (VProc_t *self, Value_t **roots)
 		    else {
 		      /* check for possible pointers in non-pointer fields */
 			Value_t v = *(Value_t *)scanP;
-			if (isPtr(v)) {
+			if (isHeapPtr(v)) {
 			    MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
 			    switch (cq->sts) {
 			      case FREE_CHUNK:

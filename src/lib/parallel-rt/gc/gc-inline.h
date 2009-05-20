@@ -15,13 +15,13 @@
 #include "bibop.h"
 #include "internal-heap.h"
 
-/* is a header tagged as a forward pointer? */
+/*! \brief is a header tagged as a forward pointer? */
 STATIC_INLINE bool isForwardPtr (Word_t hdr)
 {
     return ((hdr & FWDPTR_TAG_MASK) == FWDPTR_TAG);
 }
 
-/* extract a forward pointer from a header */
+/*! \brief extract a forward pointer from a header */
 STATIC_INLINE Word_t *GetForwardPtr (Word_t hdr)
 {
     return (Word_t *)(Addr_t)hdr;
@@ -32,10 +32,18 @@ STATIC_INLINE Word_t MakeForwardPtr (Word_t hdr, Word_t *fp)
     return (Word_t)((Addr_t)fp | FWDPTR_TAG);
 }
 
-/* return true if the value is a pointer */
+/*! \brief return true if the value might be a pointer */
 STATIC_INLINE bool isPtr (Value_t v)
 {
     return (((Word_t)v & 0x3) == 0);
+}
+
+/*! \brief return true if the value is a pointer and is in the range covered
+ * by the BIBOP.
+ */
+STATIC_INLINE bool isHeapPtr (Value_t v)
+{
+    return ((((Word_t)v & 0x3) == 0) && ((Addr_t)v < (1l << ADDR_BITS)));
 }
 
 STATIC_INLINE bool isMixedHdr (Word_t hdr)
