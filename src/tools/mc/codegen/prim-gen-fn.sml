@@ -37,9 +37,9 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
     val f64Ty = 64
     val boolTy = 64
 
-    fun wordLit i = T.LI (T.I.fromInt (i64Ty, i))
+    fun wordLit i = T.LI(T.I.fromInt (i64Ty, i))
 
-    fun arrayOffset {base, i, wordSzB} = T.ADD (MTy.wordTy, base, T.MULS(MTy.wordTy, wordLit wordSzB, i))
+    fun arrayOffset {base, i, wordSzB} = T.ADD(MTy.wordTy, base, T.MULS(MTy.wordTy, wordLit wordSzB, i))
 
     fun genPrim0 {varDefTbl} p = (case p
 	(* memory-system operations *)
@@ -93,7 +93,8 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		fun divs (ty, a, b) = T.DIVS(T.DIV_TO_ZERO, ty, a, b)
 		fun rems (ty, a, b) = T.REMS(T.DIV_TO_ZERO, ty, a, b)
 		fun genLoad (sz, bind, ld) (base, i) = let
-		      val addr = arrayOffset {base=defOf base, i=defOf i, wordSzB=4}
+		      val elemSzB = sz div 8
+		      val addr = arrayOffset {base=defOf base, i=defOf i, wordSzB=elemSzB}
 		      in
 			bind (sz, v, ld(sz, addr, ManticoreRegion.memory))
 		      end
