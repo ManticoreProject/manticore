@@ -19,6 +19,9 @@
 #include "gc-inline.h"
 #include "internal-heap.h"
 #include "inline-log.h"
+#ifndef NDEBUG
+#include "bibop.h"
+#endif
 
 static void ScanGlobalToSpace (
 	VProc_t *vp, Addr_t heapBase, MemChunk_t *scanChunk, Word_t *scanPtr);
@@ -234,6 +237,22 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
 	    SayDebug("[%2d]  ==> %p; %ld bytes\n", vp->id, root, nBytesCopied);
 #endif
     }
+#ifndef NDEBUG
+    else if (isPtr(root)) {
+      /* check for a bogus pointer */
+	MemChunk_t *cq = AddrToChunk(ValueToAddr(root));
+	if (cq->sts == TO_SP_CHUNK)
+	    return root;
+	else if (cq->sts == FROM_SP_CHUNK)
+	    Die("PromoteObj: unexpected from-space pointer %p\n", ValueToPtr(root));
+	else if (IS_VPROC_CHUNK(cq->sts)) {
+	    Die("PromoteObj: unexpected remote pointer %p%p\n", ValueToPtr(root));
+	}
+	else if (cq->sts == FREE_CHUNK) {
+	    Die("PromoteObj: unexpected free-space pointer %p%p\n", ValueToPtr(root));
+	}
+    }
+#endif
 
     return root;
 
