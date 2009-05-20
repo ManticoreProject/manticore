@@ -16,12 +16,17 @@ functor PrimTyFn (Ty : sig
 
   end) : sig
 
+  (* the result type of a primop *)
     val typeOf : Ty.V.var Prim.prim -> Ty.V.ty
+
+  (* the signature of a primop's arguments *)
+    val signOf : Ty.V.var Prim.prim -> (Ty.V.ty list * Ty.V.ty)
 
   end = struct
 
     structure P = Prim
 
+    val anyTy = Ty.anyTy
     val bTy = Ty.boolTy
     val i32Ty = Ty.raw RawTypes.T_Int
     val i64Ty = Ty.raw RawTypes.T_Long
@@ -113,6 +118,93 @@ functor PrimTyFn (Ty : sig
 	    | P.FenceRead => Ty.unitTy
 	    | P.FenceWrite => Ty.unitTy
 	    | P.FenceRW => Ty.unitTy
+	  (* end case *))
+
+    fun signOf p = (case p
+	   of P.isBoxed _ => ([anyTy], bTy)
+	    | P.isUnboxed _ => ([anyTy], bTy)
+	    | P.Equal _ => ([anyTy, anyTy], bTy)
+	    | P.NotEqual _ => ([anyTy, anyTy], bTy)
+	    | P.BNot _ => ([bTy], bTy)
+	    | P.BEq _ => ([bTy, bTy], bTy)
+	    | P.BNEq _ => ([bTy, bTy], bTy)
+	    | P.I32Add _ => ([i32Ty, i32Ty], i32Ty)
+	    | P.I32Sub _ => ([i32Ty, i32Ty], i32Ty)
+	    | P.I32Mul _ => ([i32Ty, i32Ty], i32Ty)
+	    | P.I32Div _ => ([i32Ty, i32Ty], i32Ty)
+	    | P.I32Mod _ => ([i32Ty, i32Ty], i32Ty)
+	    | P.I32LSh _ => ([i32Ty, i32Ty], i32Ty)
+	    | P.I32Neg _ => ([i32Ty], i32Ty)
+	    | P.I32Eq _ => ([i32Ty, i32Ty], bTy)
+	    | P.I32NEq _ => ([i32Ty, i32Ty], bTy)
+	    | P.I32Lt _ => ([i32Ty, i32Ty], bTy)
+	    | P.I32Lte _ => ([i32Ty, i32Ty], bTy)
+	    | P.I32Gt _ => ([i32Ty, i32Ty], bTy)
+	    | P.I32Gte _ => ([i32Ty, i32Ty], bTy)
+	    | P.I64Add _ => ([i64Ty, i64Ty], i64Ty)
+	    | P.I64Sub _ => ([i64Ty, i64Ty], i64Ty)
+	    | P.I64Mul _ => ([i64Ty, i64Ty], i64Ty)
+	    | P.I64Div _ => ([i64Ty, i64Ty], i64Ty)
+	    | P.I64Mod _ => ([i64Ty, i64Ty], i64Ty)
+	    | P.I64Neg _ => ([i64Ty], i64Ty)
+	    | P.I64Eq _ => ([i64Ty, i64Ty], bTy)
+	    | P.I64NEq _ => ([i64Ty, i64Ty], bTy)
+	    | P.I64Lt _ => ([i64Ty, i64Ty], bTy)
+	    | P.I64Lte _ => ([i64Ty, i64Ty], bTy)
+	    | P.I64Gt _ => ([i64Ty, i64Ty], bTy)
+	    | P.I64Gte _ => ([i64Ty, i64Ty], bTy)
+	    | P.F32Add _ => ([f32Ty, f32Ty], f32Ty)
+	    | P.F32Sub _ => ([f32Ty, f32Ty], f32Ty)
+	    | P.F32Mul _ => ([f32Ty, f32Ty], f32Ty)
+	    | P.F32Div _ => ([f32Ty, f32Ty], f32Ty)
+	    | P.F32Neg _ => ([f32Ty], f32Ty)
+	    | P.F32Sqrt _ => ([f32Ty], f32Ty)
+	    | P.F32Abs _ => ([f32Ty], f32Ty)
+	    | P.F32Eq _ => ([f32Ty, f32Ty], bTy)
+	    | P.F32NEq _ => ([f32Ty, f32Ty], bTy)
+	    | P.F32Lt _ => ([f32Ty, f32Ty], bTy)
+	    | P.F32Lte _ => ([f32Ty, f32Ty], bTy)
+	    | P.F32Gt _ => ([f32Ty, f32Ty], bTy)
+	    | P.F32Gte _ => ([f32Ty, f32Ty], bTy)
+	    | P.F64Add _ => ([f64Ty, f64Ty], f64Ty)
+	    | P.F64Sub _ => ([f64Ty, f64Ty], f64Ty)
+	    | P.F64Mul _ => ([f64Ty, f64Ty], f64Ty)
+	    | P.F64Div _ => ([f64Ty, f64Ty], f64Ty)
+	    | P.F64Neg _ => ([f64Ty], f64Ty)
+	    | P.F64Sqrt _ => ([f64Ty], f64Ty)
+	    | P.F64Abs _ => ([f64Ty], f64Ty)
+	    | P.F64Eq _ => ([f64Ty, f64Ty], bTy)
+	    | P.F64NEq _ => ([f64Ty, f64Ty], bTy)
+	    | P.F64Lt _ => ([f64Ty, f64Ty], bTy)
+	    | P.F64Lte _ => ([f64Ty, f64Ty], bTy)
+	    | P.F64Gt _ => ([f64Ty, f64Ty], bTy)
+	    | P.F64Gte _ => ([f64Ty, f64Ty], bTy)
+	    | P.I32ToI64X _ => ([i32Ty], i64Ty)
+	    | P.I32ToI64 _ => ([i32Ty], i64Ty)
+	    | P.I32ToF32 _ => ([i32Ty], f32Ty)
+	    | P.I32ToF64 _ => ([i32Ty], f64Ty)
+	    | P.I64ToF32 _ => ([i64Ty], f32Ty)
+	    | P.I64ToF64 _ => ([i64Ty], f64Ty)
+	    | P.F64ToI32 _ => ([f64Ty], i32Ty)
+	    | P.ArrayLoadI32 _ => ([anyTy, i32Ty], i32Ty)
+	    | P.ArrayLoadI64 _ => ([anyTy, i32Ty], i64Ty)
+	    | P.ArrayLoadF32 _ => ([anyTy, i32Ty], f32Ty)
+	    | P.ArrayLoadF64 _ => ([anyTy, i32Ty], f64Ty)
+	    | P.ArrayLoad _ => ([anyTy, i32Ty], Ty.anyTy)
+	    | P.ArrayStoreI32 _ => ([anyTy, i32Ty, i32Ty], Ty.unitTy)
+	    | P.ArrayStoreI64 _ => ([anyTy, i32Ty, i64Ty], Ty.unitTy)
+	    | P.ArrayStoreF32 _ => ([anyTy, i32Ty, f32Ty], Ty.unitTy)
+	    | P.ArrayStoreF64 _ => ([anyTy, i32Ty, f64Ty], Ty.unitTy)
+	    | P.ArrayStore _ => ([anyTy, i32Ty, anyTy], Ty.unitTy)
+	    | P.I32FetchAndAdd _ => ([anyTy, i32Ty], i32Ty)
+	    | P.I64FetchAndAdd _ => ([anyTy, i64Ty], i64Ty)
+	    | P.CAS(_, x, _) => ([anyTy, anyTy, anyTy], Ty.V.typeOf x)
+	    | P.BCAS _ => ([anyTy, anyTy, anyTy], bTy)
+	    | P.TAS _ => ([anyTy], bTy)
+	    | P.Pause => ([], Ty.unitTy)
+	    | P.FenceRead => ([], Ty.unitTy)
+	    | P.FenceWrite => ([], Ty.unitTy)
+	    | P.FenceRW => ([], Ty.unitTy)
 	  (* end case *))
 
   end
