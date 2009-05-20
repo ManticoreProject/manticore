@@ -48,7 +48,7 @@ structure Array64 =
 	 (* since the array is in the global heap, x must also be in the global heap *)
 	  let x : any = (any)x
 	  let x : any = promote(x)
-	  let x : unit  = ArrayStore(data, i, x)
+	  do ArrayStore(data, i, x)
 	  return()
 	;
 

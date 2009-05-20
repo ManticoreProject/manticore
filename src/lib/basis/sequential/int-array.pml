@@ -43,7 +43,7 @@ structure IntArray =
 	let len : int = @length(arr / exh)
 	do  assert(I32Lt(i,len))
         let data : any = SELECT(DATA_OFF, arr)
-	let u : unit  = ArrayStoreI32(data, i, #0(n))
+	do ArrayStoreI32(data, i, #0(n))
 	return()
       ;
 
@@ -99,7 +99,7 @@ structure IntArray =
                 then 
                   return()
 	        else
-                  let u : unit = ArrayStoreI32 (newData, i, last)
+                  do ArrayStoreI32 (newData, i, last)
                   let x : int = ArrayLoadI32 (srcData, i)
                   let j : int = I32Add(i,1)
                   let next : int = I32Add(last, x)

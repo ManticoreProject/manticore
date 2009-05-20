@@ -43,7 +43,7 @@ structure FloatArray =
 	let len : int = @length(arr / exh)
 	do assert(I32Lt(i,len))
         let data : any = SELECT(DATA_OFF, arr)
-	let x : unit  = ArrayStoreF32(data, i, #0(x))
+	do ArrayStoreF32(data, i, #0(x))
 	return()
       ;
 
@@ -85,7 +85,7 @@ structure FloatArray =
     (* @update-u : unchecked, unwrapped update operation *)
       define inline @update-u (arr : array, i : int, x : float / exh : exh) : () = 
         let data : any = SELECT(DATA_OFF, arr)
-	let u : unit  = ArrayStoreF32(data, i, x)
+	do ArrayStoreF32(data, i, x)
 	return()
       ;
 
@@ -113,7 +113,7 @@ structure FloatArray =
                 then 
                   return()
 	        else
-                  let u : unit = ArrayStoreF32 (newData, i, last)
+                  do ArrayStoreF32 (newData, i, last)
                   let x : float = ArrayLoadF32 (srcData, i)
                   let j : int = I32Add(i,1)
                   let next : float = F32Add(last, x)
