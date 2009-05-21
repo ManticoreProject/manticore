@@ -322,25 +322,26 @@ static void CheckMinorGC (VProc_t *self, Value_t **roots)
 		assert (isRawHdr(hdr));
 		int len = GetRawSizeW(hdr);
 	      // look for raw values that might be pointers
-		for (int i = 0; i < len; i++, p++) {
-		    Value_t v = (Value_t)*p;
+		for (int i = 0; i < len; i++) {
+		    Value_t v = (Value_t)p[i];
 		    if (isPtr(v)) {
 		        if (isHeapPtr(v)) {
 			  MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
 			  if (cq->sts != TO_SP_CHUNK) {
 			     if (cq->sts == FROM_SP_CHUNK)
-			       SayDebug("** suspicious looking from-space pointer %p at %p in raw object (local heap)\n",
-					ValueToPtr(v), p);
+			       SayDebug("** suspicious looking from-space pointer %p at %p[%d] in raw object of length %d (in local heap)\n",
+					ValueToPtr(v), p, i, len);
 			     else if (IS_VPROC_CHUNK(cq->sts))
-			       SayDebug("** suspicious looking local pointer %p at %p in raw object (local heap)\n",
-					ValueToPtr(v), p);
+			       SayDebug("** suspicious looking local pointer %p at %p[%d] in raw object of length %d (in local heap)\n",
+					ValueToPtr(v), p, i, len);
 			     else if (cq->sts == FREE_CHUNK)
-			       SayDebug("** suspicious looking free pointer %p at %p in raw object (local heap)\n",
-					ValueToPtr(v), p);
+			       SayDebug("** suspicious looking free pointer %p at %p[%d] in raw object of length %d (in local heap)\n",
+					ValueToPtr(v), p, i, len);
 			  }
 			} 
 		    }
 		}
+		p += len;
 	    }
 	}
     }
@@ -440,25 +441,26 @@ static void CheckMinorGC (VProc_t *self, Value_t **roots)
 		assert (isRawHdr(hdr));
 		int len = GetRawSizeW(hdr);
 	      // look for raw values that might be pointers
-		for (int i = 0; i < len; i++, p++) {
-		    Value_t v = (Value_t)*p;
+		for (int i = 0; i < len; i++) {
+		    Value_t v = (Value_t)p[i];
 		    if (isPtr(v)) {
 		        if (isHeapPtr(v)) {
 			  MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
 			  if (cq->sts != TO_SP_CHUNK) {
 			     if (cq->sts == FROM_SP_CHUNK)
-			       SayDebug("** suspicious looking from-space pointer %p at %p in raw object\n",
-					ValueToPtr(v), p);
+			       SayDebug("** suspicious looking from-space pointer %p at %p[%d] in raw object of length %d\n",
+					ValueToPtr(v), p, i, len);
 			     else if (IS_VPROC_CHUNK(cq->sts))
-			       SayDebug("** suspicious looking local pointer %p at %p in raw object\n",
-					ValueToPtr(v), p);
+			       SayDebug("** suspicious looking local pointer %p at %p[%d] in raw object of length %d\n",
+					ValueToPtr(v), p, i, len);
 			     else if (cq->sts == FREE_CHUNK)
-			       SayDebug("** suspicious looking free pointer %p at %p in raw object\n",
-					ValueToPtr(v), p);
+			       SayDebug("** suspicious looking free pointer %p at %p[%d] in raw object of length %d\n",
+					ValueToPtr(v), p, i, len);
 			  }
 			} 
 		    }
 		}
+		p += len;
 	    }
 	}
 	cp = cp->next;
