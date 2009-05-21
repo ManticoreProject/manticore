@@ -499,8 +499,27 @@ void CheckAfterGlobalGC (VProc_t *self, Value_t **roots)
 	    }
 	    else {
 		assert (isRawHdr(hdr));
-	      // we can just skip raw objects
-		p += GetRawSizeW(hdr);
+		int len = GetRawSizeW(hdr);
+	      // look for raw values that might be pointers
+		for (int i = 0; i < len; i++, p++) {
+		    Value_t v = (Value_t)*p;
+		    if (isPtr(v)) {
+		        if (isHeapPtr(v)) {
+			  MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
+			  if (cq->sts != TO_SP_CHUNK) {
+			     if (cq->sts == FROM_SP_CHUNK)
+			       SayDebug("** suspicious looking from-space pointer %p at %p in raw object (local heap)\n",
+					ValueToPtr(v), p);
+			     else if (IS_VPROC_CHUNK(cq->sts))
+			       SayDebug("** suspicious looking local pointer %p at %p in raw object (local heap)\n",
+					ValueToPtr(v), p);
+			     else if (cq->sts == FREE_CHUNK)
+			       SayDebug("** suspicious looking free pointer %p at %p in raw object (local heap)\n",
+					ValueToPtr(v), p);
+			  }
+			} 
+		    }
+		}
 	    }
 	}
     }
@@ -598,8 +617,27 @@ void CheckAfterGlobalGC (VProc_t *self, Value_t **roots)
 	    }
 	    else {
 		assert (isRawHdr(hdr));
-	      // we can just skip raw objects
-		p += GetRawSizeW(hdr);
+		int len = GetRawSizeW(hdr);
+	      // look for raw values that might be pointers
+		for (int i = 0; i < len; i++, p++) {
+		    Value_t v = (Value_t)*p;
+		    if (isPtr(v)) {
+		        if (isHeapPtr(v)) {
+			  MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
+			  if (cq->sts != TO_SP_CHUNK) {
+			     if (cq->sts == FROM_SP_CHUNK)
+			       SayDebug("** suspicious looking from-space pointer %p at %p in raw object\n",
+					ValueToPtr(v), p);
+			     else if (IS_VPROC_CHUNK(cq->sts))
+			       SayDebug("** suspicious looking local pointer %p at %p in raw object\n",
+					ValueToPtr(v), p);
+			     else if (cq->sts == FREE_CHUNK)
+			       SayDebug("** suspicious looking free pointer %p at %p in raw object\n",
+					ValueToPtr(v), p);
+			  }
+			} 
+		    }
+		}
 	    }
 	}
 	cp = cp->next;
