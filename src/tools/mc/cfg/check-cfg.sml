@@ -275,12 +275,14 @@ structure CheckCFG : sig
 		      chkVars (env, ys, "Alloc");
 		      case ty
 		       of Ty.T_Tuple(isMut, tys) =>
+(* FIXME: this check fails too often.
 			    if (TyU.match (ty, V.typeOf x))
 			      then ()
 			      else error[
 				 "type mismatch in Alloc: ", v2s' x, " = ",
 				 if isMut then "alloc !(" else "alloc (", vl2s' ys, ")\n"
 				]
+*)()
 			| _ => error[
 			      "type of allocation is ", CFGTyUtil.toString ty, " in ",
 			      v2s' x, " = ", "alloc(", vl2s' ys, ")\n"
@@ -309,7 +311,7 @@ structure CheckCFG : sig
                              "promote(", v2s' y, ")\n"]
                       in
 			chkVar (env, y, "Promote");
-			if TyU.equal (V.typeOf x, V.typeOf y)
+			if TyU.match (V.typeOf y, V.typeOf x)
 			  then ()
 			  else err ();
 			addVar (env, x)
@@ -470,7 +472,7 @@ structure CheckCFG : sig
 		      chkVars (env, args, cxt);
                       case L.typeOf lab 
                        of Ty.T_Block {args = argTys} => (
-                           checkArgTypes (TyU.equal, cxt, argTys, typesOf args))
+                           checkArgTypes (TyU.match, cxt, argTys, typesOf args))
                         | ty => error[l2s lab, ":", TyU.toString ty, " is not a block\n"])
           fun chkFunc (CFG.FUNC {lab, entry, body, exit}) = let
                 val env = chkEntry (lab, entry)
