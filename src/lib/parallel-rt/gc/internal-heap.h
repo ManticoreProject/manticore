@@ -65,9 +65,12 @@ typedef enum {
     GC_DEBUG_NONE	= 0
 } GCDebugLevel_t;
 
-extern GCDebugLevel_t GCDebug;		//!\brief Flag that controls GC debugging output
+extern GCDebugLevel_t	GCDebug;	//!\brief Flag that controls GC debugging output
+extern GCDebugLevel_t	HeapCheck;	//!\brief Flag that controls heap checking
 
 #define GC_DEBUG_DEFAULT "major"	/* default level */
+#define HEAP_DEBUG_DEFAULT "global"	/* default level */
 #endif
 
 #endif /* !_INTERNAL_HEAP_H_ */
+

@@ -167,6 +167,7 @@ void MinorGC (VProc_t *vp)
     Addr_t avail = VP_HEAP_DATA_SZB - ((Addr_t)nextScan - VProcHeap(vp));
 #ifndef NDEBUG
     if (GCDebug >= GC_DEBUG_MINOR) {
+bzero(nextScan, avail); /* clear unused part of local heap */
 	SayDebug("[%2d] Minor GC finished: %ld/%ld bytes live; %d available\n",
 	    vp->id, (Addr_t)nextScan - vp->oldTop,
 	    vp->allocPtr - vp->nurseryBase - WORD_SZB,
@@ -174,8 +175,6 @@ void MinorGC (VProc_t *vp)
 #ifndef NO_GC_STATS
 	SayDebug("[%2d] pointers scanned: %d local / %d global\n",
 	    vp->id, vp->nLocalPtrs, vp->nGlobPtrs);
-SayDebug("[%2d] oldTop = %p; nextScan = %p\n", vp->id, vp->oldTop, nextScan);
-bzero(nextScan, avail); /* clear unused part of local heap */
 #endif /* !NO_GC_STATS */
     }
 #endif /* !NDEBUG */
@@ -192,7 +191,9 @@ bzero(nextScan, avail); /* clear unused part of local heap */
     }
 
 #ifndef NDEBUG
-    CheckMinorGC (vp, roots);
+    if (HeapCheck >= GC_DEBUG_MINOR) {
+	CheckMinorGC (vp, roots);
+    }
 #endif
 
   /* reset the allocation pointer */

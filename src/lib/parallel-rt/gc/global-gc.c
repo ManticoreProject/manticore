@@ -204,9 +204,11 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 #endif
 
 #ifndef NDEBUG
-    if (GCDebug >= GC_DEBUG_GLOBAL)
-	SayDebug ("[%2d]  Checking heap consistency\n", self->id);
-    CheckAfterGlobalGC (self, roots);
+    if (HeapCheck >= GC_DEBUG_GLOBAL) {
+	if (GCDebug >= GC_DEBUG_GLOBAL)
+	    SayDebug ("[%2d] Checking heap consistency\n", self->id);
+	CheckAfterGlobalGC (self, roots);
+    }
 #endif
 
   /* the leader reclaims the from-space pages */
@@ -255,9 +257,6 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 static void GlobalGC (VProc_t *vp, Value_t **roots)
 {
     LogGlobalGCVPStart (vp);
-
-#ifndef NDEBUG
-#endif
 
   /* scan the vproc's roots */
     for (int i = 0;  roots[i] != 0;  i++) {
