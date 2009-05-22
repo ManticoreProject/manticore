@@ -272,7 +272,7 @@ if MChkTy.check stm
 		in
 		  bindExp ([lhs], [MTy.EXP(MTy.wordTy, addr)], "addrof("^v2s v^"["^Int.toString i^"])")
 		end
-	    | gen (M.E_Alloc (lhs, Ty.T_Tuple(isMut, tys), vs)) = let
+	    | gen (M.E_Alloc(lhs, Ty.T_Tuple(isMut, tys), vs)) = let
 		val {ptr, stms} = BE.Alloc.genAlloc {
 			isMut = isMut,
 			tys = tys,
@@ -299,8 +299,8 @@ if MChkTy.check stm
 		  bindExp ([lhs], result, "promote")
 		end
 	    | gen (M.E_Prim0 p) = emitStms(annotateStms(genPrim0 p, PrimUtil.nameOf p))
-	    | gen (M.E_Prim (lhs, p)) = emitStms(annotateStms(genPrim (lhs, p), PrimUtil.nameOf p))
-	    | gen (M.E_CCall (lhs, f, args)) = let 
+	    | gen (M.E_Prim(lhs, p)) = emitStms(annotateStms(genPrim (lhs, p), PrimUtil.nameOf p))
+	    | gen (M.E_CCall(lhs, f, args)) = let 
 		val {stms, result} = BE.Transfer.genCCall varDefTbl {lhs=lhs, f=f, args=args}
 		in
 		  emitStms stms;
