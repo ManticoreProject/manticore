@@ -133,8 +133,9 @@ functor Alloc64Fn (
 	    | lp (true, false, []) = allocVectorObj offAp args
 	    | lp (true, true, []) = allocMixedObj offAp args
 	    | lp (false, _, []) = allocRawObj offAp args
+	  val (totSz, hdr, stms) = lp (false, false, args)
 	  in
-	    lp (false, false, args)
+	    (totSz, hdr, List.rev stms)
 	  end
 
   (* allocate arguments in the local heap *)
@@ -154,7 +155,7 @@ functor Alloc64Fn (
 	(* bump up the allocation pointer *)
 	  val bumpAp = T.MV (MTy.wordTy, Regs.apReg, offAp (totalSize+wordSzB))
 	  in
-	    { ptr=MTy.GPR (MTy.wordTy, ptrReg), stms=ptrMv :: rev (bumpAp :: stms) }
+	    { ptr=MTy.GPR (MTy.wordTy, ptrReg), stms=stms @ [ptrMv, bumpAp] }
 	  end (* genAlloc *)
 
   (* allocate arguments in the global heap *)
@@ -182,7 +183,7 @@ functor Alloc64Fn (
 	  val bumpAp = VProcOps.genVPStore' (MTy.wordTy, Spec.ABI.globNextW, vpReg, 
 			T.ADD (64, globalApAddr, wordLit (totalSize+wordSzB)))
 	  in
-	    { ptr=MTy.GPR (MTy.wordTy, globalApReg), stms=setVP :: setGAp :: rev (bumpAp :: stms) }
+	    { ptr=MTy.GPR (MTy.wordTy, globalApReg), stms=setVP :: setGAp :: stms @ [bumpAp] }
 	  end
 
     val heapSlopSzB = Word.- (Word.<< (0w1, 0w12), 0w512)
