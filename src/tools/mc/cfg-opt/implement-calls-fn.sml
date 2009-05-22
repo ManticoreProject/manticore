@@ -307,31 +307,29 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
               | _ => exp)
          fun transActualUniformArg (arg : CFG.var) : (CFG.exp list * CFG.var) =
             case getVarOldType arg of
-               CFGTy.T_Raw rt => 
-                  let
-                     val newArgTy = wrapRaw rt
-                     val newArg = CFG.Var.new ("argActualWrap", newArgTy)
+               CFGTy.T_Raw rt => let
+		  val newArgTy = wrapRaw rt
+		  val newArg = CFG.Var.new ("argActualWrap", newArgTy)
                   in 
                      ([CFG.mkWrap(newArg, arg)], newArg)
                   end 
              | _ => ([], arg)
-         fun transActualStdArgs (args : CFG.var list) : (CFG.exp list * CFG.var) =
-            case args of
-               [] => 
-                  let
-                     val newArgTy = CFGTy.unitTy
-                     val newArg = CFG.Var.new ("argActualUnit", newArgTy)
+         fun transActualStdArgs (args : CFG.var list) : (CFG.exp list * CFG.var) = (
+            case args
+	     of [] => let
+		  val newArgTy = CFGTy.unitTy
+		  val newArg = CFG.Var.new ("argActualUnit", newArgTy)
                   in
                      ([CFG.mkConst (newArg, Literal.unitLit, newArgTy)], newArg)
                   end
              | [arg] => transActualUniformArg arg
-             | args => 
-                  let
-                     val newArgTy = CFGTy.T_Tuple (false, List.map getVarNewType args)
-                     val newArg = CFG.Var.new ("argActualTuple", newArgTy)
+             | args => let
+		  val newArgTy = CFGTy.T_Tuple (false, List.map getVarNewType args)
+		  val newArg = CFG.Var.new ("argActualTuple", newArgTy)
                   in
-                     ([CFG.mkAlloc (newArg, args)], newArg)
+                     ([CFG.mkAlloc (newArg, newArgTy, args)], newArg)
                   end
+	    (* end case *))
          fun transActualNonUniformArg (arg : CFG.var) : (CFG.exp list * CFG.var) =
             case getVarOldType arg of
                CFGTy.T_Raw rt => 

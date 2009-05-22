@@ -60,8 +60,8 @@ structure CFG =
       | E_Select of (var * int * var)		(* select i'th field (zero-based) *)
       | E_Update of (int * var * var)		(* update i'th field (zero-based) *)
       | E_AddrOf of (var * int * var)		(* return address of i'th field (zero-based) *)
-      | E_Alloc of var * var list
-      | E_GAlloc of var * var list		(* allocate in the global heap *)
+      | E_Alloc of var * ty * var list
+      | E_GAlloc of var * ty * var list		(* allocate in the global heap *)
       | E_Promote of var * var			(* promote value to global heap *)
       | E_Prim0 of prim				(* primop w/o any results *)
       | E_Prim of var * prim
@@ -148,8 +148,8 @@ structure CFG =
       | lhsOfExp (E_Select(x, _, _)) = [x]
       | lhsOfExp (E_Update(_, _, _)) = []
       | lhsOfExp (E_AddrOf(x, _, _)) = [x]
-      | lhsOfExp (E_Alloc(x, _)) = [x]
-      | lhsOfExp (E_GAlloc(x, _)) = [x]
+      | lhsOfExp (E_Alloc(x, _, _)) = [x]
+      | lhsOfExp (E_GAlloc(x, _, _)) = [x]
       | lhsOfExp (E_Promote(x, _)) = [x]
       | lhsOfExp (E_Prim0 _) = []
       | lhsOfExp (E_Prim(x, _)) = [x]
@@ -178,7 +178,7 @@ structure CFG =
     fun mkAlloc arg = mkExp(E_Alloc arg)
     fun mkGAlloc arg = mkExp(E_GAlloc arg)
     fun mkPromote arg = mkExp(E_Promote arg)
-    fun mkWrap (x, y) = mkExp(E_Alloc(x, [y]))
+    fun mkWrap (x, y) = mkExp(E_Alloc(x, CFGTy.T_Tuple(false, [Var.typeOf y]), [y]))
     fun mkUnwrap (x, y) = mkExp(E_Select(x, 0, y))
     fun mkPrim0 arg = mkExp(E_Prim0 arg)
     fun mkPrim arg = mkExp(E_Prim arg)

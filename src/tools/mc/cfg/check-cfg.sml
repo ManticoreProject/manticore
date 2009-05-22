@@ -161,151 +161,153 @@ structure CheckCFG : sig
                       chkVars (env, ys, "Var");
                       checkArgTypes (TyU.equal, "Var", typesOf xs, typesOf ys);
                       addVars (env, xs))
-                  | CFG.E_Const (x, lit, ty) => (let
+                  | CFG.E_Const (x, lit, ty) => let
                       fun err () = error[
                              "type mismatch in Const: ", v2s' x, " = ",
                              Literal.toString lit, "\n"]
                       in 
-		    (* first, check the literal against ty *)
-		      case (lit, ty)
-		       of (Literal.Enum _, Ty.T_Enum _) => ()
+		      (* first, check the literal against ty *)
+			case (lit, ty)
+			 of (Literal.Enum _, Ty.T_Enum _) => ()
 (* NOTE: the following shouldn't be necessary, but case-simplify doesn't put in enum types! *)
-			| (Literal.Enum _, Ty.T_Any) => ()
-			| (Literal.StateVal w, _) => () (* what is the type of StateVals? *)
-			| (Literal.Tag s, _) => () (* what is the type of Tags? *)
-			| (Literal.Int _, Ty.T_Raw Ty.T_Byte) => ()
-			| (Literal.Int _, Ty.T_Raw Ty.T_Short) => ()
-			| (Literal.Int _, Ty.T_Raw Ty.T_Int) => ()
-			| (Literal.Int _, Ty.T_Raw Ty.T_Long) => ()
-			| (Literal.Float _, Ty.T_Raw Ty.T_Float) => ()
-			| (Literal.Float _, Ty.T_Raw Ty.T_Double) => ()
-			| (Literal.Char _, Ty.T_Raw Ty.T_Int) => ()
-			| (Literal.String _, Ty.T_Any) => ()
-			| _ => error[
-			    "literal has bogus type: ",  v2s x, " = ", 
-			    Literal.toString lit, ":", TyU.toString ty, "\n"
-			    ]
-		      (* end case *);
-		    (* then check ty against x *)
-		      if TyU.equal(ty, V.typeOf x)
-			then ()
-			else err ();
-                      addVar (env, x)
-                      end)
-                  | CFG.E_Cast (x, ty', y) => (let
+			  | (Literal.Enum _, Ty.T_Any) => ()
+			  | (Literal.StateVal w, _) => () (* what is the type of StateVals? *)
+			  | (Literal.Tag s, _) => () (* what is the type of Tags? *)
+			  | (Literal.Int _, Ty.T_Raw Ty.T_Byte) => ()
+			  | (Literal.Int _, Ty.T_Raw Ty.T_Short) => ()
+			  | (Literal.Int _, Ty.T_Raw Ty.T_Int) => ()
+			  | (Literal.Int _, Ty.T_Raw Ty.T_Long) => ()
+			  | (Literal.Float _, Ty.T_Raw Ty.T_Float) => ()
+			  | (Literal.Float _, Ty.T_Raw Ty.T_Double) => ()
+			  | (Literal.Char _, Ty.T_Raw Ty.T_Int) => ()
+			  | (Literal.String _, Ty.T_Any) => ()
+			  | _ => error[
+			      "literal has bogus type: ",  v2s x, " = ", 
+			      Literal.toString lit, ":", TyU.toString ty, "\n"
+			      ]
+			(* end case *);
+		      (* then check ty against x *)
+			if TyU.equal(ty, V.typeOf x)
+			  then ()
+			  else err ();
+			addVar (env, x)
+                      end
+                  | CFG.E_Cast (x, ty', y) => let
                       fun err () = error[
                              "type mismatch in Cast: ", v2s' x, " = ",
                              "(", TyU.toString ty', ")(", v2s' y, ")\n"];
                       in
-                      chkVar (env, y, "Cast");
-                      if TyU.match(ty', V.typeOf x) andalso TyU.validCast (V.typeOf y, ty')
-                        then ()
-                        else err ();
-                      addVar (env, x)
-                      end)
-                  | CFG.E_Label (x, l) => (let
+			chkVar (env, y, "Cast");
+			if TyU.match(ty', V.typeOf x) andalso TyU.validCast (V.typeOf y, ty')
+			  then ()
+			  else err ();
+			addVar (env, x)
+                      end
+                  | CFG.E_Label (x, l) => let
                       fun err () = error[
                              "type mismatch in Label: ", v2s' x, " = ", l2s' l, "\n"]
                       in
-                      chkLbl (lEnv, l, "Label");
-                      case L.kindOf l
-                       of CFG.LK_None => error["no kind label ", l2s l, " in Label\n"]
-                        | CFG.LK_Extern _ => ()
-			| CFG.LK_Local _ => if TyU.match (V.typeOf x, L.typeOf l)
-                            then ()
-                            else err ()
-                      (* end case *);
-                      addVar (env, x)
-                      end)
-                  | CFG.E_Select (x, i, y) => (let
+			chkLbl (lEnv, l, "Label");
+			case L.kindOf l
+			 of CFG.LK_None => error["no kind label ", l2s l, " in Label\n"]
+			  | CFG.LK_Extern _ => ()
+			  | CFG.LK_Local _ => if TyU.match (V.typeOf x, L.typeOf l)
+			      then ()
+			      else err ()
+			(* end case *);
+			addVar (env, x)
+                      end
+                  | CFG.E_Select (x, i, y) => let
                       fun err () = error[
                              "type mismatch in Select: ", v2s' x, " = ",
                              "#", Int.toString i, "(", v2s' y, ")\n"]
                       in
-                      chkVar (env, y, "Select");
-                      
-                      case V.typeOf y
-                       of Ty.T_Tuple(_, tys) =>
-                            if (i < List.length tys) andalso TyU.match (List.nth (tys, i), V.typeOf x)
-                              then ()
-                              else err ()
-                        | Ty.T_OpenTuple(tys) =>
-                            if (i < List.length tys) andalso TyU.match (List.nth (tys, i), V.typeOf x)
-                              then ()
-                              else err ()
-                        | _ => err ()
-                      (* end case *);
-                      addVar (env, x)
-                      end)
-                  | CFG.E_Update (i, y, z) => (let
+			chkVar (env, y, "Select");
+			
+			case V.typeOf y
+			 of Ty.T_Tuple(_, tys) =>
+			      if (i < List.length tys) andalso TyU.match (List.nth (tys, i), V.typeOf x)
+				then ()
+				else err ()
+			  | Ty.T_OpenTuple(tys) =>
+			      if (i < List.length tys) andalso TyU.match (List.nth (tys, i), V.typeOf x)
+				then ()
+				else err ()
+			  | _ => err ()
+			(* end case *);
+			addVar (env, x)
+                      end
+                  | CFG.E_Update (i, y, z) => let
                       fun err () = error[
                              "type mismatch in Update: ",
                              "#", Int.toString i, "(", v2s' y, ") := ", v2s' z, "\n"]
                       in
-                      chkVar (env, y, "Update");
-                      chkVar (env, z, "Update");
-                      case V.typeOf y
-                       of Ty.T_Tuple(true, tys) => 
-			    if (i < List.length tys) andalso TyU.equal (V.typeOf z, List.nth (tys, i))
-			      then ()
-			      else err ()
-			| ty => err ()
-		      (* end case *);
-                      env
-                      end)
-                  | CFG.E_AddrOf (x, i, y) => (let
+			chkVar (env, y, "Update");
+			chkVar (env, z, "Update");
+			case V.typeOf y
+			 of Ty.T_Tuple(true, tys) => 
+			      if (i < List.length tys) andalso TyU.equal (V.typeOf z, List.nth (tys, i))
+				then ()
+				else err ()
+			  | ty => err ()
+			(* end case *);
+			env
+                      end
+                  | CFG.E_AddrOf (x, i, y) => let
                       fun err () = error [
                              "type mismatch in AddrOf: ", v2s' x, " = ",
                              "&(", v2s' y, ")\n"]
                       in
-                      chkVar (env, y, "AddrOf");
-                      case V.typeOf y
-                       of Ty.T_Tuple(_, tys) =>
-                            if (i < List.length tys) andalso TyU.match (Ty.T_Addr(List.nth (tys, i)), V.typeOf x)
-                              then ()
-                              else err ()
-			| Ty.T_VProc => 
-			  (* allow programs to take offsets from the vproc structure for atomic ops *)
-			  ()
-                        | _ => err ()
-                      (* end case *);
-                      addVar (env, x)
-                      end)
-                  | CFG.E_Alloc (x, ys) => (let
+			chkVar (env, y, "AddrOf");
+			case V.typeOf y
+			 of Ty.T_Tuple(_, tys) =>
+			      if (i < List.length tys) andalso TyU.match (Ty.T_Addr(List.nth (tys, i)), V.typeOf x)
+				then ()
+				else err ()
+			  | Ty.T_VProc => 
+			    (* allow programs to take offsets from the vproc structure for atomic ops *)
+			    ()
+			  | _ => err ()
+			(* end case *);
+			addVar (env, x)
+                      end
+                  | CFG.E_Alloc(x, ty, ys) => let
                       fun err () = error[
                              "type mismatch in Alloc: ", v2s' x, " = ",
                              "alloc(", vl2s' ys, ")\n"]
                       in
-                      chkVars (env, ys, "Alloc");
-                      if (TyU.match (Ty.T_Tuple (true, typesOf ys), V.typeOf x))
-                        orelse (TyU.match (Ty.T_Tuple (false, typesOf ys), V.typeOf x))
-                        then ()
-                        else err ();
-                      addVar (env, x)
-                      end)
-                  | CFG.E_GAlloc (x, ys) => (let
+(* FIXME: check ty *)
+			chkVars (env, ys, "Alloc");
+			if (TyU.match (Ty.T_Tuple (true, typesOf ys), V.typeOf x))
+			  orelse (TyU.match (Ty.T_Tuple (false, typesOf ys), V.typeOf x))
+			  then ()
+			  else err ();
+			addVar (env, x)
+                      end
+                  | CFG.E_GAlloc(x, ty, ys) => let
                       fun err () = error[
                              "type mismatch in GAlloc: ", v2s' x, " = ",
                              "galloc(", vl2s' ys, ")\n"]
                       in
-                      chkVars (env, ys, "GAlloc");
-                      if (TyU.match (Ty.T_Tuple (true, typesOf ys), V.typeOf x))
-                        orelse (TyU.match (Ty.T_Tuple (false, typesOf ys), V.typeOf x))
-                        then ()
-                        else err ();
-                      addVar (env, x)
-                      end)
-                  | CFG.E_Promote (x, y) => (let
+(* FIXME: check ty *)
+			chkVars (env, ys, "GAlloc");
+			if (TyU.match (Ty.T_Tuple (true, typesOf ys), V.typeOf x))
+			  orelse (TyU.match (Ty.T_Tuple (false, typesOf ys), V.typeOf x))
+			  then ()
+			  else err ();
+			addVar (env, x)
+                      end
+                  | CFG.E_Promote (x, y) => let
                       fun err () = error[
                              "type mismatch in Promote: ", v2s' x, " = ",
                              "promote(", v2s' y, ")\n"]
                       in
-                      chkVar (env, y, "Promote");
-                      if TyU.equal (V.typeOf x, V.typeOf y)
-                        then ()
-                        else err ();
-                      addVar (env, x)
-                      end)
+			chkVar (env, y, "Promote");
+			if TyU.equal (V.typeOf x, V.typeOf y)
+			  then ()
+			  else err ();
+			addVar (env, x)
+                      end
                   | CFG.E_Prim0 p => (chkVars (env, PrimUtil.varsOf p, PrimUtil.nameOf p); env)
                   | CFG.E_Prim (x, p) => (
                       chkVars (env, PrimUtil.varsOf p, PrimUtil.nameOf p);
@@ -317,39 +319,39 @@ structure CheckCFG : sig
 			then error["CCall with more than one result\n"]
 			else ();
                       addVars (env, xs))
-                  | CFG.E_HostVProc x => (let
+                  | CFG.E_HostVProc x => let
                       fun err () = error[
                              "type mismatch in HostVProc: ", v2s' x, " = ",
                              "host_vproc()\n"]
                       in
-                      if TyU.match (Ty.T_VProc, V.typeOf x)
-                        then ()
-                        else err ();
-                      addVar (env, x)
-                      end)
-                  | CFG.E_VPLoad (x, i, y) => (let
+			if TyU.match (Ty.T_VProc, V.typeOf x)
+			  then ()
+			  else err ();
+			addVar (env, x)
+                      end
+                  | CFG.E_VPLoad (x, i, y) => let
                       fun err () = error[
                              "type mismatch in VProcLoad: ", v2s' x, " = ",
                              "load(", v2s' y, "+", IntInf.toString i, ")\n"]
                       in
-                      chkVar (env, y, "VPLoad");
-                      if TyU.equal (Ty.T_VProc, V.typeOf y)
-                        then ()
-                        else err ();
-                      addVar (env, x)
-                      end)
-                  | CFG.E_VPStore (i, y, z) => (let
+			chkVar (env, y, "VPLoad");
+			if TyU.equal (Ty.T_VProc, V.typeOf y)
+			  then ()
+			  else err ();
+			addVar (env, x)
+                      end
+                  | CFG.E_VPStore (i, y, z) => let
                       fun err () = error[
                              "type mismatch in VProcStore: ",
                              "store(", v2s' y, "+", IntInf.toString i, ", ", v2s' z, ")\n"]
                       in
-                      chkVar (env, y, "VPStore");
-                      chkVar (env, z, "VPStore");
-                      if TyU.equal (Ty.T_VProc, V.typeOf y)
-                        then ()
-                        else err ();
-                      env
-                      end)
+			chkVar (env, y, "VPStore");
+			chkVar (env, z, "VPStore");
+			if TyU.equal (Ty.T_VProc, V.typeOf y)
+			  then ()
+			  else err ();
+			env
+                      end
                 (* end case *))
           fun chkExit (env, exit) = (case exit
                  of CFG.StdApply{f, clos, args, ret, exh} => (

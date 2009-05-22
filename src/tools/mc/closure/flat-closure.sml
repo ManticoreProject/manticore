@@ -199,11 +199,10 @@ structure FlatClosure : sig
                 end
             | SOME EnclFun => let (* build <ep, cp> pair *)
                 val (b, lab) = bindLabel(labelOf x)
-                val tmp = CFG.Var.new(
-                        CPS.Var.nameOf x,
-                        CFGTy.T_Tuple(false, [CFG.Var.typeOf ep, CFG.Var.typeOf lab]))
+		val ty = CFGTy.T_Tuple(false, [CFG.Var.typeOf ep, CFG.Var.typeOf lab])
+                val tmp = CFG.Var.new(CPS.Var.nameOf x, ty)
                 in
-                  ([CFG.mkAlloc(tmp, [ep, lab]), b], tmp)
+                  ([CFG.mkAlloc(tmp, ty, [ep, lab]), b], tmp)
                 end
 	    | SOME EnclCont => ([], ep)
 	    | SOME(Extern lab) => let
@@ -357,8 +356,9 @@ structure FlatClosure : sig
                             (* the functions share a common environment tuple *)
                               val (binds, clos, sharedEnv) =
 				    mkFunClosure (env, FV.envOfFun(funVar(hd fbs)))
+(* FIXME: what if clos is empty ??? *)
                               val ep = newEP (List.map CFG.Var.typeOf clos)
-                              val bindEP = CFG.mkAlloc(ep, clos)
+                              val bindEP = CFG.mkAlloc(ep, CFG.Var.typeOf ep, clos)
                             (* map the names of the bound functions to EnclFun *)
 			      val sharedEnv = List.foldl
 				    (fn (fb, env) => insertVar(env, funVar fb, EnclFun)) 
@@ -373,7 +373,8 @@ structure FlatClosure : sig
                                     val () = CFG.Label.setType (lab, convTy)
                                     val (bindLab, labVar) = bindLabel lab
                                     val (env', f') = newLocal (env, f)
-                                    val binds = CFG.mkAlloc(f', [ep, labVar]) :: bindLab :: binds
+                                    val binds = CFG.mkAlloc(f', CFG.Var.typeOf f', [ep, labVar])
+					  :: bindLab :: binds
                                     in
                                     (* convert the function itself *)
                                       cvtExp (fbEnv, lab, conv, body);
@@ -550,10 +551,10 @@ structure FlatClosure : sig
                       in
                         ([CFG.mkAddrOf(x, i, y)] @ binds, env)
                       end
-                  | ((env, [x]), CPS.Alloc(_, ys)) => let
+                  | ((env, [x]), CPS.Alloc(ty, ys)) => let
                       val (binds, ys) = lookupVars (env, ys)
                       in
-                        ([CFG.mkAlloc(x, ys)] @ binds, env)
+                        ([CFG.mkAlloc(x, cvtTy ty, ys)] @ binds, env)
                       end
                   | ((env, [x]), CPS.Promote y) => let
                       val (binds, y) = lookupVar (env, y)
@@ -641,7 +642,8 @@ structure FlatClosure : sig
                 val (bindLab, labVar) = bindLabel lab
 		val contEnv = insertVar (lambdaEnv, f, EnclCont)  (* to support recursive conts *)
                 val (env', k') = newLocal (env, f)
-                val binds = CFG.mkAlloc(k', labVar :: clos) :: bindLab :: binds
+                val binds = CFG.mkAlloc(k', CFG.Var.typeOf k', labVar :: clos)
+		      :: bindLab :: binds
                 in
                   cvtExp (contEnv, lab, conv, body);
                   (binds, env')

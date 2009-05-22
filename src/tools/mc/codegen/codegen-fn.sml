@@ -248,65 +248,67 @@ if MChkTy.check stm
       (* Construct an MLRISC tree from a CFG expression. *)
       and genExp frame = let
 	  fun gen (M.E_Var(lhs, rhs)) = 
-	      ListPair.app setDefOf (lhs, List.map getDefOf rhs)
+		ListPair.app setDefOf (lhs, List.map getDefOf rhs)
 	    | gen (M.E_Const(lhs, lit, _)) = 
-	      bindExp ([lhs], [genLit (szOfVar lhs, lit)], "")
+		bindExp ([lhs], [genLit (szOfVar lhs, lit)], "")
 	    | gen (M.E_Label(lhs, l)) = 
-	      bindExp ([lhs], [MTy.EXP (MTy.wordTy, (T.LABEL (BE.LabelCode.getName l)))], "")
+		bindExp ([lhs], [MTy.EXP (MTy.wordTy, (T.LABEL (BE.LabelCode.getName l)))], "")
 	    | gen (M.E_Select(lhs, i, v)) = let
-	      val rhs = BE.Alloc.select {lhsTy=Var.typeOf lhs, mty=Var.typeOf v, i=i, base=defOf v}
-              in
+		val rhs = BE.Alloc.select {lhsTy=Var.typeOf lhs, mty=Var.typeOf v, i=i, base=defOf v}
+		in
 		  bindExp ([lhs], [rhs], "let "^v2s lhs^" = "^v2s v^"["^i2s i^"]")
-	      end
+		end
 	    | gen (M.E_Update(i, lhs, rhs)) = let
-              val szI = BE.Types.szOfIx (Var.typeOf lhs, i)
-	      val wordSzB = IntInf.toInt Spec.ABI.wordSzB
-	      val offset = T.LI (T.I.fromInt (MTy.wordTy, wordSzB * i))
-	      in
+		val szI = BE.Types.szOfIx (Var.typeOf lhs, i)
+		val wordSzB = IntInf.toInt Spec.ABI.wordSzB
+		val offset = T.LI (T.I.fromInt (MTy.wordTy, wordSzB * i))
+		in
 		  flushLoads ();
 		  emit(annotate(T.STORE (szI, T.ADD (MTy.wordTy, defOf lhs, offset), defOf rhs, ManticoreRegion.memory),
 		       v2s lhs^" := "^v2s rhs))
-	      end
+		end
 	    | gen (M.E_AddrOf(lhs, i, v)) = let
-	      val addr = BE.Alloc.tupleAddrOf {mty=Var.typeOf v, i=i, base=defOf v}
-	      in
+		val addr = BE.Alloc.tupleAddrOf {mty=Var.typeOf v, i=i, base=defOf v}
+		in
 		  bindExp ([lhs], [MTy.EXP(MTy.wordTy, addr)], "addrof("^v2s v^"["^Int.toString i^"])")
-	      end
-	    | gen (M.E_Alloc (lhs, vs)) = let 
-              val {ptr, stms} = BE.Alloc.genAlloc (List.map (fn v => (Var.typeOf v, getDefOf v)) vs)
-	      in 
+		end
+	    | gen (M.E_Alloc (lhs, Ty.T_Tuple(isMut, tys), vs)) = let
+(* FIXME: use tys *)
+		val {ptr, stms} = BE.Alloc.genAlloc (List.map (fn v => (Var.typeOf v, getDefOf v)) vs)
+		in 
 		  emitStms stms;
 		  bindExp ([lhs], [ptr], "alloc "^v2s lhs^" = "^String.concat (List.map v2s vs))
-	      end
-	    | gen (M.E_GAlloc(lhs, vs)) = let 
-              val {ptr, stms} = BE.Alloc.genGlobalAlloc (List.map (fn v => (Var.typeOf v, getDefOf v)) vs)
-	      in 
+		end
+	    | gen (M.E_GAlloc(lhs, Ty.T_Tuple(isMut, tys), vs)) = let 
+(* FIXME: use tys *)
+		val {ptr, stms} = BE.Alloc.genGlobalAlloc (List.map (fn v => (Var.typeOf v, getDefOf v)) vs)
+		in 
 		  emitStms (annotateStms (stms, "galloc "^v2s lhs^" = "^String.concat (List.map v2s vs)));
 		  bindExp ([lhs], [ptr], "")
-	      end
+		end
 	    | gen (M.E_Promote (lhs, v)) =  let
-              val {stms, result} = BE.Transfer.genPromote varDefTbl {lhs=lhs, arg=v}
-	      in
+		val {stms, result} = BE.Transfer.genPromote varDefTbl {lhs=lhs, arg=v}
+		in
 		  emitStms stms;
 		  bindExp ([lhs], result, "promote")
-	      end
+		end
 	    | gen (M.E_Prim0 p) = emitStms(annotateStms(genPrim0 p, PrimUtil.nameOf p))
 	    | gen (M.E_Prim (lhs, p)) = emitStms(annotateStms(genPrim (lhs, p), PrimUtil.nameOf p))
 	    | gen (M.E_CCall (lhs, f, args)) = let 
-              val {stms, result} = BE.Transfer.genCCall varDefTbl {lhs=lhs, f=f, args=args}
-	      in
+		val {stms, result} = BE.Transfer.genCCall varDefTbl {lhs=lhs, f=f, args=args}
+		in
 		  emitStms stms;
 		  bindExp (lhs, result, "ccall "^Var.toString f)
-	      end
+		end
 	    | gen (M.E_Cast(lhs, _, v)) = 
-	      bindExp ([lhs], [getDefOf v], "")
+		bindExp ([lhs], [getDefOf v], "")
 	    (* vproc operations *)
 	    | gen (M.E_HostVProc lhs) =
-	      bindExp ([lhs], [BE.VProcOps.genHostVP], "host()")
+		bindExp ([lhs], [BE.VProcOps.genHostVP], "host()")
 	    | gen (M.E_VPLoad(lhs, offset, vproc)) =
-	      bindExp ([lhs], [BE.VProcOps.genVPLoad varDefTbl (szOfVar lhs, offset, vproc)], "vpload "^v2s lhs)
+		bindExp ([lhs], [BE.VProcOps.genVPLoad varDefTbl (szOfVar lhs, offset, vproc)], "vpload "^v2s lhs)
 	    | gen (M.E_VPStore(offset, vproc, v)) =
-	      emitStms(annotateStms([BE.VProcOps.genVPStore varDefTbl (szOfVar v, offset, vproc, v)], "vpstore "^v2s v))
+		emitStms(annotateStms([BE.VProcOps.genVPStore varDefTbl (szOfVar v, offset, vproc, v)], "vpstore "^v2s v))
          in
 	    gen
          end (* genExp *)

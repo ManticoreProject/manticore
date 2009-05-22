@@ -92,8 +92,16 @@ structure PrintCFG : sig
 		      ]
 		  | (CFG.E_AddrOf(_, i, x)) =>
 		      prl ["&", Int.toString i, " ", varUseToString x]
-		  | (CFG.E_Alloc(_, args)) => (pr "alloc"; prList varUseToString args)
-		  | (CFG.E_GAlloc(_, args)) => (pr "galloc"; prList varUseToString args)
+		  | (CFG.E_Alloc(_, ty, args)) => let
+		      val mut = (case ty of CFGTy.T_Tuple(true, _) => "alloc !" | _ => "alloc ")
+		      in
+			pr mut; prList varUseToString args
+		      end
+		  | (CFG.E_GAlloc(_, ty, args)) => let
+		      val mut = (case ty of CFGTy.T_Tuple(true, _) => "galloc !" | _ => "galloc ")
+		      in
+			pr mut; prList varUseToString args
+		      end
 		  | (CFG.E_Promote(_, y)) => prl["promote(", varUseToString y, ")"]
 		  | (CFG.E_Prim0 p) => pr (PrimUtil.fmt varUseToString p)
 		  | (CFG.E_Prim(_, p)) => pr (PrimUtil.fmt varUseToString p)

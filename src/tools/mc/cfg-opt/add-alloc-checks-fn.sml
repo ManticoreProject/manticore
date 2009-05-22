@@ -64,11 +64,11 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 	  CFG.Label.newProp (fn _ => 0w0)
 
   (* the amount of storage allocated by an expression *)
-    fun expAlloc (CFG.E_Alloc(_, xs)) = Word.fromLargeInt ABI.wordSzB * Word.fromInt(length xs + 1)
+    fun expAlloc (CFG.E_Alloc(_, _, xs)) = Word.fromLargeInt ABI.wordSzB * Word.fromInt(length xs + 1)
       | expAlloc _ = 0w0
 
   (* the amount of storage allocated by an expression *)
-    fun gExpAlloc (CFG.E_GAlloc(_, xs)) = Word.fromLargeInt ABI.wordSzB * Word.fromInt(length xs + 1)
+    fun gExpAlloc (CFG.E_GAlloc(_, _, xs)) = Word.fromLargeInt ABI.wordSzB * Word.fromInt(length xs + 1)
       | gExpAlloc _ = 0w0
 
     fun transform (CFG.MODULE{name, externs, code}) = let
