@@ -271,32 +271,38 @@ structure CheckCFG : sig
 			(* end case *);
 			addVar (env, x)
                       end
-                  | CFG.E_Alloc(x, ty, ys) => let
-                      fun err () = error[
-                             "type mismatch in Alloc: ", v2s' x, " = ",
-                             "alloc(", vl2s' ys, ")\n"]
-                      in
-(* FIXME: check ty *)
-			chkVars (env, ys, "Alloc");
-			if (TyU.match (Ty.T_Tuple (true, typesOf ys), V.typeOf x))
-			  orelse (TyU.match (Ty.T_Tuple (false, typesOf ys), V.typeOf x))
-			  then ()
-			  else err ();
-			addVar (env, x)
-                      end
-                  | CFG.E_GAlloc(x, ty, ys) => let
-                      fun err () = error[
-                             "type mismatch in GAlloc: ", v2s' x, " = ",
-                             "galloc(", vl2s' ys, ")\n"]
-                      in
-(* FIXME: check ty *)
-			chkVars (env, ys, "GAlloc");
-			if (TyU.match (Ty.T_Tuple (true, typesOf ys), V.typeOf x))
-			  orelse (TyU.match (Ty.T_Tuple (false, typesOf ys), V.typeOf x))
-			  then ()
-			  else err ();
-			addVar (env, x)
-                      end
+                  | CFG.E_Alloc(x, ty, ys) => (
+		      chkVars (env, ys, "Alloc");
+		      case ty
+		       of Ty.T_Tuple(isMut, tys) =>
+			    if (TyU.match (ty, V.typeOf x))
+			      then ()
+			      else error[
+				 "type mismatch in Alloc: ", v2s' x, " = ",
+				 if isMut then "alloc !(" else "alloc (", vl2s' ys, ")\n"
+				]
+			| _ => error[
+			      "type of allocation is ", CFGTyUtil.toString ty, " in ",
+			      v2s' x, " = ", "alloc(", vl2s' ys, ")\n"
+			    ]
+		      (* end case *);
+		      addVar (env, x))
+                  | CFG.E_GAlloc(x, ty, ys) => (
+		      chkVars (env, ys, "GAlloc");
+		      case ty
+		       of Ty.T_Tuple(isMut, tys) =>
+			    if (TyU.match (ty, V.typeOf x))
+			      then ()
+			      else error[
+				 "type mismatch in GAlloc: ", v2s' x, " = ",
+				 if isMut then "galloc !(" else "galloc (", vl2s' ys, ")\n"
+				]
+			| _ => error[
+			      "type of allocation is ", CFGTyUtil.toString ty, " in ",
+			      v2s' x, " = ", "galloc(", vl2s' ys, ")\n"
+			    ]
+		      (* end case *);
+		      addVar (env, x))
                   | CFG.E_Promote (x, y) => let
                       fun err () = error[
                              "type mismatch in Promote: ", v2s' x, " = ",
