@@ -489,7 +489,7 @@ structure CheckCFG : sig
 		val outS = TextIO.openOut outFile
 		in
 		  pr ["broken CFG dumped to ", outFile, "\n"];
-		  PrintCFG.output (outS, module);
+		  PrintCFG.output {types=true} (outS, module);
 		  TextIO.closeOut outS;
 		  raise Fail "broken CFG"
 		end
@@ -498,9 +498,10 @@ structure CheckCFG : sig
 	    !anyErrors
 	  end (* check *)
 
-    val check =
-       BasicControl.mkTracePass
-       {passName = "cfg-check",
-        pass = check,
-        verbose = 2}
+    val check = BasicControl.mkTracePass {
+	    passName = "cfg-check",
+	    pass = check,
+	    verbose = 2
+	  }
+
   end
