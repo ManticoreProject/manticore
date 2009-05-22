@@ -290,8 +290,8 @@ structure FlatClosureWithCFA : sig
             (insertVar(env, x, Local x'), x')
           end
  
-    fun newLocalVar (env, name, ty) = let
-          val x' = CFG.Var.new (name, ty)
+    fun newLocalVar (env, x, ty) = let
+          val x' = CFG.Var.new (CPS.Var.nameOf x, ty)
           in
             (insertVar(env, x, Local x'), x')
           end
@@ -413,7 +413,7 @@ structure FlatClosureWithCFA : sig
           val (_, binds, clos, cfgArgs) =
                 CPS.Var.Set.foldl mkArgs (1, [], env, []) fv
           val cfgArgs = List.rev cfgArgs
-	  val epTy = envPtrTy (mkContTy(CFGTy.T_Any, List.map CFG.Var.typeOf params')
+	  val epTy = envPtrType (mkContTy(CFGTy.T_Any, List.map CFG.Var.typeOf params')
                 :: List.map CFG.Var.typeOf cfgArgs)
           val ep = newEP epTy
           in
@@ -676,8 +676,8 @@ structure FlatClosureWithCFA : sig
                       val () = CFG.Label.setType (lab, convTy)
                       val (bindLab, labVar) = bindLabel lab
                       val (env', f') = newLocal (env, f)
-		      val (env', f') = newLocalVar (env, CPS.Var.nameOf f,
-			    CFGTy.T_Tuple(false, [CFGVar.typeOf ep, CFGVar.typeOf labVar]))
+		      val (env', f') = newLocalVar (env, f,
+			    CFGTy.T_Tuple(false, [CFG.Var.typeOf ep, CFG.Var.typeOf labVar]))
                       val binds = CFG.mkAlloc(f', CFG.Var.typeOf f', [ep, labVar])
 			    :: bindLab :: binds
                       in
@@ -694,7 +694,7 @@ structure FlatClosureWithCFA : sig
                       if CFA.isEscaping f
                         then (CFGTyUtil.stdContTy, CFG.StdCont, CFGTy.T_StdCont)
                         else (CFGTyUtil.kwnContTy, CFG.KnownFunc, CFGTy.T_KnownFunc)
-                val (binds, ep, clos, lambdaEnv, params') = 
+                val (binds, clos, lambdaEnv, params') = 
                       mkContClosure (env, params, FV.envOfFun f, mkContTy)
                 val clos' = envPtrOf lambdaEnv
                 val conv = mkEntry{
@@ -711,7 +711,7 @@ structure FlatClosureWithCFA : sig
                 val contEnv = insertVar (lambdaEnv, f, EnclCont)  (* to support recursive conts *)
 		val clos = labVar :: clos
 		val closTy = CFGTy.T_Tuple(false, List.map CFG.Var.typeOf clos)
-                val (env', k') = newLocalVar (env, CPS.Var.nameOf f, closTy)
+                val (env', k') = newLocalVar (env, f, closTy)
                 val binds = CFG.mkAlloc(k', closTy, clos) :: bindLab :: binds
                 in
                   cvtExp (contEnv, lab, conv, body);
