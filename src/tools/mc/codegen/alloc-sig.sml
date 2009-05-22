@@ -20,11 +20,20 @@ signature ALLOC =
   (* returns an expression that computes the length of an array *)
     val arrayLength : MTy.T.rexp -> MTy.T.rexp
 
-  (* allocate a list of types, and initialize them *)
-    val genAlloc : (CFG.ty * MTy.mlrisc_tree) list -> {ptr : MTy.mlrisc_tree, stms : MTy.T.stm list}
+  (* generate code to allocate a tuple object in the local heap *)
+    val genAlloc : {
+	    isMut : bool,
+	    tys : CFG.ty list,
+	    args : MTy.mlrisc_tree list
+	  } -> {ptr : MTy.mlrisc_tree, stms : MTy.T.stm list}
 
   (* allocate a list of types in the global heap, and initialize them *)
-    val genGlobalAlloc : (CFG.ty * MTy.mlrisc_tree) list -> {ptr : MTy.mlrisc_tree, stms : MTy.T.stm list}
+  (* generate code to allocate a tuple object in the global heap *)
+    val genGlobalAlloc : {
+	    isMut : bool,
+	    tys : CFG.ty list,
+	    args : MTy.mlrisc_tree list
+	  } -> {ptr : MTy.mlrisc_tree, stms : MTy.T.stm list}
 
   (* heap limit check.  evaluates to true when the heap contains sufficient
    * space for the given size.

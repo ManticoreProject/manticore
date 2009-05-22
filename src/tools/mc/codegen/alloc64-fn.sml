@@ -137,12 +137,13 @@ functor Alloc64Fn (
 	    lp (false, false, args)
 	  end
 
-    (* allocate arguments in the local heap *)
-    fun genAlloc [] = 
-        (* an empty allocation generates a nil pointer *)
-	{ ptr=MTy.EXP (MTy.wordTy, wordLit 1), stms=[] }
-      | genAlloc args = let
-	  fun offAp i = T.ADD (MTy.wordTy, T.REG(MTy.wordTy, Regs.apReg), wordLit i)
+  (* allocate arguments in the local heap *)
+    fun genAlloc {tys=[], ...} = (* an empty allocation generates a nil pointer *)
+(* FIXME: this only happens because the closure-conversion doesn't deal with empty closures correctly *)
+	  { ptr=MTy.EXP (MTy.wordTy, wordLit 1), stms=[] }
+      | genAlloc {isMut, tys, args} = let
+	  val args = ListPair.zipEq (tys, args)
+	  fun offAp i = T.ADD(MTy.wordTy, T.REG(MTy.wordTy, Regs.apReg), wordLit i)
 	  val (totalSize, hdrWord, stms) = alloc offAp args
 	(* store the header word *)
 	  val stms = MTy.store (offAp (~wordSzB), MTy.EXP (MTy.wordTy, T.LI hdrWord), ManticoreRegion.memory) :: stms
@@ -156,35 +157,33 @@ functor Alloc64Fn (
 	    { ptr=MTy.GPR (MTy.wordTy, ptrReg), stms=ptrMv :: rev (bumpAp :: stms) }
 	  end (* genAlloc *)
 
-    (* allocate arguments in the global heap *)
-    fun genGlobalAlloc [] = 
-        (* an empty allocation generates a nil pointer *)
-	{ ptr=MTy.EXP (MTy.wordTy, wordLit 1), stms=[] }
-      | genGlobalAlloc args = let
-	val (vpReg, setVP) = let
-	    val r = Cells.newReg()
-	    val MTy.EXP(_, hostVP) = VProcOps.genHostVP
-            in
-	       (T.REG(MTy.wordTy, r), T.MV(MTy.wordTy, r, hostVP))
-            end
-	val (globalApReg, globalAp, setGAp, globalApAddr) = let
-	    val r = Cells.newReg()
-	    val MTy.EXP(_, gap) = MTy.EXP (64, VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.globNextW, vpReg))
-            in
-	       (r, T.REG(MTy.wordTy, r), T.MV(MTy.wordTy, r, gap), gap)
-            end
-        fun offAp i = T.ADD (MTy.wordTy, globalAp, wordLit i)
-	val (totalSize, hdrWord, stms) = alloc offAp args
+  (* allocate arguments in the global heap *)
+    fun genGlobalAlloc {tys=[], ...} = raise Fail "GAlloc[]"
+      | genGlobalAlloc {isMut, tys, args} = let
+	  val args = ListPair.zipEq (tys, args)
+	  val (vpReg, setVP) = let
+		val r = Cells.newReg()
+		val MTy.EXP(_, hostVP) = VProcOps.genHostVP
+		in
+		  (T.REG(MTy.wordTy, r), T.MV(MTy.wordTy, r, hostVP))
+		end
+	  val (globalApReg, globalAp, setGAp, globalApAddr) = let
+		val r = Cells.newReg()
+		val MTy.EXP(_, gap) = MTy.EXP (64, VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.globNextW, vpReg))
+		in
+		  (r, T.REG(MTy.wordTy, r), T.MV(MTy.wordTy, r, gap), gap)
+		end
+	  fun offAp i = T.ADD (MTy.wordTy, globalAp, wordLit i)
+	  val (totalSize, hdrWord, stms) = alloc offAp args
 	(* store the header word *)
 	  val stms = MTy.store (offAp (~wordSzB), MTy.EXP (MTy.wordTy, T.LI hdrWord), ManticoreRegion.memory) 
 		:: stms
-
 	(* bump up the allocation pointer *)
 	  val bumpAp = VProcOps.genVPStore' (MTy.wordTy, Spec.ABI.globNextW, vpReg, 
 			T.ADD (64, globalApAddr, wordLit (totalSize+wordSzB)))
-	in
+	  in
 	    { ptr=MTy.GPR (MTy.wordTy, globalApReg), stms=setVP :: setGAp :: rev (bumpAp :: stms) }
-	end
+	  end
 
     val heapSlopSzB = Word.- (Word.<< (0w1, 0w12), 0w512)
 
