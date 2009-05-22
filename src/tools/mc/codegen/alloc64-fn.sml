@@ -67,15 +67,6 @@ functor Alloc64Fn (
 	      | MTy.K_INT => MTy.EXP (ty, T.LOAD (ty, addr, ManticoreRegion.memory))
 	  end
 
-  (* returns an expression that computes the length of an array
-   *   WARNING: this function uses the vector header tag to compute the length.
-   *   WARNING: we treat array lengths as 32-bit values even though the header stores up to 61 bits
-   *)
-    fun arrayLength (array) =
-	  T.SRL(32, 
-	     T.LOAD (32, T.SUB(MTy.wordTy, array, wordLit wordSzB), ManticoreRegion.memory), 
-	     wordLit(3))
-
   (* return true if the type may be represented by a pointer into the heap *)
     fun isHeapPointer CFG.T_Any = true
       | isHeapPointer (CFG.T_Tuple _) = true
