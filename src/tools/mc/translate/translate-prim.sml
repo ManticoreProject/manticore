@@ -230,13 +230,10 @@ structure TranslatePrim : sig
 			 of BPT.SE_Mark _ => raise Fail "Mark" (* FIXME *)
 			  | BPT.SE_Var x => BOM.mkLet(lhs', cvtVar(x, fn x => BOM.mkRet[x]), body') 
 			  | BPT.SE_Alloc args => let
-			      val mut = (case BV.typeOf(hd lhs')
-				      of BTy.T_Tuple(mut, _) => mut
-				       | _ => false (* is this case an error? *)
-				    (* end case *))
+			      val ty = BV.typeOf(hd lhs')
 			      in
 				cvtSimpleExps(findCFun, args,
-				  fn xs => BOM.mkStmt(lhs', BOM.E_Alloc(BTy.T_Tuple(mut, List.map BV.typeOf xs), xs),
+				  fn xs => BOM.mkStmt(lhs', BOM.E_Alloc(ty, xs),
 				    body'))
 			      end
 			  | BPT.SE_Wrap e =>

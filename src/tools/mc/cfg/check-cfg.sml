@@ -279,7 +279,7 @@ structure CheckCFG : sig
 			    if (TyU.match (ty, V.typeOf x))
 			      then ()
 			      else error[
-				 "type mismatch in Alloc: ", v2s' x, " = ",
+				 "type mismatch in Alloc: ", v2s x, " = ",
 				 if isMut then "alloc !(" else "alloc (", vl2s' ys, ")\n"
 				]
 *)()
@@ -471,7 +471,7 @@ structure CheckCFG : sig
 		      chkLbl (lEnv, lab, cxt);
 		      chkVars (env, args, cxt);
                       case L.typeOf lab 
-                       of Ty.T_Block {args = argTys} => (
+                       of Ty.T_Block{args = argTys} => (
                            checkArgTypes (TyU.match, cxt, argTys, typesOf args))
                         | ty => error[l2s lab, ":", TyU.toString ty, " is not a block\n"])
           fun chkFunc (CFG.FUNC {lab, entry, body, exit}) = let
