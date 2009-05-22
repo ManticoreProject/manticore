@@ -480,18 +480,19 @@ structure CheckBOM : sig
 	    Census.census module;
 	  (* check new and old census information *)
 	    VTbl.appi checkCnt counts;
-if !anyErrors
-  then let
-(* FIXME: we should generate this name from the input file name! *)
-    val outFile = "broken-BOM"
-    val outS = TextIO.openOut outFile
-    in
-      pr ["broken BOM dumped to ", outFile, "\n"];
-      PrintBOM.output (outS, module);
-      TextIO.closeOut outS;
-      raise Fail "broken BOM"
-    end
-  else ();
+	  (* report errors, if any *)
+	    if !anyErrors
+	      then let
+	    (* FIXME: we should generate this name from the input file name! *)
+		val outFile = "broken-BOM"
+		val outS = TextIO.openOut outFile
+		in
+		  pr ["broken BOM dumped to ", outFile, "\n"];
+		  PrintBOM.output (outS, module);
+		  TextIO.closeOut outS;
+		  raise Fail "broken BOM"
+		end
+	      else ();
 	  (* return the error status *)
 	    !anyErrors
 	  end

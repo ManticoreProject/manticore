@@ -481,13 +481,19 @@ structure CheckCFG : sig
                 end
           in
             List.app chkFunc code;
-if !anyErrors
-  then (
-    print "******************** broken CFG ********************\n";
-    PrintCFG.print module;
-    print "********************\n";
-    raise Fail "broken CFG")
-  else ();
+	  (* report errors, if any *)
+	    if !anyErrors
+	      then let
+	    (* FIXME: we should generate this name from the input file name! *)
+		val outFile = "broken-CFG"
+		val outS = TextIO.openOut outFile
+		in
+		  pr ["broken CFG dumped to ", outFile, "\n"];
+		  PrintCFG.output (outS, module);
+		  TextIO.closeOut outS;
+		  raise Fail "broken CFG"
+		end
+	      else ();
 	  (* return the error status *)
 	    !anyErrors
 	  end (* check *)
