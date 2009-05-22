@@ -184,7 +184,7 @@ structure PrintCFG : sig
 	    pr "}\n"
 	  end
 
-    fun print m = output {types=false} (TextIO.stdErr, m)
+    fun print m = output {types=false} (TextIO.stdOut, m)
 
     fun printFunc f = let
           val m = CFG.MODULE {name = Atom.atom "ad-hoc",
