@@ -263,12 +263,12 @@ structure FlatClosureWithCFA : sig
             x'
           end
 
-    fun newEP [] =
-      (* NOTE: T_Enum(0w0) is the correct type here, but that causes problems in CheckCFG. *)
-          CFG.Var.new ("ep", CFGTy.T_Any)
-      | newEP tys = CFG.Var.new ("ep", CFGTy.T_Tuple(false, tys))
-    val newEP = fn tys => let
-          val x' = newEP tys
+  (* return the type use to represent the environment type *)
+    fun envPtrType [] = CFGTy.T_Enum 0w0
+      | envPtrType tys = CFGTy.T_Tuple(false, tys)
+
+    fun newEP ty = let
+          val x' = CFG.Var.new ("ep", ty)
           in
             if Controls.get ClosureControls.debug
               then print(concat[
@@ -277,8 +277,21 @@ structure FlatClosureWithCFA : sig
             x'
           end
 
+(*
+    fun newEP [] =
+      (* NOTE: T_Enum(0w0) is the correct type here, but that causes problems in CheckCFG. *)
+          CFG.Var.new ("ep", CFGTy.T_Any)
+      | newEP tys = CFG.Var.new ("ep", CFGTy.T_Tuple(false, tys))
+*)
+
     fun newLocal (env, x) = let
           val x' = newVar x
+          in
+            (insertVar(env, x, Local x'), x')
+          end
+ 
+    fun newLocalVar (env, name, ty) = let
+          val x' = CFG.Var.new (name, ty)
           in
             (insertVar(env, x, Local x'), x')
           end
@@ -371,9 +384,15 @@ structure FlatClosureWithCFA : sig
           val (_, binds, clos, cfgArgs) =
                 CPS.Var.Set.foldl mkArgs (0, [], externEnv, []) fv
           val cfgArgs = List.rev cfgArgs
-          val ep = newEP (List.map CFG.Var.typeOf cfgArgs)
+	  val epTy = envPtrType (List.map CFG.Var.typeOf cfgArgs)
+          val ep = newEP epTy
+	  val ep' = newEP epTy
+	  val bindEP = (case epTy
+		 of CFGTy.T_Enum _ => CFG.mkConst(ep', Literal.Enum 0w0, epTy)
+		  | _ => CFG.mkAlloc(ep', epTy, cfgArgs)
+		(* end case *))
           in
-            (binds, cfgArgs, E{ep = ep, env = clos})
+            (bindEP::binds, ep', cfgArgs, E{ep = ep, env = clos})
           end
 
   (* given a set of free CPS variables that define the environment of a continuation, create the
@@ -394,9 +413,9 @@ structure FlatClosureWithCFA : sig
           val (_, binds, clos, cfgArgs) =
                 CPS.Var.Set.foldl mkArgs (1, [], env, []) fv
           val cfgArgs = List.rev cfgArgs
-          val ep = newEP (
-                mkContTy(CFGTy.T_Any, List.map CFG.Var.typeOf params')
+	  val epTy = envPtrTy (mkContTy(CFGTy.T_Any, List.map CFG.Var.typeOf params')
                 :: List.map CFG.Var.typeOf cfgArgs)
+          val ep = newEP epTy
           in
             (binds, cfgArgs, E{ep = ep, env = clos}, params')
           end
@@ -639,10 +658,8 @@ structure FlatClosureWithCFA : sig
         (* convert bound functions *)
           and cvtFunc (env, fbs) = let
               (* the functions share a common environment tuple *)
-                val (binds, clos, sharedEnv) =
+                val (binds, ep, clos, sharedEnv) =
                       mkFunClosure (env, FV.envOfFun(funVar(hd fbs)))
-                val ep = newEP (List.map CFG.Var.typeOf clos)
-                val bindEP = CFG.mkAlloc(ep, CFG.Var.typeOf ep, clos)
               (* map the names of the bound functions to EnclFun *)
                 val sharedEnv = List.foldl
                       (fn (fb, env) => insertVar(env, funVar fb, EnclFun)) 
@@ -659,6 +676,8 @@ structure FlatClosureWithCFA : sig
                       val () = CFG.Label.setType (lab, convTy)
                       val (bindLab, labVar) = bindLabel lab
                       val (env', f') = newLocal (env, f)
+		      val (env', f') = newLocalVar (env, CPS.Var.nameOf f,
+			    CFGTy.T_Tuple(false, [CFGVar.typeOf ep, CFGVar.typeOf labVar]))
                       val binds = CFG.mkAlloc(f', CFG.Var.typeOf f', [ep, labVar])
 			    :: bindLab :: binds
                       in
@@ -667,7 +686,7 @@ structure FlatClosureWithCFA : sig
                         (binds, env')
                       end
                 in
-                   List.foldl cvtFB (bindEP::binds, env) fbs
+                   List.foldl cvtFB (binds, env) fbs
                 end
         (* convert a bound continuation *)
           and cvtCont (env, CPS.FB{f, params, body, ...}) = let
@@ -675,7 +694,7 @@ structure FlatClosureWithCFA : sig
                       if CFA.isEscaping f
                         then (CFGTyUtil.stdContTy, CFG.StdCont, CFGTy.T_StdCont)
                         else (CFGTyUtil.kwnContTy, CFG.KnownFunc, CFGTy.T_KnownFunc)
-                val (binds, clos, lambdaEnv, params') = 
+                val (binds, ep, clos, lambdaEnv, params') = 
                       mkContClosure (env, params, FV.envOfFun f, mkContTy)
                 val clos' = envPtrOf lambdaEnv
                 val conv = mkEntry{
@@ -690,9 +709,10 @@ structure FlatClosureWithCFA : sig
                 val () = CFG.Label.setType (lab, convTy)
                 val (bindLab, labVar) = bindLabel lab
                 val contEnv = insertVar (lambdaEnv, f, EnclCont)  (* to support recursive conts *)
-                val (env', k') = newLocal (env, f)
-                val binds = CFG.mkAlloc(k', CFG.Var.typeOf k', labVar :: clos)
-		      :: bindLab :: binds
+		val clos = labVar :: clos
+		val closTy = CFGTy.T_Tuple(false, List.map CFG.Var.typeOf clos)
+                val (env', k') = newLocalVar (env, CPS.Var.nameOf f, closTy)
+                val binds = CFG.mkAlloc(k', closTy, clos) :: bindLab :: binds
                 in
                   cvtExp (contEnv, lab, conv, body);
                   (binds, env')
