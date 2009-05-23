@@ -303,19 +303,6 @@ structure TranslatePrim : sig
 			  cvtSimpleExps(findCFun, args,
 			    fn xs => BOM.mkStmt(lhs', BOM.E_CCall(cfun, xs), body'))
 		        end
-		    | BPT.RHS_PMLVar pmlVar => raise Fail "TODO: implement pmlvar"
-(* TODO: pmlvars are unsafe within the bodies of hlops. Fix this problem before re-enabling the code below. *)
-	          (*let
-		       (* see comments above on pml imports for an explanation *)
-			val v = (
-			    case E.findBOMPMLVar pmlVar
-			     of NONE => raise Fail (String.concat ["compiler bug: unbound PML variable ", PTVar.toString pmlVar])
-			      | SOME v => v
-				(* end case *))
-		        in
-			   BOM.mkLet(lhs', BOM.mkRet [v], body')
-			end *)
-		  (* end case *)
 		end 
 	    | BPT.E_Fun(fbs, e) => let
 		fun f (fb, cvtBodies) = let
