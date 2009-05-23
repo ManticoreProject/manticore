@@ -83,6 +83,11 @@ structure BindingEnv : sig
   (* lookup the qualified id where the hlop is bound *)
     val getHLOpPath : bom_hlop -> string list
 
+  (* C Functions *)
+  (* Note that C functions have global scope *)
+    val defineCFun    : (Atom.atom * bom_var) -> unit
+    val findCFun      : Atom.atom -> bom_var option
+
   end = struct
 
     structure PT1 = ProgramParseTree.PML1
@@ -332,5 +337,15 @@ structure BindingEnv : sig
 	  Atom.toString name,
 	  varEnvToString varEnv
 	]
+
+  (* C functions *)
+  (* Note that C functions have global scope *)
+    local 
+	structure ATbl = AtomTable
+	val tbl : Var.var ATbl.hash_table = AtomTable.mkTable (128, Fail "C function table")
+    in
+    val findCFun = ATbl.find tbl
+    val defineCFun = ATbl.insert tbl
+    end
 
   end

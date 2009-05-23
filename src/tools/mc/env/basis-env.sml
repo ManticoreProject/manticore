@@ -13,6 +13,7 @@ structure BasisEnv : sig
 
     val getValFromBasis   : string list -> ModuleEnv.val_bind
     val getTyFromBasis    : string list -> ModuleEnv.ty_def
+    val getCFunFromBasis  : string list -> ProgramParseTree.Var.var
     val getBOMTyFromBasis : string list -> ProgramParseTree.Var.var
     val getHLOpFromBasis  : string list -> ProgramParseTree.Var.var
 
@@ -86,6 +87,15 @@ structure BasisEnv : sig
 		       of SOME tyd => tyd
 			| NONE => notFound path
 		      (* end case *))
+		  | NONE => notFound path
+		(* end case *))
+	    | _ => notFound path
+	  (* end case *))
+
+  (* use a path (or qualified name) to look up a C function *)
+    fun getCFunFromBasis path = (case getModule path
+	   of SOME(_, x) => (case BEnv.findCFun x
+		 of SOME v => v
 		  | NONE => notFound path
 		(* end case *))
 	    | _ => notFound path
