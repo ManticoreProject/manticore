@@ -17,9 +17,6 @@ signature ALLOC =
   (* compute the address of the ith element off the base address *)
     val tupleAddrOf : {mty : CFG.ty, i : int, base : MTy.T.rexp} -> MTy.T.rexp
 
-  (* returns an expression that computes the length of an array *)
-(*    val arrayLength : MTy.T.rexp -> MTy.T.rexp*)
-
   (* generate code to allocate a tuple object in the local heap *)
     val genAlloc : {
 	    isMut : bool,
