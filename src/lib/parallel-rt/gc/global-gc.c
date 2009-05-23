@@ -108,9 +108,9 @@ void InitGlobalGC ()
 
 }
 
-/* \brief attempt to start a global GC.
- * \param vp the host vproc
- * \param roots the array of root pointers for this vproc
+/*! \brief attempt to start a global GC.
+ *  \param vp the host vproc
+ *  \param roots the array of root pointers for this vproc
  */
 void StartGlobalGC (VProc_t *self, Value_t **roots)
 {
@@ -137,14 +137,15 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	    NWordsScanned = 0;
 	    NBytesCopied = 0;
 #endif
-	for (int i = 0;  i < NumVProcs;  i++)
-	    if (VProcs[i] != self)
-		VProcGlobalGCInterrupt (self, VProcs[i]);
-	} else {
+	  /* signal the other vprocs that GlobalGC is needed */
+	    for (int i = 0;  i < NumVProcs;  i++) {
+		if (VProcs[i] != self)
+		    VProcGlobalGCInterrupt (self, VProcs[i]);
+	    }
+	}
+	else {
+	  // we are a follower
 	    leaderVProc = false;
-	    if (++NReadyForGC == NumVProcs)
-		CondSignal (&LeaderWait);
-	    CondWait (&FollowerWait, &GCLock);
 	}
 
       /* add the vproc's pages to the from-space list */
@@ -171,25 +172,29 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	    FromSpaceChunks = self->globToSpHd;
 	}
 
-    MutexUnlock (&GCLock);
-
-  /* finish the GC setup for this vproc */
-    self->globToSpTl = (MemChunk_t *)0;
-    self->globToSpHd = (MemChunk_t *)0;
+      /* finish the GC setup for this vproc */
+	self->globToSpTl = (MemChunk_t *)0;
+	self->globToSpHd = (MemChunk_t *)0;
 #ifndef NO_GC_STATS
-    self->nWordsScanned = 0;
-    self->nBytesCopied = 0;
+	self->nWordsScanned = 0;
+	self->nBytesCopied = 0;
 #endif
 
-    if (leaderVProc) {
-      /* reset the size of to-space */
-	ToSpaceSz = 0;
-	MutexLock(&GCLock);
+      // here the leader waits for the followers and the followers wait for the
+      // leader to say "go"
+	if (leaderVProc) {
+	  /* reset the size of to-space */
+	    ToSpaceSz = 0;
 	    while (NReadyForGC < NumVProcs)
 		CondWait(&LeaderWait, &GCLock);
 	    CondBroadcast(&FollowerWait);
-	MutexUnlock (&GCLock);
-    }
+	}
+	else {
+	    if (++NReadyForGC == NumVProcs)
+		CondSignal (&LeaderWait);
+	    CondWait (&FollowerWait, &GCLock);
+	}
+    MutexUnlock (&GCLock);
 
   /* allocate the initial chunk for the vproc */
     AllocToSpaceChunk (self);
