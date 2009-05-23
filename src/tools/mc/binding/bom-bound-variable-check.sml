@@ -142,14 +142,6 @@ structure BOMBoundVariableCheck :> sig
 	           in
 		      PT2.RHS_VPStore (off, sexp1, sexp2)
 		   end
-	     | PT1.RHS_PMLVar v => let
-		   val v' = (case findValQid(loc, env, v)
-			      of BEnv.Con v => v
-			       | BEnv.Var v => v
-			    (* end case *))
-	           in
-		       PT2.RHS_PMLVar v'
-		   end
             (* end case *))
 
   (* check the lambda where the variable v is already bound *)
