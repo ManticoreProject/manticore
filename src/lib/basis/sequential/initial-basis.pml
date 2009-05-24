@@ -217,6 +217,10 @@ _primcode (
 	apply append (l1 / exh)
   ;
 
+#ifndef NDEBUG
+  extern void CheckGlobalPtr (void*);
+#endif
+
 #ifndef SEQUENTIAL
   typedef fiber_local_storage = any;
   typedef thread_id = fiber_local_storage;

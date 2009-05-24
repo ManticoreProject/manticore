@@ -400,7 +400,41 @@ static void ScanGlobalToSpace (VProc_t *vp)
 }
 
 #ifndef NDEBUG
-/* Check the invariant that addr is a pointer living in either the root set or the local heap. 
+/* Check that the given address points to an object in the global heap.
+ */
+void CheckGlobalPtr (void *addr)
+{
+    VProc_t *self = VProcSelf();
+    Value_t v = (Value_t *)addr;
+    if (isHeapPtr(v)) {
+	MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
+	if (cq->sts == TO_SP_CHUNK)
+	    return;
+	else if (cq->sts == FROM_SP_CHUNK)
+	    SayDebug("CheckGlobalPtr: unexpected from-space pointer %p at %p\n",
+		ValueToPtr(v), addr);
+	else if (IS_VPROC_CHUNK(cq->sts)) {
+	    if (cq->sts != VPROC_CHUNK(self->id)) {
+		SayDebug("CheckGlobalPtr: bogus remote pointer %p at %p\n",
+		    ValueToPtr(v), addr);
+	    } 
+	    else if (cq->sts == VPROC_CHUNK(self->id)) {
+		SayDebug("CheckGlobalPtr: bogus local pointer %p at %p\n",
+		    ValueToPtr(v), addr);
+	    }	      
+	    else if (! inAddrRange(VProcHeap(self), self->oldTop - VProcHeap(self), ValueToAddr(v))) {
+		SayDebug("CheckGlobalPtr: bogus local pointer %p at %p is out of bounds\n",
+		    ValueToPtr(v), addr);
+	    }
+	}
+	else if (cq->sts == FREE_CHUNK) {
+	    SayDebug("CheckGlobalPtr: unexpected free-space pointer %p at %p\n",
+		ValueToPtr(v), addr);
+	}
+    }
+}
+/* Check the invariant that the value pointed to by addr is a pointer living in either
+ * the root set or the local heap. 
  * Precondition: this check should only occur just after a global collection.
  */
 static void CheckLocalPtr (VProc_t *self, void *addr, const char *where)

@@ -56,6 +56,11 @@ structure TranslatePrim : sig
 
     fun useCFun var = BOM.Var.addToCount(var, 1)
 
+    fun findCFun name = (case E.findBOMCFun name
+            of NONE => raise (fail(["Unknown C function ", PTVar.toString name]))
+	     | SOME(cf as CFunctions.CFun{var, ...}) => var
+            (* end case *))
+
   (* globally accessible translation environment *)
     local
     val translateEnv : TranslateEnv.env option ref = ref NONE
@@ -287,9 +292,16 @@ structure TranslatePrim : sig
 				BOM.mkStmt(lhs', BOM.E_VPLoad(offset, vp), body'))
 			(* end case *))
 		    | BPT.RHS_Update(i, arg, rhs) => 
-			cvtSimpleExp(findCFun, arg, fn x =>
-			  cvtSimpleExp(findCFun, rhs, fn y =>
-			    BOM.mkStmt(lhs', BOM.E_Update(i, x, y), body')))
+		      cvtSimpleExp(findCFun, arg, fn x =>
+			cvtSimpleExp(findCFun, rhs, fn y =>
+		          if not(Controls.get BasicControl.debug)
+			     then 
+			      BOM.mkStmt(lhs', BOM.E_Update(i, x, y), body')
+			  else
+			      BOM.mkStmts([([], BOM.E_CCall(findCFun(BasisEnv.getCFunFromBasis ["CheckGlobalPtr"]), [x])),
+					   ([], BOM.E_CCall(findCFun(BasisEnv.getCFunFromBasis ["CheckGlobalPtr"]), [y])),
+					   (lhs', BOM.E_Update(i, x, y))],
+					  body')))
 		    | BPT.RHS_VPStore(offset, vp, arg) =>
   		        cvtSimpleExp(findCFun, vp, fn vp =>
 				cvtSimpleExp(findCFun, arg, fn x =>
@@ -477,11 +489,6 @@ structure TranslatePrim : sig
 	  in
 	    cvt (exps, [])
 	  end
-
-    fun findCFun name = (case E.findBOMCFun name
-            of NONE => raise (fail(["Unknown C function ", PTVar.toString name]))
-	     | SOME(cf as CFunctions.CFun{var, ...}) => var
-            (* end case *))
 
     fun etaExpand (name, l) = let
 	    val BOM.FB { f=f', params=params', exh=exh', ...} = BOMUtil.copyLambda l
