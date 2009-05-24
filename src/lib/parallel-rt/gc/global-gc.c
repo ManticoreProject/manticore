@@ -411,28 +411,29 @@ void CheckGlobalPtr (void *addr)
 	if (cq->sts == TO_SP_CHUNK)
 	    return;
 	else if (cq->sts == FROM_SP_CHUNK)
-	    SayDebug("CheckGlobalPtr: unexpected from-space pointer %p at %p\n",
-		ValueToPtr(v), addr);
+	    SayDebug("[%2d] CheckGlobalPtr: unexpected from-space pointer %p at %p\n",
+		self->id, ValueToPtr(v), addr);
 	else if (IS_VPROC_CHUNK(cq->sts)) {
 	    if (cq->sts != VPROC_CHUNK(self->id)) {
-		SayDebug("CheckGlobalPtr: bogus remote pointer %p at %p\n",
-		    ValueToPtr(v), addr);
+		SayDebug("[%2d] CheckGlobalPtr: bogus remote pointer %p at %p\n",
+		    self->id, ValueToPtr(v), addr);
 	    } 
 	    else if (cq->sts == VPROC_CHUNK(self->id)) {
-		SayDebug("CheckGlobalPtr: bogus local pointer %p at %p\n",
-		    ValueToPtr(v), addr);
+		SayDebug("[%2d] CheckGlobalPtr: bogus local pointer %p at %p\n",
+		    self->id, ValueToPtr(v), addr);
 	    }	      
 	    else if (! inAddrRange(VProcHeap(self), self->oldTop - VProcHeap(self), ValueToAddr(v))) {
-		SayDebug("CheckGlobalPtr: bogus local pointer %p at %p is out of bounds\n",
-		    ValueToPtr(v), addr);
+		SayDebug("[%2d] CheckGlobalPtr: bogus local pointer %p at %p is out of bounds\n",
+		    self->id, ValueToPtr(v), addr);
 	    }
 	}
 	else if (cq->sts == FREE_CHUNK) {
-	    SayDebug("CheckGlobalPtr: unexpected free-space pointer %p at %p\n",
-		ValueToPtr(v), addr);
+	    SayDebug("[%2d] CheckGlobalPtr: unexpected free-space pointer %p at %p\n",
+		self->id, ValueToPtr(v), addr);
 	}
     }
 }
+
 /* Check the invariant that the value pointed to by addr is a pointer living in either
  * the root set or the local heap. 
  * Precondition: this check should only occur just after a global collection.
@@ -445,21 +446,21 @@ static void CheckLocalPtr (VProc_t *self, void *addr, const char *where)
 	if (cq->sts == TO_SP_CHUNK)
 	    return;
 	else if (cq->sts == FROM_SP_CHUNK)
-	    SayDebug("** unexpected from-space pointer %p at %p in %s\n",
-		ValueToPtr(v), addr, where);
+	    SayDebug("[%2d] ** unexpected from-space pointer %p at %p in %s\n",
+		self->id, ValueToPtr(v), addr, where);
 	else if (IS_VPROC_CHUNK(cq->sts)) {
 	    if (cq->sts != VPROC_CHUNK(self->id)) {
-		SayDebug("** unexpected remote pointer %p at %p in %s\n",
-		    ValueToPtr(v), addr, where);
+		SayDebug("[%2d] ** unexpected remote pointer %p at %p in %s\n",
+		    self->id, ValueToPtr(v), addr, where);
 	    }
 	    else if (! inAddrRange(VProcHeap(self), self->oldTop - VProcHeap(self), ValueToAddr(v))) {
-		SayDebug("** local pointer %p at %p in %s is out of bounds\n",
-		    ValueToPtr(v), addr, where);
+		SayDebug("[%2d] ** local pointer %p at %p in %s is out of bounds\n",
+		    self->id, ValueToPtr(v), addr, where);
 	    }
 	}
 	else if (cq->sts == FREE_CHUNK) {
-	    SayDebug("** unexpected free-space pointer %p at %p in %s\n",
-		ValueToPtr(v), addr, where);
+	    SayDebug("[%2d] ** unexpected free-space pointer %p at %p in %s\n",
+		self->id, ValueToPtr(v), addr, where);
 	}
     }
 }
@@ -495,16 +496,16 @@ void CheckAfterGlobalGC (VProc_t *self, Value_t **roots)
 			    MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
 			    switch (cq->sts) {
 			      case FREE_CHUNK:
-				SayDebug(" ** possible free-space pointer %p in mixed object %p+%d\n",
-				    v, p, scanP-p);
+				SayDebug("[%2d] ** possible free-space pointer %p in mixed object %p+%d\n",
+				    self->id, v, p, scanP-p);
 				break;
 			      case TO_SP_CHUNK:
-				SayDebug(" ** possible to-space pointer %p in mixed object %p+%d\n",
-				    v, p, scanP-p);
+				SayDebug("[%2d] ** possible to-space pointer %p in mixed object %p+%d\n",
+				    self->id, v, p, scanP-p);
 				break;
 			      case FROM_SP_CHUNK:
-				SayDebug(" ** possible from-space pointer %p in mixed object %p+%d\n",
-				    v, p, scanP-p);
+				SayDebug("[%2d] ** possible from-space pointer %p in mixed object %p+%d\n",
+				    self->id, v, p, scanP-p);
 				break;
 			      case UNMAPPED_CHUNK:
 				break;
@@ -512,12 +513,12 @@ void CheckAfterGlobalGC (VProc_t *self, Value_t **roots)
 				if (IS_VPROC_CHUNK(cq->sts)) {
 				  /* the vproc pointer is pretty common, so filter it out */
 				    if ((Addr_t)v & ~VP_HEAP_MASK != (Addr_t)v)
-					SayDebug(" ** possible local pointer %p in mixed object %p+%d\n",
-					    v, p, scanP-p);
+					SayDebug("[%2d] ** possible local pointer %p in mixed object %p+%d\n",
+					    self->id, v, p, scanP-p);
 				}
 				else {
-				    SayDebug(" ** strange pointer %p in mixed object %p+%d\n",
-					v, p, scanP-p);
+				    SayDebug("[%2d] ** strange pointer %p in mixed object %p+%d\n",
+					self->id, v, p, scanP-p);
 				}
 				break;
 			    }
@@ -543,18 +544,18 @@ void CheckAfterGlobalGC (VProc_t *self, Value_t **roots)
 		    Value_t v = (Value_t)p[i];
 		    if (isPtr(v)) {
 		        if (isHeapPtr(v)) {
-			  MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
-			  if (cq->sts != TO_SP_CHUNK) {
-			     if (cq->sts == FROM_SP_CHUNK)
-			       SayDebug("** suspicious looking from-space pointer %p at %p[%d] in raw object of length %d (in local heap)\n",
-					ValueToPtr(v), p, i, len);
-			     else if (IS_VPROC_CHUNK(cq->sts))
-			       SayDebug("** suspicious looking local pointer %p at %p[%d] in raw object of length %d (in local heap)\n",
-					ValueToPtr(v), p, i, len);
-			     else if (cq->sts == FREE_CHUNK)
-			       SayDebug("** suspicious looking free pointer %p at %p[%d] in raw object of length %d (in local heap)\n",
-					ValueToPtr(v), p, i, len);
-			  }
+			    MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
+			    if (cq->sts != TO_SP_CHUNK) {
+				if (cq->sts == FROM_SP_CHUNK)
+				    SayDebug("[%2d] ** suspicious looking from-space pointer %p at %p[%d] in raw object of length %d (in local heap)\n",
+					self->id, ValueToPtr(v), p, i, len);
+				else if (IS_VPROC_CHUNK(cq->sts))
+				    SayDebug("[%2d] ** suspicious looking local pointer %p at %p[%d] in raw object of length %d (in local heap)\n",
+					self->id, ValueToPtr(v), p, i, len);
+				else if (cq->sts == FREE_CHUNK)
+				    SayDebug("[%2d] ** suspicious looking free pointer %p at %p[%d] in raw object of length %d (in local heap)\n",
+					self->id, ValueToPtr(v), p, i, len);
+			    }
 			} 
 		    }
 		}
@@ -582,14 +583,14 @@ void CheckAfterGlobalGC (VProc_t *self, Value_t **roots)
 			    MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
 			    if (cq->sts != TO_SP_CHUNK) {
 				if (cq->sts == FROM_SP_CHUNK)
-				    SayDebug("** unexpected from-space pointer %p at %p in mixed object\n",
-					ValueToPtr(v), p);
+				    SayDebug("[%2d] ** unexpected from-space pointer %p at %p in mixed object\n",
+					self->id, ValueToPtr(v), p);
 				else if (IS_VPROC_CHUNK(cq->sts))
-				    SayDebug("** unexpected local pointer %p at %p in mixed object\n",
-					ValueToPtr(v), p);
+				    SayDebug("[%2d] ** unexpected local pointer %p at %p in mixed object\n",
+					self->id, ValueToPtr(v), p);
 				else if (cq->sts == FREE_CHUNK)
-				    SayDebug("** unexpected free pointer %p at %p in mixed object\n",
-					ValueToPtr(v), p);
+				    SayDebug("[%2d] ** unexpected free pointer %p at %p in mixed object\n",
+					self->id, ValueToPtr(v), p);
 			    }
 			}
 		    }
@@ -600,16 +601,16 @@ void CheckAfterGlobalGC (VProc_t *self, Value_t **roots)
 			    MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
 			    switch (cq->sts) {
 			      case FREE_CHUNK:
-				SayDebug(" ** possible free-space pointer %p in mixed object %p+%d\n",
-				    v, p, scanP-p);
+				SayDebug("[%2d] ** possible free-space pointer %p in mixed object %p+%d\n",
+				    self->id, v, p, scanP-p);
 				break;
 			      case TO_SP_CHUNK:
-				SayDebug(" ** possible to-space pointer %p in mixed object %p+%d\n",
-				    v, p, scanP-p);
+				SayDebug("[%2d] ** possible to-space pointer %p in mixed object %p+%d\n",
+				    self->id, v, p, scanP-p);
 				break;
 			      case FROM_SP_CHUNK:
-				SayDebug(" ** possible from-space pointer %p in mixed object %p+%d\n",
-				    v, p, scanP-p);
+				SayDebug("[%2d] ** possible from-space pointer %p in mixed object %p+%d\n",
+				    self->id, v, p, scanP-p);
 				break;
 			      case UNMAPPED_CHUNK:
 				break;
@@ -617,12 +618,12 @@ void CheckAfterGlobalGC (VProc_t *self, Value_t **roots)
 				if (IS_VPROC_CHUNK(cq->sts)) {
 				  /* the vproc pointer is pretty common, so filter it out */
 				    if ((Addr_t)v & ~VP_HEAP_MASK != (Addr_t)v)
-					SayDebug(" ** possible local pointer %p in mixed object %p+%d\n",
-					    v, p, scanP-p);
+					SayDebug("[%2d] ** possible local pointer %p in mixed object %p+%d\n",
+					    self->id, v, p, scanP-p);
 				}
 				else {
-				    SayDebug(" ** strange pointer %p in mixed object %p+%d\n",
-					v, p, scanP-p);
+				    SayDebug("[%2d] ** strange pointer %p in mixed object %p+%d\n",
+					self->id, v, p, scanP-p);
 				}
 				break;
 			    }
@@ -642,14 +643,14 @@ void CheckAfterGlobalGC (VProc_t *self, Value_t **roots)
 			MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
 			if (cq->sts != TO_SP_CHUNK) {
 			    if (cq->sts == FROM_SP_CHUNK)
-				SayDebug("** unexpected from-space pointer %p at %p in vector\n",
-				    ValueToPtr(v), p);
+				SayDebug("[%2d] ** unexpected from-space pointer %p at %p in vector\n",
+				    self->id, ValueToPtr(v), p);
 			    else if (IS_VPROC_CHUNK(cq->sts))
-				SayDebug("** unexpected local pointer %p at %p in vector\n",
-				    ValueToPtr(v), p);
+				SayDebug("[%2d] ** unexpected local pointer %p at %p in vector\n",
+				    self->id, ValueToPtr(v), p);
 			    else if (cq->sts == FREE_CHUNK)
-				SayDebug("** unexpected free pointer %p at %p in vector\n",
-				    ValueToPtr(v), p);
+				SayDebug("[%2d] ** unexpected free pointer %p at %p in vector\n",
+				    self->id, ValueToPtr(v), p);
 			}
 		    }
 		}
@@ -662,18 +663,18 @@ void CheckAfterGlobalGC (VProc_t *self, Value_t **roots)
 		    Value_t v = (Value_t)p[i];
 		    if (isPtr(v)) {
 		        if (isHeapPtr(v)) {
-			  MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
-			  if (cq->sts != TO_SP_CHUNK) {
-			     if (cq->sts == FROM_SP_CHUNK)
-			       SayDebug("** suspicious looking from-space pointer %p at %p[%d] in raw object of length %d\n",
-					ValueToPtr(v), p, i, len);
-			     else if (IS_VPROC_CHUNK(cq->sts))
-			       SayDebug("** suspicious looking local pointer %p at %p[%d] in raw object of length %d\n",
-					ValueToPtr(v), p, i, len);
-			     else if (cq->sts == FREE_CHUNK)
-			       SayDebug("** suspicious looking free pointer %p at %p[%d] in raw object of length %d\n",
-					ValueToPtr(v), p, i, len);
-			  }
+			    MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
+			    if (cq->sts != TO_SP_CHUNK) {
+				if (cq->sts == FROM_SP_CHUNK)
+				   SayDebug("[%2d] ** suspicious looking from-space pointer %p at %p[%d] in raw object of length %d\n",
+					self->id, ValueToPtr(v), p, i, len);
+			       else if (IS_VPROC_CHUNK(cq->sts))
+				   SayDebug("[%2d] ** suspicious looking local pointer %p at %p[%d] in raw object of length %d\n",
+					self->id, ValueToPtr(v), p, i, len);
+			       else if (cq->sts == FREE_CHUNK)
+				   SayDebug("[%2d] ** suspicious looking free pointer %p at %p[%d] in raw object of length %d\n",
+					self->id, ValueToPtr(v), p, i, len);
+			    }
 			} 
 		    }
 		}
