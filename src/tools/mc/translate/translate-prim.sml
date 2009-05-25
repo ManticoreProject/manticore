@@ -169,55 +169,6 @@ structure TranslatePrim : sig
 	  (* end case *))
       | cvtPat (BPT.P_Const(const, ty)) = (BOM.P_Const(const, cvtTy ty))
 
-    (* PML imports
-     *
-     * One property prevents us from simply importing the variable directly: hlops
-     * expansion happens later, so getting the scope right would be difficult. Instead
-     * we do something like closure conversion. i.e.,
-     *
-     *   define @f (params, ... / exh) : ty =
-     *     stm1
-     *     let x : ty' = pmlval p
-     *     stm2
-     *   ;
-     *
-     * ==> (rewrites to)
-     *
-     *   define @f (params, ..., p' : ty' / exh) : ty =
-     *     stm1
-     *     stm2
-     *   ;
-     * where p' is a fresh BOM variable. We must also pass the PML value at the call 
-     * sites. This strategy unfortunately precludes rewrite rules for the HLOp.
-     *
-     *)
-    local
-	(* for each import, we record two variables: the fresh binding (p' in the example)
-	 * and the actual binding (p in the example).
-	 *)
-	val pmlImports : (BOM.var * BOM.var) list ref = ref []
-	fun findVar ([], v) = NONE
-	  | findVar ((b, a) :: xs, v) = if BV.same(a, v)
-              then SOME b
-	      else findVar(xs, v)
-    in
-    fun addPMLImport actual = (case findVar (!pmlImports, actual)
-            of NONE => let
-		   val binding = BV.new(BV.nameOf actual, BV.typeOf actual)
-                   in
-		      pmlImports := (binding, actual) :: !pmlImports;
-		      binding
-	           end
-	     | SOME binding => binding
-           (* end case *))
-    fun getPMLImports () = let
-	    val imports = !pmlImports
-            in
-	       pmlImports := [];
-	       imports
-	    end
-    end
-
     fun cvtExp (findCFun, e) = (case e
 	   of BPT.E_Mark {tree, span} => cvtExp(findCFun, tree)
 	    | BPT.E_Let(lhs, BPT.RHS_Mark{tree, span}, e'') => 
@@ -294,8 +245,7 @@ structure TranslatePrim : sig
 		    | BPT.RHS_Update(i, arg, rhs) => 
 		      cvtSimpleExp(findCFun, arg, fn x =>
 			cvtSimpleExp(findCFun, rhs, fn y =>
-		          if not(Controls.get BasicControl.debug)
-			     then 
+		          if not(Controls.get BasicControl.debug) then 
 			      BOM.mkStmt(lhs', BOM.E_Update(i, x, y), body')
 			  else
 			      BOM.mkStmts([([], BOM.E_CCall(findCFun(BasisEnv.getCFunFromBasis ["CheckGlobalPtr"]), [x])),
@@ -607,7 +557,7 @@ structure TranslatePrim : sig
 	      | BPT.LambdaPrimVal fb => raise Fail "todo"
 	      | BPT.HLOpPrimVal hlop => (
 		  case E.findBOMHLOpDef hlop
-		   of SOME{name, path, inline, def as BOM.FB{f, ...}, externs, pmlImports} => let
+		   of SOME{name, path, inline, def as BOM.FB{f, ...}, externs} => let
 		      (* to synthesize polymorphism for the return type, we eta expand and cast to the instantiated type. *)
 			fun mkFB instTy = let
 			    val BOMTy.T_Fun(paramTys, exhTys, [retTy]) = BOM.Var.typeOf f
@@ -712,7 +662,6 @@ structure TranslatePrim : sig
 		   path = BindingEnv.getHLOpPath hlopId,
 		   inline = inline,
 		   def = lambda,
-		   pmlImports = getPMLImports(),
 		   externs = VTbl.listItemsi cfuns
 	        }
 	    in
@@ -732,7 +681,6 @@ structure TranslatePrim : sig
 		path = BindingEnv.getHLOpPath hlopId,
 		inline = inline,
 		def = BOM.mkLambda{f=f, params=[param], exh=[exh], body=body},
-		pmlImports = [],
 		externs = []
 	      }
 	  in
