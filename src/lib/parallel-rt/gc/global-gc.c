@@ -402,29 +402,33 @@ static void ScanGlobalToSpace (VProc_t *vp)
 #ifndef NDEBUG
 /* Check that the given address points to an object in the global heap.
  */
-void CheckGlobalPtr (void *addr)
+void CheckGlobalPtr (VProc_t *self, void *addr, char *where)
 {
-    VProc_t *self = VProcSelf();
-    Value_t v = (Value_t *)addr;
+    assert(VProcSelf() == self);
+    Value_t v = (Value_t)addr;
     if (isHeapPtr(v)) {
 	MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
 	if (cq->sts == TO_SP_CHUNK)
 	    return;
 	else if (cq->sts == FROM_SP_CHUNK)
-	    SayDebug("[%2d] CheckGlobalPtr: unexpected from-space pointer %p at %p\n",
-		self->id, ValueToPtr(v), addr);
+	    SayDebug("[%2d] CheckGlobalPtr: unexpected from-space pointer %p in %s\n",
+		     self->id, ValueToPtr(v), where);
 	else if (IS_VPROC_CHUNK(cq->sts)) {
-	    if (cq->sts != VPROC_CHUNK(self->id)) {
-		SayDebug("[%2d] CheckGlobalPtr: bogus remote pointer %p at %p\n",
-		    self->id, ValueToPtr(v), addr);
+	    if (inAddrRange(ValueToAddr(v) & ~VP_HEAP_MASK, sizeof(VProc_t), ValueToAddr(v))) {
+	      /* IMPORTANT: we make an exception for objects stored in the vproc structure */
+	        return;
+	    }
+	    else if (cq->sts != VPROC_CHUNK(self->id)) {
+		SayDebug("[%2d] CheckGlobalPtr: bogus remote pointer %p in %s\n",
+			 self->id, ValueToPtr(v), where, sizeof(VProc_t));
 	    } 
 	    else if (cq->sts == VPROC_CHUNK(self->id)) {
-		SayDebug("[%2d] CheckGlobalPtr: bogus local pointer %p at %p\n",
-		    self->id, ValueToPtr(v), addr);
+		   SayDebug("[%2d] CheckGlobalPtr: bogus local pointer %p in %s\n",
+			    self->id, ValueToPtr(v), where);
 	    }	      
 	    else if (! inAddrRange(VProcHeap(self), self->oldTop - VProcHeap(self), ValueToAddr(v))) {
-		SayDebug("[%2d] CheckGlobalPtr: bogus local pointer %p at %p is out of bounds\n",
-		    self->id, ValueToPtr(v), addr);
+		SayDebug("[%2d] CheckGlobalPtr: bogus local pointer %p is out of bounds in %s\n",
+			 self->id, ValueToPtr(v), where);
 	    }
 	}
 	else if (cq->sts == FREE_CHUNK) {

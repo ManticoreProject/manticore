@@ -74,7 +74,7 @@ struct struct_vproc {
 #ifndef ENABLE_LOGGING	      /* GC counters for logging info */
 
 #endif
-    
+
 };
 
 typedef enum {

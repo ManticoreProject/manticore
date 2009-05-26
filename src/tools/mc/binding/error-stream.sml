@@ -8,6 +8,7 @@ structure ErrorStream =
     val errStrm = ref(Error.mkErrStream "<bogus>")
 
     fun setErrStrm es = errStrm := es
+    fun getErrStrm () = !errStrm
 
     fun error (span, msg) = Error.errorAt (!errStrm, span, msg)
 

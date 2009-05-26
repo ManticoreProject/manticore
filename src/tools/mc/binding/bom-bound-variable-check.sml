@@ -51,11 +51,11 @@ structure BOMBoundVariableCheck :> sig
     val findBOMTyQid = findQid (QualifiedId.findBOMTy, "BOM type", dummyVar)
     val findBOMHLOpQid = findQid (QualifiedId.findBOMHLOp, "HLOp", dummyVar)
 
-  fun findDCon (env, qid) = (
-        case QualifiedId.findVal(env, qid)
-	 of SOME(BEnv.Con con) => SOME con   (* data constructor (defined in PML) *)
-	  | _ => NONE
-        (* end case *))
+    fun findDCon (env, qid) = (
+	  case QualifiedId.findVal(env, qid)
+	   of SOME(BEnv.Con con) => SOME con   (* data constructor (defined in PML) *)
+	    | _ => NONE
+	  (* end case *))
 
     fun freshVar v = Var.new(Atom.toString v, ())
 
@@ -351,6 +351,7 @@ structure BOMBoundVariableCheck :> sig
 		   val v' = freshVar v
 		   val env = BEnv.insertBOMHLOp(env, v, v')
 	           in
+		       Var.setErrorStream(v', SOME (ErrorStream.getErrStrm()));
 		       (PT2.D_Define(inline, v', params', exns', returnTys', exp'), env)
 		   end
 	     | PT1.D_ImportML(inline, hlopId, pmlId) => let

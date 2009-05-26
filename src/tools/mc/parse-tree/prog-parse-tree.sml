@@ -27,14 +27,22 @@ structure ProgramParseTree =
 	type mod_use = qid
 	type sig_id = Atom.atom)
 
-    structure Var = VarFn (
-      struct
-	type kind = unit
-	type ty = unit
-	val defaultKind = ()
-	fun kindToString _ = ""
-	fun tyToString _ = ""
-      end)
+    structure Var = struct
+      local
+	  structure V = VarFn (
+            struct
+	      type kind = unit
+	      type ty = unit
+	      val defaultKind = ()
+	      fun kindToString _ = ""
+	      fun tyToString _ = ""
+	    end)
+      in
+      open V
+      val {getFn = getErrorStream  : var -> Error.err_stream option, setFn = setErrorStream, ...} = newProp (fn _ => NONE)
+      end
+    end
+
     type var = Var.var
 
   (* PML parse tree with variables represented as flat names *)
