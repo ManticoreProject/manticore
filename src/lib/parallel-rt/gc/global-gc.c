@@ -407,9 +407,33 @@ static void ScanGlobalToSpace (VProc_t *vp)
 }
 
 #ifndef NDEBUG
-/* Check that the given address points to an object in the global heap.
+void CheckGlobalAddr (VProc_t *self, void *addr, char *where);
+/* Check that the given address points *to* an object in the global heap.
  */
 void CheckGlobalPtr (VProc_t *self, void *addr, char *where)
+{
+  if (isHeapPtr(PtrToValue(addr))) {
+	Word_t *ptr = (Word_t*)addr;
+	Word_t hdr = ptr[-1];
+	if (isMixedHdr(hdr) || isVectorHdr(hdr)) {
+	  // the header word is valid
+	}
+	else if (isRawHdr(hdr)) {
+	    SayDebug("[%2d] CheckGlobalPtr: unexpected raw header for %p in %s \n",
+		     self->id, addr, where);
+	}
+	else {
+	    SayDebug("[%2d] CheckGlobalPtr: unexpected bogus header for %p in %s \n",
+		     self->id, addr, where);
+	}
+    }
+    CheckGlobalAddr (self, addr, where);
+}
+
+/* Check that the given address points *into* an object in the global heap. That is,
+ * addr might point into the middle of a heap object.
+ */
+void CheckGlobalAddr (VProc_t *self, void *addr, char *where)
 {
     assert(VProcSelf() == self);
     Value_t v = (Value_t)addr;
@@ -420,7 +444,7 @@ void CheckGlobalPtr (VProc_t *self, void *addr, char *where)
 	else if (cq->sts == FROM_SP_CHUNK) {
 	  if (!GlobalGCInProgress) {
 	    /* it is safe to point to from-space pages just before performing a global gc */
-	      SayDebug("[%2d] CheckGlobalPtr: unexpected from-space pointer %p in %s\n",
+	      SayDebug("[%2d] CheckGlobalAddr: unexpected from-space pointer %p in %s\n",
 		       self->id, ValueToPtr(v), where);
 	  }
 	}
@@ -430,24 +454,25 @@ void CheckGlobalPtr (VProc_t *self, void *addr, char *where)
 	        return;
 	    }
 	    else if (cq->sts != VPROC_CHUNK(self->id)) {
-		SayDebug("[%2d] CheckGlobalPtr: bogus remote pointer %p in %s\n",
+		SayDebug("[%2d] CheckGlobalAddr: bogus remote pointer %p in %s\n",
 			 self->id, ValueToPtr(v), where);
 	    } 
 	    else if (cq->sts == VPROC_CHUNK(self->id)) {
-		   SayDebug("[%2d] CheckGlobalPtr: bogus local pointer %p in %s\n",
+		   SayDebug("[%2d] CheckGlobalAddr: bogus local pointer %p in %s\n",
 			    self->id, ValueToPtr(v), where);
 	    }	      
 	    else if (! inAddrRange(VProcHeap(self), self->oldTop - VProcHeap(self), ValueToAddr(v))) {
-		SayDebug("[%2d] CheckGlobalPtr: bogus local pointer %p is out of bounds in %s\n",
+		SayDebug("[%2d] CheckGlobalAddr: bogus local pointer %p is out of bounds in %s\n",
 			 self->id, ValueToPtr(v), where);
 	    }
 	}
 	else if (cq->sts == FREE_CHUNK) {
-	    SayDebug("[%2d] CheckGlobalPtr: unexpected free-space pointer %p at %p from %s\n",
+	    SayDebug("[%2d] CheckGlobalAddr: unexpected free-space pointer %p at %p from %s\n",
 		     self->id, ValueToPtr(v), addr, where);
 	}
     }
 }
+
 
 /* Check the invariant that the value pointed to by addr is a pointer living in either
  * the root set or the local heap. 

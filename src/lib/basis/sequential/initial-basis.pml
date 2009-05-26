@@ -219,6 +219,7 @@ _primcode (
 
 #ifndef NDEBUG
   extern void CheckGlobalPtr (void*, void*, void*);
+  extern void CheckGlobalAddr (void*, void*, void*);
 #endif
 
 #ifndef SEQUENTIAL

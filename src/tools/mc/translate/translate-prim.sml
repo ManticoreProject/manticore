@@ -171,14 +171,17 @@ structure TranslatePrim : sig
 	(* end case *))
 
   (* generate a dynamic check that the given variable is a valid pointer to the global heap *)
-    fun checkGlobalPtr (loc, v) =
+  (* the argument pointsToHeapObject must be false whenever the pointer might point into the middle
+   * of a heap object. *)
+    fun checkGlobalPtr (loc, v, pointsToHeapObject) =
 	let val self = newTmp BTy.T_VProc
 	    val t = newTmp BTy.T_Any
 	    val locS = Error.locToString(Error.location(!errStrm, loc))
+	    val checkCFun = if pointsToHeapObject then "CheckGlobalPtr" else "CheckGlobalAddr"
 	in
 	    [([self], BOM.E_HostVProc),
 	     ([t], BOM.E_Const(Literal.String (locS ^ " at " ^ BOM.Var.toString v), BTy.T_Any)),
-	     ([], BOM.E_CCall(findCFun(BasisEnv.getCFunFromBasis ["CheckGlobalPtr"]), [self, v, t]))]
+	     ([], BOM.E_CCall(findCFun(BasisEnv.getCFunFromBasis [checkCFun]), [self, v, t]))]
 	end
 
     fun cvtPrim (loc, lhs, p, xs, body) = 
@@ -187,9 +190,15 @@ structure TranslatePrim : sig
 	else
 	    (case mkPrim(p, xs)
 	      of prim as BOM.E_Prim(Prim.CAS(x, new, old)) =>
-		 BOM.mkStmts (checkGlobalPtr(loc, x) @
-			      checkGlobalPtr(loc, new) @
-			      checkGlobalPtr(loc, old) @
+		 BOM.mkStmts (checkGlobalPtr(loc, x, false) @
+			      checkGlobalPtr(loc, new, false) @
+			      checkGlobalPtr(loc, old, false) @
+		              [(lhs, prim)],
+			      body)
+	       | prim as BOM.E_Prim(Prim.BCAS(x, new, old)) =>
+		 BOM.mkStmts (checkGlobalPtr(loc, x, false) @
+			      checkGlobalPtr(loc, new, false) @
+			      checkGlobalPtr(loc, old, false) @
 		              [(lhs, prim)],
 			      body)
 	       | prim => BOM.mkStmts ([(lhs, mkPrim(p, xs))], body)
@@ -297,8 +306,8 @@ structure TranslatePrim : sig
 			    if not(Controls.get BasicControl.debug) then 
 				BOM.mkStmt(lhs', BOM.E_Update(i, x, y), body')
 			    else
-				BOM.mkStmts(checkGlobalPtr(loc, x) @
-					    checkGlobalPtr(loc, y) @
+				BOM.mkStmts(checkGlobalPtr(loc, x, true) @
+					    checkGlobalPtr(loc, y, false) @
 					    [(lhs', BOM.E_Update(i, x, y))],
 					    body')))
 		      | BPT.RHS_VPStore(offset, vp, arg) =>
