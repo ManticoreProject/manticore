@@ -410,9 +410,13 @@ void CheckGlobalPtr (VProc_t *self, void *addr, char *where)
 	MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
 	if (cq->sts == TO_SP_CHUNK)
 	    return;
-	else if (cq->sts == FROM_SP_CHUNK)
-	    SayDebug("[%2d] CheckGlobalPtr: unexpected from-space pointer %p in %s\n",
-		     self->id, ValueToPtr(v), where);
+	else if (cq->sts == FROM_SP_CHUNK) {
+	  if (!GlobalGCInProgress) {
+	    /* it is safe to point to from-space pages just before performing a global gc */
+	      SayDebug("[%2d] CheckGlobalPtr: unexpected from-space pointer %p in %s\n",
+		       self->id, ValueToPtr(v), where);
+	  }
+	}
 	else if (IS_VPROC_CHUNK(cq->sts)) {
 	    if (inAddrRange(ValueToAddr(v) & ~VP_HEAP_MASK, sizeof(VProc_t), ValueToAddr(v))) {
 	      /* IMPORTANT: we make an exception for objects stored in the vproc structure */
