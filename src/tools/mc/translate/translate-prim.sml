@@ -226,8 +226,8 @@ structure TranslatePrim : sig
 		end
 	  (* end case *))
 
-    fun cvtPat (BPT.P_PMark {tree, span}) = cvtPat tree
-      | cvtPat (BPT.P_DCon(dc, xs)) = (case findCon dc
+    fun cvtPat (loc, BPT.P_PMark {tree, span}) = cvtPat (span, tree)
+      | cvtPat (loc, BPT.P_DCon(dc, xs)) = (case findCon dc
 	   of SOME(E.Const dc) => BOM.P_DCon(dc, []) (* nullary constructor *)
 	    | SOME(E.DCon(dc, _)) => let (* non-nullary constructor *)
 		val xs = cvtVarPats xs
@@ -238,15 +238,15 @@ structure TranslatePrim : sig
 	    | SOME(E.Lit lit) => BOM.P_Const lit
 	    | NONE => raise Fail(String.concat["unknown BOM nullary data constructor ", PTVar.nameOf dc])
 	  (* end case *))
-      | cvtPat (BPT.P_Const(const, ty)) = (BOM.P_Const(const, cvtTy ty))
+      | cvtPat (loc, BPT.P_Const(const, ty)) = (BOM.P_Const(const, cvtTy ty))
 
     fun cvtExp (loc, findCFun, e) = let
 	  fun cvt (loc, e) = (case e
-	     of BPT.E_Mark {tree, span} => cvt(loc, tree)
+	     of BPT.E_Mark {tree, span} => cvt(span, tree)
 	      | BPT.E_Let(lhs, BPT.RHS_Mark{tree, span}, e'') => 
 		  cvt(loc, BPT.E_Let(lhs, tree, e''))
 	      | BPT.E_Let(lhs, BPT.RHS_SimpleExp (BPT.SE_Mark{tree, span}), e') => 
-		  cvt(loc, BPT.E_Let(lhs, BPT.RHS_SimpleExp tree, e'))
+		  cvt(span, BPT.E_Let(lhs, BPT.RHS_SimpleExp tree, e'))
 	      | BPT.E_Let(lhs, rhs, body) => let
 		  val lhs' = cvtVarPats lhs
 		  val body' = cvt(loc, body)
@@ -346,7 +346,7 @@ structure TranslatePrim : sig
 		  cvtSimpleExp(loc, findCFun, e1, fn x => BOM.mkIf(x, cvt(loc, e2), cvt(loc, e3)))
 	      | BPT.E_Case(arg, cases, dflt) => let
 		  fun doCase (pat, exp) = let
-			val (pat') = cvtPat(pat)
+			val (pat') = cvtPat(loc, pat)
 			in
 			  (pat', cvt(loc, exp))
 			end		
@@ -399,7 +399,7 @@ structure TranslatePrim : sig
 
     and cvtSimpleExp (loc, findCFun, e, k : BOM.var -> BOM.exp) = let
 	  fun cvt (loc, e, k) = (case e
-	     of BPT.SE_Mark {tree, span} => cvt(loc, tree, k)
+	     of BPT.SE_Mark {tree, span} => cvt(span, tree, k)
 	      | BPT.SE_Var x => cvtVar(x, k)
 	      | BPT.SE_Alloc args => 
 		(* NOTE: nested tuples are always immutable *)
@@ -688,9 +688,9 @@ structure TranslatePrim : sig
 	  end
 
   (* this is the second pass, which converts actual HLOp definitions to BOM lambdas *)
-    fun cvtDefs importEnv [] = []
-      | cvtDefs importEnv (BPT.D_Mark {span, tree}::defs) = cvtDefs importEnv (tree::defs)
-      | cvtDefs importEnv (BPT.D_Define(inline, hlopId, params, exh, retTy, SOME e)::defs) = let
+    fun cvtDefs loc importEnv [] = []
+      | cvtDefs loc importEnv (BPT.D_Mark {span, tree}::defs) = cvtDefs span importEnv (tree::defs)
+      | cvtDefs loc importEnv (BPT.D_Define(inline, hlopId, params, exh, retTy, SOME e)::defs) = let
 	    val _ = (case PTVar.getErrorStream hlopId
 		      of NONE => ()
 		       | SOME strm => errStrm := strm)
@@ -707,7 +707,7 @@ structure TranslatePrim : sig
 		      (* end case *);
 		      var
                     end
-	    val doBody = cvtLambda ((0,0), findCFun', (hlopId, params, exh, retTy, e), BTy.T_Fun)
+	    val doBody = cvtLambda (loc, findCFun', (hlopId, params, exh, retTy, e), BTy.T_Fun)
 	    val lambda = doBody ()
 	    val def = {
 		   name = hlop,
@@ -717,12 +717,12 @@ structure TranslatePrim : sig
 		   externs = VTbl.listItemsi cfuns
 	        }
 	    val _ = E.insertBOMHLOpDef(hlopId, def)
-	    val defs = def :: cvtDefs importEnv defs
+	    val defs = def :: cvtDefs loc importEnv defs
 	    in
 	       checkForErrors(!errStrm);
 	       defs
 	    end
-      | cvtDefs importEnv (BPT.D_ImportML(inline, hlopId, pmlId)::defs) = let
+      | cvtDefs loc importEnv (BPT.D_ImportML(inline, hlopId, pmlId)::defs) = let
 	  val hlop = Option.valOf(E.findBOMHLOp hlopId)
 	  val bomVar = lookupPMLId pmlId
 	  val fTy as BTy.T_Fun([paramTy], [exhTy], [retTy]) = BV.typeOf bomVar
@@ -739,14 +739,14 @@ structure TranslatePrim : sig
 	      }
 	  in
 	    E.insertBOMHLOpDef(hlopId, def);
-	    def :: cvtDefs importEnv defs
+	    def :: cvtDefs loc importEnv defs
 	  end
-      | cvtDefs importEnv (_::defs) = cvtDefs importEnv defs
+      | cvtDefs loc importEnv (_::defs) = cvtDefs loc importEnv defs
 
     fun cvtCode (env, code) = withTranslateEnv env (fn () => let
 	    val importEnv = E.getImportEnv env
 	    val _ = List.app (insDef importEnv) code
-	    val defs = cvtDefs importEnv code
+	    val defs = cvtDefs (0,0) importEnv code
 	    in
 	       HLOpEnv.addDefs defs;
 	       List.map #def (List.filter (not o #inline) defs)
