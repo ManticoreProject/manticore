@@ -23,7 +23,7 @@ $(TARGET)-mc1:	primes1.pml
 $(TARGET)-mc2:	primes2.pml
 	$(PMLC) $(PMLCFLAGS) -o $(TARGET)-mc2 primes2.pml
 
-.PHONY clean
+.PHONY: clean
 clean:
 	rm -f $(TARGET)-smlnj $(TARGET)-mc1 $(TARGET)-mc2
 
