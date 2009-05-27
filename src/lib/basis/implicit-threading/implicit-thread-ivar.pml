@@ -25,13 +25,9 @@ structure ImplicitThreadIVar =
 	         int             (* spin lock *)
 	        ];
 
-    (* create an ivar. 
-     * NOTE: we postpone promoting the ivar until the "put" operation. this strategy has strong 
-     * synergy with the software-polling version of work stealing. for this implementation, we can
-     * avoid promoting the ivar in the common case, and pay for the promotion only when a steal occurs.
-     *)
       define @ivar (v : any / exh : exh) : ivar =
 	let x : ivar = alloc (nil, v, 0)
+        let x : ivar = promote(x)
 	return (x)
       ;
 
@@ -40,14 +36,6 @@ structure ImplicitThreadIVar =
       ;
 
       define @get (ivar : ivar / exh : exh) : any =
-(*
-FIXME: add "isPromoted" primop to the compiler.
-NOTE: supposing we have inLocalHeap, 
-        if Not(isPromoted(ivar))
-	   then return(SELECT(VALUE_OFF, ivar))
-	else 
-*)
-        let ivar : ivar = promote(ivar)
         let vp : vproc = SchedulerAction.@atomic-begin()
 	let readFlag : int = I32FetchAndAdd(&SPIN_LOCK_OFF(ivar), 1)
 	let value : any = SELECT(VALUE_OFF, ivar)
@@ -75,11 +63,10 @@ NOTE: supposing we have inLocalHeap,
       ;
 
       define @put (ivar : ivar, x : any / exh : exh) : () = 
-        let ivar : ivar = promote(ivar)
 	let x : any = promote((any)x)
         let vp : vproc = SchedulerAction.@atomic-begin()
 	let oldValue : any = CAS (&VALUE_OFF(ivar), EMPTY_VAL, x)
-      (* wait for blocking fibers *)
+      (* wait for fibers that are trying to block on the ivar *)
 	let blocked : List.list = 
 	   if Equal(oldValue, EMPTY_VAL)
 	      then
