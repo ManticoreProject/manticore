@@ -144,13 +144,13 @@ STATIC_INLINE bool BarrierWait (Barrier_t *b)
 {
     bool	result = false;
     MutexLock (&(b->lock));
-	if (++(b->nWaiting) < b->nProcs)
-	    CondWait (&(b->wait), &(b->lock));
-	else {
-	    b->nWaiting = 0;  // reset state
+	if (++(b->nWaiting) == b->nProcs) {
 	    CondBroadcast (&(b->wait));
 	    result = true;
 	}
+	else
+	    while (b->nWaiting < b->nProcs)
+		CondWait (&(b->wait), &(b->lock));
     MutexUnlock (&(b->lock));
 
     return result;
