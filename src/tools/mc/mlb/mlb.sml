@@ -138,7 +138,8 @@ structure MLB : sig
 		"." ::
 		LoadPaths.basisCPPDefDir ::
 		includes
-	  val predefs = List.map RunCPP.mkDef ([
+	  val predefs = "-w" ::
+              List.map RunCPP.mkDef ([
 		("PML_PATH", SOME (OS.FileSys.fullPath dir^"/"^name)),
 		("PML_FILE", SOME name)
 	      ] @ List.map parseCPPPredef predefs @ defines())
