@@ -246,22 +246,25 @@ structure CheckCFG : sig
 			chkVar (env, z, "Update");
 			case V.typeOf y
 			 of Ty.T_Tuple(true, tys) => 
-			      if (i < List.length tys) andalso TyU.equal (V.typeOf z, List.nth (tys, i))
+			      if (i < List.length tys)
+			      andalso TyU.equal (V.typeOf z, List.nth (tys, i))
 				then ()
 				else err ()
 			  | ty => err ()
 			(* end case *);
 			env
                       end
-                  | CFG.E_AddrOf (x, i, y) => let
+                  | CFG.E_AddrOf(x, i, y) => let
                       fun err () = error [
                              "type mismatch in AddrOf: ", v2s' x, " = ",
                              "&(", v2s' y, ")\n"]
                       in
 			chkVar (env, y, "AddrOf");
 			case V.typeOf y
-			 of Ty.T_Tuple(_, tys) =>
-			      if (i < List.length tys) andalso TyU.match (Ty.T_Addr(List.nth (tys, i)), V.typeOf x)
+			 of Ty.T_Tuple(isMut, tys) =>
+			      if (i < List.length tys)
+			      andalso TyU.match (Ty.T_Addr(List.nth (tys, i)), V.typeOf x)
+			      andalso isMut
 				then ()
 				else err ()
 			  | Ty.T_VProc => 
@@ -274,7 +277,23 @@ structure CheckCFG : sig
                   | CFG.E_Alloc(x, ty, ys) => (
 		      chkVars (env, ys, "Alloc");
 		      case ty
-		       of Ty.T_Tuple(isMut, tys) =>
+		       of Ty.T_Tuple(isMut, tys) => (case V.typeOf x
+			     of Ty.T_Tuple(isMut', tys') =>
+				  if (isMut <> isMut')
+				  orelse (List.length tys <> List.length tys')
+				  orelse (List.length tys <> List.length ys)
+				    then error[
+					"type mismatch in Alloc: ", v2s' x, " = ",
+					if isMut then "alloc !(" else "alloc (",
+					vl2s' ys, ")\n"
+				      ]
+				    else ()
+			      | _ => error[
+				    "type mismatch in Alloc: ", v2s x, " = ",
+				    if isMut then "alloc !(" else "alloc (",
+				    vl2s' ys, ")\n"
+				  ]
+			    (* end case *))
 (* FIXME: this check fails too often.
 			    if (TyU.match (ty, V.typeOf x))
 			      then ()
@@ -282,7 +301,7 @@ structure CheckCFG : sig
 				 "type mismatch in Alloc: ", v2s x, " = ",
 				 if isMut then "alloc !(" else "alloc (", vl2s' ys, ")\n"
 				]
-*)()
+*)
 			| _ => error[
 			      "type of allocation is ", CFGTyUtil.toString ty, " in ",
 			      v2s' x, " = ", "alloc(", vl2s' ys, ")\n"
@@ -316,7 +335,9 @@ structure CheckCFG : sig
 			  else err ();
 			addVar (env, x)
                       end
-                  | CFG.E_Prim0 p => (chkVars (env, PrimUtil.varsOf p, PrimUtil.nameOf p); env)
+                  | CFG.E_Prim0 p => (
+		      chkVars (env, PrimUtil.varsOf p, PrimUtil.nameOf p);
+		      env)
                   | CFG.E_Prim (x, p) => (
                       chkVars (env, PrimUtil.varsOf p, PrimUtil.nameOf p);
                       addVar (env, x))
