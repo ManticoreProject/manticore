@@ -79,8 +79,8 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     Word_t	*globScan = (Word_t *)(vp->globNextW - WORD_SZB);
     MemChunk_t	*scanChunk = vp->globToSpTl;
 
-    assert (oldBase < vp->oldTop);
-    assert (vp->oldTop < top);
+    assert (oldBase <= vp->oldTop);
+    assert (vp->oldTop <= top);
 
     LogMajorGCStart (vp);
 
