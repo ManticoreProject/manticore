@@ -60,7 +60,7 @@ Location_t GetLocation ()
 }
 
 /*! \brief determine the number of CPUs */
-static int GetNumCPUs ()
+static bool GetNumCPUs ()
 {
 #if defined(HAVE__PROC_CPUINFO)
   /* Get the number of hardware processors on systems that have /proc/cpuinfo */
@@ -74,23 +74,49 @@ static int GetNumCPUs ()
 		n++;
 	}
 	fclose (cpuinfo);
-	return n;
+	NumCPUs = n;
+	return true;
     }
     else {
 	Warning("unable to determine the number of processors\n");
-	return 0;
+	return false;
     }
 #elif defined(TARGET_DARWIN)
-    int		numCPUs;
     size_t	len = sizeof(int);
-    if (sysctlbyname("hw.activecpu", &numCPUs, &len, 0, 0) < 0) {
-	Warning("unable to determine the number of processors\n");
-	return 0;
+
+  /* the number of nodes */
+    if (sysctlbyname("hw.packages", &NumHWNodes, &len, 0, 0) < 0) {
+	if (errno == ENOENT) {
+	  // "hw.packages" is not known
+	    NumHWNodes = 1;
+	}
+	else {
+	    Warning("unable to determine the number of nodes\n");
+	    return false;
+	}
     }
-    else
-	return numCPUs;
+
+  /* the number of cores */
+    if (sysctlbyname("hw.physicalcpu", &NumHWCores, &len, 0, 0) < 0) {
+	Warning("unable to determine the number of physical CPUs\n");
+	return false;
+    }
+
+  /* the number of hardware threads */
+    if (sysctlbyname("hw.logicalcpu", &NumHWThreads, &len, 0, 0) < 0) {
+	if (errno == ENOENT) {
+	  // "hw.packages" is not known
+	    NumHWThreads = NumHWCores;
+	}
+	else {
+	    Warning("unable to determine the number of logical CPUs\n");
+	    return false;
+	}
+    }
+
+    return false;
 #else
-    return 0;
+    return false;
 #endif
 
 } /* end of GetNumCPUs */
