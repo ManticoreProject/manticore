@@ -128,7 +128,7 @@ STATIC_INLINE bool BarrierWait (Barrier_t *b)
 
 STATIC_INLINE void BarrierDestroy (Barrier_t *b)
 {
-    CHECK_RETURN(pthread_barrier_destroy (b);
+    CHECK_RETURN(pthread_barrier_destroy (b));
 }
 
 #else /* !HAVE_PTHREAD_BARRIER */
