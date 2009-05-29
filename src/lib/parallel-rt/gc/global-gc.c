@@ -697,8 +697,8 @@ void CheckAfterGlobalGC (VProc_t *self, Value_t **roots)
 					 self->id, ValueToPtr(v), p);
 			      }
 			      else if (! inAddrRange(VProcHeap(self), self->oldTop - VProcHeap(self), ValueToAddr(v))) {
-				SayDebug("[%2d] ** unexpected local pointer %p at %p in vector is out of bounds\n",
-					 self->id, ValueToPtr(v), p);
+				SayDebug("[%2d] ** unexpected local pointer %p at %p in vector[%d] is out of bounds\n",
+					 self->id, ValueToPtr(v), p, i);
 			      } else {
 				SayDebug("[%2d] ** unexpected local pointer %p at %p in vector\n",
 					 self->id, ValueToPtr(v), p);
