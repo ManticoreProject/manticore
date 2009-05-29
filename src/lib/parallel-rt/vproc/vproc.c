@@ -275,7 +275,7 @@ VProc_t *VProcSelf ()
 void VProcWake (VProc_t *vp)
 {
     assert (vp != VProcSelf());
-    CondSignal(&(vp->wait));
+    CondSignal (&(vp->wait));
 }
 
 /*! \brief place a signal (fiber + fiber-local storage) on the landing pad of the remote vproc.
@@ -286,17 +286,19 @@ void VProcWake (VProc_t *vp)
  */
 void VProcSendSignal (VProc_t *self, VProc_t *vp, Value_t fls, Value_t k)
 {
-    while (true) {
-	Value_t landingPadOrig = vp->landingPad;
-	Value_t landingPadNew =
-	    PromoteObj(self, AllocUniform(self, 3, fls, k, landingPadOrig));
-	Value_t x = CompareAndSwapValue(&(vp->landingPad), landingPadOrig, landingPadNew);
-	if (ValueToPtr(x) == ValueToPtr(landingPadOrig)) {
-	    if (vp->sleeping == M_TRUE)
-		VProcWake(vp);
-	    return;
-	}
-    }
+    Value_t landingPadOrig, landingPadNew, x;
+
+    Value_t dummyFLS = GlobalAllocNonUniform (self, 4, INT(-1), PTR(M_NONE), INT(0), PTR(M_NIL));
+
+    do {
+	landingPadOrig = vp->landingPad;
+	landingPadNew = GlobalAllocUniform (self, 3, dummyFLS, k, landingPadOrig);
+	x = CompareAndSwapValue(&(vp->landingPad), landingPadOrig, landingPadNew);
+    } while (x != landingPadOrig);
+
+    if (vp->sleeping == M_TRUE)
+	VProcWake(vp);
+
 }
 
 /*! \brief interrupt a remote vproc to take part in a global collection.
@@ -357,8 +359,8 @@ void VProcSleep (VProc_t *vp)
 
     MutexLock(&(vp->lock));
 	AtomicWriteValue (&(vp->sleeping), M_TRUE);
-	while (ValueToPtr(vp->landingPad) == M_NIL)
-	    CondWait(&(vp->wait), &(vp->lock));
+	while (vp->landingPad == M_NIL)
+	    CondWait (&(vp->wait), &(vp->lock));
 	AtomicWriteValue (&(vp->sleeping), M_FALSE);
     MutexUnlock(&(vp->lock));
 
