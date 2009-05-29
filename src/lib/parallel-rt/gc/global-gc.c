@@ -379,7 +379,7 @@ static void ScanGlobalToSpace (VProc_t *vp)
 		for (int i = 0;  i < len;  i++, scanPtr++) {
 		    Value_t v = (Value_t)*scanPtr;
 		    if (isFromSpacePtr(v)) {
-			*scanPtr = (Word_t)ForwardObj(vp, v);
+		        *scanPtr = (Word_t)ForwardObj(vp, v);
 		    }
 		}
 	    }
@@ -687,9 +687,23 @@ void CheckAfterGlobalGC (VProc_t *self, Value_t **roots)
 			    if (cq->sts == FROM_SP_CHUNK)
 				SayDebug("[%2d] ** unexpected from-space pointer %p at %p in vector\n",
 				    self->id, ValueToPtr(v), p);
-			    else if (IS_VPROC_CHUNK(cq->sts))
+			    else if (IS_VPROC_CHUNK(cq->sts)) {
+			      if (cq->sts != VPROC_CHUNK(self->id)) {
+				SayDebug("[%2d] ** unexpected remote pointer %p at %p in vector\n",
+					 self->id, ValueToPtr(v), p);
+			      }
+			      else if (ValueToAddr(v) & ~VP_HEAP_MASK != ValueToAddr(v)) {
+				SayDebug("[%2d] ** unexpected vproc-structure pointer %p at %p in vector\n",
+					 self->id, ValueToPtr(v), p);
+			      }
+			      else if (! inAddrRange(VProcHeap(self), self->oldTop - VProcHeap(self), ValueToAddr(v))) {
+				SayDebug("[%2d] ** unexpected local pointer %p at %p in vector is out of bounds\n",
+					 self->id, ValueToPtr(v), p);
+			      } else {
 				SayDebug("[%2d] ** unexpected local pointer %p at %p in vector\n",
-				    self->id, ValueToPtr(v), p);
+					 self->id, ValueToPtr(v), p);
+			      }
+			    } 
 			    else if (cq->sts == FREE_CHUNK)
 				SayDebug("[%2d] ** unexpected free pointer %p at %p in vector\n",
 				    self->id, ValueToPtr(v), p);
