@@ -278,12 +278,6 @@ void VProcWake (VProc_t *vp)
     CondSignal(&(vp->wait));
 }
 
-/*! \brief create a vproc queue item */
-Value_t VProcQueueItem (VProc_t *self, Value_t fls, Value_t k, Value_t link)
-{
-  return PromoteObj(self, AllocUniform(self, 3, fls, k, link));
-}
-
 /*! \brief place a signal (fiber + fiber-local storage) on the landing pad of the remote vproc.
  *  \param self the host vproc.
  *  \param vp the destination vproc.
@@ -293,16 +287,15 @@ Value_t VProcQueueItem (VProc_t *self, Value_t fls, Value_t k, Value_t link)
 void VProcSendSignal (VProc_t *self, VProc_t *vp, Value_t fls, Value_t k)
 {
     while (true) {
-      Value_t landingPadOrig = vp->landingPad;
-      Value_t landingPadNew = VProcQueueItem(self, fls, k, landingPadOrig);
-      Value_t x = CompareAndSwapValue(&(vp->landingPad), landingPadOrig, landingPadNew);
-      if (ValueToPtr(x) != ValueToPtr(landingPadOrig)) {
-	  continue;
-      } else {
-	if (vp->sleeping == M_TRUE)
-	    VProcWake(vp);
-	return;
-      }
+	Value_t landingPadOrig = vp->landingPad;
+	Value_t landingPadNew =
+	    PromoteObj(self, AllocUniform(self, 3, fls, k, landingPadOrig));
+	Value_t x = CompareAndSwapValue(&(vp->landingPad), landingPadOrig, landingPadNew);
+	if (ValueToPtr(x) == ValueToPtr(landingPadOrig)) {
+	    if (vp->sleeping == M_TRUE)
+		VProcWake(vp);
+	    return;
+	}
     }
 }
 
