@@ -114,7 +114,7 @@ structure WorkStealers =
 	     of PT.STOP => 
 		throw dispatch()
 	      | PT.PREEMPT(k : PT.fiber) => 
-		let fls : FLS.fls = FLS.@get ()
+		let fls : FLS.fls = FLS.@get-in-atomic (self)
 		do VPQ.@enqueue-from-atomic (self, fls, k)
 		throw dispatch () 
 	      | _ =>

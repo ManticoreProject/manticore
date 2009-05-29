@@ -176,7 +176,7 @@ structure VProc (* :
      * PRECONDITION: NotEqual(self, dst) and Equal(self, host_vproc)
      *) 
       define @send-high-priority-signal-from-atomic (self : vproc, dst : vproc, k : PT.fiber) : () =
-          let fls : FLS.fls = FLS.@get()
+          let fls : FLS.fls = FLS.@get-in-atomic(self)
           do @send-from-atomic(self, dst, fls, k)
           do ccall VProcPreempt(self, dst)
 	  return()

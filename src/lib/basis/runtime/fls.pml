@@ -34,7 +34,7 @@
  *     the associated fiber is pinned to that vproc. Otherwise the associated fiber
  *     can migrate to other vprocs.
  *
- *   - implicit-threading environment
+ *   - implicit-threading environment (ITE)
  *     A nonempty value in this field indicates that the fiber represents an implicit
  *     thread.
  *
@@ -72,6 +72,7 @@ structure FLS :
       define inline @set-in-atomic (self : vproc, fls : fls) : ();
     (* get the fls from the host vproc *)
       define inline @get () : fls;
+      define inline @get-in-atomic (self : vproc) : fls;
 
     (* return the pinning information associated with the given FLS *)
       define @pin-info (fls : fls / exh : exh) : int =
@@ -159,15 +160,20 @@ structure FLS :
 	;
 
     (* set the fls on the host vproc *)
-      define inline @set (fls : fls) : () =
-	  do assert (NotEqual(fls, nil))
-	  do vpstore (CURRENT_FLS, host_vproc, fls)
-	  return ()
-	;
-
       define inline @set-in-atomic (self : vproc, fls : fls) : () =
 	  do assert (NotEqual(fls, nil))
 	  do vpstore (CURRENT_FLS, self, fls)
+	  return ()
+	;
+
+      define inline @set (fls : fls) : () =
+(* FIXME: there is an cyclic dependency between this module and SchedulerAction
+	  let vp
+	  let vp : vproc = SchedulerAction.@atomic-begin()
+	  do @set-in-atomic (vp, fls)
+	  do SchedulerAction.@atomic-end(vp)
+*)
+	  do @set-in-atomic (host_vproc, fls)
 	  return ()
 	;
 
