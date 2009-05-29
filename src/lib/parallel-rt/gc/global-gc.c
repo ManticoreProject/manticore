@@ -408,11 +408,12 @@ static void ScanGlobalToSpace (VProc_t *vp)
 
 #ifndef NDEBUG
 void CheckGlobalAddr (VProc_t *self, void *addr, char *where);
+
 /* Check that the given address points *to* an object in the global heap.
  */
 void CheckGlobalPtr (VProc_t *self, void *addr, char *where)
 {
-  if (isHeapPtr(PtrToValue(addr))) {
+    if (isHeapPtr(PtrToValue(addr))) {
 	Word_t *ptr = (Word_t*)addr;
 	Word_t hdr = ptr[-1];
 	if (isMixedHdr(hdr) || isVectorHdr(hdr)) {
@@ -420,11 +421,12 @@ void CheckGlobalPtr (VProc_t *self, void *addr, char *where)
 	}
 	else if (isRawHdr(hdr)) {
 	    SayDebug("[%2d] CheckGlobalPtr: unexpected raw header for %p in %s \n",
-		     self->id, addr, where);
+		self->id, addr, where);
 	}
 	else {
-	    SayDebug("[%2d] CheckGlobalPtr: unexpected bogus header for %p in %s \n",
-		     self->id, addr, where);
+	    MemChunk_t *cq = AddrToChunk(addr);
+	    SayDebug("[%2d] CheckGlobalPtr: unexpected bogus header %p for %p[%d] in %s\n",
+		self->id, hdr, addr, cq->sts, where);
 	}
     }
     CheckGlobalAddr (self, addr, where);
