@@ -13,13 +13,10 @@
 #ifndef _TOPOLOGY_H_
 #define _TOPOLOGY_H_
 
+#include "manticore-rt.h"
 #include "os-threads.h"
 
-/*! \brief a location specifies a hardware thread, core, and node in the system
- *
- * The location is encoded as node:core:thread.
- */
-typedef unsigned int Location_t;
+/* Location_t is defined in manticore-rt.h */
 
 #define LOC_THREAD_BITS	8	//!< max 2^8 hardware threads per core
 #define LOC_CORE_BITS	8	//!< max 2^8 cores per node
