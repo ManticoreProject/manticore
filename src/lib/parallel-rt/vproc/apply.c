@@ -76,6 +76,12 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 					       PtrToValue(&ASM_Resume),
 					       vp->stdCont,
 					       vp->stdEnvPtr);
+#ifndef NDEBUG
+		/*
+		  if (DebugFlg)
+		      SayDebug ("[%2d] resumeK = %p\n", vp->id, resumeK);
+		*/
+#endif
 	      /* pass the signal to scheduling code in the BOM runtime */
 		envP = vp->schedCont;
 		codeP = ValueToAddr(ValueToCont(envP)->cp);
