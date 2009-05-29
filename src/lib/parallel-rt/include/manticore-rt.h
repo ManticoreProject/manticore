@@ -43,7 +43,7 @@ typedef uint8_t Byte_t;
 #  define SIXTYFOUR_BIT_WORDS
 #  define WORD_LOGSZB		3
 #else
-#  define WORD_LOGSZB		2
+#  error "word size must be 64 bits"
 #endif
 #define BYTES_TO_WORDS(N)	(((N) + (WORD_SZB-1)) >> WORD_LOGSZB)
 
