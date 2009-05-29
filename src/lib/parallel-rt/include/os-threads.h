@@ -15,7 +15,8 @@
 #include <assert.h>
 
 #ifndef NDEBUG
-#  define CHECK_RETURN(e)	assert((e) == 0)
+//#  define CHECK_RETURN(e)	assert((e) == 0)
+#  define CHECK_RETURN(e)	e
 #else
 #  define CHECK_RETURN(e)	e
 #endif
