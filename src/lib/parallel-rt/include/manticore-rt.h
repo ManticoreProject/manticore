@@ -43,7 +43,7 @@ typedef uint8_t Byte_t;
 #  define SIXTYFOUR_BIT_WORDS
 #  define WORD_LOGSZB		3
 #else
-#  define WORD_LOGSZB		2
+#  error "word size must be 64 bits"
 #endif
 #define BYTES_TO_WORDS(N)	(((N) + (WORD_SZB-1)) >> WORD_LOGSZB)
 
@@ -82,6 +82,12 @@ typedef struct struct_opts Options_t;
 typedef struct struct_vproc VProc_t;
 typedef struct struct_chunk MemChunk_t;
 typedef struct struct_logbuf LogBuffer_t;
+
+/*! \brief a location specifies a hardware thread, core, and node in the system
+ *
+ * The location is encoded as node:core:thread.
+ */
+typedef unsigned int Location_t;
 
 STATIC_INLINE bool ValueIsBoxed (Value_t v) { return (((Addr_t)v & 0x3) == 0); }
 

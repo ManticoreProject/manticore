@@ -108,14 +108,18 @@ fun debug () = let
     val ps = readParticles()
     val n = L.length(ps)
 
-    fun iter (ps : particle list, i, err) = (raise Fail "todo") (*if (i<nSteps)
+    fun iter (ps : particle list, i, err) = if (i<nSteps)
         then let
           val bhPs : particle list = Ropes.toSeq(oneStep (llx, lly, rux, ruy, Ropes.fromSeq ps))
 	  val naivePs : particle list = naiveStep ps
 	  in
              iter(bhPs, i+1, rmax(err, maxErr(naivePs, bhPs)))
           end
-        else err*)
+        else err
+    val err = iter(ps, 0, 0.0)
+    in
+       Print.printLn("Error for BH:"^Double.toString err)
+    end
 *)
 
 fun benchmark () =
@@ -127,8 +131,8 @@ fun benchmark () =
 		iter (oneStep ps, i + 1)
 	    else
 		ps
-	val particles = fromListP (readParticles ())
 	val t0 = Time.now()
+	val particles = fromListP (readParticles ())
 	val tree = iter (particles, 0)
 	val t = (Time.now() - t0)
     in

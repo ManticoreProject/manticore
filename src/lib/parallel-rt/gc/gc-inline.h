@@ -12,14 +12,16 @@
 #include "manticore-rt.h"
 #include "header-bits.h"
 #include "heap.h"
+#include "bibop.h"
+#include "internal-heap.h"
 
-/* is a header tagged as a forward pointer? */
+/*! \brief is a header tagged as a forward pointer? */
 STATIC_INLINE bool isForwardPtr (Word_t hdr)
 {
     return ((hdr & FWDPTR_TAG_MASK) == FWDPTR_TAG);
 }
 
-/* extract a forward pointer from a header */
+/*! \brief extract a forward pointer from a header */
 STATIC_INLINE Word_t *GetForwardPtr (Word_t hdr)
 {
     return (Word_t *)(Addr_t)hdr;
@@ -30,10 +32,18 @@ STATIC_INLINE Word_t MakeForwardPtr (Word_t hdr, Word_t *fp)
     return (Word_t)((Addr_t)fp | FWDPTR_TAG);
 }
 
-/* return true if the value is a pointer */
+/*! \brief return true if the value might be a pointer */
 STATIC_INLINE bool isPtr (Value_t v)
 {
     return (((Word_t)v & 0x3) == 0);
+}
+
+/*! \brief return true if the value is a pointer and is in the range covered
+ * by the BIBOP.
+ */
+STATIC_INLINE bool isHeapPtr (Value_t v)
+{
+    return ((((Word_t)v & 0x3) == 0) && ((Addr_t)v < (1l << ADDR_BITS)));
 }
 
 STATIC_INLINE bool isMixedHdr (Word_t hdr)
@@ -87,6 +97,21 @@ STATIC_INLINE int GetLength (Word_t hdr)
 STATIC_INLINE bool inAddrRange (Addr_t base, Addr_t szB, Addr_t p)
 {
     return ((p - base) < szB);
+}
+
+/*! \brief return the top of the used space in a memory chunk.
+ *  \param vp the vproc that owns the chunk.
+ *  \param cp the memory chunk.
+ */
+STATIC_INLINE Word_t *UsedTopOfChunk (VProc_t *vp, MemChunk_t *cp)
+{
+    if (vp->globToSpTl == cp)
+      /* NOTE: we must subtract WORD_SZB here because globNextW points to the first
+       * data word of the next object (not the header word)!
+       */
+	return (Word_t *)(vp->globNextW - WORD_SZB);
+    else
+	return (Word_t *)(cp->usedTop);
 }
 
 #endif /* !_GC_INLINE_H_ */

@@ -19,11 +19,22 @@
 #include "gc-inline.h"
 #include "internal-heap.h"
 #include "inline-log.h"
+#ifndef NDEBUG
+#include "bibop.h"
+#endif
 
 static void ScanGlobalToSpace (
 	VProc_t *vp, Addr_t heapBase, MemChunk_t *scanChunk, Word_t *scanPtr);
+#ifndef NDEBUG
+void CheckAfterGlobalGC (VProc_t *self, Value_t **roots);
+#endif
 
-/* Forward an object into the global-heap chunk reserved for the current VP */
+
+/*! \brief Forward an object into the global-heap chunk reserved for the given vp.
+ *  \param vp the vproc
+ *  \param v  the heap object that is to be forwarded
+ *  \return the forwarded value
+ */
 STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
 {
     Word_t	*p = ((Word_t *)ValueToPtr(v));
@@ -31,6 +42,7 @@ STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
     if (isForwardPtr(hdr))
 	return PtrToValue(GetForwardPtr(hdr));
     else {
+      /* forward object to global heap. */
 	Word_t *nextW = (Word_t *)vp->globNextW;
 	int len = GetLength(hdr);
 	if (nextW+len >= (Word_t *)(vp->globLimit)) {
@@ -53,12 +65,13 @@ STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
  *  \param vp the vproc that is performing the collection.
  *  \param roots a null-terminated array of root addresses.
  *  \param top the address of the top of the old region in
- *         the local heap.
+ *         the local heap after the minor GC.
  */
 void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 {
-    Addr_t	heapBase = (Addr_t)vp;
-    Addr_t	oldBase = VProcHeap(vp);
+    Addr_t	heapBase = (Addr_t)vp;		/* used to text for pointers into the */
+						/* local heap */
+    Addr_t	oldBase = VProcHeap(vp);	
     Addr_t	oldSzB = vp->oldTop - oldBase;
   /* NOTE: we must subtract WORD_SZB here because globNextW points to the first
    * data word of the next object (not the header word)!
@@ -66,8 +79,8 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     Word_t	*globScan = (Word_t *)(vp->globNextW - WORD_SZB);
     MemChunk_t	*scanChunk = vp->globToSpTl;
 
-    assert (VProcHeap(vp) < vp->oldTop);
-    assert (vp->oldTop < top);
+    assert (oldBase <= vp->oldTop);
+    assert (vp->oldTop <= top);
 
     LogMajorGCStart (vp);
 
@@ -153,14 +166,12 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 #ifndef NDEBUG
     if (GCDebug >= GC_DEBUG_MAJOR) {
 	unsigned long nBytesCopied = 0;
-	while (scanChunk != (MemChunk_t *)0) {
-	    if (scanChunk->next == (MemChunk_t *)0)
-		nBytesCopied += (unsigned long)(vp->globNextW - (Addr_t)globScan - WORD_SZB);
-	    else
-		nBytesCopied += (unsigned long)(scanChunk->usedTop - scanChunk->baseAddr);
-	    scanChunk = scanChunk->next;
+	for (MemChunk_t *p = scanChunk; p != (MemChunk_t *)0;  p = p->next) {
+	    Addr_t base = (p == scanChunk) ? (Addr_t)globScan - WORD_SZB : p->baseAddr;
+	    Addr_t tp = (p->next == 0) ? vp->globNextW : p->usedTop;
+	    nBytesCopied += (tp - base);
 	}
-	SayDebug("[%2d] Major GC finished: %ld/%ld bytes live\n",
+	SayDebug("[%2d] Major GC finished: %ld/%ld bytes copied\n",
 	    vp->id, nBytesCopied, oldSzB);
     }
 #endif
@@ -170,15 +181,19 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     memcpy ((void *)oldBase, (void *)(vp->oldTop), youngSzB);
     vp->oldTop = VProcHeap(vp) + youngSzB;
 
+#ifndef NDEBUG
+    if (HeapCheck >= GC_DEBUG_MAJOR) {
+	if (GCDebug >= GC_DEBUG_MAJOR)
+	    SayDebug ("[%2d] Checking heap consistency\n", vp->id);
+	bzero ((void *)(vp->oldTop), VP_HEAP_DATA_SZB - youngSzB);
+	CheckAfterGlobalGC (vp, roots);
+    }
+#endif
+
     LogMajorGCEnd (vp);
 
-/* FIXME: there are additional roots in the vproc that we need to consider (e.g.,
- * the entryq.
- */
-    /*
     if (vp->globalGCPending || (ToSpaceSz >= ToSpaceLimit))
 	StartGlobalGC (vp, roots);
-    */
 
 } /* end of MajorGC */
 
@@ -204,27 +219,47 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
     if (isPtr(root) && inVPHeap(heapBase, ValueToAddr(root))) {
 	MemChunk_t	*scanChunk = vp->globToSpTl;
 	Word_t		*scanPtr = (Word_t *)(vp->globNextW - WORD_SZB);
+
 	assert ((Word_t *)(scanChunk->baseAddr) <= scanPtr);
 	assert (scanPtr < (Word_t *)(scanChunk->baseAddr + scanChunk->szB));
+
       /* promote the root to the global heap */
 	root = ForwardObj (vp, root);
 
-	int64_t nbytes;
-	if (scanChunk == vp->globToSpTl) {
-	    nbytes = (vp->globNextW - (Addr_t)scanPtr - WORD_SZB);
-	}
-	else {
-	  /* copied data spans multiple chunks */
-	    nbytes = 0; /* FIXME */
-	}
-#ifndef NDEBUG
-	if (GCDebug >= GC_DEBUG_ALL)
-	    SayDebug("[%2d]  ==> %p; %ld bytes\n", vp->id, root, nbytes);
-#endif
-
       /* promote any reachable values */
 	ScanGlobalToSpace (vp, heapBase, scanChunk, scanPtr);
+
+#ifndef NO_GC_STATS
+	uint64_t nBytesCopied = 0;
+	for (MemChunk_t *p = scanChunk; p != (MemChunk_t *)0;  p = p->next) {
+	    Addr_t base = (p == scanChunk) ? (Addr_t)scanPtr - WORD_SZB : p->baseAddr;
+	    Addr_t tp = (p->next == 0) ? vp->globNextW : p->usedTop;
+	    nBytesCopied += (tp - base);
+	}
+#endif
+#ifndef NDEBUG
+	if (GCDebug >= GC_DEBUG_ALL)
+	    SayDebug("[%2d]  ==> %p; %ld bytes\n", vp->id, root, nBytesCopied);
+#endif
     }
+#ifndef NDEBUG
+    else if (isPtr(root)) {
+      /* check for a bogus pointer */
+	MemChunk_t *cq = AddrToChunk(ValueToAddr(root));
+	if (cq->sts == TO_SP_CHUNK)
+	    return root;
+/* 
+	else if ((cq->sts == FROM_SP_CHUNK) && (! GlobalGCInProgress))
+	    Die("PromoteObj: unexpected from-space pointer %p\n", ValueToPtr(root));
+*/
+	else if (IS_VPROC_CHUNK(cq->sts)) {
+	    Die("PromoteObj: unexpected remote pointer %p%p\n", ValueToPtr(root));
+	}
+	else if (cq->sts == FREE_CHUNK) {
+	    Die("PromoteObj: unexpected free-space pointer %p%p\n", ValueToPtr(root));
+	}
+    }
+#endif
 
     return root;
 

@@ -26,6 +26,7 @@ structure BindingEnv : sig
     val empty : Atom.atom -> env
     val freshEnv : Atom.atom * env option -> env
     val freshEnv' : Atom.atom * env option * bom_env * mod_env * sig_env -> env
+
   (* get the outer environment *)
     val outerEnv    : env -> env option
     val nameOf      : env -> Atom.atom
@@ -82,6 +83,11 @@ structure BindingEnv : sig
 
   (* lookup the qualified id where the hlop is bound *)
     val getHLOpPath : bom_hlop -> string list
+
+  (* C Functions *)
+  (* Note that C functions have global scope *)
+    val defineCFun    : (Atom.atom * bom_var) -> unit
+    val findCFun      : Atom.atom -> bom_var option
 
   end = struct
 
@@ -182,10 +188,9 @@ structure BindingEnv : sig
 	    BOMEnv {hlopEnv=hlopEnv, varEnv=varEnv, tyEnv=Map.insert(tyEnv, id, x)}
     (* remember a HLOp's full path, e.g., Future1.@touch *)
       val {
-	getFn=getHLOpPath : Var.var -> string list, 
-	setFn=setHLOpPath : (Var.var * string list) -> unit, ...
-      } = 
-	  Var.newProp (fn _ => [])
+	  getFn=getHLOpPath : Var.var -> string list, 
+	  setFn=setHLOpPath : (Var.var * string list) -> unit, ...
+	} = Var.newProp (fn _ => [])
 
     (* maps qualified ids to BOM types *)
       val tyPathMp : ty_bind AtomTable.hash_table = AtomTable.mkTable(128, Fail "Path table")
@@ -210,13 +215,14 @@ structure BindingEnv : sig
 
     (* lookup a variable in the scope of the current module *)
     fun findInEnv (Env (fields as {outerEnv, ...}), select, x) = (case Map.find(select fields, x)
-        of NONE => 
-	   (* x is not bound in this module, so check the enclosing module *)
-	   (case outerEnv
-	     of NONE => NONE
-	      | SOME env => findInEnv(env, select, x))
-	 (* found a value *)
-	 | SOME v => SOME v)	      
+	   of NONE => (
+	      (* x is not bound in this module, so check the enclosing module *)
+		case outerEnv
+		 of NONE => NONE
+		  | SOME env => findInEnv(env, select, x)
+		(* end case *))
+	    | SOME v => SOME v
+	  (* end case *))	      
 
     fun findTy (env, tv) = findInEnv (env, #tyEnv, tv)
     fun findVal (env, v) = findInEnv (env, #varEnv, v)
@@ -224,31 +230,34 @@ structure BindingEnv : sig
     fun findSig (env, v) = findInEnv (env, #sigEnv, v)
 
     fun findBOMVar (Env{bomEnv=BOMEnv {varEnv, ...}, outerEnv, ...}, x) = (case Map.find(varEnv, x)
-        of NONE => 
-	   (* x is not bound in this module, so check the enclosing module *)
-	   (case outerEnv
-	     of NONE => NONE
-	      | SOME env => findBOMVar(env, x))
-	 (* found a value *)
-	 | SOME v => SOME v)
+	   of NONE => (
+	      (* x is not bound in this module, so check the enclosing module *)
+		case outerEnv
+		 of NONE => NONE
+		  | SOME env => findBOMVar(env, x)
+		(* end case *))
+	    | SOME v => SOME v
+	  (* end case *))	      
 
     fun findBOMHLOp (Env{bomEnv=BOMEnv {hlopEnv, ...}, outerEnv, ...}, x) = (case Map.find(hlopEnv, x)
-        of NONE => 
-	   (* x is not bound in this module, so check the enclosing module *)
-	   (case outerEnv
-	     of NONE => NONE
-	      | SOME env => findBOMHLOp(env, x))
-	 (* found a value *)
-	 | SOME v => SOME v)
+	   of NONE => (
+	      (* x is not bound in this module, so check the enclosing module *)
+		case outerEnv
+		 of NONE => NONE
+		  | SOME env => findBOMHLOp(env, x)
+		(* end case *))
+	    | SOME v => SOME v
+	  (* end case *))	      
 
     fun findBOMTy (Env{bomEnv=BOMEnv{tyEnv, ...}, outerEnv, ...}, x) = (case Map.find(tyEnv, x)
-        of NONE => 
-	   (* x is not bound in this module, so check the enclosing module *)
-	   (case outerEnv
-	     of NONE => NONE
-	      | SOME env => findBOMTy(env, x))
-	 (* found a value *)
-	 | SOME v => SOME v)
+	   of NONE => (
+	      (* x is not bound in this module, so check the enclosing module *)
+		case outerEnv
+		 of NONE => NONE
+		  | SOME env => findBOMTy(env, x)
+		(* end case *))
+	    | SOME v => SOME v
+	  (* end case *))	      
 
   (* constrains env2 to contain only those keys that are also in env1 *)
     fun intersect (env1, env2) = Map.intersectWith (fn (x1, x2) => x2) (env1, env2)
@@ -289,7 +298,9 @@ structure BindingEnv : sig
     val getDataCons = getDataCons
     end
 
-  (* lists elements in the module environment that have a matching name in the constraining environment *)
+  (* lists elements in the module environment that have a matching name in the
+   * constraining environment
+   *)
     fun matchByName find (cEnv, mEnv) = let
 	  fun match (id, cX, matches) = (
 	        case find(mEnv, id)
@@ -306,31 +317,45 @@ structure BindingEnv : sig
 
     fun filterByKey filter = Map.filteri (filter o #1)
 
-    fun filterBOMEnv (BOMEnv{varEnv, hlopEnv, tyEnv}, filter) =
-	  BOMEnv{varEnv=filterByKey filter varEnv,
-		 hlopEnv=filterByKey filter hlopEnv,
-		 tyEnv=filterByKey filter tyEnv
-		}
+    fun filterBOMEnv (BOMEnv{varEnv, hlopEnv, tyEnv}, filter) = BOMEnv{
+	      varEnv=filterByKey filter varEnv,
+	      hlopEnv=filterByKey filter hlopEnv,
+	      tyEnv=filterByKey filter tyEnv
+	    }
 
   (* filter out unwanted elements from an environment *)
-    fun filterEnv (Env{name, tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, filter) = 
-	  Env{name=name,
+    fun filterEnv (Env{name, tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}, filter) = Env{
+	      name=name,
 	      tyEnv=filterByKey filter tyEnv,
 	      varEnv=filterByKey filter varEnv,
 	      bomEnv=filterBOMEnv(bomEnv, filter),
 	      modEnv=filterByKey filter modEnv,
 	      sigEnv=sigEnv,
 	      outerEnv=outerEnv
-	     }
+	    }
 
-    fun varToString (id, (Var v | Con v)) = "\tvar "^Atom.toString id^" "^Var.toString v
+    fun varToString (id, Var v) = String.concat [
+	    "\tvar ", Atom.toString id, " ", Var.toString v
+	  ]
+      | varToString (id, Con v) = String.concat [
+	    "\tcon ", Atom.toString id, " ", Var.toString v
+	  ]
 
-    fun varEnvToString vEnv = String.concatWith "\n" (List.map  varToString (Map.listItemsi vEnv))
+    fun varEnvToString vEnv = String.concatWith "\n" (List.map varToString (Map.listItemsi vEnv))
 
     fun toString (Env{name, tyEnv, varEnv, bomEnv, modEnv, sigEnv, outerEnv}) =
-	String.concat [
-	  Atom.toString name,
-	  varEnvToString varEnv
-	]
+	  Atom.toString name ^ varEnvToString varEnv
+
+  (* C functions *)
+  (* Note that C functions have global scope *)
+(* FIXME: using a global table here is a bad idea; should be part of an environment object. *)
+    local 
+      structure ATbl = AtomTable
+      val tbl : Var.var ATbl.hash_table = AtomTable.mkTable (128, Fail "C function table")
+    in
+    val findCFun = ATbl.find tbl
+    val defineCFun = ATbl.insert tbl
+    end
 
   end
+

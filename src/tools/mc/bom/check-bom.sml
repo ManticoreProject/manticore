@@ -49,16 +49,49 @@ structure CheckBOM : sig
 
     fun typesOf xs = List.map BV.typeOf xs
 
+  (* get the binding of a variable, chasing through casts and renamings *)
+    fun resolveBinding x = let
+	  fun lp x = (case BV.kindOf x
+		 of B.VK_Let(B.E_Pt(_, B.E_Ret[y])) => lp y
+		  | B.VK_RHS(B.E_Cast(_, y)) => lp y
+		  | k => k
+		(* end case *))
+	  in
+	    lp x
+	  end
+
+  (* check for assignments of unpromoted values; return true if okay and false
+   * otherwise.
+   *)
+    fun checkAssign (ty, x) = let
+	  val k = BTU.kindOf ty
+	  in
+	    if (k = BTy.K_BOXED) orelse (k = BTy.K_UNIFORM)
+	      then (case resolveBinding x
+		 of B.VK_RHS(B.E_Promote _) => true
+		  | B.VK_RHS(B.E_Const _) => true
+		  | _ => false
+		(* end case *))
+	      else true
+	  end
+
     fun check (phase, module) = let
 	  val B.MODULE{name, externs, hlops, body} = module
 	  val anyErrors = ref false
+	  val anyWarnings = ref false
 	(* report an error *)
 	  fun error msg = (
-		if !anyErrors then ()
+		if !anyErrors orelse !anyWarnings then ()
 		else (
 		  pr ["***** Bogus BOM in ", Atom.toString name, " after ", phase, " *****\n"];
 		  anyErrors := true);
 		pr ("** " :: msg))
+	  fun warning msg = (
+		if !anyErrors orelse !anyWarnings then ()
+		else (
+		  pr ["***** Possibly Bogus BOM in ", Atom.toString name, " after ", phase, " *****\n"];
+		  anyWarnings := true);
+		pr ("?? " :: msg))
 	  fun cerror msg = pr ("== "::msg)
 	(* match the parameter types against argument variables *)
 	  fun checkArgTypes (cmp, ctx, paramTys, argTys) = let
@@ -291,11 +324,29 @@ structure CheckBOM : sig
                       chkVar(x, "Update");
                       chkVar(y, "Update");
                       case BV.typeOf x
-                       of BTy.T_Tuple(true, tys) => 
-			    if (i < List.length tys) andalso BTU.equal(BV.typeOf y, List.nth (tys, i))
-			      then ()
-			      else error["type mismatch in Update: ",
-				     "#", Int.toString i, "(", v2s x, ") := ", v2s y, "\n"]
+                       of BTy.T_Tuple(true, tys) =>
+			    if (i < List.length tys)
+			      then let
+				val ty = List.nth(tys, i)
+				val k = BTU.kindOf ty
+				in
+				  if BTU.equal(BV.typeOf y, ty)
+				    then ()
+				    else error[
+					"type mismatch in #", Int.toString i,
+					"(", v2s x, ") := ", v2s y, "\n"
+				      ];
+				  if checkAssign (ty, y)
+				    then ()
+				    else warning[
+					"possible unpromoted update in #", Int.toString i,
+					"(", v2s x, ") := ", v2s y, "\n"
+				      ]
+				end
+			      else error [
+				  "index out of bounds in #", Int.toString i,
+				  "(", v2s x, ") := ", v2s y, "\n"
+				]
 			| ty => error[v2s x, ":", BTU.toString ty, " is not a mutable tuple",
                                     "#", Int.toString i, "(", v2s x, ") := ", v2s y, "\n"]
 		      (* end case *))
@@ -312,7 +363,7 @@ structure CheckBOM : sig
 			| ty => error[v2s x, ":", BTU.toString ty, " is not a tuple",
                                     vl2s lhs, " = &(", v2s x, ")\n"]
 		      (* end case *))
-		  | ([ty], B.E_Alloc (allocTy, xs)) => (
+		  | ([ty], B.E_Alloc(allocTy, xs)) => (
                       chkVars(xs, "Alloc");
                       if BTU.match (allocTy, ty)
 			then ()
@@ -329,10 +380,7 @@ structure CheckBOM : sig
 		      chkVar (y, "Promote");
 		      if BTU.equal(ty, BV.typeOf y) then ()
 			else error ["type mismatch in Promote: ", vl2s lhs, " = ", v2s y, "\n"])
-		  | ([], B.E_Prim p) => (
-                      chkVars(PrimUtil.varsOf p, PrimUtil.nameOf p))
-		  | ([ty], B.E_Prim p) => (
-                      chkVars(PrimUtil.varsOf p, PrimUtil.nameOf p))
+		  | (lhsTys, B.E_Prim p) => chkPrim (lhs, lhsTys, p)
                   | ([ty], B.E_DCon(BTy.DCon{name, argTy, myTyc, ...}, args)) => (
                       chkVars(args, name);
 		      checkArgTypes (BTU.match, name ^ vl2s args, argTy, typesOf args))
@@ -364,6 +412,47 @@ structure CheckBOM : sig
                                   IntInf.toString n, ", ", v2s vp, ", ", v2s x, ")\n"])
 		  | _ => error["bogus rhs for ", vl2s lhs, "\n"]
 		(* end case *))
+	  and chkPrim (lhs, lhsTys, p) = let
+		val args = PrimUtil.varsOf p
+		val (paramTys, resTy) = BOMUtil.signOfPrim p
+		fun chkParamArg (paramTy, arg) = if BTU.match(BV.typeOf arg, paramTy)
+		      then ()
+		      else (
+			error  ["type mismatch in ", PrimUtil.nameOf p, "(... ", v2s arg, " ...)\n"];
+			cerror ["  expected  ", BTU.toString paramTy, "\n"];
+			cerror ["  but found ", BTU.toString(BV.typeOf arg), "\n"])
+		in
+		  chkVars (args, PrimUtil.nameOf p);
+		  case (lhsTys, resTy)
+		   of ([], NONE) => ()
+		    | ([lhsTy], SOME rhsTy) => if BTU.match (rhsTy, lhsTy)
+			then ()
+			else (
+			  error  ["type mismatch in: ", vl2s lhs, " = ", PrimUtil.nameOf p, vl2s args, "\n"];
+			  cerror ["  lhs type ", t2s lhsTy, "\n"];
+			  cerror ["  rhs type ", t2s rhsTy, "\n"])
+		    | _ => error[
+			  "arity mismatch in ", vl2s lhs, " = ", PrimUtil.nameOf p, vl2s args, "\n"
+			]
+		  (* end case *);
+		  ListPair.appEq chkParamArg (paramTys, args);
+		(* check polymorphic array updates for missing promotions *)
+		  case p
+		   of Prim.ArrayStore(a, i, x) => if checkAssign(BTy.T_Any, x)
+			then ()
+			else warning[
+			    "possible unpromoted update in ArrayStore(", v2s a, ",",
+			    v2s i, ",", v2s x, ")\n"
+			  ]
+		    | Prim.CAS(loc, old, new) => if checkAssign(BV.typeOf new, new)
+			then ()
+			else warning[
+			    "possible unpromoted update in CAS(", v2s loc, ",",
+			    v2s old, ",", v2s new, ")\n"
+			  ]
+		    | _ => ()
+		  (* end case *)
+		end
 	(* check an external function *)
 	  fun chkExtern (CFunctions.CFun{var, name, ...}) = (
 		insert var;
@@ -391,18 +480,19 @@ structure CheckBOM : sig
 	    Census.census module;
 	  (* check new and old census information *)
 	    VTbl.appi checkCnt counts;
-if !anyErrors
-  then let
-(* FIXME: we should generate this name from the input file name! *)
-    val outFile = "broken-BOM"
-    val outS = TextIO.openOut outFile
-    in
-      pr ["broken BOM dumped to ", outFile, "\n"];
-      PrintBOM.output (outS, module);
-      TextIO.closeOut outS;
-      raise Fail "broken BOM"
-    end
-  else ();
+	  (* report errors, if any *)
+	    if !anyErrors
+	      then let
+	    (* FIXME: we should generate this name from the input file name! *)
+		val outFile = "broken-BOM"
+		val outS = TextIO.openOut outFile
+		in
+		  pr ["broken BOM dumped to ", outFile, "\n"];
+		  PrintBOM.output (outS, module);
+		  TextIO.closeOut outS;
+		  raise Fail "broken BOM"
+		end
+	      else ();
 	  (* return the error status *)
 	    !anyErrors
 	  end

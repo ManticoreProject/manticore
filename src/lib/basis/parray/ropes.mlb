@@ -8,14 +8,11 @@
 
   ../sequential/sequential.mlb
   ../misc/debug.mlb
-  ../runtime/runtime.mlb
-  ../synch/synch.mlb
-  ../implicit-threading/implicit-threading.mlb
-  ../schedulers/schedulers.mlb
 
   list-seq.pml
   array-seq.pml
   float-array-seq.pml
+  int-array-seq.pml
 
   max-leaf-size.pml
 
@@ -23,5 +20,6 @@
   rope2.pml
   rope-pair.pml
   float-rope.pml
+  int-rope.pml
 
   test-ropes.pml

@@ -66,10 +66,8 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN = struct
       ctl = Controls.stringControl ControlUtil.Cvt.bool annotateInstrs,
       envName = NONE}
 
-  fun fmtMsg msg = msg^"\t (Manticore codegen)"
-
   fun annotate (stm, msg) = if (msg <> "" andalso Controls.get annotateInstrs)
-      then T.ANNOTATION(stm, #create MLRiscAnnotations.COMMENT (fmtMsg msg))
+      then T.ANNOTATION(stm, #create MLRiscAnnotations.COMMENT msg)
       else stm
 
   fun annotateStms ([], msg) = []
@@ -250,65 +248,73 @@ if MChkTy.check stm
       (* Construct an MLRISC tree from a CFG expression. *)
       and genExp frame = let
 	  fun gen (M.E_Var(lhs, rhs)) = 
-	      ListPair.app setDefOf (lhs, List.map getDefOf rhs)
+		ListPair.app setDefOf (lhs, List.map getDefOf rhs)
 	    | gen (M.E_Const(lhs, lit, _)) = 
-	      bindExp ([lhs], [genLit (szOfVar lhs, lit)], "")
+		bindExp ([lhs], [genLit (szOfVar lhs, lit)], "")
 	    | gen (M.E_Label(lhs, l)) = 
-	      bindExp ([lhs], [MTy.EXP (MTy.wordTy, (T.LABEL (BE.LabelCode.getName l)))], "")
+		bindExp ([lhs], [MTy.EXP (MTy.wordTy, (T.LABEL (BE.LabelCode.getName l)))], "")
 	    | gen (M.E_Select(lhs, i, v)) = let
-	      val rhs = BE.Alloc.select {lhsTy=Var.typeOf lhs, mty=Var.typeOf v, i=i, base=defOf v}
-              in
+		val rhs = BE.Alloc.select {lhsTy=Var.typeOf lhs, mty=Var.typeOf v, i=i, base=defOf v}
+		in
 		  bindExp ([lhs], [rhs], "let "^v2s lhs^" = "^v2s v^"["^i2s i^"]")
-	      end
+		end
 	    | gen (M.E_Update(i, lhs, rhs)) = let
-              val szI = BE.Types.szOfIx (Var.typeOf lhs, i)
-	      val wordSzB = IntInf.toInt Spec.ABI.wordSzB
-	      val offset = T.LI (T.I.fromInt (MTy.wordTy, wordSzB * i))
-	      in
+		val szI = BE.Types.szOfIx (Var.typeOf lhs, i)
+		val wordSzB = IntInf.toInt Spec.ABI.wordSzB
+		val offset = T.LI (T.I.fromInt (MTy.wordTy, wordSzB * i))
+		in
 		  flushLoads ();
 		  emit(annotate(T.STORE (szI, T.ADD (MTy.wordTy, defOf lhs, offset), defOf rhs, ManticoreRegion.memory),
 		       v2s lhs^" := "^v2s rhs))
-	      end
+		end
 	    | gen (M.E_AddrOf(lhs, i, v)) = let
-	      val addr = BE.Alloc.tupleAddrOf {mty=Var.typeOf v, i=i, base=defOf v}
-	      in
+		val addr = BE.Alloc.tupleAddrOf {mty=Var.typeOf v, i=i, base=defOf v}
+		in
 		  bindExp ([lhs], [MTy.EXP(MTy.wordTy, addr)], "addrof("^v2s v^"["^Int.toString i^"])")
-	      end
-	    | gen (M.E_Alloc (lhs, vs)) = let 
-              val {ptr, stms} = BE.Alloc.genAlloc (List.map (fn v => (Var.typeOf v, getDefOf v)) vs)
-	      in 
+		end
+	    | gen (M.E_Alloc(lhs, Ty.T_Tuple(isMut, tys), vs)) = let
+		val {ptr, stms} = BE.Alloc.genAlloc {
+			isMut = isMut,
+			tys = tys,
+			args = List.map getDefOf vs
+		      }
+		in 
 		  emitStms stms;
 		  bindExp ([lhs], [ptr], "alloc "^v2s lhs^" = "^String.concat (List.map v2s vs))
-	      end
-	    | gen (M.E_GAlloc(lhs, vs)) = let 
-              val {ptr, stms} = BE.Alloc.genGlobalAlloc (List.map (fn v => (Var.typeOf v, getDefOf v)) vs)
-	      in 
+		end
+	    | gen (M.E_GAlloc(lhs, Ty.T_Tuple(isMut, tys), vs)) = let 
+		val {ptr, stms} = BE.Alloc.genGlobalAlloc {
+			isMut = isMut,
+			tys = tys,
+			args = List.map getDefOf vs
+		      }
+		in 
 		  emitStms (annotateStms (stms, "galloc "^v2s lhs^" = "^String.concat (List.map v2s vs)));
 		  bindExp ([lhs], [ptr], "")
-	      end
+		end
 	    | gen (M.E_Promote (lhs, v)) =  let
-              val {stms, result} = BE.Transfer.genPromote varDefTbl {lhs=lhs, arg=v}
-	      in
+		val {stms, result} = BE.Transfer.genPromote varDefTbl {lhs=lhs, arg=v}
+		in
 		  emitStms stms;
 		  bindExp ([lhs], result, "promote")
-	      end
+		end
 	    | gen (M.E_Prim0 p) = emitStms(annotateStms(genPrim0 p, PrimUtil.nameOf p))
-	    | gen (M.E_Prim (lhs, p)) = emitStms(annotateStms(genPrim (lhs, p), PrimUtil.nameOf p))
-	    | gen (M.E_CCall (lhs, f, args)) = let 
-              val {stms, result} = BE.Transfer.genCCall varDefTbl {lhs=lhs, f=f, args=args}
-	      in
+	    | gen (M.E_Prim(lhs, p)) = emitStms(annotateStms(genPrim (lhs, p), PrimUtil.nameOf p))
+	    | gen (M.E_CCall(lhs, f, args)) = let 
+		val {stms, result} = BE.Transfer.genCCall varDefTbl {lhs=lhs, f=f, args=args}
+		in
 		  emitStms stms;
 		  bindExp (lhs, result, "ccall "^Var.toString f)
-	      end
+		end
 	    | gen (M.E_Cast(lhs, _, v)) = 
-	      bindExp ([lhs], [getDefOf v], "")
+		bindExp ([lhs], [getDefOf v], "")
 	    (* vproc operations *)
 	    | gen (M.E_HostVProc lhs) =
-	      bindExp ([lhs], [BE.VProcOps.genHostVP], "host()")
+		bindExp ([lhs], [BE.VProcOps.genHostVP], "host()")
 	    | gen (M.E_VPLoad(lhs, offset, vproc)) =
-	      bindExp ([lhs], [BE.VProcOps.genVPLoad varDefTbl (szOfVar lhs, offset, vproc)], "vpload "^v2s lhs)
+		bindExp ([lhs], [BE.VProcOps.genVPLoad varDefTbl (szOfVar lhs, offset, vproc)], "vpload "^v2s lhs)
 	    | gen (M.E_VPStore(offset, vproc, v)) =
-	      emitStms(annotateStms([BE.VProcOps.genVPStore varDefTbl (szOfVar v, offset, vproc, v)], "vpstore "^v2s v))
+		emitStms(annotateStms([BE.VProcOps.genVPStore varDefTbl (szOfVar v, offset, vproc, v)], "vpstore "^v2s v))
          in
 	    gen
          end (* genExp *)
@@ -319,51 +325,56 @@ if MChkTy.check stm
       val entryFunc as M.FUNC{lab=entryLab, ...} :: _ = code
       val clusters = GenClusters.clusters code
 		     
-      fun genFunc (M.FUNC {lab, entry, body, exit}) = let
-	  fun emitLabel () = let
-	      val label = BE.LabelCode.getName lab
-	      in
-	         (* if this function is the module entry point, output the entry label *)
-	         if M.Label.same (lab, entryLab)
-                    then (pseudoOp (P.global RuntimeLabels.entry);  entryLabel RuntimeLabels.entry)
-                    else (); 
-		 (* output the label *)
-		 (case M.Label.kindOf lab
-		   of M.LK_Local {export=SOME s, ...} => ( 
-		      pseudoOp (P.global (Label.global s));			     
-		      entryLabel (Label.global s);
-		      defineLabel label)
-		    | M.LK_Local {func=CFG.FUNC{entry, ...}, ...} => 
-		      (case entry
-			of CFG.Block _ =>  
-			   (* CFG.Blocks are only called within their own cluster *)
-			   defineLabel label
-			 | _ => entryLabel label)
-		    | _ => raise Fail "emitLabel"
-		 (* end case *))
-	      end (* emitLabel *)		  
-	  val stms = BE.Transfer.genFuncEntry varDefTbl (lab, entry)
+      fun genFunc (M.FUNC{lab, entry, body, exit}) = let
+	    fun emitLabel () = let
+		  val label = BE.LabelCode.getName lab
+		  in
+		  (* if this function is the module entry point, output the entry label *)
+		    if M.Label.same (lab, entryLab)
+		       then (pseudoOp (P.global RuntimeLabels.entry);  entryLabel RuntimeLabels.entry)
+		       else ();
+		  (* output the label *)
+		    case M.Label.kindOf lab
+		     of M.LK_Local{export=SOME s, ...} => ( 
+			  pseudoOp (P.global (Label.global s));			     
+			  entryLabel (Label.global s);
+			  defineLabel label)
+		      | M.LK_Local {func=CFG.FUNC{entry, ...}, ...} => (case entry
+			   of M.Block{args} => (
+			      (* CFG.Blocks are only called within their own cluster *)
+				comment (concat[
+				    "block ", M.Label.toString lab, " (",
+				    String.concatWith "," (List.map M.Var.toString args), ")"
+				  ]);
+				defineLabel label)
+			   | _ => entryLabel label
+			  (* end case *))
+		      | _ => raise Fail "emitLabel"
+		    (* end case *)
+		  end (* emitLabel *)		  
+	    val stms = BE.Transfer.genFuncEntry varDefTbl (lab, entry)
 	  (* finish a function by emitting the function body *)
-	  fun finish () = let
-	      val funcAnRef = getAnnotations ()
-	      val frame = BE.SpillLoc.getFuncFrame lab
-	      val regs = BE.LabelCode.getParamRegs lab
-	      in	
-	        if (Controls.get annotateInstrs)
-		   then (List.app ((fn s => comment (fmtMsg("param: "^s))) o MTy.treeToString o MTy.regToTree) regs;
-			 comment (fmtMsg ("CFG function: "^CFG.Label.toString lab)))
-                   else ();
-	        (* flush out any stale loads from other functions*)
-	         BE.VarDef.flushLoads varDefTbl;
-		 funcAnRef := (#create BE.SpillLoc.frameAn) frame :: (!funcAnRef);
-		 emitLabel ();
-		 emitStms stms;
-		 List.app (genExp frame) body;
-		 genTransfer exit
-	      end (* finish *)
-          in
+	    fun finish () = let
+		  val funcAnRef = getAnnotations ()
+		  val frame = BE.SpillLoc.getFuncFrame lab
+		  val regs = BE.LabelCode.getParamRegs lab
+		  in	
+		    if (Controls.get annotateInstrs)
+		      then (
+			List.app ((fn s => comment ("param: "^s)) o MTy.treeToString o MTy.regToTree) regs;
+			comment ("CFG function: "^CFG.Label.toString lab))
+		      else ();
+		   (* flush out any stale loads from other functions*)
+		     BE.VarDef.flushLoads varDefTbl;
+		     funcAnRef := (#create BE.SpillLoc.frameAn) frame :: (!funcAnRef);
+		     emitLabel ();
+		     emitStms stms;
+		     List.app (genExp frame) body;
+		     genTransfer exit
+		  end (* finish *)
+	    in
 	      finish
-          end (* genFunc *)
+	    end (* genFunc *)
 
       fun genCluster c = let
 	  val _ = BE.VarDef.clear varDefTbl;

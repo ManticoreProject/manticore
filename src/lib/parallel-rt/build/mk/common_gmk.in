@@ -55,7 +55,8 @@ MISC_SRCS =	main.c \
 		apply.c \
 		basis.c \
 		options.c \
-		image.c
+		image.c \
+		work-stealing-local-deques.c
 
 ifeq ($(ENABLE_LOGGING),true)
   CPPFLAGS += -DENABLE_LOGGING

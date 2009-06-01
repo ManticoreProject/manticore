@@ -87,7 +87,7 @@ _primcode (
   ;
   define inline @long-div (arg : [ml_long, ml_long] / exh : exh) : ml_long =
       let b : long = unwrap(#1(arg))
-        if I64Eq(b, 0)
+        if I64Eq(b, 0:long)
 	  then RAISE_DIV(exh)
 	  else
 	    let res : ml_long = wrap(I64Div(unwrap(#0(arg)), b))
@@ -216,6 +216,11 @@ _primcode (
 	    end
 	apply append (l1 / exh)
   ;
+
+#ifndef NDEBUG
+  extern void CheckGlobalPtr (void*, void*, void*);
+  extern void CheckGlobalAddr (void*, void*, void*);
+#endif
 
 #ifndef SEQUENTIAL
   typedef fiber_local_storage = any;

@@ -12,6 +12,14 @@
 #include "manticore-rt.h"
 #include <pthread.h>
 #include <signal.h>
+#include <assert.h>
+
+#ifndef NDEBUG
+//#  define CHECK_RETURN(e)	assert((e) == 0)
+#  define CHECK_RETURN(e)	e
+#else
+#  define CHECK_RETURN(e)	e
+#endif
 
 /********** Threads **********/
 
@@ -34,7 +42,8 @@ STATIC_INLINE OSThread_t ThreadSelf ()
 /* signalling a thread */
 STATIC_INLINE void ThreadKill (OSThread_t tid, int sig)
 {
-    pthread_kill (tid, sig);
+    CHECK_RETURN(pthread_kill (tid, sig));
+
 } /* end of ThreadKill */
 
 
@@ -44,27 +53,27 @@ typedef pthread_mutex_t Mutex_t;
 
 STATIC_INLINE void MutexInit (Mutex_t *mu)
 {
-    pthread_mutex_init (mu, (pthread_mutexattr_t *)0);
+    CHECK_RETURN(pthread_mutex_init (mu, (pthread_mutexattr_t *)0));
 } /* end of NewMutex */
 
 STATIC_INLINE void DestroyMutex (Mutex_t *mu)
 {
-    pthread_mutex_destroy (mu);
+    CHECK_RETURN(pthread_mutex_destroy (mu));
 } /* end of DestroyMultex */
 
 STATIC_INLINE void MutexLock (Mutex_t *mu)
 {
-    pthread_mutex_lock (mu);
+    CHECK_RETURN(pthread_mutex_lock (mu));
 }
 
 STATIC_INLINE void MutexUnlock (Mutex_t *mu)
 {
-    pthread_mutex_unlock (mu);
+    CHECK_RETURN(pthread_mutex_unlock (mu));
 }
 
 STATIC_INLINE void MutexDestroy (Mutex_t *mu)
 {
-    pthread_mutex_destroy (mu);
+    CHECK_RETURN(pthread_mutex_destroy (mu));
 }
 
 
@@ -74,32 +83,32 @@ typedef pthread_cond_t Cond_t;
 
 STATIC_INLINE void CondInit (Cond_t *cond)
 {
-    pthread_cond_init (cond, (pthread_condattr_t *)0);
+    CHECK_RETURN(pthread_cond_init (cond, (pthread_condattr_t *)0));
 } /* end of CondInit */
 
 STATIC_INLINE void DestroyCond (Cond_t *cond)
 {
-    pthread_cond_destroy (cond);
+    CHECK_RETURN(pthread_cond_destroy (cond));
 } /* end of DestroyCond */
 
 STATIC_INLINE void CondWait (Cond_t *cond, Mutex_t *mu)
 {
-    pthread_cond_wait (cond, mu);
+    CHECK_RETURN(pthread_cond_wait (cond, mu));
 }
 
 STATIC_INLINE void CondSignal (Cond_t *cond)
 {
-    pthread_cond_signal (cond);
+    CHECK_RETURN(pthread_cond_signal (cond));
 }
 
 STATIC_INLINE void CondBroadcast (Cond_t *cond)
 {
-    pthread_cond_broadcast (cond);
+    CHECK_RETURN(pthread_cond_broadcast (cond));
 }
 
 STATIC_INLINE void CondDestroy (Cond_t *cond)
 {
-    pthread_cond_destroy (cond);
+    CHECK_RETURN(pthread_cond_destroy (cond));
 }
 
 /********** Barrier synchronization **********/
@@ -110,7 +119,7 @@ typedef pthread_barrier_t Barrier_t;
 
 STATIC_INLINE void BarrierInit (Barrier_t *b, int nProcs)
 {
-    pthread_barrier_init (b, 0, nProcs);
+    CHECK_RETURN(pthread_barrier_init (b, 0, nProcs));
 }
 
 STATIC_INLINE bool BarrierWait (Barrier_t *b)
@@ -120,7 +129,7 @@ STATIC_INLINE bool BarrierWait (Barrier_t *b)
 
 STATIC_INLINE void BarrierDestroy (Barrier_t *b)
 {
-    pthread_barrier_destroy (b);
+    CHECK_RETURN(pthread_barrier_destroy (b));
 }
 
 #else /* !HAVE_PTHREAD_BARRIER */
@@ -144,12 +153,18 @@ STATIC_INLINE bool BarrierWait (Barrier_t *b)
 {
     bool	result = false;
     MutexLock (&(b->lock));
-	if (++(b->nWaiting) < b->nProcs)
-	    CondWait (&(b->wait), &(b->lock));
-	else {
-	    b->nWaiting = 0;  // reset state
+	if (++(b->nWaiting) == b->nProcs) {
 	    CondBroadcast (&(b->wait));
 	    result = true;
+	}
+	else {
+	  /* NOTE: the CondWait may return prematurely, if the calling
+	   * thread receives a signal, so we need to check the state
+	   * before proceeding.
+	   */
+	    while (b->nWaiting < b->nProcs) {
+		CondWait (&(b->wait), &(b->lock));
+	    }
 	}
     MutexUnlock (&(b->lock));
 
@@ -165,5 +180,7 @@ STATIC_INLINE void BarrierDestroy (Barrier_t *b)
 }
 
 #endif /* HAVE_PTHREAD_BARRIER */
+
+#undef CHECK_RETURN
 
 #endif /* !_OS_THREADS_H_ */

@@ -67,14 +67,14 @@ structure SwpWorkStealing (* :
     (* update a location in the local deque. *)
       define inline @deque-update (deque : deque, i : long, elt : any / exh : exh) : () =
 	  let elts : addr(any) = &DEQUE_ELTS(deque)
-	  let x : bool = ArrayStoreI64(elts, i, elt)
+	  do ArrayStore((any)elts, i, elt)
 	  return()
 	;
 
     (* subscript from the deque. *)
       define inline @deque-sub (deque : deque, i : long / exh : exh) : any =
 	  let elts : addr(any) = &DEQUE_ELTS(deque)
-	  let elt : any = ArrayLoadI64(elts, i)
+	  let elt : any = ArrayLoad((any)elts, i)
 	  return(elt)
 	;
 

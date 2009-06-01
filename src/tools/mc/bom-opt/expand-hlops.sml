@@ -23,16 +23,6 @@ structure ExpandHLOps : sig
   (* record a use of a C function *)
     fun useCFun (var, cnt) = B.Var.addToCount(var, cnt)
 
-  (* add the list of PML imports to the parameters of the HLOP *)
-    fun addPMLImports (B.FB{f, params, exh, body}) = let
-	    val BTy.T_Fun (_, _, retTy) = BOM.Var.typeOf f
-	    val params = params
-	    val ty = BTy.T_Fun (List.map BOM.Var.typeOf params, List.map BOM.Var.typeOf exh, retTy)
-	    in
-	       BOM.Var.setType(f, ty);
-	       B.mkLambda {f=f, params=params, exh=exh, body=body}
-            end
-
     fun expand (module as B.MODULE{name, externs, hlops, body}) = let
 	  val changed = ref false
 	(* a table of the lambdas that we are adding to the module.  The domain is the
@@ -48,11 +38,10 @@ structure ExpandHLOps : sig
 			       of SOME(B.FB{f, ...}) => f
 				| NONE => let
 				      val lambda = BU.copyLambda lambda
-				      val lambda as B.FB{f=f', ...} = addPMLImports lambda
 				      in
 				          List.app useCFun cfuns;
 					  VTbl.insert lambdas (f, lambda);
-					  f'
+					  f
 				      end
 		               (* end case *))
 		    in
@@ -90,10 +79,10 @@ structure ExpandHLOps : sig
 		  | B.E_Throw _ => e
 		  | B.E_Ret _ => e
 		  | B.E_HLOp(hlOp, args, rets) => let
-	              val (inline, defn, cfuns, pmlImports, import) = (case HLOpEnv.findDef hlOp
-			    of SOME{inline, def, externs, pmlImports, ...} => 
+	              val (inline, defn, cfuns, import) = (case HLOpEnv.findDef hlOp
+			    of SOME{inline, def, externs, ...} => 
 			       (* found the definition in inline BOM *)
-				 (inline, def, externs, pmlImports, false)
+				 (inline, def, externs, false)
 			     | NONE => raise Fail("unable to find " ^ HLOp.toString hlOp)
 			    (* end case *))
 		      val args' = args

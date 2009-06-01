@@ -161,7 +161,7 @@ structure SchedulerAction (* :
 
     (* run the fiber under the scheduler action and with the given fls *)
       define inline @dispatch-from-atomic (self : vproc, act : PT.sched_act, fiber : PT.fiber, fls : FLS.fls) noreturn =
-	  do FLS.@set(fls)
+	  do FLS.@set-in-atomic(self, fls)
 	  @run (self, act, fiber)
 	;
 

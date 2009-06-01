@@ -427,7 +427,7 @@ structure PrimChan (*: sig
 				 * thread has not already claimed the event.
 				 *)
 				  fun matchLp () : () =
-					let mySts : PEvt.event_status = CAS(flg, PEvt.WAITING, PEvt.CLAIMED)
+					let mySts : PEvt.event_status = CAS(&0(flg), PEvt.WAITING, PEvt.CLAIMED)
 					case mySts
 					 of PEvt.WAITING => (* try to claim the matching event *)
 					      let sts : PEvt.event_status = CAS(&0(state), PEvt.WAITING, PEvt.SYNCHED)
@@ -543,7 +543,7 @@ structure PrimChan (*: sig
 				 * some other thread has not already claimed the event.
 				 *)
 				  fun matchLp () : () =
-					let mySts : PEvt.event_status = CAS(flg, PEvt.WAITING, PEvt.CLAIMED)
+					let mySts : PEvt.event_status = CAS(&0(flg), PEvt.WAITING, PEvt.CLAIMED)
 					case mySts
 					 of PEvt.WAITING => (* try to claim the matching event *)
 					      let sts : PEvt.event_status = CAS(&0(state), PEvt.WAITING, PEvt.SYNCHED)

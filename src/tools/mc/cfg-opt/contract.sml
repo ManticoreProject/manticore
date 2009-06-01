@@ -166,21 +166,21 @@ structure Contract : sig
 		      then (ST.tick cntUnusedVar; Census.dec y; (rest, exit))
 		      else (C.mkAddrOf(x, i, y) :: rest, exit)
 		  end
-	      | C.E_Alloc(x, ys) => let
+	      | C.E_Alloc(x, ty, ys) => let
 		  val ys = applySubst' (env, ys)
 		  val (rest, exit) = doRest env
 		  in
 		    if unused x
 		      then (ST.tick cntUnusedVar; Census.dec' ys; (rest, exit))
-		      else (C.mkAlloc(x, ys) :: rest, exit)
+		      else (C.mkAlloc(x, ty, ys) :: rest, exit)
 		  end
-	      | C.E_GAlloc(x, ys) => let
+	      | C.E_GAlloc(x, ty, ys) => let
 		  val ys = applySubst' (env, ys)
 		  val (rest, exit) = doRest env
 		  in
 		    if unused x
 		      then (ST.tick cntUnusedVar; Census.dec' ys; (rest, exit))
-		      else (C.mkGAlloc(x, ys) :: rest, exit)
+		      else (C.mkGAlloc(x, ty, ys) :: rest, exit)
 		  end
 	      | C.E_Promote(x, y) => let
 		  val y = applySubst (env, y)

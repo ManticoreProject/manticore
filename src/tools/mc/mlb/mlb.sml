@@ -138,7 +138,8 @@ structure MLB : sig
 		"." ::
 		LoadPaths.basisCPPDefDir ::
 		includes
-	  val predefs = List.map RunCPP.mkDef ([
+	  val predefs = "-w" ::
+              List.map RunCPP.mkDef ([
 		("PML_PATH", SOME (OS.FileSys.fullPath dir^"/"^name)),
 		("PML_FILE", SOME name)
 	      ] @ List.map parseCPPPredef predefs @ defines())
@@ -327,8 +328,10 @@ structure MLB : sig
             val runtimeBasisLibPts = loadMLB(LoadPaths.runtimeBasisLib, env)
           (* load the top-level scheduler *)
 	    val topLevelSchedPts = loadMLB(LoadPaths.topLevelSchedLib (Controls.get BasicControl.scheduler), env)
+	  (* parallel array *)
+	    val parrayPts = loadMLB(LoadPaths.parrayLib, env)
             in
-              topLevelSchedPts @ runtimeBasisLibPts
+              parrayPts @ topLevelSchedPts @ runtimeBasisLibPts
             end
           else let
 	  (* implicit-threading library *)

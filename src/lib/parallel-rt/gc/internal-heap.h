@@ -17,8 +17,8 @@ typedef enum {
     TO_SP_CHUNK,		/*!< to-space chunk in the global heap */
     FROM_SP_CHUNK,		/*!< from-space chunk in the global heap */
     VPROC_CHUNK_TAG,		/*!< low four bits of VProc chunk (see #VPROC_CHUNK) */
-    UNMAPPED_CHUNK		/*!< special status used for the dummy chunk that represents
-				 *   unmapped regions of the memory space.
+    UNMAPPED_CHUNK		/*!< special status used for the dummy chunk that
+				 *   represents unmapped regions of the memory space.
 				 */
 } Status_t;
 
@@ -28,9 +28,14 @@ typedef enum {
 struct struct_chunk {
     Addr_t	baseAddr;	/*!< chunk base address */
     Addr_t	szB;		/*!< chunk size in bytes */
-    Addr_t	usedTop;	/*!< [baseAddr..usedTop) is the part of the chunk in use */
+    Addr_t	usedTop;	/*!< [baseAddr..usedTop) is the part of the
+				 *   chunk in use
+				 */
     MemChunk_t	*next;		/*!< link field */
     Status_t	sts;		/*!< current status of chunk */
+    Location_t	where;		/*!< the location of the vproc that allocated
+				 *   this chunk.
+				 */
 };
 
 /********** Global heap **********/
@@ -65,9 +70,11 @@ typedef enum {
     GC_DEBUG_NONE	= 0
 } GCDebugLevel_t;
 
-extern GCDebugLevel_t GCDebug;		//!\brief Flag that controls GC debugging output
+extern GCDebugLevel_t	GCDebug;	//!\brief Flag that controls GC debugging output
+extern GCDebugLevel_t	HeapCheck;	//!\brief Flag that controls heap checking
 
 #define GC_DEBUG_DEFAULT "major"	/* default level */
+#define HEAP_DEBUG_DEFAULT "global"	/* default level */
 #endif
 
 #endif /* !_INTERNAL_HEAP_H_ */

@@ -172,6 +172,11 @@ AC_MSG_RESULT($ac_cv_func_pthread_setaffinity_np)
 LIBS=$save_LIBS
 CFLAGS=$save_CFLAGS
 
+dnl
+dnl check for Linux NUMA support (libnuma)
+dnl
+AC_CHECK_LIB(numa,numa_available)
+
 dnl check for /proc/cpuinfo
 dnl
 AC_CHECK_FILES(/proc/cpuinfo)

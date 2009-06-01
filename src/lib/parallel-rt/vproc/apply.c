@@ -84,10 +84,16 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 	  /* check for pending signals */
 	    if ((vp->sigPending == M_TRUE) && (vp->atomic == M_FALSE)) {
 		Value_t resumeK = AllocUniform (vp, 3,
-						PtrToValue(&ASM_Resume),
-						vp->stdCont,
-						vp->stdEnvPtr);
-	      /* pass the signal to the Manticore signal handler */
+					       PtrToValue(&ASM_Resume),
+					       vp->stdCont,
+					       vp->stdEnvPtr);
+#ifndef NDEBUG
+		/*
+		  if (DebugFlg)
+		      SayDebug ("[%2d] resumeK = %p\n", vp->id, resumeK);
+		*/
+#endif
+	      /* pass the signal to scheduling code in the BOM runtime */
 		envP = vp->schedCont;
 		codeP = ValueToAddr(ValueToCont(envP)->cp);
 		arg = resumeK;

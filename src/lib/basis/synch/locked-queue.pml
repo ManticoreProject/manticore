@@ -71,7 +71,7 @@ structure LockedQueue :
 	@new()
       ;
 
-      define @in-place-enqueue (q : queue, qElt : elt) : () =                   
+      define inline @in-place-enqueue (q : queue, qElt : elt) : () =                   
         let qHd : elt = SELECT(HD_OFF, q)
         let qTl : elt = SELECT(TL_OFF, q) 						  
         do if Equal (qTl, EMPTY)                                                                 
@@ -104,7 +104,7 @@ structure LockedQueue :
 	return(UNIT)
       ;
 
-      define @in-place-dequeue (q : queue) : Option.option = 		  
+      define inline @in-place-dequeue (q : queue) : Option.option = 		  
         let qTl : elt = SELECT(TL_OFF, q)        	 	     	   	     		  
         let qHd : elt = SELECT(HD_OFF, q) 						  
         if Equal (qHd, EMPTY) 		     							  

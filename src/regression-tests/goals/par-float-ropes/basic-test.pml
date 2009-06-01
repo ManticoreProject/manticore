@@ -1,3 +1,5 @@
+structure FR = FloatRope
+
 val time = Time.timeToEval
 val println = Print.printLn
 
@@ -7,14 +9,36 @@ fun gen n = Float.fromInt n * 0.000001
 
 val xsP = Ropes.tabP (sz, gen)
 
-val xsF = FloatRope.tabP (sz, gen)
+(*
+val _ = println "built xsP"
+*)
 
-val (resP, tP) = time (fn _ => Scan.plusScan_float xsP)
+val xsF = FR.tabP (sz, gen)
 
-val (resF, tF) = time (fn _ => FloatScan.plusScan xsF)
+(*
+val _ = println "xsF"
+val _ = println ("xsF " ^ (if FR.isBalanced xsF then "is" else "is not") ^ " balanced")
+*)
 
-val _ = println ("tP\t" ^ Long.toString tP)
+fun sched susp = ImplicitThread.runWithGroup (MultiprogrammedWorkStealing.workGroup (), susp)
 
-val _ = println ("tF\t" ^ Long.toString tF)
+(* wrap : (unit -> 'a) -> unit -> 'a *)
+fun sched thunk = (fn () =>
+ (ImplicitThread.runWithGroup (MultiprogrammedWorkStealing.workGroup (), thunk)))
 
-val _ = println "Done."
+val (resP, tP) = time (sched (fn _ => Scan.plusScan_float xsP))
+
+(*
+val _ = println "ran plusScan on polymorphic rope"
+*)
+
+val (resF, tF) = time (sched (fn _ => FloatScan.plusScan xsF))
+
+(*
+val _ = println "ran plusScan on float rope"
+*)
+
+val msg = (Int.toString sz) ^ "," ^ (Long.toString tP) ^ "," ^ (Long.toString tF)
+
+val _ = println msg
+

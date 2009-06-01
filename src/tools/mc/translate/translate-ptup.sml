@@ -136,11 +136,13 @@ structure TranslatePTup  : sig
 		    val eq = BV.new ("eq", BTy.boolTy)
 		    val nV = BV.new ("n", intTy)
 		    val wV = BV.new ("w", intTy)
-		    val c = BV.new ("c", BTy.T_Tuple (true, [intTy]))
+		    val c' = BV.new ("c'", BTy.T_Tuple (true, [intTy]))
+		    val c =  BV.new ("c", BTy.T_Addr intTy)
 		in
 		    B.mkStmts ([
-		        ([c], B.E_Promote c0),         (* lazy promotion *)
-			([nV], intRhs (n - w + 1)),    (* nV is the number of other slow clones *)
+		        ([c'], B.E_Promote c0),         (* lazy promotion *)
+			([c], B.E_AddrOf (0, c')),
+			([nV], intRhs (n - w + 1)),     (* nV is the number of other slow clones *)
 			([wV], intRhs w),
 		        ([nPrev], B.E_Prim (Prim.I32FetchAndAdd (c, wV)))],
 			     B.mkStmt ([eq], B.E_Prim (Prim.I32Eq (nV, nPrev)),
@@ -221,7 +223,8 @@ structure TranslatePTup  : sig
 	    mkNilTuple (r0, tys,
 			  B.mkStmts ([
 			  ([oneV], one),
-			  ([c0], B.E_Alloc (BTy.T_Tuple (true, [intTy]), [oneV]))],
+			  ([c0], B.E_Alloc (BTy.T_Tuple (true, [intTy]), [oneV]))
+			  ],
 				     B.mkFun (thunks_1toN, 
 					      mkSlowClones (
 					      let

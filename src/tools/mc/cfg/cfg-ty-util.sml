@@ -10,10 +10,13 @@ structure CFGTyUtil : sig
 
     val hasUniformRep : CFGTy.ty -> bool
 
+    val kindOf : CFGTy.ty -> CFGTy.kind
+
     val equal : (CFGTy.ty * CFGTy.ty) -> bool
     val match : (CFGTy.ty * CFGTy.ty) -> bool
     val validCast : (CFGTy.ty * CFGTy.ty) -> bool
 
+    val kindToString : CFGTy.kind -> string
     val toString : CFGTy.ty -> string
 
     val stdContTy : CFGTy.ty * CFGTy.ty list -> CFGTy.ty

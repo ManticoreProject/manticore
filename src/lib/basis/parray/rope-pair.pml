@@ -21,6 +21,7 @@ structure RopePair (* : ROPE_PAIR *) = struct
   (* using this for the moment so we can observe the exception message at runtime *)
     fun failwith msg = (Print.printLn msg; (raise Fail msg))
 
+(*
   (* sameStructureP : 'a rope * 'b rope -> bool *)
     fun sameStructureP (r1, r2) = 
      (if R.length r1 <> R.length r2 then
@@ -43,6 +44,7 @@ structure RopePair (* : ROPE_PAIR *) = struct
 	  lp (r1, r2)
 	end
      (* end if *))
+*)
      
   (* fastMapP : ('a * 'b -> 'g) * 'a rope * 'b rope -> 'g rope *)
   (* pre : both ropes have exactly the same structure *)

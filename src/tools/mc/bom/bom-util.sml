@@ -50,7 +50,8 @@ structure BOMUtil : sig
   (* return the type of a BOM term *)
     val typeOfExp : BOM.exp -> BOM.ty list
     val typeOfRHS : BOM.rhs -> BOM.ty list
-    val typeOfPrim : BOM.prim -> BOM.ty list
+    val typeOfPrim : BOM.prim -> BOM.ty option
+    val signOfPrim : BOM.prim -> (BOM.ty list * BOM.ty option)
 
   (* for debugging output *)
     val expToString : BOM.exp -> string
@@ -269,14 +270,26 @@ structure BOMUtil : sig
     local
       structure PTy = PrimTyFn (
 	struct
-	  structure V = BV
-	  val unitTy = BTy.unitTy
+	  type ty = B.ty
+	  type var = B.var
+	  val typeOf = B.Var.typeOf
+	  val anyTy = BTy.T_Any
+	  val noTy = BTy.unitTy
 	  val boolTy = BTy.boolTy
 	  val raw = BTy.T_Raw
+	  val addr = BTy.T_Addr
 	end)
     in
   (* return the type of a BOM term *)
-    fun typeOfPrim prim = [PTy.typeOf prim]
+    fun typeOfPrim prim = (case PTy.typeOf prim
+	   of BTy.T_Enum(0w0) => NONE (* unitTy *)
+	    | ty => SOME ty
+	  (* end case *))
+
+    fun signOfPrim p = (case PTy.signOf p
+	   of (tys, BTy.T_Enum(0w0)) => (tys, NONE)
+	    | (tys, ty) => (tys, SOME ty)
+	  (* end case *))
 
     fun typeOfRHS (B.E_Const(_, ty)) = [ty]
       | typeOfRHS (B.E_Cast(ty, _)) = [ty]
@@ -285,7 +298,10 @@ structure BOMUtil : sig
       | typeOfRHS (B.E_AddrOf(i, x)) = [BTy.T_Addr(BOMTyUtil.select(BV.typeOf x, i))]
       | typeOfRHS (B.E_Alloc(ty, _)) = [ty]
       | typeOfRHS (B.E_Promote x) = [BV.typeOf x]
-      | typeOfRHS (B.E_Prim p) = typeOfPrim p
+      | typeOfRHS (B.E_Prim p) = (case PTy.typeOf p
+	   of BTy.T_Enum(0w0) => [] (* unitTy *)
+	    | ty => [ty]
+	  (* end case *))
       | typeOfRHS (B.E_DCon(dc, _)) = [BOMTyUtil.typeOfDCon dc]
       | typeOfRHS (B.E_CCall(cf, _)) = let
 	  val BTy.T_CFun(CFunctions.CProto(cty, _, _)) = BV.typeOf cf

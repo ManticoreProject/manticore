@@ -17,17 +17,20 @@ signature ALLOC =
   (* compute the address of the ith element off the base address *)
     val tupleAddrOf : {mty : CFG.ty, i : int, base : MTy.T.rexp} -> MTy.T.rexp
 
-  (* compute the address of the ith element off the base address *)
-    val arrayAddrOf : {lhsTy : CFG.ty, i : MTy.T.rexp, base : MTy.T.rexp} -> MTy.T.rexp
-
-  (* returns an expression that computes the length of an array *)
-    val arrayLength : MTy.T.rexp -> MTy.T.rexp
-
-  (* allocate a list of types, and initialize them *)
-    val genAlloc : (CFG.ty * MTy.mlrisc_tree) list -> {ptr : MTy.mlrisc_tree, stms : MTy.T.stm list}
+  (* generate code to allocate a tuple object in the local heap *)
+    val genAlloc : {
+	    isMut : bool,
+	    tys : CFG.ty list,
+	    args : MTy.mlrisc_tree list
+	  } -> {ptr : MTy.mlrisc_tree, stms : MTy.T.stm list}
 
   (* allocate a list of types in the global heap, and initialize them *)
-    val genGlobalAlloc : (CFG.ty * MTy.mlrisc_tree) list -> {ptr : MTy.mlrisc_tree, stms : MTy.T.stm list}
+  (* generate code to allocate a tuple object in the global heap *)
+    val genGlobalAlloc : {
+	    isMut : bool,
+	    tys : CFG.ty list,
+	    args : MTy.mlrisc_tree list
+	  } -> {ptr : MTy.mlrisc_tree, stms : MTy.T.stm list}
 
   (* heap limit check.  evaluates to true when the heap contains sufficient
    * space for the given size.

@@ -51,39 +51,19 @@ structure BOMBoundVariableCheck :> sig
     val findBOMTyQid = findQid (QualifiedId.findBOMTy, "BOM type", dummyVar)
     val findBOMHLOpQid = findQid (QualifiedId.findBOMHLOp, "HLOp", dummyVar)
 
-  fun findDCon (env, qid) = (
-        case QualifiedId.findVal(env, qid)
-	 of SOME(BEnv.Con con) => SOME con   (* data constructor (defined in PML) *)
-	  | _ => NONE
-        (* end case *))
-
-  (* Here is where we bind C functions. Since they have global scope at link time, we keep
-   * C functions in a global lookup table. 
-   *)
-    local 
-    structure ATbl = AtomTable
-    val tbl : Var.var ATbl.hash_table = AtomTable.mkTable (128, Fail "C function table")
-    in
+    fun findDCon (env, qid) = (
+	  case QualifiedId.findVal(env, qid)
+	   of SOME(BEnv.Con con) => SOME con   (* data constructor (defined in PML) *)
+	    | _ => NONE
+	  (* end case *))
 
     fun freshVar v = Var.new(Atom.toString v, ())
 
-    fun findCFun (loc, f) = (case ATbl.find tbl f
+    fun findCFun (loc, f) = (case BEnv.findCFun f
            of NONE => (error(loc, ["C function ", Atom.toString f, " is undefined"]);
 		       dummyVar)
 	    | SOME f => f
 	  (* end case *))
-
-    fun defineCFun (loc, f) = (
-	  case ATbl.find tbl f
-	   of NONE => let 
-		  val v = freshVar f 
-	          in
-		      ATbl.insert tbl (f, v); v
-	          end
-	    | SOME v => v
-          (* end case *))
-
-    end (* local *)
 
     fun chkList loc (chkX, xs, env) = let
 	   fun f (x, (xs, env)) = let
@@ -161,14 +141,6 @@ structure BOMBoundVariableCheck :> sig
 		   val sexp2 = chkSexp loc (sexp2, env)
 	           in
 		      PT2.RHS_VPStore (off, sexp1, sexp2)
-		   end
-	     | PT1.RHS_PMLVar v => let
-		   val v' = (case findValQid(loc, env, v)
-			      of BEnv.Con v => v
-			       | BEnv.Var v => v
-			    (* end case *))
-	           in
-		       PT2.RHS_PMLVar v'
 		   end
             (* end case *))
 
@@ -379,6 +351,7 @@ structure BOMBoundVariableCheck :> sig
 		   val v' = freshVar v
 		   val env = BEnv.insertBOMHLOp(env, v, v')
 	           in
+		       Var.setErrorStream(v', SOME (ErrorStream.getErrStrm()));
 		       (PT2.D_Define(inline, v', params', exns', returnTys', exp'), env)
 		   end
 	     | PT1.D_ImportML(inline, hlopId, pmlId) => let
@@ -393,7 +366,14 @@ structure BOMBoundVariableCheck :> sig
 		      (PT2.D_ImportML(inline, hlopId', pmlId'), env)
 		   end
 	     | PT1.D_Extern (CFunctions.CFun{var, name, retTy, argTys, varArg, attrs}) => let
-		   val var' = defineCFun(loc, var);
+		   val var' = (case BEnv.findCFun var
+			of NONE => let 
+			       val var' = freshVar var
+			       in
+			         BEnv.defineCFun (var, var'); var'
+			       end
+			 | SOME var' => var'
+		        (* end case *))
 		   in
 		     (* keep C functions in a distinct, global namespace *)
 		       (PT2.D_Extern(CFunctions.CFun{var=var', name=name, retTy=retTy, 

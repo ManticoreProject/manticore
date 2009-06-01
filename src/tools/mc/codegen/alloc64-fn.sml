@@ -53,10 +53,6 @@ functor Alloc64Fn (
 	    T.ADD (MTy.wordTy, base, wordLit offset)
 	  end
 
-  (* compute the address of the ith element off the base address *)
-    fun arrayAddrOf {lhsTy : CFG.ty, i : T.rexp, base : T.rexp} = 
-	  T.ADD (MTy.wordTy, base, T.MULS(MTy.wordTy, wordLit (Types.alignedTySzB lhsTy), i))
-
   (* select the ith element off of a 'base' address *)
     fun select {lhsTy : CFG.ty, mty : CFG.ty, i : int, base : T.rexp} = let
           val (offset, lhsTyI) = (case mty
@@ -70,15 +66,6 @@ functor Alloc64Fn (
 	     of MTy.K_FLOAT => MTy.FEXP (ty, T.FLOAD (ty, addr, ManticoreRegion.memory))
 	      | MTy.K_INT => MTy.EXP (ty, T.LOAD (ty, addr, ManticoreRegion.memory))
 	  end
-
-  (* returns an expression that computes the length of an array
-   *   WARNING: this function uses the vector header tag to compute the length.
-   *   WARNING: we treat array lengths as 32-bit values even though the header stores up to 61 bits
-   *)
-    fun arrayLength (array) =
-	  T.SRL(32, 
-	     T.LOAD (32, T.SUB(MTy.wordTy, array, wordLit wordSzB), ManticoreRegion.memory), 
-	     wordLit(3))
 
   (* return true if the type may be represented by a pointer into the heap *)
     fun isHeapPointer CFG.T_Any = true
@@ -137,16 +124,18 @@ functor Alloc64Fn (
 	    | lp (true, false, []) = allocVectorObj offAp args
 	    | lp (true, true, []) = allocMixedObj offAp args
 	    | lp (false, _, []) = allocRawObj offAp args
+	  val (totSz, hdr, stms) = lp (false, false, args)
 	  in
-	    lp (false, false, args)
+	    (totSz, hdr, List.rev stms)
 	  end
 
-    (* allocate arguments in the local heap *)
-    fun genAlloc [] = 
-        (* an empty allocation generates a nil pointer *)
-	{ ptr=MTy.EXP (MTy.wordTy, wordLit 1), stms=[] }
-      | genAlloc args = let
-	  fun offAp i = T.ADD (MTy.wordTy, T.REG(MTy.wordTy, Regs.apReg), wordLit i)
+  (* allocate arguments in the local heap *)
+    fun genAlloc {tys=[], ...} = (* an empty allocation generates a nil pointer *)
+(* FIXME: this only happens because the closure-conversion doesn't deal with empty closures correctly *)
+	  { ptr=MTy.EXP (MTy.wordTy, wordLit 1), stms=[] }
+      | genAlloc {isMut, tys, args} = let
+	  val args = ListPair.zipEq (tys, args)
+	  fun offAp i = T.ADD(MTy.wordTy, T.REG(MTy.wordTy, Regs.apReg), wordLit i)
 	  val (totalSize, hdrWord, stms) = alloc offAp args
 	(* store the header word *)
 	  val stms = MTy.store (offAp (~wordSzB), MTy.EXP (MTy.wordTy, T.LI hdrWord), ManticoreRegion.memory) :: stms
@@ -157,38 +146,36 @@ functor Alloc64Fn (
 	(* bump up the allocation pointer *)
 	  val bumpAp = T.MV (MTy.wordTy, Regs.apReg, offAp (totalSize+wordSzB))
 	  in
-	    { ptr=MTy.GPR (MTy.wordTy, ptrReg), stms=ptrMv :: rev (bumpAp :: stms) }
+	    { ptr=MTy.GPR (MTy.wordTy, ptrReg), stms=stms @ [ptrMv, bumpAp] }
 	  end (* genAlloc *)
 
-    (* allocate arguments in the global heap *)
-    fun genGlobalAlloc [] = 
-        (* an empty allocation generates a nil pointer *)
-	{ ptr=MTy.EXP (MTy.wordTy, wordLit 1), stms=[] }
-      | genGlobalAlloc args = let
-	val (vpReg, setVP) = let
-	    val r = Cells.newReg()
-	    val MTy.EXP(_, hostVP) = VProcOps.genHostVP
-            in
-	       (T.REG(MTy.wordTy, r), T.MV(MTy.wordTy, r, hostVP))
-            end
-	val (globalApReg, globalAp, setGAp, globalApAddr) = let
-	    val r = Cells.newReg()
-	    val MTy.EXP(_, gap) = MTy.EXP (64, VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.globNextW, vpReg))
-            in
-	       (r, T.REG(MTy.wordTy, r), T.MV(MTy.wordTy, r, gap), gap)
-            end
-        fun offAp i = T.ADD (MTy.wordTy, globalAp, wordLit i)
-	val (totalSize, hdrWord, stms) = alloc offAp args
+  (* allocate arguments in the global heap *)
+    fun genGlobalAlloc {tys=[], ...} = raise Fail "GAlloc[]"
+      | genGlobalAlloc {isMut, tys, args} = let
+	  val args = ListPair.zipEq (tys, args)
+	  val (vpReg, setVP) = let
+		val r = Cells.newReg()
+		val MTy.EXP(_, hostVP) = VProcOps.genHostVP
+		in
+		  (T.REG(MTy.wordTy, r), T.MV(MTy.wordTy, r, hostVP))
+		end
+	  val (globalApReg, globalAp, setGAp, globalApAddr) = let
+		val r = Cells.newReg()
+		val MTy.EXP(_, gap) = MTy.EXP (64, VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.globNextW, vpReg))
+		in
+		  (r, T.REG(MTy.wordTy, r), T.MV(MTy.wordTy, r, gap), gap)
+		end
+	  fun offAp i = T.ADD (MTy.wordTy, globalAp, wordLit i)
+	  val (totalSize, hdrWord, stms) = alloc offAp args
 	(* store the header word *)
 	  val stms = MTy.store (offAp (~wordSzB), MTy.EXP (MTy.wordTy, T.LI hdrWord), ManticoreRegion.memory) 
 		:: stms
-
 	(* bump up the allocation pointer *)
 	  val bumpAp = VProcOps.genVPStore' (MTy.wordTy, Spec.ABI.globNextW, vpReg, 
 			T.ADD (64, globalApAddr, wordLit (totalSize+wordSzB)))
-	in
-	    { ptr=MTy.GPR (MTy.wordTy, globalApReg), stms=setVP :: setGAp :: rev (bumpAp :: stms) }
-	end
+	  in
+	    { ptr=MTy.GPR (MTy.wordTy, globalApReg), stms=setVP :: setGAp :: stms @ [bumpAp] }
+	  end
 
     val heapSlopSzB = Word.- (Word.<< (0w1, 0w12), 0w512)
 

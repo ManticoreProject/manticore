@@ -81,7 +81,6 @@
       | RHS_Promote of simple_exp			(* promote value to global heap *)
       | RHS_CCall of (c_id * simple_exp list)
       | RHS_VPStore of (offset * simple_exp * simple_exp)
-      | RHS_PMLVar of pml_var                           (* variable bound in PML *)
 
     and simple_exp
       = SE_Mark of simple_exp mark
@@ -128,7 +127,6 @@
 	    | RHS_Promote _ => "RHS_Promote"
 	    | RHS_CCall _ => "RHS_CCall"
 	    | RHS_VPStore _ => "RHS_VPStore"
-	    | RHS_PMLVar _ => "RHS_PMLVar"
 	  (* end case *))
 
     and simpleExpToString e = (case e

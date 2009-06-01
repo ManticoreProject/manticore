@@ -44,7 +44,10 @@ MemChunk_t		*BIBOP[BIBOP_TBLSZ];
 static MemChunk_t	UnmappedChunk;
 
 #ifndef NDEBUG
+static GCDebugLevel_t ParseGCLevel (const char *debug);
+
 GCDebugLevel_t		GCDebug;	// Flag that controls GC debugging output
+GCDebugLevel_t		HeapCheck;	// Flag that controls heap checking
 #endif
 
 /* HeapInit:
@@ -63,12 +66,10 @@ void HeapInit (Options_t *opts)
 
 #ifndef NDEBUG
     const char *debug = GetStringOpt (opts, "-gcdebug", DebugFlg ? GC_DEBUG_DEFAULT : "none");
-    if (strcmp(debug, "none") == 0) GCDebug = GC_DEBUG_NONE;
-    else if (strcmp(debug, "minor") == 0) GCDebug = GC_DEBUG_MINOR;
-    else if (strcmp(debug, "major") == 0) GCDebug = GC_DEBUG_MAJOR;
-    else if (strcmp(debug, "global") == 0) GCDebug = GC_DEBUG_GLOBAL;
-    else if (strcmp(debug, "all") == 0) GCDebug = GC_DEBUG_ALL;
-    else GCDebug = GC_DEBUG_NONE;
+    GCDebug = ParseGCLevel (debug);
+
+    debug = GetStringOpt (opts, "-heapcheck", DebugFlg ? HEAP_DEBUG_DEFAULT : "none");
+    HeapCheck = ParseGCLevel (debug);
 
     if (GCDebug > GC_DEBUG_NONE)
 	SayDebug("HeapInit: max nursery = %d, threshold = %d\n", (int)MaxNurserySzB, (int)MajorGCThreshold);
@@ -199,6 +200,11 @@ VProc_t *AllocVProcMemory (int id)
 	UpdateBIBOP (chunk);
     MutexUnlock (&HeapLock);
 
+#ifndef NDEBUG
+    if (GCDebug > GC_DEBUG_NONE)
+	SayDebug("     AllocVProcMemory(%d): %ld Kb at %p\n", id, chunk->szB/1024, chunk->baseAddr);
+#endif
+
     return vproc;
 
 }
@@ -234,3 +240,18 @@ void UpdateBIBOP (MemChunk_t *chunk)
     } /* while */
 
 }
+
+#ifndef NDEBUG
+static GCDebugLevel_t ParseGCLevel (const char *debug)
+{
+
+    if (strcmp(debug, "none") == 0) return GC_DEBUG_NONE;
+    else if (strcmp(debug, "minor") == 0) return GC_DEBUG_MINOR;
+    else if (strcmp(debug, "major") == 0) return GC_DEBUG_MAJOR;
+    else if (strcmp(debug, "global") == 0) return GC_DEBUG_GLOBAL;
+    else if (strcmp(debug, "all") == 0) return GC_DEBUG_ALL;
+    else return GC_DEBUG_NONE;
+
+}
+#endif
+

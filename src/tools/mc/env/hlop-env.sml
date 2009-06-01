@@ -12,7 +12,6 @@ structure HLOpEnv : sig
 	path : string list,                     (* full path to the HLOp *)
 	inline : bool,				(* should the HLOp be inlined? *)
 	def : BOM.lambda,			(* the HLOps definition *)
-	pmlImports : (BOM.var * BOM.var) list,  (* imports from PML *)
 	externs : (BOM.var * int) list		(* list of external variables (i.e., C functions) *)
 						(* that def references paired with a count of the *)
 						(* number of references *)
@@ -32,7 +31,6 @@ structure HLOpEnv : sig
 	path : string list,                     (* full path to the HLOp *)
 	inline : bool,				(* should the HLOp be inlined? *)
 	def : BOM.lambda,			(* the HLOps definition *)
-	pmlImports : (BOM.var * BOM.var) list,  (* imports from PML *)
 	externs : (BOM.var * int) list		(* list of external variables (i.e., C functions) *)
 						(* that def references paired with a count of the *)
 						(* number of references *)
@@ -42,7 +40,7 @@ structure HLOpEnv : sig
     local 
     (* hlop -> hlop_def *)
     val hlops : hlop_def Stamp.Tbl.hash_table = Stamp.Tbl.mkTable(128, Fail "HLOp table")
-    fun addDef (d as {name as HLOp.HLOp{id, name=n, ...}, path, inline, def, externs, pmlImports}) = (
+    fun addDef (d as {name as HLOp.HLOp{id, name=n, ...}, path, inline, def, externs}) = (
 	(* associate a HLOp with a unique ID *)
 	  Stamp.Tbl.insert hlops (id, d))    
     in

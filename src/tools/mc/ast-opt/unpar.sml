@@ -32,20 +32,27 @@ structure Unpar : sig
 	      | exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, t)
 	      | exp (m as A.VarArityOpExp _) = m
 	      | exp (A.TupleExp es) = A.TupleExp (map exp es)
-	      | exp (A.RangeExp (e1, e2, oe3, t)) = A.RangeExp (exp e1, 
-								exp e2,
-								Option.map exp oe3,
-								t)
+	      | exp (A.RangeExp (e1, e2, oe3, t)) = let
+		val e1' = exp e1
+		val e2' = exp e2
+		val oe3' = Option.map exp oe3
+		val t' = Elaborate.trTy t
+		in
+		    TranslateRange.tr (e1', e2', oe3', t')
+		end
 	      | exp (A.PTupleExp es) = 
 		(* eliminate parallel tuples *)
 		if (what = PTUP orelse what = ALL)
 		   then A.TupleExp (map exp es)
 		   else A.PTupleExp es
-	      | exp (A.PArrayExp (es, t)) = A.PArrayExp (map exp es, t)
-	      | exp (A.PCompExp (e, pes, oe)) = 
-		A.PCompExp (exp e,
-			   map (fn (p,e) => (p, exp e)) pes,
-			   Option.map exp oe)
+	      | exp (A.PArrayExp (es, t)) = let
+		    val a = ParrLitToRope.tr (map exp es, Elaborate.trTy t)
+                (* rewrites with parallel tuples *)
+		in
+		    exp a
+		end
+	      | exp (e as A.PCompExp (e', pes, oe)) = 
+		TranslatePComp.tr exp (e', pes, oe)
 	      | exp (A.PChoiceExp (es, t)) = A.PChoiceExp (map exp es, t)
 	      | exp (A.SpawnExp e) = A.SpawnExp (exp e)
 	      | exp (k as A.ConstExp c) = k

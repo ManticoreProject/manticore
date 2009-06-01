@@ -34,17 +34,17 @@ structure EagerFuture (* : FUTURE *) =
 
 	let v : any = apply f (UNIT / exh')
 
-	let isMigrated : bool = ImplicitThread.@remove-thread(thd / exh)
-	if isMigrated
+	let wasNotMigrated : bool = ImplicitThread.@remove-thread(thd / exh)
+	if wasNotMigrated
 	   then
-	    (* slow clone *)
-	    do ImplicitThreadIVar.@put(ivar, Result.RES(v) / exh)
-	    SchedulerAction.@stop()
-	else
 	    (* fast clone *)
 	    let ivar : ImplicitThreadIVar.ivar = ImplicitThreadIVar.@ivar(Result.RES(v) / exh)
 	    let fut : future = alloc(ivar, Option.NONE)
             return(fut)
+	else
+	    (* slow clone *)
+	    do ImplicitThreadIVar.@put(ivar, Result.RES(v) / exh)
+	    SchedulerAction.@stop()
       ;
 
       define @future-with-cancelation (f : fun(unit / exh -> any) / exh : exh) : future =
@@ -64,17 +64,17 @@ structure EagerFuture (* : FUTURE *) =
 	    SchedulerAction.@stop()
 	  let v : any = apply f (UNIT / exh')
 
-	  let isMigrated : bool = ImplicitThread.@remove-thread(thd / exh)
-	  if isMigrated
+	  let wasNotMigrated : bool = ImplicitThread.@remove-thread(thd / exh)
+	  if wasNotMigrated
 	     then
-	      (* slow clone *)
-	      do ImplicitThreadIVar.@put(ivar, Result.RES(v) / exh)
-	      let _ : unit = SchedulerAction.@stop()
-              return(fut)
-	  else
 	      (* fast clone *)
 	      let ivar : ImplicitThreadIVar.ivar = ImplicitThreadIVar.@ivar(v / exh)
 	      let fut : future = alloc(ivar, Option.NONE)
+              return(fut)
+	  else
+	      (* slow clone *)
+	      do ImplicitThreadIVar.@put(ivar, Result.RES(v) / exh)
+	      let _ : unit = SchedulerAction.@stop()
               return(fut)
 
         let thd : ImplicitThread.thread = ImplicitThread.@thread(k', Option.SOME(c) / exh)

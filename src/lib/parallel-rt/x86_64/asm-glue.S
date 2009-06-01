@@ -7,7 +7,7 @@
 
 #include "asm-defs.h"
 #include "asm-offsets.h"
-#include "registers.h"	
+#include "registers.h"
 
 #define TMP_REG1            %r10          /* must be caller save */
 #define TMP_REG2            %r15          /* must be caller save */	
@@ -47,8 +47,8 @@ _GSYM(ASM_Apply):
 	movq	%rdi,%r10		/* save vproc pointer in %r10 */
 	movq	%rsi,%r12		/* save code pointer in %r12 */
 	movq	%rdx,STD_ARG_REG	/* standard argument */
-	movq	%r8,STD_CONT_REG	/* return continuation */	
 	movq	%rcx,STD_EP_REG		/* environment pointer */
+	movq	%r8,STD_CONT_REG	/* return continuation */	
 	movq	%r9,STD_EXH_REG		/* exception continuation */
       /* load Manticore state */
 	movq	ALLOC_PTR(%r10),ALLOC_PTR_REG	/* load allocation pointer */
@@ -75,12 +75,39 @@ _GSYM(ASM_VProcSleep):
 	movq	$REQ_Sleep, TMP_REG1
 	jmp	switch_to_c
 
+#ifndef NDEBUG
+/* r14 points at the current element of the spill area
+*  r15 points at the last element of the spill area
+*/
+	.p2align 3
+	.globl	_GSYM(ASM_InvalidateSpillArea)
+_GSYM(ASM_InvalidateSpillArea):
+invalidate_spill_area:
+	cmpq	%r14,%r15
+	je	continue_to_c
+	movq	$0xdeadb,(%r14)
+	subq	$8,%r14
+	jmp	invalidate_spill_area
+#endif
+	
 	.p2align 3
 	.globl	_GSYM(ASM_InvokeGC)
 _GSYM(ASM_InvokeGC):
 	movq	$REQ_GC, TMP_REG1
 
 switch_to_c:
+#ifndef NDEBUG
+/* FIXME: disable this check once we've fixed the issues with missing roots */
+/* consistency check for the garbage collector: overwrite all the entries in the spill area,
+ * all none of these entries should be live at this point.
+ */
+	movq	%rbp,%r14
+	subq	$56,%r14
+	movq	%rbp,%r15
+	subq	$2104,%r15
+	jmp 	invalidate_spill_area
+continue_to_c:		
+#endif
 	/* the sequential GC does not store the VProc at the base of its heap */
 #ifdef SEQUENTIAL_RT
 	call	VProcSelf

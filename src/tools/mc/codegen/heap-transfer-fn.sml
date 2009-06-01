@@ -420,7 +420,11 @@ functor HeapTransferFn (
      (* types, values, and temporary registers for the roots (order matters) *)
       val (rootTys, rootArgs, rootTemps) = loop (roots, [], [], [])
      (* allocate the roots *)
-      val {ptr=rootPtr, stms=initRoots} = Alloc.genAlloc (ListPair.zip (rootTys, List.map MTy.regToTree rootTemps))
+      val {ptr=rootPtr, stms=initRoots} = Alloc.genAlloc {
+	      isMut = false,
+	      tys = rootTys,
+	      args = List.map MTy.regToTree rootTemps
+	    }
      (* restore the roots *)
       fun restore ([], i, rs) = List.rev rs
 	| restore (ty::tys, i, rs) = let

@@ -20,5 +20,5 @@ fun bench (seqSz, n, sort) =
 	()
     end
 
-val () = ImplicitThread.runWithGroup(MultiprogrammedWorkStealing.workGroup(), fn () => (
+val () = ImplicitThread.runWithGroup(SwpWorkStealing.workGroup(), fn () => (
 			 bench(PrimIO.readInt(), PrimIO.readInt(), Quicksort.quicksort)))

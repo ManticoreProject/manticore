@@ -25,7 +25,7 @@ structure Compare = struct
     val smSeq = mkMatrix (sz, sz)
     val smPar = cvt smSeq
     val vSeq = List.tabulate (sz, fn _ => 1.0)
-    val vPar = Ropes.fromList vSeq 
+    val vPar = Ropes.tabP (sz, fn _ => 1.0)
     val (parRes, parTime) = Time.timeToEval (fn () => SMVM.smvm (smPar, vPar))
     val (seqRes, seqTime) = 
       if runseq then

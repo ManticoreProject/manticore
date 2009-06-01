@@ -120,30 +120,36 @@ structure List =
 
     fun concat xss = foldr append nil xss
 
-    fun all xs = (
-	  case xs
-	   of nil => true
-	    | true :: xs => all xs
-	    | _ => false
-          (* end case *))
+    fun all pred xs = let
+      fun lp xs =
+       (case xs
+          of nil => true
+	   | h::t => (pred h) andalso (lp t)
+         (* end case *))
+      in
+        lp xs
+      end
 
-    fun exists p = let
-	  fun existsp xs = (
-	        case xs
-		 of nil => false
-		  | (a::x) => if p a then true else existsp x
-	        (* end case *))
-	  in existsp end
+    fun exists pred xs = let
+      fun lp xs = 
+       (case xs
+	  of nil => false
+	   | (h::t) => (pred h) orelse (lp t)
+         (* end case *))
+      in
+        lp xs
+      end
 
     fun zip (xs, ys) = let
-	fun loop (xs, ys, zs) = (case (xs, ys)
-	    of (nil, _) => rev(zs)
-	     | (_, nil) => rev(zs)
-	     | (x :: xs, y :: ys) => loop(xs, ys, (x, y) :: zs)
-	    (* end case *))
-	 in
-	    loop(xs, ys, nil)
-	 end
+      fun lp (xs, ys, acc) =
+       (case (xs, ys)
+	  of (nil, _) => rev acc
+	   | (_, nil) => rev acc
+	   | (x::xs, y::ys) => lp (xs, ys, (x,y)::acc)
+         (* end case *))
+      in
+	lp (xs, ys, nil)
+      end
 
     fun unzip xs = let
 	fun loop (xs, zs1, zs2) = (case xs
@@ -163,14 +169,15 @@ structure List =
 	    loop(xs, (nil, nil, nil))
 	 end
 
-    fun filter f ls = let
-	fun loop arg = (case arg
-	    of (nil, res) => rev res
-	     | (x :: xs, res) => loop(xs, if f x then x :: res else res)
-	    (* end case *))
-	in
-	   loop(ls, nil)
-	end
+    fun filter f xs = let
+      fun lp arg = 
+       (case arg
+	  of (nil, acc) => rev acc
+	   | (x::xs, acc) => lp (xs, if f x then x::acc else acc)
+         (* end case *)) 
+      in
+        lp (xs, nil)
+      end
 
     fun zipWith (oper, xs, ys) = map oper (zip(xs, ys))
 

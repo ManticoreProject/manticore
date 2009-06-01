@@ -43,7 +43,7 @@ structure FloatArray =
 	let len : int = @length(arr / exh)
 	do assert(I32Lt(i,len))
         let data : any = SELECT(DATA_OFF, arr)
-	let x : unit  = ArrayStoreF64(data, i, #0(x))
+	do ArrayStoreF32(data, i, #0(x))
 	return()
       ;
 
@@ -85,7 +85,7 @@ structure FloatArray =
     (* @update-u : unchecked, unwrapped update operation *)
       define inline @update-u (arr : array, i : int, x : float / exh : exh) : () = 
         let data : any = SELECT(DATA_OFF, arr)
-	let x : unit  = ArrayStoreF64(data, i, x)
+	do ArrayStoreF32(data, i, x)
 	return()
       ;
 
@@ -104,6 +104,8 @@ structure FloatArray =
           else
             let mlSeed : ml_float = #0(arg)
             let newArray : array = @array (len, mlSeed / exh)
+            let srcData : any = SELECT(DATA_OFF, arr)
+            let newData : any = SELECT(DATA_OFF, newArray)
 	    let seed : float = #0(mlSeed)
          (* note: bounds are not checked in this loop, since they'd only be checked against len *)
             fun loop (i : int, last : float / ) : () =
@@ -111,12 +113,11 @@ structure FloatArray =
                 then 
                   return()
 	        else
-                  do @update-u (newArray, i, last / exh)
-                  let x : float = @sub-u (arr, i / exh)
+                  do ArrayStoreF32 (newData, i, last)
+                  let x : float = ArrayLoadF32 (srcData, i)
                   let j : int = I32Add(i,1)
-                  let next : float = F64Add(last, x)
-                  do apply loop (j, next)
-                  return()
+                  let next : float = F32Add(last, x)
+                  apply loop (j, next)
              do apply loop (0, seed)
              return (newArray)
       ;
@@ -125,16 +126,16 @@ structure FloatArray =
   (* Bounds are not checked. *)
     define inline @sum (arr : array / exh : exh) : ml_float =
       let len : int = @length (arr / exh)
+      let data : any = SELECT(DATA_OFF, arr)
       fun loop (i : int, acc : float / ) : float =
         if I32Gte (i, len)
         then
           return (acc)
         else
-          let curr : float = @sub-u (arr, i / exh)
-          let newAcc : float = F64Add(curr, acc)
+          let curr : float = ArrayLoadF32 (data, i)
+          let newAcc : float = F32Add (curr, acc)
 	  let j : int = I32Add (i, 1)
-          let s : float = apply loop (j, newAcc)
-          return (s)
+          apply loop (j, newAcc)
       let s : float = apply loop (0, 0.0)
       let ml_s : ml_float = wrap(s)
       return (ml_s)
@@ -152,23 +153,29 @@ structure FloatArray =
     val prefixPlusScan : float * array -> array = _prim(@prefix-plus-scan)
     val sum : array -> float = _prim(@sum)
 
-    fun tabulate (n, f : int -> 'a) = 
-	if n = 0
-	   then emptyArray ()
-	else let
-	  val a = array(n, f 0)
-	  fun tab i = if i < n 
-		then (update(a, i, f i); tab(i + 1))
-		else a
-          in
-	    tab 1
-	  end
+    fun tabulate (n, f : int -> float) = 
+      if n = 0 then emptyArray ()
+      else let
+        val a = array (n, f 0)
+	fun tab i = 
+	  if i < n then 
+	   (update(a, i, f i); 
+	    tab(i + 1))
+	  else a
+	val retval = tab 1
+        in
+	  retval
+	end
 
     fun app f arr = let
-	  val len = length arr
-	  fun app i = if i < len then (f (sub (arr, i)); app (i + 1)) else ()
-	  in
-	    app 0
-	  end
+      val len = length arr
+      fun app i = 
+        if i < len then 
+         (f (sub (arr, i)); 
+	  app (i + 1)) 
+	else ()
+      in
+        app 0
+      end
 
   end

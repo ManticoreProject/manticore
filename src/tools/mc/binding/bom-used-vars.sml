@@ -45,7 +45,6 @@ structure BOMUsedVars =
 	     | PT.RHS_Promote sexp => usedOfSexp sexp
 	     | PT.RHS_CCall (f, sexps) => usedOfSexps sexps
 	     | PT.RHS_VPStore (off, sexp1, sexp2) => union[usedOfSexp sexp1, usedOfSexp sexp2]
-	     | PT.RHS_PMLVar v => var v
             (* end case *))
 
   (* check the lambda where the variable v is already bound *)
