@@ -126,8 +126,6 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	    leaderVProc = true;
 	    GlobalGCInProgress = true;
 	    NReadyForGC = 1;
-	    BarrierInit (&GCBarrier1, NumVProcs);
-	    BarrierInit (&GCBarrier2, NumVProcs);
 	    NumGlobalGCs++;
 	    LogGlobalGCInit (self, NumGlobalGCs);
 #ifndef NDEBUG
@@ -189,6 +187,11 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	    ToSpaceSz = 0;
 	    while (NReadyForGC < NumVProcs)
 		CondWait(&LeaderWait, &GCLock);
+	  /* all followers are ready to do GC, so initialize the barriers
+	   * and then wake them up.
+	   */
+	    BarrierInit (&GCBarrier1, NumVProcs);
+	    BarrierInit (&GCBarrier2, NumVProcs);
 	    CondBroadcast(&FollowerWait);
 	}
 	else {
