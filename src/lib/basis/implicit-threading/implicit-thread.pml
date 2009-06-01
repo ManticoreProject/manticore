@@ -160,10 +160,10 @@ structure ImplicitThread (* :
      * POSTCONDITION: each worker has started running
      *)
       define @spawn-n-workers (nWorkers : int, k : PT.fiber, spawnFn : fun(int, PT.fiber / exh -> ) / exh : exh) : () =
-	let barrier : NWayBarrier.barrier = NWayBarrier.@new(nWorkers / exh)
+	let barrier : Barrier.barrier = Barrier.@new(nWorkers / exh)
 	cont init (x : unit ) =
-	  do NWayBarrier.@ready(barrier / exh)
-	  do NWayBarrier.@barrier(barrier / exh)
+	  do Barrier.@ready(barrier / exh)
+	  do Barrier.@wait(barrier / exh)
 	  throw k(UNIT)
 	fun spawn (i : int / exh : exh) : () =
 	    if I32Gte(i, nWorkers)
@@ -172,7 +172,7 @@ structure ImplicitThread (* :
 		do apply spawnFn(i, init / exh)
 		apply spawn(I32Add(i, 1) / exh)
 	do apply spawn(0 / exh)
-	do NWayBarrier.@barrier(barrier / exh)
+	do Barrier.@wait(barrier / exh)
         return()
       ;
 

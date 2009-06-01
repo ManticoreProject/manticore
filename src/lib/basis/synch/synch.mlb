@@ -13,6 +13,6 @@
   ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
   in
     locked-queue.pml
-    n-way-barrier.pml
+    barrier.pml
     cilk-5-deque.pml
   end

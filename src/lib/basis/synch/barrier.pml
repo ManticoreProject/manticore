@@ -1,12 +1,12 @@
-(* n-way-barrier.pml
+(* barrier.pml
  *
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * N-way memory barrier.
+ * Barriers.
  *)
 
-structure NWayBarrier =
+structure Barrier =
   struct
 
     _primcode(
@@ -33,8 +33,8 @@ structure NWayBarrier =
 	return()
       ;
 
-    (* wait to pass through the barrier *)
-      define @barrier (b : barrier / exh : exh) : () =
+    (* synchronize participating fibers waiting on the barrier *)
+      define @wait (b : barrier / exh : exh) : () =
         let vp : vproc = SchedulerAction.@atomic-begin()
         fun barrierSpin () : () =	
 	      if I32Eq(SELECT(NUM_IN_BARRIER_OFF, b), SELECT(BARRIER_COUNT_OFF, b))
