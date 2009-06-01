@@ -168,15 +168,15 @@ structure SwpWorkStealing (* :
 
       define @worker-from-atomic (nWorkers : int,                (* total number of workers in the group *)
                                   deques : Arr.array,            (* contains pointers to every deque in the work group *)
-                                  barrier : NWayBarrier.barrier
+                                  barrier : Barrier.barrier
 		                 / exh : exh) : PT.fiber =
 	  cont initK (_ : unit) =
 	      let self : vproc = SchedulerAction.@atomic-begin()
 	      let workerId : int = VProc.@vproc-id(self)
 	      let deque : deque = @alloc-deque(self, deques / exh)
-	      do NWayBarrier.@ready(barrier / exh)
+	      do Barrier.@ready(barrier / exh)
 	    (* wait for the other schedulers to allocate their local deques *)
-	      do NWayBarrier.@barrier(barrier / exh)
+	      do Barrier.@wait(barrier / exh)
 
 	      cont schedulerLoop (sign : PT.signal) =
 		cont impossible () = 
@@ -269,7 +269,7 @@ structure SwpWorkStealing (* :
       define @work-group (x : unit / exh : exh) : ImplicitThread.group =
 	  let nVPs : int = VProc.@num-vprocs()
 	  let deques : Arr.array = Arr.@array(nVPs, enum(0) / exh)
-          let barrier : NWayBarrier.barrier = NWayBarrier.@new(nVPs / exh)
+          let barrier : Barrier.barrier = Barrier.@new(nVPs / exh)
 	  fun spawnFn (thd : ImplicitThread.thread / exh : exh) : unit =
 	      do @push-tl (thd / exh)
 	      return(UNIT)
@@ -278,7 +278,7 @@ structure SwpWorkStealing (* :
 	  let initWorker : PT.fiber = @worker-from-atomic(nVPs, deques, barrier / exh)
 	  let group : ImplicitThread.group = ImplicitThread.@group(initWorker, spawnFn, removeFn, deques / exh)
         (* wait for the deques to all be initialized. *)
-          do NWayBarrier.@barrier(barrier / exh)
+          do Barrier.@wait(barrier / exh)
 	  return(group)
 	;
 
