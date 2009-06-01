@@ -135,8 +135,8 @@ STATIC_INLINE void BarrierDestroy (Barrier_t *b)
 #else /* !HAVE_PTHREAD_BARRIER */
 
 typedef struct {
-    int		nProcs;		/*!< number of processes involved in the sync */
-    int		nWaiting;	/*!< number of processes currently blocked */
+    volatile int nProcs;	/*!< number of processes involved in the sync */
+    volatile int nWaiting;	/*!< number of processes currently blocked */
     Mutex_t	lock;		/*!< lock to control access to barrier rep. */
     Cond_t	wait;		/*!< condition for waiting */
 } Barrier_t;
