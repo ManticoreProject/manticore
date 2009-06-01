@@ -21,8 +21,9 @@
 static Mutex_t		GCLock;		// Lock that protects the following variables:
 static Cond_t		LeaderWait;	// The leader waits on this for the followers
 static Cond_t		FollowerWait;	// followers block on this until the leader starts the GC
-static int		NReadyForGC;	// number of vprocs that are ready for GC
-static bool		GlobalGCInProgress; // true, when a global GC has been initiated
+static volatile int	NReadyForGC;	// number of vprocs that are ready for GC
+static volatile bool	GlobalGCInProgress; // true, when a global GC has been initiated
+static volatile bool	AllReadyForGC;	// true when all vprocs are ready to start GC
 uint32_t		NumGlobalGCs;	// the total number of global GCs.
 static Barrier_t        GCBarrier1;	// for synchronizing on completion of copying phase
 static Barrier_t	GCBarrier2;	// for synchronizing on completion of GC
@@ -125,6 +126,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	  /* this vproc is leading the global GC */
 	    leaderVProc = true;
 	    GlobalGCInProgress = true;
+	    AllReadyForGC = false;
 	    NReadyForGC = 1;
 	    NumGlobalGCs++;
 	    LogGlobalGCInit (self, NumGlobalGCs);
@@ -192,12 +194,14 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	   */
 	    BarrierInit (&GCBarrier1, NumVProcs);
 	    BarrierInit (&GCBarrier2, NumVProcs);
+	    AllReadyForGC = true;
 	    CondBroadcast(&FollowerWait);
 	}
 	else {
 	    if (++NReadyForGC == NumVProcs)
 		CondSignal (&LeaderWait);
-	    CondWait (&FollowerWait, &GCLock);
+	    while (! AllReadyForGC)
+	        CondWait (&FollowerWait, &GCLock);
 	}
     MutexUnlock (&GCLock);
 

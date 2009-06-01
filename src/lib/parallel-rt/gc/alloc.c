@@ -134,13 +134,16 @@ Value_t GlobalAllocUniform (VProc_t *vp, int nElems, ...)
     Value_t	elems[nElems];
     va_list	ap;
 
-    assert (vp == VProcSelf());
-    assert ((vp->globNextW % WORD_SZB) == 0);
+    if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit) {
+	AllocToSpaceChunk(vp);
+    }
+
+    assert (AddrToChunk(vp->globNextW)->sts == TO_SP_CHUNK);
 
   /* first we must ensure that the elements are in the global heap */
     va_start(ap, nElems);
     for (int i = 0;  i < nElems;  i++) {
-	elems[i] = PromoteObj (vp, va_arg(ap, Value_t));
+	elems[i] = va_arg(ap, Value_t);
     }
     va_end(ap);
 
@@ -165,8 +168,11 @@ Value_t GlobalAllocNonUniform (VProc_t *vp, int nElems, ...)
     Word_t	bits = 0;
     va_list	ap;
 
-    assert (vp == VProcSelf());
-    assert ((vp->globNextW % WORD_SZB) == 0);
+    if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit) {
+	AllocToSpaceChunk(vp);
+    }
+
+    assert (AddrToChunk(vp->globNextW)->sts == TO_SP_CHUNK);
 
   /* first we must ensure that the elements are in the global heap */
     va_start(ap, nElems);
@@ -174,7 +180,7 @@ Value_t GlobalAllocNonUniform (VProc_t *vp, int nElems, ...)
 	int tag = va_arg(ap, int);
 	assert ((tag == RAW_FIELD) || (tag == PTR_FIELD));
 	bits |= (tag << i);
-	elems[i] = PromoteObj (vp, va_arg(ap, Value_t));
+	elems[i] = va_arg(ap, Value_t);
     }
     va_end(ap);
 
