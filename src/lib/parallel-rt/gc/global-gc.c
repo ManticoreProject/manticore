@@ -22,12 +22,10 @@ static Mutex_t		GCLock;		// Lock that protects the following variables:
 static Cond_t		LeaderWait;	// The leader waits on this for the followers
 static Cond_t		FollowerWait;	// followers block on this until the leader starts the GC
 static int		NReadyForGC;	// number of vprocs that are ready for GC
-static Barrier_t	GCBarrier;	// for synchronizing on GC completion
 static bool		GlobalGCInProgress; // true, when a global GC has been initiated
 uint32_t		NumGlobalGCs;	// the total number of global GCs.
-#ifndef NDEBUG
-static Barrier_t        CheckBarrier;   // for synchronizing the GC check completion
-#endif
+static Barrier_t        GCBarrier1;	// for synchronizing on completion of copying phase
+static Barrier_t	GCBarrier2;	// for synchronizing on completion of GC
 
 #ifndef NO_GC_STATS
 static uint64_t		FromSpaceSzb;
@@ -128,10 +126,8 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	    leaderVProc = true;
 	    GlobalGCInProgress = true;
 	    NReadyForGC = 1;
-	    BarrierInit (&GCBarrier, NumVProcs);
-#ifndef NDEBUG
-	    BarrierInit (&CheckBarrier, NumVProcs);
-#endif
+	    BarrierInit (&GCBarrier1, NumVProcs);
+	    BarrierInit (&GCBarrier2, NumVProcs);
 	    NumGlobalGCs++;
 	    LogGlobalGCInit (self, NumGlobalGCs);
 #ifndef NDEBUG
@@ -220,8 +216,10 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	    SayDebug ("[%2d] Checking heap consistency\n", self->id);
 	CheckAfterGlobalGC (self, roots);
     }
-    BarrierWait (&CheckBarrier);
 #endif
+
+  /* synchronize on every vproc finishing GC */
+    BarrierWait (&GCBarrier1);
 
   /* the leader reclaims the from-space pages */
     if (leaderVProc) {
@@ -249,8 +247,8 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 
     LogGlobalGCEnd (self, NumGlobalGCs);
 
-  /* synchronize on every vproc finishing GC */
-    BarrierWait (&GCBarrier);
+  /* synchronize on from-space being reclaimed */
+    BarrierWait (&GCBarrier2);
 
 #ifndef NDEBUG
     if (GCDebug >= GC_DEBUG_GLOBAL) {
