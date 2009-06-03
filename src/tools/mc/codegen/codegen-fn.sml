@@ -72,7 +72,8 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN =
       | annotate (stm, msg) = T.ANNOTATION(stm, #create MLRiscAnnotations.COMMENT msg)
 
     fun codeGen {dst, code=M.MODULE{name, externs, code}} = let
-	  val annotate = if (Controls.get annotateInstrs)
+	  val annotateFlg = Controls.get annotateInstrs
+	  val annotate = if annotateFlg
 		then annotate
 		else (fn (stm, msg) => stm)
 	  fun annotateStms ([], msg) = []
@@ -238,7 +239,12 @@ if MChkTy.check stm
 	(* bind CFG variables to MLRISC trees.  we annotate MLRISC code with the given message. *)
 	  fun bindExp (lhs, rhs, msg) = let
 (* FIXME: we should try to avoid the concat when we are not actually annotating instructions! *)
-		fun f (l, r) = emitStms (annotateStms(bind (l, r), String.concat msg))
+		fun f (l, r) = let
+		      val stms = bind (l, r)
+		      val stms = if annotateFlg then annotateStms(stms, String.concat msg) else stms
+		      in
+			emitStms stms
+		      end
 		in
 		  ListPair.appEq f (lhs, rhs)
 		end                 
@@ -261,7 +267,7 @@ if MChkTy.check stm
 		      val offset = T.LI (T.I.fromInt (MTy.wordTy, wordSzB * i))
 		      in
 			flushLoads ();
-			emit(annotate(T.STORE (szI, T.ADD (MTy.wordTy, defOf lhs, offset), defOf rhs, ManticoreRegion.memory),
+			emit(annotate(T.STORE (szI, T.ADD(MTy.wordTy, defOf lhs, offset), defOf rhs, ManticoreRegion.memory),
 			     v2s lhs^" := "^v2s rhs))
 		      end
 		  | gen (M.E_AddrOf(lhs, i, v)) = let
@@ -286,7 +292,8 @@ if MChkTy.check stm
 			      args = List.map getDefOf vs
 			    }
 		      in 
-			emitStms (annotateStms (stms, "galloc "^v2s lhs^" = "^String.concat (List.map v2s vs)));
+			emitStms (annotateStms (
+			  stms, String.concat("galloc " :: v2s lhs :: " = " :: List.map v2s vs)));
 			bindExp ([lhs], [ptr], [])
 		      end
 		  | gen (M.E_Promote (lhs, v)) =  let
