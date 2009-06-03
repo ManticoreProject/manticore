@@ -40,6 +40,8 @@ structure CPS =
 					(* in the vproc structure *)
       | VPStore of (offset * var * var)	(* store a value at the given byte offset *)
 					(* in the vproc structure *)
+      | VPAddr of (offset * var)	(* address of given byte offset in the vproc *)
+					(* structure *)
 
     and lambda = FB of {	      (* function/continuation abstraction *)
 	  f : var,			(* function name *)

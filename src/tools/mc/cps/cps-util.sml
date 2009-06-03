@@ -36,6 +36,7 @@ structure CPSUtil : sig
 	    | C.HostVProc => ()
 	    | C.VPLoad(n, x) => f x
 	    | C.VPStore(n, x, y) => (f x; f y)
+	    | C.VPAddr(n, x) => f x
 	  (* end case *))
 
     fun mapRHS f rhs = (case rhs
@@ -52,6 +53,7 @@ structure CPSUtil : sig
 	    | C.HostVProc => rhs
 	    | C.VPLoad(n, x) => C.VPLoad(n, f x)
 	    | C.VPStore(n, x, y) => C.VPStore(n, f x, f y)
+	    | C.VPAddr(n, x) => C.VPAddr(n, f x)
 	  (* end case *))
 
     fun varsOfRHS rhs = (case rhs
@@ -68,6 +70,7 @@ structure CPSUtil : sig
 	    | C.HostVProc => []
 	    | C.VPLoad(n, x) => [x]
 	    | C.VPStore(n, x, y) => [x, y]
+	    | C.VPAddr(n, x) => [x]
 	  (* end case *))
 
     fun rhsToString (C.Var xs) = concat["Var(", vl2s xs, ")"]
@@ -83,6 +86,7 @@ structure CPSUtil : sig
       | rhsToString (C.HostVProc) = "HostVProc"
       | rhsToString (C.VPLoad(n, x)) = concat["VPLoad(", IntInf.toString n, ", ", v2s x, ")"]
       | rhsToString (C.VPStore(n, x, y)) = concat["VPStore(", IntInf.toString n, v2s x,  ", ", v2s y, ")"]
+      | rhsToString (C.VPAddr(n, x)) = concat["VPAddr(", IntInf.toString n, ", ", v2s x, ")"]
 
     fun applyToBoundVars func (C.MODULE{externs, body, ...}) = let
 	  fun applyToFBs fbs = (

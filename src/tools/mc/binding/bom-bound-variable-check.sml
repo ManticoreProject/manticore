@@ -258,11 +258,11 @@ structure BOMBoundVariableCheck :> sig
 	           in
 		       PT2.SE_Select (i, sexp)
 		   end
-	     | PT1.SE_AddrOf (i, sexp) => PT2.SE_AddrOf (i, chkSexp loc (sexp, env))
-	     | PT1.SE_Const (lit, ty) => PT2.SE_Const (lit, chkTy loc (ty, env))
+	     | PT1.SE_AddrOf(i, sexp) => PT2.SE_AddrOf (i, chkSexp loc (sexp, env))
+	     | PT1.SE_Const(lit, ty) => PT2.SE_Const (lit, chkTy loc (ty, env))
 	     | PT1.SE_MLString s => PT2.SE_MLString s
-	     | PT1.SE_Cast (ty, sexp) => PT2.SE_Cast (chkTy loc (ty, env), 
-						      chkSexp loc (sexp, env))
+	     | PT1.SE_Cast(ty, sexp) =>
+		PT2.SE_Cast(chkTy loc (ty, env), chkSexp loc (sexp, env))
 	     | PT1.SE_Prim (prim, sexps) => let
 	           val prim = (case findDCon (env, prim)
 				 of SOME dcon => dcon
@@ -278,7 +278,8 @@ structure BOMBoundVariableCheck :> sig
 		      PT2.SE_Prim(prim, chkSexps loc (sexps, env))
                    end
 	     | PT1.SE_HostVProc => PT2.SE_HostVProc
-	     | PT1.SE_VPLoad (off, sexp) => PT2.SE_VPLoad (off, chkSexp loc (sexp, env))
+	     | PT1.SE_VPLoad(off, sexp) => PT2.SE_VPLoad(off, chkSexp loc (sexp, env))
+	     | PT1.SE_VPAddr(off, sexp) => PT2.SE_VPAddr(off, chkSexp loc (sexp, env))
             (* end case *))
 
     and chkSexps loc (sexps, env) = List.map (fn sexp => chkSexp loc (sexp, env)) sexps

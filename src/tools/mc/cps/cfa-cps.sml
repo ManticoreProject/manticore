@@ -528,6 +528,7 @@ structure CFACPS : sig
                   | doRhs ([x], CPS.HostVProc) = addInfo (x, TOP)
                   | doRhs ([x], CPS.VPLoad _) = addInfo (x, TOP)
                   | doRhs ([], CPS.VPStore (_, y, z)) = escape z
+                  | doRhs ([x], CPS.VPAddr _) = addInfo (x, TOP)
                   | doRhs (xs, rhs) = raise Fail(concat[
                        "type error: doRhs([", String.concatWith "," (List.map CV.toString xs), 
                        "], ", CPSUtil.rhsToString rhs, ")"

@@ -77,6 +77,7 @@ structure CFGUtil : sig
       | rhsOfExp (E_HostVProc _) = []
       | rhsOfExp (E_VPLoad(_, _, x)) = [x]
       | rhsOfExp (E_VPStore(_, x, y)) = [x, y]
+      | rhsOfExp (E_VPAddr(_, _, x)) = [x]
 
   (* project the list of variables in a control transfer.  Note that the order must agree with
    * the parameter order of paramsOfConv below.
@@ -156,6 +157,7 @@ structure CFGUtil : sig
 	      | E_CCall(lhs, f, rhs) => CFG.mkCCall (lhs, substVar f, List.map substVar rhs)
 	      | E_VPLoad(lhs, offset, rhs) => CFG.mkVPLoad (lhs, offset, substVar rhs)
 	      | E_VPStore(offset, v1, v2) => CFG.mkVPStore (offset, substVar v1, substVar v2)
+	      | E_VPAddr(lhs, offset, rhs) => CFG.mkVPAddr (lhs, offset, substVar rhs)
 	      | e => e
             (* end case *)
 	  end

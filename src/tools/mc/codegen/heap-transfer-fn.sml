@@ -450,7 +450,7 @@ functor HeapTransferFn (
       val (vpReg, setVP) = hostVProc ()
      (* post-C-call vproc pointer*)
       val (vpReg', setVP') = hostVProc ()
-      val stdEnvPtrOffset = VProcOps.genVPAddrOf (Spec.ABI.stdEnvPtr, vpReg')
+      val stdEnvPtrOffset = VProcOps.genVPAddrOf' (Spec.ABI.stdEnvPtr, vpReg')
       val {initRoots, restoredRoots, rootPtr, rootTemps, rootArgs} = 
 	     processGCRoots varDefTbl (roots, T.LOAD (MTy.wordTy, stdEnvPtrOffset, ManticoreRegion.memory))
      (* if the C call returns a value (it is non-void), we pass the return value to the first argument 

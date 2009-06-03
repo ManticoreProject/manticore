@@ -25,7 +25,8 @@ signature VPROC_OPS =
     val genVPStore' : (MTy.T.ty * CFG.offset * MTy.T.rexp * MTy.T.rexp) -> MTy.T.stm
 
   (* compute an offset off the vproc structure. *)
-    val genVPAddrOf : (CFG.offset * MTy.T.rexp) -> MTy.T.rexp
+    val genVPAddrOf  : VarDef.var_def_tbl -> (CFG.offset * CFG.var) -> MTy.mlrisc_tree
+    val genVPAddrOf' : (CFG.offset * MTy.T.rexp) -> MTy.T.rexp
 
   end (* VPROC_OPS *)
 
@@ -51,15 +52,17 @@ functor VProcOpsFn (
 
     val genHostVP = MTy.EXP(ty, genHostVP')
   
-    fun genVPAddrOf (offset, vp) = T.ADD(ty, vp, T.LI offset)
+    fun genVPAddrOf' (offset, vp) = T.ADD(ty, vp, T.LI offset)
 
-    fun genVPLoad' (ty, offset, vp) = T.LOAD(ty, genVPAddrOf (offset, vp), memory)
+    fun genVPAddrOf varDefTbl (offset, vp) =
+	  MTy.EXP (ty, genVPAddrOf' (offset, VarDef.defOf varDefTbl vp))
+
+    fun genVPLoad' (ty, offset, vp) = T.LOAD(ty, genVPAddrOf' (offset, vp), memory)
 
     fun genVPLoad varDefTbl (ty, offset, vproc) =
 	  MTy.EXP (ty, genVPLoad' (ty, offset, VarDef.defOf varDefTbl vproc))
   
-    fun genVPStore' (ty, offset, vproc, v) =
-	  T.STORE (ty, T.ADD (MTy.wordTy, vproc, T.LI offset), v, memory)
+    fun genVPStore' (ty, offset, vp, v) = T.STORE (ty, genVPAddrOf' (offset, vp), v, memory)
   
     fun genVPStore varDefTbl (ty, offset, vproc, v) =
 	  genVPStore' (ty, offset, VarDef.defOf varDefTbl vproc, 

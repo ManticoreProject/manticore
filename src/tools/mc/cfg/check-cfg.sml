@@ -267,9 +267,6 @@ structure CheckCFG : sig
 			      andalso isMut
 				then ()
 				else err ()
-			  | Ty.T_VProc => 
-			    (* allow programs to take offsets from the vproc structure for atomic ops *)
-			    ()
 			  | _ => err ()
 			(* end case *);
 			addVar (env, x)
@@ -358,10 +355,11 @@ structure CheckCFG : sig
 			  else err ();
 			addVar (env, x)
                       end
-                  | CFG.E_VPLoad (x, i, y) => let
+                  | CFG.E_VPLoad(x, i, y) => let
                       fun err () = error[
-                             "type mismatch in VProcLoad: ", v2s' x, " = ",
-                             "load(", v2s' y, "+", IntInf.toString i, ")\n"]
+			      "type mismatch: ", v2s' x, " = ",
+                              "vpload(", v2s' y, "+", IntInf.toString i, ")\n"
+			    ]
                       in
 			chkVar (env, y, "VPLoad");
 			if TyU.equal (Ty.T_VProc, V.typeOf y)
@@ -369,10 +367,10 @@ structure CheckCFG : sig
 			  else err ();
 			addVar (env, x)
                       end
-                  | CFG.E_VPStore (i, y, z) => let
+                  | CFG.E_VPStore(i, y, z) => let
                       fun err () = error[
-                             "type mismatch in VProcStore: ",
-                             "store(", v2s' y, "+", IntInf.toString i, ", ", v2s' z, ")\n"]
+                             "type mismatch: ",
+                             "vpstore(", v2s' y, "+", IntInf.toString i, ", ", v2s' z, ")\n"]
                       in
 			chkVar (env, y, "VPStore");
 			chkVar (env, z, "VPStore");
@@ -380,6 +378,18 @@ structure CheckCFG : sig
 			  then ()
 			  else err ();
 			env
+                      end
+                  | CFG.E_VPAddr(x, i, y) => let
+                      fun err () = error[
+			      "type mismatch: ", v2s' x, " = ",
+                              "vpaddr(", v2s' y, "+", IntInf.toString i, ")\n"
+			    ]
+                      in
+			chkVar (env, y, "VPAddr");
+			if TyU.equal (Ty.T_VProc, V.typeOf y)
+			  then ()
+			  else err ();
+			addVar (env, x)
                       end
                 (* end case *))
           fun chkExit (env, exit) = (case exit

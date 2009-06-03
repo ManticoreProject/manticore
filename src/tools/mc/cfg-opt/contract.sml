@@ -235,6 +235,14 @@ structure Contract : sig
 		  in
 		    (C.mkVPStore(i, applySubst(env, x), applySubst(env, y)) :: rest, exit)
 		  end
+	      | C.E_VPAddr(x, i, y) => let
+		  val y = applySubst (env, y)
+		  val (rest, exit) = doRest env
+		  in
+		    if unused x
+		      then (ST.tick cntUnusedVar; Census.dec y; (rest, exit))
+		      else (C.mkVPAddr(x, i, y) :: rest, exit)
+		  end
 	    (* end case *)
 	  end
 

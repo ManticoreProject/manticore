@@ -100,6 +100,7 @@ structure Keywords : sig
 	    ("vec128",		T.KW_vec128),
 	    ("void",		T.KW_void),
 	    ("vproc",		T.KW_vproc),
+	    ("vpaddr",		T.KW_vpaddr),
 	    ("vpload",		T.KW_vpload),
 	    ("vpstore",		T.KW_vpstore),
 	    ("wrap",		T.KW_wrap)

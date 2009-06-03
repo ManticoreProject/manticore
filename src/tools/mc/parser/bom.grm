@@ -55,6 +55,7 @@
         | KW_use_rw     ("use_rw")
 	| KW_vec128	("vec128")
 	| KW_void	("void")
+	| KW_vpaddr	("vpaddr")
 	| KW_vproc	("vproc")
 	| KW_vpload	("vpload")
 	| KW_vpstore	("vpstore")
@@ -301,6 +302,8 @@ NonSelectExp
 	| "host_vproc"			=> (markBOMSE(FULL_SPAN, BPT.SE_HostVProc))
 	| "vpload" "(" POSINT "," SimpleExp ")"
 					=> (markBOMSE(FULL_SPAN, BPT.SE_VPLoad(POSINT, SimpleExp)))
+	| "vpaddr" "(" POSINT "," SimpleExp ")"
+					=> (markBOMSE(FULL_SPAN, BPT.SE_VPAddr(POSINT, SimpleExp)))
 	;
 
 SimpleExp

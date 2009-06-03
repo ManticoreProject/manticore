@@ -610,6 +610,11 @@ structure FlatClosureWithCFA : sig
                       in
                         ([CFG.mkVPStore(offset, vp, x)] @ binds, env)
                       end
+                  | ((env, [x]), CPS.VPAddr(offset, vp)) => let
+                      val (binds, vp) = lookupVar(env, vp)
+                      in
+                        ([CFG.mkVPAddr(x, offset, vp)] @ binds, env)
+                      end
                   | (_, rhs) => raise Fail("ill-formed RHS binding: " ^ CPSUtil.rhsToString rhs)
                 (* end case *))
         (* create a standard function convention for a list of parameters *)

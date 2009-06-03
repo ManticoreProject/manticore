@@ -145,6 +145,9 @@ structure PrintBOM : sig
 		  "vpstore(", IntInf.toString offset, ", ", varUseToString vp, ", ",
 		  varUseToString x, ")"
 		]
+	    | prRHS (B.E_VPAddr(offset, vp)) = prl [
+		  "vpaddr(", IntInf.toString offset, ", ", varUseToString vp, ")"
+		]
 	  and prConst (lit, ty) = prl [
 		  Literal.toString lit, ":", BOMTyUtil.toString ty
 		]

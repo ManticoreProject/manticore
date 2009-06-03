@@ -208,15 +208,16 @@ end = struct
     (* rhsToArgVars() - Give a BOM statement RHS, return all the
        variable arguments to that item. *)
     fun rhsToArgVars rhs = (case rhs
-        of B.E_Cast (_, v) => [v]
-         | B.E_Select (_, v) => [v]
-         | B.E_Update (_, v1, v2) => [v1, v2]
-         | B.E_AddrOf (_, v) => [v]
-         | B.E_Alloc (_, args) => args
-         | B.E_DCon (_, args) => args
-         | B.E_CCall (_, args) => args
-         | B.E_VPLoad (_, v) => [v]
-         | B.E_VPStore (_, v1, v2) => [v1, v2]
+        of B.E_Cast(_, v) => [v]
+         | B.E_Select(_, v) => [v]
+         | B.E_Update(_, v1, v2) => [v1, v2]
+         | B.E_AddrOf(_, v) => [v]
+         | B.E_Alloc(_, args) => args
+         | B.E_DCon(_, args) => args
+         | B.E_CCall(_, args) => args
+         | B.E_VPLoad(_, v) => [v]
+         | B.E_VPStore(_, v1, v2) => [v1, v2]
+         | B.E_VPAddr(_, v) => [v]
          | _ => []
         (* end case *))
 

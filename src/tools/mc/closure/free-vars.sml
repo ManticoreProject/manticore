@@ -62,6 +62,7 @@ structure FreeVars : sig
       | fvOfRHS (fv, CPS.HostVProc) = fv
       | fvOfRHS (fv, CPS.VPLoad(_, vp)) = addVar(fv, vp)
       | fvOfRHS (fv, CPS.VPStore(_, vp, x)) = addVars(fv, [vp, x])
+      | fvOfRHS (fv, CPS.VPAddr(_, vp)) = addVar(fv, vp)
 
   (* return the variable of a lambda *)
     fun funVar (CPS.FB{f, ...}) = f

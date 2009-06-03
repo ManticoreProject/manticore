@@ -242,9 +242,6 @@ structure CheckCPS : sig
 			    if (i < List.length tys) andalso CTU.match(CTy.T_Addr(List.nth (tys, i)), ty)
                               then ()
                               else error["type mismatch in AddrOf: ", vl2s lhs, " = &(", v2s x, ")\n"]
-			| CTy.T_VProc => 
-			  (* allow programs to take offsets from the vproc structure for atomic ops *)
-			  ()
 			| ty => error[v2s x, ":", CTU.toString ty, " is not a tuple: ",
                                     vl2s lhs, " = &(", v2s x, ")\n"]
 		      (* end case *))
@@ -279,10 +276,11 @@ structure CheckCPS : sig
 		  | ([ty], C.VPLoad(n, vp)) => (
                       chkVar(env, vp, "VPLoad");
                       if CTU.equal(CV.typeOf vp, CTy.T_VProc)
-                         then ()
-                         else error["type mismatch in VPLoad: ",
-                                  vl2s lhs, " = vpload(", 
-                                  IntInf.toString n, ", ", v2s vp, ")\n"])
+                        then ()
+                        else error[
+			    "type mismatch: ", vl2s lhs, " = vpload(", 
+                            IntInf.toString n, ", ", v2s vp, ")\n"
+			  ])
 		  | ([], C.VPStore(n, vp, x)) => (
 		      chkVar(env, vp, "VPStore"); 
                       chkVar(env, x, "VPStore");
@@ -291,6 +289,14 @@ structure CheckCPS : sig
                          else error["type mismatch in VPStore: ",
                                   vl2s lhs, " = vpstore(", 
                                   IntInf.toString n, ", ", v2s vp, ", ", v2s x, ")\n"])
+		  | ([ty], C.VPAddr(n, vp)) => (
+                      chkVar(env, vp, "VPAddr");
+                      if CTU.equal(CV.typeOf vp, CTy.T_VProc)
+                        then ()
+                        else error[
+			    "type mismatch: ", vl2s lhs, " = vpaddr(", 
+                            IntInf.toString n, ", ", v2s vp, ")\n"
+			  ])
 		  | _ => error["bogus rhs for ", vl2s lhs, "\n"]
 		(* end case *))
 	  and chkFB (env, fb as C.FB{f, params, rets, body}, vk) = (let

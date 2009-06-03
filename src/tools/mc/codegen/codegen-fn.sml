@@ -320,7 +320,13 @@ if MChkTy.check stm
 			[BE.VProcOps.genVPLoad varDefTbl (szOfVar lhs, offset, vproc)],
 			["vpload ", v2s lhs])
 		  | gen (M.E_VPStore(offset, vproc, v)) =
-		      emitStms(annotateStms([BE.VProcOps.genVPStore varDefTbl (szOfVar v, offset, vproc, v)], "vpstore "^v2s v))
+		      emitStms (
+			annotateStms([BE.VProcOps.genVPStore varDefTbl (szOfVar v, offset, vproc, v)],
+			"vpstore "^v2s v))
+		  | gen (M.E_VPAddr(lhs, offset, vproc)) =
+		      bindExp ([lhs],
+			[BE.VProcOps.genVPAddrOf varDefTbl (offset, vproc)],
+			["vpaddr ", v2s lhs])
 		in
 		  gen
 		end (* genExp *)
