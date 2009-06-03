@@ -77,6 +77,28 @@ structure Prim =
       | I64ToF32 of 'var		(* long -> float conversion *)
       | I64ToF64 of 'var		(* long -> double conversion *)
       | F64ToI32 of 'var                (* double -> int conversion *)
+    (* address arithmetic *)
+      | I64ToAddr of 'var               (* long -> addr(any) conversion *)
+      | AddrAdd of 'var * 'var
+      | AddrSub of 'var * 'var
+    (* loads from addresses *)
+      | AddrLoadI8 of 'var
+      | AddrLoadU8 of 'var
+      | AddrLoadI16 of 'var
+      | AddrLoadU16 of 'var
+      | AddrLoadI32 of 'var
+      | AddrLoadI64 of 'var
+      | AddrLoadF32 of 'var
+      | AddrLoadF64 of 'var
+      | AddrLoad of 'var
+    (* stores to addresses *)
+      | AddrStoreI8 of 'var * 'var
+      | AddrStoreI16 of 'var * 'var
+      | AddrStoreI32 of 'var * 'var
+      | AddrStoreI64 of 'var * 'var
+      | AddrStoreF32 of 'var * 'var
+      | AddrStoreF64 of 'var * 'var
+      | AddrStore of 'var * 'var
     (* array load operations *)
       | ArrayLoadI32 of 'var * 'var
       | ArrayLoadI64 of 'var * 'var

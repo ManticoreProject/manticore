@@ -74,6 +74,8 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
     val uTy = Ty.unitTy
     val bTy = Ty.boolTy
     val adrTy = Ty.addrTy
+    val i8  = Ty.rawTy RawTypes.T_Byte
+    val i16 = Ty.rawTy RawTypes.T_Short
     val i32 = Ty.rawTy RawTypes.T_Int
     val i64 = Ty.rawTy RawTypes.T_Long
     val f32 = Ty.rawTy RawTypes.T_Float
@@ -161,6 +163,25 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
                 ("I64ToF32",    mk Prim1 (P.I64ToF32,   i64,            f32)),
                 ("I64ToF64",    mk Prim1 (P.I64ToF64,   i64,            f64)),
                 ("F64ToI32",    mk Prim1 (P.F64ToI32,   f64,            i32)),
+		("I64ToAddr",   mk Prim1 (P.I64ToAddr,  i64,            adrTy)),
+		("AddrAdd",     mk Prim2 (P.AddrAdd,    (adrTy, adrTy), adrTy)),
+		("AddrSub",     mk Prim2 (P.AddrSub,    (adrTy, adrTy), adrTy)),
+		("AddrLoadI8",   mk Prim1 (P.AddrLoadI8,        adrTy,	        i8)),
+		("AddrLoadU8",   mk Prim1 (P.AddrLoadU8,        adrTy,	        i8)),
+		("AddrLoadI16",  mk Prim1 (P.AddrLoadI16,	adrTy,	        i16)),
+		("AddrLoadU16",  mk Prim1 (P.AddrLoadU16,	adrTy,	        i16)),
+		("AddrLoadI32",  mk Prim1 (P.AddrLoadI32,	adrTy,	        i32)),
+		("AddrLoadI64",  mk Prim1 (P.AddrLoadI64,	adrTy,	        i64)),
+		("AddrLoadF32",  mk Prim1 (P.AddrLoadF32,	adrTy,	        f32)),
+		("AddrLoadF64",  mk Prim1 (P.AddrLoadF64,	adrTy,	        f64)),
+		("AddrLoad",     mk Prim1 (P.AddrLoad,	        adrTy,	        aTy)),
+		("AddrStoreI8",  mk Prim2 (P.AddrStoreI8,	(adrTy, i8),	        uTy)),
+		("AddrStoreI16",  mk Prim2 (P.AddrStoreI16,	(adrTy, i16),	        uTy)),
+		("AddrStoreI32",  mk Prim2 (P.AddrStoreI32,	(adrTy, i32),	        uTy)),
+		("AddrStoreI64",  mk Prim2 (P.AddrStoreI64,	(adrTy, i64),	        uTy)),
+		("AddrStoreF32",  mk Prim2 (P.AddrStoreF32,	(adrTy, f32),	        uTy)),
+		("AddrStoreF64",  mk Prim2 (P.AddrStoreF64,	(adrTy, f64),	        uTy)),
+		("AddrStore",     mk Prim2 (P.AddrStore,	(adrTy, aTy),	        uTy)),
 		("ArrayLoadI32",   mk Prim2 (P.ArrayLoadI32,	(adrTy, i32),	        i32)),
 		("ArrayLoadI64",   mk Prim2 (P.ArrayLoadI64,	(adrTy, i32),	        i64)),
 		("ArrayLoadF32",   mk Prim2 (P.ArrayLoadF32,	(adrTy, i32),	        f32)),
