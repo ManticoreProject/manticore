@@ -32,3 +32,16 @@ for np in 2 3 4 5 6 7 8 ; do
     primes-mc2 -p $np >> $f
   done
 done
+
+# parallel version with grouping of threads
+#
+for np in 2 3 4 5 6 7 8 ; do
+  name="Manticore "$np"P4"
+  echo "running $name benchmarks"
+  echo "" >> $f
+  echo "$name:" >> $f
+  for i in 0 1 2 3 4 5 6 7 8 9 ; do
+    primes-mc3 -p $np >> $f
+  done
+done
+
