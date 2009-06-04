@@ -35,7 +35,8 @@ functor Alloc64Fn (
 		if (j >= i) then sz
 		else offset (tys, j+1, Types.alignedTySzB ty + sz)
 	    | offset ([], _, _) = raise Fail(concat[
-		  "offset ", Int.toString(List.length tys), " of type ", CFGTyUtil.toString (M.T_Tuple (false, tys))
+		  "offset ", Int.toString(List.length tys), " of type ",
+		  CFGTyUtil.toString (M.T_Tuple (false, tys))
 		])
 	  in 
 	    offset (tys, 0, 0) 
@@ -176,6 +177,7 @@ functor Alloc64Fn (
 	    { ptr=MTy.GPR (MTy.wordTy, globalApReg), stms=setVP :: setGAp :: stms @ [bumpAp] }
 	  end
 
+(* FIXME: this value should come from the runtime constants *)
     val heapSlopSzB = Word.- (Word.<< (0w1, 0w12), 0w512)
 
   (* This expression evaluates to true when the heap has enough space for szB
@@ -186,14 +188,14 @@ functor Alloc64Fn (
    *    then continue;
    *    else doGC ();
    *)
-  fun genAllocCheck szB =
-      if Word.<= (szB, heapSlopSzB)
-      then T.CMP (MTy.wordTy, T.Basis.LE, 
-		  T.SUB (MTy.wordTy, T.REG (MTy.wordTy, Regs.limReg), T.REG (MTy.wordTy, Regs.apReg)),
-		  T.LI 0)
-      else T.CMP (MTy.wordTy, T.Basis.LE, 
-		  T.SUB (MTy.wordTy, T.REG (MTy.wordTy, Regs.limReg), T.REG (MTy.wordTy, Regs.apReg)),
-		  T.LI (Word.toLargeInt szB))
+    fun genAllocCheck szB =
+	if Word.<= (szB, heapSlopSzB)
+	then T.CMP (MTy.wordTy, T.Basis.LE, 
+		    T.SUB (MTy.wordTy, T.REG (MTy.wordTy, Regs.limReg), T.REG (MTy.wordTy, Regs.apReg)),
+		    T.LI 0)
+	else T.CMP (MTy.wordTy, T.Basis.LE, 
+		    T.SUB (MTy.wordTy, T.REG (MTy.wordTy, Regs.limReg), T.REG (MTy.wordTy, Regs.apReg)),
+		    T.LI (Word.toLargeInt szB))
 
   (* This expression checks that there are at least szB bytes available in the
    * global heap.
@@ -203,20 +205,20 @@ functor Alloc64Fn (
    *     else doGC ();
    *)
 (* FIXME: untested *)
-  fun genGlobalAllocCheck szB = let
-      val (vpReg, setVP) = let
-	    val r = Cells.newReg()
-	    val MTy.EXP(_, hostVP) = VProcOps.genHostVP
-            in
-	       (T.REG(MTy.wordTy, r), T.MV(MTy.wordTy, r, hostVP))
-            end
-      val globalAP = VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.globNextW, vpReg)
-      val globalLP = VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.globLimit, vpReg)
-      in
-          {stms=[ setVP ],
-	   allocCheck=T.CMP (MTy.wordTy, T.Basis.LE,
-			     T.SUB (MTy.wordTy, globalLP, globalAP),
-			     T.LI (Word.toLargeInt szB))}
-      end
+    fun genGlobalAllocCheck szB = let
+	val (vpReg, setVP) = let
+	      val r = Cells.newReg()
+	      val MTy.EXP(_, hostVP) = VProcOps.genHostVP
+	      in
+		 (T.REG(MTy.wordTy, r), T.MV(MTy.wordTy, r, hostVP))
+	      end
+	val globalAP = VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.globNextW, vpReg)
+	val globalLP = VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.globLimit, vpReg)
+	in
+	    {stms=[ setVP ],
+	     allocCheck=T.CMP (MTy.wordTy, T.Basis.LE,
+			       T.SUB (MTy.wordTy, globalLP, globalAP),
+			       T.LI (Word.toLargeInt szB))}
+	end
 
-end (* Alloc64Fn *)
+  end (* Alloc64Fn *)
