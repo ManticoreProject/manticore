@@ -23,6 +23,7 @@
 #include "inline-log.h"
 #include "time.h"
 #include "work-stealing-local-deques.h"
+#include "work-stealing-deque.h"
 
 typedef struct {	    /* data passed to NewVProc */
     int		id;		/* VProc ID */
@@ -89,6 +90,7 @@ void VProcInit (Options_t *opts)
 
   /* Initialize work stealing */
     M_WSInit (NumVProcs);
+    M_InitDequeList ();
 
   /* Initialize vprocs */
     BarrierInit (&InitBarrier, NumVProcs+1);
@@ -308,7 +310,7 @@ void VProcPreempt (VProc_t *self, VProc_t *vp)
 #ifndef NDEBUG
     if (DebugFlg)
 	if (self == 0)
-	  SayDebug("Timer interrupt on vproc %d from %d.\n", vp->id);
+	  SayDebug("Timer interrupt on vproc %d from %d.\n", self->id, vp->id);
 	else
 	  SayDebug("[%2d] Signaling vproc %d.\n", self->id, vp->id);
 #endif

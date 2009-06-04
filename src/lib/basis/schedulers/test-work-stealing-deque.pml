@@ -1,35 +1,108 @@
 structure D = WorkStealingDeque
 
 #define DUMMY_ELT enum(2):any
+#define DUMMY_ELT2 enum(3):any
 
 _primcode (
+
+define @check-elt (x : Option.option, y : any) : () =
+    case x
+     of Option.NONE =>
+	do assert(false)
+	return ()
+      | Option.SOME (x : any) =>
+	assert (Equal (x, y))
+    end
+  ;
 
 define @test (x : unit / exh : exh) : unit =
     let self : vproc = host_vproc
 
-    let deque : deque = D.@new-from-atomic (self, 2)
-    do @push-new-end-from-atomic (self, deque, DUMMY_ELT)
-    do @push-new-end-from-atomic (self, deque, DUMMY_ELT)
-    let x : elt = @pop-new-end-from-atomic (self, deque)
-    do assert (Equal (x, DUMMY_ELT))
-    do @push-new-end-from-atomic (self, deque, DUMMY_ELT)
-    let x : elt = @pop-new-end-from-atomic (self, deque)
-    do assert (Equal (x, DUMMY_ELT))
-    let x : elt = @pop-new-end-from-atomic (self, deque)
-    do assert (Equal (x, DUMMY_ELT))
+    let deque : D.deque = D.@new-from-atomic (self, 3)
 
-    let deque : deque = D.@new-from-atomic (self, 2)
-    do @push-new-end-from-atomic (self, deque, DUMMY_ELT)
-    do @push-new-end-from-atomic (self, deque, DUMMY_ELT)
-    let x : elt = @pop-old-end-from-atomic (self, deque)
-    do assert (Equal (x, DUMMY_ELT))
-    do @push-new-end-from-atomic (self, deque, DUMMY_ELT)
-    let x : elt = @pop-old-end-from-atomic (self, deque)
-    do assert (Equal (x, DUMMY_ELT))
-    let x : elt = @pop-old-end-from-atomic (self, deque)
-    do assert (Equal (x, DUMMY_ELT))
+    do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT )
+    let x : Option.option = D.@pop-new-end-from-atomic (self, deque )
+    do @check-elt (x, DUMMY_ELT)
+    do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT )
+    let x : Option.option = D.@pop-new-end-from-atomic (self, deque )
+    do @check-elt (x, DUMMY_ELT)
+    let isEmpty : bool = D.@is-empty-from-atomic (self, deque)
+    do assert (isEmpty)
 
-    return ()
+    do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT2 )
+    do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT )
+    let x : Option.option = D.@pop-new-end-from-atomic (self, deque )
+    do @check-elt (x, DUMMY_ELT)
+    do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT )
+    let x : Option.option = D.@pop-new-end-from-atomic (self, deque )
+    do @check-elt (x, DUMMY_ELT)
+    let x : Option.option = D.@pop-new-end-from-atomic (self, deque )
+    do @check-elt (x, DUMMY_ELT2)
+    let isEmpty : bool = D.@is-empty-from-atomic (self, deque)
+    do assert (isEmpty)
+
+
+    do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT )
+    do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT2 )
+    let x : Option.option = D.@pop-old-end-from-atomic (self, deque )
+    do @check-elt (x, DUMMY_ELT)
+    do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT )
+    let x : Option.option = D.@pop-old-end-from-atomic (self, deque )
+    do @check-elt (x, DUMMY_ELT2)
+    let x : Option.option = D.@pop-old-end-from-atomic (self, deque )
+    do @check-elt (x, DUMMY_ELT)
+    let isEmpty : bool = D.@is-empty-from-atomic (self, deque)
+    do assert (isEmpty)
+
+
+    do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT )
+    do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT )
+    let x : Option.option = D.@pop-old-end-from-atomic (self, deque )
+    do @check-elt (x, DUMMY_ELT)
+    do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT )
+    let x : Option.option = D.@pop-new-end-from-atomic (self, deque )
+    do @check-elt (x, DUMMY_ELT)
+    let x : Option.option = D.@pop-old-end-from-atomic (self, deque )
+    do @check-elt (x, DUMMY_ELT)
+    let isEmpty : bool = D.@is-empty-from-atomic (self, deque)
+    do assert (isEmpty)
+
+
+    do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT )
+    do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT )
+    let x : Option.option = D.@pop-new-end-from-atomic (self, deque )
+    do @check-elt (x, DUMMY_ELT)
+    do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT )
+    let x : Option.option = D.@pop-old-end-from-atomic (self, deque )
+    do @check-elt (x, DUMMY_ELT)
+    let x : Option.option = D.@pop-new-end-from-atomic (self, deque )
+    do @check-elt (x, DUMMY_ELT)
+    let isEmpty : bool = D.@is-empty-from-atomic (self, deque)
+    do assert (isEmpty)
+
+    let deque : D.deque = D.@double-size-from-atomic (self, deque)
+    do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT )
+    do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT )
+    let x : Option.option = D.@pop-new-end-from-atomic (self, deque )
+    do @check-elt (x, DUMMY_ELT)
+    do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT )
+    let x : Option.option = D.@pop-old-end-from-atomic (self, deque )
+    do @check-elt (x, DUMMY_ELT)
+    let x : Option.option = D.@pop-new-end-from-atomic (self, deque )
+    do @check-elt (x, DUMMY_ELT)
+    do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT )
+    do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT )
+    do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT )
+    do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT )
+    do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT )
+    let isEmpty : bool = D.@is-empty-from-atomic (self, deque)
+    do assert (BNot(isEmpty))
+    let isFull : bool = D.@is-full-from-atomic (self, deque)
+    do assert (isFull)
+
+    do D.@free-from-atomic (self, deque)
+
+    return (UNIT)
   ;
 
 )

@@ -35,12 +35,12 @@ typedef struct DequeList_s DequeList_t;
 /* must call this function once at startup */
 void M_InitDequeList ();
 
-Value_t M_DequeAlloc (Deque_t *deque, int size);
+Value_t M_DequeAlloc (VProc_t *self, int size);
 void M_DequeFree (Deque_t *deque);
 
 /* number of roots needed for deques on the given vproc */
-int M_NumDequeRoots (VProc_t *vp);
+int M_NumDequeRoots (VProc_t *self);
 /* add the deque elements to the root set */
-Value_t **M_AddDequeEltsToRoots (VProc_t *vp, Value_t **rootPtr);
+Value_t **M_AddDequeEltsToRoots (VProc_t *self, Value_t **rootPtr);
 
 #endif /*! _WORK_STEALING_DEQUE_H_ */

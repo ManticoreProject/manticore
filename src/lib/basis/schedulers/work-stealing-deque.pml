@@ -23,10 +23,11 @@ structure WorkStealingDeque (* :
       define @double-size-from-atomic (self : vproc, deque : deque) : deque;
 
       define inline @is-full-from-atomic (self : vproc, deque : deque) : bool;
+      define inline @is-empty-from-atomic (self : vproc, deque : deque) : bool;
 
-      define inline @push-new-end-from-atomic (self : vproc, deque : deque, elt : any / exh : exh) : ();
-      define inline @pop-new-end-from-atomic (self : vproc, deque : deque / exh : exh) : Option.option;
-      define inline @pop-old-end-from-atomic (self : vproc, deque : deque / exh : exh) : Option.option;
+      define inline @push-new-end-from-atomic (self : vproc, deque : deque, elt : any) : ();
+      define inline @pop-new-end-from-atomic (self : vproc, deque : deque) : Option.option;
+      define inline @pop-old-end-from-atomic (self : vproc, deque : deque) : Option.option;
 
     )
 
@@ -44,7 +45,7 @@ structure WorkStealingDeque (* :
     (* Deque representation:
      *
      * For compactness, we represent deques as circular buffers. There are two pointers into this buffer:
-     * old and new. The old pointer points to the oldest element on the deque and new points to the newest.
+     * "old" and "new". The old pointer points to the oldest element on the deque and new points to the newest.
      * To distinguish whether the deque is empty or full, we always keep one deque entry open, which means
      * that we waste a word of memory for each deque.
      *
@@ -81,7 +82,7 @@ structure WorkStealingDeque (* :
 	    if I32Lte (LOAD_DEQUE_OLD(deque), LOAD_DEQUE_NEW(deque)) then
 		return (I32Sub (LOAD_DEQUE_NEW(deque), LOAD_DEQUE_OLD(deque)))
 	    else 
-		return (I32Sub (LOAD_DEQUE_SIZE(deque), I32Sub (LOAD_DEQUE_OLD(deque), LOAD_DEQUE_NEW(deque))))
+		return (I32Sub (LOAD_DEQUE_MAX_SIZE(deque), I32Sub (LOAD_DEQUE_OLD(deque), LOAD_DEQUE_NEW(deque))))
 	  ;
 
 	define inline @is-empty (deque : deque) : bool =
@@ -90,20 +91,26 @@ structure WorkStealingDeque (* :
 
 	define inline @is-full (deque : deque) : bool =
 	    let size : int = @num-elts (deque)
-	    return (I32Gte (size, LOAD_DEQUE_MAX_SIZE(deque)))
+	    return (I32Gte (size, I32Sub (LOAD_DEQUE_MAX_SIZE(deque), 1)))
 	  ;
 
 	define @assert-in-bounds (deque : deque, i : int) : () =
 	    do assert (I32Gte (i, 0))
 	    do assert (I32Lt (i, LOAD_DEQUE_MAX_SIZE(deque)))
 	    if I32Lte (LOAD_DEQUE_OLD(deque), LOAD_DEQUE_NEW(deque)) then
-		do assert (I32Gte (i, LOAD_DEQUE_NEW(deque)))
-		do assert (I32Lt (i, LOAD_DEQUE_OLD(deque)))
-  	        return ()
-	    else
 		do assert (I32Gte (i, LOAD_DEQUE_OLD(deque)))
 		do assert (I32Lt (i, LOAD_DEQUE_NEW(deque)))
   	        return ()
+	    else
+		if I32Gt (i, LOAD_DEQUE_NEW(deque)) then
+		    do assert (I32Gte (i, LOAD_DEQUE_OLD(deque)))
+		    return ()
+		else if I32Eq (i, LOAD_DEQUE_NEW(deque)) then
+		    do assert (false)
+		    return ()
+		else
+		    do assert (I32Lt (i, LOAD_DEQUE_NEW(deque)))
+  	            return ()
 	  ;
 
 	define inline @update (deque : deque, i : int, elt : any) : () =
@@ -143,7 +150,7 @@ structure WorkStealingDeque (* :
 
       (* move the index i one position right w.r.t. the deque size sz *)
 	define inline @move-right (i : int, sz : int) : int =
-	    if I32Gte (i, sz) then
+	    if I32Gte (i, I32Sub (sz, 1)) then
 		return (0)
 	    else
 		return (I32Add (i, 1))
@@ -156,27 +163,29 @@ structure WorkStealingDeque (* :
     _primcode (
 
       define inline @new-from-atomic (self : vproc, size : int) : deque =
-	  ccall M_DequeAlloc (self, size : int)
+	  let deque : deque = ccall M_DequeAlloc (self, size)
+          return (deque)
 	;
 
       define inline @free-from-atomic (self : vproc, deque : deque) : () =
-	  ccall M_DequeFree (self, deque)
+	  do ccall M_DequeFree (self, deque)
+          return ()
 	;
 
     (* double the size of the deque *)
       define @double-size-from-atomic (self : vproc, deque : deque) : deque =
-	  let size : int = @size (deque)
+	  let size : int = @num-elts (deque)
 	  let newDeque : deque = @new-from-atomic (self, I32Mul (LOAD_DEQUE_MAX_SIZE(deque), 2))
-	  fun copy (i : int, j : int) : () =
+	  fun copyElts (i : int, j : int) : () =
 	      if I32Lt (j, size) then
 		  let elt : any = @sub (deque, i)
-		  do @update(deque, i, NIL_DEQUE_ELT)
+		  do @update(deque, i, DEQUE_NIL_ELT)
 		  do @update (newDeque, j, elt)
-		  let iR : int = @move-right (i)
-		  copy (iR, I32Add (j, 1))
+		  let iR : int = @move-right (i, LOAD_DEQUE_MAX_SIZE(deque))
+		  apply copyElts (iR, I32Add (j, 1))
 	      else
 		  return ()
-	  do copy (LOAD_DEQUE_OLD(deque), 0)
+	  do apply copyElts (LOAD_DEQUE_OLD(deque), 0)
           do STORE_DEQUE_NEW(deque, 0)
           do STORE_DEQUE_OLD(deque, 0)
 	  return (newDeque)
@@ -186,8 +195,12 @@ structure WorkStealingDeque (* :
 	   @is-full (deque)
 	 ;
 
+       define inline @is-empty-from-atomic (self : vproc, deque : deque) : bool =
+	   @is-empty (deque)
+	 ;
+
      (* precondition: the deque is not full *)
-       define inline @push-new-end-from-atomic (self : vproc, deque : deque, elt : any / exh : exh) : () =
+       define inline @push-new-end-from-atomic (self : vproc, deque : deque, elt : any) : () =
 	   do @check-deque (deque)
 	   do assert(NotEqual(elt, DEQUE_NIL_ELT))
 	   let isFull : bool = @is-full (deque)
@@ -195,12 +208,13 @@ structure WorkStealingDeque (* :
 	   let new : int = LOAD_DEQUE_NEW(deque)
 	   let newR : int = @move-right (LOAD_DEQUE_NEW(deque), LOAD_DEQUE_MAX_SIZE(deque))
 	   do STORE_DEQUE_NEW(deque, newR)
-	   do @update (deque, new)
+	   do @update (deque, new, elt)
 	   do @check-deque (deque)
 	   return ()
 	 ;
 
-     define inline @pop-new-end-from-atomic (self : vproc, deque : deque / exh : exh) : Option.option =
+     define inline @pop-new-end-from-atomic (self : vproc, deque : deque) : Option.option =
+         do @check-deque (deque)
 	 let isEmpty : bool = @is-empty (deque)
 	 if isEmpty then
 	     return (Option.NONE)
@@ -214,7 +228,8 @@ structure WorkStealingDeque (* :
 	     return (Option.SOME (elt))
        ;
 
-     define inline @pop-old-end-from-atomic (self : vproc, deque : deque / exh : exh) : Option.option =
+     define inline @pop-old-end-from-atomic (self : vproc, deque : deque) : Option.option =
+  	 do @check-deque (deque)
 	 let isEmpty : bool = @is-empty (deque)
 	 if isEmpty then
 	     return (Option.NONE)
@@ -224,7 +239,8 @@ structure WorkStealingDeque (* :
 	     do @update (deque, old, DEQUE_NIL_ELT)
 	     let oldR : int = @move-right (LOAD_DEQUE_OLD(deque), LOAD_DEQUE_MAX_SIZE(deque))
 	     do STORE_DEQUE_OLD(deque, oldR)
-	     return ()
+    	     do @check-deque (deque)
+	     return (Option.SOME(elt))
        ;
 
     )
