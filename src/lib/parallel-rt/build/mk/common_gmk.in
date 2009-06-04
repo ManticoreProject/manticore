@@ -55,6 +55,7 @@ MISC_SRCS =	main.c \
 		apply.c \
 		basis.c \
 		options.c \
+		topology.c \
 		image.c
 
 ifeq ($(ENABLE_LOGGING),true)
