@@ -6,7 +6,6 @@
  * TODO: get rid of this module.
  *)
 
-#define WORD_SZB        8
 #define DATA_OFF        0
 #define LENGTH_OFF      1
 
@@ -30,8 +29,7 @@ structure Array64 =
  
     (* allocate and initialize an array *)
       define inline @array (n : int, elt : any / exh : exh) : array =
-	  let elt : any = (any)elt
-	  let elt : any = promote(elt)
+	  let elt : any = promote((any)elt)
 	  let data : ![any] = ccall M_NewArray(host_vproc, n, elt)
 	  let arr : array = alloc(data, n)
 	  return(arr)
@@ -45,11 +43,9 @@ structure Array64 =
 	  do assert(I32Gte(i,0))
 	  let len : int = @length(arr / exh)
 	  do assert(I32Lt(i,len))
-	  let data : ![any] = SELECT(DATA_OFF, arr)
 	 (* since the array is in the global heap, x must also be in the global heap *)
-	  let x : any = (any)x
-	  let x : any = promote(x)
-          do AddrStore(AddrAdd(&0(data), I64ToAddr (I32ToI64X (I32LSh (i, WORD_SZB)))), x)
+	  let x : any = promote((any)x)
+          do AddrStore(AddrAdd(&0(SELECT(DATA_OFF, arr)), I64ToAddr (I32ToI64X (I32LSh (i, 3)))), x)
 	  return()
 	;
 
@@ -57,8 +53,7 @@ structure Array64 =
 	  let len : int = @length(arr / exh)
 	  do assert(I32Gte(i,0))
 	  do assert(I32Lt(i,len))
-	  let data : ![any] = SELECT(DATA_OFF, arr)
-	  let x : any = AddrLoad(AddrAdd(&0(data), I64ToAddr (I32ToI64X (I32LSh (i, WORD_SZB)))))
+	  let x : any = AddrLoad(AddrAdd(&0(SELECT(DATA_OFF, arr)), I64ToAddr (I32ToI64X (I32LSh (i, 3)))))
 	  return (x)
 	;
 
