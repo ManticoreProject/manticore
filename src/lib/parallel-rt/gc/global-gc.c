@@ -429,7 +429,7 @@ void CheckGlobalPtr (VProc_t *self, void *addr, char *where)
 		self->id, addr, where);
 	}
 	else {
-	    MemChunk_t *cq = AddrToChunk(addr);
+	    MemChunk_t *cq = AddrToChunk((Addr_t)addr);
 	    SayDebug("[%2d] CheckGlobalPtr: unexpected bogus header %p for %p[%d] in %s\n",
 		self->id, hdr, addr, cq->sts, where);
 	}
