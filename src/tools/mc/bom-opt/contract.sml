@@ -254,7 +254,7 @@ structure Contract : sig
                 if List.all unused lhs andalso pureExp rhs
                   then (
                     ST.tick cntLetElim;
-                    C.delete (env, rhs);
+                    C.deleteWithRenaming (env, rhs);
                     doExp (env, e, kid))
                   else (case doExp(env, rhs, kid+1)
                      of B.E_Pt(_, B.E_Ret ys) => let
@@ -316,7 +316,7 @@ structure Contract : sig
             | B.E_Fun([fb as B.FB{f, params, exh, body}], e) => let
                   fun deadFun () = (
                         ST.tick cntDeadFun;
-                        C.delete (env, body))
+                        C.deleteWithRenaming (env, body))
                 (* reduce the function body and its scope *)
                   fun reduceRest () = let
                         val e' = doExp (env, e, kid)
@@ -350,7 +350,7 @@ structure Contract : sig
                               if not(isInlined f)
                                 then (
                                   ST.tick cntDeadRecFun;
-                                  C.delete (env, body))
+                                  C.deleteWithRenaming (env, body))
                                 else ();
                               e'
                             end
@@ -365,7 +365,7 @@ structure Contract : sig
                   fun deadFun (lambda as B.FB{f, body, ...}) = if (useCntOf f = 0)
                         then (
                           ST.tick cntDeadFun;
-                          C.delete (env, body);
+                          C.deleteWithRenaming (env, body);
                           NONE)
                         else SOME lambda
                 (* check to see if a function has been inlined or is dead *)
@@ -405,7 +405,7 @@ structure Contract : sig
                   fun deadCont () = if (useCntOf f = 0)
                         then (
                           ST.tick cntDeadCont;
-                          C.delete (env, body);
+                          C.deleteWithRenaming (env, body);
                           true)
                         else false
                 (* check to see if a continuation has been inlined or is dead *)
@@ -464,8 +464,8 @@ structure Contract : sig
                         ST.tick cntIfConst;
                         dec x;
                         if (b <> 0w0)
-                          then (C.delete(env, e2); doExp(env, e1, kid))
-                          else (C.delete(env, e1); doExp(env, e2, kid)))
+                          then (C.deleteWithRenaming(env, e2); doExp(env, e1, kid))
+                          else (C.deleteWithRenaming(env, e1); doExp(env, e2, kid)))
                     | B.VK_RHS(B.E_Prim(Prim.BNot y)) => (
                         ST.tick cntIfNot;
                         dec x;

@@ -257,7 +257,7 @@ structure Inline : sig
 			    else (
 			      ST.tick cntDeadFn;
 			      prl["remove dead function ", v2s f, "\n"];
-			      C.delete (U.empty, body);
+			      C.delete body;
 			      NONE)
 		      in
 			case List.mapPartial doFB fbs

@@ -17,7 +17,8 @@ structure Census : sig
   (* For each variable use (and application use) in the expression, decrement
    * the (renamed) variable's count by one.
    *)
-    val delete : (BOMUtil.subst * BOM.exp) -> unit
+    val delete : BOM.exp -> unit
+    val deleteWithRenaming : (BOMUtil.subst * BOM.exp) -> unit
 
   (* update variable counts *)
     val clear : BOM.var -> unit		(* clear both use and application counts *)
@@ -91,13 +92,43 @@ structure Census : sig
 
     fun initExp e = doE e
 
-    fun delete (env, e) = let
-	  val subst = U.subst env
+    fun delete e = let
 	  fun dec x = B.Var.addToCount(x, ~1)
 	  fun decApp f = let
 		val appCnt = B.Var.appCntRef f
 		in
 		  dec f;
+		  appCnt := !appCnt - 1
+		end
+	  fun dec' xs = List.app dec xs
+	  fun del (B.E_Pt(_, t)) = (case t
+		 of B.E_Let(_, e1, e2) => (del e1; del e2)
+		  | B.E_Stmt(_, rhs, e) => (BOMUtil.appRHS dec rhs; del e)
+		  | B.E_Fun(fbs, e) => (List.app delFB fbs; del e)
+		  | B.E_Cont(fb, e) => (delFB fb; del e)
+		  | B.E_If(x, e1, e2) => (dec x; del e1; del e2)
+		  | B.E_Case(x, cases, dflt) => (
+		      dec x;
+		      List.app (fn (_, e) => del e) cases;
+		      Option.app del dflt)
+		  | B.E_Apply(f, args, rets) => (decApp f; dec' args; dec' rets)
+		  | B.E_Throw(k, args) => (decApp k; dec' args)
+		  | B.E_Ret xs => dec' xs
+		  | B.E_HLOp(_, args, rets) => (dec' args; dec' rets)
+		(* end case *))
+	  and delFB (B.FB{body, ...}) = del body
+	  in
+	    del e
+	  end
+
+    fun deleteWithRenaming (env, e) = let
+	  val subst = U.subst env
+	  fun dec x = B.Var.addToCount(subst x, ~1)
+	  fun decApp f = let
+		val f = subst f
+		val appCnt = B.Var.appCntRef f
+		in
+		  B.Var.addToCount(f, ~1);
 		  appCnt := !appCnt - 1
 		end
 	  fun dec' xs = List.app dec xs
