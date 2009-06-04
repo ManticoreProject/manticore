@@ -82,7 +82,9 @@ structure WorkStealingDeque (* :
 	    if I32Lte (LOAD_DEQUE_OLD(deque), LOAD_DEQUE_NEW(deque)) then
 		return (I32Sub (LOAD_DEQUE_NEW(deque), LOAD_DEQUE_OLD(deque)))
 	    else 
-		return (I32Sub (LOAD_DEQUE_MAX_SIZE(deque), I32Sub (LOAD_DEQUE_OLD(deque), LOAD_DEQUE_NEW(deque))))
+		return (I32Sub (LOAD_DEQUE_MAX_SIZE(deque), 
+				I32Sub (LOAD_DEQUE_OLD(deque), 
+					LOAD_DEQUE_NEW(deque))))
 	  ;
 
 	define inline @is-empty (deque : deque) : bool =
@@ -91,7 +93,7 @@ structure WorkStealingDeque (* :
 
 	define inline @is-full (deque : deque) : bool =
 	    let size : int = @num-elts (deque)
-	    return (I32Gte (size, I32Sub (LOAD_DEQUE_MAX_SIZE(deque), 1)))
+	    return (I32Gte (size, I32Sub (LOAD_DEQUE_MAX_SIZE(deque), 1)))        (* leave one space open *)
 	  ;
 
 	define @assert-in-bounds (deque : deque, i : int) : () =
