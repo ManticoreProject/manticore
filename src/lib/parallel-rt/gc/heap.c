@@ -7,6 +7,7 @@
 #include "manticore-rt.h"
 #include "heap.h"
 #include "vproc.h"
+#include "topology.h"
 #include "bibop.h"
 #include "os-memory.h"
 #include "os-threads.h"
@@ -143,6 +144,7 @@ void AllocToSpaceChunk (VProc_t *vp)
 	    }
 	    chunk->baseAddr = (Addr_t)memObj;
 	    chunk->szB = nPages * BIBOP_PAGE_SZB;
+	    chunk->where = LocationNode(vp->location);
 	    UpdateBIBOP (chunk);
 	}
 	else {
@@ -170,14 +172,16 @@ void AllocToSpaceChunk (VProc_t *vp)
 
 #ifndef NDEBUG
     if (GCDebug > GC_DEBUG_NONE)
-	SayDebug("[%2d] AllocToSpaceChunk: %ld Kb at %p\n", vp->id, chunk->szB/1024, chunk->baseAddr);
+	SayDebug("[%2d] AllocToSpaceChunk: %ld Kb at %p,,%p (node %d)\n",
+	    vp->id, chunk->szB/1024, chunk->baseAddr,
+	    chunk->baseAddr+chunk->szB, chunk->where);
 #endif
 
 }
 
 /*! \brief Allocate a VProc's local memory object.
  */
-VProc_t *AllocVProcMemory (int id)
+VProc_t *AllocVProcMemory (int id, Location_t loc)
 {
     assert (VP_HEAP_SZB >= BIBOP_PAGE_SZB);
 
@@ -197,12 +201,15 @@ VProc_t *AllocVProcMemory (int id)
 	chunk->baseAddr = (Addr_t)vproc;
 	chunk->szB = VP_HEAP_SZB;
 	chunk->sts = VPROC_CHUNK(id);
+	chunk->where = LocationNode(loc);
 	UpdateBIBOP (chunk);
     MutexUnlock (&HeapLock);
 
 #ifndef NDEBUG
     if (GCDebug > GC_DEBUG_NONE)
-	SayDebug("     AllocVProcMemory(%d): %ld Kb at %p\n", id, chunk->szB/1024, chunk->baseAddr);
+	SayDebug("     AllocVProcMemory(%d): %ld Kb at %p,,%p (node %d)\n",
+	    id, chunk->szB/1024, chunk->baseAddr,
+	    chunk->baseAddr+chunk->szB, chunk->where);
 #endif
 
     return vproc;

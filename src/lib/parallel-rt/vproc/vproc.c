@@ -14,6 +14,7 @@
 #include "os-memory.h"
 #include "os-threads.h"
 #include "atomic-ops.h"
+#include "topology.h"
 #include "vproc.h"
 #include "heap.h"
 #include "gc.h"
@@ -25,6 +26,7 @@
 
 typedef struct {	    /* data passed to NewVProc */
     int		id;		/* VProc ID */
+    Location_t	loc;		/* the location for the VProc */
     VProcFn_t	initFn;		/* the initial function to run */
     Value_t	initArg;	/* initial argument data for initFn */
     bool        started;        /* has the vproc started running Manticore code? */
@@ -41,7 +43,7 @@ static pthread_key_t	VProcInfoKey;
 static Barrier_t	InitBarrier;	/* barrier for initialization */
 
 /********** Globals **********/
-int			NumHardwareProcs;
+int			NumHWThreads;
 int			NumVProcs;
 int			NumIdleVProcs;
 VProc_t			*VProcs[MAX_NUM_VPROCS];
@@ -78,24 +80,37 @@ struct struct_queue_item {
  */
 void VProcInit (Options_t *opts)
 {
-    NumHardwareProcs = GetNumCPUs();
+    bool	denseLayout = false;	// in dense mode, we'll allocate
+					// the first n logical processors.
+					// Otherwise, we spread the load
+					// around.
+
     NumIdleVProcs = 0;
 
   /* get command-line options */
-    NumVProcs = ((NumHardwareProcs == 0) ? DFLT_NUM_VPROCS : NumHardwareProcs);
+    NumVProcs = ((NumHWThreads == 0) ? DFLT_NUM_VPROCS : NumHWThreads);
     NumVProcs = GetIntOpt (opts, "-p", NumVProcs);
-    if ((NumHardwareProcs > 0) && (NumVProcs > NumHardwareProcs))
+    if ((NumHWThreads > 0) && (NumVProcs > NumHWThreads))
 	Warning ("%d processors requested on a %d processor machine\n",
-	    NumVProcs, NumHardwareProcs);
+	    NumVProcs, NumHWThreads);
+
+#ifdef TARGET_DARWIN
+    denseLayout = true;  // no affinity support on Mac OS X
+#else
+    if (NumVProcs >= NumHWThreads)
+	denseLayout = true;
+    else
+	denseLayout = GetFlagOpt (opts, "-dense");
+#endif
 
 #ifndef NDEBUG
-    SayDebug("%d/%d processors allocated to vprocs\n", NumVProcs, NumHardwareProcs);
+    SayDebug("%d/%d processors allocated to vprocs\n", NumVProcs, NumHWThreads);
 #endif
 
 #ifdef ENABLE_LOGGING
   /* initialize the log file */
     const char *logFile = GetStringOpt(opts, "-log", DFLT_LOG_FILE);
-    InitLogFile (logFile, NumVProcs, NumHardwareProcs);
+    InitLogFile (logFile, NumVProcs, NumHWThreads);
 #endif
 
     if (pthread_key_create (&VProcInfoKey, 0) != 0) {
@@ -115,9 +130,48 @@ void VProcInit (Options_t *opts)
 	initData[i].initArg = M_UNIT;
     }
 
+  /* assign locations */
+    if (denseLayout) {
+	for (int i = 0;  i < NumVProcs;  i++)
+	    initData[i].loc = Locations[i];
+    }
+    else if (NumVProcs <= NumHWNodes) {
+      /* at most one vproc per node */
+	for (int nd = 0;  nd < NumVProcs;  nd++)
+	    initData[nd].loc = Location(nd, 0, 0);
+    }
+    else if (NumVProcs <= NumHWCores) {
+      /* at most one vproc per core */
+	int nd = 0;
+	int core = 0;
+	for (int i = 0;  i < NumVProcs;  i++) {
+	    initData[nd].loc = Location(nd, core, 0);
+	    if (++nd == NumHWNodes) {
+		nd = 0;
+		core++;
+	    }
+	}
+    }
+    else {
+	int nd = 0;
+	int core = 0;
+	int thd = 0;
+	for (int i = 0;  i < NumVProcs;  i++) {
+	    initData[nd].loc = Location(nd, core, thd);
+	    if (++nd == NumHWNodes) {
+		nd = 0;
+		if (++core == NumCoresPerNode) {
+		    core = 0;
+		    thd++;
+		}
+	    }
+	}
+    }
+
+  /* create vprocs */
     for (int i = 0;  i < NumVProcs;  i++) {
 	OSThread_t pid;
-	if (! ThreadCreate (&pid, NewVProc, &(initData[i])))
+	if (! SpawnAt (&pid, NewVProc, &(initData[i]), initData[i].loc))
 	    Die ("Unable to start vproc %d\n", i);
     }
 
@@ -140,20 +194,14 @@ void *NewVProc (void *arg)
     struct sigaction	sa;
 
 #ifndef NDEBUG
-    if (DebugFlg)
-	SayDebug("[%2d] NewVProc: initializing ...\n", initData->id);
-#endif
-
-#ifdef HAVE_PTHREAD_SETAFFINITY_NP 
-    cpu_set_t	cpus;
-    CPU_ZERO(&cpus);
-    CPU_SET(initData->id, &cpus);
-    if (pthread_setaffinity_np (pthread_self(), sizeof(cpu_set_t), &cpus) == -1) {
-	Warning("[%2d] unable to set affinity\n", initData->id);
+    if (DebugFlg) {
+	char buf[16];
+	LocationString (buf, sizeof(buf), initData->loc);
+	SayDebug("[%2d] NewVProc: initializing at %s...\n", initData->id, buf);
     }
 #endif
 
-    VProc_t* vproc = AllocVProcMemory (initData->id);
+    VProc_t* vproc = AllocVProcMemory (initData->id, initData->loc);
     if (vproc == 0) {
 	Die ("unable to allocate memory for vproc %d\n", initData->id);
     }
@@ -162,6 +210,7 @@ void *NewVProc (void *arg)
   /* initialize the vproc structure */
     vproc->id = initData->id;
     vproc->hostID = pthread_self();
+    vproc->location = initData->loc;
 
     vproc->oldTop = VProcHeap(vproc);
     InitVProcHeap (vproc);

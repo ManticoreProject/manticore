@@ -33,7 +33,7 @@ struct struct_chunk {
 				 */
     MemChunk_t	*next;		/*!< link field */
     Status_t	sts;		/*!< current status of chunk */
-    Location_t	where;		/*!< the location of the vproc that allocated
+    int		where;		/*!< the node of the vproc that allocated
 				 *   this chunk.
 				 */
 };

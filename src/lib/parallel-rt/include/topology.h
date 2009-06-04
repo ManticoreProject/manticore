@@ -29,7 +29,8 @@ extern int		NumHWCores;	//!< \brief total number of (possibly
 extern int		NumHWThreads;	//!< \brief total number of hardware threads
 extern int		NumCoresPerNode; //!< \brief number of cores per thread
 extern int		NumThdsPerCore; //!< \brief number of threads per core
-extern Location_t	*Locations;	//!< \brief an array of the availble locations
+extern Location_t	*Locations;	//!< \brief an array of the available
+					//!  locations indexed by processor ID
 
 /*! \brief initialization function that determines the hardware topology.
  */

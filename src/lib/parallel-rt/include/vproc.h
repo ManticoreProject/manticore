@@ -97,7 +97,6 @@ STATIC_INLINE Addr_t VProcHeap (VProc_t *vp)
 }
 
 /* the array of vprocs */
-extern int		NumHardwareProcs;	// number of hardware processors to use.
 extern int		NumVProcs;
 extern VProc_t		*VProcs[MAX_NUM_VPROCS];
 
