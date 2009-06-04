@@ -142,7 +142,7 @@ static bool GetNumCPUs ()
 	fclose (cpuinfo);
 
 	NumHWNodes = maxNodeId + 1;
-	NumHWCores = numHWNodes * nCores;
+	NumHWCores = NumHWNodes * nCores;
 	NumHWThreads = maxProcId + 1;
 	NumCoresPerNode = nCores;
 	NumThdsPerCore = NumHWThreads / NumHWCores;
