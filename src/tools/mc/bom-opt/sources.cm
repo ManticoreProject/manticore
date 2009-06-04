@@ -27,6 +27,7 @@ is
   bom-opt-fn.sml
   case-simplify.sml
   contract.sml
+  dead-funs.sml
   expand-hlops.sml
   inline.sml
   group-funs.sml
