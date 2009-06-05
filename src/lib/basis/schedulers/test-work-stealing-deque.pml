@@ -18,7 +18,9 @@ define @check-elt (x : Option.option, y : any) : () =
 define @test (x : unit / exh : exh) : unit =
     let self : vproc = host_vproc
 
-    let deque : D.deque = D.@new-from-atomic (self, 3)
+    let workGroupId : long = 0:long
+
+    let deque : D.deque = D.@new-from-atomic (self, workGroupId, 3)
 
     do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT )
     let x : Option.option = D.@pop-new-end-from-atomic (self, deque )
@@ -80,7 +82,7 @@ define @test (x : unit / exh : exh) : unit =
     let isEmpty : bool = D.@is-empty-from-atomic (self, deque)
     do assert (isEmpty)
 
-    let deque : D.deque = D.@double-size-from-atomic (self, deque)
+    let deque : D.deque = D.@double-size-from-atomic (self, workGroupId, deque)
     do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT )
     do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT )
     let x : Option.option = D.@pop-new-end-from-atomic (self, deque )
@@ -100,7 +102,7 @@ define @test (x : unit / exh : exh) : unit =
     let isFull : bool = D.@is-full-from-atomic (self, deque)
     do assert (isFull)
 
-    do D.@free-from-atomic (self, deque)
+    do D.@release-from-atomic (self, deque)
 
     return (UNIT)
   ;
