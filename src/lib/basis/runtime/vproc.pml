@@ -18,7 +18,7 @@ structure VProc (* :
     (* find the vproc with a given unique id *)
       define @vproc-by-id (id : int) : vproc =
     (* total number of vprocs *)
-      define @num-vprocs (/ exh : exh) : int;
+      define @num-vprocs () : int;
 
     (** Vproc lists and iterators **)
 
