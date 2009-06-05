@@ -15,7 +15,7 @@
   ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
   in
     work-stealing-deque.pml
-(*    test-work-stealing-deque.pml*)
+    test-work-stealing-deque.pml
     global-bfs-scheduler.pml
     swp-work-stealing.pml
   end

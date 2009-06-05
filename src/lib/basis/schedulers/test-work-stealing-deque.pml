@@ -30,7 +30,7 @@ define @test (x : unit / exh : exh) : unit =
     do @check-elt (x, DUMMY_ELT)
     let isEmpty : bool = D.@is-empty-from-atomic (self, deque)
     do assert (isEmpty)
-
+(*
     do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT2 )
     do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT )
     let x : Option.option = D.@pop-new-end-from-atomic (self, deque )
@@ -103,7 +103,7 @@ define @test (x : unit / exh : exh) : unit =
     do assert (isFull)
 
     do D.@release-from-atomic (self, deque)
-
+*)
     return (UNIT)
   ;
 

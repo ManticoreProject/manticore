@@ -26,7 +26,7 @@ struct WorkGroupList_s {
 };
 typedef struct WorkGroupList_s WorkGroupList_t;
 
-static WorkGroupList_t **PerVProcLists;
+static WorkGroupList_t **PerVProcLists;          
 
 /* \brief must call this function once at startup */
 void M_InitWorkGroupList ()

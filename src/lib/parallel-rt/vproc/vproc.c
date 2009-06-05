@@ -88,9 +88,8 @@ void VProcInit (Options_t *opts)
 	Die ("unable to create VProcInfoKey");
     }
 
-  /* Initialize work stealing */
-    M_WSInit (NumVProcs);
-    M_InitDequeList ();
+  /* Initialize the work stealing scheduler-local data */
+    M_InitWorkGroupList ();
 
   /* Initialize vprocs */
     BarrierInit (&InitBarrier, NumVProcs+1);

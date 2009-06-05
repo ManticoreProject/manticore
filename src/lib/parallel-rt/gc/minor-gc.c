@@ -94,7 +94,7 @@ void MinorGC (VProc_t *vp)
     *rp++ = &(vp->rdyQTl);
     *rp++ = &(vp->landingPad);
     *rp++ = &(vp->stdEnvPtr);
-    rp = M_WSAddLocalDequesToRoots(vp, rp);
+    rp = M_AddDequeEltsToRoots(vp, rp);
     *rp++ = 0;
     assert (rp <= roots+((sizeof(roots) + WORK_STEALING_LOCAL_DEQUE_MAX_ROOTS)/sizeof(Value_t *)));
 
