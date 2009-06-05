@@ -30,7 +30,7 @@ define @test (x : unit / exh : exh) : unit =
     do @check-elt (x, DUMMY_ELT)
     let isEmpty : bool = D.@is-empty-from-atomic (self, deque)
     do assert (isEmpty)
-(*
+
     do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT2 )
     do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT )
     let x : Option.option = D.@pop-new-end-from-atomic (self, deque )
@@ -69,6 +69,10 @@ define @test (x : unit / exh : exh) : unit =
     let isEmpty : bool = D.@is-empty-from-atomic (self, deque)
     do assert (isEmpty)
 
+    do D.@release-from-atomic (self, deque)
+
+    let claimed : bool = D.@claim-from-atomic (self, deque)
+    do assert (claimed)
 
     do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT )
     do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT )
@@ -80,6 +84,14 @@ define @test (x : unit / exh : exh) : unit =
     let x : Option.option = D.@pop-new-end-from-atomic (self, deque )
     do @check-elt (x, DUMMY_ELT)
     let isEmpty : bool = D.@is-empty-from-atomic (self, deque)
+    do assert (isEmpty)
+
+    do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT )
+    let x : Option.option = D.@pop-old-end-from-atomic (self, deque )
+    do @check-elt (x, DUMMY_ELT)
+    do D.@push-new-end-from-atomic (self, deque, DUMMY_ELT )
+    let x : Option.option = D.@pop-new-end-from-atomic (self, deque )
+    do @check-elt (x, DUMMY_ELT)
     do assert (isEmpty)
 
     let deque : D.deque = D.@double-size-from-atomic (self, workGroupId, deque)
@@ -103,7 +115,7 @@ define @test (x : unit / exh : exh) : unit =
     do assert (isFull)
 
     do D.@release-from-atomic (self, deque)
-*)
+
     return (UNIT)
   ;
 

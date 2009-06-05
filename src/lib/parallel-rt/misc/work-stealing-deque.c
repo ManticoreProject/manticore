@@ -41,12 +41,12 @@ static WorkGroupList_t *FindWorkGroup (VProc_t *self, int64_t workGroupId)
   WorkGroupList_t *wgList = PerVProcLists[self->id];
 
   while (wgList != NULL) {
-	if (wgList->workGroupId == workGroupId)
-	  return wgList;
-	wgList = wgList->next;
+    if (wgList->workGroupId == workGroupId)
+      return wgList;
+    wgList = wgList->next;
   }
 
-  /* add an entry for this work group to the work group list */
+  // add an entry for this work group to the work group list
   WorkGroupList_t *new = NEW(WorkGroupList_t);
   new->workGroupId = workGroupId;
   new->deques = NULL;
@@ -71,7 +71,8 @@ static DequeList_t *ConsDeque (Deque_t *deque, DequeList_t *deques)
  */
 Value_t M_DequeAlloc (VProc_t *self, int64_t workGroupId, int32_t size)
 {
-  Deque_t *deque = NEW(Deque_t);
+  Deque_t *deque = (Deque_t*)malloc (sizeof(Deque_t) + sizeof(Value_t) * (size - 1));
+
   deque->new = 0;
   deque->old = 0;
   deque->maxSz = size;
@@ -81,6 +82,7 @@ Value_t M_DequeAlloc (VProc_t *self, int64_t workGroupId, int32_t size)
   /* add the deque to the deque list of the current work group */
   WorkGroupList_t *workGroup = FindWorkGroup (self, workGroupId);
   workGroup->deques = ConsDeque (deque, workGroup->deques);
+
   return (PtrToValue (deque));
 }
 
@@ -89,17 +91,64 @@ Value_t M_DequeAlloc (VProc_t *self, int64_t workGroupId, int32_t size)
 static int MoveLeft (int i, int sz)
 {
   if (i <= 0)
-	return sz - 1;
+    return sz - 1;
   else
-	return i - 1;
+    return i - 1;
 }
 
-/* \brief free any deques that have been marked as free since the last GC
+/* \brief return the number of elements in the given deque
+ */
+static int DequeNumElts (Deque_t *deque)
+{
+  if (deque->old <= deque->new)
+    return deque->new - deque->old;
+  else
+    return deque->maxSz - deque->old - deque->new;
+}
+
+static DequeList_t *PruneDequeList (DequeList_t *deques)
+{
+  DequeList_t *old = deques;
+  DequeList_t *new = NULL;
+  
+  while (old != NULL) {
+    DequeList_t *next = old->next;
+    if (DequeNumElts (old->deque) == 0 && old->deque->claimed == M_FALSE) {
+      FREE(old->deque);
+      FREE(old);
+    }
+    else {
+      old->next = new;
+      new = old;
+    }
+    old = next;
+  }
+
+  return new;
+}
+
+/* \brief free any deques that have been marked as free since the preceding GC
  * \param self the host vproc
  */
 static void Prune (VProc_t *self)
 {
-  // TODO
+  WorkGroupList_t *old = PerVProcLists[self->id];
+  WorkGroupList_t *new = NULL;
+
+  while (old != NULL) {
+    WorkGroupList_t *next = old->next;
+    old->deques = PruneDequeList (old->deques);
+    if (old->deques == NULL) {
+      FREE(old);
+    }
+    else {
+      old->next = new;
+      new = old;
+    }
+    old = next;
+  }
+
+  PerVProcLists[self->id] = new;
 }
 
 /* \brief number of roots needed for deques on the given vproc 
@@ -114,22 +163,15 @@ int M_NumDequeRoots (VProc_t *self)
 
   WorkGroupList_t *wgList = PerVProcLists[self->id];
   while (wgList != NULL) {
-	DequeList_t *deques = wgList->deques;
-	  while (deques != NULL) {
-		Deque_t *deque = deques->deque;
-		// iterate through the deque in the direction going from the new to the old end
-		{
-		  int i = deque->new;
-		  do {
-		  numRoots++;
-		  if (i == deque->old)
-			break;
-		  i = MoveLeft (i, deque->maxSz);
-		  } while (true);
-		}
-		deques = deques->next;
-	  }
-	  wgList = wgList->next;
+    DequeList_t *deques = wgList->deques;
+    while (deques != NULL) {
+      Deque_t *deque = deques->deque;
+      // iterate through the deque in the direction going from the new to the old end
+      for (int i = deque->new; i != deque->old; i = MoveLeft (i, deque->maxSz))
+	numRoots++;
+      deques = deques->next;
+    }
+    wgList = wgList->next;
   }
 
   return numRoots;
@@ -143,24 +185,20 @@ int M_NumDequeRoots (VProc_t *self)
 Value_t **M_AddDequeEltsToRoots (VProc_t *self, Value_t **rootPtr)
 {
   WorkGroupList_t *wgList = PerVProcLists[self->id];
+
   while (wgList != NULL) {
-	DequeList_t *deques = wgList->deques;
-	  while (deques != NULL) {
-		Deque_t *deque = deques->deque;
-		// iterate through the deque in the direction going from the new to the old end
-		{
-		  int i = deque->new;
-		  do {
-		  assert (deque->elts[i - 1] != M_NIL);
-		  *rootPtr++ = &(deque->elts[i - 1]);
-		  if (i == deque->old)
-			break;
-		  i = MoveLeft (i, deque->maxSz);
-		  } while (true);
-		}
-		deques = deques->next;
-	  }
-	  wgList = wgList->next;
+    DequeList_t *deques = wgList->deques;
+    while (deques != NULL) {
+      Deque_t *deque = deques->deque;
+      // iterate through the deque in the direction going from the new to the old end
+      for (int i = deque->new; i != deque->old; i = MoveLeft (i, deque->maxSz)) {
+	// i points one element to right of the element we want
+	assert (deque->elts[i - 1] != M_NIL);
+	*rootPtr++ = &(deque->elts[i - 1]);
+      }
+      deques = deques->next;
+    }
+    wgList = wgList->next;
   }
 
   return rootPtr;
@@ -175,11 +213,11 @@ Value_t M_LocalDeques (VProc_t *self, int64_t workGroupId)
 {
   Value_t l = M_NIL;
   DequeList_t *deques = FindWorkGroup (self, workGroupId)->deques;
-
+  
   while (deques != NULL) {
-	Value_t deque = AllocUniform (self, 1, PtrToValue(deques->deque));
-	l = Cons (self, deque, l);
-	deques = deques->next;
+    Value_t deque = AllocUniform (self, 1, PtrToValue(deques->deque));
+    l = Cons (self, deque, l);
+    deques = deques->next;
   }
 
   return l;

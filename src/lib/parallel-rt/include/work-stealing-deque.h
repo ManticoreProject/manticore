@@ -21,7 +21,7 @@ struct Deque_s {
   int32_t       new;           // pointer to the address immediately to the right of the newest element
   int32_t       maxSz;         // max number of elements
   Value_t       claimed;       // M_TRUE, if the deque is claimed by a scheduler
-  Value_t       elts[];        // elements of the deque
+  Value_t       elts[1];       // elements of the deque
 };
 typedef struct Deque_s Deque_t;
 
