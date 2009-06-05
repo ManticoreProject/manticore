@@ -22,7 +22,6 @@
 #include "scheduler.h"
 #include "inline-log.h"
 #include "time.h"
-#include "work-stealing-local-deques.h"
 #include "work-stealing-deque.h"
 
 typedef struct {	    /* data passed to NewVProc */
