@@ -29,7 +29,7 @@ structure SchedulerAction (* :
       define inline @stop () : unit;
 
     (* yield control to the parent scheduler *)
-      define inline @yield-from-atomic () : ();
+      define inline @yield-from-atomic (vp : vproc) : ();
       define inline @yield () : ();
       define inline @yield-in-atomic (vp : vproc) : ();
 
