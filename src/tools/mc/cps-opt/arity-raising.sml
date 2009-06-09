@@ -665,7 +665,8 @@ structure ArityRaising : sig
                case handleLambda (fb, true)
                 of [fl, stb] => C.Exp(ppt, C.Cont(fl, C.Exp(ProgPt.new(),
                                                             C.Cont (stb, walkExp (newParams, e)))))
-                 | [single] => C.Exp(ppt, C.Cont(single, walkExp (newParams, e))))
+                 | [single] => C.Exp(ppt, C.Cont(single, walkExp (newParams, e)))
+                 | _ => raise Fail "Invalid return from handleLambda")
 	     | (C.If(x, e1, e2)) => C.Exp(ppt, C.If(x, walkExp (newParams, e1), walkExp (newParams, e2)))
 	     | (C.Switch(x, cases, dflt)) => C.Exp(ppt, C.Switch(x,
                                List.map (fn (tag,exp) => (tag,walkExp (newParams, exp))) cases,
@@ -685,7 +686,7 @@ structure ArityRaising : sig
                     val _ = List.app (fn x => CV.setKind (x, C.VK_Param func)) newParams
                     val newType = CTy.T_Fun (List.map CV.typeOf newParams,
                                              List.map CV.typeOf rets)
-                    val flat = CV.new (CV.toString f ^ "flat", newType)
+                    val flat = CV.new ("flatFun", newType)
                     val _ = setInfo (f, vmap, pmap, params, SOME(flat))
                     val body = walkExp (newParams, body)
 
@@ -697,7 +698,7 @@ structure ArityRaising : sig
                                    
                     val stubLambda = C.FB{f=f, params=paramCopy, rets=retsCopy, body=stub}
                     val lambda = C.FB{f=flat, params=newParams, rets=rets, body=body}
-                    val _  = CV.setKind (flat, C.VK_Fun lambda)
+                    val _  = CV.setKind (flat, if not(isCont) then C.VK_Fun lambda else C.VK_Cont lambda)
                                                 
                 in
                     [lambda, stubLambda]
@@ -715,7 +716,6 @@ structure ArityRaising : sig
                 analyse m;
                 let val m' = flatten m
                 in
-                    print "flattened\n" ;
                     PrintCPS.output ((TextIO.openOut "post-flatten"),m');
                     m'
                 end)
