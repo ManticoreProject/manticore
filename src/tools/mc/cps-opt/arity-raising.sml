@@ -24,6 +24,7 @@ structure ArityRaising : sig
 
   (***** controls ******)
     val enableArityRaising = ref false
+    val flatteningDebug = ref false
 
     val () = List.app (fn ctl => ControlRegistry.register CPSOptControls.registry {
               ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
@@ -35,7 +36,14 @@ structure ArityRaising : sig
                   pri = [0, 1],
                   obscurity = 0,
                   help = "enable arity raising (argument flattening)"
-                }
+                },
+              Controls.control {
+                  ctl = flatteningDebug,
+                  name = "flatten-debug",
+                  pri = [0, 1],
+                  obscurity = 0,
+                  help = "debug arity raising (argument flattening)"
+                  }
             ]
 
 
@@ -360,7 +368,7 @@ structure ArityRaising : sig
 		])) vmap;
 	    print "  call sites:\n";
 	    List.app (fn site => print(concat["    ", siteToString site, "\n"])) (getSites f);
-            print " param names:";
+            print (" new name: " ^ (case flat of SOME(x) => CV.toString x | _ => "NONE") ^ " param names:");
             List.app (fn v => print (CV.toString v ^ " ")) (computeParamList (params, vmap, sign)); print "\n"
 	  end
 (* -DEBUG *)
@@ -587,11 +595,8 @@ structure ArityRaising : sig
 	    | analLp ([], true) = analLp (sites, false)
 	    | analLp (site::r, flg) = analLp (r, analyseCallSite site orelse flg)
 	  in
-(* print "***** initial candidates *****\n"; *)
-(*DEBUG*) (* List.app printCandidate candidates; *)
-	    analLp (sites, false)
-; print "***** candidates after call-site analysis *****\n";
-(*DEBUG*)List.app printCandidate candidates
+	    analLp (sites, false) ;
+            candidates
 	  end
 
   (***** Flattening *****)
@@ -710,15 +715,15 @@ structure ArityRaising : sig
 
   (***** Transformation *****)
 
-    (* TODO: controls for keep-pre-flatten/keep-post-flatten *)
     fun transform m = if !enableArityRaising
-	  then (PrintCPS.output ((TextIO.openOut "pre-flatten"),m);
-                analyse m;
-                let val m' = flatten m
-                in
-                    PrintCPS.output ((TextIO.openOut "post-flatten"),m');
-                    m'
-                end)
-	  else m
-
+	              then (let
+                                val candidates = analyse m
+                                val m' = flatten m
+                            in
+                                (if !flatteningDebug
+                                 then List.app printCandidate candidates
+                                 else ());
+                                m'
+                            end)
+                      else m
   end
