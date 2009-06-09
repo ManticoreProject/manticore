@@ -246,6 +246,25 @@ structure ArityRaising : sig
 	      (* end case *))
       end)
 
+    (* Compute param list from the final signature,
+     * vmap of the VAR->PATH mappings, and original params
+     *)
+    fun computeParamList (origParams, vmap, sign) = let
+        fun computeParam paramPath = 
+            case paramPath
+             of (i, []) => List.nth (origParams, i)
+              | (i, l) => let
+                    val path = listToPath (i, l)
+                    val vmap' = ParamMap.filter (fn (p) => comparePath (p,path) = EQUAL) vmap
+                in
+                    case ParamMap.firsti vmap'
+                     of SOME(VAR(x), _) => x
+                      | _ => raise Fail ("Signature contains invalid path")
+                end
+    in
+        List.map computeParam sign
+    end
+
   (* property for tracking the call sites of candidate functions; we also use this
    * property to distinguish candidate functions from non-candidate functions.
    *)
@@ -321,19 +340,20 @@ structure ArityRaising : sig
     type info = {
 	  vmap : path ParamMap.map,
 	  pmap : int ref PMap.map,
-	  sign : fun_sig
+	  sign : fun_sig,
+          params : C.var list
 	}
     local
       val {clrFn, getFn : CV.var -> info, setFn, ...} = CV.newProp (fn x => raise Fail ((CV.toString x) ^ " is not a candidate"))
     in
     val clearInfo = clrFn
     val getInfo = getFn
-    fun setInfo (f, vmap, pmap) = setFn (f, {vmap=vmap, pmap=pmap, sign=computeMaxSig pmap});
+    fun setInfo (f, vmap, pmap, params) = setFn (f, {vmap=vmap, pmap=pmap, sign=computeMaxSig pmap, params=params});
     end
 
 (* +DEBUG *)
     fun printCandidate f = let
-	  val {vmap, pmap, sign} = getInfo f
+	  val {vmap, pmap, sign, params} = getInfo f
 	  in
 	    print(concat["candidate ", CV.toString f, " : ", sigToString sign, "\n"]);
 	    print "  vmap:\n";
@@ -343,7 +363,9 @@ structure ArityRaising : sig
 		  Int.toString(!(valOf(PMap.find(pmap, p)))), "\n"
 		])) vmap;
 	    print "  call sites:\n";
-	    List.app (fn site => print(concat["    ", siteToString site, "\n"])) (getSites f)
+	    List.app (fn site => print(concat["    ", siteToString site, "\n"])) (getSites f);
+            print "  param names:";
+            List.app (fn v => print (CV.toString v ^ " ")) (computeParamList (params, vmap, sign)); print "\n"
 	  end
 (* -DEBUG *)
 
@@ -467,7 +489,7 @@ structure ArityRaising : sig
 		      end
 		in
 		  ST.tick cntCandidateFun;
-		  setInfo (f, vmap, pmap);
+		  setInfo (f, vmap, pmap, params);
 		  candidates := f :: !candidates
 		end (* analyseCandidate *)
 	(* walk an expression looking for candidates *)
@@ -552,12 +574,12 @@ structure ArityRaising : sig
           (*DEBUG*)val gSig = sigOfFuns [g]
           val () = print(concat["* analyseCallSite (", siteToString site, ")\n"])
          *)
-	  val {vmap, pmap, ...} = getInfo g
+	  val {vmap, pmap, params, ...} = getInfo g
 	  val (vmap, pmap) = List.foldl doParam (vmap, pmap) (sigOfFuns callees)
 	  in
         (*            if !changed then print(concat["  ", sigToString gSig, "  -->  ", sigToString(sigOfFuns [g]), "\n"]) else (); *)
 	    if !changed
-	    then (setInfo(g, vmap, pmap); true)
+	    then (setInfo(g, vmap, pmap, params); true)
 	    else false
 	  end
 
@@ -644,18 +666,25 @@ structure ArityRaising : sig
                 end
             else case rets of SOME(rets) => C.Exp(ppt, C.Apply(g, args, rets))
                             | NONE => C.Exp(ppt, C.Throw(g, args))
-         and walkExp(enclosing, C.Exp(ppt,e)) = case e
-            of (C.Let(vars, rhs, e)) => C.Exp(ppt, C.Let(vars, rhs, walkExp (enclosing, e)))
+         and walkExp(newParams, C.Exp(ppt,e)) = case e
+            of (C.Let([v], rhs, e)) => ( (* If v has been promoted to a param, omit the let *)
+               if List.exists (fn x => (CV.toString x)=(CV.toString v)) newParams
+               then walkExp (newParams, e)
+               else C.Exp (ppt, C.Let([v], rhs, walkExp (newParams, e))))
+             | (C.Let(vars, rhs, e)) => if List.exists
+                      (fn v => List.exists (fn x => (CV.toString x)=(CV.toString v)) newParams) vars
+                                        then raise Fail ("Can't lift variable from multi-bind on LHS of let")
+                                        else C.Exp (ppt, C.Let(vars, rhs, walkExp (newParams, e)))
 	     | (C.Fun(fbs, e)) => let
                    val newfuns = List.map handleLambda fbs
                in
-                   C.Exp(ppt, C.Fun(newfuns, walkExp (enclosing, e)))
+                   C.Exp(ppt, C.Fun(newfuns, walkExp (newParams, e)))
                end
-	     | (C.Cont(fb, e)) => C.Exp(ppt, C.Cont(handleLambda fb, walkExp (enclosing, e)))
-	     | (C.If(x, e1, e2)) => C.Exp(ppt, C.If(x, walkExp (enclosing, e1), walkExp (enclosing, e2)))
+	     | (C.Cont(fb, e)) => C.Exp(ppt, C.Cont(handleLambda fb, walkExp (newParams, e)))
+	     | (C.If(x, e1, e2)) => C.Exp(ppt, C.If(x, walkExp (newParams, e1), walkExp (newParams, e2)))
 	     | (C.Switch(x, cases, dflt)) => C.Exp(ppt, C.Switch(x,
-                               List.map (fn (tag,exp) => (tag,walkExp (enclosing, exp))) cases,
-                                                                 Option.map (fn (f) => walkExp (enclosing, f)) dflt))
+                               List.map (fn (tag,exp) => (tag,walkExp (newParams, exp))) cases,
+                                                                 Option.map (fn (f) => walkExp (newParams, f)) dflt))
 	     | (C.Apply(g, args, rets)) => 
                flattenApplyThrow (ppt, g, args, SOME(rets))
 	     | (C.Throw(k, args)) =>
@@ -665,16 +694,20 @@ structure ArityRaising : sig
         (* NOTE: will need to return multiple functions when handling escaping *)
         and handleLambda(func as C.FB{f, params, rets, body}) =
             if not (isCandidate f) then
-                C.FB{f=f, params=params, rets=rets, body=walkExp (func, body)}
+                C.FB{f=f, params=params, rets=rets, body=walkExp (params, body)}
             else let
-                    val {vmap, pmap, sign} = getInfo f
-                    val body = walkExp (func, body)
-                    fun getType (x, p) = CTy.T_Any (* TODO: determine real type *)
-(*                    val newTy = CTy.T_Fun (ParamMap.mapi getType , #2(CTy.ty f))
-                    val newName = CV.new(CV.nameOf f ^ "flat", newTy) *)
+                    val {vmap, pmap, sign, ...} = getInfo f
+                    val newParams = computeParamList (params, vmap, sign)
+                    val _ = List.app (fn x => CV.setKind (x, C.VK_Param func)) newParams
+                    val body = walkExp (newParams, body)
+                    val lambda = C.FB{f=f, params=newParams, rets=rets, body=body}
+                    val _  = CV.setKind (f, C.VK_Fun lambda)
+                    val newType = CTy.T_Fun (List.map CV.typeOf newParams,
+                                             List.map CV.typeOf rets)
+                    val _ = CV.setType (f, newType)
+                                                
                 in
-                    (* TODO: here *)
-                    C.FB{f=f, params=params, rets=rets, body=body}
+                    lambda
                 end
     in
         C.MODULE{name=name,externs=externs, body=handleLambda body}
@@ -682,6 +715,7 @@ structure ArityRaising : sig
 
   (***** Transformation *****)
 
+    (* TODO: controls for keep-pre-flatten/keep-post-flatten *)
     fun transform m = if !enableArityRaising
 	  then (PrintCPS.output ((TextIO.openOut "pre-flatten"),m);
                 analyse m;
