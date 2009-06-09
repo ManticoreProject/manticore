@@ -156,19 +156,6 @@ structure ArityRaising : sig
 	    String.concat ("(" :: f sign)
 	  end
 
-  (* a property for keeping track of candidate function signatures *)
-    local
-      val {setFn, getFn, clrFn, ...} = CV.newProp (fn f => [[~1]])
-    in
-    fun initSig f = let
-	  val (paramTys, _) = CPSTyUtil.asFunTy(CV.typeOf f)
-	  in
-	    setFn (f, List.tabulate (List.length paramTys, fn i => [i]))
-	  end
-    val getSig = getFn
-    val clrSig = clrFn
-    end
-
   (* compute a maximal signature of a candidate function from its pmap.  The maximal signature
    * includes any path that has a non-zero count.
    *)
@@ -188,8 +175,12 @@ structure ArityRaising : sig
 	    filter (computeMaxSig pmap, (~1, []), [])
 	  end
 
-  (* merge two signatures to have a common calling convention.  We use this operation to handle
-   * the case where group of functions must have a   calling convention.
+  (* merge two signatures to have a common calling convention.
+   * We use this operation to handle the case where there are multiple
+   * possible functions that can be called at a single call site.
+   * If we trivially flattened, we could end up with different parameter
+   * conventions and incompatible calls. This unifies the convention
+   * across the two functions.
    *)
     fun sigMeet (sig1, sig2) = let
 	  fun removeDerivedPaths (p, q::qs) = if isPrefix(p, q)
@@ -266,13 +257,7 @@ structure ArityRaising : sig
 	   of NONE => []
 	    | SOME l => !l
 	  (* end case *))
-    fun isCandidate f =
-	  ((CV.appCntOf f > 0) orelse (case CFA.equivalentFuns f of [] => false | _ => true))
-	  andalso (case CV.typeOf f
-	     of CTy.T_Fun(tys, _) =>
-		  List.exists (fn CTy.T_Tuple(false, _) => true | _ => false) tys
-	      | _ => false
-	    (* end case *))
+
   (* if a bound variable is a candidate function, then mark it
    * by initializing its call-site list
    *
@@ -283,16 +268,21 @@ structure ArityRaising : sig
    *	2) and either
    *	      a) f has lexically known application sites
    *	      b) f has a member of a set of known functions with known call sites
+   *
+   * TEMP) it's not an escaping function (we know all of its call sites)
+   *           Consider removing this later and introducing an 'original'
+   *           signature version that can be used in escaping locations.
    *)
     fun markCandidate f = let
 	  fun mark () =
-		if (CV.appCntOf f > 0)
-		orelse (case CFA.equivalentFuns f of [] => false | _ => true)
+		if (not(CFA.isEscaping f)
+                    andalso ((CV.appCntOf f > 0)
+		    orelse (case CFA.equivalentFuns f of [] => false | _ => true)))
 		  then (case CV.typeOf f
 		     of CTy.T_Fun(tys, _) =>
 			  if List.exists (fn CTy.T_Tuple(false, _) => true | _ => false) tys
 			    then (
-			      initSig f;
+                              ST.tick cntCandidateFun;
 			      setFn (f, ref []))
 			    else ()
 		      | _ => ()
@@ -305,8 +295,10 @@ structure ArityRaising : sig
 	      | _ => ()
 	    (* end case *)
 	  end
-  (* is a function a candidate? *)
+    
+    (* is a function a candidate? *)
     fun isCandidate f = Option.isSome(peekFn f)
+
   (* add an application site to any candidate functions that are called from
    * the site.
    *)
@@ -332,7 +324,7 @@ structure ArityRaising : sig
 	  sign : fun_sig
 	}
     local
-      val {clrFn, getFn : CV.var -> info, setFn, ...} = CV.newProp (fn x => raise Fail "not candidate")
+      val {clrFn, getFn : CV.var -> info, setFn, ...} = CV.newProp (fn x => raise Fail ((CV.toString x) ^ " is not a candidate"))
     in
     val clearInfo = clrFn
     val getInfo = getFn
@@ -415,12 +407,27 @@ structure ArityRaising : sig
 			| (C.Cont(fb, e)) => (
 			    analyseLambdas [fb];
 			    doExp (vmap, pmap, e))
+                        (* Conditional code: can't add guarded variable accesses
+                         * i.e. can end up adding a param for y that was within
+                         * an 'if not(null x) then let y = #1(x) else 2' *)
 			| (C.If(x, e1, e2)) => let
-			    val (vmap, pmap) = doExp(vmap, pmap, e1)
+                              val _ = walkExp e1
+                              val _ = walkExp e2
+                          in
+                              (vmap, pmap)
+                          end
+(*			    val (vmap, pmap) = doExp(vmap, pmap, e1)
 			    in
 			      doExp(vmap, pmap, e2)
-			    end
+			    end *)
 			| (C.Switch(x, cases, dflt)) => let
+			    val _ = (case dflt
+				      of SOME e => walkExp e
+				       | NONE => ())
+			    in
+			      List.map (fn (_, e) => walkExp e) cases ;
+                              (vmap, pmap)
+			    end(*
 			    val (vmap, pmap) = (case dflt
 				   of SOME e => doExp(vmap, pmap, e)
 				    | NONE => (vmap, pmap)
@@ -428,12 +435,12 @@ structure ArityRaising : sig
 			    fun doCase ((_, e), (vmap, pmap)) = doExp(vmap, pmap, e)
 			    in
 			      List.foldl doCase (vmap, pmap) cases
-			    end
+			    end*)
 			| (C.Apply(g, args, _)) => (
-			    addCallSite (SOME f, ppt, g, args);
+			  addCallSite (SOME f, ppt, g, args);
 			    (vmap, pmap))
 			| (C.Throw(k, args)) => (
-			    addCallSite (SOME f, ppt, k, args);
+			  addCallSite (SOME f, ppt, k, args);
 			    (vmap, pmap))
 		      (* end case *))
 		val (vmap, pmap) = doExp(vmap, pmap, body)
@@ -489,10 +496,20 @@ structure ArityRaising : sig
 	    !candidates
 	  end
 
+    (* Attempt to come up with a combined signature via sigMeet. Note
+     * that non-candidate calls cancel out any attempt to further simplify
+     * the signature.
+     *)
     fun sigOfFuns [] = raise Fail "no functions"
       | sigOfFuns [f] = #sign(getInfo f)
-      | sigOfFuns (f::r) =
-	  List.foldl (fn (g, sign) => sigMeet(#sign(getInfo g), sign)) (#sign(getInfo f)) r
+      | sigOfFuns (l as f::r) = let
+            val canMeet = List.foldl (fn (g, b) => if (b) then (isCandidate g) else b) true l
+        in
+            if (canMeet) then
+	        List.foldl (fn (g, sign) => sigMeet(#sign(getInfo g), sign)) (#sign(getInfo f)) r
+            else
+                []
+        end
 
   (* analyse a call site inside a candidate function. *)
     fun analyseCallSite (SITE{enclFn=NONE, ...}) = false
@@ -507,7 +524,7 @@ structure ArityRaising : sig
 			     of SOME q => let (* this argument is derivable from a parameter *)
 				(* have we already done the bookkeeping for x? *)
 				  val vmap = (case ParamMap.find(vmap, ARG(site, path))
-					 of NONE => (
+					 of NONE => (changed := true;
 					      addToRef(lookupPath(pmap, q), ~1);
 					      ParamMap.insert(vmap, ARG(site, path), q))
 					  | SOME _ => vmap
@@ -531,15 +548,17 @@ structure ArityRaising : sig
 		in
 		  doArg (p, List.nth(args, i), PARAM i, vmap, pmap)
 		end
+        (*
+          (*DEBUG*)val gSig = sigOfFuns [g]
+          val () = print(concat["* analyseCallSite (", siteToString site, ")\n"])
+         *)
 	  val {vmap, pmap, ...} = getInfo g
-(*DEBUG*)val gSig = sigOfFuns [g]
-val () = print(concat["* analyseCallSite (", siteToString site, ")\n"])
 	  val (vmap, pmap) = List.foldl doParam (vmap, pmap) (sigOfFuns callees)
 	  in
-if !changed then print(concat["  ", sigToString gSig, "  -->  ", sigToString(sigOfFuns [g]), "\n"]) else ();
+        (*            if !changed then print(concat["  ", sigToString gSig, "  -->  ", sigToString(sigOfFuns [g]), "\n"]) else (); *)
 	    if !changed
-	      then (setInfo(g, vmap, pmap); true)
-	      else false
+	    then (setInfo(g, vmap, pmap); true)
+	    else false
 	  end
 
   (* for each candidate function, analyse the arguments of its call sites *)
@@ -550,17 +569,127 @@ if !changed then print(concat["  ", sigToString gSig, "  -->  ", sigToString(sig
 	    | analLp ([], true) = analLp (sites, false)
 	    | analLp (site::r, flg) = analLp (r, analyseCallSite site orelse flg)
 	  in
-print "***** initial candidates *****\n";
-(*DEBUG*)List.app printCandidate candidates;
+(* print "***** initial candidates *****\n"; *)
+(*DEBUG*) (* List.app printCandidate candidates; *)
 	    analLp (sites, false)
-; print "***** candidates after call-site an analysis *****\n";
+; print "***** candidates after call-site analysis *****\n";
 (*DEBUG*)List.app printCandidate candidates
 	  end
+
+  (***** Flattening *****)
+    (* walk down the tree, keeping
+     *)
+
+    (* for each candidate:
+     * - for each known call site
+     *  - transform call site to pass modified arguments
+     *  NOTE: have to do here to handle recursive calls properly
+     * - set params to the variables for the pmap
+     * - walk the body
+     *  - if it's a let of a variable with cnt =  0, omit it
+     *  - if it's a let of a variable in the pmap and is now a param, omit it
+     *  - if it's a let of a variable in the pmap not a param, see if there's a shorter
+     *    way to get at it (i.e. SEL into something that's a param)
+     *  - o/w emit the code
+     *
+     * LATER:
+     * ----- version that supports escaping functions -----
+     * - create a new name
+     * - create a new body for the old function name
+     *  - select out the arguments and pass them to the new function0
+     *)
+    fun flatten (C.MODULE{name,externs,body}) = let
+        fun flattenApplyThrow (ppt, g, args, rets) = 
+            if isCandidate g
+            then let 
+                    val {sign, ...} = getInfo g
+                    fun genCall (sign, newArgs, progress) =
+                        if null sign
+                        then case rets of SOME(rets) => C.Exp(ppt, C.Apply(g, rev newArgs, rets))
+                                        | NONE => C.Exp(ppt, C.Throw(g, rev newArgs))
+                        else let
+                                fun genResult (varBase, path) =
+                                    if length path = 0
+                                    then
+                                        genCall (tl sign, varBase :: newArgs, NONE)
+                                    else let
+                                            val newType = case CV.typeOf varBase
+                                                           of CTy.T_Tuple(_, types) => List.nth (types, (hd path))
+                                                            | CTy.T_Any => raise Fail ("SEL into any of var: " ^
+                                                                                       CV.toString varBase ^
+                                                                                       " probably flattening var that isn't guaranteed to be that type.\n")
+                                                            | _ => raise Fail "SEL from non tuple/any type"
+                                            val newVar = CV.new ("letFlat", newType)
+                                            val rhs = C.Select ((hd path), varBase)
+                                            val _ = CV.setKind(newVar, C.VK_Let rhs)
+                                        in
+                                            if length path = 1
+                                            then C.Exp(ProgPt.new(), C.Let ([newVar], rhs,
+                                                                            genCall (tl sign, newVar :: newArgs, NONE)))
+                                            else C.Exp(ProgPt.new(), C.Let ([newVar], rhs,
+                                                                            genCall (tl sign, newArgs, SOME (newVar, tl path))))
+                                        end
+                            in
+                                case progress
+                                 of SOME(base,l) => genResult (base, l)
+                                  | NONE => let
+                                        val (whichBase, path) = hd sign
+                                        val varBase = List.nth (args, whichBase)
+                                    in
+                                        genResult (varBase, path)
+                                    end
+                            end
+                in
+                    genCall (sign, [], NONE)
+                end
+            else case rets of SOME(rets) => C.Exp(ppt, C.Apply(g, args, rets))
+                            | NONE => C.Exp(ppt, C.Throw(g, args))
+         and walkExp(enclosing, C.Exp(ppt,e)) = case e
+            of (C.Let(vars, rhs, e)) => C.Exp(ppt, C.Let(vars, rhs, walkExp (enclosing, e)))
+	     | (C.Fun(fbs, e)) => let
+                   val newfuns = List.map handleLambda fbs
+               in
+                   C.Exp(ppt, C.Fun(newfuns, walkExp (enclosing, e)))
+               end
+	     | (C.Cont(fb, e)) => C.Exp(ppt, C.Cont(handleLambda fb, walkExp (enclosing, e)))
+	     | (C.If(x, e1, e2)) => C.Exp(ppt, C.If(x, walkExp (enclosing, e1), walkExp (enclosing, e2)))
+	     | (C.Switch(x, cases, dflt)) => C.Exp(ppt, C.Switch(x,
+                               List.map (fn (tag,exp) => (tag,walkExp (enclosing, exp))) cases,
+                                                                 Option.map (fn (f) => walkExp (enclosing, f)) dflt))
+	     | (C.Apply(g, args, rets)) => 
+               flattenApplyThrow (ppt, g, args, SOME(rets))
+	     | (C.Throw(k, args)) =>
+               flattenApplyThrow (ppt, k, args, NONE)
+
+        (* Returns flattened version of candidate functions *)
+        (* NOTE: will need to return multiple functions when handling escaping *)
+        and handleLambda(func as C.FB{f, params, rets, body}) =
+            if not (isCandidate f) then
+                C.FB{f=f, params=params, rets=rets, body=walkExp (func, body)}
+            else let
+                    val {vmap, pmap, sign} = getInfo f
+                    val body = walkExp (func, body)
+                    fun getType (x, p) = CTy.T_Any (* TODO: determine real type *)
+(*                    val newTy = CTy.T_Fun (ParamMap.mapi getType , #2(CTy.ty f))
+                    val newName = CV.new(CV.nameOf f ^ "flat", newTy) *)
+                in
+                    (* TODO: here *)
+                    C.FB{f=f, params=params, rets=rets, body=body}
+                end
+    in
+        C.MODULE{name=name,externs=externs, body=handleLambda body}
+    end
 
   (***** Transformation *****)
 
     fun transform m = if !enableArityRaising
-	  then (analyse m; m)
+	  then (PrintCPS.output ((TextIO.openOut "pre-flatten"),m);
+                analyse m;
+                let val m' = flatten m
+                in
+                    PrintCPS.output ((TextIO.openOut "post-flatten"),m');
+                    m'
+                end)
 	  else m
 
   end
