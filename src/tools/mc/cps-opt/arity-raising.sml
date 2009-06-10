@@ -299,7 +299,7 @@ structure ArityRaising : sig
     fun markCandidate f = let
 	  fun mark () =
 		if ((CV.appCntOf f > 0)
-		    orelse (case CFA.equivalentFuns f of [] => false | _ => true))
+		orelse (case CFA.equivalentFuns f of [] => false | _ => true))
 		  then (case CV.typeOf f
 		     of CTy.T_Fun(tys, _) =>
 			  if List.exists (fn CTy.T_Tuple(false, _) => true | _ => false) tys
@@ -348,11 +348,13 @@ structure ArityRaising : sig
           flat : C.var option
 	}
     local
-      val {clrFn, getFn : CV.var -> info, setFn, ...} = CV.newProp (fn x => raise Fail ((CV.toString x) ^ " is not a candidate"))
+      val {clrFn, getFn : CV.var -> info, setFn, ...} =
+	    CV.newProp (fn x => raise Fail ((CV.toString x) ^ " is not a candidate"))
     in
     val clearInfo = clrFn
     val getInfo = getFn
-    fun setInfo (f, vmap, pmap, params, flat) = setFn (f, {vmap=vmap, pmap=pmap, sign=computeMaxSig pmap, params=params, flat=flat});
+    fun setInfo (f, vmap, pmap, params, flat) =
+	  setFn (f, {vmap=vmap, pmap=pmap, sign=computeMaxSig pmap, params=params, flat=flat});
     end
 
 (* +DEBUG *)
@@ -437,36 +439,24 @@ structure ArityRaising : sig
                          * i.e. can end up adding a param for y that was within
                          * an 'if not(null x) then let y = #1(x) else 2' *)
 			| (C.If(x, e1, e2)) => let
-                              val _ = walkExp e1
-                              val _ = walkExp e2
-                          in
+			    val _ = walkExp e1
+			    val _ = walkExp e2
+			    in
                               (vmap, pmap)
-                          end
+			    end
 (*			    val (vmap, pmap) = doExp(vmap, pmap, e1)
 			    in
 			      doExp(vmap, pmap, e2)
 			    end *)
-			| (C.Switch(x, cases, dflt)) => let
-			    val _ = (case dflt
-				      of SOME e => walkExp e
-				       | NONE => ())
-			    in
-			      List.map (fn (_, e) => walkExp e) cases ;
-                              (vmap, pmap)
-			    end(*
-			    val (vmap, pmap) = (case dflt
-				   of SOME e => doExp(vmap, pmap, e)
-				    | NONE => (vmap, pmap)
-				  (* end case *))
-			    fun doCase ((_, e), (vmap, pmap)) = doExp(vmap, pmap, e)
-			    in
-			      List.foldl doCase (vmap, pmap) cases
-			    end*)
+			| (C.Switch(x, cases, dflt)) => (
+			    List.app (fn (_, e) => walkExp e) cases;
+			    Option.app walkExp dflt;
+			    (vmap, pmap))
 			| (C.Apply(g, args, _)) => (
-			  addCallSite (SOME f, ppt, g, args);
+			    addCallSite (SOME f, ppt, g, args);
 			    (vmap, pmap))
 			| (C.Throw(k, args)) => (
-			  addCallSite (SOME f, ppt, k, args);
+			    addCallSite (SOME f, ppt, k, args);
 			    (vmap, pmap))
 		      (* end case *))
 		val (vmap, pmap) = doExp(vmap, pmap, body)
