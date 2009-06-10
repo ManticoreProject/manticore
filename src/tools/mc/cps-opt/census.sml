@@ -17,6 +17,9 @@ structure Census : sig
     val decUseCnt : CPS.var -> unit	(* decrement use count *)
     val decAppCnt : CPS.var -> unit	(* decrement both use and application counts *)
 
+  (* adjust counts to account for the deletion of an expression *)
+    val delete : (CPS.var CPS.Var.Map.map * CPS.exp) -> unit
+
   end = struct
 
     structure C = CPS
@@ -81,6 +84,44 @@ structure Census : sig
 	  in
 	    dec x;
 	    appCnt := !appCnt - 1
+	  end
+
+  (* adjust counts to account for the deletion of an expression *)
+    fun delete (env, e) = let
+	  fun dec x = (case CPS.Var.Map.find(env, x)
+		 of SOME y => decUseCnt y
+		  | NONE => decUseCnt x
+		(* end case *))
+	  fun decApp x = (case CPS.Var.Map.find(env, x)
+		 of SOME y => decAppCnt y
+		  | NONE => decAppCnt x
+		(* end case *))
+	  fun doExp (C.Exp(_, t)) = (case t
+		 of (C.Let(lhs, rhs, e)) => (
+		      CPSUtil.appRHS dec rhs;
+		      doExp e)
+		  | (C.Fun(fbs, e)) => (
+		      List.app doFB fbs;
+		      doExp e)
+		  | (C.Cont(fb, e)) => (
+		      doFB fb;
+		      doExp e)
+		  | (C.If(x, e1, e2)) => (dec x; doExp e1; doExp e2)
+		  | (C.Switch(x, cases, dflt)) => (
+		      dec x;
+		      List.app (fn (_, e) => doExp e) cases;
+		      Option.app doExp dflt)
+		  | (C.Apply(f, args, rets)) => (
+		      decApp f;
+		      List.app dec args;
+		      List.app dec rets)
+		  | (C.Throw(k, args)) => (
+		      decApp k;
+		      List.app dec args)
+		(* end case *))
+	  and doFB (C.FB{body, ...}) = doExp body
+	  in
+	    doExp e
 	  end
 
   end
