@@ -621,7 +621,6 @@ structure ArityRaising : sig
 					  (* end case *))
 				    val newVar = CV.new ("letFlat", newType)
 				    val rhs = C.Select (hd path, varBase)
-				    val _ = CV.setKind(newVar, C.VK_Let rhs)
 				    in
 				      if length path = 1
 					then C.mkLet ([newVar], rhs,
@@ -647,31 +646,44 @@ structure ArityRaising : sig
 		   of SOME(rets) => C.Exp(ppt, C.Apply(g, args, rets))
 		    | NONE => C.Exp(ppt, C.Throw(g, args))
 		  (* end case *))
-	  and walkExp(newParams, C.Exp(ppt,e)) = (case e
-		 of (C.Let([v], rhs, e)) => ( (* If v has been promoted to a param, omit the let *)
+          and useCountOfVar(encl, v) = 
+              if not(isCandidate(encl))
+              then ~1
+              else let
+                      val {vmap, pmap,...} = getInfo encl
+                  in
+                      case ParamMap.find (vmap, VAR v)
+                       of SOME(path) => !(valOf(PMap.find(pmap, path)))
+                        | NONE => ~2
+                  end
+	  and walkExp(encl, newParams, C.Exp(ppt,e)) = (case e
+		 of (C.Let([v], rhs, e)) => (
+                      (* If v has been promoted to a param or its
+                       * use count is now zero, omit it *)
 		      if List.exists (fn x => CV.same(x, v)) newParams
-			then walkExp (newParams, e)
-			else C.Exp(ppt, C.Let([v], rhs, walkExp (newParams, e))))
+                         orelse useCountOfVar (encl, v) = 0
+			then walkExp (encl, newParams, e)
+			else C.Exp(ppt, C.Let([v], rhs, walkExp (encl, newParams, e))))
 		  | (C.Let(vars, rhs, e)) =>
 		      if List.exists (fn v => List.exists (fn x => CV.same(x, v)) newParams) vars
 			then raise Fail ("Can't lift variable from multi-bind on LHS of let")
-			else C.Exp(ppt, C.Let(vars, rhs, walkExp (newParams, e)))
+			else C.Exp(ppt, C.Let(vars, rhs, walkExp (encl, newParams, e)))
 		  | (C.Fun(fbs, e)) => let
 		      val newfuns = List.foldr (fn (f,rr) => handleLambda (f,false) @ rr) [] fbs
 		      in
-			C.Exp(ppt, C.Fun(newfuns, walkExp (newParams, e)))
+			C.mkFun(newfuns, walkExp (encl, newParams, e))
 		      end
 		  | (C.Cont(fb, e)) => (case handleLambda (fb, true)
-		       of [fl, stb] => C.Exp(ppt, C.Cont(fl, C.mkCont (stb, walkExp (newParams, e))))
-			| [single] => C.Exp(ppt, C.Cont(single, walkExp (newParams, e)))
+		       of [fl, stb] => C.mkCont(fl, C.mkCont (stb, walkExp (encl, newParams, e)))
+			| [single] => C.mkCont(single, walkExp (encl, newParams, e))
 			| _ => raise Fail "Invalid return from handleLambda"
 		      (* end case *))
 		  | (C.If(x, e1, e2)) =>
-		      C.Exp(ppt, C.If(x, walkExp (newParams, e1), walkExp (newParams, e2)))
+		      C.Exp(ppt, C.If(x, walkExp (encl, newParams, e1), walkExp (encl, newParams, e2)))
 		  | (C.Switch(x, cases, dflt)) =>
 		      C.Exp(ppt, C.Switch(x,
-			List.map (fn (tag,exp) => (tag,walkExp (newParams, exp))) cases,
-			Option.map (fn (f) => walkExp (newParams, f)) dflt))
+			List.map (fn (tag,exp) => (tag,walkExp (encl, newParams, exp))) cases,
+			Option.map (fn (f) => walkExp (encl, newParams, f)) dflt))
 		  | (C.Apply(g, args, rets)) => 
 		      flattenApplyThrow (ppt, g, args, SOME(rets))
 		  | (C.Throw(k, args)) =>
@@ -681,31 +693,29 @@ structure ArityRaising : sig
         (* Returns flattened version of candidate functions *)
         and handleLambda(func as C.FB{f, params, rets, body}, isCont) =
 	      if not (isCandidate f)
-                then [C.FB{f=f, params=params, rets=rets, body=walkExp (params, body)}]
+                then [C.FB{f=f, params=params, rets=rets, body=walkExp (f, params, body)}]
 		else let
 		  val {vmap, pmap, params, sign, flat} = getInfo f
 		  val newParams = computeParamList (params, vmap, sign)
-		  val _ = List.app (fn x => CV.setKind (x, C.VK_Param func)) newParams
 		  val newType = CTy.T_Fun (List.map CV.typeOf newParams, List.map CV.typeOf rets)
 		  val flat = CV.new ("flatFun", newType)
 		  val _ = setInfo (f, vmap, pmap, params, SOME(flat))
-		  val body = walkExp (newParams, body)
+		  val body = walkExp (f, newParams, body)
 		(* Create a stub with the old name that just SEL's and jumps to the flat version. *)
 		  val paramCopy = List.map CV.copy params
 		  val retsCopy = List.map CV.copy rets
 		  val stub = flattenApplyThrow (ProgPt.new(), f, paramCopy,
 						if not(isCont) then SOME retsCopy else NONE)
 				 
-		  val stubLambda = C.FB{f=f, params=paramCopy, rets=retsCopy, body=stub}
-		  val lambda = C.FB{f=flat, params=newParams, rets=rets, body=body}
-		  val _  = CV.setKind (flat, if not(isCont) then C.VK_Fun lambda else C.VK_Cont lambda)                                        
+		  val stubLambda = C.mkLambda (C.FB{f=f, params=paramCopy, rets=retsCopy, body=stub})
+		  val lambda = C.mkLambda(C.FB{f=flat, params=newParams, rets=rets, body=body})
 		  in
                     [lambda, stubLambda]
 		  end
 	in
 	  C.MODULE{
 	      name=name,externs=externs,
-	      body = C.mkFB{f=f, params=params, rets=rets, body=walkExp (params, body)}
+	      body = C.mkFB{f=f, params=params, rets=rets, body=walkExp (f, params, body)}
 	    }
 	end
 
