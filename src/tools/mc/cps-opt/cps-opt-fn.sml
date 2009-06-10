@@ -35,7 +35,7 @@ functor CPSOptFn (Spec : TARGET_SPEC) : sig
 	  val _ = census module
 	  val module = eta module
           val _ = cfa module
-	  val module = ArityRaising.transform module
+	  val module = arity module
           val _ = CFACPS.clearInfo module
 	  in
 	    module
