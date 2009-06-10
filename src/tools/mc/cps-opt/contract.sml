@@ -32,8 +32,8 @@ structure Contract : sig
     val firstCounter            = cntUnusedStmt
     val lastCounter             = cntUnusedCFun
   (* these counters track the number of contraction phases/iterations *)
-    val cntPhases		= ST.newCounter "cfg-contract:phases"
-    val cntIters		= ST.newCounter "cfg-contract:iterations"
+    val cntPhases		= ST.newCounter "cps-contract:phases"
+    val cntIters		= ST.newCounter "cps-contract:iterations"
 
   (********** Get variable info **********)
     fun bindingOf (VarRep.V{kind, ...}) = !kind
@@ -77,6 +77,15 @@ structure Contract : sig
 
     fun substDec' (env, xs) = List.map (fn x => substDec(env, x)) xs
 
+  (* support for recording that a function has been inlined.  Note that we
+   * need to distinguish between inlined and dead functions (even though
+   * both have zero use counts), since when a function is inlined its body
+   * has been copied, but when a function is dead, the variables it references
+   * must have their counts decreased.
+   *)
+    fun markInlined (VarRep.V{kind, ...}) = kind := C.VK_None
+    fun isInlined (VarRep.V{kind = ref C.VK_None, ...}) = true
+      | isInlined _ = false
 
     fun doExp (env, exp as C.Exp(_, e)) = (case e
 	   of C.Let(lhs, C.Var rhs, e) => (
@@ -157,12 +166,14 @@ structure Contract : sig
 		      (fn (fb as C.FB{f, ...}) => setBinding(f, C.VK_Fun fb))
 			fbs
 		val e = doExp(env, e)
-		fun filterDead (fb as C.FB{f, body, ...}) = if unused f
-		      then (
-			ST.tick cntUnusedFun;
-			Census.delete (env, body);
-			NONE)
-		      else SOME fb
+		fun filterDead (fb as C.FB{f, body, ...}) = if isInlined f
+			then NONE
+		      else if unused f
+			then (
+			  ST.tick cntUnusedFun;
+			  Census.delete (env, body);
+			  NONE)
+			else SOME fb
 		in
 		  case List.mapPartial filterDead fbs
 		   of [] => e
@@ -182,7 +193,9 @@ structure Contract : sig
 		  val _ = setBinding(f, C.VK_Cont fb)
 		  val e = doExp (env, e)
 		  in
-		    if unused f
+		    if isInlined f
+		      then doExp (env, e)
+		    else if unused f
 		      then (
 			ST.tick cntUnusedCont; 
 			Census.delete (env, body);
@@ -218,6 +231,7 @@ structure Contract : sig
 			if useCntOf f = 1
 			  then ((* inline function that is only called once *)
 			    ST.tick cntBeta;
+			    markInlined f;
 			    inline (env, params@rets, body, args@conts))
 			  else C.mkApply(f, args, conts)
 		    | _ => C.mkApply(f, args, conts)
@@ -232,6 +246,7 @@ structure Contract : sig
 			if useCntOf k = 1
 			  then ((* inline continuation that is only called once *)
 			    ST.tick cntBetaCont;
+			    markInlined k;
 			    inline (env, params, body, args))
 			  else C.mkThrow(k, args)
 		    | _ => C.mkThrow(k, args)
