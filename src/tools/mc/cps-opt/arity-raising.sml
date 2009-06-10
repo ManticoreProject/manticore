@@ -704,7 +704,7 @@ structure ArityRaising : sig
 	in
 	  C.MODULE{
 	      name=name,externs=externs,
-	      body = C.mkLambda(C.FB{f=f, params=params, rets=rets, body=walkExp (params, body)})
+	      body = C.mkFB{f=f, params=params, rets=rets, body=walkExp (params, body)}
 	    }
 	end
 

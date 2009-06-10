@@ -127,7 +127,7 @@ structure EtaExpand : sig
 	    then let
 	      val (_, [body]) = doFB (VMap.empty, body)
 	      in
-		C.MODULE{name=name, externs=externs, body=body}
+		C.MODULE{name=name, externs=externs, body=C.mkLambda body}
 	      end
 	    else m
 
