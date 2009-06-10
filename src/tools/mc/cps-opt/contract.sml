@@ -13,6 +13,7 @@ structure Contract : sig
   end = struct
 
     structure C = CPS
+    structure CTy = CPSTy
     structure CV = C.Var
     structure VMap = CV.Map
     structure ST = Stats
@@ -46,8 +47,8 @@ structure Contract : sig
     val combineAppUseCnts = CV.combineAppUseCnts
 
   (* functions to update census counts *)
-    fun inc x = BV.addToCount(x, 1)
-    fun dec x = BV.addToCount(x, ~1)
+    fun inc x = CV.addToCount(x, 1)
+    fun dec x = CV.addToCount(x, ~1)
     val dec' = List.app dec
     fun unused x = (useCntOf x = 0)
 
@@ -81,7 +82,7 @@ structure Contract : sig
 	   of C.Let(lhs, C.Var rhs, e) => (
 		ST.tick cntVarRename;
 		dec' rhs;
-		doExp (reame'(env, lhs, rhs), e))
+		doExp (rename'(env, lhs, rhs), e))
 	    | C.Let([y], rhs as C.Select(i, x), e) => if unused y
 		then (
 		  ST.tick cntUnusedStmt;
@@ -140,12 +141,12 @@ structure Contract : sig
 	    | C.Fun(fbs, e) => let
 	      (* blackhole to avoid recursive inlining *)
 		val _ = List.app
-		      (fn (C.FB{f, ...}) => setBinding(f, C.VK_Cont fb))
+		      (fn (C.FB{f, ...}) => setBinding(f, C.VK_None))
 			fbs
 		fun doFB (C.FB{f, params, rets, body}) = if unused f
 		      then (
 			ST.tick cntUnusedFun;
-			Census.delete body;
+			Census.delete (env, body);
 			NONE)
 		      else SOME(C.mkFB{
 			  f=f, params=params, rets=rets,
@@ -159,7 +160,7 @@ structure Contract : sig
 		fun filterDead (fb as C.FB{f, body, ...}) = if unused f
 		      then (
 			ST.tick cntUnusedFun;
-			Census.delete body;
+			Census.delete (env, body);
 			NONE)
 		      else SOME fb
 		in
@@ -171,7 +172,7 @@ structure Contract : sig
 	    | C.Cont(C.FB{f, params, rets, body}, e) => if unused f
 		then (
 		  ST.tick cntUnusedCont;
-		  Census.delete body;
+		  Census.delete (env, body);
 		  doExp (env, e))
 		else let
 		(* blackhole to avoid recursive inlining *)
@@ -184,7 +185,7 @@ structure Contract : sig
 		    if unused f
 		      then (
 			ST.tick cntUnusedCont; 
-			Census.delete body;
+			Census.delete (env, body);
 			doExp (env, e))
 		      else C.mkCont(fb, e)
 		  end
@@ -192,7 +193,7 @@ structure Contract : sig
 		val x = subst(env, x)
 		in
 		  case bindingOf x
-		   of C.VK_Let(C.Const(_, lit)) => (
+		   of C.VK_Let(C.Const(lit, _)) => (
 			ST.tick cntIfConst;
 			if (Literal.same(lit, Literal.trueLit))
 			  then (Census.delete(env, e2); doExp(env, e1))
@@ -203,6 +204,9 @@ structure Contract : sig
 	    | C.Switch(x, cases, dflt) => let
 		val x = subst(env, x)
 		in
+		  C.mkSwitch (x,
+		    List.map (fn (l, e) => (l, doExp(env, e))) cases,
+		    Option.map (fn e => doExp(env, e)) dflt)
 		end
 	    | C.Apply(f, args, conts) => let
 		val f = subst(env, f)
@@ -248,7 +252,7 @@ structure Contract : sig
 	  fun ticks () = ST.sum {from = firstCounter, to = lastCounter}
 	  fun loop (body, prevSum) = let
 		val _ = ST.tick cntIters
-		val body = List.mapPartial contractFunc body
+		val body = doExp(VMap.empty, body)
 		val sum = ticks()
 		in
 		  if (prevSum <> sum)
@@ -258,7 +262,7 @@ structure Contract : sig
 	  val body = loop (body, ticks())
 	  val fb = C.mkFB{f=f, params=params, rets=rets, body=body}
 	  in
-	    C.MODULE{name=name, externs=externs, body=body}
+	    C.MODULE{name=name, externs=externs, body=fb}
 	  end
 
   end

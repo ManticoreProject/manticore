@@ -28,6 +28,7 @@ functor CPSOptFn (Spec : TARGET_SPEC) : sig
     val cfa = analyze {passName = "cfa", pass = CFACPS.analyze}
 
   (* wrap transformation passes with keep controls *)
+    val contract = transform {passName = "contract", pass = Contract.transform}
     val eta = transform {passName = "eta", pass = EtaExpand.transform}
     val arity = transform {passName = "flatten", pass = ArityRaising.transform}
 
