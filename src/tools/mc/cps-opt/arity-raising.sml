@@ -607,7 +607,8 @@ structure ArityRaising : sig
 			      | NONE => C.Exp(ppt, C.Throw(f, rev newArgs))
 			    (* end case *))
 			  else let
-			    fun genResult (varBase, path) = if length path = 0
+			    fun genResult (varBase, path) =
+                                  if length path = 0
 				  then genCall (tl sign, varBase :: newArgs, NONE)
 				  else let
 				    val newType = (case CV.typeOf varBase
@@ -626,7 +627,7 @@ structure ArityRaising : sig
 					then C.mkLet ([newVar], rhs,
 					    genCall (tl sign, newVar :: newArgs, NONE))
 					else C.mkLet ([newVar], rhs,
-					    genCall (tl sign, newArgs, SOME (newVar, tl path)))
+					    genCall (sign, newArgs, SOME (newVar, tl path)))
                                         end
 			    in
 			      case progress
