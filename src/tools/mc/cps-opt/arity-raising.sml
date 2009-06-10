@@ -607,123 +607,129 @@ structure ArityRaising : sig
      * - in the body of the specialized version, remove any variables
      *)
     fun flatten (C.MODULE{name,externs,body=(C.FB{f,params,rets,body})}) = let
-        fun flattenApplyThrow (ppt, g, args, rets) = 
-            if isCandidate g
-            then let 
-                    val {sign, flat=SOME(f), ...} = getInfo g
-                    fun genCall (sign, newArgs, progress) =
+	  fun flattenApplyThrow (ppt, g, args, rets) = if isCandidate g
+		then let 
+		  val {sign, flat=SOME(f), ...} = getInfo g
+		  fun genCall (sign, newArgs, progress) =
                         if null sign
-                        then case rets of SOME(rets) => C.Exp(ppt, C.Apply(f, rev newArgs, rets))
-                                        | NONE => C.Exp(ppt, C.Throw(f, rev newArgs))
-                        else let
-                                fun genResult (varBase, path) =
-                                    if length path = 0
-                                    then
-                                        genCall (tl sign, varBase :: newArgs, NONE)
-                                    else let
-                                            val newType = case CV.typeOf varBase
-                                                           of CTy.T_Tuple(_, types) => List.nth (types, (hd path))
-                                                            | CTy.T_Any => raise Fail ("SEL into any of var: " ^
-                                                                                       CV.toString varBase ^
-                                                                                       " probably flattening var that isn't guaranteed to be that type.\n")
-                                                            | _ => raise Fail "SEL from non tuple/any type"
-                                            val newVar = CV.new ("letFlat", newType)
-                                            val rhs = C.Select ((hd path), varBase)
-                                            val _ = CV.setKind(newVar, C.VK_Let rhs)
-                                        in
-                                            if length path = 1
-                                            then C.Exp(ProgPt.new(), C.Let ([newVar], rhs,
-                                                                            genCall (tl sign, newVar :: newArgs, NONE)))
-                                            else C.Exp(ProgPt.new(), C.Let ([newVar], rhs,
-                                                                            genCall (tl sign, newArgs, SOME (newVar, tl path))))
+			  then (case rets
+			     of SOME(rets) => C.Exp(ppt, C.Apply(f, rev newArgs, rets))
+			      | NONE => C.Exp(ppt, C.Throw(f, rev newArgs))
+			    (* end case *))
+			  else let
+			    fun genResult (varBase, path) = if length path = 0
+				  then genCall (tl sign, varBase :: newArgs, NONE)
+				  else let
+				    val newType = (case CV.typeOf varBase
+					   of CTy.T_Tuple(_, types) => List.nth (types, (hd path))
+					    | CTy.T_Any => raise Fail (concat[
+						  "SEL into any of var: ", CV.toString varBase,
+						  " probably flattening var that isn't guaranteed to be that type.\n"
+						])
+					    | _ => raise Fail "SEL from non tuple/any type"
+					  (* end case *))
+				    val newVar = CV.new ("letFlat", newType)
+				    val rhs = C.Select (hd path, varBase)
+				    val _ = CV.setKind(newVar, C.VK_Let rhs)
+				    in
+				      if length path = 1
+					then C.mkLet ([newVar], rhs,
+					    genCall (tl sign, newVar :: newArgs, NONE))
+					else C.mkLet ([newVar], rhs,
+					    genCall (tl sign, newArgs, SOME (newVar, tl path)))
                                         end
-                            in
-                                case progress
-                                 of SOME(base,l) => genResult (base, l)
-                                  | NONE => let
-                                        val (whichBase, path) = hd sign
-                                        val varBase = List.nth (args, whichBase)
-                                    in
-                                        genResult (varBase, path)
-                                    end
+			    in
+			      case progress
+			       of SOME(base,l) => genResult (base, l)
+				| NONE => let
+				    val (whichBase, path)::_ = sign
+				    val varBase = List.nth (args, whichBase)
+				    in
+				      genResult (varBase, path)
+				    end
+			      (* end case *)
                             end
-                in
+		  in
                     genCall (sign, [], NONE)
-                end
-            else case rets of SOME(rets) => C.Exp(ppt, C.Apply(g, args, rets))
-                            | NONE => C.Exp(ppt, C.Throw(g, args))
-         and walkExp(newParams, C.Exp(ppt,e)) = case e
-            of (C.Let([v], rhs, e)) => ( (* If v has been promoted to a param, omit the let *)
-               if List.exists (fn x => (CV.toString x)=(CV.toString v)) newParams
-               then walkExp (newParams, e)
-               else C.Exp (ppt, C.Let([v], rhs, walkExp (newParams, e))))
-             | (C.Let(vars, rhs, e)) => if List.exists
-                      (fn v => List.exists (fn x => (CV.toString x)=(CV.toString v)) newParams) vars
-                                        then raise Fail ("Can't lift variable from multi-bind on LHS of let")
-                                        else C.Exp (ppt, C.Let(vars, rhs, walkExp (newParams, e)))
-	     | (C.Fun(fbs, e)) => let
-                   val newfuns = List.foldr (fn (f,rr) => handleLambda (f,false) @ rr) [] fbs
-               in
-                   C.Exp(ppt, C.Fun(newfuns, walkExp (newParams, e)))
-               end
-	     | (C.Cont(fb, e)) => (
-               case handleLambda (fb, true)
-                of [fl, stb] => C.Exp(ppt, C.Cont(fl, C.Exp(ProgPt.new(),
-                                                            C.Cont (stb, walkExp (newParams, e)))))
-                 | [single] => C.Exp(ppt, C.Cont(single, walkExp (newParams, e)))
-                 | _ => raise Fail "Invalid return from handleLambda")
-	     | (C.If(x, e1, e2)) => C.Exp(ppt, C.If(x, walkExp (newParams, e1), walkExp (newParams, e2)))
-	     | (C.Switch(x, cases, dflt)) => C.Exp(ppt, C.Switch(x,
-                               List.map (fn (tag,exp) => (tag,walkExp (newParams, exp))) cases,
-                                                                 Option.map (fn (f) => walkExp (newParams, f)) dflt))
-	     | (C.Apply(g, args, rets)) => 
-               flattenApplyThrow (ppt, g, args, SOME(rets))
-	     | (C.Throw(k, args)) =>
-               flattenApplyThrow (ppt, k, args, NONE)
+		  end
+		else (case rets
+		   of SOME(rets) => C.Exp(ppt, C.Apply(g, args, rets))
+		    | NONE => C.Exp(ppt, C.Throw(g, args))
+		  (* end case *))
+	  and walkExp(newParams, C.Exp(ppt,e)) = (case e
+		 of (C.Let([v], rhs, e)) => ( (* If v has been promoted to a param, omit the let *)
+		      if List.exists (fn x => CV.same(x, v)) newParams
+			then walkExp (newParams, e)
+			else C.Exp(ppt, C.Let([v], rhs, walkExp (newParams, e))))
+		  | (C.Let(vars, rhs, e)) =>
+		      if List.exists (fn v => List.exists (fn x => CV.same(x, v)) newParams) vars
+			then raise Fail ("Can't lift variable from multi-bind on LHS of let")
+			else C.Exp(ppt, C.Let(vars, rhs, walkExp (newParams, e)))
+		  | (C.Fun(fbs, e)) => let
+		      val newfuns = List.foldr (fn (f,rr) => handleLambda (f,false) @ rr) [] fbs
+		      in
+			C.Exp(ppt, C.Fun(newfuns, walkExp (newParams, e)))
+		      end
+		  | (C.Cont(fb, e)) => (case handleLambda (fb, true)
+		       of [fl, stb] => C.Exp(ppt, C.Cont(fl, C.mkCont (stb, walkExp (newParams, e))))
+			| [single] => C.Exp(ppt, C.Cont(single, walkExp (newParams, e)))
+			| _ => raise Fail "Invalid return from handleLambda"
+		      (* end case *))
+		  | (C.If(x, e1, e2)) =>
+		      C.Exp(ppt, C.If(x, walkExp (newParams, e1), walkExp (newParams, e2)))
+		  | (C.Switch(x, cases, dflt)) =>
+		      C.Exp(ppt, C.Switch(x,
+			List.map (fn (tag,exp) => (tag,walkExp (newParams, exp))) cases,
+			Option.map (fn (f) => walkExp (newParams, f)) dflt))
+		  | (C.Apply(g, args, rets)) => 
+		      flattenApplyThrow (ppt, g, args, SOME(rets))
+		  | (C.Throw(k, args)) =>
+		      flattenApplyThrow (ppt, k, args, NONE)
+		(* end case *))
 
         (* Returns flattened version of candidate functions *)
         and handleLambda(func as C.FB{f, params, rets, body}, isCont) =
-            if not (isCandidate f) then
-                [C.FB{f=f, params=params, rets=rets, body=walkExp (params, body)}]
-            else let
-                    val {vmap, pmap, params, sign, flat} = getInfo f
-                    val newParams = computeParamList (params, vmap, sign)
-                    val _ = List.app (fn x => CV.setKind (x, C.VK_Param func)) newParams
-                    val newType = CTy.T_Fun (List.map CV.typeOf newParams,
-                                             List.map CV.typeOf rets)
-                    val flat = CV.new ("flatFun", newType)
-                    val _ = setInfo (f, vmap, pmap, params, SOME(flat))
-                    val body = walkExp (newParams, body)
-
-                    (* Create a stub with the old name that just SEL's and jumps to the flat version. *)
-                    val paramCopy = List.map CV.copy params
-                    val retsCopy = List.map CV.copy rets
-                    val stub = flattenApplyThrow (ProgPt.new(), f, paramCopy,
-                                                  if not(isCont) then SOME retsCopy else NONE)
-                                   
-                    val stubLambda = C.FB{f=f, params=paramCopy, rets=retsCopy, body=stub}
-                    val lambda = C.FB{f=flat, params=newParams, rets=rets, body=body}
-                    val _  = CV.setKind (flat, if not(isCont) then C.VK_Fun lambda else C.VK_Cont lambda)
-                                                
-                in
+	      if not (isCandidate f)
+                then [C.FB{f=f, params=params, rets=rets, body=walkExp (params, body)}]
+		else let
+		  val {vmap, pmap, params, sign, flat} = getInfo f
+		  val newParams = computeParamList (params, vmap, sign)
+		  val _ = List.app (fn x => CV.setKind (x, C.VK_Param func)) newParams
+		  val newType = CTy.T_Fun (List.map CV.typeOf newParams, List.map CV.typeOf rets)
+		  val flat = CV.new ("flatFun", newType)
+		  val _ = setInfo (f, vmap, pmap, params, SOME(flat))
+		  val body = walkExp (newParams, body)
+		(* Create a stub with the old name that just SEL's and jumps to the flat version. *)
+		  val paramCopy = List.map CV.copy params
+		  val retsCopy = List.map CV.copy rets
+		  val stub = flattenApplyThrow (ProgPt.new(), f, paramCopy,
+						if not(isCont) then SOME retsCopy else NONE)
+				 
+		  val stubLambda = C.FB{f=f, params=paramCopy, rets=retsCopy, body=stub}
+		  val lambda = C.FB{f=flat, params=newParams, rets=rets, body=body}
+		  val _  = CV.setKind (flat, if not(isCont) then C.VK_Fun lambda else C.VK_Cont lambda)                                        
+		  in
                     [lambda, stubLambda]
-                end
-    in
-        C.MODULE{name=name,externs=externs,
-                 body=C.FB{f=f, params=params, rets=rets, body=walkExp (params, body)}}
-    end
+		  end
+	in
+	  C.MODULE{
+	      name=name,externs=externs,
+	      body = C.mkLambda(C.FB{f=f, params=params, rets=rets, body=walkExp (params, body)})
+	    }
+	end
 
   (***** Transformation *****)
 
     fun transform m = if !enableArityRaising
-	              then (let
-                                val candidates = analyse m
-                                val m' = flatten m
-                            in
-                                (if !flatteningDebug
-                                 then List.app printCandidate candidates
-                                 else ());
-                                m'
-                            end)
-                      else m
+	  then let
+	    val candidates = analyse m
+	    val m' = flatten m
+	    in
+	      if !flatteningDebug
+		then List.app printCandidate candidates
+		else ();
+	      m'
+	    end
+	  else m
+
   end
