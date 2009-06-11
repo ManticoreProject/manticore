@@ -46,6 +46,7 @@ functor CPSOptFn (Spec : TARGET_SPEC) : sig
 
     fun optimize module = let
 	  val _ = census module
+	  val _ = CheckCPS.check ("convert", module)
 	  val module = eta module
 	  val module = contract module
           val _ = cfa module
