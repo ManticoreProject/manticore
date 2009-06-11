@@ -59,7 +59,7 @@ structure Contract : sig
 	  VMap.insert(env, x, y))
 
     fun rename' (env, [], []) = env
-      | rename' (env, x::xs, y::ys) = rename' (VMap.insert(env, x, y), xs, ys)
+      | rename' (env, x::xs, y::ys) = rename' (rename(env, x, y), xs, ys)
       | rename' _ = raise Fail "rename': arity mismatch"
 
     fun subst (env, x) = (case VMap.find(env, x)
@@ -92,7 +92,7 @@ structure Contract : sig
 		ST.tick cntVarRename;
 		dec' rhs;
 		doExp (rename'(env, lhs, rhs), e))
-	    | C.Let([y], rhs as C.Select(i, x), e) => if unused y
+	    | C.Let([y], C.Select(i, x), e) => if unused y
 		then (
 		  ST.tick cntUnusedStmt;
 		  substDec (env, x);
@@ -103,7 +103,7 @@ structure Contract : sig
 		    case bindingOf x
 		     of C.VK_Let(C.Alloc(CTy.T_Tuple(false, _), xs)) => let
 			  val x' = List.nth(xs, i)
-			  val env = rename(env, x, x')
+			  val env = rename(env, y, x')
 			  in
 			    ST.tick cntSelectConst;
 			    dec x;
@@ -117,7 +117,7 @@ structure Contract : sig
 				ST.tick cntUnusedStmt;
 				dec x;
 				e)
-			      else C.mkLet([y], rhs, e)
+			      else C.mkLet([y], C.Select(i, x), e)
 			  end
 		    (* end case *)
 		  end
