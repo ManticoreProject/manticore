@@ -24,6 +24,7 @@ structure ArityRaising : sig
 
   (***** controls ******)
     val enableArityRaising = ref false
+    val enableUselessElimination = ref false
     val flatteningDebug = ref false
 
     val () = List.app (fn ctl => ControlRegistry.register CPSOptControls.registry {
@@ -36,6 +37,13 @@ structure ArityRaising : sig
                   pri = [0, 1],
                   obscurity = 0,
                   help = "enable arity raising (argument flattening)"
+                },
+              Controls.control {
+                  ctl = enableUselessElimination,
+                  name = "useless",
+                  pri = [0, 1],
+                  obscurity = 0,
+                  help = "enable useless variable elimination (requires flatten=true)"
                 },
               Controls.control {
                   ctl = flatteningDebug,
@@ -53,6 +61,10 @@ structure ArityRaising : sig
     val cntSelElim		= ST.newCounter "cps-arity:select-elim"
     val cntAllocElim		= ST.newCounter "cps-arity:alloc-elim"
     val cntAllocIntro		= ST.newCounter "cps-arity:alloc-intro"
+
+    val cntEscapingFuns         = ST.newCounter "cps-arity:escaping-funs"
+    val cntUselessElim          = ST.newCounter "cps-arity:useless-elim"
+    val cntUselessScanPasses    = ST.newCounter "cps-arity:useless-scan-passes"
 
 
   (***** Analysis *****)
@@ -377,6 +389,18 @@ structure ArityRaising : sig
 
     fun addToRef (r, n) = r := !r + n
 
+  (* property for tracking bindings to function bodies, used in useful
+   * variable analysis
+   *)
+    local
+      val {setFn, getFn, peekFn, ...} = CV.newProp (fn f => NONE : C.lambda option)
+    in
+    fun setFB (f,b) = setFn (f, SOME(b))
+    fun getFB f = getFn f
+    end
+
+    val escaping = ref ([] : C.var list)
+
   (* the first part of the analysis is to gather all of the candidate functions and
    * their call sites.  We also compute the initial vmaps and pmaps based on the selects
    * in the candidate-function bodies.
@@ -386,9 +410,15 @@ structure ArityRaising : sig
 	  val candidates = ref []
 	(* analyse a bound function or continuation *)
 	  fun analyseLambdas fbs = let
-	      fun analyseFB (fb as C.FB{f, body, ...}) = if isCandidate f
-		    then analyseCandidate fb
-		    else walkExp body
+	      fun analyseFB (fb as C.FB{f, body, ...}) = (
+                  setFB(f,fb) ;
+                  if CFACPS.isEscaping f
+                  then (ST.tick cntEscapingFuns;
+                        escaping := f :: !escaping)
+                  else () ;
+                  if isCandidate f
+		  then analyseCandidate fb
+		  else walkExp body)
 	      in
 		List.app analyseFB fbs
 	      end
@@ -444,10 +474,6 @@ structure ArityRaising : sig
 			    in
                               (vmap, pmap)
 			    end
-(*			    val (vmap, pmap) = doExp(vmap, pmap, e1)
-			    in
-			      doExp(vmap, pmap, e2)
-			    end *)
 			| (C.Switch(x, cases, dflt)) => (
 			    List.app (fn (_, e) => walkExp e) cases;
 			    Option.app walkExp dflt;
@@ -589,6 +615,263 @@ structure ArityRaising : sig
             candidates
 	  end
 
+  (***** Usefulness *****)
+
+  (* property for tracking the usefulness of a variable. All variables are assumed
+   * useless until proven otherwise. Note that variables don't transition back to
+   * useless once they've been identified as useful.
+   *)
+    local
+      val {setFn, getFn, peekFn, ...} = CV.newProp (fn f => false)
+    in
+    fun setUseful f = setFn (f, true)
+    fun getUseful f = getFn f
+    end
+    
+  (* property for whether or not we've processed this function yet
+   * the int corresponds to the round number, since we iterate scanning
+   * until a fixpoint is reached *)
+    datatype processing_state = UNPROCESSED | INPROCESS of int | DONE of int
+    local
+      val {setFn, getFn, peekFn, ...} = CV.newProp (fn f => UNPROCESSED)
+    in
+    fun setInProcess (f,i) = setFn (f, INPROCESS(i))
+    fun setDone (f,i) = setFn (f, DONE(i))
+    fun getProcessState f = getFn f
+    end
+
+    fun scanUseful (m, round) = let
+        val C.MODULE{body=body,...} = m
+        val C.FB{f=main,params,rets,body} = body
+        val usefuls = ref (!escaping @ [main])
+        val changed = ref false
+        fun markUseful f = (
+            if getUseful f
+            then ()
+            else (changed := true ;
+                  case CV.kindOf f
+                   of C.VK_Fun(_) => (
+                      usefuls := f :: !usefuls ;
+                      setUseful f)
+                    | C.VK_Cont(_) => (
+                      usefuls := f :: !usefuls ;
+                      setUseful f)
+                    | _ => setUseful f
+                 (* end case *)))
+                           
+        fun markCorresponding (a,b) = (
+            if getUseful a
+            then markUseful b
+            else ())
+        fun processLambda (f) = let
+            val SOME(C.FB {body,params,rets,...}) = getFB f
+        in
+            case getProcessState f
+             of UNPROCESSED => (setInProcess (f, round) ; processExp body ; setDone (f, round))
+              | DONE(i) => (if i=round then () else (setInProcess (f, round) ; processExp body ; setDone (f, round)))
+              | INPROCESS(i) => (
+                if i=round
+                then (
+                    (* For mutually recursive functions, we just punt
+                     * and assume all params/rets are useful. *)
+                    List.app markUseful params ;
+                    List.app markUseful rets ;
+                    setDone (f,round))
+                else (
+                    setInProcess (f, round) ;
+                    processExp body ;
+                    setDone (f, round)))
+        end
+        and processExp (C.Exp (_, term)) = processTerm term
+        (* Scanning for usefulness is done bottom-up, so we process the body
+         * before bindings at hand. *)
+        and processTerm t = (case t
+          of C.Let ([var], rhs, body) => (
+            processExp body;
+            if getUseful var
+            then processRhs rhs
+            else ())
+          | C.Let ([], rhs, body) => (
+            processExp body;
+            processRhs rhs)
+          | C.Let (_, rhs, body) => (
+            processExp body;
+            processRhs rhs)
+          | C.Fun (_, body) => processExp body
+          | C.Cont (_, body) => processExp body
+          | C.If (var, e1, e2) => (
+            processExp e1;
+            processExp e2;
+            markUseful var)
+          | C.Switch (x, cases, dflt) => (
+	    List.app (fn (_, e) => processExp e) cases;
+	    Option.app processExp dflt;
+            markUseful x)
+          (* TODO: maybe check equivalentFns instead of just the straight binding? *)
+          | C.Apply (f, args, rets) => (
+            case getFB f
+             of SOME(C.FB{params,rets=conts,...}) => (let
+                    val pairedArgs = ListPair.zip (params, args)
+                    val pairedConts = ListPair.zip (conts, rets)
+                in
+                    if not (getUseful f)
+                    then (markUseful f;
+                          processLambda f)
+                    else (processLambda f);
+                    List.app markCorresponding pairedArgs ;
+                    List.app markCorresponding pairedConts 
+                end)
+              | NONE => (List.app markUseful args;
+                         List.app markUseful rets;
+                         markUseful f)
+            (* end case *))
+                
+          | C.Throw (f, args) => (
+            case getFB f
+             of SOME(C.FB{params,...}) => (let
+                    val pairedArgs = ListPair.zip (params, args)
+                in
+                    if not (getUseful f)
+                    then (markUseful f;
+                          processLambda f)
+                    else (processLambda f);
+                    List.app markCorresponding pairedArgs
+                end)
+              | NONE => (List.app markUseful args;
+                         markUseful f)
+            (* end case *))
+        (* end case *))
+
+        and processRhs rhs = (case rhs
+         of C.Var (vars) => List.app markUseful vars
+          | C.Cast (_, v) => markUseful v
+          | C.Const (_, _) => ()
+          | C.Select (_, v) => markUseful v
+          | C.Update (_, v, x) => (markUseful v; markUseful x)
+          | C.AddrOf (_, v) => markUseful v
+          | C.Alloc (_, vars) => List.app markUseful vars
+          | C.Promote (v) => markUseful v
+          | C.Prim (primop) => (
+            case primop
+             of Prim.isBoxed (v) => markUseful v
+              | Prim.isUnboxed (v) => markUseful v
+              | Prim.Equal (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.NotEqual (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.BNot (v) => markUseful v
+              | Prim.BEq (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.BNEq (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.I32Add (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.I32Sub (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.I32Mul (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.I32Div (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.I32Mod (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.I32LSh (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.I32Neg (v) => markUseful v
+              | Prim.I32Eq (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.I32NEq (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.I32Lt (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.I32Lte (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.I32Gt (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.I32Gte (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.I64Add (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.I64Sub (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.I64Mul (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.I64Div (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.I64Mod (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.I64Neg (v) => markUseful v
+              | Prim.I64Eq (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.I64NEq (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.I64Lt (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.I64Lte (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.I64Gt (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.I64Gte (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.F32Add (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.F32Sub (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.F32Mul (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.F32Div (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.F32Neg (v) => markUseful v
+              | Prim.F32Sqrt (v) => markUseful v
+              | Prim.F32Abs (v) => markUseful v
+              | Prim.F32Eq (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.F32NEq (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.F32Lt (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.F32Lte (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.F32Gt (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.F32Gte (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.F64Add (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.F64Sub (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.F64Mul (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.F64Div (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.F64Neg (v) => markUseful v
+              | Prim.F64Sqrt (v) => markUseful v
+              | Prim.F64Abs (v) => markUseful v
+              | Prim.F64Eq (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.F64NEq (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.F64Lt (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.F64Lte (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.F64Gt (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.F64Gte (v1, v2) => (markUseful v1; markUseful v2)
+    (* conversions *)
+              | Prim.I32ToI64X (v) => markUseful v
+              | Prim.I32ToI64 (v) => markUseful v
+              | Prim.I32ToF32 (v) => markUseful v
+              | Prim.I32ToF64 (v) => markUseful v
+              | Prim.I64ToF32 (v) => markUseful v
+              | Prim.I64ToF64 (v) => markUseful v
+              | Prim.F64ToI32 (v) => markUseful v
+    (* array load operations *)
+              | Prim.ArrayLoadI32 (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.ArrayLoadI64 (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.ArrayLoadF32 (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.ArrayLoadF64 (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.ArrayLoad (v1, v2) => (markUseful v1; markUseful v2)
+    (* array store operations *)
+              | Prim.ArrayStoreI32 (v1, v2, v3) => (markUseful v1; markUseful v2; markUseful v3)
+              | Prim.ArrayStoreI64 (v1, v2, v3) => (markUseful v1; markUseful v2; markUseful v3)
+              | Prim.ArrayStoreF32 (v1, v2, v3) => (markUseful v1; markUseful v2; markUseful v3)
+              | Prim.ArrayStoreF64 (v1, v2, v3) => (markUseful v1; markUseful v2; markUseful v3)
+              | Prim.ArrayStore (v1, v2, v3) => (markUseful v1; markUseful v2; markUseful v3)
+    (* atomic operations *)
+              | Prim.I32FetchAndAdd (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.I64FetchAndAdd (v1, v2) => (markUseful v1; markUseful v2)
+              | Prim.CAS (v1, v2, v3) => (markUseful v1; markUseful v2; markUseful v3)
+              | Prim.BCAS (v1, v2, v3) => (markUseful v1; markUseful v2; markUseful v3)
+              | Prim.TAS (v) => markUseful v
+    (* memory-system operations *)
+              | Prim.Pause => ()				(* yield processor to allow memory operations to be seen *)
+              | Prim.FenceRead => ()			(* memory fence for reads *)
+              | Prim.FenceWrite => ()			(* memory fence for writes *)
+              | Prim.FenceRW => ()				(* memory fence for both reads and writes *)
+            (* end case *))
+
+          | C.CCall (f, args) => (markUseful f ; List.app markUseful args)
+          | C.HostVProc => ()
+          | C.VPLoad (_, v) => markUseful v
+          | C.VPStore (_, v1, v2) => (markUseful v1; markUseful v2)
+          | C.VPAddr (_, v) => markUseful v
+          (* end case *))
+            
+        (* Need to iterate to a fixpoint because it's frequent to have a
+         * set of locals that are used in function bodies that we don't
+         * realize correspond a useful variable binding until after 
+         * we've already finished processing the binding for the current var *)
+        fun process () = let
+            val head = hd (!usefuls)
+        in
+            usefuls := tl (!usefuls);
+            processLambda (head) ;
+            if not(null(!usefuls))
+            then process ()
+            else (if !changed
+                 then scanUseful (m, round+1)
+                 else ())
+        end
+    in
+        ST.tick cntUselessScanPasses;
+        process()
+    end
+
+
   (***** Flattening *****)
 
     (* walk down the tree and:
@@ -597,6 +880,10 @@ structure ArityRaising : sig
      * - in the body of the specialized version, remove any variables
      *)
     fun flatten (C.MODULE{name,externs,body=(C.FB{f,params,rets,body})}) = let
+        (* TODO: Per Olin's thesis, instead of passing a "dummy" argument to 
+         * useless parameter slots, attempt to remove those parameters where
+         * that's valid to do. *)
+          val uselessDummy = CV.new ("uselessDummy", CTy.T_Any)
 	  fun flattenApplyThrow (ppt, g, args, rets) = if isCandidate g
 		then let 
 		  val {sign, flat=SOME(f), ...} = getInfo g
@@ -635,7 +922,9 @@ structure ArityRaising : sig
 				    val (whichBase, path)::_ = sign
 				    val varBase = List.nth (args, whichBase)
 				    in
-				      genResult (varBase, path)
+                                      if CV.same (varBase, uselessDummy)
+                                      then genCall (tl sign, varBase :: newArgs, NONE)
+				      else genResult (varBase, path)
 				    end
 			      (* end case *)
                             end
@@ -656,12 +945,19 @@ structure ArityRaising : sig
                        of SOME(path) => !(valOf(PMap.find(pmap, path)))
                         | NONE => ~2
                   end
+          and shouldSkipUseless (v) =
+              if !enableUselessElimination
+              then (if getUseful v
+                    then false
+                    else (ST.tick (cntUselessElim); true))
+              else false
 	  and walkExp(encl, newParams, C.Exp(ppt,e)) = (case e
 		 of (C.Let([v], rhs, e)) => (
                       (* If v has been promoted to a param or its
                        * use count is now zero, omit it *)
 		      if List.exists (fn x => CV.same(x, v)) newParams
                          orelse useCountOfVar (encl, v) = 0
+                         orelse shouldSkipUseless (v)
 			then walkExp (encl, newParams, e)
 			else C.Exp(ppt, C.Let([v], rhs, walkExp (encl, newParams, e))))
 		  | (C.Let(vars, rhs, e)) =>
@@ -670,12 +966,26 @@ structure ArityRaising : sig
 			else C.Exp(ppt, C.Let(vars, rhs, walkExp (encl, newParams, e)))
 		  | (C.Fun(fbs, e)) => let
 		      val newfuns = List.foldr (fn (f,rr) => handleLambda (f,false) @ rr) [] fbs
+                      val newfuns' = List.filter (fn (C.FB{f,...}) => not(shouldSkipUseless f)) newfuns
 		      in
-			C.mkFun(newfuns, walkExp (encl, newParams, e))
+                        if null (newfuns')
+                        then walkExp (encl, newParams, e)
+                        else C.mkFun (newfuns', walkExp (encl, newParams, e))
 		      end
 		  | (C.Cont(fb, e)) => (case handleLambda (fb, true)
-		       of [fl, stb] => C.mkCont(fl, C.mkCont (stb, walkExp (encl, newParams, e)))
-			| [single] => C.mkCont(single, walkExp (encl, newParams, e))
+		       of [fl as C.FB{f=fl',...}, stb as C.FB{f=stb',...}] => let
+                              val inner = (if shouldSkipUseless stb'
+                                           then walkExp (encl, newParams, e)
+                                           else C.mkCont (stb, walkExp (encl, newParams, e)))
+                          in
+                              if shouldSkipUseless fl'
+                              then inner
+                              else C.mkCont(fl, inner)
+                          end
+			| [single as C.FB{f=single',...}] => (
+                          if shouldSkipUseless single'
+                          then walkExp (encl, newParams, e)
+                          else C.mkCont(single, walkExp (encl, newParams, e)))
 			| _ => raise Fail "Invalid return from handleLambda"
 		      (* end case *))
 		  | (C.If(x, e1, e2)) =>
@@ -684,10 +994,23 @@ structure ArityRaising : sig
 		      C.Exp(ppt, C.Switch(x,
 			List.map (fn (tag,exp) => (tag,walkExp (encl, newParams, exp))) cases,
 			Option.map (fn (f) => walkExp (encl, newParams, f)) dflt))
-		  | (C.Apply(g, args, rets)) => 
+		  | (C.Apply(g, args, rets)) => let
+                        val args = List.map (fn arg => if shouldSkipUseless(arg)
+                                                       then uselessDummy
+                                                       else arg) args
+                        val rets = List.map (fn arg => if shouldSkipUseless(arg)
+                                                       then uselessDummy
+                                                       else arg) rets
+                    in
 		      flattenApplyThrow (ppt, g, args, SOME(rets))
-		  | (C.Throw(k, args)) =>
+                    end
+		  | (C.Throw(k, args)) => let
+                        val args = List.map (fn arg => if shouldSkipUseless(arg)
+                                                       then uselessDummy
+                                                       else arg) args
+                    in
 		      flattenApplyThrow (ppt, k, args, NONE)
+                    end
 		(* end case *))
 
         (* Returns flattened version of candidate functions *)
@@ -699,6 +1022,7 @@ structure ArityRaising : sig
 		  val newParams = computeParamList (params, vmap, sign)
 		  val newType = CTy.T_Fun (List.map CV.typeOf newParams, List.map CV.typeOf rets)
 		  val flat = CV.new ("flat"^CV.nameOf f, newType)
+                  val _ = if getUseful f then setUseful flat else ()
 		  val _ = setInfo (f, vmap, pmap, params, SOME(flat))
 		  val body = walkExp (f, newParams, body)
 		(* Create a stub with the old name that just SEL's and jumps to the flat version. *)
@@ -715,7 +1039,9 @@ structure ArityRaising : sig
 	in
 	  C.MODULE{
 	      name=name,externs=externs,
-	      body = C.mkFB{f=f, params=params, rets=rets, body=walkExp (f, params, body)}
+	      body = C.mkFB{f=f, params=params, rets=rets, body=
+                        C.mkLet ([uselessDummy], C.Const (Literal.Enum(0w0), CTy.T_Any),
+                                 walkExp (f, params, body))}
 	    }
 	end
 
@@ -724,6 +1050,7 @@ structure ArityRaising : sig
     fun transform m = if !enableArityRaising
 	  then let
 	    val candidates = analyse m
+            val _ = if !enableUselessElimination then scanUseful (m, 0) else ()
 	    val m' = flatten m
 	    in
 	      if !flatteningDebug
