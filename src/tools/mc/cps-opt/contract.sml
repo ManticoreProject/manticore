@@ -130,23 +130,15 @@ structure Contract : sig
 	    | C.Let([], C.VPStore(n, x, z), e) =>
 		C.mkLet([], C.VPStore(n, subst(env, x), subst(env, z)),
 		  doExp(env, e))
-	    | C.Let(lhs, rhs, e) => if List.all unused lhs
-		then (
-		  ST.tick cntUnusedStmt;
-		  CPSUtil.appRHS (fn x => substDec (env, x)) rhs;
-		  doExp (env, e))
+	    | C.Let(lhs, rhs as C.Prim p, e) => if PrimUtil.isPure p
+		then doPureLet (env, lhs, rhs, e)
 		else let
-		  val rhs = CPSUtil.mapRHS (fn x => subst(env, x)) rhs
-		  val _ = setBindings (lhs, C.VK_Let rhs)
-		  val e = doExp (env, e)
+		  val rhs = C.Prim(PrimUtil.map (fn x => subst(env, x)) p)
 		  in
-		    if List.all unused lhs
-		      then (
-			ST.tick cntUnusedStmt;
-			CPSUtil.appRHS dec rhs;
-			e)
-		      else C.mkLet(lhs, rhs, e)
+		    setBindings (lhs, C.VK_Let rhs);
+		    C.mkLet(lhs, rhs, doExp(env, e))
 		  end
+	    | C.Let(lhs, rhs, e) => doPureLet (env, lhs, rhs, e)
 	    | C.Fun(fbs, e) => let
 	      (* blackhole to avoid recursive inlining *)
 		val _ = List.app
@@ -253,6 +245,24 @@ structure Contract : sig
 		  (* end case *)
 		end
 	  (* end case *))
+
+    and doPureLet (env, lhs, rhs, e) = if List.all unused lhs
+	  then (
+	    ST.tick cntUnusedStmt;
+	    CPSUtil.appRHS (fn x => substDec (env, x)) rhs;
+	    doExp (env, e))
+	  else let
+	    val rhs = CPSUtil.mapRHS (fn x => subst(env, x)) rhs
+	    val _ = setBindings (lhs, C.VK_Let rhs)
+	    val e = doExp (env, e)
+	    in
+	      if List.all unused lhs
+		then (
+		  ST.tick cntUnusedStmt;
+		  CPSUtil.appRHS dec rhs;
+		  e)
+		else C.mkLet(lhs, rhs, e)
+	    end
 
     and inline (env, params, body, args) = let
 	  val env = rename' (env, params, args)
