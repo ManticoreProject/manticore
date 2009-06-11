@@ -698,7 +698,7 @@ structure ArityRaising : sig
 		  val {vmap, pmap, params, sign, flat} = getInfo f
 		  val newParams = computeParamList (params, vmap, sign)
 		  val newType = CTy.T_Fun (List.map CV.typeOf newParams, List.map CV.typeOf rets)
-		  val flat = CV.new ("flatFun", newType)
+		  val flat = CV.new ("flat"^CV.nameOf f, newType)
 		  val _ = setInfo (f, vmap, pmap, params, SOME(flat))
 		  val body = walkExp (f, newParams, body)
 		(* Create a stub with the old name that just SEL's and jumps to the flat version. *)
