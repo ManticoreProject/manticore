@@ -555,7 +555,11 @@ structure ArityRaising : sig
 		       of C.VK_Let(C.Alloc(CTy.T_Tuple(false, _), xs)) =>
 			    doArg (r, List.nth(xs, i), SEL(i, path), vmap, pmap)
 			| _ => (case ParamMap.find(vmap, VAR x)
-			     of SOME q => let (* this argument is derivable from a parameter *)
+			     of SOME q => (* this argument is derivable from a parameter *)
+                                (case path
+                                  of PARAM(_) => (* this argument is directly a parameter - do nothing *)
+                                     (vmap, pmap)
+                                   | _ => (let 
 				(* have we already done the bookkeeping for x? *)
 				  val vmap = (case ParamMap.find(vmap, ARG(site, path))
 					 of NONE => (changed := true;
@@ -565,8 +569,9 @@ structure ArityRaising : sig
 					(* end case *))
 				  in
 				    followPath (r, SEL(i, q), SEL(i, path), vmap, pmap)
-				  end
-			      | NONE => (vmap, pmap)
+				  end)
+                                  (* end case *))
+			           | NONE => (vmap, pmap)
 			    (* end case *))
 		      (* end case *))
 		and followPath ([], _, _, vmap, pmap) = (vmap, pmap)
@@ -582,14 +587,15 @@ structure ArityRaising : sig
 		in
 		  doArg (p, List.nth(args, i), PARAM i, vmap, pmap)
 		end
-        (*
-          (*DEBUG*)val gSig = sigOfFuns [g]
+
+          (* val gSig = sigOfFuns [g]
           val () = print(concat["* analyseCallSite (", siteToString site, ")\n"])
-         *)
+                   *)
 	  val {vmap, pmap, params, ...} = getInfo g
 	  val (vmap, pmap) = List.foldl doParam (vmap, pmap) (sigOfFuns callees)
 	  in
-        (*            if !changed then print(concat["  ", sigToString gSig, "  -->  ", sigToString(sigOfFuns [g]), "\n"]) else (); *)
+            
+            (*if !changed then print(concat["  ", sigToString gSig, "  -->  ", sigToString(sigOfFuns [g]), "\n"]) else ();  *)
 	    if !changed
 	    then (setInfo(g, vmap, pmap, params, NONE); true)
 	    else false
