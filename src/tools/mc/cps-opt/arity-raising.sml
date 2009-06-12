@@ -1056,6 +1056,8 @@ structure ArityRaising : sig
 	      if !flatteningDebug
 		then List.app printCandidate candidates
 		else ();
+(* FIXME: should mainain census counts! *)
+	      Census.census m';
 	      m'
 	    end
 	  else m
