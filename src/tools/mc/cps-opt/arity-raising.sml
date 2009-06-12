@@ -24,7 +24,6 @@ structure ArityRaising : sig
 
   (***** controls ******)
     val enableArityRaising = ref false
-    val enableUselessElimination = ref false
     val flatteningDebug = ref false
 
     val () = List.app (fn ctl => ControlRegistry.register CPSOptControls.registry {
@@ -37,13 +36,6 @@ structure ArityRaising : sig
                   pri = [0, 1],
                   obscurity = 0,
                   help = "enable arity raising (argument flattening)"
-                },
-              Controls.control {
-                  ctl = enableUselessElimination,
-                  name = "useless",
-                  pri = [0, 1],
-                  obscurity = 0,
-                  help = "enable useless variable elimination (requires flatten=true)"
                 },
               Controls.control {
                   ctl = flatteningDebug,
@@ -648,21 +640,36 @@ structure ArityRaising : sig
         fun markUseful f = (
             if getUseful f
             then ()
-            else (changed := true ;
-                  case CV.kindOf f
-                   of C.VK_Fun(_) => (
-                      usefuls := f :: !usefuls ;
-                      setUseful f)
-                    | C.VK_Cont(_) => (
-                      usefuls := f :: !usefuls ;
-                      setUseful f)
-                    | _ => setUseful f
-                 (* end case *)))
+            else (if !flatteningDebug
+                  then print (concat[CV.toString f, " is useful in round",
+                                     Int.toString round, "\n"])
+                  else ();
+                  changed := true ;
+                  setUseful f) ;
+            (case CV.kindOf f
+              of C.VK_Fun(_) => (
+                 if not (List.exists (fn x => CV.same(x,f)) (!usefuls))
+                 then usefuls := f :: !usefuls
+                 else ())
+               | C.VK_Cont(_) => (
+                 if not (List.exists (fn x => CV.same(x,f)) (!usefuls))
+                 then usefuls := f :: !usefuls
+                 else ())
+               | _ => ()
+            (* end case *)))
                            
         fun markCorresponding (a,b) = (
             if getUseful a
             then markUseful b
             else ())
+        fun isEffectful (rhs) = (
+            case rhs
+             of C.Prim (primop) => not(PrimUtil.isPure primop)
+              | C.Update (_, _, _) => true
+              | C.CCall (_, _) => true
+              | C.VPStore (_, _, _) => true
+              | _ => false
+        (* end case *))
         fun processLambda (f) = let
             val SOME(C.FB {body,params,rets,...}) = getFB f
         in
@@ -688,6 +695,9 @@ structure ArityRaising : sig
         and processTerm t = (case t
           of C.Let ([var], rhs, body) => (
             processExp body;
+            if isEffectful rhs
+            then setUseful var
+            else ();
             if getUseful var
             then processRhs rhs
             else ())
@@ -714,10 +724,8 @@ structure ArityRaising : sig
                     val pairedArgs = ListPair.zip (params, args)
                     val pairedConts = ListPair.zip (conts, rets)
                 in
-                    if not (getUseful f)
-                    then (markUseful f;
-                          processLambda f)
-                    else (processLambda f);
+                    markUseful f;
+                    processLambda f;
                     List.app markCorresponding pairedArgs ;
                     List.app markCorresponding pairedConts 
                 end)
@@ -731,10 +739,8 @@ structure ArityRaising : sig
              of SOME(C.FB{params,...}) => (let
                     val pairedArgs = ListPair.zip (params, args)
                 in
-                    if not (getUseful f)
-                    then (markUseful f;
-                          processLambda f)
-                    else (processLambda f);
+                    markUseful f;
+                    processLambda f;
                     List.app markCorresponding pairedArgs
                 end)
               | NONE => (List.app markUseful args;
@@ -946,11 +952,9 @@ structure ArityRaising : sig
                         | NONE => ~2
                   end
           and shouldSkipUseless (v) =
-              if !enableUselessElimination
-              then (if getUseful v
-                    then false
-                    else (ST.tick (cntUselessElim); true))
-              else false
+              if getUseful v
+              then false
+              else (ST.tick (cntUselessElim); true)
 	  and walkExp(encl, newParams, C.Exp(ppt,e)) = (case e
 		 of (C.Let([v], rhs, e)) => (
                       (* If v has been promoted to a param or its
@@ -1053,7 +1057,7 @@ structure ArityRaising : sig
     fun transform m = if !enableArityRaising
 	  then let
 	    val candidates = analyse m
-            val _ = if !enableUselessElimination then scanUseful (m, 0) else ()
+            val _ = scanUseful (m, 0)
 	    val m' = flatten m
 	    in
 	      if !flatteningDebug
