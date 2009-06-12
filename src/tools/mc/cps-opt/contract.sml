@@ -149,11 +149,12 @@ structure Contract : sig
 			ST.tick cntUnusedFun;
 			Census.delete (env, body);
 			NONE)
-		      else SOME(C.mkFB{
+		      else SOME(C.FB{
 			  f=f, params=params, rets=rets,
 			  body=doExp(env, body)
 			})
-		val fbs = List.mapPartial doFB fbs
+		val fbs = List.map C.mkLambda (List.mapPartial doFB fbs)
+	      (* restore binding info *)
 		val _ = List.app
 		      (fn (fb as C.FB{f, ...}) => setBinding(f, C.VK_Fun fb))
 			fbs
