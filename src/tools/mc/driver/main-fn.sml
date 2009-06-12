@@ -169,7 +169,8 @@ functor MainFn (
           val _ = CheckBOM.check ("translate", bom)
           val cfg = bomToCFG bom
 	  in
-	    codegen (verbose, asmFile, cfg)
+	    codegen (verbose, asmFile, cfg);
+	    Stats.report ()
 	  end
 
     fun doFile file = BackTrace.monitor (fn () => let
