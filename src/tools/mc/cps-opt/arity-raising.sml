@@ -1038,10 +1038,13 @@ structure ArityRaising : sig
 		  end
 	in
 	  C.MODULE{
-	      name=name,externs=externs,
-	      body = C.mkFB{f=f, params=params, rets=rets, body=
-                        C.mkLet ([uselessDummy], C.Const (Literal.Enum(0w0), CTy.T_Any),
-                                 walkExp (f, params, body))}
+	      name=name, externs=externs,
+	      body = C.mkLambda(C.FB{
+		  f=f, params=params, rets=rets,
+		  body = C.mkLet (
+		      [uselessDummy], C.Const(Literal.Enum(0w0), CTy.T_Any),
+		      walkExp (f, params, body))
+		})
 	    }
 	end
 

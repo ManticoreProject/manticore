@@ -153,11 +153,8 @@ structure Contract : sig
 			  f=f, params=params, rets=rets,
 			  body=doExp(env, body)
 			})
+	      (* note that the mkLambda resets the kind info *)
 		val fbs = List.map C.mkLambda (List.mapPartial doFB fbs)
-	      (* restore binding info *)
-		val _ = List.app
-		      (fn (fb as C.FB{f, ...}) => setBinding(f, C.VK_Fun fb))
-			fbs
 		val e = doExp(env, e)
 		fun filterDead (fb as C.FB{f, body, ...}) = if isInlined f
 			then NONE
@@ -181,8 +178,7 @@ structure Contract : sig
 		else let
 		(* blackhole to avoid recursive inlining *)
 		  val _ = setBinding(f, C.VK_None)
-		  val body = doExp(env, body)
-		  val fb = C.mkFB{f=f, params=params, rets=rets, body=body}
+		  val fb = C.FB{f=f, params=params, rets=rets, body=doExp(env, body)}
 		  val _ = setBinding(f, C.VK_Cont fb)
 		  val e = doExp (env, e)
 		  in
@@ -286,7 +282,7 @@ structure Contract : sig
 		    else body
 		end
 	  val body = loop (body, ticks())
-	  val fb = C.mkFB{f=f, params=params, rets=rets, body=body}
+	  val fb = C.mkLambda(C.FB{f=f, params=params, rets=rets, body=body})
 	  in
 	    C.MODULE{name=name, externs=externs, body=fb}
 	  end
