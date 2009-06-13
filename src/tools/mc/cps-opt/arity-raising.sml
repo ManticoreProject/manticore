@@ -852,27 +852,27 @@ structure ArityRaising : sig
 		   of SOME(rets) => C.Exp(ppt, C.Apply(g, args, rets))
 		    | NONE => C.Exp(ppt, C.Throw(g, args))
 		  (* end case *))
-          and useCountOfVar(encl, v) = 
-              if not(isCandidate(encl))
-              then ~1
-              else let
-                      val {vmap, pmap,...} = getInfo encl
+          and useCountOfVar(encl, v) = if not(isCandidate(encl))
+		then ~1
+		else let
+		  val {vmap, pmap,...} = getInfo encl
                   in
-                      case ParamMap.find (vmap, VAR v)
-                       of SOME(path) => !(valOf(PMap.find(pmap, path)))
-                        | NONE => ~2
+		    case ParamMap.find (vmap, VAR v)
+		     of SOME(path) => !(valOf(PMap.find(pmap, path)))
+		      | NONE => ~2
+		    (* end case *)
                   end
-          and shouldSkipUseless (v) =
-              if getUseful v
-              then false
-              else (ST.tick (cntUselessElim); true)
+          and shouldSkipUseless (v) = if getUseful v
+		then false
+		else (ST.tick (cntUselessElim); true)
 	  and walkExp(encl, newParams, C.Exp(ppt,e)) = (case e
 		 of (C.Let([v], rhs, e)) => (
-                      (* If v has been promoted to a param or its
-                       * use count is now zero, omit it *)
+		    (* If v has been promoted to a param or its
+		     * use count is now zero, omit it
+		     *)
 		      if List.exists (fn x => CV.same(x, v)) newParams
-                         orelse useCountOfVar (encl, v) = 0
-                         orelse shouldSkipUseless (v)
+		      orelse useCountOfVar (encl, v) = 0
+		      orelse shouldSkipUseless (v)
 			then walkExp (encl, newParams, e)
 			else C.Exp(ppt, C.Let([v], rhs, walkExp (encl, newParams, e))))
 		  | (C.Let(vars, rhs, e)) =>
@@ -889,18 +889,18 @@ structure ArityRaising : sig
 		      end
 		  | (C.Cont(fb, e)) => (case handleLambda (fb, true)
 		       of [fl as C.FB{f=fl',...}, stb as C.FB{f=stb',...}] => let
-                              val inner = (if shouldSkipUseless stb'
-                                           then walkExp (encl, newParams, e)
-                                           else C.mkCont (stb, walkExp (encl, newParams, e)))
-                          in
+			    val inner = (if shouldSkipUseless stb'
+					 then walkExp (encl, newParams, e)
+					 else C.mkCont (stb, walkExp (encl, newParams, e)))
+			    in
                               if shouldSkipUseless fl'
-                              then inner
-                              else C.mkCont(fl, inner)
-                          end
+				then inner
+				else C.mkCont(fl, inner)
+			    end
 			| [single as C.FB{f=single',...}] => (
-                          if shouldSkipUseless single'
-                          then walkExp (encl, newParams, e)
-                          else C.mkCont(single, walkExp (encl, newParams, e)))
+			    if shouldSkipUseless single'
+			      then walkExp (encl, newParams, e)
+			      else C.mkCont(single, walkExp (encl, newParams, e)))
 			| _ => raise Fail "Invalid return from handleLambda"
 		      (* end case *))
 		  | (C.If(x, e1, e2)) =>
@@ -934,14 +934,14 @@ structure ArityRaising : sig
 		  val newType = CTy.T_Fun (List.map CV.typeOf newParams, List.map CV.typeOf rets)
 		  val flat = CV.new ("flat"^CV.nameOf f, newType)
                   val _ = if getUseful f then setUseful flat else ()
-		  val _ = setInfo (f, vmap, pmap, params, SOME(flat))
+		  val _ = setInfo (f, vmap, pmap, params, SOME flat)
 		  val body = walkExp (f, newParams, body)
 		(* Create a stub with the old name that just SEL's and jumps to the flat version. *)
 		  val paramCopy = List.map CV.copy params
 		  val retsCopy = List.map CV.copy rets
-		  val stub = flattenApplyThrow (ProgPt.new(), f, paramCopy,
-						if not(isCont) then SOME retsCopy else NONE)
-				 
+		  val stub = flattenApplyThrow (
+			ProgPt.new(), f, paramCopy,
+			if not(isCont) then SOME retsCopy else NONE) 
 		  val stubLambda = C.mkLambda (C.FB{f=f, params=paramCopy, rets=retsCopy, body=stub})
 		  val lambda = C.mkLambda(C.FB{f=flat, params=newParams, rets=rets, body=body})
 		  in
