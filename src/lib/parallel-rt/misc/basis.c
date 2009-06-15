@@ -31,6 +31,15 @@ Value_t M_LongToString (int64_t n)
     return AllocString (VProcSelf(), buf);
 }
 
+/* M_Word64ToString:
+ */
+Value_t M_Word64ToString (uint64_t n)
+{
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%lu", n);
+    return AllocString (VProcSelf(), buf);
+}
+
 /* M_FloatToString:
  */
 Value_t M_FloatToString (float f)
