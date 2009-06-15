@@ -327,7 +327,7 @@ structure MLB : sig
           (* runtime library *)
             val runtimeBasisLibPts = loadMLB(LoadPaths.runtimeBasisLib, env)
           (* load the top-level scheduler *)
-	    val topLevelSchedPts = loadMLB(LoadPaths.topLevelSchedLib (Controls.get BasicControl.scheduler), env)
+	    val topLevelSchedPts = loadMLB(LoadPaths.topLevelSchedLib "no-op-scheduler", env)
 	  (* parallel array *)
 	    val parrayPts = loadMLB(LoadPaths.parrayLib, env)
             in
