@@ -729,7 +729,6 @@ structure TranslatePrim : sig
 		val _ = E.insertBOMHLOpDef(hlopId, def)
 		val defs = def :: cvtDefs (loc, importEnv, defs)
 		in
-print(concat["@define ", if inline then "inline " else "", HLOp.toString hlop, "\n"]);
 		  checkForErrors(!errStrm);
 		  defs
 		end
