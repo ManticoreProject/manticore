@@ -118,8 +118,8 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 		("I64Mul",	mk Prim2 (P.I64Mul,	(i64, i64),	i64)),
 		("I64Div",	mk Prim2 (P.I64Div,	(i64, i64),	i64)),
 		("I64Mod",	mk Prim2 (P.I64Mod,	(i64, i64),	i64)),
-(*
 		("I64LSh",	mk Prim2 (P.I64LSh,	(i64, i64),	i64)),
+(*
 		("I64RShA",	mk Prim2 (P.I64RShA,	(i64, i64),	i64)),
 		("I64RShL",	mk Prim2 (P.I64RShL,	(i64, i64),	i64)),
 *)
@@ -130,6 +130,9 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 		("I64Lte",	mk Prim2 (P.I64Lte,	(i64, i64),	bTy)),
 		("I64Gt",	mk Prim2 (P.I64Gt,	(i64, i64),	bTy)),
 		("I64Gte",	mk Prim2 (P.I64Gte,	(i64, i64),	bTy)),
+		("U64Mul",      mk Prim2 (P.U64Mul,     (i64, i64),     i64)),
+		("U64Div",      mk Prim2 (P.U64Div,     (i64, i64),     i64)),
+		("U64Lt",       mk Prim2 (P.U64Lt,      (i64, i64),     bTy)),
 		("F32Add",	mk Prim2 (P.F32Add,	(f32, f32),	f32)),
 		("F32Sub",	mk Prim2 (P.F32Sub,	(f32, f32),	f32)),
 		("F32Mul",	mk Prim2 (P.F32Mul,	(f32, f32),	f32)),

@@ -36,6 +36,7 @@ structure Prim =
       | I64Mul of 'var * 'var
       | I64Div of 'var * 'var
       | I64Mod of 'var * 'var
+      | I64LSh of 'var * 'var
       | I64Neg of 'var
       | I64Eq of 'var * 'var
       | I64NEq of 'var * 'var
@@ -43,6 +44,9 @@ structure Prim =
       | I64Lte of 'var * 'var
       | I64Gt of 'var * 'var
       | I64Gte of 'var * 'var
+      | U64Mul of 'var * 'var
+      | U64Div of 'var * 'var
+      | U64Lt of 'var * 'var
       | F32Add of 'var * 'var
       | F32Sub of 'var * 'var
       | F32Mul of 'var * 'var

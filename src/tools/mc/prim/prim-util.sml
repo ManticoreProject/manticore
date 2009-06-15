@@ -46,6 +46,7 @@ structure PrimUtil : sig
       | nameOf (P.I64Mul _) = "I64Mul"
       | nameOf (P.I64Div _) = "I64Div"
       | nameOf (P.I64Mod _) = "I64Mod"
+      | nameOf (P.I64LSh _) = "I64LSh"
       | nameOf (P.I64Neg _) = "I64Neg"
       | nameOf (P.I64Eq _) = "I64Eq"
       | nameOf (P.I64NEq _) = "I64NEq"
@@ -53,6 +54,9 @@ structure PrimUtil : sig
       | nameOf (P.I64Lte _) = "I64Lte"
       | nameOf (P.I64Gt _) = "I64Gt"
       | nameOf (P.I64Gte _) = "I64Gte"
+      | nameOf (P.U64Mul _) = "U64Mul"
+      | nameOf (P.U64Div _) = "U64Div"
+      | nameOf (P.U64Lt _) = "U64Lt"
       | nameOf (P.F32Add _) = "F32Add"
       | nameOf (P.F32Sub _) = "F32Sub"
       | nameOf (P.F32Mul _) = "F32Mul"
@@ -151,6 +155,7 @@ structure PrimUtil : sig
       | varsOf (P.I64Mul(a, b)) = [a, b]
       | varsOf (P.I64Div(a, b)) = [a, b]
       | varsOf (P.I64Mod(a, b)) = [a, b]
+      | varsOf (P.I64LSh(a, b)) = [a, b]
       | varsOf (P.I64Neg a) = [a]
       | varsOf (P.I64Eq(a, b)) = [a, b]
       | varsOf (P.I64NEq(a, b)) = [a, b]
@@ -158,6 +163,9 @@ structure PrimUtil : sig
       | varsOf (P.I64Lte(a, b)) = [a, b]
       | varsOf (P.I64Gt(a, b)) = [a, b]
       | varsOf (P.I64Gte(a, b)) = [a, b]
+      | varsOf (P.U64Mul(a, b)) = [a, b]
+      | varsOf (P.U64Div(a, b)) = [a, b]
+      | varsOf (P.U64Lt(a, b)) = [a, b]
       | varsOf (P.F32Add(a, b)) = [a, b]
       | varsOf (P.F32Sub(a, b)) = [a, b]
       | varsOf (P.F32Mul(a, b)) = [a, b]
@@ -272,6 +280,7 @@ structure PrimUtil : sig
       | explode (P.I64Mul(a, b)) = (p2 P.I64Mul, [a, b])
       | explode (P.I64Div(a, b)) = (p2 P.I64Div, [a, b])
       | explode (P.I64Mod(a, b)) = (p2 P.I64Mod, [a, b])
+      | explode (P.I64LSh(a, b)) = (p2 P.I64LSh, [a, b])
       | explode (P.I64Neg a) = (p1 P.I64Neg, [a])
       | explode (P.I64Eq(a, b)) = (p2 P.I64Eq, [a, b])
       | explode (P.I64NEq(a, b)) = (p2 P.I64NEq, [a, b])
@@ -279,6 +288,9 @@ structure PrimUtil : sig
       | explode (P.I64Lte(a, b)) = (p2 P.I64Lte, [a, b])
       | explode (P.I64Gt(a, b)) = (p2 P.I64Gt, [a, b])
       | explode (P.I64Gte(a, b)) = (p2 P.I64Gte, [a, b])
+      | explode (P.U64Mul(a, b)) = (p2 P.U64Mul, [a, b])
+      | explode (P.U64Div(a, b)) = (p2 P.U64Div, [a, b])
+      | explode (P.U64Lt(a, b)) = (p2 P.U64Lt, [a, b])
       | explode (P.F32Add(a, b)) = (p2 P.F32Add, [a, b])
       | explode (P.F32Sub(a, b)) = (p2 P.F32Sub, [a, b])
       | explode (P.F32Mul(a, b)) = (p2 P.F32Mul, [a, b])
