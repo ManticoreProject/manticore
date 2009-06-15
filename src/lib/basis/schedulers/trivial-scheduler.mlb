@@ -1,0 +1,14 @@
+(* trivial-scheduler.mlb
+ *
+ * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Load the trivial thread scheduler.
+ *)
+
+  ../runtime/runtime.mlb
+
+  ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
+  in
+    no-op-scheduler.pml
+  end
