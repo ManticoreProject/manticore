@@ -100,7 +100,7 @@ structure Cancelation (* : sig
       define @set-inactive (c : cancelable / exh : exh) : () =
         do @set-current(SELECT(PARENT_OFF, c) / exh)
         let children : List.list = promote(SELECT(CHILDREN_OFF, c))
-	let gChildren : ![List.list] = SELECT(GCHILDREN_OFF, c)
+	let gChildren : ![List.list] = promote(SELECT(GCHILDREN_OFF, c))
         do #0(gChildren) := children
         let inactive : ![vproc] = @get-inactive-flag(c)
       (* FIXME: an atomic write would suffice. *)
