@@ -60,9 +60,9 @@ structure TranslatePTup  : sig
 	end
 
   (* implicit-thread creation *)
-    fun mkThread (k, exh) = B.mkHLOp (findHLOp ["ImplicitThread", "thread-no-cancelable"], [k], [exh])
+    fun mkThread (k, exh) = B.mkHLOp (findHLOp ["ImplicitThread", "new-thread"], [k], [exh])
   (* scheduling operations *)
-    fun spawnThread (k, exh) = B.mkHLOp (findHLOp ["ImplicitThread", "spawn"], [k], [exh])
+    fun spawnThread (k, exh) = B.mkHLOp (findHLOp ["ImplicitThread", "spawn-thread"], [k], [exh])
     fun removeThread (thread, exh) = B.mkHLOp (findHLOp ["ImplicitThread", "remove-thread"], [thread], [exh])
     local
 	    fun mkRaiseExn (env, exh) = 
