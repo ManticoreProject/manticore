@@ -123,6 +123,8 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
   (* to re-enable rewrites, fix them so that they use inline BOM instead of the old hlop files. *)
 (*          val module = rewriteAll module*)
 	  val module = expandAll module
+	(* FIXME: rerun the census to get the counts for HLOp code right. *)
+	  val _ = Census.census module
 	(* NOTE: we cannot run groupFuns until after HLOp expansion, since it doesn't know the
 	 * recursive dependencies of the HLOps.
 	 *)
@@ -141,7 +143,7 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
     val optimize = BasicControl.mkKeepPassSimple {
 	    output = PrintBOM.output,
 	    ext = "bom",
-	    passName = "bom-optimize",
+	    passName = "optimize",
 	    pass = optimize,
 	    registry = BOMOptControls.registry
 	  }
