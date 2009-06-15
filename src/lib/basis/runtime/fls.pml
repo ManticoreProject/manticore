@@ -205,9 +205,9 @@ structure FLS :
       define @ite (stk : List.list,
 		   c : Option.option           (* cancelable *)
 		  / exh : exh) : ite =
-	let ite : ite = alloc(stk, c)
-	return(ite)
-      ;
+	  let ite : ite = alloc(stk, c)
+	  return(ite)
+	;
 
     (* find the ITE environment *)
 
