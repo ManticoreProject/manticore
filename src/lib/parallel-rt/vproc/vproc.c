@@ -305,6 +305,7 @@ void VProcGlobalGCInterrupt (VProc_t *self, VProc_t *vp)
  */
 void VProcPreempt (VProc_t *self, VProc_t *vp)
 {
+  /*
 #ifndef NDEBUG
     if (DebugFlg)
 	if (self == 0)
@@ -312,7 +313,7 @@ void VProcPreempt (VProc_t *self, VProc_t *vp)
 	else
 	  SayDebug("[%2d] Signaling vproc %d.\n", self->id, vp->id);
 #endif
-
+  */
     VProcZeroLimitPtr(vp);
 }
 
