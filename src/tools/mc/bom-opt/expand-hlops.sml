@@ -22,7 +22,7 @@ structure ExpandHLOps : sig
     structure H = HLOp
     structure VSet = B.Var.Set
 
-    fun expand (module as B.MODULE{name, externs, hlops, body}) = let
+    fun expand (B.MODULE{name, externs, hlops, body}) = let
 	  val changed = ref false
 	  fun cvtExp (e as B.E_Pt(_, t)) = (case t
 		 of B.E_Let(lhs, e1, e2) => B.mkLet(lhs, cvtExp e1, cvtExp e2)
@@ -64,6 +64,18 @@ structure ExpandHLOps : sig
 	      else NONE
 	  end
 
-    fun finish m = m
+    fun finish (B.MODULE{name, externs, hlops, body}) = let
+	(* decrement the use count of an HLOp by one and clear the HLOp property,
+	 * since we are done with them now
+	 *)
+	  fun doHLOp f = (
+		B.Var.clrHLOp f;
+		Census.decUseCnt f)
+	  in
+	    B.Var.Set.app doHLOp hlops;
+	    B.MODULE{
+		name = name, externs = externs, hlops = B.Var.Set.empty,
+		body = body}
+	  end
 
   end
