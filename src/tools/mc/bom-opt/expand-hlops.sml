@@ -72,10 +72,8 @@ structure ExpandHLOps : sig
 		B.Var.clrHLOp f;
 		Census.decUseCnt f)
 	  in
-	    B.Var.Set.app doHLOp hlops;
-	    B.MODULE{
-		name = name, externs = externs, hlops = B.Var.Set.empty,
-		body = body}
+	    List.app doHLOp hlops;
+	    B.MODULE{name = name, externs = externs, hlops = [], body = body}
 	  end
 
   end

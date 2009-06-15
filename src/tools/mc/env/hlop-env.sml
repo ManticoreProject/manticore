@@ -26,7 +26,7 @@ structure HLOpEnv : sig
   (* get the BOM variables that are bound to the BOM functions, which
    * define the HLOps.
    *)
-    val listHLOps : unit -> BOM.Var.Set.set
+    val listHLOps : unit -> BOM.var list
 
   end = struct
 
@@ -56,9 +56,7 @@ structure HLOpEnv : sig
   (* find a HLOp by the unique HLOp ID *)
     fun findDef (HLOp.HLOp{id, ...}) = Tbl.find hlops id
   (* get all the bodies of all defined HLOps *)
-    fun listHLOps () =
-	  Tbl.fold (fn ({def=BOM.FB{f, ...}, ...}, s) => BOM.Var.Set.add(s, f))
-	    BOM.Var.Set.empty hlops
+    fun listHLOps () = Tbl.fold (fn ({def=BOM.FB{f, ...}, ...}, s) => f::s) [] hlops
     end
 
   end

@@ -186,7 +186,7 @@ structure PrintBOM : sig
 	     of MODULE(B.MODULE{name, externs, hlops, body}) => (
 		  prl ["module ", Atom.toString name, "\n"];
 		  List.app prExtern externs;
-		  BV.Set.app
+		  List.app
 		    (fn hlop => (indent 1; prl["define @", BV.nameOf hlop, " = ", varUseToString hlop, "\n"]))
 		      hlops;
 		  prLambda (2, "fun ", body))

@@ -77,12 +77,12 @@ structure Census : sig
 	  fun clrCFun cf = clear(CFunctions.varOf cf)
 	  in
 	    List.app clrCFun externs;
-	    B.Var.Set.app clear hlops;
+	    List.app clear hlops;
 	    clrFB body;
 	  (* compute counts *)
 	    doFB body;
 	  (* We bump the count of HLOps by one to avoid prematurely deleting them *)
-	    B.Var.Set.app inc hlops
+	    List.app inc hlops
 	  end
 
     fun initLambda fb = (clrFB fb; doFB fb)

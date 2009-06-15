@@ -132,7 +132,7 @@ structure BOM =
     datatype module = MODULE of {
 	name : Atom.atom,
 	externs : var CFunctions.c_fun list,
-	hlops : Var.Set.set,		    (* the names of the functions that *)
+	hlops : var list,		    (* the names of the functions that *)
 					    (* are define HLOps *)
 	body : lambda
       }
