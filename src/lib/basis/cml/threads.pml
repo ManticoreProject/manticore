@@ -29,9 +29,10 @@ structure Threads (*: sig
 	      (* in case of an exception, just terminate the fiber *)
 		cont exh (exn : PT.exn) = return (UNIT)
 		(* in *)
-		  let defaultImplicitThreadSched : ImplicitThread.group = @get-default-implicit-thread-sched(UNIT / exh)
+		  let defaultImplicitThreadSched : ImplicitThread.work_group = 
+						   @get-default-implicit-thread-sched (UNIT / exh)
                 (* run the body of the thread with the default implicit-thread scheduler in scope *)
-                  ImplicitThread.@run-with-group(defaultImplicitThreadSched, f / exh)
+                  ImplicitThread.@run-on-work-group (defaultImplicitThreadSched, f / exh)
 	      (* in *)
 		SchedulerAction.@stop ()
 	    (* in *)
