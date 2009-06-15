@@ -166,7 +166,6 @@ functor MainFn (
           val _ = checkForErrors errStrm
 	(* create the initial translation environment *)
           val bom = Translate.translate (IB.primTranslationEnv, ast)
-          val _ = CheckBOM.check ("translate", bom)
           val cfg = bomToCFG bom
 	  in
 	    codegen (verbose, asmFile, cfg);

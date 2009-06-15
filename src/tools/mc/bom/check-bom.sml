@@ -27,6 +27,16 @@ structure CheckBOM : sig
     val t2s = BTU.toString
     fun tl2s ts = concat["(", String.concatWith "," (map t2s ts), ")"]
 
+  (* for checking census counts *)
+    structure ChkVC = CheckVarCountsFn (
+      struct
+	type var = B.var
+	val useCntOf = BV.useCount
+	val appCntOf = BV.appCntOf
+	val toString = v2s
+	structure Tbl = BV.Tbl
+      end)
+
   (* placeholder for testing variable kind equality *)
     fun eqVK _ = true
 
@@ -93,6 +103,11 @@ structure CheckBOM : sig
 		  anyWarnings := true);
 		pr ("?? " :: msg))
 	  fun cerror msg = pr ("== "::msg)
+	(* for tracking census counts *)
+	  val counts = ChkVC.init error
+	  val bindVar = ChkVC.bind counts
+	  val useVar = ChkVC.use counts
+	  val appVar = ChkVC.appUse counts
 	(* match the parameter types against argument variables *)
 	  fun checkArgTypes (cmp, ctx, paramTys, argTys) = let
 	      (* chk1 : ty * ty -> unit *)
@@ -115,15 +130,6 @@ structure CheckBOM : sig
 			cerror ["  found    (", str argTys, ")\n"]
                       end
 	        end
-	(* a table mapping variables to their census counts *)
-	  val counts = VTbl.mkTable (256, Fail "count table")
-	  fun insert x = (case VTbl.find counts x
-		 of SOME _ => error["multiple bindings of ", v2s x, "\n"]
-		  | NONE => VTbl.insert counts (x, {
-			appCnt = BV.appCntOf x,
-			useCnt = BV.useCount x
-		      })
-		(* end case *))
 	(* match a list of variables to a context *)
 	  fun chkContext (cxt, xs) = (case cxt
 		 of TAIL(f, tys) => checkArgTypes (BTU.match, "return from " ^ v2s f, tys, typesOf xs)
@@ -138,32 +144,37 @@ structure CheckBOM : sig
 		  TAIL(f, rng)
 		end
 	(* Check that a variable is bound *)
-	  fun chkVar (x, ctx) = if VTbl.inDomain counts x
-		then ()
-		else error["unbound variable ", v2s x, " in ", ctx, "\n"]
+	  fun chkVar (x, ctx) = useVar x
+	  fun chkApplyVar (x, cxt) = appVar x
 	  fun chkVars (xs, ctx) = List.app (fn x => chkVar(x, ctx)) xs
-	  fun chkBinding (x, binding) = if eqVK(BV.kindOf x, binding)
-		then ()
-		else error[
-		    "binding of ", v2s x, " is ",
-		    vkToString(BV.kindOf x), " (expected ",
-		    vkToString binding, ")\n"
-		  ]
+	  fun chkBinding (x, binding) = (
+		bindVar x;
+		if eqVK(BV.kindOf x, binding)
+		  then ()
+		  else error[
+		      "binding of ", v2s x, " is ",
+		      vkToString(BV.kindOf x), " (expected ",
+		      vkToString binding, ")\n"
+		    ])
 	  fun chkBindings (lhs, binding) =
 		List.app (fn x => chkBinding(x, binding)) lhs
 (* FIXME: we should check the kind of the xs, but we don't have a kind for pattern-bound
  * variables yet!
  *)
 	  fun chkPat (B.P_DCon(BTy.DCon{name, argTy, myTyc, ...}, xs)) = (
-		List.app insert xs;
-		checkArgTypes (BTU.match, concat["pattern: ", name, vl2s xs], argTy, typesOf xs))
+		List.app bindVar xs;
+		checkArgTypes (BTU.match, concat["pattern: ", name, vl2s xs],
+		  argTy, typesOf xs))
 	    | chkPat (B.P_Const _) = ()
 	(* *)
-	  fun insertFB (B.FB{f, ...}) = insert f
-	  fun chkFB (lambda as B.FB{f, params, exh, body}) = (let
+	  fun insertFB (fb as B.FB{f, ...}) = (
+		chkBinding (f, B.VK_Fun fb);
+		if BV.isHLOp f then useVar f else ())
+	  fun chkFB (B.FB{f, params, exh, body}) = let
                 val (argTys, exhTys, retTys) =
                       case BV.typeOf f
-                       of BTy.T_Fun(argTys, exhTys, retTys) => (argTys, exhTys, retTys)
+                       of BTy.T_Fun(argTys, exhTys, retTys) =>
+			    (argTys, exhTys, retTys)
                         | BTy.T_Cont(argTys) => (argTys, [], [])
                         | ty => (error[
 			      "expected function/continuation type for ",
@@ -172,36 +183,31 @@ structure CheckBOM : sig
 			    ([],[],[]))
                       (* end case *)
                 in
-		chkBinding (f, B.VK_Fun lambda);
-		chkBindings (params, B.VK_Param);
-                checkArgTypes(BTU.equal, concat["Fun ", v2s f, " params"], argTys, typesOf params);
-		chkBindings (exh, B.VK_Param);
-                checkArgTypes(BTU.equal, concat["Fun ", v2s f, " exh"], exhTys, typesOf exh);
-		List.app insert params;
-		List.app insert exh;
-		chkE (tailContext f, body)
-                end)
+		  chkBindings (params, B.VK_Param);
+		  checkArgTypes(BTU.equal, concat["Fun ", v2s f, " params"],
+		    argTys, typesOf params);
+		  chkBindings (exh, B.VK_Param);
+		  checkArgTypes(BTU.equal, concat["Fun ", v2s f, " exh"],
+		    exhTys, typesOf exh);
+		  chkE (tailContext f, body)
+                end
 	  and chkE (cxt, B.E_Pt(_, t)) = (case t
 		 of B.E_Let(lhs, rhs, e) => (
 		      chkBindings (lhs, B.VK_Let rhs);
 		      chkE(BIND(lhs, rhs), rhs);
-		      List.app insert lhs;
 		      chkE(cxt, e))
 		  | B.E_Stmt(lhs, rhs, e) => (
 		      chkBindings (lhs, B.VK_RHS rhs);
 		      chkRHS (lhs, rhs);
-		      List.app insert lhs;
 		      chkE(cxt, e))
 		  | B.E_Fun(fbs, e) => (
 		      List.app insertFB fbs;
-		      chkE(cxt, e);
-		      List.app chkFB fbs)
+		      List.app chkFB fbs;
+		      chkE (cxt, e))
 		  | B.E_Cont(fb as B.FB{f, params, exh, body}, e) => (
 		      chkBinding (f, B.VK_Cont fb);
 		      chkBindings (params, B.VK_Param);
-		      insert f;
 		      chkE(cxt, e);
-		      List.app insert params;
 		      if not(null exh)
 			then error[
 			    "continuation ", v2s f, " has non-empty return list"
@@ -214,12 +220,12 @@ structure CheckBOM : sig
 		  | B.E_Case(x, cases, dflt) => let
 		      fun chk' (pat, e) = (chkPat pat; chkE(cxt, e))
 		      in
-			chkVar(x, "Case");
+			chkVar (x, "Case");
 			List.app chk' cases;
 			Option.app (fn e => chkE(cxt, e)) dflt
 		      end
 		  | B.E_Apply(f, args, rets) => (
-		      chkVar (f, "Apply");
+		      chkApplyVar (f, "Apply");
 		      case BV.typeOf f
 		       of BTy.T_Fun(argTys, exhTys, retTys) => (
 			    chkVars (args, "Apply args");
@@ -238,7 +244,7 @@ structure CheckBOM : sig
 			| ty => error[v2s f, " : ", BTU.toString ty, " is not a function\n"]
 		      (* end case *))
 		  | B.E_Throw(k, args) => (
-		      chkVar(k, "Throw");
+		      chkApplyVar (k, "Throw");
 		      case BV.typeOf k
 		       of BTy.T_Cont(argTys) => (
 			    chkVars (args, "Throw args");
@@ -383,11 +389,11 @@ structure CheckBOM : sig
 		      checkArgTypes (BTU.match, name ^ vl2s args, argTy, typesOf args))
 		  | ([ty], B.E_CCall(cf, args)) => (
 (* FIXME: check that the return type matches *)
-		      chkVar(cf, "CCall"); 
-                      chkVars(args, "CCall args"))
+		      chkApplyVar (cf, "CCall"); 
+                      chkVars (args, "CCall args"))
 		  | ([], B.E_CCall(cf, args)) => (
-		      chkVar(cf, "CCall"); 
-                      chkVars(args, "CCall args"))
+		      chkApplyVar (cf, "CCall"); 
+                      chkVars (args, "CCall args"))
 		  | ([ty], B.E_HostVProc) => (
                       if BTU.match(BTy.T_VProc, ty)
                          then ()
@@ -461,31 +467,20 @@ structure CheckBOM : sig
 		end
 	(* check an external function *)
 	  fun chkExtern (CFunctions.CFun{var, name, ...}) = (
-		insert var;
+		bindVar var;
 		case BV.kindOf var
 		 of B.VK_Extern _ => ()
 		  | vk => error[
 			"extern ", v2s var, " has kind ", vkToString vk
 		      ]
 		(* end case *))
-	(* check old counts against new counts *)
-	  fun checkCnt (x, {appCnt, useCnt}) =
-		if (appCnt <> BV.appCntOf x) orelse (useCnt <> BV.useCount x)
-		  then (* error[
-		      "inconsistent counts for ", v2s x, ": recorded <",
-		      Int.toString useCnt, ":", Int.toString appCnt,
-		      "> vs. actual <", Int.toString(BV.useCount x), ":",
-		      Int.toString(BV.appCntOf x), ">\n"
-		    ] *) ()
-		  else ()
 	  in
-	  (* record census counts and do initial checking *)
 	    List.app chkExtern externs;
 	    chkFB body; insertFB body;
-	  (* recompute census information *)
-	    Census.census module;
-	  (* check new and old census information *)
-	    VTbl.appi checkCnt counts;
+(* FIXME
+	  (* check census counts *)
+	    ChkVC.checkCounts counts;
+*)
 	  (* report errors, if any *)
 	    if !anyErrors
 	      then let

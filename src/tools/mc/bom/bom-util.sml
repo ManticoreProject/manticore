@@ -250,7 +250,8 @@ structure BOMUtil : sig
    *)
     fun applyLambda (B.FB{f, params, exh, body}, args, rets) = let
 	  fun err msg = raise Fail(concat[
-		  msg, " mismatch in application of ", BV.toString f, ":", BOMTyUtil.toString(BV.typeOf f)
+		  msg, " mismatch in application of ", BV.toString f, ":",
+		  BOMTyUtil.toString(BV.typeOf f)
 		])
 	  val s = extend' (empty, params, args) handle _ => err "param/arg"
 	  val s = extend' (s, exh, rets) handle _ => err "exh/rets"

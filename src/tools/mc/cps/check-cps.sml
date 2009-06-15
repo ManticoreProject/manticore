@@ -355,7 +355,7 @@ structure CheckCPS : sig
 	  (* check for errors *)
 	    if !anyErrors
 	      then let
-	    (* FIXME: we should generate this name from the input file name! *)
+(* FIXME: we should generate this name from the input file name! *)
 		val outFile = "broken-CPS"
 		val outS = TextIO.openOut outFile
 		in

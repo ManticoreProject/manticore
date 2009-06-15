@@ -77,13 +77,12 @@ structure Census : sig
 	  fun clrCFun cf = clear(CFunctions.varOf cf)
 	  in
 	    List.app clrCFun externs;
+	    B.Var.Set.app clear hlops;
 	    clrFB body;
-	    List.app clrFB hlops;
-	  (* HLOps can contain references to external PML variables *)
-	    List.app doFB hlops;
+	  (* compute counts *)
 	    doFB body;
-	  (* preserve non-inlined HLOps (they have FBs, but application sites do not refer to the FBs directly) *)
-	    List.app (inc o funBind) hlops
+	  (* We bump the count of HLOps by one to avoid prematurely deleting them *)
+	    B.Var.Set.app inc hlops
 	  end
 
     fun initLambda fb = (clrFB fb; doFB fb)
