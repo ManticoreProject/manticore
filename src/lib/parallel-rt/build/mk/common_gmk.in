@@ -56,7 +56,6 @@ MISC_SRCS =	main.c \
 		basis.c \
 		options.c \
 		image.c \
-		work-stealing-local-deques.c \
 		work-stealing-deque.c
 
 ifeq ($(ENABLE_LOGGING),true)

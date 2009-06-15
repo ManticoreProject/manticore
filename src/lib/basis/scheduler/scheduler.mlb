@@ -1,4 +1,4 @@
-(* schedulers.mlb
+(* scheduler.mlb
  *
  * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -10,12 +10,17 @@
   ../misc/debug.mlb
   ../runtime/runtime.mlb
   ../synch/synch.mlb
-  ../implicit-threading/implicit-threading.mlb
+  ../implicit-thread/implicit-thread.mlb
+
+  ann "cpp" "../include/prim.def"
+  in
+    ../misc/uid.pml
+  end
 
   ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
   in
-    work-stealing-deque.pml
-    test-work-stealing-deque.pml
     global-bfs-scheduler.pml
-    swp-work-stealing.pml
+    work-stealing-deque.pml
+    work-stealing.pml
+    test-work-stealing-deque.pml
   end

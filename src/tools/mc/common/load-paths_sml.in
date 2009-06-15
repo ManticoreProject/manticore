@@ -32,10 +32,10 @@ structure LoadPaths =
     val runtimeBasisLib = join (runtimeBasisDir, "runtime.mlb")
 
   (* scheduling *)
-    val schedsDir = join (basisDir, "schedulers")
+    val schedsDir = join (basisDir, "scheduler")
 
   (* scheduling library *)
-    val schedsLib = join (schedsDir, "schedulers.mlb")
+    val schedsLib = join (schedsDir, "scheduler.mlb")
 
   (* top-level scheduler library *)
     fun topLevelSchedLib sched = join (schedsDir, OS.Path.joinBaseExt{base=sched, ext=SOME "mlb"})

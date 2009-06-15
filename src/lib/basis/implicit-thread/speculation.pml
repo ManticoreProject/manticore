@@ -61,14 +61,11 @@ structure Speculation :
                     return()
 	       else return()
 
-      (* capture the ite of the original thread *)
-        let ite : ImplicitThread.ite = FLS.@get-ite(/ exh)
-
       (* resume the original thread *)
         cont retK (x : O.option) = 
           cont k (z : unit) = return(x)
-          let thd : ImplicitThread.thread = ImplicitThread.@alloc(ite, k / exh)
-          do ImplicitThread.@run-out-of-scheduler(thd / exh)
+          let thd : ImplicitThread.thread = ImplicitThread.@new-thread (k / exh)
+          do ImplicitThread.@throw-to (thd / exh)
           let e : exn = Fail(@"Speculation.@por: impossible")
           throw exh(e)
 
@@ -90,12 +87,12 @@ structure Speculation :
 	let c2 : C.cancelable = C.@new(/ exh)
 
         let k2 : PT.fiber = apply handler(c1, f2)
-        let t1 : ImplicitThread.thread = ImplicitThread.@thread(k2, O.SOME(c2) / exh)
+        let t1 : ImplicitThread.thread = ImplicitThread.@new-cancelable-thread(k2, c2 / exh)
 	do ImplicitThread.@spawn(t1 / exh)
 
 	let k1 : PT.fiber = apply handler(c2, f1)
-        let t1 : ImplicitThread.thread = ImplicitThread.@thread(k1, O.SOME(c1) / exh)
-	do ImplicitThread.@run-out-of-scheduler(t1 / exh)
+        let t1 : ImplicitThread.thread = ImplicitThread.@new-thread(k1, c1 / exh)
+	do ImplicitThread.@throw-to (t1 / exh)
         let e : exn = Fail(@"Speculation.@por: impossible")
         throw exh(e)
       ;

@@ -1,9 +1,9 @@
-(* implicit-threading.mlb
+(* implicit-thread.mlb
  *
  * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Support for implicitly-generated threads.
+ * Runtime support for implicit threads
  *)
 
   ../sequential/sequential.mlb
@@ -11,7 +11,12 @@
   ../runtime/runtime.mlb
   ../synch/synch.mlb
 
-(* Implicit threading support *)
+  ann "cpp" "../include/prim.def"
+  in
+    ../misc/uid.pml
+  end
+
+(* implicit threading substrate*)
   ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
   in
     cancelation.pml
@@ -19,23 +24,17 @@
     implicit-thread-ivar.pml
   end
 
-(* Futures *)
-
+(* parallel suspensions *)
   par-susp-sig.pml
-  future-sig.pml
   ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
   in
     par-susp.pml
     par-susp1.pml
-    eager-future.pml
   end
 
-  fcms-sig.pml
-  fcms.pml
-
-(* Implicit-thread speculation *)
-
+(* multilisp futures *)
+  future-sig.pml
   ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
   in
-    speculation.pml
+    multilisp-future.pml
   end

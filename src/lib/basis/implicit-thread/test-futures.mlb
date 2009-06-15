@@ -1,5 +1,5 @@
-implicit-threading.mlb
-../schedulers/schedulers.mlb
+implicit-thread.mlb
+../scheduler/scheduler.mlb
 
   ann "cpp" "../include/debug.def,../include/assert.def"
   in

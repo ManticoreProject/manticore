@@ -6,7 +6,7 @@
  * Initialize the default implicit-thread scheduler.
  *)
 
-  schedulers.mlb
+  scheduler.mlb
 
   ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
   in

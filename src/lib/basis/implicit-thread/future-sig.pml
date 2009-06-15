@@ -27,4 +27,17 @@ signature FUTURE =
    *)
     val cancel : 'a future -> unit
 
+  (*
+    _prim (
+
+      typedef future;
+
+      define @future (arg : [fun(unit / exh -> any), bool] / exh : exh) : future;
+      define @touch (fut : future / exh : exh) : any;
+      define @poll (fut : future / exh : exh) : Option.option;
+      define @cancel (fut : future / exh : exh) : unit;
+
+    )
+  *)
+
   end

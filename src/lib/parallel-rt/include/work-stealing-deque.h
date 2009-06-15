@@ -20,7 +20,7 @@ struct Deque_s {
   int32_t       old;           // pointer to the oldest element in the deque
   int32_t       new;           // pointer to the address immediately to the right of the newest element
   int32_t       maxSz;         // max number of elements
-  Value_t       claimed;       // M_TRUE, if the deque is claimed by a scheduler
+  int32_t       nClaimed;      // the number of processes that hold a reference to the deque
   Value_t       elts[1];       // elements of the deque
 };
 typedef struct Deque_s Deque_t;
@@ -34,7 +34,7 @@ void M_InitWorkGroupList ();
  * \param size the max number of elements in the deque
  * \return a pointer to the freshly allocated deque
  */
-Value_t M_DequeAlloc (VProc_t *self, int64_t workGroupId, int32_t size);
+Value_t M_DequeAlloc (VProc_t *self, uint64_t workGroupId, int32_t size);
 
 /* \brief number of roots needed for deques on the given vproc 
  * \param self the host vproc
@@ -54,6 +54,6 @@ Value_t **M_AddDequeEltsToRoots (VProc_t *self, Value_t **rootPtr);
  * \param the work group id
  * \return pointer to a linked list of the deques
  */
-Value_t M_LocalDeques (VProc_t *self, int64_t workGroupId);
+Value_t M_LocalDeques (VProc_t *self, uint64_t workGroupId);
 
 #endif /*! _WORK_STEALING_DEQUE_H_ */
