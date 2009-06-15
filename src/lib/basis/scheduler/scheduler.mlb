@@ -22,5 +22,4 @@
     global-bfs-scheduler.pml
     work-stealing-deque.pml
     work-stealing.pml
-    test-work-stealing-deque.pml
   end
