@@ -54,6 +54,8 @@ structure VProc (* :
       define @sleep-from-atomic (vp : vproc) : ();
 
     )
+
+    val numVProcs : unit -> int
     
   end *) = struct
 
@@ -75,6 +77,11 @@ structure VProc (* :
       define inline @num-vprocs () : int =
 	  let n : int = ccall GetNumVProcs()
 	  return (n)
+	;
+
+      define inline @num-vprocs-w (_ : unit / exh : exh) : ml_int =
+	  let n : int = @num-vprocs ()
+          return (alloc (n))
 	;
 
     (* returns the unique id of the given vproc *)
@@ -212,5 +219,7 @@ structure VProc (* :
 	;
 
     )
+
+    val numVProcs : unit -> int = _prim (@num-vprocs-w)
 
   end
