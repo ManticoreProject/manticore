@@ -911,6 +911,21 @@ structure ArityRaising : sig
           and shouldSkipUseless (v) = if getUseful v
 		then false
 		else (ST.tick (cntUselessElim); true)
+          and findAlias (v, encl) = if not(isCandidate encl)
+            then NONE
+            else let
+                    val {vmap,sign,...} = getInfo encl
+                in
+                    case ParamMap.find (vmap, VAR (v))
+                     of SOME(path) => let
+                            fun findInSign (n, s::sign) =
+                                if samePath(path, listToPath s) then SOME(n) else findInSign(n+1,sign)
+                              | findInSign (n, []) = NONE
+                        in
+                            findInSign(0, sign)
+                        end
+                      | NONE => NONE
+                end
 	  and walkExp(encl, newParams, C.Exp(ppt,e)) = (case e
 		 of (C.Let([v], rhs, e)) => (
 		    (* If v has been promoted to a param or its
@@ -920,7 +935,12 @@ structure ArityRaising : sig
 		      orelse useCountOfVar (encl, v) = 0
 		      orelse shouldSkipUseless (v)
 			then walkExp (encl, newParams, e)
-			else C.Exp(ppt, C.Let([v], rhs, walkExp (encl, newParams, e))))
+			else (
+                            case findAlias (v, encl)
+                             of SOME(n) => C.mkLet ([v], C.Var ([(List.nth (newParams, n))]),
+                                                    walkExp (encl, newParams, e))
+                              | NONE => C.mkLet([v], rhs, walkExp (encl, newParams, e))
+                            (* end case *)))                            
 		  | (C.Let(vars, rhs, e)) =>
 		      if List.exists (fn v => List.exists (fn x => CV.same(x, v)) newParams) vars
 			then raise Fail ("Can't lift variable from multi-bind on LHS of let")
