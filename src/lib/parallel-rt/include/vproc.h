@@ -100,7 +100,7 @@ STATIC_INLINE Addr_t VProcHeap (VProc_t *vp)
 extern int		NumVProcs;
 extern VProc_t		*VProcs[MAX_NUM_VPROCS];
 
-extern void VProcInit (Options_t *opts);
+extern void VProcInit (bool isSequential, Options_t *opts);
 extern VProc_t *VProcCreate (VProcFn_t f, void *arg);
 extern VProc_t *VProcSelf ();
 void VProcSendUnixSignal (VProc_t *vp, VPSignal_t sig);

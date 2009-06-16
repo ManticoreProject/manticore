@@ -34,6 +34,7 @@ bool		DebugFlg = false;
 static Mutex_t	PrintLock;		/* lock for output routines */
 
 extern int32_t mantMagic;
+extern int32_t SequentialFlag;
 
 
 int main (int argc, const char **argv)
@@ -54,7 +55,7 @@ int main (int argc, const char **argv)
 
     DiscoverTopology ();
     HeapInit (opts);
-    VProcInit (opts);
+    VProcInit ((bool)SequentialFlag, opts);
 
   /* get the time quantum in milliseconds */
     TimeQ = GetIntOpt(opts, "-q", DFLT_TIME_Q_MS);
@@ -134,8 +135,8 @@ static void Ping (int n)
     static int	nextPing = 0;
 
     for (int i = 0;  i < n;  i++) {
-      if (VProcs[nextPing]->sleeping != M_TRUE)
-	  VProcPreempt (0, VProcs[nextPing]);
+	if (VProcs[nextPing]->sleeping != M_TRUE)
+	    VProcPreempt (0, VProcs[nextPing]);
 	if (++nextPing == NumVProcs)
 	    nextPing = 0;
     }
@@ -162,8 +163,8 @@ void Say (const char *fmt, ...)
 
     va_start (ap, fmt);
     MutexLock (&PrintLock);
-      vfprintf (stdout, fmt, ap);
-      fflush (stdout);
+	vfprintf (stdout, fmt, ap);
+	fflush (stdout);
     MutexUnlock (&PrintLock);
     va_end(ap);
 
@@ -179,8 +180,8 @@ void SayDebug (const char *fmt, ...)
 
     va_start (ap, fmt);
     MutexLock (&PrintLock);
-      vfprintf (DebugF, fmt, ap);
-      fflush (DebugF);
+	vfprintf (DebugF, fmt, ap);
+	fflush (DebugF);
     MutexUnlock (&PrintLock);
     va_end(ap);
 
