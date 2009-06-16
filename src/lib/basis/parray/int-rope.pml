@@ -121,7 +121,7 @@ structure IntRope = struct
                subInBounds(r2, i - length r1)
         (* end case *))
 
-  (* sub : int_rope * int -> float *)
+  (* sub : int_rope * int -> int *)
   (* subscript; returns r[i] *)
     fun sub (r, i) = 
       if inBounds (r, i) 
@@ -260,7 +260,7 @@ structure IntRope = struct
 	     end
 	   (* end case *))
      (* end if *))
- 
+
   (* balToRope : balancer -> int_rope *)              
   (* Concatenate all ropes in the balancer into one balanced rope. *)
     fun balToRope balancer = let
