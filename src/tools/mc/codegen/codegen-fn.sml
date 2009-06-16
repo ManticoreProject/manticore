@@ -405,6 +405,11 @@ if MChkTy.check stm
 		pseudoOp (P.global RuntimeLabels.magic);
 		defineLabel RuntimeLabels.magic;
 		pseudoOp (P.int (P.I32, [Spec.ABI.magic]));
+	      (* sequential-mode flag *)
+		pseudoOp (P.global RuntimeLabels.sequential);
+		defineLabel RuntimeLabels.sequential;
+		pseudoOp (P.int (P.I32, [if Controls.get BasicControl.sequential then 1 else 0]));
+	      (* literals *)
 		FloatLit.appi (fn ((sz, f), l) => emitLit (l, P.float(sz, [f]))) floatTbl;
 		StringLit.appi (fn (s, l) => emitLit (l, P.asciz s)) strTbl;
 	      (* emit a dummy string label for tags *)
