@@ -50,7 +50,11 @@ structure SchedulerAction (* :
     (***** support for local atomicity *****)
       define inline @atomic-begin () : vproc =
 	  let vp : vproc = host_vproc
-	  do vpstore (ATOMIC, host_vproc, true)
+        (* FIXME: we're hosed if these two surrounding instructions are
+	 * not executed atomically, i.e., if a heap-limit check is inserted
+	 * here. *)
+	  do vpstore (ATOMIC, vp, true)
+          do assert (Equal(vp, host_vproc))
 	  return(vp)
 	;
 
