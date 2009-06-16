@@ -825,7 +825,6 @@ structure ArityRaising : sig
                         if null sign
 			  then (case retArgs
 			     of SOME(retArgs) => let
-                                    (* TODO: against rets instead *)
                                     val filteredRetArgs = ListPair.foldr
                                         (fn (a,b,rr) => if getUseful a
                                                         then b::rr
