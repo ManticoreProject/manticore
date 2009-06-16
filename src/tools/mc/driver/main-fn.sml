@@ -203,13 +203,13 @@ functor MainFn (
           \    -C<control>=<v>  set named control\n\
 	  \    -o <file>        specify executable-file name\n\
           \    -H               produce complete help listing\n\
-          \    -h               produce minimal help listing)\n\
+          \    -h               produce minimal help listing\n\
           \    -h<level>        help listing with obscurity limit\n\
-          \    -version         show version)\n\
+          \    -version         show version\n\
 	  \    -debug           build an executable with debugging enabled\n\
 	  \    -log             build an executable with logging enabled\n\
 	  \    -sequential      compile a sequential-mode program\n\
-	  \    -v               compile in verbose mode\n\
+	  \    -verbose         compile in verbose mode\n\
 	  \"
 
     fun message (level, b) = (
@@ -291,7 +291,7 @@ functor MainFn (
 		| "-H" => help (SOME NONE)
 		| "-version" => version ()
 		| "-sequential" => set BasicControl.sequential
-		| "-v" => (Controls.set(BasicControl.verbose, 1); processArgs args)
+		| "-verbose" => (Controls.set(BasicControl.verbose, 1); processArgs args)
 		| "-log" => set BasicControl.logging
 		| "-debug" => set BasicControl.debug
 		| _ => badopt ()
