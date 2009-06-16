@@ -349,7 +349,9 @@ structure ArityRaising : sig
 	  pmap : int ref PMap.map,
 	  sign : fun_sig,
           params : C.var list,
-          flat : C.var option
+          rets : C.var list,
+          flat : C.var option,
+          flatParams : C.var list option
 	}
     local
       val {clrFn, getFn : CV.var -> info, setFn, ...} =
@@ -357,13 +359,13 @@ structure ArityRaising : sig
     in
     val clearInfo = clrFn
     val getInfo = getFn
-    fun setInfo (f, vmap, pmap, params, flat) =
-	  setFn (f, {vmap=vmap, pmap=pmap, sign=computeMaxSig pmap, params=params, flat=flat});
+    fun setInfo (f, vmap, pmap, params, rets, flat, flatParams) =
+	  setFn (f, {vmap=vmap, pmap=pmap, sign=computeMaxSig pmap, params=params, rets=rets, flat=flat, flatParams=flatParams});
     end
 
 (* +DEBUG *)
     fun printCandidate f = let
-	  val {vmap, pmap, sign, params, flat} = getInfo f
+	  val {vmap, pmap, sign, params, flat, ...} = getInfo f
 	  in
 	    print(concat["candidate ", CV.toString f, " : ", sigToString sign, "\n"]);
 	    print "  vmap:\n";
@@ -415,7 +417,7 @@ structure ArityRaising : sig
 		List.app analyseFB fbs
 	      end
 	(* analyse the body of a candidate *)
-	  and analyseCandidate (C.FB{f, params, body, ...}) = let
+	  and analyseCandidate (C.FB{f, params, rets, body, ...}) = let
 	      (* construct an initial mapping from the parameters to their paths
 	       * and from their paths to their use counts.
 	       *)
@@ -502,7 +504,7 @@ structure ArityRaising : sig
 		      end
 		in
 		  ST.tick cntCandidateFun;
-		  setInfo (f, vmap, pmap, params, NONE);
+		  setInfo (f, vmap, pmap, params, rets, NONE, NONE);
 		  candidates := f :: !candidates
 		end (* analyseCandidate *)
 	(* walk an expression looking for candidates *)
@@ -593,12 +595,12 @@ structure ArityRaising : sig
           (* val gSig = sigOfFuns [g]
           val () = print(concat["* analyseCallSite (", siteToString site, ")\n"])
                    *)
-	  val {vmap, pmap, params, ...} = getInfo g
+	  val {vmap, pmap, params, rets, ...} = getInfo g
 	  val (vmap, pmap) = List.foldl doParam (vmap, pmap) (sigOfFuns callees)
 	  in
 	    (*if !changed then print(concat["  ", sigToString gSig, "  -->  ", sigToString(sigOfFuns [g]), "\n"]) else ();  *)
 	    if !changed
-	    then (setInfo(g, vmap, pmap, params, NONE); true)
+	    then (setInfo(g, vmap, pmap, params, rets, NONE, NONE); true)
 	    else false
 	  end
 
@@ -796,24 +798,49 @@ structure ArityRaising : sig
      * original, which calls the specialized with the extra arguments
      * - in the body of the specialized version, remove any variables
      *)
-    fun flatten (C.MODULE{name,externs,body=(C.FB{f,params,rets,body})}) = let
-        (* TODO: Per Olin's thesis, instead of passing a "dummy" argument to 
-         * useless parameter slots, attempt to remove those parameters where
-         * that's valid to do. *)
-          val uselessDummy = CV.new ("uselessDummy", CTy.T_Any)
-	  fun flattenApplyThrow (ppt, g, args, rets) = if isCandidate g
+    fun flatten (C.MODULE{name,externs,body=(C.FB{f=main,params=modParams,rets=modRets,body=modBody})}) = let
+          fun genUseless(useless, body) = let
+              val typ = CV.typeOf useless
+              fun cast () = let
+                  val temp = CV.new ("any", CTy.T_Any)
+              in
+                  C.mkLet ([temp], C.Const(Literal.Enum(0w0), CTy.T_Any),
+                           C.mkLet ([useless], C.Cast (typ, temp), body))
+              end
+          in
+              case typ
+               of CTy.T_Any => C.mkLet ([useless], C.Const(Literal.Enum(0w0), CTy.T_Any), body)
+                | CTy.T_Enum (_) => C.mkLet ([useless], C.Const(Literal.Enum(0w0), typ), body)
+                | CTy.T_Raw (_) => C.mkLet ([useless], C.Const(Literal.Enum(0w0), typ), body)
+                | CTy.T_Tuple (_, _) => cast ()
+                | CTy.T_Addr (_) => cast ()
+                | CTy.T_Fun (_, _) => cast ()
+                | CTy.T_CFun (_) => cast ()
+                | CTy.T_VProc => cast()
+          end
+	  fun flattenApplyThrow (ppt, g, args, retArgs) = if isCandidate g
 		then let 
-		  val {sign, flat=SOME(f), ...} = getInfo g
-		  fun genCall (sign, newArgs, progress) =
+		  val {sign, params, rets, flat=SOME(f), flatParams=SOME(fParams), ...} = getInfo g
+		  fun genCall (sign, params, newArgs, progress) =
                         if null sign
-			  then (case rets
-			     of SOME(rets) => C.Exp(ppt, C.Apply(f, rev newArgs, rets))
+			  then (case retArgs
+			     of SOME(retArgs) => let
+                                    (* TODO: against rets instead *)
+                                    val filteredRetArgs = ListPair.foldr
+                                        (fn (a,b,rr) => if getUseful a
+                                                        then b::rr
+                                                        else rr)
+                                        []
+                                        (rets, retArgs)
+                                in
+                                    C.Exp(ppt, C.Apply(f, rev newArgs, filteredRetArgs))
+                                end
 			      | NONE => C.Exp(ppt, C.Throw(f, rev newArgs))
 			    (* end case *))
 			  else let
 			    fun genResult (varBase, path) =
                                   if length path = 0
-				  then genCall (tl sign, varBase :: newArgs, NONE)
+				  then genCall (tl sign, tl params, varBase :: newArgs, NONE)
 				  else let
 				    val newType = (case CV.typeOf varBase
 					   of CTy.T_Tuple(_, types) => List.nth (types, (hd path))
@@ -828,30 +855,49 @@ structure ArityRaising : sig
 				    in
 				      if length path = 1
 					then C.mkLet ([newVar], rhs,
-					    genCall (tl sign, newVar :: newArgs, NONE))
+					    genCall (tl sign, tl params, newVar :: newArgs, NONE))
 					else C.mkLet ([newVar], rhs,
-					    genCall (sign, newArgs, SOME (newVar, tl path)))
+					    genCall (sign, params, newArgs, SOME (newVar, tl path)))
                                         end
 			    in
 			      case progress
 			       of SOME(base,l) => genResult (base, l)
 				| NONE => let
 				    val (whichBase, path)::_ = sign
+                                    val param = hd params
 				    val varBase = List.nth (args, whichBase)
 				    in
-                                      if CV.same (varBase, uselessDummy)
-                                      then genCall (tl sign, varBase :: newArgs, NONE)
+                                      (* Flattened functions will lose any useless parameters.
+                                       * We know they only have known call sites (by construction).
+                                       *)
+                                      if shouldSkipUseless param
+                                      then genCall (tl sign, tl params, newArgs, NONE)
 				      else genResult (varBase, path)
 				    end
 			      (* end case *)
                             end
 		  in
-                    genCall (sign, [], NONE)
+                    genCall (sign, fParams, [], NONE)
 		  end
-		else (case rets
-		   of SOME(rets) => C.Exp(ppt, C.Apply(g, args, rets))
-		    | NONE => C.Exp(ppt, C.Throw(g, args))
-		  (* end case *))
+		else let (* Not a call to a candidate function. Keep arguments in place *)
+                        fun translateArgs (v::vl, accum, final) =
+                            if shouldSkipUseless v
+                            then (let
+                                      val useless = CV.copy v
+                                  in
+                                      genUseless (useless, translateArgs (vl, useless::accum, final))
+                                  end)
+                            else translateArgs (vl, v::accum, final)
+                          | translateArgs ([], accum, final) =
+                            final (rev accum)
+                    in
+                        case retArgs
+		         of SOME(retArgs) => translateArgs (args, [],
+                                           fn x => translateArgs (retArgs, [],
+                                              fn y => C.Exp(ppt, C.Apply(g, x, y))))
+		          | NONE => translateArgs (args, [],
+                                                   fn x => C.Exp (ppt, C.Throw(g, x)))
+                    end
           and useCountOfVar(encl, v) = if not(isCandidate(encl))
 		then ~1
 		else let
@@ -909,19 +955,8 @@ structure ArityRaising : sig
 		      C.Exp(ppt, C.Switch(x,
 			List.map (fn (tag,exp) => (tag,walkExp (encl, newParams, exp))) cases,
 			Option.map (fn (f) => walkExp (encl, newParams, f)) dflt))
-		  | (C.Apply(g, args, rets)) => let
-		      fun f arg = if shouldSkipUseless arg then uselessDummy else arg
-		      val args = List.map f args
-		      val rets = List.map f rets
-		      in
-			flattenApplyThrow (ppt, g, args, SOME(rets))
-		      end
-		  | (C.Throw(k, args)) => let
-		      fun f arg = if shouldSkipUseless arg then uselessDummy else arg
-		      val args = List.map f args
-		      in
-			flattenApplyThrow (ppt, k, args, NONE)
-		      end
+		  | (C.Apply(g, args, rets)) => flattenApplyThrow (ppt, g, args, SOME(rets))
+		  | (C.Throw(k, args)) => flattenApplyThrow (ppt, k, args, NONE)
 		(* end case *))
 
         (* Returns flattened version of candidate functions *)
@@ -929,21 +964,25 @@ structure ArityRaising : sig
 	      if not (isCandidate f)
                 then [C.FB{f=f, params=params, rets=rets, body=walkExp (f, params, body)}]
 		else let
-		  val {vmap, pmap, params, sign, flat} = getInfo f
+		  val {vmap, pmap, params, rets, sign, ...} = getInfo f
 		  val newParams = computeParamList (params, vmap, sign)
-		  val newType = CTy.T_Fun (List.map CV.typeOf newParams, List.map CV.typeOf rets)
+                  val newParams = List.filter getUseful newParams
+                  val newRets = List.filter getUseful rets
+		  val newType = CTy.T_Fun (List.map CV.typeOf newParams, List.map CV.typeOf newRets)
 		  val flat = CV.new ("flat"^CV.nameOf f, newType)
                   val _ = if getUseful f then setUseful flat else ()
-		  val _ = setInfo (f, vmap, pmap, params, SOME flat)
+		  val _ = setInfo (f, vmap, pmap, params, rets, SOME flat, SOME newParams)
 		  val body = walkExp (f, newParams, body)
 		(* Create a stub with the old name that just SEL's and jumps to the flat version. *)
 		  val paramCopy = List.map CV.copy params
 		  val retsCopy = List.map CV.copy rets
+                  val _ = ListPair.app (fn (a,b) => if getUseful a then setUseful b else ()) (params, paramCopy)
+                  val _ = ListPair.app (fn (a,b) => if getUseful a then setUseful b else ()) (rets, retsCopy)
 		  val stub = flattenApplyThrow (
 			ProgPt.new(), f, paramCopy,
 			if not(isCont) then SOME retsCopy else NONE) 
 		  val stubLambda = C.mkLambda (C.FB{f=f, params=paramCopy, rets=retsCopy, body=stub})
-		  val lambda = C.mkLambda(C.FB{f=flat, params=newParams, rets=rets, body=body})
+		  val lambda = C.mkLambda(C.FB{f=flat, params=newParams, rets=newRets, body=body})
 		  in
                     [lambda, stubLambda]
 		  end
@@ -951,10 +990,8 @@ structure ArityRaising : sig
 	  C.MODULE{
 	      name=name, externs=externs,
 	      body = C.mkLambda(C.FB{
-		  f=f, params=params, rets=rets,
-		  body = C.mkLet (
-		      [uselessDummy], C.Const(Literal.Enum(0w0), CTy.T_Any),
-		      walkExp (f, params, body))
+                  f=main,params=modParams,rets=modRets,
+                  body= walkExp (main, modParams, modBody)
 		})
 	    }
 	end
