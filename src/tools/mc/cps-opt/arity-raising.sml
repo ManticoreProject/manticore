@@ -447,7 +447,8 @@ structure ArityRaising : sig
 				(* either add q to the path map or update its count *)
 				  val pmap = (case PMap.find(pmap, q)
 					 of NONE => PMap.insert(pmap, q, ref(CV.useCount x))
-					  | SOME cnt => (addToRef(cnt, CV.useCount x); pmap)
+					  | SOME cnt => (addToRef(cnt, CV.useCount x);
+                                                         pmap)
 					(* end case *))
 				  in
 				    doExp (vmap, pmap, e)
@@ -548,71 +549,10 @@ structure ArityRaising : sig
                 []
         end
 
-  (* analyse a call site inside a candidate function. *)
-    fun analyseCallSite (SITE{enclFn=NONE, ...}) = false
-      | analyseCallSite (site as SITE{enclFn=SOME g, ppt, callees, f, args}) = let
-	  val changed = ref false
-	  fun doParam ((i, p), (vmap, pmap)) = let
-		fun doArg ([], _, _, vmap, pmap) = (vmap, pmap)
-		  | doArg (i::r, x, path, vmap, pmap) = (case CV.kindOf x
-		       of C.VK_Let(C.Alloc(CTy.T_Tuple(false, _), xs)) =>
-			    doArg (r, List.nth(xs, i), SEL(i, path), vmap, pmap)
-			| _ => (case ParamMap.find(vmap, VAR x)
-			     of SOME q => ((* this argument is derivable from a parameter *)
-				  case path
-				   of PARAM(_) => (* this argument is directly a parameter - do nothing *)
-                                     (vmap, pmap)
-				    | _ => let 
-				      (* have we already done the bookkeeping for x? *)
-					val vmap = (case ParamMap.find(vmap, ARG(site, path))
-					       of NONE => (
-						    changed := true;
-						    addToRef(lookupPath(pmap, q), ~1);
-						    ParamMap.insert(vmap, ARG(site, path), q))
-						| SOME _ => vmap
-					      (* end case *))
-					in
-					  followPath (r, SEL(i, q), SEL(i, path), vmap, pmap)
-					end
-				  (* end case *))
-			      | NONE => (vmap, pmap)
-			    (* end case *))
-		      (* end case *))
-		and followPath ([], _, _, vmap, pmap) = (vmap, pmap)
-		  | followPath (i::r, srcPath, dstPath, vmap, pmap) = (
-		      case ParamMap.find(vmap, ARG(site, dstPath))
-		       of NONE => let
-			    val vmap = ParamMap.insert(vmap, ARG(site, dstPath), srcPath)
-			    in
-			      followPath (r, SEL(i, srcPath), SEL(i, dstPath), vmap, pmap)
-			    end
-			| SOME q => followPath (r, q, SEL(i, dstPath), vmap, pmap)
-		      (* end case *))
-		in
-		  doArg (p, List.nth(args, i), PARAM i, vmap, pmap)
-		end
-
-          (* val gSig = sigOfFuns [g]
-          val () = print(concat["* analyseCallSite (", siteToString site, ")\n"])
-                   *)
-	  val {vmap, pmap, params, rets, ...} = getInfo g
-	  val (vmap, pmap) = List.foldl doParam (vmap, pmap) (sigOfFuns callees)
-	  in
-	    (*if !changed then print(concat["  ", sigToString gSig, "  -->  ", sigToString(sigOfFuns [g]), "\n"]) else ();  *)
-	    if !changed
-	    then (setInfo(g, vmap, pmap, params, rets, NONE, NONE); true)
-	    else false
-	  end
-
   (* for each candidate function, analyse the arguments of its call sites *)
     fun analyse m = let
 	  val candidates = gather m
-	  val sites = List.foldr (fn (f, s) => getSites f @ s) [] candidates
-	  fun analLp ([], false) = ()
-	    | analLp ([], true) = analLp (sites, false)
-	    | analLp (site::r, flg) = analLp (r, analyseCallSite site orelse flg)
 	  in
-	    analLp (sites, false) ;
             candidates
 	  end
 
