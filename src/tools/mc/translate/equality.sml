@@ -51,13 +51,14 @@ structure Equality : sig
 	     of BTy.T_Any => mkPrim (P.Equal, P.NotEqual)
 	      | BTy.T_Enum _ => mkPrim (P.Equal, P.NotEqual)
 	      | BTy.T_Raw rty => (case rty
-		   of BTy.T_Byte => raise Fail "Byte equality"
-		    | BTy.T_Short => raise Fail "Short equality"
+		   of BTy.T_Byte => raise Fail "Raw T_Byte equality"
+		    | BTy.T_Short => raise Fail "Raw T_Short equality"
 		    | BTy.T_Int => mkPrim (P.I32Eq, P.I32NEq)
 		    | BTy.T_Long => mkPrim (P.I64Eq, P.I64NEq)
 		    | BTy.T_Float => mkPrim (P.F32Eq, P.F32NEq)
 		    | BTy.T_Double => mkPrim (P.F32Eq, P.F64NEq)
-		    | BTy.T_Vec128 => raise Fail "Vec128 equality"
+		    | BTy.T_Vec128 => raise Fail "Raw T_Vec128 equality"
+		    | BTy.T_Bool => raise Fail "Raw T_Bool equality"
 		  (* end case *))
 	      | BTy.T_Tuple(false, tys) => mkTuple (0, tys)
 	      | _ => raise Fail(BOMTyUtil.toString ty ^ " not an equality type")

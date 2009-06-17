@@ -186,23 +186,25 @@ structure TranslatePrim : sig
 	  ] end
 
     fun cvtPrim (loc, lhs, p, xs, body) = 
-	if not(Controls.get BasicControl.debug)
-	  then BOM.mkStmts ([(lhs, mkPrim(p, xs))], body)
-	  else (case mkPrim(p, xs)
-	      of prim as BOM.E_Prim(Prim.CAS(x, new, old)) =>
-		 BOM.mkStmts (checkGlobalPtr(loc, x, false) @
-			      checkGlobalPtr(loc, new, false) @
-			      checkGlobalPtr(loc, old, false) @
-		              [(lhs, prim)],
-			      body)
-	       | prim as BOM.E_Prim(Prim.BCAS(x, new, old)) =>
-		 BOM.mkStmts (checkGlobalPtr(loc, x, false) @
-			      checkGlobalPtr(loc, new, false) @
-			      checkGlobalPtr(loc, old, false) @
-		              [(lhs, prim)],
-			      body)
-	       | prim => BOM.mkStmts ([(lhs, mkPrim(p, xs))], body)
-	    (* end case *))
+	  if not(Controls.get BasicControl.debug)
+	    then BOM.mkStmts ([(lhs, mkPrim(p, xs))], body)
+	    else (case mkPrim(p, xs)
+	       of prim as BOM.E_Prim(Prim.CAS(x, new, old)) =>
+		    BOM.mkStmts (
+		      checkGlobalPtr(loc, x, false) @
+		      checkGlobalPtr(loc, new, false) @
+		      checkGlobalPtr(loc, old, false) @
+		      [(lhs, prim)],
+		      body)
+		| prim as BOM.E_Prim(Prim.BCAS(x, new, old)) =>
+		    BOM.mkStmts (
+		      checkGlobalPtr(loc, x, false) @
+		      checkGlobalPtr(loc, new, false) @
+		      checkGlobalPtr(loc, old, false) @
+		      [(lhs, prim)],
+		      body)
+		| prim => BOM.mkStmts ([(lhs, mkPrim(p, xs))], body)
+	      (* end case *))
 
   (* convert a variable expression to either an ordinary variable or a nullary constructor *)
     fun cvtVar (x, k) = (case lookupVarOrDCon x
