@@ -13,6 +13,7 @@ _primcode (
 
   typedef exh = cont(exn);
   typedef unit = enum(0);
+  typedef ml_bool = ??
   typedef string_len = int;
   typedef string_data = any;
   typedef ml_string = [string_data, string_len];
@@ -51,9 +52,10 @@ _primcode (
       let res : ml_int = wrap(I32Mod(unwrap(#0(arg)), unwrap(#1(arg))))
         return (res)
   ;
-  define inline @int-gt (arg : [ml_int, ml_int] / _ : exh) : bool =
-      let res : bool = I32Gt(unwrap(#0(arg)), unwrap(#1(arg)))
-        return (res)
+  define inline @int-gt (arg : [ml_int, ml_int] / _ : exh) : ml_bool =
+      if (I32Gt(unwrap(#0(arg)), unwrap(#1(arg))))
+	then return (true)
+	else return (false)
   ;
   define inline @int-gte (arg : [ml_int, ml_int] / _ : exh) : bool =
       let res : bool = I32Gte(unwrap(#0(arg)), unwrap(#1(arg)))
