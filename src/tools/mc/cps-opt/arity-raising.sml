@@ -393,6 +393,18 @@ structure ArityRaising : sig
     fun getFB f = getFn f
     end
 
+    (* property mapping from a variable to its defining function. This is used
+     * during the flattening pass over the captured variables of a function to
+     * see if there is a lexically equivalent shorter name for the same
+     * access path.
+     *)
+    local
+        val {setFn, getFn, ...} = CV.newProp (fn f => (NONE : C.var option))
+    in
+    fun setParent (f,p) = setFn (f, SOME(p))
+    fun getParent f = getFn f
+    end
+
     val escaping = ref ([] : C.var list)
 
   (* the first part of the analysis is to gather all of the candidate functions and
@@ -433,9 +445,11 @@ structure ArityRaising : sig
 		      in
 			f (0, params, ParamMap.empty, PMap.empty)
 		      end
+                val _ = List.app (fn p => setParent (p, f)) params
 	      (* analyse the body of the candidate function *)
 		fun doExp (vmap, pmap, C.Exp(ppt, t)) = (case t
 		       of (C.Let([x], C.Select(i, y), e)) => (
+                            setParent (x, f) ;
 			    case ParamMap.find(vmap, VAR y)
 			     of NONE => doExp(vmap, pmap, e)
 			      | SOME p => let
@@ -568,6 +582,7 @@ structure ArityRaising : sig
     fun setUseful f = setFn (f, true)
     fun getUseful f = getFn f
     end
+
     
   (* property for whether or not we've processed this function yet
    * the int corresponds to the round number, since we iterate scanning
@@ -850,21 +865,37 @@ structure ArityRaising : sig
           and shouldSkipUseless (v) = if getUseful v
 		then false
 		else (ST.tick (cntUselessElim); true)
-          and findAlias (v, encl) = if not(isCandidate encl)
-            then NONE
-            else let
-                    val {vmap,sign,...} = getInfo encl
-                in
-                    case ParamMap.find (vmap, VAR (v))
-                     of SOME(path) => let
-                            fun findInSign (n, s::sign) =
-                                if samePath(path, listToPath s) then SOME(n) else findInSign(n+1,sign)
-                              | findInSign (n, []) = NONE
-                        in
-                            findInSign(0, sign)
-                        end
-                      | NONE => NONE
-                end
+          and findAlias (v, encl, i, y) =
+              if not(isCandidate encl)
+              then NONE
+              else let
+                      fun findInSign (n, s::sign, path, params) =
+                          if samePath(path, listToPath s) then SOME(List.nth (params, n)) else findInSign(n+1,sign, path, params)
+                        | findInSign (n, [], _, _) = NONE
+                      val {vmap,sign, flatParams=SOME(newParams), ...} = getInfo encl
+                  in
+                      case ParamMap.find (vmap, VAR (v))
+                       of SOME(path) => findInSign(0, sign, path, newParams)
+                        | NONE => (* look up path in defining function of selectee *)
+                          (case getParent y
+                            of SOME (p) =>
+                               if not(isCandidate p)
+                               then NONE
+                               else let
+                                       val {vmap, pmap, sign, flatParams=SOME(newParams),...} = getInfo p
+                                   in
+                                       case ParamMap.find (vmap, VAR (y))
+                                        of SOME(path) => let
+                                               val fullPath = SEL(i, path)
+                                           in
+                                               findInSign(0, sign, fullPath, newParams)
+                                           end
+                                         | NONE => NONE
+                                       
+                                   end
+                             | NONE => NONE
+                          (* end case *))
+                  end
 	  and walkExp(encl, newParams, C.Exp(ppt,e)) = (case e
 		 of (C.Let([v], rhs, e)) => (
 		    (* If v has been promoted to a param or its
@@ -874,12 +905,15 @@ structure ArityRaising : sig
 		      orelse useCountOfVar (encl, v) = 0
 		      orelse shouldSkipUseless (v)
 			then walkExp (encl, newParams, e)
-			else (
-                            case findAlias (v, encl)
-                             of SOME(n) => C.mkLet ([v], C.Var ([(List.nth (newParams, n))]),
-                                                    walkExp (encl, newParams, e))
-                              | NONE => C.mkLet([v], rhs, walkExp (encl, newParams, e))
-                            (* end case *)))                            
+			else (case rhs
+                               of C.Select(i, y) => (
+                                  case findAlias (v, encl, i, y)
+                                   of SOME(v') => C.mkLet ([v], C.Var ([v']),
+                                                           walkExp (encl, newParams, e))
+                                    | NONE => C.mkLet([v], rhs, walkExp (encl, newParams, e))
+                                  (* end case *))
+                                | _ => C.mkLet([v], rhs, walkExp (encl, newParams, e))
+                             (* end case *)))
 		  | (C.Let(vars, rhs, e)) =>
 		      if List.exists (fn v => List.exists (fn x => CV.same(x, v)) newParams) vars
 			then raise Fail ("Can't lift variable from multi-bind on LHS of let")
