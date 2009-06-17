@@ -748,6 +748,17 @@ structure ArityRaising : sig
 
   (***** Flattening *****)
 
+  (* property for tracking whether a function was created during flattening.
+   * this is important because we don't re-run CFA, so isEscaping is invalid
+   * for it (says true even though it's false)
+   *)
+    local
+      val {setFn, getFn, peekFn, ...} = CV.newProp (fn f => false)
+    in
+    fun setFlat f = setFn (f, true)
+    fun isFlat f = getFn f
+    end
+
     (* walk down the tree and:
      * - turn candidate functions into a specialized version and the
      * original, which calls the specialized with the extra arguments
@@ -963,6 +974,7 @@ structure ArityRaising : sig
                   val newRets = List.filter getUseful rets
 		  val newType = CTy.T_Fun (List.map CV.typeOf newParams, List.map CV.typeOf newRets)
 		  val flat = CV.new ("flat"^CV.nameOf f, newType)
+                  val _ = setFlat (flat)
                   val _ = if getUseful f then setUseful flat else ()
 		  val _ = setInfo (f, vmap, pmap, params, rets, SOME flat, SOME newParams)
 		  val body = walkExp (f, newParams, body)
@@ -977,7 +989,9 @@ structure ArityRaising : sig
 		  val stubLambda = C.mkLambda (C.FB{f=f, params=paramCopy, rets=retsCopy, body=stub})
 		  val lambda = C.mkLambda(C.FB{f=flat, params=newParams, rets=newRets, body=body})
 		  in
-                    [lambda, stubLambda]
+                        setFB (f, stubLambda);
+                        setFB (flat, lambda);
+                        [lambda, stubLambda]
 		  end
 	in
 	  C.MODULE{
@@ -988,6 +1002,66 @@ structure ArityRaising : sig
 		})
 	    }
 	end
+    (*
+     * Flatten+useless elim can leave around useCnt=0 params on flattened functions.
+     * This removes them, cleans up the types, and cleans up the call sites.
+     *)
+    fun cleanupParams (C.MODULE{name,externs,body=(C.FB{f=main,params=modParams,rets=modRets,body=modBody})}) = let
+        fun cleanupExp (exp as C.Exp(ppt, e)) = (
+            case e
+             of C.Let (vars, rhs, e) => C.mkLet (vars, rhs, cleanupExp e)
+              | C.Fun (lambdas, body) => C.mkFun(List.map cleanupLambda lambdas, cleanupExp body)
+              | C.Cont (f, body) => C.mkCont (cleanupLambda f, cleanupExp body)
+              | C.If (v, e1, e2) => C.mkIf (v, cleanupExp e1, cleanupExp e2)
+              | C.Switch (v, cases, body) => C.mkSwitch(v, List.map (fn (tag,e) => (tag, cleanupExp e))
+                                                                    cases, Option.map cleanupExp body)
+              | C.Apply (f, args, retArgs) => (
+                if not(isFlat f) 
+                then exp
+                else case getFB f
+                      of SOME(C.FB{params,rets,...}) =>
+                         C.mkApply(f,
+                                   ListPair.foldr (fn (a,b,rr) => if CV.useCount a > 0 then b::rr
+                                                                  else (Census.decUseCnt b ; rr))
+                                   [] (params, args),
+                                   ListPair.foldr (fn (a,b,rr) => if CV.useCount a > 0 then b::rr
+                                                                  else (Census.decUseCnt b ; rr))
+                                   [] (rets, retArgs))
+                                   
+                       | NONE => exp
+                )
+              | C.Throw (k, args) => (
+                if not (isFlat k) 
+                then exp
+                else case getFB k
+                      of SOME(C.FB{params,...}) => 
+                         C.mkThrow(k,
+                                   ListPair.foldr (fn (a,b,rr) => if CV.useCount a > 0 then b::rr
+                                                                  else (Census.decUseCnt b ; rr))
+                                                  [] (params, args))
+                       | NONE => exp
+                (* end case *)))
+        and cleanupLambda (lambda as C.FB{f, params, rets, body}) =
+            if not (isFlat f) 
+            then C.mkLambda(C.FB{f=f,params=params,rets=rets,body=cleanupExp body})
+            else let
+                    val params' = List.filter (fn p => (CV.useCount p) > 0) params
+                    val rets' = List.filter (fn p => (CV.useCount p) > 0) rets
+		    val newType = CTy.T_Fun (List.map CV.typeOf params', List.map CV.typeOf rets')
+                    val _ = CV.setType (f, newType)
+                in
+                    
+                    C.mkLambda(C.FB{f=f,params=params',rets=rets',body=cleanupExp body})
+                end
+    in
+        C.MODULE{
+	name=name, externs=externs,
+	body = C.mkLambda(C.FB{
+                          f=main,params=modParams,rets=modRets,
+                          body= cleanupExp (modBody)
+		         })
+	}
+    end
 
   (***** Transformation *****)
 
@@ -1002,7 +1076,7 @@ structure ArityRaising : sig
 		else ();
 (* FIXME: should mainain census counts! *)
 	      Census.census m';
-	      m'
+              cleanupParams m'
 	    end
 	  else m
 
