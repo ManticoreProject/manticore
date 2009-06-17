@@ -68,9 +68,9 @@ structure BOMTy =
 					(* is represented as heap-allocated tag/value pair *)
       | ExnRep				(* exception constructors *)
 
-    val unitTy = T_Enum(0w0)
+    val unitTy = T_Enum 0w0
 
-    val boolTy = T_Enum(0w1)
+    val boolTy = T_Raw RawTypes.T_Bool
 
     val exnTyc = AbsTyc{
 	    name = "exn",
