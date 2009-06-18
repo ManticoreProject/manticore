@@ -450,10 +450,10 @@ structure CheckBOM : sig
 		  ListPair.appEq chkParamArg (paramTys, args);
 		(* check polymorphic array updates for missing promotions *)
 		  case p
-		   of Prim.ArrayStore(a, i, x) => if checkAssign(BTy.T_Any, x)
+		   of Prim.ArrStore(a, i, x) => if checkAssign(BTy.T_Any, x)
 			then ()
 			else warning[
-			    "possible unpromoted update in ArrayStore(", v2s a, ",",
+			    "possible unpromoted update in ArrStore(", v2s a, ",",
 			    v2s i, ",", v2s x, ")\n"
 			  ]
 		    | Prim.CAS(loc, old, new) => if checkAssign(BV.typeOf new, new)

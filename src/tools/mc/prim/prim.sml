@@ -36,6 +36,7 @@ structure Prim =
       | I64Mul of 'var * 'var
       | I64Div of 'var * 'var
       | I64Mod of 'var * 'var
+      | I64LSh of 'var * 'var
       | I64Neg of 'var
       | I64Eq of 'var * 'var
       | I64NEq of 'var * 'var
@@ -43,6 +44,9 @@ structure Prim =
       | I64Lte of 'var * 'var
       | I64Gt of 'var * 'var
       | I64Gte of 'var * 'var
+      | U64Mul of 'var * 'var
+      | U64Div of 'var * 'var
+      | U64Lt of 'var * 'var
       | F32Add of 'var * 'var
       | F32Sub of 'var * 'var
       | F32Mul of 'var * 'var
@@ -77,18 +81,41 @@ structure Prim =
       | I64ToF32 of 'var		(* long -> float conversion *)
       | I64ToF64 of 'var		(* long -> double conversion *)
       | F64ToI32 of 'var                (* double -> int conversion *)
+    (* address arithmetic *)
+      | AdrAddI64 of 'var * 'var
+      | AdrSubI64 of 'var * 'var
+    (* loads from addresses *)
+      | AdrLoadI8 of 'var
+      | AdrLoadU8 of 'var
+      | AdrLoadI16 of 'var
+      | AdrLoadU16 of 'var
+      | AdrLoadI32 of 'var
+      | AdrLoadI64 of 'var
+      | AdrLoadF32 of 'var
+      | AdrLoadF64 of 'var
+      | AdrLoadAdr of 'var
+      | AdrLoad of 'var                   (* load a uniform value from the given address *)
+    (* stores to addresses *)
+      | AdrStoreI8 of 'var * 'var
+      | AdrStoreI16 of 'var * 'var
+      | AdrStoreI32 of 'var * 'var
+      | AdrStoreI64 of 'var * 'var
+      | AdrStoreF32 of 'var * 'var
+      | AdrStoreF64 of 'var * 'var
+      | AdrStoreAdr of 'var * 'var
+      | AdrStore of 'var * 'var           (* store a uniform value at the given address *)
     (* array load operations *)
-      | ArrayLoadI32 of 'var * 'var
-      | ArrayLoadI64 of 'var * 'var
-      | ArrayLoadF32 of 'var * 'var
-      | ArrayLoadF64 of 'var * 'var
-      | ArrayLoad of 'var * 'var	(* load a uniform value *)
+      | ArrLoadI32 of 'var * 'var
+      | ArrLoadI64 of 'var * 'var
+      | ArrLoadF32 of 'var * 'var
+      | ArrLoadF64 of 'var * 'var
+      | ArrLoad of 'var * 'var	(* load a uniform value *)
     (* array store operations *)
-      | ArrayStoreI32 of 'var * 'var * 'var
-      | ArrayStoreI64 of 'var * 'var * 'var
-      | ArrayStoreF32 of 'var * 'var * 'var
-      | ArrayStoreF64 of 'var * 'var * 'var
-      | ArrayStore of 'var * 'var * 'var (* store a uniform value *)
+      | ArrStoreI32 of 'var * 'var * 'var
+      | ArrStoreI64 of 'var * 'var * 'var
+      | ArrStoreF32 of 'var * 'var * 'var
+      | ArrStoreF64 of 'var * 'var * 'var
+      | ArrStore of 'var * 'var * 'var (* store a uniform value *)
     (* atomic operations *)
       | I32FetchAndAdd of 'var * 'var
       | I64FetchAndAdd of 'var * 'var

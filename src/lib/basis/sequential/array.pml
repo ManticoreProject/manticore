@@ -48,7 +48,7 @@ structure Array64 =
 	 (* since the array is in the global heap, x must also be in the global heap *)
 	  let x : any = (any)x
 	  let x : any = promote(x)
-	  do ArrayStore(data, i, x)
+	  do ArrStore(data, i, x)
 	  return()
 	;
 
@@ -57,7 +57,7 @@ structure Array64 =
 	  do assert(I32Gte(i,0))
 	  do assert(I32Lt(i,len))
 	  let data : any = SELECT(DATA_OFF, arr)
-	  let x : any = ArrayLoad(data, i)
+	  let x : any = ArrLoad(data, i)
 	  return (x)
 	;
 

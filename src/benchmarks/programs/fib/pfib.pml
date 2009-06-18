@@ -42,6 +42,7 @@ fun bench () = let
       Print.print(Long.toString t)
     end
 
-val workStealing = MultiprogrammedWorkStealing.workGroup()
+val _ = bench()
+(*val workStealing = MultiprogrammedWorkStealing.workGroup()
 val _ = ImplicitThread.runWithGroup(workStealing, bench)
-
+*)

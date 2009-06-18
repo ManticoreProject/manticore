@@ -13,7 +13,7 @@ structure PrimTypes =
 
     (* mutable 1-D arrays *)
       typedef array = [
-                any,                  (* array data *)
+                ![any],               (* array data *)
                 int                   (* number of elements in the array *)
               ];
 
