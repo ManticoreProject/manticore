@@ -20,11 +20,8 @@ val _ = println "xsF"
 val _ = println ("xsF " ^ (if FR.isBalanced xsF then "is" else "is not") ^ " balanced")
 *)
 
-fun sched susp = ImplicitThread.runWithGroup (MultiprogrammedWorkStealing.workGroup (), susp)
-
 (* wrap : (unit -> 'a) -> unit -> 'a *)
-fun sched thunk = (fn () =>
- (ImplicitThread.runWithGroup (MultiprogrammedWorkStealing.workGroup (), thunk)))
+fun sched thunk = thunk()
 
 val (resP, tP) = time (sched (fn _ => Scan.plusScan_float xsP))
 
