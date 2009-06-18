@@ -292,11 +292,11 @@ structure TranslatePTup  : sig
 		      | mkThunks (e_i :: es_1toM, cancelablesToTheRight) =
 			let
 			    val thunk_i = BV.new ("thunk_i", BTy.T_Fun([], [BTy.exhTy], BOMUtil.typeOfExp e_i))
-			    val (exh, _) = E.newHandler env
-			    val exh' = freshExh (exh, fn e => mkCancelAll (exh, cancelablesToTheRight, e))
-			    val e_i' = BOMUtil.substExp (BOMUtil.singleton (exh, varOfLambda exh'), e_i)
+			    val (exh', _) = E.newHandler env
+			    val exh'' = freshExh (exh', fn e => mkCancelAll (exh', cancelablesToTheRight, e))
+			    val e_i' = BOMUtil.substExp (BOMUtil.singleton (exh, varOfLambda exh''), e_i)
 			in
-			    B.mkLambda {f = thunk_i, params = [], exh = [exh], body = B.mkCont (exh', e_i')} ::
+			    B.mkLambda {f = thunk_i, params = [], exh = [exh'], body = B.mkCont (exh'', e_i')} ::
 			    mkThunks (es_1toM, take1 cancelablesToTheRight)
 			end
 		in
