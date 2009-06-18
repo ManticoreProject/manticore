@@ -116,7 +116,9 @@ functor PrimTyFn (Ty : sig
 	    | P.I64ToF32 _ => f32Ty
 	    | P.I64ToF64 _ => f64Ty
 	    | P.F64ToI32 _ => i32Ty
+	    | P.AdrAddI32 _ => Ty.addr anyTy
 	    | P.AdrAddI64 _ => Ty.addr anyTy
+	    | P.AdrSubI32 _ => Ty.addr anyTy
 	    | P.AdrSubI64 _ => Ty.addr anyTy
 	    | P.AdrLoadI8 _ => i8Ty
 	    | P.AdrLoadU8 _ => i8Ty
@@ -228,7 +230,9 @@ functor PrimTyFn (Ty : sig
 	    | P.I64ToF32 _ => ([i64Ty], f32Ty)
 	    | P.I64ToF64 _ => ([i64Ty], f64Ty)
 	    | P.F64ToI32 _ => ([f64Ty], i32Ty)
+	    | P.AdrAddI32 _ => ([Ty.addr anyTy, i32Ty], Ty.addr anyTy)
 	    | P.AdrAddI64 _ => ([Ty.addr anyTy, i64Ty], Ty.addr anyTy)
+	    | P.AdrSubI32 _ => ([Ty.addr anyTy, i32Ty], Ty.addr anyTy)
 	    | P.AdrSubI64 _ => ([Ty.addr anyTy, i64Ty], Ty.addr anyTy)
 	    | P.AdrLoadI8 _ => ([Ty.addr i8Ty], i8Ty)
 	    | P.AdrLoadU8 _ => ([Ty.addr i8Ty], i8Ty)
