@@ -15,8 +15,8 @@ structure GenLogEventsDef : GENERATOR =
 	  fun prDef (name, id, desc) = prl [
 		  "#define ", name, " ", Int.toString id, " /* ", desc, " */\n"
 		]
-	  fun genDef ({id = 0, name, desc, ...} : LoadFile.event) = prDef (name, 0, desc)
-	    | genDef ({id, name, desc, ...}) = prDef (name^"Evt", id, desc)
+	  fun genDef (LoadFile.EVT{id = 0, name, desc, ...}) = prDef (name, 0, desc)
+	    | genDef (LoadFile.EVT{id, name, desc, ...}) = prDef (name^"Evt", id, desc)
 	  in [
 	    ("LOG-EVENTS", fn () => LoadFile.applyToEvents genDef logDesc)
 	  ] end

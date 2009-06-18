@@ -6,64 +6,44 @@
 
 structure LoadFile : sig
 
-    datatype event_kind = EVENT | START | END | SRC | DST
-
-    type event = {
-	name : string,
-	id : int,
-	args : EventSig.arg_desc list,
-	sign : string,
-	kind : event_kind,
-	desc : string
+    datatype event = EVT of {
+	name : string,			(* event name *)
+	id : int,			(* unique integer ID *)
+	args : EventSig.arg_desc list,	(* arguments *)
+	sign : string,			(* signature *)
+	genId : bool,			(* the event generates a dynamic ID *)
+	desc : string			(* description *)
       }
-
-    datatype event_desc
-      = GRP of {
-	  name : string,
-	  events : event_desc list
-	}
-      | EVT of event
 
     type log_file_desc = {
 	date : string,
 	version : {major : int, minor : int, patch : int},
-	events : event_desc list
+	events : event list
       }
 
     val loadFile : string -> log_file_desc
 
   (* helper functions *)
     val applyToEvents : (event -> unit) -> log_file_desc -> unit
-    val apply : (event_desc -> unit) -> log_file_desc -> unit
     val foldEvents : ((event * 'a) -> 'a) -> 'a -> log_file_desc -> 'a
 
   end = struct
 
     structure J = JSON
 
-    datatype event_kind = EVENT | START | END | SRC | DST
-
-    type event = {
+    datatype event = EVT of {
 	name : string,
 	id : int,
 	args : EventSig.arg_desc list,
 	sign : string,
-	kind : event_kind,
+	genId : bool,
 	desc : string
       }
-
-    datatype event_desc
-      = GRP of {
-	  name : string,
-	  events : event_desc list
-	}
-      | EVT of event
-
 
     type log_file_desc = {
 	date : string,
 	version : {major : int, minor : int, patch : int},
-	events : event_desc list
+	events : event list
       }
 
     fun findField (J.OBJECT fields) = let
@@ -150,70 +130,33 @@ structure LoadFile : sig
 		  | _ => raise Fail "bogus version"
 		(* end case *))
 	  val nextId = ref 0
-	  fun cvtEventOrGroup obj = let
+	  fun cvtEvent obj = let
 		val find = lookupField (findField obj)
 		val name = findString find "name"
-		val kind = findString find "kind"
-		fun cvtEvent kind = let
-		      val args = let
-			    val (_, args) = foldl cvtArg (EventSig.argStart, []) (find "args")
-			    in
-			      List.rev args
-			    end
-		      val id = !nextId
+		val args = let
+		      val (_, args) = foldl cvtArg (EventSig.argStart, []) (find "args")
 		      in
-			nextId := id + 1;
-			EVT{
-			    name = name, kind = kind, id = id, args = args,
-			    sign = EventSig.signOf args, desc = findString find "desc"
-			  }
+			List.rev args
 		      end
+		val id = !nextId
+		val genId = List.exists (fn {ty=EventSig.NEW_ID, ...} => true | _ => false) args
 		in
-		  case findString find "kind"
-		   of "GROUP" => GRP{
-			  name = name,
-			  events = cvtArray cvtEventOrGroup (find "events")
-			}
-		    | "EVENT" => cvtEvent EVENT
-		    | "START" => cvtEvent START
-		    | "END" => cvtEvent END
-		    | "SRC" => cvtEvent SRC
-		    | "DST" => cvtEvent DST
-		    | s => raise Fail(concat["unknown event kind \"", String.toString s, "\""])
-		  (* end case *)
+		  nextId := id + 1;
+		  EVT{
+		      name = name, genId = genId, id = id, args = args,
+		      sign = EventSig.signOf args, desc = findString find "desc"
+		    }
 		end
 	  in {
 	    date = findString find "date",
 	    version = version,
-	    events = cvtArray cvtEventOrGroup (find "events")
+	    events = cvtArray cvtEvent (find "events")
 	  } end
 
     fun loadFile file = cvt (JSONParser.parseFile file)
 
   (* helper functions *)
-    fun applyToEvents f {date, version, events} = let
-	  fun appf (GRP{events, ...}) = List.app appf events
-	    | appf (EVT ev) = f ev
-	  in
-	    List.app appf events
-	  end
-
-    fun apply f {date, version, events} = let
-	  fun appf ed = (
-		f ed;
-		case ed
-		 of GRP{events, ...} => List.app appf events
-		  | _ => ()
-		(* end case *))
-	  in
-	    List.app appf events
-	  end
-
-    fun foldEvents f init {date, version, events} = let
-	  fun foldf (GRP{events, ...}, acc) = List.foldl foldf acc events
-	    | foldf (EVT evt, acc) = f(evt, acc)
-	  in
-	    List.foldl foldf init events
-	  end
+    fun applyToEvents f {date, version, events} = List.app f events
+    fun foldEvents f init {date, version, events} = List.foldl f init events
 
   end
