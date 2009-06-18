@@ -71,11 +71,11 @@ structure TranslatePTup  : sig
      *)
     fun freshExh (exh, body) =
 	let
-	    val exhV = BV.new ("exh", BTy.exhTy)
+	    val exh' = BV.new ("exh", BTy.exhTy)
 	    val exn = BV.new ("exn", BTy.exnTy)
 	in	    
-	    B.mkLambda {f = exhV, params = [exn], exh = [], body = 
-		      body (B.mkThrow (exhV, [exn]))}
+	    B.mkLambda {f = exh', params = [exn], exh = [], body = 
+		      body (B.mkThrow (exh, [exn]))}
 	end
 
     fun take1 [] = []
@@ -289,7 +289,7 @@ structure TranslatePTup  : sig
 	    val thunks_1toM = 
 		let
 		    fun mkThunks ([], _) = []
-		      | mkThunks (e_i :: e_1toM, cancelablesToTheRight) =
+		      | mkThunks (e_i :: es_1toM, cancelablesToTheRight) =
 			let
 			    val thunk_i = BV.new ("thunk_i", BTy.T_Fun([], [BTy.exhTy], BOMUtil.typeOfExp e_i))
 			    val (exh, _) = E.newHandler env
@@ -312,14 +312,14 @@ structure TranslatePTup  : sig
 		    val t = BV.new ("t", BTy.T_Any)
 		    val isNil = BV.new ("isNil", BTy.boolTy)
 		    val nilV = BV.new ("nilV", BTy.T_Any)
-		    val waitOn_i = BV.new ("waitOn" ^  Int.toString i, BTy.T_Fun ([intTy], [BTy.exhTy], []))
+		    val waitOn_i = BV.new ("waitOn" ^  Int.toString i, BTy.T_Fun ([], [], []))
 		in
 		  B.mkLambda {f = waitOn_i, params = [], exh = [], body = 
                       B.mkStmts ([([r], B.E_Promote r0),
 				  ([t], B.E_Select (i, r)),
 				  ([nilV], nilVal),
 				  ([isNil], B.E_Prim (Prim.Equal (t, nilV)))],
-				 B.mkIf (t,
+				 B.mkIf (isNil,
 					 B.mkApply (waitOn_i, [], []),
 					 B.mkRet []))} ::
 		  mkWaitOns (i + 1, ty_1toM)
@@ -376,7 +376,7 @@ structure TranslatePTup  : sig
 			    B.mkLet ([v_i], B.mkApply (thunk_i, [], [exh]), store (i, v_i, r, exh))
 			end
 
-		    fun mkSlowClone (0, [], [], [_]) = eNext
+		    fun mkSlowClone (0, [], [], []) = eNext
 		      | mkSlowClone (i, thunk_i :: thunks, slowCloneThread :: slowCloneThreads, waitOns) =
 			let
 			    val slowClone_i = BV.new ("slowClone_" ^ Int.toString i, BTy.T_Cont [BTy.unitTy])

@@ -246,7 +246,7 @@ structure Translate : sig
 	    | AST.PTupleExp exps => let
 		val exps' = List.map (fn e => trExpToExp (env, e)) exps
 	        in 
-		  EXP(TranslatePTup.tr{supportsExceptions=false, env=env, es=exps'})
+		  EXP(TranslatePTup.tr{supportsExceptions=true, env=env, es=exps'})
 	        end
 	    | AST.PArrayExp(exps, ty) => raise Fail "unexpected PArrayExp"
 	    | AST.PCompExp _ => raise Fail "unexpected PCompExp"
