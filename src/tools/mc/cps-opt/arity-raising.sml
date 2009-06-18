@@ -447,47 +447,55 @@ structure ArityRaising : sig
 		      end
                 val _ = List.app (fn p => setParent (p, f)) params
 	      (* analyse the body of the candidate function *)
-		fun doExp (vmap, pmap, C.Exp(ppt, t)) = (case t
+		fun doExp (vmap, pmap, C.Exp(ppt, t), carefully) = (case t
 		       of (C.Let([x], C.Select(i, y), e)) => (
                             setParent (x, f) ;
 			    case ParamMap.find(vmap, VAR y)
-			     of NONE => doExp(vmap, pmap, e)
+			     of NONE => doExp(vmap, pmap, e, carefully)
 			      | SOME p => let
 				  val q = SEL(i, p)
-				  val vmap = ParamMap.insert(vmap, VAR x, q)
+				  val vmap' = ParamMap.insert(vmap, VAR x, q)
 				(* decrement p's count *)
 				  val cnt = lookupPath(pmap, p)
 				  val _ = addToRef (cnt, ~1)
 				(* either add q to the path map or update its count *)
-				  val pmap = (case PMap.find(pmap, q)
-					 of NONE => PMap.insert(pmap, q, ref(CV.useCount x))
+				  val (vmap, pmap) = (case PMap.find(pmap, q)
+					 of NONE => (
+                                            if carefully
+                                            then (addToRef (cnt, 1) ; (vmap, pmap))
+                                            else (vmap', PMap.insert(pmap, q, ref(CV.useCount x))))
 					  | SOME cnt => (addToRef(cnt, CV.useCount x);
-                                                         pmap)
+                                                         (vmap', pmap))
 					(* end case *))
 				  in
-				    doExp (vmap, pmap, e)
+				    doExp (vmap, pmap, e, carefully)
 				  end)
-			| (C.Let(_, _, e)) => doExp (vmap, pmap, e)
+			| (C.Let(_, _, e)) => doExp (vmap, pmap, e, carefully)
 			| (C.Fun(fbs, e)) => (
 			    analyseLambdas fbs;
-			    doExp (vmap, pmap, e))
+			    doExp (vmap, pmap, e, carefully))
 			| (C.Cont(fb, e)) => (
 			    analyseLambdas [fb];
-			    doExp (vmap, pmap, e))
+			    doExp (vmap, pmap, e, carefully))
 			| (C.If(x, e1, e2)) => let
 			  (* Conditional code: can't add guarded variable accesses
 			   * i.e., can end up adding a param for y that was within
 			   * an 'if not(null x) then let y = #1(x) else 2'
 			   *)
-			    val _ = walkExp e1
-			    val _ = walkExp e2
+			    val (vmap, pmap) = doExp (vmap, pmap, e1, true)
+			    val (vmap, pmap) = doExp (vmap, pmap, e2, true)
 			    in
                               (vmap, pmap)
 			    end
-			| (C.Switch(x, cases, dflt)) => (
-			    List.app (fn (_, e) => walkExp e) cases;
-			    Option.app walkExp dflt;
-			    (vmap, pmap))
+			| (C.Switch(x, cases, dflt)) => let
+			    val (vmap, pmap) = (case dflt
+				   of SOME e => doExp(vmap, pmap, e, true)
+				    | NONE => (vmap, pmap)
+				  (* end case *))
+			    fun doCase ((_, e), (vmap, pmap)) = doExp(vmap, pmap, e, true)
+			    in
+			      List.foldl doCase (vmap, pmap) cases
+			    end
 			| (C.Apply(g, args, _)) => (
 			    addCallSite (SOME f, ppt, g, args);
 			    (vmap, pmap))
@@ -495,7 +503,7 @@ structure ArityRaising : sig
 			    addCallSite (SOME f, ppt, k, args);
 			    (vmap, pmap))
 		      (* end case *))
-		val (vmap, pmap) = doExp(vmap, pmap, body)
+		val (vmap, pmap) = doExp(vmap, pmap, body, false)
 	      (* the "argument shape" of f is a list of paths such that
 	       *  1) no path is derived from another in the list,
 	       *  2) the use counts of the paths are > 0
