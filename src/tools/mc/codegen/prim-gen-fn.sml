@@ -49,38 +49,38 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 	  val gprBind = BE.VarDef.gprBind varDefTbl
 	  fun gen p = (case p
 	      (* array store operations *)
-	       of P.ArrayStoreI32 (base, i, x) => let
+	       of P.ArrStoreI32 (base, i, x) => let
 		    val addr = arrayOffset {base=defOf base, i=defOf i, wordSzB=4}
 		    in
 		      BE.VarDef.flushLoads varDefTbl @
 		      [T.STORE(i32Ty, addr, defOf x, ManticoreRegion.memory)]
 		   end
-		| P.ArrayStoreI64(base, i, x) => let
+		| P.ArrStoreI64(base, i, x) => let
 		    val addr = arrayOffset {base=defOf base, i=defOf i, wordSzB=8}
 		    in
 		      BE.VarDef.flushLoads varDefTbl @
 		      [T.STORE(i64Ty, addr, defOf x, ManticoreRegion.memory)]
 		    end
-		| P.ArrayStoreF32 (base, i, x) => let
+		| P.ArrStoreF32 (base, i, x) => let
 		    val addr = arrayOffset {base=defOf base, i=defOf i, wordSzB=4}
 		    in
 		      BE.VarDef.flushLoads varDefTbl @
 		      [T.FSTORE(f32Ty, addr, fdefOf x, ManticoreRegion.memory)]
 		    end
-		| P.ArrayStoreF64 (base, i, x) => let
+		| P.ArrStoreF64 (base, i, x) => let
 		    val addr = arrayOffset {base=defOf base, i=defOf i, wordSzB=8}
 		    in
 		      BE.VarDef.flushLoads varDefTbl @
 		      [T.FSTORE(f64Ty, addr, fdefOf x, ManticoreRegion.memory)]
 		   end
-		| P.ArrayStore(base, i, x) => let
+		| P.ArrStore(base, i, x) => let
 		    val addr = arrayOffset {base=defOf base, i=defOf i, wordSzB=8}
 		    in
 		      BE.VarDef.flushLoads varDefTbl @
 		      [T.STORE(anyTy, addr, defOf x, ManticoreRegion.memory)]
 		    end
              (* address stores *)
-		| P.AddrStoreI8(addr, x) => let
+		| P.AdrStoreI8(addr, x) => let
 		  (* note that we bind the definitions of the address and source before calling flushLoads. this
 		   * trick avoids flushing those definitions and gives much better code.
 		   *)
@@ -89,7 +89,7 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		      BE.VarDef.flushLoads varDefTbl @
 		      [T.STORE(i8Ty, addr', x', ManticoreRegion.memory)]
 		    end
-		| P.AddrStoreI16(addr, x) => let
+		| P.AdrStoreI16(addr, x) => let
 		  (* note that we bind the definitions of the address and source before calling flushLoads. this
 		   * trick avoids flushing those definitions and gives much better code.
 		   *)
@@ -98,7 +98,7 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		      BE.VarDef.flushLoads varDefTbl @
 		      [T.STORE(i16Ty, addr', x', ManticoreRegion.memory)]
 		    end
-		| P.AddrStoreI32(addr, x) => let
+		| P.AdrStoreI32(addr, x) => let
 		  (* note that we bind the definitions of the address and source before calling flushLoads. this
 		   * trick avoids flushing those definitions and gives much better code.
 		   *)
@@ -107,7 +107,7 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		      BE.VarDef.flushLoads varDefTbl @
 		      [T.STORE(i32Ty, addr', x', ManticoreRegion.memory)]
 		    end
-		| P.AddrStoreI64(addr, x) => let
+		| P.AdrStoreI64(addr, x) => let
 		  (* note that we bind the definitions of the address and source before calling flushLoads. this
 		   * trick avoids flushing those definitions and gives much better code.
 		   *)
@@ -116,7 +116,7 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		      BE.VarDef.flushLoads varDefTbl @
 		      [T.STORE(i64Ty, addr', x', ManticoreRegion.memory)]
 		    end
-		| P.AddrStoreF32(addr, x) => let
+		| P.AdrStoreF32(addr, x) => let
 		  (* note that we bind the definitions of the address and source before calling flushLoads. this
 		   * trick avoids flushing those definitions and gives much better code.
 		   *)
@@ -125,7 +125,7 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		      BE.VarDef.flushLoads varDefTbl @
 		      [T.FSTORE(f32Ty, addr', x', ManticoreRegion.memory)]
 		    end
-		| P.AddrStoreF64(addr, x) => let
+		| P.AdrStoreF64(addr, x) => let
 		  (* note that we bind the definitions of the address and source before calling flushLoads. this
 		   * trick avoids flushing those definitions and gives much better code.
 		   *)
@@ -134,7 +134,16 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		      BE.VarDef.flushLoads varDefTbl @
 		      [T.FSTORE(f64Ty, addr', x', ManticoreRegion.memory)]
 		    end
-		| P.AddrStore(addr, x) => let
+		| P.AdrStoreAdr(addr, x) => let
+		  (* note that we bind the definitions of the address and source before calling flushLoads. this
+		   * trick avoids flushing those definitions and gives much better code.
+		   *)
+		    val addr' = defOf addr and x' = defOf x
+		    in
+		      BE.VarDef.flushLoads varDefTbl @
+		      [T.STORE(anyTy, addr', x', ManticoreRegion.memory)]
+		    end
+		| P.AdrStore(addr, x) => let
 		  (* note that we bind the definitions of the address and source before calling flushLoads. this
 		   * trick avoids flushing those definitions and gives much better code.
 		   *)
@@ -287,25 +296,25 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		    | P.I64ToF64 x => fbind (f64Ty, v, T.CVTI2F(f64Ty, i64Ty, defOf x))
 		    | P.F64ToI32 x => gprBind (i32Ty, v, T.CVTF2I(i32Ty, T.Basis.TO_NEAREST, f64Ty, fdefOf x))
 		  (* address arithmetic *)
-		    | P.I64ToAddr x => gprBind (i64Ty, v, defOf x)
-		    | P.AddrAdd a => genArith2 (anyTy, T.ADD, a)
-		    | P.AddrSub a => genArith2 (anyTy, T.SUB, a)
+		    | P.AdrAddI64 a => genArith2 (anyTy, T.ADD, a)
+		    | P.AdrSubI64 a => genArith2 (anyTy, T.SUB, a)
 		  (* address loads *)
-		    | P.AddrLoadI8 addr => gprBind (i32Ty, v, T.SX(i32Ty, 8, T.LOAD(8, defOf addr, ManticoreRegion.memory)))
-		    | P.AddrLoadU8 addr => gprBind (i32Ty, v, T.ZX(i32Ty, 8, T.LOAD(8, defOf addr, ManticoreRegion.memory)))
-		    | P.AddrLoadI16 addr => gprBind (i32Ty, v, T.SX(i32Ty, 16, T.LOAD(16, defOf addr, ManticoreRegion.memory)))
-		    | P.AddrLoadU16 addr => gprBind (i32Ty, v, T.ZX(i32Ty, 16, T.LOAD(16, defOf addr, ManticoreRegion.memory)))
-		    | P.AddrLoadI32 addr => gprBind (i32Ty, v, T.LOAD(32, defOf addr, ManticoreRegion.memory))
-		    | P.AddrLoadI64 addr => gprBind (i64Ty, v, T.LOAD(64, defOf addr, ManticoreRegion.memory))
-		    | P.AddrLoadF32 addr => fbind (f32Ty, v, T.FLOAD(32, defOf addr, ManticoreRegion.memory))
-		    | P.AddrLoadF64 addr => fbind (f64Ty, v, T.FLOAD(64, defOf addr, ManticoreRegion.memory))
-		    | P.AddrLoad addr => gprBind (anyTy, v, T.LOAD(anyTy, defOf addr, ManticoreRegion.memory))
+		    | P.AdrLoadI8 addr => gprBind (i32Ty, v, T.SX(i32Ty, 8, T.LOAD(8, defOf addr, ManticoreRegion.memory)))
+		    | P.AdrLoadU8 addr => gprBind (i32Ty, v, T.ZX(i32Ty, 8, T.LOAD(8, defOf addr, ManticoreRegion.memory)))
+		    | P.AdrLoadI16 addr => gprBind (i32Ty, v, T.SX(i32Ty, 16, T.LOAD(16, defOf addr, ManticoreRegion.memory)))
+		    | P.AdrLoadU16 addr => gprBind (i32Ty, v, T.ZX(i32Ty, 16, T.LOAD(16, defOf addr, ManticoreRegion.memory)))
+		    | P.AdrLoadI32 addr => gprBind (i32Ty, v, T.LOAD(32, defOf addr, ManticoreRegion.memory))
+		    | P.AdrLoadI64 addr => gprBind (i64Ty, v, T.LOAD(64, defOf addr, ManticoreRegion.memory))
+		    | P.AdrLoadF32 addr => fbind (f32Ty, v, T.FLOAD(32, defOf addr, ManticoreRegion.memory))
+		    | P.AdrLoadF64 addr => fbind (f64Ty, v, T.FLOAD(64, defOf addr, ManticoreRegion.memory))
+		    | P.AdrLoadAdr addr => gprBind (anyTy, v, T.LOAD(anyTy, defOf addr, ManticoreRegion.memory))
+		    | P.AdrLoad addr => gprBind (anyTy, v, T.LOAD(anyTy, defOf addr, ManticoreRegion.memory))
 		  (* array load operations *)
-		    | P.ArrayLoadI32(base, i) => genLoad (i32Ty, gprBind, T.LOAD) (base, i)
-		    | P.ArrayLoadI64(base, i) => genLoad (i64Ty, gprBind, T.LOAD) (base, i)
-		    | P.ArrayLoadF32(base, i) => genLoad (f32Ty, fbind, T.FLOAD) (base, i)
-		    | P.ArrayLoadF64(base, i) => genLoad (f64Ty, fbind, T.FLOAD) (base, i)
-		    | P.ArrayLoad(base, i) => genLoad (anyTy, gprBind, T.LOAD) (base, i)
+		    | P.ArrLoadI32(base, i) => genLoad (i32Ty, gprBind, T.LOAD) (base, i)
+		    | P.ArrLoadI64(base, i) => genLoad (i64Ty, gprBind, T.LOAD) (base, i)
+		    | P.ArrLoadF32(base, i) => genLoad (f32Ty, fbind, T.FLOAD) (base, i)
+		    | P.ArrLoadF64(base, i) => genLoad (f64Ty, fbind, T.FLOAD) (base, i)
+		    | P.ArrLoad(base, i) => genLoad (anyTy, gprBind, T.LOAD) (base, i)
 		  (* atomic operations *)
 		    | P.I32FetchAndAdd(addr, x) => let
 			val (r, stms) = BE.AtomicOps.genFetchAndAdd32 {

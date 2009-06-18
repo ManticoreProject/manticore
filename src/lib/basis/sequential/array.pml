@@ -22,15 +22,16 @@ structure Array64 =
 
     (* allocate and initialize an array *)
       define inline @empty-array (x : unit / exh : exh) : array =
-	  let data : ![any] = ccall M_NewArray(host_vproc, 0, nil)
+	  let data : any = ccall M_NewArray(host_vproc, 0, nil)
 	  let arr : array = alloc(data, 0)
 	  return(arr)
 	;
  
     (* allocate and initialize an array *)
       define inline @array (n : int, elt : any / exh : exh) : array =
-	  let elt : any = promote((any)elt)
-	  let data : ![any] = ccall M_NewArray(host_vproc, n, elt)
+	  let elt : any = (any)elt
+	  let elt : any = promote(elt)
+	  let data : any = ccall M_NewArray(host_vproc, n, elt)
 	  let arr : array = alloc(data, n)
 	  return(arr)
 	;
@@ -43,9 +44,11 @@ structure Array64 =
 	  do assert(I32Gte(i,0))
 	  let len : int = @length(arr / exh)
 	  do assert(I32Lt(i,len))
+	  let data : any = SELECT(DATA_OFF, arr)
 	 (* since the array is in the global heap, x must also be in the global heap *)
-	  let x : any = promote((any)x)
-          do AddrStore(AddrAdd(&0(SELECT(DATA_OFF, arr)), I64ToAddr (I32ToI64X (I32LSh (i, 3)))), x)
+	  let x : any = (any)x
+	  let x : any = promote(x)
+	  do ArrStore(data, i, x)
 	  return()
 	;
 
@@ -53,7 +56,8 @@ structure Array64 =
 	  let len : int = @length(arr / exh)
 	  do assert(I32Gte(i,0))
 	  do assert(I32Lt(i,len))
-	  let x : any = AddrLoad(AddrAdd(&0(SELECT(DATA_OFF, arr)), I64ToAddr (I32ToI64X (I32LSh (i, 3)))))
+	  let data : any = SELECT(DATA_OFF, arr)
+	  let x : any = ArrLoad(data, i)
 	  return (x)
 	;
 

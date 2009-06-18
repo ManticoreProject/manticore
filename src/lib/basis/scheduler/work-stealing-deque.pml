@@ -87,15 +87,15 @@ structure WorkStealingDeque (* :
 #define DEQUE_NCLAIMED_OFFB   12
 #define DEQUE_ELTS_OFFB       16
 
-#define LOAD_DEQUE_OLD(deque)        AddrLoadI32 ((addr(int))&0(deque))
-#define LOAD_DEQUE_NEW(deque)        AddrLoadI32 ((addr(int))AddrAdd (&0(deque), I64ToAddr (DEQUE_NEW_OFFB:long)))
-#define STORE_DEQUE_OLD(deque, i)    AddrStoreI32 ((addr(int))&0(deque), i)
-#define STORE_DEQUE_NEW(deque, i)    AddrStoreI32 ((addr(int))AddrAdd (&0(deque), I64ToAddr (DEQUE_NEW_OFFB:long)), i)
+#define LOAD_DEQUE_OLD(deque)        AdrLoadI32 ((addr(int))&0(deque))
+#define LOAD_DEQUE_NEW(deque)        AdrLoadI32 ((addr(int))AdrAddI64 (&0(deque), DEQUE_NEW_OFFB:long))
+#define STORE_DEQUE_OLD(deque, i)    AdrStoreI32 ((addr(int))&0(deque), i)
+#define STORE_DEQUE_NEW(deque, i)    AdrStoreI32 ((addr(int))AdrAddI64 (&0(deque), DEQUE_NEW_OFFB:long), i)
 
-#define LOAD_DEQUE_MAX_SIZE(deque)   AddrLoadI32 ((addr(int))AddrAdd (&0(deque), I64ToAddr (DEQUE_MAXSZ_OFFB:long)))
+#define LOAD_DEQUE_MAX_SIZE(deque)   AdrLoadI32 ((addr(int))AdrAddI64 (&0(deque), DEQUE_MAXSZ_OFFB:long))
 
-#define LOAD_DEQUE_NCLAIMED(deque)        AddrLoadI32 ((addr(int))AddrAdd (&0(deque), I64ToAddr (DEQUE_NCLAIMED_OFFB:long)))
-#define STORE_DEQUE_NCLAIMED(deque, c)    AddrStoreI32 ((addr(int))AddrAdd (&0(deque), I64ToAddr (DEQUE_NCLAIMED_OFFB:long)), c)
+#define LOAD_DEQUE_NCLAIMED(deque)        AdrLoadI32 ((addr(int))AdrAddI64 (&0(deque), DEQUE_NCLAIMED_OFFB:long))
+#define STORE_DEQUE_NCLAIMED(deque, c)    AdrStoreI32 ((addr(int))AdrAddI64 (&0(deque), DEQUE_NCLAIMED_OFFB:long), c)
 
 (*    local*)
 
@@ -131,9 +131,9 @@ structure WorkStealingDeque (* :
 
 	define (* inline *) @assert-ptr (deque : deque, i : int) : () =
 #ifndef NDEBUG
-	    do ccall M_AssertDequeAddr (deque, i, AddrAdd (&0(deque), 
-				   AddrAdd (I64ToAddr (DEQUE_ELTS_OFFB:long),         (* the byte offset of elts *)
-					    I64ToAddr (I32ToI64X (I32LSh (i, 3))))))
+	    do ccall M_AssertDequeAddr (deque, i, AdrAddI64 (&0(deque), 
+				   I64Add (DEQUE_ELTS_OFFB:long,         (* the byte offset of elts *)
+					 I32ToI64X (I32LSh (i, 3)))))
 #endif
 	    return ()
 	  ;
@@ -141,9 +141,9 @@ structure WorkStealingDeque (* :
 	define (* inline *) @update (deque : deque, i : int, elt : any) : () =
 	    do @assert-in-bounds (deque, i)
             do @assert-ptr (deque, i)
-	    do AddrStore (AddrAdd (&0(deque), 
-				   AddrAdd (I64ToAddr (DEQUE_ELTS_OFFB:long),         (* the byte offset of elts *)
-				   I64ToAddr (I32ToI64X (I32LSh (i, 3))))), 
+	    do AdrStore (AdrAddI64 (&0(deque), 
+				   I64Add (DEQUE_ELTS_OFFB:long,         (* the byte offset of elts *)
+				   I32ToI64X (I32LSh (i, 3)))), 
 			  elt)
 	    return ()
 	  ;
@@ -151,9 +151,9 @@ structure WorkStealingDeque (* :
 	define (* inline *) @sub (deque : deque, i : int) : any =
 	    do @assert-in-bounds (deque, i)
             do @assert-ptr (deque, i)
-	    let elt : any = AddrLoad (AddrAdd (&0(deque),         (* the byte offset of elts *)
-					       AddrAdd (I64ToAddr (DEQUE_ELTS_OFFB:long),
-					       I64ToAddr (I32ToI64X (I32LSh (i, 3))))))
+	    let elt : any = AdrLoad (AdrAddI64 (&0(deque),         (* the byte offset of elts *)
+					       I64Add (DEQUE_ELTS_OFFB:long,
+					       I32ToI64X (I32LSh (i, 3)))))
 	    return (elt)
 	  ;
 

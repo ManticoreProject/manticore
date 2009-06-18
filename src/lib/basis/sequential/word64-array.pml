@@ -45,7 +45,7 @@ structure Word64Array =
 	let len : int = @length(arr / exh)
 	do  assert(I32Lt(i,len))
         let data : any = SELECT(DATA_OFF, arr)
-	do ArrayStoreI64(data, i, #0(n))
+	do ArrStoreI64(data, i, #0(n))
 	return()
       ;
 
@@ -54,7 +54,7 @@ structure Word64Array =
 	do assert(I32Gte(i,0))
 	do assert(I32Lt(i,len))
         let data : any = SELECT(DATA_OFF, arr)
-	let n : word64 = ArrayLoadI64(data, i)
+	let n : word64 = ArrLoadI64(data, i)
         let wn : ml_word64 = alloc(n)
 	return(wn)
       ;
