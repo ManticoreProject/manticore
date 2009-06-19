@@ -136,7 +136,7 @@ dnl
 ACX_PTHREAD()
 
 dnl
-dnl check for various library routines etc
+dnl check for various library routines etc.
 dnl
 AC_CHECK_FUNCS(posix_memalign)
 if test x"$ac_cv_func_posix_memalign" != xyes ; then
@@ -148,10 +148,33 @@ fi
 dnl
 dnl FIXME: clock_gettime requires librt on linux, so we need a special test for it.
 dnl
-AC_CHECK_FUNCS(mach_absolute_time clock_gettime)
+AC_CHECK_FUNCS(mach_absolute_time)
 AC_CHECK_TYPES([struct timespec])
 
+dnl
+dnl check for clock_gettime.  On Linux, this requires librt.
+dnl
+save_LIBS=$LIBS
+LIBS="-lrt $LIBS"
+AC_MSG_CHECKING([for clock_gettime])
+AC_LINK_IFELSE(
+  AC_LANG_PROGRAM(
+    [[#include <time.h>]],
+    [[struct timespec t; clock_gettime(CLOCK_REALTIME, &s); ]]),
+  [ ac_cv_func_clock_gettime=yes;
+    AC_DEFINE(HAVE_CLOCK_GETTIME, [1], [is clock_gettime available?])],
+  [ac_cv_func_clock_gettime=no])
+AC_MSG_RESULT($ac_cv_func_clock_gettime)
+if test "$ac_cv_func_clock_gettime" = "no" ; then
+  LIBS=$save_LIBS
+fi
+
 AC_CHECK_FUNCS(sigtimedwait nanosleep)
+
+dnl
+dnl check for sched_setaffinity
+dnl
+AC_CHECK_FUNCS(sched_setaffinity)
 
 dnl
 dnl check for pthread_setaffinity_np
