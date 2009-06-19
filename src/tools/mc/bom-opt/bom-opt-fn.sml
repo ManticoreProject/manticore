@@ -99,6 +99,7 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 	  end
 
     val groupFuns = transform {passName = "group-funs", pass = GroupFuns.transform}
+    val deadFuns = transform {passName = "dead-funs", pass = DeadFuns.transform}
     val uncurry = transform {passName = "uncurry", pass = Uncurry.transform}
     val caseSimplify = transform {passName = "case-simplify", pass = CaseSimplify.transform}
     val rewriteAll = transform {passName = "rewrite-all", pass = rewriteAll}
@@ -115,6 +116,7 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 	 * recursive dependencies of the HLOps.
 	 *)
 	  val module = groupFuns module
+	  val module = deadFuns module
 	  val module = inline true module
 	  val module = contract module  
 	  val module = uncurry module

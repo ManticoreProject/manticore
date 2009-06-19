@@ -155,8 +155,8 @@ structure BOM =
     fun mkLambda {f, params, exh, body} = let
 	  val l = FB{f=f, params=params, exh=exh, body=body}
 	  in
-	      setLambdaKind l;
-	      l
+	    setLambdaKind l;
+	    l
 	  end
     fun mkFun (fbs, e) = (
 	  List.app setLambdaKind fbs;
