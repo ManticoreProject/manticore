@@ -70,11 +70,12 @@ structure BOM =
       | VK_Param
       | VK_Fun of lambda
       | VK_Cont of lambda
-      | VK_Extern of string
+      | VK_CFun of c_fun
 
     withtype var = (var_kind, ty) VarRep.var_rep
          and prim = var Prim.prim
 	 and const = (Literal.literal * ty)
+	 and c_fun = var CFunctions.c_fun
 
     fun varKindToString VK_None = "None"
       | varKindToString (VK_Let _) = "Let"
@@ -82,7 +83,7 @@ structure BOM =
       | varKindToString VK_Param = "Param"
       | varKindToString (VK_Fun _) = "Fun"
       | varKindToString (VK_Cont _) = "Cont"
-      | varKindToString (VK_Extern _) = "Extern"
+      | varKindToString (VK_CFun _) = "CFun"
 
     structure Var = struct
     	local
@@ -187,15 +188,18 @@ structure BOM =
     fun mkRet arg = mkExp(E_Ret arg)
     fun mkHLOp arg = mkExp(E_HLOp arg)
 
-    fun mkCFun arg = (
-	  Var.setKind(#var arg, VK_Extern(#name arg));
-	  CFunctions.CFun arg)
+    fun mkCFun arg = let
+	  val cf = CFunctions.CFun arg
+	  in
+	    Var.setKind(#var arg, VK_CFun cf);
+	    cf
+	  end
 
   (* mkModule : Atom.atom * var CFunctions.c_fun list * lambda -> module *)
     fun mkModule (name, externs, hlops, body as FB{params, exh, ...}) = (
 	  List.app (fn x => Var.setKind(x, VK_Param)) (params @ exh);
 	  List.app
-	    (fn (CFunctions.CFun{var, name, ...}) => Var.setKind(var, VK_Extern name))
+	    (fn (cf as CFunctions.CFun{var, ...}) => Var.setKind(var, VK_CFun cf))
 	      externs;
 	  MODULE{name = name, externs = externs, hlops = hlops, body = body})
 
