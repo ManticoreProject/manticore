@@ -12,7 +12,7 @@ PMLC =		@PMLC@
 
 TARGET =	primes
 
-all:		$(TARGET)-smlnj $(TARGET)-mc1 $(TARGET)-mc2
+all:		$(TARGET)-smlnj $(TARGET)-mc1 $(TARGET)-mc2 $(TARGET)-mc3
 
 $(TARGET)-smlnj:	sources.cm primes.sml
 	echo "SMLofNJ.exportFn(\"primes-smlnj\", Main.main);" | $(SMLNJ) sources.cm
@@ -23,7 +23,10 @@ $(TARGET)-mc1:	primes1.pml
 $(TARGET)-mc2:	primes2.pml
 	$(PMLC) $(PMLCFLAGS) -o $(TARGET)-mc2 primes2.pml
 
+$(TARGET)-mc3:	primes3.pml
+	$(PMLC) $(PMLCFLAGS) -o $(TARGET)-mc3 primes3.pml
+
 .PHONY: clean
 clean:
-	rm -f $(TARGET)-smlnj $(TARGET)-mc1 $(TARGET)-mc2
+	rm -f $(TARGET)-smlnj $(TARGET)-mc1 $(TARGET)-mc2 $(TARGET)-mc3
 
