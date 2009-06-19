@@ -249,7 +249,7 @@ structure Contract : sig
             | _ => FAIL
           (* end case *))
 
-    fun doExp(env, B.E_Pt(_, t), kid) = (case t
+    fun doExp (env, B.E_Pt(_, t), kid) = (case t
            of B.E_Let(lhs, rhs, e) =>
                 if List.all unused lhs andalso pureExp rhs
                   then (

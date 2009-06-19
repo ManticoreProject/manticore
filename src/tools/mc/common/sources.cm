@@ -31,6 +31,7 @@ Library
   structure VarRep
   structure BasisNames
 
+  functor CheckVarCountsFn
   functor VarFn
 
   structure Memo
@@ -47,6 +48,7 @@ is
   basic-control.sml
   expansion-opts.sml
   c-functions.sml
+  check-var-counts-fn.sml
   const-arith.sml
   error.sml
   float-lit.sml

@@ -125,15 +125,10 @@ functor MainFn (
   (* the compiler's backend *)
     fun bomToCFG bom = let
 	  val bom = BOMOpt.optimize bom	
-          val _ = CheckBOM.check ("bom-optimize", bom)
           val cps = Convert.transform bom
-	  val _ = CheckCPS.check ("convert", cps)
 	  val cps = CPSOpt.optimize cps
-	  val _ = CheckCPS.check ("cps-optimize", cps)
 	  val cfg = Closure.convert cps
-	  val _ = CheckCFG.check ("closure", cfg)
 	  val cfg = CFGOpt.optimize cfg
-	  val _ = CheckCFG.check ("cfg-optimize", cfg)
 	  in
 	    cfg
 	  end
@@ -171,10 +166,10 @@ functor MainFn (
           val _ = checkForErrors errStrm
 	(* create the initial translation environment *)
           val bom = Translate.translate (IB.primTranslationEnv, ast)
-          val _ = CheckBOM.check ("translate", bom)
           val cfg = bomToCFG bom
 	  in
-	    codegen (verbose, asmFile, cfg)
+	    codegen (verbose, asmFile, cfg);
+	    Stats.report ()
 	  end
 
     fun doFile file = BackTrace.monitor (fn () => let
@@ -202,15 +197,20 @@ functor MainFn (
           \\n\
           \  file:\n\
           \    <file>.pml\n\
-          \    <file>.bom\n\
+          \    <file>.mlb\n\
           \\n\
           \  options:\n\
-          \    -C<control>=<v>  (set named control)\n\
-	  \    -o <file>        (specify executable)\n\
-          \    -H               (produce complete help listing)\n\
-          \    -h               (produce minimal help listing)\n\
-          \    -h<level>        (help listing with obscurity limit)\n\
-          \    -version         (show version)\n"
+          \    -C<control>=<v>  set named control\n\
+	  \    -o <file>        specify executable-file name\n\
+          \    -H               produce complete help listing\n\
+          \    -h               produce minimal help listing\n\
+          \    -h<level>        help listing with obscurity limit\n\
+          \    -version         show version\n\
+	  \    -debug           build an executable with debugging enabled\n\
+	  \    -log             build an executable with logging enabled\n\
+	  \    -sequential      compile a sequential-mode program\n\
+	  \    -verbose         compile in verbose mode\n\
+	  \"
 
     fun message (level, b) = (
 	  err usageMsg;
@@ -269,26 +269,33 @@ functor MainFn (
 
     and processOption (arg, args) = let
 	  fun badopt () = bad (concat ["!* ill-formed option: `", arg, "'\n"])
+	  fun set ctl = (Controls.set(ctl, true); processArgs args)
 	  in
             if String.isPrefix "-C" arg
-               then (processControl arg; processArgs args)
-	    else if String.isPrefix "-o" arg
-	       then (exeFile := List.hd args; processArgs(List.tl args))
+	      then (processControl arg; processArgs args)
             else if String.isPrefix "-h" arg
-               then let
-                  val level = String.extract (arg, 2, NONE)
-                  in
-                    if level = "" 
-                       then help NONE
-                    else if CharVector.all Char.isDigit level
-                       then help (SOME (Int.fromString level))
-                    else badopt ()
-                  end
-            else if arg = "-H"
-               then help (SOME NONE)
-            else if arg = "-version"
-               then version ()
-            else badopt ()
+	      then let
+		val level = String.extract (arg, 2, NONE)
+		in
+		  if level = "" 
+		    then help NONE
+		  else if CharVector.all Char.isDigit level
+		    then help (SOME (Int.fromString level))
+		    else badopt ()
+		end
+            else (case arg
+	       of "-o" => (case args
+		     of exe::r => (exeFile := exe; processArgs r)
+		      | _ => badopt()
+		    (* end case *))
+		| "-H" => help (SOME NONE)
+		| "-version" => version ()
+		| "-sequential" => set BasicControl.sequential
+		| "-verbose" => (Controls.set(BasicControl.verbose, 1); processArgs args)
+		| "-log" => set BasicControl.logging
+		| "-debug" => set BasicControl.debug
+		| _ => badopt ()
+	      (* end case *))
 	  end
 
     fun main (_, args) = processArgs args

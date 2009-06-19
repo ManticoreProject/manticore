@@ -43,12 +43,12 @@ structure BOM =
       | E_CCall of (var * var list)		(* foreign-function calls *)
     (* VProc operations *)
       | E_HostVProc				(* gets the hosting VProc *)
-      | E_VPLoad of (offset * var)		(* load a value from the given byte offset *)
+      | E_VPLoad of (offset * var)		(* load a value from the given byte *)
+						(* offset in the vproc structure *)
+      | E_VPStore of (offset * var * var)	(* store a value at the given byte *)
+						(* offset in the vproc structure *)
+      | E_VPAddr of (offset * var)		(* address of given byte offset *)
 						(* in the vproc structure *)
-      | E_VPStore of (offset * var * var)	(* store a value at the given byte offset *)
-						(* in the vproc structure *)
-      | E_VPAddr of (offset * var)		(* address of given byte offset in the vproc *)
-						(* structure *)
 
     and lambda = FB of {	  	    (* function/continuation abstraction *)
 	  f : var,				(* function name *)
@@ -58,7 +58,8 @@ structure BOM =
 	}
 
     and pat			  	    (* simple, one-level, patterns *)
-      = P_DCon of data_con * var list		(* data constructor; the argument list is empty for *)
+      = P_DCon of data_con * var list		(* data constructor; the argument *)
+						(* list is empty for *)
 						(* nullary constructors *)
       | P_Const of const
 
@@ -74,13 +75,6 @@ structure BOM =
     withtype var = (var_kind, ty) VarRep.var_rep
          and prim = var Prim.prim
 	 and const = (Literal.literal * ty)
-
-    datatype module = MODULE of {
-	name : Atom.atom,
-	externs : var CFunctions.c_fun list,
-	hlops : lambda list,
-	body : lambda
-      }
 
     fun varKindToString VK_None = "None"
       | varKindToString (VK_Let _) = "Let"
@@ -119,14 +113,30 @@ structure BOM =
 		    end
 		| NONE => ()
 	      (* end case *))
+      (* string representation that includes counts *)
 	val toString = fn x => (case peekFn x
 	       of NONE => concat[toString x, "#", Int.toString(useCount x)]
-		| SOME r => concat[toString x, "#", Int.toString(useCount x), ".", Int.toString(!r)]
+		| SOME r => concat[
+		      toString x, "#", Int.toString(useCount x),
+		      ".", Int.toString(!r)
+		    ]
 	      (* end case *))
 	end (* local val ... *)
+      (* mapping from functions to the HLOp that they define *)
+	val {clrFn = clrHLOp, peekFn = hlop, setFn = setHLOp, ...} =
+	      newProp (fn _ => ((raise Fail "no HLOp") : hlop))
+	fun isHLOp f = Option.isSome(hlop f)
 	end (* local structure V = ... *)
       end 
-       
+
+    datatype module = MODULE of {
+	name : Atom.atom,
+	externs : var CFunctions.c_fun list,
+	hlops : var list,		    (* the names of the functions that *)
+					    (* are define HLOps *)
+	body : lambda
+      }
+
     val unitConst = (Literal.unitLit, BOMTy.unitTy)
 
   (* wrapped raw values are stored in tuples *)

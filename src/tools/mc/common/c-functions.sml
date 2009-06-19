@@ -37,6 +37,8 @@ signature C_FUNCTIONS =
     val protoHasAttr : attribute -> c_proto -> bool
     val cfunHasAttr : attribute -> 'var c_fun -> bool
 
+    val isPure : 'var c_fun -> bool
+
     val tyToString : c_type -> string
     val attrToString : attribute -> string
     val protoToString : c_proto -> string
@@ -76,6 +78,8 @@ structure CFunctions : C_FUNCTIONS =
     fun nameOf (CFun{name, ...}) = name
     fun typeOf (CFun{retTy, argTys, attrs, ...}) = CProto(retTy, argTys, attrs)
     fun isVarArg (CFun{varArg, ...}) = varArg
+
+    fun isPure cf = cfunHasAttr A_pure cf
 
     fun tyToString PointerTy = "void *"
       | tyToString (BaseTy rTy) = RawTypes.toString rTy

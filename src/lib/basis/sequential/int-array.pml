@@ -18,7 +18,7 @@ structure IntArray =
 
       typedef array = PT.array;
 
-      extern void* GlobalAllocIntArray (void*, int, int);
+      extern void* GlobalAllocIntArray (void*, int, int) __attribute__((pure));
 
     (* allocate and initialize an array *)
       define inline @empty-array (x : unit / exh : exh) : array =

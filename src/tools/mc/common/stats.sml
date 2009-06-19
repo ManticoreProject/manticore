@@ -22,7 +22,7 @@ structure Stats :> sig
     val sumAll : unit -> int
 
     val resetAll : unit -> unit
-    val report : unit -> (string * int) list
+    val report : unit -> unit
 
   end = struct
 
@@ -35,6 +35,7 @@ structure Stats :> sig
 
     val nextCounter = ref 0
     val verbose = ref false
+    val reportStats = ref false
 
     type counter = int
 
@@ -67,17 +68,42 @@ structure Stats :> sig
 
     fun resetAll () = A.modify (fn _ => 0) counters
 
-    fun report () = List.tabulate (!nextCounter, fn i => (name i, count i))
+    fun report () = if !reportStats
+	  then let
+	    val fileName = (case Controls.get BasicControl.keepPassBaseName
+		   of NONE => "STATS"
+		    | SOME b => OS.Path.joinBaseExt{base=b, ext=SOME "stats"}
+		  (* end case *))
+	    val outS = TextIO.openOut fileName
+	    fun prl l = TextIO.output(outS, String.concat l)
+	    fun lp i = if (i < !nextCounter)
+		  then let
+		    val n = Array.sub(counters, i)
+		    in
+		      if n > 0
+			then prl [
+			    StringCvt.padRight #" " 31 (Array.sub(names, i)),
+			    " ", Int.toString n, "\n"
+			  ]
+			else ();
+		      lp (i+1)
+		    end
+		  else ()
+	    in
+	      lp 0;
+	      TextIO.closeOut outS
+	    end
+	  else ()
 
   (* Controls *)
     val statReg = ControlRegistry.new {help = "Compiler statistics"}
 
-    val reportCtl : bool Controls.control = Controls.genControl {
+    val reportCtl : bool Controls.control = Controls.control {
+	    ctl = reportStats,
 	    name = "report",
 	    pri = [0, 1],
 	    obscurity = 0,
-	    help = "report statistics",
-	    default = false
+	    help = "report statistics"
 	  }
 
     val traceCtl : bool Controls.control = Controls.control {

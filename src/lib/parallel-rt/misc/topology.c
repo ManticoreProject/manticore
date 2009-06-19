@@ -84,9 +84,9 @@ static void *InitWithLocation (void *arg)
 #ifdef HAVE_SCHED_SETAFFINITY
     cpu_set_t	cpus;
     CPU_ZERO(&cpus);
-    CPU_SET(LocationId(locArg->loc), &cpus);
+    CPU_SET(LogicalId(locArg->loc), &cpus);
     if (sched_setaffinity (0, sizeof(cpu_set_t), &cpus) == -1) {
-	Warning("[%2d] unable to set affinity\n", initData->id);
+	Warning("**** unable to set affinity\n");
     }
 #endif
 

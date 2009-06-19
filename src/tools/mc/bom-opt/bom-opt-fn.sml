@@ -44,24 +44,33 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 
     val expand = mkModuleOptPass ("expand", ExpandHLOps.expand)
 
-    val contract = transform {passName = "contract", pass = Contract.contract {removeExterns=true}}
-    val expandAllContract = transform {passName = "expand-all-contract", pass = Contract.contract {removeExterns=false}}
-    val rewriteAllContract = transform {passName = "rewrite-all-contract", pass = Contract.contract {removeExterns=false}}
+    val contract = transform {
+	    passName = "contract",
+	    pass = Contract.contract {removeExterns=true}
+	  }
+    val expandAllContract = transform {
+	    passName = "expand-all-contract",
+	    pass = Contract.contract {removeExterns=false}
+	  }
+    val rewriteAllContract = transform {
+	    passName = "rewrite-all-contract",
+	    pass = Contract.contract {removeExterns=false}
+	  }
 
     val rewrite = mkModuleOptPass ("rewrite", RewriteHLOps.rewrite)
 
     fun expandAll module = (case expand module
 	   of SOME module => let
 		val _ = CheckBOM.check ("expand-all:expand", module)
-	      (* NOTE: we don't remove externs here because references may be hiding inside
-	       * unexpanded HLOps.
+	      (* NOTE: we don't remove externs here because references may
+	       * be hiding inside unexpanded HLOps.
 	       *)
 		val module = expandAllContract module
 		val _ = CheckBOM.check ("expand-all:contract", module)
 		in
 		  expandAll module
 		end
-	    | NONE => module
+	    | NONE => ExpandHLOps.finish module
 	  (* end case *))
 
 (* FIXME: rewriting and expansion should be interleaved!!! *)
@@ -106,12 +115,16 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
     val expandAll = transform {passName = "expand-all", pass = expandAll}
 
     fun optimize module = let
+	  val _ = Census.census module
+          val _ = CheckBOM.check ("translate", module)
 	  val module = contract module
 	  val module = inline false module  
 	  val module = contract module
   (* to re-enable rewrites, fix them so that they use inline BOM instead of the old hlop files. *)
 (*          val module = rewriteAll module*)
 	  val module = expandAll module
+	(* FIXME: rerun the census to get the counts for HLOp code right. *)
+	  val _ = Census.census module
 	(* NOTE: we cannot run groupFuns until after HLOp expansion, since it doesn't know the
 	 * recursive dependencies of the HLOps.
 	 *)
@@ -130,7 +143,7 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
     val optimize = BasicControl.mkKeepPassSimple {
 	    output = PrintBOM.output,
 	    ext = "bom",
-	    passName = "bom-optimize",
+	    passName = "optimize",
 	    pass = optimize,
 	    registry = BOMOptControls.registry
 	  }

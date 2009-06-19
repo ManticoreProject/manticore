@@ -24,6 +24,16 @@ structure CheckCPS : sig
     val t2s = CTU.toString
     fun tl2s ts = concat["(", String.concatWith "," (map t2s ts), ")"]
 
+  (* for checking census counts *)
+    structure ChkVC = CheckVarCountsFn (
+      struct
+	type var = C.var
+	val useCntOf = CV.useCount
+	val appCntOf = CV.appCntOf
+	val toString = v2s
+	structure Tbl = CV.Tbl
+      end)
+
   (* placeholder for testing variable kind equality *)
     fun eqVK _ = true
 
@@ -49,6 +59,11 @@ structure CheckCPS : sig
 		  anyErrors := true);
 		pr ("** " :: msg))
 	  fun cerror msg = pr ("== "::msg)
+	(* for tracking census counts *)
+	  val counts = ChkVC.init error
+	  val bindVar = ChkVC.bind counts
+	  val useVar = ChkVC.use counts
+	  val appVar = ChkVC.appUse counts
 	(* match the parameter types against argument variables *)
         (* checkArgTypes : string * ty list * ty list -> unit *)
 	  fun checkArgTypes (cmp, ctx, paramTys, argTys) = let
@@ -73,21 +88,33 @@ structure CheckCPS : sig
                       end
 	        end
 	(* Check that a variable is bound *)
-          fun addFB (C.FB{f, ...}, env) = VSet.add(env, f)
-          fun addVars (env, xs) = VSet.addList(env, xs)
-	  fun chkVar (env, x, cxt) = if VSet.member(env, x)
-		then ()
-		else error["unbound variable ", v2s x, " in ", cxt, "\n"]
+	  fun chkVar (env, x, cxt) = (
+		useVar x;
+		if VSet.member(env, x)
+		  then ()
+		  else error["unbound variable ", v2s x, " in ", cxt, "\n"])
+	  fun chkApplyVar (env, x, cxt) = (
+		appVar x;
+		if VSet.member(env, x)
+		  then ()
+		  else error["unbound variable ", v2s x, " in ", cxt, "\n"])
 	  fun chkVars (env, xs, cxt) = List.app (fn x => chkVar(env, x, cxt)) xs
-	  fun chkBinding (x, binding) = if eqVK(CV.kindOf x, binding)
-		then ()
-		else error[
-		    "binding of ", v2s x, " is ",
-		    vkToString(CV.kindOf x), " (expected ",
-		    vkToString binding, ")\n"
-		  ]
+	  fun chkBinding (x, binding) = (
+		bindVar x;
+		if eqVK(CV.kindOf x, binding)
+		  then ()
+		  else error[
+		      "binding of ", v2s x, " is ",
+		      vkToString(CV.kindOf x), " (expected ",
+		      vkToString binding, ")\n"
+		    ])
 	  fun chkBindings (lhs, binding) =
 		List.app (fn x => chkBinding(x, binding)) lhs
+	(* add variables to the environment *)
+          fun addVars (env, xs) = VSet.addList(env, xs)
+          fun addFB vk (fb as C.FB{f, ...}, env) = (
+		chkBinding (f, vk fb);
+		VSet.add(env, f))
 (* FIXME: we should check the kind of the xs, but we don't have a kind for pattern-bound
  * variables yet!
  *)
@@ -97,15 +124,15 @@ structure CheckCPS : sig
 		      chkRHS(env, lhs, rhs);
 		      chkExp (addVars(env, lhs), e))
 		  | C.Fun(fbs, e) => let
-		      val env = List.foldl addFB env fbs
+		      val env = List.foldl (addFB C.VK_Fun) env fbs
 		      in
-			List.app (fn fb => chkFB(env, fb, C.VK_Fun)) fbs;
+			List.app (fn fb => chkFB(env, fb)) fbs;
 			chkExp(env, e)
 		      end
 		  | C.Cont(fb, e) => let
-		      val env = addFB (fb, env)
+		      val env = addFB C.VK_Cont (fb, env)
 		      in
-			chkFB(env, fb, C.VK_Cont); 
+			chkFB(env, fb); 
                         chkExp(env, e)
 		      end
 		  | C.If(x, e1, e2) => (
@@ -129,8 +156,7 @@ structure CheckCPS : sig
                               Option.app (fn e => chkExp (env, e)) dflt
                             end
                         | CTy.T_Raw rt => let
-                            fun chkCase (tag, exp) = 
-                                   chkExp (env, exp)
+                            fun chkCase (tag, exp) = chkExp (env, exp)
                             fun chk () = (
                                    List.app chkCase cases; 
                                    Option.app (fn e => chkExp (env, e)) dflt)
@@ -153,7 +179,7 @@ structure CheckCPS : sig
                             cerror ["  but found ", CTU.toString (CV.typeOf x), "\n"])
 		      (* end case *))
 		  | C.Apply(f, args, rets) => (
-		      chkVar (env, f, "Apply");
+		      chkApplyVar (env, f, "Apply");
 		      case CV.typeOf f
 		       of CTy.T_Fun(argTys, retTys) => (
 			    chkVars (env, args, "Apply args");
@@ -163,7 +189,7 @@ structure CheckCPS : sig
 			| ty => error[v2s f, ":", CTU.toString ty, " is not a function\n"]
 		      (* end case *))
 		  | C.Throw(k, args) => (
-		      chkVar (env, k, "Throw");
+		      chkApplyVar (env, k, "Throw");
 		      case CV.typeOf k
 		       of CTy.T_Fun(argTys, []) => (
 			    chkVars (env, args, "Throw args");
@@ -264,10 +290,14 @@ structure CheckCPS : sig
 		  | ([ty], C.Prim p) => (
                       chkVars(env, PrimUtil.varsOf p, PrimUtil.nameOf p))
 		  | ([ty], C.CCall(cf, args)) => (
-		      chkVar(env, cf, "CCall"); 
+		      if VSet.member(env, cf)
+			then ()
+			else error["unbound C function ", v2s cf, "\n"];
                       chkVars(env, args, "CCall args"))
 		  | ([], C.CCall(cf, args)) => (
-		      chkVar(env, cf, "CCall"); 
+		      if VSet.member(env, cf)
+			then ()
+			else error["unbound C function ", v2s cf, "\n"];
                       chkVars(env, args, "CCall args"))
 		  | ([ty], C.HostVProc) => (
                       if CTU.match(CTy.T_VProc, ty)
@@ -299,7 +329,7 @@ structure CheckCPS : sig
 			  ])
 		  | _ => error["bogus rhs for ", vl2s lhs, "\n"]
 		(* end case *))
-	  and chkFB (env, fb as C.FB{f, params, rets, body}, vk) = (let
+	  and chkFB (env, fb as C.FB{f, params, rets, body}) = let
                 val (argTys, retTys) =
                       case CV.typeOf f
                        of CTy.T_Fun(argTys, retTys) =>
@@ -309,37 +339,36 @@ structure CheckCPS : sig
                                  ([],[]))
                       (* end case *)
                 in
-                chkBinding (f, vk fb);
-                chkBindings (params, C.VK_Param fb);
-                checkArgTypes(CTU.equal, concat["Fun ", v2s f, " params"], argTys, typesOf params);
-                chkBindings (rets, C.VK_Param fb);
-                checkArgTypes(CTU.equal, concat["Fun ", v2s f, " rets"], retTys, typesOf rets);
-		chkExp (addVars(addVars(env, params), rets), body)
-                end)
+		  chkBindings (params, C.VK_Param fb);
+		  checkArgTypes(CTU.equal, concat["Fun ", v2s f, " params"], argTys, typesOf params);
+		  chkBindings (rets, C.VK_Param fb);
+		  checkArgTypes(CTU.equal, concat["Fun ", v2s f, " rets"], retTys, typesOf rets);
+		  chkExp (addVars(addVars(env, params), rets), body)
+                end
 	  val env = List.foldl
 		(fn (cf, env) => VSet.add(env, CFunctions.varOf cf))
 		  VSet.empty externs
 	  in
-	    chkFB (env, body, C.VK_Fun);
-if !anyErrors
-  then let
+	    chkFB (addFB C.VK_Fun (body, env), body);
+	  (* check census counts *)
+	    ChkVC.checkCounts counts;
+	  (* check for errors *)
+	    if !anyErrors
+	      then let
 (* FIXME: we should generate this name from the input file name! *)
-    val outFile = "broken-CPS"
-    val outS = TextIO.openOut outFile
-    in
-      pr ["broken CPS dumped to ", outFile, "\n"];
-      PrintCPS.output (outS, module);
-      TextIO.closeOut outS;
-      raise Fail "broken CPS"
-    end
-  else ();
+		val outFile = "broken-CPS"
+		val outS = TextIO.openOut outFile
+		in
+		  pr ["broken CPS dumped to ", outFile, "\n"];
+		  PrintCPS.output (outS, module);
+		  TextIO.closeOut outS;
+		  OS.Process.exit OS.Process.failure
+		end
+	      else ();
 	  (* return the error status *)
 	    !anyErrors
 	  end (* check *)
 
-    val check =
-       BasicControl.mkTracePass
-       {passName = "cps-check",
-        pass = check,
-        verbose = 2}
+    val check = BasicControl.mkTracePass {passName = "cps-check", pass = check, verbose = 2}
+
   end

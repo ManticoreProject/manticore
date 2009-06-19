@@ -10,14 +10,26 @@ functor CPSOptFn (Spec : TARGET_SPEC) : sig
 
   end = struct
 
-  (* a wrapper for CPS optimization passes *)
-    fun transform {passName, pass} = BasicControl.mkKeepPassSimple {
-	    output = PrintCPS.output,
-	    ext = "cps",
-	    passName = passName,
-	    pass = pass,
-	    registry = CPSOptControls.registry
-	  }
+  (* a wrapper for BOM optimization passes.  The wrapper includes an invariant check. *)
+    fun transform {passName, pass} = let
+	  val xform = BasicControl.mkKeepPassSimple {
+		  output = PrintCPS.output,
+		  ext = "cps",
+		  passName = passName,
+		  pass = pass,
+		  registry = CPSOptControls.registry
+		}
+	  fun xform' module = let
+		val module = xform module
+		val _ = CheckCPS.check (passName, module)
+		in
+		  module
+		end
+	  in
+	    xform'
+	  end
+
+  (* a wrapper for CPS analysis passes *)
     fun analyze {passName, pass} = BasicControl.mkTracePassSimple {
             passName = passName,
             pass = pass
@@ -28,14 +40,18 @@ functor CPSOptFn (Spec : TARGET_SPEC) : sig
     val cfa = analyze {passName = "cfa", pass = CFACPS.analyze}
 
   (* wrap transformation passes with keep controls *)
-    val eta = transform {passName = "eta", pass = EtaExpand.transform}
+    val contract = transform {passName = "contract", pass = Contract.transform}
+    val eta = transform {passName = "eta-expand", pass = EtaExpand.transform}
     val arity = transform {passName = "flatten", pass = ArityRaising.transform}
 
     fun optimize module = let
 	  val _ = census module
+	  val _ = CheckCPS.check ("convert", module)
+	  val module = contract module
 	  val module = eta module
           val _ = cfa module
-	  val module = ArityRaising.transform module
+	  val module = arity module
+	  val module = contract module
           val _ = CFACPS.clearInfo module
 	  in
 	    module

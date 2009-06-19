@@ -12,7 +12,10 @@ structure VProcInit (* :
 
     _prim(
 
-    (* bootstrap the vproc.
+    (* bootstrap the vproc for purely-sequential execution *)
+      define @bootstrap-sequential ( / exh : exh) : unit;
+
+    (* bootstrap the vprocs
      *   - mkAct is a function that takes a vproc and returns the top-level scheduler
      *     for that vproc.
      *)
@@ -28,6 +31,19 @@ structure VProcInit (* :
 
     _primcode (
 
+    (* bootstrap the vproc for purely-sequential execution *)
+      define @bootstrap-sequential ( / exh : exh) : () =
+	  cont schedCont (k : PT.fiber) = throw k(UNIT)
+	  do vpstore(VP_SCHED_CONT, host_vproc, schedCont)
+          let fls : FLS.fls = FLS.@new(UNIT / exh)
+          do vpstore(CURRENT_FLS, host_vproc, fls)
+	  return()
+	;
+
+    (* bootstrap the vprocs
+     *   - mkAct is a function that takes a vproc and returns the top-level scheduler
+     *     for that vproc.
+     *)
       define @bootstrap (mkAct : fun (vproc / exh -> PT.sched_act) / exh : exh) : () =
 	  let self : vproc = SchedulerAction.@atomic-begin()
         (* initialize fields in the vproc structure *)

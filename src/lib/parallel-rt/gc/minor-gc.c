@@ -182,7 +182,7 @@ bzero(nextScan, avail); /* clear unused part of local heap */
     }
 #endif /* !NDEBUG */
 
-    LogMinorGCEnd (vp);
+    LogMinorGCEnd (vp, (int)allocSzB, (int)((Addr_t)nextScan - vp->oldTop));
 
     if ((avail < MajorGCThreshold) || vp->globalGCPending) {
       /* time to do a major collection. */

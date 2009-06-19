@@ -376,12 +376,14 @@ structure Translate : sig
 	        case TranslatePrim.cvtRhs (env, x, Var.typeOf x, rhs)
 		 of SOME (env', x', e) => mkLet([x'], e, k env')
 		  | NONE => k env
-	      (* end case *))
+		(* end case *))
 	    | AST.PrimCodeBind code => let
-                  val lambdas = TranslatePrim.cvtCode (env, code)
-	          in
-		     B.mkFun(lambdas, k env)
-                  end
+		val lambdas = TranslatePrim.cvtCode (env, code)
+		fun mk [] = k env
+		  | mk (fb::fbs) = B.mkFun([fb], mk fbs)
+		in
+		  mk lambdas
+		end
 	  (* end case *))
 
   (* translation of the body of a case expression. *) 
@@ -587,7 +589,6 @@ structure Translate : sig
 		  TextIO.closeOut outFile
 		end
 	      else ();
-	    Census.census module;
 	    module
 	  end
 

@@ -63,7 +63,7 @@ struct struct_queue_item {
  *
  * Initialization for the VProc management system.
  */
-void VProcInit (Options_t *opts)
+void VProcInit (bool isSequential, Options_t *opts)
 {
     bool	denseLayout = false;	// in dense mode, we'll allocate
 					// the first n logical processors.
@@ -73,11 +73,16 @@ void VProcInit (Options_t *opts)
     NumIdleVProcs = 0;
 
   /* get command-line options */
-    NumVProcs = ((NumHWThreads == 0) ? DFLT_NUM_VPROCS : NumHWThreads);
-    NumVProcs = GetIntOpt (opts, "-p", NumVProcs);
-    if ((NumHWThreads > 0) && (NumVProcs > NumHWThreads))
-	Warning ("%d processors requested on a %d processor machine\n",
-	    NumVProcs, NumHWThreads);
+    if (isSequential) {
+	NumVProcs = 1;
+    }
+    else {
+	NumVProcs = ((NumHWThreads == 0) ? DFLT_NUM_VPROCS : NumHWThreads);
+	NumVProcs = GetIntOpt (opts, "-p", NumVProcs);
+	if ((NumHWThreads > 0) && (NumVProcs > NumHWThreads))
+	    Warning ("%d processors requested on a %d processor machine\n",
+		NumVProcs, NumHWThreads);
+    }
 
 #ifdef TARGET_DARWIN
     denseLayout = true;  // no affinity support on Mac OS X

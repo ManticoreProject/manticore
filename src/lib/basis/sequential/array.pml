@@ -18,7 +18,7 @@ structure Array64 =
 
       typedef array = PT.array;
 
-      extern void* M_NewArray (void*, int, void*);
+      extern void* M_NewArray (void*, int, void*) __attribute__((pure));
 
     (* allocate and initialize an array *)
       define inline @empty-array (x : unit / exh : exh) : array =
