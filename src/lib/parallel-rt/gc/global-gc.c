@@ -243,8 +243,9 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 		/*DEBUG bzero((void*)cp->baseAddr, cp->szB);*/
 #endif
 		MemChunk_t *cq = cp->next;
-		cp->next = FreeChunks;
-		FreeChunks = cp;
+		int nd = cp->where;
+		cp->next = FreeChunks[nd];
+		FreeChunks[nd] = cp;
 		cp = cq;
 	    }
 /* NOTE: at some point we may want to release memory back to the OS */
@@ -430,7 +431,7 @@ void CheckGlobalPtr (VProc_t *self, void *addr, char *where)
 		self->id, addr, where);
 	}
 	else {
-	    MemChunk_t *cq = AddrToChunk(addr);
+	    MemChunk_t *cq = AddrToChunk((Addr_t)addr);
 	    SayDebug("[%2d] CheckGlobalPtr: unexpected bogus header %p for %p[%d] in %s\n",
 		self->id, hdr, addr, cq->sts, where);
 	}

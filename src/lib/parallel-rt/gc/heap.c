@@ -7,6 +7,7 @@
 #include "manticore-rt.h"
 #include "heap.h"
 #include "vproc.h"
+#include "topology.h"
 #include "bibop.h"
 #include "os-memory.h"
 #include "os-threads.h"
@@ -29,7 +30,7 @@ Addr_t		MaxNurserySzB;	/* limit on size of nursery in vproc heap */
 Addr_t		MajorGCThreshold; /* when the size of the nursery goes below this limit */
 				/* it is time to do a GC. */
 MemChunk_t	*FromSpaceChunks; /* list of chunks is from-space */
-MemChunk_t	*FreeChunks;	/* list of free chunks */
+MemChunk_t	**FreeChunks;	/* lists of free chunks, one per node */
 
 /* The BIBOP maps addresses to the memory chunks containing the address.
  * It is used by the global collector and access to it is protected by
@@ -55,7 +56,6 @@ GCDebugLevel_t		HeapCheck;	// Flag that controls heap checking
  */
 void HeapInit (Options_t *opts)
 {
-
     MaxNurserySzB = GetSizeOpt (opts, "-nursery", ONE_K, VP_HEAP_DATA_SZB/2);
     if (MaxNurserySzB < MIN_NURSERY_SZB)
 	MaxNurserySzB = MIN_NURSERY_SZB;
@@ -100,7 +100,9 @@ void HeapInit (Options_t *opts)
 #endif
     TotalVM = 0;
     FromSpaceChunks = (MemChunk_t *)0;
-    FreeChunks = (MemChunk_t *)0;
+    FreeChunks = NEWVEC(MemChunk_t *, NumHWNodes);
+    for (int i = 0;  i < NumHWNodes;  i++)
+	FreeChunks[i] = 0;
 
     InitGlobalGC ();
 
@@ -131,10 +133,11 @@ void AllocToSpaceChunk (VProc_t *vp)
 {
     void	*memObj;
     MemChunk_t	*chunk;
+    int		node = LocationNode(vp->location);
 
     MutexLock (&HeapLock);
-	if (FreeChunks == (MemChunk_t *)0) {
-	  /* no free chunks, so allocate storage from OS */
+	if (FreeChunks[node] == (MemChunk_t *)0) {
+	  /* no free chunks on this node, so allocate storage from OS */
 	    int nPages = HEAP_CHUNK_SZB >> PAGE_BITS;
 	    memObj = AllocMemory(&nPages, BIBOP_PAGE_SZB, nPages);
 	    chunk = NEW(MemChunk_t);
@@ -143,11 +146,13 @@ void AllocToSpaceChunk (VProc_t *vp)
 	    }
 	    chunk->baseAddr = (Addr_t)memObj;
 	    chunk->szB = nPages * BIBOP_PAGE_SZB;
+	    chunk->where = node;
 	    UpdateBIBOP (chunk);
 	}
 	else {
-	    chunk = FreeChunks;
-	    FreeChunks = chunk->next;
+	    chunk = FreeChunks[node];
+	    FreeChunks[node] = chunk->next;
+	    assert (chunk->where == node);
 	}
 	chunk->sts = TO_SP_CHUNK;
 	ToSpaceSz += HEAP_CHUNK_SZB;
@@ -170,14 +175,16 @@ void AllocToSpaceChunk (VProc_t *vp)
 
 #ifndef NDEBUG
     if (GCDebug > GC_DEBUG_NONE)
-	SayDebug("[%2d] AllocToSpaceChunk: %ld Kb at %p\n", vp->id, chunk->szB/1024, chunk->baseAddr);
+	SayDebug("[%2d] AllocToSpaceChunk: %ld Kb at %p..%p (node %d)\n",
+	    vp->id, chunk->szB/1024, chunk->baseAddr,
+	    chunk->baseAddr+chunk->szB, chunk->where);
 #endif
 
 }
 
 /*! \brief Allocate a VProc's local memory object.
  */
-VProc_t *AllocVProcMemory (int id)
+VProc_t *AllocVProcMemory (int id, Location_t loc)
 {
     assert (VP_HEAP_SZB >= BIBOP_PAGE_SZB);
 
@@ -197,12 +204,15 @@ VProc_t *AllocVProcMemory (int id)
 	chunk->baseAddr = (Addr_t)vproc;
 	chunk->szB = VP_HEAP_SZB;
 	chunk->sts = VPROC_CHUNK(id);
+	chunk->where = LocationNode(loc);
 	UpdateBIBOP (chunk);
     MutexUnlock (&HeapLock);
 
 #ifndef NDEBUG
     if (GCDebug > GC_DEBUG_NONE)
-	SayDebug("     AllocVProcMemory(%d): %ld Kb at %p\n", id, chunk->szB/1024, chunk->baseAddr);
+	SayDebug("     AllocVProcMemory(%d): %ld Kb at %p..%p (node %d)\n",
+	    id, chunk->szB/1024, chunk->baseAddr,
+	    chunk->baseAddr+chunk->szB, chunk->where);
 #endif
 
     return vproc;

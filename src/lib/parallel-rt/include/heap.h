@@ -10,6 +10,7 @@
 #include "manticore-rt.h"
 #include "vproc.h"
 #include "atomic-ops.h"
+#include "topology.h"
 
 /* size of a heap chunk */
 #define HEAP_CHUNK_SZB		((Addr_t)(4*ONE_MEG))
@@ -59,6 +60,6 @@ STATIC_INLINE bool inVPHeap (Addr_t heapBase, Addr_t p)
 extern void HeapInit (Options_t *opts);
 extern void InitVProcHeap (VProc_t *vp);
 extern void AllocToSpaceChunk (VProc_t *vp);
-extern VProc_t *AllocVProcMemory (int id);
+extern VProc_t *AllocVProcMemory (int id, Location_t loc);
 
 #endif /* !_HEAP_H_ */

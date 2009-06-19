@@ -11,6 +11,7 @@
 #include <stdarg.h>
 #include "options.h"
 #include "value.h"
+#include "topology.h"
 #include "vproc.h"
 #include "heap.h"
 #include "os-threads.h"
@@ -51,6 +52,7 @@ int main (int argc, const char **argv)
 	Die("runtime/compiler inconsistency\n");
     }
 
+    DiscoverTopology ();
     HeapInit (opts);
     VProcInit (opts);
 

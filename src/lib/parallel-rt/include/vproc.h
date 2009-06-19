@@ -33,8 +33,8 @@ struct struct_vproc {
     Value_t	stdExnCont;	//!< holds value of standard exception-cont. reg.
     Addr_t	allocPtr;	//!< allocation pointer
 			      /* logging support */
-    uint64_t	eventId;	//!< counter for generating event IDs; the top 8 bits of the
-				//! counter hold the VProc ID.
+    uint64_t	eventId;	//!< counter for generating event IDs; the
+				//!  top 8 bits of the counter hold the VProc ID.
     LogBuffer_t	*log;	        //!< current buffer for logging events
     LogBuffer_t	*prevLog;       //!< previous buffer for logging events
 			      /* GC parameters */
@@ -52,23 +52,28 @@ struct struct_vproc {
     Addr_t	globLimit;	//!< limit pointer for to-space chunk
     int		id;		//!< index of this vproc in VProcs[] array
     OSThread_t	hostID;		//!< PThread ID of host
+    Location_t	location;	//!< the physical location that hosts this vproc.
 
   /* the following fields may be changed by remote vprocs */
     Mutex_t	lock;		//!< lock for VProc state
     Cond_t	wait;		//!< for waiting when idle
     Value_t     landingPad;     //!< the head of the landing pad (stack)
     Addr_t	limitPtr;	//!< heap-limit pointer
-    bool	globalGCPending; //!< true when the vproc has been signaled that
-				//! global GC has started, but this vproc has not
+    bool	globalGCPending; //!< true when this vproc has been signaled that
+				//! global GC has started, but it has not
 				//! started yet.
 
   /* additional optional fields used for stats etc. */
 			      /* GC stats */
 #ifndef NO_GC_STATS
-    int32_t	nLocalPtrs;	//!< counter of pointers into local heap that are scanned in minor GC
-    int32_t	nGlobPtrs;	//!< counter of pointers into global heap that are scanned in minor GC
-    uint64_t	nWordsScanned;	//!< counter of words scanned by this vproc during global GC
-    uint64_t	nBytesCopied;	//!< counter of bytes copied by this vproc during global GC
+    int32_t	nLocalPtrs;	//!< counter of pointers into local heap that
+				//!  are scanned in minor GC
+    int32_t	nGlobPtrs;	//!< counter of pointers into global heap that
+				//!  are scanned in minor GC
+    uint64_t	nWordsScanned;	//!< counter of words scanned by this vpro
+				//! c during global GC
+    uint64_t	nBytesCopied;	//!< counter of bytes copied by this vproc
+				//!  during global GC
 #endif
 #ifndef ENABLE_LOGGING	      /* GC counters for logging info */
 
@@ -86,7 +91,6 @@ STATIC_INLINE Addr_t VProcHeap (VProc_t *vp)
 }
 
 /* the array of vprocs */
-extern int		NumHardwareProcs;	// number of hardware processors to use.
 extern int		NumVProcs;
 extern VProc_t		*VProcs[MAX_NUM_VPROCS];
 

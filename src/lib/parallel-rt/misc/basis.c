@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "vproc.h"
+#include "topology.h"
 #include "value.h"
 #include "heap.h"
 #include <sys/time.h>
@@ -157,11 +158,13 @@ Word_t M_GetTime ()
 
 /* M_GetNumProcs:
  *
- * Return the number of hardware processors.
+ * Return the number of hardware processors.  On processors with
+ * hardware multithreading, this will be the number of threads,
+ * otherwise it is the number of cores.
  */
 int M_GetNumProcs ()
 {
-    return NumHardwareProcs;
+    return NumHWThreads;
 }
 
 /* M_GetNumVProcs:

@@ -24,9 +24,13 @@
 
 /* globals */
 extern int		NumHWNodes;	//!< \brief number of (possibly multicore) processors
-extern int		NumHWCores;	//!< \brief number of (possibly mulithreaded) cores
-extern int		NumHWThreads;	//!< \brief number of hardware threads
-extern Location_t	*Locations;	//!< \brief an array of the availble locations
+extern int		NumHWCores;	//!< \brief total number of (possibly
+					//!  mulithreaded) cores
+extern int		NumHWThreads;	//!< \brief total number of hardware threads
+extern int		NumCoresPerNode; //!< \brief number of cores per thread
+extern int		NumThdsPerCore; //!< \brief number of threads per core
+extern Location_t	*Locations;	//!< \brief an array of the available
+					//!  locations indexed by processor ID
 
 /*! \brief initialization function that determines the hardware topology.
  */
@@ -41,13 +45,25 @@ void DiscoverTopology ();
  */
 bool SpawnAt (OSThread_t *tidOut, void * (*f)(void *), void *arg, Location_t loc);
 
-/*! \brief return the location of the current thread */
-Location_t GetLocation ();
+STATIC_INLINE Location_t Location (int nd, int core, int thd)
+{
+    return ((nd << (LOC_THREAD_BITS+LOC_CORE_BITS)) | (core << LOC_THREAD_BITS) | thd);
+}
 
 /*! \brief return the node of a location */
 STATIC_INLINE int LocationNode (Location_t loc)
 {
     return (loc >> (LOC_THREAD_BITS+LOC_CORE_BITS));
+}
+
+/*! \brief return the logical processor ID of the location. */
+STATIC_INLINE int LogicalId (Location_t loc)
+{
+/* FIXME: this works for Linux, but what about Mac OS X? */
+    int id = LocationNode(loc);
+    id = id * NumCoresPerNode + (loc >> LOC_THREAD_BITS) & ((1 << LOC_CORE_BITS) - 1);
+    id = id * NumThdsPerCore + (loc & ((1 << LOC_THREAD_BITS) - 1));
+    return id;
 }
 
 /*! \brief are two locations on the same node? */
@@ -61,5 +77,13 @@ STATIC_INLINE bool SameCoreLocation (Location_t loc1, Location_t loc2)
 {
     return ((loc1 >> LOC_THREAD_BITS) == (loc2 > LOC_THREAD_BITS));
 }
+
+/*! \brief put a string representation of the location in the buffer.
+ *  \param buf the string buffer
+ *  \param bufSz the size of the buffer.
+ *  \param loc the location.
+ *  \return the number of characters (not counting the '\0')
+ */
+int LocationString (char *buf, size_t bufSz, Location_t loc);
 
 #endif /* !_TOPOLOGY_H_ */

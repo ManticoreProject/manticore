@@ -33,7 +33,7 @@ struct struct_chunk {
 				 */
     MemChunk_t	*next;		/*!< link field */
     Status_t	sts;		/*!< current status of chunk */
-    Location_t	where;		/*!< the location of the vproc that allocated
+    int		where;		/*!< the node of the vproc that allocated
 				 *   this chunk.
 				 */
 };
@@ -50,7 +50,7 @@ extern Addr_t		ToSpaceLimit;	/* if ToSpaceSz exceeds this value, then do a */
 extern Addr_t		TotalVM;	/* total memory used by heap (including vproc */
 					/* local heaps) */
 extern MemChunk_t	*FromSpaceChunks; /* list of chunks is from-space */
-extern MemChunk_t	*FreeChunks;	/* list of free chunks */
+extern MemChunk_t	**FreeChunks;	/* list of free chunks, one per node */
 
 extern void UpdateBIBOP (MemChunk_t *chunk);
 

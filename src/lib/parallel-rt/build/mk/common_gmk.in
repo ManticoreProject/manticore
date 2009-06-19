@@ -55,8 +55,9 @@ MISC_SRCS =	main.c \
 		apply.c \
 		basis.c \
 		options.c \
-		image.c \
-		work-stealing-deque.c
+		work-stealing-deque.c \
+		topology.c \
+		image.c
 
 ifeq ($(ENABLE_LOGGING),true)
   CPPFLAGS += -DENABLE_LOGGING
