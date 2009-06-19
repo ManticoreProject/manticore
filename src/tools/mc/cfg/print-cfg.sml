@@ -110,11 +110,14 @@ structure PrintCFG : sig
 		      prList varUseToString args)
 		  | (CFG.E_HostVProc _) => pr "host_vproc()"
 		  | (CFG.E_VPLoad(_, offset, vp)) => prl [
-			"load(", varUseToString vp, "+", IntInf.toString offset, ")"
+			"vpload(", varUseToString vp, "+", IntInf.toString offset, ")"
 		      ]
 		  | (CFG.E_VPStore(offset, vp, x)) => prl [
-			"store(", varUseToString vp, "+", IntInf.toString offset, ",",
+			"vpstore(", varUseToString vp, "+", IntInf.toString offset, ",",
 			varUseToString x, ")"
+		      ]
+		  | (CFG.E_VPAddr(_, offset, vp)) => prl [
+			"vpaddr(", varUseToString vp, "+", IntInf.toString offset, ")"
 		      ]
 		(* end case *);
 		pr "\n")

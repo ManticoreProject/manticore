@@ -72,6 +72,8 @@ structure CFG =
 						(* in the vproc structure *)
       | E_VPStore of (offset * var * var)	(* store a value at the given byte offset *)
 						(* in the vproc structure *)
+      | E_VPAddr of (var * offset * var)	(* address of given byte offset in the vproc *)
+						(* structure *)
 
     and transfer
       = StdApply of {f : var, clos : var, args : var list, ret : var, exh : var}
@@ -157,6 +159,7 @@ structure CFG =
       | lhsOfExp (E_HostVProc x) = [x]
       | lhsOfExp (E_VPLoad(x, _, _)) = [x]
       | lhsOfExp (E_VPStore _) = []
+      | lhsOfExp (E_VPAddr(x, _, _)) = [x]
 
   (* project out the parameters of a convention *)
     fun paramsOfConv (StdFunc{clos, args, ret, exh}) = clos :: args @ [ret, exh]
@@ -186,6 +189,7 @@ structure CFG =
     fun mkHostVProc arg = mkExp(E_HostVProc arg)
     fun mkVPLoad arg = mkExp(E_VPLoad arg)
     fun mkVPStore arg = mkExp(E_VPStore arg)
+    fun mkVPAddr arg = mkExp(E_VPAddr arg)
 
     fun mkFunc (l, conv, body, exit, export) = let
 	    val func = FUNC{lab = l, entry = conv, body = body, exit = exit}

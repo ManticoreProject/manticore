@@ -93,10 +93,11 @@
       | SE_Const of (Literal.literal * ty)
       | SE_MLString of string				(* ML string literal *)
       | SE_Cast of (ty * simple_exp)
-      | SE_Prim of (prim * simple_exp list)	(* prim-op or data constructor *)
+      | SE_Prim of (prim * simple_exp list)		(* prim-op or data constructor *)
     (* VProc operations *)
       | SE_HostVProc					(* gets the hosting VProc *)
       | SE_VPLoad of (offset * simple_exp)
+      | SE_VPAddr of (offset * simple_exp)		(* address of byte offset in VProc *)
 
     and pat
       = P_PMark of pat mark
@@ -143,6 +144,7 @@
 	    | SE_Prim _ => "SE_Prim"
 	    | SE_HostVProc => "SE_HostVProc"
 	    | SE_VPLoad _ => "SE_VPLoad"
+	    | SE_VPAddr _ => "SE_VPAddr"
 	  (* end case *))
 
   end

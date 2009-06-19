@@ -371,6 +371,7 @@ structure CFACFG : sig
                   | doExp (CFG.E_HostVProc x) = addInfo(x, TOP)
                   | doExp (CFG.E_VPLoad(x, _, _)) = addInfo(x, TOP)
                   | doExp (CFG.E_VPStore(_, _, z)) = escape z
+                  | doExp (CFG.E_VPAddr(x, _, _)) = addInfo(x, TOP)
                 fun doXfer (CFG.StdApply{f, clos, args, ret, exh}) =
                       doApply (f, 
                                ("StdApply{f = " ^ (CFG.Var.toString f) ^ ", ...}", 

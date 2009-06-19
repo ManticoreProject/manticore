@@ -160,7 +160,7 @@ structure VProc (* :
 	      let ldgPadOrig : queue_item = vpload(VP_LANDING_PAD, dst)
 	      let ldgPadNew : queue_item = alloc(fls, k, ldgPadOrig)
 	      let ldgPadNew : queue_item = promote(ldgPadNew)
-	      let x : queue_item = CAS((addr(queue_item))&VP_LANDING_PAD(dst), ldgPadOrig, ldgPadNew)
+	      let x : queue_item = CAS((addr(queue_item))vpaddr(VP_LANDING_PAD,dst), ldgPadOrig, ldgPadNew)
 	      if NotEqual(x, ldgPadOrig)
 		then
 		  do Pause ()
@@ -198,7 +198,7 @@ structure VProc (* :
           do if Equal(ldgPadOrig, Q_EMPTY)
 		then throw exit()
 	     else return()
-          let x : queue_item = CAS((addr(queue_item))&VP_LANDING_PAD(self), ldgPadOrig, Q_EMPTY)
+          let x : queue_item = CAS((addr(queue_item))vpaddr(VP_LANDING_PAD, self), ldgPadOrig, Q_EMPTY)
           if Equal(x, ldgPadOrig)
 	     then return(x)
 	  else return(Q_EMPTY)

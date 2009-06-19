@@ -68,20 +68,21 @@ structure BOMUsedVars =
             (* end case *))
 
     and usedOfSexp sexp = (case sexp
-            of PT.SE_Mark {tree, span} => usedOfSexp tree
+            of PT.SE_Mark{tree, span} => usedOfSexp tree
 	     | PT.SE_Var v => var v
 	     | PT.SE_Alloc sexps => usedOfSexps sexps
 	     | PT.SE_Unwrap sexp => usedOfSexp sexp
 	     | PT.SE_Wrap sexp => usedOfSexp sexp
-	     | PT.SE_Select (i, sexp) => usedOfSexp sexp
-	     | PT.SE_AddrOf (i, sexp) => usedOfSexp sexp
-	     | PT.SE_Const (lit, ty) => usedOfTy ty
+	     | PT.SE_Select(i, sexp) => usedOfSexp sexp
+	     | PT.SE_AddrOf(i, sexp) => usedOfSexp sexp
+	     | PT.SE_Const(lit, ty) => usedOfTy ty
 	     | PT.SE_MLString s => empty
-	     | PT.SE_Cast (ty, sexp) => union[usedOfSexp sexp, usedOfTy ty]
-	     | PT.SE_Prim (prim, sexps) => union[var prim, usedOfSexps sexps]
+	     | PT.SE_Cast(ty, sexp) => union[usedOfSexp sexp, usedOfTy ty]
+	     | PT.SE_Prim(prim, sexps) => union[var prim, usedOfSexps sexps]
 	     | PT.SE_HostVProc => empty
-	     | PT.SE_VPLoad (off, sexp) => usedOfSexp sexp
-            (* end case *))
+	     | PT.SE_VPLoad(off, sexp) => usedOfSexp sexp
+	     | PT.SE_VPAddr(off, sexp) => usedOfSexp sexp
+	  (* end case *))
 
     and usedOfSexps sexps = usedOfList usedOfSexp sexps
 

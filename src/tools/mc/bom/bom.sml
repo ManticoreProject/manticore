@@ -47,6 +47,8 @@ structure BOM =
 						(* in the vproc structure *)
       | E_VPStore of (offset * var * var)	(* store a value at the given byte offset *)
 						(* in the vproc structure *)
+      | E_VPAddr of (offset * var)		(* address of given byte offset in the vproc *)
+						(* structure *)
 
     and lambda = FB of {	  	    (* function/continuation abstraction *)
 	  f : var,				(* function name *)

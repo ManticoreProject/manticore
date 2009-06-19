@@ -96,6 +96,7 @@ structure BOMUtil : sig
       | varsOfRHS (B.E_HostVProc) = []
       | varsOfRHS (B.E_VPLoad(n, x)) = [x]
       | varsOfRHS (B.E_VPStore(n, x, y)) = [x, y]
+      | varsOfRHS (B.E_VPAddr(n, x)) = [x]
 
   (* apply a substitution to a RHS term *)
     fun substRHS (s, rhs) = (case rhs
@@ -112,6 +113,7 @@ structure BOMUtil : sig
 	    | B.E_HostVProc => rhs
 	    | B.E_VPLoad(n, x) => B.E_VPLoad(n, subst s x)
 	    | B.E_VPStore(n, x, y) => B.E_VPStore(n, subst s x, subst s y)
+	    | B.E_VPAddr(n, x) => B.E_VPAddr(n, subst s x)
 	  (* end case *))
 
   (* apply a substitution to an expression *)
@@ -311,6 +313,7 @@ structure BOMUtil : sig
       | typeOfRHS (B.E_HostVProc) = [BTy.T_VProc]
       | typeOfRHS (B.E_VPLoad _) = [BTy.T_Any]
       | typeOfRHS (B.E_VPStore _) = []
+      | typeOfRHS (B.E_VPAddr _) = [BTy.T_Addr BTy.T_Any]
 
   (* rawInt : int -> B.rhs *)
     fun rawInt(n) = B.E_Const(Literal.Int (IntInf.fromInt n), BTy.T_Raw BTy.T_Int)

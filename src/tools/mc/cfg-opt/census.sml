@@ -56,6 +56,7 @@ structure Census : sig
       | doExp (C.E_HostVProc x) = clr x
       | doExp (C.E_VPLoad(x, _, y)) = (clr x; inc y)
       | doExp (C.E_VPStore(_, x, y)) = (inc x; inc y)
+      | doExp (C.E_VPAddr(x, _, y)) = (clr x; inc y)
 
   (* update the census counts for the variables used in a jump *)
     fun doJump (lab, args) = (incLab lab; inc' args)

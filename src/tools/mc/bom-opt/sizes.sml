@@ -28,6 +28,7 @@ structure Sizes : sig
       | sizeOfRHS B.E_HostVProc = 1
       | sizeOfRHS (B.E_VPLoad _) = 1
       | sizeOfRHS (B.E_VPStore _) = 1
+      | sizeOfRHS (B.E_VPAddr _) = 1
 
     fun sizeOfApply (f, xs, ys) = let
 	  val n = List.length xs + List.length ys

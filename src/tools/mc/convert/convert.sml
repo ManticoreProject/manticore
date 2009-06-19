@@ -194,6 +194,7 @@ structure Convert : sig
 		  | B.E_HostVProc => C.HostVProc
 		  | B.E_VPLoad(off, x) => C.VPLoad(off, cv x)
 		  | B.E_VPStore(off, x, y) => C.VPStore(off, cv x, cv y)
+		  | B.E_VPAddr(off, x) => C.VPAddr(off, cv x)
 		(* end case *))
 	  in
 	    C.mkLet(lhs', rhs', k env2)

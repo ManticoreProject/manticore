@@ -172,23 +172,23 @@ structure TranslatePrim : sig
 
   (* generate a dynamic check that the given variable is a valid pointer to the global heap *)
   (* the argument pointsToHeapObject must be false whenever the pointer might point into the middle
-   * of a heap object. *)
-    fun checkGlobalPtr (loc, v, pointsToHeapObject) =
-	let val self = newTmp BTy.T_VProc
-	    val t = newTmp BTy.T_Any
-	    val locS = Error.locToString(Error.location(!errStrm, loc))
-	    val checkCFun = if pointsToHeapObject then "CheckGlobalPtr" else "CheckGlobalAddr"
-	in
-	    [([self], BOM.E_HostVProc),
-	     ([t], BOM.E_Const(Literal.String (locS ^ " at " ^ BOM.Var.toString v), BTy.T_Any)),
-	     ([], BOM.E_CCall(findCFun(BasisEnv.getCFunFromBasis [checkCFun]), [self, v, t]))]
-	end
+   * of a heap object.
+   *)
+    fun checkGlobalPtr (loc, v, pointsToHeapObject) = let
+	  val self = newTmp BTy.T_VProc
+	  val t = newTmp BTy.T_Any
+	  val locS = Error.locToString(Error.location(!errStrm, loc))
+	  val checkCFun = if pointsToHeapObject then "CheckGlobalPtr" else "CheckGlobalAddr"
+	  in [
+	    ([self], BOM.E_HostVProc),
+	    ([t], BOM.E_Const(Literal.String (locS ^ " at " ^ BOM.Var.toString v), BTy.T_Any)),
+	    ([], BOM.E_CCall(findCFun(BasisEnv.getCFunFromBasis [checkCFun]), [self, v, t]))
+	  ] end
 
     fun cvtPrim (loc, lhs, p, xs, body) = 
-	if not(Controls.get BasicControl.debug) then 	
-	    BOM.mkStmts ([(lhs, mkPrim(p, xs))], body)
-	else
-	    (case mkPrim(p, xs)
+	if not(Controls.get BasicControl.debug)
+	  then BOM.mkStmts ([(lhs, mkPrim(p, xs))], body)
+	  else (case mkPrim(p, xs)
 	      of prim as BOM.E_Prim(Prim.CAS(x, new, old)) =>
 		 BOM.mkStmts (checkGlobalPtr(loc, x, false) @
 			      checkGlobalPtr(loc, new, false) @
@@ -203,7 +203,6 @@ structure TranslatePrim : sig
 			      body)
 	       | prim => BOM.mkStmts ([(lhs, mkPrim(p, xs))], body)
 	    (* end case *))
-
 
   (* convert a variable expression to either an ordinary variable or a nullary constructor *)
     fun cvtVar (x, k) = (case lookupVarOrDCon x
@@ -299,6 +298,9 @@ structure TranslatePrim : sig
 			    | BPT.SE_VPLoad(offset, vp) =>
 				cvtSimpleExp(loc, findCFun, vp, fn vp =>
 				  BOM.mkStmt(lhs', BOM.E_VPLoad(offset, vp), body'))
+			    | BPT.SE_VPAddr(offset, vp) =>
+				cvtSimpleExp(loc, findCFun, vp, fn vp =>
+				  BOM.mkStmt(lhs', BOM.E_VPAddr(offset, vp), body'))
 			  (* end case *))
 		      | BPT.RHS_Update(i, arg, rhs) => 
 			cvtSimpleExp(loc, findCFun, arg, fn x =>
@@ -476,6 +478,12 @@ structure TranslatePrim : sig
 		    val tmp = newTmp(BTy.T_Any)
 		    in
 		      BOM.mkStmt([tmp], BOM.E_VPLoad(offset, vp), k tmp)
+		    end)
+	      | BPT.SE_VPAddr(offset, vp) =>
+		  cvt(loc, vp, fn vp => let
+		    val tmp = newTmp(BTy.T_Addr BTy.T_Any)
+		    in
+		      BOM.mkStmt([tmp], BOM.E_VPAddr(offset, vp), k tmp)
 		    end)
 	    (* end case *))
       in

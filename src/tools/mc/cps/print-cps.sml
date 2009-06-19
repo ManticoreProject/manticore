@@ -102,11 +102,14 @@ structure PrintCPS : sig
 		prList varUseToString args)
 	    | prRHS (CPS.HostVProc) = pr "host_vproc()"
 	    | prRHS (CPS.VPLoad(offset, vp)) = prl [
-		  "load(", varUseToString vp, "+", IntInf.toString offset, ")"
+		  "vpload(", varUseToString vp, "+", IntInf.toString offset, ")"
 		]
 	    | prRHS (CPS.VPStore(offset, vp, x)) = prl [
-		  "store(", varUseToString vp, "+", IntInf.toString offset, ",",
+		  "vpstore(", varUseToString vp, "+", IntInf.toString offset, ",",
 		  varUseToString x, ")"
+		]
+	    | prRHS (CPS.VPAddr(offset, vp)) = prl [
+		  "vpaddr(", varUseToString vp, "+", IntInf.toString offset, ")"
 		]
 	  and prLambda (i, prefix, CPS.FB{f, params, rets, body}) = let
 		fun prParams params = prList' varBindToString params
