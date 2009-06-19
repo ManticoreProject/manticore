@@ -82,7 +82,9 @@ structure Prim =
       | I64ToF64 of 'var		(* long -> double conversion *)
       | F64ToI32 of 'var                (* double -> int conversion *)
     (* address arithmetic *)
+      | AdrAddI32 of 'var * 'var
       | AdrAddI64 of 'var * 'var
+      | AdrSubI32 of 'var * 'var
       | AdrSubI64 of 'var * 'var
     (* loads from addresses *)
       | AdrLoadI8 of 'var

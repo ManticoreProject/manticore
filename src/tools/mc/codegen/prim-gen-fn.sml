@@ -37,6 +37,7 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
     val i64Ty = 64
     val f32Ty = 32
     val f64Ty = 64
+    val adrTy = 64
     val boolTy = 64
 
     fun wordLit i = T.LI(T.I.fromInt (i64Ty, i))
@@ -296,8 +297,12 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		    | P.I64ToF64 x => fbind (f64Ty, v, T.CVTI2F(f64Ty, i64Ty, defOf x))
 		    | P.F64ToI32 x => gprBind (i32Ty, v, T.CVTF2I(i32Ty, T.Basis.TO_NEAREST, f64Ty, fdefOf x))
 		  (* address arithmetic *)
-		    | P.AdrAddI64 a => genArith2 (anyTy, T.ADD, a)
-		    | P.AdrSubI64 a => genArith2 (anyTy, T.SUB, a)
+		    | P.AdrAddI32(a, b) =>
+			gprBind (adrTy, v, T.ADD(adrTy, defOf a, T.SX(i64Ty, i32Ty, defOf b)))
+		    | P.AdrSubI32(a, b) =>
+			gprBind (adrTy, v, T.ADD(adrTy, defOf a, T.SX(i64Ty, i32Ty, defOf b)))
+		    | P.AdrAddI64 a => genArith2 (adrTy, T.ADD, a)
+		    | P.AdrSubI64 a => genArith2 (adrTy, T.SUB, a)
 		  (* address loads *)
 		    | P.AdrLoadI8 addr => gprBind (i32Ty, v, T.SX(i32Ty, 8, T.LOAD(8, defOf addr, ManticoreRegion.memory)))
 		    | P.AdrLoadU8 addr => gprBind (i32Ty, v, T.ZX(i32Ty, 8, T.LOAD(8, defOf addr, ManticoreRegion.memory)))
@@ -307,7 +312,7 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		    | P.AdrLoadI64 addr => gprBind (i64Ty, v, T.LOAD(64, defOf addr, ManticoreRegion.memory))
 		    | P.AdrLoadF32 addr => fbind (f32Ty, v, T.FLOAD(32, defOf addr, ManticoreRegion.memory))
 		    | P.AdrLoadF64 addr => fbind (f64Ty, v, T.FLOAD(64, defOf addr, ManticoreRegion.memory))
-		    | P.AdrLoadAdr addr => gprBind (anyTy, v, T.LOAD(anyTy, defOf addr, ManticoreRegion.memory))
+		    | P.AdrLoadAdr addr => gprBind (adrTy, v, T.LOAD(adrTy, defOf addr, ManticoreRegion.memory))
 		    | P.AdrLoad addr => gprBind (anyTy, v, T.LOAD(anyTy, defOf addr, ManticoreRegion.memory))
 		  (* array load operations *)
 		    | P.ArrLoadI32(base, i) => genLoad (i32Ty, gprBind, T.LOAD) (base, i)
