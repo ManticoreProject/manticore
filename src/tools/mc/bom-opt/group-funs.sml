@@ -18,12 +18,9 @@ structure GroupFuns : sig
     structure BU = BOMUtil
     structure VSet = BV.Set
     structure VMap = BV.Map
-    structure C = Census
     structure ST = Stats
 
-
   (********** Counters for statistics **********)
- 
     val cntGroup	= ST.newCounter "group-fns:group"
     val cntSplit	= ST.newCounter "group-fns:split"
 
