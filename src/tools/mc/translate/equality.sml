@@ -56,7 +56,7 @@ structure Equality : sig
 		    | BTy.T_Int => mkPrim (P.I32Eq, P.I32NEq)
 		    | BTy.T_Long => mkPrim (P.I64Eq, P.I64NEq)
 		    | BTy.T_Float => mkPrim (P.F32Eq, P.F32NEq)
-		    | BTy.T_Double => mkPrim (P.F32Eq, P.F64NEq)
+		    | BTy.T_Double => mkPrim (P.F64Eq, P.F64NEq)
 		    | BTy.T_Vec128 => raise Fail "Vec128 equality"
 		  (* end case *))
 	      | BTy.T_Tuple(false, tys) => mkTuple (0, tys)
