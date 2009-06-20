@@ -35,6 +35,9 @@ structure InitialBasis : sig
     structure BTy = BOMTy
     structure BV = BOM.Var
 
+  (* get the definitions from Basis *)
+    open Basis
+
   (* create a new bound variable *)
     fun newVar name = ProgramParseTree.Var.new(Atom.toString name, ())
 
@@ -67,22 +70,22 @@ structure InitialBasis : sig
 		  (* end case *)
 		end
 	  val (bEnv, mEnv) = List.foldl insTyc (bEnv, mEnv) [
-		  Basis.boolTyc,
-		  Basis.listTyc,
-		  Basis.exnTyc,
-		  Basis.intTyc,
-		  Basis.longTyc,
-		  Basis.integerTyc,
-		  Basis.floatTyc,
-		  Basis.doubleTyc,
-		  Basis.charTyc,
-		  Basis.runeTyc,
-		  Basis.stringTyc,
-		  Basis.chanTyc,
-		  Basis.ivarTyc,
-		  Basis.mvarTyc,
-		  Basis.eventTyc,
-		  Basis.threadIdTyc
+		  boolTyc,
+		  listTyc,
+		  exnTyc,
+		  intTyc,
+		  longTyc,
+		  integerTyc,
+		  floatTyc,
+		  doubleTyc,
+		  charTyc,
+		  runeTyc,
+		  stringTyc,
+		  chanTyc,
+		  ivarTyc,
+		  mvarTyc,
+		  eventTyc,
+		  threadIdTyc
 		]
 	(* add primitive types *)
 	  fun insTy ((name, ty), (bEnv, mEnv)) = let
@@ -92,7 +95,7 @@ structure InitialBasis : sig
 		  MEnv.insertTy(mEnv, id, MEnv.TyDef ty)
 		) end
 	  val (bEnv, mEnv) = List.foldl insTy (bEnv, mEnv) [
-		  (N.unit, Types.TyScheme([], Basis.unitTy))
+		  (N.unit, Types.TyScheme([], unitTy))
 		]
 	(* add data-constructor aliases *)
 	  val SOME consId = BEnv.findVal (bEnv, N.listCons)
@@ -106,10 +109,10 @@ structure InitialBasis : sig
 		  MEnv.insertVar (mEnv, exId, MEnv.Con ex)
 		) end
 	  val (bEnv, mEnv) = List.foldl insExn (bEnv, mEnv) [
-		  Basis.exnBind,
-		  Basis.exnDiv,
-		  Basis.exnFail,
-		  Basis.exnMatch
+		  exnBind,
+		  exnDiv,
+		  exnFail,
+		  exnMatch
 		]
 	  in
 	    (bEnv, mEnv)
@@ -129,114 +132,32 @@ structure InitialBasis : sig
       infix 9 **
       infixr 8 -->
     in
-    val lte = (
-	    tyScheme(Types.Order, fn tv => (tv ** tv --> Basis.boolTy)),
-	    [
-	      Basis.int_lte,
-	      Basis.long_lte,
-	      Basis.integer_lte,
-	      Basis.float_lte,
-	      Basis.double_lte,
-	      Basis.char_lte,
-	      Basis.rune_lte,
-	      Basis.string_lte
-	    ])
-    val lt = (
-	    tyScheme(Types.Order, fn tv => (tv ** tv --> Basis.boolTy)),
-	    [
-	      Basis.int_lt,
-	      Basis.long_lt,
-	      Basis.integer_lt,
-	      Basis.float_lt,
-	      Basis.double_lt,
-	      Basis.char_lt,
-	      Basis.rune_lt,
-	      Basis.string_lt
-	    ])
-    val gte = (
-	    tyScheme(Types.Order, fn tv => (tv ** tv --> Basis.boolTy)),
-	    [
-	      Basis.int_gte,
-	      Basis.long_gte,
-	      Basis.integer_gte,
-	      Basis.float_gte,
-	      Basis.double_gte,
-	      Basis.char_gte,
-	      Basis.rune_gte,
-	      Basis.string_gte
-	    ])
-    val gt = (
-	    tyScheme(Types.Order, fn tv => (tv ** tv --> Basis.boolTy)),
-	    [
-	      Basis.int_gt,
-	      Basis.long_gt,
-	      Basis.integer_gt,
-	      Basis.float_gt,
-	      Basis.double_gt,
-	      Basis.char_gt,
-	      Basis.rune_gt,
-	      Basis.string_gt
-	    ])
+    val lte = (tyScheme(Types.Order, fn tv => (tv ** tv --> boolTy)),
+	       [int_lte, long_lte, integer_lte, float_lte, double_lte, char_lte, rune_lte, string_lte])
+    val lt = (tyScheme(Types.Order, fn tv => (tv ** tv --> boolTy)),
+	       [int_lt, long_lt, integer_lt, float_lt, double_lt, char_lt, rune_lt, string_lt])
+    val gte = (tyScheme(Types.Order, fn tv => (tv ** tv --> boolTy)),
+	       [int_gte, long_gte, integer_gte, float_gte, double_gte, char_gte, rune_gte, string_gte])
+    val gt = (tyScheme(Types.Order, fn tv => (tv ** tv --> boolTy)),
+	       [int_gt, long_gt, integer_gt, float_gt, double_gt, char_gt, rune_gt, string_gt])
 
-    val plus = (
-	    tyScheme(Types.Num, fn tv => (tv ** tv --> tv)),
-	    [
-	      Basis.int_plus,
-	      Basis.long_plus,
-	      Basis.integer_plus,
-	      Basis.float_plus,
-	      Basis.double_plus
-	    ])
-    val minus = (
-	    tyScheme(Types.Num, fn tv => (tv ** tv --> tv)),
-	    [
-	      Basis.int_minus,
-	      Basis.long_minus,
-	      Basis.integer_minus,
-	      Basis.float_minus,
-	      Basis.double_minus
-	    ])
-    val times = (
-	    tyScheme(Types.Num, fn tv => (tv ** tv --> tv)),
-	    [
-	      Basis.int_times,
-	      Basis.long_times,
-	      Basis.integer_times,
-	      Basis.float_times,
-	      Basis.double_times
-	    ])
+    val plus = (tyScheme(Types.Num, fn tv => (tv ** tv --> tv)),
+	       [int_plus, long_plus, integer_plus, float_plus, double_plus])
+    val minus = (tyScheme(Types.Num, fn tv => (tv ** tv --> tv)),
+	       [int_minus, long_minus, integer_minus, float_minus, double_minus])
+    val times = (tyScheme(Types.Num, fn tv => (tv ** tv --> tv)),
+	       [int_times, long_times, integer_times, float_times, double_times])
 
-    val fdiv = (
-	    tyScheme(Types.Float, fn tv => (tv ** tv --> tv)),
-	    [
-	      Basis.float_fdiv,
-	      Basis.double_fdiv
-	    ])
+    val fdiv = (tyScheme(Types.Float, fn tv => (tv ** tv --> tv)),
+		[float_fdiv, double_fdiv])
 
-    val div = (
-	    tyScheme(Types.Int, fn tv => (tv ** tv --> tv)),
-	    [
-	      Basis.int_div,
-	      Basis.long_div,
-	      Basis.integer_div
-	    ])
-    val mod = (
-	    tyScheme(Types.Int, fn tv => (tv ** tv --> tv)),
-	    [
-	      Basis.int_mod,
-	      Basis.long_mod,
-	      Basis.integer_mod
-	    ])
+    val div = (tyScheme(Types.Int, fn tv => (tv ** tv --> tv)),
+	       [int_div, long_div, integer_div])
+    val mod = (tyScheme(Types.Int, fn tv => (tv ** tv --> tv)),
+	       [int_mod, long_mod, integer_mod])
 
-    val neg = (
-	    tyScheme(Types.Num, fn tv => (tv --> tv)),
-	    [
-	      Basis.int_neg,
-	      Basis.long_neg,
-	      Basis.integer_neg,
-	      Basis.float_neg,
-	      Basis.double_neg
-	    ])
+    val neg = (tyScheme(Types.Num, fn tv => (tv --> tv)),
+		[int_neg, long_neg, integer_neg, float_neg, double_neg])
     end (* local *)
 
   (* create wrapper code for a high-level operation. *)
@@ -320,20 +241,18 @@ structure InitialBasis : sig
 		     TranslateEnv.insertCon(env, con, dcon)
 		  end
 	    in
-(* FIXME: boolTyc does not map to BTy.boolTy!!! *)
 	      List.app insertDataCon [
 	          (N.boolTrue,   TranslateEnv.Lit(Literal.trueLit, BTy.boolTy)),
 	          (N.boolFalse,  TranslateEnv.Lit(Literal.falseLit, BTy.boolTy))
 	      ];
 	      List.app insertTyc [
-(* FIXME: boolTyc does not map to BTy.boolTy!!! *)
-	          (Basis.boolTyc,	BTy.K_UNBOXED,  BTy.boolTy),
-		  (Basis.intTyc,	BTy.K_BOXED,	wrapTy BTy.T_Int),
-		  (Basis.longTyc,	BTy.K_BOXED,	wrapTy BTy.T_Long),
-		  (Basis.floatTyc,	BTy.K_BOXED,	wrapTy BTy.T_Float),
-		  (Basis.doubleTyc,	BTy.K_BOXED,	wrapTy BTy.T_Double),
-(*		  (Basis.stringTyc,	BTy.K_BOXED,	BOMBasis.stringTy),*)
-		  (Basis.exnTyc,	BTy.K_BOXED,	BTy.exnTy)
+	          (boolTyc,     BTy.K_UNBOXED,  BTy.boolTy),
+		  (intTyc,	BTy.K_BOXED,	wrapTy BTy.T_Int),
+		  (longTyc,	BTy.K_BOXED,	wrapTy BTy.T_Long),
+		  (floatTyc,	BTy.K_BOXED,	wrapTy BTy.T_Float),
+		  (doubleTyc,	BTy.K_BOXED,	wrapTy BTy.T_Double),
+(*		  (stringTyc,	BTy.K_BOXED,	BOMBasis.stringTy),*)
+		  (exnTyc,	BTy.K_BOXED,	BTy.exnTy)
 		];
 	      env
 	    end
@@ -357,68 +276,68 @@ structure InitialBasis : sig
 		  (* end case *)
 		end
 	  val ast = List.foldr bindVarToHLOp progAST [
-		  Basis.int_div,
-		  Basis.int_gt,
-		  Basis.int_gte,
-		  Basis.int_lt,
-		  Basis.int_lte,
-		  Basis.int_minus,
-		  Basis.int_mod,
-		  Basis.int_neg,
-		  Basis.int_plus,
-		  Basis.int_times,
-		  Basis.long_div,
-		  Basis.long_gt,
-		  Basis.long_gte,
-		  Basis.long_lt,
-		  Basis.long_lte,
-		  Basis.long_minus,
-		  Basis.long_mod,
-		  Basis.long_neg,
-		  Basis.long_plus,
-		  Basis.long_times,
-		  Basis.integer_div,
-		  Basis.integer_gt,
-		  Basis.integer_gte,
-		  Basis.integer_lt,
-		  Basis.integer_lte,
-		  Basis.integer_minus,
-		  Basis.integer_mod,
-		  Basis.integer_neg,
-		  Basis.integer_plus,
-		  Basis.integer_times,
-		  Basis.float_fdiv,
-		  Basis.float_gt,
-		  Basis.float_gte,
-		  Basis.float_lt,
-		  Basis.float_lte,
-		  Basis.float_minus,
-		  Basis.float_neg,
-		  Basis.float_plus,
-		  Basis.float_times,
-		  Basis.double_fdiv,
-		  Basis.double_gt,
-		  Basis.double_gte,
-		  Basis.double_lt,
-		  Basis.double_lte,
-		  Basis.double_minus,
-		  Basis.double_neg,
-		  Basis.double_plus,
-		  Basis.double_times,
-		  Basis.char_gt,
-		  Basis.char_gte,
-		  Basis.char_lt,
-		  Basis.char_lte,
-		  Basis.rune_gt,
-		  Basis.rune_gte,
-		  Basis.rune_lt,
-		  Basis.rune_lte,
-		  Basis.string_gt,
-		  Basis.string_gte,
-		  Basis.string_lt,
-		  Basis.string_lte,
-		  Basis.list_append,
-		  Basis.string_concat
+		  int_div,
+		  int_gt,
+		  int_gte,
+		  int_lt,
+		  int_lte,
+		  int_minus,
+		  int_mod,
+		  int_neg,
+		  int_plus,
+		  int_times,
+		  long_div,
+		  long_gt,
+		  long_gte,
+		  long_lt,
+		  long_lte,
+		  long_minus,
+		  long_mod,
+		  long_neg,
+		  long_plus,
+		  long_times,
+		  integer_div,
+		  integer_gt,
+		  integer_gte,
+		  integer_lt,
+		  integer_lte,
+		  integer_minus,
+		  integer_mod,
+		  integer_neg,
+		  integer_plus,
+		  integer_times,
+		  float_fdiv,
+		  float_gt,
+		  float_gte,
+		  float_lt,
+		  float_lte,
+		  float_minus,
+		  float_neg,
+		  float_plus,
+		  float_times,
+		  double_fdiv,
+		  double_gt,
+		  double_gte,
+		  double_lt,
+		  double_lte,
+		  double_minus,
+		  double_neg,
+		  double_plus,
+		  double_times,
+		  char_gt,
+		  char_gte,
+		  char_lt,
+		  char_lte,
+		  rune_gt,
+		  rune_gte,
+		  rune_lt,
+		  rune_lte,
+		  string_gt,
+		  string_gte,
+		  string_lt,
+		  string_lte,
+		  list_append,
+		  string_concat
 		]
 	  fun cat (AST.TD_Module _ :: r) = raise Fail "unexpected module in initial basis"
 	    | cat (AST.TD_DCon _ :: r) = cat r
@@ -460,8 +379,8 @@ structure InitialBasis : sig
 		  MEnv.insertVar(mEnv, id, MEnv.Var var)
 		) end
 	  val (bEnv, mEnv) = List.foldl insOp (bEnv, mEnv) [
-		  (N.append,	Basis.list_append),
-		  (N.concat,	Basis.string_concat)
+		  (N.append,	list_append),
+		  (N.concat,	string_concat)
 		]
 	(* insert the equality operators *)
 	  fun insEqOp ((name, var), (bEnv, mEnv)) = let
@@ -471,8 +390,8 @@ structure InitialBasis : sig
 		  MEnv.insertVar(mEnv, id, MEnv.EqOp var)
 		) end
 	  val (bEnv, mEnv) = List.foldl insEqOp (bEnv, mEnv) [
-		  (N.eq,	Basis.eq),
-		  (N.neq,	Basis.neq)
+		  (N.eq,	eq),
+		  (N.neq,	neq)
 		]
 	(* add type bindings for abstract types *)
 	  fun insTycBind (tyc, bomName) = let
@@ -493,8 +412,8 @@ structure InitialBasis : sig
 			  ])
 		end
 	  val () = List.app insTycBind [
-		  (Basis.stringTyc, "ml_string"),
-		  (Basis.threadIdTyc, "thread_id")
+		  (stringTyc, "ml_string"),
+		  (threadIdTyc, "thread_id")
 		]
 	  in {
 	    bEnv = bEnv,

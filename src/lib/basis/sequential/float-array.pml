@@ -18,7 +18,7 @@ structure FloatArray =
 
       typedef array = PT.array;
 
-      extern void* GlobalAllocFloatArray (void*, int, float);
+      extern void* GlobalAllocFloatArray (void*, int, float) __attribute__((pure));
 
     (* allocate and initialize an array *)
       define inline @empty-array (x : unit / exh : exh) : array =
@@ -43,7 +43,7 @@ structure FloatArray =
 	let len : int = @length(arr / exh)
 	do assert(I32Lt(i,len))
         let data : any = SELECT(DATA_OFF, arr)
-	do ArrayStoreF32(data, i, #0(x))
+	do ArrStoreF32(data, i, #0(x))
 	return()
       ;
 
@@ -52,7 +52,7 @@ structure FloatArray =
 	do assert(I32Gte(i,0))
 	do assert(I32Lt(i,len))
         let data : any = SELECT(DATA_OFF, arr)
-	let x : float = ArrayLoadF32(data, i)
+	let x : float = ArrLoadF32(data, i)
         let x : ml_float = alloc(x)
 	return(x)
       ;
@@ -78,14 +78,14 @@ structure FloatArray =
     (* @sub-u : unchecked, unwrapped sub operation *)
       define inline @sub-u (arr : array, i : int / exh : exh) : float =
         let data : any = SELECT(DATA_OFF, arr)
-        let x : float = ArrayLoadF32(data, i)
+        let x : float = ArrLoadF32(data, i)
         return(x)
       ;
 
     (* @update-u : unchecked, unwrapped update operation *)
       define inline @update-u (arr : array, i : int, x : float / exh : exh) : () = 
         let data : any = SELECT(DATA_OFF, arr)
-	do ArrayStoreF32(data, i, x)
+	do ArrStoreF32(data, i, x)
 	return()
       ;
 
@@ -113,8 +113,8 @@ structure FloatArray =
                 then 
                   return()
 	        else
-                  do ArrayStoreF32 (newData, i, last)
-                  let x : float = ArrayLoadF32 (srcData, i)
+                  do ArrStoreF32 (newData, i, last)
+                  let x : float = ArrLoadF32 (srcData, i)
                   let j : int = I32Add(i,1)
                   let next : float = F32Add(last, x)
                   apply loop (j, next)
@@ -132,7 +132,7 @@ structure FloatArray =
         then
           return (acc)
         else
-          let curr : float = ArrayLoadF32 (data, i)
+          let curr : float = ArrLoadF32 (data, i)
           let newAcc : float = F32Add (curr, acc)
 	  let j : int = I32Add (i, 1)
           apply loop (j, newAcc)

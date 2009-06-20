@@ -139,4 +139,5 @@ fun benchmark () =
 	Print.printLn (Time.toString t)
     end
 
+(*val _ = benchmark()*)
 val () = ImplicitThread.runWithGroup(MultiprogrammedWorkStealing.workGroup(), benchmark)

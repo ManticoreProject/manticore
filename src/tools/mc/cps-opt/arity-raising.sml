@@ -447,47 +447,55 @@ structure ArityRaising : sig
 		      end
                 val _ = List.app (fn p => setParent (p, f)) params
 	      (* analyse the body of the candidate function *)
-		fun doExp (vmap, pmap, C.Exp(ppt, t)) = (case t
+		fun doExp (vmap, pmap, C.Exp(ppt, t), carefully) = (case t
 		       of (C.Let([x], C.Select(i, y), e)) => (
                             setParent (x, f) ;
 			    case ParamMap.find(vmap, VAR y)
-			     of NONE => doExp(vmap, pmap, e)
+			     of NONE => doExp(vmap, pmap, e, carefully)
 			      | SOME p => let
 				  val q = SEL(i, p)
-				  val vmap = ParamMap.insert(vmap, VAR x, q)
+				  val vmap' = ParamMap.insert(vmap, VAR x, q)
 				(* decrement p's count *)
 				  val cnt = lookupPath(pmap, p)
 				  val _ = addToRef (cnt, ~1)
 				(* either add q to the path map or update its count *)
-				  val pmap = (case PMap.find(pmap, q)
-					 of NONE => PMap.insert(pmap, q, ref(CV.useCount x))
+				  val (vmap, pmap) = (case PMap.find(pmap, q)
+					 of NONE => (
+                                            if carefully
+                                            then (addToRef (cnt, 1) ; (vmap, pmap))
+                                            else (vmap', PMap.insert(pmap, q, ref(CV.useCount x))))
 					  | SOME cnt => (addToRef(cnt, CV.useCount x);
-                                                         pmap)
+                                                         (vmap', pmap))
 					(* end case *))
 				  in
-				    doExp (vmap, pmap, e)
+				    doExp (vmap, pmap, e, carefully)
 				  end)
-			| (C.Let(_, _, e)) => doExp (vmap, pmap, e)
+			| (C.Let(_, _, e)) => doExp (vmap, pmap, e, carefully)
 			| (C.Fun(fbs, e)) => (
 			    analyseLambdas fbs;
-			    doExp (vmap, pmap, e))
+			    doExp (vmap, pmap, e, carefully))
 			| (C.Cont(fb, e)) => (
 			    analyseLambdas [fb];
-			    doExp (vmap, pmap, e))
+			    doExp (vmap, pmap, e, carefully))
 			| (C.If(x, e1, e2)) => let
 			  (* Conditional code: can't add guarded variable accesses
 			   * i.e., can end up adding a param for y that was within
 			   * an 'if not(null x) then let y = #1(x) else 2'
 			   *)
-			    val _ = walkExp e1
-			    val _ = walkExp e2
+			    val (vmap, pmap) = doExp (vmap, pmap, e1, true)
+			    val (vmap, pmap) = doExp (vmap, pmap, e2, true)
 			    in
                               (vmap, pmap)
 			    end
-			| (C.Switch(x, cases, dflt)) => (
-			    List.app (fn (_, e) => walkExp e) cases;
-			    Option.app walkExp dflt;
-			    (vmap, pmap))
+			| (C.Switch(x, cases, dflt)) => let
+			    val (vmap, pmap) = (case dflt
+				   of SOME e => doExp(vmap, pmap, e, true)
+				    | NONE => (vmap, pmap)
+				  (* end case *))
+			    fun doCase ((_, e), (vmap, pmap)) = doExp(vmap, pmap, e, true)
+			    in
+			      List.foldl doCase (vmap, pmap) cases
+			    end
 			| (C.Apply(g, args, _)) => (
 			    addCallSite (SOME f, ppt, g, args);
 			    (vmap, pmap))
@@ -495,7 +503,7 @@ structure ArityRaising : sig
 			    addCallSite (SOME f, ppt, k, args);
 			    (vmap, pmap))
 		      (* end case *))
-		val (vmap, pmap) = doExp(vmap, pmap, body)
+		val (vmap, pmap) = doExp(vmap, pmap, body, false)
 	      (* the "argument shape" of f is a list of paths such that
 	       *  1) no path is derived from another in the list,
 	       *  2) the use counts of the paths are > 0
@@ -748,6 +756,17 @@ structure ArityRaising : sig
 
   (***** Flattening *****)
 
+  (* property for tracking whether a function was created during flattening.
+   * this is important because we don't re-run CFA, so isEscaping is invalid
+   * for it (says true even though it's false)
+   *)
+    local
+      val {setFn, getFn, peekFn, ...} = CV.newProp (fn f => false)
+    in
+    fun setFlat f = setFn (f, true)
+    fun isFlat f = getFn f
+    end
+
     (* walk down the tree and:
      * - turn candidate functions into a specialized version and the
      * original, which calls the specialized with the extra arguments
@@ -963,6 +982,7 @@ structure ArityRaising : sig
                   val newRets = List.filter getUseful rets
 		  val newType = CTy.T_Fun (List.map CV.typeOf newParams, List.map CV.typeOf newRets)
 		  val flat = CV.new ("flat"^CV.nameOf f, newType)
+                  val _ = setFlat (flat)
                   val _ = if getUseful f then setUseful flat else ()
 		  val _ = setInfo (f, vmap, pmap, params, rets, SOME flat, SOME newParams)
 		  val body = walkExp (f, newParams, body)
@@ -977,7 +997,9 @@ structure ArityRaising : sig
 		  val stubLambda = C.mkLambda (C.FB{f=f, params=paramCopy, rets=retsCopy, body=stub})
 		  val lambda = C.mkLambda(C.FB{f=flat, params=newParams, rets=newRets, body=body})
 		  in
-                    [lambda, stubLambda]
+                        setFB (f, stubLambda);
+                        setFB (flat, lambda);
+                        [lambda, stubLambda]
 		  end
 	in
 	  C.MODULE{
@@ -988,6 +1010,66 @@ structure ArityRaising : sig
 		})
 	    }
 	end
+    (*
+     * Flatten+useless elim can leave around useCnt=0 params on flattened functions.
+     * This removes them, cleans up the types, and cleans up the call sites.
+     *)
+    fun cleanupParams (C.MODULE{name,externs,body=(C.FB{f=main,params=modParams,rets=modRets,body=modBody})}) = let
+        fun cleanupExp (exp as C.Exp(ppt, e)) = (
+            case e
+             of C.Let (vars, rhs, e) => C.mkLet (vars, rhs, cleanupExp e)
+              | C.Fun (lambdas, body) => C.mkFun(List.map cleanupLambda lambdas, cleanupExp body)
+              | C.Cont (f, body) => C.mkCont (cleanupLambda f, cleanupExp body)
+              | C.If (v, e1, e2) => C.mkIf (v, cleanupExp e1, cleanupExp e2)
+              | C.Switch (v, cases, body) => C.mkSwitch(v, List.map (fn (tag,e) => (tag, cleanupExp e))
+                                                                    cases, Option.map cleanupExp body)
+              | C.Apply (f, args, retArgs) => (
+                if not(isFlat f) 
+                then exp
+                else case getFB f
+                      of SOME(C.FB{params,rets,...}) =>
+                         C.mkApply(f,
+                                   ListPair.foldr (fn (a,b,rr) => if CV.useCount a > 0 then b::rr
+                                                                  else (Census.decUseCnt b ; rr))
+                                   [] (params, args),
+                                   ListPair.foldr (fn (a,b,rr) => if CV.useCount a > 0 then b::rr
+                                                                  else (Census.decUseCnt b ; rr))
+                                   [] (rets, retArgs))
+                                   
+                       | NONE => exp
+                )
+              | C.Throw (k, args) => (
+                if not (isFlat k) 
+                then exp
+                else case getFB k
+                      of SOME(C.FB{params,...}) => 
+                         C.mkThrow(k,
+                                   ListPair.foldr (fn (a,b,rr) => if CV.useCount a > 0 then b::rr
+                                                                  else (Census.decUseCnt b ; rr))
+                                                  [] (params, args))
+                       | NONE => exp
+                (* end case *)))
+        and cleanupLambda (lambda as C.FB{f, params, rets, body}) =
+            if not (isFlat f) 
+            then C.mkLambda(C.FB{f=f,params=params,rets=rets,body=cleanupExp body})
+            else let
+                    val params' = List.filter (fn p => (CV.useCount p) > 0) params
+                    val rets' = List.filter (fn p => (CV.useCount p) > 0) rets
+		    val newType = CTy.T_Fun (List.map CV.typeOf params', List.map CV.typeOf rets')
+                    val _ = CV.setType (f, newType)
+                in
+                    
+                    C.mkLambda(C.FB{f=f,params=params',rets=rets',body=cleanupExp body})
+                end
+    in
+        C.MODULE{
+	name=name, externs=externs,
+	body = C.mkLambda(C.FB{
+                          f=main,params=modParams,rets=modRets,
+                          body= cleanupExp (modBody)
+		         })
+	}
+    end
 
   (***** Transformation *****)
 
@@ -1002,7 +1084,7 @@ structure ArityRaising : sig
 		else ();
 (* FIXME: should mainain census counts! *)
 	      Census.census m';
-	      m'
+              cleanupParams m'
 	    end
 	  else m
 

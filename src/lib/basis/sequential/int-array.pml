@@ -18,7 +18,7 @@ structure IntArray =
 
       typedef array = PT.array;
 
-      extern void* GlobalAllocIntArray (void*, int, int);
+      extern void* GlobalAllocIntArray (void*, int, int) __attribute__((pure));
 
     (* allocate and initialize an array *)
       define inline @empty-array (x : unit / exh : exh) : array =
@@ -43,7 +43,7 @@ structure IntArray =
 	let len : int = @length(arr / exh)
 	do  assert(I32Lt(i,len))
         let data : any = SELECT(DATA_OFF, arr)
-	do ArrayStoreI32(data, i, #0(n))
+	do ArrStoreI32(data, i, #0(n))
 	return()
       ;
 
@@ -52,7 +52,7 @@ structure IntArray =
 	do assert(I32Gte(i,0))
 	do assert(I32Lt(i,len))
         let data : any = SELECT(DATA_OFF, arr)
-	let n : int = ArrayLoadI32(data, i)
+	let n : int = ArrLoadI32(data, i)
         let wn : ml_int = alloc(n)
 	return(wn)
       ;
@@ -99,8 +99,8 @@ structure IntArray =
                 then 
                   return()
 	        else
-                  do ArrayStoreI32 (newData, i, last)
-                  let x : int = ArrayLoadI32 (srcData, i)
+                  do ArrStoreI32 (newData, i, last)
+                  let x : int = ArrLoadI32 (srcData, i)
                   let j : int = I32Add(i,1)
                   let next : int = I32Add(last, x)
                   apply loop (j, next)
@@ -118,7 +118,7 @@ structure IntArray =
         then
           return (acc)
         else
-          let curr : int = ArrayLoadI32 (data, i)
+          let curr : int = ArrLoadI32 (data, i)
           let newAcc : int = I32Add (curr, acc)
 	  let j : int = I32Add (i, 1)
           apply loop (j, newAcc)

@@ -13,4 +13,4 @@ fun try (n : long) = let
         Print.print ("fact(" ^ Long.toString(n) ^ ") is " ^ s ^ ".\n")
       end;
 
-val _ = List.app try (0::1::5::10::20::31::33::nil)
+val _ = List.app try (0::1::5::10::20::nil)

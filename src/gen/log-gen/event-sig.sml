@@ -8,8 +8,41 @@
  * which layouts we need to generate code for.
  *)
 
-structure EventSig =
-  struct
+structure EventSig : sig
+
+  (* the field types *)
+    datatype ty
+      = ADDR
+      | INT
+      | WORD
+      | FLOAT
+      | DOUBLE
+      | NEW_ID
+      | EVENT_ID
+      | STR of int
+
+    type arg_desc = {
+	name : string,
+	ty : ty,
+	loc : word,
+	desc : string
+      }
+
+    val argStart : word
+
+    val tyFromString : string -> ty option
+
+  (* sort a list of arguments by increasing location *)
+    val sortArgs : arg_desc list -> arg_desc list
+
+    val alignLoc : word * word -> word
+    val alignAndSize : ty -> {align:word, sz:word, tag:string}
+    val signOf : arg_desc list -> string
+
+    structure Set : ORD_SET where type Key.ord_key = string
+    structure Map : ORD_MAP where type Key.ord_key = string
+
+  end = struct
 
     structure SS = Substring
 
@@ -23,6 +56,7 @@ structure EventSig =
       | WORD
       | FLOAT
       | DOUBLE
+      | NEW_ID
       | EVENT_ID
       | STR of int
 
@@ -32,7 +66,8 @@ structure EventSig =
 	    | "word" => SOME WORD
 	    | "float" => SOME FLOAT
 	    | "double" => SOME DOUBLE
-	    | "event" => SOME EVENT_ID
+	    | "new-id" => SOME NEW_ID
+	    | "id" => SOME EVENT_ID
 	    | s => let
 		val ss = SS.full s
 		in
@@ -52,7 +87,8 @@ structure EventSig =
       | tyToString WORD = "word"
       | tyToString FLOAT = "float"
       | tyToString DOUBLE = "double"
-      | tyToString EVENT_ID = "event"
+      | tyToString NEW_ID = "new-id"
+      | tyToString EVENT_ID = "id"
       | tyToString (STR n) = "str" ^ Int.toString n
 
   (* field tag, alignment, and size in bytes *)
@@ -61,6 +97,7 @@ structure EventSig =
       | alignAndSize WORD = {tag = "u", align = 0w4, sz = 0w4}
       | alignAndSize FLOAT = {tag = "f", align = 0w4, sz = 0w4}
       | alignAndSize DOUBLE = {tag = "D", align = 0w8, sz = 0w8}
+      | alignAndSize NEW_ID = {tag = "N", align = 0w8, sz = 0w8}
       | alignAndSize EVENT_ID = {tag = "I", align = 0w8, sz = 0w8}
       | alignAndSize (STR n) =
 	  {tag = "s"^Int.toString n, align = 0w1, sz = Word.fromInt n}
@@ -106,6 +143,9 @@ structure EventSig =
 		  tag :: f(loc' + sz, ads)
 		end
 	  in
+	    if List.length(List.filter (fn {ty=NEW_ID, ...} => true | _ => false) ads) > 1
+	      then raise Fail "multiple new-id arguments (at most one allowed)"
+	      else ();
 	    String.concat(f (argStart, sortArgs ads))
 	  end
 

@@ -19,7 +19,10 @@
 #  include <mach/mach_time.h>
 #endif
 
-// get the pointer to the next log entry
+/*! \brief get the pointer to the next log entry for the vproc
+ *  \param vp the host vproc
+ *  \return the address of the next log entry.
+ */
 STATIC_INLINE LogEvent_t *NextLogEvent (VProc_t *vp)
 {
     LogBuffer_t *buf;
@@ -36,6 +39,9 @@ STATIC_INLINE LogEvent_t *NextLogEvent (VProc_t *vp)
 
 }
 
+/*! \brief set a timestamp field
+ *  \param ts the address of the timestamp field
+ */
 STATIC_INLINE void LogTimestamp (LogTS_t *ts)
 {
 #if HAVE_MACH_ABSOLUTE_TIME
@@ -52,6 +58,16 @@ STATIC_INLINE void LogTimestamp (LogTS_t *ts)
     ts->ts_val.frac = t.tv_usec;
 #endif
 }
+
+/*! \brief generate a unique event ID
+ *  \param vp the host vproc
+ *  \return the new ID.
+ */
+STATIC_INLINE uint64_t NewEventId (VProc_t *vp)
+{
+    return (uint64_t)FetchAndAdd64((int64_t *)&(vp->eventId), 1);
+}
+
 
 @GENERIC-LOG-FUNCTIONS@
 

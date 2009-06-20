@@ -124,9 +124,18 @@ structure Contract : sig
 	    | C.Let([], C.Update(i, x, z), e) =>
 		C.mkLet([], C.Update(i, subst(env, x), subst(env, z)),
 		  doExp(env, e))
-	    | C.Let(lhs, C.CCall(cf, xs), e) =>
-(* FIXME: check if cf is bound to a pure C function *)
-		C.mkLet(lhs, C.CCall(cf, subst'(env, xs)), doExp(env, e))
+	    | C.Let(lhs, rhs as C.CCall(cf, xs), e) => let
+		fun doit () = C.mkLet(
+		      lhs, C.CCall(cf, subst'(env, xs)),
+		      doExp(env, e))
+		in
+		  case CV.kindOf cf
+		   of C.VK_CFun cf => if CFunctions.isPure cf
+			then doPureLet (env, lhs, rhs, e)
+			else doit()
+		    | _ => doit()
+		  (* end case *)
+		end
 	    | C.Let([], C.VPStore(n, x, z), e) =>
 		C.mkLet([], C.VPStore(n, subst(env, x), subst(env, z)),
 		  doExp(env, e))

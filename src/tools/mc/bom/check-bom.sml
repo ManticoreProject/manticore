@@ -48,7 +48,8 @@ structure CheckBOM : sig
       | vkToString B.VK_Param = "VK_Param"
       | vkToString (B.VK_Fun _) = "VK_Fun"
       | vkToString (B.VK_Cont _) = "VK_Cont"
-      | vkToString (B.VK_Extern x) = concat["VK_Extern(", x, ")"]
+      | vkToString (B.VK_CFun cf) =
+	  concat["VK_CFun(", CFunctions.nameOf cf, ")"]
 
   (* the context of a BOM expression *)
     datatype context
@@ -450,10 +451,10 @@ structure CheckBOM : sig
 		  ListPair.appEq chkParamArg (paramTys, args);
 		(* check polymorphic array updates for missing promotions *)
 		  case p
-		   of Prim.ArrayStore(a, i, x) => if checkAssign(BTy.T_Any, x)
+		   of Prim.ArrStore(a, i, x) => if checkAssign(BTy.T_Any, x)
 			then ()
 			else warning[
-			    "possible unpromoted update in ArrayStore(", v2s a, ",",
+			    "possible unpromoted update in ArrStore(", v2s a, ",",
 			    v2s i, ",", v2s x, ")\n"
 			  ]
 		    | Prim.CAS(loc, old, new) => if checkAssign(BV.typeOf new, new)
@@ -469,7 +470,7 @@ structure CheckBOM : sig
 	  fun chkExtern (CFunctions.CFun{var, name, ...}) = (
 		bindVar var;
 		case BV.kindOf var
-		 of B.VK_Extern _ => ()
+		 of B.VK_CFun _ => ()
 		  | vk => error[
 			"extern ", v2s var, " has kind ", vkToString vk
 		      ]

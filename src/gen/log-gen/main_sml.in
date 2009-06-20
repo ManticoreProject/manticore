@@ -20,7 +20,7 @@ structure Main : sig
 
     val rootDir = "@MANTICORE_ROOT@"
     val templateDir = "@MANTICORE_ROOT@/src/gen/log-gen/templates"
-    val jsonFile = "@MANTICORE_ROOT@/src/gen/log-gen/log-events.json"
+    val jsonFile = "@MANTICORE_ROOT@/config/log-events.json"
 
     fun mkTarget (template, path, gen) =
 	  (P.concat(templateDir, template), P.concat(rootDir, path), gen)
@@ -59,6 +59,9 @@ structure Main : sig
 	    (* end case *);
 	    OS.Process.success
 	  end
+	    handle ex => (
+	      print(concat["uncaught exception ", exnMessage ex, "\n"]);
+	      OS.Process.failure)
 
   end
 

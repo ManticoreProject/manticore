@@ -43,3 +43,4 @@ fun bench () = let
     end
 
 val _ = ImplicitThread.runWithGroup(MultiprogrammedWorkStealing.workGroup(), bench)
+

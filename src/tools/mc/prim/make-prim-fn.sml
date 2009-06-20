@@ -74,6 +74,8 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
     val uTy = Ty.unitTy
     val bTy = Ty.boolTy
     val adrTy = Ty.addrTy
+    val i8  = Ty.rawTy RawTypes.T_Byte
+    val i16 = Ty.rawTy RawTypes.T_Short
     val i32 = Ty.rawTy RawTypes.T_Int
     val i64 = Ty.rawTy RawTypes.T_Long
     val f32 = Ty.rawTy RawTypes.T_Float
@@ -116,8 +118,8 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 		("I64Mul",	mk Prim2 (P.I64Mul,	(i64, i64),	i64)),
 		("I64Div",	mk Prim2 (P.I64Div,	(i64, i64),	i64)),
 		("I64Mod",	mk Prim2 (P.I64Mod,	(i64, i64),	i64)),
-(*
 		("I64LSh",	mk Prim2 (P.I64LSh,	(i64, i64),	i64)),
+(*
 		("I64RShA",	mk Prim2 (P.I64RShA,	(i64, i64),	i64)),
 		("I64RShL",	mk Prim2 (P.I64RShL,	(i64, i64),	i64)),
 *)
@@ -128,6 +130,9 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 		("I64Lte",	mk Prim2 (P.I64Lte,	(i64, i64),	bTy)),
 		("I64Gt",	mk Prim2 (P.I64Gt,	(i64, i64),	bTy)),
 		("I64Gte",	mk Prim2 (P.I64Gte,	(i64, i64),	bTy)),
+		("U64Mul",      mk Prim2 (P.U64Mul,     (i64, i64),     i64)),
+		("U64Div",      mk Prim2 (P.U64Div,     (i64, i64),     i64)),
+		("U64Lt",       mk Prim2 (P.U64Lt,      (i64, i64),     bTy)),
 		("F32Add",	mk Prim2 (P.F32Add,	(f32, f32),	f32)),
 		("F32Sub",	mk Prim2 (P.F32Sub,	(f32, f32),	f32)),
 		("F32Mul",	mk Prim2 (P.F32Mul,	(f32, f32),	f32)),
@@ -161,16 +166,38 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
                 ("I64ToF32",    mk Prim1 (P.I64ToF32,   i64,            f32)),
                 ("I64ToF64",    mk Prim1 (P.I64ToF64,   i64,            f64)),
                 ("F64ToI32",    mk Prim1 (P.F64ToI32,   f64,            i32)),
-		("ArrayLoadI32",   mk Prim2 (P.ArrayLoadI32,	(adrTy, i32),	        i32)),
-		("ArrayLoadI64",   mk Prim2 (P.ArrayLoadI64,	(adrTy, i32),	        i64)),
-		("ArrayLoadF32",   mk Prim2 (P.ArrayLoadF32,	(adrTy, i32),	        f32)),
-		("ArrayLoadF64",   mk Prim2 (P.ArrayLoadF64,	(adrTy, i32),	        f64)),
-		("ArrayLoad",	   mk Prim2 (P.ArrayLoad,	(adrTy, i32),	        f64)),
-		("ArrayStoreI32",  mk Prim3 (P.ArrayStoreI32,	(adrTy, i32, i32),	uTy)),
-		("ArrayStoreI64",  mk Prim3 (P.ArrayStoreI64,	(adrTy, i32, i64),	uTy)),
-		("ArrayStoreF32",  mk Prim3 (P.ArrayStoreF32,	(adrTy, i32, f32),	uTy)),
-		("ArrayStoreF64",  mk Prim3 (P.ArrayStoreF64,	(adrTy, i32, f64),	uTy)),
-		("ArrayStore",	   mk Prim3 (P.ArrayStore,	(adrTy, i32, f64),	uTy)),
+		("AdrAddI32",   mk Prim2 (P.AdrAddI32,  (adrTy, i32), adrTy)),
+		("AdrAddI64",   mk Prim2 (P.AdrAddI64,  (adrTy, i64), adrTy)),
+		("AdrSubI32",   mk Prim2 (P.AdrSubI32,  (adrTy, i32), adrTy)),
+		("AdrSubI64",   mk Prim2 (P.AdrSubI64,  (adrTy, i64), adrTy)),
+		("AdrLoadI8",   mk Prim1 (P.AdrLoadI8,  adrTy,	        i8)),
+		("AdrLoadU8",   mk Prim1 (P.AdrLoadU8,  adrTy,	        i8)),
+		("AdrLoadI16",  mk Prim1 (P.AdrLoadI16,	adrTy,	        i16)),
+		("AdrLoadU16",  mk Prim1 (P.AdrLoadU16,	adrTy,	        i16)),
+		("AdrLoadI32",  mk Prim1 (P.AdrLoadI32,	adrTy,	        i32)),
+		("AdrLoadI64",  mk Prim1 (P.AdrLoadI64,	adrTy,	        i64)),
+		("AdrLoadF32",  mk Prim1 (P.AdrLoadF32,	adrTy,	        f32)),
+		("AdrLoadF64",  mk Prim1 (P.AdrLoadF64,	adrTy,	        f64)),
+		("AdrLoadAdr",  mk Prim1 (P.AdrLoadAdr,	adrTy,	        adrTy)),
+		("AdrLoad",     mk Prim1 (P.AdrLoad,	adrTy,	        aTy)),
+		("AdrStoreI8",  mk Prim2 (P.AdrStoreI8,	(adrTy, i8),	        uTy)),
+		("AdrStoreI16", mk Prim2 (P.AdrStoreI16,	(adrTy, i16),	        uTy)),
+		("AdrStoreI32", mk Prim2 (P.AdrStoreI32,	(adrTy, i32),	        uTy)),
+		("AdrStoreI64", mk Prim2 (P.AdrStoreI64,	(adrTy, i64),	        uTy)),
+		("AdrStoreF32", mk Prim2 (P.AdrStoreF32,	(adrTy, f32),	        uTy)),
+		("AdrStoreF64", mk Prim2 (P.AdrStoreF64,	(adrTy, f64),	        uTy)),
+		("AdrStoreAdr", mk Prim2 (P.AdrStoreAdr,	(adrTy, adrTy),	        uTy)),
+		("AdrStore",    mk Prim2 (P.AdrStore,	(adrTy, aTy),	        uTy)),
+		("ArrLoadI32",   mk Prim2 (P.ArrLoadI32,	(adrTy, i32),	        i32)),
+		("ArrLoadI64",   mk Prim2 (P.ArrLoadI64,	(adrTy, i32),	        i64)),
+		("ArrLoadF32",   mk Prim2 (P.ArrLoadF32,	(adrTy, i32),	        f32)),
+		("ArrLoadF64",   mk Prim2 (P.ArrLoadF64,	(adrTy, i32),	        f64)),
+		("ArrLoad",	   mk Prim2 (P.ArrLoad,	(adrTy, i32),	        f64)),
+		("ArrStoreI32",  mk Prim3 (P.ArrStoreI32,	(adrTy, i32, i32),	uTy)),
+		("ArrStoreI64",  mk Prim3 (P.ArrStoreI64,	(adrTy, i32, i64),	uTy)),
+		("ArrStoreF32",  mk Prim3 (P.ArrStoreF32,	(adrTy, i32, f32),	uTy)),
+		("ArrStoreF64",  mk Prim3 (P.ArrStoreF64,	(adrTy, i32, f64),	uTy)),
+		("ArrStore",	   mk Prim3 (P.ArrStore,	(adrTy, i32, f64),	uTy)),
 		("I32FetchAndAdd", mk Prim2 (P.I32FetchAndAdd,	(i32, i32),		i32)),
 		("I64FetchAndAdd", mk Prim2 (P.I32FetchAndAdd,	(i64, i64),		i64)),
 		("CAS",		mk Prim3 (P.CAS,	(adrTy, aTy, aTy), aTy)),

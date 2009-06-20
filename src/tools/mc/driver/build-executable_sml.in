@@ -21,21 +21,28 @@ structure BuildExecutable : sig
 
     val cat = String.concatWith " "
 
+    fun ++ ("", l) = l
+      | ++ (opt, l) = opt::l
+
+    infixr ++
+
     val isCrossCompiler = (@CROSS_COMPILING@ = 1)
+
     val ccCmd =  "@CC@"
-    val cFlags = String.concatWith " " ["@CFLAGS@", "@CFLAG_M64@"]
-    fun ldFlags libName = cat (
-          (List.map (fn path => "-L" ^ path) (
-             List.filter (fn path => OS.FileSys.access (path, [])) [
-	       "@prefix@/lib",
-	       "@MANTICORE_LIBDIR@",
-	       "@MANTICORE_SRCDIR@/lib/parallel-rt/build/" ^ libName
-             ])
-          ) @ [
-	    "@LDFLAGS@",
-	    "-l" ^ libName,
-	    "-lpthread"
-	  ])
+
+    val cFlags = cat ("@CFLAGS@" ++ "@CFLAG_M64@" ++ [])
+
+    fun ldFlags libName = let
+	  val libDirs = List.filter (fn path => OS.FileSys.access (path, [])) [
+		  "@prefix@/lib",
+		  "@MANTICORE_LIBDIR@",
+		  "@MANTICORE_SRCDIR@/lib/parallel-rt/build/" ^ libName
+		]
+	  val libDirs = List.map (fn path => "-L" ^ path) libDirs
+	  val rtLib = "-l" ^ libName
+	  in
+	    cat (libDirs @ ("@LDFLAGS@" ++ rtLib ++ "@LIBS@" ++ "-lpthread" ++ []))
+	  end
 
     fun cmd asmFile = let
 	  val logging = if Controls.get BasicControl.logging then "-log" else ""
