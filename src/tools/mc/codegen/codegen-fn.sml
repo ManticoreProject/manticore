@@ -116,6 +116,7 @@ if MChkTy.check stm
 	  val genGoto = BE.Transfer.genGoto varDefTbl
 	  val genPrim0 = Prim.genPrim0 {varDefTbl=varDefTbl}
 	  val genPrim = Prim.genPrim {varDefTbl=varDefTbl}
+	  val genCond = Prim.genCond {varDefTbl=varDefTbl}
 
 	(* literals *)
 	  val floatTbl = FloatLit.new ()
@@ -172,10 +173,10 @@ if MChkTy.check stm
 		  exitBlock liveOut
 		end
 	    | genTransfer (M.Goto jmp) = emitStms (annotateStms ((genGoto jmp), "goto"))
-	    | genTransfer (M.If (c, jT as (lT, argsT), jF)) = 
-		let val labT = newLabel "L_true"
-		in 
-		  emit (T.BCC (cdefOf c, labT));
+	    | genTransfer (M.If(cond, jT as (lT, argsT), jF)) = let
+		val labT = newLabel "L_true"
+		in
+		  emitStms (genCond (cond, labT));
 		  emitStms (genGoto jF);
 		  defineLabel labT;
 		  emitStms (genGoto jT)

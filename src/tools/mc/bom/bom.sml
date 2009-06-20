@@ -22,7 +22,7 @@ structure BOM =
       | E_Stmt of (var list * rhs * exp)
       | E_Fun of (lambda list * exp)
       | E_Cont of (lambda * exp)
-      | E_If of (var * exp * exp)
+      | E_If of (cond * exp * exp)
       | E_Case of (var * (pat * exp) list * exp option)
       | E_Apply of (var * var list * var list)
       | E_Throw of (var * var list)
@@ -73,6 +73,7 @@ structure BOM =
       | VK_CFun of c_fun
 
     withtype var = (var_kind, ty) VarRep.var_rep
+         and cond = var Prim.cond
          and prim = var Prim.prim
 	 and const = (Literal.literal * ty)
 	 and c_fun = var CFunctions.c_fun

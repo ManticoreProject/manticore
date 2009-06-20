@@ -40,6 +40,12 @@ structure BOMTyUtil : sig
   (* convert a C type into a BOM type with the same representation *)
     val ctypeToBOM : CFunctions.c_type -> BOMTy.ty list
 
+  (* the BOM representation of booleans *)
+    val boolTyc : BOMTy.tyc
+    val boolTy  : BOMTy.ty
+    val falseDC : BOMTy.data_con
+    val trueDC : BOMTy.data_con
+
   end = struct
 
     structure BTy = BOMTy
@@ -209,5 +215,12 @@ structure BOMTyUtil : sig
     fun ctypeToBOM (CFunctions.PointerTy) = [BTy.T_Any]  (* FIXME: is this safe? *)
       | ctypeToBOM (CFunctions.BaseTy rTy) = [BTy.T_Raw rTy]
       | ctypeToBOM (CFunctions.VoidTy) = []
+
+  (* the BOM representation of booleans *)
+    val boolTyc = BOMTyCon.newDataTyc ("bool", 2)
+    val boolTy = BOMTy.T_TyCon boolTyc
+    val newCon = BOMTyCon.newDataCon boolTyc
+    val falseDC = newCon ("false", BTy.Enum 0w0, [])
+    val trueDC = newCon ("true", BTy.Enum 0w1, [])
 
   end

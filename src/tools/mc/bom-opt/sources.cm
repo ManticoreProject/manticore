@@ -26,6 +26,7 @@ is
   bom-opt-controls.sml
   bom-opt-fn.sml
   case-simplify.sml
+  cond-contract.sml
   contract.sml
   dead-funs.sml
   expand-hlops.sml

@@ -170,7 +170,7 @@ structure Translate : sig
 		EXP(trBind (env, b, fn env' => trExpToExp(env', e)))
 	    | AST.IfExp(e1, e2, e3, ty) =>
 		EXP(trExpToV (env, e1, fn x =>
-		  B.mkIf(x, trExpToExp(env, e2), trExpToExp(env, e3))))
+		  BOMUtil.mkBoolCase(x, trExpToExp(env, e2), trExpToExp(env, e3))))
 	    | AST.CaseExp(e, rules, ty) =>
 		EXP(trExpToV (env, e, fn x => trCase(env, x, rules)))
 	    | AST.PCaseExp _ => raise Fail "PCaseExp" (* FIXME *)

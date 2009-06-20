@@ -106,25 +106,18 @@ structure CaseSimplify : sig
     (* generate numeric comparisons *)
       fun genNumTest (ty, ltPrim, eqPrim, const) {arg, key, ltAct, eqAct, gtAct} = let
 	    val v = BV.new("_caseLbl", ty)
-	    val isLess = BV.new("_isLess", BTy.boolTy)
-	    val isEq = BV.new("_isEq", BTy.boolTy)
 	    in
 	      B.mkStmt([v], const key,
-	      B.mkStmt([isLess], B.E_Prim(ltPrim(arg, v)),
-		B.mkIf(isLess,
+		B.mkIf(ltPrim(arg, v),
 		  ltAct,
-		  B.mkStmt([isEq], B.E_Prim(eqPrim(arg, v)),
-		    B.mkIf(isEq, eqAct, gtAct)))))
+		  B.mkIf(eqPrim(arg, v), eqAct, gtAct)))
 	    end
 
     (* generate numeric order test *)
       fun genNumOrdTest (ty, cmpPrim, const) {arg, key, eqAct, neqAct} = let
 	    val v = BV.new("_caseLbl", ty)
-	    val isOrd = BV.new("_isOrd", BTy.boolTy)
 	    in
-	      B.mkStmt([v], const key,
-	      B.mkStmt([isOrd], B.E_Prim(cmpPrim(arg, v)),
-		B.mkIf(isOrd, eqAct, neqAct)))
+	      B.mkStmt([v], const key, B.mkIf(cmpPrim(arg, v), eqAct, neqAct))
 	    end
     (* label types *)
       val intTy = BTy.T_Raw BTy.T_Int
@@ -360,7 +353,7 @@ DEBUG*)
 		  B.mkCont(fb, xformE(s, tys, e))
 		end
 	    | B.E_If(x, e1, e2) =>
-		B.mkIf(subst s x, xformE(s, tys, e1), xformE(s, tys, e2))
+		B.mkIf(CondUtil.map (subst s) x, xformE(s, tys, e1), xformE(s, tys, e2))
 	    | B.E_Case(x, rules, dflt) => xformCase (s, tys, x, rules, dflt)
 	    | B.E_Apply(f, args, exh) => let
 		val subst = subst s
@@ -448,15 +441,13 @@ DEBUG*)
 			      val ty = BTy.T_Enum(Word.fromInt(BTyc.nCons(BTyc.dconTyc dc)))
 			      val tag' = BV.new("tag", ty)
 			      val tmp = BV.new("tmp", ty)
-			      val eq = BV.new("eq", BTy.boolTy)
 			      in
 				B.mkStmts([
 				    ([argument'], B.E_Cast(BV.typeOf argument', argument)),
 				    ([tag'], B.E_Select(0, argument')),
-				    ([tmp], B.E_Const(Lit.Enum tag, ty)),
-				    ([eq], B.E_Prim(Prim.Equal(tag', tmp)))
+				    ([tmp], B.E_Const(Lit.Enum tag, ty))
 				  ],
-				  B.mkIf(eq, sel(ys, 1), dflt))
+				  B.mkIf(Prim.Equal(tag', tmp), sel(ys, 1), dflt))
 			      end
 			  | NONE => sel(ys, 1)
 			(* end case *))
@@ -504,18 +495,17 @@ DEBUG*)
 	     of EnumCase{rules, ...} => B.mkCase(argument, List.map enumCase rules, dflt)
 	      | ConsCase{rules, ...} => consCase (rules, dflt)
 	      | MixedCase{enums, cons} => let
-		  val isBoxed = BV.new("isBoxed", BTy.boolTy)
-		  val boxedTest = if numEnumsOfTyc x = 1
+		  val (stmts, boxedTest) = if numEnumsOfTyc x = 1
 			then let
 			(* when there is only one possible enum value, we just do
 			 * an equality test.
 			 *)
 			  val tmp = BV.new("t", BTy.T_Enum(0w0))
-			  in [
-			    ([tmp], B.E_Const(Lit.Enum 0w0, BTy.T_Enum(0w0))),
-			    ([isBoxed], B.E_Prim(Prim.NotEqual(argument, tmp)))
-			  ] end
-			else [([isBoxed], B.E_Prim(Prim.isBoxed argument))]
+			  in (
+			    [([tmp], B.E_Const(Lit.Enum 0w0, BTy.T_Enum(0w0)))],
+			    Prim.NotEqual(argument, tmp)
+			  ) end
+			else ([], Prim.isBoxed argument)
 		  val (optFB, dflt) = if (#hasDflt enums) andalso (#hasDflt cons)
 			then let
 			(* the default case is shared by both the boxed and unboxed
@@ -542,7 +532,7 @@ DEBUG*)
 			  | {rules, hasDflt=true} => consCase (rules, dflt)
 			  | {rules, hasDflt=false} => consCase (rules, NONE)
 			(* end case *))
-		  val e = B.mkStmts(boxedTest, B.mkIf(isBoxed, consCase, enumsCase))
+		  val e = B.mkStmts(stmts, B.mkIf(boxedTest, consCase, enumsCase))
 		  in
 		  (* add the join-continuation binding if needed *)
 		    case optFB

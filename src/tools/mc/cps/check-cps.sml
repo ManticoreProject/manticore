@@ -136,8 +136,8 @@ structure CheckCPS : sig
 			chkFB(env, fb); 
                         chkExp(env, e)
 		      end
-		  | C.If(x, e1, e2) => (
-                      chkVar(env, x, "If"); 
+		  | C.If(cond, e1, e2) => (
+                      chkVars(env, CondUtil.varsOf cond, "If");
                       chkExp(env, e1); 
                       chkExp(env, e2))
 		  | C.Switch(x, cases, dflt) => (

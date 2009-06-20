@@ -16,13 +16,17 @@ structure Equality : sig
     structure BV = B.Var
     structure BTy = BOMTy
     structure P = Prim
+    structure BTU = BOMTyUtil
 
     fun mk (isEq, a, b, ty) = let
-	  val res = BV.new("res", BTy.boolTy)
-	  fun mkPrim (eqP, neqP) = let
-		val p = if isEq then eqP else neqP
+	  fun mkTest (eqP, neqP) = let
+		val cond = if isEq then eqP else neqP
+		val t = BV.new("t", BTU.boolTy)
+		val f = BV.new("f", BTU.boolTy)
 		in
-		  B.mkStmt([res], B.E_Prim(p(a, b)), B.mkRet[res])
+		  B.mkIf(cond(a, b),
+		    B.mkStmt([t], B.E_DCon(BTU.trueDC, []), B.mkRet[t]),
+		    B.mkStmt([f], B.E_DCon(BTU.falseDC, []), B.mkRet[f]))
 		end
 	  fun mkTuple (i, [ty]) = let
 		val a' = BV.new("a"^Int.toString i, ty)
@@ -36,29 +40,27 @@ structure Equality : sig
 	    | mkTuple (i, ty::tys) = let
 		val a' = BV.new("a"^Int.toString i, ty)
 		val b' = BV.new("b"^Int.toString i, ty)
-		val res' = BV.new("res'", BTy.boolTy)
+		val res' = BV.new("res'", BTU.boolTy)
 		in
 		  B.mkStmts([
 		      ([a'], B.E_Select(i, a)),
 		      ([b'], B.E_Select(i, b))
-		    ], B.mkLet([res'], mk(isEq, a', b', ty),
-		      B.mkIf(res',
-			(* then *) mkTuple (i+1, tys),
-			(* else *) B.mkRet[res'])))
+		    ],
+		    B.mkLet([res'], mk(isEq, a', b', ty),
+		      BOMUtil.mkBoolCase(res', mkTuple (i+1, tys), B.mkRet[res'])))
 		end
 	  in
 	    case ty
-	     of BTy.T_Any => mkPrim (P.Equal, P.NotEqual)
-	      | BTy.T_Enum _ => mkPrim (P.Equal, P.NotEqual)
+	     of BTy.T_Any => mkTest (P.Equal, P.NotEqual)
+	      | BTy.T_Enum _ => mkTest (P.Equal, P.NotEqual)
 	      | BTy.T_Raw rty => (case rty
 		   of BTy.T_Byte => raise Fail "Raw T_Byte equality"
 		    | BTy.T_Short => raise Fail "Raw T_Short equality"
-		    | BTy.T_Int => mkPrim (P.I32Eq, P.I32NEq)
-		    | BTy.T_Long => mkPrim (P.I64Eq, P.I64NEq)
-		    | BTy.T_Float => mkPrim (P.F32Eq, P.F32NEq)
-		    | BTy.T_Double => mkPrim (P.F32Eq, P.F64NEq)
+		    | BTy.T_Int => mkTest (P.I32Eq, P.I32NEq)
+		    | BTy.T_Long => mkTest (P.I64Eq, P.I64NEq)
+		    | BTy.T_Float => mkTest (P.F32Eq, P.F32NEq)
+		    | BTy.T_Double => mkTest (P.F32Eq, P.F64NEq)
 		    | BTy.T_Vec128 => raise Fail "Raw T_Vec128 equality"
-		    | BTy.T_Bool => raise Fail "Raw T_Bool equality"
 		  (* end case *))
 	      | BTy.T_Tuple(false, tys) => mkTuple (0, tys)
 	      | _ => raise Fail(BOMTyUtil.toString ty ^ " not an equality type")
@@ -75,7 +77,7 @@ structure Equality : sig
 	  val f = if isEq then "eq" else "neq"
 	  in
 	    BOM.FB{
-		f = BV.new(f, BTy.T_Fun([argTy], [BTy.exhTy], [BTy.boolTy])),
+		f = BV.new(f, BTy.T_Fun([argTy], [BTy.exhTy], [BTU.boolTy])),
 		params = [arg],
 		exh = [BV.new("_exh", BTy.exhTy)],
 		body = B.mkStmts([

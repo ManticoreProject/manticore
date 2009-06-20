@@ -55,7 +55,7 @@ structure Census : sig
 		      clearFB fb;
 		      doFB fb;
 		      doExp e)
-		  | (C.If(x, e1, e2)) => (inc x; doExp e1; doExp e2)
+		  | (C.If(cond, e1, e2)) => (CondUtil.app inc cond; doExp e1; doExp e2)
 		  | (C.Switch(x, cases, dflt)) => (
 		      inc x;
 		      List.app (fn (_, e) => doExp e) cases;
@@ -106,7 +106,7 @@ structure Census : sig
 		  | (C.Cont(fb, e)) => (
 		      doFB fb;
 		      doExp e)
-		  | (C.If(x, e1, e2)) => (dec x; doExp e1; doExp e2)
+		  | (C.If(cond, e1, e2)) => (CondUtil.app dec cond; doExp e1; doExp e2)
 		  | (C.Switch(x, cases, dflt)) => (
 		      dec x;
 		      List.app (fn (_, e) => doExp e) cases;

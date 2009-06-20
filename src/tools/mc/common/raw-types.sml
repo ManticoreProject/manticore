@@ -13,7 +13,6 @@ structure RawTypes =
       = T_Byte | T_Short | T_Int | T_Long
       | T_Float | T_Double
       | T_Vec128
-      | T_Bool
 
     fun sizeOf T_Byte = 1
       | sizeOf T_Short = 2
@@ -22,7 +21,6 @@ structure RawTypes =
       | sizeOf T_Float = 4
       | sizeOf T_Double = 8
       | sizeOf T_Vec128 = 16
-      | sizeOf T_Bool = 4	(* not sure about this? *)
 
     fun toString T_Byte = "byte"
       | toString T_Short = "short"
@@ -31,6 +29,5 @@ structure RawTypes =
       | toString T_Float = "float"
       | toString T_Double = "double"
       | toString T_Vec128 = "vec128"
-      | toString T_Bool = "bool"
 
   end

@@ -70,8 +70,6 @@ structure BOMTy =
 
     val unitTy = T_Enum 0w0
 
-    val boolTy = T_Raw RawTypes.T_Bool
-
     val exnTyc = AbsTyc{
 	    name = "exn",
 	    stamp = Stamp.new(),

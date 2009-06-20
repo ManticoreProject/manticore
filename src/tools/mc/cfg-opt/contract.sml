@@ -101,8 +101,10 @@ structure Contract : sig
 		    args = applySubst'(env, args)
 		  }
 	      | C.Goto jmp => C.Goto(contractJump jmp)
-	      | C.If(x, jmp1, jmp2) =>
-		  C.If(applySubst(env, x), contractJump jmp1, contractJump jmp2)
+	      | C.If(cond, jmp1, jmp2) =>
+		  C.If(CondUtil.map (fn x => applySubst(env, x)) cond,
+		    contractJump jmp1,
+		    contractJump jmp2)
 	      | C.Switch(x, cases, dflt) =>
 		  C.Switch(applySubst(env, x),
 		    List.map (fn (tag, jmp) => (tag, contractJump jmp)) cases,

@@ -678,10 +678,10 @@ structure ArityRaising : sig
 		    processRhs rhs)
 		| C.Fun (_, body) => processExp body
 		| C.Cont (_, body) => processExp body
-		| C.If (var, e1, e2) => (
+		| C.If(cond, e1, e2) => (
 		    processExp e1;
 		    processExp e2;
-		    markUseful var)
+		    CondUtil.app markUseful cond)
 		| C.Switch (x, cases, dflt) => (
 		    List.app (fn (_, e) => processExp e) cases;
 		    Option.app processExp dflt;

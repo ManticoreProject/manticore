@@ -46,8 +46,6 @@ structure Contract : sig
     val cntDeadRecFun           = ST.newCounter "contract:dead-rec-fun"
     val cntDeadCont             = ST.newCounter "contract:dead-cont"
     val cntEta                  = ST.newCounter "contract:eta"
-    val cntIfNot                = ST.newCounter "contract:if-not"
-    val cntIfConst              = ST.newCounter "contract:if-const"
     val cntIfReduce             = ST.newCounter "contract:if-reduce"
     val cntTrivCase             = ST.newCounter "contract:triv-case"
     val cntCaseConst            = ST.newCounter "contract:case-const"
@@ -118,7 +116,8 @@ structure Contract : sig
                         | B.E_Stmt(_, rhs, e) => pureRHS rhs andalso pureExp e
                         | B.E_Fun(_, e) => pureExp e
                         | B.E_Cont(_, e) => pureExp e
-                        | B.E_If(_, e1, e2) => pureExp e1 andalso pureExp e2
+                        | B.E_If(cond, e1, e2) =>
+			    CondUtil.isPure cond andalso pureExp e1 andalso pureExp e2
                         | B.E_Case(x, cases, dflt) =>
                             List.all (fn (_, e) => pureExp e) cases
                             andalso (case dflt of SOME e => pureExp e | _ => true)
@@ -435,46 +434,18 @@ structure Contract : sig
                             else B.mkCont(fb', e')
                         end
                   end
-            | B.E_If(x, e1, e2) => let
-                val x = U.subst env x
-                fun doIf (cond, trueE, falseE) = let
-                    (* check for expressions of the form
-                     *   if x then let a = true in a else let b = false in b
-                     *)
-                      fun bval (B.E_Pt(_, B.E_Stmt([a], B.E_Const(Lit.Enum av, _), B.E_Pt(_, B.E_Ret[a'])))) =
-                            SOME(a, av)
-                        | bval _ = NONE
-                      val trueE = doExp(env, trueE, kid)
-                      val falseE = doExp(env, falseE, kid)
-                      in
-                        case (bval trueE, bval falseE)
-                         of (SOME(a, 0w1), SOME(b, 0w0)) => (
-                              ST.tick cntIfReduce;
-                              B.mkRet[cond])
-                          | (SOME(a, 0w0), SOME(b, 0w1)) => (
-                              ST.tick cntIfReduce;
-                              B.mkStmt([a], B.E_Prim(Prim.BNot cond), B.mkRet[a]))
-                          | (SOME(a, av), SOME(b, _)) => (
-                              ST.tick cntIfReduce;
-                              B.mkStmt([a], B.E_Const(Lit.Enum av, BTy.boolTy), B.mkRet[a]))
-                          | _ => B.mkIf(cond, trueE, falseE)
-                        (* end case *)
-                      end
+            | B.E_If(cond, e1, e2) => let
+                val cond = CondUtil.map (U.subst env) cond
+		fun reduce (keepExp, deleteExp) = (
+		      ST.tick cntIfReduce;
+		      C.deleteWithRenaming(env, deleteExp);
+		      doExp(env, keepExp, kid))
                 in
-                  case bindingOf x
-                   of B.VK_RHS(B.E_Const(Lit.Enum b, _)) => (
-                        ST.tick cntIfConst;
-                        dec x;
-                        if (b <> 0w0)
-                          then (C.deleteWithRenaming(env, e2); doExp(env, e1, kid))
-                          else (C.deleteWithRenaming(env, e1); doExp(env, e2, kid)))
-                    | B.VK_RHS(B.E_Prim(Prim.BNot y)) => (
-                        ST.tick cntIfNot;
-                        dec x;
-                        inc y;
-                        B.mkIf(y, doExp(env, e2, kid), doExp(env, e1, kid)))
-                    | _ => B.mkIf(x, doExp(env, e1, kid), doExp(env, e2, kid))
-                  (* end case *)
+                  case CondContract.contract cond
+		   of CondContract.UNKNOWN => B.mkIf(cond, doExp(env, e1, kid), doExp(env, e2, kid))
+		    | CondContract.TRUE => reduce (e1, e2)
+		    | CondContract.FALSE => reduce (e2, e1)
+		  (* end case *)
                 end
             | B.E_Case(x, [], SOME e) => let
               (* eliminate a trivial case *)

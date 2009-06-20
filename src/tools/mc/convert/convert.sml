@@ -101,8 +101,8 @@ structure Convert : sig
 		in
 		  C.mkCont(fb, cvtTailE(env, e, retK'))
 		end
-	    | B.E_If(x, e1, e2) =>
-		C.mkIf(lookup(env, x),
+	    | B.E_If(cond, e1, e2) =>
+		C.mkIf(CondUtil.map (fn x => lookup(env, x)) cond,
 		  cvtTailE (env, e1, retK'),
 		  cvtTailE (env, e2, retK'))
 	    | B.E_Case(x, cases, optDflt) => cvtCase (env, x, cases, optDflt, retK')
@@ -142,13 +142,13 @@ structure Convert : sig
 		    C.FB{f=joinK', params=ys', rets=[], body=k ys'},
 		    C.mkCont(fb, cvtTailE(env, e, joinK')))
 		end
-	    | B.E_If(x, e1, e2) => let
+	    | B.E_If(cond, e1, e2) => let
 		val ys' = List.map (fn ty => CV.new("a", ty)) tys'
 		val joinK' = CV.new("ifJoinK", CTy.contTy tys')
 		in
 		  C.mkCont(
 		    C.FB{f=joinK', params=ys', rets=[], body=k ys'},
-		    C.mkIf(lookup(env, x),
+		    C.mkIf(CondUtil.map (fn x => lookup(env, x)) cond,
 		      cvtTailE(env, e1, joinK'),
 		      cvtTailE(env, e2, joinK')))
 		end
