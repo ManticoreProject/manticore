@@ -375,18 +375,6 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		    | P.AdrNEq a => genCmp (anyTy, T.NE, a)
 		  (* atomic operations *)
 (* FIXME
-		    | P.TAS addr => let
-			val tmp = Cells.newReg ()
-			val (r, stms) = BE.AtomicOps.genTestAndSetWord{
-				    addr = T.LOAD(boolTy, defOf addr, ()),
-				    newVal = tmp
-				  }
-			in
-			  BE.VarDef.flushLoads varDefTbl
-			  @ [T.MV (boolTy, tmp, T.LI BE.Spec.trueRep)]
-			  @ stms
-			  @ gprBind (boolTy, v, r)
-			end
 		    | P.BCAS(addr, key, new) => let
 			val (cc, _, stms) = BE.AtomicOps.genCompareAndSwapWord{
 				    addr = T.LOAD(anyTy, defOf addr, ()),
@@ -396,6 +384,19 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 			  BE.VarDef.flushLoads varDefTbl
 			  @ stms
 			  @ cbind (v, cc)
+			end
+		    | P.I32isSet addr =>
+		    | P.I32TAS addr => let
+			val tmp = Cells.newReg ()
+			val (r, stms) = BE.AtomicOps.genTestAndSetWord{
+				addr = T.LOAD(i32Ty, defOf addr, ()),
+				newVal = tmp
+			      }
+			in
+			  BE.VarDef.flushLoads varDefTbl
+			  @ [T.MV (boolTy, tmp, T.LI BE.Spec.trueRep)]
+			  @ stms
+			  @ gprBind (boolTy, v, r)
 			end
 *)
 		end (* gen *)
