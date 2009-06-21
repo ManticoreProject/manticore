@@ -18,6 +18,7 @@ structure BOMTyCon : sig
     val dconArgTy : BOMTy.data_con -> BOMTy.ty list
     val dconTyc : BOMTy.data_con -> BOMTy.tyc
     val dconResTy : BOMTy.data_con -> BOMTy.ty	(* the tyc as a ty *)
+    val dconSame : BOMTy.data_con * BOMTy.data_con -> bool
 
   (* new exception datacon *)
     val newExnCon : (string * BOMTy.ty list) -> BOMTy.data_con
@@ -67,6 +68,8 @@ structure BOMTyCon : sig
     fun dconArgTy (DCon{argTy, ...}) = argTy
     fun dconTyc (DCon{myTyc, ...}) = myTyc
     fun dconResTy (DCon{myTyc, ...}) = BOMTy.T_TyCon myTyc
+
+    fun dconSame (DCon{stamp=a, ...}, DCon{stamp=b, ...}) = Stamp.same(a, b)
 
     fun newExnCon (name, tys) = DCon{
 	    name = name,
