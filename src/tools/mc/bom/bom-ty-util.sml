@@ -217,10 +217,16 @@ structure BOMTyUtil : sig
       | ctypeToBOM (CFunctions.VoidTy) = []
 
   (* the BOM representation of booleans *)
-    val boolTyc = BOMTyCon.newDataTyc ("bool", 2)
+    local
+      val boolTyc as BTy.DataTyc{rep, kind, ...} =
+	    BOMTyCon.newDataTyc ("bool", 2)
+      val newCon = BOMTyCon.newDataCon boolTyc
+    in
+    val boolTyc = boolTyc
     val boolTy = BOMTy.T_TyCon boolTyc
-    val newCon = BOMTyCon.newDataCon boolTyc
     val falseDC = newCon ("false", BTy.Enum 0w0, [])
     val trueDC = newCon ("true", BTy.Enum 0w1, [])
+    val _ = (rep := BOMTy.T_Enum(0w1); kind := BOMTy.K_UNBOXED)
+    end
 
   end
