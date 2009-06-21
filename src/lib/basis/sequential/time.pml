@@ -19,31 +19,13 @@ structure Time =
       extern void* M_GetTime();
 
     (* get the current time *)
-      define inline @now( / exh : PT.exh) : time =
+      define inline @now (x : PT.unit / exh : PT.exh) : [time] =
         let t : long = ccall M_GetTime()
-        return(t)
+        return (alloc(t))
       ;
-
-      define inline @now-wrapper(x : PT.unit / exh : PT.exh) : [time] =
-        let t : time = @now(/exh)      
-        return(alloc(t))
-      ;
-
-      define inline @lte (x : time, y : time / exh : PT.exh) : PT.bool =
-        return(I64Lte(x, y))
-      ;
-
-      define inline @gt (x : time, y : time / exh : PT.exh) : PT.bool =
-        return(I64Gt(x, y))
-      ;
-
-      define inline @add (x : time, y : time / exh : PT.exh) : time =
-        return(I64Add(x, y))
-      ;
-
     )
 
-    val now : unit -> time = _prim(@now-wrapper)
+    val now : unit -> time = _prim(@now)
 
     fun fromSecs t = t * 1000000
     fun toSecs t = t div 1000000
@@ -58,6 +40,7 @@ structure Time =
 	    sign ^ Long.toString(toSecs t) ^ frac
 	  end
 
+(* FIXME: this function does not belong here!!! *)
   (* timeToEval : (unit -> 'a) -> 'a * time *)
   (* Pass in a suspended computation; get back the result and the time it took. *)
     fun timeToEval f = let

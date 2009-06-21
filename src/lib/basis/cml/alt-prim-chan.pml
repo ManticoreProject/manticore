@@ -82,12 +82,12 @@ structure PrimChan (*: sig
 
       (* does a channel have waiting receivers? *)
 	define inline @chan-waiting-recv (ch : chan_rep) : bool =
-	    return (NotEqual(SELECT(CH_RECVQ_HD, ch), Q_NIL))
+	    if NotEqual(SELECT(CH_RECVQ_HD, ch), Q_NIL) then return (true) else return (false)
 	  ;
 
       (* does a channel have waiting senders? *)
 	define inline @chan-waiting-send (ch : chan_rep) : bool =
-	    return (NotEqual(SELECT(CH_SENDQ_HD, ch), Q_NIL))
+	    if NotEqual(SELECT(CH_SENDQ_HD, ch), Q_NIL) then return (true) else return (false)
 	  ;
 
       (* enqueue an item on a channel's recv queue *)

@@ -123,42 +123,42 @@ structure Cancelation (* : sig
       define @wrap (c : cancelable, k : PT.fiber / exh : exh) : PT.fiber =
 
         cont impossible () = 
-             let e : exn = Fail(@"Cancelation.@wrap: impossible")
-             throw exh(e)
+	  let e : exn = Fail(@"Cancelation.@wrap: impossible")
+	  throw exh(e)
 
         cont terminate (self : vproc) = 
-             do @set-inactive(c / exh)
-             do SchedulerAction.@stop-from-atomic(self)
-             throw impossible()
+	  do @set-inactive(c / exh)
+	  do SchedulerAction.@stop-from-atomic(self)
+	  throw impossible()
 
         cont dispatch (self : vproc, handler : PT.sched_act, k : PT.fiber) =
-             do @set-active-from-atomic(self, c / exh)
-             let canceledFlg : ![bool] = @get-canceled-flag(c)
-             if #0(canceledFlg)
-                then 
-		 throw terminate(self)
-	     else
-                 do SchedulerAction.@run(self, handler, k)
-                 throw impossible()
+	  do @set-active-from-atomic(self, c / exh)
+	  let canceledFlg : ![bool] = @get-canceled-flag(c)
+	  case #0(canceledFlg)
+	   of true => throw terminate(self)
+	     | false =>
+		 do SchedulerAction.@run(self, handler, k)
+		 throw impossible()
+	  end
 
       (* poll for cancelation *)
         cont handler (s : PT.signal) =
-             let self : vproc = host_vproc
-             case s
-	      of PT.STOP => 
-		 throw terminate(self)
-	       | PT.PREEMPT(k : PT.fiber) =>
-		 do @set-inactive(c / exh)
-                 do SchedulerAction.@yield-in-atomic(self)
-                 throw dispatch(self, handler, k)
-	       | _ =>
-		 let e : exn = Match
-                 throw exh (e)
-             end
+	  let self : vproc = host_vproc
+	  case s
+	   of PT.STOP => 
+	      throw terminate(self)
+	    | PT.PREEMPT(k : PT.fiber) =>
+	      do @set-inactive(c / exh)
+	      do SchedulerAction.@yield-in-atomic(self)
+	      throw dispatch(self, handler, k)
+	    | _ =>
+	      let e : exn = Match
+	      throw exh (e)
+	  end
 
         cont wrappedK (x : unit) =
-             let self : vproc = SchedulerAction.@atomic-begin()
-             throw dispatch(self, handler, k)
+	  let self : vproc = SchedulerAction.@atomic-begin()
+	  throw dispatch(self, handler, k)
 
         return(wrappedK)
       ;
@@ -201,8 +201,7 @@ structure Cancelation (* : sig
 	    case cs1
 	     of nil => 
 		case cs2
-		 of nil => 
-		    return()
+		 of nil => return()
 		  | _ => 
 		    let cs2 : L.list = PrimList.@rev(cs2 / exh)
 		    apply cancelAndWait(cs2, nil)
@@ -212,24 +211,25 @@ structure Cancelation (* : sig
 		let inactive : ![vproc] = @get-inactive-flag(c)
 		let isCanceled : bool = CAS(&0(canceled), false, true)
 		if Equal(#0(inactive), INACTIVE)
-		then
+		  then
 		  (* TRICKY! The up-to-date version of gChildren exists in the global heap, which
 		   * is why we need the promotion below.
 		   *)
                     let gChildren : ![L.list] = promote(SELECT(GCHILDREN_OFF, c))
 		    let cs2 : L.list = PrimList.@append(#0(gChildren), cs2 / exh)
 		    apply cancelAndWait(cs1, cs2)
-		else
-		    do if isCanceled
-		       then
-			   do Pause()
-		           do SchedulerAction.@yield-in-atomic(self)
-			   return()
-		       else 
-			   let dummyK : PT.fiber = vpload(VP_DUMMYK, self)
-			   do VProc.@send-high-priority-signal-from-atomic(self, #0(inactive), dummyK)
-			   return()
-		     apply cancelAndWait(cs1, L.CONS(c, cs2))
+		  else
+		    do case isCanceled
+			of true =>
+			     do Pause()
+			     do SchedulerAction.@yield-in-atomic(self)
+			     return()
+			 | false =>
+			     let dummyK : PT.fiber = vpload(VP_DUMMYK, self)
+			     do VProc.@send-high-priority-signal-from-atomic(self, #0(inactive), dummyK)
+			     return()
+		      end
+		    apply cancelAndWait(cs1, L.CONS(c, cs2))
 	    end
 	do apply cancelAndWait(L.CONS(c, L.nil), L.nil)
 	do SchedulerAction.@atomic-end(self)

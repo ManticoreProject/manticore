@@ -71,18 +71,15 @@ structure VProcQueue (* :
       define @more-than-one-from-atomic (vp : vproc) : bool =
 	  let tl : queue_item = vpload (VP_RDYQ_TL, vp)
 	  let hd : queue_item = vpload (VP_RDYQ_HD, vp)
-
 	  let nTl : int =
-		    if Equal(tl, Q_EMPTY) then return(0)
-		    else if Equal(SELECT(LINK_OFF, tl), Q_EMPTY) then return (1)
-		    else return(2)
-
+		if Equal(tl, Q_EMPTY) then return(0)
+		else if Equal(SELECT(LINK_OFF, tl), Q_EMPTY) then return (1)
+		else return(2)
 	  let nHd : int =
-		    if Equal(hd, Q_EMPTY) then return(0)
-		    else if Equal(SELECT(LINK_OFF, hd), Q_EMPTY) then return (1)
-		    else return(2)
-
-	  return(I32Gt(I32Add(nTl, nHd), 1))
+		if Equal(hd, Q_EMPTY) then return(0)
+		else if Equal(SELECT(LINK_OFF, hd), Q_EMPTY) then return (1)
+		else return(2)
+	  if I32Gt(I32Add(nTl, nHd), 1) then return(true) else return(false)
 	;
 
     (**** Local-queue operations ****)
@@ -98,8 +95,7 @@ structure VProcQueue (* :
 	       let acc : queue_item = alloc(fls, k, acc)
 	       if Equal(rest, Q_EMPTY)
 		 then return(acc)
-	       else
-		 apply revQueue (SELECT(FLS_OFF, rest), SELECT(FIBER_OFF, rest), SELECT(LINK_OFF, rest), acc)
+		 else apply revQueue (SELECT(FLS_OFF, rest), SELECT(FIBER_OFF, rest), SELECT(LINK_OFF, rest), acc)
 	  let qitem : queue_item = apply revQueue (fls, k, rest, Q_EMPTY)
 	  return (qitem)
 	;
@@ -107,9 +103,8 @@ structure VProcQueue (* :
       define @queue-append (queue1 : queue_item, queue2 : queue_item) : queue_item =
 	  fun append (queue1 : queue_item) : queue_item =
 	      if Equal(queue1, Q_EMPTY)
-		 then
-		  return(queue2)
-	      else 
+		then return(queue2)
+		else 
 		  let rest : queue_item = apply append(SELECT(LINK_OFF, queue1))
 		  let queue11 : queue_item = alloc(SELECT(FLS_OFF, queue1), SELECT(FIBER_OFF, queue1), rest)
 		  return(queue11)
@@ -182,20 +177,25 @@ structure VProcQueue (* :
 		   of O.NONE => throw exit(O.NONE)
 		    | O.SOME(item : queue_item) =>
 		      let b : bool = apply f (SELECT(FLS_OFF, item) / exh)
-		      if b then throw exit (O.SOME(item))
-		      else if Equal(SELECT(FLS_OFF, item), SELECT(FLS_OFF, origItem))
-			then 
-			  do @enqueue-from-atomic(self, SELECT(FLS_OFF, item), SELECT(FIBER_OFF, item))
-			  throw exit (O.NONE)
-			else 
-			  do @enqueue-from-atomic(self, SELECT(FLS_OFF, item), SELECT(FIBER_OFF, item))
-			  apply lp()
+		      case b
+		       of true => throw exit (O.SOME(item))
+			| false =>
+			    if Equal(SELECT(FLS_OFF, item), SELECT(FLS_OFF, origItem))
+			      then 
+				do @enqueue-from-atomic(self, SELECT(FLS_OFF, item), SELECT(FIBER_OFF, item))
+				throw exit (O.NONE)
+			      else 
+				do @enqueue-from-atomic(self, SELECT(FLS_OFF, item), SELECT(FIBER_OFF, item))
+				apply lp()
+		      end
 		  end
 	      let b : bool = apply f (SELECT(FLS_OFF, origItem) / exh)
-	      if b then throw exit(O.SOME(origItem))
-	      else
-		do @enqueue-from-atomic(self, SELECT(FLS_OFF, origItem), SELECT(FIBER_OFF, origItem))
-		apply lp()
+		case b
+		 of true => throw exit(O.SOME(origItem))
+		  | false =>
+		      do @enqueue-from-atomic(self, SELECT(FLS_OFF, origItem), SELECT(FIBER_OFF, origItem))
+		      apply lp()
+		end
 	  end
 	;
 
@@ -204,10 +204,8 @@ structure VProcQueue (* :
     (* enqueue on a given vproc. NOTE: signals must be masked  *)
       define inline @enqueue-on-vproc-from-atomic (self : vproc, dst : vproc, fls : FLS.fls, k : PT.fiber) : () =
           if Equal(self, dst)
-	     then
-	      @enqueue-from-atomic(self, fls, k)
-	  else
-	      VProc.@send-from-atomic(self, dst, fls, k)
+	    then @enqueue-from-atomic(self, fls, k)
+	    else VProc.@send-from-atomic(self, dst, fls, k)
       ;
 
     (* enqueue on a remote vproc *)

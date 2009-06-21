@@ -89,10 +89,8 @@ structure ImplicitThreadIVar =
 
       define @poll (ivar : ivar / exh : exh) : Option.option =
 	if Equal(SELECT(VALUE_OFF, ivar), EMPTY_VAL)
-	   then
-	    return (Option.NONE)
-	else
-	    return (Option.SOME(SELECT(VALUE_OFF, ivar)))
+	  then return (Option.NONE)
+	  else return (Option.SOME(SELECT(VALUE_OFF, ivar)))
       ;
 
     )

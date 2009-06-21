@@ -21,10 +21,11 @@
 #define _SPIN_LOCK_DEF_
 
 #define SPIN_LOCK(name, OFFSET)					\
-	fun spinLp () : () = if SELECT(OFFSET, name) then	\
+	fun spinLp () : () = if I32isSet(SELECT(OFFSET, name))	\
+	       then						\
 		do Pause()					\
 		apply spinLp ()					\
-	      else if TAS(ADDR_OF(OFFSET, name))		\
+	      else if I32TAS(ADDR_OF(OFFSET, name))		\
 		then apply spinLp ()				\
 		else return ()					\
 	do apply spinLp ()

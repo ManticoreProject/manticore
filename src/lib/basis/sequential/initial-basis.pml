@@ -13,7 +13,6 @@ _primcode (
 
   typedef exh = cont(exn);
   typedef unit = enum(0);
-  typedef ml_bool = ??
   typedef string_len = int;
   typedef string_data = any;
   typedef ml_string = [string_data, string_len];
@@ -52,22 +51,25 @@ _primcode (
       let res : ml_int = wrap(I32Mod(unwrap(#0(arg)), unwrap(#1(arg))))
         return (res)
   ;
-  define inline @int-gt (arg : [ml_int, ml_int] / _ : exh) : ml_bool =
-      if (I32Gt(unwrap(#0(arg)), unwrap(#1(arg))))
+  define inline @int-gt (arg : [ml_int, ml_int] / _ : exh) : bool =
+      if I32Gt(unwrap(#0(arg)), unwrap(#1(arg)))
 	then return (true)
 	else return (false)
   ;
   define inline @int-gte (arg : [ml_int, ml_int] / _ : exh) : bool =
-      let res : bool = I32Gte(unwrap(#0(arg)), unwrap(#1(arg)))
-        return (res)
+      if I32Gte(unwrap(#0(arg)), unwrap(#1(arg)))
+	then return (true)
+	else return (false)
   ;
   define inline @int-lt (arg : [ml_int, ml_int] / _ : exh) : bool =
-      let res : bool = I32Lt(unwrap(#0(arg)), unwrap(#1(arg)))
-        return (res)
+      if I32Lt(unwrap(#0(arg)), unwrap(#1(arg)))
+	then return (true)
+	else return (false)
   ;
   define inline @int-lte (arg : [ml_int, ml_int] / _ : exh) : bool =
-      let res : bool = I32Lte(unwrap(#0(arg)), unwrap(#1(arg)))
-        return (res)
+      if I32Lte(unwrap(#0(arg)), unwrap(#1(arg)))
+	then return (true)
+	else return (false)
   ;
   define inline @int-neg (arg : ml_int / _ : exh) : ml_int =
       let res : ml_int = wrap(I32Neg(unwrap(arg)))
@@ -100,20 +102,24 @@ _primcode (
         return (res)
   ;
   define inline @long-gt (arg : [ml_long, ml_long] / _ : exh) : bool =
-      let res : bool = I64Gt(unwrap(#0(arg)), unwrap(#1(arg)))
-        return (res)
+      if I64Gt(unwrap(#0(arg)), unwrap(#1(arg)))
+	then return (true)
+	else return (false)
   ;
   define inline @long-gte (arg : [ml_long, ml_long] / _ : exh) : bool =
-      let res : bool = I64Gte(unwrap(#0(arg)), unwrap(#1(arg)))
-        return (res)
+      if I64Gte(unwrap(#0(arg)), unwrap(#1(arg)))
+	then return (true)
+	else return (false)
   ;
   define inline @long-lt (arg : [ml_long, ml_long] / _ : exh) : bool =
-      let res : bool = I64Lt(unwrap(#0(arg)), unwrap(#1(arg)))
-        return (res)
+      if I64Lt(unwrap(#0(arg)), unwrap(#1(arg)))
+	then return (true)
+	else return (false)
   ;
   define inline @long-lte (arg : [ml_long, ml_long] / _ : exh) : bool =
-      let res : bool = I64Lte(unwrap(#0(arg)), unwrap(#1(arg)))
-        return (res)
+      if I64Lte(unwrap(#0(arg)), unwrap(#1(arg)))
+	then return (true)
+	else return (false)
   ;
   define inline @long-neg (arg : ml_long / _ : exh) : ml_long =
       let res : ml_long = wrap(I64Neg(unwrap(arg)))
@@ -138,20 +144,24 @@ _primcode (
         return (res)
   ;
   define inline @float-gt (arg : [ml_float, ml_float] / _ : exh) : bool =
-      let res : bool = F32Gt(unwrap(#0(arg)), unwrap(#1(arg)))
-        return (res)
+      if F32Gt(unwrap(#0(arg)), unwrap(#1(arg)))
+	then return (true)
+	else return (false)
   ;
   define inline @float-gte (arg : [ml_float, ml_float] / _ : exh) : bool =
-      let res : bool = F32Gte(unwrap(#0(arg)), unwrap(#1(arg)))
-        return (res)
+      if F32Gte(unwrap(#0(arg)), unwrap(#1(arg)))
+	then return (true)
+	else return (false)
   ;
   define inline @float-lt (arg : [ml_float, ml_float] / _ : exh) : bool =
-      let res : bool = F32Lt(unwrap(#0(arg)), unwrap(#1(arg)))
-        return (res)
+      if F32Lt(unwrap(#0(arg)), unwrap(#1(arg)))
+	then return (true)
+	else return (false)
   ;
   define inline @float-lte (arg : [ml_float, ml_float] / _ : exh) : bool =
-      let res : bool = F32Lte(unwrap(#0(arg)), unwrap(#1(arg)))
-        return (res)
+      if F32Lte(unwrap(#0(arg)), unwrap(#1(arg)))
+	then return (true)
+	else return (false)
   ;
   define inline @float-neg (arg : ml_float / _ : exh) : ml_float =
       let res : ml_float = wrap(F32Neg(unwrap(arg)))
@@ -176,20 +186,24 @@ _primcode (
         return (res)
   ;
   define inline @double-gt (arg : [ml_double, ml_double] / _ : exh) : bool =
-      let res : bool = F64Gt(unwrap(#0(arg)), unwrap(#1(arg)))
-        return (res)
+      if F64Gt(unwrap(#0(arg)), unwrap(#1(arg)))
+	then return (true)
+	else return (false)
   ;
   define inline @double-gte (arg : [ml_double, ml_double] / _ : exh) : bool =
-      let res : bool = F64Gte(unwrap(#0(arg)), unwrap(#1(arg)))
-        return (res)
+      if F64Gte(unwrap(#0(arg)), unwrap(#1(arg)))
+	then return (true)
+	else return (false)
   ;
   define inline @double-lt (arg : [ml_double, ml_double] / _ : exh) : bool =
-      let res : bool = F64Lt(unwrap(#0(arg)), unwrap(#1(arg)))
-        return (res)
+      if F64Lt(unwrap(#0(arg)), unwrap(#1(arg)))
+	then return (true)
+	else return (false)
   ;
   define inline @double-lte (arg : [ml_double, ml_double] / _ : exh) : bool =
-      let res : bool = F64Lte(unwrap(#0(arg)), unwrap(#1(arg)))
-        return (res)
+      if F64Lte(unwrap(#0(arg)), unwrap(#1(arg)))
+	then return (true)
+	else return (false)
   ;
   define inline @double-neg (arg : ml_double / _ : exh) : ml_double =
       let res : ml_double = wrap(F64Neg(unwrap(arg)))

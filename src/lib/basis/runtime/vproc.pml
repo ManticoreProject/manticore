@@ -160,12 +160,12 @@ structure VProc (* :
 		  apply lp ()
 		else
 		    let sleeping : bool = vpload(VP_SLEEPING, dst)
-		    do if sleeping
-		          then 
-			   do ccall VProcWake(dst)
-		           return()
-		       else 
-			   return()
+		    do case sleeping
+		       of true =>
+			    do ccall VProcWake(dst)
+			    return()
+			| false => return()
+		      end
                     throw exit()
 	  do apply lp()
 	  return()
@@ -188,12 +188,12 @@ structure VProc (* :
           cont exit () = return(Q_EMPTY)
           let ldgPadOrig : queue_item = vpload(VP_LANDING_PAD, self)
           do if Equal(ldgPadOrig, Q_EMPTY)
-		then throw exit()
-	     else return()
+	      then throw exit()
+	      else return()
           let x : queue_item = CAS((addr(queue_item))vpaddr(VP_LANDING_PAD, self), ldgPadOrig, Q_EMPTY)
           if Equal(x, ldgPadOrig)
-	     then return(x)
-	  else return(Q_EMPTY)
+	      then return(x)
+	      else return(Q_EMPTY)
       ;
 
     (* put the vproc to sleep until a signal arrives on its landing pad 

@@ -57,7 +57,7 @@ structure WorkStealers =
 		    fun isNotPinned (fls : FLS.fls / exh : exh) : bool =
 			let pinned : int = FLS.@pin-info(fls / exh)
                         let victim : int = VProc.@vproc-id(victimVP)
-			return (NotEqual(pinned, victim))
+			if NotEqual(pinned, victim) then return(true) else return(false)
 		    let item : O.option = VPQ.@dequeue-with-pred-from-atomic (victimVP, isNotPinned / exh)
 		    case item
 		     of O.NONE =>
