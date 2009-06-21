@@ -135,6 +135,7 @@ structure Prim =
       | AdrNEq of 'var * 'var
     (* conditional atomic operations *)
       | BCAS of 'var * 'var * 'var	(* compare and swap; returns bool *)
-      | TAS of 'var			(* test and set *)
+      | I32isSet of 'var		(* 32-bit test (for short-circuiting I32TAS) *)
+      | I32TAS of 'var			(* 32-bit test and set *)
 
   end

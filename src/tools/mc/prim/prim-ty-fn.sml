@@ -255,7 +255,8 @@ functor PrimTyFn (Ty : sig
 		in
 		  [Ty.addr ty, ty, ty]
 		end
-	    | P.TAS _ => [Ty.addr i32Ty]
+	    | P.I32isSet _ => [Ty.addr i32Ty]
+	    | P.I32TAS _ => [Ty.addr i32Ty]
 	  (* end case *))
 
   end

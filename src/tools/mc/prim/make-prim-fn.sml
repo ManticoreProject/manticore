@@ -246,7 +246,8 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 		("AdrEq",	mk Cond2 (P.AdrEq,	(i32, i32))),
 		("AdrNEq",	mk Cond2 (P.AdrNEq,	(i32, i32))),
 		("BCAS",	mk Cond3 (P.BCAS,	(adrTy, aTy, aTy))),
-		("TAS",		mk Cond1 (P.TAS,	i32))
+		("I32isSet",	mk Cond1 (P.I32isSet,	i32)),
+		("I32TAS",	mk Cond1 (P.I32TAS,	i32))
 	      ];
 	    AtomTable.find tbl
 	  end

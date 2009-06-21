@@ -55,7 +55,8 @@ structure CondUtil : sig
       | nameOf (P.AdrEq _) = "AdrEq"
       | nameOf (P.AdrNEq _) = "AdrNEq"
       | nameOf (P.BCAS _) = "BCAS"
-      | nameOf (P.TAS _) = "TAS"
+      | nameOf (P.I32isSet _) = "I32isSet"
+      | nameOf (P.I32TAS _) = "I32TAS"
 
   (* return the list of variables referenced in a primitive operation *)
     fun varsOf (P.isBoxed a) = [a]
@@ -93,7 +94,8 @@ structure CondUtil : sig
       | varsOf (P.AdrEq(a, b)) = [a, b]
       | varsOf (P.AdrNEq(a, b)) = [a, b]
       | varsOf (P.BCAS(a, b, c)) = [a, b, c]
-      | varsOf (P.TAS a) = [a]
+      | varsOf (P.I32isSet a) = [a]
+      | varsOf (P.I32TAS a) = [a]
 
     fun fmt v2s p = (case varsOf p
 	   of [x] => concat[nameOf p, "(", v2s x, ")"]
@@ -144,7 +146,8 @@ structure CondUtil : sig
       | explode (P.AdrEq(a, b)) = (p2 P.AdrEq, [a, b])
       | explode (P.AdrNEq(a, b)) = (p2 P.AdrNEq, [a, b])
       | explode (P.BCAS(a, b, c)) = (p3 P.BCAS, [a, b, c])
-      | explode (P.TAS a) = (p1 P.TAS, [a])
+      | explode (P.I32isSet a) = (p1 P.I32isSet, [a])
+      | explode (P.I32TAS a) = (p1 P.I32TAS, [a])
     end (* local *)
 
     fun map f p = let val (mk, args) = explode p in mk(List.map f args) end
@@ -152,7 +155,8 @@ structure CondUtil : sig
     fun app f p = List.app f (varsOf p)
 
     fun isPure (P.BCAS _) = false
-      | isPure (P.TAS _) = false
+      | isPure (P.I32isSet _) = false	(* treat as impure, since arg is volatile *)
+      | isPure (P.I32TAS _) = false
       | isPure _ = true
 
   end
