@@ -24,6 +24,11 @@ _primcode (
 (* logging events *)
   typedef log_event = int;
 
+(* bool operators *)
+  define inline @bool-not (arg : bool / _ : exh) : bool =
+      case arg of true => return(false) | false => return(true) end
+  ;
+
 (* int operators *)
   define inline @int-add (arg : [ml_int, ml_int] / _ : exh) : ml_int =
       let res : ml_int = wrap(I32Add(unwrap(#0(arg)), unwrap(#1(arg))))
@@ -247,3 +252,5 @@ _primcode (
 #endif
 
 )
+
+val not : bool -> bool = _prim(@bool-not)
