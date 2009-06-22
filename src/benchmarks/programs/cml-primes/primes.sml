@@ -85,6 +85,6 @@ structure Main = struct
 	    RunCML.doit (thd, NONE)
 	  end
 
-    fun main _ = (timeit 2000; OS.Process.success)
+    fun main _ = (timeit 5000; OS.Process.success)
 
   end
