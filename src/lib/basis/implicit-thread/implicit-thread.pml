@@ -27,7 +27,7 @@ structure ImplicitThread (* :
 
       define inline @new-thread (k : PT.fiber / exh : exh) : thread;
       define inline @new-cancelable-thread (k : PT.fiber, c : Cancelation.cancelable / exh : exh) : thread;
-    (* pairs the fiber with the current implicit-thread environment to create a new thread *)
+    (* creates a new thread by pairing the fiber with the current implicit-thread environment *)
       define inline @capture (k : PT.fiber / exh : exh) : thread;
 
     (** Work group management **)
