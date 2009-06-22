@@ -31,7 +31,11 @@ structure CVar (*: sig
 	    FLS.fls,			(* FLS of thread *)
 	    PT.fiber			(* thread's continuation *)
 	  ];
-	typedef cvar = ![bool, bool, List.list];
+	typedef cvar = ![
+	    int,			(* spinlock *)
+	    bool,			(* state *)
+	    List.list			(* list of waiters *)
+	  ];
 
       (* the fields of a cvar *)
 #	define CV_LOCK		0
@@ -40,7 +44,7 @@ structure CVar (*: sig
 
       (* create a new signal variable *)
 	define inline @cvar-new (_ : unit / _ : exh) : cvar =
-	    let cv : cvar = alloc(false, false, nil)
+	    let cv : cvar = alloc(0, false, nil)
 	    let cv : cvar = promote (cv)
 	    return (cv)
 	  ;

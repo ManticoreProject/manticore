@@ -247,7 +247,7 @@ structure PrimChan (*: sig
       (***** Channel operations *****)
 	
 	define inline @chan-new (arg : unit / exh : exh) : chan_rep =
-	    let ch : chan_rep = alloc(false, (sendq_item)Q_NIL, (sendq_item)Q_NIL, (recvq_item)Q_NIL, (recvq_item)Q_NIL)
+	    let ch : chan_rep = alloc(0, (sendq_item)Q_NIL, (sendq_item)Q_NIL, (recvq_item)Q_NIL, (recvq_item)Q_NIL)
 	    let ch : chan_rep = promote (ch)
 	    return (ch)
 	  ;

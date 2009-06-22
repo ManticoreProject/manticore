@@ -31,7 +31,7 @@
 	do apply spinLp ()
 
 #define SPIN_UNLOCK(name, OFFSET)				\
-	do UPDATE(OFFSET, name, false)
+	do UPDATE(OFFSET, name, 0)
 
 #endif /*! _SPIN_LOCK_DEF_ */
 

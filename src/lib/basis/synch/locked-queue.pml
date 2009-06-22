@@ -56,13 +56,13 @@ structure LockedQueue :
 
     (* locked queue structure *)
       typedef queue = ![
-          int32,	(* spin lock *)
+          int,		(* spin lock *)
 	  elt,		(* head *)
 	  elt		(* tail *)
       ];
 
       define @new () : queue =
-        let lockedQ : queue = alloc (false, EMPTY, EMPTY)
+        let lockedQ : queue = alloc (0, EMPTY, EMPTY)
         let lockedQ : queue = promote (lockedQ)
         return (lockedQ)
       ;

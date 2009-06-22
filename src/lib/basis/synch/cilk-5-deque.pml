@@ -74,7 +74,7 @@ structure Cilk5Deque (* :
   (* create a deque *)
       define @new ( / exh : exh) : deque =
 	let arr : Arr.array = Arr.@array(DEQUE_SZ, enum(0) / exh)
-	let deq : deque = alloc(0, 0, arr, false)
+	let deq : deque = alloc(0, 0, arr, 0)
 	let deq : deque = promote(deq)
 	return(deq)
       ;
