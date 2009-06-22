@@ -59,7 +59,7 @@ structure Equality : sig
 		    | BTy.T_Int => mkTest (P.I32Eq, P.I32NEq)
 		    | BTy.T_Long => mkTest (P.I64Eq, P.I64NEq)
 		    | BTy.T_Float => mkTest (P.F32Eq, P.F32NEq)
-		    | BTy.T_Double => mkTest (P.F32Eq, P.F64NEq)
+		    | BTy.T_Double => mkTest (P.F64Eq, P.F64NEq)
 		    | BTy.T_Vec128 => raise Fail "Raw T_Vec128 equality"
 		  (* end case *))
 	      | BTy.T_Tuple(false, tys) => mkTuple (0, tys)
