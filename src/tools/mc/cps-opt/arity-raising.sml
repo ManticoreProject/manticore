@@ -652,13 +652,11 @@ structure ArityRaising : sig
 		   of UNPROCESSED => processBody()
 		    | DONE(i) => if i = round then () else processBody()
 		    | INPROCESS(i) =>  if i = round
-			then (
-			 (* For mutually recursive functions, we just punt
-			  * and assume all params/rets are useful.
-			  *)
-			    List.app markUseful params ;
-			    List.app markUseful rets ;
-			    setDone (f,round))
+		      (* For recursive function calls, we just return empty,
+                       * assuming that we will pick upany additional information
+                       * from the function when we return from the DFS.
+		       *)
+			then ()
 			else processBody()
 		  (* end case *)
 		end
