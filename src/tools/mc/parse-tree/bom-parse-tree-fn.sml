@@ -27,6 +27,7 @@
     type pml_var = pml_var
     type ty_con = ty_con
     type ty_def = ty_def
+    type cond = Atom.atom
     type prim = prim
     type dcon = dcon
     type hlop_use = hlop_use
@@ -66,7 +67,7 @@
       | E_Let of (var_pat list * rhs * exp)
       | E_Fun of (lambda list * exp)
       | E_Cont of (lambda * exp)
-      | E_If of (simple_exp * exp * exp)
+      | E_If of (cond * simple_exp list * exp * exp)
       | E_Case of (simple_exp * (pat * exp) list * (var_pat * exp) option)
       | E_Apply of (var_use * simple_exp list * simple_exp list)
       | E_Throw of (var_use * simple_exp list)

@@ -45,7 +45,7 @@ structure PrimChan (*: sig
 	  ];
 
 	typedef chan_rep = ![	    (* all fields are mutable *)
-	    bool,			(* spin lock *)
+	    int,			(* spin lock *)
 	    List.list,			(* sendq head *)
 	    List.list,			(* sendq tail *)
 	    List.list,			(* recvq head *)
@@ -153,7 +153,7 @@ structure PrimChan (*: sig
 	  ;
 
 	define inline @chan-new (arg : unit / exh : exh) : chan_rep =
-	    let ch : chan_rep = alloc(false, nil, nil, nil, nil)
+	    let ch : chan_rep = alloc(0, nil, nil, nil, nil)
 	    let ch : chan_rep = promote (ch)
 	    return (ch)
 	  ;

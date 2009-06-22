@@ -49,7 +49,7 @@ structure Census : sig
 	    | B.E_Stmt(lhs, rhs, e) => (List.app clear lhs; BOMUtil.appRHS inc rhs; doE e)
 	    | B.E_Fun(fbs, e) => (List.app clrFB fbs; List.app doFB fbs; doE e)
 	    | B.E_Cont(fb, e) => (clrFB fb; doFB fb; doE e)
-	    | B.E_If(x, e1, e2) => (inc x; doE e1; doE e2)
+	    | B.E_If(cond, e1, e2) => (CondUtil.app inc cond; doE e1; doE e2)
 	    | B.E_Case(x, cases, dflt) => let
 		fun doCase (B.P_DCon(_, args), e) = (List.app clear args; doE e)
 		  | doCase (_, e) = doE e
@@ -105,7 +105,7 @@ structure Census : sig
 		  | B.E_Stmt(_, rhs, e) => (BOMUtil.appRHS dec rhs; del e)
 		  | B.E_Fun(fbs, e) => (List.app delFB fbs; del e)
 		  | B.E_Cont(fb, e) => (delFB fb; del e)
-		  | B.E_If(x, e1, e2) => (dec x; del e1; del e2)
+		  | B.E_If(cond, e1, e2) => (CondUtil.app dec cond; del e1; del e2)
 		  | B.E_Case(x, cases, dflt) => (
 		      dec x;
 		      List.app (fn (_, e) => del e) cases;
@@ -136,7 +136,7 @@ structure Census : sig
 		  | B.E_Stmt(_, rhs, e) => (BOMUtil.appRHS dec rhs; del e)
 		  | B.E_Fun(fbs, e) => (List.app delFB fbs; del e)
 		  | B.E_Cont(fb, e) => (delFB fb; del e)
-		  | B.E_If(x, e1, e2) => (dec x; del e1; del e2)
+		  | B.E_If(cond, e1, e2) => (CondUtil.app dec cond; del e1; del e2)
 		  | B.E_Case(x, cases, dflt) => (
 		      dec x;
 		      List.app (fn (_, e) => del e) cases;

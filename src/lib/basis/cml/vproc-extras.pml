@@ -49,7 +49,7 @@ structure VProcExtras (* : sig
 	define inline @same (arg : [ml_vproc, ml_vproc] / _ : exh) : bool =
 	    let a : vproc = #0(#0(arg))
 	    let b : vproc = #0(#1(arg))
-	    return (Equal(a, b))
+	    if Equal(a, b) then return(true) else return(false)
 	  ;
 
 	define inline @remoteSpawn (arg : [ml_vproc, fun(unit / exh -> unit)] / exh : exh) : FLS.fls =

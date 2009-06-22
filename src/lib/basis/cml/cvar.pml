@@ -31,7 +31,11 @@ structure CVar (*: sig
 	    FLS.fls,			(* FLS of thread *)
 	    PT.fiber			(* thread's continuation *)
 	  ];
-	typedef cvar = ![bool, bool, List.list];
+	typedef cvar = ![
+	    int,			(* spinlock *)
+	    bool,			(* state *)
+	    List.list			(* list of waiters *)
+	  ];
 
       (* the fields of a cvar *)
 #	define CV_LOCK		0
@@ -40,7 +44,7 @@ structure CVar (*: sig
 
       (* create a new signal variable *)
 	define inline @cvar-new (_ : unit / _ : exh) : cvar =
-	    let cv : cvar = alloc(false, false, nil)
+	    let cv : cvar = alloc(0, false, nil)
 	    let cv : cvar = promote (cv)
 	    return (cv)
 	  ;
@@ -80,17 +84,17 @@ structure CVar (*: sig
 
       (* wait for a variable to be signaled *)
 	define @cvar-wait (cv : cvar / _ : exh) : unit =
-	    if SELECT(CV_STATE, cv)
-	      then return (UNIT)
-	      else (* slow-path requires waiting *)
+	    case SELECT(CV_STATE, cv)
+	     of true => return (UNIT)
+	      | false => (* slow-path requires waiting *)
 		let self : vproc = SchedulerAction.@atomic-begin ()
 		SPIN_LOCK(cv, CV_LOCK)
-		if SELECT(CV_STATE, cv)
-		  then
+		case SELECT(CV_STATE, cv)
+		 of true =>
 		    SPIN_UNLOCK(cv, CV_LOCK)
 		    do SchedulerAction.@atomic-end (self)
 		    return (UNIT)
-		  else
+		  | false =>
 		    cont k (_ : unit) = return (UNIT)
 		    (* in *)
 		      let flg : PEvt.event_state = alloc (PEvt.WAITING)
@@ -101,6 +105,8 @@ structure CVar (*: sig
 		      do UPDATE(CV_WAITING, cv, l)
 		      SPIN_UNLOCK(cv, CV_LOCK)
 		      SchedulerAction.@stop-from-atomic (self)
+		end
+	    end
 	  ;
 
 	define inline @cvar-wait-evt (cv : cvar / _ : exh) : PEvt.pevent =
@@ -108,12 +114,12 @@ structure CVar (*: sig
 	    fun doFn (_ : vproc, k : PT.fiber / _ : exh) : () = throw k (UNIT)
 	    fun blockFn (self : vproc, flg : PEvt.event_state, fls : FLS.fls, k : cont(unit) / _ : exh) : () =
 		SPIN_LOCK(cv, CV_LOCK)
-		if SELECT(CV_STATE, cv)
-		  then
+		case SELECT(CV_STATE, cv)
+		 of true =>
 		    SPIN_UNLOCK(cv, CV_LOCK)
 		    do SchedulerAction.@atomic-end (self)
 		    throw k (UNIT)
-		  else
+		  | false =>
 		    let flg : PEvt.event_state = alloc (PEvt.WAITING)
 		    let fls : FLS.fls = FLS.@get()
 		    let item : waiter = alloc (flg, self, fls, k)
@@ -122,6 +128,7 @@ structure CVar (*: sig
 		    do UPDATE(CV_WAITING, cv, l)
 		    SPIN_UNLOCK(cv, CV_LOCK)
 		    SchedulerAction.@stop-from-atomic (self)
+		end
 	  (* in *)
 	    return (PEvt.BEVT(pollFn, doFn, blockFn))
 	  ;

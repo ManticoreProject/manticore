@@ -86,7 +86,7 @@ structure CFGUtil : sig
       | varsOfXfer (StdThrow{k, clos, args}) = k :: clos :: args
       | varsOfXfer (Apply{f, clos, args}) = f:: clos :: args
       | varsOfXfer (Goto(_, args)) = args
-      | varsOfXfer (If(x, (_, args1), (_, args2))) = x :: args1 @ args2
+      | varsOfXfer (If(cond, (_, args1), (_, args2))) = CondUtil.varsOf cond @ args1 @ args2
       | varsOfXfer (Switch(x, cases, dflt)) = let
 	  fun f ((_, (_, args)), l) = args @ l
 	  in
@@ -106,7 +106,7 @@ structure CFGUtil : sig
       | labelsOfXfer (StdThrow _) = []
       | labelsOfXfer (Apply _) = []
       | labelsOfXfer (Goto(lab, _)) = [lab]
-      | labelsOfXfer (If(x, (lab1, _), (lab2, _))) = [lab1, lab2]
+      | labelsOfXfer (If(_, (lab1, _), (lab2, _))) = [lab1, lab2]
       | labelsOfXfer (Switch(x, cases, dflt)) = let
 	  fun f ((_, (lab, _)), l) = lab :: l
 	  in
@@ -168,14 +168,17 @@ structure CFGUtil : sig
 	  fun sj (l, args) = (l, List.map sv args)
 	  in 
 	    case transfer
-	     of StdApply{f, clos, args, ret, exh} => StdApply{f=sv f, clos=sv clos, args=List.map sv args, ret=sv ret, exh=sv exh}
+	     of StdApply{f, clos, args, ret, exh} =>
+		  StdApply{f=sv f, clos=sv clos, args=List.map sv args, ret=sv ret, exh=sv exh}
 	      | StdThrow{k, clos, args} => StdThrow{k=sv k, clos=sv clos, args=List.map sv args}
 	      | Apply{f, clos, args} => Apply{f=sv f, clos=sv clos, args=List.map sv args}
 	      | Goto jmp => Goto(sj jmp)
-	      | If(v, jmp1, jmp2) => If(sv v, sj jmp1, sj jmp2)
-	      | Switch(x, cases, dflt) => Switch(sv x, List.map (fn (c, j) => (c, sj j)) cases, Option.map sj dflt)
+	      | If(cond, jmp1, jmp2) => If(CondUtil.map sv cond, sj jmp1, sj jmp2)
+	      | Switch(x, cases, dflt) =>
+		  Switch(sv x, List.map (fn (c, j) => (c, sj j)) cases, Option.map sj dflt)
 	      | HeapCheck{hck, szb, nogc} => HeapCheck{hck=hck, szb=szb, nogc=sj nogc}
-	      | AllocCCall{lhs, f, args, ret} => AllocCCall{lhs=lhs, f=sv f, args=List.map sv args, ret=sj ret}
+	      | AllocCCall{lhs, f, args, ret} =>
+		  AllocCCall{lhs=lhs, f=sv f, args=List.map sv args, ret=sj ret}
 	     (* end case *)
 	  end
 

@@ -21,104 +21,80 @@ functor AMD64AtomicOpsFn (
     fun copyDef (ty, dst, T.REG(_, src)) = T.COPY(ty, [dst], [src])
       | copyDef (ty, dst, rexp) = T.MV(ty, dst, rexp)
 
-  (* 32-bit compare and swap operation *)
-    fun genCompareAndSwap32 {addr, cmpVal, newVal} = let
+  (* atomic swap operation *)
+    fun genSwap {ty, addr, newVal} = let
 	  val oldVal = Cells.newReg()
-	  val oldVal' = T.REG(32, oldVal)
+	  val oldVal' = T.REG(ty, oldVal)
+	  val xchg = (case ty
+		 of 32 => IX.LOCK_XCHGL(T.REG(32, newVal), addr)
+		  | 64 => IX.LOCK_XCHGQ(T.REG(64, newVal), addr)
+		(* end case *))
+	  val stms = [T.EXT xchg, T.COPY(ty, [oldVal], [newVal]) ]
+	  in
+	    (oldVal', stms)
+	  end
+
+  (* atomic compare and swap operation *)
+    fun genCompareAndSwap {ty, addr, cmpVal, newVal} = let
+	  val oldVal = Cells.newReg()
+	  val oldVal' = T.REG(ty, oldVal)
+	  val cmpxchg = (case ty
+		 of 32 => IX.LOCK_CMPXCHGL(newVal, addr)
+		  | 64 => IX.LOCK_CMPXCHGQ(newVal, addr)
+		(* end case *))
 	  val stms = [
-		  copyDef (32, Cells.rax, cmpVal),
-		  T.EXT(IX.LOCK_CMPXCHGL(newVal, addr)),
-		  T.COPY(32, [oldVal], [Cells.rax])
+		  copyDef (ty, Cells.rax, cmpVal),
+		  T.EXT cmpxchg,
+		  T.COPY(ty, [oldVal], [Cells.rax])
 		]
 	  in
 	    (T.CC(T.Basis.EQ, Cells.eflags), oldVal', stms)
 	  end
 
-  (* 64-bit compare and swap operation *)
-    fun genCompareAndSwap64 {addr, cmpVal, newVal} = let
-	  val oldVal = Cells.newReg()
-	  val oldVal' = T.REG(64, oldVal)
-	  val stms = [
-		  copyDef (64, Cells.rax, cmpVal),
-		  T.EXT(IX.LOCK_CMPXCHGQ(newVal, addr)),
-		  T.COPY(64, [oldVal], [Cells.rax])
-		]
+  (* atomic test and set operation *)
+(* FIXME: once we have support for the BTS instruction, we should use it *)
+    fun genTestAndSet {ty, addr} = let
+	  val r' = Cells.newReg()
+	  val r = T.REG(ty, r')
+	  val xchg = (case ty
+		 of 32 => IX.LOCK_XCHGL(r, addr)
+		  | 64 => IX.LOCK_XCHGQ(r, addr)
+		(* end case *))
+	  val stms = [T.MV (ty, r', T.LI 1), T.EXT xchg]
+	  val cc = T.CMP(ty, T.EQ, r, T.LI 1)
 	  in
-	    (T.CC(T.Basis.EQ, Cells.eflags), oldVal', stms)
+	    (cc, stms)
 	  end
 
-  (* word-sized compare and swap operation *)
-    val genCompareAndSwapWord = genCompareAndSwap64
-
-  (* 32-bit test and set operation *)
-    fun genTestAndSet32 {addr, newVal} = let
-	  val oldVal = Cells.newReg()
-	  val oldVal' = T.REG(32, oldVal)
-	  val stms = [
-		  T.EXT(IX.LOCK_XCHGL(T.REG(32, newVal), addr)),
-		  T.COPY(32, [oldVal], [newVal])
-		]
-	  in
-	    (oldVal', stms)
-	  end
-
-  (* 64-bit test and set operation *)
-    fun genTestAndSet64 {addr, newVal} = let
-	  val oldVal = Cells.newReg()
-	  val oldVal' = T.REG(64, oldVal)
-	  val stms = [
-		  T.EXT(IX.LOCK_XCHGQ(T.REG(64, newVal), addr)),
-		  T.COPY(64, [oldVal], [newVal])
-		]
-	  in
-	    (oldVal', stms)
-	  end
-
-  (* word-sized test and set operation *)
-    val genTestAndSetWord = genTestAndSet64
-
-   (* 32-bit fetch and add operation *)
-    fun genFetchAndAdd32 {addr, x} = let
-         val r = Cells.newReg ()
-         val r' = T.REG(32, r)
-         val stms = [
-	         copyDef (32, r, x),
-	         T.EXT(IX.LOCK_XADDL(r', addr))
-               ]
+   (* atomic fetch and add operation *)
+    fun genFetchAndAdd {ty, addr, x} = let
+	  val r = Cells.newReg ()
+	  val r' = T.REG(ty, r)
+	  val xadd = (case ty
+		 of 32 => IX.LOCK_XADDL(r', addr)
+		  | 64 => IX.LOCK_XADDQ(r', addr)
+		(* end case *))
+         val stms = [copyDef (ty, r, x), T.EXT xadd]
          in
              (r', stms)
          end
 
-   (* 64-bit fetch and add operation *)
-    fun genFetchAndAdd64 {addr, x} = let
-         val r = Cells.newReg ()
-         val r' = T.REG(64, r)
-         val stms = [
-	         copyDef (64, r, x),
-	         T.EXT(IX.LOCK_XADDQ(r', addr))
-               ]
-         in
-             (r', stms)
-         end
-
-  (* FIXME: placeholders until SML/NJ 110.69 *)
-    fun genPause () = []
-    fun genFenceWrite () = []
-    fun genFenceRead () = []
-    fun genFenceRW () = []
-
-(* FIXME: wait until SML/NJ 110.69
   (* pause instruction to support efficient spin locks *)
     fun genPause () = [T.EXT IX.PAUSE]
 
-  (* sequentializing operation for all write-to-memory instructions prior to this instruction *)
+  (* sequentializing operation for all write-to-memory instructions
+   * prior to this instruction
+   *)
     fun genFenceWrite () = [T.EXT IX.SFENCE]
 
-  (* sequentializing operation for all load-from-memory instructions prior to this instruction *)
+  (* sequentializing operation for all load-from-memory instructions
+   * prior to this instruction
+   *)
     fun genFenceRead () = [T.EXT IX.LFENCE]
 
-  (* sequentializing operation for all load-from-memory and write-to-memory instructions prior to this instruction *)
+  (* sequentializing operation for all load-from-memory and write-to-memory
+   * instructions prior to this instruction
+   *)
     fun genFenceRW () = [T.EXT IX.MFENCE]
-*)
 
   end

@@ -108,22 +108,21 @@ structure TranslatePValCilk5  : sig
 	      B.mkLambda{f=slowPathK, params=[unitVar()], exh=[], body=
                  B.mkApply(bodyFn, [selFromIVar], [exh])}
 	  val slowPath = BV.new("slowPath", findBOMTy["ImplicitThread", "thread"])
-	  val goLocal = BV.new("goLocal", BOMTy.boolTy)
+	  val goLocal = BV.new("goLocal", BOMTyUtil.boolTy)
 	  val selLocally = BV.new("selLocally", BTy.T_Fun([BTy.unitTy], [BTy.exhTy], [ty1]))
 	  val (selLocallyExh, _) = E.newHandler env
           in
-	     B.mkLet([ivar], mkIVar exh,
-             B.mkFun([bodyFnL, selFromIVarL],
-             B.mkCont(slowPathL,
-             B.mkLet([slowPath], mkThread(exh, slowPathK),
-             B.mkLet([], mkWsPush(exh, slowPath),
-	     trExp(env, e1, fn x1 =>
-             B.mkFun([B.mkLambda{f=selLocally, params=[unitVar()], exh=[selLocallyExh], body=B.mkRet[x1]}],
-             B.mkLet([goLocal], mkWsPop exh,
-		      B.mkIf(goLocal,
-			     B.mkApply(bodyFn, [selLocally], [exh]),
-			     B.mkLet([], mkIPut(exh, ivar, x1),
-				     mkStop(env, exh)))))))))))
+	    B.mkLet([ivar], mkIVar exh,
+	    B.mkFun([bodyFnL, selFromIVarL],
+	    B.mkCont(slowPathL,
+	    B.mkLet([slowPath], mkThread(exh, slowPathK),
+	    B.mkLet([], mkWsPush(exh, slowPath),
+	    trExp(env, e1, fn x1 =>
+	    B.mkFun([B.mkLambda{f=selLocally, params=[unitVar()], exh=[selLocallyExh], body=B.mkRet[x1]}],
+	    B.mkLet([goLocal], mkWsPop exh,
+	      BOMUtil.mkBoolCase (goLocal,
+		B.mkApply(bodyFn, [selLocally], [exh]),
+		B.mkLet([], mkIPut(exh, ivar, x1), mkStop(env, exh)))))))))))
 	  end
 
   end

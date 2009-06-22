@@ -54,7 +54,7 @@ structure PrintCPS : sig
 		      prExp (i, e))
 		  | CPS.Fun _ => raise Fail "empty function binding"
 		  | CPS.Cont(fb, e) => (prLambda(i, "cont ", fb); prExp (i, e))
-		  | CPS.If(x, e1, e2) => prIf(i, x, e1, e2)
+		  | CPS.If(cond, e1, e2) => prIf(i, cond, e1, e2)
 		  | CPS.Switch(x, cases, dflt) => let
 		      fun prCase (c, e) = (
 			    indent (i+1);
@@ -125,14 +125,15 @@ structure PrintCPS : sig
 		  pr ") =\n";
 		  prExp (i+2, body)
 		end
-	  and prIf (i, x, e1, CPS.Exp(_, CPS.If(y, e2, e3))) = (
-		prl ["if ", varUseToString x, " then\n"];
+	  and prIf (i, cond, e1, CPS.Exp(_, CPS.If(cond', e2, e3))) = (
+		prl ["if ", condToString cond, " then\n"];
 		prExp(i+1, e1);
-		indent (i); pr "else "; prIf(i, y, e2, e3))
-	    | prIf (i, x, e1, e2) = (
-		prl ["if ", varUseToString x, " then\n"];
+		indent (i); pr "else "; prIf(i, cond', e2, e3))
+	    | prIf (i, cond, e1, e2) = (
+		prl ["if ", condToString cond, " then\n"];
 		prExp(i+1, e1);
 		indent (i); pr "else\n"; prExp(i+1, e2))
+	  and condToString cond = CondUtil.fmt varUseToString cond
 	  fun prExtern cf = (indent 1; prl [CFunctions.cfunToString cf, "\n"])
 	  in
 	    prl ["(* CPS *)\nmodule ", Atom.toString name, "\n"];

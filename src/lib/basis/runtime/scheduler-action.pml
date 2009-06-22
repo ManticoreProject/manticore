@@ -141,14 +141,15 @@ structure SchedulerAction (* :
     (* unmask signals; if there is a signal pending, then yield to the scheduler. *)
       define inline @atomic-end (vp : vproc) : () =
 	  let pending : bool = vpload (SIG_PENDING, vp)
-	    if pending
-	      then
-		do vpstore (SIG_PENDING, vp, false)
-		do @yield-from-atomic (vp)
-		return ()
-	      else
-		do @atomic-end-no-check (vp)
-		return ()
+	    case pending
+	     of true =>
+		  do vpstore (SIG_PENDING, vp, false)
+		  do @yield-from-atomic (vp)
+		  return ()
+	      | false =>
+		  do @atomic-end-no-check (vp)
+		  return ()
+	    end
 	;
 
     (* create a fiber *)

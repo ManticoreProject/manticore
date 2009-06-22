@@ -22,7 +22,6 @@ structure Contract : sig
     val cntUnusedStmt           = ST.newCounter "cps-contract:unused-stmt"
     val cntVarRename		= ST.newCounter "cps-contract:var-rename"
     val cntSelectConst          = ST.newCounter "cps-contract:select-const"
-    val cntIfConst              = ST.newCounter "cps-contract:if-const"
     val cntBeta                 = ST.newCounter "cps-contract:beta"
     val cntBetaCont             = ST.newCounter "cps-contract:beta-cont"
     val cntUnusedFun		= ST.newCounter "cps-contract:unused-fun"
@@ -200,18 +199,9 @@ structure Contract : sig
 			doExp (env, e))
 		      else C.mkCont(fb, e)
 		  end
-	    | C.If(x, e1, e2) => let
-		val x = subst(env, x)
-		in
-		  case bindingOf x
-		   of C.VK_Let(C.Const(lit, _)) => (
-			ST.tick cntIfConst;
-			if (Literal.same(lit, Literal.trueLit))
-			  then (Census.delete(env, e2); doExp(env, e1))
-			  else (Census.delete(env, e1); doExp(env, e2)))
-		    | _ => C.mkIf(x, doExp(env, e1), doExp(env, e2))
-		  (* end case *)
-		end
+	    | C.If(cond, e1, e2) => C.mkIf(CondUtil.map (fn x => subst(env, x)) cond,
+		doExp(env, e1),
+		doExp(env, e2))
 	    | C.Switch(x, cases, dflt) => let
 		val x = subst(env, x)
 		in

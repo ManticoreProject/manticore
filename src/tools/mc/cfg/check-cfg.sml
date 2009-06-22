@@ -436,15 +436,8 @@ structure CheckCFG : sig
                         | ty => error[v2s f, ":", TyU.toString ty, " is not a known\n"]
                       (* end case *))
                   | CFG.Goto jmp => chkJump (env, jmp, "Goto")
-                  | CFG.If(x, j1, j2) => (
-                      chkVar (env, x, "If");
-                      if TyU.equal (V.typeOf x, Ty.boolTy)
-                         then ()
-                         else (
-(* FIXME: this probably should be an error, but it doesn't get checked upstream yet *)
-                           warning ["type mismatch in If(", V.toString x, ")\n"];
-                           cerror ["  expected  ", TyU.toString Ty.boolTy, "\n"];
-                           cerror ["  but found ", TyU.toString (V.typeOf x), "\n"]);
+                  | CFG.If(cond, j1, j2) => (
+                      chkVars (env, CondUtil.varsOf cond, "If");
                       chkJump (env, j1, "If/true");
                       chkJump (env, j2, "If/false"))
                   | CFG.Switch(x, cases, dflt) => (

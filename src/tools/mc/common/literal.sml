@@ -19,6 +19,7 @@ structure Literal : sig
       | Float of FloatLit.float		(* Float and Double types *)
       | Char of UTF8.wchar
       | String of string		(* uses UTF8 encoding *)
+      | Bool of bool			(* Raw boolean value (not PML's bool type!) *)
 
     val toString : literal -> string
 
@@ -46,6 +47,7 @@ structure Literal : sig
       | Float of FloatLit.float		(* Float and Double types *)
       | Char of UTF8.wchar
       | String of string		(* uses UTF8 encoding *)
+      | Bool of bool			(* Raw boolean value (not PML's bool type!) *)
 
   (* convert a wide character to its ASCII representation as a Manticore string *)
     fun wcharToStr (w : UTF8.wchar) =
@@ -74,6 +76,8 @@ structure Literal : sig
       | toString (Float flt) = FloatLit.toString flt
       | toString (Char wc) = concat["'", wcharToStr wc, "'"]
       | toString (String s) = concat["\"", utf8ToStr s, "\""]
+      | toString (Bool true) = "TRUE"
+      | toString (Bool false) = "FALSE"
 
     fun same (Enum e1, Enum e2) = (e1 = e2)
       | same (StateVal n1, StateVal n2) = (n1 = n2)
@@ -82,6 +86,7 @@ structure Literal : sig
       | same (Float f1, Float f2) = FloatLit.same(f1, f2)
       | same (Char c1, Char c2) = (c1 = c2)
       | same (String s1, String s2) = (s1 = s2)
+      | same (Bool b1, Bool b2) = (b1 = b2)
       | same _ = false
 
     fun compare (Enum a, Enum b) = Word.compare(a, b)
@@ -91,6 +96,9 @@ structure Literal : sig
       | compare (Float f1, Float f2) = FloatLit.compare(f1, f2)
       | compare (Char c1, Char c2) = Word.compare(c1, c2)
       | compare (String s1, String s2) = String.compare(s1, s2)
+      | compare (Bool false, Bool true) = LESS
+      | compare (Bool true, Bool false) = GREATER
+      | compare (Bool _, Bool _) = EQUAL
       | compare (Enum _, _) = LESS
       | compare (_, Enum _) = GREATER
       | compare (StateVal _, _) = LESS
@@ -103,6 +111,8 @@ structure Literal : sig
       | compare (_, Float _) = GREATER
       | compare (Char _, _) = LESS
       | compare (_, Char _) = GREATER
+      | compare (String _, _) = LESS
+      | compare (_, String _) = GREATER
 
   (* for hash codes, use the low-order 4 bits for a type code *)
     local
@@ -112,6 +122,7 @@ structure Literal : sig
       val floatCd = 0w7
       val charCd = 0w11
       val stringCd = 0w13
+      val boolCd = 0w17
       val tagCd = 0w15
       fun h (hash, base) = Word.<<(hash, 0w4) + base
     in
@@ -122,6 +133,8 @@ structure Literal : sig
       | hash (Float f) = h(FloatLit.hash f, floatCd)
       | hash (Char c) = h(c, charCd)
       | hash (String s) = h(HashString.hashString s, stringCd)
+      | hash (Bool false) = h(0w1, boolCd)
+      | hash (Bool true) = h(0w3, boolCd)
     end (* local *)
 
     structure Tbl = HashTableFn (
@@ -133,8 +146,7 @@ structure Literal : sig
 
   (* some standard constants *)
     val unitLit = Enum 0w0
-    val trueLit = Enum 0w1
-    val falseLit = Enum 0w0
+    val trueLit = Bool true
+    val falseLit = Bool false
 
   end
-

@@ -17,7 +17,6 @@
 	| KW_any	("any")
 	| KW_apply	("apply")
 	| KW___attribute__ ("__attribute__")
-	| KW_bool	("bool")
 	| KW_byte	("byte")
 (*	| KW_case	("case")		*)
 	| KW_ccall	("ccall")
@@ -30,7 +29,6 @@
 (*	| KW_end	("end")			*)
 	| KW_enum	("enum")
 	| KW_extern	("extern")
-	| KW_false	("false")
 	| KW_float	("float")
 (*	| KW_fun	("fun")			*)
 	| KW_host_vproc ("host_vproc")
@@ -49,7 +47,6 @@
 	| KW_tag        ("tag")
 (*	| KW_then	("then")		*)
 	| KW_throw	("throw")
-	| KW_true	("true")
 	| KW_typedef	("typedef")
 	| KW_unwrap	("unwrap")
         | KW_use_rw     ("use_rw")
@@ -111,10 +108,6 @@
   val markBOMPat = markBOM BPT.P_PMark
   val markBOMVarPat = markBOM BPT.P_VPMark
   val markBOMSE = markBOM BPT.SE_Mark
-
-(* the BOM boolean type *)
-  val boolTy = BPT.T_Enum 0w1
-
 );
 
 
@@ -206,7 +199,6 @@ Params
 BOMType
 	: "addr" "(" BOMType ")"		=> (markBOMTy(FULL_SPAN, BPT.T_Addr(BOMType)))
 	| "any"					=> (markBOMTy(FULL_SPAN, BPT.T_Any))
-	| "bool"				=> (markBOMTy(FULL_SPAN, boolTy))
 	| "enum" "(" POSINT ")"			=> (markBOMTy(FULL_SPAN, BPT.T_Enum(Word.fromLargeInt POSINT)))
 	| RawType				=> (markBOMTy(FULL_SPAN, BPT.T_Raw RawType))
 	| "!" "[" BOMType ("," BOMType)* "]"	=> (markBOMTy(FULL_SPAN, BPT.T_Tuple(true, BOMType :: SR)))
@@ -241,8 +233,8 @@ BOMExp
 		=> (markBOMExp(FULL_SPAN, BPT.E_Fun(BOMLambda::SR, BOMExp)))
 	| "cont" CLambda BOMExp
 		=> (markBOMExp(FULL_SPAN, BPT.E_Cont(CLambda, BOMExp)))
-	| "if" SimpleExp "then" BOMExp "else" BOMExp
-		=> (markBOMExp(FULL_SPAN, BPT.E_If(SimpleExp, BOMExp1, BOMExp2)))
+	| "if" ID "(" Args ")" "then" BOMExp "else" BOMExp
+		=> (markBOMExp(FULL_SPAN, BPT.E_If(ID, Args, BOMExp1, BOMExp2)))
         | "case" SimpleExp "of" Rules ("|" Default)? "end"
 		=> (markBOMExp(FULL_SPAN, BPT.E_Case(SimpleExp, Rules, SR)))
 	| "apply" QualifiedId "(" Args ("/" Args)? ")"
@@ -336,9 +328,7 @@ VarPat
 	;
 
 Literal
-	: "false"			=> (Literal.falseLit, boolTy)
-	| "true"			=> (Literal.trueLit, boolTy)
-	| "enum" "(" POSINT ")" (":" BOMType)?
+	: "enum" "(" POSINT ")" (":" BOMType)?
 		=> (let
 		    val w = Word.fromLargeInt POSINT
 		    in

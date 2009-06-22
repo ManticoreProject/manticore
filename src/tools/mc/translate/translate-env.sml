@@ -52,6 +52,7 @@ structure TranslateEnv : sig
       | BTY_TYS of AST.ty_scheme
       | BTY_TYC of Types.tycon
       | BTY_TY of BOMTy.ty
+
     type hlop_def = {
 	name : BOM.hlop,			(* the HLOp's identifier *)
 	path : string list,                     (* full path to the HLOp *)
@@ -61,6 +62,7 @@ structure TranslateEnv : sig
 						(* that def references paired with a count of the *)
 						(* number of references *)
       }
+
     val getImportEnv    : env -> import_env
     val insertBOMTyDef	: (ty_def * BOMTy.ty) -> unit
     val insertBOMVar	: (var * BOM.var) -> unit

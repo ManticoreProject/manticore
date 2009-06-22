@@ -134,9 +134,10 @@ structure PrimEvent (*: sig
 		      | BEVT(pollFn : poll_fn, doFn : do_fn, _ : blk_fn) =>
 			  let b : bool = apply pollFn ()
 			  (* in *)
-			    if b
-			      then return (CONS(doFn, enabled))
-			      else return (enabled)
+			    case b
+			     of true => return (CONS(doFn, enabled))
+			      | false => return (enabled)
+			    end
 		    end
 	      let enabled : List.list = apply poll (evt, nil)
 	      (* in *)

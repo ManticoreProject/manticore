@@ -49,12 +49,12 @@ structure ParSusp1 : PAR_SUSP =
     (* create a suspension. the second argument is a flag to determine whether the suspension is cancelable. *)
       define @delay (f : fun(unit / exh -> any), isCancelable : bool / exh : exh) : suspension =
         let cOpt : Option.option =
-		   if isCancelable
-		      then 
-		       let c : Cancelation.cancelable = Cancelation.@new(/ exh)
-		       return(Option.SOME(c))
-		   else 
-		       return(Option.NONE)
+	      case isCancelable
+	       of true =>
+		    let c : Cancelation.cancelable = Cancelation.@new(/ exh)
+		    return (Option.SOME(c))
+		| false => return (Option.NONE)
+	      end
         let susp : suspension = alloc(EMPTY_ST, f, cOpt)
 	let susp : suspension = promote(susp)
 	return(susp)

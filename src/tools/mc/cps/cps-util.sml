@@ -106,7 +106,7 @@ structure CPSUtil : sig
 		  | (C.Cont(fb, e)) => (
 		      applyToFBs [fb];
 		      applyToExp e)
-		  | (C.If(x, e1, e2)) => (applyToExp e1; applyToExp e2)
+		  | (C.If(_, e1, e2)) => (applyToExp e1; applyToExp e2)
 		  | (C.Switch(x, cases, dflt)) => (
 		      List.app (fn (_, e) => applyToExp e) cases;
 		      Option.app applyToExp dflt)

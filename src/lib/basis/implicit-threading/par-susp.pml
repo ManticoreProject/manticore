@@ -27,12 +27,12 @@ structure ParSusp (* : PAR_SUSP*) =
       define @delay (f : fun(unit / exh -> any), isCancelable : bool / exh : exh) : suspension =
 	let ivar : ImplicitThreadIVar.ivar = ImplicitThreadIVar.@empty-ivar(/ exh)
         let cOpt : Option.option =
-		   if isCancelable
-		      then 
-		       let c : Cancelation.cancelable = Cancelation.@new(/ exh)
-		       return(Option.SOME(c))
-		   else 
-		       return(Option.NONE)
+	      case isCancelable
+	       of true =>
+		    let c : Cancelation.cancelable = Cancelation.@new(/ exh)
+		    return (Option.SOME(c))
+		| false => return (Option.NONE)
+	      end
         let susp : suspension = alloc(false, ivar, f, cOpt)
 	let susp : suspension = promote(susp)
 	return(susp)
@@ -54,14 +54,14 @@ structure ParSusp (* : PAR_SUSP*) =
     (* evaluate the suspension and seed the ivar with the result *)
       define @steal (susp : suspension / exh : exh) : () =
         let stolen : bool = CAS(ADDR_OF(STOLEN_OFF, susp), false, true)
-	if stolen
-	   then
-	    return()
-	else
-	    let x : any = @eval(susp / exh)
-            let nilThk : fun(unit / exh -> any) = (fun(unit / exh -> any))$0
-	    do UPDATE(THUNK_OFF, susp, nilThk)                  (* prevent a space leak *)
-	    ImplicitThreadIVar.@put(SELECT(IVAR_OFF, susp), x / exh)
+	case stolen
+	 of true => return()
+	  | false =>
+	      let x : any = @eval(susp / exh)
+	      let nilThk : fun(unit / exh -> any) = (fun(unit / exh -> any))$0
+	      do UPDATE(THUNK_OFF, susp, nilThk)                  (* prevent a space leak *)
+	      ImplicitThreadIVar.@put(SELECT(IVAR_OFF, susp), x / exh)
+	end
       ;
 
     (* place the suspension on the ready queue *)

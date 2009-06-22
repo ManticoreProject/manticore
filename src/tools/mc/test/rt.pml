@@ -512,7 +512,7 @@ fun ray' winsize = let
     in
       output vs; outputImage(img, "out.ppm"); freeImage img;
       print("computed scene in " ^ dtos t ^ " seconds\n")
-    end;
+    end
 
 (*
 fun run (outFile, sz) = let

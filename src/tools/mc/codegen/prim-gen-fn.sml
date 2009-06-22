@@ -14,6 +14,8 @@ signature PRIM_GEN =
     val genPrim0 : ctx -> CFG.prim -> BE.MTy.T.stm list
     val genPrim : ctx -> (CFG.var * CFG.prim) -> BE.MTy.T.stm list
 
+    val genCond : ctx -> CFG.cond * Label.label -> BE.MTy.T.stm list
+
   end (* PRIM_GEN *)
 
 functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
@@ -190,12 +192,7 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 	  val gprBind = BE.VarDef.gprBind varDefTbl
 	  val cbind = BE.VarDef.cbind varDefTbl
 	  val fbind = BE.VarDef.fbind varDefTbl
-
 	  fun gen (v, p) = let
-		fun genCmp (ty, c, (v1, v2)) = 
-		      cbind (v, T.CMP (ty, c, defOf v1, defOf v2))
-		fun genFCmp (ty, c, (v1, v2)) = 
-		      cbind (v, T.FCMP (ty, c, fdefOf v1, fdefOf v2))
 		fun genArith1 (ty, oper, v') = 
 		      gprBind (ty, v, oper (ty, defOf v'))
 		fun genArith2 (ty, oper, (v1, v2)) = 
@@ -214,35 +211,14 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		      end
 		in
 		  case p
-		   of P.isBoxed p => 
-			cbind (v, T.CMP(anyTy, T.EQ, T.ANDB(anyTy, defOf p, wordLit 1), wordLit 0))
-		    | P.isUnboxed p => 
-			cbind (v, T.CMP(anyTy, T.NE, T.ANDB(anyTy, defOf p, wordLit 1), wordLit 0))
-		    | P.Equal a => genCmp (anyTy, T.EQ, a)
-		    | P.NotEqual a => genCmp (anyTy, T.NE, a)
-		    | P.BNot a => let
-			val dst = Cells.newReg()
-			in
-			  T.MV(anyTy, dst, T.COND(anyTy, T.CMP(anyTy, T.Basis.EQ, T.LI BE.Spec.trueRep, defOf(a)),
-			    T.LI BE.Spec.falseRep, T.LI BE.Spec.trueRep)) ::
-			  gprBind(anyTy, v, T.REG(anyTy, dst))
-			end
-		    | P.BEq a => genCmp (anyTy, T.EQ, a)
-		    | P.BNEq a => genCmp (anyTy, T.NE, a)
 		   (* 32-bit integer primitives *)				  
-		    | P.I32Add a => genArith2 (i32Ty, T.ADD, a)
+		   of P.I32Add a => genArith2 (i32Ty, T.ADD, a)
 		    | P.I32Sub a => genArith2 (i32Ty, T.SUB, a)
 		    | P.I32Mul a => genArith2 (i32Ty, T.MULS, a)
 		    | P.I32Div a => genArith2 (i32Ty, divs, a)
 		    | P.I32Mod a => genArith2 (i32Ty, rems, a)
 		    | P.I32LSh a => genArith2 (i32Ty, T.SLL, a)
 		    | P.I32Neg a => genArith1 (i32Ty, T.NEG, a)
-		    | P.I32Eq a => genCmp (i32Ty, T.EQ, a)
-		    | P.I32NEq a => genCmp (i32Ty, T.NE, a)
-		    | P.I32Lt a => genCmp (i32Ty, T.LT, a)
-		    | P.I32Lte a => genCmp (i32Ty, T.LE, a)
-		    | P.I32Gt a => genCmp (i32Ty, T.GT, a)
-		    | P.I32Gte a => genCmp (i32Ty, T.GE, a)
 		   (* 64-bit integer primitives *)
 		    | P.I64Add a => genArith2 (i64Ty, T.ADD, a)
 		    | P.I64Sub a => genArith2 (i64Ty, T.SUB, a)
@@ -251,15 +227,8 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		    | P.I64Mod a => genArith2 (i64Ty, rems, a)
 		    | P.I64LSh a => genArith2 (i64Ty, T.SLL, a)
 		    | P.I64Neg a => genArith1 (i64Ty, T.NEG, a)
-		    | P.I64Eq a => genCmp (i64Ty, T.EQ, a)
-		    | P.I64NEq a => genCmp (i64Ty, T.NE, a)
-		    | P.I64Lt a => genCmp (i64Ty, T.LT, a)
-		    | P.I64Lte a => genCmp (i64Ty, T.LE, a)
-		    | P.I64Gt a => genCmp (i64Ty, T.GT, a)
-		    | P.I64Gte a => genCmp (i64Ty, T.GE, a)
 		    | P.U64Mul a => genArith2 (i64Ty, T.MULU, a)
 		    | P.U64Div a => genArith2 (i64Ty, T.DIVU, a)
-		    | P.U64Lt a => genCmp (i64Ty, T.LTU, a)
 		  (* 32-bit floating-point *)
 		    | P.F32Add a => genFArith2 (f32Ty, T.FADD, a)
 		    | P.F32Sub a => genFArith2 (f32Ty, T.FSUB, a)
@@ -268,12 +237,6 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		    | P.F32Neg a => genFArith1 (f32Ty, T.FNEG, a)
 		    | P.F32Sqrt a => genFArith1 (f32Ty, T.FSQRT, a)
 		    | P.F32Abs a => genFArith1 (f32Ty, T.FABS, a)
-		    | P.F32Eq a => genFCmp (f32Ty, T.==, a)
-		    | P.F32NEq a => genFCmp (f32Ty, T.<>, a)
-		    | P.F32Lt a => genFCmp (f32Ty, T.<, a)
-		    | P.F32Lte a => genFCmp (f32Ty, T.<=, a)
-		    | P.F32Gt a => genFCmp (f32Ty, T.>, a)
-		    | P.F32Gte a => genFCmp (f32Ty, T.>=, a)
 		  (* 64-bit floating-point *)
 		    | P.F64Add a => genFArith2 (f64Ty, T.FADD, a)
 		    | P.F64Sub a => genFArith2 (f64Ty, T.FSUB, a)
@@ -282,12 +245,6 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		    | P.F64Neg a => genFArith1 (f64Ty, T.FNEG, a)
 		    | P.F64Sqrt a => genFArith1 (f64Ty, T.FSQRT, a)
 		    | P.F64Abs a => genFArith1 (f64Ty, T.FABS, a)
-		    | P.F64Eq a => genFCmp (f64Ty, T.==, a)
-		    | P.F64NEq a => genFCmp (f64Ty, T.<>, a)
-		    | P.F64Lt a => genFCmp (f64Ty, T.<, a)
-		    | P.F64Lte a => genFCmp (f64Ty, T.<=, a)
-		    | P.F64Gt a => genFCmp (f64Ty, T.>, a)
-		    | P.F64Gte a => genFCmp (f64Ty, T.>=, a)
 		  (* conversions *)
 		    | P.I32ToI64X x => gprBind (i64Ty, v, T.SX(i64Ty, i32Ty, defOf x))
 		    | P.I32ToI64 x => gprBind (i64Ty, v, T.ZX(i64Ty, i32Ty, defOf x))
@@ -322,57 +279,37 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		    | P.ArrLoad(base, i) => genLoad (anyTy, gprBind, T.LOAD) (base, i)
 		  (* atomic operations *)
 		    | P.I32FetchAndAdd(addr, x) => let
-			val (r, stms) = BE.AtomicOps.genFetchAndAdd32 {
-				 addr=T.LOAD(i32Ty, defOf addr, ()),
-				 x=defOf x
-			       }
+			val (r, stms) = BE.AtomicOps.genFetchAndAdd {
+				ty = i32Ty,
+				addr=T.LOAD(i32Ty, defOf addr, ()),
+				x=defOf x
+			      }
 			in
 			  BE.VarDef.flushLoads varDefTbl
 			  @ stms
 			  @ gprBind (i32Ty, v, r)
 			end
 		    | P.I64FetchAndAdd(addr, x) => let
-			val (r, stms) = BE.AtomicOps.genFetchAndAdd64 {
-				 addr=T.LOAD(i64Ty, defOf addr, ()),
-				 x=defOf x
-			       }
+			val (r, stms) = BE.AtomicOps.genFetchAndAdd {
+				ty = i64Ty,
+				addr=T.LOAD(i64Ty, defOf addr, ()),
+				x=defOf x
+			      }
 			in
 			  BE.VarDef.flushLoads varDefTbl
 			  @ stms
 			  @ gprBind (i64Ty, v, r)
 			end
 		    | P.CAS(addr, key, new) => let
-			val (_, r, stms) = BE.AtomicOps.genCompareAndSwapWord{
-				    addr = T.LOAD(anyTy, defOf addr, ()),
-				    cmpVal = defOf key, newVal = defOf new
-				  }
+			val (_, r, stms) = BE.AtomicOps.genCompareAndSwap {
+				ty = anyTy,
+				addr = T.LOAD(anyTy, defOf addr, ()),
+				cmpVal = defOf key, newVal = defOf new
+			      }
 			in
 			  BE.VarDef.flushLoads varDefTbl
 			  @ stms
 			  @ gprBind (anyTy, v, r)
-			end
-		    | P.TAS addr => let
-			val tmp = Cells.newReg ()
-			val (r, stms) = BE.AtomicOps.genTestAndSetWord{
-				    addr = T.LOAD(boolTy, defOf addr, ()),
-				    newVal = tmp
-				  }
-			in
-			  BE.VarDef.flushLoads varDefTbl
-			  @ [T.MV (boolTy, tmp, T.LI BE.Spec.trueRep)]
-			  @ stms
-			  @ gprBind (boolTy, v, r)
-			end
-		    | P.BCAS(addr, key, new) => let
-			val (cc, _, stms) = BE.AtomicOps.genCompareAndSwapWord{
-				    addr = T.LOAD(anyTy, defOf addr, ()),
-				    cmpVal = defOf key, newVal = defOf new
-				  }
-			in
-(* FIXME *)raise Fail "codegen for BCAS is broken";
-			  BE.VarDef.flushLoads varDefTbl
-			  @ stms
-			  @ cbind (v, cc)
 			end
 		    | _ => raise Fail(concat[
 			  "genPrim(", CFG.Var.toString v, ", ",
@@ -383,5 +320,93 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 	    gen
 	  end (* genPrim *)
 
+    fun genCond {varDefTbl} = let
+	  val getDefOf = BE.VarDef.getDefOf varDefTbl
+	  val setDefOf = BE.VarDef.setDefOf varDefTbl
+	  val defOf = BE.VarDef.defOf varDefTbl
+	  val fdefOf = BE.VarDef.fdefOf varDefTbl
+	  val cdefOf = BE.VarDef.cdefOf varDefTbl
+	  val gprBind = BE.VarDef.gprBind varDefTbl
+	  val cbind = BE.VarDef.cbind varDefTbl
+	  val fbind = BE.VarDef.fbind varDefTbl
+	  fun gen (cond, trueLab) = let
+		fun bcc cmp = [T.BCC(cmp, trueLab)]
+		fun genCmp (ty, c, (v1, v2)) = 
+		      bcc (T.CMP (ty, c, defOf v1, defOf v2))
+		fun genFCmp (ty, c, (v1, v2)) = 
+		      bcc (T.FCMP (ty, c, fdefOf v1, fdefOf v2))
+		in
+		  case cond
+		   of P.isBoxed p => 
+			bcc (T.CMP(anyTy, T.EQ, T.ANDB(anyTy, defOf p, wordLit 1), wordLit 0))
+		    | P.isUnboxed p => 
+			bcc (T.CMP(anyTy, T.NE, T.ANDB(anyTy, defOf p, wordLit 1), wordLit 0))
+		    | P.Equal a => genCmp (anyTy, T.EQ, a)
+		    | P.NotEqual a => genCmp (anyTy, T.NE, a)
+		    | P.EnumEq a => genCmp (i32Ty, T.EQ, a)
+		    | P.EnumNEq a => genCmp (i32Ty, T.NE, a)
+		   (* 32-bit integer primitives *)				  
+		    | P.I32Eq a => genCmp (i32Ty, T.EQ, a)
+		    | P.I32NEq a => genCmp (i32Ty, T.NE, a)
+		    | P.I32Lt a => genCmp (i32Ty, T.LT, a)
+		    | P.I32Lte a => genCmp (i32Ty, T.LE, a)
+		    | P.I32Gt a => genCmp (i32Ty, T.GT, a)
+		    | P.I32Gte a => genCmp (i32Ty, T.GE, a)
+		    | P.U32Lt a => genCmp (i32Ty, T.LTU, a)
+		   (* 64-bit integer primitives *)
+		    | P.I64Eq a => genCmp (i64Ty, T.EQ, a)
+		    | P.I64NEq a => genCmp (i64Ty, T.NE, a)
+		    | P.I64Lt a => genCmp (i64Ty, T.LT, a)
+		    | P.I64Lte a => genCmp (i64Ty, T.LE, a)
+		    | P.I64Gt a => genCmp (i64Ty, T.GT, a)
+		    | P.I64Gte a => genCmp (i64Ty, T.GE, a)
+		    | P.U64Lt a => genCmp (i64Ty, T.LTU, a)
+		  (* 32-bit floating-point *)
+		    | P.F32Eq a => genFCmp (f32Ty, T.==, a)
+		    | P.F32NEq a => genFCmp (f32Ty, T.<>, a)
+		    | P.F32Lt a => genFCmp (f32Ty, T.<, a)
+		    | P.F32Lte a => genFCmp (f32Ty, T.<=, a)
+		    | P.F32Gt a => genFCmp (f32Ty, T.>, a)
+		    | P.F32Gte a => genFCmp (f32Ty, T.>=, a)
+		  (* 64-bit floating-point *)
+		    | P.F64Eq a => genFCmp (f64Ty, T.==, a)
+		    | P.F64NEq a => genFCmp (f64Ty, T.<>, a)
+		    | P.F64Lt a => genFCmp (f64Ty, T.<, a)
+		    | P.F64Lte a => genFCmp (f64Ty, T.<=, a)
+		    | P.F64Gt a => genFCmp (f64Ty, T.>, a)
+		    | P.F64Gte a => genFCmp (f64Ty, T.>=, a)
+		    | P.AdrEq a => genCmp (anyTy, T.EQ, a)
+		    | P.AdrNEq a => genCmp (anyTy, T.NE, a)
+		  (* atomic operations *)
+		    | P.BCAS(addr, key, new) => let
+			val (cc, _, stms) = BE.AtomicOps.genCompareAndSwap {
+				ty = anyTy,
+				addr = T.LOAD(anyTy, defOf addr, ()),
+				cmpVal = defOf key, newVal = defOf new
+			      }
+			in
+			  BE.VarDef.flushLoads varDefTbl
+			  @ stms
+			  @ bcc cc
+			end
+		    | P.I32isSet addr =>
+			  BE.VarDef.flushLoads varDefTbl @
+			  bcc (T.CMP(i32Ty, T.EQ,
+			    T.LOAD(i32Ty, defOf addr, ()),
+			    T.LI 1))
+		    | P.I32TAS addr => let
+			val (cc, stms) = BE.AtomicOps.genTestAndSet {
+				ty = anyTy,
+				addr = T.LOAD(i32Ty, defOf addr, ())
+			      }
+			in
+			  BE.VarDef.flushLoads varDefTbl
+			  @ stms
+			  @ bcc cc
+			end
+		end (* gen *)
+	  in
+	    gen
+	  end (* genCond *)
 
   end (* PrimGenFn *)

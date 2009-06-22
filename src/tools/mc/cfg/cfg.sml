@@ -80,7 +80,7 @@ structure CFG =
       | StdThrow of {k : var, clos : var, args : var list}
       | Apply of {f : var, clos : var, args : var list}
       | Goto of jump
-      | If of (var * jump * jump)
+      | If of (cond * jump * jump)
       | Switch of (var * (tag * jump) list * jump option)
       | HeapCheck of {hck : heap_check_kind, szb : word, nogc : jump}
       | AllocCCall of { (* a CCall that does allocation *)
@@ -105,6 +105,7 @@ structure CFG =
 
     withtype var = (var_kind, ty) VarRep.var_rep
 	 and label = (label_kind, ty) VarRep.var_rep
+         and cond = var Prim.cond
          and prim = var Prim.prim
          and jump = (label * var list)
 	 and cfun = label CFunctions.c_fun

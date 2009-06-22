@@ -38,16 +38,17 @@ structure TranslatePrim : sig
 	type ty = BTy.ty
 	val anyTy = BTy.T_Any
 	val unitTy = BTy.unitTy
-	val boolTy = BTy.boolTy
 	val addrTy = BTy.T_Addr(BTy.T_Any)
 	val rawTy = BTy.T_Raw)
 
     datatype prim_info = datatype MkPrim.prim_info
+    datatype cond_info = datatype MkPrim.cond_info
 
     val findPrim = MkPrim.findPrim o Atom.atom o PTVar.nameOf
 
     val errStrm = ref(Error.mkErrStream "<bogus>")
     fun error (span, msg) = Error.errorAt (!errStrm, span, msg)
+
   (* check for errors and report them if there are any *)
     fun checkForErrors errStrm = (
 	  Error.report (TextIO.stdErr, errStrm);
@@ -125,11 +126,10 @@ structure TranslatePrim : sig
 	    List.map f vpats
 	  end
 
-    fun lookupVar v = (
-	case E.findBOMVar v
-         of NONE => raise Fail(String.concat ["unknown BOM variable ", PTVar.nameOf v])
-	  | SOME v => v
-        (* end case *))
+    fun lookupVar v = (case E.findBOMVar v
+	   of NONE => raise Fail(String.concat ["unknown BOM variable ", PTVar.nameOf v])
+	    | SOME v => v
+	  (* end case *))
 
     datatype var_or_dcon
       = Var of BOM.Var.var
@@ -143,32 +143,36 @@ structure TranslatePrim : sig
 		(* end case *))
 	  (* end case *))
 
-    fun mkPrim (p, xs) = 
-	(case (findPrim p, xs)
-	  of (NONE, _) => 
-	     (case findCon p
-	       of NONE => raise (fail(["unknown data constructor ", PTVar.toString p]))
-		| SOME (E.DCon (dc, _)) => BOM.E_DCon(dc, xs)
-	     (* end case *))
-	   | (SOME(Prim0{con, ...}), []) => BOM.E_Prim con
-	   | (SOME(Prim1{mk, ...}), [x]) => BOM.E_Prim(mk x)
-	   | (SOME(Prim2{mk, ...}), [x, y]) => BOM.E_Prim(mk(x, y))
-	   | (SOME(Prim3{mk, ...}), [x, y, z]) => BOM.E_Prim(mk(x, y, z))
-	   | _ => raise (fail(["arity mismatch for primop ", PTVar.toString p]))
-	(* end case *))
+    fun mkPrim (p, xs) = (case (findPrim p, xs)
+	   of (NONE, _) => (case findCon p
+		 of NONE => raise (fail(["unknown data constructor ", PTVar.toString p]))
+		  | SOME(E.DCon(dc, _)) => BOM.E_DCon(dc, xs)
+		(* end case *))
+	    | (SOME(Prim0{con, ...}), []) => BOM.E_Prim con
+	    | (SOME(Prim1{mk, ...}), [x]) => BOM.E_Prim(mk x)
+	    | (SOME(Prim2{mk, ...}), [x, y]) => BOM.E_Prim(mk(x, y))
+	    | (SOME(Prim3{mk, ...}), [x, y, z]) => BOM.E_Prim(mk(x, y, z))
+	    | _ => raise (fail(["arity mismatch for primop ", PTVar.toString p]))
+	  (* end case *))
 
-    fun tyOfPrim p = 
-	(case findPrim p
-	  of NONE => 
-	     (case findCon p
-	       of SOME (E.DCon (dc, rep)) => BOMTyCon.dconResTy dc
-		| _ => raise (fail(["unknown data constructor ", PTVar.toString p]))
-	     (* end case *))
-	   | SOME(Prim1{mk, resTy, ...}) => resTy
-	   | SOME(Prim2{mk, resTy, ...}) => resTy
-	   | SOME(Prim3{mk, resTy, ...}) => resTy
-	   | _ => raise (fail(["arity mismatch for primop ", PTVar.toString p]))
-	(* end case *))
+    fun tyOfPrim p =  (case findPrim p
+	   of NONE =>  (case findCon p
+		 of SOME (E.DCon (dc, rep)) => BOMTyCon.dconResTy dc
+		  | _ => raise (fail(["unknown data constructor ", PTVar.toString p]))
+		(* end case *))
+	    | SOME(Prim1{mk, resTy, ...}) => resTy
+	    | SOME(Prim2{mk, resTy, ...}) => resTy
+	    | SOME(Prim3{mk, resTy, ...}) => resTy
+	    | _ => raise (fail["arity mismatch for primop ", PTVar.toString p])
+	  (* end case *))
+
+    fun mkCond (cond, xs)  = (case (MkPrim.findCond cond, xs)
+	   of (NONE, _) => raise (fail["unknown conditional operator ", Atom.toString cond])
+	    | (SOME(Cond1{mk, ...}), [x]) => mk x
+	    | (SOME(Cond2{mk, ...}), [x, y]) => mk(x, y)
+	    | (SOME(Cond3{mk, ...}), [x, y, z]) => mk(x, y, z)
+	    | _ => raise (fail["arity mismatch for conditional ", Atom.toString cond])
+	  (* end case *))
 
   (* generate a dynamic check that the given variable is a valid pointer to the global heap *)
   (* the argument pointsToHeapObject must be false whenever the pointer might point into the middle
@@ -186,23 +190,27 @@ structure TranslatePrim : sig
 	  ] end
 
     fun cvtPrim (loc, lhs, p, xs, body) = 
-	if not(Controls.get BasicControl.debug)
-	  then BOM.mkStmts ([(lhs, mkPrim(p, xs))], body)
-	  else (case mkPrim(p, xs)
-	      of prim as BOM.E_Prim(Prim.CAS(x, new, old)) =>
-		 BOM.mkStmts (checkGlobalPtr(loc, x, false) @
-			      checkGlobalPtr(loc, new, false) @
-			      checkGlobalPtr(loc, old, false) @
-		              [(lhs, prim)],
-			      body)
-	       | prim as BOM.E_Prim(Prim.BCAS(x, new, old)) =>
-		 BOM.mkStmts (checkGlobalPtr(loc, x, false) @
-			      checkGlobalPtr(loc, new, false) @
-			      checkGlobalPtr(loc, old, false) @
-		              [(lhs, prim)],
-			      body)
-	       | prim => BOM.mkStmts ([(lhs, mkPrim(p, xs))], body)
-	    (* end case *))
+	  if not(Controls.get BasicControl.debug)
+	    then BOM.mkStmts ([(lhs, mkPrim(p, xs))], body)
+	    else (case mkPrim(p, xs)
+	       of prim as BOM.E_Prim(Prim.CAS(x, new, old)) =>
+		    BOM.mkStmts (
+		      checkGlobalPtr(loc, x, false) @
+		      checkGlobalPtr(loc, new, false) @
+		      checkGlobalPtr(loc, old, false) @
+		      [(lhs, prim)],
+		      body)
+(*
+		| prim as BOM.E_Prim(Prim.BCAS(x, new, old)) =>
+		    BOM.mkStmts (
+		      checkGlobalPtr(loc, x, false) @
+		      checkGlobalPtr(loc, new, false) @
+		      checkGlobalPtr(loc, old, false) @
+		      [(lhs, prim)],
+		      body)
+*)
+		| prim => BOM.mkStmts ([(lhs, mkPrim(p, xs))], body)
+	      (* end case *))
 
   (* convert a variable expression to either an ordinary variable or a nullary constructor *)
     fun cvtVar (x, k) = (case lookupVarOrDCon x
@@ -344,8 +352,9 @@ structure TranslatePrim : sig
 		  in
 		    BOM.mkCont(cvtBody(), cvt(loc, e))
 		  end
-	      | BPT.E_If(e1, e2, e3) =>
-		  cvtSimpleExp(loc, findCFun, e1, fn x => BOM.mkIf(x, cvt(loc, e2), cvt(loc, e3)))
+	      | BPT.E_If(cond, args, e1, e2) =>
+		  cvtSimpleExps (loc, findCFun, args,
+		    fn xs => BOM.mkIf(mkCond (cond, xs), cvt(loc, e1), cvt(loc, e2)))
 	      | BPT.E_Case(arg, cases, dflt) => let
 		  fun doCase (pat, exp) = let
 			val (pat') = cvtPat(loc, pat)
@@ -466,7 +475,7 @@ structure TranslatePrim : sig
 		  cvtSimpleExps(loc, findCFun, args, fn xs => 
 		    let val lhs' = newTmp(tyOfPrim p)
 		    in
-			cvtPrim(loc, [lhs'], p, xs, k lhs')
+		      cvtPrim(loc, [lhs'], p, xs, k lhs')
 		    end)
 	      | BPT.SE_HostVProc =>  let
 		    val tmp = newTmp BTy.T_VProc
