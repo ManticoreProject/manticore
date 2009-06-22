@@ -45,7 +45,7 @@ structure PrimChan (*: sig
 	  ];
 
 	typedef chan_rep = ![	    (* all fields are mutable *)
-	    bool,			(* spin lock *)
+	    int,			(* spin lock *)
 	    List.list,			(* sendq head *)
 	    List.list,			(* sendq tail *)
 	    List.list,			(* recvq head *)

@@ -65,10 +65,10 @@ structure Cilk5Deque (* :
     _primcode(
 
       typedef deque = ![
-		  int,                   (* tail *)
-		  int,                   (* head *)
-		  Arr.array,             (* array of implicit threads *)
-		  bool                   (* lock on the head of the deque *)
+		  int,		(* tail *)
+		  int,		(* head *)
+		  Arr.array,	(* array of implicit threads *)
+		  int		(* spinlock on the head of the deque *)
 	      ];
 
   (* create a deque *)

@@ -50,15 +50,15 @@ structure LockedQueue :
 
     (* linked queue elements *)
       typedef elt = ![
-          queue_item,         (* data *)
-	  any           (* next element *)
+          queue_item,	(* data *)
+	  any		(* next element *)
       ];
 
     (* locked queue structure *)
       typedef queue = ![
-          bool,           (* spin lock *)
-	  elt,            (* head *)
-	  elt             (* tail *)
+          int32,	(* spin lock *)
+	  elt,		(* head *)
+	  elt		(* tail *)
       ];
 
       define @new () : queue =
