@@ -46,7 +46,7 @@ structure Closure : sig
     val convert = BasicControl.mkKeepPass {
 	    preOutput = PrintCPS.output,
             preExt = "cps",
-            postOutput = PrintCFG.output {types=true},
+            postOutput = PrintCFG.output {types=false},
             postExt = "cfg",
             passName = "closure",
             pass = convert,
