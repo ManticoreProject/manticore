@@ -279,30 +279,33 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		    | P.ArrLoad(base, i) => genLoad (anyTy, gprBind, T.LOAD) (base, i)
 		  (* atomic operations *)
 		    | P.I32FetchAndAdd(addr, x) => let
-			val (r, stms) = BE.AtomicOps.genFetchAndAdd32 {
-				 addr=T.LOAD(i32Ty, defOf addr, ()),
-				 x=defOf x
-			       }
+			val (r, stms) = BE.AtomicOps.genFetchAndAdd {
+				ty = i32Ty,
+				addr=T.LOAD(i32Ty, defOf addr, ()),
+				x=defOf x
+			      }
 			in
 			  BE.VarDef.flushLoads varDefTbl
 			  @ stms
 			  @ gprBind (i32Ty, v, r)
 			end
 		    | P.I64FetchAndAdd(addr, x) => let
-			val (r, stms) = BE.AtomicOps.genFetchAndAdd64 {
-				 addr=T.LOAD(i64Ty, defOf addr, ()),
-				 x=defOf x
-			       }
+			val (r, stms) = BE.AtomicOps.genFetchAndAdd {
+				ty = i64Ty,
+				addr=T.LOAD(i64Ty, defOf addr, ()),
+				x=defOf x
+			      }
 			in
 			  BE.VarDef.flushLoads varDefTbl
 			  @ stms
 			  @ gprBind (i64Ty, v, r)
 			end
 		    | P.CAS(addr, key, new) => let
-			val (_, r, stms) = BE.AtomicOps.genCompareAndSwapWord{
-				    addr = T.LOAD(anyTy, defOf addr, ()),
-				    cmpVal = defOf key, newVal = defOf new
-				  }
+			val (_, r, stms) = BE.AtomicOps.genCompareAndSwap {
+				ty = anyTy,
+				addr = T.LOAD(anyTy, defOf addr, ()),
+				cmpVal = defOf key, newVal = defOf new
+			      }
 			in
 			  BE.VarDef.flushLoads varDefTbl
 			  @ stms
@@ -327,16 +330,17 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 	  val cbind = BE.VarDef.cbind varDefTbl
 	  val fbind = BE.VarDef.fbind varDefTbl
 	  fun gen (cond, trueLab) = let
+		fun bcc cmp = [T.BCC(cmp, trueLab)]
 		fun genCmp (ty, c, (v1, v2)) = 
-		      [T.BCC(T.CMP (ty, c, defOf v1, defOf v2), trueLab)]
+		      bcc (T.CMP (ty, c, defOf v1, defOf v2))
 		fun genFCmp (ty, c, (v1, v2)) = 
-		      [T.BCC(T.FCMP (ty, c, fdefOf v1, fdefOf v2), trueLab)]
+		      bcc (T.FCMP (ty, c, fdefOf v1, fdefOf v2))
 		in
 		  case cond
 		   of P.isBoxed p => 
-			[T.BCC(T.CMP(anyTy, T.EQ, T.ANDB(anyTy, defOf p, wordLit 1), wordLit 0), trueLab)]
+			bcc (T.CMP(anyTy, T.EQ, T.ANDB(anyTy, defOf p, wordLit 1), wordLit 0))
 		    | P.isUnboxed p => 
-			[T.BCC(T.CMP(anyTy, T.NE, T.ANDB(anyTy, defOf p, wordLit 1), wordLit 0), trueLab)]
+			bcc (T.CMP(anyTy, T.NE, T.ANDB(anyTy, defOf p, wordLit 1), wordLit 0))
 		    | P.Equal a => genCmp (anyTy, T.EQ, a)
 		    | P.NotEqual a => genCmp (anyTy, T.NE, a)
 		    | P.EnumEq a => genCmp (i32Ty, T.EQ, a)
@@ -374,31 +378,32 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		    | P.AdrEq a => genCmp (anyTy, T.EQ, a)
 		    | P.AdrNEq a => genCmp (anyTy, T.NE, a)
 		  (* atomic operations *)
-(* FIXME
 		    | P.BCAS(addr, key, new) => let
-			val (cc, _, stms) = BE.AtomicOps.genCompareAndSwapWord{
-				    addr = T.LOAD(anyTy, defOf addr, ()),
-				    cmpVal = defOf key, newVal = defOf new
-				  }
-			in
-			  BE.VarDef.flushLoads varDefTbl
-			  @ stms
-			  @ cbind (v, cc)
-			end
-		    | P.I32isSet addr =>
-		    | P.I32TAS addr => let
-			val tmp = Cells.newReg ()
-			val (r, stms) = BE.AtomicOps.genTestAndSetWord{
-				addr = T.LOAD(i32Ty, defOf addr, ()),
-				newVal = tmp
+			val (cc, _, stms) = BE.AtomicOps.genCompareAndSwap {
+				ty = anyTy,
+				addr = T.LOAD(anyTy, defOf addr, ()),
+				cmpVal = defOf key, newVal = defOf new
 			      }
 			in
 			  BE.VarDef.flushLoads varDefTbl
-			  @ [T.MV (boolTy, tmp, T.LI BE.Spec.trueRep)]
 			  @ stms
-			  @ gprBind (boolTy, v, r)
+			  @ bcc cc
 			end
-*)
+		    | P.I32isSet addr =>
+			  BE.VarDef.flushLoads varDefTbl @
+			  bcc (T.CMP(i32Ty, T.EQ,
+			    T.LOAD(i32Ty, defOf addr, ()),
+			    T.LI 1))
+		    | P.I32TAS addr => let
+			val (cc, stms) = BE.AtomicOps.genTestAndSet {
+				ty = anyTy,
+				addr = T.LOAD(i32Ty, defOf addr, ())
+			      }
+			in
+			  BE.VarDef.flushLoads varDefTbl
+			  @ stms
+			  @ bcc cc
+			end
 		end (* gen *)
 	  in
 	    gen
