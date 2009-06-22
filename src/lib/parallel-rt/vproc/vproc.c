@@ -7,7 +7,7 @@
 #include "manticore-rt.h"
 #include <stdio.h>
 #include <signal.h>
-#include <ucontext.h>
+#include <time.h>
 #if defined (TARGET_DARWIN)
 #  include <sys/sysctl.h>
 #endif
@@ -395,6 +395,38 @@ void VProcSleep (VProc_t *vp)
 #ifndef NDEBUG
     if (DebugFlg)
 	SayDebug("[%2d] VProcSleep exiting\n", vp->id);
+#endif
+
+}
+
+/*! \brief put the vproc to sleep. the vproc unblocks when either a signal arrives or the given time has elapsed.
+ *  \param vp the vproc that is being put to sleep.
+ *  \param nsec the number of nanoseconds to sleep
+ */
+void VProcNanosleep (VProc_t *vp, unsigned long nsec)
+{
+    assert (vp == VProcSelf());
+
+    LogVProcSleep (vp);
+
+    struct timespec timeToWait;
+    timeToWait.tv_sec = 0;
+    timeToWait.tv_nsec = nsec;
+
+#ifndef NDEBUG
+    if (DebugFlg)
+	SayDebug("[%2d] VProcTimedWait called\n", vp->id);
+#endif
+
+    MutexLock(&(vp->lock));
+	AtomicWriteValue (&(vp->sleeping), M_TRUE);
+	CondTimedWait (&(vp->wait), &(vp->lock), &timeToWait);
+	AtomicWriteValue (&(vp->sleeping), M_FALSE);
+    MutexUnlock(&(vp->lock));
+
+#ifndef NDEBUG
+    if (DebugFlg)
+	SayDebug("[%2d] VProcTimedWait exiting\n", vp->id);
 #endif
 
 }
