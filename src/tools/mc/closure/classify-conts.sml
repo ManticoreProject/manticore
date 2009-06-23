@@ -68,6 +68,10 @@ structure ClassifyConts : sig
 	    | r => r := outer :: !r
 	  (* end case *))
     fun clrUse k = clrFn k
+    fun usesOf k = (case peekFn k
+	   of SOME xs => (clrUse k; xs)
+	    | NONE => raise Fail "expected uses of join cont"
+	  (* end case *))
     end
 
   (* track the kind of a bound continuation *)
@@ -93,6 +97,22 @@ structure ClassifyConts : sig
 	    | _ => ()
 	  (* end case *))
 
+  (* given a binding context for a continuation, check uses to see
+   * if they are in the same environment.
+   *)
+    fun checkUse outer = let
+	  fun chk k = CV.same(outer, k)
+		orelse (case kindOfCont k
+		   of JoinCont => (case getOuter k
+			 of NONE => false
+			  | SOME k => chk k'
+			(* end case *))
+		    | _ > false
+		  (* end case *))
+	  in
+	    chk
+	  end
+
     fun analExp (outer, C.Exp(_, t)) = (case t
 	   of C.Let (_, rhs, e) => (
 		CPSUtil.appRHS doArg rhs;
@@ -114,7 +134,9 @@ structure ClassifyConts : sig
 		analExp (f, body);
 		analExp (outer, e);
 		case kindOfCont f
-		 of JoinCont => ??
+		 of JoinCont => if List.all (checkUse outer) (usesOf f)
+		      then () (* it remains a join continuation *)
+		      else markAsOther f
 		  | _ => ())
 	    | C.If(_, e1, e2) => (analExp(outer, e1); analExp(outer, e2))
 	    | C.Switch(_, cases, dflt) => (
