@@ -82,6 +82,7 @@ functor PrimTyFn (Ty : sig
 	    | P.I64Gte _ => i64Ty
 	    | P.U64Mul _ => i64Ty
 	    | P.U64Div _ => i64Ty
+	    | P.U64Rem _ => i64Ty
 	    | P.U64Lt _ => i64Ty
 	    | P.F32Add _ => f32Ty
 	    | P.F32Sub _ => f32Ty
@@ -196,6 +197,7 @@ functor PrimTyFn (Ty : sig
 	    | P.I64Gte _ => ([i64Ty, i64Ty], bTy)
 	    | P.U64Mul _ => ([i64Ty, i64Ty], i64Ty)
 	    | P.U64Div _ => ([i64Ty, i64Ty], i64Ty)
+	    | P.U64Rem _ => ([i64Ty, i64Ty], i64Ty)
 	    | P.U64Lt _ => ([i64Ty, i64Ty], bTy)
 	    | P.F32Add _ => ([f32Ty, f32Ty], f32Ty)
 	    | P.F32Sub _ => ([f32Ty, f32Ty], f32Ty)

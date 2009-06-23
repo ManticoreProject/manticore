@@ -259,6 +259,7 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		    | P.I64Gte a => genCmp (i64Ty, T.GE, a)
 		    | P.U64Mul a => genArith2 (i64Ty, T.MULU, a)
 		    | P.U64Div a => genArith2 (i64Ty, T.DIVU, a)
+		    | P.U64Rem a => genArith2 (i64Ty, T.REMU, a)
 		    | P.U64Lt a => genCmp (i64Ty, T.LTU, a)
 		  (* 32-bit floating-point *)
 		    | P.F32Add a => genFArith2 (f32Ty, T.FADD, a)

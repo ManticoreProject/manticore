@@ -56,6 +56,7 @@ structure PrimUtil : sig
       | nameOf (P.I64Gte _) = "I64Gte"
       | nameOf (P.U64Mul _) = "U64Mul"
       | nameOf (P.U64Div _) = "U64Div"
+      | nameOf (P.U64Rem _) = "U64Rem"
       | nameOf (P.U64Lt _) = "U64Lt"
       | nameOf (P.F32Add _) = "F32Add"
       | nameOf (P.F32Sub _) = "F32Sub"
@@ -168,6 +169,7 @@ structure PrimUtil : sig
       | varsOf (P.I64Gte(a, b)) = [a, b]
       | varsOf (P.U64Mul(a, b)) = [a, b]
       | varsOf (P.U64Div(a, b)) = [a, b]
+      | varsOf (P.U64Rem(a, b)) = [a, b]
       | varsOf (P.U64Lt(a, b)) = [a, b]
       | varsOf (P.F32Add(a, b)) = [a, b]
       | varsOf (P.F32Sub(a, b)) = [a, b]
@@ -296,6 +298,7 @@ structure PrimUtil : sig
       | explode (P.I64Gte(a, b)) = (p2 P.I64Gte, [a, b])
       | explode (P.U64Mul(a, b)) = (p2 P.U64Mul, [a, b])
       | explode (P.U64Div(a, b)) = (p2 P.U64Div, [a, b])
+      | explode (P.U64Rem(a, b)) = (p2 P.U64Rem, [a, b])
       | explode (P.U64Lt(a, b)) = (p2 P.U64Lt, [a, b])
       | explode (P.F32Add(a, b)) = (p2 P.F32Add, [a, b])
       | explode (P.F32Sub(a, b)) = (p2 P.F32Sub, [a, b])
