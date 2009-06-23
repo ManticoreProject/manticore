@@ -53,6 +53,11 @@ struct struct_vproc {
     int		id;		//!< index of this vproc in VProcs[] array
     OSThread_t	hostID;		//!< PThread ID of host
     Location_t	location;	//!< the physical location that hosts this vproc.
+  /* the following fields determine the time that the vproc should sleep
+   * after the receiving the next REQ_Sleep request. if both fields are set
+   * to zero, there is no limit to the duration that the vproc sleeps. */
+    Time_t      sleepSec;       //!< time in seconds
+    Time_t      sleepNsec;      //!< time in nanoseconds
 
   /* the following fields may be changed by remote vprocs */
     Mutex_t	lock;		//!< lock for VProc state
@@ -100,6 +105,7 @@ extern VProc_t *VProcSelf ();
 void VProcPreempt (VProc_t *self, VProc_t *vp);
 void VProcSendSignal (VProc_t *self, VProc_t *vp, Value_t k, Value_t fls);
 void VProcSleep (VProc_t *vp);
+void VProcNanosleep (VProc_t *vp, Time_t sec, Time_t nsec);
 void VProcGlobalGCInterrupt (VProc_t *self, VProc_t *vp);
 
 #endif /* !_VPROC_H_ */

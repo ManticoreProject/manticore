@@ -30,12 +30,12 @@ structure PrimTypes =
 
   (* signals for fibers *)
     datatype signal 
-      = STOP                            (* terminate the fiber *)
-      | PREEMPT of fiber                (* preempt the fiber; carries the preempted fiber *)
-      | UNBLOCK of                      (* unblock a fiber *)
-	   (fiber *                     (* fiber doing the unblocking *)
-	    fiber                       (* fiber to unblock *))
-      | BLOCK of fiber                  (* block a fiber; carries the resumption fiber *)
+      = STOP
+      | PREEMPT of fiber                (* the argument is the resumption fiber. *)
+      | SLEEP of (fiber * long)         (* blocking for a given time interval. the second argument
+					 * is the time to sleep in microseconds *)
+      | UNBLOCK of (fiber * fiber)
+      | BLOCK of fiber
 
     _primcode (
       typedef sched_act = cont(signal);

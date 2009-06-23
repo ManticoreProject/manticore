@@ -400,33 +400,44 @@ void VProcSleep (VProc_t *vp)
 }
 
 /*! \brief put the vproc to sleep. the vproc unblocks when either a signal arrives or the given time has elapsed.
- *  \param vp the vproc that is being put to sleep.
- *  \param nsec the number of nanoseconds to sleep
+ *  \param vp the vproc that is being put to sleep
+ *  \param sec the number of seconds to sleep.
+ *  \param nsec the number of nanoseconds to sleep (must be in the range 0 to 999999999)
  */
-void VProcNanosleep (VProc_t *vp, unsigned long nsec)
+void VProcNanosleep (VProc_t *vp, Time_t sec, Time_t nsec)
 {
+    struct timespec timeToWait;
+
     assert (vp == VProcSelf());
 
     LogVProcSleep (vp);
 
-    struct timespec timeToWait;
-    timeToWait.tv_sec = 0;
-    timeToWait.tv_nsec = nsec;
-
 #ifndef NDEBUG
     if (DebugFlg)
-	SayDebug("[%2d] VProcTimedWait called\n", vp->id);
+        SayDebug("[%2d] VProcNanosleep for %llu seconds and %llu nanoseconds\n", vp->id, sec, nsec);
 #endif
 
     MutexLock(&(vp->lock));
+#if HAVE_CLOCK_GETTIME
+	clock_gettime (CLOCK_REALTIME, &timeToWait);
+	timeToWait.tv_sec += sec;
+	timeToWait.tv_nsec += nsec;
+#else
+	struct timeval t;
+	gettimeofday (&t, 0);
+	timeToWait.tv_sec = sec + t.tv_sec;
+	timeToWait.tv_nsec = nsec + t.tv_usec * 1000;
+#endif
 	AtomicWriteValue (&(vp->sleeping), M_TRUE);
-	CondTimedWait (&(vp->wait), &(vp->lock), &timeToWait);
+	while (CondTimedWait (&(vp->wait), &(vp->lock), &timeToWait))
+	  if (vp->landingPad != M_NIL)
+	    break;
 	AtomicWriteValue (&(vp->sleeping), M_FALSE);
     MutexUnlock(&(vp->lock));
 
 #ifndef NDEBUG
     if (DebugFlg)
-	SayDebug("[%2d] VProcTimedWait exiting\n", vp->id);
+        SayDebug("[%2d] VProcNanosleep exiting\n", vp->id);
 #endif
 
 }

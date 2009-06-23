@@ -34,7 +34,8 @@ structure BuildExecutable : sig
           ) @ [
 	    "@LDFLAGS@",
 	    "-l" ^ libName,
-	    "-lpthread"
+	    "-lpthread",
+	    "-lrt"
 	  ])
 
     fun cmd asmFile = let

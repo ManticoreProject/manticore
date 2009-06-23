@@ -16,7 +16,7 @@ structure Time =
     _primcode(
       typedef time = long;
 
-      extern void* M_GetTime();
+      extern long M_GetTime();
 
     (* get the current time *)
       define inline @now( / exh : PT.exh) : time =

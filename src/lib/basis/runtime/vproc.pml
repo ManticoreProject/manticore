@@ -52,6 +52,12 @@ structure VProc (* :
      * PRECONDITION: Equal(self, host_vproc)
      *)
       define @sleep-from-atomic (vp : vproc) : ();
+    (* put the vproc to sleep until either a signal arrives on its landing pad or the given amount
+     * of time has elapsed. sec is the time in seconds and nsec is the time in nanoseconds. nsec
+     * should be in the range 0 to 999999999.
+     * PRECONDITION: Equal(self, host_vproc)
+     *)
+      define @nanosleep-from-atomic (vp : vproc, sec : long, nsec : long) : ();
 
     )
 
@@ -208,7 +214,27 @@ structure VProc (* :
      * PRECONDITION: Equal(vp, host_vproc)
      *)
       define @sleep-from-atomic (vp : vproc) : () =
-	  fun sleep () : () =	      
+	  fun sleep () : () =
+	    (* the zero indicates that there is no limit on the duration *)
+	      do vpstore(VP_SLEEP_SEC, vp, 0)
+	      do vpstore(VP_SLEEP_NSEC, vp, 0)
+              cont wakeupK (x : unit) = return ()
+	    (* the C runtime expects the resumption continuation to be in vp->wakeupCont *)
+	      do vpstore(VP_WAKEUP_CONT, vp, wakeupK)
+	      let sleepK : PT.fiber = ccall SleepCont (vp)
+	      throw sleepK(UNIT)
+	  do apply sleep()
+	  return()
+	;
+
+    (* put the vproc to sleep until either a signal arrives on its landing pad or the given time
+     * has elapsed. the time is in nanoseconds.
+     * PRECONDITION: Equal(self, host_vproc)
+     *)
+      define @nanosleep-from-atomic (vp : vproc, sec : long, nsec : long) : () =
+	  fun sleep () : () =
+	      do vpstore(VP_SLEEP_SEC, vp, sec)
+	      do vpstore(VP_SLEEP_NSEC, vp, nsec)
               cont wakeupK (x : unit) = return ()
 	    (* the C runtime expects the resumption continuation to be in vp->wakeupCont *)
 	      do vpstore(VP_WAKEUP_CONT, vp, wakeupK)

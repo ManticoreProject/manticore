@@ -97,9 +97,9 @@ STATIC_INLINE void CondWait (Cond_t *cond, Mutex_t *mu)
     CHECK_RETURN(pthread_cond_wait (cond, mu));
 }
 
-STATIC_INLINE void CondTimedWait (Cond_t *cond, Mutex_t *mu, const struct timespec *abstime)
+STATIC_INLINE bool CondTimedWait (Cond_t *cond, Mutex_t *mu, const struct timespec *abstime)
 {
-    CHECK_RETURN(pthread_cond_timedwait (cond, mu, abstime));
+    return (pthread_cond_timedwait (cond, mu, abstime) == 0);
 }
 
 STATIC_INLINE void CondSignal (Cond_t *cond)
