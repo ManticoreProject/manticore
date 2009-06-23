@@ -12,89 +12,105 @@ structure RoundRobin =
 #include "vproc-queue.def"
 
     _primcode(
+
     (* top-level thread scheduler that uses a round robin policy *)
       define @round-robin (_ : unit / exh : exh) : unit = 
 
-	cont switch (s : PT.signal) =
-          let self : vproc = host_vproc
-
-        let sleeping : ![List.list] = alloc(List.nil)
-        let sleeping : ![List.list] = promote(sleeping)
-        let nextWakeTime : ![Time.time] = alloc(0:long)
-        let nextWakeTime : ![Time.time] = promote(nextWakeTime)
-
-	fun addToSleepingList (timeToWake : Time.time, fls : FLS.fls, k : PT.fiber) : () =
-	    let sleeping' : List.list = 
-		    promote(List.CONS(alloc(timeToWake, fls, k), #0(sleeping)))
-	    do #0(sleeping) := sleeping'
-	    do if I64Lt (timeToWake, #0(nextWakeTime)) then
-		   do #0(nextWakeTime) := timeToWake
-		   return()
-	       else if I64Eq (#0(nextWakeTime), 0:long) then
-		   do #0(nextWakeTime) := timeToWake
-		   return()
-	       else
-		   return()
-	    return()
-
-	fun unblockReadyThreads () : () =
-	    fun doit (currTime : Time.time, sleeping : List.list) : () =
-		case sleeping
+	fun mkSwitch (self : vproc / exh : exh) : PT.sched_act =
+	  (* sleeping threads sorted in increasing order by deadline *)
+	    let sleeping : ![List.list] = alloc (List.nil)
+	    let sleeping : ![List.list] = promote (sleeping)
+	    fun addToSleeping (timeToWait : Time.time, fls : FLS.fls, k : PT.fiber) : () =
+		fun insert (item : [Time.time, FLS.fls, PT.fiber], sleeping : List.list) : List.list =
+		    case sleeping
+		     of List.nil => 
+			return (List.CONS (item, List.nil))
+		      | List.CONS (item' : [Time.time, FLS.fls, PT.fiber], sleeping' : List.list) =>
+			if I64Gt (#0(item'), #0(item)) then
+			    return (List.CONS (item, sleeping))
+			else
+			    let sleeping'' : List.list = apply insert (item', sleeping')
+			    return (List.CONS (item', sleeping''))
+		     end
+		let currTime : Time.time = Time.@now (/ exh)
+		let sleeping' : List.list = 
+			apply insert (alloc (I64Add (currTime, timeToWait), fls, k), #0(sleeping))
+		let sleeping' : List.list = promote (sleeping')
+		do #0(sleeping) := sleeping'
+		return ()
+	    fun removeFromSleeping (enq : fun (vproc, FLS.fls, PT.fiber / -> )) : () =
+		let currTime : Time.time = Time.@now (/ exh)
+		fun remove () : () =
+		    case #0(sleeping)
+		     of List.nil =>
+			return ()
+		      | List.CONS (item : [Time.time, FLS.fls, PT.fiber], sleeping' : List.list) =>
+			if I64Gte (currTime, #0(item)) then
+			    do #0(sleeping) := sleeping'
+			    do apply enq (self, #1(item), #2(item))
+			    apply remove ()
+			else
+			    return ()
+		    end
+		apply remove ()
+          (* return the next point in time that one of the sleeping threads should wake up. we return a zero to
+	   * indicate that there are no sleeping threads. *)
+	    fun nextSleepingDeadline () : Time.time =
+		case #0(sleeping)
 		 of List.nil =>
-		    return()
-		  | List.CONS(item : [Time.time, FLS.fls, PT.fiber], sleeping : List.list) =>
-		    if I64Gte (#0(item), currTime) then
-			do VProcQueue.@enqueue-from-atomic (self, #1(item), #2(item))
-			apply doit (currTime, sleeping)
-		    else
-			do apply addToSleepingList (#0(item), #1(item), #2(item))
-			apply doit (currTime, sleeping)
+		    return (0:long)
+		  | List.CONS (item : [Time.time, FLS.fls, PT.fiber], sleeping' : List.list) =>
+		    return (#0(item))
 		end
-	    do #0(nextWakeTime) := 0:long
-	    let currTime : Time.time = Time.@now (/ exh)
-	    apply doit (currTime, #0(sleeping))
 
-          cont dispatch () =
-            do apply unblockReadyThreads()
-            let item : Option.option = VProcQueue.@dequeue-from-atomic(self)
-            case item
-	     of Option.NONE => 
-		do if I64Eq (#0(nextWakeTime), 0:long) then
-		       do VProc.@sleep-from-atomic(self)
-                       return()
-		   else
-		       let sec : long = I64Div (#0(nextWakeTime), 1000000:long)
-		       let nsec : long = I64Mul (I64Mod (#0(nextWakeTime), 1000000:long), 1000:long)
-		       do VProc.@nanosleep-from-atomic(self, sec, nsec)
-                       return()
-		throw dispatch()
-	      | Option.SOME(qitem : VProcQueue.queue_item) =>
-		do SchedulerAction.@dispatch-from-atomic (self, switch, SELECT(FIBER_OFF, qitem), SELECT(FLS_OFF, qitem))
-                return(UNIT)
-            end
+	    cont switch (s : PT.signal) =
+	      cont dispatch () =
+		fun enq (self : vproc, fls : FLS.fls, k : PT.fiber) : () = VProcQueue.@enqueue-from-atomic (self, fls, k)
+		do apply removeFromSleeping (enq)
+		let item : Option.option = VProcQueue.@dequeue-from-atomic(self)
+		case item
+		 of Option.NONE => 
+		    let currTime : Time.time = Time.@now (/ exh)
+	            let nextSleepingDeadline : Time.time = apply nextSleepingDeadline ()
+                    if I64Eq (nextSleepingDeadline, 0:long) then
+			do VProc.@sleep-from-atomic (self)
+			throw dispatch ()
+		    else if I64Lt (nextSleepingDeadline, currTime) then
+			throw dispatch ()
+		    else
+			let timeToSleep : Time.time = I64Sub (nextSleepingDeadline, currTime)
+			let sec : long = U64Div (timeToSleep, 1000000:long)
+	                let nsec : long = U64Mul (U64Rem (timeToSleep, 1000000:long), 1000:long)
+			do VProc.@nanosleep-from-atomic (self, sec, nsec)
+			throw dispatch ()
+		  | Option.SOME(qitem : VProcQueue.queue_item) =>
+		    do SchedulerAction.@dispatch-from-atomic (self, switch, SELECT(FIBER_OFF, qitem), SELECT(FLS_OFF, qitem))
+		    throw dispatch()
+		end
 
-	  case s
-	    of PT.STOP => 
-	       throw dispatch ()
-	     | PT.PREEMPT (k : PT.fiber) =>
-	       let fls : FLS.fls = FLS.@get-in-atomic (self)
-	       do VProcQueue.@enqueue-from-atomic (self, fls, k)
-	       throw dispatch ()
-	     | PT.SLEEP (k : PT.fiber, t : Time.time) =>
-	       let fls : FLS.fls = FLS.@get-in-atomic (self)
-               do apply addToSleepingList (t, fls, k)
-               throw dispatch()
-	     | _ =>
-	       let e : exn = Match
-     	       throw exh(e)
-	  end
+	      case s
+		of PT.STOP => 
+		   throw dispatch ()
+		 | PT.PREEMPT (k : PT.fiber) =>
+		   let fls : FLS.fls = FLS.@get-in-atomic (self)
+		   do VProcQueue.@enqueue-from-atomic (self, fls, k)
+		   throw dispatch ()
+		 | PT.SLEEP (k : PT.fiber, t : Time.time) =>
+		   let fls : FLS.fls = FLS.@get-in-atomic (self)
+		   do apply addToSleeping (t, fls, k)
+		   throw dispatch()
+		 | _ =>
+		   let e : exn = Match
+		   throw exh(e)
+	      end
 
-	fun mkSwitch (_ : vproc / exh : PT.exh) : PT.sched_act = return (switch)
+            return (switch)
 
        (* run the scheduler on all vprocs *)
 	do VProcInit.@bootstrap (mkSwitch / exh)
 	return (UNIT)
       ;
+
     )
 
     val roundRobin : unit -> unit = _prim (@round-robin)
