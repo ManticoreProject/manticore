@@ -57,6 +57,7 @@ structure ArityRaising : sig
     val cntEscapingFuns         = ST.newCounter "cps-arity:escaping-funs"
     val cntUselessElim          = ST.newCounter "cps-arity:useless-elim"
     val cntUselessScanPasses    = ST.newCounter "cps-arity:useless-scan-passes"
+    val cntFunsToConts          = ST.newCounter "cps-arity:funs-to-conts"
 
 
   (***** Analysis *****)
@@ -1011,30 +1012,60 @@ structure ArityRaising : sig
     (*
      * Flatten+useless elim can leave around useCnt=0 params on flattened functions.
      * This removes them, cleans up the types, and cleans up the call sites.
+     *
+     * Additionally, if we've gotten to a point where any of the C.Fun lambdas have
+     * had all of their return continuations eliminated, change those into C.Cont
      *)
     fun cleanupParams (C.MODULE{name,externs,body=(C.FB{f=main,params=modParams,rets=modRets,body=modBody})}) = let
         fun cleanupExp (exp as C.Exp(ppt, e)) = (
             case e
              of C.Let (vars, rhs, e) => C.mkLet (vars, rhs, cleanupExp e)
-              | C.Fun (lambdas, body) => C.mkFun(List.map cleanupLambda lambdas, cleanupExp body)
+              | C.Fun (lambdas, body) => let
+                    val lambdas = List.map cleanupLambda lambdas
+                    fun emitFunsOrConts((l as C.FB{rets,...})::lambdas, accum) =
+                        if List.null rets
+                        then (if List.null accum
+                              then (ST.tick cntFunsToConts;
+                                    C.mkCont (l, emitFunsOrConts (lambdas, [])))
+                              else C.mkFun (rev accum, C.mkCont (l, emitFunsOrConts (lambdas, []))))
+                        else emitFunsOrConts (lambdas, l::accum)
+                      | emitFunsOrConts([], accum) = let
+                            val body = cleanupExp body
+                        in
+                            if List.null accum
+                            then body
+                            else C.mkFun (rev accum, body)
+                        end
+                in
+                    emitFunsOrConts (lambdas, [])
+                end
               | C.Cont (f, body) => C.mkCont (cleanupLambda f, cleanupExp body)
               | C.If (v, e1, e2) => C.mkIf (v, cleanupExp e1, cleanupExp e2)
               | C.Switch (v, cases, body) => C.mkSwitch(v, List.map (fn (tag,e) => (tag, cleanupExp e))
                                                                     cases, Option.map cleanupExp body)
               | C.Apply (f, args, retArgs) => (
                 if not(isFlat f) 
-                then exp
+                then (case CV.typeOf f
+                       of CPSTy.T_Fun (_, []) => C.mkThrow (f, args)
+                        | CPSTy.T_Fun (_, _) => exp 
+                     (* end case *))
                 else case getFB f
-                      of SOME(C.FB{params,rets,...}) =>
-                         C.mkApply(f,
-                                   ListPair.foldr (fn (a,b,rr) => if CV.useCount a > 0 then b::rr
+                      of SOME(C.FB{params,rets,...}) => let
+                             val newArgs = ListPair.foldr (fn (a,b,rr) => if CV.useCount a > 0 then b::rr
                                                                   else (Census.decUseCnt b ; rr))
-                                   [] (params, args),
-                                   ListPair.foldr (fn (a,b,rr) => if CV.useCount a > 0 then b::rr
+                                                          [] (params, args)
+                             val newRets = ListPair.foldr (fn (a,b,rr) => if CV.useCount a > 0 then b::rr
                                                                   else (Census.decUseCnt b ; rr))
-                                   [] (rets, retArgs))
-                                   
-                       | NONE => exp
+                                                          [] (rets, retArgs)
+                         in
+                             case CV.kindOf f
+                              of CPS.VK_Fun(_) => C.mkApply (f, newArgs, newRets)
+                               | _ => C.mkThrow (f, newArgs)
+                         end
+                       | NONE => (case CV.typeOf f
+                                   of CPSTy.T_Fun (_, []) => C.mkThrow (f, args)
+                                    | CPSTy.T_Fun (_, _) => exp 
+                                 (* end case *))
                 )
               | C.Throw (k, args) => (
                 if not (isFlat k) 
@@ -1056,7 +1087,6 @@ structure ArityRaising : sig
 		    val newType = CTy.T_Fun (List.map CV.typeOf params', List.map CV.typeOf rets')
                     val _ = CV.setType (f, newType)
                 in
-                    
                     C.mkLambda(C.FB{f=f,params=params',rets=rets',body=cleanupExp body})
                 end
     in

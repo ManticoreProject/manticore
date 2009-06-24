@@ -130,7 +130,7 @@ structure CPS =
 	  List.app (fn x => Var.setKind(x, VK_Let rhs)) lhs;
 	  mkExp(Let(lhs, rhs, exp)))
     fun mkLambda (lambda as FB{f, params, rets, ...}) = (
-	  Var.setKind(f, VK_Fun lambda);
+          if List.null rets then Var.setKind(f, VK_Cont lambda) else Var.setKind(f, VK_Fun lambda);
 	  List.app (fn x => Var.setKind(x, VK_Param lambda)) params;
 	  List.app (fn x => Var.setKind(x, VK_Param lambda)) rets;
 	  lambda)
