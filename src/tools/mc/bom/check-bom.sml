@@ -319,10 +319,16 @@ structure CheckBOM : sig
 			  ])
 		  | ([ty], B.E_Cast(ty', x)) => (
 		      chkVar (x, "Cast");
-		      if BTU.match(ty', ty) andalso BTU.validCast(BV.typeOf x, ty')
+		      if BTU.match(ty', ty)
 			then ()
 			else error [
-			    "type mismatch in Cast:", vl2s' lhs, " = (", BTU.toString ty',
+			    "type mismatch:", vl2s' lhs, " = (", BTU.toString ty',
+			    ")", v2s' x, "\n"
+			  ];
+		      if BTU.validCast(BV.typeOf x, ty')
+			then ()
+			else error [
+			    "invalid cast:", vl2s' lhs, " = (", BTU.toString ty',
 			    ")", v2s' x, "\n"
 			  ])
 		  | ([ty], B.E_Select(i, x)) => (
