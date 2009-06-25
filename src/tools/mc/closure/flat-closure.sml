@@ -1,6 +1,6 @@
 (* flat-closure.sml
  *
- * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
  * This is a simple closure conversion algorithm.  In general, function
@@ -79,7 +79,7 @@ structure FlatClosure : sig
             CPS.Var.newProp (fn f => raise Fail(concat["labelOf(", CPS.Var.toString f, ")"]))
     in
     fun assignLabels lambda = let
-          fun assignFB (CPS.FB{f, body, ...}) = let 
+          fun assignFB (CPS.FB{f, body, ...}) = let
                 val fTy = CPS.Var.typeOf f
                 val lab = CFG.Label.new(CPS.Var.nameOf f, cvtStdFunTyAux(fTy))
                 in

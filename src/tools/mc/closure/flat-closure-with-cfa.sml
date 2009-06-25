@@ -1,6 +1,6 @@
 (* flat-closure-with-cfa.sml
  *
- * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
  * This is a simple closure conversion algorithm.  In general, function
@@ -16,24 +16,8 @@ structure FlatClosureWithCFA : sig
 
   end = struct
 
-    structure CFA = struct
-      open CFACPS
-      (* val valueOf = fn x => TOP *)
-      (* val isEscaping = fn x => true *)
-      val analyze = BasicControl.mkTracePassSimple {
-              passName = "cfa",
-              pass = analyze
-            }
-    end
-
-    structure FV = struct
-      open FreeVars
-      val analyze = BasicControl.mkTracePassSimple {
-              passName = "fv",
-              pass = analyze
-            }
-    end
-
+    structure CFA = CFACPS
+    structure FV = FreeVars
     structure VMap = CPS.Var.Map
 
   (* return the variable of a lambda *)
@@ -206,8 +190,8 @@ structure FlatClosureWithCFA : sig
       | Global of int           (* at the ith slot of the current closure *)
       | EnclFun                 (* the enclosing function (or one that shares the *)
                                 (* same closure). *)
-      | EnclCont                (* the enclosing continuation function *)
-      | Extern of CFG.label     (* bound to an external variable (e.g., C function *)
+      | EnclCont		(* the enclosing continuation function *)
+      | Extern of CFG.label	(* bound to an external variable (e.g., C function *)
 
   (* an envrionment for mapping from CPS variables to CFG variables.  We also
    * track the current closure.
@@ -340,15 +324,15 @@ structure FlatClosureWithCFA : sig
                 in
                   ([CFG.mkAlloc(tmp, ty, [ep, lab]), b], tmp)
                 end
-            | SOME EnclCont => ([], ep)
-            | SOME(Extern lab) => let
+	    | SOME EnclCont => ([], ep)
+	    | SOME(Extern lab) => let
                 val tmp = newVar x
                 in
                   ([CFG.mkLabel(tmp, lab)], tmp)
                 end
             | NONE => raise Fail(concat[
-                  "unbound variable ", CPS.Var.toString x, "; ep = ", CFG.Var.toString ep
-                ])
+		  "unbound variable ", CPS.Var.toString x, "; ep = ", CFG.Var.toString ep
+		])
           (* end case *))
     val lookupVar = fn (env, x) => let
           val (binds, x') = lookupVar (env, x)
@@ -406,10 +390,10 @@ structure FlatClosureWithCFA : sig
                 in
                   (i+1, b@binds, VMap.insert(clos, x, Global i), x'::xs)
                 end
-        (* the initial environment is the externs plus the parameters *)
-          val env = ListPair.foldl
-                (fn (x, x', env) => VMap.insert(env, x, Local x'))
-                  externEnv (params, params')
+	(* the initial environment is the externs plus the parameters *)
+	  val env = ListPair.foldl
+		(fn (x, x', env) => VMap.insert(env, x, Local x'))
+		  externEnv (params, params')
           val (_, binds, clos, cfgArgs) =
                 CPS.Var.Set.foldl mkArgs (1, [], env, []) fv
           val cfgArgs = List.rev cfgArgs
@@ -904,11 +888,12 @@ structure FlatClosureWithCFA : sig
             FV.analyze m;
             assignLabels body;
             cvtModLambda body;
-          (* we need to rebuild the entry function so that it has an exported lambda *)
-            let val CFG.FUNC{lab, entry, body, exit} :: r = !blocks
-            val init = CFG.mkExportFunc(lab, entry, body, exit, Atom.toString name ^ "_init")
-            in
-              CFG.mkModule(name, externs, init::r)
-            end
+	  (* we need to rebuild the entry function so that it has an exported lambda *)
+	    let val CFG.FUNC{lab, entry, body, exit} :: r = !blocks
+	    val init = CFG.mkExportFunc(lab, entry, body, exit, Atom.toString name ^ "_init")
+	    in
+	      CFG.mkModule(name, externs, init::r)
+	    end
           end
+
   end
