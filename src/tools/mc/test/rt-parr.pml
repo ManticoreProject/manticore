@@ -480,4 +480,4 @@ fun ray winsize = let
       freeImage img
     end;
 
-ray (readint ())
+val _ = ray (readint ())

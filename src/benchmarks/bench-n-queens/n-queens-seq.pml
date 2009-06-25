@@ -1,11 +1,11 @@
 val seqSz = 1;
 
 fun timeToEval (f) = let
-    val b = gettimeofday ()
+    val b = Time.now()
     val v = f()
-    val e = gettimeofday ()
+    val e = Time.now()
     in
-       print (dtos (e-b)^"\n");
+       Print.print (Time.toString(e-b)^"\n");
        v
     end
 ;
@@ -50,38 +50,38 @@ fun isOK (row, dist, placed) = (case placed
     of nil => true
      | p :: ps => p <> row+dist andalso p <> row-dist andalso isOK(row, dist+1, ps)
     (* end case *))
-;
+
 
 fun try (x, y, z) = (case x
     of nil => (case y
        of nil => (raise Foo 1)
-	| _ => NONE
+	| _ => Option.NONE
        (* end case *))
      | x :: xs => let
 	   val l = if (isOK(x, 1, z))
 		   then try(xs@y, nil, x :: z)
-		   else NONE
+		   else Option.NONE
            in
 	      case l
-	       of NONE => try(xs, x::y, z)
+	       of Option.NONE => try(xs, x::y, z)
 		| _ => l
            end
     (* end case *))
-;
 
-fun queens (n) = let
+
+
+fun queens (n) = (let
     fun f (i) = i
     fun doit () = let
-	 val v = try(rev(tab(f, 0, n, 1)), nil, nil)	    
+	 val v = try(List.rev(List.tabulate(n,f)), nil, nil)	    
           in
              case v
-	      of NONE => print "error\n"
+	      of Option.NONE => Print.print "error\n"
 	       | _ => ()
          end
-    val t1 = gettimeofday()
+    val t1 = Time.now()
     in
-      doit()  handle _ => print (dtos (gettimeofday() - t1))
-    end
-;
+      doit()  handle _ => Print.print (Time.toString (Time.now() - t1))
+    end)
 
-queens(readint())
+val _ = queens(8)
