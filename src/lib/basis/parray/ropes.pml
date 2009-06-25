@@ -440,11 +440,11 @@ structure Ropes (* : ROPES *) = struct
 
   (* nEltsInRange : int * int * int -> int *)
     fun nEltsInRange (from, to_, step) = (* "to" is syntax in pml *)
-     (if step = 0 then failwith "cannot have step 0 in a range"
-      else if from = to_ then 1
-      else if (from > to_ andalso step > 0) then 0
-      else if (from < to_ andalso step < 0) then 0
-      else (Int.abs (from - to_) div Int.abs step) + 1)
+	  if step = 0 then failwith "cannot have step 0 in a range"
+	  else if from = to_ then 1
+	  else if (from > to_ andalso step > 0) then 0
+	  else if (from < to_ andalso step < 0) then 0
+	  else (Int.abs (from - to_) div Int.abs step) + 1)
 
   (* rangeP : int * int * int -> int rope *)
     fun rangeP (from, to_, step) = (* "to" is syntax in pml *)
@@ -596,18 +596,17 @@ structure Ropes (* : ROPES *) = struct
   (* Strategy: First, filter all the leaves without balancing. *)
   (*           Then balance the whole thing if needed. *)
     fun filterP (pred, rope) = let
-      fun f r =
-       (case r
-	  of LEAF (len, s) => let
-               val s' = S.filter (pred, s)
-               in
-                 LEAF (S.length s', s')
-	       end
-	   | CAT (_, _, r1, r2) => 
-	       concatWithoutBalancing (| f r1, f r2 |)
-          (* end case *))
-      in
-        balanceIfNecessary (f rope)
-      end
+	  fun f r = (case r
+		 of LEAF (len, s) => let
+		      val s' = S.filter (pred, s)
+		      in
+			LEAF (S.length s', s')
+		      end
+		  | CAT (_, _, r1, r2) => 
+		      concatWithoutBalancing (| f r1, f r2 |)
+		(* end case *))
+	  in
+	    balanceIfNecessary (f rope)
+	  end
 
   end
