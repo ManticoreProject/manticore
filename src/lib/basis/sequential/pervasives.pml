@@ -4,10 +4,7 @@
  * All rights reserved.
  *)
 
-(* FIXME: add support for rebinding datatypes
-datatype 'a option = datatype 'a Option.option
-*)
-type 'a option = 'a Option.option
+datatype option = datatype Option.option
 
 val print = Print.print
 
