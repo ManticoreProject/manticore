@@ -21,6 +21,7 @@ structure ImplicitThread (* :
       typedef scheduler_state = any;
 
       typedef thread;
+      typedef worker;
       typedef work_group;
 
     (** Implicit thread creation **)
@@ -32,15 +33,19 @@ structure ImplicitThread (* :
 
     (** Work group management **)
 
-      define @new-work-group (workGroupId : UID.uid,
-                              designatedWorkerInit : PT.fiber, 
-			      auxiliaryWorkerInit : PT.fiber, 
+      define @new-work-group (workGroupId : Word64.word,
 			      spawnFn : fun (thread / exh -> unit),
 			      removeFn : fun (thread / exh -> unit),
 			      schedulerState : scheduler_state,
 			      terminated : ![bool]
 			    / exh : exh) : work_group;
-      define inline @work-group-id (group : work_group) : UID.uid;
+    (* spawn the worker initialized by initWorker (using the given fls) on the vproc dst *)
+      define inline @spawn-worker (group : work_group, 
+				   dst : vproc, 
+				   workerFLS : FLS.fls, 
+				   initWorker : cont (worker) 
+				 / exh : exh) : worker;
+      define inline @work-group-id (group : work_group) : Word64.word;
     (* return the work group at the  top of the work-group stack. an exception is raised
      * if the stack is empty. *)
       define inline @current-work-group (_ : unit / exh : exh) : work_group;
@@ -70,13 +75,11 @@ structure ImplicitThread (* :
 
 (* offsets into tuples *)
 #define WORK_GROUP_UID_OFF                      0
-#define WORK_GROUP_DESIGNATED_WORKER_OFF        1
-#define WORK_GROUP_AUXILIARY_WORKER_OFF         2
-#define WORK_GROUP_SPAWN_FUN_OFF                3
-#define WORK_GROUP_REMOVE_FUN_OFF               4
-#define WORK_GROUP_SCHEDULER_STATE_OFF          5
-#define WORK_GROUP_SUSPEND_OFF                  6
-#define WORK_GROUP_TERMINATED_OFF               7
+#define WORK_GROUP_SPAWN_FUN_OFF                1
+#define WORK_GROUP_REMOVE_FUN_OFF               2
+#define WORK_GROUP_SCHEDULER_STATE_OFF          3
+#define WORK_GROUP_SUSPEND_OFF                  4
+#define WORK_GROUP_TERMINATED_OFF               5
 
 #define ITE_STACK_OFF         0
 #define ITE_CANCELABLE_OFF    1
@@ -94,11 +97,11 @@ structure ImplicitThread (* :
       (* scheduler-specific state provided by the scheduler *)
 	typedef scheduler_state = any;
 
+        typedef worker = Word64.word;
+
 	typedef work_group = 
 		 [
-		   UID.uid,                       (* unique id *)
-		   PT.fiber,                      (* initialization of a designated worker *)
-		   PT.fiber,                      (* initialization of an auxiliary worker *)
+		   Word64.word,                   (* unique id *)
 		   fun (thread / exh -> unit),    (* spawn function *)
 		   fun (thread / exh -> bool),    (* thread removal function *)
 		   scheduler_state,               (* scheduler-specific state provided by the scheduler *)
@@ -196,48 +199,13 @@ structure ImplicitThread (* :
 	      return ()
 	    ;
 
-	(* spawn n copies of the given fiber *)
-	  define @spawn-n-workers (n : int, 
-				   k : PT.fiber, 
-				   spawnFn : fun(int, PT.fiber / exh -> )
-				 / exh : exh) : () =
-	      let barrier : Barrier.barrier = Barrier.@new (n / exh)
-	      cont init (_ : unit ) =
-		do Barrier.@ready (barrier / exh)
-		do Barrier.@wait (barrier / exh)
-		throw k (UNIT)
-	      fun spawn (i : int / exh : exh) : () =
-		  if I32Gte (i, n) then 
-		      return ()
-		  else
-		      do apply spawnFn (i, init / exh)
-		      apply spawn (I32Add (i, 1) / exh)
-	      do apply spawn (0 / exh)
-	      do Barrier.@wait (barrier / exh)
-	      return ()
-	    ;
-
-	  define (* inline *) @spawn-designated-workers (fls : FLS.fls, init : PT.fiber / exh : exh) : () =
-	      fun spawnFn (i : int, k : PT.fiber / exh : exh) : () =
-		  let vp : vproc = VProc.@vproc-by-id (i)
-		  (* pin the worker to the ith vproc *)
-		  let fls : FLS.fls = FLS.@pin-to (fls, i / exh)
-		  VProcQueue.@enqueue-on-vproc (vp, fls, k)
-	      let nWorkers : int = VProc.@num-vprocs ()
-	      do @spawn-n-workers (nWorkers, init, spawnFn / exh)
-	      return()
-	    ;
-
       )
 
     in
 
     _primcode (
 
-      (* create a work group and make it ready to receive work *)
-	define @new-work-group (workGroupId : UID.uid,
-	                        designatedWorkerInit : PT.fiber, 
-				auxiliaryWorkerInit : PT.fiber, 
+	define @new-work-group (workGroupId : Word64.word,
 				spawnFn : fun(thread / exh -> unit),
 				removeFn : fun(thread / exh -> bool),
 				schedulerState : scheduler_state,
@@ -246,11 +214,7 @@ structure ImplicitThread (* :
 	    do @migrate-to-top-level-sched (/ exh)	    
             let nVProcs : int = VProc.@num-vprocs ()
             let suspendResumeArr : Arr.array = Arr.@array (nVProcs, false / exh)
-	    let fls : FLS.fls = FLS.@get ()
-	    do @spawn-designated-workers (fls, designatedWorkerInit / exh)
             let group : work_group = promote (alloc (workGroupId,
-						     designatedWorkerInit, 
-						     auxiliaryWorkerInit,
 						     spawnFn, 
 						     removeFn, 
 						     schedulerState,
@@ -259,104 +223,118 @@ structure ImplicitThread (* :
 	    return (group)
 	  ;
 
-	define (* inline *) @work-group-id (group : work_group) : UID.uid =
-	    return (SELECT(WORK_GROUP_UID_OFF, group))
-	  ;
+    (* spawn the worker initialized by initWorker (using the given fls) on the vproc dst *)
+      define inline @spawn-worker (group : work_group, 
+				   dst : vproc, 
+				   workerFLS : FLS.fls, 
+				   initWorker : cont (worker)
+				 / exh : exh) : worker =
+	  let workerId : Word64.word = UID.@new (/ exh)
+          let i : int = VProc.@vproc-id (dst)
+	  let workerFLS' : FLS.fls = FLS.@pin-to (workerFLS, i / exh)
+	  cont initWorker' (_ : unit) = throw initWorker (workerId)
+	  do VProcQueue.@enqueue-on-vproc (dst, workerFLS', initWorker')
+	  return (workerId)
+        ;
 
-      (* return the work group at the  top of the work-group stack. an exception is raised
-       * if the stack is empty. *)
-	define (* inline *) @current-work-group (_ : unit / exh : exh) : work_group =
-	    let ite : FLS.ite = FLS.@get-ite (/ exh)
-	    let stk : List.list = SELECT(ITE_STACK_OFF, ite)
-	    case stk
-	     of List.nil => 
-		let e : exn = Fail(@"ImplicitThread.@current-work-group: empty work-group stack")
-		throw exh (e)
-	      | List.CONS(group : work_group, stk : List.list) =>
-		return (group)
-	    end
-	  ;
+      define (* inline *) @work-group-id (group : work_group) : Word64.word =
+	  return (SELECT(WORK_GROUP_UID_OFF, group))
+	;
 
-      (* suspend / resume the execution of all workers local to the given vproc *)
-	define @suspend-vproc (workGroup : work_group, vp : vproc / exh : exh) : () =
-	    let vpId : int = VProc.@vproc-id (vp)
-	    do Arr.@update (SELECT(WORK_GROUP_SUSPEND_OFF, workGroup), vpId, true / exh)
-	    return ()
-	  ;
+    (* return the work group at the  top of the work-group stack. an exception is raised
+     * if the stack is empty. *)
+      define (* inline *) @current-work-group (_ : unit / exh : exh) : work_group =
+	  let ite : FLS.ite = FLS.@get-ite (/ exh)
+	  let stk : List.list = SELECT(ITE_STACK_OFF, ite)
+	  case stk
+	   of List.nil => 
+	      let e : exn = Fail(@"ImplicitThread.@current-work-group: empty work-group stack")
+	      throw exh (e)
+	    | List.CONS(group : work_group, stk : List.list) =>
+	      return (group)
+	  end
+	;
 
-	define @resume-vproc (workGroup : work_group, vp : vproc / exh : exh) : () =
-	    let vpId : int = VProc.@vproc-id (vp)
-	    do Arr.@update (SELECT(WORK_GROUP_SUSPEND_OFF, workGroup), vpId, false / exh)
-	    return ()
-	  ;
+    (* suspend / resume the execution of all workers local to the given vproc *)
+      define @suspend-vproc (workGroup : work_group, vp : vproc / exh : exh) : () =
+	  let vpId : int = VProc.@vproc-id (vp)
+	  do Arr.@update (SELECT(WORK_GROUP_SUSPEND_OFF, workGroup), vpId, true / exh)
+	  return ()
+	;
 
-      (* place the given implicit thread on the ready queue of the current work group *)
-	define (* inline *) @spawn-thread (thd : thread / exh : exh) : () =
-	    let group : work_group = @current-work-group (UNIT / exh)
-	    let spawnFn : fun(thread / exh -> unit) = SELECT(WORK_GROUP_SPAWN_FUN_OFF, group)
-	    let _ : unit = apply spawnFn (thd / exh)
-	    return ()
-	  ;
+      define @resume-vproc (workGroup : work_group, vp : vproc / exh : exh) : () =
+	  let vpId : int = VProc.@vproc-id (vp)
+	  do Arr.@update (SELECT(WORK_GROUP_SUSPEND_OFF, workGroup), vpId, false / exh)
+	  return ()
+	;
 
-      (* remove the given thread from the ready queue, supposing the thread is already on the ready queue. if 
-       * the return value is true, then the thread was both on the ready queue and successfully removed by
-       * the operation. otherwise, the return value must be false. note that this prescribed behavior provides
-       * some latitude to the scheduler, which may, for example, choose to always return false. *)
-	define (* inline *) @remove-thread (thd : thread / exh : exh) : bool =
-	    let group : work_group = @current-work-group (UNIT / exh)
-	    let removeFn : fun(thread / exh -> bool) = SELECT(WORK_GROUP_REMOVE_FUN_OFF, group)
-	    apply removeFn (thd / exh)
-	  ;
+    (* place the given implicit thread on the ready queue of the current work group *)
+      define (* inline *) @spawn-thread (thd : thread / exh : exh) : () =
+	  let group : work_group = @current-work-group (UNIT / exh)
+	  let spawnFn : fun(thread / exh -> unit) = SELECT(WORK_GROUP_SPAWN_FUN_OFF, group)
+	  let _ : unit = apply spawnFn (thd / exh)
+	  return ()
+	;
 
-	define @terminated-flag () : ![bool] =
-	    let terminated : ![bool] = alloc (false)
-	    let terminated : ![bool] = promote (terminated)
-	    return (terminated)
-	  ;
+    (* remove the given thread from the ready queue, supposing the thread is already on the ready queue. if 
+     * the return value is true, then the thread was both on the ready queue and successfully removed by
+     * the operation. otherwise, the return value must be false. note that this prescribed behavior provides
+     * some latitude to the scheduler, which may, for example, choose to always return false. *)
+      define (* inline *) @remove-thread (thd : thread / exh : exh) : bool =
+	  let group : work_group = @current-work-group (UNIT / exh)
+	  let removeFn : fun(thread / exh -> bool) = SELECT(WORK_GROUP_REMOVE_FUN_OFF, group)
+	  apply removeFn (thd / exh)
+	;
 
-      (* terminate the work group (the workers in the group cease to execute new work) *)
-	define @terminate-work-group (workGroup : work_group) : () =
-	    do #0(SELECT(WORK_GROUP_TERMINATED_OFF, workGroup)) := true
-	    return ()
-	  ;
+      define @terminated-flag () : ![bool] =
+	  let terminated : ![bool] = alloc (false)
+	  let terminated : ![bool] = promote (terminated)
+	  return (terminated)
+	;
 
-      (* begin the dynamic scope of a work group *)
-	define (* inline *) @work-group-begin (group : work_group / exh : exh) : () =
-	    do @migrate-to-top-level-sched (/ exh)
-	    do @seed-ite (/ exh)
-	    do @push-work-group (group / exh)
-	  (* assign the continuation of the current thread to the first thread on the work group's 
-	   * ready queue *)
-            cont k (x : unit) = return ()
-	    let thd : thread = @new-thread (k / exh)
-	    do @spawn-thread (thd / exh)
-	    let _ : unit = SchedulerAction.@stop ()
-	    return ()
-	  ;
+    (* terminate the work group (the workers in the group cease to execute new work) *)
+      define @terminate-work-group (workGroup : work_group) : () =
+	  do #0(SELECT(WORK_GROUP_TERMINATED_OFF, workGroup)) := true
+	  return ()
+	;
 
-      (* end the dynamic scope of a work group *)
-	define @work-group-end (/ exh : exh) : () =
-	    let _ : Option.option = @pop-work-group (/ exh)
-	    do @migrate-to-top-level-sched (/ exh)
-	    return ()
-	  ;
+    (* begin the dynamic scope of a work group *)
+      define (* inline *) @work-group-begin (group : work_group / exh : exh) : () =
+	  do @migrate-to-top-level-sched (/ exh)
+	  do @seed-ite (/ exh)
+	  do @push-work-group (group / exh)
+	(* assign the continuation of the current thread to the first thread on the work group's 
+	 * ready queue *)
+	  cont k (x : unit) = return ()
+	  let thd : thread = @new-thread (k / exh)
+	  do @spawn-thread (thd / exh)
+	  let _ : unit = SchedulerAction.@stop ()
+	  return ()
+	;
 
-	define (* inline *) @run-on-work-group (group : work_group, f : fun(unit / exh -> any) / exh : exh) : any =
-	    do @work-group-begin (group / exh)
-	    let x : any = apply f (UNIT / exh)
-	    do @work-group-end (/ exh)
-	    return (x)
-	  ;
+    (* end the dynamic scope of a work group *)
+      define @work-group-end (/ exh : exh) : () =
+	  let _ : Option.option = @pop-work-group (/ exh)
+	  do @migrate-to-top-level-sched (/ exh)
+	  return ()
+	;
 
-	define @run-on-work-group-w (arg : [work_group, fun(unit / exh -> any)] / exh : exh) : any =
-	    @run-on-work-group(#0(arg), #1(arg) / exh)
-	  ;
+      define (* inline *) @run-on-work-group (group : work_group, f : fun(unit / exh -> any) / exh : exh) : any =
+	  do @work-group-begin (group / exh)
+	  let x : any = apply f (UNIT / exh)
+	  do @work-group-end (/ exh)
+	  return (x)
+	;
 
-	define @default-work-group-begin (defaultGroup : work_group / exh : exh) : unit =
-	    do @seed-ite (/ exh)
-	    do @push-work-group (defaultGroup / exh)
-	    return (UNIT)
-	  ;
+      define @run-on-work-group-w (arg : [work_group, fun(unit / exh -> any)] / exh : exh) : any =
+	  @run-on-work-group(#0(arg), #1(arg) / exh)
+	;
+
+      define @default-work-group-begin (defaultGroup : work_group / exh : exh) : unit =
+	  do @seed-ite (/ exh)
+	  do @push-work-group (defaultGroup / exh)
+	  return (UNIT)
+	;
 
     )
 

@@ -20,7 +20,7 @@ structure GlobalBFSScheduler (* :
 #define MAX_STEAL_ATTEMPTS          1000
 #define MAX_SLEEP_TIME_USECS        2000000:long
 
-      define @designated-worker (readyQ : LockedQueue.queue / exh : exh) : PT.fiber =
+      define @new-worker (readyQ : LockedQueue.queue / exh : exh) : cont (ImplicitThread.worker) =
 	  cont schedulerLoop (s : PT.signal) =
 	    let self : vproc = host_vproc
 
@@ -56,20 +56,18 @@ structure GlobalBFSScheduler (* :
 	       throw exh (e)
 	   end
 
-	  cont initK (x : unit) =
+	  cont initWorker (workerId : ImplicitThread.worker) =
 	    throw schedulerLoop (PT.STOP)
 
-	  return (initK)
+	  return (initWorker)
 	;
 
     define @work-group (_ : unit / exh : exh) : ImplicitThread.work_group =
+        let fls : FLS.fls = FLS.@get ()
 	let readyQ : LockedQueue.queue = LockedQueue.@new ()
         let uid : UID.uid = UID.@new (/ exh)
         let terminated : ![bool] = ImplicitThread.@terminated-flag ()
-	let designatedWorkerInit : PT.fiber = @designated-worker (readyQ / exh)
-        cont auxiliaryWorkerInit (_ : unit) = 
-          let e : exn = Fail(@"GlobalBFSScheduler.@work-group: todo: implement auxiliary worker")
-          throw exh (e)
+	let workerInit : cont (ImplicitThread.worker) = @new-worker (readyQ / exh)
 	fun spawnFn (thd : ImplicitThread.thread / exh : exh) : unit =
             let vp : vproc = SchedulerAction.@atomic-begin ()
 	    do LockedQueue.@enqueue-from-atomic (readyQ, thd)
@@ -78,13 +76,15 @@ structure GlobalBFSScheduler (* :
         fun removeFn (thd : ImplicitThread.thread / exh : exh) : bool = return (false)
 	let group : ImplicitThread.work_group = 
 		ImplicitThread.@new-work-group (uid,
-						designatedWorkerInit,
-						auxiliaryWorkerInit,
 						spawnFn,
 						removeFn,
 						enum(0):any,
 						terminated
 					      / exh)
+	fun spawnWorker (dst : vproc / exh : exh) : () =
+	    let workerId : Word64.word = ImplicitThread.@spawn-worker (group, dst, fls, workerInit / exh)
+	    return ()
+	do VProc.@for-each-vproc (spawnWorker / exh)
 	return (group)
       ;
 

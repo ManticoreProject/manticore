@@ -43,8 +43,8 @@ structure WorkStealing (* :
 
       (* set the assigned deque for the host vproc *)
 	define (* inline *) @set-assigned-deque-from-atomic (self : vproc, 
-						       assignedDeques : Arr.array,
-						       deque : D.deque / exh : exh) : () =
+							     assignedDeques : Arr.array,
+							     deque : D.deque / exh : exh) : () =
 	    let id : int = VProc.@vproc-id (self)
 	    do Arr.@update (assignedDeques, id, deque / exh)
 	    return ()
@@ -144,10 +144,10 @@ structure WorkStealing (* :
 	  apply lp ()
 	;
 
-      define @designated-worker (workGroupId : UID.uid,
-				 isTerminated : fun (/ -> bool),
-				 assignedDeques : Arr.array
-			       / exh : exh) : PT.fiber =
+      define @new-worker (workGroupId : UID.uid,
+			  isTerminated : fun (/ -> bool),
+			  assignedDeques : Arr.array
+			/ exh : exh) : cont (ImplicitThread.worker) =
 	  cont impossible () = 
 	   do assert (false)
 	   let exn : exn = Fail(@"WorkStealing.@designated-worker: impossible") 
@@ -155,7 +155,7 @@ structure WorkStealing (* :
 
 	  let nVProcs : int = VProc.@num-vprocs ()
 
-	  cont init (_ : unit) =
+	  cont initWorker (workerId : ImplicitThread.worker) =
 	    let self : vproc = SchedulerAction.@atomic-begin ()
 
 	    cont schedulerLoop (deque : D.deque, sign : PT.signal) =
@@ -226,7 +226,7 @@ structure WorkStealing (* :
 	    let deque : D.deque = D.@new-from-atomic (self, workGroupId, INITIAL_DEQUE_SIZE)
             throw schedulerLoop (deque, PT.STOP)
 
-	  return (init)
+	  return (initWorker)
 	;
 
       )
@@ -268,12 +268,13 @@ structure WorkStealing (* :
 	;
 
       define @work-group (_ : unit / exh : exh) : ImplicitThread.work_group =
+          let fls : FLS.fls = FLS.@get ()
 	  let uid : UID.uid = UID.@new (/ exh)
 	  let terminated : ![bool] = ImplicitThread.@terminated-flag ()
 	  fun isTerminated () : bool = return (#0(terminated))
           let nVProcs : int = VProc.@num-vprocs ()
           let assignedDeques : Arr.array = Arr.@array (nVProcs, enum(0):any / exh)
-	  let designatedWorkerInit : PT.fiber = @designated-worker (uid, isTerminated, assignedDeques / exh)
+	  let workerInit : cont (ImplicitThread.worker) = @new-worker (uid, isTerminated, assignedDeques / exh)
 	  cont auxiliaryWorkerInit (_ : unit) = 
 		let e : exn = Fail(@"WorkStealing.@work-group: todo: implement auxiliary worker")
 		throw exh (e)
@@ -284,13 +285,15 @@ structure WorkStealing (* :
 	      @pop-new-end (/ exh)
 	  let group : ImplicitThread.work_group = 
 		      ImplicitThread.@new-work-group (uid,
-						      designatedWorkerInit,
-						      auxiliaryWorkerInit,
 						      spawnFn,
 						      removeFn,
 						      assignedDeques,
 						      terminated
 						    / exh)
+	  fun spawnWorker (dst : vproc / exh : exh) : () =
+	      let workerId : Word64.word = ImplicitThread.@spawn-worker (group, dst, fls, workerInit / exh)
+	      return ()
+	  do VProc.@for-each-vproc (spawnWorker / exh)
 	  return (group)
 	;
 
