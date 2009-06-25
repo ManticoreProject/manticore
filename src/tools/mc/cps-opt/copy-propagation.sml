@@ -87,8 +87,10 @@ structure CopyPropagation : sig
             in
                 b andalso isClosedExp (body, env)
             end
-          | isClosedTerm (C.If (_, e1, e2), env) = isClosedExp (e1, env) andalso isClosedExp (e2, env)
-          | isClosedTerm (C.Switch (_, cases, default), env) =
+          | isClosedTerm (C.If (cond, e1, e2), env) = checkList (env, CondUtil.varsOf cond) andalso
+            isClosedExp (e1, env) andalso isClosedExp (e2, env)
+          | isClosedTerm (C.Switch (x, cases, default), env) =
+            VSet.member (env, x) andalso
             (List.foldl (fn ((tag,body),b) => b andalso isClosedExp (body, env)) true cases) andalso
             (case default of SOME(e) => isClosedExp(e, env) | NONE => true)
           | isClosedTerm (C.Apply (f, args, params), env) =
