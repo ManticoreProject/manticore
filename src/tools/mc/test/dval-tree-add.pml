@@ -1,3 +1,4 @@
+(* not real pml; this program uses the "dval" binder *)
 datatype tree = EMPTY | NODE of (int * tree * tree);
 
 fun treeAdd t = (case t
@@ -10,4 +11,5 @@ fun treeAdd t = (case t
        end
     (* end case *));
 
-treeAdd (NODE(1, EMPTY, EMPTY))
+val _ = treeAdd (NODE(1, EMPTY, EMPTY))
+
