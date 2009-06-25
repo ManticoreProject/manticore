@@ -444,7 +444,7 @@ structure Ropes (* : ROPES *) = struct
 	  else if from = to_ then 1
 	  else if (from > to_ andalso step > 0) then 0
 	  else if (from < to_ andalso step < 0) then 0
-	  else (Int.abs (from - to_) div Int.abs step) + 1)
+	  else (Int.abs (from - to_) div Int.abs step) + 1
 
   (* rangeP : int * int * int -> int rope *)
     fun rangeP (from, to_, step) = (* "to" is syntax in pml *)
@@ -458,7 +458,7 @@ structure Ropes (* : ROPES *) = struct
 
   (* rangePNoStep : int * int -> int rope *)
     fun rangePNoStep (from, to_) = (* "to" is syntax in pml *)
-      rangeP (from, to_, 1)
+	  rangeP (from, to_, 1)
   
 (* ***** ROPE DECONSTRUCTION ***** *)
 
@@ -497,29 +497,28 @@ structure Ropes (* : ROPES *) = struct
   (* splitAt : 'a rope * int -> 'a rope * 'a rope *)
   (* split a rope in two at index i. (r[0, ..., i], r[i+1, ..., |r|-1]) *)
     fun splitAt (r, i) =
-      if inBounds(r, i)
-      then splitAtWithBalancing(r, i)
-      else failwith "subscript out of bounds for splitAt"
+	  if inBounds(r, i)
+	    then splitAtWithBalancing(r, i)
+	    else failwith "subscript out of bounds for splitAt"
 
   (* cut the rope r into r[0, ..., n-1] and r[n, ..., length r - 1] *)
     fun cut (r, n) =
-      if n = 0
-      then (empty, r)
-      else splitAt(r, n - 1)
+	  if n = 0
+	    then (empty, r)
+	    else splitAt(r, n - 1)
 
   (* naturalSplit : 'a rope -> 'a rope * 'a rope *)
   (* If a rope is a CAT, splits it at the root. *)
   (* If a rope is a LEAF, splits it into two leaves of roughly equal size. *)
-    fun naturalSplit r =
-     (case r
-        of LEAF (len, s) => let
-             val len' = len div 2
-	     val (s1, s2) = S.cut (s, len')
-             in
-               (LEAF (len', s1), LEAF (len - len', s2))
-	     end
-	 | CAT (_, _, r1, r2) => (r1, r2)
-        (* end case *))
+    fun naturalSplit r = (case r
+	   of LEAF (len, s) => let
+		val len' = len div 2
+		val (s1, s2) = S.cut (s, len')
+		in
+		  (LEAF (len', s1), LEAF (len - len', s2))
+		end
+	    | CAT (_, _, r1, r2) => (r1, r2)
+	  (* end case *))
 
   (* partialSeq : 'a rope * int * int -> 'a seq *)
   (* return the sequence of elements from low incl to high excl *)
