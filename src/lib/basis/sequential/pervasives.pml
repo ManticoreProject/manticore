@@ -16,3 +16,4 @@ val app = List.app
 val map = List.map
 val foldl = List.foldl
 val foldr = List.foldr
+val nth = List.nth
