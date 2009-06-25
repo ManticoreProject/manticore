@@ -33,8 +33,5 @@ val pc1 = [| max2(x,y) | x in [| 1, 2, 3, 4, 8 |],
                      	 y in [| 5, 4, 3, 2, 1 |] |];
 val _ = print ("The length of pc1 is " ^ Int.toString (plen pc1) ^ ".\n");
 val s = parrString pc1;
-val _ = print ("   pc1: " ^ s ^ "\n        (expected [5,4,3,4,8])\n");
-
-()
-
+val _ = print ("   pc1: " ^ s ^ "\n        (expected [5,4,3,4,8])\n")
 

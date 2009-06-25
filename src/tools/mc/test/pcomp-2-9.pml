@@ -140,6 +140,5 @@ val parcomp =
       i in [|15,4,38,63,91,47,19,19,20,15|] |]
 ;
 val _ = printPar(parcomp);
-val _ = print "expected [|83,77,93,89,91,88,89,92,88,90|]\n\n";
+val _ = print "expected [|83,77,93,89,91,88,89,92,88,90|]\n\n"
 
-()

@@ -20,5 +20,5 @@ val pc = [| sqr(x) | x in [| 1 to 20 |] |];
 
 val s = parrString pc;
 
-print ("RESULT: " ^ s ^ "\n     (expected 1, 4, 9, ..., 400)\n")
+val _ = print ("RESULT: " ^ s ^ "\n     (expected 1, 4, 9, ..., 400)\n")
 
