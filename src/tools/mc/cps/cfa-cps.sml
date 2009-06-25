@@ -585,6 +585,11 @@ structure CFACPS : sig
             if !resultsFlg then printResults body else ()
           end
 
+    val analyze = BasicControl.mkTracePassSimple {
+	    passName = "cfa",
+	    pass = analyze
+	  }
+
   (* clear CFA annotations from the variables of a module.  Note that we can
    * restrict the traversal to binding instances.
    *)

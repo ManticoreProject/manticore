@@ -124,6 +124,11 @@ structure FreeVars : sig
 		raise Fail "non-closed module")
 	  end
 
+    val analyze = BasicControl.mkTracePassSimple {
+	    passName = "free-vars",
+	    pass = analyze
+	  }
+
     fun envOfFun f = let
 	  val fv = getFV f
 	  in
