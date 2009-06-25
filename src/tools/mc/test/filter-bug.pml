@@ -4,6 +4,6 @@ fun snd (_, y) = y;
 
 val xs = (1,true)::nil;
 
-val odds = filter (snd, xs);
+val odds = List.filter snd xs;
 
-()
+val _ = ()
