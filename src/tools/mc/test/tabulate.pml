@@ -16,7 +16,7 @@ fun catw (sep, ss) =
     (* end case *));
 
 fun numsToS ns =
-  let val s  = catw (",", map (itos, ns))
+  let val s  = catw (",", map (Int.toString, ns))
   in
     "[" ^ s ^ "]"
   end;

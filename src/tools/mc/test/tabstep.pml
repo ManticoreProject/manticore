@@ -15,7 +15,7 @@ fun nsString nums =
   let fun build (curr, acc) =
         (case curr
            of nil => rev acc
-            | n::ns => build (ns, (itos n) :: acc)
+            | n::ns => build (ns, (Int.toString n) :: acc)
 	  (* end case *))
   in
       "[" ^ (catw (",", build (nums, nil))) ^ "]"

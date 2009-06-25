@@ -20,5 +20,5 @@ val IHopeIts100 =
       | n::ns => foldr (mx, n, ns)
   (* end case *));
 
-fun main _ = print ((itos IHopeIts100) ^ " (expected 100).\n")
+fun main _ = Print.print ((Int.toString IHopeIts100) ^ " (expected 100).\n")
 

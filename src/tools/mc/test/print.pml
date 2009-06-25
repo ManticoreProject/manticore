@@ -27,8 +27,8 @@ structure Print (* : PRINT *) =
         print s
       end 
 
-    fun int n = print (itos n)
-    fun ints ns = withSep (",", itos, ns)
+    fun int n = print (Int.toString n)
+    fun ints ns = withSep (",", Int.toString, ns)
     fun ln s = (print s; print "\n")
 
   end

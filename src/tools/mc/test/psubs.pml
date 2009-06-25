@@ -21,7 +21,7 @@ fun map (f, xs) =
     (* end case *))
 ;
 
-fun itosToString ns = "[" ^ (catw (",", (map (itos, ns)))) ^ "]";
+fun itosToString ns = "[" ^ (catw (",", (map (Int.toString, ns)))) ^ "]";
 
 print ("Elements 0, 4 and 8 of par are " 
        ^ itosToString list 

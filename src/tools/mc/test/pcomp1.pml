@@ -7,7 +7,7 @@ fun parrString a =
       fun build (curr, acc) =
         if curr=len
         then rev acc
-        else build (curr+1, (itos (a!curr)) :: acc)
+        else build (curr+1, (Int.toString (a!curr)) :: acc)
   in
       "[" ^ (concatWith (",", build (0, nil))) ^ "]"
   end;

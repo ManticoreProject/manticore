@@ -10,7 +10,7 @@ val v0  = [| 1, 1, 1, 1, 1, 1 |];
 
 val dotp0 = dotp (sv0, v0);
 
-val _ = print ("Testing dotp: expecting 2 => " ^ (itos dotp0) ^ "\n");
+val _ = print ("Testing dotp: expecting 2 => " ^ (Int.toString dotp0) ^ "\n");
 
 type sparse_matrix = sparse_vector parray;
 
@@ -26,9 +26,9 @@ fun vtos v =
          if (m >= n) then
            acc
          else if (m = (n - 1)) then 
-           build (m+1, acc ^ (itos (v!m)))
+           build (m+1, acc ^ (Int.toString (v!m)))
 	 else
-	   build (m+1, acc ^ (itos (v!m)) ^ ",")
+	   build (m+1, acc ^ (Int.toString (v!m)) ^ ",")
    in
      "[|" ^ (build (0, "")) ^ "|]"
    end;

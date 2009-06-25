@@ -234,9 +234,9 @@ val build_tree_time = t1 - t0;
 val size_time = t3 - t2; 
 
 (print ("The outcome of the game is ");
- print (itos(result));
+ print (Int.toString(result));
  print " (expecting 0).\nThe size of T is ";
- print (itos(s));
+ print (Int.toString(s));
  print " (expecting 549946).\n";
  print "Time to build the tree: ";
  print (dtos(build_tree_time));
@@ -253,7 +253,7 @@ fun println s = (print s; print "\n");
 
 fun otos o = (case o of NONE => "NONE" | SOME _ => "SOME");
 
-fun Ltos ns = concatWith(",",map(itos,ns));
+fun Ltos ns = concatWith(",",map(Int.toString,ns));
 
 fun Btos b = let
   fun str op =
@@ -276,7 +276,7 @@ val aBoard = SOME(X)::SOME(X)::NONE::SOME(O)::SOME(O)::SOME(O)::NONE::NONE::NONE
 val aTree = minimax(aBoard,X);
 
 (*
-let fun str (b, s) = "(" ^ Btos(b) ^ "," ^ itos(s) ^ ")"
+let fun str (b, s) = "(" ^ Btos(b) ^ "," ^ Int.toString(s) ^ ")"
 in
   app(compose(println,str),immChildren(aTree))
 end  
