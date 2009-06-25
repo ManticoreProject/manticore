@@ -155,7 +155,7 @@ structure WorkStealing (* :
 
 	  let nVProcs : int = VProc.@num-vprocs ()
 
-	  cont initWorker (workerId : ImplicitThread.worker) =
+	  cont initWorker (worker : ImplicitThread.worker) =
 	    let self : vproc = SchedulerAction.@atomic-begin ()
 
 	    cont schedulerLoop (deque : D.deque, sign : PT.signal) =
@@ -291,7 +291,7 @@ structure WorkStealing (* :
 						      terminated
 						    / exh)
 	  fun spawnWorker (dst : vproc / exh : exh) : () =
-	      let workerId : Word64.word = ImplicitThread.@spawn-worker (group, dst, fls, workerInit / exh)
+	      let worker : Word64.word = ImplicitThread.@spawn-worker (group, dst, fls, workerInit / exh)
 	      return ()
 	  do VProc.@for-each-vproc (spawnWorker / exh)
 	  return (group)
