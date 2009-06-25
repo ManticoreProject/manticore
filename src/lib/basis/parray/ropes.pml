@@ -78,29 +78,26 @@ structure Ropes (* : ROPES *) = struct
   (* isBalanced : 'a rope -> bool *)
   (* balancing condition for ropes *)
   (* The max depth here is given in Boehm et al. 95. *)
-    fun isBalanced r = 
-     (case r
-        of LEAF _ => true
-	 | CAT (depth, len, _, _) => (depth <= Int.ceilingLg len + 2)
-        (* end case *))
+    fun isBalanced r = (case r
+	   of LEAF _ => true
+	    | CAT (depth, len, _, _) => (depth <= Int.ceilingLg len + 2)
+	  (* end case *))
 
   (* singleton : 'a -> 'a rope *)
     fun singleton x = LEAF (1, S.singleton x)
 
   (* isEmpty : 'a rope -> bool *)
-    fun isEmpty r = 
-     (case r
-        of LEAF (0, _) => true
-	 | CAT (_, 0, _, _) => true
-	 | _ => false
-        (* end case *))
+    fun isEmpty r = (case r
+	   of LEAF (0, _) => true
+	    | CAT (_, 0, _, _) => true
+	    | _ => false
+	  (* end case *))
 
   (* length : 'a rope -> int *)
-    fun length r = 
-     (case r
-        of LEAF (len, s) => len
-	 | CAT(_, len, r1, r2) => len
-        (* end case *))
+    fun length r = (case r
+	   of LEAF (len, s) => len
+	    | CAT(_, len, r1, r2) => len
+	  (* end case *))
 
   (* depth : 'a rope -> int *)
   (* The depth of a leaf is 0. *)
@@ -112,6 +109,7 @@ structure Ropes (* : ROPES *) = struct
 
   (* inBounds : 'a rope * int -> bool *)
   (* Is the given int a valid index of the rope at hand? *)
+(* FIXME: use unsigned compare! *)
     fun inBounds (r, i) = i < length r andalso i >= 0
 
   (* subInBounds : 'a rope * int -> 'a *)
@@ -324,7 +322,7 @@ structure Ropes (* : ROPES *) = struct
   (* concatenates two ropes (with balancing) *)
     fun concatWithBalancing (r1, r2) = balanceIfNecessary(concatWithoutBalancing(r1, r2))
 
-  (* concat : 'a rope -> 'a rope *)
+  (* concat : 'a rope * 'a rope -> 'a rope *)
     val concat = concatWithBalancing
 
   (* toSeq : 'a rope -> 'a seq *)
@@ -436,11 +434,9 @@ structure Ropes (* : ROPES *) = struct
         end)
 
   (* tabP : int * (int -> 'a) -> 'a rope *)
-    fun tabP (n, f) = 
-     (if n <= 0 then
-        empty
-      else
-        tabFromToP (0, n, f) (* n.b.: tabFromToP is exclusive of its upper bound *))
+    fun tabP (n, f) = if n <= 0
+	  then empty
+	  else tabFromToP (0, n, f) (* n.b.: tabFromToP is exclusive of its upper bound *)
 
   (* nEltsInRange : int * int * int -> int *)
     fun nEltsInRange (from, to_, step) = (* "to" is syntax in pml *)
@@ -587,14 +583,13 @@ structure Ropes (* : ROPES *) = struct
   (* Reduce with an associative operator. *)
   (* e.g., sumP r == reduceP (+, 0, r) *)
     fun reduceP (assocOp, unit, rope) = let
-      fun red r =
-       (case r
-	  of LEAF (_, s) => S.reduce (assocOp, unit, s)
-	   | CAT (_, _, r1, r2) => assocOp (| red r1, red r2 |)
-         (* end case *))
-      in
-        red rope
-      end
+	  fun red r = (case r
+		 of LEAF(_, s) => S.reduce (assocOp, unit, s)
+		  | CAT(_, _, r1, r2) => assocOp (| red r1, red r2 |)
+		(* end case *))
+	  in
+	    red rope
+	  end
 
   (* filterP : ('a -> bool) * 'a rope -> 'a rope *)
   (* post: the output is balanced *)
