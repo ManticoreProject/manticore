@@ -24,7 +24,4 @@ fun tryThis (L : foo) = if (all (isSome, L)) then true else false;
 
 val opts = (SOME X)::NONE::nil;
 
-if (tryThis(opts)) then 
-  print "true\n"
-else 
-  print "false\n"
+val _ = if tryThis opts then Print.print "true\n" else Print.print "false\n"

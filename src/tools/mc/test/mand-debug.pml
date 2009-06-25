@@ -58,4 +58,4 @@ val arrayOfStrings =
 
 fun prln s = (print (s ^ "\n"));
 
-parrayApp (prln, arrayOfStrings)
+val _ = parrayApp (prln, arrayOfStrings)

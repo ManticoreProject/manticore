@@ -84,4 +84,4 @@ fun queens (n) = let
     end
 ;
 
-queens(readint())
+val _ = queens(readint())

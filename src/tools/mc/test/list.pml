@@ -7,6 +7,5 @@ fun rev l = let
 	rev' (l, nil)
       end;
  
-val l = rev (1::2::3::nil);
+val l = rev (1::2::3::nil)
 
-()
