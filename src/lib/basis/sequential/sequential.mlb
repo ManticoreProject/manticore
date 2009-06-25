@@ -1,3 +1,9 @@
+(* sequential.mlb
+ *
+ * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
 prim-types.pml
 order.pml
 int.pml
@@ -33,3 +39,6 @@ end
 time.pml
 prim-io.pml
 list-pair.pml
+
+(* prevasive definitions *)
+pervasives.pml
