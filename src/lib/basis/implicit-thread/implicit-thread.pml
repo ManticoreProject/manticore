@@ -229,12 +229,12 @@ structure ImplicitThread (* :
 				   workerFLS : FLS.fls, 
 				   initWorker : cont (worker)
 				 / exh : exh) : worker =
-	  let workerId : Word64.word = UID.@new (/ exh)
+	  let worker : Word64.word = UID.@new (/ exh)
           let i : int = VProc.@vproc-id (dst)
 	  let workerFLS' : FLS.fls = FLS.@pin-to (workerFLS, i / exh)
-	  cont initWorker' (_ : unit) = throw initWorker (workerId)
+	  cont initWorker' (_ : unit) = throw initWorker (worker)
 	  do VProcQueue.@enqueue-on-vproc (dst, workerFLS', initWorker')
-	  return (workerId)
+	  return (worker)
         ;
 
       define (* inline *) @work-group-id (group : work_group) : Word64.word =
