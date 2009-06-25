@@ -112,7 +112,6 @@ functor MainFn (
 	  val (bEnv, errStrms, basis) = List.foldl chk (bEnv, [], []) basis
 	(* record the basis binding environment *)
 	  val _ = BasisEnv.saveBasisEnv bEnv
-	  val _ = PArray.setTyc getPArrImpl
 	  val (bEnv, errStrms, program) = List.foldl chk (bEnv, errStrms, basis) program
 	  val p2s = treeShake (List.rev program)
         (* module and type checking *)

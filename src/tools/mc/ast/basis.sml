@@ -20,6 +20,7 @@ structure Basis : sig
     val runeTyc		: Types.tycon
     val stringTyc	: Types.tycon
     val listTyc		: Types.tycon
+    val parrayTyc	: Types.tycon
     val chanTyc		: Types.tycon
     val ivarTyc		: Types.tycon
     val mvarTyc		: Types.tycon
@@ -34,6 +35,7 @@ structure Basis : sig
     val floatTy		: Types.ty
     val stringTy	: Types.ty
     val listTy		: Types.ty -> Types.ty
+    val parrayTy	: Types.ty -> Types.ty
     val threadIdTy	: Types.ty
 
   (* type classes as lists of types *)
@@ -142,6 +144,8 @@ structure Basis : sig
 	  (N.listCons, SOME(AST.TupleTy[tv', AST.ConTy([tv'], listTyc)]))
     end (* local *)
 
+    val parrayTyc = TyCon.newDataTyc (N.parray, [TyVar.new(Atom.atom "'a")])
+
     val exnTyc = Exn.exnTyc
 
     val intTyc = TyCon.newAbsTyc (N.int, 0, true)
@@ -171,6 +175,7 @@ structure Basis : sig
     val runeTy = AST.ConTy([], runeTyc)
     val stringTy = AST.ConTy([], stringTyc)
     fun listTy ty = AST.ConTy([ty], listTyc)
+    fun parrayTy ty = AST.ConTy([ty], parrayTyc)
     val threadIdTy = AST.ConTy([], threadIdTyc)
 
   (* exceptions *)

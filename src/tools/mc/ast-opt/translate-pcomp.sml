@@ -14,7 +14,6 @@ structure TranslatePComp : sig
   end  = struct
 
     structure A = AST
-    structure B = Basis
 
     fun tr trExp (e, pes, oe) = 
      (case (pes, oe)
@@ -31,7 +30,7 @@ structure TranslatePComp : sig
 	       val e1' = trExp e1
 	       val mapPV = BasisEnv.getVarFromBasis ["Ropes", "mapP"]
 	       val mapP = A.VarExp (mapPV, [t1, t])
-	       val resTy = PArray.parrayTy t
+	       val resTy = Basis.parrayTy t
 	       fun map arr = A.ApplyExp (mapP, A.TupleExp [f, arr], resTy)
                in
                  case optPred
@@ -47,7 +46,7 @@ structure TranslatePComp : sig
 			val predFn = A.FunExp (tmpV, cs, Basis.boolTy)
 			val filtered = A.ApplyExp (filterP,
 						   A.TupleExp [predFn, e1'],
-						   PArray.parrayTy t1)
+						   Basis.parrayTy t1)
                         in
 			  map filtered
 		        end
@@ -69,7 +68,7 @@ structure TranslatePComp : sig
 	       val mapP2V = BasisEnv.getVarFromBasis ["RopePair", "mapP"]
 	       val mapP2 = A.VarExp (mapP2V, [t1, t2, t])
 	       in
-                 A.ApplyExp (mapP2, A.TupleExp [f, e1', e2'], PArray.parrayTy t)
+                 A.ApplyExp (mapP2, A.TupleExp [f, e1', e2'], Basis.parrayTy t)
 	       end
 	   | (pes, NONE) => let (* any number of pbinds, no pred *)
   	       val arity = List.length pes
@@ -85,7 +84,7 @@ structure TranslatePComp : sig
 				  [A.PatMatch (A.TuplePat ps, e')],
 				  te)
 	       val lam = A.FB (f, arg, b)
-	       val resTy = PArray.parrayTy te
+	       val resTy = Basis.parrayTy te
 	       val tup = A.VarExp (f, []) :: (List.map trExp es)
 	       val mapPn = let
                  val tupTy = A.TupleTy (funTy :: (List.map TypeOf.exp es))

@@ -450,7 +450,7 @@ structure ChkExp :> sig
 		  if not(U.unify (ty1, TypeClass.new Types.Num))
 		  then error (loc, ["range elements must have numeric type"])
 		  else ();
-		  (AST.RangeExp(e1', e2', eo', ty1), PArray.parrayTy ty1)
+		  (AST.RangeExp(e1', e2', eo', ty1), Basis.parrayTy ty1)
 	      end
 	    | PT.PTupleExp es => let
 		  fun chk (e, (es, tys)) = let
@@ -474,7 +474,7 @@ structure ChkExp :> sig
 		    end
 		val (es', ty) = List.foldr chk ([], Ty.MetaTy (MetaVar.new depth)) es
 	      in
-		  (AST.PArrayExp(es', ty), PArray.parrayTy ty)
+		  (AST.PArrayExp(es', ty), Basis.parrayTy ty)
 	      end
 	    | PT.PCompExp (e, pbs, eo) => let
 		val pes = chkPBinds (loc, depth, pbs)
@@ -491,7 +491,7 @@ structure ChkExp :> sig
 			  | NONE => NONE
 			(* end case *))
 		in
-		  (AST.PCompExp (e', pes, eo'), PArray.parrayTy resTy)
+		  (AST.PCompExp (e', pes, eo'), Basis.parrayTy resTy)
 		end
 	    | PT.SpawnExp e => let
 		val (e', ty) = chkExp (loc, depth, e)
@@ -628,7 +628,7 @@ structure ChkExp :> sig
                  val (exp', resTy) = chkExp(loc, depth, exp)
 		 val (pat', resTy') = chkPat (loc, depth, pat)
 		 in
- 		   if not (U.unify (resTy, PArray.parrayTy resTy'))
+ 		   if not (U.unify (resTy, Basis.parrayTy resTy'))
 		     then error (loc, ["type mismatch in pattern binding"])
 		     else ();
 		   (pat', exp')
