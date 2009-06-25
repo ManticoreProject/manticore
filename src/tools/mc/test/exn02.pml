@@ -6,5 +6,5 @@ fun f g = (g(); 42) handle Foo n => n;
 
 fun g' () = raise Foo 17;
 
-print(itos(f g') ^ "\n")
+val _ = Print.print(Int.toString(f g') ^ "\n")
 
