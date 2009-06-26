@@ -7,6 +7,9 @@
  * but which CFA tells us can only be bound to a single function with that function's
  * literal name. Note that we need to respect lexical scoping (which the CFA analysis
  * does not require to be true).
+ *
+ * TODOs:
+ * Split analysis from transformation. !pass is a horrible hack
  *)
 
 structure CopyPropagation : sig
@@ -55,11 +58,40 @@ structure CopyPropagation : sig
     val cntPropagatedFunctions  = ST.newCounter "cps-copy-propagation:propagated-functions"
     val cntHoistedFunctions     = ST.newCounter "cps-copy-propagation:hoisted-functions"
 
-    (* property for tracking bindings to function bodies, used in useful
-     * variable analysis
+    (* Type used for building a function nesting hierarchy
+     * This is used to determine a common-parent (LUB) when hoisting
+     * functions up.
      *)
     local
-      val {setFn, getFn, peekFn, ...} = CV.newProp (fn f => raise Fail "Undefined function binding during copy propagation.")
+      val {setFn, getFn, ...} = CV.newProp (fn f => (f, 0))
+    in
+    fun setParent (f : CV.var, (p : CV.var, l : int)) = setFn (f, (p, l))
+    fun getParent f = getFn f
+    end
+
+    fun fixup (translations) = let
+        (* Find the common parent of the two *)
+        fun fixOne (callee, caller) =
+            if CV.compare (callee, caller) = EQUAL
+            then caller
+            else let
+                    val (calleeParent , calleeLevel) = getParent callee
+                    val (callerParent, callerLevel) = getParent caller
+                in
+                    case Int.compare (calleeLevel, callerLevel)
+                     of EQUAL => fixOne (calleeParent, callerParent)
+                      | GREATER => fixOne (calleeParent, caller)
+                      | LESS => fixOne (callee, callerParent)
+                end
+    in
+        VMap.mapi fixOne translations
+    end
+
+
+    (* property for tracking bindings to function bodies
+     *)
+    local
+      val {setFn, getFn, ...} = CV.newProp (fn f => raise Fail "Undefined function binding during copy propagation.")
     in
     fun setFB (f,b : C.lambda) = setFn (f, b)
     fun getFB f = getFn f
@@ -125,7 +157,8 @@ structure CopyPropagation : sig
         isClosedExp (body, env)
     end
 
-    fun copyPropagate (C.MODULE{name,externs,body=(C.FB{f=main,params=modParams,rets=modRets,body=modBody})}) = let
+    fun copyPropagate (C.MODULE{name,externs,body=(mainLambda
+                                                       as C.FB{f=main,params=modParams,rets=modRets,body=modBody})}) = let
         val pass = ref 0
         (* Only insert into the map if the callee isn't already being moved up.
          * If it has already been scheduled for a move, that will also 'work' for the later
@@ -164,8 +197,8 @@ structure CopyPropagation : sig
             if (!pass) = 0
             then continue ((fn x => x), env, map)
             else let
-                    fun wrapWithNewPreds' (l::rest, wrapper, env, map, continue) = let
-                        val C.FB{f=f',...} = l
+                    fun wrapWithNewPreds' (l'::rest, wrapper, env, map, continue) = let
+                        val C.FB{f=f',...} = l'
                         val preds = List.map (fn (k,v) => getFB k)
                                              (VMap.listItemsi
                                                   (VMap.filter
@@ -210,7 +243,14 @@ structure CopyPropagation : sig
                     val env' = VSet.addList(env, vars)
                     val (body, env'', map') = copyPropagateExp (e, env', map, parent)
                 in (C.mkLet (vars, rhs, body), env'', map') end
-              | C.Fun (lambdas, body) =>
+              | C.Fun (lambdas, body) => (
+                if !pass=0
+                then let
+                        val (_, n) = getParent parent
+                    in
+                        List.app (fn (l as C.FB{f,...}) => setParent (f, (parent, n+1))) lambdas
+                    end
+                else ();
                 wrapWithNewPreds (
                 lambdas, env, map,
                 (fn (wrapper, env, map) => let
@@ -229,8 +269,15 @@ structure CopyPropagation : sig
                         if List.null lambdas
                         then (wrapper body, env', map'')
                         else (wrapper (C.mkFun(lambdas, body)), env', map'')
-                    end))
-              | C.Cont (f as C.FB{f=fname,...}, body) =>
+                    end)))
+              | C.Cont (f as C.FB{f=fname,...}, body) =>(
+                if !pass=0
+                then let
+                        val (_, n) = getParent parent
+                    in
+                        setParent (fname, (parent, n+1))
+                    end
+                else ();
                 wrapWithNewPreds (
                 [f], env, map,
                 (fn (wrapper, env, map) =>
@@ -245,7 +292,7 @@ structure CopyPropagation : sig
                             val (body, _, map'') = copyPropagateExp (body, env', map', parent)
                         in
                             (wrapper (C.mkCont (lambda, body)), env', map'')
-                        end))
+                        end)))
               | C.If (v, e1, e2) => let
                     val (e1', _, map') = copyPropagateExp (e1, env, map, parent)
                     val (e2', _, map'') = copyPropagateExp (e2, env, map', parent)
@@ -286,6 +333,7 @@ structure CopyPropagation : sig
         (* end case *))
         and copyPropagateLambda (lambda as C.FB{f, params, rets, body}, env, map) = let
             val _ = if (!pass) = 0 then setFB (f, lambda) else ()
+            val _ = if VSet.member (env, f) then (raise Fail (concat[CV.toString f, " is already a member"])) else ()
             val env' = VSet.add (env, f)
             val (body, _, map') = copyPropagateExp (body, env', map, f)
         in
@@ -299,6 +347,7 @@ structure CopyPropagation : sig
         val (_, _, translations) = copyPropagateExp (modBody, env, VMap.empty, main)
         (* On the second time through, do copy prop and make any moves we can *)
         val _ = pass := !pass +1
+        val translations = fixup (translations)
         val (body', _, _) = copyPropagateExp (modBody, env, translations, main)
     in
         C.MODULE{
