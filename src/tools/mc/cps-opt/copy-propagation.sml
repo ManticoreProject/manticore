@@ -128,7 +128,7 @@ structure CopyPropagation : sig
           | isClosedTerm (C.Apply (f, args, params), env) =
             VSet.member (env, f) andalso
             checkList (env, args) andalso
-            checkList (env, rets)
+            checkList (env, params)
           | isClosedTerm (C.Throw (k, args), env) =
             VSet.member (env, k) andalso
             checkList (env, args)
