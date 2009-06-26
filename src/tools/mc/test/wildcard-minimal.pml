@@ -7,7 +7,7 @@ fun toString n =
    of X => "X"
     | _ => "O";
 
-(print (toString X);
+val _ = (print (toString X);
  print "\n";
  print (toString O);
  print "\n")

@@ -1,3 +1,3 @@
 fun f () = ();
-spawn f()
+val _ = spawn f()
 
