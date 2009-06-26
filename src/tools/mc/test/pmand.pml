@@ -33,6 +33,5 @@ fun pixel (i, j) = let
 	loop (0, c_re, c_im)
       end;
 
-val img = [| [| pixel(i, j) | j in [| 0 to sz-1 |] |] | i in [| 0 to sz-1 |] |];
+val img = [| [| pixel(i, j) | j in [| 0 to sz-1 |] |] | i in [| 0 to sz-1 |] |]
 
-()

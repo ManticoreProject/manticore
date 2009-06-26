@@ -21,4 +21,4 @@ fun numsToS ns =
     "[" ^ s ^ "]"
   end;
 
-print ((numsToS cubes) ^ "\n     (expected cubes for 0,1,...,10)\n")
+val _ = print ((numsToS cubes) ^ "\n     (expected cubes for 0,1,...,10)\n")
