@@ -497,10 +497,19 @@ structure ArityRaising : sig
                               (vmap, pmap)
 			    end
 			| (C.Switch(x, cases, dflt)) => let
+                              (* Switch is used for datatype dispatch. Therefore, add
+                               * not only the variable being used but also the parent of
+                               * the path, as very often that variable represents the type
+                               * tag of a datatype.
+                               *)
                             val unsafeParams = (
                                 case ParamMap.find(vmap, VAR x)
                                  of NONE => unsafeParams
-                                  | SOME p => p::unsafeParams
+                                  | SOME p => (
+                                    case p
+                                     of SEL(_, p') => p::(p'::unsafeParams)
+                                      | PARAM(_) => p::unsafeParams
+                                    (* end case *))
                             (* end case *))
 			    val (vmap, pmap) = (case dflt
 				   of SOME e => doExp(vmap, pmap, e, unsafeParams)
@@ -807,7 +816,7 @@ structure ArityRaising : sig
 	  fun flattenApplyThrow (ppt, g, args, retArgs) = if isCandidate g
 		then let 
 		  val {sign, params, rets, flat=SOME(f), flatParams=SOME(fParams), ...} = getInfo g
-		  fun genCall (sign, params, newArgs, progress) =
+		  fun genCall (sign, params, newArgs, progress, args') =
                         if null sign
 			  then (case retArgs
 			     of SOME(retArgs) => let
@@ -825,10 +834,10 @@ structure ArityRaising : sig
 			  else let
 			    fun genResult (varBase, path) =
                                   if length path = 0
-				  then genCall (tl sign, tl params, varBase :: newArgs, NONE)
+				  then genCall (tl sign, tl params, varBase :: newArgs, NONE, args')
 				  else (
                                       case peekAlias ((hd path), varBase)
-                                       of SOME (v') => genCall (sign, params, newArgs, SOME (v', tl path))
+                                       of SOME (v') => genCall (sign, params, newArgs, SOME (v', tl path), args')
                                         | NONE => let
 				              val newType = (
                                                   case CV.typeOf varBase
@@ -844,9 +853,9 @@ structure ArityRaising : sig
 				          in
 				              if length path = 1
 					      then C.mkLet ([newVar], rhs,
-					                    genCall (tl sign, tl params, newVar :: newArgs, NONE))
+					                    genCall (tl sign, tl params, newVar :: newArgs, NONE, args'))
 					      else C.mkLet ([newVar], rhs,
-					                    genCall (sign, params, newArgs, SOME (newVar, tl path)))
+					                    genCall (sign, params, newArgs, SOME (newVar, tl path), args'))
                                           end
                                       (* end case *))
 			    in
@@ -855,19 +864,46 @@ structure ArityRaising : sig
 				| NONE => let
 				    val (whichBase, path)::_ = sign
                                     val param = hd params
-				    val varBase = List.nth (args, whichBase)
+				    val varBase = List.nth (args', whichBase)
 				    in
                                       (* Flattened functions will lose any useless parameters.
                                        * We know they only have known call sites (by construction).
                                        *)
                                       if shouldSkipUseless param
-                                      then genCall (tl sign, tl params, newArgs, NONE)
+                                      then genCall (tl sign, tl params, newArgs, NONE, args')
 				      else genResult (varBase, path)
 				    end
 			      (* end case *)
                             end
+                  fun cleanupArgsBeforeCall (sign, params, newArgs, progress,
+                                             paramType::paramTypes, arg::orig, accum) =
+                      let
+                          val argType = CV.typeOf arg
+                      in
+                          if CPSTyUtil.equal (paramType, argType)
+                          then cleanupArgsBeforeCall (sign, params, newArgs, progress, paramTypes, orig, arg::accum)
+                          else let
+                                  val typed = CV.new ("coerced", paramType)
+                              in
+                                  C.mkLet ([typed], C.Cast(paramType, arg),
+                                           cleanupArgsBeforeCall (sign, params, newArgs, progress,
+                                                                  paramTypes, orig, typed::accum))
+                              end
+                      end
+                    | cleanupArgsBeforeCall (sign, params, newArgs, progress, paramTypes, [], accum) =
+                      genCall (sign, params, newArgs, progress, rev accum)
+                    | cleanupArgsBeforeCall (sign, params, newArgs, progress, _, _, accum) =
+                      raise Fail (concat["Can't happen - call to method had mismatched arg/params.",
+                                         CV.toString g])
+                  val CTy.T_Fun(paramTypes, _)  = CV.typeOf g
 		  in
-                    genCall (sign, fParams, [], NONE)
+                    (* Often, original tupled arguments are of type :any instead of what
+                     * they will be at the landing site of the call, relying on Apply to
+                     * implicitly cast them. Since we're checking types in our flat-sels
+                     * above, if the original argument is not of the type it would have
+                     * when the Apply lands, we cast it here and use that instead.
+                     *)
+                    cleanupArgsBeforeCall (sign, fParams, [], NONE, paramTypes, args, [])
 		  end
 		else let (* Not a call to a candidate function. Keep arguments in place *)
                         fun translateArgs (v::vl, accum, final) =
