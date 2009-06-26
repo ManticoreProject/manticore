@@ -399,6 +399,17 @@ void VProcSleep (VProc_t *vp)
 
 }
 
+static struct timespec TimespecAdd (struct timespec time1, struct timespec time2)
+{
+    struct timespec result;
+    result.tv_sec = time1.tv_sec + time2.tv_sec ;
+    result.tv_nsec = time1.tv_nsec + time2.tv_nsec ;
+    if (result.tv_nsec > 1000000000L) {			/* Carry? */
+        result.tv_sec++ ;  result.tv_nsec = result.tv_nsec - 1000000000L ;
+    }
+    return result;
+}
+
 /*! \brief put the vproc to sleep. the vproc unblocks when either a signal arrives or the given time has elapsed.
  *  \param vp the vproc that is being put to sleep
  *  \param sec the number of seconds to sleep.
@@ -406,7 +417,10 @@ void VProcSleep (VProc_t *vp)
  */
 void VProcNanosleep (VProc_t *vp, Time_t sec, Time_t nsec)
 {
-    struct timespec timeToWait;
+    struct timespec delta, currTime, timeToWake;
+
+    delta.tv_sec = sec;
+    delta.tv_nsec = nsec;
 
     assert (vp == VProcSelf());
 
@@ -414,22 +428,22 @@ void VProcNanosleep (VProc_t *vp, Time_t sec, Time_t nsec)
 
 #ifndef NDEBUG
     if (DebugFlg)
-        SayDebug("[%2d] VProcNanosleep for %llu seconds and %llu nanoseconds\n", vp->id, sec, nsec);
+        SayDebug("[%2d] VProcNanosleep for %lu seconds and %lu nanoseconds\n", vp->id, (uint64_t)sec, (uint64_t)nsec);
 #endif
 
     MutexLock(&(vp->lock));
 #if HAVE_CLOCK_GETTIME
-	clock_gettime (CLOCK_REALTIME, &timeToWait);
-	timeToWait.tv_sec += sec;
-	timeToWait.tv_nsec += nsec;
+	clock_gettime (CLOCK_REALTIME, &currTime);
 #else
 	struct timeval t;
 	gettimeofday (&t, 0);
-	timeToWait.tv_sec = sec + t.tv_sec;
-	timeToWait.tv_nsec = nsec + t.tv_usec * 1000;
+	currTime.tv_sec = t.tv_sec;
+	currTime.tv_nsec = t.tv_usec * 1000;
 #endif
+      /* wall clock time indicating when the vproc should wake */
+	timeToWake = TimespecAdd (delta, currTime);
 	AtomicWriteValue (&(vp->sleeping), M_TRUE);
-	while (CondTimedWait (&(vp->wait), &(vp->lock), &timeToWait))
+	while (CondTimedWait (&(vp->wait), &(vp->lock), &timeToWake))
 	  if (vp->landingPad != M_NIL)
 	    break;
 	AtomicWriteValue (&(vp->sleeping), M_FALSE);
