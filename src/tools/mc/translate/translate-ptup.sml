@@ -8,11 +8,13 @@
  * 
  * Our translation extends the Cilk-5 technique by adding lazy promotion. That is, we
  * defer any promotions to the slow clone.
+ *
+ * TODO: treat trivial computations specially, since there is no point in generating clones for them 
  *)
 
 structure TranslatePTup  : sig
 
-  (* An AST to BOM translation of parrays to ropes. *)
+  (* precondition: length es > 1 *)
     val tr : {
 	  supportsExceptions : bool,
 	  env : TranslateEnv.env,
@@ -107,13 +109,7 @@ structure TranslatePTup  : sig
     end
 
     (* version of the translation that does not support exceptions *)
-    fun trWithoutExh {env, es = []} = 
-	let
-	    val x = BV.new ("x", BTy.unitTy)
-	in
-	    B.mkStmt ([x], B.E_Const(Lit.unitLit, BTy.unitTy), B.mkRet [x])
-	end
-      | trWithoutExh {env, es = es as e_0 :: es_1toM} =
+    fun trWithoutExh (env, es as e_0 :: es_1toM) =
 	let
 
 	    val n = List.length es
@@ -259,13 +255,7 @@ structure TranslatePTup  : sig
 	end
 
     (* version of the translation that supports exceptions *)
-    fun trWithExh {env, es = []} = 
-	let
-	    val x = BV.new ("x", BTy.unitTy)
-	in
-	    B.mkStmt ([x], B.E_Const(Lit.unitLit, BTy.unitTy), B.mkRet [x])
-	end
-      | trWithExh {env, es = es as e_0 :: es_1toM} =
+    fun trWithExh (env, es as e_0 :: es_1toM) =
 	let
 
 	    val n = List.length es
@@ -445,7 +435,115 @@ structure TranslatePTup  : sig
 				     B.mkLet ([v_0], B.mkCont (exh', e_0'), fastClone (1, thunkVs_1toM, slowClones_1toM, [v_0]))
 				 end)))))
 	end
-    fun tr {supportsExceptions=false, env, es} = trWithoutExh {env=env, es=es}
-      | tr {supportsExceptions=true, env, es} = trWithExh {env=env, es=es}
+
+    (* log : real -> (real -> real) *)
+    fun log base x = Math.ln x / Math.ln base
+
+    (* ceilingLog : (int * int) -> int *)
+    fun ceilingLog (b, x) = ceil (log (Real.fromInt b) (real x))
+
+    (* returns the digits of x written as a base-k integer. digits are ordered from least to most significant *)
+    (* e.g., baseKDigits (2, 4) ==> [0, 0, 1] *)
+    (* precondition: x is nonnegative *)
+    fun baseKDigits (k, x) =
+	if x < 0 then
+	    raise Fail "only nonnegative integers are supported"
+	else if x = 0 then
+	    [0]
+	else 
+	    let
+		fun lp 0 = []
+		  | lp x = x mod k :: lp (x div k)
+	    in
+		lp x
+	    end
+
+    (* find the selection path from the root to the ith element of a k-nested n-tuple *)
+    fun path (k, n, i) = 
+	let 
+	    val ds = baseKDigits (k, i)
+	    val p = ceilingLog (k, n) - List.length ds
+	in
+	    List.rev (if p < 1 then
+			  ds
+		      else
+			  ds @ List.tabulate (p, fn _ => 0))
+	end
+
+    (* constructs the expression #ix0(#ix1(...(#ixn-1(tup)))) and hands the result to f *)
+    fun nestedSelect (tup : BV.var, ixs : int list, f : BV.var -> B.exp) : B.exp =
+	let
+	    fun mk (prev, _, []) = f prev
+	      | mk (prev, BTy.T_Tuple (_, tys), d :: ds) =
+		let
+		    val ty = List.nth (tys, d)
+		    val v = BV.new ("v", ty)
+		in
+		    B.mkStmt ([v], B.E_Select (d, prev),
+			      mk (v, ty, ds))
+		end
+	in
+	    mk (tup, BV.typeOf tup, ixs)
+	end
+
+    (* flatten the k-nested ptuple tup of length n *)
+    fun flatten (tup : BV.var, k, n, flatTy) : B.exp =
+	let 
+	    fun lp (i, vs) =
+		if i = n then
+		    let 
+			val flatTup = BV.new ("flattenedTup", flatTy)
+		    in
+			B.mkStmt ([flatTup], B.E_Alloc (flatTy, List.rev vs),
+				 B.mkRet [flatTup])
+		    end
+		else
+		    nestedSelect (tup, path (k, n, i), fn v =>
+							  lp (i + 1, v :: vs))
+	in
+	    lp (0, [])
+	end
+
+    (* partition the list xs of length n into length-k sublists annotated with sublist length *)
+    (* e.g., partition (2, 3, [1,2,3]) ==> [(2, [1,2]), (1, [3])] *)
+    fun partition (k, n, xs) = 
+	if n <= k then
+	    [(n, xs)]
+	else
+	    (n - k, List.take (xs, k)) :: partition (k, n - k, List.drop (xs, k))
+
+    val k = 4          (* maximum number of elements in a flat ptuple *)
+
+    fun tr {supportsExceptions, env, es} = 
+	if List.length es <= 1 then
+	    raise Fail "compiler bug in TranslatePTup: the size of the input ptuple must be > 1"
+	else
+	    let
+		val tr' = if supportsExceptions then
+			      trWithExh
+			  else 
+			      trWithoutExh
+		val n = List.length es
+	    in
+		if n <= k then
+		    tr' (env, es)
+		else
+		    let
+			(* decompose a parallel tuple into nested parallel tuples of size k *)
+			(* e.g., consider decomp of a parallel tuple where n = 3 and k = 2
+			 *   (| e1,e2,e3 |)  ==>  (| (| e1,e2 |),e3 |)
+			 *)
+			fun decomp (n, es) =
+			    if n <= k then
+				tr' (env, es)
+			    else 
+				tr' (env, List.map decomp (partition (k, n, es)))
+			val nestedEs = decomp (length es, es)
+			val nestedEsV = BV.new ("nestedEsV", List.hd (BOMUtil.typeOfExp nestedEs))
+			val flatTy = BTy.T_Tuple (false, List.map (List.hd o BOMUtil.typeOfExp) es)
+		    in
+			B.mkLet ([nestedEsV], nestedEs, flatten (nestedEsV, k, n, flatTy))
+		    end
+	    end
 
   end
