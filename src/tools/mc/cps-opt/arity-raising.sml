@@ -629,7 +629,7 @@ structure ArityRaising : sig
     end
 
     fun scanUseful (m, round) = let
-	  val C.MODULE{body=body,...} = m
+	  val C.MODULE{body,externs,...} = m
 	  val C.FB{f=main,params,rets,body} = body
 	  val usefuls = ref (!escaping @ [main])
 	  val changed = ref false
@@ -656,14 +656,22 @@ structure ArityRaising : sig
 		  | _ => ()
 		(* end case *))
 	  fun markCorresponding (a,b) = if getUseful a then markUseful b else ()
-	  fun isEffectful rhs = (case rhs
-		 of C.Prim (primop) => not(PrimUtil.isPure primop)
-		  | C.Update _ => true
-(* FIXME: should check for pure C functions *)
-		  | C.CCall _ => true
-		  | C.VPStore _ => true
-		  | _ => false
-	       (* end case *))
+	  fun isEffectful rhs = (
+              case rhs
+	       of C.Prim (primop) => not(PrimUtil.isPure primop)
+		| C.Update _ => true
+		| C.CCall (f, _) => let
+                      fun findCCall (cFun) = CV.same (CFunctions.varOf cFun, f)
+                      val cCall = List.filter findCCall externs
+                  in
+                      if List.length cCall = 1
+                      then not (CFunctions.isPure (List.hd cCall))
+                      else true
+                  end
+		| C.VPStore _ => true
+		| _ => false
+                                                         (* end case *))
+
 	  fun processLambda f = let
 		val SOME(C.FB {body,params,rets,...}) = getFB f
 		fun processBody () = (
@@ -707,7 +715,6 @@ structure ArityRaising : sig
 		    List.app (fn (_, e) => processExp e) cases;
 		    Option.app processExp dflt;
 		    markUseful x)
-		(* TODO: maybe check equivalentFns instead of just the straight binding? *)
 		| C.Apply (f, args, rets) => (
 		    case getFB f
 		     of SOME(C.FB{params,rets=conts,...}) => let
