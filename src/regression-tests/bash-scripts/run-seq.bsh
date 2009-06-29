@@ -35,14 +35,17 @@ do
 	 status=$(diff $fname.test $fname.ok | wc -l)
 	 if [ $status -eq "0" ] ; then
 	   echo "***** Check succeeded for goal $g in file $f." >> $REPORT
+	   echo "ok" >> $LOG
 	   echo "ok"
 	 else
 	   echo "***** Check failed for goal $g in file $f." >> $REPORT
 	   diff $fname.test $fname.ok >> $REPORT
+	   echo "fail" >> $LOG
 	   echo "fail"
 	 fi
        else
 	 echo "***** Compile failed for goal $g in file $f." >> $REPORT
+	 echo "fail" >> $LOG
 	 echo "fail"
        fi
        rm -f a.out $fname.s $fname.test
