@@ -628,6 +628,22 @@ structure ArityRaising : sig
     fun getProcessState f = getFn f
     end
 
+    fun isEffectful (rhs, externs) = (
+        case rhs
+	 of C.Prim (primop) => not(PrimUtil.isPure primop)
+	  | C.Update _ => true
+	  | C.CCall (f, _) => let
+                fun findCCall (cFun) = CV.same (CFunctions.varOf cFun, f)
+                val cCall = List.filter findCCall externs
+            in
+                if List.length cCall = 1
+                then not (CFunctions.isPure (List.hd cCall))
+                else true
+            end
+	  | C.VPStore _ => true
+	  | _ => false
+    (* end case *))
+
     fun scanUseful (m, round) = let
 	  val C.MODULE{body,externs,...} = m
 	  val C.FB{f=main,params,rets,body} = body
@@ -656,21 +672,6 @@ structure ArityRaising : sig
 		  | _ => ()
 		(* end case *))
 	  fun markCorresponding (a,b) = if getUseful a then markUseful b else ()
-	  fun isEffectful rhs = (
-              case rhs
-	       of C.Prim (primop) => not(PrimUtil.isPure primop)
-		| C.Update _ => true
-		| C.CCall (f, _) => let
-                      fun findCCall (cFun) = CV.same (CFunctions.varOf cFun, f)
-                      val cCall = List.filter findCCall externs
-                  in
-                      if List.length cCall = 1
-                      then not (CFunctions.isPure (List.hd cCall))
-                      else true
-                  end
-		| C.VPStore _ => true
-		| _ => false
-                                                         (* end case *))
 
 	  fun processLambda f = let
 		val SOME(C.FB {body,params,rets,...}) = getFB f
@@ -697,7 +698,7 @@ structure ArityRaising : sig
 	     *)
 	       of C.Let ([var], rhs, body) => (
 		    processExp body;
-		    if isEffectful rhs then setUseful var else ();
+		    if isEffectful (rhs, externs) then setUseful var else ();
 		    if getUseful var then processRhs rhs else ())
 		| C.Let ([], rhs, body) => (
 		    processExp body;
@@ -1068,6 +1069,65 @@ structure ArityRaising : sig
 		})
 	    }
 	end
+        
+    (*
+     * Given our incremental approach to flattening and useless elimination, it would be
+     * technically better to iterate CFA+flat+useless+Census+contract to a fixpoint. However,
+     * that's really slow. Doing these next two cleanup passes (remove zero-count let bindings
+     * and then zero-count parameters) catches the vast majority of what's left after a single
+     * iteration of CFA+flat+usless+census.
+     *)
+    fun cleanupBody (C.MODULE{name,externs,body=(C.FB{f=main,params=modParams,rets=modRets,body=modBody})}) = let
+        fun decCountsRHS (rhs) = (
+            case rhs
+             of C.Var (vars) => List.app Census.decUseCnt vars
+	      | C.Cast (_, v) => Census.decUseCnt v
+	      | C.Const (_, _) => ()
+	      | C.Select (_, v) => Census.decUseCnt v
+	      | C.Update (_, v, x) => (Census.decUseCnt v; Census.decUseCnt x)
+	      | C.AddrOf (_, v) => Census.decUseCnt v
+	      | C.Alloc (_, vars) => List.app Census.decUseCnt vars
+	      | C.Promote (v) => Census.decUseCnt v
+	      | C.Prim p => PrimUtil.app Census.decUseCnt p
+	      | C.CCall (f, args) => (Census.decUseCnt f ; List.app Census.decUseCnt args)
+	      | C.HostVProc => ()
+	      | C.VPLoad (_, v) => Census.decUseCnt v
+	      | C.VPStore (_, v1, v2) => (Census.decUseCnt v1; Census.decUseCnt v2)
+	      | C.VPAddr (_, v) => Census.decUseCnt v
+        (* end case *))
+
+        fun cleanupExp (exp as C.Exp(ppt, e)) = (
+            case e
+             of C.Let ([x], rhs, e) =>
+                if CV.useCount x > 0 orelse isEffectful (rhs, externs)
+                then C.mkLet ([x], rhs, cleanupExp e)
+                else (decCountsRHS rhs; cleanupExp e)
+              | C.Let (vars, rhs, e) => C.mkLet (vars, rhs, cleanupExp e)
+              | C.Fun (lambdas, body) => let
+                    val lambdas = List.map cleanupLambda lambdas
+                    val body = cleanupExp body
+                in
+                    C.mkFun (lambdas, body)
+                end
+              | C.Cont (f, body) => C.mkCont (cleanupLambda f, cleanupExp body)
+              | C.If (v, e1, e2) => C.mkIf (v, cleanupExp e1, cleanupExp e2)
+              | C.Switch (v, cases, body) => C.mkSwitch(v, List.map (fn (tag,e) => (tag, cleanupExp e))
+                                                                    cases, Option.map cleanupExp body)
+              | C.Apply (f, args, retArgs) => C.mkApply (f, args, retArgs)
+              | C.Throw (k, args) => C.mkThrow (k, args)
+                (* end case *))
+        and cleanupLambda (lambda as C.FB{f, params, rets, body}) =
+            C.mkLambda(C.FB{f=f,params=params,rets=rets,body=cleanupExp body})
+    in
+        C.MODULE{
+	name=name, externs=externs,
+	body = C.mkLambda(C.FB{
+                          f=main,params=modParams,rets=modRets,
+                          body= cleanupExp (modBody)
+		         })
+	}
+    end
+        
     (*
      * Flatten+useless elim can leave around useCnt=0 params on flattened functions.
      * This removes them, cleans up the types, and cleans up the call sites.
@@ -1146,7 +1206,6 @@ structure ArityRaising : sig
 		    val newType = CTy.T_Fun (List.map CV.typeOf params', List.map CV.typeOf rets')
                     val _ = CV.setType (f, newType)
                     val fb = C.FB{f=f,params=params',rets=rets',body=cleanupExp body}
-                    val _ = setFB (f, fb)
                 in
                     C.mkLambda(fb)
                 end
@@ -1167,13 +1226,15 @@ structure ArityRaising : sig
 	    val candidates = analyse m
             val _ = scanUseful (m, 0)
 	    val m' = flatten m
+            (* FIXME: should mainain census counts! *)
+	    val _ = Census.census m'
+            val m' = cleanupBody m'
+            val m' = cleanupParams m'
 	    in
 	      if !flatteningDebug
 		then List.app printCandidate candidates
 		else ();
-(* FIXME: should mainain census counts! *)
-	      Census.census m';
-              cleanupParams m'
+              m'
 	    end
 	  else m
 
