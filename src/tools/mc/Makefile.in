@@ -76,7 +76,7 @@ build:		$(HEAP_IMAGE) test/$(PROGRAM)
 test/$(PROGRAM):	$(HEAP_IMAGE)
 	$(INSTALL_SMLNJ_WRAPPER) $(PROGRAM) $(THISDIR)/test
 
-$(HEAP_IMAGE)
+$(HEAP_IMAGE):
 	$(ML_BUILD) $(ML_BUILD_FLAGS) $(ROOT_CM) Main.main $(PROGRAM)
 	touch $(HEAP_IMAGE)
 
