@@ -18,19 +18,22 @@ structure FreeVars : sig
 
   end = struct
 
+    structure PPt = ProgPt
     structure V = CPS.Var
+    structure VSet = V.Set
 
 (* +DEBUG *)
     fun prSet s = (
 	  print "{";
-	  V.Set.foldl
+	  VSet.foldl
 	    (fn (x, false) => (print("," ^ V.toString x); false)
 	      | (x, true) => (print(V.toString x); false)
 	    ) true s;
 	  print "}")
 (* -DEBUG*)
 
-    val {getFn = getFV, setFn = setFV, ...} = V.newProp (fn _ => V.Set.empty)
+    val {getFn = getFV, setFn = setFV, ...} = V.newProp (fn _ => VSet.empty)
+    val {getFn = getFVOfPt, setFn = setFVOfPt, ...} = PPt.newProp (fn _ => VSet.empty)
 
   (* is a variable externally bound? *)
     fun isExtern x = (case V.kindOf x
@@ -41,11 +44,11 @@ structure FreeVars : sig
   (* functions to add free variables to a set; if the variable is extern,
    * then it is ignored.
    *)
-    fun addVar (fv, x) = if isExtern x then fv else V.Set.add(fv, x)
+    fun addVar (fv, x) = if isExtern x then fv else VSet.add(fv, x)
     fun addVars (fv, []) = fv
       | addVars (fv, x::xs) = addVars(addVar(fv, x), xs)
 
-    fun remove (s, x) = V.Set.delete (s, x) handle _ => s
+    fun remove (s, x) = VSet.delete (s, x) handle _ => s
     fun removes (s, xs) = List.foldl (fn (x, s) => remove (s, x)) s xs
 
   (* extend a set of free variables by the variables in a RHS *)
@@ -67,12 +70,12 @@ structure FreeVars : sig
   (* return the variable of a lambda *)
     fun funVar (CPS.FB{f, ...}) = f
 
-    fun analExp (fv, CPS.Exp(_, e)) = (case e
-	   of CPS.Let(xs, rhs, e) => removes(analExp (fvOfRHS (fv, rhs), e), xs)
+    fun analExp (CPS.Exp(_, e)) = (case e
+	   of CPS.Let(xs, rhs, e) => removes (fvOfRHS(analExp e, rhs), xs)
 	    | CPS.Fun(fbs, e) => let
 	      (* first, compute the union of the free variables of the lambdas *)
-		fun f (fb, fv) = V.Set.union(analFB fb, fv)
-		val fbEnv = List.foldl f V.Set.empty fbs
+		fun f (fb, fv) = VSet.union(analFB fb, fv)
+		val fbEnv = List.foldl f VSet.empty fbs
 	      (* then remove the function names from the free variable set *)
 		fun g (fb, fv) = remove(fv, funVar fb)
 		val fbEnv = List.foldl g fbEnv fbs
@@ -80,7 +83,7 @@ structure FreeVars : sig
 		(* record the environment for the lambdas *)
 		  List.app (fn fb => setFV (funVar fb, fbEnv)) fbs;
 		(* also remove the function names from the free variables of e *)
-		  List.foldl g (analExp (V.Set.union(fv, fbEnv), e)) fbs
+		  List.foldl g (VSet.union(analExp e, fbEnv)) fbs
 		end
 	    | CPS.Cont(fb, e) => let
 	      (* compute the free variables of the lambda *)
@@ -89,34 +92,46 @@ structure FreeVars : sig
 		val fbEnv = remove(fbEnv, funVar fb)
 		in
 		  setFV (funVar fb, fbEnv);
-		  remove (analExp (V.Set.union (fv, fbEnv), e), funVar fb)
+		  remove (VSet.union (fbEnv, analExp e), funVar fb)
 		end
-	    | CPS.If(cond, e1, e2) => analExp (analExp (addVars(fv, CondUtil.varsOf cond), e1), e2)
-	    | CPS.Switch(x, cases, dflt) => 
-                List.foldl (fn ((_,e), fv) => analExp (fv, e))
-                           (let
-                               val fv = addVar (fv, x)
-                            in 
-                               case dflt of
-                                  SOME e => analExp (fv, e)
-                                | NONE => fv
-                            end)
-                           cases
-	    | CPS.Apply(f, args, rets) => addVars(fv, f::args@rets)
-	    | CPS.Throw(k, args) => addVars(fv, k::args)
+	    | CPS.If(cond, e1, e2) => let
+		val fv1 = analExpAndRecord e1
+		val fv2 = analExpAndRecord e2
+		in
+		  addVars (VSet.union(fv1, fv2), CondUtil.varsOf cond)
+		end
+	    | CPS.Switch(x, cases, dflt) => let
+		fun doCase ((_, e), fv) = VSet.union (fv, analExpAndRecord e)
+		val fv = List.foldl doCase VSet.empty cases
+		in
+		  case dflt
+		   of SOME e => VSet.union(fv, analExpAndRecord e)
+		    | NONE => fv
+		  (* end case *)
+		end
+	    | CPS.Apply(f, args, rets) => addVars(VSet.empty, f::args@rets)
+	    | CPS.Throw(k, args) => addVars(VSet.empty, k::args)
 	  (* end case *))
+
+  (* analyze and record the free variables of an expression *)
+    and analExpAndRecord (e as CPS.Exp(ppt, _)) = let
+	  val fv = analExp e
+	  in
+	    setFVOfPt (ppt, fv);
+	    fv
+	  end
 
   (* compute the free variables of a lambda; the resulting set may include
    * the lambda's name.
    *)
-    and analFB (CPS.FB{f, params, rets, body}) = V.Set.difference (
-	  analExp (V.Set.empty, body),
-	  addVars (addVars(V.Set.empty, params), rets))
+    and analFB (CPS.FB{f, params, rets, body}) = VSet.difference (
+	  analExp body,
+	  addVars (addVars(VSet.empty, params), rets))
 
     fun analyze (CPS.MODULE{name, externs, body, ...}) = let
 	  val fv = analFB body
 	  in
-	    if V.Set.isEmpty fv
+	    if VSet.isEmpty fv
 	      then ()
 	      else (
 		print(concat["FV(", Atom.toString name, ") = "]);
@@ -138,37 +153,6 @@ structure FreeVars : sig
 	    fv
 	  end
 
-    fun freeVarsOfExp exp = let
-	  fun analFB fb = getFV(funVar fb)
-	  fun analExp (fv, CPS.Exp(_, e)) = (case e
-		 of CPS.Let(xs, rhs, e) => removes(analExp (fvOfRHS (fv, rhs), e), xs)
-		  | CPS.Fun(fbs, e) => let
-		    (* first add the free variables of the lambdas to fv *)
-		      fun f (fb, fv) = V.Set.union(analFB fb, fv)
-		      val fv = List.foldl f fv fbs
-		      in
-		      (* remove the function names from the free variables of e *)
-			List.foldl (fn (fb, fv) => remove(fv, funVar fb)) (analExp (fv, e)) fbs
-		      end
-		  | CPS.Cont(fb, e) =>
-		      remove (analExp (V.Set.union (fv, analFB fb), e), funVar fb)
-		  | CPS.If(cond, e1, e2) =>
-		      analExp (analExp (addVars(fv, CondUtil.varsOf cond), e1), e2)
-		  | CPS.Switch(x, cases, dflt) => 
-                      List.foldl (fn ((_,e), fv) => analExp (fv, e))
-                                 (let
-                                     val fv = addVar (fv, x)
-                                  in
-                                     case dflt of
-                                        SOME e => analExp (fv, e)
-                                      | NONE => fv
-                                  end)
-                                 cases
-		  | CPS.Apply(f, args, rets) => addVars(fv, f::args@rets)
-		  | CPS.Throw(k, args) => addVars(fv, k::args)
-		(* end case *))
-	  in
-	    analExp (V.Set.empty, exp)
-	  end
+    fun freeVarsOfExp (CPS.Exp(ppt, _)) = getFVOfPt ppt
 
   end
