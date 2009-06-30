@@ -79,8 +79,10 @@ structure Unify : sig
 		  | (Ty.VarTy tv1, Ty.VarTy tv2) => TyVar.same(tv1, tv2)
 		  | (_, Ty.VarTy _) => raise Fail ""
 		  | (Ty.VarTy _, _) => raise Fail ""
-		  | _ => 
-(print (TypeUtil.fmt {long=true} ty1^" "^TypeUtil.fmt {long=true} ty2^"\n"); false) 
+		  | _ =>
+(print (concat["unification failure:\n  ", TypeUtil.fmt {long=true} ty1,
+"\n  ", TypeUtil.fmt {long=true} ty2, "\n"]);
+false)
 	       (* end case *))
 	(* unify a type with an uninstantiated meta-variable *)
 	  and unifyWithMV (ty, mv as Ty.MVar{info, ...}) = let
