@@ -74,7 +74,8 @@ structure Contract : sig
 		fun chainElim targetLab = (case lookupFunc targetLab
 		       of C.FUNC{body=[], exit=C.Goto(lab, _), ...} => (
 			    ST.tick cntJumpChain;
-			    Census.decLab lab;
+			    Census.decLab targetLab;
+			    Census.incLab lab;
 			    chainElim lab)
 			| _ => targetLab
 		      (* end case *))
