@@ -8,9 +8,10 @@ val (ns : int parray) = [| 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
                            10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
                            10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
                            10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
-                           10, 10, 10, 10, 10, 10, 10, 10, 10, 10 |];
+                           10, 10, 10, 10, 10, 10, 10, 10, 10, 10 |]
                         (* That's 1100 total. *)
 
-val s = sumP ns;
+fun add (x, y) = x + y
+val s = reduceP (add, 0, ns)
 
-print ("The answer is " ^ (itos s) ^ ". (Expected 1100.)\n")
+val _ = Print.print ("The answer is " ^ (Int.toString s) ^ ". (Expected 1100.)\n")

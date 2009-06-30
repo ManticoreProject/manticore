@@ -9,7 +9,6 @@
  * Our translation extends the Cilk-5 technique by adding lazy promotion. That is, we
  * defer any promotions to the slow clone.
  *
- * TODO: treat trivial computations specially, since there is no point in generating clones for them 
  *)
 
 structure TranslatePTup  : sig
@@ -31,15 +30,36 @@ structure TranslatePTup  : sig
     structure E = TranslateEnv
     structure Lit = Literal
 
-    val findBOMTy = E.findBOMTyByPath
-    val findHLOp = E.findBOMHLOpByPath
+    (* returns true if the given expression might involve some non-trivial computation, e.g., a computation
+     * that is worth running in parallel. *)
+    (*
+     TODO: avoid generating slow clones for trivial expressions
+    fun isNontrivialExp (B.E_Pt (_, e)) = isNontrivialTerm e
+
+    and isNontrivialTerm (B.E_Let (_, e, e')) = isNontrivialExp e orelse isNontrivialExp e'
+      | isNontrivialTerm (B.E_Stmt (_, rhs, e)) = isNontrivialRHS rhs orelse isNontrivialExp e
+      | isNontrivialTerm (B.E_Fun (_, e)) = isNontrivialExp e
+      | isNontrivialTerm (B.E_Cont (_, e)) = isNontrivialExp e
+      | isNontrivialTerm (B.E_If (_, e1, e2)) = isNontrivialExp e1 orelse isNontrivialExp e2
+      | isNontrivialTerm (B.E_Case (_, pexps, NONE)) = List.exists (isNontrivialExp o #2) pexps
+      | isNontrivialTerm (B.E_Case (_, pexps, SOME e)) = List.exists (isNontrivialExp o #2) pexps orelse
+							 isNontrivialExp e
+      | isNontrivialTerm (B.E_Apply _) = true
+      | isNontrivialTerm (B.E_Throw _) = true
+      | isNontrivialTerm (B.E_Ret _) = false
+      | isNontrivialTerm (B.E_HLOp _) = true
+
+    and isNontrivialRHS (B.E_CCall _) = true
+      | isNontrivialRHS _ = false
+     *)
 
     fun varOfLambda (B.FB {f, ...}) = f
 
     val intTy = BTy.T_Raw RawTypes.T_Int
     fun intRhs x = B.E_Const (Literal.Int (Int.toLarge x), intTy)
 
-    fun mkLets (binds : (BV.var list * BOM.exp) list, e') = List.foldl (fn ((x, e), e') => B.mkLet (x, e, e')) e' binds
+    fun mkLets (binds : (BV.var list * BOM.exp) list, e') = 
+	List.foldl (fn ((x, e), e') => B.mkLet (x, e, e')) e' binds
 
     fun unitVar () = BV.new("_unit", BTy.unitTy)
 
@@ -84,10 +104,11 @@ structure TranslatePTup  : sig
       | take1 (x :: xs) = xs
 
   (* implicit-thread creation *)
-    fun mkThread (k, exh) = B.mkHLOp (findHLOp ["ImplicitThread", "new-thread"], [k], [exh])
+    fun mkThread (k, exh) = B.mkHLOp (E.findBOMHLOpByPath ["ImplicitThread", "new-thread"], [k], [exh])
   (* scheduling operations *)
-    fun spawnThread (k, exh) = B.mkHLOp (findHLOp ["ImplicitThread", "spawn-thread"], [k], [exh])
-    fun removeThread (thread, exh) = B.mkHLOp (findHLOp ["ImplicitThread", "remove-thread"], [thread], [exh])
+    fun spawnThread (k, exh) = B.mkHLOp (E.findBOMHLOpByPath ["ImplicitThread", "spawn-thread"], [k], [exh])
+    fun removeThread (thread, exh) = 
+	B.mkHLOp (E.findBOMHLOpByPath ["ImplicitThread", "remove-thread"], [thread], [exh])
     local
 	    fun mkRaiseExn (env, exh) = 
 		let
@@ -104,7 +125,7 @@ structure TranslatePTup  : sig
     in
     fun mkStop (env, exh) = 
 	  B.mkLet([unitVar()], 
-		    B.mkHLOp(findHLOp["SchedulerAction", "stop"], [], []),
+		    B.mkHLOp(E.findBOMHLOpByPath["SchedulerAction", "stop"], [], []),
 	    mkRaiseExn(env, exh))
     end
 
@@ -176,7 +197,7 @@ structure TranslatePTup  : sig
 	    (* we create m slow clones *)
 	    val slowClones_1toM = 
 		List.tabulate (m, fn i => BV.new ("slowCloneThread_" ^ Int.toString (i + 1), 
-						      findBOMTy ["ImplicitThread", "thread"]))
+						      E.findBOMTyByPath ["ImplicitThread", "thread"]))
 	    fun mkSlowClones eNext = 
 		let
 		    (* evaluate the ith thunk and store the result in the result tuple *)
@@ -244,14 +265,14 @@ structure TranslatePTup  : sig
 			  ([oneV], one),
 			  ([c0], B.E_Alloc (BTy.T_Tuple (true, [intTy]), [oneV]))
 			  ],
-				     B.mkFun (thunks_1toM, 
-					      mkSlowClones (
-					      let
-						  val v_0 = BV.new ("v_0", ty_0)
-					      in
-						  B.mkLet ([v_0], e_0,
-							   fastClone (1, thunkVs_1toM, slowClones_1toM, [v_0]))
-					      end))))
+			     B.mkFun (thunks_1toM, 
+				      mkSlowClones (
+				      let
+					  val v_0 = BV.new ("v_0", ty_0)
+				      in
+					  B.mkLet ([v_0], e_0,
+						   fastClone (1, thunkVs_1toM, slowClones_1toM, [v_0]))
+				      end))))
 	end
 
     (* version of the translation that supports exceptions *)
@@ -270,11 +291,11 @@ structure TranslatePTup  : sig
 
 	    val exh = E.handlerOf env
 
-	    val cancelables_1toM = List.map (fn _ => BV.new ("ccbl", findBOMTy ["Cancelation", "cancelable"])) es_1toM
+	    val cancelables_1toM = List.map (fn _ => BV.new ("ccbl", E.findBOMTyByPath ["Cancelation", "cancelable"])) es_1toM
 
 	    fun mkCancelAll (exh, cs, e) =
 		mkLets (List.map (fn c => ([], 
-		      B.mkHLOp(findHLOp["Cancelation", "cancel"], [c], [exh]))) cs, e)
+		      B.mkHLOp(E.findBOMHLOpByPath["Cancelation", "cancel"], [c], [exh]))) cs, e)
 
 	    val thunks_1toM = 
 		let
@@ -354,7 +375,7 @@ structure TranslatePTup  : sig
 	    (* we create m = M slow clones *)
 	    val slowClones_1toM = 
 		List.tabulate (m, fn i => BV.new ("slowCloneThread_" ^ Int.toString (i + 1), 
-						      findBOMTy ["ImplicitThread", "thread"]))
+						      E.findBOMTyByPath ["ImplicitThread", "thread"]))
 	    fun mkSlowClones eNext = 
 		let
 		    (* evaluate the ith thunk and store the result in the result tuple *)
@@ -424,7 +445,7 @@ structure TranslatePTup  : sig
 			  ([oneV], one),
 			  ([c0], B.E_Alloc (BTy.T_Tuple (true, [intTy]), [oneV]))
 			  ],
-		mkLets (List.map (fn c => ([c], B.mkHLOp (findHLOp ["Cancelation", "new"], [], [exh]))) cancelables_1toM,
+		mkLets (List.map (fn c => ([c], B.mkHLOp (E.findBOMHLOpByPath ["Cancelation", "new"], [], [exh]))) cancelables_1toM,
 			B.mkFun (waitOns_Mm1to0 @ thunks_1toM, 
 				 mkSlowClones (
 				 let
@@ -474,7 +495,7 @@ structure TranslatePTup  : sig
     fun nestedSelect (tup : BV.var, ixs : int list, f : BV.var -> B.exp) : B.exp =
 	let
 	    fun mk (prev, _, []) = f prev
-	      | mk (prev, BTy.T_Tuple (_, tys), d :: ds) =
+	      | mk (prev, ty as BTy.T_Tuple (_, tys), d :: ds) =
 		let
 		    val ty = List.nth (tys, d)
 		    val v = BV.new ("v", ty)
@@ -499,20 +520,30 @@ structure TranslatePTup  : sig
 		    end
 		else
 		    nestedSelect (tup, path (k, n, i), fn v =>
-							  lp (i + 1, v :: vs))
+						  lp (i + 1, v :: vs))
 	in
 	    lp (0, [])
 	end
 
-    (* partition the list xs of length n into length-k sublists annotated with sublist length *)
-    (* e.g., partition (2, 3, [1,2,3]) ==> [(2, [1,2]), (1, [3])] *)
-    fun partition (k, n, xs) = 
-	if n <= k then
-	    [(n, xs)]
-	else
-	    (n - k, List.take (xs, k)) :: partition (k, n - k, List.drop (xs, k))
+    fun ceilDiv (x, y) = ceil (real x / real y)
 
-    val k = 4          (* maximum number of elements in a flat ptuple *)
+    (* partition the list xs into k sublists *)
+    (* precondition: n > k *)
+    fun partition (k, n, xs) = 
+	let
+	    val x = ceilDiv (n, k)
+	    fun doit (0, []) = []
+	      | doit (n, xs) = 
+		let
+		    val x' = Int.min (n, x)
+		in
+		    (x', List.take (xs, x')) :: doit (n - x', List.drop (xs, x'))
+		end
+	in
+	    doit (n, xs)
+	end
+
+    val k = 2          (* maximum number of elements in a flat ptuple *)
 
     fun tr {supportsExceptions, env, es} = 
 	if List.length es <= 1 then
@@ -533,7 +564,8 @@ structure TranslatePTup  : sig
 			(* e.g., consider decomp of a parallel tuple where n = 3 and k = 2
 			 *   (| e1,e2,e3 |)  ==>  (| (| e1,e2 |),e3 |)
 			 *)
-			fun decomp (n, es) =
+			fun decomp (1, [e]) = e
+			  | decomp (n, es) =
 			    if n <= k then
 				tr' (env, es)
 			    else 
