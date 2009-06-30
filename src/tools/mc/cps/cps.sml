@@ -152,4 +152,7 @@ structure CPS =
 	    cf
 	  end
 
+    fun mkLets ([], e) = e
+      | mkLets ((lhs, rhs)::r, e) = mkLet (lhs, rhs, mkLets(r, e))
+
   end
