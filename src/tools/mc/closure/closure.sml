@@ -39,6 +39,7 @@ structure Closure : sig
           }
 
     fun convert module = (
+	  ClassifyConts.analyze module;
 	  case Controls.get convertStyle
 	   of ConvertStyle.Flat => FlatClosure.convert module
 	    | ConvertStyle.FlatWithCFA => FlatClosureWithCFA.convert module

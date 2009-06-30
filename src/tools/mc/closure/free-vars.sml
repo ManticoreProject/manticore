@@ -6,6 +6,10 @@
 
 structure FreeVars : sig
 
+  (* compute the free-variable sets for the functions and continuations
+   * of a module.  We record the sets of functions, continuations, and
+   * the arms of conditionals and switches.
+   *)
     val analyze : CPS.module -> unit
 
   (* return the free variables of a function or continuation variable *)
@@ -110,7 +114,18 @@ structure FreeVars : sig
 		  (* end case *)
 		end
 	    | CPS.Apply(f, args, rets) => addVars(VSet.empty, f::args@rets)
-	    | CPS.Throw(k, args) => addVars(VSet.empty, k::args)
+	    | CPS.Throw(k, args) => let
+		val fv = addVars(VSet.empty, args)
+		in
+		(* if k is a join continuation, then we need to add its free
+		 * variables here to ensure that they will be present on the
+		 * path from where k is defined to here.  Otherwise, we add
+		 * k in as a free variable.
+		 *)
+		  if ClassifyConts.isJoinCont k
+		    then VSet.union(fv, getFV k)
+		    else addVar(fv, k)
+		end
 	  (* end case *))
 
   (* analyze and record the free variables of an expression *)

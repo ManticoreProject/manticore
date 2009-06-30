@@ -22,13 +22,38 @@ structure ClassifyConts : sig
 			 * a first-class continuation)
 			 *)
 
+    val kindToString : cont_kind -> string
+
   (* return the kind of  a continuation *)
     val kindOfCont : CPS.var -> cont_kind
+
+  (* is k a join continuation?  This returns false when classification is
+   * disabled.
+   *)
+    val isJoinCont : CPS.var -> bool
 
   end = struct
 
     structure C = CPS
     structure CV = CPS.Var
+    structure ST = Stats
+
+  (* controls *)
+    val enableFlg = ref true
+
+    val () = List.app (fn ctl => ControlRegistry.register ClosureControls.registry {
+	      ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
+	      envName = NONE
+	    }) [
+	      Controls.control {
+		  ctl = enableFlg,
+		  name = "enable-join-opt",
+		  pri = [0, 1],
+		  obscurity = 0,
+		  help = "enable optimization of join continuations"
+		}
+	    ]
+
 
     type context = C.var	(* function or continuation that encloses
 				 * the expression in question.
@@ -48,10 +73,18 @@ structure ClassifyConts : sig
 			 * a first-class continuation)
 			 *)
 
+    fun kindToString JoinCont = "JoinCont"
+      | kindToString ReturnCont = "ReturnCont"
+      | kindToString ParamCont = "ParamCont"
+      | kindToString OtherCont = "OtherCont"
+
+  (********** Counters for statistics **********)
+    val cntJoinCont	= ST.newCounter "clos:join-cont"
+
   (* the outer context of a letcont-bound variable *)
     local
       val {peekFn, setFn : C.var * context -> unit, ...} =
-	    CV.newProp (fn _ => raise Fail "nesting"
+	    CV.newProp (fn _ => raise Fail "nesting")
     in
     val getOuter = peekFn
     val setOuter = setFn
@@ -65,12 +98,12 @@ structure ClassifyConts : sig
     fun initUse k = setFn(k, ref[])
     fun addUse (outer, k) = (case peekFn k
 	   of NONE => ()
-	    | r => r := outer :: !r
+	    | SOME r => r := outer :: !r
 	  (* end case *))
-    fun clrUse k = clrFn k
+    fun clrUses k = clrFn k
     fun usesOf k = (case peekFn k
-	   of SOME xs => (clrUse k; xs)
-	    | NONE => raise Fail "expected uses of join cont"
+	   of SOME xs => !xs
+	    | NONE => []
 	  (* end case *))
     end
 
@@ -80,7 +113,7 @@ structure ClassifyConts : sig
 	    CV.newProp (fn _ => raise Fail "cont kind")
     in
   (* return the kind of  a continuation *)
-    fun kindOfCont = (case peekFn k
+    fun kindOf k = (case peekFn k
 	   of NONE => OtherCont
 	    | SOME kind => kind
 	  (* end case *))
@@ -88,11 +121,11 @@ structure ClassifyConts : sig
     fun markAsReturn k = setFn(k, ReturnCont)
     fun markAsOther k = (case peekFn k
 	   of SOME OtherCont => ()
-	    | _ => (setFn(k, OtherCont); clrUse k)
+	    | _ => (setFn(k, OtherCont); clrUses k)
 	  (* end case *))
     end
 
-    fun doArg x = (case V.kindOf x
+    fun doArg x = (case CV.kindOf x
 	   of C.VK_Cont _ => markAsOther x
 	    | _ => ()
 	  (* end case *))
@@ -102,12 +135,12 @@ structure ClassifyConts : sig
    *)
     fun checkUse outer = let
 	  fun chk k = CV.same(outer, k)
-		orelse (case kindOfCont k
+		orelse (case kindOf k
 		   of JoinCont => (case getOuter k
 			 of NONE => false
-			  | SOME k => chk k'
+			  | SOME k' => chk k'
 			(* end case *))
-		    | _ > false
+		    | _ => false
 		  (* end case *))
 	  in
 	    chk
@@ -121,7 +154,7 @@ structure ClassifyConts : sig
 		fun doFB (C.FB{f, body, ...}) = analExp (f, body)
 		in
 		  List.app doFB fbs;
-		  analExp (outer e)
+		  analExp (outer, e)
 		end
 	    | C.Cont(C.FB{f, body, ...}, e) => (
 	      (* initialize properties for this continuation *)
@@ -130,13 +163,23 @@ structure ClassifyConts : sig
 		  then markAsJoin f
 		  else markAsReturn f;
 	      (* analyse its body *)
-(* what about recursive continuations? *)
 		analExp (f, body);
+		if List.null (usesOf f)
+		  then ()
+		  else (); (* FIXME: what do we do about recursive join conts? *)
 		analExp (outer, e);
-		case kindOfCont f
-		 of JoinCont => if List.all (checkUse outer) (usesOf f)
-		      then () (* it remains a join continuation *)
-		      else markAsOther f
+		if Controls.get ClosureControls.debug
+		  then print(concat[
+		      "ClassifyConts: kindOf(", CV.toString f, ") = ",
+		      kindToString(kindOf f), "\n"
+		    ])
+		  else ();
+		case kindOf f
+		 of JoinCont => (
+		      if List.all (checkUse outer) (usesOf f)
+			then ST.tick cntJoinCont (* it remains a join continuation *)
+			else markAsOther f;
+		      clrUses f)
 		  | _ => ())
 	    | C.If(_, e1, e2) => (analExp(outer, e1); analExp(outer, e2))
 	    | C.Switch(_, cases, dflt) => (
@@ -147,6 +190,23 @@ structure ClassifyConts : sig
 		addUse (outer, k);
 		List.app doArg args)
 	  (* end case *))
+
+    fun analyze (C.MODULE{body=C.FB{f, body, ...}, ...}) =
+	  if !enableFlg then analExp (f, body) else ()
+
+  (* return the kind of a continuation *)
+    fun kindOfCont k = (case CV.kindOf k
+	   of C.VK_Cont _ => kindOf k
+	    | C.VK_Param _ => ParamCont
+	    | _ => OtherCont
+	  (* end case *))
+
+  (* is k a join continuation? *)
+    fun isJoinCont k = !enableFlg
+	  andalso (case kindOfCont k
+	     of JoinCont => true
+	      | _ => false
+	    (* end case *))
 
   end
 
