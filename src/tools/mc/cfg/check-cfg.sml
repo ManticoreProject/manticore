@@ -515,7 +515,7 @@ structure CheckCFG : sig
 		val outS = TextIO.openOut outFile
 		in
 		  pr ["broken CFG dumped to ", outFile, "\n"];
-		  PrintCFG.output {types=true} (outS, module);
+		  PrintCFG.output {counts=true, types=true} (outS, module);
 		  TextIO.closeOut outS;
 		  raise Fail "broken CFG"
 		end

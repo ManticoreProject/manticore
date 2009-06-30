@@ -13,7 +13,7 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
   (* a wrapper for CFG optimization passes.  The wrapper includes an invariant check. *)
     fun transform {passName, pass} = let
 	  val xform = BasicControl.mkKeepPassSimple {
-		  output = PrintCFG.output {types = false},
+		  output = PrintCFG.output {counts=true, types = false},
 		  ext = "cfg",
 		  passName = passName,
 		  pass = pass,
@@ -68,7 +68,7 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
 	  end
 
     val optimize = BasicControl.mkKeepPassSimple {
-	    output = PrintCFG.output {types=false},
+	    output = PrintCFG.output {counts=true, types=false},
 	    ext = "cfg",
 	    passName = "cfg-optimize",
 	    pass = optimize,

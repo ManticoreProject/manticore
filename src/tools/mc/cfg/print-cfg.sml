@@ -6,7 +6,7 @@
 
 structure PrintCFG : sig
 
-    type flags = {types : bool}
+    type flags = {counts : bool, types : bool}
 
     val output : flags -> (TextIO.outstream * CFG.module) -> unit
 
@@ -16,7 +16,7 @@ structure PrintCFG : sig
 
   end = struct
 
-    type flags = {types : bool}
+    type flags = {counts : bool, types : bool}
 
     fun output (flags : flags) (outS, CFG.MODULE{name, externs, code}) = let
 	  fun pr s = TextIO.output(outS, s)
@@ -33,11 +33,16 @@ structure PrintCFG : sig
 		in
 		  pr "("; prL l; pr ")"
 		end
-	  fun varBindToString x = if (#types flags)
-		then String.concat[
-		    CFG.Var.toString x, "#", Int.toString(CFG.Var.useCount x), ":", CFGTyUtil.toString(CFG.Var.typeOf x)
-		  ]
-		else CFG.Var.toString x
+	  fun varBindToString x = let
+		val l = if (#types flags)
+		      then [":", CFGTyUtil.toString(CFG.Var.typeOf x)]
+		      else []
+		val l = if (#counts flags)
+		      then "#" :: Int.toString(CFG.Var.useCount x) :: l
+		      else l
+		in
+		  String.concat(CFG.Var.toString x :: l)
+		end
 	  fun varUseToString x = CFG.Var.toString x
 	  fun labelToString lab = "$" ^ (CFG.Label.toString lab)
 	  fun prParams []= pr "() ="
@@ -187,7 +192,7 @@ structure PrintCFG : sig
 	    pr "}\n"
 	  end
 
-    fun print m = output {types=false} (TextIO.stdOut, m)
+    fun print m = output {counts=true, types=false} (TextIO.stdOut, m)
 
     fun printFunc f = let
           val m = CFG.MODULE {name = Atom.atom "ad-hoc",
