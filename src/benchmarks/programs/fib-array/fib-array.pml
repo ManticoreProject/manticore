@@ -8,8 +8,7 @@
  * the parallel-array map, we should expect a near linear speedup of the computation.
  *)
 
-fun sFib (n : int) = (
-    case n
+fun sFib (n : int) = (case n
      of 0 => 0
       | 1 => 1
       | n => let
@@ -25,8 +24,7 @@ fun bench () = let
     val n = PrimIO.readInt()
     val (a', t) = Time.timeToEval(fn () => tabP (n, fn _ => sFib i))
     in
-      Print.print(Long.toString t);
-      ()
+      Print.print(Long.toString t)
     end
 
 val _ = bench ()
