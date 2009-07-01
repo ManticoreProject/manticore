@@ -457,39 +457,7 @@ structure TranslatePTup  : sig
 				 end)))))
 	end
 
-    (* log : real -> (real -> real) *)
-    fun log base x = Math.ln x / Math.ln base
-
-    (* ceilingLog : (int * int) -> int *)
-    fun ceilingLog (b, x) = ceil (log (Real.fromInt b) (real x))
-
-    (* returns the digits of x written as a base-k integer. digits are ordered from least to most significant *)
-    (* e.g., baseKDigits (2, 4) ==> [0, 0, 1] *)
-    (* precondition: x is nonnegative *)
-    fun baseKDigits (k, x) =
-	if x < 0 then
-	    raise Fail "only nonnegative integers are supported"
-	else if x = 0 then
-	    [0]
-	else 
-	    let
-		fun lp 0 = []
-		  | lp x = x mod k :: lp (x div k)
-	    in
-		lp x
-	    end
-
-    (* find the selection path from the root to the ith element of a k-nested n-tuple *)
-    fun path (k, n, i) = 
-	let 
-	    val ds = baseKDigits (k, i)
-	    val p = ceilingLog (k, n) - List.length ds
-	in
-	    List.rev (if p < 1 then
-			  ds
-		      else
-			  ds @ List.tabulate (p, fn _ => 0))
-	end
+    fun ceilingDiv (x, y) = ceil (real x / real y)
 
     (* constructs the expression #ix0(#ix1(...(#ixn-1(tup)))) and hands the result to f *)
     fun nestedSelect (tup : BV.var, ixs : int list, f : BV.var -> B.exp) : B.exp =
@@ -507,40 +475,64 @@ structure TranslatePTup  : sig
 	    mk (tup, BV.typeOf tup, ixs)
 	end
 
+    (* returns a list where the ith element is the path to that element in the nested tuple *)
+    fun enumerate (k, n) : int list list =
+	let
+	    fun doit (1, p) = [List.rev p]
+	      | doit (n : int, p : int list) =
+		let
+		    val x = ceilingDiv (n, k)
+		    fun partition (i, n) =
+			if n > 0 then
+			    (Int.min (n, x), i :: p) :: partition (i + 1, n - x)
+			else
+			    []
+		in
+		    List.concat (List.map doit (partition (0, n)))
+		end
+	in
+	    doit (n, [])
+	end
+
+    (* takes a list of expressions corresponding to the flat, input parallel tuple and builds the nested
+     * clone translation where each nested tuple has a size between 2 and k. the nesting structure of this
+     * function must match the nesting structure of the enumerate function above, as enumerate is picking
+     * apart the nested tuple created here.
+     *)
+    fun transNestedPTup (tr : B.exp list -> B.exp, k, n, es : B.exp list) =
+	let
+	    fun doit (1, [e]) = e
+	      | doit (n : int, es : B.exp list) =
+		let
+		    val x = ceilingDiv (n, k)
+		    fun partition (i, n, es) =
+			if n > 0 then
+			    (Int.min (n, x), List.take (es, Int.min (n, x))) :: 
+			    partition (i + 1, n - x, List.drop (es, Int.min (n, x)))
+			else
+			    []
+		in
+		    tr (List.map doit (partition (0, n, es)))
+		end
+	in
+	    doit (n, es)
+	end
+
     (* flatten the k-nested ptuple tup of length n *)
     fun flatten (tup : BV.var, k, n, flatTy) : B.exp =
 	let 
-	    fun lp (i, vs) =
-		if i = n then
-		    let 
-			val flatTup = BV.new ("flattenedTup", flatTy)
-		    in
-			B.mkStmt ([flatTup], B.E_Alloc (flatTy, List.rev vs),
-				 B.mkRet [flatTup])
-		    end
-		else
-		    nestedSelect (tup, path (k, n, i), fn v =>
-						  lp (i + 1, v :: vs))
-	in
-	    lp (0, [])
-	end
-
-    fun ceilDiv (x, y) = ceil (real x / real y)
-
-    (* partition the list xs into k sublists *)
-    (* precondition: n > k *)
-    fun partition (k, n, xs) = 
-	let
-	    val x = ceilDiv (n, k)
-	    fun doit (0, []) = []
-	      | doit (n, xs) = 
-		let
-		    val x' = Int.min (n, x)
+	    fun lp ([], vs) = 
+		let 
+		    val flatTup = BV.new ("flattenedTup", flatTy)
 		in
-		    (x', List.take (xs, x')) :: doit (n - x', List.drop (xs, x'))
+		    B.mkStmt ([flatTup], B.E_Alloc (flatTy, List.rev vs),
+			      B.mkRet [flatTup])
 		end
+	      | lp (path :: paths, vs) =
+		nestedSelect (tup, path, fn v =>
+				    lp (paths, v :: vs))
 	in
-	    doit (n, xs)
+	    lp (enumerate (k, n), [])
 	end
 
     val k = 2          (* maximum number of elements in a flat ptuple *)
@@ -550,31 +542,21 @@ structure TranslatePTup  : sig
 	    raise Fail "compiler bug in TranslatePTup: the size of the input ptuple must be > 1"
 	else
 	    let
-		val tr' = if supportsExceptions then
-			      trWithExh
-			  else 
-			      trWithoutExh
 		val n = List.length es
+		fun tr' es = if supportsExceptions then
+				 trWithExh (env, es)
+			     else 
+				 trWithoutExh (env, es)
 	    in
 		if n <= k then
-		    tr' (env, es)
+		    tr' es
 		else
 		    let
-			(* decompose a parallel tuple into nested parallel tuples of size k *)
-			(* e.g., consider decomp of a parallel tuple where n = 3 and k = 2
-			 *   (| e1,e2,e3 |)  ==>  (| (| e1,e2 |),e3 |)
-			 *)
-			fun decomp (1, [e]) = e
-			  | decomp (n, es) =
-			    if n <= k then
-				tr' (env, es)
-			    else 
-				tr' (env, List.map decomp (partition (k, n, es)))
-			val nestedEs = decomp (length es, es)
-			val nestedEsV = BV.new ("nestedEsV", List.hd (BOMUtil.typeOfExp nestedEs))
+			val nestedTuple = transNestedPTup (tr', k, n, es)
+			val nestedTupleV = BV.new ("nestedTupleV", List.hd (BOMUtil.typeOfExp nestedTuple))
 			val flatTy = BTy.T_Tuple (false, List.map (List.hd o BOMUtil.typeOfExp) es)
 		    in
-			B.mkLet ([nestedEsV], nestedEs, flatten (nestedEsV, k, n, flatTy))
+			B.mkLet ([nestedTupleV], nestedTuple, flatten (nestedTupleV, k, n, flatTy))
 		    end
 	    end
 
