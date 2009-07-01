@@ -237,7 +237,7 @@ structure FLS :
 	;
 
       define @keys-same (arg : [[int], [int]] / exh : exh) : bool =
-	return(I32Eq(#0(#0(arg)), #0(#1(arg))))
+	if I32Eq(#0(#0(arg)), #0(#1(arg))) then return(true) else return(false)
       ;
 
       define @set-dict (dict : List.list / exh : exh) : unit =

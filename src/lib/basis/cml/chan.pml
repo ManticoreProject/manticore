@@ -34,7 +34,7 @@ structure Chan : sig
 	  ];
 
 	typedef chan_rep = ![	    (* all fields are mutable *)
-	    bool,			(* spin lock *)
+	    int,			(* spin lock *)
 	    List.list,			(* sendq head *)
 	    List.list,			(* sendq tail *)
 	    List.list,			(* recvq head *)
@@ -59,10 +59,10 @@ structure Chan : sig
 
 	define inline @chan-acquire-lock (ch : chan_rep / exh : exh) : () =
 	    fun spin () : () =
-		  if (#0(ch)) then
+		  if I32isSet(&0(ch)) then
 		    do Pause ()
 		    apply spin ()
-		  else if (TAS(&(ch))) then
+		  else if I32TAS(&(ch)) then
 		    do Pause ()
 		    apply spin ()
 		  else

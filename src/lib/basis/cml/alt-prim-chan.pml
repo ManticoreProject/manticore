@@ -51,7 +51,7 @@ structure PrimChan (*: sig
 	  ];
 
 	typedef chan_rep = ![	    (* all fields are mutable *)
-	    bool,			(* spin lock *)
+	    int,			(* spin lock *)
 	    sendq_item,			(* sendq head item *)
 	    sendq_item,			(* sendq tail item *)
 	    recvq_item,			(* recvq head item *)
@@ -82,12 +82,12 @@ structure PrimChan (*: sig
 
       (* does a channel have waiting receivers? *)
 	define inline @chan-waiting-recv (ch : chan_rep) : bool =
-	    return (NotEqual(SELECT(CH_RECVQ_HD, ch), Q_NIL))
+	    if NotEqual(SELECT(CH_RECVQ_HD, ch), Q_NIL) then return (true) else return (false)
 	  ;
 
       (* does a channel have waiting senders? *)
 	define inline @chan-waiting-send (ch : chan_rep) : bool =
-	    return (NotEqual(SELECT(CH_SENDQ_HD, ch), Q_NIL))
+	    if NotEqual(SELECT(CH_SENDQ_HD, ch), Q_NIL) then return (true) else return (false)
 	  ;
 
       (* enqueue an item on a channel's recv queue *)
@@ -247,7 +247,7 @@ structure PrimChan (*: sig
       (***** Channel operations *****)
 	
 	define inline @chan-new (arg : unit / exh : exh) : chan_rep =
-	    let ch : chan_rep = alloc(false, (sendq_item)Q_NIL, (sendq_item)Q_NIL, (recvq_item)Q_NIL, (recvq_item)Q_NIL)
+	    let ch : chan_rep = alloc(0, (sendq_item)Q_NIL, (sendq_item)Q_NIL, (recvq_item)Q_NIL, (recvq_item)Q_NIL)
 	    let ch : chan_rep = promote (ch)
 	    return (ch)
 	  ;

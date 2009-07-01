@@ -18,7 +18,7 @@ structure CPS =
       = Let of (var list * rhs * exp)
       | Fun of (lambda list * exp)
       | Cont of (lambda * exp)
-      | If of (var * exp * exp)
+      | If of (cond * exp * exp)
       | Switch of (var * (tag * exp) list * exp option)
       | Apply of (var * var list * var list)
       | Throw of (var * var list)
@@ -59,6 +59,7 @@ structure CPS =
       | VK_Extern of string
 
     withtype var = (var_kind, ty) VarRep.var_rep
+         and cond = var Prim.cond
          and prim = var Prim.prim
 
     datatype module = MODULE of {

@@ -66,7 +66,7 @@ structure PrintBOM : sig
 		      pr "<** empty function binding** >\n";
 		      prExp (i, e))
 		  | B.E_Cont(fb, e) => (prLambda(i, "cont ", fb); prExp (i, e))
-		  | B.E_If(x, e1, e2) => prIf(i, x, e1, e2)
+		  | B.E_If(cond, e1, e2) => prIf(i, cond, e1, e2)
 		  | B.E_Case(x, cases, dflt) => let
 		      fun prCase ((pat, e), isFirst) = (
 			    indent i;
@@ -172,14 +172,15 @@ structure PrintBOM : sig
 		  (* end case *);
 		  prExp (i+2, body)
 		end
-	  and prIf (i, x, e1, B.E_Pt(_, B.E_If(y, e2, e3))) = (
-		prl ["if ", varUseToString x, " then\n"];
+	  and prIf (i, cond, e1, B.E_Pt(_, B.E_If(cond', e2, e3))) = (
+		prl ["if ", condToString cond, " then\n"];
 		prExp(i+1, e1);
-		indent (i); pr "else "; prIf(i, y, e2, e3))
-	    | prIf (i, x, e1, e2) = (
-		prl ["if ", varUseToString x, " then\n"];
+		indent (i); pr "else "; prIf(i, cond', e2, e3))
+	    | prIf (i, cond, e1, e2) = (
+		prl ["if ", condToString cond, " then\n"];
 		prExp(i+1, e1);
 		indent (i); pr "else\n"; prExp(i+1, e2))
+	  and condToString cond = CondUtil.fmt varUseToString cond
 	  fun prExtern cf = (indent 1; prl [CFunctions.cfunToString cf, "\n"])
 	  in
 	    case arg

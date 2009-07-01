@@ -134,12 +134,13 @@ structure Cancelation (* : sig
 	  cont dispatch (self : vproc, handler : PT.sched_act, k : PT.fiber) =
 	       do @set-active-from-atomic(self, c / exh)
 	       let canceledFlg : ![bool] = @get-canceled-flag(c)
-	       if #0(canceledFlg)
-		  then 
+	       case #0(canceledFlg)
+		of true =>
 		   throw terminate(self)
-	       else
+		 | false =>
 		   do SchedulerAction.@run(self, handler, k)
 		   throw impossible()
+               end
 
 	(* poll for cancelation *)
 	  cont handler (s : PT.signal) =
@@ -220,15 +221,16 @@ structure Cancelation (* : sig
 		      let cs2 : L.list = PrimList.@append(#0(gChildren), cs2 / exh)
 		      apply cancelAndWait(cs1, cs2)
 		  else
-		      do if isCanceled
-			 then
+		      do case isCanceled
+			  of true =>
 			     do Pause()
 			     do SchedulerAction.@yield-in-atomic(self)
 			     return()
-			 else 
+			   | false =>
 			     let dummyK : PT.fiber = vpload(VP_DUMMYK, self)
 			     do VProc.@send-high-priority-signal-from-atomic(self, #0(inactive), dummyK)
 			     return()
+                          end
 		       apply cancelAndWait(cs1, L.CONS(c, cs2))
 	      end
 	  do apply cancelAndWait(L.CONS(c, L.nil), L.nil)

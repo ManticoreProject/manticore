@@ -68,10 +68,12 @@ structure WorkStealing (* :
 		    | List.CONS (deque : [D.deque], deques : List.list) =>
 		      let deque : D.deque = #0(deque)
 		      let isEmpty : bool = D.@is-empty-from-atomic (self, deque)
-		      if isEmpty then
+		      case isEmpty
+		       of true =>
 			  apply selectNonEmptyDeque (deques)
-		      else
+			| false =>
 			  return (Option.SOME(deque))
+                      end
 		  end
 	      let deque : Option.option = apply selectNonEmptyDeque (deques)
 	      do case deque
@@ -85,7 +87,7 @@ structure WorkStealing (* :
 		     case thd
 		      of Option.NONE => 
 		       (* the deque returned by selectNonEmptyDeque should not be empty *)			 
-			 do assert (false)
+			 do assert_fail()
 			 return ()
 		       | Option.SOME (thd : ImplicitThread.thread) =>
 			 let x : Option.option = promote (Option.SOME(List.CONS (thd, nil)))
@@ -149,7 +151,7 @@ structure WorkStealing (* :
 			  assignedDeques : Arr.array
 			/ exh : exh) : cont (ImplicitThread.worker) =
 	  cont impossible () = 
-	   do assert (false)
+	   do assert_fail()
 	   let exn : exn = Fail(@"WorkStealing.@designated-worker: impossible") 
 	   throw exh (exn)
 
@@ -193,13 +195,15 @@ structure WorkStealing (* :
 		  throw findWork ()
 
 		let isFinished : bool = apply isTerminated ()
-		do if isFinished then
+		do case isFinished
+		    of true =>
 		       do @clear-deque-from-atomic (self, deque)
 		       do D.@release-from-atomic (self, deque)
 		       do SchedulerAction.@stop-from-atomic (self)
 		       throw impossible ()
-		   else
+		     | false =>
 		       return ()
+                   end
 
 		case sign
 		 of PT.STOP =>
@@ -209,15 +213,17 @@ structure WorkStealing (* :
 		    (*do D.@push-new-end-from-atomic (self, deque, thd) *)
 		    do SchedulerAction.@yield-in-atomic (self)
  		    let isFull : bool = D.@is-full (deque)
-                    if isFull then
+                    case isFull
+		     of true =>
 			(* if the deque is full, double its size *)
 			let newDeque : D.deque = 
 				  D.@double-size-from-atomic (self, workGroupId, deque)
 (* TODO *)
 			throw impossible ()
-		    else
+		      | false =>
 			throw dispatch (thd)
-		  | _ =>
+                   end
+      		 | _ =>
 		    throw impossible ()
 		end (* sigHandler *)
 
@@ -256,12 +262,14 @@ structure WorkStealing (* :
           let deque : D.deque = 
 		    (* if the current deque is full, let the scheduler loop choose the course
 		     * of action. *)
-		      if isFull then
+		      case isFull
+		       of true =>
 			  do SchedulerAction.@yield-in-atomic (self)
 			  let deque : D.deque = @get-assigned-deque-from-atomic (self / exh)
 		          return (deque)
-		      else
+			| false =>
 			  return (deque)
+                      end
 	  do D.@push-new-end-from-atomic (self, deque, thd)
 	  do SchedulerAction.@atomic-end (self)
 	  return ()

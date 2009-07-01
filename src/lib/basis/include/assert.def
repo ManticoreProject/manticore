@@ -11,6 +11,7 @@
 
 #ifdef NDEBUG
 #  define assert(check)	return()
+#  define assert_fail() return()
 #  define pml_assert(check) ()
 #else
 #define _QUOTE(x) #x
@@ -20,6 +21,9 @@
 	  then return ()				  		        \
 	  else do ccall M_AssertFail (QUOTE(check), QUOTE(PML_FILE), __LINE__)	\
 	    return ()                                                   
+
+#  define assert_fail()                                                         \
+               ccall M_AssertFail (QUOTE(check), QUOTE(PML_FILE), __LINE__)	\
 
 #  define pml_assert(check)						        \
 	if check							        \

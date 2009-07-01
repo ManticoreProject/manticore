@@ -91,7 +91,7 @@ structure FreeVars : sig
 		  setFV (funVar fb, fbEnv);
 		  remove (analExp (V.Set.union (fv, fbEnv), e), funVar fb)
 		end
-	    | CPS.If(x, e1, e2) => analExp (analExp (addVar (fv, x), e1), e2)
+	    | CPS.If(cond, e1, e2) => analExp (analExp (addVars(fv, CondUtil.varsOf cond), e1), e2)
 	    | CPS.Switch(x, cases, dflt) => 
                 List.foldl (fn ((_,e), fv) => analExp (fv, e))
                            (let
@@ -147,7 +147,8 @@ structure FreeVars : sig
 		      end
 		  | CPS.Cont(fb, e) =>
 		      remove (analExp (V.Set.union (fv, analFB fb), e), funVar fb)
-		  | CPS.If(x, e1, e2) => analExp (analExp (addVar (fv, x), e1), e2)
+		  | CPS.If(cond, e1, e2) =>
+		      analExp (analExp (addVars(fv, CondUtil.varsOf cond), e1), e2)
 		  | CPS.Switch(x, cases, dflt) => 
                       List.foldl (fn ((_,e), fv) => analExp (fv, e))
                                  (let

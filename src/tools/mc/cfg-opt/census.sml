@@ -66,7 +66,7 @@ structure Census : sig
       | doExit (C.StdThrow{k, clos, args}) = (inc k; inc clos; inc' args)
       | doExit (C.Apply{f, clos, args}) = (inc f; inc clos; inc' args)
       | doExit (C.Goto jmp) = doJump jmp
-      | doExit (C.If(x, jmp1, jmp2)) = (inc x; doJump jmp1; doJump jmp2)
+      | doExit (C.If(cond, jmp1, jmp2)) = (CondUtil.app inc cond; doJump jmp1; doJump jmp2)
       | doExit (C.Switch(x, cases, dflt)) = (
 	  inc x;
 	  List.app (fn (_, jmp) => doJump jmp) cases;

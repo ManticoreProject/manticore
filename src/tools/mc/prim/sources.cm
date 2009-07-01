@@ -8,10 +8,12 @@
 
 Library
 
+  structure CondUtil
   structure Prim
   structure PrimUtil
   functor MakePrimFn
   functor PrimTyFn
+
 is
 
   $/basis.cm
@@ -21,6 +23,7 @@ is
 
   ../common/sources.cm
 
+  cond-util.sml
   make-prim-fn.sml
   prim.sml
   prim-ty-fn.sml

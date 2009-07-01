@@ -14,7 +14,6 @@ signature PRIM_TYPES =
 
     val anyTy : ty
     val unitTy : ty
-    val boolTy : ty
     val addrTy : ty
     val rawTy : RawTypes.raw_ty -> ty
 
@@ -43,7 +42,22 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 	    resTy : Ty.ty
 	  }
 
+    datatype cond_info
+      = Cond1 of {
+	    mk : Ty.var -> Ty.var Prim.cond,
+	    argTy : Ty.ty
+	  }
+      | Cond2 of {
+	    mk : Ty.var * Ty.var -> Ty.var Prim.cond,
+	    argTy : Ty.ty * Ty.ty
+	  }
+      | Cond3 of {
+	    mk : Ty.var * Ty.var * Ty.var -> Ty.var Prim.cond,
+	    argTy : Ty.ty * Ty.ty * Ty.ty
+	  }
+
     val findPrim : Atom.atom -> prim_info option
+    val findCond : Atom.atom -> cond_info option
 
   end = struct
 
@@ -70,9 +84,22 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 	    resTy : Ty.ty
 	  }
 
+    datatype cond_info
+      = Cond1 of {
+	    mk : Ty.var -> Ty.var Prim.cond,
+	    argTy : Ty.ty
+	  }
+      | Cond2 of {
+	    mk : Ty.var * Ty.var -> Ty.var Prim.cond,
+	    argTy : Ty.ty * Ty.ty
+	  }
+      | Cond3 of {
+	    mk : Ty.var * Ty.var * Ty.var -> Ty.var Prim.cond,
+	    argTy : Ty.ty * Ty.ty * Ty.ty
+	  }
+
     val aTy = Ty.anyTy
     val uTy = Ty.unitTy
-    val bTy = Ty.boolTy
     val adrTy = Ty.addrTy
     val i8  = Ty.rawTy RawTypes.T_Byte
     val i16 = Ty.rawTy RawTypes.T_Short
@@ -89,13 +116,6 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 	  fun mk cons (mk, argTy, resTy) = cons {mk = mk, argTy = argTy, resTy = resTy}
 	  in
 	    List.app (fn (n, info) => ins(Atom.atom n, info)) [
-		("isBoxed",	mk Prim1 (P.isBoxed,	aTy,		bTy)),
-		("isUnboxed",	mk Prim1 (P.isUnboxed,	aTy,		bTy)),
-		("Equal",	mk Prim2 (P.Equal,	(aTy, aTy),	bTy)),
-		("NotEqual",	mk Prim2 (P.NotEqual,	(aTy, aTy),	bTy)),
-		("BNot",	mk Prim1 (P.BNot,	bTy,		bTy)),
-		("BEq",		mk Prim2 (P.BEq,	(bTy, bTy),	bTy)),
-		("BNEq",	mk Prim2 (P.BNEq,	(bTy, bTy),	bTy)),
 		("I32Add",	mk Prim2 (P.I32Add,	(i32, i32),	i32)),
 		("I32Sub",	mk Prim2 (P.I32Sub,	(i32, i32),	i32)),
 		("I32Mul",	mk Prim2 (P.I32Mul,	(i32, i32),	i32)),
@@ -107,12 +127,6 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 		("I32RShL",	mk Prim2 (P.I32RShL,	(i32, i32),	i32)),
 *)
 		("I32Neg",	mk Prim1 (P.I32Neg,	i32,		i32)),
-		("I32Eq",	mk Prim2 (P.I32Eq,	(i32, i32),	bTy)),
-		("I32NEq",	mk Prim2 (P.I32NEq,	(i32, i32),	bTy)),
-		("I32Lt",	mk Prim2 (P.I32Lt,	(i32, i32),	bTy)),
-		("I32Lte",	mk Prim2 (P.I32Lte,	(i32, i32),	bTy)),
-		("I32Gt",	mk Prim2 (P.I32Gt,	(i32, i32),	bTy)),
-		("I32Gte",	mk Prim2 (P.I32Gte,	(i32, i32),	bTy)),
 		("I64Add",	mk Prim2 (P.I64Add,	(i64, i64),	i64)),
 		("I64Sub",	mk Prim2 (P.I64Sub,	(i64, i64),	i64)),
 		("I64Mul",	mk Prim2 (P.I64Mul,	(i64, i64),	i64)),
@@ -124,16 +138,9 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 		("I64RShL",	mk Prim2 (P.I64RShL,	(i64, i64),	i64)),
 *)
 		("I64Neg",	mk Prim1 (P.I64Neg,	i64,		i64)),
-		("I64Eq",	mk Prim2 (P.I64Eq,	(i64, i64),	bTy)),
-		("I64NEq",	mk Prim2 (P.I64NEq,	(i64, i64),	bTy)),
-		("I64Lt",	mk Prim2 (P.I64Lt,	(i64, i64),	bTy)),
-		("I64Lte",	mk Prim2 (P.I64Lte,	(i64, i64),	bTy)),
-		("I64Gt",	mk Prim2 (P.I64Gt,	(i64, i64),	bTy)),
-		("I64Gte",	mk Prim2 (P.I64Gte,	(i64, i64),	bTy)),
 		("U64Mul",      mk Prim2 (P.U64Mul,     (i64, i64),     i64)),
 		("U64Div",      mk Prim2 (P.U64Div,     (i64, i64),     i64)),
 		("U64Rem",      mk Prim2 (P.U64Rem,     (i64, i64),     i64)),
-		("U64Lt",       mk Prim2 (P.U64Lt,      (i64, i64),     bTy)),
 		("F32Add",	mk Prim2 (P.F32Add,	(f32, f32),	f32)),
 		("F32Sub",	mk Prim2 (P.F32Sub,	(f32, f32),	f32)),
 		("F32Mul",	mk Prim2 (P.F32Mul,	(f32, f32),	f32)),
@@ -141,12 +148,6 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 		("F32Neg",	mk Prim1 (P.F32Neg,	f32,		f32)),
 		("F32Sqrt",	mk Prim1 (P.F32Sqrt,	f32,		f32)),
 		("F32Abs",	mk Prim1 (P.F32Abs,	f32,		f32)),
-		("F32Eq",	mk Prim2 (P.F32Eq,	(f32, f32),	bTy)),
-		("F32NEq",	mk Prim2 (P.F32NEq,	(f32, f32),	bTy)),
-		("F32Lt",	mk Prim2 (P.F32Lt,	(f32, f32),	bTy)),
-		("F32Lte",	mk Prim2 (P.F32Lte,	(f32, f32),	bTy)),
-		("F32Gt",	mk Prim2 (P.F32Gt,	(f32, f32),	bTy)),
-		("F32Gte",	mk Prim2 (P.F32Gte,	(f32, f32),	bTy)),
 		("F64Add",	mk Prim2 (P.F64Add,	(f64, f64),	f64)),
 		("F64Sub",	mk Prim2 (P.F64Sub,	(f64, f64),	f64)),
 		("F64Mul",	mk Prim2 (P.F64Mul,	(f64, f64),	f64)),
@@ -154,12 +155,6 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 		("F64Neg",	mk Prim1 (P.F64Neg,	f64,		f64)),
 		("F64Sqrt",	mk Prim1 (P.F64Sqrt,	f64,		f64)),
 		("F64Abs",	mk Prim1 (P.F64Abs,	f64,		f64)),
-		("F64Eq",	mk Prim2 (P.F64Eq,	(f64, f64),	bTy)),
-		("F64NEq",	mk Prim2 (P.F64NEq,	(f64, f64),	bTy)),
-		("F64Lt",	mk Prim2 (P.F64Lt,	(f64, f64),	bTy)),
-		("F64Lte",	mk Prim2 (P.F64Lte,	(f64, f64),	bTy)),
-		("F64Gt",	mk Prim2 (P.F64Gt,	(f64, f64),	bTy)),
-		("F64Gte",	mk Prim2 (P.F64Gte,	(f64, f64),	bTy)),
                 ("I32ToI64X",   mk Prim1 (P.I32ToI64X,  i32,            i64)),
                 ("I32ToI64",    mk Prim1 (P.I32ToI64,   i32,            i64)),
                 ("I32ToF32",    mk Prim1 (P.I32ToF32,   i32,            f32)),
@@ -202,12 +197,58 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 		("I32FetchAndAdd", mk Prim2 (P.I32FetchAndAdd,	(i32, i32),		i32)),
 		("I64FetchAndAdd", mk Prim2 (P.I32FetchAndAdd,	(i64, i64),		i64)),
 		("CAS",		mk Prim3 (P.CAS,	(adrTy, aTy, aTy), aTy)),
-		("BCAS",	mk Prim3 (P.BCAS,	(adrTy, aTy, aTy), bTy)),
-		("TAS",		mk Prim1 (P.TAS,	bTy,		bTy)),
 		("Pause",	mk0 (P.Pause,				uTy)),
 		("FenceRead",	mk0 (P.FenceRead,			uTy)),
 		("FenceWrite",	mk0 (P.FenceWrite,			uTy)),
 		("FenceRW",	mk0 (P.FenceRW,				uTy))
+	      ];
+	    AtomTable.find tbl
+	  end
+
+  (* table mapping condition names to cond_info *)
+    val findCond = let
+	  val tbl = AtomTable.mkTable(128, Fail "cond table")
+	  val ins = AtomTable.insert tbl
+	  fun mk cons (mk, argTy) = cons {mk = mk, argTy = argTy}
+	  in
+	    List.app (fn (n, info) => ins(Atom.atom n, info)) [
+		("isBoxed",	mk Cond1 (P.isBoxed,	aTy)),
+		("isUnboxed",	mk Cond1 (P.isUnboxed,	aTy)),
+		("Equal",	mk Cond2 (P.Equal,	(aTy, aTy))),
+		("NotEqual",	mk Cond2 (P.NotEqual,	(aTy, aTy))),
+		("EnumEq",	mk Cond2 (P.EnumEq,	(i32, i32))),
+		("EnumNEq",	mk Cond2 (P.EnumNEq,	(i32, i32))),
+		("I32Eq",	mk Cond2 (P.I32Eq,	(i32, i32))),
+		("I32NEq",	mk Cond2 (P.I32NEq,	(i32, i32))),
+		("I32Lt",	mk Cond2 (P.I32Lt,	(i32, i32))),
+		("I32Lte",	mk Cond2 (P.I32Lte,	(i32, i32))),
+		("I32Gt",	mk Cond2 (P.I32Gt,	(i32, i32))),
+		("I32Gte",	mk Cond2 (P.I32Gte,	(i32, i32))),
+		("U32Lt",       mk Cond2 (P.U32Lt,      (i32, i32))),
+		("I64Eq",	mk Cond2 (P.I64Eq,	(i64, i64))),
+		("I64NEq",	mk Cond2 (P.I64NEq,	(i64, i64))),
+		("I64Lt",	mk Cond2 (P.I64Lt,	(i64, i64))),
+		("I64Lte",	mk Cond2 (P.I64Lte,	(i64, i64))),
+		("I64Gt",	mk Cond2 (P.I64Gt,	(i64, i64))),
+		("I64Gte",	mk Cond2 (P.I64Gte,	(i64, i64))),
+		("U64Lt",       mk Cond2 (P.U64Lt,      (i64, i64))),
+		("F32Eq",	mk Cond2 (P.F32Eq,	(f32, f32))),
+		("F32NEq",	mk Cond2 (P.F32NEq,	(f32, f32))),
+		("F32Lt",	mk Cond2 (P.F32Lt,	(f32, f32))),
+		("F32Lte",	mk Cond2 (P.F32Lte,	(f32, f32))),
+		("F32Gt",	mk Cond2 (P.F32Gt,	(f32, f32))),
+		("F32Gte",	mk Cond2 (P.F32Gte,	(f32, f32))),
+		("F64Eq",	mk Cond2 (P.F64Eq,	(f64, f64))),
+		("F64NEq",	mk Cond2 (P.F64NEq,	(f64, f64))),
+		("F64Lt",	mk Cond2 (P.F64Lt,	(f64, f64))),
+		("F64Lte",	mk Cond2 (P.F64Lte,	(f64, f64))),
+		("F64Gt",	mk Cond2 (P.F64Gt,	(f64, f64))),
+		("F64Gte",	mk Cond2 (P.F64Gte,	(f64, f64))),
+		("AdrEq",	mk Cond2 (P.AdrEq,	(i32, i32))),
+		("AdrNEq",	mk Cond2 (P.AdrNEq,	(i32, i32))),
+		("BCAS",	mk Cond3 (P.BCAS,	(adrTy, aTy, aTy))),
+		("I32isSet",	mk Cond1 (P.I32isSet,	i32)),
+		("I32TAS",	mk Cond1 (P.I32TAS,	i32))
 	      ];
 	    AtomTable.find tbl
 	  end

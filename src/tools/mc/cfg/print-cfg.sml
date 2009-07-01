@@ -147,8 +147,8 @@ structure PrintCFG : sig
 		      prList varUseToString args;
 		      pr "\n";
 		      indent (i+1); prJump("", (l,lhs@rArgs)))
-		  | CFG.If(x, j1, j2) => (
-		      prl ["if ", varUseToString x, "\n"];
+		  | CFG.If(cond, j1, j2) => (
+		      prl ["if ", CondUtil.fmt varUseToString cond, "\n"];
 		      indent (i+1); prJump("then", j1);
 		      indent (i+1); prJump("else", j2))
 		  | CFG.Switch(x, cases, dflt) => let

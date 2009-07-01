@@ -389,11 +389,12 @@ structure FlatClosure : sig
                               in
                                 cvt (env, e, binds @ stms)
                               end
-                          | CPS.If(x, e1, e2) => let
-                              val (binds, x) = lookupVar(env, x)
-                              in
-                                finish(binds @ stms,
-				  CFG.If(x, branch("then", e1), branch("else", e2)))
+                          | CPS.If(cond, e1, e2) => let
+			      val (mkC, args) = CondUtil.explode cond
+			      val (binds, args) = lookupVars (env, args)
+			      in
+				finish (binds @ stms,
+				  CFG.If(mkC args, branch("then", e1), branch("else", e2)))
                               end
                           | CPS.Switch(x, cases, dflt) => let
                               val (binds, x) = lookupVar(env, x)

@@ -21,10 +21,10 @@ structure ThreadOps : sig end =
      * be used to cancel the wakeup.
      *)
       define @sleep (duration : Time.time, termFlg : ![PT.bool] / exh : PT.exh) : () =
-	let t0 : Time.time = Time.@now (/exh)
+	let t0 : Time.time = Time.@now ()
 	let finishTime : Time.time = Time.@add (t0, duration / exh)
 	fun lp ( / exh : PT.exh) : () =
-	    let t : Time.time = Time.@now(/exh)
+	    let t : Time.time = Time.@now()
             let finished : PT.bool = Time.@gt(t, finishTime / exh)
 	    if finished
 		then return ()

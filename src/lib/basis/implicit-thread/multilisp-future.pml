@@ -32,15 +32,17 @@ structure MultilispFuture (* : FUTURE *) =
 	    SchedulerAction.@stop()
 	  let v : any = apply f (UNIT / exh')
 	  let wasNotMigrated : bool = ImplicitThread.@remove-thread (thd / exh)
-	  if wasNotMigrated then
+	  case wasNotMigrated
+	   of true =>
 	      (* fast clone *)
 	      let ivar : ImplicitThreadIVar.ivar = ImplicitThreadIVar.@ivar (Result.RES(v) / exh)
 	      let fut : future = alloc (ivar, Option.NONE)
 	      return (fut)
-	  else
+	    | false =>
 	      (* slow clone *)
 	      do ImplicitThreadIVar.@put (ivar, Result.RES(v) / exh)
 	      SchedulerAction.@stop ()
+          end
 	;
 
       define @future-with-cancelation (f : fun(unit / exh -> any) / exh : exh) : future =
@@ -58,16 +60,18 @@ structure MultilispFuture (* : FUTURE *) =
 	      SchedulerAction.@stop ()
 	    let v : any = apply f (UNIT / exh')
 	    let wasNotMigrated : bool = ImplicitThread.@remove-thread (thd / exh)
-	    if wasNotMigrated then
+	    case wasNotMigrated
+	     of true =>
 		(* fast clone *)
 		let ivar : ImplicitThreadIVar.ivar = ImplicitThreadIVar.@ivar (v / exh)
 		let fut : future = alloc (ivar, Option.NONE)
 		return (fut)
-	    else
+	      | false =>
 		(* slow clone *)
 		do ImplicitThreadIVar.@put (ivar, Result.RES(v) / exh)
 		let _ : unit = SchedulerAction.@stop ()
 		return (fut)
+             end
 	  let thd : ImplicitThread.thread = ImplicitThread.@new-cancelable-thread (k', c / exh)
 	  do ImplicitThread.@throw-to (thd / exh)
 	  let e : exn = Fail(@"EagerFuture.@future-with-cancelation: impossible")
@@ -75,10 +79,12 @@ structure MultilispFuture (* : FUTURE *) =
 	;
 
       define @future (arg : [fun(unit / exh -> any), bool] / exh : exh) : future =
-	  if SELECT(1, arg) then
+	  case SELECT(1, arg)
+	   of true =>
 	      @future-with-cancelation (SELECT(0, arg) / exh)
-	  else
+	    | false =>
 	      @future-no-cancelation (SELECT(0, arg) / exh)
+          end
 	;
 
       define @touch (fut : future / exh : exh) : any =

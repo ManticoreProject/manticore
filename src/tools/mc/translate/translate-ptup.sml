@@ -174,7 +174,6 @@ structure TranslatePTup  : sig
 	    fun finish (w, r) =
 		let
 		    val nPrev = BV.new ("nPrev", intTy)
-		    val eq = BV.new ("eq", BTy.boolTy)
 		    val nV = BV.new ("n", intTy)
 		    val wV = BV.new ("w", intTy)
 		    val c' = BV.new ("c'", BTy.T_Tuple (true, [intTy]))
@@ -186,12 +185,11 @@ structure TranslatePTup  : sig
 			([nV], intRhs (n - w + 1)),     (* nV is the number of other slow clones *)
 			([wV], intRhs w),
 		        ([nPrev], B.E_Prim (Prim.I32FetchAndAdd (c, wV)))],
-			     B.mkStmt ([eq], B.E_Prim (Prim.I32Eq (nV, nPrev)),
-				      B.mkIf (eq, 
-					      (* the worker has the complete tuple *)
-					      B.mkRet [r],
-					      (* other workers are still working *)
-					      mkStop (env, exh))))
+			       B.mkIf (Prim.I32Eq (nV, nPrev),
+				       (* the worker has the complete tuple *)
+				       B.mkRet [r],
+				       (* other workers are still working *)
+				       mkStop (env, exh)))
 		end
 		    
 	    (* we create m slow clones *)
@@ -241,11 +239,11 @@ structure TranslatePTup  : sig
 		let
 		    val BTy.T_Fun (_, _, [ty_i]) = BV.typeOf thunk_i
 		    val v_i = BV.new ("v_" ^ Int.toString i, ty_i)
-		    val notStolen_i = BV.new ("notStolen_" ^ Int.toString i, BTy.boolTy)
+		    val notStolen_i = BV.new ("notStolen_" ^ Int.toString i, BOMTyUtil.boolTy)
 		    val r = BV.new ("r", slowCloneTupleTy)
 		in
 		    B.mkLet([notStolen_i], removeThread (slowCloneThread_i, exh),			    
-			    B.mkIf (notStolen_i,
+			    BOMUtil.mkBoolCase (notStolen_i,
 				    B.mkLet ([v_i], B.mkApply (thunk_i, [], [exh]),
 					     fastClone (i + 1, thunks, slowClones_1toM, v_i :: vs)),
 				    (* switch to the slow clone *)
@@ -321,16 +319,14 @@ structure TranslatePTup  : sig
 		let
 		    val r = BV.new ("r", slowCloneTupleTy)
 		    val t = BV.new ("t", BTy.T_Any)
-		    val isNil = BV.new ("isNil", BTy.boolTy)
 		    val nilV = BV.new ("nilV", BTy.T_Any)
 		    val waitOn_i = BV.new ("waitOn" ^  Int.toString i, BTy.T_Fun ([], [], []))
 		in
 		  B.mkLambda {f = waitOn_i, params = [], exh = [], body = 
                       B.mkStmts ([([r], B.E_Promote r0),
 				  ([t], B.E_Select (i, r)),
-				  ([nilV], nilVal),
-				  ([isNil], B.E_Prim (Prim.Equal (t, nilV)))],
-				 B.mkIf (isNil,
+				  ([nilV], nilVal)],
+				 B.mkIf (Prim.Equal (t, nilV),
 					 B.mkApply (waitOn_i, [], []),
 					 B.mkRet []))} ::
 		  mkWaitOns (i + 1, ty_1toM)
@@ -352,7 +348,6 @@ structure TranslatePTup  : sig
 	    fun finish (w, r) =
 		let
 		    val nPrev = BV.new ("nPrev", intTy)
-		    val eq = BV.new ("eq", BTy.boolTy)
 		    val nV = BV.new ("n", intTy)
 		    val wV = BV.new ("w", intTy)
 		    val c' = BV.new ("c'", BTy.T_Tuple (true, [intTy]))
@@ -364,12 +359,11 @@ structure TranslatePTup  : sig
 			([nV], intRhs (n - w + 1)),     (* nV is the number of other slow clones *)
 			([wV], intRhs w),
 		        ([nPrev], B.E_Prim (Prim.I32FetchAndAdd (c, wV)))],
-			     B.mkStmt ([eq], B.E_Prim (Prim.I32Eq (nV, nPrev)),
-				      B.mkIf (eq, 
-					      (* the worker has the complete tuple *)
-					      B.mkRet [r],
-					      (* other workers are still working *)
-					      mkStop (env, exh))))
+			       B.mkIf (Prim.I32Eq (nV, nPrev), 
+				       (* the worker has the complete tuple *)
+				       B.mkRet [r],
+				       (* other workers are still working *)
+				       mkStop (env, exh)))
 		end
 		    
 	    (* we create m = M slow clones *)
@@ -421,11 +415,11 @@ structure TranslatePTup  : sig
 		let
 		    val BTy.T_Fun (_, _, [ty_i]) = BV.typeOf thunk_i
 		    val v_i = BV.new ("v_" ^ Int.toString i, ty_i)
-		    val notStolen_i = BV.new ("notStolen_" ^ Int.toString i, BTy.boolTy)
+		    val notStolen_i = BV.new ("notStolen_" ^ Int.toString i, BOMTyUtil.boolTy)
 		    val r = BV.new ("r", slowCloneTupleTy)
 		in
 		    B.mkLet([notStolen_i], removeThread (slowCloneThread_i, exh),			    
-			    B.mkIf (notStolen_i,
+			    BOMUtil.mkBoolCase (notStolen_i,
 				    B.mkLet ([v_i], B.mkApply (thunk_i, [], [exh]),
 					     fastClone (i + 1, thunks, slowClones_1toM, v_i :: vs)),
 				    (* switch to the slow clone *)

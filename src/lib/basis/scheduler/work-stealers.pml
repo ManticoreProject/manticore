@@ -95,9 +95,10 @@ structure WorkStealers =
 	      cont dispatch () =
 	      (* notify any idle vprocs if there is extra local work *)
 		let hasElts : bool = VPQ.@more-than-one-from-atomic(self)
-		do if hasElts
-		   then @wake-idle-vprocs(self / exh)
-		   else return()
+		do case hasElts
+		    of true => @wake-idle-vprocs(self / exh)
+		       | false => return()
+                   end
 		let item : O.option = VPQ.@dequeue-from-atomic(self)
 		case item
 		 of O.NONE => 

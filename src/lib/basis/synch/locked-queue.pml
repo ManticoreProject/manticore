@@ -50,19 +50,19 @@ structure LockedQueue :
 
     (* linked queue elements *)
       typedef elt = ![
-          queue_item,         (* data *)
-	  any           (* next element *)
+          queue_item,	(* data *)
+	  any		(* next element *)
       ];
 
     (* locked queue structure *)
       typedef queue = ![
-          bool,           (* spin lock *)
-	  elt,            (* head *)
-	  elt             (* tail *)
+          int,		(* spin lock *)
+	  elt,		(* head *)
+	  elt		(* tail *)
       ];
 
       define @new () : queue =
-        let lockedQ : queue = alloc (false, EMPTY, EMPTY)
+        let lockedQ : queue = alloc (0, EMPTY, EMPTY)
         let lockedQ : queue = promote (lockedQ)
         return (lockedQ)
       ;
@@ -108,17 +108,17 @@ structure LockedQueue :
         let qTl : elt = SELECT(TL_OFF, q)        	 	     	   	     		  
         let qHd : elt = SELECT(HD_OFF, q) 						  
         if Equal (qHd, EMPTY) 		     							  
-           then (* the queue is empty *)
-                return(Option.NONE)
+	  then (* the queue is empty *)
+	    return(Option.NONE)
 	else (* the queue is nonempty, so take an element off the queue head *)
           let qNext : any = SELECT(ELT_TL_OFF, qHd)
           let qNext : elt = (elt)qNext 					  
           do if Equal (qHd, qTl) 	   								  
-                then (* there is one element on the queue, so clear out the tail *) 			  
-                     let emptyQ : elt = (elt)EMPTY 	  
-                     do UPDATE(TL_OFF, q, emptyQ) 							  
-                     return () 		       								  
-                else return () 										  
+	    then (* there is one element on the queue, so clear out the tail *) 			  
+	      let emptyQ : elt = (elt)EMPTY 	  
+	      do UPDATE(TL_OFF, q, emptyQ) 							  
+	      return () 		       								  
+	    else return () 										  
           do UPDATE(HD_OFF, q, qNext) 								  
           let elt : any = SELECT(ELT_HD_OFF, qHd) 						  
           return(Option.SOME(elt))

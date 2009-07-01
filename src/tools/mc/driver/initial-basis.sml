@@ -242,11 +242,11 @@ structure InitialBasis : sig
 		  end
 	    in
 	      List.app insertDataCon [
-	          (N.boolTrue,   TranslateEnv.Lit(Literal.trueLit, BTy.boolTy)),
-	          (N.boolFalse,  TranslateEnv.Lit(Literal.falseLit, BTy.boolTy))
+	          (N.boolTrue,   TranslateEnv.Const BOMTyUtil.trueDC),
+	          (N.boolFalse,  TranslateEnv.Const BOMTyUtil.falseDC)
 	      ];
 	      List.app insertTyc [
-	          (boolTyc,     BTy.K_UNBOXED,  BTy.boolTy),
+	          (boolTyc,     BTy.K_UNBOXED,  BOMTyUtil.boolTy),
 		  (intTyc,	BTy.K_BOXED,	wrapTy BTy.T_Int),
 		  (longTyc,	BTy.K_BOXED,	wrapTy BTy.T_Long),
 		  (floatTyc,	BTy.K_BOXED,	wrapTy BTy.T_Float),

@@ -214,8 +214,19 @@ structure CheckBOM : sig
 			  ]
 			else ();
 		      chkE(cxt, body))
-		  | B.E_If(x, e1, e2) => (
-		      chkVar(x, "If"); chkE(cxt, e1); chkE(cxt, e2))
+		  | B.E_If(cond, e1, e2) => let
+		      val args = CondUtil.varsOf cond
+		      val paramTys = BOMUtil.condArgTys cond
+		      fun chkParamArg (paramTy, arg) = if BTU.match(BV.typeOf arg, paramTy)
+			    then ()
+			    else (
+			      error  ["type mismatch in ", CondUtil.nameOf cond, "(... ", v2s arg, " ...)\n"];
+			      cerror ["  expected  ", BTU.toString paramTy, "\n"];
+			      cerror ["  but found ", BTU.toString(BV.typeOf arg), "\n"])
+		      in
+			chkVars (args, "If");
+			chkE(cxt, e1); chkE(cxt, e2)
+		      end
 (* FIXME: need to check that the type of x covers the types of the cases! *)
 		  | B.E_Case(x, cases, dflt) => let
 		      fun chk' (pat, e) = (chkPat pat; chkE(cxt, e))

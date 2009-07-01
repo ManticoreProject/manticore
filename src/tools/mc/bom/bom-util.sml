@@ -47,11 +47,15 @@ structure BOMUtil : sig
   (* make a raw int expression from an int *)
     val rawInt : int -> BOM.rhs
 
+  (* make a case for testing booleans (i.e., an if-the-else) *)
+    val mkBoolCase : (BOM.var * BOM.exp * BOM.exp) -> BOM.exp
+
   (* return the type of a BOM term *)
     val typeOfExp : BOM.exp -> BOM.ty list
     val typeOfRHS : BOM.rhs -> BOM.ty list
     val typeOfPrim : BOM.prim -> BOM.ty option
     val signOfPrim : BOM.prim -> (BOM.ty list * BOM.ty option)
+    val condArgTys : BOM.cond -> BOM.ty list
 
   (* for debugging output *)
     val expToString : BOM.exp -> string
@@ -123,7 +127,8 @@ structure BOMUtil : sig
 		  | B.E_Stmt(xs, rhs, e) => B.mkStmt(xs, substRHS (s, rhs), substE e)
 		  | B.E_Fun(fbs, e) => B.mkFun(List.map substFB fbs, substE e)
 		  | B.E_Cont(fb, e) => B.mkCont(substFB fb, substE e)
-		  | B.E_If(x, e1, e2) => B.mkIf(subst s x, substE e1, substE e2)
+		  | B.E_If(cond, e1, e2) =>
+		      B.mkIf(CondUtil.map (subst s) cond, substE e1, substE e2)
 		  | B.E_Case(x, cases, dflt) =>
 		      B.mkCase(subst s x,
 			List.map (fn (p, e) => (p, substE e)) cases,
@@ -223,7 +228,8 @@ structure BOMUtil : sig
 		in
 		  B.mkCont(fb, copyExp(s, e))
 		end
-	    | B.E_If(x, e1, e2) => B.mkIf(subst s x, copyExp(s, e1), copyExp(s, e2))
+	    | B.E_If(cond, e1, e2) =>
+		B.mkIf(CondUtil.map (subst s) cond, copyExp(s, e1), copyExp(s, e2))
 	    | B.E_Case(x, cases, dflt) => let
 		fun copyCase (B.P_DCon(dc, args), e) = let
 		      val (s, args) = freshVars(s, args)
@@ -270,6 +276,12 @@ structure BOMUtil : sig
   (* create a copy of a list of mutually recursive functions *)
     fun copyLambdas fbs = #2 (copyFBs (empty, fbs))
 
+  (* make a case for testing booleans (i.e., an if-the-else) *)
+    fun mkBoolCase (arg, trueE, falseE) = B.mkCase(arg, [
+	    (B.P_DCon(BOMTyUtil.trueDC, []), trueE),
+	    (B.P_DCon(BOMTyUtil.falseDC, []), falseE)
+	  ], NONE)
+
     local
       structure PTy = PrimTyFn (
 	struct
@@ -278,7 +290,6 @@ structure BOMUtil : sig
 	  val typeOf = B.Var.typeOf
 	  val anyTy = BTy.T_Any
 	  val noTy = BTy.unitTy
-	  val boolTy = BTy.boolTy
 	  val raw = BTy.T_Raw
 	  val addr = BTy.T_Addr
 	end)
@@ -293,6 +304,8 @@ structure BOMUtil : sig
 	   of (tys, BTy.T_Enum(0w0)) => (tys, NONE)
 	    | (tys, ty) => (tys, SOME ty)
 	  (* end case *))
+
+    val condArgTys = PTy.condArgTys
 
     fun typeOfRHS (B.E_Const(_, ty)) = [ty]
       | typeOfRHS (B.E_Cast(ty, _)) = [ty]

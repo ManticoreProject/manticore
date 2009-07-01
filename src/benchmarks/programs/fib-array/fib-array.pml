@@ -23,9 +23,11 @@ fun sFib (n : int) = (
 fun bench () = let
     val i = PrimIO.readInt()
     val n = PrimIO.readInt()
-    val (a', t) = Time.timeToEval(fn () => tabP (n, fn _ => sFib i))
+    val b = Time.now()
+    val x = tabP (n, fn _ => sFib i)
+    val e = Time.now()
     in
-      Print.print(Long.toString t);
+      Print.print(Time.toString (e - b));
       ()
     end
 

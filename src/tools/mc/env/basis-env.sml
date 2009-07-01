@@ -24,7 +24,6 @@ structure BasisEnv : sig
 
   end = struct
 
-    structure N = BasisNames
     structure PPT = ProgramParseTree
     structure BEnv = BindingEnv
     structure MEnv = ModuleEnv

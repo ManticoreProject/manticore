@@ -4,33 +4,21 @@
  * All rights reserved.
  *
  * This is a placeholder until we get primop generation working.  It includes
- * booleans, 32 and 64-bit integers, and 32 and 64-bit floating-point numbers.
+ * 32 and 64-bit integers, and 32 and 64-bit floating-point numbers.
  *)
 
 structure Prim =
   struct
 
+  (* machine-level operations *)
     datatype 'var prim
-      = isBoxed of 'var
-      | isUnboxed of 'var
-      | Equal of 'var * 'var	(* equality on T_any *)
-      | NotEqual of 'var * 'var	(* equality on T_any *)
-      | BNot of 'var
-      | BEq of 'var * 'var
-      | BNEq of 'var * 'var
-      | I32Add of 'var * 'var
+      = I32Add of 'var * 'var
       | I32Sub of 'var * 'var
       | I32Mul of 'var * 'var
       | I32Div of 'var * 'var
       | I32Mod of 'var * 'var
       | I32LSh of 'var * 'var
       | I32Neg of 'var
-      | I32Eq of 'var * 'var
-      | I32NEq of 'var * 'var
-      | I32Lt of 'var * 'var
-      | I32Lte of 'var * 'var
-      | I32Gt of 'var * 'var
-      | I32Gte of 'var * 'var
       | I64Add of 'var * 'var
       | I64Sub of 'var * 'var
       | I64Mul of 'var * 'var
@@ -38,16 +26,9 @@ structure Prim =
       | I64Mod of 'var * 'var
       | I64LSh of 'var * 'var
       | I64Neg of 'var
-      | I64Eq of 'var * 'var
-      | I64NEq of 'var * 'var
-      | I64Lt of 'var * 'var
-      | I64Lte of 'var * 'var
-      | I64Gt of 'var * 'var
-      | I64Gte of 'var * 'var
       | U64Mul of 'var * 'var
       | U64Div of 'var * 'var
       | U64Rem of 'var * 'var
-      | U64Lt of 'var * 'var
       | F32Add of 'var * 'var
       | F32Sub of 'var * 'var
       | F32Mul of 'var * 'var
@@ -55,12 +36,6 @@ structure Prim =
       | F32Neg of 'var
       | F32Sqrt of 'var
       | F32Abs of 'var
-      | F32Eq of 'var * 'var
-      | F32NEq of 'var * 'var
-      | F32Lt of 'var * 'var
-      | F32Lte of 'var * 'var
-      | F32Gt of 'var * 'var
-      | F32Gte of 'var * 'var
       | F64Add of 'var * 'var
       | F64Sub of 'var * 'var
       | F64Mul of 'var * 'var
@@ -68,12 +43,6 @@ structure Prim =
       | F64Neg of 'var
       | F64Sqrt of 'var
       | F64Abs of 'var
-      | F64Eq of 'var * 'var
-      | F64NEq of 'var * 'var
-      | F64Lt of 'var * 'var
-      | F64Lte of 'var * 'var
-      | F64Gt of 'var * 'var
-      | F64Gte of 'var * 'var
     (* conversions *)
       | I32ToI64X of 'var		(* int -> long conversion with sign extension *)
       | I32ToI64 of 'var		(* unsigned int -> long conversion *)
@@ -123,12 +92,51 @@ structure Prim =
       | I32FetchAndAdd of 'var * 'var
       | I64FetchAndAdd of 'var * 'var
       | CAS of 'var * 'var * 'var	(* compare and swap; returns old value *)
-      | BCAS of 'var * 'var * 'var	(* compare and swap; returns bool *)
-      | TAS of 'var			(* test and set *)
     (* memory-system operations *)
       | Pause				(* yield processor to allow memory operations to be seen *)
       | FenceRead			(* memory fence for reads *)
       | FenceWrite			(* memory fence for writes *)
       | FenceRW				(* memory fence for both reads and writes *)
+
+  (* primitive conditional tests *)
+    datatype 'var cond
+      = isBoxed of 'var
+      | isUnboxed of 'var
+      | Equal of 'var * 'var	(* equality on T_any *)
+      | NotEqual of 'var * 'var	(* equality on T_any *)
+      | EnumEq of 'var * 'var
+      | EnumNEq of 'var * 'var
+      | I32Eq of 'var * 'var
+      | I32NEq of 'var * 'var
+      | I32Lt of 'var * 'var
+      | I32Lte of 'var * 'var
+      | I32Gt of 'var * 'var
+      | I32Gte of 'var * 'var
+      | U32Lt of 'var * 'var
+      | I64Eq of 'var * 'var
+      | I64NEq of 'var * 'var
+      | I64Lt of 'var * 'var
+      | I64Lte of 'var * 'var
+      | I64Gt of 'var * 'var
+      | I64Gte of 'var * 'var
+      | U64Lt of 'var * 'var
+      | F32Eq of 'var * 'var
+      | F32NEq of 'var * 'var
+      | F32Lt of 'var * 'var
+      | F32Lte of 'var * 'var
+      | F32Gt of 'var * 'var
+      | F32Gte of 'var * 'var
+      | F64Eq of 'var * 'var
+      | F64NEq of 'var * 'var
+      | F64Lt of 'var * 'var
+      | F64Lte of 'var * 'var
+      | F64Gt of 'var * 'var
+      | F64Gte of 'var * 'var
+      | AdrEq of 'var * 'var
+      | AdrNEq of 'var * 'var
+    (* conditional atomic operations *)
+      | BCAS of 'var * 'var * 'var	(* compare and swap; returns bool *)
+      | I32isSet of 'var		(* 32-bit test (for short-circuiting I32TAS) *)
+      | I32TAS of 'var			(* 32-bit test and set *)
 
   end

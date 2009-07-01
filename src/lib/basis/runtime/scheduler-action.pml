@@ -139,7 +139,7 @@ structure SchedulerAction (* :
 	    let vp : vproc = @atomic-begin()         (* mask signals before resuming *)
 	    return()
 	  do @forward-from-atomic (vp, PT.PREEMPT(k))
-	  do assert(false) (* control should never reach this point *)
+	  do assert_fail() (* control should never reach this point *)
 	  return()
 	;
 
@@ -163,21 +163,22 @@ structure SchedulerAction (* :
 	    let vp : vproc = @atomic-begin()         (* mask signals before resuming *)
 	    return()
 	  do @forward-from-atomic (vp, PT.SLEEP(k, t))
-	  do assert(false) (* control should never reach this point *)
+	  do assert_fail() (* control should never reach this point *)
 	  return()
 	;
 
     (* unmask signals; if there is a signal pending, then yield to the scheduler. *)
       define inline @atomic-end (vp : vproc) : () =
 	  let pending : bool = vpload (SIG_PENDING, vp)
-	    if pending
-	      then
-		do vpstore (SIG_PENDING, vp, false)
-		do @yield-from-atomic (vp)
-		return ()
-	      else
-		do @atomic-end-no-check (vp)
-		return ()
+	    case pending
+	     of true =>
+		  do vpstore (SIG_PENDING, vp, false)
+		  do @yield-from-atomic (vp)
+		  return ()
+	      | false =>
+		  do @atomic-end-no-check (vp)
+		  return ()
+	    end
 	;
 
     (* create a fiber *)

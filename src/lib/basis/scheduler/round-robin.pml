@@ -32,14 +32,14 @@ structure RoundRobin =
 			    let sleeping'' : List.list = apply insert (item', sleeping')
 			    return (List.CONS (item', sleeping''))
 		     end
-		let currTime : Time.time = Time.@now (/ exh)
+		let currTime : Time.time = Time.@now ()
 		let sleeping' : List.list = 
 			apply insert (alloc (I64Add (currTime, timeToWait), fls, k), #0(sleeping))
 		let sleeping' : List.list = promote (sleeping')
 		do #0(sleeping) := sleeping'
 		return ()
 	    fun removeFromSleeping (enq : fun (vproc, FLS.fls, PT.fiber / -> )) : () =
-		let currTime : Time.time = Time.@now (/ exh)
+		let currTime : Time.time = Time.@now ()
 		fun remove () : () =
 		    case #0(sleeping)
 		     of List.nil =>
@@ -70,7 +70,7 @@ structure RoundRobin =
 		let item : Option.option = VProcQueue.@dequeue-from-atomic(self)
 		case item
 		 of Option.NONE => 
-		    let currTime : Time.time = Time.@now (/ exh)
+		    let currTime : Time.time = Time.@now ()
 	            let nextSleepingDeadline : Time.time = apply nextSleepingDeadline ()
                     if I64Eq (nextSleepingDeadline, 0:long) then
 			do VProc.@sleep-from-atomic (self)

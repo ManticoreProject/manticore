@@ -35,11 +35,15 @@ structure Word64 =
 	;
 
       define @same (arg : [ml_word, ml_word] / exh : exh) : bool =
-	  return (I64Eq (unwrap (#0(arg)), unwrap (#1(arg))))
+	  if I64Eq (unwrap (#0(arg)), unwrap (#1(arg)))
+	    then return (true)
+	    else return (false)
 	;
 
       define @less-than (arg : [ml_word, ml_word] / exh : exh) : bool =
-	  return (U64Lt (unwrap (#0(arg)), unwrap (#1(arg))))
+	  if U64Lt (unwrap (#0(arg)), unwrap (#1(arg)))
+	    then return (true)
+	    else return (false)
 	;
 
       define @from-int (x : ml_int / exh : exh) : ml_word =
@@ -66,27 +70,21 @@ structure Word64 =
     val toString : word -> string = _prim(@to-string)
 
     fun compare (x, y) = 
-	if same (x, y) then EQUAL 
-	else if lessThan (x, y) then LESS 
-	else GREATER
+	  if same (x, y) then EQUAL 
+	  else if lessThan (x, y) then LESS 
+	  else GREATER
 
-    fun floorLg x =
-	let fun lp (x, i) =
-		if same (x, 1) then
-		    i
-		else
-		    lp (udiv (x, 2), add (i, 1))
-	in
+    fun floorLg x = let
+	  fun lp (x, i) = if same (x, 1) then i else lp (udiv (x, 2), add (i, 1))
+	  in
 	    lp (x, 0)
-	end
+	  end
 
-    fun ceilingLg x = 
-	let val lg = floorLg x
-	in
-	    add (lg, (case compare (sub (x, lsh (1, lg)), 0)
-			      of GREATER => 1
-			       | _ => 0))
-	end
+    fun ceilingLg x = let
+	  val lg = floorLg x
+	  in
+	    add (lg, case compare (sub (x, lsh (1, lg)), 0) of GREATER => 1 | _ => 0)
+	  end
 
   end
 
