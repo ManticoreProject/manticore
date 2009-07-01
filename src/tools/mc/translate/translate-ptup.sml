@@ -535,7 +535,7 @@ structure TranslatePTup  : sig
 	    lp (enumerate (k, n), [])
 	end
 
-    val k = 2          (* maximum number of elements in a flat ptuple *)
+    val k = 4          (* maximum number of elements in a flat ptuple *)
 
     fun tr {supportsExceptions, env, es} = 
 	if List.length es <= 1 then
