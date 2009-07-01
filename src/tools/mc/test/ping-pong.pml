@@ -10,8 +10,8 @@ fun pong () = let
 	if (i = 1) then () else pong()
       end;
 
-val b = gettimeofday ();
+val b = Time.now ();
 val _ = (spawn (ping 1000); pong());
-val e = gettimeofday ();
+val e = Time.now ();
 
-print ("time elapsed: "^dtos (e-b)^"\n")
+val _ = print ("time elapsed: "^dtos (e-b)^"\n")

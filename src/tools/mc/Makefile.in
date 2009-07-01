@@ -80,6 +80,12 @@ $(HEAP_IMAGE):
 	$(ML_BUILD) $(ML_BUILD_FLAGS) $(ROOT_CM) Main.main $(PROGRAM)
 	touch $(HEAP_IMAGE)
 
+# the following rule forces rerunning of ml-antlr if one of the inputs
+# changes.
+#
+parser/manticore.grm:	parser/bom.grm parser/sml.grm
+	touch parser/manticore.grm
+
 .depend:	$(CM_FILES)
 	touch .depend
 	$(ML_MAKEDEPEND) $(ML_MAKEDEPEND_FLAGS) -n -f .depend $(ROOT_CM) $(HEAP_IMAGE)

@@ -66,7 +66,7 @@ structure ParrLitToRope : sig
       | tr ([e], ty) = let
           val sing = BEnv.getVarFromBasis ["Ropes", "singleton"]
           in
-	    AST.ApplyExp (AST.VarExp (sing, [ty]), e, PArray.parrayTy ty)
+	    AST.ApplyExp (AST.VarExp (sing, [ty]), e, Basis.parrayTy ty)
           end
       | tr (es, ty) = let
           val xs = newVars ty es

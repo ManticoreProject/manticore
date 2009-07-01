@@ -8,8 +8,7 @@
  * the parallel-array map, we should expect a near linear speedup of the computation.
  *)
 
-fun sFib (n : int) = (
-    case n
+fun sFib (n : int) = (case n
      of 0 => 0
       | 1 => 1
       | n => let

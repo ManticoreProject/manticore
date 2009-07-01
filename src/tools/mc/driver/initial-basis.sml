@@ -81,6 +81,7 @@ structure InitialBasis : sig
 		  charTyc,
 		  runeTyc,
 		  stringTyc,
+		  parrayTyc,
 		  chanTyc,
 		  ivarTyc,
 		  mvarTyc,
@@ -252,7 +253,8 @@ structure InitialBasis : sig
 		  (floatTyc,	BTy.K_BOXED,	wrapTy BTy.T_Float),
 		  (doubleTyc,	BTy.K_BOXED,	wrapTy BTy.T_Double),
 (*		  (stringTyc,	BTy.K_BOXED,	BOMBasis.stringTy),*)
-		  (exnTyc,	BTy.K_BOXED,	BTy.exnTy)
+		  (exnTyc,	BTy.K_BOXED,	BTy.exnTy),
+		  (parrayTyc,	BTy.K_UNIFORM,	BTy.T_Any)
 		];
 	      env
 	    end

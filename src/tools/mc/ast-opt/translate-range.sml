@@ -10,7 +10,7 @@ structure TranslateRange : sig
 
     val tr : AST.exp * AST.exp * AST.exp option * AST.ty -> AST.exp
 
-end = struct
+  end = struct
 
     structure A = AST
     structure T = Types
@@ -24,7 +24,7 @@ end = struct
 	  of NONE => (get "rangePNoStep", A.TupleExp [fromExp, toExp])
 	   | SOME stepExp => (get "rangeP", A.TupleExp [fromExp, toExp, stepExp]))
       in 
-        A.ApplyExp (A.VarExp (rangeFnV, []), arg, PArray.parrayTy Basis.intTy)
+        A.ApplyExp (A.VarExp (rangeFnV, []), arg, Basis.parrayTy Basis.intTy)
       end
 
   end

@@ -38,15 +38,17 @@ structure Closure : sig
             envName = NONE
           }
 
-    fun convert cps = (case Controls.get convertStyle
-	   of ConvertStyle.Flat => FlatClosure.convert cps
-	    | ConvertStyle.FlatWithCFA => FlatClosureWithCFA.convert cps
+    fun convert module = (
+	  ClassifyConts.analyze module;
+	  case Controls.get convertStyle
+	   of ConvertStyle.Flat => FlatClosure.convert module
+	    | ConvertStyle.FlatWithCFA => FlatClosureWithCFA.convert module
 	  (* end case *))
 
     val convert = BasicControl.mkKeepPass {
 	    preOutput = PrintCPS.output,
             preExt = "cps",
-            postOutput = PrintCFG.output {types=false},
+            postOutput = PrintCFG.output {counts=false, types=false},
             postExt = "cfg",
             passName = "closure",
             pass = convert,

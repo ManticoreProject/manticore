@@ -21,6 +21,7 @@ is
   ../cps-opt/sources.cm
   ../cfg/sources.cm
 
+  classify-conts.sml
   closure.sml
   closure-controls.sml
   free-vars.sml

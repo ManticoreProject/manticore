@@ -32,12 +32,12 @@ structure TypeOf : sig
       | exp (AST.ApplyExp(_, _, ty)) = ty
       | exp (AST.VarArityOpExp (_, _, ty)) = ty
       | exp (AST.TupleExp es) = Ty.TupleTy(List.map exp es)
-      | exp (AST.RangeExp(_, _, _, ty)) = PArray.parrayTy ty
+      | exp (AST.RangeExp(_, _, _, ty)) = B.parrayTy ty
       | exp (AST.PTupleExp es) = Ty.TupleTy(List.map exp es)
-      | exp (AST.PArrayExp(_, ty)) = PArray.parrayTy ty
-      | exp (AST.PCompExp(e, _, _)) = PArray.parrayTy(exp e)
+      | exp (AST.PArrayExp(_, ty)) = B.parrayTy ty
+      | exp (AST.PCompExp(e, _, _)) = B.parrayTy(exp e)
       | exp (AST.PChoiceExp(_, ty)) = ty
-      | exp (AST.SpawnExp _) = Basis.threadIdTy
+      | exp (AST.SpawnExp _) = B.threadIdTy
       | exp (AST.ConstExp c) = const c
       | exp (AST.VarExp(x, argTys)) = 
           (TU.apply(Var.typeOf x, argTys) 

@@ -148,4 +148,7 @@ structure CPS =
 	  Var.setKind(#var arg, VK_Extern(#name arg));
 	  CFunctions.CFun arg)
 
+    fun mkLets ([], e) = e
+      | mkLets ((lhs, rhs)::r, e) = mkLet (lhs, rhs, mkLets(r, e))
+
   end

@@ -1,66 +1,52 @@
+(* prim-list.pml
+ *
+ * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Some hooks into the List module, which we make available to inline BOM code.
+ *)
+
 structure PrimList =
   struct
 
-    structure L = List
-    structure PT = PrimTypes
-
-  (* list utilities for inline BOM *)
     _primcode (
 
-      typedef list = L.list;
+(* FIXME: if the bindings below are declared "inline", the compiler complains that the hlops are
+ * unbound. *)
 
-      define @length (xs : list / exh : exh) : int =
-	fun lp (xs : list, acc : int / exh : exh) : int =
-	    case xs
-	     of nil => return(acc)
-	      | CONS(x : any, xs : list) => apply lp(xs, I32Add(acc, 1) / exh)
-	    end
-	apply lp(xs, 0 / exh)
-      ;
+      typedef list = List.list;
 
-      define @app (f : fun(any / PT.exh -> ), ls : L.list / exh : PT.exh) : () =
-	fun lp (f : fun(any / PT.exh -> ), xs : L.list / exh : PT.exh) : () =
-	    case xs
-	     of nil => return()
-	      | L.CONS(x : any, xs : list) =>
-		do apply f(x / exh)
-		apply lp(f, xs / exh)
-	    end
-	apply lp(f, ls / exh)
-      ;
+      define (* inline *) @length-w = List.length;
+      define (* inline *) @length (xs : list / exh : exh) : int =
+	  let l : ml_int = @length-w (xs / exh)
+	  return (unwrap(l))
+	;
 
-      define @rev (xs : list / exh : PT.exh) : L.list =
-	fun rev (xs : L.list, ys : L.list / exh : PT.exh) : L.list =
-	    case xs
-	     of nil => return(ys)
-	      | L.CONS(x : any, xs : L.list) => apply rev(xs, L.CONS(x, ys) / exh)
-	    end
-	apply rev(xs, nil / exh)
-      ;
+      define (* inline *) @app-w = List.app;
+      define (* inline *) @app (f : fun(any / exh -> ), ls : list / exh : exh) : () =
+	  fun f1 (x : any / exh : exh) : unit =
+	      do apply f (x / exh)
+	      return (UNIT)
+	(* app is curried *)
+	  let app : fun(list / exh -> unit) = @app-w (f1 / exh)
+	  let _ : unit = apply app (ls / exh)
+	  return ()
+	;
 
-      define @map (f : fun(any / PT.exh -> any), ls : L.list / exh : PT.exh) : L.list =
-	fun lp (f : fun(any / PT.exh -> any), xs : L.list, ys : L.list / exh : PT.exh) : L.list =
-	    case xs
-	     of nil => 
-		let ys : L.list = @rev(ys / exh)
-                return(ys)
-	      | L.CONS(x : any, xs : list) =>
-		let x : any = apply f(x / exh)
-		apply lp(f, xs, L.CONS(x, xs) / exh)
-	    end
-	apply lp(f, ls, nil / exh)
-      ;
+      define (* inline *) @rev = List.rev;
 
-      define @append (l1 : L.list, l2 : L.list / exh : PT.exh) : L.list =
-	  fun append (l1 : L.list / exh : PT.exh) : L.list =
-		case l1
-		 of L.CONS(hd:any, tl:L.list) =>
-		      let l : L.list = apply append (tl / exh)
-			return (L.CONS(hd, l))
-		  | nil => return (l2)
-		end
-	    apply append (l1 / exh)
-      ;
+      define (* inline *) @map-w = List.map;
+      define (* inline *) @map (f : fun(any / exh -> any), ls : list / exh : exh) : list =
+	  let map : fun (list / exh -> any) = @map-w (f / exh)
+	  let x : any = apply map (ls / exh)
+	  return (x)
+	;
+
+      define (* inline *) @append-w = List.append;
+      define (* inline *) @append (l1 : list, l2 : list / exh : exh) : list =
+	  let x : list = @append-w (alloc (l1, l2) / exh)
+	  return (x)
+	;
 
     )
 

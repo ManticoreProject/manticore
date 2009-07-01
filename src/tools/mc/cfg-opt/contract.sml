@@ -70,16 +70,28 @@ structure Contract : sig
     fun contractExit (env, xfer) = let
 	(* contract a jump: rename its arguments and do jump-chain elimination *)
 	  fun contractJump (lab, args) = let
-		val args = applySubst' (env, args)
-		fun chainElim targetLab = (case lookupFunc targetLab
-		       of C.FUNC{body=[], exit=C.Goto(lab, _), ...} => (
-			    ST.tick cntJumpChain;
-			    Census.decLab lab;
-			    chainElim lab)
-			| _ => targetLab
+		fun chainElim (lab, args) = (case lookupFunc lab
+		       of C.FUNC{
+			    body=[], entry=C.Block{args=params}, exit=C.Goto(labOut, argsOut), ...
+			  } => let
+			  (* To ensure that the order of the arguments is correct, we need to
+			   * set up a mapping from params to args and apply it to argsOut.  For
+			   * example, if the args are "(x, y, z)", the params are "(a, b, c)",
+			   * and the argsOut are "(b, a, c)", then the new arguments should
+			   * be "(y, x, z)".
+			   *)
+			    val s = ListPair.foldlEq (fn (p, a, s) => VMap.insert(s, p, a))
+				  VMap.empty (params, args)
+			    in
+			      ST.tick cntJumpChain;
+			      Census.decLab lab;
+			      Census.incLab labOut;
+			      chainElim (labOut, applySubst' (s, argsOut))
+			    end
+			| _ => (lab, args)
 		      (* end case *))
 		in
-		  (chainElim lab, args)
+		  chainElim (lab, applySubst' (env, args))
 		end
 	  in
 	    case xfer

@@ -6,7 +6,7 @@
 
 structure PrintCFG : sig
 
-    type flags = {types : bool}
+    type flags = {counts : bool, types : bool}
 
     val output : flags -> (TextIO.outstream * CFG.module) -> unit
 
@@ -16,7 +16,7 @@ structure PrintCFG : sig
 
   end = struct
 
-    type flags = {types : bool}
+    type flags = {counts : bool, types : bool}
 
     fun output (flags : flags) (outS, CFG.MODULE{name, externs, code}) = let
 	  fun pr s = TextIO.output(outS, s)
@@ -33,13 +33,25 @@ structure PrintCFG : sig
 		in
 		  pr "("; prL l; pr ")"
 		end
-	  fun varBindToString x = if (#types flags)
-		then String.concat[
-		    CFG.Var.toString x, "#", Int.toString(CFG.Var.useCount x), ":", CFGTyUtil.toString(CFG.Var.typeOf x)
-		  ]
-		else CFG.Var.toString x
+	  fun varBindToString x = let
+		val l = if (#types flags)
+		      then [":", CFGTyUtil.toString(CFG.Var.typeOf x)]
+		      else []
+		val l = if (#counts flags)
+		      then "#" :: Int.toString(CFG.Var.useCount x) :: l
+		      else l
+		in
+		  String.concat(CFG.Var.toString x :: l)
+		end
 	  fun varUseToString x = CFG.Var.toString x
-	  fun labelToString lab = "$" ^ (CFG.Label.toString lab)
+	  fun labelBindToString lab = let
+		val l = if (#counts flags)
+		      then ["#", Int.toString(CFG.Label.useCount lab)]
+		      else []
+		in
+		  String.concat("$" :: CFG.Label.toString lab :: l)
+		end
+	  fun labelUseToString lab = "$" ^ (CFG.Label.toString lab)
 	  fun prParams []= pr "() ="
 	    | prParams [x] = pr(concat["(", varBindToString x, ") ="])
 	    | prParams params = let
@@ -67,7 +79,7 @@ structure PrintCFG : sig
 		in
 		  indent 1;
 		  pr kind;
-		  prl [labelToString lab, " "]; prParams params; pr "\n";
+		  prl [labelBindToString lab, " "]; prParams params; pr "\n";
 		  List.app (prExp 2) body;
 		  prXfer (2, exit)
 		end
@@ -84,7 +96,7 @@ structure PrintCFG : sig
                         Literal.toString lit, ":", CFGTyUtil.toString ty
                       ]
 		  | (CFG.E_Cast(_, ty, y)) => prl["(", CFGTyUtil.toString ty, ")", varUseToString y]
-		  | (CFG.E_Label(_, lab)) => pr(labelToString lab)
+		  | (CFG.E_Label(_, lab)) => pr(labelUseToString lab)
 		  | (CFG.E_Select(_, i, x)) =>
 		      prl ["#", Int.toString i, " ", varUseToString x]
 		  | (CFG.E_Update(i, x, z)) => prl [
@@ -170,13 +182,13 @@ structure PrintCFG : sig
 		prList varUseToString args;
 		pr "\n")
 	  and prJump (prefix, (lab, args)) = (
-		prl [prefix, " ", labelToString lab];
+		prl [prefix, " ", labelUseToString lab];
 		prList varUseToString args;
 		pr "\n")
 	  fun prExtern cf = prl["  ", CFunctions.cfunToString cf, "\n"]
 (*
 	  fun prExtern (CFunctions.CFun{var, ...}) = prl[
-		  "  extern ", labelToString var, " : ",
+		  "  extern ", labelUseToString var, " : ",
 		  CFGTy.toString(CFG.Label.typeOf var), "\n"
 		]
 *)
@@ -187,7 +199,7 @@ structure PrintCFG : sig
 	    pr "}\n"
 	  end
 
-    fun print m = output {types=false} (TextIO.stdOut, m)
+    fun print m = output {counts=true, types=false} (TextIO.stdOut, m)
 
     fun printFunc f = let
           val m = CFG.MODULE {name = Atom.atom "ad-hoc",

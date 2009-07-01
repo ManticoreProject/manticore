@@ -61,20 +61,66 @@ structure Contract : sig
       | rename' (env, x::xs, y::ys) = rename' (rename(env, x, y), xs, ys)
       | rename' _ = raise Fail "rename': arity mismatch"
 
+  (* apply a substitution to a variable *)
     fun subst (env, x) = (case VMap.find(env, x)
 	   of SOME y => y
 	    | NONE => x
 	  (* end case *))
 
+  (* apply a substitution to a list of variables *)
     fun subst' (env, []) = []
       | subst' (env, x::xs) = subst(env, x) :: subst'(env, xs)
 
+  (* decrement a variable's use count after applying a substitution *)
     fun substDec (env, x) = (case VMap.find(env, x)
 	   of SOME y => dec y
 	    | NONE => dec x
 	  (* end case *))
 
-    fun substDec' (env, xs) = List.map (fn x => substDec(env, x)) xs
+  (* extend the environment with a mapping from the "toVars" to the "fromVars" (i.e.,
+   * instances of a ftoVarromVar will be replaced with the corresponding fromVar),
+   * inserting type casts as necessary
+   *)
+    fun extendWithCasts {env, fromVars, toVars} = let
+        (* FIXME -- Do this right! *)
+          fun needsCast (fromTy, toTy) = (case fromTy
+                 of CTy.T_Any => not (CPSTyUtil.equal (CTy.T_Any, toTy)) 
+                  | CTy.T_Tuple(b, ts) => (case toTy
+                       of CTy.T_Tuple (b', ts') => ListPair.exists needsCast (ts, ts')
+                        | _ => false
+                      (* end case *))
+                  | _ => false
+                (* end case *))
+          fun mkCasts ([], [], fromVars', casts) = (List.rev fromVars', List.rev casts)
+            | mkCasts (_::_, [], _, _) = raise Fail "more fromVars than toVars"
+            | mkCasts ([], _::_, _, _) = raise Fail "more toVars than fromVars"
+            | mkCasts (fromVar::fromVars, toVar::toVars, fromVars', casts) = let
+                val fromTy = CV.typeOf fromVar
+                val toTy = CV.typeOf toVar
+                in
+                  if not (needsCast (fromTy, toTy))
+                    then mkCasts (fromVars, toVars, fromVar::fromVars', casts)
+                    else let
+                      val name = let val x = CV.nameOf fromVar
+                            in 
+                              concat ["_cast", (if String.isPrefix "_" x then "" else "_"), x]
+                            end
+                      val c = CV.new (name, toTy)
+                      val _ = Census.incUseCnt c (* because bind will decrement the count *)
+                      val cast = ([c], C.Cast(toTy, fromVar))
+                      in
+                        mkCasts (fromVars, toVars, c::fromVars', cast::casts)
+                      end
+                end
+          val (fromVars',casts) = mkCasts (fromVars, toVars, [], [])
+          fun bind (fromVar', toVar, env) = (
+                CV.combineAppUseCnts (fromVar', toVar);
+                dec fromVar';
+                VMap.insert (env, toVar, fromVar'))
+          val env' = ListPair.foldl bind env (fromVars', toVars)
+          in
+	    (env', casts)
+          end
 
   (* support for recording that a function has been inlined.  Note that we
    * need to distinguish between inlined and dead functions (even though
@@ -101,12 +147,12 @@ structure Contract : sig
 		  in
 		    case bindingOf x
 		     of C.VK_Let(C.Alloc(CTy.T_Tuple(false, _), xs)) => let
-			  val x' = List.nth(xs, i)
-			  val env = rename(env, y, x')
+			  val z = List.nth(xs, i)
+			  val (env, casts) = extendWithCasts {env = env, fromVars = [z], toVars = [y]}
 			  in
 			    ST.tick cntSelectConst;
-			    dec x;
-			    doExp (env, e)
+			    dec x; inc z;
+			    C.mkLets (casts, doExp (env, e))
 			  end
 		      | _ => let
 			  val e = doExp (env, e)
@@ -252,10 +298,9 @@ structure Contract : sig
 	    end
 
     and inline (env, params, body, args) = let
-	  val env = rename' (env, params, args)
+	  val (env, casts) = extendWithCasts {env = env, fromVars = args, toVars = params}
 	  in
-	    List.app dec args;
-	    doExp (env, body)
+	    C.mkLets (casts, doExp (env, body))
 	  end
 
     fun transform (C.MODULE{name, externs, body}) = let

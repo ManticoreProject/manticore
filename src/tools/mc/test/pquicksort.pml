@@ -54,4 +54,4 @@ val _ = print "str\n";
 val str = intListToString xs;
 val _ = print "done\n";
 
-print (str^ "\n")
+val _ = print (str^ "\n")

@@ -497,10 +497,19 @@ structure ArityRaising : sig
                               (vmap, pmap)
 			    end
 			| (C.Switch(x, cases, dflt)) => let
+                              (* Switch is used for datatype dispatch. Therefore, add
+                               * not only the variable being used but also the parent of
+                               * the path, as very often that variable represents the type
+                               * tag of a datatype.
+                               *)
                             val unsafeParams = (
                                 case ParamMap.find(vmap, VAR x)
                                  of NONE => unsafeParams
-                                  | SOME p => p::unsafeParams
+                                  | SOME p => (
+                                    case p
+                                     of SEL(_, p') => p::(p'::unsafeParams)
+                                      | PARAM(_) => p::unsafeParams
+                                    (* end case *))
                             (* end case *))
 			    val (vmap, pmap) = (case dflt
 				   of SOME e => doExp(vmap, pmap, e, unsafeParams)
@@ -619,8 +628,24 @@ structure ArityRaising : sig
     fun getProcessState f = getFn f
     end
 
+    fun isEffectful (rhs, externs) = (
+        case rhs
+	 of C.Prim (primop) => not(PrimUtil.isPure primop)
+	  | C.Update _ => true
+	  | C.CCall (f, _) => let
+                fun findCCall (cFun) = CV.same (CFunctions.varOf cFun, f)
+                val cCall = List.filter findCCall externs
+            in
+                if List.length cCall = 1
+                then not (CFunctions.isPure (List.hd cCall))
+                else true
+            end
+	  | C.VPStore _ => true
+	  | _ => false
+    (* end case *))
+
     fun scanUseful (m, round) = let
-	  val C.MODULE{body=body,...} = m
+	  val C.MODULE{body,externs,...} = m
 	  val C.FB{f=main,params,rets,body} = body
 	  val usefuls = ref (!escaping @ [main])
 	  val changed = ref false
@@ -647,14 +672,7 @@ structure ArityRaising : sig
 		  | _ => ()
 		(* end case *))
 	  fun markCorresponding (a,b) = if getUseful a then markUseful b else ()
-	  fun isEffectful rhs = (case rhs
-		 of C.Prim (primop) => not(PrimUtil.isPure primop)
-		  | C.Update _ => true
-(* FIXME: should check for pure C functions *)
-		  | C.CCall _ => true
-		  | C.VPStore _ => true
-		  | _ => false
-	       (* end case *))
+
 	  fun processLambda f = let
 		val SOME(C.FB {body,params,rets,...}) = getFB f
 		fun processBody () = (
@@ -680,7 +698,7 @@ structure ArityRaising : sig
 	     *)
 	       of C.Let ([var], rhs, body) => (
 		    processExp body;
-		    if isEffectful rhs then setUseful var else ();
+		    if isEffectful (rhs, externs) then setUseful var else ();
 		    if getUseful var then processRhs rhs else ())
 		| C.Let ([], rhs, body) => (
 		    processExp body;
@@ -698,7 +716,6 @@ structure ArityRaising : sig
 		    List.app (fn (_, e) => processExp e) cases;
 		    Option.app processExp dflt;
 		    markUseful x)
-		(* TODO: maybe check equivalentFns instead of just the straight binding? *)
 		| C.Apply (f, args, rets) => (
 		    case getFB f
 		     of SOME(C.FB{params,rets=conts,...}) => let
@@ -807,7 +824,7 @@ structure ArityRaising : sig
 	  fun flattenApplyThrow (ppt, g, args, retArgs) = if isCandidate g
 		then let 
 		  val {sign, params, rets, flat=SOME(f), flatParams=SOME(fParams), ...} = getInfo g
-		  fun genCall (sign, params, newArgs, progress) =
+		  fun genCall (sign, params, newArgs, progress, args') =
                         if null sign
 			  then (case retArgs
 			     of SOME(retArgs) => let
@@ -825,10 +842,10 @@ structure ArityRaising : sig
 			  else let
 			    fun genResult (varBase, path) =
                                   if length path = 0
-				  then genCall (tl sign, tl params, varBase :: newArgs, NONE)
+				  then genCall (tl sign, tl params, varBase :: newArgs, NONE, args')
 				  else (
                                       case peekAlias ((hd path), varBase)
-                                       of SOME (v') => genCall (sign, params, newArgs, SOME (v', tl path))
+                                       of SOME (v') => genCall (sign, params, newArgs, SOME (v', tl path), args')
                                         | NONE => let
 				              val newType = (
                                                   case CV.typeOf varBase
@@ -844,9 +861,9 @@ structure ArityRaising : sig
 				          in
 				              if length path = 1
 					      then C.mkLet ([newVar], rhs,
-					                    genCall (tl sign, tl params, newVar :: newArgs, NONE))
+					                    genCall (tl sign, tl params, newVar :: newArgs, NONE, args'))
 					      else C.mkLet ([newVar], rhs,
-					                    genCall (sign, params, newArgs, SOME (newVar, tl path)))
+					                    genCall (sign, params, newArgs, SOME (newVar, tl path), args'))
                                           end
                                       (* end case *))
 			    in
@@ -855,19 +872,46 @@ structure ArityRaising : sig
 				| NONE => let
 				    val (whichBase, path)::_ = sign
                                     val param = hd params
-				    val varBase = List.nth (args, whichBase)
+				    val varBase = List.nth (args', whichBase)
 				    in
                                       (* Flattened functions will lose any useless parameters.
                                        * We know they only have known call sites (by construction).
                                        *)
                                       if shouldSkipUseless param
-                                      then genCall (tl sign, tl params, newArgs, NONE)
+                                      then genCall (tl sign, tl params, newArgs, NONE, args')
 				      else genResult (varBase, path)
 				    end
 			      (* end case *)
                             end
+                  fun cleanupArgsBeforeCall (sign, params, newArgs, progress,
+                                             paramType::paramTypes, arg::orig, accum) =
+                      let
+                          val argType = CV.typeOf arg
+                      in
+                          if CPSTyUtil.equal (paramType, argType)
+                          then cleanupArgsBeforeCall (sign, params, newArgs, progress, paramTypes, orig, arg::accum)
+                          else let
+                                  val typed = CV.new ("coerced", paramType)
+                              in
+                                  C.mkLet ([typed], C.Cast(paramType, arg),
+                                           cleanupArgsBeforeCall (sign, params, newArgs, progress,
+                                                                  paramTypes, orig, typed::accum))
+                              end
+                      end
+                    | cleanupArgsBeforeCall (sign, params, newArgs, progress, paramTypes, [], accum) =
+                      genCall (sign, params, newArgs, progress, rev accum)
+                    | cleanupArgsBeforeCall (sign, params, newArgs, progress, _, _, accum) =
+                      raise Fail (concat["Can't happen - call to method had mismatched arg/params.",
+                                         CV.toString g])
+                  val CTy.T_Fun(paramTypes, _)  = CV.typeOf g
 		  in
-                    genCall (sign, fParams, [], NONE)
+                    (* Often, original tupled arguments are of type :any instead of what
+                     * they will be at the landing site of the call, relying on Apply to
+                     * implicitly cast them. Since we're checking types in our flat-sels
+                     * above, if the original argument is not of the type it would have
+                     * when the Apply lands, we cast it here and use that instead.
+                     *)
+                    cleanupArgsBeforeCall (sign, fParams, [], NONE, paramTypes, args, [])
 		  end
 		else let (* Not a call to a candidate function. Keep arguments in place *)
                         fun translateArgs (v::vl, accum, final) =
@@ -1025,6 +1069,65 @@ structure ArityRaising : sig
 		})
 	    }
 	end
+        
+    (*
+     * Given our incremental approach to flattening and useless elimination, it would be
+     * technically better to iterate CFA+flat+useless+Census+contract to a fixpoint. However,
+     * that's really slow. Doing these next two cleanup passes (remove zero-count let bindings
+     * and then zero-count parameters) catches the vast majority of what's left after a single
+     * iteration of CFA+flat+usless+census.
+     *)
+    fun cleanupBody (C.MODULE{name,externs,body=(C.FB{f=main,params=modParams,rets=modRets,body=modBody})}) = let
+        fun decCountsRHS (rhs) = (
+            case rhs
+             of C.Var (vars) => List.app Census.decUseCnt vars
+	      | C.Cast (_, v) => Census.decUseCnt v
+	      | C.Const (_, _) => ()
+	      | C.Select (_, v) => Census.decUseCnt v
+	      | C.Update (_, v, x) => (Census.decUseCnt v; Census.decUseCnt x)
+	      | C.AddrOf (_, v) => Census.decUseCnt v
+	      | C.Alloc (_, vars) => List.app Census.decUseCnt vars
+	      | C.Promote (v) => Census.decUseCnt v
+	      | C.Prim p => PrimUtil.app Census.decUseCnt p
+	      | C.CCall (f, args) => (Census.decUseCnt f ; List.app Census.decUseCnt args)
+	      | C.HostVProc => ()
+	      | C.VPLoad (_, v) => Census.decUseCnt v
+	      | C.VPStore (_, v1, v2) => (Census.decUseCnt v1; Census.decUseCnt v2)
+	      | C.VPAddr (_, v) => Census.decUseCnt v
+        (* end case *))
+
+        fun cleanupExp (exp as C.Exp(ppt, e)) = (
+            case e
+             of C.Let ([x], rhs, e) =>
+                if CV.useCount x > 0 orelse isEffectful (rhs, externs)
+                then C.mkLet ([x], rhs, cleanupExp e)
+                else (decCountsRHS rhs; cleanupExp e)
+              | C.Let (vars, rhs, e) => C.mkLet (vars, rhs, cleanupExp e)
+              | C.Fun (lambdas, body) => let
+                    val lambdas = List.map cleanupLambda lambdas
+                    val body = cleanupExp body
+                in
+                    C.mkFun (lambdas, body)
+                end
+              | C.Cont (f, body) => C.mkCont (cleanupLambda f, cleanupExp body)
+              | C.If (v, e1, e2) => C.mkIf (v, cleanupExp e1, cleanupExp e2)
+              | C.Switch (v, cases, body) => C.mkSwitch(v, List.map (fn (tag,e) => (tag, cleanupExp e))
+                                                                    cases, Option.map cleanupExp body)
+              | C.Apply (f, args, retArgs) => C.mkApply (f, args, retArgs)
+              | C.Throw (k, args) => C.mkThrow (k, args)
+                (* end case *))
+        and cleanupLambda (lambda as C.FB{f, params, rets, body}) =
+            C.mkLambda(C.FB{f=f,params=params,rets=rets,body=cleanupExp body})
+    in
+        C.MODULE{
+	name=name, externs=externs,
+	body = C.mkLambda(C.FB{
+                          f=main,params=modParams,rets=modRets,
+                          body= cleanupExp (modBody)
+		         })
+	}
+    end
+        
     (*
      * Flatten+useless elim can leave around useCnt=0 params on flattened functions.
      * This removes them, cleans up the types, and cleans up the call sites.
@@ -1103,7 +1206,6 @@ structure ArityRaising : sig
 		    val newType = CTy.T_Fun (List.map CV.typeOf params', List.map CV.typeOf rets')
                     val _ = CV.setType (f, newType)
                     val fb = C.FB{f=f,params=params',rets=rets',body=cleanupExp body}
-                    val _ = setFB (f, fb)
                 in
                     C.mkLambda(fb)
                 end
@@ -1124,13 +1226,15 @@ structure ArityRaising : sig
 	    val candidates = analyse m
             val _ = scanUseful (m, 0)
 	    val m' = flatten m
+            (* FIXME: should mainain census counts! *)
+	    val _ = Census.census m'
+            val m' = cleanupBody m'
+            val m' = cleanupParams m'
 	    in
 	      if !flatteningDebug
 		then List.app printCandidate candidates
 		else ();
-(* FIXME: should mainain census counts! *)
-	      Census.census m';
-              cleanupParams m'
+              m'
 	    end
 	  else m
 

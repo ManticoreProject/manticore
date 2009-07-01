@@ -7,6 +7,9 @@
  * but which CFA tells us can only be bound to a single function with that function's
  * literal name. Note that we need to respect lexical scoping (which the CFA analysis
  * does not require to be true).
+ *
+ * TODOs:
+ * Split analysis from transformation. !pass is a horrible hack
  *)
 
 structure CopyPropagation : sig
@@ -55,11 +58,52 @@ structure CopyPropagation : sig
     val cntPropagatedFunctions  = ST.newCounter "cps-copy-propagation:propagated-functions"
     val cntHoistedFunctions     = ST.newCounter "cps-copy-propagation:hoisted-functions"
 
-    (* property for tracking bindings to function bodies, used in useful
-     * variable analysis
+    (* Type used for building a function nesting hierarchy
+     * This is used to determine a common-parent (LUB) when hoisting
+     * functions up.
      *)
     local
-      val {setFn, getFn, peekFn, ...} = CV.newProp (fn f => raise Fail "Undefined function binding during copy propagation.")
+      val {setFn, getFn, ...} = CV.newProp (fn f => (f, 0))
+    in
+    fun setParent (f : CV.var, (p : CV.var, l : int)) = (
+        if !propagationDebug
+        then print (concat ["Parent function of ", CV.toString f,
+                            " is ", CV.toString p, " at level ",
+                            Int.toString l, "\n"])
+        else ();
+        setFn (f, (p, l)))
+    fun getParent f = getFn f
+    end
+
+    fun fixup (translations) = let
+        (* Find the common parent of the two *)
+        fun fixOne (callee, caller, first) =
+            if CV.compare (callee, caller) = EQUAL
+            then caller
+            else let
+                    val (calleeParent , calleeLevel) = getParent callee
+                    val (callerParent, callerLevel) = getParent caller
+                in
+                    case Int.compare (calleeLevel, callerLevel)
+                     of EQUAL => ( (* If the original caller/callee
+                                    * have the same parent, then try to just
+                                    * shuffle ahead instead of up. *)
+                        if CV.compare (calleeParent, callerParent) = EQUAL
+                           andalso first
+                        then caller
+                        else fixOne (calleeParent, callerParent, false))
+                      | GREATER => fixOne (calleeParent, caller, false)
+                      | LESS => fixOne (callee, callerParent, false)
+                end
+    in
+        VMap.mapi (fn (a,b) => fixOne (a,b,true))  translations
+    end
+
+
+    (* property for tracking bindings to function bodies
+     *)
+    local
+      val {setFn, getFn, ...} = CV.newProp (fn f => raise Fail "Undefined function binding during copy propagation.")
     in
     fun setFB (f,b : C.lambda) = setFn (f, b)
     fun getFB f = getFn f
@@ -69,7 +113,14 @@ structure CopyPropagation : sig
         val env = VSet.addList (env, params)
         val env = VSet.addList (env, rets)
         val env = VSet.add (env, f)
-        fun checkList (env, l) = List.foldl (fn (a,b) => b andalso VSet.member (env, a)) true l
+        fun checkMembership (env, var) = let
+            val isMember = VSet.member (env, var)
+        in
+            if (!propagationDebug) andalso not(isMember)
+            then (print (concat [CV.toString var, " is free in attempted hoist.\n"]) ; isMember)
+            else isMember
+        end
+        fun checkList (env, l) = List.foldl (fn (a,b) => b andalso checkMembership (env, a)) true l
         fun isClosedExp (C.Exp(ppt, e), env) = isClosedTerm (e, env)
         and isClosedTerm (C.Let (lhs, rhs, body), env) = let
             val env = VSet.addList (env, lhs)
@@ -90,30 +141,30 @@ structure CopyPropagation : sig
           | isClosedTerm (C.If (cond, e1, e2), env) = checkList (env, CondUtil.varsOf cond) andalso
             isClosedExp (e1, env) andalso isClosedExp (e2, env)
           | isClosedTerm (C.Switch (x, cases, default), env) =
-            VSet.member (env, x) andalso
+            checkMembership (env, x) andalso
             (List.foldl (fn ((tag,body),b) => b andalso isClosedExp (body, env)) true cases) andalso
             (case default of SOME(e) => isClosedExp(e, env) | NONE => true)
           | isClosedTerm (C.Apply (f, args, params), env) =
-            VSet.member (env, f) andalso
+            checkMembership (env, f) andalso
             checkList (env, args) andalso
-            checkList (env, rets)
+            checkList (env, params)
           | isClosedTerm (C.Throw (k, args), env) =
-            VSet.member (env, k) andalso
+            checkMembership (env, k) andalso
             checkList (env, args)
         and isClosedRHS (C.Var (vars), env) = checkList (env, vars)
-          | isClosedRHS (C.Cast (_, v), env) = VSet.member (env, v)
+          | isClosedRHS (C.Cast (_, v), env) = checkMembership (env, v)
           | isClosedRHS (C.Const (_, _), _) = true
-          | isClosedRHS (C.Select (_, v), env) = VSet.member (env, v)
-          | isClosedRHS (C.Update (_, v1, v2), env) = VSet.member (env, v1) andalso VSet.member (env, v2)
-          | isClosedRHS (C.AddrOf (_, v), env) = VSet.member (env, v)
+          | isClosedRHS (C.Select (_, v), env) = checkMembership (env, v)
+          | isClosedRHS (C.Update (_, v1, v2), env) = checkMembership (env, v1) andalso checkMembership (env, v2)
+          | isClosedRHS (C.AddrOf (_, v), env) = checkMembership (env, v)
           | isClosedRHS (C.Alloc (_, vars), env) = checkList (env, vars)
-          | isClosedRHS (C.Promote (v), env) = VSet.member (env, v)
+          | isClosedRHS (C.Promote (v), env) = checkMembership (env, v)
           | isClosedRHS (C.Prim (prim), env) = checkList (env, PrimUtil.varsOf prim)
-          | isClosedRHS (C.CCall (v, vars), env) = VSet.member (env, v) andalso checkList (env, vars)
+          | isClosedRHS (C.CCall (v, vars), env) = checkMembership (env, v) andalso checkList (env, vars)
           | isClosedRHS (C.HostVProc, _) = true
-          | isClosedRHS (C.VPLoad (_, v), env) = VSet.member (env, v)
-          | isClosedRHS (C.VPStore (_, v1, v2), env) = VSet.member (env, v1) andalso VSet.member (env, v2)
-          | isClosedRHS (C.VPAddr (_, v), env) = VSet.member (env, v)
+          | isClosedRHS (C.VPLoad (_, v), env) = checkMembership (env, v)
+          | isClosedRHS (C.VPStore (_, v1, v2), env) = checkMembership (env, v1) andalso checkMembership (env, v2)
+          | isClosedRHS (C.VPAddr (_, v), env) = checkMembership (env, v)
         and isClosedLambda (lambda as C.FB{f,params,rets,body}, env) = let
             val env = VSet.add (env, f)
             val env' = VSet.addList (env, params)
@@ -125,7 +176,8 @@ structure CopyPropagation : sig
         isClosedExp (body, env)
     end
 
-    fun copyPropagate (C.MODULE{name,externs,body=(C.FB{f=main,params=modParams,rets=modRets,body=modBody})}) = let
+    fun copyPropagate (C.MODULE{name,externs,body=(mainLambda
+                                                       as C.FB{f=main,params=modParams,rets=modRets,body=modBody})}) = let
         val pass = ref 0
         (* Only insert into the map if the callee isn't already being moved up.
          * If it has already been scheduled for a move, that will also 'work' for the later
@@ -137,7 +189,7 @@ structure CopyPropagation : sig
              of NONE => VMap.insert (map, callee, caller)
               | _ => map
         (* end case *))
-        fun findCopy (f, env) = (
+        fun findCopy (f, env, parent) = (
             case CFA.valueOf f
              of CFA.LAMBDAS (l) => (
                 case CV.Set.listItems l
@@ -153,7 +205,8 @@ structure CopyPropagation : sig
                                      COPY (f'))
                                else SKIP (* Only make changes in the second pass *)
                           else (if !propagationDebug
-                                then print (concat [CV.toString f', " was not in scope for copy-prop in pass ", Int.toString (!pass), ".\n"])
+                                then print (concat [CV.toString f', " was not in scope for copy-prop over ",
+                                                    CV.toString parent, " in pass ", Int.toString (!pass), ".\n"])
                                 else ();
                                 MOVE(f'))))
                   | _ => SKIP
@@ -164,8 +217,8 @@ structure CopyPropagation : sig
             if (!pass) = 0
             then continue ((fn x => x), env, map)
             else let
-                    fun wrapWithNewPreds' (l::rest, wrapper, env, map, continue) = let
-                        val C.FB{f=f',...} = l
+                    fun wrapWithNewPreds' (l'::rest, wrapper, env, map, continue) = let
+                        val C.FB{f=f',...} = l'
                         val preds = List.map (fn (k,v) => getFB k)
                                              (VMap.listItemsi
                                                   (VMap.filter
@@ -210,7 +263,14 @@ structure CopyPropagation : sig
                     val env' = VSet.addList(env, vars)
                     val (body, env'', map') = copyPropagateExp (e, env', map, parent)
                 in (C.mkLet (vars, rhs, body), env'', map') end
-              | C.Fun (lambdas, body) =>
+              | C.Fun (lambdas, body) => (
+                if !pass=0
+                then let
+                        val (_, n) = getParent parent
+                    in
+                        List.app (fn (l as C.FB{f,...}) => setParent (f, (parent, n+1))) lambdas
+                    end
+                else ();
                 wrapWithNewPreds (
                 lambdas, env, map,
                 (fn (wrapper, env, map) => let
@@ -229,8 +289,15 @@ structure CopyPropagation : sig
                         if List.null lambdas
                         then (wrapper body, env', map'')
                         else (wrapper (C.mkFun(lambdas, body)), env', map'')
-                    end))
-              | C.Cont (f as C.FB{f=fname,...}, body) =>
+                    end)))
+              | C.Cont (f as C.FB{f=fname,...}, body) =>(
+                if !pass=0
+                then let
+                        val (_, n) = getParent parent
+                    in
+                        setParent (fname, (parent, n+1))
+                    end
+                else ();
                 wrapWithNewPreds (
                 [f], env, map,
                 (fn (wrapper, env, map) =>
@@ -245,7 +312,7 @@ structure CopyPropagation : sig
                             val (body, _, map'') = copyPropagateExp (body, env', map', parent)
                         in
                             (wrapper (C.mkCont (lambda, body)), env', map'')
-                        end))
+                        end)))
               | C.If (v, e1, e2) => let
                     val (e1', _, map') = copyPropagateExp (e1, env, map, parent)
                     val (e2', _, map'') = copyPropagateExp (e2, env, map', parent)
@@ -265,17 +332,17 @@ structure CopyPropagation : sig
                     (C.mkSwitch(v, switches, default), env, map')
                 end
               | C.Apply (f, args, retArgs) => (
-                case findCopy (f, env)
+                case findCopy (f, env, parent)
                  of COPY (f') => (ST.tick cntPropagatedFunctions;
                                   Census.decAppCnt f;
                                   Census.incAppCnt f';
                                   (C.mkApply (f', args, retArgs), env, map))
                   | MOVE(callee) => (C.mkApply (f, args, retArgs), env,
-                                             insert (map, callee, parent))
+                                     insert (map, callee, parent))
                   | SKIP => (C.mkApply (f, args, retArgs), env, map)
                 (* end case *))
               | C.Throw (k, args) => (
-                case findCopy (k, env)
+                case findCopy (k, env, parent)
                  of COPY (k') => (ST.tick cntPropagatedFunctions;
                                   Census.decAppCnt k;
                                   Census.incAppCnt k';
@@ -286,7 +353,10 @@ structure CopyPropagation : sig
         (* end case *))
         and copyPropagateLambda (lambda as C.FB{f, params, rets, body}, env, map) = let
             val _ = if (!pass) = 0 then setFB (f, lambda) else ()
+            val _ = if VSet.member (env, f) then (raise Fail (concat[CV.toString f, " is already a member"])) else ()
             val env' = VSet.add (env, f)
+            val env' = VSet.addList (env', params)
+            val env' = VSet.addList (env', rets)
             val (body, _, map') = copyPropagateExp (body, env', map, f)
         in
             (C.mkLambda(C.FB{f=f,params=params,rets=rets,body=body}), env', map')
@@ -299,6 +369,7 @@ structure CopyPropagation : sig
         val (_, _, translations) = copyPropagateExp (modBody, env, VMap.empty, main)
         (* On the second time through, do copy prop and make any moves we can *)
         val _ = pass := !pass +1
+        val translations = fixup (translations)
         val (body', _, _) = copyPropagateExp (modBody, env, translations, main)
     in
         C.MODULE{

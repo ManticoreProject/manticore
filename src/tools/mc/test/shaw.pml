@@ -4,5 +4,5 @@ fun signum (n : int) =
    else if (n < 0)
         then ~1
         else 0;
-(| signum (1000 : int), signum (~1000 : int) |)
+val _ = (| signum (1000 : int), signum (~1000 : int) |)
 
