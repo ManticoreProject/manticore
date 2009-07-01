@@ -17,7 +17,7 @@ fun outputImg i = if i < N
         then let
           fun loop j = if j < N
               then (
-                   output (i, j, Ropes.sub(Ropes.sub(mandelbrotRGB, i), j));
+                   output (i, j, subP(subP(mandelbrotRGB, i), j));
                    loop (j+1)
                 )
               else outputImg (i+1)
