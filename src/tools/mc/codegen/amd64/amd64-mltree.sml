@@ -71,6 +71,12 @@ functor AMD64MLTreeFn (structure AMD64Constant : CONSTANT) =
 		    | (IX.POP rexp) => concat["POP(", #rexp prt rexp, ")"]
 		    | IX.LEAVE => "LEAVE"
 		    | (IX.RET rexp) => concat["RET(", #rexp prt rexp, ")"]
+		    | IX.LOCK_XADDL(addr, x) => concat[
+			  "LOCK_XADDL(", #rexp prt addr, ",", #rexp prt x, ")"
+			]
+		    | IX.LOCK_XADDQ(addr, x) => concat[
+			  "LOCK_XADDQ(", #rexp prt addr, ",", #rexp prt x, ")"
+			]
 		    | (IX.LOCK_CMPXCHGL(re1, re2)) => concat[
 			  "LOCK_CMPXCHGL(", #rexp prt re1, ",", #rexp prt re2, ")"
 			]
@@ -83,12 +89,10 @@ functor AMD64MLTreeFn (structure AMD64Constant : CONSTANT) =
 		    | (IX.LOCK_XCHGQ(re1, re2)) => concat[
 			  "LOCK_XCHGQ(", #rexp prt re1, ",", #rexp prt re2, ")"
 			]
-		    | IX.LOCK_XADDL(addr, x) => concat[
-			  "LOCK_XADDL(", #rexp prt addr, ",", #rexp prt x, ")"
-			]
-		    | IX.LOCK_XADDQ(addr, x) => concat[
-			  "LOCK_XADDQ(", #rexp prt addr, ",", #rexp prt x, ")"
-			]
+		    | IX.PAUSE => "PAUSE"
+		    | IX.MFENCE => "MFENCE"
+		    | IX.LFENCE => "LFENCE"
+		    | IX.SFENCE => "SFENCE"
 		  (* end case *))
 	    fun showRext _ _ = raise Fail "showRext"
 	    fun showFext _ _ = raise Fail "showFext"

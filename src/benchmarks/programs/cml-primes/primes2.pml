@@ -84,5 +84,6 @@ structure Main = struct
 (*val _ = Main.timeit 362*)
 (*val _ = Main.timeit 375*)	(* fails *)
 (*val _ = Main.timeit 2000*)
+(*val _ = Main.timeit 2000*)
 val _ = Main.timeit 5000
 
