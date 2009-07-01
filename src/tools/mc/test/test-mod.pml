@@ -9,8 +9,8 @@ structure Main =
     structure T =
       struct
         fun f i = (
-	    print (itos (fib i)^"\n");
-	    print (itos (Fib.fib i + TreeAdd.treeAdd (TreeAdd.mkTree 10))^"\n"))
+	    print (Int.toString (fib i)^"\n");
+	    print (Int.toString (Fib.fib i + TreeAdd.treeAdd (TreeAdd.mkTree 10))^"\n"))
       end
     fun g () = T.f 10 + 1
   end

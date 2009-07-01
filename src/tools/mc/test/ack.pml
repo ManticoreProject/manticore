@@ -5,9 +5,9 @@ fun ack(m,n) = if m=0 then
 	       else if m>0 andalso n>0 then
 		   ack(m-1,ack(m,n-1))
 	       else
-		   ~1 (* raise Fail "undefined" *);
+		   ~1 (* raise Fail "undefined" *)
 
-ack(4,1)
+val _ = ack(4,1)
 (*(| ack(4,1), ack(5,0) |)*)
 
 	

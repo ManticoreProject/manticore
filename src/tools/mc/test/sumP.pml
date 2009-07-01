@@ -14,4 +14,5 @@ val (ns : int parray) = [| 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
 fun add (x, y) = x + y
 val s = reduceP (add, 0, ns)
 
-val _ = Print.print ("The answer is " ^ (Int.toString s) ^ ". (Expected 1100.)\n")
+print ("The answer is " ^ (Int.toString s) ^ ". (Expected 1100.)\n")
+

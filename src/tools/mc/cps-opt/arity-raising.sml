@@ -57,6 +57,7 @@ structure ArityRaising : sig
     val cntEscapingFuns         = ST.newCounter "cps-arity:escaping-funs"
     val cntUselessElim          = ST.newCounter "cps-arity:useless-elim"
     val cntUselessScanPasses    = ST.newCounter "cps-arity:useless-scan-passes"
+    val cntFunsToConts          = ST.newCounter "cps-arity:funs-to-conts"
 
 
   (***** Analysis *****)
@@ -446,12 +447,18 @@ structure ArityRaising : sig
 			f (0, params, ParamMap.empty, PMap.empty)
 		      end
                 val _ = List.app (fn p => setParent (p, f)) params
+
+                fun isUnsafe (unsafe::rest, p) =
+                    if isDerivedFrom (p, unsafe)
+                    then true
+                    else isUnsafe (rest, p)
+                  | isUnsafe ([], _) = false
 	      (* analyse the body of the candidate function *)
-		fun doExp (vmap, pmap, C.Exp(ppt, t), carefully) = (case t
+		fun doExp (vmap, pmap, C.Exp(ppt, t), unsafeParams) = (case t
 		       of (C.Let([x], C.Select(i, y), e)) => (
                             setParent (x, f) ;
 			    case ParamMap.find(vmap, VAR y)
-			     of NONE => doExp(vmap, pmap, e, carefully)
+			     of NONE => doExp(vmap, pmap, e, unsafeParams)
 			      | SOME p => let
 				  val q = SEL(i, p)
 				  val vmap' = ParamMap.insert(vmap, VAR x, q)
@@ -461,38 +468,45 @@ structure ArityRaising : sig
 				(* either add q to the path map or update its count *)
 				  val (vmap, pmap) = (case PMap.find(pmap, q)
 					 of NONE => (
-                                            if carefully
+                                            if isUnsafe (unsafeParams, p)
                                             then (addToRef (cnt, 1) ; (vmap, pmap))
                                             else (vmap', PMap.insert(pmap, q, ref(CV.useCount x))))
 					  | SOME cnt => (addToRef(cnt, CV.useCount x);
                                                          (vmap', pmap))
 					(* end case *))
 				  in
-				    doExp (vmap, pmap, e, carefully)
+				    doExp (vmap, pmap, e, unsafeParams)
 				  end)
-			| (C.Let(_, _, e)) => doExp (vmap, pmap, e, carefully)
+			| (C.Let(_, _, e)) => doExp (vmap, pmap, e, unsafeParams)
 			| (C.Fun(fbs, e)) => (
 			    analyseLambdas fbs;
-			    doExp (vmap, pmap, e, carefully))
+			    doExp (vmap, pmap, e, unsafeParams))
 			| (C.Cont(fb, e)) => (
 			    analyseLambdas [fb];
-			    doExp (vmap, pmap, e, carefully))
+			    doExp (vmap, pmap, e, unsafeParams))
 			| (C.If(x, e1, e2)) => let
-			  (* Conditional code: can't add guarded variable accesses
-			   * i.e., can end up adding a param for y that was within
-			   * an 'if not(null x) then let y = #1(x) else 2'
-			   *)
-			    val (vmap, pmap) = doExp (vmap, pmap, e1, true)
-			    val (vmap, pmap) = doExp (vmap, pmap, e2, true)
+                            val condVars = CondUtil.varsOf x
+                            val unsafeParams = foldl (fn (x,unsafeParams) =>
+                                                         (case ParamMap.find(vmap, VAR x)
+                                                           of NONE => unsafeParams
+                                                            | SOME p => p::unsafeParams))
+                                               unsafeParams condVars
+			    val (vmap, pmap) = doExp (vmap, pmap, e1, unsafeParams)
+			    val (vmap, pmap) = doExp (vmap, pmap, e2, unsafeParams)
 			    in
                               (vmap, pmap)
 			    end
 			| (C.Switch(x, cases, dflt)) => let
+                            val unsafeParams = (
+                                case ParamMap.find(vmap, VAR x)
+                                 of NONE => unsafeParams
+                                  | SOME p => p::unsafeParams
+                            (* end case *))
 			    val (vmap, pmap) = (case dflt
-				   of SOME e => doExp(vmap, pmap, e, true)
+				   of SOME e => doExp(vmap, pmap, e, unsafeParams)
 				    | NONE => (vmap, pmap)
 				  (* end case *))
-			    fun doCase ((_, e), (vmap, pmap)) = doExp(vmap, pmap, e, true)
+			    fun doCase ((_, e), (vmap, pmap)) = doExp(vmap, pmap, e, unsafeParams)
 			    in
 			      List.foldl doCase (vmap, pmap) cases
 			    end
@@ -503,7 +517,7 @@ structure ArityRaising : sig
 			    addCallSite (SOME f, ppt, k, args);
 			    (vmap, pmap))
 		      (* end case *))
-		val (vmap, pmap) = doExp(vmap, pmap, body, false)
+		val (vmap, pmap) = doExp(vmap, pmap, body, [])
 	      (* the "argument shape" of f is a list of paths such that
 	       *  1) no path is derived from another in the list,
 	       *  2) the use counts of the paths are > 0
@@ -812,24 +826,29 @@ structure ArityRaising : sig
 			    fun genResult (varBase, path) =
                                   if length path = 0
 				  then genCall (tl sign, tl params, varBase :: newArgs, NONE)
-				  else let
-				    val newType = (case CV.typeOf varBase
-					   of CTy.T_Tuple(_, types) => List.nth (types, (hd path))
-					    | CTy.T_Any => raise Fail (concat[
-						  "SEL into any of var: ", CV.toString varBase,
-						  " probably flattening var that isn't guaranteed to be that type.\n"
-						])
-					    | _ => raise Fail "SEL from non tuple/any type"
-					  (* end case *))
-				    val newVar = CV.new ("letFlat", newType)
-				    val rhs = C.Select (hd path, varBase)
-				    in
-				      if length path = 1
-					then C.mkLet ([newVar], rhs,
-					    genCall (tl sign, tl params, newVar :: newArgs, NONE))
-					else C.mkLet ([newVar], rhs,
-					    genCall (sign, params, newArgs, SOME (newVar, tl path)))
-                                        end
+				  else (
+                                      case peekAlias ((hd path), varBase)
+                                       of SOME (v') => genCall (sign, params, newArgs, SOME (v', tl path))
+                                        | NONE => let
+				              val newType = (
+                                                  case CV.typeOf varBase
+					           of CTy.T_Tuple(_, types) => List.nth (types, (hd path))
+					            | CTy.T_Any => raise Fail (concat[
+						                               "SEL into any of var: ", CV.toString varBase,
+						                               " probably flattening var that isn't guaranteed to be that type.\n"
+						                              ])
+					            | _ => raise Fail "SEL from non tuple/any type"
+					      (* end case *))
+				              val newVar = CV.new ("letFlat", newType)
+				              val rhs = C.Select (hd path, varBase)
+				          in
+				              if length path = 1
+					      then C.mkLet ([newVar], rhs,
+					                    genCall (tl sign, tl params, newVar :: newArgs, NONE))
+					      else C.mkLet ([newVar], rhs,
+					                    genCall (sign, params, newArgs, SOME (newVar, tl path)))
+                                          end
+                                      (* end case *))
 			    in
 			      case progress
 			       of SOME(base,l) => genResult (base, l)
@@ -882,36 +901,34 @@ structure ArityRaising : sig
           and shouldSkipUseless (v) = if getUseful v
 		then false
 		else (ST.tick (cntUselessElim); true)
+          and findInSign (n, s::sign, path, params) =
+              if samePath(path, listToPath s) then SOME(List.nth (params, n)) else findInSign(n+1,sign, path, params)
+            | findInSign (n, [], _, _) = NONE
+          (* look up path in defining function of selectee *)
+          and peekAlias (i, y) = (
+              case getParent y
+               of SOME(encl) => (
+                  if not(isCandidate encl)
+                  then NONE
+                  else let
+                          val {vmap,sign, flatParams=SOME(newParams), ...} = getInfo encl
+                      in
+                          case ParamMap.find (vmap, VAR (y))
+                           of SOME(path) => findInSign(0, sign, SEL (i, path), newParams)
+                            | NONE => NONE
+                      end)
+                | NONE => NONE
+          (* end case *))
           and findAlias (v, encl, i, y) =
               if not(isCandidate encl)
               then NONE
               else let
-                      fun findInSign (n, s::sign, path, params) =
-                          if samePath(path, listToPath s) then SOME(List.nth (params, n)) else findInSign(n+1,sign, path, params)
-                        | findInSign (n, [], _, _) = NONE
                       val {vmap,sign, flatParams=SOME(newParams), ...} = getInfo encl
                   in
                       case ParamMap.find (vmap, VAR (v))
                        of SOME(path) => findInSign(0, sign, path, newParams)
-                        | NONE => (* look up path in defining function of selectee *)
-                          (case getParent y
-                            of SOME (p) =>
-                               if not(isCandidate p)
-                               then NONE
-                               else let
-                                       val {vmap, pmap, sign, flatParams=SOME(newParams),...} = getInfo p
-                                   in
-                                       case ParamMap.find (vmap, VAR (y))
-                                        of SOME(path) => let
-                                               val fullPath = SEL(i, path)
-                                           in
-                                               findInSign(0, sign, fullPath, newParams)
-                                           end
-                                         | NONE => NONE
-                                       
-                                   end
-                             | NONE => NONE
-                          (* end case *))
+                        | NONE => peekAlias (i, y)
+                          
                   end
 	  and walkExp(encl, newParams, C.Exp(ppt,e)) = (case e
 		 of (C.Let([v], rhs, e)) => (
@@ -1011,30 +1028,60 @@ structure ArityRaising : sig
     (*
      * Flatten+useless elim can leave around useCnt=0 params on flattened functions.
      * This removes them, cleans up the types, and cleans up the call sites.
+     *
+     * Additionally, if we've gotten to a point where any of the C.Fun lambdas have
+     * had all of their return continuations eliminated, change those into C.Cont
      *)
     fun cleanupParams (C.MODULE{name,externs,body=(C.FB{f=main,params=modParams,rets=modRets,body=modBody})}) = let
         fun cleanupExp (exp as C.Exp(ppt, e)) = (
             case e
              of C.Let (vars, rhs, e) => C.mkLet (vars, rhs, cleanupExp e)
-              | C.Fun (lambdas, body) => C.mkFun(List.map cleanupLambda lambdas, cleanupExp body)
+              | C.Fun (lambdas, body) => let
+                    val lambdas = List.map cleanupLambda lambdas
+                    fun emitFunsOrConts((l as C.FB{rets,...})::lambdas, accum) =
+                        if List.null rets
+                        then (if List.null accum
+                              then (ST.tick cntFunsToConts;
+                                    C.mkCont (l, emitFunsOrConts (lambdas, [])))
+                              else C.mkFun (rev accum, C.mkCont (l, emitFunsOrConts (lambdas, []))))
+                        else emitFunsOrConts (lambdas, l::accum)
+                      | emitFunsOrConts([], accum) = let
+                            val body = cleanupExp body
+                        in
+                            if List.null accum
+                            then body
+                            else C.mkFun (rev accum, body)
+                        end
+                in
+                    emitFunsOrConts (lambdas, [])
+                end
               | C.Cont (f, body) => C.mkCont (cleanupLambda f, cleanupExp body)
               | C.If (v, e1, e2) => C.mkIf (v, cleanupExp e1, cleanupExp e2)
               | C.Switch (v, cases, body) => C.mkSwitch(v, List.map (fn (tag,e) => (tag, cleanupExp e))
                                                                     cases, Option.map cleanupExp body)
               | C.Apply (f, args, retArgs) => (
                 if not(isFlat f) 
-                then exp
+                then (case CV.typeOf f
+                       of CPSTy.T_Fun (_, []) => C.mkThrow (f, args)
+                        | _ => exp 
+                     (* end case *))
                 else case getFB f
-                      of SOME(C.FB{params,rets,...}) =>
-                         C.mkApply(f,
-                                   ListPair.foldr (fn (a,b,rr) => if CV.useCount a > 0 then b::rr
+                      of SOME(C.FB{params,rets,...}) => let
+                             val newArgs = ListPair.foldr (fn (a,b,rr) => if CV.useCount a > 0 then b::rr
                                                                   else (Census.decUseCnt b ; rr))
-                                   [] (params, args),
-                                   ListPair.foldr (fn (a,b,rr) => if CV.useCount a > 0 then b::rr
+                                                          [] (params, args)
+                             val newRets = ListPair.foldr (fn (a,b,rr) => if CV.useCount a > 0 then b::rr
                                                                   else (Census.decUseCnt b ; rr))
-                                   [] (rets, retArgs))
-                                   
-                       | NONE => exp
+                                                          [] (rets, retArgs)
+                         in
+                             case CV.kindOf f
+                              of CPS.VK_Fun(_) => C.mkApply (f, newArgs, newRets)
+                               | _ => C.mkThrow (f, newArgs)
+                         end
+                       | NONE => (case CV.typeOf f
+                                   of CPSTy.T_Fun (_, []) => C.mkThrow (f, args)
+                                    | _ => exp 
+                                 (* end case *))
                 )
               | C.Throw (k, args) => (
                 if not (isFlat k) 
@@ -1055,9 +1102,10 @@ structure ArityRaising : sig
                     val rets' = List.filter (fn p => (CV.useCount p) > 0) rets
 		    val newType = CTy.T_Fun (List.map CV.typeOf params', List.map CV.typeOf rets')
                     val _ = CV.setType (f, newType)
+                    val fb = C.FB{f=f,params=params',rets=rets',body=cleanupExp body}
+                    val _ = setFB (f, fb)
                 in
-                    
-                    C.mkLambda(C.FB{f=f,params=params',rets=rets',body=cleanupExp body})
+                    C.mkLambda(fb)
                 end
     in
         C.MODULE{

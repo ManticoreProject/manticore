@@ -1,3 +1,5 @@
+(* this program isn't real pml; it tests the dval binder *)
+
 val seqSz = 1;
 
 fun timeToEval (f) = let
@@ -82,4 +84,4 @@ fun queens (n) = let
     end
 ;
 
-queens(readint())
+val _ = queens(readint())

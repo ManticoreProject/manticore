@@ -251,9 +251,9 @@ val build_tree_time = t1 - t0;
 val size_time = t3 - t2; 
 
 (print ("The outcome of the game is ");
- print (itos(result));
+ print (Int.toString(result));
  print " (expecting 0).\nThe size of T is ";
- print (itos(s));
+ print (Int.toString(s));
  print " (expecting 549946).\n";
  print "Time to build the tree: ";
  print (dtos(build_tree_time));

@@ -6,5 +6,5 @@ exception Foo of int;
 
 fun g' () = raise Foo 17;
 
-(*print(itos(f g') ^ "\n")*) 0
+val _ = (*Print.print(Int.toString(f g') ^ "\n")*) 0
 

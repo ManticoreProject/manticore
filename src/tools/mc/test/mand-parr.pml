@@ -61,4 +61,4 @@ fun outputImg i = if i < sz
           end
         else ();
 
-(outputImg 0; outputImage(img, "mand.ppm"); freeImage img)
+val _ = (outputImg 0; outputImage(img, "mand.ppm"); freeImage img)

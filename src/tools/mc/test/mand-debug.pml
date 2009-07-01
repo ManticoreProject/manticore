@@ -51,11 +51,11 @@ fun catw (sep, strPar) =
 
 val arrayOfStrings = 
   let (* row2string : int parray -> string *)
-      fun row2string r = "[" ^ catw (",", [| itos n | n in r |]) ^ "]";
+      fun row2string r = "[" ^ catw (",", [| Int.toString n | n in r |]) ^ "]";
   in
       [| row2string r | r in img |]
   end;
 
 fun prln s = (print (s ^ "\n"));
 
-parrayApp (prln, arrayOfStrings)
+val _ = parrayApp (prln, arrayOfStrings)

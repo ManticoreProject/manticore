@@ -71,7 +71,7 @@ fun doit () = let
         (* end case *))
     fun recvLs () = (case (recv ch)
         of NONE => ()
-	 | SOME i => (print ((itos i)^"\n"); recvLs ())
+	 | SOME i => (print ((Int.toString i)^"\n"); recvLs ())
         (* end case *))
     in
        	print "start sorting\n";
@@ -82,4 +82,4 @@ fun doit () = let
     end
 ;
 
-doit ()
+val _ = doit ()

@@ -9,9 +9,9 @@ val side : double = 2.0;
 
 val sz : int = 1024;
 val maxCount : int = 1000;
-val maxCount' = itof (maxCount-1);
+val maxCount' = Float.toString (maxCount-1);
 
-val delta : double = side / (itod(sz-1));
+val delta : double = side / (Double.toString(sz-1));
 
 val img = Image.new (sz, sz);
 
@@ -31,7 +31,7 @@ val blue = weight (10.0, 0.25);
 fun color cnt = if (cnt = maxCount)
       then (0.0, 0.0, 0.0)
       else let
-	val w = itof cnt / maxCount'
+	val w = Float.toString cnt / maxCount'
 	val r = min(1.0, max(0.0, 1.25*(w-0.75) + red w))
 	val g = min(1.0, max(0.1, 1.0*(w-0.5) + green w))
 	val b = min(1.0, max(0.2, 0.75*(w-0.25) + blue w))
@@ -40,8 +40,8 @@ fun color cnt = if (cnt = maxCount)
 	end;
 
 fun pixel (i, j) = let
-      val c_re = xBase + (delta * itod j)
-      val c_im = yBase - (delta * itod i)
+      val c_re = xBase + (delta * Double.toString j)
+      val c_im = yBase - (delta * Double.toString i)
       fun loop (cnt, z_re, z_im) = if (cnt < maxCount)
 	    then let
 	      val z_re_sq = z_re * z_re
@@ -71,4 +71,4 @@ fun lp i = if (i < sz)
 	end
       else ();
 
-(lp 0; Image.output("mand.ppm", img); Image.free img)
+val _ = (lp 0; Image.output("mand.ppm", img); Image.free img)

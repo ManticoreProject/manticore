@@ -5,4 +5,4 @@ val f = _prim (fun f (x:[int] / exh : cont(any)) : [int] =
                    return (alloc(v')))
 
 val x = f 1
-val _ = print (itos x^"\n")
+val _ = Print.print (Int.toString x^"\n")

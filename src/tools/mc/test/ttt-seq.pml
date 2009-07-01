@@ -210,9 +210,9 @@ fun minimax (b : board, p : player) =
     fun moveTo' i = moveTo (b, p, i)
     fun minimax' b = minimax (b, other p)
     fun select2 (_, s) = s
-    val moves = map (moveTo', allMoves b)
-    val trees = map (minimax', moves)
-    val scores = map (compose (select2, top), trees)
+    val moves = map moveTo' (allMoves b)
+    val trees = map minimax' moves
+    val scores = map (select2 o top) trees
     in
       case p
         of X => Rose ((b, listmax scores), trees)
@@ -225,24 +225,25 @@ val t1 = gettimeofday();
 
 val (b, result) = top(T);
 
-val t2 = gettimeofday();
+val t2 = Time.now();
 val s = size(T);
-val t3 = gettimeofday();
+val t3 = Time.now();
 
 val build_tree_time = t1 - t0;
 
 val size_time = t3 - t2; 
 
-(print ("The outcome of the game is ");
- print (itos(result));
- print " (expecting 0).\nThe size of T is ";
- print (itos(s));
- print " (expecting 549946).\n";
- print "Time to build the tree: ";
- print (dtos(build_tree_time));
- print "\nTime to compute the size of the tree: ";
- print (dtos(size_time));
- print "\n")
+val _ = (
+      print ("The outcome of the game is ");
+      print (Int.toString(result));
+      print " (expecting 0).\nThe size of T is ";
+      print (Int.toString(s));
+      print " (expecting 549946).\n";
+      print "Time to build the tree: ";
+      print (Time.toString(build_tree_time));
+      print "\nTime to compute the size of the tree: ";
+      print (Time.toString(size_time));
+      print "\n")
 
 (* A bunch of debugging follows. *)
 
@@ -253,7 +254,7 @@ fun println s = (print s; print "\n");
 
 fun otos o = (case o of NONE => "NONE" | SOME _ => "SOME");
 
-fun Ltos ns = concatWith(",",map(itos,ns));
+fun Ltos ns = concatWith(",",map(Int.toString,ns));
 
 fun Btos b = let
   fun str op =
@@ -276,7 +277,7 @@ val aBoard = SOME(X)::SOME(X)::NONE::SOME(O)::SOME(O)::SOME(O)::NONE::NONE::NONE
 val aTree = minimax(aBoard,X);
 
 (*
-let fun str (b, s) = "(" ^ Btos(b) ^ "," ^ itos(s) ^ ")"
+let fun str (b, s) = "(" ^ Btos(b) ^ "," ^ Int.toString(s) ^ ")"
 in
   app(compose(println,str),immChildren(aTree))
 end  

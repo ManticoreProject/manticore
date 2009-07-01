@@ -7,7 +7,7 @@ fun parrString a =
       fun build (curr, acc) =
         if curr=len
         then rev acc
-        else build (curr+1, (itos (a!curr)) :: acc)
+        else build (curr+1, (Int.toString (a!curr)) :: acc)
   in
       "[" ^ (concatWith (",", build (0, nil))) ^ "]"
   end;
@@ -20,5 +20,5 @@ val pc = [| sqr(x) | x in [| 1 to 20 |] |];
 
 val s = parrString pc;
 
-print ("RESULT: " ^ s ^ "\n     (expected 1, 4, 9, ..., 400)\n")
+val _ = print ("RESULT: " ^ s ^ "\n     (expected 1, 4, 9, ..., 400)\n")
 

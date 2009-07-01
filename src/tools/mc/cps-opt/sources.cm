@@ -25,6 +25,7 @@ is
   arity-raising.sml
   census.sml
   contract.sml
+  copy-propagation.sml
   cps-opt-controls.sml
   cps-opt-fn.sml
   eta-expand.sml

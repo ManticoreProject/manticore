@@ -7,10 +7,10 @@ structure Fib =
       (* end case *))
   end
 
-fun println s = (print s; print "\n")
+fun println s = (Print.print s; Print.print "\n")
 
 fun main _ = let
-  val f10 = itos (Fib.fib 10)
+  val f10 = Int.toString (Fib.fib 10)
   in
     println f10
   end

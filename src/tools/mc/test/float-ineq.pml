@@ -10,8 +10,8 @@ fun filter (g, ls) = (case ls
 fun floatListToString ls =  let
     fun loop (ls, acc) =  (case ls
         of nil => acc
-	 | x :: nil => acc ^ (ftos x)
-	 | x :: xs => loop (xs, acc ^ (ftos x) ^ ", ")
+	 | x :: nil => acc ^ (Float.toString x)
+	 | x :: xs => loop (xs, acc ^ (Float.toString x) ^ ", ")
         (* end case *))
     in
        "[" ^ loop (ls, "") ^ "]"
@@ -21,8 +21,8 @@ fun floatListToString ls =  let
 fun intListToString ls = let
     fun loop (ls, acc) =  (case ls
         of nil => acc
-	 | x :: y :: nil => acc ^ (itos x) ^ ", " ^ (itos y)
-	 | x :: xs => loop (xs, acc ^ (itos x) ^ ", ")
+	 | x :: y :: nil => acc ^ (Int.toString x) ^ ", " ^ (Int.toString y)
+	 | x :: xs => loop (xs, acc ^ (Int.toString x) ^ ", ")
         (* end case *))
     in
        "[" ^ loop (ls, "") ^ "]"
@@ -32,5 +32,5 @@ fun intListToString ls = let
 val x : float list = 5.0 :: ~1.0 :: 1002.123 :: 1.0 :: 20.0 :: nil;
 val y = filter (f1 10.0, x);
 
-val _ = print ((floatListToString x)^"\n");
-print ((floatListToString y)^"\n")
+val _ = Print.print ((floatListToString x)^"\n");
+val _ = Print.print ((floatListToString y)^"\n")

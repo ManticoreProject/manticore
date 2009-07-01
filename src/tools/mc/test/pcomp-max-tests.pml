@@ -23,7 +23,7 @@ fun parString a =
       fun build (curr, acc) =
         if curr=len
         then rev acc
-        else build (curr+1, (itos (a!curr)) :: acc)
+        else build (curr+1, (Int.toString (a!curr)) :: acc)
   in
       "[|" ^ (catw (",", build (0, nil))) ^ "|]"
   end;
@@ -1787,6 +1787,5 @@ val parcomp =
       k in [|1,7,0,6,6,3,9,9,6,5,3,2,3|] |]
 ;
 val _ = printPar(parcomp);
-val _ = print "expected [|9,7,9,9,9,9,9,9,9,9,9,9,8|]\n";
+val _ = print "expected [|9,7,9,9,9,9,9,9,9,9,9,9,8|]\n"
 
-()

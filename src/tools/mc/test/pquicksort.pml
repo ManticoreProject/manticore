@@ -20,8 +20,8 @@ fun filter (g, ls) = let
 fun intListToString ls = let
     fun loop (ls, acc) =  (case ls
         of nil => acc
-(*         | x :: y :: nil => acc ^ (itos x) ^ ", " ^ (itos y)*)
-	 | x :: xs => loop (xs, acc ^ (itos x) ^ ", ")
+(*         | x :: y :: nil => acc ^ (Int.toString x) ^ ", " ^ (Int.toString y)*)
+	 | x :: xs => loop (xs, acc ^ (Int.toString x) ^ ", ")
         (* end case *))
     in
        "[" ^ loop (ls, "") ^ "]"
