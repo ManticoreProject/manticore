@@ -66,7 +66,7 @@ structure CheckCFG : sig
         (* checkArgTypes : string * ty list * ty list -> unit *)
 	  fun checkArgTypes (cmp, ctx, paramTys, argTys) = let
 	      (* chk1 : ty * ty -> unit *)
-	        fun chk1 (pty, aty) =
+	        fun chk1 (aty, pty) =
 		      if (cmp (aty, pty))
                         then ()
 		        else (
@@ -75,15 +75,11 @@ structure CheckCFG : sig
 			  cerror ["  but found ", TyU.toString aty, "\n"])
 	        in 
 	          if (length paramTys = length argTys)
-                    then ListPair.app chk1 (paramTys, argTys)
-                    else let
-	            (* str : ty list -> string *)
-                      fun str ts = String.concatWith "," (map TyU.toString ts)
-                      in 
-                        error ["wrong number of arguments in ", ctx, "\n"];
-			cerror ["  expected (", str paramTys, ")\n"];
-			cerror ["  found    (", str argTys, ")\n"]
-                      end
+                    then ListPair.app chk1 (argTys, paramTys)
+                    else (
+		      error ["wrong number of arguments in ", ctx, "\n"];
+		      cerror ["  expected ", tl2s paramTys, "\n"];
+		      cerror ["  found    ", tl2s argTys, "\n"])
 	        end
 	(* construct a set of the bound labels in the module *)
 	  val lEnv = List.foldl
@@ -491,13 +487,17 @@ structure CheckCFG : sig
                        (* end case *);
                        chkJump (addVars (env, lhs), (l,lhs@rargs), "AllocCCall"))
                 (* end case *))
-		and chkJump (env, (lab, args), cxt) = (
-		      chkLbl (lEnv, lab, cxt);
-		      chkVars (env, args, cxt);
-                      case L.typeOf lab 
-                       of Ty.T_Block{args = argTys} => (
-                           checkArgTypes (TyU.match, cxt, argTys, typesOf args))
-                        | ty => error[l2s lab, ":", TyU.toString ty, " is not a block\n"])
+		and chkJump (env, (lab, args), cxt) = let
+		      val cxt = String.concat[cxt, " jump to ", l2s lab]
+		      in
+			chkLbl (lEnv, lab, cxt);
+			chkVars (env, args, cxt);
+			case L.typeOf lab 
+			 of Ty.T_Block{args = paramTys} => (
+			      checkArgTypes (TyU.match, cxt, paramTys, typesOf args))
+			  | ty => error[cxt, " is not a block\n"]
+			(* end case *)
+		      end
           fun chkFunc (CFG.FUNC {lab, entry, body, exit}) = let
                 val env = chkEntry (lab, entry)
 		val env = List.foldl (fn (exp,env) => chkExp (env, exp)) env body
