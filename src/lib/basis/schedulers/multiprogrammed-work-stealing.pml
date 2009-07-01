@@ -47,7 +47,7 @@ structure MultiprogrammedWorkStealing (* :
           let self : vproc = host_vproc
 
           cont impossible () = 
-            do assert(false)
+            do assert_fail()
             let exn : exn = Fail(@"MultiprogrammedWorkStealing: impossible")
             throw exh(exn)
 

@@ -62,21 +62,6 @@ structure PrimList =
 	    apply append (l1 / exh)
       ;
 
-      define @nth (l : L.list, n : int / exh : PT.exh) : any =
-	fun lp (l : L.list, n : int / exh : PT.exh) : any =
-	    case l
-	     of nil => 
-(* FIXME: raise an exception *)
-		do assert(PT.false)
-		return($0)
-	      | L.CONS(x : any, l : L.list) => 
-		if I32Eq(n, 0)
-		   then return(x)
-		else apply lp(l, I32Sub(n, 1) / exh)
-            end
-	apply lp(l, n / exh)
-      ;
-
     )
 
 

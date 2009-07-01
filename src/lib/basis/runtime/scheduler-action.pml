@@ -134,7 +134,7 @@ structure SchedulerAction (* :
 	    let vp : vproc = @atomic-begin()         (* mask signals before resuming *)
 	    return()
 	  do @forward-from-atomic (vp, PT.PREEMPT(k))
-	  do assert(false) (* control should never reach this point *)
+	  do assert_fail() (* control should never reach this point *)
 	  return()
 	;
 
