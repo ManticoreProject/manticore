@@ -112,7 +112,7 @@ structure FreeVars : sig
 			| NONE => fv
 		      (* end case *))
 		in
-		  addVar (fv, x)
+		  addVar (fv', x)
 		end
 	    | CPS.Apply(f, args, rets) => addVars(VSet.empty, f::args@rets)
 	    | CPS.Throw(k, args) => let
