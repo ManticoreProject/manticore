@@ -172,7 +172,7 @@ structure WorkStealing (* :
 		  throw impossible()
 
 		cont findWork () =                
-		(* look for work on the local deque. *)
+		(* look for work on the local deque *)
 		  let thd : Option.option = D.@pop-new-end-from-atomic (self, deque)
 		  do case thd
 		      of Option.NONE => 
@@ -180,9 +180,8 @@ structure WorkStealing (* :
 		       | Option.SOME (thd : ImplicitThread.thread) => 
 			 throw dispatch (thd)
 		     end
-		(* nothing available on the local deque. *)
 		  do SchedulerAction.@yield-in-atomic (self)
-		(* try to steal from another worker. *)
+		(* no local work available , so try to steal from another worker *)
 		  let victimVPId : int = Rand.@in-range-int (0, nVProcs / exh)
 		  let victimVP : vproc = VProc.@vproc-by-id (victimVPId)
 		  do if Equal (victimVP, self) then 
@@ -283,9 +282,6 @@ structure WorkStealing (* :
           let nVProcs : int = VProc.@num-vprocs ()
           let assignedDeques : Arr.array = Arr.@array (nVProcs, enum(0):any / exh)
 	  let workerInit : cont (ImplicitThread.worker) = @new-worker (uid, isTerminated, assignedDeques / exh)
-	  cont auxiliaryWorkerInit (_ : unit) = 
-		let e : exn = Fail(@"WorkStealing.@work-group: todo: implement auxiliary worker")
-		throw exh (e)
 	  fun spawnFn (thd : ImplicitThread.thread / exh : exh) : unit =
 	      do @push-new-end (thd / exh)
 	      return (UNIT)
