@@ -36,7 +36,7 @@ structure FreeVars : sig
 	  print "}")
 (* -DEBUG*)
 
-    val {getFn = getFV, setFn = setFV, ...} = V.newProp (fn _ => VSet.empty)
+    val {getFn = getFV, setFn = setFV, ...} = V.newProp (fn _ => NONE : VSet.set option)
     val {getFn = getFVOfPt, setFn = setFVOfPt, ...} = PPt.newProp (fn _ => VSet.empty)
 
   (* is a variable externally bound? *)
@@ -74,6 +74,7 @@ structure FreeVars : sig
   (* return the variable of a lambda *)
     fun funVar (CPS.FB{f, ...}) = f
 
+    val again = ref false
     fun analExp (CPS.Exp(_, e)) = (case e
 	   of CPS.Let(xs, rhs, e) => removes (fvOfRHS(analExp e, rhs), xs)
 	    | CPS.Fun(fbs, e) => let
@@ -85,7 +86,7 @@ structure FreeVars : sig
 		val fbEnv = List.foldl g fbEnv fbs
 		in
 		(* record the environment for the lambdas *)
-		  List.app (fn fb => setFV (funVar fb, fbEnv)) fbs;
+		  List.app (fn fb => setFV (funVar fb, SOME(fbEnv))) fbs;
 		(* also remove the function names from the free variables of e *)
 		  List.foldl g (VSet.union(analExp e, fbEnv)) fbs
 		end
@@ -95,7 +96,7 @@ structure FreeVars : sig
 	      (* remove the continuation's name from the set *)
 		val fbEnv = remove(fbEnv, funVar fb)
 		in
-		  setFV (funVar fb, fbEnv);
+		  setFV (funVar fb, SOME(fbEnv));
 		  remove (VSet.union (fbEnv, analExp e), funVar fb)
 		end
 	    | CPS.If(cond, e1, e2) => let
@@ -124,7 +125,12 @@ structure FreeVars : sig
 		 * k in as a free variable.
 		 *)
 		  if ClassifyConts.isJoinCont k
-		    then VSet.union(fv, getFV k)
+		    then (case getFV k
+                           of SOME fvs => VSet.union(fv, fvs)
+                            | NONE => ((* still processing k; need to loop *)
+                                       again := true;
+                                       fv)
+                         (* end case *))
 		    else addVar(fv, k)
 		end
 	  (* end case *))
@@ -144,7 +150,8 @@ structure FreeVars : sig
 	  analExp body,
 	  addVars (addVars(VSet.empty, params), rets))
 
-    fun analyze (CPS.MODULE{name, externs, body, ...}) = let
+    fun analyze (module as CPS.MODULE{name, externs, body, ...}) = let
+          val _ = again := false
 	  val fv = analFB body
 	  in
 	    if VSet.isEmpty fv
@@ -152,7 +159,10 @@ structure FreeVars : sig
 	      else (
 		print(concat["FV(", Atom.toString name, ") = "]);
 		prSet fv; print "\n";
-		raise Fail "non-closed module")
+		raise Fail "non-closed module");
+            if !again
+              then analyze module
+              else ()
 	  end
 
     val analyze = BasicControl.mkTracePassSimple {
@@ -161,7 +171,7 @@ structure FreeVars : sig
 	  }
 
     fun envOfFun f = let
-	  val fv = getFV f
+	  val SOME(fv) = getFV f
 	  in
             if Controls.get ClosureControls.debug
                then (print(concat["FV(", V.toString f, ") = "]); prSet fv; print "\n")
