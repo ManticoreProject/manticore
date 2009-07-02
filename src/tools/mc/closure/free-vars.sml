@@ -36,7 +36,7 @@ structure FreeVars : sig
 	  print "}")
 (* -DEBUG*)
 
-    val {getFn = getFV, setFn = setFV, ...} = V.newProp (fn _ => NONE : VSet.set option)
+    val {getFn = getFV, setFn = setFV, ...} = V.newProp (fn _ => VSet.empty)
     val {getFn = getFVOfPt, setFn = setFVOfPt, ...} = PPt.newProp (fn _ => VSet.empty)
 
   (* is a variable externally bound? *)
@@ -74,7 +74,6 @@ structure FreeVars : sig
   (* return the variable of a lambda *)
     fun funVar (CPS.FB{f, ...}) = f
 
-    val again = ref false
     fun analExp (CPS.Exp(_, e)) = (case e
 	   of CPS.Let(xs, rhs, e) => removes (fvOfRHS(analExp e, rhs), xs)
 	    | CPS.Fun(fbs, e) => let
@@ -86,7 +85,7 @@ structure FreeVars : sig
 		val fbEnv = List.foldl g fbEnv fbs
 		in
 		(* record the environment for the lambdas *)
-		  List.app (fn fb => setFV (funVar fb, SOME(fbEnv))) fbs;
+		  List.app (fn fb => setFV (funVar fb, fbEnv)) fbs;
 		(* also remove the function names from the free variables of e *)
 		  List.foldl g (VSet.union(analExp e, fbEnv)) fbs
 		end
@@ -96,7 +95,7 @@ structure FreeVars : sig
 	      (* remove the continuation's name from the set *)
 		val fbEnv = remove(fbEnv, funVar fb)
 		in
-		  setFV (funVar fb, SOME(fbEnv));
+		  setFV (funVar fb, fbEnv);
 		  remove (VSet.union (fbEnv, analExp e), funVar fb)
 		end
 	    | CPS.If(cond, e1, e2) => let
@@ -108,12 +107,11 @@ structure FreeVars : sig
 	    | CPS.Switch(x, cases, dflt) => let
 		fun doCase ((_, e), fv) = VSet.union (fv, analExpAndRecord e)
 		val fv = List.foldl doCase VSet.empty cases
-		val fv' = (case dflt
-		       of SOME e => VSet.union(fv, analExpAndRecord e)
-			| NONE => fv
-		      (* end case *))
 		in
-		  addVar (fv', x)
+		  case dflt
+		   of SOME e => VSet.union(fv, analExpAndRecord e)
+		    | NONE => fv
+		  (* end case *)
 		end
 	    | CPS.Apply(f, args, rets) => addVars(VSet.empty, f::args@rets)
 	    | CPS.Throw(k, args) => let
@@ -125,12 +123,7 @@ structure FreeVars : sig
 		 * k in as a free variable.
 		 *)
 		  if ClassifyConts.isJoinCont k
-		    then (case getFV k
-                           of SOME fvs => VSet.union(fv, fvs)
-                            | NONE => ((* still processing k; need to loop *)
-                                       again := true;
-                                       fv)
-                         (* end case *))
+		    then VSet.union(fv, getFV k)
 		    else addVar(fv, k)
 		end
 	  (* end case *))
@@ -150,8 +143,7 @@ structure FreeVars : sig
 	  analExp body,
 	  addVars (addVars(VSet.empty, params), rets))
 
-    fun analyze (module as CPS.MODULE{name, externs, body, ...}) = let
-          val _ = again := false
+    fun analyze (CPS.MODULE{name, externs, body, ...}) = let
 	  val fv = analFB body
 	  in
 	    if VSet.isEmpty fv
@@ -159,10 +151,7 @@ structure FreeVars : sig
 	      else (
 		print(concat["FV(", Atom.toString name, ") = "]);
 		prSet fv; print "\n";
-		raise Fail "non-closed module");
-            if !again
-              then analyze module
-              else ()
+		raise Fail "non-closed module")
 	  end
 
     val analyze = BasicControl.mkTracePassSimple {
@@ -171,7 +160,7 @@ structure FreeVars : sig
 	  }
 
     fun envOfFun f = let
-	  val SOME(fv) = getFV f
+	  val fv = getFV f
 	  in
             if Controls.get ClosureControls.debug
                then (print(concat["FV(", V.toString f, ") = "]); prSet fv; print "\n")
