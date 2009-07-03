@@ -166,7 +166,8 @@ structure ClassifyConts : sig
 		analExp (f, body);
 		if List.null (usesOf f)
 		  then ()
-		  else (); (* FIXME: what do we do about recursive join conts? *)
+		  else (* we don't support recursive join conts *)
+		    markAsOther f;
 		analExp (outer, e);
 		if Controls.get ClosureControls.debug
 		  then print(concat[

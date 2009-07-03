@@ -107,12 +107,12 @@ structure FreeVars : sig
 	    | CPS.Switch(x, cases, dflt) => let
 		fun doCase ((_, e), fv) = VSet.union (fv, analExpAndRecord e)
 		val fv = List.foldl doCase VSet.empty cases
-		val fv' = (case dflt
+		val fv = (case dflt
 		       of SOME e => VSet.union(fv, analExpAndRecord e)
 			| NONE => fv
 		      (* end case *))
 		in
-		  addVar (fv', x)
+		  addVar (fv, x)
 		end
 	    | CPS.Apply(f, args, rets) => addVars(VSet.empty, f::args@rets)
 	    | CPS.Throw(k, args) => let
