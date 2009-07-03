@@ -110,7 +110,7 @@ structure FreeVars : sig
 		val fv = (case dflt
 		       of SOME e => VSet.union(fv, analExpAndRecord e)
 			| NONE => fv
-		      (* end case *)
+		      (* end case *))
 		in
 		  addVar (fv, x)
 		end
