@@ -7,12 +7,9 @@
  *
  * Memory management:
  * Since we allocate deques in the C heap, we rely on a reference counting scheme to manage memory
- * associated with deques. To maintain the reference counts, we require that workers always claim their
- * deques before using them and release the deques once they are no longer needed.
- *
- * There is a potential space leak. The memory manager only frees deques that are empty and have a zero
- * reference count. So, we must avoid leaving nonempty deques around for an unbounded 
- * amount of time.
+ * associated with deques. To maintain the reference counts, we require that workers release deques
+ * that are no longer needed. The memory manager only frees deques that are both empty and have
+ * a reference count of zero.
  *
  *)
 
@@ -42,7 +39,7 @@ structure WorkStealingDeque (* :
       define @double-size-from-atomic (self : vproc, workGroupId : ImplicitThread.work_group_id, deque : deque) : deque;
 
     (* returns the deques associated with the given vproc and the work group id *)
-      define @local-deques-from-atomic (self : vproc, workGroupId : ImplicitThread.work_group_id) : List.list;
+      define @local-deques-from-atomic (self : vproc, workGroupId : ImplicitThread.work_group_id) : (* [deque] *) List.list;
     )
 
   end *) = struct
@@ -236,42 +233,42 @@ structure WorkStealingDeque (* :
 	   return ()
 	 ;
 
-     define (* inline *) @pop-new-end-from-atomic (self : vproc, deque : deque) : Option.option =
-         do assert (NotEqual (deque, enum(0):any))
-         do assert (I32Gt (LOAD_DEQUE_NCLAIMED(deque), 0))
-         do @check-deque (deque)
-	 let isEmpty : bool = @is-empty (deque)
-	 case isEmpty
-	  of true =>
-	     return (Option.NONE)
-	   | false =>
-	     let newL : int = @move-left (LOAD_DEQUE_NEW(deque), LOAD_DEQUE_MAX_SIZE(deque))
-	     let elt : any = @sub (deque, newL)
-	     do @update (deque, newL, DEQUE_NIL_ELT)
-	     do STORE_DEQUE_NEW(deque, newL)
-	     do @check-deque (deque)
-	     do assert (NotEqual(elt, DEQUE_NIL_ELT))
-	     return (Option.SOME (elt))
-         end
-       ;
+      define (* inline *) @pop-new-end-from-atomic (self : vproc, deque : deque) : Option.option =
+	  do assert (NotEqual (deque, enum(0):any))
+	  do assert (I32Gt (LOAD_DEQUE_NCLAIMED(deque), 0))
+	  do @check-deque (deque)
+	  let isEmpty : bool = @is-empty (deque)
+	  case isEmpty
+	   of true =>
+	      return (Option.NONE)
+	    | false =>
+	      let newL : int = @move-left (LOAD_DEQUE_NEW(deque), LOAD_DEQUE_MAX_SIZE(deque))
+	      let elt : any = @sub (deque, newL)
+	      do @update (deque, newL, DEQUE_NIL_ELT)
+	      do STORE_DEQUE_NEW(deque, newL)
+	      do @check-deque (deque)
+	      do assert (NotEqual(elt, DEQUE_NIL_ELT))
+	      return (Option.SOME (elt))
+	  end
+	;
 
-     define (* inline *) @pop-old-end-from-atomic (self : vproc, deque : deque) : Option.option =
-         do assert (I32Gt (LOAD_DEQUE_NCLAIMED(deque), 0))
-  	 do @check-deque (deque)
-	 let isEmpty : bool = @is-empty (deque)
-	 case isEmpty
-	  of true =>
-	     return (Option.NONE)
-	   | false =>
-	     let old : int = LOAD_DEQUE_OLD(deque)
-	     let elt : any = @sub (deque, old)
-	     do @update (deque, old, DEQUE_NIL_ELT)
-	     let oldR : int = @move-right (LOAD_DEQUE_OLD(deque), LOAD_DEQUE_MAX_SIZE(deque))
-	     do STORE_DEQUE_OLD(deque, oldR)
-    	     do @check-deque (deque)
-	     return (Option.SOME(elt))
-         end
-       ;
+      define (* inline *) @pop-old-end-from-atomic (self : vproc, deque : deque) : Option.option =
+	  do assert (I32Gt (LOAD_DEQUE_NCLAIMED(deque), 0))
+	  do @check-deque (deque)
+	  let isEmpty : bool = @is-empty (deque)
+	  case isEmpty
+	   of true =>
+	      return (Option.NONE)
+	    | false =>
+	      let old : int = LOAD_DEQUE_OLD(deque)
+	      let elt : any = @sub (deque, old)
+	      do @update (deque, old, DEQUE_NIL_ELT)
+	      let oldR : int = @move-right (LOAD_DEQUE_OLD(deque), LOAD_DEQUE_MAX_SIZE(deque))
+	      do STORE_DEQUE_OLD(deque, oldR)
+	      do @check-deque (deque)
+	      return (Option.SOME(elt))
+	  end
+	;
 
       define (* inline *) @release-from-atomic (self : vproc, deque : deque) : () =
           do assert (I32Gt (LOAD_DEQUE_NCLAIMED(deque), 0))
@@ -302,7 +299,7 @@ structure WorkStealingDeque (* :
 	;
 
     (* returns the deques associated with the given vproc and the work group id *)
-      define @local-deques-from-atomic (self : vproc, workGroupId : UID.uid) : List.list =
+      define @local-deques-from-atomic (self : vproc, workGroupId : UID.uid) : (* [deque] *) List.list =
           let localDeques : List.list = ccall M_LocalDeques (self, workGroupId)
           return (localDeques)
         ;

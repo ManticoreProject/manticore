@@ -105,9 +105,9 @@ structure ImplicitThreadIVar (* :
 	     else
 		 do assert (NotEqual(oldValue, EMPTY_VAL))
 		 return (nil)
-	  fun unblock (thd : ImplicitThread.thread / exh : exh) : () =
-	      ImplicitThread.@spawn-thread (thd / exh)
-	  do PrimList.@app (unblock, blocked / exh)
+	  fun resume (thd : ImplicitThread.thread / exh : exh) : () =
+	      ImplicitThread.@resume-thread (thd / exh)
+	  do PrimList.@app (resume, blocked / exh)
 	  do SchedulerAction.@atomic-end (vp)
 	  return ()
 	;

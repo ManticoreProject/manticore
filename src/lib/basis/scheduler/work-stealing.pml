@@ -9,14 +9,6 @@
 structure WorkStealing (* :
   sig
 
-    _prim (
-
-      define inline @push-new-end (thd : ImplicitThread.thread) : ();
-    (* return true, if there was an element on the deque *)
-      define inline @pop-new-end () : bool;
-
-    )
-
     val workGroup : unit -> ImplicitThread.work_group
 
   end *) = struct
@@ -60,6 +52,7 @@ structure WorkStealing (* :
 
 	    cont thief (_ : unit) =
 	      let self : vproc = SchedulerAction.@atomic-begin ()
+              do assert (Equal (self, victim))
 	      let deques : List.list = D.@local-deques-from-atomic (self, workGroupId)
 	      fun selectNonEmptyDeque (deques : List.list) : Option.option =
 		  case deques
@@ -169,7 +162,7 @@ structure WorkStealing (* :
 		  do assert (NotEqual (thd, enum(0)))
                   do @set-assigned-deque-from-atomic (self, assignedDeques, deque / exh)
 		  do ImplicitThread.@run-from-atomic (self, sigHandler, thd / exh)
-		  throw impossible()
+		  throw impossible ()
 
 		cont findWork () =                
 		(* look for work on the local deque *)
@@ -186,9 +179,9 @@ structure WorkStealing (* :
 		  let victimVP : vproc = VProc.@vproc-by-id (victimVPId)
 		  do if Equal (victimVP, self) then 
 			 (* cannot steal from the host vproc *)
-			 throw findWork()
+			 throw findWork ()
 		     else 
-			 return()
+			 return ()
 		  let stolenThds : List.list = @steal-from-atomic (self, victimVP, workGroupId)
 		  do @push-threads-on-local-deque-from-atomic (self, deque, stolenThds)
 		  throw findWork ()
@@ -234,14 +227,8 @@ structure WorkStealing (* :
 	  return (initWorker)
 	;
 
-      )
-
-    in
-
-    _primcode (
-
     (* return true, if there was an element on the deque *)
-      define (* inline *) @pop-new-end (/ exh : exh) : bool =
+      define (* inline *) @remove-thread (/ exh : exh) : bool =
 	  let self : vproc = SchedulerAction.@atomic-begin ()
 	  let deque : D.deque = @get-assigned-deque-from-atomic (self / exh)
 	  let k : Option.option = D.@pop-new-end-from-atomic (self, deque)
@@ -254,7 +241,7 @@ structure WorkStealing (* :
 	  end
 	;
 
-      define (* inline *) @push-new-end (thd : ImplicitThread.thread / exh : exh) : () =
+      define (* inline *) @spawn-thread (thd : ImplicitThread.thread / exh : exh) : () =
 	  let self : vproc = SchedulerAction.@atomic-begin ()
 	  let deque : D.deque = @get-assigned-deque-from-atomic (self / exh)
 	  let isFull : bool = D.@is-full (deque)
@@ -274,6 +261,18 @@ structure WorkStealing (* :
 	  return ()
 	;
 
+    (* one of several policies for resuming a thread. here we create a deque containing just the given thread. *)
+      define (* inline *) @resume-thread-on-new-deque (thd : ImplicitThread.thread / exh : exh) : () =
+	  let self : vproc = SchedulerAction.@atomic-begin ()
+	  let workGroup : ImplicitThread.work_group = ImplicitThread.@current-work-group (UNIT / exh)
+	  let workGroupId : UID.uid = ImplicitThread.@work-group-id (workGroup)
+	  let deque : D.deque = D.@new-from-atomic (self, workGroupId, 1)
+	  do D.@push-new-end-from-atomic (self, deque, thd)
+	  do D.@release-from-atomic (self, deque)
+	  do SchedulerAction.@atomic-end (self)
+	  return ()
+	;
+
       define @work-group (_ : unit / exh : exh) : ImplicitThread.work_group =
           let fls : FLS.fls = FLS.@get ()
 	  let uid : UID.uid = UID.@new (/ exh)
@@ -283,13 +282,17 @@ structure WorkStealing (* :
           let assignedDeques : Arr.array = Arr.@array (nVProcs, enum(0):any / exh)
 	  let workerInit : cont (ImplicitThread.worker) = @new-worker (uid, isTerminated, assignedDeques / exh)
 	  fun spawnFn (thd : ImplicitThread.thread / exh : exh) : unit =
-	      do @push-new-end (thd / exh)
+	      do @spawn-thread (thd / exh)
+	      return (UNIT)
+	  fun resumeFn (thd : ImplicitThread.thread / exh : exh) : unit =
+	      do @resume-thread-on-new-deque (thd / exh)
 	      return (UNIT)
 	  fun removeFn (thd : ImplicitThread.thread / exh : exh) : bool = 
-	      @pop-new-end (/ exh)
+	      @remove-thread (/ exh)
 	  let group : ImplicitThread.work_group = 
 		      ImplicitThread.@new-work-group (uid,
 						      spawnFn,
+						      resumeFn,
 						      removeFn,
 						      assignedDeques,
 						      terminated
@@ -301,7 +304,9 @@ structure WorkStealing (* :
 	  return (group)
 	;
 
-    )
+      )
+
+    in
 
     val workGroup : unit -> ImplicitThread.work_group = _prim (@work-group)
 

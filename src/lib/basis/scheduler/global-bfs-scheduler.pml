@@ -77,6 +77,8 @@ structure GlobalBFSScheduler (* :
 	let group : ImplicitThread.work_group = 
 		ImplicitThread.@new-work-group (uid,
 						spawnFn,
+			      (* in this policy there is no difference between spawning and resuming a thread *)
+						spawnFn,
 						removeFn,
 						enum(0):any,
 						terminated

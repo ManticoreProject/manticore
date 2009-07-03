@@ -35,6 +35,7 @@ structure ImplicitThread (* :
 
       define @new-work-group (workGroupId : Word64.word,
 			      spawnFn : fun (thread / exh -> unit),
+			      resumeFn : fun (thread / exh -> unit),
 			      removeFn : fun (thread / exh -> unit),
 			      schedulerState : scheduler_state,
 			      terminated : ![bool]
@@ -45,15 +46,20 @@ structure ImplicitThread (* :
 				   workerFLS : FLS.fls, 
 				   initWorker : cont (worker) 
 				 / exh : exh) : worker;
-      define inline @work-group-id (group : work_group) : Word64.word;
+      define inline @work-group-id (group : work_group) : UID.uid;
     (* return the work group at the  top of the work-group stack. an exception is raised
      * if the stack is empty. *)
       define inline @current-work-group (_ : unit / exh : exh) : work_group;
     (* suspend / resume the execution of all workers local to the given vproc *)
       define @suspend-vproc (workGroup : work_group, vp : vproc / exh : exh) : ();
       define @resume-vproc (workGroup : work_group, vp : vproc / exh : exh) : ();
-    (* place the given implicit thread on the ready queue of the current work group *)
-      define inline @spawn-thread (thd : thread / exh : exh) : thread;
+    (* put the given thread on the ready queue of the current work group. the scheduler treats the
+     * given thread as if it is newly created. *)
+      define inline @spawn-thread (thd : thread / exh : exh) : ();
+    (* put the given thread on the ready queue of the current work group. the scheduler treats the
+     * given thread as if it is the continuation of an existing thread, e.g., the thread is the
+     * resumption of a blocked thread. *)
+      define inline @resume-thread (thd : thread / exh : exh) : ();
     (* remove the given thread from the ready queue, supposing the thread is already on the ready queue. if 
      * the return value is true, then the thread was both on the ready queue and successfully removed by
      * the operation. otherwise, the return value must be false. note that this prescribed behavior provides
@@ -76,10 +82,11 @@ structure ImplicitThread (* :
 (* offsets into tuples *)
 #define WORK_GROUP_UID_OFF                      0
 #define WORK_GROUP_SPAWN_FUN_OFF                1
-#define WORK_GROUP_REMOVE_FUN_OFF               2
-#define WORK_GROUP_SCHEDULER_STATE_OFF          3
-#define WORK_GROUP_SUSPEND_OFF                  4
-#define WORK_GROUP_TERMINATED_OFF               5
+#define WORK_GROUP_RESUME_FUN_OFF               2
+#define WORK_GROUP_REMOVE_FUN_OFF               3
+#define WORK_GROUP_SCHEDULER_STATE_OFF          4
+#define WORK_GROUP_SUSPEND_OFF                  5
+#define WORK_GROUP_TERMINATED_OFF               6
 
 #define ITE_STACK_OFF         0
 #define ITE_CANCELABLE_OFF    1
@@ -103,6 +110,7 @@ structure ImplicitThread (* :
 		 [
 		   Word64.word,                   (* unique id *)
 		   fun (thread / exh -> unit),    (* spawn function *)
+		   fun (thread / exh -> unit),    (* resume function *)
 		   fun (thread / exh -> bool),    (* thread removal function *)
 		   scheduler_state,               (* scheduler-specific state provided by the scheduler *)
 		   Arr.array,                     (* the ith entry is true, if the work group is suspended
@@ -207,6 +215,7 @@ structure ImplicitThread (* :
 
 	define @new-work-group (workGroupId : Word64.word,
 				spawnFn : fun(thread / exh -> unit),
+				resumeFn : fun(thread / exh -> unit),
 				removeFn : fun(thread / exh -> bool),
 				schedulerState : scheduler_state,
 				terminated : ![bool]
@@ -216,6 +225,7 @@ structure ImplicitThread (* :
             let suspendResumeArr : Arr.array = Arr.@array (nVProcs, false / exh)
             let group : work_group = promote (alloc (workGroupId,
 						     spawnFn, 
+						     resumeFn, 
 						     removeFn, 
 						     schedulerState,
 						     suspendResumeArr,
@@ -237,7 +247,7 @@ structure ImplicitThread (* :
 	  return (worker)
         ;
 
-      define (* inline *) @work-group-id (group : work_group) : Word64.word =
+      define (* inline *) @work-group-id (group : work_group) : UID.uid =
 	  return (SELECT(WORK_GROUP_UID_OFF, group))
 	;
 
@@ -268,13 +278,24 @@ structure ImplicitThread (* :
 	  return ()
 	;
 
-    (* place the given implicit thread on the ready queue of the current work group *)
+    (* put the given thread on the ready queue of the current work group. the scheduler treats the
+     * given thread as if it is newly created. *)
       define (* inline *) @spawn-thread (thd : thread / exh : exh) : () =
 	  let group : work_group = @current-work-group (UNIT / exh)
 	  let spawnFn : fun(thread / exh -> unit) = SELECT(WORK_GROUP_SPAWN_FUN_OFF, group)
 	  let _ : unit = apply spawnFn (thd / exh)
 	  return ()
 	;
+
+    (* put the given thread on the ready queue of the current work group. the scheduler treats the
+     * given thread as if it is the continuation of an existing thread, e.g., the thread is the
+     * resumption of a blocked thread. *)
+      define inline @resume-thread (thd : thread / exh : exh) : () =
+	  let group : work_group = @current-work-group (UNIT / exh)
+	  let resumeFn : fun(thread / exh -> unit) = SELECT(WORK_GROUP_RESUME_FUN_OFF, group)
+	  let _ : unit = apply resumeFn (thd / exh)
+	  return ()
+        ;
 
     (* remove the given thread from the ready queue, supposing the thread is already on the ready queue. if 
      * the return value is true, then the thread was both on the ready queue and successfully removed by
