@@ -181,12 +181,10 @@ Value_t **M_AddDequeEltsToRoots (VProc_t *self, Value_t **rootPtr)
 Value_t M_LocalDeques (VProc_t *self, uint64_t workGroupId)
 {
   Value_t l = M_NIL;
-  DequeList_t *deques = FindWorkGroup (self, workGroupId)->deques;
-  while (deques != NULL) {
+  for (DequeList_t *deques = FindWorkGroup (self, workGroupId)->deques; deques != NULL; deques = deques->next) {
     deques->deque->nClaimed++;    // claim the deque for the calling process
     Value_t deque = AllocUniform (self, 1, PtrToValue(deques->deque));
-    l = Cons (self, deque, l);
-    deques = deques->next;
+    l = Cons (self, deque, l);    
   }
   return l;
 }
