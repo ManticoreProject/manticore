@@ -94,7 +94,8 @@ void VProcInit (bool isSequential, Options_t *opts)
 #endif
 
 #ifndef NDEBUG
-    SayDebug("%d/%d processors allocated to vprocs\n", NumVProcs, NumHWThreads);
+    SayDebug("%d/%d processors allocated to vprocs (%s)\n", NumVProcs, NumHWThreads,
+	         denseLayout ? "dense layout" : "non-dense layout");
 #endif
 
 #ifdef ENABLE_LOGGING
