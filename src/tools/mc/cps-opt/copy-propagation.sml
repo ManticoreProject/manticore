@@ -7,6 +7,11 @@
  * but which CFA tells us can only be bound to a single function with that function's
  * literal name. Note that we need to respect lexical scoping (which the CFA analysis
  * does not require to be true).
+ * We also need to be environmentally consonant (Shivers' term) - we can only replace
+ * a function if we're replacing it with one that is from an environment guaranteed
+ * to have the same bindings. This prevents replacing a call to a closure with a
+ * variable bound to a value A from being replaced with a call to the known function
+ * in an environment where the variable is bound to a value B.
  *
  * TODOs:
  * Split analysis from transformation. !pass is a horrible hack
@@ -184,6 +189,9 @@ structure CopyPropagation : sig
          * one.
          * We handle cycles later, by refusing to move a function that has already been moved.
          *)
+	val externsEnv = List.foldl
+		             (fn (cf, env) => VSet.add(env, CFunctions.varOf cf))
+		             VSet.empty externs
         fun insert (map, callee, caller) = (
             case VMap.find (map, callee)
              of NONE => VMap.insert (map, callee, caller)
@@ -199,16 +207,28 @@ structure CopyPropagation : sig
                      else
                          (if VSet.member (env, f')
                           then if !pass = 1
-                               then (if !propagationDebug
-                                     then print (concat [CV.toString f', " is being propagated.\n"])
-                                     else ();
-                                     COPY (f'))
+                               then let
+                                       (* TODO: this is far too conservative - instead compute whether the
+                                        * environment contains bindings set on the same call contour (reflow)
+                                        *)
+                                       val isSafe = isClosed (getFB f', externsEnv)
+                                   in
+                                       if isSafe
+                                       then (if !propagationDebug
+                                             then print (concat [CV.toString f', " is being propagated.\n"])
+                                             else ();
+                                             COPY (f'))
+                                       else (print (concat [CV.toString f',
+                                                            " was not safe for subst for copy-prop in place of ",
+                                                            CV.toString f, ".\n"]);
+                                             SKIP)
+                                   end
                                else SKIP (* Only make changes in the second pass *)
-                          else (if !propagationDebug
-                                then print (concat [CV.toString f', " was not in scope for copy-prop over ",
-                                                    CV.toString parent, " in pass ", Int.toString (!pass), ".\n"])
-                                else ();
-                                MOVE(f'))))
+                             else (if !propagationDebug
+                                   then (print (concat [CV.toString f', " was not in scope for copy-prop over ",
+                                                        CV.toString parent, " in pass ", Int.toString (!pass), ".\n"]))
+                                   else ();
+                                   MOVE(f'))))
                   | _ => SKIP
                 (* end case *))
               | _ => SKIP
@@ -361,10 +381,7 @@ structure CopyPropagation : sig
         in
             (C.mkLambda(C.FB{f=f,params=params,rets=rets,body=body}), env', map')
         end
-	val env = List.foldl
-		      (fn (cf, env) => VSet.add(env, CFunctions.varOf cf))
-		      VSet.empty externs
-        val env = VSet.add (env, main)
+        val env = VSet.add (externsEnv, main)
         (* In the first pass, gather desired moves *)
         val (_, _, translations) = copyPropagateExp (modBody, env, VMap.empty, main)
         (* On the second time through, do copy prop and make any moves we can *)
