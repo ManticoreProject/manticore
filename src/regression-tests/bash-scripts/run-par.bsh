@@ -23,7 +23,7 @@ do
    do
      fname=${f%.pml}
      if [ -e "$fname.ok" ] ; then
-       echo -n "checking $fname ... "
+       echo -n "checking $g/$f ..."
        $MC $MCFLAGS $f 2> /dev/null
        if [ "$?" -eq "0" ] ; then
 	 ./a.out > $fname.test
@@ -48,3 +48,4 @@ do
 done
 
 )
+echo -n "Report available at: $REPORT"
