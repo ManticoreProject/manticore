@@ -78,10 +78,8 @@ structure RoundRobin =
 		    else if I64Lt (nextSleepingDeadline, currTime) then
 			throw dispatch ()
 		    else
-			let timeToSleep : Time.time = I64Sub (nextSleepingDeadline, currTime)
-			let sec : long = U64Div (timeToSleep, 1000000:long)
-	                let nsec : long = U64Mul (U64Rem (timeToSleep, 1000000:long), 1000:long)
-			do VProc.@nanosleep-from-atomic (self, sec, nsec)
+			let timeToSleepUsec : Time.time = I64Sub (nextSleepingDeadline, currTime)
+			do VProc.@nanosleep-from-atomic (self, U64Mul (timeToSleepUsec, 1000:long))
 			throw dispatch ()
 		  | Option.SOME(qitem : VProcQueue.queue_item) =>
 		    do SchedulerAction.@dispatch-from-atomic (self, switch, SELECT(FIBER_OFF, qitem), SELECT(FLS_OFF, qitem))
@@ -100,8 +98,7 @@ structure RoundRobin =
 		   do apply addToSleeping (t, fls, k)
 		   throw dispatch()
 		 | _ =>
-		   let e : exn = Match
-		   throw exh(e)
+		   throw exh(Match)
 	      end
 
             return (switch)

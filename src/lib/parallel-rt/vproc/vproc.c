@@ -400,28 +400,30 @@ void VProcSleep (VProc_t *vp)
 
 }
 
+#define ONE_SECOND         1000000000L
+
 static struct timespec TimespecAdd (struct timespec time1, struct timespec time2)
 {
     struct timespec result;
-    result.tv_sec = time1.tv_sec + time2.tv_sec ;
-    result.tv_nsec = time1.tv_nsec + time2.tv_nsec ;
-    if (result.tv_nsec > 1000000000L) {			/* Carry? */
-        result.tv_sec++ ;  result.tv_nsec = result.tv_nsec - 1000000000L ;
+    result.tv_sec = time1.tv_sec + time2.tv_sec;
+    result.tv_nsec = time1.tv_nsec + time2.tv_nsec;
+    if (result.tv_nsec > ONE_SECOND) {			/* Carry? */
+        result.tv_sec++;  
+	result.tv_nsec = result.tv_nsec - ONE_SECOND;
     }
     return result;
 }
 
 /*! \brief put the vproc to sleep. the vproc unblocks when either a signal arrives or the given time has elapsed.
  *  \param vp the vproc that is being put to sleep
- *  \param sec the number of seconds to sleep.
- *  \param nsec the number of nanoseconds to sleep (must be in the range 0 to 999999999)
+ *  \param nsec the number of nanoseconds to sleep
  */
-void VProcNanosleep (VProc_t *vp, Time_t sec, Time_t nsec)
+void VProcNanosleep (VProc_t *vp, Time_t nsec)
 {
     struct timespec delta, currTime, timeToWake;
 
-    delta.tv_sec = sec;
-    delta.tv_nsec = nsec;
+    delta.tv_sec = nsec / ONE_SECOND;
+    delta.tv_nsec = nsec % ONE_SECOND;
 
     assert (vp == VProcSelf());
 
@@ -429,20 +431,16 @@ void VProcNanosleep (VProc_t *vp, Time_t sec, Time_t nsec)
 
 #ifndef NDEBUG
     if (DebugFlg)
-        SayDebug("[%2d] VProcNanosleep for %lu seconds and %lu nanoseconds\n", vp->id, (uint64_t)sec, (uint64_t)nsec);
+        SayDebug ("[%2d] VProcNanosleep for %lu seconds and %lu nanoseconds\n", 
+		                 vp->id, (uint64_t)delta.tv_sec, (uint64_t)delta.tv_nsec);
 #endif
 
     MutexLock(&(vp->lock));
-#if HAVE_CLOCK_GETTIME
-	clock_gettime (CLOCK_REALTIME, &currTime);
-#else
 	struct timeval t;
 	gettimeofday (&t, 0);
 	currTime.tv_sec = t.tv_sec;
 	currTime.tv_nsec = t.tv_usec * 1000;
-#endif
-      /* wall clock time indicating when the vproc should wake */
-	timeToWake = TimespecAdd (delta, currTime);
+	timeToWake = TimespecAdd (delta, currTime); // wall clock time indicating when the vproc should wake
 	AtomicWriteValue (&(vp->sleeping), M_TRUE);
 	while (CondTimedWait (&(vp->wait), &(vp->lock), &timeToWake))
 	  if (vp->landingPad != M_NIL)

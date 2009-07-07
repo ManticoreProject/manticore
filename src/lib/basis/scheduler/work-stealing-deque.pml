@@ -228,7 +228,7 @@ structure WorkStealingDeque (* :
 	 ;
       
       define (* inline *) @is-claimed-from-atomic (self : vproc, deque : deque) : bool =
-          if I32Gt (LOAD_DEQUE_NCLAIMED(deque), 0) then
+          if I32Eq (LOAD_DEQUE_NCLAIMED(deque), 0) then
 	      return (false)
 	  else
 	      return (true)
@@ -300,6 +300,12 @@ structure WorkStealingDeque (* :
           return ()
         ;
 
+      define @release-deques-from-atomic (self : vproc, deques : List.list) : () =
+          fun release (deque : [deque] / _ : exh) : () = @release-from-atomic (self, #0(deque))
+          cont exh (_ : exn) = return ()
+          PrimList.@app (release, deques / exh)
+	;
+
     (* double the size of the deque *)
       define @double-size-from-atomic (self : vproc, workGroupId : UID.uid, deque : deque) : deque =
           do assert (I32Gt (LOAD_DEQUE_NCLAIMED(deque), 0))
@@ -322,18 +328,6 @@ structure WorkStealingDeque (* :
 	  return (newDeque)
 	;
 
-      define @release-deques-from-atomic (self : vproc, deques : List.list) : () =
-	  fun lp (deques : List.list) : () =
-	      case deques
-	       of List.nil =>
-		  return ()
-		| List.CONS(deque : [deque], deques : List.list) =>
-		  do @release-from-atomic (self, #0(deque))
-		  apply lp (deques)
-              end
-	   apply lp (deques)
-	;
-
     (* the list of returned threads is ordered from oldest to youngest *)
       define @to-list-from-atomic (self : vproc, deque : deque) : (* ImplicitThread.thread *) List.list =
 	  fun lp () : List.list =
@@ -350,15 +344,9 @@ structure WorkStealingDeque (* :
 
     (* the list of threads is inserting in order from oldest to youngest *)
       define @add-list-from-atomic (self : vproc, deque : deque, thds : List.list) : () =
-	  fun lp (thds : List.list) : () =
-	      case thds
-	       of nil => 
-		  return ()
-		| List.CONS (thd : ImplicitThread.thread, thds : List.list) =>
-		  do @push-new-end-from-atomic (self, deque, thd)
-		  apply lp (thds)
-	      end
-	  apply lp (thds)
+          fun add (thd : ImplicitThread.thread / _ : exh) : () = @push-new-end-from-atomic (self, deque, thd)
+          cont exh (_ : exn) = return ()
+          PrimList.@app (add, thds / exh)
 	;
 
     )

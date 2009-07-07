@@ -83,7 +83,7 @@ structure WorkStealing (* :
 	  ;
 
       (* send a thief from thiefVP to steal from victimVP. the result list is the list of stolen threads. *)
-	define @send-thief-from-atomic (thiefVP : vproc, victimVP : vproc, workGroupId : UID.uid)
+	define @thief-from-atomic (thiefVP : vproc, victimVP : vproc, workGroupId : UID.uid)
 								      : (* ImplicitThread.thread *) List.list =
 	    do assert (NotEqual (thiefVP, victimVP))
 	  (* communication channel used to pass the result of the steal from the victim vproc back to the
@@ -132,41 +132,29 @@ structure WorkStealing (* :
 	  ;
 
       (* loop until at least one ready thread has been stolen; the result is the list of stolen threads *)
-(* FIXME: check for work-group termination here *)
 	define @find-work-in-atomic (self : vproc, workGroupId : UID.uid) : (* ImplicitThread.thread *) List.list =
-	    cont fwlp () =
-              do SchedulerAction.@yield-in-atomic (self)
-	    (* try to mug a worker local to this vproc *)
-	      let muggedThreads : List.list = @mug-from-atomic (self, workGroupId)
-	      case muggedThreads
-	       of List.CONS (_ : ImplicitThread.thread, _ : List.list) =>
-		  (* successful mugging *)
-		  return (muggedThreads)
-		| List.nil =>
-		  (* mugging failed; try to steal *)
-		  let nVProcs : int = VProc.@num-vprocs ()
-                  cont exh (_ : exn) = throw fwlp ()
-		  let victimVPId : int = Rand.@in-range-int (0, nVProcs / exh)
-		  let victimVP : vproc = VProc.@vproc-by-id (victimVPId)
-		  do if Equal (victimVP, self) then 
-		      (* cannot steal from the host vproc *)
-			 throw fwlp ()
-		     else 
-			 return ()
-		  let stolenThds : List.list = @send-thief-from-atomic (self, victimVP, workGroupId)
-		  case stolenThds
-		   of List.CONS (_ : ImplicitThread.thread, _ : List.list) =>
-		      (* successful steal *)
-		      return (stolenThds)
-		    | List.nil =>
-		      throw fwlp ()
-		  end
-	      end
-	    throw fwlp ()
+          (* try to mug a worker local to this vproc *)
+	    let muggedThreads : List.list = @mug-from-atomic (self, workGroupId)
+	    case muggedThreads
+	     of List.CONS (_ : ImplicitThread.thread, _ : List.list) =>
+		(* successful mugging *)
+		return (muggedThreads)
+	      | List.nil =>
+		(* mugging failed; try to steal *)
+		let nVProcs : int = VProc.@num-vprocs ()
+		cont exh (_ : exn) = return (List.nil)
+		let victimVPId : int = Rand.@in-range-int (0, nVProcs / exh)
+		let victimVP : vproc = VProc.@vproc-by-id (victimVPId)
+		if Equal (victimVP, self) then 
+		    (* cannot steal from the host vproc *)
+		    return (List.nil)
+		else 
+		    @thief-from-atomic (self, victimVP, workGroupId)
+	    end
 	  ;
 
 	define @new-worker (workGroupId : UID.uid, isTerminated : fun (/ -> bool), assignedDeques : Arr.array
-									    / exh : exh) : cont (ImplicitThread.worker) =
+									    / exh : exh) : cont (vproc, ImplicitThread.worker) =
 	    cont impossible () = 
 	      do assert_fail()
 	      throw exh (Fail(@"WorkStealing.@designated-worker: impossible"))
@@ -191,6 +179,7 @@ structure WorkStealing (* :
 		  let thd : Option.option = D.@pop-new-end-from-atomic (self, deque)
 		  case thd
 		   of Option.NONE =>
+		      do SchedulerAction.@yield-in-atomic (self)
 		      let stolenThds : List.list = @find-work-in-atomic (self, workGroupId)
                       do D.@add-list-from-atomic (self, deque, stolenThds)
 		      throw schedulerLoop (self, worker, deque, PT.STOP)
@@ -213,8 +202,7 @@ structure WorkStealing (* :
 	       | _ =>
 		  throw impossible ()
 	      end (* schedulerLoop *)
-	    cont initWorker (worker : ImplicitThread.worker) =
-	      let self : vproc = SchedulerAction.@atomic-begin ()
+	    cont initWorker (self : vproc, worker : ImplicitThread.worker) =	      
 	      let deque : D.deque = D.@new-from-atomic (self, workGroupId, 128)
 	      do @set-assigned-deque-from-atomic (self, assignedDeques, deque / exh)
 	      throw schedulerLoop (self, worker, deque, PT.STOP)
@@ -273,7 +261,7 @@ structure WorkStealing (* :
 	    fun isTerminated () : bool = return (#0(terminated))
 	    let nVProcs : int = VProc.@num-vprocs ()
 	    let assignedDeques : Arr.array = Arr.@array (nVProcs, enum(0):any / exh)
-	    let workerInit : cont (ImplicitThread.worker) = @new-worker (uid, isTerminated, assignedDeques / exh)
+	    let initWorker : cont (vproc, ImplicitThread.worker) = @new-worker (uid, isTerminated, assignedDeques / exh)
 	    fun spawnFn (thd : ImplicitThread.thread / exh : exh) : unit =
 		do @spawn-thread (thd / exh)
 		return (UNIT)
@@ -291,7 +279,7 @@ structure WorkStealing (* :
 							terminated
 						      / exh)
 	    fun spawnWorker (dst : vproc / exh : exh) : () =
-		let worker : Word64.word = ImplicitThread.@spawn-worker (group, dst, fls, workerInit / exh)
+		let worker : Word64.word = ImplicitThread.@spawn-worker (group, dst, fls, initWorker / exh)
 		return ()
 	    do VProc.@for-each-vproc (spawnWorker / exh)
 	    return (group)

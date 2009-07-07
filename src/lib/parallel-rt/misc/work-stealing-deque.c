@@ -167,7 +167,8 @@ Value_t **M_AddDequeEltsToRoots (VProc_t *self, Value_t **rootPtr)
       // iterate through the deque in the direction going from the new to the old end
       for (int i = deque->new; i != deque->old; i = MoveLeft (i, deque->maxSz))
 	// i points one element to right of the element we want, j
-	*rootPtr++ = &(deque->elts[MoveLeft (i, deque->maxSz)]);
+	if (deque->elts[MoveLeft (i, deque->maxSz)] != M_NIL)
+	  *rootPtr++ = &(deque->elts[MoveLeft (i, deque->maxSz)]);
     }
   }
   return rootPtr;

@@ -40,11 +40,12 @@ structure ImplicitThread (* :
 			      schedulerState : scheduler_state,
 			      terminated : ![bool]
 			    / exh : exh) : work_group;
-    (* spawn the worker initialized by initWorker (using the given fls) on the vproc dst *)
+    (* spawn the worker initialized by initWorker (using the given fls) on the vproc dst. signals
+     * are masked on entry to initWorker. *)
       define inline @spawn-worker (group : work_group, 
 				   dst : vproc, 
 				   workerFLS : FLS.fls, 
-				   initWorker : cont (worker) 
+				   initWorker : cont (vproc, worker) 
 				 / exh : exh) : worker;
       define inline @work-group-id (group : work_group) : UID.uid;
     (* return the work group at the  top of the work-group stack. an exception is raised
@@ -233,16 +234,19 @@ structure ImplicitThread (* :
 	    return (group)
 	  ;
 
-    (* spawn the worker initialized by initWorker (using the given fls) on the vproc dst *)
+    (* spawn the worker initialized by initWorker (using the given fls) on the vproc dst. signals
+     * are masked on entry to initWorker. *)
       define inline @spawn-worker (group : work_group, 
 				   dst : vproc, 
 				   workerFLS : FLS.fls, 
-				   initWorker : cont (worker)
+				   initWorker : cont (vproc, worker)
 				 / exh : exh) : worker =
 	  let worker : Word64.word = UID.@new (/ exh)
           let i : int = VProc.@vproc-id (dst)
 	  let workerFLS' : FLS.fls = FLS.@pin-to (workerFLS, i / exh)
-	  cont initWorker' (_ : unit) = throw initWorker (worker)
+	  cont initWorker' (_ : unit) = 
+            let self : vproc = SchedulerAction.@atomic-begin ()
+            throw initWorker (self, worker)
 	  do VProcQueue.@enqueue-on-vproc (dst, workerFLS', initWorker')
 	  return (worker)
         ;

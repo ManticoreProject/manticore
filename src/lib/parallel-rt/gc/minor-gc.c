@@ -84,7 +84,7 @@ void MinorGC (VProc_t *vp)
    * holds the GC root.
    */
     int nWorkStealingRoots = M_NumDequeRoots (vp);
-    Value_t *roots[9 + nWorkStealingRoots], **rp;
+    Value_t *roots[16 + nWorkStealingRoots], **rp;
     rp = roots;
     *rp++ = &(vp->currentFLS);
     *rp++ = &(vp->actionStk);
@@ -107,6 +107,9 @@ void MinorGC (VProc_t *vp)
 
   /* process the roots */
     for (int i = 0;  roots[i] != 0;  i++) {
+      if (roots[i] == 1)
+	Say ("roots[%d]==1\n", i);
+      assert (roots[i] != 1);
 	Value_t p = *roots[i];
 	if (isPtr(p)) {
 	    if (inAddrRange(nurseryBase, allocSzB, ValueToAddr(p))) {

@@ -43,5 +43,3 @@
     VP_OFFSET(vp, VPROC_ID, id, true);
     VP_OFFSET(vp, VP_LANDING_PAD, landingPad, false);
     VP_OFFSET(vp, LIMIT_PTR, limitPtr, true);
-    VP_OFFSET(vp, VP_SLEEP_SEC, sleepSec, true);
-    VP_OFFSET(vp, VP_SLEEP_NSEC, sleepNsec, true);

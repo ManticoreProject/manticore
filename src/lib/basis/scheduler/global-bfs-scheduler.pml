@@ -20,9 +20,12 @@ structure GlobalBFSScheduler (* :
 #define MAX_STEAL_ATTEMPTS          1000
 #define MAX_SLEEP_TIME_USECS        2000000:long
 
-      define @new-worker (readyQ : LockedQueue.queue / exh : exh) : cont (ImplicitThread.worker) =
-	  cont schedulerLoop (s : PT.signal) =
-	    let self : vproc = host_vproc
+      define @new-worker (readyQ : LockedQueue.queue / exh : exh) : cont (vproc, ImplicitThread.worker) =
+	  cont schedulerLoop (self : vproc, s : PT.signal) =
+            cont run (thd : ImplicitThread.thread) = 
+              cont act (s : PT.signal) = throw schedulerLoop (self, s)
+              do ImplicitThread.@run-from-atomic (self, act, thd / exh)
+              throw exh (Match)
 
 	    cont dispatch (numStealAttempts : int, sleepTime : Time.time) =
 	      let thd : Option.option = LockedQueue.@dequeue-from-atomic (readyQ)
@@ -30,16 +33,16 @@ structure GlobalBFSScheduler (* :
 	       of Option.NONE =>
                   if I32Lte (numStealAttempts, MAX_STEAL_ATTEMPTS) then
 		      throw dispatch (I32Add (numStealAttempts, 1), sleepTime)
-		  else		      
+		  else
 		      do SchedulerAction.@sleep-in-atomic (self, I64Add (sleepTime, 100:long))
 		      let sleepTime : Time.time = if U64Lt (sleepTime, MAX_SLEEP_TIME_USECS) then
 						      return (U64Mul (sleepTime, 2:long))
 						  else
 						      return (MAX_SLEEP_TIME_USECS)
+
 		      throw dispatch (0, sleepTime)
 		| Option.SOME(thd : ImplicitThread.thread) =>
-		  do ImplicitThread.@run-from-atomic (self, schedulerLoop, thd / exh)
-		  throw dispatch (0, 0:long)
+		  throw run (thd)
 	      end
 
 	   case s
@@ -48,16 +51,13 @@ structure GlobalBFSScheduler (* :
 	     | PT.PREEMPT(k : PT.fiber) =>
 	       let thd : ImplicitThread.thread = ImplicitThread.@capture (k / exh)
                do SchedulerAction.@yield-in-atomic (self)
-	       do ImplicitThread.@run-from-atomic (self, schedulerLoop, thd / exh)
-	       let e : exn = Match
-	       throw exh (e)
+	       throw run (thd)
 	     | _ => 
-	       let e : exn = Match
-	       throw exh (e)
+	       throw exh (Match)
 	   end
 
-	  cont initWorker (worker : ImplicitThread.worker) =
-	    throw schedulerLoop (PT.STOP)
+	  cont initWorker (self : vproc, worker : ImplicitThread.worker) =
+	    throw schedulerLoop (self, PT.STOP)
 
 	  return (initWorker)
 	;
@@ -67,7 +67,7 @@ structure GlobalBFSScheduler (* :
 	let readyQ : LockedQueue.queue = LockedQueue.@new ()
         let uid : UID.uid = UID.@new (/ exh)
         let terminated : ![bool] = ImplicitThread.@terminated-flag ()
-	let workerInit : cont (ImplicitThread.worker) = @new-worker (readyQ / exh)
+	let initWorker : cont (vproc, ImplicitThread.worker) = @new-worker (readyQ / exh)
 	fun spawnFn (thd : ImplicitThread.thread / exh : exh) : unit =
             let vp : vproc = SchedulerAction.@atomic-begin ()
 	    do LockedQueue.@enqueue-from-atomic (readyQ, thd)
@@ -84,7 +84,7 @@ structure GlobalBFSScheduler (* :
 						terminated
 					      / exh)
 	fun spawnWorker (dst : vproc / exh : exh) : () =
-	    let worker : Word64.word = ImplicitThread.@spawn-worker (group, dst, fls, workerInit / exh)
+	    let worker : Word64.word = ImplicitThread.@spawn-worker (group, dst, fls, initWorker / exh)
 	    return ()
 	do VProc.@for-each-vproc (spawnWorker / exh)
 	return (group)
