@@ -34,7 +34,7 @@ structure CopyPropagation : sig
     structure ST = Stats
 
   (***** controls ******)
-    val enableCopyPropagation = ref false
+    val enableCopyPropagation = ref true
     val propagationDebug = ref false
 
     val () = List.app (fn ctl => ControlRegistry.register CPSOptControls.registry {
@@ -218,9 +218,11 @@ structure CopyPropagation : sig
                                              then print (concat [CV.toString f', " is being propagated.\n"])
                                              else ();
                                              COPY (f'))
-                                       else (print (concat [CV.toString f',
-                                                            " was not safe for subst for copy-prop in place of ",
-                                                            CV.toString f, ".\n"]);
+                                       else (if !propagationDebug
+                                             then print (concat [CV.toString f',
+                                                                 " was not safe for subst for copy-prop in place of ",
+                                                                 CV.toString f, ".\n"])
+                                             else ();
                                              SKIP)
                                    end
                                else SKIP (* Only make changes in the second pass *)
