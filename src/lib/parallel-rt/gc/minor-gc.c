@@ -84,7 +84,7 @@ void MinorGC (VProc_t *vp)
    * holds the GC root.
    */
     int nWorkStealingRoots = M_NumDequeRoots (vp);
-    Value_t *roots[16 + nWorkStealingRoots], **rp;
+    Value_t *roots[9 + nWorkStealingRoots], **rp;
     rp = roots;
     *rp++ = &(vp->currentFLS);
     *rp++ = &(vp->actionStk);
@@ -97,7 +97,7 @@ void MinorGC (VProc_t *vp)
     *rp++ = &(vp->stdEnvPtr);
     rp = M_AddDequeEltsToRoots(vp, rp);
     *rp++ = 0;
-    assert (rp <= roots+((sizeof(roots) + nWorkStealingRoots)/sizeof(Value_t *)));
+    //    assert (rp <= roots+((sizeof(roots) + nWorkStealingRoots)/sizeof(Value_t *)));
 
 #ifndef NDEBUG
   /* nullify non-live registers */
