@@ -23,7 +23,7 @@ structure ArityRaising : sig
     structure ST = Stats
 
   (***** controls ******)
-    val enableArityRaising = ref false
+    val enableArityRaising = ref true
     val flatteningDebug = ref false
 
     val () = List.app (fn ctl => ControlRegistry.register CPSOptControls.registry {
@@ -822,7 +822,7 @@ structure ArityRaising : sig
                 | CTy.T_VProc => cast()
           end
 	  fun flattenApplyThrow (ppt, g, args, retArgs) = if isCandidate g
-		then let 
+		then let
 		  val {sign, params, rets, flat=SOME(f), flatParams=SOME(fParams), ...} = getInfo g
 		  fun genCall (sign, params, newArgs, progress, args') =
                         if null sign
@@ -997,14 +997,16 @@ structure ArityRaising : sig
 			then raise Fail ("Can't lift variable from multi-bind on LHS of let")
 			else C.Exp(ppt, C.Let(vars, rhs, walkExp (encl, newParams, e)))
 		  | (C.Fun(fbs, e)) => let
-		      val newfuns = List.foldr (fn (f,rr) => handleLambda (f,false) @ rr) [] fbs
+                      val _ = List.app handleLambda fbs
+		      val newfuns = List.foldr (fn (f,rr) => handleLambdaBody (f,false) @ rr) [] fbs
                       val newfuns' = List.filter (fn (C.FB{f,...}) => not(shouldSkipUseless f)) newfuns
 		      in
                         if null (newfuns')
                         then walkExp (encl, newParams, e)
                         else C.mkFun (newfuns', walkExp (encl, newParams, e))
 		      end
-		  | (C.Cont(fb, e)) => (case handleLambda (fb, true)
+		  | (C.Cont(fb, e)) => (handleLambda(fb);
+                                        case handleLambdaBody (fb, true)
 		       of [fl as C.FB{f=fl',...}, stb as C.FB{f=stb',...}] => let
 			    val inner = (if shouldSkipUseless stb'
 					 then walkExp (encl, newParams, e)
@@ -1018,7 +1020,7 @@ structure ArityRaising : sig
 			    if shouldSkipUseless single'
 			      then walkExp (encl, newParams, e)
 			      else C.mkCont(single, walkExp (encl, newParams, e)))
-			| _ => raise Fail "Invalid return from handleLambda"
+			| _ => raise Fail "Invalid return from handleLambdaBody"
 		      (* end case *))
 		  | (C.If(x, e1, e2)) =>
 		      C.Exp(ppt, C.If(x, walkExp (encl, newParams, e1), walkExp (encl, newParams, e2)))
@@ -1031,9 +1033,9 @@ structure ArityRaising : sig
 		(* end case *))
 
         (* Returns flattened version of candidate functions *)
-        and handleLambda(func as C.FB{f, params, rets, body}, isCont) =
+        and handleLambda(func as C.FB{f, params, rets, body}) =
 	      if not (isCandidate f)
-                then [C.FB{f=f, params=params, rets=rets, body=walkExp (f, params, body)}]
+                then ()
 		else let
 		  val {vmap, pmap, params, rets, sign, ...} = getInfo f
 		  val newParams = computeParamList (params, vmap, sign)
@@ -1044,8 +1046,16 @@ structure ArityRaising : sig
                   val _ = setFlat (flat)
                   val _ = if getUseful f then setUseful flat else ()
 		  val _ = setInfo (f, vmap, pmap, params, rets, SOME flat, SOME newParams)
-		  val body = walkExp (f, newParams, body)
 		(* Create a stub with the old name that just SEL's and jumps to the flat version. *)
+		  in
+                        ()
+		  end
+        and handleLambdaBody (func as C.FB{f, params, rets, body}, isCont) =
+            if not (isCandidate f)
+            then [C.FB{f=f, params=params, rets=rets, body=walkExp (f, params, body)}]
+            else let
+		  val {params, rets, flat=SOME(flat), flatParams=SOME(newParams), ...} = getInfo f
+		  val body = walkExp (f, newParams, body)
 		  val paramCopy = List.map CV.copy params
 		  val retsCopy = List.map CV.copy rets
                   val _ = ListPair.app (fn (a,b) => if getUseful a then setUseful b else ()) (params, paramCopy)
@@ -1053,13 +1063,15 @@ structure ArityRaising : sig
 		  val stub = flattenApplyThrow (
 			ProgPt.new(), f, paramCopy,
 			if not(isCont) then SOME retsCopy else NONE) 
+                  val newRets = List.filter getUseful rets
 		  val stubLambda = C.mkLambda (C.FB{f=f, params=paramCopy, rets=retsCopy, body=stub})
 		  val lambda = C.mkLambda(C.FB{f=flat, params=newParams, rets=newRets, body=body})
-		  in
-                        setFB (f, stubLambda);
-                        setFB (flat, lambda);
-                        [lambda, stubLambda]
-		  end
+                in
+                    setFB (f, stubLambda);
+                    setFB (flat, lambda);
+                    [lambda, stubLambda]
+                end
+            
 	in
 	  C.MODULE{
 	      name=name, externs=externs,
