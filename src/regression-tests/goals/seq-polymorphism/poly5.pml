@@ -1,6 +1,7 @@
 _primcode(
-  define @f(x : any / exh : exh) : any =
-    let v : any = ArrLoad(x, 0)
+  define @f(x : [![any],int] / exh : exh) : any =
+    let data : ![any] = #0(x)
+    let v : any = ArrLoad(data, 0)
     return(v)
   ;
 )

@@ -11,6 +11,7 @@ DATE=$( date +"%F-%H-%M-%S" )
 REPORT_FILE=report-$DATE
 REPORT="$DIR/reports/$REPORT_FILE"
 LOG="$DIR/LOG"
+status=""
 
 # allow core dumps
 ulimit -c unlimited
@@ -39,12 +40,14 @@ do
 	   echo "ok"
 	 else
 	   echo "***** Check failed for goal $g in file $f." >> $REPORT
+           status="$g/$f failed $status."
 	   diff $fname.test $fname.ok >> $REPORT
 	   echo "fail" >> $LOG
 	   echo "fail"
 	 fi
        else
 	 echo "***** Compile failed for goal $g in file $f." >> $REPORT
+         status="$g/$f failed $status."
 	 echo "fail" >> $LOG
 	 echo "fail"
        fi
@@ -55,4 +58,6 @@ do
 done
 
 )
-echo -n "Report available at: $REPORT"
+echo $status >> $LOG
+echo $status
+echo "Report available at: $REPORT"
