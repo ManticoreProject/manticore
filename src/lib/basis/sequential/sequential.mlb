@@ -35,6 +35,7 @@ trap.pml
 ann "cpp" "../include/prim.def,../include/assert.def"
 in
   prim-list.pml
+  prim-bool.pml
 end
 time.pml
 prim-io.pml
