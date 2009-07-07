@@ -7,9 +7,11 @@
  *
  * Memory management:
  * Since we allocate deques in the C heap, we rely on a reference counting scheme to manage memory
- * associated with deques. To maintain the reference counts, we require that workers release deques
- * that are no longer needed. The memory manager only frees deques that are both empty and have
- * a reference count of zero.
+ * associated with deques. We maintain reference counts as follows. The reference count of
+ * a newly-created deque is set to 1 (by @new-from-atomic). Reference counts are incremented
+ * for each deque returned by the call to @local-deques-from-atomic. Reference counts are decremented
+ * by @release-from-atomic and @release-deques-from-atomic. The garbage collector frees deques that
+ * are both empty and have a reference count of zero.
  *
  *)
 
@@ -27,10 +29,15 @@ structure WorkStealingDeque (* :
 
       define inline @is-full-from-atomic (self : vproc, deque : deque) : bool;
       define inline @is-empty-from-atomic (self : vproc, deque : deque) : bool;
+      define inline @is-claimed-from-atomic (self : vproc, deque : deque) : bool;
 
       define inline @push-new-end-from-atomic (self : vproc, deque : deque, elt : any) : ();
       define inline @pop-new-end-from-atomic (self : vproc, deque : deque) : Option.option;
       define inline @pop-old-end-from-atomic (self : vproc, deque : deque) : Option.option;
+
+    (* returns the deques associated with the given vproc and the work group id. all the deques in this list are 
+     * automatically claimed for the caller. *)
+      define @local-deques-from-atomic (self : vproc, workGroupId : ImplicitThread.work_group_id) : (* [deque] *) List.list;
 
       define inline @release-from-atomic (self : vproc, deque : deque) : ();
       define @release-deques-from-atomic (self : vproc, deques : List.list) : ();
@@ -38,8 +45,11 @@ structure WorkStealingDeque (* :
     (* double the size of the deque *)
       define @double-size-from-atomic (self : vproc, workGroupId : ImplicitThread.work_group_id, deque : deque) : deque;
 
-    (* returns the deques associated with the given vproc and the work group id *)
-      define @local-deques-from-atomic (self : vproc, workGroupId : ImplicitThread.work_group_id) : (* [deque] *) List.list;
+    (* the list of returned threads is ordered from oldest to youngest *)
+      define @to-list-from-atomic (self : vproc, deque : D.deque) : (* ImplicitThread.thread *) List.list;
+    (* the list of threads is inserting in order from oldest to youngest *)
+      define @add-list-from-atomic (self : vproc, deque : D.deque, thds : List.list) : ();
+
     )
 
   end *) = struct
@@ -216,22 +226,29 @@ structure WorkStealingDeque (* :
            do assert (I32Gt (LOAD_DEQUE_NCLAIMED(deque), 0))
 	   @is-empty (deque)
 	 ;
-
-     (* precondition: the deque is not full *)
-       define (* inline *) @push-new-end-from-atomic (self : vproc, deque : deque, elt : any) : () =
-           do assert (NotEqual (deque, enum(0):any))
-           do assert (I32Gt (LOAD_DEQUE_NCLAIMED(deque), 0))
-	   do @check-deque (deque)
-	   do assert(NotEqual(elt, DEQUE_NIL_ELT))
-	   let isFull : bool = @is-full (deque)
+      
+      define (* inline *) @is-claimed-from-atomic (self : vproc, deque : deque) : bool =
+          if I32Gt (LOAD_DEQUE_NCLAIMED(deque), 0) then
+	      return (false)
+	  else
+	      return (true)
+        ;
+       
+    (* precondition: the deque is not full *)
+      define (* inline *) @push-new-end-from-atomic (self : vproc, deque : deque, elt : any) : () =
+	  do assert (NotEqual (deque, enum(0):any))
+	  do assert (I32Gt (LOAD_DEQUE_NCLAIMED(deque), 0))
+	  do @check-deque (deque)
+	  do assert(NotEqual(elt, DEQUE_NIL_ELT))
+	  let isFull : bool = @is-full (deque)
 (*           do assert (BNot (isFull))*)
-	   let new : int = LOAD_DEQUE_NEW(deque)
-	   let newR : int = @move-right (LOAD_DEQUE_NEW(deque), LOAD_DEQUE_MAX_SIZE(deque))
-	   do STORE_DEQUE_NEW(deque, newR)
-	   do @update (deque, new, elt)
-	   do @check-deque (deque)
-	   return ()
-	 ;
+	  let new : int = LOAD_DEQUE_NEW(deque)
+	  let newR : int = @move-right (LOAD_DEQUE_NEW(deque), LOAD_DEQUE_MAX_SIZE(deque))
+	  do STORE_DEQUE_NEW(deque, newR)
+	  do @update (deque, new, elt)
+	  do @check-deque (deque)
+	  return ()
+	;
 
       define (* inline *) @pop-new-end-from-atomic (self : vproc, deque : deque) : Option.option =
 	  do assert (NotEqual (deque, enum(0):any))
@@ -270,6 +287,13 @@ structure WorkStealingDeque (* :
 	  end
 	;
 
+    (* returns the deques associated with the given vproc and the work group id. all the deques in this list are 
+     * automatically claimed for the caller. *)
+      define @local-deques-from-atomic (self : vproc, workGroupId : UID.uid) : (* [deque] *) List.list =
+          let localDeques : List.list = ccall M_LocalDeques (self, workGroupId)
+          return (localDeques)
+        ;
+
       define (* inline *) @release-from-atomic (self : vproc, deque : deque) : () =
           do assert (I32Gt (LOAD_DEQUE_NCLAIMED(deque), 0))
           do STORE_DEQUE_NCLAIMED(deque, I32Sub (LOAD_DEQUE_NCLAIMED(deque), 1))
@@ -298,12 +322,6 @@ structure WorkStealingDeque (* :
 	  return (newDeque)
 	;
 
-    (* returns the deques associated with the given vproc and the work group id *)
-      define @local-deques-from-atomic (self : vproc, workGroupId : UID.uid) : (* [deque] *) List.list =
-          let localDeques : List.list = ccall M_LocalDeques (self, workGroupId)
-          return (localDeques)
-        ;
-
       define @release-deques-from-atomic (self : vproc, deques : List.list) : () =
 	  fun lp (deques : List.list) : () =
 	      case deques
@@ -314,6 +332,33 @@ structure WorkStealingDeque (* :
 		  apply lp (deques)
               end
 	   apply lp (deques)
+	;
+
+    (* the list of returned threads is ordered from oldest to youngest *)
+      define @to-list-from-atomic (self : vproc, deque : deque) : (* ImplicitThread.thread *) List.list =
+	  fun lp () : List.list =
+	      let thd : Option.option = @pop-old-end-from-atomic (self, deque)
+	      case thd
+	       of Option.NONE =>
+		  return (List.nil)
+		| Option.SOME (thd : ImplicitThread.thread) =>
+		  let rest : List.list = apply lp ()
+		  return (List.CONS (thd, rest))
+	      end
+	  apply lp ()
+	;
+
+    (* the list of threads is inserting in order from oldest to youngest *)
+      define @add-list-from-atomic (self : vproc, deque : deque, thds : List.list) : () =
+	  fun lp (thds : List.list) : () =
+	      case thds
+	       of nil => 
+		  return ()
+		| List.CONS (thd : ImplicitThread.thread, thds : List.list) =>
+		  do @push-new-end-from-atomic (self, deque, thd)
+		  apply lp (thds)
+	      end
+	  apply lp (thds)
 	;
 
     )
