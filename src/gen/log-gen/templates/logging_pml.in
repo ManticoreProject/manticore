@@ -11,16 +11,25 @@
 structure Logging =
   struct
 
-#ifdef ENABLE_LOGGING
     _primcode (
+
+#ifdef ENABLE_LOGGING
 @GENERIC-LOG-HLOPS@
 
 @LOG-HLOPS@
-      )
+
+@WRAPPED-LOG-HLOPS@
+
 #else /* !ENABLE_LOGGING */
 
 @DUMMY-LOG-HLOPS@
 
+#endif
+
+      )
+
+#ifdef ENABLE_LOGGING
+@LOG-FUNCTIONS@
 #endif
 
   end
