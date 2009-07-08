@@ -17,6 +17,7 @@ structure Main : sig
     structure GenInlineLogH = GeneratorFn (GenInlineLogH)
     structure GenLogEventsDef = GeneratorFn (GenLogEventsDef)
     structure GenLogEventsH = GeneratorFn (GenLogEventsH)
+    structure GenLoggingPML = GeneratorFn (GenLoggingPML)
 
     val rootDir = "@MANTICORE_ROOT@"
     val templateDir = "@MANTICORE_ROOT@/src/gen/log-gen/templates"
@@ -26,9 +27,10 @@ structure Main : sig
 	  (P.concat(templateDir, template), P.concat(rootDir, path), gen)
 
     val targets = List.map mkTarget [
-	    (GenInlineLogH.template,   GenInlineLogH.path,   GenInlineLogH.gen),
-	    (GenLogEventsDef.template, GenLogEventsDef.path, GenLogEventsDef.gen),
-	    (GenLogEventsH.template,   GenLogEventsH.path,   GenLogEventsH.gen)
+	    (GenInlineLogH.template,	GenInlineLogH.path,	GenInlineLogH.gen),
+	    (GenLogEventsDef.template,	GenLogEventsDef.path,	GenLogEventsDef.gen),
+	    (GenLogEventsH.template,	GenLogEventsH.path,	GenLogEventsH.gen),
+	    (GenLoggingPML.template,	GenLoggingPML.path,	GenLoggingPML.gen)
 	  ]
 
     fun usage () = TextIO.output (TextIO.stdErr, "usage: log-gen [-help] [-clean] [-depend]\n")
@@ -60,7 +62,7 @@ structure Main : sig
 	    OS.Process.success
 	  end
 	    handle ex => (
-	      print(concat["uncaught exception ", exnMessage ex, "\n"]);
+	      print(concat["uncaught exception ", General.exnMessage ex, "\n"]);
 	      OS.Process.failure)
 
   end

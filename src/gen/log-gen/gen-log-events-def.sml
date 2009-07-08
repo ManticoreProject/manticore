@@ -12,11 +12,15 @@ structure GenLogEventsDef : GENERATOR =
 
     fun hooks (outS, logDesc as {date, version, events}) = let
 	  fun prl l = TextIO.output(outS, concat l)
-	  fun prDef (name, id, desc) = prl [
-		  "#define ", name, " ", Int.toString id, " /* ", desc, " */\n"
-		]
-	  fun genDef (LoadFile.EVT{id = 0, name, desc, ...}) = prDef (name, 0, desc)
-	    | genDef (LoadFile.EVT{id, name, desc, ...}) = prDef (name^"Evt", id, desc)
+	  val isRTOnly = LoadFile.hasAttr LoadFile.ATTR_RT
+	  fun genDef (evt as LoadFile.EVT{id, name, desc, ...}) =
+		if isRTOnly evt
+		  then prl [
+		      "/*      ", name, "Evt ", Int.toString id, " ** ", desc, " */\n"
+		    ]
+		  else prl [
+		      "#define ", name, "Evt ", Int.toString id, " /* ", desc, " */\n"
+		    ]
 	  in [
 	    ("LOG-EVENTS", fn () => LoadFile.applyToEvents genDef logDesc)
 	  ] end

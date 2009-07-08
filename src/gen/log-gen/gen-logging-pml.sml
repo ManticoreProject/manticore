@@ -64,18 +64,18 @@ structure GenLoggingPML : GENERATOR =
 		  genCopy (r, i+1)
 		end
 	  in
-	    prl ["\tdefine inline @", logEvent, sign, " (vp : vproc, evt : int"];
+	    prl ["\tdefine inline @logEvent", sign, " (vp : vproc, evt : int"];
 	    genParams (args, 0);
 	    prl [") : ", if isSource then "long" else "()", " =\n"];
 	    pr "\
 	      \\t    let ep : addr(any) = @NextLogEvent(vp)\n\
 	      \\t    do @LogTimestamp (ep)\n\
 	      \\t    do AdrStoreI32(AdrAdd32(ep, %d), evt)\n\
-	      \"
+	      \";
 	    genCopy (args, 0);
 	    if isSource
 	      then pr "\t    return (newId);\n"
-	      else pr "\t    return ()\n;
+	      else pr "\t    return ()\n;";
 	    pr "\t  ;\n"
 	  end
 
@@ -97,8 +97,7 @@ structure GenLoggingPML : GENERATOR =
 	  end
 
   (* generate a dummy logging macro for when logging is disabled *)
-    fun genDummyLogMacro outS (LoadFile.EVT{id=0, ...}) = ()
-      | genDummyLogMacro outS (LoadFile.EVT ed) = let
+    fun genDummyLogMacro outS (LoadFile.EVT ed) = let
 	  fun pr s = TextIO.output(outS, s)
 	  fun prl l = TextIO.output(outS, concat l)
 	  fun prParams [] = ()
@@ -115,11 +114,12 @@ structure GenLoggingPML : GENERATOR =
    * descriptors.
    *)
     fun computeSigMap logDesc = let
-	  fun doEvent (LoadFile.EVT{sign, args, genId, ...}, map) = (case Map.find(map, sign)
+	  val isSourceEvt = LoadFile.hasAttr LoadFile.ATTR_SRC
+	  fun doEvent (evt as LoadFile.EVT{sign, args, ...}, map) = (case Map.find(map, sign)
 		 of SOME _ => map
 		  | NONE => let
 		      val argInfo = {
-			      isSource = genId,
+			      isSource = isSourceEvt evt,
 			      args = List.map (fn {loc, ty, ...} => (loc, ty)) args
 			    }
 		      in
@@ -131,14 +131,16 @@ structure GenLoggingPML : GENERATOR =
 	  end
 
     fun hooks (outS, logDesc : LoadFile.log_file_desc) = let
+	(* filter out the runtime-system-only events *)
+	  val logDesc = LoadFile.filterEvents (not o (LoadFile.hasAttr LoadFile.ATTR_RT)) logDesc
 	  val sigMap = computeSigMap logDesc
 	  fun genericLogFuns () = Map.appi (genForSig outS) sigMap
 	  fun logFunctions () = LoadFile.applyToEvents (genLogMacro outS) logDesc
 	  fun dummyLogFunctions () = LoadFile.applyToEvents (genDummyLogMacro outS) logDesc
 	  in [
-	    ("GENERIC-LOG-FUNCTIONS", genericLogFuns),
-	    ("LOG-FUNCTIONS", logFunctions),
-	    ("DUMMY-LOG-FUNCTIONS", dummyLogFunctions)
+	    ("GENERIC-LOG-HLOPS", genericLogFuns),
+	    ("LOG-HLOPS", logFunctions),
+	    ("DUMMY-LOG-HLOPS", dummyLogFunctions)
 	  ] end
 
   end
