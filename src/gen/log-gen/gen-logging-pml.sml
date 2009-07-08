@@ -78,8 +78,8 @@ structure GenLoggingPML : GENERATOR =
 	      \";
 	    genCopy (args, 0);
 	    if isSource
-	      then pr "\t    return (newId);\n"
-	      else pr "\t    return ()\n;";
+	      then pr "\t    return (newId)\n"
+	      else pr "\t    return ()\n";
 	    pr "\t  ;\n"
 	  end
 
@@ -199,17 +199,30 @@ structure GenLoggingPML : GENERATOR =
 	  end
 
   (* generate a dummy logging macro for when logging is disabled *)
-    fun genDummyLogHLOp outS (LoadFile.EVT ed) = let
+    fun genDummyLogHLOp outS (evt as LoadFile.EVT ed) = let
 	  fun pr s = TextIO.output(outS, s)
 	  fun prl l = TextIO.output(outS, concat l)
-	  fun prParams [] = ()
-	    | prParams ((a : Sig.arg_desc)::r) = (prl [",", #name a]; prParams r)
-	  fun prArgs [] = ()
-	    | prArgs ((a : Sig.arg_desc)::r) = (prl [", (", #name a, ")"]; prArgs r)
+	  val isSource = LoadFile.hasAttr LoadFile.ATTR_SRC evt
+	  val retTy = if isSource then "long" else "unit"
+	  fun argToBOMTy ({ty, ...} : Sig.arg_desc) = (case ty
+		 of Sig.ADDR => "any"
+		  | Sig.INT => "int"
+		  | Sig.WORD => "int"
+		  | Sig.FLOAT => "float"
+		  | Sig.DOUBLE => "double"
+		  | Sig.NEW_ID => "long"
+		  | Sig.EVENT_ID => "long"
+		  | Sig.STR n => raise Fail "strings not supported yet"
+		(* end case *))
+	  val args = filterArgs  (Sig.sortArgs(#args ed))
 	  in
-	    prl ["#define Log", #name ed, "(vp"];
-	    prParams (#args ed);
-	    pr ")\n"
+	    prl ["\tdefine inline @log-", #name ed, " (_ : vproc"];
+	    List.app (fn a => prl [", _ : ", argToBOMTy a]) args;
+	    prl [") : ", retTy, " = "];
+	  (* return result (if any) *)
+	    if isSource
+	      then pr "return (0 : long);\n"
+	      else pr "return ();\n"
 	  end
 
   (* generate an event-specific logging function *)
@@ -230,7 +243,7 @@ structure GenLoggingPML : GENERATOR =
 		  | Sig.STR n => "string"
 		(* end case *))
 	  in
-	    prl ["    val ", name, " : "];
+	    prl ["    val log", name, " : "];
 	    case filterArgs args
 	     of [] => pr "unit"
 	      | [arg] => pr(argToTy arg)

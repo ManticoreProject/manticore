@@ -14,11 +14,19 @@ structure Logging =
     _primcode (
 
 #ifdef ENABLE_LOGGING
+
+	define @NextLogEvent (vp : vproc) : addr(any) =
+(* FIXME *)
+	  ;
+
+      (* fill in the timestamp field of the event *)
+	define @LogTimestamp (ep : addr(any)) : () =
+(* FIXME *)
+	  ;
+
 @GENERIC-LOG-HLOPS@
 
 @LOG-HLOPS@
-
-@WRAPPED-LOG-HLOPS@
 
 #else /* !ENABLE_LOGGING */
 
@@ -26,10 +34,10 @@ structure Logging =
 
 #endif
 
+@WRAPPED-LOG-HLOPS@
+
       )
 
-#ifdef ENABLE_LOGGING
 @LOG-FUNCTIONS@
-#endif
 
   end
