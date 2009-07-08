@@ -19,8 +19,7 @@ structure Barrier =
 		int          (* count of ready fibers *)
               ];
 
-    (* create a barrier *)
-      define @new(n : int    (* number of participants *)
+      define @new (n : int    (* number of fibers *)
 		  / exh : exh) : barrier =
 	let barrier : barrier = alloc(n, 0)
 	let barrier : barrier = promote(barrier)
@@ -40,7 +39,6 @@ structure Barrier =
 	      if I32Eq(SELECT(NUM_IN_BARRIER_OFF, b), SELECT(BARRIER_COUNT_OFF, b))
 		 then SchedulerAction.@atomic-end(vp)
 	      else 
-		  do SchedulerAction.@yield-in-atomic(vp)
 		  do Pause()
 		  apply barrierSpin()
 	apply barrierSpin ()

@@ -29,14 +29,16 @@ structure SchedulerAction (* :
       define inline @stop () : unit;
 
     (* yield control to the parent scheduler *)
+      define inline @yield-in-atomic (vp : vproc) : vproc;  
+			                         (* returns the new host vproc *)
       define inline @yield-from-atomic (vp : vproc) : ();
       define inline @yield () : ();
-      define inline @yield-in-atomic (vp : vproc) : ();
 
     (* block the fiber until the given time has elapsed *)
+      define inline @sleep-in-atomic (vp : vproc, t : Time.time) : ();  
+			                         (* returns the new host vproc *)
       define inline @sleep-from-atomic (vp : vproc, t : Time.time) : ();
       define inline @sleep (t : Time.time) : ();
-      define inline @sleep-in-atomic (vp : vproc, t : Time.time) : ();
 
     (* create a fiber *)
       define inline @fiber (f : PT.fiber_fun / exh : exh) : PT.fiber;
@@ -120,6 +122,16 @@ structure SchedulerAction (* :
 	  @forward (PT.STOP)
 	;
 
+    (* yield control to the parent scheduler, masking signals upon return *)
+      define inline @yield-in-atomic (vp : vproc) : vproc =
+	  cont k (x : unit) = 
+	    let vp : vproc = @atomic-begin()         (* mask signals before resuming *)
+	    return(vp)
+	  do @forward-from-atomic (vp, PT.PREEMPT(k))
+	  do assert_fail() (* control should never reach this point *)
+	  return(vp)
+	;
+
     (* yield control to the parent scheduler *)
       define inline @yield-from-atomic (vp : vproc) : () =
 	  cont k (x : unit) = return ()
@@ -134,14 +146,14 @@ structure SchedulerAction (* :
 	  return ()
 	;
 
-    (* yield control to the parent scheduler, masking signals upon return *)
-      define inline @yield-in-atomic (vp : vproc) : () =
+    (* block the fiber until the given time has elapsed , masking signals upon return *)
+      define inline @sleep-in-atomic (vp : vproc, t : Time.time) : vproc =
 	  cont k (x : unit) = 
 	    let vp : vproc = @atomic-begin()         (* mask signals before resuming *)
-	    return()
-	  do @forward-from-atomic (vp, PT.PREEMPT(k))
+	    return(vp)
+	  do @forward-from-atomic (vp, PT.SLEEP(k, t))
 	  do assert_fail() (* control should never reach this point *)
-	  return()
+	  return(vp)
 	;
 
     (* block the fiber until the given time has elapsed *)
@@ -156,16 +168,6 @@ structure SchedulerAction (* :
 	  cont k (x : unit) = return ()
 	  do @forward (PT.SLEEP(k, t))
 	  return ()
-	;
-
-    (* block the fiber until the given time has elapsed , masking signals upon return *)
-      define inline @sleep-in-atomic (vp : vproc, t : Time.time) : () =
-	  cont k (x : unit) = 
-	    let vp : vproc = @atomic-begin()         (* mask signals before resuming *)
-	    return()
-	  do @forward-from-atomic (vp, PT.SLEEP(k, t))
-	  do assert_fail() (* control should never reach this point *)
-	  return()
 	;
 
     (* unmask signals; if there is a signal pending, then yield to the scheduler. *)

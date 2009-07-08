@@ -123,7 +123,7 @@ structure WorkStealing (* :
 		case #0(ch)
 		 of Option.NONE =>
 		    do Pause()
-		    do SchedulerAction.@yield-in-atomic (thiefVP)
+		    let _ : vproc = SchedulerAction.@yield-in-atomic (thiefVP)
 		    apply wait ()
 		  | Option.SOME (thds : List.list) =>
 		    return (thds)
@@ -186,7 +186,7 @@ structure WorkStealing (* :
 		  let thd : Option.option = D.@pop-new-end-from-atomic (self, deque)
 		  case thd
 		   of Option.NONE =>
-		      do SchedulerAction.@yield-in-atomic (self)
+		      let _ : vproc = SchedulerAction.@yield-in-atomic (self)
 		      let stolenThds : List.list = @find-work-in-atomic (self, workGroupId, pickVictim)
                       do D.@add-list-from-atomic (self, deque, stolenThds)
 		      throw schedulerLoop (self, worker, deque, PT.STOP)
@@ -202,7 +202,7 @@ structure WorkStealing (* :
 		    | false =>
 		      let thd : ImplicitThread.thread = ImplicitThread.@capture (k / exh)
 		      do D.@push-new-end-from-atomic (self, deque, thd)  (* make the thread available to thieves *)
-		      do SchedulerAction.@yield-in-atomic (self)
+		      let _ : vproc = SchedulerAction.@yield-in-atomic (self)
                       throw schedulerLoop (self, worker, deque, PT.STOP)
 		 end
 	       | _ =>
@@ -230,22 +230,20 @@ structure WorkStealing (* :
 	  ;
 
 	define (* inline *) @spawn-thread (thd : ImplicitThread.thread / exh : exh) : () =
+	    fun lp (self : vproc) : () =
+		let deque : D.deque = @get-assigned-deque-from-atomic (self / exh)
+		let isFull : bool = D.@is-full (deque)
+		case isFull
+		 of true =>  (* the deque is full: let the scheduler loop choose the next action *)
+		    let self : vproc = SchedulerAction.@yield-in-atomic (self)
+		    apply lp (self)
+		  | false =>
+		    do D.@push-new-end-from-atomic (self, deque, thd)
+		    do SchedulerAction.@atomic-end (self)
+		    return ()
+		end
 	    let self : vproc = SchedulerAction.@atomic-begin ()
-	    let deque : D.deque = @get-assigned-deque-from-atomic (self / exh)
-	    let isFull : bool = D.@is-full (deque)
-	    let deque : D.deque = 
-	      (* if the current deque is full, let the scheduler loop choose the course of action. *)
-			case isFull
-			 of true =>
-			    do SchedulerAction.@yield-in-atomic (self)
-			    let deque : D.deque = @get-assigned-deque-from-atomic (self / exh)
-			    return (deque)
-			  | false =>
-			    return (deque)
-			end
-	    do D.@push-new-end-from-atomic (self, deque, thd)
-	    do SchedulerAction.@atomic-end (self)
-	    return ()
+	    apply lp (self)
 	  ;
 
       (* one of several policies for resuming a thread. here we create a deque containing just the given thread. *)

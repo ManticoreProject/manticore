@@ -189,8 +189,7 @@ structure Cancelation (* : sig
      * until the target fiber and all of its children have terminated.
      *)
       define @cancel (c : cancelable / exh : exh) : () =        
-	  let self : vproc = SchedulerAction.@atomic-begin()
-	  fun cancelAndWait (cs1 : L.list, cs2 : L.list) : () =
+	  fun cancelAndWait (self : vproc, cs1 : L.list, cs2 : L.list) : () =
 	      case cs1
 	       of nil => 
 		  case cs2
@@ -198,7 +197,7 @@ structure Cancelation (* : sig
 		      return()
 		    | _ => 
 		      let cs2 : L.list = PrimList.@rev(cs2 / exh)
-		      apply cancelAndWait(cs2, nil)
+		      apply cancelAndWait(self, cs2, nil)
 		  end
 		| L.CONS(c : cancelable, cs1 : L.list) =>		
 		  let canceled : ![bool] = @get-canceled-flag(c)
@@ -211,21 +210,22 @@ structure Cancelation (* : sig
 		     *)
 		      let gChildren : ![L.list] = promote(SELECT(GCHILDREN_OFF, c))
 		      let cs2 : L.list = PrimList.@append(#0(gChildren), cs2 / exh)
-		      apply cancelAndWait(cs1, cs2)
+		      apply cancelAndWait(self, cs1, cs2)
 		  else
-		      do case isCanceled
-			  of true =>
-			     do Pause()
-			     do SchedulerAction.@yield-in-atomic(self)
-			     return()
-			   | false =>
-			     let dummyK : PT.fiber = vpload(VP_DUMMYK, self)
-			     do VProc.@send-high-priority-signal-from-atomic(self, #0(inactive), dummyK)
-			     return()
-                          end
-		       apply cancelAndWait(cs1, L.CONS(c, cs2))
+		      case isCanceled
+		       of true =>
+			  do Pause()
+			  let self : vproc = SchedulerAction.@yield-in-atomic(self)
+			  apply cancelAndWait(self, cs1, L.CONS(c, cs2))
+			| false =>
+			  let dummyK : PT.fiber = vpload(VP_DUMMYK, self)
+			  do VProc.@send-high-priority-signal-from-atomic(self, #0(inactive), dummyK)
+			  apply cancelAndWait(self, cs1, L.CONS(c, cs2))
+                      end
+		       
 	      end
-	  do apply cancelAndWait(L.CONS(c, L.nil), L.nil)
+	  let self : vproc = SchedulerAction.@atomic-begin()
+	  do apply cancelAndWait(self, L.CONS(c, L.nil), L.nil)
 	  do SchedulerAction.@atomic-end(self)
 	  return()
 	;

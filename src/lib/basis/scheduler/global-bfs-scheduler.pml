@@ -34,7 +34,7 @@ structure GlobalBFSScheduler (* :
                   if I32Lte (numStealAttempts, MAX_STEAL_ATTEMPTS) then
 		      throw dispatch (I32Add (numStealAttempts, 1), sleepTime)
 		  else
-		      do SchedulerAction.@sleep-in-atomic (self, I64Add (sleepTime, 100:long))
+		      let _ : vproc = SchedulerAction.@sleep-in-atomic (self, I64Add (sleepTime, 100:long))
 		      let sleepTime : Time.time = if U64Lt (sleepTime, MAX_SLEEP_TIME_USECS) then
 						      return (U64Mul (sleepTime, 2:long))
 						  else
@@ -50,7 +50,7 @@ structure GlobalBFSScheduler (* :
 	       throw dispatch (0, 1:long)
 	     | PT.PREEMPT(k : PT.fiber) =>
 	       let thd : ImplicitThread.thread = ImplicitThread.@capture (k / exh)
-               do SchedulerAction.@yield-in-atomic (self)
+               let _ : vproc = SchedulerAction.@yield-in-atomic (self)
 	       throw run (thd)
 	     | _ => 
 	       throw exh (Match)
