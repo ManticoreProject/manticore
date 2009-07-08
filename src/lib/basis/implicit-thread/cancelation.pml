@@ -17,7 +17,8 @@ structure Cancelation (* : sig
      *)
       define @new ( / exh : exh) : cancelable;
 
-    (* wrap a fiber with a cancelable. the fiber is now cancelable by applying @cancel(c / exh) *)
+    (* returns a fiber that does the same thing as k, except that this new fiber is canceled
+     * when c is canceled. *)
       define @wrap (c : cancelable, k : PT.fiber / exh : exh) : PT.fiber;
 
     (* cancel the fiber associated with c. this operation blocks the calling fiber
@@ -119,48 +120,40 @@ structure Cancelation (* : sig
 	  return()
 	;
 
-    (* attach the fiber k to the cancelable *)
+    (* returns a fiber that does the same thing as k, except that this new fiber is canceled
+     * when c is canceled. *)
       define @wrap (c : cancelable, k : PT.fiber / exh : exh) : PT.fiber =
-
-	  cont impossible () = 
-	       let e : exn = Fail(@"Cancelation.@wrap: impossible")
-	       throw exh(e)
-
-	  cont terminate (self : vproc) = 
+	  cont impossible () = throw exh(Fail(@"Cancelation.@wrap: impossible"))
+	  cont terminate () = 
 	       do @set-inactive(c / exh)
-	       do SchedulerAction.@stop-from-atomic(self)
+	       let _ : unit = SchedulerAction.@stop()
 	       throw impossible()
-
-	  cont dispatch (self : vproc, handler : PT.sched_act, k : PT.fiber) =
+	  cont dispatch (act : PT.sched_act, k : PT.fiber) =
+             (* signals must be masked between the call to @set-active-from-atomic and the call
+	      * to SchedulerAction.@run, since the call to the former maintains the vproc on which 
+	      * the fiber is being run. *)
+               let self : vproc = SchedulerAction.@atomic-begin()
 	       do @set-active-from-atomic(self, c / exh)
 	       let canceledFlg : ![bool] = @get-canceled-flag(c)
 	       case #0(canceledFlg)
 		of true =>
-		   throw terminate(self)
+		   throw terminate()
 		 | false =>
-		   do SchedulerAction.@run(self, handler, k)
+		   do SchedulerAction.@run(self, act, k)
 		   throw impossible()
                end
-
-	(* poll for cancelation *)
-	  cont handler (s : PT.signal) =
-	       let self : vproc = host_vproc
+	  cont act (s : PT.signal) =
 	       case s
 		of PT.STOP => 
-		   throw terminate(self)
+		   throw terminate()
 		 | PT.PREEMPT(k : PT.fiber) =>
 		   do @set-inactive(c / exh)
-		   do SchedulerAction.@yield-in-atomic(self)
-		   throw dispatch(self, handler, k)
+		   do SchedulerAction.@yield()
+		   throw dispatch(act, k)
 		 | _ =>
-		   let e : exn = Match
-		   throw exh (e)
+		   throw exh (Match)
 	       end
-
-	  cont wrappedK (x : unit) =
-	       let self : vproc = SchedulerAction.@atomic-begin()
-	       throw dispatch(self, handler, k)
-
+	  cont wrappedK (x : unit) = throw dispatch(act, k)
 	  return(wrappedK)
 	;
 
@@ -168,8 +161,7 @@ structure Cancelation (* : sig
 	  let canceled : ![bool] = alloc(false)
 	  let inactive : ![vproc] = alloc(INACTIVE)
 	  let gChildren : ![List.list] = alloc(nil)
-	  let c : cancelable = alloc(canceled, inactive, nil, gChildren, parent)
-	  return(c)
+	  return(alloc(canceled, inactive, nil, gChildren, parent))
 	;
 
     (* create a cancelable *)

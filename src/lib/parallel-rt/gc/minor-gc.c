@@ -97,7 +97,6 @@ void MinorGC (VProc_t *vp)
     *rp++ = &(vp->stdEnvPtr);
     rp = M_AddDequeEltsToRoots(vp, rp);
     *rp++ = 0;
-    //    assert (rp <= roots+((sizeof(roots) + nWorkStealingRoots)/sizeof(Value_t *)));
 
 #ifndef NDEBUG
   /* nullify non-live registers */
@@ -107,9 +106,6 @@ void MinorGC (VProc_t *vp)
 
   /* process the roots */
     for (int i = 0;  roots[i] != 0;  i++) {
-      if (roots[i] == 1)
-	Say ("roots[%d]==1\n", i);
-      assert (roots[i] != 1);
 	Value_t p = *roots[i];
 	if (isPtr(p)) {
 	    if (inAddrRange(nurseryBase, allocSzB, ValueToAddr(p))) {

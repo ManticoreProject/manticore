@@ -91,6 +91,7 @@ structure SchedulerAction (* :
 
     (* run the fiber under the scheduler action *)
       define inline @run (self : vproc, act : PT.sched_act, fiber : PT.fiber) noreturn =
+	  do assert (Equal(self, host_vproc))
 	  do @push-act(self, act)
 	  do @atomic-end-no-check (self)
 	  throw fiber (UNIT)
@@ -195,6 +196,7 @@ structure SchedulerAction (* :
 
     (* run the fiber under the scheduler action and with the given fls *)
       define inline @dispatch-from-atomic (self : vproc, act : PT.sched_act, fiber : PT.fiber, fls : FLS.fls) noreturn =
+	  do assert (Equal(self, host_vproc))
 	  do FLS.@set-in-atomic(self, fls)
 	  @run (self, act, fiber)
 	;
