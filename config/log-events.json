@@ -104,6 +104,7 @@
       },
       { "name" : "MajorGCStart",
 	"args" : [
+	    {"name" : "nYoungBytes", "ty" : "word", "desc" : "number of young bytes in local heap"},
 	    {"name" : "nOldBytes", "ty" : "word", "desc" : "number of old bytes in local heap"}
 	  ],
 	"attrs" : ["rt"],

@@ -82,7 +82,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     assert (oldBase <= vp->oldTop);
     assert (vp->oldTop <= top);
 
-    LogMajorGCStart (vp);
+    LogMajorGCStart (vp, (uint32_t)(top - vp->oldTop), (uint32_t)oldSzB);
 
 #ifndef NDEBUG
     if (GCDebug >= GC_DEBUG_MAJOR)
@@ -190,7 +190,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     }
 #endif
 
-    LogMajorGCEnd (vp);
+    LogMajorGCEnd (vp, 0, 0); /* FIXME: nCopiedBytes, nAvailBytes */
 
     if (vp->globalGCPending || (ToSpaceSz >= ToSpaceLimit))
 	StartGlobalGC (vp, roots);

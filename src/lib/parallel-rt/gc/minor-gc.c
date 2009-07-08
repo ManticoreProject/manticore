@@ -57,12 +57,12 @@ STATIC_INLINE Value_t ForwardObj (Value_t v, Word_t **nextW)
  */
 void MinorGC (VProc_t *vp)
 {
-    LogMinorGCStart (vp);
-
     Addr_t	nurseryBase = vp->nurseryBase;
     Addr_t	allocSzB = vp->allocPtr - nurseryBase - WORD_SZB;
     Word_t	*nextScan = (Word_t *)(vp->oldTop); /* current top of to-space */
     Word_t	*nextW = nextScan + 1;		/* next object address in to-space */
+
+    LogMinorGCStart (vp, (uint32_t)allocSzB);
 
     assert (VProcHeap(vp) <= (Addr_t)nextScan);
     assert ((Addr_t)nextScan < vp->nurseryBase);
@@ -179,7 +179,7 @@ bzero(nextScan, avail); /* clear unused part of local heap */
     }
 #endif /* !NDEBUG */
 
-    LogMinorGCEnd (vp, (int)allocSzB, (int)((Addr_t)nextScan - vp->oldTop));
+    LogMinorGCEnd (vp, (uint32_t)((Addr_t)nextScan - vp->oldTop), (uint32_t)avail);
 
     if ((avail < MajorGCThreshold) || vp->globalGCPending) {
       /* time to do a major collection. */
