@@ -164,15 +164,19 @@ structure GenLoggingPML : GENERATOR =
 	  (* unwrapping of arguments *)
 	    case args
 	     of [] => ()
-	      | [arg] => prl [
-		    "\t    let ", #name arg, " : ", argToBOMTy arg, " = #0(", #name arg, ")\n"
-		  ]
+	      | [arg] => if isWrapped arg
+		    then prl [
+			"\t    let ", #name arg, " : ", argToBOMTy arg, " = #0(", #name arg, ")\n"
+		      ]
+		    else ()
 	      | args => let
 		  fun f (arg, i) = (
-			prl [
-			    "\t    let ", #name arg, " : ", argToBOMTy arg, " = #0(#",
-			    Int.toString i, "(arg))\n"
-			  ];
+			if isWrapped arg
+			  then prl [
+			      "\t    let ", #name arg, " : ", argToBOMTy arg, " = #0(#",
+			      Int.toString i, "(arg))\n"
+			    ]
+			  else ();
 			i+1)
 		  in
 		    ignore (List.foldl f 0 args)
