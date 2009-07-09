@@ -17,10 +17,12 @@
 #include <sys/stat.h>
 #include <assert.h>
 #include "log-file.h"
+#include "event-desc.hxx"
 #include "log-desc.hxx"
 
 /* temporary */
-#define logDescFile	"/Users/jhr/Work/Manticore/manticore/src/gen/log-gen/log-events.json"
+#define logDescFile	"/Users/jhr/Work/Manticore/manticore/config/log-events.json"
+#define logViewFile	"/Users/jhr/Work/Manticore/manticore/config/log-view.json"
 
 /* the actual size of a block in the log buffer */
 static size_t	LogBufSzB = LOGBLOCK_SZB;
@@ -81,7 +83,7 @@ int main (int argc, const char **argv)
 	}
     }
 
-    LogFileDesc *logFileDesc = LoadLogDesc (logDescFile);
+    LogFileDesc *logFileDesc = LoadLogDesc (logDescFile, logViewFile);
     if (logFileDesc == 0) {
 	fprintf(stderr, "unable to load \"%s\"\n", logDescFile);
 	exit (1);
