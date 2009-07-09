@@ -59,6 +59,54 @@ void EventGroup::AddGroup (int i, Group *item)
 }
 
 
+/***** class StateGroup member functions *****/
+
+StateGroup::StateGroup (const char *desc, int nStates, int nTransitions)
+    : Group (desc, STATE_GROUP),
+	_stateNames(nStates, (const char *)0),
+	_transitions(nTransitions, StateTransition())
+{
+}
+
+StateGroup::~StateGroup ()
+{
+}
+
+int StateGroup::NextState (int st, EventDesc *evt) const
+{
+    for (int i = 0;  i < this->_transitions.size();  i++) {
+	if (this->_transitions.at(i)._event == evt)
+	    return this->_transitions.at(i)._nextState;
+    }
+    return -1;
+}
+
+void StateGroup::AddState (int i, const char *st)
+{
+    this->_stateNames.at(i) = CopyString(st);
+}
+
+void StateGroup::AddTransition (int i, EventDesc *evt, const char *st)
+{
+  // first map the state name to an index
+    int state;
+    for (state = 0;  state < this->_stateNames.size();  state++) {
+	if (strcmp(this->_stateNames.at(state), st) == 0)
+	    break;
+    }
+
+  // then add the transition info
+    this->_transitions.at(i)._event = evt;
+    this->_transitions.at(i)._nextState = state;
+
+}
+
+/***** class IntervalGroup member functions *****/
+
+
+/***** class DependentGroup member functions *****/
+
+
 /***** class LogFileDesc member functions *****/
 
 LogFileDesc::~LogFileDesc ()

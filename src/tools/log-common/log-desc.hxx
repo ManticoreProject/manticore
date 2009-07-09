@@ -80,6 +80,8 @@ class EventGroup : public Group {
 struct StateTransition {
     EventDesc	*_event;	//!< the event that causes the transition
     int		_nextState;	//!< the state being transitioned to.
+
+    StateTransition () : _event(0), _nextState(0) { }
 };
 
 /*! \brief the representation of a state group */
@@ -181,6 +183,6 @@ class LogFileDesc {
 
 };
 
-extern LogFileDesc *LoadLogDesc (const char *logDescFile);
+extern LogFileDesc *LoadLogDesc (const char *logDescFile, const char *logViewDesc);
 
 #endif /* !_LOG_DESC_HXX_ */
