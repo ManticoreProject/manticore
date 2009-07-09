@@ -10,14 +10,16 @@
 #include <stdint.h>
 #include <vector>
 
+/*! \brief the different types of event-argument data */
 enum ArgType {
-    ADDR,
-    INT,
-    WORD,
-    FLOAT,
-    DOUBLE,
-    EVENT_ID,
-    STR0
+    ADDR,		//!< address data (64-bits)
+    INT,		//!< 32-bit signed integer data
+    WORD,		//!< 32-bit unsigned integer data
+    FLOAT,		//!< 32-bit floating-point data
+    DOUBLE,		//!< 64-bit floating-point data
+    NEW_ID,		//!< new unique event ID (64-bits)
+    EVENT_ID,		//!< event ID (64-bits)
+    STR0		//!< base type for fixed-length strings
 };
 
 #define STR(n)		(STR0+(n))
@@ -26,10 +28,10 @@ enum ArgType {
 #define MAX_STRLEN	20
 
 struct ArgDesc {
-    char	*name;		// the argument's name
-    ArgType	ty;		// the argument's type
-    int		loc;		// the offset of the field from the start of the event (in bytes)
-    char	*desc;
+    char	*name;		//!< the argument's name
+    ArgType	ty;		//!< the argument's type
+    int		loc;		//!< the offset of the field from the start of the event (in bytes)
+    char	*desc;		//!< description of event
 } ;
 
 //! \brief An event-argument value
@@ -43,10 +45,10 @@ union ArgValue {
     char		str[MAX_STRLEN+1];
 };
 
-//! \brief An event-argument value tagged with its type
+//! \brief An event-argument value tagged with its description
 struct TaggedArgValue {
-    const ArgDesc	*desc;
-    ArgValue		val;
+    const ArgDesc	*desc;	//!< the argument description
+    ArgValue		val;	//!< the argument type
 };
 
 enum EventKind {

@@ -65,7 +65,8 @@ static ArgDesc *GetArgs (JSON_Value_t *v)
 	else if (strcasecmp(tyStr, "word") == 0) ty = WORD;
 	else if (strcasecmp(tyStr, "float") == 0) ty = FLOAT;
 	else if (strcasecmp(tyStr, "double") == 0) ty = DOUBLE;
-	else if (strcasecmp(tyStr, "event") == 0) ty = EVENT_ID;
+	else if (strcasecmp(tyStr, "new-id") == 0) ty = NEW_ID;
+	else if (strcasecmp(tyStr, "id") == 0) ty = EVENT_ID;
 	else if (sscanf(tyStr, "str%d", &n) == 1) ty = (ArgType)((int)STR0 + n);
 	else {
 	    free (ads);
@@ -76,9 +77,9 @@ static ArgDesc *GetArgs (JSON_Value_t *v)
 	/* FIXME */
 
 	ads[i].name = CopyString(name);
-	ads[i].ty;
+	ads[i].ty = ty;
 	ads[i].loc = location;
-	ads[i].desc;
+	ads[i].desc = desc;
     }
 
     return ads;

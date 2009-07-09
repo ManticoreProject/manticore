@@ -86,6 +86,7 @@ ArgValue EventDesc::GetArg (LogEvent_t *evtData, int i)
       case DOUBLE:
 	value.d = *(double *)p;
 	break;
+      case NEW_ID:
       case EVENT_ID:
 	value.id = *(uint64_t *)p;
 	break;
