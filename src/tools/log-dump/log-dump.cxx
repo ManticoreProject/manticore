@@ -19,10 +19,10 @@
 #include "log-file.h"
 #include "event-desc.hxx"
 #include "log-desc.hxx"
+#include "default-log-paths.h"
 
-/* temporary */
-#define logDescFile	"/Users/jhr/Work/Manticore/manticore/config/log-events.json"
-#define logViewFile	"/Users/jhr/Work/Manticore/manticore/config/log-view.json"
+#define logDescFile	DEFAULT_LOG_EVENTS_PATH
+#define logViewFile	DEFAULT_LOG_VIEW_PATH
 
 /* the actual size of a block in the log buffer */
 static size_t	LogBufSzB = LOGBLOCK_SZB;
