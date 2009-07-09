@@ -16,6 +16,7 @@ structure Rand =
       extern int M_RandomInt(int, int);
       extern void M_SeedRand();
       extern double M_DRand (double, double);
+      extern float M_FRand (float, float);
 
       define inline @in-range-long(lo : long, hi : long / exh : exh) : long =
         let r : long = ccall M_Random(lo, hi)
@@ -49,6 +50,11 @@ structure Rand =
 	return (alloc(r))
       ;
 
+      define inline @rand-float (arg : [ml_float, ml_float] / exh : exh) : ml_float =
+	let r : float = ccall M_FRand (#0(#0(arg)), #0(#1(arg)))
+	return (alloc(r))
+      ;
+
     )
 
   (* The random long generated is inclusive of the lower bound, exclusive of the upper. *)
@@ -60,6 +66,8 @@ structure Rand =
     val inRangeInt : (int * int) -> int = _prim(@in-range-int-wrap)
 
     val seed : unit -> unit = _prim(@seed)
+
+    val randFloat : (float * float) -> float = _prim(@rand-float)
 
     val randDouble : (double * double) -> double = _prim(@rand-double)
 
