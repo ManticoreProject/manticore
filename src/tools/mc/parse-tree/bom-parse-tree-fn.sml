@@ -46,6 +46,10 @@
       | D_Define of (bool * hlop_bind * var_pat list * var_pat list * ty list option * exp option)
 		                                   (* HLOp *)
       | D_ImportML of (bool * hlop_bind * pml_var) (* form to import an ML function *)
+      | D_Rewrite of { label  : Atom.atom,         (* hlop rewrite rule *)
+                       lhs    : rw_pattern,
+                       rhs    : rw_pattern,
+                       weight : IntInf.int }
 
     and ty
       = T_Mark of ty mark
@@ -109,6 +113,12 @@
       = P_VPMark of var_pat mark
       | P_Wild of ty option
       | P_Var of (var_bind * ty)
+
+  (* rewrite pattern *)
+    and rw_pattern = 
+	     RW_Call of hlop_use * rw_pattern list
+           | RW_Const of (Literal.literal * ty)
+           | RW_Var of var_use
 
     withtype lambda = (var_bind * var_pat list * var_pat list * ty list * exp)
 
