@@ -103,8 +103,28 @@ void StateGroup::AddTransition (int i, EventDesc *evt, const char *st)
 
 /***** class IntervalGroup member functions *****/
 
+IntervalGroup::IntervalGroup (const char *desc, EventDesc *a, EventDesc *b)
+    : Group (desc, INTERVAL_GROUP),
+	_start(a), _end(b)
+{
+}
+
+IntervalGroup::~IntervalGroup ()
+{
+}
+
 
 /***** class DependentGroup member functions *****/
+
+DependentGroup::DependentGroup (const char *desc, EventDesc *src, EventDesc *dst)
+    : Group (desc, DEPENDENT_GROUP),
+	_src(src), _dst(dst)
+{
+}
+
+DependentGroup::~DependentGroup ()
+{
+}
 
 
 /***** class LogFileDesc member functions *****/
