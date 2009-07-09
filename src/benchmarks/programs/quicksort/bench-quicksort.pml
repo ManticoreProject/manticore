@@ -1,5 +1,5 @@
 fun randomList n = List.tabulate(n, fn _ => Rand.inRangeInt(0, 10000))
-fun randomRope n = Ropes.tabFromToP(0, n, fn _ => Rand.inRangeInt (0, 10000))
+fun randomParray n = tabP(n, fn _ => Rand.inRangeInt (0, 10000))
 
 fun benchSeq (seqSz, n) = 
     let
@@ -12,11 +12,10 @@ fun benchSeq (seqSz, n) =
 
 fun bench (seqSz, n, sort) = 
     let
-	val r = randomRope n
+	val r = randomParray n
         val (r, t) = Time.timeToEval(fn () => sort r)
     in
 	Print.printLn(Long.toString t);
-	(*Print.printLn(Ropes.toString Int.toString r);*)
 	()
     end
 
