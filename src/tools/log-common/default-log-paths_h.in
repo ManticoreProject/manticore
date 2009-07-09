@@ -1,0 +1,26 @@
+/*! \file default-log-paths.h
+ *
+ * \author John Reppy
+ *
+ * The default paths for the log-events.json and log-view.json files.
+ */
+
+/*
+ * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * @configure_input@
+ */
+
+#ifndef _DEFAULT_LOG_PATHS_H_
+#define _DEFAULT_LOG_PATHS_H_
+
+#ifndef DEFAULT_LOG_EVENTS_PATH
+#  define DEFAULT_LOG_EVENTS_PATH @DEFAULT_LOG_EVENTS_PATH@
+#endif
+
+#ifndef DEFAULT_LOG_VIEW_PATH
+#  define DEFAULT_LOG_VIEW_PATH @DEFAULT_LOG_VIEW_PATH@
+#endif
+
+#endif /* !_DEFAULT_LOG_PATHS_H_ */
