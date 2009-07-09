@@ -1,0 +1,138 @@
+// !$*UTF8*$!
+{
+	29B97313FDCFA39411CA2CEA /* Project object */ = {
+		activeBuildConfigurationName = Debug;
+		activeExecutable = 52E795FB10065A990031A217 /* LogDrawer */;
+		activeTarget = 8D1107260486CEB800E47090 /* LogDrawer */;
+		addToTargets = (
+			8D1107260486CEB800E47090 /* LogDrawer */,
+		);
+		codeSenseManager = 52E7960010065AB80031A217 /* Code sense */;
+		executables = (
+			52E795FB10065A990031A217 /* LogDrawer */,
+		);
+		perUserDictionary = {
+			PBXConfiguration.PBXFileTableDataSource3.PBXErrorsWarningsDataSource = {
+				PBXFileTableDataSourceColumnSortingDirectionKey = "-1";
+				PBXFileTableDataSourceColumnSortingKey = PBXErrorsWarningsDataSource_LocationID;
+				PBXFileTableDataSourceColumnWidthsKey = (
+					20,
+					300,
+					231,
+				);
+				PBXFileTableDataSourceColumnsKey = (
+					PBXErrorsWarningsDataSource_TypeID,
+					PBXErrorsWarningsDataSource_MessageID,
+					PBXErrorsWarningsDataSource_LocationID,
+				);
+			};
+			PBXConfiguration.PBXFileTableDataSource3.PBXFileTableDataSource = {
+				PBXFileTableDataSourceColumnSortingDirectionKey = "-1";
+				PBXFileTableDataSourceColumnSortingKey = PBXFileDataSource_Filename_ColumnID;
+				PBXFileTableDataSourceColumnWidthsKey = (
+					20,
+					341,
+					20,
+					48.16259765625,
+					43,
+					43,
+					20,
+				);
+				PBXFileTableDataSourceColumnsKey = (
+					PBXFileDataSource_FiletypeID,
+					PBXFileDataSource_Filename_ColumnID,
+					PBXFileDataSource_Built_ColumnID,
+					PBXFileDataSource_ObjectSize_ColumnID,
+					PBXFileDataSource_Errors_ColumnID,
+					PBXFileDataSource_Warnings_ColumnID,
+					PBXFileDataSource_Target_ColumnID,
+				);
+			};
+			PBXPerProjectTemplateStateSaveDate = 268851865;
+			PBXWorkspaceStateSaveDate = 268851865;
+		};
+		perUserProjectItems = {
+			52E7963610065AF70031A217 /* PBXTextBookmark */ = 52E7963610065AF70031A217 /* PBXTextBookmark */;
+			52E7963710065AF70031A217 /* PBXTextBookmark */ = 52E7963710065AF70031A217 /* PBXTextBookmark */;
+		};
+		sourceControlManager = 52E795FF10065AB80031A217 /* Source Control */;
+		userBuildSettings = {
+		};
+	};
+	52E795FB10065A990031A217 /* LogDrawer */ = {
+		isa = PBXExecutable;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		autoAttachOnCrash = 1;
+		breakpointsEnabled = 0;
+		configStateDict = {
+		};
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		dylibVariantSuffix = "";
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		executableSystemSymbolLevel = 0;
+		executableUserSymbolLevel = 0;
+		libgmallocEnabled = 0;
+		name = LogDrawer;
+		sourceDirectories = (
+		);
+	};
+	52E795FF10065AB80031A217 /* Source Control */ = {
+		isa = PBXSourceControlManager;
+		fallbackIsa = XCSourceControlManager;
+		isSCMEnabled = 0;
+		scmConfiguration = {
+		};
+	};
+	52E7960010065AB80031A217 /* Code sense */ = {
+		isa = PBXCodeSenseManager;
+		indexTemplatePath = "";
+	};
+	52E7963010065AF30031A217 /* Message.m */ = {
+		isa = PBXFileReference;
+		name = Message.m;
+		path = /Users/koreiklein/workspace/LogDrawer/Message.m;
+		sourceTree = "<absolute>";
+	};
+	52E7963210065AF30031A217 /* Message.m */ = {
+		isa = PBXFileReference;
+		lastKnownFileType = sourcecode.c.objc;
+		name = Message.m;
+		path = /Users/koreiklein/workspace/LogDrawer/Message.m;
+		sourceTree = "<absolute>";
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {528, 1960}}";
+			sepNavSelRange = "{1192, 0}";
+			sepNavVisRange = "{1058, 276}";
+		};
+	};
+	52E7963610065AF70031A217 /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 52E7963010065AF30031A217 /* Message.m */;
+		rLen = 1;
+		rLoc = 57;
+		rType = 1;
+	};
+	52E7963710065AF70031A217 /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 52E7963210065AF30031A217 /* Message.m */;
+		name = "Message.m: 58";
+		rLen = 0;
+		rLoc = 1192;
+		rType = 0;
+		vrLen = 276;
+		vrLoc = 1058;
+	};
+	8D1107260486CEB800E47090 /* LogDrawer */ = {
+		activeExec = 0;
+		executables = (
+			52E795FB10065A990031A217 /* LogDrawer */,
+		);
+	};
+}
