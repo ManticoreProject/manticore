@@ -26,6 +26,7 @@ structure ASTOpt : sig
 	transform {passName="pval-to-future", pass=PValToFuture.tr}
 
     fun optimize (exp : AST.exp) : AST.exp = let
+	  val exp = LookupInfixOps.tr exp
 	  val exp = if (Controls.get BasicControl.sequential)
 		          then Unpar.unpar exp
 		          else let

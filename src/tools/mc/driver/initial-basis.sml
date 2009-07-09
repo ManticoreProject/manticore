@@ -360,7 +360,8 @@ structure InitialBasis : sig
 		) end
 	  val (bEnv, mEnv) = List.foldl insOp (bEnv, mEnv) [
 		  (N.append,	list_append),
-		  (N.concat,	string_concat)
+		  (N.concat,	string_concat),
+		  (N.psub,      psub)
 		]
 	(* insert the equality operators *)
 	  fun insEqOp ((name, var), (bEnv, mEnv)) = let
