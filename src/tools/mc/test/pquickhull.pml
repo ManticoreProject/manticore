@@ -28,6 +28,8 @@ fun farthest(a,b,S) = (let val (dist,pt) = subP(quicksort(mapP ( (fn (x) => (dis
 fun upto((x,y) : point,(q,w) : point,dx,dy,lyst) = (if ((x = q) andalso (y = w)) then lyst
                                    else upto((x+dx,y+dy),(q,w),dx,dy,concatP(lyst,[|(x+dx,y+dy)|])));  
 
+
+(* want a cleverer way to generate the line, but this isn't heinous for a naive approach *)
 fun line(a : point,b : point) = (let val (x,y) = a
                      val (q,w) = b
 		     val dx = (x - q) / 100.0
@@ -46,6 +48,39 @@ fun isbelow(pt : point,line) = (let val (a,b) = pt in (let val l = (filterP ((fn
 
 fun rightof(a,b,S) = (filterP ((fn (x) => isrightof(x,line(a,b))),  S));
 
+fun below(a,b,S) = (filterP ((fn (x) => isbelow(x,line(a,b))),  S));
+
+
+(* The following two functions are used to find the extreme points on a random list of points  *)
+
+fun leftmosthighest (xs) = ( if lengthP xs <= 1 then
+	    (~1.0,~1.0)
+	else
+	    let
+		val (a,b) = subP (xs, lengthP xs div 2)
+		val lt = filterP (fn (x,y) => x > a orelse y < b, xs)
+		val eq = filterP (fn (x,y) => x = a andalso y = b, xs)
+		val gt = filterP (fn (x,y) => x <= a andalso y > b, xs)
+		val (lt, gt) = (| quicksort lt, quicksort gt |)
+	    in
+		subP(concatP (lt, (concatP (eq, gt))),lengthP xs - 1)
+	    end);
+
+fun rightmostlowest (xs) =  (if lengthP xs <= 1 then
+	    (~1.0,~1.0)
+	else
+	    let
+		val (a,b) = subP (xs, lengthP xs div 2)
+		val lt = filterP (fn (x,y) => x < a orelse y > b, xs)
+		val eq = filterP (fn (x,y) => x = a andalso y = b, xs)
+		val gt = filterP (fn (x,y) => x >= a andalso y < b, xs)
+		val (lt, gt) = (| quicksort lt, quicksort gt |)
+	    in
+		subP(concatP (lt, (concatP (eq, gt))),lengthP xs - 1)
+	    end);
+
+(* the main event *)
+
 fun quickhull(a,b,S) = 
  (case lengthP(S) of 
    0  => [||]
@@ -56,6 +91,11 @@ fun quickhull(a,b,S) =
           in
 	      concatP(concatP(x,[|c|]), y)
 	  end));
+
+
+fun genpoints (pa,x) = (if lengthP(pa) = x then pa
+else genpoints(concatP(pa,[|Rand.randDouble(0.0,100.0), Rand.randDouble(0.0,100.0)|]), x));
+
 
 val _ = concatP(quickhull((0.0,0.0),(1.0,1.0),[||]), quickhull((0.0,0.0),(1.0,1.0),[||]))
 
