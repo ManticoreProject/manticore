@@ -36,12 +36,12 @@ fun farthest (a, b, S) =
 	pt
     end
 
-(* FIXME: upto does not terminate *)
-fun upto ((x, y) : point,(q, w) : point, dx, dy, lyst) = 
-    if ((x = q) andalso (y = w)) then
+(* FIXME: 100 is just a hard-coded hack...is there a better way to determine sampling along the line? *)
+fun upto ((x, y) : point,(q, w) : point, dx, dy, lyst, i) = 
+    if i <= 0 then
 	lyst
     else
-	upto ((x + dx, y + dy), (q, w), dx, dy, concatP (lyst, [| (x + dx, y + dy) |]))
+	upto ((x + dx, y + dy), (q, w), dx, dy, concatP (lyst, [| (x + dx, y + dy) |]),i-1)
 
 fun line (a : point, b : point) = 
     let val (x, y) = a
@@ -50,7 +50,7 @@ fun line (a : point, b : point) =
 	val dy = (y - w) / 100.0
 	val lyst = [| a |]
     in 
-	upto ((x, y), (q, w), dx, dy, lyst)
+	upto ((x, y), (q, w), dx, dy, lyst,100)
     end
 
 fun isrightof ((a, b) : point, line) = 
