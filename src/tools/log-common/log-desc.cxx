@@ -1,11 +1,15 @@
-/* log-desc.cxx
+/*! \file log-desc.cxx
  *
+ * \author John Reppy
+ */
+
+/*
  * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  */
 
+#include "event-desc.hxx"
 #include "log-desc.hxx"
-#include "log-file.h"
 #include <string.h>
 #include <stack>
 #include <assert.h>
@@ -16,104 +20,60 @@ inline char *CopyString (const char *s)
     return strcpy (new char[strlen(s)+1], s);
 }
 
-/***** class EventOrGroup member functions *****/
+/***** class Group member functions *****/
 
-EventOrGroup::EventOrGroup (const char *name, EventKind kind)
+Group::Group (const char *desc, GroupKind kind)
 {
-    this->_name = CopyString(name);
+    this->_desc = CopyString(desc);
     this->_kind = kind;
 }
 
-EventOrGroup::~EventOrGroup ()
+Group::~Group ()
 {
-    delete this->_name;
+    delete this->_desc;
 }
 
 
 /***** class EventGroup member functions *****/
 
-EventGroup::EventGroup (const char *name, int n)
-    : EventOrGroup (name, LOG_GROUP), _kids(n, (EventOrGroup *)0)
+EventGroup::EventGroup (const char *desc, int nEvents, int nGroups)
+    : Group (desc, EVENT_GROUP),
+	_events(nEvents, (EventDesc *)0),
+	_groups(nGroups, (Group *)0)
 {
 }
 
 EventGroup::~EventGroup ()
 {
-    /* FIXME: delete the kids */
 }
 
-void EventGroup::Add (int i, EventOrGroup *item)
+void EventGroup::AddEvent (int i, EventDesc *item)
 {
-    this->_kids.at(i) = item;
+    this->_events.at(i) = item;
+}
+
+void EventGroup::AddGroup (int i, Group *item)
+{
+    this->_groups.at(i) = item;
     item->SetGroup (this);
-}
-
-
-/***** class EventDesc member functions *****/
-
-EventDesc::EventDesc (const char *name, EventKind kind)
-    : EventOrGroup (name, kind)
-{
-}
-
-EventDesc::~EventDesc ()
-{
-    delete this->_name;
-    if (this->_args != 0) delete this->_args;
-}
-
-ArgValue EventDesc::GetArg (LogEvent_t *evtData, int i)
-{
-    assert ((0 <= i) && (i < this->_nArgs));
-
-    ArgValue value;
-
-    ArgType ty = this->_args[i].ty;
-    void *p = (void *)((uint64_t)evtData + this->_args[i].loc);
-    switch (ty) {
-      case ADDR:
-	value.a = *(uint64_t *)p;
-	break;
-      case INT:
-	value.i = *(int32_t *)p;
-	break;
-      case WORD:
-	value.w = *(uint32_t *)p;
-	break;
-      case FLOAT:
-	value.f = *(float *)p;
-	break;
-      case DOUBLE:
-	value.d = *(double *)p;
-	break;
-      case NEW_ID:
-      case EVENT_ID:
-	value.id = *(uint64_t *)p;
-	break;
-      default: {
-	int len = STRLEN(ty);
-	assert ((0 < len) && (len <= MAX_STRLEN));
-	strncpy (value.str, (char *)p, len);
-	value.str[len] = '\0';
-	} break;
-    }
-
-    return value;
 }
 
 
 /***** class LogFileDesc member functions *****/
 
-LogFileDesc::LogFileDesc (EventGroup *root)
-{
-    this->_root = root;
-    this->_events = 0;
-}
-
 LogFileDesc::~LogFileDesc ()
 {
     delete this->_root;
     delete this->_events;
+}
+
+EventDesc *LogFileDesc::FindEventByName (const char *name) const
+{
+    for (int i = 0;  i < this->_events->size();  i++) {
+	if (strcmp(name, this->_events->at(i)->Name()) == 0)
+	    return this->_events->at(i);
+    }
+    return 0;
 }
 
 /* visitor walks of the event hierarchy */
@@ -124,7 +84,7 @@ struct StkNode {
 
     StkNode (EventGroup *g) { this->grp = g; this->i = 0; }
 
-    EventOrGroup *Next ()
+    Group *Next ()
     {
 	if (this->i < grp->NumKids())
 	    return grp->Kid(this->i++);
@@ -140,12 +100,13 @@ typedef std::stack<StkNode> Stack_t;
 //! node.
 void LogFileDesc::PreOrderWalk (LogDescVisitor *visitor)
 {
+#ifdef FIXME
     Stack_t stk;
 
     visitor->VisitGroup (this->_root);
     stk.push (StkNode(this->_root));
     while (! stk.empty()) {
-	EventOrGroup *p = stk.top().Next();
+	Group *p = stk.top().Next();
 	if (p == 0) {
 	    stk.pop();
 	}
@@ -159,18 +120,19 @@ void LogFileDesc::PreOrderWalk (LogDescVisitor *visitor)
 		visitor->VisitEvent (static_cast<EventDesc *>(p));
 	}
     }
-
+#endif
 }
 
 //! \brief do a post-order traversal of the event hierarchy, calling the visitor methods at each
 //! node.
 void LogFileDesc::PostOrderWalk (LogDescVisitor *visitor)
 {
+#ifdef FIXME
     Stack_t stk;
 
     stk.push (StkNode(this->_root));
     while (! stk.empty()) {
-	EventOrGroup *p = stk.top().Next();
+	Group *p = stk.top().Next();
 	if (p == 0) {
 	    visitor->VisitGroup (stk.top().grp);
 	    stk.pop();
@@ -185,5 +147,5 @@ void LogFileDesc::PostOrderWalk (LogDescVisitor *visitor)
 		visitor->VisitEvent (static_cast<EventDesc *>(p));
 	}
     }
-
+#endif
 }

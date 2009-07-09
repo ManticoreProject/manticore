@@ -1,5 +1,9 @@
-/* load-log-desc.hxx
+/*! \file log-desc.hxx
  *
+ * \author John Reppy
+ */
+
+/*
  * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  */
@@ -7,133 +11,135 @@
 #ifndef _LOG_DESC_HXX_
 #define _LOG_DESC_HXX_
 
-#include <stdint.h>
 #include <vector>
 
-/*! \brief the different types of event-argument data */
-enum ArgType {
-    ADDR,		//!< address data (64-bits)
-    INT,		//!< 32-bit signed integer data
-    WORD,		//!< 32-bit unsigned integer data
-    FLOAT,		//!< 32-bit floating-point data
-    DOUBLE,		//!< 64-bit floating-point data
-    NEW_ID,		//!< new unique event ID (64-bits)
-    EVENT_ID,		//!< event ID (64-bits)
-    STR0		//!< base type for fixed-length strings
+class EventDesc;
+
+//! \brief the different kinds of groups of events
+enum GroupKind {
+    EVENT_GROUP,	/*!< a group of events and/or groups */
+    STATE_GROUP,	/*!< a group of events that represent state transitions */
+    INTERVAL_GROUP,
+    DEPENDENT_GROUP
 };
 
-#define STR(n)		(STR0+(n))
-#define isSTR(ty)	((ty) > STR0)
-#define STRLEN(ty)	((int)(ty) - (int)STR0)
-#define MAX_STRLEN	20
-
-struct ArgDesc {
-    char	*name;		//!< the argument's name
-    ArgType	ty;		//!< the argument's type
-    int		loc;		//!< the offset of the field from the start of the event (in bytes)
-    char	*desc;		//!< description of event
-} ;
-
-//! \brief An event-argument value
-union ArgValue {
-    uint64_t		a;
-    int32_t		i;
-    uint32_t		w;
-    float		f;
-    double		d;
-    uint64_t		id;
-    char		str[MAX_STRLEN+1];
-};
-
-//! \brief An event-argument value tagged with its description
-struct TaggedArgValue {
-    const ArgDesc	*desc;	//!< the argument description
-    ArgValue		val;	//!< the argument type
-};
-
-enum EventKind {
-    LOG_GROUP,		/* a group of events */
-    LOG_EVENT,		/* an independent event */
-/* FIXME: replace START/STOP classification with START/STOP/MIDDLE to allow tracking of status
- * changes over an interval (e.g., running/idle/sleeping).
- */
-    LOG_START,		/* the start of an interval; the next event code will be the */
-			/* end of the interval */
-    LOG_END,		/* the end of an interval; the previous event code will be the */
-			/* start of the interval */
-    LOG_SRC,		/* the source of a dependent event */
-    LOG_DST,		/* the destination of a dependent event */
-};
-
-/* helper class for loading the log-file description */
-class LogFileDescLoader;
-
-/* event descriptor are either groups of events or actual events. */
-class EventOrGroup;	// either a group (EventGroup) or event (EventDesc)
-class EventGroup;	// a group of events
-class EventDesc;	// an event description.
-
-class EventOrGroup {
+/*! \brief the base of the group-class hierarchy */
+class Group {
   public:
-    const char *Name () const	{ return this->_name; }
-    bool isGroup () const	{ return this->_kind == LOG_GROUP; }
-    EventGroup *Group () const	{ return this->_grp; }
-    EventKind Kind() const	{ return this->_kind; }
+  /// the description of the group
+    const char *Desc () const	{ return this->_desc; }
+  /// the parent group; 0 for the root
+    Group *Parent () const	{ return this->_grp; }
+  /// the kind of the group
+    GroupKind Kind() const	{ return this->_kind; }
+  /// is this group the root?
     bool isRoot () const	{ return (this->_grp == 0); }
 
+    void SetGroup (Group *grp) { this->_grp = grp; }
+
   protected:
-    const char	*_name;		/* the event's name */
-    EventKind	_kind;		/* the kind of event */
-    EventGroup	*_grp;		/* the group that this belongs to */
+    const char	*_desc;		/*!< the event's description */
+    GroupKind	_kind;		/*!< the kind of group */
+    Group	*_grp;		/*!< the group that this group belongs to */
 
-    EventOrGroup (const char *name, EventKind kind);
-    virtual ~EventOrGroup ();
-
-    void SetGroup (EventGroup *grp) { this->_grp = grp; }
-
-    friend class EventGroup;
+    explicit Group (const char *desc, GroupKind kind);
+    virtual ~Group ();
 
 };
 
-class EventGroup : public EventOrGroup {
+/*! \brief the representation of a group of events and/or groups */
+class EventGroup : public Group {
   public:
     ~EventGroup ();
 
-    int NumKids () const { return this->_kids.size(); }
-    EventOrGroup *Kid (int i) const { return this->_kids.at(i); }
+  /// return the number of events in this group
+    int NumEvents () const { return this->_events.size(); }
+  /// return the i'th event in this group
+    EventDesc *Event (int i) const { return this->_events.at(i); }
+
+  /// return the number of subgroups in this group
+    int NumKids () const { return this->_groups.size(); }
+  /// return the i'th subgroup in this group
+    Group *Kid (int i) const { return this->_groups.at(i); }
 
   protected:
-    std::vector<EventOrGroup *>	_kids;
+    EventGroup (const char *desc, int nEvents, int nGroups);
 
-    EventGroup (const char *name, int n);
+    void AddEvent (int i, EventDesc *item);
+    void AddGroup (int i, Group *item);
 
-    void Add (int i, EventOrGroup *item);
+  private:
+    std::vector<EventDesc *>	_events;
+    std::vector<Group *>	_groups;
 
     friend class LogFileDescLoader;
 
 };
 
-class EventDesc : public EventOrGroup {
+//! \brief state transitions in a state group
+struct StateTransition {
+    EventDesc	*_event;	//!< the event that causes the transition
+    int		_nextState;	//!< the state being transitioned to.
+};
+
+/*! \brief the representation of a state group */
+class StateGroup : public Group {
   public:
-    int Id () const { return this->_id; }
-    int NArgs () const { return this->_nArgs; }
-    const ArgDesc *Args () const { return this->_args; }
-    const char *Description () const { return this->_desc; }
+    ~StateGroup ();
 
-    ArgDesc *GetArgDesc (int i)	{ return &(this->_args[i]); }
-    ArgType GetArgType (int i)	{ return this->_args[i].ty; }
+    int StartState () const	{ return this->_start; }
+    int NextState (int st, EventDesc *evt) const;
 
-    ArgValue GetArg (struct struct_log_event *evtData, int i);
-
-    ~EventDesc ();
+    const char *StateName (int i) const	{ return this->_stateNames.at(i); }
 
   protected:
-    int		_id;
-    int		_nArgs;
-    ArgDesc	*_args;
-    char	*_desc;
+    StateGroup (const char *desc, int nStates, int nTransitions);
 
-    EventDesc (const char *name, EventKind kind);
+    void AddState (int i, const char *st);
+    void AddTransition (int i, EventDesc *evt, const char *st);
+
+  private:
+    int				_start;		//!< the initial state
+    std::vector<const char *>	_stateNames;	//!< the state names
+    std::vector<StateTransition> _transitions;
+
+    friend class LogFileDescLoader;
+
+};
+
+/*! \brief the representation of an interval group */
+class IntervalGroup : public Group {
+  public:
+    ~IntervalGroup ();
+
+    EventDesc *Start () const	{ return this->_start; }
+    EventDesc *End () const	{ return this->_end; }
+
+  protected:
+    explicit IntervalGroup (const char *desc, EventDesc *a, EventDesc *b);
+
+  private:
+    EventDesc	*_start;
+    EventDesc	*_end;
+
+    friend class LogFileDescLoader;
+
+};
+
+/*! \brief the representation of a group of dependent events */
+class DependentGroup : public Group {
+  public:
+    ~DependentGroup ();
+
+    EventDesc *Src () const	{ return this->_src; }
+    EventDesc *Dst () const	{ return this->_dst; }
+
+  protected:
+    explicit DependentGroup (const char *desc, EventDesc *src, EventDesc *dst);
+
+  private:
+    EventDesc	*_src;
+    EventDesc	*_dst;
 
     friend class LogFileDescLoader;
 
@@ -146,10 +152,14 @@ class LogDescVisitor {
     virtual void VisitEvent (EventDesc *evt) = 0;
 };
 
+/*! \brief the description of a log file.  This class combines the
+ *  information from the log-events.json and even-view.json files.
+ */
 class LogFileDesc {
   public:
     int NumEventKinds () const { return this->_events->size(); }
-    EventDesc *FindEventById (int id) { return this->_events->at(id); }
+    EventDesc *FindEventById (int id) const { return this->_events->at(id); }
+    EventDesc *FindEventByName (const char *name) const;
 
   /* visitor walks of the event hierarchy */
     void PreOrderWalk (LogDescVisitor *visitor);
@@ -161,7 +171,11 @@ class LogFileDesc {
     EventGroup			*_root;
     std::vector<EventDesc *>	*_events;
 
-    LogFileDesc (EventGroup *root);
+    LogFileDesc (std::vector<EventDesc *> *evts)
+    {
+	this->_root = 0;
+	this->_events = evts;
+    }
 
     friend class LogFileDescLoader;
 
