@@ -79,7 +79,7 @@ static ArgDesc *GetArgs (JSON_Value_t *v)
 	ads[i].name = CopyString(name);
 	ads[i].ty = ty;
 	ads[i].loc = location;
-	ads[i].desc = desc;
+	ads[i].desc = (char *)desc;
     }
 
     return ads;
