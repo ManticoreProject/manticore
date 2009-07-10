@@ -15,8 +15,12 @@
 #include "log.h"
 #include "atomic-ops.h"
 #include "vproc.h"
-#ifdef HAVE_MACH_ABSOLUTE_TIME
+#if defined(HAVE_MACH_ABSOLUTE_TIME)
 #  include <mach/mach_time.h>
+#elif defined(HAVE_CLOCK_GETTIME)
+#  include <time.h>
+#else
+#  include <sys/time.h>
 #endif
 
 /*! \brief get the pointer to the next log entry for the vproc
@@ -44,13 +48,13 @@ STATIC_INLINE LogEvent_t *NextLogEvent (VProc_t *vp)
  */
 STATIC_INLINE void LogTimestamp (LogTS_t *ts)
 {
-#if HAVE_MACH_ABSOLUTE_TIME
+#if defined(HAVE_MACH_ABSOLUTE_TIME)
     ts->ts_mach = mach_absolute_time();
-#elif HAVE_CLOCK_GETTIME
+#elif defined(HAVE_CLOCK_GETTIME)
     struct timespec t;
     clock_gettime (CLOCK_REALTIME, &t);
-    ts->ts_val.sec = t.ts_sec;
-    ts->ts_val.frac = t.ts_nsec;
+    ts->ts_val.sec = t.tv_sec;
+    ts->ts_val.frac = t.tv_nsec;
 #else
     struct timeval t;
     gettimeofday (&t, 0);
