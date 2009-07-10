@@ -19,6 +19,15 @@
 		52E7962A10065AC80031A217 /* MessageView.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E7961C10065AC70031A217 /* MessageView.m */; };
 		52E7962B10065AC80031A217 /* Band.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E7961E10065AC70031A217 /* Band.m */; };
 		52E7962C10065AC80031A217 /* Utils.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E7962110065AC80031A217 /* Utils.m */; };
+		52E796C0100677730031A217 /* logdrawer.doxygen.config in Resources */ = {isa = PBXBuildFile; fileRef = 52E796BF100677730031A217 /* logdrawer.doxygen.config */; };
+		52E798231007C6790031A217 /* default-log-paths_h.in in Resources */ = {isa = PBXBuildFile; fileRef = 52E797BC1007C6790031A217 /* default-log-paths_h.in */; };
+		52E798241007C6790031A217 /* event-desc.cxx in Sources */ = {isa = PBXBuildFile; fileRef = 52E797BD1007C6790031A217 /* event-desc.cxx */; };
+		52E7985C1007C6790031A217 /* json.c in Sources */ = {isa = PBXBuildFile; fileRef = 52E797F71007C6790031A217 /* json.c */; };
+		52E7985D1007C6790031A217 /* JSON_parser.c in Sources */ = {isa = PBXBuildFile; fileRef = 52E797F91007C6790031A217 /* JSON_parser.c */; };
+		52E7985E1007C6790031A217 /* JSON_parser.h.gch in Resources */ = {isa = PBXBuildFile; fileRef = 52E797FB1007C6790031A217 /* JSON_parser.h.gch */; };
+		52E7987F1007C6790031A217 /* load-log-desc.cxx in Sources */ = {isa = PBXBuildFile; fileRef = 52E7981D1007C6790031A217 /* load-log-desc.cxx */; };
+		52E798801007C6790031A217 /* log-desc.cxx in Sources */ = {isa = PBXBuildFile; fileRef = 52E7981E1007C6790031A217 /* log-desc.cxx */; };
+		52E798EA1007CB8D0031A217 /* VProc.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E798E91007CB8D0031A217 /* VProc.m */; };
 		8D11072B0486CEB800E47090 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 089C165CFE840E0CC02AAC07 /* InfoPlist.strings */; };
 		8D11072D0486CEB800E47090 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 29B97316FDCFA39411CA2CEA /* main.m */; settings = {ATTRIBUTES = (); }; };
 		8D11072F0486CEB800E47090 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7A1FEA54F0111CA2CBB /* Cocoa.framework */; };
@@ -56,6 +65,23 @@
 		52E7961E10065AC70031A217 /* Band.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Band.m; sourceTree = "<group>"; };
 		52E7962010065AC80031A217 /* Utils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Utils.h; sourceTree = "<group>"; };
 		52E7962110065AC80031A217 /* Utils.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Utils.m; sourceTree = "<group>"; };
+		52E796BF100677730031A217 /* logdrawer.doxygen.config */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = logdrawer.doxygen.config; path = ../logdrawer.doxygen.config; sourceTree = SOURCE_ROOT; };
+		52E7974B1007C5EB0031A217 /* DynamicEventRep.mm */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; path = DynamicEventRep.mm; sourceTree = "<group>"; };
+		52E797BC1007C6790031A217 /* default-log-paths_h.in */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = "default-log-paths_h.in"; path = "../../log-common/default-log-paths_h.in"; sourceTree = "<group>"; };
+		52E797BD1007C6790031A217 /* event-desc.cxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "event-desc.cxx"; sourceTree = "<group>"; };
+		52E797BE1007C6790031A217 /* event-desc.hxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = "event-desc.hxx"; sourceTree = "<group>"; };
+		52E797F71007C6790031A217 /* json.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = json.c; path = "../../log-common/json.c"; sourceTree = "<group>"; };
+		52E797F81007C6790031A217 /* json.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = json.h; path = "../../log-common/json.h"; sourceTree = "<group>"; };
+		52E797F91007C6790031A217 /* JSON_parser.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = JSON_parser.c; path = "../../log-common/JSON_parser.c"; sourceTree = "<group>"; };
+		52E797FA1007C6790031A217 /* JSON_parser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = JSON_parser.h; path = "../../log-common/JSON_parser.h"; sourceTree = "<group>"; };
+		52E797FB1007C6790031A217 /* JSON_parser.h.gch */ = {isa = PBXFileReference; lastKnownFileType = file; name = JSON_parser.h.gch; path = "../../log-common/JSON_parser.h.gch"; sourceTree = "<group>"; };
+		52E7981D1007C6790031A217 /* load-log-desc.cxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = "load-log-desc.cxx"; path = "../../log-common/load-log-desc.cxx"; sourceTree = "<group>"; };
+		52E7981E1007C6790031A217 /* log-desc.cxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "log-desc.cxx"; sourceTree = "<group>"; };
+		52E7981F1007C6790031A217 /* log-desc.hxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = "log-desc.hxx"; sourceTree = "<group>"; };
+		52E798E51007CB820031A217 /* LogFile.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = LogFile.mm; sourceTree = "<group>"; };
+		52E798E81007CB8D0031A217 /* VProc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = VProc.h; sourceTree = "<group>"; };
+		52E798E91007CB8D0031A217 /* VProc.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = VProc.m; sourceTree = "<group>"; };
+		52E798EE1007D01E0031A217 /* log-file.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "log-file.h"; path = "../../../include/log-file.h"; sourceTree = SOURCE_ROOT; };
 		8D1107310486CEB800E47090 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		8D1107320486CEB800E47090 /* LogDrawer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LogDrawer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -102,6 +128,7 @@
 			isa = PBXGroup;
 			children = (
 				52E7960110065AC70031A217 /* Classes */,
+				52E796BE100677500031A217 /* Configuration */,
 				29B97315FDCFA39411CA2CEA /* Other Sources */,
 				29B97317FDCFA39411CA2CEA /* Resources */,
 				29B97323FDCFA39411CA2CEA /* Frameworks */,
@@ -161,6 +188,8 @@
 		52E7960510065AC70031A217 /* EventRep */ = {
 			isa = PBXGroup;
 			children = (
+				52E7974D1007C6070031A217 /* Static */,
+				52E7974C1007C5FF0031A217 /* Dynamic */,
 			);
 			name = EventRep;
 			sourceTree = "<group>";
@@ -240,6 +269,70 @@
 			name = Utils;
 			sourceTree = "<group>";
 		};
+		52E796BE100677500031A217 /* Configuration */ = {
+			isa = PBXGroup;
+			children = (
+				52E796BF100677730031A217 /* logdrawer.doxygen.config */,
+			);
+			name = Configuration;
+			sourceTree = "<group>";
+		};
+		52E7974C1007C5FF0031A217 /* Dynamic */ = {
+			isa = PBXGroup;
+			children = (
+				52E798E81007CB8D0031A217 /* VProc.h */,
+				52E798E91007CB8D0031A217 /* VProc.m */,
+				52E7974B1007C5EB0031A217 /* DynamicEventRep.mm */,
+				52E798E51007CB820031A217 /* LogFile.mm */,
+			);
+			name = Dynamic;
+			sourceTree = "<group>";
+		};
+		52E7974D1007C6070031A217 /* Static */ = {
+			isa = PBXGroup;
+			children = (
+				52E798821007C6C90031A217 /* GroupDesc */,
+				52E798811007C6A80031A217 /* EventDesc */,
+				52E798831007C6F50031A217 /* Other */,
+			);
+			name = Static;
+			sourceTree = "<group>";
+		};
+		52E798811007C6A80031A217 /* EventDesc */ = {
+			isa = PBXGroup;
+			children = (
+				52E797BD1007C6790031A217 /* event-desc.cxx */,
+				52E797BE1007C6790031A217 /* event-desc.hxx */,
+			);
+			name = EventDesc;
+			path = "../../log-common";
+			sourceTree = "<group>";
+		};
+		52E798821007C6C90031A217 /* GroupDesc */ = {
+			isa = PBXGroup;
+			children = (
+				52E7981E1007C6790031A217 /* log-desc.cxx */,
+				52E7981F1007C6790031A217 /* log-desc.hxx */,
+			);
+			name = GroupDesc;
+			path = "../../log-common";
+			sourceTree = "<group>";
+		};
+		52E798831007C6F50031A217 /* Other */ = {
+			isa = PBXGroup;
+			children = (
+				52E798EE1007D01E0031A217 /* log-file.h */,
+				52E797BC1007C6790031A217 /* default-log-paths_h.in */,
+				52E797F71007C6790031A217 /* json.c */,
+				52E797F81007C6790031A217 /* json.h */,
+				52E797F91007C6790031A217 /* JSON_parser.c */,
+				52E797FA1007C6790031A217 /* JSON_parser.h */,
+				52E797FB1007C6790031A217 /* JSON_parser.h.gch */,
+				52E7981D1007C6790031A217 /* load-log-desc.cxx */,
+			);
+			name = Other;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -250,6 +343,7 @@
 				8D1107290486CEB800E47090 /* Resources */,
 				8D11072C0486CEB800E47090 /* Sources */,
 				8D11072E0486CEB800E47090 /* Frameworks */,
+				52E7966C100670D60031A217 /* ShellScript */,
 			);
 			buildRules = (
 			);
@@ -285,10 +379,29 @@
 			files = (
 				8D11072B0486CEB800E47090 /* InfoPlist.strings in Resources */,
 				1DDD58160DA1D0A300B32029 /* MainMenu.xib in Resources */,
+				52E796C0100677730031A217 /* logdrawer.doxygen.config in Resources */,
+				52E798231007C6790031A217 /* default-log-paths_h.in in Resources */,
+				52E7985E1007C6790031A217 /* JSON_parser.h.gch in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		52E7966C100670D60031A217 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/zsh;
+			shellScript = "#!/bin/zsh/\n\n#Set the following variables to customize this script\n\n# Path to configuration file\nCONFIG=$SOURCE_ROOT/../logdrawer.doxygen.config\n\n\n\n\n\n\n#######################################################\n# Script implementation:\n\n# Path to documentation directory\nDOCS_PATH=${SOURCE_ROOT}/`sed -n '\\/OUTPUT_DIRECTORY/p' < $CONFIG | cut -d= -f 2 | cut -d\\  -f 2`\n\n# Name of the bundle to load\nBUNDLE_NAME=`sed -n '/DOCSET_BUNDLE_ID/p' < $CONFIG | cut -d= -f 2 | cut -d\\  -f 2`\n\n\n# Generate the documentation\n/Users/koreiklein/bin/doxygen $CONFIG\n\n# Install the documentation\nmake -C $DOCS_PATH/html/Makefile install\n\n\n# Use an applescript to load the docs into the help viewer\nSCRIPT_FILE=${TMPDIR}loadDocs.scpt\nrm -f $SCRIPT_FILE\n\n# Write the applescript\necho \"tell application \\\"Xcode\\\"\" >> $SCRIPT_FILE\necho \"load documentation set with path \\\n\\\"/Users/$USER/Library/Developer/Shared/Documentation/DocSets/${BUNDLE_NAME}.docset\\\"\" >> $SCRIPT_FILE\necho \"end tell\" >> $SCRIPT_FILE\n\n\necho 'DocSets/'${BUNDLE_NAME} >> /Users/${USER}/sample.txt\n\n# Run the applescript\nosascript $SCRIPT_FILE\n\nexit 0\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		8D11072C0486CEB800E47090 /* Sources */ = {
@@ -307,6 +420,12 @@
 				52E7962A10065AC80031A217 /* MessageView.m in Sources */,
 				52E7962B10065AC80031A217 /* Band.m in Sources */,
 				52E7962C10065AC80031A217 /* Utils.m in Sources */,
+				52E798241007C6790031A217 /* event-desc.cxx in Sources */,
+				52E7985C1007C6790031A217 /* json.c in Sources */,
+				52E7985D1007C6790031A217 /* JSON_parser.c in Sources */,
+				52E7987F1007C6790031A217 /* load-log-desc.cxx in Sources */,
+				52E798801007C6790031A217 /* log-desc.cxx in Sources */,
+				52E798EA1007CB8D0031A217 /* VProc.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
