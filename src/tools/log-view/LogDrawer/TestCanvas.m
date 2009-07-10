@@ -7,6 +7,7 @@
 
 #import "TestCanvas.h"
 #import "ShapeRep.h"
+#import "LogFile.h"
 
 
 @implementation TestCanvas

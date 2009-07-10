@@ -28,6 +28,8 @@
 		52E7987F1007C6790031A217 /* load-log-desc.cxx in Sources */ = {isa = PBXBuildFile; fileRef = 52E7981D1007C6790031A217 /* load-log-desc.cxx */; };
 		52E798801007C6790031A217 /* log-desc.cxx in Sources */ = {isa = PBXBuildFile; fileRef = 52E7981E1007C6790031A217 /* log-desc.cxx */; };
 		52E798EA1007CB8D0031A217 /* VProc.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E798E91007CB8D0031A217 /* VProc.m */; };
+		52E79A011007E2A90031A217 /* LogFile.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E79A001007E2A90031A217 /* LogFile.m */; };
+		52E79AC21007F0AE0031A217 /* TestLogFile.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E79AC11007F0AE0031A217 /* TestLogFile.m */; };
 		8D11072B0486CEB800E47090 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 089C165CFE840E0CC02AAC07 /* InfoPlist.strings */; };
 		8D11072D0486CEB800E47090 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 29B97316FDCFA39411CA2CEA /* main.m */; settings = {ATTRIBUTES = (); }; };
 		8D11072F0486CEB800E47090 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7A1FEA54F0111CA2CBB /* Cocoa.framework */; };
@@ -78,10 +80,13 @@
 		52E7981D1007C6790031A217 /* load-log-desc.cxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = "load-log-desc.cxx"; path = "../../log-common/load-log-desc.cxx"; sourceTree = "<group>"; };
 		52E7981E1007C6790031A217 /* log-desc.cxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "log-desc.cxx"; sourceTree = "<group>"; };
 		52E7981F1007C6790031A217 /* log-desc.hxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = "log-desc.hxx"; sourceTree = "<group>"; };
-		52E798E51007CB820031A217 /* LogFile.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = LogFile.m; sourceTree = "<group>"; };
+		52E798E51007CB820031A217 /* LogFile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LogFile.h; sourceTree = "<group>"; };
 		52E798E81007CB8D0031A217 /* VProc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = VProc.h; sourceTree = "<group>"; };
 		52E798E91007CB8D0031A217 /* VProc.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = VProc.m; sourceTree = "<group>"; };
 		52E798EE1007D01E0031A217 /* log-file.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "log-file.h"; path = "../../../include/log-file.h"; sourceTree = SOURCE_ROOT; };
+		52E79A001007E2A90031A217 /* LogFile.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = LogFile.m; sourceTree = "<group>"; };
+		52E79AC01007F0AE0031A217 /* TestLogFile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TestLogFile.h; sourceTree = "<group>"; };
+		52E79AC11007F0AE0031A217 /* TestLogFile.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TestLogFile.m; sourceTree = "<group>"; };
 		8D1107310486CEB800E47090 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		8D1107320486CEB800E47090 /* LogDrawer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LogDrawer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -181,6 +186,8 @@
 			children = (
 				52E7960310065AC70031A217 /* TestCanvas.h */,
 				52E7960410065AC70031A217 /* TestCanvas.m */,
+				52E79AC01007F0AE0031A217 /* TestLogFile.h */,
+				52E79AC11007F0AE0031A217 /* TestLogFile.m */,
 			);
 			name = Test;
 			sourceTree = "<group>";
@@ -280,10 +287,7 @@
 		52E7974C1007C5FF0031A217 /* Dynamic */ = {
 			isa = PBXGroup;
 			children = (
-				52E798E81007CB8D0031A217 /* VProc.h */,
-				52E798E91007CB8D0031A217 /* VProc.m */,
-				52E7974B1007C5EB0031A217 /* DynamicEventRep.h */,
-				52E798E51007CB820031A217 /* LogFile.m */,
+				52E79A361007E4BA0031A217 /* Representations */,
 			);
 			name = Dynamic;
 			sourceTree = "<group>";
@@ -331,6 +335,18 @@
 				52E7981D1007C6790031A217 /* load-log-desc.cxx */,
 			);
 			name = Other;
+			sourceTree = "<group>";
+		};
+		52E79A361007E4BA0031A217 /* Representations */ = {
+			isa = PBXGroup;
+			children = (
+				52E7974B1007C5EB0031A217 /* DynamicEventRep.h */,
+				52E798E81007CB8D0031A217 /* VProc.h */,
+				52E798E91007CB8D0031A217 /* VProc.m */,
+				52E798E51007CB820031A217 /* LogFile.h */,
+				52E79A001007E2A90031A217 /* LogFile.m */,
+			);
+			name = Representations;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -399,7 +415,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/zsh;
-			shellScript = "#!/bin/zsh/\n\n#Set the following variables to customize this script\n\n# Path to configuration file\nCONFIG=$SOURCE_ROOT/../logdrawer.doxygen.config\n\n\n\n\n\n\n#######################################################\n# Script implementation:\n\n# Path to documentation directory\nDOCS_PATH=${SOURCE_ROOT}/`sed -n '\\/OUTPUT_DIRECTORY/p' < $CONFIG | cut -d= -f 2 | cut -d\\  -f 2`\n\n# Name of the bundle to load\nBUNDLE_NAME=`sed -n '/DOCSET_BUNDLE_ID/p' < $CONFIG | cut -d= -f 2 | cut -d\\  -f 2`\n\n\n# Generate the documentation\n/Users/koreiklein/bin/doxygen $CONFIG\n\n# Install the documentation\nmake -C $DOCS_PATH/html/Makefile install\n\n\n# Use an applescript to load the docs into the help viewer\nSCRIPT_FILE=${TMPDIR}loadDocs.scpt\nrm -f $SCRIPT_FILE\n\n# Write the applescript\necho \"tell application \\\"Xcode\\\"\" >> $SCRIPT_FILE\necho \"load documentation set with path \\\n\\\"/Users/$USER/Library/Developer/Shared/Documentation/DocSets/${BUNDLE_NAME}.docset\\\"\" >> $SCRIPT_FILE\necho \"end tell\" >> $SCRIPT_FILE\n\n\necho 'DocSets/'${BUNDLE_NAME} >> /Users/${USER}/sample.txt\n\n# Run the applescript\nosascript $SCRIPT_FILE\n\nexit 0\n";
+			shellScript = "#!/bin/zsh/\n\n#Set the following variables to customize this script\n\n# Path to configuration file\nCONFIG=$SOURCE_ROOT/../logdrawer.doxygen.config\n\n\n\n\n\n\n#######################################################\n# Script implementation:\n\n# Path to documentation directory\nDOCS_PATH=${SOURCE_ROOT}/`sed -n '\\/OUTPUT_DIRECTORY/p' < $CONFIG | cut -d= -f 2 | cut -d\\  -f 2`\n\n# Name of the bundle to load\nBUNDLE_NAME=`sed -n '/DOCSET_BUNDLE_ID/p' < $CONFIG | cut -d= -f 2 | cut -d\\  -f 2`\n\n\n# Generate the documentation\n/Users/koreiklein/bin/doxygen $CONFIG\n\n# Install the documentation\nmake -C $DOCS_PATH/html/Makefile install\n\n\n# Use an applescript to load the docs into the help viewer\nSCRIPT_FILE=${TMPDIR}loadDocs.scpt\nrm -f $SCRIPT_FILE\n\n# Write the applescript\necho \"tell application \\\"Xcode\\\"\" >> $SCRIPT_FILE\necho \"load documentation set with path \\\n\\\"/Users/$USER/Library/Developer/Shared/Documentation/DocSets/${BUNDLE_NAME}.docset\\\"\" >> $SCRIPT_FILE\necho \"end tell\" >> $SCRIPT_FILE\n\n# Run the applescript\nosascript $SCRIPT_FILE\n\nexit 0\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -426,6 +442,8 @@
 				52E7987F1007C6790031A217 /* load-log-desc.cxx in Sources */,
 				52E798801007C6790031A217 /* log-desc.cxx in Sources */,
 				52E798EA1007CB8D0031A217 /* VProc.m in Sources */,
+				52E79A011007E2A90031A217 /* LogFile.m in Sources */,
+				52E79AC21007F0AE0031A217 /* TestLogFile.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
