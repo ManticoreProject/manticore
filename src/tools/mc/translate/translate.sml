@@ -24,6 +24,18 @@ structure Translate : sig
 	fun compare (B.FB{f, ...}, B.FB{f=g, ...}) = BV.compare (f, g)
       end)
 
+    local
+	val rewrites = ref ([] : Rewrites.rewrite list)
+    in
+    fun addRewrites rs = rewrites := rs @ (!rewrites)
+    fun listRewrites () = let
+          val rewrites' = !rewrites
+          in
+	    rewrites := [];
+	    rewrites'
+          end
+    end
+
     val ropeMapSet = ref(LambdaSet.empty)
 
     val trTy = TranslateTypes.tr
@@ -573,7 +585,8 @@ structure Translate : sig
 		}
 	  val imports = listImports env
 	  val hlops = HLOpEnv.listHLOps()
-	  val module = B.mkModule(Atom.atom "Main", imports, hlops, mainFun)
+	  val rewrites = listRewrites()
+	  val module = B.mkModule(Atom.atom "Main", imports, hlops, rewrites, mainFun)
 	  in
 	    if (Controls.get TranslateControls.keepEnv)
 	      then let

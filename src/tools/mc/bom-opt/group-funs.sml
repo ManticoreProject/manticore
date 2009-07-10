@@ -109,13 +109,14 @@ structure GroupFuns : sig
 		e0)
 	  (* end case *))
 
-    fun transform (B.MODULE{name, externs, hlops, body}) = let
+    fun transform (B.MODULE{name, externs, hlops, rewrites, body}) = let
 	  val body = doLambda (VMap.empty, body)
 	  in
 	    B.MODULE{
 		name = name,
 		externs = externs,
 		hlops = hlops,
+		rewrites = rewrites,
 		body = body
 	      }
 	  end

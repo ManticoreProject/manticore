@@ -228,7 +228,7 @@ structure Inline : sig
 
 
   (* apply expansive inlining to the functions in the module *)
-    fun inline (specializeRecFuns, B.MODULE{name, externs, hlops, body}) = let
+    fun inline (specializeRecFuns, B.MODULE{name, externs, hlops, rewrites, body}) = let
 	  val {isRec, bindingOf, clearMarks, recAppCnt} = analyse body
 	  fun doExp (env, exp as B.E_Pt(pt, term)) = (case term
 		 of B.E_Let(xs, e1, e2) => let
@@ -346,6 +346,7 @@ structure Inline : sig
 		name = name,
 		externs = externs,
 		hlops = hlops,
+		rewrites = rewrites,
 		body = body
 	      }
 	  end

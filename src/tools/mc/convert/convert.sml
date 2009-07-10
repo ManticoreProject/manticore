@@ -227,7 +227,7 @@ structure Convert : sig
 	    (env, C.FB{f = f', params = params', rets = [], body = body'})
 	  end
 
-    fun transform (B.MODULE{name, externs, hlops, body}) = let
+    fun transform (B.MODULE{name, externs, hlops, rewrites, body}) = let
 	  fun cvtExtern (CFunctions.CFun{var, name, retTy, argTys, attrs, varArg}, (cfs, env)) = let
 		val (var', env) = bindVar(env, var)
 		in

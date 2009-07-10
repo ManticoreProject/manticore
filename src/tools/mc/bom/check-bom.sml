@@ -86,7 +86,7 @@ structure CheckBOM : sig
 	  end
 
     fun check (phase, module) = let
-	  val B.MODULE{name, externs, hlops, body} = module
+	  val B.MODULE{name, externs, hlops, rewrites, body} = module
 	  val anyErrors = ref false
 	  val anyWarnings = ref false
 	(* report an error *)

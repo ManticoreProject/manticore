@@ -18,8 +18,8 @@ end = struct
     structure BU = BOMUtil
     structure H = HLOp
     structure ATbl = AtomTable
-(*
     structure RW = Rewrites
+(*
     structure PT = RW.PT (* XXX - Hack *)
 *)
 
@@ -36,15 +36,16 @@ end = struct
         envName = NONE
         }
 
-(***** FIXME --- needs to be rewritten to use different HLOp infrastructure *****
+
     (* ____________________________________________________________ *)
     (* XXX - Stolen from expand.sml; perhaps this stuff could get
        moved into a separate structure? *)
+  (* table mapping primop names to prim_info *)
     structure MkPrim = MakePrimFn (
-        type var = BOM.var
-        type ty = BTy.ty
+	type var = BOM.var
+	type ty = BTy.ty
 	val anyTy = BTy.T_Any
-	val boolTy = BTy.boolTy
+	val unitTy = BTy.unitTy
 	val addrTy = BTy.T_Addr(BTy.T_Any)
 	val rawTy = BTy.T_Raw)
 
@@ -53,7 +54,7 @@ end = struct
 
     (* ____________________________________________________________ *)
     (* findHLOps() - Find the set of HLOps in a given BOM module. *)
-    fun findHLOps (module as B.MODULE{name, externs, hlops, body}) = let
+    fun findHLOps (module as B.MODULE{name, externs, hlops, rewrites, body}) = let
 
         val hlopEnv = ATbl.mkTable (32, Fail "hlopEnv")
 
@@ -88,15 +89,15 @@ end = struct
     (* FIXME: Might want to make a RWState structure. *)
 
     (* rwstate - Map from nonterminal name to benefit. *)
-    type rwstate = IntInf.int AtomMap.map
+    type rwstate = IntInf.int Rewrites.EltMap.map
 
-    val emptyRWState = AtomMap.empty : rwstate
+    val emptyRWState = Rewrites.EltMap.empty : rwstate
 
     val baseWeight = IntInf.fromInt 0
 
-    val basePair = (Rewrites.wildcard, baseWeight)
+    val basePair = (Rewrites.Elt_Wildcard, baseWeight)
 
-    val isEmptyRWState : rwstate -> bool = AtomMap.isEmpty
+    val isEmptyRWState : rwstate -> bool = Rewrites.EltMap.isEmpty
 
     val { clrFn = clearPPRWState,
           getFn = getPPRWState,
@@ -113,20 +114,20 @@ end = struct
        an exception if the production name is not in the rewrite
        state. *)
     fun getRWStateWeight (nt, rwState) =
-        if Atom.same(Rewrites.wildcard, nt)
+        if Rewrites.sameElt(Rewrites.Elt_Wildcard, nt)
         then baseWeight
-        else AtomMap.lookup(rwState, nt)
+        else Rewrites.EltMap.lookup(rwState, nt)
 
     (* getRWStateKeys() - Get a list of atoms that have a weight
        associated with them in the given state (injects the wildcard
        nonterminal). *)
-    fun getRWStateKeys state = Rewrites.wildcard :: (AtomMap.listKeys state)
+    fun getRWStateKeys state = Rewrites.Elt_Wildcard :: (Rewrites.EltMap.listKeys state)
 
     (* getRWStateMaxPair() - Get the nonterminal weight pair that is maximal
        for the given state, and is also in the given nonterminal map. *)
     fun getRWStateMaxPair (state, ntMap) = let
         fun cmpPair (p1 as (nt1, wt1), p2opt) =
-            if AtomMap.inDomain(ntMap, nt1)
+            if Rewrites.EltMap.inDomain(ntMap, nt1)
             then (case p2opt
                    of SOME (_, wt2) => 
                       if IntInf.>(wt1, wt2) then SOME p1 else p2opt
@@ -134,7 +135,7 @@ end = struct
                    (* end case *))
             else p2opt
     in
-        foldl cmpPair NONE (AtomMap.listItemsi state)
+        foldl cmpPair NONE (Rewrites.EltMap.listItemsi state)
     end (* getRWStateMaxPair *)
 
     (* crossRWStates() - Utility for creating list of atom lists.
@@ -166,13 +167,13 @@ end = struct
             val childWeights = ListPair.map getRWStateWeight
                                             (tl rhs, rhsRWStates)
             val totalWeight = List.foldl IntInf.+ prodWeight childWeights
-            val crntWeight = (case AtomMap.find (rwState, name)
+            val crntWeight = (case Rewrites.EltMap.find (rwState, name)
                                of NONE => baseWeight
                                 | SOME wt => wt
                                (* end case *))
         in
             if IntInf.>=(totalWeight, crntWeight)
-            then (AtomMap.insert(rwState, name, totalWeight))
+            then (Rewrites.EltMap.insert(rwState, name, totalWeight))
             else rwState
         end (* applyProdToRWState() *)
     in
@@ -183,7 +184,7 @@ end = struct
     fun rwStateToString rwState = let
         val keys = getRWStateKeys rwState
         fun pairToStr key =
-            String.concat [Atom.toString key, " : ",
+            String.concat [Rewrites.eltToString key, " : ",
                            IntInf.toString (getRWStateWeight(key, rwState))]
         val keysAndWeights =
             String.concatWith ", " (List.map pairToStr keys)
@@ -192,8 +193,7 @@ end = struct
     end (* rwStateToString() *)
 
     (* FIXME: Will need to move these into an environment... *)
-    val allocStr = "alloc"
-    val allocAtom = Atom.atom allocStr
+    val allocElt = Rewrites.Elt_Alloc
 
     (* termToArgVars() - Given a BOM term, return all the variable arguments
        to that term.  XXX - What about exceptions? *)
@@ -241,8 +241,8 @@ end = struct
        BOM variables.  Note: This chases variable bindings using the
        variable kind. *)
     and matchRWPatToVar (pat, v, env) = (case pat
-        of RW.PT.Var a => AtomMap.insert(env, a, v)
-         | RW.PT.Call (_, pats) =>
+        of Rewrites.RW_Var a => BOM.Var.Map.insert(env, a, v)
+         | Rewrites.RW_HLOpApply (_, pats) =>
            matchRWPatListToVars(pats, kindToArgVars (B.Var.kindOf v), env)
          | _ => env
         (* end case *))
@@ -251,9 +251,9 @@ end = struct
        return an environment binding pattern meta-variables to BOM
        variables. *)
     fun matchRWPatToTerm (rw_pat, t) = (case rw_pat
-        of RW.PT.Call(_, pats) => matchRWPatListToVars(pats, termToArgVars t,
-                                                       AtomMap.empty)
-         | _ => AtomMap.empty
+        of Rewrites.RW_HLOpApply(_, pats) => matchRWPatListToVars(pats, termToArgVars t,
+                                                       BOM.Var.Map.empty)
+         | _ => BOM.Var.Map.empty
         (* end case *))
 
     (* rwEnvToString() - Utility function for displaying a rewrite
@@ -261,13 +261,14 @@ end = struct
        variables). *)
     fun mvEnvToString mv_env = let
         fun vPairToString (a, v) =
-            String.concat [Atom.toString a, " : ", B.Var.toString v]
-        val kvStrs = List.map vPairToString (AtomMap.listItemsi mv_env)
+            String.concat [BOM.Var.toString a, " : ", B.Var.toString v]
+        val kvStrs = List.map vPairToString (BOM.Var.Map.listItemsi mv_env)
         val kvPairs = String.concatWith ", " kvStrs
     in
         String.concat ["{", kvPairs, "}"]
     end (* rwEnvToString() *)
 
+(*
     (* mkCvtCtorCont() - Return a continuation function for the a
        rewrite constructor (which will map into either a data
        constructor, or primop.
@@ -282,16 +283,17 @@ end = struct
     fun mkCvtCtorCont (ctor, k : BOM.var -> BOM.exp) = let
         fun cvtCtorCont xs = let
             val rhs =
-                if Atom.same(ctor, allocAtom)
+                if Rewrites.sameElt(ctor, allocElt)
                 then BOM.E_Alloc(BTy.T_Tuple(false, map BOM.Var.typeOf xs), xs)
                 else (case (findPrim ctor, xs)
                        of (NONE, _) =>
-                          (case BOMBasis.findDCon ctor
+			  raise Fail "todo"
+(*                          (case BOMBasis.findDCon ctor
                             of NONE =>
                                raise (Fail ("Unknown ctor in rewrite: " ^
-                                            (Atom.toString ctor)))
+                                            (Rewrite.eltToString ctor)))
                              | SOME dc => BOM.E_DCon(dc, xs)
-                           (* end case *))
+                           (* end case *)) *)
                         | (SOME(Prim0{con, ...}), []) => BOM.E_Prim con
                         | (SOME(Prim1{mk, ...}), [x]) => BOM.E_Prim(mk x)
                         | (SOME(Prim2{mk, ...}), [x, y]) =>
@@ -300,7 +302,7 @@ end = struct
                           BOM.E_Prim(mk(x, y, z))
                         | (SOME(_), _) =>
                           raise (Fail ("Arity mismatch for primop " ^
-                                       (Atom.toString ctor)))
+                                       (Rewrites.eltToString ctor)))
                       (* end case *))
             val rhs_tys = BU.typeOfRHS rhs
             val lhs = map (fn rhs_ty => B.Var.new("_t", rhs_ty)) rhs_tys
@@ -313,31 +315,30 @@ end = struct
     in
         cvtCtorCont
     end (* mkCvtCtorCont() *)
+*)
+
+    fun cvtPrim (prim, pats, rw_env, mv_env, exns, k) = raise Fail "todo"
 
     (* cvtPat() - Convert a rewrite pattern into a BOM binding
        expression, passing the bound temporary to a BOM expression
        continuation, k.  *)
     fun cvtPat (rw_pat, rw_env, mv_env, exns,
                 k : BOM.var -> BOM.exp) = (case rw_pat
-        of RW.PT.Var (var_name) => k(AtomMap.lookup(mv_env, var_name))
-           (* FIXME: Again, per the allocAtom definition, I would like to have
+        of Rewrites.RW_Var (var_name) => k(BOM.Var.Map.lookup(mv_env, var_name))
+           (* FIXME: Again, per the allocElt definition, I would like to have
               some kind of environment for looking up and differentiating
               between constructors and HLOps. *)
-         | RW.PT.Call (ctor, pats) => let
-               val ctor_str = Atom.toString ctor
-           in
-               if String.sub(ctor_str, 0) = #"@"
-               then cvtHLOp(Atom.atom(String.extract(ctor_str, 1, NONE)),
-                            pats, rw_env, mv_env, exns, k)
-               else cvtCtor(ctor, pats, rw_env, mv_env, exns, k)
-           end
-         | RW.PT.Const (lit, lit_ty) => let
-               val ty = Rewrites.cvtTy (rw_env, lit_ty)
+         | Rewrites.RW_HLOpApply (hlop, pats) => 
+	   cvtHLOp(hlop, pats, rw_env, mv_env, exns, k)
+	 | Rewrites.RW_Prim (prim, pats) =>
+	   cvtPrim(prim, pats, rw_env, mv_env, exns, k)
+         | Rewrites.RW_Const (lit, ty) => let
                val tmp = B.Var.new("_t", ty)
            in
                BOM.mkStmt([tmp], BOM.E_Const(lit, ty), k tmp)
            end
         (* end case *))
+
     (* cvtPats() - Convert a list of patterns into BOM binding syntax
        and a list of BOM variables.  The resulting list is passed to the
        continuation, which creates the rest of a BOM expression.
@@ -350,18 +351,19 @@ end = struct
     in
         cvtPats'(rw_pats, [])
     end (* cvtPats() *)
+(*
     (* cvtCtor() - Convert a data constructor pattern into BOM binding
        syntax. *)
     and cvtCtor (ctor, pats, rw_env, mv_env, exns, k) =
         cvtPats(pats, rw_env, mv_env, exns, mkCvtCtorCont(ctor, k))
+*)
     (* cvtHLOp() - Covert a HLOp application pattern into BOM syntax.
 
        FIXME: Exn handlers seem hacked here.  How do I even know the
        actual HLOp has exn handling arguments that are similar to the
        HLOp being replaced? *)
-    and cvtHLOp (hlopAtom, pats, rw_env, mv_env, exns,
-                 k) = (case HLOpEnv.find hlopAtom
-        of SOME hlop =>
+    and cvtHLOp (hlop, pats, rw_env, mv_env, exns,
+                 k) = 
            cvtPats(pats, rw_env, mv_env, exns,
                    fn xs => let
                           val e = BOM.mkHLOp(hlop, xs, exns)
@@ -370,13 +372,10 @@ end = struct
                       in
                           if not (List.null tys) then
                               raise (Fail ("Expected lone type for HLOp exp: "
-                                           ^ (Atom.toString hlopAtom)))
+                                           ^ (HLOp.toString hlop)))
                           else 
                               BOM.mkLet([tmp], e, k tmp)
                       end)
-         | NONE => raise (Fail ("Unkown HLOp in rewrite: " ^
-                                (Atom.toString hlopAtom)))
-        (* end case *))
 
     (* mkExpFromRWPat() - Given a pattern and a meta-variable
        environment that references BOM variables, construct a new BOM
@@ -390,7 +389,7 @@ end = struct
     (* ____________________________________________________________ *)
     (* rewrite'() - Rewrite the given BOM module, using HLOp rewrites in the
        library path. *)
-    fun rewrite' (module as B.MODULE{name, externs, hlops, body}) = let
+    fun rewrite' (module as B.MODULE{name, externs, hlops, rewrites, body}) = let
         (* __________________________________________________ *)
         (* XXX Not sure rewrites need to worry about this stuff
         inherrited from the HLOp expander (unless we add C function
@@ -413,22 +412,14 @@ end = struct
         (* __________________________________________________ *)
         val hlopEnv = findHLOps module
 
-        val hlrwFiles =
-            List.concat (List.map (fn (_, hlop) => HLRWDefLoader.load hlop)
-                                  (ATbl.listItemsi hlopEnv))
-
-        val hlrwDefs = List.concat hlrwFiles
-
         val rw_env =
-            foldl Rewrites.addRWDefnToEnv (Rewrites.emptyEnv ()) hlrwDefs
+            foldl Rewrites.addRWToGrammar (Rewrites.newGrammar()) rewrites
 
-        val (Rewrites.RWEnv {hlrwGrammar, ...}) = rw_env
-
-        val hlrwGrammarHash = Rewrites.getGrammarHash hlrwGrammar
+        val hlrwGrammarHash = Rewrites.getGrammarHash rw_env
 
         val rwMap =
-            AtomMap.filter Rewrites.productionHasRW
-                           (Rewrites.getGrammarProductionMap hlrwGrammar)
+            Rewrites.EltMap.filter Rewrites.productionHasRW
+                           (Rewrites.getGrammarProductionMap rw_env)
 
         (* XXX - Couldn't find easy way to get something like "oporelse" *)
         val myor = fn (a, b) => a orelse b
@@ -438,7 +429,7 @@ end = struct
            into the hlrwGrammarHash, and a list of rewrite states, create
            a rewrite state based on all permutations of state
            non-terminals. *)
-        fun mkRWState (rwRHSKey, rwRHSRest) = (case AtomMap.find(
+        fun mkRWState (rwRHSKey, rwRHSRest) = (case Rewrites.EltMap.find(
                                                      hlrwGrammarHash, rwRHSKey)
             of NONE => emptyRWState
              | SOME [] => emptyRWState (* Should not happen. *)
@@ -473,10 +464,8 @@ end = struct
            rewriting in rewriteExp()), and passed up to possibly be
            associated to a variable by matchBindingExp(). *)
         fun matchExp (B.E_Pt(ppt, t)) = (case t
-            of B.E_HLOp(hlOp, vars, _) => let
-                   val hlOpName = Atom.atom ("@" ^ (Atom.toString
-                                                        (H.name hlOp)))
-                   val rwState = mkRWState(hlOpName, List.map getVarRWState
+            of B.E_HLOp(hlop, vars, _) => let
+                   val rwState = mkRWState(Rewrites.Elt_HLOp hlop, List.map getVarRWState
                                                               vars)
                in
                    setPPRWState(ppt, rwState); rwState
@@ -489,7 +478,7 @@ end = struct
            associate with the result, so for this to work,
            matchBindingExp() MUST have a binding variable. *)
         fun matchRHS (B.E_Alloc(_, vars)) =
-            mkRWState(allocAtom, List.map getVarRWState vars)
+            mkRWState(allocElt, List.map getVarRWState vars)
           | matchRHS _ = emptyRWState
         (* __________________________________________________ *)
         (* matchBindingExp() - Derive a rewrite state for the
@@ -574,11 +563,11 @@ end = struct
                in case ntWtPairOpt
                    of SOME (nt, _) => let
                           val debug = Controls.get BOMOptControls.debug
-                          val prod = AtomMap.lookup(rwMap, nt)
+                          val prod = Rewrites.EltMap.lookup(rwMap, nt)
                           val (Rewrites.HLRWProduction {rw_opt, ...}) = prod
-                          val (rw as RW.PT.Rewrite {label = rw_label,
-                                                    lhs = rw_lhs,
-                                                    rhs = rw_rhs, ...}) =
+                          val (rw as Rewrites.Rewrite {label = rw_label,
+                                                       lhs = rw_lhs,
+                                                       rhs = rw_rhs, ...}) =
                               Option.valOf rw_opt
                           val _ = if debug then
                                       (print ("Apply RW: " ^ 
@@ -620,11 +609,11 @@ end = struct
     in
         (* DEBUG: print (Rewrites.grammarToString hlrwGrammar); *)
 	if changed
-	then SOME(B.mkModule(name, getExterns(), hlops, body'))
+	then SOME(B.mkModule(name, getExterns(), hlops, [], body'))
 	else NONE
     end
-*****)
-    fun rewrite' _ = raise Fail "rewriting not implemented"
+
+    fun rewrite' e = SOME e
 
     fun rewrite m = if Controls.get rw_ctl then NONE else rewrite' m
 

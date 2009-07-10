@@ -116,9 +116,10 @@
 
   (* rewrite pattern *)
     and rw_pattern = 
-	     RW_Call of hlop_use * rw_pattern list
-           | RW_Const of (Literal.literal * ty)
-           | RW_Var of var_use
+	RW_HLOpApply of (hlop_use * rw_pattern list)     (* application of a hlop *)
+      | RW_Prim of (prim * rw_pattern list)              (* application of a prim-op or data constructor  *)
+      | RW_Const of (Literal.literal * ty)
+      | RW_Var of var_use
 
     withtype lambda = (var_bind * var_pat list * var_pat list * ty list * exp)
 

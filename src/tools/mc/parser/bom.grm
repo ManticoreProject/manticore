@@ -123,14 +123,15 @@
     label_counter := !label_counter + 1;
     ret_val
   end (* new_label() *)
-(*
-  val listTyTerm = BPT.T_TyCon(Atom.atom "list")
 
-  val nilPat = BPT.Const((Literal.Enum(Word.fromInt 0), listTyTerm))
-	       
+  val listTyTerm = BPT.T_TyCon {tree = ([Atom.atom "List"], Atom.atom "list"), span = (0, 0)}
+
+  val nilPat = BPT.RW_Const((Literal.Enum(Word.fromInt 0), listTyTerm))
+  val listCons = {tree = ([Atom.atom "List"], Atom.atom "CONS"), span = (0, 0)}
+
   fun listToDConList [] = nilPat
-    | listToDConList (pat :: ps) = BPT.RW_DCon [pat, listToDConList ps]
-*)
+    | listToDConList (pat :: ps) = BPT.RW_Prim(listCons,
+                                               [pat, listToDConList ps])
 );
 
 
@@ -412,11 +413,11 @@ LabelOpt
 
 Pattern
         : HLOpQId LP PatternArgs RP
-                => ( BPT.RW_Call(HLOpQId, PatternArgs) )
-(* FIXME
+                => ( BPT.RW_HLOpApply(HLOpQId, PatternArgs) )
+
         | LB PatternArgs RB
                 => ( listToDConList(PatternArgs) )
-*)
+
         | Literal
                 => ( BPT.RW_Const(Literal) )
 

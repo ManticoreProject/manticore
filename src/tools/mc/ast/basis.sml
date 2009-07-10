@@ -62,6 +62,7 @@ structure Basis : sig
 
   (* primitive operators *)
     val list_append	: AST.var
+    val psub            : AST.var
     val string_concat	: AST.var
     val int_div		: AST.var
     val int_gt		: AST.var
@@ -232,6 +233,14 @@ structure Basis : sig
 	    in
 	      ty ** ty --> ty
 	    end))
+
+    val psub = Var.newPoly("psub",
+          forall(fn tv => let
+            val ty = parrayTy tv
+            in
+                ty ** intTy --> tv
+            end))
+
     val string_concat = monoVar("string-concat2", stringTy ** stringTy --> stringTy)
 
     local

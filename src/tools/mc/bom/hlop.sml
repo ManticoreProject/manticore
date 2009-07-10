@@ -32,6 +32,7 @@ structure HLOp =
     fun name (HLOp{name, ...}) = name
     fun hash (HLOp{id, ...}) = Stamp.hash id
     fun same (HLOp{id=a, ...}, HLOp{id=b, ...}) = Stamp.same(a, b)
+    fun compare (HLOp{id=a, ...}, HLOp{id=b, ...}) = Stamp.compare(a, b)
 
     fun isPure _ = false (* FIXME *)
 

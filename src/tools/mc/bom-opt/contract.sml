@@ -634,7 +634,7 @@ structure Contract : sig
 
 (*    fun contract _ module =  module*)
 
-    fun contract (flags : flags) (module as B.MODULE{name, externs, hlops, body}) = let
+    fun contract (flags : flags) (module as B.MODULE{name, externs, hlops, rewrites, body}) = let
           fun ticks () = ST.sum {from = firstCounter, to = lastCounter}
           fun loop (body, prevSum) = let
                 val _ = ST.tick cntIters
@@ -665,7 +665,7 @@ if (prevSum <> sum) then (
                 else externs
           in
             ST.tick cntPhases;
-            B.MODULE{name=name, externs=externs, hlops=hlops, body=body}
+            B.MODULE{name=name, externs=externs, hlops=hlops, rewrites=rewrites, body=body}
           end
 
   end
