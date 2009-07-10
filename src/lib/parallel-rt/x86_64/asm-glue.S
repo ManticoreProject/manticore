@@ -79,8 +79,8 @@ _GSYM(ASM_VProcSleep):
 
 #ifndef NDEBUG
 /* r14 points at the current element of the spill area
-*  r15 points at the last element of the spill area
-*/
+ *  r15 points at the last element of the spill area
+ */
 	.p2align 3
 	.globl	_GSYM(ASM_InvalidateSpillArea)
 _GSYM(ASM_InvalidateSpillArea):
@@ -138,3 +138,65 @@ continue_to_c:
 	leave
 	ret
 
+#ifdef ENABLE_LOGGING
+/* ASM_GetTimeStamp (void *ts)
+ *
+ * Fill in the time stamp using a system-dependent call.
+ */
+	.p2align 3
+	.globl	_GSYM(ASM_GetTimeStamp)
+_GSYM(ASM_GetTimeStamp):
+	pushq	%rbp
+	movq	%rsp, %rbp
+
+#if defined(HAVE_MACH_ABSOLUTE_TIME)
+    /* ts->ts_mach = mach_absolute_time(); */
+	pushq	%rbx
+	subq	$8, %rsp
+	movq	%rdi, %rbx
+	call	_GSYM(mach_absolute_time)
+	movq	%rax, (%rbx)
+	addq	$8, %rsp
+	popq	%rbx
+#elif defined(HAVE_CLOCK_GETTIME)
+    /* struct timespec t;
+     * clock_gettime (CLOCK_REALTIME, &t);
+     * ts->sec = t.tv_sec;
+     * ts->frac = t.tv_nsec;
+     */
+	pushq	%rbx
+	movq	%rdi, %rbx
+	xorl	%edi, %edi
+	subq	$16, %rsp
+	movq	%rsp, %rsi
+	call	_GSYM(clock_gettime)
+	movq	(%rsp), %rax
+	movl	%eax, (%rbx)
+	movq	8(%rsp), %rax
+	movl	%eax, 4(%rbx)
+	addq	$16, %rsp
+	popq	%rbx
+#else
+    /* struct timeval t;
+     * gettimeofday (&t, 0);
+     * ts->sec = t.tv_sec;
+     * ts->frac = t.tv_usec;
+     */
+	pushq	%rbx
+	movq	%rdi, %rbx
+	leaq	-32(%rbp), %rdi
+	subq	$24, %rsp
+	xorl	%esi, %esi
+	call	_GSYM(gettimeofday)
+	movq	-32(%rbp), %rax
+	movl	%eax, (%rbx)
+	movl	-24(%rbp), %eax
+	movl	%eax, 4(%rbx)
+	addq	$24, %rsp
+	popq	%rbx
+#endif
+
+	leave
+	ret
+
+#endif /* ENABLE_LOGGING */
