@@ -9,7 +9,7 @@
 #import <Cocoa/Cocoa.h>
 #import "log-file.h"
 
-
+/// Represents the data in a logfile
 @interface LogFile : NSObject {
     NSString *filename; ///< Name of the represented log file
     LogFileHeader header; ///< the header of the log file, as defined in log-file.h
@@ -21,9 +21,9 @@
 
 
 @property (read) uint64_t	magic;		///< to identify log files
-@property (read) uint32_t	majorVersion;
-@property (read) uint32_t	minorVersion;
-@property (read) uint32_t	patchVersion;
+@property (read) uint32_t	majorVersion;   ///< version info
+@property (read) uint32_t	minorVersion;   ///< version info
+@property (read) uint32_t	patchVersion;   ///< version info
 @property (read) uint32_t	hdrSzB;		///< size of the header struct
 @property (read) uint32_t	bufSzB;		///< buffer size (usually == sizeof(struct_logbuf))
 @property (read) char *		date;		///< the date of the run (as reported by ctime(3))

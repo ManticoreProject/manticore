@@ -1,4 +1,4 @@
-/** \file DynamicEventRep.mm
+/** \file DynamicEventRep.h
  * \author Korei Klein
  * \date 7/10/09
  *
@@ -6,18 +6,19 @@
  * Define the representation of dynamic events.
  */
 
-#include "event-desc.hxx"
+//#import "event-desc.hxx"
 #import "log-file.h"
 
 
 /// The representation of Dynamic Events.
 /** A single dynamic event corresponds to exactly one instance of a LogEvent_t
  * found in a single log file. */
-struct _DynamicEvent
+typedef struct _DynamicEvent
 {
+
     // Fields common to all DynamicEvents
 
-	EventDesc *desc; ///< The description of this type of event
+	void *desc; ///< The description of this type of event.  Should be an EventDesc
     	/**< You can determine if a DynamicEvent e is a:
     	 * 1. simple
     	 * 2. interval
@@ -40,7 +41,6 @@ struct _DynamicEvent
 	    // simple and state events do not have any references
 	} references;
 
-};
+} DynamicEvent;
 
-typedef struct _DynamicEvent DynamicEvent;
 
