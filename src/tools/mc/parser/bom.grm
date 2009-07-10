@@ -167,10 +167,11 @@ Definition
 	| "define" optInline HLOpId HLOpDef ";"
 		=> (markBOMDefn(FULL_SPAN, HLOpDef(optInline, HLOpId)))
         | LabelOpt Pattern DDARROW Pattern Benefit ";"               (* rewrite rule *)
-                => ( BPT.D_Rewrite {label = LabelOpt,
+                => ( markBOMDefn(FULL_SPAN, 
+				 BPT.D_Rewrite {label = LabelOpt,
                                     lhs = Pattern1,
                                     rhs = Pattern2,
-                                    weight = Benefit} )
+                                    weight = Benefit}) )
 	;
 
 HLOpDef

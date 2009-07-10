@@ -73,11 +73,11 @@ structure BOM =
       | VK_Extern of string
 
     (* rewrite pattern *)
-    and rw_pattern = 
-	     RW_HLOpApply of (hlop * rw_pattern list)        (* application of a hlop *)
-	   | RW_Prim of (var * rw_pattern list)              (* application of a prim-op or data constructor  *)
-	   | RW_Const of (Literal.literal * ty)
-	   | RW_Var of var
+    and rw_pattern 
+      = RW_HLOpApply of (hlop * rw_pattern list)        (* application of a hlop *)
+      | RW_Prim of (var * rw_pattern list)              (* application of a prim-op or data constructor  *)
+      | RW_Const of (Literal.literal * ty)
+      | RW_Var of var
 
     and rewrite = Rewrite of { label  : Atom.atom,         (* hlop rewrite rule *)
 			       lhs    : rw_pattern,

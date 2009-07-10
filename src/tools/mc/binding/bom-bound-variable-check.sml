@@ -58,6 +58,19 @@ structure BOMBoundVariableCheck :> sig
 
     fun freshVar v = Var.new(Atom.toString v, ())
 
+    fun findPrim (loc, prim, env) = (case findDCon (env, prim)
+			   of SOME dcon => dcon
+			    | NONE => (case QualifiedId.unqualId prim
+				 of NONE => (
+				    error (loc, [
+					"invalid primop/data constructor use for ",
+					qidToString prim
+				      ]);
+				    dummyVar)
+				  | SOME prim => freshVar prim  (* ordinary primop *)
+				(* end case *))
+			  (* end case *))
+
     fun findCFun (loc, f) = (case BEnv.findCFun f
            of NONE => (error(loc, ["C function ", Atom.toString f, " is undefined"]);
 		       dummyVar)
@@ -263,18 +276,7 @@ structure BOMBoundVariableCheck :> sig
 	    | PT1.SE_Cast(ty, sexp) =>
 	       PT2.SE_Cast(chkTy loc (ty, env), chkSexp loc (sexp, env))
 	    | PT1.SE_Prim (prim, sexps) => let
-		val prim = (case findDCon (env, prim)
-		       of SOME dcon => dcon
-			| NONE => (case QualifiedId.unqualId prim
-			     of NONE => (
-				error (loc, [
-				    "invalid primop/data constructor use for ",
-				    qidToString prim
-				  ]);
-				dummyVar)
-			      | SOME prim => freshVar prim  (* ordinary primop *)
-			    (* end case *))
-		      (* end case *))
+		val prim = findPrim (loc, prim, env)
 		in
 		  PT2.SE_Prim(prim, chkSexps loc (sexps, env))
 		end
@@ -333,6 +335,49 @@ structure BOMBoundVariableCheck :> sig
 
     and chkVarPats loc (vps, env) = chkList loc (chkVarPat, vps, env)
 
+    and chkRWPat loc (pat, env, rwEnv) = let
+	    fun patternVars (PT1.RW_HLOpApply (_, pats)) = 
+		List.foldl AtomSet.union AtomSet.empty (List.map patternVars pats)
+	      | patternVars (PT1.RW_Prim (p, pats)) = 
+		List.foldl AtomSet.union AtomSet.empty (List.map patternVars pats)
+	      | patternVars (PT1.RW_Const _) = AtomSet.empty
+	      | patternVars (PT1.RW_Var v) = (case QualifiedId.unqualId v
+					       of NONE => 
+						  (error(loc, ["qualified ID used as a rewrite pattern variable", qidToString v]);
+						   AtomSet.empty)
+						| SOME v => AtomSet.singleton v)
+	    fun addPatternVar (v, rwEnv) = (case AtomMap.find (rwEnv, v)
+					     of NONE => AtomMap.insert (rwEnv, v, freshVar v)
+					      | SOME v => rwEnv)
+	    val rwEnv = List.foldl addPatternVar rwEnv (AtomSet.listItems (patternVars pat))
+	    in
+	      (case pat
+		of PT1.RW_HLOpApply (hlop, pats) => let
+		       val hlop = findBOMHLOpQid(loc, env, hlop)
+		       val (pats, _) = chkRWPats loc (pats, env, rwEnv)
+		       in
+		           (PT2.RW_HLOpApply (hlop, pats), rwEnv)
+		       end
+		 | PT1.RW_Prim (prim, pats) => let
+		       val (pats, _) = chkRWPats loc (pats, env, rwEnv)
+		       in
+		           (PT2.RW_Prim (findPrim (loc, prim, env), pats), rwEnv)
+		       end
+		 | PT1.RW_Const (lit, ty) => (PT2.RW_Const (lit, chkTy loc (ty, env)), rwEnv)
+		 | PT1.RW_Var v => (PT2.RW_Var (findBOMVarQid (loc, env, v)), rwEnv)
+	      (* end case *))
+	    end
+
+    and chkRWPats loc (pats, env, rwEnv) = let
+	    fun chk (pat, (pats, rwEnv)) = let
+		    val (pat, rwEnv) = chkRWPat loc (pat, env, rwEnv)
+	            in
+		       (pat :: pats, rwEnv)
+	            end
+            in
+	       List.foldl chk ([], rwEnv) pats
+	    end
+
     fun chkDefn loc (defn, env) = (case defn
 	    of PT1.D_Mark {tree, span} => let
 		   val (tree, env) = chkDefn span (tree, env)
@@ -388,6 +433,12 @@ structure BOMBoundVariableCheck :> sig
 		   val env = BEnv.insertBOMTy(env, td, td')
 		   in
 		       (PT2.D_TypeDef(td', ty), env)
+		   end
+	     | PT1.D_Rewrite {label, lhs, rhs, weight} => let
+		   val (lhs, rwEnv) = chkRWPat loc (lhs, env, AtomMap.empty)
+		   val (rhs, rwEnv) = chkRWPat loc (rhs, env, rwEnv)
+		   in
+		       (PT2.D_Rewrite {label=label, lhs=lhs, rhs=rhs, weight=weight}, env)
 		   end
              (* end case *))
 
