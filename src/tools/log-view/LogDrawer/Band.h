@@ -5,6 +5,7 @@
 
 #import <Cocoa/Cocoa.h>
 
+/// A view representing a vproc
 /*!
  A Band is a view which represents the events for a single vproc.
  Bands do not represent message events.
