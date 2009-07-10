@@ -16,6 +16,26 @@
 
 #include <stdint.h>
 
+/*! \brief event attributes; these include the "attrs" field from the
+ *  log-events.json file as well as information about how the event is
+ *  used in the log-view.json file.
+ */
+enum EventAttr {
+    ATTR_NONE		= 0,		//!< no attribute
+    ATTR_PML		= (1 << 0),	//!< has "pml" attribute in "attrs" array
+    ATTR_RT		= (1 << 1),	//!< has "rt" attribute in "attrs" array
+    ATTR_SRC		= (1 << 2),	//!< has "src" attribute in "attrs" array
+    ATTR_STATE		= (1 << 3),	//!< member of state group
+    ATTR_INTERVAL	= (1 << 4),	//!< member of interval group
+    ATTR_DEPENDENT	= (1 << 5)	//!< member of dependent group
+};
+
+//! \brief bitmask for group-membership attributes
+#define IN_GROUP_MASK	(ATTR_STATE | ATTR_INTERVAL | ATTR_DEPENDENT)
+
+//! \brief bitmask of event attributes
+typedef uint32_t EventAttrs_t;
+
 /*! \brief the different types of event-argument data */
 enum ArgType {
     ADDR,		//!< address data (64-bits)
@@ -33,6 +53,7 @@ enum ArgType {
 #define STRLEN(ty)	((int)(ty) - (int)STR0)
 #define MAX_STRLEN	20
 
+//! \brief the static description of an event argument.
 struct ArgDesc {
     char	*name;		//!< the argument's name
     ArgType	ty;		//!< the argument's type
@@ -73,6 +94,13 @@ class EventDesc {
   /// the event's description
     const char *Description () const { return this->_desc; }
 
+  /// does an event have a given attribute?
+    bool HasAttr (EventAttr attr) { return ((this->_attrs & (EventAttrs_t)attr) != 0); }
+  /// mark that an event has a given attribute
+    void SetAttr (EventAttr attr) { this->_attrs |= (EventAttrs_t)attr; }
+  /// return true if the event is not a member of any group
+    bool isSimpleEvent () const	{ return ((this->_attrs & IN_GROUP_MASK) == 0); }
+
     ArgDesc *GetArgDesc (int i)	{ return &(this->_args[i]); }
     ArgType GetArgType (int i)	{ return this->_args[i].ty; }
 
@@ -84,6 +112,7 @@ class EventDesc {
     explicit EventDesc ();	/* NoEvent constructor */
     explicit EventDesc (
 	const char *name, int id,
+	EventAttrs_t attrs,
 	int nArgs, ArgDesc *args,
 	const char *d);
 
@@ -94,6 +123,7 @@ class EventDesc {
     int		_id;
     int		_nArgs;
     ArgDesc	*_args;
+    EventAttrs_t _attrs;
     char	*_desc;
 
 };

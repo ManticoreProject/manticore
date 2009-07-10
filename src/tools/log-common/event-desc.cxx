@@ -32,6 +32,7 @@ EventDesc::EventDesc ()
 
 EventDesc::EventDesc (
     const char *name, int id,
+    EventAttrs_t attrs,
     int nArgs, ArgDesc *args,
     const char *d)
 {
@@ -39,6 +40,7 @@ EventDesc::EventDesc (
     this->_id		= id;
     this->_nArgs	= nArgs;
     this->_args		= args;
+    this->_attrs	= attrs;
     this->_desc		= CopyString(d);
 }
 

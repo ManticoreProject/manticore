@@ -185,16 +185,29 @@ EventDesc *LogFileDescLoader::NewEvent (JSON_Value_t *v)
 
   /* get optional "attrs" field */
     JSON_Value_t *attrs = JSON_GetField (args, "attrs");
+    EventAttrs_t attributes = ATTR_NONE;
     if (attrs != 0) {
 	if (attrs->tag != JSON_array) {
 	    delete ads;
 	    return 0;
 	}
-/* FIXME: process attrs field */
+	for (int i = 0;  i < attrs->u.array.length;  i++) {
+	    const char *attr = JSON_GetString(attrs->u.array.elems[i]);
+	    if (attr == 0)
+		return 0;
+	    else if (strcasecmp(attr, "src") == 0)
+		attributes |= (ATTR_SRC | ATTR_DEPENDENT);
+	    else if (strcasecmp(attr, "pml") == 0)
+		attributes |= ATTR_PML;
+	    else if (strcasecmp(attr, "rt") == 0)
+		attributes |= ATTR_RT;
+	    else
+		return 0;
+	}
     }
 
     EventDesc *ed = new EventDesc (
-	    name, this->_nextId++,
+	    name, this->_nextId++, attributes,
 	    args->u.array.length, ads,
 	    CopyString(desc));
 
@@ -238,13 +251,15 @@ Group *LogFileDescLoader::NewGroup (JSON_Value_t *v)
 	}
       /* add the transitions */
 	for (int i = 0;  i < nTrans;  i++) {
-/* FIXME: add transitions */
+/* FIXME: add transitions and mark events as being in a state group */
 	}
 	return grp;
     }
     else if (strcasecmp(kindStr, "interval") == 0) {
 	EventDesc *a = this->GetEventField (v, "start");
 	EventDesc *b = this->GetEventField (v, "end");
+	a->SetAttr (ATTR_INTERVAL);
+	b->SetAttr (ATTR_INTERVAL);
 	if ((a == 0) || (b == 0))
 	    return 0;
 	else
@@ -253,6 +268,8 @@ Group *LogFileDescLoader::NewGroup (JSON_Value_t *v)
     else if (strcasecmp(kindStr, "dependent") == 0) {
 	EventDesc *src = this->GetEventField (v, "src");
 	EventDesc *dst = this->GetEventField (v, "dst");
+	src->SetAttr (ATTR_DEPENDENT);
+	dst->SetAttr (ATTR_DEPENDENT);
 	if ((src == 0) || (dst == 0))
 	    return 0;
 	else
