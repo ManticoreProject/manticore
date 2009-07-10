@@ -1533,6 +1533,10 @@ structure ArityRaising : sig
 	    val _ = Census.census m'
             val m' = cleanupBody m'
             val m' = cleanupParams m'
+            (* Sometimes cleanupParams can remove a param that is still used
+             * in a let binding. One more pass over the body to clean those up!
+             *)
+            val m' = cleanupBody m'
 	    in
 	      if !flatteningDebug
 		then List.app printCandidate candidates
