@@ -1067,9 +1067,24 @@ structure ArityRaising : sig
             (* end case *))
           | typeOfRHS(C.Update (_, _, _)) = NONE
           | typeOfRHS(C.AddrOf (i, v)) = NONE
-          | typeOfRHS(C.Alloc (CPSTy.T_Tuple(b, _), vars)) = SOME (CPSTy.T_Tuple(b, List.map CV.typeOf vars))
+          | typeOfRHS(C.Alloc (CPSTy.T_Tuple(b, tys), vars)) = let
+                (*
+                 * Types of items stored into an alloc are frequently wrong relative to
+                 * how they're going to be used (i.e. a :enum(0) in for a ![any, any]).
+                 * Only update function types.
+                 *)
+                fun chooseType (ty, v) = let
+                    val vTy = CV.typeOf v
+                in
+                    case vTy
+                     of CTy.T_Fun(_, _) => vTy
+                      | _ => ty
+                end
+            in
+                SOME (CPSTy.T_Tuple(b, ListPair.map chooseType (tys, vars)))
+            end
           | typeOfRHS(C.Alloc (_, vars)) = raise Fail "encountered an alloc that didn't originally have a tuple type."
-          | typeOfRHS(C.Promote (_)) = NONE
+          | typeOfRHS(C.Promote (v)) = SOME (CV.typeOf v)
           | typeOfRHS(C.Prim (prim)) = NONE (* do I need to do this one? *)
           | typeOfRHS(C.CCall (cfun, _)) = NONE
           | typeOfRHS(C.HostVProc) = NONE
