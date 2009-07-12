@@ -64,7 +64,7 @@ int main ()
 #include "vproc-offsets-ins.c"
 
     printf ("\n  (* mask to get address of VProc from alloc pointer *)\n");
-    PR_VALUE(vpMask, VP_MASK, ~((Addr_t)VP_HEAP_SZB-1));
+    PR_VALUE(vpMask, vpMask, ~((Addr_t)VP_HEAP_SZB-1));
 
     printf ("\n  (* offsets into the log buffer *)\n");
     PR_VALUE(logBufferSzB, logBufferSzB, sizeof(LogBuffer_t));
