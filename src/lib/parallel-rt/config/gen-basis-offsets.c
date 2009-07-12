@@ -1,4 +1,4 @@
-/* gen-runtime-offsets.c
+/* gen-basis-offsets.c
  *
  * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
