@@ -28,7 +28,7 @@
 		52E7987F1007C6790031A217 /* load-log-desc.cxx in Sources */ = {isa = PBXBuildFile; fileRef = 52E7981D1007C6790031A217 /* load-log-desc.cxx */; };
 		52E798801007C6790031A217 /* log-desc.cxx in Sources */ = {isa = PBXBuildFile; fileRef = 52E7981E1007C6790031A217 /* log-desc.cxx */; };
 		52E798EA1007CB8D0031A217 /* VProc.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E798E91007CB8D0031A217 /* VProc.m */; };
-		52E79A011007E2A90031A217 /* LogFile.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E79A001007E2A90031A217 /* LogFile.m */; };
+		52E79A011007E2A90031A217 /* LogFile.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52E79A001007E2A90031A217 /* LogFile.mm */; };
 		52E79AC21007F0AE0031A217 /* TestLogFile.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E79AC11007F0AE0031A217 /* TestLogFile.m */; };
 		52E79CE2100B8C690031A217 /* CustomSplitView.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E79CE1100B8C690031A217 /* CustomSplitView.m */; };
 		8D11072B0486CEB800E47090 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 089C165CFE840E0CC02AAC07 /* InfoPlist.strings */; };
@@ -85,10 +85,10 @@
 		52E798E81007CB8D0031A217 /* VProc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = VProc.h; sourceTree = "<group>"; };
 		52E798E91007CB8D0031A217 /* VProc.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = VProc.m; sourceTree = "<group>"; };
 		52E798EE1007D01E0031A217 /* log-file.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "log-file.h"; path = "../../../include/log-file.h"; sourceTree = SOURCE_ROOT; };
-		52E79A001007E2A90031A217 /* LogFile.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = LogFile.m; sourceTree = "<group>"; };
+		52E79A001007E2A90031A217 /* LogFile.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = LogFile.mm; sourceTree = "<group>"; };
 		52E79AC01007F0AE0031A217 /* TestLogFile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TestLogFile.h; sourceTree = "<group>"; };
 		52E79AC11007F0AE0031A217 /* TestLogFile.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TestLogFile.m; sourceTree = "<group>"; };
-		52E79CAA100B85F10031A217 /* LogDrawer.xcclassmodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcclassmodel; path = LogDrawer.xcclassmodel; sourceTree = "<group>"; };
+		52E79CAA100B85F10031A217 /* LogDrawer.xcclassmodel */ = {isa = PBXFileReference; explicitFileType = wrapper.xcclassmodel; path = LogDrawer.xcclassmodel; sourceTree = "<group>"; };
 		52E79CE0100B8C690031A217 /* CustomSplitView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CustomSplitView.h; sourceTree = "<group>"; };
 		52E79CE1100B8C690031A217 /* CustomSplitView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = CustomSplitView.m; sourceTree = "<group>"; };
 		8D1107310486CEB800E47090 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -347,7 +347,7 @@
 				52E798E81007CB8D0031A217 /* VProc.h */,
 				52E798E91007CB8D0031A217 /* VProc.m */,
 				52E798E51007CB820031A217 /* LogFile.h */,
-				52E79A001007E2A90031A217 /* LogFile.m */,
+				52E79A001007E2A90031A217 /* LogFile.mm */,
 			);
 			name = Representations;
 			sourceTree = "<group>";
@@ -473,7 +473,7 @@
 				52E7987F1007C6790031A217 /* load-log-desc.cxx in Sources */,
 				52E798801007C6790031A217 /* log-desc.cxx in Sources */,
 				52E798EA1007CB8D0031A217 /* VProc.m in Sources */,
-				52E79A011007E2A90031A217 /* LogFile.m in Sources */,
+				52E79A011007E2A90031A217 /* LogFile.mm in Sources */,
 				52E79AC21007F0AE0031A217 /* TestLogFile.m in Sources */,
 				52E79CE2100B8C690031A217 /* CustomSplitView.m in Sources */,
 			);

@@ -9,6 +9,7 @@
 #import <Cocoa/Cocoa.h>
 #import "CustomSplitView.h"
 #import "MessageView.h"
+#import "log-desc.hxx"
 
 /// Display a log file
 /**
@@ -21,5 +22,8 @@
     IBOutlet CustomSplitView *splitView; ///< The background view, and the view that contains the BandViews
     IBOutlet MessageView *messageView; ///< The foreground view, and the view that displays dependent events
 }
+
+
+
 
 @end

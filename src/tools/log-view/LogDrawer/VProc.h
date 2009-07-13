@@ -16,4 +16,11 @@
     DynamicEvent (*events)[]; ///< A sorted array of the events relevant to this vProc
 }
 
+/// modify and access the events array
+@property (readwrite, assign) DynamicEvent (*events)[];
+
+/// Initialize
+- (VProc *)initWithVpId:(int32_t)vpIdVal;
+
+
 @end

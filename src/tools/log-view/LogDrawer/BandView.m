@@ -20,7 +20,9 @@
 }
 
 - (void)drawRect:(NSRect)rect {
-    // Drawing code here.
+    // FIXME simple implementation for testing
+    [[NSColor greenColor] set];
+    [NSBezierPath fillRect:[self visibleRect]];
 }
 
 @end

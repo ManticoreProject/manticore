@@ -20,8 +20,25 @@
     NSString *clockName; ///< Cache of header.clockName;
 }
 
-/// Create a LogFile object from the fileName of the logfile it should represent
-- (LogFile *)initWithLogFile:(NSString *)logFileName;
+
+/// Initialize using a file and a description of it
+/** Initialize
+ * \param filename name of the log file to represent
+ * \param desc the description of the log file format and semantics
+ * \return the initialized LogView
+ */
+- (LogView *)initWithFilename:(NSString *)filename andLogFileDesc:(LogFileDesc *)desc;
+
+/// Initialize using only filenames
+/** Initialize
+ * \param filename name of the log file to represent
+ * \param eventDesc the jason file describing the format of events in the log
+ * \param logDesc the jason file describing the semantics of events in the log
+ * \return the initialized LogView
+ */
+- (LogView *)initWithFilename:(NSString *)filename
+	 andEventDescFilename:(NSString *)eventDesc
+	   andLogDescFilename:(NSString *)logDesc;
 
 @property (readonly) NSString	*filename;
 @property (readonly) NSMutableArray *vProcs;

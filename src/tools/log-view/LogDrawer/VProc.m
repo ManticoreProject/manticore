@@ -8,4 +8,15 @@
 
 @implementation VProc
 
+@synthesize events;
+
+- (VProc *)initWithVpId:(int32_t)vpIdVal
+{
+    if (![super init])
+	return nil;
+    vpId = vpIdVal;
+    return self;
+}
+
+
 @end
