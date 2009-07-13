@@ -36,36 +36,14 @@ fun farthest (a, b, S) =
 	pt
     end
 
-(* FIXME: 100 is just a hard-coded hack...is there a better way to determine sampling along the line? *)
-fun upto ((x, y) : point,(q, w) : point, dx, dy, lyst, i) = 
-    if i <= 0 then
-	lyst
-    else
-	upto ((x + dx, y + dy), (q, w), dx, dy, concatP (lyst, [| (x + dx, y + dy) |]),i-1)
+(* returns 0 if the point (x, y) is on the line; a negative number if the point
+ * is to the left of the line; a positive number if the point is to the right
+ * of the line *)
+fun dir ((x1, y1), (x2, y2)) (x, y) = (y - y1) * (x2 - x1) - (x - x1) * (y2 - y1) 
 
-fun line (a : point, b : point) = 
-    let val (x, y) = a
-        val (q, w) = b
-	val dx = (x - q) / 100.0
-	val dy = (y - w) / 100.0
-	val lyst = [| a |]
-    in 
-	upto ((x, y), (q, w), dx, dy, lyst,100)
-    end
+fun isRight line pt = dir line pt > 0
 
-fun isrightof ((a, b) : point, line) = 
-    let
-	val l = filterP (fn (x, y) =>  a > x andalso b > y, line)
-    in
-	lengthP l <> 0
-    end
-
-fun rightof (a, b, S) = 
-    let
-	val l = line (a, b)
-    in
-	filterP (fn x => isrightof (x, l), S)
-    end
+fun rightof (a, b, S) = filterP (isRight (a, b), S)
 
 fun quickhull (a, b, S) = 
     if lengthP S = 0 then
