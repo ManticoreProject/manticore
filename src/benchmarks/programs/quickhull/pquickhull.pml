@@ -39,7 +39,7 @@ fun farthest (a, b, S) =
 (* returns true if the point (x,y) is to the right of the vector defined by (a,b) *)
 fun isRight ((*a as *) (x1, y1), (* b as *) (x2, y2)) (x, y) = 
     (* use the signed distance *)
-    ((y1 - y2) * x + (x2 - x1) * y + (x1 * y2 - x2 * y1)) < 0
+    ((y1 - y2) * x + (x2 - x1) * y + (x1 * y2 - x2 * y1)) < 0.0
 
 fun rightof (a, b, S) = filterP (isRight (a, b), S)
 
