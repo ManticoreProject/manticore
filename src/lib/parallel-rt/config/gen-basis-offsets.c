@@ -27,14 +27,14 @@
 	} while (0)
 
 /* print a field offset and record it in the CRC buffer */
-#define PR_OFFSET(obj, var, lab)						\
+#define PR_OFFSET(obj, symb, lab)						\
 	do {									\
 	    uint32_t _offset = (int)((Addr_t)&(obj.lab) - (Addr_t)&obj);	\
-	    PR_VALUE(lab, var, _offset);					\
+	    PR_VALUE(lab, symb, _offset);					\
 	} while (0)
 
 /* print a VProc_t field offset and record it in the CRC buffer */
-#define VP_OFFSET(obj, xxx, lab, local)		PR_OFFSET(obj, lab, lab)
+#define VP_OFFSET(obj, symb, lab, local)	PR_OFFSET(obj, symb, lab)
 
 int main ()
 {
