@@ -11,9 +11,9 @@
 /// Display a log file
 /**
  Draws a picture of a log file.
- LogView displays each vProc on a seperate Band.
+ LogView displays each vProc on a seperate BandView.
  Each band displays its relevant events.
- LogView also displays messages as arrows going between Bands.
+ LogView also displays messages as arrows going between BandViews.
  */
 @interface LogView : NSView {
 

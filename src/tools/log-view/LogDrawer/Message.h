@@ -6,16 +6,16 @@
 
 #import <Cocoa/Cocoa.h>
 #import "Structures.h"
+#import "EventShape.h"
 
 /// Represent a message event by drawing an arrow
 /*! Before creating any message objects, you must call initArrowHead.
  */
-@interface Message : NSObject {
+@interface Message : EventShape {
 	NSPoint start; //!< Point where the arrow starts
 	NSPoint end; //!< Point where the arrow ends
 	NSBezierPath *path; //!< The entire arrow (cache of start and end).
 	
-	NSColor *color; //!< Color of the arrow
 	CGFloat lineWidth; //!< Width of the arrow
 	
 	event sender; //!< The event where this message was sent

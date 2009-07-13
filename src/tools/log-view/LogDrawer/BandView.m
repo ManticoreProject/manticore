@@ -1,15 +1,15 @@
 //
-//  Band.m
+//  BandView.m
 //  Visualizer
 //
 //  Created by Korei Klein on 7/7/09.
 //  Copyright 2009 __MyCompanyName__. All rights reserved.
 //
 
-#import "Band.h"
+#import "BandView.h"
 
 
-@implementation Band
+@implementation BandView
 
 - (id)initWithFrame:(NSRect)frame {
     self = [super initWithFrame:frame];
