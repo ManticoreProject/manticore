@@ -10,6 +10,8 @@
 #import "log-file.h"
 
 
+
+
 /// The representation of Dynamic Events.
 /** A single dynamic event corresponds to exactly one instance of a LogEvent_t
  * found in a single log file. */
@@ -31,15 +33,15 @@ typedef struct _DynamicEvent
     	uint32_t data[5]; ///< upto 20 bytes of extra data
 
     // Fields dependent of the group(s) of the DynamicEvent
+    /// the references field contains pointers to events which this event is related to
+    union _DynamicEventReferences_t {
+	struct _DynamicEvent *(*dsts)[]; ///< For a Depenedent Event which is a source
+	struct _DynamicEvent *src; ///< For a Dependent Event which is a destination
+	struct _DynamicEvent *end; ///< For an Interval Event which is a start
+	struct _DynamicEvent *start; ///< For an Interval Event which is an end
+	// simple and state events do not have any references
+    } references;
 
-	/// the references field contains pointers to events which this event is related to
-	union {
-	    struct _DynamicEvent *(*dsts)[]; ///< For a Depenedent Event which is a source
-	    struct _DynamicEvent *src; ///< For a Dependent Event which is a destination
-	    struct _DynamicEvent *end; ///< For an Interval Event which is a start
-	    struct _DynamicEvent *start; ///< For an Interval Event which is an end
-	    // simple and state events do not have any references
-	} references;
 
 } DynamicEvent;
 
