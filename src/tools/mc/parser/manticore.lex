@@ -68,6 +68,16 @@
 	      })
 	  end
 
+  (* scan a number from a hexidecimal string *)
+    val fromHexString = valOf o (StringCvt.scanString (IntInf.scan StringCvt.HEX))
+(* FIXME: the above code doesn't work in SML/NJ; here is a work around *)
+fun fromHexString s = let
+      val SOME(n, _) = IntInf.scan StringCvt.HEX Substring.getc
+	    (Substring.triml 2 (Substring.full s))
+      in
+	n
+      end
+
   (* convert a HLOp ID to an atom *)
     fun cvtHLOpId id = Atom.atom(String.extract(id, 1, NONE))
 
@@ -102,6 +112,8 @@
 %let letter = [a-zA-Z];
 %let dig = [0-9];
 %let num = {dig}+;
+%let hexdigit = [0-9a-fA-F];
+%let hexnum = "0x"{hexdigit}+;
 %let idchar = {letter}|{dig}|"_"|"'";
 %let id = {letter}{idchar}*;
 %let qidt = {id}".";
@@ -159,6 +171,7 @@
 <INITIAL,PRIMCODE> "~"{num}	=> (T.NEGINT(valOf (IntInf.fromString yytext)));
 <INITIAL,PRIMCODE> "~"?{num}"."{num}([eE][+~]?{num})?
 				=> (mkFloat yysubstr);
+<INITIAL,PRIMCODE> {hexnum}	=> (T.POSINT(fromHexString yytext));
 <INITIAL,PRIMCODE> {ws}		=> (skip ());
 <INITIAL,PRIMCODE> "(*"		=> (YYBEGIN COMMENT; depth := 1; skip());
 <PRIMCODE> "@\""		=> (isMLString := true; YYBEGIN STRING; skip());
