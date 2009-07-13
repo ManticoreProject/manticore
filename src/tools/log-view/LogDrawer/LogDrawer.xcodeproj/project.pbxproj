@@ -30,6 +30,7 @@
 		52E798EA1007CB8D0031A217 /* VProc.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E798E91007CB8D0031A217 /* VProc.m */; };
 		52E79A011007E2A90031A217 /* LogFile.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E79A001007E2A90031A217 /* LogFile.m */; };
 		52E79AC21007F0AE0031A217 /* TestLogFile.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E79AC11007F0AE0031A217 /* TestLogFile.m */; };
+		52E79CE2100B8C690031A217 /* CustomSplitView.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E79CE1100B8C690031A217 /* CustomSplitView.m */; };
 		8D11072B0486CEB800E47090 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 089C165CFE840E0CC02AAC07 /* InfoPlist.strings */; };
 		8D11072D0486CEB800E47090 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 29B97316FDCFA39411CA2CEA /* main.m */; settings = {ATTRIBUTES = (); }; };
 		8D11072F0486CEB800E47090 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7A1FEA54F0111CA2CBB /* Cocoa.framework */; };
@@ -88,6 +89,8 @@
 		52E79AC01007F0AE0031A217 /* TestLogFile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TestLogFile.h; sourceTree = "<group>"; };
 		52E79AC11007F0AE0031A217 /* TestLogFile.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TestLogFile.m; sourceTree = "<group>"; };
 		52E79CAA100B85F10031A217 /* LogDrawer.xcclassmodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcclassmodel; path = LogDrawer.xcclassmodel; sourceTree = "<group>"; };
+		52E79CE0100B8C690031A217 /* CustomSplitView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CustomSplitView.h; sourceTree = "<group>"; };
+		52E79CE1100B8C690031A217 /* CustomSplitView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = CustomSplitView.m; sourceTree = "<group>"; };
 		8D1107310486CEB800E47090 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		8D1107320486CEB800E47090 /* LogDrawer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LogDrawer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -261,10 +264,8 @@
 			children = (
 				52E7961910065AC70031A217 /* LogView.h */,
 				52E7961A10065AC70031A217 /* LogView.m */,
-				52E7961B10065AC70031A217 /* MessageView.h */,
-				52E7961C10065AC70031A217 /* MessageView.m */,
-				52E7961D10065AC70031A217 /* BandView.h */,
-				52E7961E10065AC70031A217 /* BandView.m */,
+				52E79CF8100B8F4C0031A217 /* Background */,
+				52E79CF9100B8F5B0031A217 /* Foreground */,
 			);
 			name = LogView;
 			sourceTree = "<group>";
@@ -357,6 +358,26 @@
 				52E79CAA100B85F10031A217 /* LogDrawer.xcclassmodel */,
 			);
 			name = Design;
+			sourceTree = "<group>";
+		};
+		52E79CF8100B8F4C0031A217 /* Background */ = {
+			isa = PBXGroup;
+			children = (
+				52E79CE0100B8C690031A217 /* CustomSplitView.h */,
+				52E79CE1100B8C690031A217 /* CustomSplitView.m */,
+			);
+			name = Background;
+			sourceTree = "<group>";
+		};
+		52E79CF9100B8F5B0031A217 /* Foreground */ = {
+			isa = PBXGroup;
+			children = (
+				52E7961B10065AC70031A217 /* MessageView.h */,
+				52E7961C10065AC70031A217 /* MessageView.m */,
+				52E7961D10065AC70031A217 /* BandView.h */,
+				52E7961E10065AC70031A217 /* BandView.m */,
+			);
+			name = Foreground;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -454,6 +475,7 @@
 				52E798EA1007CB8D0031A217 /* VProc.m in Sources */,
 				52E79A011007E2A90031A217 /* LogFile.m in Sources */,
 				52E79AC21007F0AE0031A217 /* TestLogFile.m in Sources */,
+				52E79CE2100B8C690031A217 /* CustomSplitView.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

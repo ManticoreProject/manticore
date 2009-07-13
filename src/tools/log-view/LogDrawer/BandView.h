@@ -13,7 +13,8 @@
  BandViews do not represent message events.
  */
 @interface BandView : NSView {
-    IBOutlet MessageView *messageView;
+    /// The MessageView this band should use to display its dependent events
+    IBOutlet MessageView *messageView; 
 
 }
 

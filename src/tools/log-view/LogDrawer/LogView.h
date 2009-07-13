@@ -7,6 +7,8 @@
 //
 
 #import <Cocoa/Cocoa.h>
+#import "CustomSplitView.h"
+#import "MessageView.h"
 
 /// Display a log file
 /**
@@ -16,7 +18,8 @@
  LogView also displays messages as arrows going between BandViews.
  */
 @interface LogView : NSView {
-
+    IBOutlet CustomSplitView *splitView; ///< The background view, and the view that contains the BandViews
+    IBOutlet MessageView *messageView; ///< The foreground view, and the view that displays dependent events
 }
 
 @end
