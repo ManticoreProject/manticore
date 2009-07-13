@@ -671,12 +671,13 @@ structure ArityRaising : sig
                                             callees)
               val (difference, remainder) = List.partition partByCallee candidateSets
               val calleeSet = VSet.addList (VSet.empty, callees)
+	      val _ =  if List.length callees > 1
+		       then List.app setShared callees
+		       else ()
               val newSet = (case difference
                              of [] => calleeSet
-                              | a => (if List.length callees > 1 orelse
-                                         VSet.numItems (hd a) > 1
-                                      then (List.app (fn (s) => VSet.app setShared s)  a;
-                                            List.app setShared callees)
+                              | a => (if VSet.numItems (hd a) > 1
+                                      then (List.app (fn (s) => VSet.app setShared s) a)
                                       else ();
                                       List.foldr VSet.union VSet.empty (calleeSet::a))
                            (* end case *))
