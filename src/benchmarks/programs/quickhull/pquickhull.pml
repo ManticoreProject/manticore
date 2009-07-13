@@ -36,12 +36,10 @@ fun farthest (a, b, S) =
 	pt
     end
 
-(* returns 0 if the point (x, y) is on the line; a negative number if the point
- * is to the left of the line; a positive number if the point is to the right
- * of the line *)
-fun dir ((x1, y1), (x2, y2)) (x, y) = (y - y1) * (x2 - x1) - (x - x1) * (y2 - y1) 
-
-fun isRight line pt = dir line pt > 0
+(* returns true if the point (x,y) is to the right of the vector defined by (a,b) *)
+fun isRight ((*a as *) (x1, y1), (* b as *) (x2, y2)) (x, y) = 
+    (* use the signed distance *)
+    ((y1 - y2) * x + (x2 - x1) * y + (x1 * y2 - x2 * y1)) < 0
 
 fun rightof (a, b, S) = filterP (isRight (a, b), S)
 
