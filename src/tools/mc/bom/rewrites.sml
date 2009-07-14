@@ -29,8 +29,9 @@ structure Rewrites = struct
       | compareElt (Elt_Alloc, Elt_Alloc) = EQUAL
       | compareElt (Elt_Alloc, _) = LESS
       | compareElt (_, Elt_Alloc) = GREATER
-      | compareElt (Elt_Wildcard, _) = EQUAL
-      | compareElt (_, Elt_Wildcard) = EQUAL
+      | compareElt (Elt_Wildcard, Elt_Wildcard) = EQUAL
+      | compareElt (Elt_Wildcard, _) = LESS
+      | compareElt (_, Elt_Wildcard) = GREATER
 
     fun sameElt (e1, e2) = compareElt (e1, e2) = EQUAL
 

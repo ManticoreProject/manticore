@@ -341,11 +341,7 @@ structure BOMBoundVariableCheck :> sig
 	      | patternVars (PT1.RW_Prim (p, pats)) = 
 		List.foldl AtomSet.union AtomSet.empty (List.map patternVars pats)
 	      | patternVars (PT1.RW_Const _) = AtomSet.empty
-	      | patternVars (PT1.RW_Var v) = (case QualifiedId.unqualId v
-					       of NONE => 
-						  (error(loc, ["qualified ID used as a rewrite pattern variable", qidToString v]);
-						   AtomSet.empty)
-						| SOME v => AtomSet.singleton v)
+	      | patternVars (PT1.RW_Var v) = AtomSet.singleton v
 	      | patternVars (PT1.RW_Alloc pats) = 
 		List.foldl AtomSet.union AtomSet.empty (List.map patternVars pats)
 	    fun addPatternVar (v, rwEnv) = (case AtomMap.find (rwEnv, v)
@@ -366,7 +362,8 @@ structure BOMBoundVariableCheck :> sig
 		           (PT2.RW_Prim (findPrim (loc, prim, env), pats), rwEnv)
 		       end
 		 | PT1.RW_Const (lit, ty) => (PT2.RW_Const (lit, chkTy loc (ty, env)), rwEnv)
-		 | PT1.RW_Var v => (PT2.RW_Var (findBOMVarQid (loc, env, v)), rwEnv)
+		 | PT1.RW_Var v => 
+		     (PT2.RW_Var (AtomMap.lookup (rwEnv, v)), rwEnv)
 		 | PT1.RW_Alloc pats => let
 		       val (pats, _) = chkRWPats loc (pats, env, rwEnv)
 		       in

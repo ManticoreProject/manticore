@@ -76,12 +76,13 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 (* FIXME: rewriting and expansion should be interleaved!!! *)
     fun rewriteAll module = (case rewrite module
 	   of SOME module => let
-		val _ = CheckBOM.check ("rewrite-all:rewrite", module)
+(*		val _ = CheckBOM.check ("rewrite-all:rewrite", module)*)
 	      (* NOTE: we don't remove externs here because references may be hiding inside
 	       * unexpanded HLOps.
 	       *)
-		val module = rewriteAllContract module
+(*		val module = rewriteAllContract module
 		val _ = CheckBOM.check ("rewrite-all:contract", module)
+*)
 		in
 		  rewriteAll module
 		end
@@ -120,8 +121,7 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 	  val module = contract module
 	  val module = inline false module  
 	  val module = contract module
-  (* to re-enable rewrites, fix them so that they use inline BOM instead of the old hlop files. *)
-(*          val module = rewriteAll module*)
+          val module = rewriteAll module
 	  val module = expandAll module
 	(* FIXME: rerun the census to get the counts for HLOp code right. *)
 	  val _ = Census.census module

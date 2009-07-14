@@ -623,8 +623,6 @@ end = struct
 	else NONE
     end
 
-    fun rewrite' e = SOME e
-
     fun rewrite m = if Controls.get rw_ctl then NONE else rewrite' m
 
 end (* RewriteHLOps struct *)

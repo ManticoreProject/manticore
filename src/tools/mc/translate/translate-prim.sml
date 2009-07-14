@@ -655,12 +655,14 @@ structure TranslatePrim : sig
 	    | BPT.RW_Prim _ => raise Fail "todo"
 	    | BPT.RW_Const (lit, ty) => BOM.RW_Const (lit, cvtTy ty)
 	    | BPT.RW_Var v => (
-	        case lookupVarOrDCon v
-		 of Var x => BOM.RW_Var x
-		  | Con(E.Const dc) => raise Fail "todo"
-		  | Con(E.DCon _) => raise Fail "impossible"
-		  | Con(E.ExnConst dc') => raise Fail "impossible"
-		  | Con(E.Lit lit) => BOM.RW_Const lit
+	        case E.findBOMVar v
+		 of SOME v' => BOM.RW_Var v'
+		  | NONE => let
+	              val v' = BOM.Var.new (PTVar.nameOf v, BTy.T_Any)
+		      in
+			E.insertBOMVar (v, v');
+			BOM.RW_Var v'
+	              end
 	      (* end case *))
           (* end case *))
 
