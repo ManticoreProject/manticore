@@ -22,11 +22,11 @@ typedef struct _DynamicEvent
 
 	void *desc; ///< The description of this type of event.  Should be an EventDesc
     	/**< You can determine if a DynamicEvent e is a:
-    	 * 1. simple
-    	 * 2. interval
-    	 * 3. message
-    	 * 4. state
-    	 * 5. some of the above
+    	 * -# simple
+    	 * -# interval
+    	 * -# message
+    	 * -# state
+    	 * -# some of the above
     	 * event by checking the event group of e->desc
     	 */
     	LogTS_t timestamp; ///< time stamp (8 bytes)

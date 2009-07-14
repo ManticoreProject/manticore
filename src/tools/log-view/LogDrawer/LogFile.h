@@ -1,6 +1,8 @@
-/** LogFile.h
+/** \file LogFile.h
  * \author Korei Klein
  * \date 7/10/09
+ 
+ Define the internal representation of a logfile.
  */
 
 #import <Cocoa/Cocoa.h>

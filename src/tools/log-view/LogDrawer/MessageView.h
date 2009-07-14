@@ -1,10 +1,8 @@
-//
-//  MessageView.h
-//  Visualizer
-//
-//  Created by Korei Klein on 7/7/09.
-//  Copyright 2009 __MyCompanyName__. All rights reserved.
-//
+/** \file  MessageView.h
+ * \author Korei Klein
+ * \date 7/7/09
+ */
+
 
 #import <Cocoa/Cocoa.h>
 

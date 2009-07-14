@@ -131,13 +131,7 @@ void fileError(void)
     return self;
 }
 
-/// Initialize using only filenames
-/** Initialize
- * \param filename name of the log file to represent
- * \param eventDesc the jason file describing the format of events in the log
- * \param logDesc the jason file describing the semantics of events in the log
- * \return the initialized LogView
- */
+
 - (LogFile *)initWithFilename:(NSString *)filenameVal
 	 andEventDescFilename:(NSString *)eventDesc
 	   andLogDescFilename:(NSString *)logDesc

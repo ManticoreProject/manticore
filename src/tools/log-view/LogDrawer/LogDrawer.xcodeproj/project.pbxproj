@@ -398,7 +398,6 @@
 				8D1107290486CEB800E47090 /* Resources */,
 				8D11072C0486CEB800E47090 /* Sources */,
 				8D11072E0486CEB800E47090 /* Frameworks */,
-				52E7966C100670D60031A217 /* ShellScript */,
 			);
 			buildRules = (
 			);
@@ -441,22 +440,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
-
-/* Begin PBXShellScriptBuildPhase section */
-		52E7966C100670D60031A217 /* ShellScript */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/zsh;
-			shellScript = "#!/bin/zsh/\n\n#Set the following variables to customize this script\n\n# Path to configuration file\nCONFIG=$SOURCE_ROOT/../logdrawer.doxygen.config\n\n\n\n\n\n\n#######################################################\n# Script implementation:\n\n# Path to documentation directory\nDOCS_PATH=${SOURCE_ROOT}/`sed -n '\\/OUTPUT_DIRECTORY/p' < $CONFIG | cut -d= -f 2 | cut -d\\  -f 2`\n\n# Name of the bundle to load\nBUNDLE_NAME=`sed -n '/DOCSET_BUNDLE_ID/p' < $CONFIG | cut -d= -f 2 | cut -d\\  -f 2`\n\n\n# Generate the documentation\n/Users/koreiklein/bin/doxygen $CONFIG\n\n# Install the documentation\nmake -C $DOCS_PATH/html/Makefile install\n\n\n# Use an applescript to load the docs into the help viewer\nSCRIPT_FILE=${TMPDIR}loadDocs.scpt\nrm -f $SCRIPT_FILE\n\n# Write the applescript\necho \"tell application \\\"Xcode\\\"\" >> $SCRIPT_FILE\necho \"load documentation set with path \\\n\\\"/Users/$USER/Library/Developer/Shared/Documentation/DocSets/${BUNDLE_NAME}.docset\\\"\" >> $SCRIPT_FILE\necho \"end tell\" >> $SCRIPT_FILE\n\n# Run the applescript\nosascript $SCRIPT_FILE\n\nexit 0\n";
-		};
-/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		8D11072C0486CEB800E47090 /* Sources */ = {
