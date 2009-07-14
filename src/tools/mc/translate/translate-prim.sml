@@ -19,7 +19,7 @@ structure TranslatePrim : sig
    * definitions to environments and caches.
    *)
     val cvtCode : (TranslateEnv.env * ProgramParseTree.PML2.BOMParseTree.code) 
-		    -> BOM.lambda list
+		    -> (BOM.lambda list * Rewrites.rewrite list)
 
   end = struct
 
@@ -643,6 +643,27 @@ structure TranslatePrim : sig
 	    (* end case *)
           end)
 
+    fun cvtRWPat loc pat = (
+	  case pat
+  	   of BPT.RW_HLOpApply (hlop, pats) => (
+	        case E.findBOMHLOp hlop
+		 of SOME hlop => BOM.RW_HLOpApply (hlop, List.map (cvtRWPat loc) pats)
+		  | _ => (
+		    error (loc, ["unbound hlop ", PTVar.nameOf hlop]);
+		    BOM.RW_Var (BOM.Var.new ("dummy", BTy.T_Any)))
+	        (* end case *))
+	    | BPT.RW_Prim _ => raise Fail "todo"
+	    | BPT.RW_Const (lit, ty) => BOM.RW_Const (lit, cvtTy ty)
+	    | BPT.RW_Var v => (
+	        case lookupVarOrDCon v
+		 of Var x => BOM.RW_Var x
+		  | Con(E.Const dc) => raise Fail "todo"
+		  | Con(E.DCon _) => raise Fail "impossible"
+		  | Con(E.ExnConst dc') => raise Fail "impossible"
+		  | Con(E.Lit lit) => BOM.RW_Const lit
+	      (* end case *))
+          (* end case *))
+
     fun tyOfPat (BPT.P_VPMark {tree, span}) = tyOfPat tree
       | tyOfPat (BPT.P_Wild NONE) = BTy.T_Any
       | tyOfPat (BPT.P_Wild(SOME ty)) = cvtTy ty
@@ -703,11 +724,13 @@ structure TranslatePrim : sig
 	  in
 	    E.insertBOMHLOp(hlopId, hlop)
 	  end
+      | insDef importEnv (BPT.D_Rewrite _) = ()
 
-  (* this is the second pass, which converts actual HLOp definitions to BOM lambdas *)
-    fun cvtDefs (loc, importEnv, []) = []
-      | cvtDefs (loc, importEnv, def::defs) = (case def
-	   of BPT.D_Mark {span, tree} => cvtDefs (span, importEnv, tree::defs)
+  (* this is the second pass, which converts actual HLOp definitions to BOM lambdas and records
+   * rewrite rules. *)
+    fun cvtDefs (loc, importEnv, [], hlops, rewrites) = (List.rev hlops, List.rev rewrites)
+      | cvtDefs (loc, importEnv, def::defs, hlops, rewrites) = (case def
+	   of BPT.D_Mark {span, tree} => cvtDefs (span, importEnv, tree::defs, hlops, rewrites)
 	    | BPT.D_Define(inline, hlopId, params, exh, retTy, SOME e) => let
 		val _ = (case PTVar.getErrorStream hlopId
 		       of NONE => ()
@@ -728,18 +751,16 @@ structure TranslatePrim : sig
 		      end
 		val doBody = cvtLambda (loc, findCFun', (hlopId, params, exh, retTy, e), BTy.T_Fun)
 		val lambda = doBody ()
-		val def = {
+		val hlop' = {
 			name = hlop,
 			path = BindingEnv.getHLOpPath hlopId,
 			inline = inline,
 			def = lambda,
 			externs = VTbl.listItemsi cfuns
-		      }
-		val _ = E.insertBOMHLOpDef(hlopId, def)
-		val defs = def :: cvtDefs (loc, importEnv, defs)
+		      } 
+		val _ = E.insertBOMHLOpDef(hlopId, hlop')
 		in
-		  checkForErrors(!errStrm);
-		  defs
+		  cvtDefs (loc, importEnv, defs, hlop' :: hlops, rewrites)
 		end
 	    | BPT.D_ImportML(inline, hlopId, pmlId) => let
 		val hlop = Option.valOf(E.findBOMHLOp hlopId)
@@ -749,84 +770,35 @@ structure TranslatePrim : sig
 		val param = BV.new("_arg", paramTy)
 		val exh = BV.new("_exh", exhTy)
 		val body = BOM.mkApply(bomVar, [param], [exh])
-		val def = {
+		val hlop' = {
 			name = hlop,
 			path = BindingEnv.getHLOpPath hlopId,
 			inline = inline,
 			def = BOM.mkLambda{f=f, params=[param], exh=[exh], body=body},
 			externs = []
-		      }
+		      } 
 		in
-		  E.insertBOMHLOpDef(hlopId, def);
-		  def :: cvtDefs (loc, importEnv, defs)
+		  E.insertBOMHLOpDef(hlopId, hlop');
+		  cvtDefs (loc, importEnv, defs, hlop' :: hlops, rewrites)
 		end
-	    | _ => cvtDefs (loc, importEnv, defs)
+	    | BPT.D_Rewrite {label, lhs, rhs, weight} => let
+		val lhs' = cvtRWPat loc lhs
+		val rhs' = cvtRWPat loc rhs
+		val rewrite = BOM.Rewrite {label=label, lhs=lhs', rhs=rhs', weight=weight}
+	        in
+		  cvtDefs (loc, importEnv, defs, hlops, rewrite :: rewrites)
+		end
+	    | _ => cvtDefs (loc, importEnv, defs, hlops, rewrites)
 	  (* end case *))
-
-(*
-    fun cvtDefs loc importEnv [] = []
-      | cvtDefs loc importEnv (BPT.D_Mark {span, tree}::defs) = cvtDefs span importEnv (tree::defs)
-      | cvtDefs loc importEnv (BPT.D_Define(inline, hlopId, params, exh, retTy, SOME e)::defs) = let
-	    val _ = (case PTVar.getErrorStream hlopId
-		      of NONE => ()
-		       | SOME strm => errStrm := strm)
-	    val hlop = Option.valOf(E.findBOMHLOp hlopId)
-	    val retTy = (case retTy of NONE => [] | SOME tys => tys)
-	    val cfuns = VTbl.mkTable (16, Fail "cfun table")
-	    fun findCFun' name = let
-		    val var = findCFun name
-		    in
-		      (* increment the count of references to the C function *)
-		      case VTbl.find cfuns var
-		       of NONE => VTbl.insert cfuns (var, 1)
-			| SOME n => VTbl.insert cfuns (var, n+1)
-		      (* end case *);
-		      var
-                    end
-	    val doBody = cvtLambda (loc, findCFun', (hlopId, params, exh, retTy, e), BTy.T_Fun)
-	    val lambda = doBody ()
-	    val def = {
-		   name = hlop,
-		   path = BindingEnv.getHLOpPath hlopId,
-		   inline = inline,
-		   def = lambda,
-		   externs = VTbl.listItemsi cfuns
-	        }
-	    val _ = E.insertBOMHLOpDef(hlopId, def)
-	    val defs = def :: cvtDefs loc importEnv defs
-	    in
-	       checkForErrors(!errStrm);
-	       defs
-	    end
-      | cvtDefs loc importEnv (BPT.D_ImportML(inline, hlopId, pmlId)::defs) = let
-	  val hlop = Option.valOf(E.findBOMHLOp hlopId)
-	  val bomVar = lookupPMLId pmlId
-	  val fTy as BTy.T_Fun([paramTy], [exhTy], [retTy]) = BV.typeOf bomVar
-	  val f = BV.new(PTVar.nameOf hlopId, fTy)
-	  val param = BV.new("_arg", paramTy)
-	  val exh = BV.new("_exh", exhTy)
-	  val body = BOM.mkApply(bomVar, [param], [exh])
-	  val def = {
-		name = hlop,
-		path = BindingEnv.getHLOpPath hlopId,
-		inline = inline,
-		def = BOM.mkLambda{f=f, params=[param], exh=[exh], body=body},
-		externs = []
-	      }
-	  in
-	    E.insertBOMHLOpDef(hlopId, def);
-	    def :: cvtDefs loc importEnv defs
-	  end
-      | cvtDefs loc importEnv (_::defs) = cvtDefs loc importEnv defs
-*)
 
     fun cvtCode (env, code) = withTranslateEnv env (fn () => let
 	    val importEnv = E.getImportEnv env
 	    val _ = List.app (insDef importEnv) code
-	    val defs = cvtDefs ((0,0), importEnv, code)
+	    val (defs, rewrites) = cvtDefs ((0,0), importEnv, code, [], [])
 	    in
 	       HLOpEnv.addDefs defs;
-	       List.map #def (List.filter (not o #inline) defs)
+	       checkForErrors(!errStrm);
+	       (List.map #def (List.filter (not o #inline) defs), rewrites)
             end)
 
   end

@@ -140,6 +140,11 @@ structure Rewrites = struct
            raise (Fail
                "Constants not currently supported in LHS of rewrite patterns.")
          | RW_Var(_) => (Elt_Wildcard, grammar)
+	 | RW_Alloc pats => let
+               val (argNTs, grammar') = foldl rwFolder ([], grammar) pats
+           in
+	       (Elt_Alloc, grammar')
+	   end
     end (* addPatternToGrammar() *)
 
     (* addRWToGrammar() - Convert a rewrite definition to a set of
@@ -227,6 +232,8 @@ structure Rewrites = struct
         (* FIXME: something to print the constant type? *)
       | patternToString (RW_Const(lit, ty)) = Literal.toString lit
       | patternToString (RW_Var(name)) = BOM.Var.toString name
+      | patternToString (RW_Alloc pats) = 
+	"alloc (" ^ String.concatWith ", " (List.map patternToString pats) ^ ")"
 
     (* rewriteToString() - Utility function to make a string from a
        parse tree rewrite. *)
@@ -234,12 +241,5 @@ structure Rewrites = struct
         String.concat [ Atom.toString label, " : ", patternToString lhs,
                         " ==> ", patternToString rhs, " {",
                         IntInf.toString weight, "}" ]
-
-(*
-    fun addRWDefnToEnv (PT.RewriteDef (rw), RWEnv{hlrwGrammar}) =
-        RWEnv { hlrwGrammar = addRWToGrammar(rw, hlrwGrammar) }
-      | addRWDefnToEnv (PT.TypeDef(id, ty), env as RWEnv{hlrwGrammar, tyEnv}) =
-        insertTy(env, id, cvtTy(env, ty))
-*)
 
 end (* Rewrites *)

@@ -244,6 +244,8 @@ end = struct
         of Rewrites.RW_Var a => BOM.Var.Map.insert(env, a, v)
          | Rewrites.RW_HLOpApply (_, pats) =>
            matchRWPatListToVars(pats, kindToArgVars (B.Var.kindOf v), env)
+	 | Rewrites.RW_Alloc pats => 
+           matchRWPatListToVars(pats, kindToArgVars (B.Var.kindOf v), env)
          | _ => env
         (* end case *))
 
@@ -337,6 +339,15 @@ end = struct
            in
                BOM.mkStmt([tmp], BOM.E_Const(lit, ty), k tmp)
            end
+	 | Rewrites.RW_Alloc pats =>
+	   cvtPats (pats, rw_env, mv_env, exns, 
+		 fn pats => let
+			val tys = List.map BOM.Var.typeOf pats
+			val ty = BTy.T_Tuple(false, tys)
+			val tmp = B.Var.new("_t", ty)
+		    in
+			BOM.mkStmt([tmp], BOM.E_Alloc(ty, pats), k tmp)
+		    end)
         (* end case *))
 
     (* cvtPats() - Convert a list of patterns into BOM binding syntax
@@ -410,7 +421,6 @@ end = struct
             then externs
             else ATbl.listItems importEnv
         (* __________________________________________________ *)
-        val hlopEnv = findHLOps module
 
         val rw_env =
             foldl Rewrites.addRWToGrammar (Rewrites.newGrammar()) rewrites

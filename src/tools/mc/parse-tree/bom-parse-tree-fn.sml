@@ -120,6 +120,7 @@
       | RW_Prim of (prim * rw_pattern list)              (* application of a prim-op or data constructor  *)
       | RW_Const of (Literal.literal * ty)
       | RW_Var of var_use
+      | RW_Alloc of rw_pattern list                      (* allocation in the local heap *)
 
     withtype lambda = (var_bind * var_pat list * var_pat list * ty list * exp)
 

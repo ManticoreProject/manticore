@@ -390,10 +390,11 @@ structure Translate : sig
 		  | NONE => k env
 		(* end case *))
 	    | AST.PrimCodeBind code => let
-		val lambdas = TranslatePrim.cvtCode (env, code)
+		val (lambdas, rewrites) = TranslatePrim.cvtCode (env, code)
 		fun mk [] = k env
 		  | mk (fb::fbs) = B.mkFun([fb], mk fbs)
 		in
+		  addRewrites rewrites;
 		  mk lambdas
 		end
 	  (* end case *))

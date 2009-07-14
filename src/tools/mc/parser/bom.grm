@@ -424,6 +424,9 @@ Pattern
 
         | QualifiedId
                 => ( BPT.RW_Var QualifiedId )
+
+        | "alloc" "(" PatternArgs ")"		
+                => ( BPT.RW_Alloc PatternArgs )
         ;
 
 PatternArgs
