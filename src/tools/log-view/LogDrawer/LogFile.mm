@@ -8,9 +8,9 @@
 
 #import "LogFile.h"
 #import "log-file.h"
-#import "VProc.h"
+#import "VProc.hxx"
 #import <sys/stat.h>
-#import "DynamicEventRep."
+#import "DynamicEventRep.hxx"
 #import "log-desc.hxx"
 
 // class LogFileDesc; // Why does this not work?
@@ -121,8 +121,8 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
 	    DynamicEvent *dynamicEvent = &(*events)[j];
 
 	    memcpy(&dynamicEvent->value, logEvent, sizeof(logEvent));
-	    dynamicEvent->timestamp = GetTimestamp(logEvent->timestamp);
-	    dynamicEvent->desc  = (void *)desc->FindEventById(logEvent->event);
+	    dynamicEvent->timestamp = GetTimestamp(&logEvent->timestamp, header);
+	    dynamicEvent->desc  = desc->FindEventById(logEvent->event);
 	    dynamicEvent->references.src = NULL; // FIXME references must be properly initialized
 
 	}

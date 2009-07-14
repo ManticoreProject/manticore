@@ -4,7 +4,6 @@
 */
 
 #import <Cocoa/Cocoa.h>
-#import "VProc.h"
 #import "MessageView.h"
 
 /// A view representing a vproc
@@ -14,8 +13,7 @@
  */
 @interface BandView : NSView {
     /// The MessageView this band should use to display its dependent events
-    IBOutlet MessageView *messageView; 
-    IBOutlet VProc *vProc; ///< The VProc this band is drawing pictures of
+    IBOutlet MessageView *messageView;
 }
 
 @end

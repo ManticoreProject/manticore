@@ -3,7 +3,7 @@
  * \date 7/10/09
  */
 
-#import "VProc.h"
+#import "VProc.hxx"
 
 
 @implementation VProc

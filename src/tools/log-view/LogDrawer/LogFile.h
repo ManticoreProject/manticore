@@ -17,7 +17,7 @@ struct LogFileDesc;
 @interface LogFile : NSObject {
     NSString *filename; ///< Name of the represented log file
     struct _LogFileHeader_t *header; ///< the header of the log file, as defined in log-file.h
-    NSMutableArray *vProcs; ///< an array containing header.nVProcs VProcs
+    NSMutableArray *vProcs; ///< an array containing header.nVProcs VProcs sorted by vpId
 
     // These variables are to provide more convinient representations of some
     // things already found in the header

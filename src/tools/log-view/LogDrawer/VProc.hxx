@@ -7,7 +7,7 @@
 
 #import <Cocoa/Cocoa.h>
 #import "log-file.h"
-#import "DynamicEventRep.mm"
+#import "DynamicEventRep.hxx"
 
 /// The representation of a virtual processor
 @interface VProc : NSObject {

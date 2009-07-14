@@ -18,7 +18,8 @@
 //#import "event-desc.hxx"
 #import "log-file.h"
 #import "event-desc.hxx"
-#define STATIC_INLINE // static inline XXX
+#import "log-desc.hxx"
+#define STATIC_INLINE static inline
 
 
 
@@ -30,7 +31,7 @@
  * This structure is not part of the interface to events.
  * It is highly subject to change.  Use the interface in DynamicEventRep.h to interact with events.
  */
-struct DynamicEvent_struct
+typedef struct DynamicEvent_struct
 {
 
     // Fields common to all DynamicEvents
@@ -56,31 +57,24 @@ struct DynamicEvent_struct
 	struct _DynamicEvent *start; ///< For an Interval Event which is an end
 	// simple and state events do not have any references
     } references;
-};
-
-
-
-
-
-/// The abstract type of an event
-typedef struct DynamicEvent_struct DynamicEvent;
+} DynamicEvent;
 
 /// The time the event was logged in nanoseconds
-STATIC_INLINE uint64_t timeStamp(DynamicEvent event, struct LogFileDesc *desc)
+STATIC_INLINE uint64_t timeStamp(DynamicEvent event, LogFileDesc *desc)
 {
     return event.timestamp;
 }
 
 /// The static version of this event
-STATIC_INLINE EventDesc *desc(DynamicEvent event, struct LogFileDesc *desc)
+STATIC_INLINE EventDesc *desc(DynamicEvent event, LogFileDesc *desc)
 {
     return event.desc;
 }
 
 /// Recover the arguments of this event
-STATIC_INLINE ArgValue getArg(DynamicEvent event, struct LogFileDesc *desc, int argNum)
+STATIC_INLINE ArgValue getArg(DynamicEvent event, LogFileDesc *desc, int argNum)
 {
-    return event.desc->GetArg(event.value, argNum);
+    return event.desc->GetArg(&event.value, argNum);
 }
 
 
