@@ -180,13 +180,15 @@ JSON_Value_t *JSON_ParseFile (const char *file)
         }
         if (!JSON_parser_char(jc, next_char)) {
             delete_JSON_parser(jc);
-            fprintf(stderr, "JSON_parser_char: syntax error, byte %d\n", count);
+            fprintf(stderr,
+		"[%s] syntax error at byte %d ('%c')\n",
+		file, count, next_char);
             exit (1);
         }
     }
     if (!JSON_parser_done(jc)) {
         delete_JSON_parser(jc);
-        fprintf(stderr, "JSON_parser_end: syntax error\n");
+        fprintf(stderr, "[%s]: syntax error at EOF\n", file);
 	exit (1);
     }
 
