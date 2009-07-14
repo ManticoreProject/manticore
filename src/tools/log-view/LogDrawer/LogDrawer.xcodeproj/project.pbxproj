@@ -81,7 +81,7 @@
 		52E7981D1007C6790031A217 /* load-log-desc.cxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = "load-log-desc.cxx"; path = "../../log-common/load-log-desc.cxx"; sourceTree = "<group>"; };
 		52E7981E1007C6790031A217 /* log-desc.cxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "log-desc.cxx"; sourceTree = "<group>"; };
 		52E7981F1007C6790031A217 /* log-desc.hxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = "log-desc.hxx"; sourceTree = "<group>"; };
-		52E798E51007CB820031A217 /* LogFile.hxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = LogFile.hxx; sourceTree = "<group>"; };
+		52E798E51007CB820031A217 /* LogFile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LogFile.h; sourceTree = "<group>"; };
 		52E798E81007CB8D0031A217 /* VProc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = VProc.h; sourceTree = "<group>"; };
 		52E798E91007CB8D0031A217 /* VProc.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = VProc.m; sourceTree = "<group>"; };
 		52E798EE1007D01E0031A217 /* log-file.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "log-file.h"; path = "../../../include/log-file.h"; sourceTree = SOURCE_ROOT; };
@@ -347,7 +347,7 @@
 				52E7974B1007C5EB0031A217 /* DynamicEventRep.h */,
 				52E798E81007CB8D0031A217 /* VProc.h */,
 				52E798E91007CB8D0031A217 /* VProc.m */,
-				52E798E51007CB820031A217 /* LogFile.hxx */,
+				52E798E51007CB820031A217 /* LogFile.h */,
 				52E79A001007E2A90031A217 /* LogFile.mm */,
 			);
 			name = Representations;
