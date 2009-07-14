@@ -15,7 +15,7 @@
 @interface BandView : NSView {
     /// The MessageView this band should use to display its dependent events
     IBOutlet MessageView *messageView; 
-    IBOutlet VProc *vProc;
+    IBOutlet VProc *vProc; ///< The VProc this band is drawing pictures of
 }
 
 @end

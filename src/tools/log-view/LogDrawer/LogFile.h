@@ -6,7 +6,7 @@
 #import <Cocoa/Cocoa.h>
 #import "LogView.h"
 struct _LogFileHeader_t;
-class LogFileDesc;
+
 // union _LogTS_t;
 
 
@@ -32,7 +32,7 @@ class LogFileDesc;
  * \param desc the description of the log file format and semantics
  * \return the initialized LogView
  */
-- (LogFile *)initWithFilename:(NSString *)filename andLogFileDesc:(LogFileDesc *)desc;
+- (LogFile *)initWithFilename:(NSString *)filename andLogFileDesc:(void *)desc;
 
 /// Initialize using only filenames
 /** Initialize

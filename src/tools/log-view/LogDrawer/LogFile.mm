@@ -10,8 +10,11 @@
 #import "log-file.h"
 #import "VProc.h"
 #import <sys/stat.h>
+#include "log-desc.hxx"
 
+// class LogFileDesc; // Why does this not work?
 
+/// Load a log file into a LogFileDesc c++ class
 extern LogFileDesc *LoadLogDesc(const char *, const char *);
 
 
@@ -26,9 +29,9 @@ void fileError(void)
 /** This function's implementation is based heavily on that of LoadLogFile from
  * log-dump.cxx
  */
-- (LogFile *)initWithFilename:(NSString *)filenameVal andLogFileDesc:(LogFileDesc *)desc
+- (LogFile *)initWithFilename:(NSString *)filenameVal andLogFileDesc:(void *)descVal
 {
-   
+    LogFileDesc *desc = (LogFileDesc *) descVal;
     if (![super init])
 	return nil;
     
