@@ -10,6 +10,7 @@ Library
 
   structure ASTOpt
   structure CompletionBitstring
+  structure DerivedForms
   structure FlatParTup
   structure FreshVar
   structure PValToFuture
@@ -41,6 +42,7 @@ is
   ast-opt.sml
   ast-opt-controls.sml
   completion-bitstring.sml
+  derived-forms.sml
   flat-par-tup.sml
   fresh-var.sml
   pval-to-future.sml
