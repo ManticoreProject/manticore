@@ -33,13 +33,15 @@ fun mkTree d =
     end
 
 fun bench () = let
-    val seqCutoff = PrimIO.readInt()
-    (* the input is the depth of the tree *)
-    val n = PrimIO.readInt()
-    val tree = mkTree n
-    val (pf, t) = Time.timeToEval(fn () => treeAdd tree)
+    val _ = PrimIO.readInt()
+    (* depth of the tree *)
+    val d = PrimIO.readInt()
+    val tree = mkTree d
+    val b = Time.now ()
+    val t = treeAdd tree
+    val e = Time.now ()
     in
-      Print.print(Long.toString t)
+      Print.print(Long.toString (e-b))
     end
 
 val _ = ImplicitThread.runWithGroup(MultiprogrammedWorkStealing.workGroup(), bench)
