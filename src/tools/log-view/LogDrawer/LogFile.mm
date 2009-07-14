@@ -10,7 +10,8 @@
 #import "log-file.h"
 #import "VProc.h"
 #import <sys/stat.h>
-#include "log-desc.hxx"
+#import "DynamicEventRep."
+#import "log-desc.hxx"
 
 // class LogFileDesc; // Why does this not work?
 
@@ -23,15 +24,25 @@ extern LogFileDesc *LoadLogDesc(const char *, const char *);
 
 void fileError(void)
 {
+    exit(1);
+}
 
+/// convert a timestamp to nanoseconds
+static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
+{
+    if (header->tsKind == LOGTS_MACH_ABSOLUTE)
+	return ts->ts_mach;
+    else if (header->tsKind == LOGTS_TIMESPEC)
+	return ts->ts_val.sec * 1000000000 + ts->ts_val.frac;
+    else // header->tsKind == LOGTS_TIMEVAL
+	return ts->ts_val.sec * 1000000000 + ts->ts_val.frac * 1000;
 }
 
 /** This function's implementation is based heavily on that of LoadLogFile from
  * log-dump.cxx
  */
-- (LogFile *)initWithFilename:(NSString *)filenameVal andLogFileDesc:(void *)descVal
+- (LogFile *)initWithFilename:(NSString *)filenameVal andLogFileDesc:(struct LogFileDesc *)desc
 {
-    LogFileDesc *desc = (LogFileDesc *) descVal;
     if (![super init])
 	return nil;
     
@@ -109,10 +120,10 @@ void fileError(void)
 	    LogEvent_t *logEvent = &(log->log[j]);
 	    DynamicEvent *dynamicEvent = &(*events)[j];
 
-	    assert( sizeof(logEvent->data) ==sizeof(dynamicEvent->data) );
-	    memcpy(&dynamicEvent->data, &logEvent->data, sizeof(logEvent->data));
-	    dynamicEvent->timestamp = logEvent->timestamp;
+	    memcpy(&dynamicEvent->value, logEvent, sizeof(logEvent));
+	    dynamicEvent->timestamp = GetTimestamp(logEvent->timestamp);
 	    dynamicEvent->desc  = (void *)desc->FindEventById(logEvent->event);
+	    dynamicEvent->references.src = NULL; // FIXME references must be properly initialized
 
 	}
     }
