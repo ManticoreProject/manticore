@@ -7,5 +7,5 @@
 
 #import "DynamicEventRep.hxx"
 #import "VProc.hxx"
-#import "LogView.h"
+#import "LogFile.h"
 

@@ -7,10 +7,11 @@
 #import <Cocoa/Cocoa.h>
 
 
-
 /// Tests to check that the log file can be loaded properly
 @interface TestLogFile : NSObject {
 
 }
+
+- (IBAction)loadLog:(id)sender;
 
 @end
