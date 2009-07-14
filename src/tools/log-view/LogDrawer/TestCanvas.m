@@ -39,7 +39,6 @@
 					   color:[NSColor yellowColor]
 					   start:nil]
 	];
-	[Message initArrowHead];
 	[objects addObject:
 		[[Message alloc] initArrowFromPoint:NSMakePoint(0, 0)
 					    toPoint:NSMakePoint(110, 100)]

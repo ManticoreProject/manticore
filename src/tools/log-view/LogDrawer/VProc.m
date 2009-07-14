@@ -9,6 +9,7 @@
 @implementation VProc
 
 @synthesize events;
+@synthesize numEvents;
 
 - (VProc *)initWithVpId:(int32_t)vpIdVal
 {

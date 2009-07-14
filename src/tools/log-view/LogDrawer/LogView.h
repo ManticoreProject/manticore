@@ -9,7 +9,7 @@
 #import <Cocoa/Cocoa.h>
 #import "CustomSplitView.h"
 #import "MessageView.h"
-#import "log-desc.hxx"
+
 
 /// Display a log file
 /**

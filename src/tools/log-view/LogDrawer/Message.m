@@ -27,6 +27,20 @@
 
 #pragma mark Initializations
 
++ (void)inititialize
+{
+    // Initialize the arrowHead
+    arrowHead = [[NSBezierPath alloc] init];
+    
+    
+    [arrowHead moveToPoint:
+     NSMakePoint( - ARROW_HEAD_HEIGHT, ARROW_HEAD_WIDTH / 2)];
+    [arrowHead lineToPoint:
+     NSZeroPoint];
+    [arrowHead lineToPoint:
+     NSMakePoint(- ARROW_HEAD_HEIGHT, - ARROW_HEAD_WIDTH / 2)];
+}
+
 - (Message *)initArrowFromPoint:(NSPoint)p1
 			toPoint:(NSPoint)p2
 {
@@ -90,23 +104,6 @@
 	[path setLineWidth:lineWidth];
 	
 	return self;
-}
-
-#pragma mark ArrowHead Initialization
-
-+ (void)initArrowHead
-{
-	 if (arrowHead)
-		@throw @"arrowHead was already initialized";
-	arrowHead = [[NSBezierPath alloc] init];
-	
-	
-	[arrowHead moveToPoint:
-		NSMakePoint( - ARROW_HEAD_HEIGHT, ARROW_HEAD_WIDTH / 2)];
-	[arrowHead lineToPoint:
-		NSZeroPoint];
-	[arrowHead lineToPoint:
-		NSMakePoint(- ARROW_HEAD_HEIGHT, - ARROW_HEAD_WIDTH / 2)];
 }
 
 

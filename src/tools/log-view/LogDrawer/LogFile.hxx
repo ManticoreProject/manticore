@@ -4,12 +4,16 @@
  */
 
 #import <Cocoa/Cocoa.h>
-#import "log-file.h"
+#import "LogView.h"
+struct _LogFileHeader_t;
+class LogFileDesc;
+// union _LogTS_t;
+
 
 /// Represents the data in a logfile
 @interface LogFile : NSObject {
     NSString *filename; ///< Name of the represented log file
-    LogFileHeader_t *header; ///< the header of the log file, as defined in log-file.h
+    struct _LogFileHeader_t *header; ///< the header of the log file, as defined in log-file.h
     NSMutableArray *vProcs; ///< an array containing header.nVProcs VProcs
 
     // These variables are to provide more convinient representations of some
@@ -17,7 +21,8 @@
     // They must therefore be properly initialized when file is read
 
     NSString *date; ///< Cache of header.date is string format as reported by ctime(3)
-    NSString *clockName; ///< Cache of header.clockName;
+    NSString *clockName; ///< Cache of header.clockName
+    
 }
 
 
@@ -27,7 +32,7 @@
  * \param desc the description of the log file format and semantics
  * \return the initialized LogView
  */
-- (LogView *)initWithFilename:(NSString *)filename andLogFileDesc:(LogFileDesc *)desc;
+- (LogFile *)initWithFilename:(NSString *)filename andLogFileDesc:(LogFileDesc *)desc;
 
 /// Initialize using only filenames
 /** Initialize
@@ -36,7 +41,7 @@
  * \param logDesc the jason file describing the semantics of events in the log
  * \return the initialized LogView
  */
-- (LogView *)initWithFilename:(NSString *)filename
+- (LogFile *)initWithFilename:(NSString *)filename
 	 andEventDescFilename:(NSString *)eventDesc
 	   andLogDescFilename:(NSString *)logDesc;
 
@@ -55,7 +60,7 @@
 @property (readonly) uint32_t	bufSzB;		///< buffer size (usually == sizeof(struct_logbuf))
 //@property (readonly) char *		date;		///< the date of the run (as reported by ctime(3))
 @property (readonly) uint32_t	tsKind;		///< timestamp format
-@property (readonly) LogTS_t	startTime;	///< start time for run
+// @property (readonly) union _LogTS_t	startTime;	///< start time for run
 // @property (readonly) char *		clockName;	///< a string describing the clock
 @property (readonly) uint32_t	resolution;	///< clock resolution in nanoseconds
 @property (readonly) uint32_t	nVProcs;	///< number of vprocs in system

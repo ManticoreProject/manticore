@@ -9,8 +9,6 @@
 #import "EventShape.h"
 
 /// Represent a message event by drawing an arrow
-/*! Before creating any message objects, you must call initArrowHead.
- */
 @interface Message : EventShape {
 	NSPoint start; //!< Point where the arrow starts
 	NSPoint end; //!< Point where the arrow ends
@@ -29,7 +27,6 @@
  */
 NSBezierPath *arrowHead; //!< arrowhead
 
-+ (void)initArrowHead; //!< create the arrowHead path
 
 
 ///Initialize

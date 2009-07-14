@@ -8,6 +8,12 @@
 
 #import "LogFile.h"
 #import "log-file.h"
+#import "VProc.h"
+#import <sys/stat.h>
+
+
+extern LogFileDesc *LoadLogDesc(const char *, const char *);
+
 
 @implementation LogFile
 
@@ -20,12 +26,16 @@ void fileError(void)
 /** This function's implementation is based heavily on that of LoadLogFile from
  * log-dump.cxx
  */
-- (LogView *)initWithFilename:(NSString *)filename andLogFileDesc:(LogFileDesc *)desc
+- (LogFile *)initWithFilename:(NSString *)filenameVal andLogFileDesc:(LogFileDesc *)desc
 {
-    size_t LogBufSzB = LOGBLOCK_SZB;
+   
     if (![super init])
 	return nil;
-    NSFileHandle *f = [NSFileHandle fileHandleForReadingAtPath:logFileName];
+    
+    filename = filenameVal;
+    size_t LogBufSzB = LOGBLOCK_SZB;
+    
+    NSFileHandle *f = [NSFileHandle fileHandleForReadingAtPath:filename];
     if (!f)
 	fileError();
 
@@ -49,16 +59,25 @@ void fileError(void)
 	[f seekToFileOffset:LogBufSzB];
     }
 
+    // get the file size
+    off_t fileSize;
+    {
+	struct stat st;
+	if (stat([filename cStringUsingEncoding:NSASCIIStringEncoding], &st) < 0)
+	    @throw @"Could not stat the given file";
+	fileSize = st.st_size;
+    }
+
     // XXX Why can't the log->next field be used here??
     // And is this - 1 correct?  What if LogBufSzB % sizeof(LogEvent_t) == 0 ?
     int NEventsPerBuf = (LogBufSzB / sizeof(LogEvent_t)) - 1;
     int numBufs = (fileSize / LogBufSzB) - 1;
     if (numBufs <= 0)
 	@throw @"There are no buffers in the logfile";
+    int MaxNumEvents = NEventsPerBuf * numBufs;
 
-
-    VProc vProcs_c_array[header->nVProcs];  // To be converted into an NSMutableArray later
-    for (int i = 0; i < header->nVProcs: ++i)
+    VProc *vProcs_c_array[header->nVProcs];  // To be converted into an NSMutableArray later
+    for (int i = 0; i < header->nVProcs; ++i)
 	vProcs_c_array[i] = NULL;
 
     vProcs = [[NSMutableArray alloc] initWithCapacity:header->nVProcs];
@@ -66,11 +85,11 @@ void fileError(void)
     /* read in the events */
     for (int i = 0;  i < numBufs;  i++) {
 	VProc *cur_vProc;
-	logBuffer_t *log = (LogBuffer_t *) [[f readDataOfLength:LogBufSzB] bytes];
+	LogBuffer_t *log = (LogBuffer_t *) [[f readDataOfLength:LogBufSzB] bytes];
 	assert (log->vpId < header->nVProcs);
 
 	if (vProcs_c_array[log->vpId] == NULL)
-	    cur_vProc = vProcs_c_array[log->vpId] = [[VProc alloc] initWithId:log->vpId];
+	    cur_vProc = vProcs_c_array[log->vpId] = [[VProc alloc] initWithVpId:log->vpId];
 	else
 	    cur_vProc = vProcs_c_array[log->vpId];
 
@@ -78,18 +97,19 @@ void fileError(void)
 	if (log->next > NEventsPerBuf)
 	    log->next = NEventsPerBuf;
 
-	DynamicEvent *events = cur_vProc.events = (DynamicEvent *) malloc(log->next * sizeof(DynamicEvent));
-	
+	DynamicEvent (*events)[] = cur_vProc.events = (DynamicEvent (*)[]) malloc(log->next * sizeof(DynamicEvent));
+	// XXX ? Is it correct to think that log->next can be used this way ?
+	int numEvents = cur_vProc.numEvents = log->next;
+	assert (numEvents < MaxNumEvents);
 	for (int j = 0;  j < log->next;  j++) {
-	    assert (NumEvents < MaxNumEvents);
 
 	    LogEvent_t *logEvent = &(log->log[j]);
-	    DynamicEvent *dynamicEvent = &events[j];
+	    DynamicEvent *dynamicEvent = &(*events)[j];
 
-	    assert( sizeof(lp->data) ==sizeof(dynamicEvent->data) );
-	    memcpy(&dynamicEvent->data, &lp->data, sizeof(lp->data));
-	    dynamicEvent->timestamp = lp->timestamp;
-	    dynamicEvent->desc  = (void *)desc->FindEventById(lp->event);
+	    assert( sizeof(logEvent->data) ==sizeof(dynamicEvent->data) );
+	    memcpy(&dynamicEvent->data, &logEvent->data, sizeof(logEvent->data));
+	    dynamicEvent->timestamp = logEvent->timestamp;
+	    dynamicEvent->desc  = (void *)desc->FindEventById(logEvent->event);
 
 	}
     }
@@ -115,11 +135,11 @@ void fileError(void)
  * \param logDesc the jason file describing the semantics of events in the log
  * \return the initialized LogView
  */
-- (LogView *)initWithFilename:(NSString *)filename
+- (LogFile *)initWithFilename:(NSString *)filenameVal
 	 andEventDescFilename:(NSString *)eventDesc
 	   andLogDescFilename:(NSString *)logDesc
 {
-    return [self initWithFilename:filename
+    return [self initWithFilename:filenameVal
 		   andLogFileDesc:LoadLogDesc([logDesc UTF8String], [eventDesc UTF8String])];
 }
 
@@ -162,10 +182,12 @@ void fileError(void)
 {
     return header->tsKind;
 }
+/*
 - (LogTS_t)startTime
 {
     return header->startTime;
 }
+ */
 - (uint32_t)resolution
 {
     return header->resolution;
