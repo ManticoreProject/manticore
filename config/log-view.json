@@ -84,7 +84,7 @@
 		      ["GlobalGCInit", "GC"],	["GlobalGCEnd", "Active"],
 		      ["PromoteStart", "GC"],	["PromoteEnd", "Active"],
 		      ["VProcIdle", "Idle"],
-		      ["VProcSleep", "Sleeping"],
+		      ["VProcSleep", "Sleeping"]
 		    ]
 		}
 	      ]
