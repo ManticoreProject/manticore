@@ -1050,7 +1050,24 @@ structure ArityRaising : sig
          *)
         fun typeOfRHS(C.Var ([v])) = SOME (CV.typeOf v)
           | typeOfRHS(C.Var (vars)) = NONE
-          | typeOfRHS(C.Cast (typ, _)) = NONE
+          | typeOfRHS(C.Cast (typ, var)) = (* if the cast is or contains a function type,
+                                            * we may have updated it in an incompatible way
+                                            * for the cast, so just fill in our type.
+                                            * This frequently happens around the generated _cast
+                                            * for ropes code
+                                            *)
+            let
+                val rhsType = CV.typeOf var
+                fun cleanup (CTy.T_Tuple (b, dstTys), CTy.T_Tuple (b', srcTys)) =
+                    CTy.T_Tuple (b, ListPair.map cleanup (dstTys, srcTys))
+                  | cleanup (dst as CTy.T_Fun(_, _), src as CTy.T_Fun (_, _)) =
+                    if CPSTyUtil.soundMatch (dst, src)
+                    then dst
+                    else src
+                  | cleanup (dst, _) = dst
+            in
+                SOME (cleanup (typ, rhsType))
+            end
           | typeOfRHS(C.Const (_, typ)) = SOME(typ)
           | typeOfRHS(C.Select (i, v)) = (
             (* Select is often used as a pseudo-cast, so only "change" the type if we've 
@@ -1321,6 +1338,9 @@ structure ArityRaising : sig
                                     | NONE => (fixLet ([v], rhs);
                                                C.mkLet([v], rhs, walkExp (encl, newParams, e)))
                                   (* end case *))
+                                | C.Cast(ty,x) => (fixLet ([v], rhs);
+                                                   C.mkLet ([v], C.Cast (CV.typeOf v, x),
+                                                            walkExp (encl, newParams, e)))
                                 | _ => (fixLet ([v], rhs);
                                         C.mkLet([v], rhs, walkExp (encl, newParams, e)))
                              (* end case *)))
