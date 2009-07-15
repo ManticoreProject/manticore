@@ -76,5 +76,3 @@ STATIC_INLINE ArgValue getArg(DynamicEvent event, LogFileDesc *desc, int argNum)
 {
     return event.desc->GetArg(&event.value, argNum);
 }
-
-

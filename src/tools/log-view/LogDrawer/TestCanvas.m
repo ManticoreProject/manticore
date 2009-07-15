@@ -53,6 +53,15 @@
     return self;
 }
 
+- (void)awakeFromNib
+{
+    NSString *root = @"/Users/koreiklein/workspace/manticore/trunk/src/tools/log-view/LogDrawer/";
+    LogFile *lf = [[LogFile alloc] initWithFilename:[root stringByAppendingString:@"fact.mlg"]
+		 andEventDescFilename:[root stringByAppendingString:@"event-view.json"]
+		   andLogDescFilename:[root stringByAppendingString:@"log-events.json"]];
+    NSLog(@" LogFile is \n%@",lf);
+}
+
 - (void)drawRect:(NSRect)rect {
 	for (id obj in objects)
 	{

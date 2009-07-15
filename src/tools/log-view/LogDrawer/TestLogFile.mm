@@ -15,8 +15,9 @@
 
 - (IBAction)loadLog:(id)sender
 {
-    [[LogFile alloc] initWithFilename:@"fact.mlg"
-		 andEventDescFilename:@"event-view.json"
-		   andLogDescFilename:@"log-events.json"];
+    NSString *root = @"/Users/koreiklein/workspace/manticore/trunk/src/tools/log-view/LogDrawer/";
+    [[LogFile alloc] initWithFilename:[root stringByAppendingString:@"fact2.mlg"]
+		 andEventDescFilename:[root stringByAppendingString:@"event-view.json"]
+		   andLogDescFilename:[root stringByAppendingString:@"log-events.json"]];
 }
 @end

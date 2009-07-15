@@ -8,11 +8,11 @@
 
 /* Begin PBXBuildFile section */
 		1DDD58160DA1D0A300B32029 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 1DDD58140DA1D0A300B32029 /* MainMenu.xib */; };
-		529ED897100D175500D8B8B1 /* fact.mlg in Resources */ = {isa = PBXBuildFile; fileRef = 529ED895100D175500D8B8B1 /* fact.mlg */; };
-		529ED898100D175500D8B8B1 /* fact2.mlg in Resources */ = {isa = PBXBuildFile; fileRef = 529ED896100D175500D8B8B1 /* fact2.mlg */; };
 		529ED9F2100D2FFF00D8B8B1 /* AppController.m in Sources */ = {isa = PBXBuildFile; fileRef = 529ED9F1100D2FFF00D8B8B1 /* AppController.m */; };
 		529ED9FD100D316C00D8B8B1 /* event-view.json in Resources */ = {isa = PBXBuildFile; fileRef = 529ED9FC100D316C00D8B8B1 /* event-view.json */; };
 		529ED9FF100D318600D8B8B1 /* log-events.json in Resources */ = {isa = PBXBuildFile; fileRef = 529ED9FE100D318600D8B8B1 /* log-events.json */; };
+		529EDA5E100D337E00D8B8B1 /* fact.mlg in Resources */ = {isa = PBXBuildFile; fileRef = 529EDA5C100D337E00D8B8B1 /* fact.mlg */; };
+		529EDA5F100D337E00D8B8B1 /* fact2.mlg in Resources */ = {isa = PBXBuildFile; fileRef = 529EDA5D100D337E00D8B8B1 /* fact2.mlg */; };
 		52E7962210065AC80031A217 /* TestCanvas.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E7960410065AC70031A217 /* TestCanvas.m */; };
 		52E7962310065AC80031A217 /* EventShape.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E7960A10065AC70031A217 /* EventShape.m */; };
 		52E7962410065AC80031A217 /* Interval.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E7960D10065AC70031A217 /* Interval.m */; };
@@ -36,6 +36,7 @@
 		52E79A011007E2A90031A217 /* LogFile.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52E79A001007E2A90031A217 /* LogFile.mm */; };
 		52E79AC21007F0AE0031A217 /* TestLogFile.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52E79AC11007F0AE0031A217 /* TestLogFile.mm */; };
 		52E79CE2100B8C690031A217 /* CustomSplitView.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E79CE1100B8C690031A217 /* CustomSplitView.m */; };
+		52F36EC1100E237A001CCBD6 /* EventUtils.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52F36EC0100E237A001CCBD6 /* EventUtils.mm */; };
 		8D11072B0486CEB800E47090 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 089C165CFE840E0CC02AAC07 /* InfoPlist.strings */; };
 		8D11072D0486CEB800E47090 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 29B97316FDCFA39411CA2CEA /* main.m */; settings = {ATTRIBUTES = (); }; };
 		8D11072F0486CEB800E47090 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7A1FEA54F0111CA2CBB /* Cocoa.framework */; };
@@ -50,13 +51,13 @@
 		29B97324FDCFA39411CA2CEA /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = /System/Library/Frameworks/AppKit.framework; sourceTree = "<absolute>"; };
 		29B97325FDCFA39411CA2CEA /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = /System/Library/Frameworks/Foundation.framework; sourceTree = "<absolute>"; };
 		32CA4F630368D1EE00C91783 /* LogDrawer_Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LogDrawer_Prefix.pch; sourceTree = "<group>"; };
-		529ED895100D175500D8B8B1 /* fact.mlg */ = {isa = PBXFileReference; lastKnownFileType = file; name = fact.mlg; path = ../../../../../../../Desktop/fact.mlg; sourceTree = SOURCE_ROOT; };
-		529ED896100D175500D8B8B1 /* fact2.mlg */ = {isa = PBXFileReference; lastKnownFileType = file; name = fact2.mlg; path = ../../../../../../../Desktop/fact2.mlg; sourceTree = SOURCE_ROOT; };
 		529ED966100D244E00D8B8B1 /* DynamicRep.hxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = DynamicRep.hxx; sourceTree = "<group>"; };
 		529ED9F0100D2FFF00D8B8B1 /* AppController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AppController.h; sourceTree = "<group>"; };
 		529ED9F1100D2FFF00D8B8B1 /* AppController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AppController.m; sourceTree = "<group>"; };
 		529ED9FC100D316C00D8B8B1 /* event-view.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "event-view.json"; sourceTree = "<group>"; };
 		529ED9FE100D318600D8B8B1 /* log-events.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "log-events.json"; sourceTree = "<group>"; };
+		529EDA5C100D337E00D8B8B1 /* fact.mlg */ = {isa = PBXFileReference; lastKnownFileType = file; path = fact.mlg; sourceTree = "<group>"; };
+		529EDA5D100D337E00D8B8B1 /* fact2.mlg */ = {isa = PBXFileReference; lastKnownFileType = file; path = fact2.mlg; sourceTree = "<group>"; };
 		52E7960310065AC70031A217 /* TestCanvas.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TestCanvas.h; sourceTree = "<group>"; };
 		52E7960410065AC70031A217 /* TestCanvas.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TestCanvas.m; sourceTree = "<group>"; };
 		52E7960810065AC70031A217 /* ShapeRep.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ShapeRep.h; sourceTree = "<group>"; };
@@ -98,11 +99,13 @@
 		52E798E91007CB8D0031A217 /* VProc.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = VProc.mm; sourceTree = "<group>"; };
 		52E798EE1007D01E0031A217 /* log-file.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "log-file.h"; path = "../../../include/log-file.h"; sourceTree = SOURCE_ROOT; };
 		52E79A001007E2A90031A217 /* LogFile.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = LogFile.mm; sourceTree = "<group>"; };
-		52E79AC01007F0AE0031A217 /* TestLogFile.hxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = TestLogFile.hxx; sourceTree = "<group>"; };
+		52E79AC01007F0AE0031A217 /* TestLogFile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TestLogFile.h; sourceTree = "<group>"; };
 		52E79AC11007F0AE0031A217 /* TestLogFile.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = TestLogFile.mm; sourceTree = "<group>"; };
 		52E79CAA100B85F10031A217 /* LogDrawer.xcclassmodel */ = {isa = PBXFileReference; explicitFileType = wrapper.xcclassmodel; path = LogDrawer.xcclassmodel; sourceTree = "<group>"; };
 		52E79CE0100B8C690031A217 /* CustomSplitView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CustomSplitView.h; sourceTree = "<group>"; };
 		52E79CE1100B8C690031A217 /* CustomSplitView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = CustomSplitView.m; sourceTree = "<group>"; };
+		52F36EC0100E237A001CCBD6 /* EventUtils.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = EventUtils.mm; sourceTree = "<group>"; };
+		52F36EC8100E2470001CCBD6 /* EventUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EventUtils.h; sourceTree = "<group>"; };
 		8D1107310486CEB800E47090 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		8D1107320486CEB800E47090 /* LogDrawer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LogDrawer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -191,6 +194,7 @@
 			isa = PBXGroup;
 			children = (
 				52E7974B1007C5EB0031A217 /* DynamicEventRep.hxx */,
+				52F36F01100E25D2001CCBD6 /* Utils */,
 			);
 			name = DynamicEvents;
 			sourceTree = "<group>";
@@ -207,8 +211,8 @@
 		529EDA01100D319B00D8B8B1 /* Sample Log Files */ = {
 			isa = PBXGroup;
 			children = (
-				529ED895100D175500D8B8B1 /* fact.mlg */,
-				529ED896100D175500D8B8B1 /* fact2.mlg */,
+				529EDA5C100D337E00D8B8B1 /* fact.mlg */,
+				529EDA5D100D337E00D8B8B1 /* fact2.mlg */,
 			);
 			name = "Sample Log Files";
 			sourceTree = "<group>";
@@ -242,7 +246,7 @@
 			children = (
 				52E7960310065AC70031A217 /* TestCanvas.h */,
 				52E7960410065AC70031A217 /* TestCanvas.m */,
-				52E79AC01007F0AE0031A217 /* TestLogFile.hxx */,
+				52E79AC01007F0AE0031A217 /* TestLogFile.h */,
 				52E79AC11007F0AE0031A217 /* TestLogFile.mm */,
 			);
 			name = Test;
@@ -439,6 +443,15 @@
 			name = Controllers;
 			sourceTree = "<group>";
 		};
+		52F36F01100E25D2001CCBD6 /* Utils */ = {
+			isa = PBXGroup;
+			children = (
+				52F36EC0100E237A001CCBD6 /* EventUtils.mm */,
+				52F36EC8100E2470001CCBD6 /* EventUtils.h */,
+			);
+			name = Utils;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -487,10 +500,10 @@
 				52E796C0100677730031A217 /* logdrawer.doxygen.config in Resources */,
 				52E798231007C6790031A217 /* default-log-paths_h.in in Resources */,
 				52E7985E1007C6790031A217 /* JSON_parser.h.gch in Resources */,
-				529ED897100D175500D8B8B1 /* fact.mlg in Resources */,
-				529ED898100D175500D8B8B1 /* fact2.mlg in Resources */,
 				529ED9FD100D316C00D8B8B1 /* event-view.json in Resources */,
 				529ED9FF100D318600D8B8B1 /* log-events.json in Resources */,
+				529EDA5E100D337E00D8B8B1 /* fact.mlg in Resources */,
+				529EDA5F100D337E00D8B8B1 /* fact2.mlg in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -523,6 +536,7 @@
 				52E79AC21007F0AE0031A217 /* TestLogFile.mm in Sources */,
 				52E79CE2100B8C690031A217 /* CustomSplitView.m in Sources */,
 				529ED9F2100D2FFF00D8B8B1 /* AppController.m in Sources */,
+				52F36EC1100E237A001CCBD6 /* EventUtils.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

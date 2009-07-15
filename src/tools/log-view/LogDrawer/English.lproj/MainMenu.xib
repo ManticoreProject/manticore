@@ -9,7 +9,7 @@
 		<object class="NSMutableArray" key="IBDocument.EditedObjectIDs">
 			<bool key="EncodedWithXMLCoder">YES</bool>
 			<integer value="57"/>
-			<integer value="372"/>
+			<integer value="371"/>
 		</object>
 		<object class="NSArray" key="IBDocument.PluginDependencies">
 			<bool key="EncodedWithXMLCoder">YES</bool>
@@ -1105,7 +1105,7 @@
 			<object class="NSWindowTemplate" id="972006081">
 				<int key="NSWindowStyleMask">15</int>
 				<int key="NSWindowBacking">2</int>
-				<string key="NSWindowRect">{{335, 449}, {395, 301}}</string>
+				<string key="NSWindowRect">{{57, 43}, {395, 301}}</string>
 				<int key="NSWTFlags">1946157056</int>
 				<string key="NSWindowTitle">Window</string>
 				<string key="NSWindowClass">NSWindow</string>
@@ -1180,13 +1180,13 @@
 							<reference key="NSHScroller" ref="119285179"/>
 							<reference key="NSContentView" ref="494127634"/>
 						</object>
-						<object class="NSButton" id="153040913">
+						<object class="NSButton" id="641765045">
 							<reference key="NSNextResponder" ref="439893737"/>
 							<int key="NSvFlags">268</int>
 							<string key="NSFrame">{{127, 12}, {96, 32}}</string>
 							<reference key="NSSuperview" ref="439893737"/>
 							<bool key="NSEnabled">YES</bool>
-							<object class="NSButtonCell" key="NSCell" id="919509225">
+							<object class="NSButtonCell" key="NSCell" id="334451886">
 								<int key="NSCellFlags">67239424</int>
 								<int key="NSCellFlags2">134217728</int>
 								<string key="NSContents">Test</string>
@@ -1195,7 +1195,7 @@
 									<double key="NSSize">1.300000e+01</double>
 									<int key="NSfFlags">1044</int>
 								</object>
-								<reference key="NSControlView" ref="153040913"/>
+								<reference key="NSControlView" ref="641765045"/>
 								<int key="NSButtonFlags">-2038284033</int>
 								<int key="NSButtonFlags2">129</int>
 								<string key="NSAlternateContents"/>
@@ -1208,13 +1208,13 @@
 					<string key="NSFrameSize">{395, 301}</string>
 					<reference key="NSSuperview"/>
 				</object>
-				<string key="NSScreenRect">{{0, 0}, {1440, 878}}</string>
+				<string key="NSScreenRect">{{0, 0}, {1680, 1028}}</string>
 				<string key="NSMaxSize">{3.40282e+38, 3.40282e+38}</string>
 			</object>
 			<object class="NSCustomObject" id="755631768">
 				<string key="NSClassName">NSFontManager</string>
 			</object>
-			<object class="NSCustomObject" id="1066745222">
+			<object class="NSCustomObject" id="251527397">
 				<string key="NSClassName">TestLogFile</string>
 			</object>
 		</object>
@@ -1753,9 +1753,17 @@
 					<object class="IBOutletConnection" key="connection">
 						<string key="label">initialFirstResponder</string>
 						<reference key="source" ref="972006081"/>
-						<reference key="destination" ref="153040913"/>
+						<reference key="destination" ref="641765045"/>
 					</object>
 					<int key="connectionID">457</int>
+				</object>
+				<object class="IBConnectionRecord">
+					<object class="IBActionConnection" key="connection">
+						<string key="label">loadLog:</string>
+						<reference key="source" ref="251527397"/>
+						<reference key="destination" ref="641765045"/>
+					</object>
+					<int key="connectionID">459</int>
 				</object>
 			</object>
 			<object class="IBMutableOrderedSet" key="objectRecords">
@@ -2344,7 +2352,7 @@
 						<object class="NSMutableArray" key="children">
 							<bool key="EncodedWithXMLCoder">YES</bool>
 							<reference ref="398751057"/>
-							<reference ref="153040913"/>
+							<reference ref="641765045"/>
 						</object>
 						<reference key="parent" ref="972006081"/>
 					</object>
@@ -2686,21 +2694,21 @@
 					</object>
 					<object class="IBObjectRecord">
 						<int key="objectID">455</int>
-						<reference key="object" ref="153040913"/>
+						<reference key="object" ref="641765045"/>
 						<object class="NSMutableArray" key="children">
 							<bool key="EncodedWithXMLCoder">YES</bool>
-							<reference ref="919509225"/>
+							<reference ref="334451886"/>
 						</object>
 						<reference key="parent" ref="439893737"/>
 					</object>
 					<object class="IBObjectRecord">
 						<int key="objectID">456</int>
-						<reference key="object" ref="919509225"/>
-						<reference key="parent" ref="153040913"/>
+						<reference key="object" ref="334451886"/>
+						<reference key="parent" ref="641765045"/>
 					</object>
 					<object class="IBObjectRecord">
 						<int key="objectID">458</int>
-						<reference key="object" ref="1066745222"/>
+						<reference key="object" ref="251527397"/>
 						<reference key="parent" ref="1049"/>
 					</object>
 				</object>
@@ -3184,7 +3192,7 @@
 				</object>
 			</object>
 			<nil key="sourceID"/>
-			<int key="maxID">458</int>
+			<int key="maxID">459</int>
 		</object>
 		<object class="IBClassDescriber" key="IBDocument.Classes">
 			<object class="NSMutableArray" key="referencedPartialClassDescriptions">
@@ -3195,6 +3203,18 @@
 					<object class="IBClassDescriptionSource" key="sourceIdentifier">
 						<string key="majorKey">IBProjectSource</string>
 						<string key="minorKey">TestCanvas.h</string>
+					</object>
+				</object>
+				<object class="IBPartialClassDescription">
+					<string key="className">TestLogFile</string>
+					<string key="superclassName">NSObject</string>
+					<object class="NSMutableDictionary" key="actions">
+						<string key="NS.key.0">loadLog:</string>
+						<string key="NS.object.0">id</string>
+					</object>
+					<object class="IBClassDescriptionSource" key="sourceIdentifier">
+						<string key="majorKey">IBProjectSource</string>
+						<string key="minorKey">TestLogFile.h</string>
 					</object>
 				</object>
 			</object>
