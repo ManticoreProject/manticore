@@ -18,7 +18,7 @@
     NSMutableArray *states; //< Necessary because at first we wont know when a state ends
 }
 
-- (void)addEventWithColor:(NSColor *)c andStart:(CGFloat)s;
-- (void)addStateWithColor:(NSColor *)c andStart:(CGFloat)s;
+- (void)addEvent:(void *)e withColor:(NSColor *)c andStart:(CGFloat)s;
+- (void)addState:(void *)e withColor:(NSColor *)c andStart:(CGFloat)s;
 
 @end

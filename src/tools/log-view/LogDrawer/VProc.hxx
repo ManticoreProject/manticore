@@ -21,6 +21,9 @@
 /// modify and access the size of the events array
 @property (readwrite, assign) int numEvents;
 
+/// modify and access vpId
+@property (readwrite, assign) int32_t vpId;
+
 /// Initialize
 - (VProc *)initWithVpId:(int32_t)vpIdVal;
 

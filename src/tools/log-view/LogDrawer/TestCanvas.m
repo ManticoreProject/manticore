@@ -25,8 +25,7 @@
 	[objects addObject:
 		[[State alloc] initWithRect:NSMakeRect(0, bounds.origin.y, 100, bounds.size.height)
 				      color:[NSColor orangeColor]
-				      start:nil
-					end:nil]
+				      start:nil]
 	];
 	[objects addObject:
 		[[Interval alloc] initWithRect:NSMakeRect(10, 10, 50, 20)]

@@ -13,7 +13,7 @@
 
 @synthesize events;
 @synthesize numEvents;
-
+@synthesize vpId;
 
 #pragma mark Initialization
 

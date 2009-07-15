@@ -60,7 +60,7 @@ STATIC_INLINE uint64_t timeStamp(DynamicEvent event, LogFileDesc *desc)
 }
 
 /// The static version of this event
-STATIC_INLINE EventDesc *desc(DynamicEvent event, LogFileDesc *desc)
+STATIC_INLINE EventDesc *description(DynamicEvent event, LogFileDesc *desc)
 {
     return event.desc;
 }

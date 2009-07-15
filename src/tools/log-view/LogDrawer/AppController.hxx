@@ -7,10 +7,13 @@
 #import <Cocoa/Cocoa.h>
 #import "DynamicRep.hxx"
 #import "LogView.h"
+#import "log-desc.hxx"
 
 @interface AppController : NSObject {
-
+    IBOutlet LogView *logView;
 }
+
+- (NSColor *)groupColor:(Group *)g;
 
 - (void)fillLogView:(LogView *)lv
 	withLogFile:(LogFile *)lf

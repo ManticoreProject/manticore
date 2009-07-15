@@ -28,11 +28,16 @@
 
 - (void)addEvent:(void *)e withColor:(NSColor *)c andStart:(CGFloat)s
 {
-    [shapes addObject:[[Singleton alloc] initWithPoint:NSMakePoint(s , y + height / 2) color:c start:e]];
+    NSRect bounds = [self bounds];
+    [shapes addObject:[[Singleton alloc]
+		       initWithPoint:NSMakePoint(s , bounds.origin.y + bounds.size.height / 2)
+		       color:c start:e]];
 }
 - (void)addState:(void *)e withColor:(NSColor *)c andStart:(CGFloat)s;
 {
-    [shapes addObject:[[State alloc] initWithRect:NSMakeRect(s, y, end - s, height) color:c start:e]]
+    NSRect bounds = [self bounds];
+    [shapes addObject:[[State alloc] initWithRect:NSMakeRect(s, bounds.origin.y, bounds.origin.x + bounds.size.width - s, bounds.size.height)
+					    color:c start:e]];
 }
 
 

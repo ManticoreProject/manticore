@@ -8,6 +8,8 @@
 #import "log-desc.hxx"
 #import "event-desc.hxx"
 #import "LogView.h"
+#import "VProc.hxx"
+#import "DynamicEventRep.hxx"
 
 
 @implementation AppController
@@ -21,26 +23,27 @@
     CGFloat viewEnd = lv.end;
     double scale = (viewStart - viewEnd) / (logStart - logEnd);
 
-    NSMutableArray *bands = [NSMutableArray initWithCapacity:lf.nVProcs];
+    NSMutableArray *bands = [NSMutableArray arrayWithCapacity:lf.nVProcs];
     for (VProc *vp in lf.vProcs)
     {
-	DynamicEvent (*events)[] = vp.events;
+	DynamicEvent *events = (DynamicEvent *) vp.events;
 	for (int i = 0; i < vp.vpId; ++i)
 	{
 	    BandView *band;
-	    EventDesc *desc = desc(events[i]);
+	    EventDesc *desc = description(events[i], nil);
+	    NSLog(@"%@", desc);
 	    Group *g = NULL; // FIXME
-	    if (events[i].timeStamp >= s &&
-	        events[i].timeStamp <= f)
+	    if (events[i].timestamp >= logStart &&
+	        events[i].timestamp <= logEnd)
 		{
 		    switch (g->Kind())
 		    {
 			case EVENT_GROUP:
-			    [band addEvent:&events[i] withColor:groupColor(g)
+			    [band addEvent:&events[i] withColor:[self groupColor:g]
 					   andStart:viewStart + scale * events[i].timestamp];
 			    break;
 			case STATE_GROUP:
-			    [band addState:&events[i] withColor:groupColor(g)
+			    [band addState:&events[i] withColor:[self groupColor:g]
 					   andStart:viewStart + scale * events[i].timestamp];
 			    break;
 			case INTERVAL_GROUP: case DEPENDENT_GROUP:
@@ -52,7 +55,7 @@
     }
 }
 
-- (NSColor *)groupColor(Group *g)
+- (NSColor *)groupColor:(Group *)g
 {
     return [NSColor redColor]; // FIXME
 }
