@@ -22,6 +22,10 @@
 #include "log-file.h"
 #include "crc.h"
 
+/* since LOGBUF_SZ is defined in log-file.h, we have to be tricky */
+static int LogBufSz = LOGBUF_SZ;
+#undef LOGBUF_SZ
+
 /* print the definition of a symbol */
 #define PR_DEFINE(symb, val)							\
 	printf("#define " #symb " %#0lx\n", (uint64_t)val)
@@ -63,6 +67,8 @@ int main ()
     printf ("#ifndef _ASM_OFFSETS_H_\n");
     printf ("#define _ASM_OFFSETS_H_\n");
 
+    printf ("\n#ifdef NOT_C_SOURCE\n");
+
     printf ("\n/* offsets into the VProc_t structure */\n");
 #include "vproc-offsets-ins.c"
 
@@ -70,7 +76,7 @@ int main ()
     PR_VALUE(vpMask, VP_MASK, ~((Addr_t)VP_HEAP_SZB-1));
 
     printf ("\n/* offsets into the log buffer */\n");
-    PR_VALUE(logBufferSzB, LOGBUF_SZB, sizeof(LogBuffer_t));
+    PR_VALUE(logBufferSz, LOGBUF_SZ, LogBufSz);
     PR_OFFSET(logBuffer, LOGBUF_NEXT_OFFSET, next);
     PR_OFFSET(logBuffer, LOGBUF_START_OFFSET, log);
 
@@ -102,10 +108,12 @@ int main ()
     PR_DEFINE(REQ_Sleep, REQ_Sleep);
 
     printf("\n/* common Manticore unboxed values */\n");
+    PR_DEFINE(M_UNIT, M_UNIT);
     PR_DEFINE(M_FALSE, M_FALSE);
     PR_DEFINE(M_TRUE, M_TRUE);
-    PR_DEFINE(M_UNIT, M_UNIT);
     PR_DEFINE(M_NIL, M_NIL);
+
+    printf ("\n#endif /* NOT_C_SOURCE */\n");
 
     printf ("\n/* magic number */\n");
     printf ("#define RUNTIME_MAGIC %#0x\n", CRC32(buf, bp - (char *)buf));

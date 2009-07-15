@@ -17,6 +17,10 @@
 #include "log-file.h"
 #include "crc.h"
 
+/* since LOGBUF_SZ is defined in log-file.h, we have to be tricky */
+static int LogBufSz = LOGBUF_SZ;
+#undef LOGBUF_SZ
+
 /* print the definition of a symbol */
 #define PR_DEFINE(symb, val)							\
 	printf("    val " #symb " : IntInf.int = %#0lx\n", (uint64_t)val)
@@ -67,7 +71,7 @@ int main ()
     PR_VALUE(vpMask, vpMask, ~((Addr_t)VP_HEAP_SZB-1));
 
     printf ("\n  (* offsets into the log buffer *)\n");
-    PR_VALUE(logBufferSzB, logBufferSzB, sizeof(LogBuffer_t));
+    PR_VALUE(logBufferSz, logBufferSz, LogBufSz);
     PR_OFFSET(logBuffer, logBufNext, next);
     PR_OFFSET(logBuffer, logBufLog, log);
 
