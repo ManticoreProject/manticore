@@ -200,11 +200,6 @@ structure Rewrites = struct
     fun productionHasRW (HLRWProduction {rw_opt = SOME rw, ... }) = true
       | productionHasRW _ = false
 
-    (* findProduction() - Find the (supposedly sole) production for the given
-       nonterminal in the grammar. *)
-    fun findProduction (nt, HLRWGrammar prods) =
-        List.find (fn HLRWProduction {name, ...} => compareElt(nt, name) = EQUAL) prods
-
     (* productionToString() - Create a string representation of a RW grammar
        production. *)
     fun productionToString (HLRWProduction {name, rhs, rw_opt}) = let
