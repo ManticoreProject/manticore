@@ -14,6 +14,11 @@
 @interface BandView : NSView {
     /// The MessageView this band should use to display its dependent events
     IBOutlet MessageView *messageView;
+    NSMutableArray *shapes;
+    NSMutableArray *states; //< Necessary because at first we wont know when a state ends
 }
+
+- (void)addEventWithColor:(NSColor *)c andStart:(CGFloat)s;
+- (void)addStateWithColor:(NSColor *)c andStart:(CGFloat)s;
 
 @end

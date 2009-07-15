@@ -9,6 +9,9 @@
 
 @implementation LogView
 
+@synthesize start;
+@synthesize end;
+
 - (id)initWithFrame:(NSRect)frame {
     self = [super initWithFrame:frame];
     if (self) {
@@ -19,6 +22,18 @@
 
 - (void)drawRect:(NSRect)rect {
     // Drawing code here.
+}
+
+- (LogView *)initWithBands:(NSMutableArray *)bands
+{
+    if (![super init])
+	return nil;
+    
+    for (BandView *band in bands)
+    {
+	[splitView addSubview:band];
+    }
+    return self;
 }
 
 @end

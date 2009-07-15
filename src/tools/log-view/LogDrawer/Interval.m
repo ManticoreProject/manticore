@@ -33,8 +33,8 @@
 
 - (Interval *)initWithRect:(NSRect)r
 		     color:(NSColor *)c
-		     start:(event)s
-		       end:(event)e
+		     start:(void *)s
+		       end:(void *)e
 {
 	if (![super init])
 		return nil;

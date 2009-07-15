@@ -7,6 +7,7 @@
 //
 
 #import "BandView.h"
+#import "ShapeRep.h"
 
 
 @implementation BandView
@@ -24,5 +25,15 @@
     [[NSColor greenColor] set];
     [NSBezierPath fillRect:[self visibleRect]];
 }
+
+- (void)addEvent:(void *)e withColor:(NSColor *)c andStart:(CGFloat)s
+{
+    [shapes addObject:[[Singleton alloc] initWithPoint:NSMakePoint(s , y + height / 2) color:c start:e]];
+}
+- (void)addState:(void *)e withColor:(NSColor *)c andStart:(CGFloat)s;
+{
+    [shapes addObject:[[State alloc] initWithRect:NSMakeRect(s, y, end - s, height) color:c start:e]]
+}
+
 
 @end

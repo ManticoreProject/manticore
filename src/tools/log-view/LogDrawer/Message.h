@@ -16,8 +16,8 @@
 	
 	CGFloat lineWidth; //!< Width of the arrow
 	
-	event sender; //!< The event where this message was sent
-	event receiver; //!< The event where this message was received
+	void *sender; //!< The event where this message was sent
+	void *receiver; //!< The event where this message was received
 }
 
 /*!
@@ -35,8 +35,8 @@ NSBezierPath *arrowHead; //!< arrowhead
 ///Initialize
 - (Message *)initArrowFromPoint:(NSPoint)p1
 			toPoint:(NSPoint)p2
-			 sender:(event)s
-		       receiver:(event)r;
+			 sender:(void *)s
+		       receiver:(void *)r;
 ///Initialize
 /*! initialize
  \param p1 the point where the arrow starts
@@ -50,8 +50,8 @@ NSBezierPath *arrowHead; //!< arrowhead
 			toPoint:(NSPoint)p2
 			  color:(NSColor *)c
 		      lineWidth:(CGFloat)w
-			 sender:(event)s
-		       receiver:(event)r;
+			 sender:(void *)s
+		       receiver:(void *)r;
 
 
 /// Determine if a point lies within the area this shape is drawn on

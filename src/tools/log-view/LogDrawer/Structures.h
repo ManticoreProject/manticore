@@ -5,9 +5,10 @@
  *
  */
 
+struct DynamicEvent_struct;
 
 /// Pointer to corresponding event
-typedef void *event;
+typedef struct DynamicEvent_struct event;
 
 /// Structure to represent an interval of time in floating point.
 typedef struct _timeRange {

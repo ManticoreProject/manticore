@@ -7,6 +7,7 @@
 #import <Cocoa/Cocoa.h>
 #import "CustomSplitView.h"
 #import "MessageView.h"
+#import "BandView.h"
 
 
 /// Display a log file
@@ -19,9 +20,13 @@
 @interface LogView : NSView {
     IBOutlet CustomSplitView *splitView; ///< The background view, and the view that contains the BandViews
     IBOutlet MessageView *messageView; ///< The foreground view, and the view that displays dependent events
+    CGFloat start;
+    CGFloat end;
 }
 
+- (LogView *)initWithBands:(NSMutableArray *)bands;
 
-
+@property (readwrite, assign) CGFloat start;
+@property (readwrite, assign) CGFloat end;
 
 @end

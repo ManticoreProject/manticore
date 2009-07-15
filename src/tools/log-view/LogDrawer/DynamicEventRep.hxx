@@ -47,23 +47,10 @@ struct DynamicEvent_struct
      */
     uint64_t timestamp; ///< time stamp (8 bytes)
     struct struct_log_event value; ///< The original event as read from the logfile
-
-    /*
-    // Fields dependent of the group(s) of the DynamicEvent
-    /// the references field contains pointers to events which this event is related to
-    union _DynamicEventReferences_t {
-	struct DynamicEvent_struct *(*dsts)[]; ///< For a Depenedent Event which is a source
-	struct DynamicEvent_struct *src; ///< For a Dependent Event which is a destination
-	struct DynamicEvent_struct *end; ///< For an Interval Event which is a start
-	struct DynamicEvent_struct *start; ///< For an Interval Event which is an end
-	// simple and state events do not have any references
-    } references;
-     */
-    NSMutableArray *references; ///< An array of DynamicReference s
 };
 
 /// The DynamicEvent type is exposed in the interface, but not the DynamitEvent_struct
-typedef DynamicEventClass *DynamicEvent;
+typedef DynamicEvent_struct DynamicEvent;
 
 
 /// The time the event was logged in nanoseconds
@@ -87,7 +74,6 @@ STATIC_INLINE ArgValue getArg(DynamicEvent event, LogFileDesc *desc, int argNum)
 
 #pragma mark References Accessors
 
-typedef Dynamic
 
 /*
  
@@ -115,3 +101,4 @@ STATIC_INLINE DynamicEvent *getRefEnd(DynamicEvent e)
     return e.references.end;
 }
 */
+

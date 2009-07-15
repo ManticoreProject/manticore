@@ -127,50 +127,7 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
 	    dynamicEvent->desc  = desc->FindEventById(logEvent->event);
 
 	    // FIXME what function returns the groups containing desc?
-	    NSArray groups = [[NSArray alloc] init];
-
-	    // Initialize the references field of the dynamicEvent struct
-	    for (Group *group in groups) { switch (group->Kind()) {
-	    	    case EVENT_GROUP: case STATE_GROUP:
-	    	        // Simple and state events don't have meaningful data in their references field
-	    	        break;
-	    	    case INTERVAL_GROUP:
-	    	        assert( desc->GetArgType(0) == EVENT_ID );
-	    	        if (desc == group->Start())
-	    	        {
-	    	    	// XXX Include this dynamicEvent in the map
-	    	        }
-	    	        else if (desc == group->end())
-	    	        {
-			  DynamicEvent *start = NULL; // XXX Lookup the start
-			  [dynamicEvent->references addObject:
-			    
-			  start->references.end = dynamicEvent;
-	    	        }
-	    	        else
-	    	        {
-	    	    	@throw @"Found a static event in an interval group,
-	    	    	but it is not the start or end of the group";
-	    	        }
-	    	        break;
-	    	    case DEPENDENT_GROUP:
-	    	        if (desc == group->Src)
-	    	        {
-	    	    	// Include this dynamicEvent in the map
-	    	        }
-	    	        else if (desc == group->Dst)
-	    	        {
-	    	    	DynamicEvent *src = NULL; // XXX Lookup the source
-	    	    	dynamicEvent->references.src = src;
-	    	    	src->references.dst
-	    	        }
-	    	        else
-	    	        {
-	    	    	@throw @"Found a static event in a dependent group,
-	    	    	but it is not the source or end of the group";
-	    	        }
-	    	        break;
-	    }}
+	    NSArray *groups = [[NSArray alloc] init];
 
 	}
     }

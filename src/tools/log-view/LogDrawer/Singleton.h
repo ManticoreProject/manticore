@@ -11,7 +11,7 @@
 	NSPoint place; //!< point at which to display the diamond
 	NSBezierPath *path; //!< the diamond (a cache of place).
 	
-	event start; //!< The corresponding event
+	void *start; //!< The corresponding event
 }
 
 /// Testing function.  Generates a warining.
@@ -24,7 +24,7 @@
 
  \return the initialized object
  */
-- (Singleton *)initWithPoint:(NSPoint)p color:(NSColor *)c start:(event)s;
+- (Singleton *)initWithPoint:(NSPoint)p color:(NSColor *)c start:(void *)s;
 
 
 @end

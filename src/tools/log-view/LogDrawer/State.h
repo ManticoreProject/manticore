@@ -10,8 +10,8 @@
 @interface State : EventShape {
 	NSRect rect; //!< Rectangle representing the event. Not null.
 	
-	event start; //!< The event corresponding to the begginig of the interval. Not null.
-	event end; //!< The event corresponding to the end of the interval. Not null.
+	void *start; //!< The event corresponding to the begginig of the interval. Not null.
+	void *end; //!< The event corresponding to the end of the interval. Not null.
 }
 
 /// Testing function. Generates a warning.
@@ -26,7 +26,7 @@
 
  \return the initialized object
  */
-- (State *)initWithRect:(NSRect)r color:(NSColor *)c start:(event)s end:(event)e;
+- (State *)initWithRect:(NSRect)r color:(NSColor *)c start:(void *)s;
 
 
 @end

@@ -17,19 +17,18 @@
 - (State *)initWithRect:(NSRect)r
 {
 	NSLog(@" ****\tState:\tBad initialization");
-	return [self initWithRect:r color:DEFAULT_STATE_COLOR start:nil end:nil];
+	return [self initWithRect:r color:DEFAULT_STATE_COLOR start:(void *)nil];
 }
 - (State *)initWithRect:(NSRect)r
 		  color:(NSColor *)c
-		  start:(event)s
-		    end:(event)e
+		  start:(void *)s
 {
 	if (![super init])
 		return nil;
 	rect = r;
 	color = c;
 	start = s;
-	end = e;
+	end = nil;
 	return self;
 }
 

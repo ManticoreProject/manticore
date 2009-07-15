@@ -13,8 +13,8 @@
 	NSRect rect; //!< Rectangle representing the event. Not null.
 	NSBezierPath *roundedRect; //!< Rounded rectangle (a cache of rect). Not null.
 	
-	event start; //!< The event corresponding to the begginig of the interval. Not null.
-	event end; //!< The event corresponding to the end of the interval. Not null.
+	void *start; //!< The event corresponding to the begginig of the interval. Not null.
+	void *end; //!< The event corresponding to the end of the interval. Not null.
 }
 
 /// Testing function.  Implementation prints a warning.
@@ -29,7 +29,7 @@
 
  \return the initialized object
  */
-- (Interval *)initWithRect:(NSRect)r color:(NSColor *)c start:(event)s end:(event)e;
+- (Interval *)initWithRect:(NSRect)r color:(NSColor *)c start:(void *)s end:(void *)e;
 
 
 @end

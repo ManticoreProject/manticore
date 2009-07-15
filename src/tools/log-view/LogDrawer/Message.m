@@ -53,8 +53,8 @@
 
 - (Message *)initArrowFromPoint:(NSPoint)p1
 			toPoint:(NSPoint)p2
-			 sender:(event)s
-		       receiver:(event)r
+			 sender:(void *)s
+		       receiver:(void *)r
 {
 	// Okay initialization. Arrows are assumed to be black
 	return [self initArrowFromPoint:p1
@@ -69,8 +69,8 @@
 			toPoint:(NSPoint)p2
 			  color:(NSColor *)c
 		      lineWidth:(CGFloat)w
-			 sender:(event)s
-		       receiver:(event)r
+			 sender:(void *)s
+		       receiver:(void *)r
 {
 	if (![super init])
 		return nil;
