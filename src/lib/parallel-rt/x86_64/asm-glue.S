@@ -139,7 +139,7 @@ continue_to_c:
 	ret
 
 #ifdef ENABLE_LOGGING
-/* ASM_GetTimeStamp (void *ts)
+/* void ASM_GetTimeStamp (void *ts)
  *
  * Fill in the time stamp using a system-dependent call.
  */
