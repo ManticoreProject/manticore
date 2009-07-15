@@ -212,10 +212,10 @@ structure ArityRaising : sig
             | f ([], [], mergedSig) = mergedSig
 	    | f (ps, [], mergedSig) = if compareRevPath (defaultArgPath, hd ps) = PathEq
                                       then (hd ps)::mergedSig
-                                      else mergedSig
+                                      else List.revAppend(ps, mergedSig)
 	    | f ([], qs, mergedSig) = if compareRevPath (defaultArgPath, hd qs) = PathEq
                                       then (hd qs)::mergedSig
-                                      else mergedSig
+                                      else List.revAppend(qs, mergedSig)
 	  in
 	    List.rev (f (sig1, sig2, []))
 	  end
@@ -278,7 +278,16 @@ structure ArityRaising : sig
                 in
                     case ParamMap.firsti vmap'
                      of SOME(VAR(x), _) => x
-                      | _ => raise Fail ("Signature contains invalid path")
+                      | _ => let
+                            val baseParam = List.nth (origParams, i)
+                            fun findSubtype (i::l, CTy.T_Tuple (_, tys)) =
+                                findSubtype (l, List.nth (tys, i))
+                              | findSubtype (i::l, _) = raise Fail ("Signature contains invalid path")
+                              | findSubtype (_, ty) = ty
+                            val paramType = findSubtype (l, CV.typeOf baseParam)
+                        in
+                            CV.new ("unused", paramType)
+                        end
                 end
     in
         List.map computeParam sign
