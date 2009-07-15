@@ -24,7 +24,7 @@ extern LogFileDesc *LoadLogDesc(const char *, const char *);
 
 void fileError(void)
 {
-    @throw @"LogFile: file error";
+    @throw @"LogFile: file access error";
 }
 
 /// convert a timestamp to nanoseconds
@@ -45,10 +45,10 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
 {
     if (![super init])
 	return nil;
-    
+
     filename = filenameVal;
     size_t LogBufSzB = LOGBLOCK_SZB;
-    
+
     NSFileHandle *f = [NSFileHandle fileHandleForReadingAtPath:filename];
     if (!f)
 	fileError();
@@ -78,23 +78,22 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
     {
 	struct stat st;
 	if (stat([filename cStringUsingEncoding:NSASCIIStringEncoding], &st) < 0)
-	    @throw @"Could not stat the given file";
+	    @throw @"LogFile: could not stat the given file";
 	fileSize = st.st_size;
     }
 
-    // XXX Why can't the log->next field be used here??
-    // And is this - 1 correct?  What if LogBufSzB % sizeof(LogEvent_t) == 0 ?
+    // -1 is to compensate for the fact that the header of the block takes up exactly one
+    // LogEvent_t of data at the beggining of the block
     int NEventsPerBuf = (LogBufSzB / sizeof(LogEvent_t)) - 1;
     int numBufs = (fileSize / LogBufSzB) - 1;
     if (numBufs <= 0)
-	@throw @"There are no buffers in the logfile";
+	@throw @"LogFile: There are no buffers in the logfile";
+    // Maximum number of events in the entire log file
     int MaxNumEvents = NEventsPerBuf * numBufs;
 
     VProc *vProcs_c_array[header->nVProcs];  // To be converted into an NSMutableArray later
     for (int i = 0; i < header->nVProcs; ++i)
 	vProcs_c_array[i] = NULL;
-
-    vProcs = [[NSMutableArray alloc] initWithCapacity:header->nVProcs];
 
     /* read in the events */
     for (int i = 0;  i < numBufs;  i++) {
@@ -107,15 +106,18 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
 	else
 	    cur_vProc = vProcs_c_array[log->vpId];
 
-	// XXX Necessary??? see the XXX above about log->next and NEventsPerBuf.
+	// log->next has and only has exactly one of these two properties:
+	// 1.  log->next is equal to the number of events in this block
+	// 2.  log->next is greater than the number of events in this block, and this block
+	//	contains the maximum number of events that will fit into a block.
 	if (log->next > NEventsPerBuf)
 	    log->next = NEventsPerBuf;
 
 	DynamicEvent (*events)[] = cur_vProc.events = (DynamicEvent (*)[]) malloc(log->next * sizeof(DynamicEvent));
-	// XXX ? Is it correct to think that log->next can be used this way ?
+	// log->next is equal to the number of events in this block of the log
 	int numEvents = cur_vProc.numEvents = log->next;
 	assert (numEvents < MaxNumEvents);
-	for (int j = 0;  j < log->next;  j++) {
+	for (int j = 0;  j < numEvents;  j++) {
 
 	    LogEvent_t *logEvent = &(log->log[j]);
 	    DynamicEvent *dynamicEvent = &(*events)[j];
@@ -123,7 +125,52 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
 	    memcpy(&dynamicEvent->value, logEvent, sizeof(logEvent));
 	    dynamicEvent->timestamp = GetTimestamp(&logEvent->timestamp, header);
 	    dynamicEvent->desc  = desc->FindEventById(logEvent->event);
-	    dynamicEvent->references.src = NULL; // FIXME references must be properly initialized
+
+	    // FIXME what function returns the groups containing desc?
+	    NSArray groups = [[NSArray alloc] init];
+
+	    // Initialize the references field of the dynamicEvent struct
+	    for (Group *group in groups) { switch (group->Kind()) {
+	    	    case EVENT_GROUP: case STATE_GROUP:
+	    	        // Simple and state events don't have meaningful data in their references field
+	    	        break;
+	    	    case INTERVAL_GROUP:
+	    	        assert( desc->GetArgType(0) == EVENT_ID );
+	    	        if (desc == group->Start())
+	    	        {
+	    	    	// XXX Include this dynamicEvent in the map
+	    	        }
+	    	        else if (desc == group->end())
+	    	        {
+			  DynamicEvent *start = NULL; // XXX Lookup the start
+			  [dynamicEvent->references addObject:
+			    
+			  start->references.end = dynamicEvent;
+	    	        }
+	    	        else
+	    	        {
+	    	    	@throw @"Found a static event in an interval group,
+	    	    	but it is not the start or end of the group";
+	    	        }
+	    	        break;
+	    	    case DEPENDENT_GROUP:
+	    	        if (desc == group->Src)
+	    	        {
+	    	    	// Include this dynamicEvent in the map
+	    	        }
+	    	        else if (desc == group->Dst)
+	    	        {
+	    	    	DynamicEvent *src = NULL; // XXX Lookup the source
+	    	    	dynamicEvent->references.src = src;
+	    	    	src->references.dst
+	    	        }
+	    	        else
+	    	        {
+	    	    	@throw @"Found a static event in a dependent group,
+	    	    	but it is not the source or end of the group";
+	    	        }
+	    	        break;
+	    }}
 
 	}
     }
@@ -134,6 +181,8 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
 	if (vProcs_c_array[i] == NULL)
 	    @throw @"Did not find enough vProcs in the log file";
     }
+
+    vProcs = [[NSMutableArray alloc] initWithCapacity:header->nVProcs];
 
     // Convert the vProcs_c_array into vProcs
     for (int i = 0; i < header->nVProcs; ++i)

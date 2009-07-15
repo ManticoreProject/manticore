@@ -11,7 +11,7 @@
  * is defined.
  *
  * The implementation consists of the type DynamicEvent is defined to be, along with the bodies of
- * of the functions.
+ * of the functions, and the implementation of LogFile in LogFile.mm.
  *
  */
 
@@ -31,7 +31,7 @@
  * This structure is not part of the interface to events.
  * It is highly subject to change.  Use the interface in DynamicEventRep.h to interact with events.
  */
-typedef struct DynamicEvent_struct
+struct DynamicEvent_struct
 {
 
     // Fields common to all DynamicEvents
@@ -48,16 +48,23 @@ typedef struct DynamicEvent_struct
     uint64_t timestamp; ///< time stamp (8 bytes)
     struct struct_log_event value; ///< The original event as read from the logfile
 
+    /*
     // Fields dependent of the group(s) of the DynamicEvent
     /// the references field contains pointers to events which this event is related to
     union _DynamicEventReferences_t {
-	struct _DynamicEvent *(*dsts)[]; ///< For a Depenedent Event which is a source
-	struct _DynamicEvent *src; ///< For a Dependent Event which is a destination
-	struct _DynamicEvent *end; ///< For an Interval Event which is a start
-	struct _DynamicEvent *start; ///< For an Interval Event which is an end
+	struct DynamicEvent_struct *(*dsts)[]; ///< For a Depenedent Event which is a source
+	struct DynamicEvent_struct *src; ///< For a Dependent Event which is a destination
+	struct DynamicEvent_struct *end; ///< For an Interval Event which is a start
+	struct DynamicEvent_struct *start; ///< For an Interval Event which is an end
 	// simple and state events do not have any references
     } references;
-} DynamicEvent;
+     */
+    NSMutableArray *references; ///< An array of DynamicReference s
+};
+
+/// The DynamicEvent type is exposed in the interface, but not the DynamitEvent_struct
+typedef DynamicEventClass *DynamicEvent;
+
 
 /// The time the event was logged in nanoseconds
 STATIC_INLINE uint64_t timeStamp(DynamicEvent event, LogFileDesc *desc)
@@ -76,3 +83,35 @@ STATIC_INLINE ArgValue getArg(DynamicEvent event, LogFileDesc *desc, int argNum)
 {
     return event.desc->GetArg(&event.value, argNum);
 }
+
+
+#pragma mark References Accessors
+
+typedef Dynamic
+
+/*
+ 
+/// Get this event's destinations.  The event must be a message source event.
+STATIC_INLINE DynamicEvent **getRefDsts(DynamicEvent e)
+{
+    return (DynamicEvent **) (e.references.dsts);
+}
+
+/// Get this event's source.  The event must be a message destination event.
+STATIC_INLINE DynamicEvent *getRefSrc(DynamicEvent e)
+{
+    return e.references.src;
+}
+
+/// Get this event's start.  The event must be an interval end event.
+STATIC_INLINE DynamicEvent *getRefStart(DynamicEvent e)
+{
+    return e.references.start;
+}
+
+/// Get this event's end.  The event must be a interval start event.
+STATIC_INLINE DynamicEvent *getRefEnd(DynamicEvent e)
+{
+    return e.references.end;
+}
+*/
