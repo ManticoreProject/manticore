@@ -72,9 +72,7 @@ structure GenLoggingPML : GENERATOR =
 	    genParams (args, 0);
 	    prl [") : ", if isSource then "long" else "()", " =\n"];
 	    pr "\
-	      \\t    let ep : addr(any) = @NextLogEvent(vp)\n\
-	      \\t    do @LogTimestamp (ep)\n\
-	      \\t    do AdrStoreI32(AdrAdd32(ep, %d), evt)\n\
+	      \\t    let ep : addr(any) = @NewEvent(vp, evt)\n\
 	      \";
 	    genCopy (args, 0);
 	    if isSource
