@@ -24,7 +24,7 @@ extern LogFileDesc *LoadLogDesc(const char *, const char *);
 
 void fileError(void)
 {
-    exit(1);
+    @throw @"LogFile: file error";
 }
 
 /// convert a timestamp to nanoseconds
@@ -147,8 +147,11 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
 	 andEventDescFilename:(NSString *)eventDesc
 	   andLogDescFilename:(NSString *)logDesc
 {
+    LogFileDesc *desc = LoadLogDesc([logDesc UTF8String], [eventDesc UTF8String]);
+    if (desc == NULL)
+	@throw @"Could not load the two log description files";
     return [self initWithFilename:filenameVal
-		   andLogFileDesc:LoadLogDesc([logDesc UTF8String], [eventDesc UTF8String])];
+		   andLogFileDesc:desc];
 }
 
 
@@ -208,5 +211,23 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
 {
     return header->nCPUs;
 }
+
+#pragma mark Description
+
+- (NSString *)description
+{
+    NSMutableString *ret = [NSMutableString stringWithFormat:
+	@"<<< LogFile object: version (%d,%d,%d), CPUs: %d, nVProcs: %d, bufSize %d, headerSize %d\n \tvProcs:\n", self.majorVersion, self.minorVersion, self.patchVersion,
+	  self.nCPUs, self.nVProcs, self.bufSzB, self.hdrSzB];
+    NSLog(ret);
+    for (VProc *vp in vProcs)
+    {
+	[ret appendString:@"\t\t"];
+	[ret appendString:[vp description]];
+    }
+    [ret appendString:@" >>>\n"];
+    return ret;
+}
+
 
 @end
