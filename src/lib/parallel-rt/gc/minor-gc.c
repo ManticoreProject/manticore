@@ -95,7 +95,7 @@ void MinorGC (VProc_t *vp)
     *rp++ = &(vp->rdyQTl);
     *rp++ = &(vp->landingPad);
     *rp++ = &(vp->stdEnvPtr);
-    rp = M_AddDequeEltsToRoots(vp, rp);
+    rp = M_AddDequeEltsToLocalRoots(vp, rp);
     *rp++ = 0;
 
 #ifndef NDEBUG

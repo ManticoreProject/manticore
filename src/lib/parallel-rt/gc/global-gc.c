@@ -17,6 +17,7 @@
 #include "atomic-ops.h"
 #include "bibop.h"
 #include "inline-log.h"
+#include "work-stealing-deque.h"
 
 static Mutex_t		GCLock;		// Lock that protects the following variables:
 static Cond_t		LeaderWait;	// The leader waits on this for the followers
@@ -275,6 +276,9 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 static void GlobalGC (VProc_t *vp, Value_t **roots)
 {
     LogGlobalGCVPStart (vp);
+
+  /* collect roots that were pruned away from the minor collector's root set */
+    roots = M_AddDequeEltsToGlobalRoots(vp, roots);
 
   /* scan the vproc's roots */
     for (int i = 0;  roots[i] != 0;  i++) {

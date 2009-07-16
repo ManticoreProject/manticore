@@ -10,6 +10,8 @@
  */
 
 #include "work-stealing-deque.h"
+#include "internal-heap.h"
+#include "bibop.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -154,21 +156,58 @@ static int MoveLeft (int i, int sz)
     return i - 1;
 }
 
-/* \brief add the deque elements to the root set 
+/* \brief add the deque elements to the root set to be used by a minor collection
  * \param self the host vproc
  * \param rootPtr pointer to the root set
  * \return the updated root set
  */
-Value_t **M_AddDequeEltsToRoots (VProc_t *self, Value_t **rootPtr)
+Value_t **M_AddDequeEltsToLocalRoots (VProc_t *self, Value_t **rootPtr)
 {
   for (WorkGroupList_t *wgList = PerVProcLists[self->id]; wgList != NULL; wgList = wgList->next) {
     for (DequeList_t *deques = wgList->deques; deques != NULL; deques = deques->next) {
       Deque_t *deque = deques->deque;
       // iterate through the deque in the direction going from the new to the old end
-      for (int i = deque->new; i != deque->old; i = MoveLeft (i, deque->maxSz))
-	// i points one element to right of the element we want, j
-	if (deque->elts[MoveLeft (i, deque->maxSz)] != M_NIL)
-	  *rootPtr++ = &(deque->elts[MoveLeft (i, deque->maxSz)]);
+      for (int i = deque->new; i != deque->old; i = MoveLeft (i, deque->maxSz)) {
+	int j = MoveLeft (i, deque->maxSz); 
+                  // i points one element to right of the element we want to scan
+	if (deque->elts[j] != M_NIL)
+	  if (IS_VPROC_CHUNK(AddrToChunk(ValueToAddr(deque->elts[j]))->sts))
+	    // the jth element is in the local heap
+	    *rootPtr++ = &(deque->elts[j]);
+	  else
+	    /* the jth element must be in the global heap, so we do not need to add it
+	     * to the root set. elements to the right of the jth position must also be
+	     * in the global heap, so it is safe to return the current root set. this
+	     * property always holds for two reasons:
+	     *   1. new elements can only be inserted at the new (rightmost) end of the deque
+	     *   2. elements are not explicitly promoted when inserted into the deque
+	     */
+	    return rootPtr;
+      }	    
+    }
+  }
+  return rootPtr;
+}
+
+/* \brief add the deque elements to the root set to be used by a global collection
+ * \param self the host vproc
+ * \param rootPtr pointer to the root set
+ * \return the updated root set
+ */
+Value_t **M_AddDequeEltsToGlobalRoots (VProc_t *self, Value_t **rootPtr)
+{
+  for (WorkGroupList_t *wgList = PerVProcLists[self->id]; wgList != NULL; wgList = wgList->next) {
+    for (DequeList_t *deques = wgList->deques; deques != NULL; deques = deques->next) {
+      Deque_t *deque = deques->deque;
+      // iterate through the deque in the direction going from the new to the old end
+      for (int i = deque->new; i != deque->old; i = MoveLeft (i, deque->maxSz)) {
+	int j = MoveLeft (i, deque->maxSz); 
+                  // i points one element to right of the element we want to scan
+	if (deque->elts[j] != M_NIL)
+	  if (!IS_VPROC_CHUNK(AddrToChunk(ValueToAddr(deque->elts[j]))->sts))
+	    // the jth element is in the local heap
+	    *rootPtr++ = &(deque->elts[j]);
+      }	    
     }
   }
   return rootPtr;

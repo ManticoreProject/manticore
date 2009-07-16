@@ -42,12 +42,19 @@ Value_t M_DequeAlloc (VProc_t *self, uint64_t workGroupId, int32_t size);
  */
 int M_NumDequeRoots (VProc_t *self);
 
-/* \brief add the deque elements to the root set
+/* \brief add the deque elements to the root set to be used by a minor collection
  * \param self the host vproc
- * \param rootPtr the root pointer
- * \return the updated root pointer
+ * \param rootPtr pointer to the root set
+ * \return the updated root set
  */
-Value_t **M_AddDequeEltsToRoots (VProc_t *self, Value_t **rootPtr);
+Value_t **M_AddDequeEltsToLocalRoots (VProc_t *self, Value_t **rootPtr);
+
+/* \brief add the deque elements to the root set to be used by a global collection
+ * \param self the host vproc
+ * \param rootPtr pointer to the root set
+ * \return the updated root set
+ */
+Value_t **M_AddDequeEltsToGlobalRoots (VProc_t *self, Value_t **rootPtr);
 
 /* \brief returns a list of all deques on the host vproc corresponding to the given work group
  * \param self the host vproc
