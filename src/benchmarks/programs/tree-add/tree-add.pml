@@ -42,4 +42,4 @@ fun bench () = let
       Print.print(Long.toString t)
     end
 
-val _ = ImplicitThread.runWithGroup(SwpWorkStealing.workGroup(), bench)
+val _ = ImplicitThread.runOnWorkGroup(WorkStealing.workGroup(), bench)
