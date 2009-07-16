@@ -72,7 +72,11 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
 	// reset input file pointer
 	[f seekToFileOffset:LogBufSzB];
     }
-
+    
+    // We will continue to adjust lastTime and firstTime when we find new events
+    lastTime = start = GetTimestamp(&header->startTime, header);
+    firstTime = - 1;  //< The largest possible uint64_t
+    
     // get the file size
     off_t fileSize;
     {
@@ -101,34 +105,59 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
 	LogBuffer_t *log = (LogBuffer_t *) [[f readDataOfLength:LogBufSzB] bytes];
 	assert (log->vpId < header->nVProcs);
 
-	if (vProcs_c_array[log->vpId] == NULL)
-	    cur_vProc = vProcs_c_array[log->vpId] = [[VProc alloc] initWithVpId:log->vpId];
-	else
-	    cur_vProc = vProcs_c_array[log->vpId];
-
 	// log->next has and only has exactly one of these two properties:
 	// 1.  log->next is equal to the number of events in this block
 	// 2.  log->next is greater than the number of events in this block, and this block
 	//	contains the maximum number of events that will fit into a block.
 	if (log->next > NEventsPerBuf)
-	    log->next = NEventsPerBuf;
+	    log->next = NEventsPerBuf;	
+	DynamicEvent (*events)[];
+	// log->next is now equal to the number of events in this block of the log
+	int numEventsInBlock = log->next;
+	assert (numEventsInBlock < MaxNumEvents);
+	
+	// This will be initialized to the index of the first spot
+	// in the events array which does not have an event in it
+	int firstFreeEvent;
+	
+	if (vProcs_c_array[log->vpId] == NULL)
+	{
+	    // This vProc does not yet exist, create it, and initialize it for this block
+	    cur_vProc = vProcs_c_array[log->vpId] = [[VProc alloc] initWithVpId:log->vpId];
+	    
+	    firstFreeEvent = 0;
+	    events = cur_vProc.events =
+		(DynamicEvent (*)[]) malloc(numEventsInBlock * sizeof(DynamicEvent));
+	    cur_vProc.numEvents = numEventsInBlock;
+	}
+	else {
+	    // This vProc exists, but its events, and numEvents fields must
+	    // be modified to accomodate the block we are now reading in
+	    cur_vProc = vProcs_c_array[log->vpId];
+	    firstFreeEvent = cur_vProc.numEvents;
+	    cur_vProc.numEvents += numEventsInBlock;
+	    events = cur_vProc.events = (DynamicEvent (*)[])
+	      realloc(cur_vProc.events, sizeof(DynamicEvent) * cur_vProc.numEvents);
+	}
 
-	DynamicEvent (*events)[] = cur_vProc.events = (DynamicEvent (*)[]) malloc(log->next * sizeof(DynamicEvent));
-	// log->next is equal to the number of events in this block of the log
-	int numEvents = cur_vProc.numEvents = log->next;
-	assert (numEvents < MaxNumEvents);
-	for (int j = 0;  j < numEvents;  j++) {
+	// Add each event to the events array
+	for (int j = 0;  j < numEventsInBlock;  j++) {
 
 	    LogEvent_t *logEvent = &(log->log[j]);
-	    DynamicEvent *dynamicEvent = &(*events)[j];
+	    DynamicEvent *dynamicEvent = &(*events)[j + firstFreeEvent];
 
 	    memcpy(&dynamicEvent->value, logEvent, sizeof(logEvent));
 	    dynamicEvent->timestamp = GetTimestamp(&logEvent->timestamp, header);
 	    dynamicEvent->desc  = desc->FindEventById(logEvent->event);
 
-	    // FIXME what function returns the groups containing desc?
-	    NSArray *groups = [[NSArray alloc] init];
-
+	    if (dynamicEvent->timestamp > lastTime)
+		lastTime = dynamicEvent->timestamp;
+	    if (dynamicEvent->timestamp < firstTime)
+	    {
+		firstTime = dynamicEvent->timestamp;
+		NSLog(@"LogFile set firstTime to %qu", firstTime);
+	    }
+	    // FIXME initialize references
 	}
     }
 
@@ -164,6 +193,19 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
 
 @synthesize filename;
 @synthesize vProcs;
+
+- (uint64_t)start
+{
+    return start;
+}
+- (uint64_t)firstTime
+{
+    return firstTime;
+}
+- (uint64_t)lastTime
+{
+    return lastTime;
+}
 
 
 #pragma mark fields of header

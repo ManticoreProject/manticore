@@ -18,11 +18,6 @@ struct Group;
 
 - (NSColor *)groupColor:(struct Group *)g;
 
-- (void)fillLogView:(LogView *)lv
-	withLogFile:(LogFile *)lf
-	fromTime:(uint64_t)s
-	toTime:(uint64_t)f;
-
 - (IBAction)test:(id)sender;
 
 @end

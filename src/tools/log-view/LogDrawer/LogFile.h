@@ -6,7 +6,6 @@
  */
 
 #import <Cocoa/Cocoa.h>
-#import "LogView.h"
 struct _LogFileHeader_t;
 struct LogFileDesc;
 
@@ -23,6 +22,10 @@ struct LogFileDesc;
     // things already found in the header
     // They must therefore be properly initialized when file is read
 
+    uint64_t start;
+    uint64_t firstTime;
+    uint64_t lastTime;
+    
     NSString *date; ///< Cache of header.date is string format as reported by ctime(3)
     NSString *clockName; ///< Cache of header.clockName
     
@@ -47,6 +50,13 @@ struct LogFileDesc;
 - (LogFile *)initWithFilename:(NSString *)filename
 	 andEventDescFilename:(NSString *)eventDesc
 	   andLogDescFilename:(NSString *)logDesc;
+
+/// The start time of the log file
+- (uint64_t)start;
+/// The time the first event was logged, meaningless if there are no events
+- (uint64_t)firstTime;
+/// The time the last event was logged, meaningless if there are no events
+- (uint64_t)lastTime;
 
 @property (readonly) NSString	*filename;
 @property (readonly) NSMutableArray *vProcs;

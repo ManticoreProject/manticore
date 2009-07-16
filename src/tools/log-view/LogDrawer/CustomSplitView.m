@@ -21,7 +21,7 @@
 }
 
 - (void)drawRect:(NSRect)rect {
-    // Drawing code here.
+    NSLog(@"CustomSplitView is drawing a rectangle");
 }
 
 

@@ -21,7 +21,7 @@
 		52E7962610065AC80031A217 /* Singleton.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E7961110065AC70031A217 /* Singleton.m */; };
 		52E7962710065AC80031A217 /* Message.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E7961410065AC70031A217 /* Message.m */; };
 		52E7962810065AC80031A217 /* Structures.c in Sources */ = {isa = PBXBuildFile; fileRef = 52E7961710065AC70031A217 /* Structures.c */; };
-		52E7962910065AC80031A217 /* LogView.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E7961A10065AC70031A217 /* LogView.m */; };
+		52E7962910065AC80031A217 /* LogView.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52E7961A10065AC70031A217 /* LogView.mm */; };
 		52E7962A10065AC80031A217 /* MessageView.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E7961C10065AC70031A217 /* MessageView.m */; };
 		52E7962B10065AC80031A217 /* BandView.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E7961E10065AC70031A217 /* BandView.m */; };
 		52E7962C10065AC80031A217 /* Utils.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E7962110065AC80031A217 /* Utils.m */; };
@@ -76,7 +76,7 @@
 		52E7961610065AC70031A217 /* Structures.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Structures.h; sourceTree = "<group>"; };
 		52E7961710065AC70031A217 /* Structures.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = Structures.c; sourceTree = "<group>"; };
 		52E7961910065AC70031A217 /* LogView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LogView.h; sourceTree = "<group>"; };
-		52E7961A10065AC70031A217 /* LogView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = LogView.m; sourceTree = "<group>"; };
+		52E7961A10065AC70031A217 /* LogView.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = LogView.mm; sourceTree = "<group>"; };
 		52E7961B10065AC70031A217 /* MessageView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MessageView.h; sourceTree = "<group>"; };
 		52E7961C10065AC70031A217 /* MessageView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MessageView.m; sourceTree = "<group>"; };
 		52E7961D10065AC70031A217 /* BandView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BandView.h; sourceTree = "<group>"; };
@@ -321,7 +321,7 @@
 			isa = PBXGroup;
 			children = (
 				52E7961910065AC70031A217 /* LogView.h */,
-				52E7961A10065AC70031A217 /* LogView.m */,
+				52E7961A10065AC70031A217 /* LogView.mm */,
 				52E79CF8100B8F4C0031A217 /* Background */,
 				52E79CF9100B8F5B0031A217 /* Foreground */,
 			);
@@ -534,7 +534,7 @@
 				52E7962610065AC80031A217 /* Singleton.m in Sources */,
 				52E7962710065AC80031A217 /* Message.m in Sources */,
 				52E7962810065AC80031A217 /* Structures.c in Sources */,
-				52E7962910065AC80031A217 /* LogView.m in Sources */,
+				52E7962910065AC80031A217 /* LogView.mm in Sources */,
 				52E7962A10065AC80031A217 /* MessageView.m in Sources */,
 				52E7962B10065AC80031A217 /* BandView.m in Sources */,
 				52E7962C10065AC80031A217 /* Utils.m in Sources */,

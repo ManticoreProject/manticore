@@ -16,69 +16,26 @@
 
 @implementation AppController
 
-- (void)fillLogView:(LogView *)lv
-	withLogFile:(LogFile *)lf
-	fromTime:(uint64_t)logStart
-	toTime:(uint64_t)logEnd
-{
-    CGFloat viewStart = lv.start;
-    CGFloat viewEnd = lv.end;
-    double scale = (viewStart - viewEnd) / (logStart - logEnd);
-    NSRect logViewBounds = [lv bounds];
 
-    NSMutableArray *bands = [NSMutableArray arrayWithCapacity:lf.nVProcs];
-    int v = 0;
-    for (VProc *vp in lf.vProcs)
-    {
-	DynamicEvent *events = (DynamicEvent *) vp.events;
-	NSRect curFrame = NSMakeRect(logViewBounds.origin.x, v * BAND_HEIGHT,
-				     logViewBounds.size.width, BAND_HEIGHT);
-        BandView *band = [[BandView alloc] initWithFrame:curFrame];
-	for (int i = 0; i < vp.numEvents; ++i)
-	{
-	    NSLog(@"adding a band for VProc with vpId %d", i);
-	    EventDesc *desc = description(events[i], nil);
-	    
-	    // NSLog(@"%@", desc);
-	    Group *g = NULL; // FIXME
-	    if (events[i].timestamp >= logStart &&
-	        events[i].timestamp <= logEnd)
-		{/*
-		    switch (g->Kind())
-		    {
-			case EVENT_GROUP:
-			    [band addEvent:&events[i] withColor:[self groupColor:g]
-					   andStart:viewStart + scale * events[i].timestamp];
-			    break;
-			case STATE_GROUP: */
-			    [band addState:&events[i] withColor:[self groupColor:g]
-					   andStart:viewStart + scale * events[i].timestamp];
-			    /*break;
-			case INTERVAL_GROUP: case DEPENDENT_GROUP:
-			// not handling these cases
-			    break;
-		    } */
-		}
-	}
-        [bands addObject:band];
-	++v;
-    }
-    [lv acquireBands:bands];
-    [lv setNeedsDisplay:YES];
-}
 
 - (NSColor *)groupColor:(Group *)g
 {
     return [NSColor redColor]; // FIXME
 }
 
+
+
 - (IBAction)test:(id)sender
 {
+    uint64_t fraction = 800; //< The number of times what we will display can fit into the whole log
     NSString *root = @"/Users/koreiklein/workspace/manticore/trunk/src/tools/log-view/LogDrawer/";
     LogFile *lf = [[LogFile alloc] initWithFilename:[root stringByAppendingString:@"fib.mlg"]
 		 andEventDescFilename:[root stringByAppendingString:@"event-view.json"]
 		   andLogDescFilename:[root stringByAppendingString:@"log-events.json"]];
-    [self fillLogView:logView withLogFile:lf fromTime:0 toTime:2021168108];
+    uint64_t ft = [lf firstTime];
+    uint64_t lt = [lf lastTime];
+    [logView setStart:lt - (lt - ft) / fraction andEnd:lt];
+    [logView setLogFile:lf];
 }
 
 

@@ -22,6 +22,8 @@
 }
 
 - (void)drawRect:(NSRect)rect {
+    [[NSColor greenColor] set];
+    [NSBezierPath fillRect:[self visibleRect]];
     NSLog(@"BandView is drawing shapes");
     for (EventShape *e in shapes)
     {

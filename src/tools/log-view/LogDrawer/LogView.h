@@ -8,6 +8,7 @@
 #import "CustomSplitView.h"
 #import "MessageView.h"
 #import "BandView.h"
+#import "LogFile.h"
 
 
 /// Display a log file
@@ -20,13 +21,16 @@
 @interface LogView : NSView {
     IBOutlet CustomSplitView *splitView; ///< The background view, and the view that contains the BandViews
     IBOutlet MessageView *messageView; ///< The foreground view, and the view that displays dependent events
-    CGFloat start;
-    CGFloat end;
+    uint64_t logStart;
+    uint64_t logEnd;
+    LogFile *logFile;
 }
 
-- (void)acquireBands:(NSMutableArray *)bands;
+@property (readwrite, assign) uint64_t logStart;
+@property (readwrite, assign) uint64_t logEnd;
 
-@property (readwrite, assign) CGFloat start;
-@property (readwrite, assign) CGFloat end;
+- (void)setLogFile:(LogFile *)logFileVal;
+
+- (void)setStart:(uint64_t)startVal andEnd:(uint64_t)endVal;
 
 @end
