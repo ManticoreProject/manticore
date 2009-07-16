@@ -94,6 +94,8 @@ class StateGroup : public Group {
 
     const char *StateName (int i) const	{ return this->_stateNames.at(i); }
 
+    std::vector<EventDesc *> Events() const { return this->_events; }
+
   protected:
     StateGroup (const char *desc, int nStates, int nTransitions);
 
@@ -103,7 +105,8 @@ class StateGroup : public Group {
   private:
     int				_start;		//!< the initial state
     std::vector<const char *>	_stateNames;	//!< the state names
-    std::vector<StateTransition> _transitions;
+    std::vector<StateTransition> _transitions;	//!< the transition table
+    std::vector<EventDesc *>	_events;	//!< the events in the group
 
     friend class LogFileDescLoader;
 
@@ -147,11 +150,13 @@ class DependentGroup : public Group {
 
 };
 
-//! \brief abstract virtual class for traversing the event hierarchy
+//! \brief abstract virtual class for traversing the group hierarchy
 class LogDescVisitor {
   public:
     virtual void VisitGroup (EventGroup *grp) = 0;
-    virtual void VisitEvent (EventDesc *evt) = 0;
+    virtual void VisitStateGroup (StateGroup *grp) = 0;
+    virtual void VisitIntervalGroup (IntervalGroup *grp) = 0;
+    virtual void VisitDependentGroup (DependentGroup *grp) = 0;
 };
 
 /*! \brief the description of a log file.  This class combines the

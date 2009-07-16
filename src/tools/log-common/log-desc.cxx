@@ -71,7 +71,8 @@ void EventGroup::AddGroup (int i, Group *item)
 StateGroup::StateGroup (const char *desc, int nStates, int nTransitions)
     : Group (desc, STATE_GROUP),
 	_stateNames(nStates, (const char *)0),
-	_transitions(nTransitions, StateTransition())
+	_transitions(nTransitions, StateTransition()),
+	_events()
 {
 }
 
@@ -105,6 +106,17 @@ void StateGroup::AddTransition (int i, EventDesc *evt, const char *st)
   // then add the transition info
     this->_transitions.at(i)._event = evt;
     this->_transitions.at(i)._nextState = state;
+
+  // look for evt in the _events vector
+    for (std::vector<EventDesc *>::iterator iter = this->_events.begin();
+	iter < this->_events.end();  iter++
+    ) {
+	if ((*iter)->Id() == evt->Id())
+	    return; /* evt is already in the _events vector */
+    }
+
+  // if we get here, then evt should be added to the _events vector
+    this->_events.push_back(evt);
 
 }
 
@@ -182,8 +194,52 @@ std::vector<DependentGroup *> *LogFileDesc::DependentGroups (EventDesc *ed) cons
 	return 0;
 }
 
+/* add a group to a group vector */
+template <class T>
+static void AddGroup (std::vector<T *> *&v, T *g)
+{
+    if (v == 0)
+	v = new std::vector<T *>(1, g);
+    else
+	v->push_back(g);
+}
+
 void LogFileDesc::_InitEventInfo ()
 {
+    class Visitor : public LogDescVisitor {
+      public:
+	Visitor (LogFileDesc *ld, EventGrpInfo **info) : _logFile(ld), _info(info) { }
+
+	void VisitGroup (EventGroup *) { }
+	void VisitStateGroup (StateGroup *grp)
+	{
+	    std::vector<EventDesc *>::iterator iter;
+	    std::vector<EventDesc *> evts = grp->Events();
+	    for (std::vector<EventDesc *>::iterator iter = evts.begin();  iter < evts.end();  iter++) {
+		EventDesc *ed = *iter;
+		AddGroup<StateGroup> (this->_info[ed->Id()]->stateGrps, grp);
+	    }
+	}
+	void VisitIntervalGroup (IntervalGroup *grp)
+	{
+	    int id = grp->Start()->Id();
+	    AddGroup<IntervalGroup> (this->_info[id]->intervalGrps, grp);
+	    id = grp->End()->Id();
+	    AddGroup<IntervalGroup> (this->_info[id]->intervalGrps, grp);
+	}
+	void VisitDependentGroup (DependentGroup *grp)
+	{
+	    int id = grp->Src()->Id();
+	    AddGroup<DependentGroup> (this->_info[id]->dependentGrps, grp);
+	    id = grp->Dst()->Id();
+	    AddGroup<DependentGroup> (this->_info[id]->dependentGrps, grp);
+	}
+      private:
+	EventGrpInfo **_info;
+	LogFileDesc *_logFile;
+
+    };
+
     this->_info = new EventGrpInfo*[this->_events->size()];
     for (int i = 0;  i < this->_events->size();  i++) {
 	if (this->_events->at(i)->isSimpleEvent())
@@ -196,7 +252,8 @@ void LogFileDesc::_InitEventInfo ()
 	}
     }
 
-/* FIXME: walk the group tree to record the info */
+    Visitor v(this, this->_info);
+    this->PreOrderWalk (&v);
 
 }
 
@@ -224,7 +281,6 @@ typedef std::stack<StkNode> Stack_t;
 //! node.
 void LogFileDesc::PreOrderWalk (LogDescVisitor *visitor)
 {
-#ifdef FIXME
     Stack_t stk;
 
     visitor->VisitGroup (this->_root);
@@ -234,17 +290,26 @@ void LogFileDesc::PreOrderWalk (LogDescVisitor *visitor)
 	if (p == 0) {
 	    stk.pop();
 	}
-	else {
-	    EventGroup *grp = dynamic_cast<EventGroup *>(p);
-	    if (grp != 0) {
+	else switch (p->Kind()) {
+	  case EVENT_GROUP: {
+		EventGroup *grp = reinterpret_cast<EventGroup *>(p);
 		visitor->VisitGroup (grp);
 		stk.push (StkNode(grp));
-   	    }
-	    else
-		visitor->VisitEvent (static_cast<EventDesc *>(p));
+	    } break;
+	  case STATE_GROUP: {
+		StateGroup *grp = reinterpret_cast<StateGroup *>(p);
+		visitor->VisitStateGroup (grp);
+	    } break;
+	  case INTERVAL_GROUP: {
+		IntervalGroup *grp = reinterpret_cast<IntervalGroup *>(p);
+		visitor->VisitIntervalGroup (grp);
+	    } break;
+	  case DEPENDENT_GROUP: {
+		DependentGroup *grp = reinterpret_cast<DependentGroup *>(p);
+		visitor->VisitDependentGroup (grp);
+	    } break;
 	}
     }
-#endif
 }
 
 //! \brief do a post-order traversal of the event hierarchy, calling the visitor methods at each
