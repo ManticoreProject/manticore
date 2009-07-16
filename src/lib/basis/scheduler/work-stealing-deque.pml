@@ -68,7 +68,7 @@ structure WorkStealingDeque (* :
      * For compactness, we represent deques as circular buffers. There are two pointers into this buffer:
      * "old" and "new". The old pointer points to the oldest element on the deque and new points to the 
      * newest. Our convention is that old points to the leftmost element and new points to the rightmost
-     * element.
+     * element. In other words, elements increase in age going from right to left.
      *
      * To distinguish whether the deque is empty or full, we always keep one deque entry open, which means
      * that we waste a word of memory for each deque. 
