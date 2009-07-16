@@ -5,7 +5,7 @@
  *
  * Driver for scripts.
  * The command line script "run-tests" has the following options:
- *   -m FILE the path to mc (default is "mc" and assumes it's in the path)
+ *   -m FILE the path to pmlc (default is "pmlc" and assumes it's in the path)
  *   -c FILE a local copy to write the HTML to in addition to ../reports/current/results.html 
  *)
 
@@ -14,7 +14,7 @@ structure Main = struct
   structure G = GetOpt
   structure U = Utils
   structure L = Locations
-  structure R  = RunTestsFn(MC)
+  structure R  = RunTestsFn(PMLC)
 
   fun println s = (print s; print "\n")
 
@@ -35,22 +35,22 @@ structure Main = struct
     println "  options:";
     println "    -c <file> (specify local copy of html results)";
     println "    -d <dir>  (only test this specified goal directory)";
-    println "    -m <path> (specify location of mc)"; 
+    println "    -m <path> (specify location of pmlc)"; 
     raise Fail (case optMsg of SOME msg => msg | NONE => ""))
 
 (* main : string * string list -> OS.Process.status *)
 (* Run the tests and generate HTML reports for all named files. *)
   fun main (progname, args) = let
     (* infrastructure for command-line options, including some local state *)
-    val mcPath = ref "mc"
+    val pmlcPath = ref "pmlc"
     val htdocs = ref [L.defaultRpt]
     val oneDir = (ref NONE) : string option ref
-    fun noteMC path = (mcPath := path; path)
+    fun notePMLC path = (pmlcPath := path; path)
     fun noteLocal path = (htdocs := (!htdocs)@[path]; path)
     fun noteDir d = (oneDir := SOME d; d)
     fun mkOpt (s, l, act, h) = {short=s, long=[l], desc=G.ReqArg(act,"FILE"), help=h}
     val opts = [
-      mkOpt ("m", "mc", noteMC, "mc path"),
+      mkOpt ("m", "pmlc", notePMLC, "pmlc path"),
       mkOpt ("c", "local-copy", noteLocal, "local copy of html output"),
       mkOpt ("d", "directory", noteDir, "directory")
     ]
@@ -58,7 +58,7 @@ structure Main = struct
     val (opts, nonOpts) = G.getOpt {argOrder=G.RequireOrder, options=opts, errFn=failWith} args
 	                  handle Fail s => (usage (SOME s))
     (* run the report and generate HTML *)
-    val _ = MC.setCompilerPath (!mcPath)
+    val _ = PMLC.setCompilerPath (!pmlcPath)
     val _ = println "running tests..."
     val rpt = R.run (!oneDir)
     in

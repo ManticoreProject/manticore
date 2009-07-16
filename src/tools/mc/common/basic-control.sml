@@ -3,7 +3,7 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu/)
  * All rights reserved.
  *
- * Basic controls for the mc compiler.
+ * Basic controls for the pmlc compiler.
  *)
 
 structure BasicControl :  sig
@@ -87,7 +87,7 @@ structure BasicControl :  sig
 
   end = struct
 
-    val topRegistry = ControlRegistry.new {help = "mc controls"}
+    val topRegistry = ControlRegistry.new {help = "pmlc controls"}
 
     fun nest (prefix, reg, pri) = ControlRegistry.nest topRegistry {
 	    prefix = SOME prefix,

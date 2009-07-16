@@ -398,7 +398,7 @@ typedef struct manticore_value *Value_t;
 
 dnl for the benchmark programs, we need the path to the PML compiler
 dnl
-PMLC=$MANTICORE_BINDIR/mc
+PMLC=$MANTICORE_BINDIR/pmlc
 AC_SUBST(PMLC)
 
 dnl for the benchmark programs, we need the path to the MLton compiler

@@ -192,7 +192,7 @@ functor MainFn (
     fun version () = (errnl Version.banner; quit true)
 
     val usageMsg = "\
-	  \usage: mc [options] file\n\
+	  \usage: pmlc [options] file\n\
           \\n\
           \  file:\n\
           \    <file>.pml\n\

@@ -4,7 +4,7 @@ Group
   structure Locations
   structure Utils
   signature COMPILER
-  structure MC
+  structure PMLC
   structure OCaml
   structure Tests
   functor   RunTestsFn
@@ -22,7 +22,7 @@ is
   locations.sml
   utils.sml  
   compiler.sig
-  mc.sml
+  pmlc.sml
   ocaml.sml
   tests.sml
   run-tests-fn.sml
