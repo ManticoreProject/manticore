@@ -13,9 +13,11 @@ fun benchSeq (seqSz, n) =
 fun bench (seqSz, n, sort) = 
     let
 	val r = randomParray n
-        val (r, t) = Time.timeToEval(fn () => sort r)
+	val b = Time.now ()
+        val r = sort r
+	val e = Time.now ()
     in
-	Print.printLn(Long.toString t);
+	Print.printLn(Time.toString (e-b));
 	()
     end
 
