@@ -15,5 +15,4 @@
 @interface MessageView : NSView {
 
 }
-
 @end

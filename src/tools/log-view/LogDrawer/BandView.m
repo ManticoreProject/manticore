@@ -15,15 +15,19 @@
 - (id)initWithFrame:(NSRect)frame {
     self = [super initWithFrame:frame];
     if (self) {
-        // Initialization code here.
+	shapes = [[NSMutableArray alloc] init];
+	states = [[NSMutableArray alloc] init];
     }
     return self;
 }
 
 - (void)drawRect:(NSRect)rect {
-    // FIXME simple implementation for testing
-    [[NSColor greenColor] set];
-    [NSBezierPath fillRect:[self visibleRect]];
+    NSLog(@"BandView is drawing shapes");
+    for (EventShape *e in shapes)
+    {
+	NSLog(@"\t\tDrawing");
+	[e drawShape];
+    }
 }
 
 - (void)addEvent:(void *)e withColor:(NSColor *)c andStart:(CGFloat)s
@@ -35,6 +39,7 @@
 }
 - (void)addState:(void *)e withColor:(NSColor *)c andStart:(CGFloat)s;
 {
+    NSLog(@"BandView is adding a state event");
     NSRect bounds = [self bounds];
     [shapes addObject:[[State alloc] initWithRect:NSMakeRect(s, bounds.origin.y, bounds.origin.x + bounds.size.width - s, bounds.size.height)
 					    color:c start:e]];

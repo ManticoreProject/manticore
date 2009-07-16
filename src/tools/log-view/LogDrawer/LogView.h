@@ -24,7 +24,7 @@
     CGFloat end;
 }
 
-- (LogView *)initWithBands:(NSMutableArray *)bands;
+- (void)acquireBands:(NSMutableArray *)bands;
 
 @property (readwrite, assign) CGFloat start;
 @property (readwrite, assign) CGFloat end;

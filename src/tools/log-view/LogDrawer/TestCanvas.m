@@ -8,6 +8,7 @@
 #import "TestCanvas.h"
 #import "ShapeRep.h"
 #import "LogFile.h"
+#import "AppController.h"
 
 
 @implementation TestCanvas
@@ -54,11 +55,14 @@
 
 - (void)awakeFromNib
 {
+    [appController test:self];
     NSString *root = @"/Users/koreiklein/workspace/manticore/trunk/src/tools/log-view/LogDrawer/";
+   /*
     LogFile *lf = [[LogFile alloc] initWithFilename:[root stringByAppendingString:@"fact.mlg"]
 		 andEventDescFilename:[root stringByAppendingString:@"event-view.json"]
 		   andLogDescFilename:[root stringByAppendingString:@"log-events.json"]];
     NSLog(@" LogFile is \n%@",lf);
+    */
 }
 
 - (void)drawRect:(NSRect)rect {

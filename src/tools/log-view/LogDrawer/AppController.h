@@ -5,19 +5,24 @@
  */
 
 #import <Cocoa/Cocoa.h>
-#import "DynamicRep.hxx"
+// #import "DynamicRep.hxx"
 #import "LogView.h"
-#import "log-desc.hxx"
+#import "LogFile.h"
+// #import "log-desc.hxx"
+
+struct Group;
 
 @interface AppController : NSObject {
     IBOutlet LogView *logView;
 }
 
-- (NSColor *)groupColor:(Group *)g;
+- (NSColor *)groupColor:(struct Group *)g;
 
 - (void)fillLogView:(LogView *)lv
 	withLogFile:(LogFile *)lf
 	fromTime:(uint64_t)s
 	toTime:(uint64_t)f;
+
+- (IBAction)test:(id)sender;
 
 @end

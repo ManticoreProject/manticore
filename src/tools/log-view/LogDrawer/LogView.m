@@ -14,26 +14,32 @@
 
 - (id)initWithFrame:(NSRect)frame {
     self = [super initWithFrame:frame];
-    if (self) {
-        // Initialization code here.
+    if (self) { 
+        splitView = [[CustomSplitView alloc] initWithFrame:[self bounds]];
+	messageView = [[MessageView alloc] initWithFrame:[self bounds]];
+	[self addSubview:splitView];
+	[self addSubview:messageView];
+	start = 0;
+	end = 2000;
+     
     }
     return self;
 }
 
 - (void)drawRect:(NSRect)rect {
     // Drawing code here.
+    NSLog(@"LogView is asked to draw a rect");
+    [[NSColor blueColor] set];
+    [NSBezierPath fillRect:[self bounds]];
 }
 
-- (LogView *)initWithBands:(NSMutableArray *)bands
-{
-    if (![super init])
-	return nil;
-    
+- (void)acquireBands:(NSMutableArray *)bands
+{    
     for (BandView *band in bands)
     {
 	[splitView addSubview:band];
     }
-    return self;
+    [splitView adjustSubviews];
 }
 
 @end

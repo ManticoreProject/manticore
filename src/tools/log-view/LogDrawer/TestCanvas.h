@@ -6,6 +6,7 @@
  */
 
 #import <Cocoa/Cocoa.h>
+#import "AppController.h"
 
 /// Draws a few objects using the interfaces in ShapeRep.h
 /*! This canvas is not set up the way that the logview will eventually be set up.
@@ -14,6 +15,7 @@
 @interface TestCanvas : NSView {
 /// Shapes that this TestCanvas will draw
     NSMutableArray *objects;
+    IBOutlet AppController *appController;
 }
 
 @end

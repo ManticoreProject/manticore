@@ -12,7 +12,7 @@
  * 2. the ability to draw rule lines behind its subviews
  *
  */
-@interface CustomSplitView : NSView {
+@interface CustomSplitView : NSSplitView {
     /// [self subviews] should be and only be the BandViews being displayed
 }
 

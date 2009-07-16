@@ -13,6 +13,7 @@
 		529ED9FF100D318600D8B8B1 /* log-events.json in Resources */ = {isa = PBXBuildFile; fileRef = 529ED9FE100D318600D8B8B1 /* log-events.json */; };
 		529EDA5E100D337E00D8B8B1 /* fact.mlg in Resources */ = {isa = PBXBuildFile; fileRef = 529EDA5C100D337E00D8B8B1 /* fact.mlg */; };
 		529EDA5F100D337E00D8B8B1 /* fact2.mlg in Resources */ = {isa = PBXBuildFile; fileRef = 529EDA5D100D337E00D8B8B1 /* fact2.mlg */; };
+		52A58D9A100FAF3900C3F0ED /* fib.mlg in Resources */ = {isa = PBXBuildFile; fileRef = 52A58D99100FAF3900C3F0ED /* fib.mlg */; };
 		52E7962210065AC80031A217 /* TestCanvas.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E7960410065AC70031A217 /* TestCanvas.m */; };
 		52E7962310065AC80031A217 /* EventShape.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E7960A10065AC70031A217 /* EventShape.m */; };
 		52E7962410065AC80031A217 /* Interval.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E7960D10065AC70031A217 /* Interval.m */; };
@@ -52,12 +53,13 @@
 		29B97325FDCFA39411CA2CEA /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = /System/Library/Frameworks/Foundation.framework; sourceTree = "<absolute>"; };
 		32CA4F630368D1EE00C91783 /* LogDrawer_Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LogDrawer_Prefix.pch; sourceTree = "<group>"; };
 		529ED966100D244E00D8B8B1 /* DynamicRep.hxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = DynamicRep.hxx; sourceTree = "<group>"; };
-		529ED9F0100D2FFF00D8B8B1 /* AppController.hxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = AppController.hxx; sourceTree = "<group>"; };
+		529ED9F0100D2FFF00D8B8B1 /* AppController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AppController.h; sourceTree = "<group>"; };
 		529ED9F1100D2FFF00D8B8B1 /* AppController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = AppController.mm; sourceTree = "<group>"; };
 		529ED9FC100D316C00D8B8B1 /* event-view.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "event-view.json"; sourceTree = "<group>"; };
 		529ED9FE100D318600D8B8B1 /* log-events.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "log-events.json"; sourceTree = "<group>"; };
 		529EDA5C100D337E00D8B8B1 /* fact.mlg */ = {isa = PBXFileReference; lastKnownFileType = file; path = fact.mlg; sourceTree = "<group>"; };
 		529EDA5D100D337E00D8B8B1 /* fact2.mlg */ = {isa = PBXFileReference; lastKnownFileType = file; path = fact2.mlg; sourceTree = "<group>"; };
+		52A58D99100FAF3900C3F0ED /* fib.mlg */ = {isa = PBXFileReference; lastKnownFileType = file; path = fib.mlg; sourceTree = "<group>"; };
 		52E7960310065AC70031A217 /* TestCanvas.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TestCanvas.h; sourceTree = "<group>"; };
 		52E7960410065AC70031A217 /* TestCanvas.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TestCanvas.m; sourceTree = "<group>"; };
 		52E7960810065AC70031A217 /* ShapeRep.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ShapeRep.h; sourceTree = "<group>"; };
@@ -211,6 +213,7 @@
 		529EDA01100D319B00D8B8B1 /* Sample Log Files */ = {
 			isa = PBXGroup;
 			children = (
+				52A58D99100FAF3900C3F0ED /* fib.mlg */,
 				529EDA5C100D337E00D8B8B1 /* fact.mlg */,
 				529EDA5D100D337E00D8B8B1 /* fact2.mlg */,
 			);
@@ -436,7 +439,7 @@
 		52E79E1A100BD61C0031A217 /* Controllers */ = {
 			isa = PBXGroup;
 			children = (
-				529ED9F0100D2FFF00D8B8B1 /* AppController.hxx */,
+				529ED9F0100D2FFF00D8B8B1 /* AppController.h */,
 				529ED9F1100D2FFF00D8B8B1 /* AppController.mm */,
 			);
 			name = Controllers;
@@ -512,6 +515,7 @@
 				529ED9FF100D318600D8B8B1 /* log-events.json in Resources */,
 				529EDA5E100D337E00D8B8B1 /* fact.mlg in Resources */,
 				529EDA5F100D337E00D8B8B1 /* fact2.mlg in Resources */,
+				52A58D9A100FAF3900C3F0ED /* fib.mlg in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
