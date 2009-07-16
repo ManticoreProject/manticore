@@ -14,6 +14,13 @@
 #include <stack>
 #include <assert.h>
 
+/* additional info about events */
+struct EventGrpInfo {
+    std::vector<StateGroup *>		*stateGrps;
+    std::vector<IntervalGroup *>	*intervalGrps;
+    std::vector<DependentGroup *>	*dependentGrps;
+};
+
 inline char *CopyString (const char *s)
 {
     if (s == 0) return 0;
@@ -129,6 +136,13 @@ DependentGroup::~DependentGroup ()
 
 /***** class LogFileDesc member functions *****/
 
+LogFileDesc::LogFileDesc (std::vector<EventDesc *> *evts)
+{
+    this->_root = 0;
+    this->_events = evts;
+    this->_info = 0;
+}
+
 LogFileDesc::~LogFileDesc ()
 {
     delete this->_root;
@@ -142,6 +156,48 @@ EventDesc *LogFileDesc::FindEventByName (const char *name) const
 	    return this->_events->at(i);
     }
     return 0;
+}
+
+std::vector<StateGroup *> *LogFileDesc::StateGroups (EventDesc *ed) const
+{
+    if (ed->HasAttr (ATTR_STATE))
+	return this->_info[ed->Id()]->stateGrps;
+    else
+	return 0;
+}
+
+std::vector<IntervalGroup *> *LogFileDesc::IntervalGroups (EventDesc *ed) const
+{
+    if (ed->HasAttr (ATTR_INTERVAL))
+	return this->_info[ed->Id()]->intervalGrps;
+    else
+	return 0;
+}
+
+std::vector<DependentGroup *> *LogFileDesc::DependentGroups (EventDesc *ed) const
+{
+    if (ed->HasAttr (ATTR_DEPENDENT))
+	return this->_info[ed->Id()]->dependentGrps;
+    else
+	return 0;
+}
+
+void LogFileDesc::_InitEventInfo ()
+{
+    this->_info = new EventGrpInfo*[this->_events->size()];
+    for (int i = 0;  i < this->_events->size();  i++) {
+	if (this->_events->at(i)->isSimpleEvent())
+	    this->_info[i] = 0;
+	else {
+	    this->_info[i] = new EventGrpInfo;
+	    this->_info[i]->stateGrps = 0;
+	    this->_info[i]->intervalGrps = 0;
+	    this->_info[i]->dependentGrps = 0;
+	}
+    }
+
+/* FIXME: walk the group tree to record the info */
+
 }
 
 /* visitor walks of the event hierarchy */

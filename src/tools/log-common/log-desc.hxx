@@ -163,6 +163,13 @@ class LogFileDesc {
     EventDesc *FindEventById (int id) const { return this->_events->at(id); }
     EventDesc *FindEventByName (const char *name) const;
 
+  // methods for getting information about the groups that an
+  // event belongs to.  These methods return 0 when the event
+  // does not belong to any groups of the given kind.
+    std::vector<StateGroup *> *StateGroups (EventDesc *) const;
+    std::vector<IntervalGroup *> *IntervalGroups (EventDesc *) const;
+    std::vector<DependentGroup *> *DependentGroups (EventDesc *) const;
+
   /* visitor walks of the event hierarchy */
     void PreOrderWalk (LogDescVisitor *visitor);
     void PostOrderWalk (LogDescVisitor *visitor);
@@ -172,12 +179,11 @@ class LogFileDesc {
   protected:
     EventGroup			*_root;
     std::vector<EventDesc *>	*_events;
+    struct EventGrpInfo		**_info;
 
-    LogFileDesc (std::vector<EventDesc *> *evts)
-    {
-	this->_root = 0;
-	this->_events = evts;
-    }
+    LogFileDesc (std::vector<EventDesc *> *evts);
+
+    void _InitEventInfo ();
 
     friend class LogFileDescLoader;
 
