@@ -52,6 +52,7 @@ structure BasisNames =
     val mod =		Atom.atom "mod"
     val fdiv =		Atom.atom "/"
     val uMinus =	Atom.atom "~"
+    val compose =       Atom.atom "o"
 
   (* pre-defined data constructors *)
     val boolTrue =	Atom.atom "true"
