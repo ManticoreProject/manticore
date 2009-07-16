@@ -23,13 +23,10 @@ structure TypeKinds : sig
   (* convert to string *)
     val toString : kind -> string
 
-  (* are two kinds the same? *)
-    val same : (kind * kind) -> bool
-
   (* isKind k1 k2 --- returns true if k2 is a subkind of k1 *)
     val isKind : kind -> kind -> bool
 
-  struct
+  end = struct
 
     type kind = word
 
@@ -59,10 +56,7 @@ structure TypeKinds : sig
 	    | _ => raise Fail("bogus kind rep 0x" ^ Word.toString k)
 	  (* end case *))
 
-  (* are two kinds the same? *)
-    fun same : (k1 : kind, k2) = (k1 = k2)
-
   (* isKind k1 k2 --- returns true if k2 is a subkind of k1 *)
-    fun isKind (k1 : kind, k2) = (Word.andb(k1, k2) = k2)
+    fun isKind (k1 : kind) k2 = (Word.andb(k1, k2) = k2)
 
   end
