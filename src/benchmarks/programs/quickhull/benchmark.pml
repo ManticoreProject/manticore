@@ -1,9 +1,9 @@
-fun isbelow ((a, b) : point, line) = 
-    let
-	val l = filterP (fn (x, y) =>  a < x andalso b < y, line)
-    in
-	lengthP l <> 0
-    end
+fun p2s (x, y) = "(" ^ Float.toString x ^ "," ^ Float.toString y ^ ")"
+(*
+val S = [| (0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0), (0.5, 0.5), (0.5, 1.5) |]
+val H = quickhull S
+val _ = Print.printLn (PArray.toString p2s ", " H)
+*)
 
 fun bench (seqSz, n) = 
     let
@@ -12,11 +12,15 @@ fun bench (seqSz, n) =
         val hull = quickhull pts
 	val e = Time.now ()
     in
-	Print.printLn(Long.toString (e - b));
+	(*
+	Print.printLn (PArray.toString p2s ", " pts);
+	Print.printLn (PArray.toString p2s ", " hull);
+	 *)
+	Print.printLn (Time.toString (e - b));
 	()
     end
 
-val () = (*ImplicitThread.runWithGroup(MultiprogrammedWorkStealing.workGroup(), fn () => ( *)
-			 bench(PrimIO.readInt(), PrimIO.readInt())
+val () = ImplicitThread.runWithGroup(MultiprogrammedWorkStealing.workGroup(), fn () => 
+			 bench(PrimIO.readInt(), PrimIO.readInt()))
 
 
