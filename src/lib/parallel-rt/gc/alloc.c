@@ -204,7 +204,7 @@ Value_t GlobalAllocNonUniform (VProc_t *vp, int nElems, ...)
 Value_t GlobalAllocArray (VProc_t *vp, int nElems, Value_t elt)
 {
   /* the array must fit into a global chunk */
-    assert (HEAP_CHUNK_SZB <= WORD_SZB*(nElems+1) && nElems >= 0);
+    assert (HEAP_CHUNK_SZB > WORD_SZB*(nElems+1) && nElems >= 0);
 
     if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit) {
 	AllocToSpaceChunk(vp);
