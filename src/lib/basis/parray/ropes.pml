@@ -101,16 +101,16 @@ structure Ropes (* : ROPES *) = struct
 
   (* computeLength : 'a rope -> int *)
     fun computeLength r = (case r
-          of LEAF (_, s) = S.length s
-	   | CAT (_, _, r1, r2) = computeLength r1 + computeLength r2)
+          of LEAF (_, s) => S.length s
+	   | CAT (_, _, r1, r2) => computeLength r1 + computeLength r2)
 
   (* chkLength : 'a rope -> unit *)
     fun chkLength r = (case r
-          of LEAF (len, s) = 
+          of LEAF (len, s) => 
 	       if len = computeLength r 
 	       then () 
 	       else failwith "inconsistent length at leaf"
-	   | CAT (_, len, r1, r2) =
+	   | CAT (_, len, r1, r2) =>
 	       if len = computeLength r
 	       then (chkLength r1; chkLength r2)
 	       else failwith "inconsisten length at cat")
@@ -424,8 +424,9 @@ structure Ropes (* : ROPES *) = struct
            | l::nil => l
            | _ => build (catPairs ls)
          (* end case *))
+      val r = build leaves
       in
-        build leaves      
+        (chkLength r; r)      
       end
 
   (* fromSeq : 'a seq -> 'a rope *)
