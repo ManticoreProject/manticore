@@ -462,6 +462,11 @@ fun ray winsize = let
       Print.print (Long.toString (e-b))
     end
 
+
+(*but this reveals a CPS error:*)
+val _ = ray(PrimIO.readInt ())
+(* won't compile with this
 val _ = PrimIO.readInt ()
 val _ = ImplicitThread.runWithGroup(SwpWorkStealing.workGroup(), fn () => ( 
                ray (PrimIO.readInt ())))
+*)
