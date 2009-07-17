@@ -915,13 +915,33 @@ structure ArityRaising : sig
          * After we've flattened several functions, we need to transform any formals
          * or return continuations to have the new type. This is slightly tricky
          * because the functions can appear as fields in a tuple.
+         * We also have to do some extra work to handle polymorphism - if we reach
+         * a parameter in the target functions whose type differs, just promote it
+         * to any. The type being different is an indicator that it's not actually
+         * used in the calling function, but is just passed along.
          *)
         fun transformParam(retVar) = let
-            fun getFirstLambda (l) = hd (CPS.Var.Set.listItems l)
+            fun getParamFunType (l) = let
+                val l::lambdas = map CV.typeOf (CPS.Var.Set.listItems l)
+                fun mergeSignatures (base, new) = let
+                    val CPSTy.T_Fun(baseParams, baseRets) = base
+                    val CPSTy.T_Fun(newParams, newRets) = new
+                    fun bestMatch (t1, t2) =
+                        if CPSTyUtil.equal (t1, t2)
+                        then t1
+                        else CPSTy.T_Any
+                    val args' = ListPair.map bestMatch (baseParams, newParams)
+                    val rets' = ListPair.map bestMatch (baseRets, newRets)
+                in
+                    CPSTy.T_Fun (args', rets')
+                end
+            in
+                foldr mergeSignatures l lambdas
+            end
             fun buildType (CPSTy.T_Tuple (heap, tys), cpsValues) = let
                 fun updateSlot (origTy, cpsValue) = (
                     case cpsValue
-                     of CFACPS.LAMBDAS(l) => CV.typeOf (getFirstLambda l)
+                     of CFACPS.LAMBDAS(l) => getParamFunType l
                       | CFACPS.TUPLE (values) => buildType (origTy, values)
                       | _ => origTy
                 (* end case *))
@@ -933,7 +953,7 @@ structure ArityRaising : sig
         in
             case CFACPS.valueOf retVar
              of CFACPS.LAMBDAS(l) => let
-                    val newType = CV.typeOf (getFirstLambda l)
+                    val newType = getParamFunType l
                 in
                     if CPSTyUtil.equal (CV.typeOf retVar, newType)
                     then ()
