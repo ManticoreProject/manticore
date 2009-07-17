@@ -13,6 +13,10 @@
 
 @implementation State
 
+@synthesize start;
+@synthesize end;
+@synthesize rect;
+
 #pragma mark Initializations
 - (State *)initWithRect:(NSRect)r
 {

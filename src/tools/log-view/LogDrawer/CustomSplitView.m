@@ -7,7 +7,7 @@
 
 #pragma mark Defined Constants
 /// The amount of space between bars
-#define DIVIDER_THICKNESS ( 5 )
+#define DIVIDER_THICKNESS ( 10 )
 
 
 @implementation CustomSplitView

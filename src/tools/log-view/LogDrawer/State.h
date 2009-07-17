@@ -11,11 +11,15 @@
 	NSRect rect; //!< Rectangle representing the event. Not null.
 	
 	void *start; //!< The event corresponding to the begginig of the interval. Not null.
-	void *end; //!< The event corresponding to the end of the interval. Not null.
+	State *end; //!< The event corresponding to the end of the interval. Not null.
 }
 
 /// Testing function. Generates a warning.
 - (State *)initWithRect:(NSRect)r;
+
+@property (readwrite, assign) void *start;
+@property (readwrite, assign) State *end;
+@property (readwrite, assign) NSRect rect;
 
 ///Initialize
 /*! initialize

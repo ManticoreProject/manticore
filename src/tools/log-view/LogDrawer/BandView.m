@@ -9,6 +9,9 @@
 #import "BandView.h"
 #import "ShapeRep.h"
 
+#define XRADIUS ( 10 )
+#define YRADIUS ( 10 )
+#define DEFAULT_BAND_COLOR ( [NSColor greenColor] )
 
 @implementation BandView
 
@@ -16,14 +19,17 @@
     self = [super initWithFrame:frame];
     if (self) {
 	shapes = [[NSMutableArray alloc] init];
-	states = [[NSMutableArray alloc] init];
+	lastState = nil;
+	bandColor = DEFAULT_BAND_COLOR;
     }
     return self;
 }
 
 - (void)drawRect:(NSRect)rect {
-    [[NSColor greenColor] set];
+    [bandColor set];
     [NSBezierPath fillRect:[self visibleRect]];
+    [[NSColor blackColor] set];
+    
     NSLog(@"BandView is drawing shapes");
     for (EventShape *e in shapes)
     {
@@ -43,9 +49,27 @@
 {
     NSLog(@"BandView is adding a state event");
     NSRect bounds = [self bounds];
-    [shapes addObject:[[State alloc] initWithRect:NSMakeRect(s, bounds.origin.y, bounds.origin.x + bounds.size.width - s, bounds.size.height)
-					    color:c start:e]];
+    
+    // For now, this state's rectangle extends to the end of the BandView
+    State *newState = [[State alloc]
+		      initWithRect:NSMakeRect(s,
+				    bounds.origin.y,
+				    bounds.origin.x + bounds.size.width - s,
+				    bounds.size.height)
+		      color:c
+		      start:e];
+    if (lastState)
+    {
+	NSRect oldLastStateRect = lastState.rect;
+	// Now that a new state has been added, we can shorten the width of the last state
+	oldLastStateRect.size.width = s - oldLastStateRect.origin.x;
+	lastState.rect = oldLastStateRect;
+	
+    }
+    lastState = newState;
+    [shapes addObject:newState];
 }
 
 
 @end
+

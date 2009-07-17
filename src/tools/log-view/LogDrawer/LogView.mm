@@ -45,7 +45,21 @@
     [NSBezierPath fillRect:[self bounds]];
 }
 
+int sillyNumber = 0;
 
+/// For Testing, return a new interesting color
+- (NSColor *)sillyNextColor
+{
+    if (sillyNumber == 0)
+    {
+	sillyNumber = 1;
+	return [NSColor redColor];
+    }
+    else {
+	sillyNumber = 0;
+	return [NSColor yellowColor];
+    }
+}
 
 - (void)readNewData
 {
@@ -92,7 +106,7 @@
 		CGFloat drawingPosition =
 		    bounds.origin.x + scale * (events[i].timestamp - logStart);
 		NSLog(@"\tAdding event at time %qu, position %f to band", events[i].timestamp, drawingPosition);
-		[band addEvent:&events[i] withColor:[NSColor yellowColor]
+		[band addState:&events[i] withColor:[self sillyNextColor]
 		      andStart:drawingPosition];
 	    }
 	    else {

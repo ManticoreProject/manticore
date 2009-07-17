@@ -27,7 +27,7 @@
 
 - (IBAction)test:(id)sender
 {
-    uint64_t fraction = 800; //< The number of times what we will display can fit into the whole log
+    uint64_t fraction = 2500; //< The number of times what we will display can fit into the whole log
     NSString *root = @"/Users/koreiklein/workspace/manticore/trunk/src/tools/log-view/LogDrawer/";
     LogFile *lf = [[LogFile alloc] initWithFilename:[root stringByAppendingString:@"fib.mlg"]
 		 andEventDescFilename:[root stringByAppendingString:@"event-view.json"]
