@@ -99,6 +99,22 @@ structure Ropes (* : ROPES *) = struct
 	    | CAT(_, len, r1, r2) => len
 	  (* end case *))
 
+  (* computeLength : 'a rope -> int *)
+    fun computeLength r = (case r
+          of LEAF (_, s) = S.length s
+	   | CAT (_, _, r1, r2) = computeLength r1 + computeLength r2)
+
+  (* chkLength : 'a rope -> unit *)
+    fun chkLength r = (case r
+          of LEAF (len, s) = 
+	       if len = computeLength r 
+	       then () 
+	       else failwith "inconsistent length at leaf"
+	   | CAT (_, len, r1, r2) =
+	       if len = computeLength r
+	       then (chkLength r1; chkLength r2)
+	       else failwith "inconsisten length at cat")
+
   (* depth : 'a rope -> int *)
   (* The depth of a leaf is 0. *)
     fun depth r = 
