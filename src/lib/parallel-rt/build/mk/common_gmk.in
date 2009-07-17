@@ -11,7 +11,11 @@
 #
 # determine the buid options
 #
-ENABLE_GC_STATS=false
+ifeq (,$(findstring stats,$(BUILD_OPTIONS)))
+  ENABLE_GC_STATS=false
+else
+  ENABLE_GC_STATS=true
+endif
 ifeq (,$(findstring logging,$(BUILD_OPTIONS)))
   ENABLE_LOGGING=false
 else

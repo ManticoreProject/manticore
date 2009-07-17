@@ -504,6 +504,7 @@ if test $CROSS_COMPILING = 0 ; then
     MK_BUILD_DIR(mcrt-debug, [debug])
     MK_BUILD_DIR(mcrt-log, [logging])
     MK_BUILD_DIR(mcrt-log-debug, [logging debug])
+    MK_BUILD_DIR(mcrt-stats, [stats])
 fi
 
 AC_OUTPUT
