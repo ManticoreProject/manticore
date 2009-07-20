@@ -18,6 +18,7 @@ struct LogFileDesc;
     struct _LogFileHeader_t *header; ///< the header of the log file, as defined in log-file.h
     NSMutableArray *vProcs; ///< an array containing header.nVProcs VProcs sorted by vpId
 
+    struct LogFileDesc *desc; ///< The description of this file
     // These variables are to provide more convinient representations of some
     // things already found in the header
     // They must therefore be properly initialized when file is read
@@ -58,6 +59,7 @@ struct LogFileDesc;
 /// The time the last event was logged, meaningless if there are no events
 - (uint64_t)lastTime;
 
+@property (readonly) struct LogFileDesc *desc;
 @property (readonly) NSString	*filename;
 @property (readonly) NSMutableArray *vProcs;
 

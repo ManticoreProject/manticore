@@ -9,8 +9,9 @@
 /// Represents a state event by drawing a rectangle
 @interface State : EventShape {
 	NSRect rect; //!< Rectangle representing the event. Not null.
-	
-	void *start; //!< The event corresponding to the begginig of the interval. Not null.
+    
+	/// The event corresponding to the begginig of the interval. Null for the first state.
+	void *start; 
 	State *end; //!< The event corresponding to the end of the interval. Not null.
 }
 

@@ -10,6 +10,14 @@
 #import "BandView.h"
 #import "LogFile.h"
 
+struct Group;
+struct StateGroup;
+
+enum ZoomLevel {
+    zoomLevelDeep,
+    zoomLevelMedium,
+    zoomLevelShallow
+};
 
 /// Display a log file
 /**
@@ -24,8 +32,15 @@
     uint64_t logStart;
     uint64_t logEnd;
     LogFile *logFile;
+    
+    
+    int cur_state;
+    struct StateGroup *stateGroup; //< The group of state events to display
+    
+    enum ZoomLevel zoomLevel;
 }
 
+@property (readwrite, assign) enum ZoomLevel zoomLevel;
 @property (readwrite, assign) uint64_t logStart;
 @property (readwrite, assign) uint64_t logEnd;
 

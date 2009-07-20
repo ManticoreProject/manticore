@@ -7,6 +7,8 @@
 #import "MessageView.h"
 #import "State.h"
 
+struct IntervalGroup;
+
 /// A view representing a vproc
 /*!
  A BandView is a view which represents the events for a single vproc.
@@ -15,13 +17,36 @@
 @interface BandView : NSView {
     /// The MessageView this band should use to display its dependent events
     IBOutlet MessageView *messageView;
-    NSMutableArray *shapes;
+    
+    NSMutableArray *states;
+    NSMutableArray *intervals;
+    NSMutableArray *singletons;
+    NSMutableArray *messages;
+    
+    
     State *lastState;
+    NSColor *stateStartColor;
+    
     NSColor *bandColor;
+    
+    
+    CGFloat cur_singleton_height;
+    NSMapTable *intervalMap; //< IntervalGroup -> most recently added interval event from that group
 }
 
+- (void)setStateStartColor:(NSColor *)c;
 
-- (void)addEvent:(void *)e withColor:(NSColor *)c andStart:(CGFloat)s;
+- (void)addSingleton:(void *)e withColor:(NSColor *)c andStart:(CGFloat)s;
+
 - (void)addState:(void *)e withColor:(NSColor *)c andStart:(CGFloat)s;
+
+- (void)addIntervalStart:(void *)e
+	       withColor:(NSColor *)c
+	forIntervalGroup:(struct IntervalGroup *)g
+		andStart:(CGFloat)s;
+- (void)addIntervalEnd:(void *)e
+	forIntervalGroup:(struct IntervalGroup *)g
+		andStart:(CGFloat)s;
+
 
 @end

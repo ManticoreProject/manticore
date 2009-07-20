@@ -7,14 +7,7 @@
 
 #pragma mark Defaults
 
-/// Default color of singleton events
-#define DEFAULT_SINGLETON_COLOR ([NSColor yellowColor])
-/// Height of diamond
-#define DIAMOND_HEIGHT (16)
-/// Width of diamond
-#define DIAMOND_WIDTH (8)
-/// Width of the border of a diamond
-#define DEFAULT_LINE_WIDTH (.6)
+
 
 @implementation Singleton
 

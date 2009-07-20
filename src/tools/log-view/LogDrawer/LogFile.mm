@@ -21,6 +21,7 @@ extern LogFileDesc *LoadLogDesc(const char *, const char *);
 
 @implementation LogFile
 
+@synthesize desc;
 
 void fileError(void)
 {
@@ -41,11 +42,12 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
 /** This function's implementation is based heavily on that of LoadLogFile from
  * log-dump.cxx
  */
-- (LogFile *)initWithFilename:(NSString *)filenameVal andLogFileDesc:(struct LogFileDesc *)desc
+- (LogFile *)initWithFilename:(NSString *)filenameVal andLogFileDesc:(struct LogFileDesc *)descVal
 {
     if (![super init])
 	return nil;
 
+    desc = descVal;
     filename = filenameVal;
     size_t LogBufSzB = LOGBLOCK_SZB;
 
@@ -150,6 +152,8 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
 	    dynamicEvent->timestamp = GetTimestamp(&logEvent->timestamp, header);
 	    dynamicEvent->desc  = desc->FindEventById(logEvent->event);
 
+	   // NSLog(@"Found event with description %s", dynamicEvent->desc->Description());
+	    
 	    if (dynamicEvent->timestamp > lastTime)
 		lastTime = dynamicEvent->timestamp;
 	    if (dynamicEvent->timestamp < firstTime)
@@ -182,11 +186,11 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
 	 andEventDescFilename:(NSString *)eventDesc
 	   andLogDescFilename:(NSString *)logDesc
 {
-    LogFileDesc *desc = LoadLogDesc([logDesc UTF8String], [eventDesc UTF8String]);
-    if (desc == NULL)
+    LogFileDesc *descVal = LoadLogDesc([logDesc UTF8String], [eventDesc UTF8String]);
+    if (descVal == NULL)
 	@throw @"Could not load the two log description files";
     return [self initWithFilename:filenameVal
-		   andLogFileDesc:desc];
+		   andLogFileDesc:descVal];
 }
 
 
