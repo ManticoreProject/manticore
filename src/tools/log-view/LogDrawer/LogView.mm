@@ -48,9 +48,44 @@
 }
 
 - (void)drawRect:(NSRect)rect {
-    switch (zoomLevel)
     [[NSColor blueColor] set];
     [NSBezierPath fillRect:[self bounds]];
+    
+    
+    // The rest is for testing how much to zoom in by, it is not necessary
+    NSBezierPath *path = [[NSBezierPath alloc] init];
+    
+    NSRect vr = [self visibleRect];
+    int slivers = 50;
+    CGFloat w = vr.size.width / slivers;
+    
+    for (int i = 0; i < slivers; ++i)
+    {
+	
+	if (i % 10 == 0)
+	    [[NSColor yellowColor] set];
+	else
+	    [[NSColor blackColor] set];
+
+	[path moveToPoint :NSMakePoint(vr.origin.x + i * w, vr.origin.y)];
+	[path lineToPoint:NSMakePoint(vr.origin.x + i * w, vr.origin.y + vr.size.height)];
+	[path stroke];
+    }
+}
+
+
+- (CGFloat)image:(uint64_t)p
+{
+    NSRect bounds = [self bounds];
+    uint64_t scale = bounds.size.width / (logEnd - logStart);
+    return bounds.origin.x + scale * (p - logStart);
+}
+
+- (uint64_t)preImage:(CGFloat)p
+{
+    NSRect bounds = [self bounds];
+    uint64_t scale = (logStart - logEnd) / bounds.size.width;
+    return logStart + scale * (p - bounds.origin.x);
 }
 
 int sillyNumber = 0;
@@ -166,7 +201,7 @@ int sillyNumber = 0;
 		// For now, we set the stateGroup to be the one containing
 		// the first event, if such a state exists
 		if (!stateGroup)
-		{ 
+		{
 		    NSLog(@"stateGroup is uninitialized, checking event for groups to use");
 		    NSLog(@"logFile.desc = 0x%x", logFile.desc);
 		    std::vector<StateGroup *> *states =
@@ -209,6 +244,7 @@ int sillyNumber = 0;
 		{
 		    for (int h = 0; h < intervals->size(); ++h)
 		    {
+			// NSLog(@"checking interval %s", intervals->at(i)->Desc());
 		        IntervalGroup *intervalGroup = intervals->at(i);
 		        if (eventDesc == intervalGroup->Start())
 		        {
@@ -217,11 +253,12 @@ int sillyNumber = 0;
 		    	   forIntervalGroup:intervalGroup
 		    		   andStart:drawingPosition];
 		        }
-		        else if (eventDesc == intervalGroup->End())
+		        else
 		        {
-		    	[band addIntervalEnd:&events[i]
-		    	    forIntervalGroup:intervalGroup
-		    		    andStart:drawingPosition];
+			    assert (eventDesc == intervalGroup->End());
+			    [band addIntervalEnd:&events[i]
+				forIntervalGroup:intervalGroup
+					andStart:drawingPosition];
 		        }
 		    }
 		}
@@ -229,14 +266,36 @@ int sillyNumber = 0;
 		
 #pragma mark DEPENDENT GROUPS
 	///////////////// DEPENDENT GROUPS ////////////////
-		NSLog(@"\tAdding event at time %qu, position %f to band", events[i].timestamp, drawingPosition);
+		
+		std::vector<DependentGroup *> *dependents =
+		    logFile.desc->DependentGroups(eventDesc);
+		if (dependents)
+		{
+		    for (int h = 0; h < dependents->size(); ++h)
+		    {
+			DependentGroup *dependentGroup = dependents->at(h);
+			if (eventDesc == dependentGroup->Src())
+			{
+			    // 
+			}
+			else
+			{
+			    assert (eventDesc == dependentGroup->Dst());
+			}
+		    }
+		}
+		/* NSLog(@"\tAdding event at time %qu, position %f to band", events[i].timestamp, drawingPosition);
 		[band addState:&events[i] withColor:[self sillyNextColor]
 		      andStart:drawingPosition];
+		 */
 	    }
 	    else {
+		// The event is not part of the current timespan
 		// NSLog(@"Skipping event at time %qu, because it is out of timespan", events[i].timestamp);
 	    }
 	}
+	
+	//////////////////////// FINISH ///////////////////
 	[splitView addSubview:band];
 	[band setNeedsDisplay:YES];
 	++v;
@@ -309,6 +368,17 @@ int sillyNumber = 0;
 	[self readNewData];
 	[self setNeedsDisplay:YES];
     }
+}
+
+- (void)resizeIntervalToSize:(uint64_t)size aboutPivot:(uint64_t)pivot
+{
+    assert( logStart <= pivot && pivot <= logEnd );
+    uint64_t width = logEnd - logStart;
+    uint64_t firstFrac = pivot - logStart;
+    uint64_t secondFrac = logEnd - pivot;
+    
+    [self setStart:pivot - firstFrac * width
+	    andEnd:pivot + secondFrac * width];
 }
 
 @end
