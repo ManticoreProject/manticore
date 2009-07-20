@@ -46,6 +46,19 @@ enum ZoomLevel {
 
 - (void)setLogFile:(LogFile *)logFileVal;
 
+/// Calculate the image in the bounds of a point in the logFile
+- (CGFloat)image:(uint64_t)p;
+/// Calculate the preimage in the logFile of a point in the bounds
+- (uint64_t)preImage:(CGFloat)p;
+
+/// Set the endpoints of the interval of the logFile being shown
 - (void)setStart:(uint64_t)startVal andEnd:(uint64_t)endVal;
+
+/// Adjust the size of the logFile interval using a pivot and a new width
+/** Linearly change logStart and logEnd such that pivot is in the same place,
+  * but logEnd - logStart = size.
+  * invariant: logStart <= pivot <= logEnd
+  */
+- (void)resizeIntervalToSize:(uint64_t)size aboutPivot:(uint64_t)pivot;
 
 @end

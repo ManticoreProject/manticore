@@ -56,7 +56,7 @@
 - (void)awakeFromNib
 {
     [appController test:self];
-    NSString *root = @"/Users/koreiklein/workspace/manticore/trunk/src/tools/log-view/LogDrawer/";
+    // NSString *root = @"/Users/koreiklein/workspace/manticore/trunk/src/tools/log-view/LogDrawer/";
    /*
     LogFile *lf = [[LogFile alloc] initWithFilename:[root stringByAppendingString:@"fact.mlg"]
 		 andEventDescFilename:[root stringByAppendingString:@"event-view.json"]

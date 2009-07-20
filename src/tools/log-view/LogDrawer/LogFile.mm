@@ -101,9 +101,9 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
     for (int i = 0; i < header->nVProcs; ++i)
 	vProcs_c_array[i] = NULL;
 
-    /* read in the events */
+    /* read in the blocks */
     for (int i = 0;  i < numBufs;  i++) {
-	VProc *cur_vProc;
+	VProc *cur_vProc; //< VProc for this block
 	LogBuffer_t *log = (LogBuffer_t *) [[f readDataOfLength:LogBufSzB] bytes];
 	assert (log->vpId < header->nVProcs);
 
@@ -141,8 +141,10 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
 	    events = cur_vProc.events = (DynamicEvent (*)[])
 	      realloc(cur_vProc.events, sizeof(DynamicEvent) * cur_vProc.numEvents);
 	}
+	
+	// events is now as big as it needs to be, we now simply fill it with events
 
-	// Add each event to the events array
+	// Add each event to events
 	for (int j = 0;  j < numEventsInBlock;  j++) {
 
 	    LogEvent_t *logEvent = &(log->log[j]);
@@ -151,11 +153,16 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
 	    memcpy(&dynamicEvent->value, logEvent, sizeof(logEvent));
 	    dynamicEvent->timestamp = GetTimestamp(&logEvent->timestamp, header);
 	    dynamicEvent->desc  = desc->FindEventById(logEvent->event);
+	    // NSLog(@"Found event with desc %s", dynamicEvent->desc->Description());
 
 	   // NSLog(@"Found event with description %s", dynamicEvent->desc->Description());
 	    
+	    // Set first and last times for this log file
 	    if (dynamicEvent->timestamp > lastTime)
+	    {
 		lastTime = dynamicEvent->timestamp;
+		// NSLog(@"LogFile set lastTime to %qu", lastTime);
+	    }
 	    if (dynamicEvent->timestamp < firstTime)
 	    {
 		firstTime = dynamicEvent->timestamp;
