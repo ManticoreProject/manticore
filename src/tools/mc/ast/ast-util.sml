@@ -45,7 +45,7 @@ structure ASTUtil : sig
   (* create an if expression *)
     val mkIfExp : (AST.exp * AST.exp * AST.exp) -> AST.exp
 
-  (* create an expression for a variable and its concete types *)
+  (* create an expression for a variable and its concrete types *)
     val mkVarExp : (AST.var * AST.ty list) -> AST.exp
 
   (* make a fresh copy of an expression *)
@@ -197,5 +197,4 @@ structure ASTUtil : sig
 	in
 	    copyExpWalk s e
 	end
-
   end
