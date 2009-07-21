@@ -7,7 +7,7 @@
 
 #pragma mark Defined Constants
 /// The amount of space between bars
-#define DIVIDER_THICKNESS ( 10 )
+
 
 
 @implementation CustomSplitView
@@ -21,7 +21,7 @@
 }
 
 - (void)drawRect:(NSRect)rect {
-    NSLog(@"CustomSplitView is drawing a rectangle");
+    // NSLog(@"CustomSplitView is drawing a rectangle");
 }
 
 

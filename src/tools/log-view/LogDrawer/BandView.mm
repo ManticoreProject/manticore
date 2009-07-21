@@ -12,12 +12,28 @@
 #define XRADIUS ( 10 )
 #define YRADIUS ( 10 )
 #define DEFAULT_BAND_COLOR ( [NSColor greenColor] )
+#define BAND_BORDER_THICKNESS ( 2 )
+#define BAND_ROUNDING_RADIUS ( 10 )
+#define Y_PADDING ( 3 )
+#define X_PADDING ( 25 )
 
 /// DIAMOND_PADDING is the amount of space allowed between adjacent diamonds
 /// It may be negative to allow the diamonds to overlap
 #define DIAMOND_PADDING ( 5 )
 
 @implementation BandView
+
+/// Return the bounds of this BandView, but shrunk a little
+- (NSRect)shapeBounds
+{
+    NSRect r = self.bounds;
+    r.origin.x += X_PADDING;
+    r.origin.y += Y_PADDING;
+    r.size.width -= 2 * X_PADDING;
+    r.size.height -= 2 * Y_PADDING;
+    return r;
+}
+
 
 #pragma mark Initialization
 - (id)initWithFrame:(NSRect)frame
@@ -31,7 +47,7 @@
 	messages = [[NSMutableArray alloc] init];
 	lastState = nil;
 	bandColor = DEFAULT_BAND_COLOR;
-	NSRect bounds = [self bounds];
+	NSRect bounds = self.shapeBounds;
 	cur_singleton_height = bounds.size.height / 2;
 	srandom(time(NULL));
 	intervalMap = [NSMapTable
@@ -46,8 +62,15 @@
 #pragma mark Drawing
 - (void)drawRect:(NSRect)rect {
     [bandColor set];
-    [NSBezierPath fillRect:[self bounds]];
+    NSBezierPath *bandPath =
+	[NSBezierPath bezierPathWithRoundedRect:self.shapeBounds
+					xRadius:BAND_ROUNDING_RADIUS
+					yRadius:BAND_ROUNDING_RADIUS];
+    bandPath.lineWidth = BAND_BORDER_THICKNESS;
+    [bandPath fill];
     [[NSColor blackColor] set];
+    [bandPath stroke];
+
 
     int i; // for help with NSLogging
 
@@ -57,7 +80,7 @@
 	[e drawShape];
 	++i;
     }
-    NSLog(@"Drew %d state changes", i);
+    // NSLog(@"Drew %d state changes", i);
 
     i = 0;
     for (EventShape *e in intervals)
@@ -65,7 +88,7 @@
 	[e drawShape];
 	++i;
     }
-    NSLog(@"Drew %d intervals", i);
+    // NSLog(@"Drew %d intervals", i);
 
     i = 0;
     for (EventShape *e in messages)
@@ -73,7 +96,7 @@
 	[e drawShape];
 	++i;
     }
-    NSLog(@"Drew %d messages", i);
+    // NSLog(@"Drew %d messages", i);
 
     i = 0;
     for (EventShape *e in singletons)
@@ -81,20 +104,32 @@
 	[e drawShape];
 	++i;
     }
-    NSLog(@"Drew %d singletons", i);
+    // NSLog(@"Drew %d singletons", i);
 }
 
 #pragma mark Singletons
 
-/// Return the fraction of the current height at which the next singleton should
-/// be placed
+
 - (CGFloat)singletonHeight
 {
-    NSRect bounds = [self bounds];
+    CGFloat height = self.bounds.size.height;
+    cur_singleton_height += DIAMOND_HEIGHT + DIAMOND_PADDING;
+    if (cur_singleton_height >= height - (DIAMOND_HEIGHT + DIAMOND_PADDING))
+    {
+	cur_singleton_height -= height - 2 * (DIAMOND_HEIGHT + DIAMOND_PADDING);
+    }
+    return cur_singleton_height;
+}
+
+/// Return the fraction of the current height at which the next singleton should
+/// be placed
+- (CGFloat)singletonHeightOld
+{
+    NSRect bounds = self.shapeBounds;
     double t = random();
     double r = (t / RAND_MAX) * bounds.size.height;
-    NSLog(@"random double %f, %f", t, r);
-    double range = bounds.size.height - DIAMOND_HEIGHT - 2 * DIAMOND_PADDING;
+    // NSLog(@"random double %f, %f", t, r);
+    double range = bounds.size.height - 2 * DIAMOND_HEIGHT - 2 * DIAMOND_PADDING;
     assert( range > 0);
     while (r >= range)
 	r -= range;
@@ -108,16 +143,16 @@
 
     // where \ is set subtraction
     // We draw our singleton at height r along the band
-    cur_singleton_height = r;
+    cur_singleton_height = r + DIAMOND_HEIGHT;
     return (bounds.origin.y + r);
 }
 
 
 - (void)addSingleton:(void *)e withColor:(NSColor *)c andStart:(CGFloat)s
 {
-    NSLog(@"BandView is adding a singleton event");
+    // NSLog(@"BandView is adding a singleton event");
     [singletons addObject:[[Singleton alloc]
-		       initWithPoint:NSMakePoint(s, [self singletonHeight])
+		       initWithPoint:NSMakePoint(s, self.singletonHeight)
 		       color:c start:e]];
 }
 
@@ -125,7 +160,7 @@
 - (void)addState:(void *)e withColor:(NSColor *)c andStart:(CGFloat)s;
 {
     NSLog(@"BandView is adding a state event");
-    NSRect bounds = [self bounds];
+    NSRect bounds = self.bounds;
     
     // For now, this state's rectangle extends to the end of the BandView
     NSRect newRect = NSMakeRect(s,
@@ -146,7 +181,7 @@
     }
     else
     {
-	NSLog(@" *****  scBandView, states: a state was added before an initial state was set");
+	NSLog(@" *****  BandView, states: a state was added before an initial state was set");
     }
     lastState = newState;
     [states addObject:newState];
@@ -173,7 +208,7 @@
 // FIXME use a better algorithm for picking height
 - (CGFloat)heightForIntervalAt:(CGFloat)x fromGroup:(Group *)g
 {
-    return [self bounds].size.height / 2;
+    return self.shapeBounds.size.height / 2;
 }
 
 - (void)addIntervalStart:(void *)e
@@ -181,7 +216,7 @@
 	forIntervalGroup:(struct IntervalGroup *)g
 		andStart:(CGFloat)s
 {
-    NSRect bounds = [self bounds];
+    NSRect bounds = self.shapeBounds;
     NSLog(@"BandView is adding an interval event");
     Interval *i = [[Interval alloc]
 		   initWithX:s

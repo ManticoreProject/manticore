@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		1DDD58160DA1D0A300B32029 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 1DDD58140DA1D0A300B32029 /* MainMenu.xib */; };
+		523D60021014FD2100CD8552 /* Navigator.m in Sources */ = {isa = PBXBuildFile; fileRef = 523D60011014FD2100CD8552 /* Navigator.m */; };
+		5248C056101643C9006A2BD8 /* primes-p4.mlg in Resources */ = {isa = PBXBuildFile; fileRef = 5248C055101643C9006A2BD8 /* primes-p4.mlg */; };
 		529ED9F2100D2FFF00D8B8B1 /* AppController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 529ED9F1100D2FFF00D8B8B1 /* AppController.mm */; };
 		529ED9FD100D316C00D8B8B1 /* event-view.json in Resources */ = {isa = PBXBuildFile; fileRef = 529ED9FC100D316C00D8B8B1 /* event-view.json */; };
 		529ED9FF100D318600D8B8B1 /* log-events.json in Resources */ = {isa = PBXBuildFile; fileRef = 529ED9FE100D318600D8B8B1 /* log-events.json */; };
@@ -52,6 +54,9 @@
 		29B97324FDCFA39411CA2CEA /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = /System/Library/Frameworks/AppKit.framework; sourceTree = "<absolute>"; };
 		29B97325FDCFA39411CA2CEA /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = /System/Library/Frameworks/Foundation.framework; sourceTree = "<absolute>"; };
 		32CA4F630368D1EE00C91783 /* LogDrawer_Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LogDrawer_Prefix.pch; sourceTree = "<group>"; };
+		523D60001014FD2100CD8552 /* Navigator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Navigator.h; sourceTree = "<group>"; };
+		523D60011014FD2100CD8552 /* Navigator.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Navigator.m; sourceTree = "<group>"; };
+		5248C055101643C9006A2BD8 /* primes-p4.mlg */ = {isa = PBXFileReference; lastKnownFileType = file; name = "primes-p4.mlg"; path = "../../../../../../../primes-p4.mlg"; sourceTree = SOURCE_ROOT; };
 		529ED966100D244E00D8B8B1 /* DynamicRep.hxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = DynamicRep.hxx; sourceTree = "<group>"; };
 		529ED9F0100D2FFF00D8B8B1 /* AppController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AppController.h; sourceTree = "<group>"; };
 		529ED9F1100D2FFF00D8B8B1 /* AppController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = AppController.mm; sourceTree = "<group>"; };
@@ -160,6 +165,7 @@
 				29B97317FDCFA39411CA2CEA /* Resources */,
 				29B97323FDCFA39411CA2CEA /* Frameworks */,
 				19C28FACFE9D520D11CA2CBB /* Products */,
+				5248C055101643C9006A2BD8 /* primes-p4.mlg */,
 			);
 			name = LogDrawer;
 			sourceTree = "<group>";
@@ -441,6 +447,8 @@
 			children = (
 				529ED9F0100D2FFF00D8B8B1 /* AppController.h */,
 				529ED9F1100D2FFF00D8B8B1 /* AppController.mm */,
+				523D60001014FD2100CD8552 /* Navigator.h */,
+				523D60011014FD2100CD8552 /* Navigator.m */,
 			);
 			name = Controllers;
 			sourceTree = "<group>";
@@ -516,6 +524,7 @@
 				529EDA5E100D337E00D8B8B1 /* fact.mlg in Resources */,
 				529EDA5F100D337E00D8B8B1 /* fact2.mlg in Resources */,
 				52A58D9A100FAF3900C3F0ED /* fib.mlg in Resources */,
+				5248C056101643C9006A2BD8 /* primes-p4.mlg in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -549,6 +558,7 @@
 				52E79CE2100B8C690031A217 /* CustomSplitView.m in Sources */,
 				529ED9F2100D2FFF00D8B8B1 /* AppController.mm in Sources */,
 				52F36EC1100E237A001CCBD6 /* EventUtils.mm in Sources */,
+				523D60021014FD2100CD8552 /* Navigator.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -4,7 +4,7 @@
  */
 
 #import <Cocoa/Cocoa.h>
-
+#define DIVIDER_THICKNESS ( 30 )
 
 /// Customized subclass of NSSplitView
 /** CustomSplitView is a subclass of NSView that provides
@@ -19,5 +19,6 @@
 
 /// Override to change divider thickness
 - (CGFloat)dividerThickness;
+
 
 @end

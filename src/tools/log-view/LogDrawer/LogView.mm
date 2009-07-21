@@ -8,19 +8,22 @@
 #import "VProc.hxx"
 #import "log-desc.hxx"
 
-#define BAND_HEIGHT ( 200 )
+#define MIN_BAND_HEIGHT ( 50 )
 #define SINGLETON_COLOR ( [NSColor yellowColor] )
-
+#define LOG_VIEW_BACKGROUND_COLOR ( [NSColor blackColor] )
+#define DEFAULT_TIME_TICK ( 20 )
+#define TICK_LINE_COLOR ( [NSColor cyanColor] )
+#define TICK_LINE_WIDTH ( 0.1 )
 
 @implementation LogView
 
 
 
 
-@synthesize logStart;
-@synthesize logEnd;
+@synthesize logX;
+@synthesize logWidth;
 @synthesize zoomLevel;
-
+@synthesize timeTick;
 
 - (id)initWithFrame:(NSRect)frame {
     self = [super initWithFrame:frame];
@@ -28,48 +31,51 @@
 	NSRect f = [self frame];
 	f.size.width = 3000; // XXX For testing, to make it easy to see a big frame
 	[self setFrame:f];
-	splitView = [[CustomSplitView alloc] initWithFrame:[self bounds]];
-	messageView = [[MessageView alloc] initWithFrame:[self bounds]];
+	splitView = [[CustomSplitView alloc] initWithFrame:self.bounds];
+	messageView = [[MessageView alloc] initWithFrame:self.bounds];
 	[self addSubview:splitView];
+	NSRect splitViewBounds = splitView.bounds;
+	splitViewBounds.size.height -= 2 * DIVIDER_THICKNESS;
+	splitViewBounds.origin.y += DIVIDER_THICKNESS;
+	splitView.bounds = splitViewBounds;
 	[self addSubview:messageView];
+	
 	logFile = nil;
 	stateGroup = NULL;
 	cur_state = 0;
-	
+	timeTick = DEFAULT_TIME_TICK;
 	/* for lack of any other reasonable choice,
-	 * logStart and logEnd are initialized to the minimum and maximum values.
+	 * logX and logWidth are initialized to the minimum and maximum values.
 	 * Note: this may cause poor performance if they are not reinitialized
 	 * before the first call to setLogFile
 	 */
-	logStart = 0;
-	logEnd = -1;
+	logX = 0;
+	logWidth = -1;
     }
     return self;
 }
 
 - (void)drawRect:(NSRect)rect {
-    [[NSColor blueColor] set];
+    [LOG_VIEW_BACKGROUND_COLOR set];
     [NSBezierPath fillRect:[self bounds]];
     
+    NSBezierPath *verticalLine = [[NSBezierPath alloc] init];
+    NSRect bounds = self.bounds;
     
-    // The rest is for testing how much to zoom in by, it is not necessary
-    NSBezierPath *path = [[NSBezierPath alloc] init];
+    NSPoint s = NSMakePoint(bounds.origin.x, bounds.origin.y);
+    NSPoint f = NSMakePoint(bounds.origin.x, bounds.origin.y + bounds.size.height);
     
-    NSRect vr = [self visibleRect];
-    int slivers = 50;
-    CGFloat w = vr.size.width / slivers;
-    
-    for (int i = 0; i < slivers; ++i)
+    [TICK_LINE_COLOR set];
+    verticalLine.lineWidth = TICK_LINE_WIDTH;
+    verticalLine.flatness = .3;
+    while (s.x < bounds.origin.x + bounds.size.width)
     {
-	
-	if (i % 10 == 0)
-	    [[NSColor yellowColor] set];
-	else
-	    [[NSColor blackColor] set];
 
-	[path moveToPoint :NSMakePoint(vr.origin.x + i * w, vr.origin.y)];
-	[path lineToPoint:NSMakePoint(vr.origin.x + i * w, vr.origin.y + vr.size.height)];
-	[path stroke];
+	[verticalLine moveToPoint:s];
+	[verticalLine lineToPoint:f];
+	[verticalLine stroke];
+	s.x += timeTick;
+	f.x += timeTick;
     }
 }
 
@@ -77,15 +83,15 @@
 - (CGFloat)image:(uint64_t)p
 {
     NSRect bounds = [self bounds];
-    uint64_t scale = bounds.size.width / (logEnd - logStart);
-    return bounds.origin.x + scale * (p - logStart);
+    uint64_t scale = bounds.size.width / logWidth;
+    return bounds.origin.x + scale * (p - logX);
 }
 
 - (uint64_t)preImage:(CGFloat)p
 {
     NSRect bounds = [self bounds];
-    uint64_t scale = (logStart - logEnd) / bounds.size.width;
-    return logStart + scale * (p - bounds.origin.x);
+    uint64_t scale = logWidth / bounds.size.width;
+    return logX + scale * (p - bounds.origin.x);
 }
 
 int sillyNumber = 0;
@@ -140,31 +146,46 @@ int sillyNumber = 0;
 - (void)readNewDataDeepZoom
 {
     NSRect bounds = [self bounds];
-    bounds.size.height =
-	logFile.nVProcs * (BAND_HEIGHT + [splitView dividerThickness]);
-    NSRect frame = [self frame];
+    CGFloat min_height = 
+	logFile.nVProcs * (MIN_BAND_HEIGHT + [splitView dividerThickness]);
+    if (bounds.size.height < min_height)
+    {
+	bounds.size.height = min_height;
+    }
+    CGFloat band_height =
+	(bounds.size.height - logFile.nVProcs * splitView.dividerThickness) /
+		logFile.nVProcs;
+    NSRect frame = self.frame;
     frame.size.width = bounds.size.width;
     frame.size.height = bounds.size.height;
-    [self setFrame:frame];
+    self.frame = frame;
+    self.bounds = bounds;
+    
  
     // The old subviews no longer have valid shapes on them, remove them
-    CustomSplitView *newSplitView = [[CustomSplitView alloc] initWithFrame:bounds];
+    NSRect splitViewBounds = bounds;
+    splitViewBounds.origin.y += DIVIDER_THICKNESS;
+    splitViewBounds.size.height -= 2 * DIVIDER_THICKNESS;
+    CustomSplitView *newSplitView = [[CustomSplitView alloc] initWithFrame:splitViewBounds];
     MessageView *newMessageView = [[MessageView alloc] initWithFrame:bounds];
     [self replaceSubview:splitView with:newSplitView];
     [self replaceSubview:messageView with:newMessageView];
     splitView = newSplitView;
     messageView = newMessageView;
 
-    // Converts from intervals in log file to intervals in log view
-    double scale = bounds.size.width / (logEnd - logStart);
-
+   
     int v = 0;
     for (VProc *vp in logFile.vProcs)
     {
 	DynamicEvent *events = (DynamicEvent *) vp.events;
-	NSRect curFrame = NSMakeRect(bounds.origin.x, v * BAND_HEIGHT,
-				     bounds.size.width, BAND_HEIGHT);
+	NSRect curFrame = NSMakeRect(splitViewBounds.origin.x, v * band_height,
+				     splitViewBounds.size.width, band_height);
         BandView *band = [[BandView alloc] initWithFrame:curFrame];
+	NSRect bandBounds = band.shapeBounds;
+
+	// Converts from intervals in log file to intervals in log view
+	double scale = bandBounds.size.width / logWidth;
+
 	
 	NSRect splitViewFrame = [splitView frame];
 	NSLog(@"adding a band for VProc with vpId %d", v);
@@ -174,19 +195,20 @@ int sillyNumber = 0;
 	{
 	    // NSLog(@"checking if event %d of %d is in timespan", i, vp.numEvents);
 	    EventDesc *eventDesc = description(events[i], nil);
-	    if (events[i].timestamp >= logStart &&
-	        events[i].timestamp <= logEnd)
+	    if (events[i].timestamp >= logX &&
+	        events[i].timestamp <= logX + logWidth)
 	    {
 		// NSLog(@"Found event in timespan, checking for shapes to draw");
-		
+	    
+	    CGFloat drawingPosition =
+		bandBounds.origin.x + scale * (events[i].timestamp - logX);		
 #pragma mark SINGLETONS
 	/////////////// SINGLETONS ///////////////////
-		CGFloat drawingPosition =
-		bounds.origin.x + scale * (events[i].timestamp - logStart);
+
 
 		if (events[i].desc->isSimpleEvent())
 		{
-		    NSLog(@"adding singleton");
+		    // NSLog(@"adding singleton");
 		    // The event is a singleton
 		    // The event may also be in some groups
 		    [band addSingleton:&events[i]
@@ -202,8 +224,8 @@ int sillyNumber = 0;
 		// the first event, if such a state exists
 		if (!stateGroup)
 		{
-		    NSLog(@"stateGroup is uninitialized, checking event for groups to use");
-		    NSLog(@"logFile.desc = 0x%x", logFile.desc);
+		    // NSLog(@"stateGroup is uninitialized, checking event for groups to use");
+		    // NSLog(@"logFile.desc = 0x%x", logFile.desc);
 		    std::vector<StateGroup *> *states =
 			logFile.desc->StateGroups(eventDesc);
 		    if (states)
@@ -308,7 +330,7 @@ int sillyNumber = 0;
 }
 
 /// Read data from log file.  The data read corresponds to the interval
-/// (logStart, logEnd)
+/// (logX, logX + logWidth)
 - (void)readNewData
 {
     switch (zoomLevel)
@@ -334,12 +356,13 @@ int sillyNumber = 0;
 #pragma mark Zoomming
 
 /// The largest number of nanoseconds that can be displayed at deep zoom
-#define MAX_DEEP_ZOOM_WIDTH ( 1000000 )
+#define MAX_DEEP_ZOOM_WIDTH ( -1 )
 /// The largest number of nanoseconds that can be displayed at medium zoom
 #define MAX_MEDIUM_ZOOM_WIDTH ( 10000000 )
 
 - (void)setZoomWithWidth:(uint64_t)width
 {
+    NSLog(@"Zoom is %qu", width);
     if (width < MAX_DEEP_ZOOM_WIDTH)
     {
 	NSLog(@"Entering deep zoom");
@@ -357,12 +380,12 @@ int sillyNumber = 0;
     }
 }
 
-- (void)setStart:(uint64_t)startVal andEnd:(uint64_t)endVal
+- (void)setStart:(uint64_t)logXVal andWidth:(uint64_t)logWidthVal
 {
-    logStart = startVal;
-    logEnd = endVal;
-    NSLog(@"start time = %qu, end time = %qu", logStart, logEnd);
-    [self setZoomWithWidth:logEnd - logStart];
+    logX = logXVal;
+    logWidth = logWidthVal;
+    NSLog(@"start time = %qu, end time = %qu", logX, logX + logWidth);
+    [self setZoomWithWidth:logWidth];
     if (logFile)
     {
 	[self readNewData];
@@ -372,13 +395,10 @@ int sillyNumber = 0;
 
 - (void)resizeIntervalToSize:(uint64_t)size aboutPivot:(uint64_t)pivot
 {
-    assert( logStart <= pivot && pivot <= logEnd );
-    uint64_t width = logEnd - logStart;
-    uint64_t firstFrac = pivot - logStart;
-    uint64_t secondFrac = logEnd - pivot;
-    
-    [self setStart:pivot - firstFrac * width
-	    andEnd:pivot + secondFrac * width];
+    assert( logX <= pivot && pivot <= logX + logWidth );
+    uint64_t frac = (pivot - logX) / logWidth;
+
+    [self setStart:pivot - frac * size andWidth:size];
 }
 
 @end

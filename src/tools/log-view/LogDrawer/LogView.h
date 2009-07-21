@@ -29,10 +29,11 @@ enum ZoomLevel {
 @interface LogView : NSView {
     IBOutlet CustomSplitView *splitView; ///< The background view, and the view that contains the BandViews
     IBOutlet MessageView *messageView; ///< The foreground view, and the view that displays dependent events
-    uint64_t logStart;
-    uint64_t logEnd;
+    uint64_t logX;
+    uint64_t logWidth;
     LogFile *logFile;
     
+    CGFloat timeTick; ///< The number of pixel between two adjacent time ticks
     
     int cur_state;
     struct StateGroup *stateGroup; //< The group of state events to display
@@ -41,8 +42,9 @@ enum ZoomLevel {
 }
 
 @property (readwrite, assign) enum ZoomLevel zoomLevel;
-@property (readwrite, assign) uint64_t logStart;
-@property (readwrite, assign) uint64_t logEnd;
+@property (readwrite, assign) uint64_t logX;
+@property (readwrite, assign) uint64_t logWidth;
+@property (readwrite, assign) CGFloat timeTick;
 
 - (void)setLogFile:(LogFile *)logFileVal;
 
@@ -52,12 +54,12 @@ enum ZoomLevel {
 - (uint64_t)preImage:(CGFloat)p;
 
 /// Set the endpoints of the interval of the logFile being shown
-- (void)setStart:(uint64_t)startVal andEnd:(uint64_t)endVal;
+- (void)setStart:(uint64_t)logXVal andWidth:(uint64_t)logWidthVal;
 
 /// Adjust the size of the logFile interval using a pivot and a new width
-/** Linearly change logStart and logEnd such that pivot is in the same place,
-  * but logEnd - logStart = size.
-  * invariant: logStart <= pivot <= logEnd
+/** Linearly change logX and logWidth such that pivot is in the same place,
+  * but logWidth = size.
+  * invariant: pivot <= logWidth >= 0
   */
 - (void)resizeIntervalToSize:(uint64_t)size aboutPivot:(uint64_t)pivot;
 

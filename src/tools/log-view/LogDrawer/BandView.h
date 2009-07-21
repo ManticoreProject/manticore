@@ -34,6 +34,8 @@ struct IntervalGroup;
     NSMapTable *intervalMap; //< IntervalGroup -> most recently added interval event from that group
 }
 
+@property (readonly, assign) NSRect shapeBounds; ///< The rectangle which shapes may be drawn in
+
 - (void)setStateStartColor:(NSColor *)c;
 
 - (void)addSingleton:(void *)e withColor:(NSColor *)c andStart:(CGFloat)s;

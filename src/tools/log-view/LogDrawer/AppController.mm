@@ -27,14 +27,15 @@
 
 - (IBAction)test:(id)sender
 {
-    uint64_t fraction = 1700; //< The number of times what we will display can fit into the whole log
+    uint64_t fraction = 10; //< The number of times what we will display can fit into the whole log
     NSString *root = @"/Users/koreiklein/workspace/manticore/trunk/src/tools/log-view/LogDrawer/";
-    LogFile *lf = [[LogFile alloc] initWithFilename:[root stringByAppendingString:@"fib.mlg"]
+    LogFile *lf = [[LogFile alloc] initWithFilename:@"/Users/koreiklein/primes-p4.mlg"
 		 andEventDescFilename:[root stringByAppendingString:@"event-view.json"]
 		   andLogDescFilename:[root stringByAppendingString:@"log-events.json"]];
     uint64_t ft = [lf firstTime];
     uint64_t lt = [lf lastTime];
-    [logView setStart:lt - (lt - ft) / fraction andEnd:lt];
+    uint64_t width = (lt - ft) / fraction;
+    [logView setStart:lt - width andWidth:width];
     [logView setLogFile:lf];
 }
 
