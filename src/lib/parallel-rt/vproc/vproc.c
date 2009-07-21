@@ -458,6 +458,9 @@ static void SigHandler (int sig, siginfo_t *si, void *_sc)
 {
     ucontext_t	*uc = (ucontext_t *)_sc;
     VProc_t	*self = VProcSelf();
+#ifdef ENABLE_LOGGING
+    extern uint64_t GlobalGCUId;
+#endif
 
   /* WARNING:
    * Enabling the following SayDebug can cause deadlock;
@@ -480,7 +483,7 @@ static void SigHandler (int sig, siginfo_t *si, void *_sc)
 	self->sigPending = M_TRUE;
 	break;
       case SIGUSR2: /* Global GC signal */
-	LogGCSignal (self);
+	LogGCSignal (self, GlobalGCUId);
 	self->sigPending = M_TRUE;
 	break;
       default:

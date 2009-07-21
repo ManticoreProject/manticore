@@ -34,6 +34,10 @@ static uint64_t		NWordsScanned;
 static uint64_t		NBytesCopied;
 #endif
 
+#ifdef ENABLE_LOGGING
+uint64_t		GlobalGCUId;	// Unique ID of current global GC
+#endif
+
 static void GlobalGC (VProc_t *vp, Value_t **roots);
 static void ScanVProcHeap (VProc_t *vp);
 static void ScanGlobalToSpace (VProc_t *vp);
@@ -129,7 +133,9 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	    AllReadyForGC = false;
 	    NReadyForGC = 1;
 	    NumGlobalGCs++;
-	    LogGlobalGCInit (self, NumGlobalGCs);
+#ifdef ENABLE_LOGGING
+	    GlobalGCUId = LogGlobalGCInit (self, NumGlobalGCs);
+#endif
 #ifndef NDEBUG
 	    if (GCDebug >= GC_DEBUG_GLOBAL)
 	        SayDebug("[%2d] Initiating global GC %d (%d processors)\n", self->id, NumGlobalGCs, NumVProcs);
@@ -253,10 +259,10 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	MutexUnlock (&HeapLock);
     }
 
-    LogGlobalGCEnd (self, NumGlobalGCs);
-
   /* synchronize on from-space being reclaimed */
     BarrierWait (&GCBarrier2);
+
+    LogGlobalGCEnd (self, NumGlobalGCs);
 
 #ifndef NDEBUG
     if (GCDebug >= GC_DEBUG_GLOBAL) {
