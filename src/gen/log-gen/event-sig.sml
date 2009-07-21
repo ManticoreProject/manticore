@@ -39,6 +39,9 @@ structure EventSig : sig
     val alignAndSize : ty -> {align:word, sz:word, tag:string}
     val signOf : arg_desc list -> string
 
+  (* is an argument a new-id? *)
+    val isNewIdArg : arg_desc -> bool
+
     structure Set : ORD_SET where type Key.ord_key = string
     structure Map : ORD_MAP where type Key.ord_key = string
 
@@ -148,6 +151,9 @@ structure EventSig : sig
 	      else ();
 	    String.concat(f (argStart, sortArgs ads))
 	  end
+
+  (* is an argument a new-id? *)
+    fun isNewIdArg (ad : arg_desc) = (case #ty ad of NEW_ID => true | _ => false)
 
   (* sets and maps keyed by signature *)
     local

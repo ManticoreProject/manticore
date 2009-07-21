@@ -102,11 +102,13 @@ structure GenInlineLogH : GENERATOR =
 	    | prParams ((a : Sig.arg_desc)::r) = (prl [",", #name a]; prParams r)
 	  fun prArgs [] = ()
 	    | prArgs ((a : Sig.arg_desc)::r) = (prl [", (", #name a, ")"]; prArgs r)
+	(* filter out any new-id arguments *)
+	  val args = List.filter (not o Sig.isNewIdArg) (#args ed)
 	  in
 	    prl ["#define Log", #name ed, "(vp"];
-	    prParams (#args ed);
+	    prParams args;
 	    prl [") LogEvent", #sign ed, " ((vp), ", #name ed, "Evt"];
-	    prArgs (Sig.sortArgs(#args ed)); (* NOTE: location order here! *)
+	    prArgs (Sig.sortArgs args); (* NOTE: location order here! *)
 	    pr ")\n"
 	  end
 
@@ -119,9 +121,11 @@ structure GenInlineLogH : GENERATOR =
 	    | prParams ((a : Sig.arg_desc)::r) = (prl [",", #name a]; prParams r)
 	  fun prArgs [] = ()
 	    | prArgs ((a : Sig.arg_desc)::r) = (prl [", (", #name a, ")"]; prArgs r)
+	(* filter out any new-id arguments *)
+	  val args = List.filter (not o Sig.isNewIdArg) (#args ed)
 	  in
 	    prl ["#define Log", #name ed, "(vp"];
-	    prParams (#args ed);
+	    prParams args;
 	    pr ")\n"
 	  end
 
