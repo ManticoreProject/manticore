@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include "event-desc.hxx"
 #include "log-desc.hxx"
 #include "json.h"
@@ -24,7 +25,10 @@ class LogFileDescLoader {
     EventDesc *NewEvent (JSON_Value_t *v);
     Group *NewGroup (JSON_Value_t *obj);
 
+    EventDesc *GetEventByName (JSON_Value_t *v);
     EventDesc *GetEventField (JSON_Value_t *v, const char *name);
+
+    void Error (const char *fmt, ...);
 
   protected:
     LogFileDesc		*_desc;
@@ -125,7 +129,7 @@ bool LogFileDescLoader::GetLogEventsFile (JSON_Value_t *v)
   // allocate the events vector, including a slot for NoEvent
     std::vector<EventDesc *> *eds =
 	new std::vector<EventDesc *> (events->u.array.length + 1, (EventDesc *)0);
-    this->_desc = new LogFileDesc (eds);;
+    this->_desc = new LogFileDesc (eds);
 
   /* initialize the events array */
     eds->at(0) = new EventDesc ();  /* NoEvent */
@@ -179,7 +183,7 @@ EventDesc *LogFileDescLoader::NewEvent (JSON_Value_t *v)
     if (args->u.array.length == 0)
 	ads = 0;
     else if ((ads = GetArgs(args)) == 0) {
-	fprintf (stderr, "bad argument for event %s\n", name);
+	this->Error("bad argument for event %s\n", name);
 	return 0;
     }
 
@@ -231,7 +235,23 @@ Group *LogFileDescLoader::NewGroup (JSON_Value_t *v)
 	EventGroup *grp =
 	    new EventGroup (desc,
 		events->u.array.length, groups->u.array.length);
-/* FIXME: add events and groups */
+      /* add events to the group */
+	for (int i = 0;  i < events->u.array.length;  i++) {
+	    EventDesc *evt = this->GetEventByName (events->u.array.elems[i]);
+	    if (evt == 0)
+		return 0;
+	    grp->AddEvent (i, evt);
+	}
+      /* add sub-groups to the group */
+	for (int i = 0;  i < groups->u.array.length;  i++) {
+	    JSON_Value_t *g = groups->u.array.elems[i];
+	    if ((g == 0) || (g->tag != JSON_object))
+		return 0;
+	    Group *subgrp = this->NewGroup(g);
+	    if (subgrp == 0)
+		return 0;
+	    grp->AddGroup (i, subgrp);
+	}
 	return grp;
     }
     else if (strcasecmp(kindStr, "state") == 0) {
@@ -251,45 +271,78 @@ Group *LogFileDescLoader::NewGroup (JSON_Value_t *v)
 	}
       /* add the transitions */
 	for (int i = 0;  i < nTrans;  i++) {
-/* FIXME: add transitions and mark events as being in a state group */
+	  /* add transitions and mark events as being in a state group */
+	    JSON_Value_t *t = trans->u.array.elems[i];
+	    if ((t == 0) || (t->tag != JSON_array) || (t->u.array.length != 2))
+		return 0;
+	    EventDesc *evt = this->GetEventByName (t->u.array.elems[0]);
+	    const char *stName = JSON_GetString(t->u.array.elems[1]);
+	    if ((evt == 0) || (stName == 0))
+		return 0;
+	    grp->AddTransition (i, evt, stName);
+	    evt->SetAttr (ATTR_STATE);
 	}
 	return grp;
     }
     else if (strcasecmp(kindStr, "interval") == 0) {
 	EventDesc *a = this->GetEventField (v, "start");
 	EventDesc *b = this->GetEventField (v, "end");
-	a->SetAttr (ATTR_INTERVAL);
-	b->SetAttr (ATTR_INTERVAL);
 	if ((a == 0) || (b == 0))
 	    return 0;
-	else
+	else {
+	    a->SetAttr (ATTR_INTERVAL);
+	    b->SetAttr (ATTR_INTERVAL);
 	    return new IntervalGroup (desc, a, b);
+	}
     }
     else if (strcasecmp(kindStr, "dependent") == 0) {
 	EventDesc *src = this->GetEventField (v, "src");
 	EventDesc *dst = this->GetEventField (v, "dst");
-	src->SetAttr (ATTR_DEPENDENT);
-	dst->SetAttr (ATTR_DEPENDENT);
 	if ((src == 0) || (dst == 0))
 	    return 0;
-	else
+	else {
+	    src->SetAttr (ATTR_DEPENDENT);
+	    dst->SetAttr (ATTR_DEPENDENT);
 	    return new DependentGroup (desc, src, dst);
+	}
     }
     else {
-	fprintf (stderr, "bad group kind %s\n", kindStr);
+	this->Error("bad group kind %s\n", kindStr);
 	return 0;
     }
+
+}
+
+EventDesc *LogFileDescLoader::GetEventByName (JSON_Value_t *v)
+{
+    const char *evtName = JSON_GetString(v);
+    if (evtName == 0)
+	return 0;
+    EventDesc *ed = this->_desc->FindEventByName (evtName);
+    if (ed == 0)
+	this->Error ("unknown event \"%s\"\n", evtName);
+    return ed;
 
 }
 
 EventDesc *LogFileDescLoader::GetEventField (JSON_Value_t *v, const char *name)
 {
-    const char *evtName = JSON_GetString(JSON_GetField(v, name));
+    JSON_Value_t *fld = JSON_GetField(v, name);
 
-    if (evtName == 0)
+    if (fld == 0) {
+	this->Error ("unable to find field \"%s\" in JSON object\n", name);
 	return 0;
+    }
     else
-	return this->_desc->FindEventByName (evtName);
+	return this->GetEventByName (fld);
 
 }
 
+/* error reporting */
+void LogFileDescLoader::Error (const char *fmt, ...)
+{
+    va_list va;
+    va_start (va, fmt);
+    vfprintf (stderr, fmt, va);
+    va_end (va);
+}
