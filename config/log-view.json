@@ -59,17 +59,18 @@
  *	dst	-- the destination of the interval
  */
 {
-  "date" : "0x20090305",
-  "version" : [1, 1, 0],
+  "date" : "0x20090721",
+  "version" : [0, 0, 0],
   "root" : {
       "desc" : "All events",
       "kind" : "GROUP",
       "events" : [ "NoEvent" ],
       "groups" : [
-	  { "desc" : "VProc Events",
+	  { "desc" : "VProc events",
 	    "kind" : "GROUP",
 	    "events" : [
-		"VProcStartIdle", "VProcStartMain", "VProcExitMain", "VProcDequeue",
+		"VProcStartIdle", "VProcStartMain", "VProcExitMain",
+		"VProcSleep", "VProcWakeup",
 		"PreemptSignal", "GCSignal"
 	      ],
 	    "groups" : [
@@ -81,15 +82,17 @@
 		      ["VProcWakeup", "Active"],
 		      ["MinorGCStart", "GC"],	["MinorGCEnd", "Active"],
 		      ["MajorGCStart", "GC"],	["MajorGCEnd", "Active"],
-		      ["GlobalGCInit", "GC"],	["GlobalGCEnd", "Active"],
+		      ["GlobalGCInit", "GC"],	["GlobalGCVPStart", "Start"], ["GlobalGCEnd", "Active"],
 		      ["PromoteStart", "GC"],	["PromoteEnd", "Active"],
+		      ["VProcStartIdle", "Idle"],
+		      ["VProcStartMain", "Active"],
 		      ["VProcIdle", "Idle"],
 		      ["VProcSleep", "Sleeping"]
 		    ]
 		}
 	      ]
 	  },
-	  { "desc" : "GC Events",
+	  { "desc" : "GC events",
 	    "kind" : "GROUP",
 	    "events" : [ ],
 	    "groups" : [
@@ -117,15 +120,20 @@
 		  "kind"  : "INTERVAL",
 		  "start" : "PromoteStart",
 		  "end"   : "PromoteEnd"
+		},
+		{ "desc"  : "Global GC startup",
+		  "kind"  : "DEPENDENT",
+		  "src"   : "GlobalGCInit",
+		  "dst"   : "GCSignal"
 		}
 	      ]
 	  },
-	  { "desc" : "Runtime Events",
+	  { "desc" : "Runtime events",
 	    "kind" : "GROUP",
 	    "events" : ["RTPreemption",  "RTFuture1Spawn", "RTFuture1Touch", "RTFuture1Steal"],
 	    "groups" : []
 	  },
-	  { "desc" : "Thread Events",
+	  { "desc" : "Thread events",
 	    "kind" : "GROUP",
 	    "events" : ["ThdExit"],
 	    "groups" : [
@@ -136,7 +144,7 @@
 		},
 		{ "desc" : "Remote thread spawn",
 		  "kind" : "DEPENDENT",
-		  "src"  : "RemoteThdSpawn",
+		  "src"  : "ThdSpawnOn",
 		  "dst"  : "ThdStart"
 		}
 	      ]
