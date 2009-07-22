@@ -11,16 +11,30 @@ structure Rewrites = struct
 
     structure BTy = BOMTy
 
-    datatype rw_elt =
-	     Elt_HLOp of BOM.hlop
-	   | Elt_Prim of BOM.var
-	   | Elt_Alloc
-	   | Elt_Wildcard
+    datatype rw_pattern = datatype BOM.rw_pattern
+
+    datatype rewrite = datatype BOM.rewrite
+
+    type production_id = Stamp.stamp
+
+    datatype production = HLRWProduction of {
+        name : production_id,
+        rhs : rw_elt list,
+        rw_opt : rewrite option
+      }
+
+    and rw_elt =
+	Elt_HLOp of BOM.hlop
+      | Elt_Prim of BOM.var
+      | Elt_Alloc
+      | Elt_Wildcard
+      | Elt_Nonterminal of production_id
 
     fun eltToString (Elt_HLOp hlop) = HLOp.toString hlop
       | eltToString (Elt_Prim p) = BOM.Var.toString p
       | eltToString Elt_Alloc = "alloc"
       | eltToString Elt_Wildcard = "*"
+      | eltToString (Elt_Nonterminal nt) = "nonterminal<" ^ Stamp.toString nt ^ ">"
 
     fun compareElt (Elt_HLOp h1, Elt_HLOp h2) = HLOp.compare (h1, h2)
       | compareElt (Elt_Prim p1, Elt_Prim p2) = BOM.Var.compare (p1, p2)
@@ -32,6 +46,9 @@ structure Rewrites = struct
       | compareElt (Elt_Wildcard, Elt_Wildcard) = EQUAL
       | compareElt (Elt_Wildcard, _) = LESS
       | compareElt (_, Elt_Wildcard) = GREATER
+      | compareElt (Elt_Nonterminal _, Elt_Nonterminal _) = EQUAL
+      | compareElt (Elt_Nonterminal _, _) = LESS
+      | compareElt (_, Elt_Nonterminal _) = GREATER
 
     fun sameElt (e1, e2) = compareElt (e1, e2) = EQUAL
 
@@ -41,16 +58,6 @@ structure Rewrites = struct
 	val compare = compareElt
       end
     structure EltMap = RedBlackMapFn (EltKey)
-
-    datatype rw_pattern = datatype BOM.rw_pattern
-
-    datatype rewrite = datatype BOM.rewrite
-
-    datatype production = HLRWProduction of {
-        name : rw_elt,
-        rhs : rw_elt list,
-        rw_opt : rewrite option
-      }
 
     datatype grammar = HLRWGrammar of production list
 
@@ -68,7 +75,7 @@ structure Rewrites = struct
     (* getNewNonterminal() - Another abstraction for getting a new
        nonterminal name w.r.t. the given grammar. *)
     fun getNewNonterminal (grammar as HLRWGrammar prod_list) =
-        Elt_Prim (BOM.Var.new ("!NT" ^ (Int.toString (length prod_list)), BOMTy.T_Any))
+	Elt_Nonterminal (Stamp.new ())
 
     (* matchRHS() - Match a production against a list of nonterminals. *)
     fun matchRHS (HLRWProduction {rhs, ...}, rhs') = let
@@ -109,7 +116,7 @@ structure Rewrites = struct
                                   (prod as HLRWProduction { name, ... }) ::
                                   prods) =
                 if similarProduction(prod, rhs, rw_opt)
-                then SOME name
+                then SOME (Elt_Nonterminal name)
                 else matchProduction' (rhs, prods)
               | matchProduction' (rhs, []) = NONE
         in
@@ -123,7 +130,7 @@ structure Rewrites = struct
               of SOME prod_name => (prod_name, grammar)
                | NONE => let
                      val prod_name = getNewNonterminal grammar
-                     val prod = HLRWProduction { name = prod_name,
+                     val prod = HLRWProduction { name = Stamp.new (),
                                                  rhs = rhs,
                                                  rw_opt = rw_opt }
                  in
@@ -182,7 +189,7 @@ structure Rewrites = struct
        the grammar to their (supposedly sole) production. *)
     fun getGrammarProductionMap (HLRWGrammar prods) = let
         fun prodMapFolder (prod as HLRWProduction {name, ...}, m) =
-            EltMap.insert(m, name, prod)
+            EltMap.insert(m, Elt_Nonterminal name, prod)
     in
         foldl prodMapFolder EltMap.empty prods
     end (* getGrammarProductionMap() *)
@@ -206,7 +213,7 @@ structure Rewrites = struct
         val rhss = String.concat (List.map (fn a => (eltToString a) ^ " ")
                                            rhs)
     in
-        String.concat [eltToString name, " := ", rhss, rwOptToString rw_opt]
+        String.concat ["nt", Stamp.toString name, " := ", rhss, rwOptToString rw_opt]
     end (* productionToString *)
 
     (* grammarToString() - Create a string representation of a full RW grammar

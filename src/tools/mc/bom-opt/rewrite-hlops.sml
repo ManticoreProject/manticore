@@ -28,7 +28,7 @@ end = struct
          pri = [5, 0],
          obscurity = 1,
          help = "skip the HLOp rewriting pass",
-         default = false
+         default = true
          }
 
     val _ = ControlRegistry.register BOMOptControls.registry {
@@ -94,8 +94,6 @@ end = struct
     val emptyRWState = Rewrites.EltMap.empty : rwstate
 
     val baseWeight = IntInf.fromInt 0
-
-    val basePair = (Rewrites.Elt_Wildcard, baseWeight)
 
     val isEmptyRWState : rwstate -> bool = Rewrites.EltMap.isEmpty
 
@@ -167,13 +165,13 @@ end = struct
             val childWeights = ListPair.map getRWStateWeight
                                             (tl rhs, rhsRWStates)
             val totalWeight = List.foldl IntInf.+ prodWeight childWeights
-            val crntWeight = (case Rewrites.EltMap.find (rwState, name)
+            val crntWeight = (case Rewrites.EltMap.find (rwState, Rewrites.Elt_Nonterminal name)
                                of NONE => baseWeight
                                 | SOME wt => wt
                                (* end case *))
         in
             if IntInf.>=(totalWeight, crntWeight)
-            then (Rewrites.EltMap.insert(rwState, name, totalWeight))
+            then (Rewrites.EltMap.insert(rwState, Rewrites.Elt_Nonterminal name, totalWeight))
             else rwState
         end (* applyProdToRWState() *)
     in
@@ -445,13 +443,13 @@ end = struct
              | SOME [] => emptyRWState (* Should not happen. *)
              | SOME candidateProds => let
                    val ntStrings = crossRWStates(rwRHSKey, rwRHSRest)
-                   (* +DEBUG
+(*
                    val _ =
                        print ((String.concatWith "\n"
                                (List.map (fn alist => String.concatWith " "
-                                          (List.map Atom.toString alist))
+                                          (List.map Rewrites.eltToString (rwRHSKey :: rwRHSRest)))
                                          ntStrings)) ^ "\n")
-                      -DEBUG *)
+*)
                    fun prodMatchesNtString prod = let
                        fun prodMatchesNtString' (ntString, acc) =
                            acc orelse Rewrites.matchRHS(prod, ntString)
@@ -464,7 +462,7 @@ end = struct
                    val rwState = foldl applyProdToRWState emptyRWState
                                        matchingProds
                in
-                   (* DEBUG: print ((rwStateToString rwState) ^ "\n"); *)
+                   print ((rwStateToString rwState) ^ "\n"); 
                    rwState
                end
             (* end case *))
