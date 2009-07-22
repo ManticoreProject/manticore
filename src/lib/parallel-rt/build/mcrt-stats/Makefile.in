@@ -1,0 +1,55 @@
+# Makefile.in
+#
+# COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu/)
+# All rights reserved.
+#
+# Generic makefile for the runtime system libraries.  This file is used to
+# create the Makefile.in files for mcrt, mcrt-log, etc.
+#
+# @configure_input@
+#
+
+#### Start of system configuration section. ####
+
+#
+# directories for the install target
+#
+PREFIX =		@prefix@
+INSTALL_BINDIR =	$(PREFIX)/bin
+INSTALL_HEAPDIR =	$(INSTALL_BINDIR)/.heap
+INSTALL_LIBDIR =	$(PREFIX)/lib
+INSTALL_INCDIR =	$(PREFIX)/include
+
+#
+# directories for the local-install target
+#
+SRCDIR =	@MANTICORE_ROOT@/src
+LIBDIR =	@MANTICORE_ROOT@/lib
+BINDIR =	@MANTICORE_ROOT@/bin
+HEAPDIR =	$(BINDIR)/.heap
+
+INSTALL =	@INSTALL@
+SHELL =		@SHELL@
+@SET_MAKE@
+
+#### End of system configuration section. ####
+
+# the target build options
+#
+BUILD_OPTIONS =	stats
+
+# the target library name
+#
+TARGET =	libmcrt-stats.a
+
+build:		$(TARGET)
+
+local-install:	$(TARGET)
+	$(INSTALL) $(TARGET) $(LIBDIR)/$(TARGET)
+
+install:	$(TARGET)
+	$(INSTALL) $(TARGET) $(INSTALL_LIBDIR)/$(TARGET)
+
+# Include common definitions for run-time builds
+#
+include ../mk/common.gmk
